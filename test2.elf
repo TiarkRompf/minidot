@@ -288,11 +288,20 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V T -> type.
 %total C (eval-safe _ _ C _). % induction on eval-exp
 
 
+%{
+  
+Coverage error --- missing cases:
+{X1:tenv} {X2:exp} {X3:exp} {X4:tpe} {X5:venv} {X6:val} {X7:tpe}
+   {X8:type-exp X1 X3 X7} {X9:type-exp X1 X2 (arrow X7 X4)} {X10:wf-env X5 X1}
+   {X11:venv} {X12:exp -> exp -> exp} {X13:exp} {X14:exp} {X15:venv} {X16:tpe}
+   {X17:venv} {X18:val} {X19:eval-exp X11 (X12 X13 X14) X6}
+   {X20:vbind X15 (clos ([x:exp] [x1:exp] X12 x x1) X16 X17) X13 X11}
+   {X21:vbind X17 X18 X14 X15} {X22:eval-exp X5 X3 X18}
+   {X23:eval-exp X5 X2 (clos ([x:exp] [x1:exp] X12 x x1) X16 X17)}
+   {X24:wf-val X6 X4}
+   |- eval-safe (t/app X8 X9) X10 (e/app X19 X20 X21 X22 X23) X24.
 
+%% ABORT %%
 
-
-
-
-
-
+}%
 

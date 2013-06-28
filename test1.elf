@@ -1,6 +1,6 @@
 % echo "loadFile test1.elf" |/Volumes/Twelf\ for\ OS\ X\ \(Intel\)/Twelf/bin/twelf-server
 
-% CEK machine
+% CEK machine (expr evaluation done, stm execution unfinished)
 
 
 nat: type.
