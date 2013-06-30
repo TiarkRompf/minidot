@@ -1,4 +1,5 @@
-% echo "loadFile test3.elf" |/Volumes/Twelf\ for\ OS\ X\ \(Intel\)/Twelf/bin/twelf-server
+% echo "set unsafe true 
+% loadFile test5.elf" |/Volumes/Twelf\ for\ OS\ X\ \(Intel\)/Twelf/bin/twelf-server
 
 % STLC: big step preservation
 % - add store
@@ -109,6 +110,54 @@ sub-tp/fun  : sub-tp (arrow T1 T2) (arrow T3 T4)
               <- sub-tp T2 T4.
 
 
+%% Subtyping is transitive
+
+sub-tp-trans-aux :
+  %% Inputs
+  {T2:tpe}
+  sub-tp T1 T2 ->
+  sub-tp T2 T3 ->
+  %% Output
+  sub-tp T1 T3 ->
+  type.
+%mode sub-tp-trans-aux +T2 +SBT1 +SBT2 -SBT3.
+
+-/int    : sub-tp-trans-aux int sub-tp/nat SBT SBT.
+-/bool   : sub-tp-trans-aux bool sub-tp/bool SBT SBT.
+-/top    : sub-tp-trans-aux top sub-tp/top sub-tp/top sub-tp/top.
+-/bot    : sub-tp-trans-aux _ sub-tp/bot _ sub-tp/bot.
+-/fun-top : sub-tp-trans-aux (arrow T1 T2) (sub-tp/fun SBT2 SBT1) 
+              (sub-tp/top) (sub-tp/top).
+
+-/fun-fun  : sub-tp-trans-aux
+      (arrow T1 T2)
+      (sub-tp/fun SBT2 SBT1)
+            (sub-tp/fun SBT4 SBT3)
+            (sub-tp/fun SBT6 SBT5)  
+      <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
+
+
+%worlds () (sub-tp-trans-aux _ _ _ _).
+%total T2 (sub-tp-trans-aux T2 _ _ _).
+
+%% Just a corrollary to sub-tp-trans-aux that doesn't require us to provide
+%% T2 as an additional argument.
+
+sub-tp-trans :
+  %% Inputs
+  sub-tp T1 T2 ->
+  sub-tp T2 T3 ->
+  %% Output
+  sub-tp T1 T3 ->
+  type.
+%mode sub-tp-trans +SBT1 +SBT2 -SBT3.
+
+-/i : sub-tp-trans SBT1 SBT2 SBT3
+       <- sub-tp-trans-aux _ SBT1 SBT2 SBT3.
+
+%worlds () (sub-tp-trans _ _ _).
+%total {} (sub-tp-trans _ _ _).
 
 
 
