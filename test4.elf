@@ -1,0 +1,502 @@
+% echo "set unsafe true 
+% loadFile test4.elf" |/Volumes/Twelf\ for\ OS\ X\ \(Intel\)/Twelf/bin/twelf-server
+
+% STLC: big step preservation
+% + add store
+% - add subtyping
+% - add type members
+% - add value members
+% - add paths
+
+
+% arithmetic
+
+
+nat: type.
+z: nat.
+s: nat -> nat.
+
+add : nat -> nat -> nat -> type.
+add/z : add z N N.
+add/s : add (s N1) N2 (s N3)
+   <- add N1 N2 N3.
+
+%mode add +N1 +N2 -N3.
+
+lte : nat -> nat -> type.
+lte/z : lte z N.
+lte/s : lte (s N1) (s N2) 
+   <- lte N1 N2.
+
+%mode lte +N1 +N2.
+
+
+ne : nat -> nat -> type.
+ne/z : ne z (s N).
+ne/z : ne (s N) z.
+ne/s : ne (s N1) (s N2) 
+   <- ne N1 N2.
+
+%mode ne +N1 +N2.
+
+
+%query 0 * lte (s (s z)) (s z).
+%query 1 * lte (s (s z)) (s (s z)).
+
+
+
+%{ ------- language ----- }%
+
+% sorts
+cst: type.
+op: type.
+
+exp: type.
+% stm: type.
+
+tpe: type.
+val: type.
+ref: type.
+
+venv: type.
+tenv: type.
+
+store: type.
+
+
+% constants
+ncst: nat -> cst.
+fcst: cst.
+tcst: cst.
+
+% operators
+plus  : op.
+equal : op.
+
+% expressions
+cste: cst -> exp.
+var: nat -> exp.
+prm: op -> exp -> exp -> exp.
+fun: exp -> tpe -> exp.
+app: exp -> exp -> exp.
+
+% types
+int  : tpe.
+bool : tpe.
+top  : tpe.
+bot  : tpe.
+arrow: tpe -> tpe -> tpe.
+
+% values
+% cstv: cst -> val.
+clos: exp -> venv -> val.
+
+% locations
+loc:  nat -> ref.
+
+% environments
+vnil  : venv.
+vcons : ref -> venv -> venv.
+tnil  : tenv.
+tcons : tpe -> tenv -> tenv.
+
+% store
+snil  : store.
+scons : val -> store -> store.
+
+
+
+%{ ------- eval-op / primitives ----- }%
+
+% typeof
+
+typeof     : cst -> tpe -> type.
+-/n        : typeof (ncst N) int.
+-/t        : typeof (tcst) bool.
+-/f        : typeof (fcst) bool.
+
+%mode typeof *A *B.
+
+% eval-op
+
+eval-cst-op : op -> cst -> cst -> cst -> type.
+e/plus     : eval-cst-op plus (ncst N1) (ncst N2) (ncst N3) <- add N1 N2 N3.
+e/eqt      : eval-cst-op equal (ncst N1) (ncst N2) (tcst) <- lte N1 N2 <- lte N2 N1.
+e/eqf      : eval-cst-op equal (ncst N1) (ncst N2) (fcst) <- ne N1 N2.
+
+% eval-op    : op -> val -> val -> val -> type.
+% ev/v       : eval-op O (cstv C1) (cstv C2) (cstv C3) <- eval-cst-op O C1 C2 C3.
+
+%mode eval-cst-op +O +V1 +V2 -V3.
+% %mode eval-op +O +V1 +V2 -V3.
+
+
+% type-op
+
+type-op    : op -> tpe -> tpe -> tpe -> type.
+t/plus     : type-op plus int int int.
+t/eq       : type-op equal int int bool.
+
+
+% eval-cst-op/safe
+
+eval-cst-op-safe : type-op OP T1 T2 T3 -> eval-cst-op OP C1 C2 C3 -> typeof C3 T3 -> type.
+%mode eval-cst-op-safe +LTE1 +LTE2 -LTE3.
+
+-plus   : eval-cst-op-safe t/plus (e/plus _) -/n.
+-eqt    : eval-cst-op-safe t/eq (e/eqt _ _) -/t.
+-eqf    : eval-cst-op-safe t/eq (e/eqf _) -/f.
+
+%worlds () (eval-cst-op-safe _ _ _).
+%total LTE1 (eval-cst-op-safe LTE1 _ _). % induction on first arg (not used here)
+
+
+
+%{ ------- environments / store ----- }%
+
+vlookup : venv -> exp -> ref -> type. % todo: other way round!
+vl/hit  : vlookup (vcons V G) (var z) V.
+vl/miss : vlookup (vcons _ G) (var (s N)) V <- vlookup G (var N) V.
+
+vbind : venv -> ref -> exp -> venv -> type.
+vl/n  : vbind vnil V (var z) (vcons V vnil).
+vl/c  : vbind (vcons V G1) V2 (var (s N)) (vcons V2 (vcons V G1)) <- vbind G1 V (var N) _.
+
+vfresh : venv -> exp -> type.
+vf/n   : vfresh vnil (var z).
+vf/c   : vfresh (vcons _ G) (var (s N)) <- vfresh G (var N).
+
+
+tlookup: tenv -> exp -> tpe -> type. % todo: other way round!
+tl/hit  : tlookup (tcons V G) (var z) V.
+tl/miss : tlookup (tcons _ G) (var (s N)) V <- tlookup G (var N) V.
+
+tbind : tenv -> tpe -> exp -> tenv -> type.
+tl/n  : tbind tnil V (var z) (tcons V tnil).
+tl/c  : tbind (tcons V G1) V2 (var (s N)) (tcons V2 (tcons V G1)) <- tbind G1 V (var N) _.
+
+tfresh : tenv -> exp -> type.
+tf/n   : tfresh tnil (var z).
+tf/c   : tfresh (tcons _ G) (var (s N)) <- tfresh G (var N).
+
+
+slookup: store -> ref -> val -> type.
+sl/hit  : slookup (scons V G) (loc z) V.
+sl/miss : slookup (scons _ G) (loc (s N)) V <- slookup G (loc N) V.
+
+sbind : store -> val -> ref -> store -> type.
+sl/n  : sbind snil V (loc z) (scons V snil).
+sl/c  : sbind (scons V2 G1) V (loc (s N)) (scons V2 G2) <- sbind G1 V (loc N) G2.
+
+sfresh : store -> ref -> type.
+sf/n   : sfresh snil (loc z).
+sf/c   : sfresh (scons _ G) (loc (s N)) <- sfresh G (loc N).
+
+
+vslookup : venv -> store -> exp -> ref -> val -> type.
+vsl      : vslookup G S E L V <- vlookup G E L <- slookup S L V.
+
+
+
+
+%mode vbind +G +V -E -G2.
+%mode tbind +G +V -E -G2.
+
+%mode vlookup +G +E -V.
+%mode tlookup +G +E -T.
+
+%mode vfresh +G -X.
+%mode tfresh +G -X.
+
+
+%query 1 * sbind snil (clos E1 vnil) L S1.
+%query 1 * sbind (scons (clos E1 vnil) snil) (clos E2 vnil) L S2.
+%query 1 * slookup (scons (clos E1 vnil) (scons (clos E2 vnil) snil)) (loc z) V.
+%query 1 * slookup (scons (clos E1 vnil) (scons (clos E2 vnil) snil)) (loc (s z)) V.
+
+
+
+%{ ------- eval-exp / type-exp ----- }%
+
+eval-exp   : venv -> store -> exp -> ref -> val -> store -> type.
+% e/cst      : eval-exp G (cste C) (cstv C).
+% e/prim     : eval-exp G (prm OP E1 E2) V3
+%            <- eval-exp G E1 V1 
+%            <- eval-exp G E2 V2
+%            <- eval-op OP V1 V2 V3.
+
+e/var      : eval-exp G S X L V S 
+            <- vslookup G S X L V.
+e/fun      : eval-exp G S0 (fun R T) L (clos R G) S1
+            <- sbind S0 (clos R G) L S1.
+
+e/app      : eval-exp G S0 (app E1 E2) L3 V3 S3
+            <- eval-exp G S0 E1 L (clos R G1) S1
+            <- eval-exp G S1 E2 L2 V2 S2
+            <- eval-exp (vcons L2 G1) S2 R L3 V3 S3.
+
+
+type-exp   : tenv -> exp -> tpe -> type.
+t/cst      : type-exp G (cste C) T <- typeof C T.
+t/var      : type-exp G X T <- tlookup G X T.
+t/fun      : type-exp G (fun R T1) (arrow T1 T2) 
+                <- type-exp (tcons T1 G) R T2.
+
+t/prim      : type-exp G (prm OP E1 E2) T3
+            <- type-exp G E1 T1 
+            <- type-exp G E2 T1
+            <- type-op OP T1 T2 T3.
+
+t/app       : type-exp G (app E1 E2) T2
+            <- type-exp G E1 (arrow T1 T2) 
+            <- type-exp G E2 T1.
+
+
+
+%{ ------- well-formedness / typing for values and environment ----- }%
+
+wf-val   : store -> val -> tpe -> type.
+wf-ref   : store -> ref -> val -> tpe -> type.
+wf-env   : store -> venv -> tenv -> type.
+
+% wfv/c    : wf-val S (cstv C) T <- typeof C T.
+wfv/f    : wf-val S (clos R H) (arrow T1 T2) 
+            <- wf-env S H G
+            <- type-exp (tcons T1 G) R T2.
+
+            % this holds for: all T1->T2 types legal for closure
+
+wfr      : wf-ref S L V T <- slookup S L V <- wf-val S V T.
+
+wfe/n    : wf-env S vnil tnil. 
+wfe/c    : wf-env S (vcons L H) (tcons T G) 
+            <- wf-ref S L V T
+            <- wf-env S H G.
+
+
+
+
+
+%{ ------- store properties ----- }%
+
+% relate binding and lookup operations
+
+store-safe: sbind S0 V L S1 -> slookup S1 L V -> type.
+
+- : store-safe (sl/c SB) (sl/miss SL) <- store-safe SB SL.
+- : store-safe (sl/n) (sl/hit).
+
+%mode store-safe +A -B.
+%worlds () (store-safe _ _).
+%total A (store-safe A _).
+
+
+% monotonicity of store modifications: 
+% adding bindings does not invalidate well-formedness of existing ones
+
+store-prefix  : store -> store -> type.
+sts/refl   : store-prefix S S.
+sts/trans  : store-prefix S0 S2 <- store-prefix S0 S1 <- store-prefix S1 S2.
+sts/bind   : store-prefix S0 S1 <- sbind S0 _ _ S1.
+
+
+sbind-lookup-safe: sbind S0 V L S1 -> slookup S0 L1 V1 -> slookup S1 L1 V1 -> type.
+- : sbind-lookup-safe (sl/c SB) (sl/hit) (sl/hit).
+- : sbind-lookup-safe (sl/c SB) (sl/miss SL0) (sl/miss SL1)
+      <- sbind-lookup-safe SB SL0 SL1.
+
+%mode sbind-lookup-safe +A +B -C.
+%worlds () (sbind-lookup-safe _ _ _).
+%total A (sbind-lookup-safe A _ _).
+
+store-lookup-safe: store-prefix S0 S1 -> slookup S0 L1 V1 -> slookup S1 L1 V1 -> type.
+- : store-lookup-safe (sts/refl) S S.
+- : store-lookup-safe (sts/trans SP1 SP0) SL0 SL2
+     <- store-lookup-safe SP0 SL0 SL1
+     <- store-lookup-safe SP1 SL1 SL2.
+- : store-lookup-safe (sts/bind SB) SL0 SL1 
+    <- sbind-lookup-safe SB SL0 SL1.
+
+%mode store-lookup-safe +A +B -C.
+%worlds () (store-lookup-safe _ _ _).
+%total A (store-lookup-safe A _ _).
+
+
+
+store-wfv-safe: store-prefix S0 S1 -> wf-val S0 V1 T -> wf-val S1 V1 T -> type.
+store-wfr-safe: store-prefix S0 S1 -> wf-ref S0 L1 V1 T -> wf-ref S1 L1 V1 T -> type.
+store-wfe-safe: store-prefix S0 S1 -> wf-env S0 H G -> wf-env S1 H G -> type.
+
+%mode store-wfv-safe +A +B -C.
+%mode store-wfr-safe +A +B -C.
+%mode store-wfe-safe +A +B -C.
+
+
+- : store-wfe-safe SB (wfe/n) (wfe/n).
+- : store-wfe-safe SB (wfe/c WE1 (wfr (wfv/f T WEU1) SL)) (wfe/c WE2 (wfr (wfv/f T WEU2) SL1))
+      <- store-lookup-safe SB SL SL1
+      <- store-wfe-safe SB WE1 WE2
+      <- store-wfe-safe SB WEU1 WEU2.
+
+% - : store-wfe-safe SB (wfe/c WE1 (wfr (wfv/c T) SL)) (wfe/c WE2 (wfr (wfv/c T) SL))
+%      <- store-lookup-safe SB SL SL1
+%      <- store-wfe-safe SB WE1 WE2.
+
+%worlds () (store-wfe-safe _ _ _).
+%total B (store-wfe-safe A B _).
+
+
+% - : store-wfv-safe SB (wfv/c T) (wfv/c T).
+- : store-wfv-safe SB (wfv/f TE WE) (wfv/f TE WE1)
+      <- store-wfe-safe SB WE WE1.
+
+%worlds () (store-wfv-safe _ _ _).
+%total A (store-wfv-safe A _ _).
+
+- : store-wfr-safe SB (wfr WV SL) (wfr WV1 SL1)
+      <- store-lookup-safe SB SL SL1
+      <- store-wfv-safe SB WV WV1.
+
+%worlds () (store-wfr-safe _ _ _).
+%total A (store-wfr-safe A _ _).
+
+
+
+
+% eval produces monotonic stores
+
+eval-st-prefix : eval-exp H S0 E L V S1 -> store-prefix S0 S1 -> type.
+%mode eval-st-prefix +A -B.
+
+-           : eval-st-prefix (e/var VL) (sts/refl).
+-           : eval-st-prefix (e/fun SB) (sts/bind SB).
+-           : eval-st-prefix (e/app ER EX EF) (sts/trans (sts/trans SR SX) SF)
+                <- eval-st-prefix (ER: eval-exp _ S2 _ _ _ S3) SR
+                <- eval-st-prefix (EX: eval-exp _ S1 _ _ _ S2) SX
+                <- eval-st-prefix (EF: eval-exp _ S0 _ _ _ S1) SF.
+
+%worlds () (eval-st-prefix _ _).
+%total A (eval-st-prefix A _).
+
+
+%{ ------- type preservation ----- }%
+
+
+% lookup safe
+
+lookup-safe: wf-env S H G -> tlookup G X T -> vlookup H X L -> wf-ref S L V T -> type.
+%mode lookup-safe +A +B +C -D.
+
+-      : lookup-safe (wfe/c G W) tl/hit vl/hit W.  
+-      : lookup-safe (wfe/c G W) (tl/miss A) (vl/miss B) W1
+         <- lookup-safe G A B W1.
+
+%worlds () (lookup-safe _ _ _ _).
+%total A (lookup-safe A _ _ _). 
+
+
+
+lookup-safev: wf-env S H G -> tlookup G X T -> vslookup H S X L V -> wf-val S V T -> type.
+%mode lookup-safev +A +B +C -D.
+
+-      : lookup-safev (wfe/c G (wfr W S)) tl/hit (vsl S vl/hit) W.  
+-      : lookup-safev (wfe/c G (wfr W SL1)) (tl/miss A) (vsl SL2 (vl/miss B)) W1
+         <- lookup-safev G A (vsl SL2 B) W1.
+
+%{
+Coverage error --- missing cases:
+{X1:store} {X2:nat} {X3:venv} {X4:tpe} {X5:tenv} {X6:exp} {X7:venv} {X8:exp}
+   {X9:venv} {X10:wf-env X1 X3 X5} {X11:wf-val X1 (clos X8 X9) X4}
+   {X12:slookup X1 (loc X2) (clos X8 X9)} {X13:slookup X1 (loc X2) (clos X6 X7)}
+   {X14:wf-val X1 (clos X6 X7) X4}
+   |- lookup-safev (wfe/c X10 (wfr X11 X12)) tl/hit (vsl X13 vl/hit) X14.
+
+not enough evidence to conclude that SL1 = SL2.
+we need an auxialiary lemma to show that store lookups are unique. TODO!
+}%
+
+
+%worlds () (lookup-safev _ _ _ _).
+%trustme
+%total A (lookup-safev A _ _ _). 
+
+
+eval-lookup: eval-exp H S0 E L V S1 -> slookup S1 L V -> type.
+%mode eval-lookup +A -B.
+
+-      : eval-lookup (e/var (vsl SL VL)) SL.
+-      : eval-lookup (e/fun SB) SL <- store-safe SB SL.
+-      : eval-lookup (e/app ER EX EF) SL <- eval-lookup ER SL.
+
+
+%worlds () (eval-lookup _ _).
+%total A (eval-lookup A _ ).
+
+
+% eval safe -- main preservation theorem
+
+eval-safe: type-exp G E T -> wf-env S0 H G -> eval-exp H S0 E L V S1 -> wf-val S1 V T -> type.
+%mode eval-safe +A +B +C -E.
+
+% -      : eval-safe (t/cst T) _ (e/cst) (wfv/c T).  
+% -      : eval-safe (t/prim T _ _) _ (e/prim V _ _) WF
+%           <- eval-op-safe T V WF.
+
+-      : eval-safe (t/var L) WE (e/var SL) WV
+          <- lookup-safev WE L SL WV.
+
+-      : eval-safe (t/fun (TS: type-exp (tcons T1 G) R T2)) WE 
+          (e/fun (SB: sbind S0 (clos R H) L S1)) 
+          (wfv/f TS WE1)   % wf-ref S1 (clo R G) (arrow T1 T2)
+          <- store-wfe-safe (sts/bind SB) WE WE1
+          <- store-safe SB SL.
+
+
+-      : eval-safe 
+            (t/app 
+              (TX: type-exp G0 EXP2 T1) 
+              (TF: type-exp G0 EXP1 (arrow T1 T2))
+            ) 
+            (WE0: wf-env S0 H0 G0)
+            (e/app
+              (EV3: eval-exp (vcons LX HC0) S2 R L3 V3 S3)
+              (EVX: eval-exp H0 S1 EXP2 LX VX S2)
+              (EVF: eval-exp H0 S0 EXP1 L1 (clos R HC0) S1)
+            )
+            (Z: wf-val S3 _ T2)
+
+          <- eval-st-prefix EVF (SP01: store-prefix S0 S1)
+          <- eval-st-prefix EVX (SP12: store-prefix S1 S2)
+          <- eval-st-prefix EV3 (SP23: store-prefix S2 S3)
+
+          <- store-wfe-safe SP01 WE0 WE1
+          <- store-wfe-safe SP12 WE1 WE2
+          <- store-wfe-safe SP23 WE2 WE3 % envs well-formed in all stores
+
+          <- eval-safe TX      % eval X
+            (WE1: wf-env S1 H0 G0) 
+            EVX 
+            (WVX: wf-val S2 VX T1) % VX no free??
+
+          <- eval-lookup EVX SLX1
+
+          <- eval-safe TF      % eval F
+            WE0
+            (EVF: eval-exp H0 S0 EXP1 L1 _ S1)
+            (wfv/f 
+              (TR : type-exp (tcons T1 GC0) R T2)
+              (WEC1: wf-env S1 HC0 GC0)
+            )
+
+          <- store-wfe-safe SP12 WEC1 WEC2
+
+          <- eval-safe         % eval F(X)
+              (TR: type-exp (tcons T1 GC0) R T2)
+              (wfe/c WEC2 (wfr WVX SLX1))
+              (EV3: eval-exp (vcons LX HC0) S2 R L3 V3 S3)
+              (Z: wf-val S3 V3 T2).
+
+
+%worlds () (eval-safe _ _ _ _).
+%total C (eval-safe A _ C _). % induction on eval-exp
+
