@@ -384,38 +384,38 @@ wfe/n    : wf-env vnil tnil.
 wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V T <- wf-env H G.
 
 
+invert-wf-val-env :
+  %% Input
+  wf-val V T ->
+  %% Output
+  wf-env H G ->
+  type.
+%mode invert-wf-val-env +WFE1 -WFE2.
+
+-     : invert-wf-val-env (wfv/f TE WE) WE.
+-     : invert-wf-val-env (wfv/sub ST TS) WE <- invert-wf-val-env TS WE.
+
+%worlds () (invert-wf-val-env _ _).
+%total WFE (invert-wf-val-env WFE _). 
+
 
 invert-wf-fun :
   %% Input
-  wf-val (clos R H) (arrow T1 T2) ->
+  wf-val (clos R H) T ->
   %% Output
   type-exp (tcons T3 G) R T4 ->
   wf-env H G ->
-  sub-tp T1 T3 ->
-  sub-tp T4 T2 ->
+  sub-tp (arrow T3 T4) T ->
   type.
-%mode invert-wf-fun +WFE1 -WFE2 -WFE3 -SBT1 -SBT2.
+%mode invert-wf-fun +WFE1 -WFE2 -WFE3 -SBT1.
 
--     : invert-wf-fun (wfv/f (TS: type-exp (tcons T1 G) R T2) WE) TS WE SBA SBB 
-            <- sub-tp-refl T1 SBA 
-            <- sub-tp-refl T2 SBB.
--     : invert-wf-fun (wfv/sub (sub-tp/fun SBA1 SBB1) TS) L L1 SBA2 SBB2 
-            <- invert-wf-fun TS L L1 SBA SBB 
-            <- sub-tp-trans SBA SBA1 SBA2
-            <- sub-tp-trans SBB SBB1 SBB2.
-% -     : invert-wf-fun (wfv/sub (sub-tp/bot) TS) L L1 SBA2 SBB2 
-%            <- invert-wf-fun TS L L1 SBA SBB 
-%            <- sub-tp-trans SBA _ SBA2
-%            <- sub-tp-trans SBB _ SBB2.
-
-
-% TODO: proper inversion lemma for: sub-tp T (arrow T1 T2) -> sub-tp
-% missing some case, hence trustme
-
-
-%worlds () (invert-wf-fun _ _ _ _ _).
-%trustme
-%total WFE (invert-wf-fun WFE _ _ _ _). 
+-     : invert-wf-fun (wfv/f (TS: type-exp (tcons T1 G) R T2) WE) TS WE SB
+            <- sub-tp-refl (arrow T1 T2) SB.
+-     : invert-wf-fun (wfv/sub SBA1 TS) L L1 SBA2
+            <- invert-wf-fun TS L L1 SBA 
+            <- sub-tp-trans SBA SBA1 SBA2.
+%worlds () (invert-wf-fun _ _ _ _).
+%total WFE (invert-wf-fun WFE _ _ _). 
 
 
 %{ ------- type preservation ----- }%
@@ -494,8 +494,7 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V T -> type.
               ZF 
               (TR : type-exp (tcons T3 GC0) R T4)
               (WE1: wf-env HC0 GC0)
-              (STA: sub-tp T1 T3)
-              (STR: sub-tp T4 T2)
+              ((sub-tp/fun STR STA): sub-tp (arrow T3 T4) (arrow T1 T2))
 
           <- eval-safe                 % eval F(X)
               TR % (t/sub ST TR)  % (TR': type-exp (tcons T3 GC0) R T4)
