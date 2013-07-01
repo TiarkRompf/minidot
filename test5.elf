@@ -384,20 +384,6 @@ wfe/n    : wf-env vnil tnil.
 wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V T <- wf-env H G.
 
 
-invert-wf-val-env :
-  %% Input
-  wf-val V T ->
-  %% Output
-  wf-env H G ->
-  type.
-%mode invert-wf-val-env +WFE1 -WFE2.
-
--     : invert-wf-val-env (wfv/f TE WE) WE.
--     : invert-wf-val-env (wfv/sub ST TS) WE <- invert-wf-val-env TS WE.
-
-%worlds () (invert-wf-val-env _ _).
-%total WFE (invert-wf-val-env WFE _). 
-
 
 invert-wf-fun :
   %% Input
