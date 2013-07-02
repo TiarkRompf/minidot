@@ -190,7 +190,6 @@ tf/c   : tfresh (tcons _ G) (var (s N)) <- tfresh G (var N).
 
 
 
-
 %{ ------- subtyping ------ }%
 
 sub-tp : tenv -> tpe -> tenv -> tpe -> type.
@@ -264,7 +263,7 @@ sub-tp-refl :
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
 
--/recv-n: sub-tp-refl (wf-tp/tsel T1 L) (sub-tp/tsel SBT1 L L)
+-/tsel: sub-tp-refl (wf-tp/tsel T1 L) (sub-tp/tsel SBT1 L L)
    <- sub-tp-refl T1 SBT1.
 
 
@@ -276,53 +275,92 @@ sub-tp-refl :
 
 sub-tp-trans-aux :
   %% Inputs
-  {G2:tenv}
-  {T2:tpe}
+%  {G2:tenv}
+%  {T2:tpe}
+  wf-tp G2 T2 ->
   sub-tp G1 T1 G2 T2 ->
   sub-tp G2 T2 G3 T3 ->
   %% Output
   sub-tp G1 T1 G3 T3 ->
   type.
-%mode sub-tp-trans-aux +G2 +T2 +SBT1 +SBT2 -SBT3.
+%mode sub-tp-trans-aux +T2 +SBT1 +SBT2 -SBT3.
 
--/int    : sub-tp-trans-aux _ int sub-tp/int sub-tp/int sub-tp/int.
--/int-top    : sub-tp-trans-aux _ int sub-tp/int sub-tp/top sub-tp/top.
--/bool   : sub-tp-trans-aux _ bool sub-tp/bool sub-tp/bool sub-tp/bool.
--/bool-top   : sub-tp-trans-aux _ bool sub-tp/bool sub-tp/top sub-tp/top.
--/top    : sub-tp-trans-aux _ top sub-tp/top sub-tp/top sub-tp/top.
--/bot    : sub-tp-trans-aux _ _ sub-tp/bot _ sub-tp/bot.
--/fun-top : sub-tp-trans-aux _ (arrow T1 T2) (sub-tp/fun SBT2 SBT1) 
+-/int    : sub-tp-trans-aux wf-tp/int sub-tp/int sub-tp/int sub-tp/int.
+-/int-top    : sub-tp-trans-aux wf-tp/int sub-tp/int sub-tp/top sub-tp/top.
+-/bool   : sub-tp-trans-aux wf-tp/bool sub-tp/bool sub-tp/bool sub-tp/bool.
+-/bool-top   : sub-tp-trans-aux wf-tp/bool sub-tp/bool sub-tp/top sub-tp/top.
+-/top    : sub-tp-trans-aux wf-tp/top sub-tp/top sub-tp/top sub-tp/top.
+-/bot    : sub-tp-trans-aux _ sub-tp/bot _ sub-tp/bot.
+-/fun-top : sub-tp-trans-aux (wf-tp/fun T1 T2) (sub-tp/fun SBT2 SBT1) 
               (sub-tp/top) (sub-tp/top).
--/rect-top : sub-tp-trans-aux _ (rect T1) (sub-tp/rect SBT1) 
+-/rect-top : sub-tp-trans-aux (wf-tp/rect T1) (sub-tp/rect SBT1) 
               (sub-tp/top) (sub-tp/top).
--/recv-top : sub-tp-trans-aux _ (recv T1) (sub-tp/recv SBT1) 
+-/recv-top : sub-tp-trans-aux (wf-tp/recv T1) (sub-tp/recv SBT1) 
+              (sub-tp/top) (sub-tp/top).
+-/tsel-top : sub-tp-trans-aux (wf-tp/tsel L T1) (sub-tp/tsel SBT1 _ _) 
               (sub-tp/top) (sub-tp/top).
 
 -/fun-fun  : sub-tp-trans-aux
-      G (arrow T1 T2)
-      (sub-tp/fun SBT2 SBT1)
+      (wf-tp/fun T1 T2)
+            (sub-tp/fun SBT2 SBT1)
             (sub-tp/fun SBT4 SBT3)
             (sub-tp/fun SBT6 SBT5)  
-      <- sub-tp-trans-aux G T1 SBT3 SBT1 SBT5
-      <- sub-tp-trans-aux G T2 SBT2 SBT4 SBT6.
+      <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
 
 -/rect-rect  : sub-tp-trans-aux
-      G (rect T1)
-      (sub-tp/rect SBT1)
+      (wf-tp/rect T1)
+            (sub-tp/rect SBT1)
             (sub-tp/rect SBT3)
             (sub-tp/rect SBT5)  
-      <- sub-tp-trans-aux G T1 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-aux T1 SBT1 SBT3 SBT5.
 
 -/recv-recv  : sub-tp-trans-aux
-      G (recv T1)
-      (sub-tp/recv SBT1)
+      (wf-tp/recv T1)
+            (sub-tp/recv SBT1)
             (sub-tp/recv SBT3)
             (sub-tp/recv SBT5)  
-      <- sub-tp-trans-aux G T1 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-aux T1 SBT1 SBT3 SBT5.
+
+-/tsel-tsel  : sub-tp-trans-aux
+      (wf-tp/tsel T1 L2)
+            (sub-tp/tsel SBT1 TL2 TL1)
+            (sub-tp/tsel SBT3 TL3 TL2)
+            (sub-tp/tsel SBT5 TL3 TL1)
+      <- sub-tp-trans-aux T1 SBT1 SBT3 SBT5.
+
+%{
+Coverage error --- missing cases:
+{X1:tenv} {X2:tpe} {X3:tpe} {X4:tenv} {X5:tpe} {X6:tpe} {X7:tenv} {X8:tpe}
+   {X9:tpe} {X10:wf-tp X1 X3} {X11:wf-tp X1 X2} {X12:sub-tp X4 X6 X1 X3}
+   {X13:sub-tp X1 X2 X4 X5} {X14:sub-tp X1 X3 X7 X9} {X15:sub-tp X7 X8 X1 X2}
+   {X16:sub-tp X4 (arrow X5 X6) X7 (arrow X8 X9)}
+   |- sub-tp-trans-aux (wf-tp/fun X10 X11) (sub-tp/fun X12 X13)
+         (sub-tp/fun X14 X15) X16,
+{X1:tenv} {X2:exp} {X3:tenv} {X4:exp} {X5:tenv} {X6:exp} {X7:tpe}
+   {X8:wf-tp X1 X7} {X9:tlookup X1 X2 X7} {X10:tpe} {X11:tpe}
+   {X12:sub-tp X3 X10 X1 X11} {X13:tlookup X1 X2 X11} {X14:tlookup X3 X4 X10}
+   {X15:tpe} {X16:tpe} {X17:sub-tp X1 X15 X5 X16} {X18:tlookup X5 X6 X16}
+   {X19:tlookup X1 X2 X15} {X20:sub-tp X3 (tsel X4) X5 (tsel X6)}
+   |- sub-tp-trans-aux (wf-tp/tsel X8 X9) (sub-tp/tsel X12 X13 X14)
+         (sub-tp/tsel X17 X18 X19) X20.
+  
+}%
 
 
-%worlds () (sub-tp-trans-aux _ _ _ _ _).
-%total T2 (sub-tp-trans-aux _ T2 _ _ _).
+%worlds () (sub-tp-trans-aux _ _ _ _).
+%trustme
+%total T2 (sub-tp-trans-aux T2 _ _ _).
+
+
+
+extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
+%mode extract-wf +SBT1 -SBT2 -SBT3.
+%worlds () (extract-wf _ _ _).
+%trustme
+%total T2 (extract-wf T2 _ _).
+
+
 
 %% Just a corrollary to sub-tp-trans-aux that doesn't require us to provide
 %% T2 as an additional argument.
@@ -337,10 +375,11 @@ sub-tp-trans :
 %mode sub-tp-trans +SBT1 +SBT2 -SBT3.
 
 -/i : sub-tp-trans SBT1 SBT2 SBT3
-       <- sub-tp-trans-aux _ _ SBT1 SBT2 SBT3.
+       <- extract-wf SBT1 T1 T2
+       <- sub-tp-trans-aux T2 SBT1 SBT2 SBT3.
 
 %worlds () (sub-tp-trans _ _ _).
-%total {} (sub-tp-trans _ _ _).
+%total {A} (sub-tp-trans A _ _).
 
 
 
@@ -388,6 +427,13 @@ t/sub       : type-exp G E T2
 
 %{ ------- suptyping inversion ----- }%
 
+extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
+%mode extract-wf2 +WFE1 -WFE2.
+%worlds () (extract-wf2 _ _).
+%trustme
+%total WFE (extract-wf2 WFE _).
+
+
 invert-app : 
   %% Input
   type-exp G (app E1 E2) T ->
@@ -398,7 +444,9 @@ invert-app :
   type.
 %mode invert-app +WFE1 -WFE2 -WFE3 -SBT.
 
--     : invert-app (t/app TS1 TS) TS TS1 SB <- sub-tp-refl _ _ SB.
+-     : invert-app (t/app TS1 TS) TS TS1 SB 
+            <- extract-wf2 (t/app TS1 TS) W 
+            <- sub-tp-refl W SB.
 -     : invert-app (t/sub SB1 TS) L L2 SB2 
             <- invert-app TS L L2 SB 
             <- sub-tp-trans SB SB1 SB2.
@@ -435,7 +483,9 @@ invert-var :
   type.
 %mode invert-var +WFE1 -WFE2 -SBT1.
 
--     : invert-var (t/var L) L SB <- sub-tp-refl G T SB.
+-     : invert-var (t/var L) L SB 
+            <- extract-wf2 (t/var L) W
+            <- sub-tp-refl W SB.
 -     : invert-var (t/sub SB1 TS) L SB2 
             <- invert-var TS L SB 
             <- sub-tp-trans SB SB1 SB2.
@@ -464,6 +514,11 @@ wfe/n    : wf-env vnil tnil.
 wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V G T <- wf-env H G.
 
 
+extract-wf3: wf-val V G T1 -> wf-tp G T1 -> type.
+%mode extract-wf3 +WFE1 -WFE2.
+%worlds () (extract-wf3 _ _).
+%trustme
+%total WFE (extract-wf3 WFE _).
 
 invert-wf-fun :
   %% Input
@@ -476,7 +531,8 @@ invert-wf-fun :
 %mode invert-wf-fun +WFE1 -WFE2 -WFE3 -SBT1.
 
 -     : invert-wf-fun (wfv/f (TS: type-exp (tcons T1 G) R T2) WE) TS WE SB
-            <- sub-tp-refl _ (arrow T1 T2) SB.
+            <- extract-wf3 (wfv/f TS WE) W 
+            <- sub-tp-refl W SB.
 
 -     : invert-wf-fun (wfv/sub SBA1 TS) L L1 (SBA2)
             <- invert-wf-fun TS L L1 SBA 
