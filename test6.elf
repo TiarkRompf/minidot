@@ -414,40 +414,34 @@ invert-wf-fun :
 %{ ------- type preservation ----- }%
 
 
-foobar: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
-%mode foobar +A +B -C.
-%worlds () (foobar _ _ _).
+extend-wfv: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
+%mode extend-wfv +A +B -C.
+%worlds () (extend-wfv _ _ _).
 %trustme
-%total A (foobar A _ _). % induction on first arg
-
-foobar2: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
-%mode foobar2 +A +B -C.
-%worlds () (foobar2 _ _ _).
-%trustme
-%total A (foobar2 A _ _). % induction on first arg
+%total A (extend-wfv A _ _).
 
 
-foobarX: sub-tp X4 X3 (tcons T3 GC0) T3 -> {Z: tpe} sub-tp X4 X3 GC0 T3 -> type.
-%mode foobarX +A +B -C.
-%worlds () (foobarX _ _ _).
-%trustme
-%total A (foobarX A _ _). % induction on first arg
+% <- extend-wfe WVX STA WE1 WE2
 
-foobarY: wf-env H G -> {Z: tpe} wf-env H (tcons Z G) -> type.
-%mode foobarY +A +B -C.
-%worlds () (foobarY _ _ _).
+extend-wfe: wf-val V2 G0 T1 -> sub-tp G0 T1 (tcons T3 GC0) T3 
+      -> wf-env HC0 GC0 -> wf-env (vcons V2 HC0) (tcons T3 GC0) -> type.
+%mode extend-wfe +A +B +C -D.
+%worlds () (extend-wfe _ _ _ _).
 %trustme
-%total A (foobarY A _ _). % induction on first arg
+%total A (extend-wfe A _ _ _).
+
+
 
 % lookup safe
 
 lookup-safe: wf-env H G -> tlookup G X T -> vlookup H X V -> wf-val V G T -> type.
 %mode lookup-safe +A +B +C -D.
 
--      : lookup-safe (wfe/c G V) tl/hit vl/hit V1 <- foobar V _ V1.
+-      : lookup-safe (wfe/c G V) tl/hit vl/hit V1 
+         <- extend-wfv V _ V1.
 -      : lookup-safe (wfe/c G V) (tl/miss A) (vl/miss B) Z1
          <- lookup-safe G A B Z
-         <- foobar Z _ Z1.
+         <- extend-wfv Z _ Z1.
 
 %worlds () (lookup-safe _ _ _ _).
 %total A (lookup-safe A _ _ _). % induction on first arg
@@ -518,18 +512,15 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
                     (STA: sub-tp G0 T1 (tcons T3 GC0) T3)): 
                 sub-tp (tcons T3 GC0) (arrow T3 T4) G0 (arrow T1 T2))
 
-          % wf-val V2 G0 T1 -> sub-tp G0 T1 (tcons T3 GC0) T3 
-          %    -> wf-env HC0 GC0 -> wf-env (vcons V2 HC0) (tcons T3 HC0)
-
-          <- foobarX (STA: sub-tp G0 T1 (tcons T3 GC0) T3) T3 (STA1: sub-tp G0 T1 GC0 T3)
+          <- extend-wfe WVX STA WE1 WE2
 
 
           <- eval-safe                 % eval F(X)
               TR % (t/sub ST TR)  % (TR': type-exp (tcons T3 GC0) R T4)
-              (wfe/c WE1 (wfv/sub STA1 WVX))
+              % (wfe/c WE1 (wfv/sub STA1 WVX))
+              WE2
               (EV3: eval-exp (vcons V2 HC0) R V3) 
               (Z: wf-val V3 (tcons T3 GC0) T4).
-
 
 
 
