@@ -5,8 +5,8 @@
 % - add store
 % + add subtyping
 % + add env to subtyping
-% - add type members
-% - add value members
+% + add type members
+% + add value members
 % - add paths
 % - add self types
 
@@ -86,7 +86,7 @@ bot  : tpe.
 arrow: tpe -> tpe -> tpe.  % { A => B }
 rect : tpe -> tpe.         % { type A }
 recv : tpe -> tpe.         % { val l: A }
-% tsel : exp -> tpe.         % l.A
+tsel : exp -> tpe.         % l.A
 
 % values
 cstv: cst -> val.
@@ -99,122 +99,6 @@ tnil  : tenv.
 tcons : tpe -> tenv -> tenv.
 
 
-%{ ------- subtyping ------ }%
-
-sub-tp : tenv -> tpe -> tenv -> tpe -> type.
-
-sub-tp/int  : sub-tp G1 int G2 int.
-sub-tp/bool : sub-tp G1 bool G2 bool.
-sub-tp/top  : sub-tp G1 T G2 top.
-sub-tp/bot  : sub-tp G1 bot G2 T.
-
-sub-tp/fun  : sub-tp G1 (arrow T1 T2) G2 (arrow T3 T4)
-              <- sub-tp G2 T3 G1 T1
-              <- sub-tp G1 T2 G2 T4.
-
-sub-tp/rect : sub-tp G1 (rect T1) G2 (rect T3)
-              <- sub-tp G1 T1 G2 T3.
-
-sub-tp/recv : sub-tp G1 (recv T1) G2 (recv T3)
-              <- sub-tp G1 T1 G2 T3.
-
-
-%% Subtyping is reflexive
-
-sub-tp-refl : 
-  %% Input
-  {G:tenv} {T:tpe}
-  %% Output
-  sub-tp G T G T ->
-  type.
-%mode sub-tp-refl +G +T -SBT.
-
--/int : sub-tp-refl _ int sub-tp/int.
--/bool: sub-tp-refl _ bool sub-tp/bool.
--/bot : sub-tp-refl _ bot sub-tp/bot.
--/top : sub-tp-refl _ top sub-tp/top.
--/fun : sub-tp-refl G (arrow T1 T2) (sub-tp/fun SBT2 SBT1)
-   <- sub-tp-refl G T1 SBT1
-   <- sub-tp-refl G T2 SBT2.
--/rect: sub-tp-refl G (rect T1) (sub-tp/rect SBT1)
-   <- sub-tp-refl G T1 SBT1.
--/recv: sub-tp-refl G (recv T1) (sub-tp/recv SBT1)
-   <- sub-tp-refl G T1 SBT1.
-
-
-%worlds () (sub-tp-refl _ _ _).
-%total T (sub-tp-refl _ T _).
-
-
-%% Subtyping is transitive
-
-sub-tp-trans-aux :
-  %% Inputs
-  {G2:tenv}
-  {T2:tpe}
-  sub-tp G1 T1 G2 T2 ->
-  sub-tp G2 T2 G3 T3 ->
-  %% Output
-  sub-tp G1 T1 G3 T3 ->
-  type.
-%mode sub-tp-trans-aux +G2 +T2 +SBT1 +SBT2 -SBT3.
-
--/int    : sub-tp-trans-aux _ int sub-tp/int sub-tp/int sub-tp/int.
--/int-top    : sub-tp-trans-aux _ int sub-tp/int sub-tp/top sub-tp/top.
--/bool   : sub-tp-trans-aux _ bool sub-tp/bool sub-tp/bool sub-tp/bool.
--/bool-top   : sub-tp-trans-aux _ bool sub-tp/bool sub-tp/top sub-tp/top.
--/top    : sub-tp-trans-aux _ top sub-tp/top sub-tp/top sub-tp/top.
--/bot    : sub-tp-trans-aux _ _ sub-tp/bot _ sub-tp/bot.
--/fun-top : sub-tp-trans-aux _ (arrow T1 T2) (sub-tp/fun SBT2 SBT1) 
-              (sub-tp/top) (sub-tp/top).
--/rect-top : sub-tp-trans-aux _ (rect T1) (sub-tp/rect SBT1) 
-              (sub-tp/top) (sub-tp/top).
--/recv-top : sub-tp-trans-aux _ (recv T1) (sub-tp/recv SBT1) 
-              (sub-tp/top) (sub-tp/top).
-
--/fun-fun  : sub-tp-trans-aux
-      G (arrow T1 T2)
-      (sub-tp/fun SBT2 SBT1)
-            (sub-tp/fun SBT4 SBT3)
-            (sub-tp/fun SBT6 SBT5)  
-      <- sub-tp-trans-aux G T1 SBT3 SBT1 SBT5
-      <- sub-tp-trans-aux G T2 SBT2 SBT4 SBT6.
-
--/rect-rect  : sub-tp-trans-aux
-      G (rect T1)
-      (sub-tp/rect SBT1)
-            (sub-tp/rect SBT3)
-            (sub-tp/rect SBT5)  
-      <- sub-tp-trans-aux G T1 SBT1 SBT3 SBT5.
-
--/recv-recv  : sub-tp-trans-aux
-      G (recv T1)
-      (sub-tp/recv SBT1)
-            (sub-tp/recv SBT3)
-            (sub-tp/recv SBT5)  
-      <- sub-tp-trans-aux G T1 SBT1 SBT3 SBT5.
-
-
-%worlds () (sub-tp-trans-aux _ _ _ _ _).
-%total T2 (sub-tp-trans-aux _ T2 _ _ _).
-
-%% Just a corrollary to sub-tp-trans-aux that doesn't require us to provide
-%% T2 as an additional argument.
-
-sub-tp-trans :
-  %% Inputs
-  sub-tp G1 T1 G2 T2 ->
-  sub-tp G2 T2 G3 T3 ->
-  %% Output
-  sub-tp G1 T1 G3 T3 ->
-  type.
-%mode sub-tp-trans +SBT1 +SBT2 -SBT3.
-
--/i : sub-tp-trans SBT1 SBT2 SBT3
-       <- sub-tp-trans-aux _ _ SBT1 SBT2 SBT3.
-
-%worlds () (sub-tp-trans _ _ _).
-%total {} (sub-tp-trans _ _ _).
 
 
 
@@ -301,6 +185,165 @@ tf/c   : tfresh (tcons _ G) (var (s N)) <- tfresh G (var N).
 
 %mode vfresh +G -X.
 %mode tfresh +G -X.
+
+
+
+
+
+
+%{ ------- subtyping ------ }%
+
+sub-tp : tenv -> tpe -> tenv -> tpe -> type.
+
+sub-tp/int  : sub-tp G1 int G2 int.
+sub-tp/bool : sub-tp G1 bool G2 bool.
+sub-tp/top  : sub-tp G1 T G2 top.
+sub-tp/bot  : sub-tp G1 bot G2 T.
+
+sub-tp/fun  : sub-tp G1 (arrow T1 T2) G2 (arrow T3 T4)
+              <- sub-tp G2 T3 G1 T1
+              <- sub-tp G1 T2 G2 T4.
+
+sub-tp/rect : sub-tp G1 (rect T1) G2 (rect T3)
+              <- sub-tp G1 T1 G2 T3.
+
+sub-tp/recv : sub-tp G1 (recv T1) G2 (recv T3)
+              <- sub-tp G1 T1 G2 T3.
+
+sub-tp/tsel : sub-tp G1 (tsel E1) G2 (tsel E2)
+              <- tlookup G1 E1 T1
+              <- tlookup G2 E2 T2
+              <- sub-tp G1 T1 G2 T2.
+
+
+wf-tp : tenv -> tpe -> type.
+
+wf-tp/int  : wf-tp G1 int.
+wf-tp/bool : wf-tp G1 bool.
+wf-tp/top  : wf-tp G1 top.
+wf-tp/bot  : wf-tp G1 bot.
+
+wf-tp/fun  : wf-tp G1 (arrow T1 T2)
+              <- wf-tp G1 T1
+              <- wf-tp G1 T2.
+
+wf-tp/rect : wf-tp G1 (rect T1)
+              <- wf-tp G1 T1.
+
+wf-tp/recv : wf-tp G1 (recv T1)
+              <- wf-tp G1 T1.
+
+wf-tp/tsel : wf-tp G1 (tsel E1)
+              <- tlookup G1 E1 T1
+              <- wf-tp G1 T1.
+
+
+%% Subtyping is reflexive
+
+sub-tp-refl : 
+  %% Input
+  wf-tp G T ->
+  %% Output
+  sub-tp G T G T ->
+  type.
+%mode sub-tp-refl +WT -SBT.
+
+-/int : sub-tp-refl wf-tp/int sub-tp/int.
+-/bool: sub-tp-refl wf-tp/bool sub-tp/bool.
+-/bot : sub-tp-refl wf-tp/bot sub-tp/bot.
+-/top : sub-tp-refl wf-tp/top sub-tp/top.
+-/fun : sub-tp-refl (wf-tp/fun T1 T2) (sub-tp/fun SBT2 SBT1)
+   <- sub-tp-refl T1 SBT1
+   <- sub-tp-refl T2 SBT2.
+-/fun : sub-tp-refl (wf-tp/fun T1 T2) (sub-tp/fun SBT1 SBT2)
+   <- sub-tp-refl T1 SBT1
+   <- sub-tp-refl T2 SBT2.
+
+-/rect: sub-tp-refl (wf-tp/rect T1) (sub-tp/rect SBT1)
+   <- sub-tp-refl T1 SBT1.
+-/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
+   <- sub-tp-refl T1 SBT1.
+
+-/recv-n: sub-tp-refl (wf-tp/tsel T1 L) (sub-tp/tsel SBT1 L L)
+   <- sub-tp-refl T1 SBT1.
+
+
+%worlds () (sub-tp-refl _ _).
+%total T (sub-tp-refl T _).
+
+
+%% Subtyping is transitive
+
+sub-tp-trans-aux :
+  %% Inputs
+  {G2:tenv}
+  {T2:tpe}
+  sub-tp G1 T1 G2 T2 ->
+  sub-tp G2 T2 G3 T3 ->
+  %% Output
+  sub-tp G1 T1 G3 T3 ->
+  type.
+%mode sub-tp-trans-aux +G2 +T2 +SBT1 +SBT2 -SBT3.
+
+-/int    : sub-tp-trans-aux _ int sub-tp/int sub-tp/int sub-tp/int.
+-/int-top    : sub-tp-trans-aux _ int sub-tp/int sub-tp/top sub-tp/top.
+-/bool   : sub-tp-trans-aux _ bool sub-tp/bool sub-tp/bool sub-tp/bool.
+-/bool-top   : sub-tp-trans-aux _ bool sub-tp/bool sub-tp/top sub-tp/top.
+-/top    : sub-tp-trans-aux _ top sub-tp/top sub-tp/top sub-tp/top.
+-/bot    : sub-tp-trans-aux _ _ sub-tp/bot _ sub-tp/bot.
+-/fun-top : sub-tp-trans-aux _ (arrow T1 T2) (sub-tp/fun SBT2 SBT1) 
+              (sub-tp/top) (sub-tp/top).
+-/rect-top : sub-tp-trans-aux _ (rect T1) (sub-tp/rect SBT1) 
+              (sub-tp/top) (sub-tp/top).
+-/recv-top : sub-tp-trans-aux _ (recv T1) (sub-tp/recv SBT1) 
+              (sub-tp/top) (sub-tp/top).
+
+-/fun-fun  : sub-tp-trans-aux
+      G (arrow T1 T2)
+      (sub-tp/fun SBT2 SBT1)
+            (sub-tp/fun SBT4 SBT3)
+            (sub-tp/fun SBT6 SBT5)  
+      <- sub-tp-trans-aux G T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux G T2 SBT2 SBT4 SBT6.
+
+-/rect-rect  : sub-tp-trans-aux
+      G (rect T1)
+      (sub-tp/rect SBT1)
+            (sub-tp/rect SBT3)
+            (sub-tp/rect SBT5)  
+      <- sub-tp-trans-aux G T1 SBT1 SBT3 SBT5.
+
+-/recv-recv  : sub-tp-trans-aux
+      G (recv T1)
+      (sub-tp/recv SBT1)
+            (sub-tp/recv SBT3)
+            (sub-tp/recv SBT5)  
+      <- sub-tp-trans-aux G T1 SBT1 SBT3 SBT5.
+
+
+%worlds () (sub-tp-trans-aux _ _ _ _ _).
+%total T2 (sub-tp-trans-aux _ T2 _ _ _).
+
+%% Just a corrollary to sub-tp-trans-aux that doesn't require us to provide
+%% T2 as an additional argument.
+
+sub-tp-trans :
+  %% Inputs
+  sub-tp G1 T1 G2 T2 ->
+  sub-tp G2 T2 G3 T3 ->
+  %% Output
+  sub-tp G1 T1 G3 T3 ->
+  type.
+%mode sub-tp-trans +SBT1 +SBT2 -SBT3.
+
+-/i : sub-tp-trans SBT1 SBT2 SBT3
+       <- sub-tp-trans-aux _ _ SBT1 SBT2 SBT3.
+
+%worlds () (sub-tp-trans _ _ _).
+%total {} (sub-tp-trans _ _ _).
+
+
+
 
 
 %{ ------- eval-exp / type-exp ----- }%
