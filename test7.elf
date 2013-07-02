@@ -53,7 +53,6 @@ cst: type.
 op: type.
 
 exp: type.
-% stm: type.
 
 tpe: type.
 val: type.
@@ -75,8 +74,9 @@ equal : op.
 cste: cst -> exp.
 var: nat -> exp.
 prm: op -> exp -> exp -> exp.
-fun: exp -> tpe -> exp.
+fun: exp -> exp -> tpe -> exp.
 app: exp -> exp -> exp.
+
 
 % types
 int  : tpe.
@@ -85,8 +85,8 @@ top  : tpe.
 bot  : tpe.
 arrow: tpe -> tpe -> tpe.  % { A => B }
 rect : tpe -> tpe.         % { type A }
-recv : tpe -> tpe.         % { val l: A }
-tsel : exp -> tpe.         % l.A
+recv : tpe -> tpe.         % { val get: A }
+tsel : exp -> tpe.         % x.A
 
 % values
 cstv: cst -> val.
@@ -203,11 +203,11 @@ sub-tp/fun  : sub-tp G1 (arrow T1 T2) G2 (arrow T3 T4)
               <- sub-tp G2 T3 G1 T1
               <- sub-tp G1 T2 G2 T4.
 
-sub-tp/rect : sub-tp G1 (rect T1) G2 (rect T3)
-              <- sub-tp G1 T1 G2 T3.
+sub-tp/rect : sub-tp G1 (rect T1) G2 (rect T2)
+              <- sub-tp G1 T1 G2 T2.
 
-sub-tp/recv : sub-tp G1 (recv T1) G2 (recv T3)
-              <- sub-tp G1 T1 G2 T3.
+sub-tp/recv : sub-tp G1 (recv T1) G2 (recv T2)
+              <- sub-tp G1 T1 G2 T2.
 
 sub-tp/tsel : sub-tp G1 (tsel E1) G2 (tsel E2)
               <- tlookup G1 E1 T1
@@ -251,9 +251,6 @@ sub-tp-refl :
 -/bool: sub-tp-refl wf-tp/bool sub-tp/bool.
 -/bot : sub-tp-refl wf-tp/bot sub-tp/bot.
 -/top : sub-tp-refl wf-tp/top sub-tp/top.
--/fun : sub-tp-refl (wf-tp/fun T1 T2) (sub-tp/fun SBT2 SBT1)
-   <- sub-tp-refl T1 SBT1
-   <- sub-tp-refl T2 SBT2.
 -/fun : sub-tp-refl (wf-tp/fun T1 T2) (sub-tp/fun SBT1 SBT2)
    <- sub-tp-refl T1 SBT1
    <- sub-tp-refl T2 SBT2.
@@ -269,6 +266,16 @@ sub-tp-refl :
 
 %worlds () (sub-tp-refl _ _).
 %total T (sub-tp-refl T _).
+
+
+
+extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
+%mode extract-wf +SBT1 -SBT2 -SBT3.
+%worlds () (extract-wf _ _ _).
+%trustme
+%total T2 (extract-wf T2 _ _).
+
+
 
 
 %% Subtyping is transitive
@@ -354,11 +361,6 @@ Coverage error --- missing cases:
 
 
 
-extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
-%mode extract-wf +SBT1 -SBT2 -SBT3.
-%worlds () (extract-wf _ _ _).
-%trustme
-%total T2 (extract-wf T2 _ _).
 
 
 
@@ -395,7 +397,7 @@ eval-exp   : venv -> exp -> val -> type.
 %             <- eval-op OP V1 V2 V3.
 
 e/var      : eval-exp G X V <- vlookup G X V.
-e/fun      : eval-exp G (fun R T) (clos R G).
+e/fun      : eval-exp G (fun R R2 T) (clos R G).
 
 
 e/app      : eval-exp G (app E1 E2) V3
@@ -408,8 +410,12 @@ e/app      : eval-exp G (app E1 E2) V3
 type-exp   : tenv -> exp -> tpe -> type.
 t/cst      : type-exp G (cste C) T <- typeof C T.
 t/var      : type-exp G X T <- tlookup G X T.
-t/fun      : type-exp G (fun R T1) (arrow T1 T2) 
+t/fun      : type-exp G (fun R R2 T) (arrow T1 T2) 
                 <- type-exp (tcons T1 G) R T2.
+t/rect     : type-exp G (fun R R2 T) (rect T).
+t/recv     : type-exp G (fun R R2 T) (recv T1)
+                <- type-exp G R2 T1.
+
 
 t/prim      : type-exp G (prm OP E1 E2) T3
             <- type-exp G E1 T1 
@@ -457,7 +463,7 @@ invert-app :
 
 invert-fun :
   %% Input
-  type-exp G (fun R T1) T ->
+  type-exp G (fun R R2 TX) T ->
   %% Output
   type-exp (tcons T3 G) R T4 ->
   sub-tp (tcons T3 G) (arrow T3 T4) G T ->
@@ -468,6 +474,8 @@ invert-fun :
 % -     : invert-fun (t/sub SB1 TS) L SB2 
 %            <- invert-fun TS L SB 
 %            <- sub-tp-trans SB SB1 SB2.
+
+% TODO: also yield rect and recv types
 
 %worlds () (invert-fun _ _ _).
 %trustme

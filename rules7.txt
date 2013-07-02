@@ -1,0 +1,108 @@
+// syntax
+
+t ::= x                         // variable
+    | new {                     // object/function creation
+        def apply(x) = t1
+        val get = t2
+        type T 
+      }
+    | t.apply(t)                // method call
+    | t.get                     // field selection
+
+T ::= Top | Bot 
+    | { T1 => T2 }              // method
+    | { val T }                 // field member
+    | { type T }                // type member
+    | x.T                       // type selection
+
+G :: = tnil | T::G              // type env
+H :: = vnil | v::H              // value env
+
+v ::= Clos H {                  // object/closure
+        def apply = t
+        val get = t
+      }
+
+// lookup
+
+x: T in G
+x->v in H
+
+
+// subtyping
+
+G1 T <: G2 Top
+G1 Bot <: G2 T
+
+G2 T3 <: G1 T1    G1 T2 <: G2 T4
+----------------------------------
+G1 { T1 => T2 } <: G2 { T3 => T4 }
+
+
+G1 T1 <: G2 T2
+------------------------------
+G1 { val T1 } <: G2 { val T2 }
+
+
+G1 T1 <: G2 T2
+--------------------------------
+G1 { type T1 } <: G2 { type T2 }
+
+
+x:T1 in G1     y:T2 in G2    G1 T1 <: G2 T2
+-------------------------------------------
+G1 x.T1 <: G2 y.T2
+
+
+// eval
+
+x->v in H
+-----------
+H |- x => v
+
+H |- new { def apply(x) = t1; val get = t2; type T } => Clos H { def apply(x) = t1; val get = t2 }
+
+
+H |- t1 => Clos H1 { def apply(x) = t3; val get = t4 }
+H |- t2 => v2
+x->v::H => t1 => v3
+-------------------------------------------------------
+H |- t1.apply(t2) => v3
+
+
+H |- t1 => Clos H1 { def apply(x) = t3; val get = t4 }
+H |- t4 => v4
+-------------------------------------------------------
+H |- t1.get => v4
+
+
+
+// expression typing
+
+x: T in G
+---------
+G |- x: T
+
+
+x:T1::G |- t1: T2
+-------------------------------------------------------------------
+G |- new { def apply(x) = t1; val get = t2; type T } : { T1 => T2 }
+
+
+G |- t2: T2
+-------------------------------------------------------------------
+G |- new { def apply(x) = t1; val get = t2; type T } : { get T2 }
+
+
+G |- new { def apply(x) = t1; val get = t2; type T } : { type T }
+
+
+G |- t: T1    G T1 <: G T2
+--------------------------
+G |- t: T2
+
+
+
+// value typing
+
+(like for expressions, just with Clos)
