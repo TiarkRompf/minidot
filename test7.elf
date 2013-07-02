@@ -90,7 +90,7 @@ tsel : exp -> tpe.         % x.A
 
 % values
 cstv: cst -> val.
-clos: exp -> venv -> val.
+clos: exp -> val -> venv -> val.
 
 % environments
 vnil  : venv.
@@ -397,13 +397,20 @@ eval-exp   : venv -> exp -> val -> type.
 %             <- eval-op OP V1 V2 V3.
 
 e/var      : eval-exp G X V <- vlookup G X V.
-e/fun      : eval-exp G (fun R R2 T) (clos R G).
+e/fun      : eval-exp G (fun R R2 T) (clos R V2 G)
+            <- eval-exp G R2 V2.
 
 
 e/app      : eval-exp G (app E1 E2) V3
-            <- eval-exp G E1 (clos R G1)
+            <- eval-exp G E1 (clos R R2 G1)
             <- eval-exp G E2 V2
             <- eval-exp (vcons V2 G1) R V3.
+
+% e/sel      : eval-exp G (sel E1) V1
+%             <- eval-exp G E1 (clos R R2 G1)
+%             <- eval-exp G E2 V2
+%             <- eval-exp (vcons V2 G1) R V3.
+
 
 
 
@@ -510,7 +517,7 @@ wf-val   : val -> tenv -> tpe -> type.
 wf-env   : venv -> tenv -> type.
 
 % wfv/c    : wf-val (cstv C) T <- typeof C T.
-wfv/f    : wf-val (clos R H) (tcons T1 G) (arrow T1 T2) 
+wfv/f    : wf-val (clos R R2 H) (tcons T1 G) (arrow T1 T2) 
             <- wf-env H G
             <- type-exp (tcons T1 G) R T2.
 wfv/sub  : wf-val V G T
@@ -530,7 +537,7 @@ extract-wf3: wf-val V G T1 -> wf-tp G T1 -> type.
 
 invert-wf-fun :
   %% Input
-  wf-val (clos R H) G1 T ->
+  wf-val (clos R R2 H) G1 T ->
   %% Output
   type-exp (tcons T3 G) R T4 ->
   wf-env H G ->
@@ -538,8 +545,9 @@ invert-wf-fun :
   type.
 %mode invert-wf-fun +WFE1 -WFE2 -WFE3 -SBT1.
 
--     : invert-wf-fun (wfv/f (TS: type-exp (tcons T1 G) R T2) WE) TS WE SB
-            <- extract-wf3 (wfv/f TS WE) W 
+-     : invert-wf-fun ((wfv/f (TS: type-exp (tcons T1 G) R T2) WE):(wf-val (clos R R2 H) _ _))
+             TS WE SB
+            <- extract-wf3 ((wfv/f TS WE):(wf-val (clos R R2 H) _ _)) W 
             <- sub-tp-refl W SB.
 
 -     : invert-wf-fun (wfv/sub SBA1 TS) L L1 (SBA2)
@@ -627,7 +635,7 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
           <- invert-var ZT L ST
           <- lookup-safe E L L2 V.
 
--      : eval-safe ZT E (e/fun) (wfv/sub ST (wfv/f TS E))
+-      : eval-safe ZT E (e/fun _) (wfv/sub ST (wfv/f TS E))
           <- invert-fun ZT TS ST.
 
 -      : eval-safe 
@@ -636,7 +644,7 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
             (e/app
               (EV3: eval-exp (vcons V2 HC0) R V3) 
               (EVX: eval-exp H0 EXP2 V2) 
-              (EVF: eval-exp H0 EXP1 (clos R HC0))
+              (EVF: eval-exp H0 EXP1 (clos R R2 HC0))
             )
             (wfv/sub ST (wfv/sub STR (Z: wf-val V3 (tcons T3 GC0) T4)))
 
@@ -654,8 +662,8 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
           <- eval-safe          % eval F
               TF
               WE 
-              (EVF: eval-exp H0 EXP1 (clos R HC0))
-              (ZF: wf-val (clos R HC0) G0 (arrow T1 T2))
+              (EVF: eval-exp H0 EXP1 (clos R R2 HC0))
+              (ZF: wf-val (clos R R2 HC0) G0 (arrow T1 T2))
 
           <- invert-wf-fun 
               ZF 

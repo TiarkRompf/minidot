@@ -60,18 +60,20 @@ x->v in H
 -----------
 H |- x => v
 
-H |- new { def apply(x) = t1; val get = t2; type T } => Clos H { def apply(x) = t1; val get = t2 }
 
-
-H |- t1 => Clos H1 { def apply(x) = t3; val get = t4 }
 H |- t2 => v2
-x->v::H => t1 => v3
+-------------------------------------------------------
+H |- new { def apply(x) = t1; val get = t2; type T } => Clos H { def apply(x) = t1; val get = v2 }
+
+
+H |- t1 => Clos H1 { def apply(x) = t3; val get = v4 }
+H |- t2 => v2
+x->v::H |- t1 => v3
 -------------------------------------------------------
 H |- t1.apply(t2) => v3
 
 
-H |- t1 => Clos H1 { def apply(x) = t3; val get = t4 }
-H |- t4 => v4
+H |- t1 => Clos H1 { def apply(x) = t3; val get = v4 }
 -------------------------------------------------------
 H |- t1.get => v4
 
