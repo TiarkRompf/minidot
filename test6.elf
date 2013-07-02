@@ -413,9 +413,23 @@ invert-wf-fun :
 
 %{ ------- type preservation ----- }%
 
+extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2) T2 -> type.
+%mode extend-sub-tp +A +B -C.
+%worlds () (extend-sub-tp _ _ _).
+%trustme
+%total A (extend-sub-tp A _ _).
+
 
 extend-wfv: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
 %mode extend-wfv +A +B -C.
+
+-     : extend-wfv (wfv/sub ST WV) T (wfv/sub ST1 WV1) 
+            <- extend-wfv WV T WV1
+            <- extend-sub-tp ST T ST1.
+% -     : extend-wfv (wfv/f TE WE) T (wfv/f TE1 WE1) 
+%             <- extend-wfv WV T WV1
+%             <- extend-sub-tp ST T ST1.
+
 %worlds () (extend-wfv _ _ _).
 %trustme
 %total A (extend-wfv A _ _).
