@@ -99,6 +99,18 @@ G |- new { def apply(x) = t1; val get = t2; type T } : { get T2 }
 G |- new { def apply(x) = t1; val get = t2; type T } : { type T }
 
 
+
+G |- t1: { T1 => T2 }
+G |- t2: T1
+---------------------
+G |- t1.apply(t2): T2
+
+
+G |- t1: { val get: T2 }
+---------------------
+G |- t1.get: T2
+
+
 G |- t: T1    G T1 <: G T2
 --------------------------
 G |- t: T2

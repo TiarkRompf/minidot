@@ -503,12 +503,16 @@ invert-fun :
   type.
 %mode invert-fun +WFE1 -WFE2 -SBT1.
 
-% -     : invert-fun (t/fun TS) TS SB <- sub-tp-refl _ _ SB.
+% -     : invert-fun (t/fun TS) TS SB 
+%            <- sub-tp-refl _ _ SB.
 % -     : invert-fun (t/sub SB1 TS) L SB2 
 %            <- invert-fun TS L SB 
 %            <- sub-tp-trans SB SB1 SB2.
 
-% TODO: also yield rect and recv types
+% TODO: 
+% this will need to be generalized: we cannot
+% convert an arbitrary type assigment T to
+% arrow T3 T4. also handle rect and recv types.
 
 %worlds () (invert-fun _ _ _).
 %trustme
