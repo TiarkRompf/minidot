@@ -1,0 +1,179 @@
+// syntax
+
+t ::= x                         // variable
+    | new {                     // object/function creation
+        def apply(x) = t1
+        val get = t2
+        type T1..T2
+      }
+    | t.apply(t)                // method call
+    | t.get                     // field selection
+
+T ::= Top | Bot 
+    | { T1 => T2 }              // method
+    | { val T }                 // field member
+    | { type T1..T2 }           // type member
+    | { x => T }                // self-type binding
+    | x.T                       // type selection
+
+G :: = tnil | T::G              // type env
+H :: = vnil | v::H              // value env
+
+v ::= Clos H {                  // object/closure
+        def apply = t
+        val get = t
+      }
+
+p  ::= ? | x | p.get | p.T      // paths: context for subtp
+p! ::= x | p!.get | p!.T        // stable paths
+
+
+// lookup
+
+x: T in G
+x->v in H
+
+
+
+// subtyping: G1 p1 T1 <: G2 p2 T2 (context-sensitive)
+
+G1 |- p1 T   <: p2 Top
+G1 |- p1 Bot <: p2 T
+
+G |- ? T3 <: ? T1    G |- ? T2 <: ? T4
+---------------------------------------
+G |- p1 { T1 => T2 } <: p2 { T3 => T4 }
+
+
+G |- p1.get T1 <: p2.get T2
+-----------------------------------
+G |- p1 { val T1 } <: p2 { val T2 }
+
+
+
+G |- ? T2 <: ? T3
+---------------------------------------------
+G |- p1 { type T1..T2 } <: p2 { type T3..T4 }
+
+
+G |- ? T3 <: ? T1    G |- ? T2 <: ? T4
+-----------------------------------------------
+G |- p1! { type T1..T2 } <: p1! { type T3..T4 }
+
+
+
+G |- x: { type T1..T2 }
+-----------------------
+G |- p1 T2 <: p2 x.T
+
+
+G |- x: { type T1..T2 }
+-----------------------
+G |- p1 x.T <: p2 T1
+
+
+
+z:T2::G |- z [z/x]T1 <: p2 T2        G |- T2 wf    z fresh
+----------------------------------------------------------
+G |- p1 { x => T1 } <: p2 T2
+
+
+G |- p1! [p1/x]T1 <: p2 T2
+-----------------------------
+G |- p1! { x => T1 } <: p2 T2
+
+(plus symmetric version)
+
+
+
+
+// subtyping across environments: G1 p1 T1 <: G2 p2 T2 
+
+(needed for proof, union assumes all idents in program are distinct)
+
+
+G1 union G2 |- p1 T1 <: p2 T2    G1 |- T1 wf    G2 |- T2 wf
+-----------------------------------------------------------
+G1 p1 T1 <: G2 p2 T2
+
+
+// type-wf: G |- T wf
+
+all free vars in T are bound in G
+
+
+
+
+
+// eval
+
+x->v in H
+-----------
+H |- x => v
+
+
+H |- t2 => v2
+-------------------------------------------------------
+H |- new { def apply(x) = t1; val get = t2; type T1..T2 } 
+        => Clos H { def apply(x) = t1; val get = v2 }
+
+
+H |- t1 => Clos H1 { def apply(x) = t3; val get = v4 }
+H |- t2 => v2
+x->v::H |- t1 => v3
+-------------------------------------------------------
+H |- t1.apply(t2) => v3
+
+
+H |- t1 => Clos H1 { def apply(x) = t3; val get = v4 }
+-------------------------------------------------------
+H |- t1.get => v4
+
+
+
+// expression typing
+
+x: T in G
+---------
+G |- x: T
+
+
+x:T1::G |- t1: T2    G |- T1 => T2 wf
+------------------------------------------------------------------------
+G |- new { def apply(x) = t1; val get = t2; type T3..T4 } : { T1 => T2 }
+
+
+G |- t2: T2
+----------------------------------------------------------------------
+G |- new { def apply(x) = t1; val get = t2; type T3..T4 } : { get T2 }
+
+
+G |- new { def apply(x) = t1; val get = t2; type T3..T4 } : { type T3..T4 }
+
+
+
+G |- t1: { T1 => T2 }
+G |- t2: T1
+---------------------
+G |- t1.apply(t2): T2
+
+
+G |- t1: { val get: T2 }
+------------------------
+G |- t1.get: T2
+
+
+G |- t: T1    G |- ? T1 <: ? T2
+-------------------------------
+G |- t: T2
+
+G |- p!: T1    G |- p! T1 <: p! T2
+----------------------------------
+G |- p!: T2
+
+
+
+
+// value typing
+
+(like for expressions, just with Clos)
