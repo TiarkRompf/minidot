@@ -76,6 +76,7 @@ var: nat -> exp.
 prm: op -> exp -> exp -> exp.
 fun: exp -> exp -> tpe -> exp.
 app: exp -> exp -> exp.
+sel: exp -> exp.
 
 
 % types
@@ -87,6 +88,7 @@ arrow: tpe -> tpe -> tpe.  % { A => B }
 rect : tpe -> tpe.         % { type A }
 recv : tpe -> tpe.         % { val get: A }
 tsel : exp -> tpe.         % x.A
+% tand : tpe -> tpe -> tpe.  % A && B
 
 % values
 cstv: cst -> val.
@@ -210,8 +212,8 @@ sub-tp/recv : sub-tp G1 (recv T1) G2 (recv T2)
               <- sub-tp G1 T1 G2 T2.
 
 sub-tp/tsel : sub-tp G1 (tsel E1) G2 (tsel E2)
-              <- tlookup G1 E1 T1
-              <- tlookup G2 E2 T2
+              <- tlookup G1 E1 (rect T1)
+              <- tlookup G2 E2 (rect T2)
               <- sub-tp G1 T1 G2 T2.
 
 
@@ -233,8 +235,9 @@ wf-tp/recv : wf-tp G1 (recv T1)
               <- wf-tp G1 T1.
 
 wf-tp/tsel : wf-tp G1 (tsel E1)
-              <- tlookup G1 E1 T1
+              <- tlookup G1 E1 (rect T1)
               <- wf-tp G1 T1.
+
 
 
 %% Subtyping is reflexive
@@ -406,10 +409,8 @@ e/app      : eval-exp G (app E1 E2) V3
             <- eval-exp G E2 V2
             <- eval-exp (vcons V2 G1) R V3.
 
-% e/sel      : eval-exp G (sel E1) V1
-%             <- eval-exp G E1 (clos R R2 G1)
-%             <- eval-exp G E2 V2
-%             <- eval-exp (vcons V2 G1) R V3.
+e/sel      : eval-exp G (sel E1) V
+            <- eval-exp G E1 (clos R V G1).
 
 
 
@@ -432,6 +433,9 @@ t/prim      : type-exp G (prm OP E1 E2) T3
 t/app       : type-exp G (app E1 E2) T2
             <- type-exp G E1 (arrow T1 T2) 
             <- type-exp G E2 T1.
+
+t/sel       : type-exp G (sel E1) T1
+            <- type-exp G E1 (recv T1). 
 
 t/sub       : type-exp G E T2
             <- type-exp G E T1
@@ -466,6 +470,28 @@ invert-app :
 
 %worlds () (invert-app _ _ _ _).
 %total WFE (invert-app WFE _ _ _).
+
+
+invert-sel : 
+  %% Input
+  type-exp G (sel E1) T ->
+  %% Output
+  type-exp G E1 (recv T1) ->
+  sub-tp G T1 G T -> 
+  type.
+%mode invert-sel +WFE1 -WFE3 -SBT.
+
+-     : invert-sel (t/sel TS) TS SB 
+            <- extract-wf2 (t/sel TS) W 
+            <- sub-tp-refl W SB.
+-     : invert-sel (t/sub SB1 TS) L2 SB2 
+            <- invert-sel TS L2 SB 
+            <- sub-tp-trans SB SB1 SB2.
+
+%worlds () (invert-sel _ _ _).
+%total WFE (invert-sel WFE _ _).
+
+
 
 
 invert-fun :
@@ -520,6 +546,10 @@ wf-env   : venv -> tenv -> type.
 wfv/f    : wf-val (clos R R2 H) (tcons T1 G) (arrow T1 T2) 
             <- wf-env H G
             <- type-exp (tcons T1 G) R T2.
+
+wfv/r    : wf-val (clos R R2 H) G (recv T)
+            <- wf-val R2 G T.
+
 wfv/sub  : wf-val V G T
             <- wf-val V G1 T1
             <- sub-tp G1 T1 G T.
@@ -537,11 +567,11 @@ extract-wf3: wf-val V G T1 -> wf-tp G T1 -> type.
 
 invert-wf-fun :
   %% Input
-  wf-val (clos R R2 H) G1 T ->
+  wf-val (clos R R2 H) G1 (arrow T1 T2) ->
   %% Output
   type-exp (tcons T3 G) R T4 ->
   wf-env H G ->
-  sub-tp (tcons T3 G) (arrow T3 T4) G1 T ->
+  sub-tp (tcons T3 G) (arrow T3 T4) G1 (arrow T1 T2) ->
   type.
 %mode invert-wf-fun +WFE1 -WFE2 -WFE3 -SBT1.
 
@@ -556,7 +586,32 @@ invert-wf-fun :
 
 
 %worlds () (invert-wf-fun _ _ _ _).
+%trustme
 %total WFE (invert-wf-fun WFE _ _ _). 
+
+%{
+Coverage error --- missing cases:
+{X1:exp} {X2:val} {X3:venv} {X4:tenv} {X5:tpe} {X6:tpe} {X7:tpe} {X8:tenv}
+   {X9:tpe} {X10:tenv} {X11:wf-val (clos X1 X2 X3) X10 bot}
+   {X12:type-exp (tcons X7 X8) X1 X9} {X13:wf-env X3 X8}
+   {X14:sub-tp (tcons X7 X8) (arrow X7 X9) X4 (arrow X5 X6)}
+   |- invert-wf-fun (wfv/sub sub-tp/bot X11) X12 X13 X14.  
+}%
+
+
+
+invert-wf-rec :
+  %% Input
+  wf-val (clos R R2 H) G1 (recv T) ->
+  %% Output
+  wf-val R2 G1 T4 ->
+  sub-tp G1 (recv T4) G1 (recv T) ->
+  type.
+%mode invert-wf-rec +WFE1 -WFE3 -SBT1.
+%worlds () (invert-wf-rec _ _ _).
+%trustme
+%total WFE (invert-wf-rec WFE _ _). 
+
 
 
 %{ ------- type preservation ----- }%
@@ -637,6 +692,12 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
 
 -      : eval-safe ZT E (e/fun _) (wfv/sub ST (wfv/f TS E))
           <- invert-fun ZT TS ST.
+
+-      : eval-safe ZT WE (e/sel EVX) (wfv/sub ST (wfv/sub ST1 WV1))
+          <- invert-sel ZT TS ST
+          <- eval-safe TS WE EVX WVX
+          <- invert-wf-rec WVX WV1 (sub-tp/recv ST1).
+
 
 -      : eval-safe 
             (ZT: type-exp _ _ T2')
