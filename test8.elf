@@ -75,7 +75,7 @@ equal : op.
 cste: cst -> exp.
 var: nat -> exp.
 prm: op -> exp -> exp -> exp.
-fun: exp -> exp -> tpe -> tpe -> exp. % new { def apply = t1 val = t2 type A..B }
+fun: exp -> exp -> tpe -> tpe -> exp.   % new { def apply = t1 val = t2 type A..B }
 app: exp -> exp -> exp.
 sel: exp -> exp.
 
