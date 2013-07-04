@@ -362,7 +362,7 @@ sub-tp-trans-aux :
 
  -/tsel-tsel  : sub-tp-trans-aux
              (wf-tp/tsel T2 TL2)
-             (sub-tp/tsel2 SBT1 TL2)
+             (sub-tp/tsel2 SBT1 TL3)
              SBT3
              (sub-tp/tsel2 SBT5 TL2)
        <- sub-tp-trans-aux T2 SBT1 SBT3 SBT5.
@@ -383,9 +383,10 @@ sub-tp-trans-aux :
     {X14:sub-tp X1 X7 X5 X6} {X15:tlookup X1 X2 (rect X13)}
     {X16:sub-tp X3 X4 X5 X6}
 }%
--:    sub-tp-trans-aux (wf-tp/tsel X8 X9) (sub-tp/tsel2 X11 X9)
-          (sub-tp/tsel1 X14 X9) X16
-             <- sub-tp-trans-aux X8 X11 X14 X16.
+
+% -:    sub-tp-trans-aux (wf-tp/tsel X8 X9) (sub-tp/tsel2 X11 X9)
+%          (sub-tp/tsel1 X14 X9) X16
+%             <- sub-tp-trans-aux X8 X11 X14 X16.
 
 
 
