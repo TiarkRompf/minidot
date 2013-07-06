@@ -35,7 +35,7 @@ x->v in H
 
 
 
-// subtyping: G1 p1 T1 <: G2 p2 T2 (context-sensitive)
+// subtyping: G |- p1 T1 <: p2 T2 (context-sensitive)
 
 G |- p1 T   <: p2 Top
 G |- p1 Bot <: p2 T
@@ -120,7 +120,7 @@ H |- new { def apply(x) = t1; val get = t2; type T1..T2 }
 
 H |- t1 => Clos H1 { def apply(x) = t3; val get = v4 }
 H |- t2 => v2
-x->v::H |- t1 => v3
+x->v::H1 |- t1 => v3
 -------------------------------------------------------
 H |- t1.apply(t2) => v3
 
