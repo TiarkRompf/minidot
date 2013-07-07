@@ -1,4 +1,4 @@
 massive-octo-nemesis
 ====================
 
-thanks for suggesting this name, GitHub
+Type system stuff. GitHub suggested the repo name.
