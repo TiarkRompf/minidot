@@ -195,12 +195,14 @@ tf/c   : tfresh (tcons _ G) (var (s N)) <- tfresh G (var N).
 %{ ------- subtyping ------ }%
 
 path-eval: tenv -> exp -> tpe -> type.
-%mode path-eval +G +E -T.
+% %mode path-eval +G +E -T.
 
+wf-tp : tenv -> tpe -> type.
 
 sub-tp : tenv -> tpe -> tenv -> tpe -> type.
 
-pev/lup  : path-eval G E T <- tlookup G E T .
+pev  : path-eval G E T <- wf-tp G T <- tlookup G E T.
+
 % pev/sub  : path-eval G E T2 <- path-eval G E T1 <- sub-tp G T1 G T2.
 
 
@@ -230,7 +232,6 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2)
               % <- sub-tp G1 P1 T1 G2 E2T2.
 
 
-wf-tp : tenv -> tpe -> type.
 
 wf-tp/int  : wf-tp G1 int.
 wf-tp/bool : wf-tp G1 bool.
@@ -248,9 +249,7 @@ wf-tp/recv : wf-tp G1 (recv T1)
               <- wf-tp G1 T1.
 
 wf-tp/tsel : wf-tp G1 (tsel E1)
-              <- path-eval G1 E1 (rect T1)
-              <- wf-tp G1 T1.
-
+              <- path-eval G1 E1 (rect T1).
 
 
 %% Subtyping is reflexive
@@ -277,8 +276,8 @@ sub-tp-refl :
    <- sub-tp-refl T1 SBT1.
 
 -/tsel: sub-tp-refl 
-  (wf-tp/tsel WT1 (L: path-eval G1 E1 (rect T1))) 
-    (sub-tp/tsel1 (sub-tp/tsel2 SBT1 L) L)
+  (wf-tp/tsel (pev L (wf-tp/rect WT1)))
+    (sub-tp/tsel1 (sub-tp/tsel2 SBT1 (pev L (wf-tp/rect WT1))) (pev L (wf-tp/rect WT1)))
      <- sub-tp-refl WT1 SBT1.
 
 %worlds () (sub-tp-refl _ _).
@@ -369,6 +368,57 @@ sub-tp-trans-aux :
 
 
 
+
+
+same: tpe -> tpe -> type.
+ident: same T T.
+
+lookup-eq: tlookup G2 E (rect T1) -> tlookup G2 E (rect T2) -> same T1 T2 -> type.
+%mode lookup-eq +P1 +P2 -SBT.
+
+- : lookup-eq tl/hit tl/hit ident.
+- : lookup-eq (tl/miss A) (tl/miss B) X <- lookup-eq A B X.
+
+%worlds () (lookup-eq _ _ _).
+%total {T2} (lookup-eq T2 _ _).
+
+
+eq-low: same T1 T1' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1' G2 T2 -> type.
+%mode eq-low +P1 +P2 -SBT.
+
+- : eq-low ident S S.
+
+%worlds () (eq-low _ _ _).
+%total {T2} (eq-low T2 _ _).
+
+eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
+%mode eq-high +P1 +P2 -SBT.
+
+- : eq-high ident S S.
+
+%worlds () (eq-high _ _ _).
+%total {T2} (eq-high T2 _ _).
+
+
+
+-/tsel2-tsel1  : sub-tp-trans-aux  % T1 < p.T2 && p.T2 < T3 --> T1 < T3
+      (wf-tp/tsel (pev (P0: (tlookup G2 E (rect T2))) (wf-tp/rect (W: wf-tp G2 T2)) ))
+      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (P1: (tlookup G2 E (rect T2A))) (wf-tp/rect W1X)))
+      (sub-tp/tsel1 (A2: sub-tp G2 T2B G3 T3) (pev (P2: (tlookup G2 E (rect T2B))) (wf-tp/rect W2X)))
+      (SBT5: sub-tp G1 T1 G3 T3)
+
+      <- lookup-eq P1 P0 (S1: same T2A T2)
+      <- lookup-eq P2 P0 (S2: same T2B T2)
+
+      <- eq-high S1 A1 (A1': sub-tp G1 T1 G2 T2)
+      <- eq-low  S2 A2 (A2': sub-tp G2 T2 G3 T3)
+
+      <- sub-tp-trans-aux W A1' A2' SBT5.
+
+%{
+%% approximate
+
+
 wfff0: tlookup G E (rect T0) -> wf-tp G1 T0 -> tlookup G E (rect T1) -> wf-tp G1 T1 -> type.
 %mode wfff0 +P0 +W +P1 -W1.
 
@@ -380,15 +430,6 @@ wfff0: tlookup G E (rect T0) -> wf-tp G1 T0 -> tlookup G E (rect T1) -> wf-tp G1
 %reduces N3 <= N2 (wfff0 _ N2 _ N3).
 
 
-wfff: path-eval G E (rect T0) -> wf-tp G T0 -> path-eval G E (rect T1) -> wf-tp G T1 -> type.
-%mode wfff +P0 +W +P1 -W1.
-- : wfff (pev/lup A) W0 (pev/lup B) W1 <- wfff0 A W0 B W1.
-%worlds () (wfff _ _ _ _).
-%total {T2} (wfff T2 _ _ _).
-%reduces N3 <= N2 (wfff _ N2 _ N3).
-
-
-
 foobarx: wf-tp G T1 -> tlookup G2 E (rect T1) -> tlookup G2 E (rect T2) -> sub-tp G T1 G T2 -> wf-tp G T2 -> type.
 %mode foobarx +W +P1 +P2 -SBT -W2.
 
@@ -398,40 +439,28 @@ foobarx: wf-tp G T1 -> tlookup G2 E (rect T1) -> tlookup G2 E (rect T2) -> sub-t
 %worlds () (foobarx _ _ _ _ _).
 %total {T2} (foobarx _ T2 _ _ _).
 
-foobary: wf-tp G T1 -> path-eval G E (rect T1) -> path-eval G E (rect T2) -> sub-tp G T1 G T2 -> wf-tp G T2 -> type.
-%mode foobary +W +P1 +P2 -SBT -W2.
-- : foobary W (pev/lup A) (pev/lup B) S U <- foobarx W A B S U.
-%worlds () (foobary _ _ _ _ _).
-%total {T2} (foobary _ T2 _ _ _).
-
-
-
-
 
 -/tsel2-tsel1  : sub-tp-trans-aux  % T1 < p.T2 && p.T2 < T3 --> T1 < T3
-      (wf-tp/tsel (W: wf-tp G2 T2) (P0: (path-eval G2 E (rect T2))))
-      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (P1: (path-eval G2 E (rect T2A))))
-      (sub-tp/tsel1 (A2: sub-tp G2 T2B G3 T3) (P2: (path-eval G2 E (rect T2B))))
+      (wf-tp/tsel (pev (P0: (tlookup G2 E (rect T2))) (wf-tp/rect (W: wf-tp G2 T2)) ))
+      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (P1: (tlookup G2 E (rect T2A))) (wf-tp/rect W1X)))
+      (sub-tp/tsel1 (A2: sub-tp G2 T2B G3 T3) (pev (P2: (tlookup G2 E (rect T2B))) (wf-tp/rect W2X)))
       (SBT5: sub-tp G1 T1 G3 T3)
 
-%      <- foobar1 P0 (sub-tp/tsel2 A1 P1) SBT1
-%      <- foobar2 P0 (sub-tp/tsel1 A2 P2) SBT2
+%      <- foobar1 P0 A1 (SBT1: sub-tp G1 T1 G2 T2)   infer T2A < T2 
 
-%      <- foobar1 P0 A1 (SBT1: sub-tp G1 T1 G2 T2)
-
-      <- wfff P0 W P1 W1
-      <- foobary W1 P1 P0 (SBTZ0: (sub-tp G2 T2A G2 T2)) _
+      <- wfff0 P0 W P1 W1
+      <- foobarx W1 P1 P0 (SBTZ0: (sub-tp G2 T2A G2 T2)) _
       <- sub-tp-trans-aux W1 A1 SBTZ0 (SBT1: sub-tp G1 T1 G2 T2)
 
 
-%      <- foobar2 P0 A2 (SBT2: sub-tp G2 T2 G3 T3)
+%      <- foobar2 P0 A2 (SBT2: sub-tp G2 T2 G3 T3)   infer T2 < T2B 
 
-      <- wfff P0 W P2 W2
-      <- foobary W P0 P2 (SBTZ1: (sub-tp G2 T2 G2 T2B)) _
+      <- wfff0 P0 W P2 W2
+      <- foobarx W P0 P2 (SBTZ1: (sub-tp G2 T2 G2 T2B)) _
       <- sub-tp-trans-aux W2 SBTZ1 A2 (SBT2: sub-tp G2 T2 G3 T3)
 
       <- sub-tp-trans-aux W SBT1 SBT2 SBT5.
-
+}%
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
