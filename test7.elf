@@ -211,13 +211,14 @@ sub-tp/rect : sub-tp G1 (rect T1) G2 (rect T2)
 sub-tp/recv : sub-tp G1 (recv T1) G2 (recv T2)
               <- sub-tp G1 T1 G2 T2.
 
-sub-tp/tsel1 : sub-tp G1 (tsel E1) G2 T2
-              <- tlookup G1 E1 (rect T1)
-              <- sub-tp G1 T1 G2 T2.
+% sub-tp/tsel1 : sub-tp G1 (tsel E1) G2 T2
+%              <- tlookup G1 E1 (rect T1)
+%              <- sub-tp G1 T1 G2 T2.
 
-sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2)
-              <- tlookup G2 E2 (rect T2)
-              <- sub-tp G1 T1 G2 T2.
+% sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2)
+%              <- tlookup G2 E2 (rect T2)
+%              <- sub-tp G1 T1 G2 T2.
+
               % <- sub-tp G1 P1 T1 G2 E2T2.
 
 
@@ -238,9 +239,9 @@ wf-tp/rect : wf-tp G1 (rect T1)
 wf-tp/recv : wf-tp G1 (recv T1)
               <- wf-tp G1 T1.
 
-wf-tp/tsel : wf-tp G1 (tsel E1)
-              <- tlookup G1 E1 (rect T1)
-              <- wf-tp G1 T1.
+% wf-tp/tsel : wf-tp G1 (tsel E1)
+%              <- tlookup G1 E1 (rect T1)
+%              <- wf-tp G1 T1.
 
 
 
@@ -267,9 +268,9 @@ sub-tp-refl :
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
 
--/tsel: sub-tp-refl 
-  (wf-tp/tsel T1 L) (sub-tp/tsel1 (sub-tp/tsel2 SBT1 L) L)
-   <- sub-tp-refl T1 SBT1.
+% -/tsel: sub-tp-refl 
+%  (wf-tp/tsel T1 L) (sub-tp/tsel1 (sub-tp/tsel2 SBT1 L) L)
+%   <- sub-tp-refl T1 SBT1.
 
 %worlds () (sub-tp-refl _ _).
 %total T (sub-tp-refl T _).
@@ -300,21 +301,10 @@ sub-tp-trans-aux :
 %mode sub-tp-trans-aux +T2 +SBT1 +SBT2 -SBT3.
 
 -/int    : sub-tp-trans-aux wf-tp/int sub-tp/int sub-tp/int sub-tp/int.
--/int-top    : sub-tp-trans-aux wf-tp/int sub-tp/int sub-tp/top sub-tp/top.
 -/bool   : sub-tp-trans-aux wf-tp/bool sub-tp/bool sub-tp/bool sub-tp/bool.
--/bool-top   : sub-tp-trans-aux wf-tp/bool sub-tp/bool sub-tp/top sub-tp/top.
--/top    : sub-tp-trans-aux wf-tp/top sub-tp/top sub-tp/top sub-tp/top.
+
+-/top    : sub-tp-trans-aux _ _ sub-tp/top sub-tp/top.
 -/bot    : sub-tp-trans-aux _ sub-tp/bot _ sub-tp/bot.
--/fun-top : sub-tp-trans-aux (wf-tp/fun T1 T2) (sub-tp/fun SBT2 SBT1) 
-              (sub-tp/top) (sub-tp/top).
--/rect-top : sub-tp-trans-aux (wf-tp/rect T1) (sub-tp/rect SBT1) 
-              (sub-tp/top) (sub-tp/top).
--/recv-top : sub-tp-trans-aux (wf-tp/recv T1) (sub-tp/recv SBT1) 
-              (sub-tp/top) (sub-tp/top).
--/tsel-top : sub-tp-trans-aux (wf-tp/tsel T1 L) (sub-tp/tsel1 SBT1 _) 
-              (sub-tp/top) (sub-tp/top).
--/tsel-top : sub-tp-trans-aux (wf-tp/tsel T1 L) (sub-tp/tsel2 SBT1 _) 
-              (sub-tp/top) (sub-tp/top).
 
 -/fun-fun  : sub-tp-trans-aux
       (wf-tp/fun T2 T1)
@@ -339,71 +329,35 @@ sub-tp-trans-aux :
       <- sub-tp-trans-aux T1 SBT1 SBT3 SBT5.
 
 
--/tsel-tsel  : sub-tp-trans-aux
-      (wf-tp/tsel (T2: wf-tp G2 TT2) (TL2: tlookup G2 E2 (rect TT2)))
-            ((sub-tp/tsel2 SBT1 TL2): (sub-tp _ _ _ _))
-            (sub-tp/tsel1 SBT3 TL3)
-            SBT5
-      <- sub-tp-trans-aux T2 SBT1 SBT3 SBT5.
-
--/tsel-tsel  : sub-tp-trans-aux
-            T2
-            (sub-tp/tsel1 SBT1 TL2)
-            SBT3
-            (sub-tp/tsel1 SBT5 TL2)
-      <- sub-tp-trans-aux T2 SBT1 SBT3 SBT5.
-
--/tsel-tsel  : sub-tp-trans-aux
-            T2
-            SBT1
-            (sub-tp/tsel2 SBT3 TL2)
-            (sub-tp/tsel2 SBT5 TL2)
-      <- sub-tp-trans-aux T2 SBT1 SBT3 SBT5.
-
- -/tsel-tsel  : sub-tp-trans-aux
-             (wf-tp/tsel T2 TL2)
-             (sub-tp/tsel2 SBT1 TL3)
-             SBT3
-             (sub-tp/tsel2 SBT5 TL2)
-       <- sub-tp-trans-aux T2 SBT1 SBT3 SBT5.
-
-% - : {X1:tenv} {X2:exp} {X3:tenv} {X4:tpe} {X5:tenv} {X6:tpe} {X7:tpe}
-%    {X8:wf-tp X1 X7} {X9:tlookup X1 X2 (rect X7)} {X10:tpe}
-%    {X11:sub-tp X3 X4 X1 X10} {X12:tlookup X1 X2 (rect X10)} {X13:tpe}
-%    {X14:sub-tp X1 X13 X5 X6} {X15:tlookup X1 X2 (rect X13)}
-%    {X16:sub-tp X3 X4 X5 X6}
-%    sub-tp-trans-aux (wf-tp/tsel X8 X9) (sub-tp/tsel2 X11 X12)
-%          (sub-tp/tsel1 X14 X15) _
-%             <- sub-tp-trans-aux _ X11 X14 X16.
-
-%{
- - : {X1:tenv} {X2:exp} {X3:tenv} {X4:tpe} {X5:tenv} {X6:tpe} {X7:tpe}
-    {X8:wf-tp X1 X7} {X9:tlookup X1 X2 (rect X7)} {X10:tpe}
-    {X11:sub-tp X3 X4 X1 X7} {X12:tlookup X1 X2 (rect X10)} {X13:tpe}
-    {X14:sub-tp X1 X7 X5 X6} {X15:tlookup X1 X2 (rect X13)}
-    {X16:sub-tp X3 X4 X5 X6}
-}%
-
-% -:    sub-tp-trans-aux (wf-tp/tsel X8 X9) (sub-tp/tsel2 X11 X9)
-%          (sub-tp/tsel1 X14 X9) X16
-%             <- sub-tp-trans-aux X8 X11 X14 X16.
-
-
-
-%{
-{X1:tenv} {X2:exp} {X3:tenv} {X4:exp} {X5:tenv} {X6:exp} {X7:tpe}
-   {X8:wf-tp X1 X7} {X9:tlookup X1 X2 X7} {X10:tpe} {X11:tpe}
-   {X12:sub-tp X3 X10 X1 X11} {X13:tlookup X1 X2 X11} {X14:tlookup X3 X4 X10}
-   {X15:tpe} {X16:tpe} {X17:sub-tp X1 X15 X5 X16} {X18:tlookup X5 X6 X16}
-   {X19:tlookup X1 X2 X15} {X20:sub-tp X3 (tsel X4) X5 (tsel X6)}
-   |- sub-tp-trans-aux (wf-tp/tsel X8 X9) (sub-tp/tsel X12 X13 X14)
-         (sub-tp/tsel X17 X18 X19) X20.
-  
-}%
-
+% -/tsel-tsel  : sub-tp-trans-aux
+%       (wf-tp/tsel (T2: wf-tp G2 TT2) (TL2: tlookup G2 E2 (rect TT2)))
+%             ((sub-tp/tsel2 SBT1 TL2): (sub-tp _ _ _ _))
+%             (sub-tp/tsel1 SBT3 TL3)
+%             SBT5
+%       <- sub-tp-trans-aux T2 SBT1 SBT3 SBT5.
+% 
+% -/tsel-tsel  : sub-tp-trans-aux
+%             T2
+%             (sub-tp/tsel1 SBT1 TL2)
+%             SBT3
+%             (sub-tp/tsel1 SBT5 TL2)
+%       <- sub-tp-trans-aux T2 SBT1 SBT3 SBT5.
+% 
+% -/tsel-tsel  : sub-tp-trans-aux
+%             T2
+%             SBT1
+%             (sub-tp/tsel2 SBT3 TL2)
+%             (sub-tp/tsel2 SBT5 TL2)
+%       <- sub-tp-trans-aux T2 SBT1 SBT3 SBT5.
+% 
+% -/tsel-tsel  : sub-tp-trans-aux
+%              (wf-tp/tsel T2 TL2)
+%              (sub-tp/tsel2 SBT1 TL3)
+%              SBT3
+%              (sub-tp/tsel2 SBT5 TL2)
+%        <- sub-tp-trans-aux T2 SBT1 SBT3 SBT5.
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
-% %trustme
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 
