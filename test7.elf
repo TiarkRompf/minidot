@@ -208,8 +208,8 @@ pev  : path-eval G E T <- wf-tp G T <- tlookup G E T.
 
 sub-tp/int  : sub-tp G1 int G2 int.
 sub-tp/bool : sub-tp G1 bool G2 bool.
-sub-tp/top  : sub-tp G1 T G2 top.
-sub-tp/bot  : sub-tp G1 bot G2 T.
+sub-tp/top  : sub-tp G1 T G2 top <- wf-tp G1 T.
+sub-tp/bot  : sub-tp G1 bot G2 T <- wf-tp G2 T.
 
 sub-tp/fun  : sub-tp G1 (arrow T1 T2) G2 (arrow T3 T4)
               <- sub-tp G2 T3 G1 T1
@@ -264,8 +264,8 @@ sub-tp-refl :
 
 -/int : sub-tp-refl wf-tp/int sub-tp/int.
 -/bool: sub-tp-refl wf-tp/bool sub-tp/bool.
--/bot : sub-tp-refl wf-tp/bot sub-tp/bot.
--/top : sub-tp-refl wf-tp/top sub-tp/top.
+-/bot : sub-tp-refl wf-tp/bot (sub-tp/bot wf-tp/bot).
+-/top : sub-tp-refl wf-tp/top (sub-tp/top wf-tp/top).
 -/fun : sub-tp-refl (wf-tp/fun T1 T2) (sub-tp/fun SBT1 SBT2)
    <- sub-tp-refl T1 SBT1
    <- sub-tp-refl T2 SBT2.
@@ -289,24 +289,28 @@ extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
 %mode extract-wf +SBT1 -SBT2 -SBT3.
 - : extract-wf sub-tp/int wf-tp/int wf-tp/int.
 - : extract-wf sub-tp/bool wf-tp/bool wf-tp/bool.
-% - : extract-wf sub-tp/top _ wf-tp/top.
-% - : extract-wf sub-tp/bot wf-tp/bot _.
-- : extract-wf (sub-tp/fun ST1 ST2) (wf-tp/fun W1 W2) (wf-tp/fun W3 W4)
-      <- extract-wf ST1 W1 W2
-      <- extract-wf ST2 W3 W4.
+- : extract-wf (sub-tp/top W) W wf-tp/top.
+- : extract-wf (sub-tp/bot W) wf-tp/bot W.
+- : extract-wf (sub-tp/fun (ST1:sub-tp G1 T2 G2 T4) (ST2:sub-tp G2 T3 G1 T1)) 
+        (wf-tp/fun W2 W1) (wf-tp/fun W4 W3)
+      <- extract-wf ST1 W2 W4
+      <- extract-wf ST2 W3 W1.
 - : extract-wf (sub-tp/rect ST) (wf-tp/rect W1) (wf-tp/rect W2)
       <- extract-wf ST W1 W2.
 - : extract-wf (sub-tp/recv ST) (wf-tp/recv W1) (wf-tp/recv W2)
       <- extract-wf ST W1 W2.
 
-% - : extract-wf (sub-tp/tsel1 ST P) (wf-tp/tsel W1 P) (wf-tp/tsel W2 P) %% may be different P!
-%      <- extract-wf ST W1 W2.
+- : extract-wf (sub-tp/tsel1 ST (pev L (wf-tp/rect _))) 
+      (wf-tp/tsel (pev L (wf-tp/rect W1))) W2
+      <- extract-wf ST W1 W2.
+
+- : extract-wf (sub-tp/tsel2 ST (pev L (wf-tp/rect _))) 
+      W1 (wf-tp/tsel (pev L (wf-tp/rect W2)))
+      <- extract-wf ST W1 W2.
+
 
 %worlds () (extract-wf _ _ _).
-%trustme
 %total T2 (extract-wf T2 _ _).
-
-% FIXME!!
 
 
 
@@ -327,8 +331,9 @@ sub-tp-trans-aux :
 -/int    : sub-tp-trans-aux wf-tp/int sub-tp/int sub-tp/int sub-tp/int.
 -/bool   : sub-tp-trans-aux wf-tp/bool sub-tp/bool sub-tp/bool sub-tp/bool.
 
--/top    : sub-tp-trans-aux _ _ sub-tp/top sub-tp/top.
--/bot    : sub-tp-trans-aux _ sub-tp/bot _ sub-tp/bot.
+-/top    : sub-tp-trans-aux _ S1 (sub-tp/top _) (sub-tp/top W) <- extract-wf S1 W _.
+-/bot    : sub-tp-trans-aux _ (sub-tp/bot _) S2 (sub-tp/bot W) <- extract-wf S2 _ W.
+
 
 -/fun-fun  : sub-tp-trans-aux
       (wf-tp/fun T2 T1)
@@ -367,7 +372,7 @@ sub-tp-trans-aux :
       <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
 
 
-
+%% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
 
 same: tpe -> tpe -> type.
@@ -416,7 +421,7 @@ eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
       <- sub-tp-trans-aux W A1' A2' SBT5.
 
 %{
-%% approximate
+%% ----- approximate version / use reflexivity internally ---- %%
 
 
 wfff0: tlookup G E (rect T0) -> wf-tp G1 T0 -> tlookup G E (rect T1) -> wf-tp G1 T1 -> type.
