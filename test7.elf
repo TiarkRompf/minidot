@@ -523,19 +523,19 @@ e/sel      : eval-exp G (sel E1) V
 
 
 type-exp   : tenv -> exp -> tpe -> type.
-t/cst      : type-exp G (cste C) T <- typeof C T.
-t/var      : type-exp G X T <- tlookup G X T.
+% t/cst       : type-exp G (cste C) T <- typeof C T.
+% t/prim      : type-exp G (prm OP E1 E2) T3
+%             <- type-exp G E1 T1 
+%             <- type-exp G E2 T1
+%             <- type-op OP T1 T2 T3.
+
+t/var      : type-exp G X T <- tlookup G X T <- wf-tp G T.
 t/fun      : type-exp G (fun R R2 T) (arrow T1 T2) 
                 <- type-exp (tcons T1 G) R T2.
-t/rect     : type-exp G (fun R R2 T) (rect T).
+t/rect     : type-exp G (fun R R2 T) (rect T) <- wf-tp G T.
 t/recv     : type-exp G (fun R R2 T) (recv T1)
                 <- type-exp G R2 T1.
 
-
-t/prim      : type-exp G (prm OP E1 E2) T3
-            <- type-exp G E1 T1 
-            <- type-exp G E2 T1
-            <- type-op OP T1 T2 T3.
 
 t/app       : type-exp G (app E1 E2) T2
             <- type-exp G E1 (arrow T1 T2) 
@@ -551,10 +551,26 @@ t/sub       : type-exp G E T2
 
 %{ ------- suptyping inversion ----- }%
 
+extract-wf-arrow: wf-tp (tcons T1 G) T2 -> wf-tp G (arrow T1 T2) -> type.
+%mode extract-wf-arrow +WFE1 -WFE2.
+%worlds () (extract-wf-arrow _ _).
+%trustme
+%total WFE (extract-wf-arrow WFE _).
+
+
+
 extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 %mode extract-wf2 +WFE1 -WFE2.
+
+- : extract-wf2 (t/var W L) W.
+- : extract-wf2 (t/fun TS) W2 <- extract-wf2 TS W <- extract-wf-arrow W W2.  
+- : extract-wf2 (t/rect W) (wf-tp/rect W).
+- : extract-wf2 (t/recv TS) (wf-tp/recv W) <-  extract-wf2 TS W.
+- : extract-wf2 (t/app TS1 (TS2: type-exp _ _ (arrow _ _))) W2 <- extract-wf2 TS2 (wf-tp/fun W2 W1).
+- : extract-wf2 (t/sel TS) W <- extract-wf2 TS (wf-tp/recv W).
+- : extract-wf2 (t/sub S TS) W2 <- extract-wf S W1 W2.
+
 %worlds () (extract-wf2 _ _).
-%trustme
 %total WFE (extract-wf2 WFE _).
 
 
@@ -626,6 +642,42 @@ invert-fun :
 %total WFE (invert-fun WFE _ _). 
 
 
+% TODO: cases!!
+
+invert-fun1 :
+  %% Input
+  type-exp G (fun R R2 TX) (arrow T1 T2) ->
+  %% Output
+  type-exp (tcons T3 G) R T2 ->
+  sub-tp (tcons T3 G) (arrow T3 T4) G (arrow T1 T2) ->
+  type.
+%mode invert-fun1 +WFE1 -WFE2 -SBT1.
+
+% -     : invert-fun1 (t/fun TS) TS SB 
+%            <- extract-wf2 TS W 
+%            <- sub-tp-refl W SB.
+% -     : invert-fun1 (t/sub SB1 TS) L SB2 
+%            <- invert-fun1 TS L SB 
+%            <- sub-tp-trans SB SB1 SB2.
+
+%worlds () (invert-fun1 _ _ _).
+%trustme
+%total WFE (invert-fun1 WFE _ _). 
+
+invert-recv :
+  %% Input
+  type-exp G (fun R R2 TX) (recv T2) ->
+  %% Output
+  type-exp G E T1 ->
+  sub-tp G T1 G T2 ->
+  type.
+%mode invert-recv +WFE1 -WFE2 -SBT1.
+%worlds () (invert-recv _ _ _).
+%trustme
+%total WFE (invert-recv WFE _ _). 
+
+
+
 invert-var :
   %% Input
   type-exp G (var N) T ->
@@ -635,8 +687,8 @@ invert-var :
   type.
 %mode invert-var +WFE1 -WFE2 -SBT1.
 
--     : invert-var (t/var L) L SB 
-            <- extract-wf2 (t/var L) W
+-     : invert-var (t/var W L) L SB 
+            % <- extract-wf2 (t/var L) W
             <- sub-tp-refl W SB.
 -     : invert-var (t/sub SB1 TS) L SB2 
             <- invert-var TS L SB 
@@ -801,8 +853,15 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
           <- invert-var ZT L ST
           <- lookup-safe E L L2 V.
 
--      : eval-safe ZT E (e/fun _) (wfv/sub ST (wfv/f TS E))
+-      : eval-safe (ZT: type-exp G _ _) E (e/fun _) (wfv/sub ST (wfv/f TS E))
           <- invert-fun ZT TS ST.
+
+% -      : eval-safe (ZT: type-exp G _ (arrow _ _)) E (e/fun _) (wfv/sub ST (wfv/f TS E))
+%           <- invert-fun ZT TS ST.
+
+% -      : eval-safe (ZT: type-exp G _ (recv _ )) E (e/fun _) (wfv/sub ST (wfv/r TS E))
+%           <- invert-recv ZT TS ST.
+
 
 -      : eval-safe ZT WE (e/sel EVX) (wfv/sub ST (wfv/sub ST1 WV1))
           <- invert-sel ZT TS ST
