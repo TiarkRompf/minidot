@@ -420,6 +420,7 @@ eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
 
       <- sub-tp-trans-aux W A1' A2' SBT5.
 
+
 %{
 %% ----- approximate version / use reflexivity internally ---- %%
 
@@ -473,10 +474,8 @@ foobarx: wf-tp G T1 -> tlookup G2 E (rect T1) -> tlookup G2 E (rect T2) -> sub-t
 
 
 
-
-
-%% Just a corrollary to sub-tp-trans-aux that doesn't require us to provide
-%% T2 as an additional argument.
+%% Corrollary to sub-tp-trans-aux that doesn't require us to provide
+%% WF as an additional argument.
 
 sub-tp-trans :
   %% Inputs
