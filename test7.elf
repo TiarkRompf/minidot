@@ -289,12 +289,25 @@ sub-tp-refl :
 extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
 %mode extract-wf +SBT1 -SBT2 -SBT3.
 - : extract-wf sub-tp/int wf-tp/int wf-tp/int.
+- : extract-wf sub-tp/bool wf-tp/bool wf-tp/bool.
+% - : extract-wf sub-tp/top _ wf-tp/top.
+% - : extract-wf sub-tp/bot wf-tp/bot _.
+- : extract-wf (sub-tp/fun ST1 ST2) (wf-tp/fun W1 W2) (wf-tp/fun W3 W4)
+      <- extract-wf ST1 W1 W2
+      <- extract-wf ST2 W3 W4.
+- : extract-wf (sub-tp/rect ST) (wf-tp/rect W1) (wf-tp/rect W2)
+      <- extract-wf ST W1 W2.
+- : extract-wf (sub-tp/recv ST) (wf-tp/recv W1) (wf-tp/recv W2)
+      <- extract-wf ST W1 W2.
 
+% - : extract-wf (sub-tp/tsel1 ST P) (wf-tp/tsel W1 P) (wf-tp/tsel W2 P) %% may be different P!
+%      <- extract-wf ST W1 W2.
 
 %worlds () (extract-wf _ _ _).
 %trustme
 %total T2 (extract-wf T2 _ _).
 
+% FIXME!!
 
 
 
