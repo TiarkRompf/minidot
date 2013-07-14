@@ -831,12 +831,18 @@ invert-wf-fun1 :
             <- sub-tp-trans SB1 SB0 SB.
 
 
- -     : invert-wf-fun1 (wfv/sub SBA1 TS) SB0 L L1 (SBAk)
-            % <- sub-tp-trans SB1 SBA0 SBA1X.
+ -     : invert-wf-fun1 (wfv/sub SB1 TS) SB0 L L1 (SB)
+            <- sub-tp-trans SB1 SB0 SB1X
+            <- invert-wf-fun1 TS SB1X L L1 SB.
+%            <- sub-tp-trans SB SB1 SB2.
 
-            <- invert-wf-fun TS SB0 L L1 SBA.
-
-%            <- sub-tp-trans SBA SBA1 SBA2.
+Coverage error --- missing cases:
+{X1:exp} {X2:val} {X3:venv} {X4:tenv} {X5:tpe} {X6:tpe} {X7:tpe} {X8:tpe}
+   {X9:tenv} {X10:tpe} {X11:tenv} {X12:tpe} {X13:sub-tp X11 X12 X4 X5}
+   {X14:wf-val (clos X1 X2 X3) X11 X12} {X15:sub-tp X4 X5 X4 (arrow X6 X7)}
+   {X16:type-exp (tcons X8 X9) X1 X10} {X17:wf-env X3 X9}
+   {X18:sub-tp (tcons X8 X9) (arrow X8 X10) X4 (arrow X6 X7)}
+   |- invert-wf-fun1 (wfv/sub X13 X14) X15 X16 X17 X18.
 
 
 %worlds () (invert-wf-fun1 _ _ _ _ _).
