@@ -530,11 +530,20 @@ type-exp   : tenv -> exp -> tpe -> type.
 %             <- type-op OP T1 T2 T3.
 
 t/var      : type-exp G X T <- tlookup G X T <- wf-tp G T.
-t/fun      : type-exp G (fun R R2 T) (arrow T1 T2) 
-                <- type-exp (tcons T1 G) R T2.
-t/rect     : type-exp G (fun R R2 T) (rect T) <- wf-tp G T.
-t/recv     : type-exp G (fun R R2 T) (recv T1)
-                <- type-exp G R2 T1.
+
+% whacky way of assigning an intersection type...
+t/fun      : type-exp G (fun R R2 TX) (arrow T3 T4) 
+                <- type-exp (tcons T3 G) R T4
+                <- type-exp G R2 T2
+                <- wf-tp G TX.
+t/recv     : type-exp G (fun R R2 TX) (recv T2)
+                <- type-exp (tcons T3 G) R T4
+                <- type-exp G R2 T2
+                <- wf-tp G TX.
+t/rect     : type-exp G (fun R R2 TX) (rect TX) 
+                <- type-exp (tcons T3 G) R T4
+                <- type-exp G R2 T2
+                <- wf-tp G TX.
 
 
 t/app       : type-exp G (app E1 E2) T2
@@ -589,9 +598,9 @@ extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 %mode extract-wf2 +WFE1 -WFE2.
 
 - : extract-wf2 (t/var W L) W.
-- : extract-wf2 (t/fun TS) W2 <- extract-wf2 TS W <- extract-wf-arrow W W2.  
-- : extract-wf2 (t/rect W) (wf-tp/rect W).
-- : extract-wf2 (t/recv TS) (wf-tp/recv W) <-  extract-wf2 TS W.
+- : extract-wf2 (t/fun _ _ TS) W2 <- extract-wf2 TS W <- extract-wf-arrow W W2.  
+- : extract-wf2 (t/rect W _ _) (wf-tp/rect W).
+- : extract-wf2 (t/recv _ TS _) (wf-tp/recv W) <-  extract-wf2 TS W.
 - : extract-wf2 (t/app TS1 (TS2: type-exp _ _ (arrow _ _))) W2 <- extract-wf2 TS2 (wf-tp/fun W2 W1).
 - : extract-wf2 (t/sel TS) W <- extract-wf2 TS (wf-tp/recv W).
 - : extract-wf2 (t/sub S TS) W2 <- extract-wf S W1 W2.
@@ -642,6 +651,7 @@ invert-sel :
 
 
 
+% no intersection/union types yet, encode
 
 sub-tp-cases: tenv -> tpe -> tenv -> tpe  ->  
         tenv -> tpe -> tenv -> tpe  ->  
@@ -649,6 +659,35 @@ sub-tp-cases: tenv -> tpe -> tenv -> tpe  ->
 case-f : sub-tp G1 T1 G2 T2 -> sub-tp-cases G1 T1 G2 T2 _ _ _ _ _ _ _ _.
 case-r : sub-tp G1 T1 G2 T2 -> sub-tp-cases _ _ _ _ G1 T1 G2 T2 _ _ _ _.
 case-t : sub-tp G1 T1 G2 T2 -> sub-tp-cases _ _ _ _ _ _ _ _ G1 T1 G2 T2.
+
+cases-wfv: sub-tp-cases 
+    G (arrow T3 T4) G T 
+    G (recv T1) G T
+    G (rect TX) G T
+    -> wf-val V G (arrow T3 T4) 
+    -> wf-val V G (recv T1) 
+    -> wf-val V G (rect TX) 
+    -> wf-val V G T
+    -> type.
+%mode cases-wfv +C +W1 +W2 +W3 -W.
+%worlds () (cases-wfv _ _ _ _ _).
+%trustme
+%total WFE (cases-wfv WFE _ _ _ _). 
+
+cases-sub-trans: sub-tp-cases 
+    G T0 G T 
+    G T1 G T
+    G T2 G T
+    -> sub-tp G T G TU
+    -> sub-tp-cases
+    G T0 G TU 
+    G T1 G TU
+    G T2 G TU
+    -> type.
+%mode cases-sub-trans +C +W1 -S.
+%worlds () (cases-sub-trans _ _ _).
+%trustme
+%total WFE (cases-sub-trans WFE _ _). 
 
 invert-fun :
   %% Input
@@ -664,30 +703,23 @@ invert-fun :
   type.
 %mode invert-fun +WFE1 -WFE2 -WFE2 -SBT1.
 
-% -     : invert-fun (t/fun TS) TS SB 
-%            <- sub-tp-refl _ _ SB.
-% -     : invert-fun (t/sub SB1 TS) L SB2 
-%            <- invert-fun TS L SB 
-%            <- sub-tp-trans SB SB1 SB2.
-
+-     : invert-fun (t/fun _ TSV TS) TS TSV (case-f SB) 
+           <- extract-wf2 TS W
+           <- extract-wf-arrow W W1
+           <- sub-tp-refl W1 SB.
+-     : invert-fun (t/recv _ TSV TS) TS TSV (case-r (sub-tp/recv SB))
+           <- extract-wf2 TSV W
+           <- sub-tp-refl W SB.
+-     : invert-fun (t/rect W TSV TS) TS TSV (case-t (sub-tp/rect SB)) 
+           <- sub-tp-refl W SB.
+-     : invert-fun (t/sub SB1 TS) TSV L SB2 
+           <- invert-fun TS TSV L SB 
+           <- cases-sub-trans SB SB1 SB2.
 
 %worlds () (invert-fun _ _ _ _).
-%trustme
 %total WFE (invert-fun WFE _ _ _). 
 
-cases-wfv: sub-tp-cases 
-    G (arrow T3 T4) G T 
-    G (recv T1) G T
-    G (rect TX) G T
-    -> wf-val V G (arrow T3 T4) 
-    -> wf-val V G (recv T1) 
-    -> wf-val V G (rect TX) 
-    -> wf-val V G T
-    -> type.
-%mode cases-wfv +C +W1 +W2 +W3 -W.
-%worlds () (cases-wfv _ _ _ _ _).
-%trustme
-%total WFE (cases-wfv WFE _ _ _ _). 
+
 
 
 
