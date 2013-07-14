@@ -870,6 +870,8 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
 -      : eval-safe (ZT: type-exp G _ _) E (e/fun _) (wfv/sub ST (wfv/f TS E))
           <- invert-fun ZT TS ST.
 
+% if we dispatch on types we also need to handle top and tsel
+%
 % -      : eval-safe (ZT: type-exp G _ (arrow _ _)) E (e/fun _) (wfv/sub ST (wfv/f TS E))
 %            <- invert-fun1 ZT TS ST.
 % 
