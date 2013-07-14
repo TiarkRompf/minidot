@@ -666,16 +666,26 @@ invert-fun1 :
 
 invert-recv :
   %% Input
-  type-exp G (fun R R2 TX) (recv T2) ->
+  type-exp G (fun R R2 TX) (recv T1) ->
   %% Output
-  type-exp G E T1 ->
-  sub-tp G T1 G T2 ->
+  type-exp G R2 T1 ->
+  sub-tp G (recv T1) G (recv T2) ->
   type.
 %mode invert-recv +WFE1 -WFE2 -SBT1.
 %worlds () (invert-recv _ _ _).
 %trustme
 %total WFE (invert-recv WFE _ _). 
 
+invert-rect :
+  %% Input
+  type-exp G (fun R R2 TX) (rect T2) ->
+  %% Output
+  sub-tp G (rect TX) G (rect T2) ->
+  type.
+%mode invert-rect +WFE1 -SBT1.
+%worlds () (invert-rect _ _).
+%trustme
+%total WFE (invert-rect WFE _). 
 
 
 invert-var :
@@ -712,6 +722,10 @@ wfv/f    : wf-val (clos R R2 H) (tcons T1 G) (arrow T1 T2)
 
 wfv/r    : wf-val (clos R R2 H) G (recv T)
             <- wf-val R2 G T.
+
+wfv/t    : wf-val (clos R R2 H) G (rect T).
+            % <- wf-val R2 G T.
+
 
 wfv/sub  : wf-val V G T
             <- wf-val V G1 T1
@@ -857,10 +871,14 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
           <- invert-fun ZT TS ST.
 
 % -      : eval-safe (ZT: type-exp G _ (arrow _ _)) E (e/fun _) (wfv/sub ST (wfv/f TS E))
-%           <- invert-fun ZT TS ST.
-
-% -      : eval-safe (ZT: type-exp G _ (recv _ )) E (e/fun _) (wfv/sub ST (wfv/r TS E))
-%           <- invert-recv ZT TS ST.
+%            <- invert-fun1 ZT TS ST.
+% 
+% -      : eval-safe (ZT: type-exp G _ (recv T )) E (e/fun EX) (wfv/sub ST (wfv/r W))
+%            <- invert-recv ZT TS ST
+%            <- eval-safe TS E EX W.
+% 
+% -      : eval-safe (ZT: type-exp G _ (rect _ )) E (e/fun _) (wfv/sub ST (wfv/t))
+%            <- invert-rect ZT ST.
 
 
 -      : eval-safe ZT WE (e/sel EVX) (wfv/sub ST (wfv/sub ST1 WV1))
@@ -919,11 +937,6 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
 
 %worlds () (eval-safe _ _ _ _).
 %total C (eval-safe A _ C _). % induction on eval-exp
-
-
-
-
-
 
 
 
