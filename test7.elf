@@ -564,7 +564,7 @@ wf-val   : val -> tenv -> tpe -> type.
 wf-env   : venv -> tenv -> type.
 
 % wfv/c    : wf-val (cstv C) T <- typeof C T.
-wfv/f    : wf-val (clos R R2 H) G (arrow T1 T2) %% TODO: (tcons T1 G) instead of G
+wfv/f    : wf-val (clos R R2 H) (tcons T1 G) (arrow T1 T2) %% (tcons T1 G) instead of G
             <- wf-env H G
             <- type-exp (tcons T1 G) R T2.
 
@@ -806,16 +806,16 @@ Coverage error --- missing cases:
 %trustme
 %total WFE (invert-wf-fun WFE _ _ _). 
 
-%{
+% %{
  
 invert-wf-fun1 :
   %% Input
   wf-val (clos R R2 H) G1 T ->
-  sub-tp G1 T G1 (arrow T1 T2) ->
+  sub-tp G1 T G2 (arrow T1 T2) ->
   %% Output
   type-exp (tcons T3 G) R T4 ->
   wf-env H G ->
-  sub-tp (tcons T3 G) (arrow T3 T4) G1 (arrow T1 T2) ->
+  sub-tp (tcons T3 G) (arrow T3 T4) G2 (arrow T1 T2) ->
   type.
 %mode invert-wf-fun1 +WFE1 +SBT -WFE2 -WFE3 -SBT1.
 
@@ -831,25 +831,13 @@ invert-wf-fun1 :
             <- sub-tp-trans SB1 SB0 SB.
 
 
- -     : invert-wf-fun1 (wfv/sub SB1 TS) SB0 L L1 (SB)
-            <- sub-tp-trans SB1 SB0 SB1X
-            <- invert-wf-fun1 TS SB1X L L1 SB.
-%            <- sub-tp-trans SB SB1 SB2.
-
-Coverage error --- missing cases:
-{X1:exp} {X2:val} {X3:venv} {X4:tenv} {X5:tpe} {X6:tpe} {X7:tpe} {X8:tpe}
-   {X9:tenv} {X10:tpe} {X11:tenv} {X12:tpe} {X13:sub-tp X11 X12 X4 X5}
-   {X14:wf-val (clos X1 X2 X3) X11 X12} {X15:sub-tp X4 X5 X4 (arrow X6 X7)}
-   {X16:type-exp (tcons X8 X9) X1 X10} {X17:wf-env X3 X9}
-   {X18:sub-tp (tcons X8 X9) (arrow X8 X10) X4 (arrow X6 X7)}
-   |- invert-wf-fun1 (wfv/sub X13 X14) X15 X16 X17 X18.
-
+ -     : invert-wf-fun1 (wfv/sub (SB1: sub-tp G1 TI G T) (TS: wf-val _ G1 TI)) 
+                (SB0: sub-tp G T G2 (arrow T1 T2)) L L1 (SB)
+            <- sub-tp-trans SB1 SB0 (SB1X: sub-tp G1 TI G2 (arrow T1 T2))
+            <- invert-wf-fun1 TS SB1X L L1 (SB: sub-tp _ (arrow T3 T4) G2 (arrow T1 T2)).
 
 %worlds () (invert-wf-fun1 _ _ _ _ _).
-% %trustme
 %total WFE (invert-wf-fun1 WFE _ _ _ _). 
-
-}%
 
 
 
