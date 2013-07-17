@@ -256,10 +256,31 @@ wf-tp/tsel : wf-tp G1 (tsel E1)
 
 % Extending environments preserves subtyping
 
+extend-wf-tp: wf-tp G1 T1 -> {Z: tpe} wf-tp (tcons Z G1) T1 -> type.
+%mode extend-wf-tp +A +B -C.
+
+- : extend-wf-tp wf-tp/int T wf-tp/int.
+- : extend-wf-tp wf-tp/bool T wf-tp/bool.
+- : extend-wf-tp wf-tp/top T wf-tp/top.
+- : extend-wf-tp wf-tp/bot T wf-tp/bot.
+- : extend-wf-tp (wf-tp/fun W1 W2) T (wf-tp/fun W1' W2') 
+      <- extend-wf-tp W1 _ W1'
+      <- extend-wf-tp W2 _ W2'.
+
+%worlds () (extend-wf-tp _ _ _).
+%total A (extend-wf-tp A _ _).
+
+
 extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2) T2 -> type.
 %mode extend-sub-tp +A +B -C.
+
+- : extend-sub-tp sub-tp/int T sub-tp/int.
+- : extend-sub-tp sub-tp/bool T sub-tp/bool.
+- : extend-sub-tp (sub-tp/top W) T (sub-tp/top W).
+- : extend-sub-tp sub-tp/bot T sub-tp/bot.
+
 %worlds () (extend-sub-tp _ _ _).
-%trustme
+% %trustme
 %total A (extend-sub-tp A _ _).
 
 extend-sub-tp1: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 G2 T2 -> type.
