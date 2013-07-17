@@ -253,6 +253,29 @@ wf-tp/tsel : wf-tp G1 (tsel E1)
               <- path-eval G1 E1 (rect T1).
 
 
+
+% Extending environments preserves subtyping
+
+extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2) T2 -> type.
+%mode extend-sub-tp +A +B -C.
+%worlds () (extend-sub-tp _ _ _).
+%trustme
+%total A (extend-sub-tp A _ _).
+
+extend-sub-tp1: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 G2 T2 -> type.
+%mode extend-sub-tp1 +A +B -C.
+%worlds () (extend-sub-tp1 _ _ _).
+%trustme
+%total A (extend-sub-tp1 A _ _).
+
+helper: sub-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> sub-tp (tcons T G1)  T1 G2 T2 -> type.
+%mode helper +C +W1 -S.
+%worlds () (helper _ _ _).
+%trustme
+%total WFE (helper WFE _ _). 
+
+
+
 %% Subtyping is reflexive
 
 sub-tp-refl : 
@@ -693,13 +716,13 @@ case-r : sub-tp G1 T1 G2 T2 -> sub-tp-cases _ _ _ _ G1 T1 G2 T2 _ _ _ _.
 case-t : sub-tp G1 T1 G2 T2 -> sub-tp-cases _ _ _ _ _ _ _ _ G1 T1 G2 T2.
 
 cases-wfv: sub-tp-cases 
-    G T0 G T 
-    G T1 G T
-    G T2 G T
-    -> wf-val V G T0 
-    -> wf-val V G T1
-    -> wf-val V G T2
-    -> wf-val V G T
+    G1A T0 G2 T 
+    G1B T1 G2 T
+    G1C T2 G2 T
+    -> wf-val V G1A T0 
+    -> wf-val V G1B T1
+    -> wf-val V G1C T2
+    -> wf-val V G2 T
     -> type.
 %mode cases-wfv +C +W1 +W2 +W3 -W.
 
@@ -711,14 +734,14 @@ cases-wfv: sub-tp-cases
 %total WFE (cases-wfv WFE _ _ _ _). 
 
 cases-sub-trans: sub-tp-cases 
-    G T0 G T 
-    G T1 G T
-    G T2 G T
-    -> sub-tp G T G TU
+    G1A T0 G2 T 
+    G1B T1 G2 T
+    G1C T2 G2 T
+    -> sub-tp G2 T G3 TU
     -> sub-tp-cases
-    G T0 G TU 
-    G T1 G TU
-    G T2 G TU
+    G1A T0 G3 TU 
+    G1B T1 G3 TU
+    G1C T2 G3 TU
     -> type.
 %mode cases-sub-trans +C +W1 -S.
 
@@ -729,6 +752,9 @@ cases-sub-trans: sub-tp-cases
 %worlds () (cases-sub-trans _ _ _).
 %total WFE (cases-sub-trans WFE _ _). 
 
+
+% we could even strengthen it slightly: tcons in output not strictly necessary
+
 invert-fun :
   %% Input
   type-exp G (fun R R2 TX) T ->
@@ -736,17 +762,17 @@ invert-fun :
   type-exp (tcons T3 G) R T4 ->
   type-exp G R2 T1 ->
   sub-tp-cases 
-    G (arrow T3 T4) G T 
+    (tcons T3 G) (arrow T3 T4) G T 
     G (recv T1) G T
     G (rect TX) G T
   ->
   type.
 %mode invert-fun +WFE1 -WFE2 -WFE2 -SBT1.
 
--     : invert-fun (t/fun _ TSV TS) TS TSV (case-f SB) 
-           <- extract-wf2 TS W
-           <- extract-wf-arrow W W1
-           <- sub-tp-refl W1 SB.
+-     : invert-fun (t/fun WX TSV TS) TS TSV (case-f SB1) 
+           <- extract-wf2 (t/fun WX TSV TS) W
+           <- sub-tp-refl W SB
+           <- extend-sub-tp1 SB _ SB1.
 -     : invert-fun (t/recv _ TSV TS) TS TSV (case-r (sub-tp/recv SB))
            <- extract-wf2 TSV W
            <- sub-tp-refl W SB.
@@ -758,8 +784,6 @@ invert-fun :
 
 %worlds () (invert-fun _ _ _ _).
 %total WFE (invert-fun WFE _ _ _). 
-
-
 
 
 
@@ -806,7 +830,7 @@ Coverage error --- missing cases:
 %trustme
 %total WFE (invert-wf-fun WFE _ _ _). 
 
-% %{
+
  
 invert-wf-fun1 :
   %% Input
@@ -818,11 +842,6 @@ invert-wf-fun1 :
   sub-tp (tcons T3 G) (arrow T3 T4) G2 (arrow T1 T2) ->
   type.
 %mode invert-wf-fun1 +WFE1 +SBT -WFE2 -WFE3 -SBT1.
-
-% -    : invert-wf-fun1 ((wfv/f (TS: type-exp (tcons T1 G) R T2) WE):(wf-val (clos R R2 H) _ _))
-%             TS WE SB
-%            <- extract-wf3 ((wfv/f TS WE):(wf-val (clos R R2 H) _ _)) W 
-%            <- sub-tp-refl W SB.
 
 -     :  invert-wf-fun1 ((wfv/f TS WE):(wf-val (clos R R2 H) _ _)) SB0
              TS WE SB
@@ -857,11 +876,6 @@ invert-wf-rec :
 
 %{ ------- type preservation ----- }%
 
-extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2) T2 -> type.
-%mode extend-sub-tp +A +B -C.
-%worlds () (extend-sub-tp _ _ _).
-%trustme
-%total A (extend-sub-tp A _ _).
 
 
 extend-wfv: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
@@ -919,6 +933,8 @@ eval-op-safe : type-op OP T1 T2 T3 -> eval-op OP V1 V2 V3 -> wf-val V3 T3 -> typ
 %total A (eval-op-safe A _ _). % induction on first arg
 }%
 
+
+% hack: wf-val E (tcons T1 G)
 
 eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> type.
 %mode eval-safe +A +B +C -D.
