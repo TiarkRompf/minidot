@@ -789,6 +789,36 @@ invert-fun :
 
 
 %{ ------- suptyping inversion: wf-val ----- }%
+ 
+% although we only call this from the outside when we
+% know T = T1 -> T2, it seems like internally we need a 
+% more general interface (b/c of wfv/sub)
+
+invert-wf-fun-aux :
+  %% Input
+  wf-val (clos R R2 H) G1 T ->
+  sub-tp G1 T G2 (arrow T1 T2) ->
+  %% Output
+  type-exp (tcons T3 G) R T4 ->
+  wf-env H G ->
+  sub-tp (tcons T3 G) (arrow T3 T4) G2 (arrow T1 T2) ->
+  type.
+%mode invert-wf-fun-aux +WFE1 +SBT -WFE2 -WFE3 -SBT1.
+
+-     :  invert-wf-fun-aux ((wfv/f TS WE):(wf-val (clos R R2 H) _ _)) SB0
+             TS WE SB
+            <- extract-wf3 ((wfv/f TS WE):(wf-val (clos R R2 H) _ _)) W 
+            <- sub-tp-refl W SB1
+            <- sub-tp-trans SB1 SB0 SB.
+
+
+ -     : invert-wf-fun-aux (wfv/sub (SB1: sub-tp G1 TI G T) (TS: wf-val _ G1 TI)) 
+                (SB0: sub-tp G T G2 (arrow T1 T2)) L L1 (SB)
+            <- sub-tp-trans SB1 SB0 (SB1X: sub-tp G1 TI G2 (arrow T1 T2))
+            <- invert-wf-fun-aux TS SB1X L L1 (SB: sub-tp _ (arrow T3 T4) G2 (arrow T1 T2)).
+
+%worlds () (invert-wf-fun-aux _ _ _ _ _).
+%total WFE (invert-wf-fun-aux WFE _ _ _ _). 
 
 invert-wf-fun :
   %% Input
@@ -800,63 +830,15 @@ invert-wf-fun :
   type.
 %mode invert-wf-fun +WFE1 -WFE2 -WFE3 -SBT1.
 
-%{
-
--     :  invert-wf-fun ((wfv/f TS WE):(wf-val (clos R R2 H) _ _))
-             TS WE SB
-            <- extract-wf3 ((wfv/f TS WE):(wf-val (clos R R2 H) _ _)) W 
-            <- sub-tp-refl W SB.
-
- -     : invert-wf-fun (wfv/sub SBA1 TS) L L1 (SBA2)
-            <- invert-wf-fun TS L L1 SBA % issue: TS need not be arrow, but can be sel, bot, ..
-            <- sub-tp-trans SBA SBA1 SBA2.
-
-Coverage error --- missing cases:
-{X1:exp} {X2:val} {X3:venv} {X4:tenv} {X5:tpe} {X6:tpe} {X7:tpe} {X8:tenv}
-   {X9:tpe} {X10:tenv} {X11:wf-tp X4 (arrow X5 X6)}
-   {X12:wf-val (clos X1 X2 X3) X10 bot} {X13:type-exp (tcons X7 X8) X1 X9}
-   {X14:wf-env X3 X8} {X15:sub-tp (tcons X7 X8) (arrow X7 X9) X4 (arrow X5 X6)}
-   |- invert-wf-fun (wfv/sub (sub-tp/bot X11) X12) X13 X14 X15,
-{X1:exp} {X2:val} {X3:venv} {X4:tenv} {X5:tpe} {X6:tpe} {X7:tpe} {X8:tenv}
-   {X9:tpe} {X10:tenv} {X11:exp} {X12:sub-tp X10 (tsel X11) X4 (arrow X5 X6)}
-   {X13:wf-val (clos X1 X2 X3) X10 (tsel X11)}
-   {X14:type-exp (tcons X7 X8) X1 X9} {X15:wf-env X3 X8}
-   {X16:sub-tp (tcons X7 X8) (arrow X7 X9) X4 (arrow X5 X6)}
-   |- invert-wf-fun (wfv/sub X12 X13) X14 X15 X16.
-}%
-
+-     :  invert-wf-fun A B C D 
+            <- extract-wf3 A W
+            <- sub-tp-refl W SB
+            <- invert-wf-fun-aux A SB B C D.
 
 %worlds () (invert-wf-fun _ _ _ _).
-%trustme
 %total WFE (invert-wf-fun WFE _ _ _). 
 
 
- 
-invert-wf-fun1 :
-  %% Input
-  wf-val (clos R R2 H) G1 T ->
-  sub-tp G1 T G2 (arrow T1 T2) ->
-  %% Output
-  type-exp (tcons T3 G) R T4 ->
-  wf-env H G ->
-  sub-tp (tcons T3 G) (arrow T3 T4) G2 (arrow T1 T2) ->
-  type.
-%mode invert-wf-fun1 +WFE1 +SBT -WFE2 -WFE3 -SBT1.
-
--     :  invert-wf-fun1 ((wfv/f TS WE):(wf-val (clos R R2 H) _ _)) SB0
-             TS WE SB
-            <- extract-wf3 ((wfv/f TS WE):(wf-val (clos R R2 H) _ _)) W 
-            <- sub-tp-refl W SB1
-            <- sub-tp-trans SB1 SB0 SB.
-
-
- -     : invert-wf-fun1 (wfv/sub (SB1: sub-tp G1 TI G T) (TS: wf-val _ G1 TI)) 
-                (SB0: sub-tp G T G2 (arrow T1 T2)) L L1 (SB)
-            <- sub-tp-trans SB1 SB0 (SB1X: sub-tp G1 TI G2 (arrow T1 T2))
-            <- invert-wf-fun1 TS SB1X L L1 (SB: sub-tp _ (arrow T3 T4) G2 (arrow T1 T2)).
-
-%worlds () (invert-wf-fun1 _ _ _ _ _).
-%total WFE (invert-wf-fun1 WFE _ _ _ _). 
 
 
 
@@ -1008,8 +990,4 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
 
 %worlds () (eval-safe _ _ _ _).
 %total C (eval-safe A _ C _). % induction on eval-exp
-
-
-
-
 
