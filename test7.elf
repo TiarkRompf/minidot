@@ -266,6 +266,10 @@ extend-wf-tp: wf-tp G1 T1 -> {Z: tpe} wf-tp (tcons Z G1) T1 -> type.
 - : extend-wf-tp (wf-tp/fun W1 W2) T (wf-tp/fun W1' W2') 
       <- extend-wf-tp W1 _ W1'
       <- extend-wf-tp W2 _ W2'.
+- : extend-wf-tp (wf-tp/rect W1) T (wf-tp/rect W1') 
+      <- extend-wf-tp W1 _ W1'.
+- : extend-wf-tp (wf-tp/recv W1) T (wf-tp/recv W1') 
+      <- extend-wf-tp W1 _ W1'.
 
 %worlds () (extend-wf-tp _ _ _).
 %total A (extend-wf-tp A _ _).
