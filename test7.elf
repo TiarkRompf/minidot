@@ -659,10 +659,10 @@ wf-val   : val -> tenv -> tpe -> type.
 wf-env   : venv -> tenv -> type.
 
 % wfv/c    : wf-val (cstv C) T <- typeof C T.
-wfv/f    : wf-val (clos R R2 H) (tcons T1 G) (arrow T1 T2) %% (tcons T1 G) instead of G
+wfv/f    : wf-val (clos R R2 H) G (arrow T1 T2)
             <- wf-env H G
             <- type-exp (tcons T1 G) R T2
-            <- wf-tp G (arrow T1 T2). % TODO: which env: G or G'?
+            <- wf-tp G (arrow T1 T2).
 
 wfv/r    : wf-val (clos R R2 H) G (recv T)
             <- wf-val R2 G T.
@@ -704,7 +704,7 @@ extract-wf3: wf-val V G T1 -> wf-tp G T1 -> type.
 
 - : extract-wf3 (wfv/r TS) (wf-tp/recv W) <- extract-wf3 TS W.
 - : extract-wf3 (wfv/t W) (wf-tp/rect W).
-- : extract-wf3 (wfv/f WF TS WE) WF' <- extend-wf-tp WF _ WF'.
+- : extract-wf3 (wfv/f WF TS WE) WF. % <- extend-wf-tp WF _ WF'.
 - : extract-wf3 (wfv/sub S TS) W2 <- extract-wf S W1 W2.
 
 %worlds () (extract-wf3 _ _).
@@ -835,17 +835,17 @@ invert-fun :
   wf-tp G (arrow T3 T4) ->
   wf-tp G TX ->
   sub-tp-cases 
-    (tcons T3 G) (arrow T3 T4) G T 
+    G (arrow T3 T4) G T 
     G (recv T1) G T
     G (rect TX) G T
   ->
   type.
 %mode invert-fun +WFE1 -WFE2 -WFE3 -WFE4 -WFE5 -SBT1.
 
--     : invert-fun (t/fun WF WX TSV TS) TS TSV WF WX (case-f SB1) 
+-     : invert-fun (t/fun WF WX TSV TS) TS TSV WF WX (case-f SB) 
            % <- extract-wf2 (t/fun WF WX TSV TS) W
-           <- sub-tp-refl WF SB
-           <- extend-sub-tp1 SB _ SB1.
+           <- sub-tp-refl WF SB.
+           % <- extend-sub-tp1 SB _ SB1.
 -     : invert-fun (t/recv WF WX TSV TS) TS TSV WF WX (case-r (sub-tp/recv SB))
            <- extract-wf2 TSV W
            <- sub-tp-refl W SB.
@@ -874,7 +874,7 @@ invert-wf-fun-aux :
   %% Output
   type-exp (tcons T3 G) R T4 ->
   wf-env H G ->
-  sub-tp (tcons T3 G) (arrow T3 T4) G2 (arrow T1 T2) ->
+  sub-tp G (arrow T3 T4) G2 (arrow T1 T2) ->
   type.
 %mode invert-wf-fun-aux +WFE1 +SBT -WFE2 -WFE3 -SBT1.
 
@@ -899,7 +899,7 @@ invert-wf-fun :
   %% Output
   type-exp (tcons T3 G) R T4 ->
   wf-env H G ->
-  sub-tp (tcons T3 G) (arrow T3 T4) G1 (arrow T1 T2) ->
+  sub-tp G (arrow T3 T4) G1 (arrow T1 T2) ->
   type.
 %mode invert-wf-fun +WFE1 -WFE2 -WFE3 -SBT1.
 
@@ -948,11 +948,20 @@ extend-wfv: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
 %total A (extend-wfv A _ _).
 
 
-% <- extend-wfe WVX STA WE1 WE2
 
-extend-wfe: wf-val V2 G0 T1 -> sub-tp G0 T1 (tcons T3 GC0) T3 
-      -> wf-env HC0 GC0 -> wf-env (vcons V2 HC0) (tcons T3 GC0) -> type.
+extend-wfe1: wf-val V G T -> wf-env H G -> wf-env (vcons V H) (tcons T G) -> type.
+%mode extend-wfe1 +A +B -D.
+- : extend-wfe1 TV TE (wfe/c TE TV).
+%worlds () (extend-wfe1 _ _ _).
+%total A (extend-wfe1 A _ _).
+
+
+
+extend-wfe: wf-val V G0 T1 -> sub-tp G0 T1 GC0 T3 
+      -> wf-env HC0 GC0 -> wf-env (vcons V HC0) (tcons T3 GC0) -> type.
 %mode extend-wfe +A +B +C -D.
+
+
 %worlds () (extend-wfe _ _ _ _).
 %trustme
 %total A (extend-wfe A _ _ _).
@@ -1020,7 +1029,7 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
               (EVX: eval-exp H0 EXP2 V2) 
               (EVF: eval-exp H0 EXP1 (clos R R2 HC0))
             )
-            (wfv/sub ST (wfv/sub STR (Z: wf-val V3 (tcons T3 GC0) T4)))
+            (wfv/sub ST (wfv/sub STR1 (Z: wf-val V3 (tcons T3 GC0) T4)))
 
           <- invert-app ZT
               (TF: type-exp G0 EXP1 (arrow T1 T2))
@@ -1044,16 +1053,19 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
               (TR : type-exp (tcons T3 GC0) R T4)
               (WE1: wf-env HC0 GC0)
               ((sub-tp/fun 
-                    (STR: sub-tp (tcons T3 GC0) T4 G0 T2) 
-                    (STA: sub-tp G0 T1 (tcons T3 GC0) T3)): 
-                sub-tp (tcons T3 GC0) (arrow T3 T4) G0 (arrow T1 T2))
+                    (STR: sub-tp GC0 T4 G0 T2) 
+                    (STA: sub-tp G0 T1 GC0 T3)): 
+                sub-tp GC0 (arrow T3 T4) G0 (arrow T1 T2))
+
+          % STR: GC0 T4 <: G0 T2  -->  STR1: (tconds T3 GC0) T4 <: G0 T2
+
+          <- extend-sub-tp1 STR _ STR1
 
           <- extend-wfe WVX STA WE1 WE2
 
 
           <- eval-safe                 % eval F(X)
-              TR % (t/sub ST TR)  % (TR': type-exp (tcons T3 GC0) R T4)
-              % (wfe/c WE1 (wfv/sub STA1 WVX))
+              (TR: type-exp (tcons T3 GC0) R T4)
               WE2
               (EV3: eval-exp (vcons V2 HC0) R V3) 
               (Z: wf-val V3 (tcons T3 GC0) T4).
