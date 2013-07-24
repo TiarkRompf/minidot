@@ -285,7 +285,6 @@ extend-wf-tp: wf-tp G1 T1 -> {Z: tpe} wf-tp (tcons Z G1) T1 -> type.
       <- extend-wf-lkp L _ L'
       <- extend-wf-tp W _ W'.
 
-
 %worlds () (extend-wf-tp _ _ _).
 %total A (extend-wf-tp A _ _).
 
@@ -307,12 +306,6 @@ extend-sub-tp1: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 G2 T2 -> t
 %worlds () (extend-sub-tp1 _ _ _).
 %trustme
 %total A (extend-sub-tp1 A _ _).
-
-helper: sub-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> sub-tp (tcons T G1)  T1 G2 T2 -> type.
-%mode helper +C +W1 -S.
-%worlds () (helper _ _ _).
-%trustme
-%total WFE (helper WFE _ _). 
 
 
 
@@ -956,7 +949,6 @@ eval-op-safe : type-op OP T1 T2 T3 -> eval-op OP V1 V2 V3 -> wf-val V3 T3 -> typ
 }%
 
 
-% hack: wf-val E (tcons T1 G)
 
 eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> type.
 %mode eval-safe +A +B +C -D.
