@@ -263,7 +263,6 @@ extend-wf-lkp: tlookup G E T -> {Z: tpe} tlookup (tcons Z G) E T -> type.
 %total A (extend-wf-lkp A _ _).
 
 
-% extend-wf-pev: path-eval G E T -> {Z: tpe} path-eval (tcons Z G) E T -> type.
 
 % Extending environments preserves subtyping
 
@@ -289,38 +288,60 @@ extend-wf-tp: wf-tp G1 T1 -> {Z: tpe} wf-tp (tcons Z G1) T1 -> type.
 %total A (extend-wf-tp A _ _).
 
 
-extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2) T2 -> type.
-%mode extend-sub-tp +A +B -C.
+extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe} 
+  sub-tp (tcons Z G1) T1 (tcons Z G2) T2 -> 
+  sub-tp (tcons Z G1) T1 G2 T2 -> 
+  sub-tp G1 T1 (tcons Z G2) T2 -> 
+  type.
+%mode extend-sub-tp +A +B -C -D -E.
 
-- : extend-sub-tp sub-tp/int T sub-tp/int.
-- : extend-sub-tp sub-tp/bool T sub-tp/bool.
-- : extend-sub-tp (sub-tp/top ST) T (sub-tp/top ST') <- extend-wf-tp ST _ ST'.
-- : extend-sub-tp (sub-tp/bot ST) T (sub-tp/bot ST') <- extend-wf-tp ST _ ST'.
-- : extend-sub-tp (sub-tp/fun ST1 ST2) T (sub-tp/fun ST1' ST2') 
-      <- extend-sub-tp ST1 _ ST1'
-      <- extend-sub-tp ST2 _ ST2'.
-- : extend-sub-tp (sub-tp/rect ST1) T (sub-tp/rect ST1') 
-      <- extend-sub-tp ST1 _ ST1'.
-- : extend-sub-tp (sub-tp/recv ST1) T (sub-tp/recv ST1') 
-      <- extend-sub-tp ST1 _ ST1'.
-- : extend-sub-tp (sub-tp/tsel1 ST (pev L W)) T (sub-tp/tsel1 ST' (pev L' W'))
+- : extend-sub-tp sub-tp/int T sub-tp/int sub-tp/int sub-tp/int.
+- : extend-sub-tp sub-tp/bool T sub-tp/bool sub-tp/bool sub-tp/bool.
+- : extend-sub-tp (sub-tp/top ST) T (sub-tp/top ST') (sub-tp/top ST') (sub-tp/top ST) 
+      <- extend-wf-tp ST _ ST'.
+- : extend-sub-tp (sub-tp/bot ST) T (sub-tp/bot ST') (sub-tp/bot ST) (sub-tp/bot ST') 
+      <- extend-wf-tp ST _ ST'.
+- : extend-sub-tp (sub-tp/fun ST1 ST2) T (sub-tp/fun ST1' ST2') (sub-tp/fun ST1A ST2B) (sub-tp/fun ST1B ST2A)
+      <- extend-sub-tp ST1 _ ST1' ST1A ST1B
+      <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
+- : extend-sub-tp (sub-tp/rect ST1) T (sub-tp/rect ST1') (sub-tp/rect ST1A) (sub-tp/rect ST1B) 
+      <- extend-sub-tp ST1 _ ST1' ST1A ST1B.
+- : extend-sub-tp (sub-tp/recv ST1) T (sub-tp/recv ST1') (sub-tp/recv ST1A) (sub-tp/recv ST1B) 
+      <- extend-sub-tp ST1 _ ST1' ST1A ST1B.
+- : extend-sub-tp (sub-tp/tsel1 ST (pev L W)) T 
+    (sub-tp/tsel1 ST' (pev L' W')) (sub-tp/tsel1 STA (pev L' W')) (sub-tp/tsel1 STB (pev L W))
       <- extend-wf-lkp L _ L'
       <- extend-wf-tp W _ W'
-      <- extend-sub-tp ST _ ST'.
-- : extend-sub-tp (sub-tp/tsel2 ST (pev L W)) T (sub-tp/tsel2 ST' (pev L' W'))
+      <- extend-sub-tp ST _ ST' STA STB.
+- : extend-sub-tp (sub-tp/tsel2 ST (pev L W)) T 
+    (sub-tp/tsel2 ST' (pev L' W')) (sub-tp/tsel2 STA (pev L W)) (sub-tp/tsel2 STB (pev L' W'))
       <- extend-wf-lkp L _ L'
       <- extend-wf-tp W _ W'
-      <- extend-sub-tp ST _ ST'.
+      <- extend-sub-tp ST _ ST' STA STB.
 
-%worlds () (extend-sub-tp _ _ _).
-%total A (extend-sub-tp A _ _).
+%worlds () (extend-sub-tp _ _ _ _ _).
+%total A (extend-sub-tp A _ _ _ _).
 
+
+extend-sub-tp12: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2) T2 -> type.
+%mode extend-sub-tp12 +A +B -C.
+- : extend-sub-tp12 ST Z ST' <- extend-sub-tp ST Z ST' _ _.
+%worlds () (extend-sub-tp12 _ _ _).
+%total A (extend-sub-tp12 A _ _).
 
 extend-sub-tp1: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 G2 T2 -> type.
 %mode extend-sub-tp1 +A +B -C.
+- : extend-sub-tp1 ST Z ST' <- extend-sub-tp ST Z _ ST' _.
 %worlds () (extend-sub-tp1 _ _ _).
-%trustme
 %total A (extend-sub-tp1 A _ _).
+
+extend-sub-tp2: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp G1 T1 (tcons Z G2) T2 -> type.
+%mode extend-sub-tp2 +A +B -C.
+- : extend-sub-tp2 ST Z ST' <- extend-sub-tp ST Z _ _ ST'.
+%worlds () (extend-sub-tp2 _ _ _).
+%total A (extend-sub-tp2 A _ _).
+
+
 
 
 
@@ -913,7 +934,7 @@ extend-wfv: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
 
 -     : extend-wfv (wfv/sub ST WV) T (wfv/sub ST1 WV1) 
             <- extend-wfv WV T WV1
-            <- extend-sub-tp ST T ST1.
+            <- extend-sub-tp12 ST T ST1.
 % -     : extend-wfv (wfv/f TE WE) T (wfv/f TE1 WE1) 
 %             <- extend-wfv WV T WV1
 %             <- extend-sub-tp ST T ST1.
