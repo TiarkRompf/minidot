@@ -254,7 +254,7 @@ wf-tp/tsel : wf-tp G1 (tsel E1)
 
 
 
-% Extending environments preserves lookup
+% Extending environments preserves lookup (TODO: change index sign)
 
 extend-wf-lkp: tlookup G E T -> {Z: tpe} tlookup (tcons Z G) E T -> type.
 %mode extend-wf-lkp +A +B -C.
