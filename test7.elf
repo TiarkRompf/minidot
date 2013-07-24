@@ -294,12 +294,27 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2
 
 - : extend-sub-tp sub-tp/int T sub-tp/int.
 - : extend-sub-tp sub-tp/bool T sub-tp/bool.
-- : extend-sub-tp (sub-tp/top W) T (sub-tp/top W).
-- : extend-sub-tp sub-tp/bot T sub-tp/bot.
+- : extend-sub-tp (sub-tp/top ST) T (sub-tp/top ST') <- extend-wf-tp ST _ ST'.
+- : extend-sub-tp (sub-tp/bot ST) T (sub-tp/bot ST') <- extend-wf-tp ST _ ST'.
+- : extend-sub-tp (sub-tp/fun ST1 ST2) T (sub-tp/fun ST1' ST2') 
+      <- extend-sub-tp ST1 _ ST1'
+      <- extend-sub-tp ST2 _ ST2'.
+- : extend-sub-tp (sub-tp/rect ST1) T (sub-tp/rect ST1') 
+      <- extend-sub-tp ST1 _ ST1'.
+- : extend-sub-tp (sub-tp/recv ST1) T (sub-tp/recv ST1') 
+      <- extend-sub-tp ST1 _ ST1'.
+- : extend-sub-tp (sub-tp/tsel1 ST (pev L W)) T (sub-tp/tsel1 ST' (pev L' W'))
+      <- extend-wf-lkp L _ L'
+      <- extend-wf-tp W _ W'
+      <- extend-sub-tp ST _ ST'.
+- : extend-sub-tp (sub-tp/tsel2 ST (pev L W)) T (sub-tp/tsel2 ST' (pev L' W'))
+      <- extend-wf-lkp L _ L'
+      <- extend-wf-tp W _ W'
+      <- extend-sub-tp ST _ ST'.
 
 %worlds () (extend-sub-tp _ _ _).
-% %trustme
 %total A (extend-sub-tp A _ _).
+
 
 extend-sub-tp1: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 G2 T2 -> type.
 %mode extend-sub-tp1 +A +B -C.
