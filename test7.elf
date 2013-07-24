@@ -949,24 +949,6 @@ extend-wfv: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
 
 
 
-extend-wfe1: wf-val V G T -> wf-env H G -> wf-env (vcons V H) (tcons T G) -> type.
-%mode extend-wfe1 +A +B -D.
-- : extend-wfe1 TV TE (wfe/c TE TV).
-%worlds () (extend-wfe1 _ _ _).
-%total A (extend-wfe1 A _ _).
-
-
-
-extend-wfe: wf-val V G0 T1 -> sub-tp G0 T1 GC0 T3 
-      -> wf-env HC0 GC0 -> wf-env (vcons V HC0) (tcons T3 GC0) -> type.
-%mode extend-wfe +A +B +C -D.
-
-
-%worlds () (extend-wfe _ _ _ _).
-%trustme
-%total A (extend-wfe A _ _ _).
-
-
 
 % lookup safe
 
@@ -1057,18 +1039,13 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
                     (STA: sub-tp G0 T1 GC0 T3)): 
                 sub-tp GC0 (arrow T3 T4) G0 (arrow T1 T2))
 
-          % STR: GC0 T4 <: G0 T2  -->  STR1: (tconds T3 GC0) T4 <: G0 T2
-
-          <- extend-sub-tp1 STR _ STR1
-
-          <- extend-wfe WVX STA WE1 WE2
-
-
           <- eval-safe                 % eval F(X)
               (TR: type-exp (tcons T3 GC0) R T4)
-              WE2
+              (wfe/c WE1 (wfv/sub STA WVX))
               (EV3: eval-exp (vcons V2 HC0) R V3) 
-              (Z: wf-val V3 (tcons T3 GC0) T4).
+              (Z: wf-val V3 (tcons T3 GC0) T4)
+
+          <- extend-sub-tp1 STR _ (STR1: sub-tp (tcons T3 GC0) T4 G0 T2).
 
 
 
