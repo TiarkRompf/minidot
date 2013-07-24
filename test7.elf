@@ -33,6 +33,14 @@ lte/s : lte (s N1) (s N2)
 %mode lte +N1 +N2.
 
 
+eq : nat -> nat -> type.
+eq/z : eq z z.
+eq/s : eq (s N1) (s N2) 
+   <- eq N1 N2.
+
+%mode eq +N1 +N2.
+
+
 ne : nat -> nat -> type.
 ne/z : ne z (s N).
 ne/z : ne (s N) z.
@@ -44,6 +52,17 @@ ne/s : ne (s N1) (s N2)
 
 %query 0 * lte (s (s z)) (s z).
 %query 1 * lte (s (s z)) (s (s z)).
+
+
+sub-eq: eq A1 A2 -> eq C1 C2 -> add A1 B1 C1 -> add A2 B2 C2 -> eq B1 B2 -> type.
+%mode sub-eq +E1 +E2 +A1 +A2 -E3.
+
+- : sub-eq eq/z E add/z add/z E.
+- : sub-eq (eq/s E1) (eq/s E2) (add/s A1) (add/s A2) E3
+  <- sub-eq E1 E2 A1 A2 E3.
+
+%worlds () (sub-eq _ _ _ _ _).
+%total {T2} (sub-eq T2 _ _ _ _).
 
 
 
