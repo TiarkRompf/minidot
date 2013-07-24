@@ -254,6 +254,17 @@ wf-tp/tsel : wf-tp G1 (tsel E1)
 
 
 
+% Extending environments preserves lookup
+
+extend-wf-lkp: tlookup G E T -> {Z: tpe} tlookup (tcons Z G) E T -> type.
+%mode extend-wf-lkp +A +B -C.
+%worlds () (extend-wf-lkp _ _ _).
+%trustme
+%total A (extend-wf-lkp A _ _).
+
+
+% extend-wf-pev: path-eval G E T -> {Z: tpe} path-eval (tcons Z G) E T -> type.
+
 % Extending environments preserves subtyping
 
 extend-wf-tp: wf-tp G1 T1 -> {Z: tpe} wf-tp (tcons Z G1) T1 -> type.
@@ -270,6 +281,10 @@ extend-wf-tp: wf-tp G1 T1 -> {Z: tpe} wf-tp (tcons Z G1) T1 -> type.
       <- extend-wf-tp W1 _ W1'.
 - : extend-wf-tp (wf-tp/recv W1) T (wf-tp/recv W1') 
       <- extend-wf-tp W1 _ W1'.
+- : extend-wf-tp (wf-tp/tsel (pev L W)) T (wf-tp/tsel (pev L' W'))
+      <- extend-wf-lkp L _ L'
+      <- extend-wf-tp W _ W'.
+
 
 %worlds () (extend-wf-tp _ _ _).
 %total A (extend-wf-tp A _ _).
