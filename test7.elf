@@ -660,9 +660,10 @@ wf-env   : venv -> tenv -> type.
 
 % wfv/c    : wf-val (cstv C) T <- typeof C T.
 wfv/f    : wf-val (clos R R2 H) G (arrow T1 T2)
-            <- wf-env H G
-            <- type-exp (tcons T1 G) R T2
-            <- wf-tp G (arrow T1 T2).
+            <- wf-env H GC
+            <- type-exp (tcons T1 GC) R T2
+            <- wf-tp G (arrow T1 T2)
+            <- sub-tp GC (arrow T1 T2) G (arrow T1 T2).
 
 wfv/r    : wf-val (clos R R2 H) G (recv T)
             <- wf-val R2 G T.
@@ -704,7 +705,7 @@ extract-wf3: wf-val V G T1 -> wf-tp G T1 -> type.
 
 - : extract-wf3 (wfv/r TS) (wf-tp/recv W) <- extract-wf3 TS W.
 - : extract-wf3 (wfv/t W) (wf-tp/rect W).
-- : extract-wf3 (wfv/f WF TS WE) WF. % <- extend-wf-tp WF _ WF'.
+- : extract-wf3 (wfv/f ST WF TS WE) WF. % <- extend-wf-tp WF _ WF'.
 - : extract-wf3 (wfv/sub S TS) W2 <- extract-wf S W1 W2.
 
 %worlds () (extract-wf3 _ _).
@@ -878,10 +879,10 @@ invert-wf-fun-aux :
   type.
 %mode invert-wf-fun-aux +WFE1 +SBT -WFE2 -WFE3 -SBT1.
 
--     :  invert-wf-fun-aux ((wfv/f WF TS WE):(wf-val (clos R R2 H) _ _)) SB0
+-     :  invert-wf-fun-aux ((wfv/f SB1 WF TS WE):(wf-val (clos R R2 H) _ _)) SB0
              TS WE SB
-            <- extract-wf3 ((wfv/f WF TS WE):(wf-val (clos R R2 H) _ _)) W 
-            <- sub-tp-refl W SB1
+            % <- extract-wf3 ((wfv/f WF TS WE):(wf-val (clos R R2 H) _ _)) W 
+            % <- sub-tp-refl WF SB1
             <- sub-tp-trans SB1 SB0 SB.
 
 
@@ -892,6 +893,7 @@ invert-wf-fun-aux :
 
 %worlds () (invert-wf-fun-aux _ _ _ _ _).
 %total WFE (invert-wf-fun-aux WFE _ _ _ _). 
+
 
 invert-wf-fun :
   %% Input
@@ -939,12 +941,15 @@ extend-wfv: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
 -     : extend-wfv (wfv/sub ST WV) T (wfv/sub ST1 WV1) 
             <- extend-wfv WV T WV1
             <- extend-sub-tp12 ST T ST1.
-% -     : extend-wfv (wfv/f TE WE) T (wfv/f TE1 WE1) 
-%             <- extend-wfv WV T WV1
-%             <- extend-sub-tp ST T ST1.
+-     : extend-wfv (wfv/f ST WF TE WE) T (wfv/f ST1 WF1 TE WE)
+            <- extend-wf-tp WF T WF1
+            <- extend-sub-tp2 ST T ST1.
+-     : extend-wfv (wfv/r WV) T (wfv/r WV1)
+            <- extend-wfv WV T WV1.
+-     : extend-wfv (wfv/t W) T (wfv/t W1)
+            <- extend-wf-tp W T W1.
 
 %worlds () (extend-wfv _ _ _).
-%trustme
 %total A (extend-wfv A _ _).
 
 
@@ -995,7 +1000,8 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
  -      : eval-safe (ZT: type-exp G _ _) E (e/fun EX) W
           <- invert-fun ZT TS TSV WF WX CST
           <- eval-safe TSV E EX WV
-          <- cases-wfv CST (wfv/f WF TS E) (wfv/r WV) (wfv/t WX) W.
+          <- sub-tp-refl WF ST
+          <- cases-wfv CST (wfv/f ST WF TS E) (wfv/r WV) (wfv/t WX) W.
 
 -      : eval-safe ZT WE (e/sel EVX) (wfv/sub ST (wfv/sub ST1 WV1))
           <- invert-sel ZT TS ST
