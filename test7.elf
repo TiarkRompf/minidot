@@ -917,17 +917,50 @@ invert-wf-fun :
 
 
 
+invert-wf-rec-aux :
+  %% Input
+  wf-val (clos R R2 H) G1 T ->
+  sub-tp G1 T G2 (recv T2) ->
+  %% Output
+  wf-val R2 G T4 ->
+  sub-tp G (recv T4) G2 (recv T2) ->
+  type.
+%mode invert-wf-rec-aux +WFE1 +SBT -WFE3 -SBT1.
+
+-     :  invert-wf-rec-aux ((wfv/r TV):(wf-val (clos R R2 H) _ _)) SB0
+            TV SB
+           <- extract-wf3 TV W 
+           <- sub-tp-refl (wf-tp/recv W) SB1
+           <- sub-tp-trans SB1 SB0 SB.
+
+
+ -     : invert-wf-rec-aux (wfv/sub (SB1: sub-tp G1 TI G T) (TS: wf-val _ G1 TI)) 
+                (SB0: sub-tp G T G2 (recv T2)) TV SB
+            <- sub-tp-trans SB1 SB0 (SB1X: sub-tp G1 TI G2 (recv T2))
+            <- invert-wf-rec-aux TS SB1X TV (SB: sub-tp _ (recv T4) G2 (recv T2)).
+
+
+%worlds () (invert-wf-rec-aux _ _ _ _).
+%total WFE (invert-wf-rec-aux WFE _ _ _). 
+
+
 invert-wf-rec :
   %% Input
   wf-val (clos R R2 H) G1 (recv T) ->
   %% Output
-  wf-val R2 G1 T4 ->
-  sub-tp G1 (recv T4) G1 (recv T) ->
+  wf-val R2 G T4 ->
+  sub-tp G (recv T4) G1 (recv T) ->
   type.
 %mode invert-wf-rec +WFE1 -WFE3 -SBT1.
+
+-     :  invert-wf-rec A B C 
+            <- extract-wf3 A W
+            <- sub-tp-refl W SB
+            <- invert-wf-rec-aux A SB B C.
+
 %worlds () (invert-wf-rec _ _ _).
-%trustme
 %total WFE (invert-wf-rec WFE _ _). 
+
 
 
 
