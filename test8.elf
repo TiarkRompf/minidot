@@ -128,7 +128,7 @@ bool : tpe.
 top  : tpe.
 bot  : tpe.
 arrow: tpe -> tpe -> tpe.  % { A => B }
-rect : tpe -> tpe.  % { type A }
+rect : tpe -> tpe -> tpe.  % { type A..B }
 recv : tpe -> tpe.         % { val get: A }
 tsel : exp -> tpe.         % x.A
 % tand : tpe -> tpe -> tpe.  % A && B
