@@ -295,14 +295,15 @@ wf-tp/fun  : wf-tp G1 (arrow T1 T2)
               <- wf-tp G1 T1
               <- wf-tp G1 T2.
 
-wf-tp/rect : wf-tp G1 (rect T1)
-              <- wf-tp G1 T1.
+wf-tp/rect : wf-tp G1 (rect T1 T2)
+              <- wf-tp G1 T1
+              <- wf-tp G1 T2. % TBD: require T1 <: T1U?
 
 wf-tp/recv : wf-tp G1 (recv T1)
               <- wf-tp G1 T1.
 
 wf-tp/tsel : wf-tp G1 (tsel E1)
-              <- path-eval G1 E1 (rect T1).
+              <- path-eval G1 E1 (rect T1 T1U).
 
 
 
