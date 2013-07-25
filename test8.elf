@@ -470,13 +470,13 @@ extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
 - : extract-wf (sub-tp/recv ST) (wf-tp/recv W1) (wf-tp/recv W2)
       <- extract-wf ST W1 W2.
 
-- : extract-wf (sub-tp/tsel1 ST (pev L (wf-tp/rect _ W3))) 
+- : extract-wf (sub-tp/tsel1 ST (pev L (wf-tp/rect W1 W3))) 
       (wf-tp/tsel (pev L (wf-tp/rect W1 W3))) W2
-      <- extract-wf ST W1 W2.
+      <- extract-wf ST _ W2. % W1 W2
 
-- : extract-wf (sub-tp/tsel2 ST (pev L (wf-tp/rect W3 _))) 
+- : extract-wf (sub-tp/tsel2 ST (pev L (wf-tp/rect W3 W2))) 
       W1 (wf-tp/tsel (pev L (wf-tp/rect W3 W2)))
-      <- extract-wf ST W1 W2.
+      <- extract-wf ST W1 _. % W1 W2
 
 
 %worlds () (extract-wf _ _ _).
