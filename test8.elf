@@ -614,21 +614,31 @@ eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
 %total {T2} (eq-high T2 _ _).
 
 
+good-bounds: wf-tp G (rect T TU) -> sub-tp G T G TU -> type.
+%mode good-bounds +P1 -SBT.
+%worlds () (good-bounds _ _).
+%trustme
+%total {T2} (good-bounds T2 _).
+
+
 
 -/tsel2-tsel1  : sub-tp-trans-aux  % T1 < p.T2 && p.T2 < T3 --> T1 < T3
-      (wf-tp/tsel (pev (P0: (tlookup G2 (var N) (rect T2 T3))) (wf-tp/rect (W3: wf-tp G2 T3) (W: wf-tp G2 T2)) ))
-      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (P1: (tlookup G2 (var N) (rect T2A T3A))) (wf-tp/rect W1X W1Y)))
-      (sub-tp/tsel1 (A2: sub-tp G2 T3B G3 T3) (pev (P2: (tlookup G2 (var N) (rect T2B T3B))) (wf-tp/rect W2X W2Y)))
+      (wf-tp/tsel (pev (P0: (tlookup G2 (var N) (rect T2 T2U))) (wf-tp/rect (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) ))
+      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (P1: (tlookup G2 (var N) (rect T2A T2UA))) (wf-tp/rect W1X W1Y)))
+      (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) (pev (P2: (tlookup G2 (var N) (rect T2B T2UB))) (wf-tp/rect W2X W2Y)))
       (SBT5: sub-tp G1 T1 G3 T3)
       
       <- eq-refl N Q
-      <- lookup-eq P1 P0 Q (S1: same T2A T2) (S3: same T3A T3)
-      <- lookup-eq P2 P0 Q (S2: same T2B T2) (S4: same T3B T3)
+      <- lookup-eq P1 P0 Q (S1: same T2A T2) (S3: same T2UA T2U)
+      <- lookup-eq P2 P0 Q (S2: same T2B T2) (S4: same T2UB T2U)
 
       <- eq-high S1 A1 (A1': sub-tp G1 T1 G2 T2)
-      <- eq-low  S4 A2 (A2': sub-tp G2 T2 G3 T3)
+      <- eq-low  S4 A2 (A2': sub-tp G2 T2U G3 T3)
 
-      <- sub-tp-trans-aux W A1' A2' SBT5.
+      <- good-bounds (wf-tp/rect WU W) AB
+
+      <- sub-tp-trans-aux W A1' AB SBT3
+      <- sub-tp-trans-aux WU SBT3 A2' SBT5.
 
 
 %{
