@@ -514,11 +514,12 @@ sub-tp-trans-aux :
       <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
 
 -/rect-rect  : sub-tp-trans-aux
-      (wf-tp/rect T1)
-            (sub-tp/rect SBT1)
-            (sub-tp/rect SBT3)
-            (sub-tp/rect SBT5)  
-      <- sub-tp-trans-aux T1 SBT1 SBT3 SBT5.
+      (wf-tp/rect T2 T1)
+            (sub-tp/rect SBT2 SBT1)
+            (sub-tp/rect SBT4 SBT3)
+            (sub-tp/rect SBT6 SBT5)  
+      <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
 
 -/recv-recv  : sub-tp-trans-aux
       (wf-tp/recv T1)
@@ -570,26 +571,28 @@ size-eq: tsize G2 (var N1) -> tsize G2 (var N2) -> eq N1 N2 -> type.
 
 
 
-lookup-zero-eq: tlookup-zero G2 (var N1) (rect T1) -> tlookup-zero G2 (var N2) (rect T2) -> eq N1 N2 -> same T1 T2 -> type.
-%mode lookup-zero-eq +P1 +P2 +E -SBT.
+lookup-zero-eq: tlookup-zero G2 (var N1) (rect T1 T3) -> tlookup-zero G2 (var N2) (rect T2 T4) -> eq N1 N2 
+  -> same T1 T2 -> same T3 T4 -> type.
+%mode lookup-zero-eq +P1 +P2 +E -SBT -SBT2.
 
-- : lookup-zero-eq tl/hit tl/hit eq/z ident.
-- : lookup-zero-eq (tl/miss A) (tl/miss B) (eq/s E) X <- lookup-zero-eq A B E X.
+- : lookup-zero-eq tl/hit tl/hit eq/z ident ident.
+- : lookup-zero-eq (tl/miss A) (tl/miss B) (eq/s E) X Y <- lookup-zero-eq A B E X Y.
 
-%worlds () (lookup-zero-eq _ _ _ _).
-%total {T2} (lookup-zero-eq T2 _ _ _).
+%worlds () (lookup-zero-eq _ _ _ _ _).
+%total {T2} (lookup-zero-eq T2 _ _ _ _).
 
 
-lookup-eq: tlookup G2 (var N1) (rect T1) -> tlookup G2 (var N2) (rect T2) -> eq N1 N2 -> same T1 T2 -> type.
-%mode lookup-eq +P1 +P2 +E -SBT.
+lookup-eq: tlookup G2 (var N1) (rect T1 T3) -> tlookup G2 (var N2) (rect T2 T4) -> eq N1 N2
+  -> same T1 T2 -> same T3 T4 -> type.
+%mode lookup-eq +P1 +P2 +E -SBT -SBT.
 
-- : lookup-eq (tl L1 A1 F1) (tl L2 A2 F2) EN X 
+- : lookup-eq (tl L1 A1 F1) (tl L2 A2 F2) EN X Y
         <- size-eq F1 F2 ES 
         <- sub-eq EN ES A1 A2 EM 
-        <- lookup-zero-eq L1 L2 EM X.
+        <- lookup-zero-eq L1 L2 EM X Y.
 
-%worlds () (lookup-eq _ _ _ _).
-%total {T2} (lookup-eq T2 _ _ _).
+%worlds () (lookup-eq _ _ _ _ _).
+%total {T2} (lookup-eq T2 _ _ _ _).
 
 
 
@@ -613,17 +616,17 @@ eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
 
 
 -/tsel2-tsel1  : sub-tp-trans-aux  % T1 < p.T2 && p.T2 < T3 --> T1 < T3
-      (wf-tp/tsel (pev (P0: (tlookup G2 (var N) (rect T2))) (wf-tp/rect (W: wf-tp G2 T2)) ))
-      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (P1: (tlookup G2 (var N) (rect T2A))) (wf-tp/rect W1X)))
-      (sub-tp/tsel1 (A2: sub-tp G2 T2B G3 T3) (pev (P2: (tlookup G2 (var N) (rect T2B))) (wf-tp/rect W2X)))
+      (wf-tp/tsel (pev (P0: (tlookup G2 (var N) (rect T2 T3))) (wf-tp/rect (W3: wf-tp G2 T3) (W: wf-tp G2 T2)) ))
+      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (P1: (tlookup G2 (var N) (rect T2A T3A))) (wf-tp/rect W1X W1Y)))
+      (sub-tp/tsel1 (A2: sub-tp G2 T3B G3 T3) (pev (P2: (tlookup G2 (var N) (rect T2B T3B))) (wf-tp/rect W2X W2Y)))
       (SBT5: sub-tp G1 T1 G3 T3)
       
       <- eq-refl N Q
-      <- lookup-eq P1 P0 Q (S1: same T2A T2)
-      <- lookup-eq P2 P0 Q (S2: same T2B T2)
+      <- lookup-eq P1 P0 Q (S1: same T2A T2) (S3: same T3A T3)
+      <- lookup-eq P2 P0 Q (S2: same T2B T2) (S4: same T3B T3)
 
       <- eq-high S1 A1 (A1': sub-tp G1 T1 G2 T2)
-      <- eq-low  S2 A2 (A2': sub-tp G2 T2 G3 T3)
+      <- eq-low  S4 A2 (A2': sub-tp G2 T2 G3 T3)
 
       <- sub-tp-trans-aux W A1' A2' SBT5.
 
