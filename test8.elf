@@ -349,8 +349,9 @@ extend-wf-tp: wf-tp G1 T1 -> {Z: tpe} wf-tp (tcons Z G1) T1 -> type.
 - : extend-wf-tp (wf-tp/fun W1 W2) T (wf-tp/fun W1' W2') 
       <- extend-wf-tp W1 _ W1'
       <- extend-wf-tp W2 _ W2'.
-- : extend-wf-tp (wf-tp/rect W1) T (wf-tp/rect W1') 
-      <- extend-wf-tp W1 _ W1'.
+- : extend-wf-tp (wf-tp/rect W1 W2) T (wf-tp/rect W1' W2') 
+      <- extend-wf-tp W1 _ W1'
+      <- extend-wf-tp W2 _ W2'.
 - : extend-wf-tp (wf-tp/recv W1) T (wf-tp/recv W1') 
       <- extend-wf-tp W1 _ W1'.
 - : extend-wf-tp (wf-tp/tsel (pev L W)) T (wf-tp/tsel (pev L' W'))
@@ -377,8 +378,9 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 - : extend-sub-tp (sub-tp/fun ST1 ST2) T (sub-tp/fun ST1' ST2') (sub-tp/fun ST1A ST2B) (sub-tp/fun ST1B ST2A)
       <- extend-sub-tp ST1 _ ST1' ST1A ST1B
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
-- : extend-sub-tp (sub-tp/rect ST1) T (sub-tp/rect ST1') (sub-tp/rect ST1A) (sub-tp/rect ST1B) 
-      <- extend-sub-tp ST1 _ ST1' ST1A ST1B.
+- : extend-sub-tp (sub-tp/rect ST1 ST2) T (sub-tp/rect ST1' ST2') (sub-tp/rect ST1A ST2B) (sub-tp/rect ST1B ST2A) 
+      <- extend-sub-tp ST1 _ ST1' ST1A ST1B
+      <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 - : extend-sub-tp (sub-tp/recv ST1) T (sub-tp/recv ST1') (sub-tp/recv ST1A) (sub-tp/recv ST1B) 
       <- extend-sub-tp ST1 _ ST1' ST1A ST1B.
 - : extend-sub-tp (sub-tp/tsel1 ST (pev L W)) T 
