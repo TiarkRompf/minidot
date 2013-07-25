@@ -307,8 +307,9 @@ wf-tp/tsel : wf-tp G1 (tsel E1)
 
 extend-wf-lkpz: tlookup-zero G (var N) T -> {Z: tpe} tlookup-zero (tcons Z G) (var (s N)) T -> type.
 %mode extend-wf-lkpz +A +B -D.
+- : extend-wf-lkpz tl/hit _ (tl/miss tl/hit).
+- : extend-wf-lkpz (tl/miss A) _ (tl/miss B) <- extend-wf-lkpz A _ B.
 %worlds () (extend-wf-lkpz _ _ _).
-%trustme
 %total A (extend-wf-lkpz A _ _).
 
 size-inc: tsize G (var N) -> {Z: tpe} tsize (tcons Z G) (var (s N)) -> type.
