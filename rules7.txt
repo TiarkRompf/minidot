@@ -20,7 +20,7 @@ H :: = vnil | v::H              // value env
 
 v ::= Clos H {                  // object/closure
         def apply = t
-        val get = t
+        val get = v
       }
 
 // lookup
@@ -29,10 +29,43 @@ x: T in G
 x->v in H
 
 
+// types well-formed w.r.t env
+
+G wf Top
+G wf Bot
+
+
+G wf T1    G wf T2
+------------------
+G wf { T1 => T2 }
+
+
+G wf T
+--------------
+G wf { val T }
+
+
+G wf T
+---------------
+G wf { type T }
+
+
+x:{ type T } in G
+-----------------
+G wf x.T
+
+
+
 // subtyping
 
+G1 wf T
+--------------
 G1 T <: G2 Top
+
+G2 wf T
+--------------
 G1 Bot <: G2 T
+
 
 G2 T3 <: G1 T1    G1 T2 <: G2 T4
 ----------------------------------
@@ -87,23 +120,24 @@ H |- t1.get => v4
 
 // expression typing
 
-x: T in G
----------
+x: T in G    G wf T
+-------------------
 G |- x: T
 
 
-x:T1::G |- t1: T2
+x:T1::G |- t1: T2    G wf T1    G wf T2
 -------------------------------------------------------------------
 G |- new { def apply(x) = t1; val get = t2; type T } : { T1 => T2 }
 
 
 G |- t2: T2
--------------------------------------------------------------------
+-----------------------------------------------------------------
 G |- new { def apply(x) = t1; val get = t2; type T } : { get T2 }
 
 
+G wf T
+-----------------------------------------------------------------
 G |- new { def apply(x) = t1; val get = t2; type T } : { type T }
-
 
 
 G |- t1: { T1 => T2 }
@@ -113,7 +147,7 @@ G |- t1.apply(t2): T2
 
 
 G |- t1: { val get: T2 }
----------------------
+------------------------
 G |- t1.get: T2
 
 
@@ -125,4 +159,31 @@ G |- t: T2
 
 // value typing
 
-(like for expressions, just with Clos)
+x: T in G    G wf T
+-------------------
+G |- x: T
+
+
+G1 |- H1    x:T1::G1 |- t: T2    G1 { T1 => T2 } <: G { T1 => T2 }
+------------------------------------------------------------------
+G |- Clos H1 { def apply = t val get = v } : { T1 => T2 }
+
+
+G |- t2: T2
+-------------------------------------------------------
+G |- Clos H1 { def apply = t val get = v } : { get T2 }
+
+
+G wf T
+-------------------------------------------------------
+G |- Clos H1 { def apply = t val get = v } : { type T }
+
+
+G1 |- v: T1    G1 T1 <: G T
+---------------------------
+G |- v: T
+
+
+// well-typed environments
+
+G1 |- H1 (element-wise)
