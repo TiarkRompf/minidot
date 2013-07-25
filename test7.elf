@@ -302,12 +302,30 @@ wf-tp/tsel : wf-tp G1 (tsel E1)
 
 
 
-% Extending environments preserves lookup (TODO: change index sign)
+% Extending environments preserves lookup
 
-extend-wf-lkp: tlookup G E T -> {Z: tpe} tlookup (tcons Z G) E T -> type.
-%mode extend-wf-lkp +A +B -C.
-%worlds () (extend-wf-lkp _ _ _).
+
+extend-wf-lkpz: tlookup-zero G (var N) T -> {Z: tpe} tlookup-zero (tcons Z G) (var (s N)) T -> type.
+%mode extend-wf-lkpz +A +B -D.
+%worlds () (extend-wf-lkpz _ _ _).
 %trustme
+%total A (extend-wf-lkpz A _ _).
+
+size-inc: tsize G (var N) -> {Z: tpe} tsize (tcons Z G) (var (s N)) -> type.
+%mode size-inc +A +B -D.
+%worlds () (size-inc _ _ _).
+%trustme
+%total A (size-inc A _ _).
+
+
+
+extend-wf-lkp: tlookup G (var N) T -> {Z: tpe} tlookup (tcons Z G) (var N) T -> type.
+%mode extend-wf-lkp +A +B -C.
+- : extend-wf-lkp (tl L A S) Z (tl L' A' S')
+      <- size-inc S Z S'
+      <- add-inc A A'
+      <- extend-wf-lkpz L Z L'.
+%worlds () (extend-wf-lkp _ _ _).
 %total A (extend-wf-lkp A _ _).
 
 
