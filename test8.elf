@@ -297,7 +297,8 @@ wf-tp/fun  : wf-tp G1 (arrow T1 T2)
 
 wf-tp/rect : wf-tp G1 (rect T1 T2)
               <- wf-tp G1 T1
-              <- wf-tp G1 T2. % TBD: require T1 <: T1U? quite likely required for transitivity
+              <- wf-tp G1 T2
+              <- sub-tp G1 T1 G1 T2. % T1 <: T2 required for transitivity
 
 wf-tp/recv : wf-tp G1 (recv T1)
               <- wf-tp G1 T1.
@@ -342,6 +343,14 @@ extend-wf-lkp: tlookup G (var N) T -> {Z: tpe} tlookup (tcons Z G) (var N) T -> 
 extend-wf-tp: wf-tp G1 T1 -> {Z: tpe} wf-tp (tcons Z G1) T1 -> type.
 %mode extend-wf-tp +A +B -C.
 
+extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe} 
+  sub-tp (tcons Z G1) T1 (tcons Z G2) T2 -> 
+  sub-tp (tcons Z G1) T1 G2 T2 -> 
+  sub-tp G1 T1 (tcons Z G2) T2 -> 
+  type.
+%mode extend-sub-tp +A +B -C -D -E.
+
+
 - : extend-wf-tp wf-tp/int T wf-tp/int.
 - : extend-wf-tp wf-tp/bool T wf-tp/bool.
 - : extend-wf-tp wf-tp/top T wf-tp/top.
@@ -349,7 +358,8 @@ extend-wf-tp: wf-tp G1 T1 -> {Z: tpe} wf-tp (tcons Z G1) T1 -> type.
 - : extend-wf-tp (wf-tp/fun W1 W2) T (wf-tp/fun W1' W2') 
       <- extend-wf-tp W1 _ W1'
       <- extend-wf-tp W2 _ W2'.
-- : extend-wf-tp (wf-tp/rect W1 W2) T (wf-tp/rect W1' W2') 
+- : extend-wf-tp (wf-tp/rect ST W1 W2) T (wf-tp/rect ST' W1' W2') 
+      <- extend-sub-tp ST _ ST' _ _
       <- extend-wf-tp W1 _ W1'
       <- extend-wf-tp W2 _ W2'.
 - : extend-wf-tp (wf-tp/recv W1) T (wf-tp/recv W1') 
@@ -358,16 +368,6 @@ extend-wf-tp: wf-tp G1 T1 -> {Z: tpe} wf-tp (tcons Z G1) T1 -> type.
       <- extend-wf-lkp L _ L'
       <- extend-wf-tp W _ W'.
 
-%worlds () (extend-wf-tp _ _ _).
-%total A (extend-wf-tp A _ _).
-
-
-extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe} 
-  sub-tp (tcons Z G1) T1 (tcons Z G2) T2 -> 
-  sub-tp (tcons Z G1) T1 G2 T2 -> 
-  sub-tp G1 T1 (tcons Z G2) T2 -> 
-  type.
-%mode extend-sub-tp +A +B -C -D -E.
 
 - : extend-sub-tp sub-tp/int T sub-tp/int sub-tp/int sub-tp/int.
 - : extend-sub-tp sub-tp/bool T sub-tp/bool sub-tp/bool sub-tp/bool.
@@ -394,8 +394,9 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-wf-tp W _ W'
       <- extend-sub-tp ST _ ST' STA STB.
 
-%worlds () (extend-sub-tp _ _ _ _ _).
-%total A (extend-sub-tp A _ _ _ _).
+%worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _).
+%total (A B) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _).
+
 
 
 extend-sub-tp12: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2) T2 -> type.
@@ -437,15 +438,15 @@ sub-tp-refl :
 -/fun : sub-tp-refl (wf-tp/fun T1 T2) (sub-tp/fun SBT1 SBT2)
    <- sub-tp-refl T1 SBT1
    <- sub-tp-refl T2 SBT2.
--/rect: sub-tp-refl (wf-tp/rect T1 T2) (sub-tp/rect SBT1 SBT2)
+-/rect: sub-tp-refl (wf-tp/rect ST T1 T2) (sub-tp/rect SBT1 SBT2)
    <- sub-tp-refl T1 SBT1
    <- sub-tp-refl T2 SBT2.
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
 
 -/tsel: sub-tp-refl 
-  (wf-tp/tsel (pev L (wf-tp/rect WT1 WT2)))
-    (sub-tp/tsel1 (sub-tp/tsel2 SBT1 (pev L (wf-tp/rect WT1 WT2))) (pev L (wf-tp/rect WT1 WT2)))
+  (wf-tp/tsel (pev L (wf-tp/rect ST WT1 WT2)))
+    (sub-tp/tsel1 (sub-tp/tsel2 SBT1 (pev L (wf-tp/rect ST WT1 WT2))) (pev L (wf-tp/rect ST WT1 WT2)))
      <- sub-tp-refl WT1 SBT1.
 
 %worlds () (sub-tp-refl _ _).
@@ -464,22 +465,23 @@ extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
         (wf-tp/fun W2 W1) (wf-tp/fun W4 W3)
       <- extract-wf ST1 W2 W4
       <- extract-wf ST2 W3 W1.
-- : extract-wf (sub-tp/rect ST1 ST2) (wf-tp/rect W2 W1) (wf-tp/rect W4 W3)
+- : extract-wf (sub-tp/rect ST1 ST2) (wf-tp/rect ST1 W2 W1) (wf-tp/rect ST2 W4 W3) %% FIXME: T1<:T2 & T3 <: T4
       <- extract-wf ST1 W2 W4
       <- extract-wf ST2 W3 W1.
 - : extract-wf (sub-tp/recv ST) (wf-tp/recv W1) (wf-tp/recv W2)
       <- extract-wf ST W1 W2.
 
-- : extract-wf (sub-tp/tsel1 ST (pev L (wf-tp/rect W1 W3))) 
-      (wf-tp/tsel (pev L (wf-tp/rect W1 W3))) W2
+- : extract-wf (sub-tp/tsel1 ST (pev L (wf-tp/rect SB W1 W3))) 
+      (wf-tp/tsel (pev L (wf-tp/rect SB W1 W3))) W2
       <- extract-wf ST _ W2. % W1 W2
 
-- : extract-wf (sub-tp/tsel2 ST (pev L (wf-tp/rect W3 W2))) 
-      W1 (wf-tp/tsel (pev L (wf-tp/rect W3 W2)))
+- : extract-wf (sub-tp/tsel2 ST (pev L (wf-tp/rect SB W3 W2))) 
+      W1 (wf-tp/tsel (pev L (wf-tp/rect SB W3 W2)))
       <- extract-wf ST W1 _. % W1 W2
 
 
 %worlds () (extract-wf _ _ _).
+%trustme
 %total T2 (extract-wf T2 _ _).
 
 
@@ -514,7 +516,7 @@ sub-tp-trans-aux :
       <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
 
 -/rect-rect  : sub-tp-trans-aux
-      (wf-tp/rect T2 T1)
+      (wf-tp/rect SB T2 T1)
             (sub-tp/rect SBT2 SBT1)
             (sub-tp/rect SBT4 SBT3)
             (sub-tp/rect SBT6 SBT5)  
@@ -614,18 +616,11 @@ eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
 %total {T2} (eq-high T2 _ _).
 
 
-good-bounds: wf-tp G (rect T TU) -> sub-tp G T G TU -> type.
-%mode good-bounds +P1 -SBT.
-%worlds () (good-bounds _ _).
-%trustme
-%total {T2} (good-bounds T2 _).
-
-
 
 -/tsel2-tsel1  : sub-tp-trans-aux  % T1 < p.T2 && p.T2 < T3 --> T1 < T3
-      (wf-tp/tsel (pev (P0: (tlookup G2 (var N) (rect T2 T2U))) (wf-tp/rect (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) ))
-      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (P1: (tlookup G2 (var N) (rect T2A T2UA))) (wf-tp/rect W1X W1Y)))
-      (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) (pev (P2: (tlookup G2 (var N) (rect T2B T2UB))) (wf-tp/rect W2X W2Y)))
+      (wf-tp/tsel (pev (P0: (tlookup G2 (var N) (rect T2 T2U))) (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) ))
+      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (P1: (tlookup G2 (var N) (rect T2A T2UA))) (wf-tp/rect _ W1X W1Y)))
+      (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) (pev (P2: (tlookup G2 (var N) (rect T2B T2UB))) (wf-tp/rect _ W2X W2Y)))
       (SBT5: sub-tp G1 T1 G3 T3)
       
       <- eq-refl N Q
@@ -634,8 +629,6 @@ good-bounds: wf-tp G (rect T TU) -> sub-tp G T G TU -> type.
 
       <- eq-high S1 A1 (A1': sub-tp G1 T1 G2 T2)
       <- eq-low  S4 A2 (A2': sub-tp G2 T2U G3 T3)
-
-      <- good-bounds (wf-tp/rect WU W) AB
 
       <- sub-tp-trans-aux W A1' AB SBT3
       <- sub-tp-trans-aux WU SBT3 A2' SBT5.
