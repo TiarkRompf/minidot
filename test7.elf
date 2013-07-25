@@ -62,7 +62,6 @@ eq-refl: {N:nat} eq N N -> type.
 %total {A} (eq-refl A _).
 
 
-
 sub-eq: eq A1 A2 -> eq C1 C2 -> add A1 B1 C1 -> add A2 B2 C2 -> eq B1 B2 -> type.
 %mode sub-eq +E1 +E2 +A1 +A2 -E3.
 
@@ -72,6 +71,18 @@ sub-eq: eq A1 A2 -> eq C1 C2 -> add A1 B1 C1 -> add A2 B2 C2 -> eq B1 B2 -> type
 
 %worlds () (sub-eq _ _ _ _ _).
 %total {A} (sub-eq A _ _ _ _).
+
+add-inc: add A B C -> add A (s B) (s C) -> type.
+%mode add-inc +E1 -E2.
+
+- : add-inc add/z add/z.
+- : add-inc (add/s A1) (add/s A2)
+  <- add-inc A1 A2.
+
+%worlds () (add-inc _ _).
+%total {A} (add-inc A _).
+
+
 
 
 
