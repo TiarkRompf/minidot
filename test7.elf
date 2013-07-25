@@ -313,8 +313,9 @@ extend-wf-lkpz: tlookup-zero G (var N) T -> {Z: tpe} tlookup-zero (tcons Z G) (v
 
 size-inc: tsize G (var N) -> {Z: tpe} tsize (tcons Z G) (var (s N)) -> type.
 %mode size-inc +A +B -D.
+- : size-inc tf/n T (tf/c tf/n).
+- : size-inc (tf/c S) T (tf/c S') <- size-inc S _ S'.
 %worlds () (size-inc _ _ _).
-%trustme
 %total A (size-inc A _ _).
 
 
