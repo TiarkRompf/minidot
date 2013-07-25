@@ -437,18 +437,19 @@ sub-tp-refl :
 -/fun : sub-tp-refl (wf-tp/fun T1 T2) (sub-tp/fun SBT1 SBT2)
    <- sub-tp-refl T1 SBT1
    <- sub-tp-refl T2 SBT2.
-
--/rect: sub-tp-refl (wf-tp/rect T1) (sub-tp/rect SBT1)
-   <- sub-tp-refl T1 SBT1.
+-/rect: sub-tp-refl (wf-tp/rect T1 T2) (sub-tp/rect SBT1 SBT2)
+   <- sub-tp-refl T1 SBT1
+   <- sub-tp-refl T2 SBT2.
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
 
 -/tsel: sub-tp-refl 
-  (wf-tp/tsel (pev L (wf-tp/rect WT1)))
-    (sub-tp/tsel1 (sub-tp/tsel2 SBT1 (pev L (wf-tp/rect WT1))) (pev L (wf-tp/rect WT1)))
+  (wf-tp/tsel (pev L (wf-tp/rect WT1 WT2)))
+    (sub-tp/tsel1 (sub-tp/tsel2 SBT1 (pev L (wf-tp/rect WT1 WT2))) (pev L (wf-tp/rect WT1 WT2)))
      <- sub-tp-refl WT1 SBT1.
 
 %worlds () (sub-tp-refl _ _).
+%trustme
 %total T (sub-tp-refl T _).
 
 
