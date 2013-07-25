@@ -267,18 +267,19 @@ sub-tp/fun  : sub-tp G1 (arrow T1 T2) G2 (arrow T3 T4)
               <- sub-tp G2 T3 G1 T1
               <- sub-tp G1 T2 G2 T4.
 
-sub-tp/rect : sub-tp G1 (rect T1) G2 (rect T2)
-              <- sub-tp G1 T1 G2 T2.
+sub-tp/rect : sub-tp G1 (rect T1 T2) G2 (rect T3 T4)
+              <- sub-tp G2 T3 G1 T1
+              <- sub-tp G1 T2 G2 T4.
 
 sub-tp/recv : sub-tp G1 (recv T1) G2 (recv T2)
               <- sub-tp G1 T1 G2 T2.
 
 sub-tp/tsel1 : sub-tp G1 (tsel E1) G2 T2
-              <- path-eval G1 E1 (rect T1)
-              <- sub-tp G1 T1 G2 T2.
+              <- path-eval G1 E1 (rect T1 T1U)
+              <- sub-tp G1 T1U G2 T2.
 
 sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2)
-              <- path-eval G2 E2 (rect T2)
+              <- path-eval G2 E2 (rect T2 T2U)
               <- sub-tp G1 T1 G2 T2.
 
               % <- sub-tp G1 P1 T1 G2 E2T2.
