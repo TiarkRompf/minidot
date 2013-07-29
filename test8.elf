@@ -310,6 +310,11 @@ wf-tp/tsel : wf-tp G1 (tsel E1)
               <- path-eval G1 E1 (rect T1 T1U).
 
 
+subeq-tp : tenv -> tpe -> tenv -> tpe -> type.
+
+subeq-tp/eq  : subeq-tp G T G T <- wf-tp G T.
+subeq-tp/sub : subeq-tp G1 T1 G2 T2 <- sub-tp G1 T1 G2 T2.
+
 
 % Extending environments preserves lookup
 
@@ -457,6 +462,20 @@ sub-tp-refl :
 %worlds () (sub-tp-refl _ _).
 %trustme
 %total T (sub-tp-refl T _).
+
+subeq-tp-refl : 
+  %% Input
+  wf-tp G T ->
+  %% Output
+  subeq-tp G T G T ->
+  type.
+%mode subeq-tp-refl +WT -SBT.
+
+-/eq  : subeq-tp-refl W (subeq-tp/eq W).
+
+%worlds () (subeq-tp-refl _ _).
+%trustme
+%total T (subeq-tp-refl T _).
 
 
 
@@ -713,6 +732,25 @@ sub-tp-trans :
 
 %worlds () (sub-tp-trans _ _ _).
 %total {A} (sub-tp-trans A _ _).
+
+
+subeq-tp-trans :
+  %% Inputs
+  subeq-tp G1 T1 G2 T2 ->
+  subeq-tp G2 T2 G3 T3 ->
+  %% Output
+  subeq-tp G1 T1 G3 T3 ->
+  type.
+%mode subeq-tp-trans +SBT1 +SBT2 -SBT3.
+
+- : subeq-tp-trans (subeq-tp/eq W1) (subeq-tp/eq W2) (subeq-tp/eq W1).
+- : subeq-tp-trans (subeq-tp/eq W1) (subeq-tp/sub S2) (subeq-tp/sub S2).
+- : subeq-tp-trans (subeq-tp/sub S1) (subeq-tp/eq W2) (subeq-tp/sub S1).
+- : subeq-tp-trans (subeq-tp/sub S1) (subeq-tp/sub S2) (subeq-tp/sub S3) 
+      <- sub-tp-trans S1 S2 S3.
+
+%worlds () (subeq-tp-trans _ _ _).
+%total {A} (subeq-tp-trans A _ _).
 
 
 
