@@ -481,7 +481,6 @@ sub-tp-refl :
      <- sub-tp-refl WT1 SBT1.
 
 %worlds () (sub-tp-refl _ _).
-%trustme
 %total T (sub-tp-refl T _).
 
 }%
@@ -498,7 +497,6 @@ subeq-tp-refl :
 -/eq  : subeq-tp-refl W (subeq-tp/eq W).
 
 %worlds () (subeq-tp-refl _ _).
-%trustme
 %total T (subeq-tp-refl T _).
 
 
