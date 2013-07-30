@@ -1231,8 +1231,10 @@ subeq-tp-inv-recv: subeq-tp G1 (recv T1) G2 (recv T2)
   -> type. 
 %mode subeq-tp-inv-recv +LTE1 -LTE2.
 
+- : subeq-tp-inv-recv (subeq-tp/eq (wf-tp/recv W)) (subeq-tp/eq W).
+- : subeq-tp-inv-recv (subeq-tp/sub (sub-tp/recv S)) (subeq-tp/sub S).
+
 %worlds () (subeq-tp-inv-recv _ _).
-%trustme
 %total A (subeq-tp-inv-recv A _).
 
 subeq-tp-inv-fun: subeq-tp G1 (arrow T1 T2) G2 (arrow T3 T4) 
