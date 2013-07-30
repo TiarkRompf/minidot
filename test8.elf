@@ -1122,24 +1122,24 @@ invert-wf-fun :
 invert-wf-rec-aux :
   %% Input
   wf-val (clos R R2 H) G1 T ->
-  sub-tp G1 T G2 (recv T2) ->
+  subeq-tp G1 T G2 (recv T2) ->
   %% Output
   wf-val R2 G T4 ->
-  sub-tp G (recv T4) G2 (recv T2) ->
+  subeq-tp G (recv T4) G2 (recv T2) ->
   type.
 %mode invert-wf-rec-aux +WFE1 +SBT -WFE3 -SBT1.
 
 -     :  invert-wf-rec-aux ((wfv/r TV):(wf-val (clos R R2 H) _ _)) SB0
             TV SB
            <- extract-wf3 TV W 
-           <- sub-tp-refl (wf-tp/recv W) SB1
-           <- sub-tp-trans SB1 SB0 SB.
+           <- subeq-tp-refl (wf-tp/recv W) SB1
+           <- subeq-tp-trans SB1 SB0 SB.
 
 
  -     : invert-wf-rec-aux (wfv/sub (SB1: sub-tp G1 TI G T) (TS: wf-val _ G1 TI)) 
-                (SB0: sub-tp G T G2 (recv T2)) TV SB
-            <- sub-tp-trans SB1 SB0 (SB1X: sub-tp G1 TI G2 (recv T2))
-            <- invert-wf-rec-aux TS SB1X TV (SB: sub-tp _ (recv T4) G2 (recv T2)).
+                (SB0: subeq-tp G T G2 (recv T2)) TV SB
+            <- subeq-tp-trans (subeq-tp/sub SB1) SB0 (SB1X: subeq-tp G1 TI G2 (recv T2))
+            <- invert-wf-rec-aux TS SB1X TV (SB: subeq-tp _ (recv T4) G2 (recv T2)).
 
 
 %worlds () (invert-wf-rec-aux _ _ _ _).
@@ -1151,13 +1151,13 @@ invert-wf-rec :
   wf-val (clos R R2 H) G1 (recv T) ->
   %% Output
   wf-val R2 G T4 ->
-  sub-tp G (recv T4) G1 (recv T) ->
+  subeq-tp G (recv T4) G1 (recv T) ->
   type.
 %mode invert-wf-rec +WFE1 -WFE3 -SBT1.
 
 -     :  invert-wf-rec A B C 
             <- extract-wf3 A W
-            <- sub-tp-refl W SB
+            <- subeq-tp-refl W SB
             <- invert-wf-rec-aux A SB B C.
 
 %worlds () (invert-wf-rec _ _ _).
@@ -1224,15 +1224,24 @@ lookup-safe: wf-env H G -> tlookup G (var N) T -> vlookup H (var N) V -> wf-val 
 %total A (lookup-safe A _ _ _).
 
 
-subeq-tp-fun: subeq-tp G1 (arrow T1 T2) G2 (arrow T3 T4) 
+subeq-tp-inv-recv: subeq-tp G1 (recv T1) G2 (recv T2) 
+  -> subeq-tp G1 T1 G2 T2
+  -> type. 
+%mode subeq-tp-inv-recv +LTE1 -LTE2.
+
+%worlds () (subeq-tp-inv-recv _ _).
+%trustme
+%total A (subeq-tp-inv-recv A _).
+
+subeq-tp-inv-fun: subeq-tp G1 (arrow T1 T2) G2 (arrow T3 T4) 
   -> subeq-tp G2 T3 G1 T1 
   -> subeq-tp G1 T2 G2 T4
   -> type. 
-%mode subeq-tp-fun +LTE1 -LTE2 -LTE3.
+%mode subeq-tp-inv-fun +LTE1 -LTE2 -LTE3.
 
-%worlds () (subeq-tp-fun _ _ _).
+%worlds () (subeq-tp-inv-fun _ _ _).
 %trustme
-%total A (subeq-tp-fun A _ _).
+%total A (subeq-tp-inv-fun A _ _).
 
 
 %{
@@ -1271,8 +1280,9 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
 -      : eval-safe ZT WE (e/sel EVX) WV3
           <- invert-sel ZT TS ST
           <- eval-safe TS WE EVX WVX
-          <- invert-wf-rec WVX WV1 (sub-tp/recv ST1)
-          <- wfv-widen (subeq-tp/sub ST1) WV1 WV2
+          <- invert-wf-rec WVX WV1 STR
+          <- subeq-tp-inv-recv STR ST1
+          <- wfv-widen ST1 WV1 WV2
           <- wfv-widen ST WV2 WV3.
 
 
@@ -1309,7 +1319,7 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
               (WE1: wf-env HC0 GC0)
               STF
 
-          <- subeq-tp-fun 
+          <- subeq-tp-inv-fun 
               (STF: subeq-tp GC0 (arrow T3 T4) G0 (arrow T1 T2))
               (STA: subeq-tp G0 T1 GC0 T3)
               (STR: subeq-tp GC0 T4 G0 T2)
