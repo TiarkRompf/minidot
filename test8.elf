@@ -431,6 +431,14 @@ extend-sub-tp2: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp G1 T1 (tcons Z G2) T2 -> t
 
 %%% TODO: subeq-tp/eq only supports G1 T1 G1 T1, but we need G1 T1 (tcons Z G1) T1 here
 
+extend-subeq-tp1: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp (tcons Z G1) T1 G2 T2 -> type.
+%mode extend-subeq-tp1 +A +B -C.
+% - : extend-subeq-tp1 (subeq-tp/eq W) Z (subeq-tp/eq W') <- extend-wf-tp W _ W'.
+- : extend-subeq-tp1 (subeq-tp/sub S) Z (subeq-tp/sub S') <- extend-sub-tp1 S _ S'.
+%worlds () (extend-subeq-tp1 _ _ _).
+%trustme
+%total A (extend-subeq-tp1 A _ _).
+
 extend-subeq-tp2: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T2 -> type.
 %mode extend-subeq-tp2 +A +B -C.
 % - : extend-subeq-tp2 (subeq-tp/eq W) Z (subeq-tp/eq W') <- extend-wf-tp W _ W'.
@@ -1218,6 +1226,15 @@ lookup-safe: wf-env H G -> tlookup G (var N) T -> vlookup H (var N) V -> wf-val 
 %total A (lookup-safe A _ _ _).
 
 
+subeq-tp-fun: subeq-tp G1 (arrow T1 T2) G2 (arrow T3 T4) 
+  -> subeq-tp G2 T3 G1 T1 
+  -> subeq-tp G1 T2 G2 T4
+  -> type. 
+%mode subeq-tp-fun +LTE1 -LTE2 -LTE3.
+
+%worlds () (subeq-tp-fun _ _ _).
+%trustme
+%total A (subeq-tp-fun A _ _).
 
 
 %{
@@ -1269,7 +1286,7 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
               (EVX: eval-exp H0 EXP2 V2) 
               (EVF: eval-exp H0 EXP1 (clos R R2 HC0))
             )
-            (wfv/sub ST (wfv/sub STR1 (Z: wf-val V3 (tcons T3 GC0) T4)))
+            Z2 % (wfv/sub ST (wfv/sub STR1 (Z: wf-val V3 (tcons T3 GC0) T4)))
 
           <- invert-app ZT
               (TF: type-exp G0 EXP1 (arrow T1 T2))
@@ -1292,18 +1309,25 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
               ZF 
               (TR : type-exp (tcons T3 GC0) R T4)
               (WE1: wf-env HC0 GC0)
-              ((sub-tp/fun 
-                    (STR: sub-tp GC0 T4 G0 T2) 
-                    (STA: sub-tp G0 T1 GC0 T3)): 
-                sub-tp GC0 (arrow T3 T4) G0 (arrow T1 T2))
+              STF
+
+          <- subeq-tp-fun 
+              (STF: subeq-tp GC0 (arrow T3 T4) G0 (arrow T1 T2))
+              (STA: subeq-tp G0 T1 GC0 T3)
+              (STR: subeq-tp GC0 T4 G0 T2)
+
+          <- wfv-widen STA WVX WVX3
 
           <- eval-safe                 % eval F(X)
               (TR: type-exp (tcons T3 GC0) R T4)
-              (wfe/c WE1 (wfv/sub STA WVX))
+              (wfe/c WE1 WVX3)
               (EV3: eval-exp (vcons V2 HC0) R V3) 
               (Z: wf-val V3 (tcons T3 GC0) T4)
 
-          <- extend-sub-tp1 STR _ (STR1: sub-tp (tcons T3 GC0) T4 G0 T2).
+          <- extend-subeq-tp1 STR _ (STR1: subeq-tp (tcons T3 GC0) T4 G0 T2)
+
+          <- wfv-widen STR1 (Z: wf-val V3 (tcons T3 GC0) T4) Z1
+          <- wfv-widen (subeq-tp/sub ST) Z1 Z2.
 
 
 
