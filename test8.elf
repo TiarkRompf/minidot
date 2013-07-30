@@ -460,22 +460,19 @@ extend-sub-tp2: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp G1 T1 (tcons Z G2) T2 -> t
 
 
 
-%%% TODO: subeq-tp/eq only supports G1 T1 G1 T1, but we need G1 T1 (tcons Z G1) T1 here
 
 extend-subeq-tp1: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp (tcons Z G1) T1 G2 T2 -> type.
 %mode extend-subeq-tp1 +A +B -C.
-% - : extend-subeq-tp1 (subeq-tp/eq W) Z (subeq-tp/eq W') <- extend-wf-tp W _ W'.
+- : extend-subeq-tp1 (subeq-tp/eq SX1 SX2 W) Z (subeq-tp/eq SX1 (sub-env/ext SX2) W).
 - : extend-subeq-tp1 (subeq-tp/sub S) Z (subeq-tp/sub S') <- extend-sub-tp1 S _ S'.
 %worlds () (extend-subeq-tp1 _ _ _).
-%trustme
 %total A (extend-subeq-tp1 A _ _).
 
 extend-subeq-tp2: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T2 -> type.
 %mode extend-subeq-tp2 +A +B -C.
-% - : extend-subeq-tp2 (subeq-tp/eq W) Z (subeq-tp/eq W') <- extend-wf-tp W _ W'.
+- : extend-subeq-tp2 (subeq-tp/eq SX1 SX2 W) Z (subeq-tp/eq (sub-env/ext SX1) SX2 W).
 - : extend-subeq-tp2 (subeq-tp/sub S) Z (subeq-tp/sub S') <- extend-sub-tp2 S _ S'.
 %worlds () (extend-subeq-tp2 _ _ _).
-%trustme
 %total A (extend-subeq-tp2 A _ _).
 
 
@@ -804,7 +801,7 @@ subeq-tp-trans :
       <- sub-tp-trans S1 S2 S3.
 
 %worlds () (subeq-tp-trans _ _ _).
-%trustme
+% %trustme
 %total {A} (subeq-tp-trans A _ _).
 
 
