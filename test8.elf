@@ -1243,8 +1243,10 @@ subeq-tp-inv-fun: subeq-tp G1 (arrow T1 T2) G2 (arrow T3 T4)
   -> type. 
 %mode subeq-tp-inv-fun +LTE1 -LTE2 -LTE3.
 
+- : subeq-tp-inv-fun (subeq-tp/eq (wf-tp/fun W1 W2)) (subeq-tp/eq W2) (subeq-tp/eq W1).
+- : subeq-tp-inv-fun (subeq-tp/sub (sub-tp/fun S1 S2)) (subeq-tp/sub S2) (subeq-tp/sub S1).
+
 %worlds () (subeq-tp-inv-fun _ _ _).
-%trustme
 %total A (subeq-tp-inv-fun A _ _).
 
 
