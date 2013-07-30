@@ -491,6 +491,16 @@ extend-sub-tp2: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp G1 T1 (tcons Z G2) T2 -> t
 
 
 
+restrict-sub-tp2: sub-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} sub-tp G1 T1 (tcons Z G2) T2 -> type.
+%mode restrict-sub-tp2 -A +Y +B +C.
+%worlds () (restrict-sub-tp2 _ _ _ _).
+%trustme
+%total A (restrict-sub-tp2 _ _ _ A).
+
+
+
+
+
 
 extend-subeq-tp1: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp (tcons Z G1) T1 G2 T2 -> type.
 %mode extend-subeq-tp1 +A +B -C.
@@ -506,6 +516,19 @@ extend-subeq-tp2: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T
 %worlds () (extend-subeq-tp2 _ _ _).
 %total A (extend-subeq-tp2 A _ _).
 
+
+restrict-subeq-tp2: subeq-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T2 -> type.
+%mode restrict-subeq-tp2 -A +Y +B +C.
+%worlds () (restrict-subeq-tp2 _ _ _ _).
+%trustme
+%total A (restrict-subeq-tp2 _ _ _ A).
+
+
+extend-wf-tp-mult: wf-tp G1 T1 -> sub-env G1 G2 -> wf-tp G2 T1 -> type.
+%mode extend-wf-tp-mult +A +B -C.
+%worlds () (extend-wf-tp-mult _ _ _).
+%trustme
+%total A (extend-wf-tp-mult A _ _).
 
 
 extend-sub-tp1-mult: sub-tp G1 T1 G2 T2 -> sub-env G1 G3 -> sub-tp G3 T1 G2 T2 -> type.
@@ -983,12 +1006,50 @@ extract-wf3: wf-val V G T1 -> wf-tp G T1 -> type.
 
 
 
+restrict-wfv: wf-val X3 X2 X1 -> wf-tp X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
+%mode restrict-wfv -A +X +B +C.
+
+-     : restrict-wfv (wfv/sub ST WV) WT T (wfv/sub ST1 WV) 
+            <- restrict-sub-tp2 ST WT T ST1.
+-     : restrict-wfv (wfv/f ST WF TE WE) WF T (wfv/f ST1 WF1 TE WE)
+            <- restrict-subeq-tp2 ST WF T ST1.
+-     : restrict-wfv (wfv/r WV) (wf-tp/recv WT) T (wfv/r WV1)
+            <- restrict-wfv WV WT T WV1.
+-     : restrict-wfv (wfv/t WT) WT T (wfv/t W1).
+
+%worlds () (restrict-wfv _ _ _ _).
+%total A (restrict-wfv _ _ _ A).
+
+
+extend-wfv: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
+%mode extend-wfv +A +B -C.
+
+-     : extend-wfv (wfv/sub ST WV) T (wfv/sub ST1 WV) 
+            <- extend-sub-tp2 ST T ST1.
+-     : extend-wfv (wfv/f ST WF TE WE) T (wfv/f ST1 WF1 TE WE)
+            <- extend-wf-tp WF T WF1
+            <- extend-subeq-tp2 ST T ST1.
+-     : extend-wfv (wfv/r WV) T (wfv/r WV1)
+            <- extend-wfv WV T WV1.
+-     : extend-wfv (wfv/t W) T (wfv/t W1)
+            <- extend-wf-tp W T W1.
+
+%worlds () (extend-wfv _ _ _).
+%total A (extend-wfv A _ _).
+
+
 wfv-narrow-env: wf-tp G0 T1 -> sub-env G0 G1 -> wf-val V G1 T1 -> wf-val V G0 T1 -> type.
 %mode wfv-narrow-env +A +B +C -D.
 
+- : wfv-narrow-env W sub-env/refl WV WV.
+- : wfv-narrow-env (W: wf-tp G0 T1) (sub-env/ext (S: sub-env G0 G1)) 
+                        (WV: wf-val V (tcons Z G1) T1) (WV2: wf-val V G0 T1)
+      <- extend-wf-tp-mult W S W1
+      <- restrict-wfv (WV1: wf-val V G1 T1) W1 _ WV
+      <- wfv-narrow-env W S WV1 WV2.
+
 %worlds () (wfv-narrow-env _ _ _ _).
-%trustme
-%total A (wfv-narrow-env A _ _ _).
+%total A (wfv-narrow-env _ A _ _).
 
 
 wfv-widen-env: sub-env G1 G2 -> wf-val V G1 T1 -> wf-val V G2 T1 -> type.
@@ -1008,6 +1069,7 @@ wfv-widen: subeq-tp G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
 
 %worlds () (wfv-widen _ _ _).
 %total A (wfv-widen A _ _).
+
 
 
 %{ ------- suptyping inversion: type-exp ----- }%
@@ -1270,26 +1332,6 @@ invert-wf-rec :
 
 
 %{ ------- type preservation ----- }%
-
-
-
-extend-wfv: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
-%mode extend-wfv +A +B -C.
-
--     : extend-wfv (wfv/sub ST WV) T (wfv/sub ST1 WV1) 
-            <- extend-wfv WV T WV1
-            <- extend-sub-tp12 ST T ST1.
--     : extend-wfv (wfv/f ST WF TE WE) T (wfv/f ST1 WF1 TE WE)
-            <- extend-wf-tp WF T WF1
-            <- extend-subeq-tp2 ST T ST1.
--     : extend-wfv (wfv/r WV) T (wfv/r WV1)
-            <- extend-wfv WV T WV1.
--     : extend-wfv (wfv/t W) T (wfv/t W1)
-            <- extend-wf-tp W T W1.
-
-%worlds () (extend-wfv _ _ _).
-%total A (extend-wfv A _ _).
-
 
 
 
