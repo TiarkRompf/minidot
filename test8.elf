@@ -887,16 +887,16 @@ invert-var :
   type-exp G (var N) T ->
   %% Output
   tlookup G (var N) T1 ->
-  sub-tp G T1 G T ->
+  subeq-tp G T1 G T ->
   type.
 %mode invert-var +WFE1 -WFE2 -SBT1.
 
 -     : invert-var (t/var W L) L SB 
             % <- extract-wf2 (t/var L) W
-            <- sub-tp-refl W SB.
+            <- subeq-tp-refl W SB.
 -     : invert-var (t/sub SB1 TS) L SB2 
             <- invert-var TS L SB 
-            <- sub-tp-trans SB SB1 SB2.
+            <- subeq-tp-trans SB (subeq-tp/sub SB1) SB2.
 
 %worlds () (invert-var _ _ _).
 %total WFE (invert-var WFE _ _). 
@@ -1203,6 +1203,15 @@ eval-op-safe : type-op OP T1 T2 T3 -> eval-op OP V1 V2 V3 -> wf-val V3 T3 -> typ
 }%
 
 
+wfv-widen: subeq-tp G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
+%mode wfv-widen +LTE1 +LTE2 -LTE3.
+
+- : wfv-widen (subeq-tp/eq _) W W.
+- : wfv-widen (subeq-tp/sub S) W (wfv/sub S W).
+
+%worlds () (wfv-widen _ _ _).
+%total A (wfv-widen A _ _).
+
 
 eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> type.
 %mode eval-safe +A +B +C -D.
@@ -1211,9 +1220,10 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
 % -      : eval-safe (t/prim T _ _) _ (e/prim V _ _) WF
 %           <- eval-op-safe T V WF.
 
- -      : eval-safe ZT E (e/var L2) (wfv/sub ST V)
+ -      : eval-safe ZT E (e/var L2) V2
           <- invert-var ZT L ST
-          <- lookup-safe E L L2 V.
+          <- lookup-safe E L L2 V
+          <- wfv-widen ST V V2.
 
  -      : eval-safe (ZT: type-exp G _ _) E (e/fun EX) W
           <- invert-fun ZT TS TSV WF WX CST
