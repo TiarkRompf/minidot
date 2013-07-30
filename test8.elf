@@ -936,16 +936,16 @@ invert-app :
   %% Output
   type-exp G E1 (arrow T1 T2) ->
   type-exp G E2 T1 ->
-  sub-tp G T2 G T -> 
+  subeq-tp G T2 G T -> 
   type.
 %mode invert-app +WFE1 -WFE2 -WFE3 -SBT.
 
 -     : invert-app (t/app TS1 TS) TS TS1 SB 
             <- extract-wf2 (t/app TS1 TS) W 
-            <- sub-tp-refl W SB.
+            <- subeq-tp-refl W SB.
 -     : invert-app (t/sub SB1 TS) L L2 SB2 
             <- invert-app TS L L2 SB 
-            <- sub-tp-trans SB SB1 SB2.
+            <- subeq-tp-trans SB (subeq-tp/sub SB1) SB2.
 
 %worlds () (invert-app _ _ _ _).
 %total WFE (invert-app WFE _ _ _).
@@ -1291,7 +1291,7 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
           <- invert-app ZT
               (TF: type-exp G0 EXP1 (arrow T1 T2))
               (TX: type-exp G0 EXP2 T1)
-              (ST: sub-tp _ T2 _ T2')
+              (ST: subeq-tp _ T2 _ T2')
 
           <- eval-safe          % eval X
               (TX: type-exp _ _ T1)
@@ -1327,7 +1327,7 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
           <- extend-subeq-tp1 STR _ (STR1: subeq-tp (tcons T3 GC0) T4 G0 T2)
 
           <- wfv-widen STR1 (Z: wf-val V3 (tcons T3 GC0) T4) Z1
-          <- wfv-widen (subeq-tp/sub ST) Z1 Z2.
+          <- wfv-widen ST Z1 Z2.
 
 
 
