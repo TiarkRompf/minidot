@@ -1002,6 +1002,17 @@ cases-subeq-trans: subeq-tp-cases
 
 % we could even strengthen it slightly: tcons in output not strictly necessary
 
+subeq-tp-recv: subeq-tp G1 T1 G2 T2 -> subeq-tp G1 (recv T1) G2 (recv T2) -> type.
+%mode subeq-tp-recv +C -S.
+
+- : subeq-tp-recv (subeq-tp/eq W) (subeq-tp/eq (wf-tp/recv W)).
+- : subeq-tp-recv (subeq-tp/sub S) (subeq-tp/sub (sub-tp/recv S)).
+
+%worlds () (subeq-tp-recv _ _).
+%total WFE (subeq-tp-recv WFE _). 
+
+
+
 invert-fun :
   %% Input
   type-exp G (fun R R2 TX1 TX2) T ->
@@ -1019,15 +1030,16 @@ invert-fun :
 %mode invert-fun +WFE1 -WFE2 -WFE3 -WFE4 -WFE5 -SBT1.
 
 -     : invert-fun (t/fun WF WX TSV TS) TS TSV WF WX (case-f SB) 
-           <- sub-tp-refl WF SB.
+           <- subeq-tp-refl WF SB.
 -     : invert-fun (t/rect WF WX TSV TS) TS TSV WF WX (case-t SB) 
-           <- sub-tp-refl WX SB.
--     : invert-fun (t/recv WF WX TSV TS) TS TSV WF WX (case-r (sub-tp/recv SB))
+           <- subeq-tp-refl WX SB.
+-     : invert-fun (t/recv WF WX TSV TS) TS TSV WF WX (case-r SBR)
            <- extract-wf2 TSV W
-           <- sub-tp-refl W SB.
+           <- subeq-tp-refl W SB
+           <- subeq-tp-recv SB SBR.
 -     : invert-fun (t/sub SB1 TS) TSV L WF WX SB2 
            <- invert-fun TS TSV L WF WX SB 
-           <- cases-sub-trans SB SB1 SB2.
+           <- cases-subeq-trans SB (subeq-tp/sub SB1) SB2.
 
 %worlds () (invert-fun _ _ _ _ _ _).
 %total WFE (invert-fun WFE _ _ _ _ _). 
