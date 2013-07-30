@@ -928,16 +928,16 @@ invert-sel :
   type-exp G (sel E1) T ->
   %% Output
   type-exp G E1 (recv T1) ->
-  sub-tp G T1 G T -> 
+  subeq-tp G T1 G T -> 
   type.
 %mode invert-sel +WFE1 -WFE3 -SBT.
 
 -     : invert-sel (t/sel TS) TS SB 
             <- extract-wf2 (t/sel TS) W 
-            <- sub-tp-refl W SB.
+            <- subeq-tp-refl W SB.
 -     : invert-sel (t/sub SB1 TS) L2 SB2 
             <- invert-sel TS L2 SB 
-            <- sub-tp-trans SB SB1 SB2.
+            <- subeq-tp-trans SB (subeq-tp/sub SB1) SB2.
 
 %worlds () (invert-sel _ _ _).
 %total WFE (invert-sel WFE _ _).
@@ -1231,10 +1231,12 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
           <- sub-tp-refl WF ST
           <- cases-wfv CST (wfv/f ST WF TS E) (wfv/r WV) (wfv/t WX) W.
 
--      : eval-safe ZT WE (e/sel EVX) (wfv/sub ST (wfv/sub ST1 WV1))
+-      : eval-safe ZT WE (e/sel EVX) WV3
           <- invert-sel ZT TS ST
           <- eval-safe TS WE EVX WVX
-          <- invert-wf-rec WVX WV1 (sub-tp/recv ST1).
+          <- invert-wf-rec WVX WV1 (sub-tp/recv ST1)
+          <- wfv-widen (subeq-tp/sub ST1) WV1 WV2
+          <- wfv-widen ST WV2 WV3.
 
 
 -      : eval-safe 
