@@ -448,7 +448,9 @@ extend-subeq-tp2: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T
 %total A (extend-subeq-tp2 A _ _).
 
 
+%{
 
+%% XXX Subtyping is not reflexive if we have type bounds!
 
 %% Subtyping is reflexive
 
@@ -482,6 +484,9 @@ sub-tp-refl :
 %trustme
 %total T (sub-tp-refl T _).
 
+}%
+
+
 subeq-tp-refl : 
   %% Input
   wf-tp G T ->
@@ -495,7 +500,6 @@ subeq-tp-refl :
 %worlds () (subeq-tp-refl _ _).
 %trustme
 %total T (subeq-tp-refl T _).
-
 
 
 extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
