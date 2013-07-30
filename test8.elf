@@ -878,6 +878,15 @@ extract-wf3: wf-val V G T1 -> wf-tp G T1 -> type.
 %total WFE (extract-wf3 WFE _).
 
 
+wfv-widen: subeq-tp G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
+%mode wfv-widen +LTE1 +LTE2 -LTE3.
+
+- : wfv-widen (subeq-tp/eq _) W W.
+- : wfv-widen (subeq-tp/sub S) W (wfv/sub S W).
+
+%worlds () (wfv-widen _ _ _).
+%total A (wfv-widen A _ _).
+
 
 %{ ------- suptyping inversion: type-exp ----- }%
 
@@ -946,14 +955,14 @@ invert-sel :
 
 % no intersection/union types yet, encode
 
-sub-tp-cases: tenv -> tpe -> tenv -> tpe  ->  
+subeq-tp-cases: tenv -> tpe -> tenv -> tpe  ->  
         tenv -> tpe -> tenv -> tpe  ->  
         tenv -> tpe -> tenv -> tpe  ->  type.
-case-f : sub-tp G1 T1 G2 T2 -> sub-tp-cases G1 T1 G2 T2 _ _ _ _ _ _ _ _.
-case-r : sub-tp G1 T1 G2 T2 -> sub-tp-cases _ _ _ _ G1 T1 G2 T2 _ _ _ _.
-case-t : sub-tp G1 T1 G2 T2 -> sub-tp-cases _ _ _ _ _ _ _ _ G1 T1 G2 T2.
+case-f : subeq-tp G1 T1 G2 T2 -> subeq-tp-cases G1 T1 G2 T2 _ _ _ _ _ _ _ _.
+case-r : subeq-tp G1 T1 G2 T2 -> subeq-tp-cases _ _ _ _ G1 T1 G2 T2 _ _ _ _.
+case-t : subeq-tp G1 T1 G2 T2 -> subeq-tp-cases _ _ _ _ _ _ _ _ G1 T1 G2 T2.
 
-cases-wfv: sub-tp-cases 
+cases-wfv: subeq-tp-cases 
     G1A T0 G2 T 
     G1B T1 G2 T
     G1C T2 G2 T
@@ -964,31 +973,31 @@ cases-wfv: sub-tp-cases
     -> type.
 %mode cases-wfv +C +W1 +W2 +W3 -W.
 
-- : cases-wfv (case-f ST) WF WR WT (wfv/sub ST WF).
-- : cases-wfv (case-r ST) WF WR WT (wfv/sub ST WR).
-- : cases-wfv (case-t ST) WF WR WT (wfv/sub ST WT).
+- : cases-wfv (case-f ST) WF WR WT WF1 <- wfv-widen ST WF WF1.
+- : cases-wfv (case-r ST) WF WR WT WR1 <- wfv-widen ST WR WR1.
+- : cases-wfv (case-t ST) WF WR WT WT1 <- wfv-widen ST WT WT1.
 
 %worlds () (cases-wfv _ _ _ _ _).
 %total WFE (cases-wfv WFE _ _ _ _). 
 
-cases-sub-trans: sub-tp-cases 
+cases-subeq-trans: subeq-tp-cases 
     G1A T0 G2 T 
     G1B T1 G2 T
     G1C T2 G2 T
-    -> sub-tp G2 T G3 TU
-    -> sub-tp-cases
+    -> subeq-tp G2 T G3 TU
+    -> subeq-tp-cases
     G1A T0 G3 TU 
     G1B T1 G3 TU
     G1C T2 G3 TU
     -> type.
-%mode cases-sub-trans +C +W1 -S.
+%mode cases-subeq-trans +C +W1 -S.
 
-- : cases-sub-trans (case-f S1) S2 (case-f S3) <- sub-tp-trans S1 S2 S3.
-- : cases-sub-trans (case-r S1) S2 (case-r S3) <- sub-tp-trans S1 S2 S3.
-- : cases-sub-trans (case-t S1) S2 (case-t S3) <- sub-tp-trans S1 S2 S3.
+- : cases-subeq-trans (case-f S1) S2 (case-f S3) <- subeq-tp-trans S1 S2 S3.
+- : cases-subeq-trans (case-r S1) S2 (case-r S3) <- subeq-tp-trans S1 S2 S3.
+- : cases-subeq-trans (case-t S1) S2 (case-t S3) <- subeq-tp-trans S1 S2 S3.
 
-%worlds () (cases-sub-trans _ _ _).
-%total WFE (cases-sub-trans WFE _ _). 
+%worlds () (cases-subeq-trans _ _ _).
+%total WFE (cases-subeq-trans WFE _ _). 
 
 
 % we could even strengthen it slightly: tcons in output not strictly necessary
@@ -1001,7 +1010,7 @@ invert-fun :
   type-exp G R2 T1 ->
   wf-tp G (arrow T3 T4) ->
   wf-tp G (rect TX1 TX2) ->
-  sub-tp-cases 
+  subeq-tp-cases 
     G (arrow T3 T4) G T 
     G (recv T1) G T
     G (rect TX1 TX2) G T
@@ -1201,16 +1210,6 @@ eval-op-safe : type-op OP T1 T2 T3 -> eval-op OP V1 V2 V3 -> wf-val V3 T3 -> typ
 %worlds () (eval-op-safe _ _ _).
 %total A (eval-op-safe A _ _). % induction on first arg
 }%
-
-
-wfv-widen: subeq-tp G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
-%mode wfv-widen +LTE1 +LTE2 -LTE3.
-
-- : wfv-widen (subeq-tp/eq _) W W.
-- : wfv-widen (subeq-tp/sub S) W (wfv/sub S W).
-
-%worlds () (wfv-widen _ _ _).
-%total A (wfv-widen A _ _).
 
 
 eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> type.
