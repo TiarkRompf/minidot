@@ -982,14 +982,31 @@ extract-wf3: wf-val V G T1 -> wf-tp G T1 -> type.
 %total WFE (extract-wf3 WFE _).
 
 
+
+wfv-narrow-env: wf-tp G0 T1 -> sub-env G0 G1 -> wf-val V G1 T1 -> wf-val V G0 T1 -> type.
+%mode wfv-narrow-env +A +B +C -D.
+
+%worlds () (wfv-narrow-env _ _ _ _).
+%trustme
+%total A (wfv-narrow-env A _ _ _).
+
+
+wfv-widen-env: sub-env G1 G2 -> wf-val V G1 T1 -> wf-val V G2 T1 -> type.
+%mode wfv-widen-env +LTE1 +LTE2 -LTE3.
+%worlds () (wfv-widen-env _ _ _).
+%trustme
+%total A (wfv-widen-env A _ _).
+
+
 wfv-widen: subeq-tp G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
 %mode wfv-widen +LTE1 +LTE2 -LTE3.
 
-- : wfv-widen (subeq-tp/eq SX1 SX2 _) W W.
+- : wfv-widen (subeq-tp/eq SX2 SX1 W) WV1 WV2 
+      <- wfv-narrow-env W SX1 WV1 WV0 
+      <- wfv-widen-env SX2 WV0 WV2.
 - : wfv-widen (subeq-tp/sub S) W (wfv/sub S W).
 
 %worlds () (wfv-widen _ _ _).
-%trustme
 %total A (wfv-widen A _ _).
 
 
