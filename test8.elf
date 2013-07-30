@@ -1085,8 +1085,6 @@ invert-wf-fun-aux :
 
 -     :  invert-wf-fun-aux ((wfv/f SB1 WF TS WE):(wf-val (clos R R2 H) _ _)) SB0
              TS WE SB
-            % <- extract-wf3 ((wfv/f WF TS WE):(wf-val (clos R R2 H) _ _)) W 
-            % <- sub-tp-refl WF SB1
             <- subeq-tp-trans SB1 SB0 SB.
 
 
