@@ -332,6 +332,37 @@ sub-env-trans: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
 %trustme
 %total A (sub-env-trans A _ _).
 
+sub-env-transi: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
+%mode sub-env-transi +A -B +C.
+
+%worlds () (sub-env-transi _ _ _).
+%trustme
+%total A (sub-env-transi A _ _).
+
+
+%% not quite sure about this one ...
+
+sub-env-dia: sub-env G1 GT -> sub-env G2 GT -> sub-env G0 G1 -> sub-env G0 G2 -> type.
+%mode sub-env-dia +A +B -C -D.
+
+%worlds () (sub-env-dia _ _ _ _).
+%trustme
+%total A (sub-env-dia A _ _ _).
+
+
+sub-tp-xxx1: sub-tp G1 T1 G2 T2 -> wf-tp G0 T1 -> sub-env G0 G1 -> sub-tp G0 T1 G2 T2 -> type.
+%mode sub-tp-xxx1 +A +B +C -D.
+
+%worlds () (sub-tp-xxx1 _ _ _ _).
+%trustme
+%total A (sub-tp-xxx1 A _ _ _).
+
+sub-tp-xxx2: sub-tp G1 T1 G2 T2 -> wf-tp G0 T2 -> sub-env G0 G2 -> sub-tp G1 T1 G0 T2 -> type.
+%mode sub-tp-xxx2 +A +B +C -D.
+
+%worlds () (sub-tp-xxx2 _ _ _ _).
+%trustme
+%total A (sub-tp-xxx2 A _ _ _).
 
 
 
@@ -476,9 +507,24 @@ extend-subeq-tp2: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T
 %total A (extend-subeq-tp2 A _ _).
 
 
+
+extend-sub-tp1-mult: sub-tp G1 T1 G2 T2 -> sub-env G1 G3 -> sub-tp G3 T1 G2 T2 -> type.
+%mode extend-sub-tp1-mult +A +B -C.
+%worlds () (extend-sub-tp1-mult _ _ _).
+%trustme
+%total A (extend-sub-tp1-mult A _ _).
+
+extend-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> sub-env G2 G3 -> sub-tp G1 T1 G3 T2 -> type.
+%mode extend-sub-tp2-mult +A +B -C.
+%worlds () (extend-sub-tp2-mult _ _ _).
+%trustme
+%total A (extend-sub-tp2-mult A _ _).
+
+
+
 %{
 
-%% XXX Subtyping is not reflexive if we have type bounds!
+%% XXX Subtyping of type selections is not reflexive if we have type bounds!
 
 %% Subtyping is reflexive
 
@@ -783,6 +829,7 @@ sub-tp-trans :
 %total {A} (sub-tp-trans A _ _).
 
 
+
 subeq-tp-trans :
   %% Inputs
   subeq-tp G1 T1 G2 T2 ->
@@ -792,16 +839,21 @@ subeq-tp-trans :
   type.
 %mode subeq-tp-trans +SBT1 +SBT2 -SBT3.
 
-- : subeq-tp-trans (subeq-tp/eq SX1 SX2 W1) (subeq-tp/eq SY1 SY2 W2) (subeq-tp/eq SZ1 SZ2 W1)
-      <- sub-env-trans SX1 SY1 SZ1
-      <- sub-env-trans SX2 SY2 SZ2.
-- : subeq-tp-trans (subeq-tp/eq _ _ W1) (subeq-tp/sub S2) (subeq-tp/sub S2).
-- : subeq-tp-trans (subeq-tp/sub S1) (subeq-tp/eq _ _ W2) (subeq-tp/sub S1).
+- : subeq-tp-trans (subeq-tp/eq SX2 SX1 W1) (subeq-tp/eq SY2 SY1 W2) (subeq-tp/eq SZY1 SX1 W1)
+      <- sub-env-dia SX2 SY1 SZ1 SZ2
+      <- sub-env-trans SZ2 SY2 SZY2
+      <- sub-env-transi SZ1 SZY1 SZY2.
+
+- : subeq-tp-trans (subeq-tp/eq SX2 SX1 W1) (subeq-tp/sub S2) (subeq-tp/sub S4)
+      <- sub-tp-xxx1 S2 W1 SX2 S3
+      <- extend-sub-tp1-mult S3 SX1 S4.
+- : subeq-tp-trans (subeq-tp/sub S1) (subeq-tp/eq SX2 SX1 W2) (subeq-tp/sub S4)
+      <- sub-tp-xxx2 S1 W2 SX1 S3
+      <- extend-sub-tp2-mult S3 SX2 S4.
 - : subeq-tp-trans (subeq-tp/sub S1) (subeq-tp/sub S2) (subeq-tp/sub S3) 
       <- sub-tp-trans S1 S2 S3.
 
 %worlds () (subeq-tp-trans _ _ _).
-% %trustme
 %total {A} (subeq-tp-trans A _ _).
 
 
