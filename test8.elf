@@ -490,6 +490,17 @@ restrict-sub-tp: sub-tp G1 T1 G2 T2
 - : restrict-sub-tp sub-tp/bool W1 W2 T  sub-tp/bool.
 - : restrict-sub-tp (sub-tp/top W1) W1 W2 T (sub-tp/top _). 
 - : restrict-sub-tp (sub-tp/bot W2) W1 W2 T (sub-tp/bot _). 
+- : restrict-sub-tp (sub-tp/fun ST1 ST2) (wf-tp/fun W1 W2) (wf-tp/fun W3 W4) T (sub-tp/fun ST1' ST2')
+      <- restrict-sub-tp ST1 W1 W3 T ST1'
+      <- restrict-sub-tp ST2 W4 W2 T ST2'.
+- : restrict-sub-tp (sub-tp/rect ST1 ST2 B2 B1) (wf-tp/rect SB1 W1 W2) (wf-tp/rect SB2 W3 W4) T (sub-tp/rect ST1' ST2' B2' B1')
+      <- restrict-sub-tp B2 W4 W3 T B2'
+      <- restrict-sub-tp B1 W2 W1 T B1'
+      <- restrict-sub-tp ST1 W1 W3 T ST1'
+      <- restrict-sub-tp ST2 W4 W2 T ST2'.
+- : restrict-sub-tp (sub-tp/recv ST1) (wf-tp/recv W1) (wf-tp/recv W2) T (sub-tp/recv ST1')
+      <- restrict-sub-tp ST1 W1 W2 T ST1'.
+
 
 
 %worlds () (restrict-sub-tp _ _ _ _ _).
