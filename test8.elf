@@ -486,9 +486,15 @@ restrict-sub-tp: sub-tp G1 T1 G2 T2
   -> type.
 %mode restrict-sub-tp -A +B +C +D +E.
 
+- : restrict-sub-tp sub-tp/int W1 W2 T sub-tp/int.
+- : restrict-sub-tp sub-tp/bool W1 W2 T  sub-tp/bool.
+- : restrict-sub-tp (sub-tp/top W1) W1 W2 T (sub-tp/top _). 
+- : restrict-sub-tp (sub-tp/bot W2) W1 W2 T (sub-tp/bot _). 
+
+
 %worlds () (restrict-sub-tp _ _ _ _ _).
-%trustme
-%total A (restrict-sub-tp A _ _ _ _).
+% %trustme
+%total A (restrict-sub-tp _ _ _ _ A).
 
 
 
