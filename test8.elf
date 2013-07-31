@@ -394,11 +394,11 @@ extend-wf-lkp: tlookup G (var N) T -> {Z: tpe} tlookup (tcons Z G) (var N) T -> 
 %total A (extend-wf-lkp A _ _).
 
 
-restrict-wf-lkp: tlookup G (var N) T -> wf-tp G T -> {Z: tpe} tlookup (tcons Z G) (var N) T -> type.
-%mode restrict-wf-lkp -A +W +B +C.
-%worlds () (restrict-wf-lkp _ _ _ _).
-%trustme
-%total A (restrict-wf-lkp _ _ _ A).
+% restrict-wf-lkp: tlookup G (var N) T -> wf-tp G T -> {Z: tpe} tlookup (tcons Z G) (var N) T -> type.
+% %mode restrict-wf-lkp -A +W +B +C.
+% %worlds () (restrict-wf-lkp _ _ _ _).
+% %trustme
+% %total A (restrict-wf-lkp _ _ _ A).
 
 
 
