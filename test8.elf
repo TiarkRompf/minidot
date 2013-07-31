@@ -334,12 +334,7 @@ sub-env-trans: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
 %worlds () (sub-env-trans _ _ _).
 %total A (sub-env-trans _ A _).
 
-sub-env-transi: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
-%mode sub-env-transi +A -B +C.
-
-%worlds () (sub-env-transi _ _ _).
-%trustme
-%total A (sub-env-transi A _ _).
+sub-env-inv: sub-env G1 G2 -> sub-env G3 G1 -> sub-env G2 G3 -> type.
 
 
 %% not quite sure about this one ...
@@ -708,6 +703,51 @@ restrict-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> wf-tp G0 T2 -> sub-env G0 G2 -> sub
 %total A (restrict-sub-tp2-mult A _ _ _).
 
 
+empty-env-sub: {G:tenv} sub-env tnil G -> type.
+%mode empty-env-sub +A -B.
+%worlds () (empty-env-sub _ _).
+%trustme
+%total A (empty-env-sub A _).
+
+
+
+%% Diamond property w.r.t. environment for well formed types
+
+wf-tp-dia: 
+  wf-tp GT T -> wf-tp G1 T -> wf-tp G2 T -> sub-env G1 GT -> sub-env G2 GT ->
+  wf-tp G T -> sub-env G G1 -> sub-env G G2 ->
+  type.
+%mode wf-tp-dia +A +B +C +D +E -F -G -H.
+
+- : wf-tp-dia wf-tp/int (wf-tp/int: (wf-tp G1 _)) (wf-tp/int: (wf-tp G2 _)) _ _ (wf-tp/int: (wf-tp tnil _)) S1 S2 
+      <- empty-env-sub G1 S1 <- empty-env-sub G2 S2.
+- : wf-tp-dia wf-tp/bool (wf-tp/bool: (wf-tp G1 _)) (wf-tp/bool: (wf-tp G2 _)) _ _ (wf-tp/bool: (wf-tp tnil _)) S1 S2 
+      <- empty-env-sub G1 S1 <- empty-env-sub G2 S2.
+- : wf-tp-dia wf-tp/top (wf-tp/top: (wf-tp G1 _)) (wf-tp/top: (wf-tp G2 _)) _ _ (wf-tp/top: (wf-tp tnil _)) S1 S2 
+      <- empty-env-sub G1 S1 <- empty-env-sub G2 S2.
+- : wf-tp-dia wf-tp/bot (wf-tp/bot: (wf-tp G1 _)) (wf-tp/bot: (wf-tp G2 _)) _ _ (wf-tp/bot: (wf-tp tnil _)) S1 S2 
+      <- empty-env-sub G1 S1 <- empty-env-sub G2 S2.
+
+%{
+- : wf-tp-dia (wf-tp/fun W1 W2) T (wf-tp/fun W1' W2') 
+      <- wf-tp-dia W1 _ W1'
+      <- wf-tp-dia W2 _ W2'.
+- : wf-tp-dia (wf-tp/rect ST W1 W2) T (wf-tp/rect ST' W1' W2') 
+      <- extend-sub-tp ST _ ST' _ _
+      <- wf-tp-dia W1 _ W1'
+      <- wf-tp-dia W2 _ W2'.
+- : extend-wf-tp (wf-tp/recv W1) T (wf-tp/recv W1') 
+      <- extend-wf-tp W1 _ W1'.
+- : extend-wf-tp (wf-tp/tsel (pev L W)) T (wf-tp/tsel (pev L' W'))
+      <- extend-wf-lkp L _ L'
+      <- extend-wf-tp W _ W'.
+}%
+
+
+%worlds () (wf-tp-dia _ _ _ _ _ _ _ _).
+%trustme
+%total A (wf-tp-dia A _ _ _ _ _ _ _).
+
 
 
 
@@ -960,10 +1000,11 @@ subeq-tp-trans :
   type.
 %mode subeq-tp-trans +SBT1 +SBT2 -SBT3.
 
-- : subeq-tp-trans (subeq-tp/eq SX2 SX1 W1) (subeq-tp/eq SY2 SY1 W2) (subeq-tp/eq SZY1 SX1 W1)
-      <- sub-env-dia SX2 SY1 SZ1 SZ2
+- : subeq-tp-trans (subeq-tp/eq SX2 SX1 W1) (subeq-tp/eq SY2 SY1 W2) (subeq-tp/eq SZY2 SZX1 W0)
+      <- extend-wf-tp-mult W1 SX2 WT
+      <- wf-tp-dia WT W1 W2 SX2 SY1 W0 SZ1 SZ2
       <- sub-env-trans SZ2 SY2 SZY2
-      <- sub-env-transi SZ1 SZY1 SZY2.
+      <- sub-env-trans SZ1 SX1 SZX1.
 
 - : subeq-tp-trans (subeq-tp/eq SX2 SX1 W1) (subeq-tp/sub S2) (subeq-tp/sub S4)
       <- restrict-sub-tp1-mult S2 W1 SX2 S3
