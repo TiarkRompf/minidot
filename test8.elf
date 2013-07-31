@@ -396,6 +396,14 @@ extend-wf-lkp: tlookup G (var N) T -> {Z: tpe} tlookup (tcons Z G) (var N) T -> 
 % %worlds () (restrict-wf-lkp _ _ _ _).
 % %trustme
 % %total A (restrict-wf-lkp _ _ _ A).
+% 
+% restrict-wf-lkp-mult: tlookup G (var N) T -> wf-tp G T -> sub-env G G1 -> tlookup G1 (var N) T -> type.
+% %mode restrict-wf-lkp-mult -A +W +B +C.
+% %worlds () (restrict-wf-lkp-mult _ _ _ _).
+% %trustme
+% %total A (restrict-wf-lkp-mult _ _ _ A).
+
+
 
 
 
@@ -710,6 +718,13 @@ empty-env-sub: {G:tenv} sub-env tnil G -> type.
 %total A (empty-env-sub A _).
 
 
+foobar-env: wf-tp G1 (tsel (var N)) -> wf-tp G0 (tsel (var N)) -> sub-env G0 G1 -> tsize G1 (var (s N)) -> type.
+%mode foobar-env +A -B -C -D.
+%worlds () (foobar-env _ _ _ _).
+%trustme
+%total A (foobar-env A _ _ _).
+
+
 
 %% Diamond property w.r.t. environment for well formed types
 
@@ -742,48 +757,26 @@ wf-tp-dia:
       <- restrict-sub-tp1-mult ST2  W0B S2' ST20
       <- restrict-sub-tp2-mult ST20 W0A S2' ST0.
 
-%{
-  
-{X1:tenv} {X2:tpe} {X3:tenv} {X4:tenv} {X5:tenv} {WTB:wf-tp X1 X2}
-  {W1B:wf-tp X3 X2} {W2B:wf-tp X4 X2} {S1:sub-env X3 X1} {S2:sub-env X4 X1}
-  {W0B:wf-tp X5 X2} {S1'':sub-env X5 X3} {S2'':sub-env X5 X4} {X6:tpe}
-  {WTA:wf-tp X1 X6} {W1A:wf-tp X3 X6} {W2A:wf-tp X4 X6} {W0A:wf-tp X5 X6}
-  {S1':sub-env X5 X3} {S2':sub-env X5 X4} {STT:sub-tp X1 X2 X1 X6}
-  {ST1:sub-tp X3 X2 X3 X6} 
-
-
-  {ST2:sub-tp X4 X2 X4 X6} {W0B:wf-tp X5 X2} {S2':sub-env X5 X4}
-                          {W0A:wf-tp X5 X6}
-
-  {ST0:sub-tp X5 X2 X5 X6}
-
-
-  wf-tp-dia WTB W1B W2B S1 S2 W0B S1'' S2''
-     -> wf-tp-dia WTA W1A W2A S1 S2 W0A S1' S2'
-     -> wf-tp-dia (wf-tp/rect STT WTA WTB) (wf-tp/rect ST1 W1A W1B)
-           (wf-tp/rect ST2 W2A W2B) S1 S2 (wf-tp/rect ST0 W0A W0B) S1' S2'.  
-
-
-
-}%
-
-
-
+- : wf-tp-dia (wf-tp/tsel (pev LT WT)) (wf-tp/tsel (pev L1 W1)) (wf-tp/tsel (pev L2 W2)) S1 S2 (wf-tp/tsel (pev L0 W0)) S1' S2'
+      <- foobar-env (wf-tp/tsel (pev LT WT)) (wf-tp/tsel (pev L0 W0)) S1X TS.
 
 
 %{
-- : wf-tp-dia (wf-tp/fun W1 W2) T (wf-tp/fun W1' W2') 
-      <- wf-tp-dia W1 _ W1'
-      <- wf-tp-dia W2 _ W2'.
-- : wf-tp-dia (wf-tp/rect ST W1 W2) T (wf-tp/rect ST' W1' W2') 
-      <- extend-sub-tp ST _ ST' _ _
-      <- wf-tp-dia W1 _ W1'
-      <- wf-tp-dia W2 _ W2'.
-- : extend-wf-tp (wf-tp/recv W1) T (wf-tp/recv W1') 
-      <- extend-wf-tp W1 _ W1'.
-- : extend-wf-tp (wf-tp/tsel (pev L W)) T (wf-tp/tsel (pev L' W'))
-      <- extend-wf-lkp L _ L'
-      <- extend-wf-tp W _ W'.
+strategy for T = tsel (var N):
+
+  since T wf in GT,G1,G2, size of GT,G1,G2 >= N+1.
+  pick prefix of length N+1 from GT as G0. 
+  T must be well-formed in G0, since (rect ...) existed before (var N) binding was added.
+  since both G1,G2 are prefixes of GT, and G1,G2 are longer than G0, G0 is also prefix of G1,G2.
+
+- : wf-tp-dia (wf-tp/tsel (pev LT WT)) (wf-tp/tsel (pev L1 W1)) (wf-tp/tsel (pev L2 W2)) S1 S2 (wf-tp/tsel (pev L0 W0)) S1' S2'
+      
+      %% ISSUES: 
+      %%  1) rect types are not unique
+      %%  2) find the 'right' restricted env that still support lookup of sym N -- not ensured by induction
+
+      <- wf-tp-dia WTx W1x W2x S1 S2 W0 S1' S2'
+      <- foobar-env L2 L0.
 }%
 
 
