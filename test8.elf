@@ -1006,6 +1006,9 @@ extract-wf3: wf-val V G T1 -> wf-tp G T1 -> type.
 
 
 
+%{ ------- wfv: extending and restricting the environment / type ----- }%
+
+
 restrict-wfv: wf-val X3 X2 X1 -> wf-tp X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
 %mode restrict-wfv -A +X +B +C.
 
@@ -1054,8 +1057,13 @@ wfv-narrow-env: wf-tp G0 T1 -> sub-env G0 G1 -> wf-val V G1 T1 -> wf-val V G0 T1
 
 wfv-widen-env: sub-env G1 G2 -> wf-val V G1 T1 -> wf-val V G2 T1 -> type.
 %mode wfv-widen-env +LTE1 +LTE2 -LTE3.
+
+- : wfv-widen-env sub-env/refl WV WV.
+- : wfv-widen-env (sub-env/ext S) WV WVX
+      <- wfv-widen-env S WV WV1
+      <- extend-wfv WV1 Z WVX.
+
 %worlds () (wfv-widen-env _ _ _).
-%trustme
 %total A (wfv-widen-env A _ _).
 
 
