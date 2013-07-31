@@ -350,19 +350,6 @@ sub-env-dia: sub-env G1 GT -> sub-env G2 GT -> sub-env G0 G1 -> sub-env G0 G2 ->
 %total A (sub-env-dia A _ _ _).
 
 
-sub-tp-xxx1: sub-tp G1 T1 G2 T2 -> wf-tp G0 T1 -> sub-env G0 G1 -> sub-tp G0 T1 G2 T2 -> type.
-%mode sub-tp-xxx1 +A +B +C -D.
-
-%worlds () (sub-tp-xxx1 _ _ _ _).
-%trustme
-%total A (sub-tp-xxx1 A _ _ _).
-
-sub-tp-xxx2: sub-tp G1 T1 G2 T2 -> wf-tp G0 T2 -> sub-env G0 G2 -> sub-tp G1 T1 G0 T2 -> type.
-%mode sub-tp-xxx2 +A +B +C -D.
-
-%worlds () (sub-tp-xxx2 _ _ _ _).
-%trustme
-%total A (sub-tp-xxx2 A _ _ _).
 
 
 
@@ -542,6 +529,24 @@ extend-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> sub-env G2 G3 -> sub-tp G1 T1 G3 T2 -
 %worlds () (extend-sub-tp2-mult _ _ _).
 %trustme
 %total A (extend-sub-tp2-mult A _ _).
+
+
+restrict-sub-tp1-mult: sub-tp G1 T1 G2 T2 -> wf-tp G0 T1 -> sub-env G0 G1 -> sub-tp G0 T1 G2 T2 -> type.
+%mode restrict-sub-tp1-mult +A +B +C -D.
+
+%worlds () (restrict-sub-tp1-mult _ _ _ _).
+%trustme
+%total A (restrict-sub-tp1-mult A _ _ _).
+
+restrict-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> wf-tp G0 T2 -> sub-env G0 G2 -> sub-tp G1 T1 G0 T2 -> type.
+%mode restrict-sub-tp2-mult +A +B +C -D.
+
+%worlds () (restrict-sub-tp2-mult _ _ _ _).
+%trustme
+%total A (restrict-sub-tp2-mult A _ _ _).
+
+
+
 
 
 
@@ -868,10 +873,10 @@ subeq-tp-trans :
       <- sub-env-transi SZ1 SZY1 SZY2.
 
 - : subeq-tp-trans (subeq-tp/eq SX2 SX1 W1) (subeq-tp/sub S2) (subeq-tp/sub S4)
-      <- sub-tp-xxx1 S2 W1 SX2 S3
+      <- restrict-sub-tp1-mult S2 W1 SX2 S3
       <- extend-sub-tp1-mult S3 SX1 S4.
 - : subeq-tp-trans (subeq-tp/sub S1) (subeq-tp/eq SX2 SX1 W2) (subeq-tp/sub S4)
-      <- sub-tp-xxx2 S1 W2 SX1 S3
+      <- restrict-sub-tp2-mult S1 W2 SX1 S3
       <- extend-sub-tp2-mult S3 SX2 S4.
 - : subeq-tp-trans (subeq-tp/sub S1) (subeq-tp/sub S2) (subeq-tp/sub S3) 
       <- sub-tp-trans S1 S2 S3.
