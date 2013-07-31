@@ -478,6 +478,22 @@ extend-sub-tp2: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp G1 T1 (tcons Z G2) T2 -> t
 
 
 
+
+restrict-sub-tp: sub-tp G1 T1 G2 T2 
+  -> wf-tp G1 T1
+  -> wf-tp G2 T2
+  -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2) T2 
+  -> type.
+%mode restrict-sub-tp -A +B +C +D +E.
+
+%worlds () (restrict-sub-tp _ _ _ _ _).
+%trustme
+%total A (restrict-sub-tp A _ _ _ _).
+
+
+
+
+
 restrict-sub-tp2: sub-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} sub-tp G1 T1 (tcons Z G2) T2 -> type.
 %mode restrict-sub-tp2 -A +Y +B +C.
 %worlds () (restrict-sub-tp2 _ _ _ _).
