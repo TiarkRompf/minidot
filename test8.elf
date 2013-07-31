@@ -594,106 +594,44 @@ restrict-sub-tp: sub-tp G1 T1 G2 T2
 
 - : restrict-sub-tp 
     (sub-tp/tsel1 ST (pev L1 (wf-tp/rect SF WU WS)))
-
-    ((wf-tp/tsel (pev L1 (wf-tp/rect SF WU WS))): (wf-tp _ (tsel (var N))))
-
+    ((wf-tp/tsel     (pev L1 (wf-tp/rect SF WU WS))): (wf-tp _ (tsel (var N))))
     W2 T 
+    (sub-tp/tsel1 ST' (pev L' (wf-tp/rect SF' WU' WS')))
 
-    ((sub-tp/tsel1 ST' (pev L' (wf-tp/rect SF' WU' WS')))  ) % : (sub-tp _ (tsel (var N)) _ _))
+      % first extend L1, then prove it's equal to L',
+      % establishing that we can use L1 in the result
 
-      <- extend-wf-lkp L1 T L1'
+      <- extend-wf-lkp L1 T L1'  
 
       <- eq-refl N E
+      <- lookup-eq L1' L' E _ SA
+      <- lookup-eq L' L1' E _ SB  % need the other direction to convert back
 
-      <- lookup-eq L1' L' E S1 S2
-      <- lookup-eq L' L1' E S1R S2R
-
-      % <- restrict-wf-lkp L WX T L'
-
-      <- eq-wf S2 WU WUQ
-
+      <- eq-wf SA WU WUQ
       <- restrict-sub-tp STQ WUQ W2 T ST'
+      <- eq-low SB STQ ST.
 
-      <- eq-low S2R STQ ST
-      .
+- : restrict-sub-tp 
+    (sub-tp/tsel2 ST (pev L1 (wf-tp/rect SF WU WS)))
+    W1
+    ((wf-tp/tsel     (pev L1 (wf-tp/rect SF WU WS))): (wf-tp _ (tsel (var N))))
+    T 
+    (sub-tp/tsel2 ST' (pev L' (wf-tp/rect SF' WU' WS')))
 
+      % first extend L1, then prove it's equal to L',
+      % establishing that we can use L1 in the result
 
+      <- extend-wf-lkp L1 T L1'  
 
-%{
+      <- eq-refl N E
+      <- lookup-eq L1' L' E SA _
+      <- lookup-eq L' L1' E SB _  % need the other direction to convert back
 
-      {STQ:sub-tp X3 X1 X4 X5} 
-      {ST:sub-tp X3 X2 X4 X5} 
-
-      {WUQ:wf-tp X3 X1}
-      {W2:wf-tp X4 X5} {T:tpe} 
-      {ST':sub-tp (tcons T X3) X1 (tcons T X4) X5}
-      {X6:tpe} 
-      {S2:same X6 X1} 
-      {WU:wf-tp X3 X6} 
-      {N:nat}
-      {L1:tlookup X3 (var N) (rect X1 X6)} {X7:tpe}
-      {L1':tlookup (tcons T X3) (var N) (rect X1 X6)}
-      {L':tlookup (tcons T X3) (var N) (rect X2 X1)} 
-      {E:eq N N}
-      {P:path-eval X3 (var N) (rect X7 X1)} {SF:sub-tp X3 X1 X3 X6}
-
-      {WS:wf-tp X3 X1} 
-      {SF':sub-tp (tcons T X3) X2 (tcons T X3) X1}
-      
-      {WU':wf-tp (tcons T X3) X1} 
-      {WS':wf-tp (tcons T X3) X2}
-      eq-low S1 STQ ST -> restrict-sub-tp STQ WUQ W2 T ST' -> eq-wf S2 WU WUQ
-
-
-
-
-
-
-
-   {X1:tenv} {X2:tpe} {X3:tenv} {X4:tpe} 
-
-
-      {ST:sub-tp X1 X2 X3 X4}
-
-      {WS:wf-tp X1 X6}
-      {WU:wf-tp X1 X2} 
-
-      {WSQ:wf-tp X1 X7}
-      {WUQ:wf-tp X1 X2} 
-
-      {WS':wf-tp (tcons T X1) X6}
-      {WU':wf-tp (tcons T X1) X2}
-
-      {W2:wf-tp X3 X4} 
-
-      {SFQ:sub-tp X1 X7 X1 X2}
-
-      {SF:sub-tp X1 X6 X1 X2}
-      {SF':sub-tp (tcons T X1) X6 (tcons T X1) X2} 
-      {ST':sub-tp (tcons T X1) X2 (tcons T X3) X4} {X5:nat} {X6:tpe}
-
-      {T:tpe} {X7:tpe}
-      
-      {L:tlookup X1 (var X5) (rect X6 X2)} 
-      {L1:tlookup X1 (var X5) (rect X6 X2)}
-      {L':tlookup (tcons T X1) (var X5) (rect X6 X2)}
-
-      {LQ:tlookup X1 (var X5) (rect X7 X2)}
-      
-      
-      
-      restrict-sub-tp ST WU W2 T ST'
-         -> restrict-wf-lkp L (wf-tp/rect SF WU WS) T L'
-         -> restrict-sub-tp (sub-tp/tsel1 ST (pev LQ (wf-tp/rect SFQ WUQ WSQ)))
-               (wf-tp/tsel (pev L1 (wf-tp/rect SF WU WS))) W2 T
-               (sub-tp/tsel1 ST' (pev L' (wf-tp/rect SF' WU' WS'))).
-
-
-
-}%
+      <- eq-wf SA WS WSQ
+      <- restrict-sub-tp STQ W1 WSQ T ST'
+      <- eq-high SB STQ ST.
 
 %worlds () (restrict-sub-tp _ _ _ _ _).
-% %trustme
 %total A (restrict-sub-tp _ _ _ _ A).
 
 
