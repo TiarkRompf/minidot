@@ -1,0 +1,1621 @@
+% echo "set unsafe true 
+% loadFile test9.elf" |/Volumes/Twelf\ for\ OS\ X\ \(Intel\)/Twelf/bin/twelf-server
+
+% STLC: big step preservation
+% - add store
+% + add subtyping
+% + add env to subtyping
+% + add type members
+% + add value members
+% + add type bounds
+% + add reflexivity for type selections
+% - add self types
+
+%%% not quite up to date with rules8.txt %%%
+
+
+%{ ------- arithmetic ----- }%
+
+nat: type.
+z: nat.
+s: nat -> nat.
+
+add : nat -> nat -> nat -> type.
+add/z : add z N N.
+add/s : add (s N1) N2 (s N3)
+   <- add N1 N2 N3.
+
+%mode add +N1 +N2 -N3.
+
+lte : nat -> nat -> type.
+lte/z : lte z N.
+lte/s : lte (s N1) (s N2) 
+   <- lte N1 N2.
+
+%mode lte +N1 +N2.
+
+
+eq : nat -> nat -> type.
+eq/z : eq z z.
+eq/s : eq (s N1) (s N2) 
+   <- eq N1 N2.
+
+% %mode eq +N1 +N2.
+
+
+ne : nat -> nat -> type.
+ne/z : ne z (s N).
+ne/z : ne (s N) z.
+ne/s : ne (s N1) (s N2) 
+   <- ne N1 N2.
+
+%mode ne +N1 +N2.
+
+
+%query 0 * lte (s (s z)) (s z).
+%query 1 * lte (s (s z)) (s (s z)).
+
+eq-refl: {N:nat} eq N N -> type.
+%mode eq-refl +N -E1.
+
+- : eq-refl z eq/z.
+- : eq-refl (s N) (eq/s E) <- eq-refl N E.
+
+%worlds () (eq-refl _ _).
+%total {A} (eq-refl A _).
+
+
+sub-eq: eq A1 A2 -> eq C1 C2 -> add A1 B1 C1 -> add A2 B2 C2 -> eq B1 B2 -> type.
+%mode sub-eq +E1 +E2 +A1 +A2 -E3.
+
+- : sub-eq eq/z E add/z add/z E.
+- : sub-eq (eq/s E1) (eq/s E2) (add/s A1) (add/s A2) E3
+  <- sub-eq E1 E2 A1 A2 E3.
+
+%worlds () (sub-eq _ _ _ _ _).
+%total {A} (sub-eq A _ _ _ _).
+
+add-inc: add A B C -> add A (s B) (s C) -> type.
+%mode add-inc +E1 -E2.
+
+- : add-inc add/z add/z.
+- : add-inc (add/s A1) (add/s A2)
+  <- add-inc A1 A2.
+
+%worlds () (add-inc _ _).
+%total {A} (add-inc A _).
+
+
+
+
+
+%{ ------- language ----- }%
+
+% sorts
+cst: type.
+op: type.
+
+exp: type.
+
+tpe: type.
+val: type.
+
+venv: type.
+tenv: type.
+
+
+% constants
+ncst: nat -> cst.
+fcst: cst.
+tcst: cst.
+
+% operators
+plus  : op.
+equal : op.
+
+% expressions
+cste: cst -> exp.
+var: nat -> exp.
+prm: op -> exp -> exp -> exp.
+fun: exp -> exp -> tpe -> tpe -> exp.
+app: exp -> exp -> exp.
+sel: exp -> exp.
+
+
+% types
+int  : tpe.
+bool : tpe.
+top  : tpe.
+bot  : tpe.
+arrow: tpe -> tpe -> tpe.  % { A => B }
+rect : tpe -> tpe -> tpe.  % { type A..B }
+recv : tpe -> tpe.         % { val get: A }
+tsel : exp -> tpe.         % x.A
+% tand : tpe -> tpe -> tpe.  % A && B
+
+% values
+cstv: cst -> val.
+clos: exp -> val -> venv -> val.
+
+% environments
+vnil  : venv.
+vcons : val -> venv -> venv.
+tnil  : tenv.
+tcons : tpe -> tenv -> tenv.
+
+
+
+
+
+
+%{ ------- eval-op / primitives ----- }%
+
+% typeof
+
+typeof     : cst -> tpe -> type.
+-/n        : typeof (ncst N) int.
+-/t        : typeof (tcst) bool.
+-/f        : typeof (fcst) bool.
+
+%mode typeof *A *B.
+
+% eval-op
+
+eval-cst-op : op -> cst -> cst -> cst -> type.
+e/plus     : eval-cst-op plus (ncst N1) (ncst N2) (ncst N3) <- add N1 N2 N3.
+e/eqt      : eval-cst-op equal (ncst N1) (ncst N2) (tcst) <- lte N1 N2 <- lte N2 N1.
+e/eqf      : eval-cst-op equal (ncst N1) (ncst N2) (fcst) <- ne N1 N2.
+
+eval-op    : op -> val -> val -> val -> type.
+ev/v       : eval-op O (cstv C1) (cstv C2) (cstv C3) <- eval-cst-op O C1 C2 C3.
+
+%mode eval-cst-op +O +V1 +V2 -V3.
+%mode eval-op +O +V1 +V2 -V3.
+
+
+% type-op
+
+type-op    : op -> tpe -> tpe -> tpe -> type.
+t/plus     : type-op plus int int int.
+t/eq       : type-op equal int int bool.
+
+
+% eval-cst-op/safe
+
+eval-cst-op-safe : type-op OP T1 T2 T3 -> eval-cst-op OP C1 C2 C3 -> typeof C3 T3 -> type.
+%mode eval-cst-op-safe +LTE1 +LTE2 -LTE3.
+
+-plus   : eval-cst-op-safe t/plus (e/plus _) -/n.
+-eqt    : eval-cst-op-safe t/eq (e/eqt _ _) -/t.
+-eqf    : eval-cst-op-safe t/eq (e/eqf _) -/f.
+
+%worlds () (eval-cst-op-safe _ _ _).
+%total LTE1 (eval-cst-op-safe LTE1 _ _). % induction on first arg (not used here)
+
+
+
+%{ ------- environments ----- }%
+
+vlookup-zero : venv -> exp -> val -> type.
+vl/hit  : vlookup-zero (vcons V G) (var z) V.
+vl/miss : vlookup-zero (vcons _ G) (var (s N)) V <- vlookup-zero G (var N) V.
+
+vbind : venv -> val -> exp -> venv -> type.
+vl/n  : vbind vnil V (var z) (vcons V vnil).
+vl/c  : vbind (vcons V G1) V2 (var (s N)) (vcons V2 (vcons V G1)) <- vbind G1 V (var N) _.
+
+vsize : venv -> exp -> type.
+vf/n   : vsize vnil (var z).
+vf/c   : vsize (vcons _ G) (var (s N)) <- vsize G (var N).
+
+vlookup: venv -> exp -> val -> type.
+vl  : vlookup G (var N) V
+  <- vsize G (var S)
+  <- add N M S
+  <- vlookup-zero G (var M) V.
+
+
+tlookup-zero: tenv -> exp -> tpe -> type.
+tl/hit  : tlookup-zero (tcons V G) (var z) V.
+tl/miss : tlookup-zero (tcons _ G) (var (s N)) V <- tlookup-zero G (var N) V.
+
+tbind : tenv -> tpe -> exp -> tenv -> type.
+tl/n  : tbind tnil V (var z) (tcons V tnil).
+tl/c  : tbind (tcons V G1) V2 (var (s N)) (tcons V2 (tcons V G1)) <- tbind G1 V (var N) _.
+
+tsize : tenv -> exp -> type.
+tf/n   : tsize tnil (var z).
+tf/c   : tsize (tcons _ G) (var (s N)) <- tsize G (var N).
+
+tlookup: tenv -> exp -> tpe -> type.
+tl  : tlookup G (var N) V
+  <- tsize G (var S)
+  <- add N M S
+  <- tlookup-zero G (var M) V.
+
+% tlookupa: tenv -> exp -> tpe -> type.
+% tl/hita  : tlookupa (tcons V G) (var N) V <- tfresh G (var N).
+% tl/missa : tlookupa (tcons _ G) (var N) V <- tlookupa G (var N) V.
+
+
+
+
+
+
+
+
+%{ ------- subtyping ------ }%
+
+path-eval: tenv -> exp -> tpe -> type.
+% %mode path-eval +G +E -T.
+
+wf-tp : tenv -> tpe -> type.
+
+sub-tp : tenv -> tpe -> tenv -> tpe -> type.
+
+pev  : path-eval G E T <- wf-tp G T <- tlookup G E T.
+
+% pev/sub  : path-eval G E T2 <- path-eval G E T1 <- sub-tp G T1 G T2.
+
+sub-env: tenv -> tenv -> type.
+
+
+
+sub-tp/int  : sub-tp G1 int G2 int.
+sub-tp/bool : sub-tp G1 bool G2 bool.
+sub-tp/top  : sub-tp G1 T G2 top <- wf-tp G1 T.
+sub-tp/bot  : sub-tp G1 bot G2 T <- wf-tp G2 T.
+
+sub-tp/fun  : sub-tp G1 (arrow T1 T2) G2 (arrow T3 T4)
+              <- sub-tp G2 T3 G1 T1
+              <- sub-tp G1 T2 G2 T4.
+
+sub-tp/rect : sub-tp G1 (rect T1 T2) G2 (rect T3 T4)
+              <- sub-tp G1 T1 G1 T2
+              <- sub-tp G2 T3 G2 T4
+
+              <- sub-tp G2 T3 G1 T1
+              <- sub-tp G1 T2 G2 T4.
+
+sub-tp/recv : sub-tp G1 (recv T1) G2 (recv T2)
+              <- sub-tp G1 T1 G2 T2.
+
+sub-tp/tsel1 : sub-tp G1 (tsel E1) G2 T2
+              <- path-eval G1 E1 (rect T1 T1U)
+              <- sub-tp G1 T1U G2 T2.
+
+sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2)
+              <- path-eval G2 E2 (rect T2 T2U)
+              <- sub-tp G1 T1 G2 T2.
+
+              % <- sub-tp G1 P1 T1 G2 E2T2.
+
+sub-tp/tselx : sub-tp G1 (tsel E) G2 (tsel E)
+               <- sub-env G G2
+               <- sub-env G G1
+               <- path-eval G E (rect T2 T2U).
+
+
+
+
+wf-tp/int  : wf-tp G1 int.
+wf-tp/bool : wf-tp G1 bool.
+wf-tp/top  : wf-tp G1 top.
+wf-tp/bot  : wf-tp G1 bot.
+
+wf-tp/fun  : wf-tp G1 (arrow T1 T2)
+              <- wf-tp G1 T1
+              <- wf-tp G1 T2.
+
+wf-tp/rect : wf-tp G1 (rect T1 T2)
+              <- wf-tp G1 T1
+              <- wf-tp G1 T2
+              <- sub-tp G1 T1 G1 T2. % T1 <: T2 required for transitivity
+
+wf-tp/recv : wf-tp G1 (recv T1)
+              <- wf-tp G1 T1.
+
+wf-tp/tsel : wf-tp G1 (tsel E1)
+              <- path-eval G1 E1 (rect T1 T1U).
+
+
+
+% Partial ordering on environments
+
+
+sub-env/refl: sub-env G G.
+sub-env/ext: sub-env G1 (tcons Z G2) <- sub-env G1 G2.
+
+
+sub-env-trans: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
+%mode sub-env-trans +A +B -C.
+
+- : sub-env-trans S sub-env/refl S.
+- : sub-env-trans S1 (sub-env/ext S2) (sub-env/ext S3) <- sub-env-trans S1 S2 S3.
+
+%worlds () (sub-env-trans _ _ _).
+%total A (sub-env-trans _ A _).
+
+sub-env-inv: sub-env G1 G2 -> sub-env G3 G1 -> sub-env G2 G3 -> type.
+
+
+%% grrrr
+sub-env-transi: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
+%mode sub-env-transi +A -B +C.
+
+- : sub-env-transi S1 (sub-env/ext S2) (sub-env/ext S3) <- sub-env-transi S1 S2 S3.
+
+%worlds () (sub-env-transi _ _ _).
+%trustme
+%total A (sub-env-transi _ _ A).
+
+
+%% not quite sure about this one ...
+
+sub-env-dia: sub-env G1 GT -> sub-env G2 GT -> sub-env G0 G1 -> sub-env G0 G2 -> type.
+%mode sub-env-dia +A +B -C -D.
+
+%worlds () (sub-env-dia _ _ _ _).
+%trustme
+%total A (sub-env-dia A _ _ _).
+
+
+
+
+
+
+% Subtyping with explicit equality case
+
+subeq-tp : tenv -> tpe -> tenv -> tpe -> type.
+
+subeq-tp/eq  : subeq-tp G1 T G2 T <- wf-tp G T <- sub-env G G1 <- sub-env G G2.
+subeq-tp/sub : subeq-tp G1 T1 G2 T2 <- sub-tp G1 T1 G2 T2.
+
+
+
+
+
+% Extending environments preserves lookup
+
+
+extend-wf-lkpz: tlookup-zero G (var N) T -> {Z: tpe} tlookup-zero (tcons Z G) (var (s N)) T -> type.
+%mode extend-wf-lkpz +A +B -D.
+- : extend-wf-lkpz tl/hit _ (tl/miss tl/hit).
+- : extend-wf-lkpz (tl/miss A) _ (tl/miss B) <- extend-wf-lkpz A _ B.
+%worlds () (extend-wf-lkpz _ _ _).
+%total A (extend-wf-lkpz A _ _).
+
+size-inc: tsize G (var N) -> {Z: tpe} tsize (tcons Z G) (var (s N)) -> type.
+%mode size-inc +A +B -D.
+- : size-inc tf/n T (tf/c tf/n).
+- : size-inc (tf/c S) T (tf/c S') <- size-inc S _ S'.
+%worlds () (size-inc _ _ _).
+%total A (size-inc A _ _).
+
+
+
+extend-wf-lkp: tlookup G (var N) T -> {Z: tpe} tlookup (tcons Z G) (var N) T -> type.
+%mode extend-wf-lkp +A +B -C.
+- : extend-wf-lkp (tl L A S) Z (tl L' A' S')
+      <- size-inc S Z S'
+      <- add-inc A A'
+      <- extend-wf-lkpz L Z L'.
+%worlds () (extend-wf-lkp _ _ _).
+%total A (extend-wf-lkp A _ _).
+
+
+% restrict-wf-lkp: tlookup G (var N) T -> wf-tp G T -> {Z: tpe} tlookup (tcons Z G) (var N) T -> type.
+% %mode restrict-wf-lkp -A +W +B +C.
+% %worlds () (restrict-wf-lkp _ _ _ _).
+% %trustme
+% %total A (restrict-wf-lkp _ _ _ A).
+
+
+
+% Uniqueness of lookup
+
+same: tpe -> tpe -> type.
+ident: same T T.
+
+% same-refl: same T1 T2 -> same T2 T1 -> type
+
+lookup-zero-same: tlookup-zero G2 E T1 -> tlookup-zero G2 E T2 -> same T1 T2 -> type.
+%mode lookup-zero-same +P1 +P2 -SBT.
+
+- : lookup-zero-same tl/hit tl/hit ident.
+- : lookup-zero-same (tl/miss A) (tl/miss B) X <- lookup-zero-same A B X.
+
+%worlds () (lookup-zero-same _ _ _).
+%total {T2} (lookup-zero-same T2 _ _).
+
+
+
+size-eq: tsize G2 (var N1) -> tsize G2 (var N2) -> eq N1 N2 -> type.
+%mode size-eq +P1 +P2 -SBT.
+
+- : size-eq tf/n tf/n eq/z.
+- : size-eq (tf/c A) (tf/c B) (eq/s X) <- size-eq A B X.
+
+%worlds () (size-eq _ _ _).
+%total {T2} (size-eq T2 _ _).
+
+
+
+lookup-zero-eq: tlookup-zero G2 (var N1) (rect T1 T3) -> tlookup-zero G2 (var N2) (rect T2 T4) -> eq N1 N2 
+  -> same T1 T2 -> same T3 T4 -> type.
+%mode lookup-zero-eq +P1 +P2 +E -SBT -SBT2.
+
+- : lookup-zero-eq tl/hit tl/hit eq/z ident ident.
+- : lookup-zero-eq (tl/miss A) (tl/miss B) (eq/s E) X Y <- lookup-zero-eq A B E X Y.
+
+%worlds () (lookup-zero-eq _ _ _ _ _).
+%total {T2} (lookup-zero-eq T2 _ _ _ _).
+
+
+lookup-eq: tlookup G2 (var N1) (rect T1 T3) -> tlookup G2 (var N2) (rect T2 T4) -> eq N1 N2
+  -> same T1 T2 -> same T3 T4 -> type.
+%mode lookup-eq +P1 +P2 +E -SBT -SBT.
+
+- : lookup-eq (tl L1 A1 F1) (tl L2 A2 F2) EN X Y
+        <- size-eq F1 F2 ES 
+        <- sub-eq EN ES A1 A2 EM 
+        <- lookup-zero-eq L1 L2 EM X Y.
+
+%worlds () (lookup-eq _ _ _ _ _).
+%total {T2} (lookup-eq T2 _ _ _ _).
+
+
+
+
+eq-low: same T1 T1' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1' G2 T2 -> type.
+%mode eq-low +P1 +P2 -SBT.
+
+- : eq-low ident S S.
+
+%worlds () (eq-low _ _ _).
+%total {T2} (eq-low T2 _ _).
+
+eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
+%mode eq-high +P1 +P2 -SBT.
+
+- : eq-high ident S S.
+
+%worlds () (eq-high _ _ _).
+%total {T2} (eq-high T2 _ _).
+
+eq-wf: same T1 T1' -> wf-tp G1 T1 -> wf-tp G1 T1' -> type.
+%mode eq-wf +P1 +P2 -SBT.
+
+- : eq-wf ident S S.
+
+%worlds () (eq-wf _ _ _).
+%total {T2} (eq-wf T2 _ _).
+
+
+
+
+
+
+% Extending environments preserves subtyping
+
+extend-wf-tp: wf-tp G1 T1 -> {Z: tpe} wf-tp (tcons Z G1) T1 -> type.
+%mode extend-wf-tp +A +B -C.
+
+extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe} 
+  sub-tp (tcons Z G1) T1 (tcons Z G2) T2 -> 
+  sub-tp (tcons Z G1) T1 G2 T2 -> 
+  sub-tp G1 T1 (tcons Z G2) T2 -> 
+  type.
+%mode extend-sub-tp +A +B -C -D -E.
+
+
+- : extend-wf-tp wf-tp/int T wf-tp/int.
+- : extend-wf-tp wf-tp/bool T wf-tp/bool.
+- : extend-wf-tp wf-tp/top T wf-tp/top.
+- : extend-wf-tp wf-tp/bot T wf-tp/bot.
+- : extend-wf-tp (wf-tp/fun W1 W2) T (wf-tp/fun W1' W2') 
+      <- extend-wf-tp W1 _ W1'
+      <- extend-wf-tp W2 _ W2'.
+- : extend-wf-tp (wf-tp/rect ST W1 W2) T (wf-tp/rect ST' W1' W2') 
+      <- extend-sub-tp ST _ ST' _ _
+      <- extend-wf-tp W1 _ W1'
+      <- extend-wf-tp W2 _ W2'.
+- : extend-wf-tp (wf-tp/recv W1) T (wf-tp/recv W1') 
+      <- extend-wf-tp W1 _ W1'.
+- : extend-wf-tp (wf-tp/tsel (pev L W)) T (wf-tp/tsel (pev L' W'))
+      <- extend-wf-lkp L _ L'
+      <- extend-wf-tp W _ W'.
+
+
+- : extend-sub-tp sub-tp/int T sub-tp/int sub-tp/int sub-tp/int.
+- : extend-sub-tp sub-tp/bool T sub-tp/bool sub-tp/bool sub-tp/bool.
+- : extend-sub-tp (sub-tp/top ST) T (sub-tp/top ST') (sub-tp/top ST') (sub-tp/top ST) 
+      <- extend-wf-tp ST _ ST'.
+- : extend-sub-tp (sub-tp/bot ST) T (sub-tp/bot ST') (sub-tp/bot ST) (sub-tp/bot ST') 
+      <- extend-wf-tp ST _ ST'.
+- : extend-sub-tp (sub-tp/fun ST1 ST2) T (sub-tp/fun ST1' ST2') (sub-tp/fun ST1A ST2B) (sub-tp/fun ST1B ST2A)
+      <- extend-sub-tp ST1 _ ST1' ST1A ST1B
+      <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
+- : extend-sub-tp (sub-tp/rect ST1 ST2 B2 B1) T (sub-tp/rect ST1' ST2' B2' B1') (sub-tp/rect ST1A ST2B B2 B1') (sub-tp/rect ST1B ST2A B2' B1) 
+      <- extend-sub-tp B2 _ B2' _ _
+      <- extend-sub-tp B1 _ B1' _ _
+      <- extend-sub-tp ST1 _ ST1' ST1A ST1B
+      <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
+- : extend-sub-tp (sub-tp/recv ST1) T (sub-tp/recv ST1') (sub-tp/recv ST1A) (sub-tp/recv ST1B) 
+      <- extend-sub-tp ST1 _ ST1' ST1A ST1B.
+- : extend-sub-tp (sub-tp/tsel1 ST (pev L W)) T 
+    (sub-tp/tsel1 ST' (pev L' W')) (sub-tp/tsel1 STA (pev L' W')) (sub-tp/tsel1 STB (pev L W))
+      <- extend-wf-lkp L _ L'
+      <- extend-wf-tp W _ W'
+      <- extend-sub-tp ST _ ST' STA STB.
+- : extend-sub-tp (sub-tp/tsel2 ST (pev L W)) T 
+    (sub-tp/tsel2 ST' (pev L' W')) (sub-tp/tsel2 STA (pev L W)) (sub-tp/tsel2 STB (pev L' W'))
+      <- extend-wf-lkp L _ L'
+      <- extend-wf-tp W _ W'
+      <- extend-sub-tp ST _ ST' STA STB.
+
+- : extend-sub-tp (sub-tp/tselx (pev L W) S1 S2) T 
+    (sub-tp/tselx (pev L W) (sub-env/ext S1) (sub-env/ext S2)) 
+    (sub-tp/tselx (pev L W) (sub-env/ext S1) S2) 
+    (sub-tp/tselx (pev L W) S1 (sub-env/ext S2)).
+
+
+%worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _).
+%total (A B) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _).
+
+
+
+extend-sub-tp12: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2) T2 -> type.
+%mode extend-sub-tp12 +A +B -C.
+- : extend-sub-tp12 ST Z ST' <- extend-sub-tp ST Z ST' _ _.
+%worlds () (extend-sub-tp12 _ _ _).
+%total A (extend-sub-tp12 A _ _).
+
+extend-sub-tp1: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 G2 T2 -> type.
+%mode extend-sub-tp1 +A +B -C.
+- : extend-sub-tp1 ST Z ST' <- extend-sub-tp ST Z _ ST' _.
+%worlds () (extend-sub-tp1 _ _ _).
+%total A (extend-sub-tp1 A _ _).
+
+extend-sub-tp2: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp G1 T1 (tcons Z G2) T2 -> type.
+%mode extend-sub-tp2 +A +B -C.
+- : extend-sub-tp2 ST Z ST' <- extend-sub-tp ST Z _ _ ST'.
+%worlds () (extend-sub-tp2 _ _ _).
+%total A (extend-sub-tp2 A _ _).
+
+
+
+
+restrict-sub-tp: sub-tp G1 T1 G2 T2 
+  -> wf-tp G1 T1
+  -> wf-tp G2 T2
+  -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2) T2 
+  -> type.
+%mode restrict-sub-tp -A +B +C +D +E.
+
+- : restrict-sub-tp sub-tp/int W1 W2 T sub-tp/int.
+- : restrict-sub-tp sub-tp/bool W1 W2 T  sub-tp/bool.
+- : restrict-sub-tp (sub-tp/top W1) W1 W2 T (sub-tp/top _). 
+- : restrict-sub-tp (sub-tp/bot W2) W1 W2 T (sub-tp/bot _). 
+- : restrict-sub-tp (sub-tp/fun ST1 ST2) (wf-tp/fun W1 W2) (wf-tp/fun W3 W4) T (sub-tp/fun ST1' ST2')
+      <- restrict-sub-tp ST1 W1 W3 T ST1'
+      <- restrict-sub-tp ST2 W4 W2 T ST2'.
+- : restrict-sub-tp (sub-tp/rect ST1 ST2 B2 B1) (wf-tp/rect SB1 W1 W2) (wf-tp/rect SB2 W3 W4) T (sub-tp/rect ST1' ST2' B2' B1')
+      <- restrict-sub-tp B2 W4 W3 T B2'
+      <- restrict-sub-tp B1 W2 W1 T B1'
+      <- restrict-sub-tp ST1 W1 W3 T ST1'
+      <- restrict-sub-tp ST2 W4 W2 T ST2'.
+- : restrict-sub-tp (sub-tp/recv ST1) (wf-tp/recv W1) (wf-tp/recv W2) T (sub-tp/recv ST1')
+      <- restrict-sub-tp ST1 W1 W2 T ST1'.
+
+- : restrict-sub-tp 
+    (sub-tp/tsel1 ST (pev L1 (wf-tp/rect SF WU WS)))
+    ((wf-tp/tsel     (pev L1 (wf-tp/rect SF WU WS))): (wf-tp _ (tsel (var N))))
+    W2 T 
+    (sub-tp/tsel1 ST' (pev L' (wf-tp/rect SF' WU' WS')))
+
+      % first extend L1, then prove it's equal to L',
+      % establishing that we can use L1 in the result
+
+      <- extend-wf-lkp L1 T L1'  
+
+      <- eq-refl N E
+      <- lookup-eq L1' L' E _ SA
+      <- lookup-eq L' L1' E _ SB  % need the other direction to convert back
+
+      <- eq-wf SA WU WUQ
+      <- restrict-sub-tp STQ WUQ W2 T ST'
+      <- eq-low SB STQ ST.
+
+- : restrict-sub-tp 
+    (sub-tp/tsel2 ST (pev L1 (wf-tp/rect SF WU WS)))
+    W1
+    ((wf-tp/tsel     (pev L1 (wf-tp/rect SF WU WS))): (wf-tp _ (tsel (var N))))
+    T 
+    (sub-tp/tsel2 ST' (pev L' (wf-tp/rect SF' WU' WS')))
+
+      % first extend L1, then prove it's equal to L',
+      % establishing that we can use L1 in the result
+
+      <- extend-wf-lkp L1 T L1'  
+
+      <- eq-refl N E
+      <- lookup-eq L1' L' E SA _
+      <- lookup-eq L' L1' E SB _  % need the other direction to convert back
+
+      <- eq-wf SA WS WSQ
+      <- restrict-sub-tp STQ W1 WSQ T ST'
+      <- eq-high SB STQ ST.
+
+- : restrict-sub-tp (sub-tp/tselx (pev L (wf-tp/rect SF WU WS)) S1 S2)
+      (wf-tp/tsel (pev L1 (wf-tp/rect SF1 WU1 WS1)))
+      (wf-tp/tsel (pev L2 (wf-tp/rect SF2 WU2 WS2)))
+      T
+      (sub-tp/tselx (pev L' (wf-tp/rect SF' WU' WS')) S1' S2').
+
+%worlds () (restrict-sub-tp _ _ _ _ _).
+%total A (restrict-sub-tp _ _ _ _ A).
+
+
+
+
+
+restrict-sub-tp2: sub-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} sub-tp G1 T1 (tcons Z G2) T2 -> type.
+%mode restrict-sub-tp2 -A +Y +B +C.
+%worlds () (restrict-sub-tp2 _ _ _ _).
+%trustme
+%total A (restrict-sub-tp2 _ _ _ A).
+
+
+
+
+
+
+extend-subeq-tp1: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp (tcons Z G1) T1 G2 T2 -> type.
+%mode extend-subeq-tp1 +A +B -C.
+- : extend-subeq-tp1 (subeq-tp/eq SX1 SX2 W) Z (subeq-tp/eq SX1 (sub-env/ext SX2) W).
+- : extend-subeq-tp1 (subeq-tp/sub S) Z (subeq-tp/sub S') <- extend-sub-tp1 S _ S'.
+%worlds () (extend-subeq-tp1 _ _ _).
+%total A (extend-subeq-tp1 A _ _).
+
+extend-subeq-tp2: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T2 -> type.
+%mode extend-subeq-tp2 +A +B -C.
+- : extend-subeq-tp2 (subeq-tp/eq SX1 SX2 W) Z (subeq-tp/eq (sub-env/ext SX1) SX2 W).
+- : extend-subeq-tp2 (subeq-tp/sub S) Z (subeq-tp/sub S') <- extend-sub-tp2 S _ S'.
+%worlds () (extend-subeq-tp2 _ _ _).
+%total A (extend-subeq-tp2 A _ _).
+
+
+restrict-subeq-tp2: subeq-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T2 -> type.
+%mode restrict-subeq-tp2 -A +Y +B +C.
+%worlds () (restrict-subeq-tp2 _ _ _ _).
+%trustme
+%total A (restrict-subeq-tp2 _ _ _ A).
+
+
+extend-wf-tp-mult: wf-tp G1 T1 -> sub-env G1 G2 -> wf-tp G2 T1 -> type.
+%mode extend-wf-tp-mult +A +B -C.
+%worlds () (extend-wf-tp-mult _ _ _).
+%trustme
+%total A (extend-wf-tp-mult A _ _).
+
+
+extend-sub-tp1-mult: sub-tp G1 T1 G2 T2 -> sub-env G1 G3 -> sub-tp G3 T1 G2 T2 -> type.
+%mode extend-sub-tp1-mult +A +B -C.
+%worlds () (extend-sub-tp1-mult _ _ _).
+%trustme
+%total A (extend-sub-tp1-mult A _ _).
+
+extend-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> sub-env G2 G3 -> sub-tp G1 T1 G3 T2 -> type.
+%mode extend-sub-tp2-mult +A +B -C.
+%worlds () (extend-sub-tp2-mult _ _ _).
+%trustme
+%total A (extend-sub-tp2-mult A _ _).
+
+
+restrict-sub-tp1-mult: sub-tp G1 T1 G2 T2 -> wf-tp G0 T1 -> sub-env G0 G1 -> sub-tp G0 T1 G2 T2 -> type.
+%mode restrict-sub-tp1-mult +A +B +C -D.
+
+%worlds () (restrict-sub-tp1-mult _ _ _ _).
+%trustme
+%total A (restrict-sub-tp1-mult A _ _ _).
+
+restrict-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> wf-tp G0 T2 -> sub-env G0 G2 -> sub-tp G1 T1 G0 T2 -> type.
+%mode restrict-sub-tp2-mult +A +B +C -D.
+
+%worlds () (restrict-sub-tp2-mult _ _ _ _).
+%trustme
+%total A (restrict-sub-tp2-mult A _ _ _).
+
+
+empty-env-sub: {G:tenv} sub-env tnil G -> type.
+
+
+
+
+
+%{
+
+%% XXX Subtyping of type selections is not reflexive if we have type bounds!
+
+%% Subtyping is reflexive
+
+sub-tp-refl : 
+  %% Input
+  wf-tp G T ->
+  %% Output
+  sub-tp G T G T ->
+  type.
+%mode sub-tp-refl +WT -SBT.
+
+-/int : sub-tp-refl wf-tp/int sub-tp/int.
+-/bool: sub-tp-refl wf-tp/bool sub-tp/bool.
+-/bot : sub-tp-refl wf-tp/bot (sub-tp/bot wf-tp/bot).
+-/top : sub-tp-refl wf-tp/top (sub-tp/top wf-tp/top).
+-/fun : sub-tp-refl (wf-tp/fun T1 T2) (sub-tp/fun SBT1 SBT2)
+   <- sub-tp-refl T1 SBT1
+   <- sub-tp-refl T2 SBT2.
+-/rect: sub-tp-refl (wf-tp/rect ST T1 T2) (sub-tp/rect SBT1 SBT2 ST ST)
+   <- sub-tp-refl T1 SBT1
+   <- sub-tp-refl T2 SBT2.
+-/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
+   <- sub-tp-refl T1 SBT1.
+
+-/tsel: sub-tp-refl 
+  (wf-tp/tsel (pev L (wf-tp/rect ST WT1 WT2)))
+    (sub-tp/tsel1 (sub-tp/tsel2 SBT1 (pev L (wf-tp/rect ST WT1 WT2))) (pev L (wf-tp/rect ST WT1 WT2)))
+     <- sub-tp-refl WT1 SBT1.
+
+%worlds () (sub-tp-refl _ _).
+%total T (sub-tp-refl T _).
+
+}%
+
+
+subeq-tp-refl : 
+  %% Input
+  wf-tp G T ->
+  %% Output
+  subeq-tp G T G T ->
+  type.
+%mode subeq-tp-refl +WT -SBT.
+
+-/eq  : subeq-tp-refl W (subeq-tp/eq sub-env/refl sub-env/refl W).
+
+%worlds () (subeq-tp-refl _ _).
+%total T (subeq-tp-refl T _).
+
+
+extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
+%mode extract-wf +SBT1 -SBT2 -SBT3.
+- : extract-wf sub-tp/int wf-tp/int wf-tp/int.
+- : extract-wf sub-tp/bool wf-tp/bool wf-tp/bool.
+- : extract-wf (sub-tp/top W) W wf-tp/top.
+- : extract-wf (sub-tp/bot W) wf-tp/bot W.
+- : extract-wf (sub-tp/fun (ST1:sub-tp G1 T2 G2 T4) (ST2:sub-tp G2 T3 G1 T1)) 
+        (wf-tp/fun W2 W1) (wf-tp/fun W4 W3)
+      <- extract-wf ST1 W2 W4
+      <- extract-wf ST2 W3 W1.
+- : extract-wf (sub-tp/rect ST1 ST2 B2 B1) (wf-tp/rect B1 W2 W1) (wf-tp/rect B2 W4 W3) %% FIXME: T1<:T2 & T3 <: T4
+      <- extract-wf ST1 W2 W4
+      <- extract-wf ST2 W3 W1.
+- : extract-wf (sub-tp/recv ST) (wf-tp/recv W1) (wf-tp/recv W2)
+      <- extract-wf ST W1 W2.
+
+- : extract-wf (sub-tp/tsel1 ST (pev L (wf-tp/rect SB W1 W3))) 
+      (wf-tp/tsel (pev L (wf-tp/rect SB W1 W3))) W2
+      <- extract-wf ST _ W2. % W1 W2
+
+- : extract-wf (sub-tp/tsel2 ST (pev L (wf-tp/rect SB W3 W2))) 
+      W1 (wf-tp/tsel (pev L (wf-tp/rect SB W3 W2)))
+      <- extract-wf ST W1 _. % W1 W2
+
+
+%worlds () (extract-wf _ _ _).
+%total T2 (extract-wf T2 _ _).
+
+
+
+%% Subtyping is transitive
+
+sub-tp-trans-aux :
+  %% Inputs
+%  {G2:tenv}
+%  {T2:tpe}
+  wf-tp G2 T2 ->
+  sub-tp G1 T1 G2 T2 ->
+  sub-tp G2 T2 G3 T3 ->
+  %% Output
+  sub-tp G1 T1 G3 T3 ->
+  type.
+%mode sub-tp-trans-aux +T2 +SBT1 +SBT2 -SBT3.
+
+-/int    : sub-tp-trans-aux wf-tp/int sub-tp/int sub-tp/int sub-tp/int.
+-/bool   : sub-tp-trans-aux wf-tp/bool sub-tp/bool sub-tp/bool sub-tp/bool.
+
+-/top    : sub-tp-trans-aux _ S1 (sub-tp/top _) (sub-tp/top W) <- extract-wf S1 W _.
+-/bot    : sub-tp-trans-aux _ (sub-tp/bot _) S2 (sub-tp/bot W) <- extract-wf S2 _ W.
+
+
+-/fun-fun  : sub-tp-trans-aux
+      (wf-tp/fun T2 T1)
+            (sub-tp/fun SBT2 SBT1)
+            (sub-tp/fun SBT4 SBT3)
+            (sub-tp/fun SBT6 SBT5)  
+      <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
+
+-/rect-rect  : sub-tp-trans-aux
+      (wf-tp/rect SB T2 T1)
+            (sub-tp/rect SBT2 SBT1 B2 B1)
+            (sub-tp/rect SBT4 SBT3 B4 B3)
+            (sub-tp/rect SBT6 SBT5 B4 B1)
+      <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
+
+
+
+
+
+-/recv-recv  : sub-tp-trans-aux
+      (wf-tp/recv T1)
+            (sub-tp/recv SBT1)
+            (sub-tp/recv SBT3)
+            (sub-tp/recv SBT5)  
+      <- sub-tp-trans-aux T1 SBT1 SBT3 SBT5.
+
+-/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
+      W
+      (sub-tp/tsel1 SBT1 P)
+      SBT3
+      (sub-tp/tsel1 SBT5 P)
+      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+
+-/tsel2  : sub-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
+      W
+      SBT1
+      (sub-tp/tsel2 SBT3 P)
+      (sub-tp/tsel2 SBT5 P)
+      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+
+
+%% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
+
+
+-/tsel2-tsel1  : sub-tp-trans-aux  % T1 < p.T2 && p.T2 < T3 --> T1 < T3
+      (wf-tp/tsel (pev (P0: (tlookup G2 (var N) (rect T2 T2U))) (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) ))
+      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (P1: (tlookup G2 (var N) (rect T2A T2UA))) (wf-tp/rect _ W1X W1Y)))
+      (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) (pev (P2: (tlookup G2 (var N) (rect T2B T2UB))) (wf-tp/rect _ W2X W2Y)))
+      (SBT5: sub-tp G1 T1 G3 T3)
+      
+      <- eq-refl N Q
+      <- lookup-eq P1 P0 Q (S1: same T2A T2) (S3: same T2UA T2U)
+      <- lookup-eq P2 P0 Q (S2: same T2B T2) (S4: same T2UB T2U)
+
+      <- eq-high S1 A1 (A1': sub-tp G1 T1 G2 T2)
+      <- eq-low  S4 A2 (A2': sub-tp G2 T2U G3 T3)
+
+      <- sub-tp-trans-aux W A1' AB SBT3
+      <- sub-tp-trans-aux WU SBT3 A2' SBT5.
+
+
+%{
+%% ----- approximate version / use reflexivity internally ---- %%
+
+
+wfff0: tlookup G E (rect T0) -> wf-tp G1 T0 -> tlookup G E (rect T1) -> wf-tp G1 T1 -> type.
+%mode wfff0 +P0 +W +P1 -W1.
+
+- : wfff0 tl/hit W0 tl/hit W0.
+- : wfff0 (tl/miss A) W0 (tl/miss B) W1 <- wfff0 A W0 B W1.
+
+%worlds () (wfff0 _ _ _ _).
+%total {T2} (wfff0 T2 _ _ _).
+%reduces N3 <= N2 (wfff0 _ N2 _ N3).
+
+
+foobarx: wf-tp G T1 -> tlookup G2 E (rect T1) -> tlookup G2 E (rect T2) -> sub-tp G T1 G T2 -> wf-tp G T2 -> type.
+%mode foobarx +W +P1 +P2 -SBT -W2.
+
+- : foobarx W tl/hit tl/hit X W <- sub-tp-refl W X.
+- : foobarx W (tl/miss A) (tl/miss B) X Y <- foobarx W A B X Y.
+
+%worlds () (foobarx _ _ _ _ _).
+%total {T2} (foobarx _ T2 _ _ _).
+
+
+-/tsel2-tsel1  : sub-tp-trans-aux  % T1 < p.T2 && p.T2 < T3 --> T1 < T3
+      (wf-tp/tsel (pev (P0: (tlookup G2 E (rect T2))) (wf-tp/rect (W: wf-tp G2 T2)) ))
+      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (P1: (tlookup G2 E (rect T2A))) (wf-tp/rect W1X)))
+      (sub-tp/tsel1 (A2: sub-tp G2 T2B G3 T3) (pev (P2: (tlookup G2 E (rect T2B))) (wf-tp/rect W2X)))
+      (SBT5: sub-tp G1 T1 G3 T3)
+
+%      <- foobar1 P0 A1 (SBT1: sub-tp G1 T1 G2 T2)   infer T2A < T2 
+
+      <- wfff0 P0 W P1 W1
+      <- foobarx W1 P1 P0 (SBTZ0: (sub-tp G2 T2A G2 T2)) _
+      <- sub-tp-trans-aux W1 A1 SBTZ0 (SBT1: sub-tp G1 T1 G2 T2)
+
+
+%      <- foobar2 P0 A2 (SBT2: sub-tp G2 T2 G3 T3)   infer T2 < T2B 
+
+      <- wfff0 P0 W P2 W2
+      <- foobarx W P0 P2 (SBTZ1: (sub-tp G2 T2 G2 T2B)) _
+      <- sub-tp-trans-aux W2 SBTZ1 A2 (SBT2: sub-tp G2 T2 G3 T3)
+
+      <- sub-tp-trans-aux W SBT1 SBT2 SBT5.
+}%
+
+%worlds () (sub-tp-trans-aux _ _ _ _).
+%total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
+
+
+
+
+%% Corrollary to sub-tp-trans-aux that doesn't require us to provide
+%% WF as an additional argument.
+
+sub-tp-trans :
+  %% Inputs
+  sub-tp G1 T1 G2 T2 ->
+  sub-tp G2 T2 G3 T3 ->
+  %% Output
+  sub-tp G1 T1 G3 T3 ->
+  type.
+%mode sub-tp-trans +SBT1 +SBT2 -SBT3.
+
+-/i : sub-tp-trans SBT1 SBT2 SBT3
+       <- extract-wf SBT1 T1 T2
+       <- sub-tp-trans-aux T2 SBT1 SBT2 SBT3.
+
+%worlds () (sub-tp-trans _ _ _).
+%total {A} (sub-tp-trans A _ _).
+
+
+
+subeq-tp-trans :
+  %% Inputs
+  subeq-tp G1 T1 G2 T2 ->
+  subeq-tp G2 T2 G3 T3 ->
+  %% Output
+  subeq-tp G1 T1 G3 T3 ->
+  type.
+%mode subeq-tp-trans +SBT1 +SBT2 -SBT3.
+
+- : subeq-tp-trans (subeq-tp/eq SX2 SX1 W1) (subeq-tp/eq SY2 SY1 W2) (subeq-tp/eq SZY1 SX1 W1)
+      <- sub-env-dia SX2 SY1 SZ1 SZ2
+      <- sub-env-trans SZ2 SY2 SZY2
+      <- sub-env-transi SZ1 SZY1 SZY2.
+
+- : subeq-tp-trans (subeq-tp/eq SX2 SX1 W1) (subeq-tp/sub S2) (subeq-tp/sub S4)
+      <- restrict-sub-tp1-mult S2 W1 SX2 S3
+      <- extend-sub-tp1-mult S3 SX1 S4.
+- : subeq-tp-trans (subeq-tp/sub S1) (subeq-tp/eq SX2 SX1 W2) (subeq-tp/sub S4)
+      <- restrict-sub-tp2-mult S1 W2 SX1 S3
+      <- extend-sub-tp2-mult S3 SX2 S4.
+- : subeq-tp-trans (subeq-tp/sub S1) (subeq-tp/sub S2) (subeq-tp/sub S3) 
+      <- sub-tp-trans S1 S2 S3.
+
+%worlds () (subeq-tp-trans _ _ _).
+%total {A} (subeq-tp-trans A _ _).
+
+
+
+
+
+%{ ------- eval-exp / type-exp ----- }%
+
+eval-exp   : venv -> exp -> val -> type.
+% e/cst      : eval-exp G (cste C) (cstv C).
+% e/prim     : eval-exp G (prm OP E1 E2) V3
+%             <- eval-exp G E1 V1 
+%             <- eval-exp G E2 V2
+%             <- eval-op OP V1 V2 V3.
+
+e/var      : eval-exp G X V <- vlookup G X V.
+e/fun      : eval-exp G (fun R R2 T1 T2) (clos R V2 G)
+            <- eval-exp G R2 V2.
+
+
+e/app      : eval-exp G (app E1 E2) V3
+            <- eval-exp G E1 (clos R R2 G1)
+            <- eval-exp G E2 V2
+            <- eval-exp (vcons V2 G1) R V3.
+
+e/sel      : eval-exp G (sel E1) V
+            <- eval-exp G E1 (clos R V G1).
+
+
+
+
+type-exp   : tenv -> exp -> tpe -> type.
+% t/cst       : type-exp G (cste C) T <- typeof C T.
+% t/prim      : type-exp G (prm OP E1 E2) T3
+%             <- type-exp G E1 T1 
+%             <- type-exp G E2 T1
+%             <- type-op OP T1 T2 T3.
+
+t/var      : type-exp G X T <- tlookup G X T <- wf-tp G T.
+
+% whacky way of assigning an intersection type...
+t/fun      : type-exp G (fun R R2 TX1 TX2) (arrow T3 T4) 
+                <- type-exp (tcons T3 G) R T4
+                <- type-exp G R2 T2
+                <- wf-tp G (rect TX1 TX2)
+                <- wf-tp G (arrow T3 T4).
+t/recv     : type-exp G (fun R R2 TX1 TX2) (recv T2)
+                <- type-exp (tcons T3 G) R T4
+                <- type-exp G R2 T2
+                <- wf-tp G (rect TX1 TX2)
+                <- wf-tp G (arrow T3 T4).
+t/rect     : type-exp G (fun R R2 TX1 TX2) (rect TX1 TX2) 
+                <- type-exp (tcons T3 G) R T4
+                <- type-exp G R2 T2
+                <- wf-tp G (rect TX1 TX2)
+                <- wf-tp G (arrow T3 T4).
+
+
+t/app       : type-exp G (app E1 E2) T2
+            <- type-exp G E1 (arrow T1 T2) 
+            <- type-exp G E2 T1.
+
+t/sel       : type-exp G (sel E1) T1
+            <- type-exp G E1 (recv T1). 
+
+t/sub       : type-exp G E T2
+            <- type-exp G E T1
+            <- sub-tp G T1 G T2.
+
+%{ ------- well-formedness / typing for values and environment ----- }%
+
+wf-val   : val -> tenv -> tpe -> type.
+wf-env   : venv -> tenv -> type.
+
+% wfv/c    : wf-val (cstv C) T <- typeof C T.
+wfv/f    : wf-val (clos R R2 H) G (arrow T1 T2)
+            <- wf-env H GC
+            <- type-exp (tcons T1 GC) R T2
+            <- wf-tp G (arrow T1 T2)
+            <- subeq-tp GC (arrow T1 T2) G (arrow T1 T2).
+
+wfv/r    : wf-val (clos R R2 H) G (recv T)
+            <- wf-val R2 G T.
+
+wfv/t    : wf-val (clos R R2 H) G (rect T1 T2)
+            <- wf-tp G (rect T1 T2).
+            % <- wf-val R2 G T.
+
+
+wfv/sub  : wf-val V G T
+            <- wf-val V G1 T1
+            <- sub-tp G1 T1 G T.
+
+
+wfe/n    : wf-env vnil tnil. 
+wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V G T <- wf-env H G.
+
+
+
+%{ ------- type well-formedness extractors ----- }%
+
+extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
+%mode extract-wf2 +WFE1 -WFE2.
+
+- : extract-wf2 (t/var W L) W.
+- : extract-wf2 (t/fun W _ _ TS) W. % <- extract-wf2 TS W <- extract-wf-arrow W W2.  
+- : extract-wf2 (t/rect _ W _ _) W.
+- : extract-wf2 (t/recv _ _ TS _) (wf-tp/recv W) <- extract-wf2 TS W.
+- : extract-wf2 (t/app TS1 (TS2: type-exp _ _ (arrow _ _))) W2 <- extract-wf2 TS2 (wf-tp/fun W2 W1).
+- : extract-wf2 (t/sel TS) W <- extract-wf2 TS (wf-tp/recv W).
+- : extract-wf2 (t/sub S TS) W2 <- extract-wf S W1 W2.
+
+%worlds () (extract-wf2 _ _).
+%total WFE (extract-wf2 WFE _).
+
+
+extract-wf3: wf-val V G T1 -> wf-tp G T1 -> type.
+%mode extract-wf3 +WFE1 -WFE2.
+
+- : extract-wf3 (wfv/r TS) (wf-tp/recv W) <- extract-wf3 TS W.
+- : extract-wf3 (wfv/t W) W.
+- : extract-wf3 (wfv/f ST WF TS WE) WF. % <- extend-wf-tp WF _ WF'.
+- : extract-wf3 (wfv/sub S TS) W2 <- extract-wf S W1 W2.
+
+%worlds () (extract-wf3 _ _).
+%total WFE (extract-wf3 WFE _).
+
+
+
+%{ ------- wfv: extending and restricting the environment / type ----- }%
+
+
+restrict-wfv: wf-val X3 X2 X1 -> wf-tp X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
+%mode restrict-wfv -A +X +B +C.
+
+-     : restrict-wfv (wfv/sub ST WV) WT T (wfv/sub ST1 WV) 
+            <- restrict-sub-tp2 ST WT T ST1.
+-     : restrict-wfv (wfv/f ST WF TE WE) WF T (wfv/f ST1 WF1 TE WE)
+            <- restrict-subeq-tp2 ST WF T ST1.
+-     : restrict-wfv (wfv/r WV) (wf-tp/recv WT) T (wfv/r WV1)
+            <- restrict-wfv WV WT T WV1.
+-     : restrict-wfv (wfv/t WT) WT T (wfv/t W1).
+
+%worlds () (restrict-wfv _ _ _ _).
+%total A (restrict-wfv _ _ _ A).
+
+
+extend-wfv: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
+%mode extend-wfv +A +B -C.
+
+-     : extend-wfv (wfv/sub ST WV) T (wfv/sub ST1 WV) 
+            <- extend-sub-tp2 ST T ST1.
+-     : extend-wfv (wfv/f ST WF TE WE) T (wfv/f ST1 WF1 TE WE)
+            <- extend-wf-tp WF T WF1
+            <- extend-subeq-tp2 ST T ST1.
+-     : extend-wfv (wfv/r WV) T (wfv/r WV1)
+            <- extend-wfv WV T WV1.
+-     : extend-wfv (wfv/t W) T (wfv/t W1)
+            <- extend-wf-tp W T W1.
+
+%worlds () (extend-wfv _ _ _).
+%total A (extend-wfv A _ _).
+
+
+wfv-narrow-env: wf-tp G0 T1 -> sub-env G0 G1 -> wf-val V G1 T1 -> wf-val V G0 T1 -> type.
+%mode wfv-narrow-env +A +B +C -D.
+
+- : wfv-narrow-env W sub-env/refl WV WV.
+- : wfv-narrow-env (W: wf-tp G0 T1) (sub-env/ext (S: sub-env G0 G1)) 
+                        (WV: wf-val V (tcons Z G1) T1) (WV2: wf-val V G0 T1)
+      <- extend-wf-tp-mult W S W1
+      <- restrict-wfv (WV1: wf-val V G1 T1) W1 _ WV
+      <- wfv-narrow-env W S WV1 WV2.
+
+%worlds () (wfv-narrow-env _ _ _ _).
+%total A (wfv-narrow-env _ A _ _).
+
+
+wfv-widen-env: sub-env G1 G2 -> wf-val V G1 T1 -> wf-val V G2 T1 -> type.
+%mode wfv-widen-env +LTE1 +LTE2 -LTE3.
+
+- : wfv-widen-env sub-env/refl WV WV.
+- : wfv-widen-env (sub-env/ext S) WV WVX
+      <- wfv-widen-env S WV WV1
+      <- extend-wfv WV1 Z WVX.
+
+%worlds () (wfv-widen-env _ _ _).
+%total A (wfv-widen-env A _ _).
+
+
+wfv-widen: subeq-tp G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
+%mode wfv-widen +LTE1 +LTE2 -LTE3.
+
+- : wfv-widen (subeq-tp/eq SX2 SX1 W) WV1 WV2 
+      <- wfv-narrow-env W SX1 WV1 WV0 
+      <- wfv-widen-env SX2 WV0 WV2.
+- : wfv-widen (subeq-tp/sub S) W (wfv/sub S W).
+
+%worlds () (wfv-widen _ _ _).
+%total A (wfv-widen A _ _).
+
+
+
+%{ ------- suptyping inversion: type-exp ----- }%
+
+
+invert-var :
+  %% Input
+  type-exp G (var N) T ->
+  %% Output
+  tlookup G (var N) T1 ->
+  subeq-tp G T1 G T ->
+  type.
+%mode invert-var +WFE1 -WFE2 -SBT1.
+
+-     : invert-var (t/var W L) L SB 
+            % <- extract-wf2 (t/var L) W
+            <- subeq-tp-refl W SB.
+-     : invert-var (t/sub SB1 TS) L SB2 
+            <- invert-var TS L SB 
+            <- subeq-tp-trans SB (subeq-tp/sub SB1) SB2.
+
+%worlds () (invert-var _ _ _).
+%total WFE (invert-var WFE _ _). 
+
+
+invert-app : 
+  %% Input
+  type-exp G (app E1 E2) T ->
+  %% Output
+  type-exp G E1 (arrow T1 T2) ->
+  type-exp G E2 T1 ->
+  subeq-tp G T2 G T -> 
+  type.
+%mode invert-app +WFE1 -WFE2 -WFE3 -SBT.
+
+-     : invert-app (t/app TS1 TS) TS TS1 SB 
+            <- extract-wf2 (t/app TS1 TS) W 
+            <- subeq-tp-refl W SB.
+-     : invert-app (t/sub SB1 TS) L L2 SB2 
+            <- invert-app TS L L2 SB 
+            <- subeq-tp-trans SB (subeq-tp/sub SB1) SB2.
+
+%worlds () (invert-app _ _ _ _).
+%total WFE (invert-app WFE _ _ _).
+
+
+invert-sel : 
+  %% Input
+  type-exp G (sel E1) T ->
+  %% Output
+  type-exp G E1 (recv T1) ->
+  subeq-tp G T1 G T -> 
+  type.
+%mode invert-sel +WFE1 -WFE3 -SBT.
+
+-     : invert-sel (t/sel TS) TS SB 
+            <- extract-wf2 (t/sel TS) W 
+            <- subeq-tp-refl W SB.
+-     : invert-sel (t/sub SB1 TS) L2 SB2 
+            <- invert-sel TS L2 SB 
+            <- subeq-tp-trans SB (subeq-tp/sub SB1) SB2.
+
+%worlds () (invert-sel _ _ _).
+%total WFE (invert-sel WFE _ _).
+
+
+
+% no intersection/union types yet, encode
+
+subeq-tp-cases: tenv -> tpe -> tenv -> tpe  ->  
+        tenv -> tpe -> tenv -> tpe  ->  
+        tenv -> tpe -> tenv -> tpe  ->  type.
+case-f : subeq-tp G1 T1 G2 T2 -> subeq-tp-cases G1 T1 G2 T2 _ _ _ _ _ _ _ _.
+case-r : subeq-tp G1 T1 G2 T2 -> subeq-tp-cases _ _ _ _ G1 T1 G2 T2 _ _ _ _.
+case-t : subeq-tp G1 T1 G2 T2 -> subeq-tp-cases _ _ _ _ _ _ _ _ G1 T1 G2 T2.
+
+cases-wfv: subeq-tp-cases 
+    G1A T0 G2 T 
+    G1B T1 G2 T
+    G1C T2 G2 T
+    -> wf-val V G1A T0 
+    -> wf-val V G1B T1
+    -> wf-val V G1C T2
+    -> wf-val V G2 T
+    -> type.
+%mode cases-wfv +C +W1 +W2 +W3 -W.
+
+- : cases-wfv (case-f ST) WF WR WT WF1 <- wfv-widen ST WF WF1.
+- : cases-wfv (case-r ST) WF WR WT WR1 <- wfv-widen ST WR WR1.
+- : cases-wfv (case-t ST) WF WR WT WT1 <- wfv-widen ST WT WT1.
+
+%worlds () (cases-wfv _ _ _ _ _).
+%total WFE (cases-wfv WFE _ _ _ _). 
+
+cases-subeq-trans: subeq-tp-cases 
+    G1A T0 G2 T 
+    G1B T1 G2 T
+    G1C T2 G2 T
+    -> subeq-tp G2 T G3 TU
+    -> subeq-tp-cases
+    G1A T0 G3 TU 
+    G1B T1 G3 TU
+    G1C T2 G3 TU
+    -> type.
+%mode cases-subeq-trans +C +W1 -S.
+
+- : cases-subeq-trans (case-f S1) S2 (case-f S3) <- subeq-tp-trans S1 S2 S3.
+- : cases-subeq-trans (case-r S1) S2 (case-r S3) <- subeq-tp-trans S1 S2 S3.
+- : cases-subeq-trans (case-t S1) S2 (case-t S3) <- subeq-tp-trans S1 S2 S3.
+
+%worlds () (cases-subeq-trans _ _ _).
+%total WFE (cases-subeq-trans WFE _ _). 
+
+
+% we could even strengthen it slightly: tcons in output not strictly necessary
+
+subeq-tp-recv: subeq-tp G1 T1 G2 T2 -> subeq-tp G1 (recv T1) G2 (recv T2) -> type.
+%mode subeq-tp-recv +C -S.
+
+- : subeq-tp-recv (subeq-tp/eq SX1 SX2 W) (subeq-tp/eq SX1 SX2 (wf-tp/recv W)).
+- : subeq-tp-recv (subeq-tp/sub S) (subeq-tp/sub (sub-tp/recv S)).
+
+%worlds () (subeq-tp-recv _ _).
+%total WFE (subeq-tp-recv WFE _). 
+
+
+
+invert-fun :
+  %% Input
+  type-exp G (fun R R2 TX1 TX2) T ->
+  %% Output
+  type-exp (tcons T3 G) R T4 ->
+  type-exp G R2 T1 ->
+  wf-tp G (arrow T3 T4) ->
+  wf-tp G (rect TX1 TX2) ->
+  subeq-tp-cases 
+    G (arrow T3 T4) G T 
+    G (recv T1) G T
+    G (rect TX1 TX2) G T
+  ->
+  type.
+%mode invert-fun +WFE1 -WFE2 -WFE3 -WFE4 -WFE5 -SBT1.
+
+-     : invert-fun (t/fun WF WX TSV TS) TS TSV WF WX (case-f SB) 
+           <- subeq-tp-refl WF SB.
+-     : invert-fun (t/rect WF WX TSV TS) TS TSV WF WX (case-t SB) 
+           <- subeq-tp-refl WX SB.
+-     : invert-fun (t/recv WF WX TSV TS) TS TSV WF WX (case-r SBR)
+           <- extract-wf2 TSV W
+           <- subeq-tp-refl W SB
+           <- subeq-tp-recv SB SBR.
+-     : invert-fun (t/sub SB1 TS) TSV L WF WX SB2 
+           <- invert-fun TS TSV L WF WX SB 
+           <- cases-subeq-trans SB (subeq-tp/sub SB1) SB2.
+
+%worlds () (invert-fun _ _ _ _ _ _).
+%total WFE (invert-fun WFE _ _ _ _ _). 
+
+
+
+
+%{ ------- suptyping inversion: wf-val ----- }%
+ 
+% although we only call this from the outside when we
+% know T = T1 -> T2, it seems like internally we need a 
+% more general interface (b/c of wfv/sub)
+
+invert-wf-fun-aux :
+  %% Input
+  wf-val (clos R R2 H) G1 T ->
+  subeq-tp G1 T G2 (arrow T1 T2) ->
+  %% Output
+  type-exp (tcons T3 G) R T4 ->
+  wf-env H G ->
+  subeq-tp G (arrow T3 T4) G2 (arrow T1 T2) ->
+  type.
+%mode invert-wf-fun-aux +WFE1 +SBT -WFE2 -WFE3 -SBT1.
+
+-     :  invert-wf-fun-aux ((wfv/f SB1 WF TS WE):(wf-val (clos R R2 H) _ _)) SB0
+             TS WE SB
+            <- subeq-tp-trans SB1 SB0 SB.
+
+
+ -     : invert-wf-fun-aux (wfv/sub (SB1: sub-tp G1 TI G T) (TS: wf-val _ G1 TI)) 
+                (SB0: subeq-tp G T G2 (arrow T1 T2)) L L1 (SB)
+            <- subeq-tp-trans (subeq-tp/sub SB1) SB0 (SB1X: subeq-tp G1 TI G2 (arrow T1 T2))
+            <- invert-wf-fun-aux TS SB1X L L1 (SB: subeq-tp _ (arrow T3 T4) G2 (arrow T1 T2)).
+
+%worlds () (invert-wf-fun-aux _ _ _ _ _).
+%total WFE (invert-wf-fun-aux WFE _ _ _ _). 
+
+
+invert-wf-fun :
+  %% Input
+  wf-val (clos R R2 H) G1 (arrow T1 T2) ->
+  %% Output
+  type-exp (tcons T3 G) R T4 ->
+  wf-env H G ->
+  subeq-tp G (arrow T3 T4) G1 (arrow T1 T2) ->
+  type.
+%mode invert-wf-fun +WFE1 -WFE2 -WFE3 -SBT1.
+
+-     :  invert-wf-fun A B C D 
+            <- extract-wf3 A W
+            <- subeq-tp-refl W SB
+            <- invert-wf-fun-aux A SB B C D.
+
+%worlds () (invert-wf-fun _ _ _ _).
+%total WFE (invert-wf-fun WFE _ _ _). 
+
+
+
+
+
+invert-wf-rec-aux :
+  %% Input
+  wf-val (clos R R2 H) G1 T ->
+  subeq-tp G1 T G2 (recv T2) ->
+  %% Output
+  wf-val R2 G T4 ->
+  subeq-tp G (recv T4) G2 (recv T2) ->
+  type.
+%mode invert-wf-rec-aux +WFE1 +SBT -WFE3 -SBT1.
+
+-     :  invert-wf-rec-aux ((wfv/r TV):(wf-val (clos R R2 H) _ _)) SB0
+            TV SB
+           <- extract-wf3 TV W 
+           <- subeq-tp-refl (wf-tp/recv W) SB1
+           <- subeq-tp-trans SB1 SB0 SB.
+
+
+ -     : invert-wf-rec-aux (wfv/sub (SB1: sub-tp G1 TI G T) (TS: wf-val _ G1 TI)) 
+                (SB0: subeq-tp G T G2 (recv T2)) TV SB
+            <- subeq-tp-trans (subeq-tp/sub SB1) SB0 (SB1X: subeq-tp G1 TI G2 (recv T2))
+            <- invert-wf-rec-aux TS SB1X TV (SB: subeq-tp _ (recv T4) G2 (recv T2)).
+
+
+%worlds () (invert-wf-rec-aux _ _ _ _).
+%total WFE (invert-wf-rec-aux WFE _ _ _). 
+
+
+invert-wf-rec :
+  %% Input
+  wf-val (clos R R2 H) G1 (recv T) ->
+  %% Output
+  wf-val R2 G T4 ->
+  subeq-tp G (recv T4) G1 (recv T) ->
+  type.
+%mode invert-wf-rec +WFE1 -WFE3 -SBT1.
+
+-     :  invert-wf-rec A B C 
+            <- extract-wf3 A W
+            <- subeq-tp-refl W SB
+            <- invert-wf-rec-aux A SB B C.
+
+%worlds () (invert-wf-rec _ _ _).
+%total WFE (invert-wf-rec WFE _ _). 
+
+
+
+
+%{ ------- type preservation ----- }%
+
+
+
+% lookup safe
+
+lookup-zero-safe: wf-env H G -> tlookup-zero G (var N2) T -> vlookup-zero H (var N1) V -> eq N1 N2 -> wf-val V G T -> type.
+%mode lookup-zero-safe +A +B +C +D -E.
+
+-      : lookup-zero-safe (wfe/c G V) tl/hit vl/hit eq/z V1 
+         <- extend-wfv V _ V1.
+-      : lookup-zero-safe (wfe/c G V) (tl/miss A) (vl/miss B) (eq/s E) Z1
+         <- lookup-zero-safe G A B E Z
+         <- extend-wfv Z _ Z1.
+
+%worlds () (lookup-zero-safe _ _ _ _ _).
+%total A (lookup-zero-safe A _ _ _ _). % induction on first arg
+
+wf-env-size-eq: wf-env H G -> vsize H (var N1) -> tsize G (var N2) -> eq N1 N2 -> type.
+%mode wf-env-size-eq +A +B +C -D.
+-      : wf-env-size-eq wfe/n vf/n tf/n eq/z.
+-      : wf-env-size-eq (wfe/c G _) (vf/c VS) (tf/c TS) (eq/s E) <- wf-env-size-eq G VS TS E.
+%worlds () (wf-env-size-eq _ _ _ _).
+%total A (wf-env-size-eq A _ _ _).
+
+lookup-safe: wf-env H G -> tlookup G (var N) T -> vlookup H (var N) V -> wf-val V G T -> type.
+%mode lookup-safe +A +B +C -D.
+
+-      : lookup-safe WE (tl TL TA TS) (vl VL VA VS) WV
+         <- eq-refl N EN
+         <- wf-env-size-eq WE VS TS ES
+         <- sub-eq EN ES VA TA EM
+         <- lookup-zero-safe WE TL VL EM WV.
+
+%worlds () (lookup-safe _ _ _ _).
+%total A (lookup-safe A _ _ _).
+
+
+subeq-tp-inv-recv: subeq-tp G1 (recv T1) G2 (recv T2) 
+  -> subeq-tp G1 T1 G2 T2
+  -> type. 
+%mode subeq-tp-inv-recv +LTE1 -LTE2.
+
+- : subeq-tp-inv-recv (subeq-tp/eq SX1 SX2 (wf-tp/recv W)) (subeq-tp/eq SX1 SX2 W).
+- : subeq-tp-inv-recv (subeq-tp/sub (sub-tp/recv S)) (subeq-tp/sub S).
+
+%worlds () (subeq-tp-inv-recv _ _).
+%total A (subeq-tp-inv-recv A _).
+
+subeq-tp-inv-fun: subeq-tp G1 (arrow T1 T2) G2 (arrow T3 T4) 
+  -> subeq-tp G2 T3 G1 T1 
+  -> subeq-tp G1 T2 G2 T4
+  -> type. 
+%mode subeq-tp-inv-fun +LTE1 -LTE2 -LTE3.
+
+- : subeq-tp-inv-fun (subeq-tp/eq SX1 SX2 (wf-tp/fun W1 W2)) (subeq-tp/eq SX2 SX1 W2) (subeq-tp/eq SX1 SX2 W1).
+- : subeq-tp-inv-fun (subeq-tp/sub (sub-tp/fun S1 S2)) (subeq-tp/sub S2) (subeq-tp/sub S1).
+
+%worlds () (subeq-tp-inv-fun _ _ _).
+%total A (subeq-tp-inv-fun A _ _).
+
+
+%{
+% eval primitive op safe
+
+eval-op-safe : type-op OP T1 T2 T3 -> eval-op OP V1 V2 V3 -> wf-val V3 T3 -> type.
+%mode eval-op-safe +LTE1 +LTE2 -LTE3.
+
+-plus   : eval-op-safe t/plus (ev/v (e/plus _)) (wfv/c -/n).
+-eqt    : eval-op-safe t/eq (ev/v (e/eqt _ _)) (wfv/c -/t).
+-eqf    : eval-op-safe t/eq (ev/v (e/eqf _)) (wfv/c -/f).
+
+%worlds () (eval-op-safe _ _ _).
+%total A (eval-op-safe A _ _). % induction on first arg
+}%
+
+
+eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> type.
+%mode eval-safe +A +B +C -D.
+
+% -      : eval-safe (t/cst T) _ (e/cst) (wfv/c T).  
+% -      : eval-safe (t/prim T _ _) _ (e/prim V _ _) WF
+%           <- eval-op-safe T V WF.
+
+ -      : eval-safe ZT E (e/var L2) V2
+          <- invert-var ZT L ST
+          <- lookup-safe E L L2 V
+          <- wfv-widen ST V V2.
+
+ -      : eval-safe (ZT: type-exp G _ _) E (e/fun EX) W
+          <- invert-fun ZT TS TSV WF WX CST
+          <- eval-safe TSV E EX WV
+          <- subeq-tp-refl WF ST
+          <- cases-wfv CST (wfv/f ST WF TS E) (wfv/r WV) (wfv/t WX) W.
+
+-      : eval-safe ZT WE (e/sel EVX) WV3
+          <- invert-sel ZT TS ST
+          <- eval-safe TS WE EVX WVX
+          <- invert-wf-rec WVX WV1 STR
+          <- subeq-tp-inv-recv STR ST1
+          <- wfv-widen ST1 WV1 WV2
+          <- wfv-widen ST WV2 WV3.
+
+
+-      : eval-safe 
+            (ZT: type-exp _ _ T2')
+            (WE: wf-env H0 G0)
+            (e/app
+              (EV3: eval-exp (vcons V2 HC0) R V3) 
+              (EVX: eval-exp H0 EXP2 V2) 
+              (EVF: eval-exp H0 EXP1 (clos R R2 HC0))
+            )
+            Z2 % (wfv/sub ST (wfv/sub STR1 (Z: wf-val V3 (tcons T3 GC0) T4)))
+
+          <- invert-app ZT
+              (TF: type-exp G0 EXP1 (arrow T1 T2))
+              (TX: type-exp G0 EXP2 T1)
+              (ST: subeq-tp _ T2 _ T2')
+
+          <- eval-safe          % eval X
+              (TX: type-exp _ _ T1)
+              WE 
+              EVX 
+              (WVX: wf-val V2 G0 T1)
+
+          <- eval-safe          % eval F
+              TF
+              WE 
+              (EVF: eval-exp H0 EXP1 (clos R R2 HC0))
+              (ZF: wf-val (clos R R2 HC0) G0 (arrow T1 T2))
+
+          <- invert-wf-fun 
+              ZF 
+              (TR : type-exp (tcons T3 GC0) R T4)
+              (WE1: wf-env HC0 GC0)
+              STF
+
+          <- subeq-tp-inv-fun 
+              (STF: subeq-tp GC0 (arrow T3 T4) G0 (arrow T1 T2))
+              (STA: subeq-tp G0 T1 GC0 T3)
+              (STR: subeq-tp GC0 T4 G0 T2)
+
+          <- wfv-widen STA WVX WVX3
+
+          <- eval-safe                 % eval F(X)
+              (TR: type-exp (tcons T3 GC0) R T4)
+              (wfe/c WE1 WVX3)
+              (EV3: eval-exp (vcons V2 HC0) R V3) 
+              (Z: wf-val V3 (tcons T3 GC0) T4)
+
+          <- extend-subeq-tp1 STR _ (STR1: subeq-tp (tcons T3 GC0) T4 G0 T2)
+
+          <- wfv-widen STR1 (Z: wf-val V3 (tcons T3 GC0) T4) Z1
+          <- wfv-widen ST Z1 Z2.
+
+
+
+%worlds () (eval-safe _ _ _ _).
+%total C (eval-safe A _ C _). % induction on eval-exp
+
