@@ -394,6 +394,97 @@ extend-wf-lkp: tlookup G (var N) T -> {Z: tpe} tlookup (tcons Z G) (var N) T -> 
 %total A (extend-wf-lkp A _ _).
 
 
+restrict-wf-lkp: tlookup G (var N) T -> wf-tp G T -> {Z: tpe} tlookup (tcons Z G) (var N) T -> type.
+%mode restrict-wf-lkp -A +W +B +C.
+%worlds () (restrict-wf-lkp _ _ _ _).
+%trustme
+%total A (restrict-wf-lkp _ _ _ A).
+
+
+
+% Uniqueness of lookup
+
+same: tpe -> tpe -> type.
+ident: same T T.
+
+% same-refl: same T1 T2 -> same T2 T1 -> type
+
+lookup-zero-same: tlookup-zero G2 E T1 -> tlookup-zero G2 E T2 -> same T1 T2 -> type.
+%mode lookup-zero-same +P1 +P2 -SBT.
+
+- : lookup-zero-same tl/hit tl/hit ident.
+- : lookup-zero-same (tl/miss A) (tl/miss B) X <- lookup-zero-same A B X.
+
+%worlds () (lookup-zero-same _ _ _).
+%total {T2} (lookup-zero-same T2 _ _).
+
+
+
+size-eq: tsize G2 (var N1) -> tsize G2 (var N2) -> eq N1 N2 -> type.
+%mode size-eq +P1 +P2 -SBT.
+
+- : size-eq tf/n tf/n eq/z.
+- : size-eq (tf/c A) (tf/c B) (eq/s X) <- size-eq A B X.
+
+%worlds () (size-eq _ _ _).
+%total {T2} (size-eq T2 _ _).
+
+
+
+lookup-zero-eq: tlookup-zero G2 (var N1) (rect T1 T3) -> tlookup-zero G2 (var N2) (rect T2 T4) -> eq N1 N2 
+  -> same T1 T2 -> same T3 T4 -> type.
+%mode lookup-zero-eq +P1 +P2 +E -SBT -SBT2.
+
+- : lookup-zero-eq tl/hit tl/hit eq/z ident ident.
+- : lookup-zero-eq (tl/miss A) (tl/miss B) (eq/s E) X Y <- lookup-zero-eq A B E X Y.
+
+%worlds () (lookup-zero-eq _ _ _ _ _).
+%total {T2} (lookup-zero-eq T2 _ _ _ _).
+
+
+lookup-eq: tlookup G2 (var N1) (rect T1 T3) -> tlookup G2 (var N2) (rect T2 T4) -> eq N1 N2
+  -> same T1 T2 -> same T3 T4 -> type.
+%mode lookup-eq +P1 +P2 +E -SBT -SBT.
+
+- : lookup-eq (tl L1 A1 F1) (tl L2 A2 F2) EN X Y
+        <- size-eq F1 F2 ES 
+        <- sub-eq EN ES A1 A2 EM 
+        <- lookup-zero-eq L1 L2 EM X Y.
+
+%worlds () (lookup-eq _ _ _ _ _).
+%total {T2} (lookup-eq T2 _ _ _ _).
+
+
+
+
+eq-low: same T1 T1' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1' G2 T2 -> type.
+%mode eq-low +P1 +P2 -SBT.
+
+- : eq-low ident S S.
+
+%worlds () (eq-low _ _ _).
+%total {T2} (eq-low T2 _ _).
+
+eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
+%mode eq-high +P1 +P2 -SBT.
+
+- : eq-high ident S S.
+
+%worlds () (eq-high _ _ _).
+%total {T2} (eq-high T2 _ _).
+
+eq-wf: same T1 T1' -> wf-tp G1 T1 -> wf-tp G1 T1' -> type.
+%mode eq-wf +P1 +P2 -SBT.
+
+- : eq-wf ident S S.
+
+%worlds () (eq-wf _ _ _).
+%total {T2} (eq-wf T2 _ _).
+
+
+
+
+
 
 % Extending environments preserves subtyping
 
@@ -501,7 +592,105 @@ restrict-sub-tp: sub-tp G1 T1 G2 T2
 - : restrict-sub-tp (sub-tp/recv ST1) (wf-tp/recv W1) (wf-tp/recv W2) T (sub-tp/recv ST1')
       <- restrict-sub-tp ST1 W1 W2 T ST1'.
 
+- : restrict-sub-tp 
+    (sub-tp/tsel1 ST (pev L1 (wf-tp/rect SF WU WS)))
 
+    ((wf-tp/tsel (pev L1 (wf-tp/rect SF WU WS))): (wf-tp _ (tsel (var N))))
+
+    W2 T 
+
+    ((sub-tp/tsel1 ST' (pev L' (wf-tp/rect SF' WU' WS')))  ) % : (sub-tp _ (tsel (var N)) _ _))
+
+      <- extend-wf-lkp L1 T L1'
+
+      <- eq-refl N E
+
+      <- lookup-eq L1' L' E S1 S2
+      <- lookup-eq L' L1' E S1R S2R
+
+      % <- restrict-wf-lkp L WX T L'
+
+      <- eq-wf S2 WU WUQ
+
+      <- restrict-sub-tp STQ WUQ W2 T ST'
+
+      <- eq-low S2R STQ ST
+      .
+
+
+
+%{
+
+      {STQ:sub-tp X3 X1 X4 X5} 
+      {ST:sub-tp X3 X2 X4 X5} 
+
+      {WUQ:wf-tp X3 X1}
+      {W2:wf-tp X4 X5} {T:tpe} 
+      {ST':sub-tp (tcons T X3) X1 (tcons T X4) X5}
+      {X6:tpe} 
+      {S2:same X6 X1} 
+      {WU:wf-tp X3 X6} 
+      {N:nat}
+      {L1:tlookup X3 (var N) (rect X1 X6)} {X7:tpe}
+      {L1':tlookup (tcons T X3) (var N) (rect X1 X6)}
+      {L':tlookup (tcons T X3) (var N) (rect X2 X1)} 
+      {E:eq N N}
+      {P:path-eval X3 (var N) (rect X7 X1)} {SF:sub-tp X3 X1 X3 X6}
+
+      {WS:wf-tp X3 X1} 
+      {SF':sub-tp (tcons T X3) X2 (tcons T X3) X1}
+      
+      {WU':wf-tp (tcons T X3) X1} 
+      {WS':wf-tp (tcons T X3) X2}
+      eq-low S1 STQ ST -> restrict-sub-tp STQ WUQ W2 T ST' -> eq-wf S2 WU WUQ
+
+
+
+
+
+
+
+   {X1:tenv} {X2:tpe} {X3:tenv} {X4:tpe} 
+
+
+      {ST:sub-tp X1 X2 X3 X4}
+
+      {WS:wf-tp X1 X6}
+      {WU:wf-tp X1 X2} 
+
+      {WSQ:wf-tp X1 X7}
+      {WUQ:wf-tp X1 X2} 
+
+      {WS':wf-tp (tcons T X1) X6}
+      {WU':wf-tp (tcons T X1) X2}
+
+      {W2:wf-tp X3 X4} 
+
+      {SFQ:sub-tp X1 X7 X1 X2}
+
+      {SF:sub-tp X1 X6 X1 X2}
+      {SF':sub-tp (tcons T X1) X6 (tcons T X1) X2} 
+      {ST':sub-tp (tcons T X1) X2 (tcons T X3) X4} {X5:nat} {X6:tpe}
+
+      {T:tpe} {X7:tpe}
+      
+      {L:tlookup X1 (var X5) (rect X6 X2)} 
+      {L1:tlookup X1 (var X5) (rect X6 X2)}
+      {L':tlookup (tcons T X1) (var X5) (rect X6 X2)}
+
+      {LQ:tlookup X1 (var X5) (rect X7 X2)}
+      
+      
+      
+      restrict-sub-tp ST WU W2 T ST'
+         -> restrict-wf-lkp L (wf-tp/rect SF WU WS) T L'
+         -> restrict-sub-tp (sub-tp/tsel1 ST (pev LQ (wf-tp/rect SFQ WUQ WSQ)))
+               (wf-tp/tsel (pev L1 (wf-tp/rect SF WU WS))) W2 T
+               (sub-tp/tsel1 ST' (pev L' (wf-tp/rect SF' WU' WS'))).
+
+
+
+}%
 
 %worlds () (restrict-sub-tp _ _ _ _ _).
 % %trustme
@@ -729,75 +918,6 @@ sub-tp-trans-aux :
 
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
-
-
-same: tpe -> tpe -> type.
-ident: same T T.
-
-lookup-zero-same: tlookup-zero G2 E T1 -> tlookup-zero G2 E T2 -> same T1 T2 -> type.
-%mode lookup-zero-same +P1 +P2 -SBT.
-
-- : lookup-zero-same tl/hit tl/hit ident.
-- : lookup-zero-same (tl/miss A) (tl/miss B) X <- lookup-zero-same A B X.
-
-%worlds () (lookup-zero-same _ _ _).
-%total {T2} (lookup-zero-same T2 _ _).
-
-
-
-size-eq: tsize G2 (var N1) -> tsize G2 (var N2) -> eq N1 N2 -> type.
-%mode size-eq +P1 +P2 -SBT.
-
-- : size-eq tf/n tf/n eq/z.
-- : size-eq (tf/c A) (tf/c B) (eq/s X) <- size-eq A B X.
-
-%worlds () (size-eq _ _ _).
-%total {T2} (size-eq T2 _ _).
-
-
-
-lookup-zero-eq: tlookup-zero G2 (var N1) (rect T1 T3) -> tlookup-zero G2 (var N2) (rect T2 T4) -> eq N1 N2 
-  -> same T1 T2 -> same T3 T4 -> type.
-%mode lookup-zero-eq +P1 +P2 +E -SBT -SBT2.
-
-- : lookup-zero-eq tl/hit tl/hit eq/z ident ident.
-- : lookup-zero-eq (tl/miss A) (tl/miss B) (eq/s E) X Y <- lookup-zero-eq A B E X Y.
-
-%worlds () (lookup-zero-eq _ _ _ _ _).
-%total {T2} (lookup-zero-eq T2 _ _ _ _).
-
-
-lookup-eq: tlookup G2 (var N1) (rect T1 T3) -> tlookup G2 (var N2) (rect T2 T4) -> eq N1 N2
-  -> same T1 T2 -> same T3 T4 -> type.
-%mode lookup-eq +P1 +P2 +E -SBT -SBT.
-
-- : lookup-eq (tl L1 A1 F1) (tl L2 A2 F2) EN X Y
-        <- size-eq F1 F2 ES 
-        <- sub-eq EN ES A1 A2 EM 
-        <- lookup-zero-eq L1 L2 EM X Y.
-
-%worlds () (lookup-eq _ _ _ _ _).
-%total {T2} (lookup-eq T2 _ _ _ _).
-
-
-
-
-eq-low: same T1 T1' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1' G2 T2 -> type.
-%mode eq-low +P1 +P2 -SBT.
-
-- : eq-low ident S S.
-
-%worlds () (eq-low _ _ _).
-%total {T2} (eq-low T2 _ _).
-
-eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
-%mode eq-high +P1 +P2 -SBT.
-
-- : eq-high ident S S.
-
-%worlds () (eq-high _ _ _).
-%total {T2} (eq-high T2 _ _).
-
 
 
 -/tsel2-tsel1  : sub-tp-trans-aux  % T1 < p.T2 && p.T2 < T3 --> T1 < T3
