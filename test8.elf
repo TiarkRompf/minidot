@@ -328,9 +328,11 @@ sub-env/ext: sub-env G1 (tcons Z G2) <- sub-env G1 G2.
 sub-env-trans: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
 %mode sub-env-trans +A +B -C.
 
+- : sub-env-trans S sub-env/refl S.
+- : sub-env-trans S1 (sub-env/ext S2) (sub-env/ext S3) <- sub-env-trans S1 S2 S3.
+
 %worlds () (sub-env-trans _ _ _).
-%trustme
-%total A (sub-env-trans A _ _).
+%total A (sub-env-trans _ A _).
 
 sub-env-transi: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
 %mode sub-env-transi +A -B +C.
