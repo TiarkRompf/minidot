@@ -951,40 +951,6 @@ sub-tp-trans-aux :
       <- sub-tp-trans-aux T1 SBT1 SBT3 SBT5.
 
 
-%{
-   {X1:tenv} {X2:exp} {X3:tenv} {X4:tenv} {X5:tpe} {X6:tpe}
-      {X13:tenv} {X14:tpe} {X15:tpe} 
-      {X10:tenv} {X11:tpe} {X12:tpe} 
-      {X8:tpe} {X9:tpe} 
-
-      {L2:tlookup X1 X2 (rect X5 X6)} 
-      {W2:wf-tp X1 (rect X5 X6)} {X7:tenv}
-
-      {L12:tlookup X7 X2 (rect X8 X9)}
-      {L23:tlookup X10 X2 (rect X11 X12)}
-      {L13:tlookup X13 X2 (rect X14 X15)}
-
-      {W12:wf-tp X7 (rect X8 X9)} 
-      {SA12:sub-env X7 X3} 
-      {SB12:sub-env X7 X1}
-
-      {W23:wf-tp X10 (rect X11 X12)} 
-      {SA23:sub-env X10 X1} 
-      {SB23:sub-env X10 X4}
-
-      {W13:wf-tp X13 (rect X14 X15)} 
-      {SA13:sub-env X13 X3} 
-      {SB13:sub-env X13 X4}
-
-      sub-tp-trans-aux (wf-tp/tsel (pev L2 W2))
-         (sub-tp/tselx (pev L12 W12) SA12 SB12)
-         (sub-tp/tselx (pev L23 W23) SA23 SB23)
-         (sub-tp/tselx (pev L13 W13) SA13 SB13).
-}%
-
-
-
-
 -/tselx1  : sub-tp-trans-aux
       W
       (sub-tp/tselx P SX1 SX2)
