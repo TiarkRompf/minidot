@@ -1352,17 +1352,20 @@ extract-wf4: subeq-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
 %total WFE (extract-wf4 WFE _ _). 
 
 
+
 %% this will need to change if we add non-closure values
 
-extract-wf5: wf-val V G T -> wf-tp G (rect T1 T2) -> wf-val V G (rect T1 T2) -> type.
-%mode extract-wf5 +A +B -C.
-%worlds () (extract-wf5 _ _ _).
-%trustme
-%total WFE (extract-wf5 WFE _ _). 
+assign-rect: wf-val V G0 T -> wf-tp G (rect T1 T2) -> wf-val V G (rect T1 T2) -> type.
+%mode assign-rect +A +B -C.
+- : assign-rect (wfv/f _ _ _ _) W (wfv/t W).
+- : assign-rect (wfv/r _) W (wfv/t W).
+- : assign-rect (wfv/t _) W (wfv/t W).
+- : assign-rect (wfv/sub S T) W T' <- assign-rect T W T'.
+%worlds () (assign-rect _ _ _).
+%total WFE (assign-rect WFE _ _). 
 
 
-
-cases-wfv-hack: subeq-tp-cases 
+cases-wfv-rect: subeq-tp-cases 
     G1A T0 G2 T 
     G1B T1 G2 T
     G1C (rect T2S T2U) G2 T
@@ -1371,17 +1374,17 @@ cases-wfv-hack: subeq-tp-cases
     -> wf-val V G1C TX
     -> wf-val V G2 T
     -> type.
-%mode cases-wfv-hack +C +W1 +W2 +W3 -W.
+%mode cases-wfv-rect +C +W1 +W2 +W3 -W.
 
-- : cases-wfv-hack (case-f ST) WF WR WT WF1 <- wfv-widen ST WF WF1.
-- : cases-wfv-hack (case-r ST) WF WR WT WR1 <- wfv-widen ST WR WR1.
-- : cases-wfv-hack (case-t ST) WF WR WT WT1 
+- : cases-wfv-rect (case-f ST) WF WR WT WF1 <- wfv-widen ST WF WF1.
+- : cases-wfv-rect (case-r ST) WF WR WT WR1 <- wfv-widen ST WR WR1.
+- : cases-wfv-rect (case-t ST) WF WR WT WT1 
       <- extract-wf4 ST W1 W2 
-      <- extract-wf5 WT W1 WT0
+      <- assign-rect WT W1 WT0
       <- wfv-widen ST WT0 WT1.
 
-%worlds () (cases-wfv-hack _ _ _ _ _).
-%total WFE (cases-wfv-hack WFE _ _ _ _). 
+%worlds () (cases-wfv-rect _ _ _ _ _).
+%total WFE (cases-wfv-rect WFE _ _ _ _). 
 
 
 
@@ -1740,7 +1743,7 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
  -      : eval-safe ZT E (e/var L2) V2
           <- invert-var ZT L W CST
           <- lookup-safe E L L2 V
-          <- cases-wfv-hack CST V V V V2.
+          <- cases-wfv-rect CST V V V V2.
 
  -      : eval-safe (ZT: type-exp G _ _) E (e/fun EX) W
           <- invert-fun ZT TS TSV WF WX CST

@@ -1,0 +1,8 @@
+like rules9.txt, but adding 
+
+
+// expression typing
+
+x: { type T1..T2} wf in G
+---------------------------
+G |- x: { type x.T .. x.T }
