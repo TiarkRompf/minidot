@@ -999,9 +999,8 @@ sub-tp-trans-aux :
       SBT1 
       (sub-tp/tselx P SX1 SX2)
       SBT5
-      <- restrict-sub-tp2-mult SBT1 Wx SX1 S3
-      <- extend-sub-tp2-mult S3 SX1 SBT5.
-
+      <- restrict-sub-tp2-mult SBT1 (wf-tp/tsel P) SX1 S3
+      <- extend-sub-tp2-mult S3 SX2 SBT5.      
 
 
 -/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
