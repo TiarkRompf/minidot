@@ -854,9 +854,10 @@ restrict-subeq-tp2: subeq-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} subeq-tp G1 
 
 
 
-%{
 
-%% XXX Subtyping of type selections is not reflexive if we have type bounds!
+%% In test8, Subtyping of type selections was not reflexive because of type bounds.
+%% Now we have sub-tp/tselx, so reflexivity holds again.
+%% None of the proofs depend on it though.
 
 %% Subtyping is reflexive
 
@@ -880,16 +881,13 @@ sub-tp-refl :
    <- sub-tp-refl T2 SBT2.
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
-
--/tsel: sub-tp-refl 
-  (wf-tp/tsel (pev L (wf-tp/rect ST WT1 WT2)))
-    (sub-tp/tsel1 (sub-tp/tsel2 SBT1 (pev L (wf-tp/rect ST WT1 WT2))) (pev L (wf-tp/rect ST WT1 WT2)))
-     <- sub-tp-refl WT1 SBT1.
+-/tsel: sub-tp-refl (wf-tp/tsel P) (sub-tp/tselx P sub-env/refl sub-env/refl).
 
 %worlds () (sub-tp-refl _ _).
 %total T (sub-tp-refl T _).
 
-}%
+
+
 
 
 subeq-tp-refl : 
