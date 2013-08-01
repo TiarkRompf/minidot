@@ -755,10 +755,13 @@ restrict-sub-tp1-mult: sub-tp G1 T1 G2 T2 -> wf-tp G0 T1 -> sub-env G0 G1 -> sub
 
 restrict-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> wf-tp G0 T2 -> sub-env G0 G2 -> sub-tp G1 T1 G0 T2 -> type.
 %mode restrict-sub-tp2-mult +A +B +C -D.
-
+- : restrict-sub-tp2-mult ST W sub-env/refl ST.
+- : restrict-sub-tp2-mult ST W (sub-env/ext S) ST2
+    <- extend-wf-tp-mult W S WX
+    <- restrict-sub-tp2 ST1 WX _ ST
+    <- restrict-sub-tp2-mult ST1 W S ST2.
 %worlds () (restrict-sub-tp2-mult _ _ _ _).
-%trustme
-%total A (restrict-sub-tp2-mult A _ _ _).
+%total A (restrict-sub-tp2-mult _ _ A _).
 
 
 
