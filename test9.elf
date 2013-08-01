@@ -11,8 +11,6 @@
 % + add reflexivity for type selections
 % - add self types
 
-%%% not quite up to date with rules8.txt %%%
-
 
 %{ ------- arithmetic ----- }%
 
@@ -239,7 +237,40 @@ tl  : tlookup G (var N) V
 
 
 
+% Partial ordering on environments
 
+sub-env: tenv -> tenv -> type.
+
+sub-env/refl: sub-env G G.
+sub-env/ext: sub-env G1 (tcons Z G2) <- sub-env G1 G2.
+
+
+sub-env-trans: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
+%mode sub-env-trans +A +B -C.
+
+- : sub-env-trans S sub-env/refl S.
+- : sub-env-trans S1 (sub-env/ext S2) (sub-env/ext S3) <- sub-env-trans S1 S2 S3.
+
+%worlds () (sub-env-trans _ _ _).
+%total A (sub-env-trans _ A _).
+
+
+minmax-env: tenv -> tenv -> tenv -> tenv -> type.
+mm-env/1: minmax-env G1 G2 G1 G2 <- sub-env G1 G2.
+mm-env/2: minmax-env G1 G2 G2 G1 <- sub-env G2 G1.
+
+
+% Diamond / common prefix property
+
+sub-env-dia: sub-env G1 GT -> sub-env G2 GT -> minmax-env G1 G2 GS GU -> type.
+%mode sub-env-dia +A +B -C.
+
+- : sub-env-dia sub-env/refl S (mm-env/2 S).
+- : sub-env-dia (sub-env/ext S1) sub-env/refl (mm-env/1 (sub-env/ext S1)).
+- : sub-env-dia (sub-env/ext S1) (sub-env/ext S2) MM <- sub-env-dia S1 S2 MM.
+
+%worlds () (sub-env-dia _ _ _).
+%total A (sub-env-dia A _ _).
 
 
 
@@ -247,7 +278,6 @@ tl  : tlookup G (var N) V
 %{ ------- subtyping ------ }%
 
 path-eval: tenv -> exp -> tpe -> type.
-% %mode path-eval +G +E -T.
 
 wf-tp : tenv -> tpe -> type.
 
@@ -256,9 +286,6 @@ sub-tp : tenv -> tpe -> tenv -> tpe -> type.
 pev  : path-eval G E T <- wf-tp G T <- tlookup G E T.
 
 % pev/sub  : path-eval G E T2 <- path-eval G E T1 <- sub-tp G T1 G T2.
-
-sub-env: tenv -> tenv -> type.
-
 
 
 sub-tp/int  : sub-tp G1 int G2 int.
@@ -287,8 +314,6 @@ sub-tp/tsel1 : sub-tp G1 (tsel E1) G2 T2
 sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2)
               <- path-eval G2 E2 (rect T2 T2U)
               <- sub-tp G1 T1 G2 T2.
-
-              % <- sub-tp G1 P1 T1 G2 E2T2.
 
 sub-tp/tselx : sub-tp G1 (tsel E) G2 (tsel E)
                <- sub-env G G2
@@ -320,44 +345,35 @@ wf-tp/tsel : wf-tp G1 (tsel E1)
 
 
 
-% Partial ordering on environments
+% Extract wf from subtyping
+
+extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
+%mode extract-wf +SBT1 -SBT2 -SBT3.
+- : extract-wf sub-tp/int wf-tp/int wf-tp/int.
+- : extract-wf sub-tp/bool wf-tp/bool wf-tp/bool.
+- : extract-wf (sub-tp/top W) W wf-tp/top.
+- : extract-wf (sub-tp/bot W) wf-tp/bot W.
+- : extract-wf (sub-tp/fun (ST1:sub-tp G1 T2 G2 T4) (ST2:sub-tp G2 T3 G1 T1)) 
+        (wf-tp/fun W2 W1) (wf-tp/fun W4 W3)
+      <- extract-wf ST1 W2 W4
+      <- extract-wf ST2 W3 W1.
+- : extract-wf (sub-tp/rect ST1 ST2 B2 B1) (wf-tp/rect B1 W2 W1) (wf-tp/rect B2 W4 W3) %% FIXME: T1<:T2 & T3 <: T4
+      <- extract-wf ST1 W2 W4
+      <- extract-wf ST2 W3 W1.
+- : extract-wf (sub-tp/recv ST) (wf-tp/recv W1) (wf-tp/recv W2)
+      <- extract-wf ST W1 W2.
+
+- : extract-wf (sub-tp/tsel1 ST (pev L (wf-tp/rect SB W1 W3))) 
+      (wf-tp/tsel (pev L (wf-tp/rect SB W1 W3))) W2
+      <- extract-wf ST _ W2. % W1 W2
+
+- : extract-wf (sub-tp/tsel2 ST (pev L (wf-tp/rect SB W3 W2))) 
+      W1 (wf-tp/tsel (pev L (wf-tp/rect SB W3 W2)))
+      <- extract-wf ST W1 _. % W1 W2
 
 
-sub-env/refl: sub-env G G.
-sub-env/ext: sub-env G1 (tcons Z G2) <- sub-env G1 G2.
-
-
-sub-env-trans: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
-%mode sub-env-trans +A +B -C.
-
-- : sub-env-trans S sub-env/refl S.
-- : sub-env-trans S1 (sub-env/ext S2) (sub-env/ext S3) <- sub-env-trans S1 S2 S3.
-
-%worlds () (sub-env-trans _ _ _).
-%total A (sub-env-trans _ A _).
-
-sub-env-inv: sub-env G1 G2 -> sub-env G3 G1 -> sub-env G2 G3 -> type.
-
-
-%% grrrr
-sub-env-transi: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
-%mode sub-env-transi +A -B +C.
-
-- : sub-env-transi S1 (sub-env/ext S2) (sub-env/ext S3) <- sub-env-transi S1 S2 S3.
-
-%worlds () (sub-env-transi _ _ _).
-%trustme
-%total A (sub-env-transi _ _ A).
-
-
-%% not quite sure about this one ...
-
-sub-env-dia: sub-env G1 GT -> sub-env G2 GT -> sub-env G0 G1 -> sub-env G0 G2 -> type.
-%mode sub-env-dia +A +B -C -D.
-
-%worlds () (sub-env-dia _ _ _ _).
-%trustme
-%total A (sub-env-dia A _ _ _).
+%worlds () (extract-wf _ _ _).
+%total T2 (extract-wf T2 _ _).
 
 
 
@@ -404,11 +420,6 @@ extend-wf-lkp: tlookup G (var N) T -> {Z: tpe} tlookup (tcons Z G) (var N) T -> 
 %total A (extend-wf-lkp A _ _).
 
 
-% restrict-wf-lkp: tlookup G (var N) T -> wf-tp G T -> {Z: tpe} tlookup (tcons Z G) (var N) T -> type.
-% %mode restrict-wf-lkp -A +W +B +C.
-% %worlds () (restrict-wf-lkp _ _ _ _).
-% %trustme
-% %total A (restrict-wf-lkp _ _ _ A).
 
 
 
@@ -660,10 +671,26 @@ restrict-sub-tp: sub-tp G1 T1 G2 T2
 
 
 
+restrict-sub-tp1: sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> {Z: tpe} sub-tp (tcons Z G1) T1 G2 T2 -> type.
+%mode restrict-sub-tp1 -A +Y +B +C.
+
+- : restrict-sub-tp1 ST W1 T ST1 
+    <- extend-sub-tp2 ST1 T ST12
+    <- extract-wf ST1 _ W2
+    <- restrict-sub-tp ST W1 W2 T ST12.
+
+%worlds () (restrict-sub-tp1 _ _ _ _).
+%total A (restrict-sub-tp1 _ _ _ A).
+
 restrict-sub-tp2: sub-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} sub-tp G1 T1 (tcons Z G2) T2 -> type.
 %mode restrict-sub-tp2 -A +Y +B +C.
+
+- : restrict-sub-tp2 ST W2 T ST2 
+    <- extend-sub-tp1 ST2 T ST12
+    <- extract-wf ST2 W1 _
+    <- restrict-sub-tp ST W1 W2 T ST12.
+
 %worlds () (restrict-sub-tp2 _ _ _ _).
-%trustme
 %total A (restrict-sub-tp2 _ _ _ A).
 
 
@@ -673,62 +700,119 @@ restrict-sub-tp2: sub-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} sub-tp G1 T1 (tc
 
 extend-subeq-tp1: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp (tcons Z G1) T1 G2 T2 -> type.
 %mode extend-subeq-tp1 +A +B -C.
-- : extend-subeq-tp1 (subeq-tp/eq SX1 SX2 W) Z (subeq-tp/eq SX1 (sub-env/ext SX2) W).
+- : extend-subeq-tp1 (subeq-tp/eq SX2 SX1 W) Z (subeq-tp/eq SX2 (sub-env/ext SX1) W).
 - : extend-subeq-tp1 (subeq-tp/sub S) Z (subeq-tp/sub S') <- extend-sub-tp1 S _ S'.
 %worlds () (extend-subeq-tp1 _ _ _).
 %total A (extend-subeq-tp1 A _ _).
 
 extend-subeq-tp2: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T2 -> type.
 %mode extend-subeq-tp2 +A +B -C.
-- : extend-subeq-tp2 (subeq-tp/eq SX1 SX2 W) Z (subeq-tp/eq (sub-env/ext SX1) SX2 W).
+- : extend-subeq-tp2 (subeq-tp/eq SX2 SX1 W) Z (subeq-tp/eq (sub-env/ext SX2) SX1 W).
 - : extend-subeq-tp2 (subeq-tp/sub S) Z (subeq-tp/sub S') <- extend-sub-tp2 S _ S'.
 %worlds () (extend-subeq-tp2 _ _ _).
 %total A (extend-subeq-tp2 A _ _).
 
 
-restrict-subeq-tp2: subeq-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T2 -> type.
-%mode restrict-subeq-tp2 -A +Y +B +C.
-%worlds () (restrict-subeq-tp2 _ _ _ _).
-%trustme
-%total A (restrict-subeq-tp2 _ _ _ A).
+
+
 
 
 extend-wf-tp-mult: wf-tp G1 T1 -> sub-env G1 G2 -> wf-tp G2 T1 -> type.
 %mode extend-wf-tp-mult +A +B -C.
+- : extend-wf-tp-mult W sub-env/refl W.
+- : extend-wf-tp-mult W (sub-env/ext S) W2
+    <- extend-wf-tp-mult W S W1
+    <- extend-wf-tp W1 _ W2.
 %worlds () (extend-wf-tp-mult _ _ _).
-%trustme
-%total A (extend-wf-tp-mult A _ _).
+%total A (extend-wf-tp-mult _ A _).
 
 
 extend-sub-tp1-mult: sub-tp G1 T1 G2 T2 -> sub-env G1 G3 -> sub-tp G3 T1 G2 T2 -> type.
 %mode extend-sub-tp1-mult +A +B -C.
+- : extend-sub-tp1-mult ST sub-env/refl ST.
+- : extend-sub-tp1-mult ST (sub-env/ext S) ST2
+    <- extend-sub-tp1-mult ST S ST1
+    <- extend-sub-tp1 ST1 _ ST2.
 %worlds () (extend-sub-tp1-mult _ _ _).
-%trustme
-%total A (extend-sub-tp1-mult A _ _).
+%total A (extend-sub-tp1-mult _ A _).
 
 extend-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> sub-env G2 G3 -> sub-tp G1 T1 G3 T2 -> type.
 %mode extend-sub-tp2-mult +A +B -C.
+- : extend-sub-tp2-mult ST sub-env/refl ST.
+- : extend-sub-tp2-mult ST (sub-env/ext S) ST2
+    <- extend-sub-tp2-mult ST S ST1
+    <- extend-sub-tp2 ST1 _ ST2.
 %worlds () (extend-sub-tp2-mult _ _ _).
-%trustme
-%total A (extend-sub-tp2-mult A _ _).
+%total A (extend-sub-tp2-mult _ A _).
 
 
 restrict-sub-tp1-mult: sub-tp G1 T1 G2 T2 -> wf-tp G0 T1 -> sub-env G0 G1 -> sub-tp G0 T1 G2 T2 -> type.
 %mode restrict-sub-tp1-mult +A +B +C -D.
-
+- : restrict-sub-tp1-mult ST W sub-env/refl ST.
+- : restrict-sub-tp1-mult ST W (sub-env/ext S) ST2
+    <- extend-wf-tp-mult W S WX
+    <- restrict-sub-tp1 ST1 WX _ ST
+    <- restrict-sub-tp1-mult ST1 W S ST2.
 %worlds () (restrict-sub-tp1-mult _ _ _ _).
-%trustme
-%total A (restrict-sub-tp1-mult A _ _ _).
+%total A (restrict-sub-tp1-mult _ _ A _).
 
 restrict-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> wf-tp G0 T2 -> sub-env G0 G2 -> sub-tp G1 T1 G0 T2 -> type.
 %mode restrict-sub-tp2-mult +A +B +C -D.
-
+- : restrict-sub-tp2-mult ST W sub-env/refl ST.
+- : restrict-sub-tp2-mult ST W (sub-env/ext S) ST2
+    <- extend-wf-tp-mult W S WX
+    <- restrict-sub-tp2 ST1 WX _ ST
+    <- restrict-sub-tp2-mult ST1 W S ST2.
 %worlds () (restrict-sub-tp2-mult _ _ _ _).
-%trustme
-%total A (restrict-sub-tp2-mult A _ _ _).
+%total A (restrict-sub-tp2-mult _ _ A _).
 
 
-empty-env-sub: {G:tenv} sub-env tnil G -> type.
+
+
+
+%% Diamond property w.r.t. environment for well formed types
+
+wf-tp-min: 
+  wf-tp G1 T -> wf-tp G2 T -> minmax-env G1 G2 GS GU ->
+  wf-tp GS T -> sub-env GS G1 -> sub-env GS G2 ->
+  type.
+%mode wf-tp-min +A +B +C -F -G -H.
+
+- : wf-tp-min W1 W2 (mm-env/1 S12) W1 sub-env/refl S12.
+- : wf-tp-min W1 W2 (mm-env/2 S21) W2 S21 sub-env/refl.
+
+%worlds () (wf-tp-min _ _ _ _ _ _).
+%total A (wf-tp-min A _ _ _ _ _ ).
+
+
+wf-tp-dia: 
+  wf-tp GT T -> wf-tp G1 T -> wf-tp G2 T -> sub-env G1 GT -> sub-env G2 GT ->
+  wf-tp G T -> sub-env G G1 -> sub-env G G2 ->
+  type.
+%mode wf-tp-dia +A +B +C +D +E -F -G -H.
+
+- : wf-tp-dia WT W1 W2 S1 S2 W0 S01 S02
+     <- sub-env-dia S1 S2 MM
+     <- wf-tp-min W1 W2 MM W0 S01 S02.
+
+
+%worlds () (wf-tp-dia _ _ _ _ _ _ _ _).
+%total A (wf-tp-dia A _ _ _ _ _ _ _).
+
+
+
+% Restrict subeq - placed here because it uses wf-tp-dia (does it have to?)
+
+restrict-subeq-tp2: subeq-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T2 -> type.
+%mode restrict-subeq-tp2 -A +Y +B +C.
+- : restrict-subeq-tp2 (subeq-tp/eq S2' SX1' W') W2 Z (subeq-tp/eq SX2 SX1 W)
+        <- extend-wf-tp W2 Z WT
+        <- wf-tp-dia WT W2 W (sub-env/ext sub-env/refl) SX2 W' S2' S1'
+        <- sub-env-trans S1' SX1 SX1'.
+- : restrict-subeq-tp2 (subeq-tp/sub S) W2 Z (subeq-tp/sub S') 
+        <- restrict-sub-tp2 S W2 _ S'.
+%worlds () (restrict-subeq-tp2 _ _ _ _).
+%total A (restrict-subeq-tp2 _ _ _ A).
 
 
 
@@ -786,33 +870,7 @@ subeq-tp-refl :
 %total T (subeq-tp-refl T _).
 
 
-extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
-%mode extract-wf +SBT1 -SBT2 -SBT3.
-- : extract-wf sub-tp/int wf-tp/int wf-tp/int.
-- : extract-wf sub-tp/bool wf-tp/bool wf-tp/bool.
-- : extract-wf (sub-tp/top W) W wf-tp/top.
-- : extract-wf (sub-tp/bot W) wf-tp/bot W.
-- : extract-wf (sub-tp/fun (ST1:sub-tp G1 T2 G2 T4) (ST2:sub-tp G2 T3 G1 T1)) 
-        (wf-tp/fun W2 W1) (wf-tp/fun W4 W3)
-      <- extract-wf ST1 W2 W4
-      <- extract-wf ST2 W3 W1.
-- : extract-wf (sub-tp/rect ST1 ST2 B2 B1) (wf-tp/rect B1 W2 W1) (wf-tp/rect B2 W4 W3) %% FIXME: T1<:T2 & T3 <: T4
-      <- extract-wf ST1 W2 W4
-      <- extract-wf ST2 W3 W1.
-- : extract-wf (sub-tp/recv ST) (wf-tp/recv W1) (wf-tp/recv W2)
-      <- extract-wf ST W1 W2.
 
-- : extract-wf (sub-tp/tsel1 ST (pev L (wf-tp/rect SB W1 W3))) 
-      (wf-tp/tsel (pev L (wf-tp/rect SB W1 W3))) W2
-      <- extract-wf ST _ W2. % W1 W2
-
-- : extract-wf (sub-tp/tsel2 ST (pev L (wf-tp/rect SB W3 W2))) 
-      W1 (wf-tp/tsel (pev L (wf-tp/rect SB W3 W2)))
-      <- extract-wf ST W1 _. % W1 W2
-
-
-%worlds () (extract-wf _ _ _).
-%total T2 (extract-wf T2 _ _).
 
 
 
@@ -982,10 +1040,11 @@ subeq-tp-trans :
   type.
 %mode subeq-tp-trans +SBT1 +SBT2 -SBT3.
 
-- : subeq-tp-trans (subeq-tp/eq SX2 SX1 W1) (subeq-tp/eq SY2 SY1 W2) (subeq-tp/eq SZY1 SX1 W1)
-      <- sub-env-dia SX2 SY1 SZ1 SZ2
+- : subeq-tp-trans (subeq-tp/eq SX2 SX1 W1) (subeq-tp/eq SY2 SY1 W2) (subeq-tp/eq SZY2 SZX1 W0)
+      <- extend-wf-tp-mult W1 SX2 WT
+      <- wf-tp-dia WT W1 W2 SX2 SY1 W0 SZ1 SZ2
       <- sub-env-trans SZ2 SY2 SZY2
-      <- sub-env-transi SZ1 SZY1 SZY2.
+      <- sub-env-trans SZ1 SX1 SZX1.
 
 - : subeq-tp-trans (subeq-tp/eq SX2 SX1 W1) (subeq-tp/sub S2) (subeq-tp/sub S4)
       <- restrict-sub-tp1-mult S2 W1 SX2 S3
