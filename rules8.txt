@@ -1,0 +1,101 @@
+like rules7.txt, but changing
+
+t ::= 
+    | new {                     // object/function creation
+        type T 
+      }
+
+T ::=
+    | { type T }                // type member
+
+
+
+G wf T
+---------------
+G wf { type T }
+
+x:{ type T } wf in G
+--------------------
+G wf x.T
+
+
+
+G1 T1 <: G2 T2
+--------------------------------
+G1 { type T1 } <: G2 { type T2 }
+
+
+x:{ type T1 } wf in G1    G1 T1 <: G2 T2
+----------------------------------------
+G1 x.T <: T2
+
+
+G1 T1 <: G2 T2    x:{ type T2 } wf in G2
+----------------------------------------
+G1 T1 <: x.T
+
+
+
+G wf { type T }
+-----------------------------------------------------------------
+G |- new { def apply(x) = t1; val get = t2; type T } : { type T }
+
+
+
+G wf { type T }
+-------------------------------------------------------
+G |- Clos H1 { def apply = t val get = v } : { type T }
+
+
+
+
+to
+
+
+
+t ::= 
+    | new {                     // object/function creation
+        type T1..T2 
+      }
+
+T ::=
+    | { type T1..T2 }           // bounded type member
+
+
+
+G T1 <: G T2
+--------------------
+G wf { type T1..T2 }
+
+x:{ type T1..T2 } wf in G
+-------------------------
+G wf x.T
+
+
+
+G1 T1 <: G1 T2    G2 T3 <: G2 T4
+G2 T3 <: G1 T1    G1 T2 <: G2 T4
+----------------------------------------
+G1 { type T1..T2 } <: G2 { type T3..T4 }
+
+
+x:{ type TS..TU } wf in G1    G1 TU <: G2 T2
+--------------------------------------------
+G1 x.T <: T2
+
+
+G1 T1 <: G2 TS    x:{ type TS..TU } wf in G2
+--------------------------------------------
+G1 T1 <: x.T
+
+
+
+G wf { type T1..T2 }
+---------------------------------------------------------------------------
+G |- new { def apply(x) = t1; val get = t2; type T1..T2 } : { type T1..T2 }
+
+
+
+G wf { type T1..T2 }
+------------------------------------------------------------
+G |- Clos H1 { def apply = t val get = v } : { type T1..T2 }

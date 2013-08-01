@@ -29,7 +29,7 @@ x: T in G
 x->v in H
 
 
-// types well-formed w.r.t env
+// types well-formed w.r.t env 
 
 G wf Top
 G wf Bot
@@ -50,9 +50,10 @@ G wf T
 G wf { type T }
 
 
-x:{ type T } in G
------------------
+x:{ type T } wf in G
+--------------------
 G wf x.T
+
 
 
 
@@ -82,13 +83,13 @@ G1 T1 <: G2 T2
 G1 { type T1 } <: G2 { type T2 }
 
 
-x:{ type T1 } in G1    G1 T1 <: G2 T2
--------------------------------------
+x:{ type T1 } wf in G1    G1 T1 <: G2 T2
+----------------------------------------
 G1 x.T <: T2
 
 
-G1 T1 <: G2 T2    x:{ type T2 } in G2
--------------------------------------
+G1 T1 <: G2 T2    x:{ type T2 } wf in G2
+----------------------------------------
 G1 T1 <: x.T
 
 
@@ -101,7 +102,7 @@ H |- x => v
 
 
 H |- t2 => v2
--------------------------------------------------------
+--------------------------------------------------------------------------------------------------
 H |- new { def apply(x) = t1; val get = t2; type T } => Clos H { def apply(x) = t1; val get = v2 }
 
 
@@ -120,12 +121,12 @@ H |- t1.get => v4
 
 // expression typing
 
-x: T in G    G wf T
--------------------
+x: T wf in G
+------------
 G |- x: T
 
 
-x:T1::G |- t1: T2    G wf T1    G wf T2
+x:T1::G |- t1: T2    G wf { T1 => T2 }
 -------------------------------------------------------------------
 G |- new { def apply(x) = t1; val get = t2; type T } : { T1 => T2 }
 
@@ -135,7 +136,7 @@ G |- t2: T2
 G |- new { def apply(x) = t1; val get = t2; type T } : { get T2 }
 
 
-G wf T
+G wf { type T }
 -----------------------------------------------------------------
 G |- new { def apply(x) = t1; val get = t2; type T } : { type T }
 
@@ -159,8 +160,8 @@ G |- t: T2
 
 // value typing
 
-x: T in G    G wf T
--------------------
+x: T wf in G
+------------
 G |- x: T
 
 
@@ -174,7 +175,7 @@ G |- t2: T2
 G |- Clos H1 { def apply = t val get = v } : { get T2 }
 
 
-G wf T
+G wf { type T }
 -------------------------------------------------------
 G |- Clos H1 { def apply = t val get = v } : { type T }
 
