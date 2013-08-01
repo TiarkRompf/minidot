@@ -716,9 +716,12 @@ extend-subeq-tp2: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T
 
 extend-wf-tp-mult: wf-tp G1 T1 -> sub-env G1 G2 -> wf-tp G2 T1 -> type.
 %mode extend-wf-tp-mult +A +B -C.
+- : extend-wf-tp-mult W sub-env/refl W.
+- : extend-wf-tp-mult W (sub-env/ext S) W2
+    <- extend-wf-tp-mult W S W1
+    <- extend-wf-tp W1 _ W2.
 %worlds () (extend-wf-tp-mult _ _ _).
-%trustme
-%total A (extend-wf-tp-mult A _ _).
+%total A (extend-wf-tp-mult _ A _).
 
 
 extend-sub-tp1-mult: sub-tp G1 T1 G2 T2 -> sub-env G1 G3 -> sub-tp G3 T1 G2 T2 -> type.
