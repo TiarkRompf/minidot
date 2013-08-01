@@ -668,6 +668,17 @@ restrict-sub-tp: sub-tp G1 T1 G2 T2
 
 
 
+restrict-sub-tp1: sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> {Z: tpe} sub-tp (tcons Z G1) T1 G2 T2 -> type.
+%mode restrict-sub-tp1 -A +Y +B +C.
+
+- : restrict-sub-tp1 ST W1 T ST1 
+    <- extend-sub-tp2 ST1 T ST12
+    <- extract-wf ST1 _ W2
+    <- restrict-sub-tp ST W1 W2 T ST12.
+
+%worlds () (restrict-sub-tp1 _ _ _ _).
+%total A (restrict-sub-tp1 _ _ _ A).
+
 restrict-sub-tp2: sub-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} sub-tp G1 T1 (tcons Z G2) T2 -> type.
 %mode restrict-sub-tp2 -A +Y +B +C.
 
