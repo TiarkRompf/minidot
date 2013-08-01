@@ -775,15 +775,19 @@ restrict-sub-tp: sub-tp G1 T1 G2 T2
       <- restrict-sub-tp STQ W1 WSQ T ST'
       <- eq-high SB STQ ST.
 
-% - : restrict-sub-tp (sub-tp/tselx (pev L (wf-tp/rect SF WU WS)) S1 S2)
-%      (wf-tp/tsel (pev L1 (wf-tp/rect SF1 WU1 WS1)))
-%      (wf-tp/tsel (pev L2 (wf-tp/rect SF2 WU2 WS2)))
-%      T
-%      (sub-tp/tselx (pev L' (wf-tp/rect SF' WU' WS')) S1' S2').
+
+- : restrict-sub-tp (sub-tp/tselx P S1 S2) W1 W2 T (sub-tp/tselx P' S1' S2')
+      <- extend-wf-tp-mult (wf-tp/tsel P') S1' W1'
+      <- extend-wf-tp-mult (wf-tp/tsel P') S2' W2'
+      <- wf-tp-dia W1' W1 (wf-tp/tsel P') (sub-env/ext sub-env/refl) S1' (wf-tp/tsel P1) S1A S1B
+      <- wf-tp-dia W2' W2 (wf-tp/tsel P') (sub-env/ext sub-env/refl) S2' (wf-tp/tsel P2) S2A S2B
+      <- wf-tp-dia (wf-tp/tsel P') (wf-tp/tsel P1) (wf-tp/tsel P2) S1B S2B (wf-tp/tsel P) S3A S3B
+      <- sub-env-trans S3A S1A S1
+      <- sub-env-trans S3B S2A S2.
 
 %worlds () (restrict-sub-tp _ _ _ _ _).
-%trustme
 %total A (restrict-sub-tp _ _ _ _ A).
+
 
 
 
