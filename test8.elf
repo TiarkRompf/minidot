@@ -718,11 +718,19 @@ empty-env-sub: {G:tenv} sub-env tnil G -> type.
 %total A (empty-env-sub A _).
 
 
-foobar-env: wf-tp G1 (tsel (var N)) -> wf-tp G0 (tsel (var N)) -> sub-env G0 G1 -> tsize G1 (var (s N)) -> type.
+foobar-env: wf-tp G1 (tsel (var N)) -> wf-tp G0 (tsel (var N)) -> sub-env G0 G1 -> tsize G0 (var (s N)) -> type.
 %mode foobar-env +A -B -C -D.
 %worlds () (foobar-env _ _ _ _).
 %trustme
 %total A (foobar-env A _ _ _).
+
+
+foobar-env2: wf-tp G0 (tsel (var N)) -> wf-tp G1 (tsel (var N)) -> wf-tp G2 (tsel (var N)) -> tsize G0 (var (s N)) -> 
+sub-env G0 G2 -> sub-env G1 G2 -> sub-env G0 G1 -> type.
+%mode foobar-env2 +A +B +C +D +E +F -G.
+%worlds () (foobar-env2 _ _ _ _ _ _ _).
+%trustme
+%total A (foobar-env2 A _ _ _ _ _ _).
 
 
 
@@ -747,7 +755,7 @@ wf-tp-dia:
 - : wf-tp-dia (wf-tp/recv WT) (wf-tp/recv W1) (wf-tp/recv W2) S1 S2 (wf-tp/recv W0) S1' S2'
       <- wf-tp-dia WT W1 W2 S1 S2 W0 S1' S2'.
 
-- : wf-tp-dia (wf-tp/fun WTA WTB) (wf-tp/fun W1A W1B) (wf-tp/fun W2A W2B) S1 S2 (wf-tp/fun W0A W0B) S1' S2'
+ - : wf-tp-dia (wf-tp/fun WTA WTB) (wf-tp/fun W1A W1B) (wf-tp/fun W2A W2B) S1 S2 (wf-tp/fun W0A W0B) S1' S2''
       <- wf-tp-dia WTA W1A W2A S1 S2 W0A S1' S2'
       <- wf-tp-dia WTB W1B W2B S1 S2 W0B S1'' S2''. %% PROBLEM?: S1' S2' not unique...
 
@@ -758,10 +766,13 @@ wf-tp-dia:
       <- restrict-sub-tp2-mult ST20 W0A S2' ST0.
 
 - : wf-tp-dia (wf-tp/tsel (pev LT WT)) (wf-tp/tsel (pev L1 W1)) (wf-tp/tsel (pev L2 W2)) S1 S2 (wf-tp/tsel (pev L0 W0)) S1' S2'
-      <- foobar-env (wf-tp/tsel (pev LT WT)) (wf-tp/tsel (pev L0 W0)) S1X TS.
+      <- foobar-env  (wf-tp/tsel (pev LT WT)) (wf-tp/tsel (pev L0 W0)) S1X TS
+      <- foobar-env2 (wf-tp/tsel (pev L0 W0)) (wf-tp/tsel (pev L1 W1)) (wf-tp/tsel (pev LT WT)) TS S1X S1 S1'
+      <- foobar-env2 (wf-tp/tsel (pev L0 W0)) (wf-tp/tsel (pev L2 W2)) (wf-tp/tsel (pev LT WT)) TS S1X S2 S2'.
 
 
 %{
+
 strategy for T = tsel (var N):
 
   since T wf in GT,G1,G2, size of GT,G1,G2 >= N+1.
