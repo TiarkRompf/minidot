@@ -334,7 +334,19 @@ sub-env-trans: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
 %worlds () (sub-env-trans _ _ _).
 %total A (sub-env-trans _ A _).
 
-sub-env-inv: sub-env G1 G2 -> sub-env G3 G1 -> sub-env G2 G3 -> type.
+
+minmax-env: tenv -> tenv -> tenv -> tenv -> type.
+mm-env/1: minmax-env G1 G2 G1 G2 <- sub-env G1 G2.
+mm-env/2: minmax-env G1 G2 G2 G1 <- sub-env G2 G1.
+
+sub-env-dia1: sub-env G1 GT -> sub-env G2 GT -> minmax-env G1 G2 GS GU -> type.
+%mode sub-env-dia1 +A +B -C.
+
+%worlds () (sub-env-dia1 _ _ _).
+%trustme
+%total A (sub-env-dia1 A _ _).
+
+
 
 
 %% not quite sure about this one ...
@@ -709,6 +721,7 @@ restrict-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> wf-tp G0 T2 -> sub-env G0 G2 -> sub
 %worlds () (restrict-sub-tp2-mult _ _ _ _).
 %trustme
 %total A (restrict-sub-tp2-mult A _ _ _).
+
 
 
 empty-env-sub: {G:tenv} sub-env tnil G -> type.
