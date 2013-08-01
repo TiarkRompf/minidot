@@ -1346,9 +1346,13 @@ cases-wfv: subeq-tp-cases
 
 extract-wf4: subeq-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
 %mode extract-wf4 +A -B -C.
+- : extract-wf4 (subeq-tp/eq S2 S1 W) W1 W2 <- extend-wf-tp-mult W S1 W1  <- extend-wf-tp-mult W S2 W2.
+- : extract-wf4 (subeq-tp/sub ST) W1 W2 <- extract-wf ST W1 W2.
 %worlds () (extract-wf4 _ _ _).
-%trustme
 %total WFE (extract-wf4 WFE _ _). 
+
+
+%% this will need to change if we add non-closure values
 
 extract-wf5: wf-val V G T -> wf-tp G (rect T1 T2) -> wf-val V G (rect T1 T2) -> type.
 %mode extract-wf5 +A +B -C.
