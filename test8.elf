@@ -726,9 +726,12 @@ extend-wf-tp-mult: wf-tp G1 T1 -> sub-env G1 G2 -> wf-tp G2 T1 -> type.
 
 extend-sub-tp1-mult: sub-tp G1 T1 G2 T2 -> sub-env G1 G3 -> sub-tp G3 T1 G2 T2 -> type.
 %mode extend-sub-tp1-mult +A +B -C.
+- : extend-sub-tp1-mult ST sub-env/refl ST.
+- : extend-sub-tp1-mult ST (sub-env/ext S) ST2
+    <- extend-sub-tp1-mult ST S ST1
+    <- extend-sub-tp1 ST1 _ ST2.
 %worlds () (extend-sub-tp1-mult _ _ _).
-%trustme
-%total A (extend-sub-tp1-mult A _ _).
+%total A (extend-sub-tp1-mult _ A _).
 
 extend-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> sub-env G2 G3 -> sub-tp G1 T1 G3 T2 -> type.
 %mode extend-sub-tp2-mult +A +B -C.
