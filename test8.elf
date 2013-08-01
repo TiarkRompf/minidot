@@ -339,11 +339,17 @@ minmax-env: tenv -> tenv -> tenv -> tenv -> type.
 mm-env/1: minmax-env G1 G2 G1 G2 <- sub-env G1 G2.
 mm-env/2: minmax-env G1 G2 G2 G1 <- sub-env G2 G1.
 
+
+% Diamond / common prefix property
+
 sub-env-dia: sub-env G1 GT -> sub-env G2 GT -> minmax-env G1 G2 GS GU -> type.
 %mode sub-env-dia +A +B -C.
 
+- : sub-env-dia sub-env/refl S (mm-env/2 S).
+- : sub-env-dia (sub-env/ext S1) sub-env/refl (mm-env/1 (sub-env/ext S1)).
+- : sub-env-dia (sub-env/ext S1) (sub-env/ext S2) MM <- sub-env-dia S1 S2 MM.
+
 %worlds () (sub-env-dia _ _ _).
-%trustme
 %total A (sub-env-dia A _ _).
 
 
