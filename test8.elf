@@ -317,6 +317,39 @@ wf-tp/tsel : wf-tp G1 (tsel E1)
 
 
 
+% Extract wf from subtyping
+
+extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
+%mode extract-wf +SBT1 -SBT2 -SBT3.
+- : extract-wf sub-tp/int wf-tp/int wf-tp/int.
+- : extract-wf sub-tp/bool wf-tp/bool wf-tp/bool.
+- : extract-wf (sub-tp/top W) W wf-tp/top.
+- : extract-wf (sub-tp/bot W) wf-tp/bot W.
+- : extract-wf (sub-tp/fun (ST1:sub-tp G1 T2 G2 T4) (ST2:sub-tp G2 T3 G1 T1)) 
+        (wf-tp/fun W2 W1) (wf-tp/fun W4 W3)
+      <- extract-wf ST1 W2 W4
+      <- extract-wf ST2 W3 W1.
+- : extract-wf (sub-tp/rect ST1 ST2 B2 B1) (wf-tp/rect B1 W2 W1) (wf-tp/rect B2 W4 W3) %% FIXME: T1<:T2 & T3 <: T4
+      <- extract-wf ST1 W2 W4
+      <- extract-wf ST2 W3 W1.
+- : extract-wf (sub-tp/recv ST) (wf-tp/recv W1) (wf-tp/recv W2)
+      <- extract-wf ST W1 W2.
+
+- : extract-wf (sub-tp/tsel1 ST (pev L (wf-tp/rect SB W1 W3))) 
+      (wf-tp/tsel (pev L (wf-tp/rect SB W1 W3))) W2
+      <- extract-wf ST _ W2. % W1 W2
+
+- : extract-wf (sub-tp/tsel2 ST (pev L (wf-tp/rect SB W3 W2))) 
+      W1 (wf-tp/tsel (pev L (wf-tp/rect SB W3 W2)))
+      <- extract-wf ST W1 _. % W1 W2
+
+
+%worlds () (extract-wf _ _ _).
+%total T2 (extract-wf T2 _ _).
+
+
+
+
 % Partial ordering on environments
 
 sub-env: tenv -> tenv -> type.
@@ -394,19 +427,6 @@ extend-wf-lkp: tlookup G (var N) T -> {Z: tpe} tlookup (tcons Z G) (var N) T -> 
       <- extend-wf-lkpz L Z L'.
 %worlds () (extend-wf-lkp _ _ _).
 %total A (extend-wf-lkp A _ _).
-
-
-% restrict-wf-lkp: tlookup G (var N) T -> wf-tp G T -> {Z: tpe} tlookup (tcons Z G) (var N) T -> type.
-% %mode restrict-wf-lkp -A +W +B +C.
-% %worlds () (restrict-wf-lkp _ _ _ _).
-% %trustme
-% %total A (restrict-wf-lkp _ _ _ A).
-% 
-% restrict-wf-lkp-mult: tlookup G (var N) T -> wf-tp G T -> sub-env G G1 -> tlookup G1 (var N) T -> type.
-% %mode restrict-wf-lkp-mult -A +W +B +C.
-% %worlds () (restrict-wf-lkp-mult _ _ _ _).
-% %trustme
-% %total A (restrict-wf-lkp-mult _ _ _ A).
 
 
 
@@ -650,8 +670,13 @@ restrict-sub-tp: sub-tp G1 T1 G2 T2
 
 restrict-sub-tp2: sub-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} sub-tp G1 T1 (tcons Z G2) T2 -> type.
 %mode restrict-sub-tp2 -A +Y +B +C.
+
+- : restrict-sub-tp2 ST W2 T ST2 
+    <- extend-sub-tp1 ST2 T ST12
+    <- extract-wf ST2 W1 _
+    <- restrict-sub-tp ST W1 W2 T ST12.
+
 %worlds () (restrict-sub-tp2 _ _ _ _).
-%trustme
 %total A (restrict-sub-tp2 _ _ _ A).
 
 
@@ -803,33 +828,7 @@ subeq-tp-refl :
 %total T (subeq-tp-refl T _).
 
 
-extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
-%mode extract-wf +SBT1 -SBT2 -SBT3.
-- : extract-wf sub-tp/int wf-tp/int wf-tp/int.
-- : extract-wf sub-tp/bool wf-tp/bool wf-tp/bool.
-- : extract-wf (sub-tp/top W) W wf-tp/top.
-- : extract-wf (sub-tp/bot W) wf-tp/bot W.
-- : extract-wf (sub-tp/fun (ST1:sub-tp G1 T2 G2 T4) (ST2:sub-tp G2 T3 G1 T1)) 
-        (wf-tp/fun W2 W1) (wf-tp/fun W4 W3)
-      <- extract-wf ST1 W2 W4
-      <- extract-wf ST2 W3 W1.
-- : extract-wf (sub-tp/rect ST1 ST2 B2 B1) (wf-tp/rect B1 W2 W1) (wf-tp/rect B2 W4 W3) %% FIXME: T1<:T2 & T3 <: T4
-      <- extract-wf ST1 W2 W4
-      <- extract-wf ST2 W3 W1.
-- : extract-wf (sub-tp/recv ST) (wf-tp/recv W1) (wf-tp/recv W2)
-      <- extract-wf ST W1 W2.
 
-- : extract-wf (sub-tp/tsel1 ST (pev L (wf-tp/rect SB W1 W3))) 
-      (wf-tp/tsel (pev L (wf-tp/rect SB W1 W3))) W2
-      <- extract-wf ST _ W2. % W1 W2
-
-- : extract-wf (sub-tp/tsel2 ST (pev L (wf-tp/rect SB W3 W2))) 
-      W1 (wf-tp/tsel (pev L (wf-tp/rect SB W3 W2)))
-      <- extract-wf ST W1 _. % W1 W2
-
-
-%worlds () (extract-wf _ _ _).
-%total T2 (extract-wf T2 _ _).
 
 
 
