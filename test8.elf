@@ -697,24 +697,21 @@ restrict-sub-tp2: sub-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} sub-tp G1 T1 (tc
 
 extend-subeq-tp1: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp (tcons Z G1) T1 G2 T2 -> type.
 %mode extend-subeq-tp1 +A +B -C.
-- : extend-subeq-tp1 (subeq-tp/eq SX1 SX2 W) Z (subeq-tp/eq SX1 (sub-env/ext SX2) W).
+- : extend-subeq-tp1 (subeq-tp/eq SX2 SX1 W) Z (subeq-tp/eq SX2 (sub-env/ext SX1) W).
 - : extend-subeq-tp1 (subeq-tp/sub S) Z (subeq-tp/sub S') <- extend-sub-tp1 S _ S'.
 %worlds () (extend-subeq-tp1 _ _ _).
 %total A (extend-subeq-tp1 A _ _).
 
 extend-subeq-tp2: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T2 -> type.
 %mode extend-subeq-tp2 +A +B -C.
-- : extend-subeq-tp2 (subeq-tp/eq SX1 SX2 W) Z (subeq-tp/eq (sub-env/ext SX1) SX2 W).
+- : extend-subeq-tp2 (subeq-tp/eq SX2 SX1 W) Z (subeq-tp/eq (sub-env/ext SX2) SX1 W).
 - : extend-subeq-tp2 (subeq-tp/sub S) Z (subeq-tp/sub S') <- extend-sub-tp2 S _ S'.
 %worlds () (extend-subeq-tp2 _ _ _).
 %total A (extend-subeq-tp2 A _ _).
 
 
-restrict-subeq-tp2: subeq-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T2 -> type.
-%mode restrict-subeq-tp2 -A +Y +B +C.
-%worlds () (restrict-subeq-tp2 _ _ _ _).
-%trustme
-%total A (restrict-subeq-tp2 _ _ _ A).
+
+
 
 
 extend-wf-tp-mult: wf-tp G1 T1 -> sub-env G1 G2 -> wf-tp G2 T1 -> type.
@@ -783,6 +780,22 @@ wf-tp-dia:
 
 %worlds () (wf-tp-dia _ _ _ _ _ _ _ _).
 %total A (wf-tp-dia A _ _ _ _ _ _ _).
+
+
+
+% Restrict subeq - placed here because it uses wf-tp-dia (does it have to?)
+
+restrict-subeq-tp2: subeq-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T2 -> type.
+%mode restrict-subeq-tp2 -A +Y +B +C.
+- : restrict-subeq-tp2 (subeq-tp/eq S2' SX1' W') W2 Z (subeq-tp/eq SX2 SX1 W)
+        <- extend-wf-tp W2 Z WT
+        <- wf-tp-dia WT W2 W (sub-env/ext sub-env/refl) SX2 W' S2' S1'
+        <- sub-env-trans S1' SX1 SX1'.
+- : restrict-subeq-tp2 (subeq-tp/sub S) W2 Z (subeq-tp/sub S') 
+        <- restrict-sub-tp2 S W2 _ S'.
+%worlds () (restrict-subeq-tp2 _ _ _ _).
+%total A (restrict-subeq-tp2 _ _ _ A).
+
 
 
 
