@@ -1,0 +1,8 @@
+like rules8.txt, but adding 
+
+// prefix relation on environments: G1 [= G2
+
+
+x:{ type T1..T2 } wf in G    G [= G1    G [= G2
+-----------------------------------------------
+G1 x.T <: G2 x.T
