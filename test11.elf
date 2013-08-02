@@ -1,5 +1,5 @@
 % echo "set unsafe true 
-% loadFile test10.elf" |/Volumes/Twelf\ for\ OS\ X\ \(Intel\)/Twelf/bin/twelf-server
+% loadFile test11.elf" |/Volumes/Twelf\ for\ OS\ X\ \(Intel\)/Twelf/bin/twelf-server
 
 % STLC: big step preservation
 % - add store
@@ -9,7 +9,7 @@
 % + add value members
 % + add type bounds
 % + add reflexivity for type selections
-% - add self types
+% + add self types
 
 
 %{ ------- arithmetic ----- }%
@@ -129,7 +129,7 @@ arrow: tpe -> tpe -> tpe.  % { A => B }
 rect : tpe -> tpe -> tpe.  % { type A..B }
 recv : tpe -> tpe.         % { val get: A }
 tsel : exp -> tpe.         % x.A
-% tand : tpe -> tpe -> tpe.  % A && B
+bind : tpe -> tpe.        % { this => A }
 
 % values
 cstv: cst -> val.
@@ -342,6 +342,10 @@ wf-tp/recv : wf-tp G1 (recv T1)
 
 wf-tp/tsel : wf-tp G1 (tsel E1)
               <- path-eval G1 E1 (rect T1 T1U).
+
+wf-tp/tbind : wf-tp G1 (bind T)
+              <- wf-tp (tcons (bind T) G1) T. 
+              %% TODO: var we put in env should be fresh -> inc all refs in type by one
 
 
 
