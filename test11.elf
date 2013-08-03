@@ -129,7 +129,10 @@ arrow: tpe -> tpe -> tpe.  % { A => B }
 rect : tpe -> tpe -> tpe.  % { type A..B }
 recv : tpe -> tpe.         % { val get: A }
 tsel : exp -> tpe.         % x.A
-bind : tpe -> tpe.        % { this => A }
+
+bind : nat -> tpe -> tpe.     % { this => A } %% we shouldn't need the nat param
+bindh : (exp -> tpe) -> tpe.  % { this => A } hoas version
+
 
 % values
 cstv: cst -> val.
@@ -274,6 +277,16 @@ sub-env-dia: sub-env G1 GT -> sub-env G2 GT -> minmax-env G1 G2 GS GU -> type.
 
 
 
+%{ ------- alpha conversion for types ------ }%
+
+swapv-tp: tpe -> nat -> nat -> tpe -> type.
+
+swapv-tp/int  : swapv-tp int N1 N1 int.
+swapv-tp/bool : swapv-tp bool N1 N1 bool.
+swapv-tp/top : swapv-tp top N1 N1 top.
+swapv-tp/bot : swapv-tp bool N1 N1 bot.
+
+
 
 %{ ------- subtyping ------ }%
 
@@ -343,10 +356,15 @@ wf-tp/recv : wf-tp G1 (recv T1)
 wf-tp/tsel : wf-tp G1 (tsel E1)
               <- path-eval G1 E1 (rect T1 T1U).
 
-wf-tp/tbind : wf-tp G1 (bind T)
-              <- wf-tp (tcons (bind T) G1) T. 
-              %% TODO: var we put in env should be fresh -> inc all refs in type by one
+wf-tp/tbind : wf-tp G1 (bind N T)
+              <- wf-tp (tcons (bind (s N) T1) G1) T
+              <- swapv-tp T N (s N) T1.
 
+wf-tp/tbindh : wf-tp G1 (bindh ([x] T x))
+              <- ({G2:tenv}
+                  sub-env G1 G2 -> 
+                  tsize G2 (var N) -> 
+                  wf-tp (tcons (bindh ([x] T x)) G2) (T (var N))).
 
 
 
@@ -502,6 +520,14 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 %mode extend-sub-tp +A +B -C -D -E.
 
 
+extend-wf-tpf: {Z} {G1} {G2} sub-env (tcons Z G1) G2 -> sub-env G1 G2 -> type.
+%mode extend-wf-tpf +A +B +C +D -E.
+%worlds () (extend-wf-tpf _ _ _ _ _).
+%unique extend-wf-tpf +A +B +C +D -1E.
+%trustme
+%total (A) (extend-wf-tpf _ A _ _ _).
+
+
 - : extend-wf-tp wf-tp/int T wf-tp/int.
 - : extend-wf-tp wf-tp/bool T wf-tp/bool.
 - : extend-wf-tp wf-tp/top T wf-tp/top.
@@ -518,6 +544,17 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 - : extend-wf-tp (wf-tp/tsel (pev L W)) T (wf-tp/tsel (pev L' W'))
       <- extend-wf-lkp L _ L'
       <- extend-wf-tp W _ W'.
+
+- : extend-wf-tp ((wf-tp/tbindh [G2] [S] [N] W G2 S N): (wf-tp _ (bindh ([x] F x)))) T 
+        (wf-tp/tbindh ([G2'] [S'] [N'] W G2' (FS S') N'))
+        <- {FS: sub-env (tcons Z G1) G2 -> sub-env G1 G2} extend-wf-tpf _ _ _ S' S''.
+
+
+% - : extend-wf-tpf S ([x] TF x) (wf-tp/recv W1) T (wf-tp/recv W1') <- extend-wf-tpf S TF W1 _ W1'.
+
+
+
+
 
 
 - : extend-sub-tp sub-tp/int T sub-tp/int sub-tp/int sub-tp/int.
