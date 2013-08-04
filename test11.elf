@@ -131,7 +131,8 @@ recv : tpe -> tpe.         % { val get: A }
 tsel : exp -> tpe.         % x.A
 
 bind : nat -> tpe -> tpe.     % { this => A } %% we shouldn't need the nat param
-bindh : (exp -> tpe) -> tpe.  % { this => A } hoas version
+
+% bindh : (exp -> tpe) -> tpe.  % { this => A } hoas version
 
 
 % values
@@ -279,12 +280,37 @@ sub-env-dia: sub-env G1 GT -> sub-env G2 GT -> minmax-env G1 G2 GS GU -> type.
 
 %{ ------- alpha conversion for types ------ }%
 
+swap-nat: nat -> nat -> nat -> nat -> type.
+- : swap-nat A A B B.
+- : swap-nat B A B A.
+- : swap-nat N A B N <- ne N A <- ne N B.
+
+
+
 swapv-tp: tpe -> nat -> nat -> tpe -> type.
 
-swapv-tp/int  : swapv-tp int N1 N1 int.
-swapv-tp/bool : swapv-tp bool N1 N1 bool.
-swapv-tp/top : swapv-tp top N1 N1 top.
-swapv-tp/bot : swapv-tp bool N1 N1 bot.
+swapv-tp/int  : swapv-tp int N1 N2 int.
+swapv-tp/bool : swapv-tp bool N1 N2 bool.
+swapv-tp/top  : swapv-tp top N1 N2 top.
+swapv-tp/bot  : swapv-tp bool N1 N2 bot.
+swapv-tp/fun  : swapv-tp (arrow T1 T2) N1 N2 (arrow T1' T2')
+                <- swapv-tp T1 N1 N2 T1'
+                <- swapv-tp T2 N1 N2 T2'.
+swapv-tp/rect : swapv-tp (rect T1 T2) N1 N2 (rect T1' T2')
+                <- swapv-tp T1 N1 N2 T1'
+                <- swapv-tp T2 N1 N2 T2'.
+swapv-tp/recv : swapv-tp (recv T1) N1 N2 (recv T1')
+                <- swapv-tp T1 N1 N2 T1'.
+swapv-tp/tsel : swapv-tp (tsel (var N)) N1 N2 (tsel (var N')) 
+                <- swap-nat N N1 N2 N'.
+swapv-tp/bind : swapv-tp (bind N T) N1 N2 (bind N' T')
+                <- swap-nat N N1 N2 N'
+                <- swapv-tp T N1 N2 T'.
+
+
+swapv-env: tenv -> nat -> nat -> tenv -> type.
+
+%% TODO
 
 
 
@@ -333,6 +359,22 @@ sub-tp/tselx : sub-tp G1 (tsel E) G2 (tsel E)
                <- sub-env G G1
                <- path-eval G E (rect T2 T2U).
 
+sub-tp/tbind1 : sub-tp G1 (bind X T1) G2 T2
+               <- wf-tp G1 (bind X T1)
+               % <- sub-env G G2
+               % <- sub-env G G1
+               <- sub-tp (tcons (bind X T1) G1) T1' G2 T2
+               <- swapv-tp T1 X (s N) T1'
+               <- tsize G1 (var N).
+
+
+sub-tp/tbind : sub-tp G1 T1 G2 (bind X T2)
+               <- wf-tp G2 (bind X T2)
+               % <- sub-env G G2
+               % <- sub-env G G1
+               <- sub-tp G1 T1 (tcons T1 G2) T2' 
+               <- swapv-tp T2 X (s N) T2'
+               <- tsize G2 (var N).
 
 
 
@@ -356,15 +398,16 @@ wf-tp/recv : wf-tp G1 (recv T1)
 wf-tp/tsel : wf-tp G1 (tsel E1)
               <- path-eval G1 E1 (rect T1 T1U).
 
-wf-tp/tbind : wf-tp G1 (bind N T)
-              <- wf-tp (tcons (bind (s N) T1) G1) T
-              <- swapv-tp T N (s N) T1.
+wf-tp/tbind : wf-tp G1 (bind X T)
+              <- wf-tp (tcons (bind X T) G1) T'
+              <- swapv-tp T X (s N) T'
+              <- tsize G1 (var N).
 
-wf-tp/tbindh : wf-tp G1 (bindh ([x] T x))
-              <- ({G2:tenv}
-                  sub-env G1 G2 -> 
-                  tsize G2 (var N) -> 
-                  wf-tp (tcons (bindh ([x] T x)) G2) (T (var N))).
+% wf-tp/tbindh : wf-tp G1 (bindh ([x] T x))
+%               <- ({G2:tenv}
+%                   sub-env G1 G2 -> 
+%                   tsize G2 (var N) -> 
+%                   wf-tp (tcons (bindh ([x] T x)) G2) (T (var N))).
 
 
 
@@ -503,6 +546,17 @@ eq-wf: same T1 T1' -> wf-tp G1 T1 -> wf-tp G1 T1' -> type.
 %total {T2} (eq-wf T2 _ _).
 
 
+% Swapping names in environments preserves lookup
+
+% swap-wf-lkp: tlookup G1 (var N1) T1 -> swapv-env G1 NA NB G2 -> swap-nat N1 NA NB N2 -> swapv-tp T1 NA NB T2 -> 
+% tlookup G2 (var N2) T2 -> type.
+% %mode swap-wf-lkp +A +B +C +D -E.
+% %worlds () (swap-wf-lkp _ _ _ _ _).
+% %total (A) (swap-wf-lkp A _ _ _ _).
+
+
+
+
 
 
 
@@ -520,12 +574,70 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 %mode extend-sub-tp +A +B -C -D -E.
 
 
-extend-wf-tpf: {Z} {G1} {G2} sub-env (tcons Z G1) G2 -> sub-env G1 G2 -> type.
-%mode extend-wf-tpf +A +B +C +D -E.
-%worlds () (extend-wf-tpf _ _ _ _ _).
-%unique extend-wf-tpf +A +B +C +D -1E.
+% extend-wf-tpf: {Z} {G1} {G2} sub-env (tcons Z G1) G2 -> sub-env G1 G2 -> type.
+% %mode extend-wf-tpf +A +B +C +D -E.
+% %worlds () (extend-wf-tpf _ _ _ _ _).
+% %unique extend-wf-tpf +A +B +C +D -1E.
+% %trustme
+% %total (A) (extend-wf-tpf _ A _ _ _).
+
+
+
+swapv-wf-tp: 
+  wf-tp G1 T1 -> 
+  {NA} {NB}
+  wf-tp G2 T2 -> 
+  swapv-env G1 NA NB G2 ->
+  swapv-tp T1 NA NB T2 ->
+  type.
+%mode swapv-wf-tp +A +B +C -D -E -F.
+%worlds () (swapv-wf-tp _ _ _ _ _ _).
 %trustme
-%total (A) (extend-wf-tpf _ A _ _ _).
+%total (A) (swapv-wf-tp A _ _ _ _ _).
+
+
+swapv-tp-trans: swapv-tp T1 NA NB T2 -> swapv-tp T2 NB NC T3 -> swapv-tp T1 NA NC T3 -> type.
+%mode swapv-tp-trans +A +B -C.
+%worlds () (swapv-tp-trans _ _ _).
+%trustme
+%total (A) (swapv-tp-trans A _ _).
+
+
+extend-wf-tpf: 
+  wf-tp (tcons Y (tcons Z G)) T1 -> 
+  swapv-tp T0 N0 (s N) T1 ->
+  tsize G (var N) ->
+  wf-tp (tcons Z (tcons Y G)) T2 -> 
+  swapv-tp T0 N0 (s (s N)) T2 ->
+  type.
+
+%mode extend-wf-tpf +A +B +C -E -F.
+
+- : extend-wf-tpf W X S W' X'
+    <- swapv-wf-tp W (s N) (s (s N)) W' XG XT    
+    <- swapv-tp-trans X XT X'.
+
+%worlds () (extend-wf-tpf _ _ _ _ _).
+%trustme
+%total (A) (extend-wf-tpf A _ _ _ _).
+
+
+extend-sub-tpf: 
+  sub-tp GX TX (tcons Y (tcons Z G)) T1 -> 
+  swapv-tp T0 N0 (s N) T1 ->
+  tsize G (var N) ->
+  sub-tp GX TX (tcons Z (tcons Y G)) T2 -> 
+  swapv-tp T0 N0 (s (s N)) T2 ->
+  type.
+%mode extend-sub-tpf +A +B +C -E -F.
+%worlds () (extend-sub-tpf _ _ _ _ _).
+%trustme
+%total (A) (extend-sub-tpf A _ _ _ _).
+
+
+
+
+
 
 
 - : extend-wf-tp wf-tp/int T wf-tp/int.
@@ -545,12 +657,15 @@ extend-wf-tpf: {Z} {G1} {G2} sub-env (tcons Z G1) G2 -> sub-env G1 G2 -> type.
       <- extend-wf-lkp L _ L'
       <- extend-wf-tp W _ W'.
 
-- : extend-wf-tp ((wf-tp/tbindh [G2] [S] [N] W G2 S N): (wf-tp _ (bindh ([x] F x)))) T 
-        (wf-tp/tbindh ([G2'] [S'] [N'] W G2' (FS S') N'))
-        <- {FS: sub-env (tcons Z G1) G2 -> sub-env G1 G2} extend-wf-tpf _ _ _ S' S''.
+- : extend-wf-tp (wf-tp/tbind S X W) T (wf-tp/tbind (tf/c S) X' W')
+      <- extend-wf-tp W _ W1
+      <- extend-wf-tpf W1 X S W' X'.
 
 
-% - : extend-wf-tpf S ([x] TF x) (wf-tp/recv W1) T (wf-tp/recv W1') <- extend-wf-tpf S TF W1 _ W1'.
+% - : extend-wf-tp ((wf-tp/tbindh [G2] [S] [N] W G2 S N): (wf-tp _ (bindh ([x] F x)))) T 
+%        (wf-tp/tbindh ([G2'] [S'] [N'] W G2' (FS S') N'))
+%        <- {FS: sub-env (tcons Z G1) G2 -> sub-env G1 G2} extend-wf-tpf _ _ _ S' S''.
+
 
 
 
@@ -590,7 +705,22 @@ extend-wf-tpf: {Z} {G1} {G2} sub-env (tcons Z G1) G2 -> sub-env G1 G2 -> type.
     (sub-tp/tselx (pev L W) S1 (sub-env/ext S2)).
 
 
+% - : extend-sub-tp (sub-tp/tbind1 S X ST W) T 
+% TODO
+
+- : extend-sub-tp (sub-tp/tbind S X ST W) T 
+    (sub-tp/tbind (tf/c S) XAB STAB' W2)
+    (sub-tp/tbind S X STA W)
+    (sub-tp/tbind (tf/c S) XB STB' W2)
+
+      <- extend-wf-tp W _ W2
+      <- extend-sub-tp ST _ STAB STA STB
+      <- extend-sub-tpf STAB X S STAB' XAB 
+      <- extend-sub-tpf STB X S STB' XB.
+
+
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _).
+%trustme
 %total (A B) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _).
 
 
@@ -711,6 +841,11 @@ extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
       <- extend-wf-lkp-mult L S1 L1
       <- extend-wf-lkp-mult L S2 L2.
 
+- : extract-wf (sub-tp/tbind1 S X ST W) W W2
+      <- extract-wf ST _ W2.
+
+- : extract-wf (sub-tp/tbind S X ST W) W1 W
+      <- extract-wf ST W1 _.
 
 %worlds () (extract-wf _ _ _).
 %total T2 (extract-wf T2 _ _).
@@ -826,7 +961,13 @@ restrict-sub-tp: sub-tp G1 T1 G2 T2
       <- sub-env-trans S3A S1A S1
       <- sub-env-trans S3B S2A S2.
 
+% - : restrict-sub-tp (sub-tp/tbind S X ST (wf-tp/tbind SX XX WX)) W1 
+%      (wf-tp/tbind SX XX WX) T (sub-tp/tbind (tf/c S) X' ST' W').
+% TODO
+
+
 %worlds () (restrict-sub-tp _ _ _ _ _).
+%trustme
 %total A (restrict-sub-tp _ _ _ _ A).
 
 
@@ -923,6 +1064,12 @@ sub-tp-refl :
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
 -/tsel: sub-tp-refl (wf-tp/tsel P) (sub-tp/tselx P sub-env/refl sub-env/refl).
+
+-/tbind: sub-tp-refl (wf-tp/tbind S X W) (sub-tp/tbind S X (sub-tp/tbind1 S X SBT1 (wf-tp/tbind S X W)) (wf-tp/tbind S X W))
+   <- sub-tp-refl W SBT1.
+
+
+
 
 %worlds () (sub-tp-refl _ _).
 %total T (sub-tp-refl T _).
@@ -1093,6 +1240,21 @@ foobarx: wf-tp G T1 -> tlookup G2 E (rect T1) -> tlookup G2 E (rect T2) -> sub-t
 
       <- sub-tp-trans-aux W SBT1 SBT2 SBT5.
 }%
+
+
+
+-/tbind1  : sub-tp-trans-aux  % 
+      W
+      (sub-tp/bind1 S X SBT1 W1)
+      SBT3
+      (sub-tp/bind1 S X SBT1 W1)
+      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+
+
+
+
+
+
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
