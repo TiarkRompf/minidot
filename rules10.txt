@@ -6,3 +6,6 @@ like rules9.txt, but adding
 x: { type T1..T2} wf in G
 ---------------------------
 G |- x: { type x.T .. x.T }
+
+
+(is it necessary to add this rule? it seems we can derive the more precise type just as well by subtyping...)
