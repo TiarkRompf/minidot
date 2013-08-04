@@ -355,9 +355,9 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2)
               <- sub-tp G1 T1 G2 T2.
 
 sub-tp/tselx : sub-tp G1 (tsel E) G2 (tsel E)
-               <- sub-env G G2
-               <- sub-env G G1
-               <- path-eval G E (rect T2 T2U).
+              <- sub-env G G2
+              <- sub-env G G1
+              <- path-eval G E (rect T2 T2U).
 
 sub-tp/tbind1 : sub-tp G1 (bind X T1) G2 T2
                <- wf-tp G1 (bind X T1)
@@ -408,6 +408,7 @@ wf-tp/tbind : wf-tp G1 (bind X T)
 %                   sub-env G1 G2 -> 
 %                   tsize G2 (var N) -> 
 %                   wf-tp (tcons (bindh ([x] T x)) G2) (T (var N))).
+
 
 
 
@@ -1245,13 +1246,53 @@ foobarx: wf-tp G T1 -> tlookup G2 E (rect T1) -> tlookup G2 E (rect T2) -> sub-t
 
 -/tbind1  : sub-tp-trans-aux  % 
       W
-      (sub-tp/bind1 S X SBT1 W1)
+      (sub-tp/tbind1 S X SBT1 W1)
       SBT3
-      (sub-tp/bind1 S X SBT1 W1)
+      (sub-tp/tbind1 S X SBT5 W1)
+      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+
+-/tbind2  : sub-tp-trans-aux  % 
+      W
+      SBT1
+      (sub-tp/tbind S X SBT3 W1)
+      (sub-tp/tbind S X SBT5 W1)
       <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
 
 
+%{
+  
+this is not clear. we have:
 
+G1 T1 <: G2 T2
+G2 T2 <: G3 {z=>T3}    <---    G2 T2 <: (G3,z:T2) T3
+
+and we need to show:
+
+G1 T2 <: G3 {z=>T3}    <---    G1 T1 <: (G3,z:T1) T3
+
+
+but induction only gives us:   G1 T1 <: (G3,z:T2) T3
+
+
+here is a counterexample that breaks well-formedness:
+
+T1 = bot, T2 = { T=int..int }, T3 = { z=> z.T..z.T }
+
+G bot <: (G,z:{ T=int..int }) { z=> z.T..z.T }  <---  bot <: {T=int..int}   ok
+
+G bot <: (G,z:bot) { z=> z.T..z.T }  breaks, rhs not wf-tp
+
+
+it seems that this issue can be fixed by adding a widening
+case to path-eval, which would allow us to just treat T1 as T2
+(and then use the induction hypothesis).
+
+
+env-widening lemma:
+
+G T1 <: G T2    --->  (G,z:T2) T3 <: (G,z:T1) T3
+
+}%
 
 
 
