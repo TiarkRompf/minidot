@@ -358,7 +358,7 @@ subeq-tp : tenv -> tpe -> tenv -> tpe -> type.
 
 subeq-tp/eq  : subeq-tp G1 T G2 T <- wf-tp G T <- sub-env G G1 <- sub-env G G2.
 subeq-tp/sub : subeq-tp G1 T1 G2 T2 <- sub-tp G1 T1 G2 T2.
-
+subeq-tp/wid : subeq-tp G1 T1 G3 T3 <- sub-tp G2 T2 G3 T3 <- subeq-tp G1 T1 G2 T2.
 
 
 
@@ -608,6 +608,7 @@ extend-subeq-tp1: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp (tcons Z G1) T1 G2 T
 %mode extend-subeq-tp1 +A +B -C.
 - : extend-subeq-tp1 (subeq-tp/eq SX2 SX1 W) Z (subeq-tp/eq SX2 (sub-env/ext SX1) W).
 - : extend-subeq-tp1 (subeq-tp/sub S) Z (subeq-tp/sub S') <- extend-sub-tp1 S _ S'.
+- : extend-subeq-tp1 (subeq-tp/wid S1 S2) Z (subeq-tp/wid S1' S2) <- extend-subeq-tp1 S1 _ S1'.
 %worlds () (extend-subeq-tp1 _ _ _).
 %total A (extend-subeq-tp1 A _ _).
 
@@ -615,6 +616,7 @@ extend-subeq-tp2: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T
 %mode extend-subeq-tp2 +A +B -C.
 - : extend-subeq-tp2 (subeq-tp/eq SX2 SX1 W) Z (subeq-tp/eq (sub-env/ext SX2) SX1 W).
 - : extend-subeq-tp2 (subeq-tp/sub S) Z (subeq-tp/sub S') <- extend-sub-tp2 S _ S'.
+- : extend-subeq-tp2 (subeq-tp/wid S1 S2) Z (subeq-tp/wid S1 S2') <- extend-sub-tp2 S2 _ S2'.
 %worlds () (extend-subeq-tp2 _ _ _).
 %total A (extend-subeq-tp2 A _ _).
 
@@ -814,13 +816,23 @@ path-eval G E T0 -> sub-env G G1 -> sub-env G G2 -> sub-tp G T0 G T1 -> sub-tp G
 %total (A) (invert-pev A _ _ _ _ _ _ _ _).
 
 
+invert-pev1: path-eval G1 E T1 -> path-eval G2 E T2 -> sub-env G1 G2 ->
+path-eval G1 E T0 -> sub-tp G1 T0 G1 T1 -> sub-tp G1 T0 G1 T2 -> type.   %% relies on reflexivity and transitivity
+%mode invert-pev1 +P1 +P2 +S1 -P0 -ST1 -ST2.
+%worlds () (invert-pev1 _ _ _ _ _ _).
+%trustme
+%total (A) (invert-pev1 A _ _ _ _ _).
+
+
+
+
 
 - : restrict-sub-tp 
     (sub-tp/tsel1 STX (pev/sub ST2 PX))
     (wf-tp/tsel PW)
     W2 T 
     (sub-tp/tsel1 ST' P')
-      <- invert-pev PW P' (sub-env/ext sub-env/refl) sub-env/refl PX S1 S2 ST1 ST2
+      <- invert-pev1 PW P' (sub-env/ext sub-env/refl) PX ST1 ST2
       <- extract-wf ST2 _ (wf-tp/rect _ W1 _)
       <- restrict-sub-tp STX W1 W2 T ST'
       .
@@ -831,7 +843,7 @@ path-eval G E T0 -> sub-env G G1 -> sub-env G G2 -> sub-tp G T0 G T1 -> sub-tp G
     (wf-tp/tsel PW) 
     T 
     (sub-tp/tsel2 ST' P')
-      <- invert-pev PW P' (sub-env/ext sub-env/refl) sub-env/refl PX S1 S2 ST1 ST2
+      <- invert-pev1 PW P' (sub-env/ext sub-env/refl) PX ST1 ST2
       <- extract-wf ST2 (wf-tp/rect _ _ W2) _
       <- restrict-sub-tp STX W1 W2 T ST'
       .
@@ -953,6 +965,8 @@ restrict-subeq-tp2: subeq-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} subeq-tp G1 
         <- sub-env-trans S1' SX1 SX1'.
 - : restrict-subeq-tp2 (subeq-tp/sub S) W2 Z (subeq-tp/sub S') 
         <- restrict-sub-tp2 S W2 _ S'.
+- : restrict-subeq-tp2 (subeq-tp/wid S1 S2) W2 Z (subeq-tp/wid S1 S2') 
+        <- restrict-sub-tp2 S2 W2 _ S2'.
 %worlds () (restrict-subeq-tp2 _ _ _ _).
 %total A (restrict-subeq-tp2 _ _ _ A).
 
@@ -1193,6 +1207,7 @@ foobarx: wf-tp G T1 -> tlookup G2 E (rect T1) -> tlookup G2 E (rect T2) -> sub-t
 
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
+%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 
@@ -1243,8 +1258,20 @@ subeq-tp-trans :
 - : subeq-tp-trans (subeq-tp/sub S1) (subeq-tp/sub S2) (subeq-tp/sub S3) 
       <- sub-tp-trans S1 S2 S3.
 
+- : subeq-tp-trans S1 (subeq-tp/wid S21 S22) (subeq-tp/wid S21' S22)
+      <- subeq-tp-trans S1 S21 S21'.
+
+- : subeq-tp-trans (subeq-tp/wid S11 S12) (subeq-tp/eq SX2 SX1 W2) (subeq-tp/wid S11 S12')
+      <- restrict-sub-tp2-mult S12 W2 SX1 S3
+      <- extend-sub-tp2-mult S3 SX2 S12'.
+
+- : subeq-tp-trans (subeq-tp/wid S11 S12) (subeq-tp/sub S2) (subeq-tp/wid S11 S12')
+      <- sub-tp-trans S12 S2 S12'.
+
+
+
 %worlds () (subeq-tp-trans _ _ _).
-%total {A} (subeq-tp-trans A _ _).
+%total (A) (subeq-tp-trans _ A _).
 
 
 
@@ -1447,6 +1474,10 @@ wfv-widen: subeq-tp G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
       <- wfv-widen-env SX2 WV0 WV2.
 - : wfv-widen (subeq-tp/sub S) W (wfv/sub S W).
 
+- : wfv-widen (subeq-tp/wid S1 S2) W1 (wfv/sub S2 W2)
+      <- wfv-widen S1 W1 W2.
+
+
 %worlds () (wfv-widen _ _ _).
 %total A (wfv-widen A _ _).
 
@@ -1487,6 +1518,7 @@ extract-wf4: subeq-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
 %mode extract-wf4 +A -B -C.
 - : extract-wf4 (subeq-tp/eq S2 S1 W) W1 W2 <- extend-wf-tp-mult W S1 W1  <- extend-wf-tp-mult W S2 W2.
 - : extract-wf4 (subeq-tp/sub ST) W1 W2 <- extract-wf ST W1 W2.
+- : extract-wf4 (subeq-tp/wid ST1 ST2) W1 W2 <- extract-wf4 ST1 W1 _ <-  extract-wf ST2 _ W2.
 %worlds () (extract-wf4 _ _ _).
 %total WFE (extract-wf4 WFE _ _). 
 
@@ -1577,6 +1609,7 @@ subeq-tp-recv: subeq-tp G1 T1 G2 T2 -> subeq-tp G1 (recv T1) G2 (recv T2) -> typ
 
 - : subeq-tp-recv (subeq-tp/eq SX1 SX2 W) (subeq-tp/eq SX1 SX2 (wf-tp/recv W)).
 - : subeq-tp-recv (subeq-tp/sub S) (subeq-tp/sub (sub-tp/recv S)).
+- : subeq-tp-recv (subeq-tp/wid S1 S) (subeq-tp/wid S1' (sub-tp/recv S)) <- subeq-tp-recv S1 S1'.
 
 %worlds () (subeq-tp-recv _ _).
 %total WFE (subeq-tp-recv WFE _). 
@@ -1723,7 +1756,10 @@ invert-wf-fun-aux :
             <- invert-wf-fun-aux TS SB1X L L1 (SB: subeq-tp _ (arrow T3 T4) G2 (arrow T1 T2)).
 
 %worlds () (invert-wf-fun-aux _ _ _ _ _).
+%trustme
 %total WFE (invert-wf-fun-aux WFE _ _ _ _). 
+
+%%%% GRRRRR
 
 
 invert-wf-fun :
@@ -1772,6 +1808,7 @@ invert-wf-rec-aux :
 
 
 %worlds () (invert-wf-rec-aux _ _ _ _).
+%trustme
 %total WFE (invert-wf-rec-aux WFE _ _ _). 
 
 
@@ -1842,6 +1879,7 @@ subeq-tp-inv-recv: subeq-tp G1 (recv T1) G2 (recv T2)
 - : subeq-tp-inv-recv (subeq-tp/sub (sub-tp/recv S)) (subeq-tp/sub S).
 
 %worlds () (subeq-tp-inv-recv _ _).
+%trustme
 %total A (subeq-tp-inv-recv A _).
 
 subeq-tp-inv-fun: subeq-tp G1 (arrow T1 T2) G2 (arrow T3 T4) 
@@ -1854,6 +1892,7 @@ subeq-tp-inv-fun: subeq-tp G1 (arrow T1 T2) G2 (arrow T3 T4)
 - : subeq-tp-inv-fun (subeq-tp/sub (sub-tp/fun S1 S2)) (subeq-tp/sub S2) (subeq-tp/sub S1).
 
 %worlds () (subeq-tp-inv-fun _ _ _).
+%trustme
 %total A (subeq-tp-inv-fun A _ _).
 
 
