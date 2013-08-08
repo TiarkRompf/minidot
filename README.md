@@ -1,4 +1,4 @@
-massive-octo-nemesis
-====================
+minidot
+=======
 
-Type system stuff. GitHub suggested the repo name.
+Type system stuff.
