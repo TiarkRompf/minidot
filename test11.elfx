@@ -12,6 +12,33 @@
 % + add subtyping to paths
 % - add self types
 
+%{
+
+Exploring a version that does not rely on subtyping transitivity.
+(The motivation was that self types seem to break transitivity
+in the general case).
+
+Similar to the way we avoided depending on reflexivity, we 
+add a transitivity case to subeq-tp. 
+
+We also add preliminary support for intersection types to
+streamline the different type-exp and wf-val cases.
+
+Unfortunately the preservation proof depends on the following
+lemmas which seem essentially as hard to proof as transitivity
+itself:
+
+     subeq-tp-inv-recv: subeq-tp G1 (recv T1) G2 (recv T2) 
+      -> subeq-tp G1 T1 G2 T2
+      -> type. 
+
+     subeq-tp-inv-fun: subeq-tp G1 (arrow T1 T2) G2 (arrow T3 T4) 
+      -> subeq-tp G2 T3 G1 T1 
+      -> subeq-tp G1 T2 G2 T4
+      -> type. 
+
+}%
+
 
 %{ ------- arithmetic ----- }%
 

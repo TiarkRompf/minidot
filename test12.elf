@@ -12,6 +12,8 @@
 % + add subtyping to paths
 % + add self types
 
+%%%%%% work in progress / currently broken %%%%%%
+
 
 %{ ------- arithmetic ----- }%
 

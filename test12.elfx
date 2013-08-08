@@ -12,6 +12,43 @@
 % + add subtyping to paths
 % + add self types
 
+%%%%%% experimental %%%%%%
+
+%{
+  
+Adding self types.
+
+Naming is less straightforward; extend-wf-tp etc
+become more involved. It seems we need a slew of
+lemmas like this:
+
+  extend-swap-wf-tp: 
+    %%% input:
+    wf-tp (tcons Y (tcons Z G)) T1 -> 
+    swapv-tp T0 N0 (s N) T1 ->    
+    tsize G (var N) ->
+    %%% output:
+    wf-tp (tcons Z (tcons Y G)) T2 -> 
+    swapv-tp T0 N0 (s (s N)) T2 ->
+    type.
+
+
+Transitivity breaks. See note in sub-tp-trans-aux.
+
+It seems we need something like this:
+
+G T1 <: G T2    --->  (G,z:T2) T3 = (G,z:T1) T3
+
+Which does not hold e.g. for T1 = bot.
+
+Possible fixes: 
+1) rule out bot (and arbitrary intersection types) --> see test11.elf
+2) add variance info to environment and allow
+   tsel1/tsel2 only for corresponding variance
+
+}%
+
+
 
 %{ ------- arithmetic ----- }%
 
