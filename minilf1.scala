@@ -147,7 +147,7 @@ object Test {
 
     def saturate(e: LF, d: Int, xs: List[LF]): Unit = {
       if (d == 0) {
-        val res = for (x <- xs if (x.typ == e)) yield x
+        val res = for (x <- xs if (/*true || */x.typ == e)) yield x
         if (res.isEmpty) println("nothing found")
         else {
           val align = res.map(_.toString.length).max
@@ -164,7 +164,7 @@ object Test {
       }
     }
 
-    def search(e: LF, xs: List[LF] = Nil, d: Int = 10) = saturate(e,d,xs++table.values.toList)
+    def search(e: LF, xs: List[LF] = Nil, d: Int = 5) = saturate(e,d,xs++table.values.toList)
 
 
     fresh(nat) { N => 
@@ -203,7 +203,54 @@ object Test {
     }}
 
 
+    println("--- --- ---")
+
+
+    val tpe    = typ("tpe")
+ 
+    val int    = tpe("int")
+    val bool   = tpe("bool")
+    val top    = tpe("top")
+    val bot    = tpe("bot")
+    val arrow  = tpe { T1 => tpe { T2 => tpe } } ("arrow")
+
+
+    val sub_tp        = tpe { T1 => tpe { T2 => typ } } ("sub-tp")
+
+    val sub_tp_int    = sub_tp(int)(int) ("sub-tp-int")
+
+    val sub_tp_bool   = sub_tp(bool)(bool) ("sub-tp-bool")
+
+    val sub_tp_top    = tpe { T => sub_tp(T)(top) } ("sub-tp-top")
+
+    val sub_tp_bot    = tpe { T => sub_tp(bot)(T) } ("sub-tp-bot")
+
+    val sub_tp_arrow  = tpe { T1 => tpe { T2 => tpe { T3 => tpe { T4 => 
+                          sub_tp(T3)(T1) { ST31 => sub_tp(T2)(T4) { ST24 =>
+                            sub_tp(arrow(T1)(T2))(arrow(T3)(T4)) }}}}}}
+
+
+    fresh(tpe) { T =>
+      println(s"reflexivity: {$T:tpe} sub-tp $T $T")
+
+      search(sub_tp(T)(T),fresh(tpe)(U=>sub_tp(U)(U))::T::Nil)
+    }
+
 
     //table.foreach(println)
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
