@@ -250,6 +250,7 @@ extract-from-opt/eval-exp-app : opt/eval-exp-app OV1 OV2 OV3 -> val/get OV1 (clo
 - : extract-from-opt/eval-exp-app (ea/ok D) val/get/some val/get/some D.
 %worlds () (extract-from-opt/eval-exp-app _ _ _ _).
 %total OD (extract-from-opt/eval-exp-app OD _ _ _).
+%reduces A' <= A (extract-from-opt/eval-exp-app A _ _ A').
 
 type-exp   : tenv -> exp -> tpe -> type.
 t/cst      : type-exp G (cste C) T <- typeof C T.
@@ -353,4 +354,4 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E OV -> val/get OV V -> wf
           <- eval-safe T0 (wfe/c WE0 WX) EV0 VG W.
 
 %worlds () (eval-safe _ _ _ _ _).
-%covers eval-safe +A +B +C -D -E.
+%total (A) (eval-safe _ _ A _ _).
