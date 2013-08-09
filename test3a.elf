@@ -217,45 +217,45 @@ extract-from-res-eval-op : res-eval-op OP OV1 OV2 OV3 -> val-get OV1 V1 -> val-g
 %total OD (extract-from-res-eval-op OD _ _ _).
 
 
-res-eval-exp-app : res-val -> res-val -> res-val -> type.
-%mode res-eval-exp-app +V1 +V2 -V3.
-eval-exp   : venv -> exp -> res-val -> type.
-%mode eval-exp +G +E -V.
+res-eval-exp-app : nat -> res-val -> res-val -> res-val -> type.
+%mode res-eval-exp-app +N +V1 +V2 -V3.
+eval-exp   : nat -> venv -> exp -> res-val -> type.
+%mode eval-exp +N +G +E -V.
 
-ea/ok     : res-eval-exp-app (val-some (clos R G)) (val-some V2) V3
-              <- eval-exp (vcons V2 G) R V3.
-ea/n1c    : res-eval-exp-app (val-some (cstv C1)) V2 val-stuck.
-ea/s1     : res-eval-exp-app val-stuck V2 val-stuck.
-ea/s2     : res-eval-exp-app V1 val-stuck val-stuck.
-ea/ot    : res-eval-exp-app (val-some (clos R G)) val-timeout val-timeout.
-ea/to    : res-eval-exp-app val-timeout (val-some V2) val-timeout.
-ea/tt    : res-eval-exp-app val-timeout val-timeout val-timeout.
+ea/ok     : res-eval-exp-app (s N) (val-some (clos R G)) (val-some V2) V3
+              <- eval-exp N (vcons V2 G) R V3.
+ea/okz    : res-eval-exp-app z (val-some (clos R G)) (val-some V2) val-timeout.
+ea/n1c    : res-eval-exp-app N (val-some (cstv C1)) V2 val-stuck.
+ea/s1     : res-eval-exp-app N val-stuck V2 val-stuck.
+ea/s2     : res-eval-exp-app N V1 val-stuck val-stuck.
+ea/ot    : res-eval-exp-app N (val-some (clos R G)) val-timeout val-timeout.
+ea/to    : res-eval-exp-app N val-timeout (val-some V2) val-timeout.
+ea/tt    : res-eval-exp-app N val-timeout val-timeout val-timeout.
 
-e/cst      : eval-exp G (cste C) (val-some (cstv C)).
-e/var      : eval-exp G (var X) V <- vlookup G X V.
-e/fun      : eval-exp G (fun R T) (val-some (clos R G)).
+e/cst      : eval-exp N G (cste C) (val-some (cstv C)).
+e/var      : eval-exp N G (var X) V <- vlookup G X V.
+e/fun      : eval-exp N G (fun R T) (val-some (clos R G)).
 
-e/prim     : eval-exp G (prm OP E1 E2) V3
-            <- eval-exp G E1 V1 
-            <- eval-exp G E2 V2
+e/prim     : eval-exp (s N) G (prm OP E1 E2) V3
+            <- eval-exp N G E1 V1 
+            <- eval-exp N G E2 V2
             <- res-eval-op OP V1 V2 V3.
+e/primz    : eval-exp z G (prm OP E1 E2) val-timeout.
 
-e/app      : eval-exp G (app E1 E2) V3
-            <- eval-exp G E1 V1
-            <- eval-exp G E2 V2
-            <- res-eval-exp-app V1 V2 V3.
+e/app      : eval-exp (s N) G (app E1 E2) V3
+            <- eval-exp N G E1 V1
+            <- eval-exp N G E2 V2
+            <- res-eval-exp-app N V1 V2 V3.
+e/appz     : eval-exp z G (app E1 E2) val-timeout.
 
-%worlds () (res-eval-exp-app _ _ _) (eval-exp _ _ _).
-%covers res-eval-exp-app +V1 +V2 -V3.
-%covers eval-exp +G +E -V.
+%worlds () (res-eval-exp-app _ _ _ _) (eval-exp _ _ _ _).
+%total (N1 N2) (eval-exp N1 _ _ _) (res-eval-exp-app N2 _ _ _).
 
-
-extract-from-res-eval-exp-app : res-eval-exp-app OV1 OV2 OV3 -> val-get OV1 (clos R G) -> val-get OV2 V2 -> eval-exp (vcons V2 G) R OV3 -> type.
+extract-from-res-eval-exp-app : res-eval-exp-app (s N) OV1 OV2 OV3 -> val-get OV1 (clos R G) -> val-get OV2 V2 -> eval-exp N (vcons V2 G) R OV3 -> type.
 %mode extract-from-res-eval-exp-app +OD +EV1 +EV2 -D.
 - : extract-from-res-eval-exp-app (ea/ok D) val-get/some val-get/some D.
 %worlds () (extract-from-res-eval-exp-app _ _ _ _).
 %total OD (extract-from-res-eval-exp-app OD _ _ _).
-%reduces A' <= A (extract-from-res-eval-exp-app A _ _ A').
 
 type-exp   : tenv -> exp -> tpe -> type.
 t/cst      : type-exp G (cste C) T <- typeof C T.
@@ -321,42 +321,81 @@ eval-op-safe : type-op OP T1 T2 T3 -> wf-val V1 T1 -> wf-val V2 T2 -> eval-op OP
 %worlds () (eval-op-safe _ _ _ _ _ _).
 %total A (eval-op-safe A _ _ _ _ _).
 
-eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E OV -> val-get OV V -> wf-val V T -> type.
-%mode eval-safe +A +B +C -D -E.
+wf-res : res-val -> tpe -> type.
+case-val : wf-res (val-some V) T <- wf-val V T.
+case-timeout : wf-res val-timeout T.
 
--      : eval-safe (t/cst T) _ (e/cst) val-get/some (wfv/c T).  
+to-case-val : val-get OV V -> wf-val V T -> wf-res OV T -> type.
+%mode to-case-val +A +B -C.
+- : to-case-val val-get/some W (case-val W).
+%worlds () (to-case-val _ _ _).
+%total A (to-case-val A _ _).
 
--      : eval-safe (t/var L) E (e/var L2) V W
-          <- lookup-safe E L L2 V W.
+eval-safe-prim : wf-res OV1 T1 -> wf-res OV2 T2 -> type-op OP T1 T2 T3 -> res-eval-op OP OV1 OV2 OV3 -> wf-res OV3 T3 -> type.
+%mode eval-safe-prim +CW1 +CW2 +TC0 +OEV0 -CW3.
+- : eval-safe-prim (case-val W1) (case-val W2) TC0 OEV0 CW3
+     <- extract-from-res-eval-op OEV0 val-get/some val-get/some EV0
+     <- eval-op-safe TC0 W1 W2 EV0 VG3 W3
+     <- to-case-val VG3 W3 CW3.
+- : eval-safe-prim case-timeout (case-val W2) TC0 OEV0 case-timeout.
+- : eval-safe-prim (case-val W1) case-timeout TC0 OEV0 case-timeout.
+- : eval-safe-prim case-timeout case-timeout TC0 OEV0 case-timeout.
+%worlds () (eval-safe-prim _ _ _ _ _).
+%total A (eval-safe-prim A _ _ _ _).
 
--      : eval-safe (t/fun TS) E (e/fun) val-get/some (wfv/f TS E).
+eval-safe: type-exp G E T -> wf-env H G -> eval-exp N H E OV -> wf-res OV T -> type.
+%mode eval-safe +A +B +C -D.
+eval-safe-app: wf-res OVF (arrow TX TR) -> wf-res OVX TX -> res-eval-exp-app N OVF OVX OVR -> wf-res OVR TR -> type.
+%mode eval-safe-app +CWF +CWX +OEV0 -CWR.
+%reduces A' <= A (extract-from-res-eval-exp-app A _ _ A').
+
+-     : eval-safe-app (case-val WF) (case-val WX) OEV0 CWR
+          <- extract-from-res-eval-exp-app OEV0 val-get/some val-get/some EV0
+          <- extract-from-wfv/f WF WE0 T0
+          <- eval-safe T0 (wfe/c WE0 WX) EV0 CWR.
+
+-     : eval-safe-app (case-val WF) (case-val WX) ea/okz  case-timeout.
+-     : eval-safe-app case-timeout (case-val WX) OEV0 case-timeout.
+-     : eval-safe-app (case-val WF) case-timeout OEV0 case-timeout.
+-     : eval-safe-app case-timeout case-timeout OEV0 case-timeout.
+
+-      : eval-safe (t/cst T) _ (e/cst) (case-val (wfv/c T)).
+
+-      : eval-safe (t/var L) E (e/var L2) CW
+          <- lookup-safe E L L2 VG W
+          <- to-case-val VG W CW.
+
+-      : eval-safe (t/fun TS) E (e/fun) (case-val (wfv/f TS E)).
 
 -      : eval-safe
           (t/prim TC0 TC2 TC1)
           WE
           (e/prim OEV0 EV2 EV1)
-          VG3
-          W3
-          <- eval-safe TC1 WE EV1 VG1 W1
-          <- eval-safe TC2 WE EV2 VG2 W2
-          <- extract-from-res-eval-op OEV0 VG1 VG2 EV0
-          <- eval-op-safe TC0 W1 W2 EV0 VG3 W3.
+          CW3
+          <- eval-safe TC1 WE EV1 CW1
+          <- eval-safe TC2 WE EV2 CW2
+          <- eval-safe-prim CW1 CW2 TC0 OEV0 CW3.
+
+-      : eval-safe
+          (t/prim TC0 TC2 TC1)
+          WE
+          e/primz
+          case-timeout.
+
+-      : eval-safe 
+          (t/app TX TF)
+          WE
+          (e/app OEV0 EVX EVF)
+          CW
+          <- eval-safe TX WE EVX CWX
+          <- eval-safe TF WE EVF CWF
+          <- eval-safe-app CWF CWX OEV0 CW.
 
 -      : eval-safe 
             (t/app TX TF)
             WE
-            (e/app OEV0 EVX EVF)
-            VG
-            W
+            e/appz
+            case-timeout.
 
-          <- eval-safe TX WE EVX VGX WX
-
-          <- eval-safe TF WE EVF VGF WF
-
-          <- extract-from-res-eval-exp-app OEV0 VGF VGX EV0
-          <- extract-from-wfv/f WF WE0 T0
-
-          <- eval-safe T0 (wfe/c WE0 WX) EV0 VG W.
-
-%worlds () (eval-safe _ _ _ _ _).
-%total (A) (eval-safe _ _ A _ _).
+%worlds () (eval-safe _ _ _ _) (eval-safe-app _ _ _ _).
+%total (N1 N2)  (eval-safe _ _ N1 _) (eval-safe-app _ _ N2  _).
