@@ -89,6 +89,7 @@ tcons : tpe -> tenv -> tenv.
 cst-stuck : res-cst.
 cst-some : cst -> res-cst.
 val-stuck : res-val.
+val-timeout : res-val.
 val-some : val -> res-val.
 
 %{ ------- eval-op / primitives ----- }%
@@ -201,9 +202,11 @@ res-eval-op : op -> res-val -> res-val -> res-val -> type.
 %mode res-eval-op +O +V1 +V2 -V3.
 ope/ok     : res-eval-op OP (val-some V1) (val-some V2) V3
               <- eval-op OP V1 V2 V3.
-ope/n1     : res-eval-op OP val-stuck (val-some V2) val-stuck.
-ope/n2     : res-eval-op OP (val-some V1) val-stuck val-stuck.
-ope/n12    : res-eval-op OP val-stuck val-stuck val-stuck.
+ope/s1     : res-eval-op OP val-stuck V2 val-stuck.
+ope/s2     : res-eval-op OP V1 val-stuck val-stuck.
+ope/ot    : res-eval-op OP (val-some V1) val-timeout val-timeout.
+ope/to    : res-eval-op OP val-timeout (val-some V2) val-timeout.
+ope/tt    : res-eval-op OP val-timeout val-timeout val-timeout.
 %worlds () (res-eval-op _ _ _ _).
 %total OP (res-eval-op OP _ _ _).
 
@@ -222,9 +225,11 @@ eval-exp   : venv -> exp -> res-val -> type.
 ea/ok     : res-eval-exp-app (val-some (clos R G)) (val-some V2) V3
               <- eval-exp (vcons V2 G) R V3.
 ea/n1c    : res-eval-exp-app (val-some (cstv C1)) V2 val-stuck.
-ea/n1     : res-eval-exp-app val-stuck (val-some V2) val-stuck.
-ea/n2     : res-eval-exp-app (val-some V1) val-stuck val-stuck.
-ea/n12    : res-eval-exp-app val-stuck val-stuck val-stuck.
+ea/s1     : res-eval-exp-app val-stuck V2 val-stuck.
+ea/s2     : res-eval-exp-app V1 val-stuck val-stuck.
+ea/ot    : res-eval-exp-app (val-some (clos R G)) val-timeout val-timeout.
+ea/to    : res-eval-exp-app val-timeout (val-some V2) val-timeout.
+ea/tt    : res-eval-exp-app val-timeout val-timeout val-timeout.
 
 e/cst      : eval-exp G (cste C) (val-some (cstv C)).
 e/var      : eval-exp G (var X) V <- vlookup G X V.
