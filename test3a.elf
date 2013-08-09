@@ -50,8 +50,8 @@ val: type.
 venv: type.
 tenv: type.
 
-opt/cst : type.
-opt/val : type.
+opt-cst : type.
+opt-val : type.
 
 % constants
 ncst: nat -> cst.
@@ -86,10 +86,10 @@ tnil  : tenv.
 tcons : tpe -> tenv -> tenv.
 
 % options
-cst/none : opt/cst.
-cst/some : cst -> opt/cst.
-val/none : opt/val.
-val/some : val -> opt/val.
+cst-none : opt-cst.
+cst-some : cst -> opt-cst.
+val-none : opt-val.
+val-some : val -> opt-val.
 
 %{ ------- eval-op / primitives ----- }%
 
@@ -103,33 +103,33 @@ typeof     : cst -> tpe -> type.
 
 % eval-op
 
-eval-cst-op : op -> cst -> cst -> opt/cst -> type.
+eval-cst-op : op -> cst -> cst -> opt-cst -> type.
 %mode eval-cst-op +OP +C1 +C2 -C3.
-e/plus      : eval-cst-op plus (ncst N1) (ncst N2) (cst/some (ncst N3))
+e/plus      : eval-cst-op plus (ncst N1) (ncst N2) (cst-some (ncst N3))
                <- add N1 N2 N3.
-e/eq        : eval-cst-op equal (ncst N1) (ncst N2) (cst/some (bcst B))
+e/eq        : eval-cst-op equal (ncst N1) (ncst N2) (cst-some (bcst B))
                <- eq N1 N2 B.
-e/fail/b1   : eval-cst-op OP (bcst B1) (ncst N2) cst/none.
-e/fail/b2   : eval-cst-op OP (ncst N1) (bcst B2) cst/none.
-e/fail/b12  : eval-cst-op OP (bcst B1) (bcst B2) cst/none.
+e/fail/b1   : eval-cst-op OP (bcst B1) (ncst N2) cst-none.
+e/fail/b2   : eval-cst-op OP (ncst N1) (bcst B2) cst-none.
+e/fail/b12  : eval-cst-op OP (bcst B1) (bcst B2) cst-none.
 %worlds () (eval-cst-op _ _ _ _).
 %total OP (eval-cst-op OP _ _ _).
 
-opt/cst2val  : opt/cst -> opt/val -> type.
-%mode opt/cst2val +C -V.
-cst2val/some : opt/cst2val (cst/some C1) (val/some (cstv C1)).
-cst2val/none : opt/cst2val cst/none val/none.
-%worlds () (opt/cst2val _ _).
-%total C (opt/cst2val C _).
+opt-cst2val  : opt-cst -> opt-val -> type.
+%mode opt-cst2val +C -V.
+cst2val/some : opt-cst2val (cst-some C1) (val-some (cstv C1)).
+cst2val/none : opt-cst2val cst-none val-none.
+%worlds () (opt-cst2val _ _).
+%total C (opt-cst2val C _).
 
-eval-op     : op -> val -> val -> opt/val -> type.
+eval-op     : op -> val -> val -> opt-val -> type.
 %mode eval-op +O +V1 +V2 -V3.
 ev/v        : eval-op O (cstv C1) (cstv C2) V3
                <- eval-cst-op O C1 C2 C3
-               <- opt/cst2val C3 V3.
-ev/fail/c1  : eval-op O (clos E1 G1) (cstv C2)    val/none.
-ev/fail/c2  : eval-op O (cstv C1)    (clos E2 G2) val/none.
-ev/fail/c12 : eval-op O (clos E1 G1) (clos E2 G2) val/none.
+               <- opt-cst2val C3 V3.
+ev/fail/c1  : eval-op O (clos E1 G1) (cstv C2)    val-none.
+ev/fail/c2  : eval-op O (cstv C1)    (clos E2 G2) val-none.
+ev/fail/c12 : eval-op O (clos E1 G1) (clos E2 G2) val-none.
 %worlds () (eval-op _ _ _ _).
 %total O (eval-op O _ _ _).
 
@@ -139,29 +139,29 @@ type-op    : op -> tpe -> tpe -> tpe -> type.
 t/plus     : type-op plus int int int.
 t/eq       : type-op equal int int bool.
 
-cst/get      : opt/cst -> cst -> type.
-cst/get/some : cst/get (cst/some C1) C1.
+cst-get      : opt-cst -> cst -> type.
+cst-get/some : cst-get (cst-some C1) C1.
 
-val/get      : opt/val -> val -> type.
-val/get/some : val/get (val/some V1) V1.
+val-get      : opt-val -> val -> type.
+val-get/some : val-get (val-some V1) V1.
 
 % eval-cst-op/safe
 
-eval-cst-op-safe : type-op OP T1 T2 T3 -> typeof C1 T1 -> typeof C2 T2 -> eval-cst-op OP C1 C2 OC3 -> cst/get OC3 C3 -> typeof C3 T3 -> type.
+eval-cst-op-safe : type-op OP T1 T2 T3 -> typeof C1 T1 -> typeof C2 T2 -> eval-cst-op OP C1 C2 OC3 -> cst-get OC3 C3 -> typeof C3 T3 -> type.
 %mode eval-cst-op-safe +DT0 +DT1 +DT2 +DE0 -DOK -DT3.
 
--plus : eval-cst-op-safe t/plus -/n -/n _ cst/get/some -/n.
--eq   : eval-cst-op-safe t/eq   -/n -/n _ cst/get/some -/b.
+-plus : eval-cst-op-safe t/plus -/n -/n _ cst-get/some -/n.
+-eq   : eval-cst-op-safe t/eq   -/n -/n _ cst-get/some -/b.
 
 %worlds () (eval-cst-op-safe _ _ _ _ _ _).
 %total DT0 (eval-cst-op-safe DT0 _ _ _ _ _).
 
 %{ ------- environments ----- }%
 
-vlookup : venv -> nat -> opt/val -> type.
+vlookup : venv -> nat -> opt-val -> type.
 %mode vlookup +G +N -V.
-vl/fail : vlookup vnil N val/none.
-vl/hit  : vlookup (vcons V G) z (val/some V).
+vl/fail : vlookup vnil N val-none.
+vl/hit  : vlookup (vcons V G) z (val-some V).
 vl/miss : vlookup (vcons _ G) (s N) V <- vlookup G N V.
 %worlds () (vlookup _ _ _).
 %total G (vlookup G _ _).
@@ -197,60 +197,60 @@ tf/c   : tfresh (tcons _ G) (var (s N)) <- tfresh G (var N).
 
 %{ ------- eval-exp / type-exp ----- }%
 
-opt/eval-op : op -> opt/val -> opt/val -> opt/val -> type.
-%mode opt/eval-op +O +V1 +V2 -V3.
-ope/ok     : opt/eval-op OP (val/some V1) (val/some V2) V3
+opt-eval-op : op -> opt-val -> opt-val -> opt-val -> type.
+%mode opt-eval-op +O +V1 +V2 -V3.
+ope/ok     : opt-eval-op OP (val-some V1) (val-some V2) V3
               <- eval-op OP V1 V2 V3.
-ope/n1     : opt/eval-op OP val/none (val/some V2) val/none.
-ope/n2     : opt/eval-op OP (val/some V1) val/none val/none.
-ope/n12    : opt/eval-op OP val/none val/none val/none.
-%worlds () (opt/eval-op _ _ _ _).
-%total OP (opt/eval-op OP _ _ _).
+ope/n1     : opt-eval-op OP val-none (val-some V2) val-none.
+ope/n2     : opt-eval-op OP (val-some V1) val-none val-none.
+ope/n12    : opt-eval-op OP val-none val-none val-none.
+%worlds () (opt-eval-op _ _ _ _).
+%total OP (opt-eval-op OP _ _ _).
 
-extract-from-opt/eval-op : opt/eval-op OP OV1 OV2 OV3 -> val/get OV1 V1 -> val/get OV2 V2 -> eval-op OP V1 V2 OV3 -> type.
-%mode extract-from-opt/eval-op +OD +EV1 +EV2 -D.
-- : extract-from-opt/eval-op (ope/ok D) val/get/some val/get/some D.
-%worlds () (extract-from-opt/eval-op _ _ _ _).
-%total OD (extract-from-opt/eval-op OD _ _ _).
+extract-from-opt-eval-op : opt-eval-op OP OV1 OV2 OV3 -> val-get OV1 V1 -> val-get OV2 V2 -> eval-op OP V1 V2 OV3 -> type.
+%mode extract-from-opt-eval-op +OD +EV1 +EV2 -D.
+- : extract-from-opt-eval-op (ope/ok D) val-get/some val-get/some D.
+%worlds () (extract-from-opt-eval-op _ _ _ _).
+%total OD (extract-from-opt-eval-op OD _ _ _).
 
 
-opt/eval-exp-app : opt/val -> opt/val -> opt/val -> type.
-%mode opt/eval-exp-app +V1 +V2 -V3.
-eval-exp   : venv -> exp -> opt/val -> type.
+opt-eval-exp-app : opt-val -> opt-val -> opt-val -> type.
+%mode opt-eval-exp-app +V1 +V2 -V3.
+eval-exp   : venv -> exp -> opt-val -> type.
 %mode eval-exp +G +E -V.
 
-ea/ok     : opt/eval-exp-app (val/some (clos R G)) (val/some V2) V3
+ea/ok     : opt-eval-exp-app (val-some (clos R G)) (val-some V2) V3
               <- eval-exp (vcons V2 G) R V3.
-ea/n1c    : opt/eval-exp-app (val/some (cstv C1)) V2 val/none.
-ea/n1     : opt/eval-exp-app val/none (val/some V2) val/none.
-ea/n2     : opt/eval-exp-app (val/some V1) val/none val/none.
-ea/n12    : opt/eval-exp-app val/none val/none val/none.
+ea/n1c    : opt-eval-exp-app (val-some (cstv C1)) V2 val-none.
+ea/n1     : opt-eval-exp-app val-none (val-some V2) val-none.
+ea/n2     : opt-eval-exp-app (val-some V1) val-none val-none.
+ea/n12    : opt-eval-exp-app val-none val-none val-none.
 
-e/cst      : eval-exp G (cste C) (val/some (cstv C)).
+e/cst      : eval-exp G (cste C) (val-some (cstv C)).
 e/var      : eval-exp G (var X) V <- vlookup G X V.
-e/fun      : eval-exp G (fun R T) (val/some (clos R G)).
+e/fun      : eval-exp G (fun R T) (val-some (clos R G)).
 
 e/prim     : eval-exp G (prm OP E1 E2) V3
             <- eval-exp G E1 V1 
             <- eval-exp G E2 V2
-            <- opt/eval-op OP V1 V2 V3.
+            <- opt-eval-op OP V1 V2 V3.
 
 e/app      : eval-exp G (app E1 E2) V3
             <- eval-exp G E1 V1
             <- eval-exp G E2 V2
-            <- opt/eval-exp-app V1 V2 V3.
+            <- opt-eval-exp-app V1 V2 V3.
 
-%worlds () (opt/eval-exp-app _ _ _) (eval-exp _ _ _).
-%covers opt/eval-exp-app +V1 +V2 -V3.
+%worlds () (opt-eval-exp-app _ _ _) (eval-exp _ _ _).
+%covers opt-eval-exp-app +V1 +V2 -V3.
 %covers eval-exp +G +E -V.
 
 
-extract-from-opt/eval-exp-app : opt/eval-exp-app OV1 OV2 OV3 -> val/get OV1 (clos R G) -> val/get OV2 V2 -> eval-exp (vcons V2 G) R OV3 -> type.
-%mode extract-from-opt/eval-exp-app +OD +EV1 +EV2 -D.
-- : extract-from-opt/eval-exp-app (ea/ok D) val/get/some val/get/some D.
-%worlds () (extract-from-opt/eval-exp-app _ _ _ _).
-%total OD (extract-from-opt/eval-exp-app OD _ _ _).
-%reduces A' <= A (extract-from-opt/eval-exp-app A _ _ A').
+extract-from-opt-eval-exp-app : opt-eval-exp-app OV1 OV2 OV3 -> val-get OV1 (clos R G) -> val-get OV2 V2 -> eval-exp (vcons V2 G) R OV3 -> type.
+%mode extract-from-opt-eval-exp-app +OD +EV1 +EV2 -D.
+- : extract-from-opt-eval-exp-app (ea/ok D) val-get/some val-get/some D.
+%worlds () (extract-from-opt-eval-exp-app _ _ _ _).
+%total OD (extract-from-opt-eval-exp-app OD _ _ _).
+%reduces A' <= A (extract-from-opt-eval-exp-app A _ _ A').
 
 type-exp   : tenv -> exp -> tpe -> type.
 t/cst      : type-exp G (cste C) T <- typeof C T.
@@ -293,10 +293,10 @@ extract-from-wfv/f : wf-val (clos R H) (arrow T1 T2) -> wf-env H G -> type-exp (
 
 % lookup safe
 
-lookup-safe: wf-env H G -> tlookup G X T -> vlookup H X OV -> val/get OV V -> wf-val V T -> type.
+lookup-safe: wf-env H G -> tlookup G X T -> vlookup H X OV -> val-get OV V -> wf-val V T -> type.
 %mode lookup-safe +A +B +C -D -E.
 
--      : lookup-safe (wfe/c G V) tl/hit vl/hit val/get/some V.  
+-      : lookup-safe (wfe/c G V) tl/hit vl/hit val-get/some V.  
 -      : lookup-safe (wfe/c G V) (tl/miss A) (vl/miss B) Y Z
          <- lookup-safe G A B Y Z.
 
@@ -307,24 +307,24 @@ lookup-safe: wf-env H G -> tlookup G X T -> vlookup H X OV -> val/get OV V -> wf
 
 % eval primitive op safe
 
-eval-op-safe : type-op OP T1 T2 T3 -> wf-val V1 T1 -> wf-val V2 T2 -> eval-op OP V1 V2 OV3 -> val/get OV3 V3 -> wf-val V3 T3 -> type.
+eval-op-safe : type-op OP T1 T2 T3 -> wf-val V1 T1 -> wf-val V2 T2 -> eval-op OP V1 V2 OV3 -> val-get OV3 V3 -> wf-val V3 T3 -> type.
 %mode eval-op-safe +DT0 +DT1 +DT2 +DE0 -DOK -DT3.
 
--plus : eval-op-safe t/plus (wfv/c -/n) (wfv/c -/n) _ val/get/some (wfv/c -/n).
--eq   : eval-op-safe t/eq   (wfv/c -/n) (wfv/c -/n) _ val/get/some (wfv/c -/b).
+-plus : eval-op-safe t/plus (wfv/c -/n) (wfv/c -/n) _ val-get/some (wfv/c -/n).
+-eq   : eval-op-safe t/eq   (wfv/c -/n) (wfv/c -/n) _ val-get/some (wfv/c -/b).
 
 %worlds () (eval-op-safe _ _ _ _ _ _).
 %total A (eval-op-safe A _ _ _ _ _).
 
-eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E OV -> val/get OV V -> wf-val V T -> type.
+eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E OV -> val-get OV V -> wf-val V T -> type.
 %mode eval-safe +A +B +C -D -E.
 
--      : eval-safe (t/cst T) _ (e/cst) val/get/some (wfv/c T).  
+-      : eval-safe (t/cst T) _ (e/cst) val-get/some (wfv/c T).  
 
 -      : eval-safe (t/var L) E (e/var L2) V W
           <- lookup-safe E L L2 V W.
 
--      : eval-safe (t/fun TS) E (e/fun) val/get/some (wfv/f TS E).
+-      : eval-safe (t/fun TS) E (e/fun) val-get/some (wfv/f TS E).
 
 -      : eval-safe
           (t/prim TC0 TC2 TC1)
@@ -334,7 +334,7 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E OV -> val/get OV V -> wf
           W3
           <- eval-safe TC1 WE EV1 VG1 W1
           <- eval-safe TC2 WE EV2 VG2 W2
-          <- extract-from-opt/eval-op OEV0 VG1 VG2 EV0
+          <- extract-from-opt-eval-op OEV0 VG1 VG2 EV0
           <- eval-op-safe TC0 W1 W2 EV0 VG3 W3.
 
 -      : eval-safe 
@@ -348,7 +348,7 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E OV -> val/get OV V -> wf
 
           <- eval-safe TF WE EVF VGF WF
 
-          <- extract-from-opt/eval-exp-app OEV0 VGF VGX EV0
+          <- extract-from-opt-eval-exp-app OEV0 VGF VGX EV0
           <- extract-from-wfv/f WF WE0 T0
 
           <- eval-safe T0 (wfe/c WE0 WX) EV0 VG W.
