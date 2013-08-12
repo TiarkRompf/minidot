@@ -7,6 +7,11 @@
 % - add value members
 % - add paths
 
+
+%%%%%% WIP: environments as key/val pairs %%%%%%
+
+
+
 % arithmetic
 
 
@@ -46,8 +51,8 @@ ne/s : ne (s N1) (s N2)
 
 eq : nat -> nat -> boolx -> type.
 eq/z : eq z z t.
-eq/z : eq z (s N) f.
-eq/z : eq (s N) z f.
+eq/zs : eq z (s N) f.
+eq/sz : eq (s N) z f.
 eq/s : eq (s N1) (s N2) R
    <- eq N1 N2 R.
 
@@ -55,6 +60,37 @@ eq/s : eq (s N1) (s N2) R
 %worlds () (eq _ _ _).
 %total (A) (eq A _ _).
 %unique eq +N1 +N2 -1R.
+
+eq-refl: {N} eq N N t -> type.
+%mode eq-refl +N -R.
+eq-refl/z: eq-refl z eq/z.
+eq-refl/s: eq-refl (s N) (eq/s E) <- eq-refl N E.
+%worlds () (eq-refl _ _).
+%total (A) (eq-refl A _).
+%unique eq-refl +N1 -1R.
+
+eq-trans: eq N1 N2 B -> eq N2 N3 t -> eq N1 N3 B -> type.
+%mode eq-trans +E1 +E2 -E3.
+eq-trans/z1: eq-trans eq/z E2 E2.
+eq-trans/z1: eq-trans eq/zs (eq/s E2) eq/zs.
+eq-trans/z1: eq-trans eq/sz eq/z eq/sz.
+eq-trans/s: eq-trans (eq/s E1) (eq/s E2) (eq/s E3) <- eq-trans E1 E2 E3.
+%worlds () (eq-trans _ _ _).
+%total (A) (eq-trans A _ _).
+%unique eq-trans +E1 +E2 -E3.
+
+eq-symm: eq N1 N2 B -> eq N2 N1 B -> type.
+%mode eq-symm +E1 -E2.
+eq-symm/z1: eq-symm eq/z eq/z.
+eq-symm/z1: eq-symm eq/zs eq/sz.
+eq-symm/z1: eq-symm eq/sz eq/zs.
+eq-symm/s:  eq-symm (eq/s E1) (eq/s E2) <- eq-symm E1 E2.
+%worlds () (eq-symm _ _).
+%total (A) (eq-symm A _).
+%unique eq-symm +E1 -E2.
+
+
+
 
 
 % %unique ne +N1 +N2.
@@ -104,6 +140,9 @@ top  : tpe.
 bot  : tpe.
 arrow: tpe -> tpe -> tpe.
 
+tsel: nat -> tpe. %%% adding tsel to have meaningful wf-tp
+
+
 % values
 cstv: cst -> val.
 clos: nat -> exp -> venv -> val.
@@ -122,7 +161,7 @@ vfresh/nil  : vfresh N vnil.
 vfresh/cons : vfresh N2 (vcons N1 V G F) <- vfresh N2 G <- eq N2 N1 f.
 
 tfresh/nil  : tfresh N tnil.
-tfresh/cons : tfresh N2 (tcons N1 T G F) <- tfresh N2 G <- eq N2 N1 t.
+tfresh/cons : tfresh N2 (tcons N1 T G F) <- tfresh N2 G <- eq N2 N1 f.
 
 
 
@@ -173,7 +212,7 @@ eval-cst-op-safe : type-op OP T1 T2 T3 -> eval-cst-op OP C1 C2 C3 -> typeof C3 T
 
 
 
-%{ ------- environments ----- }%
+%{ ------- environments / NEW ----- }%
 
 vopt: type.
 vsome: val -> vopt.
@@ -209,15 +248,28 @@ ts/f: tselect f V1 V2 V2.
 
 vlookup : venv -> nat -> vopt -> type.
 vl/fail : vlookup vnil N vnone.
-% vl/hit  : vlookup (vcons N1 V1 G F) N2 V3 <- eq N1 N2 C <- vlookup G N2 V2 <- vselect C (vsome V1) V2 V3.
-vl/hit  : vlookup (vcons N1 V1 G F) N2 (vsome V1) <- eq N1 N2 t.
-vl/miss  : vlookup (vcons N1 V1 G F) N2 V3 <- eq N1 N2 f <- vlookup G N2 V3.
+vl/hit  : vlookup (vcons N1 V1 G F) N2 V3 <- eq N1 N2 C <- vlookup G N2 V2 <- vselect C (vsome V1) V2 V3.
+% vl/hit  : vlookup (vcons N1 V1 G F) N2 (vsome V1) <- eq N1 N2 t.
+% vl/miss  : vlookup (vcons N1 V1 G F) N2 V3 <- eq N1 N2 f <- vlookup G N2 V3.
 
 tlookup : tenv -> nat -> topt -> type.
 tl/fail : tlookup tnil N tnone.
-% tl/hit  : tlookup (tcons N1 V1 G F) N2 V3 <- eq N1 N2 C <- tlookup G N2 V2 <- tselect C (tsome V1) V2 V3.
-tl/hit  : tlookup (tcons N1 V1 G F) N2 (tsome V1) <- eq N1 N2 t.
-tl/miss : tlookup (tcons N1 V1 G F) N2 V3 <- eq N1 N2 f <- tlookup G N2 V3.
+tl/hit  : tlookup (tcons N1 V1 G F) N2 V3 <- eq N1 N2 C <- tlookup G N2 V2 <- tselect C (tsome V1) V2 V3.
+% tl/hit  : tlookup (tcons N1 V1 G F) N2 (tsome V1) <- eq N1 N2 t.
+% tl/miss : tlookup (tcons N1 V1 G F) N2 V3 <- eq N1 N2 f <- tlookup G N2 V3.
+
+
+%mode vlookup +G +E -V.
+%mode tlookup +G +E -T.
+
+%worlds () (vlookup _ _ _).
+%worlds () (tlookup _ _ _).
+%total (A) (vlookup A _ _).
+%total (A) (tlookup A _ _).
+%unique vlookup +G +E -1V.
+%unique tlookup +G +E -1T.
+
+
 
 % vbind : venv -> val -> exp -> venv -> type.
 % vl/n  : vbind vnil V (var z) (vcons V vnil).
@@ -240,38 +292,289 @@ tl/miss : tlookup (tcons N1 V1 G F) N2 V3 <- eq N1 N2 f <- tlookup G N2 V3.
 % %mode vbind +G +V -E -G2.
 % %mode tbind +G +V -E -G2.
 
-%mode vlookup +G +E -V.
-%mode tlookup +G +E -T.
-
-%worlds () (vlookup _ _ _).
-%worlds () (tlookup _ _ _).
-% %total (A) (vlookup A _ _).
-% %total (A) (tlookup A _ _).
-% %unique vlookup +G +E -1V.
-% %unique tlookup +G +E -1T.
-
-
 % %mode vfresh +G -X.
 % %mode tfresh +G -X.
 
 
+
 sub-env: tenv -> tenv -> type.
 
-sub-env/nil: sub-env tnil G.
+sub-env/nil  : sub-env tnil G.
+sub-env/cons : sub-env (tcons N T G F) G2 
+                  <- sub-env G G2 
+                  <- tlookup G2 N (tsome T).
 
-sub-env/cons: sub-env (tcons N T G F) G2 <- sub-env G G2 <- tlookup G2 N (tsome T).
+
+lookup-isnt-fresh: tfresh N1 G -> tlookup G N2 (tsome T) -> eq N1 N2 f -> type.
+%mode lookup-isnt-fresh +N +T -C.
+
+- : lookup-isnt-fresh (tfresh/cons E1 F) (tl/hit ts/t L E2) E3
+      <- eq-trans E1 E2 E3.
+- : lookup-isnt-fresh (tfresh/cons _ F) (tl/hit _ L _) E 
+      <- lookup-isnt-fresh F L E.
+
+%worlds () (lookup-isnt-fresh _ _ _).
+%total (A) (lookup-isnt-fresh A _ _).
+
+
+fresh-cant-lookup: tfresh N G -> tlookup G N tnone -> type.
+%mode fresh-cant-lookup +N -C.
+
+- : fresh-cant-lookup tfresh/nil tl/fail.
+- : fresh-cant-lookup (tfresh/cons E1 F) (tl/hit ts/f L E2)  
+      <- fresh-cant-lookup F L       
+      <- eq-symm E1 E2.
+
+%worlds () (fresh-cant-lookup _ _).
+%total (A) (fresh-cant-lookup A _).
+
+
+
+sub-env-extend: {N}{T}{F} sub-env G1 G2 -> sub-env G1 (tcons N T G2 F) -> type.
+%mode sub-env-extend +N +T +F +G -C.
+
+- : sub-env-extend N T F sub-env/nil sub-env/nil.
+- : sub-env-extend N T F (sub-env/cons L S) (sub-env/cons (tl/hit ts/f L E) S2) 
+      <- sub-env-extend N T F S S2 <- lookup-isnt-fresh F L E.
+
+%worlds () (sub-env-extend _ _ _ _ _).
+%total (A) (sub-env-extend _ _ _ A _).
+
+
+sub-env-refl: {G} sub-env G G -> type.
+%mode sub-env-refl +G -C.
+
+- : sub-env-refl tnil sub-env/nil.
+- : sub-env-refl (tcons N T G F) (sub-env/cons (tl/hit ts/t L E) Z2) 
+      <- sub-env-refl G Z
+      <- sub-env-extend _ _ _ Z Z2 
+      <- fresh-cant-lookup F L
+      <- eq-refl N E.
+
+%worlds () (sub-env-refl _ _).
+%total (A) (sub-env-refl A _).
+
+
+lookup-same: tlookup G N1 T -> eq N1 N2 t -> tlookup G N2 T -> type.
+%mode lookup-same +A +B -C.
+%worlds () (lookup-same _ _ _).
+%trustme
+%total (A) (lookup-same A _ _).
+
+fresh-restrict: tfresh N G2 -> sub-env G1 G2 -> tfresh N G1 -> type.
+%mode fresh-restrict +A +B -C.
+
+- : fresh-restrict _ sub-env/nil tfresh/nil.
+- : fresh-restrict (tfresh/cons E F1) (sub-env/cons L S) (tfresh/cons E F2) 
+      <- fresh-restrict (tfresh/cons E F1) S F2.
+
+%worlds () (fresh-restrict _ _ _).
+%trustme
+%total (A) (fresh-restrict _ A _).
+
+
+lookup-extend: tlookup G1 N (tsome T) -> sub-env G1 G2 -> tlookup G2 N (tsome T) -> type.
+%mode lookup-extend +A +B -C.
+
+-: lookup-extend (tl/hit ts/f L1 _) (sub-env/cons L S) L2 <- lookup-extend L1 S L2.
+-: lookup-extend (tl/hit ts/t L1 X8) (sub-env/cons L S) L3 <- lookup-same L X8 L3.
+
+%worlds () (lookup-extend _ _ _).
+%total (A) (lookup-extend _ A _).
+
 
 
 sub-env-trans: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
 %mode sub-env-trans +A +B -C.
 
-- : sub-env-trans sub-env/nil S S.
+- : sub-env-trans sub-env/nil S sub-env/nil.
 - : sub-env-trans S sub-env/nil S.
-- : sub-env-trans (sub-env/cons _ _) (sub-env/cons _ _) (sub-env/cons _ _).
+- : sub-env-trans (sub-env/cons L1 S1) S2 (sub-env/cons L3 S3)
+      <- sub-env-trans S1 S2 S3
+      <- lookup-extend L1 S2 L3.
 
 
 %worlds () (sub-env-trans _ _ _).
 %total (A) (sub-env-trans A _ _).
+
+
+
+same: topt -> topt -> type.
+ident: same T T.
+
+
+lookup-restrict: tlookup G2 N T2 -> tlookup G1 N T1 -> sub-env G1 G2 -> tlookup G1 N T2 -> same T2 T1 -> type.
+%mode lookup-restrict +A +B +C -D -E.
+
+-: lookup-restrict L2 tl/fail sub-env/nil tl/fail ident.
+-: lookup-restrict L2 (tl/hit ts/f L1 E) (sub-env/cons L S) (tl/hit ts/f L1' E) X 
+    <- lookup-restrict L2 L1 S L1' X.
+-: lookup-restrict L2 (tl/hit ts/t L1 E) (sub-env/cons L S) (tl/hit ts/t L1' E) ident 
+    <- lookup-restrict L2 L1 S L1' X.
+
+%worlds () (lookup-restrict _ _ _ _ _).
+%total (A) (lookup-restrict _ _ A _ _).
+
+
+
+
+
+
+% get-fresh operation:
+
+get-fresh: tenv -> {N:nat} tfresh N G -> type.
+%mode get-fresh +A -B -C.
+%worlds () (get-fresh _ _ _).
+%trustme
+%total A (get-fresh A _ _).
+
+
+
+
+%%%% WF-TP
+
+wf-tp : tenv -> tpe -> type.
+
+wf-tp/bool : wf-tp G1 bool.
+wf-tp/int  : wf-tp G1 int.
+wf-tp/top  : wf-tp G1 top.
+wf-tp/bot  : wf-tp G1 bot.
+
+% wf-tp/fun  : wf-tp G1 (arrow T1 T2)
+%              <- wf-tp G1 T1
+%              <- wf-tp G1 T2.
+
+wf-tp/tsel : wf-tp G1 (tsel N)
+              <- tlookup G1 N (tsome (arrow T1 T2))
+              <- wf-tp G1 (arrow T1 T2).
+
+
+
+
+extend-wf-tp: wf-tp G T1 -> same (tsome T2) (tsome T1) -> sub-env G G' -> wf-tp G' T2 -> type.
+%mode extend-wf-tp +A +B +C -H.
+%worlds () (extend-wf-tp _ _ _ _).
+%trustme
+%total (A) (extend-wf-tp A _ _ _).
+
+
+restrict-wf-pev: wf-tp G1 T1 -> tlookup G1 N (tsome T1) -> sub-env G2 G1 -> wf-tp G2 T2 -> tlookup G2 N (tsome T2) -> 
+  wf-tp G2 T1 -> tlookup G2 N (tsome T1) -> type.
+%mode restrict-wf-pev +A +B +C +D +E -F -H.
+
+- : restrict-wf-pev WT LT S1T W1 L1 W1' L1'
+                  <- sub-env-refl _ SS1
+                  <- lookup-restrict LT L1 S1T L1' ZX1
+                  <- extend-wf-tp W1 ZX1 SS1 W1'.
+
+%worlds () (restrict-wf-pev _ _ _ _ _ _ _).
+%total (A) (restrict-wf-pev A _ _ _ _ _ _).
+
+
+
+
+%%% diamond properties --- stuck on this one
+
+tl-join: sub-env G G1 -> sub-env G G2 -> tlookup G1 N (tsome T) -> tlookup G2 N (tsome T) -> 
+tlookup G' N (tsome T) -> sub-env G G' -> sub-env G' G1 -> sub-env G' G2 -> type.
+%mode tl-join +A +B +C +D -E -F -G -H.
+
+tl-join2: tlookup G N1 (tsome T1) -> sub-env G G1 -> sub-env G G2 -> tlookup G1 N (tsome T) -> tlookup G2 N (tsome T) -> 
+tlookup G' N (tsome T) -> sub-env G G' -> sub-env G' G1 -> sub-env G' G2 -> type.
+%mode tl-join2 +N +A +B +C +D -E -F -G -H.
+
+
+empty: {N}{T} tlookup (tcons N T tnil tfresh/nil) N (tsome T) -> type.
+
+- : empty N T (tl/hit ts/t tl/fail E) <- eq-refl _ E.
+
+%mode empty +N +T -A.
+%worlds () (empty _ _ _).
+%total (A) (empty A _ _).
+
+
+%% (nil < G1)  (nil < G2) (lkup G1 N T) (lkup G2 N T) --> (nil < N T) (N T < G1) (N T < G2)
+
+- : tl-join (sub-env/nil) (sub-env/nil) L1 L2 L sub-env/nil
+      (sub-env/cons L1 sub-env/nil) 
+      (sub-env/cons L2 sub-env/nil)
+        <- empty _ _ L.
+
+
+%% either N is already in G, then just return G
+%% otherwise return G + N
+
+
+%% (A G0 < G1)  (A G0 < G2) (lkup G1 N T) (lkup G2 N T) 
+%    ---> G0 < G1 G0 < G2, A in G1 A in G2
+%    ---> G0 < G' (lkup G' N T), G' < G1 G' < G2
+%       
+%      A == N T  --> (A GO < G') (A G0 < G1) (A G0 < G2)
+%      A != N T  --> (A GO < NT A G0) (NT A G0 < G1) (NT A G0 < G2)
+
+
+% - : tl-join (sub-env/cons L1 S1) (sub-env/cons L2 S2) L1 L2 L (sub-env/cons L S0) S1 S2 
+%       <- tl-join S1 S2 L1 L2 L S0 S1 S2.
+
+- : tl-join (sub-env/cons L1S S1S) (sub-env/cons L2S S2S) L1 L2 
+      L (sub-env/cons LU SA) SB SC 
+      <- tl-join S1S S2S L1 L2 L S0 S1 S2
+      <- tl-join2 L S1 S2 L1S L2S LU SA SB SC.
+
+- : tl-join2 (tl/hit _ LA _) (sub-env/cons L1 S1) (sub-env/cons L2 S2) 
+      (tl/hit _ _ _) (tl/hit _ _ _) LU (sub-env/cons LU S0) S1 S2 
+       <- tl-join2 LA S1 S2 L1 L2 LU S0 S1 S2.
+
+%%% TODO
+
+
+
+%worlds () (tl-join _ _ _ _ _ _ _ _)(tl-join2 _ _ _ _ _ _ _ _ _).
+% %covers (tl-join +A +B +C +D -E -F -G -H)(tl-join2 +N +A +B +C +D -E -F -G -H).
+
+% %reduces A <= A' (tl-join A _ A' _ _ _ _ _).
+
+%trustme
+%total {(A B) (A B)} (tl-join A _ _ _ _ _ _ _)(tl-join2 _ _ _ B _ _ _ _ _).
+
+
+
+%%% assuming tl-join, tsel case in wf-tp-dia holds. arrow case still missing
+%%% (need union on environments?)
+
+wf-tp-dia: 
+  wf-tp GT T -> wf-tp G1 T -> wf-tp G2 T -> sub-env G1 GT -> sub-env G2 GT ->
+  wf-tp G T -> sub-env G G1 -> sub-env G G2 ->
+  type.
+
+%mode wf-tp-dia +A +B +C +D +E -F -G -H.
+
+
+- : wf-tp-dia wf-tp/bool wf-tp/bool wf-tp/bool S1 S2 wf-tp/bool sub-env/nil sub-env/nil.
+- : wf-tp-dia wf-tp/int wf-tp/int wf-tp/int S1 S2 wf-tp/int sub-env/nil sub-env/nil.
+- : wf-tp-dia wf-tp/top wf-tp/top wf-tp/top S1 S2 wf-tp/top sub-env/nil sub-env/nil.
+- : wf-tp-dia wf-tp/bot wf-tp/bot wf-tp/bot S1 S2 wf-tp/bot sub-env/nil sub-env/nil.
+
+
+- : wf-tp-dia (wf-tp/tsel WT LT) (wf-tp/tsel W1 L1)(wf-tp/tsel W2 L2) S1T S2T 
+              (wf-tp/tsel W0' L0') S01' S02'
+                  %% establish that W1 L1 W2 L2 all have the same type as WT LT
+                  <- restrict-wf-pev WT LT S1T W1 L1 W1' L1'
+                  <- restrict-wf-pev WT LT S2T W2 L2 W2' L2'
+                  %% induction
+                  <- wf-tp-dia WT W1' W2' S1T S2T W0 S01 S02
+                  %% add key/val being looked up to result W0
+                  <- tl-join S01 S02 L1' L2' L0' S0 S01' S02'
+                  <- extend-wf-tp W0 ident S0 W0'.
+
+%worlds () (wf-tp-dia _ _ _ _ _ _ _ _).
+%total A (wf-tp-dia A _ _ _ _ _ _ _).
+
+
+
+
+%%%%% OLF STUFF BELOW %%%%%
+
 
 
 
@@ -336,9 +639,13 @@ lookup-safe0: wf-val V T -> wf-env H G ->
 tlookup (tcons N T G FT) N1 (tsome T1) -> vlookup (vcons N V H FV) N1 (vsome V1) -> 
 wf-val V1 T1 -> type.
 
-- : lookup-safe0 V _ (tl/hit _) (vl/hit _) V.
+% - : lookup-safe0 V _ (tl/hit _) (vl/hit _) V.
 
-- : lookup-safe0 V (wfe/c G V1) (tl/miss A _) (vl/miss B _) Z
+- : lookup-safe0 V wfe/n _ _ V.
+
+- : lookup-safe0 V (wfe/c G V1) (tl/hit _ _ _) (vl/hit _ _ _) V.
+
+- : lookup-safe0 V (wfe/c G V1) (tl/hit _ A _) (vl/hit _ B _) Z
       <- lookup-safe0 V1 G A B Z.
 
 %mode lookup-safe0 +V +A +B +C -F.
