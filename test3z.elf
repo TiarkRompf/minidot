@@ -1,0 +1,431 @@
+% echo "loadFile test3.elf" |/Volumes/Twelf\ for\ OS\ X\ \(Intel\)/Twelf/bin/twelf-server
+
+% STLC: big step preservation
+% - add store
+% - add subtyping
+% - add type members
+% - add value members
+% - add paths
+
+% arithmetic
+
+
+boolx: type.
+t: boolx.
+f: boolx.
+
+nat: type.
+z: nat.
+s: nat -> nat.
+
+add : nat -> nat -> nat -> type.
+add/z : add z N N.
+add/s : add (s N1) N2 (s N3)
+   <- add N1 N2 N3.
+
+%mode add +N1 +N2 -N3.
+
+lte : nat -> nat -> type.
+lte/z : lte z N.
+lte/s : lte (s N1) (s N2) 
+   <- lte N1 N2.
+
+%mode lte +N1 +N2.
+
+
+ne : nat -> nat -> type.
+ne/z : ne z (s N).
+ne/z : ne (s N) z.
+ne/s : ne (s N1) (s N2) 
+   <- ne N1 N2.
+
+%mode ne +N1 +N2.
+%worlds () (ne _ _).
+%unique ne +N1 +N2.
+
+
+eq : nat -> nat -> boolx -> type.
+eq/z : eq z z t.
+eq/z : eq z (s N) f.
+eq/z : eq (s N) z f.
+eq/s : eq (s N1) (s N2) R
+   <- eq N1 N2 R.
+
+%mode eq +N1 +N2 -R.
+%worlds () (eq _ _ _).
+%total (A) (eq A _ _).
+%unique eq +N1 +N2 -1R.
+
+
+% %unique ne +N1 +N2.
+
+
+%query 0 * lte (s (s z)) (s z).
+%query 1 * lte (s (s z)) (s (s z)).
+
+
+
+%{ ------- language ----- }%
+
+% sorts
+cst: type.
+op: type.
+
+exp: type.
+% stm: type.
+
+tpe: type.
+val: type.
+
+venv: type.
+tenv: type.
+
+
+% constants
+ncst: nat -> cst.
+fcst: cst.
+tcst: cst.
+
+% operators
+plus  : op.
+equal : op.
+
+% expressions
+cste: cst -> exp.
+var: nat -> exp.
+prm: op -> exp -> exp -> exp.
+fun: nat -> exp -> tpe -> exp.
+app: exp -> exp -> exp.
+
+% types
+int  : tpe.
+bool : tpe.
+top  : tpe.
+bot  : tpe.
+arrow: tpe -> tpe -> tpe.
+
+% values
+cstv: cst -> val.
+clos: nat -> exp -> venv -> val.
+
+% environments
+
+vfresh : nat -> venv -> type.
+tfresh : nat -> tenv -> type.
+
+vnil  : venv.
+vcons : {N:nat} {V:val} {G:venv} vfresh N G -> venv.
+tnil  : tenv.
+tcons : {N:nat} {T:tpe} {G:tenv} tfresh N G -> tenv.
+
+vfresh/nil  : vfresh N vnil.
+vfresh/cons : vfresh N2 (vcons N1 V G F) <- vfresh N2 G <- eq N2 N1 f.
+
+tfresh/nil  : tfresh N tnil.
+tfresh/cons : tfresh N2 (tcons N1 T G F) <- tfresh N2 G <- eq N2 N1 t.
+
+
+
+
+%{ ------- eval-op / primitives ----- }%
+
+% typeof
+
+typeof     : cst -> tpe -> type.
+-/n        : typeof (ncst N) int.
+-/t        : typeof (tcst) bool.
+-/f        : typeof (fcst) bool.
+
+%mode typeof *A *B.
+
+% eval-op
+
+eval-cst-op : op -> cst -> cst -> cst -> type.
+e/plus     : eval-cst-op plus (ncst N1) (ncst N2) (ncst N3) <- add N1 N2 N3.
+e/eqt      : eval-cst-op equal (ncst N1) (ncst N2) (tcst) <- lte N1 N2 <- lte N2 N1.
+e/eqf      : eval-cst-op equal (ncst N1) (ncst N2) (fcst) <- ne N1 N2.
+
+eval-op    : op -> val -> val -> val -> type.
+ev/v       : eval-op O (cstv C1) (cstv C2) (cstv C3) <- eval-cst-op O C1 C2 C3.
+
+%mode eval-cst-op +O +V1 +V2 -V3.
+%mode eval-op +O +V1 +V2 -V3.
+
+
+% type-op
+
+type-op    : op -> tpe -> tpe -> tpe -> type.
+t/plus     : type-op plus int int int.
+t/eq       : type-op equal int int bool.
+
+
+% eval-cst-op/safe
+
+eval-cst-op-safe : type-op OP T1 T2 T3 -> eval-cst-op OP C1 C2 C3 -> typeof C3 T3 -> type.
+%mode eval-cst-op-safe +LTE1 +LTE2 -LTE3.
+
+-plus   : eval-cst-op-safe t/plus (e/plus _) -/n.
+-eqt    : eval-cst-op-safe t/eq (e/eqt _ _) -/t.
+-eqf    : eval-cst-op-safe t/eq (e/eqf _) -/f.
+
+%worlds () (eval-cst-op-safe _ _ _).
+%total LTE1 (eval-cst-op-safe LTE1 _ _). % induction on first arg (not used here)
+
+
+
+%{ ------- environments ----- }%
+
+vopt: type.
+vsome: val -> vopt.
+vnone: vopt.
+
+vget: vopt -> val -> type.
+vget/s: vget (vsome V) V.
+
+vselect: boolx -> vopt -> vopt -> vopt -> type.
+vs/t: vselect t V1 V2 V1.
+vs/f: vselect f V1 V2 V2.
+
+%mode vselect +G +E +E -T.
+%worlds () (vselect _ _ _ _).
+%total (A) (vselect A _ _ _).
+%unique vselect +G +V +V -1V.
+
+topt: type.
+tsome: tpe -> topt.
+tnone: topt.
+
+tget: topt -> tpe -> type.
+tget/s: tget (tsome V) V.
+
+tselect: boolx -> topt -> topt -> topt -> type.
+ts/t: tselect t V1 V2 V1.
+ts/f: tselect f V1 V2 V2.
+
+%mode tselect +G +E +E -T.
+%worlds () (tselect _ _ _ _).
+%total (A) (tselect A _ _ _).
+%unique tselect +G +V +V -1V.
+
+vlookup : venv -> nat -> vopt -> type.
+vl/fail : vlookup vnil N vnone.
+% vl/hit  : vlookup (vcons N1 V1 G F) N2 V3 <- eq N1 N2 C <- vlookup G N2 V2 <- vselect C (vsome V1) V2 V3.
+vl/hit  : vlookup (vcons N1 V1 G F) N2 (vsome V1) <- eq N1 N2 t.
+vl/miss  : vlookup (vcons N1 V1 G F) N2 V3 <- eq N1 N2 f <- vlookup G N2 V3.
+
+tlookup : tenv -> nat -> topt -> type.
+tl/fail : tlookup tnil N tnone.
+% tl/hit  : tlookup (tcons N1 V1 G F) N2 V3 <- eq N1 N2 C <- tlookup G N2 V2 <- tselect C (tsome V1) V2 V3.
+tl/hit  : tlookup (tcons N1 V1 G F) N2 (tsome V1) <- eq N1 N2 t.
+tl/miss : tlookup (tcons N1 V1 G F) N2 V3 <- eq N1 N2 f <- tlookup G N2 V3.
+
+% vbind : venv -> val -> exp -> venv -> type.
+% vl/n  : vbind vnil V (var z) (vcons V vnil).
+% vl/c  : vbind (vcons V G1) V2 (var (s N)) (vcons V2 (vcons V G1)) <- vbind G1 V (var N) _.
+%
+% vfresh : venv -> exp -> type.
+% vf/n   : vfresh vnil (var z).
+% vf/c   : vfresh (vcons _ G) (var (s N)) <- vfresh G (var N).
+
+
+% tbind : tenv -> tpe -> exp -> tenv -> type.
+% tl/n  : tbind tnil V (var z) (tcons V tnil).
+% tl/c  : tbind (tcons V G1) V2 (var (s N)) (tcons V2 (tcons V G1)) <- tbind G1 V (var N) _.
+% 
+% tfresh : tenv -> exp -> type.
+% tf/n   : tfresh tnil (var z).
+% tf/c   : tfresh (tcons _ G) (var (s N)) <- tfresh G (var N).
+
+
+% %mode vbind +G +V -E -G2.
+% %mode tbind +G +V -E -G2.
+
+%mode vlookup +G +E -V.
+%mode tlookup +G +E -T.
+
+%worlds () (vlookup _ _ _).
+%worlds () (tlookup _ _ _).
+% %total (A) (vlookup A _ _).
+% %total (A) (tlookup A _ _).
+% %unique vlookup +G +E -1V.
+% %unique tlookup +G +E -1T.
+
+
+% %mode vfresh +G -X.
+% %mode tfresh +G -X.
+
+
+sub-env: tenv -> tenv -> type.
+
+sub-env/nil: sub-env tnil G.
+
+sub-env/cons: sub-env (tcons N T G F) G2 <- sub-env G G2 <- tlookup G2 N (tsome T).
+
+
+sub-env-trans: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
+%mode sub-env-trans +A +B -C.
+
+- : sub-env-trans sub-env/nil S S.
+- : sub-env-trans S sub-env/nil S.
+- : sub-env-trans (sub-env/cons _ _) (sub-env/cons _ _) (sub-env/cons _ _).
+
+
+%worlds () (sub-env-trans _ _ _).
+%total (A) (sub-env-trans A _ _).
+
+
+
+
+%{ ------- eval-exp / type-exp ----- }%
+
+eval-exp   : venv -> exp -> val -> type.
+e/cst      : eval-exp G (cste C) (cstv C).
+e/var      : eval-exp G (var N) V <- vlookup G N (vsome V).
+e/fun      : eval-exp G (fun N R T) (clos N R G).
+
+e/prim     : eval-exp G (prm OP E1 E2) V3
+            <- eval-exp G E1 V1 
+            <- eval-exp G E2 V2
+            <- eval-op OP V1 V2 V3.
+
+e/app      : eval-exp G (app E1 E2) V3
+            <- eval-exp G E1 (clos N R G1)
+            <- eval-exp G E2 V2
+            <- eval-exp (vcons N V2 G1 F) R V3.
+
+
+
+type-exp   : tenv -> exp -> tpe -> type.
+t/cst      : type-exp G (cste C) T <- typeof C T.
+t/var      : type-exp G (var N) T <- tlookup G N (tsome T).
+t/fun      : type-exp G (fun N R T1) (arrow T1 T2) 
+                <- type-exp (tcons N T1 G F) R T2.
+
+t/prim      : type-exp G (prm OP E1 E2) T3
+            <- type-exp G E1 T1 
+            <- type-exp G E2 T1
+            <- type-op OP T1 T2 T3.
+
+t/app       : type-exp G (app E1 E2) T2
+            <- type-exp G E1 (arrow T1 T2) 
+            <- type-exp G E2 T1.
+
+
+
+%{ ------- well-formedness / typing for values and environment ----- }%
+
+wf-val   : val -> tpe -> type.
+wf-env   : venv -> tenv -> type.
+
+wfv/c    : wf-val (cstv C) T <- typeof C T.
+wfv/f    : wf-val (clos N R H) (arrow T1 T2) 
+            <- wf-env H G
+            <- type-exp (tcons N T1 G F) R T2.
+
+wfe/n    : wf-env vnil tnil. 
+wfe/c    : wf-env H G -> wf-val V T -> wf-env (vcons N V H F1) (tcons N T G F2).
+
+
+
+%{ ------- type preservation ----- }%
+
+
+% lookup safe
+
+lookup-safe0: wf-val V T -> wf-env H G -> 
+tlookup (tcons N T G FT) N1 (tsome T1) -> vlookup (vcons N V H FV) N1 (vsome V1) -> 
+wf-val V1 T1 -> type.
+
+- : lookup-safe0 V _ (tl/hit _) (vl/hit _) V.
+
+- : lookup-safe0 V (wfe/c G V1) (tl/miss A _) (vl/miss B _) Z
+      <- lookup-safe0 V1 G A B Z.
+
+%mode lookup-safe0 +V +A +B +C -F.
+
+
+%worlds () (lookup-safe0 _ _ _ _ _).
+%total A (lookup-safe0 _ A _ _ _).
+
+
+
+lookup-safe: wf-env H G -> tlookup G N (tsome T) -> vlookup H N (vsome V) -> wf-val V T -> type.
+%mode lookup-safe +A +B +C -D.
+
+-      : lookup-safe (wfe/c G V) A B Z
+         <- lookup-safe0 V G A B Z.
+
+
+%worlds () (lookup-safe _ _ _ _).
+%total A (lookup-safe A _ _ _). % induction on first arg
+
+
+
+% eval primitive op safe
+
+eval-op-safe : type-op OP T1 T2 T3 -> eval-op OP V1 V2 V3 -> wf-val V3 T3 -> type.
+%mode eval-op-safe +LTE1 +LTE2 -LTE3.
+
+-plus   : eval-op-safe t/plus (ev/v (e/plus _)) (wfv/c -/n).
+-eqt    : eval-op-safe t/eq (ev/v (e/eqt _ _)) (wfv/c -/t).
+-eqf    : eval-op-safe t/eq (ev/v (e/eqf _)) (wfv/c -/f).
+
+%worlds () (eval-op-safe _ _ _).
+%total A (eval-op-safe A _ _). % induction on first arg
+
+
+
+eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V T -> type.
+%mode eval-safe +A +B +C -D.
+
+-      : eval-safe (t/cst T) _ (e/cst) (wfv/c T).  
+
+-      : eval-safe (t/var L) E (e/var L2) V
+          <- lookup-safe E L L2 V.
+
+-      : eval-safe (t/fun TS) E (e/fun) (wfv/f TS E).
+
+-      : eval-safe (t/prim T _ _) _ (e/prim V _ _) WF
+          <- eval-op-safe T V WF.
+
+-      : eval-safe 
+            (t/app 
+              (TX: type-exp G0 EXP2 T1) 
+              (TF: type-exp G0 EXP1 (arrow T1 T2))
+            ) 
+            (WE: wf-env H0 G0)
+            (e/app
+              (EV3: eval-exp (vcons _ V2 HC0 _) R V3) 
+              (EVX: eval-exp H0 EXP2 V2) 
+              (EVF: eval-exp H0 EXP1 (clos _ R HC0))
+            )
+            (Z: wf-val V3 T2)
+
+          <- eval-safe TX WE EVX WVX   % eval X
+
+          <- eval-safe TF WE           % eval F
+            (EVF: eval-exp H0 EXP1 (clos _ R HC0))
+            (wfv/f 
+              (TR : type-exp (tcons _ T1 GC0 _) R T2)
+              (WE1: wf-env HC0 GC0)
+            )
+
+          <- eval-safe                 % eval F(X)
+              (TR: type-exp (tcons _ T1 GC0 _) R T2)
+              (wfe/c WE1 WVX)
+              (EV3: eval-exp (vcons _ V2 HC0 _) R V3) 
+              (Z: wf-val V3 T2).
+
+
+%worlds () (eval-safe _ _ _ _).
+%total C (eval-safe A _ C _). % induction on eval-exp
+
+
+
+
+
+
+
+
+
+
