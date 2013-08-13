@@ -407,10 +407,11 @@ lookup-restrict: tlookup G2 N T2 -> tlookup G1 N T1 -> sub-env G1 G2 -> tlookup 
 %mode lookup-restrict +A +B +C -D -E.
 
 -: lookup-restrict L2 tl/fail sub-env/nil tl/fail ident.
--: lookup-restrict L2 (tl/hit ts/f L1 E) (sub-env/cons L S) (tl/hit ts/f L1' E) X 
-    <- lookup-restrict L2 L1 S L1' X.
--: lookup-restrict L2 (tl/hit ts/t L1 E) (sub-env/cons L S) (tl/hit ts/t L1' E) ident 
-    <- lookup-restrict L2 L1 S L1' X.
+
+-: lookup-restrict L2 (tl/hit ts/f L1 E) (sub-env/cons L S) (tl/hit ts/f L1' E) ident 
+    <- lookup-restrict L2 L1 S L1' ident.
+
+-: lookup-restrict L2 (tl/hit ts/t L1 E) (sub-env/cons L S) (tl/hit ts/t L1 E) ident.
 
 %worlds () (lookup-restrict _ _ _ _ _).
 %total (A) (lookup-restrict _ _ A _ _).
@@ -473,69 +474,108 @@ restrict-wf-pev: wf-tp G1 T1 -> tlookup G1 N (tsome T1) -> sub-env G2 G1 -> wf-t
 
 
 
-%%% diamond properties --- stuck on this one
+membership: tenv -> nat -> tpe -> type.
+mem-yes : tlookup G N (tsome T) -> membership G N T.
+mem-no  : tlookup G N tnone -> tfresh N G -> membership G N T.
+
+test-membership: {G:tenv} {N:nat} membership G N T -> type.
+%mode test-membership +G +N -M.
+%worlds () (test-membership _ _ _).
+%trustme
+%total (A) (test-membership A _ _).
+%unique test-membership +G +N -M.
+
+
+
+union-env1: membership G1 N T -> {G3:tenv} sub-env G1 G3 -> tlookup G3 N (tsome T) -> type.
+%mode union-env1 +A -C -D -E.
+
+- : union-env1 (mem-yes L) _ S L 
+      <- sub-env-refl _ S.
+
+- : union-env1 ((mem-no L F): membership G1 N T) (tcons _ _ _ F) S' (tl/hit ts/t L E)
+      <- eq-refl _ E
+      <- sub-env-refl _ S 
+      <- sub-env-extend _ T F S S'.
+
+%worlds () (union-env1 _ _ _ _).
+%total (A) (union-env1 A _ _ _).
+
+union-env2: {G1:tenv}{N:nat} {G3:tenv} sub-env G1 G3 -> tlookup G3 N (tsome T) -> type.
+%mode union-env2 +A +B -D -E -F.
+
+- : union-env2 G1 N G3 S L
+      <- test-membership G1 N M
+      <- union-env1 M G3 S L.
+
+%worlds () (union-env2 _ _ _ _ _).
+%total (A) (union-env2 A _ _ _ _).
+
+
+
+union-env: {G1:tenv}{G2:tenv}{G3:tenv} sub-env G1 G3 -> sub-env G2 G3 -> type.
+%mode union-env +A +B -C -D -E.
+
+- : union-env tnil G2 G2 sub-env/nil S
+      <- sub-env-refl G2 S.
+
+- : union-env (tcons N T G1 F) G2 G3' (sub-env/cons L S1') S2'
+      <- union-env G1 G2 G3 S1 S2
+      <- union-env2 G3 N G3' S3 L
+      <- sub-env-trans S1 S3 S1'
+      <- sub-env-trans S2 S3 S2'.
+
+%worlds () (union-env _ _ _ _ _).
+%covers union-env +A +B -C -D -E. %%% not total, because types for a key may be different
+% %total (A) (union-env A _ _ _ _).
+
+
+
+
+%%% diamond properties --- still need to prove aux:
+
+
+aux:  {S1:sub-env G G1} {F:tfresh N G} {L1:tlookup G1 N (tsome T)} 
+      {S1'x':sub-env (tcons N T G F) G1} type.
+%mode aux +A +B +C -D.
+%worlds () (aux _ _ _ _).
+%trustme
+%total (A) (aux A _ _ _).
+
+
+
+
+tl-join1: membership G N T0 -> sub-env G G1 -> sub-env G G2 -> tlookup G1 N (tsome T) -> tlookup G2 N (tsome T) -> 
+tlookup G' N (tsome T) -> sub-env G G' -> sub-env G' G1 -> sub-env G' G2 -> type.
+%mode tl-join1 +M +A +B +C +D -E -F -G -H.
+
+- : tl-join1 (mem-yes L) S1 S2 L1 L2 L' S S1 S2
+      <- lookup-restrict L1 L S1 L' X
+      <- sub-env-refl _ S.
+
+- : tl-join1 (mem-no (L:tlookup G N tnone) F) S1 S2 L1 L2 (tl/hit ts/t L E) S' S1' S2'
+      <- eq-refl _ E
+      <- sub-env-refl _ S 
+      <- sub-env-extend _ T F S S'
+      <- aux S1 F L1 S1'
+      <- aux S2 F L2 S2'
+      .
+
+%worlds () (tl-join1 _ _ _ _ _ _ _ _ _).
+%total (A) (tl-join1 _ A _ _ _ _ _ _ _).
+
+
 
 tl-join: sub-env G G1 -> sub-env G G2 -> tlookup G1 N (tsome T) -> tlookup G2 N (tsome T) -> 
 tlookup G' N (tsome T) -> sub-env G G' -> sub-env G' G1 -> sub-env G' G2 -> type.
 %mode tl-join +A +B +C +D -E -F -G -H.
 
-tl-join2: tlookup G N1 (tsome T1) -> sub-env G G1 -> sub-env G G2 -> tlookup G1 N (tsome T) -> tlookup G2 N (tsome T) -> 
-tlookup G' N (tsome T) -> sub-env G G' -> sub-env G' G1 -> sub-env G' G2 -> type.
-%mode tl-join2 +N +A +B +C +D -E -F -G -H.
+- : tl-join S1 S2 L1 L2 L0 S0 S1' S2' 
+      <- test-membership _ _ M
+      <- tl-join1 M S1 S2 L1 L2 L0 S0 S1' S2'.
 
-
-empty: {N}{T} tlookup (tcons N T tnil tfresh/nil) N (tsome T) -> type.
-
-- : empty N T (tl/hit ts/t tl/fail E) <- eq-refl _ E.
-
-%mode empty +N +T -A.
-%worlds () (empty _ _ _).
-%total (A) (empty A _ _).
-
-
-%% (nil < G1)  (nil < G2) (lkup G1 N T) (lkup G2 N T) --> (nil < N T) (N T < G1) (N T < G2)
-
-- : tl-join (sub-env/nil) (sub-env/nil) L1 L2 L sub-env/nil
-      (sub-env/cons L1 sub-env/nil) 
-      (sub-env/cons L2 sub-env/nil)
-        <- empty _ _ L.
-
-
-%% either N is already in G, then just return G
-%% otherwise return G + N
-
-
-%% (A G0 < G1)  (A G0 < G2) (lkup G1 N T) (lkup G2 N T) 
-%    ---> G0 < G1 G0 < G2, A in G1 A in G2
-%    ---> G0 < G' (lkup G' N T), G' < G1 G' < G2
-%       
-%      A == N T  --> (A GO < G') (A G0 < G1) (A G0 < G2)
-%      A != N T  --> (A GO < NT A G0) (NT A G0 < G1) (NT A G0 < G2)
-
-
-% - : tl-join (sub-env/cons L1 S1) (sub-env/cons L2 S2) L1 L2 L (sub-env/cons L S0) S1 S2 
-%       <- tl-join S1 S2 L1 L2 L S0 S1 S2.
-
-- : tl-join (sub-env/cons L1S S1S) (sub-env/cons L2S S2S) L1 L2 
-      L (sub-env/cons LU SA) SB SC 
-      <- tl-join S1S S2S L1 L2 L S0 S1 S2
-      <- tl-join2 L S1 S2 L1S L2S LU SA SB SC.
-
-- : tl-join2 (tl/hit _ LA _) (sub-env/cons L1 S1) (sub-env/cons L2 S2) 
-      (tl/hit _ _ _) (tl/hit _ _ _) LU (sub-env/cons LU S0) S1 S2 
-       <- tl-join2 LA S1 S2 L1 L2 LU S0 S1 S2.
-
-%%% TODO
-
-
-
-%worlds () (tl-join _ _ _ _ _ _ _ _)(tl-join2 _ _ _ _ _ _ _ _ _).
-% %covers (tl-join +A +B +C +D -E -F -G -H)(tl-join2 +N +A +B +C +D -E -F -G -H).
-
-% %reduces A <= A' (tl-join A _ A' _ _ _ _ _).
-
-%trustme
-%total {(A B) (A B)} (tl-join A _ _ _ _ _ _ _)(tl-join2 _ _ _ B _ _ _ _ _).
+%worlds () (tl-join _ _ _ _ _ _ _ _).
+%total (A) (tl-join A _ _ _ _ _ _ _).
 
 
 
