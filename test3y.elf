@@ -23,4 +23,4 @@ lookup-restrict: tlookup G1 T1 -> tlookup G2 T2 -> tlookup G1 T2 -> tlookup G2 T
 
 %. this query fails! so we really proved a wrong theorem.
 
-%query 1 2 lookup-restrict (L1: tlookup int int) (L2: tlookup bool bool) (R1: tlookup int bool) (R2: tlookup bool int).
+%query 1 2 lookup-restrict (L1: tlookup int int) (L2: tlookup bool bool) R1 R2.
