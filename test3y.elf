@@ -1,32 +1,26 @@
 tpe: type.
-
 int: tpe.
 bool: tpe.
 
-tenv: type.
-
-tnil  : tenv.
-tcons : tpe -> tenv -> tenv.
-
-
-topt: type.
-tsome: tpe -> topt.
-tnone: topt.
-
-tlookup : tenv -> topt -> type.
-tl/fail : tlookup tnil tnone.
-tl/hit  : tlookup (tcons V1 G) (tsome V1).
-
+tlookup : tpe -> tpe -> type.
+tl/id : tlookup T T.
 
 %mode tlookup +G -T.
 %worlds () (tlookup _ _).
 %total (A) (tlookup A _).
 %unique tlookup +G -1T.
 
-lookup-restrict: tlookup G2 T2 -> tlookup G1 T1 -> tlookup G2 T1 -> tlookup G1 T2 -> type.
+lookup-restrict: tlookup G1 T1 -> tlookup G2 T2 -> tlookup G1 T2 -> tlookup G2 T1 -> type.
 %mode lookup-restrict +A +B -D -E.
 
 -: lookup-restrict L2 L1 L2 L1.
 
 %worlds () (lookup-restrict _ _ _ _).
 %total (A) (lookup-restrict _ A _ _).
+
+%query 1 2 tlookup int int.
+%query 1 2 tlookup bool bool.
+
+%. this query fails! so we really proved a wrong theorem.
+
+%query 1 2 lookup-restrict (L1: tlookup int int) (L2: tlookup bool bool) (R1: tlookup int bool) (R2: tlookup bool int).
