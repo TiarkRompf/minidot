@@ -416,11 +416,6 @@ lookup-restrict: tlookup G2 N T2 -> tlookup G1 N T1 -> sub-env G1 G2 -> tlookup 
 %worlds () (lookup-restrict _ _ _ _ _).
 %total (A) (lookup-restrict _ _ A _ _).
 
-
-
-
-
-
 % get-fresh operation:
 
 get-fresh: tenv -> {N:nat} tfresh N G -> type.
@@ -776,3 +771,52 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V T -> type.
 
 
 
+% Tiark, why can I derive that lookup always fails?
+lookup-restrict2: tlookup G2 N T2 -> tlookup G1 N T1 -> sub-env G1 G2 -> tlookup G2 N T1 -> tlookup G1 N T2 -> same T2 T1 -> type.
+%mode lookup-restrict2 +A +B +C -D -E -F.
+
+-: lookup-restrict2 L2 tl/fail sub-env/nil L2 tl/fail ident.
+
+-: lookup-restrict2 L2 (tl/hit ts/f L1 E) (sub-env/cons L S) L2 (tl/hit ts/f L1' E) ident 
+    <- lookup-restrict2 L2 L1 S L2' L1' ident.
+
+-: lookup-restrict2 L2 (tl/hit ts/t L1 E) (sub-env/cons L S) L2 (tl/hit ts/t L1 E) ident.
+
+%worlds () (lookup-restrict2 _ _ _ _ _ _).
+%total (A) (lookup-restrict2 _ _ A _ _ _).
+
+eq-deriv: {N1} {N2} {C} eq N1 N2 C -> type.
+%mode eq-deriv +N1 +N2 -C -EQ.
+- : eq-deriv z z t eq/z.
+- : eq-deriv z (s N) f eq/zs.
+- : eq-deriv (s N) z f eq/sz.
+- : eq-deriv (s N1) (s N2) R (eq/s E) <- eq-deriv N1 N2 R E.
+%worlds () (eq-deriv _ _ _ _).
+%total (A) (eq-deriv A _ _ _).
+
+select-deriv: {C} {V1} {V2} {V3} tselect C V1 V2 V3 -> type.
+%mode select-deriv +C +V1 +V2 -V3 -SEL.
+- : select-deriv t V1 V2 V1 ts/t.
+- : select-deriv f V1 V2 V2 ts/f.
+%worlds () (select-deriv _ _ _ _ _).
+%total (A) (select-deriv A _ _ _ _).
+
+lookup-deriv: {G} {N} {T} tlookup G N T -> type.
+%mode lookup-deriv +G +N -T -TL.
+- : lookup-deriv tnil N tnone tl/fail.
+- : lookup-deriv (tcons N1 V1 G F) N2 T (tl/hit S TL E)
+     <- eq-deriv N1 N2 C E
+     <- lookup-deriv G N2 T2 TL
+     <- select-deriv C (tsome V1) T2 T S.
+%worlds () (lookup-deriv _ _ _ _).
+%total (G) (lookup-deriv G _ _ _).
+
+lookup-always-fails: {G} {N} tlookup G N tnone -> type.
+%mode lookup-always-fails +G +N -TL.
+-: lookup-always-fails tnil N tl/fail.
+
+-: lookup-always-fails (tcons N1 V1 G F) N TL'
+    <- lookup-deriv (tcons N1 V1 G F) N T TL
+    <- lookup-restrict2 TL tl/fail sub-env/nil TL' X1 X2.
+%worlds () (lookup-always-fails _ _ _).
+%total (G) (lookup-always-fails G _ _).
