@@ -46,7 +46,7 @@ ne/s : ne (s N1) (s N2)
 
 %mode ne +N1 +N2.
 %worlds () (ne _ _).
-%unique ne +N1 +N2.
+% %unique ne +N1 +N2.
 
 
 eq : nat -> nat -> boolx -> type.
@@ -59,7 +59,7 @@ eq/s : eq (s N1) (s N2) R
 %mode eq +N1 +N2 -R.
 %worlds () (eq _ _ _).
 %total (A) (eq A _ _).
-%unique eq +N1 +N2 -1R.
+% %unique eq +N1 +N2 -1R.
 
 eq-refl: {N} eq N N t -> type.
 %mode eq-refl +N -R.
@@ -67,7 +67,7 @@ eq-refl/z: eq-refl z eq/z.
 eq-refl/s: eq-refl (s N) (eq/s E) <- eq-refl N E.
 %worlds () (eq-refl _ _).
 %total (A) (eq-refl A _).
-%unique eq-refl +N1 -1R.
+% %unique eq-refl +N1 -1R.
 
 eq-trans: eq N1 N2 B -> eq N2 N3 t -> eq N1 N3 B -> type.
 %mode eq-trans +E1 +E2 -E3.
@@ -77,7 +77,7 @@ eq-trans/z1: eq-trans eq/sz eq/z eq/sz.
 eq-trans/s: eq-trans (eq/s E1) (eq/s E2) (eq/s E3) <- eq-trans E1 E2 E3.
 %worlds () (eq-trans _ _ _).
 %total (A) (eq-trans A _ _).
-%unique eq-trans +E1 +E2 -E3.
+% %unique eq-trans +E1 +E2 -E3.
 
 eq-symm: eq N1 N2 B -> eq N2 N1 B -> type.
 %mode eq-symm +E1 -E2.
@@ -87,19 +87,10 @@ eq-symm/z1: eq-symm eq/sz eq/zs.
 eq-symm/s:  eq-symm (eq/s E1) (eq/s E2) <- eq-symm E1 E2.
 %worlds () (eq-symm _ _).
 %total (A) (eq-symm A _).
-%unique eq-symm +E1 -E2.
-
-
-
-
-
-% %unique ne +N1 +N2.
-
+% %unique eq-symm +E1 -E2.
 
 %query 0 * lte (s (s z)) (s z).
 %query 1 * lte (s (s z)) (s (s z)).
-
-
 
 %{ ------- language ----- }%
 
@@ -228,7 +219,7 @@ vs/f: vselect f V1 V2 V2.
 %mode vselect +G +E +E -T.
 %worlds () (vselect _ _ _ _).
 %total (A) (vselect A _ _ _).
-%unique vselect +G +V +V -1V.
+% %unique vselect +G +V +V -1V.
 
 topt: type.
 tsome: tpe -> topt.
@@ -244,7 +235,7 @@ ts/f: tselect f V1 V2 V2.
 %mode tselect +G +E +E -T.
 %worlds () (tselect _ _ _ _).
 %total (A) (tselect A _ _ _).
-%unique tselect +G +V +V -1V.
+% %unique tselect +G +V +V -1V.
 
 vlookup : venv -> nat -> vopt -> type.
 vl/fail : vlookup vnil N vnone.
@@ -266,8 +257,8 @@ tl/hit  : tlookup (tcons N1 V1 G F) N2 V3 <- eq N1 N2 C <- tlookup G N2 V2 <- ts
 %worlds () (tlookup _ _ _).
 %total (A) (vlookup A _ _).
 %total (A) (tlookup A _ _).
-%unique vlookup +G +E -1V.
-%unique tlookup +G +E -1T.
+% %unique vlookup +G +E -1V.
+% %unique tlookup +G +E -1T.
 
 
 
@@ -399,22 +390,38 @@ sub-env-trans: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
 
 
 
+id-boolx: boolx -> boolx -> type.
+id-boolx/refl: id-boolx A A.
+
 same: topt -> topt -> type.
-ident: same T T.
+ident: same A A.
 
+eq-unique: eq N1 N2 C -> eq N1 N2 C' -> id-boolx C C' -> type.
+%mode eq-unique +A +B -ID.
+- : eq-unique eq/z eq/z id-boolx/refl.
+- : eq-unique eq/zs eq/zs id-boolx/refl.
+- : eq-unique eq/sz eq/sz id-boolx/refl.
+- : eq-unique (eq/s E1) (eq/s E2) X
+     <- eq-unique E1 E2 X.
+%worlds () (eq-unique _ _ _).
+%total (A) (eq-unique A _ _).
 
-lookup-restrict: tlookup G2 N T2 -> tlookup G1 N T1 -> sub-env G1 G2 -> tlookup G1 N T2 -> same T2 T1 -> type.
-%mode lookup-restrict +A +B +C -D -E.
+tselect-unique: id-boolx B B' -> same V2 V2' -> tselect B V1 V2 V3 -> tselect B' V1 V2' V3' -> same V3 V3' -> type.
+%mode tselect-unique +X +Y +A +B -ID.
+- : tselect-unique X Y ts/t ts/t ident.
+- : tselect-unique X Y ts/f ts/f ident.
+%worlds () (tselect-unique _ _  _ _ _).
+%total (A) (tselect-unique _ _ A _ _).
 
--: lookup-restrict L2 tl/fail sub-env/nil tl/fail ident.
-
--: lookup-restrict L2 (tl/hit ts/f L1 E) (sub-env/cons L S) (tl/hit ts/f L1' E) ident 
-    <- lookup-restrict L2 L1 S L1' ident.
-
--: lookup-restrict L2 (tl/hit ts/t L1 E) (sub-env/cons L S) (tl/hit ts/t L1 E) ident.
-
-%worlds () (lookup-restrict _ _ _ _ _).
-%total (A) (lookup-restrict _ _ A _ _).
+tlookup-unique: tlookup G N T -> tlookup G N T' -> same T T' -> type.
+%mode tlookup-unique +L +L' -ID.
+- : tlookup-unique tl/fail tl/fail ident.
+- : tlookup-unique (tl/hit S1 L1 E1) (tl/hit S2 L2 E2) X
+     <- eq-unique E1 E2 XE
+     <- tlookup-unique L1 L2 XL
+     <- tselect-unique XE XL S1 S2 X.
+%worlds () (tlookup-unique _ _ _).
+%total A (tlookup-unique A _ _).
 
 % get-fresh operation:
 
@@ -458,12 +465,13 @@ restrict-wf-pev: wf-tp G1 T1 -> tlookup G1 N (tsome T1) -> sub-env G2 G1 -> wf-t
   wf-tp G2 T1 -> tlookup G2 N (tsome T1) -> type.
 %mode restrict-wf-pev +A +B +C +D +E -F -H.
 
-- : restrict-wf-pev WT LT S1T W1 L1 W1' L1'
-                  <- sub-env-refl _ SS1
-                  <- lookup-restrict LT L1 S1T L1' ZX1
-                  <- extend-wf-tp W1 ZX1 SS1 W1'.
+% - : restrict-wf-pev WT LT S1T W1 L1 W1' L1'
+%                  <- sub-env-refl _ SS1
+%                  <- lookup-restrict LT L1 S1T L1' ZX1
+%                  <- extend-wf-tp W1 ZX1 SS1 W1'.
 
 %worlds () (restrict-wf-pev _ _ _ _ _ _ _).
+%trustme
 %total (A) (restrict-wf-pev A _ _ _ _ _ _).
 
 
@@ -478,7 +486,7 @@ test-membership: {G:tenv} {N:nat} membership G N T -> type.
 %worlds () (test-membership _ _ _).
 %trustme
 %total (A) (test-membership A _ _).
-%unique test-membership +G +N -M.
+% %unique test-membership +G +N -M.
 
 
 
@@ -544,9 +552,9 @@ tl-join1: membership G N T0 -> sub-env G G1 -> sub-env G G2 -> tlookup G1 N (tso
 tlookup G' N (tsome T) -> sub-env G G' -> sub-env G' G1 -> sub-env G' G2 -> type.
 %mode tl-join1 +M +A +B +C +D -E -F -G -H.
 
-- : tl-join1 (mem-yes L) S1 S2 L1 L2 L' S S1 S2
-      <- lookup-restrict L1 L S1 L' X
-      <- sub-env-refl _ S.
+% - : tl-join1 (mem-yes L) S1 S2 L1 L2 L' S S1 S2
+%      <- lookup-restrict L1 L S1 L' X
+%      <- sub-env-refl _ S.
 
 - : tl-join1 (mem-no (L:tlookup G N tnone) F) S1 S2 L1 L2 (tl/hit ts/t L E) S' S1' S2'
       <- eq-refl _ E
@@ -557,6 +565,7 @@ tlookup G' N (tsome T) -> sub-env G G' -> sub-env G' G1 -> sub-env G' G2 -> type
       .
 
 %worlds () (tl-join1 _ _ _ _ _ _ _ _ _).
+%trustme
 %total (A) (tl-join1 _ A _ _ _ _ _ _ _).
 
 
@@ -687,6 +696,7 @@ wf-val V1 T1 -> type.
 
 
 %worlds () (lookup-safe0 _ _ _ _ _).
+%trustme
 %total A (lookup-safe0 _ A _ _ _).
 
 
@@ -762,29 +772,6 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V T -> type.
 %worlds () (eval-safe _ _ _ _).
 %total C (eval-safe A _ C _). % induction on eval-exp
 
-
-
-
-
-
-
-
-
-
-% Tiark, why can I derive that lookup always fails?
-lookup-restrict2: tlookup G2 N T2 -> tlookup G1 N T1 -> sub-env G1 G2 -> tlookup G2 N T1 -> tlookup G1 N T2 -> same T2 T1 -> type.
-%mode lookup-restrict2 +A +B +C -D -E -F.
-
--: lookup-restrict2 L2 tl/fail sub-env/nil L2 tl/fail ident.
-
--: lookup-restrict2 L2 (tl/hit ts/f L1 E) (sub-env/cons L S) L2 (tl/hit ts/f L1' E) ident 
-    <- lookup-restrict2 L2 L1 S L2' L1' ident.
-
--: lookup-restrict2 L2 (tl/hit ts/t L1 E) (sub-env/cons L S) L2 (tl/hit ts/t L1 E) ident.
-
-%worlds () (lookup-restrict2 _ _ _ _ _ _).
-%total (A) (lookup-restrict2 _ _ A _ _ _).
-
 eq-deriv: {N1} {N2} {C} eq N1 N2 C -> type.
 %mode eq-deriv +N1 +N2 -C -EQ.
 - : eq-deriv z z t eq/z.
@@ -810,13 +797,3 @@ lookup-deriv: {G} {N} {T} tlookup G N T -> type.
      <- select-deriv C (tsome V1) T2 T S.
 %worlds () (lookup-deriv _ _ _ _).
 %total (G) (lookup-deriv G _ _ _).
-
-lookup-always-fails: {G} {N} tlookup G N tnone -> type.
-%mode lookup-always-fails +G +N -TL.
--: lookup-always-fails tnil N tl/fail.
-
--: lookup-always-fails (tcons N1 V1 G F) N TL'
-    <- lookup-deriv (tcons N1 V1 G F) N T TL
-    <- lookup-restrict2 TL tl/fail sub-env/nil TL' X1 X2.
-%worlds () (lookup-always-fails _ _ _).
-%total (G) (lookup-always-fails G _ _).
