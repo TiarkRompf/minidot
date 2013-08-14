@@ -30,3 +30,12 @@ lookup-restrict: tlookup G2 T2 -> tlookup G1 T1 -> tlookup G2 T1 -> tlookup G1 T
 
 %worlds () (lookup-restrict _ _ _ _).
 %total (A) (lookup-restrict _ A _ _).
+
+
+G1 = (tcons int tnil).
+G2 = (tcons bool tnil).
+
+%query 1 * (tlookup G1 (tsome int)).
+%query 1 * (tlookup G2 (tsome bool)).
+%query 0 * (tlookup G1 (tsome bool)).
+%query 0 * (tlookup G2 (tsome int)).
