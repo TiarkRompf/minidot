@@ -29,7 +29,7 @@ tl/id : tlookup T T.
 lookup-restrict: tlookup G1 T1 -> tlookup G2 T2 -> tlookup G1 T2 -> tlookup G2 T1 -> type.
 %mode lookup-restrict +A +B -D -E.
 
--: lookup-restrict L2 L1 L2 L1.
+-: lookup-restrict L1 L2 L1 L2.
 
 %worlds () (lookup-restrict _ _ _ _).
 %total (A) (lookup-restrict _ A _ _).
