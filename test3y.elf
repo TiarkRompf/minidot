@@ -1,0 +1,142 @@
+% echo "loadFile test3y.elf" |/Volumes/Twelf\ for\ OS\ X\ \(Intel\)/Twelf/bin/twelf-server
+
+
+
+boolx: type.
+t: boolx.
+f: boolx.
+
+nat: type.
+z: nat.
+s: nat -> nat.
+
+eq : nat -> nat -> boolx -> type.
+eq/z : eq z z t.
+eq/zs : eq z (s N) f.
+eq/sz : eq (s N) z f.
+eq/s : eq (s N1) (s N2) R
+   <- eq N1 N2 R.
+
+%mode eq +N1 +N2 -R.
+%worlds () (eq _ _ _).
+%total (A) (eq A _ _).
+%unique eq +N1 +N2 -1R.
+
+
+
+
+tpe: type.
+
+int: tpe.
+bool: tpe.
+
+
+
+tenv: type.
+
+
+tfresh : nat -> tenv -> type.
+
+tnil  : tenv.
+tcons : {N:nat} {T:tpe} {G:tenv} tfresh N G -> tenv.
+
+tfresh/nil  : tfresh N tnil.
+tfresh/cons : tfresh N2 (tcons N1 T G F) <- tfresh N2 G <- eq N2 N1 f.
+
+
+
+topt: type.
+tsome: tpe -> topt.
+tnone: topt.
+
+tselect: boolx -> topt -> topt -> topt -> type.
+ts/t: tselect t V1 V2 V1.
+ts/f: tselect f V1 V2 V2.
+
+%mode tselect +G +E +E -T.
+%worlds () (tselect _ _ _ _).
+%total (A) (tselect A _ _ _).
+%unique tselect +G +V +V -1V.
+
+tlookup : tenv -> nat -> topt -> type.
+tl/fail : tlookup tnil N tnone.
+tl/hit  : tlookup (tcons N1 V1 G F) N2 V3 <- eq N1 N2 C <- tlookup G N2 V2 <- tselect C (tsome V1) V2 V3.
+
+
+%mode tlookup +G +E -T.
+%worlds () (tlookup _ _ _).
+%total (A) (tlookup A _ _).
+%unique tlookup +G +E -1T.
+
+
+
+sub-env: tenv -> tenv -> type.
+
+sub-env/nil  : sub-env tnil G.
+sub-env/cons : sub-env (tcons N T G F) G2 
+                  <- sub-env G G2 
+                  <- tlookup G2 N (tsome T).
+
+
+
+
+
+
+lookup-restrict: tlookup G2 N T2 -> tlookup G1 N T1 -> sub-env G1 G2 -> tlookup G2 N T1 -> tlookup G1 N T2 -> type.
+%mode lookup-restrict +A +B +C -D -E.
+
+-: lookup-restrict L2 (tl/fail: tlookup _ _ _) sub-env/nil L2 (tl/fail: tlookup _ _ _).
+
+-: lookup-restrict L2 (tl/hit ts/f L1 E) (sub-env/cons L S) L2 (tl/hit ts/f L1' E)
+    <- lookup-restrict L2 L1 S L2' L1'.
+
+-: lookup-restrict L2 (tl/hit ts/t L1 E) (sub-env/cons L S) L2 (tl/hit ts/t L1 E).
+
+%worlds () (lookup-restrict _ _ _ _ _).
+%total (A) (lookup-restrict _ _ A _ _).
+
+
+
+
+eq-deriv: {N1} {N2} {C} eq N1 N2 C -> type.
+%mode eq-deriv +N1 +N2 -C -EQ.
+- : eq-deriv z z t eq/z.
+- : eq-deriv z (s N) f eq/zs.
+- : eq-deriv (s N) z f eq/sz.
+- : eq-deriv (s N1) (s N2) R (eq/s E) <- eq-deriv N1 N2 R E.
+%worlds () (eq-deriv _ _ _ _).
+%total (A) (eq-deriv A _ _ _).
+
+select-deriv: {C} {V1} {V2} {V3} tselect C V1 V2 V3 -> type.
+%mode select-deriv +C +V1 +V2 -V3 -SEL.
+- : select-deriv t V1 V2 V1 ts/t.
+- : select-deriv f V1 V2 V2 ts/f.
+%worlds () (select-deriv _ _ _ _ _).
+%total (A) (select-deriv A _ _ _ _).
+
+lookup-deriv: {G} {N} {T} tlookup G N T -> type.
+%mode lookup-deriv +G +N -T -TL.
+- : lookup-deriv tnil N tnone tl/fail.
+- : lookup-deriv (tcons N1 V1 G F) N2 T (tl/hit S TL E)
+     <- eq-deriv N1 N2 C E
+     <- lookup-deriv G N2 T2 TL
+     <- select-deriv C (tsome V1) T2 T S.
+%worlds () (lookup-deriv _ _ _ _).
+%total (G) (lookup-deriv G _ _ _).
+
+
+
+lookup-always-fails: {G} {N} tlookup G N tnone -> type.
+%mode lookup-always-fails +G +N -TL.
+-: lookup-always-fails tnil N tl/fail.
+
+-: lookup-always-fails (tcons N1 V1 G F) N TL'
+    <- lookup-deriv (tcons N1 V1 G F) N T TL
+    <- lookup-restrict TL tl/fail sub-env/nil TL' X1.
+%worlds () (lookup-always-fails _ _ _).
+%total (G) (lookup-always-fails G _ _).
+
+
+
+
+
