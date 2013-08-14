@@ -463,22 +463,22 @@ lookup-same2: tlookup G N1 T1 -> same T2 T1 -> tlookup G N1 T2 -> type.
 %total (A) (lookup-same2 A _ _).
 
 
-lookup-restrict: {G1} tlookup G2 N (tsome T2) -> tlookup G1 N (tsome T1) -> sub-env G1 G2 -> tlookup G1 N (tsome T2) -> same (tsome T2) (tsome T1) -> type.
-%mode lookup-restrict +X +A +B +C -E -F.
+lookup-restrict: tlookup G2 N (tsome T2) -> tlookup G1 N (tsome T1) -> sub-env G1 G2 -> tlookup G1 N (tsome T2) -> same (tsome T2) (tsome T1) -> type.
+%mode lookup-restrict +A +B +C -E -F.
 
--: lookup-restrict (tcons _ _ G1 _) L2 (tl/hit ts/f L1 E) (sub-env/cons L S) (tl/hit ts/f L1' E) X
-    <- lookup-restrict G1 L2 L1 S L1' X.
+-: lookup-restrict L2 (tl/hit ts/f L1 E) (sub-env/cons L S) (tl/hit ts/f L1' E) X
+    <- lookup-restrict L2 L1 S L1' X.
 
--: lookup-restrict (tcons N T1 G1 F1) L2 (tl/hit ts/t L1 E) (sub-env/cons L S) L1' X
+-: lookup-restrict L2 (tl/hit ts/t L1 E) (sub-env/cons L S) L1' X
     <- eq-symm E E'
-    <- lookup-same L2 E' L2x
-    <- tlookup-unique L2x L X
-    <- lookup-same2 ((tl/hit ts/t L1 E): (tlookup (tcons N T1 G1 F1) _ _)) X L1'
+    <- lookup-same L2 E' L2'
+    <- tlookup-unique L2' L X
+    <- lookup-same2 (tl/hit ts/t L1 E) X L1'
     .
 
 
-%worlds () (lookup-restrict _ _ _ _ _ _).
-%total {C} (lookup-restrict C _ _ _ _ _).
+%worlds () (lookup-restrict _ _ _ _ _).
+%total {C} (lookup-restrict _ _ C _ _).
 
 
 
