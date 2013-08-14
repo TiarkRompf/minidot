@@ -346,10 +346,17 @@ sub-env-refl: {G} sub-env G G -> type.
 %total (A) (sub-env-refl A _).
 
 
+
 lookup-same: tlookup G N1 T -> eq N1 N2 t -> tlookup G N2 T -> type.
 %mode lookup-same +A +B -C.
+
+- : lookup-same tl/fail E tl/fail.
+- : lookup-same (tl/hit S L1 E1) E2 (tl/hit S L3 E3) 
+      <- eq-trans E1 E2 E3 
+      <- lookup-same L1 E2 L3.
+
+
 %worlds () (lookup-same _ _ _).
-%trustme
 %total (A) (lookup-same A _ _).
 
 
