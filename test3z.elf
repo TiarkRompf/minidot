@@ -390,8 +390,60 @@ sub-env-trans: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
 
 
 
+eq-deriv: {N1} {N2} {C} eq N1 N2 C -> type.
+%mode eq-deriv +N1 +N2 -C -EQ.
+- : eq-deriv z z t eq/z.
+- : eq-deriv z (s N) f eq/zs.
+- : eq-deriv (s N) z f eq/sz.
+- : eq-deriv (s N1) (s N2) R (eq/s E) <- eq-deriv N1 N2 R E.
+%worlds () (eq-deriv _ _ _ _).
+%total (A) (eq-deriv A _ _ _).
+
+select-deriv: {C} {V1} {V2} {V3} tselect C V1 V2 V3 -> type.
+%mode select-deriv +C +V1 +V2 -V3 -SEL.
+- : select-deriv t V1 V2 V1 ts/t.
+- : select-deriv f V1 V2 V2 ts/f.
+%worlds () (select-deriv _ _ _ _ _).
+%total (A) (select-deriv A _ _ _ _).
+
+lookup-deriv: {G} {N} {T} tlookup G N T -> type.
+%mode lookup-deriv +G +N -T -TL.
+- : lookup-deriv tnil N tnone tl/fail.
+- : lookup-deriv (tcons N1 V1 G F) N2 T (tl/hit S TL E)
+     <- eq-deriv N1 N2 C E
+     <- lookup-deriv G N2 T2 TL
+     <- select-deriv C (tsome V1) T2 T S.
+%worlds () (lookup-deriv _ _ _ _).
+%total (G) (lookup-deriv G _ _ _).
+
+
+
+
+same: topt -> topt -> type.
+ident: same T T.
+
+
+
+lookup-restrict: tlookup G2 N (tsome T2) -> tlookup G1 N (tsome T2) -> sub-env G1 G2 -> tlookup G1 N (tsome T2) -> type.
+%mode lookup-restrict +A +B +C -E.
+
+-: lookup-restrict L2 (tl/hit ts/f L1 E) (sub-env/cons L S) (tl/hit ts/f L1' E)
+    <- lookup-restrict L2 L1 S L1'.
+
+-: lookup-restrict L2 (tl/hit ts/t L1 E) (sub-env/cons L S) (tl/hit ts/t L1 E).
+
+%worlds () (lookup-restrict _ _ _ _).
+%total (A) (lookup-restrict _ _ A _).
+
+
+
+
+
+
 id-boolx: boolx -> boolx -> type.
 id-boolx/refl: id-boolx A A.
+
+
 
 same: topt -> topt -> type.
 ident: same A A.
@@ -422,6 +474,10 @@ tlookup-unique: tlookup G N T -> tlookup G N T' -> same T T' -> type.
      <- tselect-unique XE XL S1 S2 X.
 %worlds () (tlookup-unique _ _ _).
 %total A (tlookup-unique A _ _).
+
+
+
+
 
 % get-fresh operation:
 
@@ -772,28 +828,3 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V T -> type.
 %worlds () (eval-safe _ _ _ _).
 %total C (eval-safe A _ C _). % induction on eval-exp
 
-eq-deriv: {N1} {N2} {C} eq N1 N2 C -> type.
-%mode eq-deriv +N1 +N2 -C -EQ.
-- : eq-deriv z z t eq/z.
-- : eq-deriv z (s N) f eq/zs.
-- : eq-deriv (s N) z f eq/sz.
-- : eq-deriv (s N1) (s N2) R (eq/s E) <- eq-deriv N1 N2 R E.
-%worlds () (eq-deriv _ _ _ _).
-%total (A) (eq-deriv A _ _ _).
-
-select-deriv: {C} {V1} {V2} {V3} tselect C V1 V2 V3 -> type.
-%mode select-deriv +C +V1 +V2 -V3 -SEL.
-- : select-deriv t V1 V2 V1 ts/t.
-- : select-deriv f V1 V2 V2 ts/f.
-%worlds () (select-deriv _ _ _ _ _).
-%total (A) (select-deriv A _ _ _ _).
-
-lookup-deriv: {G} {N} {T} tlookup G N T -> type.
-%mode lookup-deriv +G +N -T -TL.
-- : lookup-deriv tnil N tnone tl/fail.
-- : lookup-deriv (tcons N1 V1 G F) N2 T (tl/hit S TL E)
-     <- eq-deriv N1 N2 C E
-     <- lookup-deriv G N2 T2 TL
-     <- select-deriv C (tsome V1) T2 T S.
-%worlds () (lookup-deriv _ _ _ _).
-%total (G) (lookup-deriv G _ _ _).
