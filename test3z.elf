@@ -527,10 +527,10 @@ restrict-wf-pev: wf-tp G1 T1 -> tlookup G1 N (tsome T1) -> sub-env G2 G1 -> wf-t
   wf-tp G2 T1 -> tlookup G2 N (tsome T1) -> type.
 %mode restrict-wf-pev +A +B +C +D +E -F -H.
 
-- : restrict-wf-pev WT LT S1T W1 L1 W1' L1''
+- : restrict-wf-pev WT LT S1T W1 L1 W1' L1'
                  <- sub-env-refl _ SS1
-                 <- lookup-restrict _ LT L1 S1T L1' X.
-                 <- extend-wf-tp W1 X' SS1 W1'.
+                 <- lookup-restrict LT L1 S1T L1' X
+                 <- extend-wf-tp W1 X SS1 W1'.
 
 %worlds () (restrict-wf-pev _ _ _ _ _ _ _).
 %total (A) (restrict-wf-pev A _ _ _ _ _ _).
