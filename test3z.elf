@@ -369,7 +369,7 @@ fresh-restrict: tfresh N G2 -> sub-env G1 G2 -> tfresh N G1 -> type.
       <- fresh-restrict (tfresh/cons E F1) S F2.
 
 %worlds () (fresh-restrict _ _ _).
-%trustme
+%trustme %% NOT USED
 %total (A) (fresh-restrict _ A _).
 
 
@@ -465,8 +465,11 @@ tlookup-unique: tlookup G N T -> tlookup G N T' -> same T T' -> type.
 
 lookup-same2: tlookup G N1 T1 -> same T2 T1 -> tlookup G N1 T2 -> type.
 %mode lookup-same2 +A +B -C.
+- : lookup-same2 tl/fail X tl/fail.
+- : lookup-same2 (tl/hit ts/t L E) ident (tl/hit ts/t L E).
+- : lookup-same2 (tl/hit ts/f L1 E) X (tl/hit ts/f L3 E) 
+      <- lookup-same2 L1 X L3.
 %worlds () (lookup-same2 _ _ _).
-%trustme
 %total (A) (lookup-same2 A _ _).
 
 
