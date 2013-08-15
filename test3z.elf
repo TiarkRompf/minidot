@@ -619,6 +619,23 @@ test-membership: {G:tenv} {N:nat} membership G N T -> type.
 % %unique test-membership +G +N -M.
 
 
+restrict-membership: membership G2 N T2 -> membership G1 N T1 -> sub-env G1 G2 -> membership G1 N T2 -> type.
+%mode restrict-membership +A +B +C -D.
+
+- : restrict-membership (mem-yes L2) (mem-yes L1) S (mem-yes L1')
+      <- lookup-restrict L2 L1 S L1' X.
+
+- : restrict-membership (mem-yes L2) (mem-no _ F1) S (mem-no L1 F1)
+     <- fresh-cant-lookup F1 L1.
+
+- : restrict-membership (mem-no L2 F2) _ S (mem-no L1 F1)
+     <- fresh-restrict F2 S F1
+     <- fresh-cant-lookup F1 L1.
+
+%worlds () (restrict-membership _ _ _ _).
+%total (A) (restrict-membership A _ _ _).
+
+
 
 union-env1: membership G1 N T -> {G3:tenv} sub-env G1 G3 -> tlookup G3 N (tsome T) -> type.
 %mode union-env1 +A -C -D -E.
@@ -690,23 +707,28 @@ union-env: {G1:tenv}{G2:tenv}{G3:tenv} sub-env G1 G3 -> sub-env G2 G3 -> type.
 
 
 
-intersect-env1: membership G2 N T -> tfresh N G0 -> sub-env G0 (tcons N T1 G1 F) -> sub-env G0 G2 -> 
-sub-env G0 G0' -> sub-env G0' (tcons N T1 G1 F) -> sub-env G0' G2 -> type.
+intersect-env1: membership G2 N T -> {F:tfresh N G1} sub-env G0 G1 -> sub-env G0 G2 -> 
+sub-env G0 G0' -> sub-env G0' (tcons N T G1 F) -> sub-env G0' G2 -> type.
 %mode intersect-env1 +A +B +C +D -E -F -G.
 
-- : intersect-env1 (mem-yes L) F (S1: sub-env G0 (tcons _ _ G1 F1)) S2 S 
-      (sub-env/cons (tl/hit ts/t L1 E) S1)
-      ((sub-env/cons L S2): sub-env (tcons _ _ G0 F) G2) 
+- : intersect-env1 (mem-yes (L: tlookup G2 N (tsome T1))) F1 (S1: sub-env G0 G1) S2 S 
+      ((sub-env/cons ((tl/hit ts/t L1' E): tlookup (tcons N T1 G1 F1) N (tsome _)) S1x): sub-env (tcons _ _ G0 F) _)
+      ((sub-env/cons L S2): sub-env (tcons N T1 G0 F) G2) 
+      <- fresh-restrict F1 S1 F
       <- fresh-cant-lookup F1 L1'
       <- eq-refl _ E
       <- sub-env-refl _ S0 
+      <- sub-env-extend _ _ _ S1 S1x
       <- sub-env-extend _ _ _ S0 S.
 
-- : intersect-env1 (mem-no L _) F S1 S2 S S1 S2
+- : intersect-env1 (mem-no L _) F S1 S2 S S1' S2
+      <- sub-env-extend _ _ F S1 S1'
       <- sub-env-refl _ S.
 
 %worlds () (intersect-env1 _ _ _ _ _ _ _).
 %total (A) (intersect-env1 A _ _ _ _ _ _).
+
+
 
 
 
@@ -719,13 +741,15 @@ intersect-env: {G1:tenv}{G2:tenv} sub-env G1 GT -> sub-env G2 GT -> {G3:tenv} su
 - : intersect-env (tcons N T G1 F) G2 (sub-env/cons L S1T) S2T G3' S1' S2'
       <- intersect-env G1 G2 S1T S2T G3 S1 S2
       <- test-membership G2 N M
-      <- fresh-restrict F S1 F'
-      <- intersect-env1 M F' S2 S0 S2'
-      % <- sub-env-trans S3 S0 S1''
+      <- restrict-membership (mem-yes L) M S2T M'
+      <- intersect-env1 M' F S1 S2 S0 S1' S2'
       .
 
-%worlds () (intersect-env _ _ _ _ _).
-%total (A) (intersect-env A _ _ _ _).
+%worlds () (intersect-env _ _ _ _ _ _ _).
+%total (A) (intersect-env A _ _ _ _ _ _).
+
+
+
 
 
 
@@ -765,7 +789,7 @@ tlookup G' N (tsome T) -> sub-env G G' -> sub-env G' G1 -> sub-env G' G2 -> type
 %total (A) (tl-join A _ _ _ _ _ _ _).
 
 
-wf-join G1 T -> wf-join G2 T -> sub-env G1 GT -> sub-env G2 GT -> wf-join 
+%% wf-join G1 T -> wf-join G2 T -> sub-env G1 GT -> sub-env G2 GT -> wf-join 
 
 
 %%% assuming tl-join, tsel case in wf-tp-dia holds. arrow case still missing
