@@ -552,10 +552,40 @@ membership: tenv -> nat -> tpe -> type.
 mem-yes : tlookup G N (tsome T) -> membership G N T.
 mem-no  : tlookup G N tnone -> tfresh N G -> membership G N T.
 
+select-mship: boolx -> membership G N T1 -> membership G N T2 -> membership G N T3 -> type.
+-: select-mship t V1 V2 V1.
+-: select-mship f V1 V2 V2.
+%mode select-mship +C +V1 +V2 -V3.
+%worlds () (select-mship _ _ _ _).
+%total (A) (select-mship A _ _ _).
+
+cons-mship: {N} {T1} {G} {C} eq N N1 C -> {F: tfresh N G} membership G N1 T2 -> membership (tcons N T1 G F) N1 T3 -> type.
+%mode cons-mship +N +T +G +C +E +M +F -M1.
+
+- : cons-mship N T G t E F M (mem-yes (tl/hit ts/t L' E)) 
+      <- fresh-cant-lookup F L
+      <- lookup-same L E L'
+      .
+
+- : cons-mship N T G f E F (mem-yes L) (mem-yes (tl/hit ts/f L E)).
+- : cons-mship N T G f E F ((mem-no L F0): membership _ _ T2) 
+              ((mem-no (tl/hit ts/f L E) (tfresh/cons E2 F0)): membership _ _ T2) 
+                <- eq-symm E E2.
+
+%worlds () (cons-mship _ _ _ _ _ _ _ _).
+%total (A) (cons-mship A _ _ _ _ _ _ _).
+
+
 test-membership: {G:tenv} {N:nat} membership G N T -> type.
 %mode test-membership +G +N -M.
+
+- : test-membership tnil N ((mem-no tl/fail tfresh/nil): membership tnil N bot). %% bit ugly to pass a type here...
+- : test-membership (tcons N1 T1 G F) N2 M1
+     <- eq-deriv N1 N2 C E
+     <- test-membership G N2 M
+     <- cons-mship N1 T1 G C E F M M1
+     .
 %worlds () (test-membership _ _ _).
-%trustme
 %total (A) (test-membership A _ _).
 % %unique test-membership +G +N -M.
 
