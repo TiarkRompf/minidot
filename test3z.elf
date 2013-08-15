@@ -668,16 +668,6 @@ union-env: {G1:tenv}{G2:tenv}{G3:tenv} sub-env G1 G3 -> sub-env G2 G3 -> type.
 %%% diamond properties --- still need to prove aux:
 
 
-aux:  {S1:sub-env G G1} {F:tfresh N G} {L1:tlookup G1 N (tsome T)} 
-      {S1'x':sub-env (tcons N T G F) G1} type.
-%mode aux +A +B +C -D.
-%worlds () (aux _ _ _ _).
-%trustme
-%total (A) (aux A _ _ _).
-
-
-
-
 tl-join1: membership G N T0 -> sub-env G G1 -> sub-env G G2 -> tlookup G1 N (tsome T) -> tlookup G2 N (tsome T) -> 
 tlookup G' N (tsome T) -> sub-env G G' -> sub-env G' G1 -> sub-env G' G2 -> type.
 %mode tl-join1 +M +A +B +C +D -E -F -G -H.
@@ -686,12 +676,10 @@ tlookup G' N (tsome T) -> sub-env G G' -> sub-env G' G1 -> sub-env G' G2 -> type
      <- lookup-restrict L1 L S1 L' X
      <- sub-env-refl _ S.
 
-- : tl-join1 (mem-no (L:tlookup G N tnone) F) S1 S2 L1 L2 (tl/hit ts/t L E) S' S1' S2'
+- : tl-join1 (mem-no (L:tlookup G N tnone) F) S1 S2 L1 L2 (tl/hit ts/t L E) S' (sub-env/cons L1 S1) (sub-env/cons L2 S2)
       <- eq-refl _ E
       <- sub-env-refl _ S 
       <- sub-env-extend _ T F S S'
-      <- aux S1 F L1 S1'
-      <- aux S2 F L2 S2'
       .
 
 %worlds () (tl-join1 _ _ _ _ _ _ _ _ _).
