@@ -361,16 +361,16 @@ lookup-same: tlookup G N1 T -> eq N1 N2 t -> tlookup G N2 T -> type.
 
 
 
-fresh-restrict: tfresh N G2 -> sub-env G1 G2 -> tfresh N G1 -> type.
-%mode fresh-restrict +A +B -C.
-
-- : fresh-restrict _ sub-env/nil tfresh/nil.
-- : fresh-restrict (tfresh/cons E F1) (sub-env/cons L S) (tfresh/cons E F2) 
-      <- fresh-restrict (tfresh/cons E F1) S F2.
-
-%worlds () (fresh-restrict _ _ _).
-%trustme %% NOT USED
-%total (A) (fresh-restrict _ A _).
+% NOT USED
+% fresh-restrict: tfresh N G2 -> sub-env G1 G2 -> tfresh N G1 -> type.
+% %mode fresh-restrict +A +B -C.
+% 
+% - : fresh-restrict _ sub-env/nil tfresh/nil.
+% - : fresh-restrict (tfresh/cons E F1) (sub-env/cons L S) (tfresh/cons E F2) 
+%       <- fresh-restrict (tfresh/cons E F1) S F2.
+% 
+% %worlds () (fresh-restrict _ _ _).
+% %total (A) (fresh-restrict _ A _).
 
 
 lookup-extend: tlookup G1 N (tsome T) -> sub-env G1 G2 -> tlookup G2 N (tsome T) -> type.
@@ -495,13 +495,14 @@ lookup-restrict: tlookup G2 N (tsome T2) -> tlookup G1 N (tsome T1) -> sub-env G
 
 
 
+% NOT USED YET 
 % get-fresh operation:
-
-get-fresh: tenv -> {N:nat} tfresh N G -> type.
-%mode get-fresh +A -B -C.
-%worlds () (get-fresh _ _ _).
-%trustme
-%total A (get-fresh A _ _).
+% 
+% get-fresh: tenv -> {N:nat} tfresh N G -> type.
+% %mode get-fresh +A -B -C.
+% 
+% %worlds () (get-fresh _ _ _).
+% %total A (get-fresh A _ _).
 
 
 
