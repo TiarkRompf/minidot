@@ -243,7 +243,7 @@ vl/hit  : vlookup (vcons N1 V1 G F) N2 V3 <- eq N1 N2 C <- vlookup G N2 V2 <- vs
 % vl/hit  : vlookup (vcons N1 V1 G F) N2 (vsome V1) <- eq N1 N2 t.
 % vl/miss  : vlookup (vcons N1 V1 G F) N2 V3 <- eq N1 N2 f <- vlookup G N2 V3.
 
-tlookup : tenv -> nat -> topt -> type.
+tlookup: tenv -> nat -> topt -> type.
 tl/fail : tlookup tnil N tnone.
 tl/hit  : tlookup (tcons N1 V1 G F) N2 V3 <- eq N1 N2 C <- tlookup G N2 V2 <- tselect C (tsome V1) V2 V3.
 % tl/hit  : tlookup (tcons N1 V1 G F) N2 (tsome V1) <- eq N1 N2 t.
@@ -836,10 +836,38 @@ type.
 %worlds () (intersect-env2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
 %total (A) (intersect-env2 A _ _ _ _ _ _ _ _ _ _ _ _ _ _).
 
-
+sub-env-extend2: {N}{T}{F1}{F2} sub-env G1 G2 -> sub-env (tcons N T G1 F1) (tcons N T G2 F2) -> type.
+%mode sub-env-extend2 +N +T +F1 +F2 +S -S'.
+%worlds () (sub-env-extend2 _ _ _ _ _ _).
+%trustme
+%total (A) (sub-env-extend2 _ _ _ _ A _).
 
 sub-env-restrict: sub-env G1 (tcons N T G2 F) -> sub-env G1' G1 -> sub-env G1' G2 -> sub-env G1 (tcons N T G1' F') -> type.
 %mode sub-env-restrict +S1 -S2 -S3 -S4.
+- : sub-env-restrict sub-env/nil sub-env/nil sub-env/nil (sub-env/nil: sub-env tnil (tcons _ _ _ tfresh/nil)).
+- : sub-env-restrict (sub-env/cons TL S: sub-env (tcons N T G1 F1) (tcons N T G2 F))
+     S1'
+     S2
+     (sub-env/cons (tl/hit ts/t TL3 EQ3) S3)
+     <- eq-refl N EQ3
+     <- fresh-cant-lookup F1 TL3
+     <- sub-env-restrict S S1 S2 S3
+     <- sub-env-extend N T F1 S1 S1'.
+- : sub-env-restrict (sub-env/cons (tl/hit ts/f TL EQF) S: sub-env (tcons N1 T1 G1 F1) (tcons N T G2 F))
+     (sub-env/cons (tl/hit ts/t TL1 EQ1) S1')
+     (sub-env/cons TL S2)
+     (sub-env/cons (tl/hit ts/f (tl/hit ts/t TL3 EQ1) EQF) S3')
+     <- sub-env-restrict S S1 S2 (S3: sub-env G1 (tcons N T G1' F3))
+     <- fresh-restrict F1 S1 F1'
+     <- fresh-cant-lookup F1 TL1
+     <- sub-env-extend N1 T1 F1 S1 S1'
+     <- eq-refl N1 EQ1
+     <- sub-env-refl G1' SG1'
+     <- sub-env-extend N1 T1 F1' SG1' SG1''
+     <- sub-env-extend2 N T F3 (tfresh/cons EQF F3) SG1'' SG1'''
+     <- sub-env-trans S3 SG1''' S3'
+     <- fresh-cant-lookup F1' TL3.
+
 %worlds () (sub-env-restrict _ _ _ _).
 %trustme
 %total (A) (sub-env-restrict A _ _ _).
