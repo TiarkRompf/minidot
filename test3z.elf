@@ -463,6 +463,7 @@ tlookup-unique: tlookup G N T -> tlookup G N T' -> same T T' -> type.
 %worlds () (tlookup-unique _ _ _).
 %total A (tlookup-unique A _ _).
 
+
 lookup-same2: tlookup G N1 T1 -> same T2 T1 -> tlookup G N1 T2 -> type.
 %mode lookup-same2 +A +B -C.
 - : lookup-same2 tl/fail X tl/fail.
@@ -1002,6 +1003,24 @@ wfe/c    : wf-env H G -> wf-val V T -> wf-env (vcons N V H F1) (tcons N T G F2).
 
 %{ ------- type preservation ----- }%
 
+wf-val-same: wf-val V T1 -> same (tsome T1) (tsome T2) -> wf-val V T2 -> type.
+%mode wf-val-same +V +A -B.
+- : wf-val-same W ident W.
+%worlds () (wf-val-same _ _ _).
+%total (A) (wf-val-same A _ _).
+
+tselect-t-invert: id-boolx C t -> tselect C V1 V2 V3 -> same V1 V3 -> type.
+%mode tselect-t-invert +C +X -ID.
+- : tselect-t-invert id-boolx/refl ts/t ident.
+%worlds () (tselect-t-invert _ _ _).
+%total (A) (tselect-t-invert A _ _).
+
+tselect-f-invert: id-boolx C f -> tselect C V1 V2 V3 -> same V3 V2 -> type.
+%mode tselect-f-invert +C +X -ID.
+- : tselect-f-invert id-boolx/refl ts/f ident.
+%worlds () (tselect-f-invert _ _ _).
+%total (A) (tselect-f-invert A _ _).
+
 
 % lookup safe
 
@@ -1013,16 +1032,22 @@ wf-val V1 T1 -> type.
 
 - : lookup-safe0 V wfe/n _ _ V.
 
-- : lookup-safe0 V (wfe/c G V1) (tl/hit _ _ _) (vl/hit _ _ _) V.
+- : lookup-safe0 V (wfe/c G V1) (tl/hit S1 A E1) (vl/hit vs/t B E2) V'
+      <- eq-unique E1 E2 Y
+      <- tselect-t-invert Y S1 X
+      <- wf-val-same V X V'
+      .
 
-- : lookup-safe0 V (wfe/c G V1) (tl/hit _ A _) (vl/hit _ B _) Z
-      <- lookup-safe0 V1 G A B Z.
+- : lookup-safe0 V (wfe/c G V1) (tl/hit S1 A E1) (vl/hit vs/f B E2) Z
+      <- eq-unique E1 E2 Y
+      <- tselect-f-invert Y S1 X
+      <- lookup-same2 A X A'
+      <- lookup-safe0 V1 G A' B Z
+      .
 
 %mode lookup-safe0 +V +A +B +C -F.
 
-
 %worlds () (lookup-safe0 _ _ _ _ _).
-%trustme
 %total A (lookup-safe0 _ A _ _ _).
 
 
