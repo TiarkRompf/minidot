@@ -918,10 +918,13 @@ wf-tp-dia:
 
 
 - : wf-tp-dia (wf-tp/fun TT2 TT1) (wf-tp/fun T12 T11) (wf-tp/fun T22 T21) S1T S2T 
-              (wf-tp/fun T02' T01') S01A S02A
+              (wf-tp/fun T02' T01') S01 S02
                   <- wf-tp-dia TT1 T11 T21 S1T S2T T01 S01A S02A
                   <- wf-tp-dia TT2 T12 T22 S1T S2T T02 S01B S02B
-                  <- wf-join T01 T02.
+                  <- join-env _ _ S1T S2T S01A S02A S01B S02B SA0 SB0 S01 S02 S0T
+                  <- extend-wf-tp T01 SA0 T01'
+                  <- extend-wf-tp T02 SB0 T02'
+                  .
 
 - : wf-tp-dia (wf-tp/tsel WT LT) (wf-tp/tsel W1 L1)(wf-tp/tsel W2 L2) S1T S2T 
               (wf-tp/tsel W0' L0') S01' S02'
