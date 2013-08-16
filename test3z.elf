@@ -730,9 +730,6 @@ sub-env G0 G0' -> sub-env G0' (tcons N T G1 F) -> sub-env G0' G2 -> type.
 
 
 
-
-
-
 intersect-env: {G1:tenv}{G2:tenv} sub-env G1 GT -> sub-env G2 GT -> {G3:tenv} sub-env G3 G1 -> sub-env G3 G2 -> type.
 %mode intersect-env +A +B +U +V -C -D -E.
 
@@ -747,6 +744,119 @@ intersect-env: {G1:tenv}{G2:tenv} sub-env G1 GT -> sub-env G2 GT -> {G3:tenv} su
 
 %worlds () (intersect-env _ _ _ _ _ _ _).
 %total (A) (intersect-env A _ _ _ _ _ _).
+
+
+sub-env-restrict2: sub-env G1 (tcons N T G2 F) -> tfresh N G1 -> sub-env G1 G2 -> type.
+%mode sub-env-restrict2 +S1 +S2 -S3.
+%worlds () (sub-env-restrict2 _ _ _).
+%trustme
+%total (A) (sub-env-restrict2 A _ _).
+
+
+
+%%% do we need GA' and GB' or could we just use G1?
+
+intersect-env2: membership G2 N T -> {F:tfresh N G1} 
+sub-env G0 G1 -> sub-env G0 G2 -> 
+sub-env GA (tcons N T GA' FA) -> sub-env GA G2 -> 
+sub-env GB (tcons N T GB' FB) -> sub-env GB G2 -> 
+sub-env GA' G0 -> sub-env GB' G0 ->
+
+sub-env G0 G0' -> 
+sub-env G0' (tcons N T G1 F) -> sub-env G0' G2 -> 
+sub-env GA G0' -> sub-env GB G0' ->
+type.
+%mode intersect-env2 +U +V +W +X +Y +Z +A +B +C +D -E -F -G -H -I.
+
+- : intersect-env2 (mem-yes (L: tlookup G2 N (tsome T1))) F1 
+      (S1: sub-env G0 G1) S2 
+      SAA SA2
+      SBB SB2
+      SA0 SB0
+      S 
+      ((sub-env/cons ((tl/hit ts/t L1' E): tlookup (tcons N T1 G1 F1) N (tsome _)) S1x): sub-env (tcons _ _ G0 F) _)
+      ((sub-env/cons L S2): sub-env (tcons N T1 G0 F) G2) 
+      SA0' SB0'
+      <- fresh-restrict F1 S1 F
+      <- fresh-cant-lookup F1 L1'
+      <- eq-refl _ E
+      <- sub-env-refl _ S0 
+      <- sub-env-extend _ _ _ S1 S1x
+      <- sub-env-extend _ _ _ S0 S
+      %% now A and B
+      <- sub-env-extend _ _ _ SA0 SA0x
+      <- sub-env-extend _ _ _ SB0 SB0x
+      <- fresh-cant-lookup F L0'
+      <- sub-env-trans SAA (sub-env/cons (tl/hit ts/t L0' E) SA0x) SA0'
+      <- sub-env-trans SBB (sub-env/cons (tl/hit ts/t L0' E) SB0x) SB0'
+      .
+
+- : intersect-env2 (mem-no L F2) F S1 S2 SAA SA2 SBB SB2 SA SB S S1' S2 SA' SB'
+      <- sub-env-extend _ _ F S1 S1'
+      <- sub-env-refl _ S
+      %% now A and B
+      <- fresh-restrict F2 SA2 FA
+      <- fresh-restrict F2 SB2 FB
+      <- sub-env-restrict2 SAA FA SAx
+      <- sub-env-restrict2 SBB FB SBx
+      <- sub-env-trans SAx SA SA'
+      <- sub-env-trans SBx SB SB'
+      .
+
+%worlds () (intersect-env2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+%total (A) (intersect-env2 A _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+
+
+
+sub-env-restrict: sub-env G1 (tcons N T G2 F) -> sub-env G1' G1 -> sub-env G1' G2 -> sub-env G1 (tcons N T G1' F') -> type.
+%mode sub-env-restrict +S1 -S2 -S3 -S4.
+%worlds () (sub-env-restrict _ _ _ _).
+%trustme
+%total (A) (sub-env-restrict A _ _ _).
+
+
+join-env: 
+{G1:tenv}{G2:tenv} 
+sub-env G1 GT -> sub-env G2 GT -> 
+sub-env GA G1 -> sub-env GA G2 -> sub-env GB G1 -> sub-env GB G2
+-> sub-env GA G0 -> sub-env GB G0 
+-> sub-env G0 G1 -> sub-env G0 G2
+-> sub-env G0 GT -> type.
+%mode join-env +G1 +G2 +A +B  +C +D +E +F  -G -H  -I -J -K.
+
+- : join-env tnil G2 sub-env/nil S  
+             sub-env/nil _ sub-env/nil _
+             sub-env/nil sub-env/nil
+             sub-env/nil sub-env/nil
+             sub-env/nil.
+
+- : join-env (tcons N T G1 F) G2 
+      (sub-env/cons L S1T) S2T 
+      (SA1: sub-env GA _) SA2 (SB1: sub-env GB _) SB2
+      % (sub-env/cons LA SA1) SA2 (sub-env/cons LB SB1y) SB2
+      (SA0': sub-env GA G0) SB0'
+      S1' S2'
+      (S0T': sub-env G0 GT)
+      <- sub-env-restrict SA1 SA1x1 SA1x2 SA1x3
+      <- sub-env-restrict SB1 SB1x1 SB1x2 SB1x3
+      <- sub-env-trans SA1x1 SA2 SA2'
+      <- sub-env-trans SB1x1 SB2 SB2'
+      <- join-env G1 G2 
+            S1T S2T
+            SA1x2 SA2' SB1x2 SB2'
+            (SA0x: sub-env GA' G0') SB0x
+            S1 S2
+            S0Tx
+      <- test-membership G2 N M
+      <- restrict-membership (mem-yes L) M S2T M'
+      <- intersect-env2 M' F S1 S2 SA1x3 SA2 SB1x3 SB2 SA0x SB0x S0 S1' S2' SA0' SB0'
+
+      <- sub-env-trans S2' S2T S0T'
+      .      
+
+%worlds () (join-env _ _ _ _ _ _ _ _ _ _ _ _ _).
+%total (A) (join-env A _ _ _ _ _ _ _ _ _ _ _ _).
+
 
 
 
@@ -788,8 +898,6 @@ tlookup G' N (tsome T) -> sub-env G G' -> sub-env G' G1 -> sub-env G' G2 -> type
 %worlds () (tl-join _ _ _ _ _ _ _ _).
 %total (A) (tl-join A _ _ _ _ _ _ _).
 
-
-%% wf-join G1 T -> wf-join G2 T -> sub-env G1 GT -> sub-env G2 GT -> wf-join 
 
 
 %%% assuming tl-join, tsel case in wf-tp-dia holds. arrow case still missing
