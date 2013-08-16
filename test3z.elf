@@ -846,7 +846,7 @@ type.
 %worlds () (intersect-env2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
 %total (A) (intersect-env2 A _ _ _ _ _ _ _ _ _ _ _ _ _ _).
 
-sub-env-extend2: {T} sub-env G1 G2 -> tfresh N G1 -> tfresh N G2 -> sub-env (tcons N T G1 F1) (tcons N T G2 F2) -> type.
+sub-env-extend2: {T} sub-env G1 G2 -> {F1: tfresh N G1} {F2: tfresh N G2} sub-env (tcons N T G1 F1) (tcons N T G2 F2) -> type.
 %mode sub-env-extend2 +T +S +F1 +F2 -S'.
 - : sub-env-extend2 T S (F1: tfresh N G1) (F2: tfresh N G2)
      ((sub-env/cons (tl/hit ts/t TL EQ) S2): sub-env (tcons N T G1 F1) (tcons N T G2 F2))
@@ -863,10 +863,10 @@ sub-env-restrict: sub-env G1 (tcons N T G2 F) -> sub-env G1' G1 -> sub-env G1' G
 - : sub-env-restrict (sub-env/cons (tl/hit ts/t TL EQT) S: sub-env (tcons N1 T1 G1 F1) (tcons _ _ G2 F))
      S1'
      S2
-     (sub-env/cons (tl/hit ts/t TL3 EQ3) S3)
-     <- eq-refl N1 EQ3
-     <- fresh-cant-lookup F1 TL3
-     <- sub-env-restrict S S1 S2 S3
+     (sub-env/cons (tl/hit ts/t TL3 EQT) S3)
+     <- sub-env-restrict S S1 S2 (S3: sub-env _ (tcons _ _ _ F'))
+     <- fresh-same EQT F' F''
+     <- fresh-cant-lookup F'' TL3
      <- sub-env-extend N1 T1 F1 S1 S1'.
 - : sub-env-restrict (sub-env/cons (tl/hit ts/f TL EQF) S: sub-env (tcons N1 T1 G1 F1) (tcons N T G2 F))
      (sub-env/cons (tl/hit ts/t TL1 EQ1) S1')
