@@ -359,8 +359,6 @@ lookup-same: tlookup G N1 T -> eq N1 N2 t -> tlookup G N2 T -> type.
 %worlds () (lookup-same _ _ _).
 %total (A) (lookup-same A _ _).
 
-
-
 fresh-restrict: tfresh N G2 -> sub-env G1 G2 -> tfresh N G1 -> type.
 %mode fresh-restrict +A +B -C.
 
@@ -434,6 +432,21 @@ lookup-deriv: {G} {N} {T} tlookup G N T -> type.
 same: topt -> topt -> type.
 ident: same T T.
 
+same-refl: same T T' -> same T' T -> type.
+%mode same-refl +A -B.
+- : same-refl ident ident.
+%worlds () (same-refl _ _).
+%total (A) (same-refl A _).
+
+
+lookup-same2: tlookup G N1 T1 -> same T2 T1 -> tlookup G N1 T2 -> type.
+%mode lookup-same2 +A +B -C.
+- : lookup-same2 tl/fail X tl/fail.
+- : lookup-same2 (tl/hit ts/t L E) ident (tl/hit ts/t L E).
+- : lookup-same2 (tl/hit ts/f L1 E) X (tl/hit ts/f L3 E) 
+      <- lookup-same2 L1 X L3.
+%worlds () (lookup-same2 _ _ _).
+%total (A) (lookup-same2 A _ _).
 
 id-boolx: boolx -> boolx -> type.
 id-boolx/refl: id-boolx A A.
@@ -465,16 +478,6 @@ tlookup-unique: tlookup G N T -> tlookup G N T' -> same T T' -> type.
      <- tselect-unique XE XL S1 S2 X.
 %worlds () (tlookup-unique _ _ _).
 %total A (tlookup-unique A _ _).
-
-
-lookup-same2: tlookup G N1 T1 -> same T2 T1 -> tlookup G N1 T2 -> type.
-%mode lookup-same2 +A +B -C.
-- : lookup-same2 tl/fail X tl/fail.
-- : lookup-same2 (tl/hit ts/t L E) ident (tl/hit ts/t L E).
-- : lookup-same2 (tl/hit ts/f L1 E) X (tl/hit ts/f L3 E) 
-      <- lookup-same2 L1 X L3.
-%worlds () (lookup-same2 _ _ _).
-%total (A) (lookup-same2 A _ _).
 
 
 lookup-restrict: tlookup G2 N (tsome T2) -> tlookup G1 N (tsome T1) -> sub-env G1 G2 -> tlookup G1 N (tsome T2) -> same (tsome T2) (tsome T1) -> type.
@@ -750,6 +753,27 @@ intersect-env: {G1:tenv}{G2:tenv} sub-env G1 GT -> sub-env G2 GT -> {G3:tenv} su
 %total (A) (intersect-env A _ _ _ _ _ _).
 
 
+tselect-t-invert: id-boolx C t -> tselect C V1 V2 V3 -> same V1 V3 -> type.
+%mode tselect-t-invert +C +X -ID.
+- : tselect-t-invert id-boolx/refl ts/t ident.
+%worlds () (tselect-t-invert _ _ _).
+%total (A) (tselect-t-invert A _ _).
+
+tselect-f-invert: id-boolx C f -> tselect C V1 V2 V3 -> same V3 V2 -> type.
+%mode tselect-f-invert +C +X -ID.
+- : tselect-f-invert id-boolx/refl ts/f ident.
+%worlds () (tselect-f-invert _ _ _).
+%total (A) (tselect-f-invert A _ _).
+
+lookup-after-first: tlookup (tcons N2 T2 G2 F2) N1 T1 -> eq N2 N1 f -> tlookup G2 N1 T1 -> type.
+%mode lookup-after-first +A +B -C.
+- : lookup-after-first (tl/hit SL TL2 E2) E1 TL2'
+     <- eq-unique E2 E1 X
+     <- tselect-f-invert X SL Y
+     <- lookup-same2 TL2 Y TL2'.
+%worlds () (lookup-after-first _ _ _).
+%total (A) (lookup-after-first A _ _).
+
 sub-env-restrict2: sub-env G1 (tcons N T G2 F) -> tfresh N G1 -> sub-env G1 G2 -> type.
 %mode sub-env-restrict2 +S1 +S2 -S3.
 %worlds () (sub-env-restrict2 _ _ _).
@@ -1011,19 +1035,6 @@ wf-val-same: wf-val V T1 -> same (tsome T1) (tsome T2) -> wf-val V T2 -> type.
 - : wf-val-same W ident W.
 %worlds () (wf-val-same _ _ _).
 %total (A) (wf-val-same A _ _).
-
-tselect-t-invert: id-boolx C t -> tselect C V1 V2 V3 -> same V1 V3 -> type.
-%mode tselect-t-invert +C +X -ID.
-- : tselect-t-invert id-boolx/refl ts/t ident.
-%worlds () (tselect-t-invert _ _ _).
-%total (A) (tselect-t-invert A _ _).
-
-tselect-f-invert: id-boolx C f -> tselect C V1 V2 V3 -> same V3 V2 -> type.
-%mode tselect-f-invert +C +X -ID.
-- : tselect-f-invert id-boolx/refl ts/f ident.
-%worlds () (tselect-f-invert _ _ _).
-%total (A) (tselect-f-invert A _ _).
-
 
 % lookup safe
 
