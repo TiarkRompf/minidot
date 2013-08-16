@@ -451,7 +451,6 @@ lookup-same2: tlookup G N1 T1 -> same T2 T1 -> tlookup G N1 T2 -> type.
 id-boolx: boolx -> boolx -> type.
 id-boolx/refl: id-boolx A A.
 
-
 eq-unique: eq N1 N2 C -> eq N1 N2 C' -> id-boolx C C' -> type.
 %mode eq-unique +A +B -ID.
 - : eq-unique eq/z eq/z id-boolx/refl.
@@ -461,6 +460,17 @@ eq-unique: eq N1 N2 C -> eq N1 N2 C' -> id-boolx C C' -> type.
      <- eq-unique E1 E2 X.
 %worlds () (eq-unique _ _ _).
 %total (A) (eq-unique A _ _).
+
+fresh-same: eq N1 N2 t -> tfresh N1 G1 -> tfresh N2 G1 -> type.
+%mode fresh-same +A +B -ID.
+- : fresh-same X tfresh/nil tfresh/nil.
+- : fresh-same X (tfresh/cons EQ F) (tfresh/cons EQ' F')
+     <- eq-symm EQ EQI
+     <- eq-trans EQI X EQI'
+     <- eq-symm EQI' EQ'
+     <- fresh-same X F F'.
+%worlds () (fresh-same _ _ _).
+%total (A) (fresh-same _ A _).
 
 tselect-unique: id-boolx B B' -> same V2 V2' -> tselect B V1 V2 V3 -> tselect B' V1 V2' V3' -> same V3 V3' -> type.
 %mode tselect-unique +X +Y +A +B -ID.
@@ -846,17 +856,18 @@ sub-env-extend2: {T} sub-env G1 G2 -> tfresh N G1 -> tfresh N G2 -> sub-env (tco
 %worlds () (sub-env-extend2 _ _ _ _ _).
 %total (A) (sub-env-extend2 _ A _ _ _).
 
+
 sub-env-restrict: sub-env G1 (tcons N T G2 F) -> sub-env G1' G1 -> sub-env G1' G2 -> sub-env G1 (tcons N T G1' F') -> type.
 %mode sub-env-restrict +S1 -S2 -S3 -S4.
 - : sub-env-restrict sub-env/nil sub-env/nil sub-env/nil (sub-env/nil: sub-env tnil (tcons _ _ _ tfresh/nil)).
-- : sub-env-restrict (sub-env/cons TL S: sub-env (tcons N T G1 F1) (tcons N T G2 F))
+- : sub-env-restrict (sub-env/cons (tl/hit ts/t TL EQT) S: sub-env (tcons N1 T1 G1 F1) (tcons _ _ G2 F))
      S1'
      S2
      (sub-env/cons (tl/hit ts/t TL3 EQ3) S3)
-     <- eq-refl N EQ3
+     <- eq-refl N1 EQ3
      <- fresh-cant-lookup F1 TL3
      <- sub-env-restrict S S1 S2 S3
-     <- sub-env-extend N T F1 S1 S1'.
+     <- sub-env-extend N1 T1 F1 S1 S1'.
 - : sub-env-restrict (sub-env/cons (tl/hit ts/f TL EQF) S: sub-env (tcons N1 T1 G1 F1) (tcons N T G2 F))
      (sub-env/cons (tl/hit ts/t TL1 EQ1) S1')
      (sub-env/cons TL S2)
@@ -873,7 +884,6 @@ sub-env-restrict: sub-env G1 (tcons N T G2 F) -> sub-env G1' G1 -> sub-env G1' G
      <- fresh-cant-lookup F1' TL3.
 
 %worlds () (sub-env-restrict _ _ _ _).
-%trustme
 %total (A) (sub-env-restrict A _ _ _).
 
 
