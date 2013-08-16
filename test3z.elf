@@ -363,14 +363,13 @@ fresh-restrict: tfresh N G2 -> sub-env G1 G2 -> tfresh N G1 -> type.
 %mode fresh-restrict +A +B -C.
 
 - : fresh-restrict _ sub-env/nil tfresh/nil.
-- : fresh-restrict (tfresh/cons E F1) (sub-env/cons L (S: sub-env G1 (tcons _ _ G2 _))) (tfresh/cons E F2)
+- : fresh-restrict (tfresh/cons E F1) (sub-env/cons (tl/hit ts/t _ EQT) (S: sub-env G1 (tcons _ _ G2 _))) (tfresh/cons E' F2)
+      <- eq-trans E EQT E'
       <- fresh-restrict (tfresh/cons E F1) S F2.
-
-%%% FIXME: need to construct {E':eq X1 X5 f}
-% - : fresh-restrict (tfresh/cons E F1) (sub-env/cons L (S: sub-env G1 (tcons _ _ G2 _))) (tfresh/cons E' F2) ...
-
+- : fresh-restrict (tfresh/cons E F1) (sub-env/cons (tl/hit ts/f TL EQF) (S: sub-env G1 (tcons _ _ G2 _))) (tfresh/cons E' F2)
+      <- lookup-isnt-fresh F1 TL E'
+      <- fresh-restrict (tfresh/cons E F1) S F2.
 %worlds () (fresh-restrict _ _ _).
-%trustme
 %total (A) (fresh-restrict _ A _).
 
 
