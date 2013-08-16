@@ -776,10 +776,12 @@ lookup-after-first: tlookup (tcons N2 T2 G2 F2) N1 T1 -> eq N2 N1 f -> tlookup G
 
 sub-env-restrict2: sub-env G1 (tcons N T G2 F) -> tfresh N G1 -> sub-env G1 G2 -> type.
 %mode sub-env-restrict2 +S1 +S2 -S3.
+- : sub-env-restrict2 sub-env/nil F sub-env/nil.
+- : sub-env-restrict2 (sub-env/cons TL S) (tfresh/cons EQ F) (sub-env/cons TL' S')
+     <- lookup-after-first TL EQ TL'
+     <- sub-env-restrict2 S F S'.
 %worlds () (sub-env-restrict2 _ _ _).
-%trustme
 %total (A) (sub-env-restrict2 A _ _).
-
 
 
 %%% do we need GA' and GB' or could we just use G1?
