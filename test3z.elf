@@ -11,8 +11,7 @@
 %%%%%% WIP: environments as key/val pairs %%%%%%
 
 
-
-% arithmetic
+%{ ------- arithmetic and equality ------- }%
 
 
 boolx: type.
@@ -92,7 +91,9 @@ eq-symm/s:  eq-symm (eq/s E1) (eq/s E2) <- eq-symm E1 E2.
 %query 0 * lte (s (s z)) (s z).
 %query 1 * lte (s (s z)) (s (s z)).
 
-%{ ------- language ----- }%
+
+
+%{ ------- language ------- }%
 
 % sorts
 cst: type.
@@ -157,7 +158,7 @@ tfresh/cons : tfresh N2 (tcons N1 T G F) <- tfresh N2 G <- eq N2 N1 f.
 
 
 
-%{ ------- eval-op / primitives ----- }%
+%{ ------- eval-op / primitives ------- }%
 
 % typeof
 
@@ -203,7 +204,7 @@ eval-cst-op-safe : type-op OP T1 T2 T3 -> eval-cst-op OP C1 C2 C3 -> typeof C3 T
 
 
 
-%{ ------- environments / NEW ----- }%
+%{ ------- environments / NEW ------- }%
 
 vopt: type.
 vsome: val -> vopt.
@@ -522,73 +523,6 @@ lookup-restrict: tlookup G2 N (tsome T2) -> tlookup G1 N (tsome T1) -> sub-env G
 
 
 
-
-%%%% WF-TP
-
-wf-tp : tenv -> tpe -> type.
-
-wf-tp/bool : wf-tp G1 bool.
-wf-tp/int  : wf-tp G1 int.
-wf-tp/top  : wf-tp G1 top.
-wf-tp/bot  : wf-tp G1 bot.
-
-wf-tp/fun  : wf-tp G1 (arrow T1 T2)
-             <- wf-tp G1 T1
-             <- wf-tp G1 T2.
-
-wf-tp/tsel : wf-tp G1 (tsel N)
-              <- tlookup G1 N (tsome (arrow T1 T2))
-              <- wf-tp G1 (arrow T1 T2).
-
-
-
-
-same-arrow-ex: same (tsome (arrow T1 T2)) (tsome (arrow T3 T4)) -> same (tsome T1) (tsome T3) -> same (tsome T2) (tsome T4) -> type.
-%mode same-arrow-ex +A -B -C.
-
-- : same-arrow-ex ident ident ident.
-
-%worlds () (same-arrow-ex _ _ _).
-%total (A) (same-arrow-ex A _ _).
-
-
-% extend-wf-pev 
-
-same-wf-tp: wf-tp G T1 -> same (tsome T2) (tsome T1) -> wf-tp G T2 -> type.
-%mode same-wf-tp +A +B -H.
-- : same-wf-tp W ident W.
-%worlds () (same-wf-tp _ _ _).
-%total (A) (same-wf-tp A _ _).
-
-
-extend-wf-tp: wf-tp G T -> sub-env G G' -> wf-tp G' T -> type.
-%mode extend-wf-tp +A +B -H.
-
-- : extend-wf-tp wf-tp/int S wf-tp/int.
-- : extend-wf-tp wf-tp/bool S wf-tp/bool.
-- : extend-wf-tp wf-tp/top S wf-tp/top.
-- : extend-wf-tp wf-tp/bot S wf-tp/bot.
-- : extend-wf-tp (wf-tp/fun W2 W1) S (wf-tp/fun W2' W1') 
-      <- extend-wf-tp W1 S W1'
-      <- extend-wf-tp W2 S W2'.
-- : extend-wf-tp (wf-tp/tsel W1 L1) S (wf-tp/tsel W1' L1')
-      <- lookup-extend L1 S L1'
-      <- extend-wf-tp W1 S W1'.
-
-%worlds () (extend-wf-tp _ _ _).
-%total (A) (extend-wf-tp A _ _).
-
-
-restrict-wf-pev: wf-tp G1 T1 -> tlookup G1 N (tsome T1) -> sub-env G2 G1 -> wf-tp G2 T2 -> tlookup G2 N (tsome T2) -> 
-  wf-tp G2 T1 -> tlookup G2 N (tsome T1) -> type.
-%mode restrict-wf-pev +A +B +C +D +E -F -H.
-
-- : restrict-wf-pev WT LT S1T W1 L1 W1' L1'
-                 <- lookup-restrict LT L1 S1T L1' X
-                 <- same-wf-tp W1 X W1'.
-
-%worlds () (restrict-wf-pev _ _ _ _ _ _ _).
-%total (A) (restrict-wf-pev A _ _ _ _ _ _).
 
 
 
@@ -932,13 +866,6 @@ sub-env GA G1 -> sub-env GA G2 -> sub-env GB G1 -> sub-env GB G2
 
 
 
-
-
-
-
-%%% diamond properties --- still need to prove aux:
-
-
 tl-join1: membership G N T0 -> sub-env G G1 -> sub-env G G2 -> tlookup G1 N (tsome T) -> tlookup G2 N (tsome T) -> 
 tlookup G' N (tsome T) -> sub-env G G' -> sub-env G' G1 -> sub-env G' G2 -> type.
 %mode tl-join1 +M +A +B +C +D -E -F -G -H.
@@ -968,6 +895,70 @@ tlookup G' N (tsome T) -> sub-env G G' -> sub-env G' G1 -> sub-env G' G2 -> type
 
 %worlds () (tl-join _ _ _ _ _ _ _ _).
 %total (A) (tl-join A _ _ _ _ _ _ _).
+
+
+
+
+%{ ------- types / well-formedness ------- }%
+
+wf-tp : tenv -> tpe -> type.
+
+wf-tp/bool : wf-tp G1 bool.
+wf-tp/int  : wf-tp G1 int.
+wf-tp/top  : wf-tp G1 top.
+wf-tp/bot  : wf-tp G1 bot.
+
+wf-tp/fun  : wf-tp G1 (arrow T1 T2)
+             <- wf-tp G1 T1
+             <- wf-tp G1 T2.
+
+wf-tp/tsel : wf-tp G1 (tsel N)
+              <- tlookup G1 N (tsome (arrow T1 T2))
+              <- wf-tp G1 (arrow T1 T2).
+
+
+
+% extend-wf-pev 
+
+same-wf-tp: wf-tp G T1 -> same (tsome T2) (tsome T1) -> wf-tp G T2 -> type.
+%mode same-wf-tp +A +B -H.
+- : same-wf-tp W ident W.
+%worlds () (same-wf-tp _ _ _).
+%total (A) (same-wf-tp A _ _).
+
+restrict-wf-pev: wf-tp G1 T1 -> tlookup G1 N (tsome T1) -> sub-env G2 G1 -> wf-tp G2 T2 -> tlookup G2 N (tsome T2) -> 
+  wf-tp G2 T1 -> tlookup G2 N (tsome T1) -> type.
+%mode restrict-wf-pev +A +B +C +D +E -F -H.
+
+- : restrict-wf-pev WT LT S1T W1 L1 W1' L1'
+                 <- lookup-restrict LT L1 S1T L1' X
+                 <- same-wf-tp W1 X W1'.
+
+%worlds () (restrict-wf-pev _ _ _ _ _ _ _).
+%total (A) (restrict-wf-pev A _ _ _ _ _ _).
+
+
+
+% extend-wf-tp
+
+
+extend-wf-tp: wf-tp G T -> sub-env G G' -> wf-tp G' T -> type.
+%mode extend-wf-tp +A +B -H.
+
+- : extend-wf-tp wf-tp/int S wf-tp/int.
+- : extend-wf-tp wf-tp/bool S wf-tp/bool.
+- : extend-wf-tp wf-tp/top S wf-tp/top.
+- : extend-wf-tp wf-tp/bot S wf-tp/bot.
+- : extend-wf-tp (wf-tp/fun W2 W1) S (wf-tp/fun W2' W1') 
+      <- extend-wf-tp W1 S W1'
+      <- extend-wf-tp W2 S W2'.
+- : extend-wf-tp (wf-tp/tsel W1 L1) S (wf-tp/tsel W1' L1')
+      <- lookup-extend L1 S L1'
+      <- extend-wf-tp W1 S W1'.
+
+%worlds () (extend-wf-tp _ _ _).
+%total (A) (extend-wf-tp A _ _).
+
 
 
 
