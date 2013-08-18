@@ -132,7 +132,8 @@ top  : tpe.
 bot  : tpe.
 arrow: tpe -> tpe -> tpe.
 
-tsel: nat -> tpe. %%% adding tsel to have meaningful wf-tp
+tsel  : nat -> tpe. %%% adding tsel to have meaningful wf-tp
+tbind : (exp -> tpe) -> tpe.  % { this => A } hoas version
 
 
 % values
@@ -514,12 +515,13 @@ lookup-restrict: tlookup G2 N (tsome T2) -> tlookup G1 N (tsome T1) -> sub-env G
 
 % NOT USED YET 
 % get-fresh operation:
-% 
-% get-fresh: tenv -> {N:nat} tfresh N G -> type.
-% %mode get-fresh +A -B -C.
-% 
-% %worlds () (get-fresh _ _ _).
-% %total A (get-fresh A _ _).
+
+get-fresh: {G:tenv} {N:nat} tfresh N G -> type.
+%mode get-fresh +A -B -C.
+
+%worlds () (get-fresh _ _ _).
+%trustme
+%total A (get-fresh A _ _).
 
 
 
@@ -916,6 +918,18 @@ wf-tp/tsel : wf-tp G1 (tsel N)
               <- tlookup G1 N (tsome (arrow T1 T2))
               <- wf-tp G1 (arrow T1 T2).
 
+% wf-tp/tbind : wf-tp G1 (tbind ([x] F x))
+%              <- sub-env G G1
+%              <- wf-tp (tcons N (tbind ([x] F x)) G FR) (F (var N)).
+
+wf-tp/tbind : wf-tp G1 (tbind ([x] F x))
+              <- wf-tp (tcons N (tbind ([x] F x)) G1 FR) (F (var N)).
+
+
+% wf-tp/tbind : wf-tp G1 (tbind ([x] F x))
+%              <- {N:nat}{FR:tfresh N G1} wf-tp (tcons N (tbind ([x] F x)) G1 FR) (F (var N)).
+
+
 
 
 % extend-wf-pev 
@@ -942,6 +956,15 @@ restrict-wf-pev: wf-tp G1 T1 -> tlookup G1 N (tsome T1) -> sub-env G2 G1 -> wf-t
 % extend-wf-tp
 
 
+rename-wf-fresh: {F: exp -> tpe} wf-tp (tcons N T G FR) (F (var N)) -> {FR': tfresh N' G} wf-tp (tcons N' T G FR') (F (var N')) -> type.
+%mode rename-wf-fresh +F +A +B -H.
+%worlds () (rename-wf-fresh _ _ _ _).
+%trustme
+%total (A) (rename-wf-fresh A _ _ _).
+%reduces W2 <= W1 (rename-wf-fresh _ W1 _ W2).
+
+
+
 extend-wf-tp: wf-tp G T -> sub-env G G' -> wf-tp G' T -> type.
 %mode extend-wf-tp +A +B -H.
 
@@ -949,12 +972,32 @@ extend-wf-tp: wf-tp G T -> sub-env G G' -> wf-tp G' T -> type.
 - : extend-wf-tp wf-tp/bool S wf-tp/bool.
 - : extend-wf-tp wf-tp/top S wf-tp/top.
 - : extend-wf-tp wf-tp/bot S wf-tp/bot.
+
 - : extend-wf-tp (wf-tp/fun W2 W1) S (wf-tp/fun W2' W1') 
       <- extend-wf-tp W1 S W1'
       <- extend-wf-tp W2 S W2'.
+
 - : extend-wf-tp (wf-tp/tsel W1 L1) S (wf-tp/tsel W1' L1')
       <- lookup-extend L1 S L1'
       <- extend-wf-tp W1 S W1'.
+
+% - : extend-wf-tp (wf-tp/tbind W1 S0) S (wf-tp/tbind W1 S0')
+%      <- sub-env-trans S0 S S0'.
+
+
+- : extend-wf-tp (wf-tp/tbind (W1: wf-tp (tcons N (tbind ([x:exp] F x)) G FR0) (F (var N)))) (S:sub-env G G') (wf-tp/tbind W1')
+     <- get-fresh G' N' FR'
+     <- fresh-restrict FR' S FR
+     <- sub-env-extend2 _ S FR FR' S'
+     <- rename-wf-fresh F W1 FR W1x
+     <- extend-wf-tp W1x S' W1'.
+
+% - : extend-wf-tp (wf-tp/tbind (W1: {N:nat}{FR:tfresh N G}wf-tp (tcons N (tbind ([x:exp] F x)) G FR) (F (var N))) S0) (S:sub-env G G') (wf-tp/tbind W1 S0')
+      %% (N = bind F) G: F(N) wf  &&  G <: G'  -->   (N' = bind F) G': F(N')
+      % {N:nat}{FR':tfresh N G'} 
+
+
+
 
 %worlds () (extend-wf-tp _ _ _).
 %total (A) (extend-wf-tp A _ _).
@@ -998,6 +1041,18 @@ wf-tp-dia:
                   %% add key/val being looked up to result W0
                   <- tl-join S01 S02 L1' L2' L0' S0 S01' S02'
                   <- extend-wf-tp W0 S0 W0'.
+
+% version with env slack
+% - : wf-tp-dia (wf-tp/tbind WT SET) (wf-tp/tbind W1 SE1)(wf-tp/tbind W2 SE2) S1T S2T 
+%              (wf-tp/tbind W0 SE0) S01 S02
+
+                % <- extend-wf-tp WT SET WT'
+                % <- wf-tp-dia WT' W1' W2' S1T S2T W0x S01x S02x
+                % .
+
+                %%% PROBLEM: NOT CLEAR THAT W1,W2 <: WT
+                % may need to extend, but not clear we can
+
 
 %worlds () (wf-tp-dia _ _ _ _ _ _ _ _).
 %total A (wf-tp-dia A _ _ _ _ _ _ _).
