@@ -918,22 +918,25 @@ restrict-sub-tp1: sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> {Z: tpe} sub-tp (tcons Z 
 %trustme
 %total A (restrict-sub-tp1 _ _ _ A).
 
+
 magic: 
-{WW:wf-tp (tcons (bindh X5) X8) (X5 (var X9))}  
-{SEW:sub-env X8 X4}
-{SW:tsize X8 (var X9)}
+{WW:wf-tp (tcons (bindh X5) G0) (X5 (var S0))}  
+{SW:tsize G0 (var S0)}
+{SEW:sub-env G0 G1}
 
-{ST2:sub-tp X1 X2 (tcons X3 (tcons T X4)) (X5 (var (s X6)))}
-{S:tsize X4 (var X6)}
+{ST2:sub-tp X1 X2 (tcons X3 G2) (X5 (var S2))}
 
-{ST2x:sub-tp X1 X2 (tcons X3 X4) (X5 (var X6))}
+{SZ1:tsize G2 (var S2)}
+{SX:sub-env G1 G2}
+
+{S:tsize G1 (var S1)}
+{ST2x:sub-tp X1 X2 (tcons X3 G1) (X5 (var S1))}
 type.
 
-%mode magic +A +B +C +D +E -F.
-%worlds () (magic _ _ _ _ _ _).
+%mode magic +A +B +C +D +E +F +G -H.
+%worlds () (magic _ _ _ _ _ _ _ _).
 %trustme
-%total (A) (magic A _ _ _ _ _).
-
+%total (A) (magic A _ _ _ _ _ _ _).
 
 
 - : restrict-sub-tp % easy case: G0 is already smaller than target
@@ -955,7 +958,7 @@ type.
      (sub-tp/tbindh sub-env/refl (tf/c S) STA1 STA2 W)
        <- restrict-sub-tp1 ST1 W1 T STA1
        <- restrict-sub-tp1 ST2 W1 T STA2
-       <- magic WW SEW SW ST2 S ST2x
+       <- magic WW SW SEW ST2 (tf/c S) (sub-env/ext sub-env/refl) S ST2x
        .
 
 
