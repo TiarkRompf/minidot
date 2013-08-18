@@ -366,10 +366,11 @@ sub-tp/tselx : sub-tp G1 (tsel E) G2 (tsel E)
               <- path-eval G E (rect T2 T2U).
 
 sub-tp/tbindh : sub-tp G1 T1 G2 (bindh F)
-               <- wf-tp G2 (bindh F)
-               <- sub-tp G1 T1 (tcons T1' G2) (F (var N))
+               <- wf-tp G0 (bindh F)
+               <- sub-tp G1 T1 (tcons T1' G0) (F (var N))
                <- sub-tp G1 T1 G1' T1'  %% built-in slack to fix transitivity (?)
-               <- tsize G2 (var N).
+               <- tsize G0 (var N)
+               <- sub-env G0 G2.
 
 
 
@@ -399,8 +400,9 @@ wf-tp/tsel : wf-tp G1 (tsel E1)
 %              <- tsize G1 (var N).
 
 wf-tp/tbindh : wf-tp G1 (bindh ([x] F x))
-              <- wf-tp (tcons (bindh ([x] F x)) G1) (F (var N))
-              <- tsize G1 (var N).
+              <- wf-tp (tcons (bindh ([x] F x)) G0) (F (var N))
+              <- tsize G0 (var N)
+              <- sub-env G0 G1.
 
 
 
@@ -542,34 +544,6 @@ eq-wf: same T1 T1' -> wf-tp G1 T1 -> wf-tp G1 T1' -> type.
 
 
 
-% Swapping names in environments preserves lookup
-
-% swap-wf-lkp: tlookup G1 (var N1) T1 -> swapv-env G1 NA NB G2 -> swap-nat N1 NA NB N2 -> swapv-tp T1 NA NB T2 -> 
-% tlookup G2 (var N2) T2 -> type.
-% %mode swap-wf-lkp +A +B +C +D -E.
-% %worlds () (swap-wf-lkp _ _ _ _ _).
-% %total (A) (swap-wf-lkp A _ _ _ _).
-
-swap-wf-tp:
-  wf-tp (tcons T (tcons (bindh ([x] F x)) G)) (F (var N)) ->
-  tsize G (var N) ->
-  wf-tp (tcons (bindh ([x] F x)) (tcons T G)) (F (var (s N))) ->
-  type.
-%mode swap-wf-tp +A +B -C.
-%worlds () (swap-wf-tp _ _ _).
-%trustme
-%total (A) (swap-wf-tp A _ _).
-
-swap-sub-tp:
-  wf-tp G2 (bindh F) ->
-  sub-tp G1 T1 (tcons T (tcons T1' G2)) (F (var N)) ->
-  tsize G2 (var N) ->
-  sub-tp G1 T1 (tcons T1' (tcons T G2)) (F (var (s N))) ->
-  type.
-%mode swap-sub-tp +W +A +B -C.
-%worlds () (swap-sub-tp _ _ _ _).
-%trustme
-%total (A) (swap-sub-tp A _ _ _).
 
 % Extending environments preserves subtyping
 
@@ -615,9 +589,7 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 %       <- extend-wf-tp W _ W1
 %       <- extend-swap-wf-tp W1 X S W' X'.
 
-- : extend-wf-tp (wf-tp/tbindh S W) T (wf-tp/tbindh (tf/c S) W')
-     <- extend-wf-tp W T W1
-     <- swap-wf-tp W1 S W'.
+- : extend-wf-tp (wf-tp/tbindh SE S W) T (wf-tp/tbindh (sub-env/ext SE) S W).
 
 - : extend-sub-tp sub-tp/int T sub-tp/int sub-tp/int sub-tp/int.
 - : extend-sub-tp sub-tp/bool T sub-tp/bool sub-tp/bool sub-tp/bool.
@@ -669,15 +641,13 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 %       <- extend-swap-sub-tp2 STAB X S STAB' XAB 
 %       <- extend-swap-sub-tp2 STB X S STB' XB.
 
-- : extend-sub-tp (sub-tp/tbindh S ST1 ST2 W) T
-     (sub-tp/tbindh (tf/c S) STA1 STA2' W')
-     (sub-tp/tbindh S STB1 STB2 W)
-     (sub-tp/tbindh (tf/c S) STC1 STC2' W')
-     <- extend-wf-tp W T W'
+- : extend-sub-tp (sub-tp/tbindh SE S ST1 ST2 W) T
+     (sub-tp/tbindh (sub-env/ext SE) S STB1 STB2 W)
+     (sub-tp/tbindh SE S STB1 STB2 W)
+     (sub-tp/tbindh (sub-env/ext SE) S ST1 ST2 W)
      <- extend-sub-tp ST1 T STA1 STB1 STC1
      <- extend-sub-tp ST2 T STA2 STB2 STC2
-     <- swap-sub-tp W STA2 S STA2'
-     <- swap-sub-tp W STC2 S STC2'.
+     .
 
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _).
 %total (A B C) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _).
@@ -819,8 +789,9 @@ extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
 % - : extract-wf (sub-tp/tbind2 S X ST W) W1 W
 %       <- extract-wf ST W1 _.
 
-- : extract-wf (sub-tp/tbindh S SW SE W) W1 W
-      <- extract-wf SE W1 _.
+- : extract-wf (sub-tp/tbindh ES S SW SE W) W1 W'
+      <- extract-wf SE W1 _
+      <- extend-wf-tp-mult W ES W'.
 
 
 %worlds () (extract-wf _ _ _)(extract-wf-pev _ _).
@@ -938,44 +909,58 @@ restrict-sub-tp: sub-tp G1 T1 G2 T2
       <- sub-env-trans S3B S2A S2.
 
 
-% - : restrict-sub-tp 
-%     (sub-tp/tbind1 S X ST (wf-tp/tbind S X WA))
-%     (wf-tp/tbind _ _ WA)
-%     W2
-%     T 
-%     (sub-tp/tbind1 (tf/c S) X' ST' W')
-%       <- restrict-swap-sub-tp1 ST1 X S ST' X' 
-%       <- restrict-sub-tp ST WA W2 T ST1.
+
+%%% PROBLEM WITH TERMINATION ORDER
+
+restrict-sub-tp1: sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> {Z: tpe} sub-tp (tcons Z G1) T1 G2 T2 -> type.
+%mode restrict-sub-tp1 -A +Y +B +C.
+%worlds () (restrict-sub-tp1 _ _ _ _).
+%trustme
+%total A (restrict-sub-tp1 _ _ _ A).
+
+magic: 
+{WW:wf-tp (tcons (bindh X5) X8) (X5 (var X9))}  
+{SEW:sub-env X8 X4}
+{SW:tsize X8 (var X9)}
+
+{ST2:sub-tp X1 X2 (tcons X3 (tcons T X4)) (X5 (var (s X6)))}
+{S:tsize X4 (var X6)}
+
+{ST2x:sub-tp X1 X2 (tcons X3 X4) (X5 (var X6))}
+type.
+
+%mode magic +A +B +C +D +E -F.
+%worlds () (magic _ _ _ _ _ _).
+%trustme
+%total (A) (magic A _ _ _ _ _).
 
 
-% %%%%  TODO:  THIS SEEMS TRICKY!  %%%%
-%
-% magic: tsize X3 (var X7) 
-%   -> wf-tp (tcons (bind X6 X5) X3) X4 -> swapv-tp X5 X6 (s X7) X4 
-%   -> wf-tp (tcons X2 (tcons T X3)) X8 -> swapv-tp X5 X6 (s (s X7)) X8
-%   -> wf-tp (tcons X2 X3) X4 -> type.
-% %mode magic +A +B +C +D +E -F.
-% %worlds () (magic _ _ _ _ _ _).
-% %trustme
-% %total (A) (magic A _ _ _ _ _).
-% 
-% 
-% - : restrict-sub-tp 
-%     (sub-tp/tbind2 S X ST (wf-tp/tbind S X WA))
-%     W1
-%     (wf-tp/tbind _ _ WA)
-%     T 
-%     (sub-tp/tbind2 (tf/c S) X' ST' (wf-tp/tbind _ _ WB))
-%       <- extract-wf ST' _ WAy
-%       <- restrict-swap-sub-tp2 ST1 X S ST' X' 
-%       <- magic S WA X WAy X' WAx
-%       <- restrict-sub-tp ST W1 WAx T ST1.
-% 
+
+- : restrict-sub-tp % easy case: G0 is already smaller than target
+     (sub-tp/tbindh SE S ST1 ST2 W)
+     W1
+     (wf-tp/tbindh SEW SW WW)
+     T
+     (sub-tp/tbindh (sub-env/ext SE) S STA1 STA2 W)
+       <- restrict-sub-tp1 ST1 W1 T STA1
+       <- restrict-sub-tp1 ST2 W1 T STA2
+       .
+
+
+- : restrict-sub-tp % hard case: G0 = G2 = (T G2')
+     (sub-tp/tbindh sub-env/refl S ST1 ST2x (wf-tp/tbindh SEW SW WW)) 
+     W1
+     (wf-tp/tbindh SEW SW WW)
+     T
+     (sub-tp/tbindh sub-env/refl (tf/c S) STA1 STA2 W)
+       <- restrict-sub-tp1 ST1 W1 T STA1
+       <- restrict-sub-tp1 ST2 W1 T STA2
+       <- magic WW SEW SW ST2 S ST2x
+       .
 
 
 
 %worlds () (restrict-sub-tp _ _ _ _ _).
-%trustme 
 %total (A) (restrict-sub-tp _ _ _ _ A).
 
 
@@ -993,6 +978,7 @@ restrict-sub-tp1: sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> {Z: tpe} sub-tp (tcons Z 
 
 %worlds () (restrict-sub-tp1 _ _ _ _).
 %total A (restrict-sub-tp1 _ _ _ A).
+
 
 restrict-sub-tp2: sub-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} sub-tp G1 T1 (tcons Z G2) T2 -> type.
 %mode restrict-sub-tp2 -A +Y +B +C.
@@ -1238,8 +1224,8 @@ but induction only gives us:   G1 T1 <: (G3,z:T2) T3
 -/tbindh  : sub-tp-trans-aux
        W
        SBT1
-       (sub-tp/tbindh S SW SBT3 (wf-tp/tbindh S1 WY))
-       (sub-tp/tbindh S SW' SBT5 (wf-tp/tbindh S1 WY))
+       (sub-tp/tbindh SE0 S SW SBT3 (wf-tp/tbindh SE1 S1 WY))
+       (sub-tp/tbindh SE0 S SW' SBT5 (wf-tp/tbindh SE1 S1 WY))
 
        <- sub-tp-trans-aux W SBT1 SW SW'
        <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
