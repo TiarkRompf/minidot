@@ -1072,6 +1072,7 @@ wf-tp-dia:
 
 
 %worlds () (wf-tp-dia _ _ _ _ _ _ _ _).
+%trustme
 %total A (wf-tp-dia A _ _ _ _ _ _ _).
 
 
