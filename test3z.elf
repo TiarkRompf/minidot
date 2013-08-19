@@ -1023,7 +1023,18 @@ extend-wf-tp: wf-tp G T -> sub-env G G' -> wf-tp G' T -> type.
         ([G':tenv][S: sub-env G2 G'] [FR: tfresh N G']
            W G' (MS G' S) FR))
      <- {G':tenv}{S: sub-env G2 G'}sub-env-trans S2 S (MS G' S).
-%worlds () (extend-wf-tp _ _ _).
+
+% @namin: this should be fixable by using an extended LF
+% context (%block below). unfortunately this particular one 
+% causes trouble with lookup-extend because sub-env
+% instances can occur in the context and need to be dealt 
+% with in addition to the sub-env/refl and /cons cases. 
+% Maybe we can wrap the sub-env instance in a 
+% different data type?
+
+%block bb : some {G2:tenv} block {G':tenv}{S: sub-env G2 G'}.
+
+%worlds (bb) (extend-wf-tp _ _ _).
 %total (A) (extend-wf-tp A _ _).
 
 
