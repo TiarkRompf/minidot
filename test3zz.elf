@@ -1041,16 +1041,18 @@ wf-tp-dia:
 - : wf-tp-dia wf-tp/bot wf-tp/bot wf-tp/bot S1 S2 wf-tp/bot sub-env/nil sub-env/nil.
 
 
-f- : wf-tp-dia (wf-tp/fun TT2 TT1) (wf-tp/fun T12 T11) (wf-tp/fun T22 T21) S1T S2T 
+wf-tp-dia/fun : wf-tp-dia 
+              (wf-tp/fun TT2 TT1) (wf-tp/fun T12 T11) (wf-tp/fun T22 T21) S1T S2T 
               (wf-tp/fun T02' T01') S01 S02
                   <- wf-tp-dia TT1 T11 T21 S1T S2T T01 S01A S02A
                   <- wf-tp-dia TT2 T12 T22 S1T S2T T02 S01B S02B
                   <- join-env _ _ S1T S2T S01A S02A S01B S02B SA0 SB0 S01 S02 S0T
-                  <- extend-wf-tp T01 SA0 T01' S01 T01
-                  <- extend-wf-tp T02 SB0 T02' S02 T02
+                  <- extend-wf-tp T01 SA0 T01' S0T TT1
+                  <- extend-wf-tp T02 SB0 T02' S0T TT2
                   .
 
-- : wf-tp-dia (wf-tp/tsel WT LT) (wf-tp/tsel W1 L1)(wf-tp/tsel W2 L2) S1T S2T 
+wf-tp-dia/sel : wf-tp-dia 
+              (wf-tp/tsel WT LT) (wf-tp/tsel W1 L1)(wf-tp/tsel W2 L2) S1T S2T 
               (wf-tp/tsel W0' L0') S01' S02'
                   %% establish that W1 L1 W2 L2 all have the same type as WT LT
                   <- restrict-wf-pev WT LT S1T W1 L1 W1' L1'
@@ -1068,7 +1070,7 @@ xxx-restrict: sub-env G1 (tcons N T G2 FR) -> tfresh N G1 -> sub-env G1 G2 -> ty
 %trustme
 %total A (xxx-restrict A _ _).
 
-- : wf-tp-dia (wf-tp/tbind WT SET0 SET1) 
+b- : wf-tp-dia (wf-tp/tbind WT SET0 SET1) 
               (wf-tp/tbind W1 SE10 SE11)
               (wf-tp/tbind W2 SE20 SE21) 
               S1T S2T 
@@ -1077,7 +1079,7 @@ xxx-restrict: sub-env G1 (tcons N T G2 FR) -> tfresh N G1 -> sub-env G1 G2 -> ty
               % S01 S02
               S01rx S02rx
 
-                %% prepare recursive call: W are in sub-env of WT
+                %% prepare recursive call: all W are in sub-env of WT
 
                 <- sub-env-extend2 _ S1T _ _ S1Tx
                 <- sub-env-trans SE11 S1Tx S1Tx'
