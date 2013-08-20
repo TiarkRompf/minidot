@@ -511,15 +511,14 @@ lookup-restrict: tlookup G2 N (tsome T2) -> tlookup G1 N (tsome T1) -> sub-env G
 
 
 
-% NOT USED YET 
 % get-fresh operation:
 
-% get-fresh: {G:tenv} {N:nat} tfresh N G -> type.
-% %mode get-fresh +A -B -C.
+get-fresh: {G:tenv} {N:nat} tfresh N G -> type.
+%mode get-fresh +A -B -C.
 
-% %worlds () (get-fresh _ _ _).
-% %trustme
-% %total A (get-fresh A _ _).
+%worlds () (get-fresh _ _ _).
+%trustme
+%total A (get-fresh A _ _).
 
 
 
@@ -927,9 +926,9 @@ wf-tp/tsel : wf-tp G1 (tsel N)
 % wf-tp/tbind : wf-tp G1 (tbind ([x] F x))
 %              <- {N:nat}{FR:tfresh N G1} wf-tp (tcons N (tbind ([x] F x)) G1 FR) (F N).
 
-wf-tp/tbind : wf-tp G (tbind ([x] F x))
-               <- {G':tenv}{S:sub-env G G'}{FR:tfresh N G'}
-                  wf-tp (tcons N (tbind ([x] F x)) G' FR) (F N).
+% wf-tp/tbind : wf-tp G (tbind ([x] F x))
+%               <- {G':tenv}{S:sub-env G G'}{FR:tfresh N G'}
+%                  wf-tp (tcons N (tbind ([x] F x)) G' FR) (F N).
 
 
 
@@ -1014,27 +1013,19 @@ extend-wf-tp: wf-tp G T -> sub-env G G' -> wf-tp G' T -> type.
       %% (N = bind F) G: F(N) wf  &&  G <: G'  -->   (N' = bind F) G': F(N')
       % {N:nat}{FR':tfresh N G'} 
 
-- : extend-wf-tp
-     (wf-tp/tbind
-        ([G':tenv][S: sub-env G G'] [FR: tfresh N G']
-           W G' S FR))
-     (S2: sub-env G G2)
-     (wf-tp/tbind
-        ([G':tenv][S: sub-env G2 G'] [FR: tfresh N G']
-           W G' (MS G' S) FR))
-     <- {G':tenv}{S: sub-env G2 G'}sub-env-trans S2 S (MS G' S).
+% - : extend-wf-tp
+%     (wf-tp/tbind
+%        ([G':tenv][S: sub-env G G'] [FR: tfresh N G']
+%           W G' S FR))
+%     (S2: sub-env G G2)
+%     (wf-tp/tbind
+%        ([G':tenv][S: sub-env G2 G'] [FR: tfresh N G']
+%           W G' (MS G' S) FR))
+%     <- {G':tenv}{S: sub-env G2 G'}sub-env-trans S2 S (MS G' S).
 
-% @namin: this should be fixable by using an extended LF
-% context (%block below). unfortunately this particular one 
-% causes trouble with lookup-extend because sub-env
-% instances can occur in the context and need to be dealt 
-% with in addition to the sub-env/refl and /cons cases. 
-% Maybe we can wrap the sub-env instance in a 
-% different data type?
-
-%block bb : some {G2:tenv} block {G':tenv}{S: sub-env G2 G'}.
-
-%worlds (bb) (extend-wf-tp _ _ _).
+% %block bb : some {G2:tenv} block {G':tenv}{S: sub-env G2 G'}.
+% %worlds (bb) (extend-wf-tp _ _ _).
+%worlds () (extend-wf-tp _ _ _).
 %total (A) (extend-wf-tp A _ _).
 
 
