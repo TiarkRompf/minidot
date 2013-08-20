@@ -831,10 +831,7 @@ wf-tp-dia:
 %total A (wf-tp-dia A _ _ _ _ _ _ _).
 
 magic: 
-{WF0:wf-tp (tcons (bindh F) G0) (F (var S0))}  
-{SZ0:tsize G0 (var S0)}
-{SE01:sub-env G0 G1}
-
+{WF1: wf-tp G1 (bindh F)}
 {ST2:sub-tp X1 X2 (tcons X3 G2) (F (var S2))}
 
 {SZ2:tsize G2 (var S2)}
@@ -844,10 +841,10 @@ magic:
 {ST1:sub-tp X1 X2 (tcons X3 G1) (F (var S1))}
 type.
 
-%mode magic +A +B +C +D +E +F +G -H.
-%worlds () (magic _ _ _ _ _ _ _ _).
+%mode       magic +A +B +C +D +E -F.
+%worlds () (magic  _  _  _  _  _  _).
 %trustme
-%total (A) (magic A _ _ _ _ _ _ _).
+%total (A) (magic  A  _  _  _  _  _).
 
 
 % Restrict subeq - placed here because it uses wf-tp-dia (does it have to?)
@@ -952,7 +949,7 @@ restrict-sub-tp1: sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> {Z: tpe} sub-tp (tcons Z 
      (sub-tp/tbindh sub-env/refl (tf/c S) STA1 STA2 W)
        <- restrict-sub-tp1 ST1 W1 T STA1
        <- restrict-sub-tp1 ST2 W1 T STA2
-       <- magic WW SW SEW ST2 (tf/c S) (sub-env/ext sub-env/refl) S ST2x
+       <- magic (wf-tp/tbindh SEW SW WW) ST2 (tf/c S) (sub-env/ext sub-env/refl) S ST2x
        .
 
 
