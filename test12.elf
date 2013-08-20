@@ -830,7 +830,27 @@ wf-tp-dia:
 %worlds () (wf-tp-dia _ _ _ _ _ _ _ _).
 %total A (wf-tp-dia A _ _ _ _ _ _ _).
 
+sub-env-size: sub-env G1 G2 -> nat -> type.
+sub-env-size/refl : sub-env-size sub-env/refl z.
+sub-env-size/ext : sub-env-size (sub-env/ext S) (s N)
+                    <- sub-env-size S N.
+%mode sub-env-size +A -B.
+%worlds () (sub-env-size _ _).
+%total (A) (sub-env-size A _).
 
+magic-swap:
+{WW:wf-tp (tcons (bindh ([x:exp] X1 x)) X2) (X1 (var X3))}
+{SW:tsize X2 (var X3)}
+{SEW:sub-env X2 X4}
+{ST2:sub-tp X5 X6 (tcons X7 (tcons X8 X4)) (X1 (var X9))}
+{SZ1:tsize (tcons X8 X4) (var X9)}
+{S':tsize X4 (var X10)}
+{ST2':sub-tp X5 X6 (tcons X7 X4) (X1 (var X10))}
+type.
+%mode       magic-swap +A +B +C +D +E -F -G.
+%worlds () (magic-swap _  _  _  _  _  _  _).
+%trustme
+%total A   (magic-swap A  _  _  _  _  _  _).
 
 magic-rec:
 {WW:wf-tp (tcons (bindh X5) G0) (X5 (var S0))}
@@ -842,24 +862,28 @@ magic-rec:
 {SZ1:tsize G2 (var S2)}
 {SX:sub-env G1 G2}
 
+{SIZE:nat}
+{C:sub-env-size SX SIZE}
 {S:tsize G1 (var S1)}
 {ST2x:sub-tp X1 X2 (tcons X3 G1) (X5 (var S1))}
 type.
 
-%mode magic-rec +A +B +C +D +E +F -G -H.
+%mode magic-rec +A +B +C +D +E +F +SIZE +C -G -H.
 
-- : magic-rec WW SW SEW ST2 SZ1 sub-env/refl SZ1 ST2.
-- : magic-rec WW SW SEW ST2 SZ1 (sub-env/ext S) S' ST2'
-     <- sub-env-trans SEW S SEW'
-     <- magic-rec WW SW SEW' ST2 SZ1 (sub-env/ext sub-env/refl) SZR ST2R
-     <- magic-rec WW SW SEW ST2R SZR S S' ST2'.
+- : magic-rec WW SW SEW ST2 SZ1 sub-env/refl SIZE C SZ1 ST2.
+- : magic-rec WW SW SEW ST2 SZ1 (sub-env/ext sub-env/refl) (s z) (sub-env-size/ext sub-env-size/refl) S' ST2'
+     <- magic-swap WW SW SEW ST2 SZ1 S' ST2'.
+- : magic-rec WW SW SEW ST2 SZ1 (sub-env/ext (sub-env/ext S)) (s (s SIZE)) (sub-env-size/ext (sub-env-size/ext C)) S' ST2'
+     <- sub-env-trans SEW (sub-env/ext S) SEW'
+     <- magic-rec WW SW SEW' ST2 SZ1 (sub-env/ext sub-env/refl) (s z) (sub-env-size/ext sub-env-size/refl) SZR ST2R
+     <- magic-rec WW SW SEW ST2R SZR (sub-env/ext S) (s SIZE) (sub-env-size/ext C) S' ST2'.
 
 
-%worlds ()   (magic-rec _ _ _ _ _ _ _ _).
-%covers magic-rec +A +B +C +D +E +F -G -H.
+%worlds ()   (magic-rec _ _ _ _ _ _ _ _ _ _).
+%covers magic-rec +A +B +C +D +E +F +SIZE +C -G -H.
 % TODO: Termination violation:
-% ---> [(ST2) (sub-env/ext sub-env/refl)] < [(ST2) (sub-env/ext S)]
-% %terminates [A B] (magic-rec _ _ _ A _ B _ _).
+% ---> [(ST2) (s z)] < [(ST2) (s (s SIZE))]
+% %terminates [A SIZE] (magic-rec _ _ _ A _ _ SIZE _ _ _).
 
 
 
