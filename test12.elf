@@ -830,116 +830,6 @@ wf-tp-dia:
 %worlds () (wf-tp-dia _ _ _ _ _ _ _ _).
 %total A (wf-tp-dia A _ _ _ _ _ _ _).
 
-sub-env-size: sub-env G1 G2 -> nat -> type.
-sub-env-size/refl : sub-env-size sub-env/refl z.
-sub-env-size/ext : sub-env-size (sub-env/ext S) (s N)
-                    <- sub-env-size S N.
-%mode sub-env-size +A -B.
-%worlds () (sub-env-size _ _).
-%total (A) (sub-env-size A _).
-
-sum : nat -> nat -> nat -> type.
-sum_z		: sum z N N.
-sum_s		: sum (s N1) N2 (s N3)
-		   <- sum N1 N2 N3.
-
-sum_reduces2 : {N1:nat} {N2:nat} {N3:nat} sum N1 N2 N3 -> type.
-%mode sum_reduces2 +X1 +X2 +X3 +X4.
-
--: sum_reduces2 _ _ _ sum_z.
--: sum_reduces2 (s N1) N2 (s N3) (sum_s D)
-    <- sum_reduces2 N1 N2 N3 D.
-
-%worlds () (sum_reduces2 _ _ _ _).
-%total D (sum_reduces2 _ _ _ D).
-%reduces N2 <= N3 (sum_reduces2 N1 N2 N3 _).
-
-sum_reduces2_nonzero : {N1:nat} {N2:nat} {N3:nat} sum (s N1) N2 N3 -> type.
-%mode sum_reduces2_nonzero +X1 +X2 +X3 +X4.
-
--: sum_reduces2_nonzero _ _ _ (sum_s sum_z).
--: sum_reduces2_nonzero (s N1) N2 (s N3) (sum_s D)
-    <- sum_reduces2_nonzero N1 N2 N3 D.
-
-%worlds () (sum_reduces2_nonzero _ _ _ _).
-%total D (sum_reduces2_nonzero _ _ _ D).
-%reduces N2 < N3 (sum_reduces2_nonzero N1 N2 N3 _).
-
-sum_commute : sum N1 N2 N3 -> sum N2 N1 N3 -> type.
-%mode sum_commute +D1 -D2.
-%worlds () (sum_commute _ _).
-%trustme
-%total D1 (sum_commute D1 _).
-
-sum_reduces1 : {N1:nat} {N2:nat} {N3:nat} sum N1 N2 N3 -> type.
-%mode sum_reduces1 +X1 +X2 +X3 +X4.
-
--	: sum_reduces1 N1 N2 N3 Dsum
-	   <- sum_commute Dsum Dsum'
-	   <- sum_reduces2 N2 N1 N3 Dsum'.
-
-%worlds () (sum_reduces1 _ _ _ _).
-%total {} (sum_reduces1 _ _ _ _).
-%reduces N1 <= N3 (sum_reduces1 N1 N2 N3 _).
-
-sum_reduces1_nonzero : {N1:nat} {N2:nat} {N3:nat} sum N1 (s N2) N3 -> type.
-%mode sum_reduces1_nonzero +X1 +X2 +X3 +X4.
-
--	: sum_reduces1_nonzero N1 N2 N3 Dsum
-	   <- sum_commute Dsum Dsum'
-	   <- sum_reduces2_nonzero N2 N1 N3 Dsum'.
-
-%worlds () (sum_reduces1_nonzero _ _ _ _).
-%total {} (sum_reduces1_nonzero _ _ _ _).
-%reduces N1 < N3 (sum_reduces1_nonzero N1 N2 N3 _).
-
-magic-drop:
-{WW:wf-tp (tcons (bindh F) G0) (F (var S0))}
-{SW:tsize G0 (var S0)}
-{SEW:sub-env G0 G1}
-{ST2:sub-tp X1 X2 (tcons XS (tcons XD G1)) (F (var SS1))}
-{SZ1:tsize (tcons XD G1) (var SS1)}
-{S':tsize G1 (var S1)}
-{ST2':sub-tp X1 X2 (tcons XS G1) (F (var S1))}
-type.
-%mode       magic-drop +A +B +C +D +E -F -G.
-%worlds () (magic-drop _  _  _  _  _  _  _).
-%trustme
-%total A   (magic-drop A  _  _  _  _  _  _).
-
-magic-rec:
-{WW:wf-tp (tcons (bindh X5) G0) (X5 (var S0))}
-{SW:tsize G0 (var S0)}
-{SEW:sub-env G0 G1}
-
-{ST2:sub-tp X1 X2 (tcons X3 G2) (X5 (var S2))}
-
-{SZ1:tsize G2 (var S2)}
-{SX:sub-env G1 G2}
-
-{SIZE:nat}
-{C:sub-env-size SX SIZE}
-{S:tsize G1 (var S1)}
-{ST2x:sub-tp X1 X2 (tcons X3 G1) (X5 (var S1))}
-type.
-
-%mode magic-rec +A +B +C +D +E +F +SIZE +C -G -H.
-
-- : magic-rec WW SW SEW ST2 SZ1 sub-env/refl SIZE C SZ1 ST2.
-- : magic-rec WW SW SEW ST2 SZ1 (sub-env/ext sub-env/refl) (s z) (sub-env-size/ext sub-env-size/refl) S' ST2'
-     <- magic-drop WW SW SEW ST2 SZ1 S' ST2'.
-- : magic-rec WW SW SEW ST2 SZ1 (sub-env/ext (sub-env/ext S)) (s (s SIZE)) (sub-env-size/ext (sub-env-size/ext C)) S' ST2'
-     <- sum_reduces1_nonzero (s z) SIZE (s (s SIZE)) (sum_s sum_z)
-     <- sub-env-trans SEW (sub-env/ext S) SEW'
-     <- magic-rec WW SW SEW' ST2 SZ1 (sub-env/ext sub-env/refl) (s z) (sub-env-size/ext sub-env-size/refl) SZR ST2R
-     <- magic-rec WW SW SEW ST2R SZR (sub-env/ext S) (s SIZE) (sub-env-size/ext C) S' ST2'.
-
-
-%worlds ()   (magic-rec _ _ _ _ _ _ _ _ _ _).
-%covers magic-rec +A +B +C +D +E +F +SIZE +C -G -H.
-%terminates [SIZE] (magic-rec _ _ _ _ _ _ SIZE _ _ _).
-
-
 
 % Restrict subeq - placed here because it uses wf-tp-dia (does it have to?)
 
@@ -2102,3 +1992,187 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
 %worlds () (eval-safe _ _ _ _).
 %total C (eval-safe A _ C _). % induction on eval-exp
 
+
+% SCRATCH SPACE
+%.
+
+magic-sub:
+{WF0:wf-tp (tcons (bindh F) G0) (F (var S0))}  
+{SZ0:tsize G0 (var S0)}
+{SE01:sub-env G0 G1}
+
+{ST2:sub-tp X1 X2 (tcons X3 G2) (F (var S2))}
+
+{SZ2:tsize G2 (var S2)}
+{SE12:sub-env G1 G2}
+
+{SZ1:tsize G1 (var S1)}
+{ST1:sub-tp X1 X2 (tcons X3 G1) (F (var S1))}
+type.
+
+%mode magic-sub +A +B +C +D +E +F +G -H.
+
+- : magic-sub
+     (WF0: wf-tp (tcons (bindh ([x] int)) G0) int)
+     SZ0
+     SE01
+     sub-tp/int
+     SZ2
+     SE12
+     SZ1
+     sub-tp/int.
+
+- : magic-sub
+     (WF0: wf-tp (tcons (bindh ([x] bool)) G0) bool)
+     SZ0
+     SE01
+     sub-tp/bool
+     SZ2
+     SE12
+     SZ1
+     sub-tp/bool.
+
+- : magic-sub
+     (WF0: wf-tp (tcons (bindh ([x] top)) G0) top)
+     SZ0
+     SE01
+     (sub-tp/top W1)
+     SZ2
+     SE12
+     SZ1
+     (sub-tp/top W1).
+
+% - : magic-sub
+%     (WF0: wf-tp (tcons (bindh ([x] (arrow (F1 x) (F2 x)))) G0) (arrow (F1 (var S0)) (F2 (var S0))))
+%     SZ0
+%     SE01
+%     (sub-tp/fun ST2 ST1)
+%     SZ2
+%     SE12
+%     SZ1
+%     (sub-tp/fun ST2' ST1')
+% we need magic on the left
+
+- : magic-sub
+     (WF0: wf-tp (tcons (bindh ([x] bindh (F x))) G0) (bindh (F (var S0))))
+     SZ0
+     (SE01: sub-env G0 G1)
+     (sub-tp/tbindh ISEy2 ISZy ISTl ISTy IWFy)
+     % (sub-tp/tbindh ISEy2 ISZy ISTl ISTy (wf-tp/tbindh ISExy ISZx IWFx))
+     SZ2
+     (SE12: sub-env G1 G2)
+     SZ1
+     (sub-tp/tbindh RSEy1 RSZy RSTl RSTy (wf-tp/tbindh RSExy RSZx RWFx)).
+     %<- magic-sub IWFx ISZx ISExy FOO (tf/c SZ2) ISEy2 ISZy R.
+
+%worlds () (magic-sub _ _ _ _ _ _ _ _).
+%total (A) (magic-sub _ _ _ A _ _ _ _).
+
+sub-env-size: sub-env G1 G2 -> nat -> type.
+sub-env-size/refl : sub-env-size sub-env/refl z.
+sub-env-size/ext : sub-env-size (sub-env/ext S) (s N)
+                    <- sub-env-size S N.
+%mode sub-env-size +A -B.
+%worlds () (sub-env-size _ _).
+%total (A) (sub-env-size A _).
+
+sum : nat -> nat -> nat -> type.
+sum_z		: sum z N N.
+sum_s		: sum (s N1) N2 (s N3)
+		   <- sum N1 N2 N3.
+
+sum_reduces2 : {N1:nat} {N2:nat} {N3:nat} sum N1 N2 N3 -> type.
+%mode sum_reduces2 +X1 +X2 +X3 +X4.
+
+-: sum_reduces2 _ _ _ sum_z.
+-: sum_reduces2 (s N1) N2 (s N3) (sum_s D)
+    <- sum_reduces2 N1 N2 N3 D.
+
+%worlds () (sum_reduces2 _ _ _ _).
+%total D (sum_reduces2 _ _ _ D).
+%reduces N2 <= N3 (sum_reduces2 N1 N2 N3 _).
+
+sum_reduces2_nonzero : {N1:nat} {N2:nat} {N3:nat} sum (s N1) N2 N3 -> type.
+%mode sum_reduces2_nonzero +X1 +X2 +X3 +X4.
+
+-: sum_reduces2_nonzero _ _ _ (sum_s sum_z).
+-: sum_reduces2_nonzero (s N1) N2 (s N3) (sum_s D)
+    <- sum_reduces2_nonzero N1 N2 N3 D.
+
+%worlds () (sum_reduces2_nonzero _ _ _ _).
+%total D (sum_reduces2_nonzero _ _ _ D).
+%reduces N2 < N3 (sum_reduces2_nonzero N1 N2 N3 _).
+
+sum_commute : sum N1 N2 N3 -> sum N2 N1 N3 -> type.
+%mode sum_commute +D1 -D2.
+%worlds () (sum_commute _ _).
+%trustme
+%total D1 (sum_commute D1 _).
+
+sum_reduces1 : {N1:nat} {N2:nat} {N3:nat} sum N1 N2 N3 -> type.
+%mode sum_reduces1 +X1 +X2 +X3 +X4.
+
+-	: sum_reduces1 N1 N2 N3 Dsum
+	   <- sum_commute Dsum Dsum'
+	   <- sum_reduces2 N2 N1 N3 Dsum'.
+
+%worlds () (sum_reduces1 _ _ _ _).
+%total {} (sum_reduces1 _ _ _ _).
+%reduces N1 <= N3 (sum_reduces1 N1 N2 N3 _).
+
+sum_reduces1_nonzero : {N1:nat} {N2:nat} {N3:nat} sum N1 (s N2) N3 -> type.
+%mode sum_reduces1_nonzero +X1 +X2 +X3 +X4.
+
+-	: sum_reduces1_nonzero N1 N2 N3 Dsum
+	   <- sum_commute Dsum Dsum'
+	   <- sum_reduces2_nonzero N2 N1 N3 Dsum'.
+
+%worlds () (sum_reduces1_nonzero _ _ _ _).
+%total {} (sum_reduces1_nonzero _ _ _ _).
+%reduces N1 < N3 (sum_reduces1_nonzero N1 N2 N3 _).
+
+magic-drop:
+{WW:wf-tp (tcons (bindh [x] F x) G0) (F (var S0))}
+{SW:tsize G0 (var S0)}
+{SEW:sub-env G0 G1}
+{ST2:sub-tp X1 X2 (tcons XS (tcons XD G1)) (F (var SS1))}
+{SZ1:tsize (tcons XD G1) (var SS1)}
+{S':tsize G1 (var S1)}
+{ST2':sub-tp X1 X2 (tcons XS G1) (F (var S1))}
+type.
+%mode       magic-drop +A +B +C +D +E -F -G.
+%worlds () (magic-drop _  _  _  _  _  _  _).
+%trustme
+%total A   (magic-drop A  _  _  _  _  _  _).
+
+magic-rec:
+{WW:wf-tp (tcons (bindh X5) G0) (X5 (var S0))}
+{SW:tsize G0 (var S0)}
+{SEW:sub-env G0 G1}
+
+{ST2:sub-tp X1 X2 (tcons X3 G2) (X5 (var S2))}
+
+{SZ1:tsize G2 (var S2)}
+{SX:sub-env G1 G2}
+
+{SIZE:nat}
+{C:sub-env-size SX SIZE}
+{S:tsize G1 (var S1)}
+{ST2x:sub-tp X1 X2 (tcons X3 G1) (X5 (var S1))}
+type.
+
+%mode magic-rec +A +B +C +D +E +F +SIZE +C -G -H.
+
+- : magic-rec WW SW SEW ST2 SZ1 sub-env/refl SIZE C SZ1 ST2.
+- : magic-rec WW SW SEW ST2 SZ1 (sub-env/ext sub-env/refl) (s z) (sub-env-size/ext sub-env-size/refl) S' ST2'
+     <- magic-drop WW SW SEW ST2 SZ1 S' ST2'.
+- : magic-rec WW SW SEW ST2 SZ1 (sub-env/ext (sub-env/ext S)) (s (s SIZE)) (sub-env-size/ext (sub-env-size/ext C)) S' ST2'
+     <- sum_reduces1_nonzero (s z) SIZE (s (s SIZE)) (sum_s sum_z)
+     <- sub-env-trans SEW (sub-env/ext S) SEW'
+     <- magic-rec WW SW SEW' ST2 SZ1 (sub-env/ext sub-env/refl) (s z) (sub-env-size/ext sub-env-size/refl) SZR ST2R
+     <- magic-rec WW SW SEW ST2R SZR (sub-env/ext S) (s SIZE) (sub-env-size/ext C) S' ST2'.
+
+
+%worlds ()   (magic-rec _ _ _ _ _ _ _ _ _ _).
+%covers magic-rec +A +B +C +D +E +F +SIZE +C -G -H.
+%terminates [SIZE] (magic-rec _ _ _ _ _ _ SIZE _ _ _).
