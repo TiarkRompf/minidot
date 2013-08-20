@@ -893,7 +893,7 @@ sum_reduces1_nonzero : {N1:nat} {N2:nat} {N3:nat} sum N1 (s N2) N3 -> type.
 %total {} (sum_reduces1_nonzero _ _ _ _).
 %reduces N1 < N3 (sum_reduces1_nonzero N1 N2 N3 _).
 
-magic-swap:
+magic-drop:
 {WW:wf-tp (tcons (bindh F) G0) (F (var S0))}
 {SW:tsize G0 (var S0)}
 {SEW:sub-env G0 G1}
@@ -902,10 +902,10 @@ magic-swap:
 {S':tsize G1 (var S1)}
 {ST2':sub-tp X1 X2 (tcons XS G1) (F (var S1))}
 type.
-%mode       magic-swap +A +B +C +D +E -F -G.
-%worlds () (magic-swap _  _  _  _  _  _  _).
+%mode       magic-drop +A +B +C +D +E -F -G.
+%worlds () (magic-drop _  _  _  _  _  _  _).
 %trustme
-%total A   (magic-swap A  _  _  _  _  _  _).
+%total A   (magic-drop A  _  _  _  _  _  _).
 
 magic-rec:
 {WW:wf-tp (tcons (bindh X5) G0) (X5 (var S0))}
@@ -927,7 +927,7 @@ type.
 
 - : magic-rec WW SW SEW ST2 SZ1 sub-env/refl SIZE C SZ1 ST2.
 - : magic-rec WW SW SEW ST2 SZ1 (sub-env/ext sub-env/refl) (s z) (sub-env-size/ext sub-env-size/refl) S' ST2'
-     <- magic-swap WW SW SEW ST2 SZ1 S' ST2'.
+     <- magic-drop WW SW SEW ST2 SZ1 S' ST2'.
 - : magic-rec WW SW SEW ST2 SZ1 (sub-env/ext (sub-env/ext S)) (s (s SIZE)) (sub-env-size/ext (sub-env-size/ext C)) S' ST2'
      <- sum_reduces1_nonzero (s z) SIZE (s (s SIZE)) (sum_s sum_z)
      <- sub-env-trans SEW (sub-env/ext S) SEW'
