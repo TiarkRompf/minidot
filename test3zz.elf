@@ -1070,6 +1070,8 @@ wf-tp-dia:
               % S01 S02
               S01rx S02rx
 
+                %% prepare recursive call: W are in sub-env of WT
+
                 <- sub-env-extend2 _ S1T _ _ S1Tx
                 <- sub-env-trans SE11 S1Tx S1Tx'
                 <- sub-env-trans S1Tx' SET0 S1T'
@@ -1080,25 +1082,30 @@ wf-tp-dia:
 
                 <- wf-tp-dia WT W1 W2 S1T' S2T' W0x S01x S02x
 
-                <- sub-env-trans S01x SE11 (S01xx: sub-env X5 (tcons X7 (tbind X7 X2) X8 F8))
+                %% find env below X5 (that of W0x) that does not contain N (call it X10)
+
+                <- sub-env-trans S01x SE11 (S01xx: sub-env X5 (tcons N (tbind N X2) X8 F8))
                 <- sub-env-restrict S01xx 
                     (S01r: sub-env X10 X5) 
                     (S01rx: sub-env X10 X8)
-                    (S01rr: sub-env X5 (tcons X7 (tbind X7 X2) X10 F10))
+                    (S01rr: sub-env X5 (tcons N (tbind N X2) X10 F10))
 
                 %% TODO: derive S02rx: sub-env X10 X11
                 %% S01r: X10 < X5, 
                 %% S02x:sub-env X5 X4
-                %% SE21:sub-env X4 (tcons X7 (tbind X7 X2) X11 X12)
+                %% SE21:sub-env X4 (tcons N (tbind N X2) X11 X12)
                 %% given F10 we have sub-env X10 X11
+
+
+                %% lift W0x from X5 to X10, call it W0
 
                 <- sub-env-extend2 _ S01rx F10 F8 S01rrx
                 <- sub-env-trans S01rrx SE10 S01rrrx
 
                 <- extend-wf-tp W0x S01rr W0 S01rrrx W1
 
-                <- sub-env-refl (tcons X7 (tbind X7 X2) X10 F10) SE00 
-                <- sub-env-refl (tcons X7 (tbind X7 X2) X10 F10) SE01 
+                <- sub-env-refl (tcons N (tbind N X2) X10 F10) SE00 
+                <- sub-env-refl (tcons N (tbind N X2) X10 F10) SE01 
                 .
 
 %{
