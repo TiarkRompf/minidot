@@ -1041,7 +1041,7 @@ wf-tp-dia:
 - : wf-tp-dia wf-tp/bot wf-tp/bot wf-tp/bot S1 S2 wf-tp/bot sub-env/nil sub-env/nil.
 
 
-- : wf-tp-dia (wf-tp/fun TT2 TT1) (wf-tp/fun T12 T11) (wf-tp/fun T22 T21) S1T S2T 
+f- : wf-tp-dia (wf-tp/fun TT2 TT1) (wf-tp/fun T12 T11) (wf-tp/fun T22 T21) S1T S2T 
               (wf-tp/fun T02' T01') S01 S02
                   <- wf-tp-dia TT1 T11 T21 S1T S2T T01 S01A S02A
                   <- wf-tp-dia TT2 T12 T22 S1T S2T T02 S01B S02B
@@ -1060,6 +1060,13 @@ wf-tp-dia:
                   %% add key/val being looked up to result W0
                   <- tl-join S01 S02 L1' L2' L0' S0 S01' S02'
                   <- extend-wf-tp W0 S0 W0' S01 W1'.
+
+
+xxx-restrict: sub-env G1 (tcons N T G2 FR) -> tfresh N G1 -> sub-env G1 G2 -> type.
+%mode xxx-restrict +A +B -C.
+%worlds () (xxx-restrict _ _ _).
+%trustme
+%total A (xxx-restrict A _ _).
 
 - : wf-tp-dia (wf-tp/tbind WT SET0 SET1) 
               (wf-tp/tbind W1 SE10 SE11)
@@ -1090,11 +1097,19 @@ wf-tp-dia:
                     (S01rx: sub-env X10 X8)
                     (S01rr: sub-env X5 (tcons N (tbind N X2) X10 F10))
 
-                %% TODO: derive S02rx: sub-env X10 X11
+                %% we already have that X10 is smaller than env of W1,
+                %% now prove that X10 is smaller than env of W2
+
+                %% derive S02rx: sub-env X10 X11
                 %% S01r: X10 < X5, 
                 %% S02x:sub-env X5 X4
                 %% SE21:sub-env X4 (tcons N (tbind N X2) X11 X12)
                 %% given F10 we have sub-env X10 X11
+
+                <- sub-env-trans S01r S02x S02xx'
+                <- sub-env-trans S02xx' SE21 S02xx
+
+                <- xxx-restrict S02xx F10 S02rx
 
 
                 %% lift W0x from X5 to X10, call it W0
@@ -1107,6 +1122,7 @@ wf-tp-dia:
                 <- sub-env-refl (tcons N (tbind N X2) X10 F10) SE00 
                 <- sub-env-refl (tcons N (tbind N X2) X10 F10) SE01 
                 .
+
 
 %{
     picked W0x = W0, i.e. X14 = X5 <-- sensible??
