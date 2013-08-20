@@ -513,12 +513,12 @@ lookup-restrict: tlookup G2 N (tsome T2) -> tlookup G1 N (tsome T1) -> sub-env G
 
 % get-fresh operation:
 
-get-fresh: {G:tenv} {N:nat} tfresh N G -> type.
-%mode get-fresh +A -B -C.
+% get-fresh: {G:tenv} {N:nat} tfresh N G -> type.
+% %mode get-fresh +A -B -C.
 
-%worlds () (get-fresh _ _ _).
-%trustme
-%total A (get-fresh A _ _).
+% %worlds () (get-fresh _ _ _).
+% %trustme
+% %total A (get-fresh A _ _).
 
 
 
@@ -919,20 +919,25 @@ wf-tp/tsel : wf-tp G1 (tsel N)
 %              <- sub-env G G1
 %              <- wf-tp (tcons N (tbind ([x] F x)) G FR) (F N).
 
-% wf-tp/tbind : wf-tp G1 (tbind ([x] F x))
-%              <- wf-tp (tcons N (tbind ([x] F x)) G1 FR) (F N).
+% wf-tp/tbind : wf-tp G (tbind ([x] F x))
+%              <- wf-tp (tcons N (tbind ([x] F x)) G FR) (F N).
 
 
 % wf-tp/tbind : wf-tp G1 (tbind ([x] F x))
-%              <- {N:nat}{FR:tfresh N G1} wf-tp (tcons N (tbind ([x] F x)) G1 FR) (F N).
+%               <- {N:nat}{FR:tfresh N G1} wf-tp (tcons N (tbind ([x] F x)) G1 FR) (F N).
 
 % wf-tp/tbind : wf-tp G (tbind ([x] F x))
 %               <- {G':tenv}{S:sub-env G G'}{FR:tfresh N G'}
 %                  wf-tp (tcons N (tbind ([x] F x)) G' FR) (F N).
 
-wf-tp/tbind : wf-tp G (tbind ([x] F x))
-               <- get-fresh G N FR
-               <- wf-tp (tcons N (tbind ([x] F x)) G FR) (F N).
+% wf-tp/tbind : wf-tp G (tbind ([x] F x))
+%               <- get-fresh G N FR
+%               <- wf-tp (tcons N (tbind ([x] F x)) G FR) (F N).
+
+% wf-tp/tbind : wf-tp G1 (tbind ([x] F x))
+%               <- sub-env G (tcons N (tbind ([x] F x)) G1 FR)
+%               <- sub-env (tcons N (tbind ([x] F x)) G1 FR) G
+%               <- wf-tp G (F N).
 
 
 % extend-wf-pev 
@@ -1025,6 +1030,16 @@ extend-wf-tp: wf-tp G T -> sub-env G G' -> wf-tp G' T -> type.
 %        ([G':tenv][S: sub-env G2 G'] [FR: tfresh N G']
 %           W G' (MS G' S) FR))
 %     <- {G':tenv}{S: sub-env G2 G'}sub-env-trans S2 S (MS G' S).
+
+% - : extend-wf-tp
+%     (wf-tp/tbind
+%        ([N:nat] [FR:tfresh N G]
+%           W N FR))
+%     (S: sub-env G G2)
+%     (wf-tp/tbind
+%        ([N:nat] [FR:tfresh N G2]
+%           W N (MFR N FR)))
+%   <- {N:nat}{FR:tfresh N G2} fresh-restrict FR S (MFR N FR).
 
 % %block bb : some {G2:tenv} block {G':tenv}{S: sub-env G2 G'}.
 % %worlds (bb) (extend-wf-tp _ _ _).
