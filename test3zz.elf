@@ -916,21 +916,6 @@ wf-tp/tsel : wf-tp G1 (tsel N)
               <- tlookup G1 N (tsome (arrow T1 T2))
               <- wf-tp G1 (arrow T1 T2).
 
-% wf-tp/tbind : wf-tp G1 (tbind ([x] F x))
-%              <- sub-env G G1
-%              <- wf-tp (tcons N (tbind ([x] F x)) G FR) (F N).
-
-% wf-tp/tbind : wf-tp G1 (tbind ([x] F x))
-%              <- wf-tp (tcons N (tbind ([x] F x)) G1 FR) (F N).
-
-
-% wf-tp/tbind : wf-tp G1 (tbind ([x] F x))
-%              <- {N:nat}{FR:tfresh N G1} wf-tp (tcons N (tbind ([x] F x)) G1 FR) (F N).
-
-% wf-tp/tbind : wf-tp G (tbind ([x] F x))
-%               <- {G':tenv}{S:sub-env G G'}{FR:tfresh N G'}
-%                  wf-tp (tcons N (tbind ([x] F x)) G' FR) (F N).
-
 wf-tp/tbind : wf-tp G (tbind N T)
                <- sub-env G1 (tcons N (tbind N T) G FR)
                <- sub-env (tcons N (tbind N T) G FR) G1
@@ -1076,16 +1061,72 @@ wf-tp-dia:
                   <- tl-join S01 S02 L1' L2' L0' S0 S01' S02'
                   <- extend-wf-tp W0 S0 W0' S01 W1'.
 
-% version with env slack
-% - : wf-tp-dia (wf-tp/tbind WT SET) (wf-tp/tbind W1 SE1)(wf-tp/tbind W2 SE2) S1T S2T 
-%              (wf-tp/tbind W0 SE0) S01 S02
+- : wf-tp-dia (wf-tp/tbind WT SET0 SET1) 
+              (wf-tp/tbind W1 SE10 SE11)
+              (wf-tp/tbind W2 SE20 SE21) 
+              S1T S2T 
+              %% output
+              (wf-tp/tbind W0 SE00 SE01) 
+              S01 S02
 
-                % <- extend-wf-tp WT SET WT'
-                % <- wf-tp-dia WT' W1' W2' S1T S2T W0x S01x S02x
-                % .
+                <- sub-env-extend2 _ S1T _ _ S1Tx
+                <- sub-env-trans SE11 S1Tx S1Tx'
+                <- sub-env-trans S1Tx' SET0 S1T'
+ 
+                <- sub-env-extend2 _ S2T _ _ S2Tx
+                <- sub-env-trans SE21 S2Tx S2Tx'
+                <- sub-env-trans S2Tx' SET0 S2T'
 
-                %%% PROBLEM: NOT CLEAR THAT W1,W2 <: WT
-                % may need to extend, but not clear we can
+                <- wf-tp-dia WT W1 W2 S1T' S2T' W0 S01x S02x
+
+                <- sub-env-trans S01x SE11 (S01xx: sub-env X5 (tcons X7 (tbind X7 X2) X8 X12))
+                <- sub-env-restrict S01xx 
+                    (S01r: sub-env X10 X5) _ (SE01: sub-env X5 (tcons X7 (tbind X7 X2) X10 X1))
+
+                %% FIXME:
+                %% we also need the inverse, i.e. 
+                %% {SE00:sub-env (tcons X7 (tbind X7 X2) X10 X1) X5}
+                %% so far we only have X10 < X5
+                %%
+                %% how do we know X5 contains X7?
+                .
+
+%{
+    picked W0x = W0, i.e. X14 = X5 <-- sensible??
+
+   {X1:tenv} {X2:tpe} {X3:tenv} {X4:tenv} {X5:tenv} 
+      {WT:wf-tp X1 X2}
+      {W1:wf-tp X3 X2} 
+      {W2:wf-tp X4 X2} 
+      {S1T':sub-env X3 X1}   
+      {S2T':sub-env X4 X1} 
+      {W0x:wf-tp X5 X2} 
+      {S01x:sub-env X5 X3}
+      {S02x:sub-env X5 X4} 
+
+      {SET0:sub-env (tcons X7 (tbind X7 X2) X6 X11) X1}
+      {SET1:sub-env X1 (tcons X7 (tbind X7 X2) X6 X11)}
+
+      {SE10:sub-env (tcons X7 (tbind X7 X2) X8 X12) X3}
+      {SE11:sub-env X3 (tcons X7 (tbind X7 X2) X8 X12)}
+      
+      {SE20:sub-env (tcons X7 (tbind X7 X2) X9 X13) X4}
+      {SE21:sub-env X4 (tcons X7 (tbind X7 X2) X9 X13)} 
+
+      {S1T:sub-env X8 X6}   
+      {S2T:sub-env X9 X6} 
+
+      {W0:wf-tp X14 X2}
+      
+      {SE00:sub-env (tcons X7 (tbind X7 X2) X10 X15) X14}
+      {SE01:sub-env X14 (tcons X7 (tbind X7 X2) X10 X15)} 
+
+      {S01:sub-env X10 X8}
+      {S02:sub-env X10 X9}
+
+  
+}%
+
 
 
 %worlds () (wf-tp-dia _ _ _ _ _ _ _ _).
