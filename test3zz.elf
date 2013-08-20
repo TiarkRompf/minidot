@@ -1061,7 +1061,7 @@ wf-tp-dia/sel : wf-tp-dia
                   <- wf-tp-dia WT W1' W2' S1T S2T W0 S01 S02
                   %% add key/val being looked up to result W0
                   <- tl-join S01 S02 L1' L2' L0' S0 S01' S02'
-                  <- extend-wf-tp W0 S0 W0' S01 W1'.
+                  <- extend-wf-tp W0 S0 W0' S01' W1'.
 
 
 xxx-restrict: sub-env G1 (tcons N T G2 FR) -> tfresh N G1 -> sub-env G1 G2 -> type.
