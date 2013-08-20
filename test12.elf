@@ -838,6 +838,61 @@ sub-env-size/ext : sub-env-size (sub-env/ext S) (s N)
 %worlds () (sub-env-size _ _).
 %total (A) (sub-env-size A _).
 
+sum : nat -> nat -> nat -> type.
+sum_z		: sum z N N.
+sum_s		: sum (s N1) N2 (s N3)
+		   <- sum N1 N2 N3.
+
+sum_reduces2 : {N1:nat} {N2:nat} {N3:nat} sum N1 N2 N3 -> type.
+%mode sum_reduces2 +X1 +X2 +X3 +X4.
+
+-: sum_reduces2 _ _ _ sum_z.
+-: sum_reduces2 (s N1) N2 (s N3) (sum_s D)
+    <- sum_reduces2 N1 N2 N3 D.
+
+%worlds () (sum_reduces2 _ _ _ _).
+%total D (sum_reduces2 _ _ _ D).
+%reduces N2 <= N3 (sum_reduces2 N1 N2 N3 _).
+
+sum_reduces2_nonzero : {N1:nat} {N2:nat} {N3:nat} sum (s N1) N2 N3 -> type.
+%mode sum_reduces2_nonzero +X1 +X2 +X3 +X4.
+
+-: sum_reduces2_nonzero _ _ _ (sum_s sum_z).
+-: sum_reduces2_nonzero (s N1) N2 (s N3) (sum_s D)
+    <- sum_reduces2_nonzero N1 N2 N3 D.
+
+%worlds () (sum_reduces2_nonzero _ _ _ _).
+%total D (sum_reduces2_nonzero _ _ _ D).
+%reduces N2 < N3 (sum_reduces2_nonzero N1 N2 N3 _).
+
+sum_commute : sum N1 N2 N3 -> sum N2 N1 N3 -> type.
+%mode sum_commute +D1 -D2.
+%worlds () (sum_commute _ _).
+%trustme
+%total D1 (sum_commute D1 _).
+
+sum_reduces1 : {N1:nat} {N2:nat} {N3:nat} sum N1 N2 N3 -> type.
+%mode sum_reduces1 +X1 +X2 +X3 +X4.
+
+-	: sum_reduces1 N1 N2 N3 Dsum
+	   <- sum_commute Dsum Dsum'
+	   <- sum_reduces2 N2 N1 N3 Dsum'.
+
+%worlds () (sum_reduces1 _ _ _ _).
+%total {} (sum_reduces1 _ _ _ _).
+%reduces N1 <= N3 (sum_reduces1 N1 N2 N3 _).
+
+sum_reduces1_nonzero : {N1:nat} {N2:nat} {N3:nat} sum N1 (s N2) N3 -> type.
+%mode sum_reduces1_nonzero +X1 +X2 +X3 +X4.
+
+-	: sum_reduces1_nonzero N1 N2 N3 Dsum
+	   <- sum_commute Dsum Dsum'
+	   <- sum_reduces2_nonzero N2 N1 N3 Dsum'.
+
+%worlds () (sum_reduces1_nonzero _ _ _ _).
+%total {} (sum_reduces1_nonzero _ _ _ _).
+%reduces N1 < N3 (sum_reduces1_nonzero N1 N2 N3 _).
+
 magic-swap:
 {WW:wf-tp (tcons (bindh ([x:exp] X1 x)) X2) (X1 (var X3))}
 {SW:tsize X2 (var X3)}
@@ -874,6 +929,7 @@ type.
 - : magic-rec WW SW SEW ST2 SZ1 (sub-env/ext sub-env/refl) (s z) (sub-env-size/ext sub-env-size/refl) S' ST2'
      <- magic-swap WW SW SEW ST2 SZ1 S' ST2'.
 - : magic-rec WW SW SEW ST2 SZ1 (sub-env/ext (sub-env/ext S)) (s (s SIZE)) (sub-env-size/ext (sub-env-size/ext C)) S' ST2'
+     <- sum_reduces1_nonzero (s z) SIZE (s (s SIZE)) (sum_s sum_z)
      <- sub-env-trans SEW (sub-env/ext S) SEW'
      <- magic-rec WW SW SEW' ST2 SZ1 (sub-env/ext sub-env/refl) (s z) (sub-env-size/ext sub-env-size/refl) SZR ST2R
      <- magic-rec WW SW SEW ST2R SZR (sub-env/ext S) (s SIZE) (sub-env-size/ext C) S' ST2'.
@@ -881,9 +937,7 @@ type.
 
 %worlds ()   (magic-rec _ _ _ _ _ _ _ _ _ _).
 %covers magic-rec +A +B +C +D +E +F +SIZE +C -G -H.
-% TODO: Termination violation:
-% ---> [(ST2) (s z)] < [(ST2) (s (s SIZE))]
-% %terminates [A SIZE] (magic-rec _ _ _ A _ _ SIZE _ _ _).
+%terminates [SIZE] (magic-rec _ _ _ _ _ _ SIZE _ _ _).
 
 
 
