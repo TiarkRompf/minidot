@@ -514,12 +514,12 @@ lookup-restrict: tlookup G2 N (tsome T2) -> tlookup G1 N (tsome T1) -> sub-env G
 
 % get-fresh operation:
 
-get-fresh: {G:tenv} {N:nat} tfresh N G -> type.
-%mode get-fresh +A -B -C.
-
-%worlds () (get-fresh _ _ _).
-%trustme
-%total A (get-fresh A _ _).
+% get-fresh: {G:tenv} {N:nat} tfresh N G -> type.
+% %mode get-fresh +A -B -C.
+% 
+% %worlds () (get-fresh _ _ _).
+% %trustme
+% %total A (get-fresh A _ _).
 
 
 
@@ -1064,12 +1064,6 @@ wf-tp-dia/sel : wf-tp-dia
                   <- extend-wf-tp W0 S0 W0' S01' W1'.
 
 
-xxx-restrict: sub-env G1 (tcons N T G2 FR) -> tfresh N G1 -> sub-env G1 G2 -> type.
-%mode xxx-restrict +A +B -C.
-%worlds () (xxx-restrict _ _ _).
-%trustme
-%total A (xxx-restrict A _ _).
-
 b- : wf-tp-dia (wf-tp/tbind WT SET0 SET1) 
               (wf-tp/tbind W1 SE10 SE11)
               (wf-tp/tbind W2 SE20 SE21) 
@@ -1111,7 +1105,7 @@ b- : wf-tp-dia (wf-tp/tbind WT SET0 SET1)
                 <- sub-env-trans S01r S02x S02xx'
                 <- sub-env-trans S02xx' SE21 S02xx
 
-                <- xxx-restrict S02xx F10 S02rx
+                <- sub-env-restrict2 S02xx F10 S02rx
 
 
                 %% lift W0x from X5 to X10, call it W0
