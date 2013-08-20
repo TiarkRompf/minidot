@@ -1067,7 +1067,8 @@ wf-tp-dia:
               S1T S2T 
               %% output
               (wf-tp/tbind W0 SE00 SE01) 
-              S01 S02
+              % S01 S02
+              S01rx S02rx
 
                 <- sub-env-extend2 _ S1T _ _ S1Tx
                 <- sub-env-trans SE11 S1Tx S1Tx'
@@ -1077,18 +1078,27 @@ wf-tp-dia:
                 <- sub-env-trans SE21 S2Tx S2Tx'
                 <- sub-env-trans S2Tx' SET0 S2T'
 
-                <- wf-tp-dia WT W1 W2 S1T' S2T' W0 S01x S02x
+                <- wf-tp-dia WT W1 W2 S1T' S2T' W0x S01x S02x
 
-                <- sub-env-trans S01x SE11 (S01xx: sub-env X5 (tcons X7 (tbind X7 X2) X8 X12))
+                <- sub-env-trans S01x SE11 (S01xx: sub-env X5 (tcons X7 (tbind X7 X2) X8 F8))
                 <- sub-env-restrict S01xx 
-                    (S01r: sub-env X10 X5) _ (SE01: sub-env X5 (tcons X7 (tbind X7 X2) X10 X1))
+                    (S01r: sub-env X10 X5) 
+                    (S01rx: sub-env X10 X8)
+                    (S01rr: sub-env X5 (tcons X7 (tbind X7 X2) X10 F10))
 
-                %% FIXME:
-                %% we also need the inverse, i.e. 
-                %% {SE00:sub-env (tcons X7 (tbind X7 X2) X10 X1) X5}
-                %% so far we only have X10 < X5
-                %%
-                %% how do we know X5 contains X7?
+                %% TODO: derive S02rx: sub-env X10 X11
+                %% S01r: X10 < X5, 
+                %% S02x:sub-env X5 X4
+                %% SE21:sub-env X4 (tcons X7 (tbind X7 X2) X11 X12)
+                %% given F10 we have sub-env X10 X11
+
+                <- sub-env-extend2 _ S01rx F10 F8 S01rrx
+                <- sub-env-trans S01rrx SE10 S01rrrx
+
+                <- extend-wf-tp W0x S01rr W0 S01rrrx W1
+
+                <- sub-env-refl (tcons X7 (tbind X7 X2) X10 F10) SE00 
+                <- sub-env-refl (tcons X7 (tbind X7 X2) X10 F10) SE01 
                 .
 
 %{
