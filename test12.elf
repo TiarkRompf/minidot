@@ -831,17 +831,17 @@ wf-tp-dia:
 %total A (wf-tp-dia A _ _ _ _ _ _ _).
 
 magic: 
-{WW:wf-tp (tcons (bindh X5) G0) (X5 (var S0))}  
-{SW:tsize G0 (var S0)}
-{SEW:sub-env G0 G1}
+{WF0:wf-tp (tcons (bindh F) G0) (F (var S0))}  
+{SZ0:tsize G0 (var S0)}
+{SE01:sub-env G0 G1}
 
-{ST2:sub-tp X1 X2 (tcons X3 G2) (X5 (var S2))}
+{ST2:sub-tp X1 X2 (tcons X3 G2) (F (var S2))}
 
-{SZ1:tsize G2 (var S2)}
-{SX:sub-env G1 G2}
+{SZ2:tsize G2 (var S2)}
+{SE12:sub-env G1 G2}
 
-{S:tsize G1 (var S1)}
-{ST2x:sub-tp X1 X2 (tcons X3 G1) (X5 (var S1))}
+{SZ1:tsize G1 (var S1)}
+{ST1:sub-tp X1 X2 (tcons X3 G1) (F (var S1))}
 type.
 
 %mode magic +A +B +C +D +E +F +G -H.
