@@ -930,6 +930,9 @@ wf-tp/tsel : wf-tp G1 (tsel N)
 %               <- {G':tenv}{S:sub-env G G'}{FR:tfresh N G'}
 %                  wf-tp (tcons N (tbind ([x] F x)) G' FR) (F N).
 
+wf-tp/tbind : wf-tp G (tbind ([x] F x))
+               <- get-fresh G N FR
+               <- wf-tp (tcons N (tbind ([x] F x)) G FR) (F N).
 
 
 % extend-wf-pev 
