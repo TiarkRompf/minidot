@@ -832,6 +832,34 @@ wf-tp-dia:
 
 
 
+magic-rec:
+{WW:wf-tp (tcons (bindh X5) G0) (X5 (var S0))}
+{SW:tsize G0 (var S0)}
+{SEW:sub-env G0 G1}
+
+{ST2:sub-tp X1 X2 (tcons X3 G2) (X5 (var S2))}
+
+{SZ1:tsize G2 (var S2)}
+{SX:sub-env G1 G2}
+
+{S:tsize G1 (var S1)}
+{ST2x:sub-tp X1 X2 (tcons X3 G1) (X5 (var S1))}
+type.
+
+%mode magic-rec +A +B +C +D +E +F -G -H.
+
+- : magic-rec WW SW SEW ST2 SZ1 sub-env/refl SZ1 ST2.
+- : magic-rec WW SW SEW ST2 SZ1 (sub-env/ext S) S' ST2'
+     <- sub-env-trans SEW S SEW'
+     <- magic-rec WW SW SEW' ST2 SZ1 (sub-env/ext sub-env/refl) SZR ST2R
+     <- magic-rec WW SW SEW ST2R SZR S S' ST2'.
+
+
+%worlds ()   (magic-rec _ _ _ _ _ _ _ _).
+%covers magic-rec +A +B +C +D +E +F -G -H.
+% TODO: Termination violation:
+% ---> [(ST2) (sub-env/ext sub-env/refl)] < [(ST2) (sub-env/ext S)]
+% %terminates [A B] (magic-rec _ _ _ A _ B _ _).
 
 
 
