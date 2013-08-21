@@ -830,21 +830,19 @@ wf-tp-dia:
 %worlds () (wf-tp-dia _ _ _ _ _ _ _ _).
 %total A (wf-tp-dia A _ _ _ _ _ _ _).
 
-magic: 
+magic:
+{F:exp -> tpe}
 {WF1: wf-tp G1 (bindh F)}
-{ST2:sub-tp X1 X2 (tcons X3 G2) (F (var S2))}
-
-{SZ2:tsize G2 (var S2)}
-{SE12:sub-env G1 G2}
-
+{ST2:sub-tp X1 X2 (tcons X3 (tcons X4 G1)) (F (var (s S1)))}
 {SZ1:tsize G1 (var S1)}
 {ST1:sub-tp X1 X2 (tcons X3 G1) (F (var S1))}
 type.
 
-%mode       magic +A +B +C +D +E -F.
-%worlds () (magic  _  _  _  _  _  _).
+%mode       magic +A +B +C +D -E.
+
+%worlds () (magic  _  _  _  _  _).
 %trustme
-%total (A) (magic  A  _  _  _  _  _).
+%total (A) (magic  _  A  _  _  _).
 
 
 % Restrict subeq - placed here because it uses wf-tp-dia (does it have to?)
@@ -949,7 +947,7 @@ restrict-sub-tp1: sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> {Z: tpe} sub-tp (tcons Z 
      (sub-tp/tbindh sub-env/refl (tf/c S) STA1 STA2 W)
        <- restrict-sub-tp1 ST1 W1 T STA1
        <- restrict-sub-tp1 ST2 W1 T STA2
-       <- magic (wf-tp/tbindh SEW SW WW) ST2 (tf/c S) (sub-env/ext sub-env/refl) S ST2x
+       <- magic _ (wf-tp/tbindh SEW SW WW) ST2 S ST2x
        .
 
 
@@ -2171,3 +2169,32 @@ type.
 %worlds ()   (magic-rec _ _ _ _ _ _ _ _ _ _).
 %covers magic-rec +A +B +C +D +E +F +SIZE +C -G -H.
 %terminates [SIZE] (magic-rec _ _ _ _ _ _ SIZE _ _ _).
+
+magic: 
+{F:exp -> tpe}
+{WF1: wf-tp G1 (bindh F)}
+{ST2:sub-tp X1 X2 (tcons X3 G2) (F (var S2))}
+
+{SZ2:tsize G2 (var S2)}
+{SE12:sub-env G1 G2}
+
+{SZ1:tsize G1 (var S1)}
+{ST1:sub-tp X1 X2 (tcons X3 G1) (F (var S1))}
+type.
+
+%mode       magic +A +B +C +D +E +F -G.
+
+- : magic ([x] (bindh (F x)))
+     (wf-tp/tbindh sub-env/refl SZ1 IWFx)
+     (sub-tp/tbindh sub-env/refl (tf/c (tf/c SZ1)) ISTl ISTy IWFy)
+     (tf/c SZ1) (sub-env/ext sub-env/refl) SZ1
+     (sub-tp/tbindh sub-env/refl (tf/c SZ1) ISTl ISTx' IWFx).
+
+% - : magic ([x] (bindh (F x)))
+%     (wf-tp/tbindh SEx1 ISZx IWFx)
+%     (sub-tp/tbindh SEy2 ISZy ISTl ISTy IWFy)
+%     SZ2 (SE12: sub-env G1 G2) SZ1
+%     (sub-tp/tbindh SEx1' ISZx' ISTl' ISTx' IWFx').
+
+%worlds () (magic  _  _  _  _  _  _  _).
+%total (A) (magic  _  A  _  _  _  _  _).
