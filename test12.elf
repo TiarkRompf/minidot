@@ -400,12 +400,9 @@ wf-tp/tsel : wf-tp G1 (tsel E1)
 %              <- tsize G1 (var N).
 
 wf-tp/tbindh : wf-tp G1 (bindh ([x] F x))
-              <- wf-tp (tcons (bindh ([x] F x)) G0) (F (var N))
+              <- sub-env G0 G1
               <- tsize G0 (var N)
-              <- sub-env G0 G1.
-
-
-
+              <- wf-tp (tcons (bindh ([x] F x)) G0) (F (var N)).
 
 
 % Subtyping with explicit equality case
@@ -589,7 +586,7 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 %       <- extend-wf-tp W _ W1
 %       <- extend-swap-wf-tp W1 X S W' X'.
 
-- : extend-wf-tp (wf-tp/tbindh SE S W) T (wf-tp/tbindh (sub-env/ext SE) S W).
+- : extend-wf-tp (wf-tp/tbindh W S SE) T (wf-tp/tbindh W S (sub-env/ext SE)).
 
 - : extend-sub-tp sub-tp/int T sub-tp/int sub-tp/int sub-tp/int.
 - : extend-sub-tp sub-tp/bool T sub-tp/bool sub-tp/bool sub-tp/bool.
@@ -837,6 +834,10 @@ wf-tp-dia:
 %query 1 1 tlookup (tcons (rect bot top) tnil) (var (s z)) T.
 
 %query 1 1 wf-tp (tcons (rect bot top) tnil) (tsel (var (s z))).
+
+%query 1 1 wf-tp (tcons (rect bot top) tnil) (bindh [x] (tsel (var (s z)))).
+
+%query 1 1 wf-tp (tcons (bindh ([x] F x)) (tcons (rect bot top) tnil)) (tsel (var (s z))).
 
 magic:
 {F:exp -> tpe}
