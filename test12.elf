@@ -216,7 +216,7 @@ vf/c   : vsize (vcons _ G) (var (s N)) <- vsize G (var N).
 vlookup: venv -> exp -> val -> type.
 vl  : vlookup G (var N) V
   <- vsize G (var S)
-  <- add N M S
+  <- add (s N) M S
   <- vlookup-zero G (var M) V.
 
 
@@ -238,7 +238,7 @@ tf/c   : tsize (tcons _ G) (var (s N)) <- tsize G (var N).
 tlookup: tenv -> exp -> tpe -> type.
 tl  : tlookup G (var N) V
   <- tsize G (var S)
-  <- add N M S
+  <- add (s N) M S
   <- tlookup-zero G (var M) V.
 
 % tlookupa: tenv -> exp -> tpe -> type.
@@ -505,7 +505,7 @@ lookup-eq: tlookup G2 (var N1) (rect T1 T3) -> tlookup G2 (var N2) (rect T2 T4) 
 
 - : lookup-eq (tl L1 A1 F1) (tl L2 A2 F2) EN X Y
         <- size-eq F1 F2 ES 
-        <- sub-eq EN ES A1 A2 EM 
+        <- sub-eq (eq/s EN) ES A1 A2 EM 
         <- lookup-zero-eq L1 L2 EM X Y.
 
 %worlds () (lookup-eq _ _ _ _ _).
@@ -831,13 +831,13 @@ wf-tp-dia:
 %query 1 1 wf-tp tnil (rect bot top).
 %query 1 1 wf-tp tnil (bindh [x] (rect bot top)).
 
-%query 1 1 tlookup (tcons (rect bot top) tnil) (var (s z)) T.
+%query 1 1 tlookup (tcons (rect bot top) tnil) (var z) T.
 
-%query 1 1 wf-tp (tcons (rect bot top) tnil) (tsel (var (s z))).
+%query 1 1 wf-tp (tcons (rect bot top) tnil) (tsel (var z)).
 
-%query 1 1 wf-tp (tcons (rect bot top) tnil) (bindh [x] (tsel (var (s z)))).
+%query 1 1 wf-tp (tcons (rect bot top) tnil) (bindh [x] (tsel (var z))).
 
-%query 1 1 wf-tp (tcons (bindh ([x] F x)) (tcons (rect bot top) tnil)) (tsel (var (s z))).
+%query 1 1 wf-tp (tcons (bindh ([x] F x)) (tcons (rect bot top) tnil)) (tsel (var z)).
 
 magic:
 {F:exp -> tpe}
@@ -1865,7 +1865,7 @@ lookup-safe: wf-env H G -> tlookup G (var N) T -> vlookup H (var N) V -> wf-val 
 -      : lookup-safe WE (tl TL TA TS) (vl VL VA VS) WV
          <- eq-refl N EN
          <- wf-env-size-eq WE VS TS ES
-         <- sub-eq EN ES VA TA EM
+         <- sub-eq (eq/s EN) ES VA TA EM
          <- lookup-zero-safe WE TL VL EM WV.
 
 %worlds () (lookup-safe _ _ _ _).
