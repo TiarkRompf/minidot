@@ -14,7 +14,6 @@
 
 %%%%%% work in progress %%%%%%
 
-
 %{ ------- arithmetic ----- }%
 
 nat: type.
@@ -86,8 +85,16 @@ add-inc: add A B C -> add A (s B) (s C) -> type.
 %worlds () (add-inc _ _).
 %total {A} (add-inc A _).
 
+measure: nat -> type.
+measure/z: measure z.
+measure/s: measure (s N) <- measure N.
 
-
+measure-inc: measure N -> measure (s N) -> type.
+%mode measure-inc +N1 -N2.
+- : measure-inc M (measure/s M).
+%worlds () (measure-inc _ _).
+%total N (measure-inc N _).
+%reduces M1 < M2 (measure-inc M1 M2).
 
 
 %{ ------- language ----- }%
@@ -273,12 +280,12 @@ sub-env-related: tenv -> tenv -> type.
 sub-env-related/1: sub-env-related G1 G2 <- sub-env G1 G2.
 sub-env-related/2: sub-env-related G1 G2 <- sub-env G2 G1.
 
-minmax-related: minmax-env G1 G2 GS GU -> sub-env-related G1 G2 -> type.
+minmax-related: minmax-env G0 G2 GS GU -> sub-env-related G0 G2 -> type.
 %mode minmax-related +M -R.
 minmax-related/1: minmax-related (mm-env/1 R) (sub-env-related/1 R).
 minmax-related/2: minmax-related (mm-env/2 R) (sub-env-related/2 R).
-%worlds () (minmax-related _ _).
-%total (M) (minmax-related M _).
+%worlds () (minmax-related _ _ ).
+%total (M) (minmax-related M _ ).
 
 % Diamond / common prefix property
 
@@ -848,45 +855,99 @@ wf-tp-dia:
 %worlds () (wf-tp-dia _ _ _ _ _ _ _ _).
 %total A (wf-tp-dia A _ _ _ _ _ _ _).
 
+pack:
+  {F: exp -> tpe}
+  {REL:sub-env-related G0 G2}
+  {SE02: sub-env G0 G2'}
+  {S: tsize G0 (var N0)}
+  {STA:sub-tp G1' T1 X2 X1}
+  {STB:sub-tp G1' T1 (tcons X1 G0) (F (var N0))}
+  {W: wf-tp G0 (bindh F)}
+  type.
+pack/a:
+  {F: exp -> tpe}
+  {REL:sub-env-related G0 G2}
+  {SE02: sub-env G0 G2'}
+  {S: tsize G0 (var N0)}
+  {STA:sub-tp G1' T1 X2 X1}
+  {STB:sub-tp G1' T1 (tcons X1 G0) (F (var N0))}
+  {W: wf-tp G0 (bindh F)}
+  pack F REL SE02 S STA STB W.
+
+extract-from-pack-R:
+  {PACK: pack F REL (SE02: sub-env G0 G2') S (STA: sub-tp G1' T1 X2 X1) (STB:sub-tp G1' T1 (tcons X1 G0) (F (var N0))) (W: wf-tp G0 (bindh F))}
+  {STA:sub-tp G1' T1 X2 X1}
+  {STB:sub-tp G1' T1 (tcons X1 G0) (F (var N0))}
+  {R: sub-tp G1' T1 G2' (bindh F)}
+  type.
+%mode extract-from-pack-R +PACK -STA -STB -R.
+- : extract-from-pack-R (pack/a F REL SE02 S STA STB W) STA STB (sub-tp/tbindh SE02 S STA STB W).
+%worlds () (extract-from-pack-R _ _ _ _).
+%total P   (extract-from-pack-R P _ _ _).
+%reduces STA < R (extract-from-pack-R _ STA _ R).
+%reduces STB < R (extract-from-pack-R _ _ STB R).
+
 magic:
-{F:exp -> tpe}
-{WF1: wf-tp G1 (bindh F)}
-{ST2:sub-tp X1 X2 (tcons X3 (tcons X4 G1)) (F (var (s S1)))}
-{SZ1:tsize G1 (var S1)}
-{ST1:sub-tp X1 X2 (tcons X3 G1) (F (var S1))}
-type.
-
-%mode       magic +A +B +C +D -E.
-
-%worlds () (magic  _  _  _  _  _).
+  {PACK: pack F REL (SE02: sub-env G0 G2') S (STA: sub-tp G1' T1 X2 X1) (STB:sub-tp G1' T1 (tcons X1 G0) (F (var N0))) (W: wf-tp G0 (bindh F))}
+  {SE1: sub-env G1 G1'}
+  {SE2: sub-env G1 G2'}
+  {SE':sub-env G0' G2}
+  {S':tsize G0' (var N0')}
+  {STA':sub-tp G1 T1 X2' X1'}
+  {STB':sub-tp G1 T1 (tcons X1' G0') (F (var N0'))}
+  {W':wf-tp X5 (bindh F)}
+  type.
+%mode magic +PACK +SE1 +SE2 -SE' -S' -STA' -STB' -W'.
+%worlds () (magic _ _ _ _ _ _ _ _).
 %trustme
-%total (A) (magic  _  A  _  _  _).
+%total P   (magic P _ _ _ _ _ _ _).
 
+restrict-sub-tp-rec-bindh:
+  {SIZE:measure MEASURE}
+  {F: exp -> tpe}
+  {REL:sub-env-related G0 G2}
+  {SE02: sub-env G0 G2'}
+  {S: tsize G0 (var N0)}
+  {STA:sub-tp G1' T1 X2 X1}
+  {STB:sub-tp G1' T1 (tcons X1 G0) (F (var N0))}
+  {W: wf-tp G0 (bindh F)}
+  {PACK: pack F REL SE02 S STA STB W}
+  {W1: wf-tp G1 T1}
+  {W2: wf-tp G2 T2}
+  {SE1: sub-env G1 G1'}
+  {SE2: sub-env G2 G2'}
+  {SE':sub-env G0' G2}
+  {S':tsize G0' (var N0')}
+  {STA':sub-tp G1 T1 X2' X1'}
+  {STB':sub-tp G1 T1 (tcons X1' G0') (F (var N0'))}
+  {W':wf-tp X5 (bindh F)}
+  type.
+%mode restrict-sub-tp-rec-bindh +SIZE +F +REL +SE02 +S +STA +STB +W +PACK +W1 +W2 +SE1 +SE2 -SE' -S' -STA' -STB' -W'.
 
-restrict-sub-tp-rec: sub-tp G1 T1 G2 T2
+restrict-sub-tp-rec: {SIZE:measure (s MEASURE)} sub-tp G1 T1 G2 T2
   -> wf-tp G1 T1
   -> wf-tp G2 T2
   -> sub-env G1 G1'
   -> sub-env G2 G2'
   -> sub-tp G1' T1 G2' T2
   -> type.
-%mode restrict-sub-tp-rec -A +B +C +D +E +F.
+%mode restrict-sub-tp-rec +SIZE -A +B +C +D +E +F.
 
-- : restrict-sub-tp-rec sub-tp/int W1 W2 SE1 SE2 sub-tp/int.
-- : restrict-sub-tp-rec sub-tp/bool W1 W2 SE1 SE2 sub-tp/bool.
-- : restrict-sub-tp-rec (sub-tp/top W1) W1 W2 SE1 SE2 (sub-tp/top _).
-- : restrict-sub-tp-rec (sub-tp/bot W2) W1 W2 SE1 SE2 (sub-tp/bot _).
-- : restrict-sub-tp-rec (sub-tp/fun ST1 ST2) (wf-tp/fun W1 W2) (wf-tp/fun W3 W4) SE1 SE2 (sub-tp/fun ST1' ST2')
-      <- restrict-sub-tp-rec ST1 W1 W3 SE1 SE2 ST1'
-      <- restrict-sub-tp-rec ST2 W4 W2 SE2 SE1 ST2'.
-- : restrict-sub-tp-rec (sub-tp/rect ST1 ST2 B2 B1) (wf-tp/rect SB1 W1 W2) (wf-tp/rect SB2 W3 W4) SE1 SE2 (sub-tp/rect ST1' ST2' B2' B1')
-      <- restrict-sub-tp-rec B2 W4 W3 SE2 SE2 B2'
-      <- restrict-sub-tp-rec B1 W2 W1 SE1 SE1 B1'
-      <- restrict-sub-tp-rec ST1 W1 W3 SE1 SE2 ST1'
-      <- restrict-sub-tp-rec ST2 W4 W2 SE2 SE1 ST2'.
-- : restrict-sub-tp-rec (sub-tp/recv ST1) (wf-tp/recv W1) (wf-tp/recv W2) SE1 SE2 (sub-tp/recv ST1')
-      <- restrict-sub-tp-rec ST1 W1 W2 SE1 SE2 ST1'.
-- : restrict-sub-tp-rec
+- : restrict-sub-tp-rec SIZE sub-tp/int W1 W2 SE1 SE2 sub-tp/int.
+- : restrict-sub-tp-rec SIZE sub-tp/bool W1 W2 SE1 SE2 sub-tp/bool.
+- : restrict-sub-tp-rec SIZE (sub-tp/top W1) W1 W2 SE1 SE2 (sub-tp/top _).
+- : restrict-sub-tp-rec SIZE (sub-tp/bot W2) W1 W2 SE1 SE2 (sub-tp/bot _).
+- : restrict-sub-tp-rec SIZE (sub-tp/fun ST1 ST2) (wf-tp/fun W1 W2) (wf-tp/fun W3 W4) SE1 SE2 (sub-tp/fun ST1' ST2')
+      <- restrict-sub-tp-rec SIZE ST1 W1 W3 SE1 SE2 ST1'
+      <- restrict-sub-tp-rec SIZE ST2 W4 W2 SE2 SE1 ST2'.
+- : restrict-sub-tp-rec SIZE (sub-tp/rect ST1 ST2 B2 B1) (wf-tp/rect SB1 W1 W2) (wf-tp/rect SB2 W3 W4) SE1 SE2 (sub-tp/rect ST1' ST2' B2' B1')
+      <- restrict-sub-tp-rec SIZE B2 W4 W3 SE2 SE2 B2'
+      <- restrict-sub-tp-rec SIZE B1 W2 W1 SE1 SE1 B1'
+      <- restrict-sub-tp-rec SIZE ST1 W1 W3 SE1 SE2 ST1'
+      <- restrict-sub-tp-rec SIZE ST2 W4 W2 SE2 SE1 ST2'.
+- : restrict-sub-tp-rec SIZE (sub-tp/recv ST1) (wf-tp/recv W1) (wf-tp/recv W2) SE1 SE2 (sub-tp/recv ST1')
+      <- restrict-sub-tp-rec SIZE ST1 W1 W2 SE1 SE2 ST1'.
+- : restrict-sub-tp-rec SIZE 
     (sub-tp/tsel1 ST (pev (wf-tp/rect SF WU WS) L1))
     ((wf-tp/tsel     (pev (wf-tp/rect SF WU WS) L1)): (wf-tp _ (tsel (var N))))
     W2 SE1 SE2
@@ -902,9 +963,9 @@ restrict-sub-tp-rec: sub-tp G1 T1 G2 T2
       <- lookup-eq L' L1' E _ SB  % need the other direction to convert back
 
       <- eq-wf SA WU WUQ
-      <- restrict-sub-tp-rec STQ WUQ W2 SE1 SE2 ST'
+      <- restrict-sub-tp-rec SIZE STQ WUQ W2 SE1 SE2 ST'
       <- eq-low SB STQ ST.
-- : restrict-sub-tp-rec
+- : restrict-sub-tp-rec SIZE 
     (sub-tp/tsel2 ST (pev (wf-tp/rect SF WU WS) L1))
     W1
     ((wf-tp/tsel     (pev (wf-tp/rect SF WU WS) L1)): (wf-tp _ (tsel (var N))))
@@ -921,9 +982,9 @@ restrict-sub-tp-rec: sub-tp G1 T1 G2 T2
       <- lookup-eq L' L1' E SB _  % need the other direction to convert back
 
       <- eq-wf SA WS WSQ
-      <- restrict-sub-tp-rec STQ W1 WSQ SE1 SE2 ST'
+      <- restrict-sub-tp-rec SIZE STQ W1 WSQ SE1 SE2 ST'
       <- eq-high SB STQ ST.
-- : restrict-sub-tp-rec (sub-tp/tselx P S1 S2) W1 W2 SE1 SE2 (sub-tp/tselx P' S1' S2')
+- : restrict-sub-tp-rec SIZE (sub-tp/tselx P S1 S2) W1 W2 SE1 SE2 (sub-tp/tselx P' S1' S2')
       <- extend-wf-tp-mult (wf-tp/tsel P') S1' W1'
       <- extend-wf-tp-mult (wf-tp/tsel P') S2' W2'
       <- wf-tp-dia W1' W1 (wf-tp/tsel P') SE1 S1' (wf-tp/tsel P1) S1A S1B
@@ -931,21 +992,29 @@ restrict-sub-tp-rec: sub-tp G1 T1 G2 T2
       <- wf-tp-dia (wf-tp/tsel P') (wf-tp/tsel P1) (wf-tp/tsel P2) S1B S2B (wf-tp/tsel P) S3A S3B
       <- sub-env-trans S3A S1A S1
       <- sub-env-trans S3B S2A S2.
-- : restrict-sub-tp-rec
-     (sub-tp/tbindh SE02 S STA' STB' W)
+
+- : restrict-sub-tp-rec (measure/s SIZE)
+     (sub-tp/tbindh SE' S' STA' STB' W')
      W1
      W2
      SE1
      SE2
-     (sub-tp/tbindh SE02' S STA STB W)
+     (sub-tp/tbindh SE02' S STA STB (W: wf-tp _ (bindh F)))
      <- sub-env-dia SE02' SE2 M
-     <- minmax-related M (sub-env-related/1 SE02)
+     <- minmax-related M REL
+     <- restrict-sub-tp-rec-bindh SIZE F REL SE02' S STA STB W (pack/a F REL SE02' S STA STB W) W1 W2 SE1 SE2 SE' S' STA' STB' W'.
+
+- : restrict-sub-tp-rec-bindh SIZE F (sub-env-related/1 SE') SE02' S STA STB W (pack/a F (sub-env-related/1 SE') SE02' S STA STB W) W1 W2 SE1 SE2 SE' S STA' STB' W
      <- extract-wf STA WA0 WA2
      <- extract-wf STB WB0 WB2
-     <- restrict-sub-tp-rec STA' W1 WA2 SE1 sub-env/refl STA
-     <- restrict-sub-tp-rec STB' W1 WB2 SE1 sub-env/refl STB.
-%worlds () (restrict-sub-tp-rec _ _ _ _ _ _).
-%total (A) (restrict-sub-tp-rec _ _ _ _ _ A).
+     <- restrict-sub-tp-rec (measure/s SIZE) STA' W1 WA2 SE1 sub-env/refl STA
+     <- restrict-sub-tp-rec (measure/s SIZE) STB' W1 WB2 SE1 sub-env/refl STB.
+
+- : restrict-sub-tp-rec-bindh SIZE F (sub-env-related/2 SE) SE02' S STA STB W (pack/a F (sub-env-related/2 SE) SE02' S STA STB W) W1 W2 SE1 SE2 SE' S' STA' STB' W'
+     <- magic (pack/a F (sub-env-related/2 SE) SE02' S STA STB W) SE1 SE2 SE' S' STA' STB' W'.
+
+%worlds () (restrict-sub-tp-rec _ _ _ _ _ _ _) (restrict-sub-tp-rec-bindh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+%total {(A' B') (A B)} (restrict-sub-tp-rec A' _ _ _ _ _ A) (restrict-sub-tp-rec-bindh B' _ _ _ _ _ _ _ B _ _ _ _ _ _ _ _ _).
 
 restrict-sub-tp: sub-tp G1 T1 G2 T2 
   -> wf-tp G1 T1
@@ -2307,3 +2376,16 @@ restrict-sub-tp1: sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> {Z: tpe} sub-tp (tcons Z 
 %worlds () (restrict-sub-tp _ _ _ _ _).
 %total (A) (restrict-sub-tp _ _ _ _ A).
 
+magic:
+{F:exp -> tpe}
+{WF1: wf-tp G1 (bindh F)}
+{ST2:sub-tp X1 X2 (tcons X3 (tcons X4 G1)) (F (var (s S1)))}
+{SZ1:tsize G1 (var S1)}
+{ST1:sub-tp X1 X2 (tcons X3 G1) (F (var S1))}
+type.
+
+%mode       magic +A +B +C +D -E.
+
+%worlds () (magic  _  _  _  _  _).
+%trustme
+%total (A) (magic  _  A  _  _  _).
