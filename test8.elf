@@ -285,7 +285,7 @@ wf-tp : tenv -> tpe -> type.
 
 sub-tp : tenv -> tpe -> tenv -> tpe -> type.
 
-pev  : path-eval G E T <- wf-tp G T <- tlookup G E T.
+pev  : path-eval G E T <- tlookup G E T <- wf-tp G T.
 
 % pev/sub  : path-eval G E T2 <- path-eval G E T1 <- sub-tp G T1 G T2.
 
@@ -359,12 +359,12 @@ extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
 - : extract-wf (sub-tp/recv ST) (wf-tp/recv W1) (wf-tp/recv W2)
       <- extract-wf ST W1 W2.
 
-- : extract-wf (sub-tp/tsel1 ST (pev L (wf-tp/rect SB W1 W3))) 
-      (wf-tp/tsel (pev L (wf-tp/rect SB W1 W3))) W2
+- : extract-wf (sub-tp/tsel1 ST (pev (wf-tp/rect SB W1 W3) L)) 
+      (wf-tp/tsel (pev (wf-tp/rect SB W1 W3) L)) W2
       <- extract-wf ST _ W2. % W1 W2
 
-- : extract-wf (sub-tp/tsel2 ST (pev L (wf-tp/rect SB W3 W2))) 
-      W1 (wf-tp/tsel (pev L (wf-tp/rect SB W3 W2)))
+- : extract-wf (sub-tp/tsel2 ST (pev (wf-tp/rect SB W3 W2) L)) 
+      W1 (wf-tp/tsel (pev (wf-tp/rect SB W3 W2) L))
       <- extract-wf ST W1 _. % W1 W2
 
 
@@ -529,7 +529,7 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-wf-tp W2 _ W2'.
 - : extend-wf-tp (wf-tp/recv W1) T (wf-tp/recv W1') 
       <- extend-wf-tp W1 _ W1'.
-- : extend-wf-tp (wf-tp/tsel (pev L W)) T (wf-tp/tsel (pev L' W'))
+- : extend-wf-tp (wf-tp/tsel (pev W L)) T (wf-tp/tsel (pev W' L'))
       <- extend-wf-lkp L _ L'
       <- extend-wf-tp W _ W'.
 
@@ -550,13 +550,13 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 - : extend-sub-tp (sub-tp/recv ST1) T (sub-tp/recv ST1') (sub-tp/recv ST1A) (sub-tp/recv ST1B) 
       <- extend-sub-tp ST1 _ ST1' ST1A ST1B.
-- : extend-sub-tp (sub-tp/tsel1 ST (pev L W)) T 
-    (sub-tp/tsel1 ST' (pev L' W')) (sub-tp/tsel1 STA (pev L' W')) (sub-tp/tsel1 STB (pev L W))
+- : extend-sub-tp (sub-tp/tsel1 ST (pev W L)) T 
+    (sub-tp/tsel1 ST' (pev W' L')) (sub-tp/tsel1 STA (pev W' L')) (sub-tp/tsel1 STB (pev W L))
       <- extend-wf-lkp L _ L'
       <- extend-wf-tp W _ W'
       <- extend-sub-tp ST _ ST' STA STB.
-- : extend-sub-tp (sub-tp/tsel2 ST (pev L W)) T 
-    (sub-tp/tsel2 ST' (pev L' W')) (sub-tp/tsel2 STA (pev L W)) (sub-tp/tsel2 STB (pev L' W'))
+- : extend-sub-tp (sub-tp/tsel2 ST (pev W L)) T 
+    (sub-tp/tsel2 ST' (pev W' L')) (sub-tp/tsel2 STA (pev W L)) (sub-tp/tsel2 STB (pev W' L'))
       <- extend-wf-lkp L _ L'
       <- extend-wf-tp W _ W'
       <- extend-sub-tp ST _ ST' STA STB.
@@ -610,10 +610,10 @@ restrict-sub-tp: sub-tp G1 T1 G2 T2
       <- restrict-sub-tp ST1 W1 W2 T ST1'.
 
 - : restrict-sub-tp 
-    (sub-tp/tsel1 ST (pev L1 (wf-tp/rect SF WU WS)))
-    ((wf-tp/tsel     (pev L1 (wf-tp/rect SF WU WS))): (wf-tp _ (tsel (var N))))
+    (sub-tp/tsel1 ST (pev (wf-tp/rect SF WU WS) L1))
+    ((wf-tp/tsel     (pev (wf-tp/rect SF WU WS) L1)): (wf-tp _ (tsel (var N))))
     W2 T 
-    (sub-tp/tsel1 ST' (pev L' (wf-tp/rect SF' WU' WS')))
+    (sub-tp/tsel1 ST' (pev (wf-tp/rect SF' WU' WS') L'))
 
       % first extend L1, then prove it's equal to L',
       % establishing that we can use L1 in the result
@@ -629,11 +629,11 @@ restrict-sub-tp: sub-tp G1 T1 G2 T2
       <- eq-low SB STQ ST.
 
 - : restrict-sub-tp 
-    (sub-tp/tsel2 ST (pev L1 (wf-tp/rect SF WU WS)))
+    (sub-tp/tsel2 ST (pev (wf-tp/rect SF WU WS) L1))
     W1
-    ((wf-tp/tsel     (pev L1 (wf-tp/rect SF WU WS))): (wf-tp _ (tsel (var N))))
+    ((wf-tp/tsel     (pev (wf-tp/rect SF WU WS) L1)): (wf-tp _ (tsel (var N))))
     T 
-    (sub-tp/tsel2 ST' (pev L' (wf-tp/rect SF' WU' WS')))
+    (sub-tp/tsel2 ST' (pev (wf-tp/rect SF' WU' WS') L'))
 
       % first extend L1, then prove it's equal to L',
       % establishing that we can use L1 in the result
@@ -925,9 +925,9 @@ sub-tp-trans-aux :
 
 
 -/tsel2-tsel1  : sub-tp-trans-aux  % T1 < p.T2 && p.T2 < T3 --> T1 < T3
-      (wf-tp/tsel (pev (P0: (tlookup G2 (var N) (rect T2 T2U))) (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) ))
-      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (P1: (tlookup G2 (var N) (rect T2A T2UA))) (wf-tp/rect _ W1X W1Y)))
-      (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) (pev (P2: (tlookup G2 (var N) (rect T2B T2UB))) (wf-tp/rect _ W2X W2Y)))
+      (wf-tp/tsel (pev (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) (P0: (tlookup G2 (var N) (rect T2 T2U))) ))
+      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (wf-tp/rect _ W1X W1Y) (P1: (tlookup G2 (var N) (rect T2A T2UA))) ))
+      (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) (pev (wf-tp/rect _ W2X W2Y) (P2: (tlookup G2 (var N) (rect T2B T2UB))) ))
       (SBT5: sub-tp G1 T1 G3 T3)
       
       <- eq-refl N Q
@@ -1662,3 +1662,11 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
 %worlds () (eval-safe _ _ _ _).
 %total C (eval-safe A _ C _). % induction on eval-exp
 
+%query 1 1 tlookup (tcons (rect bot top) tnil) (var (s z)) T.
+%query 1 1 wf-tp tnil (rect bot top).
+
+%query 1 1 wf-tp (tcons (rect bot top) tnil) (rect bot top).
+
+%query 1 1 path-eval (tcons (rect bot top) tnil) (var (s z)) T.
+
+%query 1 1 wf-tp (tcons (rect bot top) tnil) (tsel (var (s z))).
