@@ -1216,3 +1216,6 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
 %worlds () (eval-safe _ _ _ _).
 %total C (eval-safe A _ C _). % induction on eval-exp
 
+%query 1 1 tlookup (tcons (rect bot) (tcons (rect top) tnil)) (var (s z)) (rect top).
+%query 1 1 tlookup (tcons (rect bot) (tcons (rect top) tnil)) (var (s (s z))) (rect bot).
+%query 1 1 wf-tp (tcons (rect top) tnil) (tsel (var (s z))).
