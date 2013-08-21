@@ -514,12 +514,12 @@ lookup-restrict: tlookup G2 N (tsome T2) -> tlookup G1 N (tsome T1) -> sub-env G
 
 % get-fresh operation:
 
-get-fresh: {G:tenv} {N:nat} tfresh N G -> type.
-%mode get-fresh +A -B -C.
-
-%worlds () (get-fresh _ _ _).
-%trustme
-%total A (get-fresh A _ _).
+% get-fresh: {G:tenv} {N:nat} tfresh N G -> type.
+% %mode get-fresh +A -B -C.
+% 
+% %worlds () (get-fresh _ _ _).
+% %trustme
+% %total A (get-fresh A _ _).
 
 
 
@@ -1041,16 +1041,18 @@ wf-tp-dia:
 - : wf-tp-dia wf-tp/bot wf-tp/bot wf-tp/bot S1 S2 wf-tp/bot sub-env/nil sub-env/nil.
 
 
-- : wf-tp-dia (wf-tp/fun TT2 TT1) (wf-tp/fun T12 T11) (wf-tp/fun T22 T21) S1T S2T 
+wf-tp-dia/fun : wf-tp-dia 
+              (wf-tp/fun TT2 TT1) (wf-tp/fun T12 T11) (wf-tp/fun T22 T21) S1T S2T 
               (wf-tp/fun T02' T01') S01 S02
                   <- wf-tp-dia TT1 T11 T21 S1T S2T T01 S01A S02A
                   <- wf-tp-dia TT2 T12 T22 S1T S2T T02 S01B S02B
                   <- join-env _ _ S1T S2T S01A S02A S01B S02B SA0 SB0 S01 S02 S0T
-                  <- extend-wf-tp T01 SA0 T01' S01 T01
-                  <- extend-wf-tp T02 SB0 T02' S02 T02
+                  <- extend-wf-tp T01 SA0 T01' S0T TT1
+                  <- extend-wf-tp T02 SB0 T02' S0T TT2
                   .
 
-- : wf-tp-dia (wf-tp/tsel WT LT) (wf-tp/tsel W1 L1)(wf-tp/tsel W2 L2) S1T S2T 
+wf-tp-dia/sel : wf-tp-dia 
+              (wf-tp/tsel WT LT) (wf-tp/tsel W1 L1)(wf-tp/tsel W2 L2) S1T S2T 
               (wf-tp/tsel W0' L0') S01' S02'
                   %% establish that W1 L1 W2 L2 all have the same type as WT LT
                   <- restrict-wf-pev WT LT S1T W1 L1 W1' L1'
@@ -1059,9 +1061,10 @@ wf-tp-dia:
                   <- wf-tp-dia WT W1' W2' S1T S2T W0 S01 S02
                   %% add key/val being looked up to result W0
                   <- tl-join S01 S02 L1' L2' L0' S0 S01' S02'
-                  <- extend-wf-tp W0 S0 W0' S01 W1'.
+                  <- extend-wf-tp W0 S0 W0' S01' W1'.
 
-- : wf-tp-dia (wf-tp/tbind WT SET0 SET1) 
+
+b- : wf-tp-dia (wf-tp/tbind WT SET0 SET1) 
               (wf-tp/tbind W1 SE10 SE11)
               (wf-tp/tbind W2 SE20 SE21) 
               S1T S2T 
@@ -1069,6 +1072,8 @@ wf-tp-dia:
               (wf-tp/tbind W0 SE00 SE01) 
               % S01 S02
               S01rx S02rx
+
+                %% prepare recursive call: all W are in sub-env of WT
 
                 <- sub-env-extend2 _ S1T _ _ S1Tx
                 <- sub-env-trans SE11 S1Tx S1Tx'
@@ -1080,26 +1085,40 @@ wf-tp-dia:
 
                 <- wf-tp-dia WT W1 W2 S1T' S2T' W0x S01x S02x
 
-                <- sub-env-trans S01x SE11 (S01xx: sub-env X5 (tcons X7 (tbind X7 X2) X8 F8))
+                %% find env below X5 (that of W0x) that does not contain N (call it X10)
+
+                <- sub-env-trans S01x SE11 (S01xx: sub-env X5 (tcons N (tbind N X2) X8 F8))
                 <- sub-env-restrict S01xx 
                     (S01r: sub-env X10 X5) 
                     (S01rx: sub-env X10 X8)
-                    (S01rr: sub-env X5 (tcons X7 (tbind X7 X2) X10 F10))
+                    (S01rr: sub-env X5 (tcons N (tbind N X2) X10 F10))
 
-                %% TODO: derive S02rx: sub-env X10 X11
+                %% we already have that X10 is smaller than env of W1,
+                %% now prove that X10 is smaller than env of W2
+
+                %% derive S02rx: sub-env X10 X11
                 %% S01r: X10 < X5, 
                 %% S02x:sub-env X5 X4
-                %% SE21:sub-env X4 (tcons X7 (tbind X7 X2) X11 X12)
+                %% SE21:sub-env X4 (tcons N (tbind N X2) X11 X12)
                 %% given F10 we have sub-env X10 X11
+
+                <- sub-env-trans S01r S02x S02xx'
+                <- sub-env-trans S02xx' SE21 S02xx
+
+                <- sub-env-restrict2 S02xx F10 S02rx
+
+
+                %% lift W0x from X5 to X10, call it W0
 
                 <- sub-env-extend2 _ S01rx F10 F8 S01rrx
                 <- sub-env-trans S01rrx SE10 S01rrrx
 
                 <- extend-wf-tp W0x S01rr W0 S01rrrx W1
 
-                <- sub-env-refl (tcons X7 (tbind X7 X2) X10 F10) SE00 
-                <- sub-env-refl (tcons X7 (tbind X7 X2) X10 F10) SE01 
+                <- sub-env-refl (tcons N (tbind N X2) X10 F10) SE00 
+                <- sub-env-refl (tcons N (tbind N X2) X10 F10) SE01 
                 .
+
 
 %{
     picked W0x = W0, i.e. X14 = X5 <-- sensible??
