@@ -269,6 +269,16 @@ minmax-env: tenv -> tenv -> tenv -> tenv -> type.
 mm-env/1: minmax-env G1 G2 G1 G2 <- sub-env G1 G2.
 mm-env/2: minmax-env G1 G2 G2 G1 <- sub-env G2 G1.
 
+sub-env-related: tenv -> tenv -> type.
+sub-env-related/1: sub-env-related G1 G2 <- sub-env G1 G2.
+sub-env-related/2: sub-env-related G1 G2 <- sub-env G2 G1.
+
+minmax-related: minmax-env G1 G2 GS GU -> sub-env-related G1 G2 -> type.
+%mode minmax-related +M -R.
+minmax-related/1: minmax-related (mm-env/1 R) (sub-env-related/1 R).
+minmax-related/2: minmax-related (mm-env/2 R) (sub-env-related/2 R).
+%worlds () (minmax-related _ _).
+%total (M) (minmax-related M _).
 
 % Diamond / common prefix property
 
@@ -928,12 +938,12 @@ restrict-sub-tp-rec: sub-tp G1 T1 G2 T2
      SE1
      SE2
      (sub-tp/tbindh SE02' S STA STB W)
-     <- sub-env-dia SE02' SE2 (mm-env/1 SE02)
+     <- sub-env-dia SE02' SE2 M
+     <- minmax-related M (sub-env-related/1 SE02)
      <- extract-wf STA WA0 WA2
      <- extract-wf STB WB0 WB2
      <- restrict-sub-tp-rec STA' W1 WA2 SE1 sub-env/refl STA
      <- restrict-sub-tp-rec STB' W1 WB2 SE1 sub-env/refl STB.
-
 %worlds () (restrict-sub-tp-rec _ _ _ _ _ _).
 %total (A) (restrict-sub-tp-rec _ _ _ _ _ A).
 
