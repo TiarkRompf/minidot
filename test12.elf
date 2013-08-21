@@ -913,6 +913,14 @@ restrict-sub-tp-rec: sub-tp G1 T1 G2 T2
       <- eq-wf SA WS WSQ
       <- restrict-sub-tp-rec STQ W1 WSQ SE1 SE2 ST'
       <- eq-high SB STQ ST.
+- : restrict-sub-tp-rec (sub-tp/tselx P S1 S2) W1 W2 SE1 SE2 (sub-tp/tselx P' S1' S2')
+      <- extend-wf-tp-mult (wf-tp/tsel P') S1' W1'
+      <- extend-wf-tp-mult (wf-tp/tsel P') S2' W2'
+      <- wf-tp-dia W1' W1 (wf-tp/tsel P') SE1 S1' (wf-tp/tsel P1) S1A S1B
+      <- wf-tp-dia W2' W2 (wf-tp/tsel P') SE2 S2' (wf-tp/tsel P2) S2A S2B
+      <- wf-tp-dia (wf-tp/tsel P') (wf-tp/tsel P1) (wf-tp/tsel P2) S1B S2B (wf-tp/tsel P) S3A S3B
+      <- sub-env-trans S3A S1A S1
+      <- sub-env-trans S3B S2A S2.
 - : restrict-sub-tp-rec
      (sub-tp/tbindh SE02 S STA' STB' W)
      W1
