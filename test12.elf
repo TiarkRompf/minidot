@@ -853,14 +853,27 @@ type.
 %total (A) (magic  _  A  _  _  _).
 
 
+restrict-sub-tp-rec: sub-tp G1 T1 G2 T2
+  -> wf-tp G1 T1
+  -> wf-tp G2 T2
+  -> sub-env G1 G1'
+  -> sub-env G2 G2'
+  -> sub-tp G1' T1 G2' T2
+  -> type.
+%mode restrict-sub-tp-rec -A +B +C +D +E +F.
+%worlds () (restrict-sub-tp-rec _ _ _ _ _ _).
+%trustme
+%total (A) (restrict-sub-tp-rec _ _ _ _ _ A).
+
 restrict-sub-tp: sub-tp G1 T1 G2 T2 
   -> wf-tp G1 T1
   -> wf-tp G2 T2
   -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2) T2 
   -> type.
 %mode restrict-sub-tp -A +B +C +D +E.
+- : restrict-sub-tp ST W1 W2 Z ST'
+     <- restrict-sub-tp-rec ST W1 W2 (sub-env/ext sub-env/refl) (sub-env/ext sub-env/refl) ST'.
 %worlds () (restrict-sub-tp _ _ _ _ _).
-%trustme
 %total (A) (restrict-sub-tp _ _ _ _ A).
 
 restrict-sub-tp1: sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> {Z: tpe} sub-tp (tcons Z G1) T1 G2 T2 -> type.
