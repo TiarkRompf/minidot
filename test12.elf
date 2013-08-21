@@ -862,6 +862,11 @@ restrict-sub-tp-rec: sub-tp G1 T1 G2 T2
   -> type.
 %mode restrict-sub-tp-rec -A +B +C +D +E +F.
 
+- : restrict-sub-tp-rec sub-tp/int W1 W2 SE1 SE2 sub-tp/int.
+- : restrict-sub-tp-rec sub-tp/bool W1 W2 SE1 SE2 sub-tp/bool.
+- : restrict-sub-tp-rec (sub-tp/top W1) W1 W2 SE1 SE2 (sub-tp/top _).
+- : restrict-sub-tp-rec (sub-tp/bot W2) W1 W2 SE1 SE2 (sub-tp/bot _).
+
 - : restrict-sub-tp-rec
      (sub-tp/tbindh SE02 S STA' STB' W)
      W1
