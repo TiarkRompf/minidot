@@ -895,6 +895,25 @@ restrict-sub-tp-rec: sub-tp G1 T1 G2 T2
       <- restrict-sub-tp-rec STQ WUQ W2 SE1 SE2 ST'
       <- eq-low SB STQ ST.
 - : restrict-sub-tp-rec
+    (sub-tp/tsel2 ST (pev (wf-tp/rect SF WU WS) L1))
+    W1
+    ((wf-tp/tsel     (pev (wf-tp/rect SF WU WS) L1)): (wf-tp _ (tsel (var N))))
+    SE1 SE2
+    (sub-tp/tsel2 ST' (pev (wf-tp/rect SF' WU' WS') L'))
+
+      % first extend L1, then prove it's equal to L',
+      % establishing that we can use L1 in the result
+
+      <- extend-wf-lkp-mult L1 SE2 L1'  
+
+      <- eq-refl N E
+      <- lookup-eq L1' L' E SA _
+      <- lookup-eq L' L1' E SB _  % need the other direction to convert back
+
+      <- eq-wf SA WS WSQ
+      <- restrict-sub-tp-rec STQ W1 WSQ SE1 SE2 ST'
+      <- eq-high SB STQ ST.
+- : restrict-sub-tp-rec
      (sub-tp/tbindh SE02 S STA' STB' W)
      W1
      W2
