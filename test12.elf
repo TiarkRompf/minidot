@@ -869,6 +869,11 @@ restrict-sub-tp-rec: sub-tp G1 T1 G2 T2
 - : restrict-sub-tp-rec (sub-tp/fun ST1 ST2) (wf-tp/fun W1 W2) (wf-tp/fun W3 W4) SE1 SE2 (sub-tp/fun ST1' ST2')
       <- restrict-sub-tp-rec ST1 W1 W3 SE1 SE2 ST1'
       <- restrict-sub-tp-rec ST2 W4 W2 SE2 SE1 ST2'.
+- : restrict-sub-tp-rec (sub-tp/rect ST1 ST2 B2 B1) (wf-tp/rect SB1 W1 W2) (wf-tp/rect SB2 W3 W4) SE1 SE2 (sub-tp/rect ST1' ST2' B2' B1')
+      <- restrict-sub-tp-rec B2 W4 W3 SE2 SE2 B2'
+      <- restrict-sub-tp-rec B1 W2 W1 SE1 SE1 B1'
+      <- restrict-sub-tp-rec ST1 W1 W3 SE1 SE2 ST1'
+      <- restrict-sub-tp-rec ST2 W4 W2 SE2 SE1 ST2'.
 - : restrict-sub-tp-rec
      (sub-tp/tbindh SE02 S STA' STB' W)
      W1
