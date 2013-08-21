@@ -402,7 +402,7 @@ wf-tp/tsel : wf-tp G1 (tsel E1)
 wf-tp/tbindh : wf-tp G1 (bindh ([x] F x))
               <- sub-env G0 G1
               <- tsize G0 (var N)
-              <- wf-tp (tcons (bindh ([x] F x)) G0) (F (var N)).
+              <- wf-tp (tcons U G0) (F (var N)).
 
 
 % Subtyping with explicit equality case
@@ -539,8 +539,19 @@ eq-wf: same T1 T1' -> wf-tp G1 T1 -> wf-tp G1 T1' -> type.
 %total {T2} (eq-wf T2 _ _).
 
 
+%query 1 1 wf-tp tnil top.
+%query 1 1 wf-tp tnil (rect bot top).
+%query 1 1 wf-tp tnil (bindh [x] (rect bot top)).
 
+%query 1 1 tlookup (tcons (rect bot top) tnil) (var z) T.
 
+%query 1 1 wf-tp (tcons (rect bot top) tnil) (tsel (var z)).
+
+%query 1 1 wf-tp (tcons (rect bot top) tnil) (bindh [x] (tsel (var z))).
+
+%query 1 1 wf-tp (tcons (bindh ([x] F x)) (tcons (rect bot top) tnil)) (tsel (var z)).
+
+%query 1 1 wf-tp tnil (bindh [x] (rect bot (rect bot (tsel x)))).
 
 % Extending environments preserves subtyping
 
@@ -827,18 +838,6 @@ wf-tp-dia:
 %worlds () (wf-tp-dia _ _ _ _ _ _ _ _).
 %total A (wf-tp-dia A _ _ _ _ _ _ _).
 
-%query 1 1 wf-tp tnil top.
-%query 1 1 wf-tp tnil (rect bot top).
-%query 1 1 wf-tp tnil (bindh [x] (rect bot top)).
-
-%query 1 1 tlookup (tcons (rect bot top) tnil) (var z) T.
-
-%query 1 1 wf-tp (tcons (rect bot top) tnil) (tsel (var z)).
-
-%query 1 1 wf-tp (tcons (rect bot top) tnil) (bindh [x] (tsel (var z))).
-
-%query 1 1 wf-tp (tcons (bindh ([x] F x)) (tcons (rect bot top) tnil)) (tsel (var z)).
-
 magic:
 {F:exp -> tpe}
 {WF1: wf-tp G1 (bindh F)}
@@ -854,120 +853,15 @@ type.
 %total (A) (magic  _  A  _  _  _).
 
 
-% Restrict subeq - placed here because it uses wf-tp-dia (does it have to?)
-
 restrict-sub-tp: sub-tp G1 T1 G2 T2 
   -> wf-tp G1 T1
   -> wf-tp G2 T2
   -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2) T2 
   -> type.
 %mode restrict-sub-tp -A +B +C +D +E.
-
-- : restrict-sub-tp sub-tp/int W1 W2 T sub-tp/int.
-- : restrict-sub-tp sub-tp/bool W1 W2 T  sub-tp/bool.
-- : restrict-sub-tp (sub-tp/top W1) W1 W2 T (sub-tp/top _). 
-- : restrict-sub-tp (sub-tp/bot W2) W1 W2 T (sub-tp/bot _). 
-- : restrict-sub-tp (sub-tp/fun ST1 ST2) (wf-tp/fun W1 W2) (wf-tp/fun W3 W4) T (sub-tp/fun ST1' ST2')
-      <- restrict-sub-tp ST1 W1 W3 T ST1'
-      <- restrict-sub-tp ST2 W4 W2 T ST2'.
-- : restrict-sub-tp (sub-tp/rect ST1 ST2 B2 B1) (wf-tp/rect SB1 W1 W2) (wf-tp/rect SB2 W3 W4) T (sub-tp/rect ST1' ST2' B2' B1')
-      <- restrict-sub-tp B2 W4 W3 T B2'
-      <- restrict-sub-tp B1 W2 W1 T B1'
-      <- restrict-sub-tp ST1 W1 W3 T ST1'
-      <- restrict-sub-tp ST2 W4 W2 T ST2'.
-- : restrict-sub-tp (sub-tp/recv ST1) (wf-tp/recv W1) (wf-tp/recv W2) T (sub-tp/recv ST1')
-      <- restrict-sub-tp ST1 W1 W2 T ST1'.
-
-- : restrict-sub-tp 
-    (sub-tp/tsel1 ST (pev (wf-tp/rect SF WU WS) L1))
-    ((wf-tp/tsel     (pev (wf-tp/rect SF WU WS) L1)): (wf-tp _ (tsel (var N))))
-    W2 T 
-    (sub-tp/tsel1 ST' (pev (wf-tp/rect SF' WU' WS') L'))
-
-      % first extend L1, then prove it's equal to L',
-      % establishing that we can use L1 in the result
-
-      <- extend-wf-lkp L1 T L1'  
-
-      <- eq-refl N E
-      <- lookup-eq L1' L' E _ SA
-      <- lookup-eq L' L1' E _ SB  % need the other direction to convert back
-
-      <- eq-wf SA WU WUQ
-      <- restrict-sub-tp STQ WUQ W2 T ST'
-      <- eq-low SB STQ ST.
-
-- : restrict-sub-tp 
-    (sub-tp/tsel2 ST (pev (wf-tp/rect SF WU WS) L1))
-    W1
-    ((wf-tp/tsel     (pev (wf-tp/rect SF WU WS) L1)): (wf-tp _ (tsel (var N))))
-    T 
-    (sub-tp/tsel2 ST' (pev (wf-tp/rect SF' WU' WS') L'))
-
-      % first extend L1, then prove it's equal to L',
-      % establishing that we can use L1 in the result
-
-      <- extend-wf-lkp L1 T L1'  
-
-      <- eq-refl N E
-      <- lookup-eq L1' L' E SA _
-      <- lookup-eq L' L1' E SB _  % need the other direction to convert back
-
-      <- eq-wf SA WS WSQ
-      <- restrict-sub-tp STQ W1 WSQ T ST'
-      <- eq-high SB STQ ST.
-
-
-- : restrict-sub-tp (sub-tp/tselx P S1 S2) W1 W2 T (sub-tp/tselx P' S1' S2')
-      <- extend-wf-tp-mult (wf-tp/tsel P') S1' W1'
-      <- extend-wf-tp-mult (wf-tp/tsel P') S2' W2'
-      <- wf-tp-dia W1' W1 (wf-tp/tsel P') (sub-env/ext sub-env/refl) S1' (wf-tp/tsel P1) S1A S1B
-      <- wf-tp-dia W2' W2 (wf-tp/tsel P') (sub-env/ext sub-env/refl) S2' (wf-tp/tsel P2) S2A S2B
-      <- wf-tp-dia (wf-tp/tsel P') (wf-tp/tsel P1) (wf-tp/tsel P2) S1B S2B (wf-tp/tsel P) S3A S3B
-      <- sub-env-trans S3A S1A S1
-      <- sub-env-trans S3B S2A S2.
-
-
-
-%%% PROBLEM WITH TERMINATION ORDER
-
-restrict-sub-tp1: sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> {Z: tpe} sub-tp (tcons Z G1) T1 G2 T2 -> type.
-%mode restrict-sub-tp1 -A +Y +B +C.
-%worlds () (restrict-sub-tp1 _ _ _ _).
-%trustme
-%total A (restrict-sub-tp1 _ _ _ A).
-
-- : restrict-sub-tp % easy case: G0 is already smaller than target
-     (sub-tp/tbindh SE S ST1 ST2 W)
-     W1
-     (wf-tp/tbindh SEW SW WW)
-     T
-     (sub-tp/tbindh (sub-env/ext SE) S STA1 STA2 W)
-       <- restrict-sub-tp1 ST1 W1 T STA1
-       <- restrict-sub-tp1 ST2 W1 T STA2
-       .
-
-
-- : restrict-sub-tp % hard case: G0 = G2 = (T G2')
-     (sub-tp/tbindh sub-env/refl S ST1 ST2x (wf-tp/tbindh SEW SW WW)) 
-     W1
-     (wf-tp/tbindh SEW SW WW)
-     T
-     (sub-tp/tbindh sub-env/refl (tf/c S) STA1 STA2 W)
-       <- restrict-sub-tp1 ST1 W1 T STA1
-       <- restrict-sub-tp1 ST2 W1 T STA2
-       <- magic _ (wf-tp/tbindh SEW SW WW) ST2 S ST2x
-       .
-
-
-
 %worlds () (restrict-sub-tp _ _ _ _ _).
+%trustme
 %total (A) (restrict-sub-tp _ _ _ _ A).
-
-
-
-
-
 
 restrict-sub-tp1: sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> {Z: tpe} sub-tp (tcons Z G1) T1 G2 T2 -> type.
 %mode restrict-sub-tp1 -A +Y +B +C.
@@ -2207,3 +2101,114 @@ type.
 
 %worlds () (magic  _  _  _  _  _  _  _).
 %total (A) (magic  _  A  _  _  _  _  _).
+
+% Restrict subeq - placed here because it uses wf-tp-dia (does it have to?)
+
+restrict-sub-tp: sub-tp G1 T1 G2 T2 
+  -> wf-tp G1 T1
+  -> wf-tp G2 T2
+  -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2) T2 
+  -> type.
+%mode restrict-sub-tp -A +B +C +D +E.
+
+- : restrict-sub-tp sub-tp/int W1 W2 T sub-tp/int.
+- : restrict-sub-tp sub-tp/bool W1 W2 T  sub-tp/bool.
+- : restrict-sub-tp (sub-tp/top W1) W1 W2 T (sub-tp/top _). 
+- : restrict-sub-tp (sub-tp/bot W2) W1 W2 T (sub-tp/bot _). 
+- : restrict-sub-tp (sub-tp/fun ST1 ST2) (wf-tp/fun W1 W2) (wf-tp/fun W3 W4) T (sub-tp/fun ST1' ST2')
+      <- restrict-sub-tp ST1 W1 W3 T ST1'
+      <- restrict-sub-tp ST2 W4 W2 T ST2'.
+- : restrict-sub-tp (sub-tp/rect ST1 ST2 B2 B1) (wf-tp/rect SB1 W1 W2) (wf-tp/rect SB2 W3 W4) T (sub-tp/rect ST1' ST2' B2' B1')
+      <- restrict-sub-tp B2 W4 W3 T B2'
+      <- restrict-sub-tp B1 W2 W1 T B1'
+      <- restrict-sub-tp ST1 W1 W3 T ST1'
+      <- restrict-sub-tp ST2 W4 W2 T ST2'.
+- : restrict-sub-tp (sub-tp/recv ST1) (wf-tp/recv W1) (wf-tp/recv W2) T (sub-tp/recv ST1')
+      <- restrict-sub-tp ST1 W1 W2 T ST1'.
+
+- : restrict-sub-tp 
+    (sub-tp/tsel1 ST (pev (wf-tp/rect SF WU WS) L1))
+    ((wf-tp/tsel     (pev (wf-tp/rect SF WU WS) L1)): (wf-tp _ (tsel (var N))))
+    W2 T 
+    (sub-tp/tsel1 ST' (pev (wf-tp/rect SF' WU' WS') L'))
+
+      % first extend L1, then prove it's equal to L',
+      % establishing that we can use L1 in the result
+
+      <- extend-wf-lkp L1 T L1'  
+
+      <- eq-refl N E
+      <- lookup-eq L1' L' E _ SA
+      <- lookup-eq L' L1' E _ SB  % need the other direction to convert back
+
+      <- eq-wf SA WU WUQ
+      <- restrict-sub-tp STQ WUQ W2 T ST'
+      <- eq-low SB STQ ST.
+
+- : restrict-sub-tp 
+    (sub-tp/tsel2 ST (pev (wf-tp/rect SF WU WS) L1))
+    W1
+    ((wf-tp/tsel     (pev (wf-tp/rect SF WU WS) L1)): (wf-tp _ (tsel (var N))))
+    T 
+    (sub-tp/tsel2 ST' (pev (wf-tp/rect SF' WU' WS') L'))
+
+      % first extend L1, then prove it's equal to L',
+      % establishing that we can use L1 in the result
+
+      <- extend-wf-lkp L1 T L1'  
+
+      <- eq-refl N E
+      <- lookup-eq L1' L' E SA _
+      <- lookup-eq L' L1' E SB _  % need the other direction to convert back
+
+      <- eq-wf SA WS WSQ
+      <- restrict-sub-tp STQ W1 WSQ T ST'
+      <- eq-high SB STQ ST.
+
+
+- : restrict-sub-tp (sub-tp/tselx P S1 S2) W1 W2 T (sub-tp/tselx P' S1' S2')
+      <- extend-wf-tp-mult (wf-tp/tsel P') S1' W1'
+      <- extend-wf-tp-mult (wf-tp/tsel P') S2' W2'
+      <- wf-tp-dia W1' W1 (wf-tp/tsel P') (sub-env/ext sub-env/refl) S1' (wf-tp/tsel P1) S1A S1B
+      <- wf-tp-dia W2' W2 (wf-tp/tsel P') (sub-env/ext sub-env/refl) S2' (wf-tp/tsel P2) S2A S2B
+      <- wf-tp-dia (wf-tp/tsel P') (wf-tp/tsel P1) (wf-tp/tsel P2) S1B S2B (wf-tp/tsel P) S3A S3B
+      <- sub-env-trans S3A S1A S1
+      <- sub-env-trans S3B S2A S2.
+
+
+
+%%% PROBLEM WITH TERMINATION ORDER
+
+restrict-sub-tp1: sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> {Z: tpe} sub-tp (tcons Z G1) T1 G2 T2 -> type.
+%mode restrict-sub-tp1 -A +Y +B +C.
+%worlds () (restrict-sub-tp1 _ _ _ _).
+%trustme
+%total A (restrict-sub-tp1 _ _ _ A).
+
+- : restrict-sub-tp % easy case: G0 is already smaller than target
+     (sub-tp/tbindh SE S ST1 ST2 W)
+     W1
+     (wf-tp/tbindh SEW SW WW)
+     T
+     (sub-tp/tbindh (sub-env/ext SE) S STA1 STA2 W)
+       <- restrict-sub-tp1 ST1 W1 T STA1
+       <- restrict-sub-tp1 ST2 W1 T STA2
+       .
+
+
+- : restrict-sub-tp % hard case: G0 = G2 = (T G2')
+     (sub-tp/tbindh sub-env/refl S ST1 ST2x (wf-tp/tbindh SEW SW WW)) 
+     W1
+     (wf-tp/tbindh SEW SW WW)
+     T
+     (sub-tp/tbindh sub-env/refl (tf/c S) STA1 STA2 W)
+       <- restrict-sub-tp1 ST1 W1 T STA1
+       <- restrict-sub-tp1 ST2 W1 T STA2
+       <- magic _ (wf-tp/tbindh SEW SW WW) ST2 S ST2x
+       .
+
+
+
+%worlds () (restrict-sub-tp _ _ _ _ _).
+%total (A) (restrict-sub-tp _ _ _ _ A).
+
