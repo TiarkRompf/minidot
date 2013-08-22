@@ -1278,6 +1278,13 @@ vappend/cons     : vappend H1 (vcons H2 X V) (vcons H X V)
 %%%%%  Evaluation Rules (Explicit Stack)  %%%%%
 
 ev      : vctx -> exp -> val -> type.
+evapp   : val -> val -> (exp -> val) -> type.
+
+evapp/clo : evapp (clo H ([x] M x)) V' ([x] V x)
+             <- {x} ev (vcons H x V') (M x) (V x).
+
+evapp/bin : evapp (bin [x] VM x) VN ([x] (bin (V x)))
+             <- {x} evapp (VM x) VN (V x).
 
 ev/b    : ev H b v.
 
@@ -1287,11 +1294,9 @@ ev/var  : ev H X V
 ev/lam  : ev H (lam A ([x] M x)) (clo H M).
 
 ev/app  : ev H (app M N) (bin ([x] V x))
-     <- ev H M (clo H' ([y] M' y))
-     <- ev H N V'
-     <- {x} ev (vcons H' x V') (M' x) (V x).
-
-
+     <- ev H M VM
+     <- ev H N VN
+     <- evapp VM VN ([x] V x).
 
 %abbrev arrow : tp -> tp -> tp = [A] [B] (pi A ([x] B)).
 
@@ -1303,7 +1308,8 @@ ev/app  : ev H (app M N) (bin ([x] V x))
 %query 1 1 ev vnil (app (lam (arrow o o) ([x] (lam o ([y] x)))) (lam o ([x] x))) V.
 %query 1 1 ev vnil (app (lam (arrow o o) ([x] (lam o ([y] y)))) (app (lam o ([x] (lam o ([y] x)))) b)) V.
 %query 0 * ev vnil (app b b) V.
-
+%query 1 1 ev vnil (app (app (lam o ([x] (lam o ([y] y)))) b) b) V.
+%query 1 1 ev vnil (app (app (app (lam o ([x] (lam o ([y] (lam o [z] y))))) b) b) b) V.
 
 %%%%%  Value Typing (Explicit Context & Stack)  %%%%%
 
