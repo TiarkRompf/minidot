@@ -1694,5 +1694,5 @@ lookup-safe : wfe H G
      <- lookup-bounded-contra LG BG CONTRA
      <- false-implies-wfv CONTRA (W': wfv _ _ A).
 
-%worlds () (lookup-safe _ _ _ _ _ _).
+%worlds (ovar) (lookup-safe _ _ _ _ _ _).
 %total W (lookup-safe W _ _ _ _ _).
