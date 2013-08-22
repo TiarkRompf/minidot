@@ -923,8 +923,14 @@ ses0: sub-env gs0 gs0 = sub-env/refl.
 wfs0f: wf-tp gs0 (bindh f) = wf-tp/tbindh wfs0fn ns0-deriv ses0.
 %solve stas0 : sub-tp g1 t1 tnil ts0.
 %solve stbs0 : sub-tp g1 t1 (tcons ts0 gs0) (f (var ns0)).
+sts0 : sub-tp g1 t1 gs0 (bindh f) = sub-tp/tbindh ses0 ns0-deriv stas0 stbs0 wfs0f.
 
-stw0 : sub-tp g1 t1 gs0 (bindh f) = sub-tp/tbindh ses0 ns0-deriv stas0 stbs0 wfs0f.
+%solve wfw0fn : wf-tp (tcons tw0 gw0) (f (var nw0)).
+sew0: sub-env gw0 gw0 = sub-env/refl.
+wfw0f: wf-tp gw0 (bindh f) = wf-tp/tbindh wfw0fn nw0-deriv sew0.
+%query 0 * sub-tp g1 t1 (tcons ts0 gw0) (f (var nw0)).
+% sub-tp/tbindh sew0 nw0-deriv stas0 X wfw0f.
+% sub-tp g1 t1 gw0 (bindh f).
 
 restrict-sub-tp-rec: {SIZE:measure MEASURE} sub-tp G1 T1 G2 T2
   -> wf-tp G1 T1
