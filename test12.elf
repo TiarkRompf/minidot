@@ -900,6 +900,32 @@ restrict-sub-tp-rec-bindh:
   type.
 %mode restrict-sub-tp-rec-bindh +SIZE +F +REL +SE02 +S +STA +STB +W +W1 +W2 +SE1 +SE2 -SE' -S' -STA' -STB' -W'.
 
+tw0: tpe = rect bot top.
+ts0: tpe = top.
+tr0: tpe = rect top top.
+gw0: tenv = tnil.
+gs0: tenv = tcons tr0 tnil.
+%abbrev f: exp -> tpe = [x] (tsel (var z)).
+%define ns0 = NS0
+%solve ns0-deriv : tsize gs0 (var NS0).
+%define nw0 = NW0
+%solve nw0-deriv : tsize gw0 (var NW0).
+
+%query 1 1 wf-tp (tcons ts0 gs0) (f (var ns0)).
+%query 1 1 wf-tp (tcons tw0 gw0) (f (var nw0)).
+%query 0 * wf-tp (tcons ts0 gw0) (f (var nw0)).
+
+g1: tenv = tnil.
+t1: tpe = top.
+
+%solve wfs0fn :  wf-tp (tcons ts0 gs0) (f (var ns0)).
+ses0: sub-env gs0 gs0 = sub-env/refl.
+wfs0f: wf-tp gs0 (bindh f) = wf-tp/tbindh wfs0fn ns0-deriv ses0.
+%solve stas0 : sub-tp g1 t1 tnil ts0.
+%solve stbs0 : sub-tp g1 t1 (tcons ts0 gs0) (f (var ns0)).
+
+stw0 : sub-tp g1 t1 gs0 (bindh f) = sub-tp/tbindh ses0 ns0-deriv stas0 stbs0 wfs0f.
+
 restrict-sub-tp-rec: {SIZE:measure MEASURE} sub-tp G1 T1 G2 T2
   -> wf-tp G1 T1
   -> wf-tp G2 T2
