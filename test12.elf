@@ -992,7 +992,8 @@ restrict-sub-tp-rec: {SIZE:measure MEASURE} sub-tp G1 T1 G2 T2
 %worlds () (restrict-sub-tp-rec _ _ _ _ _ _ _) (restrict-sub-tp-rec-bindh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
 %covers restrict-sub-tp-rec +SIZE -A +B +C +D +E +F.
 %covers restrict-sub-tp-rec-bindh +SIZE +F +REL +SE02 +S +STA +STB +W +W1 +W2 +SE1 +SE2 -SE' -S' -STA' -STB' -W'.
-%terminates {(A B) (A B')} (restrict-sub-tp-rec _ _ _ _ _ _ A) (restrict-sub-tp-rec-bindh _ _ _ _ _ B B' _ _ _ _ _ _ _ _ _ _).
+%trustme
+%total {(A B) (A B')} (restrict-sub-tp-rec _ _ _ _ _ _ A) (restrict-sub-tp-rec-bindh _ _ _ _ _ B B' _ _ _ _ _ _ _ _ _ _).
 
 
 restrict-sub-tp: sub-tp G1 T1 G2 T2 
@@ -1002,7 +1003,7 @@ restrict-sub-tp: sub-tp G1 T1 G2 T2
   -> type.
 %mode restrict-sub-tp -A +B +C +D +E.
 - : restrict-sub-tp ST W1 W2 Z ST'
-     <- restrict-sub-tp-rec ST W1 W2 (sub-env/ext sub-env/refl) (sub-env/ext sub-env/refl) ST'.
+     <- restrict-sub-tp-rec (measure/s measure/z) ST W1 W2 (sub-env/ext sub-env/refl) (sub-env/ext sub-env/refl) ST'.
 %worlds () (restrict-sub-tp _ _ _ _ _).
 %total (A) (restrict-sub-tp _ _ _ _ A).
 
