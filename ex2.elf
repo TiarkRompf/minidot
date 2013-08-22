@@ -1233,7 +1233,13 @@ bin      : (exp -> val) -> val.
 vnil     : vctx.
 vcons    : vctx -> exp -> val -> vctx.
 
+val-eq : val -> val -> type.
+val-eq/i : val-eq A A.
 
+false-implies-val-eq : false -> val-eq A B -> type.
+%mode +{A:val} +{B:val} +{X1:false} -{X2:val-eq A B} (false-implies-val-eq X1 X2).
+%worlds (var | ovar | bind) (false-implies-val-eq _ _).
+%total {} (false-implies-val-eq _ _).
 
 vordered : vctx -> type.
 vbounded : vctx -> exp -> type.
@@ -1272,6 +1278,304 @@ vappend/nil      : vappend H vnil H.
 vappend/cons     : vappend H1 (vcons H2 X V) (vcons H X V)
                    <- vappend H1 H2 H.
 
+
+%%%%%  Explicit Stack Lemmas  %%%%%
+
+vbounded-isvar : vbounded H X -> isvar X I -> type.
+%mode vbounded-isvar +X1 -X2.
+
+-       : vbounded-isvar (vbounded/nil D) D.
+
+-       : vbounded-isvar (vbounded/cons _ (precedes/i _ D _)) D.
+
+%worlds (ovar | bind) (vbounded-isvar _ _).
+%total {} (vbounded-isvar _ _).
+
+vbounded-is-vordered : vbounded H X 
+%%
+		      -> vordered H
+		      -> type.
+%mode vbounded-is-vordered +X1 -X2.
+
+-       : vbounded-is-vordered (vbounded/nil _) vordered/nil.
+
+-       : vbounded-is-vordered (vbounded/cons D _) (vordered/cons D).
+
+%worlds (ovar | bind) (vbounded-is-vordered _ _).
+%total {} (vbounded-is-vordered _ _).
+
+
+
+vbounded-increase : vbounded H X
+                    -> precedes X Y
+%%
+                    -> vbounded H Y 
+		    -> type.
+%mode vbounded-increase +X1 +X2 -X3.
+
+-       : vbounded-increase
+           (vbounded/nil _)
+           (precedes/i _ D _)
+           (vbounded/nil D).
+
+-       : vbounded-increase
+           (vbounded/cons 
+              (Dvbounded : vbounded H Z)
+              (DprecZX : precedes Z X))
+           (DprecXY : precedes X Y)
+           (vbounded/cons Dvbounded DprecZY)
+           <- precedes-trans DprecZX DprecXY
+              (DprecZY : precedes Z Y).
+
+%worlds (ovar | bind) (vbounded-increase _ _ _).
+%total {} (vbounded-increase _ _ _).
+
+
+
+vappend-vbounded : vappend H1 H2 H
+		  -> vbounded H X
+%%
+		  -> vbounded H1 X 
+		  -> type.
+%mode vappend-vbounded +X1 +X2 -X3.
+
+-	: vappend-vbounded vappend/nil D D.
+
+-	: vappend-vbounded
+	   (vappend/cons 
+	      (Dvappend : vappend H1 H2 H))
+	   (vbounded/cons
+	      (Dvbounded : vbounded H Y)
+	      (Dprecedes : precedes Y X))
+	   Dvbounded''
+	   <- vappend-vbounded Dvappend Dvbounded 
+	      (Dvbounded' : vbounded H1 Y)
+	   <- vbounded-increase Dvbounded' Dprecedes 
+	      (Dvbounded'' : vbounded H1 X).
+
+%worlds (ovar | bind) (vappend-vbounded _ _ _).
+%total D (vappend-vbounded D _ _).
+
+
+
+extend-stack : vordered H
+%%
+		  -> ({x} isvar x I -> vbounded H x)
+		  -> type.
+%mode extend-stack +X1 -X2.
+
+-       : extend-stack vordered/nil ([x] [d:isvar x 0] vbounded/nil d).
+
+-       : extend-stack
+           (vordered/cons (Dvbounded : vbounded H Y))
+           ([x] [d:isvar x (s J)] vbounded/cons Dvbounded (precedes/i Dlt d Disvar))
+           <- vbounded-isvar Dvbounded
+              (Disvar : isvar Y J)
+           <- lt-succ J (Dlt : lt J (s J)).
+
+%worlds (ovar | bind) (extend-stack _ _).
+%total {} (extend-stack _ _).
+
+
+
+vordered-car : vordered (vcons H X V) 
+%%
+	       -> isvar X I
+	       -> type.
+%mode vordered-car +X1 -X2.
+
+-	: vordered-car 
+	   (vordered/cons 
+	      (Dvbounded : vbounded H X))
+	   Disvar
+	   <- vbounded-isvar Dvbounded (Disvar : isvar X I).
+
+%worlds (ovar | bind) (vordered-car _ _).
+%total {} (vordered-car _ _).
+
+
+
+vordered-cdr : vordered (vcons H X V) 
+%%
+	       -> vordered H 
+	       -> type.
+%mode vordered-cdr +X1 -X2.
+
+-	: vordered-cdr 
+	   (vordered/cons 
+	      (Dvbounded : vbounded H X)) 
+	   Dvordered
+	   <- vbounded-is-vordered Dvbounded 
+	      (Dvordered : vordered H).
+
+%worlds (ovar | bind) (vordered-cdr _ _).
+%total {} (vordered-cdr _ _).
+
+
+
+vlookup-vordered : vlookup H X A
+		  -> vordered H
+		  -> isvar X I 
+		  -> type.
+%mode vlookup-vordered +X1 +X2 -X3.
+
+-	: vlookup-vordered 
+	   vlookup/hit 
+	   (Dvordered : vordered (vcons H X T))
+	   Disvar
+	   <- vordered-car Dvordered (Disvar : isvar X I).
+
+-	: vlookup-vordered 
+	   (vlookup/miss 
+	      (Dvlookup : vlookup H X A))
+	   (Dvordered : vordered (vcons H Y B))
+	   Disvar
+	   <- vordered-cdr Dvordered (Dvordered' : vordered H)
+	   <- vlookup-vordered Dvlookup Dvordered' (Disvar : isvar X I).
+
+%worlds (ovar | bind) (vlookup-vordered _ _ _).
+%total D (vlookup-vordered D _ _).
+
+
+
+vbounded-contra : vbounded (vcons H X V) X 
+%%
+		  -> false
+		  -> type.
+%mode vbounded-contra +X1 -X2.
+
+-	: vbounded-contra 
+	   (vbounded/cons _ (Dprecedes : precedes X X))
+	   Dfalse
+	   <- precedes-irreflex Dprecedes Dfalse.
+
+%worlds (ovar | bind) (vbounded-contra _ _).
+%total {} (vbounded-contra _ _).
+
+
+
+vlookup-vbounded-contra : vlookup H X A
+			 -> vbounded H X
+%%
+			 -> false 
+			 -> type.
+%mode vlookup-vbounded-contra +X1 +X2 -X3.
+
+-       : vlookup-vbounded-contra 
+	   vlookup/hit
+	   (Dvbounded : vbounded (vcons H X V) X)
+	   Dfalse
+           <- vbounded-contra Dvbounded Dfalse.
+
+-       : vlookup-vbounded-contra 
+	   (vlookup/miss 
+	      (Dvlookup : vlookup H X A))
+	   (vbounded/cons
+	      (Dvbounded : vbounded H Y)
+	      (Dprecedes : precedes Y X))
+	   Dfalse
+           <- vbounded-increase Dvbounded Dprecedes (Dvbounded' : vbounded H X)
+           <- vlookup-vbounded-contra Dvlookup Dvbounded' Dfalse.
+
+%worlds (ovar | bind) (vlookup-vbounded-contra _ _ _).
+%total D (vlookup-vbounded-contra D _ _).
+
+
+
+vappend-vlookup-eq : ({x} vappend (vcons H1 x V) (H2 x) (H x))
+		    -> ({x} isvar x I -> vordered (H x))
+		    -> ({x} vlookup (H x) x (B x))
+%%
+		    -> ({x} val-eq V (B x)) 
+		    -> type.
+%mode vappend-vlookup-eq +X1 +X2 +X3 -X4.
+
+-       : vappend-vlookup-eq _ _ ([x] vlookup/hit) ([_] val-eq/i).
+
+-       : vappend-vlookup-eq 
+	   ([x] 
+	      vappend/cons 
+	      (Dvappend x : vappend (vcons H1 x A) (H2 x) (H x)))
+	   ([x] [d:isvar x I] 
+	      Dvordered x d : vordered (vcons (H x) (Y x) (C x)))
+	   ([x] 
+	      vlookup/miss (Dvlookup x : vlookup (H x) x (B x)))
+           Deq
+	   <- ({x} {d:isvar x I}
+		 vordered-cdr (Dvordered x d) (Dvordered' x d : vordered (H x)))
+           <- vappend-vlookup-eq Dvappend Dvordered' Dvlookup (Deq : {x} val-eq A (B x)).
+
+-       : vappend-vlookup-eq 
+	   ([x] vappend/nil) 
+	   ([x] [d:isvar x I]
+	      vordered/cons (Dvbounded x d : vbounded H1 x))
+	   ([x] 
+	      vlookup/miss (Dvlookup x : vlookup H1 x (B x)))
+           Deq
+           <- ({x} {d:isvar x I}
+                 vlookup-vbounded-contra (Dvlookup x) (Dvbounded x d) Dfalse)
+           <- ({x} false-implies-val-eq Dfalse (Deq x)).
+
+-	: vappend-vlookup-eq 
+	   ([x] 
+	      vappend/cons 
+	      (Dvappend x : vappend (vcons H1 x A) (H2 x) (H x)))
+	   ([x] [d:isvar x I]
+	      vordered/cons (Dvbounded x d : vbounded (H x) x))
+	   ([x] vlookup/hit)
+	   Deq
+	   <- ({x} {d:isvar x I}
+		 vappend-vbounded (Dvappend x) (Dvbounded x d) 
+		 (Dvbounded' x d : vbounded (vcons H1 x A) x))
+	   <- ({x} {d:isvar x I}
+		 vbounded-contra (Dvbounded' x d) Dfalse)
+	   <- ({x} false-implies-val-eq Dfalse (Deq x)).
+
+%worlds (ovar | bind) (vappend-vlookup-eq _ _ _ _).
+%total D (vappend-vlookup-eq D _ _ _).
+
+
+
+%% Vlookup is preserved under deletion of other variables.
+vlookup-pdv : ({x} vappend (vcons H1 x A) (H2 x) (H x))
+               -> vappend H1 (H2 M) H'
+               -> ({x} vlookup (H x) Y (B x))
+%%
+               -> vlookup H' Y (B M) 
+	       -> type.
+%mode vlookup-pdv +X1 +X2 +X3 -X4.
+
+-       : vlookup-pdv 
+	   ([x] vappend/cons 
+	      (Dvappend x : vappend (vcons H1 x A) (H2 x) (H x)))
+	   (vappend/cons 
+	      (Dvappend' : vappend H1 (H2 M) H'))
+	   ([x] vlookup/hit)
+	   %%
+           vlookup/hit.
+
+-       : vlookup-pdv
+	   ([x] vappend/cons 
+	      (Dvappend x : vappend (vcons H1 x A) (H2 x) (H x)))
+	   (vappend/cons 
+	      (Dvappend' : vappend H1 (H2 M) H'))
+	   ([x] 
+	      vlookup/miss 
+	      (Dvlookup x : vlookup (H x) Y (B x)))
+	   %%
+           (vlookup/miss Dvlookup')
+           <- vlookup-pdv Dvappend Dvappend' Dvlookup Dvlookup'.
+
+-       : vlookup-pdv 
+	   ([x] vappend/nil) 
+	   vappend/nil 
+	   ([x] vlookup/miss 
+	      (Dvlookup x : vlookup _ _ (B x)))
+	   %%
+           (Dvlookup M).
+
+%worlds (ovar | bind) (vlookup-pdv _ _ _ _).
+%total D (vlookup-pdv D _ _ _).
 
 
 
@@ -1338,3 +1642,57 @@ wfe/cons : wfe (vcons H X V) (cons G X A)
 %solve  1ev : ev vnil 1exp V.
 %define 1tpv = A
 %solve 1wfv : wfv 1clo nil A.
+
+false-implies-wfv : false -> wfv V G A -> type.
+%mode +{V:val} +{G:ctx} +{A:tp} +{X1:false} -{X2:wfv V G A} (false-implies-wfv X1 X2).
+%worlds (var | ovar | bind) (false-implies-wfv _ _).
+%total {} (false-implies-wfv _ _).
+
+%%%%%  Safety  %%%%%
+
+extend-wfv  : wfv V G T
+              -> {X} {A}
+%%
+                 wfv V (cons G X A) T
+        -> type.
+%mode extend-wfv +X1 +X2 +X3 -X4.
+
+-      : extend-wfv wfv/v _ _ wfv/v.
+
+-      : extend-wfv (wfv/clo WM WH) _ _ (wfv/clo WM WH).
+
+-      : extend-wfv (wfv/bin W) X A (wfv/bin W')
+          <- {y} extend-wfv (W y) X A (W' y).
+
+%worlds (var | ovar) (extend-wfv _ _ _ _).
+%total W (extend-wfv W _ _ _).
+
+lookup-safe : wfe H G
+               -> lookup G X A
+               -> vlookup H X V
+               -> ordered G
+               -> vordered H
+%%
+               -> wfv V G T
+         -> type.
+%mode lookup-safe +X1 +X2 +X3 +X4 +X5 -X6.
+
+-       : lookup-safe (wfe/cons WG WV) lookup/hit vlookup/hit OG OH WV'
+     <- extend-wfv WV _ _ WV'.
+
+-       : lookup-safe (wfe/cons WG WV) (lookup/miss LG) (vlookup/miss LH) (ordered/cons BG) (vordered/cons BH) WV''
+     <- bounded-is-ordered BG OG
+     <- vbounded-is-vordered BH OH
+     <- lookup-safe WG LG LH OG OH WV'
+     <- extend-wfv WV' _ _ WV''.
+
+-       : lookup-safe (wfe/cons WG (WV: wfv _ _ A)) lookup/hit (vlookup/miss LH) OG (vordered/cons BH) W'
+     <- vlookup-vbounded-contra LH BH CONTRA
+     <- false-implies-wfv CONTRA (W': wfv _ _ A).
+
+-       : lookup-safe (wfe/cons WG (WV: wfv _ _ A)) (lookup/miss LG) vlookup/hit (ordered/cons BG) OH W'
+     <- lookup-bounded-contra LG BG CONTRA
+     <- false-implies-wfv CONTRA (W': wfv _ _ A).
+
+%worlds () (lookup-safe _ _ _ _ _ _).
+%total W (lookup-safe W _ _ _ _ _).
