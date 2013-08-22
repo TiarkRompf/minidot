@@ -1229,6 +1229,7 @@ vctx     : type.  %name ctx H.
 
 v        : val.
 clo      : vctx -> (exp -> exp) -> val.
+bin      : (exp -> val) -> val.
 vnil     : vctx.
 vcons    : vctx -> exp -> val -> vctx.
 
@@ -1285,15 +1286,17 @@ ev/var  : ev H X V
 
 ev/lam  : ev H (lam A ([x] M x)) (clo H M).
 
-ev/app  : {x} ev H (app M N) (V x)
+ev/app  : ev H (app M N) (bin ([x] V x))
      <- ev H M (clo H' ([y] M' y))
      <- ev H N V'
-     <- ev (vcons H' x V') (M' x) (V x).
+     <- {x} ev (vcons H' x V') (M' x) (V x).
+
+
 
 %abbrev arrow : tp -> tp -> tp = [A] [B] (pi A ([x] B)).
 
-%query 1 1 ev vnil b v.
-%query 1 1 ev vnil (app (lam o ([x] x)) b) v.
+%query 1 1 ev vnil b V.
+%query 1 1 ev vnil (app (lam o ([x] x)) b) V.
 %query 1 1 ev vnil (lam o ([x] (lam o ([y] y)))) V.
 %query 1 1 ev vnil (app (lam o ([x] (lam o ([y] y)))) b) V.
 %query 1 1 ev vnil (app (lam o ([x] (lam o ([y] x)))) b) V.
@@ -1302,3 +1305,30 @@ ev/app  : {x} ev H (app M N) (V x)
 %query 0 * ev vnil (app b b) V.
 
 
+%%%%%  Value Typing (Explicit Context & Stack)  %%%%%
+
+wfv      : val -> ctx -> tp -> type.
+wfe      : vctx -> ctx -> type.
+
+wfv/v    : wfv v G o.
+
+wfv/clo  : wfv (clo H ([x] M x)) G (pi A ([x] B x))
+      <- wfe H G'
+      <- {x} ofe (cons G' x A) (M x) (B x).
+
+wfv/bin  : wfv (bin ([x] V x)) G A
+            <- {x} wfv (V x) G A.
+
+wfe/nil  : wfe vnil nil.
+
+wfe/cons : wfe (vcons H X V) (cons G X A)
+      <- wfv V G A
+      <- wfe H G.
+
+1exp = (app (lam o ([x] (lam o ([y] x)))) b).
+%define 1tp = A
+%solve 1ofe : ofe nil 1exp A.
+%define 1clo = V
+%solve  1ev : ev vnil 1exp V.
+%define 1tpv = A
+%solve 1wfv : wfv 1clo nil A.
