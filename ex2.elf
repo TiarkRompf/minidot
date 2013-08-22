@@ -1,6 +1,4 @@
-
 %{
-Twelf code for Explicit Contexts in LF (version 3)
 }%
 
 
@@ -10,7 +8,7 @@ tp      : type.  %name tp A.
 exp     : type.  %name exp M.
 
 o       : tp.
-p	: exp -> tp.
+p	      : exp -> tp.
 pi      : tp -> (exp -> tp) -> tp.
 
 b       : exp.
@@ -68,7 +66,7 @@ and carries order stamp I.
 }%
 
 %{
-Isvar will be frozen shorly.  Make it depend on itself while we still can.
+Isvar will be frozen shortly.  Make it depend on itself while we still can.
 }%
 -       : (isvar _ _ -> isvar _ _) -> type.
 
@@ -1223,3 +1221,84 @@ but that would defeat the point.
 
 %worlds (bind) (subst _ _ _).
 %total {} (subst _ _ _).
+
+%%%%%  Values  & Stacks %%%%%
+
+val      : type.  %name val V.
+vctx     : type.  %name ctx H.
+
+v        : val.
+clo      : vctx -> (exp -> exp) -> val.
+vnil     : vctx.
+vcons    : vctx -> exp -> val -> vctx.
+
+
+
+vordered : vctx -> type.
+vbounded : vctx -> exp -> type.
+%{
+"ordered G" means that the assumptions are listed in increasing order by stamp.
+"bounded G X" means that G is ordered and all assumptions are less than X.
+}%
+
+vordered/nil    : vordered vnil.
+
+vordered/cons   : vordered (vcons H X _)
+                   <- vbounded H X.
+
+vbounded/nil    : vbounded vnil X
+                   <- isvar X _.
+
+vbounded/cons   : vbounded (vcons H Y _) X
+                   <- precedes Y X
+                   <- vbounded H Y.
+
+
+
+vlookup : vctx -> exp -> val -> type.
+
+vlookup/hit     : vlookup (vcons H X V) X V.
+
+vlookup/miss    : vlookup (vcons H Y _) X V
+                   <- vlookup H X V.
+
+
+
+vappend : vctx -> vctx -> vctx -> type.
+
+vappend/nil      : vappend H vnil H.
+
+vappend/cons     : vappend H1 (vcons H2 X V) (vcons H X V)
+                   <- vappend H1 H2 H.
+
+
+
+
+%%%%%  Evaluation Rules (Explicit Stack)  %%%%%
+
+ev      : vctx -> exp -> val -> type.
+
+ev/b    : ev H b v.
+
+ev/var  : ev H X V
+     <- vlookup H X V.
+
+ev/lam  : ev H (lam A ([x] M x)) (clo H M).
+
+ev/app  : {x} ev H (app M N) (V x)
+     <- ev H M (clo H' ([y] M' y))
+     <- ev H N V'
+     <- ev (vcons H' x V') (M' x) (V x).
+
+%abbrev arrow : tp -> tp -> tp = [A] [B] (pi A ([x] B)).
+
+%query 1 1 ev vnil b v.
+%query 1 1 ev vnil (app (lam o ([x] x)) b) v.
+%query 1 1 ev vnil (lam o ([x] (lam o ([y] y)))) V.
+%query 1 1 ev vnil (app (lam o ([x] (lam o ([y] y)))) b) V.
+%query 1 1 ev vnil (app (lam o ([x] (lam o ([y] x)))) b) V.
+%query 1 1 ev vnil (app (lam (arrow o o) ([x] (lam o ([y] x)))) (lam o ([x] x))) V.
+%query 1 1 ev vnil (app (lam (arrow o o) ([x] (lam o ([y] y)))) (app (lam o ([x] (lam o ([y] x)))) b)) V.
+%query 0 * ev vnil (app b b) V.
+
+
