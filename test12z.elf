@@ -415,7 +415,7 @@ wf-tp/tbindh : wf-tp G1 (bindh ([x] F x))
 
 subeq-tp : tenv -> tpe -> tenv -> tpe -> type.
 
-subeq-tp/eq  : subeq-tp G1 T G2 T <- wf-tp G T <- sub-env G G1 <- sub-env G G2.
+% subeq-tp/eq  : subeq-tp G1 T G2 T <- wf-tp G T <- sub-env G G1 <- sub-env G G2.
 subeq-tp/sub : subeq-tp G1 T1 G2 T2 <- sub-tp G1 T1 G2 T2.
 
 
@@ -708,14 +708,14 @@ extend-sub-tp2: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp G1 T1 (tcons Z G2) T2 -> t
 
 extend-subeq-tp1: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp (tcons Z G1) T1 G2 T2 -> type.
 %mode extend-subeq-tp1 +A +B -C.
-- : extend-subeq-tp1 (subeq-tp/eq SX2 SX1 W) Z (subeq-tp/eq SX2 (sub-env/ext SX1) W).
+% - : extend-subeq-tp1 (subeq-tp/eq SX2 SX1 W) Z (subeq-tp/eq SX2 (sub-env/ext SX1) W).
 - : extend-subeq-tp1 (subeq-tp/sub S) Z (subeq-tp/sub S') <- extend-sub-tp1 S _ S'.
 %worlds () (extend-subeq-tp1 _ _ _).
 %total A (extend-subeq-tp1 A _ _).
 
 extend-subeq-tp2: subeq-tp G1 T1 G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T2 -> type.
 %mode extend-subeq-tp2 +A +B -C.
-- : extend-subeq-tp2 (subeq-tp/eq SX2 SX1 W) Z (subeq-tp/eq (sub-env/ext SX2) SX1 W).
+% - : extend-subeq-tp2 (subeq-tp/eq SX2 SX1 W) Z (subeq-tp/eq (sub-env/ext SX2) SX1 W).
 - : extend-subeq-tp2 (subeq-tp/sub S) Z (subeq-tp/sub S') <- extend-sub-tp2 S _ S'.
 %worlds () (extend-subeq-tp2 _ _ _).
 %total A (extend-subeq-tp2 A _ _).
@@ -1085,10 +1085,10 @@ restrict-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> wf-tp G0 T2 -> sub-env G0 G2 -> sub
 
 restrict-subeq-tp2: subeq-tp G1 T1 G2 T2 -> wf-tp G2 T2 -> {Z: tpe} subeq-tp G1 T1 (tcons Z G2) T2 -> type.
 %mode restrict-subeq-tp2 -A +Y +B +C.
-- : restrict-subeq-tp2 (subeq-tp/eq S2' SX1' W') W2 Z (subeq-tp/eq SX2 SX1 W)
-        <- extend-wf-tp W2 Z WT
-        <- wf-tp-dia WT W2 W (sub-env/ext sub-env/refl) SX2 W' S2' S1'
-        <- sub-env-trans S1' SX1 SX1'.
+% - : restrict-subeq-tp2 (subeq-tp/eq S2' SX1' W') W2 Z (subeq-tp/eq SX2 SX1 W)
+%         <- extend-wf-tp W2 Z WT
+%         <- wf-tp-dia WT W2 W (sub-env/ext sub-env/refl) SX2 W' S2' S1'
+%         <- sub-env-trans S1' SX1 SX1'.
 - : restrict-subeq-tp2 (subeq-tp/sub S) W2 Z (subeq-tp/sub S') 
         <- restrict-sub-tp2 S W2 _ S'.
 %worlds () (restrict-subeq-tp2 _ _ _ _).
@@ -1150,7 +1150,7 @@ subeq-tp-refl :
   type.
 %mode subeq-tp-refl +WT -SBT.
 
--/eq  : subeq-tp-refl W (subeq-tp/eq sub-env/refl sub-env/refl W).
+-/eq  : subeq-tp-refl W (subeq-tp/sub ST) <- sub-tp-refl W ST.
 
 %worlds () (subeq-tp-refl _ _).
 %total T (subeq-tp-refl T _).
@@ -1416,18 +1416,18 @@ subeq-tp-trans :
   type.
 %mode subeq-tp-trans +SBT1 +SBT2 -SBT3.
 
-- : subeq-tp-trans (subeq-tp/eq SX2 SX1 W1) (subeq-tp/eq SY2 SY1 W2) (subeq-tp/eq SZY2 SZX1 W0)
-      <- extend-wf-tp-mult W1 SX2 WT
-      <- wf-tp-dia WT W1 W2 SX2 SY1 W0 SZ1 SZ2
-      <- sub-env-trans SZ2 SY2 SZY2
-      <- sub-env-trans SZ1 SX1 SZX1.
+% - : subeq-tp-trans (subeq-tp/eq SX2 SX1 W1) (subeq-tp/eq SY2 SY1 W2) (subeq-tp/eq SZY2 SZX1 W0)
+%       <- extend-wf-tp-mult W1 SX2 WT
+%       <- wf-tp-dia WT W1 W2 SX2 SY1 W0 SZ1 SZ2
+%       <- sub-env-trans SZ2 SY2 SZY2
+%       <- sub-env-trans SZ1 SX1 SZX1.
 
-- : subeq-tp-trans (subeq-tp/eq SX2 SX1 W1) (subeq-tp/sub S2) (subeq-tp/sub S4)
-      <- restrict-sub-tp1-mult S2 W1 SX2 S3
-      <- extend-sub-tp1-mult S3 SX1 S4.
-- : subeq-tp-trans (subeq-tp/sub S1) (subeq-tp/eq SX2 SX1 W2) (subeq-tp/sub S4)
-      <- restrict-sub-tp2-mult S1 W2 SX1 S3
-      <- extend-sub-tp2-mult S3 SX2 S4.
+% - : subeq-tp-trans (subeq-tp/eq SX2 SX1 W1) (subeq-tp/sub S2) (subeq-tp/sub S4)
+%       <- restrict-sub-tp1-mult S2 W1 SX2 S3
+%       <- extend-sub-tp1-mult S3 SX1 S4.
+% - : subeq-tp-trans (subeq-tp/sub S1) (subeq-tp/eq SX2 SX1 W2) (subeq-tp/sub S4)
+%       <- restrict-sub-tp2-mult S1 W2 SX1 S3
+%       <- extend-sub-tp2-mult S3 SX2 S4.
 - : subeq-tp-trans (subeq-tp/sub S1) (subeq-tp/sub S2) (subeq-tp/sub S3) 
       <- sub-tp-trans S1 S2 S3.
 
@@ -1630,9 +1630,9 @@ wfv-widen-env: sub-env G1 G2 -> wf-val V G1 T1 -> wf-val V G2 T1 -> type.
 wfv-widen: subeq-tp G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
 %mode wfv-widen +LTE1 +LTE2 -LTE3.
 
-- : wfv-widen (subeq-tp/eq SX2 SX1 W) WV1 WV2 
-      <- wfv-narrow-env W SX1 WV1 WV0 
-      <- wfv-widen-env SX2 WV0 WV2.
+% - : wfv-widen (subeq-tp/eq SX2 SX1 W) WV1 WV2 
+%      <- wfv-narrow-env W SX1 WV1 WV0 
+%      <- wfv-widen-env SX2 WV0 WV2.
 - : wfv-widen (subeq-tp/sub S) W (wfv/sub S W).
 
 %worlds () (wfv-widen _ _ _).
@@ -1673,7 +1673,7 @@ cases-wfv: subeq-tp-cases
 
 extract-wf4: subeq-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
 %mode extract-wf4 +A -B -C.
-- : extract-wf4 (subeq-tp/eq S2 S1 W) W1 W2 <- extend-wf-tp-mult W S1 W1  <- extend-wf-tp-mult W S2 W2.
+% - : extract-wf4 (subeq-tp/eq S2 S1 W) W1 W2 <- extend-wf-tp-mult W S1 W1  <- extend-wf-tp-mult W S2 W2.
 - : extract-wf4 (subeq-tp/sub ST) W1 W2 <- extract-wf ST W1 W2.
 %worlds () (extract-wf4 _ _ _).
 %total WFE (extract-wf4 WFE _ _). 
@@ -1763,7 +1763,7 @@ cases-subeq-trans: subeq-tp-cases
 subeq-tp-recv: subeq-tp G1 T1 G2 T2 -> subeq-tp G1 (recv T1) G2 (recv T2) -> type.
 %mode subeq-tp-recv +C -S.
 
-- : subeq-tp-recv (subeq-tp/eq SX1 SX2 W) (subeq-tp/eq SX1 SX2 (wf-tp/recv W)).
+% - : subeq-tp-recv (subeq-tp/eq SX1 SX2 W) (subeq-tp/eq SX1 SX2 (wf-tp/recv W)).
 - : subeq-tp-recv (subeq-tp/sub S) (subeq-tp/sub (sub-tp/recv S)).
 
 %worlds () (subeq-tp-recv _ _).
@@ -2027,7 +2027,7 @@ subeq-tp-inv-recv: subeq-tp G1 (recv T1) G2 (recv T2)
   -> type. 
 %mode subeq-tp-inv-recv +LTE1 -LTE2.
 
-- : subeq-tp-inv-recv (subeq-tp/eq SX1 SX2 (wf-tp/recv W)) (subeq-tp/eq SX1 SX2 W).
+% - : subeq-tp-inv-recv (subeq-tp/eq SX1 SX2 (wf-tp/recv W)) (subeq-tp/eq SX1 SX2 W).
 - : subeq-tp-inv-recv (subeq-tp/sub (sub-tp/recv S)) (subeq-tp/sub S).
 
 %worlds () (subeq-tp-inv-recv _ _).
@@ -2039,7 +2039,7 @@ subeq-tp-inv-fun: subeq-tp G1 (arrow T1 T2) G2 (arrow T3 T4)
   -> type. 
 %mode subeq-tp-inv-fun +LTE1 -LTE2 -LTE3.
 
-- : subeq-tp-inv-fun (subeq-tp/eq SX1 SX2 (wf-tp/fun W1 W2)) (subeq-tp/eq SX2 SX1 W2) (subeq-tp/eq SX1 SX2 W1).
+% - : subeq-tp-inv-fun (subeq-tp/eq SX1 SX2 (wf-tp/fun W1 W2)) (subeq-tp/eq SX2 SX1 W2) (subeq-tp/eq SX1 SX2 W1).
 - : subeq-tp-inv-fun (subeq-tp/sub (sub-tp/fun S1 S2)) (subeq-tp/sub S2) (subeq-tp/sub S1).
 
 %worlds () (subeq-tp-inv-fun _ _ _).
