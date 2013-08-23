@@ -1541,7 +1541,7 @@ extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 %mode extract-wf2 +WFE1 -WFE2.
 
 - : extract-wf2 (t/var W L) W.
-- : extract-wf2 (t/varx W L) (wf-tp/rect (sub-tp/tselx ST (pev L W) sub-env/refl sub-env/refl) (wf-tp/tsel (pev L W)) (wf-tp/tsel (pev L W))) <- sub-tp-refl W ST.
+- : extract-wf2 (t/varx W L) (wf-tp/rect (sub-tp/tselx ST ST (pev L W) sub-env/refl sub-env/refl) (wf-tp/tsel (pev L W)) (wf-tp/tsel (pev L W))) <- sub-tp-refl W ST.
 - : extract-wf2 (t/fun W _ _ TS) W. % <- extract-wf2 TS W <- extract-wf-arrow W W2.  
 - : extract-wf2 (t/rect _ W _ _) W.
 - : extract-wf2 (t/recv _ _ TS _) (wf-tp/recv W) <- extract-wf2 TS W.
@@ -1773,7 +1773,7 @@ subeq-tp-recv: subeq-tp G1 T1 G2 T2 -> subeq-tp G1 (recv T1) G2 (recv T2) -> typ
 varx-tp-wf: path-eval G E (rect T1 T2) -> wf-tp G (rect (tsel E) (tsel E)) -> type.
 %mode varx-tp-wf +A -B.
 
-- : varx-tp-wf P (wf-tp/rect (sub-tp/tselx ST P sub-env/refl sub-env/refl) (wf-tp/tsel P) (wf-tp/tsel P))
+- : varx-tp-wf P (wf-tp/rect (sub-tp/tselx ST ST P sub-env/refl sub-env/refl) (wf-tp/tsel P) (wf-tp/tsel P))
     <- extract-wf-pev P W <- sub-tp-refl W ST.
 
 %worlds () (varx-tp-wf _ _).
