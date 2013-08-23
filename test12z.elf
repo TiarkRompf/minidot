@@ -517,6 +517,13 @@ lookup-eq: tlookup G2 (var N1) (rect T1 T3) -> tlookup G2 (var N2) (rect T2 T4) 
 %worlds () (lookup-eq _ _ _ _ _).
 %total {T2} (lookup-eq T2 _ _ _ _).
 
+eq-rect: same T1 T1' -> same T2 T2' -> same (rect T1 T2) (rect T1' T2') -> same (rect T1' T2') (rect T1 T2) -> type.
+%mode eq-rect +P1 +P2 -SBT -SBT2.
+
+- : eq-rect ident ident ident ident.
+
+%worlds () (eq-rect _ _ _ _).
+%total {T2} (eq-rect T2 _ _ _).
 
 
 
@@ -547,6 +554,16 @@ eq-wf: same T1 T1' -> wf-tp G1 T1 -> wf-tp G1 T1' -> type.
 %worlds () (eq-wf _ _ _).
 %total {T2} (eq-wf T2 _ _).
 %reduces N3 <= N2 (eq-wf _ N2  N3).
+
+eq-pev: same T1 T1' -> path-eval G1 N T1 -> path-eval G1 N T1' -> type.
+%mode eq-pev +P1 +P2 -SBT.
+
+- : eq-pev ident S S.
+
+%worlds () (eq-pev _ _ _).
+%total {T2} (eq-pev T2 _ _).
+%reduces N3 <= N2 (eq-pev _ N2  N3).
+
 
 
 
@@ -838,6 +855,36 @@ wf-tp-dia:
 
 %worlds () (wf-tp-dia _ _ _ _ _ _ _ _).
 %total A (wf-tp-dia A _ _ _ _ _ _ _).
+
+
+pev-tp-min: 
+  path-eval G1 N T -> path-eval G2 N T -> minmax-env G1 G2 GS GU ->
+  path-eval GS N T -> sub-env GS G1 -> sub-env GS G2 ->
+  type.
+%mode pev-tp-min +A +B +C -F -G -H.
+
+- : pev-tp-min W1 W2 (mm-env/1 S12) W1 sub-env/refl S12.
+- : pev-tp-min W1 W2 (mm-env/2 S21) W2 S21 sub-env/refl.
+
+%worlds () (pev-tp-min _ _ _ _ _ _).
+%total A (pev-tp-min A _ _ _ _ _ ).
+
+
+pev-tp-dia: 
+  path-eval GT N T -> path-eval G1 N T -> path-eval G2 N T -> sub-env G1 GT -> sub-env G2 GT ->
+  path-eval G N T -> sub-env G G1 -> sub-env G G2 ->
+  type.
+%mode pev-tp-dia +A +B +C +D +E -F -G -H.
+
+- : pev-tp-dia WT W1 W2 S1 S2 W0 S01 S02
+     <- sub-env-dia S1 S2 MM
+     <- pev-tp-min W1 W2 MM W0 S01 S02.
+
+
+%worlds () (pev-tp-dia _ _ _ _ _ _ _ _).
+%total A (pev-tp-dia A _ _ _ _ _ _ _).
+
+
 
 
 
@@ -1209,19 +1256,50 @@ sub-tp-trans-aux :
       .
 
 
-%%% FIX THESE CASES
-%%% GET RID OF ALL OTHER RESTRICT USES
-%%% IN PARTICULAR SUBEQ-TRANS
-%%% FIX REFLEXIVITY
+-/tselx-tselx  : sub-tp-trans-aux
+      (wf-tp/tsel (pev (P0: (tlookup G2 (var N) (rect _ _))) WR0 ))
+
+      (sub-tp/tselx ST11 ST12 (pev (P1: (tlookup G0 (var N) (rect _ _))) WR1) (SX1: sub-env G0 G1) (SX2: sub-env G0 G2))
+
+      (sub-tp/tselx ST21 ST22 (pev (P2: (tlookup G0' (var N) (rect _ _))) WR2) (SX2': sub-env G0' G2) (SX3: sub-env G0' G3))
+
+      (sub-tp/tselx ST31 ST32 (pev P3 W00) SX1x SX3x)
+
+      <- eq-refl N Q
+
+      <- extend-wf-pev-mult (pev P1 WR1) SX2 (pev P1' WR1')
+      <- extend-wf-pev-mult (pev P2 WR2) SX2' (pev P2' WR2')
+
+      <- lookup-eq P2' P1' Q S1 S2
+      <- eq-rect S1 S2 SR1 SR1x      
+
+      <- eq-low SR1 ST21 ST21'
+      <- eq-low SR1x ST11 ST11'
+
+      <- eq-high SR1 ST22 ST22'
+      <- eq-high SR1x ST12 ST12'
+
+      <- lookup-eq P0 P1' Q S3 S4
+      <- eq-rect S3 S4 SR3 SR3x
+      <- eq-pev SR3 (pev P0 WR0) (pev P0' WR0')
+
+      <- sub-tp-trans-aux WR0' ST11' ST21' ST31x
+      <- sub-tp-trans-aux WR0' ST22' ST12' ST32x
+
+      <- eq-low SR1 ST31x ST31xx %% TODO: reverse order somewhere above??
+      <- eq-high SR1 ST31xx ST31
+
+      <- eq-low SR1 ST32x ST32xx
+      <- eq-high SR1 ST32xx ST32
 
 
-% -/tselx2  : sub-tp-trans-aux
-%       W
-%       SBT1 
-%       (sub-tp/tselx ST P SX1 SX2)
-%       SBT5
-%       <- restrict-sub-tp2-mult SBT1 (wf-tp/tsel P) SX1 S3
-%       <- extend-sub-tp2-mult S3 SX2 SBT5.      
+      <- eq-pev SR1 (pev P2 WR2) (pev P2S WR2S)
+
+      <- pev-tp-dia (pev P0' WR0') (pev P1 WR1) (pev P2S WR2S) SX2 SX2' (pev P3 W00) S01 S02
+
+      <- sub-env-trans S01 SX1 SX1x
+      <- sub-env-trans S02 SX3 SX3x
+      .
 
 
 -/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
