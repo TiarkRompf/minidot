@@ -403,7 +403,8 @@ wf-tp/tsel : wf-tp G1 (tsel E1)
 %              <- tsize G1 (var N).
 
 wf-tp/tbindh : wf-tp G1 (bindh ([x] F x))
-              <- wf-tp (tcons (bindh ([x] F x)) G0) (F (var N))
+              % <- wf-tp (tcons (bindh ([x] F x)) G0) (F (var N))
+              <- wf-tp (tcons U G0) (F (var N))
               <- tsize G0 (var N)
               <- sub-env G0 G1.
 
@@ -928,7 +929,7 @@ sub-tp-refl :
 
 
 % -/tbind: sub-tp-refl (wf-tp/tbind S X W) (sub-tp/tbind2 S X (sub-tp/tbind1 S X SBT1 (wf-tp/tbind S X W)) (wf-tp/tbind S X W))
-%    <- sub-tp-refl W SBT1.
+%   <- sub-tp-refl W SBT1.
 
 
 %worlds () (sub-tp-refl _ _).
