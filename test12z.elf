@@ -675,6 +675,13 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 %       <- extend-swap-sub-tp2 STAB X S STAB' XAB 
 %       <- extend-swap-sub-tp2 STB X S STB' XB.
 
+- : extend-sub-tp (sub-tp/tbind1 SE S ST) T
+     (sub-tp/tbind1 (sub-env/ext SE) S STC1)
+     (sub-tp/tbind1 (sub-env/ext SE) S ST)
+     (sub-tp/tbind1 SE S STC1)
+     <- extend-sub-tp ST T STA1 STB1 STC1
+     .
+
 - : extend-sub-tp (sub-tp/tbindh SE S ST1 ST2 W) T
      (sub-tp/tbindh (sub-env/ext SE) S STB1 STB2 W)
      (sub-tp/tbindh SE S STB1 STB2 W)
