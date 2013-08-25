@@ -313,6 +313,10 @@ bounded-isvar : bounded G X -> isvar X I -> type.
 %total {} (bounded-isvar _ _).
 
 
+isvar-not-b   : isvar b I -> false -> type.
+%mode isvar-not-b +X1 -X2.
+%worlds (ovar) (isvar-not-b _ _).
+%total {} (isvar-not-b _ _).
 
 isvar-not-lam : isvar (lam A M) I -> false -> type.
 %mode isvar-not-lam +X1 -X2.
@@ -1201,7 +1205,7 @@ lookup-safe : wfe H G
                -> ordered G
                -> vordered H
 %%
-               -> wfv V G T
+               -> wfv V G A
          -> type.
 %mode lookup-safe +X1 +X2 +X3 +X4 +X5 -X6.
 
@@ -1218,7 +1222,7 @@ lookup-safe : wfe H G
      <- vlookup-vbounded-contra LH BH CONTRA
      <- false-implies-wfv CONTRA (W': wfv _ _ A).
 
--       : lookup-safe (wfe/cons WE (WV: wfv _ _ A)) (lookup/miss LG) vlookup/hit (ordered/cons BG) OH W'
+-       : lookup-safe (wfe/cons WE WV) ((lookup/miss LG): lookup _ _ A) vlookup/hit (ordered/cons BG) OH W'
      <- lookup-bounded-contra LG BG CONTRA
      <- false-implies-wfv CONTRA (W': wfv _ _ A).
 
@@ -1238,11 +1242,40 @@ ev-safe     : of G M A
 evapp-safe  : wfv VFUN G (arrow A1 A2)
                -> wfv VARG G A1
                -> evapp VFUN VARG V
-               -> of G MARG A1
 %%
-               -> ({x}{d:isvar x I} wfv (V x) G A2)
+               -> wfv (bin V) G A2
     -> type.
-%mode evapp-safe +X1 +X2 +X3 +X4 -X5.
+%mode evapp-safe +X1 +X2 +X3 -X4.
+
+-   : ev-safe (of/b: of G _ o) WE OG OH ((ev/var LH): ev H _ V) W
+ <- vlookup-vordered LH OH D
+ <- isvar-not-b D CONTRA
+ <- false-implies-wfv CONTRA (W: wfv V G o).
+
+-   : ev-safe ((of/var LG): of G _ A) WE OG OH ev/b W
+ <- lookup-ordered LG OG D
+ <- isvar-not-b D CONTRA
+ <- false-implies-wfv CONTRA (W: wfv v G A).
+
+-   : ev-safe ((of/lam T): of G _ (arrow A1 A2)) WE OG OH ((ev/var LH): ev H _ V) W
+ <- vlookup-vordered LH OH D
+ <- isvar-not-lam D CONTRA
+ <- false-implies-wfv CONTRA (W: wfv V G (arrow A1 A2)).
+
+-   : ev-safe ((of/var LG): of G _ A) WE OG OH (ev/lam: ev _ _ (clo H M)) W
+ <- lookup-ordered LG OG D
+ <- isvar-not-lam D CONTRA
+ <- false-implies-wfv CONTRA (W: wfv (clo H M) G A).
+
+-   : ev-safe ((of/app TARG TFUN): of G _ A) WE OG OH ((ev/var LH): ev H _ V) W
+ <- vlookup-vordered LH OH D
+ <- isvar-not-app D CONTRA
+ <- false-implies-wfv CONTRA (W: wfv V G A).
+
+-   : ev-safe ((of/var LG): of G _ A) WE OG OH ((ev/app _ _ _):  ev _ _ (bin V)) W
+ <- lookup-ordered LG OG D
+ <- isvar-not-app D CONTRA
+ <- false-implies-wfv CONTRA (W: wfv (bin V) G A).
 
 -   : ev-safe of/b WE _ _ ev/b wfv/v.
 
@@ -1251,21 +1284,21 @@ evapp-safe  : wfv VFUN G (arrow A1 A2)
 
 -   : ev-safe (of/lam T) WE OG OH ev/lam (wfv/clo OG T WE).
 
--   : ev-safe (of/app TARG TFUN) WE OG OH (ev/app EVAPP EVARG EVFUN) (wfv/bin [x] (W x))
- <- ev-safe TARG WE OG OH EVARG WARG
- <- ev-safe TFUN WE OG OH EVFUN WFUN
- <- evapp-safe WFUN WARG EVAPP TARG W.
-
--   : evapp-safe (wfv/clo OG TFUN WE) WARG (evapp/clo EV) TARG W'
+% TODO: almost there. The problem is we force G'=G.
+-   : evapp-safe ((wfv/clo OG TFUN WE): wfv (clo H M) G' (arrow A1 A2)) (WARG: wfv VARG G' A1) ((evapp/clo EV): evapp (clo H M) VARG V) ((wfv/bin W'): wfv (bin V) G' A2)
  <- ordered-to-vordered WE OG OH
  <- extend-context OG (FG: {x} isvar x I ->  bounded _ x)
  <- extend-stack   OH (FH: {x} isvar x I -> vbounded _ x)
  <- ({x}{d:isvar x I} ev-safe (TFUN x) (wfe/cons WE WARG) (ordered/cons (FG x d)) (vordered/cons (FH x d)) (EV x) (W x))
  <- restrict-wfv ([x][d:isvar x I] (W x)) W'.
 
--   : evapp-safe (wfv/bin W) WARG (evapp/bin EV) TARG ([x][d:isvar x I] (wfv/bin W'))
- <- ({x}{d:isvar x I} evapp-safe (W x d) WARG (EV x) TARG W').
+-   : evapp-safe (wfv/bin W) WARG (evapp/bin EV) (wfv/bin W')
+ <- ({x}{d:isvar x I} evapp-safe (W x d) WARG (EV x) (W' x d)).
 
-%worlds (ovar) (ev-safe _ _ _ _ _ _) (evapp-safe _ _ _ _ _).
-% TODO: total fails b/c of coverage checking with vars :-(
-%terminates  {(A2 B2) (A1 B1)}  (ev-safe A1 _ _ _ A2 _) (evapp-safe B1 _ B2 _ _).
+-   : ev-safe (of/app TARG TFUN) WE OG OH (ev/app EVAPP EVARG EVFUN) W
+ <- ev-safe TARG WE OG OH EVARG WARG
+ <- ev-safe TFUN WE OG OH EVFUN WFUN
+ <- evapp-safe WFUN WARG EVAPP W.
+
+%worlds (ovar) (ev-safe _ _ _ _ _ _) (evapp-safe _ _ _ _).
+%total  {(A2 B2) (A1 B1)}  (ev-safe A1 _ _ _ A2 _) (evapp-safe B1 _ B2 _).
