@@ -368,12 +368,19 @@ sub-tp/tselx : sub-tp G1 (tsel E) G2 (tsel E)
               <- sub-tp G2 (rect T2 T2U) G1 (rect T2 T2U)
               <- sub-tp G1 (rect T2 T2U) G2 (rect T2 T2U).
 
+
+sub-tp/tbind1 : sub-tp G1 (bindh F) G2 T2
+              <- sub-tp (tcons U G0) (F (var N)) G2 T2
+              <- tsize G0 (var N)
+              <- sub-env G0 G1.
+
+
 sub-tp/tbindh : sub-tp G1 T1 G2 (bindh F)
-               <- wf-tp G0 (bindh F)
-               <- sub-tp G1 T1 (tcons T1' G0) (F (var N))
-               <- sub-tp G1 T1 G1' T1'  %% built-in slack to fix transitivity (?)
-               <- tsize G0 (var N)
-               <- sub-env G0 G2.
+              <- wf-tp G0 (bindh F)
+              <- sub-tp G1 T1 (tcons T1' G0) (F (var N))
+              <- sub-tp G1 T1 G1' T1'  %% built-in slack to fix transitivity (?)
+              <- tsize G0 (var N)
+              <- sub-env G0 G2.
 
 
 
@@ -931,9 +938,11 @@ sub-tp-refl :
 % -/tbind: sub-tp-refl (wf-tp/tbind S X W) (sub-tp/tbind2 S X (sub-tp/tbind1 S X SBT1 (wf-tp/tbind S X W)) (wf-tp/tbind S X W))
 %   <- sub-tp-refl W SBT1.
 
+-/tbind: sub-tp-refl (wf-tp/tbindh SE X W) (sub-tp/tbindh SE S ST1 ST2 (wf-tp/tbindh SE X W))
+  .
+
 
 %worlds () (sub-tp-refl _ _).
-%trustme
 %total T (sub-tp-refl T _).
 
 
