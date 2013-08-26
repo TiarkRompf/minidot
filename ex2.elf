@@ -719,7 +719,7 @@ weaken-of : append G1 G2 G
 %%%%%  Values  & Stacks %%%%%
 
 val      : type.  %name val V.
-vctx     : type.  %name ctx H.
+vctx     : type.  %name vctx H.
 
 v        : val.
 clo      : vctx -> (exp -> exp) -> val.

@@ -121,7 +121,8 @@ sub       : ctx -> tp -> ctx -> tp -> type.
 
 pev/a     : pev G M A
        <- wft G A
-       <- lookup G M A.
+       <- lookup G M A
+       <- ordered G.
 
 sub/o     : sub G1 o G2 o.
 sub/top   : sub G1 A G2 top
@@ -307,6 +308,14 @@ isvar-fun : isvar X I -> isvar X J -> nat-eq I J -> type.
 %worlds (ovar) (isvar-fun _ _ _).
 %total {} (isvar-fun _ _ _).
 
+isvar-fun-eq : isvar X I -> exp-eq X X' -> isvar X' I -> type.
+%mode isvar-fun-eq +X1 +X2 -X3.
+
+-	:  isvar-fun-eq D exp-eq/i D.
+
+%worlds (ovar) (isvar-fun-eq _ _ _).
+%total {} (isvar-fun-eq _ _ _).
+
 
 
 precedes-trans : precedes X Y -> precedes Y Z -> precedes X Z -> type.
@@ -350,6 +359,23 @@ precedes-irreflex : precedes X X -> false -> type.
 %worlds (ovar) (precedes-irreflex _ _).
 %total {} (precedes-irreflex _ _).
 
+precedes-eq-irreflex : precedes X Y -> exp-eq X Y -> false -> type.
+%mode precedes-eq-irreflex +X1 +X2 -X3.
+
+-       : precedes-eq-irreflex 
+	   (precedes/i 
+	      (Dlt : lt I J)
+	      (D2 : isvar Y J)
+	      (D1 : isvar X I))
+     DEeq
+	   Dfalse
+           <- isvar-fun-eq D1 DEeq D2'
+           <- isvar-fun D2' D2 (Deq : nat-eq I J)
+           <- lt-resp Deq nat-eq/i Dlt (Dlt' : lt J J)
+           <- lt-antisymm Dlt' Dfalse.
+
+%worlds (ovar) (precedes-eq-irreflex _ _ _).
+%total {} (precedes-eq-irreflex _ _ _).
 
 
 bounded-isvar : bounded G X -> isvar X I -> type.
@@ -546,7 +572,21 @@ bounded-contra : bounded (cons G X A) X
 %worlds (ovar) (bounded-contra _ _).
 %total {} (bounded-contra _ _).
 
+bounded-eq-contra : bounded (cons G X A) Y
+                     -> exp-eq X Y
+%%
+		  -> false
+		  -> type.
+%mode bounded-eq-contra +X1 +X2 -X3.
 
+-	: bounded-eq-contra 
+	   (bounded/cons _ (Dprecedes : precedes X Y))
+     Deq
+	   Dfalse
+	   <- precedes-eq-irreflex Dprecedes Deq Dfalse.
+
+%worlds (ovar) (bounded-eq-contra _ _ _).
+%total {} (bounded-eq-contra _ _ _).
 
 lookup-bounded-contra : lookup G X A
 			 -> bounded G X
@@ -574,7 +614,34 @@ lookup-bounded-contra : lookup G X A
 %worlds (ovar) (lookup-bounded-contra _ _ _).
 %total D (lookup-bounded-contra D _ _).
 
+lookup-eq-bounded-contra : lookup G X A
+			 -> bounded G Y
+       -> exp-eq X Y
+%%
+			 -> false 
+			 -> type.
+%mode lookup-eq-bounded-contra +X1 +X2 +X3 -X4.
 
+-       : lookup-eq-bounded-contra 
+	   lookup/hit
+	   (Dbounded : bounded (cons G X A) Y)
+     Deq
+	   Dfalse
+           <- bounded-eq-contra Dbounded Deq Dfalse.
+
+-       : lookup-eq-bounded-contra 
+	   (lookup/miss 
+	      (Dlookup : lookup G X A))
+	   (bounded/cons
+	      (Dbounded : bounded G Y)
+	      (Dprecedes : precedes Y X))
+     Deq
+	   Dfalse
+           <- bounded-increase Dbounded Dprecedes (Dbounded' : bounded G X)
+           <- lookup-eq-bounded-contra Dlookup Dbounded' Deq Dfalse.
+
+%worlds (ovar) (lookup-eq-bounded-contra _ _ _ _).
+%total D (lookup-eq-bounded-contra D _ _ _).
 
 append-lookup-eq : ({x} append (cons G1 x A) (G2 x) (G x))
 		    -> ({x} isvar x I -> ordered (G x))
@@ -701,7 +768,7 @@ weaken-lookup-gen : append G1 G2 G
 %%%%%  Values  & Stacks %%%%%
 
 val      : type.  %name val V.
-vctx     : type.  %name ctx H.
+vctx     : type.  %name vctx H.
 
 v        : val.
 clo      : vctx -> (exp -> exp) -> val.
@@ -1097,13 +1164,20 @@ wfe      : vctx -> ctx -> type.
 
 wfv/v    : wfv v G o.
 
-wfv/clo  : wfv (clo H ([x] M x)) G (arrow A B)
+wfv/clo/arrow : wfv (clo H M) G (arrow A B)
       <- wfe H G'
       <- ({x} of (cons G' x A) (M x) B)
       <- ordered G'.
 
+wfv/clo/rect  : wfv (clo H M) G (rect A)
+      <- wft G A.
+
 wfv/bin  : wfv (bin V) G A
             <- {x}{d:isvar x I} wfv (V x) G A.
+
+wfv/sub  : wfv V G A
+      <- wfv V G' A'
+      <- sub G' A' G A.
 
 wfe/nil  : wfe vnil nil.
 
@@ -1116,7 +1190,8 @@ wfe/cons : wfe (vcons H X V) (cons G X A)
 %solve 1of : of nil 1exp A.
 %define 1clo = V
 %solve  1ev : ev vnil 1exp V.
-%query 1 1 wfv 1clo nil A.
+%query 1 1 wfv 1clo nil 1tp.
+%query 1 1 wfv 1clo nil top.
 
 false-implies-wfv : false -> wfv V G A -> type.
 %mode +{V:val} +{G:ctx} +{A:tp} +{X1:false} -{X2:wfv V G A} (false-implies-wfv X1 X2).
@@ -1169,6 +1244,207 @@ extend-env : wfe H G
 
 %worlds (ovar) (extend-env _ _ _ _).
 %total {} (extend-env _ _ _ _).
+
+sub-refl    : wft G A
+%%
+               -> sub G A G A
+               -> type.
+%mode sub-refl +X1 -X2.
+
+sub-refl/o     : sub-refl wft/o sub/o.
+
+sub-refl/top   : sub-refl wft/top (sub/top wft/top).
+
+sub-refl/bot   : sub-refl wft/bot (sub/bot wft/bot).
+
+sub-refl/arrow : sub-refl (wft/arrow WS WU) (sub/arrow BS BU)
+            <- sub-refl WS BS
+            <- sub-refl WU BU.
+
+sub-refl/rect  : sub-refl (wft/rect W) (sub/rect B)
+            <- sub-refl W B.
+
+sub-refl/tsel  : sub-refl
+                  (wft/tsel (pev/a OG L (wft/rect W)))
+                  (sub/tsel1
+                     (sub/tsel2 S (pev/a OG L (wft/rect W)))
+                     (pev/a OG L (wft/rect W)))
+            <- sub-refl W S.
+
+%worlds (var | ovar) (sub-refl _ _).
+%total W (sub-refl W _).
+
+extract-wf    : sub G1 A1 G2 A2
+%%
+                 -> wft G1 A1
+                 -> wft G2 A2
+       -> type.
+%mode extract-wf +X1 -X2 -X3.
+
+-     : extract-wf sub/o wft/o wft/o.
+
+-     : extract-wf (sub/top W) W wft/top.
+
+-     : extract-wf (sub/bot W) wft/bot W.
+
+-     : extract-wf (sub/arrow BU BS) (wft/arrow WU1 WS1) (wft/arrow WU2 WS2)
+   <- extract-wf BU WU1 WU2
+   <- extract-wf BS WS2 WS1.
+
+-     : extract-wf (sub/rect B) (wft/rect W1) (wft/rect W2)
+   <- extract-wf B W1 W2.
+
+-     : extract-wf
+         (sub/tsel1 B (pev/a OG L (wft/rect W1)))
+         (wft/tsel (pev/a OG L (wft/rect W1)))
+         W2
+   <- extract-wf B _ W2.
+
+-     : extract-wf
+         (sub/tsel2 B (pev/a OG L (wft/rect W2)))
+         W1
+         (wft/tsel (pev/a OG L (wft/rect W2)))
+   <- extract-wf B W1 _.
+
+%worlds (var | ovar) (extract-wf _ _ _).
+%total B (extract-wf B _ _).
+
+lookup-eq     : lookup G M A
+                 -> lookup G M' A'
+                 -> exp-eq M M'
+                 -> ordered G
+%%
+                 -> tp-eq A A'
+      -> type.
+%mode lookup-eq +X1 +X2 +X3 +X4 -X5.
+
+-     : lookup-eq lookup/hit lookup/hit EQ OG tp-eq/i.
+
+-     : lookup-eq (lookup/miss L) (lookup/miss L') EQ (ordered/cons BG) EQ'
+   <- bounded-is-ordered BG OG
+   <- lookup-eq L L' EQ OG EQ'.
+
+-     : lookup-eq (lookup/hit: lookup _ _ A) ((lookup/miss L'): lookup _ _ A') EQ (ordered/cons BG) EQ'
+   <- lookup-eq-bounded-contra L' BG EQ CONTRA
+   <- false-implies-tp-eq CONTRA (EQ': tp-eq A A').
+
+-     : lookup-eq ((lookup/miss L): lookup _ _ A) (lookup/hit: lookup _ _ A') EQ (ordered/cons BG) EQ'
+   <- lookup-eq-bounded-contra L BG EQ CONTRA
+   <- false-implies-tp-eq CONTRA (EQ': tp-eq A A').
+
+%worlds (ovar) (lookup-eq _ _ _ _ _).
+%total L (lookup-eq L _ _ _ _).
+
+rect-eq       : tp-eq (rect A) (rect A')
+%%
+                 -> tp-eq A A'
+       -> type.
+%mode rect-eq +X1 -X2.
+
+rect-eq/i : rect-eq tp-eq/i tp-eq/i.
+
+%worlds (var | ovar) (rect-eq _ _).
+%total EQ (rect-eq EQ _).
+
+lookup-eq-rect: lookup G M (rect A)
+                 -> lookup G M' (rect A')
+                 -> exp-eq M M'
+                 -> ordered G
+%%
+                 -> tp-eq A A'
+      -> type.
+%mode lookup-eq-rect +X1 +X2 +X3 +X4 -X5.
+
+-     : lookup-eq-rect L L' EQ OG EQ''
+   <- lookup-eq L L' EQ OG EQ'
+   <- rect-eq EQ' EQ''.
+
+%worlds (ovar) (lookup-eq-rect _ _ _ _ _).
+%total {} (lookup-eq-rect _ _ _ _ _).
+
+sub-eq2       : tp-eq A2 A2'
+                 -> sub G1 A1 G2 A2
+                 -> sub G1 A1 G2 A2'
+       -> type.
+%mode sub-eq2 +X1 +X2 -X3.
+
+-      : sub-eq2 tp-eq/i B B.
+
+%worlds (var | ovar) (sub-eq2 _ _ _).
+%total EQ (sub-eq2 EQ _ _).
+
+sub-eq1       : tp-eq A1 A1'
+                 -> sub G1 A1 G2 A2
+                 -> sub G1 A1' G2 A2
+       -> type.
+%mode sub-eq1 +X1 +X2 -X3.
+
+-      : sub-eq1 tp-eq/i B B.
+
+%worlds (var | ovar) (sub-eq1 _ _ _).
+%total EQ (sub-eq1 EQ _ _).
+
+sub-trans-aux : wft G2 A2
+                 -> sub G1 A1 G2 A2
+                 -> sub G2 A2 G3 A3
+%%
+                 -> sub G1 A1 G3 A3
+        -> type.
+%mode sub-trans-aux +X1 +X2 +X3 -X4.
+
+-/o     : sub-trans-aux wft/o sub/o sub/o sub/o.
+
+-/top   : sub-trans-aux _ B12 (sub/top _) (sub/top W)
+     <- extract-wf B12 W _.
+
+-/bot   : sub-trans-aux _ (sub/bot _) B23 (sub/bot W)
+     <- extract-wf B23 _ W.
+
+-/arrow : sub-trans-aux
+           (wft/arrow (WU: wft G2 U2) (WS: wft G2 S2))
+           (sub/arrow (BU12: sub G1 U1 G2 U2) (BS21: sub G2 S2 G1 S1))
+           (sub/arrow (BU23: sub G2 U2 G3 U3) (BS32: sub G3 S3 G2 S2))
+           (sub/arrow (BU13: sub G1 U1 G3 U3) (BS31: sub G3 S3 G1 S1))
+     <- sub-trans-aux WS BS32 BS21 BS31
+     <- sub-trans-aux WU BU12 BU23 BU13.
+
+-/rect  : sub-trans-aux
+           (wft/rect W)
+           (sub/rect B12)
+           (sub/rect B23)
+           (sub/rect B13)
+     <- sub-trans-aux W B12 B23 B13.
+
+-/tsel1 : sub-trans-aux
+           W
+           (sub/tsel1 B12 P)
+           B23
+           (sub/tsel1 B13 P)
+     <- sub-trans-aux W B12 B23 B13.
+
+-/tsel2 : sub-trans-aux
+           W
+           B12
+           (sub/tsel2 B23 P)
+           (sub/tsel2 B13 P)
+     <- sub-trans-aux W B12 B23 B13.
+
+-/tsel21 : sub-trans-aux
+            (wft/tsel (pev/a OG2 (L2: lookup G2 M (rect A2)) (wft/rect W2)))
+            (sub/tsel2 (B12: sub G1 A1 G2 A2') (pev/a OG2' (L2': lookup G2 M (rect A2')) (wft/rect W2')))
+            (sub/tsel1 (B23: sub G2 A2'' G3 A3) (pev/a OG2'' (L2'': lookup G2 M (rect A2'')) (wft/rect W2'')))
+            (B13: sub G1 A1 G3 A3)
+     <- lookup-eq-rect L2' L2 exp-eq/i OG2 S'
+     <- lookup-eq-rect L2'' L2 exp-eq/i OG2 S''
+     <- sub-eq2 S' B12 B12'
+     <- sub-eq1 S'' B23 B23''
+     <- sub-trans-aux W2 B12' B23'' B13.
+
+%worlds (ovar) (sub-trans-aux _ _ _ _).
+%total {W2 B12 B23} (sub-trans-aux W2 B12 B23 _).
+
+%% TODO: fix rest.
+%.
 
 extend-wfv  :  {X}{A} wfv V G T
 %%
@@ -1328,4 +1604,4 @@ evapp-safe  : wfv VFUN G (arrow A1 A2)
  <- evapp-safe WFUN WARG EVAPP W.
 
 %worlds (ovar) (ev-safe _ _ _ _ _ _) (evapp-safe _ _ _ _).
-%total  {(A2 B2) (A1 B1)}  (ev-safe A1 _ _ _ A2 _) (evapp-safe B1 _ B2 _).
+%total  (A B)  (ev-safe _ _ _ _ A _) (evapp-safe _ _ B _).
