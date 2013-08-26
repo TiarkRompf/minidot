@@ -1203,8 +1203,8 @@ but induction only gives us:   G1 T1 <: (G3,z:T2) T3
 -/tbindh  : sub-tp-trans-aux
        W
        SBT1
-       (sub-tp/tbindh SE0 S SW SBT3 (wf-tp/tbindh SE1 S1 WY))
-       (sub-tp/tbindh SE0 S SW' SBT5 (wf-tp/tbindh SE1 S1 WY))
+       (sub-tp/tbindh SE0 S SW SBT3 (wf-tp/tbindh SE1 S1 SY WY))
+       (sub-tp/tbindh SE0 S SW' SBT5 (wf-tp/tbindh SE1 S1 SY WY))
 
        <- sub-tp-trans-aux W SBT1 SW SW'
        <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
