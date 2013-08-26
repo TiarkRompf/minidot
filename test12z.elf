@@ -830,6 +830,9 @@ extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
 % - : extract-wf (sub-tp/tbind2 S X ST W) W1 W
 %       <- extract-wf ST W1 _.
 
+- : extract-wf (sub-tp/tbind1 ES S ST) (wf-tp/tbindh ES S W1) W2
+      <- extract-wf ST W1 W2.
+
 - : extract-wf (sub-tp/tbindh ES S SW SE W) W1 W'
       <- extract-wf SE W1 _
       <- extend-wf-tp-mult W ES W'.
