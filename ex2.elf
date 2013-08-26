@@ -1165,6 +1165,29 @@ ordered2v/cons : ordered-to-vordered (wfe/cons WE WV) (ordered/cons GB) (vordere
 %worlds (ovar) (ordered-to-vordered _ _ _).
 %total {} (ordered-to-vordered _ _ _).
 
+extend-env : wfe H G
+              -> ordered G
+%%
+		  -> ({x} isvar x I -> bounded G x)
+		  -> ({x} isvar x I -> vbounded H x)
+		  -> type.
+%mode extend-env +X1 +X2 -X3 -X4.
+
+-       : extend-env wfe/nil ordered/nil ([x] [d:isvar x 0] bounded/nil d) ([x] [d:isvar x 0] vbounded/nil d).
+
+-       : extend-env
+           (wfe/cons WE WV)
+           (ordered/cons Dbounded)
+           ([x] [d:isvar x (s J)] bounded/cons Dbounded (precedes/i Dlt d Disvar))
+           ([x] [d:isvar x (s J)] vbounded/cons Dvbounded (precedes/i Dlt d Disvar))
+           <- bounded-to-vbounded WE Dbounded Dvbounded
+           <- bounded-isvar Dbounded
+              (Disvar : isvar Y J)
+           <- lt-succ J (Dlt : lt J (s J)).
+
+%worlds (ovar) (extend-env _ _ _ _).
+%total {} (extend-env _ _ _ _).
+
 extend-wfv  :  {X}{A} wfv V G T
 %%
                -> wfv V (cons G X A) T
@@ -1181,23 +1204,41 @@ extend-wfv  :  {X}{A} wfv V G T
 %worlds (var | ovar) (extend-wfv _ _ _ _).
 %total W (extend-wfv _ _ W _).
 
-restrict-wfv : ({x:exp} isvar x I -> wfv (V x) (cons G x AX) A)
+change-wfv  :  wfv V G' T -> {G}
 %%
-                -> ({x:exp} isvar x I -> wfv (V x) G A)
+               wfv V G T
         -> type.
-%mode restrict-wfv +X1 -X2.
+%mode change-wfv +X1 +X2 -X3.
 
--      : restrict-wfv ([x][d:isvar x I] wfv/v) ([x][d:isvar x I] wfv/v).
+-      : change-wfv wfv/v _ wfv/v.
+
+-      : change-wfv (wfv/clo OG T WE) _ (wfv/clo OG T WE).
+
+-      : change-wfv (wfv/bin W) G (wfv/bin W')
+    <- {x}{d:isvar x I} change-wfv (W x d) G (W' x d).
+
+%worlds (var | ovar) (change-wfv _ _ _).
+%total W (change-wfv W _ _).
+
+restrict-wfv : ({x:exp} isvar x I -> wfv (V x) (cons G x AX) A)
+                -> {G'}
+%%
+                ({x:exp} isvar x I -> wfv (V x) G' A)
+        -> type.
+%mode restrict-wfv +X1 +X2 -X3.
+
+-      : restrict-wfv ([x][d:isvar x I] wfv/v) _ ([x][d:isvar x I] wfv/v).
 
 -      : restrict-wfv
           ([x][d:isvar x I] (wfv/clo (OG x d) ([y] (T x y)) (WE x d)))
+          _
           ([x][d:isvar x I] (wfv/clo (OG x d) ([y] (T x y)) (WE x d))).
 
--      : restrict-wfv ([x][d:isvar x I] (wfv/bin (W x d))) ([x][d:isvar x I](wfv/bin (W' x d)))
-    <- {y}{e:isvar y J} restrict-wfv ([x][d:isvar x I](W x d y e)) ([x][d:isvar x I](W' x d y e)).
+-      : restrict-wfv ([x][d:isvar x I] (wfv/bin (W x d))) G' ([x][d:isvar x I](wfv/bin (W' x d)))
+    <- {y}{e:isvar y J} restrict-wfv ([x][d:isvar x I](W x d y e)) G' ([x][d:isvar x I](W' x d y e)).
 
-%worlds (ovar) (restrict-wfv _ _).
-%total W (restrict-wfv W _).
+%worlds (ovar) (restrict-wfv _ _ _).
+%total W (restrict-wfv W _ _).
 
 lookup-safe : wfe H G
                -> lookup G X A
@@ -1284,13 +1325,12 @@ evapp-safe  : wfv VFUN G (arrow A1 A2)
 
 -   : ev-safe (of/lam T) WE OG OH ev/lam (wfv/clo OG T WE).
 
-% TODO: almost there. The problem is we force G'=G.
--   : evapp-safe ((wfv/clo OG TFUN WE): wfv (clo H M) G' (arrow A1 A2)) (WARG: wfv VARG G' A1) ((evapp/clo EV): evapp (clo H M) VARG V) ((wfv/bin W'): wfv (bin V) G' A2)
+-   : evapp-safe (wfv/clo (OG: ordered G) TFUN WE) (WARG: wfv _ G' _) (evapp/clo EV) (wfv/bin W')
  <- ordered-to-vordered WE OG OH
- <- extend-context OG (FG: {x} isvar x I ->  bounded _ x)
- <- extend-stack   OH (FH: {x} isvar x I -> vbounded _ x)
- <- ({x}{d:isvar x I} ev-safe (TFUN x) (wfe/cons WE WARG) (ordered/cons (FG x d)) (vordered/cons (FH x d)) (EV x) (W x))
- <- restrict-wfv ([x][d:isvar x I] (W x)) W'.
+ <- extend-env WE OG FG FH
+ <- change-wfv WARG G WARG'
+ <- ({x}{d:isvar x I} ev-safe (TFUN x) (wfe/cons WE WARG') (ordered/cons (FG x d)) (vordered/cons (FH x d)) (EV x) (W x d))
+ <- restrict-wfv W G' W'.
 
 -   : evapp-safe (wfv/bin W) WARG (evapp/bin EV) (wfv/bin W')
  <- ({x}{d:isvar x I} evapp-safe (W x d) WARG (EV x) (W' x d)).
