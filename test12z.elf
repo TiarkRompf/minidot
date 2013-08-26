@@ -940,17 +940,18 @@ sub-tp-refl :
    <- sub-tp-refl T2 SBT2.
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
--/tsel: sub-tp-refl (wf-tp/tsel P) (sub-tp/tselx ST ST P sub-env/refl sub-env/refl)
-   <- extract-wf-pev P W
+-/tsel: sub-tp-refl (wf-tp/tsel (pev L W)) (sub-tp/tselx ST ST (pev L W) sub-env/refl sub-env/refl)
    <- sub-tp-refl W ST.
 
 
 % -/tbind: sub-tp-refl (wf-tp/tbind S X W) (sub-tp/tbind2 S X (sub-tp/tbind1 S X SBT1 (wf-tp/tbind S X W)) (wf-tp/tbind S X W))
 %   <- sub-tp-refl W SBT1.
 
--/tbind: sub-tp-refl (wf-tp/tbindh SE X W) (sub-tp/tbindh SE S ST1 ST2 (wf-tp/tbindh SE X W))
-  .
-
+-/tbind: sub-tp-refl (wf-tp/tbindh SE S W) (sub-tp/tbindh SE S 
+    (sub-tp/tbind1 SE S ST2) 
+    (sub-tp/tbind1 SE S ST2)
+    (wf-tp/tbindh sub-env/refl S W))
+  <- sub-tp-refl W ST2.
 
 %worlds () (sub-tp-refl _ _).
 %total T (sub-tp-refl T _).
