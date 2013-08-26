@@ -8,11 +8,14 @@ tp      : type.  %name tp A.
 exp     : type.  %name exp M.
 
 o       : tp.
-p       : exp -> tp. % not used
+top     : tp.
+bot     : tp.
+tsel    : exp -> tp.
 arrow   : tp -> tp -> tp.
+rect    : tp -> tp.
 
 b       : exp.
-lam     : tp -> (exp -> exp) -> exp.
+lam     : tp -> tp -> (exp -> exp) -> exp.
 app     : exp -> exp -> exp.
 
 
@@ -112,6 +115,45 @@ append/cons     : append G1 (cons G2 X A) (cons G X A)
 
 %%%%%  Typing Rules (Explicit Context) %%%%%
 
+pev       : ctx -> exp -> tp -> type.
+wft       : ctx -> tp -> type.
+sub       : ctx -> tp -> ctx -> tp -> type.
+
+pev/a     : pev G M A
+       <- wft G A
+       <- lookup G M A.
+
+sub/o     : sub G1 o G2 o.
+sub/top   : sub G1 A G2 top
+       <- wft G1 A.
+sub/bot   : sub G1 bot G2 A
+       <- wft G2 A.
+sub/arrow : sub G1 (arrow AS1 AU1) G2 (arrow AS2 AU2)
+       <- sub G2 AS2 G1 AS1
+       <- sub G1 AU1 G2 AU2.
+sub/rect  : sub G1 (rect A1) G2 (rect A2)
+       <- sub G1 A1 G2 A2.
+sub/tsel1 : sub G1 (tsel M1) G2 A2
+       <- pev G1 M1 (rect A1)
+       <- sub G1 A1 G2 A2.
+sub/tsel2 : sub G1 A1 G2 (tsel M2)
+       <- pev G2 M2 (rect A2)
+       <- sub G1 A1 G2 A2.
+
+wft/o     : wft G o.
+wft/top   : wft G top.
+wft/bot   : wft G bot.
+wft/arrow : wft G (arrow AS AU)
+       <- wft G AS
+       <- wft G AU.
+wft/rect  : wft G (rect A)
+       <- wft G A.
+wft/tsel  : wft G (tsel M)
+       <- pev G M (rect A).
+
+
+
+
 of        : ctx -> exp -> tp -> type.
 
 of/b      : of G b o.
@@ -119,13 +161,21 @@ of/b      : of G b o.
 of/var		: of G X A
 		   <- lookup G X A.
 
-of/lam		: of G (lam A ([x] M x)) (arrow A B)
-		   <- ({x} of (cons G x A) (M x) B).
+of/lam/arrow : of G (lam AT A ([x] M x)) (arrow A B)
+		   <- ({x} of (cons G x A) (M x) B)
+       <- wft G AT.
+
+of/lam/rect  : of G (lam AT A ([x] M x)) (rect AT)
+		   <- ({x} of (cons G x A) (M x) B)
+       <- wft G AT.
 
 of/app		: of G (app M N) B
 		   <- of G M (arrow A B)
 		   <- of G N A.
 
+of/sub    : of G M A'
+       <- of G E A
+       <- sub G A G A'.
 
 
 
@@ -318,7 +368,7 @@ isvar-not-b   : isvar b I -> false -> type.
 %worlds (ovar) (isvar-not-b _ _).
 %total {} (isvar-not-b _ _).
 
-isvar-not-lam : isvar (lam A M) I -> false -> type.
+isvar-not-lam : isvar (lam AT A M) I -> false -> type.
 %mode isvar-not-lam +X1 -X2.
 %worlds (ovar) (isvar-not-lam _ _).
 %total {} (isvar-not-lam _ _).
@@ -645,74 +695,6 @@ weaken-lookup-gen : append G1 G2 G
 %worlds (var) (weaken-lookup-gen _ _ _ _).
 %total D (weaken-lookup-gen D _ _ _).
 
-
-
-weaken-of-gen : append G1 G2 G
-                  -> append (cons G1 X A) G2 G'
-                  -> of G M B
-%%
-                  -> of G' M B 
-		  -> type.
-%mode weaken-of-gen +X1 +X2 +X3 -X4.
-
--b      : weaken-of-gen _ _
-           of/b
-           of/b.
-
--var    : weaken-of-gen Dappend Dappend'
-           (of/var Dlookup)
-           (of/var Dlookup')
-           <- weaken-lookup-gen Dappend Dappend' Dlookup Dlookup'.
-
--lam    : weaken-of-gen Dappend Dappend'
-           (of/lam
-              (DofM : {y} of (cons G y B) (M y) C))
-           (of/lam DofM'')
-           <- ({y}
-                 weaken-of-gen (append/cons Dappend) (append/cons Dappend') (DofM y)
-		 (DofM'' y : of (cons G' y B) (M y) C)).
-
--app    : weaken-of-gen Dappend Dappend'
-           (of/app DofM2 DofM1)
-           (of/app DofM2' DofM1')
-           <- weaken-of-gen Dappend Dappend' DofM1 DofM1'
-           <- weaken-of-gen Dappend Dappend' DofM2 DofM2'.
-
-%worlds (var) (weaken-of-gen _ _ _ _).
-%total D (weaken-of-gen _ _ D _).
-
-
-
-weaken1-of : of G M B 
-%%
-	       -> of (cons G X A) M B 
-	       -> type.
-%mode +{G:ctx} +{X:exp} +{M:exp} +{B:tp} +{A:tp} +{X1:of G M B}
-   -{X2:of (cons G X A) M B} (weaken1-of X1 X2).
-
--       : weaken1-of Dof Dof'
-           <- weaken-of-gen append/nil append/nil Dof Dof'.
-
-%worlds (var) (weaken1-of _ _).
-%total {} (weaken1-of _ _).
-
-
-
-weaken-of : append G1 G2 G 
-	      -> of G1 M A
-%%
-	      -> of G M A 
-	      -> type.
-%mode weaken-of +X1 +X2 -X3.
-
--       : weaken-of append/nil D D.
-
--       : weaken-of (append/cons Dappend) Dof Dof''
-           <- weaken-of Dappend Dof Dof'
-           <- weaken1-of Dof' Dof''.
-
-%worlds (var) (weaken-of _ _ _).
-%total D (weaken-of D _ _).
 
 
 
@@ -1089,7 +1071,7 @@ ev/b    : ev H b v.
 ev/var  : ev H X V
      <- vlookup H X V.
 
-ev/lam  : ev H (lam A ([x] M x)) (clo H M).
+ev/lam  : ev H (lam AT A ([x] M x)) (clo H M).
 
 ev/app  : ev H (app M N) (bin ([x] V x))
      <- ev H M VM
@@ -1098,15 +1080,15 @@ ev/app  : ev H (app M N) (bin ([x] V x))
 
 
 %query 1 1 ev vnil b V.
-%query 1 1 ev vnil (app (lam o ([x] x)) b) V.
-%query 1 1 ev vnil (lam o ([x] (lam o ([y] y)))) V.
-%query 1 1 ev vnil (app (lam o ([x] (lam o ([y] y)))) b) V.
-%query 1 1 ev vnil (app (lam o ([x] (lam o ([y] x)))) b) V.
-%query 1 1 ev vnil (app (lam (arrow o o) ([x] (lam o ([y] x)))) (lam o ([x] x))) V.
-%query 1 1 ev vnil (app (lam (arrow o o) ([x] (lam o ([y] y)))) (app (lam o ([x] (lam o ([y] x)))) b)) V.
+%query 1 1 ev vnil (app (lam o o ([x] x)) b) V.
+%query 1 1 ev vnil (lam o o ([x] (lam o o ([y] y)))) V.
+%query 1 1 ev vnil (app (lam o o ([x] (lam o o ([y] y)))) b) V.
+%query 1 1 ev vnil (app (lam o o ([x] (lam o o ([y] x)))) b) V.
+%query 1 1 ev vnil (app (lam o (arrow o o) ([x] (lam o o ([y] x)))) (lam o o ([x] x))) V.
+%query 1 1 ev vnil (app (lam o (arrow o o) ([x] (lam o o ([y] y)))) (app (lam o o ([x] (lam o o ([y] x)))) b)) V.
 %query 0 * ev vnil (app b b) V.
-%query 1 1 ev vnil (app (app (lam o ([x] (lam o ([y] y)))) b) b) V.
-%query 1 1 ev vnil (app (app (app (lam o ([x] (lam o ([y] (lam o [z] y))))) b) b) b) V.
+%query 1 1 ev vnil (app (app (lam o o ([x] (lam o o ([y] y)))) b) b) V.
+%query 1 1 ev vnil (app (app (app (lam o o ([x] (lam o o ([y] (lam o o [z] y))))) b) b) b) V.
 
 %%%%%  Value Typing (Explicit Context & Stack)  %%%%%
 
@@ -1129,7 +1111,7 @@ wfe/cons : wfe (vcons H X V) (cons G X A)
       <- wfv V G A
       <- wfe H G.
 
-1exp = (app (lam o ([x] (lam o ([y] x)))) b).
+1exp = (app (lam o o ([x] (lam o o ([y] x)))) b).
 %define 1tp = A
 %solve 1of : of nil 1exp A.
 %define 1clo = V
@@ -1298,10 +1280,15 @@ evapp-safe  : wfv VFUN G (arrow A1 A2)
  <- isvar-not-b D CONTRA
  <- false-implies-wfv CONTRA (W: wfv v G A).
 
--   : ev-safe ((of/lam T): of G _ (arrow A1 A2)) WE OG OH ((ev/var LH): ev H _ V) W
+-   : ev-safe ((of/lam/arrow _ _): of G _ (arrow A1 A2)) WE OG OH ((ev/var LH): ev H _ V) W
  <- vlookup-vordered LH OH D
  <- isvar-not-lam D CONTRA
  <- false-implies-wfv CONTRA (W: wfv V G (arrow A1 A2)).
+
+-   : ev-safe ((of/lam/rect _ _): of G _ (rect A)) WE OG OH ((ev/var LH): ev H _ V) W
+ <- vlookup-vordered LH OH D
+ <- isvar-not-lam D CONTRA
+ <- false-implies-wfv CONTRA (W: wfv V G (rect A)).
 
 -   : ev-safe ((of/var LG): of G _ A) WE OG OH (ev/lam: ev _ _ (clo H M)) W
  <- lookup-ordered LG OG D
@@ -1323,7 +1310,7 @@ evapp-safe  : wfv VFUN G (arrow A1 A2)
 -   : ev-safe (of/var LG) WE OG OH (ev/var LH) W
  <- lookup-safe WE LG LH OG OH W.
 
--   : ev-safe (of/lam T) WE OG OH ev/lam (wfv/clo OG T WE).
+-   : ev-safe (of/lam/arrow _ T) WE OG OH ev/lam (wfv/clo OG T WE).
 
 -   : evapp-safe (wfv/clo (OG: ordered G) TFUN WE) (WARG: wfv _ G' _) (evapp/clo EV) (wfv/bin W')
  <- ordered-to-vordered WE OG OH
