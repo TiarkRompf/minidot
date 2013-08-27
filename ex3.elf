@@ -1443,60 +1443,117 @@ sub-trans-aux : wft G2 A2
 %worlds (ovar) (sub-trans-aux _ _ _ _).
 %total {W2 B12 B23} (sub-trans-aux W2 B12 B23 _).
 
-%% TODO: fix rest.
-%.
-
-extend-wfv  :  {X}{A} wfv V G T
+extend-wft  : wft G B
+               -> ordered (cons G X A)
 %%
-               -> wfv V (cons G X A) T
-        -> type.
-%mode extend-wfv +X1 +X2 +X3 -X4.
+               -> wft (cons G X A) B
+-> type.
+%mode extend-wft +X1 +X2 -X3.
 
--      : extend-wfv _ _ wfv/v wfv/v.
+-  : extend-wft wft/o _ wft/o.
 
--      : extend-wfv _ _ (wfv/clo OG T WE) (wfv/clo OG T WE).
+-  : extend-wft wft/top _ wft/top.
 
--      : extend-wfv X A (wfv/bin W) (wfv/bin W')
-    <- {x}{d:isvar x I} extend-wfv X A (W x d) (W' x d).
+-  : extend-wft wft/bot _ wft/bot.
 
-%worlds (var | ovar) (extend-wfv _ _ _ _).
-%total W (extend-wfv _ _ W _).
+-  : extend-wft (wft/arrow WU WS) OG (wft/arrow WU' WS')
+<- extend-wft WS OG WS'
+<- extend-wft WU OG WU'.
 
-change-wfv  :  wfv V G' T -> {G}
+-  : extend-wft (wft/rect W) OG (wft/rect W')
+<- extend-wft W OG W'.
+
+-  : extend-wft (wft/tsel (pev/a OG L W)) OG' (wft/tsel (pev/a OG' (lookup/miss L) W'))
+<- extend-wft W OG' W'.
+
+%worlds (var | ovar) (extend-wft _ _ _).
+%total W (extend-wft W _ _).
+
+extend-sub2  : sub G1 A1 G2 A2
+                -> ordered (cons G2 X A)
 %%
-               wfv V G T
-        -> type.
-%mode change-wfv +X1 +X2 -X3.
+                -> sub G1 A1 (cons G2 X A) A2
+         -> type.
+%mode extend-sub2 +X1 +X2 -X3.
 
--      : change-wfv wfv/v _ wfv/v.
-
--      : change-wfv (wfv/clo OG T WE) _ (wfv/clo OG T WE).
-
--      : change-wfv (wfv/bin W) G (wfv/bin W')
-    <- {x}{d:isvar x I} change-wfv (W x d) G (W' x d).
-
-%worlds (var | ovar) (change-wfv _ _ _).
-%total W (change-wfv W _ _).
-
-restrict-wfv : ({x:exp} isvar x I -> wfv (V x) (cons G x AX) A)
-                -> {G'}
+extend-sub1  : sub G1 A1 G2 A2
+                -> ordered (cons G1 X A)
 %%
-                ({x:exp} isvar x I -> wfv (V x) G' A)
+                -> sub (cons G1 X A) A1 G2 A2
+         -> type.
+%mode extend-sub1 +X1 +X2 -X3.
+
+-/o2     : extend-sub2 sub/o _ sub/o.
+
+-/o1     : extend-sub1 sub/o _ sub/o.
+
+-/top2   : extend-sub2 (sub/top W) OG (sub/top W).
+
+-/top1   : extend-sub1 (sub/top W) OG (sub/top W')
+      <- extend-wft W OG W'.
+
+-/bot2   : extend-sub2 (sub/bot W) OG (sub/bot W')
+      <- extend-wft W OG W'.
+
+-/bot1   : extend-sub1 (sub/bot W) OG (sub/bot W).
+
+-/arrow2 : extend-sub2 (sub/arrow BU BS) OG (sub/arrow BU' BS')
+      <- extend-sub1 BS OG BS'
+      <- extend-sub2 BU OG BU'.
+
+-/arrow1 : extend-sub1 (sub/arrow BU BS) OG (sub/arrow BU' BS')
+      <- extend-sub2 BS OG BS'
+      <- extend-sub1 BU OG BU'.
+
+-/rect2  : extend-sub2 (sub/rect S) OG (sub/rect S')
+      <- extend-sub2 S OG S'.
+
+-/rect1  : extend-sub1 (sub/rect S) OG (sub/rect S')
+      <- extend-sub1 S OG S'.
+
+-/tsel12 : extend-sub2 (sub/tsel1 S P) OG (sub/tsel1 S' P)
+      <- extend-sub2 S OG S'.
+
+-/tsel21 : extend-sub1 (sub/tsel2 S P) OG (sub/tsel2 S' P)
+      <- extend-sub1 S OG S'.
+
+-/tsel22 : extend-sub2
+            (sub/tsel2 S  (pev/a _  L               W)) OG
+            (sub/tsel2 S' (pev/a OG (lookup/miss L) W'))
+      <- extend-wft W OG W'
+      <- extend-sub2 S OG S'.
+
+-/tsel11 : extend-sub1
+            (sub/tsel1 S  (pev/a _  L               W)) OG
+            (sub/tsel1 S' (pev/a OG (lookup/miss L) W'))
+      <- extend-wft W OG W'
+      <- extend-sub1 S OG S'.
+
+%worlds (var | ovar) (extend-sub2 _ _ _) (extend-sub1 _ _ _).
+%total (S2 S1) (extend-sub2 S2 _ _) (extend-sub1 S1 _ _).
+
+extend-wfv  : wfv V G B
+               -> ordered (cons G X A)
+%%
+               -> wfv V (cons G X A) B
         -> type.
-%mode restrict-wfv +X1 +X2 -X3.
+%mode extend-wfv +X1 +X2 -X3.
 
--      : restrict-wfv ([x][d:isvar x I] wfv/v) _ ([x][d:isvar x I] wfv/v).
+-      : extend-wfv wfv/v _ wfv/v.
 
--      : restrict-wfv
-          ([x][d:isvar x I] (wfv/clo (OG x d) ([y] (T x y)) (WE x d)))
-          _
-          ([x][d:isvar x I] (wfv/clo (OG x d) ([y] (T x y)) (WE x d))).
+-      : extend-wfv (wfv/clo/arrow OG T WE) _ (wfv/clo/arrow OG T WE).
 
--      : restrict-wfv ([x][d:isvar x I] (wfv/bin (W x d))) G' ([x][d:isvar x I](wfv/bin (W' x d)))
-    <- {y}{e:isvar y J} restrict-wfv ([x][d:isvar x I](W x d y e)) G' ([x][d:isvar x I](W' x d y e)).
+-      : extend-wfv (wfv/clo/rect W) OG (wfv/clo/rect W')
+    <- extend-wft W OG W'.
 
-%worlds (ovar) (restrict-wfv _ _ _).
-%total W (restrict-wfv W _ _).
+-      : extend-wfv (wfv/bin W) OG (wfv/bin W')
+    <- {x}{d:isvar x I} extend-wfv (W x d) OG (W' x d).
+
+-      : extend-wfv (wfv/sub S W) OG (wfv/sub S' W)
+    <- extend-sub2 S OG S'.
+
+%worlds (var | ovar) (extend-wfv _ _ _).
+%total W (extend-wfv W _ _).
 
 lookup-safe : wfe H G
                -> lookup G X A
@@ -1509,13 +1566,13 @@ lookup-safe : wfe H G
 %mode lookup-safe +X1 +X2 +X3 +X4 +X5 -X6.
 
 -       : lookup-safe (wfe/cons WE WV) lookup/hit vlookup/hit OG OH WV'
-     <- extend-wfv _ _ WV WV'.
+     <- extend-wfv WV OG WV'.
 
 -       : lookup-safe (wfe/cons WE WV) (lookup/miss LG) (vlookup/miss LH) (ordered/cons BG) (vordered/cons BH) WV''
      <- bounded-is-ordered BG OG
      <- vbounded-is-vordered BH OH
      <- lookup-safe WE LG LH OG OH WV'
-     <- extend-wfv _ _ WV' WV''.
+     <- extend-wfv WV' (ordered/cons BG) WV''.
 
 -       : lookup-safe (wfe/cons WE (WV: wfv _ _ A)) lookup/hit (vlookup/miss LH) OG (vordered/cons BH) W'
      <- vlookup-vbounded-contra LH BH CONTRA
@@ -1527,6 +1584,9 @@ lookup-safe : wfe H G
 
 %worlds (ovar) (lookup-safe _ _ _ _ _ _).
 %total W (lookup-safe W _ _ _ _ _).
+
+%% TODO rest
+%.
 
 ev-safe     : of G M A
                -> wfe H G
