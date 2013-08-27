@@ -115,9 +115,9 @@ append/cons     : append G1 (cons G2 X A) (cons G X A)
 
 %%%%%  Typing Rules (Explicit Context) %%%%%
 
-pev       : ctx -> exp -> tp -> type.
-wft       : ctx -> tp -> type.
-sub       : ctx -> tp -> ctx -> tp -> type.
+pev       : ctx -> exp -> tp -> type.        %name pev P.
+wft       : ctx -> tp -> type.               %name wft WT.
+sub       : ctx -> tp -> ctx -> tp -> type.  %name sub B.
 
 pev/a     : pev G X A
        <- wft G A
@@ -155,7 +155,7 @@ wft/tsel  : wft G (tsel X)
 
 
 
-of        : ctx -> exp -> tp -> type.
+of        : ctx -> exp -> tp -> type.  %name of T.
 
 of/b      : of G b o.
 
@@ -1457,6 +1457,20 @@ sub-trans-aux : wft G2 A2
 %worlds (ovar) (sub-trans-aux _ _ _ _).
 %total {W2 B12 B23} (sub-trans-aux W2 B12 B23 _).
 
+sub-trans   : sub G1 A1 G2 A2
+               -> sub G2 A2 G3 A3
+%%
+               -> sub G1 A1 G3 A3
+-> type.
+%mode sub-trans +X1 +X2 -X3.
+
+- : sub-trans B12 B23 B13
+<- extract-wf B12 W1 W2
+<- sub-trans-aux W2 B12 B23 B13.
+
+%worlds (ovar) (sub-trans _ _ _).
+%total {} (sub-trans _ _ _).
+
 extend-wft  : wft G B
                -> ordered (cons G X A)
 %%
@@ -1598,6 +1612,24 @@ lookup-safe : wfe H G
 
 %worlds (ovar) (lookup-safe _ _ _ _ _ _).
 %total W (lookup-safe W _ _ _ _ _).
+
+invert-var  : of G X A
+               -> isvar X I
+%%
+               -> lookup G X A1
+               -> sub G A1 G A
+   -> type.
+%mode invert-var +X1 +X2 -X3 -X4.
+
+-  : invert-var (of/var W OG L) D L B
+<- sub-refl W B.
+
+-  : invert-var (of/sub B T) D L B''
+<- invert-var T D L B'
+<- sub-trans B' B B''.
+
+%worlds (ovar) (invert-var _ _ _ _).
+%total T (invert-var T _ _ _).
 
 %% TODO rest
 %.
