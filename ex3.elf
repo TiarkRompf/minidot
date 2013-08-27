@@ -1818,7 +1818,7 @@ inv-arrow   : wfv (clo H M) G2 (arrow A2 B2)
 <- sub-refl WT B
 <- inv-arrow-aux W B T WE OG S.
 
-%worlds () (inv-arrow _ _ _ _ _).
+%worlds (ovar) (inv-arrow _ _ _ _ _).
 %total W (inv-arrow W _ _ _ _).
 
 
@@ -1858,6 +1858,24 @@ evapp-safe  : wfv VFUN G (arrow A1 A2)
  <- ev-safe TARG WE OG OH EVARG WARG
  <- ev-safe TFUN WE OG OH EVFUN WFUN
  <- evapp-safe WFUN WARG EVAPP W.
+
+-   : evapp-safe W (WARG: wfv _ G' _) (evapp/clo EV) (wfv/bin ([x][d:isvar x I] (wfv/sub (BU' x) (W'' x d))) WT')
+ <- inv-arrow W TFUN (WE: wfe H G) OG (sub/arrow BU BS)
+ <- ordered-to-vordered WE OG OH
+ <- extend-env WE OG FG FH
+ <- ({x}{d:isvar x I}
+       ev-safe
+       (TFUN x d)
+       (wfe/cons WE (wfv/sub BS WARG))
+       (ordered/cons (FG x d))
+       (vordered/cons (FH x d))
+       (EV x)
+       (W'' x d))
+ <- extract-wf BU _ WT'
+ <- ({x}{d:isvar x I} extend-sub1 BU (ordered/cons (FG x d)) (BU' x)).
+
+-   : evapp-safe (wfv/bin W (wft/arrow W2 W1)) WARG (evapp/bin EV) (wfv/bin W' W2)
+ <- ({x}{d:isvar x I} evapp-safe (W x d) WARG (EV x) (W' x d)).
 
 %worlds (ovar) (ev-safe _ _ _ _ _ _) (evapp-safe _ _ _ _).
 %total  (A B)  (ev-safe _ _ _ _ A _) (evapp-safe _ _ B _).
