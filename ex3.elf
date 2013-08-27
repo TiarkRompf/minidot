@@ -74,8 +74,8 @@ precedes/i      : precedes X Y
 
 
 
-ordered : ctx -> type.
-bounded : ctx -> exp -> type.
+ordered : ctx -> type.        %name ordered OG.
+bounded : ctx -> exp -> type. %name bounded BG.
 %{
 "ordered G" means that the assumptions are listed in increasing order by stamp.
 "bounded G X" means that G is ordered and all assumptions are less than X.
@@ -95,7 +95,7 @@ bounded/cons    : bounded (cons G Y _) X
 
 
 
-lookup : ctx -> exp -> tp -> type.
+lookup : ctx -> exp -> tp -> type. %name lookup L.
 
 lookup/hit      : lookup (cons G X A) X A.
 
@@ -162,19 +162,22 @@ of/b      : of G b o.
 of/var		: of G X A
 		   <- lookup G X A
        <- ordered G
-       <- wft G A.
+       <- wft G A
+       <- isvar X I.
 
 of/lam/arrow : of G (lam AT A ([x] M x)) (arrow A B)
 		   <- ({x}{d:isvar x I} of (cons G x A) (M x) B)
-       <- wft G AT.
+       <- wft G AT
+       <- wft G (arrow A B).
 
 of/lam/rect  : of G (lam AT A ([x] M x)) (rect AT)
 		   <- ({x}{d:isvar x I} of (cons G x A) (M x) B)
-       <- wft G AT.
+       <- wft G AT
+       <- wft G (arrow A B).
 
 of/app		: of G (app M N) B
-		   <- of G M (arrow A B)
-		   <- of G N A.
+		   <- of G N A
+		   <- of G M (arrow A B).
 
 of/sub    : of G M A'
        <- of G M A
@@ -793,8 +796,8 @@ false-implies-val-eq : false -> val-eq A B -> type.
 %worlds (var | ovar) (false-implies-val-eq _ _).
 %total {} (false-implies-val-eq _ _).
 
-vordered : vctx -> type.
-vbounded : vctx -> exp -> type.
+vordered : vctx -> type.        %name vordered OH.
+vbounded : vctx -> exp -> type. %name vbounded BH.
 %{
 "ordered G" means that the assumptions are listed in increasing order by stamp.
 "bounded G X" means that G is ordered and all assumptions are less than X.
@@ -1319,6 +1322,29 @@ extract-wf    : sub G1 A1 G2 A2
 %worlds (var | ovar) (extract-wf _ _ _).
 %total B (extract-wf B _ _).
 
+extract-wf-tp : of G M A
+%%
+                 -> wft G A
+     -> type.
+%mode extract-wf-tp +X1 -X2.
+
+-    : extract-wf-tp of/b wft/o.
+
+-    : extract-wf-tp (of/var D W OG L) W.
+
+-    : extract-wf-tp (of/lam/arrow WA WR _) WA.
+
+-    : extract-wf-tp (of/lam/rect WA WR _) (wft/rect WR).
+
+-    : extract-wf-tp (of/app TM TN) W2
+  <- extract-wf-tp TM (wft/arrow W2 W1).
+
+-    : extract-wf-tp (of/sub B T) W2
+  <- extract-wf B W1 W2.
+
+%worlds (var | ovar) (extract-wf-tp _ _).
+%total W (extract-wf-tp W _).
+
 lookup-eq     : lookup G M A
                  -> lookup G M' A'
                  -> exp-eq M M'
@@ -1621,7 +1647,7 @@ invert-var  : of G X A
    -> type.
 %mode invert-var +X1 +X2 -X3 -X4.
 
--  : invert-var (of/var W OG L) D L B
+-  : invert-var (of/var _ W OG L) D L B
 <- sub-refl W B.
 
 -  : invert-var (of/sub B T) D L B''
@@ -1630,6 +1656,25 @@ invert-var  : of G X A
 
 %worlds (ovar) (invert-var _ _ _ _).
 %total T (invert-var T _ _ _).
+
+invert-app  : of G (app M N) A
+%%
+               -> of G M (arrow A1 A2)
+               -> of G N A1
+               -> sub G A2 G A
+   -> type.
+%mode invert-app +X1 -X2 -X3 -X4.
+
+-  : invert-app (of/app TM TN) TM TN B
+<- extract-wf-tp (of/app TM TN) W
+<- sub-refl W B.
+
+-  : invert-app (of/sub B T) TM TN B''
+<- invert-app T TM TN B'
+<- sub-trans B' B B''.
+
+%worlds (ovar) (invert-app _ _ _ _).
+%total T (invert-app T _ _ _).
 
 %% TODO rest
 %.
