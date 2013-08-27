@@ -163,23 +163,30 @@ of/var		: of G X A
 		   <- lookup G X A.
 
 of/lam/arrow : of G (lam AT A ([x] M x)) (arrow A B)
-		   <- ({x} of (cons G x A) (M x) B)
-       <- wft G AT.
+       <- wft G AT
+		   <- ({x}{d:isvar x I} of (cons G x A) (M x) B).
 
 of/lam/rect  : of G (lam AT A ([x] M x)) (rect AT)
-		   <- ({x} of (cons G x A) (M x) B)
-       <- wft G AT.
+       <- wft G AT
+		   <- ({x}{d:isvar x I} of (cons G x A) (M x) B).
 
 of/app		: of G (app M N) B
 		   <- of G M (arrow A B)
 		   <- of G N A.
 
 of/sub    : of G M A'
-       <- of G E A
+       <- of G M A
        <- sub G A G A'.
 
-
-
+%query 1 1 of nil (app (lam o o ([x] (lam o o ([y] x)))) b) (arrow o o).
+%query 1 1 of nil (app (lam o o ([x] (lam o o ([y] x)))) b) (rect o).
+%query 1 1 of nil (app (lam o o ([x] (lam o o ([y] x)))) b) (arrow bot top).
+%query 1 1 of nil (lam o (rect o) ([x] (lam o (tsel x) ([y] y)))) (arrow (rect o) (rect o)).
+%query 1 1 of nil (lam o (rect o) ([x] (lam (tsel x) o ([y] y)))) (arrow (rect o) top).
+%query 1 1 of nil (lam o (rect o) ([x] (lam o (tsel x) ([y] y)))) (arrow (rect o) (arrow bot top)).
+%query 1 1 of nil (lam o (rect o) ([x] (lam o (tsel x) ([y] y)))) (arrow (rect o) (arrow o o)).
+%query 1 1 of nil (lam o (rect o) ([x] (lam (tsel x) (tsel x) ([y] y)))) (arrow (rect o) (arrow o o)).
+%query 1 1 of nil (lam o (rect o) ([x] (lam (tsel x) (tsel x) ([y] y)))) (arrow (rect o) top).
 
 %%%%%  Worlds  %%%%%
 
@@ -1186,12 +1193,13 @@ wfe/cons : wfe (vcons H X V) (cons G X A)
       <- wfe H G.
 
 1exp = (app (lam o o ([x] (lam o o ([y] x)))) b).
-%define 1tp = A
-%solve 1of : of nil 1exp A.
+1tp = (arrow o o).
+%query 1 1 of nil 1exp 1tp.
 %define 1clo = V
 %solve  1ev : ev vnil 1exp V.
 %query 1 1 wfv 1clo nil 1tp.
 %query 1 1 wfv 1clo nil top.
+%query 1 1 of nil 1exp (rect o).
 
 false-implies-wfv : false -> wfv V G A -> type.
 %mode +{V:val} +{G:ctx} +{A:tp} +{X1:false} -{X2:wfv V G A} (false-implies-wfv X1 X2).
