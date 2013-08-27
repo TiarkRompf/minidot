@@ -1209,6 +1209,13 @@ but induction only gives us:   G1 T1 <: (G3,z:T2) T3
        <- sub-tp-trans-aux W SBT1 SW SW'
        <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
 
+-/tbind1 : sub-tp-trans-aux
+            W
+            (sub-tp/tbind1 SE S ST SU)
+            SBT2
+            (sub-tp/tbind1 SE S ST' SU)
+            <- sub-tp-trans-aux W ST SBT2 ST'.
+
 %worlds () (sub-tp-trans-aux _ _ _ _).
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
