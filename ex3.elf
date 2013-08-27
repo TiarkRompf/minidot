@@ -1821,6 +1821,39 @@ inv-arrow   : wfv (clo H M) G2 (arrow A2 B2)
 %worlds (ovar) (inv-arrow _ _ _ _ _).
 %total W (inv-arrow W _ _ _ _).
 
+inv-bin-aux   :  wfv (bin V) G1 A1
+               -> sub G1 A1 G2 A2
+%%
+               -> wft G A
+               -> ({x}{d:isvar x I} wfv (V x) G A)
+               -> sub G A G2 A2
+   -> type.
+%mode inv-bin-aux +X1 +X2 -X2 -X3 -X4.
+
+-  : inv-bin-aux (wfv/bin WV WT) B WT WV B.
+
+-  : inv-bin-aux (wfv/sub BC1 W) B12 WT' WV' BC2'
+<- sub-trans BC1 B12 BC2
+<- inv-bin-aux W BC2 WT' WV' BC2'.
+
+%worlds (ovar) (inv-bin-aux _ _ _ _ _).
+%total W (inv-bin-aux W _ _ _ _).
+
+inv-bin      :  wfv (bin V) G2 A2
+%%
+               -> wft G A
+               -> ({x}{d:isvar x I} wfv (V x) G A)
+               -> sub G A G2 A2
+   -> type.
+%mode inv-bin +X1 -X2 -X3 -X4.
+
+-  : inv-bin W WT WV S
+<- extract-wfv W WT'
+<- sub-refl WT' B
+<- inv-bin-aux W B WT WV S.
+
+%worlds (ovar) (inv-bin _ _ _ _).
+%total W (inv-bin W _ _ _).
 
 ev-safe     : of G M A
                -> wfe H G
@@ -1874,73 +1907,10 @@ evapp-safe  : wfv VFUN G (arrow A1 A2)
  <- extract-wf BU _ WT'
  <- ({x}{d:isvar x I} extend-sub1 BU (ordered/cons (FG x d)) (BU' x)).
 
--   : evapp-safe (wfv/bin W (wft/arrow W2 W1)) WARG (evapp/bin EV) (wfv/bin W' W2)
- <- ({x}{d:isvar x I} evapp-safe (W x d) WARG (EV x) (W' x d)).
-
-%worlds (ovar) (ev-safe _ _ _ _ _ _) (evapp-safe _ _ _ _).
-%total  (A B)  (ev-safe _ _ _ _ A _) (evapp-safe _ _ B _).
-
-%.
-
-
-
-%.
--   : ev-safe (of/b: of G _ o) WE OG OH ((ev/var LH): ev H _ V) W
- <- vlookup-vordered LH OH D
- <- isvar-not-b D CONTRA
- <- false-implies-wfv CONTRA (W: wfv V G o).
-
--   : ev-safe ((of/var LG): of G _ A) WE OG OH ev/b W
- <- lookup-ordered LG OG D
- <- isvar-not-b D CONTRA
- <- false-implies-wfv CONTRA (W: wfv v G A).
-
--   : ev-safe ((of/lam/arrow _ _): of G _ (arrow A1 A2)) WE OG OH ((ev/var LH): ev H _ V) W
- <- vlookup-vordered LH OH D
- <- isvar-not-lam D CONTRA
- <- false-implies-wfv CONTRA (W: wfv V G (arrow A1 A2)).
-
--   : ev-safe ((of/lam/rect _ _): of G _ (rect A)) WE OG OH ((ev/var LH): ev H _ V) W
- <- vlookup-vordered LH OH D
- <- isvar-not-lam D CONTRA
- <- false-implies-wfv CONTRA (W: wfv V G (rect A)).
-
--   : ev-safe ((of/var LG): of G _ A) WE OG OH (ev/lam: ev _ _ (clo H M)) W
- <- lookup-ordered LG OG D
- <- isvar-not-lam D CONTRA
- <- false-implies-wfv CONTRA (W: wfv (clo H M) G A).
-
--   : ev-safe ((of/app TARG TFUN): of G _ A) WE OG OH ((ev/var LH): ev H _ V) W
- <- vlookup-vordered LH OH D
- <- isvar-not-app D CONTRA
- <- false-implies-wfv CONTRA (W: wfv V G A).
-
--   : ev-safe ((of/var LG): of G _ A) WE OG OH ((ev/app _ _ _):  ev _ _ (bin V)) W
- <- lookup-ordered LG OG D
- <- isvar-not-app D CONTRA
- <- false-implies-wfv CONTRA (W: wfv (bin V) G A).
-
--   : ev-safe of/b WE _ _ ev/b wfv/v.
-
--   : ev-safe (of/var LG) WE OG OH (ev/var LH) W
- <- lookup-safe WE LG LH OG OH W.
-
--   : ev-safe (of/lam/arrow _ T) WE OG OH ev/lam (wfv/clo OG T WE).
-
--   : evapp-safe (wfv/clo (OG: ordered G) TFUN WE) (WARG: wfv _ G' _) (evapp/clo EV) (wfv/bin W')
- <- ordered-to-vordered WE OG OH
- <- extend-env WE OG FG FH
- <- change-wfv WARG G WARG'
- <- ({x}{d:isvar x I} ev-safe (TFUN x) (wfe/cons WE WARG') (ordered/cons (FG x d)) (vordered/cons (FH x d)) (EV x) (W x d))
- <- restrict-wfv W G' W'.
-
--   : evapp-safe (wfv/bin W) WARG (evapp/bin EV) (wfv/bin W')
- <- ({x}{d:isvar x I} evapp-safe (W x d) WARG (EV x) (W' x d)).
-
--   : ev-safe (of/app TARG TFUN) WE OG OH (ev/app EVAPP EVARG EVFUN) W
- <- ev-safe TARG WE OG OH EVARG WARG
- <- ev-safe TFUN WE OG OH EVFUN WFUN
- <- evapp-safe WFUN WARG EVAPP W.
+-   : evapp-safe W0 WARG (evapp/bin EV) (wfv/bin ([x][d:isvar x I] (wfv/sub BU (W' x d))) WT')
+ <- inv-bin W0 (wft/arrow WU WS) W (sub/arrow BU BS)
+ <- ({x}{d:isvar x I} evapp-safe (W x d) (wfv/sub BS WARG) (EV x) (W' x d))
+ <- extract-wf BU _ WT'.
 
 %worlds (ovar) (ev-safe _ _ _ _ _ _) (evapp-safe _ _ _ _).
 %total  (A B)  (ev-safe _ _ _ _ A _) (evapp-safe _ _ B _).
