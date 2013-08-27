@@ -167,11 +167,13 @@ of/var		: of G X A
 
 of/lam/arrow : of G (lam AT A ([x] M x)) (arrow A B)
 		   <- ({x}{d:isvar x I} of (cons G x A) (M x) B)
+       <- ({x}{d:isvar x I} ordered (cons G x A))
        <- wft G AT
        <- wft G (arrow A B).
 
 of/lam/rect  : of G (lam AT A ([x] M x)) (rect AT)
 		   <- ({x}{d:isvar x I} of (cons G x A) (M x) B)
+       <- ({x}{d:isvar x I} ordered (cons G x A))
        <- wft G AT
        <- wft G (arrow A B).
 
@@ -1179,7 +1181,7 @@ wfv/v    : wfv v G o.
 wfv/clo/arrow : wfv (clo H M) G (arrow A B)
       <- wfe H G'
       <- ({x}{d:isvar x I} of (cons G' x A) (M x) B)
-      <- ordered G'
+      <- ({x}{d:isvar x I} ordered (cons G' x A))
       <- sub G' (arrow A B) G (arrow A B).
 
 wfv/clo/rect  : wfv (clo H M) G (rect A)
@@ -1334,9 +1336,9 @@ extract-wf-tp : of G M A
 
 -    : extract-wf-tp (of/var D W OG L) W.
 
--    : extract-wf-tp (of/lam/arrow WA WR _) WA.
+-    : extract-wf-tp (of/lam/arrow WA WR _ _) WA.
 
--    : extract-wf-tp (of/lam/rect WA WR _) (wft/rect WR).
+-    : extract-wf-tp (of/lam/rect WA WR _ _) (wft/rect WR).
 
 -    : extract-wf-tp (of/app TM TN) W2
   <- extract-wf-tp TM (wft/arrow W2 W1).
@@ -1762,6 +1764,7 @@ sub-either-wfv : sub-either
 
 invert-lam  : of G (lam AT A M) A'
 %%
+               -> ({x:exp}{d:isvar x I} ordered (cons G x A))
                -> ({x:exp}{d:isvar x I} of (cons G x A) (M x) B)
                -> wft G AT
                -> wft G (arrow A B)
@@ -1769,27 +1772,27 @@ invert-lam  : of G (lam AT A M) A'
                   G (arrow A B) G A'
                   G (rect AT) G A'
    -> type.
-%mode invert-lam +X1 -X2 -X3 -X4 -X5.
+%mode invert-lam +X1 -X2 -X3 -X4 -X5 -X6.
 
--  : invert-lam (of/lam/arrow WA WT T) T WT WA (sub-either/left B)
+-  : invert-lam (of/lam/arrow WA WT OG T) OG T WT WA (sub-either/left B)
 <- sub-refl WA B.
 
--  : invert-lam (of/lam/rect WA WT T) T WT WA (sub-either/right (sub/rect B))
+-  : invert-lam (of/lam/rect WA WT OG T) OG T WT WA (sub-either/right (sub/rect B))
 <- sub-refl WT B.
 
--  : invert-lam (of/sub B T) T' WT' WA' B''
-<- invert-lam T T' WT' WA' B'
+-  : invert-lam (of/sub B T) OG' T' WT' WA' B''
+<- invert-lam T OG' T' WT' WA' B'
 <- sub-either-trans B' B B''.
 
-%worlds (ovar) (invert-lam _ _ _ _ _).
-%total T (invert-lam T _ _ _ _).
+%worlds (ovar) (invert-lam _ _ _ _ _ _).
+%total T (invert-lam T _ _ _ _ _).
 
 inv-arrow-aux : wfv (clo H M) G1 A1
                        -> sub G1 A1 G2 (arrow A2 B2)
 %%
                        -> ({x}{d:isvar x I} of (cons G x A) (M x) B)
                        -> wfe H G
-                       -> ordered G
+                       -> ({x}{d:isvar x I} ordered (cons G x A))
                        -> sub G (arrow A B) G2 (arrow A2 B2)
    -> type.
 %mode inv-arrow-aux +X1 +X2 -X3 -X4 -X5 -X6.
@@ -1808,7 +1811,7 @@ inv-arrow   : wfv (clo H M) G2 (arrow A2 B2)
 %%
                -> ({x}{d:isvar x I} of (cons G x A) (M x) B)
                -> wfe H G
-               -> ordered G
+               -> ({x}{d:isvar x I} ordered (cons G x A))
                -> sub G (arrow A B) G2 (arrow A2 B2)
    -> type.
 %mode inv-arrow +X1 -X2 -X3 -X4 -X5.
@@ -1882,9 +1885,9 @@ evapp-safe  : wfv VFUN G (arrow A1 A2)
  <- lookup-safe WE LG LH OG OH WV.
 
 -   : ev-safe T WE OG OH ev/lam W
- <- invert-lam T TM WT WAB BE
+ <- invert-lam T OG' TM WT WAB BE
  <- sub-refl WAB BAB
- <- sub-either-wfv BE (wfv/clo/arrow BAB OG TM WE) (wfv/clo/rect WT) W.
+ <- sub-either-wfv BE (wfv/clo/arrow BAB OG' TM WE) (wfv/clo/rect WT) W.
 
 -   : ev-safe T WE OG OH (ev/app EVAPP EVARG EVFUN) (wfv/sub B W)
  <- invert-app T TFUN TARG B
@@ -1892,20 +1895,19 @@ evapp-safe  : wfv VFUN G (arrow A1 A2)
  <- ev-safe TFUN WE OG OH EVFUN WFUN
  <- evapp-safe WFUN WARG EVAPP W.
 
--   : evapp-safe W (WARG: wfv _ G' _) (evapp/clo EV) (wfv/bin ([x][d:isvar x I] (wfv/sub (BU' x) (W'' x d))) WT')
+-   : evapp-safe W (WARG: wfv _ G' _) (evapp/clo EV) (wfv/bin ([x][d:isvar x I] (wfv/sub (BU' x d) (W'' x d))) WT')
  <- inv-arrow W TFUN (WE: wfe H G) OG (sub/arrow BU BS)
- <- ordered-to-vordered WE OG OH
- <- extend-env WE OG FG FH
+ <- ({x}{d:isvar x I} ordered-to-vordered (wfe/cons WE (wfv/sub BS WARG)) (OG x d) (OH x d))
  <- ({x}{d:isvar x I}
        ev-safe
        (TFUN x d)
        (wfe/cons WE (wfv/sub BS WARG))
-       (ordered/cons (FG x d))
-       (vordered/cons (FH x d))
+       (OG x d)
+       (OH x d)
        (EV x)
        (W'' x d))
  <- extract-wf BU _ WT'
- <- ({x}{d:isvar x I} extend-sub1 BU (ordered/cons (FG x d)) (BU' x)).
+ <- ({x}{d:isvar x I} extend-sub1 BU (OG x d) (BU' x d)).
 
 -   : evapp-safe W0 WARG (evapp/bin EV) (wfv/bin ([x][d:isvar x I] (wfv/sub BU (W' x d))) WT')
  <- inv-bin W0 (wft/arrow WU WS) W (sub/arrow BU BS)
