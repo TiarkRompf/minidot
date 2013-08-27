@@ -1186,6 +1186,7 @@ wfv/clo/rect  : wfv (clo H M) G (rect A)
       <- wft G A.
 
 wfv/bin  : wfv (bin V) G A
+            <- wft G A
             <- {x}{d:isvar x I} wfv (V x) G A.
 
 wfv/sub  : wfv V G A
@@ -1602,7 +1603,8 @@ extend-wfv  : wfv V G B
 -      : extend-wfv (wfv/clo/rect W) OG (wfv/clo/rect W')
     <- extend-wft W OG W'.
 
--      : extend-wfv (wfv/bin W) OG (wfv/bin W')
+-      : extend-wfv (wfv/bin W WT) OG (wfv/bin W' WT')
+    <- extend-wft WT OG WT'
     <- {x}{d:isvar x I} extend-wfv (W x d) OG (W' x d).
 
 -      : extend-wfv (wfv/sub S W) OG (wfv/sub S' W)
@@ -1640,6 +1642,27 @@ lookup-safe : wfe H G
 
 %worlds (ovar) (lookup-safe _ _ _ _ _ _).
 %total W (lookup-safe W _ _ _ _ _).
+
+extract-wfv : wfv V G A
+%%
+               -> wft G A
+   -> type.
+%mode extract-wfv +X1 -X2.
+
+-  : extract-wfv wfv/v wft/o.
+
+-  : extract-wfv (wfv/clo/arrow B OG T WE) W'
+<- extract-wf B _ W'.
+
+-  : extract-wfv (wfv/clo/rect W) (wft/rect W).
+
+-  : extract-wfv (wfv/bin WV W) W.
+
+-  : extract-wfv (wfv/sub B WV) W'
+<- extract-wf B _ W'.
+
+%worlds (var | ovar) (extract-wfv _ _).
+%total W (extract-wfv W _).
 
 invert-var  : of G X A
                -> isvar X I
@@ -1747,6 +1770,24 @@ inv-arrow-aux : wfv (clo H M) G1 A1
 
 %worlds (ovar) (inv-arrow-aux _ _ _ _ _ _).
 %total W (inv-arrow-aux W _ _ _ _ _).
+
+inv-arrow   : wfv (clo H M) G2 (arrow A2 B2)
+%%
+               -> ({x}{d:isvar x I} of (cons G x A) (M x) B)
+               -> wfe H G
+               -> ordered G
+               -> sub G (arrow A B) G2 (arrow A2 B2)
+   -> type.
+%mode inv-arrow +X1 -X2 -X3 -X4 -X5.
+
+-  : inv-arrow W T WE OG S
+<- extract-wfv W WT
+<- sub-refl WT B
+<- inv-arrow-aux W B T WE OG S.
+
+%worlds () (inv-arrow _ _ _ _ _).
+%total W (inv-arrow W _ _ _ _).
+
 
 %% TODO rest
 %.
