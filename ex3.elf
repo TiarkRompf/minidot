@@ -1727,6 +1727,23 @@ sub-either-trans : sub-either
 %worlds (ovar) (sub-either-trans _ _ _).
 %total E (sub-either-trans E _ _).
 
+sub-either-wfv : sub-either
+                  G1 A1 G A
+                  G2 A2 G A
+                  -> wfv V G1 A1
+                  -> wfv V G2 A2
+%%
+                  -> wfv V G A
+   -> type.
+%mode sub-either-wfv +X1 +X2 +X3 -X4.
+
+-  : sub-either-wfv (sub-either/left B)  W1 W2 (wfv/sub B W1).
+
+-  : sub-either-wfv (sub-either/right B) W1 W2 (wfv/sub B W2).
+
+%worlds (ovar) (sub-either-wfv _ _ _ _).
+%total E (sub-either-wfv E _ _ _).
+
 invert-lam  : of G (lam AT A M) A'
 %%
                -> ({x:exp}{d:isvar x I} of (cons G x A) (M x) B)
@@ -1789,9 +1806,6 @@ inv-arrow   : wfv (clo H M) G2 (arrow A2 B2)
 %total W (inv-arrow W _ _ _ _).
 
 
-%% TODO rest
-%.
-
 ev-safe     : of G M A
                -> wfe H G
                -> ordered G
@@ -1810,6 +1824,23 @@ evapp-safe  : wfv VFUN G (arrow A1 A2)
     -> type.
 %mode evapp-safe +X1 +X2 +X3 -X4.
 
+-   : ev-safe T WE OG OH (ev/var LH) (wfv/sub B WV)
+ <- ordered-to-vordered WE OG OH
+ <- vlookup-vordered LH OH D
+ <- invert-var T D LG B
+ <- lookup-safe WE LG LH OG OH WV.
+
+-   : ev-safe T WE OG OH ev/lam W
+ <- invert-lam T TM WT WAB BE
+ <- sub-refl WAB BAB
+ <- sub-either-wfv BE (wfv/clo/arrow BAB OG TM WE) (wfv/clo/rect WT) W.
+
+%.
+
+-   : ev-safe T WE OG OH (ev/app EVAPP EVARG EVFUN) W
+ <- invert-app T TFUN TARG B
+
+%.
 -   : ev-safe (of/b: of G _ o) WE OG OH ((ev/var LH): ev H _ V) W
  <- vlookup-vordered LH OH D
  <- isvar-not-b D CONTRA
