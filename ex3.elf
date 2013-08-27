@@ -119,9 +119,9 @@ pev       : ctx -> exp -> tp -> type.
 wft       : ctx -> tp -> type.
 sub       : ctx -> tp -> ctx -> tp -> type.
 
-pev/a     : pev G M A
+pev/a     : pev G X A
        <- wft G A
-       <- lookup G M A
+       <- lookup G X A
        <- ordered G.
 
 sub/o     : sub G1 o G2 o.
@@ -134,12 +134,12 @@ sub/arrow : sub G1 (arrow AS1 AU1) G2 (arrow AS2 AU2)
        <- sub G1 AU1 G2 AU2.
 sub/rect  : sub G1 (rect A1) G2 (rect A2)
        <- sub G1 A1 G2 A2.
-sub/tsel1 : sub G1 (tsel M1) G2 A2
-       <- pev G1 M1 (rect A1)
-       <- sub G1 A1 G2 A2.
-sub/tsel2 : sub G1 A1 G2 (tsel M2)
-       <- pev G2 M2 (rect A2)
-       <- sub G1 A1 G2 A2.
+sub/tsel1 : sub G1 (tsel X1) G2 A2
+       <- sub G1 A1 G2 A2
+       <- pev G1 X1 (rect A1).
+sub/tsel2 : sub G1 A1 G2 (tsel X2)
+       <- sub G1 A1 G2 A2
+       <- pev G2 X2 (rect A2).
 
 wft/o     : wft G o.
 wft/top   : wft G top.
@@ -149,8 +149,8 @@ wft/arrow : wft G (arrow AS AU)
        <- wft G AU.
 wft/rect  : wft G (rect A)
        <- wft G A.
-wft/tsel  : wft G (tsel M)
-       <- pev G M (rect A).
+wft/tsel  : wft G (tsel X)
+       <- pev G X (rect A).
 
 
 
@@ -160,15 +160,17 @@ of        : ctx -> exp -> tp -> type.
 of/b      : of G b o.
 
 of/var		: of G X A
-		   <- lookup G X A.
+		   <- lookup G X A
+       <- ordered G
+       <- wft G A.
 
 of/lam/arrow : of G (lam AT A ([x] M x)) (arrow A B)
-       <- wft G AT
-		   <- ({x}{d:isvar x I} of (cons G x A) (M x) B).
+		   <- ({x}{d:isvar x I} of (cons G x A) (M x) B)
+       <- wft G AT.
 
 of/lam/rect  : of G (lam AT A ([x] M x)) (rect AT)
-       <- wft G AT
-		   <- ({x}{d:isvar x I} of (cons G x A) (M x) B).
+		   <- ({x}{d:isvar x I} of (cons G x A) (M x) B)
+       <- wft G AT.
 
 of/app		: of G (app M N) B
 		   <- of G M (arrow A B)
@@ -1173,7 +1175,7 @@ wfv/v    : wfv v G o.
 
 wfv/clo/arrow : wfv (clo H M) G (arrow A B)
       <- wfe H G'
-      <- ({x} of (cons G' x A) (M x) B)
+      <- ({x}{d:isvar x I} of (cons G' x A) (M x) B)
       <- ordered G'.
 
 wfv/clo/rect  : wfv (clo H M) G (rect A)
@@ -1275,8 +1277,8 @@ sub-refl/rect  : sub-refl (wft/rect W) (sub/rect B)
 sub-refl/tsel  : sub-refl
                   (wft/tsel (pev/a OG L (wft/rect W)))
                   (sub/tsel1
-                     (sub/tsel2 S (pev/a OG L (wft/rect W)))
-                     (pev/a OG L (wft/rect W)))
+                     (pev/a OG L (wft/rect W))
+                     (sub/tsel2 (pev/a OG L (wft/rect W)) S))
             <- sub-refl W S.
 
 %worlds (var | ovar) (sub-refl _ _).
@@ -1303,13 +1305,13 @@ extract-wf    : sub G1 A1 G2 A2
    <- extract-wf B W1 W2.
 
 -     : extract-wf
-         (sub/tsel1 B (pev/a OG L (wft/rect W1)))
+         (sub/tsel1 (pev/a OG L (wft/rect W1)) B)
          (wft/tsel (pev/a OG L (wft/rect W1)))
          W2
    <- extract-wf B _ W2.
 
 -     : extract-wf
-         (sub/tsel2 B (pev/a OG L (wft/rect W2)))
+         (sub/tsel2 (pev/a OG L (wft/rect W2)) B)
          W1
          (wft/tsel (pev/a OG L (wft/rect W2)))
    <- extract-wf B W1 _.
@@ -1425,22 +1427,26 @@ sub-trans-aux : wft G2 A2
 
 -/tsel1 : sub-trans-aux
            W
-           (sub/tsel1 B12 P)
+           (sub/tsel1 P B12)
            B23
-           (sub/tsel1 B13 P)
+           (sub/tsel1 P B13)
      <- sub-trans-aux W B12 B23 B13.
 
 -/tsel2 : sub-trans-aux
            W
            B12
-           (sub/tsel2 B23 P)
-           (sub/tsel2 B13 P)
+           (sub/tsel2 P B23)
+           (sub/tsel2 P B13)
      <- sub-trans-aux W B12 B23 B13.
 
 -/tsel21 : sub-trans-aux
             (wft/tsel (pev/a OG2 (L2: lookup G2 M (rect A2)) (wft/rect W2)))
-            (sub/tsel2 (B12: sub G1 A1 G2 A2') (pev/a OG2' (L2': lookup G2 M (rect A2')) (wft/rect W2')))
-            (sub/tsel1 (B23: sub G2 A2'' G3 A3) (pev/a OG2'' (L2'': lookup G2 M (rect A2'')) (wft/rect W2'')))
+            (sub/tsel2
+               (pev/a OG2' (L2': lookup G2 M (rect A2')) (wft/rect W2'))
+               (B12: sub G1 A1 G2 A2'))
+            (sub/tsel1
+               (pev/a OG2'' (L2'': lookup G2 M (rect A2'')) (wft/rect W2''))
+               (B23: sub G2 A2'' G3 A3))
             (B13: sub G1 A1 G3 A3)
      <- lookup-eq-rect L2' L2 exp-eq/i OG2 S'
      <- lookup-eq-rect L2'' L2 exp-eq/i OG2 S''
@@ -1519,21 +1525,21 @@ extend-sub1  : sub G1 A1 G2 A2
 -/rect1  : extend-sub1 (sub/rect S) OG (sub/rect S')
       <- extend-sub1 S OG S'.
 
--/tsel12 : extend-sub2 (sub/tsel1 S P) OG (sub/tsel1 S' P)
+-/tsel12 : extend-sub2 (sub/tsel1 P S) OG (sub/tsel1 P S')
       <- extend-sub2 S OG S'.
 
--/tsel21 : extend-sub1 (sub/tsel2 S P) OG (sub/tsel2 S' P)
+-/tsel21 : extend-sub1 (sub/tsel2 P S) OG (sub/tsel2 P S')
       <- extend-sub1 S OG S'.
 
 -/tsel22 : extend-sub2
-            (sub/tsel2 S  (pev/a _  L               W)) OG
-            (sub/tsel2 S' (pev/a OG (lookup/miss L) W'))
+            (sub/tsel2 (pev/a _  L               W ) S ) OG
+            (sub/tsel2 (pev/a OG (lookup/miss L) W') S')
       <- extend-wft W OG W'
       <- extend-sub2 S OG S'.
 
 -/tsel11 : extend-sub1
-            (sub/tsel1 S  (pev/a _  L               W)) OG
-            (sub/tsel1 S' (pev/a OG (lookup/miss L) W'))
+            (sub/tsel1 (pev/a _  L               W ) S ) OG
+            (sub/tsel1 (pev/a OG (lookup/miss L) W') S')
       <- extend-wft W OG W'
       <- extend-sub1 S OG S'.
 
