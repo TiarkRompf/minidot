@@ -1664,6 +1664,22 @@ extract-wfv : wfv V G A
 %worlds (var | ovar) (extract-wfv _ _).
 %total W (extract-wfv W _).
 
+invert-b    : of G b A
+%%
+               -> of G b o
+               -> sub G o G A
+   -> type.
+%mode invert-b +X1 -X2 -X3.
+
+-  : invert-b of/b of/b sub/o.
+
+-  : invert-b (of/sub B T) T' B''
+<- invert-b T T' B'
+<- sub-trans B' B B''.
+
+%worlds (ovar) (invert-b _ _ _).
+%total T (invert-b T _ _).
+
 invert-var  : of G X A
                -> isvar X I
 %%
@@ -1824,8 +1840,10 @@ evapp-safe  : wfv VFUN G (arrow A1 A2)
     -> type.
 %mode evapp-safe +X1 +X2 +X3 -X4.
 
+-   : ev-safe T WE OG OH ev/b (wfv/sub B wfv/v)
+ <- invert-b T T' B.
+
 -   : ev-safe T WE OG OH (ev/var LH) (wfv/sub B WV)
- <- ordered-to-vordered WE OG OH
  <- vlookup-vordered LH OH D
  <- invert-var T D LG B
  <- lookup-safe WE LG LH OG OH WV.
@@ -1835,10 +1853,18 @@ evapp-safe  : wfv VFUN G (arrow A1 A2)
  <- sub-refl WAB BAB
  <- sub-either-wfv BE (wfv/clo/arrow BAB OG TM WE) (wfv/clo/rect WT) W.
 
+-   : ev-safe T WE OG OH (ev/app EVAPP EVARG EVFUN) (wfv/sub B W)
+ <- invert-app T TFUN TARG B
+ <- ev-safe TARG WE OG OH EVARG WARG
+ <- ev-safe TFUN WE OG OH EVFUN WFUN
+ <- evapp-safe WFUN WARG EVAPP W.
+
+%worlds (ovar) (ev-safe _ _ _ _ _ _) (evapp-safe _ _ _ _).
+%total  (A B)  (ev-safe _ _ _ _ A _) (evapp-safe _ _ B _).
+
 %.
 
--   : ev-safe T WE OG OH (ev/app EVAPP EVARG EVFUN) W
- <- invert-app T TFUN TARG B
+
 
 %.
 -   : ev-safe (of/b: of G _ o) WE OG OH ((ev/var LH): ev H _ V) W
