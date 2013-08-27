@@ -1676,6 +1676,56 @@ invert-app  : of G (app M N) A
 %worlds (ovar) (invert-app _ _ _ _).
 %total T (invert-app T _ _ _).
 
+sub-either  : ctx -> tp -> ctx -> tp
+           -> ctx -> tp -> ctx -> tp
+           -> type.
+sub-either/left  : sub G A G' A' -> sub-either G A G' A' _ _ _  _.
+sub-either/right : sub G A G' A' -> sub-either _ _ _  _  G A G' A'.
+
+sub-either-trans : sub-either
+                    G1 A1 G A
+                    G2 A2 G A
+                    -> sub G A G' A'
+%%
+                    -> sub-either
+                       G1 A1 G' A'
+                       G2 A2 G' A'
+   -> type.
+%mode sub-either-trans +X1 +X2 -X3.
+
+-  : sub-either-trans (sub-either/left S1)  S (sub-either/left S1')
+<- sub-trans S1 S S1'.
+
+-  : sub-either-trans (sub-either/right S2) S (sub-either/right S2')
+<- sub-trans S2 S S2'.
+
+%worlds (ovar) (sub-either-trans _ _ _).
+%total E (sub-either-trans E _ _).
+
+invert-lam  : of G (lam AT A M) A'
+%%
+               -> ({x:exp}{d:isvar x I} of (cons G x A) (M x) B)
+               -> wft G AT
+               -> wft G (arrow A B)
+               -> sub-either
+                  G (arrow A B) G A'
+                  G (rect AT) G A'
+   -> type.
+%mode invert-lam +X1 -X2 -X3 -X4 -X5.
+
+-  : invert-lam (of/lam/arrow WA WT T) T WT WA (sub-either/left B)
+<- sub-refl WA B.
+
+-  : invert-lam (of/lam/rect WA WT T) T WT WA (sub-either/right (sub/rect B))
+<- sub-refl WT B.
+
+-  : invert-lam (of/sub B T) T' WT' WA' B''
+<- invert-lam T T' WT' WA' B'
+<- sub-either-trans B' B B''.
+
+%worlds (ovar) (invert-lam _ _ _ _ _).
+%total T (invert-lam T _ _ _ _).
+
 %% TODO rest
 %.
 
