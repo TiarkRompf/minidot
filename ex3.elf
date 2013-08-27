@@ -1179,7 +1179,8 @@ wfv/v    : wfv v G o.
 wfv/clo/arrow : wfv (clo H M) G (arrow A B)
       <- wfe H G'
       <- ({x}{d:isvar x I} of (cons G' x A) (M x) B)
-      <- ordered G'.
+      <- ordered G'
+      <- sub G' (arrow A B) G (arrow A B).
 
 wfv/clo/rect  : wfv (clo H M) G (rect A)
       <- wft G A.
@@ -1595,7 +1596,8 @@ extend-wfv  : wfv V G B
 
 -      : extend-wfv wfv/v _ wfv/v.
 
--      : extend-wfv (wfv/clo/arrow OG T WE) _ (wfv/clo/arrow OG T WE).
+-      : extend-wfv (wfv/clo/arrow B OG' T WE) OG (wfv/clo/arrow B' OG' T WE)
+    <- extend-sub2 B OG B'.
 
 -      : extend-wfv (wfv/clo/rect W) OG (wfv/clo/rect W')
     <- extend-wft W OG W'.
@@ -1725,6 +1727,26 @@ invert-lam  : of G (lam AT A M) A'
 
 %worlds (ovar) (invert-lam _ _ _ _ _).
 %total T (invert-lam T _ _ _ _).
+
+inv-arrow-aux : wfv (clo H M) G1 A1
+                       -> sub G1 A1 G2 (arrow A2 B2)
+%%
+                       -> ({x}{d:isvar x I} of (cons G x A) (M x) B)
+                       -> wfe H G
+                       -> ordered G
+                       -> sub G (arrow A B) G2 (arrow A2 B2)
+   -> type.
+%mode inv-arrow-aux +X1 +X2 -X3 -X4 -X5 -X6.
+
+-  : inv-arrow-aux (wfv/clo/arrow BC1 OG T WE) B12 T WE OG BC2
+<- sub-trans BC1 B12 BC2.
+
+-  : inv-arrow-aux (wfv/sub BC1 W1) B12 T' WE' OG' BC2'
+<- sub-trans BC1 B12 BC2
+<- inv-arrow-aux W1 BC2 T' WE' OG' BC2'.
+
+%worlds (ovar) (inv-arrow-aux _ _ _ _ _ _).
+%total W (inv-arrow-aux W _ _ _ _ _).
 
 %% TODO rest
 %.
