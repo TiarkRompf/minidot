@@ -1858,6 +1858,42 @@ inv-bin      :  wfv (bin V) G2 A2
 %worlds (ovar) (inv-bin _ _ _ _).
 %total W (inv-bin W _ _ _).
 
+inv-bin-arrow-aux :  wfv (bin V) G1 A1
+                     -> sub G1 A1 G2 (arrow S2 U2)
+%%
+                     -> wft G (arrow S U)
+                     -> ({x}{d:isvar x I} wfv (V x) G (arrow S U))
+                     -> sub G (arrow S U) G2 (arrow S2 U2)
+   -> type.
+%mode inv-bin-arrow-aux +X1 +X2 -X2 -X3 -X4.
+
+-  : inv-bin-arrow-aux (wfv/bin WV WT) B WT' ([x][d:isvar x I] (wfv/sub B (WV x d))) BR
+<- extract-wf B _ WT'
+<- sub-refl WT' BR.
+
+-  : inv-bin-arrow-aux (wfv/sub BC1 W) B12 WT' WV' BC2'
+<- sub-trans BC1 B12 BC2
+<- inv-bin-arrow-aux W BC2 WT' WV' BC2'.
+
+%worlds (ovar) (inv-bin-arrow-aux _ _ _ _ _).
+%total W (inv-bin-arrow-aux W _ _ _ _).
+
+inv-bin-arrow     :  wfv (bin V) G2 (arrow S2 U2)
+%%
+                     -> wft G (arrow S U)
+                     -> ({x}{d:isvar x I} wfv (V x) G (arrow S U))
+                     -> sub G (arrow S U) G2 (arrow S2 U2)
+   -> type.
+%mode inv-bin-arrow +X1 -X2 -X3 -X4.
+
+-  : inv-bin-arrow W WT WV S
+<- extract-wfv W WT'
+<- sub-refl WT' B
+<- inv-bin-arrow-aux W B WT WV S.
+
+%worlds (ovar) (inv-bin-arrow _ _ _ _).
+%total W (inv-bin-arrow W _ _ _).
+
 ev-safe     : of G M A
                -> wfe H G
                -> ordered G
@@ -1910,7 +1946,7 @@ evapp-safe  : wfv VFUN G (arrow A1 A2)
  <- ({x}{d:isvar x I} extend-sub1 BU (OG x d) (BU' x d)).
 
 -   : evapp-safe W0 WARG (evapp/bin EV) (wfv/bin ([x][d:isvar x I] (wfv/sub BU (W' x d))) WT')
- <- inv-bin W0 (wft/arrow WU WS) W (sub/arrow BU BS)
+ <- inv-bin-arrow W0 (wft/arrow WU WS) W (sub/arrow BU BS)
  <- ({x}{d:isvar x I} evapp-safe (W x d) (wfv/sub BS WARG) (EV x) (W' x d))
  <- extract-wf BU _ WT'.
 
