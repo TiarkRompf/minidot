@@ -113,7 +113,10 @@ append/cons     : append G1 (cons G2 X A) (cons G X A)
 
 sub-ctx : ctx -> ctx -> type.
 
-sub-ctx/a       : sub-ctx G1 G2 <- append G1 _ G2.
+sub-ctx/nil      : sub-ctx G G.
+sub-ctx/cons     : sub-ctx G1 (cons G2 X A)
+              <- sub-ctx G1 G2
+              <- ordered (cons G2 X A).
 
 %%%%%  Typing Rules (Explicit Context) %%%%%
 
@@ -148,7 +151,7 @@ sub/tsel2 : sub G1 A1 G2 (tsel X2)
 sub/tselx : sub G1 (tsel X) G2 (tsel X)
        <- sub-ctx G G2
        <- sub-ctx G G1
-       <- pev G E (rect AS AU).
+       <- pev G X (rect AS AU).
 
 wft/o     : wft G o.
 wft/top   : wft G top.
@@ -1293,12 +1296,7 @@ sub-refl/rect  : sub-refl (wft/rect B WS WU) (sub/rect BS BU B B)
             <- sub-refl WS BS
             <- sub-refl WU BU.
 
-sub-refl/tsel  : sub-refl
-                  (wft/tsel P)
-                  (sub/tselx
-                     P
-                     (sub-ctx/a append/nil)
-                     (sub-ctx/a append/nil)).
+sub-refl/tsel  : sub-refl (wft/tsel P) (sub/tselx P sub-ctx/nil sub-ctx/nil).
 
 %worlds (var | ovar) (sub-refl _ _).
 %total W (sub-refl W _).
@@ -1413,16 +1411,16 @@ extend-sub   : sub G1 A1 G2 A2
       <- extend-sub S OG1 OG2 S'.
 
 -/tselx2 : extend-sub2
-            (sub/tselx (pev/a OGP L W) S1 (sub-ctx/a S2)) OG
-            (sub/tselx (pev/a OGP L W) S1 (sub-ctx/a (append/cons S2))).
+            (sub/tselx (pev/a OGP L W) S1 S2) OG
+            (sub/tselx (pev/a OGP L W) S1 (sub-ctx/cons OG S2)).
 
 -/tselx1 : extend-sub1
-            (sub/tselx (pev/a OGP L W) (sub-ctx/a S1) S2) OG
-            (sub/tselx (pev/a OGP L W) (sub-ctx/a (append/cons S1)) S2).
+            (sub/tselx (pev/a OGP L W) S1 S2) OG
+            (sub/tselx (pev/a OGP L W) (sub-ctx/cons OG S1) S2).
 
 -/tselx  : extend-sub
-            (sub/tselx (pev/a OGP L W) (sub-ctx/a S1) (sub-ctx/a S2)) OG1 OG2
-            (sub/tselx (pev/a OGP L W) (sub-ctx/a (append/cons S1)) (sub-ctx/a (append/cons S2))).
+            (sub/tselx (pev/a OGP L W) S1 S2) OG1 OG2
+            (sub/tselx (pev/a OGP L W) (sub-ctx/cons OG1 S1) (sub-ctx/cons OG2 S2)).
 
 -  : extend-wft wft/o _ wft/o.
 
@@ -1445,6 +1443,66 @@ extend-sub   : sub G1 A1 G2 A2
 %worlds (var | ovar) (extend-sub2 _ _ _) (extend-sub1 _ _ _) (extend-sub _ _ _ _) (extend-wft _ _ _).
 %total (S2 S1 S W) (extend-sub2 S2 _ _) (extend-sub1 S1 _ _) (extend-sub S _ _ _) (extend-wft W _ _).
 
+extend-wft-sub-ctx : wft G1 A1
+                      -> sub-ctx G1 G2
+%%
+                      -> wft G2 A1
+  -> type.
+%mode extend-wft-sub-ctx +X1 +X2 -X3.
+
+- : extend-wft-sub-ctx W sub-ctx/nil W.
+
+- : extend-wft-sub-ctx W (sub-ctx/cons OG S) W''
+<- extend-wft-sub-ctx W S W'
+<- extend-wft W' OG W''.
+
+%worlds (var | ovar) (extend-wft-sub-ctx _ _ _).
+%total S (extend-wft-sub-ctx _ S _).
+
+extend-lookup-sub-ctx : lookup G1 X A
+                         -> sub-ctx G1 G2
+%%
+                         -> lookup G2 X A
+  -> type.
+%mode extend-lookup-sub-ctx +X1 +X2 -X3.
+
+- : extend-lookup-sub-ctx L sub-ctx/nil L.
+
+- : extend-lookup-sub-ctx L (sub-ctx/cons OG S) (lookup/miss L')
+<- extend-lookup-sub-ctx L S L'.
+
+%worlds (var | ovar) (extend-lookup-sub-ctx _ _ _).
+%total S (extend-lookup-sub-ctx _ S _).
+
+ordered-sub-ctx1 : sub-ctx G1 G2
+                   -> ordered G2
+%%
+                   -> ordered G1
+  -> type.
+%mode ordered-sub-ctx1 +X1 +X2 -X3.
+
+- : ordered-sub-ctx1 sub-ctx/nil OG OG.
+
+- : ordered-sub-ctx1 (sub-ctx/cons _ S) (ordered/cons BG) OG'
+<- bounded-is-ordered BG OG
+<- ordered-sub-ctx1 S OG OG'.
+
+%worlds (ovar) (ordered-sub-ctx1 _ _ _).
+%total S (ordered-sub-ctx1 S _ _).
+
+ordered-sub-ctx2 : sub-ctx G1 G2
+                   -> ordered G1
+%%
+                   -> ordered G2
+  -> type.
+%mode ordered-sub-ctx2 +X1 +X2 -X3.
+
+- : ordered-sub-ctx2 sub-ctx/nil OG OG.
+
+- : ordered-sub-ctx2 (sub-ctx/cons OG2 S) OG1 OG2.
+
+%worlds (ovar) (ordered-sub-ctx2 _ _ _).
+%total {} (ordered-sub-ctx2 _ _ _).
 
 extract-wf    : sub G1 A1 G2 A2
 %%
@@ -1479,7 +1537,18 @@ extract-wf    : sub G1 A1 G2 A2
          (wft/tsel (pev/a OG L (wft/rect B2 WU2 WS2)))
    <- extract-wf B W1 _.
 
-%worlds (var | ovar) (extract-wf _ _ _).
+-     : extract-wf
+         (sub/tselx (pev/a OG L W) S1 S2)
+         (wft/tsel (pev/a OG1 L1 W1))
+         (wft/tsel (pev/a OG2 L2 W2))
+   <- ordered-sub-ctx2 S1 OG OG1
+   <- ordered-sub-ctx2 S2 OG OG2
+   <- extend-wft-sub-ctx W S1 W1
+   <- extend-wft-sub-ctx W S2 W2
+   <- extend-lookup-sub-ctx L S1 L1
+   <- extend-lookup-sub-ctx L S2 L2.
+
+%worlds (ovar) (extract-wf _ _ _).
 %total B (extract-wf B _ _).
 
 extract-wf-tp : of G M A
@@ -1494,7 +1563,7 @@ extract-wf-tp : of G M A
 
 -    : extract-wf-tp (of/lam/arrow WA WR _ _) WA.
 
--    : extract-wf-tp (of/lam/rect WA WR _ _) (wft/rect WR).
+-    : extract-wf-tp (of/lam/rect WA WR _ _) WR.
 
 -    : extract-wf-tp (of/app TM TN) W2
   <- extract-wf-tp TM (wft/arrow W2 W1).
@@ -1502,7 +1571,7 @@ extract-wf-tp : of G M A
 -    : extract-wf-tp (of/sub B T) W2
   <- extract-wf B W1 W2.
 
-%worlds (var | ovar) (extract-wf-tp _ _).
+%worlds (ovar) (extract-wf-tp _ _).
 %total W (extract-wf-tp W _).
 
 lookup-eq     : lookup G M A
@@ -1531,32 +1600,34 @@ lookup-eq     : lookup G M A
 %worlds (ovar) (lookup-eq _ _ _ _ _).
 %total L (lookup-eq L _ _ _ _).
 
-rect-eq       : tp-eq (rect A) (rect A')
+rect-eq       : tp-eq (rect AS AU) (rect AS' AU')
 %%
-                 -> tp-eq A A'
+                 -> tp-eq AS AS'
+                 -> tp-eq AU AU'
        -> type.
-%mode rect-eq +X1 -X2.
+%mode rect-eq +X1 -X2 -X3.
 
-rect-eq/i : rect-eq tp-eq/i tp-eq/i.
+rect-eq/i : rect-eq tp-eq/i tp-eq/i tp-eq/i.
 
-%worlds (var | ovar) (rect-eq _ _).
-%total EQ (rect-eq EQ _).
+%worlds (var | ovar) (rect-eq _ _ _).
+%total EQ (rect-eq EQ _ _).
 
-lookup-eq-rect: lookup G M (rect A)
-                 -> lookup G M' (rect A')
+lookup-eq-rect: lookup G M (rect AS AU)
+                 -> lookup G M' (rect AS' AU')
                  -> exp-eq M M'
                  -> ordered G
 %%
-                 -> tp-eq A A'
+                 -> tp-eq AS AS'
+                 -> tp-eq AU AU'
       -> type.
-%mode lookup-eq-rect +X1 +X2 +X3 +X4 -X5.
+%mode lookup-eq-rect +X1 +X2 +X3 +X4 -X5 -X6.
 
--     : lookup-eq-rect L L' EQ OG EQ''
+-     : lookup-eq-rect L L' EQ OG EQS EQU
    <- lookup-eq L L' EQ OG EQ'
-   <- rect-eq EQ' EQ''.
+   <- rect-eq EQ' EQS EQU.
 
-%worlds (ovar) (lookup-eq-rect _ _ _ _ _).
-%total {} (lookup-eq-rect _ _ _ _ _).
+%worlds (ovar) (lookup-eq-rect _ _ _ _ _ _).
+%total {} (lookup-eq-rect _ _ _ _ _ _).
 
 sub-eq2       : tp-eq A2 A2'
                  -> sub G1 A1 G2 A2
@@ -1605,11 +1676,12 @@ sub-trans-aux : wft G2 A2
      <- sub-trans-aux WU BU12 BU23 BU13.
 
 -/rect  : sub-trans-aux
-           (wft/rect W)
-           (sub/rect B12)
-           (sub/rect B23)
-           (sub/rect B13)
-     <- sub-trans-aux W B12 B23 B13.
+           (wft/rect B WU WS)
+           (sub/rect BU12 BS21 B22 B11)
+           (sub/rect BU23 BS32 B33 B22)
+           (sub/rect BU13 BS31 B33 B11)
+     <- sub-trans-aux WS BS32 BS21 BS31
+     <- sub-trans-aux WU BU12 BU23 BU13.
 
 -/tsel1 : sub-trans-aux
            W
@@ -1626,19 +1698,20 @@ sub-trans-aux : wft G2 A2
      <- sub-trans-aux W B12 B23 B13.
 
 -/tsel21 : sub-trans-aux
-            (wft/tsel (pev/a OG2 (L2: lookup G2 M (rect A2)) (wft/rect W2)))
+            (wft/tsel (pev/a OG2 (L2: lookup G2 M (rect AS2 AU2)) (wft/rect B2 WU2 WS2)))
             (sub/tsel2
-               (pev/a OG2' (L2': lookup G2 M (rect A2')) (wft/rect W2'))
-               (B12: sub G1 A1 G2 A2'))
+               (pev/a OG2' (L2': lookup G2 M (rect AS2' AU2')) (wft/rect B2' WU2' WS2'))
+               (B12: sub G1 A1 G2 AS2'))
             (sub/tsel1
-               (pev/a OG2'' (L2'': lookup G2 M (rect A2'')) (wft/rect W2''))
-               (B23: sub G2 A2'' G3 A3))
+               (pev/a OG2'' (L2'': lookup G2 M (rect AS2'' AU2'')) (wft/rect B2'' WU2'' WS2''))
+               (B23: sub G2 AU2'' G3 A3))
             (B13: sub G1 A1 G3 A3)
-     <- lookup-eq-rect L2' L2 exp-eq/i OG2 S'
-     <- lookup-eq-rect L2'' L2 exp-eq/i OG2 S''
-     <- sub-eq2 S' B12 B12'
-     <- sub-eq1 S'' B23 B23''
-     <- sub-trans-aux W2 B12' B23'' B13.
+     <- lookup-eq-rect L2' L2 exp-eq/i OG2 SS' SU'
+     <- lookup-eq-rect L2'' L2 exp-eq/i OG2 SS'' SU''
+     <- sub-eq2 SS' B12 B12'
+     <- sub-eq1 SU'' B23 B23''
+     <- sub-trans-aux WU2 B2 B23'' B23'''
+     <- sub-trans-aux WS2 B12' B23''' B13.
 
 %worlds (ovar) (sub-trans-aux _ _ _ _).
 %total {W2 B12 B23} (sub-trans-aux W2 B12 B23 _).
