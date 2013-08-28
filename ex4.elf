@@ -1676,9 +1676,9 @@ sub-trans-aux : wft G2 A2
      <- sub-trans-aux WU BU12 BU23 BU13.
 
 -/rect  : sub-trans-aux
-           (wft/rect B WU WS)
-           (sub/rect BU12 BS21 B22 B11)
-           (sub/rect BU23 BS32 B33 B22)
+           (wft/rect _ WU WS)
+           (sub/rect BU12 BS21 _   B11)
+           (sub/rect BU23 BS32 B33 _  )
            (sub/rect BU13 BS31 B33 B11)
      <- sub-trans-aux WS BS32 BS21 BS31
      <- sub-trans-aux WU BU12 BU23 BU13.
