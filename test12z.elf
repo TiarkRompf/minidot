@@ -288,43 +288,6 @@ sub-env-dia: sub-env G1 GT -> sub-env G2 GT -> minmax-env G1 G2 GS GU -> type.
 
 
 
-%{ ------- alpha conversion for types ------ }%
-
-swap-nat: nat -> nat -> nat -> nat -> type.
-- : swap-nat A A B B.
-- : swap-nat B A B A.
-- : swap-nat N A B N <- ne N A <- ne N B.
-
-
-
-swapv-tp: tpe -> nat -> nat -> tpe -> type.
-
-swapv-tp/int  : swapv-tp int N1 N2 int.
-swapv-tp/bool : swapv-tp bool N1 N2 bool.
-swapv-tp/top  : swapv-tp top N1 N2 top.
-swapv-tp/bot  : swapv-tp bool N1 N2 bot.
-swapv-tp/fun  : swapv-tp (arrow T1 T2) N1 N2 (arrow T1' T2')
-                <- swapv-tp T1 N1 N2 T1'
-                <- swapv-tp T2 N1 N2 T2'.
-swapv-tp/rect : swapv-tp (rect T1 T2) N1 N2 (rect T1' T2')
-                <- swapv-tp T1 N1 N2 T1'
-                <- swapv-tp T2 N1 N2 T2'.
-swapv-tp/recv : swapv-tp (recv T1) N1 N2 (recv T1')
-                <- swapv-tp T1 N1 N2 T1'.
-swapv-tp/tsel : swapv-tp (tsel (var N)) N1 N2 (tsel (var N')) 
-                <- swap-nat N N1 N2 N'.
-% swapv-tp/bind : swapv-tp (bind N T) N1 N2 (bind N' T')
-%                <- swap-nat N N1 N2 N'
-%                <- swapv-tp T N1 N2 T'.
-% swapv-tp/bindh : swapv-tp (bindh F) N1 N2 (bindh F')
-%                <- swapv-tp (F (var N1)) N1 N2 (F' (var N2)).
-
-
-swapv-env: tenv -> nat -> nat -> tenv -> type.
-
-%% TODO
-
-
 
 %{ ------- subtyping ------ }%
 
@@ -885,7 +848,7 @@ pev-tp-dia:
 
 %% In test8, Subtyping of type selections was not reflexive because of type bounds.
 %% Now we have sub-tp/tselx, so reflexivity holds again.
-%% The proofs depend on it again, as it enabled use to remove restrict-sub-tp,
+%% The proofs depend on it again, as it enabled us to remove restrict-sub-tp,
 %% which caused trouble for self types.
 
 %% Subtyping is reflexive
