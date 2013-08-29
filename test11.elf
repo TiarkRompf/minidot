@@ -12,6 +12,16 @@
 % + add subtyping to paths
 % - add self types
 
+%{
+
+Adding subsumption to path-eval. This only works if we don't have
+bottom or intersections with 'bad bounds'.
+
+Otherwise, adding this rule breaks transitivity: For the case
+T1 <: x.T and x.T <: T2, the two derivations may rely on 
+incompatible bounds for x.T, if the environment maps x to bot.
+
+}%
 
 
 %{ ------- arithmetic ----- }%
