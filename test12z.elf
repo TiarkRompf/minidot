@@ -9,12 +9,9 @@
 % + add value members
 % + add type bounds
 % + add reflexivity for type selections
-% + add subtyping to paths
 % + add self types
 
 %%%%%% work in progress %%%%%%
-
-%% try to make extend-wf-tp require an upper bound %% 
 
 
 %{ ------- arithmetic ----- }%
@@ -135,9 +132,15 @@ rect : tpe -> tpe -> tpe.  % { type A..B }
 recv : tpe -> tpe.         % { val get: A }
 tsel : exp -> tpe.         % x.A
 
-% bind : nat -> tpe -> tpe.     % { this => A } %% we shouldn't need the nat param
 
-bindh : (exp -> tpe) -> tpe.  % { this => A } hoas version
+%% This version of bind makes the variable convention
+%% explicit by fixing the 'this' identifier.
+
+%% TODO: Putting the environment in the type avoids the 
+%% need for a uniqueness lemma -- we should add one and
+%% get rid of the tenv.
+
+bind : nat -> tenv -> tpe -> tpe.     % { this_n => A } 
 
 
 % values
@@ -313,8 +316,8 @@ swapv-tp/tsel : swapv-tp (tsel (var N)) N1 N2 (tsel (var N'))
 % swapv-tp/bind : swapv-tp (bind N T) N1 N2 (bind N' T')
 %                <- swap-nat N N1 N2 N'
 %                <- swapv-tp T N1 N2 T'.
-swapv-tp/bindh : swapv-tp (bindh F) N1 N2 (bindh F')
-                  <- swapv-tp (F (var N1)) N1 N2 (F' (var N2)).
+% swapv-tp/bindh : swapv-tp (bindh F) N1 N2 (bindh F')
+%                <- swapv-tp (F (var N1)) N1 N2 (F' (var N2)).
 
 
 swapv-env: tenv -> nat -> nat -> tenv -> type.
@@ -369,17 +372,16 @@ sub-tp/tselx : sub-tp G1 (tsel E) G2 (tsel E)
               <- sub-tp G1 (rect T2 T2U) G2 (rect T2 T2U).
 
 
-sub-tp/tbind1 : sub-tp G1 (bindh F) G2 T2
-              <- sub-tp (tcons U G0) (F (var N)) G0 U
-              <- sub-tp (tcons U G0) (F (var N)) G2 T2
+sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
+              <- sub-tp (tcons TN G0) TN G2 T2
               <- tsize G0 (var N)
               <- sub-env G0 G1.
 
 
-sub-tp/tbindh : sub-tp G1 T1 G2 (bindh F)
-              <- wf-tp G0 (bindh F)
-              <- sub-tp G1 T1 (tcons T1' G0) (F (var N))
-              <- sub-tp G1 T1 G1' T1'  %% built-in slack to fix transitivity (?)
+sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
+              <- sub-tp G1 T1 (tcons TN G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
+              <- sub-tp G1 T1 (tcons T1' G0) TN
+              <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2)
               <- tsize G0 (var N)
               <- sub-env G0 G2.
 
@@ -405,15 +407,8 @@ wf-tp/recv : wf-tp G1 (recv T1)
 wf-tp/tsel : wf-tp G1 (tsel E1)
               <- path-eval G1 E1 (rect T1 T1U).
 
-% wf-tp/tbind : wf-tp G1 (bind X T)
-%              <- wf-tp (tcons (bind X T) G1) T'
-%              <- swapv-tp T X (s N) T'
-%              <- tsize G1 (var N).
-
-wf-tp/tbindh : wf-tp G1 (bindh ([x] F x))
-              % <- wf-tp (tcons (bindh ([x] F x)) G0) (F (var N))
-              <- wf-tp (tcons U G0) (F (var N))
-              <- sub-tp (tcons U G0) (F (var N)) G0 U
+wf-tp/tbind : wf-tp G1 (bind N G0 TN)
+              <- wf-tp (tcons TN G0) TN
               <- tsize G0 (var N)
               <- sub-env G0 G1.
 
@@ -619,11 +614,7 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 - : extend-wf-tp (wf-tp/tsel P) T (wf-tp/tsel P1)
       <- extend-wf-pev P T P1.
 
-% - : extend-wf-tp (wf-tp/tbind S X W) T (wf-tp/tbind (tf/c S) X' W')
-%       <- extend-wf-tp W _ W1
-%       <- extend-swap-wf-tp W1 X S W' X'.
-
-- : extend-wf-tp (wf-tp/tbindh SE S SU W) T (wf-tp/tbindh (sub-env/ext SE) S SU W).
+- : extend-wf-tp (wf-tp/tbind SE S W) T (wf-tp/tbind (sub-env/ext SE) S W).
 
 - : extend-sub-tp sub-tp/int T sub-tp/int sub-tp/int sub-tp/int.
 - : extend-sub-tp sub-tp/bool T sub-tp/bool sub-tp/bool sub-tp/bool.
@@ -657,39 +648,29 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST _ ST' STA STB
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 
-% - : extend-sub-tp (sub-tp/tbind1 S X ST W) T 
-%     (sub-tp/tbind1 (tf/c S) XAB STAB' W2)
-%     (sub-tp/tbind1 (tf/c S) XA STA' W2)
-%     (sub-tp/tbind1 S X STB W)
-% 
-%       <- extend-wf-tp W T W2
-%       <- extend-sub-tp ST T STAB STA STB
-%       <- extend-swap-sub-tp1 STAB X S STAB' XAB 
-%       <- extend-swap-sub-tp1 STA X S STA' XA.
-% 
-% 
-% - : extend-sub-tp (sub-tp/tbind2 S X ST W) T 
-%     (sub-tp/tbind2 (tf/c S) XAB STAB' W2)
-%     (sub-tp/tbind2 S X STA W)
-%     (sub-tp/tbind2 (tf/c S) XB STB' W2)
-%       <- extend-wf-tp W _ W2
-%       <- extend-sub-tp ST _ STAB STA STB
-%       <- extend-swap-sub-tp2 STAB X S STAB' XAB 
-%       <- extend-swap-sub-tp2 STB X S STB' XB.
 
-- : extend-sub-tp (sub-tp/tbind1 SE S ST SU) T
-     (sub-tp/tbind1 (sub-env/ext SE) S STC1 SU)
-     (sub-tp/tbind1 (sub-env/ext SE) S ST SU)
-     (sub-tp/tbind1 SE S STC1 SU)
+% - : extend-sub-tp (sub-tp/tbind1 SE S SU ST) T
+%      (sub-tp/tbind1 (sub-env/ext SE) S SU STC1)
+%      (sub-tp/tbind1 (sub-env/ext SE) S SU ST)
+%      (sub-tp/tbind1 SE S SU STC1)
+%      <- extend-sub-tp ST T STA1 STB1 STC1
+%      .
+
+- : extend-sub-tp (sub-tp/tbind1 SE S ST) T
+     (sub-tp/tbind1 (sub-env/ext SE) S STC1)
+     (sub-tp/tbind1 (sub-env/ext SE) S ST)
+     (sub-tp/tbind1 SE S STC1)
      <- extend-sub-tp ST T STA1 STB1 STC1
      .
 
-- : extend-sub-tp (sub-tp/tbindh SE S ST1 ST2 W) T
-     (sub-tp/tbindh (sub-env/ext SE) S STB1 STB2 W)
-     (sub-tp/tbindh SE S STB1 STB2 W)
-     (sub-tp/tbindh (sub-env/ext SE) S ST1 ST2 W)
+
+- : extend-sub-tp (sub-tp/tbind2 SE S ST1 ST2 ST3) T
+     (sub-tp/tbind2 (sub-env/ext SE) S STB1 STB2 STB3)
+     (sub-tp/tbind2 SE S STB1 STB2 STB3)
+     (sub-tp/tbind2 (sub-env/ext SE) S ST1 ST2 ST3)
      <- extend-sub-tp ST1 T STA1 STB1 STC1
      <- extend-sub-tp ST2 T STA2 STB2 STC2
+     <- extend-sub-tp ST3 T STA3 STB3 STC3
      .
 
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _).
@@ -826,20 +807,11 @@ extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
       <- extend-wf-pev-mult P S1 P1
       <- extend-wf-pev-mult P S2 P2.
 
-% - : extract-wf (sub-tp/tbind1 S X ST W) W W2
-%       <- extract-wf ST _ W2.
-% 
-% - : extract-wf (sub-tp/tbind2 S X ST W) W1 W
-%       <- extract-wf ST W1 _.
+- : extract-wf (sub-tp/tbind1 ES S ST) (wf-tp/tbind ES S WU) W2
+      <- extract-wf ST WU W2.
 
-- : extract-wf (sub-tp/tbind1 ES S ST SU) (wf-tp/tbindh ES S SU WU) W2
-      <- extract-wf SU WU _
-      <- extract-wf ST _ W2.
-
-- : extract-wf (sub-tp/tbindh ES S SW SE W) W1 W'
-      <- extract-wf SE W1 _
-      <- extend-wf-tp-mult W ES W'.
-
+- : extract-wf (sub-tp/tbind2 ES S SW SE SU) W1 (wf-tp/tbind ES S W2)
+      <- extract-wf SU W1 W2.
 
 %worlds () (extract-wf _ _ _)(extract-wf-pev _ _).
 %total (A B) (extract-wf A _ _)(extract-wf-pev B _).
@@ -911,15 +883,10 @@ pev-tp-dia:
 
 
 
-
-
-
-
-
-
 %% In test8, Subtyping of type selections was not reflexive because of type bounds.
 %% Now we have sub-tp/tselx, so reflexivity holds again.
-%% None of the proofs depend on it though.
+%% The proofs depend on it again, as it enabled use to remove restrict-sub-tp,
+%% which caused trouble for self types.
 
 %% Subtyping is reflexive
 
@@ -947,26 +914,14 @@ sub-tp-refl :
    <- sub-tp-refl W ST.
 
 
-% -/tbind: sub-tp-refl (wf-tp/tbind S X W) (sub-tp/tbind2 S X (sub-tp/tbind1 S X SBT1 (wf-tp/tbind S X W)) (wf-tp/tbind S X W))
-%   <- sub-tp-refl W SBT1.
-
-% -/tbind: sub-tp-refl (wf-tp/tbindh SE S W) (sub-tp/tbindh SE S 
-%    (sub-tp/tbind1 SE S ST2) 
-%    (sub-tp/tbind1 SE S ST2)
-%    (wf-tp/tbindh sub-env/refl S W))
-%  <- sub-tp-refl W ST2.
-
--/tbind: sub-tp-refl (wf-tp/tbindh SE S (SU: sub-tp (tcons U G0) _ G0 U) WU)
+-/tbind: sub-tp-refl (wf-tp/tbind SE S WU)
           (sub-tp/tbind1
-             SE
-             S
-             (sub-tp/tbindh SE S SU R (wf-tp/tbindh sub-env/refl S SU WU))
-             SU)
+             SE S (sub-tp/tbind2 SE S R R R))
           <- sub-tp-refl WU R.
+
 
 %worlds () (sub-tp-refl _ _).
 %total T (sub-tp-refl T _).
-
 
 
 
@@ -1167,24 +1122,8 @@ sub-tp-trans-aux :
 
 
 
-% -/tbind1  : sub-tp-trans-aux
-%       W
-%       (sub-tp/tbind1 S X SBT1 W1)
-%       SBT3
-%       (sub-tp/tbind1 S X SBT5 W1)
-%       <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
-% 
-
-% -/tbind2  : sub-tp-trans-aux
-%       W
-%       SBT1
-%       (sub-tp/tbind2 S X SBT3 W1)
-%       (sub-tp/tbind2 S X SBT5 W1)
-%       <- sub-tp-trans-aux W SBT1 SBT3 SBT5XX.
-
 %{
-in the previous formulation of tbind1/tbind2 this was 
-a problem. 
+In the previous formulation of tbind2 we had a problem.
 
 we have:
 
@@ -1197,24 +1136,40 @@ G1 T2 <: G3 {z=>T3}    <---    G1 T1 <: (G3,z:T1) T3
 
 
 but induction only gives us:   G1 T1 <: (G3,z:T2) T3
+
+That's why we have explicit slack in tbind2.
 }%
 
 
--/tbindh  : sub-tp-trans-aux
+-/tbind2  : sub-tp-trans-aux
        W
        SBT1
-       (sub-tp/tbindh SE0 S SW SBT3 (wf-tp/tbindh SE1 S1 SY WY))
-       (sub-tp/tbindh SE0 S SW' SBT5 (wf-tp/tbindh SE1 S1 SY WY))
+       (sub-tp/tbind2 SE0 S SW SBT3 SU)
+       (sub-tp/tbind2 SE0 S SW' SBT5 SU')
 
        <- sub-tp-trans-aux W SBT1 SW SW'
+       <- sub-tp-trans-aux W SBT1 SU SU'
        <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
 
+
 -/tbind1 : sub-tp-trans-aux
-            W
-            (sub-tp/tbind1 SE S ST SU)
-            SBT2
-            (sub-tp/tbind1 SE S ST' SU)
-            <- sub-tp-trans-aux W ST SBT2 ST'.
+       W
+       (sub-tp/tbind1 SE S ST)
+       SBT2
+       (sub-tp/tbind1 SE S ST')
+       <- sub-tp-trans-aux W ST SBT2 ST'.
+
+
+-/tbind2-tbind1  : sub-tp-trans-aux
+       (wf-tp/tbind SE0 WS0 WY0)
+       (sub-tp/tbind2 SE1 S1 SW SBT1 SU)
+       (sub-tp/tbind1 SE3 S3 SBT3)
+       SBT5
+
+       %% TODO: uniqueness lemmas for G0/SE/S
+
+       <- sub-tp-trans-aux WY0 SU SBT3 SBT5.
+
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
