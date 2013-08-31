@@ -1492,6 +1492,38 @@ extend-wft-sub-ctx : wft G1 A1
 %worlds (var | ovar) (extend-wft-sub-ctx _ _ _).
 %total S (extend-wft-sub-ctx _ S _).
 
+extend-sub1-sub-ctx : sub G1 A1 G2 A2
+                       -> sub-ctx G1 G1'
+%%
+                       -> sub G1' A1 G2 A2
+   -> type.
+%mode extend-sub1-sub-ctx +X1 +X2 -X3.
+
+- : extend-sub1-sub-ctx B sub-ctx/nil B.
+
+- : extend-sub1-sub-ctx B (sub-ctx/cons OG S) B''
+<- extend-sub1-sub-ctx B S B'
+<- extend-sub1 B' OG B''.
+
+%worlds (var | ovar) (extend-sub1-sub-ctx _ _ _).
+%total S (extend-sub1-sub-ctx _ S _).
+
+extend-sub2-sub-ctx : sub G1 A1 G2 A2
+                       -> sub-ctx G2 G2'
+%%
+                       -> sub G1 A1 G2' A2
+   -> type.
+%mode extend-sub2-sub-ctx +X1 +X2 -X3.
+
+- : extend-sub2-sub-ctx B sub-ctx/nil B.
+
+- : extend-sub2-sub-ctx B (sub-ctx/cons OG S) B''
+<- extend-sub2-sub-ctx B S B'
+<- extend-sub2 B' OG B''.
+
+%worlds (var | ovar) (extend-sub2-sub-ctx _ _ _).
+%total S (extend-sub2-sub-ctx _ S _).
+
 extend-lookup-sub-ctx : lookup G1 X A
                          -> sub-ctx G1 G2
 %%
@@ -1904,6 +1936,42 @@ restrict-sub  : sub (cons G1 X A) A1 (cons G2 X A) A2
 %worlds (ovar) (restrict-sub2 _ _ _ _) (restrict-sub1 _ _ _ _) (restrict-sub _ _ _ _ _ _).
 %total (S2 S1 S) (restrict-sub2 S2 _ _ _) (restrict-sub1 S1 _ _ _) (restrict-sub S _ _ _ _ _).
 
+restrict-sub1-sub-ctx : sub G1 A1 G2 A2
+                       -> sub-ctx G1' G1
+                       -> wft G1' A1
+%%
+                       -> sub G1' A1 G2 A2
+   -> type.
+%mode restrict-sub1-sub-ctx +X1 +X2 +X3 -X4.
+
+- : restrict-sub1-sub-ctx B sub-ctx/nil _ B.
+
+- : restrict-sub1-sub-ctx B (sub-ctx/cons OG S) W B''
+<- extend-wft-sub-ctx W S W'
+<- restrict-sub1 B OG W' B'
+<- restrict-sub1-sub-ctx B' S W B''.
+
+%worlds (ovar) (restrict-sub1-sub-ctx _ _ _ _).
+%total S (restrict-sub1-sub-ctx _ S _ _).
+
+restrict-sub2-sub-ctx : sub G1 A1 G2 A2
+                       -> sub-ctx G2' G2
+                       -> wft G2' A2
+%%
+                       -> sub G1 A1 G2' A2
+   -> type.
+%mode restrict-sub2-sub-ctx +X1 +X2 +X3 -X4.
+
+- : restrict-sub2-sub-ctx B sub-ctx/nil _ B.
+
+- : restrict-sub2-sub-ctx B (sub-ctx/cons OG S) W B''
+<- extend-wft-sub-ctx W S W'
+<- restrict-sub2 B OG W' B'
+<- restrict-sub2-sub-ctx B' S W B''.
+
+%worlds (ovar) (restrict-sub2-sub-ctx _ _ _ _).
+%total S (restrict-sub2-sub-ctx _ S _ _).
+
 sub-trans-aux : wft G2 A2
                  -> sub G1 A1 G2 A2
                  -> sub G2 A2 G3 A3
@@ -1950,7 +2018,7 @@ sub-trans-aux : wft G2 A2
            (sub/tsel2 P B13)
      <- sub-trans-aux W B12 B23 B13.
 
--/tsel21 : sub-trans-aux
+-/tsel21: sub-trans-aux
             (wft/tsel (pev/a OG2 (L2: lookup G2 M (rect AS2 AU2)) (wft/rect B2 WU2 WS2)))
             (sub/tsel2
                (pev/a OG2' (L2': lookup G2 M (rect AS2' AU2')) (wft/rect B2' WU2' WS2'))
