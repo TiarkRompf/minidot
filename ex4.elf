@@ -2114,9 +2114,6 @@ lookup-safe : wfe H G
 %worlds (ovar) (lookup-safe _ _ _ _ _ _).
 %total W (lookup-safe W _ _ _ _ _).
 
-% TODO: rest
-%.
-
 extract-wfv : wfv V G A
 %%
                -> wft G A
@@ -2128,14 +2125,14 @@ extract-wfv : wfv V G A
 -  : extract-wfv (wfv/clo/arrow B OG T WE) W'
 <- extract-wf B _ W'.
 
--  : extract-wfv (wfv/clo/rect W) (wft/rect W).
+-  : extract-wfv (wfv/clo/rect W) W.
 
 -  : extract-wfv (wfv/bin WV W) W.
 
 -  : extract-wfv (wfv/sub B WV) W'
 <- extract-wf B _ W'.
 
-%worlds (var | ovar) (extract-wfv _ _).
+%worlds (ovar) (extract-wfv _ _).
 %total W (extract-wfv W _).
 
 invert-b    : of G b A
@@ -2234,22 +2231,22 @@ sub-either-wfv : sub-either
 %worlds (ovar) (sub-either-wfv _ _ _ _).
 %total E (sub-either-wfv E _ _ _).
 
-invert-lam  : of G (lam AT A M) A'
+invert-lam  : of G (lam AS AU A M) A'
 %%
                -> ({x:exp}{d:isvar x I} ordered (cons G x A))
                -> ({x:exp}{d:isvar x I} of (cons G x A) (M x) B)
-               -> wft G AT
+               -> wft G (rect AS AU)
                -> wft G (arrow A B)
                -> sub-either
                   G (arrow A B) G A'
-                  G (rect AT) G A'
+                  G (rect AS AU) G A'
    -> type.
 %mode invert-lam +X1 -X2 -X3 -X4 -X5 -X6.
 
 -  : invert-lam (of/lam/arrow WA WT OG T) OG T WT WA (sub-either/left B)
 <- sub-refl WA B.
 
--  : invert-lam (of/lam/rect WA WT OG T) OG T WT WA (sub-either/right (sub/rect B))
+-  : invert-lam (of/lam/rect WA WT OG T) OG T WT WA (sub-either/right B)
 <- sub-refl WT B.
 
 -  : invert-lam (of/sub B T) OG' T' WT' WA' B''
