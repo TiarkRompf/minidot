@@ -1,0 +1,2423 @@
+%{
+}%
+
+
+%%%%%  Syntax  %%%%%
+
+tp      : type.  %name tp A.
+exp     : type.  %name exp M.
+
+o       : tp.
+top     : tp.
+bot     : tp.
+tsel    : exp -> tp.
+arrow   : tp -> tp -> tp.
+rect    : tp -> tp -> tp.
+
+b       : exp.
+lam     : tp -> tp -> tp -> (exp -> exp) -> exp.
+app     : exp -> exp -> exp.
+
+
+
+
+%%%%%  Natural Numbers  %%%%%
+
+nat : type.  %name nat N.
+
+0 : nat.
+s : nat -> nat.
+
+
+
+nat-eq : nat -> nat -> type.
+nat-eq/i : nat-eq N N.
+
+
+
+lt : nat -> nat -> type.
+
+lt/z		: lt 0 (s _).
+lt/s		: lt (s N1) (s N2)
+		   <- lt N1 N2.
+
+
+
+
+%%%%%  Contexts  %%%%%
+
+isvar   : exp -> nat -> type.
+%{
+The assumption "isvar X I" indicates that the expression X is a variable
+and carries order stamp I.
+}%
+
+%{
+Isvar will be frozen shortly.  Make it depend on itself while we still can.
+}%
+-       : (isvar _ _ -> isvar _ _) -> type.
+
+
+ctx     : type.  %name ctx G.
+
+nil     : ctx.
+cons    : ctx -> exp -> tp -> ctx.
+
+
+
+precedes : exp -> exp -> type.
+
+precedes/i      : precedes X Y
+                   <- isvar X I
+                   <- isvar Y J
+                   <- lt I J.
+
+
+
+ordered : ctx -> type.        %name ordered OG.
+bounded : ctx -> exp -> type. %name bounded BG.
+%{
+"ordered G" means that the assumptions are listed in increasing order by stamp.
+"bounded G X" means that G is ordered and all assumptions are less than X.
+}%
+
+ordered/nil     : ordered nil.
+
+ordered/cons    : ordered (cons G X _)
+                   <- bounded G X.
+
+bounded/nil     : bounded nil X
+                   <- isvar X _.
+
+bounded/cons    : bounded (cons G Y _) X
+                   <- precedes Y X
+                   <- bounded G Y.
+
+
+
+lookup : ctx -> exp -> tp -> type. %name lookup L.
+
+lookup/hit      : lookup (cons G X A) X A.
+
+lookup/miss     : lookup (cons G Y _) X A
+                   <- lookup G X A.
+
+
+
+append : ctx -> ctx -> ctx -> type.
+
+append/nil      : append G nil G.
+
+append/cons     : append G1 (cons G2 X A) (cons G X A)
+                   <- append G1 G2 G.
+
+sub-ctx : ctx -> ctx -> type.
+
+sub-ctx/nil      : sub-ctx G G.
+sub-ctx/cons     : sub-ctx G1 (cons G2 X A)
+              <- sub-ctx G1 G2
+              <- ordered (cons G2 X A).
+
+%%%%%  Typing Rules (Explicit Context) %%%%%
+
+pev       : ctx -> exp -> tp -> type.        %name pev P.
+wft       : ctx -> tp -> type.               %name wft WT.
+sub       : ctx -> tp -> ctx -> tp -> type.  %name sub B.
+
+pev/a     : pev G X A
+       <- wft G A
+       <- lookup G X A
+       <- ordered G.
+
+sub/o     : sub G1 o G2 o.
+sub/top   : sub G1 A G2 top
+       <- wft G1 A.
+sub/bot   : sub G1 bot G2 A
+       <- wft G2 A.
+sub/arrow : sub G1 (arrow AS1 AU1) G2 (arrow AS2 AU2)
+       <- sub G2 AS2 G1 AS1
+       <- sub G1 AU1 G2 AU2.
+sub/rect  : sub G1 (rect AS1 AU1) G2 (rect AS2 AU2)
+       <- sub G1 AS1 G1 AU1
+       <- sub G2 AS2 G2 AU2
+       <- sub G2 AS2 G1 AS1
+       <- sub G1 AU1 G2 AU2.
+sub/tsel1 : sub G1 (tsel X1) G2 A2
+       <- sub G1 AU1 G2 A2
+       <- pev G1 X1 (rect AS1 AU1).
+sub/tsel2 : sub G1 A1 G2 (tsel X2)
+       <- sub G1 A1 G2 AS2
+       <- pev G2 X2 (rect AS2 AU2).
+sub/tselx : sub G1 (tsel X) G2 (tsel X)
+       <- sub-ctx G G2
+       <- sub-ctx G G1
+       <- pev G X (rect AS AU).
+
+wft/o     : wft G o.
+wft/top   : wft G top.
+wft/bot   : wft G bot.
+wft/arrow : wft G (arrow AS AU)
+       <- wft G AS
+       <- wft G AU.
+wft/rect  : wft G (rect AS AU)
+       <- wft G AS
+       <- wft G AU
+       <- sub G AS G AU.
+wft/tsel  : wft G (tsel X)
+       <- pev G X (rect AS AU).
+
+
+
+
+of        : ctx -> exp -> tp -> type.  %name of T.
+
+of/b      : of G b o.
+
+of/var		: of G X A
+		   <- lookup G X A
+       <- ordered G
+       <- wft G A
+       <- isvar X I.
+
+of/lam/arrow : of G (lam AS AU A ([x] M x)) (arrow A B)
+		   <- ({x}{d:isvar x I} of (cons G x A) (M x) B)
+       <- ({x}{d:isvar x I} ordered (cons G x A))
+       <- wft G (rect AS AU)
+       <- wft G (arrow A B).
+
+of/lam/rect  : of G (lam AS AU A ([x] M x)) (rect AS AU)
+		   <- ({x}{d:isvar x I} of (cons G x A) (M x) B)
+       <- ({x}{d:isvar x I} ordered (cons G x A))
+       <- wft G (rect AS AU)
+       <- wft G (arrow A B).
+
+of/app		: of G (app M N) B
+		   <- of G N A
+		   <- of G M (arrow A B).
+
+of/sub    : of G M A'
+       <- of G M A
+       <- sub G A G A'.
+
+%query 1 1 of nil (app (lam o o o ([x] (lam o o o ([y] x)))) b) (arrow o o).
+%query 1 1 of nil (app (lam o o o ([x] (lam o o o ([y] x)))) b) (rect o o).
+%query 1 1 of nil (app (lam o o o ([x] (lam o o o ([y] x)))) b) (arrow bot top).
+%query 1 1 of nil (lam o o (rect o o) ([x] (lam o o (tsel x) ([y] y)))) (arrow (rect o o) (rect o o)).
+%query 1 1 of nil (lam o o (rect o o) ([x] (lam o (tsel x) o ([y] y)))) (arrow (rect o o) top).
+%query 1 1 of nil (lam o o (rect o o) ([x] (lam o o (tsel x) ([y] y)))) (arrow (rect o o) (arrow bot top)).
+%query 1 1 of nil (lam o o (rect o o) ([x] (lam o o (tsel x) ([y] y)))) (arrow (rect o o) (arrow o o)).
+%query 1 1 of nil (lam o o (rect o o) ([x] (lam o (tsel x) (tsel x) ([y] y)))) (arrow (rect o o) (arrow o o)).
+%query 1 1 of nil (lam o o (rect o o) ([x] (lam o (tsel x) (tsel x) ([y] y)))) (arrow (rect o o) top).
+
+%%%%%  Worlds  %%%%%
+
+%block var	: block {x:exp}.
+
+%block ovar	: some {i:nat}
+		   block 
+		   {x:exp}
+		   {d:isvar x i}.
+
+
+
+
+%%%%%  Equality  %%%%%
+
+ctx-eq : ctx -> ctx -> type.
+ctx-eq/i : ctx-eq G G.
+
+exp-eq : exp -> exp -> type.
+exp-eq/i : exp-eq M M.
+
+tp-eq : tp -> tp -> type.
+tp-eq/i : tp-eq A A.
+
+
+
+lt-resp : nat-eq N1 N1' -> nat-eq N2 N2' -> lt N1 N2 -> lt N1' N2' -> type.
+%mode lt-resp +D1 +D2 +D3 -D.
+
+-	: lt-resp nat-eq/i nat-eq/i D D.
+
+%worlds () (lt-resp _ _ _ _).
+%total {} (lt-resp _ _ _ _).
+
+
+
+of-resp : ctx-eq G G' -> exp-eq M M' -> tp-eq A A' -> of G M A -> of G' M' A' -> type.
+%mode of-resp +X1 +X2 +X3 +X4 -X5.
+
+-       : of-resp ctx-eq/i exp-eq/i tp-eq/i D D.
+
+%worlds (var | ovar) (of-resp _ _ _ _ _).
+%total {} (of-resp _ _ _ _ _).
+
+
+
+
+%%%%%  Reductio Ad Absurdum  %%%%%
+
+false : type.
+
+
+false-implies-of : false -> of G M A -> type.
+%mode +{G:ctx} +{M:exp} +{A:tp} +{X1:false} -{X2:of G M A} (false-implies-of X1 X2).
+%worlds (var | ovar) (false-implies-of _ _).
+%total {} (false-implies-of _ _).
+
+
+false-implies-tp-eq : false -> tp-eq A B -> type.
+%mode +{A:tp} +{B:tp} +{X1:false} -{X2:tp-eq A B} (false-implies-tp-eq X1 X2).
+%worlds (var | ovar) (false-implies-tp-eq _ _).
+%total {} (false-implies-tp-eq _ _).
+
+
+false-implies-bounded : false -> bounded G X -> type.
+%mode +{G:ctx} +{X:exp} +{X1:false} -{X2:bounded G X} (false-implies-bounded X1 X2).
+%worlds (var | ovar) (false-implies-bounded _ _).
+%total {} (false-implies-bounded _ _).
+
+
+false-implies-ordered : false -> ordered G -> type.
+%mode +{G:ctx} +{X1:false} -{X2:ordered G} (false-implies-ordered X1 X2).
+%worlds (var | ovar) (false-implies-ordered _ _).
+%total {} (false-implies-ordered _ _).
+
+
+
+
+%%%%%  Lt  %%%%%
+
+lt-trans : lt N1 N2 -> lt N2 N3 -> lt N1 N3 -> type.
+%mode lt-trans +D1 +D2 -D3.
+
+-	: lt-trans lt/z (lt/s _) lt/z.
+
+-	: lt-trans (lt/s D1) (lt/s D2) (lt/s D3)
+	   <- lt-trans D1 D2 D3.
+
+%worlds () (lt-trans _ _ _).
+%total D (lt-trans D _ _).
+
+
+
+lt-antisymm : lt N N -> false -> type.
+%mode lt-antisymm +X1 -X2.
+
+-	: lt-antisymm (lt/s D) D'
+	   <- lt-antisymm D D'.
+
+%worlds () (lt-antisymm _ _).
+%total D (lt-antisymm D _).
+
+
+
+lt-succ : {N} lt N (s N) -> type.
+%mode lt-succ +X1 -X2.
+
+-	: lt-succ 0 lt/z.
+
+-	: lt-succ (s N) (lt/s D)
+	   <- lt-succ N D.
+
+%worlds () (lt-succ _ _).
+%total N (lt-succ N _).
+
+
+
+
+%%%%%  Ordered Variable Lemmas  %%%%%
+
+isvar-fun : isvar X I -> isvar X J -> nat-eq I J -> type.
+%mode isvar-fun +X1 +X2 -X3.
+
+-	:  isvar-fun D D nat-eq/i.
+
+%worlds (ovar) (isvar-fun _ _ _).
+%total {} (isvar-fun _ _ _).
+
+isvar-fun-eq : isvar X I -> exp-eq X X' -> isvar X' I -> type.
+%mode isvar-fun-eq +X1 +X2 -X3.
+
+-	:  isvar-fun-eq D exp-eq/i D.
+
+%worlds (ovar) (isvar-fun-eq _ _ _).
+%total {} (isvar-fun-eq _ _ _).
+
+
+
+precedes-trans : precedes X Y -> precedes Y Z -> precedes X Z -> type.
+%mode precedes-trans +X1 +X2 -X3.
+
+-       : precedes-trans
+           (precedes/i
+              (DltIJ : lt I J)
+              (DisvarY : isvar Y J)
+              (DisvarX : isvar X I))
+           (precedes/i
+              (DltJ'K : lt J' K)
+              (DisvarZ : isvar Z K)
+              (DisvarY' : isvar Y J'))
+           (precedes/i DltIK DisvarZ DisvarX)
+           <- isvar-fun DisvarY' DisvarY 
+              (Deq : nat-eq J' J)
+           <- lt-resp Deq nat-eq/i DltJ'K
+              (DltJK : lt J K)
+           <- lt-trans DltIJ DltJK
+              (DltIK : lt I K).
+
+%worlds (ovar) (precedes-trans _ _ _).
+%total {} (precedes-trans _ _ _).
+
+
+
+precedes-irreflex : precedes X X -> false -> type.
+%mode precedes-irreflex +X1 -X2.
+
+-       : precedes-irreflex 
+	   (precedes/i 
+	      (Dlt : lt I J)
+	      (D2 : isvar X J)
+	      (D1 : isvar X I))
+	   Dfalse
+           <- isvar-fun D1 D2 (Deq : nat-eq I J)
+           <- lt-resp Deq nat-eq/i Dlt (Dlt' : lt J J)
+           <- lt-antisymm Dlt' Dfalse.
+
+%worlds (ovar) (precedes-irreflex _ _).
+%total {} (precedes-irreflex _ _).
+
+precedes-eq-irreflex : precedes X Y -> exp-eq X Y -> false -> type.
+%mode precedes-eq-irreflex +X1 +X2 -X3.
+
+-       : precedes-eq-irreflex 
+	   (precedes/i 
+	      (Dlt : lt I J)
+	      (D2 : isvar Y J)
+	      (D1 : isvar X I))
+     DEeq
+	   Dfalse
+           <- isvar-fun-eq D1 DEeq D2'
+           <- isvar-fun D2' D2 (Deq : nat-eq I J)
+           <- lt-resp Deq nat-eq/i Dlt (Dlt' : lt J J)
+           <- lt-antisymm Dlt' Dfalse.
+
+%worlds (ovar) (precedes-eq-irreflex _ _ _).
+%total {} (precedes-eq-irreflex _ _ _).
+
+
+bounded-isvar : bounded G X -> isvar X I -> type.
+%mode bounded-isvar +X1 -X2.
+
+-       : bounded-isvar (bounded/nil D) D.
+
+-       : bounded-isvar (bounded/cons _ (precedes/i _ D _)) D.
+
+%worlds (ovar) (bounded-isvar _ _).
+%total {} (bounded-isvar _ _).
+
+
+isvar-not-b   : isvar b I -> false -> type.
+%mode isvar-not-b +X1 -X2.
+%worlds (ovar) (isvar-not-b _ _).
+%total {} (isvar-not-b _ _).
+
+isvar-not-lam : isvar (lam AS AU A M) I -> false -> type.
+%mode isvar-not-lam +X1 -X2.
+%worlds (ovar) (isvar-not-lam _ _).
+%total {} (isvar-not-lam _ _).
+
+
+
+isvar-not-app : isvar (app M N) I -> false -> type.
+%mode isvar-not-app +X1 -X2.
+%worlds (ovar) (isvar-not-app _ _).
+%total {} (isvar-not-app _ _).
+
+
+
+
+%%%%%  Explicit Context Lemmas  %%%%%
+
+bounded-is-ordered : bounded G X 
+%%
+		      -> ordered G
+		      -> type.
+%mode bounded-is-ordered +X1 -X2.
+
+-       : bounded-is-ordered (bounded/nil _) ordered/nil.
+
+-       : bounded-is-ordered (bounded/cons D _) (ordered/cons D).
+
+%worlds (ovar) (bounded-is-ordered _ _).
+%total {} (bounded-is-ordered _ _).
+
+
+
+bounded-increase : bounded G X
+                    -> precedes X Y
+%%
+                    -> bounded G Y 
+		    -> type.
+%mode bounded-increase +X1 +X2 -X3.
+
+-       : bounded-increase
+           (bounded/nil _)
+           (precedes/i _ D _)
+           (bounded/nil D).
+
+-       : bounded-increase
+           (bounded/cons 
+              (Dbounded : bounded G Z)
+              (DprecZX : precedes Z X))
+           (DprecXY : precedes X Y)
+           (bounded/cons Dbounded DprecZY)
+           <- precedes-trans DprecZX DprecXY
+              (DprecZY : precedes Z Y).
+
+%worlds (ovar) (bounded-increase _ _ _).
+%total {} (bounded-increase _ _ _).
+
+
+
+append-bounded : append G1 G2 G
+		  -> bounded G X
+%%
+		  -> bounded G1 X 
+		  -> type.
+%mode append-bounded +X1 +X2 -X3.
+
+-	: append-bounded append/nil D D.
+
+-	: append-bounded
+	   (append/cons 
+	      (Dappend : append G1 G2 G))
+	   (bounded/cons
+	      (Dbounded : bounded G Y)
+	      (Dprecedes : precedes Y X))
+	   Dbounded''
+	   <- append-bounded Dappend Dbounded 
+	      (Dbounded' : bounded G1 Y)
+	   <- bounded-increase Dbounded' Dprecedes 
+	      (Dbounded'' : bounded G1 X).
+
+%worlds (ovar) (append-bounded _ _ _).
+%total D (append-bounded D _ _).
+
+
+
+extend-context : ordered G
+%%
+		  -> ({x} isvar x I -> bounded G x)
+		  -> type.
+%mode extend-context +X1 -X2.
+
+-       : extend-context ordered/nil ([x] [d:isvar x 0] bounded/nil d).
+
+-       : extend-context
+           (ordered/cons (Dbounded : bounded G Y))
+           ([x] [d:isvar x (s J)] bounded/cons Dbounded (precedes/i Dlt d Disvar))
+           <- bounded-isvar Dbounded
+              (Disvar : isvar Y J)
+           <- lt-succ J (Dlt : lt J (s J)).
+
+%worlds (ovar) (extend-context _ _).
+%total {} (extend-context _ _).
+
+
+
+ordered-car : ordered (cons G X A) 
+%%
+	       -> isvar X I
+	       -> type.
+%mode ordered-car +X1 -X2.
+
+-	: ordered-car 
+	   (ordered/cons 
+	      (Dbounded : bounded G X))
+	   Disvar
+	   <- bounded-isvar Dbounded (Disvar : isvar X I).
+
+%worlds (ovar) (ordered-car _ _).
+%total {} (ordered-car _ _).
+
+
+
+ordered-cdr : ordered (cons G X A) 
+%%
+	       -> ordered G 
+	       -> type.
+%mode ordered-cdr +X1 -X2.
+
+-	: ordered-cdr 
+	   (ordered/cons 
+	      (Dbounded : bounded G X)) 
+	   Dordered
+	   <- bounded-is-ordered Dbounded 
+	      (Dordered : ordered G).
+
+%worlds (ovar) (ordered-cdr _ _).
+%total {} (ordered-cdr _ _).
+
+
+
+lookup-ordered : lookup G X A
+		  -> ordered G
+		  -> isvar X I 
+		  -> type.
+%mode lookup-ordered +X1 +X2 -X3.
+
+-	: lookup-ordered 
+	   lookup/hit 
+	   (Dordered : ordered (cons G X A))
+	   Disvar
+	   <- ordered-car Dordered (Disvar : isvar X I).
+
+-	: lookup-ordered 
+	   (lookup/miss 
+	      (Dlookup : lookup G X A))
+	   (Dordered : ordered (cons G Y B))
+	   Disvar
+	   <- ordered-cdr Dordered (Dordered' : ordered G)
+	   <- lookup-ordered Dlookup Dordered' (Disvar : isvar X I).
+
+%worlds (ovar) (lookup-ordered _ _ _).
+%total D (lookup-ordered D _ _).
+
+
+
+bounded-contra : bounded (cons G X A) X 
+%%
+		  -> false
+		  -> type.
+%mode bounded-contra +X1 -X2.
+
+-	: bounded-contra 
+	   (bounded/cons _ (Dprecedes : precedes X X))
+	   Dfalse
+	   <- precedes-irreflex Dprecedes Dfalse.
+
+%worlds (ovar) (bounded-contra _ _).
+%total {} (bounded-contra _ _).
+
+bounded-eq-contra : bounded (cons G X A) Y
+                     -> exp-eq X Y
+%%
+		  -> false
+		  -> type.
+%mode bounded-eq-contra +X1 +X2 -X3.
+
+-	: bounded-eq-contra 
+	   (bounded/cons _ (Dprecedes : precedes X Y))
+     Deq
+	   Dfalse
+	   <- precedes-eq-irreflex Dprecedes Deq Dfalse.
+
+%worlds (ovar) (bounded-eq-contra _ _ _).
+%total {} (bounded-eq-contra _ _ _).
+
+lookup-bounded-contra : lookup G X A
+			 -> bounded G X
+%%
+			 -> false 
+			 -> type.
+%mode lookup-bounded-contra +X1 +X2 -X3.
+
+-       : lookup-bounded-contra 
+	   lookup/hit
+	   (Dbounded : bounded (cons G X A) X)
+	   Dfalse
+           <- bounded-contra Dbounded Dfalse.
+
+-       : lookup-bounded-contra 
+	   (lookup/miss 
+	      (Dlookup : lookup G X A))
+	   (bounded/cons
+	      (Dbounded : bounded G Y)
+	      (Dprecedes : precedes Y X))
+	   Dfalse
+           <- bounded-increase Dbounded Dprecedes (Dbounded' : bounded G X)
+           <- lookup-bounded-contra Dlookup Dbounded' Dfalse.
+
+%worlds (ovar) (lookup-bounded-contra _ _ _).
+%total D (lookup-bounded-contra D _ _).
+
+lookup-eq-bounded-contra : lookup G X A
+			 -> bounded G Y
+       -> exp-eq X Y
+%%
+			 -> false 
+			 -> type.
+%mode lookup-eq-bounded-contra +X1 +X2 +X3 -X4.
+
+-       : lookup-eq-bounded-contra 
+	   lookup/hit
+	   (Dbounded : bounded (cons G X A) Y)
+     Deq
+	   Dfalse
+           <- bounded-eq-contra Dbounded Deq Dfalse.
+
+-       : lookup-eq-bounded-contra 
+	   (lookup/miss 
+	      (Dlookup : lookup G X A))
+	   (bounded/cons
+	      (Dbounded : bounded G Y)
+	      (Dprecedes : precedes Y X))
+     Deq
+	   Dfalse
+           <- bounded-increase Dbounded Dprecedes (Dbounded' : bounded G X)
+           <- lookup-eq-bounded-contra Dlookup Dbounded' Deq Dfalse.
+
+%worlds (ovar) (lookup-eq-bounded-contra _ _ _ _).
+%total D (lookup-eq-bounded-contra D _ _ _).
+
+append-lookup-eq : ({x} append (cons G1 x A) (G2 x) (G x))
+		    -> ({x} isvar x I -> ordered (G x))
+		    -> ({x} lookup (G x) x (B x))
+%%
+		    -> ({x} tp-eq A (B x)) 
+		    -> type.
+%mode append-lookup-eq +X1 +X2 +X3 -X4.
+
+-       : append-lookup-eq _ _ ([x] lookup/hit) ([_] tp-eq/i).
+
+-       : append-lookup-eq 
+	   ([x] 
+	      append/cons 
+	      (Dappend x : append (cons G1 x A) (G2 x) (G x)))
+	   ([x] [d:isvar x I] 
+	      Dordered x d : ordered (cons (G x) (Y x) (C x)))
+	   ([x] 
+	      lookup/miss (Dlookup x : lookup (G x) x (B x)))
+           Deq
+	   <- ({x} {d:isvar x I}
+		 ordered-cdr (Dordered x d) (Dordered' x d : ordered (G x)))
+           <- append-lookup-eq Dappend Dordered' Dlookup (Deq : {x} tp-eq A (B x)).
+
+-       : append-lookup-eq 
+	   ([x] append/nil) 
+	   ([x] [d:isvar x I]
+	      ordered/cons (Dbounded x d : bounded G1 x))
+	   ([x] 
+	      lookup/miss (Dlookup x : lookup G1 x (B x)))
+           Deq
+           <- ({x} {d:isvar x I}
+                 lookup-bounded-contra (Dlookup x) (Dbounded x d) Dfalse)
+           <- ({x} false-implies-tp-eq Dfalse (Deq x)).
+
+-	: append-lookup-eq 
+	   ([x] 
+	      append/cons 
+	      (Dappend x : append (cons G1 x A) (G2 x) (G x)))
+	   ([x] [d:isvar x I]
+	      ordered/cons (Dbounded x d : bounded (G x) x))
+	   ([x] lookup/hit)
+	   Deq
+	   <- ({x} {d:isvar x I}
+		 append-bounded (Dappend x) (Dbounded x d) 
+		 (Dbounded' x d : bounded (cons G1 x A) x))
+	   <- ({x} {d:isvar x I}
+		 bounded-contra (Dbounded' x d) Dfalse)
+	   <- ({x} false-implies-tp-eq Dfalse (Deq x)).
+
+%worlds (ovar) (append-lookup-eq _ _ _ _).
+%total D (append-lookup-eq D _ _ _).
+
+
+
+%% Lookup is preserved under deletion of other variables.
+lookup-pdv : ({x} append (cons G1 x A) (G2 x) (G x))
+               -> append G1 (G2 M) G'
+               -> ({x} lookup (G x) Y (B x))
+%%
+               -> lookup G' Y (B M) 
+	       -> type.
+%mode lookup-pdv +X1 +X2 +X3 -X4.
+
+-       : lookup-pdv 
+	   ([x] append/cons 
+	      (Dappend x : append (cons G1 x A) (G2 x) (G x)))
+	   (append/cons 
+	      (Dappend' : append G1 (G2 M) G'))
+	   ([x] lookup/hit)
+	   %%
+           lookup/hit.
+
+-       : lookup-pdv
+	   ([x] append/cons 
+	      (Dappend x : append (cons G1 x A) (G2 x) (G x)))
+	   (append/cons 
+	      (Dappend' : append G1 (G2 M) G'))
+	   ([x] 
+	      lookup/miss 
+	      (Dlookup x : lookup (G x) Y (B x)))
+	   %%
+           (lookup/miss Dlookup')
+           <- lookup-pdv Dappend Dappend' Dlookup Dlookup'.
+
+-       : lookup-pdv 
+	   ([x] append/nil) 
+	   append/nil 
+	   ([x] lookup/miss 
+	      (Dlookup x : lookup _ _ (B x)))
+	   %%
+           (Dlookup M).
+
+%worlds (ovar) (lookup-pdv _ _ _ _).
+%total D (lookup-pdv D _ _ _).
+
+
+
+
+%%%%%  Weakening  %%%%%
+
+weaken-lookup-gen : append G1 G2 G
+                     -> append (cons G1 X A) G2 G'
+                     -> lookup G Y B
+%%
+                     -> lookup G' Y B 
+		     -> type.
+%mode weaken-lookup-gen +X1 +X2 +X3 -X4.
+
+-       : weaken-lookup-gen (append/cons _) (append/cons _) lookup/hit lookup/hit.
+
+-       : weaken-lookup-gen (append/cons Dappend) (append/cons Dappend') (lookup/miss Dlookup)
+           (lookup/miss Dlookup')
+           <- weaken-lookup-gen Dappend Dappend' Dlookup Dlookup'.
+
+-       : weaken-lookup-gen append/nil append/nil Dlookup (lookup/miss Dlookup).
+
+%worlds (var) (weaken-lookup-gen _ _ _ _).
+%total D (weaken-lookup-gen D _ _ _).
+
+
+
+
+%%%%%  Values  & Stacks %%%%%
+
+val      : type.  %name val V.
+vctx     : type.  %name vctx H.
+
+v        : val.
+clo      : vctx -> (exp -> exp) -> val.
+bin      : (exp -> val) -> val.
+vnil     : vctx.
+vcons    : vctx -> exp -> val -> vctx.
+
+val-eq : val -> val -> type.
+val-eq/i : val-eq A A.
+
+false-implies-val-eq : false -> val-eq A B -> type.
+%mode +{A:val} +{B:val} +{X1:false} -{X2:val-eq A B} (false-implies-val-eq X1 X2).
+%worlds (var | ovar) (false-implies-val-eq _ _).
+%total {} (false-implies-val-eq _ _).
+
+vordered : vctx -> type.        %name vordered OH.
+vbounded : vctx -> exp -> type. %name vbounded BH.
+%{
+"ordered G" means that the assumptions are listed in increasing order by stamp.
+"bounded G X" means that G is ordered and all assumptions are less than X.
+}%
+
+vordered/nil    : vordered vnil.
+
+vordered/cons   : vordered (vcons H X _)
+                   <- vbounded H X.
+
+vbounded/nil    : vbounded vnil X
+                   <- isvar X _.
+
+vbounded/cons   : vbounded (vcons H Y _) X
+                   <- precedes Y X
+                   <- vbounded H Y.
+
+
+
+vlookup : vctx -> exp -> val -> type.
+
+vlookup/hit     : vlookup (vcons H X V) X V.
+
+vlookup/miss    : vlookup (vcons H Y _) X V
+                   <- vlookup H X V.
+
+
+
+vappend : vctx -> vctx -> vctx -> type.
+
+vappend/nil      : vappend H vnil H.
+
+vappend/cons     : vappend H1 (vcons H2 X V) (vcons H X V)
+                   <- vappend H1 H2 H.
+
+
+%%%%%  Explicit Stack Lemmas  %%%%%
+
+vbounded-isvar : vbounded H X -> isvar X I -> type.
+%mode vbounded-isvar +X1 -X2.
+
+-       : vbounded-isvar (vbounded/nil D) D.
+
+-       : vbounded-isvar (vbounded/cons _ (precedes/i _ D _)) D.
+
+%worlds (ovar) (vbounded-isvar _ _).
+%total {} (vbounded-isvar _ _).
+
+vbounded-is-vordered : vbounded H X 
+%%
+		      -> vordered H
+		      -> type.
+%mode vbounded-is-vordered +X1 -X2.
+
+-       : vbounded-is-vordered (vbounded/nil _) vordered/nil.
+
+-       : vbounded-is-vordered (vbounded/cons D _) (vordered/cons D).
+
+%worlds (ovar) (vbounded-is-vordered _ _).
+%total {} (vbounded-is-vordered _ _).
+
+
+
+vbounded-increase : vbounded H X
+                    -> precedes X Y
+%%
+                    -> vbounded H Y 
+		    -> type.
+%mode vbounded-increase +X1 +X2 -X3.
+
+-       : vbounded-increase
+           (vbounded/nil _)
+           (precedes/i _ D _)
+           (vbounded/nil D).
+
+-       : vbounded-increase
+           (vbounded/cons 
+              (Dvbounded : vbounded H Z)
+              (DprecZX : precedes Z X))
+           (DprecXY : precedes X Y)
+           (vbounded/cons Dvbounded DprecZY)
+           <- precedes-trans DprecZX DprecXY
+              (DprecZY : precedes Z Y).
+
+%worlds (ovar) (vbounded-increase _ _ _).
+%total {} (vbounded-increase _ _ _).
+
+
+
+vappend-vbounded : vappend H1 H2 H
+		  -> vbounded H X
+%%
+		  -> vbounded H1 X 
+		  -> type.
+%mode vappend-vbounded +X1 +X2 -X3.
+
+-	: vappend-vbounded vappend/nil D D.
+
+-	: vappend-vbounded
+	   (vappend/cons 
+	      (Dvappend : vappend H1 H2 H))
+	   (vbounded/cons
+	      (Dvbounded : vbounded H Y)
+	      (Dprecedes : precedes Y X))
+	   Dvbounded''
+	   <- vappend-vbounded Dvappend Dvbounded 
+	      (Dvbounded' : vbounded H1 Y)
+	   <- vbounded-increase Dvbounded' Dprecedes 
+	      (Dvbounded'' : vbounded H1 X).
+
+%worlds (ovar) (vappend-vbounded _ _ _).
+%total D (vappend-vbounded D _ _).
+
+
+
+extend-stack : vordered H
+%%
+		  -> ({x} isvar x I -> vbounded H x)
+		  -> type.
+%mode extend-stack +X1 -X2.
+
+-       : extend-stack vordered/nil ([x] [d:isvar x 0] vbounded/nil d).
+
+-       : extend-stack
+           (vordered/cons (Dvbounded : vbounded H Y))
+           ([x] [d:isvar x (s J)] vbounded/cons Dvbounded (precedes/i Dlt d Disvar))
+           <- vbounded-isvar Dvbounded
+              (Disvar : isvar Y J)
+           <- lt-succ J (Dlt : lt J (s J)).
+
+%worlds (ovar) (extend-stack _ _).
+%total {} (extend-stack _ _).
+
+
+
+vordered-car : vordered (vcons H X V) 
+%%
+	       -> isvar X I
+	       -> type.
+%mode vordered-car +X1 -X2.
+
+-	: vordered-car 
+	   (vordered/cons 
+	      (Dvbounded : vbounded H X))
+	   Disvar
+	   <- vbounded-isvar Dvbounded (Disvar : isvar X I).
+
+%worlds (ovar) (vordered-car _ _).
+%total {} (vordered-car _ _).
+
+
+
+vordered-cdr : vordered (vcons H X V) 
+%%
+	       -> vordered H 
+	       -> type.
+%mode vordered-cdr +X1 -X2.
+
+-	: vordered-cdr 
+	   (vordered/cons 
+	      (Dvbounded : vbounded H X)) 
+	   Dvordered
+	   <- vbounded-is-vordered Dvbounded 
+	      (Dvordered : vordered H).
+
+%worlds (ovar) (vordered-cdr _ _).
+%total {} (vordered-cdr _ _).
+
+
+
+vlookup-vordered : vlookup H X A
+		  -> vordered H
+		  -> isvar X I 
+		  -> type.
+%mode vlookup-vordered +X1 +X2 -X3.
+
+-	: vlookup-vordered 
+	   vlookup/hit 
+	   (Dvordered : vordered (vcons H X T))
+	   Disvar
+	   <- vordered-car Dvordered (Disvar : isvar X I).
+
+-	: vlookup-vordered 
+	   (vlookup/miss 
+	      (Dvlookup : vlookup H X A))
+	   (Dvordered : vordered (vcons H Y B))
+	   Disvar
+	   <- vordered-cdr Dvordered (Dvordered' : vordered H)
+	   <- vlookup-vordered Dvlookup Dvordered' (Disvar : isvar X I).
+
+%worlds (ovar) (vlookup-vordered _ _ _).
+%total D (vlookup-vordered D _ _).
+
+
+
+vbounded-contra : vbounded (vcons H X V) X 
+%%
+		  -> false
+		  -> type.
+%mode vbounded-contra +X1 -X2.
+
+-	: vbounded-contra 
+	   (vbounded/cons _ (Dprecedes : precedes X X))
+	   Dfalse
+	   <- precedes-irreflex Dprecedes Dfalse.
+
+%worlds (ovar) (vbounded-contra _ _).
+%total {} (vbounded-contra _ _).
+
+
+
+vlookup-vbounded-contra : vlookup H X A
+			 -> vbounded H X
+%%
+			 -> false 
+			 -> type.
+%mode vlookup-vbounded-contra +X1 +X2 -X3.
+
+-       : vlookup-vbounded-contra 
+	   vlookup/hit
+	   (Dvbounded : vbounded (vcons H X V) X)
+	   Dfalse
+           <- vbounded-contra Dvbounded Dfalse.
+
+-       : vlookup-vbounded-contra 
+	   (vlookup/miss 
+	      (Dvlookup : vlookup H X A))
+	   (vbounded/cons
+	      (Dvbounded : vbounded H Y)
+	      (Dprecedes : precedes Y X))
+	   Dfalse
+           <- vbounded-increase Dvbounded Dprecedes (Dvbounded' : vbounded H X)
+           <- vlookup-vbounded-contra Dvlookup Dvbounded' Dfalse.
+
+%worlds (ovar) (vlookup-vbounded-contra _ _ _).
+%total D (vlookup-vbounded-contra D _ _).
+
+
+
+vappend-vlookup-eq : ({x} vappend (vcons H1 x V) (H2 x) (H x))
+		    -> ({x} isvar x I -> vordered (H x))
+		    -> ({x} vlookup (H x) x (B x))
+%%
+		    -> ({x} val-eq V (B x)) 
+		    -> type.
+%mode vappend-vlookup-eq +X1 +X2 +X3 -X4.
+
+-       : vappend-vlookup-eq _ _ ([x] vlookup/hit) ([_] val-eq/i).
+
+-       : vappend-vlookup-eq 
+	   ([x] 
+	      vappend/cons 
+	      (Dvappend x : vappend (vcons H1 x A) (H2 x) (H x)))
+	   ([x] [d:isvar x I] 
+	      Dvordered x d : vordered (vcons (H x) (Y x) (C x)))
+	   ([x] 
+	      vlookup/miss (Dvlookup x : vlookup (H x) x (B x)))
+           Deq
+	   <- ({x} {d:isvar x I}
+		 vordered-cdr (Dvordered x d) (Dvordered' x d : vordered (H x)))
+           <- vappend-vlookup-eq Dvappend Dvordered' Dvlookup (Deq : {x} val-eq A (B x)).
+
+-       : vappend-vlookup-eq 
+	   ([x] vappend/nil) 
+	   ([x] [d:isvar x I]
+	      vordered/cons (Dvbounded x d : vbounded H1 x))
+	   ([x] 
+	      vlookup/miss (Dvlookup x : vlookup H1 x (B x)))
+           Deq
+           <- ({x} {d:isvar x I}
+                 vlookup-vbounded-contra (Dvlookup x) (Dvbounded x d) Dfalse)
+           <- ({x} false-implies-val-eq Dfalse (Deq x)).
+
+-	: vappend-vlookup-eq 
+	   ([x] 
+	      vappend/cons 
+	      (Dvappend x : vappend (vcons H1 x A) (H2 x) (H x)))
+	   ([x] [d:isvar x I]
+	      vordered/cons (Dvbounded x d : vbounded (H x) x))
+	   ([x] vlookup/hit)
+	   Deq
+	   <- ({x} {d:isvar x I}
+		 vappend-vbounded (Dvappend x) (Dvbounded x d) 
+		 (Dvbounded' x d : vbounded (vcons H1 x A) x))
+	   <- ({x} {d:isvar x I}
+		 vbounded-contra (Dvbounded' x d) Dfalse)
+	   <- ({x} false-implies-val-eq Dfalse (Deq x)).
+
+%worlds (ovar) (vappend-vlookup-eq _ _ _ _).
+%total D (vappend-vlookup-eq D _ _ _).
+
+
+
+%% Vlookup is preserved under deletion of other variables.
+vlookup-pdv : ({x} vappend (vcons H1 x A) (H2 x) (H x))
+               -> vappend H1 (H2 M) H'
+               -> ({x} vlookup (H x) Y (B x))
+%%
+               -> vlookup H' Y (B M) 
+	       -> type.
+%mode vlookup-pdv +X1 +X2 +X3 -X4.
+
+-       : vlookup-pdv 
+	   ([x] vappend/cons 
+	      (Dvappend x : vappend (vcons H1 x A) (H2 x) (H x)))
+	   (vappend/cons 
+	      (Dvappend' : vappend H1 (H2 M) H'))
+	   ([x] vlookup/hit)
+	   %%
+           vlookup/hit.
+
+-       : vlookup-pdv
+	   ([x] vappend/cons 
+	      (Dvappend x : vappend (vcons H1 x A) (H2 x) (H x)))
+	   (vappend/cons 
+	      (Dvappend' : vappend H1 (H2 M) H'))
+	   ([x] 
+	      vlookup/miss 
+	      (Dvlookup x : vlookup (H x) Y (B x)))
+	   %%
+           (vlookup/miss Dvlookup')
+           <- vlookup-pdv Dvappend Dvappend' Dvlookup Dvlookup'.
+
+-       : vlookup-pdv 
+	   ([x] vappend/nil) 
+	   vappend/nil 
+	   ([x] vlookup/miss 
+	      (Dvlookup x : vlookup _ _ (B x)))
+	   %%
+           (Dvlookup M).
+
+%worlds (ovar) (vlookup-pdv _ _ _ _).
+%total D (vlookup-pdv D _ _ _).
+
+
+
+%%%%%  Evaluation Rules (Explicit Stack)  %%%%%
+
+ev      : vctx -> exp -> val -> type.
+evapp   : val -> val -> (exp -> val) -> type.
+
+evapp/clo : evapp (clo H M) V' V
+             <- {x} ev (vcons H x V') (M x) (V x).
+
+evapp/bin : evapp (bin VM) VN ([x] (bin (V x)))
+             <- {x} evapp (VM x) VN (V x).
+
+ev/b    : ev H b v.
+
+ev/var  : ev H X V
+     <- vlookup H X V.
+
+ev/lam  : ev H (lam AS AU A ([x] M x)) (clo H M).
+
+ev/app  : ev H (app M N) (bin ([x] V x))
+     <- ev H M VM
+     <- ev H N VN
+     <- evapp VM VN ([x] V x).
+
+
+%query 1 1 ev vnil b V.
+%query 1 1 ev vnil (app (lam o o o ([x] x)) b) V.
+%query 1 1 ev vnil (lam o o o ([x] (lam o o o ([y] y)))) V.
+%query 1 1 ev vnil (app (lam o o o ([x] (lam o o o ([y] y)))) b) V.
+%query 1 1 ev vnil (app (lam o o o ([x] (lam o o o ([y] x)))) b) V.
+%query 1 1 ev vnil (app (lam o o (arrow o o) ([x] (lam o o o ([y] x)))) (lam o o o ([x] x))) V.
+%query 1 1 ev vnil (app (lam o o (arrow o o) ([x] (lam o o o ([y] y)))) (app (lam o o o ([x] (lam o o o ([y] x)))) b)) V.
+%query 0 * ev vnil (app b b) V.
+%query 1 1 ev vnil (app (app (lam o o o ([x] (lam o o o ([y] y)))) b) b) V.
+%query 1 1 ev vnil (app (app (app (lam o o o ([x] (lam o o o ([y] (lam o o o [z] y))))) b) b) b) V.
+
+%%%%%  Value Typing (Explicit Context & Stack)  %%%%%
+
+wfv      : val -> ctx -> tp -> type.
+wfe      : vctx -> ctx -> type.
+
+wfv/v    : wfv v G o.
+
+wfv/clo/arrow : wfv (clo H M) G (arrow A B)
+      <- wfe H G'
+      <- ({x}{d:isvar x I} of (cons G' x A) (M x) B)
+      <- ({x}{d:isvar x I} ordered (cons G' x A))
+      <- sub G' (arrow A B) G (arrow A B).
+
+wfv/clo/rect  : wfv (clo H M) G (rect AS AU)
+      <- wft G (rect AS AU).
+
+wfv/bin  : wfv (bin V) G A
+            <- wft G A
+            <- {x}{d:isvar x I} wfv (V x) G A.
+
+wfv/sub  : wfv V G A
+      <- wfv V G' A'
+      <- sub G' A' G A.
+
+wfe/nil  : wfe vnil nil.
+
+wfe/cons : wfe (vcons H X V) (cons G X A)
+      <- wfv V G A
+      <- wfe H G.
+
+1exp = (app (lam o o o ([x] (lam o o o ([y] x)))) b).
+1tp = (arrow o o).
+%query 1 1 of nil 1exp 1tp.
+%define 1clo = V
+%solve  1ev : ev vnil 1exp V.
+%query 1 1 wfv 1clo nil 1tp.
+%query 1 1 wfv 1clo nil top.
+%query 1 1 of nil 1exp (rect o o).
+
+false-implies-wfv : false -> wfv V G A -> type.
+%mode +{V:val} +{G:ctx} +{A:tp} +{X1:false} -{X2:wfv V G A} (false-implies-wfv X1 X2).
+%worlds (var | ovar) (false-implies-wfv _ _).
+%total {} (false-implies-wfv _ _).
+
+%%%%%  Safety  %%%%%
+
+sub-ctx-trans : sub-ctx G1 G2
+                 -> sub-ctx G2 G3
+%%
+                 -> sub-ctx G1 G3
+       -> type.
+%mode sub-ctx-trans +X1 +X2 -X3.
+
+-/nil  : sub-ctx-trans S sub-ctx/nil S.
+-/cons : sub-ctx-trans S12 (sub-ctx/cons OG3 S23) (sub-ctx/cons OG3 S13)
+    <- sub-ctx-trans S12 S23 S13.
+
+%worlds (var | ovar) (sub-ctx-trans _ _ _).
+%total S23 (sub-ctx-trans _ S23 _).
+
+minmax-ctx   : ctx -> ctx -> ctx -> ctx -> type.
+minmax-ctx/1 : minmax-ctx G1 G2 G1 G2 <- sub-ctx G1 G2.
+minmax-ctx/2 : minmax-ctx G1 G2 G2 G1 <- sub-ctx G2 G1.
+
+sub-ctx-dia  : sub-ctx G1 G
+                -> sub-ctx G2 G
+%%
+                -> minmax-ctx G1 G2 GS GU
+   -> type.
+%mode sub-ctx-dia +X1 +X2 -X3.
+
+-  : sub-ctx-dia sub-ctx/nil S (minmax-ctx/2 S).
+-  : sub-ctx-dia (sub-ctx/cons OG S1) sub-ctx/nil (minmax-ctx/1 (sub-ctx/cons OG S1)).
+-  : sub-ctx-dia (sub-ctx/cons _ S1) (sub-ctx/cons _ S2) MM
+<- sub-ctx-dia S1 S2 MM.
+
+%worlds (var | ovar) (sub-ctx-dia _ _ _).
+%total S (sub-ctx-dia S _ _).
+
+bounded-to-vbounded : wfe H G -> bounded G X -> vbounded H X -> type.
+%mode bounded-to-vbounded +X1 +X2 -X3.
+
+bounded2v/nil  : bounded-to-vbounded wfe/nil (bounded/nil D) (vbounded/nil D).
+
+bounded2v/cons : bounded-to-vbounded (wfe/cons WE WV) (bounded/cons BG P) (vbounded/cons HG P)
+            <- bounded-to-vbounded WE BG HG.
+
+%worlds (ovar) (bounded-to-vbounded _ _ _).
+%total A (bounded-to-vbounded A _ _).
+
+ordered-to-vordered : wfe H G -> ordered G -> vordered H -> type.
+%mode ordered-to-vordered +X1 +X2 -X3.
+
+ordered2v/nil  : ordered-to-vordered wfe/nil ordered/nil vordered/nil.
+
+ordered2v/cons : ordered-to-vordered (wfe/cons WE WV) (ordered/cons GB) (vordered/cons HB)
+            <- bounded-to-vbounded WE GB HB.
+
+%worlds (ovar) (ordered-to-vordered _ _ _).
+%total {} (ordered-to-vordered _ _ _).
+
+extend-env : wfe H G
+              -> ordered G
+%%
+		  -> ({x} isvar x I -> bounded G x)
+		  -> ({x} isvar x I -> vbounded H x)
+		  -> type.
+%mode extend-env +X1 +X2 -X3 -X4.
+
+-       : extend-env wfe/nil ordered/nil ([x] [d:isvar x 0] bounded/nil d) ([x] [d:isvar x 0] vbounded/nil d).
+
+-       : extend-env
+           (wfe/cons WE WV)
+           (ordered/cons Dbounded)
+           ([x] [d:isvar x (s J)] bounded/cons Dbounded (precedes/i Dlt d Disvar))
+           ([x] [d:isvar x (s J)] vbounded/cons Dvbounded (precedes/i Dlt d Disvar))
+           <- bounded-to-vbounded WE Dbounded Dvbounded
+           <- bounded-isvar Dbounded
+              (Disvar : isvar Y J)
+           <- lt-succ J (Dlt : lt J (s J)).
+
+%worlds (ovar) (extend-env _ _ _ _).
+%total {} (extend-env _ _ _ _).
+
+sub-refl    : wft G A
+%%
+               -> sub G A G A
+               -> type.
+%mode sub-refl +X1 -X2.
+
+sub-refl/o     : sub-refl wft/o sub/o.
+
+sub-refl/top   : sub-refl wft/top (sub/top wft/top).
+
+sub-refl/bot   : sub-refl wft/bot (sub/bot wft/bot).
+
+sub-refl/arrow : sub-refl (wft/arrow WS WU) (sub/arrow BS BU)
+            <- sub-refl WS BS
+            <- sub-refl WU BU.
+
+sub-refl/rect  : sub-refl (wft/rect B WS WU) (sub/rect BS BU B B)
+            <- sub-refl WS BS
+            <- sub-refl WU BU.
+
+sub-refl/tsel  : sub-refl (wft/tsel P) (sub/tselx P sub-ctx/nil sub-ctx/nil).
+
+%worlds (var | ovar) (sub-refl _ _).
+%total W (sub-refl W _).
+
+extend-wft  : wft G B
+               -> ordered (cons G X A)
+%%
+               -> wft (cons G X A) B
+-> type.
+%mode extend-wft +X1 +X2 -X3.
+
+extend-sub2  : sub G1 A1 G2 A2
+                -> ordered (cons G2 X A)
+%%
+                -> sub G1 A1 (cons G2 X A) A2
+         -> type.
+%mode extend-sub2 +X1 +X2 -X3.
+
+extend-sub1  : sub G1 A1 G2 A2
+                -> ordered (cons G1 X A)
+%%
+                -> sub (cons G1 X A) A1 G2 A2
+         -> type.
+%mode extend-sub1 +X1 +X2 -X3.
+
+extend-sub   : sub G1 A1 G2 A2
+                -> ordered (cons G1 X A)
+                -> ordered (cons G2 X A)
+%%
+                -> sub (cons G1 X A) A1 (cons G2 X A) A2
+         -> type.
+%mode extend-sub +X1 +X2 +X3 -X4.
+
+-/o2     : extend-sub2 sub/o _ sub/o.
+
+-/o1     : extend-sub1 sub/o _ sub/o.
+
+-/o      : extend-sub  sub/o _ _ sub/o.
+
+-/top2   : extend-sub2 (sub/top W) OG (sub/top W).
+
+-/top1   : extend-sub1 (sub/top W) OG (sub/top W')
+      <- extend-wft W OG W'.
+
+-/top    : extend-sub  (sub/top W) OG1 OG2 (sub/top W')
+      <- extend-wft W OG1 W'.
+
+-/bot2   : extend-sub2 (sub/bot W) OG (sub/bot W')
+      <- extend-wft W OG W'.
+
+-/bot1   : extend-sub1 (sub/bot W) OG (sub/bot W).
+
+-/bot    : extend-sub  (sub/bot W) OG1 OG2 (sub/bot W')
+      <- extend-wft W OG2 W'.
+
+-/arrow2 : extend-sub2 (sub/arrow BU BS) OG (sub/arrow BU' BS')
+      <- extend-sub1 BS OG BS'
+      <- extend-sub2 BU OG BU'.
+
+-/arrow1 : extend-sub1 (sub/arrow BU BS) OG (sub/arrow BU' BS')
+      <- extend-sub2 BS OG BS'
+      <- extend-sub1 BU OG BU'.
+
+-/arrow  : extend-sub  (sub/arrow BU BS) OG1 OG2 (sub/arrow BU' BS')
+      <- extend-sub BS OG2 OG1 BS'
+      <- extend-sub BU OG1 OG2 BU'.
+
+-/rect2  : extend-sub2 (sub/rect BU BS B2 B1) OG (sub/rect BU' BS' B2' B1)
+      <- extend-sub B2 OG OG B2'
+      <- extend-sub1 BS OG BS'
+      <- extend-sub2 BU OG BU'.
+
+-/rect1  : extend-sub1 (sub/rect BU BS B2 B1) OG (sub/rect BU' BS' B2 B1')
+      <- extend-sub B1 OG OG B1'
+      <- extend-sub2 BS OG BS'
+      <- extend-sub1 BU OG BU'.
+
+-/rect  : extend-sub  (sub/rect BU BS B2 B1) OG1 OG2 (sub/rect BU' BS' B2' B1')
+      <- extend-sub B1 OG1 OG1 B1'
+      <- extend-sub B2 OG2 OG2 B2'
+      <- extend-sub BS OG2 OG1 BS'
+      <- extend-sub BU OG1 OG2 BU'.
+
+-/tsel12 : extend-sub2 (sub/tsel1 P S) OG (sub/tsel1 P S')
+      <- extend-sub2 S OG S'.
+
+-/tsel21 : extend-sub1 (sub/tsel2 P S) OG (sub/tsel2 P S')
+      <- extend-sub1 S OG S'.
+
+-/tsel22 : extend-sub2
+            (sub/tsel2 (pev/a _  L               W ) S ) OG
+            (sub/tsel2 (pev/a OG (lookup/miss L) W') S')
+      <- extend-wft W OG W'
+      <- extend-sub2 S OG S'.
+
+-/tsel11 : extend-sub1
+            (sub/tsel1 (pev/a _  L               W ) S ) OG
+            (sub/tsel1 (pev/a OG (lookup/miss L) W') S')
+      <- extend-wft W OG W'
+      <- extend-sub1 S OG S'.
+
+-/tsel2  : extend-sub
+            (sub/tsel2 (pev/a OGP  L               W ) S ) OG1 OG2
+            (sub/tsel2 (pev/a OG2  (lookup/miss L) W') S')
+      <- extend-wft W OG2 W'
+      <- extend-sub S OG1 OG2 S'.
+
+-/tsel1  : extend-sub
+            (sub/tsel1 (pev/a OGP  L               W ) S ) OG1 OG2
+            (sub/tsel1 (pev/a OG1  (lookup/miss L) W') S')
+      <- extend-wft W OG1 W'
+      <- extend-sub S OG1 OG2 S'.
+
+-/tselx2 : extend-sub2
+            (sub/tselx (pev/a OGP L W) S1 S2) OG
+            (sub/tselx (pev/a OGP L W) S1 (sub-ctx/cons OG S2)).
+
+-/tselx1 : extend-sub1
+            (sub/tselx (pev/a OGP L W) S1 S2) OG
+            (sub/tselx (pev/a OGP L W) (sub-ctx/cons OG S1) S2).
+
+-/tselx  : extend-sub
+            (sub/tselx (pev/a OGP L W) S1 S2) OG1 OG2
+            (sub/tselx (pev/a OGP L W) (sub-ctx/cons OG1 S1) (sub-ctx/cons OG2 S2)).
+
+-  : extend-wft wft/o _ wft/o.
+
+-  : extend-wft wft/top _ wft/top.
+
+-  : extend-wft wft/bot _ wft/bot.
+
+-  : extend-wft (wft/arrow WU WS) OG (wft/arrow WU' WS')
+<- extend-wft WS OG WS'
+<- extend-wft WU OG WU'.
+
+-  : extend-wft (wft/rect B WU WS) OG (wft/rect B' WU' WS')
+<- extend-wft WS OG WS'
+<- extend-wft WU OG WU'
+<- extend-sub B OG OG B'.
+
+-  : extend-wft (wft/tsel (pev/a OG L W)) OG' (wft/tsel (pev/a OG' (lookup/miss L) W'))
+<- extend-wft W OG' W'.
+
+%worlds (var | ovar) (extend-sub2 _ _ _) (extend-sub1 _ _ _) (extend-sub _ _ _ _) (extend-wft _ _ _).
+%total (S2 S1 S W) (extend-sub2 S2 _ _) (extend-sub1 S1 _ _) (extend-sub S _ _ _) (extend-wft W _ _).
+
+extend-wft-sub-ctx : wft G1 A1
+                      -> sub-ctx G1 G2
+%%
+                      -> wft G2 A1
+  -> type.
+%mode extend-wft-sub-ctx +X1 +X2 -X3.
+
+- : extend-wft-sub-ctx W sub-ctx/nil W.
+
+- : extend-wft-sub-ctx W (sub-ctx/cons OG S) W''
+<- extend-wft-sub-ctx W S W'
+<- extend-wft W' OG W''.
+
+%worlds (var | ovar) (extend-wft-sub-ctx _ _ _).
+%total S (extend-wft-sub-ctx _ S _).
+
+extend-sub1-sub-ctx : sub G1 A1 G2 A2
+                       -> sub-ctx G1 G1'
+%%
+                       -> sub G1' A1 G2 A2
+   -> type.
+%mode extend-sub1-sub-ctx +X1 +X2 -X3.
+
+- : extend-sub1-sub-ctx B sub-ctx/nil B.
+
+- : extend-sub1-sub-ctx B (sub-ctx/cons OG S) B''
+<- extend-sub1-sub-ctx B S B'
+<- extend-sub1 B' OG B''.
+
+%worlds (var | ovar) (extend-sub1-sub-ctx _ _ _).
+%total S (extend-sub1-sub-ctx _ S _).
+
+extend-sub2-sub-ctx : sub G1 A1 G2 A2
+                       -> sub-ctx G2 G2'
+%%
+                       -> sub G1 A1 G2' A2
+   -> type.
+%mode extend-sub2-sub-ctx +X1 +X2 -X3.
+
+- : extend-sub2-sub-ctx B sub-ctx/nil B.
+
+- : extend-sub2-sub-ctx B (sub-ctx/cons OG S) B''
+<- extend-sub2-sub-ctx B S B'
+<- extend-sub2 B' OG B''.
+
+%worlds (var | ovar) (extend-sub2-sub-ctx _ _ _).
+%total S (extend-sub2-sub-ctx _ S _).
+
+extend-lookup-sub-ctx : lookup G1 X A
+                         -> sub-ctx G1 G2
+%%
+                         -> lookup G2 X A
+  -> type.
+%mode extend-lookup-sub-ctx +X1 +X2 -X3.
+
+- : extend-lookup-sub-ctx L sub-ctx/nil L.
+
+- : extend-lookup-sub-ctx L (sub-ctx/cons OG S) (lookup/miss L')
+<- extend-lookup-sub-ctx L S L'.
+
+%worlds (var | ovar) (extend-lookup-sub-ctx _ _ _).
+%total S (extend-lookup-sub-ctx _ S _).
+
+ordered-sub-ctx1 : sub-ctx G1 G2
+                   -> ordered G2
+%%
+                   -> ordered G1
+  -> type.
+%mode ordered-sub-ctx1 +X1 +X2 -X3.
+
+- : ordered-sub-ctx1 sub-ctx/nil OG OG.
+
+- : ordered-sub-ctx1 (sub-ctx/cons _ S) (ordered/cons BG) OG'
+<- bounded-is-ordered BG OG
+<- ordered-sub-ctx1 S OG OG'.
+
+%worlds (ovar) (ordered-sub-ctx1 _ _ _).
+%total S (ordered-sub-ctx1 S _ _).
+
+ordered-sub-ctx2 : sub-ctx G1 G2
+                   -> ordered G1
+%%
+                   -> ordered G2
+  -> type.
+%mode ordered-sub-ctx2 +X1 +X2 -X3.
+
+- : ordered-sub-ctx2 sub-ctx/nil OG OG.
+
+- : ordered-sub-ctx2 (sub-ctx/cons OG2 S) OG1 OG2.
+
+%worlds (ovar) (ordered-sub-ctx2 _ _ _).
+%total {} (ordered-sub-ctx2 _ _ _).
+
+extract-wf    : sub G1 A1 G2 A2
+%%
+                 -> wft G1 A1
+                 -> wft G2 A2
+       -> type.
+%mode extract-wf +X1 -X2 -X3.
+
+-     : extract-wf sub/o wft/o wft/o.
+
+-     : extract-wf (sub/top W) W wft/top.
+
+-     : extract-wf (sub/bot W) wft/bot W.
+
+-     : extract-wf (sub/arrow BU BS) (wft/arrow WU1 WS1) (wft/arrow WU2 WS2)
+   <- extract-wf BU WU1 WU2
+   <- extract-wf BS WS2 WS1.
+
+-     : extract-wf (sub/rect BU BS B2 B1) (wft/rect B1 WU1 WS1) (wft/rect B2 WU2 WS2)
+   <- extract-wf BU WU1 WU2
+   <- extract-wf BS WS2 WS1.
+
+-     : extract-wf
+         (sub/tsel1 (pev/a OG L (wft/rect B1 WU1 WS1)) B)
+         (wft/tsel (pev/a OG L (wft/rect B1 WU1 WS1)))
+         W2
+   <- extract-wf B _ W2.
+
+-     : extract-wf
+         (sub/tsel2 (pev/a OG L (wft/rect B2 WU2 WS2)) B)
+         W1
+         (wft/tsel (pev/a OG L (wft/rect B2 WU2 WS2)))
+   <- extract-wf B W1 _.
+
+-     : extract-wf
+         (sub/tselx (pev/a OG L W) S1 S2)
+         (wft/tsel (pev/a OG1 L1 W1))
+         (wft/tsel (pev/a OG2 L2 W2))
+   <- ordered-sub-ctx2 S1 OG OG1
+   <- ordered-sub-ctx2 S2 OG OG2
+   <- extend-wft-sub-ctx W S1 W1
+   <- extend-wft-sub-ctx W S2 W2
+   <- extend-lookup-sub-ctx L S1 L1
+   <- extend-lookup-sub-ctx L S2 L2.
+
+%worlds (ovar) (extract-wf _ _ _).
+%total B (extract-wf B _ _).
+
+extract-wf-tp : of G M A
+%%
+                 -> wft G A
+     -> type.
+%mode extract-wf-tp +X1 -X2.
+
+-    : extract-wf-tp of/b wft/o.
+
+-    : extract-wf-tp (of/var D W OG L) W.
+
+-    : extract-wf-tp (of/lam/arrow WA WR _ _) WA.
+
+-    : extract-wf-tp (of/lam/rect WA WR _ _) WR.
+
+-    : extract-wf-tp (of/app TM TN) W2
+  <- extract-wf-tp TM (wft/arrow W2 W1).
+
+-    : extract-wf-tp (of/sub B T) W2
+  <- extract-wf B W1 W2.
+
+%worlds (ovar) (extract-wf-tp _ _).
+%total W (extract-wf-tp W _).
+
+wft-min       : wft G1 A
+                 -> wft G2 A
+                 -> minmax-ctx G1 G2 GS GU
+%%
+                 -> wft GS A
+                 -> sub-ctx GS G1
+                 -> sub-ctx GS G2
+   -> type.
+%mode wft-min +X1 +X2 +X3 -X4 -X5 -X6.
+
+-  : wft-min W1 W2 (minmax-ctx/1 S12) W1 sub-ctx/nil S12.
+-  : wft-min W1 W2 (minmax-ctx/2 S21) W2 S21 sub-ctx/nil.
+
+%worlds (var | ovar) (wft-min _ _ _ _ _ _).
+%total M (wft-min _ _ M _ _ _).
+
+wft-dia       : wft G A
+                 -> wft G1 A
+                 -> wft G2 A
+                 -> sub-ctx G1 G
+                 -> sub-ctx G2 G
+%%
+                 -> wft G' A
+                 -> sub-ctx G' G1
+                 -> sub-ctx G' G2
+   -> type.
+%mode wft-dia +X1 +X2 +X3 +X4 +X5 -X6 -X7 -X8.
+
+-  : wft-dia W W1 W2 S1 S2 W' S1' S2'
+<- sub-ctx-dia S1 S2 MM
+<- wft-min W1 W2 MM W' S1' S2'.
+
+%worlds (var | ovar) (wft-dia _ _ _ _ _ _ _ _).
+%total W   (wft-dia W _ _ _ _ _ _ _).
+
+lookup-eq     : lookup G M A
+                 -> lookup G M' A'
+                 -> exp-eq M M'
+                 -> ordered G
+%%
+                 -> tp-eq A A'
+      -> type.
+%mode lookup-eq +X1 +X2 +X3 +X4 -X5.
+
+-     : lookup-eq lookup/hit lookup/hit EQ OG tp-eq/i.
+
+-     : lookup-eq (lookup/miss L) (lookup/miss L') EQ (ordered/cons BG) EQ'
+   <- bounded-is-ordered BG OG
+   <- lookup-eq L L' EQ OG EQ'.
+
+-     : lookup-eq (lookup/hit: lookup _ _ A) ((lookup/miss L'): lookup _ _ A') EQ (ordered/cons BG) EQ'
+   <- lookup-eq-bounded-contra L' BG EQ CONTRA
+   <- false-implies-tp-eq CONTRA (EQ': tp-eq A A').
+
+-     : lookup-eq ((lookup/miss L): lookup _ _ A) (lookup/hit: lookup _ _ A') EQ (ordered/cons BG) EQ'
+   <- lookup-eq-bounded-contra L BG EQ CONTRA
+   <- false-implies-tp-eq CONTRA (EQ': tp-eq A A').
+
+%worlds (ovar) (lookup-eq _ _ _ _ _).
+%total L (lookup-eq L _ _ _ _).
+
+rect-eq       : tp-eq (rect AS AU) (rect AS' AU')
+%%
+                 -> tp-eq AS AS'
+                 -> tp-eq AU AU'
+       -> type.
+%mode rect-eq +X1 -X2 -X3.
+
+rect-eq/i : rect-eq tp-eq/i tp-eq/i tp-eq/i.
+
+%worlds (var | ovar) (rect-eq _ _ _).
+%total EQ (rect-eq EQ _ _).
+
+lookup-eq-rect: lookup G M (rect AS AU)
+                 -> lookup G M' (rect AS' AU')
+                 -> exp-eq M M'
+                 -> ordered G
+%%
+                 -> tp-eq AS AS'
+                 -> tp-eq AU AU'
+      -> type.
+%mode lookup-eq-rect +X1 +X2 +X3 +X4 -X5 -X6.
+
+-     : lookup-eq-rect L L' EQ OG EQS EQU
+   <- lookup-eq L L' EQ OG EQ'
+   <- rect-eq EQ' EQS EQU.
+
+%worlds (ovar) (lookup-eq-rect _ _ _ _ _ _).
+%total {} (lookup-eq-rect _ _ _ _ _ _).
+
+sub-eq2       : tp-eq A2 A2'
+                 -> sub G1 A1 G2 A2
+                 -> sub G1 A1 G2 A2'
+       -> type.
+%mode sub-eq2 +X1 +X2 -X3.
+
+-      : sub-eq2 tp-eq/i B B.
+
+%worlds (var | ovar) (sub-eq2 _ _ _).
+%total EQ (sub-eq2 EQ _ _).
+
+sub-eq1       : tp-eq A1 A1'
+                 -> sub G1 A1 G2 A2
+                 -> sub G1 A1' G2 A2
+       -> type.
+%mode sub-eq1 +X1 +X2 -X3.
+
+-      : sub-eq1 tp-eq/i B B.
+
+%worlds (var | ovar) (sub-eq1 _ _ _).
+%total EQ (sub-eq1 EQ _ _).
+
+wft-eq        : tp-eq A A'
+                 -> wft G A
+%%
+                 -> wft G A'
+  -> type.
+%mode wft-eq +X1 +X2 -X3.
+
+- : wft-eq tp-eq/i W W.
+
+%worlds (var | ovar) (wft-eq _ _ _).
+%total EQ (wft-eq EQ _ _).
+
+restrict-sub2 : sub G1 A1 (cons G2 X A) A2
+                 -> ordered (cons G2 X A)
+                 -> wft G2 A2
+%%
+                 -> sub G1 A1 G2 A2
+         -> type.
+%mode restrict-sub2 +X1 +X2 +X3 -X4.
+
+restrict-sub1 : sub (cons G1 X A) A1 G2 A2
+                 -> ordered (cons G1 X A)
+                 -> wft G1 A1
+%%
+                 -> sub G1 A1 G2 A2
+         -> type.
+%mode restrict-sub1 +X1 +X2 +X3 -X4.
+
+restrict-sub  : sub (cons G1 X A) A1 (cons G2 X A) A2
+                 -> ordered (cons G1 X A)
+                 -> ordered (cons G2 X A)
+                 -> wft G1 A1
+                 -> wft G2 A2
+%%
+                 -> sub G1 A1 G2 A2
+         -> type.
+%mode restrict-sub +X1 +X2 +X3 +X4 +X5 -X6.
+
+-/o2     : restrict-sub2 sub/o _ _ sub/o.
+
+-/o1     : restrict-sub1 sub/o _ _ sub/o.
+
+-/o      : restrict-sub sub/o _ _ _ _ sub/o.
+
+-/top2   : restrict-sub2 (sub/top W1) OG2 W2 (sub/top W1).
+
+-/top1   : restrict-sub1 (sub/top _) OG1 W1 (sub/top W1).
+
+-/top    : restrict-sub (sub/top _) OG1 OG2 W1 W2 (sub/top W1).
+
+-/bot2   : restrict-sub2 (sub/bot _) OG2 W2 (sub/bot W2).
+
+-/bot1   : restrict-sub1 (sub/bot W2) OG1 W1 (sub/bot W2).
+
+-/bot    : restrict-sub (sub/bot _) OG1 OG2 W1 W2 (sub/bot W2).
+
+-/arrow2 : restrict-sub2 (sub/arrow BU BS) OG2 (wft/arrow WU2 WS2) (sub/arrow BU' BS')
+      <- restrict-sub1 BS OG2 WS2 BS'
+      <- restrict-sub2 BU OG2 WU2 BU'.
+
+-/arrow1 : restrict-sub1 (sub/arrow BU BS) OG1 (wft/arrow WU1 WS1) (sub/arrow BU' BS')
+      <- restrict-sub2 BS OG1 WS1 BS'
+      <- restrict-sub1 BU OG1 WU1 BU'.
+
+-/arrow  : restrict-sub (sub/arrow BU BS) OG1 OG2 (wft/arrow WU1 WS1) (wft/arrow WU2 WS2) (sub/arrow BU' BS')
+      <- restrict-sub BS OG2 OG1 WS2 WS1 BS'
+      <- restrict-sub BU OG1 OG2 WU1 WU2 BU'.
+
+-/rect2 : restrict-sub2 (sub/rect BU BS B2 B1) OG2 (wft/rect _ WU2 WS2) (sub/rect BU' BS' B2' B1)
+     <- restrict-sub B2 OG2 OG2 WS2 WU2 B2'
+     <- restrict-sub1 BS OG2 WS2 BS'
+     <- restrict-sub2 BU OG2 WU2 BU'.
+
+-/rect1 : restrict-sub1 (sub/rect BU BS B2 B1) OG1 (wft/rect _ WU1 WS1) (sub/rect BU' BS' B2 B1')
+     <- restrict-sub B1 OG1 OG1 WS1 WU1 B1'
+     <- restrict-sub2 BS OG1 WS1 BS'
+     <- restrict-sub1 BU OG1 WU1 BU'.
+
+-/rect  : restrict-sub (sub/rect BU BS B2 B1) OG1 OG2 (wft/rect _ WU1 WS1) (wft/rect _ WU2 WS2) (sub/rect BU' BS' B2' B1')
+     <- restrict-sub B1 OG1 OG1 WS1 WU1 B1'
+     <- restrict-sub B2 OG2 OG2 WS2 WU2 B2'
+     <- restrict-sub BS OG2 OG1 WS2 WS1 BS'
+     <- restrict-sub BU OG1 OG2 WU1 WU2 BU'.
+
+-/tsel12 : restrict-sub2
+            (sub/tsel1 (pev/a OGP L (wft/rect B WU WS)) S)
+            OG2
+            W2
+            (sub/tsel1 (pev/a OGP L (wft/rect B WU WS)) S')
+      <- restrict-sub2 S OG2 W2 S'.
+
+-/tsel21 : restrict-sub1
+            (sub/tsel2 (pev/a OGP L (wft/rect B WU WS)) S)
+            OG1
+            W1
+            (sub/tsel2 (pev/a OGP L (wft/rect B WU WS)) S')
+      <- restrict-sub1 S OG1 W1 S'.
+
+-/tsel11 : restrict-sub1
+            (sub/tsel1 (pev/a OGP L (wft/rect B WU WS)) S)
+            OG1
+            (wft/tsel  (pev/a OGW1 L1 (wft/rect B1 WU1 WS1)))
+            (sub/tsel1 (pev/a OGW1 L1 (wft/rect B1 WU1 WS1)) S')
+      <- lookup-eq-rect (lookup/miss L1) L exp-eq/i OG1 EQAS1 EQAU1
+      <- lookup-eq-rect L (lookup/miss L1) exp-eq/i OG1 EQAS1' EQAU1'
+      <- wft-eq EQAU1 WU1 WU1'
+      <- restrict-sub1 S OG1 WU1' S''
+      <- sub-eq1 EQAU1' S'' S'.
+
+-/tsel22 : restrict-sub2
+            (sub/tsel2 (pev/a OGP L (wft/rect B WU WS)) S)
+            OG2
+            (wft/tsel  (pev/a OGW2 L2 (wft/rect B2 WU2 WS2)))
+            (sub/tsel2 (pev/a OGW2 L2 (wft/rect B2 WU2 WS2)) S')
+      <- lookup-eq-rect (lookup/miss L2) L exp-eq/i OG2 EQAS2 EQAU2
+      <- lookup-eq-rect L (lookup/miss L2) exp-eq/i OG2 EQAS2' EQAU2'
+      <- wft-eq EQAS2 WS2 WS2'
+      <- restrict-sub2 S OG2 WS2' S''
+      <- sub-eq2 EQAS2' S'' S'.
+
+-/tsel1  : restrict-sub
+            (sub/tsel1 (pev/a OGP L (wft/rect B WU WS)) S)
+            OG1
+            OG2
+            (wft/tsel  (pev/a OGW1 L1 (wft/rect B1 WU1 WS1)))
+            W2
+            (sub/tsel1 (pev/a OGW1 L1 (wft/rect B1 WU1 WS1)) S')
+      <- lookup-eq-rect (lookup/miss L1) L exp-eq/i OG1 EQAS1 EQAU1
+      <- lookup-eq-rect L (lookup/miss L1) exp-eq/i OG1 EQAS1' EQAU1'
+      <- wft-eq EQAU1 WU1 WU1'
+      <- restrict-sub S OG1 OG2 WU1' W2 S''
+      <- sub-eq1 EQAU1' S'' S'.
+
+-/tsel2  : restrict-sub
+            (sub/tsel2 (pev/a OGP L (wft/rect B WU WS)) S)
+            OG1
+            OG2
+            W1
+            (wft/tsel  (pev/a OGW2 L2 (wft/rect B2 WU2 WS2)))
+            (sub/tsel2 (pev/a OGW2 L2 (wft/rect B2 WU2 WS2)) S')
+      <- lookup-eq-rect (lookup/miss L2) L exp-eq/i OG2 EQAS2 EQAU2
+      <- lookup-eq-rect L (lookup/miss L2) exp-eq/i OG2 EQAS2' EQAU2'
+      <- wft-eq EQAS2 WS2 WS2'
+      <- restrict-sub S OG1 OG2 W1 WS2' S''
+      <- sub-eq2 EQAS2' S'' S'.
+
+-/tselx2 : restrict-sub2
+            (sub/tselx P S1 S2)
+            OG2 W2
+            (sub/tselx P' S1' S2')
+      <- extend-wft-sub-ctx (wft/tsel P) S1 WP1
+      <- extend-wft-sub-ctx (wft/tsel P) S2 WP2
+      <- wft-dia WP1 WP1 (wft/tsel P) sub-ctx/nil S1 (wft/tsel P1) S1A S1B
+      <- wft-dia WP2 W2 (wft/tsel P) (sub-ctx/cons OG2 sub-ctx/nil) S2 (wft/tsel P2) S2A S2B
+      <- wft-dia (wft/tsel P) (wft/tsel P1) (wft/tsel P2) S1B S2B (wft/tsel P') S3A S3B
+      <- sub-ctx-trans S3A S1A S1'
+      <- sub-ctx-trans S3B S2A S2'.
+
+-/tselx1 : restrict-sub1
+            (sub/tselx P S1 S2)
+            OG1 W1
+            (sub/tselx P' S1' S2')
+      <- extend-wft-sub-ctx (wft/tsel P) S1 WP1
+      <- extend-wft-sub-ctx (wft/tsel P) S2 WP2
+      <- wft-dia WP1 W1 (wft/tsel P) (sub-ctx/cons OG1 sub-ctx/nil) S1 (wft/tsel P1) S1A S1B
+      <- wft-dia WP2 WP2 (wft/tsel P) sub-ctx/nil S2 (wft/tsel P2) S2A S2B
+      <- wft-dia (wft/tsel P) (wft/tsel P1) (wft/tsel P2) S1B S2B (wft/tsel P') S3A S3B
+      <- sub-ctx-trans S3A S1A S1'
+      <- sub-ctx-trans S3B S2A S2'.
+
+-/tselx  : restrict-sub
+            (sub/tselx P S1 S2)
+            OG1 OG2 W1 W2
+            (sub/tselx P' S1' S2')
+      <- extend-wft-sub-ctx (wft/tsel P) S1 WP1
+      <- extend-wft-sub-ctx (wft/tsel P) S2 WP2
+      <- wft-dia WP1 W1 (wft/tsel P) (sub-ctx/cons OG1 sub-ctx/nil) S1 (wft/tsel P1) S1A S1B
+      <- wft-dia WP2 W2 (wft/tsel P) (sub-ctx/cons OG2 sub-ctx/nil) S2 (wft/tsel P2) S2A S2B
+      <- wft-dia (wft/tsel P) (wft/tsel P1) (wft/tsel P2) S1B S2B (wft/tsel P') S3A S3B
+      <- sub-ctx-trans S3A S1A S1'
+      <- sub-ctx-trans S3B S2A S2'.
+
+%worlds (ovar) (restrict-sub2 _ _ _ _) (restrict-sub1 _ _ _ _) (restrict-sub _ _ _ _ _ _).
+%total (S2 S1 S) (restrict-sub2 S2 _ _ _) (restrict-sub1 S1 _ _ _) (restrict-sub S _ _ _ _ _).
+
+restrict-sub1-sub-ctx : sub G1 A1 G2 A2
+                       -> sub-ctx G1' G1
+                       -> wft G1' A1
+%%
+                       -> sub G1' A1 G2 A2
+   -> type.
+%mode restrict-sub1-sub-ctx +X1 +X2 +X3 -X4.
+
+- : restrict-sub1-sub-ctx B sub-ctx/nil _ B.
+
+- : restrict-sub1-sub-ctx B (sub-ctx/cons OG S) W B''
+<- extend-wft-sub-ctx W S W'
+<- restrict-sub1 B OG W' B'
+<- restrict-sub1-sub-ctx B' S W B''.
+
+%worlds (ovar) (restrict-sub1-sub-ctx _ _ _ _).
+%total S (restrict-sub1-sub-ctx _ S _ _).
+
+restrict-sub2-sub-ctx : sub G1 A1 G2 A2
+                       -> sub-ctx G2' G2
+                       -> wft G2' A2
+%%
+                       -> sub G1 A1 G2' A2
+   -> type.
+%mode restrict-sub2-sub-ctx +X1 +X2 +X3 -X4.
+
+- : restrict-sub2-sub-ctx B sub-ctx/nil _ B.
+
+- : restrict-sub2-sub-ctx B (sub-ctx/cons OG S) W B''
+<- extend-wft-sub-ctx W S W'
+<- restrict-sub2 B OG W' B'
+<- restrict-sub2-sub-ctx B' S W B''.
+
+%worlds (ovar) (restrict-sub2-sub-ctx _ _ _ _).
+%total S (restrict-sub2-sub-ctx _ S _ _).
+
+sub-trans-aux : wft G2 A2
+                 -> sub G1 A1 G2 A2
+                 -> sub G2 A2 G3 A3
+%%
+                 -> sub G1 A1 G3 A3
+        -> type.
+%mode sub-trans-aux +X1 +X2 +X3 -X4.
+
+-/o     : sub-trans-aux wft/o sub/o sub/o sub/o.
+
+-/top   : sub-trans-aux _ B12 (sub/top _) (sub/top W)
+     <- extract-wf B12 W _.
+
+-/bot   : sub-trans-aux _ (sub/bot _) B23 (sub/bot W)
+     <- extract-wf B23 _ W.
+
+-/arrow : sub-trans-aux
+           (wft/arrow (WU: wft G2 U2) (WS: wft G2 S2))
+           (sub/arrow (BU12: sub G1 U1 G2 U2) (BS21: sub G2 S2 G1 S1))
+           (sub/arrow (BU23: sub G2 U2 G3 U3) (BS32: sub G3 S3 G2 S2))
+           (sub/arrow (BU13: sub G1 U1 G3 U3) (BS31: sub G3 S3 G1 S1))
+     <- sub-trans-aux WS BS32 BS21 BS31
+     <- sub-trans-aux WU BU12 BU23 BU13.
+
+-/rect  : sub-trans-aux
+           (wft/rect _ WU WS)
+           (sub/rect BU12 BS21 _   B11)
+           (sub/rect BU23 BS32 B33 _  )
+           (sub/rect BU13 BS31 B33 B11)
+     <- sub-trans-aux WS BS32 BS21 BS31
+     <- sub-trans-aux WU BU12 BU23 BU13.
+
+-/tsel1 : sub-trans-aux
+           W
+           (sub/tsel1 P B12)
+           B23
+           (sub/tsel1 P B13)
+     <- sub-trans-aux W B12 B23 B13.
+
+-/tsel2 : sub-trans-aux
+           W
+           B12
+           (sub/tsel2 P B23)
+           (sub/tsel2 P B13)
+     <- sub-trans-aux W B12 B23 B13.
+
+-/tsel21: sub-trans-aux
+            (wft/tsel (pev/a OG2 (L2: lookup G2 M (rect AS2 AU2)) (wft/rect B2 WU2 WS2)))
+            (sub/tsel2
+               (pev/a OG2' (L2': lookup G2 M (rect AS2' AU2')) (wft/rect B2' WU2' WS2'))
+               (B12: sub G1 A1 G2 AS2'))
+            (sub/tsel1
+               (pev/a OG2'' (L2'': lookup G2 M (rect AS2'' AU2'')) (wft/rect B2'' WU2'' WS2''))
+               (B23: sub G2 AU2'' G3 A3))
+            (B13: sub G1 A1 G3 A3)
+     <- lookup-eq-rect L2' L2 exp-eq/i OG2 SS' SU'
+     <- lookup-eq-rect L2'' L2 exp-eq/i OG2 SS'' SU''
+     <- sub-eq2 SS' B12 B12'
+     <- sub-eq1 SU'' B23 B23''
+     <- sub-trans-aux WU2 B2 B23'' B23'''
+     <- sub-trans-aux WS2 B12' B23''' B13.
+
+-/tselx1: sub-trans-aux W (sub/tselx P SX1 SX2) S23 S13
+     <- restrict-sub1-sub-ctx S23 SX2 (wft/tsel P) S23'
+     <- extend-sub1-sub-ctx S23' SX1 S13.
+
+-/tselx2: sub-trans-aux W S12 (sub/tselx P SX2 SX3) S13
+     <- restrict-sub2-sub-ctx S12 SX2 (wft/tsel P) S12'
+     <- extend-sub2-sub-ctx S12' SX3 S13.
+
+%worlds (ovar) (sub-trans-aux _ _ _ _).
+%total {W2 B12 B23} (sub-trans-aux W2 B12 B23 _).
+
+sub-trans   : sub G1 A1 G2 A2
+               -> sub G2 A2 G3 A3
+%%
+               -> sub G1 A1 G3 A3
+-> type.
+%mode sub-trans +X1 +X2 -X3.
+
+- : sub-trans B12 B23 B13
+<- extract-wf B12 W1 W2
+<- sub-trans-aux W2 B12 B23 B13.
+
+%worlds (ovar) (sub-trans _ _ _).
+%total {} (sub-trans _ _ _).
+
+extend-wfv  : wfv V G B
+               -> ordered (cons G X A)
+%%
+               -> wfv V (cons G X A) B
+        -> type.
+%mode extend-wfv +X1 +X2 -X3.
+
+-      : extend-wfv wfv/v _ wfv/v.
+
+-      : extend-wfv (wfv/clo/arrow B OG' T WE) OG (wfv/clo/arrow B' OG' T WE)
+    <- extend-sub2 B OG B'.
+
+-      : extend-wfv (wfv/clo/rect W) OG (wfv/clo/rect W')
+    <- extend-wft W OG W'.
+
+-      : extend-wfv (wfv/bin W WT) OG (wfv/bin W' WT')
+    <- extend-wft WT OG WT'
+    <- {x}{d:isvar x I} extend-wfv (W x d) OG (W' x d).
+
+-      : extend-wfv (wfv/sub S W) OG (wfv/sub S' W)
+    <- extend-sub2 S OG S'.
+
+%worlds (var | ovar) (extend-wfv _ _ _).
+%total W (extend-wfv W _ _).
+
+lookup-safe : wfe H G
+               -> lookup G X A
+               -> vlookup H X V
+               -> ordered G
+               -> vordered H
+%%
+               -> wfv V G A
+         -> type.
+%mode lookup-safe +X1 +X2 +X3 +X4 +X5 -X6.
+
+-       : lookup-safe (wfe/cons WE WV) lookup/hit vlookup/hit OG OH WV'
+     <- extend-wfv WV OG WV'.
+
+-       : lookup-safe (wfe/cons WE WV) (lookup/miss LG) (vlookup/miss LH) (ordered/cons BG) (vordered/cons BH) WV''
+     <- bounded-is-ordered BG OG
+     <- vbounded-is-vordered BH OH
+     <- lookup-safe WE LG LH OG OH WV'
+     <- extend-wfv WV' (ordered/cons BG) WV''.
+
+-       : lookup-safe (wfe/cons WE (WV: wfv _ _ A)) lookup/hit (vlookup/miss LH) OG (vordered/cons BH) W'
+     <- vlookup-vbounded-contra LH BH CONTRA
+     <- false-implies-wfv CONTRA (W': wfv _ _ A).
+
+-       : lookup-safe (wfe/cons WE WV) ((lookup/miss LG): lookup _ _ A) vlookup/hit (ordered/cons BG) OH W'
+     <- lookup-bounded-contra LG BG CONTRA
+     <- false-implies-wfv CONTRA (W': wfv _ _ A).
+
+%worlds (ovar) (lookup-safe _ _ _ _ _ _).
+%total W (lookup-safe W _ _ _ _ _).
+
+extract-wfv : wfv V G A
+%%
+               -> wft G A
+   -> type.
+%mode extract-wfv +X1 -X2.
+
+-  : extract-wfv wfv/v wft/o.
+
+-  : extract-wfv (wfv/clo/arrow B OG T WE) W'
+<- extract-wf B _ W'.
+
+-  : extract-wfv (wfv/clo/rect W) W.
+
+-  : extract-wfv (wfv/bin WV W) W.
+
+-  : extract-wfv (wfv/sub B WV) W'
+<- extract-wf B _ W'.
+
+%worlds (ovar) (extract-wfv _ _).
+%total W (extract-wfv W _).
+
+invert-b    : of G b A
+%%
+               -> of G b o
+               -> sub G o G A
+   -> type.
+%mode invert-b +X1 -X2 -X3.
+
+-  : invert-b of/b of/b sub/o.
+
+-  : invert-b (of/sub B T) T' B''
+<- invert-b T T' B'
+<- sub-trans B' B B''.
+
+%worlds (ovar) (invert-b _ _ _).
+%total T (invert-b T _ _).
+
+invert-var  : of G X A
+               -> isvar X I
+%%
+               -> lookup G X A1
+               -> sub G A1 G A
+   -> type.
+%mode invert-var +X1 +X2 -X3 -X4.
+
+-  : invert-var (of/var _ W OG L) D L B
+<- sub-refl W B.
+
+-  : invert-var (of/sub B T) D L B''
+<- invert-var T D L B'
+<- sub-trans B' B B''.
+
+%worlds (ovar) (invert-var _ _ _ _).
+%total T (invert-var T _ _ _).
+
+invert-app  : of G (app M N) A
+%%
+               -> of G M (arrow A1 A2)
+               -> of G N A1
+               -> sub G A2 G A
+   -> type.
+%mode invert-app +X1 -X2 -X3 -X4.
+
+-  : invert-app (of/app TM TN) TM TN B
+<- extract-wf-tp (of/app TM TN) W
+<- sub-refl W B.
+
+-  : invert-app (of/sub B T) TM TN B''
+<- invert-app T TM TN B'
+<- sub-trans B' B B''.
+
+%worlds (ovar) (invert-app _ _ _ _).
+%total T (invert-app T _ _ _).
+
+sub-either  : ctx -> tp -> ctx -> tp
+           -> ctx -> tp -> ctx -> tp
+           -> type.
+sub-either/left  : sub G A G' A' -> sub-either G A G' A' _ _ _  _.
+sub-either/right : sub G A G' A' -> sub-either _ _ _  _  G A G' A'.
+
+sub-either-trans : sub-either
+                    G1 A1 G A
+                    G2 A2 G A
+                    -> sub G A G' A'
+%%
+                    -> sub-either
+                       G1 A1 G' A'
+                       G2 A2 G' A'
+   -> type.
+%mode sub-either-trans +X1 +X2 -X3.
+
+-  : sub-either-trans (sub-either/left S1)  S (sub-either/left S1')
+<- sub-trans S1 S S1'.
+
+-  : sub-either-trans (sub-either/right S2) S (sub-either/right S2')
+<- sub-trans S2 S S2'.
+
+%worlds (ovar) (sub-either-trans _ _ _).
+%total E (sub-either-trans E _ _).
+
+sub-either-wfv : sub-either
+                  G1 A1 G A
+                  G2 A2 G A
+                  -> wfv V G1 A1
+                  -> wfv V G2 A2
+%%
+                  -> wfv V G A
+   -> type.
+%mode sub-either-wfv +X1 +X2 +X3 -X4.
+
+-  : sub-either-wfv (sub-either/left B)  W1 W2 (wfv/sub B W1).
+
+-  : sub-either-wfv (sub-either/right B) W1 W2 (wfv/sub B W2).
+
+%worlds (ovar) (sub-either-wfv _ _ _ _).
+%total E (sub-either-wfv E _ _ _).
+
+invert-lam  : of G (lam AS AU A M) A'
+%%
+               -> ({x:exp}{d:isvar x I} ordered (cons G x A))
+               -> ({x:exp}{d:isvar x I} of (cons G x A) (M x) B)
+               -> wft G (rect AS AU)
+               -> wft G (arrow A B)
+               -> sub-either
+                  G (arrow A B) G A'
+                  G (rect AS AU) G A'
+   -> type.
+%mode invert-lam +X1 -X2 -X3 -X4 -X5 -X6.
+
+-  : invert-lam (of/lam/arrow WA WT OG T) OG T WT WA (sub-either/left B)
+<- sub-refl WA B.
+
+-  : invert-lam (of/lam/rect WA WT OG T) OG T WT WA (sub-either/right B)
+<- sub-refl WT B.
+
+-  : invert-lam (of/sub B T) OG' T' WT' WA' B''
+<- invert-lam T OG' T' WT' WA' B'
+<- sub-either-trans B' B B''.
+
+%worlds (ovar) (invert-lam _ _ _ _ _ _).
+%total T (invert-lam T _ _ _ _ _).
+
+inv-arrow-aux : wfv (clo H M) G1 A1
+                       -> sub G1 A1 G2 (arrow A2 B2)
+%%
+                       -> ({x}{d:isvar x I} of (cons G x A) (M x) B)
+                       -> wfe H G
+                       -> ({x}{d:isvar x I} ordered (cons G x A))
+                       -> sub G (arrow A B) G2 (arrow A2 B2)
+   -> type.
+%mode inv-arrow-aux +X1 +X2 -X3 -X4 -X5 -X6.
+
+-  : inv-arrow-aux (wfv/clo/arrow BC1 OG T WE) B12 T WE OG BC2
+<- sub-trans BC1 B12 BC2.
+
+-  : inv-arrow-aux (wfv/sub BC1 W1) B12 T' WE' OG' BC2'
+<- sub-trans BC1 B12 BC2
+<- inv-arrow-aux W1 BC2 T' WE' OG' BC2'.
+
+%worlds (ovar) (inv-arrow-aux _ _ _ _ _ _).
+%total W (inv-arrow-aux W _ _ _ _ _).
+
+inv-arrow   : wfv (clo H M) G2 (arrow A2 B2)
+%%
+               -> ({x}{d:isvar x I} of (cons G x A) (M x) B)
+               -> wfe H G
+               -> ({x}{d:isvar x I} ordered (cons G x A))
+               -> sub G (arrow A B) G2 (arrow A2 B2)
+   -> type.
+%mode inv-arrow +X1 -X2 -X3 -X4 -X5.
+
+-  : inv-arrow W T WE OG S
+<- extract-wfv W WT
+<- sub-refl WT B
+<- inv-arrow-aux W B T WE OG S.
+
+%worlds (ovar) (inv-arrow _ _ _ _ _).
+%total W (inv-arrow W _ _ _ _).
+
+inv-bin-aux   :  wfv (bin V) G1 A1
+               -> sub G1 A1 G2 A2
+%%
+               -> wft G A
+               -> ({x}{d:isvar x I} wfv (V x) G A)
+               -> sub G A G2 A2
+   -> type.
+%mode inv-bin-aux +X1 +X2 -X2 -X3 -X4.
+
+-  : inv-bin-aux (wfv/bin WV WT) B WT WV B.
+
+-  : inv-bin-aux (wfv/sub BC1 W) B12 WT' WV' BC2'
+<- sub-trans BC1 B12 BC2
+<- inv-bin-aux W BC2 WT' WV' BC2'.
+
+%worlds (ovar) (inv-bin-aux _ _ _ _ _).
+%total W (inv-bin-aux W _ _ _ _).
+
+inv-bin      :  wfv (bin V) G2 A2
+%%
+               -> wft G A
+               -> ({x}{d:isvar x I} wfv (V x) G A)
+               -> sub G A G2 A2
+   -> type.
+%mode inv-bin +X1 -X2 -X3 -X4.
+
+-  : inv-bin W WT WV S
+<- extract-wfv W WT'
+<- sub-refl WT' B
+<- inv-bin-aux W B WT WV S.
+
+%worlds (ovar) (inv-bin _ _ _ _).
+%total W (inv-bin W _ _ _).
+
+inv-bin-arrow-aux :  wfv (bin V) G1 A1
+                     -> sub G1 A1 G2 (arrow S2 U2)
+%%
+                     -> wft G (arrow S U)
+                     -> ({x}{d:isvar x I} wfv (V x) G (arrow S U))
+                     -> sub G (arrow S U) G2 (arrow S2 U2)
+   -> type.
+%mode inv-bin-arrow-aux +X1 +X2 -X2 -X3 -X4.
+
+-  : inv-bin-arrow-aux (wfv/bin WV WT) B WT' ([x][d:isvar x I] (wfv/sub B (WV x d))) BR
+<- extract-wf B _ WT'
+<- sub-refl WT' BR.
+
+-  : inv-bin-arrow-aux (wfv/sub BC1 W) B12 WT' WV' BC2'
+<- sub-trans BC1 B12 BC2
+<- inv-bin-arrow-aux W BC2 WT' WV' BC2'.
+
+%worlds (ovar) (inv-bin-arrow-aux _ _ _ _ _).
+%total W (inv-bin-arrow-aux W _ _ _ _).
+
+inv-bin-arrow     :  wfv (bin V) G2 (arrow S2 U2)
+%%
+                     -> wft G (arrow S U)
+                     -> ({x}{d:isvar x I} wfv (V x) G (arrow S U))
+                     -> sub G (arrow S U) G2 (arrow S2 U2)
+   -> type.
+%mode inv-bin-arrow +X1 -X2 -X3 -X4.
+
+-  : inv-bin-arrow W WT WV S
+<- extract-wfv W WT'
+<- sub-refl WT' B
+<- inv-bin-arrow-aux W B WT WV S.
+
+%worlds (ovar) (inv-bin-arrow _ _ _ _).
+%total W (inv-bin-arrow W _ _ _).
+
+ev-safe     : of G M A
+               -> wfe H G
+               -> ordered G
+               -> vordered H
+               -> ev H M V
+%%
+               -> wfv V G A
+    -> type.
+%mode ev-safe +X1 +X2 +X3 +X4 +X5 -X6.
+
+evapp-safe  : wfv VFUN G (arrow A1 A2)
+               -> wfv VARG G A1
+               -> evapp VFUN VARG V
+%%
+               -> wfv (bin V) G A2
+    -> type.
+%mode evapp-safe +X1 +X2 +X3 -X4.
+
+-   : ev-safe T WE OG OH ev/b (wfv/sub B wfv/v)
+ <- invert-b T T' B.
+
+-   : ev-safe T WE OG OH (ev/var LH) (wfv/sub B WV)
+ <- vlookup-vordered LH OH D
+ <- invert-var T D LG B
+ <- lookup-safe WE LG LH OG OH WV.
+
+-   : ev-safe T WE OG OH ev/lam W
+ <- invert-lam T OG' TM WT WAB BE
+ <- sub-refl WAB BAB
+ <- sub-either-wfv BE (wfv/clo/arrow BAB OG' TM WE) (wfv/clo/rect WT) W.
+
+-   : ev-safe T WE OG OH (ev/app EVAPP EVARG EVFUN) (wfv/sub B W)
+ <- invert-app T TFUN TARG B
+ <- ev-safe TARG WE OG OH EVARG WARG
+ <- ev-safe TFUN WE OG OH EVFUN WFUN
+ <- evapp-safe WFUN WARG EVAPP W.
+
+-   : evapp-safe W (WARG: wfv _ G' _) (evapp/clo EV) (wfv/bin ([x][d:isvar x I] (wfv/sub (BU' x d) (W'' x d))) WT')
+ <- inv-arrow W TFUN (WE: wfe H G) OG (sub/arrow BU BS)
+ <- ({x}{d:isvar x I} ordered-to-vordered (wfe/cons WE (wfv/sub BS WARG)) (OG x d) (OH x d))
+ <- ({x}{d:isvar x I}
+       ev-safe
+       (TFUN x d)
+       (wfe/cons WE (wfv/sub BS WARG))
+       (OG x d)
+       (OH x d)
+       (EV x)
+       (W'' x d))
+ <- extract-wf BU _ WT'
+ <- ({x}{d:isvar x I} extend-sub1 BU (OG x d) (BU' x d)).
+
+-   : evapp-safe W0 WARG (evapp/bin EV) (wfv/bin ([x][d:isvar x I] (wfv/sub BU (W' x d))) WT')
+ <- inv-bin-arrow W0 (wft/arrow WU WS) W (sub/arrow BU BS)
+ <- ({x}{d:isvar x I} evapp-safe (W x d) (wfv/sub BS WARG) (EV x) (W' x d))
+ <- extract-wf BU _ WT'.
+
+%worlds (ovar) (ev-safe _ _ _ _ _ _) (evapp-safe _ _ _ _).
+%total  (A B)  (ev-safe _ _ _ _ A _) (evapp-safe _ _ B _).
