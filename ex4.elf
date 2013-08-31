@@ -2034,6 +2034,14 @@ sub-trans-aux : wft G2 A2
      <- sub-trans-aux WU2 B2 B23'' B23'''
      <- sub-trans-aux WS2 B12' B23''' B13.
 
+-/tselx1: sub-trans-aux W (sub/tselx P SX1 SX2) S23 S13
+     <- restrict-sub1-sub-ctx S23 SX2 (wft/tsel P) S23'
+     <- extend-sub1-sub-ctx S23' SX1 S13.
+
+-/tselx2: sub-trans-aux W S12 (sub/tselx P SX2 SX3) S13
+     <- restrict-sub2-sub-ctx S12 SX2 (wft/tsel P) S12'
+     <- extend-sub2-sub-ctx S12' SX3 S13.
+
 %worlds (ovar) (sub-trans-aux _ _ _ _).
 %total {W2 B12 B23} (sub-trans-aux W2 B12 B23 _).
 
@@ -2105,6 +2113,9 @@ lookup-safe : wfe H G
 
 %worlds (ovar) (lookup-safe _ _ _ _ _ _).
 %total W (lookup-safe W _ _ _ _ _).
+
+% TODO: rest
+%.
 
 extract-wfv : wfv V G A
 %%
