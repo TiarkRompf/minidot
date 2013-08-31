@@ -1231,6 +1231,39 @@ false-implies-wfv : false -> wfv V G A -> type.
 
 %%%%%  Safety  %%%%%
 
+sub-ctx-trans : sub-ctx G1 G2
+                 -> sub-ctx G2 G3
+%%
+                 -> sub-ctx G1 G3
+       -> type.
+%mode sub-ctx-trans +X1 +X2 -X3.
+
+-/nil  : sub-ctx-trans S sub-ctx/nil S.
+-/cons : sub-ctx-trans S12 (sub-ctx/cons OG3 S23) (sub-ctx/cons OG3 S13)
+    <- sub-ctx-trans S12 S23 S13.
+
+%worlds (var | ovar) (sub-ctx-trans _ _ _).
+%total S23 (sub-ctx-trans _ S23 _).
+
+minmax-ctx   : ctx -> ctx -> ctx -> ctx -> type.
+minmax-ctx/1 : minmax-ctx G1 G2 G1 G2 <- sub-ctx G1 G2.
+minmax-ctx/2 : minmax-ctx G1 G2 G2 G1 <- sub-ctx G2 G1.
+
+sub-ctx-dia  : sub-ctx G1 G
+                -> sub-ctx G2 G
+%%
+                -> minmax-ctx G1 G2 GS GU
+   -> type.
+%mode sub-ctx-dia +X1 +X2 -X3.
+
+-  : sub-ctx-dia sub-ctx/nil S (minmax-ctx/2 S).
+-  : sub-ctx-dia (sub-ctx/cons OG S1) sub-ctx/nil (minmax-ctx/1 (sub-ctx/cons OG S1)).
+-  : sub-ctx-dia (sub-ctx/cons _ S1) (sub-ctx/cons _ S2) MM
+<- sub-ctx-dia S1 S2 MM.
+
+%worlds (var | ovar) (sub-ctx-dia _ _ _).
+%total S (sub-ctx-dia S _ _).
+
 bounded-to-vbounded : wfe H G -> bounded G X -> vbounded H X -> type.
 %mode bounded-to-vbounded +X1 +X2 -X3.
 
@@ -1574,6 +1607,41 @@ extract-wf-tp : of G M A
 %worlds (ovar) (extract-wf-tp _ _).
 %total W (extract-wf-tp W _).
 
+wft-min       : wft G1 A
+                 -> wft G2 A
+                 -> minmax-ctx G1 G2 GS GU
+%%
+                 -> wft GS A
+                 -> sub-ctx GS G1
+                 -> sub-ctx GS G2
+   -> type.
+%mode wft-min +X1 +X2 +X3 -X4 -X5 -X6.
+
+-  : wft-min W1 W2 (minmax-ctx/1 S12) W1 sub-ctx/nil S12.
+-  : wft-min W1 W2 (minmax-ctx/2 S21) W2 S21 sub-ctx/nil.
+
+%worlds (var | ovar) (wft-min _ _ _ _ _ _).
+%total M (wft-min _ _ M _ _ _).
+
+wft-dia       : wft G A
+                 -> wft G1 A
+                 -> wft G2 A
+                 -> sub-ctx G1 G
+                 -> sub-ctx G2 G
+%%
+                 -> wft G' A
+                 -> sub-ctx G' G1
+                 -> sub-ctx G' G2
+   -> type.
+%mode wft-dia +X1 +X2 +X3 +X4 +X5 -X6 -X7 -X8.
+
+-  : wft-dia W W1 W2 S1 S2 W' S1' S2'
+<- sub-ctx-dia S1 S2 MM
+<- wft-min W1 W2 MM W' S1' S2'.
+
+%worlds (var | ovar) (wft-dia _ _ _ _ _ _ _ _).
+%total W   (wft-dia W _ _ _ _ _ _ _).
+
 lookup-eq     : lookup G M A
                  -> lookup G M' A'
                  -> exp-eq M M'
@@ -1650,6 +1718,85 @@ sub-eq1       : tp-eq A1 A1'
 
 %worlds (var | ovar) (sub-eq1 _ _ _).
 %total EQ (sub-eq1 EQ _ _).
+
+wft-eq        : tp-eq A A'
+                 -> wft G A
+%%
+                 -> wft G A'
+  -> type.
+%mode wft-eq +X1 +X2 -X3.
+
+- : wft-eq tp-eq/i W W.
+
+%worlds (var | ovar) (wft-eq _ _ _).
+%total EQ (wft-eq EQ _ _).
+
+restrict-sub  : sub (cons G1 X A) A1 (cons G2 X A) A2
+                 -> ordered (cons G1 X A)
+                 -> ordered (cons G2 X A)
+                 -> wft G1 A1
+                 -> wft G2 A2
+%%
+                 -> sub G1 A1 G2 A2
+         -> type.
+%mode restrict-sub +X1 +X2 +X3 +X4 +X5 -X6.
+
+-/o      : restrict-sub sub/o _ _ _ _ sub/o.
+
+-/top    : restrict-sub (sub/top _) OG1 OG2 W1 W2 (sub/top W1).
+
+-/bot    : restrict-sub (sub/bot _) OG1 OG2 W1 W2 (sub/bot W2).
+
+-/arrow  : restrict-sub (sub/arrow BU BS) OG1 OG2 (wft/arrow WU1 WS1) (wft/arrow WU2 WS2) (sub/arrow BU' BS')
+      <- restrict-sub BS OG2 OG1 WS2 WS1 BS'
+      <- restrict-sub BU OG1 OG2 WU1 WU2 BU'.
+
+-/rect  : restrict-sub (sub/rect BU BS B2 B1) OG1 OG2 (wft/rect _ WU1 WS1) (wft/rect _ WU2 WS2) (sub/rect BU' BS' B2' B1')
+     <- restrict-sub B1 OG1 OG1 WS1 WU1 B1'
+     <- restrict-sub B2 OG2 OG2 WS2 WU2 B2'
+     <- restrict-sub BS OG2 OG1 WS2 WS1 BS'
+     <- restrict-sub BU OG1 OG2 WU1 WU2 BU'.
+
+-/tsel1  : restrict-sub
+            (sub/tsel1 (pev/a OGP L (wft/rect B WU WS)) S)
+            OG1
+            OG2
+            (wft/tsel  (pev/a OGW1 L1 (wft/rect B1 WU1 WS1)))
+            W2
+            (sub/tsel1 (pev/a OGW1 L1 (wft/rect B1 WU1 WS1)) S')
+      <- lookup-eq-rect (lookup/miss L1) L exp-eq/i OG1 EQAS1 EQAU1
+      <- lookup-eq-rect L (lookup/miss L1) exp-eq/i OG1 EQAS1' EQAU1'
+      <- wft-eq EQAU1 WU1 WU1'
+      <- restrict-sub S OG1 OG2 WU1' W2 S''
+      <- sub-eq1 EQAU1' S'' S'.
+
+-/tsel2  : restrict-sub
+            (sub/tsel2 (pev/a OGP L (wft/rect B WU WS)) S)
+            OG1
+            OG2
+            W1
+            (wft/tsel  (pev/a OGW2 L2 (wft/rect B2 WU2 WS2)))
+            (sub/tsel2 (pev/a OGW2 L2 (wft/rect B2 WU2 WS2)) S')
+      <- lookup-eq-rect (lookup/miss L2) L exp-eq/i OG2 EQAS2 EQAU2
+      <- lookup-eq-rect L (lookup/miss L2) exp-eq/i OG2 EQAS2' EQAU2'
+      <- wft-eq EQAS2 WS2 WS2'
+      <- restrict-sub S OG1 OG2 W1 WS2' S''
+      <- sub-eq2 EQAS2' S'' S'.
+
+-/tselx  : restrict-sub
+            (sub/tselx P S1 S2)
+            OG1 OG2 W1 W2
+            (sub/tselx P' S1' S2')
+      <- extend-wft-sub-ctx (wft/tsel P) S1 WP1
+      <- extend-wft-sub-ctx (wft/tsel P) S2 WP2
+      <- wft-dia WP1 W1 (wft/tsel P) (sub-ctx/cons OG1 sub-ctx/nil) S1 (wft/tsel P1) S1A S1B
+      <- wft-dia WP2 W2 (wft/tsel P) (sub-ctx/cons OG2 sub-ctx/nil) S2 (wft/tsel P2) S2A S2B
+      <- wft-dia (wft/tsel P) (wft/tsel P1) (wft/tsel P2) S1B S2B (wft/tsel P') S3A S3B
+      <- sub-ctx-trans S3A S1A S1'
+      <- sub-ctx-trans S3B S2A S2'.
+
+%worlds (ovar) (restrict-sub _ _ _ _ _ _).
+%total S (restrict-sub S _ _ _ _ _).
 
 sub-trans-aux : wft G2 A2
                  -> sub G1 A1 G2 A2
