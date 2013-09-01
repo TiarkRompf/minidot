@@ -1,25 +1,6 @@
 %{
+DOT (Dependent Object Types) from the bottom up
 }%
-
-
-%%%%%  Syntax  %%%%%
-
-tp      : type.  %name tp A.
-exp     : type.  %name exp M.
-
-o       : tp.
-top     : tp.
-bot     : tp.
-tsel    : exp -> tp.
-arrow   : tp -> tp -> tp.
-rect    : tp -> tp -> tp.
-
-b       : exp.
-lam     : tp -> tp -> tp -> (exp -> exp) -> exp.
-app     : exp -> exp -> exp.
-
-
-
 
 %%%%%  Natural Numbers  %%%%%
 
@@ -28,21 +9,158 @@ nat : type.  %name nat N.
 0 : nat.
 s : nat -> nat.
 
-
-
 nat-eq : nat -> nat -> type.
 nat-eq/i : nat-eq N N.
 
-
+nat-neq : nat -> nat -> type.
+nat-neq/zs : nat-neq 0 (s _).
+nat-neq/sz : nat-neq (s _) 0.
+nat-neq/ss : nat-neq (s N1) (s N2)
+          <- nat-neq N1 N2.
 
 lt : nat -> nat -> type.
-
 lt/z		: lt 0 (s _).
 lt/s		: lt (s N1) (s N2)
 		   <- lt N1 N2.
 
+gt : nat -> nat -> type.
+gt/z    : gt (s _) 0.
+gt/s    : gt (s N1) (s N2)
+       <- gt N1 N2.
 
+plus : nat -> nat -> nat -> type.
+plus/z : plus 0 N N.
+plus/s : plus (s N1) N2 (s N3)
+      <- plus N1 N2 N3.
+%reduces N <= N' (plus _ N N').
 
+sum-inc : {N1}{N2}{N3} plus N1 N2 N3 -> plus N1 (s N2) (s N3) -> type.
+%mode sum-inc +X1 +X2 +X3 +X4 -X5.
+
+-: sum-inc _ _ _ plus/z plus/z.
+
+-: sum-inc _ _ _ (plus/s D) (plus/s D')
+    <- sum-inc _ _ _ D D'.
+
+%worlds () (sum-inc _ _ _ _ _).
+%total (D) (sum-inc _ _ _ D _).
+
+commute' : {N1}{N2}{N3}plus N1 N2 N3 -> plus N2 N1 N3 -> type.
+%mode commute' +X1 +X2 +X3 +X4 -X5.
+
+-: commute' 0 (s M) _ plus/z (plus/s D)
+    <- commute' 0 M _ plus/z D.
+
+-: commute' _ 0 _ _ plus/z.
+
+-: commute' (s N1) N2 _ (plus/s D) D''
+    <- commute' N1 N2 _ D D'
+    <- sum-inc _ _ _ D' D''.
+
+%worlds () (commute' _ _ _ _ _).
+%total [N1 N2] (commute' N1 N2 _ _ _).
+
+assoc : plus N1 N2 N3 
+	 -> plus N3 N4 N
+	 -> plus N2 N4 N5
+	 -> plus N1 N5 N
+	 -> type.
+%mode assoc +X1 +X2 -X3 -X4.
+
+-: assoc plus/z D D plus/z.
+
+-: assoc (plus/s Da) (plus/s Db) Da' (plus/s Db')
+    <- assoc Da Db Da' Db'. 
+
+%worlds () (assoc _ _ _ _).
+%total (D) (assoc D _ _ _).
+			   
+assoc' : plus N1 N2 N3
+	  -> plus N4 (s N3) N
+	  -> plus N4 N2 N5
+	  -> plus N1 (s N5) N
+	  -> type.
+%mode assoc' +X1 +X2 -X3 -X4.
+
+-: assoc' D1 D2 D3 D4
+    <- commute' _ _ _ D2 D2'
+    <- assoc (plus/s D1) D2' D3' (plus/s D4')
+    <- commute' _ _ _ D3' D3
+    <- sum-inc _ _ _ D4' D4.
+
+%worlds () (assoc' _ _ _ _).
+%total(D) (assoc' D _ _ _).
+
+add : {N1}{N2} plus N1 N2 N3 -> type.
+%mode add +X1 +X2 -X3.
+
+-: add 0 N2 plus/z.
+
+-: add (s N1) N2 (plus/s D)
+    <- add N1 N2 D.
+
+%worlds () (add _ _ _).
+%total (N) (add N _ _).
+
+%%%%% Labels %%%%%
+
+label : type.  %name label L.
+label/nat : nat -> label.
+
+label-eq   : label -> label -> type.
+label-eq/i : label-eq L L.
+
+label-neq  : label -> label -> type.
+label-neq/nat : label-neq (label/nat N1) (label/nat N2)
+             <- nat-neq N1 N2.
+
+label-less : label -> label -> type.
+label-less/nat : label-less (label/nat N1) (label/nat N2)
+              <- lt N1 N2.
+
+label-more : label -> label -> type.
+label-more/nat : label-more (label/nat N1) (label/nat N2)
+              <- gt N1 N2.
+
+%%%%% Syntax %%%%%
+
+tp    : type.  %name tp A.
+exp   : type.  %name exp M.
+decls : type.  %name decls D.
+
+o       : tp.
+top     : tp.
+bot     : tp.
+tsel    : exp -> label -> tp.
+arrow   : decls -> tp -> tp -> tp.
+
+b       : exp.
+lam     : decls -> tp -> (exp -> exp) -> exp.
+app     : exp -> exp -> exp.
+
+dnil    : decls.
+dcons   : decls -> label -> tp -> tp -> decls.
+
+%%%%% Declarations %%%%%
+
+dlookup : decls -> label -> tp -> tp -> type. %name dlookup DL.
+dlookup/hit  : dlookup (dcons D L S U) L S U.
+dlookup/miss : dlookup (dcons D _ _ _) L S U
+                <- dlookup D L S U.
+
+dordered : decls -> type.          %name dordered OD.
+dbounded : decls -> label -> type. %name dbounded BD.
+
+dordered/nil     : dordered dnil.
+
+dordered/cons    : dordered (dcons D L _ _)
+                   <- dbounded D L.
+
+dbounded/nil     : dbounded dnil L.
+
+dbounded/cons    : dbounded (dcons D LY _ _) LX
+                   <- label-less LY LX
+                   <- dbounded D LY.
 
 %%%%%  Contexts  %%%%%
 
@@ -120,13 +238,19 @@ sub-ctx/cons     : sub-ctx G1 (cons G2 X A)
 
 %%%%%  Typing Rules (Explicit Context) %%%%%
 
-pev       : ctx -> exp -> tp -> type.        %name pev P.
-wft       : ctx -> tp -> type.               %name wft WT.
-sub       : ctx -> tp -> ctx -> tp -> type.  %name sub B.
+pev       : ctx -> exp -> label -> tp -> tp -> type.  %name pev P.
+wft       : ctx -> tp -> type.                        %name wft WT.
+sub       : ctx -> tp -> ctx -> tp -> type.           %name sub B.
+sub-decls : ctx -> decls -> ctx -> decls -> type.     %name sub-decls BD.
+wf-decls  : ctx -> decls -> type.                     %name wf-decls WD.
 
-pev/a     : pev G X A
-       <- wft G A
-       <- lookup G X A
+pev/a     : pev G X L AS AU
+       <- sub G AS G AU
+       <- wft G AS
+       <- wft G AU
+       <- dlookup D L AS AU
+       <- dordered D
+       <- lookup G X (arrow D _ _)
        <- ordered G.
 
 sub/o     : sub G1 o G2 o.
@@ -134,42 +258,57 @@ sub/top   : sub G1 A G2 top
        <- wft G1 A.
 sub/bot   : sub G1 bot G2 A
        <- wft G2 A.
-sub/arrow : sub G1 (arrow AS1 AU1) G2 (arrow AS2 AU2)
+sub/arrow : sub G1 (arrow D1 AS1 AU1) G2 (arrow D2 AS2 AU2)
+       <- sub-decls G1 D1 G2 D2
        <- sub G2 AS2 G1 AS1
        <- sub G1 AU1 G2 AU2.
-sub/rect  : sub G1 (rect AS1 AU1) G2 (rect AS2 AU2)
-       <- sub G1 AS1 G1 AU1
-       <- sub G2 AS2 G2 AU2
-       <- sub G2 AS2 G1 AS1
-       <- sub G1 AU1 G2 AU2.
-sub/tsel1 : sub G1 (tsel X1) G2 A2
+sub/tsel1 : sub G1 (tsel X1 L1) G2 A2
        <- sub G1 AU1 G2 A2
-       <- pev G1 X1 (rect AS1 AU1).
-sub/tsel2 : sub G1 A1 G2 (tsel X2)
+       <- pev G1 X1 L1 AS1 AU1.
+sub/tsel2 : sub G1 A1 G2 (tsel X2 L2)
        <- sub G1 A1 G2 AS2
-       <- pev G2 X2 (rect AS2 AU2).
-sub/tselx : sub G1 (tsel X) G2 (tsel X)
+       <- pev G2 X2 L2 AS2 AU2.
+sub/tselx : sub G1 (tsel X L) G2 (tsel X L)
        <- sub-ctx G G2
        <- sub-ctx G G1
-       <- pev G X (rect AS AU)
-       <- sub G2 (rect AS AU) G1 (rect AS AU)
-       <- sub G1 (rect AS AU) G2 (rect AS AU).
+       <- pev G X L AS AU
+       <- sub-decls G2 (dcons dnil L AS AU) G1 (dcons dnil L AS AU)
+       <- sub-decls G1 (dcons dnil L AS AU) G2 (dcons dnil L AS AU).
+
+sub-decls/nil  : sub-decls G1 D1 G2 dnil
+              <- wf-decls G1 D1.
+
+sub-decls/cons-hit : sub-decls G1 (dcons D1 L AS1 AU1) G2 (dcons D2 L AS2 AU2)
+              <- sub G1 AS1 G1 AU1
+              <- sub G2 AS2 G2 AU2
+              <- sub G2 AS2 G1 AS1
+              <- sub G1 AU1 G2 AU2
+              <- sub-decls G1 D1 G2 D2
+              <- dbounded D1 L
+              <- dbounded D2 L.
+
+sub-decls/cons-miss : sub-decls G1 (dcons D1 L1 AS1 AU1) G2 (dcons D2 L2 AS2 AU2)
+              <- sub-decls G1 D1 G2 (dcons D2 L2 AS2 AU2)
+              <- wf-decls G1 (dcons D1 L1 AS1 AU1)
+              <- dbounded (dcons D2 L2 AS2 AU2) L1.
 
 wft/o     : wft G o.
 wft/top   : wft G top.
 wft/bot   : wft G bot.
-wft/arrow : wft G (arrow AS AU)
+wft/arrow : wft G (arrow D AS AU)
+       <- wf-decls G D
        <- wft G AS
        <- wft G AU.
-wft/rect  : wft G (rect AS AU)
+wft/tsel  : wft G (tsel X L)
+       <- pev G X L AS AU.
+
+wf-decls/nil  : wf-decls G dnil.
+wf-decls/cons : wf-decls G (dcons D L AS AU)
        <- wft G AS
        <- wft G AU
-       <- sub G AS G AU.
-wft/tsel  : wft G (tsel X)
-       <- pev G X (rect AS AU).
-
-
-
+       <- sub G AS G AU
+       <- wf-decls G D
+       <- dbounded D L.
 
 of        : ctx -> exp -> tp -> type.  %name of T.
 
@@ -181,35 +320,29 @@ of/var		: of G X A
        <- wft G A
        <- isvar X I.
 
-of/lam/arrow : of G (lam AS AU A ([x] M x)) (arrow A B)
+of/lam : of G (lam D A ([x] M x)) (arrow D A B)
 		   <- ({x}{d:isvar x I} of (cons G x A) (M x) B)
        <- ({x}{d:isvar x I} ordered (cons G x A))
-       <- wft G (rect AS AU)
-       <- wft G (arrow A B).
-
-of/lam/rect  : of G (lam AS AU A ([x] M x)) (rect AS AU)
-		   <- ({x}{d:isvar x I} of (cons G x A) (M x) B)
-       <- ({x}{d:isvar x I} ordered (cons G x A))
-       <- wft G (rect AS AU)
-       <- wft G (arrow A B).
+       <- wft G (arrow D A B).
 
 of/app		: of G (app M N) B
 		   <- of G N A
-		   <- of G M (arrow A B).
+		   <- of G M (arrow D A B).
 
 of/sub    : of G M A'
        <- of G M A
        <- sub G A G A'.
 
-%query 1 1 of nil (app (lam o o o ([x] (lam o o o ([y] x)))) b) (arrow o o).
-%query 1 1 of nil (app (lam o o o ([x] (lam o o o ([y] x)))) b) (rect o o).
-%query 1 1 of nil (app (lam o o o ([x] (lam o o o ([y] x)))) b) (arrow bot top).
-%query 1 1 of nil (lam o o (rect o o) ([x] (lam o o (tsel x) ([y] y)))) (arrow (rect o o) (rect o o)).
-%query 1 1 of nil (lam o o (rect o o) ([x] (lam o (tsel x) o ([y] y)))) (arrow (rect o o) top).
-%query 1 1 of nil (lam o o (rect o o) ([x] (lam o o (tsel x) ([y] y)))) (arrow (rect o o) (arrow bot top)).
-%query 1 1 of nil (lam o o (rect o o) ([x] (lam o o (tsel x) ([y] y)))) (arrow (rect o o) (arrow o o)).
-%query 1 1 of nil (lam o o (rect o o) ([x] (lam o (tsel x) (tsel x) ([y] y)))) (arrow (rect o o) (arrow o o)).
-%query 1 1 of nil (lam o o (rect o o) ([x] (lam o (tsel x) (tsel x) ([y] y)))) (arrow (rect o o) top).
+%query 1 1 wf-decls nil dnil.
+0l  = label/nat 0.
+1ds = dcons dnil 0l o o.
+%query 1 1 wf-decls nil 1ds.
+%query 1 1 of nil (app (lam dnil o ([x] (lam dnil o ([y] x)))) b) (arrow dnil o o).
+%query 1 1 of nil (app (lam dnil o ([x] (lam 1ds o ([y] x)))) b) (arrow 1ds o o).
+%query 1 1 of nil (app (lam dnil o ([x] (lam dnil o ([y] x)))) b) (arrow dnil bot top).
+%query 1 1 of nil (lam dnil (arrow 1ds o o) ([x] (lam dnil (tsel x 0l) ([y] y)))) (arrow dnil (arrow 1ds o o) top).
+%query 1 1 of nil (lam dnil (arrow 1ds o o) ([x] (lam dnil (tsel x 0l) ([y] y)))) (arrow dnil (arrow 1ds o o) (arrow dnil bot top)).
+%query 1 1 of nil (lam dnil (arrow 1ds o o) ([x] (lam dnil (tsel x 0l) ([y] y)))) (arrow dnil (arrow 1ds o o) (arrow dnil o o)).
 
 %%%%%  Worlds  %%%%%
 
@@ -234,7 +367,8 @@ exp-eq/i : exp-eq M M.
 tp-eq : tp -> tp -> type.
 tp-eq/i : tp-eq A A.
 
-
+decls-eq : decls -> decls -> type.
+decls-eq/i : decls-eq D D.
 
 lt-resp : nat-eq N1 N1' -> nat-eq N2 N2' -> lt N1 N2 -> lt N1' N2' -> type.
 %mode lt-resp +D1 +D2 +D3 -D.
@@ -424,7 +558,7 @@ isvar-not-b   : isvar b I -> false -> type.
 %worlds (ovar) (isvar-not-b _ _).
 %total {} (isvar-not-b _ _).
 
-isvar-not-lam : isvar (lam AS AU A M) I -> false -> type.
+isvar-not-lam : isvar (lam D A M) I -> false -> type.
 %mode isvar-not-lam +X1 -X2.
 %worlds (ovar) (isvar-not-lam _ _).
 %total {} (isvar-not-lam _ _).
@@ -1168,7 +1302,7 @@ ev/b    : ev H b v.
 ev/var  : ev H X V
      <- vlookup H X V.
 
-ev/lam  : ev H (lam AS AU A ([x] M x)) (clo H M).
+ev/lam  : ev H (lam D A ([x] M x)) (clo H M).
 
 ev/app  : ev H (app M N) (bin ([x] V x))
      <- ev H M VM
@@ -1177,15 +1311,15 @@ ev/app  : ev H (app M N) (bin ([x] V x))
 
 
 %query 1 1 ev vnil b V.
-%query 1 1 ev vnil (app (lam o o o ([x] x)) b) V.
-%query 1 1 ev vnil (lam o o o ([x] (lam o o o ([y] y)))) V.
-%query 1 1 ev vnil (app (lam o o o ([x] (lam o o o ([y] y)))) b) V.
-%query 1 1 ev vnil (app (lam o o o ([x] (lam o o o ([y] x)))) b) V.
-%query 1 1 ev vnil (app (lam o o (arrow o o) ([x] (lam o o o ([y] x)))) (lam o o o ([x] x))) V.
-%query 1 1 ev vnil (app (lam o o (arrow o o) ([x] (lam o o o ([y] y)))) (app (lam o o o ([x] (lam o o o ([y] x)))) b)) V.
+%query 1 1 ev vnil (app (lam dnil o ([x] x)) b) V.
+%query 1 1 ev vnil (lam dnil o ([x] (lam dnil o ([y] y)))) V.
+%query 1 1 ev vnil (app (lam dnil o ([x] (lam dnil o ([y] y)))) b) V.
+%query 1 1 ev vnil (app (lam dnil o ([x] (lam dnil o ([y] x)))) b) V.
+%query 1 1 ev vnil (app (lam dnil (arrow dnil o o) ([x] (lam dnil o ([y] x)))) (lam dnil o ([x] x))) V.
+%query 1 1 ev vnil (app (lam dnil (arrow dnil o o) ([x] (lam dnil o ([y] y)))) (app (lam dnil o ([x] (lam dnil o ([y] x)))) b)) V.
 %query 0 * ev vnil (app b b) V.
-%query 1 1 ev vnil (app (app (lam o o o ([x] (lam o o o ([y] y)))) b) b) V.
-%query 1 1 ev vnil (app (app (app (lam o o o ([x] (lam o o o ([y] (lam o o o [z] y))))) b) b) b) V.
+%query 1 1 ev vnil (app (app (lam dnil o ([x] (lam dnil o ([y] y)))) b) b) V.
+%query 1 1 ev vnil (app (app (app (lam dnil o ([x] (lam dnil o ([y] (lam dnil o [z] y))))) b) b) b) V.
 
 %%%%%  Value Typing (Explicit Context & Stack)  %%%%%
 
@@ -1194,14 +1328,11 @@ wfe      : vctx -> ctx -> type.
 
 wfv/v    : wfv v G o.
 
-wfv/clo/arrow : wfv (clo H M) G (arrow A B)
+wfv/arrow : wfv (clo H M) G (arrow D A B)
       <- wfe H G'
       <- ({x}{d:isvar x I} of (cons G' x A) (M x) B)
       <- ({x}{d:isvar x I} ordered (cons G' x A))
-      <- sub G' (arrow A B) G (arrow A B).
-
-wfv/clo/rect  : wfv (clo H M) G (rect AS AU)
-      <- wft G (rect AS AU).
+      <- sub G' (arrow D A B) G (arrow D A B).
 
 wfv/bin  : wfv (bin V) G A
             <- wft G A
@@ -1217,14 +1348,13 @@ wfe/cons : wfe (vcons H X V) (cons G X A)
       <- wfv V G A
       <- wfe H G.
 
-1exp = (app (lam o o o ([x] (lam o o o ([y] x)))) b).
-1tp = (arrow o o).
+1exp = (app (lam dnil o ([x] (lam dnil o ([y] x)))) b).
+1tp = (arrow dnil o o).
 %query 1 1 of nil 1exp 1tp.
 %define 1clo = V
 %solve  1ev : ev vnil 1exp V.
 %query 1 1 wfv 1clo nil 1tp.
 %query 1 1 wfv 1clo nil top.
-%query 1 1 of nil 1exp (rect o o).
 
 false-implies-wfv : false -> wfv V G A -> type.
 %mode +{V:val} +{G:ctx} +{A:tp} +{X1:false} -{X2:wfv V G A} (false-implies-wfv X1 X2).
@@ -1317,25 +1447,52 @@ sub-refl    : wft G A
                -> type.
 %mode sub-refl +X1 -X2.
 
+sub-decls-refl : wf-decls G D
+%%
+                  -> sub-decls G D G D
+                  -> type.
+%mode sub-decls-refl +X1 -X2.
+
 sub-refl/o     : sub-refl wft/o sub/o.
 
 sub-refl/top   : sub-refl wft/top (sub/top wft/top).
 
 sub-refl/bot   : sub-refl wft/bot (sub/bot wft/bot).
 
-sub-refl/arrow : sub-refl (wft/arrow WS WU) (sub/arrow BS BU)
+sub-refl/arrow : sub-refl (wft/arrow WS WU D) (sub/arrow BS BU BD)
+            <- sub-decls-refl D BD
             <- sub-refl WS BS
             <- sub-refl WU BU.
 
-sub-refl/rect  : sub-refl (wft/rect B WS WU) (sub/rect BS BU B B)
-            <- sub-refl WS BS
-            <- sub-refl WU BU.
+sub-refl/tsel  : sub-refl
+                  (wft/tsel (pev/a OG L OD LD WU WS B))
+                  (sub/tselx
+                     (sub-decls/cons-hit
+                        dbounded/nil dbounded/nil (sub-decls/nil wf-decls/nil)
+                        BU BS B B)
+                     (sub-decls/cons-hit
+                        dbounded/nil dbounded/nil (sub-decls/nil wf-decls/nil)
+                        BU BS B B)
+                     (pev/a OG L OD LD WU WS B)
+                     sub-ctx/nil
+                     sub-ctx/nil)
+            <- sub-refl WU BU
+            <- sub-refl WS BS.
 
-sub-refl/tsel  : sub-refl (wft/tsel (pev/a OG L W)) (sub/tselx B B (pev/a OG L W) sub-ctx/nil sub-ctx/nil)
-            <- sub-refl W B.
+sub-decls-refl/nil : sub-decls-refl
+                      wf-decls/nil
+                      (sub-decls/nil wf-decls/nil).
 
-%worlds (var | ovar) (sub-refl _ _).
-%total W (sub-refl W _).
+sub-decls-refl/cons : sub-decls-refl
+                       (wf-decls/cons OD WD B WU WS)
+                       (sub-decls/cons-hit
+                          OD OD BD BU BS B B)
+                 <- sub-refl WU BU
+                 <- sub-refl WS BS
+                 <- sub-decls-refl WD BD.
+
+%worlds (var | ovar) (sub-refl _ _) (sub-decls-refl _ _).
+%total (W WD) (sub-refl W _) (sub-decls-refl WD _).
 
 extend-wft  : wft G B
                -> ordered (cons G X A)
@@ -1344,10 +1501,17 @@ extend-wft  : wft G B
 -> type.
 %mode extend-wft +X1 +X2 -X3.
 
-extend-pev   : pev G Y B
+extend-wf-decls  : wf-decls G D
+                    -> ordered (cons G X A)
+%%
+                    -> wf-decls (cons G X A) D
+-> type.
+%mode extend-wf-decls +X1 +X2 -X3.
+
+extend-pev   : pev G Y L AS AU
                 -> ordered (cons G X A)
 %%
-                -> pev (cons G X A) Y B
+                -> pev (cons G X A) Y L AS AU
 -> type.
 %mode extend-pev +X1 +X2 -X3.
 
@@ -1373,6 +1537,28 @@ extend-sub   : sub G1 A1 G2 A2
          -> type.
 %mode extend-sub +X1 +X2 +X3 -X4.
 
+extend-sub-decls2  : sub-decls G1 D1 G2 D2
+                -> ordered (cons G2 X A)
+%%
+                -> sub-decls G1 D1 (cons G2 X A) D2
+         -> type.
+%mode extend-sub-decls2 +X1 +X2 -X3.
+
+extend-sub-decls1  : sub-decls G1 D1 G2 D2
+                -> ordered (cons G1 X A)
+%%
+                -> sub-decls (cons G1 X A) D1 G2 D2
+         -> type.
+%mode extend-sub-decls1 +X1 +X2 -X3.
+
+extend-sub-decls   : sub-decls G1 D1 G2 D2
+                -> ordered (cons G1 X A)
+                -> ordered (cons G2 X A)
+%%
+                -> sub-decls (cons G1 X A) D1 (cons G2 X A) D2
+         -> type.
+%mode extend-sub-decls +X1 +X2 +X3 -X4.
+
 -/o2     : extend-sub2 sub/o _ sub/o.
 
 -/o1     : extend-sub1 sub/o _ sub/o.
@@ -1395,31 +1581,18 @@ extend-sub   : sub G1 A1 G2 A2
 -/bot    : extend-sub  (sub/bot W) OG1 OG2 (sub/bot W')
       <- extend-wft W OG2 W'.
 
--/arrow2 : extend-sub2 (sub/arrow BU BS) OG (sub/arrow BU' BS')
+-/arrow2 : extend-sub2 (sub/arrow BU BS D) OG (sub/arrow BU' BS' D')
+      <- extend-sub-decls2 D OG D'
       <- extend-sub1 BS OG BS'
       <- extend-sub2 BU OG BU'.
 
--/arrow1 : extend-sub1 (sub/arrow BU BS) OG (sub/arrow BU' BS')
+-/arrow1 : extend-sub1 (sub/arrow BU BS D) OG (sub/arrow BU' BS' D')
+      <- extend-sub-decls1 D OG D'
       <- extend-sub2 BS OG BS'
       <- extend-sub1 BU OG BU'.
 
--/arrow  : extend-sub  (sub/arrow BU BS) OG1 OG2 (sub/arrow BU' BS')
-      <- extend-sub BS OG2 OG1 BS'
-      <- extend-sub BU OG1 OG2 BU'.
-
--/rect2  : extend-sub2 (sub/rect BU BS B2 B1) OG (sub/rect BU' BS' B2' B1)
-      <- extend-sub B2 OG OG B2'
-      <- extend-sub1 BS OG BS'
-      <- extend-sub2 BU OG BU'.
-
--/rect1  : extend-sub1 (sub/rect BU BS B2 B1) OG (sub/rect BU' BS' B2 B1')
-      <- extend-sub B1 OG OG B1'
-      <- extend-sub2 BS OG BS'
-      <- extend-sub1 BU OG BU'.
-
--/rect  : extend-sub  (sub/rect BU BS B2 B1) OG1 OG2 (sub/rect BU' BS' B2' B1')
-      <- extend-sub B1 OG1 OG1 B1'
-      <- extend-sub B2 OG2 OG2 B2'
+-/arrow  : extend-sub  (sub/arrow BU BS D) OG1 OG2 (sub/arrow BU' BS' D')
+      <- extend-sub-decls D OG1 OG2 D'
       <- extend-sub BS OG2 OG1 BS'
       <- extend-sub BU OG1 OG2 BU'.
 
@@ -1430,15 +1603,19 @@ extend-sub   : sub G1 A1 G2 A2
       <- extend-sub1 S OG S'.
 
 -/tsel22 : extend-sub2
-            (sub/tsel2 (pev/a _  L               W ) S ) OG
-            (sub/tsel2 (pev/a OG (lookup/miss L) W') S')
-      <- extend-wft W OG W'
+            (sub/tsel2 (pev/a _  L OD LD WU WS B) S) OG
+            (sub/tsel2 (pev/a OG (lookup/miss L) OD LD WU' WS' B') S')
+      <- extend-sub B OG OG B'
+      <- extend-wft WU OG WU'
+      <- extend-wft WS OG WS'
       <- extend-sub2 S OG S'.
 
 -/tsel11 : extend-sub1
-            (sub/tsel1 (pev/a _  L               W ) S ) OG
-            (sub/tsel1 (pev/a OG (lookup/miss L) W') S')
-      <- extend-wft W OG W'
+            (sub/tsel1 (pev/a _  L OD LD WU WS B) S) OG
+            (sub/tsel1 (pev/a OG (lookup/miss L) OD LD WU' WS' B') S')
+      <- extend-sub B OG OG B'
+      <- extend-wft WU OG WU'
+      <- extend-wft WS OG WS'
       <- extend-sub1 S OG S'.
 
 -/tsel2  : extend-sub
@@ -1454,22 +1631,22 @@ extend-sub   : sub G1 A1 G2 A2
       <- extend-sub S OG1 OG2 S'.
 
 -/tselx2 : extend-sub2
-            (sub/tselx B12  B21  (pev/a OGP L W) S1 S2) OG
-            (sub/tselx B12' B21' (pev/a OGP L W) S1 (sub-ctx/cons OG S2))
-      <- extend-sub2 B12 OG B12'
-      <- extend-sub1 B21 OG B21'.
+            (sub/tselx BD12  BD21  P S1 S2) OG
+            (sub/tselx BD12' BD21' P S1 (sub-ctx/cons OG S2))
+      <- extend-sub-decls2 BD12 OG BD12'
+      <- extend-sub-decls1 BD21 OG BD21'.
 
 -/tselx1 : extend-sub1
-            (sub/tselx B12  B21  (pev/a OGP L W) S1 S2) OG
-            (sub/tselx B12' B21' (pev/a OGP L W) (sub-ctx/cons OG S1) S2)
-      <- extend-sub1 B12 OG B12'
-      <- extend-sub2 B21 OG B21'.
+            (sub/tselx BD12  BD21  P S1 S2) OG
+            (sub/tselx BD12' BD21' P (sub-ctx/cons OG S1) S2)
+      <- extend-sub-decls1 BD12 OG BD12'
+      <- extend-sub-decls2 BD21 OG BD21'.
 
 -/tselx  : extend-sub
-            (sub/tselx B12  B21  (pev/a OGP L W) S1 S2) OG1 OG2
-            (sub/tselx B12' B21' (pev/a OGP L W) (sub-ctx/cons OG1 S1) (sub-ctx/cons OG2 S2))
-      <- extend-sub B12 OG1 OG2 B12'
-      <- extend-sub B21 OG2 OG1 B21'.
+            (sub/tselx BD12  BD21  P S1 S2) OG1 OG2
+            (sub/tselx BD12' BD21' P (sub-ctx/cons OG1 S1) (sub-ctx/cons OG2 S2))
+      <- extend-sub-decls BD12 OG1 OG2 BD12'
+      <- extend-sub-decls BD21 OG2 OG1 BD21'.
 
 -  : extend-wft wft/o _ wft/o.
 
@@ -1477,23 +1654,88 @@ extend-sub   : sub G1 A1 G2 A2
 
 -  : extend-wft wft/bot _ wft/bot.
 
--  : extend-wft (wft/arrow WU WS) OG (wft/arrow WU' WS')
+-  : extend-wft (wft/arrow WU WS D) OG (wft/arrow WU' WS' D')
+<- extend-wf-decls D OG D'
 <- extend-wft WS OG WS'
 <- extend-wft WU OG WU'.
-
--  : extend-wft (wft/rect B WU WS) OG (wft/rect B' WU' WS')
-<- extend-wft WS OG WS'
-<- extend-wft WU OG WU'
-<- extend-sub B OG OG B'.
 
 -  : extend-wft (wft/tsel P) OG (wft/tsel P')
 <- extend-pev P OG P'.
 
--  : extend-pev (pev/a OG L W) OGX (pev/a OGX (lookup/miss L) W')
-<- extend-wft W OGX W'.
+-  : extend-pev (pev/a _ L OD LD WU WS B) OG (pev/a OG (lookup/miss L) OD LD WU' WS' B')
+<- extend-sub B OG OG B'
+<- extend-wft WS OG WS'
+<- extend-wft WU OG WU'.
 
-%worlds (var | ovar) (extend-sub2 _ _ _) (extend-sub1 _ _ _) (extend-sub _ _ _ _) (extend-wft _ _ _) (extend-pev _ _ _).
-%total (S2 S1 S W P) (extend-sub2 S2 _ _) (extend-sub1 S1 _ _) (extend-sub S _ _ _) (extend-wft W _ _) (extend-pev P _ _).
+-  : extend-sub-decls2 (sub-decls/nil OD) OG (sub-decls/nil OD).
+
+-  : extend-sub-decls2
+      (sub-decls/cons-hit DB2 DB1 BD BU BS B2 B1)
+      OG
+      (sub-decls/cons-hit DB2 DB1 BD' BU' BS' B2' B1)
+<- extend-sub-decls2 BD OG BD'
+<- extend-sub2 BU OG BU'
+<- extend-sub1 BS OG BS'
+<- extend-sub B2 OG OG B2'.
+
+-  : extend-sub-decls2
+      (sub-decls/cons-miss DB2 WD1 BD)
+      OG
+      (sub-decls/cons-miss DB2 WD1 BD')
+<- extend-sub-decls2 BD OG BD'.
+
+-  : extend-sub-decls1 (sub-decls/nil WD) OG (sub-decls/nil WD')
+<- extend-wf-decls WD OG WD'.
+
+-  : extend-sub-decls1
+      (sub-decls/cons-hit DB2 DB1 BD BU BS B2 B1)
+      OG
+      (sub-decls/cons-hit DB2 DB1 BD' BU' BS' B2 B1')
+<- extend-sub-decls1 BD OG BD'
+<- extend-sub1 BU OG BU'
+<- extend-sub2 BS OG BS'
+<- extend-sub B1 OG OG B1'.
+
+-  : extend-sub-decls1
+      (sub-decls/cons-miss DB2 WD1 BD)
+      OG
+      (sub-decls/cons-miss DB2 WD1' BD')
+<- extend-wf-decls WD1 OG WD1'
+<- extend-sub-decls1 BD OG BD'.
+
+-  : extend-sub-decls (sub-decls/nil WD) OG1 OG2 (sub-decls/nil WD')
+<- extend-wf-decls WD OG1 WD'.
+
+-  : extend-sub-decls
+      (sub-decls/cons-hit DB2 DB1 BD BU BS B2 B1)
+      OG1 OG2
+      (sub-decls/cons-hit DB2 DB1 BD' BU' BS' B2' B1')
+<- extend-sub-decls BD OG1 OG2 BD'
+<- extend-sub BU OG1 OG2 BU'
+<- extend-sub BS OG2 OG1 BS'
+<- extend-sub B2 OG2 OG2 B2'
+<- extend-sub B1 OG1 OG1 B1'.
+
+-  : extend-sub-decls
+      (sub-decls/cons-miss DB2 WD1 BD)
+      OG1 OG2
+      (sub-decls/cons-miss DB2 WD1' BD')
+<- extend-wf-decls WD1 OG1 WD1'
+<- extend-sub-decls BD OG1 OG2 BD'.
+
+-  : extend-wf-decls wf-decls/nil OG wf-decls/nil.
+
+-  : extend-wf-decls
+      (wf-decls/cons DB WD B WU WS)
+      OG
+      (wf-decls/cons DB WD' B' WU' WS')
+<- extend-wf-decls WD OG WD'
+<- extend-sub B OG OG B'
+<- extend-wft WU OG WU'
+<- extend-wft WS OG WS'.
+
+%worlds (var | ovar) (extend-sub2 _ _ _) (extend-sub1 _ _ _) (extend-sub _ _ _ _) (extend-sub-decls2 _ _ _) (extend-sub-decls1 _ _ _) (extend-sub-decls _ _ _ _) (extend-wft _ _ _) (extend-wf-decls _ _ _) (extend-pev _ _ _).
+%total (S2 S1 S D2 D1 D W DW P) (extend-sub2 S2 _ _) (extend-sub1 S1 _ _) (extend-sub S _ _ _) (extend-sub-decls2 D2 _ _) (extend-sub-decls1 D1 _ _) (extend-sub-decls D _ _ _) (extend-wft W _ _) (extend-wf-decls DW _ _) (extend-pev P _ _).
 
 extend-wft-sub-ctx : wft G1 A
                       -> sub-ctx G1 G2
@@ -1511,10 +1753,10 @@ extend-wft-sub-ctx : wft G1 A
 %worlds (var | ovar) (extend-wft-sub-ctx _ _ _).
 %total S (extend-wft-sub-ctx _ S _).
 
-extend-pev-sub-ctx : pev G1 X A
+extend-pev-sub-ctx : pev G1 X L AS AU
                       -> sub-ctx G1 G2
 %%
-                      -> pev G2 X A
+                      -> pev G2 X L AS AU
   -> type.
 %mode extend-pev-sub-ctx +X1 +X2 -X3.
 
@@ -1611,13 +1853,22 @@ extract-wf    : sub G1 A1 G2 A2
        -> type.
 %mode extract-wf +X1 -X2 -X3.
 
-extract-wf-pev: pev G X A
+extract-wf-decls: sub-decls G1 D1 G2 D2
 %%
-                 -> wft G A
+                 -> wf-decls G1 D1
+                 -> wf-decls G2 D2
        -> type.
-%mode extract-wf-pev +X1 -X2.
+%mode extract-wf-decls +X1 -X2 -X3.
 
--     : extract-wf-pev (pev/a OG L W) W.
+extract-wf-pev: pev G X L AS AU
+%%
+                 -> wft G AS
+                 -> wft G AU
+                 -> sub G AS G AU
+       -> type.
+%mode extract-wf-pev +X1 -X2 -X3 -X4.
+
+-     : extract-wf-pev (pev/a OG L OD LD WU WS B) WS WU B.
 
 -     : extract-wf sub/o wft/o wft/o.
 
@@ -1625,24 +1876,21 @@ extract-wf-pev: pev G X A
 
 -     : extract-wf (sub/bot W) wft/bot W.
 
--     : extract-wf (sub/arrow BU BS) (wft/arrow WU1 WS1) (wft/arrow WU2 WS2)
-   <- extract-wf BU WU1 WU2
-   <- extract-wf BS WS2 WS1.
-
--     : extract-wf (sub/rect BU BS B2 B1) (wft/rect B1 WU1 WS1) (wft/rect B2 WU2 WS2)
+-     : extract-wf (sub/arrow BU BS BD) (wft/arrow WU1 WS1 WD1) (wft/arrow WU2 WS2 WD2)
+   <- extract-wf-decls BD WD1 WD2
    <- extract-wf BU WU1 WU2
    <- extract-wf BS WS2 WS1.
 
 -     : extract-wf
-         (sub/tsel1 (pev/a OG L (wft/rect B1 WU1 WS1)) B)
-         (wft/tsel (pev/a OG L (wft/rect B1 WU1 WS1)))
+         (sub/tsel1 P B)
+         (wft/tsel P)
          W2
    <- extract-wf B _ W2.
 
 -     : extract-wf
-         (sub/tsel2 (pev/a OG L (wft/rect B2 WU2 WS2)) B)
+         (sub/tsel2 P B)
          W1
-         (wft/tsel (pev/a OG L (wft/rect B2 WU2 WS2)))
+         (wft/tsel P)
    <- extract-wf B W1 _.
 
 -     : extract-wf
@@ -1652,8 +1900,28 @@ extract-wf-pev: pev G X A
    <- extend-pev-sub-ctx P S1 P1
    <- extend-pev-sub-ctx P S2 P2.
 
-%worlds (ovar) (extract-wf _ _ _) (extract-wf-pev _ _).
-%total (B P) (extract-wf B _ _) (extract-wf-pev P _).
+-     : extract-wf-decls
+         (sub-decls/nil WD1)
+         WD1
+         wf-decls/nil.
+
+-     : extract-wf-decls
+         (sub-decls/cons-hit OD2 OD1 BD BU BS B2 B1)
+         (wf-decls/cons OD1 WD1 B1 WU1 WS1)
+         (wf-decls/cons OD2 WD2 B2 WU2 WS2)
+<- extract-wf B2 WS2 WU2
+<- extract-wf B1 WS1 WU1
+<- extract-wf-decls BD WD1 WD2.
+
+
+-     : extract-wf-decls
+         (sub-decls/cons-miss _ WD1 BD)
+         WD1
+         WD2
+<- extract-wf-decls BD _ WD2.
+
+%worlds (ovar) (extract-wf _ _ _) (extract-wf-decls _ _ _) (extract-wf-pev _ _ _ _).
+%total (B D P) (extract-wf B _ _) (extract-wf-decls D _ _) (extract-wf-pev P _ _ _).
 
 extract-wf-tp : of G M A
 %%
@@ -1665,12 +1933,10 @@ extract-wf-tp : of G M A
 
 -    : extract-wf-tp (of/var D W OG L) W.
 
--    : extract-wf-tp (of/lam/arrow WA WR _ _) WA.
-
--    : extract-wf-tp (of/lam/rect WA WR _ _) WR.
+-    : extract-wf-tp (of/lam WD _ _) WD.
 
 -    : extract-wf-tp (of/app TM TN) W2
-  <- extract-wf-tp TM (wft/arrow W2 W1).
+  <- extract-wf-tp TM (wft/arrow W2 W1 D).
 
 -    : extract-wf-tp (of/sub B T) W2
   <- extract-wf B W1 W2.
@@ -1713,11 +1979,11 @@ wft-dia       : wft G A
 %worlds (var | ovar) (wft-dia _ _ _ _ _ _ _ _).
 %total W   (wft-dia W _ _ _ _ _ _ _).
 
-pev-min       : pev G1 X A
-                 -> pev G2 X A
+pev-min       : pev G1 X L AS AU
+                 -> pev G2 X L AS AU
                  -> minmax-ctx G1 G2 GS GU
 %%
-                 -> pev GS X A
+                 -> pev GS X L AS AU
                  -> sub-ctx GS G1
                  -> sub-ctx GS G2
    -> type.
@@ -1729,13 +1995,13 @@ pev-min       : pev G1 X A
 %worlds (var | ovar) (pev-min _ _ _ _ _ _).
 %total M (pev-min _ _ M _ _ _).
 
-pev-dia       : pev G X A
-                 -> pev G1 X A
-                 -> pev G2 X A
+pev-dia       : pev G X L AS AU
+                 -> pev G1 X L AS AU
+                 -> pev G2 X L AS AU
                  -> sub-ctx G1 G
                  -> sub-ctx G2 G
 %%
-                 -> pev G' X A
+                 -> pev G' X L AS AU
                  -> sub-ctx G' G1
                  -> sub-ctx G' G2
    -> type.
@@ -1774,34 +2040,156 @@ lookup-eq     : lookup G M A
 %worlds (ovar) (lookup-eq _ _ _ _ _).
 %total L (lookup-eq L _ _ _ _).
 
-rect-eq       : tp-eq (rect AS AU) (rect AS' AU')
+arrow-eq       : tp-eq (arrow D AS AU) (arrow D' AS' AU')
 %%
-                 -> tp-eq AS AS'
-                 -> tp-eq AU AU'
-       -> type.
-%mode rect-eq +X1 -X2 -X3.
+                  -> decls-eq D D'
+                  -> tp-eq AS AS'
+                  -> tp-eq AU AU'
+                  -> type.
+%mode arrow-eq +X1 -X2 -X3 -X4.
 
-rect-eq/i : rect-eq tp-eq/i tp-eq/i tp-eq/i.
+arrow-eq/i : arrow-eq tp-eq/i decls-eq/i tp-eq/i tp-eq/i.
 
-%worlds (var | ovar) (rect-eq _ _ _).
-%total EQ (rect-eq EQ _ _).
+%worlds (var | ovar) (arrow-eq _ _ _ _).
+%total EQ (arrow-eq EQ _ _ _).
 
-lookup-eq-rect: lookup G M (rect AS AU)
-                 -> lookup G M' (rect AS' AU')
-                 -> exp-eq M M'
-                 -> ordered G
+label-less-trans : label-less LX LY -> label-less LY LZ -> label-less LX LZ -> type.
+%mode label-less-trans +X1 +X2 -X3.
+
+-  : label-less-trans
+      (label-less/nat LTXY)
+      (label-less/nat LTYZ)
+      (label-less/nat LTXZ)
+<- lt-trans LTXY LTYZ LTXZ.
+
+%worlds (var | ovar) (label-less-trans _ _ _).
+%total {} (label-less-trans _ _ _).
+
+dbounded-is-dordered : dbounded D L
+%%
+		      -> dordered D
+		      -> type.
+%mode dbounded-is-dordered +X1 -X2.
+
+-       : dbounded-is-dordered dbounded/nil dordered/nil.
+
+-       : dbounded-is-dordered (dbounded/cons D _) (dordered/cons D).
+
+%worlds (var | ovar) (dbounded-is-dordered _ _).
+%total {} (dbounded-is-dordered _ _).
+
+label-less-eq-irreflex : label-less LX LY -> label-eq LX LY -> false -> type.
+%mode label-less-eq-irreflex +X1 +X2 -X3.
+
+-       : label-less-eq-irreflex 
+           (label-less/nat Dlt) 
+           DEeq
+           Dfalse
+           <- lt-resp nat-eq/i nat-eq/i Dlt Dlt'
+           <- lt-antisymm Dlt' Dfalse.
+
+%worlds (var | ovar) (label-less-eq-irreflex _ _ _).
+%total {} (label-less-eq-irreflex _ _ _).
+
+dbounded-eq-contra : dbounded (dcons D LX AS AU) LY
+                     -> label-eq LX LY
+%%
+		  -> false
+		  -> type.
+%mode dbounded-eq-contra +X1 +X2 -X3.
+
+-	: dbounded-eq-contra 
+	   (dbounded/cons _ (Dprecedes : label-less X Y))
+     Deq
+	   Dfalse
+	   <- label-less-eq-irreflex Dprecedes Deq Dfalse.
+
+%worlds (var | ovar) (dbounded-eq-contra _ _ _).
+%total {} (dbounded-eq-contra _ _ _).
+
+dbounded-increase : dbounded D LX
+                    -> label-less LX LY
+%%
+                    -> dbounded D LY 
+		    -> type.
+%mode dbounded-increase +X1 +X2 -X3.
+
+-       : dbounded-increase
+           dbounded/nil
+           (label-less/nat _)
+           dbounded/nil.
+
+-       : dbounded-increase
+           (dbounded/cons 
+              (Dbounded : dbounded D LZ)
+              (DprecZX : label-less LZ LX))
+           (DprecXY : label-less LX LY)
+           (dbounded/cons Dbounded DprecZY)
+           <- label-less-trans DprecZX DprecXY
+              (DprecZY : label-less LZ LY).
+
+%worlds (var | ovar) (dbounded-increase _ _ _).
+%total {} (dbounded-increase _ _ _).
+
+dlookup-eq-bounded-contra : dlookup D LX AS AU
+			 -> dbounded D LY
+       -> label-eq LX LY
+%%
+			 -> false 
+			 -> type.
+%mode dlookup-eq-bounded-contra +X1 +X2 +X3 -X4.
+
+-       : dlookup-eq-bounded-contra 
+	   dlookup/hit
+	   (Dbounded : dbounded (dcons D LX AS AU) LY)
+     Deq
+	   Dfalse
+           <- dbounded-eq-contra Dbounded Deq Dfalse.
+
+-       : dlookup-eq-bounded-contra 
+	   (dlookup/miss 
+	      (Dlookup : dlookup D LX AS AU))
+	   (dbounded/cons
+	      (Dbounded : dbounded D LY)
+	      (Dprecedes : label-less LY LX))
+     Deq
+	   Dfalse
+           <- dbounded-increase Dbounded Dprecedes (Dbounded' : dbounded D LX)
+           <- dlookup-eq-bounded-contra Dlookup Dbounded' Deq Dfalse.
+
+%worlds (var | ovar) (dlookup-eq-bounded-contra _ _ _ _).
+%total D (dlookup-eq-bounded-contra D _ _ _).
+
+dlookup-eq     : dlookup D L AS AU
+                 -> dlookup D' L AS' AU'
+                 -> decls-eq D D'
+                 -> dordered D
+                 -> dordered D'
 %%
                  -> tp-eq AS AS'
                  -> tp-eq AU AU'
       -> type.
-%mode lookup-eq-rect +X1 +X2 +X3 +X4 -X5 -X6.
+%mode dlookup-eq +X1 +X2 +X3 +X4 +X5 -X6 -X7.
 
--     : lookup-eq-rect L L' EQ OG EQS EQU
-   <- lookup-eq L L' EQ OG EQ'
-   <- rect-eq EQ' EQS EQU.
+- : dlookup-eq dlookup/hit dlookup/hit EQ OD OD' tp-eq/i tp-eq/i.
 
-%worlds (ovar) (lookup-eq-rect _ _ _ _ _ _).
-%total {} (lookup-eq-rect _ _ _ _ _ _).
+- : dlookup-eq (dlookup/miss DL) (dlookup/miss DL') EQ (dordered/cons BD) (dordered/cons BD') EQS EQU
+<- dbounded-is-dordered BD OD
+<- dbounded-is-dordered BD' OD'
+<- dlookup-eq DL DL' decls-eq/i OD OD' EQS EQU.
+
+- : dlookup-eq (dlookup/hit : dlookup _ _ AS AU) ((dlookup/miss L'): dlookup _ _ AS' AU') EQ (dordered/cons BD) _ EQS EQU
+<- dlookup-eq-bounded-contra L' BD label-eq/i CONTRA
+<- false-implies-tp-eq CONTRA (EQS: tp-eq AS AS')
+<- false-implies-tp-eq CONTRA (EQU: tp-eq AU AU').
+
+- : dlookup-eq ((dlookup/miss L): dlookup _ _ AS AU) (dlookup/hit : dlookup _ _ AS' AU')  EQ _ (dordered/cons BD') EQS EQU
+<- dlookup-eq-bounded-contra L BD' label-eq/i CONTRA
+<- false-implies-tp-eq CONTRA (EQS: tp-eq AS AS')
+<- false-implies-tp-eq CONTRA (EQU: tp-eq AU AU').
+
+%worlds (var | ovar) (dlookup-eq _ _ _ _ _ _ _).
+%total DL (dlookup-eq DL _ _ _ _ _ _).
 
 sub-eq2       : tp-eq A2 A2'
                  -> sub G1 A1 G2 A2
@@ -1840,18 +2228,42 @@ wft-eq        : tp-eq A A'
 %total EQ (wft-eq EQ _ _).
 %reduces W' <= W (wft-eq _ W W').
 
-pev-eq        : tp-eq A A'
-                 -> pev G X A
+pev-eq        : tp-eq AS AS'
+                 -> tp-eq AU AU'
+                 -> pev G X L AS AU
 %%
-                 -> pev G X A'
+                 -> pev G X L AS' AU'
   -> type.
-%mode pev-eq +X1 +X2 -X3.
+%mode pev-eq +X1 +X2 +X3 -X4.
 
-- : pev-eq tp-eq/i P P.
+- : pev-eq tp-eq/i tp-eq/i P P.
 
-%worlds (var | ovar) (pev-eq _ _ _).
-%total EQ (pev-eq EQ _ _).
-%reduces P' <= P (pev-eq _ P P').
+%worlds (var | ovar) (pev-eq _ _ _ _).
+%total EQ (pev-eq EQ _ _ _).
+%reduces P' <= P (pev-eq _ _ P P').
+
+lookup-label-eq: lookup G M (arrow D _ _)
+                  -> dordered D
+                  -> dlookup D L AS AU
+                  -> lookup G M' (arrow D' _ _)
+                  -> dordered D'
+                  -> dlookup D' L' AS' AU'
+                  -> exp-eq M M'
+                  -> label-eq L L'
+                  -> ordered G
+%%
+                 -> tp-eq AS AS'
+                 -> tp-eq AU AU'
+      -> type.
+%mode lookup-label-eq +X1 +X2 +X3 +X4 +X5 +X6 +X7 +X8 +X9 -X10 -X11.
+
+-     : lookup-label-eq L OD LD L' OD' LD' EQ EQL OG EQS EQU
+   <- lookup-eq L L' EQ OG EQA
+   <- arrow-eq EQA EQD _ _
+   <- dlookup-eq LD LD' EQD OD OD' EQS EQU.
+
+%worlds (ovar) (lookup-label-eq _ _ _ _ _ _ _ _ _ _ _).
+%total {}      (lookup-label-eq _ _ _ _ _ _ _ _ _ _ _).
 
 sub-trans-aux : wft G2 A2
                  -> sub G1 A1 G2 A2
@@ -1860,6 +2272,14 @@ sub-trans-aux : wft G2 A2
                  -> sub G1 A1 G3 A3
         -> type.
 %mode sub-trans-aux +X1 +X2 +X3 -X4.
+
+sub-decls-trans-aux : wf-decls G2 D2
+                       -> sub-decls G1 D1 G2 D2
+                       -> sub-decls G2 D2 G3 D3
+%%
+                       -> sub-decls G1 D1 G3 D3
+        -> type.
+%mode sub-decls-trans-aux +X1 +X2 +X3 -X4.
 
 -/o     : sub-trans-aux wft/o sub/o sub/o sub/o.
 
@@ -1870,18 +2290,11 @@ sub-trans-aux : wft G2 A2
      <- extract-wf B23 _ W.
 
 -/arrow : sub-trans-aux
-           (wft/arrow (WU: wft G2 U2) (WS: wft G2 S2))
-           (sub/arrow (BU12: sub G1 U1 G2 U2) (BS21: sub G2 S2 G1 S1))
-           (sub/arrow (BU23: sub G2 U2 G3 U3) (BS32: sub G3 S3 G2 S2))
-           (sub/arrow (BU13: sub G1 U1 G3 U3) (BS31: sub G3 S3 G1 S1))
-     <- sub-trans-aux WS BS32 BS21 BS31
-     <- sub-trans-aux WU BU12 BU23 BU13.
-
--/rect  : sub-trans-aux
-           (wft/rect _ WU WS)
-           (sub/rect BU12 BS21 _   B11)
-           (sub/rect BU23 BS32 B33 _  )
-           (sub/rect BU13 BS31 B33 B11)
+           (wft/arrow (WU: wft G2 U2) (WS: wft G2 S2) WD)
+           (sub/arrow (BU12: sub G1 U1 G2 U2) (BS21: sub G2 S2 G1 S1) BD21)
+           (sub/arrow (BU23: sub G2 U2 G3 U3) (BS32: sub G3 S3 G2 S2) BD23)
+           (sub/arrow (BU13: sub G1 U1 G3 U3) (BS31: sub G3 S3 G1 S1) BD13)
+     <- sub-decls-trans-aux WD BD21 BD23 BD13
      <- sub-trans-aux WS BS32 BS21 BS31
      <- sub-trans-aux WU BU12 BU23 BU13.
 
@@ -1900,94 +2313,79 @@ sub-trans-aux : wft G2 A2
      <- sub-trans-aux W B12 B23 B13.
 
 -/tsel21: sub-trans-aux
-            (wft/tsel (pev/a OG2 (L2: lookup G2 M (rect AS2 AU2)) (wft/rect B2 WU2 WS2)))
+            (wft/tsel (pev/a OG2 L2 OD2 LD2 WU2 WS2 B2))
             (sub/tsel2
-               (pev/a OG2' (L2': lookup G2 M (rect AS2' AU2')) (wft/rect B2' WU2' WS2'))
+               (pev/a OG2' L2' OD2' LD2' WU2' WS2' B2')
                (B12: sub G1 A1 G2 AS2'))
             (sub/tsel1
-               (pev/a OG2'' (L2'': lookup G2 M (rect AS2'' AU2'')) (wft/rect B2'' WU2'' WS2''))
+               (pev/a OG2'' L2'' OD2'' LD2'' WU2'' WS2'' B2'')
                (B23: sub G2 AU2'' G3 A3))
             (B13: sub G1 A1 G3 A3)
-     <- lookup-eq-rect L2' L2 exp-eq/i OG2 SS' SU'
-     <- lookup-eq-rect L2'' L2 exp-eq/i OG2 SS'' SU''
+     <- lookup-label-eq L2' OD2' LD2' L2 OD2 LD2 exp-eq/i label-eq/i OG2 SS' SU'
+     <- lookup-label-eq L2'' OD2'' LD2'' L2 OD2 LD2 exp-eq/i label-eq/i OG2 SS'' SU''
      <- sub-eq2 SS' B12 B12'
      <- sub-eq1 SU'' B23 B23''
      <- sub-trans-aux WU2 B2 B23'' B23'''
      <- sub-trans-aux WS2 B12' B23''' B13.
 
 -/tselx1: sub-trans-aux
-           (wft/tsel (pev/a OG2 L2 (wft/rect B2 WU2 WS2)))
+           (wft/tsel (pev/a OG2 L2 OD2 LD2 WU2 WS2 B2))
            (sub/tselx
-              (sub/rect BU12 BS21 B22 B11)
+              (sub-decls/cons-hit
+                 dbounded/nil dbounded/nil (sub-decls/nil wf-decls/nil)
+                 BU12 BS21 B22 B11)
               _
-              (pev/a OGX LX (wft/rect BX WUX WSX))
+              (pev/a OGX LX ODX LDX WUX WSX BX)
               SX1
               SX2)
            (sub/tsel1
-              (pev/a OG2R L2R (wft/rect B2R WU2R WS2R))
+              (pev/a OG2R L2R OD2R LD2R WU2R WS2R B2R)
               B23)
            (sub/tsel1
-              (pev/a OG1' L1' (wft/rect B1' WU1' WS1'))
+              (pev/a OG1' L1' OD1' LD1' WU1' WS1' B1')
               B13)
-     <- extend-pev-sub-ctx (pev/a OGX LX (wft/rect BX WUX WSX)) SX1 (pev/a OG1' L1' (wft/rect B1' WU1' WS1'))
-     <- extend-pev-sub-ctx (pev/a OGX LX (wft/rect BX WUX WSX)) SX2 (pev/a OG2' L2' (wft/rect B2' WU2' WS2'))
-     <- lookup-eq-rect L2  L2' exp-eq/i OG2  EQS2  EQU2
-     <- lookup-eq-rect L2R L2' exp-eq/i OG2R EQS2R EQU2R
+     <- extend-pev-sub-ctx (pev/a OGX LX ODX LDX WUX WSX BX) SX1 (pev/a OG1' L1' OD1' LD1' WU1' WS1' B1')
+     <- extend-pev-sub-ctx (pev/a OGX LX ODX LDX WUX WSX BX) SX2 (pev/a OG2' L2' OD2' LD2' WU2' WS2' B2')
+     <- lookup-label-eq L2 OD2 LD2 L2' OD2' LD2' exp-eq/i label-eq/i OG2  EQS2  EQU2
+     <- lookup-label-eq L2R OD2R LD2R L2' OD2' LD2' exp-eq/i label-eq/i OG2R EQS2R EQU2R
      <- sub-eq1 EQU2R B23 B23'
      <- wft-eq EQU2 WU2 WU2x
      <- sub-trans-aux WU2x BU12 B23' B13.
 
 -/tsel2x: sub-trans-aux
-           (wft/tsel (pev/a OG2 L2 (wft/rect B2 WU2 WS2)))
+           (wft/tsel (pev/a OG2 L2 OD2 LD2 WU2 WS2 B2))
            (sub/tsel2
-              (pev/a OG2L L2L (wft/rect B2L WU2L WS2L))
+              (pev/a OG2L L2L OD2L LD2L WU2L WS2L B2L)
               B12)
            (sub/tselx
               _
-              (sub/rect BU23 BS32 B33 B22)
-              (pev/a OGX LX (wft/rect BX WUX WSX))
+              (sub-decls/cons-hit
+                 dbounded/nil dbounded/nil (sub-decls/nil wf-decls/nil)
+                 BU23 BS32 B33 B22)
+              (pev/a OGX LX ODX LDX WUX WSX BX)
               SX2
               SX3)
            (sub/tsel2
-              (pev/a OG3' L3' (wft/rect B3' WU3' WS3'))
+              (pev/a OG3' L3' OD3' LD3' WU3' WS3' B3')
               B13)
-     <- extend-pev-sub-ctx (pev/a OGX LX (wft/rect BX WUX WSX)) SX2 (pev/a OG2' L2' (wft/rect B2' WU2' WS2'))
-     <- extend-pev-sub-ctx (pev/a OGX LX (wft/rect BX WUX WSX)) SX3 (pev/a OG3' L3' (wft/rect B3' WU3' WS3'))
-     <- lookup-eq-rect L2  L2' exp-eq/i OG2  EQS2  EQU2
-     <- lookup-eq-rect L2L L2' exp-eq/i OG2L EQS2L EQU2L
+     <- extend-pev-sub-ctx (pev/a OGX LX ODX LDX WUX WSX BX) SX2 (pev/a OG2' L2' OD2' LD2' WU2' WS2' B2')
+     <- extend-pev-sub-ctx (pev/a OGX LX ODX LDX WUX WSX BX) SX3 (pev/a OG3' L3' OD3' LD3' WU3' WS3' B3')
+     <- lookup-label-eq L2  OD2 LD2 L2' OD2' LD2' exp-eq/i label-eq/i OG2  EQS2  EQU2
+     <- lookup-label-eq L2L OD2L LD2L L2' OD2' LD2' exp-eq/i label-eq/i OG2L EQS2L EQU2L
      <- sub-eq2 EQS2L B12 B12'
      <- wft-eq EQS2 WS2 WS2x
      <- sub-trans-aux WS2x B12' BS32 B13.
 
--/tselxx: sub-trans-aux
-           (wft/tsel (pev/a OG2 L2 WR2))
-           (sub/tselx B12 B21 (pev/a OGX12 LX12 WX12) SX1 SX2)
-           (sub/tselx B23 B32 (pev/a OGX23 LX23 WX23) SX2' SX3)
-           (sub/tselx B13 B31 (pev/a OGX13 LX13 WX13) SX1' SX3')
-     <- extend-pev-sub-ctx (pev/a OGX12 LX12 WX12) SX2 (pev/a OGX12' LX12' WX12')
-     <- extend-pev-sub-ctx (pev/a OGX23 LX23 WX23) SX2' (pev/a OGX23' LX23' WX23')
-     <- lookup-eq LX12' LX23' exp-eq/i OGX12' EQ2'
-     <- lookup-eq LX23' LX12' exp-eq/i OGX23' EQ2
-     <- sub-eq1 EQ2  B23 B23'
-     <- sub-eq1 EQ2' B12 B12'
-     <- sub-eq2 EQ2  B32 B32'
-     <- sub-eq2 EQ2' B21 B21'
-     <- lookup-eq L2 LX12' exp-eq/i OG2 EQ2W
-     <- lookup-eq LX12' L2 exp-eq/i OGX12' EQ2W'
-     <- pev-eq EQ2W (pev/a OG2 L2 WR2) (pev/a OG2' L2' WR2')
-     <- sub-trans-aux WR2' B12' B23' B13x
-     <- sub-trans-aux WR2' B32' B21' B31x
-     <- sub-eq1 EQ2 B13x B13xx
-     <- sub-eq2 EQ2 B13xx B13
-     <- sub-eq1 EQ2 B31x B31xx
-     <- sub-eq2 EQ2 B31xx B31
-     <- pev-eq EQ2 (pev/a OGX23 LX23 WX23) (pev/a OGX23'' LX23'' WX23'')
-     <- pev-dia (pev/a OG2' L2' WR2') (pev/a OGX12 LX12 WX12) (pev/a OGX23'' LX23'' WX23'') SX2 SX2' (pev/a OGX13 LX13 WX13) SX1x SX3x
-     <- sub-ctx-trans SX1x SX1 SX1'
-     <- sub-ctx-trans SX3x SX3 SX3'.
+% TODO
+% -/tselxx: sub-trans-aux
+%           (wft/tsel P2)
+%           (sub/tselx B12 B21 P12 SX1 SX2)
+%           (sub/tselx B23 B32 P23 SX2' SX3)
+%            (sub/tselx B13 B31 P13 SX1' SX3')
 
-%worlds (ovar) (sub-trans-aux _ _ _ _).
-%total {W2 B12 B23} (sub-trans-aux W2 B12 B23 _).
+%worlds (ovar) (sub-trans-aux _ _ _ _) (sub-decls-trans-aux _ _ _ _).
+%trustme
+%total {(W2 WD2) (B12 BD12) (B23 BD23)} (sub-trans-aux W2 B12 B23 _) (sub-decls-trans-aux WD2 BD12 BD23 _).
 
 sub-trans   : sub G1 A1 G2 A2
                -> sub G2 A2 G3 A3
@@ -2012,11 +2410,8 @@ extend-wfv  : wfv V G B
 
 -      : extend-wfv wfv/v _ wfv/v.
 
--      : extend-wfv (wfv/clo/arrow B OG' T WE) OG (wfv/clo/arrow B' OG' T WE)
+-      : extend-wfv (wfv/arrow B OG' T WE) OG (wfv/arrow B' OG' T WE)
     <- extend-sub2 B OG B'.
-
--      : extend-wfv (wfv/clo/rect W) OG (wfv/clo/rect W')
-    <- extend-wft W OG W'.
 
 -      : extend-wfv (wfv/bin W WT) OG (wfv/bin W' WT')
     <- extend-wft WT OG WT'
@@ -2066,10 +2461,8 @@ extract-wfv : wfv V G A
 
 -  : extract-wfv wfv/v wft/o.
 
--  : extract-wfv (wfv/clo/arrow B OG T WE) W'
+-  : extract-wfv (wfv/arrow B OG T WE) W'
 <- extract-wf B _ W'.
-
--  : extract-wfv (wfv/clo/rect W) W.
 
 -  : extract-wfv (wfv/bin WV W) W.
 
@@ -2115,7 +2508,7 @@ invert-var  : of G X A
 
 invert-app  : of G (app M N) A
 %%
-               -> of G M (arrow A1 A2)
+               -> of G M (arrow D A1 A2)
                -> of G N A1
                -> sub G A2 G A
    -> type.
@@ -2175,42 +2568,36 @@ sub-either-wfv : sub-either
 %worlds (ovar) (sub-either-wfv _ _ _ _).
 %total E (sub-either-wfv E _ _ _).
 
-invert-lam  : of G (lam AS AU A M) A'
+invert-lam  : of G (lam D A M) A'
 %%
                -> ({x:exp}{d:isvar x I} ordered (cons G x A))
                -> ({x:exp}{d:isvar x I} of (cons G x A) (M x) B)
-               -> wft G (rect AS AU)
-               -> wft G (arrow A B)
-               -> sub-either
-                  G (arrow A B) G A'
-                  G (rect AS AU) G A'
+               -> wft G (arrow D A B)
+               -> sub G (arrow D A B) G A'
    -> type.
-%mode invert-lam +X1 -X2 -X3 -X4 -X5 -X6.
+%mode invert-lam +X1 -X2 -X3 -X4 -X5.
 
--  : invert-lam (of/lam/arrow WA WT OG T) OG T WT WA (sub-either/left B)
-<- sub-refl WA B.
-
--  : invert-lam (of/lam/rect WA WT OG T) OG T WT WA (sub-either/right B)
+-  : invert-lam (of/lam WT OG T) OG T WT B
 <- sub-refl WT B.
 
--  : invert-lam (of/sub B T) OG' T' WT' WA' B''
-<- invert-lam T OG' T' WT' WA' B'
-<- sub-either-trans B' B B''.
+-  : invert-lam (of/sub B T) OG' T' WT' B''
+<- invert-lam T OG' T' WT' B'
+<- sub-trans B' B B''.
 
-%worlds (ovar) (invert-lam _ _ _ _ _ _).
-%total T (invert-lam T _ _ _ _ _).
+%worlds (ovar) (invert-lam _ _ _ _ _).
+%total T (invert-lam T _ _ _ _).
 
 inv-arrow-aux : wfv (clo H M) G1 A1
-                       -> sub G1 A1 G2 (arrow A2 B2)
+                       -> sub G1 A1 G2 (arrow D2 A2 B2)
 %%
                        -> ({x}{d:isvar x I} of (cons G x A) (M x) B)
                        -> wfe H G
                        -> ({x}{d:isvar x I} ordered (cons G x A))
-                       -> sub G (arrow A B) G2 (arrow A2 B2)
+                       -> sub G (arrow D A B) G2 (arrow D2 A2 B2)
    -> type.
 %mode inv-arrow-aux +X1 +X2 -X3 -X4 -X5 -X6.
 
--  : inv-arrow-aux (wfv/clo/arrow BC1 OG T WE) B12 T WE OG BC2
+-  : inv-arrow-aux (wfv/arrow BC1 OG T WE) B12 T WE OG BC2
 <- sub-trans BC1 B12 BC2.
 
 -  : inv-arrow-aux (wfv/sub BC1 W1) B12 T' WE' OG' BC2'
@@ -2220,12 +2607,12 @@ inv-arrow-aux : wfv (clo H M) G1 A1
 %worlds (ovar) (inv-arrow-aux _ _ _ _ _ _).
 %total W (inv-arrow-aux W _ _ _ _ _).
 
-inv-arrow   : wfv (clo H M) G2 (arrow A2 B2)
+inv-arrow   : wfv (clo H M) G2 (arrow D2 A2 B2)
 %%
                -> ({x}{d:isvar x I} of (cons G x A) (M x) B)
                -> wfe H G
                -> ({x}{d:isvar x I} ordered (cons G x A))
-               -> sub G (arrow A B) G2 (arrow A2 B2)
+               -> sub G (arrow D A B) G2 (arrow D2 A2 B2)
    -> type.
 %mode inv-arrow +X1 -X2 -X3 -X4 -X5.
 
@@ -2272,11 +2659,11 @@ inv-bin      :  wfv (bin V) G2 A2
 %total W (inv-bin W _ _ _).
 
 inv-bin-arrow-aux :  wfv (bin V) G1 A1
-                     -> sub G1 A1 G2 (arrow S2 U2)
+                     -> sub G1 A1 G2 (arrow D2 S2 U2)
 %%
-                     -> wft G (arrow S U)
-                     -> ({x}{d:isvar x I} wfv (V x) G (arrow S U))
-                     -> sub G (arrow S U) G2 (arrow S2 U2)
+                     -> wft G (arrow D S U)
+                     -> ({x}{d:isvar x I} wfv (V x) G (arrow D S U))
+                     -> sub G (arrow D S U) G2 (arrow D2 S2 U2)
    -> type.
 %mode inv-bin-arrow-aux +X1 +X2 -X2 -X3 -X4.
 
@@ -2291,11 +2678,11 @@ inv-bin-arrow-aux :  wfv (bin V) G1 A1
 %worlds (ovar) (inv-bin-arrow-aux _ _ _ _ _).
 %total W (inv-bin-arrow-aux W _ _ _ _).
 
-inv-bin-arrow     :  wfv (bin V) G2 (arrow S2 U2)
+inv-bin-arrow     :  wfv (bin V) G2 (arrow D2 S2 U2)
 %%
-                     -> wft G (arrow S U)
-                     -> ({x}{d:isvar x I} wfv (V x) G (arrow S U))
-                     -> sub G (arrow S U) G2 (arrow S2 U2)
+                     -> wft G (arrow D S U)
+                     -> ({x}{d:isvar x I} wfv (V x) G (arrow D S U))
+                     -> sub G (arrow D S U) G2 (arrow D2 S2 U2)
    -> type.
 %mode inv-bin-arrow +X1 -X2 -X3 -X4.
 
@@ -2317,7 +2704,7 @@ ev-safe     : of G M A
     -> type.
 %mode ev-safe +X1 +X2 +X3 +X4 +X5 -X6.
 
-evapp-safe  : wfv VFUN G (arrow A1 A2)
+evapp-safe  : wfv VFUN G (arrow D A1 A2)
                -> wfv VARG G A1
                -> evapp VFUN VARG V
 %%
@@ -2333,10 +2720,9 @@ evapp-safe  : wfv VFUN G (arrow A1 A2)
  <- invert-var T D LG B
  <- lookup-safe WE LG LH OG OH WV.
 
--   : ev-safe T WE OG OH ev/lam W
- <- invert-lam T OG' TM WT WAB BE
- <- sub-refl WAB BAB
- <- sub-either-wfv BE (wfv/clo/arrow BAB OG' TM WE) (wfv/clo/rect WT) W.
+-   : ev-safe T WE OG OH ev/lam (wfv/sub BE (wfv/arrow B OG' TM WE))
+ <- invert-lam T OG' TM W BE
+ <- sub-refl W B.
 
 -   : ev-safe T WE OG OH (ev/app EVAPP EVARG EVFUN) (wfv/sub B W)
  <- invert-app T TFUN TARG B
@@ -2345,7 +2731,7 @@ evapp-safe  : wfv VFUN G (arrow A1 A2)
  <- evapp-safe WFUN WARG EVAPP W.
 
 -   : evapp-safe W (WARG: wfv _ G' _) (evapp/clo EV) (wfv/bin ([x][d:isvar x I] (wfv/sub (BU' x d) (W'' x d))) WT')
- <- inv-arrow W TFUN (WE: wfe H G) OG (sub/arrow BU BS)
+ <- inv-arrow W TFUN (WE: wfe H G) OG (sub/arrow BU BS D)
  <- ({x}{d:isvar x I} ordered-to-vordered (wfe/cons WE (wfv/sub BS WARG)) (OG x d) (OH x d))
  <- ({x}{d:isvar x I}
        ev-safe
@@ -2359,7 +2745,7 @@ evapp-safe  : wfv VFUN G (arrow A1 A2)
  <- ({x}{d:isvar x I} extend-sub1 BU (OG x d) (BU' x d)).
 
 -   : evapp-safe W0 WARG (evapp/bin EV) (wfv/bin ([x][d:isvar x I] (wfv/sub BU (W' x d))) WT')
- <- inv-bin-arrow W0 (wft/arrow WU WS) W (sub/arrow BU BS)
+ <- inv-bin-arrow W0 (wft/arrow WU WS WD) W (sub/arrow BU BS BD)
  <- ({x}{d:isvar x I} evapp-safe (W x d) (wfv/sub BS WARG) (EV x) (W' x d))
  <- extract-wf BU _ WT'.
 
