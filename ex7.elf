@@ -2706,6 +2706,50 @@ sub-decls-trans-aux : wf-decls G2 D2
       <- sub-eq1 EQS' B33x B33xx
       <- sub-eq2 EQU' B33xx B33.
 
+- : sub-trans-aux
+     W2
+     (sub/and1l B12 W1)
+     B23
+     (sub/and1l B13 W1)
+<- sub-trans-aux W2 B12 B23 B13.
+
+- : sub-trans-aux
+     W2
+     (sub/and1r B12 W1)
+     B23
+     (sub/and1r B13 W1)
+<- sub-trans-aux W2 B12 B23 B13.
+
+- : sub-trans-aux
+     W2
+     B12
+     (sub/or2l B23 _)
+     (sub/or2l B13 W2)
+<- sub-trans-aux W2 B12 B23 B13.
+
+- : sub-trans-aux
+     W2
+     B12
+     (sub/or2r B23 _)
+     (sub/or2r B13 W2)
+<- sub-trans-aux W2 B12 B23 B13.
+
+- : sub-trans-aux
+     W2
+     B12
+     (sub/and2 BR23 BL23)
+     (sub/and2 BR13 BL13)
+<- sub-trans-aux W2 B12 BR23 BR13
+<- sub-trans-aux W2 B12 BL23 BL13.
+
+- : sub-trans-aux
+     W2
+     (sub/or1 BR12 BL12)
+     B23
+     (sub/or1 BR13 BL13)
+<- sub-trans-aux W2 BR12 B23 BR13
+<- sub-trans-aux W2 BL12 B23 BL13.
+
 - : sub-decls-trans-aux
      WD2
      BD12
