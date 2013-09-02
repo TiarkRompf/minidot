@@ -1703,6 +1703,128 @@ extend-sub-decls   : sub-decls G1 D1 G2 D2
       <- extend-sub-decls BD12 OG1 OG2 BD12'
       <- extend-sub-decls BD21 OG2 OG1 BD21'.
 
+-/and1l2 : extend-sub2
+            (sub/and1l BL WR)
+            OG
+            (sub/and1l BL' WR)
+      <- extend-sub2 BL OG BL'.
+
+-/and1r2 : extend-sub2
+            (sub/and1r BR WL)
+            OG
+            (sub/and1r BR' WL)
+      <- extend-sub2 BR OG BR'.
+
+-/and22  : extend-sub2
+            (sub/and2 BR BL)
+            OG
+            (sub/and2 BR' BL')
+      <- extend-sub2 BR OG BR'
+      <- extend-sub2 BL OG BL'.
+
+-/or2l2 : extend-sub2
+            (sub/or2l BL WR)
+            OG
+            (sub/or2l BL' WR')
+      <- extend-sub2 BL OG BL'
+      <- extend-wft WR OG WR'.
+
+-/or2r2 : extend-sub2
+            (sub/or2r BR WL)
+            OG
+            (sub/or2r BR' WL')
+      <- extend-sub2 BR OG BR'
+      <- extend-wft WL OG WL'.
+
+-/or12  : extend-sub2
+            (sub/or1 BR BL)
+            OG
+            (sub/or1 BR' BL')
+      <- extend-sub2 BR OG BR'
+      <- extend-sub2 BL OG BL'.
+
+-/and1l1 : extend-sub1
+            (sub/and1l BL WR)
+            OG
+            (sub/and1l BL' WR')
+      <- extend-sub1 BL OG BL'
+      <- extend-wft WR OG WR'.
+
+-/and1r1 : extend-sub1
+            (sub/and1r BR WL)
+            OG
+            (sub/and1r BR' WL')
+      <- extend-sub1 BR OG BR'
+      <- extend-wft WL OG WL'.
+
+-/and21  : extend-sub1
+            (sub/and2 BR BL)
+            OG
+            (sub/and2 BR' BL')
+      <- extend-sub1 BR OG BR'
+      <- extend-sub1 BL OG BL'.
+
+-/or2l1 : extend-sub1
+            (sub/or2l BL WR)
+            OG
+            (sub/or2l BL' WR)
+      <- extend-sub1 BL OG BL'.
+
+-/or2r1 : extend-sub1
+            (sub/or2r BR WL)
+            OG
+            (sub/or2r BR' WL)
+      <- extend-sub1 BR OG BR'.
+
+-/or11  : extend-sub1
+            (sub/or1 BR BL)
+            OG
+            (sub/or1 BR' BL')
+      <- extend-sub1 BR OG BR'
+      <- extend-sub1 BL OG BL'.
+
+-/and1l  : extend-sub
+            (sub/and1l BL WR)
+            OG1 OG2
+            (sub/and1l BL' WR')
+      <- extend-sub BL OG1 OG2 BL'
+      <- extend-wft WR OG1 WR'.
+
+-/and1r  : extend-sub
+            (sub/and1r BR WL)
+            OG1 OG2
+            (sub/and1r BR' WL')
+      <- extend-sub BR OG1 OG2 BR'
+      <- extend-wft WL OG1 WL'.
+
+-/and2   : extend-sub
+            (sub/and2 BR BL)
+            OG1 OG2
+            (sub/and2 BR' BL')
+      <- extend-sub BR OG1 OG2 BR'
+      <- extend-sub BL OG1 OG2 BL'.
+
+-/or2l  : extend-sub
+            (sub/or2l BL WR)
+            OG1 OG2
+            (sub/or2l BL' WR')
+      <- extend-sub BL OG1 OG2 BL'
+      <- extend-wft WR OG2 WR'.
+
+-/or2r  : extend-sub
+            (sub/or2r BR WL)
+            OG1 OG2
+            (sub/or2r BR' WL')
+      <- extend-sub BR OG1 OG2 BR'
+      <- extend-wft WL OG2 WL'.
+
+-/or1   : extend-sub
+            (sub/or1 BR BL)
+            OG1 OG2
+            (sub/or1 BR' BL')
+      <- extend-sub BR OG1 OG2 BR'
+      <- extend-sub BL OG1 OG2 BL'.
+
 -  : extend-wft wft/o _ wft/o.
 
 -  : extend-wft wft/top _ wft/top.
@@ -1716,6 +1838,15 @@ extend-sub-decls   : sub-decls G1 D1 G2 D2
 
 -  : extend-wft (wft/tsel P) OG (wft/tsel P')
 <- extend-pev P OG P'.
+
+-  : extend-wft (wft/and WR WL) OG (wft/and WR' WL')
+<- extend-wft WL OG WL'
+<- extend-wft WR OG WR'.
+
+
+-  : extend-wft (wft/or WR WL) OG (wft/or WR' WL')
+<- extend-wft WL OG WL'
+<- extend-wft WR OG WR'.
 
 -  : extend-pev (pev/a _ L EX LD WU WS B) OG (pev/a OG (lookup/miss L) EX' LD WU' WS' B')
 <- extend-sub B OG OG B'
