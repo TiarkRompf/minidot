@@ -133,6 +133,8 @@ top     : tp.
 bot     : tp.
 tsel    : exp -> label -> tp.
 arrow   : decls -> tp -> tp -> tp.
+and     : tp -> tp -> tp.
+or      : tp -> tp -> tp.
 
 b       : exp.
 lam     : decls -> tp -> (exp -> exp) -> exp.
@@ -238,6 +240,12 @@ sub-ctx/cons     : sub-ctx G1 (cons G2 X A)
 
 %%%%%  Typing Rules (Explicit Context) %%%%%
 
+expand       : ctx -> tp -> decls -> type. %name expand EX.
+
+expand/arrow : expand G (arrow D _ _) D
+          <- dordered D.
+
+
 pev       : ctx -> exp -> label -> tp -> tp -> type.  %name pev P.
 wft       : ctx -> tp -> type.                        %name wft WT.
 sub       : ctx -> tp -> ctx -> tp -> type.           %name sub B.
@@ -249,8 +257,8 @@ pev/a     : pev G X L AS AU
        <- wft G AS
        <- wft G AU
        <- dlookup D L AS AU
-       <- dordered D
-       <- lookup G X (arrow D _ _)
+       <- expand G A D
+       <- lookup G X A
        <- ordered G.
 
 sub/o     : sub G1 o G2 o.
@@ -1515,6 +1523,13 @@ extend-pev   : pev G Y L AS AU
 -> type.
 %mode extend-pev +X1 +X2 -X3.
 
+extend-expand: expand G B D
+                -> ordered (cons G X A)
+%%
+                -> expand (cons G X A) B D
+-> type.
+%mode extend-expand +X1 +X2 -X3.
+
 extend-sub2  : sub G1 A1 G2 A2
                 -> ordered (cons G2 X A)
 %%
@@ -1603,20 +1618,22 @@ extend-sub-decls   : sub-decls G1 D1 G2 D2
       <- extend-sub1 S OG S'.
 
 -/tsel22 : extend-sub2
-            (sub/tsel2 (pev/a _  L OD LD WU WS B) S) OG
-            (sub/tsel2 (pev/a OG (lookup/miss L) OD LD WU' WS' B') S')
+            (sub/tsel2 (pev/a _  L EX LD WU WS B) S) OG
+            (sub/tsel2 (pev/a OG (lookup/miss L) EX' LD WU' WS' B') S')
       <- extend-sub B OG OG B'
       <- extend-wft WU OG WU'
       <- extend-wft WS OG WS'
-      <- extend-sub2 S OG S'.
+      <- extend-sub2 S OG S'
+      <- extend-expand EX OG EX'.
 
 -/tsel11 : extend-sub1
-            (sub/tsel1 (pev/a _  L OD LD WU WS B) S) OG
-            (sub/tsel1 (pev/a OG (lookup/miss L) OD LD WU' WS' B') S')
+            (sub/tsel1 (pev/a _  L EX LD WU WS B) S) OG
+            (sub/tsel1 (pev/a OG (lookup/miss L) EX' LD WU' WS' B') S')
       <- extend-sub B OG OG B'
       <- extend-wft WU OG WU'
       <- extend-wft WS OG WS'
-      <- extend-sub1 S OG S'.
+      <- extend-sub1 S OG S'
+      <- extend-expand EX OG EX'.
 
 -/tsel2  : extend-sub
             (sub/tsel2 P  S ) OG1 OG2
@@ -1662,10 +1679,13 @@ extend-sub-decls   : sub-decls G1 D1 G2 D2
 -  : extend-wft (wft/tsel P) OG (wft/tsel P')
 <- extend-pev P OG P'.
 
--  : extend-pev (pev/a _ L OD LD WU WS B) OG (pev/a OG (lookup/miss L) OD LD WU' WS' B')
+-  : extend-pev (pev/a _ L EX LD WU WS B) OG (pev/a OG (lookup/miss L) EX' LD WU' WS' B')
 <- extend-sub B OG OG B'
 <- extend-wft WS OG WS'
-<- extend-wft WU OG WU'.
+<- extend-wft WU OG WU'
+<- extend-expand EX OG EX'.
+
+-  : extend-expand (expand/arrow OD) OG (expand/arrow OD).
 
 -  : extend-sub-decls2 (sub-decls/nil OD) OG (sub-decls/nil OD).
 
@@ -1734,8 +1754,8 @@ extend-sub-decls   : sub-decls G1 D1 G2 D2
 <- extend-wft WU OG WU'
 <- extend-wft WS OG WS'.
 
-%worlds (var | ovar) (extend-sub2 _ _ _) (extend-sub1 _ _ _) (extend-sub _ _ _ _) (extend-sub-decls2 _ _ _) (extend-sub-decls1 _ _ _) (extend-sub-decls _ _ _ _) (extend-wft _ _ _) (extend-wf-decls _ _ _) (extend-pev _ _ _).
-%total (S2 S1 S D2 D1 D W DW P) (extend-sub2 S2 _ _) (extend-sub1 S1 _ _) (extend-sub S _ _ _) (extend-sub-decls2 D2 _ _) (extend-sub-decls1 D1 _ _) (extend-sub-decls D _ _ _) (extend-wft W _ _) (extend-wf-decls DW _ _) (extend-pev P _ _).
+%worlds (var | ovar) (extend-sub2 _ _ _) (extend-sub1 _ _ _) (extend-sub _ _ _ _) (extend-sub-decls2 _ _ _) (extend-sub-decls1 _ _ _) (extend-sub-decls _ _ _ _) (extend-wft _ _ _) (extend-wf-decls _ _ _) (extend-pev _ _ _) (extend-expand _ _ _).
+%total (S2 S1 S D2 D1 D W DW P EX) (extend-sub2 S2 _ _) (extend-sub1 S1 _ _) (extend-sub S _ _ _) (extend-sub-decls2 D2 _ _) (extend-sub-decls1 D1 _ _) (extend-sub-decls D _ _ _) (extend-wft W _ _) (extend-wf-decls DW _ _) (extend-pev P _ _) (extend-expand EX _ _).
 
 extend-wft-sub-ctx : wft G1 A
                       -> sub-ctx G1 G2
@@ -2262,11 +2282,11 @@ pev-eq        : tp-eq AS AS'
 %reduces P' <= P (pev-eq _ _ P P').
 %total EQ (pev-eq EQ _ _ _).
 
-lookup-label-eq: lookup G M (arrow D _ _)
-                  -> dordered D
+lookup-label-eq: lookup G M A
+                  -> expand G A D
                   -> dlookup D L AS AU
-                  -> lookup G M' (arrow D' _ _)
-                  -> dordered D'
+                  -> lookup G M' A'
+                  -> expand G A' D'
                   -> dlookup D' L' AS' AU'
                   -> exp-eq M M'
                   -> label-eq L L'
@@ -2277,7 +2297,7 @@ lookup-label-eq: lookup G M (arrow D _ _)
       -> type.
 %mode lookup-label-eq +X1 +X2 +X3 +X4 +X5 +X6 +X7 +X8 +X9 -X10 -X11.
 
--     : lookup-label-eq L OD LD L' OD' LD' EQ EQL OG EQS EQU
+-     : lookup-label-eq L (expand/arrow OD) LD L' (expand/arrow OD') LD' EQ EQL OG EQS EQU
    <- lookup-eq L L' EQ OG EQA
    <- arrow-eq EQA EQD _ _
    <- dlookup-eq LD LD' EQD OD OD' EQS EQU.
