@@ -2723,15 +2723,15 @@ sub-decls-trans-aux : wf-decls G2 D2
 - : sub-trans-aux
      W2
      B12
-     (sub/or2l B23 _)
-     (sub/or2l B13 W2)
+     (sub/or2l B23 W)
+     (sub/or2l B13 W)
 <- sub-trans-aux W2 B12 B23 B13.
 
 - : sub-trans-aux
      W2
      B12
-     (sub/or2r B23 _)
-     (sub/or2r B13 W2)
+     (sub/or2r B23 W)
+     (sub/or2r B13 W)
 <- sub-trans-aux W2 B12 B23 B13.
 
 - : sub-trans-aux
@@ -2749,6 +2749,35 @@ sub-decls-trans-aux : wf-decls G2 D2
      (sub/or1 BR13 BL13)
 <- sub-trans-aux W2 BR12 B23 BR13
 <- sub-trans-aux W2 BL12 B23 BL13.
+
+
+- : sub-trans-aux
+     (wft/and WR WL)
+     (sub/and2 B12R B12L)
+     (sub/and1l B23L W2R)
+     B13
+<- sub-trans-aux WL B12L B23L B13.
+
+- : sub-trans-aux
+     (wft/and WR WL)
+     (sub/and2 B12R B12L)
+     (sub/and1r B23R W2L)
+     B13
+<- sub-trans-aux WR B12R B23R B13.
+
+- : sub-trans-aux
+     (wft/or WR WL)
+     (sub/or2l B12L W1R)
+     (sub/or1 B23R B23L)
+     B13
+<- sub-trans-aux WL B12L B23L B13.
+
+- : sub-trans-aux
+     (wft/or WR WL)
+     (sub/or2r B12R W1L)
+     (sub/or1 B23R B23L)
+     B13
+<- sub-trans-aux WR B12R B23R B13.
 
 - : sub-decls-trans-aux
      WD2
