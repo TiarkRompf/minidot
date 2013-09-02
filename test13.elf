@@ -150,6 +150,8 @@ tsel : exp -> tpe.         % x.A
 
 bind : nat -> tenv -> tpe -> tpe.     % { this_n => A } 
 
+and  : tpe -> tpe -> tpe.
+
 
 % values
 cstv: cst -> val.
@@ -357,6 +359,20 @@ sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
               <- sub-env G0 G2.
 
 
+sub-tp/and1a : sub-tp G1 (and T1 T2) G2 T3
+              <- wf-tp G1 T2
+              <- sub-tp G1 T1 G2 T3.
+
+sub-tp/and1b : sub-tp G1 (and T1 T2) G2 T3
+              <- sub-tp G1 T2 G2 T3
+              <- wf-tp G1 T1.
+
+sub-tp/and2 : sub-tp G1 T1 G2 (and T2 T3)
+              <- sub-tp G1 T1 G2 T3
+              <- sub-tp G1 T1 G2 T2.
+
+
+
 
 wf-tp/int  : wf-tp G1 int.
 wf-tp/bool : wf-tp G1 bool.
@@ -383,6 +399,9 @@ wf-tp/tbind : wf-tp G1 (bind N G0 TN)
               <- tsize G0 (var N)
               <- sub-env G0 G1.
 
+wf-tp/and  : wf-tp G1 (and T1 T2)
+              <- wf-tp G1 T2
+              <- wf-tp G1 T1.
 
 
 
@@ -587,6 +606,12 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 
 - : extend-wf-tp (wf-tp/tbind SE S W) T (wf-tp/tbind (sub-env/ext SE) S W).
 
+- : extend-wf-tp (wf-tp/and W1 W2) T (wf-tp/and W1' W2')
+      <- extend-wf-tp W1 _ W1'
+      <- extend-wf-tp W2 _ W2'.
+
+
+
 - : extend-sub-tp sub-tp/int T sub-tp/int sub-tp/int sub-tp/int.
 - : extend-sub-tp sub-tp/bool T sub-tp/bool sub-tp/bool sub-tp/bool.
 - : extend-sub-tp (sub-tp/top ST) T (sub-tp/top ST') (sub-tp/top ST') (sub-tp/top ST) 
@@ -620,13 +645,6 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 
 
-% - : extend-sub-tp (sub-tp/tbind1 SE S SU ST) T
-%      (sub-tp/tbind1 (sub-env/ext SE) S SU STC1)
-%      (sub-tp/tbind1 (sub-env/ext SE) S SU ST)
-%      (sub-tp/tbind1 SE S SU STC1)
-%      <- extend-sub-tp ST T STA1 STB1 STC1
-%      .
-
 - : extend-sub-tp (sub-tp/tbind1 SE S ST) T
      (sub-tp/tbind1 (sub-env/ext SE) S STC1)
      (sub-tp/tbind1 (sub-env/ext SE) S ST)
@@ -643,6 +661,20 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
      <- extend-sub-tp ST2 T STA2 STB2 STC2
      <- extend-sub-tp ST3 T STA3 STB3 STC3
      .
+
+- : extend-sub-tp (sub-tp/and1a ST1 W2) T (sub-tp/and1a ST1' W2') (sub-tp/and1a ST1A W2') (sub-tp/and1a ST1B W2)
+      <- extend-wf-tp W2 _ W2'
+      <- extend-sub-tp ST1 _ ST1' ST1A ST1B.
+
+- : extend-sub-tp (sub-tp/and1b W1 ST2) T (sub-tp/and1b W1' ST2') (sub-tp/and1b W1' ST2A) (sub-tp/and1b W1 ST2B)
+      <- extend-wf-tp W1 _ W1'
+      <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
+
+
+- : extend-sub-tp (sub-tp/and2 ST1 ST2) T (sub-tp/and2 ST1' ST2') (sub-tp/and2 ST1A ST2A) (sub-tp/and2 ST1B ST2B)
+      <- extend-sub-tp ST1 _ ST1' ST1A ST1B
+      <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
+
 
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _).
 %total (A B C) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _).
@@ -784,6 +816,22 @@ extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
 - : extract-wf (sub-tp/tbind2 ES S SW SE SU) W1 (wf-tp/tbind ES S W2)
       <- extract-wf SU W1 W2.
 
+- : extract-wf (sub-tp/and1a S1 W2)
+      (wf-tp/and W1 W2)
+      W3
+      <- extract-wf S1 W1 W3.
+
+- : extract-wf (sub-tp/and1b W1 S2)
+      (wf-tp/and W1 W2)
+      W3
+      <- extract-wf S2 W2 W3.
+
+- : extract-wf (sub-tp/and2 S1 S2)
+      W1
+      (wf-tp/and W3 W4)
+      <- extract-wf S1 W1 W3
+      <- extract-wf S2 W2 W4.
+
 %worlds () (extract-wf _ _ _)(extract-wf-pev _ _).
 %total (A B) (extract-wf A _ _)(extract-wf-pev B _).
 
@@ -889,6 +937,10 @@ sub-tp-refl :
           (sub-tp/tbind1
              SE S (sub-tp/tbind2 SE S R R R))
           <- sub-tp-refl WU R.
+
+-/tsel: sub-tp-refl (wf-tp/and W1 W2) (sub-tp/and2 (sub-tp/and1a ST1 W2) (sub-tp/and1b W1 ST2))
+   <- sub-tp-refl W1 ST1
+   <- sub-tp-refl W2 ST2.
 
 
 %worlds () (sub-tp-refl _ _).
@@ -1143,6 +1195,7 @@ That's why we have explicit slack in tbind2.
 
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
+%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 
