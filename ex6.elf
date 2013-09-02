@@ -2479,9 +2479,6 @@ sub-decls-trans-aux : wf-decls G2 D2
       <- sub-eq1 EQS' B33x B33xx
       <- sub-eq2 EQU' B33xx B33.
 
-%     <- lookup-label-eq LX12' ODX12' LDX12' LX23' ODX23' LDX23' exp-eq/i label-eq/i OGX12' EQS2' EQSU2'
-%     <- lookup-label-eq LX23' ODX23' LDX23' LX12' ODX12' LDX12' exp-eq/i label-eq/i OGX23' EQS2 EQSU2.
-
 %worlds (ovar) (sub-trans-aux _ _ _ _) (sub-decls-trans-aux _ _ _ _).
 %total {(W2 WD2) (B12 BD12) (B23 BD23)} (sub-trans-aux W2 B12 B23 _) (sub-decls-trans-aux WD2 BD12 BD23 _).
 
