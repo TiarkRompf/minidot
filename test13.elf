@@ -17,10 +17,12 @@
 + add labels to field/method/type members
 + add intersection types (union types tbd)
 + assign intersection types to objects
-    - what about invert-var?
-    - projection lemmas -- should use expansion?
+    - what about invert-var? special-cased for now
+    + projection lemmas
 - enable multiple members in object terms
+    - use expansion for projection lemmas?
 - make type selection work with intersections
+    - expansion?
 }%
 
 
@@ -1403,9 +1405,9 @@ wfv/f    : wf-val (clos LNF R LNV R2 H) G
 % wfv/r    : wf-val (clos LNF R LNV R2 H) G (recv LNV T)
 %             <- wf-val R2 G T.
 % 
-% wfv/t    : wf-val (clos LNF R LNV R2 H) G (rect LNT T1 T2)
-%             <- wf-tp G (rect LNT T1 T2).
-%             % <- wf-val R2 G T.
+
+wfv/t    : wf-val (clos LNF R LNV R2 H) G (rect LNT T1 T2)
+            <- wf-tp G (rect LNT T1 T2).
 
 
 wfv/sub  : wf-val V G T
@@ -1438,6 +1440,7 @@ extract-wf3: wf-val V G T1 -> wf-tp G T1 -> type.
 %mode extract-wf3 +WFE1 -WFE2.
 
 - : extract-wf3 (wfv/f WF WV WR _ _ _ _) (wf-tp/and WF (wf-tp/and WV WR)).
+- : extract-wf3 (wfv/t WR) WR.
 - : extract-wf3 (wfv/sub S TS) W2 <- extract-wf S W1 W2.
 
 %worlds () (extract-wf3 _ _).
@@ -1460,6 +1463,8 @@ extend-wfv: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
             <- extend-wf-tp WR T WR1
             <- extend-wfv TV T TV1
             <- extend-subeq-tp2 ST T ST1.
+-     : extend-wfv (wfv/t WR) T (wfv/t WR1)
+            <- extend-wf-tp WR T WR1.
 
 %worlds () (extend-wfv _ _ _).
 %total A (extend-wfv A _ _).
@@ -1534,16 +1539,26 @@ extract-wf4: subeq-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
 
 %% this will need to change if we add non-closure values
 
+% assign-rect: wf-val V G0 T -> wf-tp G (rect N T1 T2) -> wf-val V G (rect N T1 T2) -> type.
+% %mode assign-rect +A +B -C.
+% - : assign-rect ((wfv/f (WF: wf-tp _ (arrow NF A B)) WV WR TV ST TE WE): (wf-val _ G0 (and (arrow NF A B) (and (recv NV C) (% rect N T1X T2X))))) W 
+%       (wfv/sub ((sub-tp/and1b WF' (sub-tp/and1b WV' SRR)): (sub-tp G _ G _))
+%         ((wfv/f (wf-tp/fun _ _) WV' W TV' ST' TE' WE): (wf-val _ G (and (arrow NF top bot) (and (recv NV top) (rect N T1 T2))% ))) )
+%           <- extract-wf3 TV WXV
+%           <- wfv-widen (subeq-tp/sub (sub-tp/top WXV)) TV TV'
+%           <- subeq-tp-trans ST (subeq-tp/sub SX) ST'
+%           <- sub-tp-refl W SRR.
+% 
+% - : assign-rect (wfv/sub S T) W T' <- assign-rect T W T'.
+% %worlds () (assign-rect _ _ _).
+% %total WFE (assign-rect WFE _ _). 
+
 assign-rect: wf-val V G0 T -> wf-tp G (rect N T1 T2) -> wf-val V G (rect N T1 T2) -> type.
 %mode assign-rect +A +B -C.
-- : assign-rect (wfv/f WF WV WR TV ST TE WE) W 
-      (wfv/sub (sub-tp/and1b WF (sub-tp/and1b WV SRR))
-        (wfv/f WF WV W TV ST TE WE))
-          <- sub-tp-refl W SRR.
-
+- : assign-rect (wfv/f WF WV WR TV ST TE WE) W (wfv/t W).
+- : assign-rect (wfv/t WR) W (wfv/t W).
 - : assign-rect (wfv/sub S T) W T' <- assign-rect T W T'.
 %worlds () (assign-rect _ _ _).
-%trustme
 %total WFE (assign-rect WFE _ _). 
 
 
@@ -1733,21 +1748,99 @@ invert-fun :
 
 
 
+
+%{ ------- inversion helpers: make sense of intersections ----- }%
+
+
+incompat-tp: tpe -> tpe -> type.
+
+incompat/recv-arrow: incompat-tp (recv _ _) (arrow _ _ _).
+incompat/arrow-recv: incompat-tp (arrow _ _ _) (recv _ _).
+
+% incompat/and1:       incompat-tp (and T1 T2) T3 <- incompat-tp T2 T3 <- incompat-tp T1 T3.
+
+
+false: type.
+
+no-subtype: false -> {G1}{T1}{G2}{T2}sub-tp G1 T1 G2 T2 -> type.
+%mode no-subtype +A +B +C +D +E -F.
+%worlds () (no-subtype _ _ _ _ _ _).
+%total (A) (no-subtype A _ _ _ _ _). 
+
+no-subtype1: sub-tp G1 (recv _ _) G2 (arrow _ _ _) -> false -> type.
+%mode no-subtype1 +A -B.
+%worlds () (no-subtype1 _ _).
+%total (A) (no-subtype1 A _). 
+
+
+no-subtype2: sub-tp G1 T1 G2 T2 -> incompat-tp T1 T2 -> false -> type.
+%mode no-subtype2 +A +B -C.
+%worlds () (no-subtype2 _ _ _).
+%total (A) (no-subtype2 A _ _). 
+
+
+project-sub-arrow: sub-tp G1 (and T1 T2) G2 T3 -> incompat-tp T2 T3 -> sub-tp G1 T1 G2 T3 -> type.
+
+- : project-sub-arrow (sub-tp/and1a ST W) E ST.
+- : project-sub-arrow (sub-tp/and1b WF ST) E ST' 
+      <- no-subtype2 ST E F <- no-subtype F _ _ _ _ ST'.
+
+
+%mode project-sub-arrow +A +E -B.
+%worlds () (project-sub-arrow _ _ _).
+%total (A) (project-sub-arrow A _ _). 
+
+
+
 project-sub-arrow: sub-tp G1 (and (arrow NF T1 T2) (and (recv NV T3) (rect NR TS TU))) G2 (arrow NF T1X T2X) -> sub-tp G1 (arrow NF T1 T2) G2 (arrow NF T1X T2X) -> type.
+
+- : project-sub-arrow (sub-tp/and1a ST W) ST.
+- : project-sub-arrow (sub-tp/and1b WF (sub-tp/and1a ST WR)) ST' 
+      <- no-subtype2 ST incompat/recv-arrow F <- no-subtype F _ _ _ _ ST'.
 
 %mode project-sub-arrow +A -B.
 %worlds () (project-sub-arrow _ _).
-%trustme
 %total (A) (project-sub-arrow A _). 
 
 
 
 project-sub-recv: sub-tp G1 (and (arrow NF T1 T2) (and (recv NV T3) (rect NR TS TU))) G2 (recv NV TX) -> sub-tp G1 (recv NV T3) G2 (recv NV TX) -> type.
 
+- : project-sub-recv (sub-tp/and1a ST W) ST'
+      <- no-subtype2 ST incompat/arrow-recv F <- no-subtype F _ _ _ _ ST'.
+- : project-sub-recv (sub-tp/and1b WF (sub-tp/and1a ST WR)) ST. 
+
 %mode project-sub-recv +A -B.
 %worlds () (project-sub-recv _ _).
-%trustme
 %total (A) (project-sub-recv A _). 
+
+
+
+%{
+%%% TODO: rudiments for expansion (not used)
+
+expand-arrow: {G:tenv} {T:tpe} {N:nat} tpe -> tpe -> type.
+
+epa/arrow: expand-arrow G (arrow N T1 T2) N T1 T2.
+epa/and1:  expand-arrow G (and T1 T2) N T3 T4 <- expand-arrow G T1 N T3 T4.
+% epa/and2:  expand-arrow G (and T1 T2) N T3 T4 <- expand-arrow G T2 N T3 T4.
+
+
+expand-monot: sub-tp G1 T1 G2 T2 -> expand-arrow G1 T1 N T11 T12 -> expand-arrow G2 T2 N T21 T22 -> sub-tp G1 (arrow N T11 T12) G2 (arrow N T21 T22) -> type.
+
+- : expand-monot ST epa/arrow epa/arrow ST.
+
+- : expand-monot (sub-tp/and1a ST W) (epa/and1 E1) E2 ST' <- expand-monot ST E1 E2 ST'.
+% - : expand-monot (sub-tp/and1a ST W) (epa/and2 E1) E2 ST' <- expand-monot ST E1 E2 ST'.
+
+% - : expand-monot (sub-tp/and1b W ST) (epa/and1 E1) E2 ST' <- expand-monot STx E1 E2 ST'.
+% - : expand-monot (sub-tp/and1b W ST) (epa/and2 E1) E2 ST' <- expand-monot ST E1 E2 ST'.
+
+%mode expand-monot +A +B +C -D.
+%worlds () (expand-monot _ _ _ _).
+%total (A) (expand-monot _ A _ _). 
+
+}%
 
 
 
