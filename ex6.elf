@@ -1923,6 +1923,26 @@ extract-wf-pev: pev G X L AS AU
 %worlds (ovar) (extract-wf _ _ _) (extract-wf-decls _ _ _) (extract-wf-pev _ _ _ _).
 %total (B D P) (extract-wf B _ _) (extract-wf-decls D _ _) (extract-wf-pev P _ _ _).
 
+extract-wf-pev-low : pev G X L AS AU
+%%
+                      -> wft G AS
+                      -> type.
+%mode extract-wf-pev-low +X1 -X2.
+-    : extract-wf-pev-low (pev/a OG L OD LD WU WS B) WS.
+%worlds (var | ovar) (extract-wf-pev-low _ _).
+%reduces W < P (extract-wf-pev-low P W).
+%total P (extract-wf-pev-low P _).
+
+extract-wf-pev-high : pev G X L AS AU
+%%
+                      -> wft G AU
+                      -> type.
+%mode extract-wf-pev-high +X1 -X2.
+-    : extract-wf-pev-high (pev/a OG L OD LD WU WS B) WU.
+%worlds (var | ovar) (extract-wf-pev-high _ _).
+%reduces W < P (extract-wf-pev-high P W).
+%total P (extract-wf-pev-high P _).
+
 extract-wf-tp : of G M A
 %%
                  -> wft G A
@@ -2200,8 +2220,8 @@ sub-eq2       : tp-eq A2 A2'
 -      : sub-eq2 tp-eq/i B B.
 
 %worlds (var | ovar) (sub-eq2 _ _ _).
-%total EQ (sub-eq2 EQ _ _).
 %reduces B' <= B (sub-eq2 _ B B').
+%total EQ (sub-eq2 EQ _ _).
 
 sub-eq1       : tp-eq A1 A1'
                  -> sub G1 A1 G2 A2
@@ -2212,8 +2232,8 @@ sub-eq1       : tp-eq A1 A1'
 -      : sub-eq1 tp-eq/i B B.
 
 %worlds (var | ovar) (sub-eq1 _ _ _).
-%total EQ (sub-eq1 EQ _ _).
 %reduces B' <= B (sub-eq1 _ B B').
+%total EQ (sub-eq1 EQ _ _).
 
 wft-eq        : tp-eq A A'
                  -> wft G A
@@ -2225,8 +2245,8 @@ wft-eq        : tp-eq A A'
 - : wft-eq tp-eq/i W W.
 
 %worlds (var | ovar) (wft-eq _ _ _).
-%total EQ (wft-eq EQ _ _).
 %reduces W' <= W (wft-eq _ W W').
+%total EQ (wft-eq EQ _ _).
 
 pev-eq        : tp-eq AS AS'
                  -> tp-eq AU AU'
@@ -2239,8 +2259,8 @@ pev-eq        : tp-eq AS AS'
 - : pev-eq tp-eq/i tp-eq/i P P.
 
 %worlds (var | ovar) (pev-eq _ _ _ _).
-%total EQ (pev-eq EQ _ _ _).
 %reduces P' <= P (pev-eq _ _ P P').
+%total EQ (pev-eq EQ _ _ _).
 
 lookup-label-eq: lookup G M (arrow D _ _)
                   -> dordered D
@@ -2264,6 +2284,46 @@ lookup-label-eq: lookup G M (arrow D _ _)
 
 %worlds (ovar) (lookup-label-eq _ _ _ _ _ _ _ _ _ _ _).
 %total {}      (lookup-label-eq _ _ _ _ _ _ _ _ _ _ _).
+
+
+pev-lookup-eq     : pev G X L AS AU
+                 -> pev G X L AS' AU'
+%%
+                 -> tp-eq AS AS'
+                 -> tp-eq AU AU'
+      -> type.
+%mode pev-lookup-eq +X1 +X2 -X3 -X4.
+
+- : pev-lookup-eq
+     (pev/a OG L OD LD WU WS B)
+     (pev/a OG' L' OD' LD' WU' WS' B')
+     EQS EQU
+<- lookup-label-eq L OD LD L' OD' LD' exp-eq/i label-eq/i OG EQS EQU.
+
+%worlds (ovar) (pev-lookup-eq _ _ _ _).
+%total P (pev-lookup-eq P _ _ _).
+
+extract-sub-decls-one-parts: sub-decls G1 (dcons dnil L AS1 AU1) G2 (dcons dnil L AS2 AU2)
+%%
+                              -> sub G1 AS1 G1 AU1
+                              -> sub G2 AS2 G2 AU2
+                              -> sub G2 AS2 G1 AS1
+                              -> sub G1 AU1 G2 AU2
+                              -> type.
+%mode extract-sub-decls-one-parts +X1 -X2 -X3 -X4 -X5.
+
+- : extract-sub-decls-one-parts
+     (sub-decls/cons-hit
+        dbounded/nil dbounded/nil (sub-decls/nil wf-decls/nil)
+        BU12 BS21 B22 B11)
+     B11 B22 BS21 BU12.
+
+%worlds (var | ovar) (extract-sub-decls-one-parts _ _ _ _ _).
+%reduces B < D (extract-sub-decls-one-parts D B _ _ _).
+%reduces B < D (extract-sub-decls-one-parts D _ B _ _).
+%reduces B < D (extract-sub-decls-one-parts D _ _ B _).
+%reduces B < D (extract-sub-decls-one-parts D _ _ _ B).
+%total {} (extract-sub-decls-one-parts _ _ _ _ _).
 
 sub-trans-aux : wft G2 A2
                  -> sub G1 A1 G2 A2
@@ -2376,15 +2436,53 @@ sub-decls-trans-aux : wf-decls G2 D2
      <- wft-eq EQS2 WS2 WS2x
      <- sub-trans-aux WS2x B12' BS32 B13.
 
-% TODO
-% -/tselxx: sub-trans-aux
-%           (wft/tsel P2)
-%           (sub/tselx B12 B21 P12 SX1 SX2)
-%           (sub/tselx B23 B32 P23 SX2' SX3)
-%            (sub/tselx B13 B31 P13 SX1' SX3')
+-/tselxx: sub-trans-aux
+           (wft/tsel P2)
+           ((sub/tselx BD12 BD21 P12 (SX1: sub-ctx G12 G1) (SX2: sub-ctx G12 G2)): sub G1 (tsel X L) G2 (tsel X L))
+           ((sub/tselx BD23 BD32 P23 (SX2': sub-ctx G23 G2) (SX3: sub-ctx G23 G3)): sub G2 (tsel X L) G3 (tsel X L))
+           ((sub/tselx
+               (sub-decls/cons-hit
+                  dbounded/nil dbounded/nil (sub-decls/nil wf-decls/nil)
+                  BU13 BS31 B33 B11)
+               (sub-decls/cons-hit
+                  dbounded/nil dbounded/nil (sub-decls/nil wf-decls/nil)
+                  BU31 BS13 B11 B33)
+               P13 SX1' SX3'): sub G1 (tsel X L) G3 (tsel X L))
+      <- extend-pev-sub-ctx P12 SX2 P12'
+      <- extend-pev-sub-ctx P23 SX2' P23'
+      <- pev-lookup-eq P23' P12' EQS' EQU'
+      <- pev-lookup-eq P12' P23' EQS'' EQU''
+      <- extract-sub-decls-one-parts BD12 B11 _   BS21 BU12
+      <- extract-sub-decls-one-parts BD21 _   _    BS12 BU21
+      <- extract-sub-decls-one-parts BD23 _   B33x BS32 BU23
+      <- extract-sub-decls-one-parts BD32 _   _    BS23 BU32
+      <- pev-lookup-eq P2 P12' EQS EQU
+      <- pev-eq EQS EQU P2 P2'
+      <- extract-wf-pev-low P2' WS2
+      <- extract-wf-pev-high P2' WU2
+      <- sub-eq1 EQU' BU23 BU23x
+      <- sub-eq2 EQU' BU23x BU23'
+      <- sub-eq1 EQS' BS32 BS32x
+      <- sub-eq2 EQS' BS32x BS32'
+      <- sub-eq1 EQU' BU32 BU32x
+      <- sub-eq2 EQU' BU32x BU32'
+      <- sub-eq1 EQS' BS23 BS23x
+      <- sub-eq2 EQS' BS23x BS23'
+      <- sub-trans-aux WU2 BU12 BU23' BU13
+      <- sub-trans-aux WS2 BS32' BS21 BS31
+      <- sub-trans-aux WU2 BU32' BU21 BU31
+      <- sub-trans-aux WS2 BS12 BS23' BS13
+      <- pev-eq EQS' EQU' P23 P23x
+      <- pev-dia P2' P12 P23x SX2 SX2' P13 SX1x SX3x
+      <- sub-ctx-trans SX1x SX1 SX1'
+      <- sub-ctx-trans SX3x SX3 SX3'
+      <- sub-eq1 EQS' B33x B33xx
+      <- sub-eq2 EQU' B33xx B33.
+
+%     <- lookup-label-eq LX12' ODX12' LDX12' LX23' ODX23' LDX23' exp-eq/i label-eq/i OGX12' EQS2' EQSU2'
+%     <- lookup-label-eq LX23' ODX23' LDX23' LX12' ODX12' LDX12' exp-eq/i label-eq/i OGX23' EQS2 EQSU2.
 
 %worlds (ovar) (sub-trans-aux _ _ _ _) (sub-decls-trans-aux _ _ _ _).
-%trustme
 %total {(W2 WD2) (B12 BD12) (B23 BD23)} (sub-trans-aux W2 B12 B23 _) (sub-decls-trans-aux WD2 BD12 BD23 _).
 
 sub-trans   : sub G1 A1 G2 A2
