@@ -15,7 +15,7 @@
 
 %{
 - add labels to field/method/type members
-- add intersection/union types
++ add intersection types (union types tbd)
 - assign intersection types to objects
 - enable multiple members in object terms
 - make type selection work with intersections
@@ -938,7 +938,7 @@ sub-tp-refl :
              SE S (sub-tp/tbind2 SE S R R R))
           <- sub-tp-refl WU R.
 
--/tsel: sub-tp-refl (wf-tp/and W1 W2) (sub-tp/and2 (sub-tp/and1a ST1 W2) (sub-tp/and1b W1 ST2))
+-/tand: sub-tp-refl (wf-tp/and W1 W2) (sub-tp/and2 (sub-tp/and1a ST1 W2) (sub-tp/and1b W1 ST2))
    <- sub-tp-refl W1 ST1
    <- sub-tp-refl W2 ST2.
 
@@ -1194,8 +1194,43 @@ That's why we have explicit slack in tbind2.
        <- sub-tp-trans-aux WY0 SU SBT3 SBT5.
 
 
+-/tand1a : sub-tp-trans-aux
+      W
+      (sub-tp/and1a SBT1 W1)
+      SBT3
+      (sub-tp/and1a SBT5 W1)
+      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+
+-/tand1b : sub-tp-trans-aux
+      W
+      (sub-tp/and1b W1 SBT1)
+      SBT3
+      (sub-tp/and1b W1 SBT5)
+      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+
+-/tand2 : sub-tp-trans-aux
+      W
+      SBT1
+      (sub-tp/and2 ST1 ST2)
+      (sub-tp/and2 ST1' ST2')
+      <- sub-tp-trans-aux W SBT1 ST1 ST1'
+      <- sub-tp-trans-aux W SBT1 ST2 ST2'.
+
+-/tand2-tand1a : sub-tp-trans-aux
+      (wf-tp/and W1 W2)
+      (sub-tp/and2 SBT1 _)
+      (sub-tp/and1a SBT3 _)
+      SBT5
+      <- sub-tp-trans-aux W1 SBT1 SBT3 SBT5.
+
+-/tand2-tand1b : sub-tp-trans-aux
+      (wf-tp/and W1 W2)
+      (sub-tp/and2 _ SBT1)
+      (sub-tp/and1b _ SBT3)
+      SBT5
+      <- sub-tp-trans-aux W2 SBT1 SBT3 SBT5.
+
 %worlds () (sub-tp-trans-aux _ _ _ _).
-%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 
