@@ -2479,6 +2479,45 @@ sub-decls-trans-aux : wf-decls G2 D2
       <- sub-eq1 EQS' B33x B33xx
       <- sub-eq2 EQU' B33xx B33.
 
+- : sub-decls-trans-aux
+     WD2
+     BD12
+     (sub-decls/nil _)
+     (sub-decls/nil WD1)
+<- extract-wf-decls BD12 WD1 _.
+
+- : sub-decls-trans-aux
+     (wf-decls/cons _ WD2 _ WU2 WS2)
+     (sub-decls/cons-hit _   OD1 BD12 BU12 BS21 _   B11)
+     (sub-decls/cons-hit OD3 OD2 BD23 BU23 BS32 B33 B22)
+     (sub-decls/cons-hit OD3 OD1 BD13 BU13 BS31 B33 B11)
+<- sub-decls-trans-aux WD2 BD12 BD23 BD13
+<- sub-trans-aux WU2 BU12 BU23 BU13
+<- sub-trans-aux WS2 BS32 BS21 BS31.
+
+- : sub-decls-trans-aux
+     WD2
+     (sub-decls/cons-miss (dbounded/cons _ L21) WD1 BD12)
+     (sub-decls/cons-hit OD3 OD2 BD23 BU23 BS32 B33 B22)
+     (sub-decls/cons-miss (dbounded/cons OD3 L21) WD1 BD13)
+<- sub-decls-trans-aux WD2 BD12 (sub-decls/cons-hit OD3 OD2 BD23 BU23 BS32 B33 B22) BD13.
+
+- : sub-decls-trans-aux
+     (wf-decls/cons _ WD2 _ WU2 WS2)
+     (sub-decls/cons-hit OD1 OD2 BD12 BU12 BS21 B22 B11)
+     (sub-decls/cons-miss OD3 _ BD23)
+     (sub-decls/cons-miss OD3 WD1 BD13)
+<- extract-wf-decls (sub-decls/cons-hit OD1 OD2 BD12 BU12 BS21 B22 B11) WD1 _
+<- sub-decls-trans-aux WD2 BD12 BD23 BD13.
+
+- : sub-decls-trans-aux
+     WD2
+     (sub-decls/cons-miss (dbounded/cons OD2 L21) WD1 BD12)
+     (sub-decls/cons-miss (dbounded/cons OD3 L32) WD2' BD23)
+     (sub-decls/cons-miss (dbounded/cons OD3 L31) WD1 BD13)
+<- sub-decls-trans-aux WD2 BD12 (sub-decls/cons-miss (dbounded/cons OD3 L32) WD2' BD23) BD13
+<- label-less-trans L32 L21 L31.
+
 %worlds (ovar) (sub-trans-aux _ _ _ _) (sub-decls-trans-aux _ _ _ _).
 %total {(W2 WD2) (B12 BD12) (B23 BD23)} (sub-trans-aux W2 B12 B23 _) (sub-decls-trans-aux WD2 BD12 BD23 _).
 
