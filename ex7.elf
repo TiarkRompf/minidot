@@ -282,6 +282,25 @@ sub/tselx : sub G1 (tsel X L) G2 (tsel X L)
        <- pev G X L AS AU
        <- sub-decls G2 (dcons dnil L AS AU) G1 (dcons dnil L AS AU)
        <- sub-decls G1 (dcons dnil L AS AU) G2 (dcons dnil L AS AU).
+sub/and1l : sub G1 (and T1L T1R) G2 T2
+       <- wft G1 T1R
+       <- sub G1 T1L G2 T2.
+sub/and1r : sub G1 (and T1L T1R) G2 T2
+       <- wft G1 T1L
+       <- sub G1 T1R G2 T2.
+sub/and2  : sub G1 T1 G2 (and T2L T2R)
+       <- sub G1 T1 G2 T2L
+       <- sub G1 T1 G2 T2R.
+sub/or2l : sub G1 T1 G2 (or T2L T2R)
+       <- wft G2 T2R
+       <- sub G1 T1 G2 T2L.
+sub/or2r : sub G1 T1 G2 (or T2L T2R)
+       <- wft G2 T2L
+       <- sub G1 T1 G2 T2R.
+sub/or1  : sub G1 (or T1L T1R) G2 T1
+       <- sub G1 T1L G2 T2
+       <- sub G1 T1R G2 T2.
+
 
 sub-decls/nil  : sub-decls G1 D1 G2 dnil
               <- wf-decls G1 D1.
@@ -309,6 +328,12 @@ wft/arrow : wft G (arrow D AS AU)
        <- wft G AU.
 wft/tsel  : wft G (tsel X L)
        <- pev G X L AS AU.
+wft/and   : wft G (and TL TR)
+       <- wft G TL
+       <- wft G TR.
+wft/or    : wft G (or TL TR)
+       <- wft G TL
+       <- wft G TR.
 
 wf-decls/nil  : wf-decls G dnil.
 wf-decls/cons : wf-decls G (dcons D L AS AU)
@@ -1486,6 +1511,19 @@ sub-refl/tsel  : sub-refl
                      sub-ctx/nil)
             <- sub-refl WU BU
             <- sub-refl WS BS.
+
+sub-refl/and  : sub-refl
+                 (wft/and WR WL)
+                 (sub/and2 (sub/and1r BR WL) (sub/and1l BL WR))
+            <- sub-refl WR BR
+            <- sub-refl WL BL.
+
+sub-refl/or   : sub-refl
+                 (wft/or WR WL)
+                 (sub/or1 (sub/or2r BR WL) (sub/or2l BL WR))
+            <- sub-refl WR BR
+            <- sub-refl WL BL.
+
 
 sub-decls-refl/nil : sub-decls-refl
                       wf-decls/nil
