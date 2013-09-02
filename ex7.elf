@@ -297,7 +297,7 @@ sub/or2l : sub G1 T1 G2 (or T2L T2R)
 sub/or2r : sub G1 T1 G2 (or T2L T2R)
        <- wft G2 T2L
        <- sub G1 T1 G2 T2R.
-sub/or1  : sub G1 (or T1L T1R) G2 T1
+sub/or1  : sub G1 (or T1L T1R) G2 T2
        <- sub G1 T1L G2 T2
        <- sub G1 T1R G2 T2.
 
@@ -2088,6 +2088,44 @@ extract-wf-pev: pev G X L AS AU
          (wft/tsel P2)
    <- extend-pev-sub-ctx P S1 P1
    <- extend-pev-sub-ctx P S2 P2.
+
+-     : extract-wf
+         (sub/and1l BL WR)
+         (wft/and WR WL')
+         W2
+   <- extract-wf BL WL' W2.
+
+-     : extract-wf
+         (sub/and1r BR WL)
+         (wft/and WR' WL)
+         W2
+   <- extract-wf BR WR' W2.
+
+-     : extract-wf
+         (sub/and2 BR BL)
+         W1
+         (wft/and WR WL)
+   <- extract-wf BR W1 WR
+   <- extract-wf BL _  WL.
+
+-     : extract-wf
+         (sub/or2l BL WR)
+         W1
+         (wft/or WR WL')
+   <- extract-wf BL W1 WL'.
+
+-     : extract-wf
+         (sub/or2r BR WL)
+         W1
+         (wft/or WR' WL)
+   <- extract-wf BR W1 WR'.
+
+-     : extract-wf
+         (sub/or1 BR BL)
+         (wft/or WR WL)
+         W2
+   <- extract-wf BR WR W2
+   <- extract-wf BL WL _.
 
 -     : extract-wf-decls
          (sub-decls/nil WD1)
