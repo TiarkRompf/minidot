@@ -340,7 +340,7 @@ exp-tp/and2 : exp-tp (and T1 T2) N (tsome T2') <- exp-tp T1 N tnone <- exp-tp T2
 %% TODO: interesting cases
 
 tlookexp: tenv -> exp -> tpe -> type.
-tle: tlookexp G (var N) T <- tlookup G (var N) T0 <- exp-tp T0 _ (tsome T).
+tle: tlookexp G (var N) (rect LN T1 T2)  <- exp-tp T0 LN (tsome (rect LN T1 T2)) <- tlookup G (var N) T0.
 
 pev  : path-eval G E (rect N TS TU) <- wf-tp G (rect N TS TU) <- tlookexp G E (rect N TS TU).
 
@@ -482,8 +482,8 @@ extend-wf-lkp: tlookup G (var N) T -> {Z: tpe} tlookup (tcons Z G) (var N) T -> 
 
 extend-wf-lkpe: tlookexp G (var N) T -> {Z: tpe} tlookexp (tcons Z G) (var N) T -> type.
 %mode extend-wf-lkpe +A +B -C.
+- : extend-wf-lkpe (tle L E) Z (tle L' E) <- extend-wf-lkp L Z L'.
 %worlds () (extend-wf-lkpe _ _ _).
-%trustme
 %total A (extend-wf-lkpe A _ _).
 
 
@@ -498,8 +498,8 @@ extend-wf-lkp-mult: tlookup G (var N) T -> sub-env G G1 -> tlookup G1 (var N) T 
 
 extend-wf-lkpe-mult: tlookexp G (var N) T -> sub-env G G1 -> tlookexp G1 (var N) T -> type.
 %mode extend-wf-lkpe-mult +A +B -C.
+- : extend-wf-lkpe-mult (tle L E) Z (tle L' E) <- extend-wf-lkp-mult L Z L'.
 %worlds () (extend-wf-lkpe-mult _ _ _).
-%trustme
 %total A (extend-wf-lkpe-mult _ A _).
 
 
@@ -558,11 +558,59 @@ lookup-eq: tlookup G2 (var N1) (rect LN T1 T3) -> tlookup G2 (var N2) (rect LN T
 %worlds () (lookup-eq _ _ _ _ _).
 %total {T2} (lookup-eq T2 _ _ _ _).
 
+
+
+lookup-zero-eq0: tlookup-zero G2 (var N1) T1 -> tlookup-zero G2 (var N2) T2 -> eq N1 N2 
+  -> same T1 T2 -> type.
+%mode lookup-zero-eq0 +P1 +P2 +E -SBT.
+
+- : lookup-zero-eq0 tl/hit tl/hit eq/z ident.
+- : lookup-zero-eq0 (tl/miss A) (tl/miss B) (eq/s E) X <- lookup-zero-eq0 A B E X.
+
+%worlds () (lookup-zero-eq0 _ _ _ _).
+%total {T2} (lookup-zero-eq0 T2 _ _ _).
+
+
+lookup-eq0: tlookup G2 (var N1) T1 -> tlookup G2 (var N2) T2 -> eq N1 N2
+  -> same T1 T2 -> type.
+%mode lookup-eq0 +P1 +P2 +E -SBT.
+
+- : lookup-eq0 (tl L1 A1 F1) (tl L2 A2 F2) EN X
+        <- size-eq F1 F2 ES 
+        <- sub-eq EN ES A1 A2 EM 
+        <- lookup-zero-eq0 L1 L2 EM X.
+
+%worlds () (lookup-eq0 _ _ _ _).
+%total {T2} (lookup-eq0 T2 _ _ _).
+
+
+expand-eq: exp-tp T LN (tsome (rect LN T1 T3)) -> exp-tp T LN (tsome (rect LN T2 T4)) 
+-> same T1 T2 -> same T3 T4 -> type.
+%mode expand-eq +P1 +P2 -SBT -SBT.
+%worlds () (expand-eq _ _ _ _).
+%trustme
+%total {T2} (expand-eq T2 _ _ _).
+
+
+eq-exp-low: same T1 T1' -> exp-tp T1 N T2 -> exp-tp T1' N T2 -> type.
+%mode eq-exp-low +P1 +P2 -SBT.
+
+- : eq-exp-low ident S S.
+
+%worlds () (eq-exp-low _ _ _).
+%total {T2} (eq-exp-low T2 _ _).
+%reduces N3 <= N2 (eq-exp-low _ N2  N3).
+
 lookexp-eq: tlookexp G2 (var N1) (rect LN T1 T3) -> tlookexp G2 (var N2) (rect LN T2 T4) -> eq N1 N2
   -> same T1 T2 -> same T3 T4 -> type.
 %mode lookexp-eq +P1 +P2 +E -SBT -SBT.
+
+- : lookexp-eq (tle L1 E1) (tle L2 E2) E S1 S2 
+      <- lookup-eq0 L1 L2 E X
+      <- eq-exp-low X E1 E1'
+      <- expand-eq E1' E2 S1 S2.
+
 %worlds () (lookexp-eq _ _ _ _ _).
-%trustme
 %total {T2} (lookexp-eq T2 _ _ _ _).
 
 
@@ -603,6 +651,8 @@ eq-wf: same T1 T1' -> wf-tp G1 T1 -> wf-tp G1 T1' -> type.
 %worlds () (eq-wf _ _ _).
 %total {T2} (eq-wf T2 _ _).
 %reduces N3 <= N2 (eq-wf _ N2  N3).
+
+
 
 eq-pev: same T1 T1' -> path-eval G1 N T1 -> path-eval G1 N T1' -> type.
 %mode eq-pev +P1 +P2 -SBT.
@@ -1381,7 +1431,7 @@ type-exp   : tenv -> exp -> tpe -> type.
 t/var      : type-exp G X T <- tlookup G X T <- wf-tp G T.
 
 t/varx     : type-exp G X (rect N (tsel X N) (tsel X N)) %% TODO: proper expansion
-                <- tlookexp G X (rect N T1 T2) <- wf-tp G (rect N T1 T2).
+                <- tlookup G X (rect N T1 T2) <- wf-tp G (rect N T1 T2).
 
 
 t/fun      : type-exp G (fun LNF R LNV R2 M) 
@@ -1478,7 +1528,7 @@ extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 %mode extract-wf2 +WFE1 -WFE2.
 
 - : extract-wf2 (t/var W L) W.
-- : extract-wf2 (t/varx W L) (wf-tp/rect (sub-tp/tselx ST ST (pev L W) sub-env/refl sub-env/refl) (wf-tp/tsel (pev L W)) (wf-tp/tsel (pev L W))) <- sub-tp-refl W ST.
+- : extract-wf2 (t/varx W L) (wf-tp/rect (sub-tp/tselx ST ST (pev (tle L exp-tp/rect) W) sub-env/refl sub-env/refl) (wf-tp/tsel (pev (tle L exp-tp/rect) W)) (wf-tp/tsel (pev (tle L exp-tp/rect) W))) <- sub-tp-refl W ST.
 - : extract-wf2 (t/fun WF WV WR _ _ _) (wf-tp/and WF (wf-tp/and WV WR)).
 - : extract-wf2 (t/app TS1 (TS2: type-exp _ _ (arrow _ _ _))) W2 <- extract-wf2 TS2 (wf-tp/fun W2 W1).
 - : extract-wf2 (t/sel TS) W <- extract-wf2 TS (wf-tp/recv W).
@@ -1722,15 +1772,14 @@ invert-var :
 -     : invert-var (t/var W L) L W z (case-f SB)
             % <- extract-wf2 (t/var L) W
             <- subeq-tp-refl W SB.
-% -     : invert-var (t/varx W (tle L E)) L W _ (case-t SB) 
-%            <- varx-tp-wf (pev L W) WS
-%            <- subeq-tp-refl WS SB.
+-     : invert-var (t/varx W L) L W _ (case-t SB) 
+           <- varx-tp-wf (pev (tle L exp-tp/rect) W) WS
+           <- subeq-tp-refl WS SB.
 -     : invert-var (t/sub SB1 TS) L W _ SB2 
             <- invert-var TS L W _ SB 
             <- cases-subeq-trans SB (subeq-tp/sub SB1) SB2.
 
 %worlds () (invert-var _ _ _ _ _).
-%trustme
 %total WFE (invert-var WFE _ _ _ _). 
 
 
