@@ -14,6 +14,7 @@
 %%%%%% work in progress %%%%%%
 
 %{
+
 + add labels to field/method/type members
 + add intersection types (union types tbd)
 + assign intersection types to objects
@@ -22,8 +23,20 @@
 + enable multiple members in object terms
     + only multiple type members for now
     - use expansion for projection lemmas?
-- make type selection work with intersections
-    - expansion?
++ make type selection work with intersections
+    + expansion
+    - add 'interesting' expansion cases
+
+Note: 
+
+Expansion is really wimply right now. It does 
+not compute actual meets and joins but is only
+defined for cases like this:
+
+   T1 --> tnone     T2 --> tsome T2'
+  ----------------------------------
+          (T1 /\ T2) -->  T2'
+
 }%
 
 
@@ -334,8 +347,14 @@ exp-tp/bot  : exp-tp bot N tnone.
 exp-tp/fun  : exp-tp (arrow N1 T1 T2) N2 tnone.
 exp-tp/recv : exp-tp (recv N1 T) N2 tnone.
 exp-tp/rect : exp-tp (rect N T1 T2) N (tsome (rect N T1 T2)).
-exp-tp/and1 : exp-tp (and T1 T2) N (tsome T1') <- exp-tp T1 N (tsome T1') <- exp-tp T2 N tnone.
-exp-tp/and2 : exp-tp (and T1 T2) N (tsome T2') <- exp-tp T1 N tnone <- exp-tp T2 N (tsome T2').
+exp-tp/rectn: exp-tp (rect N1 T1 T2) N2 tnone
+              <- ne N1 N2.
+exp-tp/and1 : exp-tp (and T1 T2) N (tsome T1') 
+              <- exp-tp T2 N tnone
+              <- exp-tp T1 N (tsome T1').
+exp-tp/and2 : exp-tp (and T1 T2) N (tsome T2') 
+              <- exp-tp T2 N (tsome T2')
+              <- exp-tp T1 N tnone.
 
 %% TODO: interesting cases
 
@@ -584,11 +603,38 @@ lookup-eq0: tlookup G2 (var N1) T1 -> tlookup G2 (var N2) T2 -> eq N1 N2
 %total {T2} (lookup-eq0 T2 _ _ _).
 
 
+
+false: type.
+
+ne-irrefl: ne N N -> false -> type.
+%mode ne-irrefl +A -B.
+- : ne-irrefl (ne/s NE) F <- ne-irrefl NE F.
+%worlds () (ne-irrefl _ _).
+%total (A) (ne-irrefl A _).
+
+no-eq: false -> {T1}{T2} same T1 T2 -> type.
+%mode no-eq +A +B +C -D.
+%worlds () (no-eq _ _ _ _).
+%total (A) (no-eq A _ _ _).
+
+
 expand-eq: exp-tp T LN (tsome (rect LN T1 T3)) -> exp-tp T LN (tsome (rect LN T2 T4)) 
 -> same T1 T2 -> same T3 T4 -> type.
 %mode expand-eq +P1 +P2 -SBT -SBT.
+
+- : expand-eq exp-tp/rect exp-tp/rect ident ident.
+- : expand-eq (exp-tp/and1 ES1 EN1) (exp-tp/and1 ES2 EN2) S1 S2 <- expand-eq ES1 ES2 S1 S2.
+- : expand-eq (exp-tp/and2 EN1 ES1) (exp-tp/and2 EN2 ES2) S1 S2 <- expand-eq ES1 ES2 S1 S2.
+
+- : expand-eq (exp-tp/and2 (exp-tp/rectn (N1)) exp-tp/rect)
+         (exp-tp/and1 exp-tp/rect (exp-tp/rectn (N2))) S1 S2
+            <- ne-irrefl N1 F <- no-eq F _ _ S1 <- no-eq F _ _ S2.
+
+- : expand-eq (exp-tp/and1 exp-tp/rect (exp-tp/rectn (N1)))
+         (exp-tp/and2 (exp-tp/rectn (N2)) exp-tp/rect) S1 S2
+            <- ne-irrefl N1 F <- no-eq F _ _ S1 <- no-eq F _ _ S2.
+
 %worlds () (expand-eq _ _ _ _).
-%trustme
 %total {T2} (expand-eq T2 _ _ _).
 
 
