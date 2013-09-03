@@ -323,7 +323,15 @@ wf-tp : tenv -> tpe -> type.
 
 sub-tp : tenv -> tpe -> tenv -> tpe -> type.
 
-pev  : path-eval G E T <- wf-tp G T <- tlookup G E T.
+topt : type.
+tnone: topt.
+tsome: tpe -> topt.
+
+exp-tp: tpe -> nat -> topt -> type.
+
+exp-tp/rect: exp-tp (rect N TS TU) N (tsome (rect N TS TU)).
+
+pev  : path-eval G E (rect N TS TU) <- wf-tp G (rect N TS TU) <- exp-tp (rect N TS TU) N (tsome (rect N TS TU)) <- tlookup G E (rect N TS TU).
 
 
 sub-tp/int  : sub-tp G1 int G2 int.
@@ -598,7 +606,7 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 %mode extend-sub-tp +A +B -C -D -E.
 
 
-- : extend-wf-pev (pev L W) T (pev L1 W1)
+- : extend-wf-pev (pev L E W) T (pev L1 E W1)
       <- extend-wf-tp W T W1
       <- extend-wf-lkp L T L1.
 
@@ -776,7 +784,7 @@ extend-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> sub-env G2 G3 -> sub-tp G1 T1 G3 T2 -
 extend-wf-pev-mult : path-eval G E T -> sub-env G G1 -> path-eval G1 E T -> type.
 %mode extend-wf-pev-mult +A +B -C.
 
-- : extend-wf-pev-mult (pev L W) S (pev L1 W1)
+- : extend-wf-pev-mult (pev L E W) S (pev L1 E W1)
       <- extend-wf-tp-mult W S W1
       <- extend-wf-lkp-mult L S L1.
 
@@ -795,7 +803,7 @@ extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
 extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
 %mode extract-wf-pev +P -S.
 
-- : extract-wf-pev (pev L W) W.
+- : extract-wf-pev (pev L E W) W.
 
 
 - : extract-wf sub-tp/int wf-tp/int wf-tp/int.
@@ -945,7 +953,7 @@ sub-tp-refl :
    <- sub-tp-refl T2 SBT2.
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
--/tsel: sub-tp-refl (wf-tp/tsel (pev L W)) (sub-tp/tselx ST ST (pev L W) sub-env/refl sub-env/refl)
+-/tsel: sub-tp-refl (wf-tp/tsel (pev L E W)) (sub-tp/tselx ST ST (pev L E W) sub-env/refl sub-env/refl)
    <- sub-tp-refl W ST.
 
 
@@ -1030,17 +1038,17 @@ sub-tp-trans-aux :
 
 %% case p.T < p.T && p.T < T3   -->   p.T < T3
 
--/tselx1  : sub-tp-trans-aux
-      (wf-tp/tsel (pev (P0: (tlookup G2 (var N) (rect LN T2 T2U))) (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) ))
+-/tselx1  : sub-tp-trans-aux %%TODO (E0: exp-tp (rect LN T2 T2U) LN (tsome (rect LN T2 T2U)))
+      (wf-tp/tsel (pev (P0: (tlookup G2 (var N) (rect LN T2 T2U))) E0 (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) ))
 
-      (sub-tp/tselx (sub-tp/rect (SY24:sub-tp G1 T2UA G2 T2UA) SY31 SY34 SY12) _ (pev (P1: (tlookup G0 (var N) (rect LN T2A T2UA))) (wf-tp/rect AB1 W1X W1Y)) (SX1: sub-env G0 G1) (SX2: sub-env G0 G2))
+      (sub-tp/tselx (sub-tp/rect (SY24:sub-tp G1 T2UA G2 T2UA) SY31 SY34 SY12) _ (pev (P1: (tlookup G0 (var N) (rect LN T2A T2UA))) E1 (wf-tp/rect AB1 W1X W1Y)) (SX1: sub-env G0 G1) (SX2: sub-env G0 G2))
 
-      (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) (pev (P2: (tlookup G2 (var N) (rect LN T2B T2UB))) (wf-tp/rect AB2 W2X W2Y)))
-      (sub-tp/tsel1 SBT5 (pev PXX (wf-tp/rect AB11' W1X1' W1Y1')))
+      (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) (pev (P2: (tlookup G2 (var N) (rect LN T2B T2UB))) E2 (wf-tp/rect AB2 W2X W2Y)))
+      (sub-tp/tsel1 SBT5 (pev PXX EXX (wf-tp/rect AB11' W1X1' W1Y1')))
 
 
-      <- extend-wf-pev-mult (pev P1 (wf-tp/rect AB1 W1X W1Y)) SX1 (pev PXX (wf-tp/rect AB11' W1X1' W1Y1'))
-      <- extend-wf-pev-mult (pev P1 (wf-tp/rect AB1 W1X W1Y)) SX2 (pev P1' (wf-tp/rect AB1' W1X' W1Y'))
+      <- extend-wf-pev-mult (pev P1 E1 (wf-tp/rect AB1 W1X W1Y)) SX1 (pev PXX EXX (wf-tp/rect AB11' W1X1' W1Y1'))
+      <- extend-wf-pev-mult (pev P1 E1 (wf-tp/rect AB1 W1X W1Y)) SX2 (pev P1' E1' (wf-tp/rect AB1' W1X' W1Y'))
 
       <- eq-refl N Q
       <- lookup-eq P0 P1' Q (S3: same T2  T2A) (S4: same T2U  T2UA)
@@ -1056,17 +1064,17 @@ sub-tp-trans-aux :
 %% case T1 < p.T && p.T < p.T   -->   T1 < p.T
 
 -/tselx2  : sub-tp-trans-aux
-      (wf-tp/tsel (pev (P0: (tlookup G2 (var N) (rect LN T2 T2U))) (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) ))
+      (wf-tp/tsel (pev (P0: (tlookup G2 (var N) (rect LN T2 T2U))) E0 (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) ))
 
-      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (P1: (tlookup G2 (var N) (rect LN T2A T2UA))) (wf-tp/rect AB1 W1X W1Y)))
+      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (P1: (tlookup G2 (var N) (rect LN T2A T2UA))) E1 (wf-tp/rect AB1 W1X W1Y)))
 
-      (sub-tp/tselx _ (sub-tp/rect SY24 SY31 SY34 SY12) (pev (P2: (tlookup G0 (var N) (rect LN T2B T2UB))) (wf-tp/rect AB2 W2X W2Y)) (SX2: sub-env G0 G2) (SX3: sub-env G0 G3))
+      (sub-tp/tselx _ (sub-tp/rect SY24 SY31 SY34 SY12) (pev (P2: (tlookup G0 (var N) (rect LN T2B T2UB))) E2 (wf-tp/rect AB2 W2X W2Y)) (SX2: sub-env G0 G2) (SX3: sub-env G0 G3))
 
-      (sub-tp/tsel2 SBT5 (pev PXX (wf-tp/rect AB2' W2X' W2Y')))
+      (sub-tp/tsel2 SBT5 (pev PXX EXX (wf-tp/rect AB2' W2X' W2Y')))
 
 
-      <- extend-wf-pev-mult (pev P2 (wf-tp/rect AB2 W2X W2Y)) SX2 (pev P2' (wf-tp/rect AB21' W2X1' W2Y1'))
-      <- extend-wf-pev-mult (pev P2 (wf-tp/rect AB2 W2X W2Y)) SX3 (pev PXX (wf-tp/rect AB2' W2X' W2Y'))
+      <- extend-wf-pev-mult (pev P2 E2 (wf-tp/rect AB2 W2X W2Y)) SX2 (pev P2' E2' (wf-tp/rect AB21' W2X1' W2Y1'))
+      <- extend-wf-pev-mult (pev P2 E2 (wf-tp/rect AB2 W2X W2Y)) SX3 (pev PXX EXX (wf-tp/rect AB2' W2X' W2Y'))
 
       <- eq-refl N Q
       <- lookup-eq P0 P2' Q (S3: same T2  T2B) (S4: same T2U  T2UB)
@@ -1080,18 +1088,18 @@ sub-tp-trans-aux :
 
 
 -/tselx-tselx  : sub-tp-trans-aux
-      (wf-tp/tsel (pev (P0: (tlookup G2 (var N) (rect _ _ _))) WR0 ))
+      (wf-tp/tsel (pev (P0: (tlookup G2 (var N) (rect _ _ _))) E0 WR0 ))
 
-      (sub-tp/tselx ST11 ST12 (pev (P1: (tlookup G0 (var N) (rect _ _ _))) WR1) (SX1: sub-env G0 G1) (SX2: sub-env G0 G2))
+      (sub-tp/tselx ST11 ST12 (pev (P1: (tlookup G0 (var N) (rect _ _ _))) E1 WR1) (SX1: sub-env G0 G1) (SX2: sub-env G0 G2))
 
-      (sub-tp/tselx ST21 ST22 (pev (P2: (tlookup G0' (var N) (rect _ _ _))) WR2) (SX2': sub-env G0' G2) (SX3: sub-env G0' G3))
+      (sub-tp/tselx ST21 ST22 (pev (P2: (tlookup G0' (var N) (rect _ _ _))) E2 WR2) (SX2': sub-env G0' G2) (SX3: sub-env G0' G3))
 
-      (sub-tp/tselx ST31 ST32 (pev P3 W00) SX1x SX3x)
+      (sub-tp/tselx ST31 ST32 (pev P3 E3 W00) SX1x SX3x)
 
       <- eq-refl N Q
 
-      <- extend-wf-pev-mult (pev P1 WR1) SX2 (pev P1' WR1')
-      <- extend-wf-pev-mult (pev P2 WR2) SX2' (pev P2' WR2')
+      <- extend-wf-pev-mult (pev P1 E1 WR1) SX2 (pev P1' E1' WR1')
+      <- extend-wf-pev-mult (pev P2 E2 WR2) SX2' (pev P2' E2' WR2')
 
       <- lookup-eq P2' P1' Q S1 S2
       <- eq-rect S1 S2 _ SR1 SR1x      
@@ -1104,7 +1112,7 @@ sub-tp-trans-aux :
 
       <- lookup-eq P0 P1' Q S3 S4
       <- eq-rect S3 S4 _ SR3 SR3x
-      <- eq-pev SR3 (pev P0 WR0) (pev P0' WR0')
+      <- eq-pev SR3 (pev P0 E0 WR0) (pev P0' E0' WR0')
 
       <- sub-tp-trans-aux WR0' ST11' ST21' ST31x
       <- sub-tp-trans-aux WR0' ST22' ST12' ST32x
@@ -1116,9 +1124,9 @@ sub-tp-trans-aux :
       <- eq-high SR1 ST32xx ST32
 
 
-      <- eq-pev SR1 (pev P2 WR2) (pev P2S WR2S)
+      <- eq-pev SR1 (pev P2 E2 WR2) (pev P2S E2S WR2S)
 
-      <- pev-tp-dia (pev P0' WR0') (pev P1 WR1) (pev P2S WR2S) SX2 SX2' (pev P3 W00) S01 S02
+      <- pev-tp-dia (pev P0' E0' WR0') (pev P1 E1 WR1) (pev P2S E2S WR2S) SX2 SX2' (pev P3 E3 W00) S01 S02
 
       <- sub-env-trans S01 SX1 SX1x
       <- sub-env-trans S02 SX3 SX3x
@@ -1144,9 +1152,9 @@ sub-tp-trans-aux :
 
 
 -/tsel2-tsel1  : sub-tp-trans-aux  % T1 < p.T2 && p.T2 < T3 --> T1 < T3
-      (wf-tp/tsel (pev (P0: (tlookup G2 (var N) (rect LN T2 T2U))) (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) ))
-      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (P1: (tlookup G2 (var N) (rect LN T2A T2UA))) (wf-tp/rect _ W1X W1Y)))
-      (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) (pev (P2: (tlookup G2 (var N) (rect LN T2B T2UB))) (wf-tp/rect _ W2X W2Y)))
+      (wf-tp/tsel (pev (P0: (tlookup G2 (var N) (rect LN T2 T2U))) E0 (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) ))
+      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (P1: (tlookup G2 (var N) (rect LN T2A T2UA))) E1 (wf-tp/rect _ W1X W1Y)))
+      (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) (pev (P2: (tlookup G2 (var N) (rect LN T2B T2UB))) E2 (wf-tp/rect _ W2X W2Y)))
       (SBT5: sub-tp G1 T1 G3 T3)
       
       <- eq-refl N Q
@@ -1342,8 +1350,8 @@ type-exp   : tenv -> exp -> tpe -> type.
 
 t/var      : type-exp G X T <- tlookup G X T <- wf-tp G T.
 
-t/varx     : type-exp G X (rect N (tsel X N) (tsel X N)) 
-                <- tlookup G X (rect N T1 T2) <- wf-tp G (rect N T1 T2).
+t/varx     : type-exp G X (rect N (tsel X N) (tsel X N)) %% TODO: proper expansion
+                <- tlookup G X (rect N T1 T2) <- exp-tp (rect N T1 T2) N (tsome (rect N T1 T2)) <- wf-tp G (rect N T1 T2).
 
 
 t/fun      : type-exp G (fun LNF R LNV R2 M) 
@@ -1440,7 +1448,7 @@ extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 %mode extract-wf2 +WFE1 -WFE2.
 
 - : extract-wf2 (t/var W L) W.
-- : extract-wf2 (t/varx W L) (wf-tp/rect (sub-tp/tselx ST ST (pev L W) sub-env/refl sub-env/refl) (wf-tp/tsel (pev L W)) (wf-tp/tsel (pev L W))) <- sub-tp-refl W ST.
+- : extract-wf2 (t/varx W E L) (wf-tp/rect (sub-tp/tselx ST ST (pev L E W) sub-env/refl sub-env/refl) (wf-tp/tsel (pev L E W)) (wf-tp/tsel (pev L E W))) <- sub-tp-refl W ST.
 - : extract-wf2 (t/fun WF WV WR _ _ _) (wf-tp/and WF (wf-tp/and WV WR)).
 - : extract-wf2 (t/app TS1 (TS2: type-exp _ _ (arrow _ _ _))) W2 <- extract-wf2 TS2 (wf-tp/fun W2 W1).
 - : extract-wf2 (t/sel TS) W <- extract-wf2 TS (wf-tp/recv W).
@@ -1684,8 +1692,8 @@ invert-var :
 -     : invert-var (t/var W L) L W z (case-f SB)
             % <- extract-wf2 (t/var L) W
             <- subeq-tp-refl W SB.
--     : invert-var (t/varx W L) L W _ (case-t SB) 
-            <- varx-tp-wf (pev L W) WS
+-     : invert-var (t/varx W E L) L W _ (case-t SB) 
+            <- varx-tp-wf (pev L E W) WS
             <- subeq-tp-refl WS SB.
 -     : invert-var (t/sub SB1 TS) L W _ SB2 
             <- invert-var TS L W _ SB 
