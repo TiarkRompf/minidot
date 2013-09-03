@@ -19,7 +19,8 @@
 + assign intersection types to objects
     - what about invert-var? special-cased for now
     + projection lemmas
-- enable multiple members in object terms
++ enable multiple members in object terms
+    + only multiple type members for now
     - use expansion for projection lemmas?
 - make type selection work with intersections
     - expansion?
