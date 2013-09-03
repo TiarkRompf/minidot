@@ -258,11 +258,10 @@ expand/and   : expand G (and TL TR) D
           <- expand G TR DR
           <- and-decls DL DR D.
 
-% TODO: or
-% expand/or   : expand G (or TL TR) D
-%          <- expand G TL DL
-%          <- expand G TR DR
-%          <- or-decls DL DR D.
+expand/or   : expand G (or TL TR) D
+          <- expand G TL DL
+          <- expand G TR DR
+          <- or-decls DL DR D.
 
 and-decls/nil1 : and-decls dnil D D.
 and-decls/nil2 : and-decls D dnil D.
@@ -274,6 +273,17 @@ and-decls/hit1: and-decls (dcons D1 L1 S1 U1) (dcons D2 L2 S2 U2) (dcons D L1 S1
 and-decls/hit2: and-decls (dcons D1 L1 S1 U1) (dcons D2 L2 S2 U2) (dcons D L2 S2 U2)
             <- label-less L1 L2
             <- and-decls (dcons D1 L1 S1 U1) D2 D.
+
+or-decls/nil1 : or-decls dnil D dnil.
+or-decls/nil2 : or-decls D dnil dnil.
+or-decls/hit  : or-decls (dcons D1 L S1 U1) (dcons D2 L S2 U2) (dcons D L (and S1 S2) (or U1 U2))
+            <- or-decls D1 D2 D.
+or-decls/miss1: or-decls (dcons D1 L1 S1 U1) (dcons D2 L2 S2 U2) D
+            <- label-less L2 L1
+            <- or-decls D1 (dcons D2 L2 S2 U2) D.
+or-decls/miss2: or-decls (dcons D1 L1 S1 U1) (dcons D2 L2 S2 U2) D
+            <- label-less L1 L2
+            <- or-decls (dcons D1 L1 S1 U1) D2 D.
 
 pev       : ctx -> exp -> label -> tp -> tp -> type.  %name pev P.
 wft       : ctx -> tp -> type.                        %name wft WT.
@@ -418,6 +428,8 @@ of/sub    : of G M A'
 %query 1 1 {x}{d:isvar x 0} ordered (cons nil x (and (arrow 1ds o o) (arrow dnil o o))) -> pev (cons nil x (and (arrow 1ds o o) (arrow dnil o o))) x 0l AS AU.
 %query 1 1 of nil (lam dnil (arrow 1ds o o) top ([x] (lam dnil (tsel x 0l) top ([y] y)))) (arrow dnil (arrow 1ds o o) top).
 %query 1 1 of nil (lam dnil (and (arrow (dcons dnil 0l bot top) bot top) (arrow dnil bot top)) top ([x] (lam dnil (tsel x 0l) top ([y] y)))) top.
+%query 1 1 of nil (lam dnil (and (arrow (dcons dnil 0l bot top) bot top) (arrow (dcons dnil 0l top top) bot top)) top ([x] (lam dnil (tsel x 0l) top ([y] y)))) top.
+%query 1 1 of nil (lam dnil (or (arrow (dcons dnil 0l bot top) bot top) (arrow (dcons dnil 0l top top) bot top)) top ([x] (lam dnil (tsel x 0l) top ([y] y)))) top.
 
 %%%%%  Worlds  %%%%%
 
@@ -1907,6 +1919,10 @@ extend-sub-decls   : sub-decls G1 D1 G2 D2
 <- extend-expand XL OG XL'
 <- extend-expand XR OG XR'.
 
+-  : extend-expand (expand/or D XR XL) OG (expand/or D XR' XL')
+<- extend-expand XL OG XL'
+<- extend-expand XR OG XR'.
+
 -  : extend-sub-decls2 (sub-decls/nil OD) OG (sub-decls/nil OD).
 
 -  : extend-sub-decls2
@@ -2575,6 +2591,32 @@ and-decls-preserves-bounded : and-decls D1 D2 D
 %worlds (var | ovar) (and-decls-preserves-bounded _ _ _ _).
 %total A (and-decls-preserves-bounded A _ _ _).
 
+or-decls-preserves-bounded : or-decls D1 D2 D
+                            -> dbounded D1 L
+                            -> dbounded D2 L
+%%
+                            -> dbounded D L
+                            -> type.
+%mode or-decls-preserves-bounded +X1 +X2 +X3 -X4.
+
+- : or-decls-preserves-bounded or-decls/nil1 OD1 OD2 OD1.
+
+- : or-decls-preserves-bounded or-decls/nil2 OD1 OD2 OD2.
+
+- : or-decls-preserves-bounded (or-decls/hit A) (dbounded/cons OD1 LE1) (dbounded/cons OD2 LE2) (dbounded/cons OD LE1)
+<- or-decls-preserves-bounded A OD1 OD2 OD.
+
+- : or-decls-preserves-bounded (or-decls/miss1 A (LA: label-less L2 L1)) (dbounded/cons OD1 (LE1: label-less L1 L)) (dbounded/cons OD2 (LE2: label-less L2 L)) OD'
+<- or-decls-preserves-bounded A OD1 (dbounded/cons OD2 LA) OD
+<- dbounded-increase OD LE1 OD'.
+
+- : or-decls-preserves-bounded (or-decls/miss2 A (LA: label-less L1 L2)) (dbounded/cons OD1 (LE1: label-less L1 L)) (dbounded/cons OD2 (LE2: label-less L2 L)) OD'
+<- or-decls-preserves-bounded A (dbounded/cons OD1 LA) OD2 OD
+<- dbounded-increase OD LE2 OD'.
+
+%worlds (var | ovar) (or-decls-preserves-bounded _ _ _ _).
+%total A (or-decls-preserves-bounded A _ _ _).
+
 and-decls-preserves-order: and-decls D1 D2 D
                             -> dordered D1
                             -> dordered D2
@@ -2599,6 +2641,32 @@ and-decls-preserves-order: and-decls D1 D2 D
 %worlds (var | ovar) (and-decls-preserves-order _ _ _ _).
 %total A (and-decls-preserves-order A _ _ _).
 
+or-decls-preserves-order: or-decls D1 D2 D
+                            -> dordered D1
+                            -> dordered D2
+%%
+                            -> dordered D
+                            -> type.
+%mode or-decls-preserves-order +X1 +X2 +X3 -X4.
+
+- : or-decls-preserves-order or-decls/nil1 OD1 OD2 OD1.
+
+- : or-decls-preserves-order or-decls/nil2 OD1 OD2 OD2.
+
+- : or-decls-preserves-order (or-decls/hit A) (dordered/cons OD1) (dordered/cons OD2) (dordered/cons OD)
+<- or-decls-preserves-bounded A OD1 OD2 OD.
+
+- : or-decls-preserves-order (or-decls/miss1 A (LA: label-less L2 L1)) (dordered/cons (OD1: dbounded D1 L1)) (dordered/cons (OD2: dbounded D2 L2)) OD'
+<- or-decls-preserves-bounded A OD1 (dbounded/cons OD2 LA) OD
+<- dbounded-is-dordered OD OD'.
+
+- : or-decls-preserves-order (or-decls/miss2 A (LA: label-less L1 L2)) (dordered/cons (OD1: dbounded D1 L1)) (dordered/cons (OD2: dbounded D2 L2)) OD'
+<- or-decls-preserves-bounded A (dbounded/cons OD1 LA) OD2 OD
+<- dbounded-is-dordered OD OD'.
+
+%worlds (var | ovar) (or-decls-preserves-order _ _ _ _).
+%total A (or-decls-preserves-order A _ _ _).
+
 expansion-is-dordered: expand G A D
 %%
                         -> dordered D
@@ -2611,6 +2679,11 @@ expansion-is-dordered: expand G A D
 <- expansion-is-dordered EX1 OD1
 <- expansion-is-dordered EX2 OD2
 <- and-decls-preserves-order A OD1 OD2 OD.
+
+- : expansion-is-dordered (expand/or A EX2 EX1) OD
+<- expansion-is-dordered EX1 OD1
+<- expansion-is-dordered EX2 OD2
+<- or-decls-preserves-order A OD1 OD2 OD.
 
 %worlds (var | ovar) (expansion-is-dordered _ _).
 %total EX (expansion-is-dordered EX _).
@@ -2678,6 +2751,56 @@ and-decls-eq: and-decls D1 D2 D
 %worlds (var | ovar) (and-decls-eq _ _ _ _ _).
 %total A (and-decls-eq A _ _ _ _).
 
+or-decls-eq: or-decls D1 D2 D
+               -> or-decls D1' D2' D'
+               -> decls-eq D1 D1'
+               -> decls-eq D2 D2'
+%%
+               -> decls-eq D D'
+               -> type.
+%mode or-decls-eq +X1 +X2 +X3 +X4 -X5.
+
+- : or-decls-eq or-decls/nil1 _ EQD1 EQD2 EQD1.
+
+- : or-decls-eq or-decls/nil2 _ EQD1 EQD2 EQD2.
+
+- : or-decls-eq (or-decls/hit A1) (or-decls/hit A2) decls-eq/i decls-eq/i D'
+<- or-decls-eq A1 A2 decls-eq/i decls-eq/i D
+<- dcons-eq D _ _ _ D'.
+
+- : or-decls-eq (or-decls/miss1 A1 L1) (or-decls/miss1 A2 L2) decls-eq/i decls-eq/i D
+<- or-decls-eq A1 A2 decls-eq/i decls-eq/i D.
+
+- : or-decls-eq (or-decls/miss2 A1 L1) (or-decls/miss2 A2 L2) decls-eq/i decls-eq/i D
+<- or-decls-eq A1 A2 decls-eq/i decls-eq/i D.
+
+- : or-decls-eq (or-decls/miss1 A1 LE1) (or-decls/miss2 A2 LE2) decls-eq/i decls-eq/i D'
+<- label-less-symm-contra LE1 LE2 CONTRA
+<- false-implies-decls-eq CONTRA D'.
+
+- : or-decls-eq (or-decls/miss2 A1 LE1) (or-decls/miss1 A2 LE2) decls-eq/i decls-eq/i D'
+<- label-less-symm-contra LE1 LE2 CONTRA
+<- false-implies-decls-eq CONTRA D'.
+
+- : or-decls-eq (or-decls/hit _) (or-decls/miss1 _ LE) decls-eq/i decls-eq/i D'
+<- label-less-eq-irreflex LE label-eq/i CONTRA
+<- false-implies-decls-eq CONTRA D'.
+
+- : or-decls-eq (or-decls/hit _) (or-decls/miss2 _ LE) decls-eq/i decls-eq/i D'
+<- label-less-eq-irreflex LE label-eq/i CONTRA
+<- false-implies-decls-eq CONTRA D'.
+
+- : or-decls-eq  (or-decls/miss1 _ LE) (or-decls/hit _) decls-eq/i decls-eq/i D'
+<- label-less-eq-irreflex LE label-eq/i CONTRA
+<- false-implies-decls-eq CONTRA D'.
+
+- : or-decls-eq  (or-decls/miss2 _ LE) (or-decls/hit _) decls-eq/i decls-eq/i D'
+<- label-less-eq-irreflex LE label-eq/i CONTRA
+<- false-implies-decls-eq CONTRA D'.
+
+%worlds (var | ovar) (or-decls-eq _ _ _ _ _).
+%total A (or-decls-eq A _ _ _ _).
+
 expansion-eq: expand G A D
                -> expand G A' D'
                -> tp-eq A A'
@@ -2692,6 +2815,11 @@ expansion-eq: expand G A D
 <- expansion-eq EL1 EL2 tp-eq/i DL
 <- expansion-eq ER1 ER2 tp-eq/i DR
 <- and-decls-eq A1 A2 DL DR D.
+
+- : expansion-eq (expand/or A1 ER1 EL1) (expand/or A2 ER2 EL2) tp-eq/i D
+<- expansion-eq EL1 EL2 tp-eq/i DL
+<- expansion-eq ER1 ER2 tp-eq/i DR
+<- or-decls-eq A1 A2 DL DR D.
 
 %worlds (var | ovar) (expansion-eq _ _ _ _).
 %total EX (expansion-eq EX _ _ _).
