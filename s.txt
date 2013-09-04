@@ -47,6 +47,7 @@ d := def m(x: T): T = t
    change the object creation variant of t from
 
    | val x: T = new { ds^x }; t
+
    to
 
    | val x: T = new Tc { ds^x }; t
