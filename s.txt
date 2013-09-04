@@ -21,13 +21,13 @@ T := Bot | Top | T /\ T | T \/ T
 
 terms t
 t := y
-   | val x: T = new { ds^x }; t
-   | val x: T = y.v         ; t
-   | val x: T = y.m(y)      ; t
+   | val x: T = new { ds^x }; t^x
+   | val x: T = y.v         ; t^x
+   | val x: T = y.m(y)      ; t^x
 
 
 definitions d
-d := def m(x: T): T = t
+d := def m(x: T): T = t^x
    | val x          = y
    | type A         : S .. U
 
