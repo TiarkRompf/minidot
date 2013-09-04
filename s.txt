@@ -1,0 +1,51 @@
+# Proposed Syntax
+
+variables x, y, z
+
+* variable x in scope is indicated by ^x
+
+types S, T, U
+T := Bot | Top | T /\ T | T \/ T
+   | { type A: S .. U }
+   | { def  m: S => U }
+   | { val  v:      U }
+   | y.A
+   | { x => T^x       }
+
+* below, in terms and definitions, all ascriptions `: T` are optional
+
+terms t
+
+t := y
+   | val x: T = new { ds^x }; t
+   | val x: T = y.v         ; t
+   | val x: T = y.m(y)      ; t
+
+definitions d
+d := def m(x: T): T = t
+   | val x          = y
+   | type A         : S .. U
+
+
+
+# Discussion / Extensions
+
+1. All y's above could be paths instead of variables,
+   where a path is a chain of immutable field selections:
+   p := x | p.v
+
+2. Can we model DOT/Scala's mixture of nominal and structural typing
+   with this system? What's missing compared to DOT is a way to create
+   an object based on a (concrete) type selection. We would need to
+   change the object creation variant of t from
+
+   | val x: T = new { ds^x }; t
+   to
+
+   | val x: T = new Tc { ds^x }; t
+
+   but that entails expanding Tc and checking that the definitions ds
+   conform.
+
+   Note that the T ascription cannot play the role of Tc, because in
+   DOT, Tc can be a type selection p.A with lower bound Bot.
