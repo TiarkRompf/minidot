@@ -1,8 +1,11 @@
 # Proposed Syntax
 
+
 variables x, y, z
 
+
 * variable x in scope is indicated by ^x
+
 
 types S, T, U
 T := Bot | Top | T /\ T | T \/ T
@@ -12,14 +15,16 @@ T := Bot | Top | T /\ T | T \/ T
    | y.A
    | { x => T^x       }
 
+
 * below, in terms and definitions, all ascriptions `: T` are optional
 
-terms t
 
+terms t
 t := y
    | val x: T = new { ds^x }; t
    | val x: T = y.v         ; t
    | val x: T = y.m(y)      ; t
+
 
 definitions d
 d := def m(x: T): T = t
@@ -30,9 +35,11 @@ d := def m(x: T): T = t
 
 # Discussion / Extensions
 
+
 1. All y's above could be paths instead of variables,
    where a path is a chain of immutable field selections:
    p := x | p.v
+
 
 2. Can we model DOT/Scala's mixture of nominal and structural typing
    with this system? What's missing compared to DOT is a way to create
