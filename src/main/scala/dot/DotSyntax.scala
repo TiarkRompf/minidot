@@ -1,7 +1,9 @@
 package dot
 
 trait DotSyntax {
-  sealed trait Entity extends scala.util.parsing.input.Positional
+  import scala.util.parsing.input.Positional
+
+  sealed trait Entity extends Positional
 
   case class Tag(id: String) extends Entity
 
@@ -29,7 +31,7 @@ trait DotSyntax {
     case class Let(x: Var, tyx: Type, ex: Term, body: Term) extends Term
   }
 
-  sealed trait Init extends Entity
+  sealed trait Init extends Positional
   object init {
     case class InitDef(d: types.MemDef, param: terms.Var, body: Term) extends Init
     case class InitVal(d: types.MemVal, t: Term) extends Init

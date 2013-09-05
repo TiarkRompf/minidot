@@ -28,4 +28,32 @@ class TestElfPrinter extends FunSuite with ElfPrinter with DotParsing {
       val x = new { x => def m(y): x.Bar = y; type Foo: Bot .. Top }; x.yo
     """}(tags("m", "Bar", "Foo", "yo"))
   }
+
+  test("printNat") {
+    expectResult("(s (s (s z)))"){printNat(3)}
+  }
+
+  test("print1") {
+    ok(print){"""
+      new { def m(x)=x }
+    """}{"""
+      (fun z _ (var (s z)) _ _ empty _ mnil)
+    """.trim}
+  }
+
+  test("print2") {
+    ok(print){"""
+      new { def m(x: { type Foo: Bot .. Top })=x }
+    """}{"""
+      (fun (s z) (rect z bot top) (var (s z)) _ _ empty _ mnil)
+    """.trim}
+  }
+
+  test("print3") {
+    ok(print){"""
+      new { type Foo: Bot .. Top }
+    """}{"""
+      (fun _ _ empty _ _ empty _ (mcons _ bot top mnil))
+    """.trim}
+  }
 }
