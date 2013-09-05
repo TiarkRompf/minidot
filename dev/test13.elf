@@ -29,7 +29,7 @@
 
 Note: 
 
-Expansion is really wimply right now. It does 
+Expansion is really wimpy right now. It does 
 not compute actual meets and joins but is only
 defined for cases like this:
 
@@ -2130,14 +2130,18 @@ invert-wf-rec-aux :
   subeq-tp G1 T G2 (recv LNV T2) ->
   %% Output
   wf-val R2 G T4 ->
-  subeq-tp (tcons TS G) (recv LNV T4) G2 (recv LNV T2) ->
+  subeq-tp G (recv LNV T4) G2 (recv LNV T2) ->
   type.
 %mode invert-wf-rec-aux +WFE1 +SBT -WFE3 -SBT1.
 
 -     :  invert-wf-rec-aux (wfv/f WF MT TV ST STF (subeq-tp/sub (sub-tp/recv STV)) TS WE S) (subeq-tp/sub (sub-tp/tbind1 _ _ SB0)) TV (subeq-tp/sub SB1)
-            <- project-sub-recv SB0 MT SB1.
+            <- project-sub-recv SB0 MT SB1'
+            <- extract-wf STV WV _
+            <- sub-tp-refl WV STV'
+            <- extend-sub-tp2 STV' _ STV''
+            <- sub-tp-trans (sub-tp/recv STV'') SB1' SB1.
 
- -     : invert-wf-rec-aux (wfv/sub (SB1: sub-tp G1 TI G T) (TS: wf-val _ G1 TI)) 
+-     : invert-wf-rec-aux (wfv/sub (SB1: sub-tp G1 TI G T) (TS: wf-val _ G1 TI)) 
                 (SB0: subeq-tp G T G2 (recv LNV T2)) TV SB
             <- subeq-tp-trans (subeq-tp/sub SB1) SB0 (SB1X: subeq-tp G1 TI G2 (recv LNV T2))
             <- invert-wf-rec-aux TS SB1X TV (SB: subeq-tp _ (recv LNV T4) G2 (recv LNV T2)).
@@ -2151,7 +2155,7 @@ invert-wf-rec :
   wf-val (clos LNF R LNV R2 H) G1 (recv LNV T) ->
   %% Output
   wf-val R2 G T4 ->
-  subeq-tp (tcons TS G) (recv LNV T4) G1 (recv LNV T) ->
+  subeq-tp G (recv LNV T4) G1 (recv LNV T) ->
   type.
 %mode invert-wf-rec +WFE1 -WFE3 -SBT1.
 
