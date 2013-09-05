@@ -1,0 +1,1 @@
+%abbrev e5 = (let _ (fun _ _ empty _ _ empty _ mnil) (let (recv (s z) top) (fun _ _ empty _ (s z) (var (s z)) _ mnil) (var (s z)))).

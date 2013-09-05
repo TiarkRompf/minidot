@@ -1,0 +1,7 @@
+%query 1 1 type-exp tnil e1 top.
+%query 1 1 type-exp tnil e2 top.
+%query 1 1 type-exp tnil e3 top.
+%query 1 1 type-exp tnil e4 top.
+
+% TODO: this should work!
+% %dquery 10 1 1 type-exp tnil e5 top.
