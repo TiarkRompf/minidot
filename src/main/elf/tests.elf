@@ -2,5 +2,8 @@
 %query 1 1 type-exp tnil e2 top.
 %query 1 1 type-exp tnil e3 top.
 %dquery 10 1 1 type-exp tnil e4 top.
+% TODO: %dquery 10 1 1 type-exp tnil e5 top.
+%dquery 10 1 1 type-exp tnil e6 top.
+% TODO: %dquery 10 1 1 type-exp tnil e7 top.
 
 %query 1 1 sub-tp tnil t2 tnil t1.
