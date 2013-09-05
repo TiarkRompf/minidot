@@ -28,7 +28,7 @@ t := y
 
 definitions d
 d := def m(x: T): T = t^x
-   | val x          = y
+   | val x      : T = y
    | type A         : S .. U
 
 
@@ -57,3 +57,9 @@ d := def m(x: T): T = t^x
 
    Note that the T ascription cannot play the role of Tc, because in
    DOT, Tc can be a type selection p.A with lower bound Bot.
+
+   Is there an alternative to expansion that only uses subtyping? Can
+   we rely on a 'varx/tselx'-like trick?
+
+3. ANF form. Is it necessary? It seems simpler, for
+   environment-tracking.
