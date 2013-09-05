@@ -10,13 +10,14 @@ variables x, y, z
 types S, T, U
 T := Bot | Top | T /\ T | T \/ T
    | { type A: S .. U }
-   | { def  m: S => U }
+   | { def  m(_: S):U }
    | { val  v:      U }
    | y.A
    | { x => T^x       }
 
 
 * below, in terms and definitions, all ascriptions `: T` are optional
+* the x => in new { x => ... } is also optional
 
 
 terms t
