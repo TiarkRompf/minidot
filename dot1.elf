@@ -2230,3 +2230,8 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
 %dquery 5 1 1 type-exp tnil (fun z _ (var (s z)) _ z empty _ mnil) (arrow z (rect z bot top) (rect z bot top)).
 %query 1 1 type-exp tnil (fun z _ (var (s z)) _ z empty _ (mcons z bot top mnil)) top.
 %query 1 1 type-exp tnil (fun z _ (var (s z)) _ z empty _ (mcons z bot top mnil)) (rect z bot top).
+
+%query 1 1 type-exp tnil (fun z (rect z bot top) (var (s z)) _ z empty _ mnil) (arrow z (rect z bot top) A).
+
+%abbrev let: tpe -> exp -> exp -> exp = [T] [ex] [ef] (app (fun z T ef _ z empty _ mnil) z ex).
+%query 1 1 type-exp tnil (let _ empty (var (s z))) A.
