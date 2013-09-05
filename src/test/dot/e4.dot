@@ -1,0 +1,3 @@
+val x = new {}
+val y = new { val v = x }
+y

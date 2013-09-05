@@ -1,0 +1,3 @@
+val x = new {}
+val y: { val v: Top } = new { val v = x }
+y
