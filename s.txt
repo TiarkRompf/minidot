@@ -29,7 +29,7 @@ t := x
 
 definitions d
 d := def m(x: T): T = t^x
-   | val x      : T = y
+   | val x      : T = t
    | type A         : S .. U
 
 
@@ -39,10 +39,13 @@ d := def m(x: T): T = t^x
 
 1. All y's above could be paths instead of variables,
    where a path is a chain of immutable field selections:
+
    p := x | p.v
 
+2. How can we allow the self/this to be used in a val definition? Do
+   we want to? In DOT, field definitions can only be variables.
 
-2. Can we model DOT/Scala's mixture of nominal and structural typing
+3. Can we model DOT/Scala's mixture of nominal and structural typing
    with this system? What's missing compared to DOT is a way to create
    an object based on a (concrete) type selection. We would need to
    change the object creation variant of t from
