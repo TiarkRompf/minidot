@@ -1,11 +1,11 @@
 package dot
 
 trait DotSyntax {
-  import scala.util.parsing.input.Positional
+  sealed trait Entity extends scala.util.parsing.input.Positional
 
-  case class Tag(id: String) extends Positional
+  case class Tag(id: String) extends Entity
 
-  sealed trait Type extends Positional
+  sealed trait Type extends Entity
   object types {
     case object Bot extends Type
     case object Top extends Type
@@ -20,7 +20,7 @@ trait DotSyntax {
     case object Unknown extends Type
   }
 
-  sealed trait Term extends Positional
+  sealed trait Term extends Entity
   object terms {
     case class Var(id: String) extends Term
     case class Sel(o: Term, tag: Tag) extends Term
@@ -29,7 +29,7 @@ trait DotSyntax {
     case class Let(x: Var, tyx: Type, ex: Term, body: Term) extends Term
   }
 
-  sealed trait Init extends Positional
+  sealed trait Init extends Entity
   object init {
     case class InitDef(d: types.MemDef, param: terms.Var, body: Term) extends Init
     case class InitVal(d: types.MemVal, t: Term) extends Init
