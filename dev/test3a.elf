@@ -237,7 +237,7 @@ e/var      : eval-exp N G (var X) V <- vlookup G X V.
 e/fun      : eval-exp N G (fun R T) (val-some (clos R G)).
 
 e/prim     : eval-exp (s N) G (prm OP E1 E2) V3
-            <- eval-exp N G E1 V1 
+            <- eval-exp N G E1 V1
             <- eval-exp N G E2 V2
             <- res-eval-op OP V1 V2 V3.
 e/primz    : eval-exp z G (prm OP E1 E2) val-timeout.
@@ -260,16 +260,16 @@ extract-from-res-eval-exp-app : res-eval-exp-app (s N) OV1 OV2 OV3 -> val-get OV
 type-exp   : tenv -> exp -> tpe -> type.
 t/cst      : type-exp G (cste C) T <- typeof C T.
 t/var      : type-exp G (var X) T <- tlookup G X T.
-t/fun      : type-exp G (fun R T1) (arrow T1 T2) 
+t/fun      : type-exp G (fun R T1) (arrow T1 T2)
                 <- type-exp (tcons T1 G) R T2.
 
 t/prim      : type-exp G (prm OP E1 E2) T3
-            <- type-exp G E1 T1 
+            <- type-exp G E1 T1
             <- type-exp G E2 T2
             <- type-op OP T1 T2 T3.
 
 t/app       : type-exp G (app E1 E2) T2
-            <- type-exp G E1 (arrow T1 T2) 
+            <- type-exp G E1 (arrow T1 T2)
             <- type-exp G E2 T1.
 
 
@@ -280,11 +280,11 @@ wf-val   : val -> tpe -> type.
 wf-env   : venv -> tenv -> type.
 
 wfv/c    : wf-val (cstv C) T <- typeof C T.
-wfv/f    : wf-val (clos R H) (arrow T1 T2) 
+wfv/f    : wf-val (clos R H) (arrow T1 T2)
             <- wf-env H G
             <- type-exp (tcons T1 G) R T2.
 
-wfe/n    : wf-env vnil tnil. 
+wfe/n    : wf-env vnil tnil.
 wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V T <- wf-env H G.
 
 extract-from-wfv/f : wf-val (clos R H) (arrow T1 T2) -> wf-env H G -> type-exp (tcons T1 G) R T2 -> type.
@@ -301,7 +301,7 @@ extract-from-wfv/f : wf-val (clos R H) (arrow T1 T2) -> wf-env H G -> type-exp (
 lookup-safe: wf-env H G -> tlookup G X T -> vlookup H X OV -> val-get OV V -> wf-val V T -> type.
 %mode lookup-safe +A +B +C -D -E.
 
--      : lookup-safe (wfe/c G V) tl/hit vl/hit val-get/some V.  
+-      : lookup-safe (wfe/c G V) tl/hit vl/hit val-get/some V.
 -      : lookup-safe (wfe/c G V) (tl/miss A) (vl/miss B) Y Z
          <- lookup-safe G A B Y Z.
 
@@ -382,7 +382,7 @@ eval-safe-app: wf-res OVF (arrow TX TR) -> wf-res OVX TX -> res-eval-exp-app N O
           e/primz
           case-timeout.
 
--      : eval-safe 
+-      : eval-safe
           (t/app TX TF)
           WE
           (e/app OEV0 EVX EVF)
@@ -391,7 +391,7 @@ eval-safe-app: wf-res OVF (arrow TX TR) -> wf-res OVX TX -> res-eval-exp-app N O
           <- eval-safe TF WE EVF CWF
           <- eval-safe-app CWF CWX OEV0 CW.
 
--      : eval-safe 
+-      : eval-safe
             (t/app TX TF)
             WE
             e/appz

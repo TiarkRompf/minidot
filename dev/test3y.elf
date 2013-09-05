@@ -1,15 +1,15 @@
 %{
 Dear all,
 
-we ran into a surprising issue with %unique and we were wondering if this is somehow 
+we ran into a surprising issue with %unique and we were wondering if this is somehow
 expected behavior or maybe a bug in the implementation. Below is a minimal test case.
 
-Twelf accepts lookup-restrict as total, even though it's not covering the case when 
-G1 is not equal to G2. Without the %unique declaration, Twelf correctly detects that 
+Twelf accepts lookup-restrict as total, even though it's not covering the case when
+G1 is not equal to G2. Without the %unique declaration, Twelf correctly detects that
 lookup-restrict is not total.
 
-In our view it seems pretty clear that lookup-restrict should not hold, as confirmed 
-by the failed query at the bottom. 
+In our view it seems pretty clear that lookup-restrict should not hold, as confirmed
+by the failed query at the bottom.
 
 Any comments will be appreciated!
 }%

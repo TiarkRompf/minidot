@@ -1,4 +1,4 @@
-% echo "set unsafe true 
+% echo "set unsafe true
 % loadFile test5.elf" |/Volumes/Twelf\ for\ OS\ X\ \(Intel\)/Twelf/bin/twelf-server
 
 % STLC: big step preservation
@@ -26,7 +26,7 @@ add/s : add (s N1) N2 (s N3)
 
 lte : nat -> nat -> type.
 lte/z : lte z N.
-lte/s : lte (s N1) (s N2) 
+lte/s : lte (s N1) (s N2)
    <- lte N1 N2.
 
 %mode lte +N1 +N2.
@@ -35,7 +35,7 @@ lte/s : lte (s N1) (s N2)
 ne : nat -> nat -> type.
 ne/z : ne z (s N).
 ne/z : ne (s N) z.
-ne/s : ne (s N1) (s N2) 
+ne/s : ne (s N1) (s N2)
    <- ne N1 N2.
 
 %mode ne +N1 +N2.
@@ -111,7 +111,7 @@ sub-tp/fun  : sub-tp (arrow T1 T2) (arrow T3 T4)
 
 %% Subtyping is reflexive
 
-sub-tp-refl : 
+sub-tp-refl :
   %% Input
   {T:tpe}
   %% Output
@@ -127,8 +127,8 @@ sub-tp-refl :
    <- sub-tp-refl T1 SBT1
    <- sub-tp-refl T2 SBT2.
 
-%worlds () (sub-tp-refl _ _).       
-%total T (sub-tp-refl T _).       
+%worlds () (sub-tp-refl _ _).
+%total T (sub-tp-refl T _).
 
 
 %% Subtyping is transitive
@@ -147,14 +147,14 @@ sub-tp-trans-aux :
 -/bool   : sub-tp-trans-aux bool sub-tp/bool SBT SBT.
 -/top    : sub-tp-trans-aux top sub-tp/top sub-tp/top sub-tp/top.
 -/bot    : sub-tp-trans-aux _ sub-tp/bot _ sub-tp/bot.
--/fun-top : sub-tp-trans-aux (arrow T1 T2) (sub-tp/fun SBT2 SBT1) 
+-/fun-top : sub-tp-trans-aux (arrow T1 T2) (sub-tp/fun SBT2 SBT1)
               (sub-tp/top) (sub-tp/top).
 
 -/fun-fun  : sub-tp-trans-aux
       (arrow T1 T2)
       (sub-tp/fun SBT2 SBT1)
             (sub-tp/fun SBT4 SBT3)
-            (sub-tp/fun SBT6 SBT5)  
+            (sub-tp/fun SBT6 SBT5)
       <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
       <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
 
@@ -272,7 +272,7 @@ tf/c   : tfresh (tcons _ G) (var (s N)) <- tfresh G (var N).
 eval-exp   : venv -> exp -> val -> type.
 % e/cst      : eval-exp G (cste C) (cstv C).
 % e/prim     : eval-exp G (prm OP E1 E2) V3
-%             <- eval-exp G E1 V1 
+%             <- eval-exp G E1 V1
 %             <- eval-exp G E2 V2
 %             <- eval-op OP V1 V2 V3.
 
@@ -290,16 +290,16 @@ e/app      : eval-exp G (app E1 E2) V3
 type-exp   : tenv -> exp -> tpe -> type.
 t/cst      : type-exp G (cste C) T <- typeof C T.
 t/var      : type-exp G X T <- tlookup G X T.
-t/fun      : type-exp G (fun R T1) (arrow T1 T2) 
+t/fun      : type-exp G (fun R T1) (arrow T1 T2)
                 <- type-exp (tcons T1 G) R T2.
 
 t/prim      : type-exp G (prm OP E1 E2) T3
-            <- type-exp G E1 T1 
+            <- type-exp G E1 T1
             <- type-exp G E2 T1
             <- type-op OP T1 T2 T3.
 
 t/app       : type-exp G (app E1 E2) T2
-            <- type-exp G E1 (arrow T1 T2) 
+            <- type-exp G E1 (arrow T1 T2)
             <- type-exp G E2 T1.
 
 t/sub       : type-exp G E T2
@@ -309,19 +309,19 @@ t/sub       : type-exp G E T2
 
 %{ ------- suptyping inversion ----- }%
 
-invert-app : 
+invert-app :
   %% Input
   type-exp G (app E1 E2) T ->
   %% Output
   type-exp G E1 (arrow T1 T2) ->
   type-exp G E2 T1 ->
-  sub-tp T2 T -> 
+  sub-tp T2 T ->
   type.
 %mode invert-app +WFE1 -WFE2 -WFE3 -SBT.
 
 -     : invert-app (t/app TS1 TS) TS TS1 SB <- sub-tp-refl _ SB.
--     : invert-app (t/sub SB1 TS) L L2 SB2 
-            <- invert-app TS L L2 SB 
+-     : invert-app (t/sub SB1 TS) L L2 SB2
+            <- invert-app TS L L2 SB
             <- sub-tp-trans SB SB1 SB2.
 
 %worlds () (invert-app _ _ _ _).
@@ -338,12 +338,12 @@ invert-fun :
 %mode invert-fun +WFE1 -WFE2 -SBT1.
 
 -     : invert-fun (t/fun TS) TS SB <- sub-tp-refl _ SB.
--     : invert-fun (t/sub SB1 TS) L SB2 
-            <- invert-fun TS L SB 
+-     : invert-fun (t/sub SB1 TS) L SB2
+            <- invert-fun TS L SB
             <- sub-tp-trans SB SB1 SB2.
 
 %worlds () (invert-fun _ _ _).
-%total WFE (invert-fun WFE _ _). 
+%total WFE (invert-fun WFE _ _).
 
 
 invert-var :
@@ -356,12 +356,12 @@ invert-var :
 %mode invert-var +WFE1 -WFE2 -SBT1.
 
 -     : invert-var (t/var L) L SB <- sub-tp-refl T SB.
--     : invert-var (t/sub SB1 TS) L SB2 
-            <- invert-var TS L SB 
+-     : invert-var (t/sub SB1 TS) L SB2
+            <- invert-var TS L SB
             <- sub-tp-trans SB SB1 SB2.
 
 %worlds () (invert-var _ _ _).
-%total WFE (invert-var WFE _ _). 
+%total WFE (invert-var WFE _ _).
 
 
 
@@ -372,7 +372,7 @@ wf-val   : val -> tpe -> type.
 wf-env   : venv -> tenv -> type.
 
 % wfv/c    : wf-val (cstv C) T <- typeof C T.
-wfv/f    : wf-val (clos R H) (arrow T1 T2) 
+wfv/f    : wf-val (clos R H) (arrow T1 T2)
             <- wf-env H G
             <- type-exp (tcons T1 G) R T2.
 wfv/sub  : wf-val V T
@@ -380,7 +380,7 @@ wfv/sub  : wf-val V T
             <- sub-tp T1 T.
 
 
-wfe/n    : wf-env vnil tnil. 
+wfe/n    : wf-env vnil tnil.
 wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V T <- wf-env H G.
 
 
@@ -398,10 +398,10 @@ invert-wf-fun :
 -     : invert-wf-fun (wfv/f (TS: type-exp (tcons T1 G) R T2) WE) TS WE SB
             <- sub-tp-refl (arrow T1 T2) SB.
 -     : invert-wf-fun (wfv/sub SBA1 TS) L L1 SBA2
-            <- invert-wf-fun TS L L1 SBA 
+            <- invert-wf-fun TS L L1 SBA
             <- sub-tp-trans SBA SBA1 SBA2.
 %worlds () (invert-wf-fun _ _ _ _).
-%total WFE (invert-wf-fun WFE _ _ _). 
+%total WFE (invert-wf-fun WFE _ _ _).
 
 
 %{ ------- type preservation ----- }%
@@ -412,7 +412,7 @@ invert-wf-fun :
 lookup-safe: wf-env H G -> tlookup G X T -> vlookup H X V -> wf-val V T -> type.
 %mode lookup-safe +A +B +C -D.
 
--      : lookup-safe (wfe/c G V) tl/hit vl/hit V.  
+-      : lookup-safe (wfe/c G V) tl/hit vl/hit V.
 -      : lookup-safe (wfe/c G V) (tl/miss A) (vl/miss B) Z
          <- lookup-safe G A B Z.
 
@@ -438,7 +438,7 @@ eval-op-safe : type-op OP T1 T2 T3 -> eval-op OP V1 V2 V3 -> wf-val V3 T3 -> typ
 eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V T -> type.
 %mode eval-safe +A +B +C -D.
 
-% -      : eval-safe (t/cst T) _ (e/cst) (wfv/c T).  
+% -      : eval-safe (t/cst T) _ (e/cst) (wfv/c T).
 % -      : eval-safe (t/prim T _ _) _ (e/prim V _ _) WF
 %           <- eval-op-safe T V WF.
 
@@ -449,12 +449,12 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V T -> type.
 -      : eval-safe ZT E (e/fun) (wfv/sub ST (wfv/f TS E))
           <- invert-fun ZT TS ST.
 
--      : eval-safe 
+-      : eval-safe
             (ZT: type-exp _ _ T2')
             (WE: wf-env H0 G0)
             (e/app
-              (EV3: eval-exp (vcons V2 HC0) R V3) 
-              (EVX: eval-exp H0 EXP2 V2) 
+              (EV3: eval-exp (vcons V2 HC0) R V3)
+              (EVX: eval-exp H0 EXP2 V2)
               (EVF: eval-exp H0 EXP1 (clos R HC0))
             )
             (wfv/sub ST (wfv/sub STR (Z: wf-val V3 T4)))
@@ -466,18 +466,18 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V T -> type.
 
           <- eval-safe          % eval X
               (TX: type-exp _ _ T1)
-              WE 
-              EVX 
+              WE
+              EVX
               (WVX: wf-val V2 T1)
 
           <- eval-safe          % eval F
               TF
-              WE 
+              WE
               (EVF: eval-exp H0 EXP1 (clos R HC0))
               (ZF: wf-val (clos R HC0) (arrow T1 T2))
 
-          <- invert-wf-fun 
-              ZF 
+          <- invert-wf-fun
+              ZF
               (TR : type-exp (tcons T3 GC0) R T4)
               (WE1: wf-env HC0 GC0)
               ((sub-tp/fun STR STA): sub-tp (arrow T3 T4) (arrow T1 T2))
@@ -485,7 +485,7 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V T -> type.
           <- eval-safe                 % eval F(X)
               TR % (t/sub ST TR)  % (TR': type-exp (tcons T3 GC0) R T4)
               (wfe/c WE1 (wfv/sub STA WVX))
-              (EV3: eval-exp (vcons V2 HC0) R V3) 
+              (EV3: eval-exp (vcons V2 HC0) R V3)
               (Z: wf-val V3 T4).
 
 

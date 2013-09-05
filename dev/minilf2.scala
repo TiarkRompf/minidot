@@ -13,7 +13,7 @@ object Test1 {
     var d = 0
     def printd(x: Any) = println(" "*d+x)
 
-    def rec(e: () => Rel)(f: () => Unit): Unit = { 
+    def rec(e: () => Rel)(f: () => Unit): Unit = {
       //printd("rec: "+e)
       if (d == 2000) {
         printd("ABORT depth "+d)
@@ -41,9 +41,9 @@ object Test1 {
     def propagate(): Boolean = { // propagate constraints and look for contradictions
       //printd("simplify")
       def prop(c1: Constraint, c2: Constraint)(fail: () => Nothing) = (c1,c2) match {
-        case (IsEqual(Exp(a),Exp(b)), IsTerm(a1, key, args)) if a == a1 => 
+        case (IsEqual(Exp(a),Exp(b)), IsTerm(a1, key, args)) if a == a1 =>
           List(IsTerm(b, key, args))
-        case (IsEqual(Exp(a),Exp(b)), IsTerm(b1, key, args)) if b == b1 => 
+        case (IsEqual(Exp(a),Exp(b)), IsTerm(b1, key, args)) if b == b1 =>
           List(IsTerm(a, key, args))
         case (IsTerm(a1, key1, args1), IsTerm(a2, key2, args2)) if a1 == a2 =>
           if (key1 != key2 || args1.length != args2.length) fail()
@@ -75,7 +75,7 @@ object Test1 {
     }
 
     def extract(x: Exp[Any]): String = cstore collectFirst { // extract term
-      case IsTerm(id, key, args) if id == x.id => 
+      case IsTerm(id, key, args) if id == x.id =>
         if (args.isEmpty) key else
         key+"("+args.map(extract).mkString(",")+")"
     } getOrElse canon(x)
@@ -84,7 +84,7 @@ object Test1 {
     def dump(x: Exp[Any]): Unit = {
       val idx = cstore groupBy { case IsTerm(id, _ , _) => id case _ => -1 }
       def rec(x: Exp[Any]): Unit = idx.getOrElse(x.id,Nil) match {
-        case IsTerm(id, key, args)::_ => 
+        case IsTerm(id, key, args)::_ =>
           assert(id == x.id)
           // hack -- special case. don't print types.
           if (key == "lf") {
@@ -122,7 +122,7 @@ object Test1 {
     }
 
     val q = fresh[T]
-    rec(() => f(q)){() => 
+    rec(() => f(q)){() =>
       if (propagate()) {
         //printd("success!")
         //printd(eval(q))
@@ -194,7 +194,7 @@ object Test1 {
 
 
 
-  // *** test 
+  // *** test
 
   def main(args: Array[String]) {
 
@@ -221,9 +221,9 @@ object Test1 {
       }
     }
 
-    def append[T](as: Exp[List[T]], bs: Exp[List[T]], cs: Exp[List[T]]): Rel = 
-      (as === nil && bs === cs) || 
-      exists[T,List[T],List[T]] { (h,t1,t2) => 
+    def append[T](as: Exp[List[T]], bs: Exp[List[T]], cs: Exp[List[T]]): Rel =
+      (as === nil && bs === cs) ||
+      exists[T,List[T],List[T]] { (h,t1,t2) =>
         (as === cons(h,t1)) && (cs === cons(h,t2)) && append(t1,bs,t2)
       }
 
@@ -246,12 +246,12 @@ object Test1 {
       append(q1, q2, list("a","b","c","d","e","f"))
     }
 
-    Test1.run[(List[String],List[String])] { 
+    Test1.run[(List[String],List[String])] {
       case Pair(q1,q2) =>
         append(q1, q2, list("a","b","c","d","e","f"))
     }
 
-    Test1.run[(List[String],List[String])] { 
+    Test1.run[(List[String],List[String])] {
       case Pair(q1,q2) => q1 === q2
     }
 
@@ -259,8 +259,8 @@ object Test1 {
 
     trait LF
 
-    Test1.run[(LF,LF)] { 
-      case Pair(q1,q2) => 
+    Test1.run[(LF,LF)] {
+      case Pair(q1,q2) =>
 
         def lf(s: Exp[LF], x: Exp[LF]): Exp[LF] = term("lf", List(s,x))
 
@@ -280,7 +280,7 @@ object Test1 {
         }
         case class For[B<:Base](u: Atom, f: Atom => B) extends Base {
           type Self = For[B#Self]
-          //def unapplySeq(x:Atom): Option[Seq[Atom]] = 
+          //def unapplySeq(x:Atom): Option[Seq[Atom]] =
           def apply(s: String,xs:List[Atom]) = For(u, x => f(x)(s,xs:+x))
           def apply(x:Atom): B = f(x.typed(u))
         }
@@ -321,8 +321,8 @@ object Test1 {
 
 
 
-    Test1.run[(LF,LF)] { 
-      case Pair(q1,q2) => 
+    Test1.run[(LF,LF)] {
+      case Pair(q1,q2) =>
 
         def lf(s: Exp[LF], x: Exp[LF]): Exp[LF] = term("lf", List(s,x))
 

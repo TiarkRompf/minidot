@@ -4,12 +4,12 @@ t ::= x                         // variable
     | new {                     // object/function creation
         def apply(x) = t1
         val get = t2
-        type T 
+        type T
       }
     | t.apply(t)                // method call
     | t.get                     // field selection
 
-T ::= Top | Bot 
+T ::= Top | Bot
     | { T1 => T2 }              // method
     | { val T }                 // field member
     | { type T }                // type member
@@ -29,7 +29,7 @@ x: T in G
 x->v in H
 
 
-// types well-formed w.r.t env 
+// types well-formed w.r.t env
 
 G wf Top
 G wf Bot

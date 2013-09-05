@@ -135,7 +135,7 @@ of/app		: of G (app M N) B
 %block var	: block {x:exp}.
 
 %block ovar	: some {i:nat}
-		   block 
+		   block
 		   {x:exp}
 		   {d:isvar x i}.
 
@@ -272,7 +272,7 @@ precedes-trans : precedes X Y -> precedes Y Z -> precedes X Z -> type.
               (DisvarZ : isvar Z K)
               (DisvarY' : isvar Y J'))
            (precedes/i DltIK DisvarZ DisvarX)
-           <- isvar-fun DisvarY' DisvarY 
+           <- isvar-fun DisvarY' DisvarY
               (Deq : nat-eq J' J)
            <- lt-resp Deq nat-eq/i DltJ'K
               (DltJK : lt J K)
@@ -287,8 +287,8 @@ precedes-trans : precedes X Y -> precedes Y Z -> precedes X Z -> type.
 precedes-irreflex : precedes X X -> false -> type.
 %mode precedes-irreflex +X1 -X2.
 
--       : precedes-irreflex 
-	   (precedes/i 
+-       : precedes-irreflex
+	   (precedes/i
 	      (Dlt : lt I J)
 	      (D2 : isvar X J)
 	      (D1 : isvar X I))
@@ -335,7 +335,7 @@ isvar-not-app : isvar (app M N) I -> false -> type.
 
 %%%%%  Explicit Context Lemmas  %%%%%
 
-bounded-is-ordered : bounded G X 
+bounded-is-ordered : bounded G X
 %%
 		      -> ordered G
 		      -> type.
@@ -353,7 +353,7 @@ bounded-is-ordered : bounded G X
 bounded-increase : bounded G X
                     -> precedes X Y
 %%
-                    -> bounded G Y 
+                    -> bounded G Y
 		    -> type.
 %mode bounded-increase +X1 +X2 -X3.
 
@@ -363,7 +363,7 @@ bounded-increase : bounded G X
            (bounded/nil D).
 
 -       : bounded-increase
-           (bounded/cons 
+           (bounded/cons
               (Dbounded : bounded G Z)
               (DprecZX : precedes Z X))
            (DprecXY : precedes X Y)
@@ -379,22 +379,22 @@ bounded-increase : bounded G X
 append-bounded : append G1 G2 G
 		  -> bounded G X
 %%
-		  -> bounded G1 X 
+		  -> bounded G1 X
 		  -> type.
 %mode append-bounded +X1 +X2 -X3.
 
 -	: append-bounded append/nil D D.
 
 -	: append-bounded
-	   (append/cons 
+	   (append/cons
 	      (Dappend : append G1 G2 G))
 	   (bounded/cons
 	      (Dbounded : bounded G Y)
 	      (Dprecedes : precedes Y X))
 	   Dbounded''
-	   <- append-bounded Dappend Dbounded 
+	   <- append-bounded Dappend Dbounded
 	      (Dbounded' : bounded G1 Y)
-	   <- bounded-increase Dbounded' Dprecedes 
+	   <- bounded-increase Dbounded' Dprecedes
 	      (Dbounded'' : bounded G1 X).
 
 %worlds (ovar) (append-bounded _ _ _).
@@ -422,14 +422,14 @@ extend-context : ordered G
 
 
 
-ordered-car : ordered (cons G X A) 
+ordered-car : ordered (cons G X A)
 %%
 	       -> isvar X I
 	       -> type.
 %mode ordered-car +X1 -X2.
 
--	: ordered-car 
-	   (ordered/cons 
+-	: ordered-car
+	   (ordered/cons
 	      (Dbounded : bounded G X))
 	   Disvar
 	   <- bounded-isvar Dbounded (Disvar : isvar X I).
@@ -439,17 +439,17 @@ ordered-car : ordered (cons G X A)
 
 
 
-ordered-cdr : ordered (cons G X A) 
+ordered-cdr : ordered (cons G X A)
 %%
-	       -> ordered G 
+	       -> ordered G
 	       -> type.
 %mode ordered-cdr +X1 -X2.
 
--	: ordered-cdr 
-	   (ordered/cons 
-	      (Dbounded : bounded G X)) 
+-	: ordered-cdr
+	   (ordered/cons
+	      (Dbounded : bounded G X))
 	   Dordered
-	   <- bounded-is-ordered Dbounded 
+	   <- bounded-is-ordered Dbounded
 	      (Dordered : ordered G).
 
 %worlds (ovar) (ordered-cdr _ _).
@@ -459,18 +459,18 @@ ordered-cdr : ordered (cons G X A)
 
 lookup-ordered : lookup G X A
 		  -> ordered G
-		  -> isvar X I 
+		  -> isvar X I
 		  -> type.
 %mode lookup-ordered +X1 +X2 -X3.
 
--	: lookup-ordered 
-	   lookup/hit 
+-	: lookup-ordered
+	   lookup/hit
 	   (Dordered : ordered (cons G X A))
 	   Disvar
 	   <- ordered-car Dordered (Disvar : isvar X I).
 
--	: lookup-ordered 
-	   (lookup/miss 
+-	: lookup-ordered
+	   (lookup/miss
 	      (Dlookup : lookup G X A))
 	   (Dordered : ordered (cons G Y B))
 	   Disvar
@@ -482,13 +482,13 @@ lookup-ordered : lookup G X A
 
 
 
-bounded-contra : bounded (cons G X A) X 
+bounded-contra : bounded (cons G X A) X
 %%
 		  -> false
 		  -> type.
 %mode bounded-contra +X1 -X2.
 
--	: bounded-contra 
+-	: bounded-contra
 	   (bounded/cons _ (Dprecedes : precedes X X))
 	   Dfalse
 	   <- precedes-irreflex Dprecedes Dfalse.
@@ -501,18 +501,18 @@ bounded-contra : bounded (cons G X A) X
 lookup-bounded-contra : lookup G X A
 			 -> bounded G X
 %%
-			 -> false 
+			 -> false
 			 -> type.
 %mode lookup-bounded-contra +X1 +X2 -X3.
 
--       : lookup-bounded-contra 
+-       : lookup-bounded-contra
 	   lookup/hit
 	   (Dbounded : bounded (cons G X A) X)
 	   Dfalse
            <- bounded-contra Dbounded Dfalse.
 
--       : lookup-bounded-contra 
-	   (lookup/miss 
+-       : lookup-bounded-contra
+	   (lookup/miss
 	      (Dlookup : lookup G X A))
 	   (bounded/cons
 	      (Dbounded : bounded G Y)
@@ -530,46 +530,46 @@ append-lookup-eq : ({x} append (cons G1 x A) (G2 x) (G x))
 		    -> ({x} isvar x I -> ordered (G x))
 		    -> ({x} lookup (G x) x (B x))
 %%
-		    -> ({x} tp-eq A (B x)) 
+		    -> ({x} tp-eq A (B x))
 		    -> type.
 %mode append-lookup-eq +X1 +X2 +X3 -X4.
 
 -       : append-lookup-eq _ _ ([x] lookup/hit) ([_] tp-eq/i).
 
--       : append-lookup-eq 
-	   ([x] 
-	      append/cons 
+-       : append-lookup-eq
+	   ([x]
+	      append/cons
 	      (Dappend x : append (cons G1 x A) (G2 x) (G x)))
-	   ([x] [d:isvar x I] 
+	   ([x] [d:isvar x I]
 	      Dordered x d : ordered (cons (G x) (Y x) (C x)))
-	   ([x] 
+	   ([x]
 	      lookup/miss (Dlookup x : lookup (G x) x (B x)))
            Deq
 	   <- ({x} {d:isvar x I}
 		 ordered-cdr (Dordered x d) (Dordered' x d : ordered (G x)))
            <- append-lookup-eq Dappend Dordered' Dlookup (Deq : {x} tp-eq A (B x)).
 
--       : append-lookup-eq 
-	   ([x] append/nil) 
+-       : append-lookup-eq
+	   ([x] append/nil)
 	   ([x] [d:isvar x I]
 	      ordered/cons (Dbounded x d : bounded G1 x))
-	   ([x] 
+	   ([x]
 	      lookup/miss (Dlookup x : lookup G1 x (B x)))
            Deq
            <- ({x} {d:isvar x I}
                  lookup-bounded-contra (Dlookup x) (Dbounded x d) Dfalse)
            <- ({x} false-implies-tp-eq Dfalse (Deq x)).
 
--	: append-lookup-eq 
-	   ([x] 
-	      append/cons 
+-	: append-lookup-eq
+	   ([x]
+	      append/cons
 	      (Dappend x : append (cons G1 x A) (G2 x) (G x)))
 	   ([x] [d:isvar x I]
 	      ordered/cons (Dbounded x d : bounded (G x) x))
 	   ([x] lookup/hit)
 	   Deq
 	   <- ({x} {d:isvar x I}
-		 append-bounded (Dappend x) (Dbounded x d) 
+		 append-bounded (Dappend x) (Dbounded x d)
 		 (Dbounded' x d : bounded (cons G1 x A) x))
 	   <- ({x} {d:isvar x I}
 		 bounded-contra (Dbounded' x d) Dfalse)
@@ -585,35 +585,35 @@ lookup-pdv : ({x} append (cons G1 x A) (G2 x) (G x))
                -> append G1 (G2 M) G'
                -> ({x} lookup (G x) Y (B x))
 %%
-               -> lookup G' Y (B M) 
+               -> lookup G' Y (B M)
 	       -> type.
 %mode lookup-pdv +X1 +X2 +X3 -X4.
 
--       : lookup-pdv 
-	   ([x] append/cons 
+-       : lookup-pdv
+	   ([x] append/cons
 	      (Dappend x : append (cons G1 x A) (G2 x) (G x)))
-	   (append/cons 
+	   (append/cons
 	      (Dappend' : append G1 (G2 M) G'))
 	   ([x] lookup/hit)
 	   %%
            lookup/hit.
 
 -       : lookup-pdv
-	   ([x] append/cons 
+	   ([x] append/cons
 	      (Dappend x : append (cons G1 x A) (G2 x) (G x)))
-	   (append/cons 
+	   (append/cons
 	      (Dappend' : append G1 (G2 M) G'))
-	   ([x] 
-	      lookup/miss 
+	   ([x]
+	      lookup/miss
 	      (Dlookup x : lookup (G x) Y (B x)))
 	   %%
            (lookup/miss Dlookup')
            <- lookup-pdv Dappend Dappend' Dlookup Dlookup'.
 
--       : lookup-pdv 
-	   ([x] append/nil) 
-	   append/nil 
-	   ([x] lookup/miss 
+-       : lookup-pdv
+	   ([x] append/nil)
+	   append/nil
+	   ([x] lookup/miss
 	      (Dlookup x : lookup _ _ (B x)))
 	   %%
            (Dlookup M).
@@ -630,7 +630,7 @@ weaken-lookup-gen : append G1 G2 G
                      -> append (cons G1 X A) G2 G'
                      -> lookup G Y B
 %%
-                     -> lookup G' Y B 
+                     -> lookup G' Y B
 		     -> type.
 %mode weaken-lookup-gen +X1 +X2 +X3 -X4.
 
@@ -651,7 +651,7 @@ weaken-of-gen : append G1 G2 G
                   -> append (cons G1 X A) G2 G'
                   -> of G M B
 %%
-                  -> of G' M B 
+                  -> of G' M B
 		  -> type.
 %mode weaken-of-gen +X1 +X2 +X3 -X4.
 
@@ -683,9 +683,9 @@ weaken-of-gen : append G1 G2 G
 
 
 
-weaken1-of : of G M B 
+weaken1-of : of G M B
 %%
-	       -> of (cons G X A) M B 
+	       -> of (cons G X A) M B
 	       -> type.
 %mode +{G:ctx} +{X:exp} +{M:exp} +{B:tp} +{A:tp} +{X1:of G M B}
    -{X2:of (cons G X A) M B} (weaken1-of X1 X2).
@@ -698,10 +698,10 @@ weaken1-of : of G M B
 
 
 
-weaken-of : append G1 G2 G 
+weaken-of : append G1 G2 G
 	      -> of G1 M A
 %%
-	      -> of G M A 
+	      -> of G M A
 	      -> type.
 %mode weaken-of +X1 +X2 -X3.
 
@@ -785,7 +785,7 @@ vbounded-isvar : vbounded H X -> isvar X I -> type.
 %worlds (ovar) (vbounded-isvar _ _).
 %total {} (vbounded-isvar _ _).
 
-vbounded-is-vordered : vbounded H X 
+vbounded-is-vordered : vbounded H X
 %%
 		      -> vordered H
 		      -> type.
@@ -803,7 +803,7 @@ vbounded-is-vordered : vbounded H X
 vbounded-increase : vbounded H X
                     -> precedes X Y
 %%
-                    -> vbounded H Y 
+                    -> vbounded H Y
 		    -> type.
 %mode vbounded-increase +X1 +X2 -X3.
 
@@ -813,7 +813,7 @@ vbounded-increase : vbounded H X
            (vbounded/nil D).
 
 -       : vbounded-increase
-           (vbounded/cons 
+           (vbounded/cons
               (Dvbounded : vbounded H Z)
               (DprecZX : precedes Z X))
            (DprecXY : precedes X Y)
@@ -829,22 +829,22 @@ vbounded-increase : vbounded H X
 vappend-vbounded : vappend H1 H2 H
 		  -> vbounded H X
 %%
-		  -> vbounded H1 X 
+		  -> vbounded H1 X
 		  -> type.
 %mode vappend-vbounded +X1 +X2 -X3.
 
 -	: vappend-vbounded vappend/nil D D.
 
 -	: vappend-vbounded
-	   (vappend/cons 
+	   (vappend/cons
 	      (Dvappend : vappend H1 H2 H))
 	   (vbounded/cons
 	      (Dvbounded : vbounded H Y)
 	      (Dprecedes : precedes Y X))
 	   Dvbounded''
-	   <- vappend-vbounded Dvappend Dvbounded 
+	   <- vappend-vbounded Dvappend Dvbounded
 	      (Dvbounded' : vbounded H1 Y)
-	   <- vbounded-increase Dvbounded' Dprecedes 
+	   <- vbounded-increase Dvbounded' Dprecedes
 	      (Dvbounded'' : vbounded H1 X).
 
 %worlds (ovar) (vappend-vbounded _ _ _).
@@ -872,14 +872,14 @@ extend-stack : vordered H
 
 
 
-vordered-car : vordered (vcons H X V) 
+vordered-car : vordered (vcons H X V)
 %%
 	       -> isvar X I
 	       -> type.
 %mode vordered-car +X1 -X2.
 
--	: vordered-car 
-	   (vordered/cons 
+-	: vordered-car
+	   (vordered/cons
 	      (Dvbounded : vbounded H X))
 	   Disvar
 	   <- vbounded-isvar Dvbounded (Disvar : isvar X I).
@@ -889,17 +889,17 @@ vordered-car : vordered (vcons H X V)
 
 
 
-vordered-cdr : vordered (vcons H X V) 
+vordered-cdr : vordered (vcons H X V)
 %%
-	       -> vordered H 
+	       -> vordered H
 	       -> type.
 %mode vordered-cdr +X1 -X2.
 
--	: vordered-cdr 
-	   (vordered/cons 
-	      (Dvbounded : vbounded H X)) 
+-	: vordered-cdr
+	   (vordered/cons
+	      (Dvbounded : vbounded H X))
 	   Dvordered
-	   <- vbounded-is-vordered Dvbounded 
+	   <- vbounded-is-vordered Dvbounded
 	      (Dvordered : vordered H).
 
 %worlds (ovar) (vordered-cdr _ _).
@@ -909,18 +909,18 @@ vordered-cdr : vordered (vcons H X V)
 
 vlookup-vordered : vlookup H X A
 		  -> vordered H
-		  -> isvar X I 
+		  -> isvar X I
 		  -> type.
 %mode vlookup-vordered +X1 +X2 -X3.
 
--	: vlookup-vordered 
-	   vlookup/hit 
+-	: vlookup-vordered
+	   vlookup/hit
 	   (Dvordered : vordered (vcons H X T))
 	   Disvar
 	   <- vordered-car Dvordered (Disvar : isvar X I).
 
--	: vlookup-vordered 
-	   (vlookup/miss 
+-	: vlookup-vordered
+	   (vlookup/miss
 	      (Dvlookup : vlookup H X A))
 	   (Dvordered : vordered (vcons H Y B))
 	   Disvar
@@ -932,13 +932,13 @@ vlookup-vordered : vlookup H X A
 
 
 
-vbounded-contra : vbounded (vcons H X V) X 
+vbounded-contra : vbounded (vcons H X V) X
 %%
 		  -> false
 		  -> type.
 %mode vbounded-contra +X1 -X2.
 
--	: vbounded-contra 
+-	: vbounded-contra
 	   (vbounded/cons _ (Dprecedes : precedes X X))
 	   Dfalse
 	   <- precedes-irreflex Dprecedes Dfalse.
@@ -951,18 +951,18 @@ vbounded-contra : vbounded (vcons H X V) X
 vlookup-vbounded-contra : vlookup H X A
 			 -> vbounded H X
 %%
-			 -> false 
+			 -> false
 			 -> type.
 %mode vlookup-vbounded-contra +X1 +X2 -X3.
 
--       : vlookup-vbounded-contra 
+-       : vlookup-vbounded-contra
 	   vlookup/hit
 	   (Dvbounded : vbounded (vcons H X V) X)
 	   Dfalse
            <- vbounded-contra Dvbounded Dfalse.
 
--       : vlookup-vbounded-contra 
-	   (vlookup/miss 
+-       : vlookup-vbounded-contra
+	   (vlookup/miss
 	      (Dvlookup : vlookup H X A))
 	   (vbounded/cons
 	      (Dvbounded : vbounded H Y)
@@ -980,46 +980,46 @@ vappend-vlookup-eq : ({x} vappend (vcons H1 x V) (H2 x) (H x))
 		    -> ({x} isvar x I -> vordered (H x))
 		    -> ({x} vlookup (H x) x (B x))
 %%
-		    -> ({x} val-eq V (B x)) 
+		    -> ({x} val-eq V (B x))
 		    -> type.
 %mode vappend-vlookup-eq +X1 +X2 +X3 -X4.
 
 -       : vappend-vlookup-eq _ _ ([x] vlookup/hit) ([_] val-eq/i).
 
--       : vappend-vlookup-eq 
-	   ([x] 
-	      vappend/cons 
+-       : vappend-vlookup-eq
+	   ([x]
+	      vappend/cons
 	      (Dvappend x : vappend (vcons H1 x A) (H2 x) (H x)))
-	   ([x] [d:isvar x I] 
+	   ([x] [d:isvar x I]
 	      Dvordered x d : vordered (vcons (H x) (Y x) (C x)))
-	   ([x] 
+	   ([x]
 	      vlookup/miss (Dvlookup x : vlookup (H x) x (B x)))
            Deq
 	   <- ({x} {d:isvar x I}
 		 vordered-cdr (Dvordered x d) (Dvordered' x d : vordered (H x)))
            <- vappend-vlookup-eq Dvappend Dvordered' Dvlookup (Deq : {x} val-eq A (B x)).
 
--       : vappend-vlookup-eq 
-	   ([x] vappend/nil) 
+-       : vappend-vlookup-eq
+	   ([x] vappend/nil)
 	   ([x] [d:isvar x I]
 	      vordered/cons (Dvbounded x d : vbounded H1 x))
-	   ([x] 
+	   ([x]
 	      vlookup/miss (Dvlookup x : vlookup H1 x (B x)))
            Deq
            <- ({x} {d:isvar x I}
                  vlookup-vbounded-contra (Dvlookup x) (Dvbounded x d) Dfalse)
            <- ({x} false-implies-val-eq Dfalse (Deq x)).
 
--	: vappend-vlookup-eq 
-	   ([x] 
-	      vappend/cons 
+-	: vappend-vlookup-eq
+	   ([x]
+	      vappend/cons
 	      (Dvappend x : vappend (vcons H1 x A) (H2 x) (H x)))
 	   ([x] [d:isvar x I]
 	      vordered/cons (Dvbounded x d : vbounded (H x) x))
 	   ([x] vlookup/hit)
 	   Deq
 	   <- ({x} {d:isvar x I}
-		 vappend-vbounded (Dvappend x) (Dvbounded x d) 
+		 vappend-vbounded (Dvappend x) (Dvbounded x d)
 		 (Dvbounded' x d : vbounded (vcons H1 x A) x))
 	   <- ({x} {d:isvar x I}
 		 vbounded-contra (Dvbounded' x d) Dfalse)
@@ -1035,35 +1035,35 @@ vlookup-pdv : ({x} vappend (vcons H1 x A) (H2 x) (H x))
                -> vappend H1 (H2 M) H'
                -> ({x} vlookup (H x) Y (B x))
 %%
-               -> vlookup H' Y (B M) 
+               -> vlookup H' Y (B M)
 	       -> type.
 %mode vlookup-pdv +X1 +X2 +X3 -X4.
 
--       : vlookup-pdv 
-	   ([x] vappend/cons 
+-       : vlookup-pdv
+	   ([x] vappend/cons
 	      (Dvappend x : vappend (vcons H1 x A) (H2 x) (H x)))
-	   (vappend/cons 
+	   (vappend/cons
 	      (Dvappend' : vappend H1 (H2 M) H'))
 	   ([x] vlookup/hit)
 	   %%
            vlookup/hit.
 
 -       : vlookup-pdv
-	   ([x] vappend/cons 
+	   ([x] vappend/cons
 	      (Dvappend x : vappend (vcons H1 x A) (H2 x) (H x)))
-	   (vappend/cons 
+	   (vappend/cons
 	      (Dvappend' : vappend H1 (H2 M) H'))
-	   ([x] 
-	      vlookup/miss 
+	   ([x]
+	      vlookup/miss
 	      (Dvlookup x : vlookup (H x) Y (B x)))
 	   %%
            (vlookup/miss Dvlookup')
            <- vlookup-pdv Dvappend Dvappend' Dvlookup Dvlookup'.
 
--       : vlookup-pdv 
-	   ([x] vappend/nil) 
-	   vappend/nil 
-	   ([x] vlookup/miss 
+-       : vlookup-pdv
+	   ([x] vappend/nil)
+	   vappend/nil
+	   ([x] vlookup/miss
 	      (Dvlookup x : vlookup _ _ (B x)))
 	   %%
            (Dvlookup M).

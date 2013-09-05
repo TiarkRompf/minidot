@@ -1,4 +1,4 @@
-like rules8.txt, but adding 
+like rules8.txt, but adding
 
 // prefix relation on environments: G1 [= G2
 

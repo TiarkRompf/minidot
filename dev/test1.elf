@@ -16,7 +16,7 @@ add/s : add (s N1) N2 (s N3)
 
 lte : nat -> nat -> type.
 lte/z : lte z N.
-lte/s : lte (s N1) (s N2) 
+lte/s : lte (s N1) (s N2)
    <- lte N1 N2.
 
 %mode lte +N1 +N2.
@@ -25,7 +25,7 @@ lte/s : lte (s N1) (s N2)
 ne : nat -> nat -> type.
 ne/z : ne z (s N).
 ne/z : ne (s N) z.
-ne/s : ne (s N1) (s N2) 
+ne/s : ne (s N1) (s N2)
    <- ne N1 N2.
 
 %mode ne +N1 +N2.
@@ -180,9 +180,9 @@ type-stm   : tenv -> stm -> tpe -> type. % forward decl
 type-exp   : tenv -> exp -> tpe -> type.
 t/cst      : type-exp G (cste C) T <- typeof C T.
 t/var      : type-exp G X T <- tlookup G X T.
-t/fun      : type-exp G (fun F T1) (arrow T1 T2) 
-                <- tbind G T1 X G1 
-                <- tbind G1 (arrow T1 T2) F1 G2 
+t/fun      : type-exp G (fun F T1) (arrow T1 T2)
+                <- tbind G T1 X G1
+                <- tbind G1 (arrow T1 T2) F1 G2
                 <- type-stm G2 (F F1 X) T2. % recursive, ok?
 
 
@@ -192,15 +192,15 @@ t/fun      : type-exp G (fun F T1) (arrow T1 T2)
 
 exec-stm  : cont -> cont -> type.
 
-e/prm     : exec-stm 
+e/prm     : exec-stm
               (ccons (prm OP E1 E2 S) G K)         % prim op
               (ccons (S X) GR K)                   % pop frame and advance next
               <- eval-exp G E1 V1
               <- eval-exp G E2 V2
-              <- eval-op-val OP V1 V2 V3 
+              <- eval-op-val OP V1 V2 V3
               <- vbind G V3 X GR.
 
-e/app     : exec-stm 
+e/app     : exec-stm
               (ccons (app E1 E2 S) G K)            % function call
               (ccons (F (var z) AX) GR (ccons (app E1 E2 S) G K))   % push frame onto stack
               <- eval-exp G E1 (clos F T G2)       % eval fun to closure
@@ -208,7 +208,7 @@ e/app     : exec-stm
               <- vbind G2 (clos F T G2) FX G3
               <- vbind G2 V2 AX GR.
 
-e/ret     : exec-stm 
+e/ret     : exec-stm
               (ccons (ret E) G1 (ccons (app _ _ ([x] S x)) G2 K)) % return stm
               (ccons (S X) GR K)                   % pop frame and advance next
               <- eval-exp G1 E V                   % eval arg
@@ -261,13 +261,13 @@ wf-cont  : cont -> tpe -> tpe -> type.
 wf-all   : cont -> tpe -> type.
 
 wfv/c    : wf-val (cstv C) T <- typeof C T.
-wfv/f    : wf-val (clos F T H) (arrow T1 T2) 
+wfv/f    : wf-val (clos F T H) (arrow T1 T2)
             <- wf-env H G
             <- tbind G T1 X G1
             <- tbind G1 (arrow T1 T2) F1 G2
             <- type-stm G2 (F F1 X) T2.
 
-wfe/n    : wf-env vnil tnil. 
+wfe/n    : wf-env vnil tnil.
 wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V T <- wf-env H G.
 
 -        : wf-cont cnil T T.
@@ -295,7 +295,7 @@ final/r  : final (ccons (ret E) G cnil) V T <- eval-exp G E V <- wf-val V T.
 lookup-safe: wf-env H G -> tlookup G X T -> vlookup H X V -> wf-val V T -> type.
 %mode lookup-safe +A +B -C -D.
 
--      : lookup-safe (wfe/c G V) tl/hit vl/hit V.  
+-      : lookup-safe (wfe/c G V) tl/hit vl/hit V.
 -      : lookup-safe (wfe/c G V) (tl/miss A) (vl/miss B) Z
          <- lookup-safe G A B Z.
 
@@ -308,7 +308,7 @@ lookup-safe: wf-env H G -> tlookup G X T -> vlookup H X V -> wf-val V T -> type.
 eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V T -> type.
 %mode eval-safe +A +B -C -D.
 
--      : eval-safe (t/cst T) _ (e/cst) (wfv/c T).  
+-      : eval-safe (t/cst T) _ (e/cst) (wfv/c T).
 -      : eval-safe (t/var L) E (e/var L2) V
           <- lookup-safe E L L2 V.
 -      : eval-safe (t/fun TS BF BX) E (e/fun) (wfv/f TS BF BX E).
