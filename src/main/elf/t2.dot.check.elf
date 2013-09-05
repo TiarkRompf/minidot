@@ -1,0 +1,1 @@
+%abbrev t2 = (and (arrow z top top) (and (recv z top) (rect z bot top))).

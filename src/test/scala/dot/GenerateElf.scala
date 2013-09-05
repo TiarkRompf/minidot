@@ -7,7 +7,7 @@ import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 class GenerateElf extends FunSuite with ElfPrinter with DotParsing {
-  val overwrite = false
+  val overwrite = true // should be false
   val src = "src/test/dot/"
   val prefix = "src/main/elf/"
   def readFile(name: String): String = {
@@ -54,7 +54,7 @@ class GenerateElf extends FunSuite with ElfPrinter with DotParsing {
     if (name.endsWith(".dot")) {
       test("sanity-checking elf of "+name) {
         val in = readFile(f.toString)
-        phrase(Parser.term)(new lexical.Scanner(in)) match {
+        phrase(if (name.startsWith("t")) Parser.typ else Parser.term)(new lexical.Scanner(in)) match {
           case Success(e, _) => check(name, "%abbrev "+name.substring(0, name.length-4)+" = "+print(e)+".")
           case r@_ => sys.error("error parsing " + name + r)
         }

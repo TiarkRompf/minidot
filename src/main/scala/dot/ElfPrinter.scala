@@ -8,10 +8,13 @@ trait ElfPrinter { this: DotSyntax =>
   import types._
   import init._
 
-  def collectTags(e: Any): List[Tag] = e match {
-    case l@Tag(id) => List(l)
-    case p: Product => p.productIterator.toList.flatMap(collectTags)
-    case _ => Nil
+  def collectTags(e: Any): List[Tag] = {
+    def c(e: Any): List[Tag] = e match {
+      case l@Tag(id) => List(l)
+      case p: Product => p.productIterator.toList.flatMap(c)
+      case _ => Nil
+    }
+    c(e).toSet.toList
   }
 
   def printNat(n: Int): String = {

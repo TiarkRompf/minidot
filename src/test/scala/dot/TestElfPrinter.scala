@@ -29,6 +29,12 @@ class TestElfPrinter extends FunSuite with ElfPrinter with DotParsing {
     """}(tags("m", "Bar", "Foo", "yo"))
   }
 
+  test("collectTagsNoDups") {
+    ok(collectTags){"""
+      val x = new { x => def m(y): x.Bar = y; type Foo: Bot .. x.Bar }; x.yo
+    """}(tags("m", "Bar", "Foo", "yo"))
+  }
+
   test("printNat") {
     expectResult("(s (s (s z)))"){printNat(3)}
   }

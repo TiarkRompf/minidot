@@ -1,0 +1,1 @@
+{def _(_:Top): Top} & { val _: Top } & { type _: Bot .. Top }
