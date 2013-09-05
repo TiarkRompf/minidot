@@ -118,9 +118,6 @@ add-inc: add A B C -> add A (s B) (s C) -> type.
 %{ ------- language ----- }%
 
 % sorts
-cst: type.
-op: type.
-
 exp: type.
 
 tpe: type.
@@ -129,26 +126,14 @@ val: type.
 venv: type.
 tenv: type.
 
-
-% constants
-ncst: nat -> cst.
-fcst: cst.
-tcst: cst.
-
-% operators
-plus  : op.
-equal : op.
-
 % members
 mem   : nat -> type.
 mnil  : mem z.
 mcons : {N} tpe -> tpe -> mem N -> mem (s N).
 
 % expressions
-cste: cst -> exp.
 empty: exp.
 var: nat -> exp.
-prm: op -> exp -> exp -> exp.
 fun: 
   nat -> exp ->          % def f() = e
   nat -> exp ->          % val v = e
@@ -161,8 +146,6 @@ sel: exp -> nat -> exp.
 
 
 % types
-int  : tpe.
-bool : tpe.
 top  : tpe.
 bot  : tpe.
 arrow: nat -> tpe -> tpe -> tpe.  % { def f: A => B }
@@ -193,56 +176,6 @@ vnil  : venv.
 vcons : val -> venv -> venv.
 tnil  : tenv.
 tcons : tpe -> tenv -> tenv.
-
-
-
-
-
-
-%{ ------- eval-op / primitives ----- }%
-
-% typeof
-
-typeof     : cst -> tpe -> type.
--/n        : typeof (ncst N) int.
--/t        : typeof (tcst) bool.
--/f        : typeof (fcst) bool.
-
-%mode typeof *A *B.
-
-% eval-op
-
-eval-cst-op : op -> cst -> cst -> cst -> type.
-e/plus     : eval-cst-op plus (ncst N1) (ncst N2) (ncst N3) <- add N1 N2 N3.
-e/eqt      : eval-cst-op equal (ncst N1) (ncst N2) (tcst) <- lte N1 N2 <- lte N2 N1.
-e/eqf      : eval-cst-op equal (ncst N1) (ncst N2) (fcst) <- ne N1 N2.
-
-eval-op    : op -> val -> val -> val -> type.
-ev/v       : eval-op O (cstv C1) (cstv C2) (cstv C3) <- eval-cst-op O C1 C2 C3.
-
-%mode eval-cst-op +O +V1 +V2 -V3.
-%mode eval-op +O +V1 +V2 -V3.
-
-
-% type-op
-
-type-op    : op -> tpe -> tpe -> tpe -> type.
-t/plus     : type-op plus int int int.
-t/eq       : type-op equal int int bool.
-
-
-% eval-cst-op/safe
-
-eval-cst-op-safe : type-op OP T1 T2 T3 -> eval-cst-op OP C1 C2 C3 -> typeof C3 T3 -> type.
-%mode eval-cst-op-safe +LTE1 +LTE2 -LTE3.
-
--plus   : eval-cst-op-safe t/plus (e/plus _) -/n.
--eqt    : eval-cst-op-safe t/eq (e/eqt _ _) -/t.
--eqf    : eval-cst-op-safe t/eq (e/eqf _) -/f.
-
-%worlds () (eval-cst-op-safe _ _ _).
-%total LTE1 (eval-cst-op-safe LTE1 _ _). % induction on first arg (not used here)
-
 
 
 %{ ------- environments ----- }%
@@ -366,8 +299,6 @@ tle: tlookexp G (var N) (rect LN T1 T2)  <- exp-tp T0 LN (tsome (rect LN T1 T2))
 pev  : path-eval G E (rect N TS TU) <- wf-tp G (rect N TS TU) <- tlookexp G E (rect N TS TU).
 
 
-sub-tp/int  : sub-tp G1 int G2 int.
-sub-tp/bool : sub-tp G1 bool G2 bool.
 sub-tp/top  : sub-tp G1 T G2 top <- wf-tp G1 T.
 sub-tp/bot  : sub-tp G1 bot G2 T <- wf-tp G2 T.
 
@@ -430,8 +361,6 @@ sub-tp/and2 : sub-tp G1 T1 G2 (and T2 T3)
 
 
 
-wf-tp/int  : wf-tp G1 int.
-wf-tp/bool : wf-tp G1 bool.
 wf-tp/top  : wf-tp G1 top.
 wf-tp/bot  : wf-tp G1 bot.
 
@@ -740,8 +669,6 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 
 
 
-- : extend-wf-tp wf-tp/int T wf-tp/int.
-- : extend-wf-tp wf-tp/bool T wf-tp/bool.
 - : extend-wf-tp wf-tp/top T wf-tp/top.
 - : extend-wf-tp wf-tp/bot T wf-tp/bot.
 - : extend-wf-tp (wf-tp/fun W1 W2) T (wf-tp/fun W1' W2') 
@@ -764,8 +691,6 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 
 
 
-- : extend-sub-tp sub-tp/int T sub-tp/int sub-tp/int sub-tp/int.
-- : extend-sub-tp sub-tp/bool T sub-tp/bool sub-tp/bool sub-tp/bool.
 - : extend-sub-tp (sub-tp/top ST) T (sub-tp/top ST') (sub-tp/top ST') (sub-tp/top ST) 
       <- extend-wf-tp ST _ ST'.
 - : extend-sub-tp (sub-tp/bot ST) T (sub-tp/bot ST') (sub-tp/bot ST) (sub-tp/bot ST') 
@@ -934,8 +859,6 @@ extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
 - : extract-wf-pev (pev L W) W.
 
 
-- : extract-wf sub-tp/int wf-tp/int wf-tp/int.
-- : extract-wf sub-tp/bool wf-tp/bool wf-tp/bool.
 - : extract-wf (sub-tp/top W) W wf-tp/top.
 - : extract-wf (sub-tp/bot W) wf-tp/bot W.
 - : extract-wf (sub-tp/fun (ST1:sub-tp G1 T2 G2 T4) (ST2:sub-tp G2 T3 G1 T1)) 
@@ -1069,8 +992,6 @@ sub-tp-refl :
   type.
 %mode sub-tp-refl +WT -SBT.
 
--/int : sub-tp-refl wf-tp/int sub-tp/int.
--/bool: sub-tp-refl wf-tp/bool sub-tp/bool.
 -/bot : sub-tp-refl wf-tp/bot (sub-tp/bot wf-tp/bot).
 -/top : sub-tp-refl wf-tp/top (sub-tp/top wf-tp/top).
 -/fun : sub-tp-refl (wf-tp/fun T1 T2) (sub-tp/fun SBT1 SBT2)
@@ -1132,9 +1053,6 @@ sub-tp-trans-aux :
   sub-tp G1 T1 G3 T3 ->
   type.
 %mode sub-tp-trans-aux +T2 +SBT1 +SBT2 -SBT3.
-
--/int    : sub-tp-trans-aux wf-tp/int sub-tp/int sub-tp/int sub-tp/int.
--/bool   : sub-tp-trans-aux wf-tp/bool sub-tp/bool sub-tp/bool sub-tp/bool.
 
 -/top    : sub-tp-trans-aux _ S1 (sub-tp/top _) (sub-tp/top W) <- extract-wf S1 W _.
 -/bot    : sub-tp-trans-aux _ (sub-tp/bot _) S2 (sub-tp/bot W) <- extract-wf S2 _ W.
@@ -2305,3 +2223,9 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
 %worlds () (eval-safe _ _ _ _).
 %total C (eval-safe A _ C _). % induction on eval-exp
 
+%%% QUERIES %%%
+
+%query 1 1 type-exp tnil empty top.
+%query 1 1 type-exp tnil (fun z (var (s z)) z empty mnil) top.
+%query 1 1 type-exp tnil (fun z (var (s z)) z empty mnil) (arrow z A A).
+%dquery 5 1 1 type-exp tnil (fun z (var (s z)) z empty mnil) (arrow z (rect z bot top) (rect z bot top)).
