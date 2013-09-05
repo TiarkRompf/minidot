@@ -146,6 +146,7 @@ mcons : {N} tpe -> tpe -> mem N -> mem (s N).
 
 % expressions
 cste: cst -> exp.
+empty: exp.
 var: nat -> exp.
 prm: op -> exp -> exp -> exp.
 fun: 
@@ -184,6 +185,7 @@ and  : tpe -> tpe -> tpe.
 
 % values
 cstv: cst -> val.
+emptyv: val.
 clos: nat -> exp -> nat -> val -> venv -> val.
 
 % environments
@@ -1447,6 +1449,8 @@ eval-exp   : venv -> exp -> val -> type.
 %             <- eval-exp G E2 V2
 %             <- eval-op OP V1 V2 V3.
 
+e/empty    : eval-exp G empty emptyv.
+
 e/var      : eval-exp G X V <- vlookup G X V.
 e/fun      : eval-exp G (fun LNF R LNV R2 MT) (clos LNF R LNV V2 G)
             <- eval-exp G R2 V2.
@@ -1473,6 +1477,8 @@ type-exp   : tenv -> exp -> tpe -> type.
 %             <- type-exp G E1 T1 
 %             <- type-exp G E2 T1
 %             <- type-op OP T1 T2 T3.
+
+t/empty    : type-exp G empty top.
 
 t/var      : type-exp G X T <- tlookup G X T <- wf-tp G T.
 
@@ -1527,6 +1533,9 @@ wf-env   : venv -> tenv -> type.
 
 % wfv/c    : wf-val (cstv C) T <- typeof C T.
 
+wfv/empty : wf-val emptyv G (rect N T1 T2)
+             <- wf-tp G (rect N T1 T2).
+
 wfv/f    : wf-val (clos LNF R LNV R2 H) G 
             (and (arrow LNF T1 T2) (and (recv LNV T) TX))
             <- wf-env H GC
@@ -1573,6 +1582,7 @@ wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V G T <- wf-env H G.
 extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 %mode extract-wf2 +WFE1 -WFE2.
 
+- : extract-wf2 t/empty wf-tp/top.
 - : extract-wf2 (t/var W L) W.
 - : extract-wf2 (t/varx W L) (wf-tp/rect (sub-tp/tselx ST ST (pev (tle L exp-tp/rect) W) sub-env/refl sub-env/refl) (wf-tp/tsel (pev (tle L exp-tp/rect) W)) (wf-tp/tsel (pev (tle L exp-tp/rect) W))) <- sub-tp-refl W ST.
 - : extract-wf2 (t/fun WF WV WR _ _ _) (wf-tp/and WF (wf-tp/and WV WR)).
@@ -1587,6 +1597,7 @@ extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 extract-wf3: wf-val V G T1 -> wf-tp G T1 -> type.
 %mode extract-wf3 +WFE1 -WFE2.
 
+- : extract-wf3 (wfv/empty W) W.
 - : extract-wf3 (wfv/f WF WV WR _ _ _ _ _) (wf-tp/and WF (wf-tp/and WV WR)).
 - : extract-wf3 (wfv/t WR) WR.
 - : extract-wf3 (wfv/sub S TS) W2 <- extract-wf S W1 W2.
@@ -1602,6 +1613,9 @@ extract-wf3: wf-val V G T1 -> wf-tp G T1 -> type.
 
 extend-wfv: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
 %mode extend-wfv +A +B -C.
+
+-     : extend-wfv (wfv/empty W) T (wfv/empty W1)
+         <- extend-wf-tp W T W1.
 
 -     : extend-wfv (wfv/sub ST WV) T (wfv/sub ST1 WV) 
             <- extend-sub-tp2 ST T ST1.
@@ -1703,6 +1717,7 @@ extract-wf4: subeq-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
 
 assign-rect: wf-val V G0 T -> wf-tp G (rect N T1 T2) -> wf-val V G (rect N T1 T2) -> type.
 %mode assign-rect +A +B -C.
+- : assign-rect (wfv/empty _) W (wfv/empty W).
 - : assign-rect (wfv/f WF WV WR MT TV ST TE WE) W (wfv/t W).
 - : assign-rect (wfv/t WR) W (wfv/t W).
 - : assign-rect (wfv/sub S T) W T' <- assign-rect T W T'.
@@ -2181,6 +2196,27 @@ eval-op-safe : type-op OP T1 T2 T3 -> eval-op OP V1 V2 V3 -> wf-val V3 T3 -> typ
 %total A (eval-op-safe A _ _). % induction on first arg
 }%
 
+eval-empty-safe: type-exp G empty T -> wf-val emptyv G T -> type.
+%mode eval-empty-safe +A -B.
+- : eval-empty-safe
+     (t/empty: type-exp G _ _)
+     (wfv/sub
+        ((sub-tp/top
+            (wf-tp/rect
+               (sub-tp/top wf-tp/top)
+               wf-tp/top
+               wf-tp/top)): sub-tp G (rect z _ _) G _)
+        (wfv/empty
+           (wf-tp/rect
+              (sub-tp/top wf-tp/top)
+              wf-tp/top
+              wf-tp/top))).
+
+- : eval-empty-safe (t/sub ST ZT) (wfv/sub ST W)
+<- eval-empty-safe ZT W.
+
+%worlds () (eval-empty-safe _ _).
+%total A (eval-empty-safe A _).
 
 eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> type.
 %mode eval-safe +A +B +C -D.
@@ -2188,6 +2224,9 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
 % -      : eval-safe (t/cst T) _ (e/cst) (wfv/c T).  
 % -      : eval-safe (t/prim T _ _) _ (e/prim V _ _) WF
 %           <- eval-op-safe T V WF.
+
+ -      : eval-safe ZT _ e/empty V
+          <- eval-empty-safe ZT V.
 
  -      : eval-safe ZT E (e/var L2) V2
           <- invert-var ZT L W _ CST
