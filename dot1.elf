@@ -135,10 +135,9 @@ mcons : {N} tpe -> tpe -> mem N -> mem (s N).
 empty: exp.
 var: nat -> exp.
 fun: 
-  nat -> exp ->          % def f() = e
-  nat -> exp ->          % val v = e
-% nat -> tpe -> tpe ->   % type T = A..B
-  mem N ->               % type T = A..B  ...
+  nat -> tpe -> exp -> tpe -> % def f(x: T): T = e
+  nat -> exp -> tpe ->        % val v: T = e
+  mem N ->                    % type T = A..B  ...
   exp.
 app: exp -> nat -> exp -> exp.
 sel: exp -> nat -> exp.
@@ -1370,7 +1369,7 @@ eval-exp   : venv -> exp -> val -> type.
 e/empty    : eval-exp G empty emptyv.
 
 e/var      : eval-exp G X V <- vlookup G X V.
-e/fun      : eval-exp G (fun LNF R LNV R2 MT) (clos LNF R LNV V2 G)
+e/fun      : eval-exp G (fun LNF TR R TP LNV R2 T2 MT) (clos LNF R LNV V2 G)
             <- eval-exp G R2 V2.
 
 
@@ -1404,7 +1403,7 @@ t/varx     : type-exp G X (rect N (tsel X N) (tsel X N)) %% TODO: proper expansi
                 <- tlookup G X (rect N T1 T2) <- wf-tp G (rect N T1 T2).
 
 
-t/fun      : type-exp G (fun LNF R LNV R2 M) 
+t/fun      : type-exp G (fun LNF T3 R T4 LNV R2 T2 M)
                 (and (arrow LNF T3 T4) (and (recv  LNV T2) MT))
                 <- type-exp (tcons T3 G) R T4
                 <- type-exp G R2 T2
@@ -1806,7 +1805,7 @@ invert-sel :
 
 invert-fun :
   %% Input
-  type-exp G (fun LNF R LNV R2 M) T ->
+  type-exp G (fun LNF _ R _ LNV R2 _ M) T ->
   %% Output
   type-exp (tcons T3 G) R T4 ->
   type-exp G R2 T1 ->
@@ -2226,8 +2225,8 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
 %%% QUERIES %%%
 
 %query 1 1 type-exp tnil empty top.
-%query 1 1 type-exp tnil (fun z (var (s z)) z empty mnil) top.
-%query 1 1 type-exp tnil (fun z (var (s z)) z empty mnil) (arrow z A A).
-%dquery 5 1 1 type-exp tnil (fun z (var (s z)) z empty mnil) (arrow z (rect z bot top) (rect z bot top)).
-%query 1 1 type-exp tnil (fun z (var (s z)) z empty (mcons z bot top mnil)) top.
-%query 1 1 type-exp tnil (fun z (var (s z)) z empty (mcons z bot top mnil)) (rect z bot top).
+%query 1 1 type-exp tnil (fun z _ (var (s z)) _ z empty _ mnil) top.
+%query 1 1 type-exp tnil (fun z _ (var (s z)) _ z empty _ mnil) (arrow z A A).
+%dquery 5 1 1 type-exp tnil (fun z _ (var (s z)) _ z empty _ mnil) (arrow z (rect z bot top) (rect z bot top)).
+%query 1 1 type-exp tnil (fun z _ (var (s z)) _ z empty _ (mcons z bot top mnil)) top.
+%query 1 1 type-exp tnil (fun z _ (var (s z)) _ z empty _ (mcons z bot top mnil)) (rect z bot top).
