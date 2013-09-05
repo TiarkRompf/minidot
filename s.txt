@@ -20,10 +20,11 @@ T := Bot | Top | T /\ T | T \/ T
 
 
 terms t
-t := y
-   | val x: T = new { ds^x }; t^x
-   | val x: T = y.v         ; t^x
-   | val x: T = y.m(y)      ; t^x
+t := x
+   | t.v
+   | t.m(t)
+   | new { x => ds^x }
+   | val x: T = t; t^x
 
 
 definitions d
@@ -60,6 +61,3 @@ d := def m(x: T): T = t^x
 
    Is there an alternative to expansion that only uses subtyping? Can
    we rely on a 'varx/tselx'-like trick?
-
-3. ANF form. Is it necessary? It seems simpler, for
-   environment-tracking.
