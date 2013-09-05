@@ -1,4 +1,4 @@
 minidot
 =======
 
-Type system stuff.
+Formalization of Dependent Object Types (DOT), from the bottom up.
