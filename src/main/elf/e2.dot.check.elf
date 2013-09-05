@@ -1,1 +1,1 @@
-%abbrev e2 = (fun _ _ empty _ _ empty _ mnil).
+%abbrev e2 = (fun z _ empty _ z empty _ mnil).

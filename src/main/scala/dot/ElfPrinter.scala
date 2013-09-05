@@ -68,12 +68,12 @@ trait ElfPrinter { this: DotSyntax =>
         }
         val tmem = if (typeMemberMap.isEmpty) "mnil" else printTypeMembers(tags, env, typeMemberMap, tags)
         val dmem = defMembers match {
-          case Nil => "_ _ empty _"
+          case Nil => "z _ empty _"
           case (_,i)::Nil => s"${p(i.d.tag)} ${p(i.d.tyP)} ${pbind(i.param, i.body)} ${p(i.d.tyR)}"
           case _ => assert(false, "TODO in elf: support object creation with more than one def"); ???
         }
         val vmem = valMembers match {
-          case Nil => "_ empty _"
+          case Nil => "z empty _"
           case (_,i)::Nil => s"${p(i.d.tag)} ${p(i.t)} ${p(i.d.ty)}"
           case _ => assert(false, "TODO in elf: support object creation with more than one val"); ???
         }
@@ -108,7 +108,7 @@ trait ElfPrinter { this: DotSyntax =>
       case TRec(self, ty) =>
         // TODO: fill env syntactically?
         //    -- at least, we can fix its size...
-        s"(bind ${printNat(env.size)} _ ${pbind(self, ty)})"
+        s"(bind ${printNat(env.size+1)} _ ${pbind(self, ty)})"
 
       case Unknown => "_"
     }
