@@ -143,11 +143,10 @@ fun:
 app: exp -> nat -> exp -> exp.
 sel: exp -> nat -> exp.
 
+% let: tpe -> exp -> exp -> exp.
 %abbrev let: tpe -> exp -> exp -> exp = [T] [ex] [ef] (app (fun z T ef _ z empty _ mnil) z ex).
 
 % types
-int  : tpe.
-bool : tpe.
 top  : tpe.
 bot  : tpe.
 arrow: nat -> tpe -> tpe -> tpe.  % { def f: A => B }
@@ -273,8 +272,6 @@ tle: tlookexp G (var N) (rect LN T1 T2)  <- exp-tp T0 LN (tsome (rect LN T1 T2))
 pev  : path-eval G E (rect N TS TU) <- wf-tp G (rect N TS TU) <- tlookexp G E (rect N TS TU).
 
 
-sub-tp/int  : sub-tp G1 int G2 int.
-sub-tp/bool : sub-tp G1 bool G2 bool.
 sub-tp/top  : sub-tp G1 T G2 top <- wf-tp G1 T.
 sub-tp/bot  : sub-tp G1 bot G2 T <- wf-tp G2 T.
 
@@ -337,8 +334,6 @@ sub-tp/and2 : sub-tp G1 T1 G2 (and T2 T3)
 
 
 
-wf-tp/int  : wf-tp G1 int.
-wf-tp/bool : wf-tp G1 bool.
 wf-tp/top  : wf-tp G1 top.
 wf-tp/bot  : wf-tp G1 bot.
 
@@ -445,6 +440,12 @@ t/app       : type-exp G (app E1 LNF E2) T2
 
 t/sel       : type-exp G (sel E1 LNV) T1
             <- type-exp G E1 (recv LNV T1).
+
+% uncomment for queries
+% t/let       : type-exp G (let T1 E1 E2) T2
+%            <- type-exp G E1 T1
+%            <- type-exp (tcons T1 G) E2 T2.
+
 
 t/sub       : type-exp G E T2
             <- type-exp G E T1
@@ -795,8 +796,6 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 
 
 
-- : extend-wf-tp wf-tp/int T wf-tp/int.
-- : extend-wf-tp wf-tp/bool T wf-tp/bool.
 - : extend-wf-tp wf-tp/top T wf-tp/top.
 - : extend-wf-tp wf-tp/bot T wf-tp/bot.
 - : extend-wf-tp (wf-tp/fun W1 W2) T (wf-tp/fun W1' W2')
@@ -819,8 +818,6 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 
 
 
-- : extend-sub-tp sub-tp/int T sub-tp/int sub-tp/int sub-tp/int.
-- : extend-sub-tp sub-tp/bool T sub-tp/bool sub-tp/bool sub-tp/bool.
 - : extend-sub-tp (sub-tp/top ST) T (sub-tp/top ST') (sub-tp/top ST') (sub-tp/top ST)
       <- extend-wf-tp ST _ ST'.
 - : extend-sub-tp (sub-tp/bot ST) T (sub-tp/bot ST') (sub-tp/bot ST) (sub-tp/bot ST')
@@ -994,8 +991,6 @@ extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
 - : extract-wf-pev (pev L W) W.
 
 
-- : extract-wf sub-tp/int wf-tp/int wf-tp/int.
-- : extract-wf sub-tp/bool wf-tp/bool wf-tp/bool.
 - : extract-wf (sub-tp/top W) W wf-tp/top.
 - : extract-wf (sub-tp/bot W) wf-tp/bot W.
 - : extract-wf (sub-tp/fun (ST1:sub-tp G1 T2 G2 T4) (ST2:sub-tp G2 T3 G1 T1))
@@ -1129,8 +1124,6 @@ sub-tp-refl :
   type.
 %mode sub-tp-refl +WT -SBT.
 
--/int : sub-tp-refl wf-tp/int sub-tp/int.
--/bool: sub-tp-refl wf-tp/bool sub-tp/bool.
 -/bot : sub-tp-refl wf-tp/bot (sub-tp/bot wf-tp/bot).
 -/top : sub-tp-refl wf-tp/top (sub-tp/top wf-tp/top).
 -/fun : sub-tp-refl (wf-tp/fun T1 T2) (sub-tp/fun SBT1 SBT2)
@@ -1192,9 +1185,6 @@ sub-tp-trans-aux :
   sub-tp G1 T1 G3 T3 ->
   type.
 %mode sub-tp-trans-aux +T2 +SBT1 +SBT2 -SBT3.
-
--/int    : sub-tp-trans-aux wf-tp/int sub-tp/int sub-tp/int sub-tp/int.
--/bool   : sub-tp-trans-aux wf-tp/bool sub-tp/bool sub-tp/bool sub-tp/bool.
 
 -/top    : sub-tp-trans-aux _ S1 (sub-tp/top _) (sub-tp/top W) <- extract-wf S1 W _.
 -/bot    : sub-tp-trans-aux _ (sub-tp/bot _) S2 (sub-tp/bot W) <- extract-wf S2 _ W.
