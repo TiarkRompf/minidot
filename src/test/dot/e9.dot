@@ -1,0 +1,2 @@
+val x: { type Foo: Top .. Top } = new { type Foo: Top .. Top }
+x
