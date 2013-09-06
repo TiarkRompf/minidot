@@ -84,7 +84,7 @@ trait ElfPrinter { this: DotSyntax =>
         }
         val vmem = valMembers match {
           case Nil => "z empty top"
-          case (_,i)::Nil => s"${p(i.d.tag)} ${p(i.t)} ${p(i.d.ty)}"
+          case (_,i)::Nil => s"${p(i.d.tag)} ${p(i.t)} ${pbind(i.d.ty, self)}"
           case _ => assert(false, "TODO in elf: support object creation with more than one val"); ???
         }
         s"(fun $dmem $vmem $tmem)"
