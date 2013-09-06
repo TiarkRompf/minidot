@@ -79,7 +79,7 @@ trait ElfPrinter { this: DotSyntax =>
         val tmem = if (typeMemberMap.isEmpty) "mnil" else printTypeMembers(tags, ebind(self), typeMemberMap, tags)
         val dmem = defMembers match {
           case Nil => "z top empty top"
-          case (_,i)::Nil => s"${p(i.d.tag)} ${pbind(i.d.tyP, self, i.param)} ${pbind(i.body, self, i.param)} ${pbind(i.d.tyR, self, i.param)}"
+          case (_,i)::Nil => s"${p(i.d.tag)} ${pbind(i.d.tyP, self)} ${pbind(i.body, self, i.param)} ${pbind(i.d.tyR, self)}"
           case _ => assert(false, "TODO in elf: support object creation with more than one def"); ???
         }
         val vmem = valMembers match {
