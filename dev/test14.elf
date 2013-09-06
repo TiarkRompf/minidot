@@ -118,9 +118,6 @@ add-inc: add A B C -> add A (s B) (s C) -> type.
 %{ ------- language ----- }%
 
 % sorts
-cst: type.
-op: type.
-
 exp: type.
 
 tpe: type.
@@ -129,25 +126,13 @@ val: type.
 venv: type.
 tenv: type.
 
-
-% constants
-ncst: nat -> cst.
-fcst: cst.
-tcst: cst.
-
-% operators
-plus  : op.
-equal : op.
-
 % members
 mem   : nat -> type.
 mnil  : mem z.
 mcons : {N} tpe -> tpe -> mem N -> mem (s N).
 
 % expressions
-cste: cst -> exp.
 var: nat -> exp.
-prm: op -> exp -> exp -> exp.
 fun: 
   nat -> exp ->          % def f() = e
   nat -> exp ->          % val v = e
@@ -183,7 +168,6 @@ and  : tpe -> tpe -> tpe.
 
 
 % values
-cstv: cst -> val.
 clos: nat -> exp -> nat -> val -> venv -> val.
 
 % environments
@@ -193,53 +177,6 @@ tnil  : tenv.
 tcons : tpe -> tenv -> tenv.
 
 
-
-
-
-
-%{ ------- eval-op / primitives ----- }%
-
-% typeof
-
-typeof     : cst -> tpe -> type.
--/n        : typeof (ncst N) int.
--/t        : typeof (tcst) bool.
--/f        : typeof (fcst) bool.
-
-%mode typeof *A *B.
-
-% eval-op
-
-eval-cst-op : op -> cst -> cst -> cst -> type.
-e/plus     : eval-cst-op plus (ncst N1) (ncst N2) (ncst N3) <- add N1 N2 N3.
-e/eqt      : eval-cst-op equal (ncst N1) (ncst N2) (tcst) <- lte N1 N2 <- lte N2 N1.
-e/eqf      : eval-cst-op equal (ncst N1) (ncst N2) (fcst) <- ne N1 N2.
-
-eval-op    : op -> val -> val -> val -> type.
-ev/v       : eval-op O (cstv C1) (cstv C2) (cstv C3) <- eval-cst-op O C1 C2 C3.
-
-%mode eval-cst-op +O +V1 +V2 -V3.
-%mode eval-op +O +V1 +V2 -V3.
-
-
-% type-op
-
-type-op    : op -> tpe -> tpe -> tpe -> type.
-t/plus     : type-op plus int int int.
-t/eq       : type-op equal int int bool.
-
-
-% eval-cst-op/safe
-
-eval-cst-op-safe : type-op OP T1 T2 T3 -> eval-cst-op OP C1 C2 C3 -> typeof C3 T3 -> type.
-%mode eval-cst-op-safe +LTE1 +LTE2 -LTE3.
-
--plus   : eval-cst-op-safe t/plus (e/plus _) -/n.
--eqt    : eval-cst-op-safe t/eq (e/eqt _ _) -/t.
--eqf    : eval-cst-op-safe t/eq (e/eqf _) -/f.
-
-%worlds () (eval-cst-op-safe _ _ _).
-%total LTE1 (eval-cst-op-safe LTE1 _ _). % induction on first arg (not used here)
 
 
 
@@ -1446,11 +1383,6 @@ subeq-tp-trans :
 %{ ------- eval-exp / type-exp ----- }%
 
 eval-exp   : venv -> exp -> val -> type.
-% e/cst      : eval-exp G (cste C) (cstv C).
-% e/prim     : eval-exp G (prm OP E1 E2) V3
-%             <- eval-exp G E1 V1 
-%             <- eval-exp G E2 V2
-%             <- eval-op OP V1 V2 V3.
 
 e/var      : eval-exp G X V <- vlookup G X V.
 e/fun      : eval-exp G (fun LNF R LNV R2 MT) (clos LNF R LNV V2 G)
@@ -1473,11 +1405,6 @@ tm/cons    : type-mem (mcons N T1 T2 R) (and (rect N T1 T2) TR) <- type-mem R TR
 
 
 type-exp   : tenv -> exp -> tpe -> type.
-% t/cst       : type-exp G (cste C) T <- typeof C T.
-% t/prim      : type-exp G (prm OP E1 E2) T3
-%             <- type-exp G E1 T1 
-%             <- type-exp G E2 T1
-%             <- type-op OP T1 T2 T3.
 
 t/var      : type-exp G X T <- tlookup G X T <- wf-tp G T.
 
@@ -1528,8 +1455,6 @@ t/sub       : type-exp G E T2
 
 wf-val   : val -> tenv -> tpe -> type.
 wf-env   : venv -> tenv -> type.
-
-% wfv/c    : wf-val (cstv C) T <- typeof C T.
 
 wfv/f    : wf-val (clos LNF R LNV R2 H) G 
             (bind N GC (and (arrow LNF T1 T2) (and (recv LNV T) TX)))
@@ -2153,28 +2078,8 @@ subeq-tp-inv-fun: subeq-tp G1 (arrow LNF T1 T2) G2 (arrow LNF T3 T4)
 %worlds () (subeq-tp-inv-fun _ _ _).
 %total A (subeq-tp-inv-fun A _ _).
 
-
-%{
-% eval primitive op safe
-
-eval-op-safe : type-op OP T1 T2 T3 -> eval-op OP V1 V2 V3 -> wf-val V3 T3 -> type.
-%mode eval-op-safe +LTE1 +LTE2 -LTE3.
-
--plus   : eval-op-safe t/plus (ev/v (e/plus _)) (wfv/c -/n).
--eqt    : eval-op-safe t/eq (ev/v (e/eqt _ _)) (wfv/c -/t).
--eqf    : eval-op-safe t/eq (ev/v (e/eqf _)) (wfv/c -/f).
-
-%worlds () (eval-op-safe _ _ _).
-%total A (eval-op-safe A _ _). % induction on first arg
-}%
-
-
 eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> type.
 %mode eval-safe +A +B +C -D.
-
-% -      : eval-safe (t/cst T) _ (e/cst) (wfv/c T).  
-% -      : eval-safe (t/prim T _ _) _ (e/prim V _ _) WF
-%           <- eval-op-safe T V WF.
 
  -      : eval-safe ZT E (e/var L2) V2
           <- invert-var ZT L W _ CST
