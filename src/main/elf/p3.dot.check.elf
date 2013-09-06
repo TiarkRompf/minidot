@@ -1,0 +1,1 @@
+%abbrev p3 = (let (bind z tnil (rect z top top)) (fun z top empty top z empty top (mcons _ top top mnil)) (let (tsel (var z) z) (fun z top empty top z empty top mnil) (var (s z)))).
