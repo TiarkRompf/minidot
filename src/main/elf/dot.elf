@@ -231,34 +231,9 @@ sub-env/refl: sub-env G G.
 sub-env/ext: sub-env G1 (tcons Z G2) <- sub-env G1 G2.
 
 
-sub-env-trans: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
-%mode sub-env-trans +A +B -C.
-
-- : sub-env-trans S sub-env/refl S.
-- : sub-env-trans S1 (sub-env/ext S2) (sub-env/ext S3) <- sub-env-trans S1 S2 S3.
-
-%worlds () (sub-env-trans _ _ _).
-%total A (sub-env-trans _ A _).
-
-
 minmax-env: tenv -> tenv -> tenv -> tenv -> type.
 mm-env/1: minmax-env G1 G2 G1 G2 <- sub-env G1 G2.
 mm-env/2: minmax-env G1 G2 G2 G1 <- sub-env G2 G1.
-
-
-% Diamond / common prefix property
-
-sub-env-dia: sub-env G1 GT -> sub-env G2 GT -> minmax-env G1 G2 GS GU -> type.
-%mode sub-env-dia +A +B -C.
-
-- : sub-env-dia sub-env/refl S (mm-env/2 S).
-- : sub-env-dia (sub-env/ext S1) sub-env/refl (mm-env/1 (sub-env/ext S1)).
-- : sub-env-dia (sub-env/ext S1) (sub-env/ext S2) MM <- sub-env-dia S1 S2 MM.
-
-%worlds () (sub-env-dia _ _ _).
-%total A (sub-env-dia A _ _).
-
-
 
 
 %{ ------- subtyping ------ }%
@@ -397,7 +372,179 @@ subeq-tp : tenv -> tpe -> tenv -> tpe -> type.
 subeq-tp/sub : subeq-tp G1 T1 G2 T2 <- sub-tp G1 T1 G2 T2.
 
 
+%{ ------- eval-exp / type-exp ----- }%
 
+eval-exp   : venv -> exp -> val -> type.
+% e/cst      : eval-exp G (cste C) (cstv C).
+% e/prim     : eval-exp G (prm OP E1 E2) V3
+%             <- eval-exp G E1 V1
+%             <- eval-exp G E2 V2
+%             <- eval-op OP V1 V2 V3.
+
+e/empty    : eval-exp G empty emptyv.
+
+e/var      : eval-exp G X V <- vlookup G X V.
+e/fun      : eval-exp G (fun LNF TR R TP LNV R2 T2 MT) (clos LNF R LNV V2 G)
+            <- eval-exp G R2 V2.
+
+
+e/app      : eval-exp G (app E1 LNF E2) V3
+            <- eval-exp G E1 (clos LNF R LNV R2 G1)
+            <- eval-exp G E2 V2
+            <- eval-exp (vcons V2 G1) R V3.
+
+e/sel      : eval-exp G (sel E1 LNV) V
+            <- eval-exp G E1 (clos LNF R LNV V G1).
+
+
+
+type-mem   : mem N -> tpe -> type.
+tm/nil     : type-mem mnil top.
+tm/cons    : type-mem (mcons N T1 T2 R) (and (rect N T1 T2) TR) <- type-mem R TR.
+
+
+type-exp   : tenv -> exp -> tpe -> type.
+% t/cst       : type-exp G (cste C) T <- typeof C T.
+% t/prim      : type-exp G (prm OP E1 E2) T3
+%             <- type-exp G E1 T1
+%             <- type-exp G E2 T1
+%             <- type-op OP T1 T2 T3.
+
+t/empty    : type-exp G empty top.
+
+t/var      : type-exp G X T <- tlookup G X T <- wf-tp G T.
+
+t/fun      : type-exp G (fun LNF T3 R T4 LNV R2 T2 M)
+                (and (arrow LNF T3 T4) (and (recv  LNV T2) MT))
+                <- type-exp G R2 T2
+                <- type-mem M MT
+                <- wf-tp G MT
+                <- wf-tp G (recv LNV T2)
+                <- wf-tp G (arrow LNF T3 T4)
+                <- type-exp (tcons T3 G) R T4
+                .
+
+
+% whacky way of assigning an intersection type...
+% t/fun      : type-exp G (fun LNF R LNV R2 LNT TX1 TX2) (arrow LNF T3 T4)
+%                 <- type-exp (tcons T3 G) R T4
+%                 <- type-exp G R2 T2
+%                 <- wf-tp G (rect LNT TX1 TX2)
+%                 <- wf-tp G (arrow LNF T3 T4).
+% t/recv     : type-exp G (fun LNF R LNV R2 LNT TX1 TX2) (recv LNV T2)
+%                 <- type-exp (tcons T3 G) R T4
+%                 <- type-exp G R2 T2
+%                 <- wf-tp G (rect LNT TX1 TX2)
+%                 <- wf-tp G (arrow LNF T3 T4).
+% t/rect     : type-exp G (fun LNF R LNV R2 LNT TX1 TX2) (rect LNT TX1 TX2)
+%                 <- type-exp (tcons T3 G) R T4
+%                 <- type-exp G R2 T2
+%                 <- wf-tp G (rect LNT TX1 TX2)
+%                 <- wf-tp G (arrow LNF T3 T4).
+
+
+t/app       : type-exp G (app E1 LNF E2) T2
+            <- type-exp G E2 T1
+            <- type-exp G E1 (arrow LNF T1 T2).
+
+t/sel       : type-exp G (sel E1 LNV) T1
+            <- type-exp G E1 (recv LNV T1).
+
+t/varx     : type-exp G X (rect N (tsel X N) (tsel X N)) %% TODO: proper expansion
+                <- tlookup G X (rect N T1 T2) <- wf-tp G (rect N T1 T2).
+
+t/sub       : type-exp G E T2
+            <- type-exp G E T1
+            <- sub-tp G T1 G T2.
+
+%{ ------- well-formedness / typing for values and environment ----- }%
+
+wf-val   : val -> tenv -> tpe -> type.
+wf-env   : venv -> tenv -> type.
+
+% wfv/c    : wf-val (cstv C) T <- typeof C T.
+
+wfv/empty : wf-val emptyv G (rect N T1 T2)
+             <- wf-tp G (rect N T1 T2).
+
+wfv/f    : wf-val (clos LNF R LNV R2 H) G
+            (and (arrow LNF T1 T2) (and (recv LNV T) TX))
+            <- wf-env H GC
+            <- type-exp (tcons T1 GC) R T2
+            <- subeq-tp GC (arrow LNF T1 T2) G (arrow LNF T1 T2)
+
+            <- wf-val R2 G T
+            <- type-mem M TX
+
+            <- wf-tp G TX
+            <- wf-tp G (recv LNV T)
+            <- wf-tp G (arrow LNF T1 T2)
+            .
+
+
+
+
+% wfv/f    : wf-val (clos LNF R LNV R2 H) G (arrow LNF T1 T2)
+%             <- wf-env H GC
+%             <- type-exp (tcons T1 GC) R T2
+%             <- wf-tp G (arrow LNF T1 T2)
+%             <- subeq-tp GC (arrow LNF T1 T2) G (arrow LNF T1 T2).
+%
+% wfv/r    : wf-val (clos LNF R LNV R2 H) G (recv LNV T)
+%             <- wf-val R2 G T.
+%
+
+wfv/t    : wf-val (clos LNF R LNV R2 H) G (rect LNT T1 T2)
+            <- wf-tp G (rect LNT T1 T2).
+
+
+wfv/sub  : wf-val V G T
+            <- wf-val V G1 T1
+            <- sub-tp G1 T1 G T.
+
+
+wfe/n    : wf-env vnil tnil.
+wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V G T <- wf-env H G.
+
+%%% QUERIES %%%
+
+%query 1 1 type-exp tnil empty top.
+%query 1 1 type-exp tnil (fun z _ (var (s z)) _ z empty _ mnil) top.
+%query 1 1 type-exp tnil (fun z _ (var (s z)) _ z empty _ mnil) (arrow z A A).
+%query 1 1 type-exp tnil (fun z (rect z bot top) (var (s z)) A z empty _ mnil) (arrow z (rect z bot top) A).
+%query 1 1 type-exp tnil (fun z _ (var (s z)) _ z empty _ (mcons z bot top mnil)) top.
+%query 1 1 type-exp tnil (fun z _ (var (s z)) _ z empty _ (mcons z bot top mnil)) (rect z bot top).
+
+%query 1 1 type-exp tnil (fun z (rect z bot top) (var (s z)) _ z empty _ mnil) (arrow z (rect z bot top) A).
+
+%query 1 1 type-exp tnil (let _ empty (var (s z))) A.
+
+%query 1 1 type-exp tnil (fun z _ (var (s z)) _ _ empty _ (mcons _ _ _ mnil)) A.
+%query 1 1 type-exp tnil (fun (s z) (rect z bot top) (var (s z)) _ _ empty _ (mcons _ _ _ (mcons _ _ _ mnil))) A.
+%query 1 1 type-exp tnil (fun _ _ empty _ _ empty _ (mcons _ bot top mnil)) A.
+
+%%% PROOFS %%%
+
+sub-env-trans: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
+%mode sub-env-trans +A +B -C.
+
+- : sub-env-trans S sub-env/refl S.
+- : sub-env-trans S1 (sub-env/ext S2) (sub-env/ext S3) <- sub-env-trans S1 S2 S3.
+
+%worlds () (sub-env-trans _ _ _).
+%total A (sub-env-trans _ A _).
+
+% Diamond / common prefix property
+
+sub-env-dia: sub-env G1 GT -> sub-env G2 GT -> minmax-env G1 G2 GS GU -> type.
+%mode sub-env-dia +A +B -C.
+
+- : sub-env-dia sub-env/refl S (mm-env/2 S).
+- : sub-env-dia (sub-env/ext S1) sub-env/refl (mm-env/1 (sub-env/ext S1)).
+- : sub-env-dia (sub-env/ext S1) (sub-env/ext S2) MM <- sub-env-dia S1 S2 MM.
+
+%worlds () (sub-env-dia _ _ _).
+%total A (sub-env-dia A _ _).
 
 
 % Extending environments preserves lookup
@@ -1352,146 +1499,6 @@ subeq-tp-trans :
 %worlds () (subeq-tp-trans _ _ _).
 %total {A} (subeq-tp-trans A _ _).
 
-
-
-
-
-%{ ------- eval-exp / type-exp ----- }%
-
-eval-exp   : venv -> exp -> val -> type.
-% e/cst      : eval-exp G (cste C) (cstv C).
-% e/prim     : eval-exp G (prm OP E1 E2) V3
-%             <- eval-exp G E1 V1
-%             <- eval-exp G E2 V2
-%             <- eval-op OP V1 V2 V3.
-
-e/empty    : eval-exp G empty emptyv.
-
-e/var      : eval-exp G X V <- vlookup G X V.
-e/fun      : eval-exp G (fun LNF TR R TP LNV R2 T2 MT) (clos LNF R LNV V2 G)
-            <- eval-exp G R2 V2.
-
-
-e/app      : eval-exp G (app E1 LNF E2) V3
-            <- eval-exp G E1 (clos LNF R LNV R2 G1)
-            <- eval-exp G E2 V2
-            <- eval-exp (vcons V2 G1) R V3.
-
-e/sel      : eval-exp G (sel E1 LNV) V
-            <- eval-exp G E1 (clos LNF R LNV V G1).
-
-
-
-type-mem   : mem N -> tpe -> type.
-tm/nil     : type-mem mnil top.
-tm/cons    : type-mem (mcons N T1 T2 R) (and (rect N T1 T2) TR) <- type-mem R TR.
-
-
-type-exp   : tenv -> exp -> tpe -> type.
-% t/cst       : type-exp G (cste C) T <- typeof C T.
-% t/prim      : type-exp G (prm OP E1 E2) T3
-%             <- type-exp G E1 T1
-%             <- type-exp G E2 T1
-%             <- type-op OP T1 T2 T3.
-
-t/empty    : type-exp G empty top.
-
-t/var      : type-exp G X T <- tlookup G X T <- wf-tp G T.
-
-t/fun      : type-exp G (fun LNF T3 R T4 LNV R2 T2 M)
-                (and (arrow LNF T3 T4) (and (recv  LNV T2) MT))
-                <- type-exp G R2 T2
-                <- type-mem M MT
-                <- wf-tp G MT
-                <- wf-tp G (recv LNV T2)
-                <- wf-tp G (arrow LNF T3 T4)
-                <- type-exp (tcons T3 G) R T4
-                .
-
-
-% whacky way of assigning an intersection type...
-% t/fun      : type-exp G (fun LNF R LNV R2 LNT TX1 TX2) (arrow LNF T3 T4)
-%                 <- type-exp (tcons T3 G) R T4
-%                 <- type-exp G R2 T2
-%                 <- wf-tp G (rect LNT TX1 TX2)
-%                 <- wf-tp G (arrow LNF T3 T4).
-% t/recv     : type-exp G (fun LNF R LNV R2 LNT TX1 TX2) (recv LNV T2)
-%                 <- type-exp (tcons T3 G) R T4
-%                 <- type-exp G R2 T2
-%                 <- wf-tp G (rect LNT TX1 TX2)
-%                 <- wf-tp G (arrow LNF T3 T4).
-% t/rect     : type-exp G (fun LNF R LNV R2 LNT TX1 TX2) (rect LNT TX1 TX2)
-%                 <- type-exp (tcons T3 G) R T4
-%                 <- type-exp G R2 T2
-%                 <- wf-tp G (rect LNT TX1 TX2)
-%                 <- wf-tp G (arrow LNF T3 T4).
-
-
-t/app       : type-exp G (app E1 LNF E2) T2
-            <- type-exp G E2 T1
-            <- type-exp G E1 (arrow LNF T1 T2).
-
-t/sel       : type-exp G (sel E1 LNV) T1
-            <- type-exp G E1 (recv LNV T1).
-
-t/varx     : type-exp G X (rect N (tsel X N) (tsel X N)) %% TODO: proper expansion
-                <- tlookup G X (rect N T1 T2) <- wf-tp G (rect N T1 T2).
-
-t/sub       : type-exp G E T2
-            <- type-exp G E T1
-            <- sub-tp G T1 G T2.
-
-%{ ------- well-formedness / typing for values and environment ----- }%
-
-wf-val   : val -> tenv -> tpe -> type.
-wf-env   : venv -> tenv -> type.
-
-% wfv/c    : wf-val (cstv C) T <- typeof C T.
-
-wfv/empty : wf-val emptyv G (rect N T1 T2)
-             <- wf-tp G (rect N T1 T2).
-
-wfv/f    : wf-val (clos LNF R LNV R2 H) G
-            (and (arrow LNF T1 T2) (and (recv LNV T) TX))
-            <- wf-env H GC
-            <- type-exp (tcons T1 GC) R T2
-            <- subeq-tp GC (arrow LNF T1 T2) G (arrow LNF T1 T2)
-
-            <- wf-val R2 G T
-            <- type-mem M TX
-
-            <- wf-tp G TX
-            <- wf-tp G (recv LNV T)
-            <- wf-tp G (arrow LNF T1 T2)
-            .
-
-
-
-
-% wfv/f    : wf-val (clos LNF R LNV R2 H) G (arrow LNF T1 T2)
-%             <- wf-env H GC
-%             <- type-exp (tcons T1 GC) R T2
-%             <- wf-tp G (arrow LNF T1 T2)
-%             <- subeq-tp GC (arrow LNF T1 T2) G (arrow LNF T1 T2).
-%
-% wfv/r    : wf-val (clos LNF R LNV R2 H) G (recv LNV T)
-%             <- wf-val R2 G T.
-%
-
-wfv/t    : wf-val (clos LNF R LNV R2 H) G (rect LNT T1 T2)
-            <- wf-tp G (rect LNT T1 T2).
-
-
-wfv/sub  : wf-val V G T
-            <- wf-val V G1 T1
-            <- sub-tp G1 T1 G T.
-
-
-wfe/n    : wf-env vnil tnil.
-wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V G T <- wf-env H G.
-
-
-
 %{ ------- type well-formedness extractors ----- }%
 
 extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
@@ -2219,20 +2226,3 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
 
 %worlds () (eval-safe _ _ _ _).
 %total C (eval-safe A _ C _). % induction on eval-exp
-
-%%% QUERIES %%%
-
-%query 1 1 type-exp tnil empty top.
-%query 1 1 type-exp tnil (fun z _ (var (s z)) _ z empty _ mnil) top.
-%query 1 1 type-exp tnil (fun z _ (var (s z)) _ z empty _ mnil) (arrow z A A).
-%query 1 1 type-exp tnil (fun z (rect z bot top) (var (s z)) A z empty _ mnil) (arrow z (rect z bot top) A).
-%query 1 1 type-exp tnil (fun z _ (var (s z)) _ z empty _ (mcons z bot top mnil)) top.
-%query 1 1 type-exp tnil (fun z _ (var (s z)) _ z empty _ (mcons z bot top mnil)) (rect z bot top).
-
-%query 1 1 type-exp tnil (fun z (rect z bot top) (var (s z)) _ z empty _ mnil) (arrow z (rect z bot top) A).
-
-%query 1 1 type-exp tnil (let _ empty (var (s z))) A.
-
-%query 1 1 type-exp tnil (fun z _ (var (s z)) _ _ empty _ (mcons _ _ _ mnil)) A.
-%query 1 1 type-exp tnil (fun (s z) (rect z bot top) (var (s z)) _ _ empty _ (mcons _ _ _ (mcons _ _ _ mnil))) A.
-%query 1 1 type-exp tnil (fun _ _ empty _ _ empty _ (mcons _ bot top mnil)) A.
