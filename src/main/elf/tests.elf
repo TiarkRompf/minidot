@@ -6,13 +6,19 @@
 %query 1 1 type-exp tnil e5  top.
 %query 1 1 type-exp tnil e6  top.
 %query 1 1 type-exp tnil e7  top.
-%query 1 1 type-exp tnil e8  top.
 %query 1 1 type-exp tnil e9  top.
-%query 1 1 type-exp tnil e10 top.
 
 %query 1 1 sub-tp tnil t2 tnil t1.
+
 
 % programs
 %query 1 1 type-exp tnil p1 top.
 %query 1 1 type-exp tnil p1i top.
 %query 1 1 type-exp tnil p2 top.
+
+% regressions
+%.
+
+% caused by self types
+%query 1 1 type-exp tnil e8  top.
+%query 1 1 type-exp tnil e10 top.

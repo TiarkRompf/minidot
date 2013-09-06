@@ -36,7 +36,14 @@ trait ElfPrinter { this: DotSyntax =>
 
   def printEntity(tags: List[Tag], env: Map[Var,Int], e: Entity): String = {
     def p(e: Entity) = printEntity(tags, env, e)
-    def pbind(x: Var, e: Entity) = printEntity(tags, env.updated(x, env.size+1), e)
+    def ebind(x: Var) = env.updated(x, env.size)
+    def pbind(e: Entity, xs: Var*) = {
+      var envp = env
+      for ((x,o) <- xs.zipWithIndex) {
+        envp = env.updated(x, env.size+o)
+      }
+      printEntity(tags, envp, e)
+    }
     e match {
 
       case l@Tag(id) => printNat(tags.size-tags.indexOf(l)-1)
@@ -52,8 +59,7 @@ trait ElfPrinter { this: DotSyntax =>
       case App(f, l, a) => s"(app ${p(f)} ${p(l)} ${p(a)})"
 
       case New(oself, members) =>
-        assert(oself.isEmpty,
-             "TODO in elf: support recursive object creation.")
+        val self = oself.getOrElse(Var("_"))
         val typeMembers = members.collect{
           case i: InitType => (i.d.tag, i)
         }
@@ -66,21 +72,21 @@ trait ElfPrinter { this: DotSyntax =>
         val valMembers = members.collect{
           case i: InitVal => (i.d.tag, i)
         }
-        val tmem = if (typeMemberMap.isEmpty) "mnil" else printTypeMembers(tags, env, typeMemberMap, tags)
+        val tmem = if (typeMemberMap.isEmpty) "mnil" else printTypeMembers(tags, ebind(self), typeMemberMap, tags)
         val dmem = defMembers match {
-          case Nil => "z _ empty _"
-          case (_,i)::Nil => s"${p(i.d.tag)} ${p(i.d.tyP)} ${pbind(i.param, i.body)} ${p(i.d.tyR)}"
+          case Nil => "z top empty top"
+          case (_,i)::Nil => s"${p(i.d.tag)} ${p(i.d.tyP)} ${pbind(i.body, self, i.param)} ${p(i.d.tyR)}"
           case _ => assert(false, "TODO in elf: support object creation with more than one def"); ???
         }
         val vmem = valMembers match {
-          case Nil => "z empty _"
+          case Nil => "z empty top"
           case (_,i)::Nil => s"${p(i.d.tag)} ${p(i.t)} ${p(i.d.ty)}"
           case _ => assert(false, "TODO in elf: support object creation with more than one val"); ???
         }
         s"(fun $dmem $vmem $tmem)"
 
       case Let(x, tyx, ex, body) =>
-        s"(let ${p(tyx)} ${p(ex)} ${pbind(x, body)})"
+        s"(let ${p(tyx)} ${p(ex)} ${pbind(body, x)})"
 
       case Bot => "bot"
 
@@ -108,7 +114,7 @@ trait ElfPrinter { this: DotSyntax =>
       case TRec(self, ty) =>
         // TODO: fill env syntactically?
         //    -- at least, we can fix its size...
-        s"(bind ${printNat(env.size+1)} _ ${pbind(self, ty)})"
+        s"(bind ${printNat(env.size)} _ ${pbind(ty, self)})"
 
       case Unknown => "_"
     }

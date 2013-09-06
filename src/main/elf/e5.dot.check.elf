@@ -1,1 +1,1 @@
-%abbrev e5 = (let top (fun z _ empty _ z empty _ mnil) (let (recv z top) (fun z _ empty _ z (var (s z)) top mnil) (var (s (s z))))).
+%abbrev e5 = (let top (fun z top empty top z empty top mnil) (let (recv z top) (fun z top empty top z (var z) top mnil) (var (s z)))).
