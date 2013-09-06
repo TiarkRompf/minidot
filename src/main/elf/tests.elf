@@ -22,8 +22,7 @@
 
 % programs
 %query 1 1 type-exp tnil p1 top.
-%query 1 1 type-exp tnil p1i top.
-%query 1 1 type-exp tnil p2 top.
+%query 1 1 type-exp tnil p2c top.
 
 % playground
 %.
@@ -36,4 +35,8 @@
 %query 1 1 wf-tp (tcons (bind z tnil (rect (s (s z)) top top)) tnil) (tsel (var z) (s (s z))).
 %query 1 1 sub-tp tnil (bind z tnil (rect (s (s z)) top top)) tnil (rect (s (s z)) top top).
 
+% regression
+%.
+%query 1 1 type-exp tnil p1i top.
+%query 1 1 type-exp tnil p2 top.
 
