@@ -39,8 +39,8 @@ trait ElfPrinter { this: DotSyntax =>
     def ebind(x: Var) = env.updated(x, env.size)
     def pbind(e: Entity, xs: Var*) = {
       var envp = env
-      for ((x,o) <- xs.zipWithIndex) {
-        envp = env.updated(x, env.size+o)
+      for (x <- xs) {
+        envp = envp.updated(x, envp.size)
       }
       printEntity(tags, envp, e)
     }
@@ -49,7 +49,7 @@ trait ElfPrinter { this: DotSyntax =>
       case l@Tag(id) => printNat(tags.size-tags.indexOf(l)-1)
 
       case v@Var(id) => env.get(v) match {
-        case None => assert(false, "syntax error: unbound variable"); ???
+        case None => assert(false, "syntax error: unbound variable "+id); ???
         case Some(i) =>
           s"(var ${printNat(i)})"
       }
@@ -75,7 +75,7 @@ trait ElfPrinter { this: DotSyntax =>
         val tmem = if (typeMemberMap.isEmpty) "mnil" else printTypeMembers(tags, ebind(self), typeMemberMap, tags)
         val dmem = defMembers match {
           case Nil => "z top empty top"
-          case (_,i)::Nil => s"${p(i.d.tag)} ${p(i.d.tyP)} ${pbind(i.body, self, i.param)} ${p(i.d.tyR)}"
+          case (_,i)::Nil => s"${p(i.d.tag)} ${pbind(i.d.tyP, self, i.param)} ${pbind(i.body, self, i.param)} ${pbind(i.d.tyR, self, i.param)}"
           case _ => assert(false, "TODO in elf: support object creation with more than one def"); ???
         }
         val vmem = valMembers match {

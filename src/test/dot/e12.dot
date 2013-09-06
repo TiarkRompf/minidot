@@ -1,0 +1,4 @@
+new { x =>
+  type A: Top .. Top
+  def m(y: Top): x.A = y
+}
