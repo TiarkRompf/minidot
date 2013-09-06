@@ -393,7 +393,8 @@ e/sel      : eval-exp G (sel E1 LNV) V
 
 type-mem   : mem N -> tpe -> type.
 tm/nil     : type-mem mnil top.
-tm/cons    : type-mem (mcons N T1 T2 R) (and (rect N T1 T2) TR) <- type-mem R TR.
+tm/consz   : type-mem (mcons z T1 T2 R) (rect N T1 T2).
+tm/cons    : type-mem (mcons (s N) T1 T2 R) (and (rect (s N) T1 T2) TR) <- type-mem R TR.
 
 
 type-exp   : tenv -> exp -> tpe -> type.

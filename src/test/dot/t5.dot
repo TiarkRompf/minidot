@@ -1,0 +1,5 @@
+{ x =>
+{type A: Top .. Top} &
+{type B: x.A .. x.A } &
+Top
+}
