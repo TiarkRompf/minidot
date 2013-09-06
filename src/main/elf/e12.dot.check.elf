@@ -1,1 +1,1 @@
-%abbrev e12 = (fun z top (var (s z)) (tsel (var z) (s z)) z empty top (mcons _ top top (mcons _ _ _ mnil))).
+%abbrev e12 = (fun z top (var (s z)) (tsel (var z) (s z)) z empty top (mcons _ top top (mcons _ bot top mnil))).

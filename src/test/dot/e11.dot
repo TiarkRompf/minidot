@@ -2,4 +2,3 @@ new { x =>
   type A: Top .. Top
   type B: Bot .. x.A
 }
-

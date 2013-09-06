@@ -32,7 +32,7 @@ trait ElfPrinter { this: DotSyntax =>
     case Nil => "mnil"
     case l::rtags =>
       val (tyS, tyU) = members.get(l) match {
-        case None => (Unknown, Unknown)
+        case None => (Bot, Top)
         case Some(i) => (i.d.tyS, i.d.tyU)
       }
       s"(mcons _ ${printEntity(tags, env, tyS)} ${printEntity(tags, env, tyU)} ${printTypeMembers(tags, env, members, rtags)})"
