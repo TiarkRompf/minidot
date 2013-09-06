@@ -1,0 +1,1 @@
+%abbrev p2 = (let _ (fun z _ empty _ z (fun z _ empty _ z (fun z _ empty _ z empty _ mnil) _ mnil) _ mnil) (sel (sel (var (s z)) z) z)).

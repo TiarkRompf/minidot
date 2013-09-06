@@ -1,1 +1,1 @@
-%abbrev e6 = (let _ (fun z _ empty _ z empty _ mnil) (let _ (fun z _ (var (s (s z))) _ z empty _ mnil) (var (s z)))).
+%abbrev e6 = (let _ (fun z _ empty _ z empty _ mnil) (let _ (fun z _ (var (s z)) _ z empty _ mnil) (var (s (s z))))).

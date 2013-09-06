@@ -36,7 +36,7 @@ trait ElfPrinter { this: DotSyntax =>
 
   def printEntity(tags: List[Tag], env: Map[Var,Int], e: Entity): String = {
     def p(e: Entity) = printEntity(tags, env, e)
-    def pbind(x: Var, e: Entity) = printEntity(tags, env.updated(x, env.size), e)
+    def pbind(x: Var, e: Entity) = printEntity(tags, env.updated(x, env.size+1), e)
     e match {
 
       case l@Tag(id) => printNat(tags.size-tags.indexOf(l)-1)
@@ -44,7 +44,7 @@ trait ElfPrinter { this: DotSyntax =>
       case v@Var(id) => env.get(v) match {
         case None => assert(false, "syntax error: unbound variable"); ???
         case Some(i) =>
-          s"(var ${printNat(env.size-i)})"
+          s"(var ${printNat(i)})"
       }
 
       case Sel(o, l) => s"(sel ${p(o)} ${p(l)})"

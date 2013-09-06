@@ -269,7 +269,7 @@ exp-tp/and2 : exp-tp (and T1 T2) N (tsome T2')
 tlookexp: tenv -> exp -> tpe -> type.
 tle: tlookexp G (var N) (rect LN T1 T2)  <- exp-tp T0 LN (tsome (rect LN T1 T2)) <- tlookup G (var N) T0.
 
-pev  : path-eval G E (rect N TS TU) <- wf-tp G (rect N TS TU) <- tlookexp G E (rect N TS TU).
+pev  : path-eval G E (rect N TS TU)  <- tlookexp G E (rect N TS TU) <- wf-tp G (rect N TS TU).
 
 
 sub-tp/top  : sub-tp G1 T G2 top <- wf-tp G1 T.
@@ -412,16 +412,16 @@ type-exp   : tenv -> exp -> tpe -> type.
 
 t/empty    : type-exp G empty top.
 
-t/var      : type-exp G X T <- tlookup G X T <- wf-tp G T.
+t/var      : type-exp G (var N) T <- tlookup G (var N) T <- wf-tp G T.
 
 t/fun      : type-exp G (fun LNF T3 R T4 LNV R2 T2 M)
                 (and (arrow LNF T3 T4) (and (recv  LNV T2) MT))
-                <- type-exp G R2 T2
                 <- type-mem M MT
+                <- type-exp G R2 T2
+                <- type-exp (tcons T3 G) R T4
                 <- wf-tp G MT
                 <- wf-tp G (recv LNV T2)
                 <- wf-tp G (arrow LNF T3 T4)
-                <- type-exp (tcons T3 G) R T4
                 .
 
 
@@ -522,6 +522,8 @@ wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V G T <- wf-env H G.
 %query 1 1 type-exp tnil (fun z _ (var (s z)) _ _ empty _ (mcons _ _ _ mnil)) A.
 %query 1 1 type-exp tnil (fun (s z) (rect z bot top) (var (s z)) _ _ empty _ (mcons _ _ _ (mcons _ _ _ mnil))) A.
 %query 1 1 type-exp tnil (fun _ _ empty _ _ empty _ (mcons _ bot top mnil)) A.
+
+%.
 
 %%% PROOFS %%%
 

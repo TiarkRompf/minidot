@@ -1,3 +1,4 @@
+% sanity checks
 %query 1 1 type-exp tnil e1  top.
 %query 1 1 type-exp tnil e2  top.
 %query 1 1 type-exp tnil e3  top.
@@ -10,3 +11,7 @@
 %query 1 1 type-exp tnil e10 top.
 
 %query 1 1 sub-tp tnil t2 tnil t1.
+
+% programs
+%query 1 1 type-exp tnil p1 top.
+%query 1 1 type-exp tnil p2 top.

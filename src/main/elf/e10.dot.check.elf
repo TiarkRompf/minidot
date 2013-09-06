@@ -1,1 +1,1 @@
-%abbrev e10 = (let (rect z top top) (fun z _ empty _ z empty _ (mcons _ top top mnil)) (let (tsel (var (s z)) z) (var (s z)) (var (s (s z))))).
+%abbrev e10 = (let (rect z top top) (fun z _ empty _ z empty _ (mcons _ top top mnil)) (let (tsel (var (s z)) z) (var (s z)) (var (s z)))).
