@@ -1829,7 +1829,7 @@ invert-fun :
   type.
 %mode invert-fun +WFE1 -WFE2 -WFE3 -WFE4 -WFE5 -SBT1 -SBT2.
 
--     : invert-fun (t/fun WFF WR STV M TV TS S)
+-     : invert-fun (t/fun WFF WR STV TV TS M S)
           TS TV M WR STV ST
            <- subeq-tp-refl WFF ST.
 
