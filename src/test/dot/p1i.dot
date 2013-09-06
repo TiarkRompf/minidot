@@ -1,0 +1,4 @@
+val a = new {}
+val b = new { val v = a }
+val c = new { val v = b }
+c.v.v

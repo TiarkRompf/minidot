@@ -141,8 +141,9 @@ fun:
   exp.
 app: exp -> nat -> exp -> exp.
 sel: exp -> nat -> exp.
+let: tpe -> exp -> exp -> exp.
 
-%abbrev let: tpe -> exp -> exp -> exp = [T] [ex] [ef] (app (fun z T ef _ z empty _ mnil) z ex).
+% %abbrev let: tpe -> exp -> exp -> exp = [T] [ex] [ef] (app (fun z T ef _ z empty _ mnil) z ex).
 
 % types
 top  : tpe.
@@ -450,6 +451,10 @@ t/app       : type-exp G (app E1 LNF E2) T2
 t/sel       : type-exp G (sel E1 LNV) T1
             <- type-exp G E1 (recv LNV T1).
 
+t/let       : type-exp G (let T1 E1 E2) T2
+            <- type-exp G E1 T1
+            <- type-exp (tcons T1 G) E2 T2.
+
 t/varx     : type-exp G X (rect N (tsel X N) (tsel X N)) %% TODO: proper expansion
                 <- tlookup G X (rect N T1 T2) <- wf-tp G (rect N T1 T2).
 
@@ -522,6 +527,8 @@ wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V G T <- wf-env H G.
 %query 1 1 type-exp tnil (fun z _ (var (s z)) _ _ empty _ (mcons _ _ _ mnil)) A.
 %query 1 1 type-exp tnil (fun (s z) (rect z bot top) (var (s z)) _ _ empty _ (mcons _ _ _ (mcons _ _ _ mnil))) A.
 %query 1 1 type-exp tnil (fun _ _ empty _ _ empty _ (mcons _ bot top mnil)) A.
+
+%.
 
 %%% PROOFS %%%
 
