@@ -378,7 +378,8 @@ e/empty    : eval-exp G empty emptyv.
 e/var      : eval-exp G X V <- vlookup G X V.
 
 e/fun      : eval-exp G (fun LNF _ R _ LNV R2 _ MT) (clos LNF R LNV V2 G)
-            <- eval-exp G R2 V2.
+            <- eval-exp (vcons emptyv G) R2 V2.
+%            <- eval-exp (vcons (clos LNF R LNV emptyv G) G) R2 V2.
 
 
 e/app      : eval-exp G (app E1 LNF E2) V3
@@ -410,8 +411,10 @@ t/fun      : type-exp G (fun LNF T3 R T4 LNV R2 T2 M)
                 (bind N G (and (arrow LNF T3 T4) (and (recv  LNV T2) MT)))
                 <- tsize G (var N)
                 <- type-exp (tcons T3 (tcons (and (arrow LNF T3 T4) (and (recv  LNV T2) MT)) G)) R T4
-                <- type-exp G R2 T2
+                <- type-exp (tcons MT G) R2 T2
                 <- type-mem M MT
+                <- subeq-tp (tcons MT G) T2 (tcons (and (arrow LNF T3 T4) (and (recv  LNV T2) MT)) G) T2
+                <- wf-tp (tcons MT G) MT
                 <- wf-tp G (bind N G (and (arrow LNF T3 T4) (and (recv  LNV T2) MT)))
                 .
 
@@ -456,15 +459,16 @@ t/sub       : type-exp G E T2
 wf-val   : val -> tenv -> tpe -> type.
 wf-env   : venv -> tenv -> type.
 
-wfv/empty : wf-val emptyv G (rect N T1 T2)
-             <- wf-tp G (rect N T1 T2).
+wfv/empty : wf-val emptyv G T
+             <- wf-tp G T.
 
 wfv/f    : wf-val (clos LNF R LNV R2 H) G
             (bind N GC (and (arrow LNF T1 T2) (and (recv LNV T) TX)))
             <- wf-env H GC
             <- type-exp (tcons T1 (tcons (and (arrow LNF T1 T2) (and (recv LNV T) TX)) GC)) R T2
 
-            <- wf-val R2 GC T
+            <- subeq-tp (tcons TX GC) T (tcons (and (arrow LNF T1 T2) (and (recv LNV T) TX)) GC) T
+            <- wf-val R2 (tcons TX GC) T
             <- type-mem M TX
 
             <- subeq-tp
@@ -494,6 +498,20 @@ wfv/sub  : wf-val V G T
 
 wfe/n    : wf-env vnil tnil.
 wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H G.
+
+
+
+%{
+  
+%dquery 7 * 5 type-exp tnil
+  (fun z top empty top z empty top
+      (mcons (s z) top top (mcons z bot (tsel (var z) (s z)) mnil))) top.
+
+}%
+
+
+
+
 
 
 
@@ -1515,7 +1533,7 @@ extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 - : extract-wf2 t/empty wf-tp/top.
 - : extract-wf2 (t/var W L) W.
 - : extract-wf2 (t/varx W L) (wf-tp/rect (sub-tp/tselx ST ST (pev (tle exp-tp/rect L) W) sub-env/refl sub-env/refl) (wf-tp/tsel (pev (tle exp-tp/rect L) W)) (wf-tp/tsel (pev (tle exp-tp/rect L) W))) <- sub-tp-refl W ST.
-- : extract-wf2 (t/fun WFF _ _ _ S) WFF.
+- : extract-wf2 (t/fun WFF _ _ _ _ _ S) WFF.
 - : extract-wf2 (t/app TS1 (TS2: type-exp _ _ (arrow _ _ _))) W2 <- extract-wf2 TS2 (wf-tp/fun W2 W1).
 - : extract-wf2 (t/sel TS) W <- extract-wf2 TS (wf-tp/recv W).
 - : extract-wf2 (t/sub S TS) W2 <- extract-wf S W1 W2.
@@ -1536,7 +1554,7 @@ extract-wf3: wf-val V G T1 -> wf-tp G T1 -> type.
 %mode extract-wf3 +WFE1 -WFE2.
 
 - : extract-wf3 (wfv/empty W) W.
-- : extract-wf3 (wfv/f SFF _ _ _ _) WFF <- extract-wf4 SFF _ WFF.
+- : extract-wf3 (wfv/f SFF _ _ _ _ _) WFF <- extract-wf4 SFF _ WFF.
 - : extract-wf3 (wfv/t WR) WR.
 - : extract-wf3 (wfv/sub S TS) W2 <- extract-wf S W1 W2.
 
@@ -1557,7 +1575,7 @@ extend-wfv: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
 
 -     : extend-wfv (wfv/sub ST WV) T (wfv/sub ST1 WV)
             <- extend-sub-tp2 ST T ST1.
--     : extend-wfv (wfv/f ST MT TV TE WE) T (wfv/f ST1 MT TV TE WE)
+-     : extend-wfv (wfv/f ST MT TV TV2 TE WE) T (wfv/f ST1 MT TV TV2 TE WE)
             <- extend-subeq-tp2 ST T ST1.
 -     : extend-wfv (wfv/t WR) T (wfv/t WR1)
             <- extend-wf-tp WR T WR1.
@@ -1630,7 +1648,7 @@ cases-wfv: subeq-tp-cases
 assign-rect: wf-val V G0 T -> wf-tp G (rect N T1 T2) -> wf-val V G (rect N T1 T2) -> type.
 %mode assign-rect +A +B -C.
 - : assign-rect (wfv/empty _) W (wfv/empty W).
-- : assign-rect (wfv/f ST MT TV TE WE) W (wfv/t W).
+- : assign-rect (wfv/f ST MT TV TV2 TE WE) W (wfv/t W).
 - : assign-rect (wfv/t WR) W (wfv/t W).
 - : assign-rect (wfv/sub S T) W T' <- assign-rect T W T'.
 %worlds () (assign-rect _ _ _).
@@ -1802,22 +1820,24 @@ invert-fun :
   type-exp G (fun LNF _ R _ LNV R2 _ M) T ->
   %% Output
   type-exp (tcons T3 (tcons (and (arrow LNF T3 T4) (and (recv LNV T1) MT)) G)) R T4 ->
-  type-exp G R2 T1 ->
+  type-exp (tcons MT G) R2 T1 ->
   type-mem M MT ->
+  wf-tp (tcons MT G) MT ->
+  subeq-tp (tcons MT G) T1 (tcons (and (arrow LNF T3 T4) (and (recv LNV T1) MT)) G) T1 ->  
   subeq-tp G (bind N G (and (arrow LNF T3 T4) (and (recv LNV T1) MT))) G T ->
   type.
-%mode invert-fun +WFE1 -WFE2 -WFE3 -WFE4 -SBT1.
+%mode invert-fun +WFE1 -WFE2 -WFE3 -WFE4 -WFE5 -SBT1 -SBT2.
 
--     : invert-fun (t/fun WFF M TSV TS S)
-          TS TSV M ST
+-     : invert-fun (t/fun WFF WR STV M TV TS S)
+          TS TV M WR STV ST
            <- subeq-tp-refl WFF ST.
 
--     : invert-fun (t/sub SB1 TS) TSV L M ST'
-           <- invert-fun TS TSV L M ST
+-     : invert-fun (t/sub SB1 TS) TSV L M WR STV ST'
+           <- invert-fun TS TSV L M WR STV ST
            <- subeq-tp-trans ST (subeq-tp/sub SB1) ST'.
 
-%worlds () (invert-fun _ _ _ _ _).
-%total WFE (invert-fun WFE _ _ _ _).
+%worlds () (invert-fun _ _ _ _ _ _ _).
+%total WFE (invert-fun WFE _ _ _ _ _ _).
 
 
 
@@ -1933,8 +1953,8 @@ invert-wf-fun-aux :
   type.
 %mode invert-wf-fun-aux +WFE1 +SBT -WFE2 -WFE3 -SBT1 -WV.
 
--     :  invert-wf-fun-aux (wfv/f ST MT TV TS WE) (subeq-tp/sub (sub-tp/tbind1 _ _ SB0)) TS WE (subeq-tp/sub STF1)
-          (wfv/f ST' MT TV TS WE)
+-     :  invert-wf-fun-aux (wfv/f ST MT TV TV2 TS WE) (subeq-tp/sub (sub-tp/tbind1 _ _ SB0)) TS WE (subeq-tp/sub STF1)
+          (wfv/f ST' MT TV TV2 TS WE)
             <- extract-wf4 ST WFF' _
             <- subeq-tp-refl WFF' ST'
             <- project-sub-arrow SB0 MT STF1.
@@ -1979,17 +1999,14 @@ invert-wf-rec-aux :
   wf-val (clos LNF R LNV R2 H) G1 T ->
   subeq-tp G1 T G2 (recv LNV T2) ->
   %% Output
-  wf-val R2 G T4 ->
-  subeq-tp G (recv LNV T4) G2 (recv LNV T2) ->
+  wf-val R2 (tcons TS G) T4 ->
+  subeq-tp (tcons TS G) (recv LNV T4) G2 (recv LNV T2) ->
   type.
 %mode invert-wf-rec-aux +WFE1 +SBT -WFE3 -SBT1.
 
--     :  invert-wf-rec-aux (wfv/f ST MT TV TS WE) (subeq-tp/sub (sub-tp/tbind1 _ _ SB0)) TV (subeq-tp/sub SB1)
+-     :  invert-wf-rec-aux (wfv/f ST MT TV (subeq-tp/sub STV) TS WE) (subeq-tp/sub (sub-tp/tbind1 _ _ SB0)) TV (subeq-tp/sub SB1)
             <- project-sub-recv SB0 MT SB1'
-            <- extract-wf3 TV WV
-            <- sub-tp-refl WV STV'
-            <- extend-sub-tp2 STV' _ STV''
-            <- sub-tp-trans (sub-tp/recv STV'') SB1' SB1.
+            <- sub-tp-trans (sub-tp/recv STV) SB1' SB1.
 
 -     : invert-wf-rec-aux (wfv/sub (SB1: sub-tp G1 TI G T) (TS: wf-val _ G1 TI))
                 (SB0: subeq-tp G T G2 (recv LNV T2)) TV SB
@@ -2114,11 +2131,12 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
           <- cases-wfv-rect CST V V V V2.
 
  -      : eval-safe (ZT: type-exp G _ _) E (e/fun EX) WV2
-          <- invert-fun ZT TS TSV M CST
-          <- eval-safe TSV E EX TV
+          <- invert-fun ZT TS TSV M WR STV CST
+          % <- eval-safe TSV (wfe/c E (wfv/sub (sub-tp/tbind1 _ _ SXX) (wfv/f STFF M (wfv/empty W) STV TS E))) EX TV
+          <- eval-safe TSV (wfe/c E (wfv/empty WR)) EX TV
           <- extract-wf4 CST WFF _
           <- subeq-tp-refl WFF STFF
-          <- wfv-widen CST (wfv/f STFF M TV TS E) WV2.
+          <- wfv-widen CST (wfv/f STFF M TV STV TS E) WV2.
 
 -      : eval-safe ZT WE (e/sel EVX) WV3
           <- invert-sel ZT TS ST
