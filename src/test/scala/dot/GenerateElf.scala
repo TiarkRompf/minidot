@@ -51,7 +51,7 @@ class GenerateElf extends FunSuite with ElfPrinter with DotParsing {
 
   for (f <- srcTree) {
     val name = f.getName
-    if (name.endsWith(".dot")) {
+    if (name.endsWith(".dot") && !name.contains("#")) {
       test("sanity-checking elf of "+name) {
         val in = readFile(f.toString)
         phrase(if (name.startsWith("t")) Parser.typ else Parser.term)(new lexical.Scanner(in)) match {
