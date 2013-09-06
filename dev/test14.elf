@@ -260,7 +260,7 @@ vf/c   : vsize (vcons _ G) (var (s N)) <- vsize G (var N).
 vlookup: venv -> exp -> val -> type.
 vl  : vlookup G (var N) V
   <- vsize G (var S)
-  <- add N M S
+  <- add (s N) M S
   <- vlookup-zero G (var M) V.
 
 
@@ -281,7 +281,7 @@ tf/c   : tsize (tcons _ G) (var (s N)) <- tsize G (var N).
 tlookup: tenv -> exp -> tpe -> type.
 tl  : tlookup G (var N) V
   <- tsize G (var S)
-  <- add N M S
+  <- add (s N) M S
   <- tlookup-zero G (var M) V.
 
 % tlookupa: tenv -> exp -> tpe -> type.
@@ -569,7 +569,7 @@ lookup-eq: tlookup G2 (var N1) (rect LN T1 T3) -> tlookup G2 (var N2) (rect LN T
   -> same T1 T2 -> same T3 T4 -> type.
 %mode lookup-eq +P1 +P2 +E -SBT -SBT.
 
-- : lookup-eq (tl L1 A1 F1) (tl L2 A2 F2) EN X Y
+- : lookup-eq (tl L1 (add/s A1) (tf/c F1)) (tl L2 (add/s A2) (tf/c F2)) EN X Y
         <- size-eq F1 F2 ES 
         <- sub-eq EN ES A1 A2 EM 
         <- lookup-zero-eq L1 L2 EM X Y.
@@ -594,7 +594,7 @@ lookup-eq0: tlookup G2 (var N1) T1 -> tlookup G2 (var N2) T2 -> eq N1 N2
   -> same T1 T2 -> type.
 %mode lookup-eq0 +P1 +P2 +E -SBT.
 
-- : lookup-eq0 (tl L1 A1 F1) (tl L2 A2 F2) EN X
+- : lookup-eq0 (tl L1 (add/s A1) (tf/c F1)) (tl L2 (add/s A2) (tf/c F2)) EN X
         <- size-eq F1 F2 ES 
         <- sub-eq EN ES A1 A2 EM 
         <- lookup-zero-eq0 L1 L2 EM X.
@@ -2121,7 +2121,7 @@ lookup-safe: wf-env H G -> tlookup G (var N) T -> vlookup H (var N) V -> wf-val 
 %mode lookup-safe +A +B +C -D.
 
 -      : lookup-safe WE (tl TL TA TS) (vl VL VA VS) WV
-         <- eq-refl N EN
+         <- eq-refl (s N) EN
          <- wf-env-size-eq WE VS TS ES
          <- sub-eq EN ES VA TA EM
          <- lookup-zero-safe WE TL VL EM WV.
