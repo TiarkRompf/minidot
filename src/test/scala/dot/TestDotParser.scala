@@ -30,6 +30,7 @@ class TestDotParser extends FunSuite with DotParsing {
   test("TypeGrouping2") { ok(Parser.typ, Some(Or(Top, And(Top, Top))))("Top | Top & Top") }
 
   test("MemType") { ok(Parser.typ)("{ type A: Bot .. Top }") }
+  test("MemTypeAlias") { ok(Parser.typ)("{ type A = Top }") }
   test("MemDef") { ok(Parser.typ)("{ def m(_: Bot): Top }") }
   test("MemVal") { ok(Parser.typ)("{ val v: Top }") }
   test("TRec/Tsel") { ok(Parser.typ)("{ x => { type A: Bot .. x.B } & { type B: Bot .. Top } }") }

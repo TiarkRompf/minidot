@@ -63,7 +63,8 @@ trait DotParsing extends StdTokenParsers with PackratParsers with DotSyntax with
       l(memVal ~ ("=" ~> term) ^^ InitVal) ("val init")
 
     lazy val memType: P[MemType] =
-      l(("type" ~> tag ~ (":" ~> typ <~ "..") ~ typ) ^^ MemType) ("type member")
+      l(("type" ~> tag ~ (":" ~> typ <~ "..") ~ typ) ^^ MemType) ("type member") |
+      l(("type" ~> tag ~ ("=" ~> typ)) ^^ {case l~ty => MemType(l, ty, ty)}) ("type member alias")
 
     lazy val initType: P[InitType] =
       l(memType ^^ InitType) ("type init")
