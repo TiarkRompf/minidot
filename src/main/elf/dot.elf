@@ -269,7 +269,7 @@ exp-tp/and2 : exp-tp (and T1 T2) N (tsome T2')
 tlookexp: tenv -> exp -> tpe -> type.
 tle: tlookexp G (var N) (rect LN T1 T2) <- tlookup G (var N) T0 <- exp-tp T0 LN (tsome (rect LN T1 T2)).
 
-pev  : path-eval G E (rect N TS TU) <- wf-tp G (rect N TS TU) <- tlookexp G E (rect N TS TU).
+pev  : path-eval G E (rect N TS TU) <- tlookexp G E (rect N TS TU) <- wf-tp G (rect N TS TU).
 
 
 sub-tp/top  : sub-tp G1 T G2 top <- wf-tp G1 T.
