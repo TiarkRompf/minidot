@@ -17,6 +17,10 @@ trait ElfPrinter { this: DotSyntax =>
     c(e).toSet.toList
   }
 
+  def printEnvFromSize(n: Int): String = {
+    if (n==0) "tnil" else s"(tcons _ ${printEnvFromSize(n-1)})"
+  }
+
   def printNat(n: Int): String = {
     assert(n>=0, "not a natural number")
     if (n==0) "z" else s"(s ${printNat(n-1)})"
@@ -112,9 +116,7 @@ trait ElfPrinter { this: DotSyntax =>
         s"(tsel ${p(x)} ${p(tag)})"
 
       case TRec(self, ty) =>
-        // TODO: fill env syntactically?
-        //    -- at least, we can fix its size...
-        s"(bind ${printNat(env.size)} _ ${pbind(ty, self)})"
+        s"(bind ${printNat(env.size)} ${printEnvFromSize(env.size)} ${pbind(ty, self)})"
 
       case Unknown => "_"
     }

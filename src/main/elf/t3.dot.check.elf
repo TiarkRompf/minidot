@@ -1,0 +1,1 @@
+%abbrev t3 = (bind z tnil (and (rect (s z) top top) (rect z (tsel (var z) (s z)) (tsel (var z) (s z))))).
