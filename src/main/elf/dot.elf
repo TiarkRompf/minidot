@@ -411,9 +411,9 @@ t/varx     : type-exp G X (rect N (tsel X N) (tsel X N)) %% TODO: proper expansi
 t/fun      : type-exp G (fun LNF T3 R T4 LNV R2 T2 M)
                 (bind N G (and (arrow LNF T3 T4) (and (recv  LNV T2) MT)))
                 <- tsize G (var N)
+                <- type-mem M MT
                 <- type-exp (tcons T3 (tcons (and (arrow LNF T3 T4) (and (recv  LNV T2) MT)) G)) R T4
                 <- type-exp (tcons MT G) R2 T2
-                <- type-mem M MT
                 <- subeq-tp (tcons MT G) T2 (tcons (and (arrow LNF T3 T4) (and (recv  LNV T2) MT)) G) T2
                 <- wf-tp (tcons MT G) MT
                 <- wf-tp G (bind N G (and (arrow LNF T3 T4) (and (recv  LNV T2) MT)))
