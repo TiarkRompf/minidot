@@ -123,8 +123,8 @@ fun:
 app: exp -> nat -> exp -> exp.
 sel: exp -> nat -> exp.
 
-% let: tpe -> exp -> exp -> exp.
-%abbrev let: tpe -> exp -> exp -> exp = [T] [ex] [ef] (app (fun z T ef _ z empty _ mnil) z ex).
+let: tpe -> exp -> exp -> exp.
+% %abbrev let: tpe -> exp -> exp -> exp = [T] [ex] [ef] (app (fun z T ef _ z empty _ mnil) z ex).
 
 % types
 top  : tpe.
@@ -265,14 +265,23 @@ exp-tp/bind : exp-tp (bind N1 G T1) N2 T2
 %% TODO: other interesting cases?
 
 
+exp-tp2: tpe -> tpe -> type.
+
+exp-tp/and1  : exp-tp2 (and T1 T2) T1' <- exp-tp2 T1 T1'.
+exp-tp/and2  : exp-tp2 (and T1 T2) T2' <- exp-tp2 T2 T2'.
+% exp-tp/bindx : exp-tp2 (bind N1 G T1) T1' <- exp-tp2 T1 T1'.
+exp-tp/refl  : exp-tp2 T T.
+
 
 tlookexp: tenv -> exp -> tpe -> type.
 tle: tlookexp G (var N) (rect LN T1 T2) <- tlookup G (var N) T0 <- exp-tp T0 LN (tsome (rect LN T1 T2)).
 
 pev  : path-eval G E (rect N TS TU) 
-          <- tlookup G E T0 
-          <- sub-tp G T0 G (rect LN TS TU)
-          <- wf-tp G (rect N TS TU).
+          <- tlookup G E T0
+          <- exp-tp2 T0 T0'
+          <- sub-tp G T0' G (rect N TS TU)
+          <- wf-tp G (rect N TS TU)
+          .
 
 
 sub-tp/top  : sub-tp G1 T G2 top <- wf-tp G1 T.
@@ -316,19 +325,19 @@ sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
 
 sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
               <- sub-tp G1 T1 (tcons TN G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
-              <- sub-tp G1 T1 (tcons T1' G0) TN
-              <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2)
+              <- sub-tp G1 T1 (tcons T1 G0) TN
+%              <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2)
               <- tsize G0 (var N)
               <- sub-env G0 G2.
 
 
-sub-tp/and1a : sub-tp G1 (and T1 T2) G2 T3
-              <- wf-tp G1 T2
-              <- sub-tp G1 T1 G2 T3.
-
 sub-tp/and1b : sub-tp G1 (and T1 T2) G2 T3
               <- sub-tp G1 T2 G2 T3
               <- wf-tp G1 T1.
+
+sub-tp/and1a : sub-tp G1 (and T1 T2) G2 T3
+              <- wf-tp G1 T2
+              <- sub-tp G1 T1 G2 T3.
 
 sub-tp/and2 : sub-tp G1 T1 G2 (and T2 T3)
               <- sub-tp G1 T1 G2 T3
@@ -449,9 +458,10 @@ t/sel       : type-exp G (sel E1 LNV) T1
             <- type-exp G E1 (recv LNV T1).
 
 % uncomment for queries
-% t/let       : type-exp G (let T1 E1 E2) T2
-%           <- type-exp G E1 T1
-%           <- type-exp (tcons T1 G) E2 T2.
+t/let       : type-exp G (let T1 E1 E2) T2
+            <- type-exp G E1 T1            
+            <- type-exp (tcons T1 G) E2 T2
+            <- wf-tp G T2.
 
 
 t/sub       : type-exp G E T2
@@ -507,6 +517,58 @@ wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H 
 
 
 %%% TEMP QUERIES %%%
+
+
+%query 1 1 wf-tp (tcons bot tnil) (tsel (var z) (rect z top top) z).
+
+%query 1 1 wf-tp (tcons (rect z top top) tnil) (tsel (var z) (rect z bot top) z).
+
+%query 1 1 wf-tp (tcons (and (recv z top) (rect z top top)) tnil) (tsel (var z) (rect z top top) z).
+
+%query 1 1 tlookup (tcons (and 
+    (recv z (tsel (var z) (rect z top top) z)) 
+    (rect z top top)) 
+  tnil) 
+  (var z)
+  A.
+
+%abbrev ex0 = (and (recv z (tsel (var z) _ z))
+                   (rect z top top)).
+
+%query 1 1 wf-tp (tcons ex0 tnil) (tsel (var z) T z).
+
+
+
+
+%abbrev ex1a  = (bind z tnil (and (arrow z top top) (and (recv z (tsel (var z) (rect z top top) z)) (rect z top top) ))).
+%abbrev ex1 = (bind z tnil                        (and (recv z (tsel (var z) (rect z top top) z)) (rect z top top) )).
+
+%query 1 1 wf-tp tnil ex1.
+
+%query 1 1 sub-tp tnil ex1a tnil ex1.
+
+
+%abbrev ex2 = (fun z top empty top z (fun z top empty top z empty top mnil) (tsel (var z) (rect z top top) z) (mcons z top top mnil)). 
+
+%query * 1 type-exp tnil ex2 ex1.
+
+%query * 1 type-exp tnil (let ex1 ex2 (var z)) ex1.
+
+%query 1 1 exp-tp ex1 z T.
+
+%query 1 1 wf-tp (tcons ex1 tnil) (tsel (var z) _ z).
+
+%query 1 1 path-eval (tcons ex1 tnil) (var z) (rect z top top).
+
+%query 1 1 type-exp (tcons ex1 tnil) (sel (var z) z) (tsel (var z) _ z).
+
+%query 1 1 type-exp tnil (let ex1 ex2 (let (tsel (var z) _ z) (sel (var z) z) (var (s z)))) top.
+
+%abbrev e15 = (let (bind z tnil (and (recv z (tsel (var z) _ (s z))) (rect (s z) top top))) (fun z top empty top z (fun z top empty top z empty top mnil) (tsel (var z) _ (s z)) (mcons _ top top (mcons _ bot top mnil))) (let (tsel (var z) _ (s z)) (sel (var z) z) (var (s z)))).
+
+
+%query 1 1 type-exp tnil e15 top.
+
 
 
 
@@ -846,7 +908,7 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 %mode extend-sub-tp +A +B -C -D -E.
 
 
-- : extend-wf-pev (pev W ST L) T (pev W1 ST1 L1)
+- : extend-wf-pev (pev W ST E L) T (pev W1 ST1 E L1)
       <- extend-wf-tp W T W1
       <- extend-sub-tp ST T ST1 _ _
       <- extend-wf-lkp L T L1.
@@ -914,11 +976,10 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
      .
 
 
-- : extend-sub-tp (sub-tp/tbind2 SE S ST1 ST2 ST3) T
-     (sub-tp/tbind2 (sub-env/ext SE) S STB1 STB2 STB3)
-     (sub-tp/tbind2 SE S STB1 STB2 STB3)
-     (sub-tp/tbind2 (sub-env/ext SE) S ST1 ST2 ST3)
-     <- extend-sub-tp ST1 T STA1 STB1 STC1
+- : extend-sub-tp (sub-tp/tbind2 SE S ST2 ST3) T
+     (sub-tp/tbind2 (sub-env/ext SE) S STB2 STB3)
+     (sub-tp/tbind2 SE S STB2 STB3)
+     (sub-tp/tbind2 (sub-env/ext SE) S ST2 ST3)
      <- extend-sub-tp ST2 T STA2 STB2 STC2
      <- extend-sub-tp ST3 T STA3 STB3 STC3
      .
@@ -1026,7 +1087,7 @@ extend-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> sub-env G2 G3 -> sub-tp G1 T1 G3 T2 -
 extend-wf-pev-mult : path-eval G E T -> sub-env G G1 -> path-eval G1 E T -> type.
 %mode extend-wf-pev-mult +A +B -C.
 
-- : extend-wf-pev-mult (pev W ST L) S (pev W1 ST1 L1)
+- : extend-wf-pev-mult (pev W ST E L) S (pev W1 ST1 E L1)
       <- extend-wf-tp-mult W S W1
       <- extend-sub-tp1-mult ST S ST'
       <- extend-sub-tp2-mult ST' S ST1
@@ -1047,7 +1108,7 @@ extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
 extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
 %mode extract-wf-pev +P -S.
 
-- : extract-wf-pev (pev W ST L) W.
+- : extract-wf-pev (pev W ST E L) W.
 
 
 - : extract-wf (sub-tp/top W) W wf-tp/top.
@@ -1079,7 +1140,7 @@ extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
 - : extract-wf (sub-tp/tbind1 ES S ST) (wf-tp/tbind ES S WU) W2
       <- extract-wf ST WU W2.
 
-- : extract-wf (sub-tp/tbind2 ES S SW SE SU) W1 (wf-tp/tbind ES S W2)
+- : extract-wf (sub-tp/tbind2 ES S SE SU) W1 (wf-tp/tbind ES S W2)
       <- extract-wf SU W1 W2.
 
 - : extract-wf (sub-tp/and1a S1 W2)
@@ -1202,7 +1263,7 @@ sub-tp-refl :
 
 -/tbind: sub-tp-refl (wf-tp/tbind SE S WU)
           (sub-tp/tbind1
-             SE S (sub-tp/tbind2 SE S R R R))
+             SE S (sub-tp/tbind2 SE S R R))
           <- sub-tp-refl WU R.
 
 -/tand: sub-tp-refl (wf-tp/and W1 W2) (sub-tp/and2 (sub-tp/and1a ST1 W2) (sub-tp/and1b W1 ST2))
@@ -1377,15 +1438,22 @@ That's why we have explicit slack in tbind2.
 }%
 
 
+%% TODO: need to generalize to prove via induction
+narrow-env: sub-tp X3 X4 X1 X2 -> sub-tp X3 X4 (tcons X2 X5) X6 -> sub-tp X3 X4 (tcons X4 X5) X6 -> type.
+%mode narrow-env +A +B -C.
+%worlds () (narrow-env _ _ _).
+%trustme
+%total (A) (narrow-env A _ _).
+
 -/tbind2  : sub-tp-trans-aux
        W
        SBT1
-       (sub-tp/tbind2 SE0 S SW SBT3 SU)
-       (sub-tp/tbind2 SE0 S SW' SBT5 SU')
+       (sub-tp/tbind2 SE0 S SBT3 SU)
+       (sub-tp/tbind2 SE0 S SBT5 SU')
 
-       <- sub-tp-trans-aux W SBT1 SW SW'
        <- sub-tp-trans-aux W SBT1 SU SU'
-       <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+       <- sub-tp-trans-aux W SBT1 SBT3 SBT5'
+       <- narrow-env SBT1 SBT5' SBT5.
 
 
 -/tbind1 : sub-tp-trans-aux
@@ -1398,7 +1466,7 @@ That's why we have explicit slack in tbind2.
 
 -/tbind2-tbind1  : sub-tp-trans-aux
        (wf-tp/tbind SE0 WS0 WY0)
-       (sub-tp/tbind2 SE1 S1 SW SBT1 SU)
+       (sub-tp/tbind2 SE1 S1 SBT1 SU)
        (sub-tp/tbind1 SE3 S3 SBT3)
        SBT5
 
@@ -1527,14 +1595,15 @@ extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 - : extract-wf2 (t/var W L) W.
 - : extract-wf2 (t/varx W L) 
       (wf-tp/rect 
-        (sub-tp/tselx ST ST (pev W ST L) sub-env/refl sub-env/refl) 
-        (wf-tp/tsel (pev W ST L))
-        (wf-tp/tsel (pev W ST L)))
+        (sub-tp/tselx ST ST (pev W ST exp-tp/refl L) sub-env/refl sub-env/refl) 
+        (wf-tp/tsel (pev W ST exp-tp/refl L))
+        (wf-tp/tsel (pev W ST exp-tp/refl L)))
       <- sub-tp-refl W ST.
 - : extract-wf2 (t/fun WFF _ _ _ _ _ S) WFF.
 - : extract-wf2 (t/app TS1 (TS2: type-exp _ _ (arrow _ _ _))) W2 <- extract-wf2 TS2 (wf-tp/fun W2 W1).
 - : extract-wf2 (t/sel TS) W <- extract-wf2 TS (wf-tp/recv W).
 - : extract-wf2 (t/sub S TS) W2 <- extract-wf S W1 W2.
+- : extract-wf2 (t/let W _ _) W.
 
 %worlds () (extract-wf2 _ _).
 %total WFE (extract-wf2 WFE _).
@@ -1762,7 +1831,7 @@ invert-var :
             <- subeq-tp-refl W SB.
 -     : invert-var (t/varx W L) L W _ (case-t SB)
            <- sub-tp-refl W ST
-           <- varx-tp-wf (pev W ST L) WS
+           <- varx-tp-wf (pev W ST exp-tp/refl L) WS
            <- subeq-tp-refl WS SB.
 -     : invert-var (t/sub SB1 TS) L W _ SB2
             <- invert-var TS L W _ SB
