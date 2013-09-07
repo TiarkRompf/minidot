@@ -158,12 +158,6 @@ tnil  : tenv.
 tcons : tpe -> tenv -> tenv.
 
 
-% type or no type
-topt : type.
-tnone: topt.
-tsome: tpe -> topt.
-
-
 
 
 
@@ -172,10 +166,6 @@ tsome: tpe -> topt.
 vlookup-zero : venv -> exp -> val -> type.
 vl/hit  : vlookup-zero (vcons V G) (var z) V.
 vl/miss : vlookup-zero (vcons _ G) (var (s N)) V <- vlookup-zero G (var N) V.
-
-vbind : venv -> val -> exp -> venv -> type.
-vl/n  : vbind vnil V (var z) (vcons V vnil).
-vl/c  : vbind (vcons V G1) V2 (var (s N)) (vcons V2 (vcons V G1)) <- vbind G1 V (var N) _.
 
 vsize : venv -> exp -> type.
 vf/n   : vsize vnil (var z).
@@ -192,10 +182,6 @@ tlookup-zero: tenv -> exp -> tpe -> type.
 tl/hit  : tlookup-zero (tcons V G) (var z) V.
 tl/miss : tlookup-zero (tcons _ G) (var (s N)) V <- tlookup-zero G (var N) V.
 
-tbind : tenv -> tpe -> exp -> tenv -> type.
-tl/n  : tbind tnil V (var z) (tcons V tnil).
-tl/c  : tbind (tcons V G1) V2 (var (s N)) (tcons V2 (tcons V G1)) <- tbind G1 V (var N) _.
-
 tsize : tenv -> exp -> type.
 tf/n   : tsize tnil (var z).
 tf/c   : tsize (tcons _ G) (var (s N)) <- tsize G (var N).
@@ -207,10 +193,6 @@ tl  : tlookup G (var N) V
   <- tsize G (var S)
   <- add (s N) M S
   <- tlookup-zero G (var M) V.
-
-% tlookupa: tenv -> exp -> tpe -> type.
-% tl/hita  : tlookupa (tcons V G) (var N) V <- tfresh G (var N).
-% tl/missa : tlookupa (tcons _ G) (var N) V <- tlookupa G (var N) V.
 
 
 
@@ -230,40 +212,6 @@ wf-tp : tenv -> tpe -> type.
 
 sub-tp : tenv -> tpe -> tenv -> tpe -> type.
 
-topt-and: topt -> topt -> topt -> type.
-topt-and/nn : topt-and tnone tnone tnone.
-topt-and/ns : topt-and tnone (tsome T) (tsome T).
-topt-and/sn : topt-and (tsome T) tnone (tsome T).
-
-%% TODO: 
-% topt-and/ss : topt-and (tsome (rect N T1 T2))
-%                        (tsome (rect N T3 T4))
-%                        (tsome (rect N (and T1 T3) (or T2 T4))).
-
-
-exp-tp: tpe -> nat -> topt -> type.
-
-exp-tp/top  : exp-tp top N tnone.
-exp-tp/bot  : exp-tp bot N tnone.
-exp-tp/fun  : exp-tp (arrow N1 T1 T2) N2 tnone.
-exp-tp/recv : exp-tp (recv N1 T) N2 tnone.
-exp-tp/rect : exp-tp (rect N T1 T2) N (tsome (rect N T1 T2)).
-exp-tp/rectn: exp-tp (rect N1 T1 T2) N2 tnone
-              <- ne N1 N2.
-exp-tp/and  : exp-tp (and T1 T2) N T3'
-              <- exp-tp T2 N T2'
-              <- exp-tp T1 N T1'
-              <- topt-and T1' T2' T3'.
-
-exp-tp/bind : exp-tp (bind N1 G T1) N2 T2
-              <- exp-tp T1 N2 T2.
-
-%% TODO: is it sensible to expand bind just like that?
-%% it seems like we might be leaking the self id N1, but on
-%% the other hand the result is subject to wf-tp anyways.
-
-%% TODO: other interesting cases?
-
 
 exp-tp2: tpe -> tpe -> type.
 
@@ -272,9 +220,6 @@ exp-tp/and2  : exp-tp2 (and T1 T2) T2' <- exp-tp2 T2 T2'.
 % exp-tp/bindx : exp-tp2 (bind N1 G T1) T1' <- exp-tp2 T1 T1'.
 exp-tp/refl  : exp-tp2 T T.
 
-
-tlookexp: tenv -> exp -> tpe -> type.
-tle: tlookexp G (var N) (rect LN T1 T2) <- tlookup G (var N) T0 <- exp-tp T0 LN (tsome (rect LN T1 T2)).
 
 pev  : path-eval G E (rect N TS TU) 
           <- tlookup G E T0
@@ -432,23 +377,6 @@ t/fun      : type-exp G (fun LNF T3 R T4 LNV R2 T2 M)
                 .
 
 
-% whacky way of assigning an intersection type...
-% t/fun      : type-exp G (fun LNF R LNV R2 LNT TX1 TX2) (arrow LNF T3 T4)
-%                 <- type-exp (tcons T3 G) R T4
-%                 <- type-exp G R2 T2
-%                 <- wf-tp G (rect LNT TX1 TX2)
-%                 <- wf-tp G (arrow LNF T3 T4).
-% t/recv     : type-exp G (fun LNF R LNV R2 LNT TX1 TX2) (recv LNV T2)
-%                 <- type-exp (tcons T3 G) R T4
-%                 <- type-exp G R2 T2
-%                 <- wf-tp G (rect LNT TX1 TX2)
-%                 <- wf-tp G (arrow LNF T3 T4).
-% t/rect     : type-exp G (fun LNF R LNV R2 LNT TX1 TX2) (rect LNT TX1 TX2)
-%                 <- type-exp (tcons T3 G) R T4
-%                 <- type-exp G R2 T2
-%                 <- wf-tp G (rect LNT TX1 TX2)
-%                 <- wf-tp G (arrow LNF T3 T4).
-
 
 t/app       : type-exp G (app E1 LNF E2) T2
             <- type-exp G E1 (arrow LNF T1 T2)
@@ -490,16 +418,6 @@ wfv/f    : wf-val (clos LNF R LNV R2 H) G
               G  (bind N GC (and (arrow LNF T1 T2) (and (recv LNV T) TX)))
             .
 
-
-% wfv/f    : wf-val (clos LNF R LNV R2 H) G (arrow LNF T1 T2)
-%             <- wf-env H GC
-%             <- type-exp (tcons T1 GC) R T2
-%             <- wf-tp G (arrow LNF T1 T2)
-%             <- subeq-tp GC (arrow LNF T1 T2) G (arrow LNF T1 T2).
-%
-% wfv/r    : wf-val (clos LNF R LNV R2 H) G (recv LNV T)
-%             <- wf-val R2 G T.
-%
 
 wfv/t    : wf-val (clos LNF R LNV R2 H) G (rect LNT T1 T2)
             <- wf-tp G (rect LNT T1 T2).
@@ -553,8 +471,6 @@ wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H 
 %query * 1 type-exp tnil ex2 ex1.
 
 %query * 1 type-exp tnil (let ex1 ex2 (var z)) ex1.
-
-%query 1 1 exp-tp ex1 z T.
 
 %query 1 1 wf-tp (tcons ex1 tnil) (tsel (var z) _ z).
 
@@ -632,13 +548,6 @@ extend-wf-lkp: tlookup G (var N) T -> {Z: tpe} tlookup (tcons Z G) (var N) T -> 
 %worlds () (extend-wf-lkp _ _ _).
 %total A (extend-wf-lkp A _ _).
 
-extend-wf-lkpe: tlookexp G (var N) T -> {Z: tpe} tlookexp (tcons Z G) (var N) T -> type.
-%mode extend-wf-lkpe +A +B -C.
-- : extend-wf-lkpe (tle E L) Z (tle E L') <- extend-wf-lkp L Z L'.
-%worlds () (extend-wf-lkpe _ _ _).
-%total A (extend-wf-lkpe A _ _).
-
-
 extend-wf-lkp-mult: tlookup G (var N) T -> sub-env G G1 -> tlookup G1 (var N) T -> type.
 %mode extend-wf-lkp-mult +A +B -C.
 - : extend-wf-lkp-mult L sub-env/refl L.
@@ -648,12 +557,6 @@ extend-wf-lkp-mult: tlookup G (var N) T -> sub-env G G1 -> tlookup G1 (var N) T 
 %worlds () (extend-wf-lkp-mult _ _ _).
 %total A (extend-wf-lkp-mult _ A _).
 
-extend-wf-lkpe-mult: tlookexp G (var N) T -> sub-env G G1 -> tlookexp G1 (var N) T -> type.
-%mode extend-wf-lkpe-mult +A +B -C.
-- : extend-wf-lkpe-mult (tle E L) Z (tle E L') <- extend-wf-lkp-mult L Z L'.
-%worlds () (extend-wf-lkpe-mult _ _ _).
-%total A (extend-wf-lkpe-mult _ A _).
-
 
 
 
@@ -662,229 +565,6 @@ extend-wf-lkpe-mult: tlookexp G (var N) T -> sub-env G G1 -> tlookexp G1 (var N)
 
 same: tpe -> tpe -> type.
 ident: same T T.
-
-sameopt : topt -> topt -> type.
-identopt: sameopt T T.
-
-false: type.
-
-ne-irrefl: ne N N -> false -> type.
-%mode ne-irrefl +A -B.
-- : ne-irrefl (ne/s NE) F <- ne-irrefl NE F.
-%worlds () (ne-irrefl _ _).
-%total (A) (ne-irrefl A _).
-
-no-eq: false -> {T1}{T2} same T1 T2 -> type.
-%mode no-eq +A +B +C -D.
-%worlds () (no-eq _ _ _ _).
-%total (A) (no-eq A _ _ _).
-
-no-eq2: false -> {T1}{T2} sameopt T1 T2 -> type.
-%mode no-eq2 +A +B +C -D.
-%worlds () (no-eq2 _ _ _ _).
-%total (A) (no-eq2 A _ _ _).
-
-
-
-
-
-
-
-
-eq-exp-low: same T1 T1' -> exp-tp T1 N T2 -> exp-tp T1' N T2 -> type.
-%mode eq-exp-low +P1 +P2 -SBT.
-
-- : eq-exp-low ident S S.
-
-%worlds () (eq-exp-low _ _ _).
-%total {T2} (eq-exp-low T2 _ _).
-%reduces N3 <= N2 (eq-exp-low _ N2  N3).
-
-
-eq-rect: same T1 T1' -> same T2 T2' -> {LN:nat} same (rect LN T1 T2) (rect LN T1' T2') -> same (rect LN T1' T2') (rect LN T1 T2) -> type.
-%mode eq-rect +P1 +P2 +LN -SBT -SBT2.
-
-- : eq-rect ident ident _ ident ident.
-
-%worlds () (eq-rect _ _ _ _ _).
-%total {T2} (eq-rect T2 _ _ _ _).
-
-eq-rect2: sameopt (tsome (rect LN T1 T2)) (tsome (rect LN T1' T2')) -> same T1 T1' -> same T2 T2' -> type.
-%mode eq-rect2 +P1 -P2 -P3.
-
-- : eq-rect2 identopt ident ident.
-
-%worlds () (eq-rect2 _ _ _).
-%total {T2} (eq-rect2 T2 _ _).
-
-
-eq-low: same T1 T1' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1' G2 T2 -> type.
-%mode eq-low +P1 +P2 -SBT.
-
-- : eq-low ident S S.
-
-%worlds () (eq-low _ _ _).
-%total {T2} (eq-low T2 _ _).
-%reduces N3 <= N2 (eq-low _ N2  N3).
-
-
-eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
-%mode eq-high +P1 +P2 -SBT.
-
-- : eq-high ident S S.
-
-%worlds () (eq-high _ _ _).
-%total {T2} (eq-high T2 _ _).
-%reduces N3 <= N2 (eq-high _ N2  N3).
-
-eq-wf: same T1 T1' -> wf-tp G1 T1 -> wf-tp G1 T1' -> type.
-%mode eq-wf +P1 +P2 -SBT.
-
-- : eq-wf ident S S.
-
-%worlds () (eq-wf _ _ _).
-%total {T2} (eq-wf T2 _ _).
-%reduces N3 <= N2 (eq-wf _ N2  N3).
-
-
-
-eq-pev: same T1 T1' -> path-eval G1 N T1 -> path-eval G1 N T1' -> type.
-%mode eq-pev +P1 +P2 -SBT.
-
-- : eq-pev ident S S.
-
-%worlds () (eq-pev _ _ _).
-%total {T2} (eq-pev T2 _ _).
-%reduces N3 <= N2 (eq-pev _ N2  N3).
-
-
-
-
-lookup-zero-same: tlookup-zero G2 E T1 -> tlookup-zero G2 E T2 -> same T1 T2 -> type.
-%mode lookup-zero-same +P1 +P2 -SBT.
-
-- : lookup-zero-same tl/hit tl/hit ident.
-- : lookup-zero-same (tl/miss A) (tl/miss B) X <- lookup-zero-same A B X.
-
-%worlds () (lookup-zero-same _ _ _).
-%total {T2} (lookup-zero-same T2 _ _).
-
-
-
-size-eq: tsize G2 (var N1) -> tsize G2 (var N2) -> eq N1 N2 -> type.
-%mode size-eq +P1 +P2 -SBT.
-
-- : size-eq tf/n tf/n eq/z.
-- : size-eq (tf/c A) (tf/c B) (eq/s X) <- size-eq A B X.
-
-%worlds () (size-eq _ _ _).
-%total {T2} (size-eq T2 _ _).
-
-
-
-lookup-zero-eq: tlookup-zero G2 (var N1) (rect LN T1 T3) -> tlookup-zero G2 (var N2) (rect LN T2 T4) -> eq N1 N2
-  -> same T1 T2 -> same T3 T4 -> type.
-%mode lookup-zero-eq +P1 +P2 +E -SBT -SBT2.
-
-- : lookup-zero-eq tl/hit tl/hit eq/z ident ident.
-- : lookup-zero-eq (tl/miss A) (tl/miss B) (eq/s E) X Y <- lookup-zero-eq A B E X Y.
-
-%worlds () (lookup-zero-eq _ _ _ _ _).
-%total {T2} (lookup-zero-eq T2 _ _ _ _).
-
-
-lookup-eq: tlookup G2 (var N1) (rect LN T1 T3) -> tlookup G2 (var N2) (rect LN T2 T4) -> eq N1 N2
-  -> same T1 T2 -> same T3 T4 -> type.
-%mode lookup-eq +P1 +P2 +E -SBT -SBT.
-
-- : lookup-eq (tl L1 (add/s A1) (tf/c F1)) (tl L2 (add/s A2) (tf/c F2)) EN X Y
-        <- size-eq F1 F2 ES
-        <- sub-eq EN ES A1 A2 EM
-        <- lookup-zero-eq L1 L2 EM X Y.
-
-%worlds () (lookup-eq _ _ _ _ _).
-%total {T2} (lookup-eq T2 _ _ _ _).
-
-
-
-lookup-zero-eq0: tlookup-zero G2 (var N1) T1 -> tlookup-zero G2 (var N2) T2 -> eq N1 N2
-  -> same T1 T2 -> type.
-%mode lookup-zero-eq0 +P1 +P2 +E -SBT.
-
-- : lookup-zero-eq0 tl/hit tl/hit eq/z ident.
-- : lookup-zero-eq0 (tl/miss A) (tl/miss B) (eq/s E) X <- lookup-zero-eq0 A B E X.
-
-%worlds () (lookup-zero-eq0 _ _ _ _).
-%total {T2} (lookup-zero-eq0 T2 _ _ _).
-
-
-lookup-eq0: tlookup G2 (var N1) T1 -> tlookup G2 (var N2) T2 -> eq N1 N2
-  -> same T1 T2 -> type.
-%mode lookup-eq0 +P1 +P2 +E -SBT.
-
-- : lookup-eq0 (tl L1 (add/s A1) (tf/c F1)) (tl L2 (add/s A2) (tf/c F2)) EN X
-        <- size-eq F1 F2 ES
-        <- sub-eq EN ES A1 A2 EM
-        <- lookup-zero-eq0 L1 L2 EM X.
-
-%worlds () (lookup-eq0 _ _ _ _).
-%total {T2} (lookup-eq0 T2 _ _ _).
-
-
-
-
-topt-and-eq: topt-and T1 T2 T3 -> topt-and T1 T2 T3' -> sameopt T3 T3' -> type.
-%mode topt-and-eq +A +B -D.
-- : topt-and-eq topt-and/nn topt-and/nn identopt.
-- : topt-and-eq topt-and/ns topt-and/ns identopt.
-- : topt-and-eq topt-and/sn topt-and/sn identopt.
-%worlds () (topt-and-eq _ _ _).
-%total (A) (topt-and-eq A _ _).
-
-eq-topt-and: sameopt T1 T1' -> sameopt T2 T2' -> topt-and T1 T2 T3 -> topt-and T1' T2' T3 -> type.
-%mode eq-topt-and +P1 +P2 +P3 -SBT.
-- : eq-topt-and identopt identopt T T.
-%worlds () (eq-topt-and _ _ _ _).
-%total (A) (eq-topt-and A _ _ _).
-
-
-expand-eq: exp-tp T LN T1 -> exp-tp T LN T2 -> sameopt T1 T2 -> type.
-%mode expand-eq +P1 +P2 -S.
-
-- : expand-eq exp-tp/top  exp-tp/top  identopt.
-- : expand-eq exp-tp/bot  exp-tp/bot  identopt.
-- : expand-eq exp-tp/fun  exp-tp/fun  identopt.
-- : expand-eq exp-tp/recv exp-tp/recv identopt.
-- : expand-eq exp-tp/rect exp-tp/rect identopt.
-- : expand-eq (exp-tp/rect) (exp-tp/rectn N) S 
-      <- ne-irrefl N F <- no-eq2 F _ _ S.
-- : expand-eq (exp-tp/rectn N) (exp-tp/rect) S 
-      <- ne-irrefl N F <- no-eq2 F _ _ S.
-- : expand-eq (exp-tp/rectn N1) (exp-tp/rectn N2) identopt.
-- : expand-eq (exp-tp/and T1 E1 E2)  (exp-tp/and T2 E3 E4) S
-      <- expand-eq E1 E3 S1
-      <- expand-eq E2 E4 S2
-      <- eq-topt-and S1 S2 T1 T1'
-      <- topt-and-eq T1' T2 S.
-- : expand-eq (exp-tp/bind E1) (exp-tp/bind E2) S
-      <- expand-eq E1 E2 S.
-
-%worlds () (expand-eq _ _ _).
-%total {T2} (expand-eq T2 _ _).
-
-lookexp-eq: tlookexp G2 (var N1) (rect LN T1 T3) -> tlookexp G2 (var N2) (rect LN T2 T4) -> eq N1 N2
-  -> same T1 T2 -> same T3 T4 -> type.
-%mode lookexp-eq +P1 +P2 +E -SBT -SBT.
-
-- : lookexp-eq (tle E1 L1) (tle E2 L2) E S1 S2
-      <- lookup-eq0 L1 L2 E X
-      <- eq-exp-low X E1 E1'
-      <- expand-eq E1' E2 XX
-      <- eq-rect2 XX S1 S2.
-
-%worlds () (lookexp-eq _ _ _ _ _).
-%total {T2} (lookexp-eq T2 _ _ _ _).
-
 
 
 
@@ -1299,8 +979,6 @@ subeq-tp-refl :
 
 sub-tp-trans-aux :
   %% Inputs
-%  {G2:tenv}
-%  {T2:tpe}
   wf-tp G2 T2 ->
   sub-tp G1 T1 G2 T2 ->
   sub-tp G2 T2 G3 T3 ->
@@ -1434,7 +1112,13 @@ G1 T2 <: G3 {z=>T3}    <---    G1 T1 <: (G3,z:T1) T3
 
 but induction only gives us:   G1 T1 <: (G3,z:T2) T3
 
-That's why we have explicit slack in tbind2.
+That's why we added explicit slack in tbind2.
+
+Now we no longer need to prove uniqueness of path-eval,
+so we can put in a subtype. Thus we can do without
+explicit slack and prove a more general env weakening
+lemma.
+
 }%
 
 
@@ -1991,14 +1675,6 @@ project-sub-recv: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) G2 (r
 %worlds () (project-sub-recv _ _ _).
 %total (A) (project-sub-recv A _ _).
 
-%{
-
-alternative idea: use expansion and prove a monotonicity lemma
-
-expand-monot: sub-tp G1 T1 G2 T2 -> expand-arrow G1 T1 N T11 T12 -> expand-arrow G2 T2 N T21 T22
--> sub-tp G1 (arrow N T11 T12) G2 (arrow N T21 T22) -> type.
-
-}%
 
 
 
