@@ -1270,52 +1270,47 @@ sub-tp-trans-aux :
 
 %% case p.T < p.T && p.T < T3   -->   p.T < T3
 
+extract-wf5: path-eval G E (rect LN T1 T2) -> wf-tp G T1 -> type.
+%mode extract-wf5 +A -B.
+%worlds () (extract-wf5 _ _).
+%trustme
+%total (A) (extract-wf5 A _).
+%reduces B <= A (extract-wf5 A B).
+
+
+extract-wf6: path-eval G E (rect LN T1 T2) -> wf-tp G T2 -> type.
+%mode extract-wf6 +A -B.
+%worlds () (extract-wf6 _ _).
+%trustme
+%total (A) (extract-wf6 A _).
+%reduces B <= A (extract-wf6 A B).
+
+
 -/tselx1  : sub-tp-trans-aux
-      (wf-tp/tsel (pev (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) (P0: (tlookexp G2 (var N) (rect LN T2 T2U))) ))
+      (wf-tp/tsel P1)
+      (sub-tp/tselx (sub-tp/rect SY24 SY31 SY34 SY12) _ P0 S1 S2)
+      (sub-tp/tsel1 (A2: sub-tp G2 TU G3 T3) P2)
+      (sub-tp/tsel1 SBT5 PX)
 
-      (sub-tp/tselx (sub-tp/rect (SY24:sub-tp G1 T2UA G2 T2UA) SY31 SY34 SY12) _ (pev (wf-tp/rect AB1 W1X W1Y) (P1: (tlookexp G0 (var N) (rect LN T2A T2UA)))) (SX1: sub-env G0 G1) (SX2: sub-env G0 G2))
+      <- extend-wf-pev-mult P0 S1 PX
+      <- extract-wf6 P1 WU
 
-      (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) (pev (wf-tp/rect AB2 W2X W2Y) (P2: (tlookexp G2 (var N) (rect LN T2B T2UB))) ))
-      (sub-tp/tsel1 SBT5 (pev (wf-tp/rect AB11' W1X1' W1Y1') PXX))
-
-
-      <- extend-wf-pev-mult (pev (wf-tp/rect AB1 W1X W1Y) P1) SX1 (pev (wf-tp/rect AB11' W1X1' W1Y1') PXX)
-      <- extend-wf-pev-mult (pev (wf-tp/rect AB1 W1X W1Y) P1) SX2 (pev (wf-tp/rect AB1' W1X' W1Y') P1')
-
-      <- eq-refl N Q
-      <- lookexp-eq P0 P1' Q (S3: same T2  T2A) (S4: same T2U  T2UA)
-      <- lookexp-eq P2 P1' Q (S1: same T2B T2A) (S2: same T2UB T2UA)
-
-      <- eq-low S2 (A2: sub-tp G2 T2UB G3 T3) (A2': sub-tp G2 T2UA G3 T3)
-      <- eq-wf S4 (WU: wf-tp G2 T2U) (WU': wf-tp G2 T2UA)
-
-      <- sub-tp-trans-aux WU' SY24 A2' SBT5
+      <- sub-tp-trans-aux WU SY24 A2 SBT5
       .
 
 
 %% case T1 < p.T && p.T < p.T   -->   T1 < p.T
 
 -/tselx2  : sub-tp-trans-aux
-      (wf-tp/tsel (pev (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) (P0: (tlookexp G2 (var N) (rect LN T2 T2U))) ))
+      (wf-tp/tsel P1)
+      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) P2)
+      (sub-tp/tselx _ (sub-tp/rect SY24 SY31 SY34 SY12) P0 S2 S3)
+      (sub-tp/tsel2 SBT5 PX)
 
-      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (wf-tp/rect AB1 W1X W1Y) (P1: (tlookexp G2 (var N) (rect LN T2A T2UA))) ))
+      <- extend-wf-pev-mult P0 S3 PX
+      <- extract-wf5 P1 WS
 
-      (sub-tp/tselx _ (sub-tp/rect SY24 SY31 SY34 SY12) (pev (wf-tp/rect AB2 W2X W2Y) (P2: (tlookexp G0 (var N) (rect LN T2B T2UB))) ) (SX2: sub-env G0 G2) (SX3: sub-env G0 G3))
-
-      (sub-tp/tsel2 SBT5 (pev (wf-tp/rect AB2' W2X' W2Y') PXX))
-
-
-      <- extend-wf-pev-mult (pev (wf-tp/rect AB2 W2X W2Y) P2) SX2 (pev (wf-tp/rect AB21' W2X1' W2Y1') P2')
-      <- extend-wf-pev-mult (pev (wf-tp/rect AB2 W2X W2Y) P2) SX3 (pev (wf-tp/rect AB2' W2X' W2Y') PXX)
-
-      <- eq-refl N Q
-      <- lookexp-eq P0 P2' Q (S3: same T2  T2B) (S4: same T2U  T2UB)
-      <- lookexp-eq P1 P2' Q (S1: same T2A T2B) (S2: same T2UA T2UB)
-
-      <- eq-high S1 (A1: sub-tp G1 T1 G2 T2A) (A1': sub-tp G1 T1 G2 T2B)
-      <- eq-wf S3 (W: wf-tp G2 T2) (W': wf-tp G2 T2B)
-
-      <- sub-tp-trans-aux W' A1' SY31 (SBT5: sub-tp G1 T1 G3 T2B)
+      <- sub-tp-trans-aux WS A1 SY31 SBT5
       .
 
 
@@ -1383,21 +1378,25 @@ sub-tp-trans-aux :
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
 
+extract-sub-bounds: path-eval G E (rect LN T1 T2) -> sub-tp G T1 G T2 -> type.
+%mode extract-sub-bounds +A -B.
+%worlds () (extract-sub-bounds _ _).
+%trustme
+%total (A) (extract-sub-bounds A _).
+%reduces B < A (extract-sub-bounds A B).
+
 -/tsel2-tsel1  : sub-tp-trans-aux  % T1 < p.T2 && p.T2 < T3 --> T1 < T3
-      (wf-tp/tsel (pev (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2))  (P0: (tlookexp G2 (var N) (rect LN T2 T2U)))))
-      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (wf-tp/rect _ W1X W1Y)  (P1: (tlookexp G2 (var N) (rect LN T2A T2UA)))))
-      (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) (pev (wf-tp/rect _ W2X W2Y) (P2: (tlookexp G2 (var N) (rect LN T2B T2UB)))))
+      (wf-tp/tsel P0)
+      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) P2)
+      (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) P3)
       (SBT5: sub-tp G1 T1 G3 T3)
 
-      <- eq-refl N Q
-      <- lookexp-eq P1 P0 Q (S1: same T2A T2) (S3: same T2UA T2U)
-      <- lookexp-eq P2 P0 Q (S2: same T2B T2) (S4: same T2UB T2U)
+      <- extract-wf5 P0 W
+      <- extract-wf6 P0 WU
+      <- extract-sub-bounds P0 AB
 
-      <- eq-high S1 A1 (A1': sub-tp G1 T1 G2 T2)
-      <- eq-low  S4 A2 (A2': sub-tp G2 T2U G3 T3)
-
-      <- sub-tp-trans-aux W A1' AB SBT3
-      <- sub-tp-trans-aux WU SBT3 A2' SBT5.
+      <- sub-tp-trans-aux W A1 AB SBT3
+      <- sub-tp-trans-aux WU SBT3 A2 SBT5.
 
 
 
@@ -1488,6 +1487,7 @@ That's why we have explicit slack in tbind2.
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
+
 
 
 
