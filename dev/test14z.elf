@@ -1271,28 +1271,6 @@ sub-tp-trans-aux :
 
 
 
-extract-wf5: path-eval G E (rect LN T1 T2) -> wf-tp G T1 -> type.
-%mode extract-wf5 +A -B.
-- : extract-wf5 (pev (wf-tp/rect _ _ W) _) W.
-%worlds () (extract-wf5 _ _).
-%total (A) (extract-wf5 A _).
-%reduces B <= A (extract-wf5 A B).
-
-
-extract-wf6: path-eval G E (rect LN T1 T2) -> wf-tp G T2 -> type.
-%mode extract-wf6 +A -B.
-- : extract-wf6 (pev (wf-tp/rect _ W _) _) W.
-%worlds () (extract-wf6 _ _).
-%total (A) (extract-wf6 A _).
-%reduces B <= A (extract-wf6 A B).
-
-
-extract-sub-bounds: path-eval G E (rect LN T1 T2) -> sub-tp G T1 G T2 -> type.
-%mode extract-sub-bounds +A -B.
-- : extract-sub-bounds (pev (wf-tp/rect ST _ _) _) ST.
-%worlds () (extract-sub-bounds _ _).
-%total (A) (extract-sub-bounds A _).
-%reduces B < A (extract-sub-bounds A B).
 
 
 %% case p.T < p.T && p.T < T3   -->   p.T < T3
