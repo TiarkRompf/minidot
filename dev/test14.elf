@@ -263,6 +263,10 @@ exp-tp/and1 : exp-tp (and T1 T2) N (tsome T1')
 exp-tp/and2 : exp-tp (and T1 T2) N (tsome T2')
               <- exp-tp T2 N (tsome T2')
               <- exp-tp T1 N tnone.
+exp-tp/and0 : exp-tp (and T1 T2) N tnone
+              <- exp-tp T2 N tnone
+              <- exp-tp T1 N tnone.
+
 
 %% TODO: interesting cases
 
@@ -502,18 +506,7 @@ wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H 
 
 
 
-%{
   
-%dquery 7 * 5 type-exp tnil
-  (fun z top empty top z empty top
-      (mcons (s z) top top (mcons z bot (tsel (var z) (s z)) mnil))) top.
-
-}%
-
-
-
-
-
 
 
 
@@ -695,6 +688,29 @@ no-eq: false -> {T1}{T2} same T1 T2 -> type.
 %total (A) (no-eq A _ _ _).
 
 
+no-exp2: exp-tp X2 X5 tnone -> exp-tp X2 X5 (tsome (rect X5 X8 X9)) -> false -> type.
+%mode no-exp2 +A +B -D.
+- : no-exp2 (exp-tp/and0 EN2 EN3) (exp-tp/and1 ES1 EN1) F <- no-exp2 EN2 ES1 F.
+- : no-exp2 (exp-tp/and0 EN2 EN3) (exp-tp/and2 EN1 ES1) F <- no-exp2 EN3 ES1 F.
+- : no-exp2 (exp-tp/rectn N1) exp-tp/rect F <- ne-irrefl N1 F.
+%worlds () (no-exp2 _ _ _).
+%total (A) (no-exp2 A _ _).
+
+no-exp1: exp-tp (and X1 X2) X5 tnone -> exp-tp X1 X5 (tsome (rect X5 X8 X9)) -> false -> type.
+%mode no-exp1 +A +B -D.
+- : no-exp1 (exp-tp/and0 X12 _) X14 F <- no-exp2 X12 X14 F.
+%worlds () (no-exp1 _ _ _).
+%total (A) (no-exp1 A _ _).
+
+no-exp1b: exp-tp (and X1 X2) X5 tnone -> exp-tp X2 X5 (tsome (rect X5 X8 X9)) -> false -> type.
+%mode no-exp1b +A +B -D.
+- : no-exp1b (exp-tp/and0 _ X12) X14 F <- no-exp2 X12 X14 F.
+%worlds () (no-exp1b _ _ _).
+%total (A) (no-exp1b A _ _).
+
+
+
+
 expand-eq: exp-tp T LN (tsome (rect LN T1 T3)) -> exp-tp T LN (tsome (rect LN T2 T4))
 -> same T1 T2 -> same T3 T4 -> type.
 %mode expand-eq +P1 +P2 -SBT -SBT.
@@ -703,13 +719,52 @@ expand-eq: exp-tp T LN (tsome (rect LN T1 T3)) -> exp-tp T LN (tsome (rect LN T2
 - : expand-eq (exp-tp/and1 ES1 EN1) (exp-tp/and1 ES2 EN2) S1 S2 <- expand-eq ES1 ES2 S1 S2.
 - : expand-eq (exp-tp/and2 EN1 ES1) (exp-tp/and2 EN2 ES2) S1 S2 <- expand-eq ES1 ES2 S1 S2.
 
-- : expand-eq (exp-tp/and2 (exp-tp/rectn (N1)) exp-tp/rect)
-         (exp-tp/and1 exp-tp/rect (exp-tp/rectn (N2))) S1 S2
+- : expand-eq (exp-tp/and1 exp-tp/rect _)
+         (exp-tp/and2 (exp-tp/rectn (N1)) exp-tp/rect) S1 S2
             <- ne-irrefl N1 F <- no-eq F _ _ S1 <- no-eq F _ _ S2.
 
-- : expand-eq (exp-tp/and1 exp-tp/rect (exp-tp/rectn (N1)))
-         (exp-tp/and2 (exp-tp/rectn (N2)) exp-tp/rect) S1 S2
+- : expand-eq (exp-tp/and1 _ (exp-tp/rectn N1))
+        (exp-tp/and2 (exp-tp/and0 X10 X11) exp-tp/rect) S1 S2
+           <- ne-irrefl N1 F <- no-eq F _ _ S1 <- no-eq F _ _ S2.
+
+- : expand-eq (exp-tp/and1 X9 X10) (exp-tp/and2 X11 _) S1 S2
+           <- no-exp2 X11 X9 F <- no-eq F _ _ S1 <- no-eq F _ _ S2.
+  
+
+
+- : expand-eq (exp-tp/and2 _ exp-tp/rect)
+         (exp-tp/and1 exp-tp/rect (exp-tp/rectn (N1))) S1 S2
             <- ne-irrefl N1 F <- no-eq F _ _ S1 <- no-eq F _ _ S2.
+
+- : expand-eq (exp-tp/and2 _ exp-tp/rect)
+        (exp-tp/and1 (exp-tp/and1 ES EN) (exp-tp/rectn N1)) S1 S2
+           <- ne-irrefl N1 F <- no-eq F _ _ S1 <- no-eq F _ _ S2.
+
+- : expand-eq (exp-tp/and2 _ exp-tp/rect)
+        (exp-tp/and1 (exp-tp/and2 X9 X10) (exp-tp/rectn N1)) S1 S2
+           <- ne-irrefl N1 F <- no-eq F _ _ S1 <- no-eq F _ _ S2.
+
+
+
+- : expand-eq (exp-tp/and2 (exp-tp/rectn N1) X9)
+        (exp-tp/and1 exp-tp/rect _) S1 S2
+           <- ne-irrefl N1 F <- no-eq F _ _ S1 <- no-eq F _ _ S2.
+
+- : expand-eq (exp-tp/and2 X10 X11)
+         (exp-tp/and1 (exp-tp/and1 X12 X13) _) S1 S2
+           <- no-exp1 X10 X12 F <- no-eq F _ _ S1 <- no-eq F _ _ S2.
+
+- : expand-eq (exp-tp/and2 X10 X11)
+         (exp-tp/and1 (exp-tp/and2 X12 X13) _) S1 S2
+           <- no-exp1b X10 X13 F <- no-eq F _ _ S1 <- no-eq F _ _ S2.
+
+
+- : expand-eq (exp-tp/and2 EN1 ES1) 
+         (exp-tp/and1 ES2 (exp-tp/and0 EN2 EN3)) S1 S2
+           <- expand-eq ES1 ES2 S1 S2.
+
+
+
 
 %worlds () (expand-eq _ _ _ _).
 %total {T2} (expand-eq T2 _ _ _).
