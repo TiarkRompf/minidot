@@ -269,7 +269,10 @@ exp-tp/bind : exp-tp (bind N1 G T1) N2 T2
 tlookexp: tenv -> exp -> tpe -> type.
 tle: tlookexp G (var N) (rect LN T1 T2) <- tlookup G (var N) T0 <- exp-tp T0 LN (tsome (rect LN T1 T2)).
 
-pev  : path-eval G E (rect N TS TU) <- tlookexp G E (rect N TS TU) <- wf-tp G (rect N TS TU).
+pev  : path-eval G E (rect N TS TU) 
+          <- tlookup G E T0 
+          <- sub-tp G T0 G (rect LN TS TU)
+          <- wf-tp G (rect N TS TU).
 
 
 sub-tp/top  : sub-tp G1 T G2 top <- wf-tp G1 T.
@@ -843,9 +846,10 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 %mode extend-sub-tp +A +B -C -D -E.
 
 
-- : extend-wf-pev (pev W L) T (pev W1 L1)
+- : extend-wf-pev (pev W ST L) T (pev W1 ST1 L1)
       <- extend-wf-tp W T W1
-      <- extend-wf-lkpe L T L1.
+      <- extend-sub-tp ST T ST1 _ _
+      <- extend-wf-lkp L T L1.
 
 
 
@@ -1022,9 +1026,11 @@ extend-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> sub-env G2 G3 -> sub-tp G1 T1 G3 T2 -
 extend-wf-pev-mult : path-eval G E T -> sub-env G G1 -> path-eval G1 E T -> type.
 %mode extend-wf-pev-mult +A +B -C.
 
-- : extend-wf-pev-mult (pev W L) S (pev W1 L1)
+- : extend-wf-pev-mult (pev W ST L) S (pev W1 ST1 L1)
       <- extend-wf-tp-mult W S W1
-      <- extend-wf-lkpe-mult L S L1.
+      <- extend-sub-tp1-mult ST S ST'
+      <- extend-sub-tp2-mult ST' S ST1
+      <- extend-wf-lkp-mult L S L1.
 
 %worlds () (extend-wf-pev-mult _ _ _).
 %total (A) (extend-wf-pev-mult A _ _).
@@ -1041,7 +1047,7 @@ extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
 extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
 %mode extract-wf-pev +P -S.
 
-- : extract-wf-pev (pev W L) W.
+- : extract-wf-pev (pev W ST L) W.
 
 
 - : extract-wf (sub-tp/top W) W wf-tp/top.
@@ -1304,45 +1310,17 @@ sub-tp-trans-aux :
 
 
 -/tselx-tselx  : sub-tp-trans-aux
-      (wf-tp/tsel (pev WR0 (P0: (tlookexp G2 (var N) (rect _ _ _))) ))
+      (wf-tp/tsel P0)
+      (sub-tp/tselx ST11 ST12 P1 (SX1: sub-env G0 G1) (SX2: sub-env G0 G2))
+      (sub-tp/tselx ST21 ST22 P2 (SX2': sub-env G0' G2) (SX3: sub-env G0' G3))
+      (sub-tp/tselx ST31 ST32 P3 SX1x SX3x)
 
-      (sub-tp/tselx ST11 ST12 (pev WR1 (P1: (tlookexp G0 (var N) (rect _ _ _)))) (SX1: sub-env G0 G1) (SX2: sub-env G0 G2))
+      <- extract-wf-pev P0 WR0'
 
-      (sub-tp/tselx ST21 ST22 (pev WR2 (P2: (tlookexp G0' (var N) (rect _ _ _)))) (SX2': sub-env G0' G2) (SX3: sub-env G0' G3))
+      <- sub-tp-trans-aux WR0' ST11 ST21 ST31
+      <- sub-tp-trans-aux WR0' ST22 ST12 ST32
 
-      (sub-tp/tselx ST31 ST32 (pev W00 P3) SX1x SX3x)
-
-      <- eq-refl N Q
-
-      <- extend-wf-pev-mult (pev WR1 P1) SX2 (pev WR1' P1')
-      <- extend-wf-pev-mult (pev WR2 P2) SX2' (pev WR2' P2')
-
-      <- lookexp-eq P2' P1' Q S1 S2
-      <- eq-rect S1 S2 _ SR1 SR1x
-
-      <- eq-low SR1 ST21 ST21'
-      <- eq-low SR1x ST11 ST11'
-
-      <- eq-high SR1 ST22 ST22'
-      <- eq-high SR1x ST12 ST12'
-
-      <- lookexp-eq P0 P1' Q S3 S4
-      <- eq-rect S3 S4 _ SR3 SR3x
-      <- eq-pev SR3 (pev WR0 P0) (pev WR0' P0')
-
-      <- sub-tp-trans-aux WR0' ST11' ST21' ST31x
-      <- sub-tp-trans-aux WR0' ST22' ST12' ST32x
-
-      <- eq-low SR1 ST31x ST31xx %% TODO: reverse order somewhere above??
-      <- eq-high SR1 ST31xx ST31
-
-      <- eq-low SR1 ST32x ST32xx
-      <- eq-high SR1 ST32xx ST32
-
-
-      <- eq-pev SR1 (pev WR2 P2) (pev WR2S P2S)
-
-      <- pev-tp-dia (pev WR0' P0') (pev WR1 P1) (pev WR2S P2S) SX2 SX2' (pev W00 P3) S01 S02
+      <- pev-tp-dia P0 P1 P2 SX2 SX2' P3 S01 S02
 
       <- sub-env-trans S01 SX1 SX1x
       <- sub-env-trans S02 SX3 SX3x
@@ -1547,7 +1525,12 @@ extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 
 - : extract-wf2 t/empty wf-tp/top.
 - : extract-wf2 (t/var W L) W.
-- : extract-wf2 (t/varx W L) (wf-tp/rect (sub-tp/tselx ST ST (pev W (tle exp-tp/rect L)) sub-env/refl sub-env/refl) (wf-tp/tsel (pev W (tle exp-tp/rect L))) (wf-tp/tsel (pev W (tle exp-tp/rect L)))) <- sub-tp-refl W ST.
+- : extract-wf2 (t/varx W L) 
+      (wf-tp/rect 
+        (sub-tp/tselx ST ST (pev W ST L) sub-env/refl sub-env/refl) 
+        (wf-tp/tsel (pev W ST L))
+        (wf-tp/tsel (pev W ST L)))
+      <- sub-tp-refl W ST.
 - : extract-wf2 (t/fun WFF _ _ _ _ _ S) WFF.
 - : extract-wf2 (t/app TS1 (TS2: type-exp _ _ (arrow _ _ _))) W2 <- extract-wf2 TS2 (wf-tp/fun W2 W1).
 - : extract-wf2 (t/sel TS) W <- extract-wf2 TS (wf-tp/recv W).
@@ -1778,7 +1761,8 @@ invert-var :
             % <- extract-wf2 (t/var L) W
             <- subeq-tp-refl W SB.
 -     : invert-var (t/varx W L) L W _ (case-t SB)
-           <- varx-tp-wf (pev W (tle exp-tp/rect L)) WS
+           <- sub-tp-refl W ST
+           <- varx-tp-wf (pev W ST L) WS
            <- subeq-tp-refl WS SB.
 -     : invert-var (t/sub SB1 TS) L W _ SB2
             <- invert-var TS L W _ SB
