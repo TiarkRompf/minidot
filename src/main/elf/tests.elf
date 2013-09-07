@@ -12,6 +12,7 @@
 %query 1 1 type-exp tnil e11  top.
 %query 1 1 type-exp tnil e12  top.
 %query 1 1 type-exp tnil e13  top.
+%query 1 1 type-exp tnil e15  top.
 
 % sanity checks for self types
 %query 1 1 type-exp tnil e11 top.
