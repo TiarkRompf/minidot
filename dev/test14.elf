@@ -275,13 +275,16 @@ exp-tp/and  : exp-tp (and T1 T2) N T3'
               <- exp-tp T1 N T1'
               <- topt-and T1' T2' T3'.
 
-exp-tp/bind : exp-tp (bind N G T) N tnone
-              <- exp-tp T2 N tnone
-              <- exp-tp T1 N tnone.
+exp-tp/bind : exp-tp (bind N1 G T1) N2 T2
+              <- exp-tp T1 N2 T2.
+
+%% TODO: is it sensible to expand bind just like that?
+%% it seems like we might be leaking the self id N1, but on
+%% the other hand the result is subject to wf-tp anyways.
+
+%% TODO: other interesting cases?
 
 
-
-%% TODO: interesting cases
 
 tlookexp: tenv -> exp -> tpe -> type.
 tle: tlookexp G (var N) (rect LN T1 T2) <- tlookup G (var N) T0 <- exp-tp T0 LN (tsome (rect LN T1 T2)).
@@ -464,8 +467,8 @@ t/sel       : type-exp G (sel E1 LNV) T1
 
 % uncomment for queries
 % t/let       : type-exp G (let T1 E1 E2) T2
-%            <- type-exp G E1 T1
-%            <- type-exp (tcons T1 G) E2 T2.
+%           <- type-exp G E1 T1
+%           <- type-exp (tcons T1 G) E2 T2.
 
 
 t/sub       : type-exp G E T2
@@ -519,7 +522,9 @@ wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H 
 
 
 
-  
+
+%%% TEMP QUERIES %%%
+
 
 
 
@@ -816,7 +821,8 @@ expand-eq: exp-tp T LN T1 -> exp-tp T LN T2 -> sameopt T1 T2 -> type.
       <- expand-eq E2 E4 S2
       <- eq-topt-and S1 S2 T1 T1'
       <- topt-and-eq T1' T2 S.
-- : expand-eq (exp-tp/bind _ _) (exp-tp/bind _ _) identopt.
+- : expand-eq (exp-tp/bind E1) (exp-tp/bind E2) S
+      <- expand-eq E1 E2 S.
 
 %worlds () (expand-eq _ _ _).
 %total {T2} (expand-eq T2 _ _).
