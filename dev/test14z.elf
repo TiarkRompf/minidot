@@ -1095,6 +1095,7 @@ extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
 %worlds () (extract-wf _ _ _)(extract-wf-pev _ _).
 %total (A B) (extract-wf A _ _)(extract-wf-pev B _).
 
+%reduces B < A (extract-wf-pev A B).
 
 
 
@@ -1188,7 +1189,8 @@ sub-tp-refl :
    <- sub-tp-refl T2 SBT2.
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
--/tsel: sub-tp-refl (wf-tp/tsel (pev W L)) (sub-tp/tselx ST ST (pev W L) sub-env/refl sub-env/refl)
+-/tsel: sub-tp-refl (wf-tp/tsel P) (sub-tp/tselx ST ST P sub-env/refl sub-env/refl)
+   <- extract-wf-pev P W
    <- sub-tp-refl W ST.
 
 
@@ -1268,23 +1270,32 @@ sub-tp-trans-aux :
       <- sub-tp-trans-aux T1 SBT1 SBT3 SBT5.
 
 
-%% case p.T < p.T && p.T < T3   -->   p.T < T3
 
 extract-wf5: path-eval G E (rect LN T1 T2) -> wf-tp G T1 -> type.
 %mode extract-wf5 +A -B.
+- : extract-wf5 (pev (wf-tp/rect _ _ W) _) W.
 %worlds () (extract-wf5 _ _).
-%trustme
 %total (A) (extract-wf5 A _).
 %reduces B <= A (extract-wf5 A B).
 
 
 extract-wf6: path-eval G E (rect LN T1 T2) -> wf-tp G T2 -> type.
 %mode extract-wf6 +A -B.
+- : extract-wf6 (pev (wf-tp/rect _ W _) _) W.
 %worlds () (extract-wf6 _ _).
-%trustme
 %total (A) (extract-wf6 A _).
 %reduces B <= A (extract-wf6 A B).
 
+
+extract-sub-bounds: path-eval G E (rect LN T1 T2) -> sub-tp G T1 G T2 -> type.
+%mode extract-sub-bounds +A -B.
+- : extract-sub-bounds (pev (wf-tp/rect ST _ _) _) ST.
+%worlds () (extract-sub-bounds _ _).
+%total (A) (extract-sub-bounds A _).
+%reduces B < A (extract-sub-bounds A B).
+
+
+%% case p.T < p.T && p.T < T3   -->   p.T < T3
 
 -/tselx1  : sub-tp-trans-aux
       (wf-tp/tsel P1)
@@ -1293,7 +1304,7 @@ extract-wf6: path-eval G E (rect LN T1 T2) -> wf-tp G T2 -> type.
       (sub-tp/tsel1 SBT5 PX)
 
       <- extend-wf-pev-mult P0 S1 PX
-      <- extract-wf6 P1 WU
+      <- extract-wf-pev P1 (wf-tp/rect _ WU _)
 
       <- sub-tp-trans-aux WU SY24 A2 SBT5
       .
@@ -1308,7 +1319,7 @@ extract-wf6: path-eval G E (rect LN T1 T2) -> wf-tp G T2 -> type.
       (sub-tp/tsel2 SBT5 PX)
 
       <- extend-wf-pev-mult P0 S3 PX
-      <- extract-wf5 P1 WS
+      <- extract-wf-pev P1 (wf-tp/rect _ _ WS)
 
       <- sub-tp-trans-aux WS A1 SY31 SBT5
       .
@@ -1378,22 +1389,13 @@ extract-wf6: path-eval G E (rect LN T1 T2) -> wf-tp G T2 -> type.
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
 
-extract-sub-bounds: path-eval G E (rect LN T1 T2) -> sub-tp G T1 G T2 -> type.
-%mode extract-sub-bounds +A -B.
-%worlds () (extract-sub-bounds _ _).
-%trustme
-%total (A) (extract-sub-bounds A _).
-%reduces B < A (extract-sub-bounds A B).
-
 -/tsel2-tsel1  : sub-tp-trans-aux  % T1 < p.T2 && p.T2 < T3 --> T1 < T3
       (wf-tp/tsel P0)
       (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) P2)
       (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) P3)
       (SBT5: sub-tp G1 T1 G3 T3)
 
-      <- extract-wf5 P0 W
-      <- extract-wf6 P0 WU
-      <- extract-sub-bounds P0 AB
+      <- extract-wf-pev P0 (wf-tp/rect AB WU W)
 
       <- sub-tp-trans-aux W A1 AB SBT3
       <- sub-tp-trans-aux WU SBT3 A2 SBT5.
@@ -1767,7 +1769,7 @@ subeq-tp-recv: subeq-tp G1 T1 G2 T2 -> {N:nat} subeq-tp G1 (recv N T1) G2 (recv 
 %total WFE (subeq-tp-recv WFE _ _).
 
 
-varx-tp-wf: path-eval G E (rect N T1 T2) -> wf-tp G (rect N (tsel E N) (tsel E N)) -> type.
+varx-tp-wf: path-eval G E (rect N T1 T2) -> wf-tp G (rect N (tsel E (rect N T1 T2) N) (tsel E (rect N T1 T2) N)) -> type.
 %mode varx-tp-wf +A -B.
 
 - : varx-tp-wf P (wf-tp/rect (sub-tp/tselx ST ST P sub-env/refl sub-env/refl) (wf-tp/tsel P) (wf-tp/tsel P))
@@ -1789,7 +1791,7 @@ invert-var :
   subeq-tp-cases
     G T1 G T
     G T1 G T
-    G (rect LN (tsel (var N) LN) (tsel (var N) LN)) G T
+    G (rect LN (tsel (var N) T1 LN) (tsel (var N) T1 LN)) G T
   ->
   type.
 %mode invert-var +WFE1 -WFE2 -SBT1 -LN -SBT1.
