@@ -366,6 +366,9 @@ t/varx     : type-exp G (var N) (rect LN (tsel (var N) (rect LN T1 T2) LN) (tsel
                 <- tlookup G N (rect LN T1 T2) <- wf-tp G (rect LN T1 T2).
                 %% TODO: proper expansion
 
+t/sel       : type-exp G (sel E1 LNV) T1
+            <- type-exp G E1 (recv LNV T1).
+
 
 t/fun      : type-exp G (fun LNF T3 R T4 LNV R2 T2 M)
                 (bind N G (and (arrow LNF T3 T4) (and (recv  LNV T2) MT)))
@@ -383,9 +386,6 @@ t/fun      : type-exp G (fun LNF T3 R T4 LNV R2 T2 M)
 t/app       : type-exp G (app E1 LNF E2) T2
             <- type-exp G E1 (arrow LNF T1 T2)
             <- type-exp G E2 T1.
-
-t/sel       : type-exp G (sel E1 LNV) T1
-            <- type-exp G E1 (recv LNV T1).
 
 % uncomment for queries
 t/let       : type-exp G (let T1 E1 E2) T2
