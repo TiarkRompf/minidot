@@ -219,8 +219,10 @@ exp-tp2: tpe -> tpe -> type.
 
 exp-tp/and1  : exp-tp2 (and T1 T2) T1' <- exp-tp2 T1 T1'.
 exp-tp/and2  : exp-tp2 (and T1 T2) T2' <- exp-tp2 T2 T2'.
-% exp-tp/bindx : exp-tp2 (bind N1 G T1) T1' <- exp-tp2 T1 T1'.
+
 exp-tp/refl  : exp-tp2 T T.
+
+exp-tp/bindx : exp-tp2 (bind N1 G T1) (bind N1 G T1') <- exp-tp2 T1 T1'.
 
 
 
@@ -256,6 +258,10 @@ pev2: path-eval2 G E T
 pev2xx: path-eval2 G E T2
           <- path-eval G E T1
           <- self-eta E T1 T2.
+
+
+
+% sub-tp/refl : sub-tp G T G T <- wf-tp G T. %%% ACCELRATE QUERIES !!
 
 
 sub-tp/top  : sub-tp G1 T G2 top <- wf-tp G1 T.
@@ -483,6 +489,8 @@ wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H 
 
 %abbrev ex1a  = (bind z tnil (and (arrow z top top) (and (recv z (tsel (var z) (rect z top top) z)) (rect z top top) ))).
 %abbrev ex1 = (bind z tnil                        (and (recv z (tsel (var z) (rect z top top) z)) (rect z top top) )).
+
+%query 1 1 wf-tp tnil ex1a.
 
 %query 1 1 wf-tp tnil ex1.
 
