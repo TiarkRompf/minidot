@@ -300,6 +300,7 @@ sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
 sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
               <- sub-tp G1 T1 (tcons TN G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
               <- sub-tp G1 T1 (tcons T1 G0) TN
+%              <- sub-tp G1 T1 (tcons T1' G0) TN
 %              <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2)
               <- tsize G0 N
               <- sub-env G0 G2.
@@ -583,14 +584,6 @@ extend-wf-lkp-mult: tlookup G N T -> sub-env G G1 -> tlookup G1 N T -> type.
 
 
 
-%{ ------- Uniqueness of lookup ------ }%
-
-same: tpe -> tpe -> type.
-ident: same T T.
-
-
-
-
 
 % Extending environments preserves subtyping
 
@@ -779,6 +772,50 @@ extend-wf-pev-mult : path-eval G E T -> sub-env G G1 -> path-eval G1 E T -> type
 
 %worlds () (extend-wf-pev-mult _ _ _).
 %total (A) (extend-wf-pev-mult A _ _).
+
+
+
+% More specific environments preserve subtyping
+
+
+sub-tp-env: tenv -> tenv -> tpe -> tenv -> tenv -> type.
+ste/n    : sub-tp-env _ _ _ G G.
+ste/c    : sub-tp-env GX GY T3 (tcons T1 G1) (tcons T2 G2) 
+            <- sub-tp GY T2 (tcons T2 G2) T3 
+            <- sub-tp GX T1 GY T2 
+            <- sub-tp-env GX GY T3 G1 G2.
+
+narrow-env1: sub-tp-env G1 G1' T2 G2 G2' -> sub-tp G1 T1 G2' T2 -> sub-tp G1 T1 G2 T2 -> type.
+%mode narrow-env1 +A +B -C.
+
+%worlds () (narrow-env1 _ _ _).
+%trustme
+%total (A) (narrow-env1 A _ _).
+
+
+narrow-env: 
+  sub-tp G1 T1 G1' T1' -> 
+  sub-tp G1 T1 (tcons T1' G2) T2 -> 
+  sub-tp G1 T1 (tcons T2 G2) T2 ->
+  sub-tp G1' T1' (tcons T1' G2) T2 ->
+  sub-tp G1' T1' (tcons T2 G2) T2 ->
+
+  sub-tp G1 T1 (tcons T1 G2) T2 -> 
+  type.
+%mode narrow-env +A +B +C +D +E -F.
+
+- : narrow-env STC ST1 _ STX _ ST2 <- narrow-env1 (ste/c ste/n STC STX) ST1 ST2.
+
+%worlds () (narrow-env _ _ _ _ _ _).
+%total (A) (narrow-env A _ _ _ _ _).
+
+
+%%% TODO: 
+% ST in path-eval requires its input to be WF, but the ST used for narrowing does 
+% not relate to that environment. 
+% add more constraints to tbind2 ?
+% or just go back to adding slack ?
+
 
 
 
@@ -1092,13 +1129,16 @@ we have:
 
 G1 T1 <: G2 T2
 G2 T2 <: G3 {z=>T3}    <---    G2 T2 <: (G3,z:T2) T3
+                               G2 T2 <: (G3,z:T3) T3
 
 and we need to show:
 
 G1 T2 <: G3 {z=>T3}    <---    G1 T1 <: (G3,z:T1) T3
+                               G1 T1 <: (G3,z:T3) T3
 
 
 but induction only gives us:   G1 T1 <: (G3,z:T2) T3
+                               G1 T1 <: (G3,z:T3) T3
 
 That's why we added explicit slack in tbind2.
 
@@ -1110,13 +1150,6 @@ lemma.
 }%
 
 
-%% TODO: need to generalize to prove via induction
-narrow-env: sub-tp X3 X4 X1 X2 -> sub-tp X3 X4 (tcons X2 X5) X6 -> sub-tp X3 X4 (tcons X4 X5) X6 -> type.
-%mode narrow-env +A +B -C.
-%worlds () (narrow-env _ _ _).
-%trustme
-%total (A) (narrow-env A _ _).
-
 -/tbind2  : sub-tp-trans-aux
        W
        SBT1
@@ -1125,7 +1158,21 @@ narrow-env: sub-tp X3 X4 X1 X2 -> sub-tp X3 X4 (tcons X2 X5) X6 -> sub-tp X3 X4 
 
        <- sub-tp-trans-aux W SBT1 SU SU'
        <- sub-tp-trans-aux W SBT1 SBT3 SBT5'
-       <- narrow-env SBT1 SBT5' SBT5.
+       
+       <- narrow-env SBT1 SBT5' SU' SBT3 SU SBT5.
+
+%{
+-/tbind2  : sub-tp-trans-aux
+       W
+       SBT1
+       (sub-tp/tbind2 SE0 S SW SBT3 SU)
+       (sub-tp/tbind2 SE0 S SW' SBT5 SU')
+
+       <- sub-tp-trans-aux W SBT1 SW SW'
+       <- sub-tp-trans-aux W SBT1 SU SU'
+       <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+}%
+
 
 
 -/tbind1 : sub-tp-trans-aux
