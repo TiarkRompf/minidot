@@ -222,11 +222,18 @@ exp-tp/refl  : exp-tp2 T T.
 
 
 pev  : path-eval G (var N) T1 
-          <- tlookup G E T0
+          <- tlookup G N T0
           <- exp-tp2 T0 T0'
           <- sub-tp G T0' G T1
           <- wf-tp G T1
           .
+
+pev-sel : path-eval G (sel E LN) T1 
+          <- path-eval G E (recv LN T0)
+          <- sub-tp G T0 G T1
+          <- wf-tp G T1
+          .
+
 
 
 sub-tp/top  : sub-tp G1 T G2 top <- wf-tp G1 T.
@@ -588,6 +595,10 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST T ST1 _ _
       <- extend-wf-lkp L T L1.
 
+- : extend-wf-pev (pev-sel W ST P) T (pev-sel W1 ST1 P1)
+      <- extend-wf-tp W T W1
+      <- extend-sub-tp ST T ST1 _ _
+      <- extend-wf-pev P T P1.
 
 
 - : extend-wf-tp wf-tp/top T wf-tp/top.
@@ -739,6 +750,13 @@ extend-wf-pev-mult : path-eval G E T -> sub-env G G1 -> path-eval G1 E T -> type
       <- extend-sub-tp2-mult ST' S ST1
       <- extend-wf-lkp-mult L S L1.
 
+- : extend-wf-pev-mult (pev-sel W ST P) S (pev-sel W1 ST1 P1)
+      <- extend-wf-tp-mult W S W1
+      <- extend-sub-tp1-mult ST S ST'
+      <- extend-sub-tp2-mult ST' S ST1
+      <- extend-wf-pev-mult P S P1.
+
+
 %worlds () (extend-wf-pev-mult _ _ _).
 %total (A) (extend-wf-pev-mult A _ _).
 
@@ -755,6 +773,7 @@ extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
 %mode extract-wf-pev +P -S.
 
 - : extract-wf-pev (pev W ST E L) W.
+- : extract-wf-pev (pev-sel W ST P) W.
 
 
 - : extract-wf (sub-tp/top W) W wf-tp/top.
