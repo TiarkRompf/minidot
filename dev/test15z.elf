@@ -1,5 +1,5 @@
 % echo "set unsafe true
-% loadFile test15.elf" |/Volumes/Twelf\ for\ OS\ X\ \(Intel\)/Twelf/bin/twelf-server
+% loadFile test15z.elf" |/Volumes/Twelf\ for\ OS\ X\ \(Intel\)/Twelf/bin/twelf-server
 
 % STLC: big step preservation
 % - add store
@@ -59,9 +59,6 @@ ne/s : ne (s N1) (s N2)
 
 %mode ne +N1 +N2.
 
-
-%query 0 * lte (s (s z)) (s z).
-%query 1 * lte (s (s z)) (s (s z)).
 
 eq-refl: {N:nat} eq N N -> type.
 %mode eq-refl +N -E1.
@@ -217,6 +214,8 @@ sub-tp : tenv -> tpe -> tenv -> tpe -> type.
 
 
 exp-tp2: tpe -> tpe -> type.
+
+%% exp-tp/refl  : exp-tp2 T T.
 
 exp-tp/and1  : exp-tp2 (and T1 T2) T1' <- exp-tp2 T1 T1'.
 exp-tp/and2  : exp-tp2 (and T1 T2) T2' <- exp-tp2 T2 T2'.
@@ -429,13 +428,17 @@ init-tp/tbindx : init-tp G (bind N G T1) (bind N G T2) %% relax env?
               <- tsize G N.
 
 
-init-tp/tbind1 : init-tp G (bind N G TN) T2 %% relax env?
-              <- init-tp (tcons TN G) TN T2
-              <- tsize G N.
+init-tp/tbind1 : init-tp G (bind N G0 TN) T2
+              <- init-tp (tcons TN G0) TN T2
+              <- tsize G0 N
+              <- sub-env G0 G.
 
-% init-tp/tbind2 : init-tp G T1 (bind N G TN) %% relax env?
-%               <- init-tp (tcons T1 G) T1 TN
-%               <- tsize G N.
+init-tp/tbind2 : init-tp G T1 (bind N G0 TN)
+              <- init-tp (tcons TN G0) T1 TN
+              <- init-tp (tcons T1 G0) T1 TN
+              <- sub-tp G T1 (tcons TN G0) T1 %% transitivity..
+              <- tsize G0 N
+              <- sub-env G0 G.
 
 
 init-tp/tselx : init-tp G (tsel E (rect N T2 T2U) N) (tsel E (rect N T2 T2U) N)
@@ -539,7 +542,6 @@ wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H 
 
 
 %%% TEMP QUERIES %%%
-
 %{
 
 %query 1 1 wf-tp (tcons bot tnil) (tsel (var z) (rect z top top) z).
@@ -561,6 +563,8 @@ wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H 
 %query 1 1 wf-tp (tcons ex0 tnil) (tsel (var z) T z).
 
 
+%query 1 1 type-exp tnil (fun (bind z tnil top) z top empty top z empty top mnil) T.
+
 
 
 %abbrev ex1a  = (bind z tnil (and (arrow z top top) (and (recv z (tsel (var z) (rect z top top) z)) (rect z top top) ))).
@@ -570,14 +574,19 @@ wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H 
 
 %query 1 1 wf-tp tnil ex1.
 
-% %query 1 1 sub-tp tnil ex1a tnil ex1.
+%query 1 1 sub-tp tnil ex1a tnil ex1.
 
 %query 1 1 init-tp tnil ex1a ex1.
 
 %query 1 1 init-tp tnil ex1a ex1.
 
 
-%abbrev ex2 = (fun _ z top empty top z (fun top z top empty top z empty top mnil) (tsel (var z) (rect z top top) z) (mcons z top top mnil)). 
+%abbrev ex2 = 
+      (fun _ 
+        z top empty top 
+        z (fun top z top empty top z empty top mnil) (tsel (var z) (rect z top top) z) 
+        (mcons z top top mnil)). 
+
 
 %query * 1 type-exp tnil ex2 _.
 
@@ -590,18 +599,33 @@ wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H 
 %query 1 1 type-exp (tcons ex1 tnil) (sel (var z) z) (tsel (var z) _ z).
 
 
-%query 1 1 type-exp tnil (let ex1 ex2 (let (tsel (var z) _ z) (sel (var z) z) (var (s z)))) top.
+%query 1 1 type-exp tnil 
+    (let ex1 ex2 
+      (let (tsel (var z) _ z) (sel (var z) z) 
+        (var (s z)))) top.
 
 
+%abbrev e15 = 
+    (let ex1 
+      (fun _ 
+        %{def}% z top empty top 
+        %{val}% z (fun _ z top empty top z empty top mnil) (tsel (var z) (rect z top top) z) 
+        %{typ}% (mcons _ top top mnil)) 
+      (let 
+        (tsel (var z) (rect z top top) z) (sel (var z) z) 
+        (var (s z)))).
+
+%query 1 1 type-exp tnil e15 top.
 
 
-%abbrev e15 = (let _ 
-              (fun ex1 z top empty top z (fun top z top empty top z empty top mnil) (tsel (var z) (rect (s z) top top) (s z)) (mcons _ top top (mcons _ bot top mnil))) 
-              (let (tsel (var z) _ (s z)) (sel (var z) z) (var (s z)))).
+%{
+val b: { z => { val l: z.X } &       { type X: Top .. Top }} = 
+   new { z =>   val l: z.X = new {};   type X: Top .. Top }
 
 
-% %query 1 1 type-exp tnil e15 top.
+val a: { val b : { b => ...  }} = new { val b = b }
 
+%TODO
 }%
 
 
@@ -610,7 +634,7 @@ wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H 
 
 nominal:
 - dot version: expand given type, check that object decls conform
-- here: instead of expansion, take the 'upper bound'
+- here: init-tp as opposed to sub-tp (subtyping for identical object)
 
 val pets = new { z =>
   type Pet: bot .. top
@@ -625,8 +649,107 @@ cat <: pets.Pet
 }%
 
 
+%query 1 1 type-exp (tcons (rect z bot top) tnil) 
+    (fun
+      (tsel (var z) _ z)   %  new pets.Pet
+      z top empty top
+      z empty top
+      mnil)
+    (tsel (var z) _ z).
+
+%query 1 1 type-exp (tcons (bind z tnil (rect z bot top)) tnil) 
+    (fun
+      (tsel (var z) (rect z bot top) z)   %  new pets.Pet
+      z top empty top
+      z empty top
+      mnil)
+    (tsel (var z) _ z).
 
 
+
+%abbrev pets0 = 
+  (fun 
+    (rect z     bot top)
+    z top empty top
+    z empty top
+    (mcons _ bot top
+    mnil)).
+
+%query 1 1 type-exp tnil pets0 T.
+
+
+%query 1 1 type-exp tnil 
+    (let _ pets0
+      (let 
+        (tsel (var z) (rect z bot top) z)    % val cat: pets.Pet = 
+        (fun
+          (tsel (var z) _ z)  %          new pets.Pet
+          z top empty top
+          z empty top
+          mnil)
+        (var (s z)) ))
+    top.
+
+
+%abbrev petTypeDec = (rect z bot top).
+%abbrev petType    = (tsel (var z) petTypeDec z).
+
+%abbrev catTypeDec = (rect (s z) bot petType).
+%abbrev catType    = (tsel (var z) catTypeDec (s z)).
+
+%abbrev pets = 
+  (fun 
+    (bind z tnil (and 
+      catTypeDec    % type Cat: bot .. z.Pet
+      petTypeDec    % type Pet: bot .. top
+    ))
+    z top empty top
+    z empty top
+    (mcons _ bot petType
+    (mcons _ bot top
+    mnil))).
+
+%query 1 1 type-exp tnil pets T.
+
+%query 1 1 type-exp (tcons (and catTypeDec petTypeDec) tnil)
+    (let 
+      petType
+      (fun
+        catType
+        z top empty top
+        z empty top
+        mnil)
+      (var (s z)) )
+    top.
+
+%%% creating cats doesn't work yet (with bind in env)
+
+%query 1 1 wf-tp (tcons ((and catTypeDec petTypeDec)) tnil) petTypeDec.
+%query 1 1 wf-tp (tcons ((and catTypeDec petTypeDec)) tnil) petType.
+%query 1 1 wf-tp (tcons ((and catTypeDec petTypeDec)) tnil) catTypeDec.
+%query 1 1 wf-tp (tcons ((and catTypeDec petTypeDec)) tnil) catType.
+
+%query 1 1 wf-tp (tcons (bind z tnil (and catTypeDec petTypeDec)) tnil) petTypeDec.
+%query 1 1 wf-tp (tcons (bind z tnil (and catTypeDec petTypeDec)) tnil) petType.
+%query 1 1 wf-tp (tcons (bind z tnil (and catTypeDec petTypeDec)) tnil) catTypeDec.
+
+% %query 1 1 wf-tp (tcons (bind z tnil (and petTypeDec catTypeDec)) tnil) (tsel (var z) (rect (s z) bot top) (s z)).
+% %query 1 1 wf-tp (tcons (bind z tnil (and petTypeDec catTypeDec)) tnil) (tsel (var z) (rect (s z) bot petType) (s z)).
+% %query 1 1 wf-tp (tcons (bind z tnil (and catTypeDec petTypeDec)) tnil) catType.
+
+
+%{
+%query 1 1 type-exp (tcons (bind z tnil (and catTypeDec petTypeDec)) tnil)
+    (fun
+      catType
+      z top empty top
+      z empty top
+      mnil)
+    petType.
+}%
+
+
+}%
 
 %%% PROOFS %%%
 
@@ -1533,16 +1656,18 @@ init-tp-trans-aux :
 %        <- init-tp-trans-aux W ST SBT2 ST'.
 % 
 
-% -/tbind2-tbind1  : init-tp-trans-aux
-%        C (wf-tp/tbind SE0 WS0 WY0)
-%        (init-tp/tbind2 S SU)
-%        (sub-tp/tbind1 SE3 S3 SBT3)
-%        SBT5
-% 
-%        %% TODO: uniqueness lemmas for G0/SE/S
-% 
-%        <- init-tp-trans-aux WY0 SU SBT3 SBT5.
-% 
+-/tbind2-tbind1  : init-tp-trans-aux
+       C (wf-tp/tbind SE0 WS0 WY0)
+       (init-tp/tbind2 SE1 S1 STXX SBT1 SU)
+       (sub-tp/tbind1 SE3 S3 SBT3)
+       SBT5
+
+       %% TODO: uniqueness lemmas for G0/SE/S
+
+       <- init-tp-trans-aux C WY0 SU SBT3 SBT5''
+       <- sub-tp-trans STXX SBT5'' SBT5
+       .
+
 
 % -/tbindx-tbind1  : init-tp-trans-aux
 %         C (wf-tp/tbind SE0 WS0 WY0)
@@ -1623,7 +1748,11 @@ init-tp-trans-false :
             (sub-tp/tsel1 ST P2)
             F <- init-tp-trans-false C IN ST F.
 
-
+-/tbind  : init-tp-trans-false
+            C
+            (init-tp/tbind2 SE S STx IN IU)
+            (sub-tp/tbind1 SE1 S1 ST)
+            F <- init-tp-trans-false C IU ST F.
 
 %worlds () (init-tp-trans-false _ _ _ _).
 %total {S1 S2} (init-tp-trans-false _ S1 S2 _).
@@ -2032,6 +2161,8 @@ no-subtype-mt-arrow: init-tp G T1 T2 -> sub-tp G T2 G2 (arrow NF TA TB) -> type-
 - : no-subtype-mt-arrow (init-tp/and1b _ IN) ST2 (tm/cons TM) F 
       <- no-subtype-mt-arrow IN ST2 TM F.
 - : no-subtype-mt-arrow (init-tp/tsel2 IN _) (sub-tp/tsel1 ST2 _) TM F 
+     <- no-subtype-mt-arrow IN ST2 TM F.
+- : no-subtype-mt-arrow (init-tp/tbind2 _ _ _ _ IN) (sub-tp/tbind1 _ _ ST2) TM F 
      <- no-subtype-mt-arrow IN ST2 TM F.
 - : no-subtype-mt-arrow (init-tp/and2 IN _) (sub-tp/and1a ST2 _) TM F 
      <- no-subtype-mt-arrow IN ST2 TM F.
