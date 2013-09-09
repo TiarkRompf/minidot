@@ -1,0 +1,4 @@
+new { x =>
+  type A: Top .. Top
+  val v: x.A = new {}
+}
