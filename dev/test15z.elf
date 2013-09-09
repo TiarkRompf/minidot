@@ -420,7 +420,7 @@ init-tp/rect : init-tp G (rect N T1 T2) (rect N T3 T4)
               <- sub-tp G T2 G T4.
 
 init-tp/recv : init-tp G (recv N T1) (recv N T2)
-              <- init-tp G T1 T2.
+              <- sub-tp G T1 G T2.
 
 
 init-tp/tbindx : init-tp G (bind N G T1) (bind N G T2) %% relax env?
@@ -1387,6 +1387,8 @@ incompat/rect-arrow: incompat-tp (rect _ _ _) (arrow _ _ _).
 compat-tp: tpe -> tpe -> type.
 
 compat/arrow-arrow: compat-tp (arrow N _ _) (arrow N _ _).
+compat/recv-recv: compat-tp (recv N _) (recv N _).
+compat/rect-rect: compat-tp (rect N _ _) (rect N _ _).
 
 no-subtype0: incompat-tp T1 T3 -> compat-tp T1 T3 -> false -> type.
 %mode no-subtype0 +A +B -D.
@@ -1423,21 +1425,21 @@ init-tp-trans-aux :
       <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
       <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
 
-% -/rect-rect  : init-tp-trans-aux
-%       C (wf-tp/rect SB T2 T1)
-%             (init-tp/rect SBT2 SBT1 B2 B1)
-%             (sub-tp/rect SBT4 SBT3 B4 B3)
-%             (sub-tp/rect SBT6 SBT5 B4 B1)
-%       <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
-%       <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
-% 
-% -/recv-recv  : init-tp-trans-aux
-%       C (wf-tp/recv T1)
-%             (init-tp/recv SBT1)
-%             (sub-tp/recv SBT3)
-%             (sub-tp/recv SBT5)
-%       <- init-tp-trans-aux T1 SBT1 SBT3 SBT5.
-% 
+-/rect-rect  : init-tp-trans-aux
+      C (wf-tp/rect SB T2 T1)
+            (init-tp/rect SBT2 SBT1 B2 B1)
+            (sub-tp/rect SBT4 SBT3 B4 B3)
+            (sub-tp/rect SBT6 SBT5 B4 B1)
+      <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
+
+-/recv-recv  : init-tp-trans-aux
+      C (wf-tp/recv T1)
+            (init-tp/recv SBT1)
+            (sub-tp/recv SBT3)
+            (sub-tp/recv SBT5)
+      <- sub-tp-trans-aux T1 SBT1 SBT3 SBT5.
+
 
 
 
@@ -1988,6 +1990,8 @@ project-sub-recv: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) G2 (r
 yes-subtype2: init-tp G T1 T2 -> sub-tp G T2 G2 T3 -> compat-tp T1 T3 -> sub-tp G T1 G2 T3 -> type.
 %mode yes-subtype2 +A +B +C -D.
 - : yes-subtype2 ST1 ST2 compat/arrow-arrow ST3 <- init-tp-trans compat/arrow-arrow ST1 ST2 ST3.
+- : yes-subtype2 ST1 ST2 compat/rect-rect ST3   <- init-tp-trans compat/rect-rect ST1 ST2 ST3.
+- : yes-subtype2 ST1 ST2 compat/recv-recv ST3 <- init-tp-trans compat/recv-recv ST1 ST2 ST3.
 %worlds () (yes-subtype2 _ _ _ _).
 %total (A) (yes-subtype2 A _ _ _).
 
