@@ -471,9 +471,9 @@ t/fun      : type-exp G (fun TC LNF T3 R T4 LNV R2 T2 M)
                 TC
                 <- tsize G N
                 <- type-mem M MT
-                <- type-exp (tcons T3 (tcons (and (arrow LNF T3 T4) (and (recv  LNV T2) MT)) G)) R T4
+                <- type-exp (tcons T3 (tcons TC G)) R T4
                 <- type-exp (tcons MT G) R2 T2
-                <- sub-tp (tcons MT G) T2 (tcons (and (arrow LNF T3 T4) (and (recv  LNV T2) MT)) G) T2
+                <- sub-tp (tcons MT G) T2 (tcons TC G) T2
                 <- wf-tp (tcons MT G) MT                
                 <- wf-tp G TC
 %                <- init-tp G (bind N G (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) TC
@@ -1920,7 +1920,6 @@ invert-fun :
 
 
 %worlds () (invert-fun _ _ _ _ _ _ _ _).
-%trustme
 %total WFE (invert-fun WFE _ _ _ _ _ _ _).
 
 
@@ -2178,7 +2177,6 @@ invert-wf-rec-aux :
             <- invert-wf-rec-aux TS SB1X TV (SB: sub-tp _ (recv LNV T4) G2 (recv LNV T2)).
 
 %worlds () (invert-wf-rec-aux _ _ _ _).
-%trustme
 %total WFE (invert-wf-rec-aux WFE _ _ _).
 
 
