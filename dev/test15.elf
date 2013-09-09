@@ -1663,14 +1663,31 @@ project-sub-recv: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) G2 (r
 
 sub-init-tp: sub-tp G0 T0 G1 T1' -> sub-tp G1 T1 G2 T2 -> init-tp T1 T1' -> sub-tp G0 T0 G2 T2 -> type.
 %mode sub-init-tp +WFE1 +WFE3 +X -WFE2.
+
+- : sub-init-tp ST1 ST2 init-tp/top ST3 <- sub-tp-trans ST1 ST2 ST3.
+- : sub-init-tp ST1 ST2 init-tp/fun ST3 <- sub-tp-trans ST1 ST2 ST3.
+- : sub-init-tp ST1 ST2 init-tp/recv ST3 <- sub-tp-trans ST1 ST2 ST3.
+- : sub-init-tp ST1 ST2 init-tp/rect ST3 <- sub-tp-trans ST1 ST2 ST3.
+% - : sub-init-tp ST1 ST2 (init-tp/and I1 I2) ST3
+%      <- sub-init-tp ST1x ST2x I1 ST31 
+%      <- sub-init-tp ST1y ST2y I2 ST32.
+
+% - : sub-init-tp ST1 ST2 (init-tp/bind I) ST3 <- sub-init-tp ST1x ST2x I ST3x.
+
+% - : sub-init-tp ST1 (sub-tp/tsel1 ST2 P) (init-tp/sel I) ST3 <- sub-init-tp ST1 ST2 I ST3.
+
 %worlds () (sub-init-tp _ _ _ _).
 %trustme
-%total WFE (sub-init-tp WFE _ _ _).
+%total WFE (sub-init-tp _ WFE _ _).
 
 xxx: type-mem M T -> init-tp T T -> type.
 %mode xxx +WFE1 -WFE2.
+
+-: xxx tm/nil init-tp/top.
+-: xxx tm/consz init-tp/rect.
+-: xxx (tm/cons M) (init-tp/and I init-tp/rect) <- xxx M I.
+
 %worlds () (xxx _ _).
-%trustme
 %total WFE (xxx WFE _ ).
 
 
