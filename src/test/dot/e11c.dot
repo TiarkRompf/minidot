@@ -1,0 +1,4 @@
+new { type A: Top .. Top } ( x =>
+  type A: Top .. Top
+  type B: Bot .. x.A
+)

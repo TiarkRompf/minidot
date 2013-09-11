@@ -9,6 +9,7 @@
 %query 1 1 type-exp tnil e8  top.
 %query 1 1 type-exp tnil e9  top.
 %query 1 1 type-exp tnil e10  top.
+%query 1 1 type-exp tnil e11c top.
 %query 1 1 type-exp tnil e12  top.
 %query 1 1 type-exp tnil e13  top.
 %query 1 1 type-exp tnil e15  top.
