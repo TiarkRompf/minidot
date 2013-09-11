@@ -75,7 +75,7 @@ trait DotParsing extends StdTokenParsers with PackratParsers with DotSyntax with
       repsep(init1, opt(";"))
 
     lazy val newTerm: P[New] =
-      l("new" ~> "{" ~> opt(name <~ ("=>" | "⇒")) ~ init <~ "}" ^^ New) ("new object")
+      l("new" ~> opt(typ) ~ ("(" ~> opt(name <~ ("=>" | "⇒"))) ~ init <~ ")" ^^ New) ("new object")
 
     lazy val letTerm: P[Let] =
       l(initVal ~ (opt(";") ~> term) ^^

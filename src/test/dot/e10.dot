@@ -1,3 +1,3 @@
-val x: { type Foo: Top .. Top } = new { type Foo: Top .. Top }
+val x: { type Foo: Top .. Top } = new ( type Foo: Top .. Top )
 val y: x.Foo = x
 x

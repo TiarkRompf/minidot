@@ -1,2 +1,2 @@
-val f: { def m(_:Top):Top } = new { def m(x) = x }
+val f: { def m(_:Top):Top } = new ( def m(x) = x )
 f

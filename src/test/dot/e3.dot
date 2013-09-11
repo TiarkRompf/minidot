@@ -1,1 +1,1 @@
-val x = new {}; x
+val x = new (); x

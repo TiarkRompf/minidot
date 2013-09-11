@@ -1,2 +1,2 @@
-val c: {val v: {val v: Top}} = new { val v: {val v: Top } = new { val v: Top = new {} }}
+val c: {val v: {val v: Top}} = new ( val v: {val v: Top } = new ( val v: Top = new () ))
 c.v.v

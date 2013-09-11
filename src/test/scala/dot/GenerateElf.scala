@@ -7,7 +7,7 @@ import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 class GenerateElf extends FunSuite with ElfPrinter with DotParsing {
-  val overwrite = true // should be false
+  val overwrite = false // should be false
   val src = "src/test/dot/"
   val prefix = "src/main/elf/"
   def readFile(name: String): String = {

@@ -1,3 +1,3 @@
-val x: {x => {type A: Top .. Top} }= new { type A: Top .. Top }
-val y: x.A = new {}
+val x: {x => {type A: Top .. Top} }= new ( type A: Top .. Top )
+val y: x.A = new ()
 y

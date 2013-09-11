@@ -1,1 +1,1 @@
-new { def m(x) = x }
+new ( def m(x) = x )

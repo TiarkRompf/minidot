@@ -35,7 +35,7 @@ class TestDotParser extends FunSuite with DotParsing {
   test("MemVal") { ok(Parser.typ)("{ val v: Top }") }
   test("TRec/Tsel") { ok(Parser.typ)("{ x => { type A: Bot .. x.B } & { type B: Bot .. Top } }") }
 
-  test("termVar") { ok(Parser.term) ("val x = new { x => }; x") }
-  test("termSel") { ok(Parser.term) ("val x = new { x => val v = x}; x.v") }
-  test("termApp") { ok(Parser.term) ("val x = new { x => def m(a)=a}; x.m(x)") }
+  test("termVar") { ok(Parser.term) ("val x = new ( x => ); x") }
+  test("termSel") { ok(Parser.term) ("val x = new ( x => val v = x ); x.v") }
+  test("termApp") { ok(Parser.term) ("val x = new ( x => def m(a)=a ); x.m(x)") }
 }

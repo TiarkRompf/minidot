@@ -27,7 +27,7 @@ trait DotSyntax {
     case class Var(id: String) extends Term
     case class Sel(o: Term, tag: Tag) extends Term
     case class App(f: Term, tag: Tag, a: Term) extends Term
-    case class New(self: Option[Var], members: List[Init]) extends Term
+    case class New(tc: Option[Type], self: Option[Var], members: List[Init]) extends Term
     case class Let(x: Var, tyx: Type, ex: Term, body: Term) extends Term
   }
 

@@ -76,7 +76,7 @@ trait ElfPrinter { this: DotSyntax =>
 
       case App(f, l, a) => s"(app ${p(f)} ${p(l)} ${p(a)})"
 
-      case New(oself, members) =>
+      case New(otc, oself, members) =>
         val self = oself.getOrElse(Var("_"))
         val typeMembers = members.collect{
           case i: InitType => (i.d.tag, i)
@@ -101,8 +101,7 @@ trait ElfPrinter { this: DotSyntax =>
           case (_,i)::Nil => s"${p(i.d.tag)} ${p(i.t)} ${pbind(i.d.ty, self)}"
           case _ => assert(false, "TODO in elf: support object creation with more than one val"); ???
         }
-        // TODO: optionally allow user to specify
-        val tc = inferConstructorType(oself, (defMembers++valMembers++typeMembers).map(_._2))
+        val tc = otc.getOrElse(inferConstructorType(oself, (defMembers++valMembers++typeMembers).map(_._2)))
         s"(fun ${p(tc)} $dmem $vmem $tmem)"
 
       case Let(x, tyx, ex, body) =>

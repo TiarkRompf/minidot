@@ -1,4 +1,4 @@
-val a = new {}
-val b: {val v: Top} = new { val v = a }
-val c: {val v: {val v: Top }} = new { val v = b }
+val a = new ()
+val b: {val v: Top} = new ( val v = a )
+val c: {val v: {val v: Top }} = new ( val v = b )
 c.v.v

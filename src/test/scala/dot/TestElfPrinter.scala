@@ -19,19 +19,19 @@ class TestElfPrinter extends FunSuite with ElfPrinter with DotParsing {
 
   test("collectTags1") {
     ok(collectTags){"""
-      val x = new { x => type Bar: Bot .. x.Foo }; x
+      val x = new ( x => type Bar: Bot .. x.Foo ); x
     """}(tags("Bar", "Foo"))
   }
 
   test("collectTags2") {
     ok(collectTags){"""
-      val x = new { x => def m(y): x.Bar = y; type Foo: Bot .. Top }; x.yo
+      val x = new ( x => def m(y): x.Bar = y; type Foo: Bot .. Top ); x.yo
     """}(tags("m", "Bar", "Foo", "yo"))
   }
 
   test("collectTagsNoDups") {
     ok(collectTags){"""
-      val x = new { x => def m(y): x.Bar = y; type Foo: Bot .. x.Bar }; x.yo
+      val x = new ( x => def m(y): x.Bar = y; type Foo: Bot .. x.Bar ); x.yo
     """}(tags("m", "Bar", "Foo", "yo"))
   }
 

@@ -1,3 +1,3 @@
-val x = new {}
-val y: { def m(z: Top): Top } = new { def m(z) = x }
+val x = new ()
+val y: { def m(z: Top): Top } = new ( def m(z) = x )
 y
