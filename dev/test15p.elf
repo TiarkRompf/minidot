@@ -247,16 +247,16 @@ eta/rect: self-eta E
               (rect X4 X5 X6) 
               (rect X4 (tsel E (rect X4 X5 X6) X4)
                        (tsel E (rect X4 X5 X6) X4)).
-eta/recv: self-eta E (recv N T) (recv N T') <- self-eta (sel E N) T T'.
+eta/recv: self-eta E (recv N T) (rect N' TS TU) <- self-eta (sel E N) T (rect N' TS TU).
 
 path-eval2: tenv -> exp -> tpe -> type.
 
-pev2: path-eval2 G E T 
+pev2: path-eval2 G E T
           <- path-eval G E T.
 
-pev2xx: path-eval2 G E T2
+pev2xx: path-eval2 G E (rect N TS TU)
           <- path-eval G E T1
-          <- self-eta E T1 T2.
+          <- self-eta E T1 (rect N TS TU).
 
 
 
@@ -1447,7 +1447,7 @@ wf-path-tp: path-eval G E T1 -> self-eta E T1 T2 -> wf-tp G T2 -> type.
         (wf-tp/tsel P))
       <- extract-wf-pev P W
       <- sub-tp-refl W ST.
-- : wf-path-tp P (eta/recv E) (wf-tp/recv W')
+- : wf-path-tp P (eta/recv E) W'
       <- extract-wf-pev P (wf-tp/recv WE)
       <- sub-tp-refl WE ST
       <- wf-path-tp (pev-sel WE ST P) E W'.
@@ -1560,14 +1560,47 @@ wfv-widen-ex: exp-tp2 T1 T2 -> wf-val V G T1 -> wf-val V G T2 -> type.
 %worlds () (wfv-widen-ex _ _ _).
 %total A (wfv-widen-ex A _ _).
 
-wfv-widen-eta: self-eta E T1 T2 -> wf-val V G T1 -> wf-val V G T2 -> type.
-%mode wfv-widen-eta +LTE1 +LTE2 -LTE3.
+%% this will need to change if we add non-closure values
+assign-rect: wf-val V G0 T -> wf-tp G (rect N T1 T2) -> wf-val V G (rect N T1 T2) -> type.
+%mode assign-rect +A +B -C.
+- : assign-rect (wfv/empty _) W (wfv/empty W).
+- : assign-rect (wfv/f IX ST MT TV TV2 TE WE) W (wfv/t W).
+- : assign-rect (wfv/t WR) W (wfv/t W).
+- : assign-rect (wfv/sub S T) W T' <- assign-rect T W T'.
+%worlds () (assign-rect _ _ _).
+%total WFE (assign-rect WFE _ _).
 
-% - : wfv-widen-eta S W (wfv/sub S W).
+wft-widen-eta: path-eval G E T1 -> self-eta E T1 T2 -> wf-tp G T1 -> wf-tp G T2 -> type.
+%mode wft-widen-eta +X1 +X2 +X3 -X4.
 
-%worlds () (wfv-widen-eta _ _ _).
-%trustme
-%total A (wfv-widen-eta A _ _).
+- : wft-widen-eta
+     P
+     eta/rect
+     _
+     (wf-tp/rect SR (wf-tp/tsel P) (wf-tp/tsel P))
+     <- sub-tp-refl (wf-tp/tsel P) SR.
+
+- : wft-widen-eta
+     P
+     (eta/recv A)
+     (wf-tp/recv W)
+     W'
+     <- sub-tp-refl W SR
+     <- wft-widen-eta (pev-sel W SR P) A W W'.
+
+%worlds () (wft-widen-eta _ _ _ _).
+%total A (wft-widen-eta _ A _ _).
+
+wfv-widen-eta: path-eval G E T1 -> self-eta E T1 (rect N S U) -> wf-val V G T1 -> wf-val V G (rect N S U) -> type.
+%mode wfv-widen-eta +X1 +X2 +X3 -X4.
+
+- : wfv-widen-eta P E WV WV'
+     <- extract-wf3 WV W
+     <- wft-widen-eta P E W W'
+     <- assign-rect WV W' WV'.
+
+%worlds () (wfv-widen-eta _ _ _ _).
+%total A (wfv-widen-eta _ A _ _).
 
 wfv-widen: sub-tp G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
 %mode wfv-widen +LTE1 +LTE2 -LTE3.
@@ -1577,7 +1610,24 @@ wfv-widen: sub-tp G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
 %worlds () (wfv-widen _ _ _).
 %total A (wfv-widen A _ _).
 
+sub-widen-eta: self-eta E T1 (rect N S U) -> wf-tp G T -> sub-tp G T0 G T1 -> sub-tp G T0 G (rect N S U) -> type.
+%mode sub-widen-eta +X1 +X2 +X3 -X4.
 
+% - : sub-widen-eta
+%     eta/rect
+%     W
+%     ST
+%     ST'.
+
+% - : wft-widen-eta
+%     (eta/recv A)
+%     W
+%     ST
+%     ST'.
+
+%worlds () (sub-widen-eta _ _ _ _).
+%trustme
+%total A (sub-widen-eta A _ _ _).
 
 %{ ------- suptyping inversion: type-exp ----- }%
 
@@ -1637,10 +1687,9 @@ invert-sel :
             <- extract-wf2 (t/sel TS) W
             <- sub-tp-refl W SB.
 -     : invert-sel (t/varx (pev2 (pev-sel W ST P))) (t/varx (pev2 P)) ST.
--     : invert-sel (t/varx (pev2xx E (pev-sel W ST P))) (t/varx (pev2xx (eta/recv E) P')) ST'
-            <- widen-pev P (sub-tp/recv ST) P'
-            <- wf-path-tp (pev-sel W ST P) E W'
-            <- sub-tp-refl W' ST'.
+
+-     : invert-sel (t/varx (pev2xx E (pev-sel W ST P))) (t/varx (pev2 P)) ST'
+         <- sub-widen-eta E W ST ST'.
 
 -     : invert-sel (t/sub SB1 TS) L2 SB2
             <- invert-sel TS L2 SB
@@ -1998,7 +2047,7 @@ eval-path2-safe: path-eval2 G E T -> wf-env H G -> eval-exp H E V -> wf-val V G 
       <- eval-path-safe P E EV V.
 - : eval-path2-safe (pev2xx ET P) E EV V2
       <- eval-path-safe P E EV V
-      <- wfv-widen-eta ET V V2.
+      <- wfv-widen-eta P ET V V2.
 
 %worlds () (eval-path2-safe _ _ _ _).
 %total (A) (eval-path2-safe _ _ A _).

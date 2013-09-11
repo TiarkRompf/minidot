@@ -247,7 +247,8 @@ eta/rect: self-eta E
               (rect X4 X5 X6) 
               (rect X4 (tsel E (rect X4 X5 X6) X4)
                        (tsel E (rect X4 X5 X6) X4)).
-eta/recv: self-eta E (recv N T) (recv N T') <- self-eta (sel E N) T T'.
+% eta/recv: self-eta E (recv N T) (recv N T') <- self-eta (sel E N) T T'.
+eta/recv: self-eta E (recv N T) T' <- self-eta (sel E N) T T'.
 
 path-eval2: tenv -> exp -> tpe -> type.
 
