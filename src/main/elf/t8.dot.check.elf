@@ -1,0 +1,1 @@
+%abbrev t8 = (bind z tnil (and (recv (s z) (tsel (var z) _ z)) (rect z bot top))).

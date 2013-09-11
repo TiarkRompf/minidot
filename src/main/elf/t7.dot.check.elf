@@ -1,0 +1,1 @@
+%abbrev t7 = (bind z tnil (and (recv (s z) (tsel (var z) _ z)) (rect z top top))).

@@ -303,7 +303,7 @@ sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
 
 
 sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
-              <- sub-tp G1 T1 (tcons TN G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
+%              <- sub-tp G1 T1 (tcons TN G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
               <- sub-tp G1 T1 (tcons T1 G0) TN
 %              <- sub-tp G1 T1 (tcons T1' G0) TN
 %              <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2)

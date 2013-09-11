@@ -21,6 +21,7 @@
 %query 1 1 wf-tp tnil t3.
 %query 1 1 wf-tp tnil t4.
 %query 1 1 wf-tp tnil t6.
+%query 1 1 sub-tp tnil t7 tnil t8.
 
 % programs
 %query 1 1 type-exp tnil p1 top.
