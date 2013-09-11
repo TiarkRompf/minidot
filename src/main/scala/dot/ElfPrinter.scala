@@ -19,7 +19,7 @@ trait ElfPrinter { this: DotSyntax =>
 
   def printEnvFromSize(n: Int, hints: Map[Int,String]): String = {
     if (n==0) "tnil" else {
-      val sty = "_"//hints.get(n-1).getOrElse("_")
+      val sty = hints.get(n-1).getOrElse("_")
       s"(tcons $sty ${printEnvFromSize(n-1, hints)})"
     }
   }
@@ -65,9 +65,10 @@ trait ElfPrinter { this: DotSyntax =>
       }
       printEntity(tags, envp, hints, e)
     }
-    def pbind_hint(e: Entity, x: Var, ty: Type) = {
+    def pbind_hint(e: Entity, x: Var, ty: Type): String = {
       val n = env.size
-      printEntity(tags, env.updated(x, n), hints.updated(n, p(ty)), e)
+      val sty = p(ty)
+      printEntity(tags, env.updated(x, n), hints.updated(n, sty), e)
     }
 
     e match {

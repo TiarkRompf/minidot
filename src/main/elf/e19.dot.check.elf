@@ -1,0 +1,1 @@
+%abbrev e19 = (let top (fun top z top empty top z empty top mnil) (let (bind (s z) (tcons top tnil) (and (recv (s z) (tsel (var (s z)) (rect z (tsel (var (s z)) _ z) top) z)) (rect z top top))) (fun (bind (s z) (tcons top tnil) (and (recv (s z) _) (rect z top top))) z top empty top (s z) (var z) _ (mcons _ bot top (mcons _ top top mnil))) (var z))).

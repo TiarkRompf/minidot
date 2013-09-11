@@ -1,0 +1,3 @@
+val l: Top = new ()
+new {b => {val l: b.Z} & {type Z: Top .. Top}} (b => val l = l; type Z: Top .. Top)
+
