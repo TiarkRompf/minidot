@@ -16,10 +16,11 @@ trait DotSyntax {
     case class MemType(tag: Tag, tyS: Type, tyU: Type) extends Type
     case class MemDef(tag: Tag, tyP: Type, tyR: Type) extends Type
     case class MemVal(tag: Tag, ty: Type) extends Type
-    case class Tsel(p: Term, tag: Tag) extends Type {
+    case class Tsel(p: Term, tag: Tag, hint: Option[MemType]) extends Type {
       assert(p.isPath)
     }
     case class TRec(self: terms.Var, ty: Type) extends Type
+    case class SingletonType(x: terms.Var) extends Type
 
     case object Unknown extends Type
   }

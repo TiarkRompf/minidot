@@ -17,8 +17,11 @@ trait ElfPrinter { this: DotSyntax =>
     c(e).toSet.toList
   }
 
-  def printEnvFromSize(n: Int): String = {
-    if (n==0) "tnil" else s"(tcons _ ${printEnvFromSize(n-1)})"
+  def printEnvFromSize(n: Int, hints: Map[Int,String]): String = {
+    if (n==0) "tnil" else {
+      val sty = "_"//hints.get(n-1).getOrElse("_")
+      s"(tcons $sty ${printEnvFromSize(n-1, hints)})"
+    }
   }
 
   def printNat(n: Int): String = {
@@ -26,16 +29,16 @@ trait ElfPrinter { this: DotSyntax =>
     if (n==0) "z" else s"(s ${printNat(n-1)})"
   }
 
-  def print(e: Entity): String = printEntity(collectTags(e), Map.empty, e)
+  def print(e: Entity): String = printEntity(collectTags(e), Map.empty, Map.empty, e)
 
-  def printTypeMembers(tags: List[Tag], env: Map[Var,Int], members: Map[Tag, InitType], rtags: List[Tag]): String = rtags match {
+  def printTypeMembers(tags: List[Tag], env: Map[Var,Int], hints: Map[Int,String], members: Map[Tag, InitType], rtags: List[Tag]): String = rtags match {
     case Nil => "mnil"
     case l::rtags =>
       val (tyS, tyU) = members.get(l) match {
         case None => (Bot, Top)
         case Some(i) => (i.d.tyS, i.d.tyU)
       }
-      s"(mcons _ ${printEntity(tags, env, tyS)} ${printEntity(tags, env, tyU)} ${printTypeMembers(tags, env, members, rtags)})"
+      s"(mcons _ ${printEntity(tags, env, hints, tyS)} ${printEntity(tags, env, hints, tyU)} ${printTypeMembers(tags, env, hints, members, rtags)})"
   }
 
   def inferConstructorType(oself: Option[Var], members: List[Init]): Type = {
@@ -52,16 +55,21 @@ trait ElfPrinter { this: DotSyntax =>
     }
   }
 
-  def printEntity(tags: List[Tag], env: Map[Var,Int], e: Entity): String = {
-    def p(e: Entity) = printEntity(tags, env, e)
+  def printEntity(tags: List[Tag], env: Map[Var,Int], hints: Map[Int,String], e: Entity): String = {
+    def p(e: Entity) = printEntity(tags, env, hints, e)
     def ebind(x: Var) = env.updated(x, env.size)
     def pbind(e: Entity, xs: Var*) = {
       var envp = env
       for (x <- xs) {
         envp = envp.updated(x, envp.size)
       }
-      printEntity(tags, envp, e)
+      printEntity(tags, envp, hints, e)
     }
+    def pbind_hint(e: Entity, x: Var, ty: Type) = {
+      val n = env.size
+      printEntity(tags, env.updated(x, n), hints.updated(n, p(ty)), e)
+    }
+
     e match {
 
       case l@Tag(id) => printNat(tags.size-tags.indexOf(l)-1)
@@ -90,7 +98,7 @@ trait ElfPrinter { this: DotSyntax =>
         val valMembers = members.collect{
           case i: InitVal => (i.d.tag, i)
         }
-        val tmem = if (typeMemberMap.isEmpty) "mnil" else printTypeMembers(tags, ebind(self), typeMemberMap, tags)
+        val tmem = if (typeMemberMap.isEmpty) "mnil" else printTypeMembers(tags, ebind(self), hints, typeMemberMap, tags)
         val dmem = defMembers match {
           case Nil => "z top empty top"
           case (_,i)::Nil => s"${p(i.d.tag)} ${pbind(i.d.tyP, self)} ${pbind(i.body, self, i.param)} ${pbind(i.d.tyR, self)}"
@@ -105,7 +113,7 @@ trait ElfPrinter { this: DotSyntax =>
         s"(fun ${p(tc)} $dmem $vmem $tmem)"
 
       case Let(x, tyx, ex, body) =>
-        s"(let ${p(tyx)} ${p(ex)} ${pbind(body, x)})"
+        s"(let ${p(tyx)} ${p(ex)} ${pbind_hint(body, x, tyx)})"
 
       case Bot => "bot"
 
@@ -127,12 +135,21 @@ trait ElfPrinter { this: DotSyntax =>
       case MemVal(l, ty) =>
         s"(recv ${p(l)} ${p(ty)})"
 
-      case Tsel(x, tag) =>
-        s"(tsel ${p(x)} _ ${p(tag)})" // TODO for _
+      case Tsel(x, tag, hint) =>
+        val ty = hint.getOrElse(Unknown)
+        s"(tsel ${p(x)} ${p(ty)} ${p(tag)})"
 
       case TRec(self, ty) =>
-        s"(bind ${printNat(env.size)} ${printEnvFromSize(env.size)} ${pbind(ty, self)})"
+        s"(bind ${printNat(env.size)} ${printEnvFromSize(env.size, hints)} ${pbind(ty, self)})"
 
+      case SingletonType(v) =>
+        env.get(v) match {
+          case None => assert(false, "syntax error: unbound variable"); ???
+          case Some(i) => hints.get(i) match {
+            case None => assert(false, "syntax error: don't know singleton type"); ???
+            case Some(sty) => sty
+          }
+        }
       case Unknown => "_"
     }
   }

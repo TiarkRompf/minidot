@@ -120,7 +120,10 @@ trait DotParsing extends StdTokenParsers with PackratParsers with DotSyntax with
       (only[Term](path, !_.isVar, p => "expected selection, not variable") ^? { case p: Sel => p })
 
     lazy val tsel: P[Type] =
-      l(sel  ^^ {case Sel(o, t) => Tsel(o, t) }) ("type selection")
+      l(sel  ~ opt(":" ~> typ ~ (".." ~> typ)) ^^ {case Sel(o, t)~hint => Tsel(o, t, hint.map({case tyS~tyU => MemType(t, tyS, tyU)}))}) ("type selection")
+
+    lazy val singleton: P[Type] =
+      l(name <~ "." <~ "type" ^^ SingletonType) ("singleton type")
 
     lazy val structType: P[Type] =
       "{" ~> (memType | memVal | memDef) <~ "}"
@@ -130,6 +133,7 @@ trait DotParsing extends StdTokenParsers with PackratParsers with DotSyntax with
       bot |
       recType |
       structType |
+      singleton |
       tsel |
       l("(" ~> typ <~ ")") ("parenthesized type")
 
