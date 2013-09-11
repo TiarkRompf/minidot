@@ -390,7 +390,7 @@ t/empty    : type-exp G empty top.
 
 t/var      : type-exp G (var N) T <- tlookup G N T <- wf-tp G T.
 
-t/varx     : type-exp G E T <- path-eval2 G E T.
+% t/varx     : type-exp G E T <- path-eval2 G E T.
 
 t/sel       : type-exp G (sel E1 LNV) T1
             <- type-exp G E1 (recv LNV T1).
@@ -1475,7 +1475,7 @@ extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 
 - : extract-wf2 t/empty wf-tp/top.
 - : extract-wf2 (t/var W L) W.
-- : extract-wf2 (t/varx P) W <- extract-wf-pev2 P W.
+% - : extract-wf2 (t/varx P) W <- extract-wf-pev2 P W.
 - : extract-wf2 (t/fun _ WFF _ _ _ _ _ _) WFF.
 - : extract-wf2 (t/app TS1 (TS2: type-exp _ _ (arrow _ _ _))) W2 <- extract-wf2 TS2 (wf-tp/fun W2 W1).
 - : extract-wf2 (t/sel TS) W <- extract-wf2 TS (wf-tp/recv W).
@@ -1610,13 +1610,6 @@ wfv-widen: sub-tp G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
 %worlds () (wfv-widen _ _ _).
 %total A (wfv-widen A _ _).
 
-sub-widen-eta: path-eval G E (recv N' T0) -> self-eta (sel E N') T1 (rect N S U) -> wf-tp G T -> sub-tp G T0 G T1 -> sub-tp G T0 G (rect N S U) -> type.
-%mode sub-widen-eta +X1 +X2 +X3 +X4 -X5.
-
-%worlds () (sub-widen-eta _ _ _ _ _).
-%trustme
-%total A (sub-widen-eta A _ _ _ _).
-
 %{ ------- suptyping inversion: type-exp ----- }%
 
 
@@ -1644,23 +1637,15 @@ invert-var :
 
 -     : invert-var (t/var W L) (pev2 (pev W ST exp-tp/refl L)) ST
             <- sub-tp-refl W ST.
--     : invert-var (t/varx P) P ST
-           <- extract-wf-pev2 P W
-           <- sub-tp-refl W ST.
+% -     : invert-var (t/varx P) P ST
+%           <- extract-wf-pev2 P W
+%           <- sub-tp-refl W ST.
 -     : invert-var (t/sub SB1 TS) P ST1
             <- invert-var TS P ST
             <- sub-tp-trans ST SB1 ST1.
 
 %worlds () (invert-var _ _ _).
 %total WFE (invert-var WFE _ _).
-
-
-
-widen-pev: path-eval G E T -> sub-tp G T G T' -> path-eval G E T' -> type.
-%mode widen-pev +WFE1 +WFE2 -SBT1.
-%worlds () (widen-pev _ _ _).
-%trustme
-%total WFE (widen-pev WFE _ _).
 
 invert-sel :
   %% Input
@@ -1674,10 +1659,10 @@ invert-sel :
 -     : invert-sel (t/sel TS) TS SB
             <- extract-wf2 (t/sel TS) W
             <- sub-tp-refl W SB.
--     : invert-sel (t/varx (pev2 (pev-sel W ST P))) (t/varx (pev2 P)) ST.
+% -     : invert-sel (t/varx (pev2 (pev-sel W ST P))) (t/varx (pev2 P)) ST.
 
--     : invert-sel (t/varx (pev2xx E (pev-sel W ST P))) (t/varx (pev2 P)) ST'
-         <- sub-widen-eta P E W ST ST'.
+% -     : invert-sel (t/varx (pev2xx E (pev-sel W ST P))) (t/varx (pev2 P)) ST'
+%         <- sub-widen-eta P E W ST ST'.
 
 -     : invert-sel (t/sub SB1 TS) L2 SB2
             <- invert-sel TS L2 SB
