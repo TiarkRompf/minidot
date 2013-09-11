@@ -221,7 +221,7 @@ exp-tp/and2  : exp-tp2 (and T1 T2) T2' <- exp-tp2 T2 T2'.
 
 exp-tp/refl  : exp-tp2 T T.
 
-exp-tp/bindx : exp-tp2 (bind N1 G T1) (bind N1 G T1') <- exp-tp2 T1 T1'.
+% exp-tp/bindx : exp-tp2 (bind N1 G T1) (bind N1 G T1') <- exp-tp2 T1 T1'.
 
 
 

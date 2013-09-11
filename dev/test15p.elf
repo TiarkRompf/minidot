@@ -221,7 +221,7 @@ exp-tp/and2  : exp-tp2 (and T1 T2) T2' <- exp-tp2 T2 T2'.
 
 exp-tp/refl  : exp-tp2 T T.
 
-exp-tp/bindx : exp-tp2 (bind N1 G T1) (bind N1 G T1') <- exp-tp2 T1 T1'.
+% exp-tp/bindx : exp-tp2 (bind N1 G T1) (bind N1 G T1') <- exp-tp2 T1 T1'.
 
 
 
@@ -1547,11 +1547,7 @@ ex-is-sub: exp-tp2 T1 T2 -> wf-tp G T1 -> sub-tp G T1 G T2 -> type.
 - : ex-is-sub exp-tp/refl W ST
      <- sub-tp-refl W ST.
 
-% - : ex-is-sub (exp-tp/bindx (EX: exp-tp2 T1 T2)) (wf-tp/tbind (SE: sub-env G0 G1) (SN: tsize G0 N) (W: wf-tp (tcons T1 G0) T1)) ST'
-%     <- ex-is-sub EX W ST.
-
 %worlds () (ex-is-sub _ _ _).
-%trustme
 %total A (ex-is-sub A _ _).
 
 wfv-widen-ex: exp-tp2 T1 T2 -> wf-val V G T1 -> wf-val V G T2 -> type.
