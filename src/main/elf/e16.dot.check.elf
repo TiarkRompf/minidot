@@ -1,0 +1,1 @@
+%abbrev e16 = (let (rect (s z) top top) (fun (rect (s z) top top) z top empty top z empty top (mcons _ top top (mcons _ bot top mnil))) (let (recv z (rect (s z) top top)) (fun (recv z _) z top empty top z (var z) _ mnil) (let (tsel (sel (var (s z)) z) _ (s z)) (fun top z top empty top z empty top mnil) (var (s z))))).

@@ -16,16 +16,26 @@ trait DotSyntax {
     case class MemType(tag: Tag, tyS: Type, tyU: Type) extends Type
     case class MemDef(tag: Tag, tyP: Type, tyR: Type) extends Type
     case class MemVal(tag: Tag, ty: Type) extends Type
-    case class Tsel(p: terms.Var, tag: Tag) extends Type // TODO: support paths!
+    case class Tsel(p: Term, tag: Tag) extends Type {
+      assert(p.isPath)
+    }
     case class TRec(self: terms.Var, ty: Type) extends Type
 
     case object Unknown extends Type
   }
 
-  sealed trait Term extends Entity
+  sealed trait Term extends Entity {
+    def isVar: Boolean = false
+    def isPath: Boolean = false
+  }
   object terms {
-    case class Var(id: String) extends Term
-    case class Sel(o: Term, tag: Tag) extends Term
+    case class Var(id: String) extends Term {
+      override def isVar = true
+      override def isPath = true
+    }
+    case class Sel(o: Term, tag: Tag) extends Term {
+      override def isPath = o.isPath
+    }
     case class App(f: Term, tag: Tag, a: Term) extends Term
     case class New(tc: Option[Type], self: Option[Var], members: List[Init]) extends Term
     case class Let(x: Var, tyx: Type, ex: Term, body: Term) extends Term

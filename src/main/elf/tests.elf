@@ -13,6 +13,7 @@
 %query 1 1 type-exp tnil e12  top.
 %query 1 1 type-exp tnil e13  top.
 %query 1 1 type-exp tnil e15  top.
+%query 1 1 type-exp tnil e16  top.
 
 % sanity checks for other judgments
 %query 1 1 sub-tp tnil t2 tnil t1.

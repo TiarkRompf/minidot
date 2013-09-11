@@ -1,0 +1,4 @@
+val a: { type Foo: Top .. Top } = new (type Foo: Top .. Top)
+val b: { val a: { type Foo: Top .. Top } }  = new (val a = a)
+val c: b.a.Foo = new ()
+b

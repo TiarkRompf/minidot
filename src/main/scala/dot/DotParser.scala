@@ -113,8 +113,14 @@ trait DotParsing extends StdTokenParsers with PackratParsers with DotSyntax with
         { case self~ty => TRec(self, ty) }
        ) ("recursive type")
 
+    lazy val path: P[Term] =
+      only[Term](term, _.isPath, p => "expected path, not arbitrary term")
+
+    lazy val sel: P[Sel] =
+      (only[Term](path, !_.isVar, p => "expected selection, not variable") ^? { case p: Sel => p })
+
     lazy val tsel: P[Type] =
-      l((name ~ ("." ~> tag)) ^^ Tsel) ("type selection")
+      l(sel  ^^ {case Sel(o, t) => Tsel(o, t) }) ("type selection")
 
     lazy val structType: P[Type] =
       "{" ~> (memType | memVal | memDef) <~ "}"
