@@ -1610,24 +1610,12 @@ wfv-widen: sub-tp G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
 %worlds () (wfv-widen _ _ _).
 %total A (wfv-widen A _ _).
 
-sub-widen-eta: self-eta E T1 (rect N S U) -> wf-tp G T -> sub-tp G T0 G T1 -> sub-tp G T0 G (rect N S U) -> type.
-%mode sub-widen-eta +X1 +X2 +X3 -X4.
+sub-widen-eta: path-eval G E (recv N' T0) -> self-eta (sel E N') T1 (rect N S U) -> wf-tp G T -> sub-tp G T0 G T1 -> sub-tp G T0 G (rect N S U) -> type.
+%mode sub-widen-eta +X1 +X2 +X3 +X4 -X5.
 
-% - : sub-widen-eta
-%     eta/rect
-%     W
-%     ST
-%     ST'.
-
-% - : wft-widen-eta
-%     (eta/recv A)
-%     W
-%     ST
-%     ST'.
-
-%worlds () (sub-widen-eta _ _ _ _).
+%worlds () (sub-widen-eta _ _ _ _ _).
 %trustme
-%total A (sub-widen-eta A _ _ _).
+%total A (sub-widen-eta A _ _ _ _).
 
 %{ ------- suptyping inversion: type-exp ----- }%
 
@@ -1689,7 +1677,7 @@ invert-sel :
 -     : invert-sel (t/varx (pev2 (pev-sel W ST P))) (t/varx (pev2 P)) ST.
 
 -     : invert-sel (t/varx (pev2xx E (pev-sel W ST P))) (t/varx (pev2 P)) ST'
-         <- sub-widen-eta E W ST ST'.
+         <- sub-widen-eta P E W ST ST'.
 
 -     : invert-sel (t/sub SB1 TS) L2 SB2
             <- invert-sel TS L2 SB
