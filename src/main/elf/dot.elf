@@ -260,7 +260,7 @@ pev2xx: path-eval2 G E (rect N TS TU)
 
 
 
-% sub-tp/refl : sub-tp G T G T <- wf-tp G T. %%% ACCELRATE QUERIES !!
+sub-tp/refl : sub-tp G T G T <- wf-tp G T. %%% ACCELRATE QUERIES !!
 
 
 sub-tp/top  : sub-tp G1 T G2 top <- wf-tp G1 T.
