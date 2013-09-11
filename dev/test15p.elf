@@ -14,10 +14,9 @@
 %%%%%% work in progress %%%%%%
 
 %{
-
-+ get rid of expansion
 + path selections
-+ nominal types
++ get rid of expansion
+- nominal types
 
 }%
 
@@ -396,80 +395,6 @@ t/varx     : type-exp G E T <- path-eval2 G E T.
 t/sel       : type-exp G (sel E1 LNV) T1
             <- type-exp G E1 (recv LNV T1).
 
-
-
-
-
-init-tp: tenv -> tpe -> tpe -> type.
-
-% init-tp/refl : init-tp G T T <- wf-tp G T.
-
-init-tp/top  : init-tp G T1 top <- wf-tp G T1.
-% init-tp/bot  : init-tp G bot T2 <- wf-tp G T2.
-
-init-tp/fun  : init-tp G (arrow N T1 T2) (arrow N T3 T4)
-              <- sub-tp G T3 G T1
-              <- sub-tp G T2 G T4.
-
-init-tp/rect : init-tp G (rect N T1 T2) (rect N T3 T4)
-              <- sub-tp G T1 G T2
-              <- sub-tp G T3 G T4
-
-              <- sub-tp G T3 G T1
-              <- sub-tp G T2 G T4.
-
-init-tp/recv : init-tp G (recv N T1) (recv N T2)
-              <- sub-tp G T1 G T2.
-
-
-init-tp/tbindx : init-tp G (bind N G T1) (bind N G T2) %% relax env?
-              <- sub-tp (tcons T1 G) T1 (tcons T2 G) T2 %% for sub-tp trans
-              <- init-tp (tcons T1 G) T1 T2
-              <- tsize G N.
-
-
-init-tp/tbind1 : init-tp G (bind N G0 TN) T2
-              <- init-tp (tcons TN G0) TN T2
-              <- tsize G0 N
-              <- sub-env G0 G.
-
-init-tp/tbind2 : init-tp G T1 (bind N G0 TN)
-              <- init-tp (tcons TN G0) T1 TN
-              <- init-tp (tcons T1 G0) T1 TN
-              <- sub-tp G T1 (tcons TN G0) T1 %% transitivity..
-              <- tsize G0 N
-              <- sub-env G0 G.
-
-
-init-tp/tselx : init-tp G (tsel E (rect N T2 T2U) N) (tsel E (rect N T2 T2U) N)
-              <- path-eval G E (rect N T2 T2U).
-
-
-init-tp/tsel2 : init-tp G T1 (tsel E2 (rect N T2 T2U) N)
-              <- path-eval G E2 (rect N T2 T2U)
-              <- init-tp G T1 T2U. 
-              %%% THIS IS THE KEY DIFF TO SUB-TP !!!
-              %%% do we need the reverse direction, too???
-
-
-
-
-init-tp/and1b : init-tp G1 (and T1 T2) T3
-              <- init-tp G1 T2 T3
-              <- wf-tp G1 T1.
-
-init-tp/and1a : init-tp G1 (and T1 T2) T3
-              <- wf-tp G1 T2
-              <- init-tp G1 T1 T3.
-
-init-tp/and2 : init-tp G1 T1 (and T2 T3)
-              <- init-tp G1 T1 T3
-              <- init-tp G1 T1 T2.
-
-
-
-
-
 t/fun      : type-exp G (fun TC LNF T3 R T4 LNV R2 T2 M)
                 TC
                 <- tsize G N
@@ -480,7 +405,8 @@ t/fun      : type-exp G (fun TC LNF T3 R T4 LNV R2 T2 M)
                 <- wf-tp (tcons MT G) MT                
                 <- wf-tp G TC
 %                <- init-tp G (bind N G (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) TC
-                <- init-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) TC
+%                <- init-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) TC
+                 <- sub-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) (tcons TC G) TC
                 .
 
 
@@ -520,9 +446,12 @@ wfv/f    : wf-val (clos LNF R LNV R2 H) G
             <- sub-tp 
                   (tcons TC0 GC) TC0
                   G TC
-            <- init-tp (tcons TC0 GC)
-                  (and (arrow LNF T1 T2) (and (recv LNV T) TX))
-                  TC0
+          %  <- init-tp (tcons TC0 GC)
+          %        (and (arrow LNF T1 T2) (and (recv LNV T) TX))
+          %        TC0
+             <- sub-tp
+                (tcons TC0 GC) (and (arrow LNF T1 T2) (and (recv LNV T) TX))
+                (tcons TC0 GC) TC0
             .
 
 
@@ -1025,41 +954,11 @@ ste/c    : sub-tp-env GX GY T3 (tcons T1 G1) (tcons T2 G2)
             <- sub-tp GX T1 GY T2 
             <- sub-tp-env GX GY T3 G1 G2.
 
-narrow-env1: sub-tp-env G1 G1' T2 G2 G2' -> sub-tp G1 T1 G2' T2 -> sub-tp G1 T1 G2 T2 -> type.
-%mode narrow-env1 +A +B -C.
-
-%worlds () (narrow-env1 _ _ _).
-%trustme
-%total (A) (narrow-env1 A _ _).
-
-
-narrow-env: 
-  sub-tp G1 T1 G1' T1' -> 
-  sub-tp G1 T1 (tcons T1' G2) T2 -> 
-  sub-tp G1 T1 (tcons T2 G2) T2 ->
-  sub-tp G1' T1' (tcons T1' G2) T2 ->
-  sub-tp G1' T1' (tcons T2 G2) T2 ->
-
-  sub-tp G1 T1 (tcons T1 G2) T2 -> 
-  type.
-%mode narrow-env +A +B +C +D +E -F.
-
-- : narrow-env STC ST1 _ STX _ ST2 <- narrow-env1 (ste/c ste/n STC STX) ST1 ST2.
-
-%worlds () (narrow-env _ _ _ _ _ _).
-%total (A) (narrow-env A _ _ _ _ _).
-
-
 %%% TODO: 
 % ST in path-eval requires its input to be WF, but the ST used for narrowing does 
 % not relate to that environment. 
 % add more constraints to tbind2 ?
 % or just go back to adding slack ?
-
-
-
-
-
 
 % Extract wf from subtyping
 
@@ -1494,18 +1393,6 @@ sub-tp-trans :
 %total {A} (sub-tp-trans A _ _).
 
 
-
-extract-wf6 : init-tp G1 T1 T2 -> wf-tp G1 T1 -> wf-tp G1 T2 -> type.
-%mode extract-wf6 +SBT1 -SBT2 -SBT3.
-%worlds () (extract-wf6 _ _ _).
-%trustme
-%total (A) (extract-wf6 A _ _).
-
-
-
-
-
-
 false: type.
 
 incompat-tp: tpe -> tpe -> type.
@@ -1530,258 +1417,6 @@ no-subtype: false -> {G1}{T1}{G2}{T2}sub-tp G1 T1 G2 T2 -> type.
 %mode no-subtype +A +B +C +D +E -F.
 %worlds () (no-subtype _ _ _ _ _ _).
 %total (A) (no-subtype A _ _ _ _ _).
-
-
-
-init-tp-trans-aux :
-  %% Inputs
-  compat-tp T1 T3 ->
-  wf-tp G2 T2 ->
-  init-tp G2 T1 T2 ->
-  sub-tp G2 T2 G3 T3 ->
-  %% Output
-  sub-tp G2 T1 G3 T3 ->
-  type.
-%mode init-tp-trans-aux +CC +T2 +SBT1 +SBT2 -SBT3.
-
-% -/top    : init-tp-trans-aux _ S1 (sub-tp/top _) (sub-tp/top W)  <- extract-wf6 S1 W _.
-% -/bot    : init-tp-trans-aux _ (init-tp/bot _) S2 (sub-tp/bot W) <- extract-wf S2 _ W.
-
-
--/fun-fun  : init-tp-trans-aux
-      C (wf-tp/fun T2 T1)
-            (init-tp/fun SBT2 SBT1)
-            (sub-tp/fun SBT4 SBT3)
-            (sub-tp/fun SBT6 SBT5)
-      <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
-      <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
-
--/rect-rect  : init-tp-trans-aux
-      C (wf-tp/rect SB T2 T1)
-            (init-tp/rect SBT2 SBT1 B2 B1)
-            (sub-tp/rect SBT4 SBT3 B4 B3)
-            (sub-tp/rect SBT6 SBT5 B4 B1)
-      <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
-      <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
-
--/recv-recv  : init-tp-trans-aux
-      C (wf-tp/recv T1)
-            (init-tp/recv SBT1)
-            (sub-tp/recv SBT3)
-            (sub-tp/recv SBT5)
-      <- sub-tp-trans-aux T1 SBT1 SBT3 SBT5.
-
-
-
-
-
-%% case p.T < p.T && p.T < T3   -->   p.T < T3
-
-% -/tselx1  : init-tp-trans-aux
-%       C (wf-tp/tsel P1)
-%       (init-tp/tselx P0)
-%       (sub-tp/tsel1 AS P2)
-%       (sub-tp/tsel1 AS P2)
-%      .
-
-
-%% case T1 < p.T && p.T < p.T   -->   T1 < p.T
-
-%%%% DOESN'T HOLD!!!
-
-% -/tselx2  : init-tp-trans-aux
-%       C (wf-tp/tsel P1)
-%       (init-tp/tsel2 A1 P2)
-%       (sub-tp/tselx (sub-tp/rect SY31 _ _ _) (sub-tp/rect _ _ _ _) P0 S2 S3)
-%       (sub-tp/tsel2 SBT5 P3)
-% 
-%       <- extend-wf-pev-mult P0 S3 P3
-%       <- extract-wf-pev P1 (wf-tp/rect _ WS _)
-%       <- init-tp-trans-aux WS A1 SY31' SBT5
-%       .
-% 
-
-% -/tselx-tselx  : init-tp-trans-aux
-%       C (wf-tp/tsel P0)
-%       (init-tp/tselx P)
-%       (sub-tp/tselx ST21 ST22 P2 SX2 SX3)
-%       (sub-tp/tselx ST21 ST22 P2 SX2 SX3)
-%       .
-% 
-
-% -/tsel1  : init-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
-%       C W
-%       (init-tp/tsel1 SBT1 P)
-%       SBT3
-%       (sub-tp/tsel1 SBT5 P)
-%       <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
-
-% -/tsel2  : init-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
-%       C W
-%       SBT1
-%       (sub-tp/tsel2 SBT3 P)
-%       (sub-tp/tsel2 SBT5 P)
-%       <- init-tp-trans-aux W SBT1 SBT3 SBT5.
-
-
-%% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
-
-
--/tsel2-tsel1  : init-tp-trans-aux  % T1 < p.T2 && p.T2 < T3 --> T1 < T3
-      C (wf-tp/tsel P0)
-      (init-tp/tsel2 A1 P2)
-      (sub-tp/tsel1 A2 P3)
-      SBT5
-
-      <- extract-wf-pev P0 (wf-tp/rect AB WU W)
-      <- init-tp-trans-aux C WU A1 A2 SBT5.
-
-
-% -/tbind2  : init-tp-trans-aux
-%        C W
-%        SBT1
-%        (sub-tp/tbind2 SE0 S SW SBT3 SU)
-%        (sub-tp/tbind2 SE0 S SW' SBT5 SU')
-% 
-%        <- init-tp-trans-aux W SBT1 SW SW'
-%        <- init-tp-trans-aux W SBT1 SU SU'
-%        <- init-tp-trans-aux W SBT1 SBT3 SBT5.
-
-
-% -/tbind1 : init-tp-trans-aux
-%        C W
-%        (init-tp/tbind1 S ST)
-%        SBT2
-%        (sub-tp/tbind1 SE S ST')
-%        <- init-tp-trans-aux W ST SBT2 ST'.
-% 
-
--/tbind2-tbind1  : init-tp-trans-aux
-       C (wf-tp/tbind SE0 WS0 WY0)
-       (init-tp/tbind2 SE1 S1 STXX SBT1 SU)
-       (sub-tp/tbind1 SE3 S3 SBT3)
-       SBT5
-
-       %% TODO: uniqueness lemmas for G0/SE/S
-
-       <- init-tp-trans-aux C WY0 SU SBT3 SBT5''
-       <- sub-tp-trans STXX SBT5'' SBT5
-       .
-
-
-% -/tbindx-tbind1  : init-tp-trans-aux
-%         C (wf-tp/tbind SE0 WS0 WY0)
-%         (init-tp/tbindx S IN1 SU2)
-%         (sub-tp/tbind1 SE3 S3 SBT3)
-%         (sub-tp/tbind1 SE3 S3 SBT5)
-% 
-%         <- sub-tp-trans-aux WY0 SU2 SBT3 SBT5.
-
-
-% -/tand1a : init-tp-trans-aux
-%      C W
-%      (init-tp/and1a SBT1 W1)
-%      SBT3
-%      (sub-tp/and1a SBT5 W1)
-%      <- init-tp-trans-aux W SBT1 SBT3 SBT5.
-%
-% -/tand1b : init-tp-trans-aux
-%      C W
-%      (init-tp/and1b W1 SBT1)
-%      SBT3
-%      (sub-tp/and1b W1 SBT5)
-%      <- init-tp-trans-aux W SBT1 SBT3 SBT5.
-
-% -/tand2 : init-tp-trans-aux
-%       C W
-%       SBT1
-%       (sub-tp/and2 ST1 ST2)
-%       (sub-tp/and2 ST1' ST2')
-%       <- init-tp-trans-aux W SBT1 ST1 ST1'
-%       <- init-tp-trans-aux W SBT1 ST2 ST2'.
-
--/tand2-tand1a : init-tp-trans-aux
-      C (wf-tp/and W1 W2)
-      (init-tp/and2 SBT1 _)
-      (sub-tp/and1a SBT3 _)
-      SBT5
-      <- init-tp-trans-aux C W1 SBT1 SBT3 SBT5.
-
--/tand2-tand1b : init-tp-trans-aux
-      C (wf-tp/and W1 W2)
-      (init-tp/and2 _ SBT1)
-      (sub-tp/and1b _ SBT3)
-      SBT5
-      <- init-tp-trans-aux C W2 SBT1 SBT3 SBT5.
-
-%worlds () (init-tp-trans-aux _ _ _ _ _).
-%total {T2 S1 S2} (init-tp-trans-aux _ T2 S1 S2 _).
-
-
-
-
-init-tp-trans-false :
-  %% Inputs
-  incompat-tp T1 T3 ->
-  init-tp G2 T1 T2 ->
-  sub-tp G2 T2 G3 T3 ->
-  %% Output
-  false ->
-  type.
-%mode init-tp-trans-false +CC +SBT1 +SBT2 -SBT3.
-
--/and1a : init-tp-trans-false
-            C
-            (init-tp/and2 IN1 IN2)
-            (sub-tp/and1a ST W1)
-            F <- init-tp-trans-false C IN1 ST F.
-
--/and1b  : init-tp-trans-false
-            C
-            (init-tp/and2 IN1 IN2)
-            (sub-tp/and1b W1 ST)
-            F <- init-tp-trans-false C IN2 ST F.
-
--/tsel   : init-tp-trans-false
-            C
-            (init-tp/tsel2 IN P)
-            (sub-tp/tsel1 ST P2)
-            F <- init-tp-trans-false C IN ST F.
-
--/tbind  : init-tp-trans-false
-            C
-            (init-tp/tbind2 SE S STx IN IU)
-            (sub-tp/tbind1 SE1 S1 ST)
-            F <- init-tp-trans-false C IU ST F.
-
-%worlds () (init-tp-trans-false _ _ _ _).
-%total {S1 S2} (init-tp-trans-false _ S1 S2 _).
-
-
-
-
-
-init-tp-trans :
-  %% Inputs
-  compat-tp T1 T3 ->
-  init-tp G2 T1 T2 ->
-  sub-tp G2 T2 G3 T3 ->
-  %% Output
-  sub-tp G2 T1 G3 T3 ->
-  type.
-%mode init-tp-trans +CC +SBT1 +SBT2 -SBT3.
-
--/i : init-tp-trans C SBT1 SBT2 SBT3
-       <- extract-wf6 SBT1 T1 T2
-       <- init-tp-trans-aux C T2 SBT1 SBT2 SBT3.
-
-%worlds () (init-tp-trans _ _ _ _).
-%total {A} (init-tp-trans A _ _ _).
-
-
-
-
-
 
 %{ ------- type safety proof ----- }%
 
@@ -1918,7 +1553,6 @@ wfv-widen-eta: self-eta E T1 T2 -> wf-val V G T1 -> wf-val V G T2 -> type.
 %trustme
 %total A (wfv-widen-eta A _ _).
 
-
 wfv-widen: sub-tp G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
 %mode wfv-widen +LTE1 +LTE2 -LTE3.
 
@@ -2034,7 +1668,7 @@ invert-fun :
   wf-tp (tcons MT G) MT ->
   sub-tp (tcons MT G) T1 (tcons TC G) T1 ->  
   sub-tp (tcons TC G) TC G T ->
-  init-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T1) MT)) TC ->
+  sub-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T1) MT)) (tcons TC G) TC ->
   type.
 %mode invert-fun +WFE1 -WFE2 -WFE3 -WFE4 -WFE5 -SBT1 -SBT2 -I.
 
@@ -2122,105 +1756,37 @@ project-sub-recv: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) G2 (r
 %total (A) (project-sub-recv A _ _).
 
 
-
-
-
-
-yes-subtype2: init-tp G T1 T2 -> sub-tp G T2 G2 T3 -> compat-tp T1 T3 -> sub-tp G T1 G2 T3 -> type.
-%mode yes-subtype2 +A +B +C -D.
-- : yes-subtype2 ST1 ST2 compat/arrow-arrow ST3 <- init-tp-trans compat/arrow-arrow ST1 ST2 ST3.
-- : yes-subtype2 ST1 ST2 compat/rect-rect ST3   <- init-tp-trans compat/rect-rect ST1 ST2 ST3.
-- : yes-subtype2 ST1 ST2 compat/recv-recv ST3 <- init-tp-trans compat/recv-recv ST1 ST2 ST3.
-%worlds () (yes-subtype2 _ _ _ _).
-%total (A) (yes-subtype2 A _ _ _).
-
-
 no-subtype0: incompat-tp T1 T3 -> compat-tp T1 T3 -> false -> type.
 %mode no-subtype0 +A +B -D.
 %worlds () (no-subtype0 _ _ _).
 %total (A) (no-subtype0 A _ _).
 
+project-sub-arrow: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) G2 (arrow NF T1X T2X) -> type-mem M MT -> sub-tp G1 (arrow NF T1 T2) G2 (arrow NF T1X T2X) -> type.
 
-no-subtype2: init-tp G T1 T2 -> sub-tp G T2 G2 T3 -> incompat-tp T1 T3 -> false -> type.
-%mode no-subtype2 +A +B +C -D.
-- : no-subtype2 IN ST2 IC F <- init-tp-trans-false IC IN ST2 F.
-%worlds () (no-subtype2 _ _ _ _).
-%total (A) (no-subtype2 A _ _ _).
+- : project-sub-arrow ((sub-tp/and1a ST W)) MT ST.
+- : project-sub-arrow ( (sub-tp/and1b WF (sub-tp/and1a ST WR))) MT ST'
+      <- no-subtype2 ST incompat/recv-arrow F <- no-subtype F _ _ _ _ ST'.
+- : project-sub-arrow ( (sub-tp/and1b WF (sub-tp/and1b WV ST))) MT ST'
+      <- no-subtype-mt-arrow ST MT F  <- no-subtype F _ _ _ _ ST'.
 
-
-
-
-no-subtype-mt-arrow: init-tp G T1 T2 -> sub-tp G T2 G2 (arrow NF TA TB) -> type-mem M T1 -> false -> type.
-
-- : no-subtype-mt-arrow IN ST2 tm/nil F       
-      <- no-subtype2 IN ST2 incompat/top-arrow F.
-- : no-subtype-mt-arrow IN ST2 tm/consz F     
-      <- no-subtype2 IN ST2 incompat/rect-arrow F.
-- : no-subtype-mt-arrow (init-tp/and1a IN _) ST2 (tm/cons TM) F
-      <- no-subtype2 IN ST2 incompat/rect-arrow F.
-- : no-subtype-mt-arrow (init-tp/and1b _ IN) ST2 (tm/cons TM) F 
-      <- no-subtype-mt-arrow IN ST2 TM F.
-- : no-subtype-mt-arrow (init-tp/tsel2 IN _) (sub-tp/tsel1 ST2 _) TM F 
-     <- no-subtype-mt-arrow IN ST2 TM F.
-- : no-subtype-mt-arrow (init-tp/tbind2 _ _ _ _ IN) (sub-tp/tbind1 _ _ ST2) TM F 
-     <- no-subtype-mt-arrow IN ST2 TM F.
-- : no-subtype-mt-arrow (init-tp/and2 IN _) (sub-tp/and1a ST2 _) TM F 
-     <- no-subtype-mt-arrow IN ST2 TM F.
-- : no-subtype-mt-arrow (init-tp/and2 _ IN) (sub-tp/and1b _ ST2) TM F 
-     <- no-subtype-mt-arrow IN ST2 TM F.
-
-%mode no-subtype-mt-arrow +A +E +C -B.
-%worlds () (no-subtype-mt-arrow _ _ _ _).
-%total (A) (no-subtype-mt-arrow A _ _ _).
+%mode project-sub-arrow +A +B -C.
+%worlds () (project-sub-arrow _ _ _).
+%total (A) (project-sub-arrow A _ _).
 
 
-project-sub-arrow: 
-init-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) TXXX -> 
-sub-tp G1 TXXX G2 (arrow NF T1X T2X) -> 
-type-mem M MT -> 
-sub-tp G1 (arrow NF T1 T2) G2 (arrow NF T1X T2X) -> 
-type.
-
-- : project-sub-arrow ((init-tp/and1a ST W)) ST2 MT ST3 <- init-tp-trans compat/arrow-arrow ST ST2 ST3.
-
-- : project-sub-arrow ( (init-tp/and1b WF (init-tp/and1a ST WR))) ST2 MT ST'
-      <- no-subtype2 ST ST2 incompat/recv-arrow F <- no-subtype F _ _ _ _ ST'.
-
-- : project-sub-arrow ( (init-tp/and1b WF (init-tp/and1b WV ST))) ST2 MT ST'
-      <- no-subtype-mt-arrow ST ST2 MT F  <- no-subtype F _ _ _ _ ST'.
-
-%mode project-sub-arrow +A +B +C -D.
-%worlds () (project-sub-arrow _ _ _ _).
-%trustme
-%total (A) (project-sub-arrow A _ _ _).
-
-
-project-sub-recv: 
-init-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) TXXX ->
-sub-tp G1 TXXX G2 (recv NV TX) -> 
-type-mem M MT -> 
-sub-tp G1 (recv NV T3) G2 (recv NV TX) -> 
-type.
-
-%{
+project-sub-recv: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) G2 (recv NV TX) -> type-mem M MT -> sub-tp G1 (recv NV T3) G2 (recv NV TX) -> type.
 
 - : project-sub-recv ((sub-tp/and1a ST W)) MT ST'
       <- no-subtype2 ST incompat/arrow-recv F <- no-subtype F _ _ _ _ ST'.
 - : project-sub-recv ((sub-tp/and1b WF (sub-tp/and1a ST WR))) MT ST.
 - : project-sub-recv ((sub-tp/and1b WF (sub-tp/and1b WV ST))) MT ST'
       <- no-subtype-mt-recv ST MT F  <- no-subtype F _ _ _ _ ST'.
-}%
 
+%mode project-sub-recv +A +B -C.
+%worlds () (project-sub-recv _ _ _).
+%total (A) (project-sub-recv A _ _).
 
-%mode project-sub-recv +A +B +C -D.
-%worlds () (project-sub-recv _ _ _ _).
-%trustme
-%total (A) (project-sub-recv A _ _ _).
-
-
-
-
-%{ ------- suptyping inversion: wf-val ----- }%
+%{ ------- subtyping inversion: wf-val ----- }%
 
 % although we only call this from the outside when we
 % know T = T1 -> T2, it seems like internally we need a
@@ -2245,7 +1811,8 @@ invert-wf-fun-aux :
           TS WE STF1
           (wfv/f IN ST' MT TV TV2 TS WE)
             <- sub-tp-trans ST SB0' SB0
-            <- project-sub-arrow IN SB0 MT STF1 
+            <- sub-tp-trans IN SB0 SB0''
+            <- project-sub-arrow SB0'' MT STF1
 
             <- extract-wf ST WFF' _
             <- sub-tp-refl WFF' ST'
@@ -2299,7 +1866,8 @@ invert-wf-rec-aux :
           SB0' 
           TV SB1
             <- sub-tp-trans ST SB0' SB0
-            <- project-sub-recv IN SB0 MT SB1'
+            <- sub-tp-trans IN SB0 SB0''
+            <- project-sub-recv SB0'' MT SB1'
             <- sub-tp-trans (sub-tp/recv STV) SB1' SB1.
 
 -     : invert-wf-rec-aux (wfv/sub (SB1: sub-tp G1 TI G T) (TS: wf-val _ G1 TI))

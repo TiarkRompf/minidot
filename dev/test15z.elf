@@ -2220,7 +2220,7 @@ type.
 
 
 
-%{ ------- suptyping inversion: wf-val ----- }%
+%{ ------- subtyping inversion: wf-val ----- }%
 
 % although we only call this from the outside when we
 % know T = T1 -> T2, it seems like internally we need a
