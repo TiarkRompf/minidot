@@ -29,6 +29,9 @@
 % programs
 %query 1 1 type-exp tnil p1 top.
 %query 1 1 type-exp tnil p2c top.
+%query 1 1 type-exp tnil p3 top.
+%query 1 1 type-exp tnil p4 top.
+%query 1 1 type-exp tnil p5 top.
 
 % regression
 %.

@@ -1,0 +1,7 @@
+val d: { val l: Top } = new (val l = new ())
+val a: { type A: {val l: Top} .. Top } = new (type A: {val l: Top} .. {val l: Top})
+val dp: a.A = d
+val b: { b => {type A: {val l: Top} .. Top} } = a
+val c: {val l: a.A} = new (val l = dp)
+val e: { e => {type A: {val l: Top} .. a.A} } = new (type A: {val l: Top} .. a.A)
+d.l
