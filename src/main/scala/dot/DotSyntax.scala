@@ -31,7 +31,9 @@ trait DotSyntax {
     case class Let(x: Var, tyx: Type, ex: Term, body: Term) extends Term
   }
 
-  sealed trait Init extends Positional
+  sealed trait Init extends Positional {
+    def d: Type
+  }
   object init {
     case class InitDef(d: types.MemDef, param: terms.Var, body: Term) extends Init
     case class InitVal(d: types.MemVal, t: Term) extends Init

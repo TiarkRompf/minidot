@@ -38,6 +38,20 @@ trait ElfPrinter { this: DotSyntax =>
       s"(mcons _ ${printEntity(tags, env, tyS)} ${printEntity(tags, env, tyU)} ${printTypeMembers(tags, env, members, rtags)})"
   }
 
+  def inferConstructorType(oself: Option[Var], members: List[Init]): Type = {
+    def infer1(m: Init): Type = m.d
+    def infer(ms: List[Init]): Type = ms match {
+      case Nil => Top
+      case m::Nil => infer1(m)
+      case m::ms => And(infer1(m), infer(ms))
+    }
+    val ty = infer(members)
+    oself match {
+      case None => ty
+      case Some(self) => TRec(self, ty)
+    }
+  }
+
   def printEntity(tags: List[Tag], env: Map[Var,Int], e: Entity): String = {
     def p(e: Entity) = printEntity(tags, env, e)
     def ebind(x: Var) = env.updated(x, env.size)
@@ -87,7 +101,9 @@ trait ElfPrinter { this: DotSyntax =>
           case (_,i)::Nil => s"${p(i.d.tag)} ${p(i.t)} ${pbind(i.d.ty, self)}"
           case _ => assert(false, "TODO in elf: support object creation with more than one val"); ???
         }
-        s"(fun $dmem $vmem $tmem)"
+        // TODO: optionally allow user to specify
+        val tc = inferConstructorType(oself, (defMembers++valMembers++typeMembers).map(_._2))
+        s"(fun ${p(tc)} $dmem $vmem $tmem)"
 
       case Let(x, tyx, ex, body) =>
         s"(let ${p(tyx)} ${p(ex)} ${pbind(body, x)})"
@@ -113,7 +129,7 @@ trait ElfPrinter { this: DotSyntax =>
         s"(recv ${p(l)} ${p(ty)})"
 
       case Tsel(x, tag) =>
-        s"(tsel ${p(x)} ${p(tag)})"
+        s"(tsel ${p(x)} _ ${p(tag)})" // TODO for _
 
       case TRec(self, ty) =>
         s"(bind ${printNat(env.size)} ${printEnvFromSize(env.size)} ${pbind(ty, self)})"

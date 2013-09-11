@@ -9,14 +9,9 @@
 %query 1 1 type-exp tnil e8  top.
 %query 1 1 type-exp tnil e9  top.
 %query 1 1 type-exp tnil e10  top.
-%query 1 1 type-exp tnil e11  top.
 %query 1 1 type-exp tnil e12  top.
 %query 1 1 type-exp tnil e13  top.
 %query 1 1 type-exp tnil e15  top.
-
-% sanity checks for self types
-%query 1 1 type-exp tnil e11 top.
-%query 1 1 type-exp tnil e12 top.
 
 % sanity checks for other judgments
 %query 1 1 sub-tp tnil t2 tnil t1.
@@ -32,4 +27,5 @@
 %.
 %query 1 1 type-exp tnil p1i top.
 %query 1 1 type-exp tnil p2 top.
+%query 1 1 type-exp tnil e11  top.
 

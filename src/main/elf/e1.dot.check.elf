@@ -1,1 +1,1 @@
-%abbrev e1 = (fun z _ (var (s z)) _ z empty top mnil).
+%abbrev e1 = (fun (arrow z _ _) z _ (var (s z)) _ z empty top mnil).

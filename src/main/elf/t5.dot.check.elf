@@ -1,1 +1,1 @@
-%abbrev t5 = (bind z tnil (and (rect (s z) top top) (and (rect z (tsel (var z) (s z)) (tsel (var z) (s z))) top))).
+%abbrev t5 = (bind z tnil (and (rect (s z) top top) (and (rect z (tsel (var z) _ (s z)) (tsel (var z) _ (s z))) top))).

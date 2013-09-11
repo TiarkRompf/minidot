@@ -1,1 +1,1 @@
-%abbrev e7 = (let _ (fun z top empty top z empty top mnil) (let (arrow z top top) (fun z _ (var z) _ z empty top mnil) (var (s z)))).
+%abbrev e7 = (let _ (fun top z top empty top z empty top mnil) (let (arrow z top top) (fun (arrow z _ _) z _ (var z) _ z empty top mnil) (var (s z)))).
