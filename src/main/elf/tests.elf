@@ -42,6 +42,7 @@
 %query 1 1 type-exp tnil p11 top.
 %query 1 1 type-exp tnil p12 top.
 %query 1 1 type-exp tnil p12a top.
+%query 1 1 type-exp tnil p12b top.
 
 % regression
 %.

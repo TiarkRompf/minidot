@@ -282,6 +282,14 @@ sub-tp/rect : sub-tp G1 (rect N T1 T2) G2 (rect N T3 T4)
 sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
               <- sub-tp G1 T1 G2 T2.
 
+
+sub-tp/tselx : sub-tp G1 (tsel E1 (rect N T1 T1U) N) G2 (tsel E2 (rect N T2 T2U) N)
+              <- path-eval G1 E1 (rect N T1 T1U)
+              <- path-eval G2 E2 (rect N T2 T2U)
+              <- sub-tp G2 (rect N T2 T2U) G1 (rect N T1 T1U)
+              <- sub-tp G1 (rect N T1 T1U) G2 (rect N T2 T2U).
+
+
 sub-tp/tsel1 : sub-tp G1 (tsel E1 (rect N T1 T1U) N) G2 T2
               <- path-eval G1 E1 (rect N T1 T1U)
               <- sub-tp G1 T1U G2 T2.
@@ -289,14 +297,6 @@ sub-tp/tsel1 : sub-tp G1 (tsel E1 (rect N T1 T1U) N) G2 T2
 sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 (rect N T2 T2U) N)
               <- path-eval G2 E2 (rect N T2 T2U)
               <- sub-tp G1 T1 G2 T2.
-
-%% TODO: should this be relaxed to be inclusion or equality?
-sub-tp/tselx : sub-tp G1 (tsel E (rect N T2 T2U) N) G2 (tsel E (rect N T2 T2U) N)
-              <- sub-env G G2
-              <- sub-env G G1
-              <- path-eval G E (rect N T2 T2U)
-              <- sub-tp G2 (rect N T2 T2U) G1 (rect N T2 T2U)
-              <- sub-tp G1 (rect N T2 T2U) G2 (rect N T2 T2U).
 
 sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
 %              <- sub-tp G1 T1 (tcons TN G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
