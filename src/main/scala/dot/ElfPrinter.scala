@@ -8,6 +8,8 @@ trait ElfPrinter { this: DotSyntax =>
   import types._
   import init._
 
+  val VERSION = 5
+
   def collectTags(e: Any): List[Tag] = {
     def c(e: Any): List[Tag] = e match {
       case l@Tag(id) => List(l)
@@ -111,7 +113,8 @@ trait ElfPrinter { this: DotSyntax =>
           case _ => assert(false, "TODO in elf: support object creation with more than one val"); ???
         }
         val tc = otc.getOrElse(inferConstructorType(oself, (defMembers++valMembers++typeMembers).map(_._2)))
-        s"(fun ${p(tc)} $dmem $vmem $tmem)"
+        val stc = if (VERSION <= 4) "" else p(tc)
+        s"(fun $stc $dmem $vmem $tmem)"
 
       case Let(x, tyx, ex, body) =>
         s"(let ${p(tyx)} ${p(ex)} ${pbind_hint(body, x, tyx)})"
@@ -138,7 +141,8 @@ trait ElfPrinter { this: DotSyntax =>
 
       case Tsel(x, tag, hint) =>
         val ty = hint.getOrElse(Unknown)
-        s"(tsel ${p(x)} ${p(ty)} ${p(tag)})"
+        val sty = if (VERSION<=4) "" else p(ty)
+        s"(tsel ${p(x)} $sty ${p(tag)})"
 
       case TRec(self, ty) =>
         s"(bind ${printNat(env.size)} ${printEnvFromSize(env.size, hints)} ${pbind(ty, self)})"
