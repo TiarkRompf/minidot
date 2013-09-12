@@ -41,10 +41,9 @@
 %query 1 1 type-exp tnil p10 top.
 %query 1 1 type-exp tnil p11 top.
 
-%query 1 1 type-exp tnil c1 top.
-
 % regression
 %.
 %query 1 1 type-exp tnil p1i top.
 %query 1 1 type-exp tnil p2 top.
+%query 1 1 type-exp tnil c1 top.
 

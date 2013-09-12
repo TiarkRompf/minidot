@@ -1,4 +1,4 @@
 val b: { b => {val l: b.X} & {type X: Top .. Top}} = new (val l = new (); type X: Top .. Top)
-val a: {val l: {b => {val l: b.X} & {type X: Top .. Top}}} = new (val l = b)
+val a: {val l: {b => {val l: b.X} & {type X: Bot .. Top}}} = new (val l = b)
 val c: a.l.X = a.l.l
 c
