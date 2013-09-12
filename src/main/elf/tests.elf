@@ -10,6 +10,7 @@
 %query 1 1 type-exp tnil e9  top.
 %query 1 1 type-exp tnil e10  top.
 %query 1 1 type-exp tnil e11c top.
+%query 1 1 type-exp tnil e11  top.
 %query 1 1 type-exp tnil e12  top.
 %query 1 1 type-exp tnil e13  top.
 %query 1 1 type-exp tnil e15  top.
@@ -33,10 +34,14 @@
 %query 1 1 type-exp tnil p4 top.
 %query 1 1 type-exp tnil p5 top.
 %query 1 1 type-exp tnil p6 top.
+%query 1 1 type-exp tnil p6a top.
 %query 1 1 type-exp tnil p7 top.
+%query 1 1 type-exp tnil p8 top.
+%query 1 1 type-exp tnil p9 top.
+%query 1 1 type-exp tnil p10 top.
+%query 1 1 type-exp tnil p11 top.
 
 % regression
 %.
 %query 1 1 type-exp tnil p1i top.
 %query 1 1 type-exp tnil p2 top.
-%query 1 1 type-exp tnil e11  top.

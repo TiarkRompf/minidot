@@ -220,9 +220,9 @@ exp-tp/and1  : exp-tp2 (and T1 T2) T1' <- exp-tp2 T1 T1'.
 exp-tp/and2  : exp-tp2 (and T1 T2) T2' <- exp-tp2 T2 T2'.
 
 % TODO: add examples where these are needed
-% exp-tp/and1x  : exp-tp2 (and T1 T2) (and T1' T2) <- exp-tp2 T1 T1'.
-% exp-tp/and2x  : exp-tp2 (and T1 T2) (and T1 T2') <- exp-tp2 T2 T2'.
-% exp-tp/bindx : exp-tp2 (bind N1 G1 T1) (bind N1 G1 T1') <- exp-tp2 T1 T1'.
+exp-tp/and1x  : exp-tp2 (and T1 T2) (and T1' T2) <- exp-tp2 T1 T1'.
+exp-tp/and2x  : exp-tp2 (and T1 T2) (and T1 T2') <- exp-tp2 T2 T2'.
+exp-tp/bindx : exp-tp2 (bind N1 G1 T1) (bind N1 G1 T1') <- exp-tp2 T1 T1'.
 
 exp-tp/refl  : exp-tp2 T T.
 
@@ -304,24 +304,28 @@ sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
 %              <- sub-tp G1 T1 (tcons T1' G0) TN
 %              <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2)
               <- tsize G0 N
-              <- sub-env G0 G2.
+              <- sub-env G0 G2
+                 .
 
 sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               <- sub-tp (tcons TN G0) TN G2 T2
               <- tsize G0 N
-              <- sub-env G0 G1.
+              <- sub-env G0 G1
+                 .
 
 sub-tp/and2 : sub-tp G1 T1 G2 (and T2 T3)
               <- sub-tp G1 T1 G2 T3
               <- sub-tp G1 T1 G2 T2.
 
+sub-tp/and1a : sub-tp G1 (and T1 T2) G2 T3
+              <- sub-tp G1 T1 G2 T3
+              <- wf-tp G1 T2.
+
 sub-tp/and1b : sub-tp G1 (and T1 T2) G2 T3
               <- sub-tp G1 T2 G2 T3
               <- wf-tp G1 T1.
 
-sub-tp/and1a : sub-tp G1 (and T1 T2) G2 T3
-              <- wf-tp G1 T2
-              <- sub-tp G1 T1 G2 T3.
+
 
 
 

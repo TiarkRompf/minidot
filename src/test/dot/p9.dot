@@ -1,0 +1,5 @@
+val d = new (val l = new ())
+val x: {x =>  {type Foo: Top .. Top} & {type Bar: x.Foo .. x.Foo}} =
+  new  (x =>   type Foo: Top .. Top  ;  type Bar: x.Foo .. x.Foo )
+val y = new Top (val l = x)
+d

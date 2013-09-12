@@ -1,0 +1,1 @@
+new {type Foo: Top .. Top}  (x => val l:Top = new (); type Foo: Top .. Top  ;  type Bar: x.Foo .. x.Foo )

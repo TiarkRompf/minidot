@@ -1,0 +1,1 @@
+%abbrev p10 = (fun (bind z tnil (and (recv (s (s z)) top) (and (rect (s z) top top) (rect z (tsel (var z) _ (s z)) (tsel (var z) _ (s z)))))) z top empty top (s (s z)) (fun top z top empty top z empty top mnil) top (mcons _ bot top (mcons _ top top (mcons _ (tsel (var z) _ (s z)) (tsel (var z) _ (s z)) mnil)))).
