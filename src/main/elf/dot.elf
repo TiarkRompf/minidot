@@ -219,10 +219,12 @@ exp-tp2: tpe -> tpe -> type.
 exp-tp/and1  : exp-tp2 (and T1 T2) T1' <- exp-tp2 T1 T1'.
 exp-tp/and2  : exp-tp2 (and T1 T2) T2' <- exp-tp2 T2 T2'.
 
+% TODO: add examples where these are needed
+% exp-tp/and1x  : exp-tp2 (and T1 T2) (and T1' T2) <- exp-tp2 T1 T1'.
+% exp-tp/and2x  : exp-tp2 (and T1 T2) (and T1 T2') <- exp-tp2 T2 T2'.
+% exp-tp/bindx : exp-tp2 (bind N1 G1 T1) (bind N1 G1 T1') <- exp-tp2 T1 T1'.
+
 exp-tp/refl  : exp-tp2 T T.
-
-% exp-tp/bindx : exp-tp2 (bind N1 G T1) (bind N1 G T1') <- exp-tp2 T1 T1'.
-
 
 
 pev  : path-eval G (var N) T1 
@@ -288,19 +290,13 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 (rect N T2 T2U) N)
               <- path-eval G2 E2 (rect N T2 T2U)
               <- sub-tp G1 T1 G2 T2.
 
+%% TODO: should this be relaxed to be inclusion or equality?
 sub-tp/tselx : sub-tp G1 (tsel E (rect N T2 T2U) N) G2 (tsel E (rect N T2 T2U) N)
               <- sub-env G G2
               <- sub-env G G1
               <- path-eval G E (rect N T2 T2U)
               <- sub-tp G2 (rect N T2 T2U) G1 (rect N T2 T2U)
               <- sub-tp G1 (rect N T2 T2U) G2 (rect N T2 T2U).
-
-
-sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
-              <- sub-tp (tcons TN G0) TN G2 T2
-              <- tsize G0 N
-              <- sub-env G0 G1.
-
 
 sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
 %              <- sub-tp G1 T1 (tcons TN G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
@@ -310,6 +306,14 @@ sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
               <- tsize G0 N
               <- sub-env G0 G2.
 
+sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
+              <- sub-tp (tcons TN G0) TN G2 T2
+              <- tsize G0 N
+              <- sub-env G0 G1.
+
+sub-tp/and2 : sub-tp G1 T1 G2 (and T2 T3)
+              <- sub-tp G1 T1 G2 T3
+              <- sub-tp G1 T1 G2 T2.
 
 sub-tp/and1b : sub-tp G1 (and T1 T2) G2 T3
               <- sub-tp G1 T2 G2 T3
@@ -318,11 +322,6 @@ sub-tp/and1b : sub-tp G1 (and T1 T2) G2 T3
 sub-tp/and1a : sub-tp G1 (and T1 T2) G2 T3
               <- wf-tp G1 T2
               <- sub-tp G1 T1 G2 T3.
-
-sub-tp/and2 : sub-tp G1 T1 G2 (and T2 T3)
-              <- sub-tp G1 T1 G2 T3
-              <- sub-tp G1 T1 G2 T2.
-
 
 
 
