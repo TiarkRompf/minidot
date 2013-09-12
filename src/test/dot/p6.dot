@@ -1,0 +1,1 @@
+new (x =>  type Foo: Top .. Top  ;  type Bar: x.Foo .. x.Foo )
