@@ -1909,14 +1909,6 @@ wfv-widen-ex: exp-tp2 T1 T2 -> wf-val V G T1 -> wf-val V G T2 -> type.
 %trustme
 %total A (wfv-widen-ex A _ _).
 
-wfv-widen-eta: self-eta E T1 T2 -> wf-val V G T1 -> wf-val V G T2 -> type.
-%mode wfv-widen-eta +LTE1 +LTE2 -LTE3.
-
-% - : wfv-widen-eta S W (wfv/sub S W).
-
-%worlds () (wfv-widen-eta _ _ _).
-%trustme
-%total A (wfv-widen-eta A _ _).
 
 
 wfv-widen: sub-tp G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
@@ -2328,6 +2320,20 @@ invert-wf-rec :
 %worlds () (invert-wf-rec _ _ _).
 %total WFE (invert-wf-rec WFE _ _).
 
+
+
+
+
+wfv-widen-eta: self-eta E T1 T2 -> wf-val V G T1 -> wf-val V G T2 -> type.
+%mode wfv-widen-eta +LTE1 +LTE2 -LTE3.
+
+% - : wfv-widen-eta (eta/recv E) W W1 
+%      <- invert-wf-rec W WR ST
+%      <- wfv-widen-eta E WR WR1.
+
+%worlds () (wfv-widen-eta _ _ _).
+%trustme
+%total A (wfv-widen-eta A _ _).
 
 
 
