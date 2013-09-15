@@ -274,75 +274,15 @@ object Test1 {
 }
 
 
-object TestLF {
+
+
+object TestLF0 {
 
   def main(args: Array[String]) {
     import Engine._
     import Base._
 
     trait LF
-
-    run[(LF,LF)] {
-      case Pair(q1,q2) =>
-
-        def lf(s: Exp[LF], x: Exp[LF]): Exp[LF] = term("lf", List(s,x))
-
-        def checktp(x: Exp[LF], y: Exp[LF]) = { x === lf(fresh,y); x }
-
-        abstract class Base {
-          type Self <: Base
-          //def apply(s: String,xs:List[Atom] = Nil): Base
-          def apply(s: String,xs:List[Atom] = Nil): Self
-        }
-        case class Atom(lv: Exp[LF]) extends Base {
-          type Self = Atom
-          def apply(s: String,xs:List[Atom]) = Atom(lf(term(s,xs.map(_.lv)),lv))
-          def apply[B<:Base](f: Atom => B) = For[B](this,f)
-          def typed(u: Atom) = { checktp(lv,u.lv); this }
-          def ===(u: Atom) = lv === u.lv
-        }
-        case class For[B<:Base](u: Atom, f: Atom => B) extends Base {
-          type Self = For[B#Self]
-          //def unapplySeq(x:Atom): Option[Seq[Atom]] =
-          def apply(s: String,xs:List[Atom]) = For(u, x => f(x)(s,xs:+x))
-          def apply(x:Atom): B = f(x.typed(u))
-        }
-
-        def % = Atom(fresh)
-
-        object typ extends Atom(term[LF]("type",Nil)) // { type Self = typ.type }
-
-
-
-        val nat = typ("nat")
-
-        val z = nat("z")
-
-        val s = nat { N1 => nat } ("s")
-
-
-        // val x = s(s(Atom(q2))).lv
-        // q1 === x
-
-        val lte = nat { N1 => nat { N2 => typ } } ("lte")
-
-        val lte_z = nat { N1 => lte(z)(N1) } ("lte-z")
-
-        val lte_s = nat { N1 => nat { N2 => lte(N1)(N2) { LTE => lte(s(N1))(s(N2)) }}} ("lte-s")
-
-
-        def lteZ(d: Atom): Rel = {
-          d === lte_z(%) || d === lte_s(%)(%)(%)
-        }
-
-
-        // find all derivations Q1 for (lte Q2 Q2)
-        val q1a = Atom(q1)
-        val q2a = Atom(q2)
-        lteZ(q1a.typed(lte(q2a)(q2a)))
-    }
-
-
 
     run[(LF,LF)] {
       case Pair(q1,q2) =>
@@ -397,5 +337,85 @@ object TestLF {
 
 
     }
+  }
+}
+
+
+object BaseLF1 {
+    import Engine._
+
+    trait LF
+
+    def lf(s: Exp[LF], x: Exp[LF]): Exp[LF] = term("lf", List(s,x))
+
+    def checktp(x: Exp[LF], y: Exp[LF]) = { x === lf(fresh,y); x }
+
+    abstract class Term {
+      type Self <: Term
+      //def apply(s: String,xs:List[Atom] = Nil): Term
+      def apply(s: String,xs:List[Atom] = Nil): Self
+    }
+    case class Atom(lv: Exp[LF]) extends Term {
+      type Self = Atom
+      def apply(s: String,xs:List[Atom]) = Atom(lf(term(s,xs.map(_.lv)),lv))
+      def apply[B<:Term](f: Atom => B) = For[B](this,f)
+      def typed(u: Atom) = { checktp(lv,u.lv); this }
+      def ===(u: Atom) = lv === u.lv
+    }
+    case class For[B<:Term](u: Atom, f: Atom => B) extends Term {
+      type Self = For[B#Self]
+      //def unapplySeq(x:Atom): Option[Seq[Atom]] =
+      def apply(s: String,xs:List[Atom]) = For(u, x => f(x)(s,xs:+x))
+      def apply(x:Atom): B = f(x.typed(u))
+    }
+
+    object Term {
+      def unapply(x: Exp[LF]) = Some(Atom(x))
+    }
+
+    def % = Atom(fresh)
+
+    object typ extends Atom(term[LF]("type",Nil)) // { type Self = typ.type }
+
+}
+
+
+object TestLF1 {
+
+  def main(args: Array[String]) {
+    import Engine._
+    import Base._
+    import BaseLF1._
+
+
+    run[(LF,LF)] {
+      case Pair(Term(q1),Term(q2)) =>
+
+        val nat = typ("nat")
+
+        val z = nat("z")
+
+        val s = nat { N1 => nat } ("s")
+
+
+        // val x = s(s(Atom(q2))).lv
+        // q1 === x
+
+        val lte = nat { N1 => nat { N2 => typ } } ("lte")
+
+        val lte_z = nat { N1 => lte(z)(N1) } ("lte-z")
+
+        val lte_s = nat { N1 => nat { N2 => lte(N1)(N2) { LTE => lte(s(N1))(s(N2)) }}} ("lte-s")
+
+
+        def lteZ(d: Atom): Rel = {
+          d === lte_z(%) || d === lte_s(%)(%)(%)
+        }
+
+
+        // find all derivations Q1 for (lte Q2 Q2)
+        lteZ(q1.typed(lte(q2)(q2)))
+    }
+
   }
 }
