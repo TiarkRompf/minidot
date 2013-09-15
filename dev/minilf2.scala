@@ -326,7 +326,7 @@ object TestLF {
 
         val lte = nat { N1 => nat { N2 => typ } } ("lte")
 
-        val lte_z = nat { N1 => lte(z)(nat) } ("lte-z")
+        val lte_z = nat { N1 => lte(z)(N1) } ("lte-z")
 
         val lte_s = nat { N1 => nat { N2 => lte(N1)(N2) { LTE => lte(s(N1))(s(N2)) }}} ("lte-s")
 
