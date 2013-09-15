@@ -392,12 +392,13 @@ object BaseLF1 {
 
     def % = Atom(fresh)
 
+    /// XXX init oder -- ok??
     object typ extends Atom(term[LF]("type",Nil)) // { type Self = typ.type }
 
 }
 
 
-object TestLF1 {
+object TestLF1_lte {
 
   def main(args: Array[String]) {
     import Engine._
@@ -432,6 +433,85 @@ object TestLF1 {
 
         // find all derivations Q1 for (lte Q2 Q2)
         lteZ(q1.typed(lte(q2)(q2)))
+    }
+
+  }
+}
+
+
+object TestLF2 {
+
+  def main(args: Array[String]) {
+    import Engine._
+    import Base._
+    import BaseLF1._
+
+    run[(LF,LF)] {
+      case Pair(Term(q1),Term(q2)) =>
+
+        // XXX must be inside run { .. } for now
+
+        val nat = typ("nat")
+        val z = nat("z")
+        val s = nat { N1 => nat } ("s")
+
+        val exp = typ("exp")
+        val cst = nat { N => exp } ("cst")
+        val idn = nat { N => exp } ("idn")
+        val fun = exp { E => exp } ("fun")
+        val app = exp { E1 => exp { E2 => exp }} ("exp")
+
+        val tpe = typ("tpe")
+        val tnat = tpe("tnat")
+        val tbot = tpe("tbot")
+        val ttop = tpe("ttop")
+        val tfun = tpe { T1 => tpe { T1 => tpe }} ("tfun")
+
+        val env = typ("env")
+        val nil = env("nil")
+        val cons = tpe { T => env { G => env }} ("cons")
+
+        val lookup = env { G => nat { N => tpe { T => typ }}} ("lookup")
+
+        val hit = env { G => tpe { T => lookup(cons(T)(G))(z)(T) }} ("hit")
+        
+        val miss = env { G => nat { N => tpe { T =>
+              lookup(G)(N)(T) { LK => lookup(cons(%)(G))(s(N))(T) }}}} ("miss")
+
+
+        val tp_exp = env { G => exp { E => tpe { T => typ }}} ("tp-exp")
+
+        val tp_cst = env { G => nat { N => tp_exp(G)(cst(N))(tnat) }} ("tp-cst")
+
+        val tp_var = env { G => nat { N => tpe { T => 
+              lookup(G)(N)(T) { L => tp_exp(G)(idn(N))(T) }}}} ("tp-var")
+
+        val tp_fun = env { G => exp { E => { tpe { T1 => tpe { T2 =>
+              tp_exp(cons(T1)(G))(E)(T2) { TP => tp_exp(G)(fun(E))(tfun(T1)(T2)) }}}}}} ("tp-fun")
+
+        val tp_app = env { G => exp { E1 => exp { E2 => { tpe { T1 => tpe { T2 =>
+              tp_exp(G)(E1)(tfun(T1)(T2)) { TP1 => tp_exp(G)(E2)(T1) { TP2 => tp_exp(G)(app(E1)(E2))(T2) }}}}}}}} ("tp-app")
+
+
+        def searchLookup(d: Atom): Rel = {
+          d === hit(%)(%)  || 
+          { val d1 = %; d === miss(%)(%)(%)(d1) && searchLookup(d1) }
+        }
+
+        def searchTp(d: Atom): Rel = {
+          d === tp_cst(%)(%) || 
+          d === tp_var(%)(%)(%)(%) ||
+          d === tp_fun(%)(%)(%)(%)(%) ||
+          d === tp_app(%)(%)(%)(%)(%)(%)(%)
+        }
+
+        //searchTp(q1.typed(tp_exp(nil)(fun(idn(z)))(q2)))
+        //searchTp(q1.typed(tp_exp(cons(tnat)(nil))(idn(z))(q2)))
+        
+        //searchLookup(q1.typed(lookup(cons(tnat)(nil))(z)(q2)))
+        //searchLookup(q1.typed(lookup(cons(tbot)(cons(tnat)(nil)))(z)(q2)))
+        searchLookup(q1.typed(lookup(cons(tbot)(cons(tnat)(nil)))(s(z))(q2)))
+
     }
 
   }
