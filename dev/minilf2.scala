@@ -2,7 +2,7 @@ package minilf2
 
 import scala.collection.mutable
 
-object Test1 {
+object Engine {
 
   // *** run loop
 
@@ -191,35 +191,51 @@ object Test1 {
     Or(() => a,() => b)
   }
 
+  implicit class ExpOps[T](a: Exp[T]) {
+    def ===(b: Exp[T]) = infix_===(a,b)
+  }
+  implicit class RelOps(a: => Rel) {
+    def &&(b: => Rel) = infix_&&(a,b)
+    def ||(b: => Rel) = infix_||(a,b)
+  }
+
+}
+
+object Base {
+  import Engine._
+
+  def list(xs: String*): Exp[List[String]] = if (xs.isEmpty) nil else cons(term(xs.head,Nil),list(xs.tail:_*))
+
+  def cons[T](hd: Exp[T], tl: Exp[List[T]]): Exp[List[T]] = term("cons",List(hd,tl))
+  def nil: Exp[List[Nothing]] = term("nil",List())
+  def pair[A,B](a: Exp[A], b: Exp[B]): Exp[(A,B)] = term("pair",List(a,b))
+
+  object Cons {
+    def unapply[T](x: Exp[List[T]]): Some[(Exp[T],Exp[List[T]])] = {
+      val h = fresh[T]
+      val t = fresh[List[T]]
+      x === cons(h,t)
+      Some((h,t))
+    }
+  }
+  object Pair {
+    def unapply[A,B](x: Exp[(A,B)]): Some[(Exp[A],Exp[B])] = {
+      val a = fresh[A]
+      val b = fresh[B]
+      x === pair(a,b)
+      Some((a,b))
+    }
+  }
+}
 
 
+object Test1 {
 
-  // *** test
+  // *** basic test
 
   def main(args: Array[String]) {
-
-    def list(xs: String*): Exp[List[String]] = if (xs.isEmpty) nil else cons(term(xs.head,Nil),list(xs.tail:_*))
-
-    def cons[T](hd: Exp[T], tl: Exp[List[T]]): Exp[List[T]] = term("cons",List(hd,tl))
-    def nil: Exp[List[Nothing]] = term("nil",List())
-    def pair[A,B](a: Exp[A], b: Exp[B]): Exp[(A,B)] = term("pair",List(a,b))
-
-    object Cons {
-      def unapply[T](x: Exp[List[T]]): Some[(Exp[T],Exp[List[T]])] = {
-        val h = fresh[T]
-        val t = fresh[List[T]]
-        x === cons(h,t)
-        Some((h,t))
-      }
-    }
-    object Pair {
-      def unapply[A,B](x: Exp[(A,B)]): Some[(Exp[A],Exp[B])] = {
-        val a = fresh[A]
-        val b = fresh[B]
-        x === pair(a,b)
-        Some((a,b))
-      }
-    }
+    import Engine._
+    import Base._
 
     def append[T](as: Exp[List[T]], bs: Exp[List[T]], cs: Exp[List[T]]): Rel =
       (as === nil && bs === cs) ||
@@ -228,38 +244,45 @@ object Test1 {
       }
 
 
-    Test1.run[List[String]] { q =>
+    run[List[String]] { q =>
       append(list("a","b","c"), list("d","e","f"), q)
     }
 
-    Test1.run[List[String]] { q =>
+    run[List[String]] { q =>
       append(list("a","b","c"), q, list("a","b","c","d","e","f"))
     }
 
-    Test1.run[List[String]] { q =>
+    run[List[String]] { q =>
       append(q, list("d","e","f"), list("a","b","c","d","e","f"))
     }
 
-    Test1.run[(List[String],List[String])] { q =>
+    run[(List[String],List[String])] { q =>
       val q1,q2 = fresh[List[String]]
       (q === pair(q1,q2)) &&
       append(q1, q2, list("a","b","c","d","e","f"))
     }
 
-    Test1.run[(List[String],List[String])] {
+    run[(List[String],List[String])] {
       case Pair(q1,q2) =>
         append(q1, q2, list("a","b","c","d","e","f"))
     }
 
-    Test1.run[(List[String],List[String])] {
+    run[(List[String],List[String])] {
       case Pair(q1,q2) => q1 === q2
     }
+  }
+}
 
 
+object TestLF {
+
+  def main(args: Array[String]) {
+    import Engine._
+    import Base._
 
     trait LF
 
-    Test1.run[(LF,LF)] {
+    run[(LF,LF)] {
       case Pair(q1,q2) =>
 
         def lf(s: Exp[LF], x: Exp[LF]): Exp[LF] = term("lf", List(s,x))
@@ -321,7 +344,7 @@ object Test1 {
 
 
 
-    Test1.run[(LF,LF)] {
+    run[(LF,LF)] {
       case Pair(q1,q2) =>
 
         def lf(s: Exp[LF], x: Exp[LF]): Exp[LF] = term("lf", List(s,x))
