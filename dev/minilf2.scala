@@ -83,9 +83,17 @@ object Engine {
 
     def dump(x: Exp[Any]): Unit = {
       val idx = cstore groupBy { case IsTerm(id, _ , _) => id case _ => -1 }
+      val stack = new scala.collection.mutable.BitSet(varCount)
+      val stack2 = new scala.collection.mutable.BitSet(varCount)
       def rec(x: Exp[Any]): Unit = idx.getOrElse(x.id,Nil) match {
         case IsTerm(id, key, args)::_ =>
           assert(id == x.id)
+          if (stack.contains(id)) {
+            System.out.print("r"+id) // not doing occurs check during unification, at least catch cycles here
+            stack2 += id
+            //return
+          }
+          stack += id
           // hack -- special case. don't print types.
           if (key == "lf") {
             rec(args.head)
@@ -93,6 +101,10 @@ object Engine {
               System.out.print(":")
               rec(args.tail.head)
             }
+            if (stack2.contains(id))
+              System.out.print("=r"+id)
+            stack -= id
+            stack2 -= id
             return
           }
 
@@ -103,6 +115,11 @@ object Engine {
             args.tail.foreach { a => System.out.print(","); rec(a) }
             System.out.print(")")
           }
+          if (stack2.contains(id)) {
+            System.out.print("=r"+id)
+          }
+          stack -= id
+          stack2 -= id
         case _ =>
           System.out.print(canon(x))
       }
