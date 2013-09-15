@@ -7,9 +7,6 @@ object Engine {
   // *** run loop
 
   def run[T](f: Exp[T] => Rel): Unit = {
-    cstore = cstore0
-    varCount = varCount0
-
     var d = 0
     def printd(x: Any) = println(" "*d+x)
 
@@ -21,21 +18,23 @@ object Engine {
       }
       val d1 = d
       val save = cstore
-      d += 1
-      val r = e() match {
-        case Or(a,b) =>
-          rec(a)(f)
-          rec(b)(f)
-        case And(a,b) =>
-          rec(a) { () =>
-            if (propagate())
-              rec(b)(f)
-          }
-        case Yes => f()
+      try {
+        d += 1
+        e() match {
+          case Or(a,b) =>
+            rec(a)(f)
+            rec(b)(f)
+          case And(a,b) =>
+            rec(a) { () =>
+              if (propagate())
+                rec(b)(f)
+            }
+          case Yes => f()
+        }
+      } finally {
+        cstore = save
+        d = d1
       }
-      cstore = save
-      d = d1
-      r
     }
 
     def propagate(): Boolean = { // propagate constraints and look for contradictions
@@ -138,15 +137,22 @@ object Engine {
       "x"+id
     }
 
-    val q = fresh[T]
-    rec(() => f(q)){() =>
-      if (propagate()) {
-        //printd("success!")
-        //printd(eval(q))
-        //cstore foreach { c => printd("    "+c)}
-        dump(q)
+
+    val saveVarCount = varCount
+    try {
+      val q = fresh[T]
+      rec(() => f(q)){() =>
+        if (propagate()) {
+          //printd("success!")
+          //printd(eval(q))
+          //cstore foreach { c => printd("    "+c)}
+          dump(q)
+        }
       }
+    } finally {
+      varCount = saveVarCount
     }
+
     println("----")
   }
 
@@ -376,6 +382,7 @@ object BaseLF1 {
       type Self = Atom
       def apply(s: String,xs:List[Atom]) = Atom(lf(term(s,xs.map(_.lv)),lv))
       def apply[B<:Term](f: Atom => B) = For[B](this,f)
+      def in[T](f: Atom => T): T = f(this)
       def typed(u: Atom) = { checktp(lv,u.lv); this }
       def ===(u: Atom) = lv === u.lv
     }
@@ -446,73 +453,103 @@ object TestLF2 {
     import Base._
     import BaseLF1._
 
+    val nat = typ("nat")
+    val z = nat("z")
+    val s = nat { N1 => nat } ("s")
+
+    val exp = typ("exp")
+    val cst = nat { N => exp } ("cst")
+    val idn = nat { N => exp } ("idn")
+    val fun = exp { E => exp } ("fun")
+    val app = exp { E1 => exp { E2 => exp }} ("exp")
+
+    val tpe = typ("tpe")
+    val tnat = tpe("tnat")
+    val tbot = tpe("tbot")
+    val ttop = tpe("ttop")
+    val tfun = tpe { T1 => tpe { T1 => tpe }} ("tfun")
+
+    val env = typ("env")
+    val nil = env("nil")
+    val cons = tpe { T => env { G => env }} ("cons")
+
+    val lookup = env { G => nat { N => tpe { T => typ }}} ("lookup")
+
+    val hit = env { G => tpe { T => lookup(cons(T)(G))(z)(T) }} ("hit")
+    
+    val miss = env { G => nat { N => tpe { T =>
+          lookup(G)(N)(T) { LK => lookup(cons(%)(G))(s(N))(T) }}}} ("miss")
+
+
+    val tp_exp = env { G => exp { E => tpe { T => typ }}} ("tp-exp")
+
+    val tp_cst = env { G => nat { N => tp_exp(G)(cst(N))(tnat) }} ("tp-cst")
+
+    val tp_var = env { G => nat { N => tpe { T => 
+          lookup(G)(N)(T) { L => tp_exp(G)(idn(N))(T) }}}} ("tp-var")
+
+    val tp_fun = env { G => exp { E => { tpe { T1 => tpe { T2 =>
+          tp_exp(cons(T1)(G))(E)(T2) { TP => tp_exp(G)(fun(E))(tfun(T1)(T2)) }}}}}} ("tp-fun")
+
+    val tp_app = env { G => exp { E1 => exp { E2 => { tpe { T1 => tpe { T2 =>
+          tp_exp(G)(E1)(tfun(T1)(T2)) { TP1 => tp_exp(G)(E2)(T1) { TP2 => tp_exp(G)(app(E1)(E2))(T2) }}}}}}}} ("tp-app")
+
+
+    def searchLookup(d: Atom): Rel = {
+      d === hit(%)(%) || 
+      %.in { d1 => d === miss(%)(%)(%)(d1) && searchLookup(d1) }
+    }
+
+    def searchTp(d: Atom): Rel = {
+      d === tp_cst(%)(%) || 
+      %.in { dv => d === tp_var(%)(%)(%)(dv)    && searchLookup(dv) } ||
+      %.in { d1 => d === tp_fun(%)(%)(%)(%)(d1) && searchTp(d1) } ||
+      %.in { d1 => %.in { d2 => 
+        d === tp_app(%)(%)(%)(%)(%)(d1)(d2)     && searchTp(d1) && searchTp(d2) }}
+    }
+
+    // test lookup
     run[(LF,LF)] {
       case Pair(Term(q1),Term(q2)) =>
-
-        // XXX must be inside run { .. } for now
-
-        val nat = typ("nat")
-        val z = nat("z")
-        val s = nat { N1 => nat } ("s")
-
-        val exp = typ("exp")
-        val cst = nat { N => exp } ("cst")
-        val idn = nat { N => exp } ("idn")
-        val fun = exp { E => exp } ("fun")
-        val app = exp { E1 => exp { E2 => exp }} ("exp")
-
-        val tpe = typ("tpe")
-        val tnat = tpe("tnat")
-        val tbot = tpe("tbot")
-        val ttop = tpe("ttop")
-        val tfun = tpe { T1 => tpe { T1 => tpe }} ("tfun")
-
-        val env = typ("env")
-        val nil = env("nil")
-        val cons = tpe { T => env { G => env }} ("cons")
-
-        val lookup = env { G => nat { N => tpe { T => typ }}} ("lookup")
-
-        val hit = env { G => tpe { T => lookup(cons(T)(G))(z)(T) }} ("hit")
-        
-        val miss = env { G => nat { N => tpe { T =>
-              lookup(G)(N)(T) { LK => lookup(cons(%)(G))(s(N))(T) }}}} ("miss")
-
-
-        val tp_exp = env { G => exp { E => tpe { T => typ }}} ("tp-exp")
-
-        val tp_cst = env { G => nat { N => tp_exp(G)(cst(N))(tnat) }} ("tp-cst")
-
-        val tp_var = env { G => nat { N => tpe { T => 
-              lookup(G)(N)(T) { L => tp_exp(G)(idn(N))(T) }}}} ("tp-var")
-
-        val tp_fun = env { G => exp { E => { tpe { T1 => tpe { T2 =>
-              tp_exp(cons(T1)(G))(E)(T2) { TP => tp_exp(G)(fun(E))(tfun(T1)(T2)) }}}}}} ("tp-fun")
-
-        val tp_app = env { G => exp { E1 => exp { E2 => { tpe { T1 => tpe { T2 =>
-              tp_exp(G)(E1)(tfun(T1)(T2)) { TP1 => tp_exp(G)(E2)(T1) { TP2 => tp_exp(G)(app(E1)(E2))(T2) }}}}}}}} ("tp-app")
-
-
-        def searchLookup(d: Atom): Rel = {
-          d === hit(%)(%)  || 
-          { val d1 = %; d === miss(%)(%)(%)(d1) && searchLookup(d1) }
-        }
-
-        def searchTp(d: Atom): Rel = {
-          d === tp_cst(%)(%) || 
-          d === tp_var(%)(%)(%)(%) ||
-          d === tp_fun(%)(%)(%)(%)(%) ||
-          d === tp_app(%)(%)(%)(%)(%)(%)(%)
-        }
-
-        //searchTp(q1.typed(tp_exp(nil)(fun(idn(z)))(q2)))
-        //searchTp(q1.typed(tp_exp(cons(tnat)(nil))(idn(z))(q2)))
-        
-        //searchLookup(q1.typed(lookup(cons(tnat)(nil))(z)(q2)))
-        //searchLookup(q1.typed(lookup(cons(tbot)(cons(tnat)(nil)))(z)(q2)))
-        searchLookup(q1.typed(lookup(cons(tbot)(cons(tnat)(nil)))(s(z))(q2)))
-
+        val env = cons(tnat)(nil)
+        val idn = z
+        searchLookup(q1.typed(lookup(env)(idn)(q2)))
     }
+    run[(LF,LF)] {
+      case Pair(Term(q1),Term(q2)) =>
+        val env = cons(tbot)(cons(tnat)(nil))
+        val idn = z
+        searchLookup(q1.typed(lookup(env)(idn)(q2)))
+    }
+    run[(LF,LF)] {
+      case Pair(Term(q1),Term(q2)) =>
+        val env = cons(tbot)(cons(tnat)(nil))
+        val idn = s(z)
+        searchLookup(q1.typed(lookup(env)(idn)(q2)))
+    }
+
+
+    // test typing
+    run[(LF,LF)] {
+      case Pair(Term(q1),Term(q2)) =>
+        val env  = cons(tbot)(cons(tnat)(nil))
+        val term = idn(s(z))
+        searchTp(q1.typed(tp_exp(env)(term)(q2)))
+    }
+    run[(LF,LF)] {
+      case Pair(Term(q1),Term(q2)) =>
+        val env  = nil
+        val term = fun(idn(z))
+        searchTp(q1.typed(tp_exp(env)(term)(q2)))
+    }
+    run[(LF,LF)] {
+      case Pair(Term(q1),Term(q2)) =>
+        val env  = nil
+        val term = app(fun(idn(z)))(cst(s(z)))
+        searchTp(q1.typed(tp_exp(env)(term)(q2)))
+    }
+
+
 
   }
 }
