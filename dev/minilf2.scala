@@ -589,3 +589,86 @@ object TestLF2 {
 
   }
 }
+
+
+object TestLF3 {
+
+  def main(args: Array[String]) {
+    import Engine._
+    import Base._
+    import BaseLF1._
+
+    val nat = typ("nat")
+    val z = nat("z")
+    val s = nat { N1 => nat } ("s")
+
+    val add = nat { N1 => nat { N2 => nat { N3 => typ }}} ("add")
+    val add_z = nat { N => add(z)(N)(N) }
+    val add_s = nat { N1 => nat { N2 => nat { N3 =>
+      add(N1)(N2)(N3) { A => add(s(N1))(N2)(s(N3)) }}}}
+
+
+    val exp = typ("exp")
+    val tpe = typ("tpe")
+    val tenv = typ("tenv")
+
+    // exp
+    val vvr = nat { N => exp } ("var")
+
+    // tpe
+    val top = tpe("top")
+    val bot = tpe("bot")
+    val arrow = nat { N => tpe { T1 => tpe { T2 => tpe }}} ("arrow")
+    val rect  = nat { N => tpe { T1 => tpe { T2 => tpe }}} ("rect")
+    val recv  = nat { N => tpe { T1 => tpe }}              ("recv")
+    val tsel  = exp { E => tpe { T1 => nat { N => tpe }}}  ("tsel")
+    val bind  = nat { N => tenv { G => tpe { T => tpe }}}  ("bind")
+    val and   = tpe { T1 => tpe { T2 => tpe }}             ("and")
+
+    // tenv
+    val tnil = tenv("tnil")
+    val tcons = tpe { T => tenv { G => tenv }} ("tcons")
+
+
+    // lookup
+    val tlookup_zero = tenv { G => nat { N => tpe { T => typ }}} ("tlookup-zero")
+
+    val tl_hit = tenv { G => tpe { T => tlookup_zero(tcons(T)(G))(z)(T) }} ("tl/hit")
+    
+    val tl_miss = tenv { G => nat { N => tpe { T =>
+          tlookup_zero(G)(N)(T) { LK => tlookup_zero(tcons(%)(G))(s(N))(T) }}}} ("tl/miss")
+
+    val tsize = tenv { G => nat { N => typ }} ("tsize")
+    val tf_n = tsize(tnil)(z)
+    val tf_c = tenv { G => nat { N => tsize(G)(N) { S => tsize(tcons(%)(G))(s(N)) }}}
+
+    val tlookup = tenv { G => nat { N => tpe { T => typ }}} ("tlookup")
+
+    val tl = tenv { G => nat { N => nat { M => nat { S => tpe { V =>
+      tsize(G)(S) { _ => add(s(N))(M)(S) { _ => tlookup_zero(G)(M)(V) { _ =>
+        tlookup(G)(N)(V) }}}
+      }}}}} ("tl")
+
+
+    // search procedures
+    def searchLookupZero(d: Atom): Rel = {
+      d === tl_hit(%)(%) || 
+      %.in { d1 => d === tl_miss(%)(%)(%)(d1) && searchLookupZero(d1) }
+    }
+
+    def searchLookup(d: Atom): Rel = {
+      %.in { d1 => d === tl(%)(%)(%)(%)(%)(%)(%)(d1) && searchLookupZero(d1) } // TODO: search size, add
+    }
+
+    // test lookup
+    run[(LF,LF)] {
+      case Pair(Term(q1),Term(q2)) =>
+        val env = tcons(top)(tcons(bot)(tnil))
+        val idn = z
+        searchLookup(q1.typed(tlookup(env)(idn)(q2)))
+    }
+    println("TODO: search size/add")
+
+
+  }
+}
