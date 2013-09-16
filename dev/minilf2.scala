@@ -18,6 +18,7 @@ object Engine {
       }
       val d1 = d
       val save = cstore
+      val saveix = cindex
       try {
         d += 1
         e() match {
@@ -31,46 +32,17 @@ object Engine {
             }
           case Yes => f()
         }
+      } catch {
+        case Backtrack => // ok
       } finally {
         cstore = save
+        cindex = saveix
         d = d1
       }
     }
 
     def propagate(): Boolean = { // propagate constraints and look for contradictions
-      //printd("simplify")
-      def prop(c1: Constraint, c2: Constraint)(fail: () => Nothing) = (c1,c2) match {
-        case (IsEqual(Exp(a),Exp(b)), IsTerm(a1, key, args)) if a == a1 =>
-          List(IsTerm(b, key, args))
-        case (IsEqual(Exp(a),Exp(b)), IsTerm(b1, key, args)) if b == b1 =>
-          List(IsTerm(a, key, args))
-        case (IsTerm(a1, key1, args1), IsTerm(a2, key2, args2)) if a1 == a2 =>
-          if (key1 != key2 || args1.length != args2.length) fail()
-          (args1,args2).zipped map (IsEqual(_,_))
-        case _ => Nil
-      }
-
-      // self-join on cstore: build hash index to optimize
-
-      //val cnew = cstore flatMap { c1 => cstore flatMap { c2 => prop(c1,c2)(() => return false) }}
-
-      val idx = new mutable.HashMap[Int, List[Constraint]] withDefaultValue Nil
-
-      def keys(c: Constraint) = c match {
-        case IsEqual(Exp(a),Exp(b)) => List(a,b)
-        case IsTerm(a, _, _) => List(a)
-      }
-
-      cstore foreach { c => keys(c) foreach { k => idx(k) = c::idx(k) }}
-
-
-      val cnew = cstore flatMap { c1 => keys(c1) flatMap { k => idx(k) flatMap { c2 => prop(c1,c2)(() => return false) }}}
-
-      //cnew filterNot (cstore contains _) foreach println
-
-      val cstore0 = cstore
-      cstore = (cstore ++ cnew).distinct.sortBy(_.toString)
-      (cstore == cstore0) || propagate() // until converged
+      true
     }
 
     def extract(x: Exp[Any]): String = cstore collectFirst { // extract term
@@ -84,8 +56,8 @@ object Engine {
       val idx = cstore groupBy { case IsTerm(id, _ , _) => id case _ => -1 }
       val stack = new scala.collection.mutable.BitSet(varCount)
       val stack2 = new scala.collection.mutable.BitSet(varCount)
-      def rec(x: Exp[Any]): Unit = idx.getOrElse(x.id,Nil) match {
-        case IsTerm(id, key, args)::_ =>
+      def rec(x: Exp[Any]): Unit = idx.getOrElse(x.id,Set.empty).headOption match {
+        case Some(IsTerm(id, key, args)) =>
           assert(id == x.id)
           if (stack.contains(id)) {
             System.out.print("r"+id) // not doing occurs check during unification, at least catch cycles here
@@ -130,7 +102,7 @@ object Engine {
 
 
     def canon(x: Exp[Any]): String = { // canonicalize var name
-      val id = (x.id::(cstore collect {
+      val id = (Set(x.id) ++ (cstore collect {
         case IsEqual(`x`,y) if y.id < x.id => y.id
         case IsEqual(y,`x`) if y.id < x.id => y.id
       })).min
@@ -176,12 +148,76 @@ object Engine {
 
 
 
-  val cstore0: List[Constraint] = Nil
-  var cstore: List[Constraint] = cstore0
+  def keys(c: Constraint) = c match {
+    case IsEqual(Exp(a),Exp(b)) => List(a,b)
+    case IsTerm(a, _, _) => List(a)
+  }
+
+  def prop(c1: Constraint, c2: Constraint)(fail: () => Nothing) = (c1,c2) match {
+    case (IsEqual(Exp(a),Exp(b)), IsTerm(a1, key, args)) if a == a1 =>
+      List(IsTerm(b, key, args))
+    case (IsEqual(Exp(a),Exp(b)), IsTerm(b1, key, args)) if b == b1 =>
+      List(IsTerm(a, key, args))
+    case (IsTerm(a1, key1, args1), IsTerm(a2, key2, args2)) if a1 == a2 =>
+      if (key1 != key2 || args1.length != args2.length) fail()
+      (args1,args2).zipped map (IsEqual(_,_))
+    case _ => Nil
+  }
+
+  val Backtrack = new Exception
+
+  val cstore0: Set[Constraint] = Set.empty
+  var cstore: Set[Constraint] = cstore0
+
+  var cindex: Map[Int, Set[Constraint]] = Map.empty withDefaultValue Set.empty
 
   def register(c: Constraint): Unit = {
-    cstore = c::cstore // start simplify right here?
+    if (cstore.contains(c)) return
+
+    val fail = () => throw Backtrack
+
+    val cnew = keys(c) flatMap { k => cindex(k) flatMap { c2 => prop(c,c2)(fail) }}
+
+    cstore = cstore + c
+    keys(c) foreach { k => cindex += k -> (cindex(k) + c) }
+
+    cnew foreach register
   }
+
+
+
+
+
+/*
+
+    def propagate(): Boolean = { // propagate constraints and look for contradictions
+      //printd("simplify")
+
+      // self-join on cstore: build hash index to optimize
+
+      //val cnew = cstore flatMap { c1 => cstore flatMap { c2 => prop(c1,c2)(() => return false) }}
+
+      val idx = new mutable.HashMap[Int, List[Constraint]] withDefaultValue Nil
+
+
+      cstore foreach { c => keys(c) foreach { k => idx(k) = c::idx(k) }}
+
+
+      val cnew = cstore flatMap { c1 => keys(c1) flatMap { k => idx(k) flatMap { c2 => prop(c1,c2)(() => return false) }}}
+
+      //cnew filterNot (cstore contains _) foreach println
+
+      val cstore0 = cstore
+      cstore = (cstore ++ cnew).distinct.sortBy(_.toString)
+      (cstore == cstore0) || propagate() // until converged
+    }
+
+*/
+
+
+
+
+
 
   def term[T](key: String, args: List[Exp[Any]]): Exp[T] = {
     val id = fresh[T]
