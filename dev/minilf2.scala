@@ -413,6 +413,7 @@ object BaseLF1 {
       type Self <: Term
       //def apply(s: String,xs:List[Atom] = Nil): Term
       def apply(s: String,xs:List[Atom] = Nil): Self
+      def =>:(a: Atom) = a.apply{ _ => this}.asInstanceOf[For[Self]]
     }
     case class Atom(lv: Exp[LF]) extends Term {
       type Self = Atom
@@ -425,6 +426,7 @@ object BaseLF1 {
     case class For[B<:Term](u: Atom, f: Atom => B) extends Term {
       type Self = For[B#Self]
       //def unapplySeq(x:Atom): Option[Seq[Atom]] =
+      //def ==>[C<:Term](v: C) = f(u) ==> v
       def apply(s: String,xs:List[Atom]) = For(u, x => f(x)(s,xs:+x))
       def apply(x:Atom): B = f(x.typed(u))
     }
@@ -598,49 +600,77 @@ object TestLF3 {
     import Base._
     import BaseLF1._
 
+    object any {
+      def apply[A<:Term](f: Atom => A) = new {
+        def apply(): A = f(%)
+        def apply(s: String): () => A#Self = () => apply()(s)
+      }
+      def apply[A<:Term](f: (Atom,Atom) => A) = new {
+        def apply(): A = f(%,%)
+        def apply(s: String): () => A#Self = () => apply()(s)
+      }
+      def apply[A<:Term](f: (Atom,Atom,Atom) => A) = new {
+        def apply(): A = f(%,%,%)
+        def apply(s: String): () => A#Self = () => apply()(s)
+      }
+      def apply[A<:Term](f: (Atom,Atom,Atom,Atom) => A) = new {
+        def apply(): A = f(%,%,%,%)
+        def apply(s: String): () => A#Self = () => apply()(s)
+      }
+    }
+
+    object rule {
+      def apply(x1: Atom, x2: Atom) = x1 (_ => x2)
+      def apply(x1: Atom, x2: Atom, x3: Atom) = x1 (_ => x2 (_ => x3))
+    }
+
+
     val nat = typ("nat")
-    val z = nat("z")
-    val s = nat { N1 => nat } ("s")
+    val z   = nat("z")
+    val s   = nat =>: nat ("s")
 
-    val add = nat { N1 => nat { N2 => nat { N3 => typ }}} ("add")
-    val add_z = nat { N => add(z)(N)(N) }
-    val add_s = nat { N1 => nat { N2 => nat { N3 =>
-      add(N1)(N2)(N3) { A => add(s(N1))(N2)(s(N3)) }}}}
+    val add   = (nat =>: nat =>: nat =>: typ) ("add")
+    val add_z = any { N => 
+                  add(z)(N)(N) }
+    val add_s = any { (N1,N2,N3) =>
+                  add(N1)(N2)(N3) =>:
+                  add(s(N1))(N2)(s(N3)) }
 
 
-    val exp = typ("exp")
-    val tpe = typ("tpe")
+    val exp  = typ("exp")
+    val tpe  = typ("tpe")
     val tenv = typ("tenv")
 
     // exp
-    val vvr = nat { N => exp } ("var")
+    val vvr = (nat =>: exp) ("var")
 
     // tpe
-    val top = tpe("top")
-    val bot = tpe("bot")
-    val arrow = nat { N => tpe { T1 => tpe { T2 => tpe }}} ("arrow")
-    val rect  = nat { N => tpe { T1 => tpe { T2 => tpe }}} ("rect")
-    val recv  = nat { N => tpe { T1 => tpe }}              ("recv")
-    val tsel  = exp { E => tpe { T1 => nat { N => tpe }}}  ("tsel")
-    val bind  = nat { N => tenv { G => tpe { T => tpe }}}  ("bind")
-    val and   = tpe { T1 => tpe { T2 => tpe }}             ("and")
+    val top   = tpe("top")
+    val bot   = tpe("bot")
+    val arrow = (nat =>: tpe  =>: tpe =>: tpe) ("arrow")
+    val rect  = (nat =>: tpe  =>: tpe =>: tpe) ("rect")
+    val recv  = (nat =>: tpe  =>: tpe        ) ("recv")
+    val tsel  = (exp =>: tpe  =>: nat =>: tpe) ("tsel")
+    val bind  = (nat =>: tenv =>: tpe =>: tpe) ("bind")
+    val and   = (tpe =>: tpe  =>: tpe        ) ("and")
 
     // tenv
-    val tnil = tenv("tnil")
-    val tcons = tpe { T => tenv { G => tenv }} ("tcons")
+    val tnil  = tenv("tnil")
+    val tcons = (tpe =>: tenv =>: tenv) ("tcons")
 
 
     // lookup
-    val tlookup_zero = tenv { G => nat { N => tpe { T => typ }}} ("tlookup-zero")
+    val tlookup_zero  = (tenv =>: nat =>: tpe =>: typ)         ("tlookup-zero")
+    val tl_hit        = any { (G,T) => 
+                          tlookup_zero(tcons(T)(G))(z)(T) }    ("tl/hit")    
+    val tl_miss       = any { (G,N,T) =>
+                          tlookup_zero(G)(N)(T) =>: 
+                          tlookup_zero(tcons(%)(G))(s(N))(T) } ("tl/miss")
 
-    val tl_hit = tenv { G => tpe { T => tlookup_zero(tcons(T)(G))(z)(T) }} ("tl/hit")
-    
-    val tl_miss = tenv { G => nat { N => tpe { T =>
-          tlookup_zero(G)(N)(T) { LK => tlookup_zero(tcons(%)(G))(s(N))(T) }}}} ("tl/miss")
-
-    val tsize = tenv { G => nat { N => typ }} ("tsize")
-    val tf_n = tsize(tnil)(z)
-    val tf_c = tenv { G => nat { N => tsize(G)(N) { S => tsize(tcons(%)(G))(s(N)) }}}
+    val tsize = (tenv =>: nat =>: typ ) ("tsize")
+    val tf_n  = tsize(tnil)(z)          ("tf/n")
+    val tf_c  = any { (G,N ) => 
+                  tsize(G)(N) =>: tsize(tcons(%)(G))(s(N)) } ("tf/c")
 
     val tlookup = tenv { G => nat { N => tpe { T => typ }}} ("tlookup")
 
@@ -652,8 +682,8 @@ object TestLF3 {
 
     // search procedures
     def searchLookupZero(d: Atom): Rel = {
-      d === tl_hit(%)(%) || 
-      %.in { d1 => d === tl_miss(%)(%)(%)(d1) && searchLookupZero(d1) }
+      d === tl_hit() || 
+      %.in { d1 => d === tl_miss()(d1) && searchLookupZero(d1) }
     }
 
     def searchLookup(d: Atom): Rel = {
