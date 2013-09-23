@@ -328,13 +328,11 @@ sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
 % ++              <- sub-tp G1 T1 (tcons T1' G0) TN
 % ++              <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2)
               <- tsize G0 N
-% ++              <- sub-env G0 G2
               .
 
 sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               <- sub-tp (tcons TN G0) TN G2 T2
               <- tsize G0 N
-% ++              <- sub-env G0 G1
               .
 
 sub-tp/and2 : sub-tp G1 T1 G2 (and T2 T3)
@@ -373,7 +371,6 @@ wf-tp/tsel : wf-tp G1 (tsel E1 (rect N T1 T1U) N)
 wf-tp/tbind : wf-tp G1 (bind N G0 TN)
               <- wf-tp (tcons TN G0) TN
               <- tsize G0 N
-% ++              <- sub-env G0 G1
               .
 
 wf-tp/and  : wf-tp G1 (and T1 T2)
@@ -826,7 +823,7 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 - : extend-wf-tp (wf-tp/tsel P) T (wf-tp/tsel P1)
       <- extend-wf-pev P T P1.
 
-- : extend-wf-tp (wf-tp/tbind SE S W) T (wf-tp/tbind (sub-env/ext SE) S W).
+- : extend-wf-tp (wf-tp/tbind S W) T (wf-tp/tbind S W).
 
 - : extend-wf-tp (wf-tp/and W1 W2) T (wf-tp/and W1' W2')
       <- extend-wf-tp W1 _ W1'
@@ -865,18 +862,18 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 
 
-- : extend-sub-tp (sub-tp/tbind1 SE S ST) T
-     (sub-tp/tbind1 (sub-env/ext SE) S STC1)
-     (sub-tp/tbind1 (sub-env/ext SE) S ST)
-     (sub-tp/tbind1 SE S STC1)
+- : extend-sub-tp (sub-tp/tbind1 S ST) T
+     (sub-tp/tbind1 S STC1)
+     (sub-tp/tbind1 S ST)
+     (sub-tp/tbind1 S STC1)
      <- extend-sub-tp ST T STA1 STB1 STC1
      .
 
 
-- : extend-sub-tp (sub-tp/tbind2 SE S ST1 ST2 ST3) T
-     (sub-tp/tbind2 (sub-env/ext SE) S STB1 STB2 STB3)
-     (sub-tp/tbind2 SE S STB1 STB2 STB3)
-     (sub-tp/tbind2 (sub-env/ext SE) S ST1 ST2 ST3)
+- : extend-sub-tp (sub-tp/tbind2 S ST1 ST2 ST3) T
+     (sub-tp/tbind2 S STB1 STB2 STB3)
+     (sub-tp/tbind2 S STB1 STB2 STB3)
+     (sub-tp/tbind2 S ST1 ST2 ST3)
      <- extend-sub-tp ST1 T STA1 STB1 STC1
      <- extend-sub-tp ST2 T STA2 STB2 STC2
      <- extend-sub-tp ST3 T STA3 STB3 STC3
@@ -1028,10 +1025,10 @@ extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
       <- extend-wf-pev-mult P S1 P1
       <- extend-wf-pev-mult P S2 P2.
 
-- : extract-wf (sub-tp/tbind1 ES S ST) (wf-tp/tbind ES S WU) W2
+- : extract-wf (sub-tp/tbind1 S ST) (wf-tp/tbind S WU) W2
       <- extract-wf ST WU W2.
 
-- : extract-wf (sub-tp/tbind2 ES S SW SE SU) W1 (wf-tp/tbind ES S W2)
+- : extract-wf (sub-tp/tbind2 S SW SE SU) W1 (wf-tp/tbind S W2)
       <- extract-wf SU W1 W2.
 
 - : extract-wf (sub-tp/and1a W2 S1)
@@ -1152,9 +1149,9 @@ sub-tp-refl :
    <- sub-tp-refl W ST.
 
 
--/tbind: sub-tp-refl (wf-tp/tbind SE S WU)
+-/tbind: sub-tp-refl (wf-tp/tbind S WU)
           (sub-tp/tbind1
-             SE S (sub-tp/tbind2 SE S R R R))
+             S (sub-tp/tbind2 S R R R))
           <- sub-tp-refl WU R.
 
 -/tand: sub-tp-refl (wf-tp/and W1 W2) (sub-tp/and2 (sub-tp/and1a W2 ST1) (sub-tp/and1b W1 ST2))
@@ -1334,8 +1331,8 @@ lemma.
 -/tbind2  : sub-tp-trans-aux
        W
        SBT1
-       (sub-tp/tbind2 SE0 S SW SBT3 SU)
-       (sub-tp/tbind2 SE0 S SW' SBT5 SU')
+       (sub-tp/tbind2 S SW SBT3 SU)
+       (sub-tp/tbind2 S SW' SBT5 SU')
 
        <- sub-tp-trans-aux W SBT1 SW SW'
        <- sub-tp-trans-aux W SBT1 SU SU'
@@ -1344,16 +1341,16 @@ lemma.
 
 -/tbind1 : sub-tp-trans-aux
        W
-       (sub-tp/tbind1 SE S ST)
+       (sub-tp/tbind1 S ST)
        SBT2
-       (sub-tp/tbind1 SE S ST')
+       (sub-tp/tbind1 S ST')
        <- sub-tp-trans-aux W ST SBT2 ST'.
 
 
 -/tbind2-tbind1  : sub-tp-trans-aux
-       (wf-tp/tbind SE0 WS0 WY0)
-       (sub-tp/tbind2 SE1 S1 SW SBT1 SU)
-       (sub-tp/tbind1 SE3 S3 SBT3)
+       (wf-tp/tbind WS0 WY0)
+       (sub-tp/tbind2 S1 SW SBT1 SU)
+       (sub-tp/tbind1 S3 SBT3)
        SBT5
 
        %% TODO: uniqueness lemmas for G0/SE/S
@@ -1461,7 +1458,7 @@ wf-tp G (bind N G (and (arrow LNF T1 T2) (and (recv LNV T3) T4))) ->
 type.
 %mode wf-fun-tp +A +B +C +D -E.
 
-- : wf-fun-tp S WF WV WR (wf-tp/tbind sub-env/refl S (wf-tp/and WF (wf-tp/and WV' WR)))
+- : wf-fun-tp S WF WV WR (wf-tp/tbind S (wf-tp/and WF (wf-tp/and WV' WR)))
       <- extend-wf-tp WV _ WV'.
 
 %worlds () (wf-fun-tp _ _ _ _ _).
