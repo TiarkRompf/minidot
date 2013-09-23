@@ -334,7 +334,7 @@ sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
 sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               <- sub-tp (tcons TN G0) TN G2 T2
               <- tsize G0 N
-% ++              <- sub-env G0 G1 %
+% ++              <- sub-env G0 G1
               .
 
 sub-tp/and2 : sub-tp G1 T1 G2 (and T2 T3)
