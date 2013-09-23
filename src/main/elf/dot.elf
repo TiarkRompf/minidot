@@ -433,8 +433,8 @@ t/fun      : type-exp G (fun TC LNF T3 R T4 LNV R2 T2 M)
                 <- wf-tp G TC
 %                <- init-tp G (bind N G (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) TC
 %                <- init-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) TC
-% ++                 <- sub-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) (tcons TC G) TC
-                 <- sub-tp G (bind N G (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) G TC % --
+                 <- sub-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) (tcons TC G) TC
+%                <- sub-tp G (bind N G (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) G TC
                 .
 
 
