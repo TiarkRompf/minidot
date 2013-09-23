@@ -300,12 +300,19 @@ sub-tp/rect : sub-tp G1 (rect N T1 T2) G2 (rect N T3 T4)
 sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
               <- sub-tp G1 T1 G2 T2.
 
-sub-tp/tselx : sub-tp G1 (tsel E (rect N T2 T2U) N) G2 (tsel E (rect N T2 T2U) N)
-              <- sub-env G G2
-              <- sub-env G G1
-              <- path-eval G E (rect N T2 T2U)
-              <- sub-tp G2 (rect N T2 T2U) G1 (rect N T2 T2U)
-              <- sub-tp G1 (rect N T2 T2U) G2 (rect N T2 T2U).
+sub-tp/tselx : sub-tp G1 (tsel E (rect N T2 T2U) N) G2 (tsel E (rect N T2 T2U) N) % --
+             <- sub-env G G2                                                     % --
+             <- sub-env G G1                                                     % --
+             <- path-eval G E (rect N T2 T2U)                                    % --
+             <- sub-tp G2 (rect N T2 T2U) G1 (rect N T2 T2U)                     % --
+             <- sub-tp G1 (rect N T2 T2U) G2 (rect N T2 T2U).                    % --
+
+
+% ++ sub-tp/tselx : sub-tp G1 (tsel E1 (rect N T1 T1U) N) G2 (tsel E2 (rect N T2 T2U) N)
+% ++               <- path-eval G1 E1 (rect N T1 T1U)                                   
+% ++               <- path-eval G2 E2 (rect N T2 T2U)                                   
+% ++               <- sub-tp G2 (rect N T2 T2U) G1 (rect N T1 T1U)                      
+% ++               <- sub-tp G1 (rect N T1 T1U) G2 (rect N T2 T2U).                     
 
 sub-tp/tsel1 : sub-tp G1 (tsel E1 (rect N T1 T1U) N) G2 T2
               <- path-eval G1 E1 (rect N T1 T1U)
@@ -316,32 +323,31 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 (rect N T2 T2U) N)
               <- sub-tp G1 T1 G2 T2.
 
 sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
-              <- sub-tp G1 T1 (tcons TN G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
-%              <- sub-tp G1 T1 (tcons T1 G0) TN
-              <- sub-tp G1 T1 (tcons T1' G0) TN
-              <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2)
+             <- sub-tp G1 T1 (tcons TN G0) TN   %% upper bound (trans: bind2-bind1 case in trans) % --
+% ++               <- sub-tp G1 T1 (tcons T1 G0) TN
+             <- sub-tp G1 T1 (tcons T1' G0) TN % --
+             <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2) % --
               <- tsize G0 N
-              <- sub-env G0 G2
+             <- sub-env G0 G2 % --
               .
 
 sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               <- sub-tp (tcons TN G0) TN G2 T2
               <- tsize G0 N
-              <- sub-env G0 G1 %
+             <- sub-env G0 G1 % --
               .
 
 sub-tp/and2 : sub-tp G1 T1 G2 (and T2 T3)
               <- sub-tp G1 T1 G2 T3
               <- sub-tp G1 T1 G2 T2.
 
-sub-tp/and1b : sub-tp G1 (and T1 T2) G2 T3
-              <- sub-tp G1 T2 G2 T3
-              <- wf-tp G1 T1.
-
 sub-tp/and1a : sub-tp G1 (and T1 T2) G2 T3
               <- sub-tp G1 T1 G2 T3
               <- wf-tp G1 T2.
 
+sub-tp/and1b : sub-tp G1 (and T1 T2) G2 T3
+              <- sub-tp G1 T2 G2 T3
+              <- wf-tp G1 T1.
 
 
 
@@ -367,7 +373,8 @@ wf-tp/tsel : wf-tp G1 (tsel E1 (rect N T1 T1U) N)
 wf-tp/tbind : wf-tp G1 (bind N G0 TN)
               <- wf-tp (tcons TN G0) TN
               <- tsize G0 N
-              <- sub-env G0 G1.
+             <- sub-env G0 G1 % --
+              .
 
 wf-tp/and  : wf-tp G1 (and T1 T2)
               <- wf-tp G1 T2
@@ -426,7 +433,8 @@ t/fun      : type-exp G (fun TC LNF T3 R T4 LNV R2 T2 M)
                 <- wf-tp G TC
 %                <- init-tp G (bind N G (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) TC
 %                <- init-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) TC
-                 <- sub-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) (tcons TC G) TC
+                <- sub-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) (tcons TC G) TC % --
+% ++                  <- sub-tp G (bind N G (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) G TC
                 .
 
 
@@ -699,6 +707,8 @@ cat <: pets.Pet
 
 
 }%
+
+% EOF
 
 %%% PROOFS %%%
 
