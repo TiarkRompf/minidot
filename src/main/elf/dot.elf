@@ -301,11 +301,11 @@ sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
               <- sub-tp G1 T1 G2 T2.
 
 % ++ sub-tp/tselx : sub-tp G1 (tsel E (rect N T2 T2U) N) G2 (tsel E (rect N T2 T2U) N)
-% ++              <- sub-env G G2
-% ++              <- sub-env G G1
-% ++              <- path-eval G E (rect N T2 T2U)
-% ++              <- sub-tp G2 (rect N T2 T2U) G1 (rect N T2 T2U)
-% ++              <- sub-tp G1 (rect N T2 T2U) G2 (rect N T2 T2U).
+% ++              <- sub-env G G2                                                    
+% ++              <- sub-env G G1                                                    
+% ++              <- path-eval G E (rect N T2 T2U)                                   
+% ++              <- sub-tp G2 (rect N T2 T2U) G1 (rect N T2 T2U)                    
+% ++              <- sub-tp G1 (rect N T2 T2U) G2 (rect N T2 T2U).                   
 
 
 sub-tp/tselx : sub-tp G1 (tsel E1 (rect N T1 T1U) N) G2 (tsel E2 (rect N T2 T2U) N) % --
