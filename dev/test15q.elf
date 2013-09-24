@@ -213,14 +213,6 @@ tl  : tlookup G N V
 
 
 
-% Partial ordering on environments
-
-sub-env: tenv -> tenv -> type.
-
-sub-env/refl: sub-env G G.
-sub-env/ext: sub-env G1 (tcons Z G2) <- sub-env G1 G2.
-
-
 %{ ------- subtyping ------ }%
 
 path-eval: tenv -> exp -> tpe -> type.
@@ -701,33 +693,6 @@ cat <: pets.Pet
 
 %%% PROOFS %%%
 
-sub-env-trans: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
-%mode sub-env-trans +A +B -C.
-
-- : sub-env-trans S sub-env/refl S.
-- : sub-env-trans S1 (sub-env/ext S2) (sub-env/ext S3) <- sub-env-trans S1 S2 S3.
-
-%worlds () (sub-env-trans _ _ _).
-%total A (sub-env-trans _ A _).
-
-
-minmax-env: tenv -> tenv -> tenv -> tenv -> type.
-mm-env/1: minmax-env G1 G2 G1 G2 <- sub-env G1 G2.
-mm-env/2: minmax-env G1 G2 G2 G1 <- sub-env G2 G1.
-
-
-% Diamond / common prefix property
-
-sub-env-dia: sub-env G1 GT -> sub-env G2 GT -> minmax-env G1 G2 GS GU -> type.
-%mode sub-env-dia +A +B -C.
-
-- : sub-env-dia sub-env/refl S (mm-env/2 S).
-- : sub-env-dia (sub-env/ext S1) sub-env/refl (mm-env/1 (sub-env/ext S1)).
-- : sub-env-dia (sub-env/ext S1) (sub-env/ext S2) MM <- sub-env-dia S1 S2 MM.
-
-%worlds () (sub-env-dia _ _ _).
-%total A (sub-env-dia A _ _).
-
 %{ ------- subtyping (proofs) ------ }%
 
 % Extending environments preserves lookup
@@ -757,20 +722,6 @@ extend-wf-lkp: tlookup G N T -> {Z: tpe} tlookup (tcons Z G) N T -> type.
       <- extend-wf-lkpz L Z L'.
 %worlds () (extend-wf-lkp _ _ _).
 %total A (extend-wf-lkp A _ _).
-
-extend-wf-lkp-mult: tlookup G N T -> sub-env G G1 -> tlookup G1 N T -> type.
-%mode extend-wf-lkp-mult +A +B -C.
-- : extend-wf-lkp-mult L sub-env/refl L.
-- : extend-wf-lkp-mult L (sub-env/ext S) L2
-    <- extend-wf-lkp-mult L S L1
-    <- extend-wf-lkp L1 _ L2.
-%worlds () (extend-wf-lkp-mult _ _ _).
-%total A (extend-wf-lkp-mult _ A _).
-
-
-
-
-
 
 % Extending environments preserves subtyping
 
@@ -909,62 +860,6 @@ extend-sub-tp2: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp G1 T1 (tcons Z G2) T2 -> t
 %total A (extend-sub-tp2 A _ _).
 
 
-
-
-
-
-extend-wf-tp-mult: wf-tp G1 T1 -> sub-env G1 G2 -> wf-tp G2 T1 -> type.
-%mode extend-wf-tp-mult +A +B -C.
-- : extend-wf-tp-mult W sub-env/refl W.
-- : extend-wf-tp-mult W (sub-env/ext S) W2
-    <- extend-wf-tp-mult W S W1
-    <- extend-wf-tp W1 _ W2.
-%worlds () (extend-wf-tp-mult _ _ _).
-%total A (extend-wf-tp-mult _ A _).
-
-
-extend-sub-tp1-mult: sub-tp G1 T1 G2 T2 -> sub-env G1 G3 -> sub-tp G3 T1 G2 T2 -> type.
-%mode extend-sub-tp1-mult +A +B -C.
-- : extend-sub-tp1-mult ST sub-env/refl ST.
-- : extend-sub-tp1-mult ST (sub-env/ext S) ST2
-    <- extend-sub-tp1-mult ST S ST1
-    <- extend-sub-tp1 ST1 _ ST2.
-%worlds () (extend-sub-tp1-mult _ _ _).
-%total A (extend-sub-tp1-mult _ A _).
-
-extend-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> sub-env G2 G3 -> sub-tp G1 T1 G3 T2 -> type.
-%mode extend-sub-tp2-mult +A +B -C.
-- : extend-sub-tp2-mult ST sub-env/refl ST.
-- : extend-sub-tp2-mult ST (sub-env/ext S) ST2
-    <- extend-sub-tp2-mult ST S ST1
-    <- extend-sub-tp2 ST1 _ ST2.
-%worlds () (extend-sub-tp2-mult _ _ _).
-%total A (extend-sub-tp2-mult _ A _).
-
-
-
-
-extend-wf-pev-mult : path-eval G E T -> sub-env G G1 -> path-eval G1 E T -> type.
-%mode extend-wf-pev-mult +A +B -C.
-
-- : extend-wf-pev-mult (pev W ST E L) S (pev W1 ST1 E L1)
-      <- extend-wf-tp-mult W S W1
-      <- extend-sub-tp1-mult ST S ST'
-      <- extend-sub-tp2-mult ST' S ST1
-      <- extend-wf-lkp-mult L S L1.
-
-- : extend-wf-pev-mult (pev-sel W ST P) S (pev-sel W1 ST1 P1)
-      <- extend-wf-tp-mult W S W1
-      <- extend-sub-tp1-mult ST S ST'
-      <- extend-sub-tp2-mult ST' S ST1
-      <- extend-wf-pev-mult P S P1.
-
-
-%worlds () (extend-wf-pev-mult _ _ _).
-%total (A) (extend-wf-pev-mult A _ _).
-
-
-
 % More specific environments preserve subtyping
 
 
@@ -1043,70 +938,6 @@ extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
 %total (A B) (extract-wf A _ _)(extract-wf-pev B _).
 
 %reduces B < A (extract-wf-pev A B).
-
-
-
-
-%% Diamond property w.r.t. environment for well formed types
-
-wf-tp-min:
-  wf-tp G1 T -> wf-tp G2 T -> minmax-env G1 G2 GS GU ->
-  wf-tp GS T -> sub-env GS G1 -> sub-env GS G2 ->
-  type.
-%mode wf-tp-min +A +B +C -F -G -H.
-
-- : wf-tp-min W1 W2 (mm-env/1 S12) W1 sub-env/refl S12.
-- : wf-tp-min W1 W2 (mm-env/2 S21) W2 S21 sub-env/refl.
-
-%worlds () (wf-tp-min _ _ _ _ _ _).
-%total A (wf-tp-min A _ _ _ _ _ ).
-
-
-wf-tp-dia:
-  wf-tp GT T -> wf-tp G1 T -> wf-tp G2 T -> sub-env G1 GT -> sub-env G2 GT ->
-  wf-tp G T -> sub-env G G1 -> sub-env G G2 ->
-  type.
-%mode wf-tp-dia +A +B +C +D +E -F -G -H.
-
-- : wf-tp-dia WT W1 W2 S1 S2 W0 S01 S02
-     <- sub-env-dia S1 S2 MM
-     <- wf-tp-min W1 W2 MM W0 S01 S02.
-
-
-%worlds () (wf-tp-dia _ _ _ _ _ _ _ _).
-%total A (wf-tp-dia A _ _ _ _ _ _ _).
-
-
-pev-tp-min:
-  path-eval G1 N T -> path-eval G2 N T -> minmax-env G1 G2 GS GU ->
-  path-eval GS N T -> sub-env GS G1 -> sub-env GS G2 ->
-  type.
-%mode pev-tp-min +A +B +C -F -G -H.
-
-- : pev-tp-min W1 W2 (mm-env/1 S12) W1 sub-env/refl S12.
-- : pev-tp-min W1 W2 (mm-env/2 S21) W2 S21 sub-env/refl.
-
-%worlds () (pev-tp-min _ _ _ _ _ _).
-%total A (pev-tp-min A _ _ _ _ _ ).
-
-
-pev-tp-dia:
-  path-eval GT N T -> path-eval G1 N T -> path-eval G2 N T -> sub-env G1 GT -> sub-env G2 GT ->
-  path-eval G N T -> sub-env G G1 -> sub-env G G2 ->
-  type.
-%mode pev-tp-dia +A +B +C +D +E -F -G -H.
-
-- : pev-tp-dia WT W1 W2 S1 S2 W0 S01 S02
-     <- sub-env-dia S1 S2 MM
-     <- pev-tp-min W1 W2 MM W0 S01 S02.
-
-
-%worlds () (pev-tp-dia _ _ _ _ _ _ _ _).
-%total A (pev-tp-dia A _ _ _ _ _ _ _).
-
-
-
-
 
 %{ ------- subtyping reflexivity and transitivity ------ }%
 
@@ -1533,20 +1364,6 @@ extend-wfv: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
 
 %worlds () (extend-wfv _ _ _).
 %total A (extend-wfv A _ _).
-
-
-
-
-wfv-widen-env: sub-env G1 G2 -> wf-val V G1 T1 -> wf-val V G2 T1 -> type.
-%mode wfv-widen-env +LTE1 +LTE2 -LTE3.
-
-- : wfv-widen-env sub-env/refl WV WV.
-- : wfv-widen-env (sub-env/ext S) WV WVX
-      <- wfv-widen-env S WV WV1
-      <- extend-wfv WV1 Z WVX.
-
-%worlds () (wfv-widen-env _ _ _).
-%total A (wfv-widen-env A _ _).
 
 ex-is-sub: exp-tp2 T1 T2 -> wf-tp G T1 -> sub-tp G T1 G T2 -> type.
 %mode ex-is-sub +X1 +X2 -X3.
