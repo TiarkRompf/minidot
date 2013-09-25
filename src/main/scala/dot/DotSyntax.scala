@@ -21,6 +21,7 @@ trait DotSyntax {
     }
     case class TRec(self: terms.Var, ty: Type) extends Type
     case class SingletonType(x: terms.Var) extends Type
+    case class TShift(ty: Type) extends Type
 
     case object Unknown extends Type
   }

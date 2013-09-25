@@ -112,7 +112,10 @@ trait ElfPrinter { this: DotSyntax =>
           case (_,i)::Nil => s"${p(i.d.tag)} ${p(i.t)} ${pbind(i.d.ty, self)}"
           case _ => assert(false, "TODO in elf: support object creation with more than one val"); ???
         }
-        val tc = otc.getOrElse(inferConstructorType(oself, (defMembers++valMembers++typeMembers).map(_._2)))
+        val tc = otc.getOrElse(inferConstructorType(oself, (defMembers++valMembers++typeMembers).map(_._2))) match {
+          case tc@TRec(_,_) => tc
+          case tc => TShift(tc)
+        }
         val stc = if (VERSION <= 4) "" else p(tc)
         s"(fun $stc $dmem $vmem $tmem)"
 
@@ -146,6 +149,9 @@ trait ElfPrinter { this: DotSyntax =>
 
       case TRec(self, ty) =>
         s"(bind ${printNat(env.size)} ${printEnvFromSize(env.size, hints)} ${pbind(ty, self)})"
+
+      case TShift(ty) =>
+        pbind(ty, Var("_"))
 
       case SingletonType(v) =>
         env.get(v) match {

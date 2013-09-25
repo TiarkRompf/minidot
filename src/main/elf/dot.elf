@@ -292,14 +292,6 @@ sub-tp/rect : sub-tp G1 (rect N T1 T2) G2 (rect N T3 T4)
 sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
               <- sub-tp G1 T1 G2 T2.
 
-sub-tp/tselx-unwrap-left : sub-tp G1 (tsel (var X1) (rect N T TU) N) G2 (tsel E (rect N T TU) N)
-                            <- tlookup G1 X1 (bind N1 G1' T1)
-                            <- sub-tp (tcons T1 G1') (tsel (var N1) (rect N T TU) N) G2 (tsel E (rect N T TU) N).
-
-sub-tp/tselx-unwrap-right : sub-tp G1 (tsel E (rect N T TU) N) G2 (tsel (var X2) (rect N T TU) N)
-                            <- tlookup G2 X2 (bind N2 G2' T2)
-                            <- sub-tp G1 (tsel E (rect N T TU) N) (tcons T2 G2') (tsel (var N2) (rect N T TU) N).
-
 sub-tp/tselx : sub-tp G (tsel E (rect N T TU) N) G (tsel E (rect N T TU) N)
               <- path-eval G E (rect N T TU).
 
@@ -311,16 +303,16 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 (rect N T2 T2U) N)
               <- path-eval G2 E2 (rect N T2 T2U)
               <- sub-tp G1 T1 G2 T2.
 
+sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
+              <- sub-tp (tcons TN G0) TN G2 T2
+              <- tsize G0 N
+              .
+
 sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
 % ++              <- sub-tp G1 T1 (tcons TN G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
               <- sub-tp G1 T1 (tcons T1 G0) TN % --
 % ++              <- sub-tp G1 T1 (tcons T1' G0) TN
 % ++              <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2)
-              <- tsize G0 N
-              .
-
-sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
-              <- sub-tp (tcons TN G0) TN G2 T2
               <- tsize G0 N
               .
 
@@ -341,7 +333,6 @@ sub-tp/tselx-drop-left : sub-tp (tcons X G1) (tsel E (rect N T TU) N) G2 (tsel E
 
 sub-tp/tselx-drop-right : sub-tp G1 (tsel E (rect N T TU) N) (tcons X G2) (tsel E (rect N T TU) N)
                           <- sub-tp G1 (tsel E (rect N T TU) N) G2 (tsel E (rect N T TU) N).
-
 
 
 wf-tp/top  : wf-tp G1 top.

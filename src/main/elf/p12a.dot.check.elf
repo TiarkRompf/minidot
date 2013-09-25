@@ -1,1 +1,1 @@
-%abbrev p12a = (fun (rect z bot (bind z tnil (recv z top))) z top empty top z empty top (mcons _ bot (bind (s z) (tcons _ tnil) (recv z top)) mnil)).
+%abbrev p12a = (fun (rect z bot (bind (s z) (tcons _ tnil) (recv z top))) z top empty top z empty top (mcons _ bot (bind (s z) (tcons _ tnil) (recv z top)) mnil)).
