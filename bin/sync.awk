@@ -1,6 +1,10 @@
 #!/usr/bin/awk -f
 
 ### script to sync dot.elf with dev
+###
+### usage examples:
+### ./bin/sync.awk src/main/elf/dot.elf >dev/test15q.elf
+### ./bin/sync.awk dev/test15q.elf >src/main/elf/dot.elf
 
 {
     ### uncomment lines starting with % ++

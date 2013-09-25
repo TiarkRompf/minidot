@@ -1,5 +1,10 @@
 #!/bin/bash
 
+### script to check the main DOT elf sources, and optional files
+###
+### usage examples:
+### ./bin/ok.sh dev/test14.elf dev/test15q.elf
+
 if [[ -z $TWELF_SERVER ]]; then
     bin=twelf-server
 else
