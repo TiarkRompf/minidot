@@ -45,6 +45,9 @@
 %query 1 1 type-exp tnil p12b top.
 %query 1 1 type-exp tnil p12c top.
 
+%query 1 1 type-exp tnil b1 top. % TODO: this should NOT work!
+%query 1 1 type-exp tnil b1ok top.
+
 % regression
 %.
 %query 1 1 type-exp tnil p1i top.

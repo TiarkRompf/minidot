@@ -1,0 +1,5 @@
+val a = new (type X: Bot .. Top)
+val b = new (type X: Bot .. Top)
+val f = new (def m(x: a.X) = x)
+val g = new (def m(x: a.X) = f.m(x))
+a
