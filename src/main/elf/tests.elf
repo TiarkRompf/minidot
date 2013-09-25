@@ -45,7 +45,6 @@
 %query 1 1 type-exp tnil p12b top.
 %query 1 1 type-exp tnil p12c top.
 
-%query 1 1 type-exp tnil b1 top. % TODO: this should NOT work!
 %query 1 1 type-exp tnil b1ok top.
 
 % regression
@@ -54,3 +53,5 @@
 %query 1 1 type-exp tnil p2 top.
 %query 1 1 type-exp tnil c1 top.
 
+% these should not type-check
+%query 0 * type-exp tnil b1 top.
