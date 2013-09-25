@@ -292,9 +292,6 @@ sub-tp/rect : sub-tp G1 (rect N T1 T2) G2 (rect N T3 T4)
 sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
               <- sub-tp G1 T1 G2 T2.
 
-sub-tp/tselx : sub-tp G (tsel E (rect N T TU) N) G (tsel E (rect N T TU) N)
-                . % TODO <- path-eval G E (rect N T TU).
-
 sub-tp/tselx-unwrap-left : sub-tp G1 (tsel (var X1) (rect N T TU) N) G2 (tsel E (rect N T TU) N)
                             <- tlookup G1 X1 (bind N1 G1' T1)
                             <- sub-tp (tcons T1 G1') (tsel (var N1) (rect N T TU) N) G2 (tsel E (rect N T TU) N).
@@ -303,11 +300,8 @@ sub-tp/tselx-unwrap-right : sub-tp G1 (tsel E (rect N T TU) N) G2 (tsel (var X2)
                             <- tlookup G2 X2 (bind N2 G2' T2)
                             <- sub-tp G1 (tsel E (rect N T TU) N) (tcons T2 G2') (tsel (var N2) (rect N T TU) N).
 
-sub-tp/tselx-drop-left : sub-tp (tcons X G1) (tsel E (rect N T TU) N) G2 (tsel E (rect N T TU) N)
-                          <- sub-tp G1 (tsel E (rect N T TU) N) G2 (tsel E (rect N T TU) N).
-
-sub-tp/tselx-drop-right : sub-tp G1 (tsel E (rect N T TU) N) (tcons X G2) (tsel E (rect N T TU) N)
-                          <- sub-tp G1 (tsel E (rect N T TU) N) G2 (tsel E (rect N T TU) N).
+sub-tp/tselx : sub-tp G (tsel E (rect N T TU) N) G (tsel E (rect N T TU) N)
+              <- path-eval G E (rect N T TU).
 
 sub-tp/tsel1 : sub-tp G1 (tsel E1 (rect N T1 T1U) N) G2 T2
               <- path-eval G1 E1 (rect N T1 T1U)
@@ -342,6 +336,11 @@ sub-tp/and1b : sub-tp G1 (and T1 T2) G2 T3
               <- sub-tp G1 T2 G2 T3
               <- wf-tp G1 T1.
 
+sub-tp/tselx-drop-left : sub-tp (tcons X G1) (tsel E (rect N T TU) N) G2 (tsel E (rect N T TU) N)
+                          <- sub-tp G1 (tsel E (rect N T TU) N) G2 (tsel E (rect N T TU) N).
+
+sub-tp/tselx-drop-right : sub-tp G1 (tsel E (rect N T TU) N) (tcons X G2) (tsel E (rect N T TU) N)
+                          <- sub-tp G1 (tsel E (rect N T TU) N) G2 (tsel E (rect N T TU) N).
 
 
 
