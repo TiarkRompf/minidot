@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-__doc__ = """usage: twelf2tex.py <twelf_signatures.txt>
+__doc__ = """usage: twelf2tex.py <twelf_signatures.txt> [preamble_extra]
 converts Twelf signatures to inference rules in the style of TAPL
 """
 
@@ -24,7 +24,7 @@ end_document = """
 
 end_file = ""
 
-def go(twelf_txt):
+def go(twelf_txt, preamble_extra=""):
   rem = twelf_txt
   commands = []
   rules = []
@@ -37,6 +37,7 @@ def go(twelf_txt):
     rem = rem[i+1:]
   print begin_file
   print "\n".join(commands)
+  print preamble_extra
   print begin_document
   print "\n".join(rules)
   print end_document
@@ -139,9 +140,13 @@ def new_rule(name, premises, conclusion):
 
 if __name__ == '__main__':
   import sys
-  if len(sys.argv)!=2:
+  argc = len(sys.argv)
+  if argc<2:
     print __doc__
   else:
+    preamble_extra = ""
+    if argc>=3:
+      preamble_extra = sys.argv[2]
     with open(sys.argv[1], 'r') as twelf_file:
       twelf_txt = twelf_file.read()
-      go(twelf_txt)
+      go(twelf_txt, preamble_extra)
