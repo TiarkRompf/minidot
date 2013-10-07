@@ -261,23 +261,27 @@ pev-sel : path-eval G (sel E LN) T1
           .
 
 
-self-eta: exp -> tpe -> tpe -> type.
+% self-eta: exp -> tpe -> tpe -> type.
 
-eta/rect: self-eta E 
-              (rect X4 X5 X6) 
-              (rect X4 (tsel E (rect X4 X5 X6) X4)
-                       (tsel E (rect X4 X5 X6) X4)).
-eta/recv: self-eta E (recv N T) (rect N' TS TU) <- self-eta (sel E N) T (rect N' TS TU).
+% eta/rect: self-eta E 
+%              (rect X4 X5 X6) 
+%              (rect X4 (tsel E (rect X4 X5 X6) X4)
+%                       (tsel E (rect X4 X5 X6) X4)).
+% eta/recv: self-eta E (recv N T) (rect N' TS TU) <- self-eta (sel E N) T (rect N' TS TU).
 
-path-eval2: tenv -> exp -> tpe -> type.
+% path-eval2: tenv -> exp -> tpe -> type.
 
-pev2: path-eval2 G E T
-          <- path-eval G E T.
+% pev2: path-eval2 G E T
+%          <- path-eval G E T.
 
-pev2xx: path-eval2 G E (rect N TS TU)
-          <- path-eval G E T1
-          <- self-eta E T1 (rect N TS TU).
+% pev2xx: path-eval2 G E (rect N TS TU)
+%          <- path-eval G E T1
+%          <- self-eta E T1 (rect N TS TU).
 
+% TODO: is this general enough?
+path-eval-eta: tenv -> exp -> tpe -> type.
+pev-eta: path-eval-eta G (sel E N) (tsel E (rect NT TA TB) NT)
+          <- path-eval G E (bind N0 G0 (and (recv N TV) (rect NT TA TB))).
 
 
 sub-tp/refl : sub-tp G T G T <- wf-tp G T. %%% ACCELRATE QUERIES !! % --
@@ -407,7 +411,7 @@ t/empty    : type-exp G empty top.
 
 t/var      : type-exp G (var N) T <- tlookup G N T <- wf-tp G T.
 
-% t/varx     : type-exp G E T <- path-eval2 G E T.
+t/varx     : type-exp G E T <- path-eval-eta G E T.
 
 t/sel       : type-exp G (sel E1 LNV) T1
             <- type-exp G E1 (recv LNV T1).

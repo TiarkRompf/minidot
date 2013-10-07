@@ -49,13 +49,13 @@
 
 % towards DOT counterexamples
 %query 1 1 type-exp tnil c1a top.
+%query 1 1 type-exp tnil c1ok top.
 
 % regression
 %.
 %query 1 1 type-exp tnil p1i top.
 %query 1 1 type-exp tnil p2 top.
 %query 1 1 type-exp tnil c1 top.
-%query 1 1 type-exp tnil c1ok top.
 
 % these should not type-check
 %query 0 * type-exp tnil b1 top.
