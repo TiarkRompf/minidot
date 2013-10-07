@@ -69,8 +69,8 @@ eq/s : eq (s N1) (s N2)
 
 
 ne : nat -> nat -> type.
-ne/z : ne z (s N).
-ne/z : ne (s N) z.
+ne/z1 : ne z (s N).
+ne/z2 : ne (s N) z.
 ne/s : ne (s N1) (s N2)
    <- ne N1 N2.
 
