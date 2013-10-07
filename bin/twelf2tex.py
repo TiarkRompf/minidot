@@ -8,6 +8,7 @@ import re
 
 begin_file = """
 \\documentclass{article}
+\\usepackage[cm]{fullpage}
 \\usepackage{amsmath}
 \\usepackage{bcprules}
 \\newcommand{\\aaatype}[0]{\\text{type}}
