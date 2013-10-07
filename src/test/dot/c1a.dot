@@ -1,0 +1,6 @@
+val b: { b => {val l: b.X:Bot..Top} & {type X:Bot..Top}} = new (b => val l: b.X:Top..Top = new (); type X:Top..Top)
+val a: {val l: b.type} = new (val l = b)
+val al: b.type = a.l
+val c: Top = al.l
+val d: Top = c
+d
