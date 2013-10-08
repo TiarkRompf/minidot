@@ -288,6 +288,8 @@ sub-tp/tselx : sub-tp G1 (tsel E (rect N T2 T2U) N) G2 (tsel E (rect N T2B T2UB)
              <- sub-env G G2
              <- sub-env G G1                
              <- sub-tp G2 (rect N T2 T2U) G2 (rect N T2B T2UB)
+             <- sub-tp G2 (rect N T2 T2U) G1 (rect N T2 T2U)
+             <- sub-tp G1 (rect N T2 T2U) G2 (rect N T2 T2U)
              <- path-eval G E (rect N T2 T2U).
 
 sub-tp/tsel1 : sub-tp G1 (tsel E1 (rect N T1 T1U) N) G2 T2
@@ -843,11 +845,13 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-wf-pev P _ P'
       <- extend-sub-tp ST _ ST' STA STB.
 
-- : extend-sub-tp (sub-tp/tselx P ST S1 S2) T
-    (sub-tp/tselx P ST' (sub-env/ext S1) (sub-env/ext S2))
-    (sub-tp/tselx P ST (sub-env/ext S1) S2)
-    (sub-tp/tselx P ST' S1 (sub-env/ext S2))
-      <- extend-sub-tp ST _ ST' _ _.
+- : extend-sub-tp (sub-tp/tselx P ST ST2 STX S1 S2) T
+    (sub-tp/tselx P ST' ST2' STX' (sub-env/ext S1) (sub-env/ext S2))
+    (sub-tp/tselx P STA ST2B STX (sub-env/ext S1) S2)
+    (sub-tp/tselx P STB ST2A STX' S1 (sub-env/ext S2))
+      <- extend-sub-tp ST _ ST' STA STB
+      <- extend-sub-tp ST2 _ ST2' ST2A ST2B
+      <- extend-sub-tp STX _ STX' _ _.
 
 - : extend-sub-tp (sub-tp/tbindx S ST W) T
      (sub-tp/tbindx S ST W')
@@ -1012,7 +1016,7 @@ extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
       W1 (wf-tp/tsel P)
       <- extract-wf ST W1 _. % W1 W2
 
-- : extract-wf (sub-tp/tselx P ST S1 S2)
+- : extract-wf (sub-tp/tselx P _ _ ST S1 S2)
       (wf-tp/tsel P1)
       (wf-tp/tsel P2')
       <- extend-wf-pev-mult P S1 P1
@@ -1138,7 +1142,7 @@ sub-tp-refl :
    <- sub-tp-refl T2 SBT2.
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
--/tsel: sub-tp-refl (wf-tp/tsel P) (sub-tp/tselx P ST sub-env/refl sub-env/refl)
+-/tsel: sub-tp-refl (wf-tp/tsel P) (sub-tp/tselx P ST ST ST sub-env/refl sub-env/refl)
    <- extract-wf-pev P W
    <- sub-tp-refl W ST.
 
@@ -1206,14 +1210,13 @@ sub-tp-trans-aux :
 
 -/tselx1  : sub-tp-trans-aux
       (wf-tp/tsel P1)
-      (sub-tp/tselx (sub-tp/rect SY24 SY31 SY34 SY12) _ P0 S1 S2)
+      (sub-tp/tselx P0 (sub-tp/rect SY24 SY31 SY34 SY12) _ (sub-tp/rect SZ24 SZ31 SZ34 SZ12) S1 S2)
       (sub-tp/tsel1 (A2: sub-tp G2 TU G3 T3) P2)
       (sub-tp/tsel1 SBT5 PX)
 
       <- extend-wf-pev-mult P0 S1 PX
       <- extract-wf-pev P1 (wf-tp/rect _ WU _)
-
-      <- sub-tp-trans-aux WU SY24 A2 SBT5
+      <- sub-tp-trans-aux WU SZ24 A2 SBT5
       .
 
 
@@ -1222,7 +1225,7 @@ sub-tp-trans-aux :
 -/tselx2  : sub-tp-trans-aux
       (wf-tp/tsel P1)
       (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) P2)
-      (sub-tp/tselx _ (sub-tp/rect SY24 SY31 SY34 SY12) P0 S2 S3)
+      (sub-tp/tselx P0 _ (sub-tp/rect SY24 SY31 SY34 SY12) _ S2 S3)
       (sub-tp/tsel2 SBT5 PX)
 
       <- extend-wf-pev-mult P0 S3 PX
@@ -1234,9 +1237,9 @@ sub-tp-trans-aux :
 
 -/tselx-tselx  : sub-tp-trans-aux
       (wf-tp/tsel P0)
-      (sub-tp/tselx ST11 ST12 P1 (SX1: sub-env G0 G1) (SX2: sub-env G0 G2))
-      (sub-tp/tselx ST21 ST22 P2 (SX2': sub-env G0' G2) (SX3: sub-env G0' G3))
-      (sub-tp/tselx ST31 ST32 P3 SX1x SX3x)
+      (sub-tp/tselx P1 ST11 ST12 TODO1 (SX1: sub-env G0 G1) (SX2: sub-env G0 G2))
+      (sub-tp/tselx P2 ST21 ST22 TODO2 (SX2': sub-env G0' G2) (SX3: sub-env G0' G3))
+      (sub-tp/tselx P3 ST31 ST32 TODO2 SX1x SX3x)
 
       <- extract-wf-pev P0 WR0'
 
