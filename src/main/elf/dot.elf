@@ -284,7 +284,7 @@ sub-tp/rect : sub-tp G1 (rect N T1 T2) G2 (rect N T3 T4)
 sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
               <- sub-tp G1 T1 G2 T2.
 
-sub-tp/tselxx : sub-tp G (tsel E (rect N T2 T2U) N) G (tsel E (rect N T2B T2UB) N)
+sub-tp/tselb : sub-tp G (tsel E (rect N T2 T2U) N) G (tsel E (rect N T2B T2UB) N)
              <- path-eval G E (rect N T2 T2U)
              <- sub-tp G (rect N T2 T2U) G (rect N T2B T2UB).
 
