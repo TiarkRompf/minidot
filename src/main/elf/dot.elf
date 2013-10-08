@@ -17,27 +17,7 @@
 + path selections
 + get rid of expansion
 - nominal types
-
 }%
-
-%{
-
-this works
-
-val r: {r => {type X = {c => {type X: Bot .. Top} & {val v: c.X}}}} =
-new (type X = {c => {type X: Bot .. Top} & {val v: c.X}})
-val c1 = new (c => type X: Top .. Top ; val v: c.X = new ())
-r
-
-but i'd like to assign
-c1
-the type
-r.X
-and that fails
-
-}%
-
-
 
 %{ ------- arithmetic ----- }%
 
