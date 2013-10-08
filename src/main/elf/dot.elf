@@ -287,7 +287,7 @@ sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
 sub-tp/tselx : sub-tp G1 (tsel E (rect N T2 T2U) N) G2 (tsel E (rect N T2B T2UB) N)
              <- sub-env G G2
              <- sub-env G G1                
-             <- sub-tp G1 (rect N T2 T2U) G2 (rect N T2B T2UB)
+             <- sub-tp G2 (rect N T2 T2U) G2 (rect N T2B T2UB)
              <- path-eval G E (rect N T2 T2U).
 
 sub-tp/tsel1 : sub-tp G1 (tsel E1 (rect N T1 T1U) N) G2 T2
@@ -328,9 +328,6 @@ sub-tp/and1b : sub-tp G1 (and T1 T2) G2 T3
               <- sub-tp G1 T2 G2 T3
               <- wf-tp G1 T1.
 
-
-
-
 wf-tp/top  : wf-tp G1 top.
 wf-tp/bot  : wf-tp G1 bot.
 
@@ -346,18 +343,9 @@ wf-tp/rect : wf-tp G1 (rect N T1 T2)
 wf-tp/recv : wf-tp G1 (recv N T1)
               <- wf-tp G1 T1.
 
- wf-tp/tsel : wf-tp G1 (tsel E1 (rect N T1A T1UA) N)
+wf-tp/tsel : wf-tp G1 (tsel E1 (rect N T1A T1UA) N)
               <- path-eval G1 E1 (rect N T1A T1UA)
               .
-
-wf-tp/tselx : wf-tp G2 (tsel E1 (rect N T1A T1UA) N)
-              <- sub-env G G2
-              <- sub-env G G1
-              <- sub-tp G1 (rect N T1 T1U) G2 (rect N T1A T1UA)
-              <- wf-tp G2 (rect N T1A T1UA)
-              <- path-eval G E1 (rect N T1 T1U)
-              .
-
 
 wf-tp/tbind : wf-tp G1 (bind N G0 TN)
               <- wf-tp (tcons TN G0) TN
@@ -700,6 +688,15 @@ cat <: pets.Pet
 
 %%% PROOFS %%%
 
+path-eval-sub: path-eval G2 E1 (rect N T1 T1U)
+                -> sub-tp G2 (rect N T1 T1U) G2 (rect N T1A T1UA)
+                -> path-eval G2 E1 (rect N T1A T1UA)
+                -> type.
+%mode path-eval-sub +A +B -C.
+%worlds () (path-eval-sub _ _ _).
+%trustme
+%total A (path-eval-sub A _ _).
+
 sub-env-trans: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
 %mode sub-env-trans +A +B -C.
 
@@ -815,10 +812,6 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 - : extend-wf-tp (wf-tp/tsel P) T (wf-tp/tsel P1)
       <- extend-wf-pev P T P1.
 
-- : extend-wf-tp (wf-tp/tselx P W2 ST S1 S2) T (wf-tp/tselx P W2' ST1 S1 (sub-env/ext S2))
-      <- extend-wf-tp W2 _ W2'
-      <- extend-sub-tp ST _ _ _ ST1.
-
 - : extend-wf-tp (wf-tp/tbind S W) T (wf-tp/tbind S W).
 
 - : extend-wf-tp (wf-tp/and W1 W2) T (wf-tp/and W1' W2')
@@ -852,9 +845,9 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 
 - : extend-sub-tp (sub-tp/tselx P ST S1 S2) T
     (sub-tp/tselx P ST' (sub-env/ext S1) (sub-env/ext S2))
-    (sub-tp/tselx P STA (sub-env/ext S1) S2)
-    (sub-tp/tselx P STB S1 (sub-env/ext S2))
-      <- extend-sub-tp ST _ ST' STA STB.
+    (sub-tp/tselx P ST (sub-env/ext S1) S2)
+    (sub-tp/tselx P ST' S1 (sub-env/ext S2))
+      <- extend-sub-tp ST _ ST' _ _.
 
 - : extend-sub-tp (sub-tp/tbindx S ST W) T
      (sub-tp/tbindx S ST W')
@@ -1021,10 +1014,10 @@ extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
 
 - : extract-wf (sub-tp/tselx P ST S1 S2)
       (wf-tp/tsel P1)
-      (wf-tp/tselx P W2 ST S1 S2)
+      (wf-tp/tsel P2')
       <- extend-wf-pev-mult P S1 P1
-      <- extract-wf ST _ W2.
-
+      <- extend-wf-pev-mult P S2 P2
+      <- path-eval-sub P2 ST P2'.
 
 - : extract-wf (sub-tp/tbindx S ST W2) (wf-tp/tbind S W1) W2
      <- extract-wf ST W1 _.
@@ -1117,9 +1110,6 @@ pev-tp-dia:
 %total A (pev-tp-dia A _ _ _ _ _ _ _).
 
 
-
-
-
 %{ ------- subtyping reflexivity and transitivity ------ }%
 
 
@@ -1151,9 +1141,6 @@ sub-tp-refl :
 -/tsel: sub-tp-refl (wf-tp/tsel P) (sub-tp/tselx P ST sub-env/refl sub-env/refl)
    <- extract-wf-pev P W
    <- sub-tp-refl W ST.
--/tselx: sub-tp-refl (wf-tp/tselx P W2 ST S1 S2) (sub-tp/tselx P2 ST2 sub-env/refl sub-env/refl)
-   <- extend-wf-pev-mult P S2 P2
-   <- sub-tp-refl W2 ST2.
 
 -/tbind: sub-tp-refl (wf-tp/tbind S WU)
           (sub-tp/tbind1
