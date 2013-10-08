@@ -284,16 +284,11 @@ sub-tp/rect : sub-tp G1 (rect N T1 T2) G2 (rect N T3 T4)
 sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
               <- sub-tp G1 T1 G2 T2.
 
-sub-tp/tselb : sub-tp G (tsel E (rect N T2 T2U) N) G (tsel E (rect N T2B T2UB) N)
-             <- path-eval G E (rect N T2 T2U)
-             <- sub-tp G (rect N T2 T2U) G (rect N T2B T2UB).
-
-sub-tp/tselx : sub-tp G1 (tsel E (rect N T2 T2U) N) G2 (tsel E (rect N T2 T2U) N)
+sub-tp/tselx : sub-tp G1 (tsel E (rect N T2 T2U) N) G2 (tsel E (rect N T2B T2UB) N)
              <- sub-env G G2
-             <- sub-env G G1
+             <- sub-env G G1                
              <- path-eval G E (rect N T2 T2U)
-             <- sub-tp G2 (rect N T2 T2U) G1 (rect N T2 T2U)
-             <- sub-tp G1 (rect N T2 T2U) G2 (rect N T2 T2U).
+             <- sub-tp G1 (rect N T2 T2U) G2 (rect N T2B T2UB).
 
 sub-tp/tsel1 : sub-tp G1 (tsel E1 (rect N T1 T1U) N) G2 T2
               <- path-eval G1 E1 (rect N T1 T1U)
@@ -846,6 +841,8 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST _ ST' STA STB
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 
+- : extend-sub-tp (sub-tp/tselb ST P) T
+     (sub-tp/tselb S
 
 - : extend-sub-tp (sub-tp/tbind1 S ST) T
      (sub-tp/tbind1 S STC1)
