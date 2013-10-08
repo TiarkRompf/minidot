@@ -1,1 +1,1 @@
-%abbrev e11 = (fun (bind z tnil (and (rect (s z) top top) (rect z bot (tsel (var z) _ (s z))))) z top empty top z empty top (mcons _ top top (mcons _ bot (tsel (var z) _ (s z)) mnil))).
+%abbrev e11 = (fun (bind z tnil (and (rect (s z) top top) (rect z bot (tsel (var z)  (s z))))) z top empty top z empty top (mcons _ top top (mcons _ bot (tsel (var z)  (s z)) mnil))).

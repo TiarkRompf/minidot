@@ -1,1 +1,1 @@
-%abbrev t6 = (bind z tnil (and (arrow (s (s (s z))) top (tsel (var z) _ (s (s z)))) (and (recv (s z) top) (and (rect (s (s z)) top top) (rect z (tsel (var z) _ (s (s z))) (tsel (var z) _ (s (s z)))))))).
+%abbrev t6 = (bind z tnil (and (arrow (s (s (s z))) top (tsel (var z)  (s (s z)))) (and (recv (s z) top) (and (rect (s (s z)) top top) (rect z (tsel (var z)  (s (s z))) (tsel (var z)  (s (s z)))))))).

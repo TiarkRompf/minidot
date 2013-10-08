@@ -1,1 +1,1 @@
-%abbrev t4 = (bind z tnil (and (arrow (s (s (s z))) top top) (and (recv (s (s z)) top) (and (rect (s z) top top) (rect z (tsel (var z) _ (s z)) (tsel (var z) _ (s z))))))).
+%abbrev t4 = (bind z tnil (and (arrow (s (s (s z))) top top) (and (recv (s (s z)) top) (and (rect (s z) top top) (rect z (tsel (var z)  (s z)) (tsel (var z)  (s z))))))).

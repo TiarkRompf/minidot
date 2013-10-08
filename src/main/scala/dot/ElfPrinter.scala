@@ -8,7 +8,7 @@ trait ElfPrinter { this: DotSyntax =>
   import types._
   import init._
 
-  val VERSION = 5
+  val VERSION = 7
 
   def collectTags(e: Any): List[Tag] = {
     def c(e: Any): List[Tag] = e match {
@@ -144,7 +144,7 @@ trait ElfPrinter { this: DotSyntax =>
 
       case Tsel(x, tag, hint) =>
         val ty = hint.getOrElse(Unknown)
-        val sty = if (VERSION<=4) "" else p(ty)
+        val sty = if (VERSION<=4 || VERSION>=7) "" else p(ty)
         s"(tsel ${p(x)} $sty ${p(tag)})"
 
       case TRec(self, ty) =>
