@@ -1,0 +1,1 @@
+%abbrev c1aa = (let (bind z tnil (and (recv (s z) (tsel (var z) (rect z bot top) z)) (rect z bot top))) (fun (bind z tnil (and (recv (s z) (tsel (var z) (rect z top top) z)) (rect z top top))) z top empty top (s z) (fun top z top empty top z empty top mnil) (tsel (var z) (rect z top top) z) (mcons _ bot top (mcons _ top top mnil))) (fun top z top empty top z empty top mnil)).

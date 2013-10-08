@@ -284,7 +284,11 @@ sub-tp/rect : sub-tp G1 (rect N T1 T2) G2 (rect N T3 T4)
 sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
               <- sub-tp G1 T1 G2 T2.
 
-sub-tp/tselx : sub-tp G1 (tsel E (rect N T2A T2UA) N) G2 (tsel E (rect N T2B T2UB) N)
+sub-tp/tselxx : sub-tp G (tsel E (rect N T2 T2U) N) G (tsel E (rect N T2B T2UB) N)
+             <- path-eval G E (rect N T2 T2U)
+             <- sub-tp G (rect N T2 T2U) G (rect N T2B T2UB).
+
+sub-tp/tselx : sub-tp G1 (tsel E (rect N T2 T2U) N) G2 (tsel E (rect N T2 T2U) N)
              <- sub-env G G2
              <- sub-env G G1
              <- path-eval G E (rect N T2 T2U)
@@ -298,6 +302,10 @@ sub-tp/tsel1 : sub-tp G1 (tsel E1 (rect N T1 T1U) N) G2 T2
 sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 (rect N T2 T2U) N)
               <- path-eval G2 E2 (rect N T2 T2U)
               <- sub-tp G1 T1 G2 T2.
+
+sub-tp/tbindx : sub-tp G1 (bind N G T1) G2 (bind N G T2)
+              <- sub-tp (tcons T1 G) T1 (tcons T1 G) T2
+              <- tsize G N.
 
 sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               <- sub-tp (tcons TN G0) TN G2 T2
