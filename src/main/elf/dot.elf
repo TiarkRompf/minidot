@@ -381,8 +381,11 @@ t/empty    : type-exp G empty top.
 
 t/var      : type-exp G (var N) T <- tlookup G N T <- wf-tp G T.
 
-t/varx     : type-exp G (var X) (rect N (tsel (var X) N) (tsel (var X) N)) %% TODO: proper expansion
-                <- tlookup G X (rect N T1 T2) <- wf-tp G (rect N T1 T2).
+t/selx     : type-exp G (sel (var X) N) (tsel (var X) NT)
+              <- tlookup G X (bind N0 G0 T0)
+              <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (and (recv N (tsel (var N0) NT)) (rect NT TA TB))
+              <- wf-tp (tcons T0 G0) (rect NT TA TB)
+              .
 
 t/sel       : type-exp G (sel E1 LNV) T1
             <- type-exp G E1 (recv LNV T1).

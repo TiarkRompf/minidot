@@ -16,8 +16,6 @@
 %query 1 1 type-exp tnil e13  top.
 %query 1 1 type-exp tnil e15  top.
 %query 1 1 type-exp tnil e16o  top.
-% %query 1 1 type-exp tnil e16n  top.
-% %query 1 1 type-exp tnil e16  top.
 %query 1 1 type-exp tnil e17  top.
 %query 1 1 type-exp tnil e19  top.
 %query 1 1 type-exp tnil e20  top.
@@ -53,13 +51,15 @@
 % towards DOT counterexamples
 %query 1 1 type-exp tnil c1aa top.
 %query 1 1 type-exp tnil c1a top.
-% %query 1 1 type-exp tnil c1ok top.
+%query 1 1 type-exp tnil c1ok top.
 
 % regression
 %.
 %query 1 1 type-exp tnil p1i top.
 %query 1 1 type-exp tnil p2 top.
 %query 1 1 type-exp tnil c1 top.
+%query 1 1 type-exp tnil e16n  top.
+%query 1 1 type-exp tnil e16  top.
 
 % these should not type-check
 %query 0 * type-exp tnil b1 top.
