@@ -241,7 +241,7 @@ exp-tp/and  : exp-tp G (and T1 T2) N T3' G3'
               <- topt-and T1' T2' T3' G1' G2' G3'.
 
 exp-tp/bind : exp-tp G0 (bind N1 G T1) N2 T2 G'
-              <- exp-tp G T1 N2 T2 G'.
+              <- exp-tp (tcons T1 G) T1 N2 T2 G'.
 
 %% TODO: other interesting cases?
 
