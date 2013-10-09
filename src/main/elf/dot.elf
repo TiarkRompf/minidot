@@ -221,43 +221,39 @@ sub-env/ext: sub-env G1 (tcons Z G2) <- sub-env G1 G2.
 
 %{ ------- subtyping ------ }%
 
-topt-and: topt -> topt -> topt -> type.
-topt-and/nn : topt-and tnone tnone tnone.
-topt-and/ns : topt-and tnone (tsome T) (tsome T).
-topt-and/sn : topt-and (tsome T) tnone (tsome T).
+topt-and: topt -> topt -> topt -> tenv -> tenv -> tenv -> type.
+topt-and/nn : topt-and tnone tnone tnone G1 G2 G3.
+topt-and/ns : topt-and tnone (tsome T) (tsome T) G1 G2 G2.
+topt-and/sn : topt-and (tsome T) tnone (tsome T) G1 G2 G1.
 
-exp-tp: tpe -> nat -> topt -> type.
+exp-tp: tenv -> tpe -> nat -> topt -> tenv -> type.
 
-exp-tp/top  : exp-tp top N tnone.
-exp-tp/bot  : exp-tp bot N tnone.
-exp-tp/fun  : exp-tp (arrow N1 T1 T2) N2 tnone.
-exp-tp/recv : exp-tp (recv N1 T) N2 tnone.
-exp-tp/rect : exp-tp (rect N T1 T2) N (tsome (rect N T1 T2)).
-exp-tp/rectn: exp-tp (rect N1 T1 T2) N2 tnone
+exp-tp/top  : exp-tp G top N tnone G'.
+exp-tp/bot  : exp-tp G bot N tnone G'.
+exp-tp/fun  : exp-tp G (arrow N1 T1 T2) N2 tnone G'.
+exp-tp/recv : exp-tp G (recv N1 T) N2 tnone G'.
+exp-tp/rect : exp-tp G (rect N T1 T2) N (tsome (rect N T1 T2)) G.
+exp-tp/rectn: exp-tp G (rect N1 T1 T2) N2 tnone G'
               <- ne N1 N2.
-exp-tp/and  : exp-tp (and T1 T2) N T3'
-              <- exp-tp T2 N T2'
-              <- exp-tp T1 N T1'
-              <- topt-and T1' T2' T3'.
+exp-tp/and  : exp-tp G (and T1 T2) N T3' G3'
+              <- exp-tp G T2 N T2' G2'
+              <- exp-tp G T1 N T1' G1'
+              <- topt-and T1' T2' T3' G1' G2' G3'.
 
-exp-tp/bind : exp-tp (bind N1 G T1) N2 T2
-              <- exp-tp T1 N2 T2.
-
-%% TODO: is it sensible to expand bind just like that?
-%% it seems like we might be leaking the self id N1, but on
-%% the other hand the result is subject to wf-tp anyways.
+exp-tp/bind : exp-tp G0 (bind N1 G T1) N2 T2 G'
+              <- exp-tp G T1 N2 T2 G'.
 
 %% TODO: other interesting cases?
 
-tlookexp: tenv -> exp -> tpe -> type.
-tle: tlookexp G (var N) (rect LN T1 T2) <- tlookup G N T0 <- exp-tp T0 LN (tsome (rect LN T1 T2)).
+tlookexp: tenv -> exp -> tpe -> tenv -> type.
+tle: tlookexp G (var N) (rect LN T1 T2) G' <- tlookup G N T0 <- exp-tp G T0 LN (tsome (rect LN T1 T2)) G'.
 
 wf-tp : tenv -> tpe -> type.
 
 sub-tp : tenv -> tpe -> tenv -> tpe -> type.
 
-path-eval: tenv -> exp -> tpe -> type.
-pev  : path-eval G E (rect N TS TU) <- tlookexp G E (rect N TS TU) <- wf-tp G (rect N TS TU).
+path-eval: tenv -> exp -> tpe -> tenv -> type.
+pev  : path-eval G E (rect N TS TU) G' <- tlookexp G E (rect N TS TU) G' <- wf-tp G (rect N TS TU).
 
 sub-tp/refl : sub-tp G T G T <- wf-tp G T. %%% ACCELRATE QUERIES !! % --
 
@@ -281,17 +277,15 @@ sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
 sub-tp/tselx : sub-tp G1 (tsel E N) G2 (tsel E N)
              <- sub-env G G2
              <- sub-env G G1                
-             <- sub-tp G2 (rect N T2 T2U) G1 (rect N T2 T2U)
-             <- sub-tp G1 (rect N T2 T2U) G2 (rect N T2 T2U)
-             <- path-eval G E (rect N T2 T2U).
+             <- path-eval G E (rect N T2 T2U) G'.
 
 sub-tp/tsel1 : sub-tp G1 (tsel E1 N) G2 T2
-              <- path-eval G1 E1 (rect N T1 T1U)
-              <- sub-tp G1 T1U G2 T2.
+              <- path-eval G1 E1 (rect N T1 T1U) G1'
+              <- sub-tp G0 T1U G2 T2.
 
 sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
-              <- path-eval G2 E2 (rect N T2 T2U)
-              <- sub-tp G1 T1 G2 T2.
+              <- path-eval G2 E2 (rect N T2 T2U) G2'
+              <- sub-tp G1 T1 G2' T2.
 
 % sub-tp/tbindx : sub-tp G1 (bind N G T1) G2 (bind N G T2)
 %              <- wf-tp G2 (bind N G T2)
@@ -339,7 +333,7 @@ wf-tp/recv : wf-tp G1 (recv N T1)
               <- wf-tp G1 T1.
 
 wf-tp/tsel : wf-tp G1 (tsel E1 N)
-              <- path-eval G1 E1 (rect N T1 T1U)
+              <- path-eval G1 E1 (rect N T1 T1U) G1'
               .
 
 wf-tp/tbind : wf-tp G1 (bind N G0 TN)
