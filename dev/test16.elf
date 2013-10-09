@@ -249,30 +249,14 @@ exp-tp/bind : exp-tp (bind N1 G T1) N2 T2
 
 %% TODO: other interesting cases?
 
+tlookexp: tenv -> exp -> tpe -> type.
+tle: tlookexp G (var N) (rect LN T1 T2) <- tlookup G N T0 <- exp-tp T0 LN (tsome (rect LN T1 T2)).
+
 wf-tp : tenv -> tpe -> type.
 
 sub-tp : tenv -> tpe -> tenv -> tpe -> type.
 
-
-exp-tp2: tpe -> tpe -> type.
-
-%% exp-tp/refl  : exp-tp2 T T.
-
-exp-tp/and1  : exp-tp2 (and T1 T2) T1' <- exp-tp2 T1 T1'.
-exp-tp/and2  : exp-tp2 (and T1 T2) T2' <- exp-tp2 T2 T2'.
-
-% TODO: add examples where these are needed
-% exp-tp/and1x  : exp-tp2 (and T1 T2) (and T1' T2) <- exp-tp2 T1 T1'.
-% exp-tp/and2x  : exp-tp2 (and T1 T2) (and T1 T2') <- exp-tp2 T2 T2'.
-% exp-tp/bindx : exp-tp2 (bind N1 G1 T1) (bind N1 G1 T1') <- exp-tp2 T1 T1'.
-
-exp-tp/refl  : exp-tp2 T T.
-
-tlookexp: tenv -> exp -> tpe -> type.
-tle: tlookexp G (var N) (rect LN T1 T2) <- tlookup G N T0 <- exp-tp T0 LN (tsome (rect LN T1 T2)).
-
 path-eval: tenv -> exp -> tpe -> type.
-
 pev  : path-eval G E (rect N TS TU) <- tlookexp G E (rect N TS TU) <- wf-tp G (rect N TS TU).
 
 % ++ sub-tp/refl : sub-tp G T G T <- wf-tp G T. %%% ACCELRATE QUERIES !!
@@ -1785,31 +1769,6 @@ wfv-widen-env: sub-env G1 G2 -> wf-val V G1 T1 -> wf-val V G2 T1 -> type.
 
 %worlds () (wfv-widen-env _ _ _).
 %total A (wfv-widen-env A _ _).
-
-ex-is-sub: exp-tp2 T1 T2 -> wf-tp G T1 -> sub-tp G T1 G T2 -> type.
-%mode ex-is-sub +X1 +X2 -X3.
-
-- : ex-is-sub (exp-tp/and1 EX1) (wf-tp/and W1 W2) (sub-tp/and1a W2 ST1)
-     <- ex-is-sub EX1 W1 ST1.
-
-- : ex-is-sub (exp-tp/and2 EX2) (wf-tp/and W1 W2) (sub-tp/and1b W1 ST2)
-     <- ex-is-sub EX2 W2 ST2.
-
-- : ex-is-sub exp-tp/refl W ST
-     <- sub-tp-refl W ST.
-
-%worlds () (ex-is-sub _ _ _).
-%total A (ex-is-sub A _ _).
-
-wfv-widen-ex: exp-tp2 T1 T2 -> wf-val V G T1 -> wf-val V G T2 -> type.
-%mode wfv-widen-ex +LTE1 +LTE2 -LTE3.
-
-- : wfv-widen-ex EX V (wfv/sub S V)
-     <- extract-wf3 V W
-     <- ex-is-sub EX W S.
-
-%worlds () (wfv-widen-ex _ _ _).
-%total A (wfv-widen-ex A _ _).
 
 %% this will need to change if we add non-closure values
 assign-rect: wf-val V G0 T -> wf-tp G (rect N T1 T2) -> wf-val V G (rect N T1 T2) -> type.
