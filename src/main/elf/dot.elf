@@ -222,18 +222,18 @@ sub-env/ext: sub-env G1 (tcons Z G2) <- sub-env G1 G2.
 %{ ------- subtyping ------ }%
 
 topt-and: topt -> topt -> topt -> tenv -> tenv -> tenv -> type.
-topt-and/nn : topt-and tnone tnone tnone G1 G2 G3.
+topt-and/nn : topt-and tnone tnone tnone G1 G2 G1. % arbitrary
 topt-and/ns : topt-and tnone (tsome T) (tsome T) G1 G2 G2.
 topt-and/sn : topt-and (tsome T) tnone (tsome T) G1 G2 G1.
 
 exp-tp: tenv -> tpe -> nat -> topt -> tenv -> type.
 
-exp-tp/top  : exp-tp G top N tnone G'.
-exp-tp/bot  : exp-tp G bot N tnone G'.
-exp-tp/fun  : exp-tp G (arrow N1 T1 T2) N2 tnone G'.
-exp-tp/recv : exp-tp G (recv N1 T) N2 tnone G'.
+exp-tp/top  : exp-tp G top N tnone G.
+exp-tp/bot  : exp-tp G bot N tnone G.
+exp-tp/fun  : exp-tp G (arrow N1 T1 T2) N2 tnone G.
+exp-tp/recv : exp-tp G (recv N1 T) N2 tnone G.
 exp-tp/rect : exp-tp G (rect N T1 T2) N (tsome (rect N T1 T2)) G.
-exp-tp/rectn: exp-tp G (rect N1 T1 T2) N2 tnone G'
+exp-tp/rectn: exp-tp G (rect N1 T1 T2) N2 tnone G
               <- ne N1 N2.
 exp-tp/and  : exp-tp G (and T1 T2) N T3' G3'
               <- exp-tp G T2 N T2' G2'
@@ -746,11 +746,23 @@ extend-wf-lkp-mult: tlookup G N T -> sub-env G G1 -> tlookup G1 N T -> type.
 %worlds () (extend-wf-lkp-mult _ _ _).
 %total A (extend-wf-lkp-mult _ A _).
 
-extend-wf-lkpe: tlookexp G (var N) T -> {Z: tpe} tlookexp (tcons Z G) (var N) T -> type.
-%mode extend-wf-lkpe +A +B -C.
-- : extend-wf-lkpe (tle E L) Z (tle E L') <- extend-wf-lkp L Z L'.
-%worlds () (extend-wf-lkpe _ _ _).
-%total A (extend-wf-lkpe A _ _).
+env-either: tenv -> tenv -> tenv -> type.
+env-either/left: env-either G1 G2 G1.
+env-either/right: env-either G1 G2 G2.
+
+extend-exp-tp: exp-tp G T N OT G' -> {Z: tpe} exp-tp (tcons Z G) T N OT G'' -> env-either (tcons Z G) G' G'' -> type.
+%mode extend-exp-tp +A +B -C -D.
+%worlds () (extend-exp-tp _ _ _ _).
+%trustme
+%total A (extend-exp-tp A _ _ _).
+
+extend-wf-lkpe: tlookexp G (var N) T G' -> {Z: tpe} tlookexp (tcons Z G) (var N) T G'' -> env-either (tcons Z G) G' G'' -> type.
+%mode extend-wf-lkpe +A +B -C -D.
+- : extend-wf-lkpe (tle E L) Z (tle E' L') O
+     <- extend-wf-lkp L Z L'
+     <- extend-exp-tp E Z E' O.
+%worlds () (extend-wf-lkpe _ _ _ _).
+%total A (extend-wf-lkpe A _ _ _).
 
 
 extend-wf-lkp-mult: tlookup G N T -> sub-env G G1 -> tlookup G1 N T -> type.
@@ -762,11 +774,19 @@ extend-wf-lkp-mult: tlookup G N T -> sub-env G G1 -> tlookup G1 N T -> type.
 %worlds () (extend-wf-lkp-mult _ _ _).
 %total A (extend-wf-lkp-mult _ A _).
 
-extend-wf-lkpe-mult: tlookexp G (var N) T -> sub-env G G1 -> tlookexp G1 (var N) T -> type.
-%mode extend-wf-lkpe-mult +A +B -C.
-- : extend-wf-lkpe-mult (tle E L) Z (tle E L') <- extend-wf-lkp-mult L Z L'.
-%worlds () (extend-wf-lkpe-mult _ _ _).
-%total A (extend-wf-lkpe-mult _ A _).
+extend-exp-tp-mult: exp-tp G T N OT G' -> sub-env G G1 -> exp-tp G1 T N OT G'' -> env-either G1 G' G'' -> type.
+%mode extend-exp-tp-mult +A +B -C -D.
+%worlds () (extend-exp-tp-mult _ _ _ _).
+%trustme
+%total A (extend-exp-tp-mult A _ _ _).
+
+extend-wf-lkpe-mult: tlookexp G (var N) T G' -> sub-env G G1 -> tlookexp G1 (var N) T G'' -> env-either G1 G' G'' -> type.
+%mode extend-wf-lkpe-mult +A +B -C -D.
+- : extend-wf-lkpe-mult (tle E L) Z (tle E' L') O
+     <- extend-wf-lkp-mult L Z L'
+     <- extend-exp-tp-mult E Z E' O.
+%worlds () (extend-wf-lkpe-mult _ _ _ _).
+%total A (extend-wf-lkpe-mult _ A _ _).
 
 
 %{ ------- Uniqueness of lookup ------ }%
@@ -776,6 +796,9 @@ ident: same T T.
 
 sameopt : topt -> topt -> type.
 identopt: sameopt T T.
+
+sameenv : tenv -> tenv -> type.
+identenv: sameenv G G.
 
 false: type.
 
@@ -795,14 +818,12 @@ no-eq2: false -> {T1}{T2} sameopt T1 T2 -> type.
 %worlds () (no-eq2 _ _ _ _).
 %total (A) (no-eq2 A _ _ _).
 
+no-eq-env: false -> {T1}{T2} sameenv T1 T2 -> type.
+%mode no-eq-env +A +B +C -D.
+%worlds () (no-eq-env _ _ _ _).
+%total (A) (no-eq-env A _ _ _).
 
-
-
-
-
-
-
-eq-exp-low: same T1 T1' -> exp-tp T1 N T2 -> exp-tp T1' N T2 -> type.
+eq-exp-low: same T1 T1' -> exp-tp G T1 N T2 G' -> exp-tp G T1' N T2 G' -> type.
 %mode eq-exp-low +P1 +P2 -SBT.
 
 - : eq-exp-low ident S S.
@@ -859,7 +880,7 @@ eq-wf: same T1 T1' -> wf-tp G1 T1 -> wf-tp G1 T1' -> type.
 
 
 
-eq-pev: same T1 T1' -> path-eval G1 N T1 -> path-eval G1 N T1' -> type.
+eq-pev: same T1 T1' -> path-eval G1 N T1 G1' -> path-eval G1 N T1' G1' -> type.
 %mode eq-pev +P1 +P2 -SBT.
 
 - : eq-pev ident S S.
@@ -941,60 +962,57 @@ lookup-eq0: tlookup G2 N1 T1 -> tlookup G2 N2 T2 -> eq N1 N2
 %worlds () (lookup-eq0 _ _ _ _).
 %total {T2} (lookup-eq0 T2 _ _ _).
 
+topt-and-eq: topt-and T1 T2 T3 G1 G2 G3 -> topt-and T1 T2 T3' G1 G2 G3' -> sameopt T3 T3' -> sameenv G3 G3' -> type.
+%mode topt-and-eq +A +B -D -E.
+- : topt-and-eq topt-and/nn topt-and/nn identopt identenv.
+- : topt-and-eq topt-and/ns topt-and/ns identopt identenv.
+- : topt-and-eq topt-and/sn topt-and/sn identopt identenv.
+%worlds () (topt-and-eq _ _ _ _).
+%total (A) (topt-and-eq A _ _ _).
+
+eq-topt-and: sameopt T1 T1' -> sameopt T2 T2' -> sameenv G1 G1' -> sameenv G2 G2' -> topt-and T1 T2 T3 G1 G2 G3 -> topt-and T1' T2' T3 G1' G2' G3 -> type.
+%mode eq-topt-and +P1 +P2 +P3 +P4 +P5 -SBT.
+- : eq-topt-and identopt identopt identenv identenv T T.
+%worlds () (eq-topt-and _ _ _ _ _ _).
+%total (A) (eq-topt-and A _ _ _ _ _).
 
 
+expand-eq: exp-tp G T LN T1 G1 -> exp-tp G T LN T2 G2 -> sameopt T1 T2 -> sameenv G1 G2 -> type.
+%mode expand-eq +P1 +P2 -S1 -S2.
 
-topt-and-eq: topt-and T1 T2 T3 -> topt-and T1 T2 T3' -> sameopt T3 T3' -> type.
-%mode topt-and-eq +A +B -D.
-- : topt-and-eq topt-and/nn topt-and/nn identopt.
-- : topt-and-eq topt-and/ns topt-and/ns identopt.
-- : topt-and-eq topt-and/sn topt-and/sn identopt.
-%worlds () (topt-and-eq _ _ _).
-%total (A) (topt-and-eq A _ _).
-
-eq-topt-and: sameopt T1 T1' -> sameopt T2 T2' -> topt-and T1 T2 T3 -> topt-and T1' T2' T3 -> type.
-%mode eq-topt-and +P1 +P2 +P3 -SBT.
-- : eq-topt-and identopt identopt T T.
-%worlds () (eq-topt-and _ _ _ _).
-%total (A) (eq-topt-and A _ _ _).
-
-
-expand-eq: exp-tp T LN T1 -> exp-tp T LN T2 -> sameopt T1 T2 -> type.
-%mode expand-eq +P1 +P2 -S.
-
-- : expand-eq exp-tp/top  exp-tp/top  identopt.
-- : expand-eq exp-tp/bot  exp-tp/bot  identopt.
-- : expand-eq exp-tp/fun  exp-tp/fun  identopt.
-- : expand-eq exp-tp/recv exp-tp/recv identopt.
-- : expand-eq exp-tp/rect exp-tp/rect identopt.
-- : expand-eq (exp-tp/rect) (exp-tp/rectn N) S 
+- : expand-eq exp-tp/top  exp-tp/top  identopt identenv.
+- : expand-eq exp-tp/bot  exp-tp/bot  identopt identenv.
+- : expand-eq exp-tp/fun  exp-tp/fun  identopt identenv.
+- : expand-eq exp-tp/recv exp-tp/recv identopt identenv.
+- : expand-eq exp-tp/rect exp-tp/rect identopt identenv.
+- : expand-eq (exp-tp/rect) (exp-tp/rectn N) S identenv
       <- ne-irrefl N F <- no-eq2 F _ _ S.
-- : expand-eq (exp-tp/rectn N) (exp-tp/rect) S 
+- : expand-eq (exp-tp/rectn N) (exp-tp/rect) S identenv
       <- ne-irrefl N F <- no-eq2 F _ _ S.
-- : expand-eq (exp-tp/rectn N1) (exp-tp/rectn N2) identopt.
-- : expand-eq (exp-tp/and T1 E1 E2)  (exp-tp/and T2 E3 E4) S
-      <- expand-eq E1 E3 S1
-      <- expand-eq E2 E4 S2
-      <- eq-topt-and S1 S2 T1 T1'
-      <- topt-and-eq T1' T2 S.
-- : expand-eq (exp-tp/bind E1) (exp-tp/bind E2) S
-      <- expand-eq E1 E2 S.
+- : expand-eq (exp-tp/rectn N1) (exp-tp/rectn N2) identopt identenv.
+- : expand-eq (exp-tp/and T1 E1 E2)  (exp-tp/and T2 E3 E4) S SG
+      <- expand-eq E1 E3 S1 SG1
+      <- expand-eq E2 E4 S2 SG2
+      <- eq-topt-and S1 S2 SG1 SG2 T1 T1'
+      <- topt-and-eq T1' T2 S SG.
+- : expand-eq (exp-tp/bind E1) (exp-tp/bind E2) S SG
+      <- expand-eq E1 E2 S SG.
 
-%worlds () (expand-eq _ _ _).
-%total {T2} (expand-eq T2 _ _).
+%worlds () (expand-eq _ _ _ _).
+%total {T2} (expand-eq T2 _ _ _).
 
-lookexp-eq: tlookexp G2 (var N1) (rect LN T1 T3) -> tlookexp G2 (var N2) (rect LN T2 T4) -> eq N1 N2
-  -> same T1 T2 -> same T3 T4 -> type.
-%mode lookexp-eq +P1 +P2 +E -SBT -SBT.
+lookexp-eq: tlookexp G2 (var N1) (rect LN T1 T3) G2A -> tlookexp G2 (var N2) (rect LN T2 T4) G2B -> eq N1 N2
+  -> same T1 T2 -> same T3 T4 -> sameenv G2A G2B -> type.
+%mode lookexp-eq +P1 +P2 +E -O1 -O2 -O3.
 
-- : lookexp-eq (tle E1 L1) (tle E2 L2) E S1 S2
+- : lookexp-eq (tle E1 L1) (tle E2 L2) E S1 S2 SG
       <- lookup-eq0 L1 L2 E X
       <- eq-exp-low X E1 E1'
-      <- expand-eq E1' E2 XX
+      <- expand-eq E1' E2 XX SG
       <- eq-rect2 XX S1 S2.
 
-%worlds () (lookexp-eq _ _ _ _ _).
-%total {T2} (lookexp-eq T2 _ _ _ _).
+%worlds () (lookexp-eq _ _ _ _ _ _).
+%total {T2} (lookexp-eq T2 _ _ _ _ _).
 
 
 % Extending environments preserves subtyping
