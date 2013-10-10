@@ -1235,17 +1235,36 @@ sub-tp-case2: getenv OG GX
                -> path-eval (tcons T G) E (rect N TS TU) OG'
                -> env-case OG G GE
                -> env-case OG' (tcons T G) GE
-               -> sub-tp (tcons T G1) X2 GX TS
-               -> sub-tp G1 X2 GX TS
-               -> sub-tp (tcons T G1) X2 (tcons T GX) TS
-               -> sub-tp G1 X2 (tcons T GX) TS
+               -> sub-tp (tcons T G1) TS1 GX TS
+               -> sub-tp G1 TS1 GX TS
+               -> sub-tp (tcons T G1) TS1 (tcons T GX) TS
+               -> sub-tp G1 TS1 (tcons T GX) TS
                -> getenv OG' GX'
-               -> sub-tp (tcons T G1) X2 GX' TS
-               -> sub-tp G1 X2 GX' TS
+               -> sub-tp (tcons T G1) TS1 GX' TS
+               -> sub-tp G1 TS1 GX' TS
                -> type.
 %mode sub-tp-case2 +A +B +C +D +E +F +G +H +I -J -K -L.
+
+- : sub-tp-case2 getenv/left P P' env-case/left env-case/left ST STA ST' STA' getenv/left ST' STA'.
+- : sub-tp-case2 getenv/right P P' env-case/right env-case/right ST STA ST' STA' getenv/right ST STA.
+
+- : sub-tp-case2 getenv/left (pev W (L: tlookexp _ (var N) _ _)) (pev W' L') env-case/left (env-case/right: env-case _ (tcons T _) GX') (ST: sub-tp (tcons T G1) TS1 _ TS) STA ST' STA' getenv/right O1 O2
+     <- extend-wf-lkpe-case-left L T L2
+     <- eq-refl N EQ
+     <- lookexp-eq L2 L' EQ _ _ X
+     <- not-sameenv-left-right X CONTRA
+     <- no-subtype CONTRA (tcons T G1) TS1 GX' TS O1
+     <- no-subtype CONTRA G1 TS1 GX' TS O2.
+
+- : sub-tp-case2 getenv/right (pev W (L: tlookexp _ (var N) _ _)) (pev W' L') env-case/right (env-case/left: env-case _ (tcons T G) GX') (ST: sub-tp (tcons T G1) TS1 _ TS) STA ST' STA' getenv/left O1 O2
+     <- extend-wf-lkpe-case-right L T L2
+     <- eq-refl N EQ
+     <- lookexp-eq L' L2 EQ _ _ X
+     <- not-sameenv-left-right X CONTRA
+     <- no-subtype CONTRA (tcons T G1) TS1 (tcons T G) TS O1
+     <- no-subtype CONTRA G1 TS1 (tcons T G) TS O2.
+
 %worlds () (sub-tp-case2 _ _ _ _ _ _ _ _ _ _ _ _).
-%trustme
 %total (A) (sub-tp-case2 A _ _ _ _ _ _ _ _ _ _ _).
 
 
