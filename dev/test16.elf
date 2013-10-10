@@ -723,6 +723,34 @@ sub-env-dia: sub-env G1 GT -> sub-env G2 GT -> minmax-env G1 G2 GS GU -> type.
 
 %{ ------- subtyping (proofs) ------ }%
 
+sub-tp-case1:  {G:getenv X9 X1}
+               {P:path-eval X5 X6 (rect X7 X8 X2) X9}
+               {P':path-eval (tcons T X5) X6 (rect X7 X8 X2) X10}
+               {ST':sub-tp (tcons T X1) X2 (tcons T X3) X4}
+               {STA:sub-tp (tcons T X1) X2 X3 X4}
+               {G':getenv X10 X11}
+               {STX':sub-tp X11 X2 (tcons T X3) X4} 
+               {STAX:sub-tp X11 X2 X3 X4}
+               type.
+%mode sub-tp-case1 +A +B +C +D +E -F -G -H.
+%worlds () (sub-tp-case1 _ _ _ _ _ _ _ _).
+%trustme
+%total (A) (sub-tp-case1 A _ _ _ _ _ _ _).
+
+sub-tp-case2: {G:getenv X9 X3}
+              {P:path-eval X5 X6 (rect X7 X4 X8) X9}   
+              {P':path-eval (tcons T X5) X6 (rect X7 X4 X8) X10}
+              {ST':sub-tp (tcons T X1) X2 (tcons T X3) X4}
+              {STB:sub-tp X1 X2 (tcons T X3) X4}
+              {G':getenv X10 X11}
+              {STX':sub-tp (tcons T X1) X2 X11 X4} 
+              {STBX:sub-tp X1 X2 X11 X4}
+               type.
+%mode sub-tp-case2 +A +B +C +D +E -F -G -H.
+%worlds () (sub-tp-case2 _ _ _ _ _ _ _ _).
+%trustme
+%total (A) (sub-tp-case2 A _ _ _ _ _ _ _).
+
 % Extending environments preserves lookup
 
 
@@ -1124,10 +1152,8 @@ lookexp-eq: tlookexp G2 (var N1) (rect LN T1 T3) G2A -> tlookexp G2 (var N2) (re
 extend-wf-tp: wf-tp G1 T1 -> {Z: tpe} wf-tp (tcons Z G1) T1 -> type.
 %mode extend-wf-tp +A +B -C.
 
-extend-wf-pev : path-eval G1 E T1 G1' -> {Z: tpe} path-eval (tcons Z G1) E T1 G1'' -> env-either (tcons Z G1) G1' G1'' -> type.
-%mode extend-wf-pev +A +B -C -D.
-
-
+extend-wf-pev : path-eval G1 E T1 G1' -> {Z: tpe} path-eval (tcons Z G1) E T1 G1'' -> type.
+%mode extend-wf-pev +A +B -C.
 
 extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
   sub-tp (tcons Z G1) T1 (tcons Z G2) T2 ->
@@ -1136,9 +1162,9 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
   type.
 %mode extend-sub-tp +A +B -C -D -E.
 
-- : extend-wf-pev (pev W L) T (pev W1 L1) G
+- : extend-wf-pev (pev W L) T (pev W1 L1)
       <- extend-wf-tp W T W1
-      <- extend-wf-lkpe L T L1 G.
+      <- extend-wf-lkpe L T L1.
 
 - : extend-wf-tp wf-tp/top T wf-tp/top.
 - : extend-wf-tp wf-tp/bot T wf-tp/bot.
@@ -1153,7 +1179,7 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-wf-tp W1 _ W1'.
 
 - : extend-wf-tp (wf-tp/tsel P) T (wf-tp/tsel P1)
-      <- extend-wf-pev P T P1 G.
+      <- extend-wf-pev P T P1.
 
 - : extend-wf-tp (wf-tp/tbind S W) T (wf-tp/tbind S W).
 
@@ -1177,14 +1203,16 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 - : extend-sub-tp (sub-tp/recv ST1) T (sub-tp/recv ST1') (sub-tp/recv ST1A) (sub-tp/recv ST1B)
       <- extend-sub-tp ST1 _ ST1' ST1A ST1B.
-- : extend-sub-tp (sub-tp/tsel1 ST P) T
-    (sub-tp/tsel1 ST' P') (sub-tp/tsel1 STA P') (sub-tp/tsel1 STB P)
-      <- extend-wf-pev P _ P' G
-      <- extend-sub-tp ST _ ST' STA STB.
-- : extend-sub-tp (sub-tp/tsel2 ST P) T
-    (sub-tp/tsel2 ST' P') (sub-tp/tsel2 STA P) (sub-tp/tsel2 STB P')
-      <- extend-wf-pev P T P' G
-      <- extend-sub-tp ST T ST' STA STB.
+- : extend-sub-tp (sub-tp/tsel1 ST G P) T
+    (sub-tp/tsel1 STX' G' P') (sub-tp/tsel1 STAX G' P') (sub-tp/tsel1 STB G P)
+      <- extend-wf-pev P T P'
+      <- extend-sub-tp ST T ST' STA STB
+      <- sub-tp-case1 G P P' ST' STA G' STX' STAX.
+- : extend-sub-tp (sub-tp/tsel2 ST G P) T
+    (sub-tp/tsel2 STX' G' P') (sub-tp/tsel2 STA G P) (sub-tp/tsel2 STBX G' P')
+      <- extend-wf-pev P T P'
+      <- extend-sub-tp ST T ST' STA STB
+      <- sub-tp-case2 G P P' ST' STB G' STX' STBX.
 
 - : extend-sub-tp (sub-tp/tselx P S1 S2) T
     (sub-tp/tselx P (sub-env/ext S1) (sub-env/ext S2))
@@ -1228,8 +1256,8 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 
 
-%worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _ _).
-%total (A B C) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _ _).
+%worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _).
+%total (A B C) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _).
 
 extend-sub-tp12: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2) T2 -> type.
 %mode extend-sub-tp12 +A +B -C.
@@ -1283,8 +1311,7 @@ extend-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> sub-env G2 G3 -> sub-tp G1 T1 G3 T2 -
 %total A (extend-sub-tp2-mult _ A _).
 
 
-
-extend-wf-pev-mult : path-eval G E T -> sub-env G G1 -> path-eval G1 E T -> type.
+extend-wf-pev-mult : path-eval G E T EG -> sub-env G G1 -> path-eval G1 E T EG' -> type.
 %mode extend-wf-pev-mult +A +B -C.
 
 - : extend-wf-pev-mult (pev W L) S (pev W1 L1)
