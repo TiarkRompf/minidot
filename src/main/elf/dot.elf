@@ -1564,8 +1564,8 @@ wf-tp-dia:
 
 
 pev-tp-min:
-  path-eval G1 N T -> path-eval G2 N T -> minmax-env G1 G2 GS GU ->
-  path-eval GS N T -> sub-env GS G1 -> sub-env GS G2 ->
+  path-eval G1 N T OG1 -> path-eval G2 N T OG2 -> minmax-env G1 G2 GS GU ->
+  path-eval GS N T OGS -> sub-env GS G1 -> sub-env GS G2 ->
   type.
 %mode pev-tp-min +A +B +C -F -G -H.
 
@@ -1577,8 +1577,8 @@ pev-tp-min:
 
 
 pev-tp-dia:
-  path-eval GT N T -> path-eval G1 N T -> path-eval G2 N T -> sub-env G1 GT -> sub-env G2 GT ->
-  path-eval G N T -> sub-env G G1 -> sub-env G G2 ->
+  path-eval GT N T OGT -> path-eval G1 N T OG1 -> path-eval G2 N T OG2 -> sub-env G1 GT -> sub-env G2 GT ->
+  path-eval G N T OG -> sub-env G G1 -> sub-env G G2 ->
   type.
 %mode pev-tp-dia +A +B +C +D +E -F -G -H.
 
@@ -1619,9 +1619,8 @@ sub-tp-refl :
    <- sub-tp-refl T2 SBT2.
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
--/tsel: sub-tp-refl (wf-tp/tsel P) (sub-tp/tselx P ST ST sub-env/refl sub-env/refl)
-   <- extract-wf-pev P W
-   <- sub-tp-refl W ST.
+-/tsel: sub-tp-refl (wf-tp/tsel P) (sub-tp/tselx P sub-env/refl sub-env/refl)
+   <- extract-wf-pev P W.
 
 -/tbind: sub-tp-refl (wf-tp/tbind S WU)
           (sub-tp/tbind1
