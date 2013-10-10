@@ -257,14 +257,14 @@ exp-tp/bind : exp-tp G0 (bind N1 G T1) N2 T2 (etenv/right G'')
 
 %% TODO: other interesting cases?
 
-tlookexp: tenv -> exp -> tpe -> tenv -> type.
-tle: tlookexp G (var N) (rect LN T1 T2) G' <- tlookup G N T0 <- exp-tp G T0 LN (tsome (rect LN T1 T2)) G'' <- getenv G'' G'.
+tlookexp: tenv -> exp -> tpe -> etenv -> type.
+tle: tlookexp G (var N) (rect LN T1 T2) G' <- tlookup G N T0 <- exp-tp G T0 LN (tsome (rect LN T1 T2)) G'.
 
 wf-tp : tenv -> tpe -> type.
 
 sub-tp : tenv -> tpe -> tenv -> tpe -> type.
 
-path-eval: tenv -> exp -> tpe -> tenv -> type.
+path-eval: tenv -> exp -> tpe -> etenv -> type.
 pev  : path-eval G E (rect N TS TU) G' <- tlookexp G E (rect N TS TU) G' <- wf-tp G (rect N TS TU).
 
 sub-tp/refl : sub-tp G T G T <- wf-tp G T. %%% ACCELRATE QUERIES !! % --
@@ -293,11 +293,13 @@ sub-tp/tselx : sub-tp G1 (tsel E N) G2 (tsel E N)
 
 sub-tp/tsel1 : sub-tp G1 (tsel E1 N) G2 T2
               <- path-eval G1 E1 (rect N T1 T1U) G1'
-              <- sub-tp G1' T1U G2 T2.
+              <- getenv G1' G1X
+              <- sub-tp G1X T1U G2 T2.
 
 sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
               <- path-eval G2 E2 (rect N T2 T2U) G2'
-              <- sub-tp G1 T1 G2' T2.
+              <- getenv G2' G2X
+              <- sub-tp G1 T1 G2X T2.
 
 % sub-tp/tbindx : sub-tp G1 (bind N G T1) G2 (bind N G T2)
 %              <- wf-tp G2 (bind N G T2)
@@ -831,14 +833,20 @@ extend-exp-tp-case: exp-tp G T N OT EG -> env-case EG G GX -> {Z: tpe} exp-tp (t
 
 extend-wf-lkpe: tlookexp G (var N) T EG -> {Z: tpe} tlookexp (tcons Z G) (var N) T EG' -> type.
 %mode extend-wf-lkpe +A +B -C.
-- : extend-wf-lkpe (tle G E L) Z (tle G' E' L')
+- : extend-wf-lkpe (tle E L) Z (tle E' L')
      <- extend-wf-lkp L Z L'
-     <- exp-tp-env-case E _ X
-     <- extend-exp-tp-case E X Z E' _
-     <- exp-tp-env-case E' G' _.
+     <- extend-exp-tp E Z E'.
 %worlds () (extend-wf-lkpe _ _ _).
 %total A (extend-wf-lkpe A _ _).
 
+extend-wf-lkpe-case: tlookexp G (var N) T EG -> {Z: tpe} tlookexp (tcons Z G) (var N) T EG' -> env-case EG G GX -> env-case EG' (tcons Z G) GX -> type.
+%mode extend-wf-lkpe-case +A +B -C -D -E.
+- : extend-wf-lkpe-case (tle E L) Z (tle E' L') X X'
+     <- extend-wf-lkp L Z L'
+     <- exp-tp-env-case E _ X
+     <- extend-exp-tp-case E X Z E' X'.
+%worlds () (extend-wf-lkpe-case _ _ _ _ _).
+%total A (extend-wf-lkpe-case A _ _ _ _).
 
 extend-wf-lkp-mult: tlookup G N T -> sub-env G G1 -> tlookup G1 N T -> type.
 %mode extend-wf-lkp-mult +A +B -C.
@@ -1098,14 +1106,13 @@ expand-eq: exp-tp G T LN T1 G1 -> exp-tp G T LN T2 G2 -> sameopt T1 T2 -> sameen
 %total {T2} (expand-eq T2 _ _ _).
 
 lookexp-eq: tlookexp G2 (var N1) (rect LN T1 T3) G2A -> tlookexp G2 (var N2) (rect LN T2 T4) G2B -> eq N1 N2
-  -> same T1 T2 -> same T3 T4 -> sametenv G2A G2B -> type.
+  -> same T1 T2 -> same T3 T4 -> sameenv G2A G2B -> type.
 %mode lookexp-eq +P1 +P2 +E -O1 -O2 -O3.
 
-- : lookexp-eq (tle G1 E1 L1) (tle G2 E2 L2) E S1 S2 SG'
+- : lookexp-eq (tle E1 L1) (tle E2 L2) E S1 S2 SG
       <- lookup-eq0 L1 L2 E X
       <- eq-exp-low X E1 E1'
       <- expand-eq E1' E2 XX SG
-      <- same-etenv-tenv SG G1 G2 SG'
       <- eq-rect2 XX S1 S2.
 
 %worlds () (lookexp-eq _ _ _ _ _ _).
