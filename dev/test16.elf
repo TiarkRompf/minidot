@@ -723,36 +723,7 @@ sub-env-dia: sub-env G1 GT -> sub-env G2 GT -> minmax-env G1 G2 GS GU -> type.
 
 %{ ------- subtyping (proofs) ------ }%
 
-sub-tp-case1:  {G:getenv X9 X1}
-               {P:path-eval X5 X6 (rect X7 X8 X2) X9}
-               {P':path-eval (tcons T X5) X6 (rect X7 X8 X2) X10}
-               {ST':sub-tp (tcons T X1) X2 (tcons T X3) X4}
-               {STA:sub-tp (tcons T X1) X2 X3 X4}
-               {G':getenv X10 X11}
-               {STX':sub-tp X11 X2 (tcons T X3) X4} 
-               {STAX:sub-tp X11 X2 X3 X4}
-               type.
-%mode sub-tp-case1 +A +B +C +D +E -F -G -H.
-%worlds () (sub-tp-case1 _ _ _ _ _ _ _ _).
-%trustme
-%total (A) (sub-tp-case1 A _ _ _ _ _ _ _).
-
-sub-tp-case2: {G:getenv X9 X3}
-              {P:path-eval X5 X6 (rect X7 X4 X8) X9}   
-              {P':path-eval (tcons T X5) X6 (rect X7 X4 X8) X10}
-              {ST':sub-tp (tcons T X1) X2 (tcons T X3) X4}
-              {STB:sub-tp X1 X2 (tcons T X3) X4}
-              {G':getenv X10 X11}
-              {STX':sub-tp (tcons T X1) X2 X11 X4} 
-              {STBX:sub-tp X1 X2 X11 X4}
-               type.
-%mode sub-tp-case2 +A +B +C +D +E -F -G -H.
-%worlds () (sub-tp-case2 _ _ _ _ _ _ _ _).
-%trustme
-%total (A) (sub-tp-case2 A _ _ _ _ _ _ _).
-
 % Extending environments preserves lookup
-
 
 extend-wf-lkpz: tlookup-zero G N T -> {Z: tpe} tlookup-zero (tcons Z G) (s N) T -> type.
 %mode extend-wf-lkpz +A +B -D.
@@ -1148,6 +1119,35 @@ lookexp-eq: tlookexp G2 (var N1) (rect LN T1 T3) G2A -> tlookexp G2 (var N2) (re
 
 
 % Extending environments preserves subtyping
+
+sub-tp-case1:  {G:getenv X9 X1}
+               {P:path-eval X5 X6 (rect X7 X8 X2) X9}
+               {P':path-eval (tcons T X5) X6 (rect X7 X8 X2) X10}
+               {ST':sub-tp (tcons T X1) X2 (tcons T X3) X4}
+               {STA:sub-tp (tcons T X1) X2 X3 X4}
+               {G':getenv X10 X11}
+               {STX':sub-tp X11 X2 (tcons T X3) X4} 
+               {STAX:sub-tp X11 X2 X3 X4}
+               type.
+%mode sub-tp-case1 +A +B +C +D +E -F -G -H.
+%worlds () (sub-tp-case1 _ _ _ _ _ _ _ _).
+%trustme
+%total (A) (sub-tp-case1 A _ _ _ _ _ _ _).
+
+sub-tp-case2: {G:getenv X9 X3}
+              {P:path-eval X5 X6 (rect X7 X4 X8) X9}   
+              {P':path-eval (tcons T X5) X6 (rect X7 X4 X8) X10}
+              {ST':sub-tp (tcons T X1) X2 (tcons T X3) X4}
+              {STB:sub-tp X1 X2 (tcons T X3) X4}
+              {G':getenv X10 X11}
+              {STX':sub-tp (tcons T X1) X2 X11 X4} 
+              {STBX:sub-tp X1 X2 X11 X4}
+               type.
+%mode sub-tp-case2 +A +B +C +D +E -F -G -H.
+%worlds () (sub-tp-case2 _ _ _ _ _ _ _ _).
+%trustme
+%total (A) (sub-tp-case2 A _ _ _ _ _ _ _).
+
 
 extend-wf-tp: wf-tp G1 T1 -> {Z: tpe} wf-tp (tcons Z G1) T1 -> type.
 %mode extend-wf-tp +A +B -C.
