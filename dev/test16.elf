@@ -1134,15 +1134,15 @@ sub-tp-case1:  getenv OG GX
 %trustme
 %total (A) (sub-tp-case1 A _ _ _ _ _ _ _).
 
-sub-tp-case2: {G:getenv X9 X3}
-              {P:path-eval X5 X6 (rect X7 X4 X8) X9}   
-              {P':path-eval (tcons T X5) X6 (rect X7 X4 X8) X10}
-              {ST':sub-tp (tcons T X1) X2 (tcons T X3) X4}
-              {STB:sub-tp X1 X2 (tcons T X3) X4}
-              {G':getenv X10 X11}
-              {STX':sub-tp (tcons T X1) X2 X11 X4} 
-              {STBX:sub-tp X1 X2 X11 X4}
-               type.
+sub-tp-case2: getenv OG GX
+               -> path-eval G E (rect N TS TU) OG
+               -> path-eval (tcons T G) E (rect N TS TU) OG'
+               -> sub-tp (tcons T G1) X2 (tcons T GX) TS
+               -> sub-tp G1 X2 (tcons T GX) TS
+               -> getenv OG' GX'
+               -> sub-tp (tcons T G1) X2 GX' TS
+               -> sub-tp G1 X2 GX' TS
+               -> type.
 %mode sub-tp-case2 +A +B +C +D +E -F -G -H.
 %worlds () (sub-tp-case2 _ _ _ _ _ _ _ _).
 %trustme
