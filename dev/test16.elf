@@ -1155,6 +1155,9 @@ extend-wf-tp: wf-tp G1 T1 -> {Z: tpe} wf-tp (tcons Z G1) T1 -> type.
 extend-wf-pev : path-eval G1 E T1 G1' -> {Z: tpe} path-eval (tcons Z G1) E T1 G1'' -> type.
 %mode extend-wf-pev +A +B -C.
 
+extend-wf-pev-case : path-eval G E T1 EG -> {Z: tpe} path-eval (tcons Z G) E T1 EG' -> env-case EG G GX -> env-case EG' (tcons Z G) GX -> type.
+%mode extend-wf-pev-case +A +B -C -D -E.
+
 extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
   sub-tp (tcons Z G1) T1 (tcons Z G2) T2 ->
   sub-tp (tcons Z G1) T1 G2 T2 ->
@@ -1165,6 +1168,10 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 - : extend-wf-pev (pev W L) T (pev W1 L1)
       <- extend-wf-tp W T W1
       <- extend-wf-lkpe L T L1.
+
+- : extend-wf-pev-case (pev W L) T (pev W1 L1) X X1
+      <- extend-wf-tp W T W1
+      <- extend-wf-lkpe-case L T L1 X X1.
 
 - : extend-wf-tp wf-tp/top T wf-tp/top.
 - : extend-wf-tp wf-tp/bot T wf-tp/bot.
@@ -1256,8 +1263,8 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 
 
-%worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _).
-%total (A B C) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _).
+%worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _)(extend-wf-pev-case _ _ _ _ _).
+%total (A B C D) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _)(extend-wf-pev-case D _ _ _ _).
 
 extend-sub-tp12: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2) T2 -> type.
 %mode extend-sub-tp12 +A +B -C.
