@@ -1125,32 +1125,38 @@ sub-tp-case1:  getenv OG GX
                -> path-eval (tcons T G) E (rect N TS TU) OG'
                -> env-case OG G GE
                -> env-case OG' (tcons T G) GE
+               -> sub-tp GX TU (tcons T G2) TU2
+               -> sub-tp GX TU G2 TU2
                -> sub-tp (tcons T GX) TU (tcons T G2) TU2
                -> sub-tp (tcons T GX) TU G2 TU2
                -> getenv OG' GX'
                -> sub-tp GX' TU (tcons T G2) TU2
                -> sub-tp GX' TU G2 TU2
                -> type.
-%mode sub-tp-case1 +A +B +C +D +E +F +G -H -I -J.
-%worlds () (sub-tp-case1 _ _ _ _ _ _ _ _ _ _).
+%mode sub-tp-case1 +A +B +C +D +E +F +G +H +I -J -K -L.
+
+% - : sub-tp-case1 getenv/left P P' env-case/left env-case/left ST STA ST' STA' getenv/left ST' STA'.
+%worlds () (sub-tp-case1 _ _ _ _ _ _ _ _ _ _ _ _).
 %trustme
-%total (A) (sub-tp-case1 A _ _ _ _ _ _ _ _ _).
+%total (A) (sub-tp-case1 A _ _ _ _ _ _ _ _ _ _ _).
 
 sub-tp-case2: getenv OG GX
                -> path-eval G E (rect N TS TU) OG
                -> path-eval (tcons T G) E (rect N TS TU) OG'
                -> env-case OG G GE
                -> env-case OG' (tcons T G) GE
+               -> sub-tp (tcons T G1) X2 GX TS
+               -> sub-tp G1 X2 GX TS
                -> sub-tp (tcons T G1) X2 (tcons T GX) TS
                -> sub-tp G1 X2 (tcons T GX) TS
                -> getenv OG' GX'
                -> sub-tp (tcons T G1) X2 GX' TS
                -> sub-tp G1 X2 GX' TS
                -> type.
-%mode sub-tp-case2 +A +B +C +D +E +F +G -H -I -J.
-%worlds () (sub-tp-case2 _ _ _ _ _ _ _ _ _ _).
+%mode sub-tp-case2 +A +B +C +D +E +F +G +H +I -J -K -L.
+%worlds () (sub-tp-case2 _ _ _ _ _ _ _ _ _ _ _ _).
 %trustme
-%total (A) (sub-tp-case2 A _ _ _ _ _ _ _ _ _).
+%total (A) (sub-tp-case2 A _ _ _ _ _ _ _ _ _ _ _).
 
 
 extend-wf-tp: wf-tp G1 T1 -> {Z: tpe} wf-tp (tcons Z G1) T1 -> type.
@@ -1218,12 +1224,12 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
     (sub-tp/tsel1 STX' G' P') (sub-tp/tsel1 STAX G' P') (sub-tp/tsel1 STB G P)
       <- extend-wf-pev-case P T P' X X'
       <- extend-sub-tp ST T ST' STA STB
-      <- sub-tp-case1 G P P' X X' ST' STA G' STX' STAX.
+      <- sub-tp-case1 G P P' X X' STB ST ST' STA G' STX' STAX.
 - : extend-sub-tp (sub-tp/tsel2 ST G P) T
     (sub-tp/tsel2 STX' G' P') (sub-tp/tsel2 STA G P) (sub-tp/tsel2 STBX G' P')
       <- extend-wf-pev-case P T P' X X'
       <- extend-sub-tp ST T ST' STA STB
-      <- sub-tp-case2 G P P' X X' ST' STB G' STX' STBX.
+      <- sub-tp-case2 G P P' X X' STA ST ST' STB G' STX' STBX.
 
 - : extend-sub-tp (sub-tp/tselx P S1 S2) T
     (sub-tp/tselx P (sub-env/ext S1) (sub-env/ext S2))
