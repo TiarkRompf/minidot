@@ -1469,9 +1469,7 @@ ste/c    : sub-tp-env GX GY T3 (tcons T1 G1) (tcons T2 G2)
 extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
 %mode extract-wf +SBT1 -SBT2 -SBT3.
 
-% EOF
-
-extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
+extract-wf-pev : path-eval G E T OG -> wf-tp G T -> type.
 %mode extract-wf-pev +P -S.
 
 - : extract-wf-pev (pev W L) W.
@@ -1488,15 +1486,15 @@ extract-wf-pev : path-eval G E T -> wf-tp G T -> type.
 - : extract-wf (sub-tp/recv ST) (wf-tp/recv W1) (wf-tp/recv W2)
       <- extract-wf ST W1 W2.
 
-- : extract-wf (sub-tp/tsel1 ST P)
+- : extract-wf (sub-tp/tsel1 ST _ P)
       (wf-tp/tsel P) W2
-      <- extract-wf ST _ W2. % W1 W2
+      <- extract-wf ST _ W2.
 
-- : extract-wf (sub-tp/tsel2 ST P)
+- : extract-wf (sub-tp/tsel2 ST _ P)
       W1 (wf-tp/tsel P)
-      <- extract-wf ST W1 _. % W1 W2
+      <- extract-wf ST W1 _.
 
-- : extract-wf (sub-tp/tselx P ST ST2 S1 S2)
+- : extract-wf (sub-tp/tselx P S1 S2)
       (wf-tp/tsel P1)
       (wf-tp/tsel P2)
       <- extend-wf-pev-mult P S1 P1
