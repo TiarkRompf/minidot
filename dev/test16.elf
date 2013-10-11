@@ -1271,6 +1271,20 @@ sub-tp-case2: getenv OG GX
 %worlds () (sub-tp-case2 _ _ _ _ _ _ _ _ _ _ _ _).
 %total (A) (sub-tp-case2 A _ _ _ _ _ _ _ _ _ _ _).
 
+pev-case: wf-tp GX T
+           -> getenv OG GX
+           -> tlookexp G E (rect N TS TU) OG
+           -> {Z: tpe} wf-tp (tcons Z GX) T
+           -> tlookexp (tcons Z G) E (rect N TS TU) OG'
+           -> env-case OG G GE
+           -> env-case OG' (tcons Z G) GE
+           -> getenv OG' GX'
+           -> wf-tp GX' T
+           -> type.
+%mode pev-case +A +B +C +D +E +F +G +H -I -J.
+%worlds () (pev-case _ _ _ _ _ _ _ _ _ _).
+%trustme
+%total (A) (pev-case _ A _ _ _ _ _ _ _ _).
 
 extend-wf-tp: wf-tp G1 T1 -> {Z: tpe} wf-tp (tcons Z G1) T1 -> type.
 %mode extend-wf-tp +A +B -C.
@@ -1288,13 +1302,15 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
   type.
 %mode extend-sub-tp +A +B -C -D -E.
 
-- : extend-wf-pev (pev W L) T (pev W1 L1)
+- : extend-wf-pev (pev W G L) T (pev W' G' L1)
       <- extend-wf-tp W T W1
-      <- extend-wf-lkpe L T L1.
+      <- extend-wf-lkpe-case L T L1 X X1
+      <- pev-case W G L T W1 L1 X X1 G' W'.
 
-- : extend-wf-pev-case (pev W L) T (pev W1 L1) X X1
+- : extend-wf-pev-case (pev W G L) T (pev W' G' L1) X X1
       <- extend-wf-tp W T W1
-      <- extend-wf-lkpe-case L T L1 X X1.
+      <- extend-wf-lkpe-case L T L1 X X1
+      <- pev-case W G L T W1 L1 X X1 G' W'.
 
 - : extend-wf-tp wf-tp/top T wf-tp/top.
 - : extend-wf-tp wf-tp/bot T wf-tp/bot.
@@ -1444,12 +1460,13 @@ extend-sub-tp2-mult: sub-tp G1 T1 G2 T2 -> sub-env G2 G3 -> sub-tp G1 T1 G3 T2 -
 extend-wf-pev-mult : path-eval G E T EG -> sub-env G G1 -> path-eval G1 E T EG' -> type.
 %mode extend-wf-pev-mult +A +B -C.
 
-- : extend-wf-pev-mult (pev W L) S (pev W1 L1)
-      <- extend-wf-tp-mult W S W1
-      <- extend-wf-lkpe-mult L S L1.
+- : extend-wf-pev-mult P sub-env/refl P.
+- : extend-wf-pev-mult P (sub-env/ext S) P2
+     <- extend-wf-pev-mult P S P1
+     <- extend-wf-pev P1 _ P2.
 
 %worlds () (extend-wf-pev-mult _ _ _).
-%total (A) (extend-wf-pev-mult A _ _).
+%total (A) (extend-wf-pev-mult _ A _).
 
 
 % More specific environments preserve subtyping
@@ -1473,10 +1490,10 @@ ste/c    : sub-tp-env GX GY T3 (tcons T1 G1) (tcons T2 G2)
 extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
 %mode extract-wf +SBT1 -SBT2 -SBT3.
 
-extract-wf-pev : path-eval G E T OG -> wf-tp G T -> type.
-%mode extract-wf-pev +P -S.
+extract-wf-pev : path-eval G E T OG -> getenv OG G' -> wf-tp G' T -> type.
+%mode extract-wf-pev +P -G -S.
 
-- : extract-wf-pev (pev W L) W.
+- : extract-wf-pev (pev W G L) G W.
 
 - : extract-wf (sub-tp/top W) W wf-tp/top.
 - : extract-wf (sub-tp/bot W) wf-tp/bot W.
@@ -1529,10 +1546,10 @@ extract-wf-pev : path-eval G E T OG -> wf-tp G T -> type.
       <- extract-wf S1 W1 W3
       <- extract-wf S2 W2 W4.
 
-%worlds () (extract-wf _ _ _)(extract-wf-pev _ _).
-%total (A B) (extract-wf A _ _)(extract-wf-pev B _).
+%worlds () (extract-wf _ _ _)(extract-wf-pev _ _ _).
+%total (A B) (extract-wf A _ _)(extract-wf-pev B _ _).
 
-%reduces B < A (extract-wf-pev A B).
+%reduces B < A (extract-wf-pev A _ B).
 
 
 
@@ -1624,7 +1641,7 @@ sub-tp-refl :
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
 -/tsel: sub-tp-refl (wf-tp/tsel P) (sub-tp/tselx P sub-env/refl sub-env/refl)
-   <- extract-wf-pev P W.
+   <- extract-wf-pev P _ W.
 
 -/tbind: sub-tp-refl (wf-tp/tbind S WU)
           (sub-tp/tbind1
