@@ -1719,6 +1719,37 @@ sub-tp-trans-aux :
 
 %% case p.T < p.T && p.T < T3   -->   p.T < T3
 
+%{
+-/tselx1 : sub-tp-trans-aux
+            (wf-tp/tsel PW)
+            (sub-tp/tselx PX S1 S2)
+            (sub-tp/tsel1 A1 GE1 P1)
+            (sub-tp/tsel1 A' GE' PX1)
+            <- extend-wf-pev-mult PX S1 PX1
+          .
+}%
+%{
+-/tselx1  : sub-tp-trans-aux
+      (wf-tp/tsel (pev (wf-tp/rect AB (WU: wf-tp G2X T2U) (W: wf-tp G2X T2)) GE (P0: (tlookexp G2 (var N) (rect LN T2 T2U) OG2)) ))
+
+      (sub-tp/tselx (pev (wf-tp/rect AB1 W1X W1Y) GEX (P1: (tlookexp G0 (var N) (rect LN T2A T2UA) OGA))) (SX1: sub-env G0 G1) (SX2: sub-env G0 G2))
+
+      (sub-tp/tsel1 (A2: sub-tp G2X T2UB G3 T3) GEB (pev (wf-tp/rect AB2 W2X W2Y) GE2 (P2: (tlookexp G2 (var N) (rect LN T2B T2UB) OGB)) ))
+      (sub-tp/tsel1 A2' GEXX (pev (wf-tp/rect AB11' W1X1' W1Y1') GEXX PXX))
+
+
+      <- extend-wf-pev-mult (pev (wf-tp/rect AB1 W1X W1Y) GEX P1) SX1 (pev (wf-tp/rect AB11' W1X1' W1Y1') GEXX PXX)
+      <- extend-wf-pev-mult (pev (wf-tp/rect AB1 W1X W1Y) GEX P1) SX2 (pev (wf-tp/rect AB1' W1X' W1Y') GEX1' P1')
+
+      <- eq-refl N Q
+      <- lookexp-eq P0 P1' Q (S3: same T2  T2A) (S4: same T2U  T2UA) (SA2: sameenv OG2 OGX)
+      <- lookexp-eq P2 P1' Q (S1: same T2B T2A) (S2: same T2UB T2UA) (SAB: sameenv OGB OGX)
+
+      <- eq-low S2 (A2: sub-tp G2X T2UB G3 T3) (A2': sub-tp G2X T2UA G3 T3)
+      <- eq-wf S4 (WU: wf-tp G2X T2U) (WU': wf-tp G2X T2UA)
+         .
+%}
+%{
 -/tselx1  : sub-tp-trans-aux
       (wf-tp/tsel (pev (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) (P0: (tlookexp G2 (var N) (rect LN T2 T2U))) ))
 
@@ -1740,10 +1771,11 @@ sub-tp-trans-aux :
 
       <- sub-tp-trans-aux WU' SY24 A2' SBT5
       .
-
+}%
 
 %% case T1 < p.T && p.T < p.T   -->   T1 < p.T
 
+%{
 -/tselx2  : sub-tp-trans-aux
       (wf-tp/tsel (pev (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) (P0: (tlookexp G2 (var N) (rect LN T2 T2U))) ))
 
@@ -1766,8 +1798,9 @@ sub-tp-trans-aux :
 
       <- sub-tp-trans-aux W' A1' SY31 (SBT5: sub-tp G1 T1 G3 T2B)
       .
+}%
 
-
+%{
 -/tselx-tselx  : sub-tp-trans-aux
       (wf-tp/tsel (pev WR0 (P0: (tlookexp G2 (var N) (rect _ _ _))) ))
 
@@ -1812,26 +1845,25 @@ sub-tp-trans-aux :
       <- sub-env-trans S01 SX1 SX1x
       <- sub-env-trans S02 SX3 SX3x
       .
-
+}%
 
 -/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
-      (sub-tp/tsel1 SBT1 P)
+      (sub-tp/tsel1 SBT1 G P)
       SBT3
-      (sub-tp/tsel1 SBT5 P)
+      (sub-tp/tsel1 SBT5 G P)
       <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
 
 -/tsel2  : sub-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
       W
       SBT1
-      (sub-tp/tsel2 SBT3 P)
-      (sub-tp/tsel2 SBT5 P)
+      (sub-tp/tsel2 SBT3 G P)
+      (sub-tp/tsel2 SBT5 G P)
       <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
-
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
-
+%{
 -/tsel2-tsel1  : sub-tp-trans-aux  % T1 < p.T2 && p.T2 < T3 --> T1 < T3
       (wf-tp/tsel (pev (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2))  (P0: (tlookexp G2 (var N) (rect LN T2 T2U)))))
       (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (wf-tp/rect _ W1X W1Y)  (P1: (tlookexp G2 (var N) (rect LN T2A T2UA)))))
@@ -1847,6 +1879,7 @@ sub-tp-trans-aux :
 
       <- sub-tp-trans-aux W A1' AB SBT3
       <- sub-tp-trans-aux WU SBT3 A2' SBT5.
+}%
 
 %{
 In the previous formulation of tbind2 we had a problem.
