@@ -1200,6 +1200,26 @@ lookexp-eq: tlookexp G2 (var N1) (rect LN T1 T3) G2A -> tlookexp G2 (var N2) (re
 %worlds () (lookexp-eq _ _ _ _ _ _).
 %total {T2} (lookexp-eq T2 _ _ _ _ _).
 
+sameopt-same: sameopt (tsome T) (tsome T') -> same T T' -> type.
+%mode sameopt-same +A -B.
+
+- : sameopt-same identopt ident.
+
+%worlds () (sameopt-same _ _).
+%total {A} (sameopt-same A _).
+
+lookexp-eq-gen: tlookexp G E (rect N S U) EG -> tlookexp G E (rect N S' U') EG' -> same (rect N S U) (rect N S' U') -> sameenv EG EG' -> type.
+%mode lookexp-eq-gen +P1 +P2 -O1 -O2.
+
+- : lookexp-eq-gen (tle E1 (L1: tlookup _ N _)) (tle E2 L2) SX SG
+      <- eq-refl N EQ
+      <- lookup-eq0 L1 L2 EQ X
+      <- eq-exp-low X E1 E1'
+      <- expand-eq E1' E2 S SG
+      <- sameopt-same S SX.
+
+%worlds () (lookexp-eq-gen _ _ _ _).
+%total {A} (lookexp-eq-gen A _ _ _).
 
 % Extending environments preserves subtyping
 
@@ -1698,15 +1718,18 @@ sub-tp-refl :
 
 %% Helpers
 
-path-eval-eq : path-eval G E T EG
-                -> path-eval G E T' EG'
-                -> same T T'
+path-eval-eq : path-eval G E (rect N S U) EG
+                -> path-eval G E (rect N S' U') EG'
+                -> same (rect N S U) (rect N S' U')
                 -> sameenv EG EG'
                 -> type.
 %mode path-eval-eq +A +B -C -D.
+
+- : path-eval-eq (pev W G L) (pev W' G' L') EQT EQG
+   <- lookexp-eq-gen L L' EQT EQG.
+
 %worlds () (path-eval-eq _ _ _ _).
-%trustme
-%total A (path-eval-eq A _ _ _).
+%total {} (path-eval-eq _ _ _ _).
 
 path-eval-env-sub : path-eval G E T EG
                      -> path-eval G1 E T EG1
