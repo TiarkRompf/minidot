@@ -1731,17 +1731,115 @@ path-eval-eq : path-eval G E (rect N S U) EG
 %worlds () (path-eval-eq _ _ _ _).
 %total {} (path-eval-eq _ _ _ _).
 
+sametenv-sub-env : sametenv G1 G2 -> sub-env G1 G2 -> type.
+%mode sametenv-sub-env +A -B.
+
+- : sametenv-sub-env identtenv sub-env/refl.
+
+%worlds () (sametenv-sub-env _ _).
+%total A (sametenv-sub-env A _).
+
+exp-tp-env-sub-left : exp-tp G T N OT (etenv/left G)
+                       -> sub-env G G1
+                       -> exp-tp G1 T N OT (etenv/left G1)
+                       -> type.
+%mode exp-tp-env-sub-left +A +B -C.
+
+- : exp-tp-env-sub-left E sub-env/refl E.
+
+- : exp-tp-env-sub-left E (sub-env/ext S) E'
+     <- exp-tp-env-sub-left E S E1
+     <- extend-exp-tp-case-left E1 _ E'.
+
+%worlds () (exp-tp-env-sub-left _ _ _).
+%total A (exp-tp-env-sub-left _ A _).
+
+exp-tp-env-sub-right : exp-tp G T N OT (etenv/right GX)
+                       -> sub-env G G1
+                       -> exp-tp G1 T N OT (etenv/right GX)
+                       -> type.
+%mode exp-tp-env-sub-right +A +B -C.
+
+- : exp-tp-env-sub-right E sub-env/refl E.
+
+- : exp-tp-env-sub-right E (sub-env/ext S) E'
+     <- exp-tp-env-sub-right E S E1
+     <- extend-exp-tp-case-right E1 _ E'.
+
+%worlds () (exp-tp-env-sub-right _ _ _).
+%total A (exp-tp-env-sub-right _ A _).
+
+env-case-left : env-case (etenv/left G') G EG -> sametenv G G' -> type.
+%mode env-case-left +A -B.
+
+- : env-case-left env-case/left identtenv.
+
+%worlds () (env-case-left _ _).
+%total A (env-case-left A _).
+
+eq-exp-tp-left : sametenv G GX -> exp-tp G T N OT (etenv/left GX) -> exp-tp G T N OT (etenv/left G) -> type.
+%mode eq-exp-tp-left +A +B -C.
+
+- : eq-exp-tp-left identtenv E E.
+
+%worlds () (eq-exp-tp-left _ _ _).
+%total {A} (eq-exp-tp-left A _ _).
+
+eq-sub-env-low : sametenv G GX -> sub-env G G2 -> sub-env GX G2 -> type.
+%mode eq-sub-env-low +A +B -C.
+
+- : eq-sub-env-low identtenv S S.
+
+%worlds () (eq-sub-env-low _ _ _).
+%total {A} (eq-sub-env-low A _ _).
+
+eq-sub-env-high : sametenv G GX -> sub-env G1 G -> sub-env G1 GX -> type.
+%mode eq-sub-env-high +A +B -C.
+
+- : eq-sub-env-high identtenv S S.
+
+%worlds () (eq-sub-env-high _ _ _).
+%total {A} (eq-sub-env-high A _ _).
+
 exp-tp-env-sub : exp-tp G T N OT EG
+                  -> getenv EG GX
+                  -> sub-env G G1
+                  -> exp-tp G1 T N OT EG1
+                  -> getenv EG1 G1X
+                  -> sub-env GX G1X
+                  -> type.
+%mode exp-tp-env-sub +A +B +C -D -E -F.
+
+- : exp-tp-env-sub E getenv/left S E' getenv/left S'
+     <- exp-tp-env-case E G EG
+     <- env-case-left EG EQG
+     <- eq-exp-tp-left EQG E E1
+     <- exp-tp-env-sub-left E1 S E'
+     <- eq-sub-env-low EQG S S'.
+
+- : exp-tp-env-sub E getenv/right S E' getenv/right sub-env/refl
+     <- exp-tp-env-sub-right E S E'.
+
+%worlds () (exp-tp-env-sub _ _ _ _ _ _).
+%total A (exp-tp-env-sub _ A _ _ _ _).
+
+exp-tp-env-sub-in : exp-tp G T N OT EG
                   -> exp-tp G1 T N OT EG1
                   -> getenv EG GX
                   -> getenv EG1 G1X
                   -> sub-env G G1
                   -> sub-env GX G1X
                   -> type.
-%mode exp-tp-env-sub +A +B +C +D +E -F.
-%worlds () (exp-tp-env-sub _ _ _ _ _ _).
-%trustme
-%total A (exp-tp-env-sub _ _ A _ _ _).
+%mode exp-tp-env-sub-in +A +B +C +D +E -F.
+
+- : exp-tp-env-sub-in E E' GE GE' S S'
+     <- exp-tp-env-sub E GE S E1 GE1 S1
+     <- expand-eq E1 E' EQT EQGE
+     <- same-etenv-tenv EQGE GE1 GE' EQG
+     <- eq-sub-env-high EQG S1 S'.
+
+%worlds () (exp-tp-env-sub-in _ _ _ _ _ _).
+%total {} (exp-tp-env-sub-in _ _ _ _ _ _).
 
 path-eval-env-sub : path-eval G E T EG
                      -> path-eval G1 E T EG1
@@ -1757,7 +1855,7 @@ path-eval-env-sub : path-eval G E T EG
      <- eq-refl N EQ
      <- lookup-eq0 L2 L' EQ EQT
      <- eq-exp-low EQT E E1
-     <- exp-tp-env-sub E1 E' GE GE1 S SX.
+     <- exp-tp-env-sub-in E1 E' GE GE1 S SX.
 
 %worlds () (path-eval-env-sub _ _ _ _ _ _).
 %total A (path-eval-env-sub _ _ A _ _ _).
