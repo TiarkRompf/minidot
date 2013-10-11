@@ -265,7 +265,11 @@ wf-tp : tenv -> tpe -> type.
 sub-tp : tenv -> tpe -> tenv -> tpe -> type.
 
 path-eval: tenv -> exp -> tpe -> etenv -> type.
-pev  : path-eval G E (rect N TS TU) G' <- tlookexp G E (rect N TS TU) G' <- wf-tp G (rect N TS TU).
+pev  : path-eval G E (rect N TS TU) EG
+        <- tlookexp G E (rect N TS TU) EG
+        % <- wf-tp G (rect N TS TU)
+        <- getenv EG G' <- wf-tp G' (rect N TS TU)
+        .
 
 % ++ sub-tp/refl : sub-tp G T G T <- wf-tp G T. %%% ACCELRATE QUERIES !!
 
@@ -1211,7 +1215,7 @@ sub-tp-case1:  getenv OG GX
 - : sub-tp-case1 getenv/left P P' env-case/left env-case/left ST STA ST' STA' getenv/left ST' STA'.
 - : sub-tp-case1 getenv/right P P' env-case/right env-case/right ST STA ST' STA' getenv/right ST STA.
 
-- : sub-tp-case1 getenv/left (pev W (L: tlookexp _ (var N) _ _)) (pev W' L') env-case/left (env-case/right: env-case _ (tcons T _) GX') (ST: sub-tp _ TU (tcons T G2) TU2) STA ST' STA' getenv/right O1 O2
+- : sub-tp-case1 getenv/left (pev _ _ (L: tlookexp _ (var N) _ _)) (pev _ _ L') env-case/left (env-case/right: env-case _ (tcons T _) GX') (ST: sub-tp _ TU (tcons T G2) TU2) STA ST' STA' getenv/right O1 O2
      <- extend-wf-lkpe-case-left L T L2
      <- eq-refl N EQ
      <- lookexp-eq L2 L' EQ _ _ X
@@ -1219,7 +1223,7 @@ sub-tp-case1:  getenv OG GX
      <- no-subtype CONTRA GX' TU (tcons T G2) TU2 O1
      <- no-subtype CONTRA GX' TU G2 TU2 O2.
 
-- : sub-tp-case1 getenv/right (pev W (L: tlookexp _ (var N) _ _)) (pev W' L') env-case/right (env-case/left: env-case _ (tcons T G) GX') (ST: sub-tp _ TU (tcons T G2) TU2) STA ST' STA' getenv/left O1 O2
+- : sub-tp-case1 getenv/right (pev _ _ (L: tlookexp _ (var N) _ _)) (pev _ _ L') env-case/right (env-case/left: env-case _ (tcons T G) GX') (ST: sub-tp _ TU (tcons T G2) TU2) STA ST' STA' getenv/left O1 O2
      <- extend-wf-lkpe-case-right L T L2
      <- eq-refl N EQ
      <- lookexp-eq L' L2 EQ _ _ X
@@ -1248,7 +1252,7 @@ sub-tp-case2: getenv OG GX
 - : sub-tp-case2 getenv/left P P' env-case/left env-case/left ST STA ST' STA' getenv/left ST' STA'.
 - : sub-tp-case2 getenv/right P P' env-case/right env-case/right ST STA ST' STA' getenv/right ST STA.
 
-- : sub-tp-case2 getenv/left (pev W (L: tlookexp _ (var N) _ _)) (pev W' L') env-case/left (env-case/right: env-case _ (tcons T _) GX') (ST: sub-tp (tcons T G1) TS1 _ TS) STA ST' STA' getenv/right O1 O2
+- : sub-tp-case2 getenv/left (pev _ _ (L: tlookexp _ (var N) _ _)) (pev _ _ L') env-case/left (env-case/right: env-case _ (tcons T _) GX') (ST: sub-tp (tcons T G1) TS1 _ TS) STA ST' STA' getenv/right O1 O2
      <- extend-wf-lkpe-case-left L T L2
      <- eq-refl N EQ
      <- lookexp-eq L2 L' EQ _ _ X
@@ -1256,7 +1260,7 @@ sub-tp-case2: getenv OG GX
      <- no-subtype CONTRA (tcons T G1) TS1 GX' TS O1
      <- no-subtype CONTRA G1 TS1 GX' TS O2.
 
-- : sub-tp-case2 getenv/right (pev W (L: tlookexp _ (var N) _ _)) (pev W' L') env-case/right (env-case/left: env-case _ (tcons T G) GX') (ST: sub-tp (tcons T G1) TS1 _ TS) STA ST' STA' getenv/left O1 O2
+- : sub-tp-case2 getenv/right (pev _ _ (L: tlookexp _ (var N) _ _)) (pev _ _ L') env-case/right (env-case/left: env-case _ (tcons T G) GX') (ST: sub-tp (tcons T G1) TS1 _ TS) STA ST' STA' getenv/left O1 O2
      <- extend-wf-lkpe-case-right L T L2
      <- eq-refl N EQ
      <- lookexp-eq L' L2 EQ _ _ X
