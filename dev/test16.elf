@@ -1192,6 +1192,11 @@ no-subtype: false -> {G1}{T1}{G2}{T2}sub-tp G1 T1 G2 T2 -> type.
 %worlds () (no-subtype _ _ _ _ _ _).
 %total (A) (no-subtype A _ _ _ _ _).
 
+no-wf-tp: false -> {G1}{T1}wf-tp G1 T1 -> type.
+%mode no-wf-tp +A +B +C -D.
+%worlds () (no-wf-tp _ _ _ _).
+%total (A) (no-wf-tp A _ _ _).
+
 not-sameenv-left-right: sameenv (etenv/left X) (etenv/right Y) -> false -> type.
 %mode not-sameenv-left-right +A -B.
 %worlds () (not-sameenv-left-right _ _).
@@ -1273,17 +1278,34 @@ sub-tp-case2: getenv OG GX
 
 pev-case: wf-tp GX T
            -> getenv OG GX
-           -> tlookexp G E (rect N TS TU) OG
+           -> tlookexp G (var X) (rect N TS TU) OG
            -> {Z: tpe} wf-tp (tcons Z GX) T
-           -> tlookexp (tcons Z G) E (rect N TS TU) OG'
+           -> tlookexp (tcons Z G) (var X) (rect N TS TU) OG'
            -> env-case OG G GE
            -> env-case OG' (tcons Z G) GE
            -> getenv OG' GX'
            -> wf-tp GX' T
            -> type.
 %mode pev-case +A +B +C +D +E +F +G +H -I -J.
+
+- : pev-case W getenv/left L Z W' L' env-case/left env-case/left getenv/left W'.
+- : pev-case W getenv/right L Z W' L' env-case/right env-case/right getenv/right W.
+
+- : pev-case (W: wf-tp _ T) getenv/left (L: tlookexp _ (var N) _ _) Z W' L' env-case/left (env-case/right: env-case _ _ GX') getenv/right WC
+     <- extend-wf-lkpe-case-left L Z L2
+     <- eq-refl N EQ
+     <- lookexp-eq L2 L' EQ _ _ X
+     <- not-sameenv-left-right X CONTRA
+     <- no-wf-tp CONTRA GX' T WC.
+
+- : pev-case (W: wf-tp _ T) getenv/right (L: tlookexp _ (var N) _ _) Z W' L' env-case/right (env-case/left: env-case _ (tcons Z G) _) getenv/left WC
+     <- extend-wf-lkpe-case-right L Z L2
+     <- eq-refl N EQ
+     <- lookexp-eq L' L2 EQ _ _ X
+     <- not-sameenv-left-right X CONTRA
+     <- no-wf-tp CONTRA (tcons Z G) T WC.
+
 %worlds () (pev-case _ _ _ _ _ _ _ _ _ _).
-%trustme
 %total (A) (pev-case _ A _ _ _ _ _ _ _ _).
 
 extend-wf-tp: wf-tp G1 T1 -> {Z: tpe} wf-tp (tcons Z G1) T1 -> type.
