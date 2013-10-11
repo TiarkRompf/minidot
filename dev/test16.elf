@@ -1731,6 +1731,18 @@ path-eval-eq : path-eval G E (rect N S U) EG
 %worlds () (path-eval-eq _ _ _ _).
 %total {} (path-eval-eq _ _ _ _).
 
+exp-tp-env-sub : exp-tp G T N OT EG
+                  -> exp-tp G1 T N OT EG1
+                  -> getenv EG GX
+                  -> getenv EG1 G1X
+                  -> sub-env G G1
+                  -> sub-env GX G1X
+                  -> type.
+%mode exp-tp-env-sub +A +B +C +D +E -F.
+%worlds () (exp-tp-env-sub _ _ _ _ _ _).
+%trustme
+%total A (exp-tp-env-sub _ _ A _ _ _).
+
 path-eval-env-sub : path-eval G E T EG
                      -> path-eval G1 E T EG1
                      -> getenv EG GX
@@ -1739,9 +1751,16 @@ path-eval-env-sub : path-eval G E T EG
                      -> sub-env GX G1X
                      -> type.
 %mode path-eval-env-sub +A +B +C +D +E -F.
+
+- : path-eval-env-sub (pev W G (tle E (L: tlookup _ N _))) (pev W' G' (tle E' L')) GE GE1 S SX
+     <- extend-wf-lkp-mult L S L2
+     <- eq-refl N EQ
+     <- lookup-eq0 L2 L' EQ EQT
+     <- eq-exp-low EQT E E1
+     <- exp-tp-env-sub E1 E' GE GE1 S SX.
+
 %worlds () (path-eval-env-sub _ _ _ _ _ _).
-%trustme
-%total A (path-eval-env-sub A _ _ _ _ _).
+%total A (path-eval-env-sub _ _ A _ _ _).
 
 path-eval-etenv : path-eval G E T EG
                    -> getenv EG GX
