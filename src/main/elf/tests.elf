@@ -64,4 +64,5 @@
 %query 1 1 type-exp tnil e16  top.
 
 % these should not type-check
-%query 0 * type-exp tnil b1 top.
+%query 0 1 type-exp tnil b1 top.
+%query 0 1 type-exp tnil b2 top.

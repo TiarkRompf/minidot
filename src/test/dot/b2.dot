@@ -1,0 +1,4 @@
+val x: { x => {type A: Bot .. Top} & {type B: x.A .. x.A} & {val l: x.B} } = new (x => type A: Top .. Top; type B: x.A .. x.A; val l: x.B = new ())
+val d = new ( def m(x: x.type): Top = val y: x.B = x.l; y )
+val y: x.B = new ()
+d.m(x)
