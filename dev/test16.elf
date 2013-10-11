@@ -1005,16 +1005,23 @@ eq-rect2: sameopt (tsome (rect LN T1 T2)) (tsome (rect LN T1' T2')) -> same T1 T
 %worlds () (eq-rect2 _ _ _).
 %total {T2} (eq-rect2 T2 _ _).
 
-
 eq-low: same T1 T1' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1' G2 T2 -> type.
 %mode eq-low +P1 +P2 -SBT.
 
 - : eq-low ident S S.
 
 %worlds () (eq-low _ _ _).
-%total {T2} (eq-low T2 _ _).
+%total {A} (eq-low A _ _).
 %reduces N3 <= N2 (eq-low _ N2  N3).
 
+eq-low-env: sametenv G1 G1' -> sub-tp G1 T1 G2 T2 -> sub-tp G1' T1 G2 T2 -> type.
+%mode eq-low-env +P1 +P2 -SBT.
+
+- : eq-low-env identtenv S S.
+
+%worlds () (eq-low-env _ _ _).
+%total {A} (eq-low-env A _ _).
+%reduces N3 <= N2 (eq-low-env _ N2  N3).
 
 eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
 %mode eq-high +P1 +P2 -SBT.
@@ -1022,7 +1029,7 @@ eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
 - : eq-high ident S S.
 
 %worlds () (eq-high _ _ _).
-%total {T2} (eq-high T2 _ _).
+%total {A} (eq-high A _ _).
 %reduces N3 <= N2 (eq-high _ N2  N3).
 
 eq-high-env: sametenv G2 G2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2' T2 -> type.
@@ -2035,23 +2042,32 @@ sub-tp-trans-aux :
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
-%{
--/tsel2-tsel1  : sub-tp-trans-aux  % T1 < p.T2 && p.T2 < T3 --> T1 < T3
-      (wf-tp/tsel (pev (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2))  (P0: (tlookexp G2 (var N) (rect LN T2 T2U)))))
-      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (wf-tp/rect _ W1X W1Y)  (P1: (tlookexp G2 (var N) (rect LN T2A T2UA)))))
-      (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) (pev (wf-tp/rect _ W2X W2Y) (P2: (tlookexp G2 (var N) (rect LN T2B T2UB)))))
-      (SBT5: sub-tp G1 T1 G3 T3)
-
-      <- eq-refl N Q
-      <- lookexp-eq P1 P0 Q (S1: same T2A T2) (S3: same T2UA T2U)
-      <- lookexp-eq P2 P0 Q (S2: same T2B T2) (S4: same T2UB T2U)
-
-      <- eq-high S1 A1 (A1': sub-tp G1 T1 G2 T2)
-      <- eq-low  S4 A2 (A2': sub-tp G2 T2U G3 T3)
-
-      <- sub-tp-trans-aux W A1' AB SBT3
-      <- sub-tp-trans-aux WU SBT3 A2' SBT5.
-}%
+-/tsel2-tsel1 : sub-tp-trans-aux
+                 (wf-tp/tsel PW)
+                 (sub-tp/tsel2 A1 GE1 P1)
+                 (sub-tp/tsel1 A2 GE2 P2)
+                 OUT
+   <- path-eval-etenv P1 GE1
+   <- path-eval-etenv P2 GE2
+   <- path-eval-etenv PW GEW
+   <- path-eval-eq P1 P2 EQR12 EQGE12
+   <- rect-same-all-same EQR12 EQS12 EQU12
+   <- same-etenv-tenv EQGE12 GE1 GE2 EQG12
+   <- path-eval-eq P1 PW EQR1W EQGE1W
+   <- rect-same-all-same EQR1W EQS1W EQU1W
+   <- same-etenv-tenv EQGE1W GE1 GEW EQG1W
+   <- path-eval-eq P2 PW EQR2W EQGE2W
+   <- rect-same-all-same EQR2W EQS2W EQU2W
+   <- same-etenv-tenv EQGE2W GE2 GEW EQG2W
+   <- extract-wf-pev PW GEW' W'
+   <- same-etenv-tenv identenv GEW' GEW EQW
+   <- eq-wf-env EQW W' (wf-tp/rect BSU WU WS)
+   <- eq-high EQS1W A1 A1'
+   <- eq-high-env EQG1W A1' A1''
+   <- sub-tp-trans-aux WS A1'' BSU BAS
+   <- eq-low EQU2W A2 A2'
+   <- eq-low-env EQG2W A2' A2''
+   <- sub-tp-trans-aux WU BAS A2'' OUT.
 
 %{
 In the previous formulation of tbind2 we had a problem.
