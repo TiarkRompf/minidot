@@ -1785,72 +1785,25 @@ sub-tp-trans-aux :
             <- extend-wf-pev-mult PX S1 PX1
             <- path-eval-etenv PX1 GEX1
             <- extend-wf-pev-mult PX S2 PX2
-            <- path-eval-eq P2 PX2  EQR2 EQGE2
-            <- path-eval-eq PX2 P2  EQR2' EQGE2'
+            <- path-eval-eq PX2 P2 EQR2 EQGE2
             <- path-eval-eq PW P2 EQR2W EQGEW
             <- path-eval-etenv PX2 GEX2
-            <- same-etenv-tenv EQGE2 GE2 GEX2 EQG2
-            <- same-etenv-tenv EQGE2' GEX2 GE2 EQG2'
+            <- same-etenv-tenv EQGE2 GEX2 GE2 EQG2
             <- extract-wf-pev PX GEX WX
             <- sub-tp-refl WX (sub-tp/rect BUX _ _ _)
-            <- rect-same-all-same EQR2' _ EQU
+            <- rect-same-all-same EQR2 _ EQU
             <- path-eval-env-sub PX PX1 GEX GEX1 S1 S1X
             <- extend-sub-tp1-mult BUX S1X BUX1
             <- eq-high EQU BUX1 BUX1'
             <- path-eval-env-sub PX PX2 GEX GEX2 S2 S2X
             <- extend-sub-tp2-mult BUX1' S2X BUX2
-            <- eq-high-env EQG2' BUX2 BUX2'
+            <- eq-high-env EQG2 BUX2 BUX2'
             <- eq-pev EQR2W PW PW'
             <- extract-wf-pev PW' GEW' (wf-tp/rect _ WU _)
             <- same-etenv-tenv EQGEW GEW' GE2 EQW2
             <- eq-wf-env EQW2 WU WU'
             <- sub-tp-trans-aux WU' BUX2' A2 A3
           .
-
-%{
--/tselx1  : sub-tp-trans-aux
-      (wf-tp/tsel (pev (wf-tp/rect AB (WU: wf-tp G2X T2U) (W: wf-tp G2X T2)) GE (P0: (tlookexp G2 (var N) (rect LN T2 T2U) OG2)) ))
-
-      (sub-tp/tselx (pev (wf-tp/rect AB1 W1X W1Y) GEX (P1: (tlookexp G0 (var N) (rect LN T2A T2UA) OGA))) (SX1: sub-env G0 G1) (SX2: sub-env G0 G2))
-
-      (sub-tp/tsel1 (A2: sub-tp G2X T2UB G3 T3) GEB (pev (wf-tp/rect AB2 W2X W2Y) GE2 (P2: (tlookexp G2 (var N) (rect LN T2B T2UB) OGB)) ))
-      (sub-tp/tsel1 A2' GEXX (pev (wf-tp/rect AB11' W1X1' W1Y1') GEXX PXX))
-
-
-      <- extend-wf-pev-mult (pev (wf-tp/rect AB1 W1X W1Y) GEX P1) SX1 (pev (wf-tp/rect AB11' W1X1' W1Y1') GEXX PXX)
-      <- extend-wf-pev-mult (pev (wf-tp/rect AB1 W1X W1Y) GEX P1) SX2 (pev (wf-tp/rect AB1' W1X' W1Y') GEX1' P1')
-
-      <- eq-refl N Q
-      <- lookexp-eq P0 P1' Q (S3: same T2  T2A) (S4: same T2U  T2UA) (SA2: sameenv OG2 OGX)
-      <- lookexp-eq P2 P1' Q (S1: same T2B T2A) (S2: same T2UB T2UA) (SAB: sameenv OGB OGX)
-
-      <- eq-low S2 (A2: sub-tp G2X T2UB G3 T3) (A2': sub-tp G2X T2UA G3 T3)
-      <- eq-wf S4 (WU: wf-tp G2X T2U) (WU': wf-tp G2X T2UA)
-         .
-}%
-%{
--/tselx1  : sub-tp-trans-aux
-      (wf-tp/tsel (pev (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) (P0: (tlookexp G2 (var N) (rect LN T2 T2U))) ))
-
-      (sub-tp/tselx (pev (wf-tp/rect AB1 W1X W1Y) (P1: (tlookexp G0 (var N) (rect LN T2A T2UA)))) (sub-tp/rect (SY24:sub-tp G1 T2UA G2 T2UA) SY31 SY34 SY12) _ (SX1: sub-env G0 G1) (SX2: sub-env G0 G2))
-
-      (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) (pev (wf-tp/rect AB2 W2X W2Y) (P2: (tlookexp G2 (var N) (rect LN T2B T2UB))) ))
-      (sub-tp/tsel1 SBT5 (pev (wf-tp/rect AB11' W1X1' W1Y1') PXX))
-
-
-      <- extend-wf-pev-mult (pev (wf-tp/rect AB1 W1X W1Y) P1) SX1 (pev (wf-tp/rect AB11' W1X1' W1Y1') PXX)
-      <- extend-wf-pev-mult (pev (wf-tp/rect AB1 W1X W1Y) P1) SX2 (pev (wf-tp/rect AB1' W1X' W1Y') P1')
-
-      <- eq-refl N Q
-      <- lookexp-eq P0 P1' Q (S3: same T2  T2A) (S4: same T2U  T2UA)
-      <- lookexp-eq P2 P1' Q (S1: same T2B T2A) (S2: same T2UB T2UA)
-
-      <- eq-low S2 (A2: sub-tp G2 T2UB G3 T3) (A2': sub-tp G2 T2UA G3 T3)
-      <- eq-wf S4 (WU: wf-tp G2 T2U) (WU': wf-tp G2 T2UA)
-
-      <- sub-tp-trans-aux WU' SY24 A2' SBT5
-      .
-}%
 
 %% case T1 < p.T && p.T < p.T   -->   T1 < p.T
 
