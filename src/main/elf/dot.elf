@@ -265,7 +265,11 @@ wf-tp : tenv -> tpe -> type.
 sub-tp : tenv -> tpe -> tenv -> tpe -> type.
 
 path-eval: tenv -> exp -> tpe -> etenv -> type.
-pev  : path-eval G E (rect N TS TU) G' <- tlookexp G E (rect N TS TU) G' <- wf-tp G (rect N TS TU).
+pev  : path-eval G E (rect N TS TU) EG
+        <- tlookexp G E (rect N TS TU) EG
+        % <- wf-tp G (rect N TS TU)
+        <- getenv EG G' <- wf-tp G' (rect N TS TU)
+        .
 
 sub-tp/refl : sub-tp G T G T <- wf-tp G T. %%% ACCELRATE QUERIES !! % --
 
