@@ -2513,14 +2513,15 @@ invert-var-cases :
 %worlds () (invert-var-cases _ _ _ _ _ _).
 %total A (invert-var-cases A _ _ _ _ _).
 
-var-cases-wfv: var-cases X G T1 T N NT -> wf-val V G T1 -> wf-val V G T -> type.
-%mode var-cases-wfv +A +B -C.
+var-cases-wfv: var-cases X G T1 T N NT -> wf-env H G -> tlookup G X T1 -> vlookup H X V -> wf-val V G T1 -> wf-val V G T -> type.
+%mode var-cases-wfv +A +B +C +D +E -F.
 
-- : var-cases-wfv (var-cases/default S1) W (wfv/sub S1 W).
-- : var-cases-wfv (var-cases/x SX1 ST WB W B L) WX WX'.
+- : var-cases-wfv (var-cases/default S1) _ _ _ W (wfv/sub S1 W).
+- : var-cases-wfv (var-cases/x SX1 ST WB W B L) E GL VL WX WX'.
 
-%worlds () (var-cases-wfv _ _ _).
-%total A (var-cases-wfv A _ _).
+%worlds () (var-cases-wfv _ _ _ _ _ _).
+%trustme
+%total A (var-cases-wfv A _ _ _ _ _).
 
 %{
 invert-var :
@@ -2897,7 +2898,7 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
  -      : eval-safe ZT E (e/var L2) V2
           <- invert-var-cases ZT A B L W CST
           <- lookup-safe E L L2 V
-          <- var-cases-wfv CST V V2.
+          <- var-cases-wfv CST E L L2 V V2.
 
  -      : eval-safe (ZT: type-exp G _ _) E (e/fun EX) (wfv/sub CST (wfv/f IN STFF M TV STV TS E))
           <- invert-fun ZT TS TSV M WR STV CST IN
