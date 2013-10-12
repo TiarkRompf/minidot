@@ -1954,77 +1954,32 @@ sub-tp-trans-aux :
 
 %% case T1 < p.T && p.T < p.T   -->   T1 < p.T
 
-%{
--/tselx2  : sub-tp-trans-aux
-      (wf-tp/tsel (pev (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) (P0: (tlookexp G2 (var N) (rect LN T2 T2U))) ))
-
-      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (wf-tp/rect AB1 W1X W1Y) (P1: (tlookexp G2 (var N) (rect LN T2A T2UA))) ))
-
-      (sub-tp/tselx (pev (wf-tp/rect AB2 W2X W2Y) (P2: (tlookexp G0 (var N) (rect LN T2B T2UB)))) _ (sub-tp/rect SY24 SY31 SY34 SY12) (SX2: sub-env G0 G2) (SX3: sub-env G0 G3))
-
-      (sub-tp/tsel2 SBT5 (pev (wf-tp/rect AB2' W2X' W2Y') PXX))
-
-
-      <- extend-wf-pev-mult (pev (wf-tp/rect AB2 W2X W2Y) P2) SX2 (pev (wf-tp/rect AB21' W2X1' W2Y1') P2')
-      <- extend-wf-pev-mult (pev (wf-tp/rect AB2 W2X W2Y) P2) SX3 (pev (wf-tp/rect AB2' W2X' W2Y') PXX)
-
-      <- eq-refl N Q
-      <- lookexp-eq P0 P2' Q (S3: same T2  T2B) (S4: same T2U  T2UB)
-      <- lookexp-eq P1 P2' Q (S1: same T2A T2B) (S2: same T2UA T2UB)
-
-      <- eq-high S1 (A1: sub-tp G1 T1 G2 T2A) (A1': sub-tp G1 T1 G2 T2B)
-      <- eq-wf S3 (W: wf-tp G2 T2) (W': wf-tp G2 T2B)
-
-      <- sub-tp-trans-aux W' A1' SY31 (SBT5: sub-tp G1 T1 G3 T2B)
-      .
-}%
-
-%{
--/tselx-tselx  : sub-tp-trans-aux
-      (wf-tp/tsel (pev WR0 (P0: (tlookexp G2 (var N) (rect _ _ _))) ))
-
-      (sub-tp/tselx (pev WR1 (P1: (tlookexp G0 (var N) (rect _ _ _)))) ST11 ST12 (SX1: sub-env G0 G1) (SX2: sub-env G0 G2))
-
-      (sub-tp/tselx (pev WR2 (P2: (tlookexp G0' (var N) (rect _ _ _)))) ST21 ST22 (SX2': sub-env G0' G2) (SX3: sub-env G0' G3))
-
-      (sub-tp/tselx (pev W00 P3) ST31 ST32 SX1x SX3x)
-
-      <- eq-refl N Q
-
-      <- extend-wf-pev-mult (pev WR1 P1) SX2 (pev WR1' P1')
-      <- extend-wf-pev-mult (pev WR2 P2) SX2' (pev WR2' P2')
-
-      <- lookexp-eq P2' P1' Q S1 S2
-      <- eq-rect S1 S2 _ SR1 SR1x
-
-      <- eq-low SR1 ST21 ST21'
-      <- eq-low SR1x ST11 ST11'
-
-      <- eq-high SR1 ST22 ST22'
-      <- eq-high SR1x ST12 ST12'
-
-      <- lookexp-eq P0 P1' Q S3 S4
-      <- eq-rect S3 S4 _ SR3 SR3x
-      <- eq-pev SR3 (pev WR0 P0) (pev WR0' P0')
-
-      <- sub-tp-trans-aux WR0' ST11' ST21' ST31x
-      <- sub-tp-trans-aux WR0' ST22' ST12' ST32x
-
-      <- eq-low SR1 ST31x ST31xx %% TODO: reverse order somewhere above??
-      <- eq-high SR1 ST31xx ST31
-
-      <- eq-low SR1 ST32x ST32xx
-      <- eq-high SR1 ST32xx ST32
-
-
-      <- eq-pev SR1 (pev WR2 P2) (pev WR2S P2S)
-
-      <- pev-tp-dia (pev WR0' P0') (pev WR1 P1) (pev WR2S P2S) SX2 SX2' (pev W00 P3) S01 S02
-
-      <- sub-env-trans S01 SX1 SX1x
-      <- sub-env-trans S02 SX3 SX3x
-      .
-}%
+-/tselx2 : sub-tp-trans-aux
+            (wf-tp/tsel PW)
+            (sub-tp/tsel2 A1 GE2 P2)
+            (sub-tp/tselx PX S2 S3)
+            (sub-tp/tsel2 A3 GEX3 PX3)
+   <- extend-wf-pev-mult PX S2 PX2
+   <- extend-wf-pev-mult PX S3 PX3
+   <- path-eval-etenv PX3 GEX3
+   <- path-eval-eq PX2 P2 EQR2 EQGE2
+   <- path-eval-eq PW P2 EQR2W EQGEW
+   <- path-eval-etenv PX2 GEX2
+   <- same-etenv-tenv EQGE2 GEX2 GE2 EQG2
+   <- extract-wf-pev PX GEX WX
+   <- sub-tp-refl WX (sub-tp/rect _ BSX _ _ )
+   <- rect-same-all-same EQR2 EQS _
+   <- path-eval-env-sub PX PX3 GEX GEX3 S3 S3X
+   <- extend-sub-tp2-mult BSX S3X BSX3
+   <- eq-low EQS BSX3 BSX3'
+   <- path-eval-env-sub PX PX2 GEX GEX2 S2 S2X
+   <- extend-sub-tp1-mult BSX3' S2X BSX2
+   <- eq-low-env EQG2 BSX2 BSX2'
+   <- eq-pev EQR2W PW PW'
+   <- extract-wf-pev PW' GEW' (wf-tp/rect _ _ WS)
+   <- same-etenv-tenv EQGEW GEW' GE2 EQW2
+   <- eq-wf-env EQW2 WS WS'
+   <- sub-tp-trans-aux WS' A1 BSX2' A3.
 
 -/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
