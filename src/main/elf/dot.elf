@@ -404,17 +404,13 @@ t/var      : type-exp G (var N) T <- tlookup G N T <- wf-tp G T.
 %              <- tlookup G X T
 %              <- wf-tp G T.
 
-t/varx     : type-exp G (var X) (recv N (tsel (var X) NT))
-              <- tlookup G X (bind N0 G0 T0)
-              <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
-              <- wf-tp G (tsel (var X) NT)
-              <- wf-tp G (bind N0 G0 T0).
-
 t/selx     : type-exp G (sel (var X) N) (tsel (var X) NT)
               <- tlookup G X (bind N0 G0 T0)
               <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
               <- wf-tp G (tsel (var X) NT)
-              <- wf-tp G (bind N0 G0 T0).
+              <- wf-tp G (bind N0 G0 T0)
+% ++               <- sub-tp (tcons T0 G0) (recv N (tsel (var N0) NT)) G (recv N (tsel (var X) NT))
+              .
 
 t/sel       : type-exp G (sel E1 LNV) T1
             <- type-exp G E1 (recv LNV T1).
@@ -434,8 +430,6 @@ t/fun      : type-exp G (fun TC LNF T3 R T4 LNV R2 T2 M)
 %                <- sub-tp G (bind N G (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) G TC
                 .
 
-
-
 t/app       : type-exp G (app E1 LNF E2) T2
             <- type-exp G E1 (arrow LNF T1 T2)
             <- type-exp G E2 T1.
@@ -446,10 +440,17 @@ t/let       : type-exp G (let T1 E1 E2) T2
             <- type-exp (tcons T1 G) E2 T2
             <- wf-tp G T2.
 
-
 t/sub       : type-exp G E T2
             <- type-exp G E T1
             <- sub-tp G T1 G T2.
+
+t/varx     : type-exp G (var X) (recv N (tsel (var X) NT))
+              <- tlookup G X (bind N0 G0 T0)
+              <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
+              <- wf-tp G (tsel (var X) NT)
+              <- wf-tp G (bind N0 G0 T0)
+% ++               <- sub-tp (tcons T0 G0) (recv N (tsel (var N0) NT)) G (recv N (tsel (var X) NT))
+              .
 
 %{ ------- well-formedness / typing for values and environment ----- }%
 
@@ -2233,8 +2234,8 @@ extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 - : extract-wf2 (t/var W L) W.
 % - : extract-wf2 (t/varx _ _ P) (wf-tp/rect B (wf-tp/tsel P) (wf-tp/tsel P))
 %     <- sub-tp-refl (wf-tp/tsel P) B.
-- : extract-wf2 (t/varx _ W _ _) (wf-tp/recv W).
-- : extract-wf2 (t/selx _ W _ _) W.
+- : extract-wf2 (t/varx _ _ W _ _) (wf-tp/recv W).
+- : extract-wf2 (t/selx _ _ W _ _) W.
 - : extract-wf2 (t/fun _ WFF _ _ _ _ _ _) WFF.
 - : extract-wf2 (t/app TS1 (TS2: type-exp _ _ (arrow _ _ _))) W2 <- extract-wf2 TS2 (wf-tp/fun W2 W1).
 - : extract-wf2 (t/sel TS) W <- extract-wf2 TS (wf-tp/recv W).
@@ -2446,6 +2447,69 @@ sub-tp-recv: sub-tp G1 T1 G2 T2 -> {N:nat} sub-tp G1 (recv N T1) G2 (recv N T2) 
 
 %% TODO: can we use intersection/union types here, too?
 
+invert-sel :
+  %% Input
+  type-exp G (sel E1 LNV) T ->
+  %% Output
+  type-exp G E1 (recv LNV T1) ->
+  sub-tp G T1 G T ->
+  type.
+%mode invert-sel +WFE1 -WFE3 -SBT.
+
+-     : invert-sel (t/sel TS) TS SB
+            <- extract-wf2 (t/sel TS) W
+            <- sub-tp-refl W SB.
+
+-     : invert-sel (t/selx ST WB W B L) (t/varx ST WB W B L) SB
+         <- sub-tp-refl W SB.
+
+-     : invert-sel (t/sub SB1 TS) L2 SB2
+            <- invert-sel TS L2 SB
+            <- sub-tp-trans SB SB1 SB2.
+
+%worlds () (invert-sel _ _ _).
+%total WFE (invert-sel WFE _ _).
+
+var-cases : {X: nat} {G: tenv} {T1: tpe} {T: tpe} {N: nat} {NT:nat} type.
+var-cases/default : var-cases X G T1 T N NT
+                     <- sub-tp G T1 G T.
+var-cases/x       : var-cases X G (bind N0 G0 T0) T N NT
+                     <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
+                     <- sub-tp (tcons T0 G0) (recv N (tsel (var N0) NT)) G T.
+
+var-cases-subeq-trans: var-cases X G T1 T N NT -> sub-tp G T G T' -> var-cases X G T1 T' N NT -> type.
+%mode var-cases-subeq-trans +A +B -C.
+
+- : var-cases-subeq-trans (var-cases/default S1) S2 (var-cases/default S3) <- sub-tp-trans S1 S2 S3.
+- : var-cases-subeq-trans (var-cases/x S1 S) SX (var-cases/x S1' S)
+     <- sub-tp-trans S1 SX S1'.
+
+%worlds () (var-cases-subeq-trans _ _ _).
+%total WFE (var-cases-subeq-trans WFE _ _).
+
+invert-var-cases :
+  %% Input
+  type-exp G (var X) T
+  %% Output
+  -> {N:nat} {NT:nat}
+  tlookup G X T1
+  -> wf-tp G T1
+  -> var-cases X G T1 T N NT
+  -> type.
+%mode invert-var-cases +A -B -C -D -E -F.
+
+-     : invert-var-cases (t/var W L) z z L W (var-cases/default SB)
+         <- sub-tp-refl W SB.
+
+-     : invert-var-cases (t/varx S W W1 S0 L) _ _ L W (var-cases/x S S0).
+
+-     : invert-var-cases (t/sub SB1 TS) A B L W SB2
+            <- invert-var-cases TS A B L W SB
+            <- var-cases-subeq-trans SB SB1 SB2.
+
+%worlds () (invert-var-cases _ _ _ _ _ _).
+%total A (invert-var-cases A _ _ _ _ _).
+
 invert-var :
   %% Input
   type-exp G (var N) T ->
@@ -2476,29 +2540,6 @@ invert-var :
 %worlds () (invert-var _ _ _ _ _).
 %trustme
 %total WFE (invert-var WFE _ _ _ _).
-
-invert-sel :
-  %% Input
-  type-exp G (sel E1 LNV) T ->
-  %% Output
-  type-exp G E1 (recv LNV T1) ->
-  sub-tp G T1 G T ->
-  type.
-%mode invert-sel +WFE1 -WFE3 -SBT.
-
--     : invert-sel (t/sel TS) TS SB
-            <- extract-wf2 (t/sel TS) W
-            <- sub-tp-refl W SB.
-
--     : invert-sel (t/selx WB W B L) (t/varx WB W B L) SB
-         <- sub-tp-refl W SB.
-
--     : invert-sel (t/sub SB1 TS) L2 SB2
-            <- invert-sel TS L2 SB
-            <- sub-tp-trans SB SB1 SB2.
-
-%worlds () (invert-sel _ _ _).
-%total WFE (invert-sel WFE _ _).
 
 invert-app :
   %% Input
