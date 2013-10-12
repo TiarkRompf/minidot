@@ -2472,25 +2472,22 @@ var-cases : {X: nat} {G: tenv} {T1: tpe} {T: tpe} {N: nat} {NT:nat} type.
 var-cases/default : var-cases X G T1 T N NT
                      <- sub-tp G T1 G T.
 var-cases/x       : var-cases X G (bind N0 G0 T0) T N NT
+                     <- tlookup G X (bind N0 G0 T0)
                      <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
-                     <- sub-tp (tcons T0 G0) (recv N (tsel (var N0) NT)) G T.
+                     <- wf-tp G (tsel (var X) NT)
+                     <- wf-tp G (bind N0 G0 T0)
+                     <- sub-tp (tcons T0 G0) (recv N (tsel (var N0) NT)) G (recv N (tsel (var X) NT))
+                     <- sub-tp G (recv N (tsel (var X) NT)) G T.
 
 var-cases-subeq-trans: var-cases X G T1 T N NT -> sub-tp G T G T' -> var-cases X G T1 T' N NT -> type.
 %mode var-cases-subeq-trans +A +B -C.
 
 - : var-cases-subeq-trans (var-cases/default S1) S2 (var-cases/default S3) <- sub-tp-trans S1 S2 S3.
-- : var-cases-subeq-trans (var-cases/x S1 S) SX (var-cases/x S1' S)
-     <- sub-tp-trans S1 SX S1'.
+- : var-cases-subeq-trans (var-cases/x SX1 ST WB W B L) SX2 (var-cases/x SX3 ST WB W B L)
+     <- sub-tp-trans SX1 SX2 SX3.
 
 %worlds () (var-cases-subeq-trans _ _ _).
 %total WFE (var-cases-subeq-trans WFE _ _).
-
-var-cases-wfv: var-cases X G T1 T N NT -> wf-val V G T1 -> wf-val V G T -> type.
-%mode var-cases-wfv +A +B -C.
-
-%worlds () (var-cases-wfv _ _ _).
-%trustme
-%total A (var-cases-wfv A _ _).
 
 invert-var-cases :
   %% Input
@@ -2506,7 +2503,8 @@ invert-var-cases :
 -     : invert-var-cases (t/var W L) z z L W (var-cases/default SB)
          <- sub-tp-refl W SB.
 
--     : invert-var-cases (t/varx S W W1 S0 L) _ _ L W (var-cases/x S S0).
+-     : invert-var-cases (t/varx S W W1 S0 L) _ _ L W (var-cases/x B S W W1 S0 L)
+         <- sub-tp-refl (wf-tp/recv W1) B.
 
 -     : invert-var-cases (t/sub SB1 TS) A B L W SB2
             <- invert-var-cases TS A B L W SB
@@ -2514,6 +2512,15 @@ invert-var-cases :
 
 %worlds () (invert-var-cases _ _ _ _ _ _).
 %total A (invert-var-cases A _ _ _ _ _).
+
+var-cases-wfv: var-cases X G T1 T N NT -> wf-val V G T1 -> wf-val V G T -> type.
+%mode var-cases-wfv +A +B -C.
+
+- : var-cases-wfv (var-cases/default S1) W (wfv/sub S1 W).
+- : var-cases-wfv (var-cases/x SX1 ST WB W B L) WX WX'.
+
+%worlds () (var-cases-wfv _ _ _).
+%total A (var-cases-wfv A _ _).
 
 %{
 invert-var :
