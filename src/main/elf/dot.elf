@@ -1005,16 +1005,23 @@ eq-rect2: sameopt (tsome (rect LN T1 T2)) (tsome (rect LN T1' T2')) -> same T1 T
 %worlds () (eq-rect2 _ _ _).
 %total {T2} (eq-rect2 T2 _ _).
 
-
 eq-low: same T1 T1' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1' G2 T2 -> type.
 %mode eq-low +P1 +P2 -SBT.
 
 - : eq-low ident S S.
 
 %worlds () (eq-low _ _ _).
-%total {T2} (eq-low T2 _ _).
+%total {A} (eq-low A _ _).
 %reduces N3 <= N2 (eq-low _ N2  N3).
 
+eq-low-env: sametenv G1 G1' -> sub-tp G1 T1 G2 T2 -> sub-tp G1' T1 G2 T2 -> type.
+%mode eq-low-env +P1 +P2 -SBT.
+
+- : eq-low-env identtenv S S.
+
+%worlds () (eq-low-env _ _ _).
+%total {A} (eq-low-env A _ _).
+%reduces N3 <= N2 (eq-low-env _ N2  N3).
 
 eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
 %mode eq-high +P1 +P2 -SBT.
@@ -1022,7 +1029,7 @@ eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
 - : eq-high ident S S.
 
 %worlds () (eq-high _ _ _).
-%total {T2} (eq-high T2 _ _).
+%total {A} (eq-high A _ _).
 %reduces N3 <= N2 (eq-high _ N2  N3).
 
 eq-high-env: sametenv G2 G2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2' T2 -> type.
@@ -1061,8 +1068,14 @@ eq-pev: same T1 T1' -> path-eval G1 N T1 G1' -> path-eval G1 N T1' G1' -> type.
 %total {T2} (eq-pev T2 _ _).
 %reduces N3 <= N2 (eq-pev _ N2  N3).
 
+eq-pev-all: sametenv G1 G1' -> same T1 T1' -> path-eval G1 N T1 EG1 -> path-eval G1' N T1' EG1' -> type.
+%mode eq-pev-all +P0 +P1 +P2 -SBT.
 
+- : eq-pev-all identtenv ident S S.
 
+%worlds () (eq-pev-all _ _ _ _).
+%total {A} (eq-pev-all A _ _ _).
+%reduces N3 <= N2 (eq-pev-all _ _ N2  N3).
 
 lookup-zero-same: tlookup-zero G2 E T1 -> tlookup-zero G2 E T2 -> same T1 T2 -> type.
 %mode lookup-zero-same +P1 +P2 -SBT.
@@ -1200,6 +1213,26 @@ lookexp-eq: tlookexp G2 (var N1) (rect LN T1 T3) G2A -> tlookexp G2 (var N2) (re
 %worlds () (lookexp-eq _ _ _ _ _ _).
 %total {T2} (lookexp-eq T2 _ _ _ _ _).
 
+sameopt-same: sameopt (tsome T) (tsome T') -> same T T' -> type.
+%mode sameopt-same +A -B.
+
+- : sameopt-same identopt ident.
+
+%worlds () (sameopt-same _ _).
+%total {A} (sameopt-same A _).
+
+lookexp-eq-gen: tlookexp G E (rect N S U) EG -> tlookexp G E (rect N S' U') EG' -> same (rect N S U) (rect N S' U') -> sameenv EG EG' -> type.
+%mode lookexp-eq-gen +P1 +P2 -O1 -O2.
+
+- : lookexp-eq-gen (tle E1 (L1: tlookup _ N _)) (tle E2 L2) SX SG
+      <- eq-refl N EQ
+      <- lookup-eq0 L1 L2 EQ X
+      <- eq-exp-low X E1 E1'
+      <- expand-eq E1' E2 S SG
+      <- sameopt-same S SX.
+
+%worlds () (lookexp-eq-gen _ _ _ _).
+%total {A} (lookexp-eq-gen A _ _ _).
 
 % Extending environments preserves subtyping
 
@@ -1698,15 +1731,128 @@ sub-tp-refl :
 
 %% Helpers
 
-path-eval-eq : path-eval G E T EG
-                -> path-eval G E T' EG'
-                -> same T T'
+path-eval-eq : path-eval G E (rect N S U) EG
+                -> path-eval G E (rect N S' U') EG'
+                -> same (rect N S U) (rect N S' U')
                 -> sameenv EG EG'
                 -> type.
 %mode path-eval-eq +A +B -C -D.
+
+- : path-eval-eq (pev W G L) (pev W' G' L') EQT EQG
+   <- lookexp-eq-gen L L' EQT EQG.
+
 %worlds () (path-eval-eq _ _ _ _).
-%trustme
-%total A (path-eval-eq A _ _ _).
+%total {} (path-eval-eq _ _ _ _).
+
+sametenv-sub-env : sametenv G1 G2 -> sub-env G1 G2 -> type.
+%mode sametenv-sub-env +A -B.
+
+- : sametenv-sub-env identtenv sub-env/refl.
+
+%worlds () (sametenv-sub-env _ _).
+%total A (sametenv-sub-env A _).
+
+exp-tp-env-sub-left : exp-tp G T N OT (etenv/left G)
+                       -> sub-env G G1
+                       -> exp-tp G1 T N OT (etenv/left G1)
+                       -> type.
+%mode exp-tp-env-sub-left +A +B -C.
+
+- : exp-tp-env-sub-left E sub-env/refl E.
+
+- : exp-tp-env-sub-left E (sub-env/ext S) E'
+     <- exp-tp-env-sub-left E S E1
+     <- extend-exp-tp-case-left E1 _ E'.
+
+%worlds () (exp-tp-env-sub-left _ _ _).
+%total A (exp-tp-env-sub-left _ A _).
+
+exp-tp-env-sub-right : exp-tp G T N OT (etenv/right GX)
+                       -> sub-env G G1
+                       -> exp-tp G1 T N OT (etenv/right GX)
+                       -> type.
+%mode exp-tp-env-sub-right +A +B -C.
+
+- : exp-tp-env-sub-right E sub-env/refl E.
+
+- : exp-tp-env-sub-right E (sub-env/ext S) E'
+     <- exp-tp-env-sub-right E S E1
+     <- extend-exp-tp-case-right E1 _ E'.
+
+%worlds () (exp-tp-env-sub-right _ _ _).
+%total A (exp-tp-env-sub-right _ A _).
+
+env-case-left : env-case (etenv/left G') G EG -> sametenv G G' -> type.
+%mode env-case-left +A -B.
+
+- : env-case-left env-case/left identtenv.
+
+%worlds () (env-case-left _ _).
+%total A (env-case-left A _).
+
+eq-exp-tp-left : sametenv G GX -> exp-tp G T N OT (etenv/left GX) -> exp-tp G T N OT (etenv/left G) -> type.
+%mode eq-exp-tp-left +A +B -C.
+
+- : eq-exp-tp-left identtenv E E.
+
+%worlds () (eq-exp-tp-left _ _ _).
+%total {A} (eq-exp-tp-left A _ _).
+
+eq-sub-env-low : sametenv G GX -> sub-env G G2 -> sub-env GX G2 -> type.
+%mode eq-sub-env-low +A +B -C.
+
+- : eq-sub-env-low identtenv S S.
+
+%worlds () (eq-sub-env-low _ _ _).
+%total {A} (eq-sub-env-low A _ _).
+
+eq-sub-env-high : sametenv G GX -> sub-env G1 G -> sub-env G1 GX -> type.
+%mode eq-sub-env-high +A +B -C.
+
+- : eq-sub-env-high identtenv S S.
+
+%worlds () (eq-sub-env-high _ _ _).
+%total {A} (eq-sub-env-high A _ _).
+
+exp-tp-env-sub : exp-tp G T N OT EG
+                  -> getenv EG GX
+                  -> sub-env G G1
+                  -> exp-tp G1 T N OT EG1
+                  -> getenv EG1 G1X
+                  -> sub-env GX G1X
+                  -> type.
+%mode exp-tp-env-sub +A +B +C -D -E -F.
+
+- : exp-tp-env-sub E getenv/left S E' getenv/left S'
+     <- exp-tp-env-case E G EG
+     <- env-case-left EG EQG
+     <- eq-exp-tp-left EQG E E1
+     <- exp-tp-env-sub-left E1 S E'
+     <- eq-sub-env-low EQG S S'.
+
+- : exp-tp-env-sub E getenv/right S E' getenv/right sub-env/refl
+     <- exp-tp-env-sub-right E S E'.
+
+%worlds () (exp-tp-env-sub _ _ _ _ _ _).
+%total A (exp-tp-env-sub _ A _ _ _ _).
+
+exp-tp-env-sub-in : exp-tp G T N OT EG
+                  -> exp-tp G1 T N OT EG1
+                  -> getenv EG GX
+                  -> getenv EG1 G1X
+                  -> sub-env G G1
+                  -> sub-env GX G1X
+                  -> type.
+%mode exp-tp-env-sub-in +A +B +C +D +E -F.
+
+- : exp-tp-env-sub-in E E' GE GE' S S'
+     <- exp-tp-env-sub E GE S E1 GE1 S1
+     <- expand-eq E1 E' EQT EQGE
+     <- same-etenv-tenv EQGE GE1 GE' EQG
+     <- eq-sub-env-high EQG S1 S'.
+
+%worlds () (exp-tp-env-sub-in _ _ _ _ _ _).
+%total {} (exp-tp-env-sub-in _ _ _ _ _ _).
 
 path-eval-env-sub : path-eval G E T EG
                      -> path-eval G1 E T EG1
@@ -1716,9 +1862,16 @@ path-eval-env-sub : path-eval G E T EG
                      -> sub-env GX G1X
                      -> type.
 %mode path-eval-env-sub +A +B +C +D +E -F.
+
+- : path-eval-env-sub (pev W G (tle E (L: tlookup _ N _))) (pev W' G' (tle E' L')) GE GE1 S SX
+     <- extend-wf-lkp-mult L S L2
+     <- eq-refl N EQ
+     <- lookup-eq0 L2 L' EQ EQT
+     <- eq-exp-low EQT E E1
+     <- exp-tp-env-sub-in E1 E' GE GE1 S SX.
+
 %worlds () (path-eval-env-sub _ _ _ _ _ _).
-%trustme
-%total A (path-eval-env-sub A _ _ _ _ _).
+%total A (path-eval-env-sub _ _ A _ _ _).
 
 path-eval-etenv : path-eval G E T EG
                    -> getenv EG GX
@@ -1775,6 +1928,22 @@ sub-tp-trans-aux :
             (sub-tp/recv SBT5)
       <- sub-tp-trans-aux T1 SBT1 SBT3 SBT5.
 
+-/tselx-tselx : sub-tp-trans-aux
+                 (wf-tp/tsel PW)
+                 (sub-tp/tselx PA SA1 SA2)
+                 (sub-tp/tselx PB SB2 SB3)
+                 (sub-tp/tselx PC SC1 SC3)
+   <- extend-wf-pev-mult PA SA2 PA2
+   <- extend-wf-pev-mult PB SB2 PB2
+   <- path-eval-eq PA2 PB2 EQRAB EQGEAB
+   <- path-eval-eq PA2 PW EQRWA EQGEWA
+   <- path-eval-eq PB2 PW EQRWB EQGEWB
+   <- eq-pev EQRWA PA PAW
+   <- eq-pev EQRWB PB PBW
+   <- pev-tp-dia PW PAW PBW SA2 SB2 PC SA SB
+   <- sub-env-trans SA SA1 SC1
+   <- sub-env-trans SB SB3 SC3.
+
 %% case p.T < p.T && p.T < T3   -->   p.T < T3
 
 -/tselx1 : sub-tp-trans-aux
@@ -1785,21 +1954,19 @@ sub-tp-trans-aux :
             <- extend-wf-pev-mult PX S1 PX1
             <- path-eval-etenv PX1 GEX1
             <- extend-wf-pev-mult PX S2 PX2
-            <- path-eval-eq P2 PX2  EQR2 EQGE2
-            <- path-eval-eq PX2 P2  EQR2' EQGE2'
+            <- path-eval-eq PX2 P2 EQR2 EQGE2
             <- path-eval-eq PW P2 EQR2W EQGEW
             <- path-eval-etenv PX2 GEX2
-            <- same-etenv-tenv EQGE2 GE2 GEX2 EQG2
-            <- same-etenv-tenv EQGE2' GEX2 GE2 EQG2'
+            <- same-etenv-tenv EQGE2 GEX2 GE2 EQG2
             <- extract-wf-pev PX GEX WX
             <- sub-tp-refl WX (sub-tp/rect BUX _ _ _)
-            <- rect-same-all-same EQR2' _ EQU
+            <- rect-same-all-same EQR2 _ EQU
             <- path-eval-env-sub PX PX1 GEX GEX1 S1 S1X
             <- extend-sub-tp1-mult BUX S1X BUX1
             <- eq-high EQU BUX1 BUX1'
             <- path-eval-env-sub PX PX2 GEX GEX2 S2 S2X
             <- extend-sub-tp2-mult BUX1' S2X BUX2
-            <- eq-high-env EQG2' BUX2 BUX2'
+            <- eq-high-env EQG2 BUX2 BUX2'
             <- eq-pev EQR2W PW PW'
             <- extract-wf-pev PW' GEW' (wf-tp/rect _ WU _)
             <- same-etenv-tenv EQGEW GEW' GE2 EQW2
@@ -1807,124 +1974,34 @@ sub-tp-trans-aux :
             <- sub-tp-trans-aux WU' BUX2' A2 A3
           .
 
-%{
--/tselx1  : sub-tp-trans-aux
-      (wf-tp/tsel (pev (wf-tp/rect AB (WU: wf-tp G2X T2U) (W: wf-tp G2X T2)) GE (P0: (tlookexp G2 (var N) (rect LN T2 T2U) OG2)) ))
-
-      (sub-tp/tselx (pev (wf-tp/rect AB1 W1X W1Y) GEX (P1: (tlookexp G0 (var N) (rect LN T2A T2UA) OGA))) (SX1: sub-env G0 G1) (SX2: sub-env G0 G2))
-
-      (sub-tp/tsel1 (A2: sub-tp G2X T2UB G3 T3) GEB (pev (wf-tp/rect AB2 W2X W2Y) GE2 (P2: (tlookexp G2 (var N) (rect LN T2B T2UB) OGB)) ))
-      (sub-tp/tsel1 A2' GEXX (pev (wf-tp/rect AB11' W1X1' W1Y1') GEXX PXX))
-
-
-      <- extend-wf-pev-mult (pev (wf-tp/rect AB1 W1X W1Y) GEX P1) SX1 (pev (wf-tp/rect AB11' W1X1' W1Y1') GEXX PXX)
-      <- extend-wf-pev-mult (pev (wf-tp/rect AB1 W1X W1Y) GEX P1) SX2 (pev (wf-tp/rect AB1' W1X' W1Y') GEX1' P1')
-
-      <- eq-refl N Q
-      <- lookexp-eq P0 P1' Q (S3: same T2  T2A) (S4: same T2U  T2UA) (SA2: sameenv OG2 OGX)
-      <- lookexp-eq P2 P1' Q (S1: same T2B T2A) (S2: same T2UB T2UA) (SAB: sameenv OGB OGX)
-
-      <- eq-low S2 (A2: sub-tp G2X T2UB G3 T3) (A2': sub-tp G2X T2UA G3 T3)
-      <- eq-wf S4 (WU: wf-tp G2X T2U) (WU': wf-tp G2X T2UA)
-         .
-}%
-%{
--/tselx1  : sub-tp-trans-aux
-      (wf-tp/tsel (pev (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) (P0: (tlookexp G2 (var N) (rect LN T2 T2U))) ))
-
-      (sub-tp/tselx (pev (wf-tp/rect AB1 W1X W1Y) (P1: (tlookexp G0 (var N) (rect LN T2A T2UA)))) (sub-tp/rect (SY24:sub-tp G1 T2UA G2 T2UA) SY31 SY34 SY12) _ (SX1: sub-env G0 G1) (SX2: sub-env G0 G2))
-
-      (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) (pev (wf-tp/rect AB2 W2X W2Y) (P2: (tlookexp G2 (var N) (rect LN T2B T2UB))) ))
-      (sub-tp/tsel1 SBT5 (pev (wf-tp/rect AB11' W1X1' W1Y1') PXX))
-
-
-      <- extend-wf-pev-mult (pev (wf-tp/rect AB1 W1X W1Y) P1) SX1 (pev (wf-tp/rect AB11' W1X1' W1Y1') PXX)
-      <- extend-wf-pev-mult (pev (wf-tp/rect AB1 W1X W1Y) P1) SX2 (pev (wf-tp/rect AB1' W1X' W1Y') P1')
-
-      <- eq-refl N Q
-      <- lookexp-eq P0 P1' Q (S3: same T2  T2A) (S4: same T2U  T2UA)
-      <- lookexp-eq P2 P1' Q (S1: same T2B T2A) (S2: same T2UB T2UA)
-
-      <- eq-low S2 (A2: sub-tp G2 T2UB G3 T3) (A2': sub-tp G2 T2UA G3 T3)
-      <- eq-wf S4 (WU: wf-tp G2 T2U) (WU': wf-tp G2 T2UA)
-
-      <- sub-tp-trans-aux WU' SY24 A2' SBT5
-      .
-}%
-
 %% case T1 < p.T && p.T < p.T   -->   T1 < p.T
 
-%{
--/tselx2  : sub-tp-trans-aux
-      (wf-tp/tsel (pev (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2)) (P0: (tlookexp G2 (var N) (rect LN T2 T2U))) ))
-
-      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (wf-tp/rect AB1 W1X W1Y) (P1: (tlookexp G2 (var N) (rect LN T2A T2UA))) ))
-
-      (sub-tp/tselx (pev (wf-tp/rect AB2 W2X W2Y) (P2: (tlookexp G0 (var N) (rect LN T2B T2UB)))) _ (sub-tp/rect SY24 SY31 SY34 SY12) (SX2: sub-env G0 G2) (SX3: sub-env G0 G3))
-
-      (sub-tp/tsel2 SBT5 (pev (wf-tp/rect AB2' W2X' W2Y') PXX))
-
-
-      <- extend-wf-pev-mult (pev (wf-tp/rect AB2 W2X W2Y) P2) SX2 (pev (wf-tp/rect AB21' W2X1' W2Y1') P2')
-      <- extend-wf-pev-mult (pev (wf-tp/rect AB2 W2X W2Y) P2) SX3 (pev (wf-tp/rect AB2' W2X' W2Y') PXX)
-
-      <- eq-refl N Q
-      <- lookexp-eq P0 P2' Q (S3: same T2  T2B) (S4: same T2U  T2UB)
-      <- lookexp-eq P1 P2' Q (S1: same T2A T2B) (S2: same T2UA T2UB)
-
-      <- eq-high S1 (A1: sub-tp G1 T1 G2 T2A) (A1': sub-tp G1 T1 G2 T2B)
-      <- eq-wf S3 (W: wf-tp G2 T2) (W': wf-tp G2 T2B)
-
-      <- sub-tp-trans-aux W' A1' SY31 (SBT5: sub-tp G1 T1 G3 T2B)
-      .
-}%
-
-%{
--/tselx-tselx  : sub-tp-trans-aux
-      (wf-tp/tsel (pev WR0 (P0: (tlookexp G2 (var N) (rect _ _ _))) ))
-
-      (sub-tp/tselx (pev WR1 (P1: (tlookexp G0 (var N) (rect _ _ _)))) ST11 ST12 (SX1: sub-env G0 G1) (SX2: sub-env G0 G2))
-
-      (sub-tp/tselx (pev WR2 (P2: (tlookexp G0' (var N) (rect _ _ _)))) ST21 ST22 (SX2': sub-env G0' G2) (SX3: sub-env G0' G3))
-
-      (sub-tp/tselx (pev W00 P3) ST31 ST32 SX1x SX3x)
-
-      <- eq-refl N Q
-
-      <- extend-wf-pev-mult (pev WR1 P1) SX2 (pev WR1' P1')
-      <- extend-wf-pev-mult (pev WR2 P2) SX2' (pev WR2' P2')
-
-      <- lookexp-eq P2' P1' Q S1 S2
-      <- eq-rect S1 S2 _ SR1 SR1x
-
-      <- eq-low SR1 ST21 ST21'
-      <- eq-low SR1x ST11 ST11'
-
-      <- eq-high SR1 ST22 ST22'
-      <- eq-high SR1x ST12 ST12'
-
-      <- lookexp-eq P0 P1' Q S3 S4
-      <- eq-rect S3 S4 _ SR3 SR3x
-      <- eq-pev SR3 (pev WR0 P0) (pev WR0' P0')
-
-      <- sub-tp-trans-aux WR0' ST11' ST21' ST31x
-      <- sub-tp-trans-aux WR0' ST22' ST12' ST32x
-
-      <- eq-low SR1 ST31x ST31xx %% TODO: reverse order somewhere above??
-      <- eq-high SR1 ST31xx ST31
-
-      <- eq-low SR1 ST32x ST32xx
-      <- eq-high SR1 ST32xx ST32
-
-
-      <- eq-pev SR1 (pev WR2 P2) (pev WR2S P2S)
-
-      <- pev-tp-dia (pev WR0' P0') (pev WR1 P1) (pev WR2S P2S) SX2 SX2' (pev W00 P3) S01 S02
-
-      <- sub-env-trans S01 SX1 SX1x
-      <- sub-env-trans S02 SX3 SX3x
-      .
-}%
+-/tselx2 : sub-tp-trans-aux
+            (wf-tp/tsel PW)
+            (sub-tp/tsel2 A1 GE2 P2)
+            (sub-tp/tselx PX S2 S3)
+            (sub-tp/tsel2 A3 GEX3 PX3)
+   <- extend-wf-pev-mult PX S2 PX2
+   <- extend-wf-pev-mult PX S3 PX3
+   <- path-eval-etenv PX3 GEX3
+   <- path-eval-eq PX2 P2 EQR2 EQGE2
+   <- path-eval-eq PW P2 EQR2W EQGEW
+   <- path-eval-etenv PX2 GEX2
+   <- same-etenv-tenv EQGE2 GEX2 GE2 EQG2
+   <- extract-wf-pev PX GEX WX
+   <- sub-tp-refl WX (sub-tp/rect _ BSX _ _ )
+   <- rect-same-all-same EQR2 EQS _
+   <- path-eval-env-sub PX PX3 GEX GEX3 S3 S3X
+   <- extend-sub-tp2-mult BSX S3X BSX3
+   <- eq-low EQS BSX3 BSX3'
+   <- path-eval-env-sub PX PX2 GEX GEX2 S2 S2X
+   <- extend-sub-tp1-mult BSX3' S2X BSX2
+   <- eq-low-env EQG2 BSX2 BSX2'
+   <- eq-pev EQR2W PW PW'
+   <- extract-wf-pev PW' GEW' (wf-tp/rect _ _ WS)
+   <- same-etenv-tenv EQGEW GEW' GE2 EQW2
+   <- eq-wf-env EQW2 WS WS'
+   <- sub-tp-trans-aux WS' A1 BSX2' A3.
 
 -/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
@@ -1942,23 +2019,30 @@ sub-tp-trans-aux :
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
-%{
--/tsel2-tsel1  : sub-tp-trans-aux  % T1 < p.T2 && p.T2 < T3 --> T1 < T3
-      (wf-tp/tsel (pev (wf-tp/rect AB (WU: wf-tp G2 T2U) (W: wf-tp G2 T2))  (P0: (tlookexp G2 (var N) (rect LN T2 T2U)))))
-      (sub-tp/tsel2 (A1: sub-tp G1 T1 G2 T2A) (pev (wf-tp/rect _ W1X W1Y)  (P1: (tlookexp G2 (var N) (rect LN T2A T2UA)))))
-      (sub-tp/tsel1 (A2: sub-tp G2 T2UB G3 T3) (pev (wf-tp/rect _ W2X W2Y) (P2: (tlookexp G2 (var N) (rect LN T2B T2UB)))))
-      (SBT5: sub-tp G1 T1 G3 T3)
-
-      <- eq-refl N Q
-      <- lookexp-eq P1 P0 Q (S1: same T2A T2) (S3: same T2UA T2U)
-      <- lookexp-eq P2 P0 Q (S2: same T2B T2) (S4: same T2UB T2U)
-
-      <- eq-high S1 A1 (A1': sub-tp G1 T1 G2 T2)
-      <- eq-low  S4 A2 (A2': sub-tp G2 T2U G3 T3)
-
-      <- sub-tp-trans-aux W A1' AB SBT3
-      <- sub-tp-trans-aux WU SBT3 A2' SBT5.
-}%
+-/tsel2-tsel1 : sub-tp-trans-aux
+                 (wf-tp/tsel PW)
+                 (sub-tp/tsel2 A1 GE1 P1)
+                 (sub-tp/tsel1 A2 GE2 P2)
+                 OUT
+   <- path-eval-etenv PW GEW
+   <- path-eval-eq P1 P2 EQR12 EQGE12
+   <- rect-same-all-same EQR12 EQS12 EQU12
+   <- same-etenv-tenv EQGE12 GE1 GE2 EQG12
+   <- path-eval-eq P1 PW EQR1W EQGE1W
+   <- rect-same-all-same EQR1W EQS1W EQU1W
+   <- same-etenv-tenv EQGE1W GE1 GEW EQG1W
+   <- path-eval-eq P2 PW EQR2W EQGE2W
+   <- rect-same-all-same EQR2W EQS2W EQU2W
+   <- same-etenv-tenv EQGE2W GE2 GEW EQG2W
+   <- extract-wf-pev PW GEW' W'
+   <- same-etenv-tenv identenv GEW' GEW EQW
+   <- eq-wf-env EQW W' (wf-tp/rect BSU WU WS)
+   <- eq-high EQS1W A1 A1'
+   <- eq-high-env EQG1W A1' A1''
+   <- sub-tp-trans-aux WS A1'' BSU BAS
+   <- eq-low EQU2W A2 A2'
+   <- eq-low-env EQG2W A2' A2''
+   <- sub-tp-trans-aux WU BAS A2'' OUT.
 
 %{
 In the previous formulation of tbind2 we had a problem.
