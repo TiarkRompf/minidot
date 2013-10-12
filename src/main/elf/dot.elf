@@ -2488,14 +2488,14 @@ invert-sel :
             <- extract-wf2 (t/sel TS) W
             <- sub-tp-refl W SB.
 
-% -     : invert-tsel (t/selx WS WR B L)
+-     : invert-sel (t/selx W B L) (t/varx W B L) SB
+         <- sub-tp-refl W SB.
 
 -     : invert-sel (t/sub SB1 TS) L2 SB2
             <- invert-sel TS L2 SB
             <- sub-tp-trans SB SB1 SB2.
 
 %worlds () (invert-sel _ _ _).
-%trustme
 %total WFE (invert-sel WFE _ _).
 
 invert-app :
