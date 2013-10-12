@@ -1068,8 +1068,14 @@ eq-pev: same T1 T1' -> path-eval G1 N T1 G1' -> path-eval G1 N T1' G1' -> type.
 %total {T2} (eq-pev T2 _ _).
 %reduces N3 <= N2 (eq-pev _ N2  N3).
 
+eq-pev-all: sametenv G1 G1' -> same T1 T1' -> path-eval G1 N T1 EG1 -> path-eval G1' N T1' EG1' -> type.
+%mode eq-pev-all +P0 +P1 +P2 -SBT.
 
+- : eq-pev-all identtenv ident S S.
 
+%worlds () (eq-pev-all _ _ _ _).
+%total {A} (eq-pev-all A _ _ _).
+%reduces N3 <= N2 (eq-pev-all _ _ N2  N3).
 
 lookup-zero-same: tlookup-zero G2 E T1 -> tlookup-zero G2 E T2 -> same T1 T2 -> type.
 %mode lookup-zero-same +P1 +P2 -SBT.
@@ -1921,6 +1927,22 @@ sub-tp-trans-aux :
             (sub-tp/recv SBT3)
             (sub-tp/recv SBT5)
       <- sub-tp-trans-aux T1 SBT1 SBT3 SBT5.
+
+-/tselx-tselx : sub-tp-trans-aux
+                 (wf-tp/tsel PW)
+                 (sub-tp/tselx PA SA1 SA2)
+                 (sub-tp/tselx PB SB2 SB3)
+                 (sub-tp/tselx PC SC1 SC3)
+   <- extend-wf-pev-mult PA SA2 PA2
+   <- extend-wf-pev-mult PB SB2 PB2
+   <- path-eval-eq PA2 PB2 EQRAB EQGEAB
+   <- path-eval-eq PA2 PW EQRWA EQGEWA
+   <- path-eval-eq PB2 PW EQRWB EQGEWB
+   <- eq-pev EQRWA PA PAW
+   <- eq-pev EQRWB PB PBW
+   <- pev-tp-dia PW PAW PBW SA2 SB2 PC SA SB
+   <- sub-env-trans SA SA1 SC1
+   <- sub-env-trans SB SB3 SC3.
 
 %% case p.T < p.T && p.T < T3   -->   p.T < T3
 
