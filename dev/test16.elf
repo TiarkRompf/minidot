@@ -2024,8 +2024,6 @@ sub-tp-trans-aux :
                  (sub-tp/tsel2 A1 GE1 P1)
                  (sub-tp/tsel1 A2 GE2 P2)
                  OUT
-   <- path-eval-etenv P1 GE1
-   <- path-eval-etenv P2 GE2
    <- path-eval-etenv PW GEW
    <- path-eval-eq P1 P2 EQR12 EQGE12
    <- rect-same-all-same EQR12 EQS12 EQU12
