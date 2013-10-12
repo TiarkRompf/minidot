@@ -403,6 +403,7 @@ t/selx     : type-exp G (sel (var X) N) (tsel (var X) NT)
               <- tlookup G X (bind N0 G0 T0)
               <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (and (recv N (tsel (var N0) NT)) (rect NT TA TB))
               <- wf-tp (tcons T0 G0) (rect NT TA TB)
+              <- wf-tp G (tsel (var X) NT)
               .
 
 t/sel       : type-exp G (sel E1 LNV) T1
