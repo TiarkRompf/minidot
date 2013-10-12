@@ -399,11 +399,16 @@ t/empty    : type-exp G empty top.
 
 t/var      : type-exp G (var N) T <- tlookup G N T <- wf-tp G T.
 
+% t/varx     : type-exp G (var X) (rect N (tsel (var X) N) (tsel (var X) N))
+%              <- path-eval G (var X) (rect N T1 T2) EG
+%              <- tlookup G X T
+%              <- wf-tp G T.
+
 t/selx     : type-exp G (sel (var X) N) (tsel (var X) NT)
               <- tlookup G X (bind N0 G0 T0)
-              <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (and (recv N (tsel (var N0) NT)) (rect NT TA TB))
-              <- wf-tp (tcons T0 G0) (rect NT TA TB)
+              <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
               <- wf-tp G (tsel (var X) NT)
+              <- wf-tp (tcons T0 G0) (recv N (tsel (var N0) NT))
               .
 
 t/sel       : type-exp G (sel E1 LNV) T1
@@ -2221,7 +2226,9 @@ extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 
 - : extract-wf2 t/empty wf-tp/top.
 - : extract-wf2 (t/var W L) W.
-- : extract-wf2 (t/selx W _ _ _) W.
+% - : extract-wf2 (t/varx _ _ P) (wf-tp/rect B (wf-tp/tsel P) (wf-tp/tsel P))
+%     <- sub-tp-refl (wf-tp/tsel P) B.
+- : extract-wf2 (t/selx _ W _ _) W.
 - : extract-wf2 (t/fun _ WFF _ _ _ _ _ _) WFF.
 - : extract-wf2 (t/app TS1 (TS2: type-exp _ _ (arrow _ _ _))) W2 <- extract-wf2 TS2 (wf-tp/fun W2 W1).
 - : extract-wf2 (t/sel TS) W <- extract-wf2 TS (wf-tp/recv W).
@@ -2431,7 +2438,6 @@ sub-tp-recv: sub-tp G1 T1 G2 T2 -> {N:nat} sub-tp G1 (recv N T1) G2 (recv N T2) 
 %worlds () (sub-tp-recv _ _ _).
 %total WFE (sub-tp-recv WFE _ _).
 
-
 %% TODO: can we use intersection/union types here, too?
 
 invert-var :
@@ -2452,6 +2458,11 @@ invert-var :
 -     : invert-var (t/var W L) L W z (case-f SB)
             % <- extract-wf2 (t/var L) W
             <- sub-tp-refl W SB.
+
+% -     : invert-var (t/varx W L P) L W _ (case-t SB)
+%         <- extract-wf2 (t/varx W L P) W2
+%         <- sub-tp-refl W2 SB.
+
 -     : invert-var (t/sub SB1 TS) L W _ SB2
             <- invert-var TS L W _ SB
             <- cases-subeq-trans SB SB1 SB2.
@@ -2472,11 +2483,14 @@ invert-sel :
             <- extract-wf2 (t/sel TS) W
             <- sub-tp-refl W SB.
 
+% -     : invert-tsel (t/selx WS WR B L)
+
 -     : invert-sel (t/sub SB1 TS) L2 SB2
             <- invert-sel TS L2 SB
             <- sub-tp-trans SB SB1 SB2.
 
 %worlds () (invert-sel _ _ _).
+%trustme
 %total WFE (invert-sel WFE _ _).
 
 invert-app :
