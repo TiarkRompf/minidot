@@ -310,12 +310,15 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
 %              <- sub-tp (tcons T1 G) T1 (tcons T1 G) T2
 %              <- tsize G N.
 
-sub-tp/bindx  : sub-tp G (bind N0 G0 T0) G (recv N (tsel (var X) NT))
-                 <- tlookup G X (bind N0 G0 T0)
-                 <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
-                 <- wf-tp G (tsel (var X) NT)
-                 <- wf-tp G (bind N0 G0 T0)
-                 .
+sub-tp/tbindx  : sub-tp G1 (bind N0 G0 T0) G2 (recv N (tsel (var X) NT))
+               <- sub-env G G2
+               <- sub-env G G1
+               <- tlookup G X (bind N0 G0 T0)
+               <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
+               <- wf-tp G (tsel (var X) NT)
+               <- wf-tp G (bind N0 G0 T0)
+               <- tsize G0 N0
+               .
 
 sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               <- sub-tp (tcons TN G0) TN G2 T2
@@ -1461,6 +1464,11 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 %     (sub-tp/tbindx S ST W')
 %     <- extend-wf-tp W T W'.
 
+- : extend-sub-tp (sub-tp/tbindx S W1 W2 ST L S1 S2) T
+     (sub-tp/tbindx S W1 W2 ST L (sub-env/ext S1) (sub-env/ext S2))
+     (sub-tp/tbindx S W1 W2 ST L (sub-env/ext S1) S2)
+     (sub-tp/tbindx S W1 W2 ST L S1 (sub-env/ext S2)).
+
 - : extend-sub-tp (sub-tp/tbind1 S ST) T
      (sub-tp/tbind1 S STC1)
      (sub-tp/tbind1 S ST)
@@ -1613,6 +1621,10 @@ extract-wf-pev : path-eval G E T OG -> getenv OG G' -> wf-tp G' T -> type.
 
 % - : extract-wf (sub-tp/tbindx S ST W2) (wf-tp/tbind S W1) W2
 %     <- extract-wf ST W1 _.
+
+- : extract-wf (sub-tp/tbindx S W1 W2 ST L S1 S2) W1' (wf-tp/recv W2')
+     <- extend-wf-tp-mult W1 S1 W1'
+     <- extend-wf-tp-mult W2 S2 W2'.
 
 - : extract-wf (sub-tp/tbind1 S ST) (wf-tp/tbind S WU) W2
       <- extract-wf ST WU W2.
@@ -2170,6 +2182,7 @@ lemma.
       <- sub-tp-trans-aux W2 SBT1 SBT3 SBT5.
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
+%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 
@@ -2241,8 +2254,8 @@ extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 - : extract-wf2 (t/var W L) W.
 % - : extract-wf2 (t/varx _ _ P) (wf-tp/rect B (wf-tp/tsel P) (wf-tp/tsel P))
 %     <- sub-tp-refl (wf-tp/tsel P) B.
-- : extract-wf2 (t/varx _ _ W _ _) (wf-tp/recv W).
-- : extract-wf2 (t/selx _ _ W _ _) W.
+% - : extract-wf2 (t/varx _ _ W _ _) (wf-tp/recv W).
+% - : extract-wf2 (t/selx _ _ W _ _) W.
 - : extract-wf2 (t/fun _ WFF _ _ _ _ _ _) WFF.
 - : extract-wf2 (t/app TS1 (TS2: type-exp _ _ (arrow _ _ _))) W2 <- extract-wf2 TS2 (wf-tp/fun W2 W1).
 - : extract-wf2 (t/sel TS) W <- extract-wf2 TS (wf-tp/recv W).
@@ -2465,8 +2478,8 @@ invert-sel :
             <- extract-wf2 (t/sel TS) W
             <- sub-tp-refl W SB.
 
--     : invert-sel (t/selx ST WB W B L) (t/varx ST WB W B L) SB
-         <- sub-tp-refl W SB.
+% -     : invert-sel (t/selx ST WB W B L) (t/varx ST WB W B L) SB
+%         <- sub-tp-refl W SB.
 
 -     : invert-sel (t/sub SB1 TS) L2 SB2
             <- invert-sel TS L2 SB
@@ -2475,62 +2488,6 @@ invert-sel :
 %worlds () (invert-sel _ _ _).
 %total WFE (invert-sel WFE _ _).
 
-var-cases : {X: nat} {G: tenv} {T1: tpe} {T: tpe} {N: nat} {NT:nat} type.
-var-cases/default : var-cases X G T1 T N NT
-                     <- sub-tp G T1 G T.
-var-cases/x       : var-cases X G (bind N0 G0 T0) T N NT
-                     <- tlookup G X (bind N0 G0 T0)
-                     <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
-                     <- wf-tp G (tsel (var X) NT)
-                     <- wf-tp G (bind N0 G0 T0)
-                     <- sub-tp (tcons T0 G0) (recv N (tsel (var N0) NT)) G (recv N (tsel (var X) NT))
-                     <- sub-tp G (recv N (tsel (var X) NT)) G T.
-
-var-cases-subeq-trans: var-cases X G T1 T N NT -> sub-tp G T G T' -> var-cases X G T1 T' N NT -> type.
-%mode var-cases-subeq-trans +A +B -C.
-
-- : var-cases-subeq-trans (var-cases/default S1) S2 (var-cases/default S3) <- sub-tp-trans S1 S2 S3.
-- : var-cases-subeq-trans (var-cases/x SX1 ST WB W B L) SX2 (var-cases/x SX3 ST WB W B L)
-     <- sub-tp-trans SX1 SX2 SX3.
-
-%worlds () (var-cases-subeq-trans _ _ _).
-%total WFE (var-cases-subeq-trans WFE _ _).
-
-invert-var-cases :
-  %% Input
-  type-exp G (var X) T
-  %% Output
-  -> {N:nat} {NT:nat}
-  tlookup G X T1
-  -> wf-tp G T1
-  -> var-cases X G T1 T N NT
-  -> type.
-%mode invert-var-cases +A -B -C -D -E -F.
-
--     : invert-var-cases (t/var W L) z z L W (var-cases/default SB)
-         <- sub-tp-refl W SB.
-
--     : invert-var-cases (t/varx S W W1 S0 L) _ _ L W (var-cases/x B S W W1 S0 L)
-         <- sub-tp-refl (wf-tp/recv W1) B.
-
--     : invert-var-cases (t/sub SB1 TS) A B L W SB2
-            <- invert-var-cases TS A B L W SB
-            <- var-cases-subeq-trans SB SB1 SB2.
-
-%worlds () (invert-var-cases _ _ _ _ _ _).
-%total A (invert-var-cases A _ _ _ _ _).
-
-var-cases-wfv: var-cases X G T1 T N NT -> wf-env H G -> tlookup G X T1 -> vlookup H X V -> wf-val V G T1 -> wf-val V G T -> type.
-%mode var-cases-wfv +A +B +C +D +E -F.
-
-- : var-cases-wfv (var-cases/default S1) _ _ _ W (wfv/sub S1 W).
-- : var-cases-wfv (var-cases/x SX1 ST WB W B L) E GL VL WX WX'.
-
-%worlds () (var-cases-wfv _ _ _ _ _ _).
-%trustme
-%total A (var-cases-wfv A _ _ _ _ _).
-
-%{
 invert-var :
   %% Input
   type-exp G (var N) T ->
@@ -2559,9 +2516,7 @@ invert-var :
             <- cases-subeq-trans SB SB1 SB2.
 
 %worlds () (invert-var _ _ _ _ _).
-%trustme
 %total WFE (invert-var WFE _ _ _ _).
-}%
 
 invert-app :
   %% Input
@@ -2903,9 +2858,9 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
           <- eval-empty-safe ZT V.
 
  -      : eval-safe ZT E (e/var L2) V2
-          <- invert-var-cases ZT A B L W CST
+          <- invert-var ZT L W _ CST
           <- lookup-safe E L L2 V
-          <- var-cases-wfv CST E L L2 V V2.
+          <- cases-wfv-rect CST V V V V2.
 
  -      : eval-safe (ZT: type-exp G _ _) E (e/fun EX) (wfv/sub CST (wfv/f IN STFF M TV STV TS E))
           <- invert-fun ZT TS TSV M WR STV CST IN
