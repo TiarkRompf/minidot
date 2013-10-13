@@ -2362,6 +2362,17 @@ invert-wf-rec :
 
 % lookup safe
 
+lookup-zero-safe-total: wf-env H G -> tlookup-zero G N1 T -> vlookup-zero H N1 V -> wf-val V G T -> type.
+%mode lookup-zero-safe-total +A +B -C -D.
+
+-      : lookup-zero-safe-total (wfe/c G V) tl/hit vl/hit V.
+-      : lookup-zero-safe-total (wfe/c G V) (tl/miss A) (vl/miss B) Z1
+         <- lookup-zero-safe-total G A B Z
+         <- extend-wfv Z _ Z1.
+
+%worlds () (lookup-zero-safe-total _ _ _ _).
+%total A (lookup-zero-safe-total A _ _ _).
+
 lookup-zero-safe: wf-env H G -> tlookup-zero G N2 T -> vlookup-zero H N1 V -> eq N1 N2 -> wf-val V G T -> type.
 %mode lookup-zero-safe +A +B +C +D -E.
 
@@ -2391,6 +2402,23 @@ lookup-safe: wf-env H G -> tlookup G N T -> vlookup H N V -> wf-val V G T -> typ
 
 %worlds () (lookup-safe _ _ _ _).
 %total A (lookup-safe A _ _ _).
+
+wf-env-tsize-vsize: wf-env H G -> tsize G N -> vsize H N -> type.
+%mode wf-env-tsize-vsize +A +B -C.
+-      : wf-env-tsize-vsize wfe/n tf/n vf/n.
+-      : wf-env-tsize-vsize (wfe/c G _) (tf/c TS) (vf/c VS) <- wf-env-tsize-vsize G TS VS.
+%worlds () (wf-env-tsize-vsize _ _ _).
+%total A (wf-env-tsize-vsize A _ _).
+
+lookup-safe-total: wf-env H G -> tlookup G N T -> vlookup H N V -> wf-val V G T -> type.
+%mode lookup-safe-total +A +B -C -D.
+
+-      : lookup-safe-total WE (tl TL A TS) (vl VL A VS) WV
+         <- wf-env-tsize-vsize WE TS VS
+         <- lookup-zero-safe-total WE TL VL WV.
+
+%worlds () (lookup-safe-total _ _ _ _).
+%total A (lookup-safe-total A _ _ _).
 
 
 sub-tp-inv-recv: sub-tp G1 (recv LNV T1) G2 (recv LNV T2)
