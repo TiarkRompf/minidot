@@ -2031,39 +2031,7 @@ extend-wfv: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
 %worlds () (extend-wfv _ _ _).
 %total A (extend-wfv A _ _).
 
-
-
-
-wfv-widen-env: sub-env G1 G2 -> wf-val V G1 T1 -> wf-val V G2 T1 -> type.
-%mode wfv-widen-env +LTE1 +LTE2 -LTE3.
-
-- : wfv-widen-env sub-env/refl WV WV.
-- : wfv-widen-env (sub-env/ext S) WV WVX
-      <- wfv-widen-env S WV WV1
-      <- extend-wfv WV1 Z WVX.
-
-%worlds () (wfv-widen-env _ _ _).
-%total A (wfv-widen-env A _ _).
-
-%% this will need to change if we add non-closure values
-assign-rect: wf-val V G0 T -> wf-tp G (rect N T1 T2) -> wf-val V G (rect N T1 T2) -> type.
-%mode assign-rect +A +B -C.
-- : assign-rect (wfv/empty _) W (wfv/empty W).
-- : assign-rect (wfv/f IX ST MT TV TV2 TE WE) W (wfv/t W).
-- : assign-rect (wfv/t WR) W (wfv/t W).
-- : assign-rect (wfv/sub S T) W T' <- assign-rect T W T'.
-%worlds () (assign-rect _ _ _).
-%total WFE (assign-rect WFE _ _).
-
 %{ ------- suptyping inversion: type-exp ----- }%
-
-sub-tp-recv: sub-tp G1 T1 G2 T2 -> {N:nat} sub-tp G1 (recv N T1) G2 (recv N T2) -> type.
-%mode sub-tp-recv +C +N -S.
-
-- : sub-tp-recv S _ (sub-tp/recv S).
-
-%worlds () (sub-tp-recv _ _ _).
-%total WFE (sub-tp-recv WFE _ _).
 
 wfv-widen-env: sub-env G1 G2 -> wf-val V G1 T1 -> wf-val V G2 T1 -> type.
 %mode wfv-widen-env +LTE1 +LTE2 -LTE3.
@@ -2085,122 +2053,6 @@ wfv-widen: sub-tp G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
 %total A (wfv-widen A _ _).
 
 %{ ------- suptyping inversion: type-exp ----- }%
-
-% explicit cases for assigning different types
-
-subeq-tp-cases: tenv -> tpe -> tenv -> tpe  ->
-        tenv -> tpe -> tenv -> tpe  ->
-        tenv -> tpe -> tenv -> tpe  ->  type.
-case-f : sub-tp G1 T1 G2 T2 -> subeq-tp-cases G1 T1 G2 T2 _ _ _ _ _ _ _ _.
-case-r : sub-tp G1 T1 G2 T2 -> subeq-tp-cases _ _ _ _ G1 T1 G2 T2 _ _ _ _.
-case-t : sub-tp G1 T1 G2 T2 -> subeq-tp-cases _ _ _ _ _ _ _ _ G1 T1 G2 T2.
-
-cases-wfv: subeq-tp-cases
-    G1A T0 G2 T
-    G1B T1 G2 T
-    G1C T2 G2 T
-    -> wf-val V G1A T0
-    -> wf-val V G1B T1
-    -> wf-val V G1C T2
-    -> wf-val V G2 T
-    -> type.
-%mode cases-wfv +C +W1 +W2 +W3 -W.
-
-- : cases-wfv (case-f ST) WF WR WT WF1 <- wfv-widen ST WF WF1.
-- : cases-wfv (case-r ST) WF WR WT WR1 <- wfv-widen ST WR WR1.
-- : cases-wfv (case-t ST) WF WR WT WT1 <- wfv-widen ST WT WT1.
-
-%worlds () (cases-wfv _ _ _ _ _).
-%total WFE (cases-wfv WFE _ _ _ _).
-
-
-
-%% this will need to change if we add non-closure values
-
-assign-rect: wf-val V G0 T -> wf-tp G (rect N T1 T2) -> wf-val V G (rect N T1 T2) -> type.
-%mode assign-rect +A +B -C.
-- : assign-rect (wfv/empty _) W (wfv/empty W).
-- : assign-rect (wfv/f IX ST MT TV TV2 TE WE) W (wfv/t W).
-- : assign-rect (wfv/t WR) W (wfv/t W).
-- : assign-rect (wfv/sub S T) W T' <- assign-rect T W T'.
-%worlds () (assign-rect _ _ _).
-%total WFE (assign-rect WFE _ _).
-
-
-cases-wfv-rect: subeq-tp-cases
-    G1A T0 G2 T
-    G1B T1 G2 T
-    G1C (rect N T2S T2U) G2 T
-    -> wf-val V G1A T0
-    -> wf-val V G1B T1
-    -> wf-val V G1C TX
-    -> wf-val V G2 T
-    -> type.
-%mode cases-wfv-rect +C +W1 +W2 +W3 -W.
-
-- : cases-wfv-rect (case-f ST) WF WR WT WF1 <- wfv-widen ST WF WF1.
-- : cases-wfv-rect (case-r ST) WF WR WT WR1 <- wfv-widen ST WR WR1.
-- : cases-wfv-rect (case-t ST) WF WR WT WT1
-      <- extract-wf ST W1 W2
-      <- assign-rect WT W1 WT0
-      <- wfv-widen ST WT0 WT1.
-
-%worlds () (cases-wfv-rect _ _ _ _ _).
-%total WFE (cases-wfv-rect WFE _ _ _ _).
-
-%{
-TODO generalize: why doesn't this work??
-
-cases-map: subeq-tp-cases
-    G1A T0 G2 T
-    G1B T1 G2 T
-    G1C T2 G2 T
-    -> (subeq-tp G1A T0 G2 T -> wf-val V G2 T)
-    -> (subeq-tp G1B T0 G2 T -> wf-val V G2 T)
-    -> (subeq-tp G1C T0 G2 T -> wf-val V G2 T)
-    -> wf-val V G2 T
-    -> type.
-%mode cases-map +C +W1 +W2 +W3 -W.
-
-- : cases-map (case-f ST) WF WR WT (WF ST).
-- : cases-map (case-r ST) WF WR WT (WR ST).
-- : cases-map (case-t ST) WF WR WT (WT ST).
-
-%worlds () (cases-map _ _ _ _ _).
-%total WFE (cases-map WFE _ _ _ _).
-}%
-
-
-cases-subeq-trans: subeq-tp-cases
-    G1A T0 G2 T
-    G1B T1 G2 T
-    G1C T2 G2 T
-    -> sub-tp G2 T G3 TU
-    -> subeq-tp-cases
-    G1A T0 G3 TU
-    G1B T1 G3 TU
-    G1C T2 G3 TU
-    -> type.
-%mode cases-subeq-trans +C +W1 -S.
-
-- : cases-subeq-trans (case-f S1) S2 (case-f S3) <- sub-tp-trans S1 S2 S3.
-- : cases-subeq-trans (case-r S1) S2 (case-r S3) <- sub-tp-trans S1 S2 S3.
-- : cases-subeq-trans (case-t S1) S2 (case-t S3) <- sub-tp-trans S1 S2 S3.
-
-%worlds () (cases-subeq-trans _ _ _).
-%total WFE (cases-subeq-trans WFE _ _).
-
-
-
-sub-tp-recv: sub-tp G1 T1 G2 T2 -> {N:nat} sub-tp G1 (recv N T1) G2 (recv N T2) -> type.
-%mode sub-tp-recv +C +N -S.
-
-- : sub-tp-recv S _ (sub-tp/recv S).
-
-%worlds () (sub-tp-recv _ _ _).
-%total WFE (sub-tp-recv WFE _ _).
-
-%% TODO: can we use intersection/union types here, too?
 
 invert-sel :
   %% Input
@@ -2245,38 +2097,6 @@ invert-var:
 %worlds () (invert-var _ _ _).
 %total A (invert-var A _ _).
 
-%{
-invert-var :
-  %% Input
-  type-exp G (var N) T ->
-  %% Output
-  tlookup G N T1 ->
-  wf-tp G T1 ->
-  {LN:nat}
-  subeq-tp-cases
-    G T1 G T
-    G T1 G T
-    G (rect LN (tsel (var N) LN) (tsel (var N) LN)) G T
-  ->
-  type.
-%mode invert-var +WFE1 -WFE2 -SBT1 -LN -SBT1.
-
--     : invert-var (t/var W L) L W z (case-f SB)
-            % <- extract-wf2 (t/var L) W
-            <- sub-tp-refl W SB.
-
-% -     : invert-var (t/varx W L P) L W _ (case-t SB)
-%         <- extract-wf2 (t/varx W L P) W2
-%         <- sub-tp-refl W2 SB.
-
--     : invert-var (t/sub SB1 TS) L W _ SB2
-            <- invert-var TS L W _ SB
-            <- cases-subeq-trans SB SB1 SB2.
-
-%worlds () (invert-var _ _ _ _ _).
-%total WFE (invert-var WFE _ _ _ _).
-}%
-
 invert-app :
   %% Input
   type-exp G (app E1 LNF E2) T ->
@@ -2296,8 +2116,6 @@ invert-app :
 
 %worlds () (invert-app _ _ _ _).
 %total WFE (invert-app WFE _ _ _).
-
-
 
 invert-fun :
   %% Input
