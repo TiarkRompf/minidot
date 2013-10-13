@@ -310,6 +310,13 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
 %              <- sub-tp (tcons T1 G) T1 (tcons T1 G) T2
 %              <- tsize G N.
 
+sub-tp/bindx  : sub-tp G (bind N0 G0 T0) G (recv N (tsel (var X) NT))
+                 <- tlookup G X (bind N0 G0 T0)
+                 <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
+                 <- wf-tp G (tsel (var X) NT)
+                 <- wf-tp G (bind N0 G0 T0)
+                 .
+
 sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               <- sub-tp (tcons TN G0) TN G2 T2
               <- tsize G0 N
@@ -404,13 +411,21 @@ t/var      : type-exp G (var N) T <- tlookup G N T <- wf-tp G T.
 %              <- tlookup G X T
 %              <- wf-tp G T.
 
-t/selx     : type-exp G (sel (var X) N) (tsel (var X) NT)
-              <- tlookup G X (bind N0 G0 T0)
-              <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
-              <- wf-tp G (tsel (var X) NT)
-              <- wf-tp G (bind N0 G0 T0)
-% ++               <- sub-tp (tcons T0 G0) (recv N (tsel (var N0) NT)) G (recv N (tsel (var X) NT))
-              .
+% t/varx     : type-exp G (var X) (recv N (tsel (var X) NT))
+%              <- tlookup G X (bind N0 G0 T0)
+%              <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
+%              <- wf-tp G (tsel (var X) NT)
+%              <- wf-tp G (bind N0 G0 T0)
+% ++ %              <- sub-tp (tcons T0 G0) (recv N (tsel (var N0) NT)) G (recv N (tsel (var X) NT))
+%              .
+
+% t/selx     : type-exp G (sel (var X) N) (tsel (var X) NT)
+%              <- tlookup G X (bind N0 G0 T0)
+%              <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
+%              <- wf-tp G (tsel (var X) NT)
+%              <- wf-tp G (bind N0 G0 T0)
+%              <- sub-tp (tcons T0 G0) (recv N (tsel (var N0) NT)) G (recv N (tsel (var X) NT))
+%              .
 
 t/sel       : type-exp G (sel E1 LNV) T1
             <- type-exp G E1 (recv LNV T1).
@@ -443,14 +458,6 @@ t/let       : type-exp G (let T1 E1 E2) T2
 t/sub       : type-exp G E T2
             <- type-exp G E T1
             <- sub-tp G T1 G T2.
-
-t/varx     : type-exp G (var X) (recv N (tsel (var X) NT))
-              <- tlookup G X (bind N0 G0 T0)
-              <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
-              <- wf-tp G (tsel (var X) NT)
-              <- wf-tp G (bind N0 G0 T0)
-% ++               <- sub-tp (tcons T0 G0) (recv N (tsel (var N0) NT)) G (recv N (tsel (var X) NT))
-              .
 
 %{ ------- well-formedness / typing for values and environment ----- }%
 
@@ -2513,14 +2520,15 @@ invert-var-cases :
 %worlds () (invert-var-cases _ _ _ _ _ _).
 %total A (invert-var-cases A _ _ _ _ _).
 
-var-cases-wfv: var-cases X G T1 T N NT -> wf-val V G T1 -> wf-val V G T -> type.
-%mode var-cases-wfv +A +B -C.
+var-cases-wfv: var-cases X G T1 T N NT -> wf-env H G -> tlookup G X T1 -> vlookup H X V -> wf-val V G T1 -> wf-val V G T -> type.
+%mode var-cases-wfv +A +B +C +D +E -F.
 
-- : var-cases-wfv (var-cases/default S1) W (wfv/sub S1 W).
-- : var-cases-wfv (var-cases/x SX1 ST WB W B L) WX WX'.
+- : var-cases-wfv (var-cases/default S1) _ _ _ W (wfv/sub S1 W).
+- : var-cases-wfv (var-cases/x SX1 ST WB W B L) E GL VL WX WX'.
 
-%worlds () (var-cases-wfv _ _ _).
-%total A (var-cases-wfv A _ _).
+%worlds () (var-cases-wfv _ _ _ _ _ _).
+%trustme
+%total A (var-cases-wfv A _ _ _ _ _).
 
 %{
 invert-var :
@@ -2897,7 +2905,7 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
  -      : eval-safe ZT E (e/var L2) V2
           <- invert-var-cases ZT A B L W CST
           <- lookup-safe E L L2 V
-          <- var-cases-wfv CST V V2.
+          <- var-cases-wfv CST E L L2 V V2.
 
  -      : eval-safe (ZT: type-exp G _ _) E (e/fun EX) (wfv/sub CST (wfv/f IN STFF M TV STV TS E))
           <- invert-fun ZT TS TSV M WR STV CST IN

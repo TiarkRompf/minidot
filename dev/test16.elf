@@ -310,6 +310,13 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
 %              <- sub-tp (tcons T1 G) T1 (tcons T1 G) T2
 %              <- tsize G N.
 
+sub-tp/bindx  : sub-tp G (bind N0 G0 T0) G (recv N (tsel (var X) NT))
+                 <- tlookup G X (bind N0 G0 T0)
+                 <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
+                 <- wf-tp G (tsel (var X) NT)
+                 <- wf-tp G (bind N0 G0 T0)
+                 .
+
 sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               <- sub-tp (tcons TN G0) TN G2 T2
               <- tsize G0 N
@@ -404,13 +411,21 @@ t/var      : type-exp G (var N) T <- tlookup G N T <- wf-tp G T.
 %              <- tlookup G X T
 %              <- wf-tp G T.
 
-t/selx     : type-exp G (sel (var X) N) (tsel (var X) NT)
-              <- tlookup G X (bind N0 G0 T0)
-              <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
-              <- wf-tp G (tsel (var X) NT)
-              <- wf-tp G (bind N0 G0 T0)
-              <- sub-tp (tcons T0 G0) (recv N (tsel (var N0) NT)) G (recv N (tsel (var X) NT)) % --
-              .
+% t/varx     : type-exp G (var X) (recv N (tsel (var X) NT))
+%              <- tlookup G X (bind N0 G0 T0)
+%              <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
+%              <- wf-tp G (tsel (var X) NT)
+%              <- wf-tp G (bind N0 G0 T0)
+%              <- sub-tp (tcons T0 G0) (recv N (tsel (var N0) NT)) G (recv N (tsel (var X) NT)) % --
+%              .
+
+% t/selx     : type-exp G (sel (var X) N) (tsel (var X) NT)
+%              <- tlookup G X (bind N0 G0 T0)
+%              <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
+%              <- wf-tp G (tsel (var X) NT)
+%              <- wf-tp G (bind N0 G0 T0)
+%              <- sub-tp (tcons T0 G0) (recv N (tsel (var N0) NT)) G (recv N (tsel (var X) NT))
+%              .
 
 t/sel       : type-exp G (sel E1 LNV) T1
             <- type-exp G E1 (recv LNV T1).
@@ -443,14 +458,6 @@ t/let       : type-exp G (let T1 E1 E2) T2
 t/sub       : type-exp G E T2
             <- type-exp G E T1
             <- sub-tp G T1 G T2.
-
-t/varx     : type-exp G (var X) (recv N (tsel (var X) NT))
-              <- tlookup G X (bind N0 G0 T0)
-              <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
-              <- wf-tp G (tsel (var X) NT)
-              <- wf-tp G (bind N0 G0 T0)
-              <- sub-tp (tcons T0 G0) (recv N (tsel (var N0) NT)) G (recv N (tsel (var X) NT)) % --
-              .
 
 %{ ------- well-formedness / typing for values and environment ----- }%
 
