@@ -2896,14 +2896,19 @@ eval-empty-safe: type-exp G empty T -> wf-val emptyv G T -> type.
 wfv-widen-eta: wf-env H G
                 -> eval-exp H (var X) V
                 -> wf-val V G (bind N0 G0 T0)
+                -> wf-tp G (tsel (var X) NT)
                 -> sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
                 -> wf-val V G (recv N (tsel (var X) NT))
                 -> type.
-%mode wfv-widen-eta +A +B +C +D -E.
+%mode wfv-widen-eta +A +B +C +D +E -F.
 
-%worlds () (wfv-widen-eta _ _ _ _ _).
+- : wfv-widen-eta E EV (wfv/empty _) W _ (wfv/empty (wf-tp/recv W)).
+
+% - : wfv-widen-eta E EV (wfv/f ST1 ST2 M VW ST3 TE WE) W ST R.
+
+%worlds () (wfv-widen-eta _ _ _ _ _ _).
 %trustme
-%total A (wfv-widen-eta _ _ A _ _).
+%total A (wfv-widen-eta _ _ A _ _ _).
 
 path-eta-safe: path-eta G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> type.
 %mode path-eta-safe +A +B +C -D.
@@ -2913,7 +2918,7 @@ path-eta-safe: path-eta G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T ->
 
 - : path-eta-safe (pet/subst W ST P) E EV V
      <- path-eta-safe P E EV V1
-     <- wfv-widen-eta E EV V1 ST V.
+     <- wfv-widen-eta E EV V1 W ST V.
 
 %worlds () (path-eta-safe _ _ _ _).
 %total A (path-eta-safe A _ _ _).
