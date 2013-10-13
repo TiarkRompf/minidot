@@ -305,11 +305,6 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
               <- getenv G2' G2X
               <- sub-tp G1 T1 G2X T2.
 
-% sub-tp/tbindx : sub-tp G1 (bind N G T1) G2 (bind N G T2)
-%              <- wf-tp G2 (bind N G T2)
-%              <- sub-tp (tcons T1 G) T1 (tcons T1 G) T2
-%              <- tsize G N.
-
 sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               <- sub-tp (tcons TN G0) TN G2 T2
               <- tsize G0 N
@@ -508,219 +503,6 @@ wfv/sub  : wf-val V G T
 
 wfe/n    : wf-env vnil tnil.
 wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H G.
-
-
-
-
-%%% TEMP QUERIES %%%
-%{
-
-%query 1 1 wf-tp (tcons bot tnil) (tsel (var z) (rect z top top) z).
-
-%query 1 1 wf-tp (tcons (rect z top top) tnil) (tsel (var z) (rect z bot top) z).
-
-%query 1 1 wf-tp (tcons (and (recv z top) (rect z top top)) tnil) (tsel (var z) (rect z top top) z).
-
-%query 1 1 tlookup (tcons (and 
-    (recv z (tsel (var z) (rect z top top) z)) 
-    (rect z top top)) 
-  tnil) 
-  z
-  A.
-
-%abbrev ex0 = (and (recv z (tsel (var z) _ z))
-                   (rect z top top)).
-
-%query 1 1 wf-tp (tcons ex0 tnil) (tsel (var z) T z).
-
-
-%query 1 1 type-exp tnil (fun (bind z tnil top) z top empty top z empty top mnil) T.
-
-
-
-%abbrev ex1a  = (bind z tnil (and (arrow z top top) (and (recv z (tsel (var z) (rect z top top) z)) (rect z top top) ))).
-%abbrev ex1   = (bind z tnil                        (and (recv z (tsel (var z) (rect z top top) z)) (rect z top top) )).
-
-%query 1 1 wf-tp tnil ex1a.
-
-%query 1 1 wf-tp tnil ex1.
-
-%query 1 1 sub-tp tnil ex1a tnil ex1.
-
-%query 1 1 init-tp tnil ex1a ex1.
-
-%query 1 1 init-tp tnil ex1a ex1.
-
-
-%abbrev ex2 = 
-      (fun _ 
-        z top empty top 
-        z (fun top z top empty top z empty top mnil) (tsel (var z) (rect z top top) z) 
-        (mcons z top top mnil)). 
-
-
-%query * 1 type-exp tnil ex2 _.
-
-%query * 1 type-exp tnil (let ex1 ex2 (var z)) ex1.
-
-%query 1 1 wf-tp (tcons ex1 tnil) (tsel (var z) _ z).
-
-%query 1 1 path-eval (tcons ex1 tnil) (var z) (rect z top top).
-
-%query 1 1 type-exp (tcons ex1 tnil) (sel (var z) z) (tsel (var z) _ z).
-
-
-%query 1 1 type-exp tnil 
-    (let ex1 ex2 
-      (let (tsel (var z) _ z) (sel (var z) z) 
-        (var (s z)))) top.
-
-
-%abbrev e15 = 
-    (let ex1 
-      (fun _ 
-        %{def}% z top empty top 
-        %{val}% z (fun _ z top empty top z empty top mnil) (tsel (var z) (rect z top top) z) 
-        %{typ}% (mcons _ top top mnil)) 
-      (let 
-        (tsel (var z) (rect z top top) z) (sel (var z) z) 
-        (var (s z)))).
-
-%query 1 1 type-exp tnil e15 top.
-
-
-%{
-val b: { z => { val l: z.X } &       { type X: Top .. Top }} = 
-   new { z =>   val l: z.X = new {};   type X: Top .. Top }
-
-
-val a: { val b : { b => ...  }} = new { val b = b }
-
-%TODO
-}%
-
-
-
-%{
-
-nominal:
-- dot version: expand given type, check that object decls conform
-- here: init-tp as opposed to sub-tp (subtyping for identical object)
-
-val pets = new { z =>
-  type Pet: bot .. top
-  type Cat: bot .. z.Pet
-}
-
-val cat = new pets.Cat
-
-cat <: pets.Cat
-cat <: pets.Pet
-
-}%
-
-
-%query 1 1 type-exp (tcons (rect z bot top) tnil) 
-    (fun
-      (tsel (var z) _ z)   %  new pets.Pet
-      z top empty top
-      z empty top
-      mnil)
-    (tsel (var z) _ z).
-
-%query 1 1 type-exp (tcons (bind z tnil (rect z bot top)) tnil) 
-    (fun
-      (tsel (var z) (rect z bot top) z)   %  new pets.Pet
-      z top empty top
-      z empty top
-      mnil)
-    (tsel (var z) _ z).
-
-
-
-%abbrev pets0 = 
-  (fun 
-    (rect z     bot top)
-    z top empty top
-    z empty top
-    (mcons _ bot top
-    mnil)).
-
-%query 1 1 type-exp tnil pets0 T.
-
-
-%query 1 1 type-exp tnil 
-    (let _ pets0
-      (let 
-        (tsel (var z) (rect z bot top) z)    % val cat: pets.Pet = 
-        (fun
-          (tsel (var z) _ z)  %          new pets.Pet
-          z top empty top
-          z empty top
-          mnil)
-        (var (s z)) ))
-    top.
-
-
-%abbrev petTypeDec = (rect z bot top).
-%abbrev petType    = (tsel (var z) petTypeDec z).
-
-%abbrev catTypeDec = (rect (s z) bot petType).
-%abbrev catType    = (tsel (var z) catTypeDec (s z)).
-
-%abbrev pets = 
-  (fun 
-    (bind z tnil (and 
-      catTypeDec    % type Cat: bot .. z.Pet
-      petTypeDec    % type Pet: bot .. top
-    ))
-    z top empty top
-    z empty top
-    (mcons _ bot petType
-    (mcons _ bot top
-    mnil))).
-
-%query 1 1 type-exp tnil pets T.
-
-%query 1 1 type-exp (tcons (and catTypeDec petTypeDec) tnil)
-    (let 
-      petType
-      (fun
-        catType
-        z top empty top
-        z empty top
-        mnil)
-      (var (s z)) )
-    top.
-
-%%% creating cats doesn't work yet (with bind in env)
-
-%query 1 1 wf-tp (tcons ((and catTypeDec petTypeDec)) tnil) petTypeDec.
-%query 1 1 wf-tp (tcons ((and catTypeDec petTypeDec)) tnil) petType.
-%query 1 1 wf-tp (tcons ((and catTypeDec petTypeDec)) tnil) catTypeDec.
-%query 1 1 wf-tp (tcons ((and catTypeDec petTypeDec)) tnil) catType.
-
-%query 1 1 wf-tp (tcons (bind z tnil (and catTypeDec petTypeDec)) tnil) petTypeDec.
-%query 1 1 wf-tp (tcons (bind z tnil (and catTypeDec petTypeDec)) tnil) petType.
-%query 1 1 wf-tp (tcons (bind z tnil (and catTypeDec petTypeDec)) tnil) catTypeDec.
-
-% %query 1 1 wf-tp (tcons (bind z tnil (and petTypeDec catTypeDec)) tnil) (tsel (var z) (rect (s z) bot top) (s z)).
-% %query 1 1 wf-tp (tcons (bind z tnil (and petTypeDec catTypeDec)) tnil) (tsel (var z) (rect (s z) bot petType) (s z)).
-% %query 1 1 wf-tp (tcons (bind z tnil (and catTypeDec petTypeDec)) tnil) catType.
-
-
-%{
-%query 1 1 type-exp (tcons (bind z tnil (and catTypeDec petTypeDec)) tnil)
-    (fun
-      catType
-      z top empty top
-      z empty top
-      mnil)
-    petType.
-}%
-
-
-}%
 
 % EOF
 
@@ -1530,11 +1312,6 @@ extend-sub-tp2: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp G1 T1 (tcons Z G2) T2 -> t
 %worlds () (extend-sub-tp2 _ _ _).
 %total A (extend-sub-tp2 A _ _).
 
-
-
-
-
-
 extend-wf-tp-mult: wf-tp G1 T1 -> sub-env G1 G2 -> wf-tp G2 T1 -> type.
 %mode extend-wf-tp-mult +A +B -C.
 - : extend-wf-tp-mult W sub-env/refl W.
@@ -1585,12 +1362,6 @@ ste/c    : sub-tp-env GX GY T3 (tcons T1 G1) (tcons T2 G2)
             <- sub-tp GY T2 (tcons T2 G2) T3 
             <- sub-tp GX T1 GY T2 
             <- sub-tp-env GX GY T3 G1 G2.
-
-%%% TODO: 
-% ST in path-eval requires its input to be WF, but the ST used for narrowing does 
-% not relate to that environment. 
-% add more constraints to tbind2 ?
-% or just go back to adding slack ?
 
 % Extract wf from subtyping
 
@@ -1661,9 +1432,6 @@ extract-wf-pev : path-eval G E T OG -> getenv OG G' -> wf-tp G' T -> type.
 
 %reduces B < A (extract-wf-pev A _ B).
 
-
-
-
 %% Diamond property w.r.t. environment for well formed types
 
 wf-tp-min:
@@ -1724,11 +1492,6 @@ pev-tp-dia:
 
 %{ ------- subtyping reflexivity and transitivity ------ }%
 
-
-%% In test8, Subtyping of type selections was not reflexive because of type bounds.
-%% Now we have sub-tp/tselx, so reflexivity holds again.
-%% The proofs depend on it again, as it enabled us to remove restrict-sub-tp,
-%% which caused trouble for self types.
 
 %% Subtyping is reflexive
 
@@ -2083,46 +1846,6 @@ sub-tp-trans-aux :
    <- eq-low-env EQG2W A2' A2''
    <- sub-tp-trans-aux WU BAS A2'' OUT.
 
-%{
-In the previous formulation of tbind2 we had a problem.
-
-we have:
-
-G1 T1 <: G2 T2
-G2 T2 <: G3 {z=>T3}    <---    G2 T2 <: (G3,z:T2) T3
-                               G2 T2 <: (G3,z:T3) T3
-
-and we need to show:
-
-G1 T2 <: G3 {z=>T3}    <---    G1 T1 <: (G3,z:T1) T3
-                               G1 T1 <: (G3,z:T3) T3
-
-
-but induction only gives us:   G1 T1 <: (G3,z:T2) T3
-                               G1 T1 <: (G3,z:T3) T3
-
-That's why we added explicit slack in tbind2.
-
-Now we no longer need to prove uniqueness of path-eval,
-so we can put in a subtype. Thus we can do without
-explicit slack and prove a more general env weakening
-lemma.
-
-}%
-
-%{
--/tbind2  : sub-tp-trans-aux
-       W
-       SBT1
-       (sub-tp/tbind2 SE0 S SBT3 SU)
-       (sub-tp/tbind2 SE0 S SBT5 SU')
-
-       <- sub-tp-trans-aux W SBT1 SU SU'
-       <- sub-tp-trans-aux W SBT1 SBT3 SBT5'
-       
-       <- narrow-env SBT1 SBT5' SU' SBT3 SU SBT5.
-}%
-
 -/tbind2  : sub-tp-trans-aux
        W
        SBT1
@@ -2133,14 +1856,12 @@ lemma.
        <- sub-tp-trans-aux W SBT1 SU SU'
        <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
 
-
 -/tbind1 : sub-tp-trans-aux
        W
        (sub-tp/tbind1 S ST)
        SBT2
        (sub-tp/tbind1 S ST')
        <- sub-tp-trans-aux W ST SBT2 ST'.
-
 
 -/tbind2-tbind1  : sub-tp-trans-aux
        (wf-tp/tbind WS0 WY0)
@@ -2199,9 +1920,6 @@ lemma.
 %worlds () (sub-tp-trans-aux _ _ _ _).
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
-
-
-
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
 %% WF as an additional argument.
 
@@ -2220,9 +1938,6 @@ sub-tp-trans :
 
 %worlds () (sub-tp-trans _ _ _).
 %total {A} (sub-tp-trans A _ _).
-
-
-% false: type.
 
 incompat-tp: tpe -> tpe -> type.
 
