@@ -310,16 +310,6 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
 %              <- sub-tp (tcons T1 G) T1 (tcons T1 G) T2
 %              <- tsize G N.
 
-sub-tp/tbindx  : sub-tp G1 (bind N0 G0 T0) G2 (recv N (tsel (var X) NT))
-               <- sub-env G G2
-               <- sub-env G G1
-               <- tlookup G X (bind N0 G0 T0)
-               <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
-               <- wf-tp G (tsel (var X) NT)
-               <- wf-tp G (bind N0 G0 T0)
-               <- tsize G0 N0
-               .
-
 sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               <- sub-tp (tcons TN G0) TN G2 T2
               <- tsize G0 N
@@ -332,6 +322,13 @@ sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
              <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2) % --
               <- tsize G0 N
               .
+sub-tp/tbindx  : sub-tp G1 (bind N0 G0 T0) G3 T2
+               <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
+               <- sub-tp G2 (recv N (tsel (var X) NT)) G3 T2
+               <- tlookup G2 X (bind N0 G0 T0)
+               <- wf-tp G1 (bind N0 G0 T0)
+               <- tsize G0 N0
+               .
 
 sub-tp/and2 : sub-tp G1 T1 G2 (and T2 T3)
               <- sub-tp G1 T1 G2 T3
@@ -1464,10 +1461,13 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
 %     (sub-tp/tbindx S ST W')
 %     <- extend-wf-tp W T W'.
 
-- : extend-sub-tp (sub-tp/tbindx S W1 W2 ST L S1 S2) T
-     (sub-tp/tbindx S W1 W2 ST L (sub-env/ext S1) (sub-env/ext S2))
-     (sub-tp/tbindx S W1 W2 ST L (sub-env/ext S1) S2)
-     (sub-tp/tbindx S W1 W2 ST L S1 (sub-env/ext S2)).
+- : extend-sub-tp (sub-tp/tbindx SN WB1 L2 ST2 ST0) T
+     (sub-tp/tbindx SN WB1' L2' ST2' ST0)
+     (sub-tp/tbindx SN WB1' L2 ST2 ST0)
+     (sub-tp/tbindx SN WB1 L2' ST2' ST0)
+     <- extend-wf-lkp L2 T L2'
+     <- extend-wf-tp WB1 T WB1'
+     <- extend-sub-tp ST2 T ST2' _ _.
 
 - : extend-sub-tp (sub-tp/tbind1 S ST) T
      (sub-tp/tbind1 S STC1)
@@ -1622,9 +1622,8 @@ extract-wf-pev : path-eval G E T OG -> getenv OG G' -> wf-tp G' T -> type.
 % - : extract-wf (sub-tp/tbindx S ST W2) (wf-tp/tbind S W1) W2
 %     <- extract-wf ST W1 _.
 
-- : extract-wf (sub-tp/tbindx S W1 W2 ST L S1 S2) W1' (wf-tp/recv W2')
-     <- extend-wf-tp-mult W1 S1 W1'
-     <- extend-wf-tp-mult W2 S2 W2'.
+- : extract-wf (sub-tp/tbindx SN W1 L2 ST2 ST0) W1 W2
+     <- extract-wf ST2 _ W2.
 
 - : extract-wf (sub-tp/tbind1 S ST) (wf-tp/tbind S WU) W2
       <- extract-wf ST WU W2.
@@ -2181,8 +2180,14 @@ lemma.
       SBT5
       <- sub-tp-trans-aux W2 SBT1 SBT3 SBT5.
 
+-/tbindx : sub-tp-trans-aux
+            W
+            (sub-tp/tbindx SN W1 L2 ST2 ST0)
+            ST23
+            (sub-tp/tbindx SN W1 L2 ST2' ST0)
+            <- sub-tp-trans-aux W ST2 ST23 ST2'.
+
 %worlds () (sub-tp-trans-aux _ _ _ _).
-%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 
