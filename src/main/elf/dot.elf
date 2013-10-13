@@ -399,7 +399,8 @@ pet/lookup : path-eta G (var X) T <- tlookup G X T <- wf-tp G T.
 pet/subst  : path-eta G (var X) (recv N (tsel (var X) NT))
                    <- path-eta G (var X) (bind N0 G0 T0)
                    <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
-                   <- wf-tp G (tsel (var X) NT).
+                   <- wf-tp G (tsel (var X) NT)
+                   <- tsize G0 N0.
 
 type-mem   : mem N -> tpe -> type.
 tm/nil     : type-mem mnil top.
@@ -2263,7 +2264,7 @@ type.
 extract-wf-pet: path-eta G E T -> wf-tp G T -> type.
 %mode extract-wf-pet +A -B.
 - : extract-wf-pet (pet/lookup W L) W.
-- : extract-wf-pet (pet/subst W ST P) (wf-tp/recv W).
+- : extract-wf-pet (pet/subst N W ST P) (wf-tp/recv W).
 %worlds () (extract-wf-pet _ _).
 %total A (extract-wf-pet A _).
 
@@ -2896,19 +2897,20 @@ eval-empty-safe: type-exp G empty T -> wf-val emptyv G T -> type.
 wfv-widen-eta: wf-env H G
                 -> eval-exp H (var X) V
                 -> wf-val V G (bind N0 G0 T0)
+                -> tsize G0 N0
                 -> wf-tp G (tsel (var X) NT)
                 -> sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
                 -> wf-val V G (recv N (tsel (var X) NT))
                 -> type.
-%mode wfv-widen-eta +A +B +C +D +E -F.
+%mode wfv-widen-eta +A +B +C +D +E +F -G.
 
-- : wfv-widen-eta E EV (wfv/empty _) W _ (wfv/empty (wf-tp/recv W)).
+- : wfv-widen-eta E EV (wfv/empty _) N W _ (wfv/empty (wf-tp/recv W)).
 
-% - : wfv-widen-eta E EV (wfv/f ST1 ST2 M VW ST3 TE WE) W ST R.
+% - : wfv-widen-eta E EV (wfv/f ST1 ST2 M VW ST3 TE WE) N W ST R.
 
-%worlds () (wfv-widen-eta _ _ _ _ _ _).
+%worlds () (wfv-widen-eta _ _ _ _ _ _ _).
 %trustme
-%total A (wfv-widen-eta _ _ A _ _ _).
+%total A (wfv-widen-eta _ _ A _ _ _ _).
 
 path-eta-safe: path-eta G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> type.
 %mode path-eta-safe +A +B +C -D.
@@ -2916,9 +2918,9 @@ path-eta-safe: path-eta G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T ->
 - : path-eta-safe (pet/lookup W L) E (e/var LH) V
      <- lookup-safe E L LH V.
 
-- : path-eta-safe (pet/subst W ST P) E EV V
+- : path-eta-safe (pet/subst N W ST P) E EV V
      <- path-eta-safe P E EV V1
-     <- wfv-widen-eta E EV V1 W ST V.
+     <- wfv-widen-eta E EV V1 N W ST V.
 
 %worlds () (path-eta-safe _ _ _ _).
 %total A (path-eta-safe A _ _ _).
