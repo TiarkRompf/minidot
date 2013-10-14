@@ -2952,6 +2952,12 @@ wf-res-widen: sub-tp G1 T1 G2 T2 -> wf-res OV G1 T1 -> wf-res OV G2 T2 -> type.
 %worlds () (wf-res-widen _ _ _).
 %total A (wf-res-widen _ A _).
 
+eval-sel-safe-res : wf-res OV1 G (recv LNV T) -> eval-sel-res LNV OV1 OV2 -> wf-res OV2 G T -> type.
+%mode eval-sel-safe-res +A +B -C.
+
+%worlds () (eval-sel-safe-res _ _ _).
+%trustme
+%total A (eval-sel-safe-res _ A _).
 
 eval-safe-res : type-exp G E T -> wf-env H G -> eval-exp-res N H E OV -> wf-res OV G T -> type.
 %mode eval-safe-res +A +B +C -D.
@@ -2965,6 +2971,12 @@ eval-safe-res : type-exp G E T -> wf-env H G -> eval-exp-res N H E OV -> wf-res 
      <- lookup-safe-res E L L2 VG VW
      <- to-case-some VG VW V
      <- wf-res-widen ST V V2.
+
+- : eval-safe-res ZT WE (er/sel EVS EVR) WVS2
+     <- invert-sel ZT TS ST
+     <- eval-safe-res TS WE EVR WVX
+     <- eval-sel-safe-res WVX EVS WVS
+     <- wf-res-widen ST WVS WVS2.
 
 %worlds () (eval-safe-res _ _ _ _an).
 %total C (eval-safe-res _ _ C _).
