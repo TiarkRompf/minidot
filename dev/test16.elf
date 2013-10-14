@@ -325,13 +325,14 @@ sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
 %               <- tsize G0 N0
 %               .
 
-% ++ sub-tp/tbindx  : sub-tp G (bind N0 G0 T0) G (recv N (tsel (var X) NT))
-% ++             <- tlookup G X (bind N0 G0 T0)
-% ++             <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
-% ++             <- wf-tp G (tsel (var X) NT)
-% ++             <- path-eval (tcons T0 G0) (var N0) (rect NT S U) EG0
-% ++             <- path-eval G (var X) (rect NT S U) (etenv/right GE)
-% ++             <- getenv EG0 GE
+% ++ sub-tp/tbindx  : sub-tp G1 (bind N0 G0 T0) G3 (recv N T2)
+% ++            <- sub-tp G2 (tsel (var X) NT) G3 T2
+% ++            <- tlookup G2 X (bind N0 G0 T0)
+% ++            <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
+% ++            <- path-eval (tcons T0 G0) (var N0) (rect NT S U) EG0
+% ++            <- path-eval G2 (var X) (rect NT S U) (etenv/right GE)
+% ++            <- getenv EG0 GE
+% ++            <- wf-tp G1 (bind N0 G0 T0)
 % ++             <- tsize G0 N0.
 
 sub-tp/and2 : sub-tp G1 T1 G2 (and T2 T3)
@@ -1324,6 +1325,16 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 
 
+% - : extend-sub-tp (sub-tp/tbindx N W1 GE PEX PEB ST L ST2) T
+%     (sub-tp/tbindx N W1' GE PEX PEB ST L ST2')
+%     (sub-tp/tbindx N W1' GE PEX PEB ST L ST2)
+%     (sub-tp/tbindx N W1 GE PEX PEB ST L ST2')
+%     % <- extend-wf-lkp L T L'
+%     % <- extend-wf-lkpe-case-right LX T LX'
+%     % <- extend-sub-tp ST T _ ST' _
+%     <- extend-sub-tp ST2 T _ _ ST2'
+%     <- extend-wf-tp W1 T W1'.
+
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _)(extend-wf-pev-case _ _ _ _ _).
 %total (A B C D) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _)(extend-wf-pev-case D _ _ _ _).
 
@@ -1459,6 +1470,10 @@ extract-wf-pev : path-eval G E T OG -> getenv OG G' -> wf-tp G' T -> type.
       (wf-tp/and W3 W4)
       <- extract-wf S1 W1 W3
       <- extract-wf S2 W2 W4.
+
+% - : extract-wf (sub-tp/tbindx N W1 GE PEX PEB ST L ST2) W1 (wf-tp/recv W2)
+%     % <- extract-wf ST W1 _
+%     <- extract-wf ST2 _ W2.
 
 %worlds () (extract-wf _ _ _)(extract-wf-pev _ _ _).
 %total (A B) (extract-wf A _ _)(extract-wf-pev B _ _).
@@ -1949,6 +1964,20 @@ sub-tp-trans-aux :
 %            ST23
 %            (sub-tp/tbindx SN W1 L2 ST2' ST0)
 %            <- sub-tp-trans-aux W ST2 ST23 ST2'.
+
+% -/tbindx-recv : sub-tp-trans-aux
+%                 (wf-tp/recv W0)
+%                 (sub-tp/tbindx N W1 GE PEX PEB ST L ST2)
+%                 (sub-tp/recv ST3)
+%                 (sub-tp/tbindx N W1 GE PEX PEB ST L STR)
+%                 <- sub-tp-trans-aux W0 ST2 ST3 STR.
+
+% -/tbind2-tbindx : sub-tp-trans-aux
+%                   (wf-tp/tbind N0 W0)
+%                   (sub-tp/tbind2 N2 ST1 ST2 ST3)
+%                   (sub-tp/tbindx NX WB GE PEX PEB STB L (sub-tp/tselx PEX0 S01 S02))
+%                   OUT
+%                   <- sub-tp-trans-aux W0 ST3 STB OUT1.
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
