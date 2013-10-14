@@ -659,6 +659,13 @@ wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H 
 
 % EOF
 
+res-val-get : res-val -> val -> type.
+res-val-get/some : res-val-get (res-val/some V) V.
+
+wf-res : res-val -> tenv -> tpe -> type.
+wf-res/some : wf-res (res-val/some V) G T <- wf-val V G T.
+wf-res/timeout : wf-res res-val/timeout G T.
+
 %%% PROOFS %%%
 
 sub-env-trans: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
@@ -2569,8 +2576,6 @@ invert-wf-rec :
 
 %{ ------- type preservation ----- }%
 
-
-
 % lookup safe
 
 lookup-zero-safe-total: wf-env H G -> tlookup-zero G N1 T -> vlookup-zero H N1 V -> wf-val V G T -> type.
@@ -2760,3 +2765,27 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
 
 %worlds () (eval-safe _ _ _ _).
 %total C (eval-safe A _ C _). % induction on eval-exp
+
+%{ ------- full type safety ----- }%
+
+% wip
+%.
+
+lookup-zero-safe-res2 : wf-env H G ->
+lookup-safe-res : wf-env H G -> tlookup G X T -> vlookup-res H X OV -> res-val-get OV V -> wf-val V G T -> type.
+%mode lookup-safe-res +A +B +C -D -E.
+
+- : lookup-safe-res WE (tl TL TA TS) (vlr VL VA VS) GV WV
+     <- eq-refl (s N) EN
+     <- wf-env-size-eq WE VS TS ES.
+
+%worlds () (lookup-safe-res _ _ _ _ _).
+%total A (lookup-safe-res _ A _ _ _).
+
+%.
+
+eval-safe-res : type-exp G E T -> wf-env H G -> eval-exp-res N H E OV -> wf-res OV G T -> type.
+%mode eval-safe-res +A +B +C -D.
+
+%worlds () (eval-safe-res _ _ _ _an).
+%total C (eval-safe-res _ _ C _).
