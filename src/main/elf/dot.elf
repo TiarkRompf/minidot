@@ -391,11 +391,15 @@ path-eta : tenv -> exp -> tpe -> type.
 
 pet/lookup : path-eta G (var X) T <- tlookup G X T <- wf-tp G T.
 
-% pet/subst  : path-eta G (var X) (recv N (tsel (var X) NT))
-%                   <- path-eta G (var X) (bind N0 G0 T0)
-%                   <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
-%                   <- wf-tp G (tsel (var X) NT)
-%                   <- tsize G0 N0.
+pet/subst  : path-eta G (var X) (recv N (tsel (var X) NT))
+              <- path-eta G (var X) (bind N0 G0 T0)
+              <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
+              <- wf-tp G (tsel (var X) NT)
+              <- path-eval (tcons T0 G0) (var N0) (rect NT S U) EG0
+              <- path-eval G (var X) (rect NT S U) EGX
+              <- getenv EG0 GE
+              <- getenv EGX GE
+              <- tsize G0 N0.
 
 type-mem   : mem N -> tpe -> type.
 tm/nil     : type-mem mnil top.
@@ -499,6 +503,17 @@ wfv/sub  : wf-val V G T
             <- wf-val V G1 T1
             <- sub-tp G1 T1 G T.
 
+wfv/eta  : wf-val V GX (recv N (tsel (var X) NT))
+            <- sub-env G GX
+            <- tlookup G X (bind N0 G0 T0)
+            <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
+            <- wf-tp G (tsel (var X) NT)
+            <- path-eval (tcons T0 G0) (var N0) (rect NT S U) EG0
+            <- path-eval G (var X) (rect NT S U) EGX
+            <- getenv EG0 GE
+            <- getenv EGX GE
+            <- tsize G0 N0
+            <- wf-val V G (bind N0 G0 T0).
 
 wfe/n    : wf-env vnil tnil.
 wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H G.
@@ -885,6 +900,14 @@ eq-pev-all: sametenv G1 G1' -> same T1 T1' -> path-eval G1 N T1 EG1 -> path-eval
 %worlds () (eq-pev-all _ _ _ _).
 %total {A} (eq-pev-all A _ _ _).
 %reduces N3 <= N2 (eq-pev-all _ _ N2  N3).
+
+eq-pev-type: same T1 T1' -> path-eval G1 N T1 EG1 -> path-eval G1' N T1' EG1' -> type.
+%mode eq-pev-type +P1 +P2 -SBT.
+
+- : eq-pev-type ident S S.
+
+%worlds () (eq-pev-type _ _ _).
+%total {T2} (eq-pev-type T2 _ _).
 
 lookup-zero-same: tlookup-zero G2 E T1 -> tlookup-zero G2 E T2 -> same T1 T2 -> type.
 %mode lookup-zero-same +P1 +P2 -SBT.
@@ -1978,7 +2001,7 @@ type.
 extract-wf-pet: path-eta G E T -> wf-tp G T -> type.
 %mode extract-wf-pet +A -B.
 - : extract-wf-pet (pet/lookup W L) W.
-% - : extract-wf-pet (pet/subst N W ST P) (wf-tp/recv W).
+- : extract-wf-pet (pet/subst N GEX GE0 PX P0 W ST P) (wf-tp/recv W).
 %worlds () (extract-wf-pet _ _).
 %total A (extract-wf-pet A _).
 
@@ -2008,7 +2031,8 @@ extract-wf3: wf-val V G T1 -> wf-tp G T1 -> type.
 - : extract-wf3 (wfv/f _ SFF _ _ _ _ _) WFF <- extract-wf SFF _ WFF.
 - : extract-wf3 (wfv/t WR) WR.
 - : extract-wf3 (wfv/sub S TS) W2 <- extract-wf S W1 W2.
-
+- : extract-wf3 (wfv/eta V GEX GE0 PX P0 N W ST L S) (wf-tp/recv W')
+     <- extend-wf-tp-mult W S W'.
 %worlds () (extract-wf3 _ _).
 %total WFE (extract-wf3 WFE _).
 
@@ -2025,6 +2049,8 @@ extend-wfv: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
             <- extend-sub-tp2 ST T ST1.
 -     : extend-wfv (wfv/t WR) T (wfv/t WR1)
             <- extend-wf-tp WR T WR1.
+
+-     : extend-wfv (wfv/eta V GEX GE0 PX P0 N W ST L S) T (wfv/eta V GEX GE0 PX P0 N W ST L (sub-env/ext S)).
 
 %worlds () (extend-wfv _ _ _).
 %total A (extend-wfv A _ _).
@@ -2332,7 +2358,20 @@ invert-wf-rec-aux :
             <- sub-tp-trans SB1 SB0 (SB1X: sub-tp G1 TI G2 (recv LNV T2))
             <- invert-wf-rec-aux TS SB1X TV (SB: sub-tp _ (recv LNV T4) G2 (recv LNV T2)).
 
+
+-     : invert-wf-rec-aux ((wfv/eta V N GEX GE0 PEX PE0 WX ST L S): wf-val (clos LNF R LNV R2 H) G1 _) (sub-tp/recv (sub-tp/tsel1 SBX0 GEX0 PEX0)) (wfv/sub B A) (sub-tp/recv (sub-tp/tsel1 SB0 GE0 PE0'))
+         <- extend-wf-pev-mult PEX S PEX'
+         <- path-eval-eq PEX' PEX0 EQR EQGE
+         <- path-eval-eq PEX0 PEX' EQR' EQGE'
+         <- same-etenv-tenv EQGE GEX GEX0 EQG
+         <- same-etenv-tenv EQGE' GEX0 GEX EQG'
+         <- eq-pev EQR PE0 PE0'
+         <- invert-wf-rec-aux V (sub-tp/tbind1 N ST) A (sub-tp/recv B)
+         <- eq-low-env EQG' SBX0 SB0
+         .
+
 %worlds () (invert-wf-rec-aux _ _ _ _).
+%trustme
 %total WFE (invert-wf-rec-aux WFE _ _ _).
 
 
@@ -2361,6 +2400,17 @@ invert-wf-rec :
 
 
 % lookup safe
+
+lookup-zero-safe-total: wf-env H G -> tlookup-zero G N1 T -> vlookup-zero H N1 V -> wf-val V G T -> type.
+%mode lookup-zero-safe-total +A +B -C -D.
+
+-      : lookup-zero-safe-total (wfe/c G V) tl/hit vl/hit V.
+-      : lookup-zero-safe-total (wfe/c G V) (tl/miss A) (vl/miss B) Z1
+         <- lookup-zero-safe-total G A B Z
+         <- extend-wfv Z _ Z1.
+
+%worlds () (lookup-zero-safe-total _ _ _ _).
+%total A (lookup-zero-safe-total A _ _ _).
 
 lookup-zero-safe: wf-env H G -> tlookup-zero G N2 T -> vlookup-zero H N1 V -> eq N1 N2 -> wf-val V G T -> type.
 %mode lookup-zero-safe +A +B +C +D -E.
@@ -2391,6 +2441,23 @@ lookup-safe: wf-env H G -> tlookup G N T -> vlookup H N V -> wf-val V G T -> typ
 
 %worlds () (lookup-safe _ _ _ _).
 %total A (lookup-safe A _ _ _).
+
+wf-env-tsize-vsize: wf-env H G -> tsize G N -> vsize H N -> type.
+%mode wf-env-tsize-vsize +A +B -C.
+-      : wf-env-tsize-vsize wfe/n tf/n vf/n.
+-      : wf-env-tsize-vsize (wfe/c G _) (tf/c TS) (vf/c VS) <- wf-env-tsize-vsize G TS VS.
+%worlds () (wf-env-tsize-vsize _ _ _).
+%total A (wf-env-tsize-vsize A _ _).
+
+lookup-safe-total: wf-env H G -> tlookup G N T -> vlookup H N V -> wf-val V G T -> type.
+%mode lookup-safe-total +A +B -C -D.
+
+-      : lookup-safe-total WE (tl TL A TS) (vl VL A VS) WV
+         <- wf-env-tsize-vsize WE TS VS
+         <- lookup-zero-safe-total WE TL VL WV.
+
+%worlds () (lookup-safe-total _ _ _ _).
+%total A (lookup-safe-total A _ _ _).
 
 
 sub-tp-inv-recv: sub-tp G1 (recv LNV T1) G2 (recv LNV T2)
@@ -2425,35 +2492,14 @@ eval-empty-safe: type-exp G empty T -> wf-val emptyv G T -> type.
 %worlds () (eval-empty-safe _ _).
 %total A (eval-empty-safe A _).
 
-%{
-wfv-widen-eta: wf-env H G
-                -> eval-exp H (var X) V
-                -> wf-val V G (bind N0 G0 T0)
-                -> tsize G0 N0
-                -> wf-tp G (tsel (var X) NT)
-                -> sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
-                -> wf-val V G (recv N (tsel (var X) NT))
-                -> type.
-%mode wfv-widen-eta +A +B +C +D +E +F -G.
-
-- : wfv-widen-eta E EV (wfv/empty _) N W _ (wfv/empty (wf-tp/recv W)).
-
-% - : wfv-widen-eta E EV (wfv/f ST1 ST2 M VW ST3 TE WE) N W ST R.
-
-%worlds () (wfv-widen-eta _ _ _ _ _ _ _).
-%trustme
-%total A (wfv-widen-eta _ _ A _ _ _ _).
-}%
-
 path-eta-safe: path-eta G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> type.
 %mode path-eta-safe +A +B +C -D.
 
 - : path-eta-safe (pet/lookup W L) E (e/var LH) V
      <- lookup-safe E L LH V.
 
-% - : path-eta-safe (pet/subst N W ST P) E EV V
-%     <- path-eta-safe P E EV V1
-%     <- wfv-widen-eta E EV V1 N W ST V.
+- : path-eta-safe (pet/subst N GEX GE0 PX P0 W ST (pet/lookup _ L)) E (e/var LH) (wfv/eta V N GEX GE0 PX P0 W ST L sub-env/refl)
+     <- lookup-safe E L LH V.
 
 %worlds () (path-eta-safe _ _ _ _).
 %total A (path-eta-safe A _ _ _).
