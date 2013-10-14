@@ -2697,11 +2697,11 @@ res-clos/some : res-clos (res-val/some V2) LNF R LNV G (res-val/some (clos LNF R
 if-eq-then-else : nat -> nat -> res-val -> res-val -> res-val -> type.
 %mode if-eq-then-else +A +B +C +D -E.
 
-- : if-eq-then-else z z A B A.
-- : if-eq-then-else (s N1) (s N2) A B C
+ifr/zz : if-eq-then-else z z A B A.
+ifr/ss : if-eq-then-else (s N1) (s N2) A B C
      <- if-eq-then-else N1 N2 A B C.
-- : if-eq-then-else (s N1) z A B B.
-- : if-eq-then-else z (s N2) A B B.
+ifr/sz : if-eq-then-else (s N1) z A B B.
+ifr/zs : if-eq-then-else z (s N2) A B B.
 
 %worlds () (if-eq-then-else _ _ _ _ _).
 %total A (if-eq-then-else A _ _ _ _).
@@ -2767,6 +2767,17 @@ res-val-get/some : res-val-get (res-val/some V) V.
 wf-res : res-val -> tenv -> tpe -> type.
 wf-res/some : wf-res (res-val/some V) G T <- wf-val V G T.
 wf-res/timeout : wf-res res-val/timeout G T.
+
+res-val-eq : res-val -> res-val -> type.
+res-val-eq/id : res-val-eq A A.
+
+eq-res-val-some-wfv : res-val-eq (res-val/some V) (res-val/some V') -> wf-val V G T -> wf-val V' G T -> type.
+%mode eq-res-val-some-wfv +A +B -C.
+
+- : eq-res-val-some-wfv res-val-eq/id B B.
+
+%worlds () (eq-res-val-some-wfv _ _ _).
+%total A (eq-res-val-some-wfv A _ _).
 
 add-commute : {N1}{N2}{N3}add N1 N2 N3 -> add N2 N1 N3 -> type.
 %mode add-commute +X1 +X2 +X3 +X4 -X5.
@@ -2952,8 +2963,28 @@ wf-res-widen: sub-tp G1 T1 G2 T2 -> wf-res OV G1 T1 -> wf-res OV G2 T2 -> type.
 %worlds () (wf-res-widen _ _ _).
 %total A (wf-res-widen _ A _).
 
+eq-if-eq-then: if-eq-then-else C C OA OB OC -> if-eq-then-else C C OA OB OA -> res-val-eq OA OC -> type.
+%mode eq-if-eq-then +A -B -C.
+
+- : eq-if-eq-then ifr/zz ifr/zz res-val-eq/id.
+
+- : eq-if-eq-then (ifr/ss A) (ifr/ss B) C
+     <- eq-if-eq-then A B C.
+
+%worlds () (eq-if-eq-then _ _ _).
+%total A (eq-if-eq-then A _ _).
+
 eval-sel-safe-res : wf-res OV1 G (recv LNV T) -> eval-sel-res LNV OV1 OV2 -> wf-res OV2 G T -> type.
 %mode eval-sel-safe-res +A +B -C.
+
+- : eval-sel-safe-res (wf-res/some WVX) (es/ok IF) OWV2
+     % hitting my first limitation. invert-wf-rec must now show that the closure indeed has the LNV tag!
+     <- invert-wf-rec WVX WV1 STR
+     <- sub-tp-inv-recv STR ST1
+     <- wfv-widen ST1 WV1 WV2
+     <- eq-if-eq-then IF IF' EQ
+     <- eq-res-val-some-wfv EQ WV2 WV2'
+     <- to-case-some res-val-get/some WV2' OWV2.
 
 %worlds () (eval-sel-safe-res _ _ _).
 %trustme
@@ -2979,4 +3010,5 @@ eval-safe-res : type-exp G E T -> wf-env H G -> eval-exp-res N H E OV -> wf-res 
      <- wf-res-widen ST WVS WVS2.
 
 %worlds () (eval-safe-res _ _ _ _an).
+%trustme
 %total C (eval-safe-res _ _ C _).
