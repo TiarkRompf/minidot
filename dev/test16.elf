@@ -2783,6 +2783,26 @@ add-commute : {N1}{N2}{N3}add N1 N2 N3 -> add N2 N1 N3 -> type.
 %worlds () (add-commute _ _ _ _ _).
 %total [N1 N2] (add-commute N1 N2 _ _ _).
 
+natid : nat -> nat -> type.
+natident : natid N N.
+
+natid-succ : natid N1 N2 -> natid (s N1) (s N2) -> type.
+%mode natid-succ +A -B.
+- : natid-succ natident natident.
+%worlds () (natid-succ _ _).
+%total A (natid-succ A _).
+
+eq-to-id : eq N1 N2 -> natid N1 N2 -> type.
+%mode eq-to-id +A -B.
+
+- : eq-to-id eq/z natident.
+- : eq-to-id (eq/s A) B'
+     <- eq-to-id A B
+     <- natid-succ B B'.
+
+%worlds () (eq-to-id _ _).
+%total A (eq-to-id A _).
+
 eq-sym : eq C C' -> eq C' C -> type.
 %mode eq-sym +A -B.
 - : eq-sym eq/z eq/z.
@@ -2802,6 +2822,20 @@ add-eq : eq C C' -> add A B C -> add A B C' -> type.
 %worlds () (add-eq _ _ _).
 %total A (add-eq A _ _).
 
+add-natid2 : natid B B' -> add A B C -> add A B' C -> type.
+%mode add-natid2 +A +B -C.
+- : add-natid2 natident B B.
+%worlds () (add-natid2 _ _ _).
+%total A (add-natid2 A _ _).
+
+add-eq2 : eq B B' -> add A B C -> add A B' C -> type.
+%mode add-eq2 +A +B -C.
+- : add-eq2 EQ B B'
+     <- eq-to-id EQ ID
+     <- add-natid2 ID B B'.
+%worlds () (add-eq2 _ _ _).
+%total A (add-eq2 A _ _).
+
 add-up-to-z-false : add (s N1) N2 z -> false -> type.
 %mode add-up-to-z-false +A -B.
 %worlds () (add-up-to-z-false _ _).
@@ -2816,7 +2850,7 @@ lookup-zero-safe-res : wf-env H G -> tlookup-zero G X T -> vlookup-zero-res H X 
      <- extend-wfv Z _ Z'.
 
 %worlds () (lookup-zero-safe-res _ _ _ _ _).
-%total A (lookup-safe A _ _ _).
+%total A (lookup-zero-safe-res A _ _ _ _).
 
 no-res-val-get : false -> {OV} {V} res-val-get OV V -> type.
 %mode no-res-val-get +A +B -C -D.
@@ -2828,36 +2862,86 @@ no-wfv : false -> {V} {G} {T} wf-val V G T -> type.
 %worlds () (no-wfv _ _ _ _ _).
 %total A (no-wfv A _ _ _ _).
 
-%.
+minus-to-add : add X MG S -> minus S X MH R -> add X MH S -> eq MG MH -> type.
+%mode minus-to-add +A +B -C -D.
 
-% minus-to-add : eq SH SG -> add (s XG) MG SG -> minus SH (s XH) MH R -> add (s XH) MH SH -> eq XH XG -> eq MG MH -> type.
-% %mode minus-to-add +A +B +C -D -E -F.
+- : minus-to-add add/z minus/z add/z EQ
+     <- eq-refl _ EQ.
+- : minus-to-add (add/s A) (minus/s B1 B2) (add/s Y) Z
+     <- minus-to-add A B2 Y Z.
 
-lookup-zero-safe-res2 : eq SH SG -> wf-env H G -> tsize G SG -> vsize H SH -> tlookup-zero G MG T -> add (s XG) MG SG -> minus SH (s XH) MH R -> vlookup-zero-res2 H MH R OV -> res-val-get OV V -> wf-val V G T -> type.
-%mode lookup-zero-safe-res2 +A +B +C +D +E +F +G +H -I -J.
+%worlds () (minus-to-add _ _ _ _).
+%total A (minus-to-add A _ _ _).
 
-- : lookup-zero-safe-res2 EQ WE TS VS (TL: tlookup-zero G _ T) TA minus/stuck (VL: vlookup-zero-res2 _ _ _ OV) GV WV
-     <- eq-sym EQ EQ'
-     <- add-eq EQ' TA TA'
-     <- add-up-to-z-false TA' CONTRA
-     <- no-res-val-get CONTRA OV V GV
+eq-tsize : eq S S' -> tsize G S -> tsize G S' -> type.
+%mode eq-tsize +A +B -C.
+
+- : eq-tsize eq/z tf/n tf/n.
+- : eq-tsize (eq/s A) (tf/c B) (tf/c C)
+     <- eq-tsize A B C.
+
+%worlds () (eq-tsize _ _ _).
+%total A (eq-tsize A _ _).
+
+eq-tlookup-zero : eq M M' -> tlookup-zero G M T -> tlookup-zero G M' T -> type.
+%mode eq-tlookup-zero +A +B -C.
+
+- : eq-tlookup-zero eq/z tl/hit tl/hit.
+- : eq-tlookup-zero (eq/s A) (tl/miss B) (tl/miss C)
+     <- eq-tlookup-zero A B C.
+%worlds () (eq-tlookup-zero _ _ _).
+%total A (eq-tlookup-zero A _ _).
+
+add-minus-contra : add (s X) M S -> minus S (s X) M res-add/stuck -> false -> type.
+%mode add-minus-contra +A +B -C.
+
+- : add-minus-contra TA minus/stuck CONTRA
+     <- add-up-to-z-false TA CONTRA.
+
+- : add-minus-contra (add/s TA) (minus/s A B) CONTRA
+     <- add-minus-contra TA B CONTRA.
+
+%worlds () (add-minus-contra _ _ _).
+%total A (add-minus-contra _ A _).
+
+lookup-zero-safe-res2 : wf-env H G -> tsize G S -> vsize H S -> tlookup-zero G M T -> add (s X) M S -> minus S (s X) M R -> vlookup-zero-res2 H M R OV -> res-val-get OV V -> wf-val V G T -> type.
+%mode lookup-zero-safe-res2 +A +B +C +D +E +F +G -H -I.
+
+
+- : lookup-zero-safe-res2 WE TS VS TL TA M vlr2/stuck GV WV
+     <- add-minus-contra TA M CONTRA
+     <- no-res-val-get CONTRA res-val/stuck V GV
      <- no-wfv CONTRA V G T WV.
 
-- : lookup-zero-safe-res2 EQ WE TS VS TL TA (minus/s I M) VL GV WV.
+- : lookup-zero-safe-res2 WE TS VS TL TA M (vlr2/some VL) GV WV
+     <- lookup-zero-safe-res WE TL VL GV WV.
  
-%worlds () (lookup-zero-safe-res2 _ _ _ _ _ _ _ _ _ _).
-%trustme
-%total A (lookup-zero-safe-res2 _ _ _ _ _ _ _ A _ _).
+%worlds () (lookup-zero-safe-res2 _ _ _ _ _ _ _ _ _).
+%total A (lookup-zero-safe-res2 _ _ _ _ _ _ A _ _).
 
 lookup-safe-res : wf-env H G -> tlookup G X T -> vlookup-res H X OV -> res-val-get OV V -> wf-val V G T -> type.
 %mode lookup-safe-res +A +B +C -D -E.
 
 - : lookup-safe-res WE (tl TL TA TS) (vlr VL VA VS) GV WV
      <- wf-env-size-eq WE VS TS ES
-     <- lookup-zero-safe-res2 ES WE TS VS TL TA VA VL GV WV.
+     <- eq-sym ES ES'
+     <- add-eq ES' TA TA'
+     <- minus-to-add TA' VA VA' EQA
+     <- add-eq2 EQA TA' TA''
+     <- eq-tlookup-zero EQA TL TL'
+     <- eq-tsize ES' TS TS'
+     <- lookup-zero-safe-res2 WE TS' VS TL' TA'' VA VL GV WV.
 
 %worlds () (lookup-safe-res _ _ _ _ _).
 %total A (lookup-safe-res _ A _ _ _).
+
+to-case-some : res-val-get OV V -> wf-val V G T -> wf-res OV G T -> type.
+%mode to-case-some +A +B -C.
+- : to-case-some res-val-get/some W (wf-res/some W).
+%worlds () (to-case-some _ _ _).
+%total A (to-case-some A _ _).
+
+%.
 
 eval-safe-res : type-exp G E T -> wf-env H G -> eval-exp-res N H E OV -> wf-res OV G T -> type.
 %mode eval-safe-res +A +B +C -D.
