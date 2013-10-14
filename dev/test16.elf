@@ -2915,7 +2915,7 @@ lookup-zero-safe-res2 : wf-env H G -> tsize G S -> vsize H S -> tlookup-zero G M
 
 - : lookup-zero-safe-res2 WE TS VS TL TA M (vlr2/some VL) GV WV
      <- lookup-zero-safe-res WE TL VL GV WV.
- 
+
 %worlds () (lookup-zero-safe-res2 _ _ _ _ _ _ _ _ _).
 %total A (lookup-zero-safe-res2 _ _ _ _ _ _ A _ _).
 
@@ -2941,10 +2941,26 @@ to-case-some : res-val-get OV V -> wf-val V G T -> wf-res OV G T -> type.
 %worlds () (to-case-some _ _ _).
 %total A (to-case-some A _ _).
 
-%.
+wf-res-widen: sub-tp G1 T1 G2 T2 -> wf-res OV G1 T1 -> wf-res OV G2 T2 -> type.
+%mode wf-res-widen +A +B -C.
+
+- : wf-res-widen S (wf-res/some W) (wf-res/some W')
+     <- wfv-widen S W W'.
+
+- : wf-res-widen S wf-res/timeout wf-res/timeout.
+
+%worlds () (wf-res-widen _ _ _).
+%total A (wf-res-widen _ A _).
+
 
 eval-safe-res : type-exp G E T -> wf-env H G -> eval-exp-res N H E OV -> wf-res OV G T -> type.
 %mode eval-safe-res +A +B +C -D.
+
+- : eval-safe-res ZT E (er/var L2) V2
+     <- invert-var ZT (pet/lookup _ L) ST
+     <- lookup-safe-res E L L2 VG VW
+     <- to-case-some VG VW V
+     <- wf-res-widen ST V V2.
 
 %worlds () (eval-safe-res _ _ _ _an).
 %total C (eval-safe-res _ _ C _).
