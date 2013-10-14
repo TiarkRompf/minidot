@@ -2956,6 +2956,10 @@ wf-res-widen: sub-tp G1 T1 G2 T2 -> wf-res OV G1 T1 -> wf-res OV G2 T2 -> type.
 eval-safe-res : type-exp G E T -> wf-env H G -> eval-exp-res N H E OV -> wf-res OV G T -> type.
 %mode eval-safe-res +A +B +C -D.
 
+- : eval-safe-res ZT _ er/empty V
+     <- eval-empty-safe ZT VW
+     <- to-case-some res-val-get/some VW V.
+
 - : eval-safe-res ZT E (er/var L2) V2
      <- invert-var ZT (pet/lookup _ L) ST
      <- lookup-safe-res E L L2 VG VW
