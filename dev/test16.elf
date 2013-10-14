@@ -73,7 +73,6 @@ ne/s : ne (s N1) (s N2)
 
 %mode ne +N1 +N2.
 
-
 eq-refl: {N:nat} eq N N -> type.
 %mode eq-refl +N -E1.
 
@@ -137,8 +136,8 @@ fun:
 app: exp -> nat -> exp -> exp.
 sel: exp -> nat -> exp.
 
-let: tpe -> exp -> exp -> exp.
-% %abbrev let: tpe -> exp -> exp -> exp = [T] [ex] [ef] (app (fun z T ef _ z empty _ mnil) z ex).
+% ++ let: tpe -> exp -> exp -> exp.
+%abbrev let: tpe -> exp -> exp -> exp = [T] [ex] [ef] (app (fun _ z T ef _ z empty _ mnil) z ex). % --
 
 % types
 top  : tpe.
@@ -183,8 +182,11 @@ vl/hit  : vlookup-zero (vcons V G) z V.
 vl/miss : vlookup-zero (vcons _ G) (s N) V <- vlookup-zero G N V.
 
 vsize : venv -> nat -> type.
+%mode vsize +A -B.
 vf/n   : vsize vnil z.
 vf/c   : vsize (vcons _ G) (s N) <- vsize G N.
+%worlds () (vsize _ _).
+%total A (vsize A _).
 
 vlookup: venv -> nat -> val -> type.
 vl  : vlookup G N V
@@ -378,6 +380,132 @@ wf-tp/and  : wf-tp G1 (and T1 T2)
 
 %{ ------- eval-exp / type-exp ----- }%
 
+res-val : type.
+res-val/stuck : res-val.
+res-val/timeout : res-val.
+res-val/some : val -> res-val.
+
+vlookup-zero-res : venv -> nat -> res-val -> type.
+%mode vlookup-zero-res +A +B -C.
+vlr/fail : vlookup-zero-res vnil N res-val/stuck.
+vlr/hit  : vlookup-zero-res (vcons V G) z (res-val/some V).
+vlr/miss : vlookup-zero-res (vcons _ G) (s N) OV <- vlookup-zero-res G N OV.
+%worlds () (vlookup-zero-res _ _ _).
+%total A (vlookup-zero-res A _ _).
+
+res-add : nat -> nat -> nat -> type.
+res-add/stuck : res-add N1 N2 N3.
+res-add/some : res-add N1 N2 N3 <- add N1 N2 N3.
+
+res-add-inc: res-add N1 N2 N3 -> res-add (s N1) N2 (s N3) -> type.
+%mode res-add-inc +A -B.
+res-add-inc/stuck : res-add-inc res-add/stuck res-add/stuck.
+res-add-inc/some : res-add-inc (res-add/some X) (res-add/some (add/s X)).
+%worlds () (res-add-inc _ _).
+%total A (res-add-inc A _).
+
+minus: {N3: nat} {N1: nat} {N2: nat} res-add N1 N2 N3 -> type.
+%mode minus +A +B -C -D.
+minus/stuck : minus z (s N1) z res-add/stuck.
+minus/z : minus N z N (res-add/some add/z).
+minus/s : minus (s N3) (s N1) N2 R'
+           <- minus N3 N1 N2 R
+           <- res-add-inc R R'.
+%worlds () (minus _ _ _ _).
+%total A (minus A _ _ _).
+
+vlookup-zero-res2 : venv -> {N2: nat} res-add N1 N2 N3 -> res-val -> type.
+%mode vlookup-zero-res2 +A +B +C -D.
+vlr2/stuck : vlookup-zero-res2 E N2 res-add/stuck res-val/stuck.
+vlr2/some : vlookup-zero-res2 E N2 (res-add/some _) OV
+             <- vlookup-zero-res E N2 OV.
+%worlds () (vlookup-zero-res2 _ _ _ _).
+%total A (vlookup-zero-res2 _ _ A _).
+
+vlookup-res: venv -> nat -> res-val -> type.
+%mode vlookup-res +A +B -C.
+vlr  : vlookup-res G N V
+  <- vsize G S
+  <- minus S (s N) M R
+  <- vlookup-zero-res2 G M R V.
+%worlds () (vlookup-res _ _ _).
+%total A (vlookup-res A _ _).
+
+res-clos: res-val -> nat -> exp -> nat -> venv -> res-val -> type.
+%mode res-clos +A +B +C +D +E -F.
+res-clos/stuck : res-clos res-val/stuck _ _ _ _ res-val/stuck.
+res-clos/timeout : res-clos res-val/timeout _ _ _ _ res-val/timeout.
+res-clos/some : res-clos (res-val/some V2) LNF R LNV G (res-val/some (clos LNF R LNV V2 G)).
+%worlds () (res-clos _ _ _ _ _ _).
+%total A (res-clos A _ _ _ _ _).
+
+if-eq-then-else : nat -> nat -> res-val -> res-val -> res-val -> type.
+%mode if-eq-then-else +A +B +C +D -E.
+
+- : if-eq-then-else z z A B A.
+- : if-eq-then-else (s N1) (s N2) A B C
+     <- if-eq-then-else N1 N2 A B C.
+- : if-eq-then-else (s N1) z A B B.
+- : if-eq-then-else z (s N2) A B B.
+
+%worlds () (if-eq-then-else _ _ _ _ _).
+%total A (if-eq-then-else A _ _ _ _).
+
+eval-sel-res : nat -> res-val -> res-val -> type.
+%mode eval-sel-res +A +B -C.
+
+es/ok : eval-sel-res LNV (res-val/some (clos LNF R LNV' V G1)) OV
+         <- if-eq-then-else LNV LNV' (res-val/some V) res-val/stuck OV.
+es/fail2 : eval-sel-res LNV (res-val/some emptyv) res-val/stuck.
+es/stuck : eval-sel-res LNV res-val/stuck res-val/stuck.
+es/timeout : eval-sel-res LNV res-val/timeout res-val/timeout.
+
+%worlds () (eval-sel-res _ _ _).
+%total A (eval-sel-res _ A _).
+
+eval-exp-res : nat -> venv -> exp -> res-val -> type.
+%mode eval-exp-res +A +B +C -D.
+
+eval-app-res : nat -> nat -> res-val -> res-val -> res-val -> type.
+%mode eval-app-res +A +B +C +D -E.
+
+ea/timeout : eval-app-res z LNF OV1 OV2 res-val/timeout.
+
+ea/ok : eval-app-res (s N) LNF (res-val/some (clos LNF' R LNV R2 G1)) (res-val/some V2) OV3'
+         <- eval-exp-res N (vcons V2 (vcons (clos LNF R LNV R2 G1) G1)) R OV3
+         <- if-eq-then-else LNF LNF' OV3 res-val/stuck OV3'.
+
+ea/fail : eval-app-res (s N) LNF (res-val/some emptyv) OV2 res-val/stuck.
+
+ea/stuck1 : eval-app-res N LNF res-val/stuck OV res-val/stuck.
+ea/stuck2 : eval-app-res N LNF OV res-val/stuck res-val/stuck.
+
+ea/timeout1 : eval-app-res N LNF res-val/timeout OV res-val/timeout.
+ea/timeout2 : eval-app-res N LNF OV res-val/timeout res-val/timeout.
+
+er/timeout  : eval-exp-res z G E res-val/timeout.
+
+er/empty    : eval-exp-res _ G empty (res-val/some emptyv).
+
+er/var      : eval-exp-res _ G (var N) V <- vlookup-res G N V.
+
+er/fun      : eval-exp-res (s N) G (fun TC LNF _ R _ LNV R2 _ MT) C
+               <- eval-exp-res N (vcons (clos z empty z emptyv G) G) R2 OV2
+               <- res-clos OV2 LNF R LNV G C.
+
+
+er/app      : eval-exp-res (s N) G (app E1 LNF E2) OV3
+            <- eval-exp-res N G E1 OV1
+            <- eval-exp-res N G E2 OV2
+            <- eval-app-res N LNF OV1 OV2 OV3.
+
+er/sel      : eval-exp-res (s N) G (sel E1 LNV) OV2
+            <- eval-exp-res N G E1 OV1
+            <- eval-sel-res LNV OV1 OV2.
+
+%worlds () (eval-exp-res _ _ _ _) (eval-app-res _ _ _ _ _).
+%total (A B) (eval-exp-res A _ _ _) (eval-app-res B _ _ _ _).
+
 eval-exp   : venv -> exp -> val -> type.
 
 e/empty    : eval-exp G empty emptyv.
@@ -467,11 +595,10 @@ t/app       : type-exp G (app E1 LNF E2) T2
             <- type-exp G E1 (arrow LNF T1 T2)
             <- type-exp G E2 T1.
 
-% uncomment for queries
-t/let       : type-exp G (let T1 E1 E2) T2
-            <- type-exp G E1 T1            
-            <- type-exp (tcons T1 G) E2 T2
-            <- wf-tp G T2.
+% ++ t/let       : type-exp G (let T1 E1 E2) T2
+% ++            <- type-exp G E1 T1
+% ++            <- type-exp (tcons T1 G) E2 T2
+% ++            <- wf-tp G T2.
 
 t/sub       : type-exp G E T2
             <- type-exp G E T1
@@ -2059,7 +2186,7 @@ extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 - : extract-wf2 (t/app TS1 (TS2: type-exp _ _ (arrow _ _ _))) W2 <- extract-wf2 TS2 (wf-tp/fun W2 W1).
 - : extract-wf2 (t/sel TS) W <- extract-wf2 TS (wf-tp/recv W).
 - : extract-wf2 (t/sub S TS) W2 <- extract-wf S W1 W2.
-- : extract-wf2 (t/let W _ _) W.
+% ++ - : extract-wf2 (t/let W _ _) W.
 
 %worlds () (extract-wf2 _ _).
 %total WFE (extract-wf2 WFE _).
