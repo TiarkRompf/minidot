@@ -54,6 +54,7 @@
 % towards DOT counterexamples
 %query 1 1 type-exp tnil c1aa top.
 %query 1 1 type-exp tnil c1a top.
+%query 1 1 type-exp tnil c1b top.
 %query 1 1 type-exp tnil c1ok top.
 
 % regression
