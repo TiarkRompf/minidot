@@ -327,15 +327,15 @@ sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
 %               <- tsize G0 N0
 %               .
 
-% ++ sub-tp/tbindx  : sub-tp G1 (bind N0 G0 T0) G3 (recv N T2)
-% ++            <- sub-tp G2 (tsel (var X) NT) G3 T2
-% ++            <- tlookup G2 X (bind N0 G0 T0)
-% ++            <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
-% ++            <- path-eval (tcons T0 G0) (var N0) (rect NT S U) EG0
-% ++            <- path-eval G2 (var X) (rect NT S U) (etenv/right GE)
-% ++            <- getenv EG0 GE
-% ++            <- wf-tp G1 (bind N0 G0 T0)
-% ++             <- tsize G0 N0.
+% sub-tp/tbindx  : sub-tp G1 (bind N0 G0 T0) G3 (recv N T2)
+%           <- sub-tp G2 (tsel (var X) NT) G3 T2
+%           <- tlookup G2 X (bind N0 G0 T0)
+%           <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
+%           <- path-eval (tcons T0 G0) (var N0) (rect NT S U) EG0
+%           <- path-eval G2 (var X) (rect NT S U) (etenv/right GE)
+%           <- getenv EG0 GE
+%           <- wf-tp G1 (bind N0 G0 T0)
+%           <- tsize G0 N0.
 
 sub-tp/and2 : sub-tp G1 T1 G2 (and T2 T3)
               <- sub-tp G1 T1 G2 T3
