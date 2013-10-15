@@ -2050,6 +2050,7 @@ sub-tp-trans :
 
 incompat-tp: tpe -> tpe -> type.
 
+incompat/top-recv: incompat-tp top (recv _ _).
 incompat/top-arrow: incompat-tp top (arrow _ _ _).
 incompat/recv-arrow: incompat-tp (recv _ _) (arrow _ _ _).
 incompat/arrow-recv: incompat-tp (arrow _ _ _) (recv _ _).
@@ -2990,17 +2991,18 @@ eq-if-eq-then: natid C C' -> if-eq-then-else C C' OA OB OC -> if-eq-then-else C 
 %worlds () (eq-if-eq-then _ _ _ _).
 %total A (eq-if-eq-then _ A _ _).
 
-invert-wf-rec-empty-false: wf-val emptyv G (recv LNV T)
-                            -> false
+invert-wf-rec-empty: wf-val emptyv G T
+                            -> sub-tp G1 top G T
                             -> type.
-%mode invert-wf-rec-empty-false +A -B.
-% this is tricky to complete!
-% I have to show that various subtyping rules cannot get top <: recv...
-- : invert-wf-rec-empty-false (wfv/sub A B) C
-     <- invert-wf-rec-empty-false B C.
-%worlds () (invert-wf-rec-empty-false _ _).
-%trustme
-%total A (invert-wf-rec-empty-false A _).
+%mode invert-wf-rec-empty +A -B.
+- : invert-wf-rec-empty (wfv/empty: wf-val _ G _) ((sub-tp/top wf-tp/top): sub-tp G top G top).
+
+- : invert-wf-rec-empty (wfv/sub ST2 WV) ST
+     <- invert-wf-rec-empty WV ST1
+     <- sub-tp-trans ST1 ST2 ST.
+
+%worlds () (invert-wf-rec-empty _ _).
+%total A (invert-wf-rec-empty A _).
 
 eval-sel-safe-res : wf-res OV1 G (recv LNV T) -> eval-sel-res LNV OV1 OV2 -> wf-res OV2 G T -> type.
 %mode eval-sel-safe-res +A +B -C.
@@ -3015,7 +3017,8 @@ eval-sel-safe-res : wf-res OV1 G (recv LNV T) -> eval-sel-res LNV OV1 OV2 -> wf-
      <- eq-res-val-some-wfv WEQ WV2 OWV2.
 
 - : eval-sel-safe-res ((wf-res/some WVX): wf-res _ G (recv _ T)) es/emptyfail OWV
-     <- invert-wf-rec-empty-false WVX CONTRA
+     <- invert-wf-rec-empty WVX ST
+     <- no-subtype2 ST incompat/top-recv CONTRA
      <- no-wf-res CONTRA res-val/stuck G T OWV.
 
 - : eval-sel-safe-res wf-res/timeout es/timeout wf-res/timeout.
