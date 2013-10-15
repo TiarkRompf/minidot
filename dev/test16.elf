@@ -2750,7 +2750,7 @@ eval-sel-res : nat -> res-val -> res-val -> type.
 
 es/ok : eval-sel-res LNV (res-val/some (clos LNF R LNV' V G1)) OV
          <- if-eq-then-else LNV LNV' (res-val/some V) res-val/stuck OV.
-es/fail2 : eval-sel-res LNV (res-val/some emptyv) res-val/stuck.
+es/emptyfail : eval-sel-res LNV (res-val/some emptyv) res-val/stuck.
 es/stuck : eval-sel-res LNV res-val/stuck res-val/stuck.
 es/timeout : eval-sel-res LNV res-val/timeout res-val/timeout.
 
@@ -2884,6 +2884,11 @@ no-wfv : false -> {V} {G} {T} wf-val V G T -> type.
 %worlds () (no-wfv _ _ _ _ _).
 %total A (no-wfv A _ _ _ _).
 
+no-wf-res : false -> {OV} {G} {T} wf-res OV G T -> type.
+%mode no-wf-res +A +B +C +D -E.
+%worlds () (no-wf-res _ _ _ _ _).
+%total A (no-wf-res A _ _ _ _).
+
 minus-to-add : add X MG S -> minus S X MH R -> add X MH S -> eq MG MH -> type.
 %mode minus-to-add +A +B -C -D.
 
@@ -2985,6 +2990,18 @@ eq-if-eq-then: natid C C' -> if-eq-then-else C C' OA OB OC -> if-eq-then-else C 
 %worlds () (eq-if-eq-then _ _ _ _).
 %total A (eq-if-eq-then _ A _ _).
 
+invert-wf-rec-empty-false: wf-val emptyv G (recv LNV T)
+                            -> false
+                            -> type.
+%mode invert-wf-rec-empty-false +A -B.
+% this is tricky to complete!
+% I have to show that various subtyping rules cannot get top <: recv...
+- : invert-wf-rec-empty-false (wfv/sub A B) C
+     <- invert-wf-rec-empty-false B C.
+%worlds () (invert-wf-rec-empty-false _ _).
+%trustme
+%total A (invert-wf-rec-empty-false A _).
+
 eval-sel-safe-res : wf-res OV1 G (recv LNV T) -> eval-sel-res LNV OV1 OV2 -> wf-res OV2 G T -> type.
 %mode eval-sel-safe-res +A +B -C.
 
@@ -2996,6 +3013,10 @@ eval-sel-safe-res : wf-res OV1 G (recv LNV T) -> eval-sel-res LNV OV1 OV2 -> wf-
      <- eq-to-id EQ' ID
      <- eq-if-eq-then ID IF IF' WEQ
      <- eq-res-val-some-wfv WEQ WV2 OWV2.
+
+- : eval-sel-safe-res ((wf-res/some WVX): wf-res _ G (recv _ T)) es/emptyfail OWV
+     <- invert-wf-rec-empty-false WVX CONTRA
+     <- no-wf-res CONTRA res-val/stuck G T OWV.
 
 - : eval-sel-safe-res wf-res/timeout es/timeout wf-res/timeout.
 
