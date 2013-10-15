@@ -2995,13 +2995,15 @@ eval-sel-safe-res : wf-res OV1 G (recv LNV T) -> eval-sel-res LNV OV1 OV2 -> wf-
      <- invert-wf-rec WVX WV1 STR EQ
      <- sub-tp-inv-recv STR ST1
      <- wfv-widen ST1 WV1 WV2
-     <- eq-to-id EQ ID
+     <- eq-sym EQ EQ'
+     <- eq-to-id EQ' ID
      <- eq-if-eq-then ID IF IF' WEQ
      <- eq-res-val-some-wfv WEQ WV2 WV2'
      <- to-case-some res-val-get/some WV2' OWV2.
 
+- : eval-sel-safe-res wf-res/timeout es/timeout wf-res/timeout.
+
 %worlds () (eval-sel-safe-res _ _ _).
-%trustme
 %total A (eval-sel-safe-res _ A _).
 
 eval-safe-res : type-exp G E T -> wf-env H G -> eval-exp-res N H E OV -> wf-res OV G T -> type.
