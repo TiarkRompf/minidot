@@ -2480,9 +2480,6 @@ invert-wf-rec :
 %worlds () (invert-wf-rec _ _ _ _).
 %total WFE (invert-wf-rec WFE _ _ _).
 
-
-
-
 %{ ------- type preservation ----- }%
 
 % lookup safe
@@ -2813,10 +2810,10 @@ wf-res/timeout : wf-res res-val/timeout G T.
 res-val-eq : res-val -> res-val -> type.
 res-val-eq/id : res-val-eq A A.
 
-eq-res-val-some-wfv : res-val-eq (res-val/some V) (res-val/some V') -> wf-val V G T -> wf-val V' G T -> type.
+eq-res-val-some-wfv : res-val-eq (res-val/some V) OV' -> wf-val V G T -> wf-res OV' G T -> type.
 %mode eq-res-val-some-wfv +A +B -C.
 
-- : eq-res-val-some-wfv res-val-eq/id B B.
+- : eq-res-val-some-wfv res-val-eq/id B (wf-res/some B).
 
 %worlds () (eq-res-val-some-wfv _ _ _).
 %total A (eq-res-val-some-wfv A _ _).
@@ -2998,8 +2995,7 @@ eval-sel-safe-res : wf-res OV1 G (recv LNV T) -> eval-sel-res LNV OV1 OV2 -> wf-
      <- eq-sym EQ EQ'
      <- eq-to-id EQ' ID
      <- eq-if-eq-then ID IF IF' WEQ
-     <- eq-res-val-some-wfv WEQ WV2 WV2'
-     <- to-case-some res-val-get/some WV2' OWV2.
+     <- eq-res-val-some-wfv WEQ WV2 OWV2.
 
 - : eval-sel-safe-res wf-res/timeout es/timeout wf-res/timeout.
 
