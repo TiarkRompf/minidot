@@ -1,5 +1,3 @@
-\newcommand{\ts}{\,\vdash\,}
-
 \renewcommand{\aaaadd}[3]{\text{#1 + #2 = #3}}
 \renewcommand{\aaalte}[2]{\text{#1 $\leq$ #2}}
 \renewcommand{\aaaeq}[2]{\text{#1 = #2}}
@@ -41,3 +39,14 @@
 \renewcommand{\aaaevalexp}[3]{{#1} \ts {#2} \Downarrow {#3}}
 \renewcommand{\aaatypeexp}[3]{{#1} \ts {#2} : {#3}}
 \renewcommand{\aaawfval}[3]{#1 \ts #2 \textbf{ wf$_v$}}
+
+%%% ! Overwriting Some Rules ! %%%
+\renewcommand{\ruleaaasubtpFtselOne}[0]{\infrule[sub-tp/tsel1]{
+{\aaasubtp {G1'} {T1U} {G2} {T2}}\\
+{\aaapatheval {G1} {E1} {{\aaarect {N} {T1} {T1U}}} {G1'}}
+}{{\aaasubtp {G1} {{\aaatsel {E1} {N}}} {G2} {T2}}}}
+\renewcommand{\ruleaaasubtpFtselTwo}[0]{\infrule[sub-tp/tsel2]{
+{\aaasubtp {G1} {T1} {G2'} {T2}}\\
+{\aaapatheval {G2} {E2} {{\aaarect {N} {T2} {T2U}}} {G2'}}
+}{{\aaasubtp {G1} {T1} {G2} {{\aaatsel {E2} {N}}}}}}
+
