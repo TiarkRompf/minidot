@@ -1,31 +1,12 @@
 #!/usr/bin/env python
 
-__doc__ = """usage: twelf2tex.py <twelf_signatures.txt> [preamble_extra]
+__doc__ = """usage: twelf2tex.py <twelf_signatures.txt>
 converts Twelf signatures to inference rules in the style of TAPL
 """
 
 import re
 
-begin_file = """
-\\documentclass{article}
-\\usepackage[cm]{fullpage}
-\\usepackage{amsmath}
-\\usepackage{bcprules}
-\\newcommand{\\aaatype}[0]{\\text{type}}
-\\newcommand{\\aaais}[2]{\\text{#1 is #2}}
-"""
-
-begin_document = """
-\\begin{document}
-"""
-
-end_document = """
-\\end{document}
-"""
-
-end_file = ""
-
-def go(twelf_txt, preamble_extra=""):
+def go(twelf_txt):
   rem = twelf_txt
   commands = []
   rules = []
@@ -44,7 +25,6 @@ def go(twelf_txt, preamble_extra=""):
       grouprules[g].append(r)
     rules.append(r)
     rem = rem[i+1:]
-  print begin_file
   print "\n".join(commands)
   print
   print "\n".join(cmdrules)
@@ -52,11 +32,7 @@ def go(twelf_txt, preamble_extra=""):
   print "\n".join("\\newcommand{\\allrules" + g + "}[0]{\n" + "\n".join(rs) + "\n}" for g, rs in grouprules.iteritems())
   print
   print "\\newcommand{\\allrules}[0]{\n" + "\n".join(rules) + "\n}"
-  print preamble_extra
-  print begin_document
-  print "{\\allrules}"
-  print end_document
-  print end_file
+
 
 def name2cmd(x):
   if x[0] == '-':
@@ -161,12 +137,9 @@ def new_rule(name, premises, conclusion):
 if __name__ == '__main__':
   import sys
   argc = len(sys.argv)
-  if argc<2:
+  if argc!=2:
     print __doc__
   else:
-    preamble_extra = ""
-    if argc>=3:
-      preamble_extra = sys.argv[2]
     with open(sys.argv[1], 'r') as twelf_file:
       twelf_txt = twelf_file.read()
-      go(twelf_txt, preamble_extra)
+      go(twelf_txt)
