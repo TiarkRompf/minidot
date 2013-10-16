@@ -278,16 +278,16 @@ pev  : path-eval G E (rect N TS TU) EG
 sub-tp/top  : sub-tp G1 T G2 top <- wf-tp G1 T.
 sub-tp/bot  : sub-tp G1 bot G2 T <- wf-tp G2 T.
 
-sub-tp/fun  : sub-tp G1 (arrow N T1 T2) G2 (arrow N T3 T4)
-              <- sub-tp G2 T3 G1 T1
-              <- sub-tp G1 T2 G2 T4.
+sub-tp/fun  : sub-tp G1 (arrow N TA1 TB1) G2 (arrow N TA2 TB2)
+              <- sub-tp G2 TA2 G1 TA1
+              <- sub-tp G1 TB1 G2 TB2.
 
-sub-tp/rect : sub-tp G1 (rect N T1 T2) G2 (rect N T3 T4)
-              <- sub-tp G1 T1 G1 T2
-              <- sub-tp G2 T3 G2 T4
+sub-tp/rect : sub-tp G1 (rect N TA1 TB1) G2 (rect N TA2 TB2)
+              <- sub-tp G1 TA1 G1 TB1
+              <- sub-tp G2 TA2 G2 TB2
 
-              <- sub-tp G2 T3 G1 T1
-              <- sub-tp G1 T2 G2 T4.
+              <- sub-tp G2 TA2 G1 TA1
+              <- sub-tp G1 TB1 G2 TB2.
 
 sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
               <- sub-tp G1 T1 G2 T2.
@@ -295,17 +295,17 @@ sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
 sub-tp/tselx : sub-tp G1 (tsel E N) G2 (tsel E N)
              <- sub-env G G2
              <- sub-env G G1
-             <- path-eval G E (rect N T2 T2U) G'.
+             <- path-eval G E (rect N TA TB) G'.
 
 sub-tp/tsel1 : sub-tp G1 (tsel E1 N) G2 T2
-              <- path-eval G1 E1 (rect N T1 T1U) G1'
+              <- path-eval G1 E1 (rect N TA1 TB1) G1'
               <- getenv G1' G1X
-              <- sub-tp G1X T1U G2 T2.
+              <- sub-tp G1X TB1 G2 T2.
 
 sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
-              <- path-eval G2 E2 (rect N T2 T2U) G2'
+              <- path-eval G2 E2 (rect N TA2 TB2) G2'
               <- getenv G2' G2X
-              <- sub-tp G1 T1 G2X T2.
+              <- sub-tp G1 T1 G2X TA2.
 
 sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               <- sub-tp (tcons TN G0) TN G2 T2
@@ -337,46 +337,45 @@ sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
 %           <- wf-tp G1 (bind N0 G0 T0)
 %           <- tsize G0 N0.
 
-sub-tp/and2 : sub-tp G1 T1 G2 (and T2 T3)
-              <- sub-tp G1 T1 G2 T3
-              <- sub-tp G1 T1 G2 T2.
+sub-tp/and2 : sub-tp G1 T1 G2 (and TA2 TB2)
+              <- sub-tp G1 T1 G2 TB2
+              <- sub-tp G1 T1 G2 TA2.
 
-sub-tp/and1a : sub-tp G1 (and T1 T2) G2 T3
-              <- sub-tp G1 T1 G2 T3
-              <- wf-tp G1 T2.
+sub-tp/and1a : sub-tp G1 (and TA1 TB1) G2 T2
+              <- sub-tp G1 TA1 G2 T2
+              <- wf-tp G1 TB1.
 
-sub-tp/and1b : sub-tp G1 (and T1 T2) G2 T3
-              <- sub-tp G1 T2 G2 T3
-              <- wf-tp G1 T1.
+sub-tp/and1b : sub-tp G1 (and TA1 TB1) G2 T2
+              <- sub-tp G1 TB1 G2 T2
+              <- wf-tp G1 TA1.
 
-wf-tp/top  : wf-tp G1 top.
-wf-tp/bot  : wf-tp G1 bot.
+wf-tp/top  : wf-tp G top.
+wf-tp/bot  : wf-tp G bot.
 
-wf-tp/fun  : wf-tp G1 (arrow N T1 T2)
-              <- wf-tp G1 T1
-              <- wf-tp G1 T2.
+wf-tp/fun  : wf-tp G (arrow N TA TB)
+              <- wf-tp G TA
+              <- wf-tp G TB.
 
-wf-tp/rect : wf-tp G1 (rect N T1 T2)
-              <- wf-tp G1 T1
-              <- wf-tp G1 T2
-              <- sub-tp G1 T1 G1 T2. % T1 <: T2 required for transitivity
+wf-tp/rect : wf-tp G (rect N TA TB)
+              <- wf-tp G TA
+              <- wf-tp G TB
+              <- sub-tp G TA G TB. % T1 <: T2 required for transitivity
 
-wf-tp/recv : wf-tp G1 (recv N T1)
-              <- wf-tp G1 T1.
+wf-tp/recv : wf-tp G (recv N T)
+              <- wf-tp G T.
 
-wf-tp/tsel : wf-tp G1 (tsel E1 N)
-              <- path-eval G1 E1 (rect N T1 T1U) G1'
+wf-tp/tsel : wf-tp G (tsel E N)
+              <- path-eval G E (rect N TA TB) G'
               .
 
-wf-tp/tbind : wf-tp G1 (bind N G0 TN)
+wf-tp/tbind : wf-tp G (bind N G0 TN)
               <- wf-tp (tcons TN G0) TN
               <- tsize G0 N
               .
 
-wf-tp/and  : wf-tp G1 (and T1 T2)
-              <- wf-tp G1 T2
-              <- wf-tp G1 T1.
-
+wf-tp/and  : wf-tp G (and TA TB)
+              <- wf-tp G TB
+              <- wf-tp G TA.
 
 %{ ------- eval-exp / type-exp ----- }%
 
