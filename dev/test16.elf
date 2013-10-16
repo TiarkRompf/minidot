@@ -278,16 +278,16 @@ pev  : path-eval G E (rect N TS TU) EG
 sub-tp/top  : sub-tp G1 T G2 top <- wf-tp G1 T.
 sub-tp/bot  : sub-tp G1 bot G2 T <- wf-tp G2 T.
 
-sub-tp/fun  : sub-tp G1 (arrow N T1 T2) G2 (arrow N T3 T4)
-              <- sub-tp G2 T3 G1 T1
-              <- sub-tp G1 T2 G2 T4.
+sub-tp/fun  : sub-tp G1 (arrow N TA1 TB1) G2 (arrow N TA2 TB2)
+              <- sub-tp G2 TA2 G1 TA1
+              <- sub-tp G1 TB1 G2 TB2.
 
-sub-tp/rect : sub-tp G1 (rect N T1 T2) G2 (rect N T3 T4)
-              <- sub-tp G1 T1 G1 T2
-              <- sub-tp G2 T3 G2 T4
+sub-tp/rect : sub-tp G1 (rect N TA1 TB1) G2 (rect N TA2 TB2)
+              <- sub-tp G1 TA1 G1 TB1
+              <- sub-tp G2 TA2 G2 TB2
 
-              <- sub-tp G2 T3 G1 T1
-              <- sub-tp G1 T2 G2 T4.
+              <- sub-tp G2 TA2 G1 TA1
+              <- sub-tp G1 TB1 G2 TB2.
 
 sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
               <- sub-tp G1 T1 G2 T2.
@@ -295,17 +295,17 @@ sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
 sub-tp/tselx : sub-tp G1 (tsel E N) G2 (tsel E N)
              <- sub-env G G2
              <- sub-env G G1
-             <- path-eval G E (rect N T2 T2U) G'.
+             <- path-eval G E (rect N TA TB) G'.
 
 sub-tp/tsel1 : sub-tp G1 (tsel E1 N) G2 T2
-              <- path-eval G1 E1 (rect N T1 T1U) G1'
+              <- path-eval G1 E1 (rect N TA1 TB1) G1'
               <- getenv G1' G1X
-              <- sub-tp G1X T1U G2 T2.
+              <- sub-tp G1X TB1 G2 T2.
 
 sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
-              <- path-eval G2 E2 (rect N T2 T2U) G2'
+              <- path-eval G2 E2 (rect N TA2 TB2) G2'
               <- getenv G2' G2X
-              <- sub-tp G1 T1 G2X T2.
+              <- sub-tp G1 T1 G2X TA2.
 
 sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               <- sub-tp (tcons TN G0) TN G2 T2
@@ -337,46 +337,45 @@ sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
 %           <- wf-tp G1 (bind N0 G0 T0)
 %           <- tsize G0 N0.
 
-sub-tp/and2 : sub-tp G1 T1 G2 (and T2 T3)
-              <- sub-tp G1 T1 G2 T3
-              <- sub-tp G1 T1 G2 T2.
+sub-tp/and2 : sub-tp G1 T1 G2 (and TA2 TB2)
+              <- sub-tp G1 T1 G2 TB2
+              <- sub-tp G1 T1 G2 TA2.
 
-sub-tp/and1a : sub-tp G1 (and T1 T2) G2 T3
-              <- sub-tp G1 T1 G2 T3
-              <- wf-tp G1 T2.
+sub-tp/and1a : sub-tp G1 (and TA1 TB1) G2 T2
+              <- sub-tp G1 TA1 G2 T2
+              <- wf-tp G1 TB1.
 
-sub-tp/and1b : sub-tp G1 (and T1 T2) G2 T3
-              <- sub-tp G1 T2 G2 T3
-              <- wf-tp G1 T1.
+sub-tp/and1b : sub-tp G1 (and TA1 TB1) G2 T2
+              <- sub-tp G1 TB1 G2 T2
+              <- wf-tp G1 TA1.
 
-wf-tp/top  : wf-tp G1 top.
-wf-tp/bot  : wf-tp G1 bot.
+wf-tp/top  : wf-tp G top.
+wf-tp/bot  : wf-tp G bot.
 
-wf-tp/fun  : wf-tp G1 (arrow N T1 T2)
-              <- wf-tp G1 T1
-              <- wf-tp G1 T2.
+wf-tp/fun  : wf-tp G (arrow N TA TB)
+              <- wf-tp G TA
+              <- wf-tp G TB.
 
-wf-tp/rect : wf-tp G1 (rect N T1 T2)
-              <- wf-tp G1 T1
-              <- wf-tp G1 T2
-              <- sub-tp G1 T1 G1 T2. % T1 <: T2 required for transitivity
+wf-tp/rect : wf-tp G (rect N TA TB)
+              <- wf-tp G TA
+              <- wf-tp G TB
+              <- sub-tp G TA G TB. % T1 <: T2 required for transitivity
 
-wf-tp/recv : wf-tp G1 (recv N T1)
-              <- wf-tp G1 T1.
+wf-tp/recv : wf-tp G (recv N T)
+              <- wf-tp G T.
 
-wf-tp/tsel : wf-tp G1 (tsel E1 N)
-              <- path-eval G1 E1 (rect N T1 T1U) G1'
+wf-tp/tsel : wf-tp G (tsel E N)
+              <- path-eval G E (rect N TA TB) G'
               .
 
-wf-tp/tbind : wf-tp G1 (bind N G0 TN)
+wf-tp/tbind : wf-tp G (bind N G0 TN)
               <- wf-tp (tcons TN G0) TN
               <- tsize G0 N
               .
 
-wf-tp/and  : wf-tp G1 (and T1 T2)
-              <- wf-tp G1 T2
-              <- wf-tp G1 T1.
-
+wf-tp/and  : wf-tp G (and TA TB)
+              <- wf-tp G TB
+              <- wf-tp G TA.
 
 %{ ------- eval-exp / type-exp ----- }%
 
@@ -399,9 +398,9 @@ e/app      : eval-exp G (app E1 LNF E2) V3
 e/sel      : eval-exp G (sel E1 LNV) V
             <- eval-exp G E1 (clos LNF R LNV V G1).
 
-path-eta : tenv -> exp -> tpe -> type.
+% path-eta : tenv -> exp -> tpe -> type.
 
-pet/lookup : path-eta G (var X) T <- tlookup G X T <- wf-tp G T.
+% pet/lookup : path-eta G (var X) T <- tlookup G X T <- wf-tp G T.
 
 % pet/subst  : path-eta G (var X) (recv N (tsel (var X) NT))
 %              <- path-eta G (var X) (bind N0 G0 T0)
@@ -423,9 +422,9 @@ type-exp   : tenv -> exp -> tpe -> type.
 
 t/empty    : type-exp G empty top.
 
-% t/var      : type-exp G (var N) T <- tlookup G N T <- wf-tp G T.
+t/var      : type-exp G (var N) T <- tlookup G N T <- wf-tp G T.
 
-t/var      : type-exp G (var X) T <- path-eta G (var X) T.
+% t/var      : type-exp G (var X) T <- path-eta G (var X) T.
 
 % t/varx     : type-exp G (var X) (rect N (tsel (var X) N) (tsel (var X) N))
 %              <- path-eval G (var X) (rect N T1 T2) EG
@@ -2113,19 +2112,18 @@ type.
 %worlds () (wf-fun-tp _ _ _ _ _).
 %total A (wf-fun-tp A _ _ _ _).
 
-extract-wf-pet: path-eta G E T -> wf-tp G T -> type.
-%mode extract-wf-pet +A -B.
-- : extract-wf-pet (pet/lookup W L) W.
+% extract-wf-pet: path-eta G E T -> wf-tp G T -> type.
+% %mode extract-wf-pet +A -B.
+% - : extract-wf-pet (pet/lookup W L) W.
 % - : extract-wf-pet (pet/subst N GEX GE0 PX P0 W ST P) (wf-tp/recv W).
-%worlds () (extract-wf-pet _ _).
-%total A (extract-wf-pet A _).
+% %worlds () (extract-wf-pet _ _).
+% %total A (extract-wf-pet A _).
 
 extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 %mode extract-wf2 +WFE1 -WFE2.
 
 - : extract-wf2 t/empty wf-tp/top.
-- : extract-wf2 (t/var P) W
-     <- extract-wf-pet P W.
+- : extract-wf2 (t/var W L) W.
 % - : extract-wf2 (t/varx _ _ P) (wf-tp/rect B (wf-tp/tsel P) (wf-tp/tsel P))
 %     <- sub-tp-refl (wf-tp/tsel P) B.
 % - : extract-wf2 (t/varx _ _ W _ _) (wf-tp/recv W).
@@ -2220,13 +2218,12 @@ invert-var:
   %% Input
   type-exp G (var N) T ->
   %% Output
-  path-eta G (var N) T1 ->
+  tlookup G N T1 ->
   sub-tp G T1 G T ->
   type.
 %mode invert-var +A -B -C.
 
--   : invert-var (t/var P) P ST
-       <- extract-wf-pet P W
+-   : invert-var (t/var W L) L ST
        <- sub-tp-refl W ST.
 
 -   : invert-var (t/sub SB1 TS) P ST1
@@ -2584,17 +2581,17 @@ eval-empty-safe: type-exp G empty T -> wf-val emptyv G T -> type.
 %worlds () (eval-empty-safe _ _).
 %total A (eval-empty-safe A _).
 
-path-eta-safe: path-eta G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> type.
-%mode path-eta-safe +A +B +C -D.
+% path-eta-safe: path-eta G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> type.
+% %mode path-eta-safe +A +B +C -D.
 
-- : path-eta-safe (pet/lookup W L) E (e/var LH) V
-     <- lookup-safe E L LH V.
+% - : path-eta-safe (pet/lookup W L) E (e/var LH) V
+%     <- lookup-safe E L LH V.
 
 % - : path-eta-safe (pet/subst N GEX GE0 PX P0 W ST (pet/lookup _ L)) E (e/var LH) (wfv/eta V N GEX GE0 PX P0 W ST L sub-env/refl)
 %     <- lookup-safe E L LH V.
 
-%worlds () (path-eta-safe _ _ _ _).
-%total A (path-eta-safe A _ _ _).
+% %worlds () (path-eta-safe _ _ _ _).
+% %total A (path-eta-safe A _ _ _).
 
 eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> type.
 %mode eval-safe +A +B +C -D.
@@ -2603,8 +2600,8 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
           <- eval-empty-safe ZT V.
 
  -      : eval-safe ZT E (e/var L2) V2
-          <- invert-var ZT P ST
-          <- path-eta-safe P E (e/var L2) V
+          <- invert-var ZT L ST
+          <- lookup-safe E L L2 V
           <- wfv-widen ST V V2.
 
  -      : eval-safe (ZT: type-exp G _ _) E (e/fun EX) (wfv/sub CST (wfv/f IN STFF M TV STV TS E))
@@ -3100,7 +3097,7 @@ eval-safe-res : type-exp G E T -> wf-env H G -> eval-exp-res N H E OV -> wf-res 
      <- to-case-some res-val-get/some VW V.
 
 - : eval-safe-res ZT E (er/var L2) V2
-     <- invert-var ZT (pet/lookup _ L) ST
+     <- invert-var ZT L ST
      <- lookup-safe-res E L L2 VG VW
      <- to-case-some VG VW V
      <- wf-res-widen ST V V2.
