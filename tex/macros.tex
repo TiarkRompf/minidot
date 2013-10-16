@@ -1,0 +1,92 @@
+% ----- listings
+
+\lstdefinelanguage{Scala}%
+{morekeywords={abstract,%
+  case,catch,char,class,%
+  def,else,extends,final,finally,for,%
+  if,import,implicit,%
+  match,module,%
+  new,null,%
+  object,override,%
+  package,private,protected,public,%
+  for,public,return,super,sealed,%
+  this,throw,trait,try,type,%
+  val,var,%
+  with,while,%
+  yield%
+  },%
+  sensitive,%
+  morecomment=[l]//,%
+  morecomment=[s]{/*}{*/},%
+  morestring=[b]",%
+  morestring=[b]',%
+  showstringspaces=false%
+}[keywords,comments,strings]%
+
+\lstset{language=Scala,%
+  mathescape=true,%
+%  columns=[c]fixed,%
+%  basewidth={0.5em, 0.40em},%
+  aboveskip=5pt,%\smallskipamount,
+  belowskip=5pt,%\negsmallskipamount,
+  lineskip=-0.2pt,
+  basewidth={0.54em, 0.4em},%
+%  backgroundcolor=\color{listingbg},
+  basicstyle=\small\ttfamily,
+  keywordstyle=\keywordstyle
+%  commentstyle=\commentstyle
+%  xleftmargin=0.5cm
+}
+
+\definecolor{listingbg}{RGB}{240, 240, 240}
+
+\newcommand{\commentstyle}[1]{\slseries{#1}}
+\newcommand{\keywordstyle}[1]{\bfseries{#1}}
+
+\lstnewenvironment{listing}{\lstset{language=Scala,mathescape=true}}{}
+\lstnewenvironment{listingtiny}{\lstset{language=Scala,mathescape=truebasicstyle=\scriptsize\ttfamily}}{}
+
+\newcommand{\code}[1]{\lstinline[language=Scala,mathescape=true,columns=fixed,basicstyle=\ttfamily]|#1|}
+
+% ----- Common inline listings (keywords, library methods etc.)
+\newcommand{\lval}{\code{val}}
+\newcommand{\ldef}{\code{def}}
+\newcommand{\lfor}{\code{for}}
+\newcommand{\lRand}[1][]{\code{Rand#1}}
+\newcommand{\lflatMap}[1][]{\code{flatMap#1}}
+\newcommand{\lchoice}[1][]{\code{choice#1}}
+\newcommand{\lalways}[1][]{\code{always#1}}
+\newcommand{\lnever}{\code{never}}
+\newcommand{\lflip}[1][]{\code{flip#1}}
+\newcommand{\lif}{\code{if}}
+\newcommand{\lopand}{\code{\&\&}}
+\newcommand{\lopor}{\code{||}}
+\newcommand{\lopeq}{\code{==}}
+\newcommand{\lplus}{\code{+}}
+\newcommand{\lminus}{\code{-}}
+
+% ----- packed items, so we don't waste space
+\newenvironment{sitemize}{
+\begin{itemize}
+  \setlength{\itemsep}{1pt}
+  \setlength{\parskip}{0pt}
+  \setlength{\parsep}{0pt}
+}{\end{itemize}}
+
+\newenvironment{senumerate}{
+\begin{enumerate}
+  \setlength{\itemsep}{1pt}
+  \setlength{\parskip}{0pt}
+  \setlength{\parsep}{0pt}
+}{\end{enumerate}}
+
+\newcommand{\mypar}[1]{{\bf #1.}}
+
+% ----- comments and todo
+
+\newcommand{\remark}[1]{{\bf $\clubsuit$ #1 $\spadesuit$}}
+%\newcommand{\note}[1]{\remark{\color{red}[#1]}}
+\newcommand{\note}[1]{{\color{red}[#1]}}
+\newcommand{\todo}[1]{\note{TODO: #1}}
+
+\newcommand{\comment}[1]{}

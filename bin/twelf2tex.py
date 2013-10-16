@@ -1,48 +1,38 @@
 #!/usr/bin/env python
 
-__doc__ = """usage: twelf2tex.py <twelf_signatures.txt> [preamble_extra]
+__doc__ = """usage: twelf2tex.py <twelf_signatures.txt>
 converts Twelf signatures to inference rules in the style of TAPL
 """
 
 import re
 
-begin_file = """
-\\documentclass{article}
-\\usepackage[cm]{fullpage}
-\\usepackage{amsmath}
-\\usepackage{bcprules}
-\\newcommand{\\aaatype}[0]{\\text{type}}
-\\newcommand{\\aaais}[2]{\\text{#1 is #2}}
-"""
-
-begin_document = """
-\\begin{document}
-"""
-
-end_document = """
-\\end{document}
-"""
-
-end_file = ""
-
-def go(twelf_txt, preamble_extra=""):
+def go(twelf_txt):
   rem = twelf_txt
   commands = []
   rules = []
+  grouprules = {}
+  cmdrules = []
   while '.' in rem:
     i = rem.index('.')
-    c, r = process(rem[:i])
+    name, c, r, g = process(rem[:i])
     if c:
       commands.append(c)
+    if name:
+      cmdrules.append("\\newcommand{\\rule" + name + "}[0]{" + r + "}")
+      r = "{\\rule" + name + "}"
+    if g:
+      grouprules[g] = grouprules.get(g, [])
+      grouprules[g].append(r)
     rules.append(r)
     rem = rem[i+1:]
-  print begin_file
   print "\n".join(commands)
-  print preamble_extra
-  print begin_document
-  print "\n".join(rules)
-  print end_document
-  print end_file
+  print
+  print "\n".join(cmdrules)
+  print
+  print "\n".join("\\newcommand{\\allrules" + g + "}[0]{\n" + "\n".join(rs) + "\n}" for g, rs in grouprules.iteritems())
+  print
+  print "\\newcommand{\\allrules}[0]{\n" + "\n".join(rules) + "\n}"
+
 
 def name2cmd(x):
   if x[0] == '-':
@@ -64,25 +54,31 @@ def typ2tex_rec(x):
     args = []
     rem = x[i+1:].strip()
     while rem != "" and rem[0] != ')':
-      a, rem = typ2tex_rec(rem)
+      _, a, rem = typ2tex_rec(rem)
       args.append(a)
     if rem != "":
       rem = rem[1:].strip()
-    return "{\\" + name + " " + " ".join(["{"+a+"}" for a in args]) + "}", rem
+    return name, "{\\" + name + " " + " ".join(["{"+a+"}" for a in args]) + "}", rem
   else:
     i = 0
     n = len(x)
     while i<n and x[i] != ' ' and x[i] != ')':
       i += 1
-    name = x[:i]
-    if name[0].islower():
-      name = "\\" + name2cmd(name)
-    return name, x[i:].strip()
+    name = None
+    txt = x[:i]
+    if txt[0].islower():
+      name = name2cmd(txt)
+      txt = "\\" + name
+    return name, txt, x[i:].strip()
 
-def typ2tex(x):
+def typ2nametex(x):
   if ' ' in x:
     x = "("+x+")"
-  res, _ = typ2tex_rec(x)
+  name, res, _ = typ2tex_rec(x)
+  return name, res
+
+def typ2tex(x):
+  _, res = typ2nametex(x)
   return res
 
 def process(x):
@@ -94,7 +90,6 @@ def process(x):
   premises = []
   conclusion = ""
   for i,a in enumerate(parts):
-    p = ""
     if a[0] == '(':
       a = a[1:]
     if a[-1] == ')':
@@ -103,15 +98,15 @@ def process(x):
       ic = a.index(':')
       varname = a[1:ic].strip()
       vartype = a[ic+1:].strip()
-      p += "\\aaais {" + varname + "} {" + typ2tex(vartype) + "}"
+      pname, p = None, "\\aaais {" + varname + "} {" + typ2tex(vartype) + "}"
     else:
-      p += typ2tex(a)
+      pname, p = typ2nametex(a)
     if i<n:
       premises.append(p)
     else:
-      conclusion = p
+      cname, conclusion = pname, p
 
-  return new_command(name, n), new_rule(name, premises, conclusion)
+  return name2cmd(name), new_command(name, n), new_rule(name, premises, conclusion), cname
 
 def new_command(name, n):
   namecmd = name2cmd(name)
@@ -142,12 +137,9 @@ def new_rule(name, premises, conclusion):
 if __name__ == '__main__':
   import sys
   argc = len(sys.argv)
-  if argc<2:
+  if argc!=2:
     print __doc__
   else:
-    preamble_extra = ""
-    if argc>=3:
-      preamble_extra = sys.argv[2]
     with open(sys.argv[1], 'r') as twelf_file:
       twelf_txt = twelf_file.read()
-      go(twelf_txt, preamble_extra)
+      go(twelf_txt)
