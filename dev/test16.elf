@@ -924,6 +924,24 @@ eq-arrow-low: eq N1 N1' -> sub-tp G1 (arrow N1 TA1 TB1) G2 T2 -> sub-tp G1 (arro
 %worlds () (eq-arrow-low _ _ _).
 %total A (eq-arrow-low A _ _).
 
+natid-eq-wfv-clos: natid LNF LNF' -> wf-val (clos LNF R LNV R2 H) G T -> wf-val (clos LNF' R LNV R2 H) G T  -> type.
+%mode natid-eq-wfv-clos +A +B -C.
+
+- : natid-eq-wfv-clos natident S S.
+
+%worlds () (natid-eq-wfv-clos _ _ _).
+%total A (natid-eq-wfv-clos A _ _).
+
+eq-wfv-clos: eq LNF LNF' -> wf-val (clos LNF R LNV R2 H) G T -> wf-val (clos LNF' R LNV R2 H) G T  -> type.
+%mode eq-wfv-clos +A +B -C.
+
+- : eq-wfv-clos EQ S S'
+     <- eq-to-id EQ ID
+     <- natid-eq-wfv-clos ID S S'.
+
+%worlds () (eq-wfv-clos _ _ _).
+%total A (eq-wfv-clos A _ _).
+
 eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
 %mode eq-high +P1 +P2 -SBT.
 
@@ -2835,6 +2853,14 @@ eq-res-val-some-wfv : res-val-eq (res-val/some V) OV' -> wf-val V G T -> wf-res 
 %worlds () (eq-res-val-some-wfv _ _ _).
 %total A (eq-res-val-some-wfv A _ _).
 
+eq-wf-res : res-val-eq A B -> wf-res A G T -> wf-res B G T -> type.
+%mode eq-wf-res +A +B -C.
+
+- : eq-wf-res res-val-eq/id B B.
+
+%worlds () (eq-wf-res _ _ _).
+%total A (eq-wf-res A _ _).
+
 add-commute : {N1}{N2}{N3}add N1 N2 N3 -> add N2 N1 N3 -> type.
 %mode add-commute +X1 +X2 +X3 +X4 -X5.
 
@@ -3067,6 +3093,20 @@ eval-app-safe-res : wf-res OVF G0 (arrow LNF T1 T2) -> wf-res OVX G0 T1 -> eval-
 
 eval-safe-res : type-exp G E T -> wf-env H G -> eval-exp-res N H E OV -> wf-res OV G T -> type.
 %mode eval-safe-res +A +B +C -D.
+
+- : eval-app-safe-res (wf-res/some WVF) (wf-res/some WVX) (ea/ok IF EVA) Z''
+     <- invert-wf-fun WVF TR WE ST WXX EQ
+     <- sub-tp-inv-fun ST STA STR
+     <- extend-sub-tp2 STA _ STA'
+     <- wfv-widen STA' WVX WVX'
+     <- eq-wfv-clos EQ WXX WXX'
+     <- eval-safe-res TR (wfe/c (wfe/c WE WXX') WVX') EVA Z
+     <- extend-sub-tp1 STR _ STR'
+     <- wf-res-widen STR' Z Z'
+     <- eq-sym EQ EQ'
+     <- eq-to-id EQ' ID
+     <- eq-if-eq-then ID IF IF' WEQ
+     <- eq-wf-res WEQ Z' Z''.
 
 - : eval-app-safe-res ((wf-res/some WVF): wf-res _ G (arrow _ _ T)) _ ea/emptyfail OWA
      <- invert-wf-empty WVF ST
