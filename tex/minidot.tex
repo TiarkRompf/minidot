@@ -1,0 +1,94 @@
+\documentclass[preprint]{sigplanconf}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[T1]{fontenc}
+\usepackage[scaled=0.8]{luximono}
+\usepackage[usenames]{color}
+\usepackage{url}
+\usepackage{listings}
+
+\usepackage{math}
+\usepackage{fleqn}
+\usepackage{latexsym}
+\usepackage{bcprules}
+\usepackage{prooftree}
+
+\usepackage{multicol}
+
+\input{macros}
+\input{dot_macros}
+\input{dot_auto}
+\input{dot_custom}
+
+\begin{document}
+
+\special{papersize=8.5in,11in}
+\setlength{\pdfpageheight}{\paperheight}
+\setlength{\pdfpagewidth}{\paperwidth}
+
+\conferenceinfo{TODO '14}{TODOmonth TODOday1-dayn, TODOcity.}
+\copyrightyear{2013} 
+\copyrightdata{[to be supplied]} 
+
+\title{minidot}
+\subtitle{Towards Dependent Object Types}
+
+\authorinfo{Nada Amin$^\ast$
+\and Tiark Rompf$^{\;\dagger\ast}$
+\and Martin Odersky$^\ast$} {
+$^\ast$EPFL: \texttt{\{first.last\}@epfl.ch}\qquad \\
+$^\dagger$Oracle Labs: \texttt{\{first.last\}@oracle.com}
+}
+
+\lstMakeShortInline[keywordstyle=,%
+              flexiblecolumns=false,%
+              %basewidth={0.56em, 0.52em},%
+              mathescape=true,%
+              basicstyle=\tt]@
+
+\maketitle
+
+\begin{abstract}
+... TODO abstract ...
+\end{abstract}
+
+\category{D.3.3}{Language Constructs and Features}{Abstract data types, Classes and objects, polymorphism}
+\category{D.3.1}{Formal Definitions and Theory}{Syntax, Semantics}
+\category{F.3.3}{Studies of Program Constructs}{Object-oriented constructs, type structure}
+\category{F.3.2}{Semantics or Programming Languages}{Operational semantics}
+
+\terms
+Languages, Theory
+
+\keywords
+calculus, objects, dependent types
+
+\section{Rules}
+
+\boxfig{subtp}{Subtyping}{
+\begin{multicols}{2}[\judgement{Subtyping}{\fbox{$\aaasubtp {G1} {T1} {G2} {T2}$}}]
+{\allrulesaaasubtp}
+\end{multicols}
+}
+
+%%% true lattice / wf & expansion
+
+%%% expansion precision
+
+%%% why A-normal form?
+
+%\appendix
+%\section{Appendix Title}
+
+%\acks
+
+\bibliographystyle{abbrvnat}
+\bibliography{dot}
+
+% \appendix
+% \section{Appendix Title}
+
+% \acks
+
+\end{document}
