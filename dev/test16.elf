@@ -3017,8 +3017,11 @@ clos-safe-res :  sub-tp (tcons TC G) TC G T
                  -> type.
 %mode clos-safe-res +A +B +C +D +E +F +G +H +I -J.
 
+- : clos-safe-res CST IN STFF M TV STV TS WE res-clos/timeout wf-res/timeout.
+
+- : clos-safe-res CST IN STFF M (wf-res/some V2) STV TS WE res-clos/some (wf-res/some (wfv/sub CST (wfv/f IN STFF M V2 STV TS WE))).
+
 %worlds () (clos-safe-res _ _ _ _ _ _ _ _ _ _).
-%trustme
 %total A (clos-safe-res _ _ _ _ _ _ _ _ A _).
 
 eval-sel-safe-res : wf-res OV1 G (recv LNV T) -> eval-sel-res LNV OV1 OV2 -> wf-res OV2 G T -> type.
