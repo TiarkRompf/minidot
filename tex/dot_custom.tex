@@ -4,41 +4,41 @@
 \renewcommand{\aaane}[2]{\text{#1 $\neq$ #2}}
 
 \renewcommand{\aaavnil}[0]{\text{$\emptyset$}}
-\renewcommand{\aaavcons}[2]{{#1}::{#2}}
-\renewcommand{\aaavsize}[2]{|{#1}|={#2}}
-\renewcommand{\aaavlookup}[3]{{#2} \mapsto {#3} \in {#1}}
+\renewcommand{\aaavcons}[2]{\text{{#1}$::${#2}}}
+\renewcommand{\aaavsize}[2]{\text{$|${#1}$|$$=${#2}}}
+\renewcommand{\aaavlookup}[3]{\text{{#2} $\mapsto$ {#3} $\in$ {#1}}}
 
 \renewcommand{\aaatnil}[0]{\text{$\emptyset$}}
-\renewcommand{\aaatcons}[2]{{#1}::{#2}}
-\renewcommand{\aaatsize}[2]{|{#1}|={#2}}
-\renewcommand{\aaatlookup}[3]{{#2} \mapsto {#3} \in {#1}}
+\renewcommand{\aaatcons}[2]{\text{{#1}$::${#2}}}
+\renewcommand{\aaatsize}[2]{\text{$|${#1}$|$$=${#2}}}
+\renewcommand{\aaatlookup}[3]{\text{{#2} $\mapsto$ {#3} $\in$ {#1}}}
 
-\renewcommand{\aaasubenv}[2]{#1 \subseteq #2}
-\renewcommand{\aaapatheval}[4]{#1 \ts #2 \ni #3 \textbf{ in } #4}
+\renewcommand{\aaasubenv}[2]{\text{#1 $\subseteq$ #2}}
+\renewcommand{\aaapatheval}[4]{\text{#1 $\ts$ #2 $\ni$ #3 {\bf in } #4}}
 
 \renewcommand{\aaaempty}[0]{\text{\{$\emptyset_e$\}}}
-\renewcommand{\aaafun}[9]{{\textbf{new } {#1} \{{\bf def }{#2}(\_:{#3}):{#4}={#5};{\bf val }{#6}:{#7}={#8};{\bf types }{#9}\}}}
+\renewcommand{\aaafun}[9]{\text{{\bf new} {#1} \{{\bf def }{#2}(\_:{#3}):{#4}={#5};{\bf val }{#6}:{#7}={#8};{\bf types }{#9}\}}}
 \renewcommand{\aaaapp}[3]{\text{#1.#2(#3)}}
 \renewcommand{\aaasel}[2]{\text{#1.#2}}
 
 \renewcommand{\aaatop}[0]{\text{$\top$}}
 \renewcommand{\aaabot}[0]{\text{$\bot$}}
-\renewcommand{\aaaarrow}[3]{\{\textbf{def } #1 : #2 \text{$\rightarrow$} #3\}}
-\renewcommand{\aaarect}[3]{\{\textbf{type } #1 : #2 .. #3\}}
-\renewcommand{\aaarecv}[2]{\{\textbf{val } #1 : #2\}}
-\renewcommand{\aaatsel}[2]{#1.#2}
-\renewcommand{\aaabind}[3]{\{ #1 \text{$\Rightarrow$} #3 \} \textbf{ in } #2}
-\renewcommand{\aaaand}[2]{#1 \text{$\wedge$} #2}
+\renewcommand{\aaaarrow}[3]{\text{\{{\bf def } #1 : #2 $\rightarrow$ #3\}}}
+\renewcommand{\aaarect}[3]{\text{\{\bf type } #1 : #2 .. #3\}}
+\renewcommand{\aaarecv}[2]{\text{\{{\bf val } #1 : #2\}}}
+\renewcommand{\aaatsel}[2]{\text{#1.#2}}
+\renewcommand{\aaabind}[3]{\text{\{ #1 $\Rightarrow$ #3 \} {\bf in } #2}}
+\renewcommand{\aaaand}[2]{\text{#1 $\wedge$ #2}}
 
 \renewcommand{\aaaemptyv}[0]{\text{\{$\emptyset_v$\}}}
-\renewcommand{\aaaclos}[5]{<\{{\bf def} #1 = #2; {\bf val } #3 = #4\} {\bf in } #5>_v}
+\renewcommand{\aaaclos}[5]{\text{$<\{${\bf def} #1 = #2; {\bf val } #3 = #4$\}$ {\bf in } #5$>_v$}}
 
-\renewcommand{\aaawftp}[2]{#1 \ts #2 \textbf{ wf}}
-\renewcommand{\aaasubtp}[4]{{#1} \ts {#2} <: {#3} \ts {#4}}
+\renewcommand{\aaawftp}[2]{\text{#1 $\ts$ #2 {\bf wf}}}
+\renewcommand{\aaasubtp}[4]{\text{{#1} $\ts$ {#2} $<:$ {#3} $\ts$ {#4}}}
 
-\renewcommand{\aaaevalexp}[3]{{#1} \ts {#2} \Downarrow {#3}}
-\renewcommand{\aaatypeexp}[3]{{#1} \ts {#2} : {#3}}
-\renewcommand{\aaawfval}[3]{#1 \ts #2 \textbf{ wf$_v$}}
+\renewcommand{\aaaevalexp}[3]{\text{{#1} $\ts$ {#2} $\Downarrow$ {#3}}}
+\renewcommand{\aaatypeexp}[3]{\text{{#1} $\ts$ {#2} : {#3}}}
+\renewcommand{\aaawfval}[3]{\text{#1 $\ts$ #2 {\bf wf$_v$}}}
 
 %%% ! Overwriting Some Rules ! %%%
 \renewcommand{\ruleaaasubtpFtselOne}[0]{\infrule[sub-tp/tsel1]{
