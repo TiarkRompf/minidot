@@ -2770,7 +2770,7 @@ ea/ok : eval-app-res (s N) LNF (res-val/some (clos LNF' R LNV R2 G1)) (res-val/s
          <- eval-exp-res N (vcons V2 (vcons (clos LNF R LNV R2 G1) G1)) R OV3
          <- if-eq-then-else LNF LNF' OV3 res-val/stuck OV3'.
 
-ea/fail : eval-app-res (s N) LNF (res-val/some emptyv) OV2 res-val/stuck.
+ea/emptyfail : eval-app-res (s N) LNF (res-val/some emptyv) OV2 res-val/stuck.
 
 ea/stuck1 : eval-app-res N LNF res-val/stuck OV res-val/stuck.
 ea/stuck2 : eval-app-res N LNF OV res-val/stuck res-val/stuck.
@@ -2991,18 +2991,18 @@ eq-if-eq-then: natid C C' -> if-eq-then-else C C' OA OB OC -> if-eq-then-else C 
 %worlds () (eq-if-eq-then _ _ _ _).
 %total A (eq-if-eq-then _ A _ _).
 
-invert-wf-rec-empty: wf-val emptyv G T
+invert-wf-empty: wf-val emptyv G T
                             -> sub-tp G1 top G T
                             -> type.
-%mode invert-wf-rec-empty +A -B.
-- : invert-wf-rec-empty (wfv/empty: wf-val _ G _) ((sub-tp/top wf-tp/top): sub-tp G top G top).
+%mode invert-wf-empty +A -B.
+- : invert-wf-empty (wfv/empty: wf-val _ G _) ((sub-tp/top wf-tp/top): sub-tp G top G top).
 
-- : invert-wf-rec-empty (wfv/sub ST2 WV) ST
-     <- invert-wf-rec-empty WV ST1
+- : invert-wf-empty (wfv/sub ST2 WV) ST
+     <- invert-wf-empty WV ST1
      <- sub-tp-trans ST1 ST2 ST.
 
-%worlds () (invert-wf-rec-empty _ _).
-%total A (invert-wf-rec-empty A _).
+%worlds () (invert-wf-empty _ _).
+%total A (invert-wf-empty A _).
 
 clos-safe-res :  sub-tp (tcons TC G) TC G T
                  -> sub-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T1) MT)) (tcons TC G) TC
@@ -3037,7 +3037,7 @@ eval-sel-safe-res : wf-res OV1 G (recv LNV T) -> eval-sel-res LNV OV1 OV2 -> wf-
      <- eq-res-val-some-wfv WEQ WV2 OWV2.
 
 - : eval-sel-safe-res ((wf-res/some WVX): wf-res _ G (recv _ T)) es/emptyfail OWV
-     <- invert-wf-rec-empty WVX ST
+     <- invert-wf-empty WVX ST
      <- no-subtype2 ST incompat/top-recv CONTRA
      <- no-wf-res CONTRA res-val/stuck G T OWV.
 
@@ -3051,6 +3051,17 @@ eval-app-safe-res : wf-res OVF G0 (arrow LNF T1 T2) -> wf-res OVX G0 T1 -> eval-
 
 eval-safe-res : type-exp G E T -> wf-env H G -> eval-exp-res N H E OV -> wf-res OV G T -> type.
 %mode eval-safe-res +A +B +C -D.
+
+- : eval-app-safe-res ((wf-res/some WVF): wf-res _ G (arrow _ _ T)) _ ea/emptyfail OWA
+     <- invert-wf-empty WVF ST
+     <- no-subtype2 ST incompat/top-arrow CONTRA
+     <- no-wf-res CONTRA res-val/stuck G T OWA.
+
+- : eval-app-safe-res _ _ ea/timeout wf-res/timeout.
+
+- : eval-app-safe-res _ _ ea/timeout1 wf-res/timeout.
+
+- : eval-app-safe-res _ _ ea/timeout2 wf-res/timeout.
 
 - : eval-safe-res _ _ er/timeout wf-res/timeout.
 
