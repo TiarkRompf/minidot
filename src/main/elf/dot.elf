@@ -860,6 +860,88 @@ eq-low-env: sametenv G1 G1' -> sub-tp G1 T1 G2 T2 -> sub-tp G1' T1 G2 T2 -> type
 %total {A} (eq-low-env A _ _).
 %reduces N3 <= N2 (eq-low-env _ N2  N3).
 
+natid : nat -> nat -> type.
+natident : natid N N.
+
+natid-succ : natid N1 N2 -> natid (s N1) (s N2) -> type.
+%mode natid-succ +A -B.
+- : natid-succ natident natident.
+%worlds () (natid-succ _ _).
+%total A (natid-succ A _).
+
+eq-to-id : eq N1 N2 -> natid N1 N2 -> type.
+%mode eq-to-id +A -B.
+
+- : eq-to-id eq/z natident.
+- : eq-to-id (eq/s A) B'
+     <- eq-to-id A B
+     <- natid-succ B B'.
+
+%worlds () (eq-to-id _ _).
+%total A (eq-to-id A _).
+
+eq-sym : eq C C' -> eq C' C -> type.
+%mode eq-sym +A -B.
+- : eq-sym eq/z eq/z.
+- : eq-sym (eq/s A) (eq/s B)
+     <- eq-sym A B.
+%worlds () (eq-sym _ _).
+%total A (eq-sym A _).
+
+natid-recv-low: natid N1 N1' -> sub-tp G1 (recv N1 T1) G2 T2 -> sub-tp G1 (recv N1' T1) G2 T2 -> type.
+%mode natid-recv-low +A +B -C.
+
+- : natid-recv-low natident S S.
+
+%worlds () (natid-recv-low _ _ _).
+%total A (natid-recv-low A _ _).
+
+eq-recv-low: eq N1 N1' -> sub-tp G1 (recv N1 T1) G2 T2 -> sub-tp G1 (recv N1' T1) G2 T2 -> type.
+%mode eq-recv-low +A +B -C.
+
+- : eq-recv-low EQ S S'
+     <- eq-to-id EQ ID
+     <- natid-recv-low ID S S'.
+
+%worlds () (eq-recv-low _ _ _).
+%total A (eq-recv-low A _ _).
+
+natid-arrow-low: natid N1 N1' -> sub-tp G1 (arrow N1 TA1 TB1) G2 T2 -> sub-tp G1 (arrow N1' TA1 TB1) G2 T2 -> type.
+%mode natid-arrow-low +A +B -C.
+
+- : natid-arrow-low natident S S.
+
+%worlds () (natid-arrow-low _ _ _).
+%total A (natid-arrow-low A _ _).
+
+eq-arrow-low: eq N1 N1' -> sub-tp G1 (arrow N1 TA1 TB1) G2 T2 -> sub-tp G1 (arrow N1' TA1 TB1) G2 T2 -> type.
+%mode eq-arrow-low +A +B -C.
+
+- : eq-arrow-low EQ S S'
+     <- eq-to-id EQ ID
+     <- natid-arrow-low ID S S'.
+
+%worlds () (eq-arrow-low _ _ _).
+%total A (eq-arrow-low A _ _).
+
+natid-eq-wfv-clos: natid LNF LNF' -> wf-val (clos LNF R LNV R2 H) G T -> wf-val (clos LNF' R LNV R2 H) G T  -> type.
+%mode natid-eq-wfv-clos +A +B -C.
+
+- : natid-eq-wfv-clos natident S S.
+
+%worlds () (natid-eq-wfv-clos _ _ _).
+%total A (natid-eq-wfv-clos A _ _).
+
+eq-wfv-clos: eq LNF LNF' -> wf-val (clos LNF R LNV R2 H) G T -> wf-val (clos LNF' R LNV R2 H) G T  -> type.
+%mode eq-wfv-clos +A +B -C.
+
+- : eq-wfv-clos EQ S S'
+     <- eq-to-id EQ ID
+     <- natid-eq-wfv-clos ID S S'.
+
+%worlds () (eq-wfv-clos _ _ _).
+%total A (eq-wfv-clos A _ _).
+
 eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
 %mode eq-high +P1 +P2 -SBT.
 
@@ -2004,6 +2086,7 @@ sub-tp-trans :
 
 incompat-tp: tpe -> tpe -> type.
 
+incompat/top-recv: incompat-tp top (recv _ _).
 incompat/top-arrow: incompat-tp top (arrow _ _ _).
 incompat/recv-arrow: incompat-tp (recv _ _) (arrow _ _ _).
 incompat/arrow-recv: incompat-tp (arrow _ _ _) (recv _ _).
@@ -2253,21 +2336,14 @@ no-subtype-mt-recv: sub-tp G1 T1 G2 (recv NF TA) -> type-mem M T1 -> false -> ty
 %total (A) (no-subtype-mt-recv A _ _).
 
 
+sub-recv-eq: sub-tp G1 (recv N1 T1) G2 (recv N2 T2) -> eq N1 N2 -> type.
+%mode sub-recv-eq +A -B.
+- : sub-recv-eq (sub-tp/recv S) EQ
+     <- eq-refl _ EQ.
+%worlds () (sub-recv-eq _ _).
+%total A (sub-recv-eq A _).
 
-project-sub-arrow: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) G2 (arrow NF T1X T2X) -> type-mem M MT -> sub-tp G1 (arrow NF T1 T2) G2 (arrow NF T1X T2X) -> type.
-
-- : project-sub-arrow ((sub-tp/and1a W ST)) MT ST.
-- : project-sub-arrow ( (sub-tp/and1b WF (sub-tp/and1a WR ST))) MT ST'
-      <- no-subtype2 ST incompat/recv-arrow F <- no-subtype F _ _ _ _ ST'.
-- : project-sub-arrow ( (sub-tp/and1b WF (sub-tp/and1b WV ST))) MT ST'
-      <- no-subtype-mt-arrow ST MT F  <- no-subtype F _ _ _ _ ST'.
-
-%mode project-sub-arrow +A +B -C.
-%worlds () (project-sub-arrow _ _ _).
-%total (A) (project-sub-arrow A _ _).
-
-
-project-sub-recv: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) G2 (recv NV TX) -> type-mem M MT -> sub-tp G1 (recv NV T3) G2 (recv NV TX) -> type.
+project-sub-recv: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV' T3) MT))) G2 (recv NV TX) -> type-mem M MT -> sub-tp G1 (recv NV' T3) G2 (recv NV TX) -> type.
 
 - : project-sub-recv ((sub-tp/and1a W ST)) MT ST'
       <- no-subtype2 ST incompat/arrow-recv F <- no-subtype F _ _ _ _ ST'.
@@ -2278,14 +2354,20 @@ project-sub-recv: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) G2 (r
 %mode project-sub-recv +A +B -C.
 %worlds () (project-sub-recv _ _ _).
 %total (A) (project-sub-recv A _ _).
-
 
 no-subtype0: incompat-tp T1 T3 -> compat-tp T1 T3 -> false -> type.
 %mode no-subtype0 +A +B -D.
 %worlds () (no-subtype0 _ _ _).
 %total (A) (no-subtype0 A _ _).
 
-project-sub-arrow: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) G2 (arrow NF T1X T2X) -> type-mem M MT -> sub-tp G1 (arrow NF T1 T2) G2 (arrow NF T1X T2X) -> type.
+sub-arrow-eq: sub-tp G1 (arrow N1 T1A T1B) G2 (arrow N2 T2A T2B) -> eq N1 N2 -> type.
+%mode sub-arrow-eq +A -B.
+- : sub-arrow-eq (sub-tp/fun _ _) EQ
+     <- eq-refl _ EQ.
+%worlds () (sub-arrow-eq _ _).
+%total A (sub-arrow-eq A _).
+
+project-sub-arrow: sub-tp G1 ((and (arrow NF' T1 T2) (and (recv NV T3) MT))) G2 (arrow NF T1X T2X) -> type-mem M MT -> sub-tp G1 (arrow NF' T1 T2) G2 (arrow NF T1X T2X) -> type.
 
 - : project-sub-arrow ((sub-tp/and1a W ST)) MT ST.
 - : project-sub-arrow ( (sub-tp/and1b WF (sub-tp/and1a WR ST))) MT ST'
@@ -2297,18 +2379,6 @@ project-sub-arrow: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) G2 (
 %worlds () (project-sub-arrow _ _ _).
 %total (A) (project-sub-arrow A _ _).
 
-
-project-sub-recv: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) G2 (recv NV TX) -> type-mem M MT -> sub-tp G1 (recv NV T3) G2 (recv NV TX) -> type.
-
-- : project-sub-recv ((sub-tp/and1a W ST)) MT ST'
-      <- no-subtype2 ST incompat/arrow-recv F <- no-subtype F _ _ _ _ ST'.
-- : project-sub-recv ((sub-tp/and1b WF (sub-tp/and1a WR ST))) MT ST.
-- : project-sub-recv ((sub-tp/and1b WF (sub-tp/and1b WV ST))) MT ST'
-      <- no-subtype-mt-recv ST MT F  <- no-subtype F _ _ _ _ ST'.
-
-%mode project-sub-recv +A +B -C.
-%worlds () (project-sub-recv _ _ _).
-%total (A) (project-sub-recv A _ _).
 
 %{ ------- subtyping inversion: wf-val ----- }%
 
@@ -2318,58 +2388,62 @@ project-sub-recv: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) G2 (r
 
 invert-wf-fun-aux :
   %% Input
-  wf-val (clos LNF R LNV R2 H) G1 T ->
+  wf-val (clos LNF' R LNV R2 H) G1 T ->
   sub-tp G1 T G2 (arrow LNF T1 T2) ->
   %% Output
   type-exp (tcons T3 (tcons TS G)) R T4 ->
   wf-env H G ->
   sub-tp (tcons TS G) (arrow LNF T3 T4) G2 (arrow LNF T1 T2) ->
-  wf-val (clos LNF R LNV R2 H) (tcons TS G) TS ->
+  wf-val (clos LNF' R LNV R2 H) (tcons TS G) TS ->
+  eq LNF' LNF ->
   type.
-%mode invert-wf-fun-aux +WFE1 +SBT -WFE2 -WFE3 -SBT1 -WV.
+%mode invert-wf-fun-aux +WFE1 +SBT -WFE2 -WFE3 -SBT1 -WV -EQ.
 
 
 -     :  invert-wf-fun-aux 
           (wfv/f IN ST MT TV TV2 TS WE) 
           SB0'
-          TS WE STF1
+          TS WE STF1'
           (wfv/f IN ST' MT TV TV2 TS WE)
+          EQ
             <- sub-tp-trans ST SB0' SB0
             <- sub-tp-trans IN SB0 SB0''
             <- project-sub-arrow SB0'' MT STF1
-
+            <- sub-arrow-eq STF1 EQ
+            <- eq-arrow-low EQ STF1 STF1'
             <- extract-wf ST WFF' _
             <- sub-tp-refl WFF' ST'
             .
 
 
  -     : invert-wf-fun-aux (wfv/sub (SB1: sub-tp G1 TI G T) (TS: wf-val _ G1 TI))
-                (SB0: sub-tp G T G2 (arrow LNF T1 T2)) L L1 SB WVXX
+                (SB0: sub-tp G T G2 (arrow LNF T1 T2)) L L1 SB WVXX EQ
             <- sub-tp-trans SB1 SB0 (SB1X: sub-tp G1 TI G2 (arrow LNF T1 T2))
-            <- invert-wf-fun-aux TS SB1X L L1 (SB: sub-tp _ (arrow LNF T3 T4) G2 (arrow LNF T1 T2)) WVXX.
+            <- invert-wf-fun-aux TS SB1X L L1 (SB: sub-tp _ (arrow LNF T3 T4) G2 (arrow LNF T1 T2)) WVXX EQ.
 
-%worlds () (invert-wf-fun-aux _ _ _ _ _ _).
-%total WFE (invert-wf-fun-aux WFE _ _ _ _ _).
+%worlds () (invert-wf-fun-aux _ _ _ _ _ _ _).
+%total WFE (invert-wf-fun-aux WFE _ _ _ _ _ _).
 
 
 invert-wf-fun :
   %% Input
-  wf-val (clos LNF R LNV R2 H) G1 (arrow LNF T1 T2) ->
+  wf-val (clos LNF' R LNV R2 H) G1 (arrow LNF T1 T2) ->
   %% Output
   type-exp (tcons T3 (tcons TS G)) R T4 ->
   wf-env H G ->
   sub-tp (tcons TS G) (arrow LNF T3 T4) G1 (arrow LNF T1 T2) ->
-  wf-val (clos LNF R LNV R2 H) (tcons TS G) TS ->
+  wf-val (clos LNF' R LNV R2 H) (tcons TS G) TS ->
+  eq LNF' LNF ->
   type.
-%mode invert-wf-fun +WFE1 -WFE2 -WFE3 -SBT1 -WF.
+%mode invert-wf-fun +WFE1 -WFE2 -WFE3 -SBT1 -WF -EQ.
 
--     :  invert-wf-fun A B C D E
+-     :  invert-wf-fun A B C D E EQ
             <- extract-wf3 A W
             <- sub-tp-refl W SB
-            <- invert-wf-fun-aux A SB B C D E.
+            <- invert-wf-fun-aux A SB B C D E EQ.
 
-%worlds () (invert-wf-fun _ _ _ _ _).
-%total WFE (invert-wf-fun WFE _ _ _ _).
+%worlds () (invert-wf-fun _ _ _ _ _ _).
+%total WFE (invert-wf-fun WFE _ _ _ _ _).
 
 
 
@@ -2377,27 +2451,30 @@ invert-wf-fun :
 
 invert-wf-rec-aux :
   %% Input
-  wf-val (clos LNF R LNV R2 H) G1 T ->
+  wf-val (clos LNF R LNV' R2 H) G1 T ->
   sub-tp G1 T G2 (recv LNV T2) ->
   %% Output
   wf-val R2 (tcons TS G) T4 ->
   sub-tp (tcons TS G) (recv LNV T4) G2 (recv LNV T2) ->
+  eq LNV' LNV ->
   type.
-%mode invert-wf-rec-aux +WFE1 +SBT -WFE3 -SBT1.
+%mode invert-wf-rec-aux +WFE1 +SBT -WFE3 -SBT1 -EQ.
 
 -     :  invert-wf-rec-aux 
           (wfv/f IN ST MT TV STV TS WE) 
           SB0' 
-          TV SB1
+          TV SB1 EQ
             <- sub-tp-trans ST SB0' SB0
             <- sub-tp-trans IN SB0 SB0''
             <- project-sub-recv SB0'' MT SB1'
-            <- sub-tp-trans (sub-tp/recv STV) SB1' SB1.
+            <- sub-recv-eq SB1' EQ
+            <- eq-recv-low EQ SB1' SB1''
+            <- sub-tp-trans (sub-tp/recv STV) SB1'' SB1.
 
 -     : invert-wf-rec-aux (wfv/sub (SB1: sub-tp G1 TI G T) (TS: wf-val _ G1 TI))
-                (SB0: sub-tp G T G2 (recv LNV T2)) TV SB
+                (SB0: sub-tp G T G2 (recv LNV T2)) TV SB EQ
             <- sub-tp-trans SB1 SB0 (SB1X: sub-tp G1 TI G2 (recv LNV T2))
-            <- invert-wf-rec-aux TS SB1X TV (SB: sub-tp _ (recv LNV T4) G2 (recv LNV T2)).
+            <- invert-wf-rec-aux TS SB1X TV (SB: sub-tp _ (recv LNV T4) G2 (recv LNV T2)) EQ.
 
 %{
 -     : invert-wf-rec-aux ((wfv/eta V N GEX GE0 PEX PE0 WX ST L S): wf-val (clos LNF R LNV R2 H) G1 _) (sub-tp/recv (sub-tp/tsel1 SBX0 GEX0 PEX0)) (wfv/sub B A) (sub-tp/recv (sub-tp/tsel1 SB0 GE0 PE0'))
@@ -2416,30 +2493,27 @@ invert-wf-rec-aux :
          <- extract-wf ST _ (wf-tp/recv W0).
 }%
 
-%worlds () (invert-wf-rec-aux _ _ _ _).
-
-%total WFE (invert-wf-rec-aux WFE _ _ _).
+%worlds () (invert-wf-rec-aux _ _ _ _ _).
+%total WFE (invert-wf-rec-aux WFE _ _ _ _).
 
 
 invert-wf-rec :
   %% Input
-  wf-val (clos LNF R LNV R2 H) G1 (recv LNV T) ->
+  wf-val (clos LNF R LNV' R2 H) G1 (recv LNV T) ->
   %% Output
   wf-val R2 G T4 ->
   sub-tp G (recv LNV T4) G1 (recv LNV T) ->
+  eq LNV' LNV ->
   type.
-%mode invert-wf-rec +WFE1 -WFE3 -SBT1.
+%mode invert-wf-rec +WFE1 -WFE3 -SBT1 -EQ.
 
--     :  invert-wf-rec A B C
+-     :  invert-wf-rec A B C EQ
             <- extract-wf3 A W
             <- sub-tp-refl W SB
-            <- invert-wf-rec-aux A SB B C.
+            <- invert-wf-rec-aux A SB B C EQ.
 
-%worlds () (invert-wf-rec _ _ _).
-%total WFE (invert-wf-rec WFE _ _).
-
-
-
+%worlds () (invert-wf-rec _ _ _ _).
+%total WFE (invert-wf-rec WFE _ _ _).
 
 %{ ------- type preservation ----- }%
 
@@ -2569,7 +2643,7 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
 -      : eval-safe ZT WE (e/sel EVX) WV3
           <- invert-sel ZT TS ST
           <- eval-safe TS WE EVX WVX
-          <- invert-wf-rec WVX WV1 STR
+          <- invert-wf-rec WVX WV1 STR _
           <- sub-tp-inv-recv STR ST1
           <- wfv-widen ST1 WV1 WV2
           <- wfv-widen ST WV2 WV3.
@@ -2607,7 +2681,7 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
               (TR : type-exp (tcons T3 (tcons _ GC0)) R T4)
               (WE1: wf-env HC0 GC0)
               STF
-              WXX
+              WXX _
 
           <- sub-tp-inv-fun
               (STF: sub-tp (tcons _ GC0) (arrow _ T3 T4) G0 (arrow _ T1 T2))
@@ -2697,11 +2771,11 @@ res-clos/some : res-clos (res-val/some V2) LNF R LNV G (res-val/some (clos LNF R
 if-eq-then-else : nat -> nat -> res-val -> res-val -> res-val -> type.
 %mode if-eq-then-else +A +B +C +D -E.
 
-- : if-eq-then-else z z A B A.
-- : if-eq-then-else (s N1) (s N2) A B C
+ifr/zz : if-eq-then-else z z A B A.
+ifr/ss : if-eq-then-else (s N1) (s N2) A B C
      <- if-eq-then-else N1 N2 A B C.
-- : if-eq-then-else (s N1) z A B B.
-- : if-eq-then-else z (s N2) A B B.
+ifr/sz : if-eq-then-else (s N1) z A B B.
+ifr/zs : if-eq-then-else z (s N2) A B B.
 
 %worlds () (if-eq-then-else _ _ _ _ _).
 %total A (if-eq-then-else A _ _ _ _).
@@ -2711,7 +2785,7 @@ eval-sel-res : nat -> res-val -> res-val -> type.
 
 es/ok : eval-sel-res LNV (res-val/some (clos LNF R LNV' V G1)) OV
          <- if-eq-then-else LNV LNV' (res-val/some V) res-val/stuck OV.
-es/fail2 : eval-sel-res LNV (res-val/some emptyv) res-val/stuck.
+es/emptyfail : eval-sel-res LNV (res-val/some emptyv) res-val/stuck.
 es/stuck : eval-sel-res LNV res-val/stuck res-val/stuck.
 es/timeout : eval-sel-res LNV res-val/timeout res-val/timeout.
 
@@ -2730,7 +2804,7 @@ ea/ok : eval-app-res (s N) LNF (res-val/some (clos LNF' R LNV R2 G1)) (res-val/s
          <- eval-exp-res N (vcons V2 (vcons (clos LNF R LNV R2 G1) G1)) R OV3
          <- if-eq-then-else LNF LNF' OV3 res-val/stuck OV3'.
 
-ea/fail : eval-app-res (s N) LNF (res-val/some emptyv) OV2 res-val/stuck.
+ea/emptyfail : eval-app-res (s N) LNF (res-val/some emptyv) OV2 res-val/stuck.
 
 ea/stuck1 : eval-app-res N LNF res-val/stuck OV res-val/stuck.
 ea/stuck2 : eval-app-res N LNF OV res-val/stuck res-val/stuck.
@@ -2768,6 +2842,25 @@ wf-res : res-val -> tenv -> tpe -> type.
 wf-res/some : wf-res (res-val/some V) G T <- wf-val V G T.
 wf-res/timeout : wf-res res-val/timeout G T.
 
+res-val-eq : res-val -> res-val -> type.
+res-val-eq/id : res-val-eq A A.
+
+eq-res-val-some-wfv : res-val-eq (res-val/some V) OV' -> wf-val V G T -> wf-res OV' G T -> type.
+%mode eq-res-val-some-wfv +A +B -C.
+
+- : eq-res-val-some-wfv res-val-eq/id B (wf-res/some B).
+
+%worlds () (eq-res-val-some-wfv _ _ _).
+%total A (eq-res-val-some-wfv A _ _).
+
+eq-wf-res : res-val-eq A B -> wf-res A G T -> wf-res B G T -> type.
+%mode eq-wf-res +A +B -C.
+
+- : eq-wf-res res-val-eq/id B B.
+
+%worlds () (eq-wf-res _ _ _).
+%total A (eq-wf-res A _ _).
+
 add-commute : {N1}{N2}{N3}add N1 N2 N3 -> add N2 N1 N3 -> type.
 %mode add-commute +X1 +X2 +X3 +X4 -X5.
 
@@ -2782,34 +2875,6 @@ add-commute : {N1}{N2}{N3}add N1 N2 N3 -> add N2 N1 N3 -> type.
 
 %worlds () (add-commute _ _ _ _ _).
 %total [N1 N2] (add-commute N1 N2 _ _ _).
-
-natid : nat -> nat -> type.
-natident : natid N N.
-
-natid-succ : natid N1 N2 -> natid (s N1) (s N2) -> type.
-%mode natid-succ +A -B.
-- : natid-succ natident natident.
-%worlds () (natid-succ _ _).
-%total A (natid-succ A _).
-
-eq-to-id : eq N1 N2 -> natid N1 N2 -> type.
-%mode eq-to-id +A -B.
-
-- : eq-to-id eq/z natident.
-- : eq-to-id (eq/s A) B'
-     <- eq-to-id A B
-     <- natid-succ B B'.
-
-%worlds () (eq-to-id _ _).
-%total A (eq-to-id A _).
-
-eq-sym : eq C C' -> eq C' C -> type.
-%mode eq-sym +A -B.
-- : eq-sym eq/z eq/z.
-- : eq-sym (eq/s A) (eq/s B)
-     <- eq-sym A B.
-%worlds () (eq-sym _ _).
-%total A (eq-sym A _).
 
 add-eq : eq C C' -> add A B C -> add A B C' -> type.
 %mode add-eq +A +B -C.
@@ -2861,6 +2926,11 @@ no-wfv : false -> {V} {G} {T} wf-val V G T -> type.
 %mode no-wfv +A +B +C +D -E.
 %worlds () (no-wfv _ _ _ _ _).
 %total A (no-wfv A _ _ _ _).
+
+no-wf-res : false -> {OV} {G} {T} wf-res OV G T -> type.
+%mode no-wf-res +A +B +C +D -E.
+%worlds () (no-wf-res _ _ _ _ _).
+%total A (no-wf-res A _ _ _ _).
 
 minus-to-add : add X MG S -> minus S X MH R -> add X MH S -> eq MG MH -> type.
 %mode minus-to-add +A +B -C -D.
@@ -2952,9 +3022,108 @@ wf-res-widen: sub-tp G1 T1 G2 T2 -> wf-res OV G1 T1 -> wf-res OV G2 T2 -> type.
 %worlds () (wf-res-widen _ _ _).
 %total A (wf-res-widen _ A _).
 
+eq-if-eq-then: natid C C' -> if-eq-then-else C C' OA OB OC -> if-eq-then-else C C' OA OB OA -> res-val-eq OA OC -> type.
+%mode eq-if-eq-then +A +B -C -D.
+
+- : eq-if-eq-then natident ifr/zz ifr/zz res-val-eq/id.
+
+- : eq-if-eq-then natident (ifr/ss A) (ifr/ss B) C
+     <- eq-if-eq-then natident A B C.
+
+%worlds () (eq-if-eq-then _ _ _ _).
+%total A (eq-if-eq-then _ A _ _).
+
+invert-wf-empty: wf-val emptyv G T
+                            -> sub-tp G1 top G T
+                            -> type.
+%mode invert-wf-empty +A -B.
+- : invert-wf-empty (wfv/empty: wf-val _ G _) ((sub-tp/top wf-tp/top): sub-tp G top G top).
+
+- : invert-wf-empty (wfv/sub ST2 WV) ST
+     <- invert-wf-empty WV ST1
+     <- sub-tp-trans ST1 ST2 ST.
+
+%worlds () (invert-wf-empty _ _).
+%total A (invert-wf-empty A _).
+
+clos-safe-res :  sub-tp (tcons TC G) TC G T
+                 -> sub-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T1) MT)) (tcons TC G) TC
+                 -> sub-tp (tcons TC G) TC (tcons TC G) TC
+                 -> type-mem M MT
+                 -> wf-res V1 (tcons MT G) T1
+                 -> sub-tp (tcons MT G) T1 (tcons TC G) T1
+                 -> type-exp (tcons T3 (tcons TC G)) R T4
+                 -> wf-env H G
+                 -> res-clos V1 LNF R LNV H VC
+                 -> wf-res VC G T
+                 -> type.
+%mode clos-safe-res +A +B +C +D +E +F +G +H +I -J.
+
+- : clos-safe-res CST IN STFF M TV STV TS WE res-clos/timeout wf-res/timeout.
+
+- : clos-safe-res CST IN STFF M (wf-res/some V2) STV TS WE res-clos/some (wf-res/some (wfv/sub CST (wfv/f IN STFF M V2 STV TS WE))).
+
+%worlds () (clos-safe-res _ _ _ _ _ _ _ _ _ _).
+%total A (clos-safe-res _ _ _ _ _ _ _ _ A _).
+
+eval-sel-safe-res : wf-res OV1 G (recv LNV T) -> eval-sel-res LNV OV1 OV2 -> wf-res OV2 G T -> type.
+%mode eval-sel-safe-res +A +B -C.
+
+- : eval-sel-safe-res (wf-res/some WVX) (es/ok IF) OWV2
+     <- invert-wf-rec WVX WV1 STR EQ
+     <- sub-tp-inv-recv STR ST1
+     <- wfv-widen ST1 WV1 WV2
+     <- eq-sym EQ EQ'
+     <- eq-to-id EQ' ID
+     <- eq-if-eq-then ID IF IF' WEQ
+     <- eq-res-val-some-wfv WEQ WV2 OWV2.
+
+- : eval-sel-safe-res ((wf-res/some WVX): wf-res _ G (recv _ T)) es/emptyfail OWV
+     <- invert-wf-empty WVX ST
+     <- no-subtype2 ST incompat/top-recv CONTRA
+     <- no-wf-res CONTRA res-val/stuck G T OWV.
+
+- : eval-sel-safe-res wf-res/timeout es/timeout wf-res/timeout.
+
+%worlds () (eval-sel-safe-res _ _ _).
+%total A (eval-sel-safe-res _ A _).
+
+eval-app-safe-res : wf-res OVF G0 (arrow LNF T1 T2) -> wf-res OVX G0 T1 -> eval-app-res N LNF OVF OVX OVA -> wf-res OVA G0 T2 -> type.
+%mode eval-app-safe-res +A +B +C -D.
 
 eval-safe-res : type-exp G E T -> wf-env H G -> eval-exp-res N H E OV -> wf-res OV G T -> type.
 %mode eval-safe-res +A +B +C -D.
+
+- : eval-app-safe-res (wf-res/some WVF) (wf-res/some WVX) (ea/ok IF EVA) Z''
+     <- invert-wf-fun WVF TR WE ST WXX EQ
+     <- sub-tp-inv-fun ST STA STR
+     <- extend-sub-tp2 STA _ STA'
+     <- wfv-widen STA' WVX WVX'
+     <- eq-wfv-clos EQ WXX WXX'
+     <- eval-safe-res TR (wfe/c (wfe/c WE WXX') WVX') EVA Z
+     <- extend-sub-tp1 STR _ STR'
+     <- wf-res-widen STR' Z Z'
+     <- eq-sym EQ EQ'
+     <- eq-to-id EQ' ID
+     <- eq-if-eq-then ID IF IF' WEQ
+     <- eq-wf-res WEQ Z' Z''.
+
+- : eval-app-safe-res ((wf-res/some WVF): wf-res _ G (arrow _ _ T)) _ ea/emptyfail OWA
+     <- invert-wf-empty WVF ST
+     <- no-subtype2 ST incompat/top-arrow CONTRA
+     <- no-wf-res CONTRA res-val/stuck G T OWA.
+
+- : eval-app-safe-res _ _ ea/timeout wf-res/timeout.
+
+- : eval-app-safe-res _ _ ea/timeout1 wf-res/timeout.
+
+- : eval-app-safe-res _ _ ea/timeout2 wf-res/timeout.
+
+- : eval-safe-res _ _ er/timeout wf-res/timeout.
+
+- : eval-safe-res ZT _ er/empty V
+     <- eval-empty-safe ZT VW
+     <- to-case-some res-val-get/some VW V.
 
 - : eval-safe-res ZT E (er/var L2) V2
      <- invert-var ZT (pet/lookup _ L) ST
@@ -2962,5 +3131,36 @@ eval-safe-res : type-exp G E T -> wf-env H G -> eval-exp-res N H E OV -> wf-res 
      <- to-case-some VG VW V
      <- wf-res-widen ST V V2.
 
-%worlds () (eval-safe-res _ _ _ _an).
-%total C (eval-safe-res _ _ C _).
+- : eval-safe-res ZT WE (er/sel EVS EVR) WVS2
+     <- invert-sel ZT TS ST
+     <- eval-safe-res TS WE EVR WVX
+     <- eval-sel-safe-res WVX EVS WVS
+     <- wf-res-widen ST WVS WVS2.
+
+- : eval-safe-res ZT WE (er/fun RX E2) WVF
+          <- invert-fun ZT TS TSV M WR STV CST IN
+          <- extract-wf CST WFF _
+          <- sub-tp-refl WFF STFF
+          <- sub-tp-refl WR STM
+          <- eval-safe-res TSV (wfe/c WE (wfv/f (sub-tp/and1b (wf-tp/fun wf-tp/top wf-tp/bot) (sub-tp/and1b (wf-tp/recv wf-tp/top) STM)) STM M wfv/empty (sub-tp/top wf-tp/top) t/empty WE)) E2 TV
+          <- clos-safe-res CST IN STFF M TV STV TS WE RX WVF.
+
+- : eval-safe-res
+     (ZT: type-exp G0 (app EF LNF EX) T2')
+     (WE: wf-env H0 G0)
+     (er/app
+        (EVA: eval-app-res N LNF OVF OVX OVA)
+        (EVX: eval-exp-res N H0 EX OVX)
+        (EVF: eval-exp-res N H0 EF OVF))
+     WVA'
+     <- invert-app ZT
+        (TF: type-exp G0 EF (arrow LNF T1 T2))
+        (TX: type-exp G0 EX T1)
+        (ST: sub-tp _ T2 _ T2')
+     <- eval-safe-res TX WE EVX ZX
+     <- eval-safe-res TF WE EVF ZF
+     <- eval-app-safe-res ZF ZX EVA WVA
+     <- wf-res-widen ST WVA WVA'.
+
+%worlds () (eval-safe-res _ _ _ _) (eval-app-safe-res _ _ _ _).
+%total (C1 C2) (eval-safe-res _ _ C1 _) (eval-app-safe-res _ _ C2 _).
