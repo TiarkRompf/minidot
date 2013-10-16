@@ -178,13 +178,13 @@ tsome: tpe -> topt.
 %{ ------- environments ----- }%
 
 vlookup-zero : venv -> nat -> val -> type.
-vl/hit  : vlookup-zero (vcons V G) z V.
-vl/miss : vlookup-zero (vcons _ G) (s N) V <- vlookup-zero G N V.
+vl/hit  : vlookup-zero (vcons V H) z V.
+vl/miss : vlookup-zero (vcons V' H) (s N) V <- vlookup-zero H N V.
 
 vsize : venv -> nat -> type.
 %mode vsize +A -B.
 vf/n   : vsize vnil z.
-vf/c   : vsize (vcons _ G) (s N) <- vsize G N.
+vf/c   : vsize (vcons V H) (s N) <- vsize H N.
 %worlds () (vsize _ _).
 %total A (vsize A _).
 
@@ -197,11 +197,11 @@ vl  : vlookup G N V
 
 tlookup-zero: tenv -> nat -> tpe -> type.
 tl/hit  : tlookup-zero (tcons V G) z V.
-tl/miss : tlookup-zero (tcons _ G) (s N) V <- tlookup-zero G N V.
+tl/miss : tlookup-zero (tcons V' G) (s N) V <- tlookup-zero G N V.
 
 tsize : tenv -> nat -> type.
 tf/n   : tsize tnil z.
-tf/c   : tsize (tcons _ G) (s N) <- tsize G N.
+tf/c   : tsize (tcons V G) (s N) <- tsize G N.
 
 %worlds () (tsize _ _).
 
