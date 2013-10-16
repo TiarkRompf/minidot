@@ -14,7 +14,12 @@ def go(twelf_txt):
   cmdrules = []
   while '.' in rem:
     i = rem.index('.')
-    name, c, r, g = process(rem[:i])
+    line = rem[:i]
+    rem = rem[i+1:]
+    if '=' in line:
+      # ignore abbreviations, such as let sugar
+      continue
+    name, c, r, g = process(line)
     if c:
       commands.append(c)
     if name:
@@ -24,7 +29,6 @@ def go(twelf_txt):
       grouprules[g] = grouprules.get(g, [])
       grouprules[g].append(r)
     rules.append(r)
-    rem = rem[i+1:]
   print "\n".join(commands)
   print
   print "\n".join(cmdrules)
@@ -50,7 +54,7 @@ def name2cmd(x):
 def typ2tex_rec(x):
   if x[0] == '(':
     i = x.index(' ')
-    name = name2cmd(x[1:i])
+    name = name2cmd(x[1:i].strip())
     args = []
     rem = x[i+1:].strip()
     while rem != "" and rem[0] != ')':
@@ -65,7 +69,7 @@ def typ2tex_rec(x):
     while i<n and x[i] != ' ' and x[i] != ')':
       i += 1
     name = None
-    txt = x[:i]
+    txt = x[:i].strip()
     if txt[0].islower():
       name = name2cmd(txt)
       txt = "\\" + name
@@ -115,7 +119,10 @@ def new_command(name, n):
   args = ""
   if n>0:
     args = "(" + ",".join(["#" + str(i+1) for i in range(0, n)]) + ")"
-  return "\\newcommand{\\" + namecmd + "}[" + str(n) + "]{\\text{" + name + args + "}}"
+  nmax = n
+  if n>9:
+    nmax = 9
+  return "\\newcommand{\\" + namecmd + "}[" + str(nmax) + "]{\\text{" + name + args + "}}"
 
 def new_rule(name, premises, conclusion):
   r = ""

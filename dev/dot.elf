@@ -589,15 +589,6 @@ extend-wf-lkp: tlookup G N T -> {Z: tpe} tlookup (tcons Z G) N T -> type.
 %worlds () (extend-wf-lkp _ _ _).
 %total A (extend-wf-lkp A _ _).
 
-extend-wf-lkp-mult: tlookup G N T -> sub-env G G1 -> tlookup G1 N T -> type.
-%mode extend-wf-lkp-mult +A +B -C.
-- : extend-wf-lkp-mult L sub-env/refl L.
-- : extend-wf-lkp-mult L (sub-env/ext S) L2
-    <- extend-wf-lkp-mult L S L1
-    <- extend-wf-lkp L1 _ L2.
-%worlds () (extend-wf-lkp-mult _ _ _).
-%total A (extend-wf-lkp-mult _ A _).
-
 env-case: etenv -> tenv -> tenv -> type.
 env-case/left : env-case (etenv/left G) G _.
 env-case/right : env-case (etenv/right G) _ G.
@@ -2297,27 +2288,15 @@ invert-fun :
 
 %{ ------- inversion helpers: make sense of intersections ----- }%
 
-
-
-no-subtype: false -> {G1}{T1}{G2}{T2}sub-tp G1 T1 G2 T2 -> type.
-%mode no-subtype +A +B +C +D +E -F.
-%worlds () (no-subtype _ _ _ _ _ _).
-%total (A) (no-subtype A _ _ _ _ _).
-
 no-subtype1: sub-tp G1 (recv _ _) G2 (arrow _ _ _) -> false -> type.
 %mode no-subtype1 +A -B.
 %worlds () (no-subtype1 _ _).
 %total (A) (no-subtype1 A _).
 
-
-
-
 no-subtype2: sub-tp G1 T1 G2 T2 -> incompat-tp T1 T2 -> false -> type.
 %mode no-subtype2 +A +B -C.
 %worlds () (no-subtype2 _ _ _).
 %total (A) (no-subtype2 A _ _).
-
-
 
 no-subtype-mt-arrow: sub-tp G1 T1 G2 (arrow NF TA TB) -> type-mem M T1 -> false -> type.
 
@@ -2354,11 +2333,6 @@ project-sub-recv: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV' T3) MT))) G2 (
 %mode project-sub-recv +A +B -C.
 %worlds () (project-sub-recv _ _ _).
 %total (A) (project-sub-recv A _ _).
-
-no-subtype0: incompat-tp T1 T3 -> compat-tp T1 T3 -> false -> type.
-%mode no-subtype0 +A +B -D.
-%worlds () (no-subtype0 _ _ _).
-%total (A) (no-subtype0 A _ _).
 
 sub-arrow-eq: sub-tp G1 (arrow N1 T1A T1B) G2 (arrow N2 T2A T2B) -> eq N1 N2 -> type.
 %mode sub-arrow-eq +A -B.
