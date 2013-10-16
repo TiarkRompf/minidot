@@ -2377,8 +2377,9 @@ invert-wf-fun-aux :
   wf-env H G ->
   sub-tp (tcons TS G) (arrow LNF T3 T4) G2 (arrow LNF T1 T2) ->
   wf-val (clos LNF' R LNV R2 H) (tcons TS G) TS ->
+  eq LNF' LNF ->
   type.
-%mode invert-wf-fun-aux +WFE1 +SBT -WFE2 -WFE3 -SBT1 -WV.
+%mode invert-wf-fun-aux +WFE1 +SBT -WFE2 -WFE3 -SBT1 -WV -EQ.
 
 
 -     :  invert-wf-fun-aux 
@@ -2386,6 +2387,7 @@ invert-wf-fun-aux :
           SB0'
           TS WE STF1'
           (wfv/f IN ST' MT TV TV2 TS WE)
+          EQ
             <- sub-tp-trans ST SB0' SB0
             <- sub-tp-trans IN SB0 SB0''
             <- project-sub-arrow SB0'' MT STF1
@@ -2397,12 +2399,12 @@ invert-wf-fun-aux :
 
 
  -     : invert-wf-fun-aux (wfv/sub (SB1: sub-tp G1 TI G T) (TS: wf-val _ G1 TI))
-                (SB0: sub-tp G T G2 (arrow LNF T1 T2)) L L1 SB WVXX
+                (SB0: sub-tp G T G2 (arrow LNF T1 T2)) L L1 SB WVXX EQ
             <- sub-tp-trans SB1 SB0 (SB1X: sub-tp G1 TI G2 (arrow LNF T1 T2))
-            <- invert-wf-fun-aux TS SB1X L L1 (SB: sub-tp _ (arrow LNF T3 T4) G2 (arrow LNF T1 T2)) WVXX.
+            <- invert-wf-fun-aux TS SB1X L L1 (SB: sub-tp _ (arrow LNF T3 T4) G2 (arrow LNF T1 T2)) WVXX EQ.
 
-%worlds () (invert-wf-fun-aux _ _ _ _ _ _).
-%total WFE (invert-wf-fun-aux WFE _ _ _ _ _).
+%worlds () (invert-wf-fun-aux _ _ _ _ _ _ _).
+%total WFE (invert-wf-fun-aux WFE _ _ _ _ _ _).
 
 
 invert-wf-fun :
@@ -2413,16 +2415,17 @@ invert-wf-fun :
   wf-env H G ->
   sub-tp (tcons TS G) (arrow LNF T3 T4) G1 (arrow LNF T1 T2) ->
   wf-val (clos LNF' R LNV R2 H) (tcons TS G) TS ->
+  eq LNF' LNF ->
   type.
-%mode invert-wf-fun +WFE1 -WFE2 -WFE3 -SBT1 -WF.
+%mode invert-wf-fun +WFE1 -WFE2 -WFE3 -SBT1 -WF -EQ.
 
--     :  invert-wf-fun A B C D E
+-     :  invert-wf-fun A B C D E EQ
             <- extract-wf3 A W
             <- sub-tp-refl W SB
-            <- invert-wf-fun-aux A SB B C D E.
+            <- invert-wf-fun-aux A SB B C D E EQ.
 
-%worlds () (invert-wf-fun _ _ _ _ _).
-%total WFE (invert-wf-fun WFE _ _ _ _).
+%worlds () (invert-wf-fun _ _ _ _ _ _).
+%total WFE (invert-wf-fun WFE _ _ _ _ _).
 
 
 
@@ -2660,7 +2663,7 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
               (TR : type-exp (tcons T3 (tcons _ GC0)) R T4)
               (WE1: wf-env HC0 GC0)
               STF
-              WXX
+              WXX _
 
           <- sub-tp-inv-fun
               (STF: sub-tp (tcons _ GC0) (arrow _ T3 T4) G0 (arrow _ T1 T2))
