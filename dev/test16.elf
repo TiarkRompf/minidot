@@ -906,6 +906,24 @@ eq-recv-low: eq N1 N1' -> sub-tp G1 (recv N1 T1) G2 T2 -> sub-tp G1 (recv N1' T1
 %worlds () (eq-recv-low _ _ _).
 %total A (eq-recv-low A _ _).
 
+natid-arrow-low: natid N1 N1' -> sub-tp G1 (arrow N1 TA1 TB1) G2 T2 -> sub-tp G1 (arrow N1' TA1 TB1) G2 T2 -> type.
+%mode natid-arrow-low +A +B -C.
+
+- : natid-arrow-low natident S S.
+
+%worlds () (natid-arrow-low _ _ _).
+%total A (natid-arrow-low A _ _).
+
+eq-arrow-low: eq N1 N1' -> sub-tp G1 (arrow N1 TA1 TB1) G2 T2 -> sub-tp G1 (arrow N1' TA1 TB1) G2 T2 -> type.
+%mode eq-arrow-low +A +B -C.
+
+- : eq-arrow-low EQ S S'
+     <- eq-to-id EQ ID
+     <- natid-arrow-low ID S S'.
+
+%worlds () (eq-arrow-low _ _ _).
+%total A (eq-arrow-low A _ _).
+
 eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
 %mode eq-high +P1 +P2 -SBT.
 
@@ -2300,19 +2318,6 @@ no-subtype-mt-recv: sub-tp G1 T1 G2 (recv NF TA) -> type-mem M T1 -> false -> ty
 %total (A) (no-subtype-mt-recv A _ _).
 
 
-
-project-sub-arrow: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) G2 (arrow NF T1X T2X) -> type-mem M MT -> sub-tp G1 (arrow NF T1 T2) G2 (arrow NF T1X T2X) -> type.
-
-- : project-sub-arrow ((sub-tp/and1a W ST)) MT ST.
-- : project-sub-arrow ( (sub-tp/and1b WF (sub-tp/and1a WR ST))) MT ST'
-      <- no-subtype2 ST incompat/recv-arrow F <- no-subtype F _ _ _ _ ST'.
-- : project-sub-arrow ( (sub-tp/and1b WF (sub-tp/and1b WV ST))) MT ST'
-      <- no-subtype-mt-arrow ST MT F  <- no-subtype F _ _ _ _ ST'.
-
-%mode project-sub-arrow +A +B -C.
-%worlds () (project-sub-arrow _ _ _).
-%total (A) (project-sub-arrow A _ _).
-
 sub-recv-eq: sub-tp G1 (recv N1 T1) G2 (recv N2 T2) -> eq N1 N2 -> type.
 %mode sub-recv-eq +A -B.
 - : sub-recv-eq (sub-tp/recv S) EQ
@@ -2337,7 +2342,14 @@ no-subtype0: incompat-tp T1 T3 -> compat-tp T1 T3 -> false -> type.
 %worlds () (no-subtype0 _ _ _).
 %total (A) (no-subtype0 A _ _).
 
-project-sub-arrow: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) G2 (arrow NF T1X T2X) -> type-mem M MT -> sub-tp G1 (arrow NF T1 T2) G2 (arrow NF T1X T2X) -> type.
+sub-arrow-eq: sub-tp G1 (arrow N1 T1A T1B) G2 (arrow N2 T2A T2B) -> eq N1 N2 -> type.
+%mode sub-arrow-eq +A -B.
+- : sub-arrow-eq (sub-tp/fun _ _) EQ
+     <- eq-refl _ EQ.
+%worlds () (sub-arrow-eq _ _).
+%total A (sub-arrow-eq A _).
+
+project-sub-arrow: sub-tp G1 ((and (arrow NF' T1 T2) (and (recv NV T3) MT))) G2 (arrow NF T1X T2X) -> type-mem M MT -> sub-tp G1 (arrow NF' T1 T2) G2 (arrow NF T1X T2X) -> type.
 
 - : project-sub-arrow ((sub-tp/and1a W ST)) MT ST.
 - : project-sub-arrow ( (sub-tp/and1b WF (sub-tp/and1a WR ST))) MT ST'
@@ -2358,13 +2370,13 @@ project-sub-arrow: sub-tp G1 ((and (arrow NF T1 T2) (and (recv NV T3) MT))) G2 (
 
 invert-wf-fun-aux :
   %% Input
-  wf-val (clos LNF R LNV R2 H) G1 T ->
+  wf-val (clos LNF' R LNV R2 H) G1 T ->
   sub-tp G1 T G2 (arrow LNF T1 T2) ->
   %% Output
   type-exp (tcons T3 (tcons TS G)) R T4 ->
   wf-env H G ->
   sub-tp (tcons TS G) (arrow LNF T3 T4) G2 (arrow LNF T1 T2) ->
-  wf-val (clos LNF R LNV R2 H) (tcons TS G) TS ->
+  wf-val (clos LNF' R LNV R2 H) (tcons TS G) TS ->
   type.
 %mode invert-wf-fun-aux +WFE1 +SBT -WFE2 -WFE3 -SBT1 -WV.
 
@@ -2372,12 +2384,13 @@ invert-wf-fun-aux :
 -     :  invert-wf-fun-aux 
           (wfv/f IN ST MT TV TV2 TS WE) 
           SB0'
-          TS WE STF1
+          TS WE STF1'
           (wfv/f IN ST' MT TV TV2 TS WE)
             <- sub-tp-trans ST SB0' SB0
             <- sub-tp-trans IN SB0 SB0''
             <- project-sub-arrow SB0'' MT STF1
-
+            <- sub-arrow-eq STF1 EQ
+            <- eq-arrow-low EQ STF1 STF1'
             <- extract-wf ST WFF' _
             <- sub-tp-refl WFF' ST'
             .
@@ -2394,12 +2407,12 @@ invert-wf-fun-aux :
 
 invert-wf-fun :
   %% Input
-  wf-val (clos LNF R LNV R2 H) G1 (arrow LNF T1 T2) ->
+  wf-val (clos LNF' R LNV R2 H) G1 (arrow LNF T1 T2) ->
   %% Output
   type-exp (tcons T3 (tcons TS G)) R T4 ->
   wf-env H G ->
   sub-tp (tcons TS G) (arrow LNF T3 T4) G1 (arrow LNF T1 T2) ->
-  wf-val (clos LNF R LNV R2 H) (tcons TS G) TS ->
+  wf-val (clos LNF' R LNV R2 H) (tcons TS G) TS ->
   type.
 %mode invert-wf-fun +WFE1 -WFE2 -WFE3 -SBT1 -WF.
 
