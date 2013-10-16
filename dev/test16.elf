@@ -3004,6 +3004,23 @@ invert-wf-rec-empty: wf-val emptyv G T
 %worlds () (invert-wf-rec-empty _ _).
 %total A (invert-wf-rec-empty A _).
 
+clos-safe-res :  sub-tp (tcons TC G) TC G T
+                 -> sub-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T1) MT)) (tcons TC G) TC
+                 -> sub-tp (tcons TC G) TC (tcons TC G) TC
+                 -> type-mem M MT
+                 -> wf-res V1 (tcons MT G) T1
+                 -> sub-tp (tcons MT G) T1 (tcons TC G) T1
+                 -> type-exp (tcons T3 (tcons TC G)) R T4
+                 -> wf-env H G
+                 -> res-clos V1 LNF R LNV H VC
+                 -> wf-res VC G T
+                 -> type.
+%mode clos-safe-res +A +B +C +D +E +F +G +H +I -J.
+
+%worlds () (clos-safe-res _ _ _ _ _ _ _ _ _ _).
+%trustme
+%total A (clos-safe-res _ _ _ _ _ _ _ _ A _).
+
 eval-sel-safe-res : wf-res OV1 G (recv LNV T) -> eval-sel-res LNV OV1 OV2 -> wf-res OV2 G T -> type.
 %mode eval-sel-safe-res +A +B -C.
 
@@ -3032,6 +3049,8 @@ eval-app-safe-res : wf-res OVF G0 (arrow LNF T1 T2) -> wf-res OVX G0 T1 -> eval-
 eval-safe-res : type-exp G E T -> wf-env H G -> eval-exp-res N H E OV -> wf-res OV G T -> type.
 %mode eval-safe-res +A +B +C -D.
 
+- : eval-safe-res _ _ er/timeout wf-res/timeout.
+
 - : eval-safe-res ZT _ er/empty V
      <- eval-empty-safe ZT VW
      <- to-case-some res-val-get/some VW V.
@@ -3047,6 +3066,14 @@ eval-safe-res : type-exp G E T -> wf-env H G -> eval-exp-res N H E OV -> wf-res 
      <- eval-safe-res TS WE EVR WVX
      <- eval-sel-safe-res WVX EVS WVS
      <- wf-res-widen ST WVS WVS2.
+
+- : eval-safe-res ZT WE (er/fun RX E2) WVF
+          <- invert-fun ZT TS TSV M WR STV CST IN
+          <- extract-wf CST WFF _
+          <- sub-tp-refl WFF STFF
+          <- sub-tp-refl WR STM
+          <- eval-safe-res TSV (wfe/c WE (wfv/f (sub-tp/and1b (wf-tp/fun wf-tp/top wf-tp/bot) (sub-tp/and1b (wf-tp/recv wf-tp/top) STM)) STM M wfv/empty (sub-tp/top wf-tp/top) t/empty WE)) E2 TV
+          <- clos-safe-res CST IN STFF M TV STV TS WE RX WVF.
 
 - : eval-safe-res
      (ZT: type-exp G0 (app EF LNF EX) T2')
