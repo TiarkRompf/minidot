@@ -3026,6 +3026,9 @@ eval-sel-safe-res : wf-res OV1 G (recv LNV T) -> eval-sel-res LNV OV1 OV2 -> wf-
 %worlds () (eval-sel-safe-res _ _ _).
 %total A (eval-sel-safe-res _ A _).
 
+eval-app-safe-res : wf-res OVF G0 (arrow LNF T1 T2) -> wf-res OVX G0 T1 -> eval-app-res N LNF OVF OVX OVA -> wf-res OVA G0 T2 -> type.
+%mode eval-app-safe-res +A +B +C -D.
+
 eval-safe-res : type-exp G E T -> wf-env H G -> eval-exp-res N H E OV -> wf-res OV G T -> type.
 %mode eval-safe-res +A +B +C -D.
 
@@ -3045,6 +3048,22 @@ eval-safe-res : type-exp G E T -> wf-env H G -> eval-exp-res N H E OV -> wf-res 
      <- eval-sel-safe-res WVX EVS WVS
      <- wf-res-widen ST WVS WVS2.
 
-%worlds () (eval-safe-res _ _ _ _an).
-%trustme
-%total C (eval-safe-res _ _ C _).
+- : eval-safe-res
+     (ZT: type-exp G0 (app EF LNF EX) T2')
+     (WE: wf-env H0 G0)
+     (er/app
+        (EVA: eval-app-res N LNF OVF OVX OVA)
+        (EVX: eval-exp-res N H0 EX OVX)
+        (EVF: eval-exp-res N H0 EF OVF))
+     WVA'
+     <- invert-app ZT
+        (TF: type-exp G0 EF (arrow LNF T1 T2))
+        (TX: type-exp G0 EX T1)
+        (ST: sub-tp _ T2 _ T2')
+     <- eval-safe-res TX WE EVX ZX
+     <- eval-safe-res TF WE EVF ZF
+     <- eval-app-safe-res ZF ZX EVA WVA
+     <- wf-res-widen ST WVA WVA'.
+
+%worlds () (eval-safe-res _ _ _ _) (eval-app-safe-res _ _ _ _).
+%total (C1 C2) (eval-safe-res _ _ C1 _) (eval-app-safe-res _ _ C2 _).
