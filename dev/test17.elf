@@ -1851,10 +1851,47 @@ rect-same-all-same : same (rect N X1 X2) (rect N X1' X2')
 %worlds () (rect-same-all-same _ _ _).
 %total A (rect-same-all-same A _ _).
 
+exp-tp-left-eq: exp-tp G T N OT (etenv/left G') -> sametenv G G' -> type.
+%mode exp-tp-left-eq +A -B.
+
+- : exp-tp-left-eq exp-tp/top identtenv.
+- : exp-tp-left-eq exp-tp/bot identtenv.
+- : exp-tp-left-eq exp-tp/fun identtenv.
+- : exp-tp-left-eq exp-tp/recv identtenv.
+- : exp-tp-left-eq exp-tp/rect identtenv.
+- : exp-tp-left-eq (exp-tp/rectn N) identtenv.
+- : exp-tp-left-eq (exp-tp/and topt-and/nn E1 E2) EQ
+     <- exp-tp-left-eq E1 EQ.
+- : exp-tp-left-eq (exp-tp/and topt-and/ns E1 E2) EQ
+         <- exp-tp-left-eq E2 EQ.
+- : exp-tp-left-eq (exp-tp/and topt-and/sn E1 E2) EQ
+         <- exp-tp-left-eq E1 EQ.
+
+%worlds () (exp-tp-left-eq _ _).
+%total A (exp-tp-left-eq A _).
+
+pev-left-same: path-eval G E T (etenv/left GX) -> sametenv G GX -> type.
+%mode pev-left-same +A -B.
+- : pev-left-same (pev W G (tle EX L)) EQ
+     <- exp-tp-left-eq EX EQ.
+%worlds () (pev-left-same _ _).
+%total A (pev-left-same A _).
+
+eq-pev-left-sametenv: sametenv G G' -> path-eval G E T (etenv/left G') -> path-eval G E T (etenv/left G) -> type.
+%mode eq-pev-left-sametenv +A +B -C.
+
+- : eq-pev-left-sametenv identtenv P P.
+%worlds () (eq-pev-left-sametenv _ _ _).
+%total A (eq-pev-left-sametenv A _ _).
+
 pev-left-eq: path-eval G E T (etenv/left GX) -> path-eval G E T (etenv/left G) -> type.
 %mode pev-left-eq +A -B.
+
+- : pev-left-eq P P'
+     <- pev-left-same P EQ
+     <- eq-pev-left-sametenv EQ P P'.
+
 %worlds () (pev-left-eq _ _).
-%trustme
 %total A (pev-left-eq A _).
 
 pev-tp-min-right:
