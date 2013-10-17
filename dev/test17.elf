@@ -1934,17 +1934,33 @@ pev-tp-dia-right: path-eval G1 E (rect N S U) (etenv/right GX)
 %worlds () (pev-tp-dia-right _ _ _ _ _ _ _ _).
 %total {} (pev-tp-dia-right _ _ _ _ _ _ _ _).
 
-add-lt : add (s N) M S -> lte N S -> type.
+no-sub-env : false -> {G}{G'} sub-env G G' -> type.
+%mode no-sub-env +A +B +C -D.
+%worlds () (no-sub-env _ _ _ _).
+%total A (no-sub-env A _ _ _).
+
+lt : nat -> nat -> type.
+lt/z : lt z (s N).
+lt/s : lt (s N1) (s N2)
+   <- lt N1 N2.
+%mode lt +N1 +N2.
+
+lt-z-false : lt N z -> false -> type.
+%mode lt-z-false +A -B.
+%worlds () (lt-z-false _ _).
+%total A (lt-z-false A _).
+
+add-lt : add (s N) M S -> lt N S -> type.
 %mode add-lt +A -B.
 
-- : add-lt (add/s add/z) lte/z.
-- : add-lt (add/s A) (lte/s LT)
+- : add-lt (add/s add/z) lt/z.
+- : add-lt (add/s A) (lt/s LT)
      <- add-lt A LT.
 
 %worlds () (add-lt _ _).
 %total A (add-lt A _).
 
-tsize-lookup : tlookup G N0 T -> tsize G N -> lte N0 N -> type.
+tsize-lookup : tlookup G N0 T -> tsize G N -> lt N0 N -> type.
 %mode tsize-lookup +A -B -C.
 
 - : tsize-lookup (tl L A N) N LT
@@ -1953,13 +1969,31 @@ tsize-lookup : tlookup G N0 T -> tsize G N -> lte N0 N -> type.
 %worlds () (tsize-lookup _ _ _).
 %total A (tsize-lookup A _ _).
 
-sub-env-size1: sub-env GA (tcons T0 GB) -> tsize GA NA -> tsize GB NB -> lte NB NA -> sub-env (tcons T0 GB) GA -> type.
-%mode sub-env-size1 +A +B +C +D -E.
-%worlds () (sub-env-size1 _ _ _ _ _).
+sub-env-size0: sub-env GA GB -> tsize GA NA -> tsize GB NB -> lte NB NA -> sub-env GB GA -> type.
+%mode sub-env-size0 +A +B +C +D -E.
+%worlds () (sub-env-size0 _ _ _ _ _).
 %trustme
-%total A (sub-env-size1 A _ _ _ _).
+%total A (sub-env-size0 A _ _ _ _).
 
-sub-env-size : sub-env G G2 -> sub-env (tcons T0 G0) G2 -> tsize G N -> tsize G0 N0 -> lte N0 N -> sub-env (tcons T0 G0) G -> type.
+lt-lte : lt NB NA -> lte (s NB) NA -> type.
+%mode lt-lte +A -B.
+
+- : lt-lte lt/z (lte/s lte/z).
+- : lt-lte (lt/s A) (lte/s B)
+     <- lt-lte A B.
+
+%worlds () (lt-lte _ _).
+%total A (lt-lte A _).
+
+sub-env-size1: sub-env GA (tcons T0 GB) -> tsize GA NA -> tsize GB NB -> lt NB NA -> sub-env (tcons T0 GB) GA -> type.
+%mode sub-env-size1 +A +B +C +D -E.
+- : sub-env-size1 S SNA SNB LT OUT
+     <- lt-lte LT LTE
+     <- sub-env-size0 S SNA (tf/c SNB) LTE OUT.
+%worlds () (sub-env-size1 _ _ _ _ _).
+%total {} (sub-env-size1 _ _ _ _ _).
+
+sub-env-size : sub-env G G2 -> sub-env (tcons T0 G0) G2 -> tsize G N -> tsize G0 N0 -> lt N0 N -> sub-env (tcons T0 G0) G -> type.
 %mode sub-env-size +A +B +C +D +E -F.
 
 - : sub-env-size sub-env/refl S _ _ _ S.
