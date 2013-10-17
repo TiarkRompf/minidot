@@ -1897,6 +1897,12 @@ pev-tp-dia-right: path-eval G1 E (rect N S U) (etenv/right GX)
 %worlds () (pev-tp-dia-right _ _ _ _ _ _ _).
 %total {} (pev-tp-dia-right _ _ _ _ _ _ _).
 
+sub-env-size-lkp : tsize G0 N0 -> sub-env G G1 -> sub-env G G2 -> sub-env (tcons T0 G0) G2 -> path-eval G (var N0) (rect N TA TB) G' -> sub-env (tcons T0 G0) G -> type.
+%mode sub-env-size-lkp +A +B +C +D +E -F.
+%worlds () (sub-env-size-lkp _ _ _ _ _ _).
+%trustme
+%total {} (sub-env-size-lkp _ _ _ _ _ _).
+
 sub-tp-trans-aux :
   %% Inputs
   wf-tp G2 T2 ->
@@ -2172,6 +2178,14 @@ sub-tp-trans-aux :
             <- eq-refl _ EQN
             <- lookup-eq0 LR' L2 EQN EQB
             <- eq-lookup EQB LR' L2'.
+
+-/tselxs : sub-tp-trans-aux
+            W0
+            (sub-tp/tselx PX S1X S2X)
+            (sub-tp/tsels N2 P3 P2 S2 L3 S3)
+            (sub-tp/tsels N2 P3 P2 S1' L3 S3)
+            <- sub-env-size-lkp N2 S1X S2X S2 PX SX
+            <- sub-env-trans SX S1X S1'.
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
