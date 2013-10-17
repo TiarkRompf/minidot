@@ -319,14 +319,6 @@ sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
              <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2) % --
               <- tsize G0 N
               .
-% sub-tp/tsels : sub-tp G1 (tsel (var N0) NT) G2 (tsel (var X) NT)
-%                <- tlookup G2 X (bind N0 G0 T0)
-%                <- sub-env (tcons T0 G0) G1
-%                <- sub-env G2' G2
-%                <- path-eval (tcons T0 G0) (var N0) (rect NT S U) (etenv/left (tcons T0 G0))
-%                <- path-eval G2' (var X) (rect NT S U) (etenv/right (tcons T0 G0))
-%                <- tsize G0 N0.
-
 sub-tp/tsels : sub-tp G1 (tsel (var N0) NT) G2 (tsel (var X) NT)
                 <- tlookup G2 X (bind N0 G0 T0)
                 <- sub-env (tcons T0 G0) G1
@@ -2092,6 +2084,17 @@ sub-tp-trans-aux :
             <- eq-wf EQS0 WS0 WS0'
             <- eq-wf-env EQG0 WS0' WS0''
             <- sub-tp-trans-aux WS0'' ST2 SB1' ST3.
+
+-/tsels-tsels : sub-tp-trans-aux
+                 (wf-tp/tsel P0)
+                 ((sub-tp/tsels N1 P2A P1 S2A S1 L2): sub-tp G1 (tsel (var X1) N) _ _)
+                 ((sub-tp/tsels N2 P3 P2B S3 S2B L3): sub-tp _ _ G3 (tsel (var X3) N))
+                 OUT
+                 <- extend-wf-pev-case-right-mult P2A S2A P2A'
+                 <- extend-wf-pev-case-left-mult P2B S2B P2B'
+                 <- path-eval-eq P2B' P2A' EQR EQGE
+                 <- not-sameenv-left-right EQGE CONTRA
+                 <- no-subtype CONTRA G1 (tsel (var X1) N) G3 (tsel (var X3) N) OUT.
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
