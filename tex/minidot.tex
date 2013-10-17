@@ -66,27 +66,7 @@ calculus, objects, dependent types
 
 % \section{Rules}
 
-\boxfig{subtp}{Subtyping}{
-\begin{multicols}{2}[\judgement{Subtyping}{\fbox{$\aaasubtp {G1} {T1} {G2} {T2}$}}]
-{\allrulesaaasubtp}
-\end{multicols}
-}
-
-\boxfig{wftp}{Well-Formedness}{
-\begin{multicols}{2}[\judgement{Well-Formedness}{\fbox{$\aaawftp {G} {T}$}}]
-{\allrulesaaawftp}
-\end{multicols}
-}
-
-\boxfig{typeexp}{Typing}{
-\judgement{Typing}{\fbox{$\aaatypeexp {G} {E} {T}$}}
-{\allrulesaaatypeexp}
-}
-
-\boxfig{evalexp}{Evaluation}{
-\judgement{Evaluation}{\fbox{$\aaaevalexp {H} {E} {V}$}}
-{\allrulesaaaevalexp}
-}
+\input{rules}
 
 \bibliographystyle{abbrvnat}
 \bibliography{dot}
