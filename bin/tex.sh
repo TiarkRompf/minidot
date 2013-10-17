@@ -13,3 +13,4 @@ command -v $bin >/dev/null 2>&1 || { echo >&2 "twelf-server not found. aborting.
 echo -e "set chatter 0\nloadFile ../dev/dot.elf\nPrint.sgn" | $bin | awk '!/^%%/' | tail -n +2 >dot.txt
 ../bin/twelf2tex.py dot.txt >dot_auto.tex
 pdflatex twelf.tex
+pdflatex minidot.tex
