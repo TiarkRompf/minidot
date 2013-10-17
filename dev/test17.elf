@@ -1884,24 +1884,32 @@ pev-tp-dia-right: path-eval G1 E (rect N S U) (etenv/right GX)
                    -> path-eval G2 E (rect N S' U') OG2
                    -> sub-env G1 G
                    -> sub-env G2 G
-                   -> path-eval G' E (rect N S U) (etenv/right GX)
+                   -> {G'} path-eval G' E (rect N S U) (etenv/right GX)
                    -> sub-env G' G1
                    -> sub-env G' G2
                    -> type.
-%mode pev-tp-dia-right +A +B +C +D -E -F -G.
+%mode pev-tp-dia-right +A +B +C +D -E -F -G -H.
 
-- : pev-tp-dia-right P1 P2 S1 S2 P' S1' S2'
+- : pev-tp-dia-right P1 P2 S1 S2 _ P' S1' S2'
      <- sub-env-dia S1 S2 MM
      <- pev-tp-min-right P1 P2 MM P' S1' S2'.
 
-%worlds () (pev-tp-dia-right _ _ _ _ _ _ _).
-%total {} (pev-tp-dia-right _ _ _ _ _ _ _).
+%worlds () (pev-tp-dia-right _ _ _ _ _ _ _ _).
+%total {} (pev-tp-dia-right _ _ _ _ _ _ _ _).
 
 sub-env-size-lkp : tsize G0 N0 -> sub-env G G1 -> sub-env G G2 -> sub-env (tcons T0 G0) G2 -> path-eval G (var N0) (rect N TA TB) G' -> sub-env (tcons T0 G0) G -> type.
 %mode sub-env-size-lkp +A +B +C +D +E -F.
 %worlds () (sub-env-size-lkp _ _ _ _ _ _).
 %trustme
 %total {} (sub-env-size-lkp _ _ _ _ _ _).
+
+extract-pev-lkp : path-eval G (var X) T EG -> tlookup G X TX -> type.
+%mode extract-pev-lkp +A -B.
+
+- : extract-pev-lkp (pev WR GR (tle EXR LR)) LR.
+
+%worlds () (extract-pev-lkp _ _).
+%total A (extract-pev-lkp A _).
 
 sub-tp-trans-aux :
   %% Inputs
@@ -2137,16 +2145,15 @@ sub-tp-trans-aux :
 -/tsel2s : sub-tp-trans-aux
             (wf-tp/tsel (pev (wf-tp/rect SR0 WU0 WS0) GE0 L))
             (sub-tp/tsel2 ST GEA P1A)
-            (sub-tp/tsels N P2 P1 S1 L2 S2)
+            (sub-tp/tsels N P2 (pev (wf-tp/rect SR1 WU1 WS1) GE1 L1) S1 L2 S2)
             (sub-tp/tsel2 ST3 getenv/right P2')
             <- extend-wf-pev-case-right-mult P2 S2 P2'
-            <- extend-wf-pev-case-left-mult P1 S1 P1'
+            <- extend-wf-pev-case-left-mult (pev (wf-tp/rect SR1 WU1 WS1) GE1 L1) S1 P1'
             <- path-eval-eq  P1A P1' EQR EQGE
             <- rect-same-all-same EQR EQS EQU
             <- same-etenv-tenv EQGE GEA getenv/left EQG
             <- eq-high EQS ST ST1
             <- eq-high-env EQG ST1 ST2
-            <- extract-wf-pev P1 GE1 (wf-tp/rect SR1 WU1 WS1)
             <- sub-tp-refl WS1 SB1
             <- extend-sub-tp1-mult SB1 S1 SB1'
             <- path-eval-eq (pev (wf-tp/rect SR0 WU0 WS0) GE0 L) P1' EQR0 EQGE0
@@ -2169,15 +2176,16 @@ sub-tp-trans-aux :
 
 -/tselsx : sub-tp-trans-aux
             W0
-            (sub-tp/tsels N1 P2 P1 S1 L2 S2)
+            (sub-tp/tsels N1 P2 P1 S1 (L2: tlookup _ X (bind N0 _ _)) S2)
             (sub-tp/tselx PX S2X S3X)
-            (sub-tp/tsels N1 (pev WR GR (tle EXR LR)) P1 S1 L2' S3X')
-            <- pev-tp-dia-right P2 PX S2 S2X (pev WR GR (tle EXR LR)) S2' S2X'
+            (sub-tp/tsels N1 P2' P1 S1 L2' S3X')
+            <- pev-tp-dia-right P2 PX S2 S2X G' P2' S2' S2X'
+            <- extract-pev-lkp P2' LR
             <- sub-env-trans S2X' S3X S3X'
             <- extend-wf-lkp-mult LR S2' LR'
-            <- eq-refl _ EQN
-            <- lookup-eq0 LR' L2 EQN EQB
-            <- eq-lookup EQB LR' L2'.
+            <- eq-refl X EQX
+            <- lookup-eq0 LR' L2 EQX EQB
+            <- eq-lookup EQB LR L2'.
 
 -/tselxs : sub-tp-trans-aux
             W0
