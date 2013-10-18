@@ -1084,6 +1084,14 @@ lookup-eq0: tlookup G2 N1 T1 -> tlookup G2 N2 T2 -> eq N1 N2
 %worlds () (lookup-eq0 _ _ _ _).
 %total {T2} (lookup-eq0 T2 _ _ _).
 
+eq-lookup: same T T' -> tlookup G N T -> tlookup G N T' -> type.
+%mode eq-lookup +A +B -C.
+
+- : eq-lookup ident L L.
+
+%worlds () (eq-lookup _ _ _).
+%total A (eq-lookup A _ _).
+
 topt-and-eq: topt-and T1 T2 T3 G1 G2 G3 -> topt-and T1 T2 T3' G1 G2 G3' -> sameopt T3 T3' -> sameenv G3 G3' -> type.
 %mode topt-and-eq +A +B -D -E.
 - : topt-and-eq topt-and/nn topt-and/nn identopt identenv.
@@ -1401,11 +1409,10 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST1 _ ST1' ST1A ST1B
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 
-- : extend-sub-tp (sub-tp/tsels N P2 P1 S2 S1 L2) T
-     (sub-tp/tsels N P2 P1 (sub-env/ext S2) (sub-env/ext S1) L2')
-     (sub-tp/tsels N P2 P1 S2 (sub-env/ext S1) L2)
-     (sub-tp/tsels N P2 P1 (sub-env/ext S2) S1 L2')
-     <- extend-wf-lkp L2 T L2'.
+- : extend-sub-tp (sub-tp/tsels N P2 P1 S1 L2 S2) T
+     (sub-tp/tsels N P2 P1 (sub-env/ext S1) L2 (sub-env/ext S2))
+     (sub-tp/tsels N P2 P1 (sub-env/ext S1) L2 S2)
+     (sub-tp/tsels N P2 P1 S1 L2 (sub-env/ext S2)).
 
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _)(extend-wf-pev-case _ _ _ _ _).
 %total (A B C D) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _)(extend-wf-pev-case D _ _ _ _).
@@ -1572,7 +1579,7 @@ extract-wf-pev : path-eval G E T OG -> getenv OG G' -> wf-tp G' T -> type.
       <- extract-wf S1 W1 W3
       <- extract-wf S2 W2 W4.
 
-- : extract-wf (sub-tp/tsels N P2 P1 S2 S1 L2)
+- : extract-wf (sub-tp/tsels N P2 P1 S1 L2 S2)
      (wf-tp/tsel P1')
      (wf-tp/tsel P2')
      <- extend-wf-pev-mult P1 S1 P1'
@@ -1844,10 +1851,47 @@ rect-same-all-same : same (rect N X1 X2) (rect N X1' X2')
 %worlds () (rect-same-all-same _ _ _).
 %total A (rect-same-all-same A _ _).
 
+exp-tp-left-eq: exp-tp G T N OT (etenv/left G') -> sametenv G G' -> type.
+%mode exp-tp-left-eq +A -B.
+
+- : exp-tp-left-eq exp-tp/top identtenv.
+- : exp-tp-left-eq exp-tp/bot identtenv.
+- : exp-tp-left-eq exp-tp/fun identtenv.
+- : exp-tp-left-eq exp-tp/recv identtenv.
+- : exp-tp-left-eq exp-tp/rect identtenv.
+- : exp-tp-left-eq (exp-tp/rectn N) identtenv.
+- : exp-tp-left-eq (exp-tp/and topt-and/nn E1 E2) EQ
+     <- exp-tp-left-eq E1 EQ.
+- : exp-tp-left-eq (exp-tp/and topt-and/ns E1 E2) EQ
+         <- exp-tp-left-eq E2 EQ.
+- : exp-tp-left-eq (exp-tp/and topt-and/sn E1 E2) EQ
+         <- exp-tp-left-eq E1 EQ.
+
+%worlds () (exp-tp-left-eq _ _).
+%total A (exp-tp-left-eq A _).
+
+pev-left-same: path-eval G E T (etenv/left GX) -> sametenv G GX -> type.
+%mode pev-left-same +A -B.
+- : pev-left-same (pev W G (tle EX L)) EQ
+     <- exp-tp-left-eq EX EQ.
+%worlds () (pev-left-same _ _).
+%total A (pev-left-same A _).
+
+eq-pev-left-sametenv: sametenv G G' -> path-eval G E T (etenv/left G') -> path-eval G E T (etenv/left G) -> type.
+%mode eq-pev-left-sametenv +A +B -C.
+
+- : eq-pev-left-sametenv identtenv P P.
+%worlds () (eq-pev-left-sametenv _ _ _).
+%total A (eq-pev-left-sametenv A _ _).
+
 pev-left-eq: path-eval G E T (etenv/left GX) -> path-eval G E T (etenv/left G) -> type.
 %mode pev-left-eq +A -B.
+
+- : pev-left-eq P P'
+     <- pev-left-same P EQ
+     <- eq-pev-left-sametenv EQ P P'.
+
 %worlds () (pev-left-eq _ _).
-%trustme
 %total A (pev-left-eq A _).
 
 pev-tp-min-right:
@@ -1877,18 +1921,202 @@ pev-tp-dia-right: path-eval G1 E (rect N S U) (etenv/right GX)
                    -> path-eval G2 E (rect N S' U') OG2
                    -> sub-env G1 G
                    -> sub-env G2 G
-                   -> path-eval G' E (rect N S U) (etenv/right GX)
+                   -> {G'} path-eval G' E (rect N S U) (etenv/right GX)
                    -> sub-env G' G1
                    -> sub-env G' G2
                    -> type.
-%mode pev-tp-dia-right +A +B +C +D -E -F -G.
+%mode pev-tp-dia-right +A +B +C +D -E -F -G -H.
 
-- : pev-tp-dia-right P1 P2 S1 S2 P' S1' S2'
+- : pev-tp-dia-right P1 P2 S1 S2 _ P' S1' S2'
      <- sub-env-dia S1 S2 MM
      <- pev-tp-min-right P1 P2 MM P' S1' S2'.
 
-%worlds () (pev-tp-dia-right _ _ _ _ _ _ _).
-%total {} (pev-tp-dia-right _ _ _ _ _ _ _).
+%worlds () (pev-tp-dia-right _ _ _ _ _ _ _ _).
+%total {} (pev-tp-dia-right _ _ _ _ _ _ _ _).
+
+no-sub-env : false -> {G}{G'} sub-env G G' -> type.
+%mode no-sub-env +A +B +C -D.
+%worlds () (no-sub-env _ _ _ _).
+%total A (no-sub-env A _ _ _).
+
+lt : nat -> nat -> type.
+lt/z : lt z (s N).
+lt/s : lt (s N1) (s N2)
+   <- lt N1 N2.
+%mode lt +N1 +N2.
+
+lt-z-false : lt N z -> false -> type.
+%mode lt-z-false +A -B.
+%worlds () (lt-z-false _ _).
+%total A (lt-z-false A _).
+
+lte-z-false : lte (s N) z -> false -> type.
+%mode lte-z-false +A -B.
+%worlds () (lte-z-false _ _).
+%total A (lte-z-false A _).
+
+add-lt : add (s N) M S -> lt N S -> type.
+%mode add-lt +A -B.
+
+- : add-lt (add/s add/z) lt/z.
+- : add-lt (add/s A) (lt/s LT)
+     <- add-lt A LT.
+
+%worlds () (add-lt _ _).
+%total A (add-lt A _).
+
+tsize-lookup : tlookup G N0 T -> tsize G N -> lt N0 N -> type.
+%mode tsize-lookup +A -B -C.
+
+- : tsize-lookup (tl L A N) N LT
+     <- add-lt A LT.
+
+%worlds () (tsize-lookup _ _ _).
+%total A (tsize-lookup A _ _).
+
+lte-inc : lte A B -> lte A (s B) -> type.
+%mode lte-inc +A -B.
+
+- : lte-inc lte/z lte/z.
+
+- : lte-inc (lte/s A) (lte/s B)
+     <- lte-inc A B.
+
+%worlds () (lte-inc _ _).
+%total A (lte-inc A _).
+
+sub-env-size-calc : sub-env GA GB -> tsize GA NA -> tsize GB NB -> lte NA NB -> type.
+%mode sub-env-size-calc +A +B +C -D.
+
+- : sub-env-size-calc S tf/n SB lte/z.
+- : sub-env-size-calc sub-env/refl (tf/c SA) (tf/c SB) (lte/s LT)
+     <- sub-env-size-calc sub-env/refl SA SB LT.
+- : sub-env-size-calc (sub-env/ext S) (tf/c SA) (tf/c SB) LT'
+     <- sub-env-size-calc S (tf/c SA) SB LT
+     <- lte-inc LT LT'.
+
+%worlds () (sub-env-size-calc _ _ _ _).
+%total A (sub-env-size-calc _ _ A _).
+
+eq-lte : eq NA NB -> lte NA NB -> type.
+%mode eq-lte +A -B.
+
+- : eq-lte eq/z lte/z.
+
+- : eq-lte (eq/s A) (lte/s B)
+     <- eq-lte A B.
+
+%worlds () (eq-lte _ _).
+%total A (eq-lte A _).
+
+
+lte-lte-eq : lte NA NB -> lte NB NA -> eq NA NB -> type.
+%mode lte-lte-eq +A +B -C.
+
+- : lte-lte-eq lte/z lte/z eq/z.
+
+- : lte-lte-eq (lte/s A) (lte/s B) (eq/s C)
+     <- lte-lte-eq A B C.
+
+%worlds () (lte-lte-eq _ _ _).
+%total A (lte-lte-eq A _ _).
+
+eq-z-sz-contra : eq z (s z) -> false -> type.
+%mode eq-z-sz-contra +A -B.
+%worlds () (eq-z-sz-contra _ _).
+%total A (eq-z-sz-contra A _).
+
+eq-eq-s-contra : eq N1 N2 -> eq N1 (s N2) -> false -> type.
+%mode eq-eq-s-contra +A +B -C.
+- : eq-eq-s-contra eq/z EQ CONTRA
+     <- eq-z-sz-contra EQ CONTRA.
+- : eq-eq-s-contra (eq/s A) (eq/s B) C
+     <- eq-eq-s-contra A B C.
+%worlds () (eq-eq-s-contra _ _ _).
+%total A (eq-eq-s-contra A _ _).
+
+lte-contra: lte (s X1) X2 -> lte X2 (s X1) -> lte (s X1) (s X2) -> lte X2 X1 -> false -> type.
+%mode lte-contra +A +B +C +D -E.
+
+- : lte-contra B2 B1 (lte/s A2) A1 CONTRA
+     <- lte-lte-eq B1 B2 EQB
+     <- lte-lte-eq A1 A2 EQA
+     <- eq-eq-s-contra EQA EQB CONTRA.
+
+%worlds () (lte-contra _ _ _ _ _).
+%total A (lte-contra A _ _ _ _).
+
+sub-env-size0: sub-env GA GB -> tsize GA NA -> tsize GB NB -> lte NB NA -> lte NA NB -> sub-env GB GA -> type.
+%mode sub-env-size0 +A +B +C +D -E -F.
+
+- : sub-env-size0 sub-env/refl _ _ _ LT sub-env/refl
+     <- eq-refl _ EQ
+     <- eq-lte EQ LT.
+
+- : sub-env-size0 sub-env/refl (tf/c A) (tf/c B) (lte/s LT) (lte/s LT') sub-env/refl
+     <- sub-env-size0 sub-env/refl A B LT LT' _.
+
+- : sub-env-size0 (sub-env/ext S) tf/n (tf/c B) LT lte/z OUT
+     <- lte-z-false LT CONTRA
+     <- no-sub-env CONTRA _ _ OUT.
+
+- : sub-env-size0 (sub-env/ext S) (tf/c A) (tf/c B) (lte/s LT) LT2' OUT
+     <- lte-inc LT LT'
+     <- sub-env-size0 S (tf/c A) B LT' LT2 _
+     <- lte-inc LT2 LT2'
+     <- lte-contra LT2 LT' LT2' LT CONTRA
+     <- no-sub-env CONTRA _ _ OUT.
+
+%worlds () (sub-env-size0 _ _ _ _ _ _).
+%total A (sub-env-size0 _ _ A _ _ _).
+
+lt-lte : lt NB NA -> lte (s NB) NA -> type.
+%mode lt-lte +A -B.
+
+- : lt-lte lt/z (lte/s lte/z).
+- : lt-lte (lt/s A) (lte/s B)
+     <- lt-lte A B.
+
+%worlds () (lt-lte _ _).
+%total A (lt-lte A _).
+
+sub-env-size1: sub-env GA (tcons T0 GB) -> tsize GA NA -> tsize GB NB -> lt NB NA -> sub-env (tcons T0 GB) GA -> type.
+%mode sub-env-size1 +A +B +C +D -E.
+- : sub-env-size1 S SNA SNB LT OUT
+     <- lt-lte LT LTE
+     <- sub-env-size0 S SNA (tf/c SNB) LTE _ OUT.
+%worlds () (sub-env-size1 _ _ _ _ _).
+%total {} (sub-env-size1 _ _ _ _ _).
+
+sub-env-size : sub-env G G2 -> sub-env (tcons T0 G0) G2 -> tsize G N -> tsize G0 N0 -> lt N0 N -> sub-env (tcons T0 G0) G -> type.
+%mode sub-env-size +A +B +C +D +E -F.
+
+- : sub-env-size sub-env/refl S _ _ _ S.
+- : sub-env-size (sub-env/ext S) (sub-env/ext S0) SN SN0 LT OUT
+     <- sub-env-size S S0 SN SN0 LT OUT.
+- : sub-env-size (sub-env/ext S) sub-env/refl SN SN0 LT OUT
+     <- sub-env-size1 (sub-env/ext S) SN SN0 LT OUT.
+
+%worlds () (sub-env-size _ _ _ _ _ _).
+%total A (sub-env-size A _ _ _ _ _).
+
+sub-env-size-lkp : tsize G0 N0 -> sub-env G G1 -> sub-env G G2 -> sub-env (tcons T0 G0) G2 -> path-eval G (var N0) (rect N TA TB) G' -> sub-env (tcons T0 G0) G -> type.
+%mode sub-env-size-lkp +A +B +C +D +E -F.
+
+- : sub-env-size-lkp SN0 S1 S2 S0 (pev W G (tle EX L)) OUT
+     <- tsize-lookup L SN LT
+     <- sub-env-size S2 S0 SN SN0 LT OUT.
+
+%worlds () (sub-env-size-lkp _ _ _ _ _ _).
+%total A (sub-env-size-lkp _ _ _ _ A _).
+
+extract-pev-lkp : path-eval G (var X) T EG -> tlookup G X TX -> type.
+%mode extract-pev-lkp +A -B.
+
+- : extract-pev-lkp (pev WR GR (tle EXR LR)) LR.
+
+%worlds () (extract-pev-lkp _ _).
+%total A (extract-pev-lkp A _).
 
 sub-tp-trans-aux :
   %% Inputs
@@ -2109,7 +2337,7 @@ sub-tp-trans-aux :
 
 -/tsels1 : sub-tp-trans-aux
             W0
-            (sub-tp/tsels N P2 P1 S2 S1 L2)
+            (sub-tp/tsels N P2 P1 S1 L2 S2)
             (sub-tp/tsel1 ST GEA P2A)
             (sub-tp/tsel1 ST3 getenv/left P1')
             <- extend-wf-pev-case-right-mult P2 S2 P2'
@@ -2124,16 +2352,15 @@ sub-tp-trans-aux :
 -/tsel2s : sub-tp-trans-aux
             (wf-tp/tsel (pev (wf-tp/rect SR0 WU0 WS0) GE0 L))
             (sub-tp/tsel2 ST GEA P1A)
-            (sub-tp/tsels N P2 P1 S2 S1 L2)
+            (sub-tp/tsels N P2 (pev (wf-tp/rect SR1 WU1 WS1) GE1 L1) S1 L2 S2)
             (sub-tp/tsel2 ST3 getenv/right P2')
             <- extend-wf-pev-case-right-mult P2 S2 P2'
-            <- extend-wf-pev-case-left-mult P1 S1 P1'
+            <- extend-wf-pev-case-left-mult (pev (wf-tp/rect SR1 WU1 WS1) GE1 L1) S1 P1'
             <- path-eval-eq  P1A P1' EQR EQGE
             <- rect-same-all-same EQR EQS EQU
             <- same-etenv-tenv EQGE GEA getenv/left EQG
             <- eq-high EQS ST ST1
             <- eq-high-env EQG ST1 ST2
-            <- extract-wf-pev P1 GE1 (wf-tp/rect SR1 WU1 WS1)
             <- sub-tp-refl WS1 SB1
             <- extend-sub-tp1-mult SB1 S1 SB1'
             <- path-eval-eq (pev (wf-tp/rect SR0 WU0 WS0) GE0 L) P1' EQR0 EQGE0
@@ -2145,8 +2372,8 @@ sub-tp-trans-aux :
 
 -/tsels-tsels : sub-tp-trans-aux
                  W0
-                 ((sub-tp/tsels N1 P2A P1 S2A S1 L2): sub-tp G1 (tsel (var X1) N) _ _)
-                 ((sub-tp/tsels N2 P3 P2B S3 S2B L3): sub-tp _ _ G3 (tsel (var X3) N))
+                 ((sub-tp/tsels N1 P2A P1 S1 L2 S2A): sub-tp G1 (tsel (var X1) N) _ _)
+                 ((sub-tp/tsels N2 P3 P2B S2B L3 S3): sub-tp _ _ G3 (tsel (var X3) N))
                  OUT
                  <- extend-wf-pev-case-right-mult P2A S2A P2A'
                  <- extend-wf-pev-case-left-mult P2B S2B P2B'
@@ -2155,12 +2382,25 @@ sub-tp-trans-aux :
                  <- no-subtype CONTRA G1 (tsel (var X1) N) G3 (tsel (var X3) N) OUT.
 
 -/tselsx : sub-tp-trans-aux
-            (wf-tp/tsel (pev W0 G0 (tle EX0 L0)))
-            (sub-tp/tsels N1 P2 P1 S2 S1 L2)
+            W0
+            (sub-tp/tsels N1 P2 P1 S1 (L2: tlookup _ X (bind N0 _ _)) S2)
             (sub-tp/tselx PX S2X S3X)
-            (sub-tp/tsels N1 P2' P1 S3X' S1 L2')
-            <- pev-tp-dia-right P2 PX S2 S2X P2' S2' S2X'
-            <- sub-env-trans S2X' S3X S3X'.
+            (sub-tp/tsels N1 P2' P1 S1 L2' S3X')
+            <- pev-tp-dia-right P2 PX S2 S2X G' P2' S2' S2X'
+            <- extract-pev-lkp P2' LR
+            <- sub-env-trans S2X' S3X S3X'
+            <- extend-wf-lkp-mult LR S2' LR'
+            <- eq-refl X EQX
+            <- lookup-eq0 LR' L2 EQX EQB
+            <- eq-lookup EQB LR L2'.
+
+-/tselxs : sub-tp-trans-aux
+            W0
+            (sub-tp/tselx PX S1X S2X)
+            (sub-tp/tsels N2 P3 P2 S2 L3 S3)
+            (sub-tp/tsels N2 P3 P2 S1' L3 S3)
+            <- sub-env-size-lkp N2 S1X S2X S2 PX SX
+            <- sub-env-trans SX S1X S1'.
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
