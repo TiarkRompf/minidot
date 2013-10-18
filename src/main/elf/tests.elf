@@ -54,9 +54,6 @@
 % towards DOT counterexamples
 %query 1 1 type-exp tnil c1aa top.
 %query 1 1 type-exp tnil c1a top.
-
-% TODO
-%.
 %query 1 1 type-exp tnil c1b top.
 %query 1 1 type-exp tnil c1c top.
 %query 1 1 type-exp tnil c1ok top.
