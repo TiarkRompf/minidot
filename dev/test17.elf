@@ -1976,8 +1976,13 @@ tsize-lookup : tlookup G N0 T -> tsize G N -> lt N0 N -> type.
 
 lte-inc : lte A B -> lte A (s B) -> type.
 %mode lte-inc +A -B.
+
+- : lte-inc lte/z lte/z.
+
+- : lte-inc (lte/s A) (lte/s B)
+     <- lte-inc A B.
+
 %worlds () (lte-inc _ _).
-%trustme
 %total A (lte-inc A _).
 
 sub-env-size-calc : sub-env GA GB -> tsize GA NA -> tsize GB NB -> lte NA NB -> type.
@@ -1993,22 +1998,52 @@ sub-env-size-calc : sub-env GA GB -> tsize GA NA -> tsize GB NB -> lte NA NB -> 
 %worlds () (sub-env-size-calc _ _ _ _).
 %total A (sub-env-size-calc _ _ A _).
 
-lte-lte-eq : lte NA NB -> lte NB NA -> eq NA NB -> type.
-%mode lte-lte-eq +A +B -C.
-%worlds () (lte-lte-eq _ _ _).
-%trustme
-%total A (lte-lte-eq A _ _).
-
 eq-lte : eq NA NB -> lte NA NB -> type.
 %mode eq-lte +A -B.
+
+- : eq-lte eq/z lte/z.
+
+- : eq-lte (eq/s A) (lte/s B)
+     <- eq-lte A B.
+
 %worlds () (eq-lte _ _).
-%trustme
 %total A (eq-lte A _).
+
+
+lte-lte-eq : lte NA NB -> lte NB NA -> eq NA NB -> type.
+%mode lte-lte-eq +A +B -C.
+
+- : lte-lte-eq lte/z lte/z eq/z.
+
+- : lte-lte-eq (lte/s A) (lte/s B) (eq/s C)
+     <- lte-lte-eq A B C.
+
+%worlds () (lte-lte-eq _ _ _).
+%total A (lte-lte-eq A _ _).
+
+eq-z-sz-contra : eq z (s z) -> false -> type.
+%mode eq-z-sz-contra +A -B.
+%worlds () (eq-z-sz-contra _ _).
+%total A (eq-z-sz-contra A _).
+
+eq-eq-s-contra : eq N1 N2 -> eq N1 (s N2) -> false -> type.
+%mode eq-eq-s-contra +A +B -C.
+- : eq-eq-s-contra eq/z EQ CONTRA
+     <- eq-z-sz-contra EQ CONTRA.
+- : eq-eq-s-contra (eq/s A) (eq/s B) C
+     <- eq-eq-s-contra A B C.
+%worlds () (eq-eq-s-contra _ _ _).
+%total A (eq-eq-s-contra A _ _).
 
 lte-contra: lte (s X1) X2 -> lte X2 (s X1) -> lte (s X1) (s X2) -> lte X2 X1 -> false -> type.
 %mode lte-contra +A +B +C +D -E.
+
+- : lte-contra B2 B1 (lte/s A2) A1 CONTRA
+     <- lte-lte-eq B1 B2 EQB
+     <- lte-lte-eq A1 A2 EQA
+     <- eq-eq-s-contra EQA EQB CONTRA.
+
 %worlds () (lte-contra _ _ _ _ _).
-%trustme
 %total A (lte-contra A _ _ _ _).
 
 sub-env-size0: sub-env GA GB -> tsize GA NA -> tsize GB NB -> lte NB NA -> lte NA NB -> sub-env GB GA -> type.
@@ -2035,36 +2070,6 @@ sub-env-size0: sub-env GA GB -> tsize GA NA -> tsize GB NB -> lte NB NA -> lte N
 %worlds () (sub-env-size0 _ _ _ _ _ _).
 %total A (sub-env-size0 _ _ A _ _ _).
 
-%.
-
-sub-env-size-natid : sub-env GA GB -> tsize GA NA -> tsize GB NB -> natid NA NB -> sub-env GB GA -> type.
-%mode sub-env-size-natid +A +B +C +D -E.
-- : sub-env-size-natid S tf/n tf/n natident S.
-- : sub-env-size-natid sub-env/refl (tf/c A) (tf/c B) natident sub-env/refl.
-- : sub-env-size-natid (sub-env/ext S) (tf/c A) (tf/c B)
-%worlds () (sub-env-size-natid _ _ _ _ _).
-%total A (sub-env-size-natid _ _ _ A _).
-
-sub-env-size-eq: sub-env GA GB -> tsize GA NA -> tsize GB NB -> eq NA NB -> sub-env GB GA -> type.
-%mode sub-env-size-eq +A +B +C +D -E.
-
-- : sub-env-size-natid S A B EQ S'
-     <- eq-to-id EQ ID
-     <- sub-env-size-natid ID S'.
-%worlds () (sub-env-size-eq _ _ _ _ _).
-%total A (sub-env-size-eq _ _ _ A _).
-
-sub-env-size0: sub-env GA GB -> tsize GA NA -> tsize GB NB -> lte NB NA -> sub-env GB GA -> type.
-%mode sub-env-size0 +A +B +C +D -E.
-
-- : sub-env-size0 SAB SA SB LTBA SBA
-     <- sub-env-size-calc SAB SA SB LTAB
-     <- lte-lte-eq LTAB LTBA EQ
-     <- sub-env-size-eq SAB SA SB EQ SBA.
-
-%worlds () (sub-env-size0 _ _ _ _ _).
-%total {} (sub-env-size0 _ _ _ _ _).
-
 lt-lte : lt NB NA -> lte (s NB) NA -> type.
 %mode lt-lte +A -B.
 
@@ -2079,7 +2084,7 @@ sub-env-size1: sub-env GA (tcons T0 GB) -> tsize GA NA -> tsize GB NB -> lt NB N
 %mode sub-env-size1 +A +B +C +D -E.
 - : sub-env-size1 S SNA SNB LT OUT
      <- lt-lte LT LTE
-     <- sub-env-size0 S SNA (tf/c SNB) LTE OUT.
+     <- sub-env-size0 S SNA (tf/c SNB) LTE _ OUT.
 %worlds () (sub-env-size1 _ _ _ _ _).
 %total {} (sub-env-size1 _ _ _ _ _).
 
