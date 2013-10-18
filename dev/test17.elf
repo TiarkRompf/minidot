@@ -1999,11 +1999,60 @@ lte-lte-eq : lte NA NB -> lte NB NA -> eq NA NB -> type.
 %trustme
 %total A (lte-lte-eq A _ _).
 
+eq-lte : eq NA NB -> lte NA NB -> type.
+%mode eq-lte +A -B.
+%worlds () (eq-lte _ _).
+%trustme
+%total A (eq-lte A _).
+
+lte-contra: lte (s X1) X2 -> lte X2 (s X1) -> lte (s X1) (s X2) -> lte X2 X1 -> false -> type.
+%mode lte-contra +A +B +C +D -E.
+%worlds () (lte-contra _ _ _ _ _).
+%trustme
+%total A (lte-contra A _ _ _ _).
+
+sub-env-size0: sub-env GA GB -> tsize GA NA -> tsize GB NB -> lte NB NA -> lte NA NB -> sub-env GB GA -> type.
+%mode sub-env-size0 +A +B +C +D -E -F.
+
+- : sub-env-size0 sub-env/refl _ _ _ LT sub-env/refl
+     <- eq-refl _ EQ
+     <- eq-lte EQ LT.
+
+- : sub-env-size0 sub-env/refl (tf/c A) (tf/c B) (lte/s LT) (lte/s LT') sub-env/refl
+     <- sub-env-size0 sub-env/refl A B LT LT' _.
+
+- : sub-env-size0 (sub-env/ext S) tf/n (tf/c B) LT lte/z OUT
+     <- lte-z-false LT CONTRA
+     <- no-sub-env CONTRA _ _ OUT.
+
+- : sub-env-size0 (sub-env/ext S) (tf/c A) (tf/c B) (lte/s LT) LT2' OUT
+     <- lte-inc LT LT'
+     <- sub-env-size0 S (tf/c A) B LT' LT2 _
+     <- lte-inc LT2 LT2'
+     <- lte-contra LT2 LT' LT2' LT CONTRA
+     <- no-sub-env CONTRA _ _ OUT.
+
+%worlds () (sub-env-size0 _ _ _ _ _ _).
+%total A (sub-env-size0 _ _ A _ _ _).
+
+%.
+
+sub-env-size-natid : sub-env GA GB -> tsize GA NA -> tsize GB NB -> natid NA NB -> sub-env GB GA -> type.
+%mode sub-env-size-natid +A +B +C +D -E.
+- : sub-env-size-natid S tf/n tf/n natident S.
+- : sub-env-size-natid sub-env/refl (tf/c A) (tf/c B) natident sub-env/refl.
+- : sub-env-size-natid (sub-env/ext S) (tf/c A) (tf/c B)
+%worlds () (sub-env-size-natid _ _ _ _ _).
+%total A (sub-env-size-natid _ _ _ A _).
+
 sub-env-size-eq: sub-env GA GB -> tsize GA NA -> tsize GB NB -> eq NA NB -> sub-env GB GA -> type.
 %mode sub-env-size-eq +A +B +C +D -E.
+
+- : sub-env-size-natid S A B EQ S'
+     <- eq-to-id EQ ID
+     <- sub-env-size-natid ID S'.
 %worlds () (sub-env-size-eq _ _ _ _ _).
-%trustme
-%total A (sub-env-size-eq A _ _ _ _).
+%total A (sub-env-size-eq _ _ _ A _).
 
 sub-env-size0: sub-env GA GB -> tsize GA NA -> tsize GB NB -> lte NB NA -> sub-env GB GA -> type.
 %mode sub-env-size0 +A +B +C +D -E.
