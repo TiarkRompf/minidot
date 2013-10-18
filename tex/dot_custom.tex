@@ -40,13 +40,16 @@
 \renewcommand{\aaatypeexp}[3]{\text{{#1} $\ts$ {#2} : {#3}}}
 \renewcommand{\aaawfval}[3]{\text{#1 $\ts$ #2 {\bf wf$_v$}}}
 
+\renewcommand{\aaaetenvFleft}[1]{\text{#1}}
+\renewcommand{\aaaetenvFright}[1]{\text{#1}}
+
+\renewcommand{\aaatnone}[0]{\text{$\emptyset_T$}}
+\renewcommand{\aaatsome}[1]{\text{#1}}
+\renewcommand{\aaaexptp}[5]{\text{#1 $\ts$ #2 $\prec_\text{#3}$ #4 | #5}}
+\renewcommand{\aaagetenv}[2]{\text{#1 $=$ #2}}
+
 %%% ! Overwriting Some Rules ! %%%
 \renewcommand{\ruleaaasubtpFtselOne}[0]{\infrule[sub-tp/tsel1]{
 {\aaasubtp {G1'} {TB1} {G2} {T2}}\\
 {\aaapatheval {G1} {E1} {{\aaarect {N} {TA1} {TB1}}} {G1'}}
 }{{\aaasubtp {G1} {{\aaatsel {E1} {N}}} {G2} {T2}}}}
-\renewcommand{\ruleaaasubtpFtselTwo}[0]{\infrule[sub-tp/tsel2]{
-{\aaasubtp {G1} {T1} {G2'} {TA2}}\\
-{\aaapatheval {G2} {E2} {{\aaarect {N} {TA2} {TB2}}} {G2'}}
-}{{\aaasubtp {G1} {T1} {G2} {{\aaatsel {E2} {N}}}}}}
-
