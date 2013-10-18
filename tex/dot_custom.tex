@@ -15,6 +15,7 @@
 
 \renewcommand{\aaasubenv}[2]{\text{#1 $\sqsubseteq$ #2}}
 \renewcommand{\aaapatheval}[4]{\text{#1 $\ts$ #2 $\ni$ #3 {\bf in } #4}}
+\renewcommand{\aaatlookexp}[4]{\text{#1 $\ts$ #2 $\ni_0$ #3 {\bf in } #4}}
 
 \renewcommand{\aaaempty}[0]{\text{\{$\emptyset_e$\}}}
 \renewcommand{\aaafun}[9]{\text{{\bf new} {#1} \{{\bf def }{#2}(\_:{#3}):{#4}={#5};{\bf val }{#6}:{#7}={#8};{\bf types }{#9}\}}}
@@ -47,9 +48,3 @@
 \renewcommand{\aaatsome}[1]{\text{#1}}
 \renewcommand{\aaaexptp}[5]{\text{#1 $\ts$ #2 $\prec_\text{#3}$ #4 | #5}}
 \renewcommand{\aaagetenv}[2]{\text{#1 $=$ #2}}
-
-%%% ! Overwriting Some Rules ! %%%
-\renewcommand{\ruleaaasubtpFtselOne}[0]{\infrule[sub-tp/tsel1]{
-{\aaasubtp {G1'} {TB1} {G2} {T2}}\\
-{\aaapatheval {G1} {E1} {{\aaarect {N} {TA1} {TB1}}} {G1'}}
-}{{\aaasubtp {G1} {{\aaatsel {E1} {N}}} {G2} {T2}}}}
