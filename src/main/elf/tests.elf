@@ -2,8 +2,6 @@
 %query 1 1 type-exp tnil ex_nat top.
 %query 1 1 type-exp tnil ex_list top.
 
-%.
-
 % sanity checks
 %query 1 1 type-exp tnil e1  top.
 %query 1 1 type-exp tnil e2  top.
