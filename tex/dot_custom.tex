@@ -49,4 +49,11 @@
 {\aaasubtp {G1} {T1} {G2'} {TA2}}\\
 {\aaapatheval {G2} {E2} {{\aaarect {N} {TA2} {TB2}}} {G2'}}
 }{{\aaasubtp {G1} {T1} {G2} {{\aaatsel {E2} {N}}}}}}
-
+\renewcommand{\ruleaaasubtpFtsels}[0]{\infrule[sub-tp/tsels]{
+{\aaatsize {G0} {N0}}\\
+{\aaapatheval {G2'} {{\aaavar {X}}} {{\aaarect {NT} {S} {U}}} {{{\aaatcons {T0} {G0}}}}}\\
+{\aaapatheval {{\aaatcons {T0} {G0}}} {{\aaavar {N0}}} {{\aaarect {NT} {S} {U}}} {{{\aaatcons {T0} {G0}}}}}\\
+{\aaasubenv {{\aaatcons {T0} {G0}}} {G1}}\\
+{\aaatlookup {G2'} {X} {{\aaabind {N0} {G0} {T0}}}}\\
+{\aaasubenv {G2'} {G2}}
+}{{\aaasubtp {G1} {{\aaatsel {{\aaavar {N0}}} {NT}}} {G2} {{\aaatsel {{\aaavar {X}}} {NT}}}}}}
