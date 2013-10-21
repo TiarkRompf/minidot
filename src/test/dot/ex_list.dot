@@ -1,0 +1,15 @@
+val r : { r => {
+  type List : Bot .. { l =>
+    { type E : Bot .. Top } &
+    { val hd : l.E } &
+    { def tl(_: Top): r.List & { type E = l.E } }
+  } }
+}
+= new (r =>
+  type List = { l =>
+    { type E : Bot .. Top } &
+    { val hd : l.E } &
+    { def tl(_: Top): r.List & { type E = l.E } }
+  }
+)
+r

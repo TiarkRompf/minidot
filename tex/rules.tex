@@ -1,3 +1,19 @@
+\boxfig{exptp}{Expansion and Membership}{
+\begin{multicols}{2}[\judgement{Expansion}{\fbox{$\aaaexptp {G} {T} {N} {T'} {G'}$}}]
+{\allrulesaaaexptp}
+\end{multicols}
+
+\judgement{Expanding Intersections}{\fbox{$\aaatoptand {T1} {T2} {T3} {G1} {G2} {G3}$}}
+{\allrulesaaatoptand}
+\linesep
+
+\judgement{Expanded Lookup}{\fbox{$\aaatlookexp {G} {E} {T} {G'}$}}
+{\allrulesaaatlookexp}
+
+\judgement{Membership}{\fbox{$\aaapatheval {G} {E} {T} {G'}$}}
+{\allrulesaaapatheval}
+}
+
 \boxfig{subtp}{Subtyping}{
 \begin{multicols}{2}[\judgement{Subtyping}{\fbox{$\aaasubtp {G1} {T1} {G2} {T2}$}}]
 {\allrulesaaasubtp}
@@ -18,5 +34,10 @@
 \boxfig{evalexp}{Evaluation}{
 \judgement{Evaluation}{\fbox{$\aaaevalexp {H} {E} {V}$}}
 {\allrulesaaaevalexp}
+}
+
+\boxfig{evalexp}{Value Typing}{
+\judgement{Value Typing}{\fbox{$\aaawfval {H} {E} {V}$}}
+{\allrulesaaawfval}
 }
 

@@ -266,7 +266,7 @@
 
 \DeclareOption{numbers}{\@setflag \@authoryear = \@false}
 
-%%%\DeclareOption{onecolumn}{\@setflag \@onecolumn = \@true}
+\DeclareOption{onecolumn}{\@setflag \@onecolumn = \@true}
 
 \DeclareOption{preprint}{\@setflag \@preprint = \@true}
 
