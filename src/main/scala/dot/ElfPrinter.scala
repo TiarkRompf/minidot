@@ -8,7 +8,7 @@ trait ElfPrinter { this: DotSyntax =>
   import types._
   import init._
 
-  val VERSION = 7
+  val VERSION = 8
 
   def collectTags(e: Any): List[Tag] = {
     def c(e: Any): List[Tag] = e match {
