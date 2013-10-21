@@ -130,25 +130,37 @@ venv: type.
 tenv: type.
 
 % members
-mem   : nat -> type.
-mnil  : mem z.
-mcons : {N} tpe -> tpe -> mem N -> mem (s N).
+mem    : nat -> type.
+mnil   : mem z.
+mcons  : {N} tpe -> tpe -> mem N -> mem (s N).          % type T = A..B
+
+vmem   : nat -> type.
+vmnil  : vmem z.
+vmcons : {N} exp -> tpe -> vmem N -> vmem (s N).        % val v: T = e
+
+dmem   : nat -> type.
+dmnil  : dmem z.
+dmcons : {N} tpe -> exp -> tpe -> dmem N -> dmem (s N). % def f(x: T): T = e
+
+
+
 
 % expressions
 empty: exp.
 var: nat -> exp.
 fun:
   tpe ->                      % new T {
-  nat -> tpe -> exp -> tpe -> %  def f(x: T): T = e
-  nat -> exp -> tpe ->        %  val v: T = e
-% nat -> tpe -> tpe ->        %  type T = A..B
-  mem N ->                    %  type T = A..B  ...
+  % nat -> tpe -> exp -> tpe -> %  def f(x: T): T = e
+  % nat -> exp -> tpe ->        %  val v: T = e
+  dmem ND ->                    %  def f(x: T): T = e
+  vmem NV ->                    %  val v: T = e
+  mem  NT ->                    %  type T = A..B  ...
   exp.                        % }
 app: exp -> nat -> exp -> exp.
 sel: exp -> nat -> exp.
 
 % ++ let: tpe -> exp -> exp -> exp.
-%abbrev let: tpe -> exp -> exp -> exp = [T] [ex] [ef] (app (fun _ z T ef _ z empty _ mnil) z ex). % --
+%abbrev let: tpe -> exp -> exp -> exp = [T] [ex] [ef] (app (fun _ (dmcons z T ef _ dmnil) (vmcons z empty _ vmnil) mnil) z ex). % --
 
 % types
 top  : tpe.
@@ -174,6 +186,9 @@ and  : tpe -> tpe -> tpe.
 % values
 emptyv: val.
 clos: nat -> exp -> nat -> val -> venv -> val.
+
+% TODO: lists of decls
+
 
 % environments
 vnil  : venv.
@@ -386,7 +401,8 @@ e/empty    : eval-exp G empty emptyv.
 
 e/var      : eval-exp G (var N) V <- vlookup G N V.
 
-e/fun      : eval-exp G (fun TC LNF _ R _ LNV R2 _ MT) (clos LNF R LNV V2 G)
+% FIXME/TODO
+e/fun      : eval-exp G (fun TC (dmcons LNF _ R _ DS) (vmcons LNV R2 _ VS) MT) (clos LNF R LNV V2 G)
             % <- eval-exp (vcons emptyv G) R2 V2.
               <- eval-exp (vcons (clos z empty z emptyv G) G) R2 V2.
 
@@ -450,7 +466,9 @@ t/var      : type-exp G (var N) T <- tlookup G N T <- wf-tp G T.
 t/sel       : type-exp G (sel E1 LNV) T1
             <- type-exp G E1 (recv LNV T1).
 
-t/fun      : type-exp G (fun TC LNF T3 R T4 LNV R2 T2 M)
+% FIXME/TODO
+
+t/fun      : type-exp G (fun TC (dmcons LNF T3 R T4 DS) (vmcons LNV R2 T2 VS) M)
                 TC
                 <- tsize G N
                 <- type-mem M MT
@@ -2614,9 +2632,11 @@ invert-app :
 %worlds () (invert-app _ _ _ _).
 %total WFE (invert-app WFE _ _ _).
 
+% TODO/FIXME
+
 invert-fun :
   %% Input
-  type-exp G (fun TC LNF _ R _ LNV R2 _ M) T ->
+  type-exp G (fun TC (dmcons LNF _ R _ DS) (vmcons LNV R2 _ VS) M) T ->
   %% Output
   type-exp (tcons T3 (tcons TC G)) R T4 ->
   type-exp (tcons MT G) R2 T1 ->
@@ -3150,7 +3170,9 @@ er/empty    : eval-exp-res _ G empty (res-val/some emptyv).
 
 er/var      : eval-exp-res _ G (var N) V <- vlookup-res G N V.
 
-er/fun      : eval-exp-res (s N) G (fun TC LNF _ R _ LNV R2 _ MT) C
+% TODO/FIXME
+
+er/fun      : eval-exp-res (s N) G (fun TC (dmcons LNF _ R _ DS) (vmcons LNV R2 _ VS) MT) C
                <- eval-exp-res N (vcons (clos z empty z emptyv G) G) R2 OV2
                <- res-clos OV2 LNF R LNV G C.
 
