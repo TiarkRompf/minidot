@@ -122,7 +122,7 @@ trait ElfPrinter { this: DotSyntax =>
         } else if (defMemberMap.isEmpty) "dmnil" else printDefMembers(tags, ebind(self), hints, defMemberMap, tags)
         val vmem = valMembers match {
           case Nil => "z empty top"
-          case (_,i)::Nil => s"${p(i.d.tag)} ${p(i.t)} ${pbind(i.d.ty, self)}"
+          case (_,i)::Nil => s"${p(i.d.tag)} ${pbind(i.t, self)} ${pbind(i.d.ty, self)}"
           case _ => assert(false, "TODO in elf: support object creation with more than one val"); ???
         }
         val tc = otc.getOrElse(inferConstructorType(oself, (defMembers++valMembers++typeMembers).map(_._2))) match {
