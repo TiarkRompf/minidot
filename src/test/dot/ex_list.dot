@@ -1,3 +1,4 @@
+val re = new ( re => def err(d: Top): Bot = re.err(d) )
 val r : { r => {
   type List : Bot .. { l =>
     { type E : Bot .. Top } &
