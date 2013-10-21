@@ -143,6 +143,13 @@ dmnil  : dmem z.
 dmcons : {N} tpe -> exp -> tpe -> dmem N -> dmem (s N). % def f(x: T): T = e
 
 
+decl   : nat -> type.
+dnil   : decl z.
+
+ddef   : {N} tpe -> exp -> tpe -> decl N -> decl (s N). % def f(x: T): T = e
+dval   : {N} exp -> tpe -> decl N -> decl (s N).        % val v: T = e
+dtpe   : {N} tpe -> tpe -> decl N -> decl (s N).        % type T = A..B
+
 
 
 % expressions
@@ -152,15 +159,16 @@ fun:
   tpe ->                      % new T {
   % nat -> tpe -> exp -> tpe -> %  def f(x: T): T = e
   % nat -> exp -> tpe ->        %  val v: T = e
-  dmem ND ->                    %  def f(x: T): T = e
-  vmem NV ->                    %  val v: T = e
-  mem  NT ->                    %  type T = A..B  ...
+  % dmem ND ->                    %  def f(x: T): T = e
+  % vmem NV ->                    %  val v: T = e
+  % mem  NT ->                    %  type T = A..B  ...
+  decl N ->
   exp.                        % }
 app: exp -> nat -> exp -> exp.
 sel: exp -> nat -> exp.
 
 % ++ let: tpe -> exp -> exp -> exp.
-%abbrev let: tpe -> exp -> exp -> exp = [T] [ex] [ef] (app (fun _ (dmcons z T ef _ dmnil) (vmcons z empty _ vmnil) mnil) z ex). % --
+%abbrev let: tpe -> exp -> exp -> exp = [T] [ex] [ef] (app (fun _ (ddef (s z) T ef _ (dval z empty _ dnil))) z ex). % --
 
 % types
 top  : tpe.
@@ -183,9 +191,18 @@ bind : nat -> tenv -> tpe -> tpe.     % { this_n => A }
 and  : tpe -> tpe -> tpe.
 
 
+% runtime members
+
+field  : nat -> type.
+fnil   : field z.
+
+fdef   : {N} exp -> field N -> field (s N). % def f(x: T): T = e
+fval   : {N} val -> field N -> field (s N). % val v: T = e
+
+
 % values
 emptyv: val.
-clos: nat -> exp -> nat -> val -> venv -> val.
+clos: field N -> venv -> val.
 
 % TODO: lists of decls
 
@@ -395,25 +412,55 @@ wf-tp/and  : wf-tp G (and TA TB)
 
 %{ ------- eval-exp / type-exp ----- }%
 
+
+get-def : field N -> nat -> exp -> type.
+
+- : get-def (fdef N R FS) N R.
+- : get-def (fdef N R FS) N1 R1 <- get-def FS N1 R1.
+
+get-val : field N -> nat -> val -> type.
+
+- : get-val (fval N V FS) N V.
+- : get-val (fval N V FS) N1 V1 <- get-val FS N1 V1.
+
+
+
+eval-field : venv -> decl N -> field N -> type.
+
 eval-exp   : venv -> exp -> val -> type.
+
+
+
+e/nil      : eval-field G dnil fnil.
+
+e/def      : eval-field G (ddef LNF _ R _ DS) (fdef LNF R FS)
+              <- eval-field G DS FS.
+
+e/val      : eval-field G (dval LNV R2 _ DS) (fval LNV V2 FS)
+              <- eval-exp (vcons (clos fnil G) G) R2 V2
+              <- eval-field G DS FS.
+
+
+
 
 e/empty    : eval-exp G empty emptyv.
 
 e/var      : eval-exp G (var N) V <- vlookup G N V.
 
 % FIXME/TODO
-e/fun      : eval-exp G (fun TC (dmcons LNF _ R _ DS) (vmcons LNV R2 _ VS) MT) (clos LNF R LNV V2 G)
-            % <- eval-exp (vcons emptyv G) R2 V2.
-              <- eval-exp (vcons (clos z empty z emptyv G) G) R2 V2.
+e/fun      : eval-exp G (fun TC DS) (clos FS G)
+            <- eval-field G DS FS.
 
 
 e/app      : eval-exp G (app E1 LNF E2) V3
-            <- eval-exp G E1 (clos LNF R LNV R2 G1)
+            <- eval-exp G E1 (clos FS G1)
             <- eval-exp G E2 V2
-            <- eval-exp (vcons V2 (vcons (clos LNF R LNV R2 G1) G1)) R V3.
+            <- get-def FS LNF R
+            <- eval-exp (vcons V2 (vcons (clos FS G1) G1)) R V3.
 
 e/sel      : eval-exp G (sel E1 LNV) V
-            <- eval-exp G E1 (clos LNF R LNV V G1).
+            <- eval-exp G E1 (clos FS G1)
+            <- get-val FS LNV V.
 
 % path-eta : tenv -> exp -> tpe -> type.
 
@@ -436,6 +483,19 @@ tm/cons    : type-mem (mcons (s N) T1 T2 R) (and (rect (s N) T1 T2) TR) <- type-
 
 
 type-exp   : tenv -> exp -> tpe -> type.
+
+type-field : tenv -> tpe -> decl N -> tpe -> type.
+
+t/nil      : type-field G TC dnil top.
+
+t/def      : type-field G TC (ddef LNF T3 R T4 DS) (and (arrow LNF T3 T4) TS)
+              <- type-exp (tcons T3 (tcons TS G)) R T4 % FIXME: no rec methods atm
+              <- type-field G TC DS TS.
+
+t/val      : type-field G TC (dval LNV R2 T2 DS) (and (recv LNV T2) TS)
+              <- type-exp (tcons TS G) R2 T2
+              <- type-field G TC DS TS.
+
 
 t/empty    : type-exp G empty top.
 
@@ -466,21 +526,12 @@ t/var      : type-exp G (var N) T <- tlookup G N T <- wf-tp G T.
 t/sel       : type-exp G (sel E1 LNV) T1
             <- type-exp G E1 (recv LNV T1).
 
-% FIXME/TODO
-
-t/fun      : type-exp G (fun TC (dmcons LNF T3 R T4 DS) (vmcons LNV R2 T2 VS) M)
+t/fun      : type-exp G (fun TC DS)
                 TC
                 <- tsize G N
-                <- type-mem M MT
-                <- type-exp (tcons T3 (tcons TC G)) R T4
-                <- type-exp (tcons MT G) R2 T2
-                <- sub-tp (tcons MT G) T2 (tcons TC G) T2
-                <- wf-tp (tcons MT G) MT                
+                <- type-field G TC DS TS
                 <- wf-tp G TC
-%                <- init-tp G (bind N G (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) TC
-%                <- init-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) TC
-                 <- sub-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) (tcons TC G) TC
-%                <- sub-tp G (bind N G (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) G TC
+                <- sub-tp (tcons TC G) TS (tcons TC G) TC
                 .
 
 t/app       : type-exp G (app E1 LNF E2) T2
@@ -501,30 +552,30 @@ t/sub       : type-exp G E T2
 wf-val   : val -> tenv -> tpe -> type.
 wf-env   : venv -> tenv -> type.
 
+wf-field : field N -> venv -> tenv -> tpe -> type.
+
+wfv/nil  : wf-field fnil H G top.
+
+wfv/def  : wf-field (fdef LNF R FS) H G (and (arrow LNF T1 T2) TS)
+            <- type-exp (tcons T1 (tcons TS GC)) R T2  % FIXME: no rec methods atm
+            <- wf-field FS H G TS.
+
+wfv/val  : wf-field (fval LNV V FS) H G (and (recv LNV T) TS)
+            <- wf-val R2 (tcons TS GC) T
+            <- wf-field FS H G TS.
+
+
+
 wfv/empty : wf-val emptyv G top.
 
-wfv/f    : wf-val (clos LNF R LNV R2 H) G
+wfv/f    : wf-val (clos FS H) G
             TC
             <- wf-env H GC
-            <- type-exp (tcons T1 (tcons TC0 GC)) R T2
-
-            <- sub-tp (tcons TX GC) T (tcons TC0 GC) T
-            <- wf-val R2 (tcons TX GC) T
-            <- type-mem M TX
-
-            <- sub-tp 
-                  (tcons TC0 GC) TC0
-                  G TC
-          %  <- init-tp (tcons TC0 GC)
-          %        (and (arrow LNF T1 T2) (and (recv LNV T) TX))
-          %        TC0
-             <- sub-tp
-                (tcons TC0 GC) (and (arrow LNF T1 T2) (and (recv LNV T) TX))
-                (tcons TC0 GC) TC0
-            .
+            <- wf-field FS H GC TS
+            <- sub-tp (tcons TS GC) TS G TC.
 
 
-wfv/t    : wf-val (clos LNF R LNV R2 H) G (rect LNT T1 T2)
+wfv/t    : wf-val (clos FS H) G (rect LNT T1 T2)
             <- wf-tp G (rect LNT T1 T2).
 
 
