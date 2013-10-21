@@ -285,7 +285,6 @@ pev  : path-eval G E (rect N TS TU) EG
 % ++ sub-tp/refl : sub-tp G T G T <- wf-tp G T. %%% ACCELRATE QUERIES !!
 
 sub-tp/top  : sub-tp G1 T G2 top <- wf-tp G1 T.
-sub-tp/bot  : sub-tp G1 bot G2 T <- wf-tp G2 T.
 
 sub-tp/fun  : sub-tp G1 (arrow N TA1 TB1) G2 (arrow N TA2 TB2)
               <- sub-tp G2 TA2 G1 TA1
@@ -300,6 +299,14 @@ sub-tp/rect : sub-tp G1 (rect N TA1 TB1) G2 (rect N TA2 TB2)
 
 sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
               <- sub-tp G1 T1 G2 T2.
+
+sub-tp/tsels : sub-tp G1 (tsel (var N0) NT) G2 (tsel (var X) NT)
+                <- sub-env G2' G2
+                <- tlookup G2' X (bind N0 G0 T0)
+                <- sub-env (tcons T0 G0) G1
+                <- path-eval (tcons T0 G0) (var N0) (rect NT S U) (etenv/left (tcons T0 G0))
+                <- path-eval G2' (var X) (rect NT S U) (etenv/right (tcons T0 G0))
+                <- tsize G0 N0.
 
 sub-tp/tselx : sub-tp G1 (tsel E N) G2 (tsel E N)
              <- sub-env G G2
@@ -328,14 +335,6 @@ sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
              <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2) % --
               <- tsize G0 N
               .
-sub-tp/tsels : sub-tp G1 (tsel (var N0) NT) G2 (tsel (var X) NT)
-                <- sub-env G2' G2
-                <- tlookup G2' X (bind N0 G0 T0)
-                <- sub-env (tcons T0 G0) G1
-                <- path-eval (tcons T0 G0) (var N0) (rect NT S U) (etenv/left (tcons T0 G0))
-                <- path-eval G2' (var X) (rect NT S U) (etenv/right (tcons T0 G0))
-                <- tsize G0 N0.
-                
 sub-tp/and2 : sub-tp G1 T1 G2 (and TA2 TB2)
               <- sub-tp G1 T1 G2 TB2
               <- sub-tp G1 T1 G2 TA2.
@@ -347,6 +346,8 @@ sub-tp/and1a : sub-tp G1 (and TA1 TB1) G2 T2
 sub-tp/and1b : sub-tp G1 (and TA1 TB1) G2 T2
               <- sub-tp G1 TB1 G2 T2
               <- wf-tp G1 TA1.
+
+sub-tp/bot  : sub-tp G1 bot G2 T <- wf-tp G2 T.
 
 wf-tp/top  : wf-tp G top.
 wf-tp/bot  : wf-tp G bot.
@@ -552,8 +553,6 @@ wfe/n    : wf-env vnil tnil.
 wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H G.
 
 % EOF
-
-%.
 
 %%% PROOFS %%%
 
@@ -959,6 +958,7 @@ eq-arrow-low: eq N1 N1' -> sub-tp G1 (arrow N1 TA1 TB1) G2 T2 -> sub-tp G1 (arro
 %worlds () (eq-arrow-low _ _ _).
 %total A (eq-arrow-low A _ _).
 
+%{
 natid-eq-wfv-clos: natid LNF LNF' -> wf-val (clos LNF R LNV R2 H) G T -> wf-val (clos LNF' R LNV R2 H) G T  -> type.
 %mode natid-eq-wfv-clos +A +B -C.
 
@@ -976,6 +976,7 @@ eq-wfv-clos: eq LNF LNF' -> wf-val (clos LNF R LNV R2 H) G T -> wf-val (clos LNF
 
 %worlds () (eq-wfv-clos _ _ _).
 %total A (eq-wfv-clos A _ _).
+}%
 
 eq-high: same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
 %mode eq-high +P1 +P2 -SBT.
@@ -2511,7 +2512,7 @@ extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 %     <- sub-tp-refl (wf-tp/tsel P) B.
 % - : extract-wf2 (t/varx _ _ W _ _) (wf-tp/recv W).
 % - : extract-wf2 (t/selx _ W _ _) W.
-- : extract-wf2 (t/fun _ WFF _ _ _ _ _ _) WFF.
+- : extract-wf2 (t/fun _ WFF _ _ _ _ _ _ _) WFF.
 - : extract-wf2 (t/app TS1 (TS2: type-exp _ _ (arrow _ _ _))) W2 <- extract-wf2 TS2 (wf-tp/fun W2 W1).
 - : extract-wf2 (t/sel TS) W <- extract-wf2 TS (wf-tp/recv W).
 - : extract-wf2 (t/sub S TS) W2 <- extract-wf S W1 W2.
