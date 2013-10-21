@@ -123,21 +123,30 @@ mem   : nat -> type.
 mnil  : mem z.
 mcons : {N} tpe -> tpe -> mem N -> mem (s N).
 
+dmem   : nat -> type.
+dmnil  : dmem z.
+dmcons : {N} tpe -> exp -> tpe -> dmem N -> dmem (s N).
+
+ddef   : nat -> type.
+ddnil  : ddef z.
+ddcons : {N} exp -> ddef N -> ddef (s N).
+
 % expressions
 empty: exp.
 var: nat -> exp.
 fun:
   tpe ->                      % new T {
-  nat -> tpe -> exp -> tpe -> %  def f(x: T): T = e
+% nat -> tpe -> exp -> tpe -> %  def f(x: T): T = e
+  dmem ND ->                  %  def f(x: T): T = e ...
   nat -> exp -> tpe ->        %  val v: T = e
 % nat -> tpe -> tpe ->        %  type T = A..B
-  mem N ->                    %  type T = A..B  ...
+  mem NT ->                   %  type T = A..B  ...
   exp.                        % }
 app: exp -> nat -> exp -> exp.
 sel: exp -> nat -> exp.
 
 % ++ let: tpe -> exp -> exp -> exp.
-%abbrev let: tpe -> exp -> exp -> exp = [T] [ex] [ef] (app (fun _ z T ef _ z empty _ mnil) z ex). % --
+%abbrev let: tpe -> exp -> exp -> exp = [T] [ex] [ef] (app (fun _ (dmcons z T ef _ dmnil) z empty _ mnil) z ex). % --
 
 % types
 top  : tpe.
@@ -162,7 +171,7 @@ and  : tpe -> tpe -> tpe.
 
 % values
 emptyv: val.
-clos: nat -> exp -> nat -> val -> venv -> val.
+clos: ddef ND -> nat -> val -> venv -> val.
 
 % environments
 vnil  : venv.
@@ -369,24 +378,31 @@ wf-tp/and  : wf-tp G (and TA TB)
 
 %{ ------- eval-exp / type-exp ----- }%
 
+def-init   : dmem N -> ddef N -> type.
+di/nil     : def-init dmnil ddnil.
+di/cons    : def-init (dmcons N _ E _ R) (ddcons N E DR) <- def-init R DR.
+
+get-def    : ddef N -> nat -> exp -> type.
+
 eval-exp   : venv -> exp -> val -> type.
 
 e/empty    : eval-exp G empty emptyv.
 
 e/var      : eval-exp G (var N) V <- vlookup G N V.
 
-e/fun      : eval-exp G (fun TC LNF _ R _ LNV R2 _ MT) (clos LNF R LNV V2 G)
-            % <- eval-exp (vcons emptyv G) R2 V2.
-              <- eval-exp (vcons (clos z empty z emptyv G) G) R2 V2.
+e/fun      : eval-exp G (fun TC MD LNV R2 _ MT) (clos ME LNV V2 G)
+              <- def-init MD ME
+              <- eval-exp (vcons (clos ddnil z emptyv G) G) R2 V2.
 
 
 e/app      : eval-exp G (app E1 LNF E2) V3
-            <- eval-exp G E1 (clos LNF R LNV R2 G1)
+            <- eval-exp G E1 (clos D LNV R2 G1)
             <- eval-exp G E2 V2
-            <- eval-exp (vcons V2 (vcons (clos LNF R LNV R2 G1) G1)) R V3.
+            <- get-def D LNF R
+            <- eval-exp (vcons V2 (vcons (clos D LNV R2 G1) G1)) R V3.
 
 e/sel      : eval-exp G (sel E1 LNV) V
-            <- eval-exp G E1 (clos LNF R LNV V G1).
+            <- eval-exp G E1 (clos D LNV V G1).
 
 % path-eta : tenv -> exp -> tpe -> type.
 
@@ -407,8 +423,18 @@ tm/nil     : type-mem mnil top.
 tm/consz   : type-mem (mcons z T1 T2 mnil) (rect z T1 T2).
 tm/cons    : type-mem (mcons (s N) T1 T2 R) (and (rect (s N) T1 T2) TR) <- type-mem R TR.
 
+def-mem   : dmem N -> tpe -> type.
+dm/nil     : def-mem dmnil top.
+dm/consz   : def-mem (dmcons z T1 _ T2 dmnil) (arrow z T1 T2).
+dm/cons    : def-mem (dmcons (s N) T1 _ T2 R) (and (arrow (s N) T1 T2) TR) <- def-mem R TR.
 
 type-exp   : tenv -> exp -> tpe -> type.
+type-exp-def : tpe -> tenv -> dmem N -> type.
+
+td/nil     : type-exp-def _ _ dmnil.
+td/cons    : type-exp-def TC G (dmcons N T3 R T4 D)
+              <- type-exp (tcons T3 (tcons TC G)) R T4
+              <- type-exp-def TC G D.
 
 t/empty    : type-exp G empty top.
 
@@ -439,19 +465,17 @@ t/var      : type-exp G (var N) T <- tlookup G N T <- wf-tp G T.
 t/sel       : type-exp G (sel E1 LNV) T1
             <- type-exp G E1 (recv LNV T1).
 
-t/fun      : type-exp G (fun TC LNF T3 R T4 LNV R2 T2 M)
+t/fun      : type-exp G (fun TC D LNV R2 T2 M)
                 TC
                 <- tsize G N
                 <- type-mem M MT
-                <- type-exp (tcons T3 (tcons TC G)) R T4
+                <- def-mem D DT
+                <- type-exp-def TC G D
                 <- type-exp (tcons MT G) R2 T2
                 <- sub-tp (tcons MT G) T2 (tcons TC G) T2
                 <- wf-tp (tcons MT G) MT                
                 <- wf-tp G TC
-%                <- init-tp G (bind N G (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) TC
-%                <- init-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) TC
-                 <- sub-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) (tcons TC G) TC
-%                <- sub-tp G (bind N G (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) G TC
+                <- sub-tp (tcons TC G) (and DT (and (recv LNV T2) MT)) (tcons TC G) TC
                 .
 
 t/app       : type-exp G (app E1 LNF E2) T2
@@ -469,15 +493,22 @@ t/sub       : type-exp G E T2
 
 %{ ------- well-formedness / typing for values and environment ----- }%
 
+type-exp-defi : tpe -> tenv -> ddef N -> tpe -> type.
+
+tdi/nil     : type-exp-defi _ _ ddnil top.
+tdi/cons    : type-exp-defi TC G (ddcons N R D) (and (arrow N T3 T4) DT)
+              <- type-exp (tcons T3 (tcons TC G)) R T4
+              <- type-exp-defi TC G D DT.
+
 wf-val   : val -> tenv -> tpe -> type.
 wf-env   : venv -> tenv -> type.
 
 wfv/empty : wf-val emptyv G top.
 
-wfv/f    : wf-val (clos LNF R LNV R2 H) G
+wfv/f    : wf-val (clos D LNV R2 H) G
             TC
             <- wf-env H GC
-            <- type-exp (tcons T1 (tcons TC0 GC)) R T2
+            <- type-exp-defi TC0 GC D DT
 
             <- sub-tp (tcons TX GC) T (tcons TC0 GC) T
             <- wf-val R2 (tcons TX GC) T
@@ -490,12 +521,12 @@ wfv/f    : wf-val (clos LNF R LNV R2 H) G
           %        (and (arrow LNF T1 T2) (and (recv LNV T) TX))
           %        TC0
              <- sub-tp
-                (tcons TC0 GC) (and (arrow LNF T1 T2) (and (recv LNV T) TX))
+                (tcons TC0 GC) (and DT (and (recv LNV T) TX))
                 (tcons TC0 GC) TC0
             .
 
 
-wfv/t    : wf-val (clos LNF R LNV R2 H) G (rect LNT T1 T2)
+wfv/t    : wf-val (clos D LNV R2 H) G (rect LNT T1 T2)
             <- wf-tp G (rect LNT T1 T2).
 
 
@@ -521,6 +552,8 @@ wfe/n    : wf-env vnil tnil.
 wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H G.
 
 % EOF
+
+%.
 
 %%% PROOFS %%%
 
