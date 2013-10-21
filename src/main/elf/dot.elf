@@ -306,18 +306,18 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
               <- getenv G2' G2X
               <- sub-tp G1 T1 G2X TA2.
 
+sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
+% ++              <- sub-tp G1 T1 (tcons TN G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
+              <- sub-tp G1 T1 G1' T1'                %% built-in slack (trans: T1-bind2)
+              <- sub-tp G1 T1 (tcons T1' G0) TN
+              <- tsize G0 N
+              .
+
 sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               <- sub-tp (tcons TN G0) TN G2 T2
               <- tsize G0 N
               .
 
-sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
-% ++              <- sub-tp G1 T1 (tcons TN G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
-              <- sub-tp G1 T1 (tcons T1 G0) TN % --
-% ++              <- sub-tp G1 T1 (tcons T1' G0) TN
-% ++              <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2)
-              <- tsize G0 N
-              .
 sub-tp/tsels : sub-tp G1 (tsel (var N0) NT) G2 (tsel (var X) NT)
                 <- sub-env G2' G2
                 <- tlookup G2' X (bind N0 G0 T0)
