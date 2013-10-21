@@ -1,0 +1,5 @@
+val r = new ( r =>
+  type X = Top
+  def foo(x: r.X): Top = r.foo(x)
+)
+r

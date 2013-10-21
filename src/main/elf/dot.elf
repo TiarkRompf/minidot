@@ -285,7 +285,6 @@ pev  : path-eval G E (rect N TS TU) EG
 sub-tp/refl : sub-tp G T G T <- wf-tp G T. %%% ACCELRATE QUERIES !! % --
 
 sub-tp/top  : sub-tp G1 T G2 top <- wf-tp G1 T.
-sub-tp/bot  : sub-tp G1 bot G2 T <- wf-tp G2 T.
 
 sub-tp/fun  : sub-tp G1 (arrow N TA1 TB1) G2 (arrow N TA2 TB2)
               <- sub-tp G2 TA2 G1 TA1
@@ -347,6 +346,8 @@ sub-tp/and1a : sub-tp G1 (and TA1 TB1) G2 T2
 sub-tp/and1b : sub-tp G1 (and TA1 TB1) G2 T2
               <- sub-tp G1 TB1 G2 T2
               <- wf-tp G1 TA1.
+
+sub-tp/bot  : sub-tp G1 bot G2 T <- wf-tp G2 T.
 
 wf-tp/top  : wf-tp G top.
 wf-tp/bot  : wf-tp G bot.

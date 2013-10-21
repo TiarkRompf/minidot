@@ -1,0 +1,1 @@
+%abbrev e18 = (let _ (fun (bind z tnil (and (arrow z (tsel (var z)  (s z)) top) (rect (s z) top top))) z (tsel (var z)  (s z)) (app (var z) z (var (s z))) top z empty top (mcons _ top top (mcons _ bot top mnil))) (var z)).
