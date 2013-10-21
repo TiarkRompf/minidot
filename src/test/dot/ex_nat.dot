@@ -1,15 +1,22 @@
 val r : { r =>
   { type Nat: Bot .. { n =>
+    { def pred(_: Top): r.Nat } &
     { def succ(_: Top): r.Nat }
   }} &
   { def zero(_: Top): r.Nat } 
 }
 = new ( r =>
   type Nat = { n =>
+    { def pred(_: Top): r.Nat } &
     { def succ(_: Top): r.Nat }
   }
   def zero(_: Top): r.Nat = new (z =>
-    def succ(_: Top): r.Nat = z
+    def pred(_: Top): r.Nat = z
+    def succ(_: Top): r.Nat = r.succ(z)
+  )
+  def succ(n: r.Nat): r.Nat = new (sn =>
+    def pred(_: Top): r.Nat = n
+    def succ(_: Top): r.Nat = r.succ(sn)
   )
 )
 val zero: r.Nat = r.zero(r)
