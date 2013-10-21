@@ -1,1 +1,1 @@
-%abbrev p1 = (let _ (fun top z top empty top z empty top mnil) (let (recv z top) (fun (recv z _) z top empty top z (var z) _ mnil) (let (recv z (recv z top)) (fun (recv z _) z top empty top z (var (s z)) _ mnil) (sel (sel (var (s (s z))) z) z)))).
+%abbrev p1 = (let _ (fun top dmnil z empty top mnil) (let (recv z top) (fun (recv z _) dmnil z (var z) _ mnil) (let (recv z (recv z top)) (fun (recv z _) dmnil z (var (s z)) _ mnil) (sel (sel (var (s (s z))) z) z)))).

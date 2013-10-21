@@ -1,1 +1,1 @@
-%abbrev e2 = (fun top z top empty top z empty top mnil).
+%abbrev e2 = (fun top dmnil z empty top mnil).

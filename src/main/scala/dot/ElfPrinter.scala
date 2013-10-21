@@ -8,7 +8,7 @@ trait ElfPrinter { this: DotSyntax =>
   import types._
   import init._
 
-  val VERSION = 8
+  val VERSION = 9
 
   def collectTags(e: Any): List[Tag] = {
     def c(e: Any): List[Tag] = e match {
@@ -41,6 +41,16 @@ trait ElfPrinter { this: DotSyntax =>
         case Some(i) => (i.d.tyS, i.d.tyU)
       }
       s"(mcons _ ${printEntity(tags, env, hints, tyS)} ${printEntity(tags, env, hints, tyU)} ${printTypeMembers(tags, env, hints, members, rtags)})"
+  }
+
+  def printDefMembers(tags: List[Tag], env: Map[Var,Int], hints: Map[Int,String], members: Map[Tag, InitDef], rtags: List[Tag]): String = rtags match {
+    case Nil => "dmnil"
+    case l::rtags =>
+      val (tyP, e, tyR) = members.get(l) match {
+        case None => (Bot, "empty", Top)
+        case Some(i) => (i.d.tyP, printEntity(tags, env.updated(i.param, env.size), hints, i.body), i.d.tyR)
+      }
+      s"(dmcons _ ${printEntity(tags, env, hints, tyP)} $e ${printEntity(tags, env, hints, tyR)} ${printDefMembers(tags, env, hints, members, rtags)})"
   }
 
   def inferConstructorType(oself: Option[Var], members: List[Init]): Type = {
@@ -92,21 +102,24 @@ trait ElfPrinter { this: DotSyntax =>
         val typeMembers = members.collect{
           case i: InitType => (i.d.tag, i)
         }
-        val typeMemberMap =typeMembers.toMap
+        val typeMemberMap = typeMembers.toMap
         assert(typeMemberMap.size==typeMembers.size,
                "syntax error: duplicate type member")
         val defMembers = members.collect{
           case i: InitDef => (i.d.tag, i)
         }
+        val defMemberMap = defMembers.toMap
+        assert(defMemberMap.size==defMembers.size,
+               "syntax error: duplicate def member")
         val valMembers = members.collect{
           case i: InitVal => (i.d.tag, i)
         }
         val tmem = if (typeMemberMap.isEmpty) "mnil" else printTypeMembers(tags, ebind(self), hints, typeMemberMap, tags)
-        val dmem = defMembers match {
+        val dmem = if (VERSION < 9) defMembers match {
           case Nil => "z top empty top"
           case (_,i)::Nil => s"${p(i.d.tag)} ${pbind(i.d.tyP, self)} ${pbind(i.body, self, i.param)} ${pbind(i.d.tyR, self)}"
           case _ => assert(false, "TODO in elf: support object creation with more than one def"); ???
-        }
+        } else if (defMemberMap.isEmpty) "dmnil" else printDefMembers(tags, ebind(self), hints, defMemberMap, tags)
         val vmem = valMembers match {
           case Nil => "z empty top"
           case (_,i)::Nil => s"${p(i.d.tag)} ${p(i.t)} ${pbind(i.d.ty, self)}"

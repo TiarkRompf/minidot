@@ -1,1 +1,1 @@
-%abbrev p12 = (fun (rect (s z) (recv z top) (recv z top)) z top empty top z empty top (mcons _ (recv z top) (recv z top) (mcons _ bot top mnil))).
+%abbrev p12 = (fun (rect (s z) (recv z top) (recv z top)) dmnil z empty top (mcons _ (recv z top) (recv z top) (mcons _ bot top mnil))).
