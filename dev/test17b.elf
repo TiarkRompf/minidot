@@ -2185,23 +2185,23 @@ sub-tp-trans-aux :
       <- sub-tp-trans-aux T1 SBT1 SBT3 SBT5.
 
 -/tselx-tselx : sub-tp-trans-aux
-                 (wf-tp/tsel PW)
-                 (sub-tp/tselx PA SA1 SA2)
-                 (sub-tp/tselx PB SB2 SB3)
-                 (sub-tp/tselx PC SC1 SC3)
-   <- extend-wf-pev-mult PA SA2 PA2
-   <- extend-wf-pev-mult PB SB2 PB2
-   <- path-eval-eq PA2 PB2 EQRAB EQGEAB
-   <- path-eval-eq PA2 PW EQRWA EQGEWA
-   <- path-eval-eq PB2 PW EQRWB EQGEWB
-   <- eq-pev EQRWA PA PAW
-   <- eq-pev EQRWB PB PBW
-   <- pev-tp-dia PW PAW PBW SA2 SB2 PC SA SB
-   <- sub-env-trans SA SA1 SC1
-   <- sub-env-trans SB SB3 SC3.
+                 (wf-tp/tsel (pev W G L))
+                 (sub-tp/tselx STA GA2 GA1 PA2 PA1)
+                 (sub-tp/tselx STB GB3 GB2 PB3 PB2)
+                 (sub-tp/tselx STC GB3 GA1 PB3 PA1)
+    <- path-eval-eq PA2 (pev W G L) EQRA EQGEA
+    <- path-eval-eq PB2 (pev W G L) EQRB EQGEB
+    <- same-etenv-tenv EQGEA GA2 G EQGA
+    <- same-etenv-tenv EQGEB GB2 G EQGB
+    <- eq-high EQRA STA STA'
+    <- eq-high-env EQGA STA' STA''
+    <- eq-low EQRB STB STB'
+    <- eq-low-env EQGB STB' STB''
+    <- sub-tp-trans-aux W STA'' STB'' STC.
 
 %% case p.T < p.T && p.T < T3   -->   p.T < T3
 
+%{
 -/tselx1 : sub-tp-trans-aux
             (wf-tp/tsel PW)
             (sub-tp/tselx PX S1 S2)
@@ -2229,9 +2229,11 @@ sub-tp-trans-aux :
             <- eq-wf-env EQW2 WU WU'
             <- sub-tp-trans-aux WU' BUX2' A2 A3
           .
+}%
 
 %% case T1 < p.T && p.T < p.T   -->   T1 < p.T
 
+%{
 -/tselx2 : sub-tp-trans-aux
             (wf-tp/tsel PW)
             (sub-tp/tsel2 A1 GE2 P2)
@@ -2258,6 +2260,7 @@ sub-tp-trans-aux :
    <- same-etenv-tenv EQGEW GEW' GE2 EQW2
    <- eq-wf-env EQW2 WS WS'
    <- sub-tp-trans-aux WS' A1 BSX2' A3.
+}%
 
 -/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
@@ -2410,6 +2413,7 @@ sub-tp-trans-aux :
                  <- not-sameenv-left-right EQGE CONTRA
                  <- no-subtype CONTRA G1 (tsel (var X1) N) G3 (tsel (var X3) N) OUT.
 
+%{
 -/tselsx : sub-tp-trans-aux
             W0
             (sub-tp/tsels N1 P2 P1 S1 (L2: tlookup _ X (bind N0 _ _)) S2)
@@ -2422,7 +2426,9 @@ sub-tp-trans-aux :
             <- eq-refl X EQX
             <- lookup-eq0 LR' L2 EQX EQB
             <- eq-lookup EQB LR L2'.
+}%
 
+%{
 -/tselxs : sub-tp-trans-aux
             W0
             (sub-tp/tselx PX S1X S2X)
@@ -2430,6 +2436,7 @@ sub-tp-trans-aux :
             (sub-tp/tsels N2 P3 P2 S1' L3 S3)
             <- sub-env-size-lkp N2 S1X S2X S2 PX SX
             <- sub-env-trans SX S1X S1'.
+}%
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
