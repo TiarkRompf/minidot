@@ -292,8 +292,10 @@ sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
               <- sub-tp G1 T1 G2 T2.
 
 sub-tp/tselx : sub-tp G1 (tsel E N) G2 (tsel E N)
-             <- path-eval G1 E (rect N TA TB) G1'
-             <- path-eval G2 E (rect N TA2 TB2) G2'
+             <- sub-env G1S G1
+             <- sub-env G2S G2
+             <- path-eval G1S E (rect N TA TB) G1'
+             <- path-eval G2S E (rect N TA2 TB2) G2'
              <- getenv G1' G1X
              <- getenv G2' G2X
              <- sub-tp G1X (rect N TA TB) G2X (rect N TA2 TB2).
@@ -1378,10 +1380,10 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST T ST' STA STB
       <- sub-tp-case2 G P P' X X' STA ST ST' STB G' STX' STBX.
 
-- : extend-sub-tp (sub-tp/tselx P S1 S2) T
-    (sub-tp/tselx P (sub-env/ext S1) (sub-env/ext S2))
-    (sub-tp/tselx P (sub-env/ext S1) S2)
-    (sub-tp/tselx P S1 (sub-env/ext S2)).
+- : extend-sub-tp (sub-tp/tselx ST G2 G1 P2 P1 S2 S1) T
+     (sub-tp/tselx ST G2 G1 P2 P1 (sub-env/ext S2) (sub-env/ext S1))
+     (sub-tp/tselx ST G2 G1 P2 P1 S2 (sub-env/ext S1))
+     (sub-tp/tselx ST G2 G1 P2 P1 (sub-env/ext S2) S1).
 
 - : extend-sub-tp (sub-tp/tbind1 S ST) T
      (sub-tp/tbind1 S STC1)
@@ -1553,11 +1555,11 @@ extract-wf-pev : path-eval G E T OG -> getenv OG G' -> wf-tp G' T -> type.
       W1 (wf-tp/tsel P)
       <- extract-wf ST W1 _.
 
-- : extract-wf (sub-tp/tselx P S1 S2)
-      (wf-tp/tsel P1)
-      (wf-tp/tsel P2)
-      <- extend-wf-pev-mult P S1 P1
-      <- extend-wf-pev-mult P S2 P2.
+- : extract-wf (sub-tp/tselx _ _ _ P2 P1 S2 S1)
+      (wf-tp/tsel P1')
+      (wf-tp/tsel P2')
+      <- extend-wf-pev-mult P1 S1 P1'
+      <- extend-wf-pev-mult P2 S2 P2'.
 
 - : extract-wf (sub-tp/tbind1 S ST) (wf-tp/tbind S WU) W2
       <- extract-wf ST WU W2.
@@ -1672,8 +1674,8 @@ sub-tp-refl :
    <- sub-tp-refl T2 SBT2.
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
--/tsel: sub-tp-refl (wf-tp/tsel P) (sub-tp/tselx P sub-env/refl sub-env/refl)
-   <- extract-wf-pev P _ W.
+-/tsel: sub-tp-refl (wf-tp/tsel (pev W G L)) (sub-tp/tselx R G G (pev W G L) (pev W G L) sub-env/refl sub-env/refl)
+   <- sub-tp-refl W R.
 
 -/tbind: sub-tp-refl (wf-tp/tbind S WU)
           (sub-tp/tbind1
