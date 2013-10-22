@@ -2201,35 +2201,22 @@ sub-tp-trans-aux :
 
 %% case p.T < p.T && p.T < T3   -->   p.T < T3
 
-%{
 -/tselx1 : sub-tp-trans-aux
-            (wf-tp/tsel PW)
-            (sub-tp/tselx PX S1 S2)
-            (sub-tp/tsel1 A2 GE2 P2)
-            (sub-tp/tsel1 A3 GEX1 PX1)
-            <- extend-wf-pev-mult PX S1 PX1
-            <- path-eval-etenv PX1 GEX1
-            <- extend-wf-pev-mult PX S2 PX2
-            <- path-eval-eq PX2 P2 EQR2 EQGE2
-            <- path-eval-eq PW P2 EQR2W EQGEW
-            <- path-eval-etenv PX2 GEX2
-            <- same-etenv-tenv EQGE2 GEX2 GE2 EQG2
-            <- extract-wf-pev PX GEX WX
-            <- sub-tp-refl WX (sub-tp/rect BUX _ _ _)
-            <- rect-same-all-same EQR2 _ EQU
-            <- path-eval-env-sub PX PX1 GEX GEX1 S1 S1X
-            <- extend-sub-tp1-mult BUX S1X BUX1
-            <- eq-high EQU BUX1 BUX1'
-            <- path-eval-env-sub PX PX2 GEX GEX2 S2 S2X
-            <- extend-sub-tp2-mult BUX1' S2X BUX2
-            <- eq-high-env EQG2 BUX2 BUX2'
-            <- eq-pev EQR2W PW PW'
-            <- extract-wf-pev PW' GEW' (wf-tp/rect _ WU _)
-            <- same-etenv-tenv EQGEW GEW' GE2 EQW2
-            <- eq-wf-env EQW2 WU WU'
-            <- sub-tp-trans-aux WU' BUX2' A2 A3
-          .
-}%
+            (wf-tp/tsel (pev (wf-tp/rect BSU0 WU0 WS0) G L))
+            (sub-tp/tselx (sub-tp/rect BU12 BS21 BSU2 BSU1) GA2 GA1 PA2 PA1)
+            (sub-tp/tsel1 STB GB2 PB2)
+            (sub-tp/tsel1 STC GA1 PA1)
+    <- path-eval-eq PA2 (pev (wf-tp/rect BSU0 WU0 WS0) G L) EQRA EQGEA
+    <- path-eval-eq PB2 (pev (wf-tp/rect BSU0 WU0 WS0) G L) EQRB EQGEB
+    <- same-etenv-tenv EQGEA GA2 G EQGA
+    <- same-etenv-tenv EQGEB GB2 G EQGB
+    <- rect-same-all-same EQRA _ EQUA
+    <- rect-same-all-same EQRB _ EQUB
+    <- eq-high EQUA BU12 BU12'
+    <- eq-high-env EQGA BU12' BU12''
+    <- eq-low EQUB STB STB'
+    <- eq-low-env EQGB STB' STB''
+    <- sub-tp-trans-aux WU0 BU12'' STB'' STC.
 
 %% case T1 < p.T && p.T < p.T   -->   T1 < p.T
 
