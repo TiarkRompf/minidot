@@ -292,9 +292,11 @@ sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
               <- sub-tp G1 T1 G2 T2.
 
 sub-tp/tselx : sub-tp G1 (tsel E N) G2 (tsel E N)
-             <- sub-env G G2
-             <- sub-env G G1
-             <- path-eval G E (rect N TA TB) G'.
+             <- path-eval G1 E (rect N TA TB) G1'
+             <- path-eval G2 E (rect N TA2 TB2) G2'
+             <- getenv G1' G1X
+             <- getenv G2' G2X
+             <- sub-tp G1X (rect N TA TB) G2X (rect N TA2 TB2).
 
 sub-tp/tsel1 : sub-tp G1 (tsel E1 N) G2 T2
               <- path-eval G1 E1 (rect N TA1 TB1) G1'
@@ -312,10 +314,9 @@ sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               .
 
 sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
-% ++              <- sub-tp G1 T1 (tcons TN G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
-              <- sub-tp G1 T1 (tcons T1 G0) TN % --
-% ++              <- sub-tp G1 T1 (tcons T1' G0) TN
-% ++              <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2)
+              <- sub-tp G1 T1 (tcons TN G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
+              <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2)
+              <- sub-tp G1 T1 (tcons T1' G0) TN
               <- tsize G0 N
               .
 sub-tp/tsels : sub-tp G1 (tsel (var N0) NT) G2 (tsel (var X) NT)
