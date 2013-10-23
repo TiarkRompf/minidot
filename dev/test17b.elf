@@ -310,7 +310,8 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
               <- getenv G2' G2X
               <- getenv GI' GIX
               <- sub-tp GIX (rect N TAI TBI) G2X (rect N TA2 TB2)
-              <- sub-tp G1 T1 GIX TAI.
+              <- sub-tp G1 T1 GIX TAI
+              <- sub-tp G1 T1 G2X TB2.
 
 sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               <- sub-tp (tcons TN G0) TN G2 T2
@@ -1585,7 +1586,7 @@ extract-wf-pev : path-eval G E T OG -> getenv OG G' -> wf-tp G' T -> type.
       (wf-tp/tsel P) W2
       <- extract-wf ST _ W2.
 
-- : extract-wf (sub-tp/tsel2 ST _ _ _ _ P _)
+- : extract-wf (sub-tp/tsel2 ST _ _ _ _ _ P _)
       W1 (wf-tp/tsel P)
       <- extract-wf ST W1 _.
 
@@ -2228,43 +2229,27 @@ sub-tp-trans-aux :
 %% case T1 < p.T && p.T < p.T   -->   T1 < p.T
 
 -/tsel2x : sub-tp-trans-aux
-            (wf-tp/tsel (pev WR G L))
-            (sub-tp/tsel2 ST1I STRI2 GI GA2 PI P2 STSI2)
-            ((sub-tp/tselx STB GB3 GB2 PB3 PB2): sub-tp G2 (tsel E N) G3 (tsel E N))
-            (sub-tp/tsel2 ST1I STRI3' GI GB3 PI PB3 STSI3')
-    <- path-eval-eq P2 (pev WR G L) EQRA EQGEA
-    <- path-eval-eq PB2 (pev WR G L) EQRB EQGEB
-    <- same-etenv-tenv EQGEA GA2 G EQGA
-    <- same-etenv-tenv EQGEB GB2 G EQGB
-    <- eq-high EQRA STRI2 STRI2'
-    <- eq-high-env EQGA STRI2' STRI2''
-    <- eq-low EQRB STB STB'
-    <- eq-low-env EQGB STB' STB''
-    <- sub-tp-trans-aux WR STRI2'' STB'' STRI3'
-    <- sub-tp-trans-aux (wf-tp/tsel (pev WR G L)) STSI2 (sub-tp/tselx STB GB3 GB2 PB3 PB2) STSI3'.
-
-%{
--/tsel22 : sub-tp-trans-aux
-            W0
-            STA
-            (sub-tp/tsel22 ST2 ST1)
-            (sub-tp/tsel22 ST2 ST1')
-    <- sub-tp-trans-aux W0 STA ST1 ST1'.
-
--/tsel221 : sub-tp-trans-aux
-             (wf-tp/tsel (pev (wf-tp/rect BSU0 WU0 WS0) G L))
-             (sub-tp/tsel22 (sub-tp/tselx STA2 GA2 GA1 PA2 PA1) STA1)
-             (sub-tp/tsel1 STB GB2 PB2)
-             % (sub-tp/tsel22 (sub-tp/tsel1 STB GB2 PB2) (sub-tp/tsel22 STA2 STA1))
-             OUT
-    <- path-eval-eq PA2 (pev (wf-tp/rect BSU0 WU0 WS0) G L) EQRA EQGEA
+            (wf-tp/tsel (pev (wf-tp/rect BSU0 WU0 WS0) G L))
+            (sub-tp/tsel2 ST12 ST1I STRI2 GI GA2 PI P2 STSI2)
+            ((sub-tp/tselx (sub-tp/rect BU23 BS32 BSU3 BSU2) GB3 GB2 PB3 PB2): sub-tp G2 (tsel E N) G3 (tsel E N))
+            (sub-tp/tsel2 ST13' ST1I STRI3' GI GB3 PI PB3 STSI3')
+    <- path-eval-eq P2 (pev (wf-tp/rect BSU0 WU0 WS0) G L) EQRA EQGEA
     <- path-eval-eq PB2 (pev (wf-tp/rect BSU0 WU0 WS0) G L) EQRB EQGEB
     <- same-etenv-tenv EQGEA GA2 G EQGA
     <- same-etenv-tenv EQGEB GB2 G EQGB
     <- rect-same-all-same EQRA EQSA EQUA
     <- rect-same-all-same EQRB EQSB EQUB
-   .
-}%
+    <- eq-high EQRA STRI2 STRI2'
+    <- eq-high-env EQGA STRI2' STRI2''
+    <- eq-low EQRB (sub-tp/rect BU23 BS32 BSU3 BSU2) STB'
+    <- eq-low-env EQGB STB' STB''
+    <- sub-tp-trans-aux (wf-tp/rect BSU0 WU0 WS0) STRI2'' STB'' STRI3'
+    <- sub-tp-trans-aux (wf-tp/tsel (pev (wf-tp/rect BSU0 WU0 WS0) G L)) STSI2 (sub-tp/tselx (sub-tp/rect BU23 BS32 BSU3 BSU2) GB3 GB2 PB3 PB2) STSI3'
+    <- eq-high EQUA ST12 ST12'
+    <- eq-high-env EQGA ST12' ST12''
+    <- eq-low EQUB BU23 BU23'
+    <- eq-low-env EQGB BU23' BU23''
+    <- sub-tp-trans-aux WU0 ST12'' BU23'' ST13'.
 
 -/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
@@ -2277,15 +2262,16 @@ sub-tp-trans-aux :
 -/tsel2 : sub-tp-trans-aux
            W
            STA1
-           (sub-tp/tsel2 ST2I STRI3 GI GB3 PI PB3 STSI3)
-           (sub-tp/tsel2 ST1I' STRI3 GI GB3 PI PB3 STSI3)
-       <- sub-tp-trans-aux W STA1 ST2I ST1I'.
+           (sub-tp/tsel2 ST3I ST2I STRI3 GI GB3 PI PB3 STSI3)
+           (sub-tp/tsel2 ST3I' ST1I' STRI3 GI GB3 PI PB3 STSI3)
+       <- sub-tp-trans-aux W STA1 ST2I ST1I'
+       <- sub-tp-trans-aux W STA1 ST3I ST3I'.
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
 -/tsel2-tsel1 : sub-tp-trans-aux
                  (wf-tp/tsel (pev (wf-tp/rect BSU0 WU0 WS0) G L))
-                 (sub-tp/tsel2 ST1I (sub-tp/rect BUI2 BS2I BSU2 BSUI) GI GA2 (pev (wf-tp/rect BSUI' WUI WSI) GI' LI) PA2 STSI2)
+                 (sub-tp/tsel2 ST1U ST1I (sub-tp/rect BUI2 BS2I BSU2 BSUI) GI GA2 (pev (wf-tp/rect BSUI' WUI WSI) GI' LI) PA2 STSI2)
                  (sub-tp/tsel1 STB GB2 PB2)
                  OUT
     <- path-eval-eq PA2 (pev (wf-tp/rect BSU0 WU0 WS0) G L) EQRA EQGEA
@@ -2294,8 +2280,6 @@ sub-tp-trans-aux :
     <- same-etenv-tenv EQGEB GB2 G EQGB
     <- rect-same-all-same EQRA EQSA EQUA
     <- rect-same-all-same EQRB EQSB EQUB
-    <- sub-tp-trans-aux WUI BSUI BUI2 BSIU2
-    <- sub-tp-trans-aux WSI ST1I BSIU2 ST1U
     <- eq-high EQUA ST1U ST1U'
     <- eq-high-env EQGA ST1U' ST1U''
     <- eq-low EQUB STB STB'
