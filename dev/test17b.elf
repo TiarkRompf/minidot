@@ -2227,6 +2227,22 @@ sub-tp-trans-aux :
 
 %% case T1 < p.T && p.T < p.T   -->   T1 < p.T
 
+-/tsel2x : sub-tp-trans-aux
+            (wf-tp/tsel (pev WR G L))
+            (sub-tp/tsel2 ST1I STRI2 GI GA2 PI P2 STSI2)
+            ((sub-tp/tselx STB GB3 GB2 PB3 PB2): sub-tp G2 (tsel E N) G3 (tsel E N))
+            (sub-tp/tsel2 ST1I STRI3' GI GB3 PI PB3 STSI3')
+    <- path-eval-eq P2 (pev WR G L) EQRA EQGEA
+    <- path-eval-eq PB2 (pev WR G L) EQRB EQGEB
+    <- same-etenv-tenv EQGEA GA2 G EQGA
+    <- same-etenv-tenv EQGEB GB2 G EQGB
+    <- eq-high EQRA STRI2 STRI2'
+    <- eq-high-env EQGA STRI2' STRI2''
+    <- eq-low EQRB STB STB'
+    <- eq-low-env EQGB STB' STB''
+    <- sub-tp-trans-aux WR STRI2'' STB'' STRI3'
+    <- sub-tp-trans-aux (wf-tp/tsel (pev WR G L)) STSI2 (sub-tp/tselx STB GB3 GB2 PB3 PB2) STSI3'.
+
 %{
 -/tsel2x : sub-tp-trans-aux
             W0
@@ -2260,6 +2276,7 @@ sub-tp-trans-aux :
     <- rect-same-all-same EQRA EQSA EQUA
     <- rect-same-all-same EQRB EQSB EQUB
    .
+
 }%
 
 %{
@@ -2493,7 +2510,7 @@ sub-tp-trans-aux :
 }%
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
-%trustme
+% %terminates {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
