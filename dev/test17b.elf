@@ -308,6 +308,10 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
               <- getenv G2' G2X
               <- sub-tp G1 T1 G2X TA2.
 
+sub-tp/tsel22 : sub-tp G1 T1 G2 (tsel E2 N)
+             <- sub-tp G1 T1 G1' (tsel E2 N)
+             <- sub-tp G1' (tsel E2 N) G2 (tsel E2 N).
+
 sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               <- sub-tp (tcons TN G0) TN G2 T2
               <- tsize G0 N
@@ -1445,6 +1449,13 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
      (sub-tp/tsels N P2 P1 (sub-env/ext S1) L2 S2)
      (sub-tp/tsels N P2 P1 S1 L2 (sub-env/ext S2)).
 
+- : extend-sub-tp (sub-tp/tsel22 ST2 ST1) T
+     (sub-tp/tsel22 ST2' ST1')
+     (sub-tp/tsel22 ST2 ST1')
+     (sub-tp/tsel22 ST2' ST1)
+     <- extend-sub-tp ST2 T _ _ ST2'
+     <- extend-sub-tp ST1 T _ ST1' _.
+
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _)(extend-wf-pev-case _ _ _ _ _).
 %total (A B C D) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _)(extend-wf-pev-case D _ _ _ _).
 
@@ -1613,6 +1624,10 @@ extract-wf-pev : path-eval G E T OG -> getenv OG G' -> wf-tp G' T -> type.
      (wf-tp/tsel P2')
      <- extend-wf-pev-mult P1 S1 P1'
      <- extend-wf-pev-mult P2 S2 P2'.
+
+- : extract-wf (sub-tp/tsel22 ST2 ST1) W1 W2
+     <- extract-wf ST1 W1 _
+     <- extract-wf ST2 _ W2.
 
 %worlds () (extract-wf _ _ _)(extract-wf-pev _ _ _).
 %total (A B) (extract-wf A _ _)(extract-wf-pev B _ _).
