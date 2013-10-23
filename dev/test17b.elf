@@ -2394,11 +2394,11 @@ sub-tp-trans-aux :
 -/tsel2s : sub-tp-trans-aux
             W0
             (sub-tp/tsel2 ST2I ST1I STRI2 GI GA2 PI PA2 STSI2)
-            (sub-tp/tsels N (pev (wf-tp/rect SR3 WU3 WS3) GE3 L3) (pev (wf-tp/rect SR2 WU2 WS2) GE2 L2) S2 L1 S3)
-            (sub-tp/tsel2 STXI ST1I STRIX GI getenv/right PI PX (sub-tp/tsels N (pev (wf-tp/rect SR3 WU3 WS3) GE3 L3) (pev (wf-tp/rect SR2 WU2 WS2) GE2 L2) S2 L1 S3))
+            (sub-tp/tsels N (pev (wf-tp/rect SR3 WU3 WS3) GE3 L3) P2 S2 L1 S3)
+            (sub-tp/tsel2 STXI ST1I STRIX GI getenv/right PI PX STSIX)
             <- extract-wf-tsel W0 WR0 GE0 L
             <- extend-wf-pev-case-right-mult (pev (wf-tp/rect SR3 WU3 WS3) GE3 L3) S3 P3'
-            <- extend-wf-pev-case-left-mult (pev (wf-tp/rect SR2 WU2 WS2) GE2 L2) S2 P2'
+            <- extend-wf-pev-case-left-mult P2 S2 P2'
             <- path-eval-eq P2' PA2 EQR2 EQGE2
             <- rect-same-all-same EQR2 EQS2 EQU2
             <- eq-pev EQR2 P3' PX
@@ -2429,7 +2429,8 @@ sub-tp-trans-aux :
             <- eq-low-env EQGW2 BR3' BR3''
             <- eq-low EQRW2 BR3'' BR3'''
             <- eq-high EQR2 BR3''' BR3''''
-            <- sub-tp-trans-aux WR0 STRI2'' BR3'''' STRIX.
+            <- sub-tp-trans-aux WR0 STRI2'' BR3'''' STRIX
+            <- sub-tp-trans-aux W0 STSI2 (sub-tp/tsels N (pev (wf-tp/rect SR3 WU3 WS3) GE3 L3) P2 S2 L1 S3) STSIX.
 
 -/tsels-tsels : sub-tp-trans-aux
                  W0
@@ -2468,6 +2469,8 @@ sub-tp-trans-aux :
 }%
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
+%terminates {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
+%.
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
