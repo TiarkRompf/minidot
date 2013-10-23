@@ -23,6 +23,7 @@
 %query 1 1 type-exp tnil e17  top.
 %query 1 1 type-exp tnil e18  top.
 %query 1 1 type-exp tnil e19  top.
+%query 1 1 type-exp tnil e20a top.
 %query 1 1 type-exp tnil e20  top.
 %query 1 1 type-exp tnil e21c top.
 
@@ -31,7 +32,7 @@
 %query 1 1 wf-tp tnil t3.
 %query 1 1 wf-tp tnil t4.
 %query 1 1 wf-tp tnil t6.
-%query 1 1 sub-tp tnil t7 tnil t8.
+% %query 1 1 sub-tp tnil t7 tnil t8. % no longer true!
 
 % programs
 %query 1 1 type-exp tnil p1 top.
@@ -50,11 +51,10 @@
 %query 1 1 type-exp tnil p12a top.
 %query 1 1 type-exp tnil p12b top.
 %query 1 1 type-exp tnil p12c top.
+%query 1 1 type-exp tnil p13a top.
 %query 1 1 type-exp tnil p13 top.
-%query 1 1 type-exp tnil p14 top.
 
 %query 1 1 type-exp tnil b1ok top.
-%query 1 1 type-exp tnil b3ok top.
 
 % towards DOT counterexamples
 %query 1 1 type-exp tnil c1aa top.
@@ -70,8 +70,32 @@
 %query 1 1 type-exp tnil c1 top.
 %query 1 1 type-exp tnil e16n  top.
 %query 1 1 type-exp tnil e16  top.
+%query 1 1 type-exp tnil p14a top.
+%query 1 1 type-exp tnil p14 top.
+%query 1 1 type-exp tnil b3ok top.
 
 % these should not type-check
 %query 0 1 type-exp tnil b1 top.
 %query 0 1 type-exp tnil b2 top.
 %query 0 1 type-exp tnil b3 top.
+
+%query 1 1
+sub-tp
+   (tcons
+       (and (recv (s z) (tsel (var (s z)) z)) (rect z bot top))
+       (tcons top tnil))
+   (and (recv (s z) (tsel (var (s z)) z)) (and (rect (s z) bot top) (rect z bot top)))
+(tcons (and (recv (s z) (tsel (var (s z)) z)) (rect z bot top)) (tcons top tnil))
+   (and (recv (s z) (tsel (var (s z)) z)) (rect z bot top)). 
+
+%query 1 1
+sub-tp
+   (tcons
+       (and (recv (s z) (tsel (var (s z)) z)) (rect z bot top))
+       (tcons top tnil))
+   (and (arrow z top top)
+       (and (recv (s z) (tsel (var (s z)) z))
+           (and (rect (s z) bot top) (rect z bot top))))
+(tcons top tnil)
+   (bind (s z) (tcons top tnil)
+       (and (recv (s z) (tsel (var (s z)) z)) (rect z bot top))). 

@@ -9,8 +9,9 @@ import scala.util.parsing.input.Positional
 trait DotParsing extends StdTokenParsers with PackratParsers with DotSyntax with ImplicitConversions with Debug {
   type Tokens = StdLexical; val lexical = new StdLexical {
     override def token: Parser[Token] = delim | super.token
+    override def identChar = letter | elem('_') | elem('!')
   }
-  lexical.delimiters ++= List("=", ";", ".", "(", ")", "{", "}", "=>", "⇒", ":", "..", "->", "→", "!", "&", "∧", "/\\", "|", "∨", "\\/", "⊥", "⊤")
+  lexical.delimiters ++= List("=", ";", ".", "(", ")", "{", "}", "=>", "⇒", ":", "..", "->", "→", "&", "∧", "/\\", "|", "∨", "\\/", "⊥", "⊤")
   lexical.reserved ++= List("def", "val", "type", "new", "Top", "Bottom", "Bot")
 
   type P[T] = PackratParser[T]

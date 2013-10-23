@@ -8,7 +8,7 @@ trait ElfPrinter { this: DotSyntax =>
   import types._
   import init._
 
-  val VERSION = 8
+  val VERSION = 9
 
   def collectTags(e: Any): List[Tag] = {
     def c(e: Any): List[Tag] = e match {
@@ -36,15 +36,18 @@ trait ElfPrinter { this: DotSyntax =>
   def printTypeMembers(tags: List[Tag], env: Map[Var,Int], hints: Map[Int,String], members: Map[Tag, InitType], rtags: List[Tag]): String = rtags match {
     case Nil => "mnil"
     case l::rtags =>
-      val (tyS, tyU) = members.get(l) match {
-        case None => (Bot, Top)
-        case Some(i) => (i.d.tyS, i.d.tyU)
+      val (tyS, tyU, teS, teU) = members.get(l) match {
+        case None => (Bot, Top, Bot, Top)
+        case Some(i) => (i.d.tyS, i.d.tyU, i.di.tyS, i.di.tyU)
       }
-      s"(mcons _ ${printEntity(tags, env, hints, tyS)} ${printEntity(tags, env, hints, tyU)} ${printTypeMembers(tags, env, hints, members, rtags)})"
+      val e = if (VERSION >= 9)
+                s" ${printEntity(tags, env, hints, teS)} ${printEntity(tags, env, hints, teU)}"
+              else ""
+      s"(mcons _ ${printEntity(tags, env, hints, tyS)} ${printEntity(tags, env, hints, tyU)}$e ${printTypeMembers(tags, env, hints, members, rtags)})"
   }
 
   def inferConstructorType(oself: Option[Var], members: List[Init]): Type = {
-    def infer1(m: Init): Type = m.d
+    def infer1(m: Init): Type = if (VERSION >= 9) m.di else m.d
     def infer(ms: List[Init]): Type = ms match {
       case Nil => Top
       case m::Nil => infer1(m)

@@ -1,1 +1,1 @@
-%abbrev p6 = (fun (bind z tnil (and (rect (s z) top top) (rect z (tsel (var z)  (s z)) (tsel (var z)  (s z))))) z top empty top z empty top (mcons _ top top (mcons _ (tsel (var z)  (s z)) (tsel (var z)  (s z)) mnil))).
+%abbrev p6 = (fun (bind z tnil (and (rect (s z) top top) (rect z (tsel (var z)  (s z)) (tsel (var z)  (s z))))) z top empty top z empty top (mcons _ top top top top (mcons _ (tsel (var z)  (s z)) (tsel (var z)  (s z)) (tsel (var z)  (s z)) (tsel (var z)  (s z)) mnil))).

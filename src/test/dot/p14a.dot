@@ -1,3 +1,2 @@
 val f = new (def m(a: Top): { x => {type !A: Bot .. Top} & {type B: x.!A .. x.!A} & {val l: x.B} } = new (x => type !A: Top .. Top; type B: x.!A .. x.!A; val l: x.B = a))
-val a = new ()
-f.m(a)
+f

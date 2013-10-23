@@ -5,7 +5,9 @@ trait DotSyntax {
 
   sealed trait Entity extends Positional
 
-  case class Tag(id: String) extends Entity
+  case class Tag(id: String) extends Entity {
+    def nominal: Boolean = id.startsWith("!")
+  }
 
   sealed trait Type extends Entity
   object types {
@@ -44,11 +46,20 @@ trait DotSyntax {
   }
 
   sealed trait Init extends Positional {
-    def d: Type
+    type T <: Type
+    def d: T
+    def di: T = d
   }
   object init {
-    case class InitDef(d: types.MemDef, param: terms.Var, body: Term) extends Init
-    case class InitVal(d: types.MemVal, t: Term) extends Init
-    case class InitType(d: types.MemType) extends Init
+    case class InitDef(d: types.MemDef, param: terms.Var, body: Term) extends Init {
+      override type T = types.MemDef
+    }
+    case class InitVal(d: types.MemVal, t: Term) extends Init {
+      override type T = types.MemVal
+    }
+    case class InitType(d: types.MemType) extends Init {
+      override type T = types.MemType
+      override def di: T = if (d.tag.nominal) types.MemType(d.tag, types.Bot, d.tyU) else d
+    }
   }
 }
