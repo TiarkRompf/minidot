@@ -304,13 +304,13 @@ sub-tp/tsel1 : sub-tp G1 (tsel E1 N) G2 T2
               <- sub-tp G1X TB1 G2 T2.
 
 sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
+              <- sub-tp GI (tsel E2 N) G2 (tsel E2 N)
               <- path-eval G2 E2 (rect N TA2 TB2) G2'
+              <- path-eval GI E2 (rect N TAI TBI) GI'
               <- getenv G2' G2X
-              <- sub-tp G1 T1 G2X TA2.
-
-sub-tp/tsel22 : sub-tp G1 T1 G2 (tsel E2 N)
-             <- sub-tp G1 T1 G1' (tsel E2 N)
-             <- sub-tp G1' (tsel E2 N) G2 (tsel E2 N).
+              <- getenv GI' GIX
+              <- sub-tp GIX (rect N TAI TBI) G2X (rect N TA2 TB2)
+              <- sub-tp G1 T1 GIX TAI.
 
 sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               <- sub-tp (tcons TN G0) TN G2 T2
@@ -1401,11 +1401,13 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-wf-pev-case P T P' X X'
       <- extend-sub-tp ST T ST' STA STB
       <- sub-tp-case1 G P P' X X' STB ST ST' STA G' STX' STAX.
-- : extend-sub-tp (sub-tp/tsel2 ST G P) T
+%{
+- : extend-sub-tp (sub-tp/tsel2 ST STI GI G2 PI P2 STI2) T
     (sub-tp/tsel2 STX' G' P') (sub-tp/tsel2 STA G P) (sub-tp/tsel2 STBX G' P')
       <- extend-wf-pev-case P T P' X X'
       <- extend-sub-tp ST T ST' STA STB
       <- sub-tp-case2 G P P' X X' STA ST ST' STB G' STX' STBX.
+}%
 
 - : extend-sub-tp (sub-tp/tselx ST G2 G1 P2 P1) T
      (sub-tp/tselx ST' G2' G1' P2' P1')
@@ -1449,14 +1451,8 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
      (sub-tp/tsels N P2 P1 (sub-env/ext S1) L2 S2)
      (sub-tp/tsels N P2 P1 S1 L2 (sub-env/ext S2)).
 
-- : extend-sub-tp (sub-tp/tsel22 ST2 ST1) T
-     (sub-tp/tsel22 ST2' ST1')
-     (sub-tp/tsel22 ST2 ST1')
-     (sub-tp/tsel22 ST2' ST1)
-     <- extend-sub-tp ST2 T _ _ ST2'
-     <- extend-sub-tp ST1 T _ ST1' _.
-
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _)(extend-wf-pev-case _ _ _ _ _).
+%trustme
 %total (A B C D) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _)(extend-wf-pev-case D _ _ _ _).
 
 extend-sub-tp12: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2) T2 -> type.
@@ -1589,7 +1585,7 @@ extract-wf-pev : path-eval G E T OG -> getenv OG G' -> wf-tp G' T -> type.
       (wf-tp/tsel P) W2
       <- extract-wf ST _ W2.
 
-- : extract-wf (sub-tp/tsel2 ST _ P)
+- : extract-wf (sub-tp/tsel2 ST _ _ _ _ P _)
       W1 (wf-tp/tsel P)
       <- extract-wf ST W1 _.
 
@@ -1624,10 +1620,6 @@ extract-wf-pev : path-eval G E T OG -> getenv OG G' -> wf-tp G' T -> type.
      (wf-tp/tsel P2')
      <- extend-wf-pev-mult P1 S1 P1'
      <- extend-wf-pev-mult P2 S2 P2'.
-
-- : extract-wf (sub-tp/tsel22 ST2 ST1) W1 W2
-     <- extract-wf ST1 W1 _
-     <- extract-wf ST2 _ W2.
 
 %worlds () (extract-wf _ _ _)(extract-wf-pev _ _ _).
 %total (A B) (extract-wf A _ _)(extract-wf-pev B _ _).
@@ -2235,6 +2227,7 @@ sub-tp-trans-aux :
 
 %% case T1 < p.T && p.T < p.T   -->   T1 < p.T
 
+%{
 -/tsel2x : sub-tp-trans-aux
             W0
             (sub-tp/tsel2 STA GA2 PA2)
@@ -2254,7 +2247,6 @@ sub-tp-trans-aux :
             (sub-tp/tsel22 ST2 ST1')
     <- sub-tp-trans-aux W0 STA ST1 ST1'.
 
-%{
 -/tsel221 : sub-tp-trans-aux
              (wf-tp/tsel (pev (wf-tp/rect BSU0 WU0 WS0) G L))
              (sub-tp/tsel22 (sub-tp/tselx STA2 GA2 GA1 PA2 PA1) STA1)
@@ -2325,15 +2317,18 @@ sub-tp-trans-aux :
       (sub-tp/tsel1 SBT5 G P)
       <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
 
+%{
 -/tsel2  : sub-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
       W
       SBT1
       (sub-tp/tsel2 SBT3 G P)
       (sub-tp/tsel2 SBT5 G P)
       <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+}%
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
+%{
 -/tsel2-tsel1 : sub-tp-trans-aux
                  (wf-tp/tsel PW)
                  (sub-tp/tsel2 A1 GE1 P1)
@@ -2358,6 +2353,7 @@ sub-tp-trans-aux :
    <- eq-low EQU2W A2 A2'
    <- eq-low-env EQG2W A2' A2''
    <- sub-tp-trans-aux WU BAS A2'' OUT.
+}%
 
 -/tbind2  : sub-tp-trans-aux
        W
@@ -2437,6 +2433,7 @@ sub-tp-trans-aux :
             <- eq-low-env EQG ST1 ST2
             <- extend-sub-tp1-mult ST2 S1 ST3.
 
+%{
 -/tsel2s : sub-tp-trans-aux
             (wf-tp/tsel (pev (wf-tp/rect SR0 WU0 WS0) GE0 L))
             (sub-tp/tsel2 ST GEA P1A)
@@ -2457,6 +2454,7 @@ sub-tp-trans-aux :
             <- eq-wf EQS0 WS0 WS0'
             <- eq-wf-env EQG0 WS0' WS0''
             <- sub-tp-trans-aux WS0'' ST2 SB1' ST3.
+}%
 
 -/tsels-tsels : sub-tp-trans-aux
                  W0
@@ -2495,6 +2493,7 @@ sub-tp-trans-aux :
 }%
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
+%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
