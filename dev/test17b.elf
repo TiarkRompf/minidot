@@ -304,9 +304,9 @@ sub-tp/tsel1 : sub-tp G1 (tsel E1 N) G2 T2
               <- sub-tp G1X TB1 G2 T2.
 
 sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
-              <- sub-tp GI (tsel E2 N) G2 (tsel E2 N)
+              <- sub-tp GI (tsel EI N) G2 (tsel E2 N)
               <- path-eval G2 E2 (rect N TA2 TB2) G2'
-              <- path-eval GI E2 (rect N TAI TBI) GI'
+              <- path-eval GI EI (rect N TAI TBI) GI'
               <- getenv G2' G2X
               <- getenv GI' GIX
               <- sub-tp GIX (rect N TAI TBI) G2X (rect N TA2 TB2)
@@ -2155,6 +2155,12 @@ extract-pev-lkp : path-eval G (var X) T EG -> tlookup G X TX -> type.
 %worlds () (extract-pev-lkp _ _).
 %total A (extract-pev-lkp A _).
 
+getenv-right: getenv (etenv/right G) G' -> sametenv G' G -> type.
+%mode getenv-right +A -B.
+- : getenv-right getenv/right identtenv.
+%worlds () (getenv-right _ _).
+%total A (getenv-right A _).
+
 sub-tp-trans-aux :
   %% Inputs
   wf-tp G2 T2 ->
@@ -2286,33 +2292,6 @@ sub-tp-trans-aux :
     <- eq-low-env EQGB STB' STB''
     <- sub-tp-trans-aux WU0 ST1U'' STB'' OUT.
 
-%{
--/tsel2-tsel1 : sub-tp-trans-aux
-                 (wf-tp/tsel PW)
-                 (sub-tp/tsel2 A1 GE1 P1)
-                 (sub-tp/tsel1 A2 GE2 P2)
-                 OUT
-   <- path-eval-etenv PW GEW
-   <- path-eval-eq P1 P2 EQR12 EQGE12
-   <- rect-same-all-same EQR12 EQS12 EQU12
-   <- same-etenv-tenv EQGE12 GE1 GE2 EQG12
-   <- path-eval-eq P1 PW EQR1W EQGE1W
-   <- rect-same-all-same EQR1W EQS1W EQU1W
-   <- same-etenv-tenv EQGE1W GE1 GEW EQG1W
-   <- path-eval-eq P2 PW EQR2W EQGE2W
-   <- rect-same-all-same EQR2W EQS2W EQU2W
-   <- same-etenv-tenv EQGE2W GE2 GEW EQG2W
-   <- extract-wf-pev PW GEW' W'
-   <- same-etenv-tenv identenv GEW' GEW EQW
-   <- eq-wf-env EQW W' (wf-tp/rect BSU WU WS)
-   <- eq-high EQS1W A1 A1'
-   <- eq-high-env EQG1W A1' A1''
-   <- sub-tp-trans-aux WS A1'' BSU BAS
-   <- eq-low EQU2W A2 A2'
-   <- eq-low-env EQG2W A2' A2''
-   <- sub-tp-trans-aux WU BAS A2'' OUT.
-}%
-
 -/tbind2  : sub-tp-trans-aux
        W
        SBT1
@@ -2391,28 +2370,43 @@ sub-tp-trans-aux :
             <- eq-low-env EQG ST1 ST2
             <- extend-sub-tp1-mult ST2 S1 ST3.
 
-%{
 -/tsel2s : sub-tp-trans-aux
             (wf-tp/tsel (pev (wf-tp/rect SR0 WU0 WS0) GE0 L))
-            (sub-tp/tsel2 ST GEA P1A)
-            (sub-tp/tsels N P2 (pev (wf-tp/rect SR1 WU1 WS1) GE1 L1) S1 L2 S2)
-            (sub-tp/tsel2 ST3 getenv/right P2')
-            <- extend-wf-pev-case-right-mult P2 S2 P2'
-            <- extend-wf-pev-case-left-mult (pev (wf-tp/rect SR1 WU1 WS1) GE1 L1) S1 P1'
-            <- path-eval-eq  P1A P1' EQR EQGE
-            <- rect-same-all-same EQR EQS EQU
-            <- same-etenv-tenv EQGE GEA getenv/left EQG
-            <- eq-high EQS ST ST1
-            <- eq-high-env EQG ST1 ST2
-            <- sub-tp-refl WS1 SB1
-            <- extend-sub-tp1-mult SB1 S1 SB1'
-            <- path-eval-eq (pev (wf-tp/rect SR0 WU0 WS0) GE0 L) P1' EQR0 EQGE0
-            <- rect-same-all-same EQR0 EQS0 EQU0
-            <- same-etenv-tenv EQGE0 GE0 getenv/left EQG0
-            <- eq-wf EQS0 WS0 WS0'
-            <- eq-wf-env EQG0 WS0' WS0''
-            <- sub-tp-trans-aux WS0'' ST2 SB1' ST3.
-}%
+            (sub-tp/tsel2 ST2I ST1I STRI2 GI GA2 PI PA2 STSI2)
+            (sub-tp/tsels N (pev (wf-tp/rect SR3 WU3 WS3) GE3 L3) (pev (wf-tp/rect SR2 WU2 WS2) GE2 L2) S2 L1 S3)
+            (sub-tp/tsel2 STXI ST1I STRIX GI getenv/right PI PX (sub-tp/tsels N (pev (wf-tp/rect SR3 WU3 WS3) GE3 L3) (pev (wf-tp/rect SR2 WU2 WS2) GE2 L2) S2 L1 S3))
+            <- extend-wf-pev-case-right-mult (pev (wf-tp/rect SR3 WU3 WS3) GE3 L3) S3 P3'
+            <- extend-wf-pev-case-left-mult (pev (wf-tp/rect SR2 WU2 WS2) GE2 L2) S2 P2'
+            <- path-eval-eq P2' PA2 EQR2 EQGE2
+            <- rect-same-all-same EQR2 EQS2 EQU2
+            <- eq-pev EQR2 P3' PX
+            <- path-eval-eq PA2 (pev (wf-tp/rect SR0 WU0 WS0) GE0 L) EQRAW2 EQGEAW2
+            <- same-etenv-tenv EQGEAW2 GA2 GE0 EQGAW2
+            <- rect-same-all-same EQRAW2 EQSAW2 EQUAW2
+            <- eq-high EQUAW2 ST2I ST2I'
+            <- eq-high-env EQGAW2 ST2I' ST2I''
+            <- getenv-right GE3 EQG3
+            <- eq-wf-env EQG3 WU3 WU3'
+            <- sub-tp-refl WU3' BU3
+            <- extend-sub-tp1-mult BU3 S2 BU3'
+            <- path-eval-eq P2' (pev (wf-tp/rect SR0 WU0 WS0) GE0 L) EQRW2 EQGEW2
+            <- same-etenv-tenv EQGEW2 getenv/left GE0 EQGW2
+            <- rect-same-all-same EQRW2 EQSW2 EQUW2
+            <- eq-low-env EQGW2 BU3' BU3''
+            <- eq-low EQUW2 BU3'' BU3'''
+            <- path-eval-eq (pev (wf-tp/rect SR0 WU0 WS0) GE0 L) PA2 EQRWA2 EQGEWA2
+            <- rect-same-all-same EQRWA2 EQSWA2 EQUWA2
+            <- eq-high EQU2 BU3''' BU3''''
+            <- sub-tp-trans-aux WU0 ST2I'' BU3'''' STXI
+            <- eq-high EQRAW2 STRI2 STRI2'
+            <- eq-high-env EQGAW2 STRI2' STRI2''
+            <- eq-wf-env EQG3 (wf-tp/rect SR3 WU3 WS3) WR3
+            <- sub-tp-refl WR3 BR3
+            <- extend-sub-tp1-mult BR3 S2 BR3'
+            <- eq-low-env EQGW2 BR3' BR3''
+            <- eq-low EQRW2 BR3'' BR3'''
+            <- eq-high EQR2 BR3''' BR3''''
+            <- sub-tp-trans-aux (wf-tp/rect SR0 WU0 WS0) STRI2'' BR3'''' STRIX.
 
 -/tsels-tsels : sub-tp-trans-aux
                  W0
@@ -2451,7 +2445,8 @@ sub-tp-trans-aux :
 }%
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
-% %terminates {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
+%terminates {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
+%.
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
