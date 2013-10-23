@@ -2283,6 +2283,25 @@ sub-tp-trans-aux :
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
+-/tsel2-tsel1 : sub-tp-trans-aux
+                 (wf-tp/tsel (pev (wf-tp/rect BSU0 WU0 WS0) G L))
+                 (sub-tp/tsel2 ST1I (sub-tp/rect BUI2 BS2I BSU2 BSUI) GI GA2 (pev (wf-tp/rect BSUI' WUI WSI) GI' LI) PA2 STSI2)
+                 (sub-tp/tsel1 STB GB2 PB2)
+                 OUT
+    <- path-eval-eq PA2 (pev (wf-tp/rect BSU0 WU0 WS0) G L) EQRA EQGEA
+    <- path-eval-eq PB2 (pev (wf-tp/rect BSU0 WU0 WS0) G L) EQRB EQGEB
+    <- same-etenv-tenv EQGEA GA2 G EQGA
+    <- same-etenv-tenv EQGEB GB2 G EQGB
+    <- rect-same-all-same EQRA EQSA EQUA
+    <- rect-same-all-same EQRB EQSB EQUB
+    <- sub-tp-trans-aux WUI BSUI BUI2 BSIU2
+    <- sub-tp-trans-aux WSI ST1I BSIU2 ST1U
+    <- eq-high EQUA ST1U ST1U'
+    <- eq-high-env EQGA ST1U' ST1U''
+    <- eq-low EQUB STB STB'
+    <- eq-low-env EQGB STB' STB''
+    <- sub-tp-trans-aux WU0 ST1U'' STB'' OUT.
+
 %{
 -/tsel2-tsel1 : sub-tp-trans-aux
                  (wf-tp/tsel PW)
