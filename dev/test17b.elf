@@ -2469,8 +2469,6 @@ sub-tp-trans-aux :
 }%
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
-%terminates {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
-%.
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
