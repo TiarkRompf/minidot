@@ -2247,6 +2247,12 @@ sub-tp-trans-aux :
              (sub-tp/tselx STB GB3 GB2 PB3 PB2)
              (sub-tp/tsel22 (sub-tp/tselx STB GB3 GB2 PB3 PB2) (sub-tp/tsel22 STA2 STA1)).
 
+-/tsel22 : sub-tp-trans-aux
+            W0
+            STA
+            (sub-tp/tsel22 ST2 ST1)
+            (sub-tp/tsel22 ST2 ST1')
+    <- sub-tp-trans-aux W0 STA ST1 ST1'.
 %{
 -/tsel2x : sub-tp-trans-aux
             (wf-tp/tsel (pev (wf-tp/rect BSU0 WU0 WS0) G L))
