@@ -413,28 +413,6 @@ t/empty    : type-exp G empty top.
 
 t/var      : type-exp G (var N) T <- tlookup G N T <- wf-tp G T.
 
-% t/var      : type-exp G (var X) T <- path-eta G (var X) T.
-
-% t/varx     : type-exp G (var X) (rect N (tsel (var X) N) (tsel (var X) N))
-%              <- path-eval G (var X) (rect N T1 T2) EG
-%              <- tlookup G X T
-%              <- wf-tp G T.
-
-% t/varx     : type-exp G (var X) (recv N (tsel (var X) NT))
-%              <- tlookup G X (bind N0 G0 T0)
-%              <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
-%              <- wf-tp G (tsel (var X) NT)
-%              <- wf-tp G (bind N0 G0 T0)
-%              <- sub-tp (tcons T0 G0) (recv N (tsel (var N0) NT)) G (recv N (tsel (var X) NT)) % --
-%              .
-
-% t/selx     : type-exp G (sel (var X) N) (tsel (var X) NT)
-%              <- tlookup G X (bind N0 G0 T0)
-%              <- sub-tp (tcons T0 G0) T0 (tcons T0 G0) (recv N (tsel (var N0) NT))
-%              <- wf-tp G (tsel (var X) NT)
-%              <- wf-tp G (bind N0 G0 T0)
-%              .
-
 t/sel       : type-exp G (sel E1 LNV) T1
             <- type-exp G E1 (recv LNV T1).
 
@@ -447,10 +425,7 @@ t/fun      : type-exp G (fun TC LNF T3 R T4 LNV R2 T2 M)
                 <- sub-tp (tcons MT G) T2 (tcons TC G) T2
                 <- wf-tp (tcons MT G) MT                
                 <- wf-tp G TC
-%                <- init-tp G (bind N G (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) TC
-%                <- init-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) TC
-                 <- sub-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) (tcons TC G) TC
-%                <- sub-tp G (bind N G (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) G TC
+                <- sub-tp (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) (tcons TC G) TC
                 .
 
 t/app       : type-exp G (app E1 LNF E2) T2
