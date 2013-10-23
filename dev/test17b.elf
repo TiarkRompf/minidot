@@ -866,7 +866,7 @@ eq-low-env: sametenv G1 G1' -> sub-tp G1 T1 G2 T2 -> sub-tp G1' T1 G2 T2 -> type
 
 %worlds () (eq-low-env _ _ _).
 %total {A} (eq-low-env A _ _).
-%reduces N3 <= N2 (eq-low-env _ N2  N3).
+% %reduces N3 <= N2 (eq-low-env _ N2  N3).
 
 natid : nat -> nat -> type.
 natident : natid N N.
@@ -966,7 +966,7 @@ eq-high-env: sametenv G2 G2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2' T2 -> typ
 
 %worlds () (eq-high-env _ _ _).
 %total {A} (eq-high-env A _ _).
-%reduces N3 <= N2 (eq-high-env _ N2  N3).
+% %reduces N3 <= N2 (eq-high-env _ N2  N3).
 
 eq-wf: same T1 T1' -> wf-tp G1 T1 -> wf-tp G1 T1' -> type.
 %mode eq-wf +P1 +P2 -SBT.
@@ -984,7 +984,7 @@ eq-wf-env: sametenv G1 G1' -> wf-tp G1 T1 -> wf-tp G1' T1 -> type.
 
 %worlds () (eq-wf-env _ _ _).
 %total {G2} (eq-wf-env G2 _ _).
-%reduces N3 <= N2 (eq-wf-env _ N2  N3).
+% %reduces N3 <= N2 (eq-wf-env _ N2  N3).
 
 eq-pev-out : same T T' -> sameenv OG OG' -> path-eval G N T OG -> path-eval G N T' OG' -> type.
 %mode eq-pev-out +A +B +C -D.
