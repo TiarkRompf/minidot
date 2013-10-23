@@ -2253,6 +2253,23 @@ sub-tp-trans-aux :
             (sub-tp/tsel22 ST2 ST1)
             (sub-tp/tsel22 ST2 ST1')
     <- sub-tp-trans-aux W0 STA ST1 ST1'.
+
+%{
+-/tsel221 : sub-tp-trans-aux
+             (wf-tp/tsel (pev (wf-tp/rect BSU0 WU0 WS0) G L))
+             (sub-tp/tsel22 (sub-tp/tselx STA2 GA2 GA1 PA2 PA1) STA1)
+             (sub-tp/tsel1 STB GB2 PB2)
+             % (sub-tp/tsel22 (sub-tp/tsel1 STB GB2 PB2) (sub-tp/tsel22 STA2 STA1))
+             OUT
+    <- path-eval-eq PA2 (pev (wf-tp/rect BSU0 WU0 WS0) G L) EQRA EQGEA
+    <- path-eval-eq PB2 (pev (wf-tp/rect BSU0 WU0 WS0) G L) EQRB EQGEB
+    <- same-etenv-tenv EQGEA GA2 G EQGA
+    <- same-etenv-tenv EQGEB GB2 G EQGB
+    <- rect-same-all-same EQRA EQSA EQUA
+    <- rect-same-all-same EQRB EQSB EQUB
+   .
+}%
+
 %{
 -/tsel2x : sub-tp-trans-aux
             (wf-tp/tsel (pev (wf-tp/rect BSU0 WU0 WS0) G L))
