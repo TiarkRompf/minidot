@@ -1244,26 +1244,26 @@ sub-tp-case2: getenv OG GX
 %worlds () (sub-tp-case2 _ _ _ _ _ _ _ _ _ _ _ _).
 %total (A) (sub-tp-case2 A _ _ _ _ _ _ _ _ _ _ _).
 
-sub-tp-casex:  {G1:getenv X15 X1}
-               {P1:path-eval X14 X9 (rect X2 X3 X4) X15}
-               {P1':path-eval (tcons T X14) X9 (rect X2 X3 X4) X16}
-               {X18:env-case X15 X14 X17}
-               {X1':env-case X16 (tcons T X14) X17}
-               {G2:getenv X10 X5}
-               {P2:path-eval X8 X9 (rect X2 X6 X7) X10}
-               {P2':path-eval (tcons T X8) X9 (rect X2 X6 X7) X11}
-               {X13:env-case X10 X8 X12}
-               {X2':env-case X11 (tcons T X8) X12}
-               {ST:sub-tp X1 (rect X2 X3 X4) X5 (rect X2 X6 X7)}
-               {STX:sub-tp (tcons T X1) (rect X2 X3 X4) (tcons T X5) (rect X2 X6 X7)}
-               {STA:sub-tp (tcons T X1) (rect X2 X3 X4) X5 (rect X2 X6 X7)}
-               {STB:sub-tp X1 (rect X2 X3 X4) (tcons T X5) (rect X2 X6 X7)}
-               {G1':getenv X16 X19}
-               {G2':getenv X11 X20}
-               {ST':sub-tp X19 (rect X2 X3 X4) X20 (rect X2 X6 X7)}
-               {ST1':sub-tp X19 (rect X2 X3 X4) X5 (rect X2 X6 X7)}
-               {ST2':sub-tp X1 (rect X2 X3 X4) X20 (rect X2 X6 X7)}
-               type.
+sub-tp-casex:  getenv OG1 G1Y
+               -> path-eval G1 E (rect N TA1 TB1) OG1
+               -> path-eval (tcons T G1) E (rect N TA1 TB1) OG1'
+               -> env-case OG1 G1 G1R
+               -> env-case OG1' (tcons T G1) G1R
+               -> getenv OG2 G2Y
+               -> path-eval G2 E (rect N TA2 TB2) OG2
+               -> path-eval (tcons T G2) E (rect N TA2 TB2) OG2'
+               -> env-case OG2 G2 G2R
+               -> env-case OG2' (tcons T G2) G2R
+               -> sub-tp G1Y (rect N TA1 TB1) G2Y (rect N TA2 TB2)
+               -> sub-tp (tcons T G1Y) (rect N TA1 TB1) (tcons T G2Y) (rect N TA2 TB2)
+               -> sub-tp (tcons T G1Y) (rect N TA1 TB1) G2Y (rect N TA2 TB2)
+               -> sub-tp G1Y (rect N TA1 TB1) (tcons T G2Y) (rect N TA2 TB2)
+               -> getenv OG1' G1X
+               -> getenv OG2' G2X
+               -> sub-tp G1X (rect N TA1 TB1) G2X (rect N TA2 TB2)
+               -> sub-tp G1X (rect N TA1 TB1) G2Y (rect N TA2 TB2)
+               -> sub-tp G1Y (rect N TA1 TB1) G2X (rect N TA2 TB2)
+               -> type.
 %mode sub-tp-casex +G1 +P1 +P1' +X1 +X1' +G2 +P2 +P2' +X2 +X2' +ST +STX +STA +STB -G1' -G2' -ST' -ST1' -ST2'.
 %worlds () (sub-tp-casex _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
 %trustme
