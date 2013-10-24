@@ -303,9 +303,9 @@ sub-tp/tsel1 : sub-tp G1 (tsel E1 N) G2 T2
               <- sub-tp G1X TB1 G2 T2.
 
 sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
-              <- sub-tp GI (tsel EI N) G2 (tsel E2 N)
+              <- sub-tp GI (tsel E2 N) G2 (tsel E2 N)
               <- path-eval G2 E2 (rect N TA2 TB2) G2'
-              <- path-eval GI EI (rect N TAI TBI) GI'
+              <- path-eval GI E2 (rect N TAI TBI) GI'
               <- getenv G2' G2X
               <- getenv GI' GIX
               <- sub-tp GIX (rect N TAI TBI) G2X (rect N TA2 TB2)
