@@ -290,6 +290,7 @@ sub-tp/rect : sub-tp G1 (rect N TA1 TB1) G2 (rect N TA2 TB2)
 sub-tp/recv : sub-tp G1 (recv N T1) G2 (recv N T2)
               <- sub-tp G1 T1 G2 T2.
 
+%{
 sub-tp/tsels : sub-tp G1 (tsel (var N0) NT) G2 (tsel (var X) NT)
                 <- sub-env G2' G2
                 <- tlookup G2' X (bind N0 G0 T0)
@@ -297,16 +298,35 @@ sub-tp/tsels : sub-tp G1 (tsel (var N0) NT) G2 (tsel (var X) NT)
                 % <- path-eval (tcons T0 G0) (var N0) (rect NT S U) (etenv/left (tcons T0 G0))
                 % <- path-eval G2' (var X) (rect NT S U) (etenv/right (tcons T0 G0))
                 <- tsize G0 N0.
+}%
 
+
+%{
 sub-tp/tselx : sub-tp G1 (tsel E N) G2 (tsel E N)
              <- sub-env G G2
              <- sub-env G G1
              <- path-eval G E (rect N TA TB) G'.
+}%
+  
+
+sub-tp/tselx : sub-tp G1 (tsel E N) G2 (tsel E N)
+             <- path-eval G1 E (rect N TA1 TB1) G1' % (etenv/right G1X)
+             <- path-eval G2 E (rect N TA2 TB2) G2' % (etenv/right G2X)
+             <- getenv G1' G1X
+             <- getenv G2' G2X
+             <- sub-tp G1X (rect N TA1 TB1) G2X (rect N TA2 TB2)
+             .
+
+
 
 sub-tp/tbind2 : sub-tp G1 T1 G2 (bind N G0 TN)
-% ++              <- sub-tp G1 T1 (tcons (bind N G0 TN) G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
-              <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2)
-              <- sub-tp G1 T1 (tcons T1' G0) TN
+              <- sub-tp G1 T1 (tcons (bind N G0 TN) G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
+
+              % <- sub-tp G1 T1 G1' T1'            %% built-in slack (trans: T1-bind2)
+              % <- sub-tp G1 T1 (tcons T1' G0) TN
+
+              <- sub-tp G1 T1 (tcons (bind N1 G1 T1) G0) TN
+              <- tsize G1 N1
               <- tsize G0 N
               .
 
@@ -337,9 +357,16 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
               <- getenv G2' G2X
               <- sub-tp G1 T1 G2X TA2.
 
+
+
+
 sub-tp/top  : sub-tp G1 T G2 top <- wf-tp G1 T.
 
 sub-tp/bot  : sub-tp G1 bot G2 T <- wf-tp G2 T.
+
+
+
+
 
 wf-tp/top  : wf-tp G top.
 wf-tp/bot  : wf-tp G bot.
@@ -521,6 +548,53 @@ wfv/eta  : wf-val V GX (recv N (tsel (var X) NT))
 
 wfe/n    : wf-env vnil tnil.
 wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H G.
+
+
+
+%query 0 1
+sub-tp
+   (tcons
+       (bind z tnil
+           (and (rect (s z) bot top)
+               (arrow z (tsel (var z) (s z)) (tsel (var z) (s z))))) tnil)
+   top
+   (tcons
+       (bind z tnil
+           (and (rect (s z) bot top)
+               (arrow z (tsel (var z) (s z)) (tsel (var z) (s z))))) tnil)
+   (tsel (var z) (s z)).
+
+
+%query 1 1
+sub-tp
+   (tcons
+       (bind z tnil
+           (and (rect (s z) top top)
+               (arrow z (tsel (var z) (s z)) (tsel (var z) (s z))))) tnil)
+   top
+   (tcons
+       (bind z tnil
+           (and (rect (s z) top top)
+               (arrow z (tsel (var z) (s z)) (tsel (var z) (s z))))) tnil)
+   (tsel (var z) (s z)).
+
+
+%query 1 1
+sub-tp
+   (tcons
+       (bind z tnil
+           (and (rect (s z) top top)
+               (arrow z (tsel (var z) (s z)) (tsel (var z) (s z))))) tnil)
+   (tsel (var z) (s z))
+   (tcons
+       (bind z tnil
+           (and (rect (s z) bot top)
+               (arrow z (tsel (var z) (s z)) (tsel (var z) (s z))))) tnil)
+   (tsel (var z) (s z)).
+
+
+
+
 
 %.
 
