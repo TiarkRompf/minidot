@@ -303,14 +303,28 @@ sub-tp/tsel1 : sub-tp G1 (tsel E1 N) G2 T2
               <- sub-tp G1X TB1 G2 T2.
 
 sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
-              <- sub-tp GI (tsel E2 N) G2 (tsel E2 N)
               <- path-eval G2 E2 (rect N TA2 TB2) G2'
-              <- path-eval GI E2 (rect N TAI TBI) GI'
+              <- getenv G2' G2X
+              <- sub-tp G1 T1 G2X TA2.
+
+%{
+sub-tp/tsel2r : sub-tp G1 T1 G2 (tsel E2 N)
+              <- path-eval G2 E2 (rect N TA2 TB2) G2'
+              <- path-eval G1 E2 (rect N TAI TBI) GI'
               <- getenv G2' G2X
               <- getenv GI' GIX
               <- sub-tp GIX (rect N TAI TBI) G2X (rect N TA2 TB2)
               <- sub-tp G1 T1 GIX TAI
               <- sub-tp G1 T1 G2X TB2.
+}%
+
+sub-tp/tsels : sub-tp G1 (tsel (var N0) NT) G2 (tsel (var X) NT)
+                <- sub-env G2' G2
+                <- tlookup G2' X (bind N0 G0 T0)
+                <- sub-env (tcons T0 G0) G1
+                <- path-eval (tcons T0 G0) (var N0) (rect NT S U) (etenv/left (tcons T0 G0))
+                <- path-eval G2' (var X) (rect NT S U) (etenv/right (tcons T0 G0))
+                <- tsize G0 N0.
 
 sub-tp/tbind1 : sub-tp G1 (bind N G0 TN) G2 T2
               <- sub-tp (tcons TN G0) TN G2 T2
