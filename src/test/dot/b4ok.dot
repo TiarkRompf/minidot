@@ -1,0 +1,11 @@
+val r : { r =>
+  { type Nat: Bot .. Top } &
+  { def succ(n: r.Nat): r.Nat } &
+  { val zero: r.Nat }
+}
+= new ( r =>
+  type Nat = Top
+  def succ(n: r.Nat): r.Nat = n
+  val zero: r.Nat = new ()
+)
+r.succ(r.zero)

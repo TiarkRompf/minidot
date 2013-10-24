@@ -1,4 +1,5 @@
 % bigger examples
+% %query 1 1 type-exp tnil ex_norec_nat top.
 % %query 1 1 type-exp tnil ex_nat top.
 % %query 1 1 type-exp tnil ex_list top.
 
@@ -51,16 +52,18 @@
 %query 1 1 type-exp tnil p12a top.
 %query 1 1 type-exp tnil p12b top.
 %query 1 1 type-exp tnil p12c top.
-%query 1 1 type-exp tnil p13a top.
+%query 1 1 type-exp tnil p13b top.
 %query 1 1 type-exp tnil p13 top.
 
 %query 1 1 type-exp tnil b1ok top.
+% %query 1 1 type-exp tnil b4ok top.
 
 % towards DOT counterexamples
 %query 1 1 type-exp tnil c1aa top.
 %query 1 1 type-exp tnil c1a top.
 %query 1 1 type-exp tnil c1b top.
 %query 1 1 type-exp tnil c1c top.
+% %query 1 1 type-exp tnil c1d top.
 %query 1 1 type-exp tnil c1ok top.
 
 % regression
@@ -70,6 +73,7 @@
 %query 1 1 type-exp tnil c1 top.
 %query 1 1 type-exp tnil e16n  top.
 %query 1 1 type-exp tnil e16  top.
+%query 1 1 type-exp tnil p13a top.
 %query 1 1 type-exp tnil p14a top.
 %query 1 1 type-exp tnil p14 top.
 %query 1 1 type-exp tnil b3ok top.
@@ -78,6 +82,22 @@
 %query 0 1 type-exp tnil b1 top.
 %query 0 1 type-exp tnil b2 top.
 %query 0 1 type-exp tnil b3 top.
+
+%query 0 1 type-exp tnil b4 top.
+%query 0 1
+sub-tp
+   (tcons top
+       (tcons
+           (bind z tnil
+               (and (rect (s z) bot top)
+                   (arrow z (tsel (var z) (s z)) (tsel (var z) (s z))))) tnil))
+   top
+   (tcons top
+       (tcons
+           (bind z tnil
+               (and (rect (s z) bot top)
+                   (arrow z (tsel (var z) (s z)) (tsel (var z) (s z))))) tnil))
+   (tsel (var z) (s z)).
 
 %query 1 1
 sub-tp
@@ -99,3 +119,4 @@ sub-tp
 (tcons top tnil)
    (bind (s z) (tcons top tnil)
        (and (recv (s z) (tsel (var (s z)) z)) (rect z bot top))). 
+

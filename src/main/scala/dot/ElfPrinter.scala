@@ -8,7 +8,7 @@ trait ElfPrinter { this: DotSyntax =>
   import types._
   import init._
 
-  val VERSION = 9
+  val VERSION = 10
 
   def collectTags(e: Any): List[Tag] = {
     def c(e: Any): List[Tag] = e match {
@@ -40,14 +40,14 @@ trait ElfPrinter { this: DotSyntax =>
         case None => (Bot, Top, Bot, Top)
         case Some(i) => (i.d.tyS, i.d.tyU, i.di.tyS, i.di.tyU)
       }
-      val e = if (VERSION >= 9)
+      val e = if (VERSION >= 10)
                 s" ${printEntity(tags, env, hints, teS)} ${printEntity(tags, env, hints, teU)}"
               else ""
       s"(mcons _ ${printEntity(tags, env, hints, tyS)} ${printEntity(tags, env, hints, tyU)}$e ${printTypeMembers(tags, env, hints, members, rtags)})"
   }
 
   def inferConstructorType(oself: Option[Var], members: List[Init]): Type = {
-    def infer1(m: Init): Type = if (VERSION >= 9) m.di else m.d
+    def infer1(m: Init): Type = if (VERSION >= 10) m.di else m.d
     def infer(ms: List[Init]): Type = ms match {
       case Nil => Top
       case m::Nil => infer1(m)
