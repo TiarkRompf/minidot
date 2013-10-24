@@ -54,6 +54,7 @@
 %query 1 1 type-exp tnil p13 top.
 
 %query 1 1 type-exp tnil b1ok top.
+%query 1 1 type-exp tnil b4ok top.
 
 % towards DOT counterexamples
 %query 1 1 type-exp tnil c1aa top.
@@ -72,7 +73,22 @@
 %query 1 1 type-exp tnil p14 top.
 %query 1 1 type-exp tnil b3ok top.
 
-% these should not type-check
+% these should not type-check -- but some do :(
 %query 0 1 type-exp tnil b1 top.
 %query 0 1 type-exp tnil b2 top.
 %query 0 1 type-exp tnil b3 top.
+%query 0 1 type-exp tnil b4 top.
+%query 0 1
+sub-tp
+   (tcons top
+       (tcons
+           (bind z tnil
+               (and (rect (s z) bot top)
+                   (arrow z (tsel (var z) (s z)) (tsel (var z) (s z))))) tnil))
+   top
+   (tcons top
+       (tcons
+           (bind z tnil
+               (and (rect (s z) bot top)
+                   (arrow z (tsel (var z) (s z)) (tsel (var z) (s z))))) tnil))
+   (tsel (var z) (s z)).
