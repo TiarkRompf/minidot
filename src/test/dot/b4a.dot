@@ -1,5 +1,5 @@
 val r : { r =>
-  { type Nat: Bot .. Top } &
+  { type Nat: Top .. Top } &
   { def succ(n: r.Nat): r.Nat } &
   { val zero: r.Nat }
 }
@@ -8,5 +8,4 @@ val r : { r =>
   def succ(n: r.Nat): r.Nat = n
   val zero: r.Nat = new ()
 )
-val sn: r.Nat = r.succ(r.zero)
-sn
+r.succ(r.zero)

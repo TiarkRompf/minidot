@@ -8,5 +8,6 @@ val r : { r =>
   def succ(n: r.Nat): r.Nat = n
   val zero: r.Nat = new ()
 )
-val sn: r.Nat = r.succ(r.zero)
-sn
+val sz: r.Nat = r.succ(r.zero)
+val sz2: r.Nat = r.succ(r.zero)
+sz
