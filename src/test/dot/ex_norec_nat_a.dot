@@ -9,5 +9,5 @@ val r : { r =>
   val zero: r.Nat = new ()
 )
 val sz: r.Nat = r.succ(r.zero)
-val sz2: r.Nat = r.succ(r.zero)
+val sz2: r.Nat = r.succ(sz)
 sz
