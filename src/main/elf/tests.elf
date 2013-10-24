@@ -51,6 +51,7 @@
 %query 1 1 type-exp tnil p12a top.
 %query 1 1 type-exp tnil p12b top.
 %query 1 1 type-exp tnil p12c top.
+%query 1 1 type-exp tnil p13 top.
 
 %query 1 1 type-exp tnil b1ok top.
 %query 1 1 type-exp tnil b4ok top.
@@ -70,7 +71,7 @@
 %query 1 1 type-exp tnil c1 top.
 %query 1 1 type-exp tnil e16n  top.
 %query 1 1 type-exp tnil e16  top.
-%query 1 1 type-exp tnil p13 top.
+%query 1 1 type-exp tnil p13a top.
 %query 1 1 type-exp tnil p14 top.
 %query 1 1 type-exp tnil b3ok top.
 
