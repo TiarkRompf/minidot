@@ -1,4 +1,5 @@
 % bigger examples
+%query 1 1 type-exp tnil ex_norec_nat top.
 % %query 1 1 type-exp tnil ex_nat top.
 % %query 1 1 type-exp tnil ex_list top.
 
