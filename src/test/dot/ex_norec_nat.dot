@@ -11,4 +11,7 @@ val r : { r =>
 val z: r.Nat = r.zero
 val sz: r.Nat = r.succ(z)
 val three: r.Nat = r.succ(r.succ(r.succ(r.zero)))
+val no = r.succ(new ())
+val nan: Top = new()
+val no2 = r.succ(nan)
 three
