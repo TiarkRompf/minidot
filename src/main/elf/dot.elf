@@ -1208,66 +1208,211 @@ sub-tp-case1:  getenv OG GX
 %total (A) (sub-tp-case1 A _ _ _ _ _ _ _ _ _ _ _).
 
 sub-tp-case2: getenv OG GX
-               -> path-eval G E (rect N TS TU) OG
-               -> path-eval (tcons T G) E (rect N TS TU) OG'
+               -> path-eval G E (rect N TSP TUP) OG
+               -> path-eval (tcons T G) E (rect N TSP TUP) OG'
                -> env-case OG G GE
                -> env-case OG' (tcons T G) GE
                -> sub-tp (tcons T G1) TS1 GX TS
                -> sub-tp G1 TS1 GX TS
                -> sub-tp (tcons T G1) TS1 (tcons T GX) TS
                -> sub-tp G1 TS1 (tcons T GX) TS
+               -> sub-tp GI TI GX TX
+               -> sub-tp GI TI (tcons T GX) TX
                -> getenv OG' GX'
                -> sub-tp (tcons T G1) TS1 GX' TS
                -> sub-tp G1 TS1 GX' TS
+               -> sub-tp GI TI GX' TX
                -> type.
-%mode sub-tp-case2 +A +B +C +D +E +F +G +H +I -J -K -L.
+%mode sub-tp-case2 +A +B +C +D +E +F +G +H +I +J +K -L -M -N -O.
 
-- : sub-tp-case2 getenv/left P P' env-case/left env-case/left ST STA ST' STA' getenv/left ST' STA'.
-- : sub-tp-case2 getenv/right P P' env-case/right env-case/right ST STA ST' STA' getenv/right ST STA.
+- : sub-tp-case2 getenv/left P P' env-case/left env-case/left ST STA ST' STA' STI STI' getenv/left ST' STA' STI'.
+- : sub-tp-case2 getenv/right P P' env-case/right env-case/right ST STA ST' STA' STI STI' getenv/right ST STA STI.
 
-- : sub-tp-case2 getenv/left (pev _ _ (L: tlookexp _ (var N) _ _)) (pev _ _ L') env-case/left (env-case/right: env-case _ (tcons T _) GX') (ST: sub-tp (tcons T G1) TS1 _ TS) STA ST' STA' getenv/right O1 O2
+- : sub-tp-case2 getenv/left (pev _ _ (L: tlookexp _ (var N) _ _)) (pev _ _ L') env-case/left (env-case/right: env-case _ (tcons T _) GX') (ST: sub-tp (tcons T G1) TS1 _ TS) STA ST' STA' STI STI' getenv/right O1 O2 O3
      <- extend-wf-lkpe-case-left L T L2
      <- eq-refl N EQ
      <- lookexp-eq L2 L' EQ _ _ X
      <- not-sameenv-left-right X CONTRA
      <- no-subtype CONTRA (tcons T G1) TS1 GX' TS O1
-     <- no-subtype CONTRA G1 TS1 GX' TS O2.
+     <- no-subtype CONTRA G1 TS1 GX' TS O2
+     <- no-subtype CONTRA _ _ _ _ O3.
 
-- : sub-tp-case2 getenv/right (pev _ _ (L: tlookexp _ (var N) _ _)) (pev _ _ L') env-case/right (env-case/left: env-case _ (tcons T G) GX') (ST: sub-tp (tcons T G1) TS1 _ TS) STA ST' STA' getenv/left O1 O2
+- : sub-tp-case2 getenv/right (pev _ _ (L: tlookexp _ (var N) _ _)) (pev _ _ L') env-case/right (env-case/left: env-case _ (tcons T G) GX') (ST: sub-tp (tcons T G1) TS1 _ TS) STA ST' STA' STI STI' getenv/left O1 O2 O3
      <- extend-wf-lkpe-case-right L T L2
      <- eq-refl N EQ
      <- lookexp-eq L' L2 EQ _ _ X
      <- not-sameenv-left-right X CONTRA
      <- no-subtype CONTRA (tcons T G1) TS1 (tcons T G) TS O1
-     <- no-subtype CONTRA G1 TS1 (tcons T G) TS O2.
+     <- no-subtype CONTRA G1 TS1 (tcons T G) TS O2
+     <- no-subtype CONTRA _ _ _ _ O3.
 
-%worlds () (sub-tp-case2 _ _ _ _ _ _ _ _ _ _ _ _).
-%total (A) (sub-tp-case2 A _ _ _ _ _ _ _ _ _ _ _).
+%worlds () (sub-tp-case2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+%total (A) (sub-tp-case2 A _ _ _ _ _ _ _ _ _ _ _ _ _ _).
 
-sub-tp-casex:  {G1:getenv X15 X1}
-               {P1:path-eval X14 X9 (rect X2 X3 X4) X15}
-               {P1':path-eval (tcons T X14) X9 (rect X2 X3 X4) X16}
-               {X18:env-case X15 X14 X17}
-               {X1':env-case X16 (tcons T X14) X17}
-               {G2:getenv X10 X5}
-               {P2:path-eval X8 X9 (rect X2 X6 X7) X10}
-               {P2':path-eval (tcons T X8) X9 (rect X2 X6 X7) X11}
-               {X13:env-case X10 X8 X12}
-               {X2':env-case X11 (tcons T X8) X12}
-               {ST:sub-tp X1 (rect X2 X3 X4) X5 (rect X2 X6 X7)}
-               {STX:sub-tp (tcons T X1) (rect X2 X3 X4) (tcons T X5) (rect X2 X6 X7)}
-               {STA:sub-tp (tcons T X1) (rect X2 X3 X4) X5 (rect X2 X6 X7)}
-               {STB:sub-tp X1 (rect X2 X3 X4) (tcons T X5) (rect X2 X6 X7)}
-               {G1':getenv X16 X19}
-               {G2':getenv X11 X20}
-               {ST':sub-tp X19 (rect X2 X3 X4) X20 (rect X2 X6 X7)}
-               {ST1':sub-tp X19 (rect X2 X3 X4) X5 (rect X2 X6 X7)}
-               {ST2':sub-tp X1 (rect X2 X3 X4) X20 (rect X2 X6 X7)}
-               type.
-%mode sub-tp-casex +G1 +P1 +P1' +X1 +X1' +G2 +P2 +P2' +X2 +X2' +ST +STX +STA +STB -G1' -G2' -ST' -ST1' -ST2'.
-%worlds () (sub-tp-casex _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
-%trustme
-%total A (sub-tp-casex A _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+sub-tp-casex:  {T} getenv OG1 G1Y
+               -> path-eval G1 E (rect N TA1 TB1) OG1
+               -> path-eval (tcons T G1) E (rect N TA1 TB1) OG1'
+               -> env-case OG1 G1 G1R
+               -> env-case OG1' (tcons T G1) G1R
+               -> getenv OG2 G2Y
+               -> path-eval G2 E (rect N TA2 TB2) OG2
+               -> path-eval (tcons T G2) E (rect N TA2 TB2) OG2'
+               -> env-case OG2 G2 G2R
+               -> env-case OG2' (tcons T G2) G2R
+               -> sub-tp G1Y (rect N TA1 TB1) G2Y (rect N TA2 TB2)
+               -> sub-tp (tcons T G1Y) (rect N TA1 TB1) (tcons T G2Y) (rect N TA2 TB2)
+               -> sub-tp (tcons T G1Y) (rect N TA1 TB1) G2Y (rect N TA2 TB2)
+               -> sub-tp G1Y (rect N TA1 TB1) (tcons T G2Y) (rect N TA2 TB2)
+               -> getenv OG1' G1X
+               -> getenv OG2' G2X
+               -> sub-tp G1X (rect N TA1 TB1) G2X (rect N TA2 TB2)
+               -> sub-tp G1X (rect N TA1 TB1) G2Y (rect N TA2 TB2)
+               -> sub-tp G1Y (rect N TA1 TB1) G2X (rect N TA2 TB2)
+               -> type.
+%mode sub-tp-casex +T +G1 +P1 +P1' +X1 +X1' +G2 +P2 +P2' +X2 +X2' +ST +STX +STA +STB -G1' -G2' -ST' -ST1' -ST2'.
+
+- : sub-tp-casex _
+     getenv/left P1 P1' env-case/left env-case/left
+     getenv/left P2 P2' env-case/left env-case/left
+     ST STX STA STB
+     getenv/left getenv/left
+     STX STA STB.
+
+- : sub-tp-casex _
+     getenv/right P1 P1' env-case/right env-case/right
+     getenv/right P2 P2' env-case/right env-case/right
+     ST STX STA STB
+     getenv/right getenv/right
+     ST ST ST.
+
+- : sub-tp-casex _
+     getenv/left P1 P1' env-case/left env-case/left
+     getenv/right P2 P2' env-case/right env-case/right
+     ST STX STA STB
+     getenv/left getenv/right
+     STA STA ST.
+
+- : sub-tp-casex _
+     getenv/right P1 P1' env-case/right env-case/right
+     getenv/left P2 P2' env-case/left env-case/left
+     ST STX STA STB
+     getenv/right getenv/left
+     STB ST STB.
+
+- : sub-tp-casex T
+     getenv/left (pev W getenv/left L) (pev W' getenv/right  L') env-case/left env-case/right
+     _ _ _ _ env-case/right
+     ST STX STA STB
+     getenv/right getenv/right
+     O1 O2 O3
+     <- extend-wf-lkpe-case-left L T LX
+     <- eq-refl N EQ
+     <- lookexp-eq LX L' EQ _ _ X
+     <- not-sameenv-left-right X CONTRA
+     <- no-subtype CONTRA _ _ _ _ O1
+     <- no-subtype CONTRA _ _ _ _ O2
+     <- no-subtype CONTRA _ _ _ _ O3.
+
+- : sub-tp-casex T
+     getenv/left (pev W getenv/left L) (pev W' getenv/right  L') env-case/left env-case/right
+     _ _ _ _ env-case/left
+     ST STX STA STB
+     getenv/right getenv/left
+     O1 O2 O3
+     <- extend-wf-lkpe-case-left L T LX
+     <- eq-refl N EQ
+     <- lookexp-eq LX L' EQ _ _ X
+     <- not-sameenv-left-right X CONTRA
+     <- no-subtype CONTRA _ _ _ _ O1
+     <- no-subtype CONTRA _ _ _ _ O2
+     <- no-subtype CONTRA _ _ _ _ O3.
+
+- : sub-tp-casex T
+     getenv/right (pev W getenv/right L) (pev W' getenv/left L') env-case/right env-case/left
+     _ _ _ _ env-case/right
+     ST STX STA STB
+     getenv/left getenv/right
+     O1 O2 O3
+     <- extend-wf-lkpe-case-right L T LX
+     <- eq-refl N EQ
+     <- lookexp-eq L' LX EQ _ _ X
+     <- not-sameenv-left-right X CONTRA
+     <- no-subtype CONTRA _ _ _ _ O1
+     <- no-subtype CONTRA _ _ _ _ O2
+     <- no-subtype CONTRA _ _ _ _ O3.
+
+- : sub-tp-casex T
+     getenv/right (pev W getenv/right L) (pev W' getenv/left L') env-case/right env-case/left
+     _ _ _ _ env-case/left
+     ST STX STA STB
+     getenv/left getenv/left
+     O1 O2 O3
+     <- extend-wf-lkpe-case-right L T LX
+     <- eq-refl N EQ
+     <- lookexp-eq L' LX EQ _ _ X
+     <- not-sameenv-left-right X CONTRA
+     <- no-subtype CONTRA _ _ _ _ O1
+     <- no-subtype CONTRA _ _ _ _ O2
+     <- no-subtype CONTRA _ _ _ _ O3.
+
+- : sub-tp-casex T
+     _ _ _ _ env-case/right
+     getenv/left (pev W getenv/left L) (pev W' getenv/right  L') env-case/left env-case/right
+     ST STX STA STB
+     getenv/right getenv/right
+     O1 O2 O3
+     <- extend-wf-lkpe-case-left L T LX
+     <- eq-refl N EQ
+     <- lookexp-eq LX L' EQ _ _ X
+     <- not-sameenv-left-right X CONTRA
+     <- no-subtype CONTRA _ _ _ _ O1
+     <- no-subtype CONTRA _ _ _ _ O2
+     <- no-subtype CONTRA _ _ _ _ O3.
+
+- : sub-tp-casex T
+     _ _ _ _ env-case/left
+     getenv/left (pev W getenv/left L) (pev W' getenv/right  L') env-case/left env-case/right
+     ST STX STA STB
+     getenv/left getenv/right
+     O1 O2 O3
+     <- extend-wf-lkpe-case-left L T LX
+     <- eq-refl N EQ
+     <- lookexp-eq LX L' EQ _ _ X
+     <- not-sameenv-left-right X CONTRA
+     <- no-subtype CONTRA _ _ _ _ O1
+     <- no-subtype CONTRA _ _ _ _ O2
+     <- no-subtype CONTRA _ _ _ _ O3.
+
+- : sub-tp-casex T
+     _ _ _ _ env-case/right
+     getenv/right (pev W getenv/right L) (pev W' getenv/left L') env-case/right env-case/left
+     ST STX STA STB
+     getenv/right getenv/left
+     O1 O2 O3
+     <- extend-wf-lkpe-case-right L T LX
+     <- eq-refl N EQ
+     <- lookexp-eq L' LX EQ _ _ X
+     <- not-sameenv-left-right X CONTRA
+     <- no-subtype CONTRA _ _ _ _ O1
+     <- no-subtype CONTRA _ _ _ _ O2
+     <- no-subtype CONTRA _ _ _ _ O3.
+
+- : sub-tp-casex T
+     _ _ _ _ env-case/left
+     getenv/right (pev W getenv/right L) (pev W' getenv/left L') env-case/right env-case/left
+     ST STX STA STB
+     getenv/left getenv/left
+     O1 O2 O3
+     <- extend-wf-lkpe-case-right L T LX
+     <- eq-refl N EQ
+     <- lookexp-eq L' LX EQ _ _ X
+     <- not-sameenv-left-right X CONTRA
+     <- no-subtype CONTRA _ _ _ _ O1
+     <- no-subtype CONTRA _ _ _ _ O2
+     <- no-subtype CONTRA _ _ _ _ O3.
+
+%worlds () (sub-tp-casex _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+%total A (sub-tp-casex _ A _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
 
 pev-case: wf-tp GX T
            -> getenv OG GX
@@ -1369,13 +1514,17 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-wf-pev-case P T P' X X'
       <- extend-sub-tp ST T ST' STA STB
       <- sub-tp-case1 G P P' X X' STB ST ST' STA G' STX' STAX.
-%{
-- : extend-sub-tp (sub-tp/tsel2 ST STI GI G2 PI P2 STI2) T
-    (sub-tp/tsel2 STX' G' P') (sub-tp/tsel2 STA G P) (sub-tp/tsel2 STBX G' P')
-      <- extend-wf-pev-case P T P' X X'
-      <- extend-sub-tp ST T ST' STA STB
-      <- sub-tp-case2 G P P' X X' STA ST ST' STB G' STX' STBX.
-}%
+
+- : extend-sub-tp (sub-tp/tsel2 ST12B ST1AX STRX2 GEX GE2 PX P2 STI2) T
+     (sub-tp/tsel2 ST1'2B' ST1'AX STRX2' GEX GE2' PX P2' STI2')
+     (sub-tp/tsel2 ST1'2B ST1'AX STRX2 GEX GE2 PX P2 STI2)
+     (sub-tp/tsel2 ST12B' ST1AX STRX2' GEX GE2' PX P2' STI2')
+      <- extend-wf-pev-case P2 T P2' X2 X2'
+      <- extend-sub-tp STI2 T _ _ STI2'
+      <- extend-sub-tp STRX2 T _ _ STRX2E
+      <- extend-sub-tp ST1AX T _ ST1'AX _
+      <- extend-sub-tp ST12B T ST1'2BE ST1'2B ST12BE
+      <- sub-tp-case2 GE2 P2 P2' X2 X2' ST1'2B ST12B ST1'2BE ST12BE STRX2 STRX2E GE2' ST1'2B' ST12B' STRX2'.
 
 - : extend-sub-tp (sub-tp/tselx ST G2 G1 P2 P1) T
      (sub-tp/tselx ST' G2' G1' P2' P1')
@@ -1384,7 +1533,7 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
      <- extend-wf-pev-case P1 T P1' X1 X1'
      <- extend-wf-pev-case P2 T P2' X2 X2'
      <- extend-sub-tp ST T STX STA STB
-     <- sub-tp-casex G1 P1 P1' X1 X1' G2 P2 P2' X2 X2' ST STX STA STB G1' G2' ST' ST1' ST2'.
+     <- sub-tp-casex T G1 P1 P1' X1 X1' G2 P2 P2' X2 X2' ST STX STA STB G1' G2' ST' ST1' ST2'.
 
 - : extend-sub-tp (sub-tp/tbind1 S ST) T
      (sub-tp/tbind1 S STC1)
@@ -1415,7 +1564,6 @@ extend-sub-tp: sub-tp G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _)(extend-wf-pev-case _ _ _ _ _).
-%trustme
 %total (A B C D) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _)(extend-wf-pev-case D _ _ _ _).
 
 extend-sub-tp12: sub-tp G1 T1 G2 T2 -> {Z: tpe} sub-tp (tcons Z G1) T1 (tcons Z G2) T2 -> type.
