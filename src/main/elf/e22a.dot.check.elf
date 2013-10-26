@@ -1,0 +1,1 @@
+%abbrev e22a = (let _ (fun (bind z (rect (s z) (arrow z top (tsel (var z)  (s z))) (arrow z top (tsel (var z)  (s z))))) z top empty top z empty top (mcons _ (arrow z top (tsel (var z)  (s z))) (arrow z top (tsel (var z)  (s z))) (mcons _ bot top mnil))) (var z)).

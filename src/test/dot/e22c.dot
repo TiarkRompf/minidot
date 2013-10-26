@@ -1,0 +1,8 @@
+val r
+= new (r =>
+  type Nat = { n => { def succ(_: Top): r.Nat } }
+  def zero(_: Top): r.Nat = new r.Nat (z =>
+    def succ(_: Top): r.Nat = z
+  )
+)
+r
