@@ -1,7 +1,7 @@
 % bigger examples
 %query 1 1 type-exp tnil ex_norec_nat_a top.
 %query 1 1 type-exp tnil ex_norec_nat top.
-% %query 1 1 type-exp tnil ex_nat top.
+%query 1 1 type-exp tnil ex_nat top.
 % %query 1 1 type-exp tnil ex_list top.
 
 % sanity checks
@@ -37,7 +37,7 @@
 %query 1 1 type-exp tnil e22g top.
 %query 1 1 type-exp tnil e22h top.
 %query 1 1 type-exp tnil e22i top.
-% %query 1 1 type-exp tnil e22j top.
+%query 1 1 type-exp tnil e22j top.
 
 % sanity checks for other judgments
 %query 1 1 sub-tp strict tnil t2 tnil t1.
@@ -284,3 +284,109 @@ path-eval strict
                    (rect z bot top)))) tnil)
    (var z) (rect (s z) TA2 TB2) G2'.
 
+
+%query 1 1
+sub-tp strict
+   (tcons
+       (bind z
+           (and (arrow z top (tsel (var z) (s (s z))))
+               (rect (s (s z))
+                   (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+                   (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))))
+       tnil)
+   (rect (s (s z)) (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+       (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))
+   (tcons
+       (and (arrow z top (tsel (var z) (s (s z))))
+           (rect (s (s z))
+               (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+               (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))) tnil)
+   (rect (s (s z)) (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+       (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))). 
+
+%query 1 1
+sub-tp strict
+   (tcons
+       (bind z
+           (and (arrow z top (tsel (var z) (s (s z))))
+               (rect (s (s z))
+                   (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+                   (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))))
+       tnil)
+   (rect (s (s z)) (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+       (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))
+   (tcons
+       (and (arrow z top (tsel (var z) (s (s z))))
+           (and (recv z top)
+               (and
+                   (rect (s (s z))
+                       (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+                       (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))
+                   (and (rect (s z) bot top) (rect z bot top)))))
+       tnil)
+   (rect (s (s z)) (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+       (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))).
+
+%query 1 1
+sub-tp strict
+   (tcons
+       (and (arrow z top (tsel (var z) (s (s z))))
+           (rect (s (s z))
+               (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+               (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))) tnil)
+   (rect (s (s z)) (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+       (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))
+   (tcons
+       (and
+           (rect (s (s z)) bot
+               (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))
+           (arrow z top (tsel (var z) (s (s z))))) tnil)
+   (rect (s (s z)) bot (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))). 
+
+%query 1 1
+sub-tp strict
+   (tcons
+       (and (arrow z top (tsel (var z) (s (s z))))
+           (rect (s (s z))
+               (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+               (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))) tnil)
+   (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+   (tcons
+       (and
+           (rect (s (s z)) bot
+               (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))
+           (arrow z top (tsel (var z) (s (s z))))) tnil)
+   (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))). 
+
+%query 1 1
+sub-tp strict
+   (tcons
+       (and (arrow z top (tsel (var z) (s (s z))))
+           (rect (s (s z))
+               (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+               (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))) tnil)
+   (tsel (var z) (s (s z)))
+   (tcons
+       (and
+           (rect (s (s z)) bot
+               (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))
+           (arrow z top (tsel (var z) (s (s z))))) tnil)
+   (tsel (var z) (s (s z))). 
+
+%query 1 1
+path-eval strict
+   (tcons
+       (and (arrow z top (tsel (var z) (s (s z))))
+           (rect (s (s z))
+               (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+               (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))) tnil)
+   (var z) (rect (s (s z)) TA1 TB1) G1.
+
+%query 1 1
+path-eval strict
+   (tcons
+       (and
+           (rect (s (s z)) bot
+               (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))
+           (arrow z top (tsel (var z) (s (s z))))) tnil)
+   (var z) (rect (s (s z)) TA2 TB2) G2. 

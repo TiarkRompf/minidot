@@ -307,15 +307,16 @@ sub-tp/recv : sub-tp M G1 (recv N T1) G2 (recv N T2)
               <- sub-tp M G1 T1 G2 T2.
 
 sub-tp/tselx0 : sub-tp M G1 (tsel E N) G2 (tsel E N)
-             <- path-eval M G1 E (rect N TA TB) G1'
-             <- path-eval M G2 E (rect N TA TB) G2'.
+             <- path-eval M G1 E (rect N TA1 TB1) G1'
+             <- path-eval M G2 E (rect N TA2 TB2) G2'.
 
 sub-tp/tselx : sub-tp M G1 (tsel E N) G2 (tsel E N)
              <- path-eval M G1 E (rect N TA1 TB1) G1'
              <- path-eval M G2 E (rect N TA2 TB2) G2'
              <- getenv G1' G1X
              <- getenv G2' G2X
-             <- sub-tp M G1X (rect N TA1 TB1) G2X (rect N TA2 TB2)
+             <- sub-tp M G1X TB1 G2X TB2
+             <- sub-tp M G2X TA2 G1X TA1
              .
 
 sub-tp/tbind2 : sub-tp M G1 T1 G2 (bind N TN)
