@@ -2312,11 +2312,11 @@ widen-mode-sub-tp : sub-tp strict G1 T1 G2 T2 -> sub-tp lenient G1 T1 G2 T2 -> t
 
 sub-tp-trans-aux :
   %% Inputs
-  wf-tp M G2 T2 ->
-  sub-tp M G1 T1 G2 T2 ->
-  sub-tp M G2 T2 G3 T3 ->
+  wf-tp lenient G2 T2 ->
+  sub-tp lenient G1 T1 G2 T2 ->
+  sub-tp lenient G2 T2 G3 T3 ->
   %% Output
-  sub-tp M G1 T1 G3 T3 ->
+  sub-tp lenient G1 T1 G3 T3 ->
   type.
 %mode sub-tp-trans-aux +T2 +SBT1 +SBT2 -SBT3.
 
@@ -2511,10 +2511,10 @@ sub-tp-trans-aux :
 
 sub-tp-trans :
   %% Inputs
-  sub-tp M G1 T1 G2 T2 ->
-  sub-tp M G2 T2 G3 T3 ->
+  sub-tp lenient G1 T1 G2 T2 ->
+  sub-tp lenient G2 T2 G3 T3 ->
   %% Output
-  sub-tp M G1 T1 G3 T3 ->
+  sub-tp lenient G1 T1 G3 T3 ->
   type.
 %mode sub-tp-trans +SBT1 +SBT2 -SBT3.
 
