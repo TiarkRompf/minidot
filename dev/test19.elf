@@ -546,7 +546,7 @@ exp-tp-env-case : exp-tp G T N OT EG -> getenv EG GX -> env-case EG G GX -> type
 - : exp-tp-env-case exp-tp/recv getenv/left env-case/left.
 - : exp-tp-env-case exp-tp/rect getenv/left env-case/left.
 - : exp-tp-env-case (exp-tp/rectn _) getenv/left env-case/left.
-- : exp-tp-env-case (exp-tp/bind E G) getenv/right env-case/right.
+- : exp-tp-env-case (exp-tp/bind _ _ _) getenv/right env-case/right.
 - : exp-tp-env-case (exp-tp/and topt-and/nn E1 E2) D1 X1
      <- exp-tp-env-case E1 D1 X1
      <- exp-tp-env-case E2 D2 X2.
@@ -578,7 +578,7 @@ extend-exp-tp: exp-tp G T N OT EG -> {Z: tpe} exp-tp (tcons Z G) T N OT EG' -> t
 -/and3 : extend-exp-tp (exp-tp/and topt-and/sn E1 E2) Z (exp-tp/and topt-and/sn E1' E2')
          <- extend-exp-tp E1 Z E1'
          <- extend-exp-tp E2 Z E2'.
--/bind : extend-exp-tp (exp-tp/bind E G) Z (exp-tp/bind E G).
+-/bind : extend-exp-tp (exp-tp/bind E G (ses N S)) Z (exp-tp/bind E G (ses N (sub-env/ext S))).
 
 %worlds () (extend-exp-tp _ _ _).
 %total A (extend-exp-tp A _ _).
@@ -601,7 +601,7 @@ extend-exp-tp-case: exp-tp G T N OT EG -> env-case EG G GX -> {Z: tpe} exp-tp (t
 - : extend-exp-tp-case (exp-tp/and topt-and/sn E1 E2) X Z (exp-tp/and topt-and/sn E1' E2') X'
          <- extend-exp-tp-case E1 X Z E1' X'
          <- extend-exp-tp E2 Z E2'.
-- : extend-exp-tp-case (exp-tp/bind E G) env-case/right Z (exp-tp/bind E G) env-case/right.
+- : extend-exp-tp-case (exp-tp/bind E G (ses N S)) env-case/right Z (exp-tp/bind E G (ses N (sub-env/ext S))) env-case/right.
 
 %worlds () (extend-exp-tp-case _ _ _ _ _).
 %total A (extend-exp-tp-case A _ _ _ _).
@@ -640,7 +640,7 @@ extend-exp-tp-case-right: exp-tp G T N OT (etenv/right GX) -> {Z: tpe} exp-tp (t
 - : extend-exp-tp-case-right (exp-tp/and topt-and/sn E1 E2) Z (exp-tp/and topt-and/sn E1' E2')
          <- extend-exp-tp-case-right E1 Z E1'
          <- extend-exp-tp E2 Z E2'.
-- : extend-exp-tp-case-right (exp-tp/bind E G) Z (exp-tp/bind E G).
+- : extend-exp-tp-case-right (exp-tp/bind E G (ses N S)) Z (exp-tp/bind E G (ses N (sub-env/ext S))).
 
 %worlds () (extend-exp-tp-case-right _ _ _).
 %total A (extend-exp-tp-case-right A _ _).
@@ -1074,6 +1074,24 @@ same-tenv-right: sametenv G1 G2 -> sameenv (etenv/right G1) (etenv/right G2) -> 
 %worlds () (same-tenv-right _ _).
 %total A (same-tenv-right A _).
 
+sub-env-size-eq: sub-env-size GN N G -> sub-env-size GN' N G -> sametenv GN GN' -> type.
+%mode sub-env-size-eq +A +B -C.
+%worlds () (sub-env-size-eq _ _ _).
+%trustme
+%total A (sub-env-size-eq A _ _).
+
+eq-sametenv-cons: sametenv G G' -> {T} sametenv (tcons T G) (tcons T G') -> type.
+%mode eq-sametenv-cons +A +B -C.
+- : eq-sametenv-cons identtenv _ identtenv.
+%worlds () (eq-sametenv-cons _ _ _).
+%total A (eq-sametenv-cons A _ _).
+
+eq-expand-env: sametenv GN GN' -> exp-tp (tcons TN GN) T L T2 G2 -> exp-tp (tcons TN GN') T L T2 G2 -> type.
+%mode eq-expand-env +A +B -C.
+- : eq-expand-env identtenv B B.
+%worlds () (eq-expand-env _ _ _).
+%total A (eq-expand-env A _ _).
+
 expand-eq: exp-tp G T LN T1 G1 -> exp-tp G T LN T2 G2 -> sameopt T1 T2 -> sameenv G1 G2 -> type.
 %mode expand-eq +P1 +P2 -S1 -S2.
 
@@ -1092,8 +1110,10 @@ expand-eq: exp-tp G T LN T1 G1 -> exp-tp G T LN T2 G2 -> sameopt T1 T2 -> sameen
       <- expand-eq E2 E4 S2 SG2
       <- eq-topt-and S1 S2 SG1 SG2 T1 T1'
       <- topt-and-eq T1' T2 S SG.
-- : expand-eq (exp-tp/bind G1 E1) (exp-tp/bind G2 E2) S SG'
-      <- expand-eq E1 E2 S SG
+- : expand-eq (exp-tp/bind G1 E1 S1) (exp-tp/bind G2 E2 S2) S SG'
+      <- sub-env-size-eq S2 S1 EQG
+      <- eq-expand-env EQG E2 E2'
+      <- expand-eq E1 E2' S SG
       <- same-etenv-tenv SG G1 G2 GX
       <- same-tenv-right GX SG'.
 
@@ -1463,7 +1483,7 @@ extend-sub-tp: sub-tp M G1 T1 G2 T2 -> {Z: tpe}
 - : extend-wf-tp (wf-tp/tsel P) T (wf-tp/tsel P1)
       <- extend-wf-pev P T P1.
 
-- : extend-wf-tp (wf-tp/tbind S W) T (wf-tp/tbind S W).
+- : extend-wf-tp (wf-tp/tbind W (ses N S)) T (wf-tp/tbind W (ses N (sub-env/ext S))).
 
 - : extend-wf-tp (wf-tp/and W1 W2) T (wf-tp/and W1' W2')
       <- extend-wf-tp W1 _ W1'
@@ -1510,17 +1530,17 @@ extend-sub-tp: sub-tp M G1 T1 G2 T2 -> {Z: tpe}
      <- extend-sub-tp ST T STX STA STB
      <- sub-tp-casex T G1 P1 P1' X1 X1' G2 P2 P2' X2 X2' ST STX STA STB G1' G2' ST' ST1' ST2'.
 
-- : extend-sub-tp (sub-tp/tbind1 S ST) T
-     (sub-tp/tbind1 S STC1)
-     (sub-tp/tbind1 S ST)
-     (sub-tp/tbind1 S STC1)
+- : extend-sub-tp (sub-tp/tbind1 ST (ses N S)) T
+     (sub-tp/tbind1 STC1 (ses N (sub-env/ext S)))
+     (sub-tp/tbind1 ST (ses N (sub-env/ext S)))
+     (sub-tp/tbind1 STC1 (ses N S))
      <- extend-sub-tp ST T STA1 STB1 STC1
      .
 
-- : extend-sub-tp (sub-tp/tbind2 S ST1 ST2 ST3) T
-     (sub-tp/tbind2 S STB1 STB2 STB3)
-     (sub-tp/tbind2 S STB1 STB2 STB3)
-     (sub-tp/tbind2 S ST1 ST2 ST3)
+- : extend-sub-tp (sub-tp/tbind2 ST1 ST2 ST3 (ses N S)) T
+     (sub-tp/tbind2 STB1 STB2 STB3 (ses N (sub-env/ext S)))
+     (sub-tp/tbind2 STB1 STB2 STB3 (ses N S))
+     (sub-tp/tbind2 ST1 ST2 ST3 (ses N (sub-env/ext S)))
      <- extend-sub-tp ST1 T STA1 STB1 STC1
      <- extend-sub-tp ST2 T STA2 STB2 STC2
      <- extend-sub-tp ST3 T STA3 STB3 STC3
@@ -1682,10 +1702,10 @@ extract-wf-pev : path-eval M G E T OG -> getenv OG G' -> wf-tp M G' T -> type.
       (wf-tp/tsel P1)
       (wf-tp/tsel P2).
 
-- : extract-wf (sub-tp/tbind1 S ST) (wf-tp/tbind S WU) W2
+- : extract-wf (sub-tp/tbind1 ST S) (wf-tp/tbind WU S) W2
       <- extract-wf ST WU W2.
 
-- : extract-wf (sub-tp/tbind2 S SW SE SU) W1 (wf-tp/tbind S W2)
+- : extract-wf (sub-tp/tbind2 SW SE SU S) W1 (wf-tp/tbind W2 S)
       <- extract-wf SU W1 W2.
 
 - : extract-wf (sub-tp/and1a W2 S1)
@@ -1792,9 +1812,9 @@ sub-tp-refl :
 -/tsel: sub-tp-refl (wf-tp/tsel (pev W G L)) (sub-tp/tselx R G G (pev W G L) (pev W G L))
    <- sub-tp-refl W R.
 
--/tbind: sub-tp-refl (wf-tp/tbind S WU)
+-/tbind: sub-tp-refl (wf-tp/tbind WU S)
           (sub-tp/tbind1
-             S (sub-tp/tbind2 S R R R))
+             (sub-tp/tbind2 R R R S) S)
           <- sub-tp-refl WU R.
 
 -/tand: sub-tp-refl (wf-tp/and W1 W2) (sub-tp/and2 (sub-tp/and1a W2 ST1) (sub-tp/and1b W1 ST2))
@@ -2372,8 +2392,8 @@ sub-tp-trans-aux :
 -/tbind2  : sub-tp-trans-aux
        W
        SBT1
-       (sub-tp/tbind2 S SW SBT3 SU)
-       (sub-tp/tbind2 S SW' SBT5 SU')
+       (sub-tp/tbind2 SW SBT3 SU S)
+       (sub-tp/tbind2 SW' SBT5 SU' S)
 
        <- sub-tp-trans-aux W SBT1 SW SW'
        <- sub-tp-trans-aux W SBT1 SU SU'
@@ -2381,20 +2401,24 @@ sub-tp-trans-aux :
 
 -/tbind1 : sub-tp-trans-aux
        W
-       (sub-tp/tbind1 S ST)
+       (sub-tp/tbind1 ST S)
        SBT2
-       (sub-tp/tbind1 S ST')
+       (sub-tp/tbind1 ST' S)
        <- sub-tp-trans-aux W ST SBT2 ST'.
 
 -/tbind2-tbind1  : sub-tp-trans-aux
-       (wf-tp/tbind WS0 WY0)
-       (sub-tp/tbind2 S1 SW SBT1 SU)
-       (sub-tp/tbind1 S3 SBT3)
-       SBT5
+       (wf-tp/tbind WU0 S0)
+       (sub-tp/tbind2 _ _ SU S1)
+       (sub-tp/tbind1 A2 S2)
+       A3
 
-       %% TODO: uniqueness lemmas for G0/SE/S
-
-       <- sub-tp-trans-aux WY0 SU SBT3 SBT5.
+       <- sub-env-size-eq S1 S0 EQG1
+       <- eq-sametenv-cons EQG1 _ EQG1'
+       <- eq-high-env EQG1' SU SU'
+       <- sub-env-size-eq S2 S0 EQG2
+       <- eq-sametenv-cons EQG2 _ EQG2'
+       <- eq-low-env EQG2' A2 A2'
+       <- sub-tp-trans-aux WU0 SU' A2' A3.
 
 -/tand1a : sub-tp-trans-aux
       W
@@ -2480,7 +2504,7 @@ widen-mode-sub-tp : sub-tp strict G1 T1 G2 T2 -> sub-tp lenient G1 T1 G2 T2 -> t
      <- widen-mode-wf-tp A A'.
 - : widen-mode-wf-tp (wf-tp/tsel P) (wf-tp/tsel P')
      <- widen-mode-path-eval P P'.
-- : widen-mode-wf-tp (wf-tp/tbind N A) (wf-tp/tbind N A')
+- : widen-mode-wf-tp (wf-tp/tbind A N) (wf-tp/tbind A' N)
      <- widen-mode-wf-tp A A'.
 - : widen-mode-wf-tp (wf-tp/and B A) (wf-tp/and B' A')
      <- widen-mode-wf-tp A A'
@@ -2507,12 +2531,12 @@ widen-mode-sub-tp : sub-tp strict G1 T1 G2 T2 -> sub-tp lenient G1 T1 G2 T2 -> t
      <- widen-mode-path-eval P2 P2'
      <- widen-mode-sub-tp A A'.
 
-- : widen-mode-sub-tp (sub-tp/tbind2 N C B A) (sub-tp/tbind2 N C' B' A')
+- : widen-mode-sub-tp (sub-tp/tbind2 C B A N) (sub-tp/tbind2 C' B' A' N)
      <- widen-mode-sub-tp A A'
      <- widen-mode-sub-tp B B'
      <- widen-mode-sub-tp C C'.
 
-- : widen-mode-sub-tp (sub-tp/tbind1 N A) (sub-tp/tbind1 N A')
+- : widen-mode-sub-tp (sub-tp/tbind1 A N) (sub-tp/tbind1 A' N)
      <- widen-mode-sub-tp A A'.
 
 - : widen-mode-sub-tp (sub-tp/and2 B A) (sub-tp/and2 B' A')
@@ -2574,11 +2598,11 @@ tsize G N ->
 wf-tp M (tcons (and (arrow LNF T1 T2) (and (recv LNV T3) T4)) G) (arrow LNF T1 T2) ->
 wf-tp M G (recv LNV T3) ->
 wf-tp M (tcons (and (arrow LNF T1 T2) (and (recv LNV T3) T4)) G) T4 ->
-wf-tp M G (bind N G (and (arrow LNF T1 T2) (and (recv LNV T3) T4))) ->
+wf-tp M G (bind N (and (arrow LNF T1 T2) (and (recv LNV T3) T4))) ->
 type.
 %mode wf-fun-tp +A +B +C +D -E.
 
-- : wf-fun-tp S WF WV WR (wf-tp/tbind S (wf-tp/and WF (wf-tp/and WV' WR)))
+- : wf-fun-tp N WF WV WR (wf-tp/tbind (wf-tp/and WF (wf-tp/and WV' WR)) (ses N sub-env/refl))
       <- extend-wf-tp WV _ WV'.
 
 %worlds () (wf-fun-tp _ _ _ _ _).
