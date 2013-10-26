@@ -8,7 +8,7 @@ trait ElfPrinter { this: DotSyntax =>
   import types._
   import init._
 
-  val VERSION = 8
+  val VERSION = 11
 
   def collectTags(e: Any): List[Tag] = {
     def c(e: Any): List[Tag] = e match {
@@ -148,7 +148,8 @@ trait ElfPrinter { this: DotSyntax =>
         s"(tsel ${p(x)} $sty ${p(tag)})"
 
       case TRec(self, ty) =>
-        s"(bind ${printNat(env.size)} ${printEnvFromSize(env.size, hints)} ${pbind(ty, self)})"
+        val renv = if (VERSION < 11) s"${printEnvFromSize(env.size, hints)} " else ""
+        s"(bind ${printNat(env.size)} $renv${pbind(ty, self)})"
 
       case TShift(ty) =>
         pbind(ty, Var("_"))

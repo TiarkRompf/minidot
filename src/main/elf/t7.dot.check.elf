@@ -1,1 +1,1 @@
-%abbrev t7 = (bind z tnil (and (recv (s z) (tsel (var z)  z)) (rect z top top))).
+%abbrev t7 = (bind z (and (recv (s z) (tsel (var z)  z)) (rect z top top))).
