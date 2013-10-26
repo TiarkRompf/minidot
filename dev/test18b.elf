@@ -428,7 +428,7 @@ t/app       : type-exp G (app E1 LNF E2) T2
 % ++ t/let       : type-exp G (let T1 E1 E2) T2
 % ++            <- type-exp G E1 T1
 % ++            <- type-exp (tcons T1 G) E2 T2
-% ++            <- wf-tp G T2.
+% ++            <- wf-tp strict G T2.
 
 t/sub       : type-exp G E T2
             <- type-exp G E T1

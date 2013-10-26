@@ -14,7 +14,7 @@
 \renewcommand{\aaatlookup}[3]{\text{{#2} $\mapsto$ {#3} $\in$ {#1}}}
 
 \renewcommand{\aaasubenv}[2]{\text{#1 $\sqsubseteq$ #2}}
-\renewcommand{\aaapatheval}[4]{\text{#1 $\ts$ #2 $\ni$ #3 {\bf in } #4}}
+\renewcommand{\aaapatheval}[5]{\text{#2 $\ts$ #3 $\ni_\text{#1}$ #4 {\bf in } #5}}
 \renewcommand{\aaatlookexp}[4]{\text{#1 $\ts$ #2 $\ni_0$ #3 {\bf in } #4}}
 
 \renewcommand{\aaaempty}[0]{\text{\{$\emptyset_e$\}}}
@@ -34,8 +34,8 @@
 \renewcommand{\aaaemptyv}[0]{\text{\{$\emptyset_v$\}}}
 \renewcommand{\aaaclos}[5]{\text{$<\{${\bf def} #1 = #2; {\bf val } #3 = #4$\}$ {\bf in } #5$>_v$}}
 
-\renewcommand{\aaawftp}[2]{\text{#1 $\ts$ #2 {\bf wf}}}
-\renewcommand{\aaasubtp}[4]{\text{{#1} $\vdash$ {#2} $<:$ {#4} $\dashv$ {#3}}}
+\renewcommand{\aaawftp}[3]{\text{#2 $\ts$ #3 {\bf wf$_text{#1}$}}}
+\renewcommand{\aaasubtp}[5]{\text{{#2} $\vdash$ {#3} $<:_\text{#1}$ {#5} $\dashv$ {#4}}}
 
 \renewcommand{\aaaevalexp}[3]{\text{{#1} $\ts$ {#2} $\Downarrow$ {#3}}}
 \renewcommand{\aaatypeexp}[3]{\text{{#1} $\ts$ {#2} : {#3}}}
@@ -50,3 +50,6 @@
 \renewcommand{\aaagetenv}[2]{\text{#1 $=$ #2}}
 
 \renewcommand{\aaatoptand}[6]{\text{(#1 | #4) $\wedge$ (#2 | #5) = (#3 | #6)}}
+
+\renewcommand{\aaastrict}[0]{\text{$!$}}
+\renewcommand{\aaalenient}[0]{\text{$\approx$}}

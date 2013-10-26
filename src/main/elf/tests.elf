@@ -29,11 +29,11 @@
 %query 1 1 type-exp tnil e21c top.
 
 % sanity checks for other judgments
-%query 1 1 sub-tp tnil t2 tnil t1.
-%query 1 1 wf-tp tnil t3.
-%query 1 1 wf-tp tnil t4.
-%query 1 1 wf-tp tnil t6.
-%query 1 1 sub-tp tnil t7 tnil t8.
+%query 1 1 sub-tp strict tnil t2 tnil t1.
+%query 1 1 wf-tp strict tnil t3.
+%query 1 1 wf-tp strict tnil t4.
+%query 1 1 wf-tp strict tnil t6.
+%query 1 1 sub-tp strict tnil t7 tnil t8.
 
 % programs
 %query 1 1 type-exp tnil p1 top.
@@ -83,7 +83,7 @@
 %query 0 1 type-exp tnil b3 top.
 %query 0 1 type-exp tnil b4 top.
 %query 0 1
-sub-tp
+sub-tp strict
    (tcons top
        (tcons
            (bind z tnil
@@ -131,7 +131,7 @@ type-exp
    (app (var z) (s z) (sel (var z) z)) (tsel (var z) (s (s z))).
 
 %query 1 1
-sub-tp
+sub-tp strict
    (tcons (tsel (var z) (s (s z)))
        (tcons
            (bind z tnil
