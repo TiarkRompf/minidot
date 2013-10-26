@@ -299,12 +299,16 @@ sub-tp/rect : sub-tp M G1 (rect N TA1 TB1) G2 (rect N TA2 TB2)
               <- sub-tp M G1 TA1 G1 TB1
               <- sub-tp M G2 TA2 G2 TB2
 
-              % <- sub-tp M G2 TA2 G1 TA1
-              % <- sub-tp M G1 TB1 G2 TB2
+              <- sub-tp M G2 TA2 G1 TA1
+              <- sub-tp M G1 TB1 G2 TB2
               .
 
 sub-tp/recv : sub-tp M G1 (recv N T1) G2 (recv N T2)
               <- sub-tp M G1 T1 G2 T2.
+
+sub-tp/tselx0 : sub-tp M G1 (tsel E N) G2 (tsel E N)
+             <- path-eval M G1 E (rect N TA TB) G1'
+             <- path-eval M G2 E (rect N TA TB) G2'.
 
 sub-tp/tselx : sub-tp M G1 (tsel E N) G2 (tsel E N)
              <- path-eval M G1 E (rect N TA1 TB1) G1'
