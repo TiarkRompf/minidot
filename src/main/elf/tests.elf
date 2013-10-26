@@ -390,3 +390,20 @@ path-eval strict
                (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))
            (arrow z top (tsel (var z) (s (s z))))) tnil)
    (var z) (rect (s (s z)) TA2 TB2) G2. 
+
+%query 1 1
+sub-tp strict
+      (tcons
+          (and (arrow z top (tsel (var z) (s (s z))))
+              (rect (s (s z))
+                  (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+                  (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))))
+         tnil)
+      (tsel (var z) (s (s z)))
+      (tcons
+          (and
+              (rect (s (s z)) bot
+                  (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))
+              (arrow z top (tsel (var z) (s (s z))))) 
+         tnil)
+      (tsel (var z) (s (s z))).
