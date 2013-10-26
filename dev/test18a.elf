@@ -136,8 +136,8 @@ fun:
 app: exp -> nat -> exp -> exp.
 sel: exp -> nat -> exp.
 
-let: tpe -> exp -> exp -> exp. % --
-% ++ %abbrev let: tpe -> exp -> exp -> exp = [T] [ex] [ef] (app (fun _ z T ef _ z empty _ mnil) z ex).
+% ++ let: tpe -> exp -> exp -> exp.
+%abbrev let: tpe -> exp -> exp -> exp = [T] [ex] [ef] (app (fun _ z T ef _ z empty _ mnil) z ex). % --
 
 % types
 top  : tpe.
@@ -273,7 +273,7 @@ pev  : path-eval G E (rect N TS TU) EG
         <- getenv EG G' <- wf-tp G' (rect N TS TU)
         .
 
-sub-tp/refl : sub-tp G T G T <- wf-tp G T. %%% ACCELRATE QUERIES !! % --
+% ++ sub-tp/refl : sub-tp G T G T <- wf-tp G T. %%% ACCELRATE QUERIES !!
 
 
 sub-tp/fun  : sub-tp G1 (arrow N TA1 TB1) G2 (arrow N TA2 TB2)
@@ -330,8 +330,8 @@ sub-tp/tsel1 : sub-tp G1 (tsel E1 N) G2 T2
 sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel E2 N)
               <- path-eval G2 E2 (rect N TA2 TB2) G2'
               <- getenv G2' G2X
-              <- sub-tp G1 T1 G2X TA2 % --
-% ++          <- sub-tp G1 T1 G2X TB2
+% ++               <- sub-tp G1 T1 G2X TA2
+         <- sub-tp G1 T1 G2X TB2 % --
               .
 
 sub-tp/top  : sub-tp G1 T G2 top <- wf-tp G1 T.
@@ -432,10 +432,10 @@ t/app       : type-exp G (app E1 LNF E2) T2
            <- type-exp G E1 (arrow LNF T1 T2)
            <- type-exp G E2 T1.
 
-t/let       : type-exp G (let T1 E1 E2) T2 % --
-           <- type-exp G E1 T1 % --
-           <- type-exp (tcons T1 G) E2 T2 % --
-           <- wf-tp G T2. % --
+% ++ t/let       : type-exp G (let T1 E1 E2) T2
+% ++            <- type-exp G E1 T1
+% ++            <- type-exp (tcons T1 G) E2 T2
+% ++            <- wf-tp G T2.
 
 t/sub       : type-exp G E T2
             <- type-exp G E T1
@@ -494,7 +494,7 @@ wfv/eta  : wf-val V GX (recv N (tsel (var X) NT))
 wfe/n    : wf-env vnil tnil.
 wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H G.
 
-%.
+% EOF
 
 %%% PROOFS %%%
 
@@ -2456,7 +2456,7 @@ extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 - : extract-wf2 (t/app TS1 (TS2: type-exp _ _ (arrow _ _ _))) W2 <- extract-wf2 TS2 (wf-tp/fun W2 W1).
 - : extract-wf2 (t/sel TS) W <- extract-wf2 TS (wf-tp/recv W).
 - : extract-wf2 (t/sub S TS) W2 <- extract-wf S W1 W2.
-- : extract-wf2 (t/let W _ _) W. % --
+% ++ - : extract-wf2 (t/let W _ _) W.
 
 %worlds () (extract-wf2 _ _).
 %total WFE (extract-wf2 WFE _).
