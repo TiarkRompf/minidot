@@ -1,7 +1,7 @@
 % bigger examples
 %query 1 1 type-exp tnil ex_norec_nat_a top.
 %query 1 1 type-exp tnil ex_norec_nat top.
-% %query 1 1 type-exp tnil ex_nat top.
+%query 1 1 type-exp tnil ex_nat top.
 % %query 1 1 type-exp tnil ex_list top.
 
 % sanity checks
@@ -27,6 +27,14 @@
 %query 1 1 type-exp tnil e19  top.
 %query 1 1 type-exp tnil e20  top.
 %query 1 1 type-exp tnil e21c top.
+%query 1 1 type-exp tnil e22 top.
+%query 1 1 type-exp tnil e22a top.
+%query 1 1 type-exp tnil e22b top.
+%query 1 1 type-exp tnil e22c top.
+%query 1 1 type-exp tnil e22d top.
+%query 1 1 type-exp tnil e22e top.
+%query 1 1 type-exp tnil e22f top.
+%query 1 1 type-exp tnil e22g top.
 
 % sanity checks for other judgments
 %query 1 1 sub-tp strict tnil t2 tnil t1.
@@ -153,3 +161,22 @@ sub-tp strict
                            (tsel (var z) (s (s z))))
                        (recv z (tsel (var z) (s (s z))))))) tnil))
    (arrow (s z) A (tsel (var z) (s (s z)))). 
+
+%query 1 1
+sub-tp strict
+   (tcons
+       (and
+           (rect (s (s z))
+               (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+               (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))
+           (arrow z top (tsel (var z) (s (s z))))) tnil)
+   (arrow z top (tsel (var z) (s (s z))))
+   (tcons
+       (bind z
+           (and
+               (rect (s (s z))
+                   (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+                   (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))
+               (arrow z top (tsel (var z) (s (s z))))))
+       tnil)
+   (arrow z A (tsel (var z) (s (s z)))).
