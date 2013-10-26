@@ -282,7 +282,11 @@ pev  : path-eval M G E (rect N TS TU) EG
         % <- wf-tp M G' (rect N TS TU)
         .
 
-sub-tp/refl : sub-tp M G T G T <- wf-tp M G T. %%% ACCELRATE QUERIES !! % --
+sub-tp/refl : sub-tp M G1 T G2 T  %%% ACCELRATE QUERIES !! % --
+               <- sub-env G G1 % --
+               <- sub-env G G2 % --
+               <- wf-tp M G T. % --
+
 
 sub-tp/top  : sub-tp M G1 T G2 top <- wf-tp M G1 T.
 
