@@ -330,11 +330,15 @@ sub-tp/tsel1 : sub-tp M G1 (tsel E1 N) G2 T2
               <- getenv G1' G1X
               <- sub-tp M G1X TB1 G2 T2.
 
-sub-tp/tsel2 : sub-tp M G1 T1 G2 (tsel E2 N)
-              <- path-eval M G2 E2 (rect N TA2 TB2) G2'
+sub-tp/tsel2-strict : sub-tp strict G1 T1 G2 (tsel E2 N)
+              <- path-eval strict G2 E2 (rect N TA2 TB2) G2'
               <- getenv G2' G2X
-% ++               <- sub-tp M G1 T1 G2X TA2
-         <- sub-tp M G1 T1 G2X TB2 % --
+              <- sub-tp strict G1 T1 G2X TA2.
+
+sub-tp/tsel2-lenient : sub-tp lenient G1 T1 G2 (tsel E2 N)
+              <- path-eval lenient G2 E2 (rect N TA2 TB2) G2'
+              <- getenv G2' G2X
+              <- sub-tp lenient G1 T1 G2X TB2
               .
 
 sub-tp/top  : sub-tp M G1 T G2 top <- wf-tp M G1 T.
@@ -1481,8 +1485,13 @@ extend-sub-tp: sub-tp M G1 T1 G2 T2 -> {Z: tpe}
       <- extend-wf-pev-case P T P' X X'
       <- extend-sub-tp ST T ST' STA STB
       <- sub-tp-case1 G P P' X X' STB ST ST' STA G' STX' STAX.
-- : extend-sub-tp (sub-tp/tsel2 ST G P) T
-    (sub-tp/tsel2 STX' G' P') (sub-tp/tsel2 STA G P) (sub-tp/tsel2 STBX G' P')
+- : extend-sub-tp (sub-tp/tsel2-strict ST G P) T
+    (sub-tp/tsel2-strict STX' G' P') (sub-tp/tsel2-strict STA G P) (sub-tp/tsel2-strict STBX G' P')
+      <- extend-wf-pev-case P T P' X X'
+      <- extend-sub-tp ST T ST' STA STB
+      <- sub-tp-case2 G P P' X X' STA ST ST' STB G' STX' STBX.
+- : extend-sub-tp (sub-tp/tsel2-lenient ST G P) T
+    (sub-tp/tsel2-lenient STX' G' P') (sub-tp/tsel2-lenient STA G P) (sub-tp/tsel2-lenient STBX G' P')
       <- extend-wf-pev-case P T P' X X'
       <- extend-sub-tp ST T ST' STA STB
       <- sub-tp-case2 G P P' X X' STA ST ST' STB G' STX' STBX.
@@ -1657,7 +1666,10 @@ extract-wf-pev : path-eval M G E T OG -> getenv OG G' -> wf-tp M G' T -> type.
       (wf-tp/tsel P) W2
       <- extract-wf ST _ W2.
 
-- : extract-wf (sub-tp/tsel2 ST _ P)
+- : extract-wf (sub-tp/tsel2-strict ST _ P)
+      W1 (wf-tp/tsel P)
+      <- extract-wf ST W1 _.
+- : extract-wf (sub-tp/tsel2-lenient ST _ P)
       W1 (wf-tp/tsel P)
       <- extract-wf ST W1 _.
 
@@ -2220,94 +2232,6 @@ extract-pev-lkp : path-eval M G (var X) T EG -> tlookup G X TX -> type.
 %worlds () (extract-pev-lkp _ _).
 %total A (extract-pev-lkp A _).
 
-%{ ------- strict implies lenient ------ }%
-
-widen-mode-wf-tp : wf-tp strict G T -> wf-tp lenient G T -> type.
-%mode widen-mode-wf-tp +A -B.
-
-widen-mode-path-eval : path-eval strict G E T G' -> path-eval lenient G E T G' -> type.
-%mode widen-mode-path-eval +A -B.
-
-widen-mode-sub-tp : sub-tp strict G1 T1 G2 T2 -> sub-tp lenient G1 T1 G2 T2 -> type.
-%mode widen-mode-sub-tp +A -B.
-
-- : widen-mode-wf-tp wf-tp/top wf-tp/top.
-- : widen-mode-wf-tp wf-tp/bot wf-tp/bot.
-- : widen-mode-wf-tp (wf-tp/fun B A) (wf-tp/fun B' A')
-     <- widen-mode-wf-tp A A'
-     <- widen-mode-wf-tp B B'.
-- : widen-mode-wf-tp (wf-tp/rect ST B A) (wf-tp/rect ST' B' A')
-     <- widen-mode-wf-tp A A'
-     <- widen-mode-wf-tp B B'
-     <- widen-mode-sub-tp ST ST'.
-- : widen-mode-wf-tp (wf-tp/recv A) (wf-tp/recv A')
-     <- widen-mode-wf-tp A A'.
-- : widen-mode-wf-tp (wf-tp/tsel P) (wf-tp/tsel P')
-     <- widen-mode-path-eval P P'.
-- : widen-mode-wf-tp (wf-tp/tbind N A) (wf-tp/tbind N A')
-     <- widen-mode-wf-tp A A'.
-- : widen-mode-wf-tp (wf-tp/and B A) (wf-tp/and B' A')
-     <- widen-mode-wf-tp A A'
-     <- widen-mode-wf-tp B B'.
-
-- : widen-mode-path-eval (pev W G L) (pev W' G L)
-     <- widen-mode-wf-tp W W'.
-
-- : widen-mode-sub-tp (sub-tp/fun B A) (sub-tp/fun B' A')
-     <- widen-mode-sub-tp A A'
-     <- widen-mode-sub-tp B B'.
-
-- : widen-mode-sub-tp (sub-tp/rect D C B A) (sub-tp/rect D' C' B' A')
-     <- widen-mode-sub-tp A A'
-     <- widen-mode-sub-tp B B'
-     <- widen-mode-sub-tp C C'
-     <- widen-mode-sub-tp D D'.
-
-- : widen-mode-sub-tp (sub-tp/recv A) (sub-tp/recv A')
-     <- widen-mode-sub-tp A A'.
-
-- : widen-mode-sub-tp (sub-tp/tselx A G2 G1 P2 P1) (sub-tp/tselx A' G2 G1 P2' P1')
-     <- widen-mode-path-eval P1 P1'
-     <- widen-mode-path-eval P2 P2'
-     <- widen-mode-sub-tp A A'.
-
-- : widen-mode-sub-tp (sub-tp/tbind2 N C B A) (sub-tp/tbind2 N C' B' A')
-     <- widen-mode-sub-tp A A'
-     <- widen-mode-sub-tp B B'
-     <- widen-mode-sub-tp C C'.
-
-- : widen-mode-sub-tp (sub-tp/tbind1 N A) (sub-tp/tbind1 N A')
-     <- widen-mode-sub-tp A A'.
-
-- : widen-mode-sub-tp (sub-tp/and2 B A) (sub-tp/and2 B' A')
-     <- widen-mode-sub-tp A A'
-     <- widen-mode-sub-tp B B'.
-
-- : widen-mode-sub-tp (sub-tp/and1a W A) (sub-tp/and1a W' A')
-     <- widen-mode-sub-tp A A'
-     <- widen-mode-wf-tp W W'.
-
-- : widen-mode-sub-tp (sub-tp/and1b W A) (sub-tp/and1b W' A')
-     <- widen-mode-sub-tp A A'
-     <- widen-mode-wf-tp W W'.
-
-- : widen-mode-sub-tp (sub-tp/tsel1 A G P) (sub-tp/tsel1 A' G P')
-     <- widen-mode-path-eval P P'
-     <- widen-mode-sub-tp A A'.
-
-- : widen-mode-sub-tp (sub-tp/tsel2 A G P) (sub-tp/tsel2 A' G P')
-     <- widen-mode-path-eval P P'
-     <- widen-mode-sub-tp A A'.
-
-- : widen-mode-sub-tp (sub-tp/top W) (sub-tp/top W')
-     <- widen-mode-wf-tp W W'.
-
-- : widen-mode-sub-tp (sub-tp/bot W) (sub-tp/bot W')
-     <- widen-mode-wf-tp W W'.
-
-%worlds () (widen-mode-wf-tp _ _) (widen-mode-path-eval _ _) (widen-mode-sub-tp _ _).
-%total (A B C) (widen-mode-wf-tp A _) (widen-mode-path-eval B _) (widen-mode-sub-tp C _).
-
 %{ ------- subtyping transitivity ------ }%
 
 sub-tp-trans-aux :
@@ -2385,9 +2309,9 @@ sub-tp-trans-aux :
 
 -/tsel2x : sub-tp-trans-aux
             (wf-tp/tsel (pev (wf-tp/rect BSU0 WU0 WS0) G L))
-            (sub-tp/tsel2 STB GB2 PB2)
+            (sub-tp/tsel2-lenient STB GB2 PB2)
             (sub-tp/tselx (sub-tp/rect BU23 BS32 BSU3 BSU2) GA3 GA2 PA3 PA2)
-            (sub-tp/tsel2 STC GA3 PA3)
+            (sub-tp/tsel2-lenient STC GA3 PA3)
     <- path-eval-eq PA2 (pev (wf-tp/rect BSU0 WU0 WS0) G L) EQRA EQGEA
     <- path-eval-eq PB2 (pev (wf-tp/rect BSU0 WU0 WS0) G L) EQRB EQGEB
     <- same-etenv-tenv EQGEA GA2 G EQGA
@@ -2410,15 +2334,15 @@ sub-tp-trans-aux :
 -/tsel2  : sub-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
       W
       SBT1
-      (sub-tp/tsel2 SBT3 G P)
-      (sub-tp/tsel2 SBT5 G P)
+      (sub-tp/tsel2-lenient SBT3 G P)
+      (sub-tp/tsel2-lenient SBT5 G P)
       <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
 -/tsel2-tsel1 : sub-tp-trans-aux
                  (wf-tp/tsel PW)
-                 (sub-tp/tsel2 A1 GE1 P1)
+                 (sub-tp/tsel2-lenient A1 GE1 P1)
                  (sub-tp/tsel1 A2 GE2 P2)
                  OUT
    <- path-eval-etenv PW GEW
@@ -2525,6 +2449,100 @@ sub-tp-trans :
 %worlds () (sub-tp-trans _ _ _).
 %total {A} (sub-tp-trans A _ _).
 
+
+
+%{ ------- strict implies lenient ------ }%
+
+widen-mode-wf-tp : wf-tp strict G T -> wf-tp lenient G T -> type.
+%mode widen-mode-wf-tp +A -B.
+
+widen-mode-path-eval : path-eval strict G E T G' -> path-eval lenient G E T G' -> type.
+%mode widen-mode-path-eval +A -B.
+
+widen-mode-sub-tp : sub-tp strict G1 T1 G2 T2 -> sub-tp lenient G1 T1 G2 T2 -> type.
+%mode widen-mode-sub-tp +A -B.
+
+- : widen-mode-wf-tp wf-tp/top wf-tp/top.
+- : widen-mode-wf-tp wf-tp/bot wf-tp/bot.
+- : widen-mode-wf-tp (wf-tp/fun B A) (wf-tp/fun B' A')
+     <- widen-mode-wf-tp A A'
+     <- widen-mode-wf-tp B B'.
+- : widen-mode-wf-tp (wf-tp/rect ST B A) (wf-tp/rect ST' B' A')
+     <- widen-mode-wf-tp A A'
+     <- widen-mode-wf-tp B B'
+     <- widen-mode-sub-tp ST ST'.
+- : widen-mode-wf-tp (wf-tp/recv A) (wf-tp/recv A')
+     <- widen-mode-wf-tp A A'.
+- : widen-mode-wf-tp (wf-tp/tsel P) (wf-tp/tsel P')
+     <- widen-mode-path-eval P P'.
+- : widen-mode-wf-tp (wf-tp/tbind N A) (wf-tp/tbind N A')
+     <- widen-mode-wf-tp A A'.
+- : widen-mode-wf-tp (wf-tp/and B A) (wf-tp/and B' A')
+     <- widen-mode-wf-tp A A'
+     <- widen-mode-wf-tp B B'.
+
+- : widen-mode-path-eval (pev W G L) (pev W' G L)
+     <- widen-mode-wf-tp W W'.
+
+- : widen-mode-sub-tp (sub-tp/fun B A) (sub-tp/fun B' A')
+     <- widen-mode-sub-tp A A'
+     <- widen-mode-sub-tp B B'.
+
+- : widen-mode-sub-tp (sub-tp/rect D C B A) (sub-tp/rect D' C' B' A')
+     <- widen-mode-sub-tp A A'
+     <- widen-mode-sub-tp B B'
+     <- widen-mode-sub-tp C C'
+     <- widen-mode-sub-tp D D'.
+
+- : widen-mode-sub-tp (sub-tp/recv A) (sub-tp/recv A')
+     <- widen-mode-sub-tp A A'.
+
+- : widen-mode-sub-tp (sub-tp/tselx A G2 G1 P2 P1) (sub-tp/tselx A' G2 G1 P2' P1')
+     <- widen-mode-path-eval P1 P1'
+     <- widen-mode-path-eval P2 P2'
+     <- widen-mode-sub-tp A A'.
+
+- : widen-mode-sub-tp (sub-tp/tbind2 N C B A) (sub-tp/tbind2 N C' B' A')
+     <- widen-mode-sub-tp A A'
+     <- widen-mode-sub-tp B B'
+     <- widen-mode-sub-tp C C'.
+
+- : widen-mode-sub-tp (sub-tp/tbind1 N A) (sub-tp/tbind1 N A')
+     <- widen-mode-sub-tp A A'.
+
+- : widen-mode-sub-tp (sub-tp/and2 B A) (sub-tp/and2 B' A')
+     <- widen-mode-sub-tp A A'
+     <- widen-mode-sub-tp B B'.
+
+- : widen-mode-sub-tp (sub-tp/and1a W A) (sub-tp/and1a W' A')
+     <- widen-mode-sub-tp A A'
+     <- widen-mode-wf-tp W W'.
+
+- : widen-mode-sub-tp (sub-tp/and1b W A) (sub-tp/and1b W' A')
+     <- widen-mode-sub-tp A A'
+     <- widen-mode-wf-tp W W'.
+
+- : widen-mode-sub-tp (sub-tp/tsel1 A G P) (sub-tp/tsel1 A' G P')
+     <- widen-mode-path-eval P P'
+     <- widen-mode-sub-tp A A'.
+
+- : widen-mode-sub-tp (sub-tp/tsel2-strict A G (pev (wf-tp/rect BSU WU WS) G L)) (sub-tp/tsel2-lenient A' G P')
+     <- widen-mode-path-eval (pev (wf-tp/rect BSU WU WS) G L)  P'
+     <- widen-mode-sub-tp A AS'
+     <- widen-mode-sub-tp BSU BSU'
+     <- sub-tp-trans AS' BSU' A'.
+
+- : widen-mode-sub-tp (sub-tp/top W) (sub-tp/top W')
+     <- widen-mode-wf-tp W W'.
+
+- : widen-mode-sub-tp (sub-tp/bot W) (sub-tp/bot W')
+     <- widen-mode-wf-tp W W'.
+
+%worlds () (widen-mode-wf-tp _ _) (widen-mode-path-eval _ _) (widen-mode-sub-tp _ _).
+%total (A B C) (widen-mode-wf-tp A _) (widen-mode-path-eval B _) (widen-mode-sub-tp C _).
+
+%{ ------- type safety proof ----- }%
+
 incompat-tp: tpe -> tpe -> type.
 
 incompat/top-recv: incompat-tp top (recv _ _).
@@ -2543,8 +2561,6 @@ no-subtype0: incompat-tp T1 T3 -> compat-tp T1 T3 -> false -> type.
 %mode no-subtype0 +A +B -D.
 %worlds () (no-subtype0 _ _ _).
 %total (A) (no-subtype0 A _ _).
-
-%{ ------- type safety proof ----- }%
 
 %{ ------- type well-formedness extractors ----- }%
 
