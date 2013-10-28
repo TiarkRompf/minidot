@@ -1823,8 +1823,18 @@ sub-tp-trans-aux :
       <- eq-sub-env-size EQG1 GA1 GC1
       .
 
+-/tsel2--tsel-same : sub-tp-trans-aux
+      W
+      (sub-tp/tsel2-lenient WA2 STA1U2 GA2 PA2)
+      (sub-tp/tsel-same GB3 GB2 PB3 PB2)
+      (sub-tp/tsel2-lenient (wf-tp/tsel-same GB3 PB3) STC1U3 GB3 PB3)
+      <- path-eval-eq PA2 PB2 EQR
+      <- rect-same-all-same EQR EQS EQU
+      <- eq-high EQU STA1U2 STA1U2'
+      <- sub-env-size-eq GA2 GB2 EQG2
+      <- eq-high-env EQG2 STA1U2' STA1U2''.
+
 %worlds () (sub-tp-trans-aux _ _ _ _).
-%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
