@@ -821,7 +821,7 @@ eq-exp-low: same T1 T1' -> exp-tp G T1 N T2 G' -> exp-tp G T1' N T2 G' -> type.
 
 %worlds () (eq-exp-low _ _ _).
 %total {T2} (eq-exp-low T2 _ _).
-%reduces N3 <= N2 (eq-exp-low _ N2  N3).
+% %reduces N3 <= N2 (eq-exp-low _ N2  N3).
 
 
 eq-rect: same T1 T1' -> same T2 T2' -> {LN:nat} same (rect LN T1 T2) (rect LN T1' T2') -> same (rect LN T1' T2') (rect LN T1 T2) -> type.
@@ -847,7 +847,7 @@ eq-low: same T1 T1' -> sub-tp M G1 T1 G2 T2 -> sub-tp M G1 T1' G2 T2 -> type.
 
 %worlds () (eq-low _ _ _).
 %total {A} (eq-low A _ _).
-%reduces N3 <= N2 (eq-low _ N2  N3).
+% %reduces N3 <= N2 (eq-low _ N2  N3).
 
 eq-low-env: sametenv G1 G1' -> sub-tp M G1 T1 G2 T2 -> sub-tp M G1' T1 G2 T2 -> type.
 %mode eq-low-env +P1 +P2 -SBT.
@@ -856,7 +856,7 @@ eq-low-env: sametenv G1 G1' -> sub-tp M G1 T1 G2 T2 -> sub-tp M G1' T1 G2 T2 -> 
 
 %worlds () (eq-low-env _ _ _).
 %total {A} (eq-low-env A _ _).
-%reduces N3 <= N2 (eq-low-env _ N2  N3).
+% %reduces N3 <= N2 (eq-low-env _ N2  N3).
 
 natid : nat -> nat -> type.
 natident : natid N N.
@@ -947,7 +947,7 @@ eq-high: same T2 T2' -> sub-tp M G1 T1 G2 T2 -> sub-tp M G1 T1 G2 T2' -> type.
 
 %worlds () (eq-high _ _ _).
 %total {A} (eq-high A _ _).
-%reduces N3 <= N2 (eq-high _ N2  N3).
+% %reduces N3 <= N2 (eq-high _ N2  N3).
 
 eq-high-env: sametenv G2 G2' -> sub-tp M G1 T1 G2 T2 -> sub-tp M G1 T1 G2' T2 -> type.
 %mode eq-high-env +P1 +P2 -SBT.
@@ -956,7 +956,7 @@ eq-high-env: sametenv G2 G2' -> sub-tp M G1 T1 G2 T2 -> sub-tp M G1 T1 G2' T2 ->
 
 %worlds () (eq-high-env _ _ _).
 %total {A} (eq-high-env A _ _).
-%reduces N3 <= N2 (eq-high-env _ N2  N3).
+% %reduces N3 <= N2 (eq-high-env _ N2  N3).
 
 eq-wf: same T1 T1' -> wf-tp M G1 T1 -> wf-tp M G1 T1' -> type.
 %mode eq-wf +P1 +P2 -SBT.
@@ -965,7 +965,7 @@ eq-wf: same T1 T1' -> wf-tp M G1 T1 -> wf-tp M G1 T1' -> type.
 
 %worlds () (eq-wf _ _ _).
 %total {T2} (eq-wf T2 _ _).
-%reduces N3 <= N2 (eq-wf _ N2  N3).
+% %reduces N3 <= N2 (eq-wf _ N2  N3).
 
 eq-wf-env: sametenv G1 G1' -> wf-tp M G1 T1 -> wf-tp M G1' T1 -> type.
 %mode eq-wf-env +P1 +P2 -SBT.
@@ -974,7 +974,7 @@ eq-wf-env: sametenv G1 G1' -> wf-tp M G1 T1 -> wf-tp M G1' T1 -> type.
 
 %worlds () (eq-wf-env _ _ _).
 %total {G2} (eq-wf-env G2 _ _).
-%reduces N3 <= N2 (eq-wf-env _ N2  N3).
+% %reduces N3 <= N2 (eq-wf-env _ N2  N3).
 
 eq-pev-out : same T T' -> sameenv OG OG' -> path-eval M G N T OG -> path-eval M G N T' OG' -> type.
 %mode eq-pev-out +A +B +C -D.
@@ -991,7 +991,7 @@ eq-pev: same T1 T1' -> path-eval M G1 N T1 G1' -> path-eval M G1 N T1' G1' -> ty
 
 %worlds () (eq-pev _ _ _).
 %total {T2} (eq-pev T2 _ _).
-%reduces N3 <= N2 (eq-pev _ N2  N3).
+% %reduces N3 <= N2 (eq-pev _ N2  N3).
 
 eq-pev-all: sametenv G1 G1' -> same T1 T1' -> path-eval M G1 N T1 EG1 -> path-eval M G1' N T1' EG1' -> type.
 %mode eq-pev-all +P0 +P1 +P2 -SBT.
@@ -1000,7 +1000,7 @@ eq-pev-all: sametenv G1 G1' -> same T1 T1' -> path-eval M G1 N T1 EG1 -> path-ev
 
 %worlds () (eq-pev-all _ _ _ _).
 %total {A} (eq-pev-all A _ _ _).
-%reduces N3 <= N2 (eq-pev-all _ _ N2  N3).
+% %reduces N3 <= N2 (eq-pev-all _ _ N2  N3).
 
 eq-pev-type: same T1 T1' -> path-eval M G1 N T1 EG1 -> path-eval M G1' N T1' EG1' -> type.
 %mode eq-pev-type +P1 +P2 -SBT.
@@ -2473,6 +2473,21 @@ sub-tp-trans-aux :
             (sub-tp/recv SBT5)
       <- sub-tp-trans-aux T1 SBT1 SBT3 SBT5.
 
+-/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
+      W
+      (sub-tp/tsel1 W1 SBT1 G P)
+      SBT3
+      (sub-tp/tsel1 W1 SBT5 G P)
+      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+
+-/tsel2  : sub-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
+      W
+      SBT1
+      (sub-tp/tsel2-lenient W2 SBT3 G P)
+      (sub-tp/tsel2-lenient W2 SBT5 G P)
+      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+
+%{
 -/tselx-tselx : sub-tp-trans-aux
                  (wf-tp/tsel W G (pev G0 L))
                  (sub-tp/tselx STA GA2 GA1 PA2 PA1)
@@ -2527,20 +2542,6 @@ sub-tp-trans-aux :
     <- eq-high-env EQGB STB' STB''
     <- sub-tp-trans-aux WU0 STB'' BU23'' STC.
 
--/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
-      W
-      (sub-tp/tsel1 W1 SBT1 G P)
-      SBT3
-      (sub-tp/tsel1 W1 SBT5 G P)
-      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
-
--/tsel2  : sub-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
-      W
-      SBT1
-      (sub-tp/tsel2-lenient W2 SBT3 G P)
-      (sub-tp/tsel2-lenient W2 SBT5 G P)
-      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
-
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
 -/tsel2-tsel1 : sub-tp-trans-aux
@@ -2562,6 +2563,7 @@ sub-tp-trans-aux :
    <- eq-low EQU2W A2 A2'
    <- eq-low-env EQG2W A2' A2''
    <- sub-tp-trans-aux WU A1'' A2'' OUT.
+}%
 
 -/tbind2  : sub-tp-trans-aux
        W
@@ -2631,7 +2633,9 @@ sub-tp-trans-aux :
       <- sub-tp-trans-aux W2 SBT1 SBT3 SBT5.
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
+% %terminates {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
+%.
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
 %% WF as an additional argument.
@@ -2651,8 +2655,6 @@ sub-tp-trans :
 
 %worlds () (sub-tp-trans _ _ _).
 %total {A} (sub-tp-trans A _ _).
-
-
 
 %{ ------- strict implies lenient ------ }%
 
