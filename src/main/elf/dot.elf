@@ -227,45 +227,33 @@ ses: sub-env-size GN N G
 
 %{ ------- subtyping ------ }%
 
-etenv: type.
-etenv/left: tenv -> etenv.
-etenv/right: tenv -> etenv.
+topt-and: topt -> topt -> topt -> type.
+topt-and/nn : topt-and tnone tnone tnone.
+topt-and/ns : topt-and tnone (tsome T) (tsome T).
+topt-and/sn : topt-and (tsome T) tnone (tsome T).
 
-getenv: etenv -> tenv -> type.
-%mode getenv +A -B.
-getenv/left: getenv (etenv/left G) G.
-getenv/right: getenv (etenv/right G) G.
-%worlds () (getenv _ _).
-%total A (getenv A _).
+exp-tp: tenv -> tpe -> nat -> topt -> type.
 
-topt-and: topt -> topt -> topt -> etenv -> etenv -> etenv -> type.
-topt-and/nn : topt-and tnone tnone tnone G1 G2 G1. % arbitrary
-topt-and/ns : topt-and tnone (tsome T) (tsome T) G1 G2 G2.
-topt-and/sn : topt-and (tsome T) tnone (tsome T) G1 G2 G1.
-
-exp-tp: tenv -> tpe -> nat -> topt -> etenv -> type.
-
-exp-tp/top  : exp-tp G top N tnone (etenv/left G).
-exp-tp/bot  : exp-tp G bot N tnone (etenv/left G).
-exp-tp/fun  : exp-tp G (arrow N1 T1 T2) N2 tnone (etenv/left G).
-exp-tp/recv : exp-tp G (recv N1 T) N2 tnone (etenv/left G).
-exp-tp/rect : exp-tp G (rect N T1 T2) N (tsome (rect N T1 T2)) (etenv/left G).
-exp-tp/rectn: exp-tp G (rect N1 T1 T2) N2 tnone (etenv/left G)
+exp-tp/top  : exp-tp G top N tnone.
+exp-tp/bot  : exp-tp G bot N tnone.
+exp-tp/fun  : exp-tp G (arrow N1 T1 T2) N2 tnone.
+exp-tp/recv : exp-tp G (recv N1 T) N2 tnone.
+exp-tp/rect : exp-tp G (rect N T1 T2) N (tsome (rect N T1 T2)).
+exp-tp/rectn: exp-tp G (rect N1 T1 T2) N2 tnone
               <- ne N1 N2.
-exp-tp/and  : exp-tp G (and T1 T2) N T3' G3'
-              <- exp-tp G T2 N T2' G2'
-              <- exp-tp G T1 N T1' G1'
-              <- topt-and T1' T2' T3' G1' G2' G3'.
+exp-tp/and  : exp-tp G (and T1 T2) N T3'
+              <- exp-tp G T2 N T2'
+              <- exp-tp G T1 N T1'
+              <- topt-and T1' T2' T3'.
 
-exp-tp/bind : exp-tp G0 (bind N1 T1) N2 T2 (etenv/right G'')
+exp-tp/bind : exp-tp G0 (bind N1 T1) N2 T2
               <- sub-env-size G N1 G0
-              <- exp-tp (tcons (bind N1 T1) G) T1 N2 T2 G'
-              <- getenv G' G''.
+              <- exp-tp (tcons (bind N1 T1) G) T1 N2 T2.
 
 %% TODO: other interesting cases?
 
-tlookexp: tenv -> exp -> tpe -> etenv -> type.
-tle: tlookexp G (var N) (rect LN T1 T2) G' <- tlookup G N T0 <- exp-tp G T0 LN (tsome (rect LN T1 T2)) G'.
+tlookexp: tenv -> exp -> tpe -> type.
+tle: tlookexp G (var N) (rect LN T1 T2) <- tlookup G N T0 <- exp-tp G T0 LN (tsome (rect LN T1 T2)).
 
 mode : type.
 strict : mode.
@@ -275,12 +263,8 @@ wf-tp : mode -> tenv -> tpe -> type.
 
 sub-tp : mode -> tenv -> tpe -> tenv -> tpe -> type.
 
-path-eval: mode -> tenv -> exp -> tpe -> etenv -> type.
-pev  : path-eval M G E (rect N TS TU) EG
-        <- tlookexp G E (rect N TS TU) EG
-        <- getenv EG G'
-        % <- wf-tp M G' (rect N TS TU)
-        .
+path-eval: mode -> tenv -> exp -> tpe -> type.
+pev  : path-eval M G E (rect N TS TU) <- tlookexp G E (rect N TS TU).
 
 sub-tp/refl : sub-tp M G1 T G2 T  %%% ACCELERATE QUERIES !! % --
                <- sub-env G G1 % --
@@ -304,19 +288,11 @@ sub-tp/rect : sub-tp M G1 (rect N TA1 TB1) G2 (rect N TA2 TB2)
 sub-tp/recv : sub-tp M G1 (recv N T1) G2 (recv N T2)
               <- sub-tp M G1 T1 G2 T2.
 
-sub-tp/tsel-same : sub-tp M G1 (tsel (var X) N) G2 (tsel (var X) N)
-              <- sub-env-size G X G1
-              <- sub-env-size G X G2
-              <- sub-env (tcons Z1 G) G1
-              <- sub-env (tcons Z2 G) G2
-              <- path-eval M (tcons Z1 G) (var X) (rect N T T) (etenv/right (tcons Z1 G))
-              <- path-eval M (tcons Z2 G) (var X) (rect N T T) (etenv/right (tcons Z2 G)).
-
-sub-tp/tselx-strict : sub-tp strict G1 (tsel E N) G2 (tsel E N)
-             <- path-eval strict G1 E (rect N TA1 TB1) G1'
-             <- path-eval strict G2 E (rect N TA2 TB2) G2'
-             <- getenv G1' G1X
-             <- getenv G2' G2X
+sub-tp/tselx-strict : sub-tp strict G1 (tsel (var X) N) G2 (tsel (var X) N)
+             <- path-eval strict G1 (var X) (rect N TA1 TB1)
+             <- path-eval strict G2 (var X) (rect N TA2 TB2)
+              <- sub-env-size G1X (s X) G1
+              <- sub-env-size G2X (s X) G2
              <- sub-tp strict G1X (rect N TA1 TB1) G2X (rect N TA2 TB2)
              .
 
@@ -344,25 +320,22 @@ sub-tp/and1b : sub-tp M G1 (and TA1 TB1) G2 T2
               <- sub-tp M G1 TB1 G2 T2
               <- wf-tp M G1 TA1.
 
-sub-tp/tsel1 : sub-tp M G1 (tsel E1 N) G2 T2
-              <- path-eval M G1 E1 (rect N TA1 TB1) G1'
-              <- getenv G1' G1X
+sub-tp/tsel1 : sub-tp M G1 (tsel (var X) N) G2 T2
+              <- path-eval M G1 (var X) (rect N TA1 TB1)
+              <- sub-env-size G1X (s X) G1
               <- sub-tp M G1X TB1 G2 T2
-              <- wf-tp M G1 (tsel E1 N)
               .
 
-sub-tp/tsel2-strict : sub-tp strict G1 T1 G2 (tsel E2 N)
-              <- path-eval strict G2 E2 (rect N TA2 TB2) G2'
-              <- getenv G2' G2X
+sub-tp/tsel2-strict : sub-tp strict G1 T1 G2 (tsel (var X) N)
+              <- path-eval strict G2 (var X) (rect N TA2 TB2)
+              <- sub-env-size G2X (s X) G2
               <- sub-tp strict G1 T1 G2X TA2
-              <- wf-tp strict G2 (tsel E2 N)
               .
 
-sub-tp/tsel2-lenient : sub-tp lenient G1 T1 G2 (tsel E2 N)
-              <- path-eval lenient G2 E2 (rect N TA2 TB2) G2'
-              <- getenv G2' G2X
+sub-tp/tsel2-lenient : sub-tp lenient G1 T1 G2 (tsel (var X) N)
+              <- path-eval lenient G2 (var X) (rect N TA2 TB2)
+              <- sub-env-size G2X (s X) G2
               <- sub-tp lenient G1 T1 G2X TB2
-              <- wf-tp lenient G2 (tsel E2 N)
               .
 
 sub-tp/bot  : sub-tp M G1 bot G2 T <- wf-tp M G2 T.
@@ -382,17 +355,10 @@ wf-tp/rect : wf-tp M G (rect N TA TB)
 wf-tp/recv : wf-tp M G (recv N T)
               <- wf-tp M G T.
 
-wf-tp/tsel-same : wf-tp M G (tsel (var X) N)
-              <- sub-env-size G0 X G
-              <- sub-env (tcons Z G0) G
-              <- path-eval M (tcons Z G0) (var X) (rect N T T) EG
-              <- getenv EG (tcons Z G0)
-              .
-
-wf-tp/tsel : wf-tp M G (tsel E N)
-              <- path-eval M G E (rect N TA TB) EG
-              <- getenv EG G'
-              <- wf-tp M G' (rect N TA TB)
+wf-tp/tsel : wf-tp M G (tsel (var X) N)
+              <- path-eval M G (var X) (rect N TA TB)
+              <- sub-env-size GX (s X) G
+              <- wf-tp M GX (rect N TA TB)
               .
 
 wf-tp/tbind : wf-tp M G (bind N TN)
