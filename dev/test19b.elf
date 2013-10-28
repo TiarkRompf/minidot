@@ -278,25 +278,42 @@ sub-tp : mode -> tenv -> tpe -> tenv -> tpe -> type.
 path-eval: mode -> tenv -> exp -> tpe -> etenv -> type.
 pev  : path-eval M G E (rect N TS TU) EG
         <- tlookexp G E (rect N TS TU) EG
-        <- getenv EG G' <- wf-tp M G' (rect N TS TU)
+        <- getenv EG G'
+        % <- wf-tp M G' (rect N TS TU)
         .
 
-% ++ sub-tp/refl : sub-tp M G T G T <- wf-tp M G T. %%% ACCELRATE QUERIES !!
+% ++ sub-tp/refl : sub-tp M G1 T G2 T  %%% ACCELRATE QUERIES !!
+% ++                <- sub-env G G1
+% ++                <- sub-env G G2
+% ++                <- wf-tp M G T.
 
+
+sub-tp/top  : sub-tp M G1 T G2 top <- wf-tp M G1 T.
 
 sub-tp/fun  : sub-tp M G1 (arrow N TA1 TB1) G2 (arrow N TA2 TB2)
+              <- sub-tp M G1 TB1 G2 TB2
               <- sub-tp M G2 TA2 G1 TA1
-              <- sub-tp M G1 TB1 G2 TB2.
+              .
 
 sub-tp/rect : sub-tp M G1 (rect N TA1 TB1) G2 (rect N TA2 TB2)
               <- sub-tp M G1 TA1 G1 TB1
               <- sub-tp M G2 TA2 G2 TB2
 
               <- sub-tp M G2 TA2 G1 TA1
-              <- sub-tp M G1 TB1 G2 TB2.
+              <- sub-tp M G1 TB1 G2 TB2
+              .
 
 sub-tp/recv : sub-tp M G1 (recv N T1) G2 (recv N T2)
               <- sub-tp M G1 T1 G2 T2.
+
+% ++ sub-tp/tselx0 : sub-tp M G1 (tsel E N) G2 (tsel E N) 
+% ++              <- path-eval M G1 E (rect N TA TB) G1'  
+% ++              <- path-eval M G2 E (rect N TA TB) G2'. 
+
+
+% ++ sub-tp/tselx1 : sub-tp M G1 (tsel E N) G2 (tsel E N) 
+% ++              <- path-eval M G1 E (rect N TA TB) G1'  
+% ++              <- path-eval M G2 E (rect N bot TB) G2'.
 
 sub-tp/tselx : sub-tp M G1 (tsel E N) G2 (tsel E N)
              <- path-eval M G1 E (rect N TA1 TB1) G1'
@@ -304,6 +321,8 @@ sub-tp/tselx : sub-tp M G1 (tsel E N) G2 (tsel E N)
              <- getenv G1' G1X
              <- getenv G2' G2X
              <- sub-tp M G1X (rect N TA1 TB1) G2X (rect N TA2 TB2)
+             % <- sub-tp M G1X TB1 G2X TB2
+             % <- sub-tp M G2X TA2 G1X TA1
              .
 
 sub-tp/tbind2 : sub-tp M G1 T1 G2 (bind N TN)
@@ -346,8 +365,6 @@ sub-tp/tsel2-lenient : sub-tp lenient G1 T1 G2 (tsel E2 N)
               <- sub-tp lenient G1 T1 G2X TB2
               .
 
-sub-tp/top  : sub-tp M G1 T G2 top <- wf-tp M G1 T.
-
 sub-tp/bot  : sub-tp M G1 bot G2 T <- wf-tp M G2 T.
 
 wf-tp/top  : wf-tp M G top.
@@ -355,15 +372,18 @@ wf-tp/bot  : wf-tp M G bot.
 
 wf-tp/fun  : wf-tp M G (arrow N TA TB)
               <- wf-tp M G TA
-              <- wf-tp M G TB.
+              <- wf-tp M G TB
+              .
 
 wf-tp/rect : wf-tp M G (rect N TA TB)
               <- wf-tp M G TA
               <- wf-tp M G TB
-              <- sub-tp M G TA G TB. % T1 <: T2 required for transitivity
+              <- sub-tp M G TA G TB  % T1 <: T2 required for transitivity
+              .
 
 wf-tp/recv : wf-tp M G (recv N T)
-              <- wf-tp M G T.
+              <- wf-tp M G T
+              .
 
 wf-tp/tsel : wf-tp M G (tsel E N)
               <- path-eval M G E (rect N TA TB) G'
@@ -376,7 +396,8 @@ wf-tp/tbind : wf-tp M G (bind N TN)
 
 wf-tp/and  : wf-tp M G (and TA TB)
               <- wf-tp M G TB
-              <- wf-tp M G TA.
+              <- wf-tp M G TA
+              .
 
 %{ ------- eval-exp / type-exp ----- }%
 
@@ -387,8 +408,7 @@ e/empty    : eval-exp G empty emptyv.
 e/var      : eval-exp G (var N) V <- vlookup G N V.
 
 e/fun      : eval-exp G (fun TC LNF _ R _ LNV R2 _ MT) (clos LNF R LNV V2 G)
-            % <- eval-exp (vcons emptyv G) R2 V2.
-              <- eval-exp (vcons (clos z empty z emptyv G) G) R2 V2.
+            <- eval-exp (vcons (clos z empty z emptyv G) G) R2 V2.
 
 
 e/app      : eval-exp G (app E1 LNF E2) V3
@@ -428,7 +448,8 @@ t/fun      : type-exp G (fun TC LNF T3 R T4 LNV R2 T2 M)
 
 t/app       : type-exp G (app E1 LNF E2) T2
            <- type-exp G E1 (arrow LNF T1 T2)
-           <- type-exp G E2 T1.
+           <- type-exp G E2 T1
+           .
 
 % ++ t/let       : type-exp G (let T1 E1 E2) T2
 % ++            <- type-exp G E1 T1
