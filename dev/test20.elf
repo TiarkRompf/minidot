@@ -340,21 +340,21 @@ sub-tp/tsel1 : sub-tp M G1 (tsel E1 N) G2 T2
               <- path-eval M G1 E1 (rect N TA1 TB1) G1'
               <- getenv G1' G1X
               <- sub-tp M G1X TB1 G2 T2
-              <- wf-tp M G1X (rect N TA1 TB1)
+              <- wf-tp M G1 (tsel E1 N)
               .
 
 sub-tp/tsel2-strict : sub-tp strict G1 T1 G2 (tsel E2 N)
               <- path-eval strict G2 E2 (rect N TA2 TB2) G2'
               <- getenv G2' G2X
               <- sub-tp strict G1 T1 G2X TA2
-              <- wf-tp strict G2X (rect N TA2 TB2)
+              <- wf-tp strict G2 (tsel E2 N)
               .
 
 sub-tp/tsel2-lenient : sub-tp lenient G1 T1 G2 (tsel E2 N)
               <- path-eval lenient G2 E2 (rect N TA2 TB2) G2'
               <- getenv G2' G2X
               <- sub-tp lenient G1 T1 G2X TB2
-              <- wf-tp lenient G2X (rect N TA2 TB2)
+              <- wf-tp lenient G2 (tsel E2 N)
               .
 
 sub-tp/bot  : sub-tp M G1 bot G2 T <- wf-tp M G2 T.
@@ -374,13 +374,13 @@ wf-tp/rect : wf-tp M G (rect N TA TB)
 wf-tp/recv : wf-tp M G (recv N T)
               <- wf-tp M G T.
 
-wf-tp/tsel-bot : wf-tp M G (tsel E N)
-              <- path-eval M G E (rect N bot TB) EG
-              .
+% wf-tp/tsel-bot : wf-tp M G (tsel E N)
+%              <- path-eval M G E (rect N bot TB) EG
+%              .
 
-wf-tp/tsel-same : wf-tp M G (tsel E N)
-              <- path-eval M G E (rect N T T) EG
-              .
+% wf-tp/tsel-same : wf-tp M G (tsel E N)
+%              <- path-eval M G E (rect N T T) EG
+%              .
 
 wf-tp/tsel : wf-tp M G (tsel E N)
               <- path-eval M G E (rect N TA TB) EG
@@ -1458,38 +1458,33 @@ sub-tp-case1:  getenv OG GX
                -> sub-tp M GX TU G2 TU2
                -> sub-tp M (tcons T GX) TU (tcons T G2) TU2
                -> sub-tp M (tcons T GX) TU G2 TU2
-               -> wf-tp M GX (rect N TS TU)
-               -> wf-tp M (tcons T GX) (rect N TS TU)
                -> getenv OG' GX'
                -> sub-tp M GX' TU (tcons T G2) TU2
                -> sub-tp M GX' TU G2 TU2
-               -> wf-tp M GX' (rect N TS TU)
                -> type.
-%mode sub-tp-case1 +A +B +C +D +E +F +G +H +I +J +K -L -M -N -O.
+%mode sub-tp-case1 +A +B +C +D +E +F +G +H +I -J -K -L.
 
-- : sub-tp-case1 getenv/left P P' env-case/left env-case/left ST STA ST' STA' W W' getenv/left ST' STA' W'.
-- : sub-tp-case1 getenv/right P P' env-case/right env-case/right ST STA ST' STA' W W' getenv/right ST STA W.
+- : sub-tp-case1 getenv/left P P' env-case/left env-case/left ST STA ST' STA' getenv/left ST' STA'.
+- : sub-tp-case1 getenv/right P P' env-case/right env-case/right ST STA ST' STA' getenv/right ST STA.
 
-- : sub-tp-case1 getenv/left (pev _ (L: tlookexp _ (var N) _ _)) (pev _ L') env-case/left (env-case/right: env-case _ (tcons T _) GX') (ST: sub-tp M _ TU (tcons T G2) TU2) STA ST' STA' W W' getenv/right O1 O2 OW
+- : sub-tp-case1 getenv/left (pev _ (L: tlookexp _ (var N) _ _)) (pev _ L') env-case/left (env-case/right: env-case _ (tcons T _) GX') (ST: sub-tp M _ TU (tcons T G2) TU2) STA ST' STA' getenv/right O1 O2
      <- extend-wf-lkpe-case-left L T L2
      <- eq-refl N EQ
      <- lookexp-eq L2 L' EQ _ _ X
      <- not-sameenv-left-right X CONTRA
      <- no-subtype CONTRA M GX' TU (tcons T G2) TU2 O1
-     <- no-subtype CONTRA M GX' TU G2 TU2 O2
-     <- no-wf-tp CONTRA M _ _ OW.
+     <- no-subtype CONTRA M GX' TU G2 TU2 O2.
 
-- : sub-tp-case1 getenv/right (pev _ (L: tlookexp _ (var N) _ _)) (pev _ L') env-case/right (env-case/left: env-case _ (tcons T G) GX') (ST: sub-tp M _ TU (tcons T G2) TU2) STA ST' STA' W W' getenv/left O1 O2 OW
+- : sub-tp-case1 getenv/right (pev _ (L: tlookexp _ (var N) _ _)) (pev _ L') env-case/right (env-case/left: env-case _ (tcons T G) GX') (ST: sub-tp M _ TU (tcons T G2) TU2) STA ST' STA' getenv/left O1 O2
      <- extend-wf-lkpe-case-right L T L2
      <- eq-refl N EQ
      <- lookexp-eq L' L2 EQ _ _ X
      <- not-sameenv-left-right X CONTRA
      <- no-subtype CONTRA M (tcons T G) TU (tcons T G2) TU2 O1
-     <- no-subtype CONTRA M (tcons T G) TU G2 TU2 O2
-     <- no-wf-tp CONTRA M _ _ OW.
+     <- no-subtype CONTRA M (tcons T G) TU G2 TU2 O2.
 
-%worlds () (sub-tp-case1 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
-%total (A) (sub-tp-case1 A _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+%worlds () (sub-tp-case1 _ _ _ _ _ _ _ _ _ _ _ _).
+%total (A) (sub-tp-case1 A _ _ _ _ _ _ _ _ _ _ _).
 
 sub-tp-case2: getenv OG GX
                -> path-eval M G E (rect N TSA TUA) OG
@@ -1500,38 +1495,33 @@ sub-tp-case2: getenv OG GX
                -> sub-tp M G1 TS1 GX TS
                -> sub-tp M (tcons T G1) TS1 (tcons T GX) TS
                -> sub-tp M G1 TS1 (tcons T GX) TS
-               -> wf-tp M GX (rect N TSA TUA)
-               -> wf-tp M (tcons T GX) (rect N TSA TUA)
                -> getenv OG' GX'
                -> sub-tp M (tcons T G1) TS1 GX' TS
                -> sub-tp M G1 TS1 GX' TS
-               -> wf-tp M GX' (rect N TSA TUA)
                -> type.
-%mode sub-tp-case2 +A +B +C +D +E +F +G +H +I +J +K -L -M -N -O.
+%mode sub-tp-case2 +A +B +C +D +E +F +G +H +I -J -K -L.
 
-- : sub-tp-case2 getenv/left P P' env-case/left env-case/left ST STA ST' STA' W W' getenv/left ST' STA' W'.
-- : sub-tp-case2 getenv/right P P' env-case/right env-case/right ST STA ST' STA' W W' getenv/right ST STA W.
+- : sub-tp-case2 getenv/left P P' env-case/left env-case/left ST STA ST' STA' getenv/left ST' STA'.
+- : sub-tp-case2 getenv/right P P' env-case/right env-case/right ST STA ST' STA' getenv/right ST STA.
 
-- : sub-tp-case2 getenv/left (pev _ (L: tlookexp _ (var N) _ _)) (pev _ L') env-case/left (env-case/right: env-case _ (tcons T _) GX') (ST: sub-tp M (tcons T G1) TS1 _ TS) STA ST' STA' W W' getenv/right O1 O2 OW
+- : sub-tp-case2 getenv/left (pev _ (L: tlookexp _ (var N) _ _)) (pev _ L') env-case/left (env-case/right: env-case _ (tcons T _) GX') (ST: sub-tp M (tcons T G1) TS1 _ TS) STA ST' STA' getenv/right O1 O2
      <- extend-wf-lkpe-case-left L T L2
      <- eq-refl N EQ
      <- lookexp-eq L2 L' EQ _ _ X
      <- not-sameenv-left-right X CONTRA
      <- no-subtype CONTRA M (tcons T G1) TS1 GX' TS O1
-     <- no-subtype CONTRA M G1 TS1 GX' TS O2
-     <- no-wf-tp CONTRA M _ _ OW.
+     <- no-subtype CONTRA M G1 TS1 GX' TS O2.
 
-- : sub-tp-case2 getenv/right (pev _ (L: tlookexp _ (var N) _ _)) (pev _ L') env-case/right (env-case/left: env-case _ (tcons T G) GX') (ST: sub-tp M (tcons T G1) TS1 _ TS) STA ST' STA' W W' getenv/left O1 O2 OW
+- : sub-tp-case2 getenv/right (pev _ (L: tlookexp _ (var N) _ _)) (pev _ L') env-case/right (env-case/left: env-case _ (tcons T G) GX') (ST: sub-tp M (tcons T G1) TS1 _ TS) STA ST' STA' getenv/left O1 O2
      <- extend-wf-lkpe-case-right L T L2
      <- eq-refl N EQ
      <- lookexp-eq L' L2 EQ _ _ X
      <- not-sameenv-left-right X CONTRA
      <- no-subtype CONTRA M (tcons T G1) TS1 (tcons T G) TS O1
-     <- no-subtype CONTRA M G1 TS1 (tcons T G) TS O2
-     <- no-wf-tp CONTRA M _ _ OW.
+     <- no-subtype CONTRA M G1 TS1 (tcons T G) TS O2.
 
-%worlds () (sub-tp-case2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
-%total (A) (sub-tp-case2 A _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+%worlds () (sub-tp-case2 _ _ _ _ _ _ _ _ _ _ _ _).
+%total (A) (sub-tp-case2 A _ _ _ _ _ _ _ _ _ _ _).
 
 sub-tp-casex:  {T} getenv OG1 G1Y
                -> path-eval M G1 E (rect N TA1 TB1) OG1
@@ -1794,10 +1784,10 @@ extend-sub-tp: sub-tp M G1 T1 G2 T2 -> {Z: tpe}
 - : extend-wf-tp (wf-tp/recv W1) T (wf-tp/recv W1')
       <- extend-wf-tp W1 _ W1'.
 
-- : extend-wf-tp (wf-tp/tsel-bot P) T (wf-tp/tsel-bot P')
-     <- extend-wf-pev P T P'.
-- : extend-wf-tp (wf-tp/tsel-same P) T (wf-tp/tsel-same P')
-     <- extend-wf-pev P T P'.
+% - : extend-wf-tp (wf-tp/tsel-bot P) T (wf-tp/tsel-bot P')
+%     <- extend-wf-pev P T P'.
+% - : extend-wf-tp (wf-tp/tsel-same P) T (wf-tp/tsel-same P')
+%     <- extend-wf-pev P T P'.
 - : extend-wf-tp (wf-tp/tsel W G (pev _ L)) T (wf-tp/tsel W' G' (pev G' L1))
       <- extend-wf-tp W T W1
       <- extend-wf-lkpe-case L T L1 X X1
@@ -1829,20 +1819,20 @@ extend-sub-tp: sub-tp M G1 T1 G2 T2 -> {Z: tpe}
     (sub-tp/tsel1 W1' STX' G' P') (sub-tp/tsel1 W1' STAX G' P') (sub-tp/tsel1 W1 STB G P)
       <- extend-wf-pev-case P T P' X X'
       <- extend-sub-tp ST T ST' STA STB
-      <- extend-wf-tp W1 T W1X
-      <- sub-tp-case1 G P P' X X' STB ST ST' STA W1 W1X G' STX' STAX W1'.
+      <- extend-wf-tp W1 T W1'
+      <- sub-tp-case1 G P P' X X' STB ST ST' STA G' STX' STAX.
 - : extend-sub-tp (sub-tp/tsel2-strict W2 ST G P) T
     (sub-tp/tsel2-strict W2' STX' G' P') (sub-tp/tsel2-strict W2 STA G P) (sub-tp/tsel2-strict W2' STBX G' P')
       <- extend-wf-pev-case P T P' X X'
       <- extend-sub-tp ST T ST' STA STB
-      <- extend-wf-tp W2 T W2X
-      <- sub-tp-case2 G P P' X X' STA ST ST' STB W2 W2X G' STX' STBX W2'.
+      <- extend-wf-tp W2 T W2'
+      <- sub-tp-case2 G P P' X X' STA ST ST' STB G' STX' STBX.
 - : extend-sub-tp (sub-tp/tsel2-lenient W2 ST G P) T
     (sub-tp/tsel2-lenient W2' STX' G' P') (sub-tp/tsel2-lenient W2 STA G P) (sub-tp/tsel2-lenient W2' STBX G' P')
       <- extend-wf-pev-case P T P' X X'
       <- extend-sub-tp ST T ST' STA STB
-      <- extend-wf-tp W2 T W2X
-      <- sub-tp-case2 G P P' X X' STA ST ST' STB W2 W2X G' STX' STBX W2'.
+      <- extend-wf-tp W2 T W2'
+      <- sub-tp-case2 G P P' X X' STA ST ST' STB G' STX' STBX.
 
 - : extend-sub-tp (sub-tp/tselx-strict ST G2 G1 P2 P1) T
      (sub-tp/tselx-strict ST' G2' G1' P2' P1')
@@ -2005,14 +1995,14 @@ extract-wf : sub-tp M G1 T1 G2 T2 -> wf-tp M G1 T1 -> wf-tp M G2 T2 -> type.
       <- extract-wf ST W1 W2.
 
 - : extract-wf (sub-tp/tsel1 W1 ST G P)
-      (wf-tp/tsel W1 G P) W2
+      W1 W2
       <- extract-wf ST _ W2.
 
 - : extract-wf (sub-tp/tsel2-strict W2 ST G P)
-      W1 (wf-tp/tsel W2 G P)
+      W1 W2
       <- extract-wf ST W1 _.
 - : extract-wf (sub-tp/tsel2-lenient W2 ST G P)
-      W1 (wf-tp/tsel W2 G P)
+      W1 W2
       <- extract-wf ST W1 _.
 
 - : extract-wf (sub-tp/tselx-strict ST G2 G1 P2 P1)
@@ -2125,7 +2115,7 @@ sub-tp-refl :
    <- sub-tp-refl T2 SBT2.
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
--/tsel: sub-tp-refl (wf-tp/tsel W G (pev G0 L)) (sub-tp/tsel1 W (sub-tp/tsel2-lenient W BU G (pev G0 L)) G (pev G0 L))
+-/tsel: sub-tp-refl (wf-tp/tsel W G (pev G0 L)) (sub-tp/tsel1 (wf-tp/tsel W G (pev G0 L)) (sub-tp/tsel2-lenient (wf-tp/tsel W G (pev G0 L)) BU G (pev G0 L)) G (pev G0 L))
    <- sub-tp-refl W (sub-tp/rect BU _ _ _).
 
 -/tbind: sub-tp-refl (wf-tp/tbind WU S)
@@ -2430,26 +2420,25 @@ sub-tp-trans-aux :
 
 -/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
-      (sub-tp/tsel1 SBT1 G P)
+      (sub-tp/tsel1 W1 SBT1 G P)
       SBT3
-      (sub-tp/tsel1 SBT5 G P)
+      (sub-tp/tsel1 W1 SBT5 G P)
       <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
 
 -/tsel2  : sub-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
       W
       SBT1
-      (sub-tp/tsel2-lenient SBT3 G P)
-      (sub-tp/tsel2-lenient SBT5 G P)
+      (sub-tp/tsel2-lenient W2 SBT3 G P)
+      (sub-tp/tsel2-lenient W2 SBT5 G P)
       <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
 -/tsel2-tsel1 : sub-tp-trans-aux
-                 (wf-tp/tsel PW)
-                 (sub-tp/tsel2-lenient A1 GE1 P1)
-                 (sub-tp/tsel1 A2 GE2 P2)
+                 (wf-tp/tsel (wf-tp/rect BSU WU WS) GEW PW)
+                 (sub-tp/tsel2-lenient _ A1 GE1 P1)
+                 (sub-tp/tsel1 _ A2 GE2 P2)
                  OUT
-   <- path-eval-etenv PW GEW
    <- path-eval-eq P1 P2 EQR12 EQGE12
    <- rect-same-all-same EQR12 EQS12 EQU12
    <- same-etenv-tenv EQGE12 GE1 GE2 EQG12
@@ -2459,9 +2448,6 @@ sub-tp-trans-aux :
    <- path-eval-eq P2 PW EQR2W EQGE2W
    <- rect-same-all-same EQR2W EQS2W EQU2W
    <- same-etenv-tenv EQGE2W GE2 GEW EQG2W
-   <- extract-wf-pev PW GEW' W'
-   <- same-etenv-tenv identenv GEW' GEW EQW
-   <- eq-wf-env EQW W' (wf-tp/rect BSU WU WS)
    <- eq-high EQU1W A1 A1'
    <- eq-high-env EQG1W A1' A1''
    <- eq-low EQU2W A2 A2'
@@ -2581,16 +2567,16 @@ widen-mode-sub-tp : sub-tp strict G1 T1 G2 T2 -> sub-tp lenient G1 T1 G2 T2 -> t
      <- widen-mode-sub-tp ST ST'.
 - : widen-mode-wf-tp (wf-tp/recv A) (wf-tp/recv A')
      <- widen-mode-wf-tp A A'.
-- : widen-mode-wf-tp (wf-tp/tsel P) (wf-tp/tsel P')
-     <- widen-mode-path-eval P P'.
+- : widen-mode-wf-tp (wf-tp/tsel W G P) (wf-tp/tsel W' G P')
+     <- widen-mode-path-eval P P'
+     <- widen-mode-wf-tp W W'.
 - : widen-mode-wf-tp (wf-tp/tbind A N) (wf-tp/tbind A' N)
      <- widen-mode-wf-tp A A'.
 - : widen-mode-wf-tp (wf-tp/and B A) (wf-tp/and B' A')
      <- widen-mode-wf-tp A A'
      <- widen-mode-wf-tp B B'.
 
-- : widen-mode-path-eval (pev G L) (pev G L)
-     <- widen-mode-wf-tp W W'.
+- : widen-mode-path-eval (pev G L) (pev G L).
 
 - : widen-mode-sub-tp (sub-tp/fun B A) (sub-tp/fun B' A')
      <- widen-mode-sub-tp A A'
@@ -2605,10 +2591,11 @@ widen-mode-sub-tp : sub-tp strict G1 T1 G2 T2 -> sub-tp lenient G1 T1 G2 T2 -> t
 - : widen-mode-sub-tp (sub-tp/recv A) (sub-tp/recv A')
      <- widen-mode-sub-tp A A'.
 
-- : widen-mode-sub-tp (sub-tp/tselx-strict A G2 G1 P2 P1) (sub-tp/tsel1 (sub-tp/tsel2-lenient BU G2 P2') G1 P1')
+- : widen-mode-sub-tp (sub-tp/tselx-strict A G2 G1 P2 P1) (sub-tp/tsel1 (wf-tp/tsel W1' G1 P1') (sub-tp/tsel2-lenient (wf-tp/tsel W2' G2 P2') BU G2 P2') G1 P1')
      <- widen-mode-path-eval P1 P1'
      <- widen-mode-path-eval P2 P2'
-     <- widen-mode-sub-tp A (sub-tp/rect BU _ _ _).
+     <- widen-mode-sub-tp A (sub-tp/rect BU BS B2 B1)
+     <- extract-wf (sub-tp/rect BU BS B2 B1) W1' W2'.
 
 - : widen-mode-sub-tp (sub-tp/tbind2 C B A N) (sub-tp/tbind2 C' B' A' N)
      <- widen-mode-sub-tp A A'
@@ -2630,15 +2617,24 @@ widen-mode-sub-tp : sub-tp strict G1 T1 G2 T2 -> sub-tp lenient G1 T1 G2 T2 -> t
      <- widen-mode-sub-tp A A'
      <- widen-mode-wf-tp W W'.
 
-- : widen-mode-sub-tp (sub-tp/tsel1 A G P) (sub-tp/tsel1 A' G P')
+- : widen-mode-sub-tp (sub-tp/tsel1 W A G P) (sub-tp/tsel1 W' A' G P')
      <- widen-mode-path-eval P P'
-     <- widen-mode-sub-tp A A'.
+     <- widen-mode-sub-tp A A'
+     <- widen-mode-wf-tp W W'.
 
-- : widen-mode-sub-tp (sub-tp/tsel2-strict A G (pev (wf-tp/rect BSU WU WS) G L)) (sub-tp/tsel2-lenient A' G P')
-     <- widen-mode-path-eval (pev (wf-tp/rect BSU WU WS) G L)  P'
+- : widen-mode-sub-tp (sub-tp/tsel2-strict (wf-tp/tsel (wf-tp/rect BSU WU WS) G0 P0) A G P) (sub-tp/tsel2-lenient W' A' G P')
+     <- widen-mode-path-eval P  P'
      <- widen-mode-sub-tp A AS'
      <- widen-mode-sub-tp BSU BSU'
-     <- sub-tp-trans AS' BSU' A'.
+     <- path-eval-eq P0 P EQR EQGE
+     <- rect-same-all-same EQR EQS EQU
+     <- same-etenv-tenv EQGE G0 G EQG
+     <- eq-low EQS BSU' BSU'1
+     <- eq-low-env EQG BSU'1 BSU'2
+     <- eq-high EQU BSU'2 BSU'3
+     <- eq-high-env EQG BSU'3 BSU'4
+     <- sub-tp-trans AS' BSU'4 A'
+     <- widen-mode-wf-tp (wf-tp/tsel (wf-tp/rect BSU WU WS) G0 P0) W'.
 
 - : widen-mode-sub-tp (sub-tp/top W) (sub-tp/top W')
      <- widen-mode-wf-tp W W'.
