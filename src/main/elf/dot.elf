@@ -304,6 +304,14 @@ sub-tp/rect : sub-tp M G1 (rect N TA1 TB1) G2 (rect N TA2 TB2)
 sub-tp/recv : sub-tp M G1 (recv N T1) G2 (recv N T2)
               <- sub-tp M G1 T1 G2 T2.
 
+sub-tp/tselx-same : sub-tp M G1 (tsel E N) G2 (tsel E N)
+              <- path-eval M G1 E (rect N T T) G1'
+              <- path-eval M G2 E (rect N T T) G2'.
+
+% sub-tp/tselx-bot : sub-tp M G1 (tsel E N) G2 (tsel E N)
+%              <- path-eval M G1 E (rect N T T) G1'
+%              <- path-eval M G2 E (rect N bot T) G2'.
+
 sub-tp/tselx-strict : sub-tp strict G1 (tsel E N) G2 (tsel E N)
              <- path-eval strict G1 E (rect N TA1 TB1) G1'
              <- path-eval strict G2 E (rect N TA2 TB2) G2'
@@ -378,9 +386,9 @@ wf-tp/recv : wf-tp M G (recv N T)
 %              <- path-eval M G E (rect N bot TB) EG
 %              .
 
-% wf-tp/tsel-same : wf-tp M G (tsel E N)
-%              <- path-eval M G E (rect N T T) EG
-%              .
+wf-tp/tsel-same : wf-tp M G (tsel E N)
+              <- path-eval M G E (rect N T T) EG
+              .
 
 wf-tp/tsel : wf-tp M G (tsel E N)
               <- path-eval M G E (rect N TA TB) EG
@@ -1786,8 +1794,8 @@ extend-sub-tp: sub-tp M G1 T1 G2 T2 -> {Z: tpe}
 
 % - : extend-wf-tp (wf-tp/tsel-bot P) T (wf-tp/tsel-bot P')
 %     <- extend-wf-pev P T P'.
-% - : extend-wf-tp (wf-tp/tsel-same P) T (wf-tp/tsel-same P')
-%     <- extend-wf-pev P T P'.
+- : extend-wf-tp (wf-tp/tsel-same P) T (wf-tp/tsel-same P')
+     <- extend-wf-pev P T P'.
 - : extend-wf-tp (wf-tp/tsel W G (pev _ L)) T (wf-tp/tsel W' G' (pev G' L1))
       <- extend-wf-tp W T W1
       <- extend-wf-lkpe-case L T L1 X X1
@@ -1870,6 +1878,20 @@ extend-sub-tp: sub-tp M G1 T1 G2 T2 -> {Z: tpe}
 - : extend-sub-tp (sub-tp/and2 ST1 ST2) T (sub-tp/and2 ST1' ST2') (sub-tp/and2 ST1A ST2A) (sub-tp/and2 ST1B ST2B)
       <- extend-sub-tp ST1 _ ST1' ST1A ST1B
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
+
+- : extend-sub-tp (sub-tp/tselx-same P2 P1) T
+     (sub-tp/tselx-same P2' P1')
+     (sub-tp/tselx-same P2 P1')
+     (sub-tp/tselx-same P2' P1)
+     <- extend-wf-pev P1 T P1'
+     <- extend-wf-pev P2 T P2'.
+
+% - : extend-sub-tp (sub-tp/tselx-bot P2 P1) T
+%     (sub-tp/tselx-bot P2' P1')
+%     (sub-tp/tselx-bot P2 P1')
+%     (sub-tp/tselx-bot P2' P1)
+%     <- extend-wf-pev P1 T P1'
+%     <- extend-wf-pev P2 T P2'.
 
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _)(extend-wf-pev-case _ _ _ _ _).
 %total (A B C D) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _)(extend-wf-pev-case D _ _ _ _).
@@ -2032,6 +2054,9 @@ extract-wf : sub-tp M G1 T1 G2 T2 -> wf-tp M G1 T1 -> wf-tp M G2 T2 -> type.
       <- extract-wf S1 W1 W3
       <- extract-wf S2 W2 W4.
 
+- : extract-wf (sub-tp/tselx-same P2 P1)
+     (wf-tp/tsel-same P1) (wf-tp/tsel-same P2).
+
 %worlds () (extract-wf _ _ _).
 %total (A) (extract-wf A _ _).
 
@@ -2115,6 +2140,7 @@ sub-tp-refl :
    <- sub-tp-refl T2 SBT2.
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
+-/tsel-same: sub-tp-refl (wf-tp/tsel-same P) (sub-tp/tselx-same P P).
 -/tsel: sub-tp-refl (wf-tp/tsel W G (pev G0 L)) (sub-tp/tsel1 (wf-tp/tsel W G (pev G0 L)) (sub-tp/tsel2-lenient (wf-tp/tsel W G (pev G0 L)) BU G (pev G0 L)) G (pev G0 L))
    <- sub-tp-refl W (sub-tp/rect BU _ _ _).
 
@@ -2520,6 +2546,14 @@ sub-tp-trans-aux :
       (sub-tp/and1b _ SBT3)
       SBT5
       <- sub-tp-trans-aux W2 SBT1 SBT3 SBT5.
+
+-/tselx-same--tselx-same : sub-tp-trans-aux
+      W
+      (sub-tp/tselx-same PA2 PA1)
+      (sub-tp/tselx-same PB3 PB2)
+      (sub-tp/tselx-same PB3 PA1')
+      <- path-eval-eq PA2 PB2 EQR EQG
+      <- eq-pev EQR PA1 PA1'.
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
