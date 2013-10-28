@@ -278,7 +278,8 @@ sub-tp : mode -> tenv -> tpe -> tenv -> tpe -> type.
 path-eval: mode -> tenv -> exp -> tpe -> etenv -> type.
 pev  : path-eval M G E (rect N TS TU) EG
         <- tlookexp G E (rect N TS TU) EG
-        <- getenv EG G' <- wf-tp M G' (rect N TS TU)
+        <- getenv EG G'
+        % <- wf-tp M G' (rect N TS TU)
         .
 
 sub-tp/refl : sub-tp M G1 T G2 T  %%% ACCELERATE QUERIES !! % --
@@ -368,8 +369,18 @@ wf-tp/rect : wf-tp M G (rect N TA TB)
 wf-tp/recv : wf-tp M G (recv N T)
               <- wf-tp M G T.
 
+wf-tp/tsel-bot : wf-tp M G (tsel E N)
+              <- path-eval M G E (rect N bot TB) EG
+              .
+
+wf-tp/tsel-same : wf-tp M G (tsel E N)
+              <- path-eval M G E (rect N T T) EG
+              .
+
 wf-tp/tsel : wf-tp M G (tsel E N)
-              <- path-eval M G E (rect N TA TB) G'
+              <- path-eval M G E (rect N TA TB) EG
+              <- getenv EG G'
+              <- wf-tp M G' (rect N TS TU)
               .
 
 wf-tp/tbind : wf-tp M G (bind N TN)
