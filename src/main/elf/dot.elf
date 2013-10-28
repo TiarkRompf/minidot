@@ -306,14 +306,14 @@ sub-tp/rect : sub-tp M G1 (rect N TA1 TB1) G2 (rect N TA2 TB2)
 sub-tp/recv : sub-tp M G1 (recv N T1) G2 (recv N T2)
               <- sub-tp M G1 T1 G2 T2.
 
-sub-tp/tselx0 : sub-tp M G1 (tsel E N) G2 (tsel E N) 
+sub-tp/tselx-same : sub-tp M G1 (tsel E N) G2 (tsel E N) 
               <- path-eval M G1 E (rect N TA TB) G1'  
               <- path-eval M G2 E (rect N TA TB) G2'. 
 
 
-sub-tp/tselx1 : sub-tp M G1 (tsel E N) G2 (tsel E N)  % --
-             <- path-eval M G1 E (rect N TA TB) G1'   % --
-             <- path-eval M G2 E (rect N bot TB) G2'. % --
+sub-tp/tselx-bot : sub-tp M G1 (tsel E N) G2 (tsel E N)
+             <- path-eval M G1 E (rect N TA TB) G1'
+             <- path-eval M G2 E (rect N bot TB) G2'.
 
 sub-tp/tselx : sub-tp M G1 (tsel E N) G2 (tsel E N)
              <- path-eval M G1 E (rect N TA1 TB1) G1'
@@ -385,8 +385,18 @@ wf-tp/recv : wf-tp M G (recv N T)
               <- wf-tp M G T
               .
 
+wf-tp/tsel-bot: wf-tp M G (tsel E N)
+              <- path-eval M G E (rect N bot TB) G'
+              .
+
+wf-tp/tsel-same: wf-tp M G (tsel E N)
+              <- path-eval M G E (rect N T T) G'
+              .
+
 wf-tp/tsel : wf-tp M G (tsel E N)
               <- path-eval M G E (rect N TA TB) G'
+              <- getenv G' GX
+              <- wf-tp M GX (rect N TA TB)
               .
 
 wf-tp/tbind : wf-tp M G (bind N TN)
