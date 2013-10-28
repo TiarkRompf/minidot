@@ -2,7 +2,6 @@
 %query 1 1 type-exp tnil ex_norec_nat_a top.
 %query 1 1 type-exp tnil ex_norec_nat top.
 %query 1 1 type-exp tnil ex_nat top.
-% %query 1 1 type-exp tnil ex_list top.
 
 % sanity checks
 %query 1 1 type-exp tnil e1  top.
@@ -60,14 +59,8 @@
 %query 1 1 type-exp tnil p10 top.
 %query 1 1 type-exp tnil p11 top.
 %query 1 1 type-exp tnil p12 top.
-% %query 1 1 type-exp tnil p12a top.
-% %query 1 1 type-exp tnil p12b top.
-% %query 1 1 type-exp tnil p12c top.
-% %query 1 1 type-exp tnil p13 top.
-% %query 1 1 type-exp tnil p14 top.
 
 %query 1 1 type-exp tnil b1ok top.
-% %query 1 1 type-exp tnil b3ok top.
 %query 1 1 type-exp tnil b4a top.
 %query 1 1 type-exp tnil b4ok top.
 
@@ -76,8 +69,6 @@
 %query 1 1 type-exp tnil c1a top.
 %query 1 1 type-exp tnil c1b top.
 %query 1 1 type-exp tnil c1c top.
-% %query 1 1 type-exp tnil c1d top.
-% %query 1 1 type-exp tnil c1ok top.
 
 % regression
 %.
@@ -87,6 +78,19 @@
 %query 1 1 type-exp tnil e16n  top.
 %query 1 1 type-exp tnil e16  top.
 %query 1 1 type-exp tnil p13a top.
+
+%query 1 1 type-exp tnil p12a top.
+%query 1 1 type-exp tnil p12b top.
+%query 1 1 type-exp tnil p12c top.
+%query 1 1 type-exp tnil p13 top.
+%query 1 1 type-exp tnil p14 top.
+
+%query 1 1 type-exp tnil b3ok top.
+
+%query 1 1 type-exp tnil c1d top.
+%query 1 1 type-exp tnil c1ok top.
+
+%query 1 1 type-exp tnil ex_list top.
 
 % these should not type-check
 %query 0 1 type-exp tnil b1 top.
