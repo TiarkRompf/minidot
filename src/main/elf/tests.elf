@@ -26,16 +26,16 @@
 %query 1 1 type-exp tnil e19  top.
 %query 1 1 type-exp tnil e20  top.
 %query 1 1 type-exp tnil e21c top.
-% %query 1 1 type-exp tnil e22 top.
-% %query 1 1 type-exp tnil e22a top.
-% %query 1 1 type-exp tnil e22b top.
-% %query 1 1 type-exp tnil e22c top.
-% %query 1 1 type-exp tnil e22d top.
-% %query 1 1 type-exp tnil e22e top.
-% %query 1 1 type-exp tnil e22f top.
-% %query 1 1 type-exp tnil e22g top.
-% %query 1 1 type-exp tnil e22h top.
-% %query 1 1 type-exp tnil e22i top.
+%query 1 1 type-exp tnil e22 top.
+%query 1 1 type-exp tnil e22a top.
+%query 1 1 type-exp tnil e22b top.
+%query 1 1 type-exp tnil e22c top.
+%query 1 1 type-exp tnil e22d top.
+%query 1 1 type-exp tnil e22e top.
+%query 1 1 type-exp tnil e22f top.
+%query 1 1 type-exp tnil e22g top.
+%query 1 1 type-exp tnil e22h top.
+%query 1 1 type-exp tnil e22i top.
 % %query 1 1 type-exp tnil e22j top.
 
 % sanity checks for other judgments

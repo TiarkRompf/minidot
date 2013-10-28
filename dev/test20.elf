@@ -288,6 +288,12 @@ sub-tp/rect : sub-tp M G1 (rect N TA1 TB1) G2 (rect N TA2 TB2)
 sub-tp/recv : sub-tp M G1 (recv N T1) G2 (recv N T2)
               <- sub-tp M G1 T1 G2 T2.
 
+sub-tp/tsel-same : sub-tp M G1 (tsel (var X) N) G2 (tsel (var X) N)
+             <- path-eval M G1 (var X) (rect N T T)
+             <- path-eval M G2 (var X) (rect N T T)
+             <- sub-env-size (tcons Z1 GX) (s X) G1
+             <- sub-env-size (tcons Z2 GX) (s X) G2.
+
 sub-tp/tselx-strict : sub-tp strict G1 (tsel (var X) N) G2 (tsel (var X) N)
              <- path-eval strict G1 (var X) (rect N TA1 TB1)
              <- path-eval strict G2 (var X) (rect N TA2 TB2)
@@ -357,6 +363,10 @@ wf-tp/rect : wf-tp M G (rect N TA TB)
 
 wf-tp/recv : wf-tp M G (recv N T)
               <- wf-tp M G T.
+
+wf-tp/tsel-same : wf-tp M G (tsel (var X) N)
+              <- path-eval M G (var X) (rect N T T)
+              <- sub-env-size GX (s X) G.
 
 wf-tp/tsel : wf-tp M G (tsel (var X) N)
               <- path-eval M G (var X) (rect N TA TB)
@@ -1273,6 +1283,9 @@ extend-sub-tp: sub-tp M G1 T1 G2 T2 -> {Z: tpe}
 - : extend-wf-tp (wf-tp/recv W1) T (wf-tp/recv W1')
       <- extend-wf-tp W1 _ W1'.
 
+- : extend-wf-tp (wf-tp/tsel-same (ses N S) P) T (wf-tp/tsel-same (ses N (sub-env/ext S)) P')
+     <- extend-wf-pev P T P'.
+
 - : extend-wf-tp (wf-tp/tsel W (ses N S) P) T (wf-tp/tsel W (ses N (sub-env/ext S)) P')
       <- extend-wf-pev P T P'.
 
@@ -1319,6 +1332,13 @@ extend-sub-tp: sub-tp M G1 T1 G2 T2 -> {Z: tpe}
       <- extend-wf-pev P T P'
       <- extend-sub-tp ST T _ ST' _
       <- extend-wf-tp W T W'.
+
+- : extend-sub-tp (sub-tp/tsel-same (ses N2 S2) (ses N1 S1) P2 P1) T
+     (sub-tp/tsel-same (ses N2 (sub-env/ext S2)) (ses N1 (sub-env/ext S1)) P2' P1')
+     (sub-tp/tsel-same (ses N2 S2) (ses N1 (sub-env/ext S1)) P2 P1')
+     (sub-tp/tsel-same (ses N2 (sub-env/ext S2)) (ses N1 S1) P2' P1)
+     <- extend-wf-pev P1 T P1'
+     <- extend-wf-pev P2 T P2'.
 
 - : extend-sub-tp (sub-tp/tselx-strict ST (ses N2 S2) (ses N1 S1) P2 P1) T
      (sub-tp/tselx-strict ST (ses N2 (sub-env/ext S2)) (ses N1 (sub-env/ext S1)) P2' P1')
@@ -1452,6 +1472,10 @@ extract-wf : sub-tp M G1 T1 G2 T2 -> wf-tp M G1 T1 -> wf-tp M G2 T2 -> type.
       W1 W2
       <- extract-wf ST W1 _.
 
+- : extract-wf (sub-tp/tsel-same G2 G1 P2 P1)
+      (wf-tp/tsel-same G1 P1)
+      (wf-tp/tsel-same G2 P2).
+
 - : extract-wf (sub-tp/tselx-strict ST G2 G1 P2 P1)
       (wf-tp/tsel W1 G1 P1)
       (wf-tp/tsel W2 G2 P2)
@@ -1562,6 +1586,7 @@ sub-tp-refl :
    <- sub-tp-refl T2 SBT2.
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
+-/tsel-same: sub-tp-refl (wf-tp/tsel-same G P) (sub-tp/tsel-same G G P P).
 -/tsel: sub-tp-refl (wf-tp/tsel W G P) (sub-tp/tsel1 (wf-tp/tsel W G P) (sub-tp/tsel2-lenient (wf-tp/tsel W G P) BU G P) G P)
    <- sub-tp-refl W (sub-tp/rect BU _ _ _).
 
@@ -1634,6 +1659,14 @@ eq-tsize-env : sametenv G G' -> tsize G S -> tsize G' S -> type.
 
 %worlds () (eq-tsize-env _ _ _).
 %total A (eq-tsize-env A _ _).
+
+eq-sub-env-size : sametenv G G' -> sub-env-size G N GX -> sub-env-size G' N GX -> type.
+%mode eq-sub-env-size +A +B -C.
+
+- : eq-sub-env-size identtenv S S.
+
+%worlds () (eq-sub-env-size _ _ _).
+%total A (eq-sub-env-size A _ _).
 
 %{ ------- subtyping transitivity ------ }%
 
@@ -1777,7 +1810,21 @@ sub-tp-trans-aux :
       SBT5
       <- sub-tp-trans-aux W2 SBT1 SBT3 SBT5.
 
+-/tsel-same--tsel-same : sub-tp-trans-aux
+      W
+      (sub-tp/tsel-same GA2 GA1 PA2 PA1)
+      (sub-tp/tsel-same GB3 GB2 PB3 PB2)
+      (sub-tp/tsel-same GB3 GC1 PB3 PC1)
+      <- path-eval-eq PA2 PB2 EQR
+      <- eq-pev EQR PA1 PC1
+      <- sub-env-size-eq GA2 GB2 EQG2
+      <- tcons-sametenv-eq EQG2 EQG
+      <- eq-sametenv-cons EQG _ EQG1
+      <- eq-sub-env-size EQG1 GA1 GC1
+      .
+
 %worlds () (sub-tp-trans-aux _ _ _ _).
+%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
@@ -1823,6 +1870,8 @@ widen-mode-sub-tp : sub-tp strict G1 T1 G2 T2 -> sub-tp lenient G1 T1 G2 T2 -> t
      <- widen-mode-sub-tp ST ST'.
 - : widen-mode-wf-tp (wf-tp/recv A) (wf-tp/recv A')
      <- widen-mode-wf-tp A A'.
+- : widen-mode-wf-tp (wf-tp/tsel-same G P) (wf-tp/tsel-same G P')
+     <- widen-mode-path-eval P P'.
 - : widen-mode-wf-tp (wf-tp/tsel W G P) (wf-tp/tsel W' G P')
      <- widen-mode-path-eval P P'
      <- widen-mode-wf-tp W W'.
@@ -1873,6 +1922,10 @@ widen-mode-sub-tp : sub-tp strict G1 T1 G2 T2 -> sub-tp lenient G1 T1 G2 T2 -> t
      <- widen-mode-sub-tp A A'
      <- widen-mode-wf-tp W W'.
 
+- : widen-mode-sub-tp (sub-tp/tsel-same G2 G1 P2 P1) (sub-tp/tsel-same G2 G1 P2' P1')
+     <- widen-mode-path-eval P1 P1'
+     <- widen-mode-path-eval P2 P2'.
+
 - : widen-mode-sub-tp (sub-tp/tsel1 W A G P) (sub-tp/tsel1 W' A' G P')
      <- widen-mode-path-eval P P'
      <- widen-mode-sub-tp A A'
@@ -1891,6 +1944,17 @@ widen-mode-sub-tp : sub-tp strict G1 T1 G2 T2 -> sub-tp lenient G1 T1 G2 T2 -> t
      <- eq-high-env EQG BSU'3 BSU'4
      <- sub-tp-trans AS' BSU'4 A'
      <- widen-mode-wf-tp (wf-tp/tsel (wf-tp/rect BSU WU WS) G0 P0) W'.
+
+- : widen-mode-sub-tp (sub-tp/tsel2-strict (wf-tp/tsel-same G0 P0) A G P) (sub-tp/tsel2-lenient W' A' G P')
+     <- widen-mode-path-eval P  P'
+     <- widen-mode-sub-tp A AS'
+     <- path-eval-eq P0 P EQR
+     <- rect-same-all-same EQR EQS EQU
+     <- path-eval-eq P P0 EQR'
+     <- rect-same-all-same EQR' EQS' EQU'
+     <- eq-high EQS' AS' AS''
+     <- eq-high EQU AS'' A'
+     <- widen-mode-wf-tp (wf-tp/tsel-same G0 P0) W'.
 
 - : widen-mode-sub-tp (sub-tp/top W) (sub-tp/top W')
      <- widen-mode-wf-tp W W'.
