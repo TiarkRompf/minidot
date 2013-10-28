@@ -2495,69 +2495,13 @@ sub-tp-trans-aux :
       (sub-tp/tsel2-lenient W2 SBT5 G P)
       <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
 
-%{
-
-%% case p.T < p.T && p.T < T3   -->   p.T < T3
-
--/tselx1 : sub-tp-trans-aux
-            (wf-tp/tsel (wf-tp/rect BSU0 WU0 WS0) G (pev G0 L))
-            (sub-tp/tselx WA2 WA1 PA2 PA1)
-            (sub-tp/tsel1 W1 STB GB2 PB2)
-            (sub-tp/tsel1 W1 STC GA1 PA1)
-    <- path-eval-eq PA2 (pev G0 L) EQRA EQGEA
-    <- path-eval-eq PB2 (pev G0 L) EQRB EQGEB
-    <- same-etenv-tenv EQGEA GA2 G EQGA
-    <- same-etenv-tenv EQGEB GB2 G EQGB
-    <- rect-same-all-same EQRA _ EQUA
-    <- rect-same-all-same EQRB _ EQUB
-    <- eq-high EQUA BU12 BU12'
-    <- eq-high-env EQGA BU12' BU12''
-    <- eq-low EQUB STB STB'
-    <- eq-low-env EQGB STB' STB''
-    <- sub-tp-trans-aux WU0 BU12'' STB'' STC.
-
-%% case T1 < p.T && p.T < p.T   -->   T1 < p.T
-
--/tsel2x : sub-tp-trans-aux
-            (wf-tp/tsel (wf-tp/rect BSU0 WU0 WS0) G (pev G0 L))
-            (sub-tp/tsel2-lenient W2 STB GB2 PB2)
-            (sub-tp/tselx (sub-tp/rect BU23 BS32 BSU3 BSU2) GA3 GA2 PA3 PA2)
-            (sub-tp/tsel2-lenient W3 STC GA3 PA3)
-    <- extract-wf  (sub-tp/tselx (sub-tp/rect BU23 BS32 BSU3 BSU2) GA3 GA2 PA3 PA2) _ W3
-    <- path-eval-eq PA2 (pev G0 L) EQRA EQGEA
-    <- path-eval-eq PB2 (pev G0 L) EQRB EQGEB
-    <- same-etenv-tenv EQGEA GA2 G EQGA
-    <- same-etenv-tenv EQGEB GB2 G EQGB
-    <- rect-same-all-same EQRA _ EQUA
-    <- rect-same-all-same EQRB _ EQUB
-    <- eq-low EQUA BU23 BU23'
-    <- eq-low-env EQGA BU23' BU23''
-    <- eq-high EQUB STB STB'
-    <- eq-high-env EQGB STB' STB''
-    <- sub-tp-trans-aux WU0 STB'' BU23'' STC.
-
-%% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
-
--/tsel2-tsel1 : sub-tp-trans-aux
-                 (wf-tp/tsel (wf-tp/rect BSU WU WS) GEW PW)
-                 (sub-tp/tsel2-lenient W1 A1 GE1 P1)
-                 (sub-tp/tsel1 (wf-tp/tsel W' GEW' PW) A2 GE2 P2)
-                 OUT
-   <- path-eval-eq P1 P2 EQR12 EQGE12
-   <- rect-same-all-same EQR12 EQS12 EQU12
-   <- same-etenv-tenv EQGE12 GE1 GE2 EQG12
-   <- path-eval-eq P1 PW EQR1W EQGE1W
-   <- rect-same-all-same EQR1W EQS1W EQU1W
-   <- same-etenv-tenv EQGE1W GE1 GEW EQG1W
-   <- path-eval-eq P2 PW EQR2W EQGE2W
-   <- rect-same-all-same EQR2W EQS2W EQU2W
-   <- same-etenv-tenv EQGE2W GE2 GEW EQG2W
-   <- eq-high EQU1W A1 A1'
-   <- eq-high-env EQG1W A1' A1''
-   <- eq-low EQU2W A2 A2'
-   <- eq-low-env EQG2W A2' A2''
-   <- sub-tp-trans-aux WU A1'' A2'' OUT.
-}%
+-/tselx-same--tselx-same : sub-tp-trans-aux
+      W
+      (sub-tp/tselx-same WA2 WA1 PA2 PA1)
+      (sub-tp/tselx-same WB3 WB2 PB3 PB2)
+      (sub-tp/tselx-same WB3 WA1 PB3 PA1')
+      <- path-eval-eq PA2 PB2 EQR EQG
+      <- eq-pev EQR PA1 PA1'.
 
 -/tbind2  : sub-tp-trans-aux
        W
