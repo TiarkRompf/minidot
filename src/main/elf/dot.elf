@@ -1015,6 +1015,14 @@ eq-pev-type: same T1 T1' -> path-eval M G1 N T1 EG1 -> path-eval M G1' N T1' EG1
 %worlds () (eq-pev-type _ _ _).
 %total {T2} (eq-pev-type T2 _ _).
 
+eq-pev-high: same TU TU' -> path-eval M G E (rect N TS TU) G' -> path-eval M G E (rect N TS TU') G' -> type.
+%mode eq-pev-high +A +B -C.
+
+- : eq-pev-high ident S S.
+
+%worlds () (eq-pev-high _ _ _).
+%total {T2} (eq-pev-high T2 _ _).
+
 lookup-zero-same: tlookup-zero G2 E T1 -> tlookup-zero G2 E T2 -> same T1 T2 -> type.
 %mode lookup-zero-same +P1 +P2 -SBT.
 
@@ -2512,16 +2520,6 @@ sub-tp-trans-aux :
       (sub-tp/tsel2-lenient W2 SBT5 G P)
       <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
 
-%{
--/tselx-same--tselx-same : sub-tp-trans-aux
-      W
-      (sub-tp/tselx-samebot-lenient WA2 WA1 PA2 PA1)
-      (sub-tp/tselx-samebot-lenient WB3 WB2 PB3 PB2)
-      (sub-tp/tselx-samebot-lenient WB3 WA1 PB3 PA1')
-      <- path-eval-eq PA2 PB2 EQR EQG
-      <- eq-pev EQR PA1 PA1'.
-}%
-
 -/tbind2  : sub-tp-trans-aux
        W
        SBT1
@@ -2589,9 +2587,17 @@ sub-tp-trans-aux :
       SBT5
       <- sub-tp-trans-aux W2 SBT1 SBT3 SBT5.
 
+-/tselx-samebot--tselx-samebot : sub-tp-trans-aux
+      W
+      (sub-tp/tselx-samebot-lenient WA2 WA1 PA2 PA1)
+      (sub-tp/tselx-samebot-lenient WB3 WB2 PB3 PB2)
+      (sub-tp/tselx-samebot-lenient WB3 WA1 PB3 PA1')
+      <- path-eval-eq PA2 PB2 EQR EQG
+      <- rect-same-all-same EQR EQS EQU
+      <- eq-pev-high EQU PA1 PA1'.
+
 %worlds () (sub-tp-trans-aux _ _ _ _).
 % %terminates {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
-%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
