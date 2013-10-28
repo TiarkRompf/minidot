@@ -1000,6 +1000,14 @@ eq-pev-type: same T1 T1' -> path-eval M G1 N T1 EG1 -> path-eval M G1' N T1' EG1
 %worlds () (eq-pev-type _ _ _).
 %total {T2} (eq-pev-type T2 _ _).
 
+eq-pev-env: sametenv G G' -> path-eval M G N T EG -> path-eval M G' N T EG -> type.
+%mode eq-pev-env +A +B -C.
+
+- : eq-pev-env identtenv S S.
+
+%worlds () (eq-pev-env _ _ _).
+%total A (eq-pev-env A _ _).
+
 lookup-zero-same: tlookup-zero G2 E T1 -> tlookup-zero G2 E T2 -> same T1 T2 -> type.
 %mode lookup-zero-same +P1 +P2 -SBT.
 
@@ -2408,6 +2416,30 @@ pev-tp-dia-right: path-eval M G1 E (rect N S U) (etenv/right GX)
 %worlds () (pev-tp-dia-right _ _ _ _ _ _ _ _).
 %total {} (pev-tp-dia-right _ _ _ _ _ _ _ _).
 
+eq-tsize-env : sametenv G G' -> tsize G S -> tsize G' S -> type.
+%mode eq-tsize-env +A +B -C.
+
+- : eq-tsize-env identtenv S S.
+
+%worlds () (eq-tsize-env _ _ _).
+%total A (eq-tsize-env A _ _).
+
+eq-getenv-cons : sametenv G G' -> getenv EG (tcons Z G) -> getenv EG (tcons Z G') -> type.
+%mode eq-getenv-cons +A +B -C.
+
+- : eq-getenv-cons identtenv GE GE.
+
+%worlds () (eq-getenv-cons _ _ _).
+%total A (eq-getenv-cons A _ _).
+
+eq-pev-right-env: sametenv G G' -> path-eval M G E T (etenv/right G) -> path-eval M G' E T (etenv/right G') -> type.
+%mode eq-pev-right-env +A +B -C.
+
+- : eq-pev-right-env identtenv P P.
+
+%worlds () (eq-pev-right-env _ _ _).
+%total A (eq-pev-right-env A _ _).
+
 %{ ------- subtyping transitivity ------ }%
 
 sub-tp-trans-aux :
@@ -2550,28 +2582,24 @@ sub-tp-trans-aux :
       SBT5
       <- sub-tp-trans-aux W2 SBT1 SBT3 SBT5.
 
-%{
--/tselx-same--tselx-same : sub-tp-trans-aux
-      W
-      (sub-tp/tselx-same PA2 PA1)
-      (sub-tp/tselx-same PB3 PB2)
-      (sub-tp/tselx-same PB3 PA1')
-      <- path-eval-eq PA2 PB2 EQR EQG
-      <- eq-pev EQR PA1 PA1'.
-}%
-
-%{
--/tselx-same--tsel1 : sub-tp-trans-aux
-      W
-      (sub-tp/tselx-same PA2 (pev GA1 LA1))
-      (sub-tp/tsel1 WB2 STB GB2 PB2)
-      (sub-tp/tsel1 (wf-tp/tsel-same (pev GA1 LA1)) STC GA1 (pev GA1 LA1))
-      <- path-eval-eq PA2 PB2 EQR EQG
-      <- rect-same-all-same EQR EQS EQU.
-}%
+-/tsel-same--tsel-same : sub-tp-trans-aux
+       W
+      (sub-tp/tsel-same PA2 PA1 SZA2 SZA1 (ses NA2 SA2) (ses NA1 SA1))
+      (sub-tp/tsel-same PB3 PB2 SZB3 SZB2 (ses NB3 SB3) (ses NB2 SB2))
+      (sub-tp/tsel-same PC3 PC1 SZB3 SZC1 (ses NB3 SB3) (ses NC1 SC1))
+      <- sub-env-size-eq (ses NA2 SA2) (ses NB2 SB2) EQG
+      <- sub-env-size-eq-cons EQG SZA2 SZB2 NA2 NB2 EQZ2
+      <- eq2-sametenv-cons EQG EQZ2 EQGZ2
+      <- eq-pev-env EQGZ2 PA2 PA2'
+      <- path-eval-eq PB2 PA2' EQR EQGE2
+      <- eq-pev EQR PB3 PC3
+      <- eq-sub-env-low EQG SA1 SC1
+      <- eq2-sametenv-cons EQG ident EQGZ1
+      <- eq-sub-env-low EQGZ1 SZA1 SZC1
+      <- eq-pev-right-env EQGZ1 PA1 PC1
+      <- eq-tsize-env EQG NA1 NC1.
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
-%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
