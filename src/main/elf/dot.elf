@@ -255,6 +255,54 @@ exp-tp/bind : exp-tp G0 (bind N1 T1) N2 T2
 tlookexp: tenv -> exp -> tpe -> type.
 tle: tlookexp G (var N) (rect LN T1 T2) <- tlookup G N T0 <- exp-tp G T0 LN (tsome (rect LN T1 T2)).
 
+exists-in: nat -> tpe -> type.
+exi/and1 : exists-in X (and T1 T2) <- exists-in X T1.
+exi/and2 : exists-in X (and T1 T2) <- exists-in X T2.
+exi/bind : exists-in X (bind Y T) <- exists-in X T.
+exi/recv : exists-in X (recv N T) <- exists-in X T.
+exi/rect1 : exists-in X (rect N T1 T2) <- exists-in X T1.
+exi/rect2 : exists-in X (rect N T1 T2) <- exists-in X T2.
+exi/fun1 : exists-in X (arrow N T1 T2) <- exists-in X T1.
+exi/fun2 : exists-in X (arrow N T1 T2) <- exists-in X T2.
+exi/tsel : exists-in X (tsel (var X) N).
+
+polarity : type.
+pos: polarity.
+neg: polarity.
+
+flip: polarity -> polarity -> type.
+%mode flip +A -B.
+pos-neg : flip pos neg.
+neg-pos : flip neg pos.
+%worlds () (flip _ _).
+%total A (flip A _).
+
+subst-in: nat -> nat -> tpe -> tpe -> tpe -> polarity -> tpe -> type.
+% %mode subst-in +X +N +TA +TB +T +P -T'.
+si/top : subst-in X N TA TB top P top.
+si/bot : subst-in X N TA TB bot P bot.
+si/and : subst-in X N TA TB (and T1 T2) P (and T1' T2')
+          <- subst-in X N TA TB T1 P T1'
+          <- subst-in X N TA TB T2 P T2'.
+si/recv : subst-in X N TA TB (recv M T1) P (recv M T1')
+          <- subst-in X N TA TB T1 P T1'.
+si/rect : subst-in X N TA TB (rect M T1 T2) P (rect M T1' T2')
+          <- flip P P'
+          <- subst-in X N TA TB T1 P T1'
+          <- subst-in X N TA TB T2 P' T2'.
+si/fun : subst-in X N TA TB (arrow M T1 T2) P (arrow M T1' T2')
+          <- flip P P'
+          <- subst-in X N TA TB T1 P T1'
+          <- subst-in X N TA TB T2 P' T2'.
+si/bind : subst-in X N TA TB (bind Y T1) P (bind Y T1')
+          <- subst-in X N TA TB T1 P T1'.
+si/tsel-pos : subst-in X N TA TB (tsel (var X) N) pos TB.
+si/tsel-neg : subst-in X N TA TB (tsel (var X) N) neg TA.
+si/tsel : subst-in X N TA TB (tsel (var Y) M) P (tsel (var Y) M)
+           <- ne N M.
+% %worlds () (subst-in _ _ _ _ _ _ _).
+% %total A (subst-in _ _ _ _ A _ _).
+
 mode : type.
 strict : mode.
 lenient : mode.
@@ -263,16 +311,18 @@ wf-tp : mode -> tenv -> tpe -> type.
 
 sub-tp : mode -> tenv -> tpe -> tenv -> tpe -> type.
 
-path-eval: mode -> tenv -> exp -> tpe -> type.
-pev-rec : path-eval M G (var X) (rect N TA TB)
+path-eval: mode -> tenv -> exp -> tpe -> tpe -> type.
+pev-rec  : path-eval M G (var X) (rect N TA TB) Z'
         <- tlookexp G (var X) (rect N TA TB)
         <- sub-env-size (tcons Z GX) (s X) G
-        <- wf-tp M (tcons (bind X (rect N bot top)) GX) (rect N TA TB)
+        <- subst-in X N bot top Z pos Z'
+        <- wf-tp M (tcons Z' GX) (rect N TA TB)
         .
-pev  : path-eval M G (var X) (rect N TA TB)
+
+pev  : path-eval M G (var X) (rect N TA TB) Z
         <- tlookexp G (var X) (rect N TA TB)
-        <- sub-env-size GX (s X) G
-        <- wf-tp M GX (rect N TA TB)
+        <- sub-env-size (tcons Z GX) (s X) G
+        <- wf-tp M (tcons Z GX) (rect N TA TB)
         .
 
 sub-tp/refl : sub-tp M G1 T G2 T  %%% ACCELERATE QUERIES !! % --
@@ -297,21 +347,12 @@ sub-tp/rect : sub-tp M G1 (rect N TA1 TB1) G2 (rect N TA2 TB2)
 sub-tp/recv : sub-tp M G1 (recv N T1) G2 (recv N T2)
               <- sub-tp M G1 T1 G2 T2.
 
-sub-tp/tsel-rec : sub-tp M G1 (tsel (var X) N) G2 (tsel (var X) N)
-             <- tlookexp G1 (var X) (rect N TA1 TB)
-             <- tlookexp G2 (var X) (rect N TA2 TB)
-             <- sub-env-size (tcons Z1 GX) (s X) G1
-             <- sub-env-size (tcons Z2 GX) (s X) G2
-             <- wf-tp M (tcons (bind X (rect N bot top)) GX) (rect N TA1 TB)
-             <- wf-tp M (tcons (bind X (rect N bot top)) GX) (rect N TA2 TB)
-             .
-
 sub-tp/tselx-strict : sub-tp strict G1 (tsel (var X) N) G2 (tsel (var X) N)
-             <- path-eval strict G1 (var X) (rect N TA1 TB1)
-             <- path-eval strict G2 (var X) (rect N TA2 TB2)
-             <- sub-env-size G1X (s X) G1
-             <- sub-env-size G2X (s X) G2
-             <- sub-tp strict G1X (rect N TA1 TB1) G2X (rect N TA2 TB2)
+             <- path-eval strict G1 (var X) (rect N TA1 TB) Z1
+             <- path-eval strict G2 (var X) (rect N TA2 TB) Z2
+             <- sub-env-size (tcons Z1X G1X) (s X) G1
+             <- sub-env-size (tcons Z2X G2X) (s X) G2
+             <- sub-tp strict (tcons Z1 G1X) (rect N TA1 TB) (tcons Z2 G2X) (rect N TA2 TB)
              .
 
 sub-tp/tbind2 : sub-tp M G1 T1 G2 (bind N TN)
@@ -339,22 +380,24 @@ sub-tp/and1b : sub-tp M G1 (and TA1 TB1) G2 T2
               <- wf-tp M G1 TA1.
 
 sub-tp/tsel1: sub-tp M G1 (tsel (var X) N) G2 T2
-              <- path-eval M G1 (var X) (rect N TA1 TB1)
-              <- sub-env-size G1X (s X) G1
-              <- sub-tp M G1X TB1 G2 T2
+              <- path-eval M G1 (var X) (rect N TA TB) Z
+              <- sub-env-size (tcons ZX GX) (s X) G1
+              <- sub-tp M (tcons ZX GX) TB G2 T2
+              <- path-eval M G1 (var X) (rect N TA TB) ZX
               .
 
 sub-tp/tsel2-strict : sub-tp strict G1 T1 G2 (tsel (var X) N)
-              <- tlookexp G2 (var X) (rect N TA TB)
-              <- sub-env-size G2X (s X) G2
-              <- wf-tp strict G2X (rect N TA TB)
-              <- sub-tp strict G1 T1 G2X TA
-              .
+               <- path-eval strict G2 (var X) (rect N TA TB) Z
+               <- sub-env-size (tcons ZX GX) (s X) G2
+               <- wf-tp strict (tcons ZX GX) (rect N TA TB)
+               <- sub-tp strict G1 T1 (tcons ZX GX) TA
+               <- path-eval strict G2 (var X) (rect N TA TB) ZX
+               .
 
 sub-tp/tsel2-lenient : sub-tp lenient G1 T1 G2 (tsel (var X) N)
-              <- path-eval lenient G2 (var X) (rect N TA2 TB2)
-              <- sub-env-size G2X (s X) G2
-              <- sub-tp lenient G1 T1 G2X TB2
+              <- path-eval lenient G2 (var X) (rect N TA TB) Z
+              <- sub-env-size (tcons ZX GX) (s X) G2
+              <- sub-tp lenient G1 T1 (tcons ZX GX) TB
               .
 
 sub-tp/bot  : sub-tp M G1 bot G2 T <- wf-tp M G2 T.
@@ -375,7 +418,7 @@ wf-tp/recv : wf-tp M G (recv N T)
               <- wf-tp M G T.
 
 wf-tp/tsel : wf-tp M G (tsel (var X) N)
-              <- path-eval M G (var X) (rect N TA TB)
+              <- path-eval M G (var X) (rect N TA TB) Z'
               .
 
 wf-tp/tbind : wf-tp M G (bind N TN)
