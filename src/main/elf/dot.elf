@@ -1688,9 +1688,9 @@ extract-wf-pev : path-eval M G (var X) (rect N TA TB) Z
 
 sub-tp-refl :
   %% Input
-  wf-tp lenient G T ->
+  wf-tp M G T ->
   %% Output
-  sub-tp lenient G T G T ->
+  sub-tp M G T G T ->
   type.
 %mode sub-tp-refl +WT -SBT.
 
@@ -1924,6 +1924,7 @@ sub-tp-trans-aux :
 }%
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
+%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
