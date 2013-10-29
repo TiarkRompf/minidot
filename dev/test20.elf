@@ -292,7 +292,7 @@ sub-tp/recv : sub-tp M R G1 (recv N T1) G2 (recv N T2)
               <- sub-tp M R G1 T1 G2 T2.
 
 sub-tp/tselx : sub-tp M R G1 (tsel (var X) N) G2 (tsel (var X) N)
-             <- lte R (s X)
+             <- lte X R
              <- path-eval M G1 (var X) (rect N TA1 TB)
              <- path-eval M G2 (var X) (rect N TA2 TB)
              <- sub-env-size (tcons Z1 G1X) (s X) G1
@@ -1534,9 +1534,55 @@ sub-tp-mono: sub-tp M R G1 T1 G2 T2 -> lte R R' -> sub-tp M R' G1 T1 G2 T2 -> ty
      <- wf-tp-mono A LE A'
      <- wf-tp-mono B LE B'.
 
+- : sub-tp-mono (sub-tp/tselx G2 G1 P2 P1 LEX) LE (sub-tp/tselx G2 G1 P2 P1 LEX')
+     <- lte-trans LEX LE LEX'.
+
+- : sub-tp-mono (sub-tp/top A) LE (sub-tp/top A')
+     <- wf-tp-mono A LE A'.
+- : sub-tp-mono (sub-tp/bot A) LE (sub-tp/bot A')
+     <- wf-tp-mono A LE A'.
+- : sub-tp-mono (sub-tp/fun B A) LE (sub-tp/fun B' A')
+     <- sub-tp-mono A LE A'
+     <- sub-tp-mono B LE B'.
+- : sub-tp-mono (sub-tp/rect D C B A) LE (sub-tp/rect D' C' B' A')
+     <- sub-tp-mono A LE A'
+     <- sub-tp-mono B LE B'
+     <- sub-tp-mono C LE C'
+     <- sub-tp-mono D LE D'.
+- : sub-tp-mono (sub-tp/recv A) LE (sub-tp/recv A')
+     <- sub-tp-mono A LE A'.
+- : sub-tp-mono (sub-tp/tselx-strict A G2 G1 P2 P1) LE (sub-tp/tselx-strict A' G2 G1 P2 P1)
+     <- sub-tp-mono A LE A'.
+- : sub-tp-mono (sub-tp/tbind2 A B C G) LE (sub-tp/tbind2 A' B' C' G)
+     <- sub-tp-mono A LE A'
+     <- sub-tp-mono B LE B'
+     <- sub-tp-mono C LE C'.
+- : sub-tp-mono (sub-tp/tbind1 A G) LE (sub-tp/tbind1 A' G)
+     <- sub-tp-mono A LE A'.
+- : sub-tp-mono (sub-tp/and2 B A) LE (sub-tp/and2 B' A')
+     <- sub-tp-mono A LE A'
+     <- sub-tp-mono B LE B'.
+- : sub-tp-mono (sub-tp/and1a B A) LE (sub-tp/and1a B' A')
+     <- sub-tp-mono A LE A'
+     <- wf-tp-mono B LE B'.
+- : sub-tp-mono (sub-tp/and1b B A) LE (sub-tp/and1b B' A')
+     <- sub-tp-mono A LE A'
+     <- wf-tp-mono B LE B'.
+- : sub-tp-mono (sub-tp/tsel1 W2 W1 A G P) LE (sub-tp/tsel1 W2' W1' A' G P)
+     <- sub-tp-mono A LE A'
+     <- wf-tp-mono W1 LE W1'
+     <- wf-tp-mono W2 LE W2'.
+- : sub-tp-mono (sub-tp/tsel2-strict W1 W2 A G P) LE (sub-tp/tsel2-strict W1' W2' A' G P)
+     <- sub-tp-mono A LE A'
+     <- wf-tp-mono W1 LE W1'
+     <- wf-tp-mono W2 LE W2'.
+- : sub-tp-mono (sub-tp/tsel2-lenient W1 W2 A G P) LE (sub-tp/tsel2-lenient W1' W2' A' G P)
+     <- sub-tp-mono A LE A'
+     <- wf-tp-mono W1 LE W1'
+     <- wf-tp-mono W2 LE W2'.
+
 %worlds () (wf-tp-mono _ _ _) (sub-tp-mono _ _ _).
 %total (A B) (wf-tp-mono A _ _) (sub-tp-mono B _ _).
-%reduces B <= A (wf-tp-mono A _ B).
 
 % Extract wf from subtyping
 
