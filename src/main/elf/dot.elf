@@ -289,10 +289,12 @@ sub-tp/recv : sub-tp M G1 (recv N T1) G2 (recv N T2)
               <- sub-tp M G1 T1 G2 T2.
 
 sub-tp/tsel-same : sub-tp M G1 (tsel (var X) N) G2 (tsel (var X) N)
-             <- path-eval M G1 (var X) (rect N T T)
-             <- path-eval M G2 (var X) (rect N T T)
+             <- path-eval M G1 (var X) (rect N TA1 TB1)
+             <- path-eval M G2 (var X) (rect N TA2 TB2)
              <- sub-env-size (tcons Z1 GX) (s X) G1
-             <- sub-env-size (tcons Z2 GX) (s X) G2.
+             <- sub-env-size (tcons Z2 GX) (s X) G2
+             <- sub-tp M (tcons (bind X (rect N bot top)) GX) (rect N TA1 TB1) (tcons (bind X (rect N bot top)) GX) (rect N TA2 TB2)
+             .
 
 sub-tp/tselx-strict : sub-tp strict G1 (tsel (var X) N) G2 (tsel (var X) N)
              <- path-eval strict G1 (var X) (rect N TA1 TB1)
@@ -372,8 +374,10 @@ wf-tp/recv : wf-tp M G (recv N T)
               <- wf-tp M G T.
 
 wf-tp/tsel-same : wf-tp M G (tsel (var X) N)
-              <- path-eval M G (var X) (rect N T T)
-              <- sub-env-size GX (s X) G.
+              <- path-eval M G (var X) (rect N TA TB)
+              <- sub-env-size (tcons Z GX) (s X) G
+              <- wf-tp M (tcons (bind X (rect N bot top)) GX) (rect N TA TB)
+              .
 
 wf-tp/tsel : wf-tp M G (tsel (var X) N)
               <- path-eval M G (var X) (rect N TA TB)
