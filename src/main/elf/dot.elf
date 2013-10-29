@@ -1573,7 +1573,9 @@ sub-tp-refl :
    <- sub-tp-refl T2 SBT2.
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
--/tsel: sub-tp-refl (wf-tp/tsel (maybe-wf-tp/no LTE) G P) (sub-tp/tselx G G P P LTE).
+-/tsel-rec: sub-tp-refl (wf-tp/tsel (maybe-wf-tp/no LTE) G P) (sub-tp/tselx G G P P LTE).
+-/tsel: sub-tp-refl (wf-tp/tsel (maybe-wf-tp/yes (wf-tp/rect BSU WU WS)) G P) (sub-tp/tsel1 (wf-tp/tsel (maybe-wf-tp/yes (wf-tp/rect BSU WU WS)) G P) (wf-tp/rect BSU WU WS) (sub-tp/tsel2-lenient WU (wf-tp/rect BSU WU WS) BU G P) G P)
+   <- sub-tp-refl WU BU.
 
 -/tbind: sub-tp-refl (wf-tp/tbind WU S)
           (sub-tp/tbind1
