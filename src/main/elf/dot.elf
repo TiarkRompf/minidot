@@ -297,19 +297,13 @@ sub-tp/rect : sub-tp M G1 (rect N TA1 TB1) G2 (rect N TA2 TB2)
 sub-tp/recv : sub-tp M G1 (recv N T1) G2 (recv N T2)
               <- sub-tp M G1 T1 G2 T2.
 
-sub-tp/tsel-same-strict : sub-tp strict G1 (tsel (var X) N) G2 (tsel (var X) N)
-             <- path-eval strict G1 (var X) (rect N TA TB)
-             <- path-eval strict G2 (var X) (rect N TA TB)
-             .
-
-sub-tp/tsel-bot-strict : sub-tp M G1 (tsel (var X) N) G2 (tsel (var X) N)
-             <- path-eval strict G1 (var X) (rect N TA TB)
-             <- path-eval strict G2 (var X) (rect N bot TB)
-             .
-
-sub-tp/tsel-refl-lenient : sub-tp lenient G1 (tsel (var X) N) G2 (tsel (var X) N)
-             <- path-eval lenient G1 (var X) (rect N TA1 TB)
-             <- path-eval lenient G2 (var X) (rect N TA2 TB)
+sub-tp/tsel-refl : sub-tp M G1 (tsel (var X) N) G2 (tsel (var X) N)
+             <- tlookexp G1 (var X) (rect N TA1 TB)
+             <- tlookexp G2 (var X) (rect N TA2 TB)
+             <- sub-env-size (tcons Z1 G1X) (s X) G1
+             <- sub-env-size (tcons Z2 G2X) (s X) G2
+             <- wf-tp M (tcons (bind X (rect N bot top)) GX) (rect N TA1 TB)
+             <- wf-tp M (tcons (bind X (rect N bot top)) GX) (rect N TA2 TB)
              .
 
 sub-tp/tselx-strict : sub-tp strict G1 (tsel (var X) N) G2 (tsel (var X) N)
