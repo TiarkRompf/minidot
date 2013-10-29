@@ -1864,12 +1864,16 @@ widen-mode-sub-tp : sub-tp strict R G1 T1 G2 T2 -> sub-tp lenient R G1 T1 G2 T2 
 - : widen-mode-sub-tp (sub-tp/recv A) (sub-tp/recv A')
      <- widen-mode-sub-tp A A'.
 
-- : widen-mode-sub-tp (sub-tp/tselx-strict A G2 G1 P2 P1) (sub-tp/tsel1 (wf-tp/tsel (maybe-wf-tp/yes W2') G2 P2') W1' (sub-tp/tsel2-lenient WU2 W2' BU G2 P2') G1 P1')
+- : widen-mode-sub-tp (sub-tp/tselx-strict A G2 G1 P2 P1) (sub-tp/tsel1 (wf-tp/tsel (maybe-wf-tp/yes W2') G2 P2') W1' (sub-tp/tsel2-lenient WU1 W2' BU G2 P2') G1 P1')
      <- widen-mode-path-eval P1 P1'
      <- widen-mode-path-eval P2 P2'
      <- widen-mode-sub-tp A (sub-tp/rect BU BS B2 B1)
      <- extract-wf (sub-tp/rect BU BS B2 B1) W1' W2'
      <- extract-wf BU WU1 WU2.
+
+- : widen-mode-sub-tp (sub-tp/tselx G2 G1 P2 P1 LTE) (sub-tp/tselx G2 G1 P2' P1' LTE)
+     <- widen-mode-path-eval P1 P1'
+     <- widen-mode-path-eval P2 P2'.
 
 - : widen-mode-sub-tp (sub-tp/tbind2 C B A N) (sub-tp/tbind2 C' B' A' N)
      <- widen-mode-sub-tp A A'
