@@ -786,6 +786,15 @@ eq-high-env: sametenv G2 G2' -> sub-tp M G1 T1 G2 T2 -> sub-tp M G1 T1 G2' T2 ->
 %total {A} (eq-high-env A _ _).
 %reduces N3 <= N2 (eq-high-env _ N2  N3).
 
+eq-high-env-cons: sametenv G2 G2' -> sub-tp M G1 T1 (tcons Z G2) T2 -> sub-tp M G1 T1 (tcons Z G2') T2 -> type.
+%mode eq-high-env-cons +P1 +P2 -SBT.
+
+- : eq-high-env-cons identtenv S S.
+
+%worlds () (eq-high-env-cons _ _ _).
+%total {A} (eq-high-env-cons A _ _).
+%reduces N3 <= N2 (eq-high-env-cons _ N2  N3).
+
 eq-wf: same T1 T1' -> wf-tp M G1 T1 -> wf-tp M G1 T1' -> type.
 %mode eq-wf +P1 +P2 -SBT.
 
@@ -1844,8 +1853,20 @@ sub-tp-trans-aux :
       <- eq-sub-env-size EQG1 GA1 GC1
       .
 
+-/tsel2--tsel-same : sub-tp-trans-aux
+      W
+      (sub-tp/tsel2-lenient WA2 STA1U2 (ses NA2 GA2) PA2)
+      (sub-tp/tsel-same (ses (tf/c NB3) GB3) (ses (tf/c NB2) GB2) PB3 PB2)
+      (sub-tp/tsel2-lenient (wf-tp/tsel-same (ses (tf/c NB3) GB3) PB3) STC1U3 (ses NB3 GB3') PB3)
+      <- sub-env-cons GB3 GB3'
+      <- sub-env-cons GB2 GB2'
+      <- path-eval-eq PA2 PB2 EQR
+      <- rect-same-all-same EQR EQS EQU
+      <- eq-high EQU STA1U2 STA1U2'
+      <- sub-env-size-eq (ses NA2 GA2) (ses NB2 GB2') EQG2
+      <- eq-high-env-cons EQG2 STA1U2' STC1U3.
+
 %worlds () (sub-tp-trans-aux _ _ _ _).
-%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
