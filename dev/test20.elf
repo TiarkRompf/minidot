@@ -374,7 +374,7 @@ wf-tp/recv : wf-tp M R G (recv N T)
 wf-tp/tsel : wf-tp M R G (tsel (var X) N)
               <- path-eval M G (var X) (rect N TA TB)
               <- sub-env-size GX (s X) G
-              <- maybe-wf-tp R M (s X) GX (rect N TA TB)
+              <- maybe-wf-tp R M X GX (rect N TA TB)
               .
 
 wf-tp/tbind : wf-tp M R G (bind N TN)
@@ -1499,14 +1499,14 @@ min-exists : {A}{B}{C} min A B C -> type.
 %worlds () (min-exists _ _ _ _).
 %total A (min-exists A _ _ _).
 
-wf-tp-to-maybe : min A B' C -> wf-tp M A G T -> lte (s B) A -> lte B B' -> maybe-wf-tp B' M A G T -> type.
-%mode wf-tp-to-maybe +A +B +C +D -E.
+wf-tp-to-maybe : min A B' C -> wf-tp M A G T -> maybe-wf-tp B' M A G T -> type.
+%mode wf-tp-to-maybe +A +B -C.
 
-- : wf-tp-to-maybe (min/lte LE) W _ _ (maybe-wf-tp/no LE).
-- : wf-tp-to-maybe (min/gt LE) W _ _ (maybe-wf-tp/yes W LE).
+- : wf-tp-to-maybe (min/lte LE) W (maybe-wf-tp/no LE).
+- : wf-tp-to-maybe (min/gt LE) W (maybe-wf-tp/yes W LE).
 
-%worlds () (wf-tp-to-maybe _ _ _ _ _).
-%total A (wf-tp-to-maybe A _ _ _ _).
+%worlds () (wf-tp-to-maybe _ _ _).
+%total A (wf-tp-to-maybe A _ _ ).
 
 wf-tp-mono: wf-tp M R G T -> lte R R' -> wf-tp M R' G T -> type.
 %mode wf-tp-mono +A +B -C.
@@ -1516,7 +1516,7 @@ sub-tp-mono: sub-tp M R G1 T1 G2 T2 -> lte R R' -> sub-tp M R' G1 T1 G2 T2 -> ty
      <- lte-trans LE' LE LE''.
 - : wf-tp-mono (wf-tp/tsel (maybe-wf-tp/yes W LE') S P) LE (wf-tp/tsel W' S P)
      <- min-exists _ _ _ MIN
-     <- wf-tp-to-maybe MIN W LE' LE W'.
+     <- wf-tp-to-maybe MIN W W'.
 - : wf-tp-mono wf-tp/top _ wf-tp/top.
 - : wf-tp-mono wf-tp/bot _ wf-tp/bot.
 - : wf-tp-mono (wf-tp/fun A B) LE (wf-tp/fun A' B')
@@ -1584,6 +1584,17 @@ sub-tp-mono: sub-tp M R G1 T1 G2 T2 -> lte R R' -> sub-tp M R' G1 T1 G2 T2 -> ty
 %worlds () (wf-tp-mono _ _ _) (sub-tp-mono _ _ _).
 %total (A B) (wf-tp-mono A _ _) (sub-tp-mono B _ _).
 
+wf-tp-to-maybe2 : min X R C -> wf-tp M R G T -> maybe-wf-tp R M X G T -> type.
+%mode wf-tp-to-maybe2 +A +B -C.
+
+- : wf-tp-to-maybe2 (min/lte LE) W (maybe-wf-tp/no LE).
+- : wf-tp-to-maybe2 (min/gt LE) W (maybe-wf-tp/yes W' LE)
+     <- lte-inc LE (lte/s LEX)
+     <- wf-tp-mono W LEX W'.
+
+%worlds () (wf-tp-to-maybe2 _ _ _).
+%total A (wf-tp-to-maybe2 A _ _ ).
+
 % Extract wf from subtyping
 
 extract-wf : sub-tp M R G1 T1 G2 T2 -> wf-tp M R G1 T1 -> wf-tp M R G2 T2 -> type.
@@ -1602,21 +1613,31 @@ extract-wf : sub-tp M R G1 T1 G2 T2 -> wf-tp M R G1 T1 -> wf-tp M R G2 T2 -> typ
       <- extract-wf ST W1 W2.
 
 - : extract-wf (sub-tp/tsel1 W2 W1 ST G P)
-      (wf-tp/tsel (maybe-wf-tp/yes W1) G P) W2.
+     (wf-tp/tsel OW1 G P) W2
+     <- min-exists _ _ _ MIN
+     <- wf-tp-to-maybe2 MIN W1 OW1.
 
 - : extract-wf (sub-tp/tsel2-strict W1 W2 ST G P)
-      W1 (wf-tp/tsel (maybe-wf-tp/yes W2) G P).
+      W1 (wf-tp/tsel OW2 G P)
+     <- min-exists _ _ _ MIN
+     <- wf-tp-to-maybe2 MIN W2 OW2.
 - : extract-wf (sub-tp/tsel2-lenient W1 W2 ST G P)
-      W1 (wf-tp/tsel (maybe-wf-tp/yes W2) G P).
+      W1 (wf-tp/tsel OW2 G P)
+     <- min-exists _ _ _ MIN
+     <- wf-tp-to-maybe2 MIN W2 OW2.
 
 - : extract-wf (sub-tp/tselx G2 G1 P2 P1 LTE)
       (wf-tp/tsel (maybe-wf-tp/no LTE) G1 P1)
       (wf-tp/tsel (maybe-wf-tp/no LTE) G2 P2).
 
 - : extract-wf (sub-tp/tselx-strict ST G2 G1 P2 P1)
-      (wf-tp/tsel (maybe-wf-tp/yes W1) G1 P1)
-      (wf-tp/tsel (maybe-wf-tp/yes W2) G2 P2)
-     <- extract-wf ST W1 W2.
+      (wf-tp/tsel OW1 G1 P1)
+      (wf-tp/tsel OW2 G2 P2)
+     <- extract-wf ST W1 W2
+     <- min-exists _ _ _ MIN1
+     <- min-exists _ _ _ MIN2
+     <- wf-tp-to-maybe2 MIN1 W1 OW1
+     <- wf-tp-to-maybe2 MIN2 W2 OW2.
 
 - : extract-wf (sub-tp/tbind1 ST S) (wf-tp/tbind WU S) W2
       <- extract-wf ST WU W2.
