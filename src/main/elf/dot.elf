@@ -1901,22 +1901,14 @@ widen-mode-sub-tp : sub-tp strict R G1 T1 G2 T2 -> sub-tp lenient R G1 T1 G2 T2 
      <- widen-mode-wf-tp W W'
      <- widen-mode-wf-tp W0 W0'.
 
-%{
-- : widen-mode-sub-tp (sub-tp/tsel2-strict W0 (wf-tp/tsel (wf-tp/rect BSU WU WS) G0 P0) A G P) (sub-tp/tsel2-lenient W0' W' A' G P')
-     <- widen-mode-path-eval P  P'
+- : widen-mode-sub-tp (sub-tp/tsel2-strict W1 (wf-tp/rect BSU WU WS) A G P) (sub-tp/tsel2-lenient W1' W' A' G P')
+     <- widen-mode-path-eval P P'
      <- widen-mode-sub-tp A AS'
      <- widen-mode-sub-tp BSU BSU'
-     <- path-eval-eq P0 P EQR
-     <- rect-same-all-same EQR EQS EQU
-     <- sub-env-size-eq G0 G EQG
-     <- eq-low EQS BSU' BSU'1
-     <- eq-low-env EQG BSU'1 BSU'2
-     <- eq-high EQU BSU'2 BSU'3
-     <- eq-high-env EQG BSU'3 BSU'4
-     <- sub-tp-trans AS' BSU'4 A'
-     <- widen-mode-wf-tp (wf-tp/tsel (wf-tp/rect BSU WU WS) G0 P0) W'
-     <- widen-mode-wf-tp W0 W0'.
-}%
+     <- widen-mode-wf-tp (wf-tp/rect BSU WU WS) W'
+     <- widen-mode-wf-tp WS WS'
+     <- sub-tp-trans-aux WS' AS' BSU' A'
+     <- widen-mode-wf-tp W1 W1'.
 
 - : widen-mode-sub-tp (sub-tp/top W) (sub-tp/top W')
      <- widen-mode-wf-tp W W'.
@@ -1925,7 +1917,6 @@ widen-mode-sub-tp : sub-tp strict R G1 T1 G2 T2 -> sub-tp lenient R G1 T1 G2 T2 
      <- widen-mode-wf-tp W W'.
 
 %worlds () (widen-mode-wf-tp _ _) (widen-mode-path-eval _ _) (widen-mode-sub-tp _ _).
-%trustme
 %total (A B C) (widen-mode-wf-tp A _) (widen-mode-path-eval B _) (widen-mode-sub-tp C _).
 
 %{ ------- type safety proof ----- }%
