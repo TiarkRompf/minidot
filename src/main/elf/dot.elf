@@ -261,10 +261,10 @@ lenient : mode.
 
 wf-tp : mode -> nat -> tenv -> tpe -> type.
 sub-tp : mode -> nat -> tenv -> tpe -> tenv -> tpe -> type.
-maybe-wf-tp : nat -> nat -> mode -> nat -> tenv -> tpe -> type.
+maybe-wf-tp : nat -> mode -> nat -> tenv -> tpe -> type.
 
-maybe-wf-tp/no : maybe-wf-tp A B M R G T <- lte A B.
-maybe-wf-tp/yes : maybe-wf-tp A B M R G T <- wf-tp M R G T.
+maybe-wf-tp/no : maybe-wf-tp B M A G T <- lte A B.
+maybe-wf-tp/yes : maybe-wf-tp B M A G T <- lte (s B) A <- wf-tp M A G T.
 
 path-eval: mode -> tenv -> exp -> tpe -> type.
 pev  : path-eval M G E (rect N TS TU) <- tlookexp G E (rect N TS TU).
@@ -303,7 +303,7 @@ sub-tp/tselx-strict : sub-tp strict R G1 (tsel (var X) N) G2 (tsel (var X) N)
              <- path-eval strict G2 (var X) (rect N TA2 TB2)
              <- sub-env-size G1X (s X) G1
              <- sub-env-size G2X (s X) G2
-             <- sub-tp strict (s X) G1X (rect N TA1 TB1) G2X (rect N TA2 TB2)
+             <- sub-tp strict R G1X (rect N TA1 TB1) G2X (rect N TA2 TB2)
              .
 
 sub-tp/tbind2 : sub-tp M R G1 T1 G2 (bind N TN)
@@ -333,24 +333,24 @@ sub-tp/and1b : sub-tp M R G1 (and TA1 TB1) G2 T2
 sub-tp/tsel1 : sub-tp M R G1 (tsel (var X) N) G2 T2
               <- path-eval M G1 (var X) (rect N TA1 TB1)
               <- sub-env-size G1X (s X) G1
-              <- sub-tp M (s X) G1X TB1 G2 T2
-              <- wf-tp M (s X) G1X (rect N TA1 TB1)
+              <- sub-tp M R G1X TB1 G2 T2
+              <- wf-tp M R G1X (rect N TA1 TB1)
               <- wf-tp M R G2 T2
               .
 
 sub-tp/tsel2-strict : sub-tp strict R G1 T1 G2 (tsel (var X) N)
               <- path-eval strict G2 (var X) (rect N TA2 TB2)
               <- sub-env-size G2X (s X) G2
-              <- sub-tp strict (s X) G1 T1 G2X TA2
-              <- wf-tp strict (s X) G2X (rect N TA2 TB2)
+              <- sub-tp strict R G1 T1 G2X TA2
+              <- wf-tp strict R G2X (rect N TA2 TB2)
               <- wf-tp strict R G1 T1
               .
 
 sub-tp/tsel2-lenient : sub-tp lenient R G1 T1 G2 (tsel (var X) N)
               <- path-eval lenient G2 (var X) (rect N TA2 TB2)
               <- sub-env-size G2X (s X) G2
-              <- sub-tp lenient (s X) G1 T1 G2X TB2
-              <- wf-tp lenient (s X) G2X (rect N TA2 TB2)
+              <- sub-tp lenient R G1 T1 G2X TB2
+              <- wf-tp lenient R G2X (rect N TA2 TB2)
               <- wf-tp lenient R G1 T1
               .
 
@@ -374,7 +374,7 @@ wf-tp/recv : wf-tp M R G (recv N T)
 wf-tp/tsel : wf-tp M R G (tsel (var X) N)
               <- path-eval M G (var X) (rect N TA TB)
               <- sub-env-size GX (s X) G
-              <- maybe-wf-tp R (s X) M (s X) GX (rect N TA TB)
+              <- maybe-wf-tp R M (s X) GX (rect N TA TB)
               .
 
 wf-tp/tbind : wf-tp M R G (bind N TN)
@@ -395,8 +395,7 @@ e/empty    : eval-exp G empty emptyv.
 e/var      : eval-exp G (var N) V <- vlookup G N V.
 
 e/fun      : eval-exp G (fun TC LNF _ R _ LNV R2 _ MT) (clos LNF R LNV V2 G)
-            % <- eval-exp (vcons emptyv G) R2 V2.
-              <- eval-exp (vcons (clos z empty z emptyv G) G) R2 V2.
+            <- eval-exp (vcons (clos z empty z emptyv G) G) R2 V2.
 
 
 e/app      : eval-exp G (app E1 LNF E2) V3
@@ -1258,6 +1257,11 @@ no-wf-tp: false -> {M}{G1}{T1}wf-tp M z G1 T1 -> type.
 %worlds () (no-wf-tp _ _ _ _ _).
 %total (A) (no-wf-tp A _ _ _ _).
 
+no-wf-tp2: false -> {M}{R}{G1}{T1}wf-tp M R G1 T1 -> type.
+%mode no-wf-tp2 +A +B +C +D +E -F.
+%worlds () (no-wf-tp2 _ _ _ _ _ _).
+%total (A) (no-wf-tp2 A _ _ _ _ _).
+
 extend-wf-tp: wf-tp M R G1 T1 -> {Z: tpe} wf-tp M R (tcons Z G1) T1 -> type.
 %mode extend-wf-tp +A +B -C.
 
@@ -1433,6 +1437,76 @@ extend-wf-pev-mult : path-eval M G E T -> sub-env G G1 -> path-eval M G1 E T -> 
 
 %worlds () (extend-wf-pev-mult _ _ _).
 %total (A) (extend-wf-pev-mult _ A _).
+
+%{ ------- subtyping and wf monotonicity ------ }%
+
+lte-gt-contra : lte A B -> lte (s B) A -> false -> type.
+%mode lte-gt-contra +A +B -C.
+
+- : lte-gt-contra lte/z GT CONTRA
+     <- lte-z-false GT CONTRA.
+
+- : lte-gt-contra (lte/s A) (lte/s B) CONTRA
+     <- lte-gt-contra A B CONTRA.
+
+%worlds () (lte-gt-contra _ _ _).
+%total A (lte-gt-contra A _ _).
+
+lte-trans : lte A B -> lte B C -> lte A C -> type.
+%mode lte-trans +A +B -C.
+
+- : lte-trans lte/z B lte/z.
+- : lte-trans (lte/s A) (lte/s B) (lte/s C)
+     <- lte-trans A B C.
+
+%worlds () (lte-trans _ _ _).
+%total A (lte-trans A _ _).
+
+extract-from-maybe-wf-tp : maybe-wf-tp R M R' G T -> lte (s R) R' -> wf-tp M R' G T -> type.
+
+- : extract-from-maybe-wf-tp (maybe-wf-tp/yes W _) _ W.
+
+- : extract-from-maybe-wf-tp (maybe-wf-tp/no LE) GT W
+     <- lte-gt-contra LE GT CONTRA
+     <- no-wf-tp2 CONTRA _ _ _ _ W.
+
+%mode extract-from-maybe-wf-tp +A +B -C.
+%worlds () (extract-from-maybe-wf-tp _ _ _).
+%total A (extract-from-maybe-wf-tp A _ _).
+
+wf-tp-to-maybe : wf-tp M A G T -> lte (s B) A -> lte B B' -> maybe-wf-tp B' M A G T -> type.
+%mode wf-tp-to-maybe +A +B +C -D.
+%worlds () (wf-tp-to-maybe _ _ _ _).
+%trustme
+%total A (wf-tp-to-maybe A _ _ _).
+
+wf-tp-mono: wf-tp M R G T -> lte R R' -> wf-tp M R' G T -> type.
+%mode wf-tp-mono +A +B -C.
+sub-tp-mono: sub-tp M R G1 T1 G2 T2 -> lte R R' -> sub-tp M R' G1 T1 G2 T2 -> type.
+%mode sub-tp-mono +A +B -C.
+- : wf-tp-mono (wf-tp/tsel (maybe-wf-tp/no LE') S P) LE (wf-tp/tsel (maybe-wf-tp/no LE'') S P)
+     <- lte-trans LE' LE LE''.
+- : wf-tp-mono (wf-tp/tsel (maybe-wf-tp/yes W LE') S P) LE (wf-tp/tsel W' S P)
+     <- wf-tp-to-maybe W LE' LE W'.
+- : wf-tp-mono wf-tp/top _ wf-tp/top.
+- : wf-tp-mono wf-tp/bot _ wf-tp/bot.
+- : wf-tp-mono (wf-tp/fun A B) LE (wf-tp/fun A' B')
+     <- wf-tp-mono A LE A'
+     <- wf-tp-mono B LE B'.
+- : wf-tp-mono (wf-tp/rect S A B) LE (wf-tp/rect S' A' B')
+     <- wf-tp-mono A LE A'
+     <- wf-tp-mono B LE B'
+     <- sub-tp-mono S LE S'.
+- : wf-tp-mono (wf-tp/recv A) LE (wf-tp/recv A')
+     <- wf-tp-mono A LE A'.
+- : wf-tp-mono (wf-tp/tbind A G) LE (wf-tp/tbind A' G)
+     <- wf-tp-mono A LE A'.
+- : wf-tp-mono (wf-tp/and A B) LE (wf-tp/and A' B')
+     <- wf-tp-mono A LE A'
+     <- wf-tp-mono B LE B'.
+
+%worlds () (wf-tp-mono _ _ _) (sub-tp-mono _ _ _).
+%total (A B) (wf-tp-mono A _ _) (sub-tp-mono B _ _).
 
 % Extract wf from subtyping
 
@@ -1686,20 +1760,6 @@ sub-tp-trans-aux :
             (sub-tp/recv SBT5)
       <- sub-tp-trans-aux T1 SBT1 SBT3 SBT5.
 
--/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
-      W
-      (sub-tp/tsel1 W2 W1 SBT1 G P)
-      SBT3
-      (sub-tp/tsel1 W2 W1 SBT5 G P)
-      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
-
--/tsel2  : sub-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
-      W
-      SBT1
-      (sub-tp/tsel2-lenient W1 W2 SBT3 G P)
-      (sub-tp/tsel2-lenient W1 W2 SBT5 G P)
-      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
-
 -/tbind2  : sub-tp-trans-aux
        W
        SBT1
@@ -1767,6 +1827,22 @@ sub-tp-trans-aux :
       SBT5
       <- sub-tp-trans-aux W2 SBT1 SBT3 SBT5.
 
+-/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
+      W
+      (sub-tp/tsel1 W2 W1 (A: sub-tp _ (s X) _ _ _ _) G P)
+      (B: sub-tp _ R _ _ _ _)
+      (sub-tp/tsel1 W3 W1 C G P)
+      <- 
+      <- sub-tp-trans-aux W A B C.
+%{
+-/tsel2  : sub-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
+      W
+      SBT1
+      (sub-tp/tsel2-lenient W1 W2 SBT3 G P)
+      (sub-tp/tsel2-lenient W1 W2 SBT5 G P)
+      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+}%
+
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
 %{
@@ -1792,7 +1868,6 @@ sub-tp-trans-aux :
 }%
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
-%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
