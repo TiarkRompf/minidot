@@ -686,6 +686,15 @@ eq-low-env: sametenv G1 G1' -> sub-tp M G1 T1 G2 T2 -> sub-tp M G1' T1 G2 T2 -> 
 %total A (eq-low-env A _ _).
 %reduces N3 <= N2 (eq-low-env _ N2  N3).
 
+eq-low-env-cons: sametenv G1 G1' -> sub-tp M (tcons Z G1) T1 G2 T2 -> sub-tp M (tcons Z G1') T1 G2 T2 -> type.
+%mode eq-low-env-cons +A +B -C.
+
+- : eq-low-env-cons identtenv S S.
+
+%worlds () (eq-low-env-cons _ _ _).
+%total A (eq-low-env-cons A _ _).
+%reduces N3 <= N2 (eq-low-env-cons _ N2  N3).
+
 natid : nat -> nat -> type.
 natident : natid N N.
 
@@ -1865,6 +1874,19 @@ sub-tp-trans-aux :
       <- eq-high EQU STA1U2 STA1U2'
       <- sub-env-size-eq (ses NA2 GA2) (ses NB2 GB2') EQG2
       <- eq-high-env-cons EQG2 STA1U2' STC1U3.
+
+-/tsel-same--tsel1 : sub-tp-trans-aux
+      W
+      (sub-tp/tsel-same (ses (tf/c NA2) GA2) (ses (tf/c NA1) GA1) PA2 PA1)
+      (sub-tp/tsel1-lenient WA1 STB3U2 (ses NB2 GB2) PB2)
+      (sub-tp/tsel1-lenient (wf-tp/tsel-same (ses (tf/c NA1) GA1) PA1) STC3U1 (ses NA1 GA1') PA1)
+      <- sub-env-cons GA1 GA1'
+      <- sub-env-cons GA2 GA2'
+      <- path-eval-eq PB2 PA2 EQR
+      <- rect-same-all-same EQR EQS EQU
+      <- eq-low EQU STB3U2 STB3U2'
+      <- sub-env-size-eq (ses NB2 GB2) (ses NA2 GA2') EQG2
+      <- eq-low-env-cons EQG2 STB3U2' STC3U1.
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
