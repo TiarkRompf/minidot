@@ -792,6 +792,15 @@ eq-wf: same T1 T1' -> wf-tp M G1 T1 -> wf-tp M G1 T1' -> type.
 %total {T2} (eq-wf T2 _ _).
 %reduces N3 <= N2 (eq-wf _ N2  N3).
 
+eq-wf-high: same T1 T1' -> wf-tp M G1 (rect X Y T1) -> wf-tp M G1 (rect X Y T1') -> type.
+%mode eq-wf-high +P1 +P2 -SBT.
+
+- : eq-wf-high ident S S.
+
+%worlds () (eq-wf-high _ _ _).
+%total {T2} (eq-wf-high T2 _ _).
+%reduces N3 <= N2 (eq-wf-high _ N2  N3).
+
 eq-wf-env: sametenv G1 G1' -> wf-tp M G1 T1 -> wf-tp M G1' T1 -> type.
 %mode eq-wf-env +A +B -C.
 
@@ -809,6 +818,24 @@ eq-pev: same T1 T1' -> path-eval M G1 N T1 -> path-eval M G1 N T1' -> type.
 %worlds () (eq-pev _ _ _).
 %total A (eq-pev A _ _).
 %reduces N3 <= N2 (eq-pev _ N2  N3).
+
+eq-lkpe: same T1 T1' -> tlookexp G1 N T1 -> tlookexp G1 N T1' -> type.
+%mode eq-lkpe +A +B -C.
+
+- : eq-lkpe ident S S.
+
+%worlds () (eq-lkpe _ _ _).
+%total A (eq-lkpe A _ _).
+%reduces N3 <= N2 (eq-lkpe _ N2  N3).
+
+eq-lkpe-high: same T1 T1' -> tlookexp G1 N (rect X Y T1) -> tlookexp G1 N (rect X Y T1') -> type.
+%mode eq-lkpe-high +A +B -C.
+
+- : eq-lkpe-high ident S S.
+
+%worlds () (eq-lkpe-high _ _ _).
+%total A (eq-lkpe-high A _ _).
+%reduces N3 <= N2 (eq-lkpe-high _ N2  N3).
 
 eq-pev-env: sametenv G G' -> path-eval M G N T -> path-eval M G' N T -> type.
 %mode eq-pev-env +A +B -C.
@@ -1737,30 +1764,6 @@ sub-tp-trans-aux :
       (sub-tp/tsel2-lenient SBT5 G P)
       <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
 
-%{
-%% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
-
--/tsel2-tsel1 : sub-tp-trans-aux
-                 (wf-tp/tsel (wf-tp/rect BSU WU WS) GEW PW)
-                 (sub-tp/tsel2-lenient _ A1 GE1 P1)
-                 (sub-tp/tsel1 _ A2 GE2 P2)
-                 OUT
-   <- path-eval-eq P1 P2 EQR12
-   <- rect-same-all-same EQR12 EQS12 EQU12
-   <- sub-env-size-eq GE1 GE2 EQG12
-   <- path-eval-eq P1 PW EQR1W
-   <- rect-same-all-same EQR1W EQS1W EQU1W
-   <- sub-env-size-eq GE1 GEW EQG1W
-   <- path-eval-eq P2 PW EQR2W
-   <- rect-same-all-same EQR2W EQS2W EQU2W
-   <- sub-env-size-eq GE2 GEW EQG2W
-   <- eq-high EQU1W A1 A1'
-   <- eq-high-env EQG1W A1' A1''
-   <- eq-low EQU2W A2 A2'
-   <- eq-low-env EQG2W A2' A2''
-   <- sub-tp-trans-aux WU A1'' A2'' OUT.
-}%
-
 -/tbind2  : sub-tp-trans-aux
        W
        SBT1
@@ -1828,23 +1831,24 @@ sub-tp-trans-aux :
       SBT5
       <- sub-tp-trans-aux W2 SBT1 SBT3 SBT5.
 
-%{
--/tsel-same--tsel-same : sub-tp-trans-aux
+-/tsel-rec--tsel-rec : sub-tp-trans-aux
       W
-      (sub-tp/tsel-same GA2 GA1 PA2 PA1)
-      (sub-tp/tsel-same GB3 GB2 PB3 PB2)
-      (sub-tp/tsel-same GB3 GC1 PB3 PC1)
-      <- path-eval-eq PA2 PB2 EQR
-      <- eq-pev EQR PA1 PC1
+      (sub-tp/tsel-rec WA2 WA1 GA2 GA1 LA2 LA1)
+      (sub-tp/tsel-rec WB3 WB2 GB3 GB2 LB3 LB2)
+      (sub-tp/tsel-rec WB3 WC1 GB3 GC1 LB3 LC1)
+      <- lookexp-eq-gen LA2 LB2 EQR
+      <- rect-same-all-same EQR EQS EQU
+      <- eq-lkpe-high EQU LA1 LC1
       <- sub-env-size-eq GA2 GB2 EQG2
       <- tcons-sametenv-eq EQG2 EQG
       <- eq-sametenv-cons EQG _ EQG1
+      <- eq-sametenv-cons EQG _ EQG1'
       <- eq-sub-env-size EQG1 GA1 GC1
+      <- eq-wf-high EQU WA1 WA1'
+      <- eq-wf-env EQG1' WA1' WC1
       .
-}%
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
-%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
