@@ -304,8 +304,8 @@ sub-tp/tselx-strict : sub-tp strict G1 (tsel (var X) N) G2 (tsel (var X) N)
              <- sub-env-size G1X (s X) G1
              <- sub-env-size G2X (s X) G2
              <- sub-tp strict G1X (rect N TA1 TB1) G2X (rect N TA2 TB2)
-             <- sub-tp M GX Z1 GX (rect N bot top)
-             <- sub-tp M GX Z2 GX (rect N bot top)
+             <- sub-tp M G1X Z1 G1X (rect N bot top)
+             <- sub-tp M G2X Z2 G2X (rect N bot top)
              .
 
 sub-tp/tbind2 : sub-tp M G1 T1 G2 (bind N TN)
@@ -334,8 +334,8 @@ sub-tp/and1b : sub-tp M G1 (and TA1 TB1) G2 T2
 
 sub-tp/tsel1: sub-tp M G1 (tsel (var X) N) G2 T2
               <- path-eval M G1 (var X) (rect N TA1 TB1)
-              <- sub-env-size (tcons Z1 G1X) (s X) G1
-              <- sub-tp M (tcons Z1 G1X) TB1 G2 T2
+              <- sub-env-size G1X (s X) G1
+              <- sub-tp M G1X TB1 G2 T2
               <- wf-tp M G1 (tsel (var X) N)
               .
 
@@ -348,8 +348,8 @@ sub-tp/tsel2-strict : sub-tp strict G1 T1 G2 (tsel (var X) N)
 
 sub-tp/tsel2-lenient : sub-tp lenient G1 T1 G2 (tsel (var X) N)
               <- path-eval lenient G2 (var X) (rect N TA2 TB2)
-              <- sub-env-size G2X X G2
-              <- sub-tp lenient G1 T1 (tcons T2X G2X) TB2
+              <- sub-env-size G2X (s X) G2
+              <- sub-tp lenient G1 T1 G2X TB2
               <- wf-tp lenient G2 (tsel (var X) N)
               .
 
