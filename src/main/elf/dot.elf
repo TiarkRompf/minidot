@@ -1827,20 +1827,6 @@ sub-tp-trans-aux :
             (sub-tp/recv SBT5)
       <- sub-tp-trans-aux T1 SBT1 SBT3 SBT5.
 
--/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
-      W
-      (sub-tp/tsel1-lenient SBT1 G P)
-      SBT3
-      (sub-tp/tsel1-lenient SBT5 G P)
-      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
-
--/tsel2  : sub-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
-      W
-      SBT1
-      (sub-tp/tsel2-lenient SBT3 G P)
-      (sub-tp/tsel2-lenient SBT5 G P)
-      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
-
 -/tbind2  : sub-tp-trans-aux
        W
        SBT1
@@ -1908,6 +1894,27 @@ sub-tp-trans-aux :
       SBT5
       <- sub-tp-trans-aux W2 SBT1 SBT3 SBT5.
 
+-/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
+      W
+      (sub-tp/tsel1-lenient SBT1 G P)
+      SBT3
+      (sub-tp/tsel1-lenient SBT5 G P)
+      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+
+-/tsel2  : sub-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
+      W
+      SBT1
+      (sub-tp/tsel2-lenient SBT3 G P)
+      (sub-tp/tsel2-lenient SBT5 G P)
+      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+
+-/tsel2-slack  : sub-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
+      W
+      SBT1
+      (sub-tp/tsel2-slack SBT3 G P)
+      (sub-tp/tsel2-slack SBT5 G P)
+      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+
 %{
 -/tsel2--tsel1 : sub-tp-trans-aux
        (wf-tp/tsel P0)
@@ -1917,7 +1924,6 @@ sub-tp-trans-aux :
 }%
 
 %worlds () (sub-tp-trans-aux _ _ _ _).
-%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
