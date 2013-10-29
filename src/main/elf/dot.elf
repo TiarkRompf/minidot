@@ -264,7 +264,16 @@ wf-tp : mode -> tenv -> tpe -> type.
 sub-tp : mode -> tenv -> tpe -> tenv -> tpe -> type.
 
 path-eval: mode -> tenv -> exp -> tpe -> type.
-pev  : path-eval M G E (rect N TS TU) <- tlookexp G E (rect N TS TU).
+pev-rec : path-eval M G E (rect N TA TB)
+        <- tlookexp G E (rect N TA TB)
+        <- sub-env-size (tcons Z GX) (s X) G
+        % <- wf-tp M (tcons (bind X (rect N bot top)) GX) (rect N TA TB)
+        .
+pev  : path-eval M G E (rect N TA TB)
+        <- tlookexp G E (rect N TA TB)
+        <- sub-env-size GX (s X) G
+        % <- wf-tp M GX (rect N TA TB)
+        .
 
 sub-tp/refl : sub-tp M G1 T G2 T  %%% ACCELERATE QUERIES !! % --
                <- sub-env G G1 % --
@@ -288,14 +297,19 @@ sub-tp/rect : sub-tp M G1 (rect N TA1 TB1) G2 (rect N TA2 TB2)
 sub-tp/recv : sub-tp M G1 (recv N T1) G2 (recv N T2)
               <- sub-tp M G1 T1 G2 T2.
 
-sub-tp/tsel-same : sub-tp M G1 (tsel (var X) N) G2 (tsel (var X) N)
-             <- path-eval M G1 (var X) (rect N TA1 TB1)
-             <- path-eval M G2 (var X) (rect N TA2 TB2)
-             <- sub-env-size (tcons Z1 GX) (s X) G1
-             <- sub-env-size (tcons Z2 GX) (s X) G2
-             <- sub-tp M (tcons (bind X (rect N bot top)) GX) (rect N TA1 TB1) (tcons (bind X (rect N bot top)) GX) (rect N TA2 TB2)
-             <- sub-tp M (tcons Z1 GX) Z1 (tcons Z1 GX) (rect N bot top)
-             <- sub-tp M (tcons Z2 GX) Z2 (tcons Z2 GX) (rect N bot top)
+sub-tp/tsel-same-strict : sub-tp strict G1 (tsel (var X) N) G2 (tsel (var X) N)
+             <- path-eval strict G1 (var X) (rect N TA TB)
+             <- path-eval strict G2 (var X) (rect N TA TB)
+             .
+
+sub-tp/tsel-bot-strict : sub-tp M G1 (tsel (var X) N) G2 (tsel (var X) N)
+             <- path-eval strict G1 (var X) (rect N TA TB)
+             <- path-eval strict G2 (var X) (rect N bot TB)
+             .
+
+sub-tp/tsel-refl-lenient : sub-tp lenient G1 (tsel (var X) N) G2 (tsel (var X) N)
+             <- path-eval lenient G1 (var X) (rect N TA1 TB)
+             <- path-eval lenient G2 (var X) (rect N TA2 TB)
              .
 
 sub-tp/tselx-strict : sub-tp strict G1 (tsel (var X) N) G2 (tsel (var X) N)
@@ -304,8 +318,6 @@ sub-tp/tselx-strict : sub-tp strict G1 (tsel (var X) N) G2 (tsel (var X) N)
              <- sub-env-size G1X (s X) G1
              <- sub-env-size G2X (s X) G2
              <- sub-tp strict G1X (rect N TA1 TB1) G2X (rect N TA2 TB2)
-             <- sub-tp M G1X Z1 G1X (rect N bot top)
-             <- sub-tp M G2X Z2 G2X (rect N bot top)
              .
 
 sub-tp/tbind2 : sub-tp M G1 T1 G2 (bind N TN)
@@ -336,21 +348,18 @@ sub-tp/tsel1: sub-tp M G1 (tsel (var X) N) G2 T2
               <- path-eval M G1 (var X) (rect N TA1 TB1)
               <- sub-env-size G1X (s X) G1
               <- sub-tp M G1X TB1 G2 T2
-              <- wf-tp M G1 (rect N TA1 TB1)
               .
 
 sub-tp/tsel2-strict : sub-tp strict G1 T1 G2 (tsel (var X) N)
               <- path-eval strict G2 (var X) (rect N TA2 TB2)
               <- sub-env-size G2X (s X) G2
               <- sub-tp strict G1 T1 G2X TA2
-              <- wf-tp strict G2 (rect N TA2 TB2)
               .
 
 sub-tp/tsel2-lenient : sub-tp lenient G1 T1 G2 (tsel (var X) N)
               <- path-eval lenient G2 (var X) (rect N TA2 TB2)
               <- sub-env-size G2X (s X) G2
               <- sub-tp lenient G1 T1 G2X TB2
-              <- wf-tp lenient G2 (rect N TA2 TB2)
               .
 
 sub-tp/bot  : sub-tp M G1 bot G2 T <- wf-tp M G2 T.
@@ -370,16 +379,8 @@ wf-tp/rect : wf-tp M G (rect N TA TB)
 wf-tp/recv : wf-tp M G (recv N T)
               <- wf-tp M G T.
 
-wf-tp/tsel-same : wf-tp M G (tsel (var X) N)
-              <- path-eval M G (var X) (rect N TA TB)
-              <- sub-env-size (tcons Z GX) (s X) G
-              <- wf-tp M (tcons (bind X (rect N bot top)) GX) (rect N TA TB)
-              .
-
 wf-tp/tsel : wf-tp M G (tsel (var X) N)
               <- path-eval M G (var X) (rect N TA TB)
-              <- sub-env-size GX (s X) G
-              <- wf-tp M GX (rect N TA TB)
               .
 
 wf-tp/tbind : wf-tp M G (bind N TN)
