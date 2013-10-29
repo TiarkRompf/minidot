@@ -1893,6 +1893,14 @@ sub-tp-trans-aux :
       SBT5
       <- sub-tp-trans-aux W2 SBT1 SBT3 SBT5.
 
+%{
+-/tsel2--tsel1 : sub-tp-trans-aux
+       (wf-tp/tsel P0)
+       (sub-tp/tsel2-lenient A GA2 PA2)
+       (sub-tp/tsel1-lenient B GB2 PB2)
+       OUT.
+}%
+
 %worlds () (sub-tp-trans-aux _ _ _ _).
 %trustme
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
