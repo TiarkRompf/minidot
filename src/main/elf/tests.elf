@@ -1,7 +1,7 @@
 % bigger examples
 %query 1 1 type-exp tnil ex_norec_nat_a top.
 %query 1 1 type-exp tnil ex_norec_nat top.
-%query 1 1 type-exp tnil ex_nat top.
+% %query 1 1 type-exp tnil ex_nat top.
 
 % sanity checks
 %query 1 1 type-exp tnil e1  top.
@@ -36,7 +36,7 @@
 %query 1 1 type-exp tnil e22g top.
 %query 1 1 type-exp tnil e22h top.
 %query 1 1 type-exp tnil e22i top.
-%query 1 1 type-exp tnil e22j top.
+% %query 1 1 type-exp tnil e22j top.
 
 % sanity checks for other judgments
 %query 1 1 sub-tp strict tnil t2 tnil t1.

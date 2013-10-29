@@ -264,15 +264,15 @@ wf-tp : mode -> tenv -> tpe -> type.
 sub-tp : mode -> tenv -> tpe -> tenv -> tpe -> type.
 
 path-eval: mode -> tenv -> exp -> tpe -> type.
-pev-rec : path-eval M G E (rect N TA TB)
-        <- tlookexp G E (rect N TA TB)
+pev-rec : path-eval M G (var X) (rect N TA TB)
+        <- tlookexp G (var X) (rect N TA TB)
         <- sub-env-size (tcons Z GX) (s X) G
-        % <- wf-tp M (tcons (bind X (rect N bot top)) GX) (rect N TA TB)
+        <- wf-tp M (tcons (bind X (rect N bot top)) GX) (rect N TA TB)
         .
-pev  : path-eval M G E (rect N TA TB)
-        <- tlookexp G E (rect N TA TB)
+pev  : path-eval M G (var X) (rect N TA TB)
+        <- tlookexp G (var X) (rect N TA TB)
         <- sub-env-size GX (s X) G
-        % <- wf-tp M GX (rect N TA TB)
+        <- wf-tp M GX (rect N TA TB)
         .
 
 sub-tp/refl : sub-tp M G1 T G2 T  %%% ACCELERATE QUERIES !! % --
