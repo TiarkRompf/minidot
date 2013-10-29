@@ -56,15 +56,6 @@ lte/s : lte (s N1) (s N2)
 
 %mode lte +N1 +N2.
 
-min: nat -> nat -> nat -> type.
-min/lte: min A B A <- lte A B.
-min/gt: min A B B <- lte (s B) A.
-
-%{
-max: nat -> nat -> nat -> type.
-max/lte: max A B B <- lte A B.
-max/gt: max A B A <- lte (s B) A.
-}%
 
 eq : nat -> nat -> type.
 eq/z : eq z z.
@@ -308,12 +299,11 @@ sub-tp/tselx : sub-tp M R G1 (tsel (var X) N) G2 (tsel (var X) N)
              <- sub-env-size (tcons Z2 G2X) (s X) G2.
 
 sub-tp/tselx-strict : sub-tp strict R G1 (tsel (var X) N) G2 (tsel (var X) N)
-             <- min R X R'
              <- path-eval strict G1 (var X) (rect N TA1 TB1)
              <- path-eval strict G2 (var X) (rect N TA2 TB2)
              <- sub-env-size G1X (s X) G1
              <- sub-env-size G2X (s X) G2
-             <- sub-tp strict R' G1X (rect N TA1 TB1) G2X (rect N TA2 TB2)
+             <- sub-tp strict R G1X (rect N TA1 TB1) G2X (rect N TA2 TB2)
              .
 
 sub-tp/tbind2 : sub-tp M R G1 T1 G2 (bind N TN)
@@ -341,29 +331,26 @@ sub-tp/and1b : sub-tp M R G1 (and TA1 TB1) G2 T2
               <- wf-tp M R G1 TA1.
 
 sub-tp/tsel1 : sub-tp M R G1 (tsel (var X) N) G2 T2
-              <- min R X R'
               <- path-eval M G1 (var X) (rect N TA1 TB1)
               <- sub-env-size G1X (s X) G1
-              <- sub-tp M R' G1X TB1 G2 T2
-              <- wf-tp M R' G1X (rect N TA1 TB1)
+              <- sub-tp M R G1X TB1 G2 T2
+              <- wf-tp M R G1X (rect N TA1 TB1)
               <- wf-tp M R G2 T2
               .
 
 sub-tp/tsel2-strict : sub-tp strict R G1 T1 G2 (tsel (var X) N)
-              <- min R X R'
               <- path-eval strict G2 (var X) (rect N TA2 TB2)
               <- sub-env-size G2X (s X) G2
-              <- sub-tp strict R' G1 T1 G2X TA2
-              <- wf-tp strict R' G2X (rect N TA2 TB2)
+              <- sub-tp strict R G1 T1 G2X TA2
+              <- wf-tp strict R G2X (rect N TA2 TB2)
               <- wf-tp strict R G1 T1
               .
 
 sub-tp/tsel2-lenient : sub-tp lenient R G1 T1 G2 (tsel (var X) N)
-              <- min R X R'
               <- path-eval lenient G2 (var X) (rect N TA2 TB2)
               <- sub-env-size G2X (s X) G2
-              <- sub-tp lenient R' G1 T1 G2X TB2
-              <- wf-tp lenient R' G2X (rect N TA2 TB2)
+              <- sub-tp lenient R G1 T1 G2X TB2
+              <- wf-tp lenient R G2X (rect N TA2 TB2)
               <- wf-tp lenient R G1 T1
               .
 
@@ -1328,24 +1315,24 @@ extend-sub-tp: sub-tp M R G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 - : extend-sub-tp (sub-tp/recv ST1) T (sub-tp/recv ST1') (sub-tp/recv ST1A) (sub-tp/recv ST1B)
       <- extend-sub-tp ST1 _ ST1' ST1A ST1B.
-- : extend-sub-tp (sub-tp/tsel1 W2 W ST (ses N S) P MIN) T
-     (sub-tp/tsel1 W2' W ST' (ses N (sub-env/ext S)) P' MIN)
-     (sub-tp/tsel1 W2 W ST (ses N (sub-env/ext S)) P' MIN)
-     (sub-tp/tsel1 W2' W ST' (ses N S) P MIN)
+- : extend-sub-tp (sub-tp/tsel1 W2 W ST (ses N S) P) T
+     (sub-tp/tsel1 W2' W ST' (ses N (sub-env/ext S)) P')
+     (sub-tp/tsel1 W2 W ST (ses N (sub-env/ext S)) P')
+     (sub-tp/tsel1 W2' W ST' (ses N S) P)
       <- extend-wf-pev P T P'
       <- extend-sub-tp ST T _ _ ST'
       <- extend-wf-tp W2 T W2'.
-- : extend-sub-tp (sub-tp/tsel2-strict W1 W ST (ses N S) P MIN) T
-     (sub-tp/tsel2-strict W1' W ST' (ses N (sub-env/ext S)) P' MIN)
-     (sub-tp/tsel2-strict W1' W ST' (ses N S) P MIN)
-     (sub-tp/tsel2-strict W1 W ST (ses N (sub-env/ext S)) P' MIN)
+- : extend-sub-tp (sub-tp/tsel2-strict W1 W ST (ses N S) P) T
+     (sub-tp/tsel2-strict W1' W ST' (ses N (sub-env/ext S)) P')
+     (sub-tp/tsel2-strict W1' W ST' (ses N S) P)
+     (sub-tp/tsel2-strict W1 W ST (ses N (sub-env/ext S)) P')
       <- extend-wf-pev P T P'
       <- extend-sub-tp ST T _ ST' _
       <- extend-wf-tp W1 T W1'.
-- : extend-sub-tp (sub-tp/tsel2-lenient W1 W ST (ses N S) P MIN) T
-     (sub-tp/tsel2-lenient W1' W ST' (ses N (sub-env/ext S)) P' MIN)
-     (sub-tp/tsel2-lenient W1' W ST' (ses N S) P MIN)
-     (sub-tp/tsel2-lenient W1 W ST (ses N (sub-env/ext S)) P' MIN)
+- : extend-sub-tp (sub-tp/tsel2-lenient W1 W ST (ses N S) P) T
+     (sub-tp/tsel2-lenient W1' W ST' (ses N (sub-env/ext S)) P')
+     (sub-tp/tsel2-lenient W1' W ST' (ses N S) P)
+     (sub-tp/tsel2-lenient W1 W ST (ses N (sub-env/ext S)) P')
       <- extend-wf-pev P T P'
       <- extend-sub-tp ST T _ ST' _
       <- extend-wf-tp W1 T W1'.
@@ -1356,10 +1343,10 @@ extend-sub-tp: sub-tp M R G1 T1 G2 T2 -> {Z: tpe}
      (sub-tp/tselx (ses N2 (sub-env/ext S2)) (ses N1 S1) P2' P1 LTE)
      <- extend-wf-pev P1 T P1'
      <- extend-wf-pev P2 T P2'.
-- : extend-sub-tp (sub-tp/tselx-strict ST (ses N2 S2) (ses N1 S1) P2 P1 MIN) T
-     (sub-tp/tselx-strict ST (ses N2 (sub-env/ext S2)) (ses N1 (sub-env/ext S1)) P2' P1' MIN)
-     (sub-tp/tselx-strict ST (ses N2 S2) (ses N1 (sub-env/ext S1)) P2 P1' MIN)
-     (sub-tp/tselx-strict ST (ses N2 (sub-env/ext S2)) (ses N1 S1) P2' P1 MIN)
+- : extend-sub-tp (sub-tp/tselx-strict ST (ses N2 S2) (ses N1 S1) P2 P1) T
+     (sub-tp/tselx-strict ST (ses N2 (sub-env/ext S2)) (ses N1 (sub-env/ext S1)) P2' P1')
+     (sub-tp/tselx-strict ST (ses N2 S2) (ses N1 (sub-env/ext S1)) P2 P1')
+     (sub-tp/tselx-strict ST (ses N2 (sub-env/ext S2)) (ses N1 S1) P2' P1)
      <- extend-wf-pev P1 T P1'
      <- extend-wf-pev P2 T P2'.
 
@@ -1487,6 +1474,10 @@ extract-from-maybe-wf-tp : maybe-wf-tp R M R' G T -> lte (s R) R' -> wf-tp M R' 
 %worlds () (extract-from-maybe-wf-tp _ _ _).
 %total A (extract-from-maybe-wf-tp A _ _).
 
+min: nat -> nat -> nat -> type.
+min/lte: min A B A <- lte A B.
+min/gt: min A B B <- lte (s B) A.
+
 min-dispatch : {C} min A B C -> {C'} min (s A) (s B) C' -> type.
 %mode min-dispatch +A +B -C -D.
 
@@ -1507,27 +1498,6 @@ min-exists : {A}{B}{C} min A B C -> type.
 
 %worlds () (min-exists _ _ _ _).
 %total A (min-exists A _ _ _).
-
-greater-min-dispatch : {C} min A B C -> lte X C -> {C'} min (s A) (s B) C' -> lte (s X) C' -> type.
-%mode greater-min-dispatch +A +B +C -D -E -F.
-
-- : greater-min-dispatch C (min/lte LE) LEX (s C) (min/lte (lte/s LE)) (lte/s LEX).
-- : greater-min-dispatch C (min/gt LE) LEX (s C) (min/gt (lte/s LE)) (lte/s LEX).
-
-%worlds () (greater-min-dispatch _ _ _ _ _ _).
-%total A (greater-min-dispatch _ A _ _ _ _).
-
-greater-min : lte X A -> lte X B -> {C} min A B C -> lte X C -> type.
-%mode greater-min +A +B -C -D -E.
-
-- : greater-min lte/z lte/z C MIN lte/z
-     <- min-exists _ _ C MIN.
-- : greater-min (lte/s A) (lte/s B) C' D' LE'
-     <- greater-min A B C D LE
-     <- greater-min-dispatch C D LE C' D' LE'.
-
-%worlds () (greater-min _ _ _ _ _).
-%total A (greater-min A _ _ _ _).
 
 wf-tp-to-maybe : min A B' C -> wf-tp M A G T -> maybe-wf-tp B' M A G T -> type.
 %mode wf-tp-to-maybe +A +B -C.
@@ -1581,11 +1551,8 @@ sub-tp-mono: sub-tp M R G1 T1 G2 T2 -> lte R R' -> sub-tp M R' G1 T1 G2 T2 -> ty
      <- sub-tp-mono D LE D'.
 - : sub-tp-mono (sub-tp/recv A) LE (sub-tp/recv A')
      <- sub-tp-mono A LE A'.
-- : sub-tp-mono (sub-tp/tselx-strict A G2 G1 P2 P1 (min/lte LE1)) LE (sub-tp/tselx-strict A' G2 G1 P2 P1 MIN)
-     <- greater-min LE LE1 _ MIN LEX
-     <- sub-tp-mono A LEX A'.
-- : sub-tp-mono (sub-tp/tselx-strict A G2 G1 P2 P1 (min/gt LE1)) LE (sub-tp/tselx-strict A G2 G1 P2 P1 (min/gt LE1'))
-     <- lte-trans LE1 LE LE1'.
+- : sub-tp-mono (sub-tp/tselx-strict A G2 G1 P2 P1) LE (sub-tp/tselx-strict A' G2 G1 P2 P1)
+     <- sub-tp-mono A LE A'.
 - : sub-tp-mono (sub-tp/tbind2 A B C G) LE (sub-tp/tbind2 A' B' C' G)
      <- sub-tp-mono A LE A'
      <- sub-tp-mono B LE B'
@@ -1601,31 +1568,18 @@ sub-tp-mono: sub-tp M R G1 T1 G2 T2 -> lte R R' -> sub-tp M R' G1 T1 G2 T2 -> ty
 - : sub-tp-mono (sub-tp/and1b B A) LE (sub-tp/and1b B' A')
      <- sub-tp-mono A LE A'
      <- wf-tp-mono B LE B'.
-- : sub-tp-mono (sub-tp/tsel1 W2 W1 A G P (min/lte LE1)) LE (sub-tp/tsel1 W2' W1' A' G P MIN)
-     <- greater-min LE LE1 _ MIN LEX
-     <- sub-tp-mono A LEX A'
-     <- wf-tp-mono W1 LEX W1'
-     <- wf-tp-mono W2 LE W2'.
-- : sub-tp-mono (sub-tp/tsel1 W2 W1 A G P (min/gt LE1)) LE (sub-tp/tsel1 W2' W1 A G P (min/gt LE1'))
-     <- lte-trans LE1 LE LE1'
-     <- wf-tp-mono W2 LE W2'.
-- : sub-tp-mono (sub-tp/tsel2-strict W1 W2 A G P (min/lte LE1)) LE (sub-tp/tsel2-strict W1' W2' A' G P MIN)
-     <- greater-min LE LE1 _ MIN LEX
-     <- sub-tp-mono A LEX A'
+- : sub-tp-mono (sub-tp/tsel1 W2 W1 A G P) LE (sub-tp/tsel1 W2' W1' A' G P)
+     <- sub-tp-mono A LE A'
      <- wf-tp-mono W1 LE W1'
-     <- wf-tp-mono W2 LEX W2'.
-- : sub-tp-mono (sub-tp/tsel2-strict W1 W2 A G P (min/gt LE1)) LE (sub-tp/tsel2-strict W1' W2 A G P (min/gt LE1'))
-     <- lte-trans LE1 LE LE1'
-     <- lte-inc LE1' (lte/s LEX)
-     <- wf-tp-mono W1 LE W1'.
-- : sub-tp-mono (sub-tp/tsel2-lenient W1 W2 A G P (min/lte LE1)) LE (sub-tp/tsel2-lenient W1' W2' A' G P MIN)
-     <- greater-min LE LE1 _ MIN LEX
-     <- sub-tp-mono A LEX A'
+     <- wf-tp-mono W2 LE W2'.
+- : sub-tp-mono (sub-tp/tsel2-strict W1 W2 A G P) LE (sub-tp/tsel2-strict W1' W2' A' G P)
+     <- sub-tp-mono A LE A'
      <- wf-tp-mono W1 LE W1'
-     <- wf-tp-mono W2 LEX W2'.
-- : sub-tp-mono (sub-tp/tsel2-lenient W1 W2 A G P (min/gt LE1)) LE (sub-tp/tsel2-lenient W1' W2 A G P (min/gt LE1'))
-     <- lte-trans LE1 LE LE1'
-     <- wf-tp-mono W1 LE W1'.
+     <- wf-tp-mono W2 LE W2'.
+- : sub-tp-mono (sub-tp/tsel2-lenient W1 W2 A G P) LE (sub-tp/tsel2-lenient W1' W2' A' G P)
+     <- sub-tp-mono A LE A'
+     <- wf-tp-mono W1 LE W1'
+     <- wf-tp-mono W2 LE W2'.
 
 %worlds () (wf-tp-mono _ _ _) (sub-tp-mono _ _ _).
 %total (A B) (wf-tp-mono A _ _) (sub-tp-mono B _ _).
