@@ -347,12 +347,12 @@ sub-tp/rect : sub-tp M G1 (rect N TA1 TB1) G2 (rect N TA2 TB2)
 sub-tp/recv : sub-tp M G1 (recv N T1) G2 (recv N T2)
               <- sub-tp M G1 T1 G2 T2.
 
-sub-tp/tselx-strict : sub-tp strict G1 (tsel (var X) N) G2 (tsel (var X) N)
-             <- path-eval strict G1 (var X) (rect N TA1 TB) Z1
-             <- path-eval strict G2 (var X) (rect N TA2 TB) Z2
+sub-tp/tselx : sub-tp M G1 (tsel (var X) N) G2 (tsel (var X) N)
+             <- path-eval M G1 (var X) (rect N TA1 TB) Z1
+             <- path-eval M G2 (var X) (rect N TA2 TB) Z2
              <- sub-env-size (tcons Z1X G1X) (s X) G1
              <- sub-env-size (tcons Z2X G2X) (s X) G2
-             <- sub-tp strict (tcons Z1 G1X) (rect N TA1 TB) (tcons Z2 G2X) (rect N TA2 TB)
+             <- sub-tp M (tcons Z1 G1X) (rect N TA1 TB) (tcons Z2 G2X) (rect N TA2 TB)
              .
 
 sub-tp/tbind2 : sub-tp M G1 T1 G2 (bind N TN)
