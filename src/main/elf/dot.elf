@@ -270,7 +270,7 @@ sub-tp : mode -> nat -> tenv -> tpe -> tenv -> tpe -> type.
 maybe-wf-tp : nat -> mode -> nat -> tenv -> tpe -> type.
 
 maybe-wf-tp/no : maybe-wf-tp B M A G T <- lte A B.
-maybe-wf-tp/yes : maybe-wf-tp B M A G T <- lte (s B) A <- wf-tp M B G T.
+maybe-wf-tp/yes : maybe-wf-tp B M A G T <- lte (s B) A <- wf-tp M A G T.
 
 path-eval: mode -> tenv -> exp -> tpe -> type.
 pev  : path-eval M G E (rect N TS TU) <- tlookexp G E (rect N TS TU).
@@ -384,7 +384,7 @@ wf-tp/recv : wf-tp M R G (recv N T)
 wf-tp/tsel : wf-tp M R G (tsel (var X) N)
               <- path-eval M G (var X) (rect N TA TB)
               <- sub-env-size GX (s X) G
-              <- maybe-wf-tp R M X GX (rect N TA TB)
+              <- maybe-wf-tp R M (s X) GX (rect N TA TB)
               .
 
 wf-tp/tbind : wf-tp M R G (bind N TN)
