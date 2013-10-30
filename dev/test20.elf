@@ -2119,6 +2119,12 @@ new-minmax : lte R1 R -> minmax V R1 V1' R1' -> minmax V R V' R' -> lte R R' -> 
 %worlds () (new-minmax _ _ _ _ _ _).
 %total A (new-minmax _ A _ _ _ _).
 
+eq-pev2: same TB TB' -> path-eval M R E (rect N TA TB) -> path-eval M R E (rect N TA TB') -> type.
+%mode eq-pev2 +A +B -C.
+- : eq-pev2 ident P P.
+%worlds () (eq-pev2 _ _ _).
+%total A (eq-pev2 A _ _).
+
 sub-tp-trans-aux :
   %% Inputs
   wf-tp lenient z GX TX ->
@@ -2280,30 +2286,19 @@ sub-tp-trans-aux :
    <- eq-lte EQDB' LEQDB
    <- lte-trans LEQDB LE2 LE2'
    <- sub-tp-trans-aux WX LE1 LE2' WU STA12'' STB23'' OUT.
-%{
--/tsel2-tsel1 : sub-tp-trans-aux
-                 (wf-tp/tsel (wf-tp/rect BSU WU WS) GEW PW)
-                 (sub-tp/tsel2-lenient _ A1 GE1 P1)
-                 (sub-tp/tsel1 _ A2 GE2 P2)
-                 OUT
-   <- path-eval-eq P1 P2 EQR12
-   <- rect-same-all-same EQR12 EQS12 EQU12
-   <- sub-env-size-eq GE1 GE2 EQG12
-   <- path-eval-eq P1 PW EQR1W
-   <- rect-same-all-same EQR1W EQS1W EQU1W
-   <- sub-env-size-eq GE1 GEW EQG1W
-   <- path-eval-eq P2 PW EQR2W
-   <- rect-same-all-same EQR2W EQS2W EQU2W
-   <- sub-env-size-eq GE2 GEW EQG2W
-   <- eq-high EQU1W A1 A1'
-   <- eq-high-env EQG1W A1' A1''
-   <- eq-low EQU2W A2 A2'
-   <- eq-low-env EQG2W A2' A2''
-   <- sub-tp-trans-aux WU A1'' A2'' OUT.
-}%
+
+-/tselx-tselx : sub-tp-trans-aux WX LE1 LE2
+   W
+   (sub-tp/tselx WA2 WA1 GA2 GA1 PA2 PA1)
+   (sub-tp/tselx WB3 WB2 GB3 GB2 PB3 PB2)
+   (sub-tp/tselx WB3' WA1' GB3 GA1 PB3 PA1')
+  <- path-eval-eq PA2 PB2 EQR
+  <- rect-same-all-same EQR EQS EQU
+  <- eq-pev2 EQU PA1 PA1'
+  <- wf-tp-mono WB3 LE2 WB3'
+  <- wf-tp-mono WA1 LE1 WA1'.
 
 %worlds () (sub-tp-trans-aux _ _ _ _ _ _ _).
-%trustme
 %total {WX T2 S1 S2} (sub-tp-trans-aux WX _ _ T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
