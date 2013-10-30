@@ -54,8 +54,6 @@ lte/z : lte z N.
 lte/s : lte (s N1) (s N2)
    <- lte N1 N2.
 
-%mode lte +N1 +N2.
-
 min: nat -> nat -> nat -> type.
 min/lte: min A B A <- lte A B.
 min/gt: min A B B <- lte (s B) A.
@@ -68,9 +66,6 @@ eq : nat -> nat -> type.
 eq/z : eq z z.
 eq/s : eq (s N1) (s N2)
    <- eq N1 N2.
-
-% %mode eq +N1 +N2.
-
 
 ne : nat -> nat -> type.
 ne/z1 : ne z (s N).
@@ -1671,7 +1666,6 @@ sub-tp-mono: sub-tp M R G1 T1 G2 T2 -> lte R R' -> sub-tp M R' G1 T1 G2 T2 -> ty
 %worlds () (wf-tp-mono _ _ _) (sub-tp-mono _ _ _).
 %trustme
 %reduces B <= A (wf-tp-mono A _ B).
-%trustme
 %reduces B <= A (sub-tp-mono A _ B).
 %total (A B) (wf-tp-mono A _ _) (sub-tp-mono B _ _).
 
