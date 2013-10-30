@@ -2166,9 +2166,11 @@ sub-tp-trans-aux :
       (wf-tp/rect SB T2 T1)
             (sub-tp/rect SBT2 SBT1 B2 B1)
             (sub-tp/rect SBT4 SBT3 B4 B3)
-            (sub-tp/rect SBT6 SBT5 B4 B1)
-      <- sub-tp-trans-aux WX LE1 LE2 T1 SBT3 SBT1 SBT5
-      <- sub-tp-trans-aux WX LE1 LE2 T2 SBT2 SBT4 SBT6.
+            (sub-tp/rect SBT6 SBT5 B4' B1')
+      <- sub-tp-trans-aux WX LE2 LE1 T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux WX LE1 LE2 T2 SBT2 SBT4 SBT6
+      <- sub-tp-mono B4 LE2 B4'
+      <- sub-tp-mono B1 LE1 B1'.
 
 -/recv-recv  : sub-tp-trans-aux WX LE1 LE2
       (wf-tp/recv T1)
