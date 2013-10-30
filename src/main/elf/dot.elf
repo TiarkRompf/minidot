@@ -1806,11 +1806,24 @@ wf-tp-minmax-to-maybe : minmax X R C D -> wf-tp M X G T -> maybe-wf-tp R M X G T
 %worlds () (wf-tp-minmax-to-maybe _ _ _).
 %total A (wf-tp-minmax-to-maybe A _ _).
 
+minmax-z-wf-tp-to-maybe : minmax X R C D -> wf-tp M z G T -> maybe-wf-tp R M X G T -> type.
+%mode minmax-z-wf-tp-to-maybe +A +B -C.
+
+- : minmax-z-wf-tp-to-maybe (minmax/lte LE) W (maybe-wf-tp/no LE).
+- : minmax-z-wf-tp-to-maybe (minmax/gt LE) W (maybe-wf-tp/yes W' LE)
+     <- wf-tp-mono W lte/z W'.
+
+%worlds () (minmax-z-wf-tp-to-maybe _ _ _).
+%total A (minmax-z-wf-tp-to-maybe A _ _).
+
 z-wf-tp-to-maybe : {R}{X} wf-tp M z G T -> maybe-wf-tp R M X G T -> type.
 %mode z-wf-tp-to-maybe +A +B +C -D.
 
+- : z-wf-tp-to-maybe R X W OUT
+     <- find-minmax X R _ _ MX _ _ _ _ _
+     <- minmax-z-wf-tp-to-maybe MX W OUT.
+
 %worlds () (z-wf-tp-to-maybe _ _ _ _).
-%trustme
 %total A (z-wf-tp-to-maybe A _ _ _).
 
 max-lte1 : max R X C -> lte R C -> type.
