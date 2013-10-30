@@ -1670,7 +1670,6 @@ sub-tp-mono: sub-tp M R G1 T1 G2 T2 -> lte R R' -> sub-tp M R' G1 T1 G2 T2 -> ty
      <- wf-tp-mono W1 LE W1'.
 %worlds () (wf-tp-mono _ _ _) (sub-tp-mono _ _ _).
 %total (A B) (wf-tp-mono A _ _) (sub-tp-mono B _ _).
-
 wf-tp-to-maybe2 : min X R C -> wf-tp M R G T -> maybe-wf-tp R M X G T -> type.
 %mode wf-tp-to-maybe2 +A +B -C.
 
@@ -1699,6 +1698,18 @@ wf-tp-max-to-maybe : max R X C -> wf-tp M C G T -> maybe-wf-tp R M X G T -> type
 
 %worlds () (wf-tp-max-to-maybe _ _ _).
 %total A (wf-tp-max-to-maybe A _ _).
+
+max-lte1 : max R X C -> lte R C -> type.
+%mode max-lte1 +A -B.
+
+- : max-lte1 (max/lte LE) LE'
+     <- eq-refl _ EQ
+     <- eq-lte EQ LE'.
+- : max-lte1 (max/gt (lte/s LE)) LE'
+     <- lte-inc LE LE'.
+
+%worlds () (max-lte1 _ _).
+%total A (max-lte1 A _).
 
 % Extract wf from subtyping
 
@@ -1933,59 +1944,60 @@ eq-tsize-env : sametenv G G' -> tsize G S -> tsize G' S -> type.
 
 sub-tp-trans-aux :
   %% Inputs
-  wf-tp lenient R G2 T2 ->
+  lte RW R ->
+  wf-tp lenient RW G2 T2 ->
   sub-tp lenient R G1 T1 G2 T2 ->
   sub-tp lenient R G2 T2 G3 T3 ->
   %% Output
   sub-tp lenient R G1 T1 G3 T3 ->
   type.
-%mode sub-tp-trans-aux +T2 +SBT1 +SBT2 -SBT3.
+%mode sub-tp-trans-aux +W +T2 +SBT1 +SBT2 -SBT3.
 
--/top    : sub-tp-trans-aux _ S1 (sub-tp/top _) (sub-tp/top W) <- extract-wf S1 W _.
--/bot    : sub-tp-trans-aux _ (sub-tp/bot _) S2 (sub-tp/bot W) <- extract-wf S2 _ W.
+-/top    : sub-tp-trans-aux _ _ S1 (sub-tp/top _) (sub-tp/top W) <- extract-wf S1 W _.
+-/bot    : sub-tp-trans-aux _ _ (sub-tp/bot _) S2 (sub-tp/bot W) <- extract-wf S2 _ W.
 
 
--/fun-fun  : sub-tp-trans-aux
+-/fun-fun  : sub-tp-trans-aux LE
       (wf-tp/fun T2 T1)
             (sub-tp/fun SBT2 SBT1)
             (sub-tp/fun SBT4 SBT3)
             (sub-tp/fun SBT6 SBT5)
-      <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
-      <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
+      <- sub-tp-trans-aux LE T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux LE T2 SBT2 SBT4 SBT6.
 
--/rect-rect  : sub-tp-trans-aux
+-/rect-rect  : sub-tp-trans-aux LE
       (wf-tp/rect SB T2 T1)
             (sub-tp/rect SBT2 SBT1 B2 B1)
             (sub-tp/rect SBT4 SBT3 B4 B3)
             (sub-tp/rect SBT6 SBT5 B4 B1)
-      <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
-      <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
+      <- sub-tp-trans-aux LE T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux LE T2 SBT2 SBT4 SBT6.
 
--/recv-recv  : sub-tp-trans-aux
+-/recv-recv  : sub-tp-trans-aux LE
       (wf-tp/recv T1)
             (sub-tp/recv SBT1)
             (sub-tp/recv SBT3)
             (sub-tp/recv SBT5)
-      <- sub-tp-trans-aux T1 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-aux LE T1 SBT1 SBT3 SBT5.
 
--/tbind2  : sub-tp-trans-aux
+-/tbind2  : sub-tp-trans-aux LE
        W
        SBT1
        (sub-tp/tbind2 SW SBT3 SU S)
        (sub-tp/tbind2 SW' SBT5 SU' S)
 
-       <- sub-tp-trans-aux W SBT1 SW SW'
-       <- sub-tp-trans-aux W SBT1 SU SU'
-       <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+       <- sub-tp-trans-aux LE W SBT1 SW SW'
+       <- sub-tp-trans-aux LE W SBT1 SU SU'
+       <- sub-tp-trans-aux LE W SBT1 SBT3 SBT5.
 
--/tbind1 : sub-tp-trans-aux
+-/tbind1 : sub-tp-trans-aux LE
        W
        (sub-tp/tbind1 ST S)
        SBT2
        (sub-tp/tbind1 ST' S)
-       <- sub-tp-trans-aux W ST SBT2 ST'.
+       <- sub-tp-trans-aux LE W ST SBT2 ST'.
 
--/tbind2-tbind1  : sub-tp-trans-aux
+-/tbind2-tbind1  : sub-tp-trans-aux LE
        (wf-tp/tbind WU0 S0)
        (sub-tp/tbind2 _ _ SU S1)
        (sub-tp/tbind1 A2 S2)
@@ -1997,51 +2009,54 @@ sub-tp-trans-aux :
        <- sub-env-size-eq S2 S0 EQG2
        <- eq-sametenv-cons EQG2 _ EQG2'
        <- eq-low-env EQG2' A2 A2'
-       <- sub-tp-trans-aux WU0 SU' A2' A3.
+       <- sub-tp-trans-aux LE WU0 SU' A2' A3.
 
--/tand1a : sub-tp-trans-aux
+-/tand1a : sub-tp-trans-aux LE
       W
       (sub-tp/and1a W1 SBT1)
       SBT3
       (sub-tp/and1a W1 SBT5)
-      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+      <- sub-tp-trans-aux LE W SBT1 SBT3 SBT5.
 
--/tand1b : sub-tp-trans-aux
+-/tand1b : sub-tp-trans-aux LE
       W
       (sub-tp/and1b W1 SBT1)
       SBT3
       (sub-tp/and1b W1 SBT5)
-      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+      <- sub-tp-trans-aux LE W SBT1 SBT3 SBT5.
 
--/tand2 : sub-tp-trans-aux
+-/tand2 : sub-tp-trans-aux LE
       W
       SBT1
       (sub-tp/and2 ST1 ST2)
       (sub-tp/and2 ST1' ST2')
-      <- sub-tp-trans-aux W SBT1 ST1 ST1'
-      <- sub-tp-trans-aux W SBT1 ST2 ST2'.
+      <- sub-tp-trans-aux LE W SBT1 ST1 ST1'
+      <- sub-tp-trans-aux LE W SBT1 ST2 ST2'.
 
--/tand2-tand1a : sub-tp-trans-aux
+-/tand2-tand1a : sub-tp-trans-aux LE
       (wf-tp/and W1 W2)
       (sub-tp/and2 SBT1 _)
       (sub-tp/and1a _ SBT3)
       SBT5
-      <- sub-tp-trans-aux W1 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-aux LE W1 SBT1 SBT3 SBT5.
 
--/tand2-tand1b : sub-tp-trans-aux
+-/tand2-tand1b : sub-tp-trans-aux LE
       (wf-tp/and W1 W2)
       (sub-tp/and2 _ SBT1)
       (sub-tp/and1b _ SBT3)
       SBT5
-      <- sub-tp-trans-aux W2 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-aux LE W2 SBT1 SBT3 SBT5.
 
--/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
+-/tsel1  : sub-tp-trans-aux  LE % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
-      (sub-tp/tsel1 W2 W1 (A: sub-tp _ (s X) _ _ _ _) G P)
-      (B: sub-tp _ R _ _ _ _)
-      (sub-tp/tsel1 W3 W1 C G P)
-      <- 
-      <- sub-tp-trans-aux W A B C.
+      (sub-tp/tsel1 W2 W1 A G P MX)
+      B
+      (sub-tp/tsel1 W3 W1 C G P MX)
+      <- max-lte1 MX LTE
+      <- sub-tp-mono B LTE B'
+      <- lte-trans LE LTE LE'
+      <- sub-tp-trans-aux LE' W A B' C
+      <- extract-wf B _ W3.
 %{
 -/tsel2  : sub-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
       W
@@ -2075,8 +2090,8 @@ sub-tp-trans-aux :
    <- sub-tp-trans-aux WU A1'' A2'' OUT.
 }%
 
-%worlds () (sub-tp-trans-aux _ _ _ _).
-%total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
+%worlds () (sub-tp-trans-aux _ _ _ _ _).
+%total {T2 S1 S2} (sub-tp-trans-aux _ T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
 %% WF as an additional argument.
