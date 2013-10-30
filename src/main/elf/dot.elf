@@ -2228,36 +2228,21 @@ sub-tp-trans-aux :
       <- wf-tp-mono W3 LE2 W3'
       <- wf-tp-mono W1 LEV W1'.
 
-%{
--/tsel1  : sub-tp-trans-aux LE LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
-      W
-      (sub-tp/tsel1 W2 W1 A G P MX)
-      B
-      (sub-tp/tsel1 W3' W1' C G P MX')
-      <- max-lte1 MX LTE
-      <- max-dia LE1 LTE M1 MX1 LEX LTE'
-      <- lte-trans LE LEX LE'
-      <- lte-trans LE2 LEX LE2'
-      <- sub-tp-trans-aux LE' LTE' LE2' W A B C
-      <- max-join LE1 MX MX1 MX'
-      <- extract-wf B _ W3
-      <- wf-tp-mono W1 LTE' W1'
-      <- wf-tp-mono W3 LE2 W3'.
-
 -/tsel2  : sub-tp-trans-aux LE LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
       A
       (sub-tp/tsel2-lenient W2 W3 B G P MX)
       (sub-tp/tsel2-lenient W1' W3' C G P MX')
-      <- max-lte1 MX LTE
-      <- max-dia LE2 LTE M2 MX2 LEX LTE'
-      <- lte-trans LE LEX LE'
-      <- lte-trans LE1 LEX LE1'
-      <- sub-tp-trans-aux LE' LE1' LTE' W A B C
-      <- max-join LE2 MX MX2 MX'
+      <- new-minmax LE2 MX MX' LER LE2' LEV
+      <- lte-trans LE LER LE'
+      <- lte-trans LE1 LER LE1'
+      <- sub-tp-trans-aux LE' LE1' LE2' W A B C
       <- extract-wf A W1 _
-      <- wf-tp-mono W3 LTE' W3'
-      <- wf-tp-mono W1 LE1 W1'.
+      <- wf-tp-mono W1 LE1 W1'
+      <- wf-tp-mono W3 LEV W3'.
+
+
+%{
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
