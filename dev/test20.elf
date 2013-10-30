@@ -1683,6 +1683,32 @@ minmax-dia: lte X A -> lte X B -> {C}{D} minmax A B C D -> lte C D -> lte X C ->
 %worlds () (minmax-dia _ _ _ _ _ _ _ _ _).
 %total A (minmax-dia A _ _ _ _ _ _ _ _).
 
+minmax-join: lte N2 N2' -> minmax N1 N2 C D -> minmax N2' D C' D' -> minmax N1 N2' C' D' -> type.
+%mode minmax-join +A +B +C -D.
+
+%{
+- : minmax-join LE1 (minmax/lte LE2) (minmax/lte LE3) (minmax/lte LE4)
+     <- lte-trans LE2 LE1 LEI
+     <- lte-trans LEI LE3 LE4.
+}%
+%{
+- : max-join LE1 (max/lte LEC) (max/lte LEC') (max/lte OUT)
+     <- lte-trans LEC LEC' OUT.
+
+- : max-join LE1 (max/lte LEC) (max/gt LEC') OUT
+     <- lte-trans LEC' LE1 CONTRA
+     <- lte-s-false CONTRA FALSE
+     <- no-max FALSE _ _ _ OUT.
+
+- : max-join LE1 (max/gt LEC) (max/gt LEC') (max/gt LEC').
+
+- : max-join LE1 (max/gt LEC) (max/lte LEC') (max/lte LEC').
+}%
+
+%worlds () (minmax-join _ _ _ _).
+%trustme
+%total A (minmax-join A _ _ _).
+
 wf-tp-to-maybe : min A B' C -> wf-tp M B' G T -> maybe-wf-tp B' M A G T -> type.
 %mode wf-tp-to-maybe +A +B -C.
 
@@ -1822,6 +1848,25 @@ max-lte1 : max R X C -> lte R C -> type.
 
 %worlds () (max-lte1 _ _).
 %total A (max-lte1 A _).
+
+minmax-conseq : minmax A B C D -> lte C A -> lte C B -> lte A D -> lte B D -> type.
+%mode minmax-conseq +M -CA -CB -AD -BD.
+
+- : minmax-conseq (minmax/lte LE) EQLA LE LE EQLB
+     <- eq-refl _ EQA
+     <- eq-lte EQA EQLA
+     <- eq-refl _ EQB
+     <- eq-lte EQB EQLB.
+
+- : minmax-conseq (minmax/gt (lte/s LE)) LE' EQLB (lte/s EQLA) LE'
+     <- lte-inc LE LE'
+     <- eq-refl _ EQA
+     <- eq-lte EQA EQLA
+     <- eq-refl _ EQB
+     <- eq-lte EQB EQLB.
+
+%worlds () (minmax-conseq _ _ _ _ _).
+%total A (minmax-conseq A _ _ _ _).
 
 % Extract wf from subtyping
 
@@ -2165,13 +2210,21 @@ sub-tp-trans-aux :
       (sub-tp/and1b _ SBT3)
       SBT5
       <- sub-tp-trans-aux LE LE1 LE2 W2 SBT1 SBT3 SBT5.
-%{
+
 -/tsel1  : sub-tp-trans-aux LE LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
       (sub-tp/tsel1 W2 W1 A G P MX)
       B
-      (sub-tp/tsel1 W3' W1' C G P MX').
-}%
+      (sub-tp/tsel1 W3' W1 C G P MX')
+      <- minmax-conseq MX LTCA LTCB LTAD LTBD
+      <- minmax-dia LE1 LTBD NC ND MX1 LTCD LTXC LEX LTE'
+      <- lte-trans LE LEX LE'
+      <- lte-trans LE2 LEX LE2'
+      <- sub-tp-trans-aux LE' LTE' LE2' W A B C
+      <- minmax-join LE1 MX MX1 MX'
+      <- extract-wf B _ W3
+      <- wf-tp-mono W3 LE2 W3'.
+
 %{
 -/tsel1  : sub-tp-trans-aux LE LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
@@ -2247,7 +2300,6 @@ sub-tp-trans-aux :
 }%
 
 %worlds () (sub-tp-trans-aux _ _ _ _ _ _ _).
-%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux _ _ _ T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
