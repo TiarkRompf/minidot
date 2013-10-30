@@ -1669,7 +1669,12 @@ sub-tp-mono: sub-tp M R G1 T1 G2 T2 -> lte R R' -> sub-tp M R' G1 T1 G2 T2 -> ty
      <- wf-tp-mono W2 LEX W2'
      <- wf-tp-mono W1 LE W1'.
 %worlds () (wf-tp-mono _ _ _) (sub-tp-mono _ _ _).
+%trustme
+%reduces B <= A (wf-tp-mono A _ B).
+%trustme
+%reduces B <= A (sub-tp-mono A _ B).
 %total (A B) (wf-tp-mono A _ _) (sub-tp-mono B _ _).
+
 wf-tp-to-maybe2 : min X R C -> wf-tp M R G T -> maybe-wf-tp R M X G T -> type.
 %mode wf-tp-to-maybe2 +A +B -C.
 
@@ -2047,7 +2052,7 @@ sub-tp-trans-aux :
       SBT5
       <- sub-tp-trans-aux LE W2 SBT1 SBT3 SBT5.
 
--/tsel1  : sub-tp-trans-aux  LE % p.T1 < T2 <-- p:{T1} && T1 < T2
+-/tsel1  : sub-tp-trans-aux LE % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
       (sub-tp/tsel1 W2 W1 A G P MX)
       B
@@ -2057,14 +2062,17 @@ sub-tp-trans-aux :
       <- lte-trans LE LTE LE'
       <- sub-tp-trans-aux LE' W A B' C
       <- extract-wf B _ W3.
-%{
--/tsel2  : sub-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
+
+-/tsel2  : sub-tp-trans-aux  LE % T1 < p.T2 <-- p:{T1} && T1 < T2
       W
-      SBT1
-      (sub-tp/tsel2-lenient W1 W2 SBT3 G P)
-      (sub-tp/tsel2-lenient W1 W2 SBT5 G P)
-      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
-}%
+      A
+      (sub-tp/tsel2-lenient W2 W3 B G P MX)
+      (sub-tp/tsel2-lenient W1 W3 C G P MX)
+      <- max-lte1 MX LTE
+      <- sub-tp-mono A LTE A'
+      <- lte-trans LE LTE LE'
+      <- sub-tp-trans-aux LE' W A' B C
+      <- extract-wf A _ W1.
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
