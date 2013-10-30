@@ -1823,6 +1823,25 @@ max-lte1 : max R X C -> lte R C -> type.
 %worlds () (max-lte1 _ _).
 %total A (max-lte1 A _).
 
+minmax-conseq : minmax A B C D -> lte C A -> lte C B -> lte A D -> lte B D -> type.
+%mode minmax-conseq +M -CA -CB -AD -BD.
+
+- : minmax-conseq (minmax/lte LE) EQLA LE LE EQLB
+     <- eq-refl _ EQA
+     <- eq-lte EQA EQLA
+     <- eq-refl _ EQB
+     <- eq-lte EQB EQLB.
+
+- : minmax-conseq (minmax/gt (lte/s LE)) LE' EQLB (lte/s EQLA) LE'
+     <- lte-inc LE LE'
+     <- eq-refl _ EQA
+     <- eq-lte EQA EQLA
+     <- eq-refl _ EQB
+     <- eq-lte EQB EQLB.
+
+%worlds () (minmax-conseq _ _ _ _ _).
+%total A (minmax-conseq A _ _ _ _).
+
 % Extract wf from subtyping
 
 extract-wf : sub-tp M R G1 T1 G2 T2 -> wf-tp M R G1 T1 -> wf-tp M R G2 T2 -> type.
@@ -2059,6 +2078,36 @@ eq-tsize-env : sametenv G G' -> tsize G S -> tsize G' S -> type.
 
 %{ ------- subtyping transitivity ------ }%
 
+minmax-dia2: lte (s X) A -> lte X B -> {C}{D} minmax A B C D -> lte C D -> lte X C -> lte A D -> lte B D -> type.
+%mode minmax-dia2 +A +B -C -D -E -F -G -H -I.
+
+- : minmax-dia2 (lte/s lte/z) lte/z C D E F lte/z I J
+     <- find-minmax _ _ C D E F G H I J.
+
+- : minmax-dia2 (lte/s A) (lte/s B) (s C) (s D) E' (lte/s F) (lte/s G) (lte/s H) (lte/s I)
+     <- minmax-dia2 A B C D E F G H I
+     <- minmax-inc E E'.
+
+%worlds () (minmax-dia2 _ _ _ _ _ _ _ _ _).
+%total A (minmax-dia2 A _ _ _ _ _ _ _ _).
+
+
+new-minmax : lte R1 R -> minmax V R1 V1' R1' -> minmax V R V' R' -> lte R R' -> lte R1' R' -> lte V1' V' -> type.
+%mode new-minmax +A +B -C -D -E -F.
+
+- : new-minmax LE1 (minmax/lte LE) (minmax/lte LE') EQLD LE1 EQLF
+     <- lte-trans LE LE1 LE'
+     <- eq-refl _ EQD
+     <- eq-lte EQD EQLD
+     <- eq-refl _ EQF
+     <- eq-lte EQF EQLF.
+
+- : new-minmax LE1 (minmax/gt LE) MX I H G
+     <- minmax-dia2 LE LE1 _ _ MX F G H I.
+
+%worlds () (new-minmax _ _ _ _ _ _).
+%total A (new-minmax _ A _ _ _ _).
+
 sub-tp-trans-aux :
   %% Inputs
   lte z R -> lte R1 R -> lte R2 R ->
@@ -2165,13 +2214,20 @@ sub-tp-trans-aux :
       (sub-tp/and1b _ SBT3)
       SBT5
       <- sub-tp-trans-aux LE LE1 LE2 W2 SBT1 SBT3 SBT5.
-%{
+
 -/tsel1  : sub-tp-trans-aux LE LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
-      (sub-tp/tsel1 W2 W1 A G P MX)
+      (sub-tp/tsel1 W2 W1 A G P (MX: minmax V R1 V' R1'))
       B
-      (sub-tp/tsel1 W3' W1' C G P MX').
-}%
+      (sub-tp/tsel1 W3' W1' C G P (MX': minmax V R V' R'))
+      <- new-minmax LE1 MX MX' LER LE1' LEV
+      <- lte-trans LE LER LE'
+      <- lte-trans LE2 LER LE2'
+      <- sub-tp-trans-aux LE' LE1' LE2' W A B C
+      <- extract-wf B _ W3
+      <- wf-tp-mono W3 LE2 W3'
+      <- wf-tp-mono W1 LEV W1'.
+
 %{
 -/tsel1  : sub-tp-trans-aux LE LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
@@ -2247,7 +2303,6 @@ sub-tp-trans-aux :
 }%
 
 %worlds () (sub-tp-trans-aux _ _ _ _ _ _ _).
-%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux _ _ _ T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
