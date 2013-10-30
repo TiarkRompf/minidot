@@ -623,6 +623,11 @@ ne-irrefl: ne N N -> false -> type.
 %worlds () (ne-irrefl _ _).
 %total (A) (ne-irrefl A _).
 
+no-max : false -> {A}{B}{C} max A B C -> type.
+%mode no-max +A +B +C +D -E.
+%worlds () (no-max _ _ _ _ _).
+%total A (no-max A _ _ _ _).
+
 no-eq: false -> {T1}{T2} same T1 T2 -> type.
 %mode no-eq +A +B +C -D.
 %worlds () (no-eq _ _ _ _).
@@ -1599,8 +1604,20 @@ max-dia: lte X A -> lte X B -> {C} max A B C -> lte A C -> lte B C -> type.
 
 max-join: lte N1 N1' -> max N1 N2 C -> max N1' C C' -> max N1' N2 C' -> type.
 %mode max-join +A +B +C -D.
+
+- : max-join LE1 (max/lte LEC) (max/lte LEC') (max/lte OUT)
+     <- lte-trans LEC LEC' OUT.
+
+- : max-join LE1 (max/lte LEC) (max/gt LEC') OUT
+     <- lte-trans LEC' LE1 CONTRA
+     <- lte-s-false CONTRA FALSE
+     <- no-max FALSE _ _ _ OUT.
+
+- : max-join LE1 (max/gt LEC) (max/gt LEC') (max/gt LEC').
+
+- : max-join LE1 (max/gt LEC) (max/lte LEC') (max/lte LEC').
+
 %worlds () (max-join _ _ _ _).
-%trustme
 %total A (max-join A _ _ _).
 
 wf-tp-to-maybe : min A B' C -> wf-tp M A G T -> maybe-wf-tp B' M A G T -> type.
