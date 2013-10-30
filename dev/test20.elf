@@ -58,6 +58,10 @@ min: nat -> nat -> nat -> type.
 min/lte: min A B A <- lte A B.
 min/gt: min A B B <- lte (s B) A.
 
+minmax: nat -> nat -> nat -> nat -> type.
+minmax/lte: minmax A B A B <- lte A B.
+minmax/gt: minmax A B B A <- lte (s B) A.
+
 max: nat -> nat -> nat -> type.
 max/lte: max A B A <- lte B A.
 max/gt: max A B B <- lte (s A) B.
@@ -301,12 +305,12 @@ sub-tp/tselx : sub-tp M R G1 (tsel (var X) N) G2 (tsel (var X) N)
              <- sub-env-size (tcons Z2 G2X) (s X) G2.
 
 sub-tp/tselx-strict : sub-tp strict R G1 (tsel (var X) N) G2 (tsel (var X) N)
-             <- min X R R'
+             <- min X R X'
              <- path-eval strict G1 (var X) (rect N TA1 TB1)
              <- path-eval strict G2 (var X) (rect N TA2 TB2)
              <- sub-env-size G1X (s X) G1
              <- sub-env-size G2X (s X) G2
-             <- sub-tp strict R' G1X (rect N TA1 TB1) G2X (rect N TA2 TB2)
+             <- sub-tp strict X' G1X (rect N TA1 TB1) G2X (rect N TA2 TB2)
              .
 
 sub-tp/tbind2 : sub-tp M R G1 T1 G2 (bind N TN)
@@ -334,16 +338,16 @@ sub-tp/and1b : sub-tp M R G1 (and TA1 TB1) G2 T2
               <- wf-tp M R G1 TA1.
 
 sub-tp/tsel1 : sub-tp M R G1 (tsel (var X) N) G2 T2
-              <- min X R R'
+              <- minmax X R X' R'
               <- path-eval M G1 (var X) (rect N TA1 TB1)
               <- sub-env-size G1X (s X) G1
               <- sub-tp M R' G1X TB1 G2 T2
-              <- wf-tp M R' G1X (rect N TA1 TB1)
+              <- wf-tp M X' G1X (rect N TA1 TB1)
               <- wf-tp M R G2 T2
               .
 
 sub-tp/tsel2-strict : sub-tp strict R G1 T1 G2 (tsel (var X) N)
-              <- min X R R'
+              <- minmax X R X' R'
               <- path-eval strict G2 (var X) (rect N TA2 TB2)
               <- sub-env-size G2X (s X) G2
               <- sub-tp strict R' G1 T1 G2X TA2
@@ -352,11 +356,11 @@ sub-tp/tsel2-strict : sub-tp strict R G1 T1 G2 (tsel (var X) N)
               .
 
 sub-tp/tsel2-lenient : sub-tp lenient R G1 T1 G2 (tsel (var X) N)
-              <- min X R R'
+              <- minmax X R X' R'
               <- path-eval lenient G2 (var X) (rect N TA2 TB2)
               <- sub-env-size G2X (s X) G2
               <- sub-tp lenient R' G1 T1 G2X TB2
-              <- wf-tp lenient R' G2X (rect N TA2 TB2)
+              <- wf-tp lenient X' G2X (rect N TA2 TB2)
               <- wf-tp lenient R G1 T1
               .
 
@@ -1629,17 +1633,55 @@ find-min : {A}{B}{C} min A B C -> lte C A -> lte C B -> type.
 %worlds () (find-min _ _ _ _ _ _).
 %total A (find-min A _ _ _ _ _).
 
-min-dia: lte X A -> lte X B -> {C} min A B C -> lte X C -> lte X C -> type.
-%mode min-dia +A +B -C -D -E -F.
+min-dia: lte X A -> lte X B -> {C} min A B C -> lte X C -> type.
+%mode min-dia +A +B -C -D -E.
 
-- : min-dia lte/z lte/z C D lte/z lte/z
+- : min-dia lte/z lte/z C D lte/z
      <- find-min _ _ C D E F.
-- : min-dia (lte/s A) (lte/s B) (s C) D' (lte/s E) (lte/s F)
-     <- min-dia A B C D E F
+- : min-dia (lte/s A) (lte/s B) (s C) D' (lte/s E)
+     <- min-dia A B C D E
      <- min-inc D D'.
 
-%worlds () (min-dia _ _ _ _ _ _).
-%total A (min-dia A _ _ _ _ _).
+%worlds () (min-dia _ _ _ _ _).
+%total A (min-dia A _ _ _ _).
+
+minmax-inc : minmax A B C D -> minmax (s A) (s B) (s C) (s D) -> type.
+%mode minmax-inc +A -B.
+
+- : minmax-inc (minmax/lte LE) (minmax/lte (lte/s LE)).
+- : minmax-inc (minmax/gt LE) (minmax/gt (lte/s LE)).
+
+%worlds () (minmax-inc _ _).
+%total A (minmax-inc A _).
+
+find-minmax : {A}{B}{C}{D} minmax A B C D -> lte C D -> lte C A -> lte C B -> lte A D -> lte B D -> type.
+%mode find-minmax +A +B -C -D -E -F -G -H -I -J.
+
+- : find-minmax z B z B (minmax/lte lte/z) lte/z lte/z lte/z lte/z EQLTE
+     <- eq-refl _ EQ
+     <- eq-lte EQ EQLTE.
+- : find-minmax (s B) z z (s B) (minmax/gt (lte/s lte/z)) lte/z lte/z lte/z EQLTE lte/z
+     <- eq-refl _ EQ
+     <- eq-lte EQ EQLTE.
+- : find-minmax (s A) (s B) (s C) (s D) E' (lte/s F) (lte/s G) (lte/s H) (lte/s I) (lte/s J)
+     <- find-minmax A B C D E F G H I J
+     <- minmax-inc E E'.
+
+%worlds () (find-minmax _ _ _ _ _ _ _ _ _ _).
+%total A (find-minmax A _ _ _ _ _ _ _ _ _).
+
+minmax-dia: lte X A -> lte X B -> {C}{D} minmax A B C D -> lte C D -> lte X C -> lte A D -> lte B D -> type.
+%mode minmax-dia +A +B -C -D -E -F -G -H -I.
+
+- : minmax-dia lte/z lte/z C D E F lte/z I J
+     <- find-minmax _ _ C D E F G H I J.
+
+- : minmax-dia (lte/s A) (lte/s B) (s C) (s D) E' (lte/s F) (lte/s G) (lte/s H) (lte/s I)
+     <- minmax-dia A B C D E F G H I
+     <- minmax-inc E E'.
+
+%worlds () (minmax-dia _ _ _ _ _ _ _ _ _).
+%total A (minmax-dia A _ _ _ _ _ _ _ _).
 
 wf-tp-to-maybe : min A B' C -> wf-tp M B' G T -> maybe-wf-tp B' M A G T -> type.
 %mode wf-tp-to-maybe +A +B -C.
@@ -1713,32 +1755,36 @@ sub-tp-mono: sub-tp M R G1 T1 G2 T2 -> lte R R' -> sub-tp M R' G1 T1 G2 T2 -> ty
      <- lte-trans LE1 LE LE1'.
 - : sub-tp-mono (sub-tp/tselx-strict A G2 G1 P2 P1 (min/gt LE1)) LE (sub-tp/tselx-strict A' G2 G1 P2 P1 MX)
      <- lte-inc LE1 (lte/s LE1X)
-     <- min-dia LE1X LE _ MX LE1X' LE'
+     <- min-dia LE1X LE _ MX LE'
      <- sub-tp-mono A LE' A'.
-- : sub-tp-mono (sub-tp/tsel1 W2 W1 A G P (min/lte LE1)) LE (sub-tp/tsel1 W2' W1 A G P (min/lte LE1'))
+- : sub-tp-mono (sub-tp/tsel1 W2 W1 A G P (minmax/lte LE1)) LE (sub-tp/tsel1 W2' W1 A' G P (minmax/lte LE1'))
      <- lte-trans LE1 LE LE1'
+     <- sub-tp-mono A LE A'
      <- wf-tp-mono W2 LE W2'.
-- : sub-tp-mono (sub-tp/tsel1 W2 W1 A G P (min/gt LE1)) LE (sub-tp/tsel1 W2' W1' A' G P MX)
+- : sub-tp-mono (sub-tp/tsel1 W2 W1 A G P (minmax/gt LE1)) LE (sub-tp/tsel1 W2' W1' A' G P MX)
      <- lte-inc LE1 (lte/s LE1X)
-     <- min-dia LE1X LE _ MX LE1X' LE'
-     <- sub-tp-mono A LE' A'
+     <- minmax-dia LE1X LE _ _ MX _ LE' LE1B LEB
+     <- sub-tp-mono A LE1B A'
      <- wf-tp-mono W1 LE' W1'
      <- wf-tp-mono W2 LE W2'.
-- : sub-tp-mono (sub-tp/tsel2-strict W1 W2 A G P (min/lte LE1)) LE (sub-tp/tsel2-strict W1' W2 A G P (min/lte LE1'))
+
+- : sub-tp-mono (sub-tp/tsel2-strict W1 W2 A G P (minmax/lte LE1)) LE (sub-tp/tsel2-strict W1' W2 A' G P (minmax/lte LE1'))
      <- lte-trans LE1 LE LE1'
+     <- sub-tp-mono A LE A'
      <- wf-tp-mono W1 LE W1'.
-- : sub-tp-mono (sub-tp/tsel2-strict W1 W2 A G P (min/gt LE1)) LE (sub-tp/tsel2-strict W1' W2 A' G P MX)
+- : sub-tp-mono (sub-tp/tsel2-strict W1 W2 A G P (minmax/gt LE1)) LE (sub-tp/tsel2-strict W1' W2 A' G P MX)
      <- lte-inc LE1 (lte/s LE1X)
-     <- min-dia LE1X LE _ MX LE1X' LE'
-     <- sub-tp-mono A LE' A'
+     <- minmax-dia LE1X LE _ _ MX _ LE' LE1B LEB
+     <- sub-tp-mono A LE1B A'
      <- wf-tp-mono W1 LE W1'.
-- : sub-tp-mono (sub-tp/tsel2-lenient W1 W2 A G P (min/lte LE1)) LE (sub-tp/tsel2-lenient W1' W2 A G P (min/lte LE1'))
+- : sub-tp-mono (sub-tp/tsel2-lenient W1 W2 A G P (minmax/lte LE1)) LE (sub-tp/tsel2-lenient W1' W2 A' G P (minmax/lte LE1'))
      <- lte-trans LE1 LE LE1'
+     <- sub-tp-mono A LE A'
      <- wf-tp-mono W1 LE W1'.
-- : sub-tp-mono (sub-tp/tsel2-lenient W1 W2 A G P (min/gt LE1)) LE (sub-tp/tsel2-lenient W1' W2' A' G P MX)
+- : sub-tp-mono (sub-tp/tsel2-lenient W1 W2 A G P (minmax/gt LE1)) LE (sub-tp/tsel2-lenient W1' W2' A' G P MX)
      <- lte-inc LE1 (lte/s LE1X)
-     <- min-dia LE1X LE _ MX LE1X' LE'
-     <- sub-tp-mono A LE' A'
+     <- minmax-dia LE1X LE _ _ MX _ LE' LE1B LEB
+     <- sub-tp-mono A LE1B A'
      <- wf-tp-mono W2 LE' W2'
      <- wf-tp-mono W1 LE W1'.
 %worlds () (wf-tp-mono _ _ _) (sub-tp-mono _ _ _).
@@ -1755,6 +1801,15 @@ wf-tp-min-to-maybe : min X R C -> wf-tp M C G T -> maybe-wf-tp R M X G T -> type
 
 %worlds () (wf-tp-min-to-maybe _ _ _).
 %total A (wf-tp-min-to-maybe A _ _).
+
+wf-tp-minmax-to-maybe : minmax X R C D -> wf-tp M C G T -> maybe-wf-tp R M X G T -> type.
+%mode wf-tp-minmax-to-maybe +A +B -C.
+
+- : wf-tp-minmax-to-maybe (minmax/lte LE) W (maybe-wf-tp/no LE).
+- : wf-tp-minmax-to-maybe (minmax/gt LE) W (maybe-wf-tp/yes W LE).
+
+%worlds () (wf-tp-minmax-to-maybe _ _ _).
+%total A (wf-tp-minmax-to-maybe A _ _).
 
 max-lte1 : max R X C -> lte R C -> type.
 %mode max-lte1 +A -B.
@@ -1787,15 +1842,15 @@ extract-wf : sub-tp M R G1 T1 G2 T2 -> wf-tp M R G1 T1 -> wf-tp M R G2 T2 -> typ
 
 - : extract-wf (sub-tp/tsel1 W2 W1 ST G P MX)
      (wf-tp/tsel OW1 G P) W2
-     <- wf-tp-min-to-maybe MX W1 OW1.
+     <- wf-tp-minmax-to-maybe MX W1 OW1.
 
 - : extract-wf (sub-tp/tsel2-strict W1 W2 ST G P MX)
       W1 (wf-tp/tsel OW2 G P)
      <- wf-tp-mono W2 lte/z W2'
-     <- wf-tp-min-to-maybe MX W2' OW2.
+     <- wf-tp-minmax-to-maybe MX W2' OW2.
 - : extract-wf (sub-tp/tsel2-lenient W1 W2 ST G P MX)
       W1 (wf-tp/tsel OW2 G P)
-     <- wf-tp-min-to-maybe MX W2 OW2.
+     <- wf-tp-minmax-to-maybe MX W2 OW2.
 
 - : extract-wf (sub-tp/tselx G2 G1 P2 P1 LTE)
       (wf-tp/tsel (maybe-wf-tp/no LTE) G1 P1)
@@ -1920,11 +1975,17 @@ sub-tp-refl :
             (wf-tp/tsel (maybe-wf-tp/yes (wf-tp/rect BSU WU WS) LTE) G P)
             (wf-tp/rect BSU WU WS)
             (sub-tp/tsel2-lenient
-               WU
-               (wf-tp/rect BSU WU WS)
-               BU G P (min/gt LTE))
-            G P (min/gt LTE))
-   <- sub-tp-refl WU BU.
+               WU'
+               WR'
+               BU' G P (minmax/lte EQLTE))
+            G P (minmax/gt LTE))
+   <- sub-tp-refl WU BU
+   <- eq-refl _ EQ
+   <- eq-lte EQ EQLTE
+   <- lte-inc LTE (lte/s LTE')
+   <- wf-tp-mono WU LTE' WU'
+   <- wf-tp-mono (wf-tp/rect BSU WU WS) LTE' WR'
+   <- sub-tp-mono BU LTE' BU'.
 
 -/tbind: sub-tp-refl (wf-tp/tbind WU S)
           (sub-tp/tbind1
@@ -2109,6 +2170,13 @@ sub-tp-trans-aux :
       W
       (sub-tp/tsel1 W2 W1 A G P MX)
       B
+      (sub-tp/tsel1 W3' W1' C G P MX').
+}%
+%{
+-/tsel1  : sub-tp-trans-aux LE LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
+      W
+      (sub-tp/tsel1 W2 W1 A G P MX)
+      B
       (sub-tp/tsel1 W3' W1' C G P MX')
       <- max-lte1 MX LTE
       <- max-dia LE1 LTE M1 MX1 LEX LTE'
@@ -2251,21 +2319,27 @@ widen-mode-sub-tp : sub-tp strict R G1 T1 G2 T2 -> sub-tp lenient R G1 T1 G2 T2 
 - : widen-mode-sub-tp (sub-tp/recv A) (sub-tp/recv A')
      <- widen-mode-sub-tp A A'.
 
-- : widen-mode-sub-tp (sub-tp/tselx-strict A G2 G1 P2 P1 (min/gt LTE)) (sub-tp/tsel1 (wf-tp/tsel (maybe-wf-tp/yes W2' LTE) G2 P2') W1' (sub-tp/tsel2-lenient WU1 W2' BU G2 P2' (min/gt LTE)) G1 P1' (min/gt LTE))
-     <- widen-mode-path-eval P1 P1'
-     <- widen-mode-path-eval P2 P2'
-     <- widen-mode-sub-tp A (sub-tp/rect BU BS B2 B1)
-     <- extract-wf (sub-tp/rect BU BS B2 B1) W1' W2'
-     <- extract-wf BU WU1 WU2.
-
-- : widen-mode-sub-tp (sub-tp/tselx-strict A G2 G1 P2 P1 (min/lte LTE)) (sub-tp/tsel1 (wf-tp/tsel (maybe-wf-tp/no LTE) G2 P2') W1' (sub-tp/tsel2-lenient WU1 W2' BU G2 P2' (min/lte EQLTE)) G1 P1' (min/lte LTE))
+- : widen-mode-sub-tp (sub-tp/tselx-strict A G2 G1 P2 P1 (min/gt LTE)) (sub-tp/tsel1 (wf-tp/tsel (maybe-wf-tp/yes W2' LTE) G2 P2') W1' (sub-tp/tsel2-lenient WU1P W2'P BUP G2 P2' (minmax/lte EQLTE)) G1 P1' (minmax/gt LTE))
      <- widen-mode-path-eval P1 P1'
      <- widen-mode-path-eval P2 P2'
      <- widen-mode-sub-tp A (sub-tp/rect BU BS B2 B1)
      <- extract-wf (sub-tp/rect BU BS B2 B1) W1' W2'
      <- extract-wf BU WU1 WU2
      <- eq-refl _ EQ
-     <- eq-lte EQ EQLTE.
+     <- eq-lte EQ EQLTE
+   <- lte-inc LTE (lte/s LTE')
+   <- wf-tp-mono WU1 LTE' WU1P
+   <- wf-tp-mono W2' LTE' W2'P
+   <- sub-tp-mono BU LTE' BUP.
+
+- : widen-mode-sub-tp (sub-tp/tselx-strict A G2 G1 P2 P1 (min/lte LTE)) (sub-tp/tsel1 (wf-tp/tsel (maybe-wf-tp/no LTE) G2 P2') W1' (sub-tp/tsel2-lenient WU1P W2' BUP G2 P2' (minmax/lte LTE)) G1 P1' (minmax/lte LTE))
+     <- widen-mode-path-eval P1 P1'
+     <- widen-mode-path-eval P2 P2'
+     <- widen-mode-sub-tp A (sub-tp/rect BU BS B2 B1)
+     <- extract-wf (sub-tp/rect BU BS B2 B1) W1' W2'
+     <- extract-wf BU WU1 WU2
+     <- wf-tp-mono WU1 LTE WU1P
+     <- sub-tp-mono BU LTE BUP.
 
 - : widen-mode-sub-tp (sub-tp/tselx G2 G1 P2 P1 LTE) (sub-tp/tselx G2 G1 P2' P1' LTE)
      <- widen-mode-path-eval P1 P1'
