@@ -1681,6 +1681,12 @@ wf-tp-to-maybe3 : min X R C -> wf-tp M X G T -> maybe-wf-tp R M X G T -> type.
 %worlds () (wf-tp-to-maybe3 _ _ _).
 %total A (wf-tp-to-maybe3 A _ _ ).
 
+wf-tp-max-to-maybe : max R X C -> wf-tp M C G T -> maybe-wf-tp R M X G T -> type.
+%mode wf-tp-max-to-maybe +A +B -C.
+%worlds () (wf-tp-max-to-maybe _ _ _).
+%trustme
+%total A (wf-tp-max-to-maybe A _ _).
+
 % Extract wf from subtyping
 
 extract-wf : sub-tp M R G1 T1 G2 T2 -> wf-tp M R G1 T1 -> wf-tp M R G2 T2 -> type.
@@ -1698,32 +1704,27 @@ extract-wf : sub-tp M R G1 T1 G2 T2 -> wf-tp M R G1 T1 -> wf-tp M R G2 T2 -> typ
 - : extract-wf (sub-tp/recv ST) (wf-tp/recv W1) (wf-tp/recv W2)
       <- extract-wf ST W1 W2.
 
-- : extract-wf (sub-tp/tsel1 W2 W1 ST G P)
+- : extract-wf (sub-tp/tsel1 W2 W1 ST G P MX)
      (wf-tp/tsel OW1 G P) W2
-     <- min-exists _ _ _ MIN
-     <- wf-tp-to-maybe3 MIN W1 OW1.
+     <- wf-tp-max-to-maybe MX W1 OW1.
 
-- : extract-wf (sub-tp/tsel2-strict W1 W2 ST G P)
+- : extract-wf (sub-tp/tsel2-strict W1 W2 ST G P MX)
       W1 (wf-tp/tsel OW2 G P)
-     <- min-exists _ _ _ MIN
-     <- wf-tp-to-maybe3 MIN W2 OW2.
-- : extract-wf (sub-tp/tsel2-lenient W1 W2 ST G P)
+     <- wf-tp-max-to-maybe MX W2 OW2.
+- : extract-wf (sub-tp/tsel2-lenient W1 W2 ST G P MX)
       W1 (wf-tp/tsel OW2 G P)
-     <- min-exists _ _ _ MIN
-     <- wf-tp-to-maybe3 MIN W2 OW2.
+     <- wf-tp-max-to-maybe MX W2 OW2.
 
 - : extract-wf (sub-tp/tselx G2 G1 P2 P1 LTE)
       (wf-tp/tsel (maybe-wf-tp/no LTE) G1 P1)
       (wf-tp/tsel (maybe-wf-tp/no LTE) G2 P2).
 
-- : extract-wf (sub-tp/tselx-strict ST G2 G1 P2 P1)
+- : extract-wf (sub-tp/tselx-strict ST G2 G1 P2 P1 MX)
       (wf-tp/tsel OW1 G1 P1)
       (wf-tp/tsel OW2 G2 P2)
      <- extract-wf ST W1 W2
-     <- min-exists _ _ _ MIN1
-     <- min-exists _ _ _ MIN2
-     <- wf-tp-to-maybe3 MIN1 W1 OW1
-     <- wf-tp-to-maybe3 MIN2 W2 OW2.
+     <- wf-tp-max-to-maybe MX W1 OW1
+     <- wf-tp-max-to-maybe MX W2 OW2.
 
 - : extract-wf (sub-tp/tbind1 ST S) (wf-tp/tbind WU S) W2
       <- extract-wf ST WU W2.
