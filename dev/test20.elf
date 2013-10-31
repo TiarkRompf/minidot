@@ -2299,6 +2299,16 @@ sub-tp-trans-aux :
       <- wf-tp-mono W3 LE2 W3'
       <- lte-trans LE LE1 LE'.
 
+%% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
+
+%{
+-/tsel2-tsel1-no : sub-tp-trans-aux LW1 LW2 LE1 LE2
+                 (wf-tp/tsel (maybe-wf-tp/no LEW) GW PW)
+                 (sub-tp/tsel2-lenient WA1 WA2 STA12 GA PA MXA)
+                 (sub-tp/tsel1 WB3 WB2 STB23 GB PB MXB)
+                 OUT
+}%
+
 %{
 -/tsel1  : sub-tp-trans-aux LW1 LW2 LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
@@ -2308,6 +2318,7 @@ sub-tp-trans-aux :
       <- extract-wf B _ W3
       <- wf-tp-mono W3 LE2 W3'.
 }%
+
 %{
 -/tsel1  : sub-tp-trans-aux LW1 LW2 LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
