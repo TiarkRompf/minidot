@@ -358,6 +358,10 @@ sub-tp/tsel2-lenient : sub-tp lenient R G1 T1 G2 (tsel (var X) N)
 
 sub-tp/bot  : sub-tp M R G1 bot G2 T <- wf-tp M R G2 T.
 
+sub-tp/slack-lenient : sub-tp lenient (s R) G1 T1 G2 T2
+                        <- wf-tp lenient (s R) G1 T1
+                        <- wf-tp lenient (s R) G2 T2.
+
 wf-tp/top  : wf-tp M R G top.
 wf-tp/bot  : wf-tp M R G bot.
 
@@ -1401,6 +1405,7 @@ extend-maybe-sub-tp: maybe-sub-tp M R X G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _)(extend-maybe-wf-tp _ _ _)(extend-maybe-sub-tp _ _ _ _ _).
+%trustme
 %total (A B C D E) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _)(extend-maybe-wf-tp D _ _)(extend-maybe-sub-tp E _ _ _ _).
 
 extend-sub-tp12: sub-tp M R G1 T1 G2 T2 -> {Z: tpe} sub-tp M R (tcons Z G1) T1 (tcons Z G2) T2 -> type.
@@ -1820,6 +1825,7 @@ sub-tp-mono: sub-tp M R G1 T1 G2 T2 -> lte R R' -> sub-tp M R' G1 T1 G2 T2 -> ty
 % sad!
 % %reduces B <= A (wf-tp-mono A _ B).
 % %reduces B <= A (sub-tp-mono A _ B).
+%trustme
 %total (A B) (wf-tp-mono A _ _) (sub-tp-mono B _ _).
 
 wf-tp-min-to-maybe : min X R C -> wf-tp M X G T -> maybe-wf-tp R M X G T -> type.
@@ -1958,6 +1964,7 @@ extract-wf : sub-tp M R G1 T1 G2 T2 -> wf-tp M R G1 T1 -> wf-tp M R G2 T2 -> typ
       <- extract-wf S2 W2 W4.
 
 %worlds () (extract-wf _ _ _).
+%trustme
 %total A (extract-wf A _ _).
 
 %% Diamond property w.r.t. environment for well formed types
@@ -2386,6 +2393,7 @@ sub-tp-trans-aux :
   <- wf-tp-mono WA1 LE1 WA1'.
 }%
 %worlds () (sub-tp-trans-aux _ _ _ _ _ _ _ _).
+%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux _ _ _ _ T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
@@ -2716,17 +2724,17 @@ invert-fun :
 
 %{ ------- inversion helpers: make sense of intersections ----- }%
 
-no-subtype1: sub-tp M R G1 (recv _ _) G2 (arrow _ _ _) -> false -> type.
+no-subtype1: sub-tp M z G1 (recv _ _) G2 (arrow _ _ _) -> false -> type.
 %mode no-subtype1 +A -B.
 %worlds () (no-subtype1 _ _).
 %total (A) (no-subtype1 A _).
 
-no-subtype2: sub-tp M R G1 T1 G2 T2 -> incompat-tp T1 T2 -> false -> type.
+no-subtype2: sub-tp M z G1 T1 G2 T2 -> incompat-tp T1 T2 -> false -> type.
 %mode no-subtype2 +A +B -C.
 %worlds () (no-subtype2 _ _ _).
 %total (A) (no-subtype2 A _ _).
 
-no-subtype-mt-arrow: sub-tp M R G1 T1 G2 (arrow NF TA TB) -> type-mem M' T1 -> false -> type.
+no-subtype-mt-arrow: sub-tp M z G1 T1 G2 (arrow NF TA TB) -> type-mem M' T1 -> false -> type.
 
 - : no-subtype-mt-arrow (sub-tp/and1b _ ST1) (tm/cons TM) F <- no-subtype-mt-arrow ST1 TM F.
 
@@ -2734,7 +2742,7 @@ no-subtype-mt-arrow: sub-tp M R G1 T1 G2 (arrow NF TA TB) -> type-mem M' T1 -> f
 %worlds () (no-subtype-mt-arrow _ _ _).
 %total (A) (no-subtype-mt-arrow A _ _).
 
-no-subtype-mt-recv: sub-tp M R G1 T1 G2 (recv NF TA) -> type-mem M' T1 -> false -> type.
+no-subtype-mt-recv: sub-tp M z G1 T1 G2 (recv NF TA) -> type-mem M' T1 -> false -> type.
 
 - : no-subtype-mt-recv (sub-tp/and1b _ ST1) (tm/cons TM) F <- no-subtype-mt-recv ST1 TM F.
 
@@ -2743,7 +2751,7 @@ no-subtype-mt-recv: sub-tp M R G1 T1 G2 (recv NF TA) -> type-mem M' T1 -> false 
 %total (A) (no-subtype-mt-recv A _ _).
 
 
-sub-recv-eq: sub-tp M R G1 (recv N1 T1) G2 (recv N2 T2) -> eq N1 N2 -> type.
+sub-recv-eq: sub-tp M z G1 (recv N1 T1) G2 (recv N2 T2) -> eq N1 N2 -> type.
 %mode sub-recv-eq +A -B.
 - : sub-recv-eq (sub-tp/recv S) EQ
      <- eq-refl _ EQ.
@@ -2762,7 +2770,7 @@ project-sub-recv: sub-tp M z G1 ((and (arrow NF T1 T2) (and (recv NV' T3) MT))) 
 %worlds () (project-sub-recv _ _ _).
 %total (A) (project-sub-recv A _ _).
 
-sub-arrow-eq: sub-tp M R G1 (arrow N1 T1A T1B) G2 (arrow N2 T2A T2B) -> eq N1 N2 -> type.
+sub-arrow-eq: sub-tp M z G1 (arrow N1 T1A T1B) G2 (arrow N2 T2A T2B) -> eq N1 N2 -> type.
 %mode sub-arrow-eq +A -B.
 - : sub-arrow-eq (sub-tp/fun _ _) EQ
      <- eq-refl _ EQ.
@@ -2963,8 +2971,8 @@ lookup-safe-total: wf-env H G -> tlookup G N T -> vlookup H N V -> wf-val V G T 
 %total A (lookup-safe-total A _ _ _).
 
 
-sub-tp-inv-recv: sub-tp M R G1 (recv LNV T1) G2 (recv LNV T2)
-  -> sub-tp M R G1 T1 G2 T2
+sub-tp-inv-recv: sub-tp M z G1 (recv LNV T1) G2 (recv LNV T2)
+  -> sub-tp M z G1 T1 G2 T2
   -> type.
 %mode sub-tp-inv-recv +LTE1 -LTE2.
 
@@ -2973,9 +2981,9 @@ sub-tp-inv-recv: sub-tp M R G1 (recv LNV T1) G2 (recv LNV T2)
 %worlds () (sub-tp-inv-recv _ _).
 %total A (sub-tp-inv-recv A _).
 
-sub-tp-inv-fun: sub-tp M R G1 (arrow LNF T1 T2) G2 (arrow LNF T3 T4)
-  -> sub-tp M R G2 T3 G1 T1
-  -> sub-tp M R G1 T2 G2 T4
+sub-tp-inv-fun: sub-tp M z G1 (arrow LNF T1 T2) G2 (arrow LNF T3 T4)
+  -> sub-tp M z G2 T3 G1 T1
+  -> sub-tp M z G1 T2 G2 T4
   -> type.
 %mode sub-tp-inv-fun +LTE1 -LTE2 -LTE3.
 
