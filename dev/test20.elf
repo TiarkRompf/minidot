@@ -2328,10 +2328,18 @@ sub-tp-trans-aux :
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
--/tsel2-tsel1-no : sub-tp-trans-aux LE1 LE2
+-/tsel2-tsel1-no1 : sub-tp-trans-aux LE1 LE2
       W
-      (sub-tp/tsel2-lenient WA1 (maybe-wf-tp/no LEA) STA12 GA PA)
+      (sub-tp/tsel2-lenient WA1 (maybe-wf-tp/no _) STA12 GA PA)
       (sub-tp/tsel1 WB3 WB2 STB23 GB PB)
+      (sub-tp/slack-lenient WC3 WC1)
+      <- wf-tp-mono WA1 LE1 WC1
+      <- wf-tp-mono WB3 LE2 WC3.
+
+-/tsel2-tsel1-no2 : sub-tp-trans-aux LE1 LE2
+      W
+      (sub-tp/tsel2-lenient WA1 WA2 STA12 GA PA)
+      (sub-tp/tsel1 WB3 (maybe-wf-tp/no _) STB23 GB PB)
       (sub-tp/slack-lenient WC3 WC1)
       <- wf-tp-mono WA1 LE1 WC1
       <- wf-tp-mono WB3 LE2 WC3.
