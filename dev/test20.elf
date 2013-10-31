@@ -301,13 +301,6 @@ sub-tp/rect : sub-tp M R G1 (rect N TA1 TB1) G2 (rect N TA2 TB2)
 sub-tp/recv : sub-tp M R G1 (recv N T1) G2 (recv N T2)
               <- sub-tp M R G1 T1 G2 T2.
 
-sub-tp/tselx-strict : sub-tp strict R G1 (tsel (var X) N) G2 (tsel (var X) N)
-             <- path-eval strict G1 (var X) (rect N TA1 TB1)
-             <- path-eval strict G2 (var X) (rect N TA2 TB2)
-             <- sub-env-size G1X (s X) G1
-             <- sub-env-size G2X (s X) G2
-             <- maybe-sub-tp R strict (s X) G1X (rect N TA1 TB1) G2X (rect N TA2 TB2).
-
 sub-tp/tbind2 : sub-tp M R G1 T1 G2 (bind N TN)
              <- sub-env-size G0 N G2
              <- sub-tp M R G1 T1 (tcons (bind N TN) G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
@@ -332,11 +325,19 @@ sub-tp/and1b : sub-tp M R G1 (and TA1 TB1) G2 T2
               <- sub-tp M R G1 TB1 G2 T2
               <- wf-tp M R G1 TA1.
 
+sub-tp/tselx-strict : sub-tp strict R G1 (tsel (var X) N) G2 (tsel (var X) N)
+             <- path-eval strict G1 (var X) (rect N TA1 TB1)
+             <- path-eval strict G2 (var X) (rect N TA2 TB2)
+             <- sub-env-size G1X (s X) G1
+             <- sub-env-size G2X (s X) G2
+             <- maybe-sub-tp R strict (s X) G1X (rect N TA1 TB1) G2X (rect N TA2 TB2).
+
 sub-tp/tsel1 : sub-tp M R G1 (tsel (var X) N) G2 T2
               <- path-eval M G1 (var X) (rect N TA1 TB1)
               <- sub-env-size G1X (s X) G1
               <- maybe-sub-tp R M (s X) G1X TB1 G2 T2
               <- maybe-wf-tp R M (s X) G1X (rect N TA1 TB1)
+              <- wf-tp M R G2 T2
               .
 
 sub-tp/tsel2-strict : sub-tp strict R G1 T1 G2 (tsel (var X) N)
@@ -344,6 +345,7 @@ sub-tp/tsel2-strict : sub-tp strict R G1 T1 G2 (tsel (var X) N)
               <- sub-env-size G2X (s X) G2
               <- maybe-sub-tp R strict (s X) G1 T1 G2X TA2
               <- maybe-wf-tp R strict (s X) G2X (rect N TA2 TB2)
+              <- wf-tp strict R G1 T1
               .
 
 sub-tp/tsel2-lenient : sub-tp lenient R G1 T1 G2 (tsel (var X) N)
@@ -351,6 +353,7 @@ sub-tp/tsel2-lenient : sub-tp lenient R G1 T1 G2 (tsel (var X) N)
               <- sub-env-size G2X (s X) G2
               <- maybe-sub-tp R lenient (s X) G1 T1 G2X TB2
               <- maybe-wf-tp R lenient (s X) G2X (rect N TA2 TB2)
+              <- wf-tp lenient R G1 T1
               .
 
 sub-tp/bot  : sub-tp M R G1 bot G2 T <- wf-tp M R G2 T.
@@ -1340,24 +1343,27 @@ extend-maybe-sub-tp: maybe-sub-tp M R X G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 - : extend-sub-tp (sub-tp/recv ST1) T (sub-tp/recv ST1') (sub-tp/recv ST1A) (sub-tp/recv ST1B)
       <- extend-sub-tp ST1 _ ST1' ST1A ST1B.
-- : extend-sub-tp (sub-tp/tsel1 OW OST (ses N S) P) T
-     (sub-tp/tsel1 OW OST' (ses N (sub-env/ext S)) P')
-     (sub-tp/tsel1 OW OST (ses N (sub-env/ext S)) P')
-     (sub-tp/tsel1 OW OST' (ses N S) P)
+- : extend-sub-tp (sub-tp/tsel1 W2 OW OST (ses N S) P) T
+     (sub-tp/tsel1 W2' OW OST' (ses N (sub-env/ext S)) P')
+     (sub-tp/tsel1 W2 OW OST (ses N (sub-env/ext S)) P')
+     (sub-tp/tsel1 W2' OW OST' (ses N S) P)
       <- extend-wf-pev P T P'
-      <- extend-maybe-sub-tp OST T _ _ OST'.
-- : extend-sub-tp (sub-tp/tsel2-strict W OST (ses N S) P) T
-     (sub-tp/tsel2-strict W OST' (ses N (sub-env/ext S)) P')
-     (sub-tp/tsel2-strict W OST' (ses N S) P)
-     (sub-tp/tsel2-strict W OST (ses N (sub-env/ext S)) P')
+      <- extend-maybe-sub-tp OST T _ _ OST'
+      <- extend-wf-tp W2 _ W2'.
+- : extend-sub-tp (sub-tp/tsel2-strict W1 W OST (ses N S) P) T
+     (sub-tp/tsel2-strict W1' W OST' (ses N (sub-env/ext S)) P')
+     (sub-tp/tsel2-strict W1' W OST' (ses N S) P)
+     (sub-tp/tsel2-strict W1 W OST (ses N (sub-env/ext S)) P')
       <- extend-wf-pev P T P'
-      <- extend-maybe-sub-tp OST T _ OST' _.
-- : extend-sub-tp (sub-tp/tsel2-lenient OW OST (ses N S) P) T
-     (sub-tp/tsel2-lenient OW OST' (ses N (sub-env/ext S)) P')
-     (sub-tp/tsel2-lenient OW OST' (ses N S) P)
-     (sub-tp/tsel2-lenient OW OST (ses N (sub-env/ext S)) P')
+      <- extend-maybe-sub-tp OST T _ OST' _
+      <- extend-wf-tp W1 _ W1'.
+- : extend-sub-tp (sub-tp/tsel2-lenient W1 OW OST (ses N S) P) T
+     (sub-tp/tsel2-lenient W1' OW OST' (ses N (sub-env/ext S)) P')
+     (sub-tp/tsel2-lenient W1' OW OST' (ses N S) P)
+     (sub-tp/tsel2-lenient W1 OW OST (ses N (sub-env/ext S)) P')
       <- extend-wf-pev P T P'
-      <- extend-maybe-sub-tp OST T _ OST' _.
+      <- extend-maybe-sub-tp OST T _ OST' _
+      <- extend-wf-tp W1 _ W1'.
 
 - : extend-sub-tp (sub-tp/tselx-strict OST (ses N2 S2) (ses N1 S1) P2 P1) T
      (sub-tp/tselx-strict OST (ses N2 (sub-env/ext S2)) (ses N1 (sub-env/ext S1)) P2' P1')
@@ -1762,45 +1768,51 @@ sub-tp-mono: sub-tp M R G1 T1 G2 T2 -> lte R R' -> sub-tp M R' G1 T1 G2 T2 -> ty
 - : sub-tp-mono (sub-tp/tselx-strict (maybe-sub-tp/yes ST LE1) G2 G1 P2 P1) LE (sub-tp/tselx-strict OST' G2 G1 P2 P1)
      <- min-exists _ _ _ MIN
      <- sub-tp-to-maybe MIN ST OST'.
-- : sub-tp-mono (sub-tp/tsel1 (maybe-wf-tp/no LE1) (maybe-sub-tp/no _) G P) LE (sub-tp/tsel1 (maybe-wf-tp/no LE1') (maybe-sub-tp/no LE1') G P)
-     <- lte-trans LE1 LE LE1'.
-- : sub-tp-mono (sub-tp/tsel1 (maybe-wf-tp/yes W _) (maybe-sub-tp/yes ST _) G P) LE (sub-tp/tsel1 OW' OST' G P)
+- : sub-tp-mono (sub-tp/tsel1 W2 (maybe-wf-tp/no LE1) (maybe-sub-tp/no _) G P) LE (sub-tp/tsel1 W2' (maybe-wf-tp/no LE1') (maybe-sub-tp/no LE1') G P)
+     <- lte-trans LE1 LE LE1'
+     <- wf-tp-mono W2 LE W2'.
+- : sub-tp-mono (sub-tp/tsel1 W2 (maybe-wf-tp/yes W _) (maybe-sub-tp/yes ST _) G P) LE (sub-tp/tsel1 W2' OW' OST' G P)
      <- min-exists _ _ _ MIN
      <- wf-tp-to-maybe MIN W OW'
-     <- sub-tp-to-maybe MIN ST OST'.
-- : sub-tp-mono (sub-tp/tsel1 (maybe-wf-tp/no LE1) (maybe-sub-tp/yes _ (lte/s LE2)) G P) LE OUT
+     <- sub-tp-to-maybe MIN ST OST'
+     <- wf-tp-mono W2 LE W2'.
+- : sub-tp-mono (sub-tp/tsel1 W2 (maybe-wf-tp/no LE1) (maybe-sub-tp/yes _ (lte/s LE2)) G P) LE OUT
      <- lte-trans LE1 LE2 LEX
      <- lte-s-false LEX CONTRA
      <- no-subtype-r CONTRA _ _ _ _ _ _ OUT.
-- : sub-tp-mono (sub-tp/tsel1 (maybe-wf-tp/yes _ (lte/s LE2)) (maybe-sub-tp/no LE1) G P) LE OUT
+- : sub-tp-mono (sub-tp/tsel1 W2 (maybe-wf-tp/yes _ (lte/s LE2)) (maybe-sub-tp/no LE1) G P) LE OUT
      <- lte-trans LE1 LE2 LEX
      <- lte-s-false LEX CONTRA
      <- no-subtype-r CONTRA _ _ _ _ _ _ OUT.
-- : sub-tp-mono (sub-tp/tsel2-strict (maybe-wf-tp/no LE1) (maybe-sub-tp/no _) G P) LE (sub-tp/tsel2-strict (maybe-wf-tp/no LE1') (maybe-sub-tp/no LE1') G P)
-     <- lte-trans LE1 LE LE1'.
-- : sub-tp-mono (sub-tp/tsel2-strict (maybe-wf-tp/yes W _) (maybe-sub-tp/yes ST _) G P) LE (sub-tp/tsel2-strict OW' OST' G P)
+- : sub-tp-mono (sub-tp/tsel2-strict W1 (maybe-wf-tp/no LE1) (maybe-sub-tp/no _) G P) LE (sub-tp/tsel2-strict W1' (maybe-wf-tp/no LE1') (maybe-sub-tp/no LE1') G P)
+     <- lte-trans LE1 LE LE1'
+     <- wf-tp-mono W1 LE W1'.
+- : sub-tp-mono (sub-tp/tsel2-strict W1 (maybe-wf-tp/yes W _) (maybe-sub-tp/yes ST _) G P) LE (sub-tp/tsel2-strict W1' OW' OST' G P)
      <- min-exists _ _ _ MIN
      <- wf-tp-to-maybe MIN W OW'
-     <- sub-tp-to-maybe MIN ST OST'.
-- : sub-tp-mono (sub-tp/tsel2-strict (maybe-wf-tp/no LE1) (maybe-sub-tp/yes _ (lte/s LE2)) G P) LE OUT
+     <- sub-tp-to-maybe MIN ST OST'
+     <- wf-tp-mono W1 LE W1'.
+- : sub-tp-mono (sub-tp/tsel2-strict W1 (maybe-wf-tp/no LE1) (maybe-sub-tp/yes _ (lte/s LE2)) G P) LE OUT
      <- lte-trans LE1 LE2 LEX
      <- lte-s-false LEX CONTRA
      <- no-subtype-r CONTRA _ _ _ _ _ _ OUT.
-- : sub-tp-mono (sub-tp/tsel2-strict (maybe-wf-tp/yes _ (lte/s LE2)) (maybe-sub-tp/no LE1) G P) LE OUT
+- : sub-tp-mono (sub-tp/tsel2-strict W1 (maybe-wf-tp/yes _ (lte/s LE2)) (maybe-sub-tp/no LE1) G P) LE OUT
      <- lte-trans LE1 LE2 LEX
      <- lte-s-false LEX CONTRA
      <- no-subtype-r CONTRA _ _ _ _ _ _ OUT.
-- : sub-tp-mono (sub-tp/tsel2-lenient (maybe-wf-tp/no LE1) (maybe-sub-tp/no _) G P) LE (sub-tp/tsel2-lenient (maybe-wf-tp/no LE1') (maybe-sub-tp/no LE1') G P)
-     <- lte-trans LE1 LE LE1'.
-- : sub-tp-mono (sub-tp/tsel2-lenient (maybe-wf-tp/yes W _) (maybe-sub-tp/yes ST _) G P) LE (sub-tp/tsel2-lenient OW' OST' G P)
+- : sub-tp-mono (sub-tp/tsel2-lenient W1 (maybe-wf-tp/no LE1) (maybe-sub-tp/no _) G P) LE (sub-tp/tsel2-lenient W1' (maybe-wf-tp/no LE1') (maybe-sub-tp/no LE1') G P)
+     <- lte-trans LE1 LE LE1'
+     <- wf-tp-mono W1 LE W1'.
+- : sub-tp-mono (sub-tp/tsel2-lenient W1 (maybe-wf-tp/yes W _) (maybe-sub-tp/yes ST _) G P) LE (sub-tp/tsel2-lenient W1' OW' OST' G P)
      <- min-exists _ _ _ MIN
      <- wf-tp-to-maybe MIN W OW'
-     <- sub-tp-to-maybe MIN ST OST'.
-- : sub-tp-mono (sub-tp/tsel2-lenient (maybe-wf-tp/no LE1) (maybe-sub-tp/yes _ (lte/s LE2)) G P) LE OUT
+     <- sub-tp-to-maybe MIN ST OST'
+     <- wf-tp-mono W1 LE W1'.
+- : sub-tp-mono (sub-tp/tsel2-lenient W1 (maybe-wf-tp/no LE1) (maybe-sub-tp/yes _ (lte/s LE2)) G P) LE OUT
      <- lte-trans LE1 LE2 LEX
      <- lte-s-false LEX CONTRA
      <- no-subtype-r CONTRA _ _ _ _ _ _ OUT.
-- : sub-tp-mono (sub-tp/tsel2-lenient (maybe-wf-tp/yes _ (lte/s LE2)) (maybe-sub-tp/no LE1) G P) LE OUT
+- : sub-tp-mono (sub-tp/tsel2-lenient W1 (maybe-wf-tp/yes _ (lte/s LE2)) (maybe-sub-tp/no LE1) G P) LE OUT
      <- lte-trans LE1 LE2 LEX
      <- lte-s-false LEX CONTRA
      <- no-subtype-r CONTRA _ _ _ _ _ _ OUT.
@@ -1906,25 +1918,22 @@ extract-wf : sub-tp M R G1 T1 G2 T2 -> wf-tp M R G1 T1 -> wf-tp M R G2 T2 -> typ
 - : extract-wf (sub-tp/recv ST) (wf-tp/recv W1) (wf-tp/recv W2)
       <- extract-wf ST W1 W2.
 
-- : extract-wf (sub-tp/tsel1 W2 W1 ST G P MX)
-     (wf-tp/tsel OW1 G P) W2
-     <- z-wf-tp-to-maybe _ _ W1 OW1.
+- : extract-wf (sub-tp/tsel1 W2 OW1 OST G P)
+     (wf-tp/tsel OW1 G P) W2.
 
-- : extract-wf (sub-tp/tsel2-strict W1 W2 ST G P MX)
-      W1 (wf-tp/tsel OW2 G P)
-     <- z-wf-tp-to-maybe _ _ W2 OW2.
-- : extract-wf (sub-tp/tsel2-lenient W1 W2 ST G P MX)
-      W1 (wf-tp/tsel OW2 G P)
-     <- z-wf-tp-to-maybe _ _ W2 OW2.
+- : extract-wf (sub-tp/tsel2-strict W1 OW2 ST G P)
+      W1 (wf-tp/tsel OW2 G P).
+- : extract-wf (sub-tp/tsel2-lenient W1 OW2 ST G P)
+      W1 (wf-tp/tsel OW2 G P).
 
-- : extract-wf (sub-tp/tselx W2 W1 G2 G1 P2 P1) W1 W2.
+- : extract-wf (sub-tp/tselx-strict (maybe-sub-tp/no LE) G2 G1 P2 P1)
+     (wf-tp/tsel (maybe-wf-tp/no LE) G1 P1)
+     (wf-tp/tsel (maybe-wf-tp/no LE) G2 P2).
 
-- : extract-wf (sub-tp/tselx-strict ST G2 G1 P2 P1)
-     (wf-tp/tsel OW1 G1 P1)
-     (wf-tp/tsel OW2 G2 P2)
-     <- extract-wf ST W1 W2
-     <- z-wf-tp-to-maybe _ _ W1 OW1
-     <- z-wf-tp-to-maybe _ _ W2 OW2.
+- : extract-wf (sub-tp/tselx-strict (maybe-sub-tp/yes ST LE) G2 G1 P2 P1)
+     (wf-tp/tsel (maybe-wf-tp/yes W1 LE) G1 P1)
+     (wf-tp/tsel (maybe-wf-tp/yes W2 LE) G2 P2)
+     <- extract-wf ST W1 W2.
 
 - : extract-wf (sub-tp/tbind1 ST S) (wf-tp/tbind WU S) W2
       <- extract-wf ST WU W2.
