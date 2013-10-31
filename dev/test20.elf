@@ -2362,28 +2362,30 @@ sub-tp-trans-aux2 :
    <- eq-high-env EQG STA12' STA12''
    <- sub-tp-trans-aux1 _ LE1 LE2 STA12'' STB23 OUT.
 
-%{
--/tselx-tselx : sub-tp-trans-aux1 R LE1 LE2
-   (sub-tp/tselx (maybe-sub-tp/yes A LEA) (maybe-wf-tp/yes WA2 _) (maybe-wf-tp/yes WA1 _) GA2 GA1 PA2 PA1)
-   (sub-tp/tselx (maybe-sub-tp/yes B LEB) (maybe-wf-tp/yes WB3 _) (maybe-wf-tp/yes WB2 _) GB3 GB2 PB3 PB2)
-   (sub-tp/tselx OC' OWC3' OWC1' GB3 GA1 PB3 PC1)
+-/slack-all : sub-tp-trans-aux1 (s R) LE1 LE2
+      A B (sub-tp/slack-lenient W3' W1')
+      <- extract-wf A W1 _
+      <- wf-tp-mono W1 LE1 W1'
+      <- extract-wf B _ W3
+      <- wf-tp-mono W3 LE2 W3'.
+
+-/tselx-tselx : sub-tp-trans-aux1 z lte/z lte/z
+   (sub-tp/tselx (maybe-sub-tp/yes A _) (maybe-wf-tp/yes WA2 _) (maybe-wf-tp/yes WA1 _) GA2 GA1 PA2 PA1)
+   (sub-tp/tselx (maybe-sub-tp/yes B _) (maybe-wf-tp/yes WB3 _) (maybe-wf-tp/yes WB2 _) GB3 GB2 PB3 PB2)
+   (sub-tp/tselx (maybe-sub-tp/yes C (lte/s lte/z)) (maybe-wf-tp/yes WB3 (lte/s lte/z)) (maybe-wf-tp/yes WA1' (lte/s lte/z)) GB3 GA1 PB3 PC1)
    <- path-eval-eq PA2 PB2 EQR
    <- rect-same-all-same EQR EQS EQU
    <- eq-pev2 EQU PA1 PC1
    <- eq-low EQU A A'
    <- eq-high EQU A' A''
-   <- sub-tp-trans-aux1 R LE1' LE2' A'' B C.
-   <- find-min _ _ _ MIN3 _ _
-   <- wf-tp-to-maybe2 MIN3 WB3 OWC3
-   <- find-min _ _ _ MINC _ _
-   <- sub-tp-to-maybe2 MINC C OC
-   <- eq-wf-rect2 EQU WA1 WA1'
-   <- find-min _ _ _ MIN1 _ _
-   <- wf-tp-to-maybe2 MIN1 WA1' OWC1.
-}%
+   <- sub-env-size-eq GA2 GB2 EQG
+   <- eq-high-env EQG A'' A'''
+   <- eq-refl (s _) EQX
+   <- eq-lte EQX LEX
+   <- sub-tp-trans-aux1 (s _) LEX LEX A''' B C
+   <- eq-wf-rect2 EQU WA1 WA1'.
 
 %worlds () (sub-tp-trans-aux1 _ _ _ _ _ _) (sub-tp-trans-aux2 _ _ _ _ _ _).
-%trustme
 %total [(S1 S1') (S2 S2')] (sub-tp-trans-aux1 _ _ _ S1 S2 _) (sub-tp-trans-aux2 _ _ _ S2' S1' _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
