@@ -2088,8 +2088,21 @@ sub-tp-refl :
    <- sub-tp-refl W2 ST2.
 
 
+-/tsel-no : sub-tp-refl (wf-tp/tsel (maybe-wf-tp/no LE) G P)
+     (sub-tp/tsel1 (wf-tp/tsel (maybe-wf-tp/no LE) G P) (maybe-wf-tp/no LE)
+       (maybe-sub-tp/no LE)
+       G P).
+
+-/tsel : sub-tp-refl (wf-tp/tsel (maybe-wf-tp/yes (wf-tp/rect B WU WS) LE) G P)
+     (sub-tp/tsel1
+        (wf-tp/tsel (maybe-wf-tp/yes (wf-tp/rect B WU WS) LE) G P)
+        (maybe-wf-tp/yes (wf-tp/rect B WU WS) LE)
+        (maybe-sub-tp/yes (sub-tp/tsel2-lenient WU (maybe-wf-tp/no LEX) (maybe-sub-tp/no LEX) G P) LE)
+        G P)
+     <- eq-refl _ EQX
+     <- eq-lte EQX LEX.
+
 %worlds () (sub-tp-refl _ _).
-%trustme
 %total T (sub-tp-refl T _).
 
 %% Subtyping is transitive
@@ -2433,23 +2446,6 @@ widen-mode-sub-tp : sub-tp strict R G1 T1 G2 T2 -> sub-tp lenient R G1 T1 G2 T2 
 
 - : widen-mode-sub-tp (sub-tp/recv A) (sub-tp/recv A')
      <- widen-mode-sub-tp A A'.
-
-%{
-- : widen-mode-sub-tp (sub-tp/tselx-strict A G2 G1 P2 P1)
-     (sub-tp/tsel1
-        (wf-tp/tsel OW2 G2 P2')
-        W1'
-        (sub-tp/tsel2-lenient WU1' W2' BU' G2 P2' (minmax/lte lte/z))
-        G1 P1' (minmax/lte lte/z))
-     <- widen-mode-path-eval P1 P1'
-     <- widen-mode-path-eval P2 P2'
-     <- widen-mode-sub-tp A (sub-tp/rect BU BS B2 B1)
-     <- extract-wf (sub-tp/rect BU BS B2 B1) W1' W2'
-     <- extract-wf BU WU1 WU2
-     <- sub-tp-mono BU lte/z BU'
-     <- wf-tp-mono WU1 lte/z WU1'
-     <- z-wf-tp-to-maybe _ _ W2' OW2.
-}%
 
 - : widen-mode-sub-tp (sub-tp/tbind2 C B A N) (sub-tp/tbind2 C' B' A' N)
      <- widen-mode-sub-tp A A'
