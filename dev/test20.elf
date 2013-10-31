@@ -2522,7 +2522,7 @@ widen-mode-sub-tp : sub-tp strict R G1 T1 G2 T2 -> sub-tp lenient R G1 T1 G2 T2 
      <- widen-mode-wf-tp WS WS'
      <- eq-refl _ EQ
      <- eq-lte EQ LEQ
-     <- sub-tp-trans-aux1 LEQ LEQ  AS' BSU' A'
+     <- sub-tp-trans-aux1 LEQ LEQ AS' BSU' A'
      <- widen-mode-wf-tp W1 W1'.
 
 - : widen-mode-sub-tp (sub-tp/top W) (sub-tp/top W')
