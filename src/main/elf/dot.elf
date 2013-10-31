@@ -293,7 +293,8 @@ sub-tp/rect : sub-tp M R1 G1 (rect N TA1 TB1) R2 G2 (rect N TA2 TB2)
               <- sub-tp M R2 G2 TA2 R2 G2 TB2
 
               <- sub-tp M R2 G2 TA2 R1 G1 TA1
-              <- sub-tp M R1 G1 TB1 R2 G2 TB2.
+              <- sub-tp M R1 G1 TB1 R2 G2 TB2
+              .
 
 sub-tp/recv : sub-tp M R1 G1 (recv N T1) R2 G2 (recv N T2)
               <- sub-tp M R1 G1 T1 R2 G2 T2.
@@ -323,21 +324,13 @@ sub-tp/and1b : sub-tp M R1 G1 (and TA1 TB1) R2 G2 T2
               <- sub-tp M R1 G1 TB1 R2 G2 T2
               <- wf-tp M R1 G1 TA1.
 
-sub-tp/tselxb : sub-tp M R1 G1 (tsel (var X) N) R2 G2 (tsel (var X) N)
+sub-tp/tselin : sub-tp M R1 G1 (tsel (var X) N) R2 G2 (tsel (var X) N)
+             <- lte (s X) R1
              <- lte (s X) R2
              <- path-eval M G1 (var X) (rect N TA1 TB)
              <- path-eval M G2 (var X) (rect N TA2 TB)
              <- sub-env-size G1X (s X) G1
-             <- sub-env-size G2X (s X) G2
-             <- maybe-wf-tp R1 M (s X) G1X (rect N TA1 TB).
-
-sub-tp/tselxa : sub-tp M R1 G1 (tsel (var X) N) R2 G2 (tsel (var X) N)
-             <- lte (s X) R1
-             <- path-eval M G1 (var X) (rect N TA1 TB)
-             <- path-eval M G2 (var X) (rect N TA2 TB)
-             <- sub-env-size G1X (s X) G1
-             <- sub-env-size G2X (s X) G2
-             <- maybe-wf-tp R2 M (s X) G2X (rect N TA2 TB).
+             <- sub-env-size G2X (s X) G2.
 
 sub-tp/tselx-strict : sub-tp strict R1 G1 (tsel (var X) N) R2 G2 (tsel (var X) N)
              <- path-eval strict G1 (var X) (rect N TA1 TB1)
@@ -458,7 +451,7 @@ t/fun      : type-exp G (fun TC LNF T3 R T4 LNV R2 T2 M)
                 <- sub-tp strict z (tcons MT G) T2 z (tcons TC G) T2
                 <- wf-tp strict z (tcons MT G) MT                
                 <- wf-tp strict z G TC
-                <- sub-tp strict z (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) z (tcons TC G) TC
+                <- sub-tp strict z G (bind N (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) z G TC
                 .
 
 t/app       : type-exp G (app E1 LNF E2) T2
