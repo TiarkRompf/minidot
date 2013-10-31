@@ -2314,6 +2314,18 @@ sub-tp-trans-aux :
       <- wf-tp-mono W3 LE2 W3'
       <- lte-trans LE LE1 LE'.
 
+-/slack1 : sub-tp-trans-aux LE1 LE2
+      W (sub-tp/slack-lenient W2 W1) B (sub-tp/slack-lenient W3' W1')
+      <- wf-tp-mono W1 LE1 W1'
+      <- extract-wf B _ W3
+      <- wf-tp-mono W3 LE2 W3'.
+
+-/slack2 : sub-tp-trans-aux LE1 LE2
+      W A (sub-tp/slack-lenient W3 W2) (sub-tp/slack-lenient W3' W1')
+      <- wf-tp-mono W3 LE2 W3'
+      <- extract-wf A W1 _
+      <- wf-tp-mono W1 LE1 W1'.
+
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
 %{
@@ -2401,7 +2413,6 @@ sub-tp-trans-aux :
   <- wf-tp-mono WA1 LE1 WA1'.
 }%
 %worlds () (sub-tp-trans-aux _ _ _ _ _ _).
-%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux _ _ T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
