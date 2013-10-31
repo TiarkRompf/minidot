@@ -372,6 +372,7 @@ sub-tp/tsel2-lenient : sub-tp lenient R1 G1 T1 R2 G2 (tsel (var X) N)
 
 sub-tp/bot  : sub-tp M R1 G1 bot R2 G2 T <- wf-tp M R2 G2 T.
 
+%{
 sub-tp/slacka-lenient : sub-tp lenient (s R1) G1 T1 R2 G2 T2
                         <- wf-tp lenient (s R1) G1 T1
                         <- wf-tp lenient R2 G2 T2.
@@ -379,6 +380,7 @@ sub-tp/slacka-lenient : sub-tp lenient (s R1) G1 T1 R2 G2 T2
 sub-tp/slackb-lenient : sub-tp lenient R1 G1 T1 (s R2) G2 T2
                         <- wf-tp lenient R1 G1 T1
                         <- wf-tp lenient (s R2) G2 T2.
+}%
 
 wf-tp/top  : wf-tp M R G top.
 wf-tp/bot  : wf-tp M R G bot.
@@ -1423,6 +1425,7 @@ extend-sub-tp: sub-tp M R1 G1 T1 R2 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST1 _ ST1' ST1A ST1B
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 
+%{
 - : extend-sub-tp (sub-tp/slacka-lenient W2 W1) T (sub-tp/slacka-lenient W2' W1') (sub-tp/slacka-lenient W2 W1') (sub-tp/slacka-lenient W2' W1)
      <- extend-wf-tp W1 T W1'
      <- extend-wf-tp W2 T W2'.
@@ -1430,6 +1433,7 @@ extend-sub-tp: sub-tp M R1 G1 T1 R2 G2 T2 -> {Z: tpe}
 - : extend-sub-tp (sub-tp/slackb-lenient W2 W1) T (sub-tp/slackb-lenient W2' W1') (sub-tp/slackb-lenient W2 W1') (sub-tp/slackb-lenient W2' W1)
      <- extend-wf-tp W1 T W1'
      <- extend-wf-tp W2 T W2'.
+}%
 
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _)(extend-maybe-wf-tp _ _ _).
 %total (A B C D) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _)(extend-maybe-wf-tp D _ _).
@@ -1817,13 +1821,14 @@ sub-tp-mono: sub-tp M R1 G1 T1 R2 G2 T2 -> lte R1 R1' -> lte R2 R2' -> sub-tp M 
      <- wf-tp-mono W1 LE1 W1'
      <- wf-tp-mono W2 LE2 W2'.
 
+%{
 - : sub-tp-mono (sub-tp/slacka-lenient W2 W1) LE1 LE2 (sub-tp/slacka-lenient W2' W1')
      <- wf-tp-mono W1 LE1 W1'
      <- wf-tp-mono W2 LE2 W2'.
 - : sub-tp-mono (sub-tp/slackb-lenient W2 W1) LE1 LE2 (sub-tp/slackb-lenient W2' W1')
      <- wf-tp-mono W1 LE1 W1'
      <- wf-tp-mono W2 LE2 W2'.
-
+}%
 
 %worlds () (wf-tp-mono _ _ _) (sub-tp-mono _ _ _ _).
 % sad!
@@ -1992,8 +1997,10 @@ extract-wf : sub-tp M R1 G1 T1 R2 G2 T2 -> wf-tp M R1 G1 T1 -> wf-tp M R2 G2 T2 
       <- extract-wf S1 W1 W3
       <- extract-wf S2 W2 W4.
 
+%{
 - : extract-wf (sub-tp/slacka-lenient W2 W1) W1 W2.
 - : extract-wf (sub-tp/slackb-lenient W2 W1) W1 W2.
+}%
 
 %worlds () (extract-wf _ _ _).
 %total A (extract-wf A _ _).
@@ -2333,12 +2340,14 @@ sub-tp-trans-aux2 :
    <- eq-high-env EQG STA12' STA12''
    <- sub-tp-trans-aux1 STA12'' STB23 OUT.
 
+%{
 -/tselxa-tsel1 : sub-tp-trans-aux1
       (sub-tp/tselxa OWA2 GA2 GA1 PA2 PA1 (lte/s LE))
       (sub-tp/tsel1 WB3 WB2 STB23 GB PB)
       (sub-tp/slacka-lenient W3 W1)
       <- extract-wf (sub-tp/tselxa OWA2 GA2 GA1 PA2 PA1 (lte/s LE)) W1 _
       <- extract-wf (sub-tp/tsel1 WB3 WB2 STB23 GB PB) _ W3.
+}%
 %{
 -/tselx-tselx : sub-tp-trans-aux1
    (sub-tp/tselx (maybe-sub-tp/yes A _) GA2 GA1 PA2 PA1)
