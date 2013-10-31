@@ -2208,175 +2208,174 @@ eq-wf-rect2 : same TB TB' -> wf-tp M R G (rect N TA TB) -> wf-tp M R G (rect N T
 
 sub-tp-trans-aux1 :
   %% Inputs
+  {R:nat}
   lte R1 R -> lte R2 R ->
   sub-tp lenient R1 G1 T1 G2 T2 ->
   sub-tp lenient R2 G2 T2 G3 T3 ->
   %% Output
   sub-tp lenient R G1 T1 G3 T3 ->
   type.
-%mode sub-tp-trans-aux1 +L1 +L2 +SBT1 +SBT2 -SBT3.
+%mode sub-tp-trans-aux1 +R +L1 +L2 +SBT1 +SBT2 -SBT3.
 
 sub-tp-trans-aux2 :
   %% Inputs
+  {R:nat}
   lte R1 R -> lte R2 R ->
   sub-tp lenient R1 G1 T1 G2 T2 ->
   sub-tp lenient R2 G2 T2 G3 T3 ->
   %% Output
   sub-tp lenient R G1 T1 G3 T3 ->
   type.
-%mode sub-tp-trans-aux2 +L1 +L2 +SBT1 +SBT2 -SBT3.
+%mode sub-tp-trans-aux2 +R +L1 +L2 +SBT1 +SBT2 -SBT3.
 
--/top    : sub-tp-trans-aux1 LE1 LE2 S1 (sub-tp/top _) (sub-tp/top W') <- extract-wf S1 W _ <- wf-tp-mono W LE1 W'.
--/bot    : sub-tp-trans-aux1 LE1 LE2 (sub-tp/bot _) S2 (sub-tp/bot W') <- extract-wf S2 _ W <- wf-tp-mono W LE2 W'.
+-/top    : sub-tp-trans-aux1 R LE1 LE2 S1 (sub-tp/top _) (sub-tp/top W') <- extract-wf S1 W _ <- wf-tp-mono W LE1 W'.
+-/bot    : sub-tp-trans-aux1 R LE1 LE2 (sub-tp/bot _) S2 (sub-tp/bot W') <- extract-wf S2 _ W <- wf-tp-mono W LE2 W'.
 
--/fun-fun  : sub-tp-trans-aux1 LE1 LE2
+-/fun-fun  : sub-tp-trans-aux1 R LE1 LE2
             (sub-tp/fun SBT2 SBT1)
             (sub-tp/fun SBT4 SBT3)
             (sub-tp/fun SBT6 SBT5)
-      <- sub-tp-trans-aux2 LE2 LE1 SBT3 SBT1 SBT5
-      <- sub-tp-trans-aux1 LE1 LE2 SBT2 SBT4 SBT6.
+      <- sub-tp-trans-aux2 R LE2 LE1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux1 R LE1 LE2 SBT2 SBT4 SBT6.
 
--/rect-rect  : sub-tp-trans-aux1 LE1 LE2
+-/rect-rect  : sub-tp-trans-aux1 R LE1 LE2
             (sub-tp/rect SBT2 SBT1 B2 B1)
             (sub-tp/rect SBT4 SBT3 B4 B3)
             (sub-tp/rect SBT6 SBT5 B4' B1')
-      <- sub-tp-trans-aux2 LE2 LE1 SBT3 SBT1 SBT5
-      <- sub-tp-trans-aux1 LE1 LE2 SBT2 SBT4 SBT6
+      <- sub-tp-trans-aux2 R LE2 LE1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux1 R LE1 LE2 SBT2 SBT4 SBT6
       <- sub-tp-mono B4 LE2 B4'
       <- sub-tp-mono B1 LE1 B1'.
 
--/recv-recv  : sub-tp-trans-aux1 LE1 LE2
+-/recv-recv  : sub-tp-trans-aux1 R LE1 LE2
             (sub-tp/recv SBT1)
             (sub-tp/recv SBT3)
             (sub-tp/recv SBT5)
-      <- sub-tp-trans-aux1 LE1 LE2 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-aux1 R LE1 LE2 SBT1 SBT3 SBT5.
 
--/tbind2  : sub-tp-trans-aux1 LE1 LE2
+-/tbind2  : sub-tp-trans-aux1 R LE1 LE2
        SBT1
        (sub-tp/tbind2 SW SBT3 SU S)
        (sub-tp/tbind2 SW' SBT5 SU' S)
 
-       <- sub-tp-trans-aux1 LE1 LE2 SBT1 SW SW'
-       <- sub-tp-trans-aux1 LE1 LE2 SBT1 SU SU'
-       <- sub-tp-trans-aux1 LE1 LE2 SBT1 SBT3 SBT5.
+       <- sub-tp-trans-aux1 R LE1 LE2 SBT1 SW SW'
+       <- sub-tp-trans-aux1 R LE1 LE2 SBT1 SU SU'
+       <- sub-tp-trans-aux1 R LE1 LE2 SBT1 SBT3 SBT5.
 
--/tbind1 : sub-tp-trans-aux1 LE1 LE2
+-/tbind1 : sub-tp-trans-aux1 R LE1 LE2
        (sub-tp/tbind1 ST S)
        SBT2
        (sub-tp/tbind1 ST' S)
-       <- sub-tp-trans-aux1 LE1 LE2 ST SBT2 ST'.
+       <- sub-tp-trans-aux1 R LE1 LE2 ST SBT2 ST'.
 
--/tbind2-tbind1  : sub-tp-trans-aux1 LE1 LE2
+-/tbind2-tbind1  : sub-tp-trans-aux1 R LE1 LE2
        (sub-tp/tbind2 _ _ SU S1)
        (sub-tp/tbind1 A2 S2)
        A3
        <- sub-env-size-eq S1 S2 EQG
        <- eq-sametenv-cons EQG _ EQG'
        <- eq-high-env EQG' SU SU'
-       <- sub-tp-trans-aux1 LE1 LE2 SU' A2 A3.
+       <- sub-tp-trans-aux1 R LE1 LE2 SU' A2 A3.
 
--/tand1a : sub-tp-trans-aux1 LE1 LE2
+-/tand1a : sub-tp-trans-aux1 R LE1 LE2
       (sub-tp/and1a W1 SBT1)
       SBT3
       (sub-tp/and1a W1' SBT5)
-      <- sub-tp-trans-aux1 LE1 LE2 SBT1 SBT3 SBT5
+      <- sub-tp-trans-aux1 R LE1 LE2 SBT1 SBT3 SBT5
       <- wf-tp-mono W1 LE1 W1'.
 
--/tand1b : sub-tp-trans-aux1 LE1 LE2
+-/tand1b : sub-tp-trans-aux1 R LE1 LE2
       (sub-tp/and1b W1 SBT1)
       SBT3
       (sub-tp/and1b W1' SBT5)
-      <- sub-tp-trans-aux1 LE1 LE2 SBT1 SBT3 SBT5
+      <- sub-tp-trans-aux1 R LE1 LE2 SBT1 SBT3 SBT5
       <- wf-tp-mono W1 LE1 W1'.
 
--/tand2 : sub-tp-trans-aux1 LE1 LE2
+-/tand2 : sub-tp-trans-aux1 R LE1 LE2
       SBT1
       (sub-tp/and2 ST1 ST2)
       (sub-tp/and2 ST1' ST2')
-      <- sub-tp-trans-aux1 LE1 LE2 SBT1 ST1 ST1'
-      <- sub-tp-trans-aux1 LE1 LE2 SBT1 ST2 ST2'.
+      <- sub-tp-trans-aux1 R LE1 LE2 SBT1 ST1 ST1'
+      <- sub-tp-trans-aux1 R LE1 LE2 SBT1 ST2 ST2'.
 
--/tand2-tand1a : sub-tp-trans-aux1 LE1 LE2
+-/tand2-tand1a : sub-tp-trans-aux1 R LE1 LE2
       (sub-tp/and2 SBT1 _)
       (sub-tp/and1a _ SBT3)
       SBT5
-      <- sub-tp-trans-aux1 LE1 LE2 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-aux1 R LE1 LE2 SBT1 SBT3 SBT5.
 
--/tand2-tand1b : sub-tp-trans-aux1 LE1 LE2
+-/tand2-tand1b : sub-tp-trans-aux1 R LE1 LE2
       (sub-tp/and2 _ SBT1)
       (sub-tp/and1b _ SBT3)
       SBT5
-      <- sub-tp-trans-aux1 LE1 LE2 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-aux1 R LE1 LE2 SBT1 SBT3 SBT5.
 
 
--/slack1 : sub-tp-trans-aux1 LE1 LE2
+-/slack1 : sub-tp-trans-aux1 (s R) LE1 LE2
       (sub-tp/slack-lenient W2 W1) B (sub-tp/slack-lenient W3' W1')
       <- wf-tp-mono W1 LE1 W1'
       <- extract-wf B _ W3
       <- wf-tp-mono W3 LE2 W3'.
 
--/slack2 : sub-tp-trans-aux1 LE1 LE2
+-/slack2 : sub-tp-trans-aux1 (s R) LE1 LE2
       A (sub-tp/slack-lenient W3 W2) (sub-tp/slack-lenient W3' W1')
       <- wf-tp-mono W3 LE2 W3'
       <- extract-wf A W1 _
       <- wf-tp-mono W1 LE1 W1'.
 
-%{
--/tsel1  : sub-tp-trans-aux1 LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
-      (sub-tp/tsel1 W2 W1 A G P)
+-/tsel1  : sub-tp-trans-aux1 z LE1 LE2
+      (sub-tp/tsel1 W2 (maybe-wf-tp/yes W1 LE) (maybe-sub-tp/yes A _) G P)
       B
-      (sub-tp/tsel1 W3' W1' C G P)
-      <- sub-tp-trans-aux1 LE1 LE2 A B C
-      <- extract-wf B _ W3
-      <- wf-tp-mono W3 LE2 W3'
-      <- wf-tp-mono W1 LE1 W1'.
+      (sub-tp/tsel1 W3 (maybe-wf-tp/yes W1 LE) (maybe-sub-tp/yes C LE) G P)
+      <- eq-refl _ EQX
+      <- eq-lte EQX LEX
+      <- sub-tp-trans-aux1 (s _) LEX lte/z A B C
+      <- extract-wf B _ W3.
 
--/tsel2  : sub-tp-trans-aux1 LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
+-/tsel1-s  : sub-tp-trans-aux1 (s N) LE1 LE2
+      (sub-tp/tsel1 W2 OW1 OA G P)
+      B
+      (sub-tp/slack-lenient W3' W1')
+      <- extract-wf B _ W3
+      <- extract-wf (sub-tp/tsel1 W2 OW1 OA G P) W1 _
+      <- wf-tp-mono W1 LE1 W1'
+      <- wf-tp-mono W3 LE2 W3'.
+
+-/tsel2  : sub-tp-trans-aux1 z LE1 LE2
       A
-      (sub-tp/tsel2-lenient W2 W3 B G P)
-      (sub-tp/tsel2-lenient W1' W3' C G P)
-      <- sub-tp-trans-aux1 LE1 LE2 A B C
+      (sub-tp/tsel2-lenient W2 (maybe-wf-tp/yes W3 LE) (maybe-sub-tp/yes B _) G P)
+      (sub-tp/tsel2-lenient W1 (maybe-wf-tp/yes W3 LE) (maybe-sub-tp/yes C LE) G P)
+      <- eq-refl _ EQX
+      <- eq-lte EQX LEX
+      <- sub-tp-trans-aux1 (s _) lte/z LEX A B C
+      <- extract-wf A W1 _.
+
+-/tsel2-s  : sub-tp-trans-aux1 (s N) LE1 LE2
+      A
+      (sub-tp/tsel2-lenient W2 OW3 OB G P)
+      (sub-tp/slack-lenient W3' W1')
       <- extract-wf A W1 _
+      <- extract-wf (sub-tp/tsel2-lenient W2 OW3 OB G P) _ W3
       <- wf-tp-mono W1 LE1 W1'
       <- wf-tp-mono W3 LE2 W3'.
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
--/tsel2-tsel1 : sub-tp-trans-aux1 LE1 LE2
-      (sub-tp/tsel2-lenient WA1 WA2 STA12 GA PA)
-      (sub-tp/tsel1 WB3 WB2 STB23 GB PB)
+%{
+-/tsel2-tsel1 : sub-tp-trans-aux1 z LE1 LE2
+      (sub-tp/tsel2-lenient WA1 (maybe-wf-tp/yes WA2 LEA) (maybe-sub-tp/yes STA12 _) GA PA)
+      (sub-tp/tsel1 WB3 (maybe-wf-tp/yes WB2 LEB) (maybe-sub-tp/yes STB23 _) GB PB)
       OUT
    <- path-eval-eq PA PB EQR
    <- rect-same-all-same EQR EQS EQU
    <- sub-env-size-eq GA GB EQG
    <- eq-high EQU STA12 STA12'
    <- eq-high-env EQG STA12' STA12''
-   <- sub-tp-trans-aux1 LE1 LE2 STA12'' STB23 OUT.
+   <- sub-tp-trans-aux1 z LE1' LE2' STA12'' STB23 OUT. % impossible
 }%
 
-%{
--/tselx-tselx : sub-tp-trans-aux1 LE1 LE2
-   (sub-tp/tselx (maybe-sub-tp/yes A LEA) (maybe-wf-tp/yes WA2 _) (maybe-wf-tp/yes WA1 _) GA2 GA1 PA2 PA1)
-   (sub-tp/tselx (maybe-sub-tp/yes B LEB) (maybe-wf-tp/yes WB3 _) (maybe-wf-tp/yes WB2 _) GB3 GB2 PB3 PB2)
-   (sub-tp/tselx OC' OWC3' OWC1' GB3 GA1 PB3 PC1)
-   <- path-eval-eq PA2 PB2 EQR
-   <- rect-same-all-same EQR EQS EQU
-   <- eq-pev2 EQU PA1 PC1
-   <- eq-low EQU A A'
-   <- eq-high EQU A' A''
-   <- sub-tp-trans-aux1 LE1' LE2' A'' B C.
-   <- find-min _ _ _ MIN3 _ _
-   <- wf-tp-to-maybe2 MIN3 WB3 OWC3
-   <- find-min _ _ _ MINC _ _
-   <- sub-tp-to-maybe2 MINC C OC
-   <- eq-wf-rect2 EQU WA1 WA1'
-   <- find-min _ _ _ MIN1 _ _
-   <- wf-tp-to-maybe2 MIN1 WA1' OWC1.
-}%
-
-%worlds () (sub-tp-trans-aux1 _ _ _ _ _) (sub-tp-trans-aux2 _ _ _ _ _).
-%trustme
-%total [(S1 S1') (S2 S2')] (sub-tp-trans-aux1 _ _ S1 S2 _) (sub-tp-trans-aux2 _ _ S2' S1' _).
+%worlds () (sub-tp-trans-aux1 _ _ _ _ _ _) (sub-tp-trans-aux2 _ _ _ _ _ _).
+%total [(S1 S1') (S2 S2')] (sub-tp-trans-aux1 _ _ _ S1 S2 _) (sub-tp-trans-aux2 _ _ _ S2' S1' _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
 %% WF as an additional argument.
@@ -2392,7 +2391,7 @@ sub-tp-trans :
 
 -/i : sub-tp-trans SBT1 SBT2 SBT3
        % <- extract-wf SBT1 T1 T2
-       <- sub-tp-trans-aux1 lte/z lte/z SBT1 SBT2 SBT3.
+       <- sub-tp-trans-aux1 z lte/z lte/z SBT1 SBT2 SBT3.
 
 %worlds () (sub-tp-trans _ _ _).
 %total {A} (sub-tp-trans A _ _).
@@ -2517,7 +2516,7 @@ widen-mode-sub-tp : sub-tp strict R G1 T1 G2 T2 -> sub-tp lenient R G1 T1 G2 T2 
      <- widen-mode-wf-tp WS WS'
      <- eq-refl _ EQ
      <- eq-lte EQ LEQ
-     <- sub-tp-trans-aux1 LEQ LEQ AS' BSU' A'
+     <- sub-tp-trans-aux1 _ LEQ LEQ AS' BSU' A'
      <- widen-mode-wf-tp W1 W1'.
 
 - : widen-mode-sub-tp (sub-tp/top W) (sub-tp/top W')
