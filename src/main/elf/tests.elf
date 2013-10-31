@@ -39,11 +39,11 @@
 %query 1 1 type-exp tnil e22j top.
 
 % sanity checks for other judgments
-%query 1 1 sub-tp strict z tnil t2 tnil t1.
+%query 1 1 sub-tp strict z tnil t2 z tnil t1.
 %query 1 1 wf-tp strict z tnil t3.
 %query 1 1 wf-tp strict z tnil t4.
 %query 1 1 wf-tp strict z tnil t6.
-%query 1 1 sub-tp strict z tnil t7 tnil t8.
+%query 1 1 sub-tp strict z tnil t7 z tnil t8.
 
 % programs
 %query 1 1 type-exp tnil p1 top.
@@ -104,7 +104,7 @@ sub-tp strict z
            (bind z 
                (and (rect (s z) bot top)
                    (arrow z (tsel (var z) (s z)) (tsel (var z) (s z))))) tnil))
-   top
+   top z
    (tcons top
        (tcons
            (bind z 
