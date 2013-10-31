@@ -325,6 +325,7 @@ sub-tp/and1b : sub-tp M R G1 (and TA1 TB1) G2 T2
               <- sub-tp M R G1 TB1 G2 T2
               <- wf-tp M R G1 TA1.
 
+%{
 sub-tp/tselx : sub-tp M R G1 (tsel (var X) N) G2 (tsel (var X) N)
              <- path-eval M G1 (var X) (rect N TA1 TB)
              <- path-eval M G2 (var X) (rect N TA2 TB)
@@ -333,13 +334,14 @@ sub-tp/tselx : sub-tp M R G1 (tsel (var X) N) G2 (tsel (var X) N)
              <- maybe-wf-tp R M (s X) G1X (rect N TA1 TB)
              <- maybe-wf-tp R M (s X) G2X (rect N TA2 TB)
              <- maybe-sub-tp R M (s X) G1X TB G2X TB.
+}%
 
 sub-tp/tselx-strict : sub-tp strict R G1 (tsel (var X) N) G2 (tsel (var X) N)
              <- path-eval strict G1 (var X) (rect N TA1 TB1)
              <- path-eval strict G2 (var X) (rect N TA2 TB2)
              <- sub-env-size G1X (s X) G1
              <- sub-env-size G2X (s X) G2
-             <- sub-tp strict R G1X (rect N TA1 TB1) G2X (rect N TA2 TB2).
+             <- maybe-sub-tp R strict (s X) G1X (rect N TA1 TB1) G2X (rect N TA2 TB2).
 
 sub-tp/tsel1 : sub-tp M R G1 (tsel (var X) N) G2 T2
               <- path-eval M G1 (var X) (rect N TA1 TB1)
@@ -367,9 +369,11 @@ sub-tp/tsel2-lenient : sub-tp lenient R G1 T1 G2 (tsel (var X) N)
 
 sub-tp/bot  : sub-tp M R G1 bot G2 T <- wf-tp M R G2 T.
 
+%{
 sub-tp/slack-lenient : sub-tp lenient (s R) G1 T1 G2 T2
                         <- wf-tp lenient (s R) G1 T1
                         <- wf-tp lenient (s R) G2 T2.
+}%
 
 wf-tp/top  : wf-tp M R G top.
 wf-tp/bot  : wf-tp M R G bot.
