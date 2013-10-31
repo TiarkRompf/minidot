@@ -2281,6 +2281,33 @@ sub-tp-trans-aux :
       SBT5
       <- sub-tp-trans-aux LW1 LW2 LE1 LE2 W2 SBT1 SBT3 SBT5.
 
+-/tsel1-no-wf : sub-tp-trans-aux LW1 LW2 LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
+      W
+      (sub-tp/tsel1 W2 (maybe-wf-tp/no LE) _ G P)
+      B
+      (sub-tp/tsel1 W3' (maybe-wf-tp/no LE') (maybe-sub-tp/no LE') G P)
+      <- extract-wf B _ W3
+      <- wf-tp-mono W3 LE2 W3'
+      <- lte-trans LE LE1 LE'.
+
+-/tsel1-no-sub : sub-tp-trans-aux LW1 LW2 LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
+      W
+      (sub-tp/tsel1 W2 _ (maybe-sub-tp/no LE) G P)
+      B
+      (sub-tp/tsel1 W3' (maybe-wf-tp/no LE') (maybe-sub-tp/no LE') G P)
+      <- extract-wf B _ W3
+      <- wf-tp-mono W3 LE2 W3'
+      <- lte-trans LE LE1 LE'.
+
+%{
+-/tsel1  : sub-tp-trans-aux LW1 LW2 LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
+      W
+      (sub-tp/tsel1 W2 (maybe-wf-tp/yes W1 LEW) (maybe-sub-tp/yes A LEA) G P)
+      B
+      (sub-tp/tsel1 W3' (maybe-wf-tp/yes W1 LEW') (maybe-sub-tp/yes C LEA') G P)
+      <- extract-wf B _ W3
+      <- wf-tp-mono W3 LE2 W3'.
+}%
 %{
 -/tsel1  : sub-tp-trans-aux LW1 LW2 LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
