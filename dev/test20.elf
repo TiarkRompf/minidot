@@ -367,9 +367,11 @@ sub-tp/tsel2-lenient : sub-tp lenient R G1 T1 G2 (tsel (var X) N)
 
 sub-tp/bot  : sub-tp M R G1 bot G2 T <- wf-tp M R G2 T.
 
+%{
 sub-tp/slack-lenient : sub-tp lenient (s R) G1 T1 G2 T2
                         <- wf-tp lenient (s R) G1 T1
                         <- wf-tp lenient (s R) G2 T2.
+}%
 
 wf-tp/top  : wf-tp M R G top.
 wf-tp/bot  : wf-tp M R G bot.
@@ -1418,9 +1420,11 @@ extend-maybe-sub-tp: maybe-sub-tp M R X G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST1 _ ST1' ST1A ST1B
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 
+%{
 - : extend-sub-tp (sub-tp/slack-lenient W2 W1) T (sub-tp/slack-lenient W2' W1') (sub-tp/slack-lenient W2 W1') (sub-tp/slack-lenient W2' W1)
      <- extend-wf-tp W1 T W1'
      <- extend-wf-tp W2 T W2'.
+}%
 
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _)(extend-maybe-wf-tp _ _ _)(extend-maybe-sub-tp _ _ _ _ _).
 %total (A B C D E) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _)(extend-maybe-wf-tp D _ _)(extend-maybe-sub-tp E _ _ _ _).
@@ -1810,9 +1814,11 @@ sub-tp-mono: sub-tp M R G1 T1 G2 T2 -> lte R R' -> sub-tp M R' G1 T1 G2 T2 -> ty
      <- sub-tp-mono ST LE ST'
      <- wf-tp-mono W1 LE W1'
      <- wf-tp-mono W2 LE W2'.
+%{
 - : sub-tp-mono (sub-tp/slack-lenient W2 W1) LE (sub-tp/slack-lenient W2' W1')
      <- wf-tp-mono W1 LE W1'
      <- wf-tp-mono W2 LE W2'.
+}%
 
 %worlds () (wf-tp-mono _ _ _) (sub-tp-mono _ _ _).
 % sad!
@@ -1987,7 +1993,9 @@ extract-wf : sub-tp M R G1 T1 G2 T2 -> wf-tp M R G1 T1 -> wf-tp M R G2 T2 -> typ
       <- extract-wf S1 W1 W3
       <- extract-wf S2 W2 W4.
 
+%{
 - : extract-wf (sub-tp/slack-lenient W2 W1) W1 W2.
+}%
 
 %worlds () (extract-wf _ _ _).
 %total A (extract-wf A _ _).
@@ -2296,7 +2304,7 @@ sub-tp-trans-aux2 :
       SBT5
       <- sub-tp-trans-aux1 LE1 LE2 SBT1 SBT3 SBT5.
 
-
+%{
 -/slack1 : sub-tp-trans-aux1 LE1 LE2
       (sub-tp/slack-lenient W2 W1) B (sub-tp/slack-lenient W3' W1')
       <- wf-tp-mono W1 LE1 W1'
@@ -2308,6 +2316,7 @@ sub-tp-trans-aux2 :
       <- wf-tp-mono W3 LE2 W3'
       <- extract-wf A W1 _
       <- wf-tp-mono W1 LE1 W1'.
+}%
 
 -/tsel1  : sub-tp-trans-aux1 LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
       (sub-tp/tsel1 W2 W1 A G P)
