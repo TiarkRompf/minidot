@@ -325,7 +325,6 @@ sub-tp/and1b : sub-tp M R G1 (and TA1 TB1) G2 T2
               <- sub-tp M R G1 TB1 G2 T2
               <- wf-tp M R G1 TA1.
 
-%{
 sub-tp/tselx : sub-tp M R G1 (tsel (var X) N) G2 (tsel (var X) N)
              <- path-eval M G1 (var X) (rect N TA1 TB)
              <- path-eval M G2 (var X) (rect N TA2 TB)
@@ -334,7 +333,6 @@ sub-tp/tselx : sub-tp M R G1 (tsel (var X) N) G2 (tsel (var X) N)
              <- maybe-wf-tp R M (s X) G1X (rect N TA1 TB)
              <- maybe-wf-tp R M (s X) G2X (rect N TA2 TB)
              <- maybe-sub-tp R M (s X) G1X TB G2X TB.
-}%
 
 sub-tp/tselx-strict : sub-tp strict R G1 (tsel (var X) N) G2 (tsel (var X) N)
              <- path-eval strict G1 (var X) (rect N TA1 TB1)
@@ -1381,14 +1379,14 @@ extend-maybe-sub-tp: maybe-sub-tp M R X G1 T1 G2 T2 -> {Z: tpe}
       <- extend-wf-pev P T P'
       <- extend-sub-tp ST T _ ST' _
       <- extend-wf-tp W1 _ W1'.
-%{
+
 - : extend-sub-tp (sub-tp/tselx OST W2 W1 (ses N2 S2) (ses N1 S1) P2 P1) T
      (sub-tp/tselx OST W2 W1 (ses N2 (sub-env/ext S2)) (ses N1 (sub-env/ext S1)) P2' P1')
      (sub-tp/tselx OST W2 W1 (ses N2 S2) (ses N1 (sub-env/ext S1)) P2 P1')
      (sub-tp/tselx OST W2 W1 (ses N2 (sub-env/ext S2)) (ses N1 S1) P2' P1)
      <- extend-wf-pev P1 T P1'
      <- extend-wf-pev P2 T P2'.
-}%
+
 - : extend-sub-tp (sub-tp/tselx-strict OST (ses N2 S2) (ses N1 S1) P2 P1) T
      (sub-tp/tselx-strict OST (ses N2 (sub-env/ext S2)) (ses N1 (sub-env/ext S1)) P2' P1')
      (sub-tp/tselx-strict OST (ses N2 S2) (ses N1 (sub-env/ext S1)) P2 P1')
@@ -1793,7 +1791,6 @@ sub-tp-mono: sub-tp M R G1 T1 G2 T2 -> lte R R' -> sub-tp M R' G1 T1 G2 T2 -> ty
 - : sub-tp-mono (sub-tp/and1b B A) LE (sub-tp/and1b B' A')
      <- sub-tp-mono A LE A'
      <- wf-tp-mono B LE B'.
-%{
 - : sub-tp-mono (sub-tp/tselx (maybe-sub-tp/no LE1) W2 W1 G2 G1 P2 P1) LE (sub-tp/tselx (maybe-sub-tp/no LE1') (maybe-wf-tp/no LE1') (maybe-wf-tp/no LE1') G2 G1 P2 P1)
      <- lte-trans LE1 LE LE1'.
 - : sub-tp-mono (sub-tp/tselx ST (maybe-wf-tp/no LE1) W1 G2 G1 P2 P1) LE (sub-tp/tselx (maybe-sub-tp/no LE1') (maybe-wf-tp/no LE1') (maybe-wf-tp/no LE1') G2 G1 P2 P1)
@@ -1805,7 +1802,6 @@ sub-tp-mono: sub-tp M R G1 T1 G2 T2 -> lte R R' -> sub-tp M R' G1 T1 G2 T2 -> ty
      <- sub-tp-to-maybe MIN ST OST'
      <- wf-tp-to-maybe MIN W1 OW1'
      <- wf-tp-to-maybe MIN W2 OW2'.
-}%
 - : sub-tp-mono (sub-tp/tselx-strict (maybe-sub-tp/no LE1) G2 G1 P2 P1) LE (sub-tp/tselx-strict (maybe-sub-tp/no LE1') G2 G1 P2 P1)
      <- lte-trans LE1 LE LE1'.
 - : sub-tp-mono (sub-tp/tselx-strict (maybe-sub-tp/yes ST LE1) G2 G1 P2 P1) LE (sub-tp/tselx-strict OST' G2 G1 P2 P1)
@@ -1975,11 +1971,9 @@ maybe-extract-wf : maybe-sub-tp R M X G1 T1 G2 T2 -> maybe-wf-tp R M X G1 T1 -> 
      (wf-tp/tsel OW2 G2 P2)
      <- maybe-extract-wf OST OW1 OW2.
 
-%{
 - : extract-wf (sub-tp/tselx OST OW2 OW1 G2 G1 P2 P1)
      (wf-tp/tsel OW1 G1 P1)
      (wf-tp/tsel OW2 G2 P2).
-}%
 
 - : extract-wf (sub-tp/tbind1 ST S) (wf-tp/tbind WU S) W2
       <- extract-wf ST WU W2.
@@ -2112,7 +2106,6 @@ sub-tp-refl :
 
 
 %worlds () (sub-tp-refl _ _).
-%trustme
 %total T (sub-tp-refl T _).
 
 %% Subtyping is transitive
@@ -2318,7 +2311,7 @@ sub-tp-trans-aux2 :
       SBT5
       <- sub-tp-trans-aux1 LE1 LE2 SBT1 SBT3 SBT5.
 
-
+%{
 -/slack1 : sub-tp-trans-aux1 LE1 LE2
       (sub-tp/slack-lenient W2 W1) B (sub-tp/slack-lenient W3' W1')
       <- wf-tp-mono W1 LE1 W1'
@@ -2330,6 +2323,7 @@ sub-tp-trans-aux2 :
       <- wf-tp-mono W3 LE2 W3'
       <- extract-wf A W1 _
       <- wf-tp-mono W1 LE1 W1'.
+}%
 
 -/tsel1  : sub-tp-trans-aux1 LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
       (sub-tp/tsel1 W2 W1 A G P)
