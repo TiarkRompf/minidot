@@ -2071,8 +2071,11 @@ sub-tp-refl :
 
 %{
 -/tsel: sub-tp-refl (wf-tp/tsel (maybe-wf-tp/yes (wf-tp/rect B WU WS) LE) G P)
-        (sub-tp/tselxa (maybe-wf-tp/yes (wf-tp/rect B WU WS) LE) G G P P LE') % oops
-   <- sub-tp-refl (wf-tp/rect B WU WS) BR.
+        (sub-tp/tsel1
+           (wf-tp/tsel (maybe-wf-tp/yes (wf-tp/rect B WU WS) LE) G P)
+           (wf-tp/rect B WU WS)
+           (sub-tp/tsel2-lenient WU (wf-tp/rect B WU WS) BU G P)G P)
+   <- sub-tp-refl WU BU.
 }%
 
 -/tbind: sub-tp-refl (wf-tp/tbind WU S)
