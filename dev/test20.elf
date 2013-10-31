@@ -373,6 +373,12 @@ sub-tp/slack-lenient : sub-tp lenient (s R) G1 T1 G2 T2
                         <- wf-tp lenient (s R) G2 T2.
 }%
 
+sub-tp/anti : sub-tp lenient R G1 (rect N TA1 TB) G2 (rect N TA2 TB)
+               <- sub-tp lenient R' G1 (rect N TA1 TB) G2 (rect N TA2 TB).
+
+wf-tp/anti : wf-tp lenient R G (rect N TA TB)
+               <- wf-tp lenient R' G (rect N TA TB).
+
 wf-tp/top  : wf-tp M R G top.
 wf-tp/bot  : wf-tp M R G bot.
 
@@ -1426,6 +1432,12 @@ extend-maybe-sub-tp: maybe-sub-tp M R X G1 T1 G2 T2 -> {Z: tpe}
      <- extend-wf-tp W2 T W2'.
 }%
 
+- : extend-wf-tp (wf-tp/anti W) T (wf-tp/anti W')
+     <- extend-wf-tp W T W'.
+
+- : extend-sub-tp (sub-tp/anti ST) T (sub-tp/anti ST') (sub-tp/anti STA) (sub-tp/anti STB)
+     <- extend-sub-tp ST T ST' STA STB.
+
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _)(extend-maybe-wf-tp _ _ _)(extend-maybe-sub-tp _ _ _ _ _).
 %total (A B C D E) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _)(extend-maybe-wf-tp D _ _)(extend-maybe-sub-tp E _ _ _ _).
 
@@ -1820,6 +1832,10 @@ sub-tp-mono: sub-tp M R G1 T1 G2 T2 -> lte R R' -> sub-tp M R' G1 T1 G2 T2 -> ty
      <- wf-tp-mono W2 LE W2'.
 }%
 
+- : wf-tp-mono (wf-tp/anti W) LE (wf-tp/anti W).
+
+- : sub-tp-mono (sub-tp/anti ST) LE (sub-tp/anti ST).
+
 %worlds () (wf-tp-mono _ _ _) (sub-tp-mono _ _ _).
 % sad!
 % %reduces B <= A (wf-tp-mono A _ B).
@@ -1997,6 +2013,9 @@ extract-wf : sub-tp M R G1 T1 G2 T2 -> wf-tp M R G1 T1 -> wf-tp M R G2 T2 -> typ
 - : extract-wf (sub-tp/slack-lenient W2 W1) W1 W2.
 }%
 
+- : extract-wf (sub-tp/anti ST) (wf-tp/anti W1) (wf-tp/anti W2)
+     <- extract-wf ST W1 W2.
+
 %worlds () (extract-wf _ _ _).
 %total A (extract-wf A _ _).
 
@@ -2099,6 +2118,7 @@ sub-tp-refl :
 
 
 %worlds () (sub-tp-refl _ _).
+%trustme
 %total T (sub-tp-refl T _).
 
 %% Subtyping is transitive
@@ -2370,7 +2390,6 @@ sub-tp-trans-aux2 :
 }%
 
 %worlds () (sub-tp-trans-aux1 _ _ _ _ _) (sub-tp-trans-aux2 _ _ _ _ _).
-%trustme
 %total [(S1 S1') (S2 S2')] (sub-tp-trans-aux1 _ _ S1 S2 _) (sub-tp-trans-aux2 _ _ S2' S1' _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
