@@ -2071,8 +2071,11 @@ sub-tp-refl :
 
 %{
 -/tsel: sub-tp-refl (wf-tp/tsel (maybe-wf-tp/yes (wf-tp/rect B WU WS) LE) G P)
-        (sub-tp/tselxa (maybe-wf-tp/yes (wf-tp/rect B WU WS) LE) G G P P LE') % oops
-   <- sub-tp-refl (wf-tp/rect B WU WS) BR.
+        (sub-tp/tsel1
+           (wf-tp/tsel (maybe-wf-tp/yes (wf-tp/rect B WU WS) LE) G P)
+           (wf-tp/rect B WU WS)
+           (sub-tp/tsel2-lenient WU (wf-tp/rect B WU WS) BU G P)G P)
+   <- sub-tp-refl WU BU.
 }%
 
 -/tbind: sub-tp-refl (wf-tp/tbind WU S)
@@ -2321,6 +2324,13 @@ sub-tp-trans-aux2 :
    <- sub-tp-trans-aux1 STA12'' STB23 OUT.
 
 %{
+-/tsel2-tselin : sub-tp-trans-aux1
+      (sub-tp/tsel2-lenient WA1 WA2 STA12 GA PA)
+      (sub-tp/tselin GB3 GB2 PA2 PA3 LE1 LE2)
+      OUT.
+}%
+
+%{
 -/tselx-tselx : sub-tp-trans-aux1
    (sub-tp/tselx (maybe-sub-tp/yes A _) GA2 GA1 PA2 PA1)
    (sub-tp/tselx (maybe-sub-tp/yes B _) GB3 GB2 PB3 PB2)
@@ -2337,7 +2347,6 @@ sub-tp-trans-aux2 :
    <- sub-tp-trans-aux1 (s _) LEX LEX A''' B C.
 }%
 %worlds () (sub-tp-trans-aux1  _ _ _) (sub-tp-trans-aux2  _ _ _).
-%trustme
 %total [(S1 S1') (S2 S2')] (sub-tp-trans-aux1 S1 S2 _) (sub-tp-trans-aux2 S2' S1' _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
@@ -2644,6 +2653,21 @@ invert-app :
 %worlds () (invert-app _ _ _ _).
 %total WFE (invert-app WFE _ _ _).
 
+shotgun : tsize G N
+           -> type-mem M MT
+           -> type-exp (tcons T3 (tcons TC G)) R T4
+           -> type-exp (tcons MT G) R2 T2
+           -> sub-tp strict z (tcons MT G) T2 z (tcons TC G) T2
+           -> wf-tp strict z (tcons MT G) MT
+           -> wf-tp strict z G TC
+           -> sub-tp strict z G (bind N (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) z G TC
+           -> sub-tp lenient z (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) z (tcons TC G) TC
+           -> type.
+%mode shotgun +A +B +C +D +E +F +G +H -I.
+%worlds () (shotgun _ _ _ _ _ _ _ _ _).
+%trustme
+%total A (shotgun _ _ _ _ _ _ _ A _).
+
 invert-fun :
   %% Input
   type-exp G (fun TC LNF _ R _ LNV R2 _ M) T ->
@@ -2663,7 +2687,7 @@ invert-fun :
            <- widen-mode-wf-tp WFF WFF'
            <- widen-mode-wf-tp WR WR'
            <- widen-mode-sub-tp STV STV'
-           <- widen-mode-sub-tp IF IF'
+           <- shotgun S M TS TV STV WR WFF IF IF'
            <- sub-tp-refl WFF' ST
            <- extend-sub-tp ST _ _ ST' _.
 
