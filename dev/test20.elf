@@ -2192,7 +2192,7 @@ sub-tp-trans-aux :
             (sub-tp/fun SBT2 SBT1)
             (sub-tp/fun SBT4 SBT3)
             (sub-tp/fun SBT6 SBT5)
-      <- sub-tp-trans-aux LW1 LW2 LE2 LE1 T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux LW2 LW1 LE2 LE1 T1 SBT3 SBT1 SBT5
       <- sub-tp-trans-aux LW1 LW2 LE1 LE2 T2 SBT2 SBT4 SBT6.
 
 -/rect-rect  : sub-tp-trans-aux LW1 LW2 LE1 LE2
@@ -2200,7 +2200,7 @@ sub-tp-trans-aux :
             (sub-tp/rect SBT2 SBT1 B2 B1)
             (sub-tp/rect SBT4 SBT3 B4 B3)
             (sub-tp/rect SBT6 SBT5 B4' B1')
-      <- sub-tp-trans-aux LW1 LW2 LE2 LE1 T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux LW2 LW1 LE2 LE1 T1 SBT3 SBT1 SBT5
       <- sub-tp-trans-aux LW1 LW2 LE1 LE2 T2 SBT2 SBT4 SBT6
       <- sub-tp-mono B4 LE2 B4'
       <- sub-tp-mono B1 LE1 B1'.
@@ -2348,7 +2348,6 @@ sub-tp-trans-aux :
   <- wf-tp-mono WA1 LE1 WA1'.
 }%
 %worlds () (sub-tp-trans-aux _ _ _ _ _ _ _ _).
-%trustme
 %total {T2 S1 S2} (sub-tp-trans-aux _ _ _ _ T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
