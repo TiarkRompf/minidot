@@ -2190,7 +2190,7 @@ eq-pev2: same TB TB' -> path-eval M R E (rect N TA TB) -> path-eval M R E (rect 
 sub-tp-trans-aux :
   %% Inputs
   lte R1 R -> lte R2 R ->
-  wf-tp lenient z G2 T2 ->
+  wf-tp lenient RW G2 T2 ->
   sub-tp lenient R1 G1 T1 G2 T2 ->
   sub-tp lenient R2 G2 T2 G3 T3 ->
   %% Output
