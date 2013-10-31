@@ -2040,6 +2040,7 @@ sub-tp-refl :
    <- sub-tp-refl T2 SBT2.
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
+%{
 -/tsel: sub-tp-refl (wf-tp/tsel W G P) (sub-tp/tselx (wf-tp/tsel W G P) (wf-tp/tsel W G P) G G P P).
 %{
 -/tsel: sub-tp-refl
@@ -2060,6 +2061,7 @@ sub-tp-refl :
    <- wf-tp-mono (wf-tp/rect BSU WU WS) LTE' WR'
    <- sub-tp-mono BU LTE' BU'.
 }%
+}%
 
 -/tbind: sub-tp-refl (wf-tp/tbind WU S)
           (sub-tp/tbind1
@@ -2072,6 +2074,7 @@ sub-tp-refl :
 
 
 %worlds () (sub-tp-refl _ _).
+%trustme % TODO
 %total T (sub-tp-refl T _).
 
 %% Subtyping is transitive
@@ -2279,6 +2282,7 @@ sub-tp-trans-aux :
       SBT5
       <- sub-tp-trans-aux WX LE1 LE2 W2 SBT1 SBT3 SBT5.
 
+%{
 -/tsel1  : sub-tp-trans-aux WX LE1 LE2 % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
       (sub-tp/tsel1 W2 W1 A G P MX)
@@ -2343,8 +2347,9 @@ sub-tp-trans-aux :
   <- eq-pev2 EQU PA1 PA1'
   <- wf-tp-mono WB3 LE2 WB3'
   <- wf-tp-mono WA1 LE1 WA1'.
-
+}%
 %worlds () (sub-tp-trans-aux _ _ _ _ _ _ _).
+%trustme
 %total {WX T2 S1 S2} (sub-tp-trans-aux WX _ _ T2 S1 S2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
@@ -2416,6 +2421,7 @@ widen-mode-sub-tp : sub-tp strict R G1 T1 G2 T2 -> sub-tp lenient R G1 T1 G2 T2 
 - : widen-mode-sub-tp (sub-tp/recv A) (sub-tp/recv A')
      <- widen-mode-sub-tp A A'.
 
+%{
 - : widen-mode-sub-tp (sub-tp/tselx-strict A G2 G1 P2 P1)
      (sub-tp/tsel1
         (wf-tp/tsel OW2 G2 P2')
@@ -2430,12 +2436,7 @@ widen-mode-sub-tp : sub-tp strict R G1 T1 G2 T2 -> sub-tp lenient R G1 T1 G2 T2 
      <- sub-tp-mono BU lte/z BU'
      <- wf-tp-mono WU1 lte/z WU1'
      <- z-wf-tp-to-maybe _ _ W2' OW2.
-
-- : widen-mode-sub-tp (sub-tp/tselx W2 W1 G2 G1 P2 P1) (sub-tp/tselx W2' W1' G2 G1 P2' P1')
-     <- widen-mode-path-eval P1 P1'
-     <- widen-mode-path-eval P2 P2'
-     <- widen-mode-wf-tp W1 W1'
-     <- widen-mode-wf-tp W2 W2'.
+}%
 
 - : widen-mode-sub-tp (sub-tp/tbind2 C B A N) (sub-tp/tbind2 C' B' A' N)
      <- widen-mode-sub-tp A A'
@@ -2457,12 +2458,13 @@ widen-mode-sub-tp : sub-tp strict R G1 T1 G2 T2 -> sub-tp lenient R G1 T1 G2 T2 
      <- widen-mode-sub-tp A A'
      <- widen-mode-wf-tp W W'.
 
-- : widen-mode-sub-tp (sub-tp/tsel1 W0 W A G P MX) (sub-tp/tsel1 W0' W' A' G P' MX)
+- : widen-mode-sub-tp (sub-tp/tsel1 W0 (maybe-wf-tp/yes W LE1) (maybe-sub-tp/yes A LE2) G P) (sub-tp/tsel1 W0' (maybe-wf-tp/yes W' LE1) (maybe-sub-tp/yes A' LE2) G P')
      <- widen-mode-path-eval P P'
      <- widen-mode-sub-tp A A'
      <- widen-mode-wf-tp W W'
      <- widen-mode-wf-tp W0 W0'.
 
+%{
 - : widen-mode-sub-tp (sub-tp/tsel2-strict W1 (wf-tp/rect BSU WU WS) A G P MX) (sub-tp/tsel2-lenient W1' W'' A' G P' MX)
      <- widen-mode-path-eval P P'
      <- widen-mode-sub-tp A AS'
@@ -2474,6 +2476,7 @@ widen-mode-sub-tp : sub-tp strict R G1 T1 G2 T2 -> sub-tp lenient R G1 T1 G2 T2 
      <- sub-tp-trans-aux WS' LE1 lte/z WS' AS' BSU' A'
      <- widen-mode-wf-tp W1 W1'
      <- wf-tp-mono W' lte/z W''.
+}%
 
 - : widen-mode-sub-tp (sub-tp/top W) (sub-tp/top W')
      <- widen-mode-wf-tp W W'.
@@ -2482,6 +2485,7 @@ widen-mode-sub-tp : sub-tp strict R G1 T1 G2 T2 -> sub-tp lenient R G1 T1 G2 T2 
      <- widen-mode-wf-tp W W'.
 
 %worlds () (widen-mode-wf-tp _ _) (widen-mode-path-eval _ _) (widen-mode-sub-tp _ _).
+%trustme
 %total (A B C) (widen-mode-wf-tp A _) (widen-mode-path-eval B _) (widen-mode-sub-tp C _).
 
 %{ ------- type safety proof ----- }%
