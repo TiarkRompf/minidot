@@ -1127,24 +1127,24 @@ sub-env-size1: sub-env GA (tcons T0 GB) -> tsize GA NA -> tsize GB NB -> lt NB N
 %worlds () (sub-env-size1 _ _ _ _ _).
 %total {} (sub-env-size1 _ _ _ _ _).
 
-sub-env-size0 : sub-env G G2 -> sub-env (tcons T0 G0) G2 -> tsize G N -> tsize G0 N0 -> lt N0 N -> sub-env (tcons T0 G0) G -> type.
-%mode sub-env-size0 +A +B +C +D +E -F.
+sub-env-size0c : sub-env G G2 -> sub-env (tcons T0 G0) G2 -> tsize G N -> tsize G0 N0 -> lt N0 N -> sub-env (tcons T0 G0) G -> type.
+%mode sub-env-size0c +A +B +C +D +E -F.
 
-- : sub-env-size0 sub-env/refl S _ _ _ S.
-- : sub-env-size0 (sub-env/ext S) (sub-env/ext S0) SN SN0 LT OUT
-     <- sub-env-size0 S S0 SN SN0 LT OUT.
-- : sub-env-size0 (sub-env/ext S) sub-env/refl SN SN0 LT OUT
+- : sub-env-size0c sub-env/refl S _ _ _ S.
+- : sub-env-size0c (sub-env/ext S) (sub-env/ext S0) SN SN0 LT OUT
+     <- sub-env-size0c S S0 SN SN0 LT OUT.
+- : sub-env-size0c (sub-env/ext S) sub-env/refl SN SN0 LT OUT
      <- sub-env-size1 (sub-env/ext S) SN SN0 LT OUT.
 
-%worlds () (sub-env-size0 _ _ _ _ _ _).
-%total A (sub-env-size0 A _ _ _ _ _).
+%worlds () (sub-env-size0c _ _ _ _ _ _).
+%total A (sub-env-size0c A _ _ _ _ _).
 
 sub-env-size-lkp : tsize G0 N0 -> sub-env G G1 -> sub-env G G2 -> sub-env (tcons T0 G0) G2 -> path-eval M G (var N0) (rect N TA TB) -> sub-env (tcons T0 G0) G -> type.
 %mode sub-env-size-lkp +A +B +C +D +E -F.
 
 - : sub-env-size-lkp SN0 S1 S2 S0 (pev (tle EX L)) OUT
      <- tsize-lookup L SN LT
-     <- sub-env-size0 S2 S0 SN SN0 LT OUT.
+     <- sub-env-size0c S2 S0 SN SN0 LT OUT.
 
 %worlds () (sub-env-size-lkp _ _ _ _ _ _).
 %total A (sub-env-size-lkp _ _ _ _ A _).
