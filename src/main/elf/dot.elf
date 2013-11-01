@@ -1495,6 +1495,20 @@ extend-wf-pev-mult : path-eval M G E T -> sub-env G G1 -> path-eval M G1 E T -> 
 %worlds () (extend-wf-pev-mult _ _ _).
 %total (A) (extend-wf-pev-mult _ A _).
 
+%{ ------- mne / meq incompatibility ------ }%
+
+meqne-false : meq M N -> mne M N -> false -> type.
+%mode meqne-false +A +B -C.
+
+- : meqne-false meq/h (mne/s MN2 NE) OUT
+     <- ne-irrefl NE OUT.
+
+- : meqne-false (meq/m MN1) (mne/s MN2 NE) OUT
+     <- meqne-false MN1 MN2 OUT.
+
+%worlds () (meqne-false _ _ _).
+%total A (meqne-false A _ _).
+
 %{ ------- subtyping and wf monotonicity ------ }%
 
 lte-gt-contra : lte A B -> lte (s B) A -> false -> type.
@@ -2336,6 +2350,20 @@ sub-tp-trans-aux2 :
    <- eq-high EQU STA12 STA12'
    <- eq-high-env EQG STA12' STA12''
    <- sub-tp-trans-aux1 STA12'' STB23 OUT.
+
+-/tselx-rec1 : sub-tp-trans-aux1
+   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2 MEQA1)
+   (sub-tp/tsel1 WB3 WB2 STB23 GB2 PB2 MNEB2)
+   OUT
+   <- meqne-false MEQA2 MNEB2 CONTRA
+   <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
+
+-/tselx-rec2 : sub-tp-trans-aux1
+   (sub-tp/tsel2-lenient WB1 WB2 STB12 GB2 PB2 MNEB2)
+   (sub-tp/tselx-rec GA3 GA2 PA3 PA2 MEQA3 MEQA2)
+   OUT
+   <- meqne-false MEQA2 MNEB2 CONTRA
+   <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
 
 %{
 -/tsel2-tselin : sub-tp-trans-aux1
