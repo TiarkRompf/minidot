@@ -288,6 +288,8 @@ maybe-wf-tp/yes : maybe-wf-tp B M A G T <- mne B A <- wf-tp M (somen A B) G T.
 path-eval: mode -> tenv -> exp -> tpe -> type.
 pev  : path-eval M G E (rect N TS TU) <- tlookexp G E (rect N TS TU).
 
+
+% TODO: it's suspicious that we have different Rs.
 sub-tp/refl : sub-tp M R1 G1 T R2 G2 T  %%% ACCELERATE QUERIES !! % --
                <- sub-env G G1 % --
                <- sub-env G G2 % --
