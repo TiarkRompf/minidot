@@ -2451,10 +2451,8 @@ widen-mode-sub-tp : sub-tp strict R1 G1 T1 R2 G2 T2 -> sub-tp lenient R1 G1 T1 R
      <- widen-mode-path-eval P1 P1'
      <- widen-mode-path-eval P2 P2'.
 
-% Oops: like in reflexivity, extra (somen ...).
-%{
 - : widen-mode-sub-tp (sub-tp/tselx-strict (sub-tp/rect BU BS B2 B1) G2 G1 P2 P1 MNE2 MNE1)
-     (sub-tp/tsel1 (wf-tp/tsel (wf-tp/rect B2' WU2' WS2') G2 P2') (wf-tp/rect B1' WU1' WS1')
+     (sub-tp/tsel1 (wf-tp/tsel (maybe-wf-tp/yes (wf-tp/rect B2' WU2' WS2') MNE2) G2 P2') (wf-tp/rect B1' WU1' WS1')
        (sub-tp/tsel2-lenient WU1' (wf-tp/rect B2' WU2' WS2') BU' G2 P2' MNE2)
        G1 P1' MNE1)
      <- widen-mode-path-eval P1 P1'
@@ -2465,7 +2463,6 @@ widen-mode-sub-tp : sub-tp strict R1 G1 T1 R2 G2 T2 -> sub-tp lenient R1 G1 T1 R
      <- widen-mode-sub-tp B1 B1'
      <- extract-wf B2' WS2' WU2'
      <- extract-wf B1' WS1' WU1'.
-}%
 
 - : widen-mode-sub-tp (sub-tp/tsel1 W0 W A G P MNE) (sub-tp/tsel1 W0' W' A' G P' MNE)
      <- widen-mode-path-eval P P'
@@ -2473,8 +2470,6 @@ widen-mode-sub-tp : sub-tp strict R1 G1 T1 R2 G2 T2 -> sub-tp lenient R1 G1 T1 R
      <- widen-mode-wf-tp W W'
      <- widen-mode-wf-tp W0 W0'.
 
-% extra (somen ...)
-%{
 - : widen-mode-sub-tp (sub-tp/tsel2-strict W1 (wf-tp/rect BSU WU WS) A G P MNE) (sub-tp/tsel2-lenient W1' W' A' G P' MNE)
      <- widen-mode-path-eval P P'
      <- widen-mode-sub-tp A AS'
@@ -2483,7 +2478,6 @@ widen-mode-sub-tp : sub-tp strict R1 G1 T1 R2 G2 T2 -> sub-tp lenient R1 G1 T1 R
      <- widen-mode-wf-tp WS WS'
      <- sub-tp-trans-aux1 AS' BSU' A'
      <- widen-mode-wf-tp W1 W1'.
-}%
 
 - : widen-mode-sub-tp (sub-tp/top W) (sub-tp/top W')
      <- widen-mode-wf-tp W W'.
@@ -2492,7 +2486,6 @@ widen-mode-sub-tp : sub-tp strict R1 G1 T1 R2 G2 T2 -> sub-tp lenient R1 G1 T1 R
      <- widen-mode-wf-tp W W'.
 
 %worlds () (widen-mode-wf-tp _ _) (widen-mode-path-eval _ _) (widen-mode-sub-tp _ _).
-%trustme
 %total (A B C) (widen-mode-wf-tp A _) (widen-mode-path-eval B _) (widen-mode-sub-tp C _).
 
 %{ ------- type safety proof ----- }%
