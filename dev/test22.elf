@@ -2061,18 +2061,17 @@ sub-tp-refl :
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
 
-%{
--/tsel-no : sub-tp-refl (wf-tp/tsel (maybe-wf-tp/no LE) G P)
-        (sub-tp/tselin G G P P LE LE).
+-/tsel-no : sub-tp-refl (wf-tp/tsel (maybe-wf-tp/no MEQ) G P)
+        (sub-tp/tselx-rec G G P P MEQ MEQ).
 
+% Oops: BU has an extra (somen ...) for the self, that we do not want.
 %{
--/tsel: sub-tp-refl (wf-tp/tsel (maybe-wf-tp/yes (wf-tp/rect B WU WS) LE) G P)
+-/tsel: sub-tp-refl (wf-tp/tsel (maybe-wf-tp/yes (wf-tp/rect B WU WS) MNE) G P)
         (sub-tp/tsel1
-           (wf-tp/tsel (maybe-wf-tp/yes (wf-tp/rect B WU WS) LE) G P)
+           (wf-tp/tsel (maybe-wf-tp/yes (wf-tp/rect B WU WS) MNE) G P)
            (wf-tp/rect B WU WS)
-           (sub-tp/tsel2-lenient WU (wf-tp/rect B WU WS) BU G P)G P)
+           (sub-tp/tsel2-lenient WU (wf-tp/rect B WU WS) BU G P MNE) G P MNE)
    <- sub-tp-refl WU BU.
-}%
 }%
 
 -/tbind: sub-tp-refl (wf-tp/tbind WU S)
