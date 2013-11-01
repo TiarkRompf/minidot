@@ -230,6 +230,7 @@ sub-env: tenv -> tenv -> type.
 
 sub-env/refl: sub-env G G.
 sub-env/ext: sub-env G1 (tcons Z I G2) <- sub-env G1 G2.
+sub-env/yyy: sub-env (tcons Z I1 G1) (tcons Z I2 G2) <- sub-env G1 G2.
 
 sub-env-size: tenv -> nat -> tenv -> type.
 ses: sub-env-size GN N G
@@ -270,21 +271,40 @@ mode : type.
 strict : mode.
 lenient : mode.
 
-wf-tp : mode -> nat -> tenv -> tpe -> type.
-sub-tp : mode -> nat -> tenv -> tpe -> tenv -> tpe -> type.
-maybe-wf-tp : nat -> mode -> nat -> tenv -> tpe -> type.
-maybe-sub-tp : nat -> mode -> nat -> tenv -> tpe -> tenv -> tpe -> type.
+mnat: type.
+somen: nat -> mnat -> mnat.
+non: mnat.
 
-maybe-wf-tp/no : maybe-wf-tp B M A G T <- lte A B.
-maybe-wf-tp/yes : maybe-wf-tp B M A G T <- lte (s B) A <- wf-tp M A G T.
+mne: mnat -> nat -> type.
+mne/n : mne non N.
+mne/s : mne (somen R M) N <- ne R N <- mne M N.
 
-maybe-sub-tp/no : maybe-sub-tp B M A G1 T1 G2 T2 <- lte A B.
-maybe-sub-tp/yes : maybe-sub-tp B M A G1 T1 G2 T2 <- lte (s B) A <- sub-tp M A G1 T1 G2 T2.
+meq: mnat -> nat -> type.
+meq/h : mne (somen R M) R.
+meq/m : mne (somen R M) N <- meq M N.
+
+wf-tp : mode -> mnat -> tenv -> tpe -> type.
+sub-tp : mode -> mnat -> tenv -> tpe -> tenv -> tpe -> type.
+
+maybe-wf-tp : mnat -> mode -> nat -> tenv -> tpe -> type.
+maybe-sub-tp : mnat -> mode -> nat -> tenv -> tpe -> tenv -> tpe -> type.
+
+maybe-wf-tp/no : maybe-wf-tp B M A G T  <- meq B A.
+maybe-wf-tp/yes : maybe-wf-tp B M A G T <- mne B A <- wf-tp M (somen A B) G T.
+
+% maybe-wf-tp/no : maybe-wf-tp (somen B R) M B G T .% <- meq B A.
+% maybe-wf-tp/no : maybe-wf-tp (somen B' R) M B G T <- ne B' B <- maybe-wf-tp R M B G T.
+% maybe-wf-tp/no : maybe-wf-tp (somen B' R) M B G T <- wf-tp M R G T.
+
+
+
+maybe-sub-tp/no : maybe-sub-tp B M A G1 T1 G2 T2 <- meq B A.
+maybe-sub-tp/yes : maybe-sub-tp B M A G1 T1 G2 T2 <- mne B A <- sub-tp M (somen A B) G1 T1 G2 T2.
 
 
 outs-wf-tp : inout -> mode -> nat -> tenv -> tpe -> type.
 outs-wf-tp/in : outs-wf-tp in M R G T.
-outs-wf-tp/out : outs-wf-tp out M R G T <- wf-tp M R G T.
+outs-wf-tp/out : outs-wf-tp out M R G T <- wf-tp M (somen R non) G T.
 
 
 
@@ -299,6 +319,7 @@ sub-tp/refl : sub-tp M R G1 T G2 T  %%% ACCELERATE QUERIES !! % --
 
 
 sub-tp/top  : sub-tp M R G1 T G2 top <- wf-tp M R G1 T.
+sub-tp/bot  : sub-tp M R G1 bot G2 T <- wf-tp M R G2 T.
 
 sub-tp/fun  : sub-tp M R G1 (arrow N TA1 TB1) G2 (arrow N TA2 TB2)
               <- sub-tp M R G2 TA2 G1 TA1
@@ -338,32 +359,38 @@ sub-tp/and1b : sub-tp M R G1 (and TA1 TB1) G2 T2
               <- sub-tp M R G1 TB1 G2 T2
               <- wf-tp M R G1 TA1.
 
-sub-tp/tselx : sub-tp M R G1 (tsel (var X) N) G2 (tsel (var X) N)
+sub-tp/tselx-strict : sub-tp strict R G1 (tsel (var X) N) G2 (tsel (var X) N)
              <- path-eval M G1 (var X) (rect N TA1 TB) _
              <- path-eval M G2 (var X) (rect N TA2 TB) _
              .
 
 
+% sub-tp/tselii : sub-tp M R G1 (tsel (var X) N) G2 (tsel (var X) N)
+%             <- path-eval M G (var X) (rect N TA1 TB) _
+%             <- path-eval M G (var X) (rect N TA2 TB) _
+%             .
+
+
 sub-tp/tsel1 : sub-tp M R G1 (tsel (var X) N) G2 T2
               <- path-eval M G1 (var X) (rect N TA1 TB1) I
-              <- sub-tp M R G1 TB1 G2 T2
-              <- wf-tp M R G1 (rect N TA1 TB1)
+              <- maybe-sub-tp R M X G1 TB1 G2 T2
+              <- maybe-wf-tp R M X G1 (rect N TA1 TB1)
               .
 
 sub-tp/tsel2-strict : sub-tp strict R G1 T1 G2 (tsel (var X) N)
-              <- path-eval strict G2 (var X) (rect N TA2 TB2) _
-              <- sub-tp strict R G1 T1 G2 TA2
-              <- wf-tp strict R G2 (rect N TA2 TB2)
+              <- path-eval strict G2 (var X) (rect N TA2 TB2) I
+              <- maybe-sub-tp R strict X G1 T1 G2 TA2
+              <- maybe-wf-tp R strict X G2 (rect N TA2 TB2)
               .
 
 
-sub-tp/tsel2-lenient : sub-tp lenient R G1 T1 G2 (tsel (var X) N)
-              <- path-eval lenient G2 (var X) (rect N TA2 TB2) I
-              <- sub-env-size G2X (s X) G2
-              <- sub-tp lenient R G1 T1 G2X TB2
-              <- wf-tp lenient R G2X (rect N TA2 TB2)
-              <- wf-tp lenient R G1 T1
-              .
+% sub-tp/tsel2-lenient : sub-tp lenient R G1 T1 G2 (tsel (var X) N)
+%               <- path-eval lenient G2 (var X) (rect N TA2 TB2) I
+%               <- sub-env-size G2X (s X) G2
+%               <- sub-tp lenient R G1 T1 G2X TB2
+%               <- wf-tp lenient R G2X (rect N TA2 TB2)
+%               <- wf-tp lenient R G1 T1
+%               .
 
 sub-tp/bot  : sub-tp M R G1 bot G2 T <- wf-tp M R G2 T.
 
@@ -388,11 +415,12 @@ wf-tp/rect : wf-tp M R G (rect N TA TB)
 wf-tp/recv : wf-tp M R G (recv N T)
               <- wf-tp M R G T.
 
+
 wf-tp/tsel : wf-tp M R G (tsel (var X) N)
               <- path-eval M G (var X) (rect N TA TB) I
-              <- sub-env-size GX (s X) G
-              <- maybe-wf-tp R M (s X) GX (rect N TA TB)
+              <- maybe-wf-tp R M X G (rect N TA TB)
               .
+
 
 wf-tp/tbind : wf-tp M R G (bind N TN)
               <- sub-env-size G0 N G
@@ -434,7 +462,7 @@ type-exp   : tenv -> exp -> tpe -> type.
 
 t/empty    : type-exp G empty top.
 
-t/var      : type-exp G (var N) T <- tlookup G N T I <- wf-tp strict z G T.
+t/var      : type-exp G (var N) T <- tlookup G N T I <- wf-tp strict non G T.   
 
 t/sel       : type-exp G (sel E1 LNV) T1
             <- type-exp G E1 (recv LNV T1).
@@ -443,12 +471,12 @@ t/fun      : type-exp G (fun TC LNF T3 R T4 LNV R2 T2 M)
                 TC
                 <- tsize G N
                 <- type-mem M MT
-                <- type-exp (tcons T3 out (tcons TC out G)) R T4
-                <- type-exp (tcons MT out G) R2 T2
-                <- sub-tp strict z (tcons MT in G) T2 (tcons TC out G) T2
-                <- wf-tp strict z (tcons MT out G) MT
-                <- wf-tp strict z G TC
-                <- sub-tp strict z (tcons TC out G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) (tcons TC out G) TC
+                <- type-exp (tcons T3 out (tcons TC in G)) R T4
+                <- type-exp (tcons MT in G) R2 T2
+                <- sub-tp strict (somen N non) (tcons MT in G) T2 (tcons TC in G) T2
+                <- wf-tp strict (somen N non) (tcons MT in G) MT
+                <- wf-tp strict (somen N non) G TC
+                <- sub-tp strict (somen N non) (tcons TC in G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) (tcons TC in G) TC
                 .
 
 t/app       : type-exp G (app E1 LNF E2) T2
@@ -458,11 +486,11 @@ t/app       : type-exp G (app E1 LNF E2) T2
 t/let       : type-exp G (let T1 E1 E2) T2 % --
            <- type-exp G E1 T1 % --
            <- type-exp (tcons T1 out G) E2 T2 % --
-           <- wf-tp strict z G T2. % --
+           <- wf-tp strict non G T2. % --
 
 t/sub       : type-exp G E T2
             <- type-exp G E T1
-            <- sub-tp strict z G T1 G T2.
+            <- sub-tp strict non G T1 G T2.
 
 %{ ------- well-formedness / typing for values and environment ----- }%
 
@@ -476,26 +504,27 @@ wfv/f    : wf-val (clos LNF R LNV R2 H) G
             <- wf-env H GC
             <- type-exp (tcons T1 in (tcons TC0 in GC)) R T2
 
-            <- sub-tp lenient z (tcons TX in GC) T (tcons TC0 in GC) T
+            %% size N instead of non ???
+            <- sub-tp lenient non (tcons TX in GC) T (tcons TC0 in GC) T
             <- wf-val R2 (tcons TX in GC) T
             <- type-mem M TX
 
-            <- sub-tp lenient z
+            <- sub-tp lenient non
                (tcons TC0 in GC) TC0
                G TC
-            <- sub-tp lenient z
+            <- sub-tp lenient non
                (tcons TC0 in GC) (and (arrow LNF T1 T2) (and (recv LNV T) TX))
                (tcons TC0 in GC) TC0
             .
 
 
 wfv/t    : wf-val (clos LNF R LNV R2 H) G (rect LNT T1 T2)
-            <- wf-tp lenient z G (rect LNT T1 T2).
+            <- wf-tp lenient non G (rect LNT T1 T2).
 
 
 wfv/sub  : wf-val V G T
             <- wf-val V G1 T1
-            <- sub-tp lenient z G1 T1 G T.
+            <- sub-tp lenient non G1 T1 G T.
 
 wfe/n    : wf-env vnil tnil.
 wfe/c    : wf-env (vcons V H) (tcons T I G) <- wf-val V (tcons T I G) T <- wf-env H G.
@@ -519,9 +548,9 @@ t2 = (bind z
                (and (recv z (tsel (var z) (s (s z))))
                    (rect (s (s z)) top top)))).
 
-%query 1 1 wf-tp strict z tnil t1.
+%query 1 1 wf-tp strict non tnil t1.
 
-%query 1 1 sub-tp strict z tnil t2 tnil t1.
+%query 1 1 sub-tp strict non tnil t2 tnil t1.
 
 
 term1x =
