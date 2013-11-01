@@ -1423,18 +1423,6 @@ extend-sub-tp: sub-tp M R1 G1 T1 R2 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST1 _ ST1' ST1A ST1B
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 
-%{
-- : extend-sub-tp (sub-tp/slack-lenient W2 W1) T (sub-tp/slack-lenient W2' W1') (sub-tp/slack-lenient W2 W1') (sub-tp/slack-lenient W2' W1)
-     <- extend-wf-tp W1 T W1'
-     <- extend-wf-tp W2 T W2'.
-
-- : extend-wf-tp (wf-tp/anti W) T (wf-tp/anti W')
-     <- extend-wf-tp W T W'.
-
-- : extend-sub-tp (sub-tp/anti ST) T (sub-tp/anti ST') (sub-tp/anti STA) (sub-tp/anti STB)
-     <- extend-sub-tp ST T ST' STA STB.
-}%
-
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _)(extend-maybe-wf-tp _ _ _).
 %total (A B C D) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _)(extend-maybe-wf-tp D _ _).
 
@@ -1949,33 +1937,23 @@ extract-wf : sub-tp M R1 G1 T1 R2 G2 T2 -> wf-tp M R1 G1 T1 -> wf-tp M R2 G2 T2 
 - : extract-wf (sub-tp/recv ST) (wf-tp/recv W1) (wf-tp/recv W2)
       <- extract-wf ST W1 W2.
 
-%{
-- : extract-wf (sub-tp/tsel1 W2 W1 ST G P)
-     (wf-tp/tsel OW1 G P) W2.
+- : extract-wf (sub-tp/tsel1 W2 W1 ST G P MNE)
+     (wf-tp/tsel (maybe-wf-tp/yes W1 MNE) G P) W2.
 
-- : extract-wf (sub-tp/tsel2-strict W1 W2 ST G P)
-      W1 (wf-tp/tsel OW2 G P)
-     <- find-min _ _ _ MIN _ _
-     <- wf-tp-to-maybe2 MIN W2 OW2.
+- : extract-wf (sub-tp/tsel2-strict W1 W2 ST G P MNE)
+      W1 (wf-tp/tsel (maybe-wf-tp/yes W2 MNE) G P).
 
-- : extract-wf (sub-tp/tsel2-lenient W1 W2 ST G P)
-      W1 (wf-tp/tsel OW2 G P)
-     <- find-min _ _ _ MIN _ _
-     <- wf-tp-to-maybe2 MIN W2 OW2.
+- : extract-wf (sub-tp/tsel2-lenient W1 W2 ST G P MNE)
+      W1 (wf-tp/tsel (maybe-wf-tp/yes W2 MNE) G P).
 
-- : extract-wf (sub-tp/tselx-strict ST G2 G1 P2 P1)
-     (wf-tp/tsel OW1 G1 P1)
-     (wf-tp/tsel OW2 G2 P2)
-     <- extract-wf ST W1 W2
-     <- find-min _ _ _ MIN1 _ _
-     <- find-min _ _ _ MIN2 _ _
-     <- wf-tp-to-maybe2 MIN1 W1 OW1
-     <- wf-tp-to-maybe2 MIN2 W2 OW2.
+- : extract-wf (sub-tp/tselx-strict ST G2 G1 P2 P1 MNE2 MNE1)
+     (wf-tp/tsel (maybe-wf-tp/yes W1 MNE1) G1 P1)
+     (wf-tp/tsel (maybe-wf-tp/yes W2 MNE2) G2 P2)
+     <- extract-wf ST W1 W2.
 
-- : extract-wf (sub-tp/tselin G2 G1 P2 P1 LE2 LE1)
-     (wf-tp/tsel (maybe-wf-tp/no LE1) G1 P1)
-     (wf-tp/tsel (maybe-wf-tp/no LE2) G2 P2).
-}%
+- : extract-wf (sub-tp/tselx-rec G2 G1 P2 P1 MEQ2 MEQ1)
+     (wf-tp/tsel (maybe-wf-tp/no MEQ1) G1 P1)
+     (wf-tp/tsel (maybe-wf-tp/no MEQ2) G2 P2).
 
 - : extract-wf (sub-tp/tbind1 ST S) (wf-tp/tbind WU S) W2
       <- extract-wf ST WU W2.
@@ -1999,16 +1977,7 @@ extract-wf : sub-tp M R1 G1 T1 R2 G2 T2 -> wf-tp M R1 G1 T1 -> wf-tp M R2 G2 T2 
       <- extract-wf S1 W1 W3
       <- extract-wf S2 W2 W4.
 
-%{
-- : extract-wf (sub-tp/slack-lenient W2 W1) W1 W2.
-
-- : extract-wf (sub-tp/anti ST) (wf-tp/anti W1) (wf-tp/anti W2)
-     <- extract-wf ST W1 W2.
-}%
-
-
 %worlds () (extract-wf _ _ _).
-%trustme
 %total A (extract-wf A _ _).
 
 %% Diamond property w.r.t. environment for well formed types
