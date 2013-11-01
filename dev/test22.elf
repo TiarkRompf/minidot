@@ -2337,8 +2337,136 @@ sub-tp-trans-aux2 :
    <- rect-same-all-same EQR EQS EQU
    <- eq-pev2 EQU PA1 PC1.
 
+% aux2 mirror
+
+-/top    : sub-tp-trans-aux2 S1 (sub-tp/top _) (sub-tp/top W) <- extract-wf S1 W _.
+-/bot    : sub-tp-trans-aux2 (sub-tp/bot _) S2 (sub-tp/bot W) <- extract-wf S2 _ W.
+
+-/fun-fun  : sub-tp-trans-aux2
+            (sub-tp/fun SBT2 SBT1)
+            (sub-tp/fun SBT4 SBT3)
+            (sub-tp/fun SBT6 SBT5)
+      <- sub-tp-trans-aux1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux2 SBT2 SBT4 SBT6.
+
+-/rect-rect  : sub-tp-trans-aux2
+            (sub-tp/rect SBT2 SBT1 B2 B1)
+            (sub-tp/rect SBT4 SBT3 B4 B3)
+            (sub-tp/rect SBT6 SBT5 B4 B1)
+      <- sub-tp-trans-aux1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux2 SBT2 SBT4 SBT6.
+
+-/recv-recv  : sub-tp-trans-aux2
+            (sub-tp/recv SBT1)
+            (sub-tp/recv SBT3)
+            (sub-tp/recv SBT5)
+      <- sub-tp-trans-aux2 SBT1 SBT3 SBT5.
+
+-/tbind2  : sub-tp-trans-aux2
+       A
+       (sub-tp/tbind2 B1 B2 B3 S)
+       (sub-tp/tbind2 C1 C2 C3 S)
+
+       <- sub-tp-trans-aux2 A B1 C1
+       <- sub-tp-trans-aux2 A B2 C2
+       <- sub-tp-trans-aux2 A B3 C3.
+
+-/tbind1 : sub-tp-trans-aux2
+       (sub-tp/tbind1 ST S)
+       SBT2
+       (sub-tp/tbind1 ST' S)
+       <- sub-tp-trans-aux2 ST SBT2 ST'.
+
+-/tbind2-tbind1  : sub-tp-trans-aux2
+       (sub-tp/tbind2 _ _ SU S1)
+       (sub-tp/tbind1 A2 S2)
+       A3
+       <- sub-env-size-eq S1 S2 EQG
+       <- eq-sametenv-cons EQG _ EQG'
+       <- eq-high-env EQG' SU SU'
+       <- sub-tp-trans-aux2 SU' A2 A3.
+
+-/tand1a : sub-tp-trans-aux2
+      (sub-tp/and1a W1 SBT1)
+      SBT3
+      (sub-tp/and1a W1 SBT5)
+      <- sub-tp-trans-aux2 SBT1 SBT3 SBT5.
+
+-/tand1b : sub-tp-trans-aux2
+      (sub-tp/and1b W1 SBT1)
+      SBT3
+      (sub-tp/and1b W1 SBT5)
+      <- sub-tp-trans-aux2 SBT1 SBT3 SBT5.
+
+-/tand2 : sub-tp-trans-aux2
+      SBT1
+      (sub-tp/and2 ST1 ST2)
+      (sub-tp/and2 ST1' ST2')
+      <- sub-tp-trans-aux2 SBT1 ST1 ST1'
+      <- sub-tp-trans-aux2 SBT1 ST2 ST2'.
+
+-/tand2-tand1a : sub-tp-trans-aux2
+      (sub-tp/and2 SBT1 _)
+      (sub-tp/and1a _ SBT3)
+      SBT5
+      <- sub-tp-trans-aux2 SBT1 SBT3 SBT5.
+
+-/tand2-tand1b : sub-tp-trans-aux2
+      (sub-tp/and2 _ SBT1)
+      (sub-tp/and1b _ SBT3)
+      SBT5
+      <- sub-tp-trans-aux2 SBT1 SBT3 SBT5.
+
+-/tsel1  : sub-tp-trans-aux2 % p.T1 < T2 <-- p:{T1} && T1 < T2
+      (sub-tp/tsel1 W2 W1 A G P MNE)
+      B
+      (sub-tp/tsel1 W3 W1 C G P MNE)
+      <- sub-tp-trans-aux2 A B C
+      <- extract-wf B _ W3.
+
+-/tsel2  : sub-tp-trans-aux2 % p.T1 < T2 <-- p:{T1} && T1 < T2
+      A
+      (sub-tp/tsel2-lenient W2 W3 B G P MNE)
+      (sub-tp/tsel2-lenient W1 W3 C G P MNE)
+      <- sub-tp-trans-aux2 A B C
+      <- extract-wf A W1 _.
+
+%% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
+
+-/tsel2-tsel1 : sub-tp-trans-aux2
+      (sub-tp/tsel2-lenient WA1 WA2 STA12 GA PA MNEA)
+      (sub-tp/tsel1 WB3 WB2 STB23 GB PB MNEB)
+      OUT
+   <- path-eval-eq PA PB EQR
+   <- rect-same-all-same EQR EQS EQU
+   <- sub-env-size-eq GA GB EQG
+   <- eq-high EQU STA12 STA12'
+   <- eq-high-env EQG STA12' STA12''
+   <- sub-tp-trans-aux2 STA12'' STB23 OUT.
+
+-/tselx-rec1 : sub-tp-trans-aux2
+   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2 MEQA1)
+   (sub-tp/tsel1 WB3 WB2 STB23 GB2 PB2 MNEB2)
+   OUT
+   <- meqne-false MEQA2 MNEB2 CONTRA
+   <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
+
+-/tselx-rec2 : sub-tp-trans-aux2
+   (sub-tp/tsel2-lenient WB1 WB2 STB12 GB2 PB2 MNEB2)
+   (sub-tp/tselx-rec GA3 GA2 PA3 PA2 MEQA3 MEQA2)
+   OUT
+   <- meqne-false MEQA2 MNEB2 CONTRA
+   <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
+
+-/tselx-rec : sub-tp-trans-aux2
+   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2 MEQA1)
+   (sub-tp/tselx-rec GB3 GB2 PB3 PB2 MEQB3 MEQB2)
+   (sub-tp/tselx-rec GB3 GA1 PB3 PC1 MEQB3 MEQA1)
+   <- path-eval-eq PA2 PB2 EQR
+   <- rect-same-all-same EQR EQS EQU
+   <- eq-pev2 EQU PA1 PC1.
+
 %worlds () (sub-tp-trans-aux1  _ _ _) (sub-tp-trans-aux2  _ _ _).
-%trustme
 %total [(S1 S1') (S2 S2')] (sub-tp-trans-aux1 S1 S2 _) (sub-tp-trans-aux2 S2' S1' _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
