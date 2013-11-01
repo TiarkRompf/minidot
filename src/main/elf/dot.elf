@@ -459,7 +459,7 @@ t/fun      : type-exp G (fun TC LNF T3 R T4 LNV R2 T2 M)
                 <- sub-tp strict non (tcons MT G) T2 non (tcons TC G) T2
                 <- wf-tp strict non (tcons MT G) MT                
                 <- wf-tp strict non G TC
-                <- sub-tp strict non G (bind N (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) non G TC
+                <- sub-tp strict non (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) non (tcons TC G) TC
                 .
 
 t/app       : type-exp G (app E1 LNF E2) T2
@@ -2771,21 +2771,6 @@ invert-app :
 %worlds () (invert-app _ _ _ _).
 %total WFE (invert-app WFE _ _ _).
 
-shotgun : tsize G N
-           -> type-mem M MT
-           -> type-exp (tcons T3 (tcons TC G)) R T4
-           -> type-exp (tcons MT G) R2 T2
-           -> sub-tp strict non (tcons MT G) T2 non (tcons TC G) T2
-           -> wf-tp strict non (tcons MT G) MT
-           -> wf-tp strict non G TC
-           -> sub-tp strict non G (bind N (and (arrow LNF T3 T4) (and (recv LNV T2) MT))) non G TC
-           -> sub-tp lenient non (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) non (tcons TC G) TC
-           -> type.
-%mode shotgun +A +B +C +D +E +F +G +H -I.
-%worlds () (shotgun _ _ _ _ _ _ _ _ _).
-%trustme
-%total A (shotgun _ _ _ _ _ _ _ A _).
-
 invert-fun :
   %% Input
   type-exp G (fun TC LNF _ R _ LNV R2 _ M) T ->
@@ -2805,7 +2790,7 @@ invert-fun :
            <- widen-mode-wf-tp WFF WFF'
            <- widen-mode-wf-tp WR WR'
            <- widen-mode-sub-tp STV STV'
-           <- shotgun S M TS TV STV WR WFF IF IF'
+           <- widen-mode-sub-tp IF IF'
            <- sub-tp-refl WFF' ST
            <- extend-sub-tp ST _ _ ST' _.
 
