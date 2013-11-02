@@ -36,7 +36,7 @@
 \renewcommand{\aaaclos}[5]{\text{$<\{${\bf def} #1 = #2; {\bf val } #3 = #4$\}$ {\bf in } #5$>_v$}}
 
 \renewcommand{\aaawftp}[4]{\text{(#2) #3 $\ts$ #4 {\bf wf$_\text{#1}$}}}
-\renewcommand{\aaamaybewftp}[5]{\text{(#3 $\notin$ #1) $\Rightarrow$ #4 $\ts$ #5 {\bf wf$_\text{#2}$}}}
+\renewcommand{\aaamaybewftp}[5]{\text{(#3 $\notin$ #1) $\rightarrow$ (#3::#1) #4 $\ts$ #5 {\bf wf$_\text{#2}$}}}
 \renewcommand{\aaasubtp}[7]{\text{(#2) {#3} $\vdash$ {#4} $<:_\text{#1}$ {#7} $\dashv$ {#6} ({#5})}}
 
 \renewcommand{\aaaevalexp}[3]{\text{{#1} $\ts$ {#2} $\Downarrow$ {#3}}}
@@ -55,3 +55,5 @@
 \renewcommand{\aaasomen}[2]{\text{#1$::$#2}}
 \renewcommand{\aaanon}[0]{\text{$\emptyset$}}
 
+\renewcommand{\aaamne}[2]{\text{#1 $\notin$ #2}}
+\renewcommand{\aaameq}[2]{\text{#1 $\in$ #2}}
