@@ -319,8 +319,8 @@ sub-tp/and1b : sub-tp M R1 G1 (and TA1 TB1) R2 G2 T2
 sub-tp/tselx-rec : sub-tp M R1 G1 (tsel (var X) N) R2 G2 (tsel (var X) N)
              <- meq R1 X
              <- meq R2 X
-             <- path-eval M G1 (var X) (rect N TA1 TB)
-             <- path-eval M G2 (var X) (rect N TA2 TB)
+             <- path-eval M G1 (var X) (rect N TA1 TB1)
+             <- path-eval M G2 (var X) (rect N TA2 TB2)
              <- sub-env-size G1X (s X) G1
              <- sub-env-size G2X (s X) G2
              .
@@ -1874,10 +1874,7 @@ sub-tp-trans-aux2 :
 -/tselx-rec : sub-tp-trans-aux1
    (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2 MEQA1)
    (sub-tp/tselx-rec GB3 GB2 PB3 PB2 MEQB3 MEQB2)
-   (sub-tp/tselx-rec GB3 GA1 PB3 PC1 MEQB3 MEQA1)
-   <- path-eval-eq PA2 PB2 EQR
-   <- rect-same-all-same EQR EQS EQU
-   <- eq-pev2 EQU PA1 PC1.
+   (sub-tp/tselx-rec GB3 GA1 PB3 PA1 MEQB3 MEQA1).
 
 % aux2 mirror
 
@@ -2003,10 +2000,7 @@ sub-tp-trans-aux2 :
 -/tselx-rec : sub-tp-trans-aux2
    (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2 MEQA1)
    (sub-tp/tselx-rec GB3 GB2 PB3 PB2 MEQB3 MEQB2)
-   (sub-tp/tselx-rec GB3 GA1 PB3 PC1 MEQB3 MEQA1)
-   <- path-eval-eq PA2 PB2 EQR
-   <- rect-same-all-same EQR EQS EQU
-   <- eq-pev2 EQU PA1 PC1.
+   (sub-tp/tselx-rec GB3 GA1 PB3 PA1 MEQB3 MEQA1).
 
 %worlds () (sub-tp-trans-aux1  _ _ _) (sub-tp-trans-aux2  _ _ _).
 %total [(S1 S1') (S2 S2')] (sub-tp-trans-aux1 S1 S2 _) (sub-tp-trans-aux2 S2' S1' _).
