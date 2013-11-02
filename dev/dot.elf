@@ -421,21 +421,21 @@ wf-tp/and  : wf-tp M R G (and TA TB)
 
 eval-exp   : venv -> exp -> val -> type.
 
-e/empty    : eval-exp G empty emptyv.
+e/empty    : eval-exp H empty emptyv.
 
-e/var      : eval-exp G (var N) V <- vlookup G N V.
+e/var      : eval-exp H (var N) V <- vlookup H N V.
 
-e/fun      : eval-exp G (fun TC LNF _ R _ LNV R2 _ MT) (clos LNF R LNV V2 G)
-            <- eval-exp (vcons (clos z empty z emptyv G) G) R2 V2.
+e/fun      : eval-exp H (fun TC LNF _ R _ LNV R2 _ MT) (clos LNF R LNV V2 H)
+            <- eval-exp (vcons (clos z empty z emptyv H) H) R2 V2.
 
 
-e/app      : eval-exp G (app E1 LNF E2) V3
-            <- eval-exp G E1 (clos LNF R LNV R2 G1)
-            <- eval-exp G E2 V2
-            <- eval-exp (vcons V2 (vcons (clos LNF R LNV R2 G1) G1)) R V3.
+e/app      : eval-exp H (app E1 LNF E2) V3
+            <- eval-exp H E1 (clos LNF R LNV R2 H1)
+            <- eval-exp H E2 V2
+            <- eval-exp (vcons V2 (vcons (clos LNF R LNV R2 H1) H1)) R V3.
 
-e/sel      : eval-exp G (sel E1 LNV) V
-            <- eval-exp G E1 (clos LNF R LNV V G1).
+e/sel      : eval-exp H (sel E1 LNV) V
+            <- eval-exp H E1 (clos LNF R LNV V H1).
 
 type-mem   : mem N -> tpe -> type.
 tm/nil     : type-mem mnil top.
