@@ -1,8 +1,4 @@
-% echo "set unsafe true
-% loadFile test15z.elf" |/Volumes/Twelf\ for\ OS\ X\ \(Intel\)/Twelf/bin/twelf-server
-
 % STLC: big step preservation
-% - add store
 % + add subtyping
 % + add env to subtyping
 % + add type members
@@ -54,18 +50,6 @@ lte/z : lte z N.
 lte/s : lte (s N1) (s N2)
    <- lte N1 N2.
 
-min: nat -> nat -> nat -> type.
-min/lte: min A B A <- lte A B.
-min/gt: min A B B <- lte (s B) A.
-
-minmax: nat -> nat -> nat -> nat -> type.
-minmax/lte: minmax A B A B <- lte A B.
-minmax/gt: minmax A B B A <- lte (s B) A.
-
-max: nat -> nat -> nat -> type.
-max/lte: max A B A <- lte B A.
-max/gt: max A B B <- lte (s A) B.
-
 eq : nat -> nat -> type.
 eq/z : eq z z.
 eq/s : eq (s N1) (s N2)
@@ -108,10 +92,6 @@ add-inc: add A B C -> add A (s B) (s C) -> type.
 
 %worlds () (add-inc _ _).
 %total {A} (add-inc A _).
-
-
-
-
 
 %{ ------- language ----- }%
 
@@ -156,10 +136,6 @@ tsel : exp -> nat -> tpe.         % x.T
 
 %% This version of bind makes the variable convention
 %% explicit by fixing the 'this' identifier.
-
-%% TODO: Putting the environment in the type avoids the
-%% need for a uniqueness lemma -- we should add one and
-%% get rid of the tenv.
 
 bind : nat -> tpe -> tpe.     % { this_n => A }
 
@@ -527,11 +503,9 @@ sub-env-trans: sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
 %worlds () (sub-env-trans _ _ _).
 %total A (sub-env-trans _ A _).
 
-
 minmax-env: tenv -> tenv -> tenv -> tenv -> type.
 mm-env/1: minmax-env G1 G2 G1 G2 <- sub-env G1 G2.
 mm-env/2: minmax-env G1 G2 G2 G1 <- sub-env G2 G1.
-
 
 % Diamond / common prefix property
 
@@ -648,11 +622,6 @@ ne-irrefl: ne N N -> false -> type.
 - : ne-irrefl (ne/s NE) F <- ne-irrefl NE F.
 %worlds () (ne-irrefl _ _).
 %total (A) (ne-irrefl A _).
-
-no-max : false -> {A}{B}{C} max A B C -> type.
-%mode no-max +A +B +C +D -E.
-%worlds () (no-max _ _ _ _ _).
-%total A (no-max A _ _ _ _).
 
 no-eq: false -> {T1}{T2} same T1 T2 -> type.
 %mode no-eq +A +B +C -D.
@@ -1523,405 +1492,6 @@ lte-trans : lte A B -> lte B C -> lte A C -> type.
 %worlds () (lte-trans _ _ _).
 %total A (lte-trans A _ _).
 
-min-dispatch : {C} min A B C -> {C'} min (s A) (s B) C' -> type.
-%mode min-dispatch +A +B -C -D.
-
-- : min-dispatch C (min/lte LE) (s C) (min/lte (lte/s LE)).
-- : min-dispatch C (min/gt LE) (s C) (min/gt (lte/s LE)).
-
-%worlds () (min-dispatch _ _ _ _).
-%total A (min-dispatch _ A _ _).
-
-min-exists : {A}{B}{C} min A B C -> type.
-%mode min-exists +A +B -C -D.
-
-- : min-exists z B z (min/lte lte/z).
-- : min-exists (s A) z z (min/gt (lte/s lte/z)).
-- : min-exists (s A) (s B) C' D'
-     <- min-exists A B C D
-     <- min-dispatch C D C' D'.
-
-%worlds () (min-exists _ _ _ _).
-%total A (min-exists A _ _ _).
-
-
-max-dispatch : {C} max A B C -> {C'} max (s A) (s B) C' -> lte (s B) C' -> type.
-%mode max-dispatch +A +B -C -D -E.
-
-- : max-dispatch C (max/gt LE) (s C) (max/gt (lte/s LE)) LTE
-     <- eq-refl _ EQ
-     <- eq-lte EQ LTE.
-- : max-dispatch C (max/lte LE) (s C) (max/lte (lte/s LE)) (lte/s LE).
-
-%worlds () (max-dispatch _ _ _ _ _).
-%total A (max-dispatch _ A _ _ _).
-
-max-exists : {A}{B}{C} max A B C -> lte B C -> type.
-%mode max-exists +A +B -C -D -E.
-
-- : max-exists A z A (max/lte lte/z) lte/z.
-- : max-exists z (s B) (s B) (max/gt (lte/s lte/z)) LTE
-     <- eq-refl _ EQ
-     <- eq-lte EQ LTE.
-- : max-exists (s A) (s B) C' D' E'
-     <- max-exists A B C D E
-     <- max-dispatch C D C' D' E'.
-
-%worlds () (max-exists _ _ _ _ _).
-%total A (max-exists A _ _ _ _).
-
-max-of-dispatch : {C} max A B C -> lte B C -> {C'} max (s A) (s B) C' -> lte (s B) C' -> type.
-%mode max-of-dispatch +A +B +C -D -E -F.
-
-- : max-of-dispatch C (max/lte LE) LEX (s C) (max/lte (lte/s LE)) (lte/s LEX).
-- : max-of-dispatch C (max/gt LE) LEX (s C) (max/gt (lte/s LE)) (lte/s LEX).
-
-%worlds () (max-of-dispatch _ _ _ _ _ _).
-%total A (max-of-dispatch _ A _ _ _ _).
-
-max-of: lte R X -> lte R R' -> {C} max R' X C -> lte X C -> type.
-%mode max-of +A +B -C -D -E.
-
-- : max-of lte/z lte/z C D E
-     <- max-exists _ _ C D E.
-- : max-of (lte/s A) (lte/s B) C' D' E'
-     <- max-of A B C D E
-     <- max-of-dispatch C D E C' D' E'.
-
-%worlds () (max-of _ _ _ _ _).
-%total A (max-of A _ _ _ _).
-
-max2-of: lte (s R) X -> lte R R' -> {C} max R' X C -> lte X C -> type.
-%mode max2-of +A +B -C -D -E.
-
-- : max2-of (lte/s lte/z) lte/z C D E
-     <- max-exists _ _ C D E.
-- : max2-of (lte/s A) (lte/s B) C' D' E'
-     <- max2-of A B C D E
-     <- max-of-dispatch C D E C' D' E'.
-
-%worlds () (max2-of _ _ _ _ _).
-%total A (max2-of A _ _ _ _).
-
-max-inc : max A B C -> max (s A) (s B) (s C) -> type.
-%mode max-inc +A -B.
-
-- : max-inc (max/lte LE) (max/lte (lte/s LE)).
-- : max-inc (max/gt LE) (max/gt (lte/s LE)).
-
-%worlds () (max-inc _ _).
-%total A (max-inc A _).
-
-find-max : {A}{B}{C} max A B C -> lte A C -> lte B C -> type.
-%mode find-max +A +B -C -D -E -F.
-
-- : find-max A z A (max/lte lte/z) LTE lte/z
-     <- eq-refl _ EQ
-     <- eq-lte EQ LTE.
-- : find-max z (s B) (s B) (max/gt (lte/s lte/z)) lte/z LTE
-     <- eq-refl _ EQ
-     <- eq-lte EQ LTE.
-- : find-max (s A) (s B) (s C) D' (lte/s E) (lte/s F)
-     <- find-max A B C D E F
-     <- max-inc D D'.
-
-%worlds () (find-max _ _ _ _ _ _).
-%total A (find-max A _ _ _ _ _).
-
-max-dia: lte X A -> lte X B -> {C} max A B C -> lte A C -> lte B C -> type.
-%mode max-dia +A +B -C -D -E -F.
-
-- : max-dia lte/z lte/z C D E F
-     <- find-max _ _ C D E F.
-- : max-dia (lte/s A) (lte/s B) (s C) D' (lte/s E) (lte/s F)
-     <- max-dia A B C D E F
-     <- max-inc D D'.
-
-%worlds () (max-dia _ _ _ _ _ _).
-%total A (max-dia A _ _ _ _ _).
-
-max-join: lte N1 N1' -> max N1 N2 C -> max N1' C C' -> max N1' N2 C' -> type.
-%mode max-join +A +B +C -D.
-
-- : max-join LE1 (max/lte LEC) (max/lte LEC') (max/lte OUT)
-     <- lte-trans LEC LEC' OUT.
-
-- : max-join LE1 (max/lte LEC) (max/gt LEC') OUT
-     <- lte-trans LEC' LE1 CONTRA
-     <- lte-s-false CONTRA FALSE
-     <- no-max FALSE _ _ _ OUT.
-
-- : max-join LE1 (max/gt LEC) (max/gt LEC') (max/gt LEC').
-
-- : max-join LE1 (max/gt LEC) (max/lte LEC') (max/lte LEC').
-
-%worlds () (max-join _ _ _ _).
-%total A (max-join A _ _ _).
-
-min-inc : min A B C -> min (s A) (s B) (s C) -> type.
-%mode min-inc +A -B.
-
-- : min-inc (min/lte LE) (min/lte (lte/s LE)).
-- : min-inc (min/gt LE) (min/gt (lte/s LE)).
-
-%worlds () (min-inc _ _).
-%total A (min-inc A _).
-
-find-min : {A}{B}{C} min A B C -> lte C A -> lte C B -> type.
-%mode find-min +A +B -C -D -E -F.
-
-- : find-min z B z (min/lte lte/z) lte/z lte/z.
-- : find-min (s B) z z (min/gt (lte/s lte/z)) lte/z lte/z.
-- : find-min (s A) (s B) (s C) D' (lte/s E) (lte/s F)
-     <- find-min A B C D E F
-     <- min-inc D D'.
-
-%worlds () (find-min _ _ _ _ _ _).
-%total A (find-min A _ _ _ _ _).
-
-min-dia: lte X A -> lte X B -> {C} min A B C -> lte X C -> type.
-%mode min-dia +A +B -C -D -E.
-
-- : min-dia lte/z lte/z C D lte/z
-     <- find-min _ _ C D E F.
-- : min-dia (lte/s A) (lte/s B) (s C) D' (lte/s E)
-     <- min-dia A B C D E
-     <- min-inc D D'.
-
-%worlds () (min-dia _ _ _ _ _).
-%total A (min-dia A _ _ _ _).
-
-minmax-inc : minmax A B C D -> minmax (s A) (s B) (s C) (s D) -> type.
-%mode minmax-inc +A -B.
-
-- : minmax-inc (minmax/lte LE) (minmax/lte (lte/s LE)).
-- : minmax-inc (minmax/gt LE) (minmax/gt (lte/s LE)).
-
-%worlds () (minmax-inc _ _).
-%total A (minmax-inc A _).
-
-find-minmax : {A}{B}{C}{D} minmax A B C D -> lte C D -> lte C A -> lte C B -> lte A D -> lte B D -> type.
-%mode find-minmax +A +B -C -D -E -F -G -H -I -J.
-
-- : find-minmax z B z B (minmax/lte lte/z) lte/z lte/z lte/z lte/z EQLTE
-     <- eq-refl _ EQ
-     <- eq-lte EQ EQLTE.
-- : find-minmax (s B) z z (s B) (minmax/gt (lte/s lte/z)) lte/z lte/z lte/z EQLTE lte/z
-     <- eq-refl _ EQ
-     <- eq-lte EQ EQLTE.
-- : find-minmax (s A) (s B) (s C) (s D) E' (lte/s F) (lte/s G) (lte/s H) (lte/s I) (lte/s J)
-     <- find-minmax A B C D E F G H I J
-     <- minmax-inc E E'.
-
-%worlds () (find-minmax _ _ _ _ _ _ _ _ _ _).
-%total A (find-minmax A _ _ _ _ _ _ _ _ _).
-
-minmax-dia: lte X A -> lte X B -> {C}{D} minmax A B C D -> lte C D -> lte X C -> lte A D -> lte B D -> type.
-%mode minmax-dia +A +B -C -D -E -F -G -H -I.
-
-- : minmax-dia lte/z lte/z C D E F lte/z I J
-     <- find-minmax _ _ C D E F G H I J.
-
-- : minmax-dia (lte/s A) (lte/s B) (s C) (s D) E' (lte/s F) (lte/s G) (lte/s H) (lte/s I)
-     <- minmax-dia A B C D E F G H I
-     <- minmax-inc E E'.
-
-%worlds () (minmax-dia _ _ _ _ _ _ _ _ _).
-%total A (minmax-dia A _ _ _ _ _ _ _ _).
-
-%{
-wf-tp-to-maybe : min A B C -> wf-tp M A G T -> maybe-wf-tp B M A G T -> type.
-%mode wf-tp-to-maybe +A +B -C.
-
-- : wf-tp-to-maybe (min/lte LE) W (maybe-wf-tp/no LE).
-- : wf-tp-to-maybe (min/gt LE) W (maybe-wf-tp/yes W LE).
-
-%worlds () (wf-tp-to-maybe _ _ _).
-%total A (wf-tp-to-maybe A _ _ ).
-
-wf-tp-mono: wf-tp M R G T -> lte R R' -> wf-tp M R' G T -> type.
-%mode wf-tp-mono +A +B -C.
-sub-tp-mono: sub-tp M R1 G1 T1 R2 G2 T2 -> lte R1 R1' -> lte R2 R2' -> sub-tp M R1' G1 T1 R2' G2 T2 -> type.
-%mode sub-tp-mono +A +B +C -D.
-- : wf-tp-mono (wf-tp/tsel (maybe-wf-tp/no LE') S P) LE (wf-tp/tsel (maybe-wf-tp/no LE'') S P)
-     <- lte-trans LE' LE LE''.
-- : wf-tp-mono (wf-tp/tsel (maybe-wf-tp/yes W LE') S P) LE (wf-tp/tsel W' S P)
-     <- min-exists _ _ _ MIN
-     <- wf-tp-to-maybe MIN W W'.
-- : wf-tp-mono wf-tp/top _ wf-tp/top.
-- : wf-tp-mono wf-tp/bot _ wf-tp/bot.
-- : wf-tp-mono (wf-tp/fun A B) LE (wf-tp/fun A' B')
-     <- wf-tp-mono A LE A'
-     <- wf-tp-mono B LE B'.
-- : wf-tp-mono (wf-tp/rect S A B) LE (wf-tp/rect S' A' B')
-     <- wf-tp-mono A LE A'
-     <- wf-tp-mono B LE B'
-     <- sub-tp-mono S LE LE S'.
-- : wf-tp-mono (wf-tp/recv A) LE (wf-tp/recv A')
-     <- wf-tp-mono A LE A'.
-- : wf-tp-mono (wf-tp/tbind A G) LE (wf-tp/tbind A G).
-- : wf-tp-mono (wf-tp/and A B) LE (wf-tp/and A' B')
-     <- wf-tp-mono A LE A'
-     <- wf-tp-mono B LE B'.
-
-- : sub-tp-mono (sub-tp/top A) LE1 LE2 (sub-tp/top A')
-     <- wf-tp-mono A LE1 A'.
-- : sub-tp-mono (sub-tp/bot A) LE1 LE2 (sub-tp/bot A')
-     <- wf-tp-mono A LE2 A'.
-- : sub-tp-mono (sub-tp/fun B A) LE1 LE2 (sub-tp/fun B' A')
-     <- sub-tp-mono A LE2 LE1 A'
-     <- sub-tp-mono B LE1 LE2 B'.
-- : sub-tp-mono (sub-tp/rect D C B A) LE1 LE2 (sub-tp/rect D' C' B' A')
-     <- sub-tp-mono A LE1 LE1 A'
-     <- sub-tp-mono B LE2 LE2 B'
-     <- sub-tp-mono C LE2 LE1 C'
-     <- sub-tp-mono D LE1 LE2 D'.
-- : sub-tp-mono (sub-tp/recv A) LE1 LE2 (sub-tp/recv A')
-     <- sub-tp-mono A LE1 LE2 A'.
-- : sub-tp-mono (sub-tp/tbind2 A B C G) LE1 LE2 (sub-tp/tbind2 A' B' C' G)
-     <- eq-refl _ EQN
-     <- eq-lte EQN LEN
-     <- sub-tp-mono A LE1 LEN A'
-     <- sub-tp-mono B LE1 LE1 B'
-     <- sub-tp-mono C LE1 LEN C'.
-- : sub-tp-mono (sub-tp/tbind1 A G) LE1 LE2 (sub-tp/tbind1 A' G)
-     <- eq-refl _ EQN
-     <- eq-lte EQN LEN
-     <- sub-tp-mono A LEN LE2 A'.
-- : sub-tp-mono (sub-tp/and2 B A) LE1 LE2 (sub-tp/and2 B' A')
-     <- sub-tp-mono A LE1 LE2 A'
-     <- sub-tp-mono B LE1 LE2 B'.
-- : sub-tp-mono (sub-tp/and1a B A) LE1 LE2 (sub-tp/and1a B' A')
-     <- sub-tp-mono A LE1 LE2 A'
-     <- wf-tp-mono B LE1 B'.
-- : sub-tp-mono (sub-tp/and1b B A) LE1 LE2 (sub-tp/and1b B' A')
-     <- sub-tp-mono A LE1 LE2 A'
-     <- wf-tp-mono B LE1 B'.
-- : sub-tp-mono (sub-tp/tselin G2 G1 P2 P1 LE2 LE1) LEA LEB (sub-tp/tselin G2 G1 P2 P1 LE2' LE1')
-     <- lte-trans LE1 LEA LE1'
-     <- lte-trans LE2 LEB LE2'.
-- : sub-tp-mono (sub-tp/tselx-strict ST G2 G1 P2 P1) LE1 LE2 (sub-tp/tselx-strict ST' G2 G1 P2 P1)
-     <- sub-tp-mono ST LE1 LE2 ST'.
-- : sub-tp-mono (sub-tp/tsel1 W2 W1 ST G P) LE1 LE2 (sub-tp/tsel1 W2' W1' ST' G P)
-     <- sub-tp-mono ST LE1 LE2 ST'
-     <- wf-tp-mono W1 LE1 W1'
-     <- wf-tp-mono W2 LE2 W2'.
-- : sub-tp-mono (sub-tp/tsel2-strict W1 W2 ST G P) LE1 LE2 (sub-tp/tsel2-strict W1' W2' ST' G P)
-     <- sub-tp-mono ST LE1 LE2 ST'
-     <- wf-tp-mono W1 LE1 W1'
-     <- wf-tp-mono W2 LE2 W2'.
-- : sub-tp-mono (sub-tp/tsel2-lenient W1 W2 ST G P) LE1 LE2 (sub-tp/tsel2-lenient W1' W2' ST' G P)
-     <- sub-tp-mono ST LE1 LE2 ST'
-     <- wf-tp-mono W1 LE1 W1'
-     <- wf-tp-mono W2 LE2 W2'.
-
-%{
-- : sub-tp-mono (sub-tp/slack-lenient W2 W1) LE (sub-tp/slack-lenient W2' W1')
-     <- wf-tp-mono W1 LE W1'
-     <- wf-tp-mono W2 LE W2'.
-
-- : wf-tp-mono (wf-tp/anti W) LE (wf-tp/anti W).
-
-- : sub-tp-mono (sub-tp/anti ST) LE (sub-tp/anti ST).
-}%
-
-%worlds () (wf-tp-mono _ _ _) (sub-tp-mono _ _ _ _).
-% sad!
-% %reduces B <= A (wf-tp-mono A _ B).
-% %reduces B <= A (sub-tp-mono A _ B).
-%total (A B) (wf-tp-mono A _ _) (sub-tp-mono B _ _ _).
-
-wf-tp-min-to-maybe : min X R C -> wf-tp M X G T -> maybe-wf-tp R M X G T -> type.
-%mode wf-tp-min-to-maybe +A +B -C.
-
-- : wf-tp-min-to-maybe (min/lte LE) W (maybe-wf-tp/no LE).
-- : wf-tp-min-to-maybe (min/gt LE) W (maybe-wf-tp/yes W LE).
-
-%worlds () (wf-tp-min-to-maybe _ _ _).
-%total A (wf-tp-min-to-maybe A _ _).
-
-wf-tp-minmax-to-maybe : minmax X R C D -> wf-tp M X G T -> maybe-wf-tp R M X G T -> type.
-%mode wf-tp-minmax-to-maybe +A +B -C.
-
-- : wf-tp-minmax-to-maybe (minmax/lte LE) W (maybe-wf-tp/no LE).
-- : wf-tp-minmax-to-maybe (minmax/gt LE) W (maybe-wf-tp/yes W LE).
-
-%worlds () (wf-tp-minmax-to-maybe _ _ _).
-%total A (wf-tp-minmax-to-maybe A _ _).
-
-minmax-z-wf-tp-to-maybe : minmax X R C D -> wf-tp M z G T -> maybe-wf-tp R M X G T -> type.
-%mode minmax-z-wf-tp-to-maybe +A +B -C.
-
-- : minmax-z-wf-tp-to-maybe (minmax/lte LE) W (maybe-wf-tp/no LE).
-- : minmax-z-wf-tp-to-maybe (minmax/gt LE) W (maybe-wf-tp/yes W' LE)
-     <- wf-tp-mono W lte/z W'.
-
-%worlds () (minmax-z-wf-tp-to-maybe _ _ _).
-%total A (minmax-z-wf-tp-to-maybe A _ _).
-
-z-wf-tp-to-maybe : {R}{X} wf-tp M z G T -> maybe-wf-tp R M X G T -> type.
-%mode z-wf-tp-to-maybe +A +B +C -D.
-
-- : z-wf-tp-to-maybe R X W OUT
-     <- find-minmax X R _ _ MX _ _ _ _ _
-     <- minmax-z-wf-tp-to-maybe MX W OUT.
-
-%worlds () (z-wf-tp-to-maybe _ _ _ _).
-%total A (z-wf-tp-to-maybe A _ _ _).
-
-max-lte1 : max R X C -> lte R C -> type.
-%mode max-lte1 +A -B.
-
-- : max-lte1 (max/lte LE) LE'
-     <- eq-refl _ EQ
-     <- eq-lte EQ LE'.
-- : max-lte1 (max/gt (lte/s LE)) LE'
-     <- lte-inc LE LE'.
-
-%worlds () (max-lte1 _ _).
-%total A (max-lte1 A _).
-
-minmax-conseq : minmax A B C D -> lte C A -> lte C B -> lte A D -> lte B D -> type.
-%mode minmax-conseq +M -CA -CB -AD -BD.
-
-- : minmax-conseq (minmax/lte LE) EQLA LE LE EQLB
-     <- eq-refl _ EQA
-     <- eq-lte EQA EQLA
-     <- eq-refl _ EQB
-     <- eq-lte EQB EQLB.
-
-- : minmax-conseq (minmax/gt (lte/s LE)) LE' EQLB (lte/s EQLA) LE'
-     <- lte-inc LE LE'
-     <- eq-refl _ EQA
-     <- eq-lte EQA EQLA
-     <- eq-refl _ EQB
-     <- eq-lte EQB EQLB.
-
-%worlds () (minmax-conseq _ _ _ _ _).
-%total A (minmax-conseq A _ _ _ _).
-
-minmax-z-conseq : minmax z B C D -> eq z C -> eq B D -> type.
-%mode minmax-z-conseq +A -B -C.
-
-- : minmax-z-conseq (minmax/lte LE) EQA EQB
-     <- eq-refl _ EQA
-     <- eq-refl _ EQB.
-
-%worlds () (minmax-z-conseq _ _ _).
-%total A (minmax-z-conseq A _ _).
-
-wf-tp-to-maybe2 : min A B C -> wf-tp M B G T -> maybe-wf-tp B M A G T -> type.
-%mode wf-tp-to-maybe2 +A +B -C.
-
-- : wf-tp-to-maybe2 (min/lte LE) W (maybe-wf-tp/no LE).
-- : wf-tp-to-maybe2 (min/gt LE) W (maybe-wf-tp/yes W' LE)
-     <- lte-inc LE (lte/s LEX)
-     <- wf-tp-mono W LEX W'.
-
-%worlds () (wf-tp-to-maybe2 _ _ _).
-%total A (wf-tp-to-maybe2 A _ _ ).
-}%
-
 % Extract wf from subtyping
 
 extract-wf : sub-tp M R1 G1 T1 R2 G2 T2 -> wf-tp M R1 G1 T1 -> wf-tp M R2 G2 T2 -> type.
@@ -2144,36 +1714,6 @@ eq-tsize-env : sametenv G G' -> tsize G S -> tsize G' S -> type.
 %total A (eq-tsize-env A _ _).
 
 %{ ------- subtyping transitivity ------ }%
-
-minmax-dia2: lte (s X) A -> lte X B -> {C}{D} minmax A B C D -> lte C D -> lte X C -> lte A D -> lte B D -> type.
-%mode minmax-dia2 +A +B -C -D -E -F -G -H -I.
-
-- : minmax-dia2 (lte/s lte/z) lte/z C D E F lte/z I J
-     <- find-minmax _ _ C D E F G H I J.
-
-- : minmax-dia2 (lte/s A) (lte/s B) (s C) (s D) E' (lte/s F) (lte/s G) (lte/s H) (lte/s I)
-     <- minmax-dia2 A B C D E F G H I
-     <- minmax-inc E E'.
-
-%worlds () (minmax-dia2 _ _ _ _ _ _ _ _ _).
-%total A (minmax-dia2 A _ _ _ _ _ _ _ _).
-
-
-new-minmax : lte R1 R -> minmax V R1 V1' R1' -> minmax V R V' R' -> lte R R' -> lte R1' R' -> lte V1' V' -> type.
-%mode new-minmax +A +B -C -D -E -F.
-
-- : new-minmax LE1 (minmax/lte LE) (minmax/lte LE') EQLD LE1 EQLF
-     <- lte-trans LE LE1 LE'
-     <- eq-refl _ EQD
-     <- eq-lte EQD EQLD
-     <- eq-refl _ EQF
-     <- eq-lte EQF EQLF.
-
-- : new-minmax LE1 (minmax/gt LE) MX I H G
-     <- minmax-dia2 LE LE1 _ _ MX F G H I.
-
-%worlds () (new-minmax _ _ _ _ _ _).
-%total A (new-minmax _ A _ _ _ _).
 
 eq-pev2: same TB TB' -> path-eval M G E (rect N TA TB) -> path-eval M G E (rect N TA TB') -> type.
 %mode eq-pev2 +A +B -C.
@@ -2538,23 +2078,6 @@ widen-mode-sub-tp : sub-tp strict R1 G1 T1 R2 G2 T2 -> sub-tp lenient R1 G1 T1 R
 
 - : widen-mode-sub-tp (sub-tp/recv A) (sub-tp/recv A')
      <- widen-mode-sub-tp A A'.
-
-%{
-- : widen-mode-sub-tp (sub-tp/tselx-strict A G2 G1 P2 P1)
-     (sub-tp/tsel1
-        (wf-tp/tsel OW2 G2 P2')
-        W1'
-        (sub-tp/tsel2-lenient WU1' W2' BU' G2 P2' (minmax/lte lte/z))
-        G1 P1' (minmax/lte lte/z))
-     <- widen-mode-path-eval P1 P1'
-     <- widen-mode-path-eval P2 P2'
-     <- widen-mode-sub-tp A (sub-tp/rect BU BS B2 B1)
-     <- extract-wf (sub-tp/rect BU BS B2 B1) W1' W2'
-     <- extract-wf BU WU1 WU2
-     <- sub-tp-mono BU lte/z BU'
-     <- wf-tp-mono WU1 lte/z WU1'
-     <- z-wf-tp-to-maybe _ _ W2' OW2.
-}%
 
 - : widen-mode-sub-tp (sub-tp/tbind2 C B A N) (sub-tp/tbind2 C' B' A' N)
      <- widen-mode-sub-tp A A'
