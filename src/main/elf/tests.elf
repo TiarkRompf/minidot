@@ -423,3 +423,51 @@ wf-tp strict
                (arrow z top (tsel (var z) (s z)))) (rect z bot top))
        tnil)
    (tsel (var z) (s z)). 
+
+%query 1 1
+sub-tp strict non
+   (tcons (tsel (var z) (s (s z)))
+       (tcons top
+           (tcons
+               (bind z
+                   (and (arrow z top (tsel (var z) (s (s z))))
+                       (rect (s (s z))
+                           (bind (s z)
+                               (arrow (s z) top (tsel (var z) (s (s z)))))
+                           (bind (s z)
+                               (arrow (s z) top (tsel (var z) (s (s z))))))))
+               tnil)))
+   (arrow (s z) top (tsel (var z) (s (s z)))) (somen z non)
+   (tcons (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+       (tcons
+           (bind z
+               (and (arrow z top (tsel (var z) (s (s z))))
+                   (rect (s (s z))
+                       (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+                       (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))))
+           tnil))
+   (arrow (s z) top (tsel (var z) (s (s z)))). 
+
+%query 1 1
+sub-tp strict non
+   (tcons (tsel (var z) (s (s z)))
+       (tcons top
+           (tcons
+               (bind z
+                   (and (arrow z top (tsel (var z) (s (s z))))
+                       (rect (s (s z))
+                           (bind (s z)
+                               (arrow (s z) top (tsel (var z) (s (s z)))))
+                           (bind (s z)
+                               (arrow (s z) top (tsel (var z) (s (s z))))))))
+               tnil)))
+   (tsel (var z) (s (s z))) (somen z non)
+   (tcons (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+       (tcons
+           (bind z
+               (and (arrow z top (tsel (var z) (s (s z))))
+                   (rect (s (s z))
+                       (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+                       (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))))
+           tnil))
+   (tsel (var z) (s (s z))). 
