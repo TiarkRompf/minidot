@@ -322,6 +322,8 @@ sub-tp/tselx-rec : sub-tp M R G1 (tsel (var X) N) R G2 (tsel (var X) N)
              <- path-eval M G2 (var X) (rect N TA2 TB)
              <- sub-env-size (tcons Z1 GX) (s X) G1
              <- sub-env-size (tcons Z2 GX) (s X) G2
+             <- wf-tp M R (tcons Z1 GX) TB
+             <- wf-tp M R (tcons Z2 GX) TB
              .
 
 sub-tp/tselx-strict : sub-tp strict R1 G1 (tsel (var X) N) R2 G2 (tsel (var X) N)
