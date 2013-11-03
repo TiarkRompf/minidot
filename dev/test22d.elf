@@ -1771,6 +1771,20 @@ eq-sub-env-size-cons : sametenv GX GX' -> sub-env-size (tcons Z GX) (s N) G -> s
 %worlds () (eq-sub-env-size-cons _ _ _).
 %total A (eq-sub-env-size-cons A _ _).
 
+shotgun1 :   meq R X
+             -> path-eval M G1 (var X) (rect N TA1 TB)
+             -> path-eval M G2 (var X) (rect N TA2 TB)
+             -> sub-env-size (tcons Z1 GX) (s X) G1
+             -> sub-env-size (tcons Z2 GX) (s X) G2
+             -> sub-tp M R (tcons Z2 GX) TB R' G' T'
+             -> sub-tp M R (tcons Z1 GX) TB R' G' T'
+             -> type.
+%mode shotgun1 +A +B +C +D +E +F -G.
+%worlds () (shotgun1 _ _ _ _ _ _ _).
+%trustme
+%total A (shotgun1 _ _ _ _ _ A _).
+
+
 sub-tp-trans-aux1 :
   %% Inputs
   sub-tp lenient R1 G1 T1 R2 G2 T2 ->
@@ -1917,21 +1931,27 @@ sub-tp-trans-aux2 :
    <- meqne-false MEQ MNE CONTRA
    <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
 
-%{
 -/tselx-rec1 : sub-tp-trans-aux1
    (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA)
-   (sub-tp/tsel1 WB2 STB23 (some-if/meq MEQB2) GB2 PB2)
-   (sub-tp/tsel1 WC3 STC13 (some-if/meq MEQA) GA1 PA1)
-   <- path-eval-eq PA2 PB2 EQR
+   (sub-tp/tsel1 (maybe-wf-tp/no MEQ) STB23 (some-if/meq MEQB2) GB2 PB2)
+   (sub-tp/tsel1 (maybe-wf-tp/no MEQA) STC13 (some-if/meq MEQA) GA1 PA1)
+   <- sub-env-size-eq GB2 GA2 EQG2
+   <- eq-low-env EQG2 STB23 STB23'
+   <- path-eval-eq PB2 PA2 EQR
    <- rect-same-all-same EQR EQS EQU
-   <- eq-pev2 EQU PA2 PA2'
-   <- sub-env-size-eq GA2 GB2 EQG2
-   <- tcons-sametenv-eq EQG2 EQG.
-}%
+   <- eq-low EQU STB23' STB23''
+   <- shotgun1 MEQA PA1 PA2 GA1 GA2 STB23'' STC13.
 
 -/tselx-rec1 : sub-tp-trans-aux1
    (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2)
    (sub-tp/tsel1 WB2 STB23 (some-if/mne MNEB2) GB2 PB2)
+   OUT
+   <- meqne-false MEQA2 MNEB2 CONTRA
+   <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
+
+-/tselx-rec1 : sub-tp-trans-aux1
+   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2)
+   (sub-tp/tsel1 (maybe-wf-tp/yes WB2 MNEB2) STB23 SIB2 GB2 PB2)
    OUT
    <- meqne-false MEQA2 MNEB2 CONTRA
    <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
