@@ -1920,12 +1920,14 @@ sub-tp-trans-aux2 :
 
 %{
 -/tselx-rec1 : sub-tp-trans-aux1
-   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2 MEQA1)
+   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA)
    (sub-tp/tsel1 WB2 STB23 (some-if/meq MEQB2) GB2 PB2)
-   (sub-tp/tsel1 WC3 STC13 (some-if/meq MEQA1) GA1 PA1)
+   (sub-tp/tsel1 WC3 STC13 (some-if/meq MEQA) GA1 PA1)
    <- path-eval-eq PA2 PB2 EQR
    <- rect-same-all-same EQR EQS EQU
-   <- eq-pev2 EQU PA2 PA2'.
+   <- eq-pev2 EQU PA2 PA2'
+   <- sub-env-size-eq GA2 GB2 EQG2
+   <- tcons-sametenv-eq EQG2 EQG.
 }%
 
 -/tselx-rec1 : sub-tp-trans-aux1
