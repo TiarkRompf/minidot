@@ -338,7 +338,7 @@ sub-tp/tsel1 : sub-tp M R1 G1 (tsel (var X) N) R2 G2 T2
               <- sub-env-size G1X (s X) G1
               <- some-if-mne R1' X R1
               <- sub-tp M R1' G1X TB1 R2 G2 T2
-              <- wf-tp M R1' G1X (rect N TA1 TB1)
+              <- maybe-wf-tp R1 M X G1X (rect N TA1 TB1)
               .
 
 sub-tp/tsel2-strict : sub-tp strict R1 G1 T1 R2 G2 (tsel (var X) N)
@@ -354,7 +354,7 @@ sub-tp/tsel2-lenient : sub-tp lenient R1 G1 T1 R2 G2 (tsel (var X) N)
               <- sub-env-size G2X (s X) G2
               <- some-if-mne R2' X R2
               <- sub-tp lenient R1 G1 T1 R2' G2X TB2
-              <- wf-tp lenient R2' G2X (rect N TA2 TB2)
+              <- maybe-wf-tp R2 lenient X G2X (rect N TA2 TB2)
               .
 
 sub-tp/bot  : sub-tp M R1 G1 bot R2 G2 T <- wf-tp M R2 G2 T.
@@ -1920,12 +1920,14 @@ sub-tp-trans-aux2 :
 
 %{
 -/tselx-rec1 : sub-tp-trans-aux1
-   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2 MEQA1)
+   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA)
    (sub-tp/tsel1 WB2 STB23 (some-if/meq MEQB2) GB2 PB2)
-   (sub-tp/tsel1 WC3 STC13 (some-if/meq MEQA1) GA1 PA1)
+   (sub-tp/tsel1 WC3 STC13 (some-if/meq MEQA) GA1 PA1)
    <- path-eval-eq PA2 PB2 EQR
    <- rect-same-all-same EQR EQS EQU
-   <- eq-pev2 EQU PA2 PA2'.
+   <- eq-pev2 EQU PA2 PA2'
+   <- sub-env-size-eq GA2 GB2 EQG2
+   <- tcons-sametenv-eq EQG2 EQG.
 }%
 
 -/tselx-rec1 : sub-tp-trans-aux1
