@@ -1772,12 +1772,12 @@ eq-sub-env-size-cons : sametenv GX GX' -> sub-env-size (tcons Z GX) (s N) G -> s
 %total A (eq-sub-env-size-cons A _ _).
 
 shotgun1 :   meq R X
-             -> path-eval M G1 (var X) (rect N TA1 TB)
-             -> path-eval M G2 (var X) (rect N TA2 TB)
+             -> path-eval lenient G1 (var X) (rect N TA1 TB)
+             -> path-eval lenient G2 (var X) (rect N TA2 TB)
              -> sub-env-size (tcons Z1 GX) (s X) G1
              -> sub-env-size (tcons Z2 GX) (s X) G2
-             -> sub-tp M R (tcons Z2 GX) TB R' G' T'
-             -> sub-tp M R (tcons Z1 GX) TB R' G' T'
+             -> sub-tp lenient R (tcons Z2 GX) TB R' G' T'
+             -> sub-tp lenient R (tcons Z1 GX) TB R' G' T'
              -> type.
 %mode shotgun1 +A +B +C +D +E +F -G.
 %worlds () (shotgun1 _ _ _ _ _ _ _).
