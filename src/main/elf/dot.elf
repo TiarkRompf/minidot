@@ -265,16 +265,10 @@ path-eval: mode -> tenv -> exp -> tpe -> type.
 pev  : path-eval M G E (rect N TS TU) <- tlookexp G E (rect N TS TU).
 
 
-% TODO: it's suspicious that we have different Rs.
-sub-tp/refl : sub-tp M R1 G1 T R2 G2 T  %%% ACCELERATE QUERIES !! % --
+sub-tp/refl : sub-tp M R G1 T R G2 T  %%% ACCELERATE QUERIES !! % --
                <- sub-env G G1 % --
                <- sub-env G G2 % --
-               <- wf-tp M R1 G T % --
-               <- wf-tp M R2 G T. % --
-
-
-sub-tp/bot  : sub-tp M R1 G1 bot R2 G2 T <- wf-tp M R2 G2 T.
-sub-tp/top  : sub-tp M R1 G1 T R2 G2 top <- wf-tp M R1 G1 T.
+               <- wf-tp M R G T. % --
 
 sub-tp/fun  : sub-tp M R1 G1 (arrow N TA1 TB1) R2 G2 (arrow N TA2 TB2)
               <- sub-tp M R2 G2 TA2 R1 G1 TA1
@@ -292,29 +286,9 @@ sub-tp/recv : sub-tp M R1 G1 (recv N T1) R2 G2 (recv N T2)
               <- sub-tp M R1 G1 T1 R2 G2 T2.
 
 
-sub-tp/tbind2 : sub-tp M R1 G1 T1 R2 G2 (bind N TN)
-             <- sub-env-size G0 N G2
-             <- sub-tp M R1 G1 T1 R2 (tcons (bind N TN) G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
-             <- sub-tp M R1 G1 T1 R2 G1' T1'                     %% built-in slack (trans: T1-bind2)
-             <- sub-tp M R1 G1 T1 R2 (tcons (bind N T1') G0) TN
-             .
-
-sub-tp/tbind1 : sub-tp M R1 G1 (bind N TN) R2 G2 T2
-              <- sub-env-size G0 N G1
-              <- sub-tp M R1 (tcons (bind N TN) G0) TN R2 G2 T2
-              .
-
 sub-tp/and2 : sub-tp M R1 G1 T1 R2 G2 (and TA2 TB2)
               <- sub-tp M R1 G1 T1 R2 G2 TB2
               <- sub-tp M R1 G1 T1 R2 G2 TA2.
-
-sub-tp/and1a : sub-tp M R1 G1 (and TA1 TB1) R2 G2 T2
-              <- sub-tp M R1 G1 TA1 R2 G2 T2
-              <- wf-tp M R1 G1 TB1.
-
-sub-tp/and1b : sub-tp M R1 G1 (and TA1 TB1) R2 G2 T2
-              <- sub-tp M R1 G1 TB1 R2 G2 T2
-              <- wf-tp M R1 G1 TA1.
 
 sub-tp/tselx-rec : sub-tp M R1 G1 (tsel (var X) N) R2 G2 (tsel (var X) N)
              <- meq R1 X
@@ -333,6 +307,28 @@ sub-tp/tselx-strict : sub-tp strict R1 G1 (tsel (var X) N) R2 G2 (tsel (var X) N
              <- sub-env-size G1X (s X) G1
              <- sub-env-size G2X (s X) G2
              <- sub-tp strict (somen X R1) G1X (rect N TA1 TB1) (somen X R2) G2X (rect N TA2 TB2).
+
+sub-tp/tbind1 : sub-tp M R1 G1 (bind N TN) R2 G2 T2
+              <- sub-env-size G0 N G1
+              <- sub-tp M R2 (tcons (bind N TN) G0) TN R2 G2 T2
+              .
+
+sub-tp/tbind2 : sub-tp M R1 G1 T1 R2 G2 (bind N TN)
+             <- sub-env-size G0 N G2
+             <- sub-tp M R1 G1 T1 R1 (tcons (bind N TN) G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
+             <- sub-tp M R1 G1 T1 R1' G1' T1'                     %% built-in slack (trans: T1-bind2)
+             <- sub-tp M R1 G1 T1 R1' (tcons (bind N T1') G0) TN
+             <- wf-tp M R2 G2 (bind N TN)
+             .
+
+sub-tp/and1a : sub-tp M R1 G1 (and TA1 TB1) R2 G2 T2
+              <- sub-tp M R1 G1 TA1 R2 G2 T2
+              <- wf-tp M R1 G1 TB1.
+
+sub-tp/and1b : sub-tp M R1 G1 (and TA1 TB1) R2 G2 T2
+              <- sub-tp M R1 G1 TB1 R2 G2 T2
+              <- wf-tp M R1 G1 TA1.
+
 
 sub-tp/tsel1 : sub-tp M R1 G1 (tsel (var X) N) R2 G2 T2
               <- mne R1 X
@@ -361,6 +357,8 @@ sub-tp/tsel2-lenient : sub-tp lenient R1 G1 T1 R2 G2 (tsel (var X) N)
               <- wf-tp lenient R1 G1 T1
               .
 
+sub-tp/bot  : sub-tp M R1 G1 bot R2 G2 T <- wf-tp M R2 G2 T.
+sub-tp/top  : sub-tp M R1 G1 T R2 G2 top <- wf-tp M R1 G1 T.
 
 wf-tp/top  : wf-tp M R G top.
 wf-tp/bot  : wf-tp M R G bot.
