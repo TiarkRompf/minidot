@@ -471,3 +471,25 @@ sub-tp strict non
                        (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))))
            tnil))
    (tsel (var z) (s (s z))). 
+
+%query 1 1
+sub-tp strict (somen z non)
+   (tcons
+       (bind z
+           (and
+               (rect (s (s z))
+                   (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+                   (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))
+               (arrow z top (tsel (var z) (s (s z))))))
+       tnil)
+   (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))) non
+   (tcons (tsel (var z) (s (s z)))
+       (tcons
+           (bind z
+               (and
+                   (rect (s (s z))
+                       (bind (s z) (arrow (s z) top (tsel (var z) (s (s z)))))
+                       (bind (s z) (arrow (s z) top (tsel (var z) (s (s z))))))
+                   (arrow z top (tsel (var z) (s (s z))))))
+           tnil))
+   (arrow (s z) X7426 (tsel (var z) (s (s z)))). 
