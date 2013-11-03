@@ -1491,6 +1491,13 @@ lte-trans : lte A B -> lte B C -> lte A C -> type.
 %worlds () (lte-trans _ _ _).
 %total A (lte-trans A _ _).
 
+to-maybe : wf-tp M R' G T -> some-if-mne R' X R -> maybe-wf-tp R M X G T -> type.
+%mode to-maybe +A +B -C.
+- : to-maybe W (some-if/mne MNE) (maybe-wf-tp/yes W MNE).
+- : to-maybe W (some-if/meq MEQ) (maybe-wf-tp/no MEQ).
+%worlds () (to-maybe _ _ _).
+%total A (to-maybe _ A _).
+
 % Extract wf from subtyping
 
 extract-wf : sub-tp M R1 G1 T1 R2 G2 T2 -> wf-tp M R1 G1 T1 -> wf-tp M R2 G2 T2 -> type.
@@ -1508,27 +1515,19 @@ extract-wf : sub-tp M R1 G1 T1 R2 G2 T2 -> wf-tp M R1 G1 T1 -> wf-tp M R2 G2 T2 
 - : extract-wf (sub-tp/recv ST) (wf-tp/recv W1) (wf-tp/recv W2)
       <- extract-wf ST W1 W2.
 
-- : extract-wf (sub-tp/tsel1 W1 ST (some-if/mne MNE) G P)
-     (wf-tp/tsel (maybe-wf-tp/yes W1 MNE) G P) W2
+- : extract-wf (sub-tp/tsel1 W1 ST SI G P)
+     (wf-tp/tsel W1 G P) W2
      <- extract-wf ST _ W2.
 
 - : extract-wf (sub-tp/tsel2-strict W2 ST (some-if/mne MNE) G P)
       W1 (wf-tp/tsel (maybe-wf-tp/yes W2 MNE) G P)
      <- extract-wf ST W1 _.
 
-- : extract-wf (sub-tp/tsel2-lenient W2 ST (some-if/mne MNE) G P)
-      W1 (wf-tp/tsel (maybe-wf-tp/yes W2 MNE) G P)
+- : extract-wf (sub-tp/tsel2-lenient W2 ST SI G P)
+      W1 (wf-tp/tsel W2 G P)
      <- extract-wf ST W1 _.
-
-- : extract-wf (sub-tp/tsel1 W1 ST (some-if/meq MEQ) G P)
-     (wf-tp/tsel (maybe-wf-tp/no MEQ) G P) W2
-     <- extract-wf ST _ W2.
 
 - : extract-wf (sub-tp/tsel2-strict W2 ST (some-if/meq MEQ) G P)
-      W1 (wf-tp/tsel (maybe-wf-tp/no MEQ) G P)
-     <- extract-wf ST W1 _.
-
-- : extract-wf (sub-tp/tsel2-lenient W2 ST (some-if/meq MEQ) G P)
       W1 (wf-tp/tsel (maybe-wf-tp/no MEQ) G P)
      <- extract-wf ST W1 _.
 
@@ -1671,8 +1670,8 @@ sub-tp-refl :
 
 -/tsel: sub-tp-refl (wf-tp/tsel (maybe-wf-tp/yes (wf-tp/rect B WU WS) MNE) G P)
         (sub-tp/tsel1
-           (wf-tp/rect B WU WS)
-           (sub-tp/tsel2-lenient (wf-tp/rect B WU WS) BU (some-if/mne MNE) G P) (some-if/mne MNE) G P)
+           (maybe-wf-tp/yes (wf-tp/rect B WU WS) MNE)
+           (sub-tp/tsel2-lenient (maybe-wf-tp/yes (wf-tp/rect B WU WS) MNE) BU (some-if/mne MNE) G P) (some-if/mne MNE) G P)
    <- sub-tp-refl WU BU.
 
 -/tbind: sub-tp-refl (wf-tp/tbind WU S)
@@ -1771,6 +1770,32 @@ eq-sub-env-size-cons : sametenv GX GX' -> sub-env-size (tcons Z GX) (s N) G -> s
 - : eq-sub-env-size-cons identtenv S S.
 %worlds () (eq-sub-env-size-cons _ _ _).
 %total A (eq-sub-env-size-cons A _ _).
+
+shotgun1 :   meq R X
+             -> path-eval M G1 (var X) (rect N TA1 TB)
+             -> path-eval M G2 (var X) (rect N TA2 TB)
+             -> sub-env-size (tcons Z1 GX) (s X) G1
+             -> sub-env-size (tcons Z2 GX) (s X) G2
+             -> sub-tp M R (tcons Z2 GX) TB R' G' T'
+             -> sub-tp M R (tcons Z1 GX) TB R' G' T'
+             -> type.
+%mode shotgun1 +A +B +C +D +E +F -G.
+%worlds () (shotgun1 _ _ _ _ _ _ _).
+%trustme
+%total A (shotgun1 _ _ _ _ _ A _).
+
+shotgun2 :   meq R X
+             -> path-eval lenient G1 (var X) (rect N TA1 TB)
+             -> path-eval lenient G2 (var X) (rect N TA2 TB)
+             -> sub-env-size (tcons Z1 GX) (s X) G1
+             -> sub-env-size (tcons Z2 GX) (s X) G2
+             -> sub-tp lenient R' G' T' R (tcons Z1 GX) TB
+             -> sub-tp lenient R' G' T' R (tcons Z2 GX) TB
+             -> type.
+%mode shotgun2 +A +B +C +D +E +F -G.
+%worlds () (shotgun2 _ _ _ _ _ _ _).
+%trustme
+%total A (shotgun2 _ _ _ _ _ A _).
 
 sub-tp-trans-aux1 :
   %% Inputs
@@ -1918,17 +1943,16 @@ sub-tp-trans-aux2 :
    <- meqne-false MEQ MNE CONTRA
    <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
 
-%{
 -/tselx-rec1 : sub-tp-trans-aux1
    (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA)
-   (sub-tp/tsel1 WB2 STB23 (some-if/meq MEQB2) GB2 PB2)
-   (sub-tp/tsel1 WC3 STC13 (some-if/meq MEQA) GA1 PA1)
-   <- path-eval-eq PA2 PB2 EQR
+   (sub-tp/tsel1 (maybe-wf-tp/no MEQ) STB23 (some-if/meq MEQB2) GB2 PB2)
+   (sub-tp/tsel1 (maybe-wf-tp/no MEQA) STC13 (some-if/meq MEQA) GA1 PA1)
+   <- sub-env-size-eq GB2 GA2 EQG2
+   <- eq-low-env EQG2 STB23 STB23'
+   <- path-eval-eq PB2 PA2 EQR
    <- rect-same-all-same EQR EQS EQU
-   <- eq-pev2 EQU PA2 PA2'
-   <- sub-env-size-eq GA2 GB2 EQG2
-   <- tcons-sametenv-eq EQG2 EQG.
-}%
+   <- eq-low EQU STB23' STB23''
+   <- shotgun1 MEQA PA1 PA2 GA1 GA2 STB23'' STC13.
 
 -/tselx-rec1 : sub-tp-trans-aux1
    (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2)
@@ -1937,8 +1961,33 @@ sub-tp-trans-aux2 :
    <- meqne-false MEQA2 MNEB2 CONTRA
    <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
 
+-/tselx-rec1 : sub-tp-trans-aux1
+   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2)
+   (sub-tp/tsel1 (maybe-wf-tp/yes WB2 MNEB2) STB23 SIB2 GB2 PB2)
+   OUT
+   <- meqne-false MEQA2 MNEB2 CONTRA
+   <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
+
+-/tselx-rec2 : sub-tp-trans-aux1
+   (sub-tp/tsel2-lenient (maybe-wf-tp/no MEQ) STB12 (some-if/meq MEQB2) GB2 PB2)
+   (sub-tp/tselx-rec GA3 GA2 PA3 PA2 MEQA)
+   (sub-tp/tsel2-lenient (maybe-wf-tp/no MEQA) STC13 (some-if/meq MEQA) GA3 PA3)
+   <- sub-env-size-eq GB2 GA2 EQG2
+   <- eq-high-env EQG2 STB12 STB12'
+   <- path-eval-eq PB2 PA2 EQR
+   <- rect-same-all-same EQR EQS EQU
+   <- eq-high EQU STB12' STB12''
+   <- shotgun2 MEQA PA2 PA3 GA2 GA3 STB12'' STC13.
+
 -/tselx-rec2 : sub-tp-trans-aux1
    (sub-tp/tsel2-lenient WB2 STB12 (some-if/mne MNEB2) GB2 PB2)
+   (sub-tp/tselx-rec GA3 GA2 PA3 PA2 MEQA2)
+   OUT
+   <- meqne-false MEQA2 MNEB2 CONTRA
+   <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
+
+-/tselx-rec2 : sub-tp-trans-aux1
+   (sub-tp/tsel2-lenient (maybe-wf-tp/yes WB2 MNEB2) STB12 SIB2 GB2 PB2)
    (sub-tp/tselx-rec GA3 GA2 PA3 PA2 MEQA2)
    OUT
    <- meqne-false MEQA2 MNEB2 CONTRA
@@ -2045,14 +2094,13 @@ sub-tp-trans-aux2 :
       A
       (sub-tp/tsel2-lenient W3 B G P MNE)
       (sub-tp/tsel2-lenient W3 C G P MNE)
-      <- sub-tp-trans-aux2 A B C
-      <- extract-wf A W1 _.
+      <- sub-tp-trans-aux2 A B C.
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
-%{
+
 -/tsel2-tsel1 : sub-tp-trans-aux2
-      (sub-tp/tsel2-lenient WA2 STA12 GA PA MNEA)
-      (sub-tp/tsel1 WB2 STB23 GB PB MNEB)
+      (sub-tp/tsel2-lenient WA2 STA12 (some-if/mne _) GA PA)
+      (sub-tp/tsel1 WB2 STB23 (some-if/mne _) GB PB)
       OUT
    <- path-eval-eq PA PB EQR
    <- rect-same-all-same EQR EQS EQU
@@ -2061,27 +2109,93 @@ sub-tp-trans-aux2 :
    <- eq-high-env EQG STA12' STA12''
    <- sub-tp-trans-aux2 STA12'' STB23 OUT.
 
+-/tsel2-tsel1 : sub-tp-trans-aux2
+      (sub-tp/tsel2-lenient WA2 STA12 (some-if/meq _) GA PA)
+      (sub-tp/tsel1 WB2 STB23 (some-if/meq _) GB PB)
+      OUT
+   <- path-eval-eq PA PB EQR
+   <- rect-same-all-same EQR EQS EQU
+   <- sub-env-size-eq GA GB EQG
+   <- eq-high EQU STA12 STA12'
+   <- eq-high-env EQG STA12' STA12''
+   <- sub-tp-trans-aux2 STA12'' STB23 OUT.
+
+-/tsel2-tsel1 : sub-tp-trans-aux2
+      (sub-tp/tsel2-lenient WA2 STA12 (some-if/mne MNE) GA PA)
+      (sub-tp/tsel1 WB2 STB23 (some-if/meq MEQ) GB PB)
+      OUT
+   <- meqne-false MEQ MNE CONTRA
+   <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
+
+-/tsel2-tsel1 : sub-tp-trans-aux2
+      (sub-tp/tsel2-lenient WA2 STA12 (some-if/meq MEQ) GA PA)
+      (sub-tp/tsel1 WB2 STB23 (some-if/mne MNE) GB PB)
+      OUT
+   <- meqne-false MEQ MNE CONTRA
+   <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
+
 -/tselx-rec1 : sub-tp-trans-aux2
-   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2 MEQA1)
-   (sub-tp/tsel1 WB2 STB23 GB2 PB2 MNEB2)
+   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA)
+   (sub-tp/tsel1 (maybe-wf-tp/no MEQ) STB23 (some-if/meq MEQB2) GB2 PB2)
+   (sub-tp/tsel1 (maybe-wf-tp/no MEQA) STC13 (some-if/meq MEQA) GA1 PA1)
+   <- sub-env-size-eq GB2 GA2 EQG2
+   <- eq-low-env EQG2 STB23 STB23'
+   <- path-eval-eq PB2 PA2 EQR
+   <- rect-same-all-same EQR EQS EQU
+   <- eq-low EQU STB23' STB23''
+   <- shotgun1 MEQA PA1 PA2 GA1 GA2 STB23'' STC13.
+
+-/tselx-rec1 : sub-tp-trans-aux2
+   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2)
+   (sub-tp/tsel1 WB2 STB23 (some-if/mne MNEB2) GB2 PB2)
+   OUT
+   <- meqne-false MEQA2 MNEB2 CONTRA
+   <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
+
+-/tselx-rec1 : sub-tp-trans-aux2
+   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2)
+   (sub-tp/tsel1 (maybe-wf-tp/yes WB2 MNEB2) STB23 SIB2 GB2 PB2)
    OUT
    <- meqne-false MEQA2 MNEB2 CONTRA
    <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
 
 -/tselx-rec2 : sub-tp-trans-aux2
-   (sub-tp/tsel2-lenient WB2 STB12 GB2 PB2 MNEB2)
-   (sub-tp/tselx-rec GA3 GA2 PA3 PA2 MEQA3 MEQA2)
+   (sub-tp/tsel2-lenient (maybe-wf-tp/no MEQ) STB12 (some-if/meq MEQB2) GB2 PB2)
+   (sub-tp/tselx-rec GA3 GA2 PA3 PA2 MEQA)
+   (sub-tp/tsel2-lenient (maybe-wf-tp/no MEQA) STC13 (some-if/meq MEQA) GA3 PA3)
+   <- sub-env-size-eq GB2 GA2 EQG2
+   <- eq-high-env EQG2 STB12 STB12'
+   <- path-eval-eq PB2 PA2 EQR
+   <- rect-same-all-same EQR EQS EQU
+   <- eq-high EQU STB12' STB12''
+   <- shotgun2 MEQA PA2 PA3 GA2 GA3 STB12'' STC13.
+
+-/tselx-rec2 : sub-tp-trans-aux2
+   (sub-tp/tsel2-lenient WB2 STB12 (some-if/mne MNEB2) GB2 PB2)
+   (sub-tp/tselx-rec GA3 GA2 PA3 PA2 MEQA2)
+   OUT
+   <- meqne-false MEQA2 MNEB2 CONTRA
+   <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
+
+-/tselx-rec2 : sub-tp-trans-aux2
+   (sub-tp/tsel2-lenient (maybe-wf-tp/yes WB2 MNEB2) STB12 SIB2 GB2 PB2)
+   (sub-tp/tselx-rec GA3 GA2 PA3 PA2 MEQA2)
    OUT
    <- meqne-false MEQA2 MNEB2 CONTRA
    <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
 
 -/tselx-rec : sub-tp-trans-aux2
-   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2 MEQA1)
-   (sub-tp/tselx-rec GB3 GB2 PB3 PB2 MEQB3 MEQB2)
-   (sub-tp/tselx-rec GB3 GA1 PB3 PA1 MEQB3 MEQA1).
-}%
+   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA)
+   (sub-tp/tselx-rec GB3 GB2 PB3 PB2 MEQB)
+   (sub-tp/tselx-rec GB3 GC1 PB3 PC1 MEQB)
+   <- path-eval-eq PA2 PB2 EQR
+   <- rect-same-all-same EQR EQS EQU
+   <- eq-pev2 EQU PA1 PC1
+   <- sub-env-size-eq GA2 GB2 EQG2
+   <- tcons-sametenv-eq EQG2 EQG
+   <- eq-sub-env-size-cons EQG GA1 GC1.
+
 %worlds () (sub-tp-trans-aux1  _ _ _) (sub-tp-trans-aux2  _ _ _).
-%trustme
 %total [(S1 S1') (S2 S2')] (sub-tp-trans-aux1 S1 S2 _) (sub-tp-trans-aux2 S2' S1' _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
@@ -2178,25 +2292,32 @@ widen-mode-sub-tp : sub-tp strict R1 G1 T1 R2 G2 T2 -> sub-tp lenient R1 G1 T1 R
      <- widen-mode-path-eval P2 P2'.
 
 - : widen-mode-sub-tp (sub-tp/tselx-strict BR SI2 SI1 G2 G1 P2 P1)
-     (sub-tp/tsel1 (wf-tp/rect B1' WU1' WS1')
-       (sub-tp/tsel2-lenient (wf-tp/rect B2' WU2' WS2') BU' SI2 G2 P2')
+     (sub-tp/tsel1 WR1'
+       (sub-tp/tsel2-lenient WR2' BU' SI2 G2 P2')
        SI1 G1 P1')
      <- widen-mode-path-eval P1 P1'
      <- widen-mode-path-eval P2 P2'
      <- widen-mode-sub-tp BR (sub-tp/rect BU' BS' B2' B1')
      <- extract-wf B2' WS2' WU2'
-     <- extract-wf B1' WS1' WU1'.
+     <- extract-wf B1' WS1' WU1'
+     <- to-maybe (wf-tp/rect B1' WU1' WS1') SI1 WR1'
+     <- to-maybe (wf-tp/rect B2' WU2' WS2') SI2 WR2'.
 
-- : widen-mode-sub-tp (sub-tp/tsel1 W A SI G P) (sub-tp/tsel1 W' A' SI G P')
+- : widen-mode-sub-tp (sub-tp/tsel1 (maybe-wf-tp/yes W MNE) A SI G P) (sub-tp/tsel1 (maybe-wf-tp/yes W' MNE) A' SI G P')
      <- widen-mode-path-eval P P'
      <- widen-mode-sub-tp A A'
      <- widen-mode-wf-tp W W'.
 
-- : widen-mode-sub-tp (sub-tp/tsel2-strict WR A SI G P) (sub-tp/tsel2-lenient (wf-tp/rect BSU' WU' WS') A' SI G P')
+- : widen-mode-sub-tp (sub-tp/tsel1 (maybe-wf-tp/no MEQ) A SI G P) (sub-tp/tsel1 (maybe-wf-tp/no MEQ) A' SI G P')
+     <- widen-mode-path-eval P P'
+     <- widen-mode-sub-tp A A'.
+
+- : widen-mode-sub-tp (sub-tp/tsel2-strict WR A SI G P) (sub-tp/tsel2-lenient WR' A' SI G P')
      <- widen-mode-path-eval P P'
      <- widen-mode-sub-tp A AS'
      <- widen-mode-wf-tp WR (wf-tp/rect BSU' WU' WS')
-     <- sub-tp-trans-aux1 AS' BSU' A'.
+     <- sub-tp-trans-aux1 AS' BSU' A'
+     <- to-maybe (wf-tp/rect BSU' WU' WS') SI WR'.
 
 - : widen-mode-sub-tp (sub-tp/top W) (sub-tp/top W')
      <- widen-mode-wf-tp W W'.
