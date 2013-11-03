@@ -1913,6 +1913,7 @@ sub-tp-trans-aux2 :
    <- meqne-false MEQ MNE CONTRA
    <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
 
+%{
 -/tselx-rec1 : sub-tp-trans-aux1
    (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2 MEQA1)
    (sub-tp/tsel1 WB2 STB23 (some-if/meq MEQB2) GB2 PB2)
@@ -1920,6 +1921,7 @@ sub-tp-trans-aux2 :
    <- path-eval-eq PA2 PB2 EQR
    <- rect-same-all-same EQR EQS EQU
    <- eq-pev2 EQU PA2 PA2'.
+}%
 
 -/tselx-rec1 : sub-tp-trans-aux1
    (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2 MEQA1)
@@ -2069,6 +2071,7 @@ sub-tp-trans-aux2 :
    (sub-tp/tselx-rec GB3 GA1 PB3 PA1 MEQB3 MEQA1).
 }%
 %worlds () (sub-tp-trans-aux1  _ _ _) (sub-tp-trans-aux2  _ _ _).
+%trustme
 %total [(S1 S1') (S2 S2')] (sub-tp-trans-aux1 S1 S2 _) (sub-tp-trans-aux2 S2' S1' _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
@@ -2164,32 +2167,25 @@ widen-mode-sub-tp : sub-tp strict R1 G1 T1 R2 G2 T2 -> sub-tp lenient R1 G1 T1 R
      <- widen-mode-path-eval P1 P1'
      <- widen-mode-path-eval P2 P2'.
 
-- : widen-mode-sub-tp (sub-tp/tselx-strict BR (some-if/mne MNE2) (some-if/mne MNE1) G2 G1 P2 P1)
+- : widen-mode-sub-tp (sub-tp/tselx-strict BR SI2 SI1 G2 G1 P2 P1)
      (sub-tp/tsel1 (wf-tp/rect B1' WU1' WS1')
-       (sub-tp/tsel2-lenient (wf-tp/rect B2' WU2' WS2') BU' G2 P2' MNE2)
-       G1 P1' MNE1)
+       (sub-tp/tsel2-lenient (wf-tp/rect B2' WU2' WS2') BU' SI2 G2 P2')
+       SI1 G1 P1')
      <- widen-mode-path-eval P1 P1'
      <- widen-mode-path-eval P2 P2'
      <- widen-mode-sub-tp BR (sub-tp/rect BU' BS' B2' B1')
      <- extract-wf B2' WS2' WU2'
      <- extract-wf B1' WS1' WU1'.
 
-- : widen-mode-sub-tp (sub-tp/tselx-strict BR (some-if/meq MEQ2) (some-if/meq MEQ1) G2 G1 P2 P1)
-     (sub-tp/tselx-rec G2 G1 P2' P1' MEQ2 MEQ1)
-     <- widen-mode-path-eval P1 P1'
-     <- widen-mode-path-eval P2 P2'.
-
-- : widen-mode-sub-tp (sub-tp/tsel1 W A G P MNE) (sub-tp/tsel1 W' A' G P' MNE)
+- : widen-mode-sub-tp (sub-tp/tsel1 W A SI G P) (sub-tp/tsel1 W' A' SI G P')
      <- widen-mode-path-eval P P'
      <- widen-mode-sub-tp A A'
      <- widen-mode-wf-tp W W'.
 
-- : widen-mode-sub-tp (sub-tp/tsel2-strict (wf-tp/rect BSU WU WS) A G P MNE) (sub-tp/tsel2-lenient W' A' G P' MNE)
+- : widen-mode-sub-tp (sub-tp/tsel2-strict WR A SI G P) (sub-tp/tsel2-lenient (wf-tp/rect BSU' WU' WS') A' SI G P')
      <- widen-mode-path-eval P P'
      <- widen-mode-sub-tp A AS'
-     <- widen-mode-sub-tp BSU BSU'
-     <- widen-mode-wf-tp (wf-tp/rect BSU WU WS) W'
-     <- widen-mode-wf-tp WS WS'
+     <- widen-mode-wf-tp WR (wf-tp/rect BSU' WU' WS')
      <- sub-tp-trans-aux1 AS' BSU' A'.
 
 - : widen-mode-sub-tp (sub-tp/top W) (sub-tp/top W')
@@ -2205,7 +2201,6 @@ widen-mode-sub-tp : sub-tp strict R1 G1 T1 R2 G2 T2 -> sub-tp lenient R1 G1 T1 R
      <- extend-sub-tp2-mult ST' S2 ST''.
 
 %worlds () (widen-mode-wf-tp _ _) (widen-mode-path-eval _ _) (widen-mode-sub-tp _ _).
-%trustme
 %total (A B C) (widen-mode-wf-tp A _) (widen-mode-path-eval B _) (widen-mode-sub-tp C _).
 
 %{ ------- type safety proof ----- }%
