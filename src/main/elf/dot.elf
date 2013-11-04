@@ -379,6 +379,14 @@ sub-tp/tsel2-lenient : sub-tp tnone lenient R1 G1 T1 R2 G2 (tsel (var X) N)
 
 sub-tp/bot  : sub-tp O M R1 G1 bot R2 G2 T <- wf-tp M R2 G2 T.
 
+% this is to account for bind reflexivity with arbitrary O
+% while restricting the rules for binds and O
+
+sub-tp/tbind-refl : sub-tp O M R G1 (bind N TN) R G2 (bind N TN)
+              <- sub-env-size G0 N G1
+              <- sub-env-size G0 N G2
+              <- wf-tp M R (tcons (bind N TN) G0) TN.
+
 wf-tp/top  : wf-tp M R G top.
 wf-tp/bot  : wf-tp M R G bot.
 
@@ -1438,6 +1446,11 @@ extend-sub-tp: sub-tp O M R1 G1 T1 R2 G2 T2 -> {Z: tpe}
      (sub-tp/refl W S2 (sub-env/ext S1))
      (sub-tp/refl W (sub-env/ext S2) S1).
 
+- : extend-sub-tp (sub-tp/tbind-refl W (ses N2 S2) (ses N1 S1)) T
+     (sub-tp/tbind-refl W (ses N2 (sub-env/ext S2)) (ses N1 (sub-env/ext S1)))
+     (sub-tp/tbind-refl W (ses N2 S2) (ses N1 (sub-env/ext S1)))
+     (sub-tp/tbind-refl W (ses N2 (sub-env/ext S2)) (ses N1 S1)).
+
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _)(extend-maybe-wf-tp _ _ _).
 %total (A B C D) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _)(extend-maybe-wf-tp D _ _).
 
@@ -1644,6 +1657,8 @@ extract-wf : sub-tp O lenient R1 G1 T1 R2 G2 T2 -> wf-tp lenient R1 G1 T1 -> wf-
      <- extend-wf-tp-mult W S2 W2.
 }%
 
+- : extract-wf (sub-tp/tbind-refl W S2 S1) (wf-tp/tbind W S1) (wf-tp/tbind W S2).
+
 %worlds () (extract-wf _ _ _).
 %total A (extract-wf A _ _).
 
@@ -1736,10 +1751,14 @@ sub-tp-refl :
          <- sub-tp-refl WU BU.
 }%
 
+%{
 -/tbind: sub-tp-refl (wf-tp/tbind WU S) O
           (sub-tp/tbind1
              (sub-tp/tbind2 R R R S) S)
           <- sub-tp-refl WU O R.
+}%
+
+-/tbind: sub-tp-refl (wf-tp/tbind WU S) O (sub-tp/tbind-refl WU S S).
 
 -/tand: sub-tp-refl (wf-tp/and W1 W2) O (sub-tp/and2 (sub-tp/and1a W2 ST1) (sub-tp/and1b W1 ST2))
    <- sub-tp-refl W1 O ST1
@@ -1832,7 +1851,7 @@ eq-sub-env-size-cons : sametenv GX GX' -> sub-env-size (tcons Z GX) (s N) G -> s
 %worlds () (eq-sub-env-size-cons _ _ _).
 %total A (eq-sub-env-size-cons A _ _).
 
-eq-sub-env-size : sametenv GX GX' -> sub-env-size GX (s N) G -> sub-env-size GX' (s N) G -> type.
+eq-sub-env-size : sametenv GX GX' -> sub-env-size GX N G -> sub-env-size GX' N G -> type.
 %mode eq-sub-env-size +A +B -C.
 - : eq-sub-env-size identtenv S S.
 %worlds () (eq-sub-env-size _ _ _).
@@ -1902,6 +1921,31 @@ sub-tp-trans-tsel-aux2 :
        <- eq-sametenv-cons EQG _ EQG'
        <- eq-high-env EQG' SU SU'
        <- sub-tp-trans-tsel-aux1 SU' A2 A3.
+
+-/tbind-refl1 : sub-tp-trans-tsel-aux1
+       (sub-tp/tbind-refl WA SA2 SA1) 
+       (sub-tp/tbind-refl WB SB3 SB2) 
+       (sub-tp/tbind-refl WA SC3 SA1)
+      <- sub-env-size-eq SB2 SA2 EQG
+      <- eq-sub-env-size EQG SB3 SC3.
+
+-/tbind-refl1 : sub-tp-trans-tsel-aux1
+       (sub-tp/tbind-refl W SA2 SA1) 
+       (sub-tp/tbind1 B SB2)
+       (sub-tp/tbind1 C SA1)
+      <- sub-env-size-eq SB2 SA2 EQG
+      <- eq-sametenv-cons EQG _ EQG'
+      <- eq-low-env EQG' B C.
+
+-/tbind-refl2 : sub-tp-trans-tsel-aux1
+       (sub-tp/tbind2 A B C SB2)
+       (sub-tp/tbind-refl W SA3 SA2) 
+       (sub-tp/tbind2 A' B C' SA3)
+      <- sub-env-size-eq SB2 SA2 EQG
+      <- eq-sametenv-cons EQG _ EQGA
+      <- eq-sametenv-cons EQG _ EQGC
+      <- eq-high-env EQGA A A'
+      <- eq-high-env EQGC C C'.
 
 -/tand1a : sub-tp-trans-tsel-aux1
       (sub-tp/and1a W1 SBT1)
@@ -2019,6 +2063,31 @@ sub-tp-trans-tsel-aux2 :
        <- eq-sametenv-cons EQG _ EQG'
        <- eq-high-env EQG' SU SU'
        <- sub-tp-trans-tsel-aux2 SU' A2 A3.
+
+-/tbind-refl1 : sub-tp-trans-tsel-aux2
+       (sub-tp/tbind-refl WA SA2 SA1) 
+       (sub-tp/tbind-refl WB SB3 SB2) 
+       (sub-tp/tbind-refl WA SC3 SA1)
+      <- sub-env-size-eq SB2 SA2 EQG
+      <- eq-sub-env-size EQG SB3 SC3.
+
+-/tbind-refl1 : sub-tp-trans-tsel-aux2
+       (sub-tp/tbind-refl W SA2 SA1) 
+       (sub-tp/tbind1 B SB2)
+       (sub-tp/tbind1 C SA1)
+      <- sub-env-size-eq SB2 SA2 EQG
+      <- eq-sametenv-cons EQG _ EQG'
+      <- eq-low-env EQG' B C.
+
+-/tbind-refl2 : sub-tp-trans-tsel-aux2
+       (sub-tp/tbind2 A B C SB2)
+       (sub-tp/tbind-refl W SA3 SA2) 
+       (sub-tp/tbind2 A' B C' SA3)
+      <- sub-env-size-eq SB2 SA2 EQG
+      <- eq-sametenv-cons EQG _ EQGA
+      <- eq-sametenv-cons EQG _ EQGC
+      <- eq-high-env EQGA A A'
+      <- eq-high-env EQGC C C'.
 
 -/tand1a : sub-tp-trans-tsel-aux2
       (sub-tp/and1a W1 SBT1)
@@ -2198,6 +2267,31 @@ sub-tp-trans-aux2 :
        <- eq-sametenv-cons EQG _ EQG'
        <- eq-high-env EQG' SU SU'
        <- sub-tp-trans-aux1 SU' A2 A3.
+
+-/tbind-refl1 : sub-tp-trans-aux1
+       (sub-tp/tbind-refl WA SA2 SA1) 
+       (sub-tp/tbind-refl WB SB3 SB2) 
+       (sub-tp/tbind-refl WA SC3 SA1)
+      <- sub-env-size-eq SB2 SA2 EQG
+      <- eq-sub-env-size EQG SB3 SC3.
+
+-/tbind-refl1 : sub-tp-trans-aux1
+       (sub-tp/tbind-refl W SA2 SA1) 
+       (sub-tp/tbind1 B SB2)
+       (sub-tp/tbind1 C SA1)
+      <- sub-env-size-eq SB2 SA2 EQG
+      <- eq-sametenv-cons EQG _ EQG'
+      <- eq-low-env EQG' B C.
+
+-/tbind-refl2 : sub-tp-trans-aux1
+       (sub-tp/tbind2 A B C SB2)
+       (sub-tp/tbind-refl W SA3 SA2) 
+       (sub-tp/tbind2 A' B C' SA3)
+      <- sub-env-size-eq SB2 SA2 EQG
+      <- eq-sametenv-cons EQG _ EQGA
+      <- eq-sametenv-cons EQG _ EQGC
+      <- eq-high-env EQGA A A'
+      <- eq-high-env EQGC C C'.
 
 -/tand1a : sub-tp-trans-aux1
       (sub-tp/and1a W1 SBT1)
@@ -2441,6 +2535,31 @@ sub-tp-trans-aux2 :
        <- eq-sametenv-cons EQG _ EQG'
        <- eq-high-env EQG' SU SU'
        <- sub-tp-trans-aux2 SU' A2 A3.
+
+-/tbind-refl1 : sub-tp-trans-aux2
+       (sub-tp/tbind-refl WA SA2 SA1) 
+       (sub-tp/tbind-refl WB SB3 SB2) 
+       (sub-tp/tbind-refl WA SC3 SA1)
+      <- sub-env-size-eq SB2 SA2 EQG
+      <- eq-sub-env-size EQG SB3 SC3.
+
+-/tbind-refl1 : sub-tp-trans-aux2
+       (sub-tp/tbind-refl W SA2 SA1) 
+       (sub-tp/tbind1 B SB2)
+       (sub-tp/tbind1 C SA1)
+      <- sub-env-size-eq SB2 SA2 EQG
+      <- eq-sametenv-cons EQG _ EQG'
+      <- eq-low-env EQG' B C.
+
+-/tbind-refl2 : sub-tp-trans-aux2
+       (sub-tp/tbind2 A B C SB2)
+       (sub-tp/tbind-refl W SA3 SA2) 
+       (sub-tp/tbind2 A' B C' SA3)
+      <- sub-env-size-eq SB2 SA2 EQG
+      <- eq-sametenv-cons EQG _ EQGA
+      <- eq-sametenv-cons EQG _ EQGC
+      <- eq-high-env EQGA A A'
+      <- eq-high-env EQGC C C'.
 
 -/tand1a : sub-tp-trans-aux2
       (sub-tp/and1a W1 SBT1)
@@ -2784,6 +2903,9 @@ widen-mode-sub-tp : sub-tp O strict R1 G1 T1 R2 G2 T2 -> sub-tp O lenient R1 G1 
      <- sub-tp-refl W' _ ST
      <- extend-sub-tp1-mult ST S1 ST'
      <- extend-sub-tp2-mult ST' S2 ST''.
+
+- : widen-mode-sub-tp (sub-tp/tbind-refl W S2 S1) (sub-tp/tbind-refl W' S2 S1)
+     <- widen-mode-wf-tp W W'.
 
 %worlds () (widen-mode-wf-tp _ _) (widen-mode-path-eval _ _) (widen-mode-sub-tp _ _).
 %total (A B C) (widen-mode-wf-tp A _) (widen-mode-path-eval B _) (widen-mode-sub-tp C _).
