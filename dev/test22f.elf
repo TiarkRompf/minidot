@@ -1839,19 +1839,19 @@ eq-sub-env-size : sametenv GX GX' -> sub-env-size GX (s N) G -> sub-env-size GX'
 
 sub-tp-trans-aux1 :
   %% Inputs
-  sub-tp O lenient R1 G1 T1 R2 G2 T2 ->
-  sub-tp O lenient R2 G2 T2 R3 G3 T3 ->
+  sub-tp tnone lenient R1 G1 T1 R2 G2 T2 ->
+  sub-tp tnone lenient R2 G2 T2 R3 G3 T3 ->
   %% Output
-  sub-tp O lenient R1 G1 T1 R3 G3 T3 ->
+  sub-tp tnone lenient R1 G1 T1 R3 G3 T3 ->
   type.
 %mode sub-tp-trans-aux1 +SBT1 +SBT2 -SBT3.
 
 sub-tp-trans-aux2 :
   %% Inputs
-  sub-tp O lenient R1 G1 T1 R2 G2 T2 ->
-  sub-tp O lenient R2 G2 T2 R3 G3 T3 ->
+  sub-tp tnone lenient R1 G1 T1 R2 G2 T2 ->
+  sub-tp tnone lenient R2 G2 T2 R3 G3 T3 ->
   %% Output
-  sub-tp O lenient R1 G1 T1 R3 G3 T3 ->
+  sub-tp tnone lenient R1 G1 T1 R3 G3 T3 ->
   type.
 %mode sub-tp-trans-aux2 +SBT1 +SBT2 -SBT3.
 
