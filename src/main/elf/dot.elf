@@ -300,16 +300,30 @@ sub-tp/and2 : sub-tp O M R1 G1 T1 R2 G2 (and TA2 TB2)
 
 sub-tp/top  : sub-tp O M R1 G1 T R2 G2 top <- wf-tp M R1 G1 T.
 
-sub-tp/tbind2 : sub-tp O M R1 G1 T1 R2 G2 (bind N TN)
+sub-tp/tbind2-tnone : sub-tp tnone M R1 G1 T1 R2 G2 (bind N TN)
              <- sub-env-size G0 N G2
-             <- sub-tp O M R1 G1 T1 R2 (tcons (bind N TN) G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
-             <- sub-tp O M R1 G1 T1 R1' G1' T1'                     %% built-in slack (trans: T1-bind2)
-             <- sub-tp O M R1 G1 T1 R1' (tcons (bind N T1') G0) TN
+             <- sub-tp tnone M R1 G1 T1 R2 (tcons (bind N TN) G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
+             <- sub-tp tnone M R1 G1 T1 R1' G1' T1'                     %% built-in slack (trans: T1-bind2)
+             <- sub-tp tnone M R1 G1 T1 R1' (tcons (bind N T1') G0) TN
              .
 
-sub-tp/tbind1 : sub-tp O M R1 G1 (bind N TN) R2 G2 T2
+sub-tp/tbind1-tnone : sub-tp tnone M R1 G1 (bind N TN) R2 G2 T2
               <- sub-env-size G0 N G1
-              <- sub-tp O M R1 (tcons (bind N TN) G0) TN R2 G2 T2
+              <- sub-tp tnone M R1 (tcons (bind N TN) G0) TN R2 G2 T2
+              .
+
+sub-tp/tbind2-tsome : sub-tp (tsome (tsel (var X) LN)) M R1 G1 T1 R2 G2 (bind N TN)
+             <- lte (s X) N
+             <- sub-env-size G0 N G2
+             <- sub-tp (tsome (tsel (var X) LN)) M R1 G1 T1 R2 (tcons (bind N TN) G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
+             <- sub-tp (tsome (tsel (var X) LN)) M R1 G1 T1 R1' G1' T1'                     %% built-in slack (trans: T1-bind2)
+             <- sub-tp (tsome (tsel (var X) LN)) M R1 G1 T1 R1' (tcons (bind N T1') G0) TN
+             .
+
+sub-tp/tbind1-tsome : sub-tp (tsome (tsel (var X) LN)) M R1 G1 (bind N TN) R2 G2 T2
+              <- lte (s X) N
+              <- sub-env-size G0 N G1
+              <- sub-tp (tsome (tsel (var X) LN)) M R1 (tcons (bind N TN) G0) TN R2 G2 T2
               .
 
 sub-tp/and1a : sub-tp O M R1 G1 (and TA1 TB1) R2 G2 T2
@@ -2092,6 +2106,30 @@ sub-tp-trans-tsel-aux2 :
 %worlds () (sub-tp-trans-tsel-aux1  _ _ _) (sub-tp-trans-tsel-aux2  _ _ _).
 %total [(S1 S1') (S2 S2')] (sub-tp-trans-tsel-aux1 S1 S2 _) (sub-tp-trans-tsel-aux2 S2' S1' _).
 
+pev-shrink : path-eval M G (var X) (rect N TA TB)
+              -> sub-env-size GX (s X) G
+              -> path-eval M GX (var X) (rect N TA TB)
+              -> type.
+%mode pev-shrink +A +B -C.
+%worlds () (pev-shrink _ _ _).
+%trustme
+%total A (pev-shrink A _ _).
+
+sub-tp-tsome-to-tnone : meq R X
+                        -> path-eval M (tcons Z1 GX) (var X) (rect N TA1 TB)
+                        -> path-eval M (tcons Z2 GX) (var X) (rect N TA2 TB)
+                        -> tsize GX X
+                        -> sub-env GX G1
+                        -> sub-env GX G2
+                        -> sub-tp (tsome (tsel (var X) N)) M R G1 T R G2 T
+                        -> sub-tp tnone M R G1 T R G2 T
+                        -> type.
+%mode sub-tp-tsome-to-tnone +A +B +C +D +E +F +G -H.
+%worlds () (sub-tp-tsome-to-tnone _ _ _ _ _ _ _ _).
+%trustme
+%reduces B <= A (sub-tp-tsome-to-tnone _ _ _ _ _ _ A B).
+%total A (sub-tp-tsome-to-tnone _ _ _ _ _ _ A _).
+
 sub-tp-trans-aux1 :
   %% Inputs
   sub-tp tnone lenient R1 G1 T1 R2 G2 T2 ->
@@ -2263,6 +2301,23 @@ sub-tp-trans-aux2 :
    <- sub-env-size-eq GB2 GA2 EQG
    <- eq-pev EQR PB1 PC1
    <- eq-sub-env-size EQG GB1 GC1.
+
+-/tselx-rec--tselx-rec : sub-tp-trans-aux1
+   (sub-tp/tselx-rec STA GA2 GA1 PA2 PA1 MEQA)
+   (sub-tp/tselx-rec STB GB3 GB2 PB3 PB2 MEQB)
+   (sub-tp/tselx-rec STC GB3 GC1 PB3 PC1 MEQB)
+   <- path-eval-eq PA2 PB2 EQR
+   <- rect-same-all-same EQR EQS EQU
+   <- eq-pev2 EQU PA1 PC1
+   <- sub-env-size-eq GA2 GB2 EQG2
+   <- tcons-sametenv-eq EQG2 EQG
+   <- eq-sub-env-size-cons EQG GA1 GC1
+   <- eq-high EQU STA STA'
+   <- eq-high-env EQG2 STA' STA''
+   <- eq-low EQU STA'' STA'''
+   <- eq-sametenv-cons EQG _ EQG1
+   <- eq-low-env EQG1 STA''' STA''''
+   <- sub-tp-trans-tsel-aux1 STA'''' STB STC.
 
 %{
 -/tselx-rec1 : sub-tp-trans-aux1
@@ -2520,7 +2575,7 @@ sub-tp-trans-aux2 :
 }%
 
 %worlds () (sub-tp-trans-aux1  _ _ _) (sub-tp-trans-aux2  _ _ _).
-%trustme
+% %trustme
 %total [(S1 S1') (S2 S2')] (sub-tp-trans-aux1 S1 S2 _) (sub-tp-trans-aux2 S2' S1' _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide

@@ -2092,6 +2092,30 @@ sub-tp-trans-tsel-aux2 :
 %worlds () (sub-tp-trans-tsel-aux1  _ _ _) (sub-tp-trans-tsel-aux2  _ _ _).
 %total [(S1 S1') (S2 S2')] (sub-tp-trans-tsel-aux1 S1 S2 _) (sub-tp-trans-tsel-aux2 S2' S1' _).
 
+pev-shrink : path-eval M G (var X) (rect N TA TB)
+              -> sub-env-size GX (s X) G
+              -> path-eval M GX (var X) (rect N TA TB)
+              -> type.
+%mode pev-shrink +A +B -C.
+%worlds () (pev-shrink _ _ _).
+%trustme
+%total A (pev-shrink A _ _).
+
+sub-tp-tsome-to-tnone : meq R X
+                        -> path-eval M (tcons Z1 GX) (var X) (rect N TA1 TB)
+                        -> path-eval M (tcons Z2 GX) (var X) (rect N TA2 TB)
+                        -> tsize GX X
+                        -> sub-env GX G1
+                        -> sub-env GX G2
+                        -> sub-tp (tsome (tsel (var X) N)) M R G1 T R G2 T
+                        -> sub-tp tnone M R G1 T R G2 T
+                        -> type.
+%mode sub-tp-tsome-to-tnone +A +B +C +D +E +F +G -H.
+%worlds () (sub-tp-tsome-to-tnone _ _ _ _ _ _ _ _).
+%trustme
+%reduces B <= A (sub-tp-tsome-to-tnone _ _ _ _ _ _ A B).
+%total A (sub-tp-tsome-to-tnone _ _ _ _ _ _ A _).
+
 sub-tp-trans-aux1 :
   %% Inputs
   sub-tp tnone lenient R1 G1 T1 R2 G2 T2 ->
