@@ -2289,6 +2289,15 @@ sub-tp-trans-aux2 :
    <- eq-pev EQR PB3 PC3
    <- eq-sub-env-size EQG GB3 GC3.
 
+-/tsel2--tsel-rec : sub-tp-trans-aux1
+      (sub-tp/tsel2-lenient WA2 STA12 SIA GA2 PA2)
+      (sub-tp/tsel-rec OWB GB3 GB2 PB3 PB2)
+      (sub-tp/tsel2-lenient WA2 STA12 SIA GC3 PC3)
+   <- path-eval-eq PB2 PA2 EQR
+   <- sub-env-size-eq GB2 GA2 EQG
+   <- eq-pev EQR PB3 PC3
+   <- eq-sub-env-size EQG GB3 GC3.
+
 -/tselx-rec--tsel-rec : sub-tp-trans-aux1
       (sub-tp/tselx-rec STA GA2 GA1 PA2 PA1 MEQ)
       (sub-tp/tsel-rec OWB GB3 GB2 PB3 PB2)
