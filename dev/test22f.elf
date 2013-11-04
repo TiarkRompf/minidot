@@ -2264,6 +2264,23 @@ sub-tp-trans-aux2 :
    <- eq-pev EQR PB1 PC1
    <- eq-sub-env-size EQG GB1 GC1.
 
+-/tselx-rec--tselx-rec : sub-tp-trans-aux1
+   (sub-tp/tselx-rec STA GA2 GA1 PA2 PA1 MEQA)
+   (sub-tp/tselx-rec STB GB3 GB2 PB3 PB2 MEQB)
+   (sub-tp/tselx-rec STC GB3 GC1 PB3 PC1 MEQB)
+   <- path-eval-eq PA2 PB2 EQR
+   <- rect-same-all-same EQR EQS EQU
+   <- eq-pev2 EQU PA1 PC1
+   <- sub-env-size-eq GA2 GB2 EQG2
+   <- tcons-sametenv-eq EQG2 EQG
+   <- eq-sub-env-size-cons EQG GA1 GC1
+   <- eq-high EQU STA STA'
+   <- eq-high-env EQG2 STA' STA''
+   <- eq-low EQU STA'' STA'''
+   <- eq-sametenv-cons EQG _ EQG1
+   <- eq-low-env EQG1 STA''' STA''''
+   <- sub-tp-trans-tsel-aux1 STA'''' STB STC.
+
 %{
 -/tselx-rec1 : sub-tp-trans-aux1
    (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA)
@@ -2520,7 +2537,7 @@ sub-tp-trans-aux2 :
 }%
 
 %worlds () (sub-tp-trans-aux1  _ _ _) (sub-tp-trans-aux2  _ _ _).
-%trustme
+% %trustme
 %total [(S1 S1') (S2 S2')] (sub-tp-trans-aux1 S1 S2 _) (sub-tp-trans-aux2 S2' S1' _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
