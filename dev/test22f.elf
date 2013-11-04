@@ -2210,41 +2210,57 @@ sub-tp-tsome-to-tnone : meq R X
                         -> tsize GX X
                         -> sub-env (tcons Z1 GX) G1
                         -> sub-env (tcons Z2 GX) G2
+                        -> sub-tp (tsome (tsel (var X) N)) lenient R (tcons Z1 GX) TB R (tcons Z2 GX) TB
                         -> sub-tp (tsome (tsel (var X) N)) lenient R G1 T1 R G2 T2
                         -> sub-tp tnone lenient R G1 T1 R G2 T2
                         -> type.
-%mode sub-tp-tsome-to-tnone +A +B +C +D +E +F +G -H.
+%mode sub-tp-tsome-to-tnone +A +B +C +D +E +F +G +H -I.
 
-- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 (sub-tp/top W) (sub-tp/top W).
-- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 (sub-tp/bot W) (sub-tp/bot W).
-- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 (sub-tp/tbind-refl W SB2 SB1) (sub-tp/tbind-refl W SB2 SB1).
-- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 (sub-tp/tsel-rec A B C D E) (sub-tp/tsel-rec A B C D E).
+- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R (sub-tp/top W) (sub-tp/top W).
+- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R (sub-tp/bot W) (sub-tp/bot W).
+- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R (sub-tp/tbind-refl W SB2 SB1) (sub-tp/tbind-refl W SB2 SB1).
+- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R (sub-tp/tsel-rec A B C D E) (sub-tp/tsel-rec A B C D E).
 
-- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 (sub-tp/fun B A) (sub-tp/fun B' A')
-     <- sub-tp-tsome-to-tnone MEQ P2 P1 S S2 S1 A A'
-     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 B B'.
+- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R (sub-tp/fun B A) (sub-tp/fun B' A')
+     <- sub-tp-tsome-to-tnone MEQ P2 P1 S S2 S1 R A A'
+     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R B B'.
 
-- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 (sub-tp/rect-lenient A) (sub-tp/rect-lenient A')
-     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 A A'.
+- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R (sub-tp/rect-lenient A) (sub-tp/rect-lenient A')
+     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R A A'.
 
-- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 (sub-tp/recv A) (sub-tp/recv A')
-     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 A A'.
+- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R (sub-tp/recv A) (sub-tp/recv A')
+     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R A A'.
 
-- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 (sub-tp/and2 A B) (sub-tp/and2 A' B')
-     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 A A'
-     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 B B'.
+- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R (sub-tp/and2 A B) (sub-tp/and2 A' B')
+     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R A A'
+     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R B B'.
 
-- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 (sub-tp/and1a W A) (sub-tp/and1a W A')
-     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 A A'.
+- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R (sub-tp/and1a W A) (sub-tp/and1a W A')
+     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R A A'.
 
-- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 (sub-tp/and1b W A) (sub-tp/and1b W A')
-     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 A A'.
+- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R (sub-tp/and1b W A) (sub-tp/and1b W A')
+     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R A A'.
 
+- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R
+     (sub-tp/tselx-rec-stop S2' S1' P2' P1' MEQ')
+     (sub-tp/tselx-rec R' S2' S1' P2' P1' MEQ')
+     <- extend-wf-pev-mult P1 S1 P1X
+     <- extend-wf-pev-mult P2 S2 P2X
+     <- path-eval-eq P1X P1' EQR1
+     <- path-eval-eq P2X P2' EQR2
+     <- rect-same-all-same EQR1 EQS1 EQU1
+     <- rect-same-all-same EQR2 EQS2 EQU2
+     <- eq-low EQU1 R R1
+     <- eq-high EQU2 R1 R12
+     <- sub-env-size-eq (ses (tf/c S) S1) S1' EQG1
+     <- sub-env-size-eq (ses (tf/c S) S2) S2' EQG2
+     <- eq-low-env EQG1 R12 R12'
+     <- eq-high-env EQG2 R12' R'.
 
-%worlds () (sub-tp-tsome-to-tnone _ _ _ _ _ _ _ _).
-%total A (sub-tp-tsome-to-tnone _ _ _ _ _ _ A _).
+%worlds () (sub-tp-tsome-to-tnone _ _ _ _ _ _ _ _ _).
+%total A (sub-tp-tsome-to-tnone _ _ _ _ _ _ _ A _).
 %trustme
-%reduces B <= A (sub-tp-tsome-to-tnone _ _ _ _ _ _ A B).
+%reduces B <= R (sub-tp-tsome-to-tnone _ _ _ _ _ _ R A B).
 
 sub-tp-tsome-to-tnone-x :  meq R X
                            -> path-eval lenient G1 (var X) (rect N TA1 TB)
@@ -2256,7 +2272,7 @@ sub-tp-tsome-to-tnone-x :  meq R X
                            -> type.
 %mode sub-tp-tsome-to-tnone-x +A +B +C +D +E +F -G.
 
-- : sub-tp-tsome-to-tnone-x MEQ P1 P2 (ses (tf/c N1) SE1) (ses (tf/c N2) SE2) ST ST'
+- : sub-tp-tsome-to-tnone-x MEQ P1 P2 (ses (tf/c N1) SE1) (ses (tf/c N2) SE2) ST ST ST'
      <- pev-shrink P1 (ses (tf/c N1) SE1) P1'
      <- pev-shrink P2 (ses (tf/c N2) SE2) P2'
      <- sub-tp-tsome-to-tnone MEQ P1' P2' N1 sub-env/refl sub-env/refl ST ST'.
