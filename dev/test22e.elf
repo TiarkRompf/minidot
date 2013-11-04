@@ -1794,15 +1794,25 @@ shotgun-wf :  meq R X
              -> path-eval lenient G2 (var X) (rect N TA2 TB)
              -> sub-env-size (tcons Z1 GX) (s X) G1
              -> sub-env-size (tcons Z2 GX) (s X) G2
-             -> wf-tp lenient R (tcons Z1 GX) TB
-             -> wf-tp lenient R (tcons Z2 GX) TB
+             -> wf-tp lenient R (tcons Z1 GX) T
+             -> wf-tp lenient R (tcons Z2 GX) T
              -> type.
 %mode shotgun-wf +A +B +C +D +E +F -G.
-%{
+
 - : shotgun-wf MEQ P1 P2 S1 S2 wf-tp/top wf-tp/top.
 - : shotgun-wf MEQ P1 P2 S1 S2 wf-tp/bot wf-tp/bot.
 - : shotgun-wf MEQ P1 P2 S1 S2 wf-tp/bot wf-tp/bot.
-}%
+- : shotgun-wf MEQ P1 P2 S1 S2 (wf-tp/rect-lenient W) (wf-tp/rect-lenient W')
+     <- shotgun-wf MEQ P1 P2 S1 S2 W W'.
+- : shotgun-wf MEQ P1 P2 S1 S2 (wf-tp/recv W) (wf-tp/recv W')
+     <- shotgun-wf MEQ P1 P2 S1 S2 W W'.
+- : shotgun-wf MEQ P1 P2 S1 S2 (wf-tp/and WA WB) (wf-tp/and WA' WB')
+     <- shotgun-wf MEQ P1 P2 S1 S2 WA WA'
+     <- shotgun-wf MEQ P1 P2 S1 S2 WB WB'.
+- : shotgun-wf MEQ P1 P2 S1 S2 (wf-tp/fun WB WA) (wf-tp/fun WB' WA')
+     <- shotgun-wf MEQ P1 P2 S1 S2 WA WA'
+     <- shotgun-wf MEQ P1 P2 S1 S2 WB WB'.
+
 %worlds () (shotgun-wf _ _ _ _ _ _ _).
 %trustme
 %total A (shotgun-wf _ _ _ _ _ A _).
@@ -1812,29 +1822,51 @@ shotgun1 :   meq R X
              -> path-eval lenient G2 (var X) (rect N TA2 TB)
              -> sub-env-size (tcons Z1 GX) (s X) G1
              -> sub-env-size (tcons Z2 GX) (s X) G2
-             -> sub-tp lenient R (tcons Z2 GX) TB R' G' T'
-             -> sub-tp lenient R (tcons Z1 GX) TB R' G' T'
+             -> sub-tp lenient R (tcons Z2 GX) T R' G' T'
+             -> sub-tp lenient R (tcons Z1 GX) T R' G' T'
              -> type.
 %mode shotgun1 +A +B +C +D +E +F -G.
-%{
-- : shotgun1 MEQ P1 P2 S1 S2 (sub-tp/top W) (sub-tp/top W').
-}%
-%worlds () (shotgun1 _ _ _ _ _ _ _).
-%trustme
-%total A (shotgun1 _ _ _ _ _ A _).
-
 shotgun2 :   meq R X
              -> path-eval lenient G1 (var X) (rect N TA1 TB)
              -> path-eval lenient G2 (var X) (rect N TA2 TB)
              -> sub-env-size (tcons Z1 GX) (s X) G1
              -> sub-env-size (tcons Z2 GX) (s X) G2
-             -> sub-tp lenient R' G' T' R (tcons Z1 GX) TB
-             -> sub-tp lenient R' G' T' R (tcons Z2 GX) TB
+             -> sub-tp lenient R' G' T' R (tcons Z1 GX) T
+             -> sub-tp lenient R' G' T' R (tcons Z2 GX) T
              -> type.
 %mode shotgun2 +A +B +C +D +E +F -G.
-%worlds () (shotgun2 _ _ _ _ _ _ _).
+
+- : shotgun1 MEQ P1 P2 S1 S2 (sub-tp/top W) (sub-tp/top W')
+     <-  shotgun-wf MEQ P2 P1 S2 S1 W W'.
+
+- : shotgun1 MEQ P1 P2 S1 S2 (sub-tp/bot W) (sub-tp/bot W).
+
+- : shotgun1 MEQ P1 P2 S1 S2 (sub-tp/rect-lenient BU) (sub-tp/rect-lenient BU')
+     <- shotgun1 MEQ P1 P2 S1 S2 BU BU'.
+
+- : shotgun1 MEQ P1 P2 S1 S2 (sub-tp/recv B) (sub-tp/recv B')
+     <- shotgun1 MEQ P1 P2 S1 S2 B B'.
+
+- : shotgun1 MEQ P1 P2 S1 S2 (sub-tp/fun B A) (sub-tp/fun B' A')
+     <- shotgun2 MEQ P2 P1 S2 S1 A A'
+     <- shotgun1 MEQ P1 P2 S1 S2 B B'.
+
+
+- : shotgun1 MEQ P1 P2 S1 S2 (sub-tp/and2 A B) (sub-tp/and2 A' B')
+     <- shotgun1 MEQ P1 P2 S1 S2 A A'
+     <- shotgun1 MEQ P1 P2 S1 S2 B B'.
+
+- : shotgun1 MEQ P1 P2 S1 S2 (sub-tp/and1a W A) (sub-tp/and1a W' A')
+     <- shotgun1 MEQ P1 P2 S1 S2 A A'
+     <- shotgun-wf MEQ P2 P1 S2 S1 W W'.
+
+- : shotgun1 MEQ P1 P2 S1 S2 (sub-tp/and1b W A) (sub-tp/and1b W' A')
+     <- shotgun1 MEQ P1 P2 S1 S2 A A'
+     <- shotgun-wf MEQ P2 P1 S2 S1 W W'.
+
+%worlds () (shotgun1 _ _ _ _ _ _ _)(shotgun2 _ _ _ _ _ _ _).
 %trustme
-%total A (shotgun2 _ _ _ _ _ A _).
+%total (A B) (shotgun1 _ _ _ _ _ A _)(shotgun2 _ _ _ _ _ B _).
 
 sub-tp-trans-aux1 :
   %% Inputs
