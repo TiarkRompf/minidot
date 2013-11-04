@@ -1868,6 +1868,30 @@ shotgun2 :   meq R X
 %trustme
 %total (A B) (shotgun1 _ _ _ _ _ A _)(shotgun2 _ _ _ _ _ B _).
 
+% counterexample to shotgun1, which shows we need more context
+%abbrev egX = z.
+%abbrev egR = somen egX non.
+%abbrev egY = (s z).
+%abbrev egTBX = (tsel (var egX) egY).
+%abbrev egTBY1 = top.
+%abbrev egTBY2 = bot.
+%abbrev egGX = tnil.
+%abbrev egZ1 = (bind z (and (rect egX egTBX egTBX) (rect egY egTBY1 egTBY1))).
+%abbrev egZ2 = (bind z (and (rect egX egTBX egTBX) (rect egY egTBY2 egTBY2))).
+%abbrev egG1 = (tcons egZ1 egGX).
+%abbrev egG2 = (tcons egZ2 egGX).
+
+%solve egMeq : meq egR egX.
+%solve egP1 : path-eval lenient egG1 (var egX) (rect egX egTBX egTBX).
+%solve egP2 : path-eval lenient egG2 (var egX) (rect egX egTBX egTBX).
+%solve egS1 : sub-env-size (tcons egZ1 egGX) (s egX) egG1.
+%solve egS2 : sub-env-size (tcons egZ2 egGX) (s egX) egG2.
+%solve egSub2 : sub-tp lenient egR (tcons egZ2 egGX) egTBX non tnil bot.
+
+% uh oh
+%query 0 1 sub-tp lenient egR (tcons egZ1 egGX) egTBX non tnil bot.
+%query 0 1 shotgun1 egMeq egP1 egP2 egS1 egS2 egSub2 OUT.
+
 sub-tp-trans-aux1 :
   %% Inputs
   sub-tp lenient R1 G1 T1 R2 G2 T2 ->
