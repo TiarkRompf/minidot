@@ -41,11 +41,11 @@
 %query 1 1 type-exp tnil e22j top.
 
 % sanity checks for other judgments
-%query 1 1 sub-tp strict non tnil t2 non tnil t1.
+%query 1 1 sub-tp tnone strict non tnil t2 non tnil t1.
 %query 1 1 wf-tp strict non tnil t3.
 %query 1 1 wf-tp strict non tnil t4.
 %query 1 1 wf-tp strict non tnil t6.
-%query 1 1 sub-tp strict non tnil t7 non tnil t8.
+%query 1 1 sub-tp tnone strict non tnil t7 non tnil t8.
 
 % programs
 %query 1 1 type-exp tnil p1 top.
@@ -73,7 +73,7 @@
 
 % negative queries
 %query 0 1
-sub-tp strict non
+sub-tp tnone strict non
    (tcons top
        (tcons
            (bind z 
