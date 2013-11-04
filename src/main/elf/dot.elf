@@ -303,8 +303,8 @@ sub-tp/top  : sub-tp M O1 R1 G1 T O2 R2 G2 top <- wf-tp M R1 G1 T.
 sub-tp/tbind2 : sub-tp M O1 R1 G1 T1 O2 R2 G2 (bind N TN)
              <- sub-env-size G0 N G2
              <- sub-tp M O1 R1 G1 T1 O2 R2 (tcons (bind N TN) G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
-             <- sub-tp M O1 R1 G1 T1 O1' R1' G1' T1'                     %% built-in slack (trans: T1-bind2)
-             <- sub-tp M O1 R1 G1 T1 O1' R1' (tcons (bind N T1') G0) TN
+             <- sub-tp M O1 R1 G1 T1 O1 R1' G1' T1'                     %% built-in slack (trans: T1-bind2)
+             <- sub-tp M O1 R1 G1 T1 O1 R1' (tcons (bind N T1') G0) TN
              .
 
 sub-tp/tbind1 : sub-tp M O1 R1 G1 (bind N TN) O2 R2 G2 T2
@@ -322,6 +322,15 @@ sub-tp/and1b : sub-tp M O1 R1 G1 (and TA1 TB1) O2 R2 G2 T2
 
 sub-tp/tselx-base : sub-tp M (tsome (tsel (var X) N)) R G1 (tsel (var X) N) (tsome (tsel (var X) N)) R G2 (tsel (var X) N).
 
+sub-tp/tselx-rec : sub-tp M O1 R G1 (tsel (var X) N) O2 R G2 (tsel (var X) N)
+             <- meq R X
+             <- path-eval M G1 (var X) (rect N TA1 TB)
+             <- path-eval M G2 (var X) (rect N TA2 TB)
+             <- sub-env-size (tcons Z1 GX) (s X) G1
+             <- sub-env-size (tcons Z2 GX) (s X) G2
+             <- sub-tp M (tsome (tsel (var X) N)) R (tcons Z1 GX) TB (tsome (tsel (var X) N)) R (tcons Z2 GX) TB
+             .
+
 sub-tp/tselx-strict : sub-tp strict O1 R1 G1 (tsel (var X) N) O2 R2 G2 (tsel (var X) N)
              <- path-eval strict G1 (var X) (rect N TA1 TB1)
              <- path-eval strict G2 (var X) (rect N TA2 TB2)
@@ -329,13 +338,13 @@ sub-tp/tselx-strict : sub-tp strict O1 R1 G1 (tsel (var X) N) O2 R2 G2 (tsel (va
              <- sub-env-size G2X (s X) G2
              <- some-if-mne R1' X R1
              <- some-if-mne R2' X R2
-             <- sub-tp strict (tsome (tsel (var X) N)) R1' G1X (rect N TA1 TB1) (tsome (tsel (var X) N)) R2' G2X (rect N TA2 TB2).
+             <- sub-tp strict O1 R1' G1X (rect N TA1 TB1) O2 R2' G2X (rect N TA2 TB2).
 
 sub-tp/tsel1 : sub-tp M O1 R1 G1 (tsel (var X) N) O2 R2 G2 T2
               <- path-eval M G1 (var X) (rect N TA1 TB1)
               <- sub-env-size G1X (s X) G1
               <- some-if-mne R1' X R1
-              <- sub-tp M (tsome (tsel (var X) N)) R1' G1X TB1 O2 R2 G2 T2
+              <- sub-tp M O1 R1' G1X TB1 O2 R2 G2 T2
               <- maybe-wf-tp R1 M X G1X (rect N TA1 TB1)
               .
 
@@ -343,7 +352,7 @@ sub-tp/tsel2-strict : sub-tp strict O1 R1 G1 T1 O2 R2 G2 (tsel (var X) N)
               <- path-eval strict G2 (var X) (rect N TA2 TB2)
               <- sub-env-size G2X (s X) G2
               <- some-if-mne R2' X R2
-              <- sub-tp strict O1 R1 G1 T1 (tsome (tsel (var X) N)) R2' G2X TA2
+              <- sub-tp strict O1 R1 G1 T1 O2 R2' G2X TA2
               <- wf-tp strict R2' G2X (rect N TA2 TB2)
               .
 
@@ -351,7 +360,7 @@ sub-tp/tsel2-lenient : sub-tp lenient O1 R1 G1 T1 O2 R2 G2 (tsel (var X) N)
               <- path-eval lenient G2 (var X) (rect N TA2 TB2)
               <- sub-env-size G2X (s X) G2
               <- some-if-mne R2' X R2
-              <- sub-tp lenient O1 R1 G1 T1 (tsome (tsel (var X) N)) R2' G2X TB2
+              <- sub-tp lenient O1 R1 G1 T1 O2 R2' G2X TB2
               <- maybe-wf-tp R2 lenient X G2X (rect N TA2 TB2)
               .
 
