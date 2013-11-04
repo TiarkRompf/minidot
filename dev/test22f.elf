@@ -1831,6 +1831,12 @@ eq-sub-env-size-cons : sametenv GX GX' -> sub-env-size (tcons Z GX) (s N) G -> s
 %worlds () (eq-sub-env-size-cons _ _ _).
 %total A (eq-sub-env-size-cons A _ _).
 
+eq-sub-env-size : sametenv GX GX' -> sub-env-size GX (s N) G -> sub-env-size GX' (s N) G -> type.
+%mode eq-sub-env-size +A +B -C.
+- : eq-sub-env-size identtenv S S.
+%worlds () (eq-sub-env-size _ _ _).
+%total A (eq-sub-env-size A _ _).
+
 sub-tp-trans-aux1 :
   %% Inputs
   sub-tp tnone lenient R1 G1 T1 R2 G2 T2 ->
@@ -1975,6 +1981,15 @@ sub-tp-trans-aux2 :
       OUT
    <- meqne-false MEQ MNE CONTRA
    <- no-subtype-r CONTRA _ _ _ _ _ _ _ _ OUT.
+
+-/tsel-rec--tsel-rec : sub-tp-trans-aux1
+      (sub-tp/tsel-rec GA2 GA1 PA2 PA1 MEQA)
+      (sub-tp/tsel-rec GB3 GB2 PB3 PB2 MEQB)
+      (sub-tp/tsel-rec GC3 GA1 PC3 PA1 MEQA)
+   <- path-eval-eq PB2 PA2 EQR
+   <- sub-env-size-eq GB2 GA2 EQG
+   <- eq-pev EQR PB3 PC3
+   <- eq-sub-env-size EQG GB3 GC3.
 
 %{
 -/tselx-rec1 : sub-tp-trans-aux1
@@ -2232,7 +2247,7 @@ sub-tp-trans-aux2 :
 }%
 
 %worlds () (sub-tp-trans-aux1  _ _ _) (sub-tp-trans-aux2  _ _ _).
-%trustme
+% %trustme
 %total [(S1 S1') (S2 S2')] (sub-tp-trans-aux1 S1 S2 _) (sub-tp-trans-aux2 S2' S1' _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
