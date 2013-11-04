@@ -268,10 +268,10 @@ path-eval: mode -> tenv -> exp -> tpe -> type.
 pev  : path-eval M G E (rect N TS TU) <- tlookexp G E (rect N TS TU).
 
 
-% ++ sub-tp/refl : sub-tp strict R G1 T R G2 T
-% ++               <- sub-env G G1
-% ++               <- sub-env G G2
-% ++               <- wf-tp strict R G T.
+sub-tp/refl : sub-tp strict R G1 T R G2 T
+              <- sub-env G G1
+              <- sub-env G G2
+              <- wf-tp strict R G T.
 
 
 sub-tp/fun  : sub-tp M R1 G1 (arrow N TA1 TB1) R2 G2 (arrow N TA2 TB2)
@@ -1405,10 +1405,10 @@ extend-sub-tp: sub-tp M R1 G1 T1 R2 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST1 _ ST1' ST1A ST1B
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 
-% ++ - : extend-sub-tp (sub-tp/refl W S2 S1) T
-% ++     (sub-tp/refl W (sub-env/ext S2) (sub-env/ext S1))
-% ++     (sub-tp/refl W S2 (sub-env/ext S1))
-% ++     (sub-tp/refl W (sub-env/ext S2) S1).
+- : extend-sub-tp (sub-tp/refl W S2 S1) T
+     (sub-tp/refl W (sub-env/ext S2) (sub-env/ext S1))
+     (sub-tp/refl W S2 (sub-env/ext S1))
+     (sub-tp/refl W (sub-env/ext S2) S1).
 
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _)(extend-maybe-wf-tp _ _ _).
 %total (A B C D) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _)(extend-maybe-wf-tp D _ _).
@@ -1596,9 +1596,9 @@ extract-wf : sub-tp M R1 G1 T1 R2 G2 T2 -> wf-tp M R1 G1 T1 -> wf-tp M R2 G2 T2 
       <- extract-wf S1 W1 W3
       <- extract-wf S2 W2 W4.
 
-% ++ - : extract-wf (sub-tp/refl W S2 S1) W1 W2
-% ++     <- extend-wf-tp-mult W S1 W1
-% ++     <- extend-wf-tp-mult W S2 W2.
+- : extract-wf (sub-tp/refl W S2 S1) W1 W2
+     <- extend-wf-tp-mult W S1 W1
+     <- extend-wf-tp-mult W S2 W2.
 
 %worlds () (extract-wf _ _ _).
 %total A (extract-wf A _ _).
@@ -2389,11 +2389,11 @@ widen-mode-sub-tp : sub-tp strict R1 G1 T1 R2 G2 T2 -> sub-tp lenient R1 G1 T1 R
 - : widen-mode-sub-tp (sub-tp/bot W) (sub-tp/bot W')
      <- widen-mode-wf-tp W W'.
 
-% ++ - : widen-mode-sub-tp (sub-tp/refl W S2 S1) ST''
-% ++     <- widen-mode-wf-tp W W'
-% ++     <- sub-tp-refl W' ST
-% ++     <- extend-sub-tp1-mult ST S1 ST'
-% ++     <- extend-sub-tp2-mult ST' S2 ST''.
+- : widen-mode-sub-tp (sub-tp/refl W S2 S1) ST''
+     <- widen-mode-wf-tp W W'
+     <- sub-tp-refl W' ST
+     <- extend-sub-tp1-mult ST S1 ST'
+     <- extend-sub-tp2-mult ST' S2 ST''.
 
 %worlds () (widen-mode-wf-tp _ _) (widen-mode-path-eval _ _) (widen-mode-sub-tp _ _).
 %total (A B C) (widen-mode-wf-tp A _) (widen-mode-path-eval B _) (widen-mode-sub-tp C _).
