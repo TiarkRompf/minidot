@@ -320,12 +320,15 @@ sub-tp/and1b : sub-tp M O1 R1 G1 (and TA1 TB1) O2 R2 G2 T2
               <- sub-tp M O1 R1 G1 TB1 O2 R2 G2 T2
               <- wf-tp M R1 G1 TA1.
 
-sub-tp/tselx-rec : sub-tp M O R G1 (tsel (var X) N) O R G2 (tsel (var X) N)
+sub-tp/tselx-base : sub-tp M (tsome (tsel (var X) N)) R G1 (tsel (var X) N) (tsome (tsel (var X) N)) R G2 (tsel (var X) N).
+
+sub-tp/tselx-rec : sub-tp M O1 R G1 (tsel (var X) N) O2 R G2 (tsel (var X) N)
              <- meq R X
              <- path-eval M G1 (var X) (rect N TA1 TB)
              <- path-eval M G2 (var X) (rect N TA2 TB)
              <- sub-env-size (tcons Z1 GX) (s X) G1
              <- sub-env-size (tcons Z2 GX) (s X) G2
+             <- sub-tp M (tsome (tsel (var X) N)) R (tcons Z1 GX) TB (tsome (tsel (var X) N)) R (tcons Z2 GX) TB
              .
 
 sub-tp/tselx-strict : sub-tp strict O1 R1 G1 (tsel (var X) N) O2 R2 G2 (tsel (var X) N)
