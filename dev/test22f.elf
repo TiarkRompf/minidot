@@ -2298,6 +2298,15 @@ sub-tp-trans-aux2 :
    <- eq-pev EQR PB3 PC3
    <- eq-sub-env-size EQG GB3 GC3.
 
+-/tsel2--tsel-rec : sub-tp-trans-aux1
+      (sub-tp/tsel-rec OWA GA2 GA1 PA2 PA1)
+      (sub-tp/tsel1 WB3 STB23 SIB GB2 PB2)
+      (sub-tp/tsel1 WB3 STB23 SIB GC1 PC1)
+   <- path-eval-eq PA2 PB2 EQR
+   <- sub-env-size-eq GA2 GB2 EQG
+   <- eq-pev EQR PA1 PC1
+   <- eq-sub-env-size EQG GA1 GC1.
+
 -/tselx-rec--tsel-rec : sub-tp-trans-aux1
       (sub-tp/tselx-rec STA GA2 GA1 PA2 PA1 MEQ)
       (sub-tp/tsel-rec OWB GB3 GB2 PB3 PB2)
@@ -2514,9 +2523,70 @@ sub-tp-trans-aux2 :
    <- meqne-false MEQ MNE CONTRA
    <- no-subtype-r CONTRA _ _ _ _ _ _ _ _ OUT.
 
-%{
+-/tsel-rec--tsel-rec : sub-tp-trans-aux2
+      (sub-tp/tsel-rec OWA GA2 GA1 PA2 PA1)
+      (sub-tp/tsel-rec OWB GB3 GB2 PB3 PB2)
+      (sub-tp/tsel-rec OWA GC3 GA1 PC3 PA1)
+   <- path-eval-eq PB2 PA2 EQR
+   <- sub-env-size-eq GB2 GA2 EQG
+   <- eq-pev EQR PB3 PC3
+   <- eq-sub-env-size EQG GB3 GC3.
+
+-/tsel2--tsel-rec : sub-tp-trans-aux2
+      (sub-tp/tsel2-lenient WA2 STA12 SIA GA2 PA2)
+      (sub-tp/tsel-rec OWB GB3 GB2 PB3 PB2)
+      (sub-tp/tsel2-lenient WA2 STA12 SIA GC3 PC3)
+   <- path-eval-eq PB2 PA2 EQR
+   <- sub-env-size-eq GB2 GA2 EQG
+   <- eq-pev EQR PB3 PC3
+   <- eq-sub-env-size EQG GB3 GC3.
+
+-/tsel2--tsel-rec : sub-tp-trans-aux2
+      (sub-tp/tsel-rec OWA GA2 GA1 PA2 PA1)
+      (sub-tp/tsel1 WB3 STB23 SIB GB2 PB2)
+      (sub-tp/tsel1 WB3 STB23 SIB GC1 PC1)
+   <- path-eval-eq PA2 PB2 EQR
+   <- sub-env-size-eq GA2 GB2 EQG
+   <- eq-pev EQR PA1 PC1
+   <- eq-sub-env-size EQG GA1 GC1.
+
+-/tselx-rec--tsel-rec : sub-tp-trans-aux2
+      (sub-tp/tselx-rec STA GA2 GA1 PA2 PA1 MEQ)
+      (sub-tp/tsel-rec OWB GB3 GB2 PB3 PB2)
+      (sub-tp/tselx-rec STA GC3 GA1 PC3 PA1 MEQ)
+   <- path-eval-eq PB2 PA2 EQR
+   <- sub-env-size-eq GB2 GA2 EQG
+   <- eq-pev EQR PB3 PC3
+   <- eq-sub-env-size EQG GB3 GC3.
+
+-/tsel-rec--tselx-rec : sub-tp-trans-aux2
+      (sub-tp/tsel-rec OWB GB2 GB1 PB2 PB1)
+      (sub-tp/tselx-rec STA GA3 GA2 PA3 PA2 MEQA)
+      (sub-tp/tselx-rec STA GA3 GC1 PA3 PC1 MEQA)
+   <- path-eval-eq PB2 PA2 EQR
+   <- sub-env-size-eq GB2 GA2 EQG
+   <- eq-pev EQR PB1 PC1
+   <- eq-sub-env-size EQG GB1 GC1.
+
+-/tselx-rec--tselx-rec : sub-tp-trans-aux2
+   (sub-tp/tselx-rec STA GA2 GA1 PA2 PA1 MEQA)
+   (sub-tp/tselx-rec STB GB3 GB2 PB3 PB2 MEQB)
+   (sub-tp/tselx-rec STC GB3 GC1 PB3 PC1 MEQB)
+   <- path-eval-eq PA2 PB2 EQR
+   <- rect-same-all-same EQR EQS EQU
+   <- eq-pev2 EQU PA1 PC1
+   <- sub-env-size-eq GA2 GB2 EQG2
+   <- tcons-sametenv-eq EQG2 EQG
+   <- eq-sub-env-size-cons EQG GA1 GC1
+   <- eq-high EQU STA STA'
+   <- eq-high-env EQG2 STA' STA''
+   <- eq-low EQU STA'' STA'''
+   <- eq-sametenv-cons EQG _ EQG1
+   <- eq-low-env EQG1 STA''' STA''''
+   <- sub-tp-trans-tsel-aux2 STA'''' STB STC.
+
 -/tselx-rec1 : sub-tp-trans-aux2
-   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA)
+   (sub-tp/tselx-rec STA GA2 GA1 PA2 PA1 MEQA)
    (sub-tp/tsel1 (maybe-wf-tp/no MEQ) STB23 (some-if/meq MEQB2) GB2 PB2)
    (sub-tp/tsel1 (maybe-wf-tp/no MEQA) STC13 (some-if/meq MEQA) GA1 PA1)
    <- sub-env-size-eq GB2 GA2 EQG2
@@ -2524,61 +2594,50 @@ sub-tp-trans-aux2 :
    <- path-eval-eq PB2 PA2 EQR
    <- rect-same-all-same EQR EQS EQU
    <- eq-low EQU STB23' STB23''
-   <- shotgun1 MEQA PA1 PA2 GA1 GA2 STB23'' STC13.
+   <- sub-tp-tsome-to-tnone-x MEQA PA1 PA2 GA1 GA2 STA STA'
+   <- sub-tp-trans-aux2 STA' STB23'' STC13.
 
--/tselx-rec1 : sub-tp-trans-aux2
-   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2)
+-/tselx-rec1-contra : sub-tp-trans-aux2
+   (sub-tp/tselx-rec STA GA2 GA1 PA2 PA1 MEQA2)
    (sub-tp/tsel1 WB2 STB23 (some-if/mne MNEB2) GB2 PB2)
    OUT
    <- meqne-false MEQA2 MNEB2 CONTRA
-   <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
+   <- no-subtype-r CONTRA _ _ _ _ _ _ _ _ OUT.
 
--/tselx-rec1 : sub-tp-trans-aux2
-   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA2)
-   (sub-tp/tsel1 (maybe-wf-tp/yes WB2 MNEB2) STB23 SIB2 GB2 PB2)
+-/tselx-rec1-contra : sub-tp-trans-aux2
+   (sub-tp/tselx-rec STA GA2 GA1 PA2 PA1 MEQA2)
+   (sub-tp/tsel1 (maybe-wf-tp/yes _ MNEB2) STB23 SIB GB2 PB2)
    OUT
    <- meqne-false MEQA2 MNEB2 CONTRA
-   <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
+   <- no-subtype-r CONTRA _ _ _ _ _ _ _ _ OUT.
 
 -/tselx-rec2 : sub-tp-trans-aux2
    (sub-tp/tsel2-lenient (maybe-wf-tp/no MEQ) STB12 (some-if/meq MEQB2) GB2 PB2)
-   (sub-tp/tselx-rec GA3 GA2 PA3 PA2 MEQA)
+   (sub-tp/tselx-rec STA GA3 GA2 PA3 PA2 MEQA)
    (sub-tp/tsel2-lenient (maybe-wf-tp/no MEQA) STC13 (some-if/meq MEQA) GA3 PA3)
    <- sub-env-size-eq GB2 GA2 EQG2
    <- eq-high-env EQG2 STB12 STB12'
    <- path-eval-eq PB2 PA2 EQR
    <- rect-same-all-same EQR EQS EQU
    <- eq-high EQU STB12' STB12''
-   <- shotgun2 MEQA PA2 PA3 GA2 GA3 STB12'' STC13.
+   <- sub-tp-tsome-to-tnone-x MEQA PA2 PA3 GA2 GA3 STA STA'
+   <- sub-tp-trans-aux2 STB12'' STA' STC13.
 
 -/tselx-rec2 : sub-tp-trans-aux2
    (sub-tp/tsel2-lenient WB2 STB12 (some-if/mne MNEB2) GB2 PB2)
-   (sub-tp/tselx-rec GA3 GA2 PA3 PA2 MEQA2)
+   (sub-tp/tselx-rec STA GA3 GA2 PA3 PA2 MEQA2)
    OUT
    <- meqne-false MEQA2 MNEB2 CONTRA
-   <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
+   <- no-subtype-r CONTRA _ _ _ _ _ _ _ _ OUT.
 
 -/tselx-rec2 : sub-tp-trans-aux2
    (sub-tp/tsel2-lenient (maybe-wf-tp/yes WB2 MNEB2) STB12 SIB2 GB2 PB2)
-   (sub-tp/tselx-rec GA3 GA2 PA3 PA2 MEQA2)
+   (sub-tp/tselx-rec STA GA3 GA2 PA3 PA2 MEQA2)
    OUT
    <- meqne-false MEQA2 MNEB2 CONTRA
-   <- no-subtype-r CONTRA _ _ _ _ _ _ _ OUT.
-
--/tselx-rec : sub-tp-trans-aux2
-   (sub-tp/tselx-rec GA2 GA1 PA2 PA1 MEQA)
-   (sub-tp/tselx-rec GB3 GB2 PB3 PB2 MEQB)
-   (sub-tp/tselx-rec GB3 GC1 PB3 PC1 MEQB)
-   <- path-eval-eq PA2 PB2 EQR
-   <- rect-same-all-same EQR EQS EQU
-   <- eq-pev2 EQU PA1 PC1
-   <- sub-env-size-eq GA2 GB2 EQG2
-   <- tcons-sametenv-eq EQG2 EQG
-   <- eq-sub-env-size-cons EQG GA1 GC1.
-}%
+   <- no-subtype-r CONTRA _ _ _ _ _ _ _ _ OUT.
 
 %worlds () (sub-tp-trans-aux1  _ _ _) (sub-tp-trans-aux2  _ _ _).
-% %trustme
 %total [(S1 S1') (S2 S2')] (sub-tp-trans-aux1 S1 S2 _) (sub-tp-trans-aux2 S2' S1' _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
