@@ -361,11 +361,11 @@ sub-tp/tsel1 : sub-tp O M R1 G1 (tsel (var X) N) R2 G2 T2
               <- maybe-wf-tp R1 M X G1X (rect N TA1 TB1)
               .
 
-sub-tp/tsel2-strict : sub-tp O strict R1 G1 T1 R2 G2 (tsel (var X) N)
+sub-tp/tsel2-strict : sub-tp tnone strict R1 G1 T1 R2 G2 (tsel (var X) N)
               <- path-eval strict G2 (var X) (rect N TA2 TB2)
               <- sub-env-size G2X (s X) G2
               <- some-if-mne R2' X R2
-              <- sub-tp O strict R1 G1 T1 R2' G2X TA2
+              <- sub-tp tnone strict R1 G1 T1 R2' G2X TA2
               <- wf-tp strict R2' G2X (rect N TA2 TB2)
               .
 
@@ -1831,27 +1831,21 @@ eq-sub-env-size-cons : sametenv GX GX' -> sub-env-size (tcons Z GX) (s N) G -> s
 %worlds () (eq-sub-env-size-cons _ _ _).
 %total A (eq-sub-env-size-cons A _ _).
 
-sub-tp-tnone-tsome : sub-tp tnone lenient R1 G1 T1 R2 G2 T2 -> {O} sub-tp O lenient R1 G1 T1 R2 G2 T2 -> type.
-%mode sub-tp-tnone-tsome +A +B -C.
-%worlds () (sub-tp-tnone-tsome _ _ _).
-%trustme
-%total A (sub-tp-tnone-tsome A _ _).
-
 sub-tp-trans-aux1 :
   %% Inputs
-  sub-tp O lenient R1 G1 T1 R2 G2 T2 ->
-  sub-tp O lenient R2 G2 T2 R3 G3 T3 ->
+  sub-tp tnone lenient R1 G1 T1 R2 G2 T2 ->
+  sub-tp tnone lenient R2 G2 T2 R3 G3 T3 ->
   %% Output
-  sub-tp O lenient R1 G1 T1 R3 G3 T3 ->
+  sub-tp tnone lenient R1 G1 T1 R3 G3 T3 ->
   type.
 %mode sub-tp-trans-aux1 +SBT1 +SBT2 -SBT3.
 
 sub-tp-trans-aux2 :
   %% Inputs
-  sub-tp O lenient R1 G1 T1 R2 G2 T2 ->
-  sub-tp O lenient R2 G2 T2 R3 G3 T3 ->
+  sub-tp tnone lenient R1 G1 T1 R2 G2 T2 ->
+  sub-tp tnone lenient R2 G2 T2 R3 G3 T3 ->
   %% Output
-  sub-tp O lenient R1 G1 T1 R3 G3 T3 ->
+  sub-tp tnone lenient R1 G1 T1 R3 G3 T3 ->
   type.
 %mode sub-tp-trans-aux2 +SBT1 +SBT2 -SBT3.
 
@@ -2365,8 +2359,7 @@ widen-mode-sub-tp : sub-tp O strict R1 G1 T1 R2 G2 T2 -> sub-tp O lenient R1 G1 
      <- widen-mode-sub-tp A AS'
      <- widen-mode-sub-tp BSU BSU'
      <- widen-mode-wf-tp WU WU'
-     <- sub-tp-tnone-tsome BSU' _ BSU''
-     <- sub-tp-trans-aux1 AS' BSU'' A'
+     <- sub-tp-trans-aux1 AS' BSU' A'
      <- to-maybe (wf-tp/rect-lenient WU') SI WR'.
 
 - : widen-mode-sub-tp (sub-tp/top W) (sub-tp/top W')
