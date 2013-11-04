@@ -2204,6 +2204,17 @@ pev-shrink : path-eval lenient G (var X) (rect N TA TB)
 %trustme
 %total A (pev-shrink A _ _).
 
+env-shrink : lte (s X) N
+              -> sub-env (tcons Z GX) G
+              -> tsize GX X
+              -> sub-env-size G0 N G
+              -> sub-env (tcons Z GX) G0
+              -> type.
+%mode env-shrink +A +B +C +D -E.
+%worlds () (env-shrink _ _ _ _ _).
+%trustme
+%total A (env-shrink _ _ _ A _).
+
 sub-tp-tsome-to-tnone : meq R X
                         -> path-eval lenient (tcons Z1 GX) (var X) (rect N TA1 TB)
                         -> path-eval lenient (tcons Z2 GX) (var X) (rect N TA2 TB)
@@ -2256,6 +2267,12 @@ sub-tp-tsome-to-tnone : meq R X
      <- sub-env-size-eq (ses (tf/c S) S2) S2' EQG2
      <- eq-low-env EQG1 R12 R12'
      <- eq-high-env EQG2 R12' R'.
+
+- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R
+     (sub-tp/tbind1s A SA LTE)
+     (sub-tp/tbind1n A' SA)
+     <- env-shrink LTE S1 S SA SA1
+     <- sub-tp-tsome-to-tnone MEQ P1 P2 S (sub-env/ext SA1) S2 R A A'.
 
 %worlds () (sub-tp-tsome-to-tnone _ _ _ _ _ _ _ _ _).
 %total A (sub-tp-tsome-to-tnone _ _ _ _ _ _ _ A _).
