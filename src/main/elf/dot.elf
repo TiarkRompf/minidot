@@ -320,10 +320,10 @@ sub-tp/tbind2s : sub-tp (tsome (tsel (var X) LN))  M R1 G1 T1 R2 G2 (bind N TN)
              <- sub-tp (tsome (tsel (var X) LN)) M R1 G1 T1 R1 (tcons (bind N T1') G0) TN
              <- sub-env-size (tcons Z0' G0') (s X) G1
              <- sub-env (tcons Z1' G0') G1'
-             <- path-eval M (tcons Z0' G0') (var X) (rect LN TA0 TB0)
-             <- path-eval M (tcons Z1' G0') (var X) (rect LN TA1 TB1)
-             <- sub-tp (tsome (tsel (var X) LN)) M R1 (tcons Z0' G0') TB0 R1 (tcons Z1' G0') TB1
-             <- sub-tp (tsome (tsel (var X) LN)) M R1 (tcons Z1' G0') TB1 R1 (tcons Z0' G0') TB0
+             <- path-eval M (tcons Z0' G0') (var X) (rect LN TA0 TB)
+             <- path-eval M (tcons Z1' G0') (var X) (rect LN TA1 TB)
+             <- sub-tp (tsome (tsel (var X) LN)) M R1 (tcons Z0' G0') TB R1 (tcons Z1' G0') TB
+             <- sub-tp (tsome (tsel (var X) LN)) M R1 (tcons Z1' G0') TB R1 (tcons Z0' G0') TB
              .
 
 sub-tp/tbind1s : sub-tp (tsome (tsel (var X) LN)) M R1 G1 (bind N TN) R2 G2 T2
@@ -2366,20 +2366,31 @@ sub-tp-tsome-to-tnone : meq R X
      <- env-shrink LTE S1 S SA SA1
      <- sub-tp-tsome-to-tnone MEQ P1 P2 S (sub-env/ext SA1) S2 R R' A A'.
 
-%{
 - : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R R'
-     (sub-tp/tbind2s P0 S0 _ A B C SA LTE)
+     (sub-tp/tbind2s STX10 STX01 PX1 PX0 SX1 (ses NX0 SX0) A B C SA LTE)
      (sub-tp/tbind2n A' B' C' SA)
      <- env-shrink LTE S2 S SA SA2
-     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 (sub-env/ext SA2) R A A'
-     <- sub-tp-tsome-to-tnone MEQ P1 P0 S S1 S0 R' B B'
-     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 (sub-env/ext SA2) R C C'.
-}%
+     <- sub-env-size-eq (ses NX0 SX0) (ses (tf/c S) S1) EQG1
+     <- tcons-sametenv-eq EQG1 EQGX
+     <- eq-pev-env EQG1 PX0 PX0'
+     <- eq-sub-env-cons EQGX SX1 SX1'
+     <- eq-sametenv-cons EQGX _ EQGX1
+     <- eq-pev-env EQGX1 PX1 PX1'
+     <- path-eval-eq PX0' P1 EQR1
+     <- rect-same-all-same EQR1 EQS1 EQU1
+     <- eq-high EQU1 STX10 STX10'
+     <- eq-high-env EQG1 STX10' STX10''
+     <- eq-low-env EQGX1 STX10'' STX10'''
+     <- eq-low EQU1 STX01 STX01'
+     <- eq-low-env EQG1 STX01' STX01''
+     <- eq-high-env EQGX1 STX01'' STX01'''
+     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 (sub-env/ext SA2) R R' A A'
+     <- sub-tp-tsome-to-tnone MEQ P1 OPX1' S S1 OSX1' OSTX01''' OSTX10''' B B'
+     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 (sub-env/ext SA2) R R' C C'.
 
 %worlds () (sub-tp-tsome-to-tnone _ _ _ _ _ _ _ _ _ _).
 %trustme
 %reduces B <= R (sub-tp-tsome-to-tnone _ _ _ _ _ _ R R' A B).
-%trustme
 %total A (sub-tp-tsome-to-tnone _ _ _ _ _ _ _ _ A _).
 
 sub-tp-tsome-to-tnone-x :  meq R X

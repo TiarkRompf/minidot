@@ -320,10 +320,10 @@ sub-tp/tbind2s : sub-tp (tsome (tsel (var X) LN))  M R1 G1 T1 R2 G2 (bind N TN)
              <- sub-tp (tsome (tsel (var X) LN)) M R1 G1 T1 R1 (tcons (bind N T1') G0) TN
              <- sub-env-size (tcons Z0' G0') (s X) G1
              <- sub-env (tcons Z1' G0') G1'
-             <- path-eval M (tcons Z0' G0') (var X) (rect LN TA0 TB0)
-             <- path-eval M (tcons Z1' G0') (var X) (rect LN TA1 TB1)
-             <- sub-tp (tsome (tsel (var X) LN)) M R1 (tcons Z0' G0') TB0 R1 (tcons Z1' G0') TB1
-             <- sub-tp (tsome (tsel (var X) LN)) M R1 (tcons Z1' G0') TB1 R1 (tcons Z0' G0') TB0
+             <- path-eval M (tcons Z0' G0') (var X) (rect LN TA0 TB)
+             <- path-eval M (tcons Z1' G0') (var X) (rect LN TA1 TB)
+             <- sub-tp (tsome (tsel (var X) LN)) M R1 (tcons Z0' G0') TB R1 (tcons Z1' G0') TB
+             <- sub-tp (tsome (tsel (var X) LN)) M R1 (tcons Z1' G0') TB R1 (tcons Z0' G0') TB
              .
 
 sub-tp/tbind1s : sub-tp (tsome (tsel (var X) LN)) M R1 G1 (bind N TN) R2 G2 T2
@@ -2299,6 +2299,7 @@ sub-tp-trans-tsel-aux2 :
    <- eq-sub-env-size-cons EQG GA1 GC1.
 
 %worlds () (sub-tp-trans-tsel-aux1 _ _ _ _ _ _ _ _ _ _ _ _ _ _) (sub-tp-trans-tsel-aux2  _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+%trustme
 %total [(S1 S1') (S2 S2')] (sub-tp-trans-tsel-aux1 _ _ _ _ _ _ _ _ _ _ _ S1 S2 _) (sub-tp-trans-tsel-aux2 _ _ _ _ _ _ _ _ _ _ _ S2' S1' _).
 
 
@@ -2366,20 +2367,17 @@ sub-tp-tsome-to-tnone : meq R X
      <- env-shrink LTE S1 S SA SA1
      <- sub-tp-tsome-to-tnone MEQ P1 P2 S (sub-env/ext SA1) S2 R R' A A'.
 
-%{
 - : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R R'
-     (sub-tp/tbind2s P0 S0 _ A B C SA LTE)
+     (sub-tp/tbind2s STX10 STX01 PX1 PX0 SX1 (ses (tf/c NX0) SX0) A B C SA LTE)
      (sub-tp/tbind2n A' B' C' SA)
      <- env-shrink LTE S2 S SA SA2
-     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 (sub-env/ext SA2) R A A'
-     <- sub-tp-tsome-to-tnone MEQ P1 P0 S S1 S0 R' B B'
-     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 (sub-env/ext SA2) R C C'.
-}%
+     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 (sub-env/ext SA2) R R' A A'
+     <- sub-tp-tsome-to-tnone MEQ PX0 PX1 NX0 SX0 SX1 STX01 STX10 B B'
+     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 (sub-env/ext SA2) R R' C C'.
 
 %worlds () (sub-tp-tsome-to-tnone _ _ _ _ _ _ _ _ _ _).
 %trustme
 %reduces B <= R (sub-tp-tsome-to-tnone _ _ _ _ _ _ R R' A B).
-%trustme
 %total A (sub-tp-tsome-to-tnone _ _ _ _ _ _ _ _ A _).
 
 sub-tp-tsome-to-tnone-x :  meq R X
