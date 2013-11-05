@@ -2552,12 +2552,12 @@ sub-tp-trans-aux2 :
 
 -/tselx-rec--tselx-rec : sub-tp-trans-aux1
    (sub-tp/tselx-rec STA GA2 GA1 PA2 PA1 MEQA)
-   (sub-tp/tselx-rec STB GB3 GB2 PB3 PB2 MEQB)
+   (sub-tp/tselx-rec STB GB3 (ses (tf/c N) GB2) PB3 PB2 MEQB)
    (sub-tp/tselx-rec STC GB3 GC1 PB3 PC1 MEQB)
    <- path-eval-eq PA2 PB2 EQR
    <- rect-same-all-same EQR EQS EQU
    <- eq-pev2 EQU PA1 PC1
-   <- sub-env-size-eq GA2 GB2 EQG2
+   <- sub-env-size-eq GA2 (ses (tf/c N) GB2) EQG2
    <- tcons-sametenv-eq EQG2 EQG
    <- eq-sub-env-size-cons EQG GA1 GC1
    <- eq-high EQU STA STA'
@@ -2565,7 +2565,10 @@ sub-tp-trans-aux2 :
    <- eq-low EQU STA'' STA'''
    <- eq-sametenv-cons EQG _ EQG1
    <- eq-low-env EQG1 STA''' STA''''
-   <- sub-tp-trans-tsel-aux1 STA'''' STB STC.
+   <- pev-shrink PC1 GC1 PC1'
+   <- pev-shrink PB2 (ses (tf/c N) GB2) PB2'
+   <- pev-shrink PB3 GB3 PB3'
+   <- sub-tp-trans-tsel-aux1 PC1' PB2' PB3' N sub-env/refl sub-env/refl sub-env/refl STA'''' STB STC.
 
 -/tselx-rec1 : sub-tp-trans-aux1
    (sub-tp/tselx-rec STA GA2 GA1 PA2 PA1 MEQA)
@@ -2820,12 +2823,12 @@ sub-tp-trans-aux2 :
 
 -/tselx-rec--tselx-rec : sub-tp-trans-aux2
    (sub-tp/tselx-rec STA GA2 GA1 PA2 PA1 MEQA)
-   (sub-tp/tselx-rec STB GB3 GB2 PB3 PB2 MEQB)
+   (sub-tp/tselx-rec STB GB3 (ses (tf/c N) GB2) PB3 PB2 MEQB)
    (sub-tp/tselx-rec STC GB3 GC1 PB3 PC1 MEQB)
    <- path-eval-eq PA2 PB2 EQR
    <- rect-same-all-same EQR EQS EQU
    <- eq-pev2 EQU PA1 PC1
-   <- sub-env-size-eq GA2 GB2 EQG2
+   <- sub-env-size-eq GA2 (ses (tf/c N) GB2) EQG2
    <- tcons-sametenv-eq EQG2 EQG
    <- eq-sub-env-size-cons EQG GA1 GC1
    <- eq-high EQU STA STA'
@@ -2833,7 +2836,10 @@ sub-tp-trans-aux2 :
    <- eq-low EQU STA'' STA'''
    <- eq-sametenv-cons EQG _ EQG1
    <- eq-low-env EQG1 STA''' STA''''
-   <- sub-tp-trans-tsel-aux2 STA'''' STB STC.
+   <- pev-shrink PC1 GC1 PC1'
+   <- pev-shrink PB2 (ses (tf/c N) GB2) PB2'
+   <- pev-shrink PB3 GB3 PB3'
+   <- sub-tp-trans-tsel-aux2 PC1' PB2' PB3' N sub-env/refl sub-env/refl sub-env/refl STA'''' STB STC.
 
 -/tselx-rec1 : sub-tp-trans-aux2
    (sub-tp/tselx-rec STA GA2 GA1 PA2 PA1 MEQA)
@@ -2962,10 +2968,11 @@ widen-mode-sub-tp : sub-tp O strict R1 G1 T1 R2 G2 T2 -> sub-tp O lenient R1 G1 
      <- widen-mode-sub-tp A A'.
 
 
-- : widen-mode-sub-tp (sub-tp/tbind2s C B A N LTE) (sub-tp/tbind2s C' B' A' N LTE)
+- : widen-mode-sub-tp (sub-tp/tbind2s P Y Z C B A N LTE) (sub-tp/tbind2s P' Y Z C' B' A' N LTE)
      <- widen-mode-sub-tp A A'
      <- widen-mode-sub-tp B B'
-     <- widen-mode-sub-tp C C'.
+     <- widen-mode-sub-tp C C'
+     <- widen-mode-path-eval P P'.
 
 - : widen-mode-sub-tp (sub-tp/tbind1s A N LTE) (sub-tp/tbind1s A' N LTE)
      <- widen-mode-sub-tp A A'.
