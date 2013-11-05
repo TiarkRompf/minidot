@@ -1979,6 +1979,16 @@ sub-tp-tsome-to-tnone : meq R X
      <- env-shrink LTE S1 S SA SA1
      <- sub-tp-tsome-to-tnone MEQ P1 P2 S (sub-env/ext SA1) S2 R A A'.
 
+%{
+- : sub-tp-tsome-to-tnone MEQ P1 P2 S S1 S2 R
+     (sub-tp/tbind2s P0 S0 _ A B C SA LTE)
+     (sub-tp/tbind2n A' B' C' SA)
+     <- env-shrink LTE S2 S SA SA2
+     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 (sub-env/ext SA2) R A A'
+     <- sub-tp-tsome-to-tnone MEQ P1 P0 S S1 S0 R' B B'
+     <- sub-tp-tsome-to-tnone MEQ P1 P2 S S1 (sub-env/ext SA2) R C C'.
+}%
+
 %worlds () (sub-tp-tsome-to-tnone _ _ _ _ _ _ _ _ _).
 %trustme
 %reduces B <= R (sub-tp-tsome-to-tnone _ _ _ _ _ _ R A B).
