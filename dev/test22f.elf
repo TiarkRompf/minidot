@@ -320,10 +320,10 @@ sub-tp/tbind2s : sub-tp (tsome (tsel (var X) LN))  M R1 G1 T1 R2 G2 (bind N TN)
              <- sub-tp (tsome (tsel (var X) LN)) M R1 G1 T1 R1 (tcons (bind N T1') G0) TN
              <- sub-env-size (tcons Z0' G0') (s X) G1
              <- sub-env (tcons Z1' G0') G1'
-             <- path-eval M (tcons Z0' G0') (var X) (rect LN TA0 TB)
-             <- path-eval M (tcons Z1' G0') (var X) (rect LN TA1 TB)
-             <- sub-tp (tsome (tsel (var X) LN)) M R1 (tcons Z0' G0') TB R1 (tcons Z1' G0') TB
-             <- sub-tp (tsome (tsel (var X) LN)) M R1 (tcons Z1' G0') TB R1 (tcons Z0' G0') TB
+             <- path-eval M (tcons Z0' G0') (var X) (rect LN TA0 TB0)
+             <- path-eval M (tcons Z1' G0') (var X) (rect LN TA1 TB1)
+             <- sub-tp (tsome (tsel (var X) LN)) M R1 (tcons Z0' G0') TB0 R1 (tcons Z1' G0') TB1
+             <- sub-tp (tsome (tsel (var X) LN)) M R1 (tcons Z1' G0') TB1 R1 (tcons Z0' G0') TB0
              .
 
 sub-tp/tbind1s : sub-tp (tsome (tsel (var X) LN)) M R1 G1 (bind N TN) R2 G2 T2
@@ -350,19 +350,19 @@ sub-tp/tsel-rec : sub-tp O M R G1 (tsel (var X) N) R G2 (tsel (var X) N)
 
 sub-tp/tselx-rec-stop : sub-tp (tsome (tsel (var X) N)) M R G1 (tsel (var X) N) R G2 (tsel (var X) N)
              <- meq R X
-             <- path-eval M G1 (var X) (rect N TA1 TB)
-             <- path-eval M G2 (var X) (rect N TA2 TB)
+             <- path-eval M G1 (var X) (rect N TA1 TB1)
+             <- path-eval M G2 (var X) (rect N TA2 TB2)
              <- sub-env-size (tcons Z1 GX) (s X) G1
              <- sub-env-size (tcons Z2 GX) (s X) G2.
 
 sub-tp/tselx-rec : sub-tp tnone M R G1 (tsel (var X) N) R G2 (tsel (var X) N)
              <- meq R X
-             <- path-eval M G1 (var X) (rect N TA1 TB)
-             <- path-eval M G2 (var X) (rect N TA2 TB)
+             <- path-eval M G1 (var X) (rect N TA1 TB1)
+             <- path-eval M G2 (var X) (rect N TA2 TB2)
              <- sub-env-size (tcons Z1 GX) (s X) G1
              <- sub-env-size (tcons Z2 GX) (s X) G2
-             <- sub-tp (tsome (tsel (var X) N)) M R (tcons Z1 GX) TB R (tcons Z2 GX) TB
-             <- sub-tp (tsome (tsel (var X) N)) M R (tcons Z2 GX) TB R (tcons Z1 GX) TB
+             <- sub-tp (tsome (tsel (var X) N)) M R (tcons Z1 GX) TB1 R (tcons Z2 GX) TB2
+             <- sub-tp (tsome (tsel (var X) N)) M R (tcons Z2 GX) TB2 R (tcons Z1 GX) TB1
              .
 
 sub-tp/tselx-strict : sub-tp tnone strict R1 G1 (tsel (var X) N) R2 G2 (tsel (var X) N)
@@ -2131,10 +2131,9 @@ sub-tp-trans-tsel-aux2 :
 -/tselx-rec-stop--tselx-rec-stop : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 STX12 STX23 STX32 STX21 NX SX1 SX2 SX3 
       (sub-tp/tselx-rec-stop GA2 GA1 PA2 PA1 MEQA)
       (sub-tp/tselx-rec-stop GB3 GB2 PB3 PB2 MEQB)
-      (sub-tp/tselx-rec-stop GB3 GC1 PB3 PC1 MEQB)
+      (sub-tp/tselx-rec-stop GB3 GC1 PB3 PA1 MEQB)
    <- path-eval-eq PA2 PB2 EQR
    <- rect-same-all-same EQR EQS EQU
-   <- eq-pev2 EQU PA1 PC1
    <- sub-env-size-eq GA2 GB2 EQG2
    <- tcons-sametenv-eq EQG2 EQG
    <- eq-sub-env-size-cons EQG GA1 GC1.
@@ -2290,27 +2289,25 @@ sub-tp-trans-tsel-aux2 :
 -/tselx-rec-stop--tselx-rec-stop : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 STX12 STX23 STX32 STX21 NX SX1 SX2 SX3 
       (sub-tp/tselx-rec-stop GA2 GA1 PA2 PA1 MEQA)
       (sub-tp/tselx-rec-stop GB3 GB2 PB3 PB2 MEQB)
-      (sub-tp/tselx-rec-stop GB3 GC1 PB3 PC1 MEQB)
+      (sub-tp/tselx-rec-stop GB3 GC1 PB3 PA1 MEQB)
    <- path-eval-eq PA2 PB2 EQR
    <- rect-same-all-same EQR EQS EQU
-   <- eq-pev2 EQU PA1 PC1
    <- sub-env-size-eq GA2 GB2 EQG2
    <- tcons-sametenv-eq EQG2 EQG
    <- eq-sub-env-size-cons EQG GA1 GC1.
 
 %worlds () (sub-tp-trans-tsel-aux1 _ _ _ _ _ _ _ _ _ _ _ _ _ _) (sub-tp-trans-tsel-aux2  _ _ _ _ _ _ _ _ _ _ _ _ _ _).
-%trustme
 %total [(S1 S1') (S2 S2')] (sub-tp-trans-tsel-aux1 _ _ _ _ _ _ _ _ _ _ _ S1 S2 _) (sub-tp-trans-tsel-aux2 _ _ _ _ _ _ _ _ _ _ _ S2' S1' _).
 
 
 sub-tp-tsome-to-tnone : meq R X
-                        -> path-eval lenient (tcons Z1 GX) (var X) (rect N TA1 TB)
-                        -> path-eval lenient (tcons Z2 GX) (var X) (rect N TA2 TB)
+                        -> path-eval lenient (tcons Z1 GX) (var X) (rect N TA1 TB1)
+                        -> path-eval lenient (tcons Z2 GX) (var X) (rect N TA2 TB2)
                         -> tsize GX X
                         -> sub-env (tcons Z1 GX) G1
                         -> sub-env (tcons Z2 GX) G2
-                        -> sub-tp (tsome (tsel (var X) N)) lenient R (tcons Z1 GX) TB R (tcons Z2 GX) TB
-                        -> sub-tp (tsome (tsel (var X) N)) lenient R (tcons Z2 GX) TB R (tcons Z1 GX) TB
+                        -> sub-tp (tsome (tsel (var X) N)) lenient R (tcons Z1 GX) TB1 R (tcons Z2 GX) TB2
+                        -> sub-tp (tsome (tsel (var X) N)) lenient R (tcons Z2 GX) TB2 R (tcons Z1 GX) TB1
                         -> sub-tp (tsome (tsel (var X) N)) lenient R G1 T1 R G2 T2
                         -> sub-tp tnone lenient R G1 T1 R G2 T2
                         -> type.
@@ -2381,13 +2378,13 @@ sub-tp-tsome-to-tnone : meq R X
 %total A (sub-tp-tsome-to-tnone _ _ _ _ _ _ _ _ A _).
 
 sub-tp-tsome-to-tnone-x :  meq R X
-                           -> path-eval lenient G1 (var X) (rect N TA1 TB)
-                           -> path-eval lenient G2 (var X) (rect N TA2 TB)
+                           -> path-eval lenient G1 (var X) (rect N TA1 TB1)
+                           -> path-eval lenient G2 (var X) (rect N TA2 TB2)
                            -> sub-env-size (tcons Z1 GX) (s X) G1
                            -> sub-env-size (tcons Z2 GX) (s X) G2
-                           -> sub-tp (tsome (tsel (var X) N)) lenient R (tcons Z1 GX) TB R (tcons Z2 GX) TB
-                           -> sub-tp (tsome (tsel (var X) N)) lenient R (tcons Z2 GX) TB R (tcons Z1 GX) TB
-                           -> sub-tp tnone lenient R (tcons Z1 GX) TB R (tcons Z2 GX) TB
+                           -> sub-tp (tsome (tsel (var X) N)) lenient R (tcons Z1 GX) TB1 R (tcons Z2 GX) TB2
+                           -> sub-tp (tsome (tsel (var X) N)) lenient R (tcons Z2 GX) TB2 R (tcons Z1 GX) TB1
+                           -> sub-tp tnone lenient R (tcons Z1 GX) TB1 R (tcons Z2 GX) TB2
                            -> type.
 %mode sub-tp-tsome-to-tnone-x +A +B +C +D +E +F +G -H.
 
@@ -2619,23 +2616,20 @@ sub-tp-trans-aux2 :
 -/tselx-rec--tselx-rec : sub-tp-trans-aux1
    (sub-tp/tselx-rec STAR STA GA2 GA1 PA2 PA1 MEQA)
    (sub-tp/tselx-rec STBR STB GB3 (ses (tf/c N) GB2) PB3 PB2 MEQB)
-   (sub-tp/tselx-rec STCR STC GB3 GC1 PB3 PC1 MEQB)
+   (sub-tp/tselx-rec STCR STC GB3 GC1 PB3 PA1 MEQB)
    <- path-eval-eq PA2 PB2 EQR
    <- rect-same-all-same EQR EQS EQU
-   <- eq-pev2 EQU PA1 PC1
    <- sub-env-size-eq GA2 (ses (tf/c N) GB2) EQG2
    <- tcons-sametenv-eq EQG2 EQG
    <- eq-sub-env-size-cons EQG GA1 GC1
    <- eq-sametenv-cons EQG _ EQG1
    <- eq-high EQU STA STA'
    <- eq-high-env EQG2 STA' STA''
-   <- eq-low EQU STA'' STA'''
-   <- eq-low-env EQG1 STA''' STA''''
+   <- eq-low-env EQG1 STA'' STA''''
    <- eq-low EQU STAR STAR'
    <- eq-low-env EQG2 STAR' STAR''
-   <- eq-high EQU STAR'' STAR'''
-   <- eq-high-env EQG1 STAR''' STAR''''
-   <- pev-shrink PC1 GC1 PC1'
+   <- eq-high-env EQG1 STAR'' STAR''''
+   <- pev-shrink PA1 GC1 PC1'
    <- pev-shrink PB2 (ses (tf/c N) GB2) PB2'
    <- pev-shrink PB3 GB3 PB3'
    <- sub-tp-trans-tsel-aux1 PC1' PB2' PB3' STA'''' STB STBR STAR'''' N sub-env/refl sub-env/refl sub-env/refl STA'''' STB STC
@@ -2895,27 +2889,24 @@ sub-tp-trans-aux2 :
 -/tselx-rec--tselx-rec : sub-tp-trans-aux2
    (sub-tp/tselx-rec STAR STA GA2 GA1 PA2 PA1 MEQA)
    (sub-tp/tselx-rec STBR STB GB3 (ses (tf/c N) GB2) PB3 PB2 MEQB)
-   (sub-tp/tselx-rec STCR STC GB3 GC1 PB3 PC1 MEQB)
+   (sub-tp/tselx-rec STCR STC GB3 GC1 PB3 PA1 MEQB)
    <- path-eval-eq PA2 PB2 EQR
    <- rect-same-all-same EQR EQS EQU
-   <- eq-pev2 EQU PA1 PC1
    <- sub-env-size-eq GA2 (ses (tf/c N) GB2) EQG2
    <- tcons-sametenv-eq EQG2 EQG
    <- eq-sub-env-size-cons EQG GA1 GC1
    <- eq-sametenv-cons EQG _ EQG1
    <- eq-high EQU STA STA'
    <- eq-high-env EQG2 STA' STA''
-   <- eq-low EQU STA'' STA'''
-   <- eq-low-env EQG1 STA''' STA''''
+   <- eq-low-env EQG1 STA'' STA''''
    <- eq-low EQU STAR STAR'
    <- eq-low-env EQG2 STAR' STAR''
-   <- eq-high EQU STAR'' STAR'''
-   <- eq-high-env EQG1 STAR''' STAR''''
-   <- pev-shrink PC1 GC1 PC1'
+   <- eq-high-env EQG1 STAR'' STAR''''
+   <- pev-shrink PA1 GC1 PA1'
    <- pev-shrink PB2 (ses (tf/c N) GB2) PB2'
    <- pev-shrink PB3 GB3 PB3'
-   <- sub-tp-trans-tsel-aux2 PC1' PB2' PB3' STA'''' STB STBR STAR'''' N sub-env/refl sub-env/refl sub-env/refl STA'''' STB STC
-   <- sub-tp-trans-tsel-aux2 PB3' PB2' PC1' STBR STAR'''' STA'''' STB N sub-env/refl sub-env/refl sub-env/refl STBR STAR'''' STCR.
+   <- sub-tp-trans-tsel-aux2 PA1' PB2' PB3' STA'''' STB STBR STAR'''' N sub-env/refl sub-env/refl sub-env/refl STA'''' STB STC
+   <- sub-tp-trans-tsel-aux2 PB3' PB2' PA1' STBR STAR'''' STA'''' STB N sub-env/refl sub-env/refl sub-env/refl STBR STAR'''' STCR.
 
 -/tselx-rec1 : sub-tp-trans-aux2
    (sub-tp/tselx-rec STAR STA GA2 GA1 PA2 PA1 MEQA)
