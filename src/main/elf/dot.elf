@@ -316,13 +316,13 @@ sub-tp/tbind2s : sub-tp (tsome (tsel (var X) LN))  M R1 G1 T1 R2 G2 (bind N TN)
              <- lte (s X) N
              <- sub-env-size G0 N G2
              <- sub-tp (tsome (tsel (var X) LN)) M R1 G1 T1 R2 (tcons (bind N TN) G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
-             <- sub-tp (tsome (tsel (var X) LN)) M R1 G1 T1 R1' G1' T1'                     %% built-in slack (trans: T1-bind2)
+             <- sub-tp (tsome (tsel (var X) LN)) M R1 G1 T1 R1 G1' T1'                     %% built-in slack (trans: T1-bind2)
              <- sub-tp (tsome (tsel (var X) LN)) M R1 G1 T1 R1' (tcons (bind N T1') G0) TN
              <- sub-env-size (tcons Z0' G0') (s X) G1
              <- sub-env (tcons Z1' G0') G1'
-             <- path-eval M (tcons Z0' G0') (var X) (rect LN TA0 TB)
-             <- path-eval M (tcons Z1' G0') (var X) (rect LN TA1 TB)
-             <- sub-tp (tsome (tsel (var X) LN)) M R1 (tcons Z0' G0') TB R1 (tcons Z1' G0') TB
+             <- path-eval M (tcons Z0' G0') (var X) (rect LN TA0 TB0)
+             <- path-eval M (tcons Z1' G0') (var X) (rect LN TA1 TB1)
+             <- sub-tp (tsome (tsel (var X) LN)) M R1 (tcons Z0' G0') TB0 R1 (tcons Z1' G0') TB1
              .
 
 sub-tp/tbind1s : sub-tp (tsome (tsel (var X) LN)) M R1 G1 (bind N TN) R2 G2 T2
@@ -361,6 +361,7 @@ sub-tp/tselx-rec : sub-tp tnone M R G1 (tsel (var X) N) R G2 (tsel (var X) N)
              <- sub-env-size (tcons Z1 GX) (s X) G1
              <- sub-env-size (tcons Z2 GX) (s X) G2
              <- sub-tp (tsome (tsel (var X) N)) M R (tcons Z1 GX) TB R (tcons Z2 GX) TB
+             <- sub-tp (tsome (tsel (var X) N)) M R (tcons Z2 GX) TB R (tcons Z1 GX) TB
              .
 
 sub-tp/tselx-strict : sub-tp tnone strict R1 G1 (tsel (var X) N) R2 G2 (tsel (var X) N)
@@ -1455,10 +1456,10 @@ extend-sub-tp: sub-tp O M R1 G1 T1 R2 G2 T2 -> {Z: tpe}
      <- extend-sub-tp ST3 T STA3 STB3 STC3
      .
 
-- : extend-sub-tp (sub-tp/tbind2s P1' S1' (ses N1 S1) ST1 ST2 ST3 (ses N S) LTE) T
-     (sub-tp/tbind2s P1' S1' (ses N1 (sub-env/ext S1)) STB1 STB2 STB3 (ses N (sub-env/ext S)) LTE)
-     (sub-tp/tbind2s P1' S1' (ses N1 (sub-env/ext S1)) STB1 STB2 STB3 (ses N S) LTE)
-     (sub-tp/tbind2s P1' S1' (ses N1 S1) ST1 ST2 ST3 (ses N (sub-env/ext S)) LTE)
+- : extend-sub-tp (sub-tp/tbind2s ST1' P1' P0' S1' (ses N1 S1) ST1 ST2 ST3 (ses N S) LTE) T
+     (sub-tp/tbind2s ST1' P1' P0' S1' (ses N1 (sub-env/ext S1)) STB1 STB2 STB3 (ses N (sub-env/ext S)) LTE)
+     (sub-tp/tbind2s ST1' P1' P0' S1' (ses N1 (sub-env/ext S1)) STB1 STB2 STB3 (ses N S) LTE)
+     (sub-tp/tbind2s ST1' P1' P0' S1' (ses N1 S1) ST1 ST2 ST3 (ses N (sub-env/ext S)) LTE)
      <- extend-sub-tp ST1 T STA1 STB1 STC1
      <- extend-sub-tp ST2 T STA2 STB2 STC2
      <- extend-sub-tp ST3 T STA3 STB3 STC3
@@ -1671,7 +1672,7 @@ extract-wf : sub-tp O lenient R1 G1 T1 R2 G2 T2 -> wf-tp lenient R1 G1 T1 -> wf-
 
 - : extract-wf (sub-tp/tbind2n SW SE SU S) W1 (wf-tp/tbind W2 S)
       <- extract-wf SU W1 W2.
-- : extract-wf (sub-tp/tbind2s _ _ _ SW SE SU S LTE) W1 (wf-tp/tbind W2 S)
+- : extract-wf (sub-tp/tbind2s _ _ _ _ _ SW SE SU S LTE) W1 (wf-tp/tbind W2 S)
       <- extract-wf SU W1 W2.
 
 - : extract-wf (sub-tp/and1a W2 S1)
@@ -2021,14 +2022,17 @@ sub-tp-trans-tsel-aux1 :
                           path-eval lenient (tcons Z1 GX) (var X) (rect N TA1 TB1)
                           -> path-eval lenient (tcons Z2 GX) (var X) (rect N TA2 TB2)
                           -> path-eval lenient (tcons Z3 GX) (var X) (rect N TA3 TB3)
+                          -> sub-tp (tsome (tsel (var X) N)) lenient (tcons Z1 GX) TB1 (tcons Z2 GX) TB2
+                          -> sub-tp (tsome (tsel (var X) N)) lenient (tcons Z2 GX) TB2 (tcons Z3 GX) TB3
                           -> tsize GX X
                           -> sub-env (tcons Z1 GX) G1
                           -> sub-env (tcons Z2 GX) G2
-                          -> sub-env (tcons Z3 GX) G3 ->
-  sub-tp (tsome (tsel (var X) N)) lenient R1 G1 T1 R2 G2 T2 ->
-  sub-tp (tsome (tsel (var X) N)) lenient R2 G2 T2 R3 G3 T3 ->
+                          -> sub-env (tcons Z3 GX) G3
+                          ->
+  sub-tp (tsome (tsel (var X) N)) lenient R G1 T1 R G2 T2 ->
+  sub-tp (tsome (tsel (var X) N)) lenient R G2 T2 R G3 T3 ->
   %% Output
-  sub-tp (tsome (tsel (var X) N)) lenient R1 G1 T1 R3 G3 T3 ->
+  sub-tp (tsome (tsel (var X) N)) lenient R G1 T1 R G3 T3 ->
   type.
 %mode sub-tp-trans-tsel-aux1 +A +B +C +D +E +F +G +SBT1 +SBT2 -SBT3.
 
@@ -2041,10 +2045,10 @@ sub-tp-trans-tsel-aux2 :
                           -> sub-env (tcons Z2 GX) G2
                           -> sub-env (tcons Z3 GX) G3 ->
   %% Inputs
-  sub-tp (tsome (tsel (var X) N)) lenient R1 G1 T1 R2 G2 T2 ->
-  sub-tp (tsome (tsel (var X) N)) lenient R2 G2 T2 R3 G3 T3 ->
+  sub-tp (tsome (tsel (var X) N)) lenient R G1 T1 R G2 T2 ->
+  sub-tp (tsome (tsel (var X) N)) lenient R G2 T2 R G3 T3 ->
   %% Output
-  sub-tp (tsome (tsel (var X) N)) lenient R1 G1 T1 R3 G3 T3 ->
+  sub-tp (tsome (tsel (var X) N)) lenient R G1 T1 R G3 T3 ->
   type.
 %mode sub-tp-trans-tsel-aux2 +A +B +C +D +E +F +G +SBT1 +SBT2 -SBT3.
 
@@ -2072,8 +2076,8 @@ sub-tp-trans-tsel-aux2 :
 
 -/tbind2s  : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
        A
-       (sub-tp/tbind2s P2 S2 (ses NX2 SN2) B1 B2 B3 S LTE)
-       (sub-tp/tbind2s PX2' SX2' (ses (tf/c NX) SX1) C1 C2 C3 S LTE)
+       (sub-tp/tbind2s ST P2 P1 S2 (ses NX2 SN2) B1 B2 B3 S LTE)
+       (sub-tp/tbind2s ST' PX2' P1' SX2' (ses (tf/c NX) SX1) C1 C2 C3 S LTE)
        <- env-shrink LTE SX3 NX S SX3'
        <- sub-env-size-eq (ses NX2 SN2) (ses (tf/c NX) SX2) EQG2
        <- tcons-sametenv-eq EQG2 EQGX
