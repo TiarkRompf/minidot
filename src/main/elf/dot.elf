@@ -1894,7 +1894,11 @@ eq-sub-env-size : sametenv GX GX' -> sub-env-size GX N G -> sub-env-size GX' N G
 %worlds () (eq-sub-env-size _ _ _).
 %total A (eq-sub-env-size A _ _).
 
-
+eq-sub-env-cons : sametenv GX GX' -> sub-env (tcons Z GX) G -> sub-env (tcons Z GX') G -> type.
+%mode eq-sub-env-cons +A +B -C.
+- : eq-sub-env-cons identtenv S S.
+%worlds () (eq-sub-env-cons _ _ _).
+%total A (eq-sub-env-cons A _ _).
 
 pev-shrink : path-eval lenient G (var X) (rect N TA TB)
               -> sub-env-size GX (s X) G
@@ -2002,24 +2006,22 @@ sub-tp-tsome-to-tnone-x :  meq R X
 
 sub-tp-trans-tsel-aux1 :
   %% Inputs
-                          meq R X
-                          -> path-eval lenient (tcons Z1 GX) (var X) (rect N TA1 TB1)
+                          path-eval lenient (tcons Z1 GX) (var X) (rect N TA1 TB1)
                           -> path-eval lenient (tcons Z2 GX) (var X) (rect N TA2 TB2)
                           -> path-eval lenient (tcons Z3 GX) (var X) (rect N TA3 TB3)
                           -> tsize GX X
                           -> sub-env (tcons Z1 GX) G1
                           -> sub-env (tcons Z2 GX) G2
                           -> sub-env (tcons Z3 GX) G3 ->
-  sub-tp (tsome (tsel (var X) N)) lenient R G1 T1 R G2 T2 ->
-  sub-tp (tsome (tsel (var X) N)) lenient R G2 T2 R G3 T3 ->
+  sub-tp (tsome (tsel (var X) N)) lenient R1 G1 T1 R2 G2 T2 ->
+  sub-tp (tsome (tsel (var X) N)) lenient R2 G2 T2 R3 G3 T3 ->
   %% Output
-  sub-tp (tsome (tsel (var X) N)) lenient R G1 T1 R G3 T3 ->
+  sub-tp (tsome (tsel (var X) N)) lenient R1 G1 T1 R3 G3 T3 ->
   type.
-%mode sub-tp-trans-tsel-aux1 +A +B +C +D +E +F +G +H +SBT1 +SBT2 -SBT3.
+%mode sub-tp-trans-tsel-aux1 +A +B +C +D +E +F +G +SBT1 +SBT2 -SBT3.
 
 sub-tp-trans-tsel-aux2 :
-                          meq R X
-                          -> path-eval lenient (tcons Z1 GX) (var X) (rect N TA1 TB1)
+                          path-eval lenient (tcons Z1 GX) (var X) (rect N TA1 TB1)
                           -> path-eval lenient (tcons Z2 GX) (var X) (rect N TA2 TB2)
                           -> path-eval lenient (tcons Z3 GX) (var X) (rect N TA3 TB3)
                           -> tsize GX X
@@ -2032,61 +2034,69 @@ sub-tp-trans-tsel-aux2 :
   %% Output
   sub-tp (tsome (tsel (var X) N)) lenient R1 G1 T1 R3 G3 T3 ->
   type.
-%mode sub-tp-trans-tsel-aux2 +A +B +C +D +E +F +G +H +SBT1 +SBT2 -SBT3.
+%mode sub-tp-trans-tsel-aux2 +A +B +C +D +E +F +G +SBT1 +SBT2 -SBT3.
 
--/top    : sub-tp-trans-tsel-aux1 MEQ PX1 PX2 PX3 NX SX1 SX2 SX3 S1 (sub-tp/top _) (sub-tp/top W) <- extract-wf S1 W _.
--/bot    : sub-tp-trans-tsel-aux1 MEQ PX1 PX2 PX3 NX SX1 SX2 SX3 (sub-tp/bot _) S2 (sub-tp/bot W) <- extract-wf S2 _ W.
+-/top    : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 S1 (sub-tp/top _) (sub-tp/top W) <- extract-wf S1 W _.
+-/bot    : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 (sub-tp/bot _) S2 (sub-tp/bot W) <- extract-wf S2 _ W.
 
--/fun-fun  : sub-tp-trans-tsel-aux1 MEQ PX1 PX2 PX3 NX SX1 SX2 SX3 
+-/fun-fun  : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
             (sub-tp/fun SBT2 SBT1)
             (sub-tp/fun SBT4 SBT3)
             (sub-tp/fun SBT6 SBT5)
-      <- sub-tp-trans-tsel-aux2 MEQ PX3 PX2 PX1 NX SX3 SX2 SX1 SBT3 SBT1 SBT5
-      <- sub-tp-trans-tsel-aux1 MEQ PX1 PX2 PX3 NX SX1 SX2 SX3 SBT2 SBT4 SBT6.
+      <- sub-tp-trans-tsel-aux2 PX3 PX2 PX1 NX SX3 SX2 SX1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 SBT2 SBT4 SBT6.
 
--/rect-rect  : sub-tp-trans-tsel-aux1 MEQ PX1 PX2 PX3 NX SX1 SX2 SX3 
+-/rect-rect  : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
             (sub-tp/rect-lenient A)
             (sub-tp/rect-lenient B)
             (sub-tp/rect-lenient C)
-      <- sub-tp-trans-tsel-aux1 MEQ PX1 PX2 PX3 NX SX1 SX2 SX3 A B C.
+      <- sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 A B C.
 
--/recv-recv  : sub-tp-trans-tsel-aux1 MEQ PX1 PX2 PX3 NX SX1 SX2 SX3 
+-/recv-recv  : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
             (sub-tp/recv SBT1)
             (sub-tp/recv SBT3)
             (sub-tp/recv SBT5)
-      <- sub-tp-trans-tsel-aux1 MEQ PX1 PX2 PX3 NX SX1 SX2 SX3 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 SBT1 SBT3 SBT5.
 
--/tbind2s  : sub-tp-trans-tsel-aux1 MEQ PX1 PX2 PX3 NX SX1 SX2 SX3 
+-/tbind2s  : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
        A
-       (sub-tp/tbind2s P2 S2 SN2 B1 B2 B3 S LTE)
-       (sub-tp/tbind2s P2' S2' SN2' C1 C2 C3 S LTE)
-       <- sub-tp-trans-tsel-aux1 MEQ PX1 PX2 PX3 NX SX1 SX2 SX3 A B1 C1
-       <- sub-tp-trans-tsel-aux1 MEQ PX1 PX2 PX2' NX SX1 SX2 SX2' A B2 C2
-       <- sub-tp-trans-tsel-aux1 MEQ PX1 PX2 PX3 NX SX1 SX2 SX3 A B3 C3.
+       (sub-tp/tbind2s P2 S2 (ses NX2 SN2) B1 B2 B3 S LTE)
+       (sub-tp/tbind2s PX2' SX2' (ses (tf/c NX) SX1) C1 C2 C3 S LTE)
+       <- env-shrink LTE SX3 NX S SX3'
+       <- sub-env-size-eq (ses NX2 SN2) (ses (tf/c NX) SX2) EQG2
+       <- tcons-sametenv-eq EQG2 EQGX
+       <- eq-sametenv-cons EQGX _ EQG2'
+       <- eq-pev-env EQG2' P2 PX2'
+       <- eq-sub-env-cons EQGX S2 SX2'
+       <- sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 (sub-env/ext SX3') A B1 C1
+       <- sub-tp-trans-tsel-aux1 PX1 PX2 PX2' NX SX1 SX2 SX2' A B2 C2
+       <- sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 (sub-env/ext SX3') A B3 C3.
 
--/tbind1 : sub-tp-trans-tsel-aux1
+-/tbind1 : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
        (sub-tp/tbind1s ST S LTE)
        SBT2
        (sub-tp/tbind1s ST' S LTE)
-       <- sub-tp-trans-tsel-aux1 ST SBT2 ST'.
+       <- env-shrink LTE SX1 NX S SX1'
+       <- sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX (sub-env/ext SX1') SX2 SX3 ST SBT2 ST'.
 
--/tbind2-tbind1  : sub-tp-trans-tsel-aux1
-       (sub-tp/tbind2s _ _ SU S1 _)
-       (sub-tp/tbind1s A2 S2 _)
+-/tbind2-tbind1  : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
+       (sub-tp/tbind2s _ _ _ _ _ SU S1 LTE1)
+       (sub-tp/tbind1s A2 S2 LTE2)
        A3
+       <- env-shrink LTE2 SX2 NX S2 SX2'
        <- sub-env-size-eq S1 S2 EQG
        <- eq-sametenv-cons EQG _ EQG'
        <- eq-high-env EQG' SU SU'
-       <- sub-tp-trans-tsel-aux1 SU' A2 A3.
+       <- sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 (sub-env/ext SX2') SX3 SU' A2 A3.
 
--/tbind-refl1 : sub-tp-trans-tsel-aux1
+-/tbind-refl1 : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
        (sub-tp/tbind-refl WA SA2 SA1) 
        (sub-tp/tbind-refl WB SB3 SB2) 
        (sub-tp/tbind-refl WA SC3 SA1)
       <- sub-env-size-eq SB2 SA2 EQG
       <- eq-sub-env-size EQG SB3 SC3.
 
--/tbind-refl1 : sub-tp-trans-tsel-aux1
+-/tbind-refl1 : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
        (sub-tp/tbind-refl W SA2 SA1) 
        (sub-tp/tbind1s B SB2 LTE)
        (sub-tp/tbind1s C SA1 LTE)
@@ -2094,48 +2104,48 @@ sub-tp-trans-tsel-aux2 :
       <- eq-sametenv-cons EQG _ EQG'
       <- eq-low-env EQG' B C.
 
--/tbind-refl2 : sub-tp-trans-tsel-aux1
-       (sub-tp/tbind2s A B C SB2 LTE)
+-/tbind-refl2 : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
+       (sub-tp/tbind2s X Y Z A B C SB2 LTE)
        (sub-tp/tbind-refl W SA3 SA2) 
-       (sub-tp/tbind2s A' B C' SA3 LTE)
+       (sub-tp/tbind2s X Y Z A' B C' SA3 LTE)
       <- sub-env-size-eq SB2 SA2 EQG
       <- eq-sametenv-cons EQG _ EQGA
       <- eq-sametenv-cons EQG _ EQGC
       <- eq-high-env EQGA A A'
       <- eq-high-env EQGC C C'.
 
--/tand1a : sub-tp-trans-tsel-aux1
+-/tand1a : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
       (sub-tp/and1a W1 SBT1)
       SBT3
       (sub-tp/and1a W1 SBT5)
-      <- sub-tp-trans-tsel-aux1 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3  SBT1 SBT3 SBT5.
 
--/tand1b : sub-tp-trans-tsel-aux1
+-/tand1b : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
       (sub-tp/and1b W1 SBT1)
       SBT3
       (sub-tp/and1b W1 SBT5)
-      <- sub-tp-trans-tsel-aux1 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3  SBT1 SBT3 SBT5.
 
--/tand2 : sub-tp-trans-tsel-aux1
+-/tand2 : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
       SBT1
       (sub-tp/and2 ST1 ST2)
       (sub-tp/and2 ST1' ST2')
-      <- sub-tp-trans-tsel-aux1 SBT1 ST1 ST1'
-      <- sub-tp-trans-tsel-aux1 SBT1 ST2 ST2'.
+      <- sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 SBT1 ST1 ST1'
+      <- sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 SBT1 ST2 ST2'.
 
--/tand2-tand1a : sub-tp-trans-tsel-aux1
+-/tand2-tand1a : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
       (sub-tp/and2 SBT1 _)
       (sub-tp/and1a _ SBT3)
       SBT5
-      <- sub-tp-trans-tsel-aux1 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 SBT1 SBT3 SBT5.
 
--/tand2-tand1b : sub-tp-trans-tsel-aux1
+-/tand2-tand1b : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
       (sub-tp/and2 _ SBT1)
       (sub-tp/and1b _ SBT3)
       SBT5
-      <- sub-tp-trans-tsel-aux1 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 SBT1 SBT3 SBT5.
 
--/tsel-rec--tsel-rec : sub-tp-trans-tsel-aux1
+-/tsel-rec--tsel-rec : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
       (sub-tp/tsel-rec OWA GA2 GA1 PA2 PA1)
       (sub-tp/tsel-rec OWB GB3 GB2 PB3 PB2)
       (sub-tp/tsel-rec OWA GC3 GA1 PC3 PA1)
@@ -2144,7 +2154,7 @@ sub-tp-trans-tsel-aux2 :
    <- eq-pev EQR PB3 PC3
    <- eq-sub-env-size EQG GB3 GC3.
 
--/tselx-rec-stop--tsel-rec : sub-tp-trans-tsel-aux1
+-/tselx-rec-stop--tsel-rec : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
       (sub-tp/tselx-rec-stop GA2 GA1 PA2 PA1 MEQ)
       (sub-tp/tsel-rec OWB GB3 GB2 PB3 PB2)
       (sub-tp/tselx-rec-stop GC3 GA1 PC3 PA1 MEQ)
@@ -2153,7 +2163,7 @@ sub-tp-trans-tsel-aux2 :
    <- eq-pev EQR PB3 PC3
    <- eq-sub-env-size EQG GB3 GC3.
 
--/tsel-rec--tselx-rec-stop : sub-tp-trans-tsel-aux1
+-/tsel-rec--tselx-rec-stop : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
       (sub-tp/tsel-rec OWA GA2 GA1 PA2 PA1)
       (sub-tp/tselx-rec-stop GB3 GB2 PB3 PB2 MEQ)
       (sub-tp/tselx-rec-stop GB3 GC1 PB3 PC1 MEQ)
@@ -2162,7 +2172,7 @@ sub-tp-trans-tsel-aux2 :
    <- eq-pev EQR PA1 PC1
    <- eq-sub-env-size EQG GA1 GC1.
 
--/tselx-rec-stop--tselx-rec-stop : sub-tp-trans-tsel-aux1
+-/tselx-rec-stop--tselx-rec-stop : sub-tp-trans-tsel-aux1 PX1 PX2 PX3 NX SX1 SX2 SX3 
       (sub-tp/tselx-rec-stop GA2 GA1 PA2 PA1 MEQA)
       (sub-tp/tselx-rec-stop GB3 GB2 PB3 PB2 MEQB)
       (sub-tp/tselx-rec-stop GB3 GC1 PB3 PC1 MEQB)
@@ -2175,60 +2185,67 @@ sub-tp-trans-tsel-aux2 :
 
 % mirror aux2
 
--/top    : sub-tp-trans-tsel-aux2 S1 (sub-tp/top _) (sub-tp/top W) <- extract-wf S1 W _.
--/bot    : sub-tp-trans-tsel-aux2 (sub-tp/bot _) S2 (sub-tp/bot W) <- extract-wf S2 _ W.
+-/top    : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 S1 (sub-tp/top _) (sub-tp/top W) <- extract-wf S1 W _.
+-/bot    : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 (sub-tp/bot _) S2 (sub-tp/bot W) <- extract-wf S2 _ W.
 
--/fun-fun  : sub-tp-trans-tsel-aux2
+-/fun-fun  : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
             (sub-tp/fun SBT2 SBT1)
             (sub-tp/fun SBT4 SBT3)
             (sub-tp/fun SBT6 SBT5)
-      <- sub-tp-trans-tsel-aux1 SBT3 SBT1 SBT5
-      <- sub-tp-trans-tsel-aux2 SBT2 SBT4 SBT6.
+      <- sub-tp-trans-tsel-aux1 PX3 PX2 PX1 NX SX3 SX2 SX1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 SBT2 SBT4 SBT6.
 
--/rect-rect  : sub-tp-trans-tsel-aux2
+-/rect-rect  : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
             (sub-tp/rect-lenient A)
             (sub-tp/rect-lenient B)
             (sub-tp/rect-lenient C)
-      <- sub-tp-trans-tsel-aux2 A B C.
+      <- sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 A B C.
 
--/recv-recv  : sub-tp-trans-tsel-aux2
+-/recv-recv  : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
             (sub-tp/recv SBT1)
             (sub-tp/recv SBT3)
             (sub-tp/recv SBT5)
-      <- sub-tp-trans-tsel-aux2 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 SBT1 SBT3 SBT5.
 
--/tbind2  : sub-tp-trans-tsel-aux2
+-/tbind2s  : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
        A
-       (sub-tp/tbind2s B1 B2 B3 S LTE)
-       (sub-tp/tbind2s C1 C2 C3 S LTE)
+       (sub-tp/tbind2s P2 S2 (ses NX2 SN2) B1 B2 B3 S LTE)
+       (sub-tp/tbind2s PX2' SX2' (ses (tf/c NX) SX1) C1 C2 C3 S LTE)
+       <- env-shrink LTE SX3 NX S SX3'
+       <- sub-env-size-eq (ses NX2 SN2) (ses (tf/c NX) SX2) EQG2
+       <- tcons-sametenv-eq EQG2 EQGX
+       <- eq-sametenv-cons EQGX _ EQG2'
+       <- eq-pev-env EQG2' P2 PX2'
+       <- eq-sub-env-cons EQGX S2 SX2'
+       <- sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 (sub-env/ext SX3') A B1 C1
+       <- sub-tp-trans-tsel-aux2 PX1 PX2 PX2' NX SX1 SX2 SX2' A B2 C2
+       <- sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 (sub-env/ext SX3') A B3 C3.
 
-       <- sub-tp-trans-tsel-aux2 A B1 C1
-       <- sub-tp-trans-tsel-aux2 A B2 C2
-       <- sub-tp-trans-tsel-aux2 A B3 C3.
-
--/tbind1 : sub-tp-trans-tsel-aux2
+-/tbind1 : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
        (sub-tp/tbind1s ST S LTE)
        SBT2
        (sub-tp/tbind1s ST' S LTE)
-       <- sub-tp-trans-tsel-aux2 ST SBT2 ST'.
+       <- env-shrink LTE SX1 NX S SX1'
+       <- sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX (sub-env/ext SX1') SX2 SX3 ST SBT2 ST'.
 
--/tbind2-tbind1  : sub-tp-trans-tsel-aux2
-       (sub-tp/tbind2s _ _ SU S1 _)
-       (sub-tp/tbind1s A2 S2 _)
+-/tbind2-tbind1  : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
+       (sub-tp/tbind2s _ _ _ _ _ SU S1 LTE1)
+       (sub-tp/tbind1s A2 S2 LTE2)
        A3
+       <- env-shrink LTE2 SX2 NX S2 SX2'
        <- sub-env-size-eq S1 S2 EQG
        <- eq-sametenv-cons EQG _ EQG'
        <- eq-high-env EQG' SU SU'
-       <- sub-tp-trans-tsel-aux2 SU' A2 A3.
+       <- sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 (sub-env/ext SX2') SX3 SU' A2 A3.
 
--/tbind-refl1 : sub-tp-trans-tsel-aux2
+-/tbind-refl1 : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
        (sub-tp/tbind-refl WA SA2 SA1) 
        (sub-tp/tbind-refl WB SB3 SB2) 
        (sub-tp/tbind-refl WA SC3 SA1)
       <- sub-env-size-eq SB2 SA2 EQG
       <- eq-sub-env-size EQG SB3 SC3.
 
--/tbind-refl1 : sub-tp-trans-tsel-aux2
+-/tbind-refl1 : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
        (sub-tp/tbind-refl W SA2 SA1) 
        (sub-tp/tbind1s B SB2 LTE)
        (sub-tp/tbind1s C SA1 LTE)
@@ -2236,48 +2253,48 @@ sub-tp-trans-tsel-aux2 :
       <- eq-sametenv-cons EQG _ EQG'
       <- eq-low-env EQG' B C.
 
--/tbind-refl2 : sub-tp-trans-tsel-aux2
-       (sub-tp/tbind2s A B C SB2 LTE)
+-/tbind-refl2 : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
+       (sub-tp/tbind2s X Y Z A B C SB2 LTE)
        (sub-tp/tbind-refl W SA3 SA2) 
-       (sub-tp/tbind2s A' B C' SA3 LTE)
+       (sub-tp/tbind2s X Y Z A' B C' SA3 LTE)
       <- sub-env-size-eq SB2 SA2 EQG
       <- eq-sametenv-cons EQG _ EQGA
       <- eq-sametenv-cons EQG _ EQGC
       <- eq-high-env EQGA A A'
       <- eq-high-env EQGC C C'.
 
--/tand1a : sub-tp-trans-tsel-aux2
+-/tand1a : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
       (sub-tp/and1a W1 SBT1)
       SBT3
       (sub-tp/and1a W1 SBT5)
-      <- sub-tp-trans-tsel-aux2 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3  SBT1 SBT3 SBT5.
 
--/tand1b : sub-tp-trans-tsel-aux2
+-/tand1b : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
       (sub-tp/and1b W1 SBT1)
       SBT3
       (sub-tp/and1b W1 SBT5)
-      <- sub-tp-trans-tsel-aux2 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3  SBT1 SBT3 SBT5.
 
--/tand2 : sub-tp-trans-tsel-aux2
+-/tand2 : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
       SBT1
       (sub-tp/and2 ST1 ST2)
       (sub-tp/and2 ST1' ST2')
-      <- sub-tp-trans-tsel-aux2 SBT1 ST1 ST1'
-      <- sub-tp-trans-tsel-aux2 SBT1 ST2 ST2'.
+      <- sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 SBT1 ST1 ST1'
+      <- sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 SBT1 ST2 ST2'.
 
--/tand2-tand1a : sub-tp-trans-tsel-aux2
+-/tand2-tand1a : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
       (sub-tp/and2 SBT1 _)
       (sub-tp/and1a _ SBT3)
       SBT5
-      <- sub-tp-trans-tsel-aux2 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 SBT1 SBT3 SBT5.
 
--/tand2-tand1b : sub-tp-trans-tsel-aux2
+-/tand2-tand1b : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
       (sub-tp/and2 _ SBT1)
       (sub-tp/and1b _ SBT3)
       SBT5
-      <- sub-tp-trans-tsel-aux2 SBT1 SBT3 SBT5.
+      <- sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 SBT1 SBT3 SBT5.
 
--/tsel-rec--tsel-rec : sub-tp-trans-tsel-aux2
+-/tsel-rec--tsel-rec : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
       (sub-tp/tsel-rec OWA GA2 GA1 PA2 PA1)
       (sub-tp/tsel-rec OWB GB3 GB2 PB3 PB2)
       (sub-tp/tsel-rec OWA GC3 GA1 PC3 PA1)
@@ -2286,7 +2303,7 @@ sub-tp-trans-tsel-aux2 :
    <- eq-pev EQR PB3 PC3
    <- eq-sub-env-size EQG GB3 GC3.
 
--/tselx-rec-stop--tsel-rec : sub-tp-trans-tsel-aux2
+-/tselx-rec-stop--tsel-rec : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
       (sub-tp/tselx-rec-stop GA2 GA1 PA2 PA1 MEQ)
       (sub-tp/tsel-rec OWB GB3 GB2 PB3 PB2)
       (sub-tp/tselx-rec-stop GC3 GA1 PC3 PA1 MEQ)
@@ -2295,7 +2312,7 @@ sub-tp-trans-tsel-aux2 :
    <- eq-pev EQR PB3 PC3
    <- eq-sub-env-size EQG GB3 GC3.
 
--/tsel-rec--tselx-rec-stop : sub-tp-trans-tsel-aux2
+-/tsel-rec--tselx-rec-stop : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
       (sub-tp/tsel-rec OWA GA2 GA1 PA2 PA1)
       (sub-tp/tselx-rec-stop GB3 GB2 PB3 PB2 MEQ)
       (sub-tp/tselx-rec-stop GB3 GC1 PB3 PC1 MEQ)
@@ -2304,7 +2321,7 @@ sub-tp-trans-tsel-aux2 :
    <- eq-pev EQR PA1 PC1
    <- eq-sub-env-size EQG GA1 GC1.
 
--/tselx-rec-stop--tselx-rec-stop : sub-tp-trans-tsel-aux2
+-/tselx-rec-stop--tselx-rec-stop : sub-tp-trans-tsel-aux2 PX1 PX2 PX3 NX SX1 SX2 SX3 
       (sub-tp/tselx-rec-stop GA2 GA1 PA2 PA1 MEQA)
       (sub-tp/tselx-rec-stop GB3 GB2 PB3 PB2 MEQB)
       (sub-tp/tselx-rec-stop GB3 GC1 PB3 PC1 MEQB)
@@ -2315,8 +2332,8 @@ sub-tp-trans-tsel-aux2 :
    <- tcons-sametenv-eq EQG2 EQG
    <- eq-sub-env-size-cons EQG GA1 GC1.
 
-%worlds () (sub-tp-trans-tsel-aux1  _ _ _) (sub-tp-trans-tsel-aux2  _ _ _).
-%total [(S1 S1') (S2 S2')] (sub-tp-trans-tsel-aux1 S1 S2 _) (sub-tp-trans-tsel-aux2 S2' S1' _).
+%worlds () (sub-tp-trans-tsel-aux1 _ _ _ _ _ _ _ _ _ _) (sub-tp-trans-tsel-aux2  _ _ _ _ _ _ _ _ _ _).
+%total [(S1 S1') (S2 S2')] (sub-tp-trans-tsel-aux1 _ _ _ _ _ _ _ S1 S2 _) (sub-tp-trans-tsel-aux2 _ _ _ _ _ _ _ S2' S1' _).
 
 sub-tp-trans-aux1 :
   %% Inputs
@@ -2535,12 +2552,12 @@ sub-tp-trans-aux2 :
 
 -/tselx-rec--tselx-rec : sub-tp-trans-aux1
    (sub-tp/tselx-rec STA GA2 GA1 PA2 PA1 MEQA)
-   (sub-tp/tselx-rec STB GB3 GB2 PB3 PB2 MEQB)
+   (sub-tp/tselx-rec STB GB3 (ses (tf/c N) GB2) PB3 PB2 MEQB)
    (sub-tp/tselx-rec STC GB3 GC1 PB3 PC1 MEQB)
    <- path-eval-eq PA2 PB2 EQR
    <- rect-same-all-same EQR EQS EQU
    <- eq-pev2 EQU PA1 PC1
-   <- sub-env-size-eq GA2 GB2 EQG2
+   <- sub-env-size-eq GA2 (ses (tf/c N) GB2) EQG2
    <- tcons-sametenv-eq EQG2 EQG
    <- eq-sub-env-size-cons EQG GA1 GC1
    <- eq-high EQU STA STA'
@@ -2548,7 +2565,10 @@ sub-tp-trans-aux2 :
    <- eq-low EQU STA'' STA'''
    <- eq-sametenv-cons EQG _ EQG1
    <- eq-low-env EQG1 STA''' STA''''
-   <- sub-tp-trans-tsel-aux1 STA'''' STB STC.
+   <- pev-shrink PC1 GC1 PC1'
+   <- pev-shrink PB2 (ses (tf/c N) GB2) PB2'
+   <- pev-shrink PB3 GB3 PB3'
+   <- sub-tp-trans-tsel-aux1 PC1' PB2' PB3' N sub-env/refl sub-env/refl sub-env/refl STA'''' STB STC.
 
 -/tselx-rec1 : sub-tp-trans-aux1
    (sub-tp/tselx-rec STA GA2 GA1 PA2 PA1 MEQA)
@@ -2803,12 +2823,12 @@ sub-tp-trans-aux2 :
 
 -/tselx-rec--tselx-rec : sub-tp-trans-aux2
    (sub-tp/tselx-rec STA GA2 GA1 PA2 PA1 MEQA)
-   (sub-tp/tselx-rec STB GB3 GB2 PB3 PB2 MEQB)
+   (sub-tp/tselx-rec STB GB3 (ses (tf/c N) GB2) PB3 PB2 MEQB)
    (sub-tp/tselx-rec STC GB3 GC1 PB3 PC1 MEQB)
    <- path-eval-eq PA2 PB2 EQR
    <- rect-same-all-same EQR EQS EQU
    <- eq-pev2 EQU PA1 PC1
-   <- sub-env-size-eq GA2 GB2 EQG2
+   <- sub-env-size-eq GA2 (ses (tf/c N) GB2) EQG2
    <- tcons-sametenv-eq EQG2 EQG
    <- eq-sub-env-size-cons EQG GA1 GC1
    <- eq-high EQU STA STA'
@@ -2816,7 +2836,10 @@ sub-tp-trans-aux2 :
    <- eq-low EQU STA'' STA'''
    <- eq-sametenv-cons EQG _ EQG1
    <- eq-low-env EQG1 STA''' STA''''
-   <- sub-tp-trans-tsel-aux2 STA'''' STB STC.
+   <- pev-shrink PC1 GC1 PC1'
+   <- pev-shrink PB2 (ses (tf/c N) GB2) PB2'
+   <- pev-shrink PB3 GB3 PB3'
+   <- sub-tp-trans-tsel-aux2 PC1' PB2' PB3' N sub-env/refl sub-env/refl sub-env/refl STA'''' STB STC.
 
 -/tselx-rec1 : sub-tp-trans-aux2
    (sub-tp/tselx-rec STA GA2 GA1 PA2 PA1 MEQA)
@@ -2945,10 +2968,11 @@ widen-mode-sub-tp : sub-tp O strict R1 G1 T1 R2 G2 T2 -> sub-tp O lenient R1 G1 
      <- widen-mode-sub-tp A A'.
 
 
-- : widen-mode-sub-tp (sub-tp/tbind2s C B A N LTE) (sub-tp/tbind2s C' B' A' N LTE)
+- : widen-mode-sub-tp (sub-tp/tbind2s P Y Z C B A N LTE) (sub-tp/tbind2s P' Y Z C' B' A' N LTE)
      <- widen-mode-sub-tp A A'
      <- widen-mode-sub-tp B B'
-     <- widen-mode-sub-tp C C'.
+     <- widen-mode-sub-tp C C'
+     <- widen-mode-path-eval P P'.
 
 - : widen-mode-sub-tp (sub-tp/tbind1s A N LTE) (sub-tp/tbind1s A' N LTE)
      <- widen-mode-sub-tp A A'.
