@@ -1,13 +1,16 @@
 val r : { r =>
-  { type Nat: Bot .. Top }
+  { type Nat: Bot .. Top } &
+  { def succ(n: r.Nat): r.Nat }
 }
 = new { r =>
   { type Church: Bot .. Top } &
   { type Curry: Bot .. Top } &
-  { type Nat: Bot .. Top }
+  { type Nat: Bot .. Top } &
+  { def succ(n: r.Nat): r.Nat }
 } ( r =>
   type Church = { def church(isZero: { def apply(_: Top): Top }): r.Curry }
   type Curry = { def curry(isSucc: { def apply(_: r.Nat): Top }): Top }
   type Nat = { n => r.Church }
+  def succ(n: r.Nat): r.Nat = n
 )
 r

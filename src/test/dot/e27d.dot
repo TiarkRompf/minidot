@@ -1,0 +1,12 @@
+val r
+= new { r =>
+  { type Church: Bot .. Top } &
+  { type Curry: Bot .. Top } &
+  { type Nat: Bot .. Top }
+}
+( r =>
+  type Church = { def apply(isZero: { def apply(_: Top): Top }): r.Curry }
+  type Curry = { def apply(isSucc: { def apply(_: Top): Top }): Top }
+  type Nat = r.Church
+)
+r

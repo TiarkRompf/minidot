@@ -30,9 +30,15 @@
 %query 1 1 type-exp tnil e24 top.
 %query 1 1 type-exp tnil e25 top.
 %query 1 1 type-exp tnil e26 top.
-% %query 1 1 type-exp tnil e27a top.
+%query 1 1 type-exp tnil e27a top.
 %query 1 1 type-exp tnil e27b top.
-% %query 1 1 type-exp tnil e27c top.
+%query 1 1 type-exp tnil e27c top.
+%query 1 1 type-exp tnil e27d top.
+% %query 1 1 type-exp tnil e27e top.
+%query 1 1 type-exp tnil e27f top.
+% %query 1 1 type-exp tnil e27g top.
+%query 1 1 type-exp tnil e27h top.
+%query 1 1 type-exp tnil e27i top.
 
 % sanity checks for other judgments
 %query 1 1 sub-tp strict non tnil t2 non tnil t1.
@@ -40,6 +46,11 @@
 %query 1 1 wf-tp strict non tnil t4.
 %query 1 1 wf-tp strict non tnil t6.
 %query 1 1 sub-tp strict non tnil t7 non tnil t8.
+%query 1 1 wf-tp strict non tnil t9.
+%query 1 1 sub-tp strict non tnil
+(bind z (rect (s z) (arrow z top (tsel (var z)  (s z))) (arrow z top (tsel (var z)  (s z)))))
+non tnil
+(rect (s z) bot top).
 
 % programs
 %query 1 1 type-exp tnil p1 top.

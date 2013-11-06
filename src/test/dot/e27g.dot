@@ -1,0 +1,10 @@
+val r
+= new { r =>
+  { type A: Bot .. Top } &
+  { def id(x: r.A): r.A }
+}
+( r =>
+  type A = { def foo(x: Top): r.A }
+  def id(x: r.A): r.A = x
+)
+r

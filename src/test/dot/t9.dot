@@ -1,0 +1,1 @@
+{ r => { type A = { def foo(x: Top): r.A } } }

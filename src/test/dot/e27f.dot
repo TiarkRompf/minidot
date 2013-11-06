@@ -1,0 +1,8 @@
+val r
+= new { r =>
+  { type A: Bot .. Top }
+}
+( r =>
+  type A = { def foo(x: Top): r.A }
+)
+r
