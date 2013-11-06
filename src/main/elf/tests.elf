@@ -1,6 +1,7 @@
 % bigger examples
 %query 1 1 type-exp tnil ex_norec_nat_a top.
 %query 1 1 type-exp tnil ex_norec_nat top.
+% %query 1 1 type-exp tnil ex_nat_church top. % TODO
 
 % sanity checks
 %query 1 1 type-exp tnil e1  top.
