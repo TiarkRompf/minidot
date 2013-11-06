@@ -53,6 +53,7 @@
 (bind z (rect (s z) (arrow z top (tsel (var z)  (s z))) (arrow z top (tsel (var z)  (s z)))))
 non tnil
 (rect (s z) bot top).
+%query 1 1 sub-tp strict non tnil t10 non tnil t11.
 
 % programs
 %query 1 1 type-exp tnil p1 top.

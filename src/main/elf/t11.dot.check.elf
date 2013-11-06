@@ -1,0 +1,1 @@
+%abbrev t11 = (bind z (and (rect (s z) bot top) (arrow z (tsel (var z)  (s z)) (tsel (var z)  (s z))))).

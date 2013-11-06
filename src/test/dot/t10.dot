@@ -1,0 +1,4 @@
+{ r =>
+  { type A: Bot .. Bot } &
+  { def id(x: r.A): r.A }
+}
