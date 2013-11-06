@@ -1,0 +1,1 @@
+%abbrev e24 = (let (or (recv z top) (recv z bot)) (fun (recv z top) z top empty top z (fun top z top empty top z empty top mnil) top mnil) (var z)).

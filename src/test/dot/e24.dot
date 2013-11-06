@@ -1,0 +1,2 @@
+val a: { val x: Top } | { val x: Bot } = new (val x: Top = new ())
+a
