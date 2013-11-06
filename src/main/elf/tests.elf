@@ -39,6 +39,8 @@
 % %query 1 1 type-exp tnil e27g top.
 %query 1 1 type-exp tnil e27h top.
 %query 1 1 type-exp tnil e27i top.
+% %query 1 1 type-exp tnil e27j top.
+%query 1 1 type-exp tnil e27k top.
 
 % sanity checks for other judgments
 %query 1 1 sub-tp strict non tnil t2 non tnil t1.
