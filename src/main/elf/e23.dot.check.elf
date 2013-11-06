@@ -1,0 +1,1 @@
+%abbrev e23 = (let (or top bot) (fun top z top empty top z empty top mnil) (var z)).

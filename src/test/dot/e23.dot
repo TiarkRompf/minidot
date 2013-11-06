@@ -1,0 +1,2 @@
+val a : Top | Bot = new ()
+a
