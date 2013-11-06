@@ -229,6 +229,7 @@ topt-or/sn : topt-or (tsome T) tnone tnone.
 topt-or/ss : topt-or (tsome (rect N TA1 TB1)) (tsome (rect N TA2 TB2)) (tsome (rect N (and TA1 TA2) (or TB1 TB2))).
 
 exp-tp: tenv -> tpe -> nat -> topt -> type.
+tlookexp: tenv -> exp -> tpe -> type.
 
 exp-tp/top  : exp-tp G top N tnone.
 exp-tp/bot  : exp-tp G bot N tnone.
@@ -248,10 +249,10 @@ exp-tp/or  : exp-tp G (or T1 T2) N T3'
 exp-tp/bind : exp-tp G0 (bind N1 T1) N2 T2
               <- sub-env-size G N1 G0
               <- exp-tp (tcons (bind N1 T1) G) T1 N2 T2.
+exp-tp/tsel : exp-tp G (tsel E L) N T
+               <- tlookexp G E (rect L TA TB)
+               <- exp-tp G TB N T.
 
-%% TODO: other interesting cases?
-
-tlookexp: tenv -> exp -> tpe -> type.
 tle: tlookexp G (var N) (rect LN T1 T2) <- tlookup G N T0 <- exp-tp G T0 LN (tsome (rect LN T1 T2)).
 
 mode : type.
@@ -544,6 +545,8 @@ extend-wf-lkp: tlookup G N T -> {Z: tpe} tlookup (tcons Z G) N T -> type.
 
 extend-exp-tp: exp-tp G T N OT -> {Z: tpe} exp-tp (tcons Z G) T N OT -> type.
 %mode extend-exp-tp +A +B -C.
+extend-wf-lkpe: tlookexp G (var N) T -> {Z: tpe} tlookexp (tcons Z G) (var N) T -> type.
+%mode extend-wf-lkpe +A +B -C.
 
 -/top : extend-exp-tp exp-tp/top Z exp-tp/top.
 -/bot : extend-exp-tp exp-tp/bot Z exp-tp/bot.
@@ -582,16 +585,16 @@ extend-exp-tp: exp-tp G T N OT -> {Z: tpe} exp-tp (tcons Z G) T N OT -> type.
 
 -/bind : extend-exp-tp (exp-tp/bind E (ses N S)) Z (exp-tp/bind E (ses N (sub-env/ext S))).
 
-%worlds () (extend-exp-tp _ _ _).
-%total A (extend-exp-tp A _ _).
+-/tsel : extend-exp-tp (exp-tp/tsel E L) Z (exp-tp/tsel E' L')
+          <- extend-wf-lkpe L Z L'
+          <- extend-exp-tp E Z E'.
 
-extend-wf-lkpe: tlookexp G (var N) T -> {Z: tpe} tlookexp (tcons Z G) (var N) T -> type.
-%mode extend-wf-lkpe +A +B -C.
 - : extend-wf-lkpe (tle E L) Z (tle E' L')
      <- extend-wf-lkp L Z L'
      <- extend-exp-tp E Z E'.
-%worlds () (extend-wf-lkpe _ _ _).
-%total A (extend-wf-lkpe A _ _).
+
+%worlds () (extend-exp-tp _ _ _) (extend-wf-lkpe _ _ _).
+%total (A B) (extend-exp-tp A _ _) (extend-wf-lkpe B _ _).
 
 extend-wf-lkp-mult: tlookup G N T -> sub-env G G1 -> tlookup G1 N T -> type.
 %mode extend-wf-lkp-mult +A +B -C.
@@ -1223,8 +1226,18 @@ eq-expand-env: sametenv GN GN' -> exp-tp (tcons TN GN) T L T2 -> exp-tp (tcons T
 %worlds () (eq-expand-env _ _ _).
 %total A (eq-expand-env A _ _).
 
+eq-expand : same T' T -> exp-tp G T L TE -> exp-tp G T' L TE -> type.
+%mode eq-expand +A +B -C.
+- : eq-expand ident E E.
+%worlds () (eq-expand _ _ _).
+%total A (eq-expand A _ _).
+%reduces C <= B (eq-expand _ B  C).
+
 expand-eq: exp-tp G T LN T1 -> exp-tp G T LN T2 -> sameopt T1 T2 -> type.
 %mode expand-eq +P1 +P2 -S1.
+lookexp-eq: tlookexp G2 (var N1) (rect LN T1 T3) -> tlookexp G2 (var N2) (rect LN T2 T4) -> eq N1 N2
+  -> same T1 T2 -> same T3 T4 -> type.
+%mode lookexp-eq +P1 +P2 +E -O1 -O2.
 
 - : expand-eq exp-tp/top  exp-tp/top  identopt.
 - : expand-eq exp-tp/bot  exp-tp/bot  identopt.
@@ -1250,22 +1263,20 @@ expand-eq: exp-tp G T LN T1 -> exp-tp G T LN T2 -> sameopt T1 T2 -> type.
       <- sub-env-size-eq S2 S1 EQG
       <- eq-expand-env EQG E2 E2'
       <- expand-eq E1 E2' S.
-
-%worlds () (expand-eq _ _ _).
-%total A (expand-eq A _ _).
-
-lookexp-eq: tlookexp G2 (var N1) (rect LN T1 T3) -> tlookexp G2 (var N2) (rect LN T2 T4) -> eq N1 N2
-  -> same T1 T2 -> same T3 T4 -> type.
-%mode lookexp-eq +P1 +P2 +E -O1 -O2.
+- : expand-eq (exp-tp/tsel E1 L1) (exp-tp/tsel E2 L2) S
+     <- eq-refl _ EQ
+     <- lookexp-eq L1 L2 EQ SA SB
+     <- eq-expand SB E2 E2'
+     <- expand-eq E1 E2' S.
 
 - : lookexp-eq (tle E1 L1) (tle E2 L2) E S1 S2
       <- lookup-eq0 L1 L2 E X
-      <- eq-exp-low X E1 E1'
-      <- expand-eq E1' E2 XX
+      <- eq-expand X E2 E2'
+      <- expand-eq E1 E2' XX
       <- eq-rect2 XX S1 S2.
 
-%worlds () (lookexp-eq _ _ _ _ _).
-%total A (lookexp-eq A _ _ _ _).
+%worlds () (expand-eq _ _ _) (lookexp-eq _ _ _ _ _).
+%total (A B) (expand-eq A _ _) (lookexp-eq B _ _ _ _).
 
 sameopt-same: sameopt (tsome T) (tsome T') -> same T T' -> type.
 %mode sameopt-same +A -B.
