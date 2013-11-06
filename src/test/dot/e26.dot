@@ -1,6 +1,4 @@
-val a = new (type Foo: Bot .. { val x: Top })
-val b = new (type Foo: Bot .. { val y: Top })
-val c: a.Foo & b.Foo = new (val x: Top = new (); val y: Top = new ())
-val cx = c.x
-val cd = c.y
-c
+val a = new (type Foo = { val x: Top })
+val b = new (type Foo = ({val x: Top} & { val y: Top }))
+val c: a.Foo | b.Foo = new (val x: Top = new ())
+c.x
