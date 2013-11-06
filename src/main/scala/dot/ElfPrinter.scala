@@ -130,7 +130,6 @@ trait ElfPrinter { this: DotSyntax =>
         s"(and ${p(ty1)} ${p(ty2)})"
 
       case Or(ty1, ty2) =>
-        assert(false, "TODO in elf: support for unions")
         s"(or ${p(ty1)} ${p(ty2)})"
 
       case MemType(l, tyS, tyU) =>

@@ -1,0 +1,7 @@
+val a: {a => { type Foo: Bot .. Top } & { val x: a.Foo } } |
+       {a => { type Foo: Bot .. Bot } & { val x: a.Foo } }
+= new (a =>
+  type Foo = Top
+  val x: a.Foo = new ()
+)
+a

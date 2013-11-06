@@ -1,0 +1,1 @@
+%abbrev e26 = (let _ (fun (rect (s z) bot (recv z top)) z top empty top z empty top (mcons _ bot (recv z top) (mcons _ bot top mnil))) (var z)).
