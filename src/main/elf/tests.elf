@@ -1,9 +1,6 @@
 % bigger examples
 %query 1 1 type-exp tnil ex_norec_nat_a top.
 %query 1 1 type-exp tnil ex_norec_nat top.
-%query 1 1 type-exp tnil ex_nat top.
-%query 1 1 type-exp tnil ex_nat_anf top.
-% %query 1 1 type-exp tnil ex_list top.
 
 % sanity checks
 %query 1 1 type-exp tnil e1  top.
@@ -28,24 +25,13 @@
 %query 1 1 type-exp tnil e19  top.
 %query 1 1 type-exp tnil e20  top.
 %query 1 1 type-exp tnil e21c top.
-%query 1 1 type-exp tnil e22 top.
-%query 1 1 type-exp tnil e22a top.
-%query 1 1 type-exp tnil e22b top.
-%query 1 1 type-exp tnil e22c top.
-%query 1 1 type-exp tnil e22d top.
-%query 1 1 type-exp tnil e22e top.
-%query 1 1 type-exp tnil e22f top.
-%query 1 1 type-exp tnil e22g top.
-%query 1 1 type-exp tnil e22h top.
-% %query 1 1 type-exp tnil e22i top.
-%query 1 1 type-exp tnil e22j top.
 
 % sanity checks for other judgments
-%query 1 1 sub-tp tnone strict non tnil t2 non tnil t1.
-%query 1 1 wf-tp strict non tnil t3.
-%query 1 1 wf-tp strict non tnil t4.
-%query 1 1 wf-tp strict non tnil t6.
-%query 1 1 sub-tp tnone strict non tnil t7 non tnil t8.
+%query 1 1 sub-tp strict tnil t2 tnil t1.
+%query 1 1 wf-tp strict tnil t3.
+%query 1 1 wf-tp strict tnil t4.
+%query 1 1 wf-tp strict tnil t6.
+%query 1 1 sub-tp strict tnil t7 tnil t8.
 
 % programs
 %query 1 1 type-exp tnil p1 top.
@@ -74,13 +60,13 @@
 
 % negative queries
 %query 0 1
-sub-tp tnone strict non
+sub-tp strict
    (tcons top
        (tcons
            (bind z 
                (and (rect (s z) bot top)
                    (arrow z (tsel (var z) (s z)) (tsel (var z) (s z))))) tnil))
-   top non
+   top
    (tcons top
        (tcons
            (bind z 
@@ -107,6 +93,22 @@ sub-tp tnone strict non
 
 %query 1 1 type-exp tnil c1d top.
 %query 1 1 type-exp tnil c1ok top.
+
+% recursive
+%query 1 1 type-exp tnil ex_nat top.
+%query 1 1 type-exp tnil ex_nat_anf top.
+%query 1 1 type-exp tnil ex_list top.
+%query 1 1 type-exp tnil e22 top.
+%query 1 1 type-exp tnil e22a top.
+%query 1 1 type-exp tnil e22b top.
+%query 1 1 type-exp tnil e22c top.
+%query 1 1 type-exp tnil e22d top.
+%query 1 1 type-exp tnil e22e top.
+%query 1 1 type-exp tnil e22f top.
+%query 1 1 type-exp tnil e22g top.
+%query 1 1 type-exp tnil e22h top.
+%query 1 1 type-exp tnil e22i top.
+%query 1 1 type-exp tnil e22j top.
 
 % these should not type-check
 %query 0 1 type-exp tnil b1 top.
