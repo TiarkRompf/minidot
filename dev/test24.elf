@@ -158,7 +158,7 @@ tsel : exp -> nat -> tpe.         % x.T
 bind : nat -> tpe -> tpe.     % { this_n => A }
 
 and  : tpe -> tpe -> tpe.
-
+or   : tpe -> tpe -> tpe.
 
 % values
 emptyv: val.
@@ -231,6 +231,13 @@ topt-and: topt -> topt -> topt -> type.
 topt-and/nn : topt-and tnone tnone tnone.
 topt-and/ns : topt-and tnone (tsome T) (tsome T).
 topt-and/sn : topt-and (tsome T) tnone (tsome T).
+topt-and/ss : topt-and (tsome (rect N TA1 TB1)) (tsome (rect N TA2 TB2)) (tsome (rect N (or TA1 TA2) (and TB1 TB2))).
+
+topt-or: topt -> topt -> topt -> type.
+topt-or/nn : topt-or tnone tnone tnone.
+topt-or/ns : topt-or tnone (tsome T) tnone.
+topt-or/sn : topt-or (tsome T) tnone tnone.
+topt-or/ss : topt-or (tsome (rect N TA1 TB1)) (tsome (rect N TA2 TB2)) (tsome (rect N (and TA1 TA2) (or TB1 TB2))).
 
 exp-tp: tenv -> tpe -> nat -> topt -> type.
 
@@ -245,7 +252,10 @@ exp-tp/and  : exp-tp G (and T1 T2) N T3'
               <- exp-tp G T2 N T2'
               <- exp-tp G T1 N T1'
               <- topt-and T1' T2' T3'.
-
+exp-tp/or  : exp-tp G (or T1 T2) N T3'
+              <- exp-tp G T2 N T2'
+              <- exp-tp G T1 N T1'
+              <- topt-or T1' T2' T3'.
 exp-tp/bind : exp-tp G0 (bind N1 T1) N2 T2
               <- sub-env-size G N1 G0
               <- exp-tp (tcons (bind N1 T1) G) T1 N2 T2.
@@ -319,6 +329,18 @@ sub-tp/and1b : sub-tp M G1 (and TA1 TB1) G2 T2
               <- sub-tp M G1 TB1 G2 T2
               <- wf-tp M G1 TA1.
 
+sub-tp/or2 : sub-tp M G1 (or TA1 TB1) G2 T2
+              <- sub-tp M G1 TB1 G2 T2
+              <- sub-tp M G1 TA1 G2 T2.
+
+sub-tp/or1a : sub-tp M G1 T1 G2 (or TA2 TB2)
+              <- sub-tp M G1 T1 G2 TA2
+              <- wf-tp M G2 TB2.
+
+sub-tp/or1b : sub-tp M  G1 T1 G2 (or TA2 TB2)
+              <- sub-tp M G1 T1 G2 TB2
+              <- wf-tp M G2 TA2.
+
 sub-tp/tsel1 : sub-tp M G1 (tsel (var X) N) G2 T2
               <- path-eval M G1 (var X) (rect N TA1 TB1)
               <- sub-env-size G1X (s X) G1
@@ -369,6 +391,10 @@ wf-tp/tbind : wf-tp M G (bind N TN)
               .
 
 wf-tp/and  : wf-tp M G (and TA TB)
+              <- wf-tp M G TB
+              <- wf-tp M G TA.
+
+wf-tp/or  : wf-tp M G (or TA TB)
               <- wf-tp M G TB
               <- wf-tp M G TA.
 
@@ -536,6 +562,7 @@ extend-exp-tp: exp-tp G T N OT -> {Z: tpe} exp-tp (tcons Z G) T N OT -> type.
 -/recv : extend-exp-tp exp-tp/recv Z exp-tp/recv.
 -/rect : extend-exp-tp exp-tp/rect Z exp-tp/rect.
 -/rectn : extend-exp-tp (exp-tp/rectn N) Z (exp-tp/rectn N).
+
 -/and1 : extend-exp-tp (exp-tp/and topt-and/nn E1 E2) Z (exp-tp/and topt-and/nn E1' E2')
          <- extend-exp-tp E1 Z E1'
          <- extend-exp-tp E2 Z E2'.
@@ -545,6 +572,25 @@ extend-exp-tp: exp-tp G T N OT -> {Z: tpe} exp-tp (tcons Z G) T N OT -> type.
 -/and3 : extend-exp-tp (exp-tp/and topt-and/sn E1 E2) Z (exp-tp/and topt-and/sn E1' E2')
          <- extend-exp-tp E1 Z E1'
          <- extend-exp-tp E2 Z E2'.
+
+-/and4 : extend-exp-tp (exp-tp/and topt-and/ss E1 E2) Z (exp-tp/and topt-and/ss E1' E2')
+         <- extend-exp-tp E1 Z E1'
+         <- extend-exp-tp E2 Z E2'.
+
+-/or1 : extend-exp-tp (exp-tp/or topt-or/nn E1 E2) Z (exp-tp/or topt-or/nn E1' E2')
+         <- extend-exp-tp E1 Z E1'
+         <- extend-exp-tp E2 Z E2'.
+-/or2 : extend-exp-tp (exp-tp/or topt-or/ns E1 E2) Z (exp-tp/or topt-or/ns E1' E2')
+         <- extend-exp-tp E1 Z E1'
+         <- extend-exp-tp E2 Z E2'.
+-/or3 : extend-exp-tp (exp-tp/or topt-or/sn E1 E2) Z (exp-tp/or topt-or/sn E1' E2')
+         <- extend-exp-tp E1 Z E1'
+         <- extend-exp-tp E2 Z E2'.
+
+-/or4 : extend-exp-tp (exp-tp/or topt-or/ss E1 E2) Z (exp-tp/or topt-or/ss E1' E2')
+         <- extend-exp-tp E1 Z E1'
+         <- extend-exp-tp E2 Z E2'.
+
 -/bind : extend-exp-tp (exp-tp/bind E (ses N S)) Z (exp-tp/bind E (ses N (sub-env/ext S))).
 
 %worlds () (extend-exp-tp _ _ _).
@@ -886,14 +932,30 @@ topt-and-eq: topt-and T1 T2 T3 -> topt-and T1 T2 T3' -> sameopt T3 T3' -> type.
 - : topt-and-eq topt-and/nn topt-and/nn identopt.
 - : topt-and-eq topt-and/ns topt-and/ns identopt.
 - : topt-and-eq topt-and/sn topt-and/sn identopt.
+- : topt-and-eq topt-and/ss topt-and/ss identopt.
 %worlds () (topt-and-eq _ _ _).
 %total A (topt-and-eq A _ _).
+
+topt-or-eq: topt-or T1 T2 T3 -> topt-or T1 T2 T3' -> sameopt T3 T3' -> type.
+%mode topt-or-eq +A +B -D.
+- : topt-or-eq topt-or/nn topt-or/nn identopt.
+- : topt-or-eq topt-or/ns topt-or/ns identopt.
+- : topt-or-eq topt-or/sn topt-or/sn identopt.
+- : topt-or-eq topt-or/ss topt-or/ss identopt.
+%worlds () (topt-or-eq _ _ _).
+%total A (topt-or-eq A _ _).
 
 eq-topt-and: sameopt T1 T1' -> sameopt T2 T2' -> topt-and T1 T2 T3 -> topt-and T1' T2' T3 -> type.
 %mode eq-topt-and +A +B +C -D.
 - : eq-topt-and identopt identopt T T.
 %worlds () (eq-topt-and _ _ _ _).
 %total A (eq-topt-and A _ _ _).
+
+eq-topt-or: sameopt T1 T1' -> sameopt T2 T2' -> topt-or T1 T2 T3 -> topt-or T1' T2' T3 -> type.
+%mode eq-topt-or +A +B +C -D.
+- : eq-topt-or identopt identopt T T.
+%worlds () (eq-topt-or _ _ _ _).
+%total A (eq-topt-or A _ _ _).
 
 sub-env-cons: sub-env (tcons T GN) G -> sub-env GN G -> type.
 %mode sub-env-cons +A -B.
@@ -1190,6 +1252,11 @@ expand-eq: exp-tp G T LN T1 -> exp-tp G T LN T2 -> sameopt T1 T2 -> type.
       <- expand-eq E2 E4 S2
       <- eq-topt-and S1 S2 T1 T1'
       <- topt-and-eq T1' T2 S.
+- : expand-eq (exp-tp/or T1 E1 E2)  (exp-tp/or T2 E3 E4) S
+      <- expand-eq E1 E3 S1
+      <- expand-eq E2 E4 S2
+      <- eq-topt-or S1 S2 T1 T1'
+      <- topt-or-eq T1' T2 S.
 - : expand-eq (exp-tp/bind E1 S1) (exp-tp/bind E2 S2) S
       <- sub-env-size-eq S2 S1 EQG
       <- eq-expand-env EQG E2 E2'
@@ -1281,6 +1348,10 @@ extend-sub-tp: sub-tp M G1 T1 G2 T2 -> {Z: tpe}
       <- extend-wf-tp W1 _ W1'
       <- extend-wf-tp W2 _ W2'.
 
+- : extend-wf-tp (wf-tp/or W1 W2) T (wf-tp/or W1' W2')
+      <- extend-wf-tp W1 _ W1'
+      <- extend-wf-tp W2 _ W2'.
+
 
 
 - : extend-sub-tp (sub-tp/top ST) T (sub-tp/top ST') (sub-tp/top ST') (sub-tp/top ST)
@@ -1351,6 +1422,18 @@ extend-sub-tp: sub-tp M G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 
 - : extend-sub-tp (sub-tp/and2 ST1 ST2) T (sub-tp/and2 ST1' ST2') (sub-tp/and2 ST1A ST2A) (sub-tp/and2 ST1B ST2B)
+      <- extend-sub-tp ST1 _ ST1' ST1A ST1B
+      <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
+
+- : extend-sub-tp (sub-tp/or1a W2 ST) T (sub-tp/or1a W2' ST') (sub-tp/or1a W2 STA) (sub-tp/or1a W2' STB)
+      <- extend-wf-tp W2 _ W2'
+      <- extend-sub-tp ST _ ST' STA STB.
+
+- : extend-sub-tp (sub-tp/or1b W2 ST) T (sub-tp/or1b W2' ST') (sub-tp/or1b W2 STA) (sub-tp/or1b W2' STB)
+      <- extend-wf-tp W2 _ W2'
+      <- extend-sub-tp ST _ ST' STA STB.
+
+- : extend-sub-tp (sub-tp/or2 ST1 ST2) T (sub-tp/or2 ST1' ST2') (sub-tp/or2 ST1A ST2A) (sub-tp/or2 ST1B ST2B)
       <- extend-sub-tp ST1 _ ST1' ST1A ST1B
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 
@@ -1483,6 +1566,22 @@ extract-wf : sub-tp M G1 T1 G2 T2 -> wf-tp M G1 T1 -> wf-tp M G2 T2 -> type.
       <- extract-wf S1 W1 W3
       <- extract-wf S2 W2 W4.
 
+- : extract-wf (sub-tp/or1a W2 S1)
+      W3
+      (wf-tp/or W1 W2)
+      <- extract-wf S1 W3 W1.
+
+- : extract-wf (sub-tp/or1b W1 S2)
+      W3
+      (wf-tp/or W1 W2)
+      <- extract-wf S2 W3 W2.
+
+- : extract-wf (sub-tp/or2 S1 S2)
+      (wf-tp/or W1 W2)
+      W3
+      <- extract-wf S1 W1 W3
+      <- extract-wf S2 W2 W4.
+
 - : extract-wf (sub-tp/refl W S2 S1) W1 W2
      <- extend-wf-tp-mult W S1 W1
      <- extend-wf-tp-mult W S2 W2.
@@ -1579,6 +1678,10 @@ sub-tp-refl :
           <- sub-tp-refl WU R.
 
 -/tand: sub-tp-refl (wf-tp/and W1 W2) (sub-tp/and2 (sub-tp/and1a W2 ST1) (sub-tp/and1b W1 ST2))
+   <- sub-tp-refl W1 ST1
+   <- sub-tp-refl W2 ST2.
+
+-/tand: sub-tp-refl (wf-tp/or W1 W2) (sub-tp/or2 (sub-tp/or1a W2 ST1) (sub-tp/or1b W1 ST2))
    <- sub-tp-refl W1 ST1
    <- sub-tp-refl W2 ST2.
 
@@ -1785,6 +1888,42 @@ sub-tp-trans-aux :
       SBT5
       <- sub-tp-trans-aux W2 SBT1 SBT3 SBT5.
 
+-/tor1a : sub-tp-trans-aux
+      W
+      SBT3
+      (sub-tp/or1a W1 SBT1)
+      (sub-tp/or1a W1 SBT5)
+      <- sub-tp-trans-aux W SBT3 SBT1 SBT5.
+
+-/tor1b : sub-tp-trans-aux
+      W
+      SBT3
+      (sub-tp/or1b W1 SBT1)
+      (sub-tp/or1b W1 SBT5)
+      <- sub-tp-trans-aux W SBT3 SBT1 SBT5.
+
+-/tor2 : sub-tp-trans-aux
+      W
+      (sub-tp/or2 ST1 ST2)
+      SBT1
+      (sub-tp/or2 ST1' ST2')
+      <- sub-tp-trans-aux W ST1 SBT1 ST1'
+      <- sub-tp-trans-aux W ST2 SBT1 ST2'.
+
+-/tor1a-tor2 : sub-tp-trans-aux
+      (wf-tp/or W1 W2)
+      (sub-tp/or1a _ SBT3)
+      (sub-tp/or2 SBT1 _)
+      SBT5
+      <- sub-tp-trans-aux W1 SBT3 SBT1 SBT5.
+
+-/tor1b-tor2 : sub-tp-trans-aux
+      (wf-tp/or W1 W2)
+      (sub-tp/or1b _ SBT3)
+      (sub-tp/or2 _ SBT1)
+      SBT5
+      <- sub-tp-trans-aux W2 SBT3 SBT1 SBT5.
+
 %worlds () (sub-tp-trans-aux _ _ _ _).
 %total {T2 S1 S2} (sub-tp-trans-aux T2 S1 S2 _).
 
@@ -1839,6 +1978,9 @@ widen-mode-sub-tp : sub-tp strict G1 T1 G2 T2 -> sub-tp lenient G1 T1 G2 T2 -> t
 - : widen-mode-wf-tp (wf-tp/and B A) (wf-tp/and B' A')
      <- widen-mode-wf-tp A A'
      <- widen-mode-wf-tp B B'.
+- : widen-mode-wf-tp (wf-tp/or B A) (wf-tp/or B' A')
+     <- widen-mode-wf-tp A A'
+     <- widen-mode-wf-tp B B'.
 
 - : widen-mode-path-eval (pev L) (pev L).
 
@@ -1878,6 +2020,18 @@ widen-mode-sub-tp : sub-tp strict G1 T1 G2 T2 -> sub-tp lenient G1 T1 G2 T2 -> t
      <- widen-mode-wf-tp W W'.
 
 - : widen-mode-sub-tp (sub-tp/and1b W A) (sub-tp/and1b W' A')
+     <- widen-mode-sub-tp A A'
+     <- widen-mode-wf-tp W W'.
+
+- : widen-mode-sub-tp (sub-tp/or2 B A) (sub-tp/or2 B' A')
+     <- widen-mode-sub-tp A A'
+     <- widen-mode-sub-tp B B'.
+
+- : widen-mode-sub-tp (sub-tp/or1a W A) (sub-tp/or1a W' A')
+     <- widen-mode-sub-tp A A'
+     <- widen-mode-wf-tp W W'.
+
+- : widen-mode-sub-tp (sub-tp/or1b W A) (sub-tp/or1b W' A')
      <- widen-mode-sub-tp A A'
      <- widen-mode-wf-tp W W'.
 
