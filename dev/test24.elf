@@ -23,17 +23,6 @@
 + make type selection work with intersections
     + expansion
     - add 'interesting' expansion cases
-
-Note:
-
-Expansion is really wimpy right now. It does
-not compute actual meets and joins but is only
-defined for cases like this:
-
-   T1 --> tnone     T2 --> tsome T2'
-  ----------------------------------
-          (T1 /\ T2) -->  T2'
-
 }%
 
 %{ ------- arithmetic ----- }%
