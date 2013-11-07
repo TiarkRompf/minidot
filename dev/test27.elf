@@ -1447,10 +1447,10 @@ extend-sub-tp: sub-tp M P R1 G1 T1 R2 G2 T2 -> {Z: tpe}
      <- extend-sub-tp ST T STA1 STB1 STC1
      .
 
-- : extend-sub-tp (sub-tp/tbind2 ST1 ST2 ST3 (ses N S) P) T
-     (sub-tp/tbind2 STB1 STB2 STB3 (ses N (sub-env/ext S)) P)
-     (sub-tp/tbind2 STB1 STB2 STB3 (ses N S) P)
-     (sub-tp/tbind2 ST1 ST2 ST3 (ses N (sub-env/ext S)) P)
+- : extend-sub-tp (sub-tp/tbind2 ST1 ST2 ST3 (ses N S)) T
+     (sub-tp/tbind2 STB1 STB2 STB3 (ses N (sub-env/ext S)))
+     (sub-tp/tbind2 STB1 STB2 STB3 (ses N S))
+     (sub-tp/tbind2 ST1 ST2 ST3 (ses N (sub-env/ext S)))
      <- extend-sub-tp ST1 T STA1 STB1 STC1
      <- extend-sub-tp ST2 T STA2 STB2 STC2
      <- extend-sub-tp ST3 T STA3 STB3 STC3
@@ -1573,7 +1573,7 @@ extract-wf : sub-tp lenient P R1 G1 T1 R2 G2 T2 -> wf-tp lenient R1 G1 T1 -> wf-
 - : extract-wf (sub-tp/tbind1 ST S) (wf-tp/tbind WU S) W2
       <- extract-wf ST WU W2.
 
-- : extract-wf (sub-tp/tbind2 SW SE SU S P) W1 (wf-tp/tbind W2 S)
+- : extract-wf (sub-tp/tbind2 SW SE SU S) W1 (wf-tp/tbind W2 S)
       <- extract-wf SU W1 W2.
 
 - : extract-wf (sub-tp/and1a W2 S1)
@@ -1620,7 +1620,7 @@ sub-tp-refl :
   %% Input
   wf-tp lenient R G T ->
   %% Output
-  sub-tp lenient G P R T R G T ->
+  sub-tp lenient G pos R T R G T ->
   type.
 %mode sub-tp-refl +WT -SBT.
 
