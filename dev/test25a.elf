@@ -595,6 +595,18 @@ typeB = (bind z (and (rect z bot top) idfun)).
 %query 1 1 global-sub-tp typeA 
                          typeB.
 
+%query 1 1 sub-tp strict rec-none (tcons typeA tnil) (tsel (var z) z)
+                                  (tcons typeA tnil) (tsel (var z) z).
+
+%query 1 1 sub-tp strict rec-none (tcons typeA tnil) (tsel (var z) z)
+                                  (tcons typeB tnil) (tsel (var z) z).
+
+%query 1 1 sub-tp strict rec-none (tcons typeB tnil) (tsel (var z) z)
+                                  (tcons typeB tnil) (tsel (var z) z).
+
+%query 0 1 sub-tp strict rec-none (tcons typeB tnil) (tsel (var z) z)
+                                  (tcons typeA tnil) (tsel (var z) z).
+
 
 
 %%% PROOFS %%%
