@@ -10,6 +10,12 @@ trait ElfPrinter { this: DotSyntax =>
 
   val VERSION = 11
 
+  var id = 0
+  def newVar: Var = {
+    id += 1
+    Var("_"+id)
+  }
+
   def collectTags(e: Any): List[Tag] = {
     def c(e: Any): List[Tag] = e match {
       case l@Tag(id) => List(l)
@@ -88,7 +94,7 @@ trait ElfPrinter { this: DotSyntax =>
       case App(f, l, a) => s"(app ${p(f)} ${p(l)} ${p(a)})"
 
       case New(otc, oself, members) =>
-        val self = oself.getOrElse(Var("_"))
+        val self = oself.getOrElse(newVar)
         val typeMembers = members.collect{
           case i: InitType => (i.d.tag, i)
         }
@@ -151,7 +157,7 @@ trait ElfPrinter { this: DotSyntax =>
         s"(bind ${printNat(env.size)} $renv${pbind(ty, self)})"
 
       case TShift(ty) =>
-        pbind(ty, Var("_"))
+        pbind(ty, newVar)
 
       case SingletonType(v) =>
         env.get(v) match {

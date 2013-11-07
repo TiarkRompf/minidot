@@ -1,0 +1,7 @@
+new ( r =>
+  def a(n: Top): Top = new (
+    def a(n2: Top): Top = new (
+      def a(n3: Bot): Bot = n3
+    )
+  )
+)

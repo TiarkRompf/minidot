@@ -1,0 +1,8 @@
+new ( r =>
+  def succ(n: Top): Top = new (
+    def a(isZero: { def a(_: Top): Top }): Top = new (
+      def a(isSucc: { def a(_: Top): Top }): Top =
+        isZero.a(n)
+    )
+  )
+)

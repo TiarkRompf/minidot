@@ -1,0 +1,22 @@
+val r : { r =>
+  { type Nat : Bot .. Top } &
+  { val zero: r.Nat }
+}
+= new ( r =>
+  type Church = { def a(isZero: { def a(_: Top): Top }): r.Curry }
+  type Curry = { def a(isSucc: { def a(_: Top): Top }): Top }
+  type Nat = r.Church
+  def succ(n: r.Nat): r.Nat = new (
+    def a(isZero: { def a(_: Top): Top }): r.Curry = new (
+      def a(isSucc: { def a(_: Top): Top }): Top =
+        isSucc.a(n)
+    )
+  )
+  val zero: r.Nat = new (
+    def a(isZero: { def a(_: Top): Top }): r.Curry = new (
+      def a(isSucc: { def a(_: Top): Top }): Top =
+        isZero.a(new())
+    )
+  )
+)
+r

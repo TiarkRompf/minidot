@@ -438,8 +438,7 @@ e/empty    : eval-exp G empty emptyv.
 e/var      : eval-exp G (var N) V <- vlookup G N V.
 
 e/fun      : eval-exp G (fun TC LNF _ R _ LNV R2 _ MT) (clos LNF R LNV V2 G)
-            % <- eval-exp (vcons emptyv G) R2 V2.
-              <- eval-exp (vcons (clos z empty z emptyv G) G) R2 V2.
+            <- eval-exp (vcons (clos z empty z emptyv G) G) R2 V2.
 
 
 e/app      : eval-exp G (app E1 LNF E2) V3
@@ -476,7 +475,8 @@ t/fun      : type-exp G (fun TC LNF T3 R T4 LNV R2 T2 M)
 
 t/app       : type-exp G (app E1 LNF E2) T2
            <- type-exp G E1 (arrow LNF T1 T2)
-           <- type-exp G E2 T1.
+           <- type-exp G E2 T1
+           .
 
 t/let       : type-exp G (let T1 E1 E2) T2 % --
            <- type-exp G E1 T1 % --

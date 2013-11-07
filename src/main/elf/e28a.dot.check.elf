@@ -1,0 +1,1 @@
+%abbrev e28a = (fun (bind z (arrow z top top)) z top (fun (arrow z top top) z top (fun (arrow z bot bot) z bot (var (s (s (s (s (s z)))))) bot z empty top mnil) top z empty top mnil) top z empty top mnil).
