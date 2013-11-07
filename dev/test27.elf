@@ -311,12 +311,11 @@ sub-tp/fun  : sub-tp M P R1 G1 (arrow N TA1 TB1) R2 G2 (arrow N TA2 TB2)
               <- sub-tp M P R1 G1 TB1 R2 G2 TB2.
 
 sub-tp/rect : sub-tp M P R1 G1 (rect N TA1 TB1) R2 G2 (rect N TA2 TB2)
-              <- flip P P'
-              <- sub-tp M P R1 G1 TA1 R1 G1 TB1
-              <- sub-tp M P R2 G2 TA2 R2 G2 TB2
+              <- sub-tp M pos R1 G1 TA1 R1 G1 TB1
+              <- sub-tp M pos R2 G2 TA2 R2 G2 TB2
 
-              <- sub-tp M P' R2 G2 TA2 R1 G1 TA1
-              <- sub-tp M P R1 G1 TB1 R2 G2 TB2.
+              <- sub-tp M pos R2 G2 TA2 R1 G1 TA1
+              <- sub-tp M pos R1 G1 TB1 R2 G2 TB2.
 
 sub-tp/recv : sub-tp M P R1 G1 (recv N T1) R2 G2 (recv N T2)
               <- sub-tp M P R1 G1 T1 R2 G2 T2.
@@ -1399,7 +1398,7 @@ extend-sub-tp: sub-tp M P R1 G1 T1 R2 G2 T2 -> {Z: tpe}
 - : extend-sub-tp (sub-tp/fun ST1 ST2 P) T (sub-tp/fun ST1' ST2' P) (sub-tp/fun ST1A ST2B P) (sub-tp/fun ST1B ST2A P)
       <- extend-sub-tp ST1 _ ST1' ST1A ST1B
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
-- : extend-sub-tp (sub-tp/rect ST1 ST2 B2 B1 P) T (sub-tp/rect ST1' ST2' B2' B1' P) (sub-tp/rect ST1A ST2B B2 B1' P) (sub-tp/rect ST1B ST2A B2' B1 P)
+- : extend-sub-tp (sub-tp/rect ST1 ST2 B2 B1) T (sub-tp/rect ST1' ST2' B2' B1') (sub-tp/rect ST1A ST2B B2 B1') (sub-tp/rect ST1B ST2A B2' B1)
       <- extend-sub-tp B2 _ B2' _ _
       <- extend-sub-tp B1 _ B1' _ _
       <- extend-sub-tp ST1 _ ST1' ST1A ST1B
@@ -1549,16 +1548,16 @@ extend-wf-pev-mult : path-eval M G E T -> sub-env G G1 -> path-eval M G1 E T -> 
 
 % Extract wf from subtyping
 
-extract-wf : sub-tp M G1 T1 G2 T2 -> wf-tp M G1 T1 -> wf-tp M G2 T2 -> type.
+extract-wf : sub-tp lenient P R1 G1 T1 R2 G2 T2 -> wf-tp lenient R1 G1 T1 -> wf-tp lenient R2 G2 T2 -> type.
 %mode extract-wf +SBT1 -SBT2 -SBT3.
 
 - : extract-wf (sub-tp/top W) W wf-tp/top.
 - : extract-wf (sub-tp/bot W) wf-tp/bot W.
-- : extract-wf (sub-tp/fun (ST1:sub-tp M G1 T2 G2 T4) (ST2:sub-tp M G2 T3 G1 T1))
+- : extract-wf (sub-tp/fun ST1 ST2 P)
         (wf-tp/fun W2 W1) (wf-tp/fun W4 W3)
       <- extract-wf ST1 W2 W4
       <- extract-wf ST2 W3 W1.
-- : extract-wf (sub-tp/rect ST1 ST2 B2 B1) (wf-tp/rect B1 W2 W1) (wf-tp/rect B2 W4 W3) %% FIXME: T1<:T2 & T3 <: T4
+- : extract-wf (sub-tp/rect ST1 ST2 B2 B1) (wf-tp/rect B1 W2 W1) (wf-tp/rect B2 W4 W3)
       <- extract-wf ST1 W2 W4
       <- extract-wf ST2 W3 W1.
 - : extract-wf (sub-tp/recv ST) (wf-tp/recv W1) (wf-tp/recv W2)
@@ -1568,22 +1567,14 @@ extract-wf : sub-tp M G1 T1 G2 T2 -> wf-tp M G1 T1 -> wf-tp M G2 T2 -> type.
       W1 W2
       <- extract-wf ST _ W2.
 
-- : extract-wf (sub-tp/tsel2-strict W2 ST G P)
-      W1 W2
-      <- extract-wf ST W1 _.
 - : extract-wf (sub-tp/tsel2-lenient W2 ST G P)
       W1 W2
       <- extract-wf ST W1 _.
 
-- : extract-wf (sub-tp/tselx-strict ST G2 G1 P2 P1)
-      (wf-tp/tsel W1 G1 P1)
-      (wf-tp/tsel W2 G2 P2)
-     <- extract-wf ST W1 W2.
-
 - : extract-wf (sub-tp/tbind1 ST S) (wf-tp/tbind WU S) W2
       <- extract-wf ST WU W2.
 
-- : extract-wf (sub-tp/tbind2 SW SE SU S) W1 (wf-tp/tbind W2 S)
+- : extract-wf (sub-tp/tbind2 SW SE SU S P) W1 (wf-tp/tbind W2 S)
       <- extract-wf SU W1 W2.
 
 - : extract-wf (sub-tp/and1a W2 S1)
@@ -1617,10 +1608,6 @@ extract-wf : sub-tp M G1 T1 G2 T2 -> wf-tp M G1 T1 -> wf-tp M G2 T2 -> type.
       W3
       <- extract-wf S1 W1 W3
       <- extract-wf S2 W2 W4.
-
-- : extract-wf (sub-tp/refl W S2 S1) W1 W2
-     <- extend-wf-tp-mult W S1 W1
-     <- extend-wf-tp-mult W S2 W2.
 
 %worlds () (extract-wf _ _ _).
 %total A (extract-wf A _ _).
