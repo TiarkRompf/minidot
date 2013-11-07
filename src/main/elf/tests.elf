@@ -43,17 +43,17 @@
 %query 1 1 type-exp tnil e27k top.
 
 % sanity checks for other judgments
-%query 1 1 sub-tp strict non tnil t2 non tnil t1.
+%query 1 1 sub-tp strict pos non tnil t2 non tnil t1.
 %query 1 1 wf-tp strict non tnil t3.
 %query 1 1 wf-tp strict non tnil t4.
 %query 1 1 wf-tp strict non tnil t6.
-%query 1 1 sub-tp strict non tnil t7 non tnil t8.
+%query 1 1 sub-tp strict pos non tnil t7 non tnil t8.
 %query 1 1 wf-tp strict non tnil t9.
-%query 1 1 sub-tp strict non tnil
+%query 1 1 sub-tp strict pos non tnil
 (bind z (rect (s z) (arrow z top (tsel (var z)  (s z))) (arrow z top (tsel (var z)  (s z)))))
 non tnil
 (rect (s z) bot top).
-%query 0 1 sub-tp strict non tnil t10 non tnil t11. % surprising limitation of contravariant 'nominality', but essential for soundness
+%query 1 1 sub-tp strict pos non tnil t10 non tnil t11.
 
 % programs
 %query 1 1 type-exp tnil p1 top.
@@ -82,7 +82,7 @@ non tnil
 
 % negative queries
 %query 0 1
-sub-tp strict non
+sub-tp strict pos non
    (tcons top
        (tcons
            (bind z 
