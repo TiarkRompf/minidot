@@ -296,7 +296,7 @@ maybe-wf-tp/yes : maybe-wf-tp B M A G T <- mne B A <- wf-tp M (somen A B) G T.
 path-eval: mode -> tenv -> exp -> tpe -> type.
 pev  : path-eval M G E (rect N TS TU) <- tlookexp G E (rect N TS TU).
 
-sub-tp/refl : sub-tp strict P R G1 T R G2 T  %%% ACCELERATE QUERIES !!
+sub-tp/refl : sub-tp strict pos R G1 T R G2 T  %%% ACCELERATE QUERIES !!
                 <- sub-env G G1
                 <- sub-env G G2
                 <- wf-tp strict R G T.
@@ -330,11 +330,10 @@ sub-tp/and2 : sub-tp M P R1 G1 T1 R2 G2 (and TA2 TB2)
               <- sub-tp M P R1 G1 T1 R2 G2 TA2.
 
 sub-tp/tbind2 : sub-tp M P R1 G1 T1 R2 G2 (bind N TN)
-             <- flip P P'
              <- sub-env-size G0 N G2
              <- sub-tp M P R1 G1 T1 R2 (tcons (bind N TN) G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
              <- sub-tp M P R1 G1 T1 R1' G1' T1'                     %% built-in slack (trans: T1-bind2)
-             <- sub-tp M P' R1 G1 T1 R1' (tcons (bind N T1') G0) TN
+             <- sub-tp M P R1 G1 T1 R1' (tcons (bind N T1') G0) TN
              .
 
 sub-tp/tselx-strict-pos : sub-tp strict pos R1 G1 (tsel (var X) N) R2 G2 (tsel (var X) N)
@@ -1619,9 +1618,9 @@ extract-wf : sub-tp lenient P R1 G1 T1 R2 G2 T2 -> wf-tp lenient R1 G1 T1 -> wf-
 
 sub-tp-refl :
   %% Input
-  wf-tp lenient G T ->
+  wf-tp lenient R G T ->
   %% Output
-  sub-tp lenient G T G T ->
+  sub-tp lenient G P R T R G T ->
   type.
 %mode sub-tp-refl +WT -SBT.
 
