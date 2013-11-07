@@ -5,6 +5,8 @@
 %query 1 1 type-exp tnil ex_nat_church_a top.
 %query 1 1 type-exp tnil ex_nat_church_b top.
 %query 1 1 type-exp tnil ex_nat_church_c top.
+%query 1 1 type-exp tnil ex_nat_church_d top.
+%query 1 1 type-exp tnil ex_nat_church_e top.
 
 % sanity checks
 %query 1 1 type-exp tnil e1  top.
