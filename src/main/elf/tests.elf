@@ -34,12 +34,12 @@
 %query 1 1 type-exp tnil e27b top.
 %query 1 1 type-exp tnil e27c top.
 %query 1 1 type-exp tnil e27d top.
-% %query 1 1 type-exp tnil e27e top.
+%query 1 1 type-exp tnil e27e top.
 %query 1 1 type-exp tnil e27f top.
-% %query 1 1 type-exp tnil e27g top.
+%query 1 1 type-exp tnil e27g top.
 %query 1 1 type-exp tnil e27h top.
 %query 1 1 type-exp tnil e27i top.
-% %query 1 1 type-exp tnil e27j top.
+%query 1 1 type-exp tnil e27j top.
 %query 1 1 type-exp tnil e27k top.
 
 % sanity checks for other judgments

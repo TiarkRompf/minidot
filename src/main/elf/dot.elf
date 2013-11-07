@@ -331,10 +331,27 @@ sub-tp/and2 : sub-tp M P R1 G1 T1 R2 G2 (and TA2 TB2)
               <- sub-tp M P R1 G1 T1 R2 G2 TA2.
 
 sub-tp/tbind2 : sub-tp M P R1 G1 T1 R2 G2 (bind N TN)
+             <- flip P P'
              <- sub-env-size G0 N G2
              <- sub-tp M P R1 G1 T1 R2 (tcons (bind N TN) G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
              <- sub-tp M P R1 G1 T1 R1' G1' T1'                     %% built-in slack (trans: T1-bind2)
-             <- sub-tp M P R1 G1 T1 R1' (tcons (bind N T1') G0) TN
+             <- sub-tp M P' R1 G1 T1 R1' (tcons (bind N T1') G0) TN
+             .
+
+sub-tp/tselx-strict-pos : sub-tp strict pos R1 G1 (tsel (var X) N) R2 G2 (tsel (var X) N)
+             <- path-eval strict G1 (var X) (rect N TA1 TB1)
+             <- path-eval strict G2 (var X) (rect N TA2 TB2)
+             <- sub-env-size G1X (s X) G1
+             <- sub-env-size G2X (s X) G2
+             <- sub-tp strict pos R1 G1X (rect N TA1 TB1) R2 G2X (rect N TA2 TB2)
+             .
+
+sub-tp/tselx-strict-neg : sub-tp strict neg R1 G1 (tsel (var X) N) R2 G2 (tsel (var X) N)
+             <- path-eval strict G1 (var X) (rect N TA1 TB1)
+             <- path-eval strict G2 (var X) (rect N TA2 TB2)
+             <- sub-env-size G1X (s X) G1
+             <- sub-env-size G2X (s X) G2
+             <- sub-tp strict pos R2 G2X (rect N TA2 TB2) R1 G1X (rect N TA1 TB1) 
              .
 
 sub-tp/and1a : sub-tp M P R1 G1 (and TA1 TB1) R2 G2 T2
@@ -365,22 +382,6 @@ sub-tp/tsel2-lenient : sub-tp lenient P R1 G1 T1 R2 G2 (tsel (var X) N)
               <- sub-tp lenient P R1 G1 T1 R2 G2X TB2
               <- wf-tp lenient R2 G2 (tsel (var X) N)
               .
-
-sub-tp/tselx-strict-pos : sub-tp strict pos R1 G1 (tsel (var X) N) R2 G2 (tsel (var X) N)
-             <- path-eval strict G1 (var X) (rect N TA1 TB1)
-             <- path-eval strict G2 (var X) (rect N TA2 TB2)
-             <- sub-env-size G1X (s X) G1
-             <- sub-env-size G2X (s X) G2
-             <- sub-tp strict pos R1 G1X (rect N TA1 TB1) R2 G2X (rect N TA2 TB2)
-             .
-
-sub-tp/tselx-strict-neg : sub-tp strict neg R1 G1 (tsel (var X) N) R2 G2 (tsel (var X) N)
-             <- path-eval strict G1 (var X) (rect N TA1 TB1)
-             <- path-eval strict G2 (var X) (rect N TA2 TB2)
-             <- sub-env-size G1X (s X) G1
-             <- sub-env-size G2X (s X) G2
-             <- sub-tp strict pos R2 G2X (rect N TA2 TB2) R1 G1X (rect N TA1 TB1) 
-             .
 
 sub-tp/or2 : sub-tp M P R1 G1 (or TA1 TB1) R2 G2 T2
               <- sub-tp M P R1 G1 TB1 R2 G2 T2
