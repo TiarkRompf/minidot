@@ -134,15 +134,8 @@ bot  : tpe.
 arrow: nat -> tpe -> tpe -> tpe.  % { def f: A => B }
 rect : nat -> tpe -> tpe -> tpe.  % { type T: A..B }
 recv : nat -> tpe -> tpe.         % { val v: A }
-tsel : exp -> nat -> tpe.         % x.T
-
-
-%% This version of bind makes the variable convention
-%% explicit by fixing the 'this' identifier.
-
-%% TODO: Putting the environment in the type avoids the
-%% need for a uniqueness lemma -- we should add one and
-%% get rid of the tenv.
+ftsel : nat -> nat -> tpe.         % x.T
+btsel : nat -> nat -> tpe.
 
 bind : nat -> tpe -> tpe.     % { this_n => A }
 
@@ -158,6 +151,10 @@ vnil  : venv.
 vcons : val -> venv -> venv.
 tnil  : tenv.
 tcons : tpe -> tenv -> tenv.
+
+benv : type.
+bnil : benv.
+bcons : nat -> tpe -> benv -> benv.
 
 % type or no type
 topt : type.
@@ -200,7 +197,16 @@ tl  : tlookup G N V
   <- add (s N) M S
   <- tlookup-zero G M V.
 
+blookup: benv -> nat -> tpe -> nat -> type.
+bl/hit : blookup (bcons N T G) N T z.
+bl/miss : blookup (bcons M T G) N T' (s ID)
+           <- ne M N
+           <- blookup G N T' ID.
 
+bindex : benv -> nat -> tpe -> nat -> type.
+bi/hit : bindex (bcons N T G) z T N.
+bi/miss : bindex (bcons M T G) (s N) T' M'
+           <- bindex G N T' M'.
 
 % Partial ordering on environments
 
@@ -246,11 +252,16 @@ exp-tp/or  : exp-tp G (or T1 T2) N T3'
               <- exp-tp G T2 N T2'
               <- exp-tp G T1 N T1'
               <- topt-or T1' T2' T3'.
+%{
 exp-tp/bind : exp-tp G0 (bind N1 T1) N2 T2
               <- sub-env-size G N1 G0
               <- exp-tp (tcons (bind N1 T1) G) T1 N2 T2.
-exp-tp/tsel : exp-tp G (tsel E L) N T
-               <- tlookexp G E (rect L TA TB)
+}%
+% TODO(namin): use bound env!
+exp-tp/bind : exp-tp G (bind N1 T1) N2 T2
+              <- exp-tp G T1 N2 T2.
+exp-tp/tsel : exp-tp G (ftsel X L) N T
+               <- tlookexp G (var X) (rect L TA TB)
                <- exp-tp G TB N T.
 
 tle: tlookexp G (var N) (rect LN T1 T2) <- tlookup G N T0 <- exp-tp G T0 LN (tsome (rect LN T1 T2)).
@@ -275,138 +286,150 @@ some-if-mne: mnat -> nat -> mnat -> type.
 some-if/mne: some-if-mne (somen N R) N R <- mne R N.
 some-if/meq: some-if-mne R N R <- meq R N.
 
-wf-tp : mode -> mnat -> tenv -> tpe -> type.
-sub-tp : mode -> mnat -> tenv -> tpe -> mnat -> tenv -> tpe -> type.
+wf-tp : mode -> mnat -> benv -> tenv -> tpe -> type.
+sub-tp : mode -> mnat -> benv -> tenv -> tpe -> mnat -> benv -> tenv -> tpe -> type.
 
-maybe-wf-tp : mnat -> mode -> nat -> tenv -> tpe -> type.
-maybe-wf-tp/no : maybe-wf-tp B M A G T  <- meq B A.
-maybe-wf-tp/yes : maybe-wf-tp B M A G T <- mne B A <- wf-tp M (somen A B) G T.
-
+maybe-wf-tp : mnat -> mode -> nat -> benv -> tenv -> tpe -> type.
+maybe-wf-tp/no : maybe-wf-tp B M A K G T  <- meq B A.
+maybe-wf-tp/yes : maybe-wf-tp B M A K G T <- mne B A <- wf-tp M (somen A B) K G T.
 
 path-eval: mode -> tenv -> exp -> tpe -> type.
 pev  : path-eval M G E (rect N TS TU) <- tlookexp G E (rect N TS TU).
 
-sub-tp/refl : sub-tp strict R G1 T R G2 T  %%% ACCELERATE QUERIES !!
+self-eval: mode -> benv -> tenv -> nat -> tpe -> type.
+sev : self-eval M B G X (rect N TS TU)
+       <- blookup B X T0 _
+       <- exp-tp G T0 N (tsome (rect N TS TU)).
+
+sub-tp/refl : sub-tp strict R K1 G1 T R K2 G2 T  %%% ACCELERATE QUERIES !!
                 <- sub-env G G1
                 <- sub-env G G2
-                <- wf-tp strict R G T.
+                <- wf-tp strict R K1 G T
+                <- wf-tp strict R K2 G T.
 
-sub-tp/top  : sub-tp M R1 G1 T R2 G2 top <- wf-tp M R1 G1 T.
+sub-tp/top  : sub-tp M R1 K1 G1 T R2 K2 G2 top <- wf-tp M R1 K1 G1 T.
 
-sub-tp/bot  : sub-tp M R1 G1 bot R2 G2 T <- wf-tp M R2 G2 T.
+sub-tp/bot  : sub-tp M R1 K1 G1 bot R2 K2 G2 T <- wf-tp M R2 K2 G2 T.
 
-sub-tp/fun  : sub-tp M R1 G1 (arrow N TA1 TB1) R2 G2 (arrow N TA2 TB2)
-              <- sub-tp M R2 G2 TA2 R1 G1 TA1
-              <- sub-tp M R1 G1 TB1 R2 G2 TB2.
+sub-tp/fun  : sub-tp M R1 K1 G1 (arrow N TA1 TB1) R2 K2 G2 (arrow N TA2 TB2)
+              <- sub-tp M R2 K2 G2 TA2 R1 K1 G1 TA1
+              <- sub-tp M R1 K1 G1 TB1 R2 K2 G2 TB2.
 
-sub-tp/rect : sub-tp M R1 G1 (rect N TA1 TB1) R2 G2 (rect N TA2 TB2)
-              <- sub-tp M R1 G1 TA1 R1 G1 TB1
-              <- sub-tp M R2 G2 TA2 R2 G2 TB2
+sub-tp/rect : sub-tp M R1 K1 G1 (rect N TA1 TB1) R2 K2 G2 (rect N TA2 TB2)
+              <- sub-tp M R1 K1 G1 TA1 R1 K1 G1 TB1
+              <- sub-tp M R2 K2 G2 TA2 R2 K2 G2 TB2
 
-              <- sub-tp M R2 G2 TA2 R1 G1 TA1
-              <- sub-tp M R1 G1 TB1 R2 G2 TB2.
+              <- sub-tp M R2 K2 G2 TA2 R1 K1 G1 TA1
+              <- sub-tp M R1 K1 G1 TB1 R2 K2 G2 TB2.
 
-sub-tp/recv : sub-tp M R1 G1 (recv N T1) R2 G2 (recv N T2)
-              <- sub-tp M R1 G1 T1 R2 G2 T2.
+sub-tp/recv : sub-tp M R1 K1 G1 (recv N T1) R2 K2 G2 (recv N T2)
+              <- sub-tp M R1 K1 G1 T1 R2 K2 G2 T2.
 
-sub-tp/tbind1 : sub-tp M R1 G1 (bind N TN) R2 G2 T2
-              <- sub-env-size G0 N G1
-              <- sub-tp M R1 (tcons (bind N TN) G0) TN R2 G2 T2
-              .
+sub-tp/bindx : sub-tp M R1 K1 G1 (bind N1 T1) R2 K2 G2 (bind N2 T2)
+                <- sub-tp M R1 (bcons N1 T1 K1) G1 T1 R2 (bcons N2 T2 K2) G2 T2.
 
-sub-tp/and2 : sub-tp M R1 G1 T1 R2 G2 (and TA2 TB2)
-              <- sub-tp M R1 G1 T1 R2 G2 TB2
-              <- sub-tp M R1 G1 T1 R2 G2 TA2.
+sub-tp/bind1 : sub-tp M R1 K1 G1 (bind N1 T1) R2 K2 G2 T2
+                <- sub-tp M R1 (bcons N1 T1 K1) G1 T1 R2 (bcons z T2 K2) G2 T2.
 
-sub-tp/tbind2 : sub-tp M R1 G1 T1 R2 G2 (bind N TN)
-             <- sub-env-size G0 N G2
-             <- sub-tp M R1 G1 T1 R2 (tcons (bind N TN) G0) TN   %% upper bound (trans: bind2-bind1 case in trans)
-             <- sub-tp M R1 G1 T1 R1' G1' T1'                     %% built-in slack (trans: T1-bind2)
-             <- sub-tp M R1 G1 T1 R1' (tcons (bind N T1') G0) TN
-             .
+sub-tp/bind2 : sub-tp M R1 K1 G1 T1 R2 K2 G2 (bind N2 T2)
+                <- sub-tp M R1 (bcons z T1 K1) G1 T1 R2 (bcons N2 T2 K2) G2 T2.
 
-sub-tp/and1a : sub-tp M R1 G1 (and TA1 TB1) R2 G2 T2
-              <- sub-tp M R1 G1 TA1 R2 G2 T2
-              <- wf-tp M R1 G1 TB1.
+sub-tp/and2 : sub-tp M R1 K1 G1 T1 R2 K2 G2 (and TA2 TB2)
+              <- sub-tp M R1 K1 G1 T1 R2 K2 G2 TB2
+              <- sub-tp M R1 K1 G1 T1 R2 K2 G2 TA2.
 
-sub-tp/and1b : sub-tp M R1 G1 (and TA1 TB1) R2 G2 T2
-              <- sub-tp M R1 G1 TB1 R2 G2 T2
-              <- wf-tp M R1 G1 TA1.
+sub-tp/and1a : sub-tp M R1 K1 G1 (and TA1 TB1) R2 K2 G2 T2
+              <- sub-tp M R1 K1 G1 TA1 R2 K2 G2 T2
+              <- wf-tp M R1 K1 G1 TB1.
 
-sub-tp/tsel1 : sub-tp M R1 G1 (tsel (var X) N) R2 G2 T2
+sub-tp/and1b : sub-tp M R1 K1 G1 (and TA1 TB1) R2 K2 G2 T2
+              <- sub-tp M R1 K1 G1 TB1 R2 K2 G2 T2
+              <- wf-tp M R1 K1 G1 TA1.
+
+sub-tp/tsel1 : sub-tp M R1 K1 G1 (ftsel X N) R2 K2 G2 T2
               <- path-eval M G1 (var X) (rect N TA1 TB1)
-              <- sub-env-size G1X (s X) G1
-              <- sub-tp M R1 G1X TB1 R2 G2 T2
-              <- wf-tp M R1 G1 (tsel (var X) N)
+              <- sub-tp M R1 K1 G1 TB1 R2 K2 G2 T2
+              <- wf-tp M R1 K1 G1 (ftsel X N)
               .
 
-sub-tp/tsel2-strict : sub-tp strict R1 G1 T1 R2 G2 (tsel (var X) N)
-              <- path-eval strict G2 (var X) (rect N TA2 TB2)
-              <- sub-env-size G2X (s X) G2
-              <- sub-tp strict R1 G1 T1 R2 G2X TA2
-              <- wf-tp strict R2 G2 (tsel (var X) N)
+sub-tp/tsel2 : sub-tp M R1 K1 G1 T1 R2 K2 G2 (ftsel X N)
+              <- path-eval M G2 (var X) (rect N TA2 TB2)
+              <- sub-tp M R1 K1 G1 T1 R2 K2 G2 TA2
+              <- wf-tp M R2 K2 G2 (ftsel X N)
               .
 
-sub-tp/tsel2-lenient : sub-tp lenient R1 G1 T1 R2 G2 (tsel (var X) N)
-              <- path-eval lenient G2 (var X) (rect N TA2 TB2)
-              <- sub-env-size G2X (s X) G2
-              <- sub-tp lenient R1 G1 T1 R2 G2X TB2
-              <- wf-tp lenient R2 G2 (tsel (var X) N)
-              .
-
-sub-tp/tselx-strict : sub-tp strict R1 G1 (tsel (var X) N) R2 G2 (tsel (var X) N)
-             <- path-eval strict G1 (var X) (rect N TA1 TB1)
-             <- path-eval strict G2 (var X) (rect N TA2 TB2)
-             <- sub-env-size G1X (s X) G1
-             <- sub-env-size G2X (s X) G2
-             <- sub-tp strict R1 G1X (rect N TA1 TB1) R2 G2X (rect N TA2 TB2)
+sub-tp/tsel-rec : sub-tp M R1 K1 G1 (ftsel X N) R2 K2 G2 (ftsel X N)
+             <- sub-env G G1
+             <- sub-env G G2
+             <- path-eval M G (var X) (rect N TA TB)
              .
 
-sub-tp/or2 : sub-tp M R1 G1 (or TA1 TB1) R2 G2 T2
-              <- sub-tp M R1 G1 TB1 R2 G2 T2
-              <- sub-tp M R1 G1 TA1 R2 G2 T2.
+sub-tp/btsel-rec : sub-tp M R1 K1 G1 (btsel X1 N) R2 K2 G2 (btsel X2 N)
+             <- blookup K1 X1 _ ID
+             <- blookup K2 X2 _ ID
+             <- self-eval M K1 G X1 (rect N TA1 TB1)
+             <- self-eval M K1 G X2 (rect N TA2 TB2)
+             .
 
-sub-tp/or1a : sub-tp M R1 G1 T1 R2 G2 (or TA2 TB2)
-              <- sub-tp M R1 G1 T1 R2 G2 TA2
-              <- wf-tp M R2 G2 TB2.
+sub-tp/btsel1 : sub-tp M R1 K1 G1 (btsel X N) R2 K2 G2 T2
+              <- self-eval M K1 G1 X (rect N TA1 TB1)
+              <- sub-tp M R1 K1 G1 TB1 R2 K2 G2 T2
+              <- wf-tp M R1 K1 G1 (btsel X N)
+              .
 
-sub-tp/or1b : sub-tp M R1 G1 T1 R2 G2 (or TA2 TB2)
-              <- sub-tp M R1 G1 T1 R2 G2 TB2
-              <- wf-tp M R2 G2 TA2.
+sub-tp/btsel2 : sub-tp M R1 K1 G1 T1 R2 K2 G2 (btsel X N)
+              <- self-eval M K2 G2 X (rect N TA2 TB2)
+              <- sub-tp M R1 K1 G1 T1 R2 K2 G2 TA2
+              <- wf-tp M R2 K2 G2 (btsel X N)
+              .
 
-wf-tp/top  : wf-tp M R G top.
-wf-tp/bot  : wf-tp M R G bot.
+sub-tp/or2 : sub-tp M R1 K1 G1 (or TA1 TB1) R2 K2 G2 T2
+              <- sub-tp M R1 K1 G1 TB1 R2 K2 G2 T2
+              <- sub-tp M R1 K1 G1 TA1 R2 K2 G2 T2.
 
-wf-tp/fun  : wf-tp M R G (arrow N TA TB)
-              <- wf-tp M R G TA
-              <- wf-tp M R G TB.
+sub-tp/or1a : sub-tp M R1 K1 G1 T1 R2 K2 G2 (or TA2 TB2)
+              <- sub-tp M R1 K1 G1 T1 R2 K2 G2 TA2
+              <- wf-tp M R2 K2 G2 TB2.
 
-wf-tp/rect : wf-tp M R G (rect N TA TB)
-              <- wf-tp M R G TA
-              <- wf-tp M R G TB
-              <- sub-tp M R G TA R G TB. % T1 <: T2 required for transitivity
+sub-tp/or1b : sub-tp M R1 K1 G1 T1 R2 K2 G2 (or TA2 TB2)
+              <- sub-tp M R1 K1 G1 T1 R2 K2 G2 TB2
+              <- wf-tp M R2 K2 G2 TA2.
 
-wf-tp/recv : wf-tp M R G (recv N T)
-              <- wf-tp M R G T.
+wf-tp/top  : wf-tp M R K G top.
+wf-tp/bot  : wf-tp M R K G bot.
 
-wf-tp/tsel : wf-tp M R G (tsel (var X) N)
+wf-tp/fun  : wf-tp M R K G (arrow N TA TB)
+              <- wf-tp M R K G TA
+              <- wf-tp M R K G TB.
+
+wf-tp/rect : wf-tp M R K G (rect N TA TB)
+              <- wf-tp M R K G TA
+              <- wf-tp M R K G TB
+              <- sub-tp M R K G TA R K G TB. % T1 <: T2 required for transitivity
+
+wf-tp/recv : wf-tp M R K G (recv N T)
+              <- wf-tp M R K G T.
+
+wf-tp/tsel : wf-tp M R K G (ftsel X N)
               <- path-eval M G (var X) (rect N TA TB)
-              <- sub-env-size GX (s X) G
-              <- maybe-wf-tp R M X GX (rect N TA TB)
+              <- maybe-wf-tp R M X K G (rect N TA TB)
               .
 
-wf-tp/tbind : wf-tp M R G (bind N TN)
-              <- sub-env-size G0 N G
-              <- wf-tp M R (tcons (bind N TN) G0) TN
+wf-tp/btsel : wf-tp M R K G (btsel X N)
+              <- self-eval M K G X (rect N TA TB)
               .
 
-wf-tp/and  : wf-tp M R G (and TA TB)
-              <- wf-tp M R G TB
-              <- wf-tp M R G TA.
+wf-tp/tbind : wf-tp M R K G (bind N TN)
+              <- wf-tp M R (bcons N TN K) G TN
+              .
 
-wf-tp/or  : wf-tp M R G (or TA TB)
-              <- wf-tp M R G TB
-              <- wf-tp M R G TA.
+wf-tp/and  : wf-tp M R K G (and TA TB)
+              <- wf-tp M R K G TB
+              <- wf-tp M R K G TA.
+
+wf-tp/or  : wf-tp M R K G (or TA TB)
+              <- wf-tp M R K G TB
+              <- wf-tp M R K G TA.
 
 %{ ------- eval-exp / type-exp ----- }%
 
@@ -439,7 +462,7 @@ type-exp   : tenv -> exp -> tpe -> type.
 
 t/empty    : type-exp G empty top.
 
-t/var      : type-exp G (var N) T <- tlookup G N T <- wf-tp strict non G T.
+t/var      : type-exp G (var N) T <- tlookup G N T <- wf-tp strict non bnil G T.
 
 t/sel       : type-exp G (sel E1 LNV) T1
             <- type-exp G E1 (recv LNV T1).
@@ -450,10 +473,10 @@ t/fun      : type-exp G (fun TC LNF T3 R T4 LNV R2 T2 M)
                 <- type-mem M MT
                 <- type-exp (tcons T3 (tcons TC G)) R T4
                 <- type-exp (tcons MT G) R2 T2
-                <- sub-tp strict non (tcons MT G) T2 non (tcons TC G) T2
-                <- wf-tp strict non (tcons MT G) MT                
-                <- wf-tp strict non G TC
-                <- sub-tp strict non (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) non (tcons TC G) TC
+                <- sub-tp strict non bnil (tcons MT G) T2 non bnil (tcons TC G) T2
+                <- wf-tp strict non bnil (tcons MT G) MT                
+                <- wf-tp strict non bnil G TC
+                <- sub-tp strict non bnil (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) non bnil (tcons TC G) TC
                 .
 
 t/app       : type-exp G (app E1 LNF E2) T2
@@ -463,11 +486,11 @@ t/app       : type-exp G (app E1 LNF E2) T2
 t/let       : type-exp G (let T1 E1 E2) T2 % --
            <- type-exp G E1 T1 % --
            <- type-exp (tcons T1 G) E2 T2 % --
-           <- wf-tp strict non G T2. % --
+           <- wf-tp strict non bnil G T2. % --
 
 t/sub       : type-exp G E T2
             <- type-exp G E T1
-            <- sub-tp strict non G T1 non G T2.
+            <- sub-tp strict non bnil G T1 non bnil G T2.
 
 %{ ------- well-formedness / typing for values and environment ----- }%
 
@@ -481,29 +504,50 @@ wfv/f    : wf-val (clos LNF R LNV R2 H) G
             <- wf-env H GC
             <- type-exp (tcons T1 (tcons TC0 GC)) R T2
 
-            <- sub-tp lenient non (tcons TX GC) T non (tcons TC0 GC) T
+            <- sub-tp lenient non bnil (tcons TX GC) T non bnil (tcons TC0 GC) T
             <- wf-val R2 (tcons TX GC) T
             <- type-mem M TX
 
             <- sub-tp lenient
-               non (tcons TC0 GC) TC0
-               non G TC
+               non bnil (tcons TC0 GC) TC0
+               non bnil G TC
             <- sub-tp lenient
-               non (tcons TC0 GC) (and (arrow LNF T1 T2) (and (recv LNV T) TX))
-               non (tcons TC0 GC) TC0
+               non bnil (tcons TC0 GC) (and (arrow LNF T1 T2) (and (recv LNV T) TX))
+               non bnil (tcons TC0 GC) TC0
             .
 
 
 wfv/t    : wf-val (clos LNF R LNV R2 H) G (rect LNT T1 T2)
-            <- wf-tp lenient non G (rect LNT T1 T2).
+            <- wf-tp lenient non bnil G (rect LNT T1 T2).
 
 
 wfv/sub  : wf-val V G T
             <- wf-val V G1 T1
-            <- sub-tp lenient non G1 T1 non G T.
+            <- sub-tp lenient non bnil G1 T1 non bnil G T.
 
 wfe/n    : wf-env vnil tnil.
 wfe/c    : wf-env (vcons V H) (tcons T G) <- wf-val V (tcons T G) T <- wf-env H G.
+
+
+%%% QUERIES %%%
+
+%abbrev egT1 = (bind (s z) (and (rect z (recv z (btsel (s z) z)) (recv z (btsel (s z) z)))
+                              (recv z (btsel (s z) z)))).
+%abbrev egT1' = (bind (s z) (and (rect z bot (recv z (btsel (s z) z)))
+                              (recv z (btsel (s z) z)))).
+%abbrev egT2 = (recv z Top).
+
+%query 1 1 wf-tp strict non bnil tnil egT1.
+%query 1 1 sub-tp strict non bnil tnil egT1 non bnil tnil egT2.
+%query 1 1 sub-tp strict non bnil tnil egT1 non bnil tnil egT1'.
+
+%abbrev egE1 = (fun (bind (s z) (rect z bot top)) z top (var z) top z empty top (mcons _ (recv z (ftsel z z)) (recv z (ftsel z z)) mnil)).
+%query 1 1 type-exp tnil egE1 top.
+
+% still need to add inside-outside link!
+%abbrev egE2 = (fun (bind (s z) (rect z bot (recv z (btsel (s z) z)))) z top (var z) top z empty top (mcons _ (recv z (ftsel z z)) (recv z (ftsel z z)) mnil)).
+% %query 1 1 type-exp tnil egE2 top.
+               
 
 %.
 
