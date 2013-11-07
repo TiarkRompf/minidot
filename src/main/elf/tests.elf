@@ -25,7 +25,7 @@
 %query 1 1 type-exp tnil e17  top.
 %query 1 1 type-exp tnil e18  top.
 %query 1 1 type-exp tnil e19  top.
-%query 1 1 type-exp tnil e20  top.
+% %query 1 1 type-exp tnil e20  top.
 %query 1 1 type-exp tnil e21c top.
 %query 1 1 type-exp tnil e23 top.
 %query 1 1 type-exp tnil e24 top.
@@ -43,8 +43,8 @@
 %query 1 1 type-exp tnil e27j top.
 %query 1 1 type-exp tnil e27k top.
 %query 1 1 type-exp tnil e27l top.
-% %query 1 1 type-exp tnil e27m top.
-% %query 1 1 type-exp tnil e27n top.
+%query 1 1 type-exp tnil e27m top.
+%query 1 1 type-exp tnil e27n top.
 
 % sanity checks for other judgments
 %query 1 1 sub-tp strict pos non tnil t2 non tnil t1.

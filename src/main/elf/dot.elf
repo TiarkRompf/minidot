@@ -466,15 +466,12 @@ t/sel       : type-exp G (sel E1 LNV) T1
             <- type-exp G E1 (recv LNV T1).
 
 t/fun      : type-exp G (fun TC LNF T3 R T4 LNV R2 T2 M)
-                TC
+                (bind N (and (arrow LNF T3 T4) (and (recv LNV T2) MT)))
                 <- tsize G N
                 <- type-mem M MT
-                <- type-exp (tcons T3 (tcons TC G)) R T4
+                <- type-exp (tcons T3 (tcons (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) G)) R T4
                 <- type-exp (tcons MT G) R2 T2
-                <- sub-tp strict pos non (tcons MT G) T2 non (tcons TC G) T2
-                <- wf-tp strict non (tcons MT G) MT                
-                <- wf-tp strict non G TC
-                <- sub-tp strict pos non (tcons TC G) (and (arrow LNF T3 T4) (and (recv LNV T2) MT)) non (tcons TC G) TC
+                <- wf-tp strict non (tcons MT G) MT
                 .
 
 t/app       : type-exp G (app E1 LNF E2) T2
