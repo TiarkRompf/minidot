@@ -393,6 +393,14 @@ sub-tp/or1b : sub-tp M P R1 G1 T1 R2 G2 (or TA2 TB2)
               <- sub-tp M P R1 G1 T1 R2 G2 TB2
               <- wf-tp M R2 G2 TA2.
 
+sub-tp/tsel-rec : sub-tp M P R G1 (tsel (var X) N) R G2 (tsel (var X) N)
+             <- path-eval M G1 (var X) (rect N TA TB)
+             <- path-eval M G2 (var X) (rect N TA TB)
+             <- sub-env-size GX (s X) G1
+             <- sub-env-size GX (s X) G2
+             <- maybe-wf-tp R M X GX (rect N TA TB)
+             .
+
 wf-tp/top  : wf-tp M R G top.
 wf-tp/bot  : wf-tp M R G bot.
 
@@ -1447,10 +1455,10 @@ extend-sub-tp: sub-tp M P R1 G1 T1 R2 G2 T2 -> {Z: tpe}
      <- extend-sub-tp ST T STA1 STB1 STC1
      .
 
-- : extend-sub-tp (sub-tp/tbind2 ST1 ST2 ST3 (ses N S) P) T
-     (sub-tp/tbind2 STB1 STB2 STB3 (ses N (sub-env/ext S)) P)
-     (sub-tp/tbind2 STB1 STB2 STB3 (ses N S) P)
-     (sub-tp/tbind2 ST1 ST2 ST3 (ses N (sub-env/ext S)) P)
+- : extend-sub-tp (sub-tp/tbind2 ST1 ST2 ST3 (ses N S)) T
+     (sub-tp/tbind2 STB1 STB2 STB3 (ses N (sub-env/ext S)))
+     (sub-tp/tbind2 STB1 STB2 STB3 (ses N S))
+     (sub-tp/tbind2 ST1 ST2 ST3 (ses N (sub-env/ext S)))
      <- extend-sub-tp ST1 T STA1 STB1 STC1
      <- extend-sub-tp ST2 T STA2 STB2 STC2
      <- extend-sub-tp ST3 T STA3 STB3 STC3
@@ -1484,6 +1492,13 @@ extend-sub-tp: sub-tp M P R1 G1 T1 R2 G2 T2 -> {Z: tpe}
      (sub-tp/refl W (sub-env/ext S2) (sub-env/ext S1))
      (sub-tp/refl W S2 (sub-env/ext S1))
      (sub-tp/refl W (sub-env/ext S2) S1).
+
+- : extend-sub-tp (sub-tp/tsel-rec W (ses N2 S2) (ses N1 S1) P2 P1) T
+     (sub-tp/tsel-rec W (ses N2 (sub-env/ext S2)) (ses N1 (sub-env/ext S1)) P2' P1')
+     (sub-tp/tsel-rec W (ses N2 S2) (ses N1 (sub-env/ext S1)) P2 P1')
+     (sub-tp/tsel-rec W (ses N2 (sub-env/ext S2)) (ses N1 S1) P2' P1)
+     <- extend-wf-pev P1 T P1'
+     <- extend-wf-pev P2 T P2'.
 
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _).
 %total (A B C) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _).
@@ -1573,7 +1588,7 @@ extract-wf : sub-tp lenient P R1 G1 T1 R2 G2 T2 -> wf-tp lenient R1 G1 T1 -> wf-
 - : extract-wf (sub-tp/tbind1 ST S) (wf-tp/tbind WU S) W2
       <- extract-wf ST WU W2.
 
-- : extract-wf (sub-tp/tbind2 SW SE SU S P) W1 (wf-tp/tbind W2 S)
+- : extract-wf (sub-tp/tbind2 SW SE SU S) W1 (wf-tp/tbind W2 S)
       <- extract-wf SU W1 W2.
 
 - : extract-wf (sub-tp/and1a W2 S1)
@@ -1608,51 +1623,62 @@ extract-wf : sub-tp lenient P R1 G1 T1 R2 G2 T2 -> wf-tp lenient R1 G1 T1 -> wf-
       <- extract-wf S1 W1 W3
       <- extract-wf S2 W2 W4.
 
+- : extract-wf (sub-tp/tsel-rec OW G2 G1 P2 P1)
+     (wf-tp/tsel OW G1 P1)
+     (wf-tp/tsel OW G2 P2).
+
 %worlds () (extract-wf _ _ _).
 %total A (extract-wf A _ _).
 
 %{ ------- subtyping reflexivity and transitivity ------ }%
 
+calc-flip : {P} {P'} flip P P' -> type.
+%mode calc-flip +A -B -C.
+calc-flip/pos : calc-flip pos neg flip/pos.
+calc-flip/neg : calc-flip neg pos flip/neg.
+%worlds () (calc-flip _ _ _).
+%total A (calc-flip A _ _).
 
 %% Subtyping is reflexive
 
 sub-tp-refl :
   %% Input
-  wf-tp lenient R G T ->
+  wf-tp lenient R G T -> {P}
   %% Output
-  sub-tp lenient G P R T R G T ->
+  sub-tp lenient P R G T R G T ->
   type.
-%mode sub-tp-refl +WT -SBT.
+%mode sub-tp-refl +WT +P -SBT.
 
--/bot : sub-tp-refl wf-tp/bot (sub-tp/bot wf-tp/bot).
--/top : sub-tp-refl wf-tp/top (sub-tp/top wf-tp/top).
--/fun : sub-tp-refl (wf-tp/fun T1 T2) (sub-tp/fun SBT1 SBT2)
-   <- sub-tp-refl T1 SBT1
-   <- sub-tp-refl T2 SBT2.
--/rect: sub-tp-refl (wf-tp/rect ST T1 T2) (sub-tp/rect SBT1 SBT2 ST ST)
-   <- sub-tp-refl T1 SBT1
-   <- sub-tp-refl T2 SBT2.
--/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
-   <- sub-tp-refl T1 SBT1.
--/tsel: sub-tp-refl (wf-tp/tsel W G P) (sub-tp/tsel1 (wf-tp/tsel W G P) (sub-tp/tsel2-lenient (wf-tp/tsel W G P) BU G P) G P)
-   <- sub-tp-refl W (sub-tp/rect BU _ _ _).
+-/bot : sub-tp-refl wf-tp/bot _ (sub-tp/bot wf-tp/bot).
+-/top : sub-tp-refl wf-tp/top _ (sub-tp/top wf-tp/top).
+-/fun : sub-tp-refl (wf-tp/fun T1 T2) P (sub-tp/fun SBT1 SBT2 FP)
+   <- calc-flip P P' FP
+   <- sub-tp-refl T1 P SBT1
+   <- sub-tp-refl T2 P' SBT2.
+-/rect: sub-tp-refl (wf-tp/rect ST T1 T2) P (sub-tp/rect SBT1 SBT2 ST ST)
+   <- sub-tp-refl T1 pos SBT1
+   <- sub-tp-refl T2 pos SBT2.
+-/recv: sub-tp-refl (wf-tp/recv T1) P (sub-tp/recv SBT1)
+   <- sub-tp-refl T1 P SBT1.
 
--/tbind: sub-tp-refl (wf-tp/tbind WU S)
+-/tbind: sub-tp-refl (wf-tp/tbind WU S) P
           (sub-tp/tbind1
              (sub-tp/tbind2 R R R S) S)
-          <- sub-tp-refl WU R.
+          <- sub-tp-refl WU P R.
 
--/tand: sub-tp-refl (wf-tp/and W1 W2) (sub-tp/and2 (sub-tp/and1a W2 ST1) (sub-tp/and1b W1 ST2))
-   <- sub-tp-refl W1 ST1
-   <- sub-tp-refl W2 ST2.
+-/tand: sub-tp-refl (wf-tp/and W1 W2) P (sub-tp/and2 (sub-tp/and1a W2 ST1) (sub-tp/and1b W1 ST2))
+   <- sub-tp-refl W1 P ST1
+   <- sub-tp-refl W2 P ST2.
 
--/tand: sub-tp-refl (wf-tp/or W1 W2) (sub-tp/or2 (sub-tp/or1a W2 ST1) (sub-tp/or1b W1 ST2))
-   <- sub-tp-refl W1 ST1
-   <- sub-tp-refl W2 ST2.
+-/tand: sub-tp-refl (wf-tp/or W1 W2) P (sub-tp/or2 (sub-tp/or1a W2 ST1) (sub-tp/or1b W1 ST2))
+   <- sub-tp-refl W1 P ST1
+   <- sub-tp-refl W2 P ST2.
 
+-/tsel : sub-tp-refl (wf-tp/tsel OW G P) _
+        (sub-tp/tsel-rec OW G G P P).
 
-%worlds () (sub-tp-refl _ _).
-%total T (sub-tp-refl T _).
+%worlds () (sub-tp-refl _ _ _).
+%total T (sub-tp-refl T _ _).
 
 %% Subtyping is transitive
 

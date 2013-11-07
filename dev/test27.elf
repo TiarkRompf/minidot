@@ -393,6 +393,14 @@ sub-tp/or1b : sub-tp M P R1 G1 T1 R2 G2 (or TA2 TB2)
               <- sub-tp M P R1 G1 T1 R2 G2 TB2
               <- wf-tp M R2 G2 TA2.
 
+sub-tp/tsel-rec : sub-tp M P R G1 (tsel (var X) N) R G2 (tsel (var X) N)
+             <- path-eval M G1 (var X) (rect N TA TB)
+             <- path-eval M G2 (var X) (rect N TA TB)
+             <- sub-env-size GX (s X) G1
+             <- sub-env-size GX (s X) G2
+             <- maybe-wf-tp R M X GX (rect N TA TB)
+             .
+
 wf-tp/top  : wf-tp M R G top.
 wf-tp/bot  : wf-tp M R G bot.
 
@@ -1485,6 +1493,13 @@ extend-sub-tp: sub-tp M P R1 G1 T1 R2 G2 T2 -> {Z: tpe}
      (sub-tp/refl W S2 (sub-env/ext S1))
      (sub-tp/refl W (sub-env/ext S2) S1).
 
+- : extend-sub-tp (sub-tp/tsel-rec W (ses N2 S2) (ses N1 S1) P2 P1) T
+     (sub-tp/tsel-rec W (ses N2 (sub-env/ext S2)) (ses N1 (sub-env/ext S1)) P2' P1')
+     (sub-tp/tsel-rec W (ses N2 S2) (ses N1 (sub-env/ext S1)) P2 P1')
+     (sub-tp/tsel-rec W (ses N2 (sub-env/ext S2)) (ses N1 S1) P2' P1)
+     <- extend-wf-pev P1 T P1'
+     <- extend-wf-pev P2 T P2'.
+
 %worlds () (extend-wf-tp _ _ _)(extend-sub-tp _ _ _ _ _)(extend-wf-pev _ _ _).
 %total (A B C) (extend-wf-tp A _ _)(extend-sub-tp B _ _ _ _)(extend-wf-pev C _ _).
 
@@ -1608,6 +1623,10 @@ extract-wf : sub-tp lenient P R1 G1 T1 R2 G2 T2 -> wf-tp lenient R1 G1 T1 -> wf-
       <- extract-wf S1 W1 W3
       <- extract-wf S2 W2 W4.
 
+- : extract-wf (sub-tp/tsel-rec OW G2 G1 P2 P1)
+     (wf-tp/tsel OW G1 P1)
+     (wf-tp/tsel OW G2 P2).
+
 %worlds () (extract-wf _ _ _).
 %total A (extract-wf A _ _).
 
@@ -1655,6 +1674,8 @@ sub-tp-refl :
    <- sub-tp-refl W1 P ST1
    <- sub-tp-refl W2 P ST2.
 
+-/tsel : sub-tp-refl (wf-tp/tsel OW G P) _
+        (sub-tp/tsel-rec OW G G P P).
 
 %worlds () (sub-tp-refl _ _ _).
 %total T (sub-tp-refl T _ _).
