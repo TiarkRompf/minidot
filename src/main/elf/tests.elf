@@ -2,6 +2,7 @@
 %query 1 1 type-exp tnil ex_norec_nat_a top.
 %query 1 1 type-exp tnil ex_norec_nat top.
 % %query 1 1 type-exp tnil ex_nat_church top. % TODO
+% %query 1 1 type-exp tnil ex_nat_church_a top.
 
 % sanity checks
 %query 1 1 type-exp tnil e1  top.
@@ -41,6 +42,9 @@
 %query 1 1 type-exp tnil e27i top.
 %query 1 1 type-exp tnil e27j top.
 %query 1 1 type-exp tnil e27k top.
+%query 1 1 type-exp tnil e27l top.
+% %query 1 1 type-exp tnil e27m top.
+% %query 1 1 type-exp tnil e27n top.
 
 % sanity checks for other judgments
 %query 1 1 sub-tp strict pos non tnil t2 non tnil t1.

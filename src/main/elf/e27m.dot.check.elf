@@ -1,0 +1,1 @@
+%abbrev e27m = (let _ (fun (bind z (and (rect (s (s z)) bot top) (arrow (s z) (tsel (var z)  (s (s z))) (tsel (var z)  (s (s z)))))) (s z) (tsel (var z)  (s (s z))) (sel (var (s z)) z) (tsel (var z)  (s (s z))) z empty top (mcons _ (recv z (tsel (var z)  (s (s z)))) (recv z (tsel (var z)  (s (s z)))) (mcons _ bot top (mcons _ bot top mnil)))) (var z)).

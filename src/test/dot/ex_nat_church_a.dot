@@ -1,0 +1,29 @@
+val r : { r =>
+  { type Nat: Bot .. Top } &
+  { def succ(n: r.Nat): r.Nat } &
+  { val zero: r.Nat }
+}
+= new { r =>
+  { type Church: Bot .. Top } &
+  { type Curry: Bot .. Top } &
+  { type Nat = { n => r.Church } } &
+  { def succ(n: r.Nat): r.Nat } &
+  { val zero: r.Nat }
+} ( r =>
+  type Church = { def church(isZero: { def apply(_: Top): Top }): r.Curry }
+  type Curry = { def curry(isSucc: { def apply(_: r.Nat): Top }): Top }
+  type Nat = { n => r.Church }
+  def succ(n: r.Nat): r.Nat = new r.Nat ( sn =>
+    def church(isZero: { def apply(_: Top): Top }) = new r.Curry (
+      def curry(isSucc: { def apply(_: r.Nat): Top }): Top =
+        isSucc.apply(n)
+    )
+  )
+  val zero: r.Nat = new r.Nat ( z =>
+    def church(isZero: { def apply(_: Top): Top }) = new r.Curry (
+      def curry(isSucc: { def apply(_: r.Nat): Top }): Top =
+        isZero.apply(z)
+    )
+  )
+)
+r

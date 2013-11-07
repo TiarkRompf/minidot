@@ -1,0 +1,10 @@
+val r
+= new { r =>
+  { type A = { val l: r.A } } &
+  { def id(x: r.A): r.A }
+}
+( r =>
+  type A = { val l: r.A }
+  def id(x: r.A): r.A = x.l
+)
+r
