@@ -1,0 +1,13 @@
+val u = new (u =>
+  type Animal = { a =>
+    { type Food: Bot .. Top } &
+    { def eat(_: a.Food): Top } &
+    { def find(_: Top): a.Food }
+  }
+  type Grass: Bot .. Top
+  type Cow = u.Animal & { type Food = u.Grass }
+)
+val c2a = new (
+  def cast(x: u.Cow): u.Animal = x
+)
+u
