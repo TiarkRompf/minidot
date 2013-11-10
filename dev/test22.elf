@@ -1,40 +1,20 @@
 % echo "set unsafe true
-% loadFile test15z.elf" |/Volumes/Twelf\ for\ OS\ X\ \(Intel\)/Twelf/bin/twelf-server
-
-% STLC: big step preservation
-% - add store
-% + add subtyping
-% + add env to subtyping
-% + add type members
-% + add value members
-% + add type bounds
-% + add reflexivity for type selections
-% + add self types
+% loadFile test22.elf" |~/Desktop/tryout/twelf/bin/twelf-server
 
 %{
-+ add labels to field/method/type members
-+ add intersection types (union types tbd)
-+ assign intersection types to objects
-    - what about invert-var? special-cased for now
-    + projection lemmas
-+ enable multiple members in object terms
-    + only multiple type members for now
-    - use expansion for projection lemmas?
-+ make type selection work with intersections
-    + expansion
-    - add 'interesting' expansion cases
+  
+strict -> lenient erasue
 
-Note:
+disable tsel2, tsel1 in recursive cycles to support transitivity
 
-Expansion is really wimpy right now. It does
-not compute actual meets and joins but is only
-defined for cases like this:
+mutual recursion in transitivity to make up for non-existing wf
 
-   T1 --> tnone     T2 --> tsome T2'
-  ----------------------------------
-          (T1 /\ T2) -->  T2'
+proof ok, but expressiveness issues:
+- no contravariance
+- lack of tsel2/1 is too restrictive
 
 }%
+
 
 %{ ------- arithmetic ----- }%
 
