@@ -1,28 +1,12 @@
 % echo "set unsafe true
-% loadFile test15z.elf" |/Volumes/Twelf\ for\ OS\ X\ \(Intel\)/Twelf/bin/twelf-server
-
-% STLC: big step preservation
-% - add store
-% + add subtyping
-% + add env to subtyping
-% + add type members
-% + add value members
-% + add type bounds
-% + add reflexivity for type selections
-% + add self types
+% loadFile test27a.elf" |~/Desktop/tryout/twelf/bin/twelf-server
 
 %{
-+ add labels to field/method/type members
-+ add intersection types (union types tbd)
-+ assign intersection types to objects
-    - what about invert-var? special-cased for now
-    + projection lemmas
-+ enable multiple members in object terms
-    + only multiple type members for now
-    - use expansion for projection lemmas?
-+ make type selection work with intersections
-    + expansion
-    - add 'interesting' expansion cases
+  
+strict -> lenient erasure variant, with polarity to support contravariance
+
+(Nada's work in progress on refactoring t/fun and wfv/f)
+
 }%
 
 %{ ------- arithmetic ----- }%
