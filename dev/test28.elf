@@ -373,29 +373,42 @@ TS1 < TS2 |- T1 < a.X    &&    TS2 < TS3 |- a.X < T2
 TS1 < TS3 |- T1 < T2
 
 
+  L1..U1 < L2..U2   T1 < L1   &&   L2..U2 < L3..U3   U2 < T2
+  ----------------------------------------------------------
+  T1 < L1 < U1 < U2 < T2
+
+
+
 TS2 < TS3 |- T1 < a.X    &&    TS1 < TS2 |- a.X < T2
 ----------------------------------------------------
 TS1 < TS3 |- T1 < T2
+
+
+  L2..U2 < L3..U3   T1 < L2   &&   L1..U1 < L2..U2   U1 < T2
+  ----------------------------------------------------------
+  T1 < L2 < L1 < U1 < T2
+
+
 
 we'll see ...
 
 }%
 
 
+
 sub-tp/tsel1 : sub-tp M P R1 G1 (tsel (var X) N) R2 G2 T2
               <- path-eval strict G1 (var X) (rect N TA1 TB1)
               <- sub-env-size G1X (s X) G1
               <- sub-tp M P R1 G1X TB1 R2 G2 T2
-              % <- sub-tp M P R1 G1X TA1 R1 G1X TB1
+              <- sub-tp M P R1 G1X TA1 R2 G2 T2 %% TA1 < TB1
               <- wf-tp strict R1 G1 (tsel (var X) N)
               .
-
 
 sub-tp/tsel2 : sub-tp M P R1 G1 T1 R2 G2 (tsel (var X) N)
               <- path-eval strict G2 (var X) (rect N TA2 TB2)
               <- sub-env-size G2X (s X) G2
+              <- sub-tp M P R1 G1 T1 R2 G2X TB2 %% TA2 < TB2
               <- sub-tp M P R1 G1 T1 R2 G2X TA2
-              % <- sub-tp M P R2 G2X TA2 R2 G2X TB2
               <- wf-tp strict R2 G2 (tsel (var X) N)
               .
 
@@ -1895,17 +1908,21 @@ sub-tp-trans-strict-aux :
 
 -/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
-      (sub-tp/tsel1 W1 SBT1 G P)
+      (sub-tp/tsel1 W1 SBTU1 SBTL1 G P)
       SBT3
-      (sub-tp/tsel1 W1 SBT5 G P)
-      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+      (sub-tp/tsel1 W1 SBTU5 SBTL5 G P)
+      <- sub-tp-trans-aux W SBTU1 SBT3 SBTU5
+      <- sub-tp-trans-aux W SBTL1 SBT3 SBTL5
+      .
 
 -/tsel2  : sub-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
       W
       SBT1
-      (sub-tp/tsel2 W2 SBT3 G P)
-      (sub-tp/tsel2 W2 SBT5 G P)
-      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+      (sub-tp/tsel2 W2 SBTU3 SBTL3 G P)
+      (sub-tp/tsel2 W2 SBTU5 SBTL5 G P)
+      <- sub-tp-trans-aux W SBT1 SBTU3 SBTU5
+      <- sub-tp-trans-aux W SBT1 SBTL3 SBTL5
+      .
 
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
@@ -1922,13 +1939,10 @@ rect-wf-bounds: maybe-wf-tp R M X G (rect N L U) -> wf-tp M R G U -> wf-tp M R G
 
 -/tsel2-tsel1 : sub-tp-trans-aux
                  (wf-tp/tsel WFR GEW PW)
-                 (sub-tp/tsel2 _ A1 GE1 P1)
-                 (sub-tp/tsel1 _ A2 GE2 P2)
+                 (sub-tp/tsel2 _ _ A1 GE1 P1)
+                 (sub-tp/tsel1 _ _ A2 GE2 P2)
                  OUT
    <- rect-wf-bounds WFR WU WS
-   <- path-eval-eq P1 P2 EQR12
-   <- rect-same-all-same EQR12 EQS12 EQU12
-   <- sub-env-size-eq GE1 GE2 EQG12
    <- path-eval-eq P1 PW EQR1W
    <- rect-same-all-same EQR1W EQS1W EQU1W
    <- sub-env-size-eq GE1 GEW EQG1W
