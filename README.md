@@ -1,3 +1,5 @@
+_A good proof is one that makes us wiser._ -- Yuri Manin
+
 minidot
 =======
 
