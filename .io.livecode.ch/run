@@ -1,0 +1,4 @@
+#!/bin/bash
+set -e
+
+echo -e "set chatter 0\nloadFile $2\nset chatter 3\nloadFile $1\nset chatter 0\nloadFile $3" | twelf-server
