@@ -1,0 +1,296 @@
+{% extends "base_livecode.html" %}
+{% block title %}twelf for minidot, an interactive tutorial{% endblock %}
+
+{% block content %}
+<p>
+<a href="http://twelf.org">Twelf</a> is a tool for reasoning about
+deductive systems. Elegantly, each declaration in Twelf looks like an
+<em>inference rule</em>:
+</p>
+
+$${
+\begin{align}
+&\text{premise}_1\\
+&\ldots\\
+&\text{premise}_n\\
+\end{align}
+\over{\text{conclusion}} }(\text{name})$$
+
+<pre class="pseudocode">
+name : premise-1 -> ... -> premise-n -> conclusion.
+</pre>
+
+<p>An inference rule without premises is called
+an <em>axiom</em>.</p>
+
+<p>Let's get started with some Twelf code.</p>
+
+<div class="live" id="nat">
+nat : type.
+z : nat.
+s : nat -> nat.
+</div>
+
+<div class="live" id="plus" data-lib="nat">
+plus : nat -> nat -> nat -> type.
+plus/z : plus z N N.
+plus/s : plus N1 N2 N3 -> plus (s N1) N2 (s N3).
+</div>
+
+<p>
+We can interpret an inference rule in two ways.
+</p>
+
+<ol>
+ <li>Each conclusion is a <em>type</em>. An axiom defines
+ a <em>term</em> inhabiting the type of the conclusion. For example,
+ the term <code>z</code> inhabits the type <code>nat</code>. Each
+ premise is also a <em>type</em>. An inference rule with \(n\)
+ premises defines a function with parameter types defined by the
+ premises and return type defined by the conclusion. This function can
+ be applied to \(n\) terms of the premise types to yield a term of the
+ conclusion type. For example, the function <code>s</code> can be
+ applied to term <code>z</code>, to yield the term <code>s z</code>.
+
+$${\text{}\over{\text{type}}}(\text{nat}) \quad {\text{}\over{\text{nat}}}(\text{z}) \quad {\text{nat}\over{\text{nat}}}(\text{s})$$
+
+ </li>
+ <li>Each conclusion and premise is a <em>proposition</em>. An
+ inference rule defines a recipe to construct a <em>proof</em>
+ or <em>evidence</em> for the proposition in the conclusion. For
+ example, the rule <code>plus/s</code> states that if you have
+ evidence of <code>plus N1 N2 N3</code>, then you can construct
+ evidence for <code>plus (s N1) N2 (s N3)</code> for
+ any <code>nat</code> terms <code>N1, N2, N3</code>.
+
+$${\begin{align}
+\text{nat}\\
+\text{nat}\\
+\text{nat}\\
+\end{align}\over{\text{type}}}(\text{plus}) \quad {\text{}\over{\text{plus z N N}}}(\text{plus/z}) \quad {\text{plus N1 N2 N3}\over{\text{plus (s N1) N2 (s N3)}}}(\text{plus/s})$$
+
+ </li>
+</ol>
+
+<p>This dual interpretation, propositions-as-types, is known as the
+Curry-Howard isomorphism. The type interpretation is more natural when
+we care to distinguish terms of the same type: even
+though <code>z</code> and <code>s z</code> are both of
+type <code>nat</code>, we don't think of them as semantically
+equivalent. The proposition interpretation is more natural when we
+only care about inhabitation: whether it is true or false. For
+example, <code>plus (s z) z (s z)</code> is inhabited (true),
+while <code>plus (s z) z z</code> is not (false).
+</p>
+
+<p>In Twelf, we can use the <code>%query</code> command to ask about
+inhabitation. Click the play button, and also try queries of your
+own by editing the box.</p>
+
+<div class="live" id="q1" data-lib="nat plus">
+%query * 1 plus (s z) z (s z).
+%query 0 * plus (s z) z z.
+%query * 3 plus A B C.
+</div>
+
+<p>We can use the <code>%solve</code> to actually construct a term of a certain type.</p>
+
+<div class="live" id="q2" data-lib="nat plus">
+%solve a_nat : nat.
+%solve a_deriv : plus (s (s z)) (s z) N.
+</div>
+
+<p>A term for the type <code>plus (s (s z)) (s z) (s (s (s z)))</code>
+is <code>plus/s (plus/s plus/z)</code>. Indeed,
+the <code>plus/z</code> axiom gives us <code>plus z (s z) (s
+z)</code>, and applying <code>plus/s</code> twice constructs the
+evidence for the desired proposition.</p>
+
+<p>In our definition of <code>plus/z</code>, the <code>N</code> is an
+implicit dependent type. We could also define the plus judgment with
+all the dependent types made explicit. Now, we also would need to be
+explicit in the applications of these new rules, as you can see with
+the <code>%solve</code> query below.
+</p>
+
+<div class="live" id="plus-alt" data-lib="nat">
+plus : nat -> nat -> nat -> type.
+plus/z : {N:nat} plus z N N.
+plus/s : {N1:nat} {N2:nat} {N3:nat} plus N1 N2 N3 -> plus (s N1) N2 (s N3).
+</div>
+<div class="live" id="q-plus-alt" data-lib="nat plus-alt">
+%solve a_deriv : plus (s (s z)) (s z) N.
+</div>
+
+<p>Note that <code>A -> B</code> is just an abbreviation
+for <code>{_:A} B</code>, where the name of the term of
+type <code>A</code> is irrelevant, since the type <code>B</code> does
+not depend on it.</p>
+
+<p>We can think of a rule with conclusion <code>type</code> and \(n\)
+premises as defining an \(n\)-place relation. Taken together, the
+rules with conclusion whose head matches the relation name defines all
+the way this relation may hold, i.e. all the possible derivations.
+</p>
+
+<p>We can also define \(n\)-place relations, where some of the places
+are universally quantified (inputs), and some are existentially
+quantified (outputs). If we can show that the relation
+is <em>total</em>, i.e. we can always find outputs for all possible
+inputs, then we can interpret the relation as a theorem. The proof of
+a theorem also takes the form of inference rules, and proceeds by
+induction on the derivation rules of some (possibly none) of the
+inputs.
+</p>
+
+<p>Let's get more concrete with some Twelf code.</p>
+
+<p>We show that <code>z</code> is a neutral element on the right. The
+induction is on the first term of type <code>nat</code>. Thus, we have
+a case (itself, an inference rule) for each inference rule whose
+conclusion is <code>nat</code>. In the <code>s</code> case, we make
+use of the induction hypothesis: the term of type <code>nat</code> in
+the premise (<code>N</code>) is smaller than the term of
+type <code>nat</code> in the conclusion (<code>(s N)</code>).
+
+<div class="live" id="plus-z-right-neutral" data-lib="nat plus">
+plus-z-right-neutral : {N:nat} plus N z N -> type.
+%mode plus-z-right-neutral +N -D.
+-/z : plus-z-right-neutral z plus/z.
+-/s : plus-z-right-neutral N D -> plus-z-right-neutral (s N) (plus/s D).
+%worlds () (plus-z-right-neutral _ _).
+%total N (plus-z-right-neutral N _).
+</div>
+
+<p>We show that we can increment on the right. The induction is on the
+first term of type <code>plus N1 N2 N3</code>. Thus, we need to
+consider all possible inference rules
+for <code>plus</code>: <code>plus/z</code> and <code>plus/z</code>. We
+use the backwards arrow <code>&lt;-</code>, so that we can start with
+the conclusion and then construct how we reach it.
+</p>
+
+<div class="live" id="plus-s-right-inc" data-lib="nat plus">
+plus-s-right-inc : plus N1 N2 N3 -> plus N1 (s N2) (s N3) -> type.
+%mode plus-s-right-inc +D1 -D2.
+-/z : plus-s-right-inc plus/z plus/z.
+-/s : plus-s-right-inc (plus/s D1) (plus/s D2)
+   <- plus-s-right-inc D1 D2.
+%worlds () (plus-s-right-inc _ _).
+%total D (plus-s-right-inc D _).
+</div>
+
+<p>Now, let's prove that <code>plus</code> is commutative.</p>
+<div class="live" id="plus-comm" data-lib="nat plus plus-z-right-neutral plus-s-right-inc">
+plus-comm : plus N1 N2 N3 -> plus N2 N1 N3 -> type.
+%mode plus-comm +D1 -D2.
+-/z : plus-comm plus/z D
+   <- plus-z-right-neutral _ D.
+-/s : plus-comm (plus/s D1) D3
+   <- plus-comm D1 D2
+   <- plus-s-right-inc D2 D3.
+%worlds () (plus-comm _ _).
+%total D (plus-comm D _).
+</div>
+
+<p><span id="exo-plus-total">Exercise:</span> Show that the plus relation is
+total, i.e. we can always add any two numbers.</p>
+<div class="live exo" id="plus-total" data-lib="nat plus">
+% TODO .
+</div>
+<div class="sol" id="sol-plus-total">
+plus-total : {N1:nat} {N2:nat} plus N1 N2 N3 -> type.
+%mode plus-total +N1 +N2 -D.
+-/z : plus-total z N2 plus/z.
+-/s : plus-total (s N1) N2 (plus/s D)
+   <- plus-total N1 N2 D.
+%worlds () (plus-total _ _ _).
+%total N1 (plus-total N1 _ _).
+</div>
+
+<p>
+Often, we need to reason about <em>equality</em> between terms. For a
+given type, we can define equality structurally or reflexively.
+</p>
+
+<p>The recipe for structural equality has one case per derivation rule.</p>
+<div class="live" id="nat-eq-struct" data-lib="nat">
+nat-eq-struct : nat -> nat -> type.
+nat-eq-struct/z : nat-eq-struct z z.
+nat-eq-struct/s : nat-eq-struct (s N1) (s N2)
+               <- nat-eq-struct N1 N2.
+</div>
+
+<p>The recipe for reflexive equality always has just one case for identity.</p>
+<div class="live" id="nat-eq" data-lib="nat">
+nat-eq : nat -> nat -> type.
+nat-eq/id : nat-eq N N.
+</div>
+
+<p><span id="exo-nat-eq-equiv">Exercise:</span> Show that the two definitions of equality for <code>nat</code>, reflexive and structural, are equivalent.</p>
+<div class="live exo" id="nat-eq-equiv" data-lib="nat nat-eq-struct nat-eq">
+nat-eq-r2s : nat-eq N1 N2 -> nat-eq-struct N1 N2 -> type.
+%mode nat-eq-r2s +A -B.
+% TODO .
+%worlds () (nat-eq-r2s _ _).
+%total A (nat-eq-r2s A _).
+
+nat-eq-s2r : nat-eq-struct N1 N2 -> nat-eq N1 N2 -> type.
+%mode nat-eq-s2r +A -B.
+% TODO .
+%worlds () (nat-eq-s2r _ _).
+%total A (nat-eq-s2r A _).
+</div>
+<div class="sol" id="sol-nat-eq-equiv">
+nat-eq-struct-refl : {N:nat} nat-eq-struct N N -> type.
+%mode nat-eq-struct-refl +N -D.
+-/z : nat-eq-struct-refl z nat-eq-struct/z.
+-/s : nat-eq-struct-refl (s N) (nat-eq-struct/s D)
+   <- nat-eq-struct-refl N D.
+%worlds () (nat-eq-struct-refl _ _).
+%total N (nat-eq-struct-refl N _).
+
+nat-eq-s : nat-eq N1 N2 -> nat-eq (s N1) (s N2) -> type.
+%mode nat-eq-s +A -B.
+-/id : nat-eq-s nat-eq/id nat-eq/id.
+%worlds () (nat-eq-s _ _).
+%total A (nat-eq-s A _).
+
+nat-eq-r2s : nat-eq N1 N2 -> nat-eq-struct N1 N2 -> type.
+%mode nat-eq-r2s +A -B.
+-/id : nat-eq-r2s nat-eq/id D
+    <- nat-eq-struct-refl _ D.
+%worlds () (nat-eq-r2s _ _).
+%total A (nat-eq-r2s A _).
+
+nat-eq-s2r : nat-eq-struct N1 N2 -> nat-eq N1 N2 -> type.
+%mode nat-eq-s2r +A -B.
+-/z : nat-eq-s2r nat-eq-struct/z nat-eq/id.
+-/s : nat-eq-s2r (nat-eq-struct/s D) EQ'
+   <- nat-eq-s2r D EQ
+   <- nat-eq-s EQ EQ'.
+%worlds () (nat-eq-s2r _ _).
+%total A (nat-eq-s2r A _).
+</div>
+
+<p>Armed with equality, we can show that the third place of
+the <code>plus</code> relation is uniquely determined by the other two
+places.</p>
+<div class="live" id="plus-unique" data-lib="nat plus nat-eq">
+nat-eq-s : nat-eq N1 N2 -> nat-eq (s N1) (s N2) -> type.
+%mode nat-eq-s +A -B.
+-/id : nat-eq-s nat-eq/id nat-eq/id.
+%worlds () (nat-eq-s _ _).
+%total A (nat-eq-s A _).
+
+plus-unique : plus N1 N2 N3 -> plus N1 N2 N3' -> nat-eq N3 N3' -> type.
+%mode plus-unique +D1 +D2 -EQ.
+-/z : plus-unique plus/z plus/z nat-eq/id.
+-/s : plus-unique (plus/s D1) (plus/s D2) EQ'
+   <- plus-unique D1 D2 EQ
+   <- nat-eq-s EQ EQ'.
+%worlds () (plus-unique _ _ _).
+%total D (plus-unique D _ _).
+</div>
+
+{% endblock %}
