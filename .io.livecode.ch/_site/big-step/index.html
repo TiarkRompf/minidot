@@ -1,0 +1,23 @@
+{% extends "base_livecode.html" %}
+{% block title %}Jeremey Siek's Type Safety Three Easy Lemmas in Twelf{% endblock %}
+
+{% block content %}
+<p>
+The type safety proofs in minidot are based
+on <a href="http://siek.blogspot.ch/2013/05/type-safety-in-three-easy-lemmas.html">Type
+Safety in Three Easy Lemmas by Jeremy Siek</a>.
+</p>
+
+<div class="live" id="nat">
+nat : type.
+z : nat.
+s : nat -> nat.
+</div>
+
+<div class="live" id="plus" data-lib="nat">
+plus : nat -> nat -> nat -> type.
+plus/z : plus z N N.
+plus/s : plus N1 N2 N3 -> plus (s N1) N2 (s N3).
+</div>
+
+{% endblock %}
