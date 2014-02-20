@@ -12,6 +12,16 @@ TODO:
     --->
   sub-dc M (tcons (bind N D1) G0) D1 (tcons (bind N D2) G0) D2
 
+
+
+  {x => D1}   {x => D2}
+  G1 x.T    <    x.T G2
+
+
+    {x => D1}   {x => D2}
+  A < x.T    <    x.T < B
+
+
 }%
 
 
@@ -350,16 +360,16 @@ sub-tp/or1b : sub-tp M  G1 T1 G2 (or TA2 TB2)
               <- wf-tp M G2 TA2.
 
 sub-tp/tsel1 : sub-tp M G1 (tsel (var X) N) G2 T2
-              <- path-eval M G1 (var X) (rect N TA1 TB1)
+              <- path-eval M G1X (var X) (rect N TA1 TB1)
               <- sub-env-size G1X (s X) G1
               <- sub-tp M G1X TB1 G2 T2
               <- wf-tp M G1 (tsel (var X) N)
               .
 
 sub-tp/tsel2 : sub-tp M G1 T1 G2 (tsel (var X) N)
-              <- path-eval M G2 (var X) (rect N TA2 TB2)
+              <- path-eval M G2X (var X) (rect N TA2 TB2)
               <- sub-env-size G2X (s X) G2
-              <- sub-tp M G1 T1 G2X TB2 % TA2 FIXME!!
+              <- sub-tp M G1 T1 G2X TA2 % TA2 FIXME!!
               <- wf-tp M G2 (tsel (var X) N)
               .
 
@@ -381,7 +391,7 @@ wf-tp/recv : wf-tp M G (recv N T)
               <- wf-tp M G T.
 
 wf-tp/tsel : wf-tp M G (tsel (var X) N)
-              <- path-eval M G (var X) (rect N TA TB)
+              <- path-eval M GX (var X) (rect N TA TB)
               <- sub-env-size GX (s X) G
               <- wf-dc M GX (rect N TA TB)
               .
@@ -1405,7 +1415,7 @@ extend-sub-dc: sub-dc M G1 T1 G2 T2 -> {Z: tpe}
 - : extend-wf-tp (wf-tp/recv W1) T (wf-tp/recv W1')
       <- extend-wf-tp W1 _ W1'.
 
-- : extend-wf-tp (wf-tp/tsel W (ses N S) P) T (wf-tp/tsel W (ses N (sub-env/ext S)) P')
+- : extend-wf-tp (wf-tp/tsel W (ses N S) P) T (wf-tp/tsel W (ses N (sub-env/ext S)) P) % was P'
       <- extend-wf-pev P T P'.
 
 - : extend-wf-tp (wf-tp/tbind W (ses N S)) T (wf-tp/tbind W (ses N (sub-env/ext S))).
@@ -1435,16 +1445,16 @@ extend-sub-dc: sub-dc M G1 T1 G2 T2 -> {Z: tpe}
 - : extend-sub-tp (sub-tp/recv ST1) T (sub-tp/recv ST1') (sub-tp/recv ST1A) (sub-tp/recv ST1B)
       <- extend-sub-tp ST1 _ ST1' ST1A ST1B.
 - : extend-sub-tp (sub-tp/tsel1 W ST (ses N S) P) T
-     (sub-tp/tsel1 W' ST' (ses N (sub-env/ext S)) P')
-     (sub-tp/tsel1 W' ST (ses N (sub-env/ext S)) P')
+     (sub-tp/tsel1 W' ST' (ses N (sub-env/ext S)) P) % was P'
+     (sub-tp/tsel1 W' ST (ses N (sub-env/ext S)) P) % P'
      (sub-tp/tsel1 W ST' (ses N S) P)
       <- extend-wf-pev P T P'
       <- extend-sub-tp ST T _ _ ST'
       <- extend-wf-tp W T W'.
 - : extend-sub-tp (sub-tp/tsel2 W ST (ses N S) P) T
-     (sub-tp/tsel2 W' ST' (ses N (sub-env/ext S)) P')
+     (sub-tp/tsel2 W' ST' (ses N (sub-env/ext S)) P) % P'
      (sub-tp/tsel2 W ST' (ses N S) P)
-     (sub-tp/tsel2 W' ST (ses N (sub-env/ext S)) P')
+     (sub-tp/tsel2 W' ST (ses N (sub-env/ext S)) P) % P'
       <- extend-wf-pev P T P'
       <- extend-sub-tp ST T _ ST' _
       <- extend-wf-tp W T W'.
@@ -1783,11 +1793,51 @@ sub-tp-refl :
 
 
 %worlds () (sub-tp-refl _ _)(sub-dc-refl _ _).
+%trustme %% TSELX
 %total (T1 T2) (sub-tp-refl T1 _)(sub-dc-refl T2 _).
 
 %% Subtyping is transitive
 
 %% Helpers
+
+path-eval-subx   : path-eval M G E (rect N S U)
+                -> path-eval M G E (rect N S' U')
+                -> sub-tp M G S G S0
+                -> sub-tp M G S0 G U0
+                -> sub-tp M G U0 G U'
+                -> type.
+%mode path-eval-subx +A +B -C -D -E.
+
+%worlds () (path-eval-subx _ _ _ _ _).
+%trustme
+%total {} (path-eval-subx _ _ _ _ _).
+
+
+path-eval-sub : path-eval M G E (rect N S U)
+                -> path-eval M G E (rect N S' U')
+                -> sub-tp M G S G U'
+                -> sub-tp M G S' G U
+                -> type.
+%mode path-eval-sub +A +B -C -D.
+
+%worlds () (path-eval-sub _ _ _ _).
+%trustme
+%total {} (path-eval-sub _ _ _ _).
+% %reduces B <= C (path-eval-sub C _ B  _).
+
+
+eq-path-eval-env : sametenv G1 G2
+                -> path-eval M G1 E (rect N S U)
+                -> path-eval M G2 E (rect N S U)
+                -> type.
+%mode eq-path-eval-env +A +B -C.
+
+- : eq-path-eval-env identtenv P P.
+
+%worlds () (eq-path-eval-env _ _ _).
+%total {} (eq-path-eval-env _ _ _).
+% %reduces B <= C (eq-path-eval-env _ C B).
+
 
 path-eval-eq : path-eval M G E (rect N S U)
                 -> path-eval M G E (rect N S' U')
@@ -1864,16 +1914,26 @@ sub-tp-trans-aux :
   type.
 %mode sub-tp-trans-aux +T2 +SBT1 +SBT2 -SBT3.
 
+sub-tp-trans-auxr :
+  %% Inputs
+  wf-tp lenient G2 T2 ->
+  sub-tp lenient G1 T1 G2 T2 ->
+  sub-tp lenient G2 T2 G3 T3 ->
+  %% Output
+  sub-tp lenient G1 T1 G3 T3 ->
+  type.
+%mode sub-tp-trans-auxr +T2 +SBT1 +SBT2 -SBT3.
+
+
 -/top    : sub-tp-trans-aux _ S1 (sub-tp/top _) (sub-tp/top W) <- extract-wf S1 W _.
 -/bot    : sub-tp-trans-aux _ (sub-tp/bot _) S2 (sub-tp/bot W) <- extract-wf S2 _ W.
-
 
 -/fun-fun  : sub-tp-trans-aux
       (wf-tp/fun T2 T1)
             (sub-tp/fun SBT2 SBT1)
             (sub-tp/fun SBT4 SBT3)
             (sub-tp/fun SBT6 SBT5)
-      <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-auxr T1 SBT3 SBT1 SBT5
       <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
 
 -/rect-rect  : sub-dc-trans-aux
@@ -1881,7 +1941,7 @@ sub-tp-trans-aux :
             (sub-dc/rect SBT2 SBT1 B2 B1)
             (sub-dc/rect SBT4 SBT3 B4 B3)
             (sub-dc/rect SBT6 SBT5 B4 B1)
-      <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-auxr T1 SBT3 SBT1 SBT5
       <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
 
 -/recv-recv  : sub-tp-trans-aux
@@ -1903,29 +1963,30 @@ sub-tp-trans-aux :
       SBT1
       (sub-tp/tsel2 W2 SBT3 G P)
       (sub-tp/tsel2 W2 SBT5 G P)
-      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+      <- sub-tp-trans-auxr W SBT1 SBT3 SBT5.
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
 -/tsel2-tsel1 : sub-tp-trans-aux
                  (wf-tp/tsel (wf-dc/rect BSU WU WS) GEW PW)
-                 (sub-tp/tsel2 _ A1 GE1 P1)
-                 (sub-tp/tsel1 _ A2 GE2 P2)
+                 (sub-tp/tsel2 (wf-tp/tsel _ _ _) A1 GE1 P1)
+                 (sub-tp/tsel1 (wf-tp/tsel _ _ _) A2 GE2 P2)
                  OUT
-   <- path-eval-eq P1 P2 EQR12
-   <- rect-same-all-same EQR12 EQS12 EQU12
-   <- sub-env-size-eq GE1 GE2 EQG12
-   <- path-eval-eq P1 PW EQR1W
-   <- rect-same-all-same EQR1W EQS1W EQU1W
+
    <- sub-env-size-eq GE1 GEW EQG1W
-   <- path-eval-eq P2 PW EQR2W
-   <- rect-same-all-same EQR2W EQS2W EQU2W
    <- sub-env-size-eq GE2 GEW EQG2W
-   <- eq-high EQU1W A1 A1'
-   <- eq-high-env EQG1W A1' A1''
-   <- eq-low EQU2W A2 A2'
-   <- eq-low-env EQG2W A2' A2''
-   <- sub-tp-trans-aux WU A1'' A2'' OUT.
+   <- eq-path-eval-env EQG1W P1 P1'
+   <- eq-path-eval-env EQG2W P2 P2'
+
+   <- path-eval-sub P1' P2' SLU12 SLU21
+
+   <- eq-high-env EQG1W A1 A1''
+   <- eq-low-env EQG2W A2 A2''
+
+   <- extract-wf SLU12 WS' WU'
+
+   <- sub-tp-trans-aux WS' A1'' SLU12 OUT1
+   <- sub-tp-trans-auxr WU' OUT1 A2'' OUT.
 
 %{
 -/tbind2  : sub-tp-trans-aux
@@ -2014,8 +2075,8 @@ eq-sub-env-size: sametenv GN GN' -> sub-env-size GN N G -> sub-env-size GN' N G 
       SBT1
       (sub-tp/and2 ST1 ST2)
       (sub-tp/and2 ST1' ST2')
-      <- sub-tp-trans-aux W SBT1 ST1 ST1'
-      <- sub-tp-trans-aux W SBT1 ST2 ST2'.
+      <- sub-tp-trans-auxr W SBT1 ST1 ST1'
+      <- sub-tp-trans-auxr W SBT1 ST2 ST2'.
 
 -/tand2-tand1a : sub-tp-trans-aux
       (wf-tp/and W1 W2)
@@ -2036,14 +2097,14 @@ eq-sub-env-size: sametenv GN GN' -> sub-env-size GN N G -> sub-env-size GN' N G 
       SBT3
       (sub-tp/or1a W1 SBT1)
       (sub-tp/or1a W1 SBT5)
-      <- sub-tp-trans-aux W SBT3 SBT1 SBT5.
+      <- sub-tp-trans-auxr W SBT3 SBT1 SBT5.
 
 -/tor1b : sub-tp-trans-aux
       W
       SBT3
       (sub-tp/or1b W1 SBT1)
       (sub-tp/or1b W1 SBT5)
-      <- sub-tp-trans-aux W SBT3 SBT1 SBT5.
+      <- sub-tp-trans-auxr W SBT3 SBT1 SBT5.
 
 -/tor2 : sub-tp-trans-aux
       W
@@ -2067,8 +2128,15 @@ eq-sub-env-size: sametenv GN GN' -> sub-env-size GN N G -> sub-env-size GN' N G 
       SBT5
       <- sub-tp-trans-aux W2 SBT3 SBT1 SBT5.
 
+%worlds () (sub-tp-trans-auxr _ _ _ _). % (sub-dc-trans-aux _ _ _ _).
+%trustme
+%total S2 (sub-tp-trans-auxr T2 S1 S2 _). % (sub-dc-trans-aux TB2 SB1 SB2 _).
+
+
 %worlds () (sub-tp-trans-aux _ _ _ _)(sub-dc-trans-aux _ _ _ _).
-%total {(T2 TB2) (S1 SB1) (S2 SB2)} (sub-tp-trans-aux T2 S1 S2 _)(sub-dc-trans-aux TB2 SB1 SB2 _).
+% %total {(T2 TB2) (S1 SB1) (S2 SB2)} (sub-tp-trans-aux T2 S1 S2 _)(sub-dc-trans-aux TB2 SB1 SB2 _).
+
+%total (S1 SB1) (sub-tp-trans-aux T2 S1 S2 _)(sub-dc-trans-aux TB2 SB1 SB2 _).
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
 %% WF as an additional argument.
