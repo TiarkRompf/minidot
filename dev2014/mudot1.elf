@@ -2,25 +2,8 @@
 
 TODO:  
 
-  - tsel2 is still using upper bound (was: lenient mode)
-
+  - fix termination for tsel2-tsel1 trans case
   - tselx
-
-  - env weakening:
-
-  sub-dc M (tcons (bind N D1) G0) D1 (tcons (bind N D1) G0) D2
-    --->
-  sub-dc M (tcons (bind N D1) G0) D1 (tcons (bind N D2) G0) D2
-
-
-
-  {x => D1}   {x => D2}
-  G1 x.T    <    x.T G2
-
-
-    {x => D1}   {x => D2}
-  A < x.T    <    x.T < B
-
 
 }%
 
@@ -271,7 +254,9 @@ tlookexp:  tenv -> exp -> dec -> type.
 exp-tp/bind: expand-tp G0 (bind N1 (rect LN T1 T2)) N (rect LN T1 T2) 
               <- sub-env-size G N1 G0.
 
-tle: tlookexp G (var N) (rect LN T1 T2) <- tlookup G N T0 <- expand-tp G T0 LN (rect LN T1 T2).
+tle: tlookexp G (var N) (rect LN T1 T2) 
+              <- tlookup G N T0 
+              <- expand-tp G T0 LN (rect LN T1 T2).
 
 
 mode : type.
@@ -289,7 +274,9 @@ sub-dc : mode -> tenv -> dec -> tenv -> dec -> type.
 
 
 path-eval: mode -> tenv -> exp -> dec -> type.
-pev  : path-eval M G E (rect LN TS TU) <- tlookexp G E (rect LN TS TU). % both!
+pev  : path-eval M G E (rect LN TS' TU') 
+              <- tlookexp G E (rect LN TS TU)
+              <- sub-dc M G (rect LN TS TU) G (rect LN TS' TU'). 
 
 sub-tp/refl : sub-tp strict G1 T G2 T  %%% ACCELERATE QUERIES !!
                 <- sub-env G G1
@@ -1209,7 +1196,7 @@ sub-env-size0b : sub-env G G2 -> sub-env (tcons T0 G0) G2 -> tsize G N -> tsize 
 sub-env-size-lkp : tsize G0 N0 -> sub-env G G1 -> sub-env G G2 -> sub-env (tcons T0 G0) G2 -> path-eval M G (var N0) (rect N TA TB) -> sub-env (tcons T0 G0) G -> type.
 %mode sub-env-size-lkp +A +B +C +D +E -F.
 
-- : sub-env-size-lkp SN0 S1 S2 S0 (pev (tle EX L)) OUT
+- : sub-env-size-lkp SN0 S1 S2 S0 (pev _ (tle EX L)) OUT
      <- tsize-lookup L SN LT
      <- sub-env-size0b S2 S0 SN SN0 LT OUT.
 
@@ -1219,7 +1206,7 @@ sub-env-size-lkp : tsize G0 N0 -> sub-env G G1 -> sub-env G G2 -> sub-env (tcons
 extract-pev-lkp : path-eval M G (var X) T -> tlookup G X TX -> type.
 %mode extract-pev-lkp +A -B.
 
-- : extract-pev-lkp (pev (tle EXR LR)) LR.
+- : extract-pev-lkp (pev _ (tle EXR LR)) LR.
 
 %worlds () (extract-pev-lkp _ _).
 %total A (extract-pev-lkp A _).
@@ -1400,8 +1387,9 @@ extend-sub-dc: sub-dc M G1 T1 G2 T2 -> {Z: tpe}
   type.
 %mode extend-sub-dc +A +B -C -D -E.
 
-- : extend-wf-pev (pev L) T (pev L1)
-      <- extend-wf-lkpe L T L1.
+- : extend-wf-pev (pev S L) T (pev S1 L1)
+      <- extend-wf-lkpe L T L1
+      <- extend-sub-dc S _ S1 _ _.
 
 - : extend-wf-tp wf-tp/top T wf-tp/top.
 - : extend-wf-tp wf-tp/bot T wf-tp/bot.
@@ -1800,30 +1788,29 @@ sub-tp-refl :
 
 %% Helpers
 
-path-eval-subx   : path-eval M G E (rect N S U)
-                -> path-eval M G E (rect N S' U')
-                -> sub-tp M G S G S0
-                -> sub-tp M G S0 G U0
-                -> sub-tp M G U0 G U'
+path-eval-subx   : path-eval M G E (rect N TA1 TB1)
+                -> path-eval M G E (rect N TA2 TB2)
+                -> sub-tp M G TA1 G TA0
+                -> sub-tp M G TA0 G TB0
+                -> sub-tp M G TB0 G TB2
                 -> type.
 %mode path-eval-subx +A +B -C -D -E.
 
+- : path-eval-subx (pev (sub-dc/rect SB0B1 SA1A0 SA1B1 SA0B0) L) 
+                   (pev (sub-dc/rect SB0B2' SA2A0' SA2B2 SA0B0') L') SA1A0' SA0B0' SB0B2'
+   <- lookexp-eq-gen L L' EQD
+   <- eq-rect2 EQD EQT _
+   <- eq-high EQT SA1A0 SA1A0'
+   .
+
 %worlds () (path-eval-subx _ _ _ _ _).
-%trustme
 %total {} (path-eval-subx _ _ _ _ _).
 
+%reduces U < A (path-eval-subx A B U V W).
+%reduces V < B (path-eval-subx A B U V W).
+%reduces W < B (path-eval-subx A B U V W).
 
-path-eval-sub : path-eval M G E (rect N S U)
-                -> path-eval M G E (rect N S' U')
-                -> sub-tp M G S G U'
-                -> sub-tp M G S' G U
-                -> type.
-%mode path-eval-sub +A +B -C -D.
 
-%worlds () (path-eval-sub _ _ _ _).
-%trustme
-%total {} (path-eval-sub _ _ _ _).
-% %reduces B <= C (path-eval-sub C _ B  _).
 
 
 eq-path-eval-env : sametenv G1 G2
@@ -1836,9 +1823,9 @@ eq-path-eval-env : sametenv G1 G2
 
 %worlds () (eq-path-eval-env _ _ _).
 %total {} (eq-path-eval-env _ _ _).
-% %reduces B <= C (eq-path-eval-env _ C B).
+%reduces B <= C (eq-path-eval-env _ C B).
 
-
+%{
 path-eval-eq : path-eval M G E (rect N S U)
                 -> path-eval M G E (rect N S' U')
                 -> samed (rect N S U) (rect N S' U')
@@ -1850,6 +1837,7 @@ path-eval-eq : path-eval M G E (rect N S U)
 
 %worlds () (path-eval-eq _ _ _).
 %total {} (path-eval-eq _ _ _).
+}%
 
 sametenv-sub-env : sametenv G1 G2 -> sub-env G1 G2 -> type.
 %mode sametenv-sub-env +A -B.
@@ -1924,6 +1912,16 @@ sub-tp-trans-auxr :
   type.
 %mode sub-tp-trans-auxr +T2 +SBT1 +SBT2 -SBT3.
 
+sub-tp-trans-auxx :
+  %% Inputs
+  wf-tp lenient G2 T2 ->
+  sub-tp lenient G1 T1 G2 T2 ->
+  sub-tp lenient G2 T2 G3 T3 ->
+  %% Output
+  sub-tp lenient G1 T1 G3 T3 ->
+  type.
+%mode sub-tp-trans-auxx +T2 +SBT1 +SBT2 -SBT3.
+
 
 -/top    : sub-tp-trans-aux _ S1 (sub-tp/top _) (sub-tp/top W) <- extract-wf S1 W _.
 -/bot    : sub-tp-trans-aux _ (sub-tp/bot _) S2 (sub-tp/bot W) <- extract-wf S2 _ W.
@@ -1933,7 +1931,7 @@ sub-tp-trans-auxr :
             (sub-tp/fun SBT2 SBT1)
             (sub-tp/fun SBT4 SBT3)
             (sub-tp/fun SBT6 SBT5)
-      <- sub-tp-trans-auxr T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-auxx T1 SBT3 SBT1 SBT5
       <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
 
 -/rect-rect  : sub-dc-trans-aux
@@ -1941,7 +1939,7 @@ sub-tp-trans-auxr :
             (sub-dc/rect SBT2 SBT1 B2 B1)
             (sub-dc/rect SBT4 SBT3 B4 B3)
             (sub-dc/rect SBT6 SBT5 B4 B1)
-      <- sub-tp-trans-auxr T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
       <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
 
 -/recv-recv  : sub-tp-trans-aux
@@ -1978,15 +1976,22 @@ sub-tp-trans-auxr :
    <- eq-path-eval-env EQG1W P1 P1'
    <- eq-path-eval-env EQG2W P2 P2'
 
-   <- path-eval-sub P1' P2' SLU12 SLU21
+   <- path-eval-subx P1' P2' SLU12A SLU12B SLU12C
 
    <- eq-high-env EQG1W A1 A1''
    <- eq-low-env EQG2W A2 A2''
 
-   <- extract-wf SLU12 WS' WU'
+   <- extract-wf SLU12A WSA WUA
+   <- extract-wf SLU12B WSB WUB
+   <- extract-wf SLU12C WSC WUC
 
-   <- sub-tp-trans-aux WS' A1'' SLU12 OUT1
-   <- sub-tp-trans-auxr WU' OUT1 A2'' OUT.
+   <- sub-tp-trans-aux WSA A1'' SLU12A OUTA
+   <- sub-tp-trans-auxr WSB OUTA SLU12B OUTAB
+
+   <- sub-tp-trans-auxr WUC SLU12C A2'' OUTC
+   <- sub-tp-trans-aux WUB OUTAB OUTC OUT
+   .
+
 
 %{
 -/tbind2  : sub-tp-trans-aux
@@ -2075,8 +2080,8 @@ eq-sub-env-size: sametenv GN GN' -> sub-env-size GN N G -> sub-env-size GN' N G 
       SBT1
       (sub-tp/and2 ST1 ST2)
       (sub-tp/and2 ST1' ST2')
-      <- sub-tp-trans-auxr W SBT1 ST1 ST1'
-      <- sub-tp-trans-auxr W SBT1 ST2 ST2'.
+      <- sub-tp-trans-aux W SBT1 ST1 ST1'
+      <- sub-tp-trans-aux W SBT1 ST2 ST2'.
 
 -/tand2-tand1a : sub-tp-trans-aux
       (wf-tp/and W1 W2)
@@ -2097,14 +2102,14 @@ eq-sub-env-size: sametenv GN GN' -> sub-env-size GN N G -> sub-env-size GN' N G 
       SBT3
       (sub-tp/or1a W1 SBT1)
       (sub-tp/or1a W1 SBT5)
-      <- sub-tp-trans-auxr W SBT3 SBT1 SBT5.
+      <- sub-tp-trans-aux W SBT3 SBT1 SBT5.
 
 -/tor1b : sub-tp-trans-aux
       W
       SBT3
       (sub-tp/or1b W1 SBT1)
       (sub-tp/or1b W1 SBT5)
-      <- sub-tp-trans-auxr W SBT3 SBT1 SBT5.
+      <- sub-tp-trans-aux W SBT3 SBT1 SBT5.
 
 -/tor2 : sub-tp-trans-aux
       W
@@ -2128,15 +2133,21 @@ eq-sub-env-size: sametenv GN GN' -> sub-env-size GN N G -> sub-env-size GN' N G 
       SBT5
       <- sub-tp-trans-aux W2 SBT3 SBT1 SBT5.
 
-%worlds () (sub-tp-trans-auxr _ _ _ _). % (sub-dc-trans-aux _ _ _ _).
+
+%worlds () (sub-tp-trans-auxx _ _ _ _).
 %trustme
-%total S2 (sub-tp-trans-auxr T2 S1 S2 _). % (sub-dc-trans-aux TB2 SB1 SB2 _).
+%total {TD} (sub-tp-trans-auxx TD SB1 SB2 _).
 
 
-%worlds () (sub-tp-trans-aux _ _ _ _)(sub-dc-trans-aux _ _ _ _).
+%worlds () (sub-tp-trans-aux _ _ _ _)(sub-tp-trans-auxr _ _ _ _)(sub-dc-trans-aux _ _ _ _).
 % %total {(T2 TB2) (S1 SB1) (S2 SB2)} (sub-tp-trans-aux T2 S1 S2 _)(sub-dc-trans-aux TB2 SB1 SB2 _).
 
-%total (S1 SB1) (sub-tp-trans-aux T2 S1 S2 _)(sub-dc-trans-aux TB2 SB1 SB2 _).
+% %covers (sub-tp-trans-aux +TL +SL1 +SL2 -_)(sub-tp-trans-auxr +TR +SR1 +SR2 -_)(sub-dc-trans-aux +TD +SB1 +SB2 -_).
+
+%total {(SL1 SR1 SB1)(SL2 SR2 SB2)(TL TR TD)} (sub-tp-trans-aux TL SL1 SL2 _)(sub-tp-trans-auxr TR SR1 SR2 _)(sub-dc-trans-aux TD SB1 SB2 _).
+
+
+
 
 %% Corrollary to sub-tp-trans-aux that doesn't require us to provide
 %% WF as an additional argument.
