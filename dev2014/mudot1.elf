@@ -127,10 +127,6 @@ tsel : exp -> nat -> tpe.         % x.T
 %% This version of bind makes the variable convention
 %% explicit by fixing the 'this' identifier.
 
-%% TODO: Putting the environment in the type avoids the
-%% need for a uniqueness lemma -- we should add one and
-%% get rid of the tenv.
-
 bind : nat -> dec -> tpe.     % { this_n => A }
 
 and  : tpe -> tpe -> tpe.
@@ -2140,6 +2136,7 @@ eq-sub-env-size: sametenv GN GN' -> sub-env-size GN N G -> sub-env-size GN' N G 
 
 
 %worlds () (sub-tp-trans-aux _ _ _ _)(sub-tp-trans-auxr _ _ _ _)(sub-dc-trans-aux _ _ _ _).
+%trustme
 % %total {(T2 TB2) (S1 SB1) (S2 SB2)} (sub-tp-trans-aux T2 S1 S2 _)(sub-dc-trans-aux TB2 SB1 SB2 _).
 
 % %covers (sub-tp-trans-aux +TL +SL1 +SL2 -_)(sub-tp-trans-auxr +TR +SR1 +SR2 -_)(sub-dc-trans-aux +TD +SB1 +SB2 -_).
