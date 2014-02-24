@@ -1,0 +1,438 @@
+%{ ------- arithmetic ----- }%
+
+nat: type.
+z: nat.
+s: nat -> nat.
+
+add : nat -> nat -> nat -> type.
+add/z : add z N N.
+add/s : add (s N1) N2 (s N3)
+   <- add N1 N2 N3.
+
+%mode add +N1 +N2 -N3.
+
+lte : nat -> nat -> type.
+lte/z : lte z N.
+lte/s : lte (s N1) (s N2)
+   <- lte N1 N2.
+
+%mode lte +N1 +N2.
+
+
+eq : nat -> nat -> type.
+eq/z : eq z z.
+eq/s : eq (s N1) (s N2)
+   <- eq N1 N2.
+
+% %mode eq +N1 +N2.
+
+
+ne : nat -> nat -> type.
+ne/z1 : ne z (s N).
+ne/z2 : ne (s N) z.
+ne/s : ne (s N1) (s N2)
+   <- ne N1 N2.
+
+%mode ne +N1 +N2.
+
+eq-refl: {N:nat} eq N N -> type.
+%mode eq-refl +N -E1.
+
+- : eq-refl z eq/z.
+- : eq-refl (s N) (eq/s E) <- eq-refl N E.
+
+%worlds () (eq-refl _ _).
+%total {A} (eq-refl A _).
+
+
+sub-eq: eq A1 A2 -> eq C1 C2 -> add A1 B1 C1 -> add A2 B2 C2 -> eq B1 B2 -> type.
+%mode sub-eq +E1 +E2 +A1 +A2 -E3.
+
+- : sub-eq eq/z E add/z add/z E.
+- : sub-eq (eq/s E1) (eq/s E2) (add/s A1) (add/s A2) E3
+  <- sub-eq E1 E2 A1 A2 E3.
+
+%worlds () (sub-eq _ _ _ _ _).
+%total {A} (sub-eq A _ _ _ _).
+
+add-inc: add A B C -> add A (s B) (s C) -> type.
+%mode add-inc +E1 -E2.
+
+- : add-inc add/z add/z.
+- : add-inc (add/s A1) (add/s A2)
+  <- add-inc A1 A2.
+
+%worlds () (add-inc _ _).
+%total {A} (add-inc A _).
+
+
+
+
+
+%{ ------- language ----- }%
+
+% sorts
+exp: type.
+
+tpe: type.
+val: type.
+
+tenv: type.
+
+% members
+
+dec: type.
+rect: tpe -> tpe -> dec.
+
+% types
+
+top : tpe.
+
+tsel : tpe.         % x.T
+
+bind : dec -> tpe.     % { this_n => A }
+
+tnil : tenv.
+tcons : tpe -> tenv.
+
+
+
+expand-tp: tenv -> tpe -> dec -> type.
+
+exp-tp/bind: expand-tp G (bind D) D.
+
+
+wf-tp : tenv -> tpe -> type.
+
+wf-dc : tenv -> dec -> type.
+
+sub-tp : tenv -> tpe -> tpe -> type.
+
+sub-dc : tenv -> dec -> dec -> type.
+
+
+
+sub-tp/refl : sub-tp G T T
+                <- wf-tp G T.
+
+sub-tp/top : sub-tp G T top.
+                % <- wf-tp G T.
+
+
+sub-dc/rect : sub-dc G (rect TA1 TB1) (rect TA2 TB2)
+              <- sub-tp G TA1 TB1
+              <- sub-tp G TA2 TB2
+
+              <- sub-tp G TA2 TA1
+              <- sub-tp G TB1 TB2
+              .
+
+sub-tp/tbindx : sub-tp tnil (bind D1) (bind D2)
+              <- sub-dc (tcons (bind D1)) D1 D2
+              <- wf-dc (tcons (bind D1)) D2
+              .
+
+
+sub-tp/tsel1 : sub-tp (tcons (bind (rect TA1 TB1))) tsel T2
+              <- wf-dc (tcons (bind (rect TA1 TB1))) (rect TA1 TB1)
+              <- sub-tp (tcons (bind (rect TA1 TB1))) TB1 T2
+              .
+
+sub-tp/tsel2 : sub-tp (tcons (bind (rect TA1 TB1))) T1 tsel
+              <- wf-dc (tcons (bind (rect TA1 TB1))) (rect TA1 TB1)
+              <- sub-tp (tcons (bind (rect TA1 TB1))) T1 TA1
+              <- sub-tp (tcons (bind (rect TA1 TB1))) T1 TB1
+              .
+
+wf-tp/top : wf-tp G top.
+
+wf-dc/rect : wf-dc G (rect TA TB)
+              <- wf-tp G TA
+              <- wf-tp G TB
+              <- sub-tp G TA TB % T1 <: T2 required for transitivity
+              .
+
+wf-tp/tbind : wf-tp tnil (bind D)
+              <- wf-dc (tcons (bind D)) D
+              .
+
+wf-tp/tsel : wf-tp (tcons (bind (rect TA1 TB1))) tsel
+              <- wf-dc (tcons (bind (rect TA1 TB1))) (rect TA1 TB1)
+              .
+
+
+extract-wf: sub-tp G T1 T2 -> wf-tp G T1 -> wf-tp G T2 -> type.
+extract-wfd: sub-dc G T1 T2 -> wf-dc G T1 -> wf-dc G T2 -> type.
+
+%mode extract-wf +A -B -C.
+%mode extract-wfd +A -B -C.
+
+%worlds () (extract-wf _ _ _).
+%trustme
+%total {A} (extract-wf A _ _).
+
+%worlds () (extract-wfd _ _ _).
+%trustme
+%total {A} (extract-wfd A _ _).
+
+%{ ------- subtyping transitivity ------ }%
+
+same: tpe -> tpe -> type.
+ident: same T T.
+
+samed: dec -> dec -> type.
+identd: samed T T.
+
+
+rect-same-all-same : samed (rect X1 X2) (rect X1' X2')
+                      -> same X1 X1'
+                      -> same X2 X2'
+                      -> type.
+%mode rect-same-all-same +A -B -C.
+- : rect-same-all-same identd ident ident.
+%worlds () (rect-same-all-same _ _ _).
+%total A (rect-same-all-same A _ _).
+
+eq-high: same T2 T2' -> sub-tp G T1 T2 -> sub-tp G T1 T2' -> type.
+%mode eq-high +P1 +P2 -SBT.
+
+- : eq-high ident S S.
+
+%worlds () (eq-high _ _ _).
+%total {A} (eq-high A _ _).
+%reduces N3 <= N2 (eq-high _ N2  N3).
+
+eq-low: same T1 T1' -> sub-tp G T1 T2 -> sub-tp G T1' T2 -> type.
+%mode eq-low +P1 +P2 -SBT.
+
+- : eq-low ident S S.
+
+%worlds () (eq-low _ _ _).
+%total A (eq-low A _ _).
+%reduces N3 <= N2 (eq-low _ N2  N3).
+
+
+
+sub-tp-trans-aux :
+  %% Inputs
+  wf-tp G T2 ->
+  sub-tp G T1 T2 ->
+  sub-tp G T2 T3 ->
+  %% Output
+  sub-tp G T1 T3 ->
+  type.
+%mode sub-tp-trans-aux +T2 +SBT1 +SBT2 -SBT3.
+
+sub-tp-trans-aux2 :
+  %% Inputs
+  wf-tp G T2 ->
+  sub-tp G T1 T2 ->
+  sub-tp G T2 T3 ->
+  %% Output
+  sub-tp G T1 T3 ->
+  type.
+%mode sub-tp-trans-aux2 +T2 +SBT1 +SBT2 -SBT3.
+
+sub-dc-trans-aux :
+  %% Inputs
+  wf-dc G T2 ->
+  sub-dc G T1 T2 ->
+  sub-dc G T2 T3 ->
+  %% Output
+  sub-dc G T1 T3 ->
+  type.
+%mode sub-dc-trans-aux +T2 +SBT1 +SBT2 -SBT3.
+
+sub-dc-trans-aux2 :
+  %% Inputs
+  wf-dc G T2 ->
+  sub-dc G T1 T2 ->
+  sub-dc G T2 T3 ->
+  %% Output
+  sub-dc G T1 T3 ->
+  type.
+%mode sub-dc-trans-aux2 +T2 +SBT1 +SBT2 -SBT3.
+
+-/rect-rect  : sub-dc-trans-aux
+      (wf-dc/rect SB T2 T1)
+            (sub-dc/rect SBT2 SBT1 B2 B1)
+            (sub-dc/rect SBT4 SBT3 B4 B3)
+            (sub-dc/rect SBT6 SBT5 B4 B1)
+      <- sub-tp-trans-aux2 T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
+
+-/rect-rect  : sub-dc-trans-aux2
+      (wf-dc/rect SB T2 T1)
+            (sub-dc/rect SBT2 SBT1 B2 B1)
+            (sub-dc/rect SBT4 SBT3 B4 B3)
+            (sub-dc/rect SBT6 SBT5 B4 B1)
+      <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux2 T2 SBT2 SBT4 SBT6.
+
+-/refl1  : sub-tp-trans-aux W (sub-tp/refl W1) ST ST.
+-/refl2  : sub-tp-trans-aux W ST (sub-tp/refl W1) ST.
+
+-/refl1  : sub-tp-trans-aux2 W (sub-tp/refl W1) ST ST.
+-/refl2  : sub-tp-trans-aux2 W ST (sub-tp/refl W1) ST.
+
+-/top  : sub-tp-trans-aux W ST (sub-tp/top) (sub-tp/top).
+-/top  : sub-tp-trans-aux2 W ST (sub-tp/top) (sub-tp/top).
+
+
+
+-/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
+      W
+      (sub-tp/tsel1 SBT1 P)
+      SBT3
+      (sub-tp/tsel1 SBT5 P)
+      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+
+-/tsel1  : sub-tp-trans-aux2  % p.T1 < T2 <-- p:{T1} && T1 < T2
+      W
+      (sub-tp/tsel1 SBT1 P)
+      SBT3
+      (sub-tp/tsel1 SBT5 P)
+      <- sub-tp-trans-aux2 W SBT1 SBT3 SBT5.
+
+-/tsel2  : sub-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
+      W
+      SBT1
+      (sub-tp/tsel2 SBT4 SBT3 P)
+      (sub-tp/tsel2 SBT6 SBT5 P)
+      <- sub-tp-trans-aux W SBT1 SBT4 SBT6
+      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+
+-/tsel2  : sub-tp-trans-aux2  % T1 < p.T2 <-- p:{T1} && T1 < T2
+      W
+      SBT1
+      (sub-tp/tsel2 SBT4 SBT3 P)
+      (sub-tp/tsel2 SBT6 SBT5 P)
+      <- sub-tp-trans-aux2 W SBT1 SBT4 SBT6
+      <- sub-tp-trans-aux2 W SBT1 SBT3 SBT5.
+
+%% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
+
+-/tsel2-tsel1 : sub-tp-trans-aux
+                 (wf-tp/tsel (wf-dc/rect BSU WU WS))
+                 (sub-tp/tsel2 A3 A1 _)
+                 (sub-tp/tsel1 A2 _)
+                 OUT
+   % <- sub-tp-trans-aux WS A1 BSU OUT1
+   <- sub-tp-trans-aux WU A3 A2 OUT.
+
+
+-/tsel2-tsel1 : sub-tp-trans-aux2
+                 (wf-tp/tsel (wf-dc/rect BSU WU WS))
+                 (sub-tp/tsel2 A3 A1 _)
+                 (sub-tp/tsel1 A2 _)
+                 OUT
+   % <- sub-tp-trans-aux WS A1 BSU OUT1
+   <- sub-tp-trans-aux2 WU A3 A2 OUT.
+
+
+env-weaken-tp: sub-tp (tcons (bind U)) T T' -> sub-dc (tcons (bind S)) S U -> sub-tp (tcons (bind S)) T T' -> type.
+%mode env-weaken-tp +SBT1 +SBT2 -SBT3.
+
+env-weaken-dc: sub-dc (tcons (bind U)) T T' -> sub-dc (tcons (bind S)) S U -> sub-dc (tcons (bind S)) T T' -> type.
+%mode env-weaken-dc +SBT1 +SBT2 -SBT3.
+
+env-weaken-wf: wf-tp (tcons (bind U)) T -> sub-dc (tcons (bind S)) S U -> wf-tp (tcons (bind S)) T -> type.
+%mode env-weaken-wf +SBT1 +SBT2 -SBT3.
+
+env-weaken-wfd: wf-dc (tcons (bind U)) T -> sub-dc (tcons (bind S)) S U -> wf-dc (tcons (bind S)) T -> type.
+%mode env-weaken-wfd +SBT1 +SBT2 -SBT3.
+
+
+- : env-weaken-wfd 
+       (wf-dc/rect ST_U1U2 WU2 WU1)
+       S
+       (wf-dc/rect ST_S1S2 WS2 WS1)
+       <- env-weaken-tp ST_U1U2 S ST_S1S2
+       <- env-weaken-wf WU2 S WS2
+       <- env-weaken-wf WU1 S WS1
+       .
+
+- : env-weaken-wf wf-tp/top S wf-tp/top.
+
+- : env-weaken-wf (wf-tp/tsel W) S (wf-tp/tsel W')
+      <- extract-wfd S W' _
+      .
+
+
+- : env-weaken-tp 
+        (sub-tp/refl W) 
+        S
+        (sub-tp/refl W')
+        <- env-weaken-wf W S W'
+        .
+
+- : env-weaken-tp 
+        sub-tp/top
+        S
+        sub-tp/top
+        .
+
+- : env-weaken-tp 
+        (sub-tp/tsel1 ST W)
+        (sub-dc/rect SBT2 SBT1 B2 B1)
+        (sub-tp/tsel1 ST' W')
+        <- env-weaken-tp ST (sub-dc/rect SBT2 SBT1 B2 B1) ST1
+        <- extract-wfd (sub-dc/rect SBT2 SBT1 B2 B1) W' _
+        <- extract-wf SBT2 _ W2
+        <- sub-tp-trans-aux W2 SBT2 ST1 ST'
+        .
+
+
+-/tbindx  : sub-tp-trans-aux
+       (wf-tp/tbind W)
+       (sub-tp/tbindx W1 S1)
+       (sub-tp/tbindx _ S2)
+       (sub-tp/tbindx W3 S3)
+       <- env-weaken-dc S2 S1 S2'
+       <- sub-dc-trans-aux W1 S1 S2' S3
+       <- extract-wfd S3 _ W3
+       .
+
+-/tbindx  : sub-tp-trans-aux2
+       (wf-tp/tbind W)
+       (sub-tp/tbindx W1 S1)
+       (sub-tp/tbindx _ S2)
+       (sub-tp/tbindx W3 S3)
+       <- env-weaken-dc S2 S1 S2'
+       <- sub-dc-trans-aux2 W1 S1 S2' S3
+       <- extract-wfd S3 _ W3
+       .
+
+
+
+%worlds () (sub-tp-trans-aux _ _ _ _)
+           (sub-tp-trans-aux2 _ _ _ _)
+           (sub-dc-trans-aux _ _ _ _)
+           (sub-dc-trans-aux2 _ _ _ _)
+           (env-weaken-tp _ _ _)
+           (env-weaken-dc _ _ _)
+           (env-weaken-wf _ _ _)
+           (env-weaken-wfd _ _ _)
+           .
+
+
+%terminates {
+             (S1 S2x S1' S2x' A B C D)
+             (S2 S1x S2' S1x' A B C D)
+            } 
+            (sub-tp-trans-aux T2 S1 S2 _)
+            (sub-tp-trans-aux2 T2x S1x S2x _)
+            (sub-dc-trans-aux T2' S1' S2' _)
+            (sub-dc-trans-aux2 T2x' S1x' S2x' _)
+            (env-weaken-tp  A _ _)
+            (env-weaken-dc  B _ _)
+            (env-weaken-wf  C _ _)
+            (env-weaken-wfd D _ _).
+
+
+
+%terminates {(S1 S2x S1' S2x') (S2 S1x S2' S1x')} (sub-tp-trans-aux T2 S1 S2 _)(sub-tp-trans-aux2 T2x S1x S2x _)(sub-dc-trans-aux T2' S1' S2' _)(sub-dc-trans-aux T2x' S1x' S2x' _).
+
+
+%total {(S1 S2x S1') (S2 S1x S2')} (sub-tp-trans-aux T2 S1 S2 _)(sub-tp-trans-aux2 T2x S1x S2x _)(sub-dc-trans-aux T2' S1' S2' _).
+

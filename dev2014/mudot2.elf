@@ -1,0 +1,298 @@
+%{ ------- arithmetic ----- }%
+
+nat: type.
+z: nat.
+s: nat -> nat.
+
+add : nat -> nat -> nat -> type.
+add/z : add z N N.
+add/s : add (s N1) N2 (s N3)
+   <- add N1 N2 N3.
+
+%mode add +N1 +N2 -N3.
+
+lte : nat -> nat -> type.
+lte/z : lte z N.
+lte/s : lte (s N1) (s N2)
+   <- lte N1 N2.
+
+%mode lte +N1 +N2.
+
+
+eq : nat -> nat -> type.
+eq/z : eq z z.
+eq/s : eq (s N1) (s N2)
+   <- eq N1 N2.
+
+% %mode eq +N1 +N2.
+
+
+ne : nat -> nat -> type.
+ne/z1 : ne z (s N).
+ne/z2 : ne (s N) z.
+ne/s : ne (s N1) (s N2)
+   <- ne N1 N2.
+
+%mode ne +N1 +N2.
+
+eq-refl: {N:nat} eq N N -> type.
+%mode eq-refl +N -E1.
+
+- : eq-refl z eq/z.
+- : eq-refl (s N) (eq/s E) <- eq-refl N E.
+
+%worlds () (eq-refl _ _).
+%total {A} (eq-refl A _).
+
+
+sub-eq: eq A1 A2 -> eq C1 C2 -> add A1 B1 C1 -> add A2 B2 C2 -> eq B1 B2 -> type.
+%mode sub-eq +E1 +E2 +A1 +A2 -E3.
+
+- : sub-eq eq/z E add/z add/z E.
+- : sub-eq (eq/s E1) (eq/s E2) (add/s A1) (add/s A2) E3
+  <- sub-eq E1 E2 A1 A2 E3.
+
+%worlds () (sub-eq _ _ _ _ _).
+%total {A} (sub-eq A _ _ _ _).
+
+add-inc: add A B C -> add A (s B) (s C) -> type.
+%mode add-inc +E1 -E2.
+
+- : add-inc add/z add/z.
+- : add-inc (add/s A1) (add/s A2)
+  <- add-inc A1 A2.
+
+%worlds () (add-inc _ _).
+%total {A} (add-inc A _).
+
+
+
+
+
+%{ ------- language ----- }%
+
+% sorts
+exp: type.
+
+tpe: type.
+val: type.
+
+tenv: type.
+
+% members
+
+dec: type.
+rect: tpe -> tpe -> dec.
+
+% types
+tsel : tpe.         % x.T
+
+bind : dec -> tpe.     % { this_n => A }
+
+tnil : tenv.
+tcons : tpe -> tenv.
+
+
+
+expand-tp: tenv -> tpe -> dec -> type.
+
+exp-tp/bind: expand-tp G (bind D) D.
+
+
+wf-tp : tenv -> tpe -> type.
+
+wf-dc : tenv -> dec -> type.
+
+sub-tp : tenv -> tpe -> tpe -> type.
+
+sub-dc : tenv -> dec -> dec -> type.
+
+
+
+path-eval: tenv -> dec -> type.
+pev  : path-eval (tcons (bind D)) D <- wf-dc (tcons (bind D)) D.
+
+sub-tp/refl : sub-tp G T T
+                <- wf-tp G T.
+
+sub-dc/rect : sub-dc G (rect TA1 TB1) (rect TA2 TB2)
+              <- sub-tp G TA1 TB1
+              <- sub-tp G TA2 TB2
+
+              <- sub-tp G TA2 TA1
+              <- sub-tp G TB1 TB2
+              .
+
+sub-tp/tbindx : sub-tp tnil (bind D1) (bind D2)
+              <- sub-dc (tcons (bind D1)) D1 D2
+              .
+
+
+sub-tp/tsel1 : sub-tp G tsel T2
+              <- path-eval G (rect TA1 TB1)
+              <- sub-tp G TB1 T2
+              .
+
+sub-tp/tsel2 : sub-tp G T1 tsel
+              <- path-eval G (rect TA1 TB1)
+              <- sub-tp G T1 TA1
+              .
+
+wf-dc/rect : wf-dc G (rect TA TB)
+              <- wf-tp G TA
+              <- wf-tp G TB
+              <- sub-tp G TA TB % T1 <: T2 required for transitivity
+              .
+
+wf-tp/tsel : wf-tp G tsel
+              <- path-eval G (rect TA TB)
+              <- wf-dc G (rect TA TB)
+              .
+
+wf-tp/tbind : wf-tp tnil (bind D)
+              <- wf-dc (tcons (bind D)) D
+              .
+
+
+
+%{ ------- subtyping transitivity ------ }%
+
+same: tpe -> tpe -> type.
+ident: same T T.
+
+samed: dec -> dec -> type.
+identd: samed T T.
+
+
+path-eval-eq : path-eval G (rect S U)
+                -> path-eval G (rect S' U')
+                -> samed (rect S U) (rect S' U')
+                -> type.
+%mode path-eval-eq +A +B -C.
+
+- : path-eval-eq (pev W) (pev W') identd.
+
+%worlds () (path-eval-eq _ _ _).
+%total {} (path-eval-eq _ _ _).
+
+rect-same-all-same : samed (rect X1 X2) (rect X1' X2')
+                      -> same X1 X1'
+                      -> same X2 X2'
+                      -> type.
+%mode rect-same-all-same +A -B -C.
+- : rect-same-all-same identd ident ident.
+%worlds () (rect-same-all-same _ _ _).
+%total A (rect-same-all-same A _ _).
+
+eq-high: same T2 T2' -> sub-tp G T1 T2 -> sub-tp G T1 T2' -> type.
+%mode eq-high +P1 +P2 -SBT.
+
+- : eq-high ident S S.
+
+%worlds () (eq-high _ _ _).
+%total {A} (eq-high A _ _).
+%reduces N3 <= N2 (eq-high _ N2  N3).
+
+eq-low: same T1 T1' -> sub-tp G T1 T2 -> sub-tp G T1' T2 -> type.
+%mode eq-low +P1 +P2 -SBT.
+
+- : eq-low ident S S.
+
+%worlds () (eq-low _ _ _).
+%total A (eq-low A _ _).
+%reduces N3 <= N2 (eq-low _ N2  N3).
+
+
+
+sub-tp-trans-aux :
+  %% Inputs
+  wf-tp G T2 ->
+  sub-tp G T1 T2 ->
+  sub-tp G T2 T3 ->
+  %% Output
+  sub-tp G T1 T3 ->
+  type.
+%mode sub-tp-trans-aux +T2 +SBT1 +SBT2 -SBT3.
+
+sub-dc-trans-aux :
+  %% Inputs
+  wf-dc G T2 ->
+  sub-dc G T1 T2 ->
+  sub-dc G T2 T3 ->
+  %% Output
+  sub-dc G T1 T3 ->
+  type.
+%mode sub-dc-trans-aux +T2 +SBT1 +SBT2 -SBT3.
+
+
+-/rect-rect  : sub-dc-trans-aux
+      (wf-dc/rect SB T2 T1)
+            (sub-dc/rect SBT2 SBT1 B2 B1)
+            (sub-dc/rect SBT4 SBT3 B4 B3)
+            (sub-dc/rect SBT6 SBT5 B4 B1)
+      <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
+
+
+-/refl1  : sub-tp-trans-aux W (sub-tp/refl W1) ST ST.
+-/refl2  : sub-tp-trans-aux W ST (sub-tp/refl W1) ST.
+
+-/tsel1  : sub-tp-trans-aux  % p.T1 < T2 <-- p:{T1} && T1 < T2
+      W
+      (sub-tp/tsel1 SBT1 P)
+      SBT3
+      (sub-tp/tsel1 SBT5 P)
+      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+
+-/tsel2  : sub-tp-trans-aux  % T1 < p.T2 <-- p:{T1} && T1 < T2
+      W
+      SBT1
+      (sub-tp/tsel2 SBT3 P)
+      (sub-tp/tsel2 SBT5 P)
+      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
+
+%% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
+
+-/tsel2-tsel1 : sub-tp-trans-aux
+                 (wf-tp/tsel (wf-dc/rect BSU WU WS) PW)
+                 (sub-tp/tsel2 A1 P1)
+                 (sub-tp/tsel1 A2 P2)
+                 OUT
+
+   <- path-eval-eq P1 PW EQR1W
+   <- rect-same-all-same EQR1W EQS1W EQU1W
+   <- path-eval-eq P2 PW EQR2W
+   <- rect-same-all-same EQR2W EQS2W EQU2W
+   <- eq-high EQS1W A1 A1'
+   <- eq-low EQU2W A2 A2'
+   <- sub-tp-trans-aux WS A1' BSU OUT1
+   <- sub-tp-trans-aux WU OUT1 A2' OUT.
+
+
+env-weaken-dc: sub-dc (tcons U) T T' -> sub-tp tnil S U -> sub-dc (tcons S) T T' -> type.
+%mode env-weaken-dc +SBT1 +SBT2 -SBT3.
+%worlds () (env-weaken-dc _ _ _).
+%trustme
+%total {A} (env-weaken-dc A _ _).
+
+env-weaken-wf: wf-dc (tcons U) T -> sub-tp tnil S U -> wf-dc (tcons S) T -> type.
+%mode env-weaken-wf +SBT1 +SBT2 -SBT3.
+%worlds () (env-weaken-wf _ _ _).
+%trustme
+%total {A} (env-weaken-wf A _ _).
+
+
+-/tbindx  : sub-tp-trans-aux
+       (wf-tp/tbind W)
+       (sub-tp/tbindx S1)
+       (sub-tp/tbindx S2)
+       (sub-tp/tbindx S3)
+       <- env-weaken-wf W (sub-tp/tbindx S1) W'
+       <- env-weaken-dc S2 (sub-tp/tbindx S1) S2'
+       <- sub-dc-trans-aux W' S1 S2' S3.
+
+
+
+%worlds () (sub-tp-trans-aux _ _ _ _)(sub-dc-trans-aux _ _ _ _).
+%total {(T2 T2') (S1 S1') (S2 S2')} (sub-tp-trans-aux T2 S1 S2 _)(sub-dc-trans-aux T2' S1' S2' _).
+
