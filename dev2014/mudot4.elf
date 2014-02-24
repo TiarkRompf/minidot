@@ -1,0 +1,369 @@
+%{ ------- arithmetic ----- }%
+
+nat: type.
+z: nat.
+s: nat -> nat.
+
+add : nat -> nat -> nat -> type.
+add/z : add z N N.
+add/s : add (s N1) N2 (s N3)
+   <- add N1 N2 N3.
+
+%mode add +N1 +N2 -N3.
+
+lte : nat -> nat -> type.
+lte/z : lte z N.
+lte/s : lte (s N1) (s N2)
+   <- lte N1 N2.
+
+%mode lte +N1 +N2.
+
+
+eq : nat -> nat -> type.
+eq/z : eq z z.
+eq/s : eq (s N1) (s N2)
+   <- eq N1 N2.
+
+% %mode eq +N1 +N2.
+
+
+ne : nat -> nat -> type.
+ne/z1 : ne z (s N).
+ne/z2 : ne (s N) z.
+ne/s : ne (s N1) (s N2)
+   <- ne N1 N2.
+
+%mode ne +N1 +N2.
+
+eq-refl: {N:nat} eq N N -> type.
+%mode eq-refl +N -E1.
+
+- : eq-refl z eq/z.
+- : eq-refl (s N) (eq/s E) <- eq-refl N E.
+
+%worlds () (eq-refl _ _).
+%total {A} (eq-refl A _).
+
+
+sub-eq: eq A1 A2 -> eq C1 C2 -> add A1 B1 C1 -> add A2 B2 C2 -> eq B1 B2 -> type.
+%mode sub-eq +E1 +E2 +A1 +A2 -E3.
+
+- : sub-eq eq/z E add/z add/z E.
+- : sub-eq (eq/s E1) (eq/s E2) (add/s A1) (add/s A2) E3
+  <- sub-eq E1 E2 A1 A2 E3.
+
+%worlds () (sub-eq _ _ _ _ _).
+%total {A} (sub-eq A _ _ _ _).
+
+add-inc: add A B C -> add A (s B) (s C) -> type.
+%mode add-inc +E1 -E2.
+
+- : add-inc add/z add/z.
+- : add-inc (add/s A1) (add/s A2)
+  <- add-inc A1 A2.
+
+%worlds () (add-inc _ _).
+%total {A} (add-inc A _).
+
+
+
+%{ ------- language ----- }%
+
+% sorts
+exp: type.
+
+tpe: type.
+val: type.
+
+tenv: type.
+
+% members
+
+dec: type.
+rect: tpe -> tpe -> dec.
+
+% types
+
+top  : tpe.
+tsel : tpe.         % x.T
+bind : dec -> tpe.     % { this_n => A }
+
+
+tcons : dec -> tenv.
+tnil : tenv.
+
+stp: nat -> tenv -> tpe -> tenv -> tpe -> type.
+
+sdc: nat -> tenv -> dec -> tenv -> dec -> type.
+
+sdc/rect: sdc (s N) G1 (rect TA1 TB1) G2 (rect TA2 TB2) 
+          <- stp N1 G1 TA2 G2 TA1
+          <- stp N2 G1 TB1 G2 TB2
+          <- stp N3 G1 TA1 G2 TB1
+          <- stp N4 G1 TA2 G2 TB2
+          <- add N1 N2 N12
+          <- add N3 N3 N34
+          <- add N12 N34 N
+          .
+
+stp/wid: stp (s N) G1 T1 G2 T2 <- stp N G1 T1 G2 T2.
+
+stp/top: stp (s z) G1 T G2 top.
+
+% stp/fun: stp (s N) G1 (arrow z TA1 TB1) G2 (arrow z TA2 TB2) 
+%           <- stp N1 G2 TA2 G1 TA1 
+%           <- stp N2 G1 TB1 G2 TB2 
+%           <- add N1 N2 N.
+
+stp/sel1: stp (s N) (tcons (rect TA1 TB1)) tsel G2 T2 
+          <- stp N1 (tcons (rect TA1 TB1)) TA1 (tcons (rect TA1 TB1)) TB1
+          <- stp N2 (tcons (rect TA1 TB1)) TB1 G2 T2
+          <- add N1 N2 N.
+
+stp/sel2: stp (s N) G1 T1 (tcons (rect TA2 TB2)) tsel
+          <- stp N1 (tcons (rect TA2 TB2)) TA2 (tcons (rect TA2 TB2)) TB2
+          <- stp N2 G1 T1 (tcons (rect TA2 TB2)) TA2
+          <- add N1 N2 N.
+
+stp/bind: stp (s N) tnil (bind D1) tnil (bind D2)
+          <- sdc N (tcons D1) D1 (tcons D2) D2
+          .
+
+
+
+add-ex: {N1} {N2} {N} add N1 N2 N -> type.
+%mode add-ex +N1 +N2 -N -A .
+%worlds () (add-ex _ _ _ _).
+%trustme
+%total N (add-ex N _ _ _).
+%reduces N1 <= N (add-ex N1 N2 N _).
+
+add-red1: {N1}{N2}{N}add N1 N2 N -> type.
+%mode add-red1 +N1 +N2 +N +A .
+%worlds () (add-red1 _ _ _ _).
+%trustme
+%total N (add-red1 N _ _ _).
+%reduces N1 <= N (add-red1 N1 N2 N _).
+
+add-red2: {N1}{N2}{N}add N1 N2 N -> type.
+%mode add-red2 +N1 +N2 +N +A .
+%worlds () (add-red2 _ _ _ _).
+%trustme
+%total N (add-red2 N _ _ _).
+%reduces N2 <= N (add-red2 N1 N2 N _).
+
+
+add-assoc: add N11 N12 N1 -> add N21 N22 N2 -> add (s N1) (s N2) (s (s N)) 
+        -> add N12 N22 NX -> add N21 N11 NY -> add NY NX N -> type.
+%mode add-assoc +A1 +A2 +A3 -A1' -A2' -A3'.
+%worlds () (add-assoc _ _ _ _ _ _).
+%trustme
+%total N (add-assoc N _ _ _ _ _).
+
+add-help1: add N11 N12 N1 -> add (s N1) N2 (s N) -> add N11 N' N -> add N12 N2 N' -> type.
+%mode add-help1 +N +T1 -S -S1.
+%worlds () (add-help1 _ _ _ _).
+%trustme
+%total N (add-help1 N _ _ _).
+
+add-help2: add N21 N22 N2 -> add N1 (s N2) (s N) -> add N' N21 N -> add N1 N22 N' -> type.
+%mode add-help2 +N +T1 -S -S1.
+%worlds () (add-help2 _ _ _ _).
+%trustme
+%total N (add-help2 N _ _ _).
+
+add-help3: add N21 N22 N2 -> add (s N1) (s N2) (s (s N)) -> add N' N21 N -> add N1 N22 N' -> type.
+%mode add-help3 +N +T1 -S -S1.
+%worlds () (add-help3 _ _ _ _).
+%trustme
+%total N (add-help3 N _ _ _).
+
+
+add-minus1: add (s N1) N2 (s N3) -> add N1 N2 N3 -> type.
+%mode add-minus1 +A1 -A2.
+%worlds () (add-minus1 _ _).
+%trustme
+%total N (add-minus1 N _).
+
+add-minus2: add N1 (s N2) (s N3) -> add N1 N2 N3 -> type.
+%mode add-minus2 +A1 -A2.
+%worlds () (add-minus2 _ _).
+%trustme
+%total N (add-minus2 N _).
+
+add-z-ex: {N} add N z N -> type.
+%mode add-z-ex +A1 -A2.
+%worlds () (add-z-ex _ _).
+%trustme
+%total N (add-z-ex N _).
+
+add-commut: add N1 N2 N -> add N2 N1 N -> type.
+%mode add-commut +A1 -A2.
+%worlds () (add-commut _ _).
+%trustme
+%total N (add-commut N _).
+
+
+
+false: type.
+
+no-addz: add (s N1) (s N2) (s z) -> false -> type.
+%mode no-addz +A -F.
+%worlds () (no-addz _ _).
+%trustme
+%total N (no-addz N _).
+
+no-subtp: {N}{G1}{G2}{T1}{T2}false -> stp N G1 T1 G2 T2 -> type.
+%mode no-subtp +N +G1 +G2 +T1 +T2 +A -F.
+%worlds () (no-subtp _ _ _ _ _ _ _).
+%trustme
+%total N (no-subtp N _ _ _ _ _ _).
+
+stp-widen: add N1 N2 N -> stp N2 G1 T1 G2 T2 -> stp N G1 T1 G2 T2 -> type.
+%mode stp-widen +N +T1 -S.
+%worlds () (stp-widen _ _ _).
+%trustme
+%total N (stp-widen N _ _).
+
+
+
+
+%% combined trans + weakening lemma
+%
+%  -- ignore size for the moment, need to factor in size of N0 (weakening deriv)
+%  -- will need to fill in symmetric version, too (any trouble expected?)
+%
+
+stp-trans-weaken: {N} add N1 N2 N -> nat -> stp N1 G1 T1 G2 T2 -> stp N2 G2 T2 G3 T3 -> stp N G1 T1 G3 T3 -> type.
+%mode stp-trans-weaken +N +A +SDC +SBT1 +SBT2 -SBT3.
+
+stp-trans-weaken2: {N} add N1 N2 N -> nat -> stp N1 G1 T1 G2 T2 -> stp N2 G2 T2 G3 T3 -> stp N G1 T1 G3 T3 -> type.
+%mode stp-trans-weaken2 +N +A +SDC +SBT1 +SBT2 -SBT3.
+
+sdc-trans-weaken: {N} add N1 N2 N -> nat -> sdc N1 G1 T1 G2 T2 -> sdc N2 G2 T2 G3 T3 -> sdc N G1 T1 G3 T3 -> type.
+%mode sdc-trans-weaken +N +A  +SDC +SBT1 +SBT2 -SBT3.
+
+%worlds () (sdc-trans-weaken _ _ _ _ _ _).
+%trustme
+%total N (sdc-trans-weaken N _ _ _ _ _).
+
+%worlds () (stp-trans-weaken2 _ _ _ _ _ _).
+%trustme
+%total N (stp-trans-weaken2 N _ _ _ _ _).
+
+
+-/top : stp-trans-weaken (s N) A WEAK S1 stp/top S3
+            <- stp-widen A stp/top S3
+            .
+
+-/wid1 : stp-trans-weaken (s N) A WEAK (stp/wid S1) S2 (stp/wid S3)
+            <- add-minus1 A A'
+            <- stp-trans-weaken N A' WEAK S1 S2 S3
+            .
+
+-/wid2 : stp-trans-weaken (s N) A WEAK S1 (stp/wid S2) (stp/wid S3)
+            <- add-minus2 A A'
+            <- stp-trans-weaken N A' WEAK S1 S2 S3
+            .
+
+%{
+-/no-fun-fun  : stp-trans-weaken (s z) A 
+            WEAK
+            (stp/fun A1 SBT2 SBT1)
+            (stp/fun A2 SBT4 SBT3)
+            S
+            <- no-addz A F
+            <- no-subtp _ _ _ _ F S
+            .
+
+-/fun-fun  : stp-trans-weaken
+            (s (s N)) (A: add (s N1) (s N2) (s (s N)))
+            WEAK
+            (stp/fun A1 SBT2 SBT1)
+            (stp/fun A2 SBT4 SBT3)
+            (stp/wid (stp/fun A3 SBT6 SBT5))
+            <- add-assoc A1 A2 A A31 A42 A3
+            <- add-red1 _ _ _ A3
+            <- add-red2 _ _ _ A3
+            <- stp-trans-weaken2 N3 A42 WEAK SBT3 SBT1 SBT5
+            <- stp-trans-weaken N4 A31 WEAK SBT2 SBT4 SBT6
+            .
+}%
+
+-/tsel1 :   stp-trans-weaken
+            (s N) (A: add (s N1) N2 (s N))
+            WEAK
+            (stp/sel1 (A1: add N11 N12 N1) ST_U2 ST_LU)
+            SBT2
+            (stp/sel1 A3 ST_U2' ST_LU)
+            <- add-help1 A1 A A3 A'
+            <- add-red1 _ _ _ A3
+            <- add-red2 _ _ _ A3            
+            <- stp-trans-weaken _ A' WEAK ST_U2 SBT2 ST_U2'
+            .
+
+-/tsel2 :   stp-trans-weaken
+            (s N) (A: add N1 (s N2) (s N))
+            WEAK
+            SBT1
+            (stp/sel2 (A2: add N21 N22 N2) ST_1L ST_LU)
+            (stp/sel2 A3 ST_1L' ST_LU)
+            <- add-help2 A2 A A3' A'
+            <- add-commut A3' A3
+            <- add-red1 _ _ _ A3
+            <- add-red2 _ _ _ A3            
+            <- stp-trans-weaken _ A' WEAK SBT1 ST_1L ST_1L'
+            .
+
+-/no-sel2-sel1 : stp-trans-weaken (s z) A 
+            WEAK
+            (stp/sel2 _ _ _)
+            (stp/sel1 _ _ _)
+            S
+            <- no-addz A F
+            <- no-subtp _ _ _ _ _ F S
+            .
+
+-/tsel2-tsel1 : stp-trans-weaken
+            (s (s N)) (A: add (s N1) (s N2) (s (s N)))
+            WEAK
+            (stp/sel2 (A1: add N11 N12 N1) ST_1L ST_LU)
+            (stp/sel1 (A2: add N21 N22 N2) ST_U2 ST_LU')
+            (stp/wid (stp/wid OUT))
+            <- add-commut A1 A3
+            <- add-help3 A2 A A5 A4
+            <- add-red1 _ _ _ A
+            <- add-red1 _ _ _ A5
+            <- stp-trans-weaken N1 A3 WEAK ST_1L ST_LU ST_1U
+            <- stp-trans-weaken N4 (A4: add N1 N22 N4) WEAK ST_1U ST_U2 ST_12
+            %% widen from N4 to N
+            <- add-commut A5 A5'
+            <- stp-widen A5' ST_12 OUT
+            .
+
+-/no-bind-bind : stp-trans-weaken (s z) A 
+            WEAK
+            (stp/bind _)
+            (stp/bind _)
+            S
+            <- no-addz A F
+            <- no-subtp _ _ _ _ _ F S
+            .
+
+-/tbind-bind : stp-trans-weaken
+            (s (s N)) (A: add (s N1) (s N2) (s (s N)))
+            WEAK
+            (stp/bind S1)
+            (stp/bind S2)
+            (stp/wid (stp/bind S3))
+            <- add-minus1 A A'
+            <- add-minus2 A' A''
+            <- sdc-trans-weaken _ A'' WEAK S1 S2 S3
+            .
+
+
+%worlds () (stp-trans-weaken _ _ _ _ _ _).
+
+%total N (stp-trans-weaken N _ _ _ _ _).
+
+
