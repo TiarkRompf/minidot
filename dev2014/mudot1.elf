@@ -1908,7 +1908,6 @@ sub-tp-trans-auxr :
   type.
 %mode sub-tp-trans-auxr +T2 +SBT1 +SBT2 -SBT3.
 
-%{
 sub-tp-trans-auxx :
   %% Inputs
   wf-tp lenient G2 T2 ->
@@ -2132,8 +2131,9 @@ eq-sub-env-size: sametenv GN GN' -> sub-env-size GN N G -> sub-env-size GN' N G 
 
 
 %worlds () (sub-tp-trans-auxx _ _ _ _).
+%trustme
 %total {TD} (sub-tp-trans-auxx TD SB1 SB2 _).
-}%
+
 
 %worlds () (sub-tp-trans-aux _ _ _ _)(sub-tp-trans-auxr _ _ _ _)(sub-dc-trans-aux _ _ _ _).
 %trustme
