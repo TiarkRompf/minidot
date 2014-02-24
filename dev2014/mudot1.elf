@@ -270,9 +270,8 @@ sub-dc : mode -> tenv -> dec -> tenv -> dec -> type.
 
 
 path-eval: mode -> tenv -> exp -> dec -> type.
-pev  : path-eval M G E (rect LN TS' TU') 
+pev  : path-eval M G E (rect LN TS TU) 
               <- tlookexp G E (rect LN TS TU)
-              % <- sub-dc M G (rect LN TS TU) G (rect LN TS' TU')
               . 
 
 sub-tp/refl : sub-tp strict G1 T G2 T  %%% ACCELERATE QUERIES !!
@@ -355,7 +354,7 @@ sub-tp/tsel2 : sub-tp M G1 T1 G2 (tsel (var X) N)
               <- path-eval M G2X (var X) (rect N TA2 TB2)
               <- sub-env-size G2X (s X) G2
               <- sub-tp M G1 T1 G2X TA2
-              <- sub-tp M G2X TA2 G2X TB2
+              <- sub-tp M G1 T1 G2X TB2
               <- wf-tp M G2 (tsel (var X) N)
               .
 
@@ -827,6 +826,7 @@ eq-wfv-clos: eq LNF LNF' -> wf-val (clos LNF R LNV R2 H) G T -> wf-val (clos LNF
 %total A (eq-wfv-clos A _ _).
 }%
 
+
 eq-high: same T2 T2' -> sub-tp M G1 T1 G2 T2 -> sub-tp M G1 T1 G2 T2' -> type.
 %mode eq-high +P1 +P2 -SBT.
 
@@ -958,6 +958,17 @@ lookup-eq0: tlookup G2 N1 T1 -> tlookup G2 N2 T2 -> eq N1 N2
 
 %worlds () (lookup-eq0 _ _ _ _).
 %total {T2} (lookup-eq0 T2 _ _ _).
+
+lookup-eq: tlookup G N T1 -> tlookup G N T2
+  -> same T1 T2 -> type.
+%mode lookup-eq +P1 +P2 -SBT.
+
+- : lookup-eq (A: tlookup _ X _) B OUT
+     <- eq-refl X EQ
+     <- lookup-eq0 A B EQ OUT.
+
+%worlds () (lookup-eq _ _ _).
+%total {A} (lookup-eq A _ _).
 
 eq-lookup: same T T' -> tlookup G N T -> tlookup G N T' -> type.
 %mode eq-lookup +A +B -C.
@@ -1343,9 +1354,8 @@ sameopt-same: sameopt (tsome T) (tsome T') -> same T T' -> type.
 lookexp-eq-gen: tlookexp G E (rect N S U) -> tlookexp G E (rect N S' U') -> samed (rect N S U) (rect N S' U') -> type.
 %mode lookexp-eq-gen +P1 +P2 -O1.
 
-- : lookexp-eq-gen (tle E1 (L1: tlookup _ N _)) (tle E2 L2) S
-      <- eq-refl N EQ
-      <- lookup-eq0 L1 L2 EQ X
+- : lookexp-eq-gen (tle E1 L1) (tle E2 L2) S
+      <- lookup-eq L1 L2 X
       <- eq-exp-low X E1 E1'
       <- expand-eq E1' E2 S.
 
@@ -1438,12 +1448,13 @@ extend-sub-dc: sub-dc M G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST T _ _ ST'
       <- extend-wf-tp W T W'.
 - : extend-sub-tp (sub-tp/tsel2 W SAB ST (ses N S) P) T
-     (sub-tp/tsel2 W' SAB ST' (ses N (sub-env/ext S)) P) % P'
-     (sub-tp/tsel2 W SAB ST' (ses N S) P)
+     (sub-tp/tsel2 W' SAB1 ST' (ses N (sub-env/ext S)) P) % P'
+     (sub-tp/tsel2 W SAB1 ST' (ses N S) P)
      (sub-tp/tsel2 W' SAB ST (ses N (sub-env/ext S)) P) % P'
       <- extend-wf-pev P T P'
       <- extend-sub-tp ST T _ ST' _
-      <- extend-wf-tp W T W'.
+      <- extend-wf-tp W T W'
+      <- extend-sub-tp SAB _ _ SAB1 _.
 %{
 - : extend-sub-tp (sub-tp/tselx-strict ST (ses N2 S2) (ses N1 S1) P2 P1) T
      (sub-tp/tselx-strict ST (ses N2 (sub-env/ext S2)) (ses N1 (sub-env/ext S1)) P2' P1')
@@ -1798,7 +1809,6 @@ eq-path-eval-env : sametenv G1 G2
 %total {} (eq-path-eval-env _ _ _).
 %reduces B <= C (eq-path-eval-env _ C B).
 
-%{
 path-eval-eq : path-eval M G E (rect N S U)
                 -> path-eval M G E (rect N S' U')
                 -> samed (rect N S U) (rect N S' U')
@@ -1810,7 +1820,6 @@ path-eval-eq : path-eval M G E (rect N S U)
 
 %worlds () (path-eval-eq _ _ _).
 %total {} (path-eval-eq _ _ _).
-}%
 
 sametenv-sub-env : sametenv G1 G2 -> sub-env G1 G2 -> type.
 %mode sametenv-sub-env +A -B.
@@ -1919,7 +1928,7 @@ sub-tp-trans-aux2 :
             (sub-dc/rect SBT2 SBT1 B2 B1)
             (sub-dc/rect SBT4 SBT3 B4 B3)
             (sub-dc/rect SBT6 SBT5 B4 B1)
-      <- sub-tp-trans-aux1 T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux2 T1 SBT3 SBT1 SBT5
       <- sub-tp-trans-aux1 T2 SBT2 SBT4 SBT6.
 
 -/recv-recv  : sub-tp-trans-aux1
@@ -1940,36 +1949,31 @@ sub-tp-trans-aux2 :
       W
       SBT1
       (sub-tp/tsel2 W2 SAB SBT3 G P)
-      (sub-tp/tsel2 W2 SAB SBT5 G P)
-      <- sub-tp-trans-aux1 W SBT1 SBT3 SBT5.
+      (sub-tp/tsel2 W2 SAB' SBT5 G P)
+      <- sub-tp-trans-aux1 W SBT1 SBT3 SBT5
+      <- sub-tp-trans-aux1 W SBT1 SAB SAB'.
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
 -/tsel2-tsel1 : sub-tp-trans-aux1
                  (wf-tp/tsel (wf-dc/rect BSU WU WS) GEW PW)
-                 (sub-tp/tsel2 (wf-tp/tsel _ _ _) A1 GE1 P1)
-                 (sub-tp/tsel1 (wf-tp/tsel _ _ _) A2 GE2 P2)
+                 (sub-tp/tsel2 (wf-tp/tsel _ _ _) SAB1 A1 GE1 P1)
+                 (sub-tp/tsel1 (wf-tp/tsel _ _ _) SAB2 A2 GE2 P2)
                  OUT
 
    <- sub-env-size-eq GE1 GEW EQG1W
    <- sub-env-size-eq GE2 GEW EQG2W
    <- eq-path-eval-env EQG1W P1 P1'
    <- eq-path-eval-env EQG2W P2 P2'
-
-   <- path-eval-subx P1' P2' SLU12A SLU12B SLU12C
-
-   <- eq-high-env EQG1W A1 A1''
-   <- eq-low-env EQG2W A2 A2''
-
-   <- extract-wf SLU12A WSA WUA
-   <- extract-wf SLU12B WSB WUB
-   <- extract-wf SLU12C WSC WUC
-
-   <- sub-tp-trans-aux1 WSA A1'' SLU12A OUTA
-   <- sub-tp-trans-aux1 WSB OUTA SLU12B OUTAB
-
-   <- sub-tp-trans-aux1 WUC SLU12C A2'' OUTC
-   <- sub-tp-trans-aux1 WUB OUTAB OUTC OUT
+   <- path-eval-eq P1' P2' EQR
+   <- rect-same-all-same EQR EQS EQU
+   <- eq-high-env EQG1W SAB1 SAB1'
+   <- eq-low-env EQG2W A2 A2'
+   <- eq-high EQU SAB1' SAB1''
+   <- path-eval-eq PW P2' EQR'
+   <- rect-same-all-same EQR' EQS' EQU'
+   <- eq-wf EQU' WU WU'
+   <- sub-tp-trans-aux1 WU' SAB1'' A2' OUT
    .
 
 
@@ -2122,7 +2126,7 @@ sub-tp-trans-aux2 :
             (sub-dc/rect SBT2 SBT1 B2 B1)
             (sub-dc/rect SBT4 SBT3 B4 B3)
             (sub-dc/rect SBT6 SBT5 B4 B1)
-      <- sub-tp-trans-aux2 T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux1 T1 SBT3 SBT1 SBT5
       <- sub-tp-trans-aux2 T2 SBT2 SBT4 SBT6.
 
 -/recv-recv  : sub-tp-trans-aux2
@@ -2134,47 +2138,41 @@ sub-tp-trans-aux2 :
 
 -/tsel1  : sub-tp-trans-aux2  % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
-      (sub-tp/tsel1 W1 SBT1 G P)
+      (sub-tp/tsel1 W1 SAB SBT1 G P)
       SBT3
-      (sub-tp/tsel1 W1 SBT5 G P)
+      (sub-tp/tsel1 W1 SAB SBT5 G P)
       <- sub-tp-trans-aux2 W SBT1 SBT3 SBT5.
 
 -/tsel2  : sub-tp-trans-aux2  % T1 < p.T2 <-- p:{T1} && T1 < T2
       W
       SBT1
-      (sub-tp/tsel2 W2 SBT3 G P)
-      (sub-tp/tsel2 W2 SBT5 G P)
-      <- sub-tp-trans-aux2 W SBT1 SBT3 SBT5.
+      (sub-tp/tsel2 W2 SAB SBT3 G P)
+      (sub-tp/tsel2 W2 SAB' SBT5 G P)
+      <- sub-tp-trans-aux2 W SBT1 SBT3 SBT5
+      <- sub-tp-trans-aux2 W SBT1 SAB SAB'.
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
 -/tsel2-tsel1 : sub-tp-trans-aux2
                  (wf-tp/tsel (wf-dc/rect BSU WU WS) GEW PW)
-                 (sub-tp/tsel2 (wf-tp/tsel _ _ _) A1 GE1 P1)
-                 (sub-tp/tsel1 (wf-tp/tsel _ _ _) A2 GE2 P2)
+                 (sub-tp/tsel2 (wf-tp/tsel _ _ _) SAB1 A1 GE1 P1)
+                 (sub-tp/tsel1 (wf-tp/tsel _ _ _) SAB2 A2 GE2 P2)
                  OUT
 
    <- sub-env-size-eq GE1 GEW EQG1W
    <- sub-env-size-eq GE2 GEW EQG2W
    <- eq-path-eval-env EQG1W P1 P1'
    <- eq-path-eval-env EQG2W P2 P2'
-
-   <- path-eval-subx P1' P2' SLU12A SLU12B SLU12C
-
-   <- eq-high-env EQG1W A1 A1''
-   <- eq-low-env EQG2W A2 A2''
-
-   <- extract-wf SLU12A WSA WUA
-   <- extract-wf SLU12B WSB WUB
-   <- extract-wf SLU12C WSC WUC
-
-   <- sub-tp-trans-aux2 WSA A1'' SLU12A OUTA
-   <- sub-tp-trans-aux2 WSB OUTA SLU12B OUTAB
-
-   <- sub-tp-trans-aux2 WUC SLU12C A2'' OUTC
-   <- sub-tp-trans-aux2 WUB OUTAB OUTC OUT
+   <- path-eval-eq P1' P2' EQR
+   <- rect-same-all-same EQR EQS EQU
+   <- eq-high-env EQG1W SAB1 SAB1'
+   <- eq-low-env EQG2W A2 A2'
+   <- eq-high EQU SAB1' SAB1''
+   <- path-eval-eq PW P2' EQR'
+   <- rect-same-all-same EQR' EQS' EQU'
+   <- eq-wf EQU' WU WU'
+   <- sub-tp-trans-aux2 WU' SAB1'' A2' OUT
    .
-
 
 %{
 -/tbind2  : sub-tp-trans-aux2
@@ -2324,7 +2322,7 @@ sub-tp-trans :
 
 -/i : sub-tp-trans SBT1 SBT2 SBT3
        <- extract-wf SBT1 T1 T2
-       <- sub-tp-trans-aux T2 SBT1 SBT2 SBT3.
+       <- sub-tp-trans-aux1 T2 SBT1 SBT2 SBT3.
 
 %worlds () (sub-tp-trans _ _ _).
 %total {A} (sub-tp-trans A _ _).
