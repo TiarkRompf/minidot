@@ -1898,27 +1898,6 @@ sub-tp-trans-aux :
   type.
 %mode sub-tp-trans-aux +T2 +SBT1 +SBT2 -SBT3.
 
-sub-tp-trans-auxr :
-  %% Inputs
-  wf-tp lenient G2 T2 ->
-  sub-tp lenient G1 T1 G2 T2 ->
-  sub-tp lenient G2 T2 G3 T3 ->
-  %% Output
-  sub-tp lenient G1 T1 G3 T3 ->
-  type.
-%mode sub-tp-trans-auxr +T2 +SBT1 +SBT2 -SBT3.
-
-sub-tp-trans-auxx :
-  %% Inputs
-  wf-tp lenient G2 T2 ->
-  sub-tp lenient G1 T1 G2 T2 ->
-  sub-tp lenient G2 T2 G3 T3 ->
-  %% Output
-  sub-tp lenient G1 T1 G3 T3 ->
-  type.
-%mode sub-tp-trans-auxx +T2 +SBT1 +SBT2 -SBT3.
-
-
 -/top    : sub-tp-trans-aux _ S1 (sub-tp/top _) (sub-tp/top W) <- extract-wf S1 W _.
 -/bot    : sub-tp-trans-aux _ (sub-tp/bot _) S2 (sub-tp/bot W) <- extract-wf S2 _ W.
 
@@ -1927,7 +1906,7 @@ sub-tp-trans-auxx :
             (sub-tp/fun SBT2 SBT1)
             (sub-tp/fun SBT4 SBT3)
             (sub-tp/fun SBT6 SBT5)
-      <- sub-tp-trans-auxx T1 SBT3 SBT1 SBT5
+      <- sub-tp-trans-aux T1 SBT3 SBT1 SBT5
       <- sub-tp-trans-aux T2 SBT2 SBT4 SBT6.
 
 -/rect-rect  : sub-dc-trans-aux
@@ -1957,7 +1936,7 @@ sub-tp-trans-auxx :
       SBT1
       (sub-tp/tsel2 W2 SBT3 G P)
       (sub-tp/tsel2 W2 SBT5 G P)
-      <- sub-tp-trans-auxr W SBT1 SBT3 SBT5.
+      <- sub-tp-trans-aux W SBT1 SBT3 SBT5.
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
 
@@ -1982,9 +1961,9 @@ sub-tp-trans-auxx :
    <- extract-wf SLU12C WSC WUC
 
    <- sub-tp-trans-aux WSA A1'' SLU12A OUTA
-   <- sub-tp-trans-auxr WSB OUTA SLU12B OUTAB
+   <- sub-tp-trans-aux WSB OUTA SLU12B OUTAB
 
-   <- sub-tp-trans-auxr WUC SLU12C A2'' OUTC
+   <- sub-tp-trans-aux WUC SLU12C A2'' OUTC
    <- sub-tp-trans-aux WUB OUTAB OUTC OUT
    .
 
@@ -2130,12 +2109,7 @@ eq-sub-env-size: sametenv GN GN' -> sub-env-size GN N G -> sub-env-size GN' N G 
       <- sub-tp-trans-aux W2 SBT3 SBT1 SBT5.
 
 
-%worlds () (sub-tp-trans-auxx _ _ _ _).
-%trustme
-%total {TD} (sub-tp-trans-auxx TD SB1 SB2 _).
-
-
-%worlds () (sub-tp-trans-aux _ _ _ _)(sub-tp-trans-auxr _ _ _ _)(sub-dc-trans-aux _ _ _ _).
+%worlds () (sub-tp-trans-aux _ _ _ _)(sub-dc-trans-aux _ _ _ _).
 %trustme
 % %total {(T2 TB2) (S1 SB1) (S2 SB2)} (sub-tp-trans-aux T2 S1 S2 _)(sub-dc-trans-aux TB2 SB1 SB2 _).
 
