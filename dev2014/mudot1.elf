@@ -272,7 +272,8 @@ sub-dc : mode -> tenv -> dec -> tenv -> dec -> type.
 path-eval: mode -> tenv -> exp -> dec -> type.
 pev  : path-eval M G E (rect LN TS' TU') 
               <- tlookexp G E (rect LN TS TU)
-              <- sub-dc M G (rect LN TS TU) G (rect LN TS' TU'). 
+              % <- sub-dc M G (rect LN TS TU) G (rect LN TS' TU')
+              . 
 
 sub-tp/refl : sub-tp strict G1 T G2 T  %%% ACCELERATE QUERIES !!
                 <- sub-env G G1
@@ -346,13 +347,15 @@ sub-tp/tsel1 : sub-tp M G1 (tsel (var X) N) G2 T2
               <- path-eval M G1X (var X) (rect N TA1 TB1)
               <- sub-env-size G1X (s X) G1
               <- sub-tp M G1X TB1 G2 T2
+              <- sub-tp M G1X TA1 G1X TB1
               <- wf-tp M G1 (tsel (var X) N)
               .
 
 sub-tp/tsel2 : sub-tp M G1 T1 G2 (tsel (var X) N)
               <- path-eval M G2X (var X) (rect N TA2 TB2)
               <- sub-env-size G2X (s X) G2
-              <- sub-tp M G1 T1 G2X TA2 % TA2 FIXME!!
+              <- sub-tp M G1 T1 G2X TA2
+              <- sub-tp M G2X TA2 G2X TB2
               <- wf-tp M G2 (tsel (var X) N)
               .
 
@@ -1192,7 +1195,7 @@ sub-env-size0b : sub-env G G2 -> sub-env (tcons T0 G0) G2 -> tsize G N -> tsize 
 sub-env-size-lkp : tsize G0 N0 -> sub-env G G1 -> sub-env G G2 -> sub-env (tcons T0 G0) G2 -> path-eval M G (var N0) (rect N TA TB) -> sub-env (tcons T0 G0) G -> type.
 %mode sub-env-size-lkp +A +B +C +D +E -F.
 
-- : sub-env-size-lkp SN0 S1 S2 S0 (pev _ (tle EX L)) OUT
+- : sub-env-size-lkp SN0 S1 S2 S0 (pev (tle EX L)) OUT
      <- tsize-lookup L SN LT
      <- sub-env-size0b S2 S0 SN SN0 LT OUT.
 
@@ -1202,7 +1205,7 @@ sub-env-size-lkp : tsize G0 N0 -> sub-env G G1 -> sub-env G G2 -> sub-env (tcons
 extract-pev-lkp : path-eval M G (var X) T -> tlookup G X TX -> type.
 %mode extract-pev-lkp +A -B.
 
-- : extract-pev-lkp (pev _ (tle EXR LR)) LR.
+- : extract-pev-lkp (pev (tle EXR LR)) LR.
 
 %worlds () (extract-pev-lkp _ _).
 %total A (extract-pev-lkp A _).
@@ -1383,9 +1386,8 @@ extend-sub-dc: sub-dc M G1 T1 G2 T2 -> {Z: tpe}
   type.
 %mode extend-sub-dc +A +B -C -D -E.
 
-- : extend-wf-pev (pev S L) T (pev S1 L1)
-      <- extend-wf-lkpe L T L1
-      <- extend-sub-dc S _ S1 _ _.
+- : extend-wf-pev (pev L) T (pev L1)
+      <- extend-wf-lkpe L T L1.
 
 - : extend-wf-tp wf-tp/top T wf-tp/top.
 - : extend-wf-tp wf-tp/bot T wf-tp/bot.
@@ -1428,17 +1430,17 @@ extend-sub-dc: sub-dc M G1 T1 G2 T2 -> {Z: tpe}
       <- extend-sub-tp ST2 _ ST2' ST2A ST2B.
 - : extend-sub-tp (sub-tp/recv ST1) T (sub-tp/recv ST1') (sub-tp/recv ST1A) (sub-tp/recv ST1B)
       <- extend-sub-tp ST1 _ ST1' ST1A ST1B.
-- : extend-sub-tp (sub-tp/tsel1 W ST (ses N S) P) T
-     (sub-tp/tsel1 W' ST' (ses N (sub-env/ext S)) P) % was P'
-     (sub-tp/tsel1 W' ST (ses N (sub-env/ext S)) P) % P'
-     (sub-tp/tsel1 W ST' (ses N S) P)
+- : extend-sub-tp (sub-tp/tsel1 W SAB ST (ses N S) P) T
+     (sub-tp/tsel1 W' SAB ST' (ses N (sub-env/ext S)) P) % was P'
+     (sub-tp/tsel1 W' SAB ST (ses N (sub-env/ext S)) P) % P'
+     (sub-tp/tsel1 W SAB ST' (ses N S) P)
       <- extend-wf-pev P T P'
       <- extend-sub-tp ST T _ _ ST'
       <- extend-wf-tp W T W'.
-- : extend-sub-tp (sub-tp/tsel2 W ST (ses N S) P) T
-     (sub-tp/tsel2 W' ST' (ses N (sub-env/ext S)) P) % P'
-     (sub-tp/tsel2 W ST' (ses N S) P)
-     (sub-tp/tsel2 W' ST (ses N (sub-env/ext S)) P) % P'
+- : extend-sub-tp (sub-tp/tsel2 W SAB ST (ses N S) P) T
+     (sub-tp/tsel2 W' SAB ST' (ses N (sub-env/ext S)) P) % P'
+     (sub-tp/tsel2 W SAB ST' (ses N S) P)
+     (sub-tp/tsel2 W' SAB ST (ses N (sub-env/ext S)) P) % P'
       <- extend-wf-pev P T P'
       <- extend-sub-tp ST T _ ST' _
       <- extend-wf-tp W T W'.
@@ -1591,10 +1593,10 @@ extract-wf : sub-tp M G1 T1 G2 T2 -> wf-tp M G1 T1 -> wf-tp M G2 T2 -> type.
 - : extract-wf (sub-tp/recv ST) (wf-tp/recv W1) (wf-tp/recv W2)
       <- extract-wf ST W1 W2.
 
-- : extract-wf (sub-tp/tsel1 W1 ST G P)
+- : extract-wf (sub-tp/tsel1 W1 _ ST G P)
       W1 W2
       <- extract-wf ST _ W2.
-- : extract-wf (sub-tp/tsel2 W2 ST G P)
+- : extract-wf (sub-tp/tsel2 W2 _ ST G P)
       W1 W2
       <- extract-wf ST W1 _.
 
@@ -1746,8 +1748,8 @@ sub-tp-refl :
 -/recv: sub-tp-refl (wf-tp/recv T1) (sub-tp/recv SBT1)
    <- sub-tp-refl T1 SBT1.
 
--/tsel: sub-tp-refl (wf-tp/tsel W G P) (sub-tp/tsel1 (wf-tp/tsel W G P) (sub-tp/tsel2 (wf-tp/tsel W G P) BU G P) G P)
-   <- sub-dc-refl W (sub-dc/rect BU _ _ _).
+% -/tsel: sub-tp-refl (wf-tp/tsel W G P) (sub-tp/tsel1 (wf-tp/tsel W G P) (sub-tp/tsel2 (wf-tp/tsel W G P) BU G P) G P)
+%   <- sub-dc-refl W (sub-dc/rect BU _ _ _).
 
 %{
 
@@ -1783,31 +1785,6 @@ sub-tp-refl :
 %% Subtyping is transitive
 
 %% Helpers
-
-path-eval-subx   : path-eval M G E (rect N TA1 TB1)
-                -> path-eval M G E (rect N TA2 TB2)
-                -> sub-tp M G TA1 G TA0
-                -> sub-tp M G TA0 G TB0
-                -> sub-tp M G TB0 G TB2
-                -> type.
-%mode path-eval-subx +A +B -C -D -E.
-
-- : path-eval-subx (pev (sub-dc/rect SB0B1 SA1A0 SA1B1 SA0B0) L) 
-                   (pev (sub-dc/rect SB0B2' SA2A0' SA2B2 SA0B0') L') SA1A0' SA0B0' SB0B2'
-   <- lookexp-eq-gen L L' EQD
-   <- eq-rect2 EQD EQT _
-   <- eq-high EQT SA1A0 SA1A0'
-   .
-
-%worlds () (path-eval-subx _ _ _ _ _).
-%total {} (path-eval-subx _ _ _ _ _).
-
-%reduces U < A (path-eval-subx A B U V W).
-%reduces V < B (path-eval-subx A B U V W).
-%reduces W < B (path-eval-subx A B U V W).
-
-
-
 
 eq-path-eval-env : sametenv G1 G2
                 -> path-eval M G1 E (rect N S U)
@@ -1954,16 +1931,16 @@ sub-tp-trans-aux2 :
 
 -/tsel1  : sub-tp-trans-aux1  % p.T1 < T2 <-- p:{T1} && T1 < T2
       W
-      (sub-tp/tsel1 W1 SBT1 G P)
+      (sub-tp/tsel1 W1 SAB SBT1 G P)
       SBT3
-      (sub-tp/tsel1 W1 SBT5 G P)
+      (sub-tp/tsel1 W1 SAB SBT5 G P)
       <- sub-tp-trans-aux1 W SBT1 SBT3 SBT5.
 
 -/tsel2  : sub-tp-trans-aux1  % T1 < p.T2 <-- p:{T1} && T1 < T2
       W
       SBT1
-      (sub-tp/tsel2 W2 SBT3 G P)
-      (sub-tp/tsel2 W2 SBT5 G P)
+      (sub-tp/tsel2 W2 SAB SBT3 G P)
+      (sub-tp/tsel2 W2 SAB SBT5 G P)
       <- sub-tp-trans-aux1 W SBT1 SBT3 SBT5.
 
 %% case T1 < p.T2 && p.T2 < T3   -->   T1 < T3
