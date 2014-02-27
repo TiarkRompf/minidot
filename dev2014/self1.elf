@@ -144,7 +144,7 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel (var X))
             <- tlookup G2 X D2
             <- sub-dc G1 D1 G2 D2
             <- has-upper D1 U1
-            <- sub-tp G1 T1 G1 U1 % NOTE(namin): G1 < G1 might be problematic for termination?
+            <- sub-tp G1 T1 G2 U1 % NOTE(namin): fiddle with this as necessary for the proofs
             .
 sub-tp/tbind : sub-tp G1 (tbind X D1) G2 (tbind X D2)
             <- sub-env-size G1 X G1X
