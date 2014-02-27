@@ -1,82 +1,12 @@
-%{ ------- arithmetic ----- }%
-
-nat: type.
-z: nat.
-s: nat -> nat.
-
-add : nat -> nat -> nat -> type.
-add/z : add z N N.
-add/s : add (s N1) N2 (s N3)
-   <- add N1 N2 N3.
-
-%mode add +N1 +N2 -N3.
-
-lte : nat -> nat -> type.
-lte/z : lte z N.
-lte/s : lte (s N1) (s N2)
-   <- lte N1 N2.
-
-%mode lte +N1 +N2.
-
-
-eq : nat -> nat -> type.
-eq/z : eq z z.
-eq/s : eq (s N1) (s N2)
-   <- eq N1 N2.
-
-% %mode eq +N1 +N2.
-
-
-ne : nat -> nat -> type.
-ne/z1 : ne z (s N).
-ne/z2 : ne (s N) z.
-ne/s : ne (s N1) (s N2)
-   <- ne N1 N2.
-
-%mode ne +N1 +N2.
-
-eq-refl: {N:nat} eq N N -> type.
-%mode eq-refl +N -E1.
-
-- : eq-refl z eq/z.
-- : eq-refl (s N) (eq/s E) <- eq-refl N E.
-
-%worlds () (eq-refl _ _).
-%total {A} (eq-refl A _).
-
-
-sub-eq: eq A1 A2 -> eq C1 C2 -> add A1 B1 C1 -> add A2 B2 C2 -> eq B1 B2 -> type.
-%mode sub-eq +E1 +E2 +A1 +A2 -E3.
-
-- : sub-eq eq/z E add/z add/z E.
-- : sub-eq (eq/s E1) (eq/s E2) (add/s A1) (add/s A2) E3
-  <- sub-eq E1 E2 A1 A2 E3.
-
-%worlds () (sub-eq _ _ _ _ _).
-%total {A} (sub-eq A _ _ _ _).
-
-add-inc: add A B C -> add A (s B) (s C) -> type.
-%mode add-inc +E1 -E2.
-
-- : add-inc add/z add/z.
-- : add-inc (add/s A1) (add/s A2)
-  <- add-inc A1 A2.
-
-%worlds () (add-inc _ _).
-%total {A} (add-inc A _).
-
 %{ ------- language ----- }%
 
-exp: type.
 tpe: type.
 dec: type.
 topt: type.
 
-var: nat -> exp.
-
 top: tpe.
-tbind: nat -> dec -> tpe.
-tsel: exp -> tpe.
+tbind: dec -> tpe.
+tsel: tpe.
 
 tnone: topt.
 tsome: tpe -> topt.
@@ -88,35 +18,10 @@ rect: topt -> tpe -> dec.
 % environments
 tenv  : type.
 tnil  : tenv.
-tcons : dec -> tenv -> tenv.
+tcons : dec -> tenv.
 
-tlookup-zero: tenv -> nat -> dec -> type.
-tl/hit  : tlookup-zero (tcons V G) z V.
-tl/miss : tlookup-zero (tcons V' G) (s N) V <- tlookup-zero G N V.
-
-tsize : tenv -> nat -> type.
-tf/n   : tsize tnil z.
-tf/c   : tsize (tcons V G) (s N) <- tsize G N.
-
-%worlds () (tsize _ _).
-
-tlookup: tenv -> nat -> dec -> type.
-tl  : tlookup G N V
-  <- tsize G S
-  <- add (s N) M S
-  <- tlookup-zero G M V.
-
-% Partial ordering on environments
-
-sub-env: tenv -> tenv -> type.
-
-sub-env/refl: sub-env G G.
-sub-env/ext: sub-env G1 (tcons Z G2) <- sub-env G1 G2.
-
-sub-env-size: tenv -> nat -> tenv -> type.
-ses: sub-env-size GN N G
-      <- sub-env GN G
-      <- tsize GN N.
+tlookup: tenv -> dec -> type.
+tl  : tlookup (tcons D) D.
 
 %{ ------- subtyping ------ }%
 
@@ -132,24 +37,22 @@ sub-tp : tenv -> tpe -> tenv -> tpe -> type.
 sub-dc : tenv -> dec -> tenv -> dec -> type.
 
 sub-tp/top : sub-tp G1 T G2 top -> wf-tp G1 T.
-sub-tp/tsel1 : sub-tp G1 (tsel (var X)) G2 T2
-            <- tlookup G1 X D1
-            <- tlookup G2 X D2
+sub-tp/tsel1 : sub-tp G1 tsel G2 T2
+            <- tlookup G1 D1
+            <- tlookup G2 D2
             <- sub-dc G1 D1 G2 D2
             <- has-lower D1 S1
             <- sub-tp G1 S1 G2 T2
             .
-sub-tp/tsel2 : sub-tp G1 T1 G2 (tsel (var X))
-            <- tlookup G1 X D1
-            <- tlookup G2 X D2
+sub-tp/tsel2 : sub-tp G1 T1 G2 tsel
+            <- tlookup G1 D1
+            <- tlookup G2 D2
             <- sub-dc G1 D1 G2 D2
             <- has-upper D1 U1
             <- sub-tp G1 T1 G2 U1 % NOTE(namin): fiddle with this as necessary for the proofs
             .
-sub-tp/tbind : sub-tp G1 (tbind X D1) G2 (tbind X D2)
-            <- sub-env-size G1 X G1X
-            <- sub-env-size G2 X G2X
-            <- sub-dc (tcons D1 G1X) D1 (tcons D2 G2X) D2
+sub-tp/tbind : sub-tp G1 (tbind D1) G2 (tbind D2)
+            <- sub-dc (tcons D1) D1 (tcons D2) D2
             .
 
 %%% PROOFS %%%
