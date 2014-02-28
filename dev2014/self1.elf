@@ -145,6 +145,21 @@ extract-sub-env : sub-tp G1 T1 G2 T2 -> sub-env G1 G2 -> type.
 %total (A B C) (extract-wf A _ _) (extract-wfd B _ _) (extract-sub-env C _).
 %reduces B <= A (extract-sub-env A B).
 
+sub-env-tl :
+  %% Inputs
+  sub-env G1 G2 ->
+  tlookup G1 D1 ->
+  %% Outputs
+  tlookup G2 D2 ->
+  sub-dc G1 D1 G2 D2 ->
+  type.
+%mode sub-env-tl +A +B -C -D.
+
+-/ss : sub-env-tl (sub-env/ss BD) TL1 tl BD.
+
+%worlds () (sub-env-tl _ _ _ _).
+%total A (sub-env-tl A _ _ _).
+
 sub-env-trans :
   %% Inputs
   sub-env G1 G2 ->
@@ -167,6 +182,15 @@ sub-tp-trans :
      <- extract-wf B12 W1 _
      <- extract-sub-env B12 E12
      <- sub-env-trans E12 E23 E13.
+
+-/tsel1 : sub-tp-trans
+           (sub-tp/tsel1 B12 HU1 E12 BD12 TL2 TL1)
+           B23
+           (sub-tp/tsel1 B13 HU1 E13 BD13 TL3 TL1)
+     <- extract-sub-env B23 E23
+     <- sub-env-trans E12 E23 E13
+     <- sub-env-tl E13 TL1 TL3 BD13
+     <- sub-tp-trans B12 B23 B13.
 
 %worlds () (sub-tp-trans _ _ _) (sub-env-trans _ _ _).
 %total {(A1 A2) (B1 B2)} (sub-tp-trans A1 B1 _) (sub-env-trans A2 B2 _).
