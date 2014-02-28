@@ -45,16 +45,16 @@ sub-tp/tsel1 : sub-tp G1 tsel G2 T2
             <- tlookup G2 D2
             <- sub-dc G1 D1 G2 D2
             <- sub-env G1 G2
-            <- has-lower D1 S1
-            <- sub-tp G1 S1 G2 T2
+            <- has-upper D1 U1
+            <- sub-tp G1 U1 G2 T2
             .
 sub-tp/tsel2 : sub-tp G1 T1 G2 tsel
             <- tlookup G1 D1
             <- tlookup G2 D2
             <- sub-dc G1 D1 G2 D2
             <- sub-env G1 G2
-            <- has-upper D1 U1
-            <- sub-tp G1 T1 G2 U1 % NOTE(namin): fiddle with this as necessary for the proofs
+            <- has-lower D1 S1
+            <- sub-tp G1 T1 G2 S1
             .
 sub-tp/tbind : sub-tp G1 (tbind D1) G2 (tbind D2)
             <- sub-dc (tcons D1) D1 (tcons D2) D2
