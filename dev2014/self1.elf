@@ -55,6 +55,8 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 tsel
             <- sub-env G1 G2
             <- has-lower D1 S1
             <- sub-tp G1 T1 G2 S1
+            <- has-upper D1 U1
+            <- sub-tp G1 T1 G2 U1
             .
 sub-tp/tbind : sub-tp G1 (tbind D1) G2 (tbind D2)
             <- sub-dc (tcons D1) D1 (tcons D2) D2
@@ -106,7 +108,7 @@ extract-sub-env : sub-tp G1 T1 G2 T2 -> sub-env G1 G2 -> type.
  <- extract-wfd BD D1 _
  <- extract-wf BT _ W2.
 
-- : extract-wf (sub-tp/tsel2 BT H _ BD TL2 TL1)
+- : extract-wf (sub-tp/tsel2 _ _ BT H _ BD TL2 TL1)
      W1
      (wf-tp/tsel D2 TL2)
  <- extract-wfd BD _ D2
@@ -136,7 +138,7 @@ extract-sub-env : sub-tp G1 T1 G2 T2 -> sub-env G1 G2 -> type.
 - : extract-sub-env (sub-tp/tsel1 BT H WE BD TL2 TL1)
      WE.
 
-- : extract-sub-env (sub-tp/tsel2 BT H WE BD TL2 TL1)
+- : extract-sub-env (sub-tp/tsel2 _ _ BT H WE BD TL2 TL1)
      WE.
 
 - : extract-sub-env (sub-tp/tbind WE _) WE.
@@ -209,12 +211,19 @@ sub-tp-trans :
 
 -/tsel2 : sub-tp-trans
            B12
-           (sub-tp/tsel2 B23 HS1 E23 BD23 TL3 TL2)
-           (sub-tp/tsel2 B13 HS1 E13 BD13 TL3 TL1)
+           (sub-tp/tsel2 BU23 HU3 B23 HS3 E23 BD23 TL3 TL2)
+           (sub-tp/tsel2 BU13 HU3 B13 HS3 E13 BD13 TL3 TL1)
      <- extract-sub-env B12 E12
      <- sub-env-trans E12 E23 E13
      <- sub-env-tlr E13 TL3 TL1 BD13
-     <- sub-tp-trans B12 B23 B13.
+     <- sub-tp-trans B12 B23 B13
+     <- sub-tp-trans B12 BU23 BU13.
+
+-/tsel2-1 : sub-tp-trans
+             (sub-tp/tsel2 BU12 HU2 B12 HS2 E12 BD12 TL2 TL1)
+             (sub-tp/tsel1 B23 HU2' E23 BD23 TL3 TL2')
+             OUT
+     .
 
 %worlds () (sub-tp-trans _ _ _) (sub-env-trans _ _ _).
 %total {(A1 A2) (B1 B2)} (sub-tp-trans A1 B1 _) (sub-env-trans A2 B2 _).
