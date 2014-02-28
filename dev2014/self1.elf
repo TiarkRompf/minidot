@@ -67,18 +67,32 @@ sub-dc/sn : sub-dc G1 (rect (tsome S1) U1) G2 (rect tnone U2)
 sub-dc/sn : sub-dc G1 (rect tnone U1) G2 (rect tnone U2)
          <- sub-tp G1 U1 G2 U2.
 
+wf-tp/top : wf-tp G top.
+wf-tp/tbind : wf-tp G (tbind D)
+           <- wf-dc (tcons D) D.
+wf-tp/tsel : wf-tp G tsel
+          <- tlookup G D
+          <- wf-dc G D.
+
+wf-dc/s : wf-dc G (rect (tsome S) U)
+       <- sub-tp G S G U.
+wf-dc/n : wf-dc G (rect tnone U)
+       <- wf-tp G U.
+
 %%% PROOFS %%%
 
 sub-tp-trans-aux :
   %% Inputs
+  wf-tp G2 T2 ->
   sub-tp G1 T1 G2 T2 ->
   sub-tp G2 T2 G3 T3 ->
   %% Output
   sub-tp G1 T1 G3 T3 ->
   type.
-%mode sub-tp-trans-aux +A +B -C.
+%mode sub-tp-trans-aux +W +A +B -C.
 
 %.
-%worlds () (sub-tp-trans-aux _ _ _).
-%total {} (sub-tp-trans-aux _ _ _).
+
+%worlds () (sub-tp-trans-aux _ _ _ _).
+%total {} (sub-tp-trans-aux _ _ _ _).
 
