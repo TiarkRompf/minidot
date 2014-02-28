@@ -55,5 +55,30 @@ sub-tp/tbind : sub-tp G1 (tbind D1) G2 (tbind D2)
             <- sub-dc (tcons D1) D1 (tcons D2) D2
             .
 
+sub-dc/ss : sub-dc G1 (rect (tsome S1) U1) G2 (rect (tsome S2) U2)
+         <- sub-tp G2 S2 G1 S1
+         <- sub-tp G1 U1 G2 U2
+         <- sub-tp G1 S1 G1 U1
+         <- sub-tp G1 S2 G2 U2.
+sub-dc/sn : sub-dc G1 (rect (tsome S1) U1) G2 (rect tnone U2)
+         <- sub-tp G1 U1 G2 U2
+         <- sub-tp G1 S1 G1 U1.
+
+sub-dc/sn : sub-dc G1 (rect tnone U1) G2 (rect tnone U2)
+         <- sub-tp G1 U1 G2 U2.
+
 %%% PROOFS %%%
+
+sub-tp-trans-aux :
+  %% Inputs
+  sub-tp G1 T1 G2 T2 ->
+  sub-tp G2 T2 G3 T3 ->
+  %% Output
+  sub-tp G1 T1 G3 T3 ->
+  type.
+%mode sub-tp-trans-aux +A +B -C.
+
+%.
+%worlds () (sub-tp-trans-aux _ _ _).
+%total {} (sub-tp-trans-aux _ _ _).
 
