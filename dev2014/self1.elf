@@ -44,6 +44,7 @@ sub-tp/tsel1 : sub-tp G1 tsel G2 T2
             <- tlookup G1 D1
             <- tlookup G2 D2
             <- sub-dc G1 D1 G2 D2
+            <- sub-env G1 G2
             <- has-lower D1 S1
             <- sub-tp G1 S1 G2 T2
             .
@@ -51,6 +52,7 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 tsel
             <- tlookup G1 D1
             <- tlookup G2 D2
             <- sub-dc G1 D1 G2 D2
+            <- sub-env G1 G2
             <- has-upper D1 U1
             <- sub-tp G1 T1 G2 U1 % NOTE(namin): fiddle with this as necessary for the proofs
             .
@@ -98,13 +100,13 @@ extract-sub-env : sub-tp G1 T1 G2 T2 -> sub-env G1 G2 -> type.
 
 - : extract-wf (sub-tp/top _ W) W wf-tp/top.
 
-- : extract-wf (sub-tp/tsel1 BT H BD TL2 TL1)
+- : extract-wf (sub-tp/tsel1 BT H _ BD TL2 TL1)
      (wf-tp/tsel D1 TL1)
      W2
  <- extract-wfd BD D1 _
  <- extract-wf BT _ W2.
 
-- : extract-wf (sub-tp/tsel2 BT H BD TL2 TL1)
+- : extract-wf (sub-tp/tsel2 BT H _ BD TL2 TL1)
      W1
      (wf-tp/tsel D2 TL2)
  <- extract-wfd BD _ D2
@@ -131,31 +133,41 @@ extract-sub-env : sub-tp G1 T1 G2 T2 -> sub-env G1 G2 -> type.
 
 - : extract-sub-env (sub-tp/top WE _) WE.
 
-- : extract-sub-env (sub-tp/tsel1 BT H BD TL2 TL1)
-     (sub-env/ss BD).
+- : extract-sub-env (sub-tp/tsel1 BT H WE BD TL2 TL1)
+     WE.
 
-- : extract-sub-env (sub-tp/tsel2 BT H BD TL2 TL1)
-     (sub-env/ss BD).
+- : extract-sub-env (sub-tp/tsel2 BT H WE BD TL2 TL1)
+     WE.
 
 - : extract-sub-env (sub-tp/tbind WE _) WE.
 
 %worlds () (extract-wf _ _ _) (extract-wfd _ _ _) (extract-sub-env _ _).
 %total (A B C) (extract-wf A _ _) (extract-wfd B _ _) (extract-sub-env C _).
+%reduces B <= A (extract-sub-env A B).
 
-sub-trans-aux :
+sub-env-trans :
   %% Inputs
   sub-env G1 G2 ->
-  sub-tp G1 T1 G2 T2 ->
   sub-env G2 G3 ->
-  sub-tp G2 T2 G3 T3 ->
   %% Output
   sub-env G1 G3 ->
+  type.
+%mode sub-env-trans +A +B -C.
+sub-tp-trans :
+  %% Inputs
+  sub-tp G1 T1 G2 T2 ->
+  sub-tp G2 T2 G3 T3 ->
+  %% Output
   sub-tp G1 T1 G3 T3 ->
   type.
-%mode sub-trans-aux +E12 +B12 +E23 +B23 -E13 -B13.
+%mode sub-tp-trans +A +B -C.
 
-%.
+-/top : sub-tp-trans B12 (sub-tp/top E23 W2)
+         (sub-tp/top E13 W1)
+     <- extract-wf B12 W1 _
+     <- extract-sub-env B12 E12
+     <- sub-env-trans E12 E23 E13.
 
-%worlds () (sub-trans-aux _ _ _ _ _ _).
-%total {} (sub-trans-aux _ _ _ _ _ _).
+%worlds () (sub-tp-trans _ _ _) (sub-env-trans _ _ _).
+%total {(A1 A2) (B1 B2)} (sub-tp-trans A1 B1 _) (sub-env-trans A2 B2 _).
 
