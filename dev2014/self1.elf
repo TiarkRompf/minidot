@@ -35,25 +35,196 @@ wf-tp : tenv -> tpe -> type.
 wf-dc : tenv -> dec -> type.
 sub-tp : tenv -> tpe -> tenv -> tpe -> type.
 sub-dc : tenv -> dec -> tenv -> dec -> type.
+sub-env : tenv -> tenv -> type.
 
-sub-tp/top : sub-tp G1 T G2 top -> wf-tp G1 T.
+sub-tp/top : sub-tp G1 T G2 top
+          <- wf-tp G1 T
+          <- sub-env G1 G2.
 sub-tp/tsel1 : sub-tp G1 tsel G2 T2
             <- tlookup G1 D1
             <- tlookup G2 D2
             <- sub-dc G1 D1 G2 D2
-            <- has-lower D1 S1
-            <- sub-tp G1 S1 G2 T2
+            <- sub-env G1 G2
+            <- has-upper D1 U1
+            <- sub-tp G1 U1 G2 T2
             .
 sub-tp/tsel2 : sub-tp G1 T1 G2 tsel
             <- tlookup G1 D1
             <- tlookup G2 D2
             <- sub-dc G1 D1 G2 D2
+            <- sub-env G1 G2
+            <- has-lower D1 S1
+            <- sub-tp G1 T1 G2 S1
             <- has-upper D1 U1
-            <- sub-tp G1 T1 G2 U1 % NOTE(namin): fiddle with this as necessary for the proofs
+            <- sub-tp G1 T1 G2 U1
             .
 sub-tp/tbind : sub-tp G1 (tbind D1) G2 (tbind D2)
             <- sub-dc (tcons D1) D1 (tcons D2) D2
+            <- sub-env G1 G2
             .
 
+sub-dc/ss : sub-dc G1 (rect (tsome S1) U1) G2 (rect (tsome S2) U2)
+         <- sub-tp G2 S2 G1 S1
+         <- sub-tp G1 U1 G2 U2
+         <- sub-tp G1 S1 G1 U1
+         <- sub-tp G2 S2 G2 U2.
+sub-dc/sn : sub-dc G1 (rect (tsome S1) U1) G2 (rect tnone U2)
+         <- sub-tp G1 U1 G2 U2
+         <- sub-tp G1 S1 G1 U1.
+
+sub-dc/nn : sub-dc G1 (rect tnone U1) G2 (rect tnone U2)
+         <- sub-tp G1 U1 G2 U2.
+
+wf-tp/top : wf-tp G top.
+wf-tp/tbind : wf-tp G (tbind D)
+           <- wf-dc (tcons D) D.
+wf-tp/tsel : wf-tp G tsel
+          <- tlookup G D
+          <- wf-dc G D.
+
+wf-dc/s : wf-dc G (rect (tsome S) U)
+       <- sub-tp G S G U.
+wf-dc/n : wf-dc G (rect tnone U)
+       <- wf-tp G U.
+
+sub-env/nn : sub-env tnil tnil.
+sub-env/ss : sub-env (tcons D1) (tcons D2)
+          <- sub-dc (tcons D1) D1 (tcons D2) D2.
+
 %%% PROOFS %%%
+
+extract-wfd : sub-dc G1 T1 G2 T2 -> wf-dc G1 T1 -> wf-dc G2 T2 -> type.
+%mode extract-wfd +A -B -C.
+extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
+%mode extract-wf +A -B -C.
+extract-sub-env : sub-tp G1 T1 G2 T2 -> sub-env G1 G2 -> type.
+%mode extract-sub-env +A -B.
+
+- : extract-wf (sub-tp/top _ W) W wf-tp/top.
+
+- : extract-wf (sub-tp/tsel1 BT H _ BD TL2 TL1)
+     (wf-tp/tsel D1 TL1)
+     W2
+ <- extract-wfd BD D1 _
+ <- extract-wf BT _ W2.
+
+- : extract-wf (sub-tp/tsel2 _ _ BT H _ BD TL2 TL1)
+     W1
+     (wf-tp/tsel D2 TL2)
+ <- extract-wfd BD _ D2
+ <- extract-wf BT W1 _.
+
+- : extract-wf (sub-tp/tbind _ BD)
+     (wf-tp/tbind D1)
+     (wf-tp/tbind D2)
+ <- extract-wfd BD D1 D2.
+
+- : extract-wfd (sub-dc/ss B2 B1 BU BS)
+     (wf-dc/s B1)
+     (wf-dc/s B2).
+
+- : extract-wfd (sub-dc/sn B1 BU)
+     (wf-dc/s B1)
+     (wf-dc/n WU2)
+ <- extract-wf BU _ WU2.
+
+- : extract-wfd (sub-dc/nn BU)
+     (wf-dc/n WU1)
+     (wf-dc/n WU2)
+ <- extract-wf BU WU1 WU2.
+
+- : extract-sub-env (sub-tp/top WE _) WE.
+
+- : extract-sub-env (sub-tp/tsel1 BT H WE BD TL2 TL1)
+     WE.
+
+- : extract-sub-env (sub-tp/tsel2 _ _ BT H WE BD TL2 TL1)
+     WE.
+
+- : extract-sub-env (sub-tp/tbind WE _) WE.
+
+%worlds () (extract-wf _ _ _) (extract-wfd _ _ _) (extract-sub-env _ _).
+%total (A B C) (extract-wf A _ _) (extract-wfd B _ _) (extract-sub-env C _).
+%reduces B <= A (extract-sub-env A B).
+
+sub-env-tl :
+  %% Inputs
+  sub-env G1 G2 ->
+  tlookup G1 D1 ->
+  %% Outputs
+  tlookup G2 D2 ->
+  sub-dc G1 D1 G2 D2 ->
+  type.
+%mode sub-env-tl +A +B -C -D.
+
+-/ss : sub-env-tl (sub-env/ss BD) TL1 tl BD.
+
+%worlds () (sub-env-tl _ _ _ _).
+%total A (sub-env-tl A _ _ _).
+
+sub-env-tlr :
+  %% Inputs
+  sub-env G1 G2 ->
+  tlookup G2 D2 ->
+  %% Outputs
+  tlookup G1 D1 ->
+  sub-dc G1 D1 G2 D2 ->
+  type.
+%mode sub-env-tlr +A +B -C -D.
+
+-/ss : sub-env-tlr (sub-env/ss BD) TL2 tl BD.
+
+%worlds () (sub-env-tlr _ _ _ _).
+%total A (sub-env-tlr A _ _ _).
+
+sub-env-trans :
+  %% Inputs
+  sub-env G1 G2 ->
+  sub-env G2 G3 ->
+  %% Output
+  sub-env G1 G3 ->
+  type.
+%mode sub-env-trans +A +B -C.
+sub-tp-trans :
+  %% Inputs
+  sub-tp G1 T1 G2 T2 ->
+  sub-tp G2 T2 G3 T3 ->
+  %% Output
+  sub-tp G1 T1 G3 T3 ->
+  type.
+%mode sub-tp-trans +A +B -C.
+
+-/top : sub-tp-trans B12 (sub-tp/top E23 W2)
+         (sub-tp/top E13 W1)
+     <- extract-wf B12 W1 _
+     <- extract-sub-env B12 E12
+     <- sub-env-trans E12 E23 E13.
+
+-/tsel1 : sub-tp-trans
+           (sub-tp/tsel1 B12 HU1 E12 BD12 TL2 TL1)
+           B23
+           (sub-tp/tsel1 B13 HU1 E13 BD13 TL3 TL1)
+     <- extract-sub-env B23 E23
+     <- sub-env-trans E12 E23 E13
+     <- sub-env-tl E13 TL1 TL3 BD13
+     <- sub-tp-trans B12 B23 B13.
+
+-/tsel2 : sub-tp-trans
+           B12
+           (sub-tp/tsel2 BU23 HU3 B23 HS3 E23 BD23 TL3 TL2)
+           (sub-tp/tsel2 BU13 HU3 B13 HS3 E13 BD13 TL3 TL1)
+     <- extract-sub-env B12 E12
+     <- sub-env-trans E12 E23 E13
+     <- sub-env-tlr E13 TL3 TL1 BD13
+     <- sub-tp-trans B12 B23 B13
+     <- sub-tp-trans B12 BU23 BU13.
+
+-/tsel2-1 : sub-tp-trans
+             (sub-tp/tsel2 BU12 HU2 B12 HS2 E12 BD12 TL2 TL1)
+             (sub-tp/tsel1 B23 HU2' E23 BD23 TL3 TL2')
+             OUT
+     .
+
+%worlds () (sub-tp-trans _ _ _) (sub-env-trans _ _ _).
+%total {(A1 A2) (B1 B2)} (sub-tp-trans A1 B1 _) (sub-env-trans A2 B2 _).
 
