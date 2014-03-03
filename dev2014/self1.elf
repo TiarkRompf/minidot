@@ -310,6 +310,14 @@ sub-env-trans :
      <- sub-tp-trans BU12' B23 OUT
      .
 
+-/tbind : sub-tp-trans
+           (sub-tp/tbind E12 BD12)
+           (sub-tp/tbind E23 BD23)
+           (sub-tp/tbind E13 BD13)
+     <- sub-env-trans E12 E23 E13
+     <- sub-dc-trans BD12 BD23 BD13
+     .
+
 %worlds () (sub-tp-trans _ _ _) (sub-dc-trans _ _ _) (sub-env-trans _ _ _).
 %total {(A1 A2 A3) (B1 B2 B3)} (sub-tp-trans A1 B1 _) (sub-dc-trans A2 B2 _) (sub-env-trans A3 B3 _).
 
