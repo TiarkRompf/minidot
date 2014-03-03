@@ -54,7 +54,7 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 tsel
             <- sub-dc G1 D1 G2 D2
             <- sub-env G1 G2
             <- has-lower D1 S1
-            <- sub-tp G1 T1 G2 S1
+            <- sub-tp G1 T1 G1 S1
             <- has-upper D2 U2
             <- sub-tp G1 T1 G2 U2
             .
@@ -289,22 +289,21 @@ sub-env-trans :
      <- sub-env-tl E13 TL1 TL3 BD13
      <- sub-tp-trans B12 B23 B13.
 
--/tsel2 : sub-tp-trans
-           B12
-           (sub-tp/tsel2 BU23 HU3 B23 HS3 E23 BD23 TL3 TL2)
-           (sub-tp/tsel2 BU13 HU3 B13 HS3 E13 BD13 TL3 TL1)
-     <- extract-sub-env B12 E12
-     <- sub-env-trans E12 E23 E13
-     <- sub-env-tlr E13 TL3 TL1 BD13
-     <- sub-tp-trans B12 B23 B13
-     <- sub-tp-trans B12 BU23 BU13.
+% -/tsel2 : sub-tp-trans
+%           B12
+%           (sub-tp/tsel2 BU23 HU3 B23 HS2 E23 BD23 TL3 TL2)
+%           (sub-tp/tsel2 BU13 HU3 B13 HS1 E13 BD13 TL3 TL1)
+%     <- extract-sub-env B12 E12
+%     <- sub-env-trans E12 E23 E13
+%     <- sub-env-tlr E13 TL3 TL1 BD13
+%     <- sub-tp-trans B12 B23 B13
+%     <- sub-tp-trans B12 BU23 BU13.
 
 -/tsel2-1 : sub-tp-trans
              (sub-tp/tsel2 BU12 HU2 B12 HS2 E12 BD12 TL2 TL1)
              (sub-tp/tsel1 B23 HU2' E23 BD23 TL3 TL2')
              OUT
      <- tlookup-eq TL2 TL2' EQD2
-     <- eq-sub-dc-high EQD2 BD12 BD12'
      <- upper-eq EQD2 HU2 HU2' EQU2
      <- eq-sub-tp-high EQU2 BU12 BU12'
      <- sub-tp-trans BU12' B23 OUT
