@@ -1,0 +1,327 @@
+%{ ------- arithmetic ----- }%
+
+nat: type.
+z: nat.
+s: nat -> nat.
+
+add : nat -> nat -> nat -> type.
+add/z : add z N N.
+add/s : add (s N1) N2 (s N3)
+   <- add N1 N2 N3.
+
+%mode add +N1 +N2 -N3.
+
+lte : nat -> nat -> type.
+lte/z : lte z N.
+lte/s : lte (s N1) (s N2)
+   <- lte N1 N2.
+
+%mode lte +N1 +N2.
+
+
+eq : nat -> nat -> type.
+eq/z : eq z z.
+eq/s : eq (s N1) (s N2)
+   <- eq N1 N2.
+
+% %mode eq +N1 +N2.
+
+
+ne : nat -> nat -> type.
+ne/z1 : ne z (s N).
+ne/z2 : ne (s N) z.
+ne/s : ne (s N1) (s N2)
+   <- ne N1 N2.
+
+%mode ne +N1 +N2.
+
+eq-refl: {N:nat} eq N N -> type.
+%mode eq-refl +N -E1.
+
+- : eq-refl z eq/z.
+- : eq-refl (s N) (eq/s E) <- eq-refl N E.
+
+%worlds () (eq-refl _ _).
+%total {A} (eq-refl A _).
+
+
+sub-eq: eq A1 A2 -> eq C1 C2 -> add A1 B1 C1 -> add A2 B2 C2 -> eq B1 B2 -> type.
+%mode sub-eq +E1 +E2 +A1 +A2 -E3.
+
+- : sub-eq eq/z E add/z add/z E.
+- : sub-eq (eq/s E1) (eq/s E2) (add/s A1) (add/s A2) E3
+  <- sub-eq E1 E2 A1 A2 E3.
+
+%worlds () (sub-eq _ _ _ _ _).
+%total {A} (sub-eq A _ _ _ _).
+
+add-inc: add A B C -> add A (s B) (s C) -> type.
+%mode add-inc +E1 -E2.
+
+- : add-inc add/z add/z.
+- : add-inc (add/s A1) (add/s A2)
+  <- add-inc A1 A2.
+
+%worlds () (add-inc _ _).
+%total {A} (add-inc A _).
+
+
+
+%{ ------- language ----- }%
+
+% sorts
+exp: type.
+
+tpe: type.
+val: type.
+
+tenv: type.
+
+% members
+
+dec: type.
+rect: tpe -> tpe -> dec.
+
+% types
+
+top  : tpe.
+tsel : tpe.         % x.T
+bind : dec -> tpe.     % { this_n => A }
+
+
+tcons : dec -> tenv.
+tnil : tenv.
+
+stp: tenv -> tpe -> tenv -> tpe -> type.
+
+sdc: tenv -> dec -> tenv -> dec -> type.
+
+sdc/rect: sdc G1 (rect TA1 TB1) G2 (rect TA2 TB2) 
+          <- stp G1 TA2 G2 TA1 % swap G1 G2?
+          <- stp G1 TB1 G2 TB2
+          <- stp G1 TA1 G2 TB1
+          <- stp G1 TA2 G2 TB2
+          .
+
+stp/top: stp tnil T tnil top.
+stp/topc: stp (tcons D1) T (tcons D2) top.
+
+% stp/fun: stp (arrow z TA1 TB1) G2 (arrow z TA2 TB2) 
+%           <- stp N1 G2 TA2 G1 TA1 
+%           <- stp N2 G1 TB1 G2 TB2 
+%          .
+
+stp/sel1: stp (tcons (rect TA1 TB1)) tsel (tcons (rect TA2 TB2)) T2 
+          <- stp (tcons (rect TA1 TB1)) TB1 (tcons (rect TA2 TB2)) T2
+          .
+
+stp/sel2: stp (tcons (rect TA1 TB1)) T1 (tcons (rect TA2 TB2)) tsel
+          % <- sdc (tcons (rect TA1 TB1)) (rect TA1 TB1) (tcons (rect TA2 TB2)) (rect TA2 TB2)
+          <- stp (tcons (rect TA1 TB1)) T1 (tcons (rect TA2 TB2)) TB2       % XXX trans: TA1 must be new lower thing!
+          <- stp (tcons (rect TA1 TB1)) T1 (tcons (rect TA1 TB1)) TA1       % XXX trans: TA1 must be new lower thing -> TA0!
+          .
+
+stp/selx: stp (tcons (rect TA1 TB1)) tsel (tcons (rect TA2 TB2)) tsel
+          <- stp (tcons (rect TA1 TB1)) TB1 (tcons (rect TA2 TB2)) TB2
+          .
+
+%{
+
+D0<D1 |- T0 < T1  &&  D1<D2 |- T1 < TA1
+
+D0<D1 --> TA1 < TA0
+
+D0<D2 |- T0 < TA0
+
+
+
+got: stp (tcons (rect TA0 TB0)) T0 (tcons (rect TA1 TB1)) T1
+   
+want: stp (tcons (rect TA0 TB0)) T0 (tcons (rect TA2 TB2)) TA1
+
+
+}%
+
+
+
+
+% stp/selx: stp (tcons (rect TA1 TB1)) tsel (tcons (rect TA2 TB2)) tsel
+%           .
+
+
+stp/bind: stp tnil (bind D1) tnil (bind D2)
+          <- sdc (tcons D1) D1 (tcons D2) D2
+          .
+
+% stp/weaken: stp (tcons (rect TA1 TB1)) T1 (tcons (rect TA1 TB1)) T2 
+%          <- stp (tcons (rect TA1 TB1)) T1 (tcons (rect TA2 TB2)) T2     % XXX trans: TA1 must be new lower thing!
+%          .
+
+
+stp-magic: stp (tcons (rect TA1 TB1)) T1 (tcons (rect TA2 TB2)) T2 ->   % D1 < D2 |- TA2 < TA1
+           stp (tcons (rect TA1 TB1)) TX (tcons (rect TA2 TB2)) TA2 ->  % D1 < D2 |- TX < TA2
+           stp (tcons (rect TA1 TB1)) TX (tcons (rect TA1 TB1)) TA1 ->  % D1 < D2 |- TX < TA2
+           type.
+%mode stp-magic +SBT1 +SBT2 -SBT3.
+%worlds () (stp-magic _ _ _).
+%trustme
+%total N (stp-magic N _ _).
+
+
+%% combined trans + weakening lemma
+%
+%  -- ignore size for the moment, need to factor in size of N0 (weakening deriv)
+%  -- will need to fill in symmetric version, too (any trouble expected?)
+%
+
+stp-trans-weaken: stp G1 T1 G2 T2 -> stp G2 T2 G3 T3 -> stp G1 T1 G3 T3 -> type.
+%mode stp-trans-weaken +SBT1 +SBT2 -SBT3.
+
+stp-trans-weaken2: stp G1 T1 G2 T2 -> stp G2 T2 G3 T3 -> stp G1 T1 G3 T3 -> type.
+%mode stp-trans-weaken2 +SBT1 +SBT2 -SBT3.
+
+sdc-trans-weaken: sdc G1 T1 G2 T2 -> sdc G2 T2 G3 T3 -> sdc G1 T1 G3 T3 -> type.
+%mode sdc-trans-weaken +SBT1 +SBT2 -SBT3.
+
+%worlds () (sdc-trans-weaken _ _ _).
+%trustme
+%total N (sdc-trans-weaken N _ _).
+
+%worlds () (stp-trans-weaken2 _ _ _).
+%trustme
+%total N (stp-trans-weaken2 N _ _).
+
+
+-/top : stp-trans-weaken S1 stp/top stp/top.
+-/topc : stp-trans-weaken S1 stp/topc stp/topc.
+
+% -/top : stp-trans-weaken S1 (stp/weaken S2) (stp/weaken S3) <- stp-trans-weaken S1 S2 S3.
+
+
+%{
+
+-/fun-fun  : stp-trans-weaken
+            (s (s N)) (A: add (s N1) (s N2) (s (s N)))
+            WEAK
+            (stp/fun A1 SBT2 SBT1)
+            (stp/fun A2 SBT4 SBT3)
+            (stp/wid (stp/fun A3 SBT6 SBT5))
+            <- add-assoc A1 A2 A A31 A42 A3
+            <- add-red1 _ _ _ A3
+            <- add-red2 _ _ _ A3
+            <- stp-trans-weaken2 N3 A42 WEAK SBT3 SBT1 SBT5
+            <- stp-trans-weaken N4 A31 WEAK SBT2 SBT4 SBT6
+            .
+}%
+
+-/tsel1 :   stp-trans-weaken
+            (stp/sel1 ST_U1)
+            SBT2
+            (stp/sel1  ST_U1')
+            <- stp-trans-weaken ST_U1 SBT2 ST_U1'
+            .
+
+-/tsel2 :   stp-trans-weaken
+            SBT1
+            (stp/sel2 ST_1L ST_2U)
+            (stp/sel2 ST_1L'' ST_2U')
+            <- stp-trans-weaken SBT1 ST_1L ST_1L'
+            <- stp-trans-weaken SBT1 ST_2U ST_2U'
+            <- stp-magic SBT1 ST_1L' ST_1L''
+            .
+
+-/tsel2-tsel1 : stp-trans-weaken
+            (stp/sel2 ST_1L ST_1U)
+            (stp/sel1 ST_U2)
+            OUT
+            <- stp-trans-weaken ST_1U ST_U2 OUT
+            .
+
+
+-/tsel1-tselx : stp-trans-weaken
+            ((stp/selx ST0): stp (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) tsel)
+            (stp/sel1 ST_U1)
+            (stp/sel1 ST_U1')
+            <- stp-trans-weaken ST0 ST_U1 ST_U1'
+            .
+
+-/tselx-tsel2 : stp-trans-weaken
+            (stp/sel2 ST_1L ST_U1)
+            ((stp/selx ST0): stp (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) tsel)
+            (stp/sel2 ST_1L ST_U1')
+            <- stp-trans-weaken ST_U1 ST0 ST_U1'
+            .
+
+
+-/tselx-tselx : stp-trans-weaken
+            (stp/selx SBT1)
+            (stp/selx SBT2)
+            (stp/selx SBT3)
+            <- stp-trans-weaken SBT1 SBT2 SBT3
+            .
+
+
+
+%{
+-/tsel2-tsel1 : stp-trans-weaken
+            (s (s N)) (A: add (s N1) (s N2) (s (s N)))
+            WEAK
+            (stp/sel2 (A1: add N11 N12 N1) ST_1L ST_LU)
+            (stp/sel1 (A2: add N21 N22 N2) ST_U2 ST_LU')
+            (stp/wid (stp/wid OUT))
+            <- add-commut A1 A3
+            <- add-help3 A2 A A5 A4
+            <- add-red1 _ _ _ A
+            <- add-red1 _ _ _ A5
+            <- stp-trans-weaken N1 A3 WEAK ST_1L ST_LU ST_1U
+            <- stp-trans-weaken N4 (A4: add N1 N22 N4) WEAK ST_1U ST_U2 ST_12
+            %% widen from N4 to N
+            <- add-commut A5 A5'
+            <- stp-widen A5' ST_12 OUT
+            .
+
+
+-/tsel2-tselx : stp-trans-weaken
+            (s (s N)) (A: add (s N1) (s z) (s (s N))
+            WEAK
+            (stp/sel2 (A1: add N11 N12 N1) ST_1L ST_LU)
+            (stp/selx)
+            (stp/wid (stp/sel2 A1' ST_1L ST_LU))
+            % <- add-commut A1 A3
+            % <- add-help3 A2 A A5 A4' 
+            % <- add-red1 _ _ _ A
+            % <- add-red1 _ _ _ A5
+            % <- stp-trans-weaken N1 A3 WEAK ST_1L ST_LU ST_1U
+            % <- stp-trans-weaken N4 (A4: add _ _ _) WEAK ST_1U ST_U2 ST_12
+            %% widen from N4 to N
+            % <- add-commut A5 A5'
+            % <- stp-widen A5' ST_12 OUT
+            .
+
+
+-/tselx-tselx : stp-trans-weaken
+            (s (s N)) (A: add (s N1) (s N2) (s (s N)))
+            WEAK
+            (stp/selx S1)
+            (stp/selx S2)
+            (stp/wid (stp/selx S3))
+            <- add-minus1 A A'
+            <- add-minus2 A' A''
+            <- sdc-trans-weaken _ A'' WEAK S1 S2 S3
+            .
+}%
+
+
+-/tbind-bind : stp-trans-weaken
+            (stp/bind S1)
+            (stp/bind S2)
+            (stp/bind S3)
+            <- sdc-trans-weaken S1 S2 S3
+            .
+
+
+%worlds () (stp-trans-weaken _ _ _).
+
+%total [A B] (stp-trans-weaken A B _ ).
+
+
