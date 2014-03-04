@@ -54,9 +54,9 @@ sub-tp/tsel2 : sub-tp G1 T1 G2 tsel
             <- sub-dc G1 D1 G2 D2
             <- sub-env G1 G2
             <- has-lower D1 S1
-            <- sub-tp G1 T1 G2 S1
-            <- has-upper D1 U1
-            <- sub-tp G1 T1 G2 U1
+            <- sub-tp G1 T1 G1 S1
+            <- has-upper D2 U2
+            <- sub-tp G1 T1 G2 U2
             .
 sub-tp/tbind : sub-tp G1 (tbind D1) G2 (tbind D2)
             <- sub-dc (tcons D1) D1 (tcons D2) D2
@@ -92,6 +92,76 @@ sub-env/ss : sub-env (tcons D1) (tcons D2)
           <- sub-dc (tcons D1) D1 (tcons D2) D2.
 
 %%% PROOFS %%%
+
+%{ ------- uniqueness ------ }%
+
+same: tpe -> tpe -> type.
+ident: same T T.
+
+samed: dec -> dec -> type.
+identd: samed T T.
+
+sameopt : topt -> topt -> type.
+identopt: sameopt T T.
+
+sametenv: tenv -> tenv -> type.
+identtenv: sametenv G G.
+
+false: type.
+
+tlookup-eq : tlookup G D1 -> tlookup G D2 -> samed D1 D2 -> type.
+%mode tlookup-eq +A +B -C.
+
+- : tlookup-eq tl tl identd.
+
+%worlds () (tlookup-eq _ _ _).
+%total A (tlookup-eq A _ _).
+
+eq-sub-tp-low : same T1 T1' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1' G2 T2 -> type.
+%mode eq-sub-tp-low +A +B -C.
+
+- : eq-sub-tp-low ident BT BT.
+
+%worlds () (eq-sub-tp-low _ _ _).
+%total A (eq-sub-tp-low A _ _).
+%reduces C <= B (eq-sub-tp-low _ B C).
+
+eq-sub-tp-high : same T2 T2' -> sub-tp G1 T1 G2 T2 -> sub-tp G1 T1 G2 T2' -> type.
+%mode eq-sub-tp-high +A +B -C.
+
+- : eq-sub-tp-high ident BT BT.
+
+%worlds () (eq-sub-tp-high _ _ _).
+%total A (eq-sub-tp-high A _ _).
+%reduces C <= B (eq-sub-tp-high _ B C).
+
+eq-sub-dc-low : samed D1 D1' -> sub-dc G1 D1 G2 D2 -> sub-dc G1 D1' G2 D2 -> type.
+%mode eq-sub-dc-low +A +B -C.
+
+- : eq-sub-dc-low identd BD BD.
+
+%worlds () (eq-sub-dc-low _ _ _).
+%total A (eq-sub-dc-low A _ _).
+%reduces C <= B (eq-sub-dc-low _ B C).
+
+eq-sub-dc-high : samed D2 D2' -> sub-dc G1 D1 G2 D2 -> sub-dc G1 D1 G2 D2' -> type.
+%mode eq-sub-dc-high +A +B -C.
+
+- : eq-sub-dc-high identd BD BD.
+
+%worlds () (eq-sub-dc-high _ _ _).
+%total A (eq-sub-dc-high A _ _).
+%reduces C <= B (eq-sub-dc-high _ B C).
+
+upper-eq : samed D D' -> has-upper D U -> has-upper D' U' -> same U U' -> type.
+%mode upper-eq +A +B +C -D.
+
+- : upper-eq identd has-upper/yes has-upper/yes ident.
+
+%worlds () (upper-eq _ _ _ _).
+%total A (upper-eq A _ _ _).
+
+%{ ------- regularity ------ }%
 
 extract-wfd : sub-dc G1 T1 G2 T2 -> wf-dc G1 T1 -> wf-dc G2 T2 -> type.
 %mode extract-wfd +A -B -C.
@@ -147,6 +217,8 @@ extract-sub-env : sub-tp G1 T1 G2 T2 -> sub-env G1 G2 -> type.
 %total (A B C) (extract-wf A _ _) (extract-wfd B _ _) (extract-sub-env C _).
 %reduces B <= A (extract-sub-env A B).
 
+%{ ------- transitivity ------ }%
+
 sub-env-tl :
   %% Inputs
   sub-env G1 G2 ->
@@ -177,14 +249,6 @@ sub-env-tlr :
 %worlds () (sub-env-tlr _ _ _ _).
 %total A (sub-env-tlr A _ _ _).
 
-sub-env-trans :
-  %% Inputs
-  sub-env G1 G2 ->
-  sub-env G2 G3 ->
-  %% Output
-  sub-env G1 G3 ->
-  type.
-%mode sub-env-trans +A +B -C.
 sub-tp-trans :
   %% Inputs
   sub-tp G1 T1 G2 T2 ->
@@ -193,6 +257,22 @@ sub-tp-trans :
   sub-tp G1 T1 G3 T3 ->
   type.
 %mode sub-tp-trans +A +B -C.
+sub-dc-trans :
+  %% Inputs
+  sub-dc G1 D1 G2 D2 ->
+  sub-dc G2 D2 G3 D3 ->
+  %% Output
+  sub-dc G1 D1 G3 D3 ->
+  type.
+%mode sub-dc-trans +A +B -C.
+sub-env-trans :
+  %% Inputs
+  sub-env G1 G2 ->
+  sub-env G2 G3 ->
+  %% Output
+  sub-env G1 G3 ->
+  type.
+%mode sub-env-trans +A +B -C.
 
 -/top : sub-tp-trans B12 (sub-tp/top E23 W2)
          (sub-tp/top E13 W1)
@@ -209,22 +289,34 @@ sub-tp-trans :
      <- sub-env-tl E13 TL1 TL3 BD13
      <- sub-tp-trans B12 B23 B13.
 
--/tsel2 : sub-tp-trans
-           B12
-           (sub-tp/tsel2 BU23 HU3 B23 HS3 E23 BD23 TL3 TL2)
-           (sub-tp/tsel2 BU13 HU3 B13 HS3 E13 BD13 TL3 TL1)
-     <- extract-sub-env B12 E12
-     <- sub-env-trans E12 E23 E13
-     <- sub-env-tlr E13 TL3 TL1 BD13
-     <- sub-tp-trans B12 B23 B13
-     <- sub-tp-trans B12 BU23 BU13.
+% -/tsel2 : sub-tp-trans
+%           B12
+%           (sub-tp/tsel2 BU23 HU3 B23 HS2 E23 BD23 TL3 TL2)
+%           (sub-tp/tsel2 BU13 HU3 B13 HS1 E13 BD13 TL3 TL1)
+%     <- extract-sub-env B12 E12
+%     <- sub-env-trans E12 E23 E13
+%     <- sub-env-tlr E13 TL3 TL1 BD13
+%     <- sub-tp-trans B12 B23 B13
+%     <- sub-tp-trans B12 BU23 BU13.
 
 -/tsel2-1 : sub-tp-trans
              (sub-tp/tsel2 BU12 HU2 B12 HS2 E12 BD12 TL2 TL1)
              (sub-tp/tsel1 B23 HU2' E23 BD23 TL3 TL2')
              OUT
+     <- tlookup-eq TL2 TL2' EQD2
+     <- upper-eq EQD2 HU2 HU2' EQU2
+     <- eq-sub-tp-high EQU2 BU12 BU12'
+     <- sub-tp-trans BU12' B23 OUT
      .
 
-%worlds () (sub-tp-trans _ _ _) (sub-env-trans _ _ _).
-%total {(A1 A2) (B1 B2)} (sub-tp-trans A1 B1 _) (sub-env-trans A2 B2 _).
+-/tbind : sub-tp-trans
+           (sub-tp/tbind E12 BD12)
+           (sub-tp/tbind E23 BD23)
+           (sub-tp/tbind E13 BD13)
+     <- sub-env-trans E12 E23 E13
+     <- sub-dc-trans BD12 BD23 BD13
+     .
+
+%worlds () (sub-tp-trans _ _ _) (sub-dc-trans _ _ _) (sub-env-trans _ _ _).
+%total {(A1 A2 A3) (B1 B2 B3)} (sub-tp-trans A1 B1 _) (sub-dc-trans A2 B2 _) (sub-env-trans A3 B3 _).
 
