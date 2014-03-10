@@ -1,0 +1,296 @@
+%{ ------- arithmetic ----- }%
+
+nat: type.
+z: nat.
+s: nat -> nat.
+
+add : nat -> nat -> nat -> type.
+add/z : add z N N.
+add/s : add (s N1) N2 (s N3)
+   <- add N1 N2 N3.
+
+%mode add +N1 +N2 -N3.
+
+lte : nat -> nat -> type.
+lte/z : lte z N.
+lte/s : lte (s N1) (s N2)
+   <- lte N1 N2.
+
+%mode lte +N1 +N2.
+
+
+eq : nat -> nat -> type.
+eq/z : eq z z.
+eq/s : eq (s N1) (s N2)
+   <- eq N1 N2.
+
+% %mode eq +N1 +N2.
+
+
+ne : nat -> nat -> type.
+ne/z1 : ne z (s N).
+ne/z2 : ne (s N) z.
+ne/s : ne (s N1) (s N2)
+   <- ne N1 N2.
+
+%mode ne +N1 +N2.
+
+eq-refl: {N:nat} eq N N -> type.
+%mode eq-refl +N -E1.
+
+- : eq-refl z eq/z.
+- : eq-refl (s N) (eq/s E) <- eq-refl N E.
+
+%worlds () (eq-refl _ _).
+%total {A} (eq-refl A _).
+
+
+sub-eq: eq A1 A2 -> eq C1 C2 -> add A1 B1 C1 -> add A2 B2 C2 -> eq B1 B2 -> type.
+%mode sub-eq +E1 +E2 +A1 +A2 -E3.
+
+- : sub-eq eq/z E add/z add/z E.
+- : sub-eq (eq/s E1) (eq/s E2) (add/s A1) (add/s A2) E3
+  <- sub-eq E1 E2 A1 A2 E3.
+
+%worlds () (sub-eq _ _ _ _ _).
+%total {A} (sub-eq A _ _ _ _).
+
+add-inc: add A B C -> add A (s B) (s C) -> type.
+%mode add-inc +E1 -E2.
+
+- : add-inc add/z add/z.
+- : add-inc (add/s A1) (add/s A2)
+  <- add-inc A1 A2.
+
+%worlds () (add-inc _ _).
+%total {A} (add-inc A _).
+
+
+
+%{ ------- language ----- }%
+
+% sorts
+exp: type.
+
+tpe: type.
+val: type.
+
+tenv: type.
+
+% members
+
+dec: type.
+rect: tpe -> tpe -> dec.
+
+% types
+
+top  : tpe.
+arrow: tpe -> tpe -> tpe.
+tsel : tpe.         % x.T
+bind : dec -> tpe.     % { this_n => A }
+
+
+tcons : dec -> tenv.
+tnil : tenv.
+
+stp: tenv -> tpe -> tpe -> type.
+
+sdc: tenv -> dec -> dec -> type.
+
+sdc/rect: sdc G1 (rect TA1 TB1) (rect TA2 TB2) 
+          <- stp G1 TA2 TA1 % swap G1 G2?
+          <- stp G1 TB1 TB2
+          <- stp G1 TA1 TB1
+          <- stp G1 TA2 TB2
+          .
+
+stp/top: stp G T top.
+
+stp/fun: stp G (arrow TA1 TB1) (arrow TA2 TB2) 
+          <- stp G TA2 TA1
+          <- stp G TB1 TB2 
+          .
+
+stp/sel1: stp (tcons (rect TA1 TB1)) tsel T2 
+          <- stp (tcons (rect TA1 TB1)) TB1 T2
+          .
+
+stp/sel2: stp (tcons (rect TA1 TB1)) T1 tsel
+          <- stp (tcons (rect TA1 TB1)) T1 TB1
+          <- stp (tcons (rect TA1 TB1)) T1 TA1
+          .
+
+stp/selx: stp (tcons (rect TA1 TB1)) tsel tsel
+          <- stp (tcons (rect TA1 TB1)) TA1 TB1
+          .
+
+
+wf-tp: tenv -> tpe -> type.
+
+wf-tp/fun: wf-tp G (arrow T1 T2) <- wf-tp G T1 <- wf-tp G T2. 
+wf-tp/sel: wf-tp (tcons (rect L U)) tsel <- wf-tp (tcons (rect L U)) U.
+
+
+stp/trans: stp G T1 T3
+          <- stp G T2 T3
+          <- stp G T1 T2 
+          <- wf-tp G T2
+          .
+
+
+stp/bind: stp tnil (bind D1) (bind D2)
+          <- sdc (tcons D1) D1 D2
+          .
+
+
+%{
+stp-inv-sel1: stp (tcons (rect TA1 TB1)) tsel T1 -> stp (tcons (rect TA1 TB1)) TB1 T1 -> type.
+%mode stp-inv-sel1 +A -B.
+- : stp-inv-sel1 stp/top stp/top.
+- : stp-inv-sel1 (stp/sel1 ST) ST.
+- : stp-inv-sel1 (stp/sel2 ST1 ST2) (stp/sel2 ST1' ST2') 
+      <- stp-inv-sel1 ST1 ST1'
+      <- stp-inv-sel1 ST2 ST2'
+      .
+%worlds () (stp-inv-sel1 _ _).
+%total (A) (stp-inv-sel1 A _).
+
+stp-inv-sel2: stp (tcons (rect TA1 TB1)) T1 tsel -> stp (tcons (rect TA1 TB1)) T1 TA1 -> stp (tcons (rect TA1 TB1)) T1 TB1 -> type.
+%mode stp-inv-sel2 +A -B -C.
+- : stp-inv-sel2 (stp/sel2 ST1 ST2) ST1 ST2.
+- : stp-inv-sel2 (stp/sel1 ST) (stp/sel1 ST1) (stp/sel1 ST2)
+      <- stp-inv-sel2 ST ST1 ST2
+      .
+%worlds () (stp-inv-sel2 _ _ _).
+%total (A) (stp-inv-sel2 A _ _).
+  
+}%
+
+
+stp-trans: stp G1 T1 T2 -> stp G1 T2 T3 -> stp G1 T1 T3 -> type.
+%mode stp-trans +SBT1 +SBT2 -SBT3.
+%%%% just create stp-trans node ...
+%worlds () (stp-trans _ _ _).
+%trustme
+%total (A) (stp-trans A _ _).
+
+
+
+stp-inv-sel1: stp (tcons (rect TA1 TB1)) tsel (arrow T1 T2) -> stp (tcons (rect TA1 TB1)) TB1 (arrow T1 T2) -> type.
+%mode stp-inv-sel1 +A -B.
+- : stp-inv-sel1 (stp/sel1 ST) ST.
+% - : stp-inv-sel1 (stp/trans W (stp/sel1 SU2) S23) ST <- stp-trans SU2 S23 ST.
+- : stp-inv-sel1 (stp/trans (wf-tp/fun W W1) S12 S23) ST <- stp-inv-sel1 S12 SU2 <- stp-trans SU2 S23 ST.
+- : stp-inv-sel1 (stp/trans (wf-tp/sel W) S12 S23) ST <- stp-inv-sel1 S23 ST.
+
+%worlds () (stp-inv-sel1 _ _).
+%total (A) (stp-inv-sel1 A _).
+
+stp-inv-sel2: stp (tcons (rect TA1 TB1)) (arrow T1 T2) tsel -> stp (tcons (rect TA1 TB1)) (arrow T1 T2) TA1 -> stp (tcons (rect TA1 TB1)) (arrow T1 T2) TB1 -> type.
+%mode stp-inv-sel2 +A -B -C.
+- : stp-inv-sel2 (stp/sel2 ST1 ST2) ST1 ST2.
+% - : stp-inv-sel2 (stp/sel1 ST) (stp/sel1 ST1) (stp/sel1 ST2)
+%      <- stp-inv-sel2 ST ST1 ST2
+%      .
+%worlds () (stp-inv-sel2 _ _ _).
+%trustme
+%total (A) (stp-inv-sel2 A _ _).
+
+
+stp-inv-fun0: stp G (arrow T1 T2) (arrow T3 T4) -> stp G T3 T1 -> stp G T2 T4 -> type.
+%mode stp-inv-fun0 +A -B -C.
+
+stp-inv-fun1: wf-tp G TX -> stp G (arrow T1 T2) TX -> stp G TX (arrow T3 T4) -> stp G T3 T1 -> stp G T2 T4 -> type.
+%mode stp-inv-fun1 +T +A +B -C -D.
+
+stp-inv-fun2: wf-tp G TX -> stp G (arrow T1 T2) TX -> stp G TX (arrow T3 T4) -> stp G T3 T1 -> stp G T2 T4 -> type.
+%mode stp-inv-fun2 +T +A +B -C -D.
+
+stp-inv-fun3: wf-tp G TX -> stp G (arrow T1 T2) TX -> stp G TX (arrow T3 T4) -> stp G T3 T1 -> stp G T2 T4 -> type.
+%mode stp-inv-fun3 +T +A +B -C -D.
+
+
+- : stp-inv-fun0 (stp/fun ST1 ST2) ST2 ST1
+      .
+- : stp-inv-fun0 (stp/trans W ST12 ST23) ST2 ST1
+      <- stp-inv-fun1 W ST12 ST23 ST2 ST1
+      .
+
+%{
+- : stp-inv-fun1 (wf-tp/fun W1 W2) ST12 ST23 ST3111 ST1232
+      <- stp-inv-fun0 ST12 ST2111 ST1222
+      <- stp-inv-fun0 ST23 ST3121 ST2232
+      <- stp-trans ST3121 ST2111 ST3111
+      <- stp-trans ST1222 ST2232 ST1232
+      .
+}%
+
+%% -----
+
+- : stp-inv-fun1 (wf-tp/fun W1x W2x) (stp/trans W2 ST12 ST23) (stp/fun ST5131 ST3252) ST5111 ST1252
+      <- stp-inv-fun1 W2 ST12 ST23 ST3111 ST1232
+      % <- stp-inv-fun3 W4 ST34 ST45 ST5131 ST3252
+      <- stp-trans ST5131 ST3111 ST5111
+      <- stp-trans ST1232 ST3252 ST1252
+      .
+
+
+% - : stp-inv-fun1 (wf-tp/fun W1x W2x) (stp/trans W2 ST12 ST23) (stp/trans W4 ST34 ST45) ST5111 ST1252
+%       <- stp-inv-fun2 W2 ST12 ST23 ST3111 ST1232
+%       <- stp-inv-fun3 W4 ST34 ST45 ST5131 ST3252
+%       <- stp-trans ST5131 ST3111 ST5111
+%       <- stp-trans ST1232 ST3252 ST1252
+%       .
+
+- : stp-inv-fun1 (wf-tp/sel W) ST1 ST2 ST1' ST2'
+      <- stp-inv-sel2 ST1 _ ST1U
+      <- stp-inv-sel1 ST2 STU2
+      <- stp-inv-fun1 W ST1U STU2 ST1' ST2'
+      .
+
+%worlds () (stp-inv-fun1 _ _ _ _ _)(stp-inv-fun2 _ _ _ _ _)(stp-inv-fun3 _ _ _ _ _).
+%total {(W1 W2 W3) (A1 A2 A3 )} (stp-inv-fun1 W1 A1 B1 _ _)(stp-inv-fun2 W2 A2 B2 _ _)(stp-inv-fun3 W3 A3 B3 _ _).
+
+%{
+  
+  { z:D1 => A1->B1 } < { z:D2 => A2->B2 } < { z:D3 => A3->B3 }
+
+  z:D1 |- D1<D2, A1->B1 < A2->B2    z:D2 |- D2<D3, A2->B2 < A3->B3
+
+  --->
+
+  z:D1 |- A3<A1  B1<B3
+
+
+}%
+
+
+stp-inv-fun: wf-tp G TX -> stp G (arrow T1 T2) TX -> stp G TX (arrow T3 T4) -> stp G T3 T1 -> stp G T2 T4 -> type.
+%mode stp-inv-fun +T +A +B -C -D.
+- : stp-inv-fun (wf-tp/fun W1 W2) (stp/fun ST1 ST2) (stp/fun ST3 ST4) ST1' ST2'
+      <- stp-trans ST1 ST3 ST2' 
+      <- stp-trans ST4 ST2 ST1' 
+      .
+
+- : stp-inv-fun (wf-tp/fun W1 W2) (stp/trans W' ST12 ST23) (stp/fun ST3 ST4) ST1' ST2'
+      <- stp-inv-fun W' ST12 ST23 ST1'' ST2'' %% termination problem
+      <- stp-trans ST2'' ST3 ST2' 
+      <- stp-trans ST4 ST1'' ST1' 
+      .
+
+
+- : stp-inv-fun (wf-tp/sel W) ST1 ST2 ST1' ST2'
+      <- stp-inv-sel2 ST1 _ ST1U
+      <- stp-inv-sel1 ST2 STU2
+      <- stp-inv-fun W ST1U STU2 ST1' ST2'
+      .
+%worlds () (stp-inv-fun _ _ _ _ _).
+
+
+
+%total (A) (stp-inv-fun A _ _ _ _).
+
+
+
+
+
