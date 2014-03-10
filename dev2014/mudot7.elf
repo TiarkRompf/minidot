@@ -99,9 +99,6 @@ spt: tenv -> tpe -> tenv -> tpe -> type. % G1 < G2 |- T1 > T2
 
 sdc: tenv -> dec -> tenv -> dec -> type. % G1 < G2 |- L1..U1 < L2..U2
 
-scd: tenv -> dec -> tenv -> dec -> type. % G1 < G2 |- L1..U1 > L2..U2
-
-
 
 sdc/rect: sdc tnil (rect L1 U1) tnil (rect L2 U2) 
           <- spt tnil L1 tnil L2
@@ -115,21 +112,6 @@ sdc/rectc: sdc (tcons D1) (rect L1 U1) (tcons D2) (rect L2 U2)
           <- stp (tcons D1) U1 (tcons D2) U2
           % <- stp (tcons D1) L1 (tcons D2) U1  %% trans issue?
           % <- stp (tcons D1) L2 (tcons D2) U2  %% trans issue?
-          .
-
-
-scd/rect: scd tnil (rect L1 U1) tnil (rect L2 U2) 
-          <- stp tnil L1 tnil L2
-          <- spt tnil U1 tnil U2
-          <- spt tnil L1 tnil U1
-          <- spt tnil L2 tnil U2
-          .
-
-scd/rectc: scd (tcons D1) (rect L1 U1) (tcons D2) (rect L2 U2) 
-          <- stp (tcons D1) L1 (tcons D2) L2
-          <- spt (tcons D1) U1 (tcons D2) U2
-          % <- stp (tcons D1) L1 (tcons D2) U1
-          % <- stp (tcons D1) L2 (tcons D2) U2
           .
 
 
@@ -237,8 +219,15 @@ spt-trans-weaken: spt G1 T1 G2 T2 -> spt G2 T2 G3 T3 -> spt G1 T1 G3 T3 -> type.
 sdc-trans-weaken: sdc G1 D1 G2 D2 -> sdc G2 D2 G3 D3 -> sdc G1 D1 G3 D3 -> type.
 %mode sdc-trans-weaken +SBT1 +SBT2 -SBT3.
 
-% scd-trans-weaken: sdc G2 D1 G1 D2 -> sdc G2 D2 G3 D3 -> sdc G1 D1 G3 D3 -> type.
-% %mode scd-trans-weaken +SBT1 +SBT2 -SBT3.
+stp-trans-weaken2: stp G1 T1 G2 T2 -> stp G2 T2 G3 T3 -> stp G1 T1 G3 T3 -> type.
+%mode stp-trans-weaken2 +SBT1 +SBT2 -SBT3.
+
+spt-trans-weaken2: spt G1 T1 G2 T2 -> spt G2 T2 G3 T3 -> spt G1 T1 G3 T3 -> type.
+%mode spt-trans-weaken2 +SBT1 +SBT2 -SBT3.
+
+sdc-trans-weaken2: sdc G1 D1 G2 D2 -> sdc G2 D2 G3 D3 -> sdc G1 D1 G3 D3 -> type.
+%mode sdc-trans-weaken2 +SBT1 +SBT2 -SBT3.
+
 
 -/rect : sdc-trans-weaken
             (sdc/rect L2U2 L1U1 U1U2 L1L2)
@@ -257,26 +246,6 @@ sdc-trans-weaken: sdc G1 D1 G2 D2 -> sdc G2 D2 G3 D3 -> sdc G1 D1 G3 D3 -> type.
             % widen L1U1 to L1U1'
             % widen L3U3 to L3U3'
             .
-
-%{
--/rect--X2 : scd-trans-weaken
-            (scd/rect L2U2 L1U1 U1U2 L1L2)
-            (scd/rect L3U3 L2U2' U2U3 L2L3)
-            (scd/rect L3U3 L1U1 U1U3 L1L3)
-            <- spt-trans-weaken U1U2 U2U3 U1U3
-            <- stp-trans-weaken L1L2 L2L3 L1L3
-            .
-
--/rectc--X2 : scd-trans-weaken
-            (scd/rectc U1U2 L1L2)
-            (scd/rectc U2U3 L2L3)
-            (scd/rectc U1U3 L1L3)
-            <- spt-trans-weaken U1U2 U2U3 U1U3
-            <- stp-trans-weaken L1L2 L2L3 L1L3
-            % widen L1U1 to L1U1'
-            % widen L3U3 to L3U3'
-            .
-}%
 
 
 -/top : stp-trans-weaken S1 stp/top stp/top.
@@ -422,16 +391,187 @@ sdc-trans-weaken: sdc G1 D1 G2 D2 -> sdc G2 D2 G3 D3 -> sdc G1 D1 G3 D3 -> type.
             (spt/bind S2)
             (spt/bind S3)
             % <- scd-trans-weaken S1 S2 S3
-            <- sdc-trans-weaken S2 S1 S3  %%% swapping sides --> term issue. hopefully fixable.
+            <- sdc-trans-weaken2 S2 S1 S3  %%% swapping sides
             .
 
 
-%worlds () (stp-trans-weaken _ _ _)(spt-trans-weaken _ _ _)(sdc-trans-weaken _ _ _).
+%{ ----------- copy'n'paste for termination --------- }%
+
+-/rect : sdc-trans-weaken2
+            (sdc/rect L2U2 L1U1 U1U2 L1L2)
+            (sdc/rect L3U3 L2U2' U2U3 L2L3)
+            (sdc/rect L3U3 L1U1 U1U3 L1L3)
+            <- stp-trans-weaken2 U1U2 U2U3 U1U3
+            <- spt-trans-weaken2 L1L2 L2L3 L1L3
+            .
+
+-/rectc : sdc-trans-weaken2
+            (sdc/rectc U1U2 L1L2)
+            (sdc/rectc U2U3 L2L3)
+            (sdc/rectc U1U3 L1L3)
+            <- stp-trans-weaken2 U1U2 U2U3 U1U3
+            <- spt-trans-weaken2 L1L2 L2L3 L1L3
+            % widen L1U1 to L1U1'
+            % widen L3U3 to L3U3'
+            .
+
+
+-/top : stp-trans-weaken2 S1 stp/top stp/top.
+-/topc : stp-trans-weaken2 S1 stp/topc stp/topc.
+
+-/top2 : spt-trans-weaken2 spt/top S1 spt/top.
+-/topc2 : spt-trans-weaken2 spt/topc S1 spt/topc.
+
+
+-/fun-fun  : stp-trans-weaken2
+            (stp/fun SBT2 SBT1)
+            (stp/fun SBT4 SBT3)
+            (stp/fun SBT6 SBT5)
+            <- spt-trans-weaken2 SBT1 SBT3 SBT5 
+            <- stp-trans-weaken2 SBT2 SBT4 SBT6
+            .
+
+-/fun-fun--X2  : spt-trans-weaken2
+            (spt/fun SBT2 SBT1)
+            (spt/fun SBT4 SBT3)
+            (spt/fun SBT6 SBT5)
+            <- stp-trans-weaken2 SBT1 SBT3 SBT5
+            <- spt-trans-weaken2 SBT2 SBT4 SBT6
+            .
+
+-/func-func  : stp-trans-weaken2
+            (stp/func SBT2 SBT1)
+            (stp/func SBT4 SBT3)
+            (stp/func SBT6 SBT5)
+            <- spt-trans-weaken2 SBT1 SBT3 SBT5
+            <- stp-trans-weaken2 SBT2 SBT4 SBT6
+            .
+-/func-func--X2  : spt-trans-weaken2
+            (spt/func SBT2 SBT1)
+            (spt/func SBT4 SBT3)
+            (spt/func SBT6 SBT5)
+            <- stp-trans-weaken2 SBT1 SBT3 SBT5
+            <- spt-trans-weaken2 SBT2 SBT4 SBT6
+            .
+
+-/tsel1 :   stp-trans-weaken2
+            (stp/sel1 ST_U1)
+            SBT2
+            (stp/sel1 ST_U1')
+            <- stp-trans-weaken2 ST_U1 SBT2 ST_U1'
+            .
+
+-/tsel1--X2 : spt-trans-weaken2
+            (spt/sel1 ST_U1)
+            SBT2
+            (spt/sel1 ST_U1')
+            <- spt-trans-weaken2 ST_U1 SBT2 ST_U1'
+            .
+
+-/tsel2 :   stp-trans-weaken2
+            SBT1
+            (stp/sel2 ST_1L ST_2U)
+            (stp/sel2 ST_1L'' ST_2U')
+            <- stp-trans-weaken2 SBT1 ST_1L ST_1L'
+            <- stp-trans-weaken2 SBT1 ST_2U ST_2U'
+            <- stp-magic SBT1 ST_1L' ST_1L''
+            .
+
+-/tsel2--X2 :   spt-trans-weaken2
+            SBT1
+            (spt/sel2 ST_1L ST_2U)
+            (spt/sel2 ST_1L'' ST_2U')
+            <- spt-trans-weaken2 SBT1 ST_1L ST_1L'
+            <- spt-trans-weaken2 SBT1 ST_2U ST_2U'
+            <- spt-magic SBT1 ST_1L' ST_1L''
+            .
+
+
+-/tsel2-tsel1 : stp-trans-weaken2
+            (stp/sel2 ST_1L ST_1U)
+            (stp/sel1 ST_U2)
+            OUT
+            <- stp-trans-weaken2 ST_1U ST_U2 OUT
+            .
+
+-/tsel2-tsel1--X2 : spt-trans-weaken2
+            (spt/sel2 ST_1L ST_1U)
+            (spt/sel1 ST_U2)
+            OUT
+            <- spt-trans-weaken2 ST_1U ST_U2 OUT
+            .
+
+
+
+-/tsel1-tselx : stp-trans-weaken2
+            ((stp/selx ST0): stp (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) tsel)
+            (stp/sel1 ST_U1)
+            (stp/sel1 ST_U1')
+            <- stp-trans-weaken2 ST0 ST_U1 ST_U1'
+            .
+
+-/tsel1-tselx--X2 : spt-trans-weaken2
+            (spt/selx (ST0:   spt (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2))
+            (spt/sel1 (ST_L3: spt (tcons (rect L2 U2)) L2 (tcons (rect L3 U3)) T3))
+            (spt/sel1 ST_L3')
+            <- spt-trans-weaken2 ST0 ST_L3 ST_L3'
+            .
+
+
+-/tsel2-tselx : stp-trans-weaken2
+            (stp/sel2 ST_1L ST_U1)
+            ((stp/selx ST0): stp (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) tsel)
+            (stp/sel2 ST_1L ST_U1')
+            <- stp-trans-weaken2 ST_U1 ST0 ST_U1'
+            .
+
+-/tsel2-tselx--X2 : spt-trans-weaken2
+            (spt/sel2 ST_1L ST_U1)
+            (spt/selx (ST0: spt (tcons (rect L2 U2)) L2 (tcons (rect L3 U3)) L3))
+            (spt/sel2 ST_1L ST_U1')
+            <- spt-trans-weaken2 ST_U1 ST0 ST_U1'
+            .
+
+
+-/tselx-tselx : stp-trans-weaken2
+            (stp/selx SBT1)
+            (stp/selx SBT2)
+            (stp/selx SBT3)
+            <- stp-trans-weaken2 SBT1 SBT2 SBT3
+            .
+
+-/tselx-tselx--X2 : spt-trans-weaken2
+            (spt/selx SBT1)
+            (spt/selx SBT2)
+            (spt/selx SBT3)
+            <- spt-trans-weaken2 SBT1 SBT2 SBT3
+            .
+
+-/tbind-bind : stp-trans-weaken2
+            (stp/bind S1)
+            (stp/bind S2)
+            (stp/bind S3)
+            <- sdc-trans-weaken2 S1 S2 S3
+            .
+
+-/tbind-bind--X2 : spt-trans-weaken2
+            (spt/bind S1)
+            (spt/bind S2)
+            (spt/bind S3)
+            <- sdc-trans-weaken S2 S1 S3  %%% swapping sides
+            .
+
+
+%worlds () 
+(stp-trans-weaken _ _ _)(spt-trans-weaken _ _ _)(sdc-trans-weaken _ _ _)
+(stp-trans-weaken2 _ _ _)(spt-trans-weaken2 _ _ _)(sdc-trans-weaken2 _ _ _)
+.
 
 %covers stp-trans-weaken +A +B -C.
 
 %covers spt-trans-weaken +A +B -C.
 
-%total {(A A' A'')(B B' B'') } (stp-trans-weaken A B _ )(spt-trans-weaken A' B' _)(sdc-trans-weaken A'' B'' _).
-
-
+%total {(A A' A'' Y Y' Y'')(B B' B'' X X' X'') } 
+(stp-trans-weaken A B _ )(spt-trans-weaken A' B' _)(sdc-trans-weaken A'' B'' _)
+(stp-trans-weaken2 X Y _ )(spt-trans-weaken2 X' Y' _)(sdc-trans-weaken2 X'' Y'' _)
+.
