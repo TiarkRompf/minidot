@@ -156,12 +156,20 @@ spt/sel1: spt (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) T2
 stp/sel2: stp (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) tsel
           % <- sdc (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2)
           <- stp (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) U2
-          <- stp (tcons (rect L1 U1)) T1 (tcons (rect L1 U1)) L1
+          % we want to express this:
+          % <- stp (tcons (rect L1 U1)) T1 (tcons (rect L1 U1)) L1 
+          % but we split it into two cases so that we can apply
+          % transitivity on independent proper subterms, instead 
+          % of twice in a chain T0 < T1 < L1 < L0.
+          <- stp (tcons (rect L1 U1)) T1 (tcons (rect LX UX)) LX
+          <- spt (tcons (rect L1 U1)) L1 (tcons (rect LX UX)) LX
           .
 
 spt/sel2: spt (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) tsel
           <- spt (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) L2
-          <- spt (tcons (rect L1 U1)) T1 (tcons (rect L1 U1)) U1
+          % <- spt (tcons (rect L1 U1)) T1 (tcons (rect L1 U1)) U1
+          <- spt (tcons (rect L1 U1)) T1 (tcons (rect LX UX)) UX
+          <- stp (tcons (rect L1 U1)) U1 (tcons (rect LX UX)) UX
           .
 
 
@@ -186,23 +194,23 @@ spt/bind: spt tnil (bind D1) tnil (bind D2)
 
 %% shotgun lemmas for case tsel2-any -- provable?
 
-stp-magic: stp (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) T2 ->  % D1 < D2 |- L2 < L1
-           stp (tcons (rect L1 U1)) TX (tcons (rect L2 U2)) L2 ->  % D1 < D2 |- TX < L2
-           stp (tcons (rect L1 U1)) TX (tcons (rect L1 U1)) L1 ->  % D1 < D1 |- TX < L1
-           type.
-%mode stp-magic +SBT1 +SBT2 -SBT3.
-%worlds () (stp-magic _ _ _).
+stp-xlow: stp (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) T2 ->
+          spt (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2 ->
+          type.
+%mode stp-xlow +SBT2 -SBT3.
+%worlds () (stp-xlow _ _).
 %trustme
-%total N (stp-magic N _ _).
+%total N (stp-xlow N _).
+%reduces N3 < N2 (stp-xlow N2 N3).
 
-spt-magic: spt (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) T2 ->  % D1 < D2 |- U2 > U1
-           spt (tcons (rect L1 U1)) TX (tcons (rect L2 U2)) U2 ->  % D1 < D2 |- TX > U2
-           spt (tcons (rect L1 U1)) TX (tcons (rect L1 U1)) U1 ->  % D1 < D1 |- TX > U1
-           type.
-%mode spt-magic +SBT1 +SBT2 -SBT3.
-%worlds () (spt-magic _ _ _).
+spt-xlow: spt (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) T2 ->
+          stp (tcons (rect L1 U1)) U1 (tcons (rect L2 U2)) U2 ->
+          type.
+%mode spt-xlow +SBT2 -SBT3.
+%worlds () (spt-xlow _ _).
 %trustme
-%total N (spt-magic N _ _).
+%total N (spt-xlow N _).
+%reduces N3 < N2 (spt-xlow N2 N3).
 
 
 
@@ -302,32 +310,34 @@ sdc-trans-weaken2: sdc G1 D1 G2 D2 -> sdc G2 D2 G3 D3 -> sdc G1 D1 G3 D3 -> type
 
 -/tsel2 :   stp-trans-weaken
             SBT1
-            (stp/sel2 ST_1L ST_2U)
-            (stp/sel2 ST_1L'' ST_2U')
+            (stp/sel2 ST_LX ST_1L ST_2U)
+            (stp/sel2 ST_LX' ST_1L' ST_2U')
             <- stp-trans-weaken SBT1 ST_1L ST_1L'
             <- stp-trans-weaken SBT1 ST_2U ST_2U'
-            <- stp-magic SBT1 ST_1L' ST_1L''
+            <- stp-xlow SBT1 ST_L1L0
+            <- spt-trans-weaken ST_L1L0 ST_LX  ST_LX'
             .
 
 -/tsel2--X2 :   spt-trans-weaken
             SBT1
-            (spt/sel2 ST_1L ST_2U)
-            (spt/sel2 ST_1L'' ST_2U')
+            (spt/sel2 ST_LX ST_1L ST_2U)
+            (spt/sel2 ST_LX' ST_1L' ST_2U')
             <- spt-trans-weaken SBT1 ST_1L ST_1L'
             <- spt-trans-weaken SBT1 ST_2U ST_2U'
-            <- spt-magic SBT1 ST_1L' ST_1L''
+            <- spt-xlow SBT1 ST_L1L0
+            <- stp-trans-weaken ST_L1L0 ST_LX  ST_LX'
             .
 
 
 -/tsel2-tsel1 : stp-trans-weaken
-            (stp/sel2 ST_1L ST_1U)
+            (stp/sel2 ST_LX ST_1L ST_1U)
             (stp/sel1 ST_U2)
             OUT
             <- stp-trans-weaken ST_1U ST_U2 OUT
             .
 
 -/tsel2-tsel1--X2 : spt-trans-weaken
-            (spt/sel2 ST_1L ST_1U)
+            (spt/sel2 ST_LX ST_1L ST_1U)
             (spt/sel1 ST_U2)
             OUT
             <- spt-trans-weaken ST_1U ST_U2 OUT
@@ -351,16 +361,16 @@ sdc-trans-weaken2: sdc G1 D1 G2 D2 -> sdc G2 D2 G3 D3 -> sdc G1 D1 G3 D3 -> type
 
 
 -/tsel2-tselx : stp-trans-weaken
-            (stp/sel2 ST_1L ST_U1)
+            (stp/sel2 ST_LX ST_1L ST_U1)
             ((stp/selx ST0): stp (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) tsel)
-            (stp/sel2 ST_1L ST_U1')
+            (stp/sel2 ST_LX ST_1L ST_U1')
             <- stp-trans-weaken ST_U1 ST0 ST_U1'
             .
 
 -/tsel2-tselx--X2 : spt-trans-weaken
-            (spt/sel2 ST_1L ST_U1)
+            (spt/sel2 ST_LX ST_1L ST_U1)
             (spt/selx (ST0: spt (tcons (rect L2 U2)) L2 (tcons (rect L3 U3)) L3))
-            (spt/sel2 ST_1L ST_U1')
+            (spt/sel2 ST_LX ST_1L ST_U1')
             <- spt-trans-weaken ST_U1 ST0 ST_U1'
             .
 
@@ -470,32 +480,34 @@ sdc-trans-weaken2: sdc G1 D1 G2 D2 -> sdc G2 D2 G3 D3 -> sdc G1 D1 G3 D3 -> type
 
 -/tsel2 :   stp-trans-weaken2
             SBT1
-            (stp/sel2 ST_1L ST_2U)
-            (stp/sel2 ST_1L'' ST_2U')
+            (stp/sel2 ST_LX ST_1L ST_2U)
+            (stp/sel2 ST_LX' ST_1L' ST_2U')
             <- stp-trans-weaken2 SBT1 ST_1L ST_1L'
             <- stp-trans-weaken2 SBT1 ST_2U ST_2U'
-            <- stp-magic SBT1 ST_1L' ST_1L''
+            <- stp-xlow SBT1 ST_L1L0
+            <- spt-trans-weaken2 ST_L1L0 ST_LX  ST_LX'
             .
 
 -/tsel2--X2 :   spt-trans-weaken2
             SBT1
-            (spt/sel2 ST_1L ST_2U)
-            (spt/sel2 ST_1L'' ST_2U')
+            (spt/sel2 ST_LX ST_1L ST_2U)
+            (spt/sel2 ST_LX' ST_1L' ST_2U')
             <- spt-trans-weaken2 SBT1 ST_1L ST_1L'
             <- spt-trans-weaken2 SBT1 ST_2U ST_2U'
-            <- spt-magic SBT1 ST_1L' ST_1L''
+            <- spt-xlow SBT1 ST_L1L0
+            <- stp-trans-weaken2 ST_L1L0 ST_LX  ST_LX'
             .
 
 
 -/tsel2-tsel1 : stp-trans-weaken2
-            (stp/sel2 ST_1L ST_1U)
+            (stp/sel2 ST_LX ST_1L ST_1U)
             (stp/sel1 ST_U2)
             OUT
             <- stp-trans-weaken2 ST_1U ST_U2 OUT
             .
 
 -/tsel2-tsel1--X2 : spt-trans-weaken2
-            (spt/sel2 ST_1L ST_1U)
+            (spt/sel2 ST_LX ST_1L ST_1U)
             (spt/sel1 ST_U2)
             OUT
             <- spt-trans-weaken2 ST_1U ST_U2 OUT
@@ -519,16 +531,16 @@ sdc-trans-weaken2: sdc G1 D1 G2 D2 -> sdc G2 D2 G3 D3 -> sdc G1 D1 G3 D3 -> type
 
 
 -/tsel2-tselx : stp-trans-weaken2
-            (stp/sel2 ST_1L ST_U1)
+            (stp/sel2 ST_LX ST_1L ST_U1)
             ((stp/selx ST0): stp (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) tsel)
-            (stp/sel2 ST_1L ST_U1')
+            (stp/sel2 ST_LX ST_1L ST_U1')
             <- stp-trans-weaken2 ST_U1 ST0 ST_U1'
             .
 
 -/tsel2-tselx--X2 : spt-trans-weaken2
-            (spt/sel2 ST_1L ST_U1)
+            (spt/sel2 ST_LX ST_1L ST_U1)
             (spt/selx (ST0: spt (tcons (rect L2 U2)) L2 (tcons (rect L3 U3)) L3))
-            (spt/sel2 ST_1L ST_U1')
+            (spt/sel2 ST_LX ST_1L ST_U1')
             <- spt-trans-weaken2 ST_U1 ST0 ST_U1'
             .
 
