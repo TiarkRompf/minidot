@@ -101,18 +101,18 @@ spt: nat -> tenv -> tpe -> tenv -> tpe -> type. % G1 < G2 |- T1 > T2
 sdc: nat -> tenv -> dec -> tenv -> dec -> type. % G1 < G2 |- L1..U1 < L2..U2
 
 
-sdc/rect: sdc (s N) tnil (rect L1 U1) tnil (rect L2 U2) 
-          <- spt (s N) tnil L1 tnil L2
-          <- stp (s N) tnil U1 tnil U2
-          <- stp (s N) tnil L1 tnil U1
-          <- stp (s N) tnil L2 tnil U2
+sdc/rect: sdc (N) tnil (rect L1 U1) tnil (rect L2 U2) 
+          <- spt (N) tnil L1 tnil L2
+          <- stp (N) tnil U1 tnil U2
+          <- stp (N) tnil L1 tnil U1
+          <- stp (N) tnil L2 tnil U2
           .
 
-sdc/rectc: sdc (s N) (tcons D1) (rect L1 U1) (tcons D2) (rect L2 U2) 
-          <- spt (s N) (tcons D1) L1 (tcons D2) L2
-          <- stp (s N) (tcons D1) U1 (tcons D2) U2
-          % <- stp (s N) (tcons D1) L1 (tcons D2) U1  %% trans issue?
-          % <- stp (s N) (tcons D1) L2 (tcons D2) U2  %% trans issue?
+sdc/rectc: sdc (N) (tcons D1) (rect L1 U1) (tcons D2) (rect L2 U2) 
+          <- spt (N) (tcons D1) L1 (tcons D2) L2
+          <- stp (N) (tcons D1) U1 (tcons D2) U2
+          % <- stp (N) (tcons D1) L1 (tcons D2) U1  %% trans issue?
+          % <- stp (N) (tcons D1) L2 (tcons D2) U2  %% trans issue?
           .
 
 
@@ -123,22 +123,22 @@ spt/assum: spt z (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) T2.
 
 stp/top: stp (s N) tnil T tnil top.
 stp/topc: stp (s N) (tcons (rect L1 U1)) T (tcons (rect L2 U2)) top
-          <- spt (N) (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2
+          <- sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2)
           .
 
 spt/top: spt (s N) tnil top tnil T.
 spt/topc: spt (s N) (tcons (rect L1 U1)) top (tcons (rect L2 U2)) T
-          <- stp (N) (tcons (rect L1 U1)) U1 (tcons (rect L2 U2)) U2
+          <- sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2)
           .
 
 stp/bot: stp (s N) tnil bot tnil T.
 stp/botc: stp (s N) (tcons (rect L1 U1)) bot (tcons (rect L2 U2)) T
-          <- spt (N) (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2
+          <- sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2)
           .
 
 spt/bot: spt (s N) tnil T tnil bot.
 spt/botc: spt (s N) (tcons (rect L1 U1)) T (tcons (rect L2 U2)) bot
-          <- stp (N) (tcons (rect L1 U1)) U1 (tcons (rect L2 U2)) U2
+          <- sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2)
           .
 
 
@@ -148,7 +148,7 @@ stp/fun: stp (s N) tnil (arrow A1 B1) tnil (arrow A2 B2)
           .
 
 stp/func: stp (s N) (tcons (rect L1 U1)) (arrow A1 B1) (tcons (rect L2 U2)) (arrow A2 B2) 
-          <- spt (N) (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2
+          <- sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2)
           <- spt (s N) (tcons (rect L1 U1)) A1 (tcons (rect L2 U2)) A2
           <- stp (s N) (tcons (rect L1 U1)) B1 (tcons (rect L2 U2)) B2 
           .
@@ -159,25 +159,25 @@ spt/fun: spt (s N) tnil (arrow A1 B1) tnil (arrow A2 B2)
           .
 
 spt/func: spt (s N) (tcons (rect L1 U1)) (arrow A1 B1) (tcons (rect L2 U2)) (arrow A2 B2) 
-          <- stp (N) (tcons (rect L1 U1)) U1 (tcons (rect L2 U2)) U2
+          <- sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2)
           <- stp (s N) (tcons (rect L1 U1)) A1 (tcons (rect L2 U2)) A2
           <- spt (s N) (tcons (rect L1 U1)) B1 (tcons (rect L2 U2)) B2 
           .
 
 
 stp/sel1: stp (s N) (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) T2 
-          <- spt (N) (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2
+          <- sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2)
           <- stp (s N) (tcons (rect L1 U1)) U1 (tcons (rect L2 U2)) T2
           .
 
 spt/sel1: spt (s N) (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) T2 
-          <- stp (N) (tcons (rect L1 U1)) U1 (tcons (rect L2 U2)) U2
+          <- sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2)
           <- spt (s N) (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) T2
           .
 
 
 stp/sel2: stp (s N) (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) tsel
-          <- spt (N) (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2
+          <- sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2)
           % <- sdc (s N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2)
           <- stp (s N) (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) U2
           % we want to express this:
@@ -192,7 +192,7 @@ stp/sel2: stp (s N) (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) tsel
           .
 
 spt/sel2: spt (s N) (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) tsel
-          <- stp (N) (tcons (rect L1 U1)) U1 (tcons (rect L2 U2)) U2
+          <- sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2)
           <- spt (s N) (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) L2
           % <- spt (s N) (tcons (rect L1 U1)) T1 (tcons (rect L1 U1)) U1
           <- spt (s N) (tcons (rect L1 U1)) T1 (tcons (rect LX UX)) UX
@@ -201,25 +201,27 @@ spt/sel2: spt (s N) (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) tsel
 
 
 stp/selx: stp (s N) (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) tsel
-          <- spt (N) (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2
+          <- sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2)
           <- stp (s N) (tcons (rect L1 U1)) U1 (tcons (rect L2 U2)) U2
+          <- spt (s N) (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2
           .
 
 spt/selx: spt (s N) (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) tsel
-          <- stp (N) (tcons (rect L1 U1)) U1 (tcons (rect L2 U2)) U2
+          <- sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2)
+          <- stp (s N) (tcons (rect L1 U1)) U1 (tcons (rect L2 U2)) U2
           <- spt (s N) (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2
           .
 
 
 stp/bind: stp (s N) tnil (bind (rect L1 U1) T1) tnil (bind (rect L2 U2) T2)
-          <- spt (N) (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2
+          % <- sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2)
           <- stp (s N) (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) T2
           <- sdc (s N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2)
           .
 
 spt/bind: spt (s N) tnil (bind (rect L1 U1) T1) tnil (bind (rect L2 U2) T2)
-          <- stp (N) (tcons (rect L1 U1)) U1 (tcons (rect L2 U2)) U2
-          <- spt (s N) (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) T2
+          % <- sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2)
+          <- stp (s N) (tcons (rect L2 U2)) T2 (tcons (rect L1 U1)) T1
           <- sdc (s N) (tcons (rect L2 U2)) (rect L2 U2) (tcons (rect L1 U1)) (rect L1 U1)
           .
 
@@ -265,6 +267,11 @@ depth = 3.
 
 %query 1 1 sdc depth g1 (rect top top) g2 (rect bot top).
 
+%query 1 1 stp depth g1 (arrow top top) g2 (arrow top top).
+
+%query 1 1 stp depth g1 (arrow top top) g2 (arrow bot top).
+
+
 
 %query 1 1 stp depth tnil (bind d1 top) tnil (bind d1 top).
 
@@ -278,7 +285,8 @@ depth = 3.
   { z => type A: bot..top; def id(z.A):z.A }
 }%
 
-t1 = (bind (rect (arrow top top) (arrow top top)) (arrow tsel tsel)).
+% t1 = (bind (rect (arrow top top) (arrow top top)) (arrow tsel tsel)).  %% hangs? hopefully just clause ordering...
+t1 = (bind (rect top top) (arrow tsel tsel)).
 t2 = (bind (rect bot top) (arrow tsel tsel)).
 
 %query 1 1 stp depth tnil t1 tnil t2.
@@ -290,19 +298,47 @@ t2 = (bind (rect bot top) (arrow tsel tsel)).
 
 %% helper lemmas
 
+stp-xdc: stp (s N) (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) T2 ->
+          sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2) ->
+          type.
+%mode stp-xdc +SBT2 -SBT3.
+
+- : stp-xdc (stp/topc XL) XL.
+- : stp-xdc (stp/botc XL) XL.
+- : stp-xdc (stp/func _ _ XL) XL.
+- : stp-xdc (stp/sel1 _ XL) XL.
+- : stp-xdc (stp/sel2 _ _ _ XL) XL.
+- : stp-xdc (stp/selx _ _ XL) XL.
+
+%worlds () (stp-xdc _ _).
+%total N (stp-xdc N _).
+%reduces N3 <= N2 (stp-xdc N2 N3).
+
+spt-xdc: spt (s N) (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) T2 ->
+          sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2) ->
+          type.
+%mode spt-xdc +SBT2 -SBT3.
+
+- : spt-xdc (spt/topc XL) XL.
+- : spt-xdc (spt/botc XL) XL.
+- : spt-xdc (spt/func _ _ XL) XL.
+- : spt-xdc (spt/sel1 _ XL) XL.
+- : spt-xdc (spt/sel2 _ _ _ XL) XL.
+- : spt-xdc (spt/selx _ _ XL) XL.
+
+%worlds () (spt-xdc _ _).
+%total N (spt-xdc N _).
+%reduces N3 <= N2 (spt-xdc N2 N3).
+
+
 stp-xlow: stp (s N) (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) T2 ->
           spt (N) (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2 ->
           type.
 %mode stp-xlow +SBT2 -SBT3.
 
-- : stp-xlow (stp/topc XL) XL.
-- : stp-xlow (stp/botc XL) XL.
-- : stp-xlow (stp/func _ _ XL) XL.
-- : stp-xlow (stp/sel1 _ XL) XL.
-- : stp-xlow (stp/sel2 _ _ _ XL) XL.
-- : stp-xlow (stp/selx _ XL) XL.
 
 %worlds () (stp-xlow _ _).
+%trustme
 %total N (stp-xlow N _).
 %reduces N3 <= N2 (stp-xlow N2 N3).
 
@@ -311,14 +347,9 @@ spt-xlow: spt (s N) (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) T2 ->
           type.
 %mode spt-xlow +SBT2 -SBT3.
 
-- : spt-xlow (spt/topc XL) XL.
-- : spt-xlow (spt/botc XL) XL.
-- : spt-xlow (spt/func _ _ XL) XL.
-- : spt-xlow (spt/sel1 _ XL) XL.
-- : spt-xlow (spt/sel2 _ _ _ XL) XL.
-- : spt-xlow (spt/selx _ XL) XL.
 
 %worlds () (spt-xlow _ _).
+%trustme
 %total N (spt-xlow N _).
 %reduces N3 <= N2 (spt-xlow N2 N3).
 
@@ -368,26 +399,26 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
 
 -/top : stp-trans-weaken S1 stp/top stp/top.
 -/topc : stp-trans-weaken S1 (stp/topc XL2) (stp/topc XL3)
-            <- stp-xlow S1 XL1
-            <- spt-trans-weaken XL1 XL2 XL3
+            <- stp-xdc S1 XL1
+            <- sdc-trans-weaken XL1 XL2 XL3
             .
 
 -/top2 : spt-trans-weaken spt/top S1 spt/top.
 -/topc2 : spt-trans-weaken (spt/topc XL1) S2 (spt/topc XL3)
-            <- spt-xlow S2 XL2
-            <- stp-trans-weaken XL1 XL2 XL3
+            <- spt-xdc S2 XL2
+            <- sdc-trans-weaken XL1 XL2 XL3
             .
 
 -/bot : stp-trans-weaken stp/bot S2 stp/bot.
 -/botc : stp-trans-weaken (stp/botc XL1) S2 (stp/botc XL3)
-            <- stp-xlow S2 XL2
-            <- spt-trans-weaken XL1 XL2 XL3
+            <- stp-xdc S2 XL2
+            <- sdc-trans-weaken XL1 XL2 XL3
             .
 
 -/bot2 : spt-trans-weaken S1 spt/bot spt/bot.
 -/botc2 : spt-trans-weaken S1 (spt/botc XL2) (spt/botc XL3)
-            <- spt-xlow S1 XL1
-            <- stp-trans-weaken XL1 XL2 XL3
+            <- spt-xdc S1 XL1
+            <- sdc-trans-weaken XL1 XL2 XL3
             .
 
 -/assum : stp-trans-weaken stp/assum stp/assum stp/assum.
@@ -416,7 +447,7 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
             (stp/func SBT6 SBT5 XL3)
             <- spt-trans-weaken SBT1 SBT3 SBT5
             <- stp-trans-weaken SBT2 SBT4 SBT6
-            <- spt-trans-weaken XL1 XL2 XL3
+            <- sdc-trans-weaken XL1 XL2 XL3
             .
 -/func-func--X2  : spt-trans-weaken
             (spt/func SBT2 SBT1 XL1)
@@ -424,7 +455,7 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
             (spt/func SBT6 SBT5 XL3)
             <- stp-trans-weaken SBT1 SBT3 SBT5
             <- spt-trans-weaken SBT2 SBT4 SBT6
-            <- stp-trans-weaken XL1 XL2 XL3
+            <- sdc-trans-weaken XL1 XL2 XL3
             .
 
 -/tsel1 :   stp-trans-weaken
@@ -432,8 +463,8 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
             SBT2
             (stp/sel1 ST_U1' XL3)
             <- stp-trans-weaken ST_U1 SBT2 ST_U1'
-            <- stp-xlow SBT2 XL2
-            <- spt-trans-weaken XL1 XL2 XL3
+            <- stp-xdc SBT2 XL2
+            <- sdc-trans-weaken XL1 XL2 XL3
             .
 
 -/tsel1--X2 : spt-trans-weaken
@@ -441,8 +472,8 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
             SBT2
             (spt/sel1 ST_U1' XL3)
             <- spt-trans-weaken ST_U1 SBT2 ST_U1'
-            <- spt-xlow SBT2 XL2
-            <- stp-trans-weaken XL1 XL2 XL3
+            <- spt-xdc SBT2 XL2
+            <- sdc-trans-weaken XL1 XL2 XL3
             .
 
 -/tsel2 :   stp-trans-weaken
@@ -453,8 +484,8 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
             <- stp-trans-weaken SBT1 ST_2U ST_2U'
             <- stp-xlow SBT1 ST_L1L0
             <- spt-trans-weaken ST_L1L0 ST_LX  ST_LX'
-            <- stp-xlow SBT1 XL1
-            <- spt-trans-weaken XL1 XL2 XL3
+            <- stp-xdc SBT1 XL1
+            <- sdc-trans-weaken XL1 XL2 XL3
             .
 
 -/tsel2--X2 :   spt-trans-weaken
@@ -465,8 +496,8 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
             <- spt-trans-weaken SBT1 ST_2U ST_2U'
             <- spt-xlow SBT1 ST_L1L0
             <- stp-trans-weaken ST_L1L0 ST_LX  ST_LX'
-            <- spt-xlow SBT1 XL1
-            <- stp-trans-weaken XL1 XL2 XL3            
+            <- spt-xdc SBT1 XL1
+            <- sdc-trans-weaken XL1 XL2 XL3            
             .
 
 
@@ -487,76 +518,77 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
 
 
 -/tsel1-tselx : stp-trans-weaken
-            ((stp/selx ST0 XL1): stp _ (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) tsel)
+            ((stp/selx _ ST0 XL1): stp _ (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) tsel)
             (stp/sel1 ST_U1 XL2)
             (stp/sel1 ST_U1' XL3)
             <- stp-trans-weaken ST0 ST_U1 ST_U1'
-            <- spt-trans-weaken XL1 XL2 XL3
+            <- sdc-trans-weaken XL1 XL2 XL3
             .
 
 -/tsel1-tselx--X2 : spt-trans-weaken
-            (spt/selx (ST0:   spt _ (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2) XL1)
+            (spt/selx (ST0:   spt _ (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2) _ XL1)
             (spt/sel1 (ST_L3: spt _ (tcons (rect L2 U2)) L2 (tcons (rect L3 U3)) T3) XL2)
             (spt/sel1 ST_L3' XL3)
             <- spt-trans-weaken ST0 ST_L3 ST_L3'
-            <- stp-trans-weaken XL1 XL2 XL3
+            <- sdc-trans-weaken XL1 XL2 XL3
             .
 
 
 -/tsel2-tselx : stp-trans-weaken
             (stp/sel2 ST_LX ST_1L ST_U1 XL1)
-            ((stp/selx ST0 XL2): stp _ (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) tsel)
+            ((stp/selx _ ST0 XL2): stp _ (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) tsel)
             (stp/sel2 ST_LX ST_1L ST_U1' XL3)
             <- stp-trans-weaken ST_U1 ST0 ST_U1'
-            <- spt-trans-weaken XL1 XL2 XL3
+            <- sdc-trans-weaken XL1 XL2 XL3
             .
 
 -/tsel2-tselx--X2 : spt-trans-weaken
             (spt/sel2 ST_LX ST_1L ST_U1 XL1)
-            (spt/selx (ST0: spt _ (tcons (rect L2 U2)) L2 (tcons (rect L3 U3)) L3) XL2)
+            (spt/selx (ST0: spt _ (tcons (rect L2 U2)) L2 (tcons (rect L3 U3)) L3) _ XL2)
             (spt/sel2 ST_LX ST_1L ST_U1' XL3)
             <- spt-trans-weaken ST_U1 ST0 ST_U1'
-            <- stp-trans-weaken XL1 XL2 XL3
+            <- sdc-trans-weaken XL1 XL2 XL3
             .
 
 
 -/tselx-tselx : stp-trans-weaken
-            (stp/selx SBT1 XL1)
-            (stp/selx SBT2 XL2)
-            (stp/selx SBT3 XL3)
-            <- stp-trans-weaken SBT1 SBT2 SBT3
-            <- spt-trans-weaken XL1 XL2 XL3
+            (stp/selx SBT1 SBT4 XL1)
+            (stp/selx SBT2 SBT5 XL2)
+            (stp/selx SBT3 SBT6 XL3)
+            <- spt-trans-weaken SBT1 SBT2 SBT3
+            <- stp-trans-weaken SBT4 SBT5 SBT6
+            <- sdc-trans-weaken XL1 XL2 XL3
             .
 
 -/tselx-tselx--X2 : spt-trans-weaken
-            (spt/selx SBT1 XL1)
-            (spt/selx SBT2 XL2)
-            (spt/selx SBT3 XL3)
+            (spt/selx SBT1 SBT4 XL1)
+            (spt/selx SBT2 SBT5 XL2)
+            (spt/selx SBT3 SBT6 XL3)
             <- spt-trans-weaken SBT1 SBT2 SBT3
-            <- stp-trans-weaken XL1 XL2 XL3
+            <- stp-trans-weaken SBT4 SBT5 SBT6
+            <- sdc-trans-weaken XL1 XL2 XL3
             .
 
 -/tbind-bind : stp-trans-weaken
-            (stp/bind S1 ST1 XL1)
-            (stp/bind S2 ST2 XL2)
-            (stp/bind S3 ST3 XL3)
+            (stp/bind S1 ST1)
+            (stp/bind S2 ST2)
+            (stp/bind S3 ST3)
             <- sdc-trans-weaken S1 S2 S3
             <- stp-trans-weaken ST1 ST2 ST3
-            <- spt-trans-weaken XL1 XL2 XL3
             .
 
 -/tbind-bind--X2 : spt-trans-weaken
-            (spt/bind S1 ST1 XL1)
-            (spt/bind S2 ST2 XL2)
-            (spt/bind S3 ST3 XL3)
+            (spt/bind S1 ST1)
+            (spt/bind S2 ST2)
+            (spt/bind S3 ST3)
             % <- scd-trans-weaken S1 S2 S3
             <- sdc-trans-weaken2 S2 S1 S3  %%% swapping sides
-            <- spt-trans-weaken ST1 ST2 ST3
-            <- stp-trans-weaken XL1 XL2 XL3
+            <- stp-trans-weaken2 ST2 ST1 ST3
             .
 
 
 %{ ----------- copy'n'paste for termination --------- }%
+
 
 
 -/rect : sdc-trans-weaken2
@@ -580,26 +612,26 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
 
 -/top : stp-trans-weaken2 S1 stp/top stp/top.
 -/topc : stp-trans-weaken2 S1 (stp/topc XL2) (stp/topc XL3)
-            <- stp-xlow S1 XL1
-            <- spt-trans-weaken2 XL1 XL2 XL3
+            <- stp-xdc S1 XL1
+            <- sdc-trans-weaken2 XL1 XL2 XL3
             .
 
 -/top2 : spt-trans-weaken2 spt/top S1 spt/top.
 -/topc2 : spt-trans-weaken2 (spt/topc XL1) S2 (spt/topc XL3)
-            <- spt-xlow S2 XL2
-            <- stp-trans-weaken2 XL1 XL2 XL3
+            <- spt-xdc S2 XL2
+            <- sdc-trans-weaken2 XL1 XL2 XL3
             .
 
 -/bot : stp-trans-weaken2 stp/bot S2 stp/bot.
 -/botc : stp-trans-weaken2 (stp/botc XL1) S2 (stp/botc XL3)
-            <- stp-xlow S2 XL2
-            <- spt-trans-weaken2 XL1 XL2 XL3
+            <- stp-xdc S2 XL2
+            <- sdc-trans-weaken2 XL1 XL2 XL3
             .
 
 -/bot2 : spt-trans-weaken2 S1 spt/bot spt/bot.
 -/botc2 : spt-trans-weaken2 S1 (spt/botc XL2) (spt/botc XL3)
-            <- spt-xlow S1 XL1
-            <- stp-trans-weaken2 XL1 XL2 XL3
+            <- spt-xdc S1 XL1
+            <- sdc-trans-weaken2 XL1 XL2 XL3
             .
 
 -/assum : stp-trans-weaken2 stp/assum stp/assum stp/assum.
@@ -628,7 +660,7 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
             (stp/func SBT6 SBT5 XL3)
             <- spt-trans-weaken2 SBT1 SBT3 SBT5
             <- stp-trans-weaken2 SBT2 SBT4 SBT6
-            <- spt-trans-weaken2 XL1 XL2 XL3
+            <- sdc-trans-weaken2 XL1 XL2 XL3
             .
 -/func-func--X2  : spt-trans-weaken2
             (spt/func SBT2 SBT1 XL1)
@@ -636,7 +668,7 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
             (spt/func SBT6 SBT5 XL3)
             <- stp-trans-weaken2 SBT1 SBT3 SBT5
             <- spt-trans-weaken2 SBT2 SBT4 SBT6
-            <- stp-trans-weaken2 XL1 XL2 XL3
+            <- sdc-trans-weaken2 XL1 XL2 XL3
             .
 
 -/tsel1 :   stp-trans-weaken2
@@ -644,8 +676,8 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
             SBT2
             (stp/sel1 ST_U1' XL3)
             <- stp-trans-weaken2 ST_U1 SBT2 ST_U1'
-            <- stp-xlow SBT2 XL2
-            <- spt-trans-weaken2 XL1 XL2 XL3
+            <- stp-xdc SBT2 XL2
+            <- sdc-trans-weaken2 XL1 XL2 XL3
             .
 
 -/tsel1--X2 : spt-trans-weaken2
@@ -653,8 +685,8 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
             SBT2
             (spt/sel1 ST_U1' XL3)
             <- spt-trans-weaken2 ST_U1 SBT2 ST_U1'
-            <- spt-xlow SBT2 XL2
-            <- stp-trans-weaken2 XL1 XL2 XL3
+            <- spt-xdc SBT2 XL2
+            <- sdc-trans-weaken2 XL1 XL2 XL3
             .
 
 -/tsel2 :   stp-trans-weaken2
@@ -665,8 +697,8 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
             <- stp-trans-weaken2 SBT1 ST_2U ST_2U'
             <- stp-xlow SBT1 ST_L1L0
             <- spt-trans-weaken2 ST_L1L0 ST_LX  ST_LX'
-            <- stp-xlow SBT1 XL1
-            <- spt-trans-weaken2 XL1 XL2 XL3
+            <- stp-xdc SBT1 XL1
+            <- sdc-trans-weaken2 XL1 XL2 XL3
             .
 
 -/tsel2--X2 :   spt-trans-weaken2
@@ -677,8 +709,8 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
             <- spt-trans-weaken2 SBT1 ST_2U ST_2U'
             <- spt-xlow SBT1 ST_L1L0
             <- stp-trans-weaken2 ST_L1L0 ST_LX  ST_LX'
-            <- spt-xlow SBT1 XL1
-            <- stp-trans-weaken2 XL1 XL2 XL3            
+            <- spt-xdc SBT1 XL1
+            <- sdc-trans-weaken2 XL1 XL2 XL3            
             .
 
 
@@ -699,72 +731,72 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
 
 
 -/tsel1-tselx : stp-trans-weaken2
-            ((stp/selx ST0 XL1): stp _ (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) tsel)
+            ((stp/selx _ ST0 XL1): stp _ (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) tsel)
             (stp/sel1 ST_U1 XL2)
             (stp/sel1 ST_U1' XL3)
             <- stp-trans-weaken2 ST0 ST_U1 ST_U1'
-            <- spt-trans-weaken2 XL1 XL2 XL3
+            <- sdc-trans-weaken2 XL1 XL2 XL3
             .
 
 -/tsel1-tselx--X2 : spt-trans-weaken2
-            (spt/selx (ST0:   spt _ (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2) XL1)
+            (spt/selx (ST0:   spt _ (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2) _ XL1)
             (spt/sel1 (ST_L3: spt _ (tcons (rect L2 U2)) L2 (tcons (rect L3 U3)) T3) XL2)
             (spt/sel1 ST_L3' XL3)
             <- spt-trans-weaken2 ST0 ST_L3 ST_L3'
-            <- stp-trans-weaken2 XL1 XL2 XL3
+            <- sdc-trans-weaken2 XL1 XL2 XL3
             .
 
 
 -/tsel2-tselx : stp-trans-weaken2
             (stp/sel2 ST_LX ST_1L ST_U1 XL1)
-            ((stp/selx ST0 XL2): stp _ (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) tsel)
+            ((stp/selx _ ST0 XL2): stp _ (tcons (rect L1 U1)) tsel (tcons (rect L2 U2)) tsel)
             (stp/sel2 ST_LX ST_1L ST_U1' XL3)
             <- stp-trans-weaken2 ST_U1 ST0 ST_U1'
-            <- spt-trans-weaken2 XL1 XL2 XL3
+            <- sdc-trans-weaken2 XL1 XL2 XL3
             .
 
 -/tsel2-tselx--X2 : spt-trans-weaken2
             (spt/sel2 ST_LX ST_1L ST_U1 XL1)
-            (spt/selx (ST0: spt _ (tcons (rect L2 U2)) L2 (tcons (rect L3 U3)) L3) XL2)
+            (spt/selx (ST0: spt _ (tcons (rect L2 U2)) L2 (tcons (rect L3 U3)) L3) _ XL2)
             (spt/sel2 ST_LX ST_1L ST_U1' XL3)
             <- spt-trans-weaken2 ST_U1 ST0 ST_U1'
-            <- stp-trans-weaken2 XL1 XL2 XL3
+            <- sdc-trans-weaken2 XL1 XL2 XL3
             .
 
 
 -/tselx-tselx : stp-trans-weaken2
-            (stp/selx SBT1 XL1)
-            (stp/selx SBT2 XL2)
-            (stp/selx SBT3 XL3)
-            <- stp-trans-weaken2 SBT1 SBT2 SBT3
-            <- spt-trans-weaken2 XL1 XL2 XL3
+            (stp/selx SBT1 SBT4 XL1)
+            (stp/selx SBT2 SBT5 XL2)
+            (stp/selx SBT3 SBT6 XL3)
+            <- spt-trans-weaken2 SBT1 SBT2 SBT3
+            <- stp-trans-weaken2 SBT4 SBT5 SBT6
+            <- sdc-trans-weaken2 XL1 XL2 XL3
             .
 
 -/tselx-tselx--X2 : spt-trans-weaken2
-            (spt/selx SBT1 XL1)
-            (spt/selx SBT2 XL2)
-            (spt/selx SBT3 XL3)
+            (spt/selx SBT1 SBT4 XL1)
+            (spt/selx SBT2 SBT5 XL2)
+            (spt/selx SBT3 SBT6 XL3)
             <- spt-trans-weaken2 SBT1 SBT2 SBT3
-            <- stp-trans-weaken2 XL1 XL2 XL3
+            <- stp-trans-weaken2 SBT4 SBT5 SBT6
+            <- sdc-trans-weaken2 XL1 XL2 XL3
             .
 
 -/tbind-bind : stp-trans-weaken2
-            (stp/bind S1 ST1 XL1)
-            (stp/bind S2 ST2 XL2)
-            (stp/bind S3 ST3 XL3)
+            (stp/bind S1 ST1)
+            (stp/bind S2 ST2)
+            (stp/bind S3 ST3)
             <- sdc-trans-weaken2 S1 S2 S3
             <- stp-trans-weaken2 ST1 ST2 ST3
-            <- spt-trans-weaken2 XL1 XL2 XL3
             .
 
 -/tbind-bind--X2 : spt-trans-weaken2
-            (spt/bind S1 ST1 XL1)
-            (spt/bind S2 ST2 XL2)
-            (spt/bind S3 ST3 XL3)
+            (spt/bind S1 ST1)
+            (spt/bind S2 ST2)
+            (spt/bind S3 ST3)
             % <- scd-trans-weaken2 S1 S2 S3
             <- sdc-trans-weaken S2 S1 S3  %%% swapping sides
-            <- spt-trans-weaken2 ST1 ST2 ST3
-            <- stp-trans-weaken2 XL1 XL2 XL3
+            <- stp-trans-weaken ST2 ST1 ST3
             .
 
 
@@ -782,6 +814,50 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
 (stp-trans-weaken A B _ )(spt-trans-weaken A' B' _)(sdc-trans-weaken A'' B'' _)
 (stp-trans-weaken2 X Y _ )(spt-trans-weaken2 X' Y' _)(sdc-trans-weaken2 X'' Y'' _)
 .
+
+
+
+stp-invert: stp N G1 T1 G2 T2 -> spt N G1 T2 G2 T1 -> type.
+%mode stp-invert +A -B.
+
+spt-invert: spt N G1 T1 G2 T2 -> stp N G1 T2 G2 T1 -> type.
+%mode spt-invert +A -B.
+
+-/assum:    stp-invert stp/assum spt/assum.
+
+-/top:      stp-invert stp/top spt/top.
+-/topc:     stp-invert (stp/topc S) (spt/topc S).
+
+-/bot:      stp-invert stp/bot spt/bot.
+-/botc:     stp-invert (stp/botc S) (spt/botc S).
+
+-/fun:      stp-invert (stp/fun S2 S1) (spt/fun S2' S1')
+            <- spt-invert S1 S1'
+            <- stp-invert S2 S2'
+            .
+-/func:     stp-invert (stp/func S2 S1 XL) (spt/func S2' S1' XL)
+            <- spt-invert S1 S1'
+            <- stp-invert S2 S2'
+            .
+
+-/selx :    stp-invert (stp/selx SL SU XL) (spt/selx SL SU XL).
+
+-/bind :    stp-invert (stp/bind SX ST) (spt/bind SX ST).
+
+%% TODO: tsel1, tsel2
+
+% -/sel1 :    stp-invert (stp/sel1 ST_L1 XL) (spt/sel2 A B ST_L1' XL)
+%            <- stp-invert ST_L1 ST_L1''
+%            .
+
+%worlds () 
+(stp-invert _ _)(spt-invert _ _)
+.
+
+%total {(A A')} 
+(stp-invert A _)(spt-invert A' _)
+.
+
 
 
 
