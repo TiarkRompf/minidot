@@ -219,7 +219,7 @@ stp/bind: stp (s N) tnil (bind (rect L1 U1) T1) tnil (bind (rect L2 U2) T2)
 
 spt/bind: spt (s N) tnil (bind (rect L1 U1) T1) tnil (bind (rect L2 U2) T2)
           <- stp (N) (tcons (rect L1 U1)) U1 (tcons (rect L2 U2)) U2
-          <- spt (s N) (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) T2
+          <- stp (s N) (tcons (rect L2 U2)) T2 (tcons (rect L1 U1)) T1
           <- sdc (s N) (tcons (rect L2 U2)) (rect L2 U2) (tcons (rect L1 U1)) (rect L1 U1)
           .
 
@@ -551,7 +551,7 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
             (spt/bind S3 ST3 XL3)
             % <- scd-trans-weaken S1 S2 S3
             <- sdc-trans-weaken2 S2 S1 S3  %%% swapping sides
-            <- spt-trans-weaken ST1 ST2 ST3
+            <- stp-trans-weaken2 ST2 ST1 ST3
             <- stp-trans-weaken XL1 XL2 XL3
             .
 
@@ -763,7 +763,7 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
             (spt/bind S3 ST3 XL3)
             % <- scd-trans-weaken2 S1 S2 S3
             <- sdc-trans-weaken S2 S1 S3  %%% swapping sides
-            <- spt-trans-weaken2 ST1 ST2 ST3
+            <- stp-trans-weaken ST2 ST1 ST3
             <- stp-trans-weaken2 XL1 XL2 XL3
             .
 
