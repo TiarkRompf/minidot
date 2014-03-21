@@ -330,15 +330,49 @@ spt-xdc: spt (s N) (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) T2 ->
 %total N (spt-xdc N _).
 %reduces N3 <= N2 (spt-xdc N2 N3).
 
+xdc-spt : sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2) ->
+          spt (N) (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2 ->
+          type.
+%mode xdc-spt +SBT2 -SBT3.
+
+- : xdc-spt (sdc/rectc XU XL) XL.
+
+%worlds () (xdc-spt _ _).
+
+%total N (xdc-spt N _).
+%reduces N3 <= N2 (xdc-spt N2 N3).
+
+xdc-stp : sdc (N) (tcons (rect L1 U1)) (rect L1 U1) (tcons (rect L2 U2)) (rect L2 U2) ->
+          stp (N) (tcons (rect L1 U1)) U1 (tcons (rect L2 U2)) U2 ->
+          type.
+%mode xdc-stp +SBT2 -SBT3.
+
+- : xdc-stp (sdc/rectc XU XL) XU.
+
+%worlds () (xdc-stp _ _).
+
+%total N (xdc-stp N _).
+%reduces N3 <= N2 (xdc-stp N2 N3).
 
 stp-xlow: stp (s N) (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) T2 ->
           spt (N) (tcons (rect L1 U1)) L1 (tcons (rect L2 U2)) L2 ->
           type.
 %mode stp-xlow +SBT2 -SBT3.
 
+- : stp-xlow (stp/topc XD) XL
+ <- xdc-spt XD XL.
+- : stp-xlow (stp/botc XD) XL
+ <- xdc-spt XD XL.
+- : stp-xlow (stp/func _ _ XD) XL
+ <- xdc-spt XD XL.
+- : stp-xlow (stp/sel1 _ XD) XL
+ <- xdc-spt XD XL.
+- : stp-xlow (stp/sel2 _ _ _ XD) XL
+ <- xdc-spt XD XL.
+- : stp-xlow (stp/selx _ _ XD) XL
+ <- xdc-spt XD XL.
 
 %worlds () (stp-xlow _ _).
-%trustme
 %total N (stp-xlow N _).
 %reduces N3 <= N2 (stp-xlow N2 N3).
 
@@ -347,9 +381,20 @@ spt-xlow: spt (s N) (tcons (rect L1 U1)) T1 (tcons (rect L2 U2)) T2 ->
           type.
 %mode spt-xlow +SBT2 -SBT3.
 
+- : spt-xlow (spt/topc XD) XU
+ <- xdc-stp XD XU.
+- : spt-xlow (spt/botc XD) XU
+ <- xdc-stp XD XU.
+- : spt-xlow (spt/func _ _ XD) XU
+ <- xdc-stp XD XU.
+- : spt-xlow (spt/sel1 _ XD) XU
+ <- xdc-stp XD XU.
+- : spt-xlow (spt/sel2 _ _ _ XD) XU
+ <- xdc-stp XD XU.
+- : spt-xlow (spt/selx _ _ XD) XU
+ <- xdc-stp XD XU.
 
 %worlds () (spt-xlow _ _).
-%trustme
 %total N (spt-xlow N _).
 %reduces N3 <= N2 (spt-xlow N2 N3).
 
