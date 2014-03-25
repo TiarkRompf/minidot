@@ -224,6 +224,14 @@ tlookup-lower-eq : tlookup (tcons (rect (tsome S) U)) (rect (tsome S') U') -> sa
 %worlds () (tlookup-lower-eq _ _).
 %total A (tlookup-lower-eq A _).
 
+eq-dec-has-upper : samed D D' -> has-upper D U -> has-upper D' U -> type.
+%mode eq-dec-has-upper +A +B -C.
+
+- : eq-dec-has-upper identd has-upper/yes has-upper/yes.
+
+%worlds () (eq-dec-has-upper _ _ _).
+%total A (eq-dec-has-upper A _ _).
+
 trans-same : same T1 T2 -> same T2 T3 -> same T1 T3 -> type.
 %mode trans-same +A +B -C.
 
@@ -335,6 +343,16 @@ trans-sub-tp-r: sub-tp G T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
 
 -/tsel2 : trans-sub-tp B12 (sub-tp/tsel2 B H D L) (sub-tp/tsel2 B' H D L)
  <- trans-sub-tp B12 B B'.
+
+-/tsel2-tsel1 : trans-sub-tp (sub-tp/tsel2 B12 H12 (wf-dc/s BSU) L12) (sub-tp/tsel1 B23 H23 D23 L23) OUT
+ <- tlookup-lower-eq L12 EQS'
+ <- has-lower-eq H12 EQS
+ <- trans-same EQS' EQS EQS''
+ <- tlookup-eq L23 L12 EQL
+ <- eq-dec-has-upper EQL H23 H23'
+ <- has-upper-eq H23' EQU
+ <- eq-sub-tp-high EQU BSU BSU'
+ <- trans-sub-tp BSU' B23 BS3.
 
 %worlds ()
 (weak-wf-tp _ _ _)
