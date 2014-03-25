@@ -192,6 +192,30 @@ extract-wf : sub-tp G T1 T2 -> wf-tp G T1 -> wf-tp G T2 -> type.
 
 %{ ------- transitivity & weakening ------ }%
 
+has-upper-eq : has-upper (rect OS U) U' -> same U U' -> type.
+%mode has-upper-eq +A -B.
+
+- : has-upper-eq has-upper/yes ident.
+
+%worlds () (has-upper-eq _ _).
+%total A (has-upper-eq A _).
+
+tlookup-upper-eq : tlookup (tcons (rect OS U)) (rect OS' U') -> same U U' -> type.
+%mode tlookup-upper-eq +A -B.
+
+- : tlookup-upper-eq tl ident.
+
+%worlds () (tlookup-upper-eq _ _).
+%total A (tlookup-upper-eq A _).
+
+trans-same : same T1 T2 -> same T2 T3 -> same T1 T3 -> type.
+%mode trans-same +A +B -C.
+
+- : trans-same ident ident ident.
+
+%worlds () (trans-same _ _ _).
+%total {} (trans-same _ _ _).
+
 env-wf : tenv -> type.
 env-wf/tnil  : env-wf tnil.
 env-wf/tcons : env-wf (tcons D)
@@ -238,6 +262,15 @@ trans-sub-dc: sub-dc G D1 D2 -> sub-dc G D2 D3 -> sub-dc G D1 D3 -> type.
 
 - : weak-sub-tp SE (sub-tp/top W) (sub-tp/top W')
  <- weak-wf-tp SE W W'.
+
+- : weak-sub-tp (sub-env/tcons (sub-dc/ss B2 B1 BU BS) WE) (sub-tp/tsel1 B H D L) (sub-tp/tsel1 B' has-upper/yes (wf-dc/s B1) tl)
+ <- weak-sub-tp (sub-env/tcons (sub-dc/ss B2 B1 BU BS) WE) B BM
+ <- tlookup-upper-eq L EQU'
+ <- has-upper-eq H EQU
+ <- trans-same EQU' EQU EQU''
+ <- eq-sub-tp-high EQU'' BU BU'
+ <- trans-sub-tp BU' BM B'.
+
 
 %worlds ()
 (weak-wf-tp _ _ _)
