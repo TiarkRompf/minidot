@@ -200,6 +200,14 @@ has-upper-eq : has-upper (rect OS U) U' -> same U U' -> type.
 %worlds () (has-upper-eq _ _).
 %total A (has-upper-eq A _).
 
+has-lower-eq : has-lower (rect (tsome S) U) S' -> same S S' -> type.
+%mode has-lower-eq +A -B.
+
+- : has-lower-eq has-lower/yes ident.
+
+%worlds () (has-lower-eq _ _).
+%total A (has-lower-eq A _).
+
 tlookup-upper-eq : tlookup (tcons (rect OS U)) (rect OS' U') -> same U U' -> type.
 %mode tlookup-upper-eq +A -B.
 
@@ -207,6 +215,14 @@ tlookup-upper-eq : tlookup (tcons (rect OS U)) (rect OS' U') -> same U U' -> typ
 
 %worlds () (tlookup-upper-eq _ _).
 %total A (tlookup-upper-eq A _).
+
+tlookup-lower-eq : tlookup (tcons (rect (tsome S) U)) (rect (tsome S') U') -> same S S' -> type.
+%mode tlookup-lower-eq +A -B.
+
+- : tlookup-lower-eq tl ident.
+
+%worlds () (tlookup-lower-eq _ _).
+%total A (tlookup-lower-eq A _).
 
 trans-same : same T1 T2 -> same T2 T3 -> same T1 T3 -> type.
 %mode trans-same +A +B -C.
@@ -248,6 +264,8 @@ trans-sub-tp: sub-tp G T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
 %mode trans-sub-tp +A12 +A23 -A13.
 trans-sub-dc: sub-dc G D1 D2 -> sub-dc G D2 D3 -> sub-dc G D1 D3 -> type.
 %mode trans-sub-dc +A12 +A23 -A13.
+trans-sub-tp-r: sub-tp G T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
+%mode trans-sub-tp-r +A12 +A23 -A13.
 
 - : weak-wf-tp _ wf-tp/top wf-tp/top.
 - : weak-wf-tp _ (wf-tp/tbind WD) (wf-tp/tbind WD).
@@ -286,6 +304,14 @@ trans-sub-dc: sub-dc G D1 D2 -> sub-dc G D2 D3 -> sub-dc G D1 D3 -> type.
  <- eq-sub-tp-high EQU'' BU BU'
  <- trans-sub-tp BU' BM B'.
 
+- : weak-sub-tp (sub-env/tcons (sub-dc/ss B2 B1 BU BS) WE) (sub-tp/tsel2 B H D L) (sub-tp/tsel2 B' has-lower/yes (wf-dc/s B1) tl)
+ <- weak-sub-tp (sub-env/tcons (sub-dc/ss B2 B1 BU BS) WE) B BM
+ <- tlookup-lower-eq L EQS'
+ <- has-lower-eq H EQS
+ <- trans-same EQS' EQS EQS''
+ <- eq-sub-tp-low EQS'' BS BS'
+ <- trans-sub-tp-r BM BS' B'.
+
 
 %worlds ()
 (weak-wf-tp _ _ _)
@@ -294,12 +320,14 @@ trans-sub-dc: sub-dc G D1 D2 -> sub-dc G D2 D3 -> sub-dc G D1 D3 -> type.
 (weak-sub-dc _ _ _)
 (trans-sub-tp _ _ _)
 (trans-sub-dc _ _ _)
+(trans-sub-tp-r _ _ _)
 .
-%total {(SW SWD SB SBD T1 TD1) (W WD B BD T2 TD2)}
+%total {(SW SWD SB SBD T1 TD1 T2') (W WD B BD T2 TD2 T1')}
 (weak-wf-tp SW W _)
 (weak-wf-dc SWD WD _)
 (weak-sub-tp SB B _)
 (weak-sub-dc SBD BD _)
 (trans-sub-tp T1 T2 _)
 (trans-sub-dc TD1 TD2 _)
+(trans-sub-tp-r T1' T2' _)
 .
