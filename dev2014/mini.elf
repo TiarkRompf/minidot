@@ -189,3 +189,69 @@ extract-wf : sub-tp G T1 T2 -> wf-tp G T1 -> wf-tp G T2 -> type.
 
 %worlds () (extract-wf _ _ _) (extract-wfd _ _ _).
 %total (A B) (extract-wf A _ _) (extract-wfd B _ _).
+
+%{ ------- transitivity & weakening ------ }%
+
+env-wf : tenv -> type.
+env-wf/tnil  : env-wf tnil.
+env-wf/tcons : env-wf (tcons D)
+            <- wf-dc (tcons D) D.
+
+sub-env : tenv -> tenv -> type.
+sub-env/tnil  : sub-env (tcons D) tnil
+            <- env-wf (tcons D).
+sub-env/tcons : sub-env (tcons D1) (tcons D2)
+            <- env-wf (tcons D2)
+            <- sub-dc (tcons D1) D1 D2.
+
+sub-lookup  : sub-env G1 G2 -> tlookup G2 D2 -> tlookup G1 D1 -> sub-dc (tcons D1) D1 D2 -> type.
+%mode sub-lookup +SE +L2 -L1 -BD.
+
+- : sub-lookup (sub-env/tcons BD WE2) L2 tl BD.
+
+%worlds () (sub-lookup _ _ _ _).
+%total SE (sub-lookup SE _ _ _).
+
+weak-wf-tp  : sub-env G1 G2 -> wf-tp G2 T -> wf-tp G1 T -> type.
+%mode weak-wf-tp +BE +A2 -A1.
+weak-wf-dc  : sub-env G1 G2 -> wf-dc G2 D -> wf-dc G1 D -> type.
+%mode weak-wf-dc +BE +A2 -A1.
+weak-sub-tp : sub-env G1 G2 -> sub-tp G2 TA TB -> sub-tp G1 TA TB -> type.
+%mode weak-sub-tp +BE +A2 -A1.
+weak-sub-dc : sub-env G1 G2 -> sub-dc G2 DA DB -> sub-dc G1 DA DB -> type.
+%mode weak-sub-dc +BE +A2 -A1.
+trans-sub-tp: sub-tp G T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
+%mode trans-sub-tp +A12 +A23 -A13.
+trans-sub-dc: sub-dc G D1 D2 -> sub-dc G D2 D3 -> sub-dc G D1 D3 -> type.
+%mode trans-sub-dc +A12 +A23 -A13.
+
+- : weak-wf-tp _ wf-tp/top wf-tp/top.
+- : weak-wf-tp _ (wf-tp/tbind WD) (wf-tp/tbind WD).
+- : weak-wf-tp (sub-env/tcons BD _) (wf-tp/tsel WD L) (wf-tp/tsel WD' tl)
+ <- extract-wfd BD WD' _.
+
+- : weak-wf-dc SE (wf-dc/s BSU) (wf-dc/s BSU')
+ <- weak-sub-tp SE BSU BSU'.
+
+- : weak-wf-dc SE (wf-dc/n WU) (wf-dc/n WU')
+ <- weak-wf-tp SE WU WU'.
+
+- : weak-sub-tp SE (sub-tp/top W) (sub-tp/top W')
+ <- weak-wf-tp SE W W'.
+
+%worlds ()
+(weak-wf-tp _ _ _)
+(weak-wf-dc _ _ _)
+(weak-sub-tp _ _ _)
+(weak-sub-dc _ _ _)
+(trans-sub-tp _ _ _)
+(trans-sub-dc _ _ _)
+.
+%total {(SW SWD SB SBD T1 TD1) (W WD B BD T2 TD2)}
+(weak-wf-tp SW W _)
+(weak-wf-dc SWD WD _)
+(weak-sub-tp SB B _)
+(weak-sub-dc SBD BD _)
+(trans-sub-tp T1 T2 _)
+(trans-sub-dc TD1 TD2 _)
+.
