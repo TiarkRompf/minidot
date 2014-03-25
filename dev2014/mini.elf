@@ -252,22 +252,15 @@ sym-same : same T1 T2 -> same T2 T1 -> type.
 %worlds () (sym-same _ _).
 %total {} (sym-same _ _).
 
-env-wf : tenv -> type.
-env-wf/tnil  : env-wf tnil.
-env-wf/tcons : env-wf (tcons D)
-            <- wf-dc (tcons D) D.
-
 sub-env : tenv -> tenv -> type.
-sub-env/tnil  : sub-env (tcons D) tnil
-            <- env-wf (tcons D).
+sub-env/tnil  : sub-env (tcons D) tnil.
 sub-env/tcons : sub-env (tcons D1) (tcons D2)
-            <- env-wf (tcons D2)
             <- sub-dc (tcons D1) D1 D2.
 
 sub-lookup  : sub-env G1 G2 -> tlookup G2 D2 -> tlookup G1 D1 -> sub-dc (tcons D1) D1 D2 -> type.
 %mode sub-lookup +SE +L2 -L1 -BD.
 
-- : sub-lookup (sub-env/tcons BD WE2) L2 tl BD.
+- : sub-lookup (sub-env/tcons BD) L2 tl BD.
 
 %worlds () (sub-lookup _ _ _ _).
 %total SE (sub-lookup SE _ _ _).
@@ -289,7 +282,7 @@ trans-sub-tp-r: sub-tp G T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
 
 - : weak-wf-tp _ wf-tp/top wf-tp/top.
 - : weak-wf-tp _ (wf-tp/tbind WD) (wf-tp/tbind WD).
-- : weak-wf-tp (sub-env/tcons BD _) (wf-tp/tsel WD L) (wf-tp/tsel WD' tl)
+- : weak-wf-tp (sub-env/tcons BD) (wf-tp/tsel WD L) (wf-tp/tsel WD' tl)
  <- extract-wfd BD WD' _.
 
 - : weak-wf-dc SE (wf-dc/s BSU) (wf-dc/s BSU')
@@ -301,31 +294,31 @@ trans-sub-tp-r: sub-tp G T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
 - : weak-sub-tp SE (sub-tp/top W) (sub-tp/top W')
  <- weak-wf-tp SE W W'.
 
-- : weak-sub-tp (sub-env/tcons (sub-dc/ss BSU B2 B1 BU BS) WE) (sub-tp/tsel1 B H D L) (sub-tp/tsel1 B' has-upper/yes (wf-dc/s B1) tl)
- <- weak-sub-tp (sub-env/tcons (sub-dc/ss BSU B2 B1 BU BS) WE) B BM
+- : weak-sub-tp (sub-env/tcons (sub-dc/ss BSU B2 B1 BU BS)) (sub-tp/tsel1 B H D L) (sub-tp/tsel1 B' has-upper/yes (wf-dc/s B1) tl)
+ <- weak-sub-tp (sub-env/tcons (sub-dc/ss BSU B2 B1 BU BS)) B BM
  <- tlookup-upper-eq L EQU'
  <- has-upper-eq H EQU
  <- trans-same EQU' EQU EQU''
  <- eq-sub-tp-high EQU'' BU BU'
  <- trans-sub-tp BU' BM B'.
-- : weak-sub-tp (sub-env/tcons (sub-dc/sn B1 BU) WE) (sub-tp/tsel1 B H D L) (sub-tp/tsel1 B' has-upper/yes (wf-dc/s B1) tl)
- <- weak-sub-tp (sub-env/tcons (sub-dc/sn B1 BU) WE) B BM
+- : weak-sub-tp (sub-env/tcons (sub-dc/sn B1 BU)) (sub-tp/tsel1 B H D L) (sub-tp/tsel1 B' has-upper/yes (wf-dc/s B1) tl)
+ <- weak-sub-tp (sub-env/tcons (sub-dc/sn B1 BU)) B BM
  <- tlookup-upper-eq L EQU'
  <- has-upper-eq H EQU
  <- trans-same EQU' EQU EQU''
  <- eq-sub-tp-high EQU'' BU BU'
  <- trans-sub-tp BU' BM B'.
-- : weak-sub-tp (sub-env/tcons (sub-dc/nn BU) WE) (sub-tp/tsel1 B H D L) (sub-tp/tsel1 B' has-upper/yes (wf-dc/n W1) tl)
+- : weak-sub-tp (sub-env/tcons (sub-dc/nn BU)) (sub-tp/tsel1 B H D L) (sub-tp/tsel1 B' has-upper/yes (wf-dc/n W1) tl)
  <- extract-wf BU W1 _
- <- weak-sub-tp (sub-env/tcons (sub-dc/nn BU) WE) B BM
+ <- weak-sub-tp (sub-env/tcons (sub-dc/nn BU)) B BM
  <- tlookup-upper-eq L EQU'
  <- has-upper-eq H EQU
  <- trans-same EQU' EQU EQU''
  <- eq-sub-tp-high EQU'' BU BU'
  <- trans-sub-tp BU' BM B'.
 
-- : weak-sub-tp (sub-env/tcons (sub-dc/ss BSU B2 B1 BU BS) WE) (sub-tp/tsel2 BUX HUX B H D L) (sub-tp/tsel2 BUX' has-upper/yes B' has-lower/yes (wf-dc/s B1) tl)
- <- weak-sub-tp (sub-env/tcons (sub-dc/ss BSU B2 B1 BU BS) WE) B BM
+- : weak-sub-tp (sub-env/tcons (sub-dc/ss BSU B2 B1 BU BS)) (sub-tp/tsel2 BUX HUX B H D L) (sub-tp/tsel2 BUX' has-upper/yes B' has-lower/yes (wf-dc/s B1) tl)
+ <- weak-sub-tp (sub-env/tcons (sub-dc/ss BSU B2 B1 BU BS)) B BM
  <- tlookup-lower-eq L EQS'
  <- has-lower-eq H EQS
  <- trans-same EQS' EQS EQS''
@@ -371,6 +364,10 @@ trans-sub-tp-r: sub-tp G T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
  <- trans-same EQU3' EQU'' EQU'''
  <- eq-sub-tp-low EQU''' B23 B23'
  <- trans-sub-tp BUX12 B23' OUT.
+
+-/tbind-tbind : trans-sub-tp (sub-tp/tbind D12 W2) (sub-tp/tbind D23 W3) (sub-tp/tbind D13 W3)
+ <- weak-sub-dc (sub-env/tcons D12) D23 D23'
+ <- trans-sub-dc D12 D23' D13.
 
 %worlds ()
 (weak-wf-tp _ _ _)
