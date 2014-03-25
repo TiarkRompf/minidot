@@ -312,6 +312,7 @@ trans-sub-tp-r: sub-tp G T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
  <- eq-sub-tp-low EQS'' BS BS'
  <- trans-sub-tp-r BM BS' B'.
 
+- : weak-sub-tp SE (sub-tp/tbind BD (wf-tp/tbind WD)) (sub-tp/tbind BD (wf-tp/tbind WD)).
 
 %worlds ()
 (weak-wf-tp _ _ _)
