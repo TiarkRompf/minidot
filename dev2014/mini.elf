@@ -333,6 +333,9 @@ trans-sub-tp-r: sub-tp G T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
 -/tsel1 : trans-sub-tp (sub-tp/tsel1 B H D L) B23 (sub-tp/tsel1 B' H D L)
  <- trans-sub-tp B B23 B'.
 
+-/tsel2 : trans-sub-tp B12 (sub-tp/tsel2 B H D L) (sub-tp/tsel2 B' H D L)
+ <- trans-sub-tp B12 B B'.
+
 %worlds ()
 (weak-wf-tp _ _ _)
 (weak-wf-dc _ _ _)
