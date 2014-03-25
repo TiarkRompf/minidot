@@ -1,0 +1,191 @@
+%{ ------- language ----- }%
+
+tpe: type.
+dec: type.
+topt: type.
+
+top: tpe.
+tbind: dec -> tpe.
+tsel: tpe.
+
+tnone: topt.
+tsome: tpe -> topt.
+
+rect: topt -> tpe -> dec.
+
+%{ ------- environments ----- }%
+
+% environments
+tenv  : type.
+tnil  : tenv.
+tcons : dec -> tenv.
+
+tlookup: tenv -> dec -> type.
+tl  : tlookup (tcons D) D.
+
+%{ ------- subtyping ------ }%
+
+has-lower : dec -> tpe -> type.
+has-lower/yes : has-lower (rect (tsome S) U) S.
+
+has-upper : dec -> tpe -> type.
+has-upper/yes : has-upper (rect _ U) U.
+
+wf-tp : tenv -> tpe -> type.
+wf-dc : tenv -> dec -> type.
+sub-tp : tenv -> tpe -> tpe -> type.
+sub-dc : tenv -> dec -> dec -> type.
+
+sub-tp/top : sub-tp G T top
+          <- wf-tp G T.
+sub-tp/tsel1 : sub-tp G tsel T
+            <- tlookup G D
+            <- wf-dc G D
+            <- has-upper D U
+            <- sub-tp G U T
+            .
+sub-tp/tsel2 : sub-tp G T tsel
+            <- tlookup G D
+            <- wf-dc G D
+            <- has-lower D S
+            <- sub-tp G T S
+            .
+sub-tp/tbind : sub-tp G (tbind D1) (tbind D2)
+            <- wf-tp G (tbind D2)
+            <- sub-dc (tcons D1) D1 D2
+            .
+
+sub-dc/ss : sub-dc G (rect (tsome S1) U1) (rect (tsome S2) U2)
+         <- sub-tp G S2 S1
+         <- sub-tp G U1 U2
+         <- sub-tp G S1 U1
+         <- sub-tp G S2 U2.
+sub-dc/sn : sub-dc G (rect (tsome S1) U1) (rect tnone U2)
+         <- sub-tp G U1 U2
+         <- sub-tp G S1 U1.
+
+sub-dc/nn : sub-dc G (rect tnone U1) (rect tnone U2)
+         <- sub-tp G U1 U2.
+
+wf-tp/top : wf-tp G top.
+wf-tp/tbind : wf-tp G (tbind D)
+           <- wf-dc (tcons D) D.
+wf-tp/tsel : wf-tp G tsel
+          <- tlookup G D
+          <- wf-dc G D.
+
+wf-dc/s : wf-dc G (rect (tsome S) U)
+       <- sub-tp G S U.
+wf-dc/n : wf-dc G (rect tnone U)
+       <- wf-tp G U.
+
+%%% PROOFS %%%
+
+%{ ------- uniqueness ------ }%
+
+same: tpe -> tpe -> type.
+ident: same T T.
+
+samed: dec -> dec -> type.
+identd: samed T T.
+
+sameopt : topt -> topt -> type.
+identopt: sameopt T T.
+
+sametenv: tenv -> tenv -> type.
+identtenv: sametenv G G.
+
+false: type.
+
+tlookup-eq : tlookup G D1 -> tlookup G D2 -> samed D1 D2 -> type.
+%mode tlookup-eq +A +B -C.
+
+- : tlookup-eq tl tl identd.
+
+%worlds () (tlookup-eq _ _ _).
+%total A (tlookup-eq A _ _).
+
+eq-sub-tp-low : same T1 T1' -> sub-tp G T1 T2 -> sub-tp G T1' T2 -> type.
+%mode eq-sub-tp-low +A +B -C.
+
+- : eq-sub-tp-low ident BT BT.
+
+%worlds () (eq-sub-tp-low _ _ _).
+%total A (eq-sub-tp-low A _ _).
+%reduces C <= B (eq-sub-tp-low _ B C).
+
+eq-sub-tp-high : same T2 T2' -> sub-tp G T1 T2 -> sub-tp G T1 T2' -> type.
+%mode eq-sub-tp-high +A +B -C.
+
+- : eq-sub-tp-high ident BT BT.
+
+%worlds () (eq-sub-tp-high _ _ _).
+%total A (eq-sub-tp-high A _ _).
+%reduces C <= B (eq-sub-tp-high _ B C).
+
+eq-sub-dc-low : samed D1 D1' -> sub-dc G D1 D2 -> sub-dc G D1' D2 -> type.
+%mode eq-sub-dc-low +A +B -C.
+
+- : eq-sub-dc-low identd BD BD.
+
+%worlds () (eq-sub-dc-low _ _ _).
+%total A (eq-sub-dc-low A _ _).
+%reduces C <= B (eq-sub-dc-low _ B C).
+
+eq-sub-dc-high : samed D2 D2' -> sub-dc G D1 D2 -> sub-dc G D1 D2' -> type.
+%mode eq-sub-dc-high +A +B -C.
+
+- : eq-sub-dc-high identd BD BD.
+
+%worlds () (eq-sub-dc-high _ _ _).
+%total A (eq-sub-dc-high A _ _).
+%reduces C <= B (eq-sub-dc-high _ B C).
+
+upper-eq : samed D D' -> has-upper D U -> has-upper D' U' -> same U U' -> type.
+%mode upper-eq +A +B +C -D.
+
+- : upper-eq identd has-upper/yes has-upper/yes ident.
+
+%worlds () (upper-eq _ _ _ _).
+%total A (upper-eq A _ _ _).
+
+%{ ------- regularity ------ }%
+
+extract-wfd : sub-dc G T1 T2 -> wf-dc G T1 -> wf-dc G T2 -> type.
+%mode extract-wfd +A -B -C.
+extract-wf : sub-tp G T1 T2 -> wf-tp G T1 -> wf-tp G T2 -> type.
+%mode extract-wf +A -B -C.
+
+- : extract-wf (sub-tp/top W) W wf-tp/top.
+
+- : extract-wf (sub-tp/tsel1 B H D L)
+     (wf-tp/tsel D L)
+     W2
+ <- extract-wf B _ W2.
+
+- : extract-wf (sub-tp/tsel2 B H D L)
+     W1
+     (wf-tp/tsel D L)
+ <- extract-wf B W1 _.
+
+- : extract-wf (sub-tp/tbind BD W2)
+     (wf-tp/tbind D1)
+     W2
+ <- extract-wfd BD D1 D2.
+
+- : extract-wfd (sub-dc/ss B2 B1 BU BS)
+     (wf-dc/s B1)
+     (wf-dc/s B2).
+
+- : extract-wfd (sub-dc/sn B1 BU)
+     (wf-dc/s B1)
+     (wf-dc/n WU2)
+ <- extract-wf BU _ WU2.
+
+- : extract-wfd (sub-dc/nn BU)
+     (wf-dc/n WU1)
+     (wf-dc/n WU2)
+ <- extract-wf BU WU1 WU2.
+
+%worlds () (extract-wf _ _ _) (extract-wfd _ _ _).
+%total (A B) (extract-wf A _ _) (extract-wfd B _ _).
