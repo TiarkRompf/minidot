@@ -371,6 +371,11 @@ trans-sub-tp-r: sub-tp G T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
  <- weak-sub-dc (sub-env/tcons D12) D23 D23'
  <- trans-sub-dc D12 D23' D13.
 
+- : trans-sub-dc (sub-dc/ss BS2U1 B2 B1 BU12 BS21) (sub-dc/ss BS3U2 B3 B2' BU23 BS32) (sub-dc/ss BS3U1 B3 B1 BU13 BS31)
+ <- trans-sub-tp BU12 BU23 BU13
+ <- trans-sub-tp-r BS32 BS21 BS31
+ <- trans-sub-tp-r BS32 BS2U1 BS3U1.
+
 %worlds ()
 (weak-wf-tp _ _ _)
 (weak-wf-dc _ _ _)
