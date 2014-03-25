@@ -327,6 +327,12 @@ trans-sub-tp-r: sub-tp G T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
 - : weak-sub-dc SE (sub-dc/nn BU) (sub-dc/nn BU')
  <- weak-sub-tp SE BU BU'.
 
+-/top : trans-sub-tp B12 (sub-tp/top W2) (sub-tp/top W1)
+ <- extract-wf B12 W1 _.
+
+-/tsel1 : trans-sub-tp (sub-tp/tsel1 B H D L) B23 (sub-tp/tsel1 B' H D L)
+ <- trans-sub-tp B B23 B'.
+
 %worlds ()
 (weak-wf-tp _ _ _)
 (weak-wf-dc _ _ _)
