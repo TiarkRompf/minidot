@@ -36,6 +36,11 @@ wf-dc : tenv -> dec -> type.
 sub-tp : tenv -> tpe -> tpe -> type.
 sub-dc : tenv -> dec -> dec -> type.
 
+sub-env : tenv -> tenv -> type.
+sub-env/tnil  : sub-env (tcons D) tnil.
+sub-env/tcons : sub-env (tcons D1) (tcons D2)
+            <- sub-dc (tcons D1) D1 D2.
+
 sub-tp/top : sub-tp G T top
           <- wf-tp G T.
 sub-tp/tsel1 : sub-tp G tsel T
@@ -55,7 +60,9 @@ sub-tp/tsel2 : sub-tp G T tsel
             .
 sub-tp/tbind : sub-tp G (tbind D1) (tbind D2)
             <- wf-tp G (tbind D2)
-            <- sub-dc (tcons D1) D1 D2
+            <- sub-env (tcons D1) (tcons D2)
+            % equivalent to sub-dc (tcons D1) D1 D2
+            % but helps with termination
             .
 
 sub-dc/ss : sub-dc G (rect (tsome S1) U1) (rect (tsome S2) U2)
@@ -172,7 +179,7 @@ extract-wf : sub-tp G T1 T2 -> wf-tp G T1 -> wf-tp G T2 -> type.
      (wf-tp/tsel D L)
  <- extract-wf B W1 _.
 
-- : extract-wf (sub-tp/tbind BD W2)
+- : extract-wf (sub-tp/tbind (sub-env/tcons BD) W2)
      (wf-tp/tbind D1)
      W2
  <- extract-wfd BD D1 D2.
@@ -251,11 +258,6 @@ sym-same : same T1 T2 -> same T2 T1 -> type.
 
 %worlds () (sym-same _ _).
 %total {} (sym-same _ _).
-
-sub-env : tenv -> tenv -> type.
-sub-env/tnil  : sub-env (tcons D) tnil.
-sub-env/tcons : sub-env (tcons D1) (tcons D2)
-            <- sub-dc (tcons D1) D1 D2.
 
 sub-lookup  : sub-env G1 G2 -> tlookup G2 D2 -> tlookup G1 D1 -> sub-dc (tcons D1) D1 D2 -> type.
 %mode sub-lookup +SE +L2 -L1 -BD.
@@ -365,7 +367,7 @@ trans-sub-tp-r: sub-tp G T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
  <- eq-sub-tp-low EQU''' B23 B23'
  <- trans-sub-tp BUX12 B23' OUT.
 
--/tbind-tbind : trans-sub-tp (sub-tp/tbind D12 W2) (sub-tp/tbind D23 W3) (sub-tp/tbind D13 W3)
+-/tbind-tbind : trans-sub-tp (sub-tp/tbind (sub-env/tcons D12) W2) (sub-tp/tbind (sub-env/tcons D23) W3) (sub-tp/tbind (sub-env/tcons D13) W3)
  <- weak-sub-dc (sub-env/tcons D12) D23 D23'
  <- trans-sub-dc D12 D23' D13.
 
