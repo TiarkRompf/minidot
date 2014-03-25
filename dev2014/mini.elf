@@ -314,6 +314,19 @@ trans-sub-tp-r: sub-tp G T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
 
 - : weak-sub-tp SE (sub-tp/tbind BD (wf-tp/tbind WD)) (sub-tp/tbind BD (wf-tp/tbind WD)).
 
+- : weak-sub-dc SE (sub-dc/ss B2 B1 BU BS) (sub-dc/ss B2' B1' BU' BS')
+ <- weak-sub-tp SE BS BS'
+ <- weak-sub-tp SE BU BU'
+ <- weak-sub-tp SE B1 B1'
+ <- weak-sub-tp SE B2 B2'.
+
+- : weak-sub-dc SE (sub-dc/sn B1 BU) (sub-dc/sn B1' BU')
+ <- weak-sub-tp SE BU BU'
+ <- weak-sub-tp SE B1 B1'.
+
+- : weak-sub-dc SE (sub-dc/nn BU) (sub-dc/nn BU')
+ <- weak-sub-tp SE BU BU'.
+
 %worlds ()
 (weak-wf-tp _ _ _)
 (weak-wf-dc _ _ _)
