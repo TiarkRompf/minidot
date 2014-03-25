@@ -270,6 +270,21 @@ trans-sub-dc: sub-dc G D1 D2 -> sub-dc G D2 D3 -> sub-dc G D1 D3 -> type.
  <- trans-same EQU' EQU EQU''
  <- eq-sub-tp-high EQU'' BU BU'
  <- trans-sub-tp BU' BM B'.
+- : weak-sub-tp (sub-env/tcons (sub-dc/sn B1 BU) WE) (sub-tp/tsel1 B H D L) (sub-tp/tsel1 B' has-upper/yes (wf-dc/s B1) tl)
+ <- weak-sub-tp (sub-env/tcons (sub-dc/sn B1 BU) WE) B BM
+ <- tlookup-upper-eq L EQU'
+ <- has-upper-eq H EQU
+ <- trans-same EQU' EQU EQU''
+ <- eq-sub-tp-high EQU'' BU BU'
+ <- trans-sub-tp BU' BM B'.
+- : weak-sub-tp (sub-env/tcons (sub-dc/nn BU) WE) (sub-tp/tsel1 B H D L) (sub-tp/tsel1 B' has-upper/yes (wf-dc/n W1) tl)
+ <- extract-wf BU W1 _
+ <- weak-sub-tp (sub-env/tcons (sub-dc/nn BU) WE) B BM
+ <- tlookup-upper-eq L EQU'
+ <- has-upper-eq H EQU
+ <- trans-same EQU' EQU EQU''
+ <- eq-sub-tp-high EQU'' BU BU'
+ <- trans-sub-tp BU' BM B'.
 
 
 %worlds ()
