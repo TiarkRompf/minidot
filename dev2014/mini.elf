@@ -174,6 +174,14 @@ upper-eq : samed D D' -> has-upper D U -> has-upper D' U' -> same U U' -> type.
 %worlds () (upper-eq _ _ _ _).
 %total A (upper-eq A _ _ _).
 
+lower-eq : samed D D' -> has-lower D S -> has-lower D' S' -> same S S' -> type.
+%mode lower-eq +A +B +C -D.
+
+- : lower-eq identd has-lower/yes has-lower/yes ident.
+
+%worlds () (lower-eq _ _ _ _).
+%total A (lower-eq A _ _ _).
+
 %{ ------- regularity ------ }%
 
 extract-wf : sub-tp G T1 T2 -> wf-tp G T1 -> wf-tp G T2 -> type.
@@ -298,13 +306,30 @@ trans-sub-dc-w2 : sub-env G G' -> sub-dc G D1 D2 -> sub-dc G' D2 D3 -> sub-dc G 
 
 -/top : trans-sub-tp BE B12 (sub-tp/top W2 WT3) (sub-tp/top W1 WT3)
  <- extract-wf B12 W1 _.
+-/top-w1 : trans-sub-tp-w1 BE B12 (sub-tp/top W2 WT3) (sub-tp/top W1' WT3)
+ <- extract-wf B12 W1 _
+ <- weak-wf-tp BE W1 W1'.
+-/top-w2 : trans-sub-tp-w2 BE B12 (sub-tp/top W2 WT3) (sub-tp/top W1 wf-tp/top)
+ <- extract-wf B12 W1 _.
 
 -/tsel1 : trans-sub-tp BE (sub-tp/tsel1 B H W1 D L) B23 (sub-tp/tsel1 B' H W1 D L)
  <- trans-sub-tp BE B B23 B'.
+-/tsel1-w2 : trans-sub-tp-w2 BE (sub-tp/tsel1 B H W1 D L) B23 (sub-tp/tsel1 B' H W1 D L)
+ <- trans-sub-tp-w2 BE B B23 B'.
 
 -/tsel2 : trans-sub-tp BE B12 (sub-tp/tsel2 BU HU B H W2 D L) (sub-tp/tsel2 BU' HU B' H W2 D L)
  <- trans-sub-tp BE B12 B B'
  <- trans-sub-tp BE B12 BU BU'.
+-/tsel2-w2 : trans-sub-tp-w2
+              (sub-env/tcons (sub-dc/ss EW' EW EB' EB EBU EBS))
+              B12 (sub-tp/tsel2 BU HU B H W2 D L)
+              (sub-tp/tsel2 BU' has-upper/yes B' has-lower/yes (wf-tp/tsel EW tl) (wf-dc/s EB) tl)
+ <- tlookup-eq L tl EQL
+ <- lower-eq EQL H has-lower/yes EQS
+ <- upper-eq EQL HU has-upper/yes EQU
+ <- trans-sub-tp-w2 (sub-env/tcons (sub-dc/ss EW' EW EB' EB EBU EBS)) B12 B BX'
+ <- trans-sub-tp-w2 (sub-env/tcons (sub-dc/ss EW' EW EB' EB EBU EBS)) B12 BU BUX'
+ .
 
 -/tsel2-tsel1 : trans-sub-tp BE (sub-tp/tsel2 BUX12 HUX12 B12 H12 _ D12 L12) (sub-tp/tsel1 B23 H23 _ D23 L23) OUT
  <- tlookup-upper-eq L12 EQU'
@@ -323,17 +348,17 @@ trans-sub-dc-w2 : sub-env G G' -> sub-dc G D1 D2 -> sub-dc G' D2 D3 -> sub-dc G 
 
 %worlds ()
 (trans-sub-tp _ _ _ _)
-(trans-sub-tp-w1 _ _ _ _)
 (trans-sub-tp-w2 _ _ _ _)
+(trans-sub-tp-w1 _ _ _ _)
 (trans-sub-dc _ _ _ _)
 (trans-sub-dc-w1 _ _ _ _)
 (trans-sub-dc-w2 _ _ _ _)
 .
 
-%total {(TB TA1 TA2 DA DA1 DA2) (TB TB1 TB2 DB DB1 DB2) (TC TC1 TC2 DC DC1 DC2)}
+%total [(TB TA1 TA2 DA DA1 DA2) (TB TB1 TB2 DB DB1 DB2) (TC TC1 TC2 DC DC1 DC2)]
 (trans-sub-tp _ TB TC _)
-(trans-sub-tp-w1 TA1 TB1 TC1 _)
 (trans-sub-tp-w2 TA2 TB2 TC2 _)
+(trans-sub-tp-w1 TA1 TB1 TC1 _)
 (trans-sub-dc DA DB DC _)
 (trans-sub-dc-w1 DA1 DB1 DC1 _)
 (trans-sub-dc-w2 DA2 DB2 DC2 _)
