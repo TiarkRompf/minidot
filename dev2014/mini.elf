@@ -37,20 +37,24 @@ sub-tp : tenv -> tpe -> tpe -> type.
 sub-dc : tenv -> dec -> dec -> type.
 
 sub-tp/top : sub-tp G T top
+          <- wf-tp G top % redundant, but helps reduce regularity
           <- wf-tp G T.
 sub-tp/tsel1 : sub-tp G tsel T
             <- tlookup G D
             <- wf-dc G D
+            <- wf-tp G tsel % redundant, but helps reduce regularity
             <- has-upper D U
             <- sub-tp G U T
             .
 sub-tp/tsel2 : sub-tp G T tsel
             <- tlookup G D
             <- wf-dc G D
+            <- wf-tp G tsel % redundant, but helps reduce regularity
             <- has-lower D S
             <- sub-tp G T S
             .
 sub-tp/tbind : sub-tp G (tbind D1) (tbind D2)
+            <- wf-tp G (tbind D1) % redundant but helps reduce regularity
             <- wf-tp G (tbind D2)
             <- sub-dc (tcons D1) D1 D2
             .
@@ -59,13 +63,24 @@ sub-dc/ss : sub-dc G (rect (tsome S1) U1) (rect (tsome S2) U2)
          <- sub-tp G S2 S1
          <- sub-tp G U1 U2
          <- sub-tp G S1 U1
-         <- sub-tp G S2 U2.
+         <- sub-tp G S2 U2
+         % redundant, but helps reduce regularity
+         <- wf-dc G (rect (tsome S1) U1)
+         <- wf-dc G (rect (tsome S2) U2)
+         .
 sub-dc/sn : sub-dc G (rect (tsome S1) U1) (rect tnone U2)
          <- sub-tp G U1 U2
-         <- sub-tp G S1 U1.
-
+         <- sub-tp G S1 U1
+         % redundant, but helps reduce regularity
+         <- wf-dc G (rect (tsome S1) U1)
+         <- wf-dc G (rect tnone U2)
+         .
 sub-dc/nn : sub-dc G (rect tnone U1) (rect tnone U2)
-         <- sub-tp G U1 U2.
+         <- sub-tp G U1 U2
+         % redundant, but helps reduce regularity
+         <- wf-dc G (rect tnone U1)
+         <- wf-dc G (rect tnone U2)
+         .
 
 wf-tp/top : wf-tp G top.
 wf-tp/tbind : wf-tp G (tbind D)
@@ -151,41 +166,39 @@ upper-eq : samed D D' -> has-upper D U -> has-upper D' U' -> same U U' -> type.
 
 %{ ------- regularity ------ }%
 
-extract-wfd : sub-dc G T1 T2 -> wf-dc G T1 -> wf-dc G T2 -> type.
-%mode extract-wfd +A -B -C.
 extract-wf : sub-tp G T1 T2 -> wf-tp G T1 -> wf-tp G T2 -> type.
 %mode extract-wf +A -B -C.
 
-- : extract-wf (sub-tp/top W) W wf-tp/top.
+- : extract-wf (sub-tp/top W WT) W WT.
 
-- : extract-wf (sub-tp/tsel1 B H D L)
-     (wf-tp/tsel D L)
-     W2
+- : extract-wf (sub-tp/tsel1 B H W1 D L) W1 W2
  <- extract-wf B _ W2.
 
-- : extract-wf (sub-tp/tsel2 B H D L)
-     W1
-     (wf-tp/tsel D L)
+- : extract-wf (sub-tp/tsel2 B H W2 D L) W1 W2
  <- extract-wf B W1 _.
 
-- : extract-wf (sub-tp/tbind BD W2)
-     (wf-tp/tbind D1)
-     W2
- <- extract-wfd BD D1 D2.
+- : extract-wf (sub-tp/tbind BD W2 W1) W1 W2.
 
-- : extract-wfd (sub-dc/ss B2 B1 BU BS)
-     (wf-dc/s B1)
-     (wf-dc/s B2).
+%worlds () (extract-wf _ _ _).
+%total (A) (extract-wf A _ _).
+%reduces {W1 W2} < {B B} (extract-wf B W1 W2).
 
-- : extract-wfd (sub-dc/sn B1 BU)
-     (wf-dc/s B1)
-     (wf-dc/n WU2)
- <- extract-wf BU _ WU2.
+extract-wfd : sub-dc G T1 T2 -> wf-dc G T1 -> wf-dc G T2 -> type.
+%mode extract-wfd +A -B -C.
 
-- : extract-wfd (sub-dc/nn BU)
-     (wf-dc/n WU1)
-     (wf-dc/n WU2)
- <- extract-wf BU WU1 WU2.
+- : extract-wfd (sub-dc/ss W2 W1 B2 B1 BU BS) W1 W2.
 
-%worlds () (extract-wf _ _ _) (extract-wfd _ _ _).
-%total (A B) (extract-wf A _ _) (extract-wfd B _ _).
+- : extract-wfd (sub-dc/sn W2 W1 B1 BU) W1 W2.
+
+- : extract-wfd (sub-dc/nn W2 W1 BU) W1 W2.
+
+%worlds () (extract-wfd _ _ _).
+%total (A) (extract-wfd A _ _).
+%reduces {W1 W2} < {B B} (extract-wfd B W1 W2).
+
+%{ ------- transitivity & weakening ------ }%
+
+sub-env : tenv -> tenv -> type.
+sub-env/tnil  : sub-env (tcons D) tnil.
+sub-env/tcons : sub-env (tcons D1) (tcons D2)
+            <- sub-dc (tcons D1) D1 D2.
