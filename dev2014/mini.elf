@@ -386,6 +386,37 @@ trans-sub-tp-r: sub-tp G T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
 - : trans-sub-dc (sub-dc/nn BU12) (sub-dc/nn BU23) (sub-dc/nn BU13)
  <- trans-sub-tp BU12 BU23 BU13.
 
+-/top : trans-sub-tp-r B12 (sub-tp/top W2) (sub-tp/top W1)
+ <- extract-wf B12 W1 _.
+
+-/tsel1 : trans-sub-tp-r (sub-tp/tsel1 B H D L) B23 (sub-tp/tsel1 B' H D L)
+ <- trans-sub-tp-r B B23 B'.
+
+-/tsel2 : trans-sub-tp-r B12 (sub-tp/tsel2 BUX HUX B H D L) (sub-tp/tsel2 BUX' HUX B' H D L)
+ <- trans-sub-tp-r B12 B B'
+ <- trans-sub-tp-r B12 BUX BUX'.
+
+-/tsel2-tsel1 : trans-sub-tp-r (sub-tp/tsel2 BUX12 HUX12 B12 H12 D12 L12) (sub-tp/tsel1 B23 H23 D23 L23) OUT
+ <- tlookup-upper-eq L12 EQU'
+ <- has-upper-eq HUX12 EQU
+ <- trans-same EQU' EQU EQU''
+ <- tlookup-eq L23 L12 EQL
+ <- eq-dec-has-upper EQL H23 H23'
+ <- has-upper-eq H23' EQU3
+ <- sym-same EQU3 EQU3'
+ <- trans-same EQU3' EQU'' EQU'''
+ <- eq-sub-tp-low EQU''' B23 B23'
+ <- trans-sub-tp-r BUX12 B23' OUT.
+
+weak-sub-dc-r : sub-env G1 G2 -> sub-dc G2 DA DB -> sub-dc G1 DA DB -> type.
+%mode weak-sub-dc-r +BE +A2 -A1.
+trans-sub-dc-r: sub-dc G D1 D2 -> sub-dc G D2 D3 -> sub-dc G D1 D3 -> type.
+%mode trans-sub-dc-r +A12 +A23 -A13.
+
+-/tbind-tbind : trans-sub-tp-r (sub-tp/tbind (sub-env/tcons D12) W2) (sub-tp/tbind (sub-env/tcons D23) W3) (sub-tp/tbind (sub-env/tcons D13) W3)
+ <- weak-sub-dc-r (sub-env/tcons D12) D23 D23'
+ <- trans-sub-dc-r D12 D23' D13.
+
 %worlds ()
 (weak-wf-tp _ _ _)
 (weak-wf-dc _ _ _)
@@ -394,8 +425,10 @@ trans-sub-tp-r: sub-tp G T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
 (trans-sub-tp _ _ _)
 (trans-sub-dc _ _ _)
 (trans-sub-tp-r _ _ _)
+(trans-sub-dc-r _ _ _)
+(weak-sub-dc-r _ _ _)
 .
-%total {(SW SWD SB SBD T1 TD1 T2') (W WD B BD T2 TD2 T1')}
+%total {(SW SWD SB SBD T1 TD1 T2' TD2' BD') (SW SWD SB SBD T1 TD2 T1' TD1' BD') (W WD B BD T2 TD2 T1' TD1' SBD') (W WD B BD T2 TD1 T2' TD2' SBD')}
 (weak-wf-tp SW W _)
 (weak-wf-dc SWD WD _)
 (weak-sub-tp SB B _)
@@ -403,4 +436,6 @@ trans-sub-tp-r: sub-tp G T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
 (trans-sub-tp T1 T2 _)
 (trans-sub-dc TD1 TD2 _)
 (trans-sub-tp-r T1' T2' _)
+(trans-sub-dc-r TD1' TD2' _)
+(weak-sub-dc-r SBD' BD' _)
 .
