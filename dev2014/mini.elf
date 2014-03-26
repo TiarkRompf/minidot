@@ -36,6 +36,11 @@ wf-dc : tenv -> dec -> type.
 sub-tp : tenv -> tpe -> tpe -> type.
 sub-dc : tenv -> dec -> dec -> type.
 
+sub-env : tenv -> tenv -> type.
+sub-env/tnil  : sub-env (tcons D) tnil.
+sub-env/tcons : sub-env (tcons D1) (tcons D2)
+            <- sub-dc (tcons D1) D1 D2.
+
 sub-tp/top : sub-tp G T top
           <- wf-tp G top % redundant, but helps reduce regularity
           <- wf-tp G T.
@@ -59,7 +64,9 @@ sub-tp/tsel2 : sub-tp G T tsel
 sub-tp/tbind : sub-tp G (tbind D1) (tbind D2)
             <- wf-tp G (tbind D1) % redundant but helps reduce regularity
             <- wf-tp G (tbind D2)
-            <- sub-dc (tcons D1) D1 D2
+            <- sub-env (tcons D1) (tcons D2)
+            % equivalent to sub-dc (tcons D1) D1 D2
+            % but helps with termination
             .
 
 sub-dc/ss : sub-dc G (rect (tsome S1) U1) (rect (tsome S2) U2)
@@ -201,11 +208,6 @@ extract-wfd : sub-dc G T1 T2 -> wf-dc G T1 -> wf-dc G T2 -> type.
 
 %{ ------- transitivity & weakening ------ }%
 
-sub-env : tenv -> tenv -> type.
-sub-env/tnil  : sub-env (tcons D) tnil.
-sub-env/tcons : sub-env (tcons D1) (tcons D2)
-            <- sub-dc (tcons D1) D1 D2.
-
 weak-wf-tp : sub-env G1 G2 -> wf-tp G2 T -> wf-tp G1 T -> type.
 %mode weak-wf-tp +BE +A2 -A1.
 
@@ -316,6 +318,9 @@ trans-sub-dc-w2 : sub-env G G' -> sub-dc G D1 D2 -> sub-dc G' D2 D3 -> sub-dc G 
  <- eq-sub-tp-low EQU''' B23 B23'
  <- trans-sub-tp BE BUX12 B23' OUT.
 
+-/tbind-tbind : trans-sub-tp BE (sub-tp/tbind (sub-env/tcons D12) W2 W1) (sub-tp/tbind (sub-env/tcons D23) W3 W2') (sub-tp/tbind (sub-env/tcons D13) W3 W1)
+ <- trans-sub-dc-w2 (sub-env/tcons D12) D12 D23 D13.
+
 %worlds ()
 (trans-sub-tp _ _ _ _)
 (trans-sub-tp-w1 _ _ _ _)
@@ -325,11 +330,11 @@ trans-sub-dc-w2 : sub-env G G' -> sub-dc G D1 D2 -> sub-dc G' D2 D3 -> sub-dc G 
 (trans-sub-dc-w2 _ _ _ _)
 .
 
-%total {(TA TA1 TA2 DA DA1 DA2) (TB TB1 TB2 DB DB1 DB2) (TC TC1 TC2 DC DC1 DC2)}
-(trans-sub-tp TA TB TC _)
+%total {(TB TA1 TA2 DA DA1 DA2) (TB TB1 TB2 DB DB1 DB2) (TC TC1 TC2 DC DC1 DC2)}
+(trans-sub-tp _ TB TC _)
 (trans-sub-tp-w1 TA1 TB1 TC1 _)
-(trans-sub-tp-w1 TA2 TB2 TC2 _)
+(trans-sub-tp-w2 TA2 TB2 TC2 _)
 (trans-sub-dc DA DB DC _)
 (trans-sub-dc-w1 DA1 DB1 DC1 _)
-(trans-sub-dc-w1 DA2 DB2 DC2 _)
+(trans-sub-dc-w2 DA2 DB2 DC2 _)
 .
