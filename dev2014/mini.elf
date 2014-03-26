@@ -209,6 +209,16 @@ extract-wfd : sub-dc G1 D1 G2 D2 -> sub-env G1 G2 -> wf-dc G1 D1 -> wf-dc G2 D2 
 %worlds () (extract-wf _ _ _ _) (extract-wfd _ _ _ _).
 %total (A B) (extract-wf A _ _ _) (extract-wfd B _ _ _).
 
+extract-wf-env : sub-env G1 G2 -> wf-env G1 -> wf-env G2 -> type.
+%mode extract-wf-env +A -B -C.
+
+- : extract-wf-env (sub-env/refl W) W W.
+- : extract-wf-env (sub-env/tcons BD) (wf-env/tcons WD1) (wf-env/tcons WD2)
+ <- extract-wfd BD _ WD1 WD2.
+
+%worlds () (extract-wf-env _ _ _).
+%total (A) (extract-wf-env A _ _).
+
 %{ ------- transitivity & weakening ------ }%
 
 weak-wf-tp : sub-env G1 G2 -> wf-tp G2 T -> wf-tp G1 T -> type.
@@ -222,3 +232,26 @@ weak-wf-tp : sub-env G1 G2 -> wf-tp G2 T -> wf-tp G1 T -> type.
 
 %worlds () (weak-wf-tp _ _ _).
 %total {} (weak-wf-tp _ _ _).
+
+trans-sub-env : wf-env G2 -> sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
+%mode trans-sub-env +W +A12 +A23 -A13.
+trans-sub-tp : wf-tp G2 T2 -> sub-tp G1 T1 G2 T2 -> sub-tp G2 T2 G3 T3 -> sub-tp G1 T1 G3 T3 -> type.
+%mode trans-sub-tp +W +A12 +A23 -A13.
+trans-sub-dc : wf-dc G2 D2 -> sub-dc G1 T1 G2 T2 -> sub-dc G2 T2 G3 T3 -> sub-dc G1 T1 G3 T3 -> type.
+%mode trans-sub-dc +W +A12 +A23 -A13.
+
+- : trans-sub-env _ (sub-env/refl W) BE BE.
+- : trans-sub-env _ BE (sub-env/refl W) BE.
+- : trans-sub-env (wf-env/tcons WD2) (sub-env/tcons BD12) (sub-env/tcons BD23) (sub-env/tcons BD13)
+ <- trans-sub-dc WD2 BD12 BD23 BD13.
+
+%worlds ()
+(trans-sub-env _ _ _ _)
+(trans-sub-tp _ _ _ _)
+(trans-sub-dc _ _ _ _)
+.
+%total (A B C)
+(trans-sub-env A _ _ _)
+(trans-sub-tp B _ _ _)
+(trans-sub-dc C _ _ _)
+.
