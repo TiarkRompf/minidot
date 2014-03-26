@@ -428,7 +428,7 @@ trans-sub-dc-r: sub-dc G D1 D2 -> sub-dc G D2 D3 -> sub-dc G D1 D3 -> type.
 (trans-sub-dc-r _ _ _)
 (weak-sub-dc-r _ _ _)
 .
-%total {(SW SWD SB SBD T1 TD1 T2' TD2' BD') (SW SWD SB SBD T1 TD2 T1' TD1' BD') (W WD B BD T2 TD2 T1' TD1' SBD') (W WD B BD T2 TD1 T2' TD2' SBD')}
+%total {(SW SWD SB SBD T1 TD1 T2' TD2' BD') (W WD B BD T2 TD2 T1' TD1' SBD')}
 (weak-wf-tp SW W _)
 (weak-wf-dc SWD WD _)
 (weak-sub-tp SB B _)
