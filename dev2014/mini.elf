@@ -52,6 +52,9 @@ sub-tp/tsel2 : sub-tp G T tsel
             <- wf-tp G tsel % redundant, but helps reduce regularity
             <- has-lower D S
             <- sub-tp G T S
+            % redundant, but helps weak/trans termination
+            <- has-upper D U
+            <- sub-tp G T U
             .
 sub-tp/tbind : sub-tp G (tbind D1) (tbind D2)
             <- wf-tp G (tbind D1) % redundant but helps reduce regularity
@@ -174,7 +177,7 @@ extract-wf : sub-tp G T1 T2 -> wf-tp G T1 -> wf-tp G T2 -> type.
 - : extract-wf (sub-tp/tsel1 B H W1 D L) W1 W2
  <- extract-wf B _ W2.
 
-- : extract-wf (sub-tp/tsel2 B H W2 D L) W1 W2
+- : extract-wf (sub-tp/tsel2 _ _ B H W2 D L) W1 W2
  <- extract-wf B W1 _.
 
 - : extract-wf (sub-tp/tbind BD W2 W1) W1 W2.
@@ -214,6 +217,70 @@ weak-wf-tp : sub-env G1 G2 -> wf-tp G2 T -> wf-tp G1 T -> type.
 %worlds () (weak-wf-tp _ _ _).
 %total {} (weak-wf-tp _ _ _).
 
+has-upper-eq : has-upper (rect OS U) U' -> same U U' -> type.
+%mode has-upper-eq +A -B.
+
+- : has-upper-eq has-upper/yes ident.
+
+%worlds () (has-upper-eq _ _).
+%total A (has-upper-eq A _).
+
+has-lower-eq : has-lower (rect (tsome S) U) S' -> same S S' -> type.
+%mode has-lower-eq +A -B.
+
+- : has-lower-eq has-lower/yes ident.
+
+%worlds () (has-lower-eq _ _).
+%total A (has-lower-eq A _).
+
+tlookup-upper-eq : tlookup (tcons (rect OS U)) (rect OS' U') -> same U U' -> type.
+%mode tlookup-upper-eq +A -B.
+
+- : tlookup-upper-eq tl ident.
+
+%worlds () (tlookup-upper-eq _ _).
+%total A (tlookup-upper-eq A _).
+
+tlookup-lower-eq : tlookup (tcons (rect (tsome S) U)) (rect (tsome S') U') -> same S S' -> type.
+%mode tlookup-lower-eq +A -B.
+
+- : tlookup-lower-eq tl ident.
+
+%worlds () (tlookup-lower-eq _ _).
+%total A (tlookup-lower-eq A _).
+
+eq-dec-has-upper : samed D D' -> has-upper D U -> has-upper D' U -> type.
+%mode eq-dec-has-upper +A +B -C.
+
+- : eq-dec-has-upper identd has-upper/yes has-upper/yes.
+
+%worlds () (eq-dec-has-upper _ _ _).
+%total A (eq-dec-has-upper A _ _).
+
+trans-same : same T1 T2 -> same T2 T3 -> same T1 T3 -> type.
+%mode trans-same +A +B -C.
+
+- : trans-same ident ident ident.
+
+%worlds () (trans-same _ _ _).
+%total {} (trans-same _ _ _).
+
+sym-same : same T1 T2 -> same T2 T1 -> type.
+%mode sym-same +A -B.
+
+- : sym-same ident ident.
+
+%worlds () (sym-same _ _).
+%total {} (sym-same _ _).
+
+sub-lookup  : sub-env G1 G2 -> tlookup G2 D2 -> tlookup G1 D1 -> sub-dc (tcons D1) D1 D2 -> type.
+%mode sub-lookup +SE +L2 -L1 -BD.
+
+- : sub-lookup (sub-env/tcons BD) L2 tl BD.
+
+%worlds () (sub-lookup _ _ _ _).
+%total SE (sub-lookup SE _ _ _).
+
 trans-sub-tp : sub-env G G' -> sub-tp G T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
 %mode trans-sub-tp +BE +A12 +A23 -A13.
 trans-sub-tp-w1 : sub-env G G' -> sub-tp G' T1 T2 -> sub-tp G T2 T3 -> sub-tp G T1 T3 -> type.
@@ -233,8 +300,21 @@ trans-sub-dc-w2 : sub-env G G' -> sub-dc G D1 D2 -> sub-dc G' D2 D3 -> sub-dc G 
 -/tsel1 : trans-sub-tp BE (sub-tp/tsel1 B H W1 D L) B23 (sub-tp/tsel1 B' H W1 D L)
  <- trans-sub-tp BE B B23 B'.
 
--/tsel2 : trans-sub-tp BE B12 (sub-tp/tsel2 B H W2 D L) (sub-tp/tsel2 B' H W2 D L)
- <- trans-sub-tp BE B12 B B'.
+-/tsel2 : trans-sub-tp BE B12 (sub-tp/tsel2 BU HU B H W2 D L) (sub-tp/tsel2 BU' HU B' H W2 D L)
+ <- trans-sub-tp BE B12 B B'
+ <- trans-sub-tp BE B12 BU BU'.
+
+-/tsel2-tsel1 : trans-sub-tp BE (sub-tp/tsel2 BUX12 HUX12 B12 H12 _ D12 L12) (sub-tp/tsel1 B23 H23 _ D23 L23) OUT
+ <- tlookup-upper-eq L12 EQU'
+ <- has-upper-eq HUX12 EQU
+ <- trans-same EQU' EQU EQU''
+ <- tlookup-eq L23 L12 EQL
+ <- eq-dec-has-upper EQL H23 H23'
+ <- has-upper-eq H23' EQU3
+ <- sym-same EQU3 EQU3'
+ <- trans-same EQU3' EQU'' EQU'''
+ <- eq-sub-tp-low EQU''' B23 B23'
+ <- trans-sub-tp BE BUX12 B23' OUT.
 
 %worlds ()
 (trans-sub-tp _ _ _ _)
