@@ -208,6 +208,8 @@ extract-wfd : sub-dc G1 D1 G2 D2 -> sub-env G1 G2 -> wf-dc G1 D1 -> wf-dc G2 D2 
 
 %worlds () (extract-wf _ _ _ _) (extract-wfd _ _ _ _).
 %total (A B) (extract-wf A _ _ _) (extract-wfd B _ _ _).
+%reduces E < A (extract-wf A E _ _).
+%reduces E < A (extract-wfd A E _ _).
 
 extract-wf-env : sub-env G1 G2 -> wf-env G1 -> wf-env G2 -> type.
 %mode extract-wf-env +A -B -C.
@@ -234,24 +236,28 @@ weak-wf-tp : sub-env G1 G2 -> wf-tp G2 T -> wf-tp G1 T -> type.
 %total {} (weak-wf-tp _ _ _).
 
 trans-sub-env : wf-env G2 -> sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
-%mode trans-sub-env +W +A12 +A23 -A13.
-trans-sub-tp : wf-tp G2 T2 -> sub-tp G1 T1 G2 T2 -> sub-tp G2 T2 G3 T3 -> sub-tp G1 T1 G3 T3 -> type.
-%mode trans-sub-tp +W +A12 +A23 -A13.
-trans-sub-dc : wf-dc G2 D2 -> sub-dc G1 T1 G2 T2 -> sub-dc G2 T2 G3 T3 -> sub-dc G1 T1 G3 T3 -> type.
-%mode trans-sub-dc +W +A12 +A23 -A13.
+%mode trans-sub-env +WE +A12 +A23 -A13.
+trans-sub-tp : wf-env G2 -> sub-tp G1 T1 G2 T2 -> sub-tp G2 T2 G3 T3 -> sub-tp G1 T1 G3 T3 -> type.
+%mode trans-sub-tp +WE +A12 +A23 -A13.
+trans-sub-dc : wf-env G2 -> sub-dc G1 T1 G2 T2 -> sub-dc G2 T2 G3 T3 -> sub-dc G1 T1 G3 T3 -> type.
+%mode trans-sub-dc +WE +A12 +A23 -A13.
 
 - : trans-sub-env _ (sub-env/refl W) BE BE.
 - : trans-sub-env _ BE (sub-env/refl W) BE.
 - : trans-sub-env (wf-env/tcons WD2) (sub-env/tcons BD12) (sub-env/tcons BD23) (sub-env/tcons BD13)
- <- trans-sub-dc WD2 BD12 BD23 BD13.
+ <- trans-sub-dc (wf-env/tcons WD2) BD12 BD23 BD13.
+
+- : trans-sub-tp WE2 B12 (sub-tp/top _ BE23) (sub-tp/top W1 BE13)
+ <- extract-wf B12 BE12 W1 _
+ <- trans-sub-env WE2 BE12 BE23 BE13.
 
 %worlds ()
 (trans-sub-env _ _ _ _)
 (trans-sub-tp _ _ _ _)
 (trans-sub-dc _ _ _ _)
 .
-%total (A B C)
-(trans-sub-env A _ _ _)
-(trans-sub-tp B _ _ _)
-(trans-sub-dc C _ _ _)
+%total {(A B C) (A12 B12 C12) (A23 B23 C23)}
+(trans-sub-env A A12 A23 _)
+(trans-sub-tp B B12 B23 _)
+(trans-sub-dc C C12 C23 _)
 .
