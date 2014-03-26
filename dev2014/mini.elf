@@ -46,6 +46,10 @@ sub-env/refl  : sub-env G G
 sub-env/tcons : sub-env (tcons D1) (tcons D2)
             <- sub-dc (tcons D1) D1 (tcons D2) D2.
 
+sub-tp/refl : sub-tp G1 T G2 T
+          <- sub-env G1 G2
+          <- wf-tp G1 T
+          <- wf-tp G2 T.
 sub-tp/top : sub-tp G1 T G2 top
           <- sub-env G1 G2
           <- wf-tp G1 T.
@@ -56,10 +60,11 @@ sub-tp/tsel1 : sub-tp G1 tsel G2 T
             <- sub-tp G1 U G2 T
             .
 sub-tp/tsel2 : sub-tp G1 T G2 tsel
+            <- sub-env G1 G2
             <- tlookup G1 D
             <- wf-tp G2 tsel
             <- has-lower D S
-            <- sub-tp G1 T G2 S
+            <- sub-tp G1 T G1 S
             .
 sub-tp/tbind : sub-tp G1 (tbind D1) G2 (tbind D2)
             <- sub-env G1 G2
@@ -168,6 +173,8 @@ extract-wf : sub-tp G1 T1 G2 T2 -> sub-env G1 G2 -> wf-tp G1 T1 -> wf-tp G2 T2 -
 extract-wfd : sub-dc G1 D1 G2 D2 -> sub-env G1 G2 -> wf-dc G1 D1 -> wf-dc G2 D2 -> type.
 %mode extract-wfd +A -B -C -D.
 
+- : extract-wf (sub-tp/refl W2 W1 E) E W1 W2.
+
 - : extract-wf (sub-tp/top W E) E W wf-tp/top.
 
 - : extract-wf (sub-tp/tsel1 B H D L)
@@ -176,11 +183,11 @@ extract-wfd : sub-dc G1 D1 G2 D2 -> sub-env G1 G2 -> wf-dc G1 D1 -> wf-dc G2 D2 
      W2
  <- extract-wf B E _ W2.
 
-- : extract-wf (sub-tp/tsel2 B H W2 L)
+- : extract-wf (sub-tp/tsel2 B H W2 L E)
      E
      W1
      W2
- <- extract-wf B E W1 _.
+ <- extract-wf B _ W1 _.
 
 - : extract-wf (sub-tp/tbind BD W2 E)
      E
@@ -235,6 +242,18 @@ weak-wf-tp : sub-env G1 G2 -> wf-tp G2 T -> wf-tp G1 T -> type.
 %worlds () (weak-wf-tp _ _ _).
 %total {} (weak-wf-tp _ _ _).
 
+% helper lemmas
+
+sub-lookup-lower : sub-env G1 G2 -> tlookup G2 D2 -> has-lower D2 S2 -> wf-tp G2 S2 -> tlookup G1 D1 -> has-lower D1 S1 -> wf-tp G1 S1 -> sub-tp G1 S2 G2 S1 -> type.
+%mode sub-lookup-lower +BE +L2 +HS2 +WS2 -L1 -HS1 -WS1 -BS21.
+
+- : sub-lookup-lower (sub-env/refl WE) tl has-lower/yes WS tl has-lower/yes WS (sub-tp/refl WS WS (sub-env/refl WE)).
+- : sub-lookup-lower (sub-env/tcons (sub-dc/ss B2 B1 BU BS)) tl has-lower/yes WS2 tl has-lower/yes WS1 BS
+ <- extract-wf B1 _ WS1 _.
+
+%worlds () (sub-lookup-lower _ _ _ _ _ _ _ _).
+%total {} (sub-lookup-lower _ _ _ _ _ _ _ _).
+
 trans-sub-env : wf-env G2 -> sub-env G1 G2 -> sub-env G2 G3 -> sub-env G1 G3 -> type.
 %mode trans-sub-env +WE +A12 +A23 -A13.
 trans-sub-tp : wf-env G2 -> sub-tp G1 T1 G2 T2 -> sub-tp G2 T2 G3 T3 -> sub-tp G1 T1 G3 T3 -> type.
@@ -253,6 +272,14 @@ trans-sub-dc : wf-env G2 -> sub-dc G1 T1 G2 T2 -> sub-dc G2 T2 G3 T3 -> sub-dc G
 
 - : trans-sub-tp WE2 (sub-tp/tsel1 B H D L) B23 (sub-tp/tsel1 B' H D L)
  <- trans-sub-tp WE2 B B23 B'.
+
+%{
+- : trans-sub-tp WE2 B12 (sub-tp/tsel2 B H W L BE23) (sub-tp/tsel2 B' H' W L' BE13)
+ <- extract-wf B12 BE12 _ _
+ <- extract-wf B _ _ WS
+ <- sub-lookup-lower BE12 L H WS L' H' WS' BS21
+ <- trans-sub-env WE2 BE12 BE23 BE13.
+}%
 
 %worlds ()
 (trans-sub-env _ _ _ _)
