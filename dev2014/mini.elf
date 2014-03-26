@@ -36,13 +36,6 @@ wf-dc : tenv -> dec -> type.
 sub-tp : tenv -> tpe -> tpe -> type.
 sub-dc : tenv -> dec -> dec -> type.
 
-sub-env : tenv -> tenv -> type.
-sub-env/tnil  : sub-env (tcons D) tnil.
-sub-env/tcons : sub-env (tcons D1) (tcons D2)
-            <- sub-dc (tcons D1) D1 D2.
-
-sub-tp/refl : sub-tp G T T
-          <- wf-tp G T.
 sub-tp/top : sub-tp G T top
           <- wf-tp G T.
 sub-tp/tsel1 : sub-tp G tsel T
@@ -163,8 +156,6 @@ extract-wfd : sub-dc G T1 T2 -> wf-dc G T1 -> wf-dc G T2 -> type.
 extract-wf : sub-tp G T1 T2 -> wf-tp G T1 -> wf-tp G T2 -> type.
 %mode extract-wf +A -B -C.
 
-- : extract-wf (sub-tp/refl W) W W.
-
 - : extract-wf (sub-tp/top W) W wf-tp/top.
 
 - : extract-wf (sub-tp/tsel1 B H D L)
@@ -198,99 +189,3 @@ extract-wf : sub-tp G T1 T2 -> wf-tp G T1 -> wf-tp G T2 -> type.
 
 %worlds () (extract-wf _ _ _) (extract-wfd _ _ _).
 %total (A B) (extract-wf A _ _) (extract-wfd B _ _).
-
-%{ ------- transitivity & weakening ------ }%
-
-has-upper-eq : has-upper (rect OS U) U' -> same U U' -> type.
-%mode has-upper-eq +A -B.
-
-- : has-upper-eq has-upper/yes ident.
-
-%worlds () (has-upper-eq _ _).
-%total A (has-upper-eq A _).
-
-has-lower-eq : has-lower (rect (tsome S) U) S' -> same S S' -> type.
-%mode has-lower-eq +A -B.
-
-- : has-lower-eq has-lower/yes ident.
-
-%worlds () (has-lower-eq _ _).
-%total A (has-lower-eq A _).
-
-tlookup-upper-eq : tlookup (tcons (rect OS U)) (rect OS' U') -> same U U' -> type.
-%mode tlookup-upper-eq +A -B.
-
-- : tlookup-upper-eq tl ident.
-
-%worlds () (tlookup-upper-eq _ _).
-%total A (tlookup-upper-eq A _).
-
-tlookup-lower-eq : tlookup (tcons (rect (tsome S) U)) (rect (tsome S') U') -> same S S' -> type.
-%mode tlookup-lower-eq +A -B.
-
-- : tlookup-lower-eq tl ident.
-
-%worlds () (tlookup-lower-eq _ _).
-%total A (tlookup-lower-eq A _).
-
-eq-dec-has-upper : samed D D' -> has-upper D U -> has-upper D' U -> type.
-%mode eq-dec-has-upper +A +B -C.
-
-- : eq-dec-has-upper identd has-upper/yes has-upper/yes.
-
-%worlds () (eq-dec-has-upper _ _ _).
-%total A (eq-dec-has-upper A _ _).
-
-trans-same : same T1 T2 -> same T2 T3 -> same T1 T3 -> type.
-%mode trans-same +A +B -C.
-
-- : trans-same ident ident ident.
-
-%worlds () (trans-same _ _ _).
-%total {} (trans-same _ _ _).
-
-sym-same : same T1 T2 -> same T2 T1 -> type.
-%mode sym-same +A -B.
-
-- : sym-same ident ident.
-
-%worlds () (sym-same _ _).
-%total {} (sym-same _ _).
-
-sub-lookup  : sub-env G1 G2 -> tlookup G2 D2 -> tlookup G1 D1 -> sub-dc (tcons D1) D1 D2 -> type.
-%mode sub-lookup +SE +L2 -L1 -BD.
-
-- : sub-lookup (sub-env/tcons BD) L2 tl BD.
-
-%worlds () (sub-lookup _ _ _ _).
-%total SE (sub-lookup SE _ _ _).
-
-weak-wf-tp  : sub-env G1 G2 -> wf-tp G2 T -> wf-tp G1 T -> type.
-%mode weak-wf-tp +BE +A2 -A1.
-
-- : weak-wf-tp _ wf-tp/top wf-tp/top.
-- : weak-wf-tp _ (wf-tp/tbind WD) (wf-tp/tbind WD).
-- : weak-wf-tp (sub-env/tcons BD) (wf-tp/tsel WD L) (wf-tp/tsel WD' tl)
- <- extract-wfd BD WD' _.
-
-%worlds () (weak-wf-tp _ _ _).
-%total {} (weak-wf-tp _ _ _).
-
-weak-wf-dc  : sub-env G1 G2 -> wf-dc G2 D -> wf-dc G1 D -> type.
-%mode weak-wf-dc +BE +A2 -A1.
-weaktrans-sub-tp: sub-env G1 G2 -> sub-tp G1 T1 T2 -> sub-tp G2 T2 T3 -> sub-tp G1 T1 T3 -> type.
-%mode weaktrans-sub-tp +BE +A12 +A23 -A13.
-weaktrans-sub-dc: sub-env G1 G2 -> sub-dc G1 D1 D2 -> sub-dc G2 D2 D3 -> sub-dc G1 D1 D3 -> type.
-%mode weaktrans-sub-dc +BE +A12 +A23 -A13.
-
-%worlds ()
-(weak-wf-dc _ _ _)
-(weaktrans-sub-tp _ _ _ _)
-(weaktrans-sub-dc _ _ _ _)
-.
-
-%total {(BE1 BE2 BE3) (A1 A2 A3) (A1 B2 B3)}
-(weak-wf-dc BE1 A1 _)
-(weaktrans-sub-tp BE2 A2 B2 _)
-(weaktrans-sub-dc BE3 A3 B3 _)
-.
