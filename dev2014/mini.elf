@@ -208,3 +208,17 @@ extract-wfd : sub-dc G1 D1 G2 D2 -> sub-env G1 G2 -> wf-dc G1 D1 -> wf-dc G2 D2 
 
 %worlds () (extract-wf _ _ _ _) (extract-wfd _ _ _ _).
 %total (A B) (extract-wf A _ _ _) (extract-wfd B _ _ _).
+
+%{ ------- transitivity & weakening ------ }%
+
+weak-wf-tp : sub-env G1 G2 -> wf-tp G2 T -> wf-tp G1 T -> type.
+%mode weak-wf-tp +BE +A2 -A1.
+
+- : weak-wf-tp _ wf-tp/top wf-tp/top.
+- : weak-wf-tp _ (wf-tp/tbind WD) (wf-tp/tbind WD).
+- : weak-wf-tp (sub-env/tcons BD) (wf-tp/tsel WD L) (wf-tp/tsel WD' tl)
+ <- extract-wfd BD _ WD' _.
+- : weak-wf-tp (sub-env/refl _) (wf-tp/tsel WD L) (wf-tp/tsel WD L).
+
+%worlds () (weak-wf-tp _ _ _).
+%total {} (weak-wf-tp _ _ _).
