@@ -311,8 +311,7 @@ atp/sel1: atp (s N) (env1 L U T) (tsel z) G2 T2
           .
 
 atp/sel2: atp (s N) G1 T1 (env1 L U T) (tsel z)
-          <- atp (s N) G1 T1 (env1 L U T) LX
-          <- atp N (env1 L U T) LX (env1 L U T) L1
+          <- atp (s N) G1 T1 (env1 L U T) L
           <- atp (s N) G1 T1 (env1 L U T) U
           .
 
@@ -347,49 +346,59 @@ atp-trans: atp N G1 T1 G2 T2 -> atp N G2 T2 G3 T3 -> atp N G1 T1 G3 T3 -> type.
 %trustme %% proved below
 %total (A) (atp-trans A _ _).
 
-%{
-stp-weaken :
+
+
+%% we know that upgradeN doesn't hold, but let's try to prove 
+%% stuff anyways, without worrying about suitable N
+
+stp-upgradeN :
   %% Input
   stp N (dcons D1) T1 (dcons D2) T2 ->
   %% Output
-  stp N (dcons D1) T1 (dcons D1) T2 ->
+  stp (s N) (dcons D1) T1 (dcons D2) T2 ->
   type.
-%mode stp-weaken +WFE1 -WFE2.
+%mode stp-upgradeN +A -B.
+%worlds () (stp-upgradeN _ _).
+%trustme
+%total A (stp-upgradeN A _).
+%reduces N3 <= N2 (stp-upgradeN N2 N3).
 
-spt-weaken :
+spt-upgradeN :
   %% Input
-  spt N (dcons D1) T2 (dcons D2) T1 ->
+  spt N (dcons D1) T1 (dcons D2) T2 ->
   %% Output
-  spt N (dcons D1) T2 (dcons D1) T1 ->
+  spt (s N) (dcons D1) T1 (dcons D2) T2 ->
   type.
-%mode spt-weaken +WFE1 -WFE2.
+%mode spt-upgradeN +A -B.
+%worlds () (spt-upgradeN _ _).
+%trustme
+%total A (spt-upgradeN A _).
+%reduces N3 <= N2 (spt-upgradeN N2 N3).
 
 
--/top: stp-weaken (stp/topc X) (stp/topc X')
-        <- spt-weaken X X'.
--/bot: stp-weaken (stp/botc X) (stp/botc X')
-        <- spt-weaken X X'.
+stp-xcross :
+  %% Input
+  stp (s N) (dcons (rect L U)) T1 (dcons D2) T2 ->
+  %% Output
+  stp (s N) (dcons (rect L U)) L (dcons D2) U ->
+  type.
+%mode stp-xcross +A -B.
+%worlds () (stp-xcross _ _).
+%trustme
+%total A (stp-xcross A _).
+%reduces N3 <= N2 (stp-xcross N2 N3).
 
--/fun: stp-weaken (stp/func R A X) (stp/func R' A' X')
-        <- spt-weaken X X'
-        <- spt-weaken A A'
-        <- stp-weaken R R'
-        .
-
--/sel1: stp-weaken (stp/sel1 SU X) (stp/sel1 SU' X')
-        <- spt-weaken X X'
-        <- stp-weaken SU SU'
-        .
-
--/selx: stp-weaken (stp/selx S X) (stp/selx S' X')
-        <- spt-weaken X X'
-        <- stp-weaken S S'
-        .
-
-%worlds () (stp-weaken _ _)(spt-weaken _ _).
-% %trustme
-%total (A A') (stp-weaken A _)(spt-weaken A' _).
-}%
+spt-xcross :
+  %% Input
+  spt (s N) (dcons (rect L U)) T1 (dcons D2) T2 ->
+  %% Output
+  stp (s N) (dcons (rect L U)) L (dcons D2) U ->
+  type.
+%mode spt-xcross +A -B.
+%worlds () (spt-xcross _ _).
+%trustme
+%total A (spt-xcross A _).
+%reduces N3 <= N2 (spt-xcross N2 N3).
 
 
 stp-to-atp :
@@ -403,10 +412,10 @@ stp-to-atp :
 
 spt-to-atp :
   %% Input
-  spt N (dcons D1) T2 (dcons D2) T1 ->
+  spt (s N) (dcons D1) T2 (dcons D2) T1 ->
   {TX}
   %% Output
-  atp N (tcons (bind z D1 TX) tnil) T1 (tcons (bind z D1 TX) tnil) T2 ->
+  atp (s N) (tcons (bind z D1 TX) tnil) T1 (tcons (bind z D1 TX) tnil) T2 ->
   type.
 %mode spt-to-atp +WFE1 +B -WFE2.
 
@@ -419,32 +428,57 @@ spt-to-atp :
         <- stp-to-atp R _ R'
         .
 
+-/selx: stp-to-atp (stp/selx _ _) _ (atp/selx)
+        .
+
 -/sel1: stp-to-atp (stp/sel1 SU _) _ (atp/sel1 SU')
         <- stp-to-atp SU _ SU'
         .
 
--/selx: stp-to-atp (stp/selx _ _) _ (atp/selx)
-        .
-
-%{
-
--/sel2: stp-to-atp (stp/sel2 SLXL1 ST1LX ST1U2 _) _ (atp/sel2 ST1LX' STLXL1' SU)
+-/sel2: stp-to-atp (stp/sel2 SLXL1 ST1LX ST1U2 STL2L1) _ (atp/sel2 ST1U1' ST1L1')
         <- stp-to-atp ST1LX _ ST1LX'
-        <- stp-to-atp STLXL1 _ STLXL1'
+
+        <- spt-upgradeN SLXL1 SLXL1_N
+        <- spt-to-atp SLXL1_N _ SLXL1_N'
+        <- atp-trans ST1LX' SLXL1_N' ST1L1'
+
+        % get L1 < U1 and trans!
+        <- stp-xcross ST1LX SL1U1
+        <- stp-to-atp SL1U1 _ SL1U1'
+        <- atp-trans ST1L1' SL1U1' ST1U1'
         .
-FIXME:
 
-- how to get SU? 
-    - spt has T1 < U2, but not T1 < U1
-    - we know T1 < L1, but we don't have it in one piece
 
-- need to handle spt, too (tricky?)
+-/top: spt-to-atp (spt/topc _) _ atp/top.
+-/bot: spt-to-atp (spt/botc _) _ atp/bot.
 
-}%
+-/fun: spt-to-atp (spt/func R A _) _ (atp/fun R' A')
+        <- stp-to-atp A _ A'
+        <- spt-to-atp R _ R'
+        .
+
+-/selx: spt-to-atp (spt/selx _ _) _ (atp/selx)
+        .
+
+-/sel1: spt-to-atp (spt/sel1 ST1L1 _) _ (atp/sel2 ST1U1' ST1L1')
+        <- spt-to-atp ST1L1 _ ST1L1'
+
+        % get L1 < U1 and trans!
+        <- spt-xcross ST1L1 SL1U1
+        <- stp-to-atp SL1U1 _ SL1U1'
+        <- atp-trans ST1L1' SL1U1' ST1U1'
+        .
+
+-/sel2: spt-to-atp (spt/sel2 SU1UX SUXT2 SL2T2 STU1U2) _ (atp/sel1 SU1T2')
+
+        <- stp-upgradeN SU1UX SU1UX_N
+        <- stp-to-atp SU1UX_N _ SU1UX_N'
+        <- spt-to-atp SUXT2 _ SUXT2'
+        <- atp-trans SU1UX_N' SUXT2' SU1T2'
+        .
 
 
 %worlds () (stp-to-atp _ _ _)(spt-to-atp _ _ _).
-%trustme
 %total (A A') (stp-to-atp A _ _)(spt-to-atp A' _ _).
 
 
@@ -1173,8 +1207,8 @@ atp-trans2: atp N G1 T1 G2 T2 -> atp N G2 T2 G3 T3 -> atp N G1 T1 G3 T3 -> type.
 
 -/sel2:     atp-trans
             SBT1
-            (atp/sel2 SBTU SBTLX SBTL)
-            (atp/sel2 SBTU' SBTLX SBTL')
+            (atp/sel2 SBTU SBTL)
+            (atp/sel2 SBTU' SBTL')
             <- atp-trans SBT1 SBTU SBTU'
             <- atp-trans SBT1 SBTL SBTL'
             .
@@ -1187,7 +1221,7 @@ atp-trans2: atp N G1 T1 G2 T2 -> atp N G2 T2 G3 T3 -> atp N G1 T1 G3 T3 -> type.
             .
 
 -/sel2-sel1:     atp-trans
-            (atp/sel2 SBTU SBTLX SBTL)
+            (atp/sel2 SBTU SBTL)
             (atp/sel1 SBTU')
             SBT
             <- atp-trans SBTU SBTU' SBT
@@ -1242,8 +1276,8 @@ atp-trans2: atp N G1 T1 G2 T2 -> atp N G2 T2 G3 T3 -> atp N G1 T1 G3 T3 -> type.
 
 -/sel2:     atp-trans2
             SBT1
-            (atp/sel2 SBTU SBTLX SBTL)
-            (atp/sel2 SBTU' SBTLX SBTL')
+            (atp/sel2 SBTU SBTL)
+            (atp/sel2 SBTU' SBTL')
             <- atp-trans2 SBT1 SBTU SBTU'
             <- atp-trans2 SBT1 SBTL SBTL'
             .
@@ -1256,7 +1290,7 @@ atp-trans2: atp N G1 T1 G2 T2 -> atp N G2 T2 G3 T3 -> atp N G1 T1 G3 T3 -> type.
             .
 
 -/sel2-sel1:     atp-trans2
-            (atp/sel2 SBTU SBTLX SBTL)
+            (atp/sel2 SBTU SBTL)
             (atp/sel1 SBTU')
             SBT
             <- atp-trans2 SBTU SBTU' SBT
