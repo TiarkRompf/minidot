@@ -476,9 +476,27 @@ depth = 3.
 t1 = (bind z (rect (arrow top top) (arrow top top)) (arrow (tsel z) (tsel z))).
 t2 = (bind z (rect bot top) (arrow (tsel z) (tsel z))).
 
+t3 = (bind z (rect bot top) (arrow bot top)).
+t4 = (arrow bot top).
+
+
 %query 1 1 stp depth dnil t1 dnil t2.
 
 %query 0 * stp depth dnil t2 dnil t1.
+
+
+
+%query 1 1 type-exp tnil (fun (rect (arrow top top) (arrow top top)) (var (s z))) T.
+
+%query 1 1 type-exp tnil (fun (rect (arrow top top) (arrow top top)) (var (s z))) (bind z D T).
+
+%query 1 1 type-exp tnil (fun (rect (arrow top top) (arrow top top)) (var (s z))) t1.
+
+%query 1 1 type-exp tnil (fun (rect (arrow top top) (arrow top top)) (var (s z))) t2.
+
+%query 1 1 type-exp tnil (fun (rect (arrow top top) (arrow top top)) (var (s z))) t3.
+
+%query 1 1 type-exp tnil (fun (rect (arrow top top) (arrow top top)) (var (s z))) t4.
 
 
 
