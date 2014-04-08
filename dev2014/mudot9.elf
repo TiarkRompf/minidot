@@ -1,3 +1,10 @@
+TODO
+
+- xhigh and xcross
+- update spt cases
+- invert-wf-fun
+
+
 %{ ------- arithmetic ----- }%
 
 nat: type.
@@ -178,8 +185,8 @@ sdc/rectc: sdc (s N) (dcons D1) (rect L1 U1) (dcons D2) (rect L2 U2)
           .
 
 
-stp/assum: stp z (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) T2.
-spt/assum: spt z (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) T2.
+stp/assum: stp z (dcons (rect L1 U1)) U1 (dcons (rect L2 U2)) U2.
+spt/assum: spt z (dcons (rect L1 U1)) L1 (dcons (rect L2 U2)) L2.
 
 
 
@@ -187,6 +194,8 @@ stp/top: stp (s N) dnil T dnil top.
 stp/topc: stp (s N) (dcons (rect L1 U1)) T (dcons (rect L2 U2)) top
           <- spt (N) (dcons (rect L1 U1)) L1 (dcons (rect L2 U2)) L2
           .
+
+
 
 spt/top: spt (s N) dnil top dnil T.
 spt/topc: spt (s N) (dcons (rect L1 U1)) top (dcons (rect L2 U2)) T
@@ -238,27 +247,39 @@ spt/sel1: spt (s N) (dcons (rect L1 U1)) (tsel z) (dcons (rect L2 U2)) T2
           .
 
 
-stp/sel2: stp (s N) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) (tsel z)
-          <- spt (N) (dcons (rect L1 U1)) L1 (dcons (rect L2 U2)) L2
-          % <- sdc (s N) (dcons (rect L1 U1)) (rect L1 U1) (dcons (rect L2 U2)) (rect L2 U2)
-          <- stp (s N) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) U2
+stp/sel2: stp (s (s (s N))) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) (tsel z)
+          <- spt (s (s N)) (dcons (rect L1 U1)) L1 (dcons (rect L2 U2)) L2
+          % <- sdc (s (s N)) (dcons (rect L1 U1)) (rect L1 U1) (dcons (rect L2 U2)) (rect L2 U2)
+          <- stp (s (s (s N))) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) U2
           % we want to express this:
-          % <- stp (s N) (dcons (rect L1 U1)) T1 (dcons (rect L1 U1)) L1 
+          % <- stp (s (s N)) (dcons (rect L1 U1)) T1 (dcons (rect L1 U1)) L1 
           % but we split it into two cases so that we can apply
           % transitivity on independent proper subterms, instead 
           % of twice in a chain T0 < T1 < L1 < L0.
           % this trick also enables us to decrease the depth of only
           % the second derivation.
-          <- stp (s N) (dcons (rect L1 U1)) T1 (dcons (rect LX UX)) LX
-          <- spt (N) (dcons (rect L1 U1)) L1 (dcons (rect LX UX)) LX
+          <- stp (s (s (s N))) (dcons (rect L1 U1)) T1 (dcons (rect LX UX)) LX
+
+          <- stp (s (s (s N))) (dcons (rect L1 U1)) U1 (dcons (rect LX UX)) UX
+          <- spt (s (s (s N))) (dcons (rect L1 U1)) L1 (dcons (rect LX UX)) LX
+          <- stp (s (s N)) (dcons (rect L1 U1)) U1 (dcons (rect LX UX)) UX
+          <- spt (s (s N)) (dcons (rect L1 U1)) L1 (dcons (rect LX UX)) LX
           .
 
-spt/sel2: spt (s N) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) (tsel z)
-          <- stp (N) (dcons (rect L1 U1)) U1 (dcons (rect L2 U2)) U2
-          <- spt (s N) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) L2
-          % <- spt (s N) (dcons (rect L1 U1)) T1 (dcons (rect L1 U1)) U1
-          <- spt (s N) (dcons (rect L1 U1)) T1 (dcons (rect LX UX)) UX
-          <- stp (N) (dcons (rect L1 U1)) U1 (dcons (rect LX UX)) UX
+          % transitivity idea: do trans on N version,
+          % then upgrade to N+1
+
+
+spt/sel2: spt (s (s (s N))) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) (tsel z)
+          <- stp (s (s (N))) (dcons (rect L1 U1)) U1 (dcons (rect L2 U2)) U2
+          <- spt (s (s (s N))) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) L2
+          % <- spt (s (s (s N))) (dcons (rect L1 U1)) T1 (dcons (rect L1 U1)) U1
+          <- spt (s (s (s N))) (dcons (rect L1 U1)) T1 (dcons (rect LX UX)) UX
+
+          <- stp (s (s (s (N)))) (dcons (rect L1 U1)) U1 (dcons (rect LX UX)) UX
+          <- spt (s (s (s (N)))) (dcons (rect L1 U1)) L1 (dcons (rect LX UX)) LX
+          <- stp (s (s (N))) (dcons (rect L1 U1)) U1 (dcons (rect LX UX)) UX
+          <- spt (s (s (N))) (dcons (rect L1 U1)) L1 (dcons (rect LX UX)) LX
           .
 
 
@@ -329,197 +350,7 @@ atp/bindA: atp (s N) G1 (bind z D1 T1) G2 T2
           .
 
 
-
-
-atp-extend1: {D1} atp N G1 T1 G T2 -> atp N (tcons D1 G1) T1 G T2 -> type.
-%mode atp-extend1 +D1 +A1 -A2.
-
-%% TODO: sel rules don't allow extension yet, but seems alright
-
-%worlds () (atp-extend1 _ _ _).
-%trustme
-%total (A) (atp-extend1 A _ _).
-
-atp-trans: atp N G1 T1 G2 T2 -> atp N G2 T2 G3 T3 -> atp N G1 T1 G3 T3 -> type.
-%mode atp-trans +S1 +S2 -SBT.
-%worlds () (atp-trans _ _ _).
-%trustme %% proved below
-%total (A) (atp-trans A _ _).
-
-
-
-%% we know that upgradeN doesn't hold, but let's try to prove 
-%% stuff anyways, without worrying about suitable N
-
-stp-upgradeN :
-  %% Input
-  stp N (dcons D1) T1 (dcons D2) T2 ->
-  %% Output
-  stp (s N) (dcons D1) T1 (dcons D2) T2 ->
-  type.
-%mode stp-upgradeN +A -B.
-%worlds () (stp-upgradeN _ _).
-%trustme
-%total A (stp-upgradeN A _).
-%reduces N3 <= N2 (stp-upgradeN N2 N3).
-
-spt-upgradeN :
-  %% Input
-  spt N (dcons D1) T1 (dcons D2) T2 ->
-  %% Output
-  spt (s N) (dcons D1) T1 (dcons D2) T2 ->
-  type.
-%mode spt-upgradeN +A -B.
-%worlds () (spt-upgradeN _ _).
-%trustme
-%total A (spt-upgradeN A _).
-%reduces N3 <= N2 (spt-upgradeN N2 N3).
-
-
-stp-xcross :
-  %% Input
-  stp (s N) (dcons (rect L U)) T1 (dcons D2) T2 ->
-  %% Output
-  stp (s N) (dcons (rect L U)) L (dcons D2) U ->
-  type.
-%mode stp-xcross +A -B.
-%worlds () (stp-xcross _ _).
-%trustme
-%total A (stp-xcross A _).
-%reduces N3 <= N2 (stp-xcross N2 N3).
-
-spt-xcross :
-  %% Input
-  spt (s N) (dcons (rect L U)) T1 (dcons D2) T2 ->
-  %% Output
-  stp (s N) (dcons (rect L U)) L (dcons D2) U ->
-  type.
-%mode spt-xcross +A -B.
-%worlds () (spt-xcross _ _).
-%trustme
-%total A (spt-xcross A _).
-%reduces N3 <= N2 (spt-xcross N2 N3).
-
-
-stp-to-atp :
-  %% Input
-  stp (s N) (dcons D1) T1 (dcons D2) T2 ->
-  {TX}
-  %% Output
-  atp (s N) (tcons (bind z D1 TX) tnil) T1 (tcons (bind z D1 TX) tnil) T2 ->
-  type.
-%mode stp-to-atp +WFE1 +B -WFE2.
-
-spt-to-atp :
-  %% Input
-  spt (s N) (dcons D1) T2 (dcons D2) T1 ->
-  {TX}
-  %% Output
-  atp (s N) (tcons (bind z D1 TX) tnil) T1 (tcons (bind z D1 TX) tnil) T2 ->
-  type.
-%mode spt-to-atp +WFE1 +B -WFE2.
-
-
--/top: stp-to-atp (stp/topc _) _ atp/top.
--/bot: stp-to-atp (stp/botc _) _ atp/bot.
-
--/fun: stp-to-atp (stp/func R A _) _ (atp/fun R' A')
-        <- spt-to-atp A _ A'
-        <- stp-to-atp R _ R'
-        .
-
--/selx: stp-to-atp (stp/selx _ _) _ (atp/selx)
-        .
-
--/sel1: stp-to-atp (stp/sel1 SU _) _ (atp/sel1 SU')
-        <- stp-to-atp SU _ SU'
-        .
-
--/sel2: stp-to-atp (stp/sel2 SLXL1 ST1LX ST1U2 STL2L1) _ (atp/sel2 ST1U1' ST1L1')
-        <- stp-to-atp ST1LX _ ST1LX'
-
-        <- spt-upgradeN SLXL1 SLXL1_N
-        <- spt-to-atp SLXL1_N _ SLXL1_N'
-        <- atp-trans ST1LX' SLXL1_N' ST1L1'
-
-        % get L1 < U1 and trans!
-        <- stp-xcross ST1LX SL1U1
-        <- stp-to-atp SL1U1 _ SL1U1'
-        <- atp-trans ST1L1' SL1U1' ST1U1'
-        .
-
-
--/top: spt-to-atp (spt/topc _) _ atp/top.
--/bot: spt-to-atp (spt/botc _) _ atp/bot.
-
--/fun: spt-to-atp (spt/func R A _) _ (atp/fun R' A')
-        <- stp-to-atp A _ A'
-        <- spt-to-atp R _ R'
-        .
-
--/selx: spt-to-atp (spt/selx _ _) _ (atp/selx)
-        .
-
--/sel1: spt-to-atp (spt/sel1 ST1L1 _) _ (atp/sel2 ST1U1' ST1L1')
-        <- spt-to-atp ST1L1 _ ST1L1'
-
-        % get L1 < U1 and trans!
-        <- spt-xcross ST1L1 SL1U1
-        <- stp-to-atp SL1U1 _ SL1U1'
-        <- atp-trans ST1L1' SL1U1' ST1U1'
-        .
-
--/sel2: spt-to-atp (spt/sel2 SU1UX SUXT2 SL2T2 STU1U2) _ (atp/sel1 SU1T2')
-
-        <- stp-upgradeN SU1UX SU1UX_N
-        <- stp-to-atp SU1UX_N _ SU1UX_N'
-        <- spt-to-atp SUXT2 _ SUXT2'
-        <- atp-trans SU1UX_N' SUXT2' SU1T2'
-        .
-
-
-%worlds () (stp-to-atp _ _ _)(spt-to-atp _ _ _).
-%total (A A') (stp-to-atp A _ _)(spt-to-atp A' _ _).
-
-
-
-
-
-
-atp-inv-fun1 :
-  %% Input
-  atp N G1 (bind z D1 (arrow T11 T12)) G2 (arrow T21 T22) ->
-  %% Output
-  atp N (tcons (bind z D1 (arrow T11 T12)) tnil) (arrow T11 T12) G2 (arrow T21 T22) ->
-  type.
-%mode atp-inv-fun1 +WFE1 -WFE2.
-
-- : atp-inv-fun1 (atp/bindA S0 S1) XX
-      <- stp-to-atp S1 _ S1'
-      <- atp-extend1 _ S0 S0'
-      <- atp-trans S1' S0' XX.
-
-
-%worlds () (atp-inv-fun1 _ _).
-%total WFE (atp-inv-fun1 WFE _).
-
-atp-inv-fun2 :
-  %% Input
-  atp N G1 (arrow T11 T12) G2 (arrow T21 T22) ->
-  %% Output
-  atp N G2 T21 G1 T11 ->
-  atp N G1 T12 G2 T22 ->
-  type.
-%mode atp-inv-fun2 +WFE1 -WFE2 -WFE3.
-
-- : atp-inv-fun2 (atp/fun SR SA) SA SR.
-
-%worlds () (atp-inv-fun2 _ _ _).
-%total WFE (atp-inv-fun2 WFE _ _).
-
-
-
-% --- high-level rules
+% ---
 
 wf-tp: tenv -> tpe -> type.
 
@@ -527,39 +358,6 @@ sub-tp: tenv -> tpe -> tenv -> tpe -> type.
 
 sub-tp/00: sub-tp G1 T1 G2 T2 
           <- atp (s z) G1 T1 G2 T2.
-
-
-sub-tp-inv-fun1 :
-  %% Input
-  tsize G1 Z ->
-  sub-tp G1 (bind Z D1 (arrow T11 T12)) G2 (arrow T21 T22) ->
-  %% Output
-  sub-tp (tcons (bind Z D1 (arrow T11 T12)) G1) (arrow T11 T12) G2 (arrow T21 T22) ->
-  type.
-%mode sub-tp-inv-fun1 +A +B -WFE2.
-
-- : sub-tp-inv-fun1 _ (sub-tp/00 A) (sub-tp/00 A')
-        <- atp-inv-fun1 A A'.
-
-%worlds () (sub-tp-inv-fun1 _ _ _).
-%total WFE (sub-tp-inv-fun1 WFE _ _).
-
-
-sub-tp-inv-fun2 :
-  %% Input
-  sub-tp (tcons (bind Z D1 (arrow T11 T12)) G1) (arrow T11 T12) G2 (arrow T21 T22) ->
-  %% Output
-  sub-tp G2 T21 (tcons (bind Z D1 (arrow T11 T12)) G1) T11 ->
-  sub-tp (tcons (bind Z D1 (arrow T11 T12)) G1) T12 G2 T22 ->
-  type.
-%mode sub-tp-inv-fun2 +WFE1 -WFE2 -WFE3.
-
-- : sub-tp-inv-fun2 (sub-tp/00 (atp/fun SR SA)) (sub-tp/00 SA) (sub-tp/00 SR).
-
-%worlds () (sub-tp-inv-fun2 _ _ _).
-%total WFE (sub-tp-inv-fun2 WFE _ _).
-
-
 
 
 
@@ -699,7 +497,7 @@ stp-xlow: stp (s N) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) T2 ->
 - : stp-xlow (stp/botc XL) XL.
 - : stp-xlow (stp/func _ _ XL) XL.
 - : stp-xlow (stp/sel1 _ XL) XL.
-- : stp-xlow (stp/sel2 _ _ _ XL) XL.
+- : stp-xlow (stp/sel2 _ _ _ _ _ _ XL) XL.
 - : stp-xlow (stp/selx _ XL) XL.
 
 %worlds () (stp-xlow _ _).
@@ -715,12 +513,161 @@ spt-xlow: spt (s N) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) T2 ->
 - : spt-xlow (spt/botc XL) XL.
 - : spt-xlow (spt/func _ _ XL) XL.
 - : spt-xlow (spt/sel1 _ XL) XL.
-- : spt-xlow (spt/sel2 _ _ _ XL) XL.
+- : spt-xlow (spt/sel2 _ _ _ _ _ _ XL) XL.
 - : spt-xlow (spt/selx _ XL) XL.
 
 %worlds () (spt-xlow _ _).
 %total N (spt-xlow N _).
 %reduces N3 <= N2 (spt-xlow N2 N3).
+
+
+stp-xhigh: stp (s N) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) T2 ->
+          stp (N) (dcons (rect L1 U1)) U1 (dcons (rect L2 U2)) U2 ->
+          type.
+%mode stp-xhigh +SBT2 -SBT3.
+
+%% TODO
+
+%worlds () (stp-xhigh _ _).
+%trustme
+%total N (stp-xhigh N _).
+%reduces N3 <= N2 (stp-xhigh N2 N3).
+
+
+spt-xhigh: spt (s N) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) T2 ->
+          spt (N) (dcons (rect L1 U1)) L1 (dcons (rect L2 U2)) L2 ->
+          type.
+%mode spt-xhigh +SBT2 -SBT3.
+
+%% TODO
+
+%worlds () (spt-xhigh _ _).
+%trustme
+%total N (spt-xhigh N _).
+%reduces N3 <= N2 (spt-xhigh N2 N3).
+
+
+
+
+stp-xcross :
+  %% Input
+  stp (s N) (dcons (rect L U)) T1 (dcons D2) T2 ->
+  %% Output
+  stp (s N) (dcons (rect L U)) L (dcons (rect L U)) U ->
+  type.
+%mode stp-xcross +A -B.
+
+%% TODO
+
+%worlds () (stp-xcross _ _).
+%trustme
+%total A (stp-xcross A _).
+%reduces N3 <= N2 (stp-xcross N2 N3).
+
+spt-xcross :
+  %% Input
+  spt (s N) (dcons (rect L U)) T1 (dcons D2) T2 ->
+  %% Output
+  stp (s N) (dcons (rect L U)) L (dcons (rect L U)) U ->
+  type.
+%mode spt-xcross +A -B.
+
+%% TODO
+
+%worlds () (spt-xcross _ _).
+%trustme
+%total A (spt-xcross A _).
+%reduces N3 <= N2 (spt-xcross N2 N3).
+
+
+
+
+%{ not needed
+
+stp-downgrade1: stp (s N) (dcons (rect L1 U1)) U1 (dcons (rect L2 U2)) U2 ->
+                spt (s N) (dcons (rect L1 U1)) L1 (dcons (rect L2 U2)) L2 ->
+          stp N (dcons (rect L1 U1)) U1 (dcons (rect L2 U2)) U2 ->
+          spt N (dcons (rect L1 U1)) L1 (dcons (rect L2 U2)) L2 ->
+          type.
+%mode stp-downgrade1 +SBT2 +B -SBT3 -D.
+
+
+%worlds () (stp-downgrade1 _ _ _ _).
+%total N (stp-downgrade1 N _ _ _).
+
+}%
+
+
+
+%% todo: need both L1 L2 and U1 U2 always ...
+
+stp-upgrade: stp (s N) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) T2 ->
+          stp (s (s N)) (dcons (rect L1 U1)) U1 (dcons (rect L2 U2)) U2 ->
+          spt (s (s N)) (dcons (rect L1 U1)) L1 (dcons (rect L2 U2)) L2 ->
+          stp (s (s (s N))) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) T2 ->
+          type.
+%mode stp-upgrade +SBT2 +B +C -SBT3.
+
+spt-upgrade: spt (s N) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) T2 ->
+          stp (s (s N)) (dcons (rect L1 U1)) U1 (dcons (rect L2 U2)) U2 ->
+          spt (s (s N)) (dcons (rect L1 U1)) L1 (dcons (rect L2 U2)) L2 ->
+          spt (s (s (s N))) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) T2 ->
+          type.
+%mode spt-upgrade +SBT2 +B +C -SBT3.
+
+
+- : stp-upgrade (stp/topc XL) XU' XL' (stp/topc XL').
+- : stp-upgrade (stp/botc XL) XU' XL' (stp/botc XL').
+- : stp-upgrade (stp/func SR SA XL) XU' XL' (stp/func SR' SA' XL')
+        <- stp-upgrade SR XU' XL' SR'
+        <- spt-upgrade SA XU' XL' SA'
+        .
+- : stp-upgrade (stp/selx SU XL) XU' XL' (stp/selx SU' XL')
+        <- stp-upgrade SU XU' XL' SU'
+        .
+
+- : stp-upgrade (stp/sel1 SU XL) XU' XL' (stp/sel1 SU' XL')
+        <- stp-upgrade SU XU' XL' SU'
+        .
+
+- : stp-upgrade (stp/sel2 SY SX SY1 SX1 SL SU XL) XU' XL' (stp/sel2 SY' SX' SY1' SX1' SL' SU' XL')
+        <- stp-upgrade SU XU' XL' SU'
+        
+        % <- stp-xlow SX1 XL''
+        % <- spt-xlow SY1 XU''
+        <- stp-upgrade SX SX1 SY1 SX'
+        <- spt-upgrade SY SX1 SY1 SY'
+        <- spt-upgrade SY1 SX' SY' SY1'
+        <- stp-upgrade SX1 SX' SY' SX1'
+
+        <- stp-upgrade SL SX' SY' SL' % T1 < LX
+        .
+
+%% TODO: spt-upgrade
+
+%worlds () (stp-upgrade _ _ _ _)(spt-upgrade _ _ _ _).
+%trustme
+%total (N N') (stp-upgrade N _ _ _)(spt-upgrade N' _ _ _).
+
+
+stp-upgrade1: stp (s (s N)) (dcons (rect L1 U1)) U1 (dcons (rect L2 U2)) U2 ->
+              spt (s (s N)) (dcons (rect L1 U1)) L1 (dcons (rect L2 U2)) L2 ->
+          stp (s (s (s N))) (dcons (rect L1 U1)) U1 (dcons (rect L2 U2)) U2 ->
+          spt (s (s (s N))) (dcons (rect L1 U1)) L1 (dcons (rect L2 U2)) L2 ->
+          type.
+%mode stp-upgrade1 +SBT2 +B -SBT3 -D.
+
+- : stp-upgrade1 AA BB AA' BB'
+          <- stp-xlow AA XL
+          <- spt-xlow BB YL
+          <- spt-upgrade XL AA BB BB'
+          <- stp-upgrade YL AA BB AA'
+          .
+
+%worlds () (stp-upgrade1 _ _ _ _).
+%total N (stp-upgrade1 N _ _ _).
+
+
 
 
 
@@ -847,38 +794,44 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
 
 -/tsel2 :   stp-trans-weaken
             SBT1
-            (stp/sel2 ST_LX ST_1L ST_2U XL2)
-            (stp/sel2 ST_LX' ST_1L' ST_2U' XL3)
+            (stp/sel2 ST_LX ST_UX ST_LX1 ST_UX1 ST_1L ST_2U XL2)
+            (stp/sel2 ST_LX' ST_UX' ST_LX1' ST_UX1' ST_1L' ST_2U' XL3)
             <- stp-trans-weaken SBT1 ST_1L ST_1L'
             <- stp-trans-weaken SBT1 ST_2U ST_2U'
             <- stp-xlow SBT1 ST_L1L0
+            <- stp-xhigh SBT1 ST_U1U0
             <- spt-trans-weaken ST_L1L0 ST_LX  ST_LX'
+            <- stp-trans-weaken ST_U1U0 ST_UX  ST_UX'
+            <- stp-upgrade1 ST_UX' ST_LX' ST_UX1' ST_LX1'
             <- stp-xlow SBT1 XL1
             <- spt-trans-weaken XL1 XL2 XL3
             .
 
 -/tsel2--X2 :   spt-trans-weaken
             SBT1
-            (spt/sel2 ST_LX ST_1L ST_2U XL2)
-            (spt/sel2 ST_LX' ST_1L' ST_2U' XL3)
+            (spt/sel2 ST_LX ST_UX ST_LX1 ST_UX1 ST_1L ST_2U XL2)
+            (spt/sel2 ST_LX' ST_UX' ST_LX1' ST_UX1' ST_1L' ST_2U' XL3)
             <- spt-trans-weaken SBT1 ST_1L ST_1L'
             <- spt-trans-weaken SBT1 ST_2U ST_2U'
-            <- spt-xlow SBT1 ST_L1L0
-            <- stp-trans-weaken ST_L1L0 ST_LX  ST_LX'
+            <- spt-xlow SBT1 ST_U1U0
+            <- spt-xhigh SBT1 ST_L1L0
+            <- spt-trans-weaken ST_L1L0 ST_LX  ST_LX'
+            <- stp-trans-weaken ST_U1U0 ST_UX  ST_UX'
+            <- stp-upgrade1 ST_UX' ST_LX' ST_UX1' ST_LX1'
             <- spt-xlow SBT1 XL1
             <- stp-trans-weaken XL1 XL2 XL3            
             .
 
 
 -/tsel2-tsel1 : stp-trans-weaken
-            (stp/sel2 ST_LX ST_1L ST_1U XL1)
+            (stp/sel2 ST_LX _ _ _ ST_1L ST_1U XL1)
             (stp/sel1 ST_U2 XL2)
             OUT
             <- stp-trans-weaken ST_1U ST_U2 OUT
             .
 
 -/tsel2-tsel1--X2 : spt-trans-weaken
-            (spt/sel2 ST_LX ST_1L ST_1U XL1)
+            (spt/sel2 ST_LX ST_UX ST_LX1 ST_UX1 ST_1L ST_1U XL1)
             (spt/sel1 ST_U2 XL2)
             OUT
             <- spt-trans-weaken ST_1U ST_U2 OUT
@@ -904,17 +857,17 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
 
 
 -/tsel2-tselx : stp-trans-weaken
-            (stp/sel2 ST_LX ST_1L ST_U1 XL1)
+            (stp/sel2 ST_LX ST_UX ST_LX1 ST_UX1 ST_1L ST_U1 XL1)
             ((stp/selx ST0 XL2): stp _ (dcons (rect L1 U1)) (tsel _) (dcons (rect L2 U2)) (tsel _))
-            (stp/sel2 ST_LX ST_1L ST_U1' XL3)
+            (stp/sel2 ST_LX ST_UX ST_LX1 ST_UX1 ST_1L ST_U1' XL3)
             <- stp-trans-weaken ST_U1 ST0 ST_U1'
             <- spt-trans-weaken XL1 XL2 XL3
             .
 
 -/tsel2-tselx--X2 : spt-trans-weaken
-            (spt/sel2 ST_LX ST_1L ST_U1 XL1)
+            (spt/sel2 ST_LX ST_UX ST_LX1 ST_UX1 ST_1L ST_U1 XL1)
             (spt/selx (ST0: spt _ (dcons (rect L2 U2)) L2 (dcons (rect L3 U3)) L3) XL2)
-            (spt/sel2 ST_LX ST_1L ST_U1' XL3)
+            (spt/sel2 ST_LX ST_UX ST_LX1 ST_UX1 ST_1L ST_U1' XL3)
             <- spt-trans-weaken ST_U1 ST0 ST_U1'
             <- stp-trans-weaken XL1 XL2 XL3
             .
@@ -1059,38 +1012,44 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
 
 -/tsel2 :   stp-trans-weaken2
             SBT1
-            (stp/sel2 ST_LX ST_1L ST_2U XL2)
-            (stp/sel2 ST_LX' ST_1L' ST_2U' XL3)
+            (stp/sel2 ST_LX ST_UX ST_LX1 ST_UX1 ST_1L ST_2U XL2)
+            (stp/sel2 ST_LX' ST_UX' ST_LX1' ST_UX1' ST_1L' ST_2U' XL3)
             <- stp-trans-weaken2 SBT1 ST_1L ST_1L'
             <- stp-trans-weaken2 SBT1 ST_2U ST_2U'
             <- stp-xlow SBT1 ST_L1L0
+            <- stp-xhigh SBT1 ST_U1U0
             <- spt-trans-weaken2 ST_L1L0 ST_LX  ST_LX'
+            <- stp-trans-weaken2 ST_U1U0 ST_UX  ST_UX'
+            <- stp-upgrade1 ST_UX' ST_LX' ST_UX1' ST_LX1'
             <- stp-xlow SBT1 XL1
             <- spt-trans-weaken2 XL1 XL2 XL3
             .
 
 -/tsel2--X2 :   spt-trans-weaken2
             SBT1
-            (spt/sel2 ST_LX ST_1L ST_2U XL2)
-            (spt/sel2 ST_LX' ST_1L' ST_2U' XL3)
+            (spt/sel2 ST_LX ST_UX ST_LX1 ST_UX1 ST_1L ST_2U XL2)
+            (spt/sel2 ST_LX' ST_UX' ST_LX1' ST_UX1' ST_1L' ST_2U' XL3)
             <- spt-trans-weaken2 SBT1 ST_1L ST_1L'
             <- spt-trans-weaken2 SBT1 ST_2U ST_2U'
-            <- spt-xlow SBT1 ST_L1L0
-            <- stp-trans-weaken2 ST_L1L0 ST_LX  ST_LX'
+            <- spt-xlow SBT1 ST_U1U0
+            <- spt-xhigh SBT1 ST_L1L0
+            <- spt-trans-weaken2 ST_L1L0 ST_LX  ST_LX'
+            <- stp-trans-weaken2 ST_U1U0 ST_UX  ST_UX'
+            <- stp-upgrade1 ST_UX' ST_LX' ST_UX1' ST_LX1'
             <- spt-xlow SBT1 XL1
-            <- stp-trans-weaken2 XL1 XL2 XL3            
+            <- stp-trans-weaken2 XL1 XL2 XL3
             .
 
 
 -/tsel2-tsel1 : stp-trans-weaken2
-            (stp/sel2 ST_LX ST_1L ST_1U XL1)
+            (stp/sel2 ST_LX ST_UX ST_LX1 ST_UX1 ST_1L ST_1U XL1)
             (stp/sel1 ST_U2 XL2)
             OUT
             <- stp-trans-weaken2 ST_1U ST_U2 OUT
             .
 
 -/tsel2-tsel1--X2 : spt-trans-weaken2
-            (spt/sel2 ST_LX ST_1L ST_1U XL1)
+            (spt/sel2 ST_LX ST_UX ST_LX1 ST_UX1 ST_1L ST_1U XL1)
             (spt/sel1 ST_U2 XL2)
             OUT
             <- spt-trans-weaken2 ST_1U ST_U2 OUT
@@ -1116,17 +1075,17 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
 
 
 -/tsel2-tselx : stp-trans-weaken2
-            (stp/sel2 ST_LX ST_1L ST_U1 XL1)
+            (stp/sel2 ST_LX ST_UX ST_LX1 ST_UX1 ST_1L ST_U1 XL1)
             ((stp/selx ST0 XL2): stp _ (dcons (rect L1 U1)) (tsel _) (dcons (rect L2 U2)) (tsel _))
-            (stp/sel2 ST_LX ST_1L ST_U1' XL3)
+            (stp/sel2 ST_LX ST_UX ST_LX1 ST_UX1 ST_1L ST_U1' XL3)
             <- stp-trans-weaken2 ST_U1 ST0 ST_U1'
             <- spt-trans-weaken2 XL1 XL2 XL3
             .
 
 -/tsel2-tselx--X2 : spt-trans-weaken2
-            (spt/sel2 ST_LX ST_1L ST_U1 XL1)
+            (spt/sel2 ST_LX ST_UX ST_LX1 ST_UX1 ST_1L ST_U1 XL1)
             (spt/selx (ST0: spt _ (dcons (rect L2 U2)) L2 (dcons (rect L3 U3)) L3) XL2)
-            (spt/sel2 ST_LX ST_1L ST_U1' XL3)
+            (spt/sel2 ST_LX ST_UX ST_LX1 ST_UX1 ST_1L ST_U1' XL3)
             <- spt-trans-weaken2 ST_U1 ST0 ST_U1'
             <- stp-trans-weaken2 XL1 XL2 XL3
             .
@@ -1331,6 +1290,171 @@ atp-trans2: atp N G1 T1 G2 T2 -> atp N G2 T2 G3 T3 -> atp N G1 T1 G3 T3 -> type.
 
 %worlds () (atp-trans _ _ _)(atp-trans2 _ _ _).
 %total [(A B') (B A')] (atp-trans A B _)(atp-trans2 A' B' _).
+
+
+% --- type inversion lemmas
+
+
+atp-extend1: {D1} atp N G1 T1 G T2 -> atp N (tcons D1 G1) T1 G T2 -> type.
+%mode atp-extend1 +D1 +A1 -A2.
+
+%% TODO: sel rules don't allow extension yet, but seems alright
+
+%worlds () (atp-extend1 _ _ _).
+%trustme
+%total (A) (atp-extend1 A _ _).
+
+
+
+
+stp-to-atp :
+  %% Input
+  stp (s N) (dcons D1) T1 (dcons D2) T2 ->
+  {TX}
+  %% Output
+  atp (s N) (tcons (bind z D1 TX) tnil) T1 (tcons (bind z D1 TX) tnil) T2 ->
+  type.
+%mode stp-to-atp +WFE1 +B -WFE2.
+
+spt-to-atp :
+  %% Input
+  spt (s N) (dcons D1) T2 (dcons D2) T1 ->
+  {TX}
+  %% Output
+  atp (s N) (tcons (bind z D1 TX) tnil) T1 (tcons (bind z D1 TX) tnil) T2 ->
+  type.
+%mode spt-to-atp +WFE1 +B -WFE2.
+
+
+-/top: stp-to-atp (stp/topc _) _ atp/top.
+-/bot: stp-to-atp (stp/botc _) _ atp/bot.
+
+-/fun: stp-to-atp (stp/func R A _) _ (atp/fun R' A')
+        <- spt-to-atp A _ A'
+        <- stp-to-atp R _ R'
+        .
+
+-/selx: stp-to-atp (stp/selx _ _) _ (atp/selx)
+        .
+
+-/sel1: stp-to-atp (stp/sel1 SU _) _ (atp/sel1 SU')
+        <- stp-to-atp SU _ SU'
+        .
+
+-/sel2: stp-to-atp (stp/sel2 _ _ SLXL1 SU1UX ST1LX ST1U2 STL2L1) _ (atp/sel2 ST1U1' ST1L1')
+        <- stp-to-atp ST1LX _ ST1LX'
+
+        <- spt-to-atp SLXL1 _ SLXL1'
+        <- atp-trans ST1LX' SLXL1' ST1L1'
+
+        % get L1 < U1 and trans!
+        <- stp-xcross ST1LX SL1U1
+        <- stp-to-atp SL1U1 _ SL1U1'
+        <- atp-trans ST1L1' SL1U1' ST1U1'
+        .
+
+
+-/top: spt-to-atp (spt/topc _) _ atp/top.
+-/bot: spt-to-atp (spt/botc _) _ atp/bot.
+
+-/fun: spt-to-atp (spt/func R A _) _ (atp/fun R' A')
+        <- stp-to-atp A _ A'
+        <- spt-to-atp R _ R'
+        .
+
+-/selx: spt-to-atp (spt/selx _ _) _ (atp/selx)
+        .
+
+-/sel1: spt-to-atp (spt/sel1 ST1L1 _) _ (atp/sel2 ST1U1' ST1L1')
+        <- spt-to-atp ST1L1 _ ST1L1'
+
+        % get L1 < U1 and trans!
+        <- spt-xcross ST1L1 SL1U1
+        <- stp-to-atp SL1U1 _ SL1U1'
+        <- atp-trans ST1L1' SL1U1' ST1U1'
+        .
+
+-/sel2: spt-to-atp (spt/sel2 _ _ SLXL1 SU1UX SUXT2 SL2T2 STU1U2) _ (atp/sel1 SU1T2')
+
+        <- stp-to-atp SU1UX _ SU1UX'
+        <- spt-to-atp SUXT2 _ SUXT2'
+        <- atp-trans SU1UX' SUXT2' SU1T2'
+        .
+
+
+%worlds () (stp-to-atp _ _ _)(spt-to-atp _ _ _).
+%total (A A') (stp-to-atp A _ _)(spt-to-atp A' _ _).
+
+
+
+
+
+
+atp-inv-fun1 :
+  %% Input
+  atp N G1 (bind z D1 (arrow T11 T12)) G2 (arrow T21 T22) ->
+  %% Output
+  atp N (tcons (bind z D1 (arrow T11 T12)) tnil) (arrow T11 T12) G2 (arrow T21 T22) ->
+  type.
+%mode atp-inv-fun1 +WFE1 -WFE2.
+
+- : atp-inv-fun1 (atp/bindA S0 S1) XX
+      <- stp-to-atp S1 _ S1'
+      <- atp-extend1 _ S0 S0'
+      <- atp-trans S1' S0' XX.
+
+
+%worlds () (atp-inv-fun1 _ _).
+%total WFE (atp-inv-fun1 WFE _).
+
+atp-inv-fun2 :
+  %% Input
+  atp N G1 (arrow T11 T12) G2 (arrow T21 T22) ->
+  %% Output
+  atp N G2 T21 G1 T11 ->
+  atp N G1 T12 G2 T22 ->
+  type.
+%mode atp-inv-fun2 +WFE1 -WFE2 -WFE3.
+
+- : atp-inv-fun2 (atp/fun SR SA) SA SR.
+
+%worlds () (atp-inv-fun2 _ _ _).
+%total WFE (atp-inv-fun2 WFE _ _).
+
+
+
+% --- high-level rules
+
+
+sub-tp-inv-fun1 :
+  %% Input
+  tsize G1 Z ->
+  sub-tp G1 (bind Z D1 (arrow T11 T12)) G2 (arrow T21 T22) ->
+  %% Output
+  sub-tp (tcons (bind Z D1 (arrow T11 T12)) G1) (arrow T11 T12) G2 (arrow T21 T22) ->
+  type.
+%mode sub-tp-inv-fun1 +A +B -WFE2.
+
+- : sub-tp-inv-fun1 _ (sub-tp/00 A) (sub-tp/00 A')
+        <- atp-inv-fun1 A A'.
+
+%worlds () (sub-tp-inv-fun1 _ _ _).
+%total WFE (sub-tp-inv-fun1 WFE _ _).
+
+
+sub-tp-inv-fun2 :
+  %% Input
+  sub-tp (tcons (bind Z D1 (arrow T11 T12)) G1) (arrow T11 T12) G2 (arrow T21 T22) ->
+  %% Output
+  sub-tp G2 T21 (tcons (bind Z D1 (arrow T11 T12)) G1) T11 ->
+  sub-tp (tcons (bind Z D1 (arrow T11 T12)) G1) T12 G2 T22 ->
+  type.
+%mode sub-tp-inv-fun2 +WFE1 -WFE2 -WFE3.
+
+- : sub-tp-inv-fun2 (sub-tp/00 (atp/fun SR SA)) (sub-tp/00 SA) (sub-tp/00 SR).
+
+%worlds () (sub-tp-inv-fun2 _ _ _).
+%total WFE (sub-tp-inv-fun2 WFE _ _).
 
 
 
