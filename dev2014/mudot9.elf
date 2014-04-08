@@ -1,8 +1,14 @@
+%{
+
 TODO
 
 - xhigh and xcross
-- update spt cases
 - invert-wf-fun
+
+- wf-tp
+- extend-sub-tp and friends
+
+}%
 
 
 %{ ------- arithmetic ----- }%
@@ -661,10 +667,34 @@ spt-upgrade: spt (s N) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) T2 ->
         <- stp-upgrade SL SX' SY' SL' % T1 < LX
         .
 
-%% TODO: spt-upgrade
+- : spt-upgrade (spt/topc XU) XU' XL' (spt/topc XU').
+- : spt-upgrade (spt/botc XU) XU' XL' (spt/botc XU').
+- : spt-upgrade (spt/func SR SA XU) XU' XL' (spt/func SR' SA' XU')
+        <- spt-upgrade SR XU' XL' SR'
+        <- stp-upgrade SA XU' XL' SA'
+        .
+- : spt-upgrade (spt/selx SU XU) XU' XL' (spt/selx SU' XU')
+        <- spt-upgrade SU XU' XL' SU'
+        .
+
+- : spt-upgrade (spt/sel1 SU XU) XU' XL' (spt/sel1 SU' XU')
+        <- spt-upgrade SU XU' XL' SU'
+        .
+
+- : spt-upgrade (spt/sel2 SY SX SY1 SX1 SU SL XU) XU' XL' (spt/sel2 SY' SX' SY1' SX1' SU' SL' XU')
+        <- spt-upgrade SL XU' XL' SL'
+        
+        % <- stp-xlow SX1 XL''
+        % <- spt-xlow SY1 XU''
+        <- stp-upgrade SX SX1 SY1 SX'
+        <- spt-upgrade SY SX1 SY1 SY'
+        <- spt-upgrade SY1 SX' SY' SY1'
+        <- stp-upgrade SX1 SX' SY' SX1'
+
+        <- spt-upgrade SU SX' SY' SU' % T1 < LX
+        .
 
 %worlds () (stp-upgrade _ _ _ _)(spt-upgrade _ _ _ _).
-%trustme
 %total (N N') (stp-upgrade N _ _ _)(spt-upgrade N' _ _ _).
 
 
