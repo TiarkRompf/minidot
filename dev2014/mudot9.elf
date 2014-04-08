@@ -2,11 +2,13 @@
 
 TODO
 
-- xhigh and xcross
-- invert-wf-fun
+- stp/spt: add witnesses for xhigh and xcross
 
 - wf-tp
 - extend-sub-tp and friends
+- sub-tp/refl
+
+- support more than one binding in env
 
 }%
 
@@ -186,7 +188,7 @@ sdc/rect: sdc (s N) dnil (rect L1 U1) dnil (rect L2 U2)
 sdc/rectc: sdc (s N) (dcons D1) (rect L1 U1) (dcons D2) (rect L2 U2) 
           <- spt (s N) (dcons D1) L1 (dcons D2) L2
           <- stp (s N) (dcons D1) U1 (dcons D2) U2
-          % <- stp (s N) (dcons D1) L1 (dcons D2) U1  %% trans issue?
+          <- stp (s N) (dcons D1) L1 (dcons D1) U1  %% trans issue: need D1?
           % <- stp (s N) (dcons D1) L2 (dcons D2) U2  %% trans issue?
           .
 
@@ -332,18 +334,13 @@ atp/fun: atp (s N) G1 (arrow A1 B1) G2 (arrow A2 B2)
           <- atp (s N) G1 B1 G2 B2 
           .
 
+atp/selx: atp (s N) (env1 L U T) (tsel z) (env1 L U T) (tsel z)
+          % <- atp (s N) (env1 L U T) L (env1 L U T) U
+          .
+
 atp/sel1: atp (s N) (env1 L U T) (tsel z) G2 T2 
           % <- atp (s N) (env1 L U T) L G2 T2
           <- atp (s N) (env1 L U T) U G2 T2
-          .
-
-atp/sel2: atp (s N) G1 T1 (env1 L U T) (tsel z)
-          <- atp (s N) G1 T1 (env1 L U T) L
-          <- atp (s N) G1 T1 (env1 L U T) U
-          .
-
-atp/selx: atp (s N) (env1 L U T) (tsel z) (env1 L U T) (tsel z)
-          % <- atp (s N) (env1 L U T) L (env1 L U T) U
           .
 
 atp/bind: atp (s N) G1 (bind z D1 T1) G2 (bind z D2 T2)
@@ -356,14 +353,25 @@ atp/bindA: atp (s N) G1 (bind z D1 T1) G2 T2
           .
 
 
+
+atp/sel2: atp (s N) G1 T1 (env1 L U T) (tsel z)
+          <- atp (s N) G1 T1 (env1 L U T) L
+          <- atp (s N) G1 T1 (env1 L U T) U
+          .
+
+
 % ---
 
 wf-tp: tenv -> tpe -> type.
 
+wf-tp/00: wf-tp G T. %% TODO!
+
 sub-tp: tenv -> tpe -> tenv -> tpe -> type.
 
 sub-tp/00: sub-tp G1 T1 G2 T2 
-          <- atp (s z) G1 T1 G2 T2.
+          <- atp (s (s (s (s z)))) G1 T1 G2 T2.  
+          %% how much N do we need ??? should it be a parameter to sub-tp ???
+          %% we know we can upgrade 
 
 
 
@@ -410,6 +418,7 @@ wfv/empty : wf-val emptyv G top.
 wfv/f    : wf-val (clos R H) G (bind Z D (arrow T1 T2))
             <- wf-env H GC
             <- tsize GC Z
+            <- sub-tp GC (bind Z D (arrow T1 T2)) G (bind Z D (arrow T1 T2))
             <- type-exp (tcons T1 (tcons (bind Z D (arrow T1 T2)) GC)) R T2.
 
 
@@ -436,7 +445,10 @@ g2 = (dcons d2).
 1 = (s z).
 2 = (s 1).
 3 = (s 2).
-depth = 3.
+4 = (s 3).
+5 = (s 4).
+6 = (s 5).
+depth = 6.
 
 %query 1 1 stp depth dnil bot dnil top.
 
@@ -491,6 +503,19 @@ t4 = (arrow bot top).
 %query 0 * stp depth dnil t2 dnil t1.
 
 
+%query 1 1 atp depth tnil t1 tnil t2.
+
+%query 1 1 atp depth tnil t2 tnil t3.
+
+%query 1 1 atp depth tnil t3 tnil t4.
+
+
+%query 1 1 sub-tp tnil t1 tnil t2.
+
+%query 1 1 sub-tp tnil t2 tnil t3.
+
+%query 1 1 sub-tp tnil t3 tnil t4.
+
 
 %query 1 1 type-exp tnil (fun (rect (arrow top top) (arrow top top)) (var (s z))) T.
 
@@ -502,7 +527,7 @@ t4 = (arrow bot top).
 
 %query 1 1 type-exp tnil (fun (rect (arrow top top) (arrow top top)) (var (s z))) t3.
 
-%query 1 1 type-exp tnil (fun (rect (arrow top top) (arrow top top)) (var (s z))) t4.
+% hangs? %query 1 1 type-exp tnil (fun (rect (arrow top top) (arrow top top)) (var (s z))) t4.
 
 
 
@@ -550,7 +575,7 @@ stp-xhigh: stp (s N) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) T2 ->
           type.
 %mode stp-xhigh +SBT2 -SBT3.
 
-%% TODO
+%% TODO: add witness to stp
 
 %worlds () (stp-xhigh _ _).
 %trustme
@@ -563,7 +588,7 @@ spt-xhigh: spt (s N) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) T2 ->
           type.
 %mode spt-xhigh +SBT2 -SBT3.
 
-%% TODO
+%% TODO: add witness to spt
 
 %worlds () (spt-xhigh _ _).
 %trustme
@@ -581,7 +606,7 @@ stp-xcross :
   type.
 %mode stp-xcross +A -B.
 
-%% TODO
+%% TODO: add witness to stp
 
 %worlds () (stp-xcross _ _).
 %trustme
@@ -596,7 +621,7 @@ spt-xcross :
   type.
 %mode spt-xcross +A -B.
 
-%% TODO
+%% TODO: add witness to spt
 
 %worlds () (spt-xcross _ _).
 %trustme
@@ -606,7 +631,8 @@ spt-xcross :
 
 
 
-%{ not needed
+%{ 
+not needed
 
 stp-downgrade1: stp (s N) (dcons (rect L1 U1)) U1 (dcons (rect L2 U2)) U2 ->
                 spt (s N) (dcons (rect L1 U1)) L1 (dcons (rect L2 U2)) L2 ->
@@ -618,12 +644,9 @@ stp-downgrade1: stp (s N) (dcons (rect L1 U1)) U1 (dcons (rect L2 U2)) U2 ->
 
 %worlds () (stp-downgrade1 _ _ _ _).
 %total N (stp-downgrade1 N _ _ _).
-
 }%
 
 
-
-%% todo: need both L1 L2 and U1 U2 always ...
 
 stp-upgrade: stp (s N) (dcons (rect L1 U1)) T1 (dcons (rect L2 U2)) T2 ->
           stp (s (s N)) (dcons (rect L1 U1)) U1 (dcons (rect L2 U2)) U2 ->
@@ -751,9 +774,9 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
             .
 
 -/rectc : sdc-trans-weaken
-            (sdc/rectc U1U2 L1L2)
-            (sdc/rectc U2U3 L2L3)
-            (sdc/rectc U1U3 L1L3)
+            (sdc/rectc L1U1 U1U2 L1L2)
+            (sdc/rectc L2U2 U2U3 L2L3)
+            (sdc/rectc L1U1 U1U3 L1L3)
             <- stp-trans-weaken U1U2 U2U3 U1U3
             <- spt-trans-weaken L1L2 L2L3 L1L3
             % widen L1U1 to L1U1'
@@ -969,9 +992,9 @@ sdc-trans-weaken2: sdc (N) G1 D1 G2 D2 -> sdc (N) G2 D2 G3 D3 -> sdc (N) G1 D1 G
             .
 
 -/rectc : sdc-trans-weaken2
-            (sdc/rectc U1U2 L1L2)
-            (sdc/rectc U2U3 L2L3)
-            (sdc/rectc U1U3 L1L3)
+            (sdc/rectc L1U1 U1U2 L1L2)
+            (sdc/rectc L2U2 U2U3 L2L3)
+            (sdc/rectc L1U1 U1U3 L1L3)
             <- stp-trans-weaken2 U1U2 U2U3 U1U3
             <- spt-trans-weaken2 L1L2 L2L3 L1L3
             % widen L1U1 to L1U1'
@@ -1340,13 +1363,14 @@ atp-trans2: atp N G1 T1 G2 T2 -> atp N G2 T2 G3 T3 -> atp N G1 T1 G3 T3 -> type.
 %total [(A B') (B A')] (atp-trans A B _)(atp-trans2 A' B' _).
 
 
-% --- type inversion lemmas
+
+% --- convert z: D1 < D2 |- ... to z: T1 |- ...
 
 
 atp-extend1: {D1} atp N G1 T1 G T2 -> atp N (tcons D1 G1) T1 G T2 -> type.
 %mode atp-extend1 +D1 +A1 -A2.
 
-%% TODO: sel rules don't allow extension yet, but seems alright
+%% TODO: sel rules don't allow extension yet (but seems ok to add)
 
 %worlds () (atp-extend1 _ _ _).
 %trustme
@@ -1474,6 +1498,24 @@ atp-inv-fun2 :
 % --- high-level rules
 
 
+sub-tp-refl: wf-tp G T -> sub-tp G T G T -> type.
+%mode sub-tp-refl +T -SBT.
+
+%worlds () (sub-tp-refl _ _).
+%trustme
+%total WFE (sub-tp-refl WFE _).
+
+
+sub-tp-trans: sub-tp G1 T1 G2 T2 -> sub-tp G2 T2 G3 T3 -> sub-tp G1 T1 G3 T3 -> type.
+%mode sub-tp-trans +S1 +S2 -SBT.
+
+- : sub-tp-trans (sub-tp/00 S1) (sub-tp/00 S2) (sub-tp/00 S3)
+          <- atp-trans S1 S2 S3.
+
+%worlds () (sub-tp-trans _ _ _).
+%total WFE (sub-tp-trans WFE _ _).
+
+
 sub-tp-inv-fun1 :
   %% Input
   tsize G1 Z ->
@@ -1507,28 +1549,15 @@ sub-tp-inv-fun2 :
 
 
 
-% --- high-level rules
-
-sub-tp-refl: wf-tp G T -> sub-tp G T G T -> type.
-%mode sub-tp-refl +T -SBT.
-
-%worlds () (sub-tp-refl _ _).
-%total WFE (sub-tp-refl WFE _).
-
-
-sub-tp-trans: sub-tp G1 T1 G2 T2 -> sub-tp G2 T2 G3 T3 -> sub-tp G1 T1 G3 T3 -> type.
-%mode sub-tp-trans +S1 +S2 -SBT.
-
-- : sub-tp-trans (sub-tp/00 S1) (sub-tp/00 S2) (sub-tp/00 S3)
-          <- atp-trans S1 S2 S3.
-
-%worlds () (sub-tp-trans _ _ _).
-%total WFE (sub-tp-trans WFE _ _).
-
-
-
-
 %{ ------- type well-formedness extractors ----- }%
+
+extract-wf : sub-tp G1 T1 G2 T2 -> wf-tp G1 T1 -> wf-tp G2 T2 -> type.
+%mode extract-wf +SBT1 -SBT2 -SBT3.
+
+%worlds () (extract-wf _ _ _).
+%trustme
+%total A (extract-wf A _ _).
+
 
 extract-wf2: type-exp G E1 T1 -> wf-tp G T1 -> type.
 %mode extract-wf2 +WFE1 -WFE2.
@@ -1578,7 +1607,9 @@ extend-wfv: wf-val X3 X2 X1 -> {Z: tpe} wf-val X3 (tcons Z X2) X1 -> type.
 
 -     : extend-wfv (wfv/sub ST WV) T (wfv/sub ST1 WV)
             <- extend-sub-tp2 ST T ST1.
--     : extend-wfv (wfv/f TE S TV) T (wfv/f TE S TV).
+-     : extend-wfv (wfv/f TE ST S TV) T (wfv/f TE ST1 S TV)
+            <- extend-sub-tp2 ST T ST1.
+
 
 
 %worlds () (extend-wfv _ _ _).
@@ -1672,14 +1703,13 @@ invert-wf-fun :
   type.
 %mode invert-wf-fun +WFE1 -WFE2 -WFE3 -GS -SBT1 -W.
 
-% -     : invert-wf-fun (wfv/f TS WE) TS WE SB
-%             <- extract-wf3 (wfv/f TS WE) W
-%             <- sub-tp-refl W SB.
-% -     : invert-wf-fun (wfv/sub SBA1 TS) L L1 SBA2
-%             <- invert-wf-fun TS L L1 SBA
-%             <- sub-tp-trans SBA SBA1 SBA2.
+-     : invert-wf-fun (wfv/f TS ST GS WE) TS GS WE ST (wfv/f TS SB GS WE)
+            <- extract-wf ST W _
+            <- sub-tp-refl W SB.
+-     : invert-wf-fun (wfv/sub SBA1 TS) L GS L1 SBA2 WVV
+            <- invert-wf-fun TS L GS L1 SBA WVV
+            <- sub-tp-trans SBA SBA1 SBA2.
 %worlds () (invert-wf-fun _ _ _ _ _ _).
-%trustme
 %total WFE (invert-wf-fun WFE _ _ _ _ _).
 
 
@@ -1790,8 +1820,10 @@ eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val V G T -> typ
           <- invert-var ZT L ST
           <- lookup-safe E L L2 V.
 
--      : eval-safe ZT E (e/fun) (wfv/sub ST (wfv/f TS GS E))
-          <- invert-fun ZT TS GS ST.
+-      : eval-safe ZT E (e/fun) (wfv/sub ST (wfv/f TS SB GS E))
+          <- invert-fun ZT TS GS ST
+          <- extract-wf ST WB _
+          <- sub-tp-refl WB SB.
 
 -      : eval-safe
             (ZT: type-exp _ _ T2')
