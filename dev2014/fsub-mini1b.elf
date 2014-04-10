@@ -73,13 +73,13 @@ sub_top     : sub _ _ _ G _ top.
 
 sub_var     : sub (s I) (s I) _ (tcons (rect L U) tnil) (sel z) T
            <- sub _ _ _ (tcons (rect L U) tnil) U T
-           <- sub _ _ _ (tcons (rect L U) tnil) U T
-           <- add z I I.
+           <- sub _ _ _ (tcons (rect L U) tnil) U T % not used
+           <- add z I I. % not used
 
 sub_var2    : sub (s I) _ (s I) (tcons (rect L U) tnil) T (sel z)
            <- sub _ _ _ (tcons (rect L U) tnil) L U
            <- sub _ _ _ (tcons (rect L U) tnil) T L
-           <- add z I I.
+           <- add z I I. % not used
 
 
 sub_arrow   : sub _ _ _ G (arrow S1 S2) (arrow T1 T2)
@@ -98,7 +98,7 @@ sdc/rect    : sdc _ _ _ G (rect L1 U1) (rect L2 U2)
             <- sub _ _ _ G L1 U1
             <- sub _ _ _ G U1 U2
             <- sub _ _ _ G L2 L1
-            . % <- sub G L2 U1.
+            .
 
 sev/last    : sev _ _ (tcons D1 G) (tcons D2 G)
             <- sdc _ _ _ G D1 D2.
@@ -180,9 +180,9 @@ t3 = (bind z (rect bot top) (arrow bot top)).
 
 %query 0 * sub _ _ _ tnil t2 t1.
 
-
 %query 1 1 sub _ _ _ tnil t2 t3.
 
+%query 1 1 sub _ _ _ tnil t1 t3.
 
 
 
@@ -296,8 +296,6 @@ narrow* : {I}{J1}{J2}{P:dc I}{Q:dc I}{M: tp J1}{N: tp J2}
 -tbind  : trans* _ _ _ _ _ _ _ _ _ nat_eq_ (sub_bind D1b (sdc/rect L D1a X1 X2)) (sub_bind D2b D2a) (sub_bind Db Da)
        <- transdc* _ _ _ _ _ _ _ _ _ nat_eq_ (sdc/rect L D1a X1 X2) D2a Da
        <- narrow* _ _ _ _ _ _ _ _ nat_eq_ (add/z) D2b (sdc/rect L D1a X1 X2) D2b'
-
-       %%% XXX problem: W1: wtp G2 T1 needs to be narrowed to W1': wtp G1 T1
        <- trans* _ _ _ _ _ _ _ _ _ nat_eq_ D1b D2b' Db.
 
 
