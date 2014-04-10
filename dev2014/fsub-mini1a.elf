@@ -1,0 +1,232 @@
+%%  based on POPLmark submission by Michael Ashley-Rollman, Karl Crary, and Robert Harper.
+
+% + de-hoas
+
+%%%%%  Natural numbers  %%%%%
+
+nat : type.  %name nat N.
+
+z : nat.
+s : nat -> nat.
+
+
+nat_eq : nat -> nat -> type.
+
+nat_eq_		: nat_eq N N.
+
+
+
+%%%%%  Syntax  %%%%%
+
+tp : type.  %name tp T.
+
+top	: tp.
+sel     : nat -> tp.
+arrow	: tp -> tp -> tp.
+bind	: nat -> tp -> tp -> tp.  %% for all x<:T1 in T2
+
+
+
+tenv: nat -> type.
+tnil: tenv z.
+tcons: tp -> tenv N -> tenv (s N).
+
+
+
+%%%%%  Semantics  %%%%%
+
+sub  : tenv N -> tp -> tp -> type.  %% subtyping judgement
+
+
+sub_top		: sub G _ top.
+
+
+sub_var  	: sub (tcons U (G: tenv Z)) (sel Z) T
+		   <- sub (tcons U G) U T.
+
+sub_arrow	: sub G (arrow S1 S2) (arrow T1 T2)
+		   <- sub G T1 S1
+		   <- sub G S2 T2.
+
+sub_bind	: sub (G: tenv z) (bind z S1 S2) (bind z T1 T2)
+		   <- sub G T1 S1 
+		   <- sub (tcons T1 G) S2 T2.
+
+
+
+weaken: sub G T1 T2 -> {T3}sub (tcons T3 G) T1 T2 -> type.
+%mode weaken +A +B -C.
+
+%worlds () (weaken _ _ _).
+%trustme
+%total (A) (weaken A _ _).
+
+
+
+
+%%%%%  Transivity and Narrowing  %%%%%
+
+%{
+
+The main proof for transitivity and narrowing.  The proof is by
+induction on:
+
+  (1st) the type Q
+  (2nd) the clause, where we take trans* < narrow*
+        (that is, narrow* can always call trans* with no change in Q,
+	but when trans* calls narrow*, Q must decrease)
+  (3rd) in trans*, the derivation of sub S Q,
+        and in narrow*, the derivation of sub M N
+
+Twelf requires that induction arguments be explicit, hence the first
+two arguments to trans* and narrow*.  The third argument ensures that
+the clause number is correct for the clause.  (That is, the clause
+number is zero in trans* and one in narrow*).
+
+
+The statement of trans* is otherwise straightforward.  The statement
+of narrow* involves one additional subtlety:
+
+In narrow*, we must identify the variable with respect to which we are
+narrowing.  The most natural way to do so is to abstract over that
+variable; thus taking an argument of type:
+
+  {X:tp} var X -> assm X Q -> sub M N
+
+Unfortunately, we run afoul of a complication.  Obviously, the LF
+context may contain dependencies only on other things in the LF
+context.  If we abstract over the variable of interest, that variable
+is not in the context, and therefore nothing in the context may depend
+on it.  As a result, we effectively can narrow only with respect to
+the last variable.  However, this is not strong enough for the proof
+to go through, since we must descend inside forall types.
+
+Thus, when we are narrowing with respect to a variable X, we must find
+a way to move assumptions that depend on X to the left of it without
+violating scoping constraints.  If we maintain the context in its
+usual form:
+
+  t1:tp, dv1:var t1, d1:assm t1 T1, ..., dn:tp, dvn:var tn, dn:assm tn Tn
+
+then this is impossible.  However, we may weaken our context
+assumption to allow variables to appear apart from their typing
+assumptions.  To adhere to scoping constraints, we must keep
+dependencies to the right of the variables they depend on, but we need
+not keep them to the right of those variables typing assumptions.
+
+For example, suppose we encounter:
+
+  ..., ti:tp, dvi:var ti, di:assm ti Ti, tj:tp, dvj:var tj, dj:assm tj Tj(ti)
+
+and we wish to move tj out of the way.  Then we produce:
+
+  ..., ti:tp, dvi:var ti, tj:tp, dvj:var tj, dj:assm tj Tj(ti), di:assm ti Ti
+
+This keeps the subtyping assumption di last, and violates no scoping constraints.
+Thus, we identify the variable for narrowing not by abstracting over
+the entire variable, but only over its subtyping assumption.
+
+As a consequence of this, we must now deal with variables bereft of
+their subtyping assumptions (vblock), and with disembodied subtyping
+assumptions (ablock).  Note that disembodied subtyping assumptions are
+substantially at odds with our usual experience, and we must
+reconsider whether the proof works at all in their presence.
+
+Fortunately, with some minor modifications, the proof still works.
+The only issue that arises is that it now appears as though the refl
+and trans might apply to non-variable types, since those types might
+now have subtyping assumptions.  However, the assm_var lemma applies,
+and states that subtyping assumptions are available only for
+variables, so a contradiction arises in each case where we suppose a
+subtyping assumption for a non-variable.
+
+}%
+
+
+trans* : {Q:tp}
+	 {Ncase:nat}
+	 nat_eq Ncase z
+%%
+	 -> sub G S Q
+	 -> sub G Q T
+%%
+	 -> sub G S T -> type.
+
+narrow* : {Q:tp}
+	  {Ncase:nat}
+	  nat_eq Ncase (s z)
+%%
+	  -> sub (tcons Q G) M N
+	  -> sub G P Q
+%%
+	  -> sub (tcons P G) M N -> type.
+
+%mode trans* +Q +N +X1 +X2 +X3 -X4.
+%mode narrow* +Q +N +X1 +X2 +X3 -X4.
+
+-top	: trans* _ _ _ D sub_top sub_top.
+
+
+-var	: trans* _ _ nat_eq_ (sub_var D2) D (sub_var D')
+	   <- trans* _ _ nat_eq_ D2 D D'.
+
+
+-arrow	: trans* _ _ nat_eq_ (sub_arrow D1b D1a) (sub_arrow D2b D2a) (sub_arrow Db Da)
+	   <- trans* _ _ nat_eq_ D2a D1a Da
+	   <- trans* _ _ nat_eq_ D1b D2b Db.
+
+-tbind	: trans* _ _ _ (sub_bind D1b D1a) (sub_bind D2b D2a) (sub_bind Db Da)
+	   <- trans* _ _ nat_eq_ D2a D1a Da
+	   <- narrow* _ _ nat_eq_ D1b D2a D1b'
+	   <- trans* _ _ nat_eq_ D1b' D2b Db.
+
+
+-top	: narrow* _ _ nat_eq_ sub_top _ sub_top.
+
+-var	: narrow* _ _ nat_eq_ (sub_var D) Dsub (sub_var D'')
+		<- weaken Dsub _ Dsub'
+	   <- narrow* _ _ nat_eq_ D Dsub D'
+	   <- trans*  _ _ nat_eq_ Dsub' D' D''.
+
+
+-arrow	: narrow* _ _ nat_eq_ (sub_arrow (D2) (D1)) Dsub (sub_arrow (D2') (D1'))
+	   <- narrow* _ _ nat_eq_ D1 Dsub D1'
+	   <- narrow* _ _ nat_eq_ D2 Dsub D2'.
+
+
+%{
+-forall	: narrow* _ _ nat_eq_ (sub_bind (D2) (D1)) Dsub (sub_bind (D2') (D1'))
+	   % <- narrow* _ _ nat_eq_ D1 Dsub D1'
+	   % <- narrow* _ _ nat_eq_ (D2) Dsub (D2').
+	   .
+}%
+
+
+%worlds () (trans* _ _ _ _ _ _) (narrow* _ _ _ _ _ _).
+%total {(Q1 Q2) (N1 N2) (D1 D2)} (trans* Q1 N1 _ D1 _ _) (narrow* Q2 N2 _ D2 _ _).
+
+
+
+
+%%%%%  Peroration  %%%%%
+
+trans : sub G S Q -> sub G Q T -> sub G S T -> type.
+%mode trans +X1 +X2 -X3.
+
+-	: trans D1 D2 D3
+	   <- trans* _ _ nat_eq_ D1 D2 D3.
+
+%worlds () (trans _ _ _).
+%total {} (trans _ _ _).
+
+
+
+narrow : sub (tcons Q tnil) M N -> sub tnil P Q -> sub (tcons P tnil) M N -> type.
+%mode narrow +X1 +X2 -X3.
+
+-	: narrow D1 D2 D3
+	   <- narrow* _ _ nat_eq_ D1 D2 D3.
+
+%worlds () (narrow _ _ _).
+%total {} (narrow _ _ _).
+
