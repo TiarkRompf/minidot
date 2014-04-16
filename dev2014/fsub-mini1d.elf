@@ -25,6 +25,18 @@ add/z: add z N N.
 add/s: add (s N1) N2 (s N3) <- add N1 N2 N3.
 
 
+
+add-reduces: {N1}{N2}{N3}add N1 N2 N3 -> type.
+%mode add-reduces +N1 +N2 +N3 +A.
+- : add-reduces _ _ _ (add/z).
+- : add-reduces _ _ _ (add/s A) <- add-reduces _ _ _ A.
+%worlds () (add-reduces _ _ _ _).
+%total (A) (add-reduces A _ _ _).
+%reduces N2 <= N3 (add-reduces N1 N2 N3 A).
+
+
+
+
 %%%%%  Syntax  %%%%%
 
 tp : type.  %name tp T.
@@ -47,11 +59,6 @@ tcons: dc -> nat -> tenv -> tenv.
 
 %%%%%  Semantics  %%%%%
 
-sub  : {I1:nat}{I2:nat}{I3:nat} tenv -> tp -> tp -> type.  %% subtyping judgement
-
-sdc: {I1:nat}{I2:nat}{I3:nat} tenv -> dc -> dc -> type.
-
-
 %{
 
     G |- z:S^(i)..U^(i)   G |- U^(i) < T^(j)
@@ -64,13 +71,13 @@ sdc: {I1:nat}{I2:nat}{I3:nat} tenv -> dc -> dc -> type.
 
 }%
 
-add-reduces: {N1}{N2}{N3}add N1 N2 N3 -> type.
-%mode add-reduces +N1 +N2 +N3 +A.
-- : add-reduces _ _ _ (add/z).
-- : add-reduces _ _ _ (add/s A) <- add-reduces _ _ _ A.
-%worlds () (add-reduces _ _ _ _).
-%total (A) (add-reduces A _ _ _).
-%reduces N2 <= N3 (add-reduces N1 N2 N3 A).
+%{
+
+sub  : {I1:nat}{I2:nat}{I3:nat} tenv -> tp -> tp -> type.  %% subtyping judgement
+
+sdc: {I1:nat}{I2:nat}{I3:nat} tenv -> dc -> dc -> type.
+
+
 
 
 sub_bot     : sub _ _ _          G bot _.
@@ -109,9 +116,10 @@ sdc/rect    : sdc I0 I1 I2       G (rect L1 U1) (rect L2 U2)
            <- sub I0 I2 I1       G L2 L1
             .
 
+}%
 
 
-%%%%%  Semantics  %%%%%
+%%%%%  Semantics (no lvels)  %%%%%
 
 sub1  : tenv -> tp -> tp -> type.  %% subtyping judgement
 
