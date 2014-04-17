@@ -42,7 +42,6 @@ dc: type. %name dc D.
 bot     : tp.
 top     : tp.
 sel     : nat -> tp.
-sel2     : nat -> tp.
 arrow   : tp -> tp -> tp.
 bind    : nat -> dc -> tp -> tp.  %% for all x<:T1 in T2
 
@@ -60,6 +59,7 @@ tcons: dc -> tenv -> tenv.
 mode1: type.
 notrans: mode1.
 oktrans: mode1.
+oktransl: mode1.
 oktransnosel: mode1.
 
 mode2: type.
@@ -67,49 +67,64 @@ nosel: mode2.
 oksel: mode2.
 
 
+issel: tp -> nat -> type.
+is/bot: issel bot z.
+is/top: issel top z.
+is/arrow: issel (arrow _ _) z.
+is/bind: issel (bind _ _ _) z.
+is/sel: issel (sel _) (s z).
+
+%mode issel +T -N.
+%worlds () (issel _ _).
+%total (A) (issel A _).
+
+testsel: {T}{N} issel T N -> type.
+
+%mode testsel +T -N -I.
+%worlds () (testsel _ _ _).
+%trustme
+%total (A) (testsel A _ _).
+
 
 stp  : {I1:mode1}{I2:mode2}{I3:mode2} tenv -> tp -> tp -> type.
 
 sdc  : {I1:mode1}{I2:mode2}{I3:mode2} tenv -> dc -> dc -> type.
 
 
-stp/bot     : stp _ _ _          G bot _.
+stp/bot     : stp notrans nosel nosel          G bot _.
          
-stp/top     : stp _ _ _          G _ top.
+stp/top     : stp notrans nosel nosel          G _ top.
 
-stp/sel1    : stp I0 oksel I2            (tcons (rect L U) tnil) (sel z) T
+stp/sel1    : stp notrans oksel I2       (tcons (rect L U) tnil) (sel z) T
            <- stp oktrans oksel I2       (tcons (rect L U) tnil) U T
            .
 
 
-stp/sel2    : stp I0 I1 oksel            (tcons (rect L U) tnil) T (sel z)
+stp/sel2    : stp notrans I1 oksel            (tcons (rect L U) tnil) T (sel z)
            <- stp oktrans oksel oksel    (tcons (rect L U) tnil) L U
-% need this?           <- stp oktrans I1 oksel       (tcons (rect L U) tnil) T U
            <- stp oktrans I1 oksel       (tcons (rect L U) tnil) T L
            .
 
-stp/arrow   : stp I0 I1 I2         G (arrow S1 S2) (arrow T1 T2)
+stp/arrow   : stp notrans nosel nosel         G (arrow S1 S2) (arrow T1 T2)
            <- stp oktrans I2 I1    G T1 S1
            <- stp oktrans I1 I2    G S2 T2
             .
 
 
-stp/bind    : stp I0 I1 I2         G (bind z S1 S2) (bind z T1 T2)
-           <- sdc oktrans oksel oksel      tnil S1 T1 
-           <- stp oktrans I1 I2    (tcons S1 tnil) S2 T2
+stp/bind    : stp notrans nosel nosel         G (bind z S1 S2) (bind z T1 T2)
+           <- sdc oktrans _ _      tnil S1 T1 
+           <- stp oktrans _ _    (tcons S1 tnil) S2 T2
            .
+
+stp/trans0   : stp oktrans I1 I2       G T1 T2
+            <- stp notrans I1 I2       G T1 T2
+            .
+
 
 stp/trans   : stp oktrans I1 I3       G T1 T3
            <- stp oktrans I2 I3    G T2 T3
            <- stp oktrans I1 I2    G T1 T2
             .
-
-
-stp/trans2   : stp oktransnosel I1 I3       G T1 T3
-            <- stp oktransnosel nosel I3    G T2 T3
-            <- stp oktransnosel I1 nosel    G T1 T2
-            .
-
 
 sdc/rect    : sdc I0 I1 I2       G (rect L1 U1) (rect L2 U2)
            <- stp I0 I2 I2       G L2 U2
@@ -118,28 +133,7 @@ sdc/rect    : sdc I0 I1 I2       G (rect L1 U1) (rect L2 U2)
            <- stp I0 I2 I1       G L2 L1
             .
 
-% step 1:   T1 < p.L < T2  --->  T1 < L < U < T2
-
-
-
 %{
-
-trans: stp notrans I1 nosel G T1 T2 -> stp notrans nosel I3 G T2 T3 -> stp notrans I1 I2 G T1 T3 -> type.
-%mode trans +A +B -C.
-
--/bot:      trans stp/bot _ stp/bot.
-
-
-%worlds () (trans _ _ _).
-%total (A) (trans A _ _).
-
-}%
-
-
-
-%{
-
-
 tX = top.
 
 d1 = (rect top top).
@@ -240,12 +234,12 @@ t3 = (bind z (rect bot top) (arrow bot top)).
 extend-stp: stp I1 I2 I3 tnil T1 T2 -> {T3}stp I1 I2 I3 (tcons T3 tnil) T1 T2 -> type.
 %mode extend-stp +A +B -D.
 
--/bot: extend-stp stp/bot _ stp/bot.
--/top: extend-stp stp/top _ stp/top.
--/arrow: extend-stp (stp/arrow S2 S1) _ (stp/arrow S2' S1')
-        <- extend-stp S2 _ S2'
-        <- extend-stp S1 _ S1'.
--/bind: extend-stp (stp/bind S2 S1) _ (stp/bind S2 S1).
+% -/bot: extend-stp stp/bot _ stp/bot.
+% -/top: extend-stp stp/top _ stp/top.
+% -/arrow: extend-stp (stp/arrow S2 S1) _ (stp/arrow S2' S1')
+%         <- extend-stp S2 _ S2'
+%         <- extend-stp S1 _ S1'.
+% -/bind: extend-stp (stp/bind S2 S1) _ (stp/bind S2 S1).
 
 %worlds () (extend-stp _ _ _).
 %trustme
@@ -280,7 +274,7 @@ number is zero in trans* and one in narrow*).
 
 
 
-
+% --------------- create trans nodes ------------- %
 
 ttrans* : {J1:mode2}{J2:mode2}{J3:mode2}{G: tenv}{S: tp}{Q: tp}{T: tp}
       {Ncase:nat}
@@ -316,115 +310,129 @@ ttransdc* : {J1:mode2}{J2:mode2}{J3:mode2}{G: tenv}{S: dc}{Q: dc}{T: dc}
 %worlds () (ttrans* _ _ _ _ _ _ _ _ _ _ _ _).
 %worlds () (ttransdc* _ _ _ _ _ _ _ _ _ _ _ _).
 
-%trustme
 %total (Q1) (ttrans* J1 J2 J3 G1 _ Q1 _ _ _ D1 E1 _).
 %total (Q1') (ttransdc* J1' J2' J3' G1' _ Q1' _ _ _ D1' E1' _).
 
 
 to-oktrans: stp notrans J1 J2 G T1 T2 -> stp oktrans J1 J2 G T1 T2 -> type.
 %mode to-oktrans +A -B.
+
+- : to-oktrans S (stp/trans0 S).
+
 %worlds () (to-oktrans _ _).
-%trustme
 %total (A) (to-oktrans A _).
 
 
-%{
-trans* :
-       stp notrans J1 nosel G S Q
-    -> stp notrans nosel J3 G Q T
-    -> stp notrans J1 J3 G S T
-    -> type.
 
+
+
+
+% --------------- linearize trans nodes, remove paths ------------- %
+
+
+% linked-list data structure so we can traverse left -> right
+% (is this necessary?)
+
+stpl  : {I2:mode2}{I3:mode2} tenv -> tp -> tp -> type.
+
+stp/transl   : stpl nosel I3      G T1 T3
+            <- stpl nosel I3      G T2 T3
+            <- stp notrans nosel nosel    G T1 T2
+             .
+stp/transe   : stpl I1 I1          G T1 T1.
+
+stp/llsel1   : stpl oksel I2      (tcons (rect L U) tnil) (sel z) T
+            <- stpl oksel I2      (tcons (rect L U) tnil) U T
+             .
+
+% linearize a derivation that uses transitivity
 
 utrans0* : 
   {Ncase:nat}
   nat_eq Ncase z ->
-  stp oktrans I1 I2 G T1 T2 -> 
-  stp oktransnosel I1 I2 G T1 T2 -> 
+  stp oktrans  I1 I2 G T1 T2 -> 
+  stpl I2 nosel G T2 T3 -> 
+  stpl I1 nosel G T1 T3 -> 
   type.
 
-utrans1* : 
-  {Ncase:nat}
-  nat_eq Ncase z ->
-  stp oktrans I1 I2 G T1 T2 -> 
-  stp oktransnosel I1 I2 G T1 T2 -> 
-  type.
+%mode utrans0*  +N +E +J1 +J2 -G.
+
+- : utrans0* _ nat_eq_ (stp/trans0 stp/top) TL (stp/transl stp/top TL).
+- : utrans0* _ nat_eq_ (stp/trans0 stp/bot) TL (stp/transl stp/bot TL).
 
 
-utrans* : 
-  {Ncase:nat}
-  nat_eq Ncase (s z) ->
-  stp oktrans I1 I2 G T1 T2 -> 
-  stp oktrans I2 I3 G T2 T3 -> 
-  stp oktransnosel I1 I3 G T1 T3 -> 
-  type.
+- : utrans0* _ nat_eq_ (stp/trans0 (stp/sel1 D)) TL (stp/llsel1 DL)
+      <- utrans0* _ nat_eq_ D TL DL.
 
-%mode utrans0*  +N +E +J1 -G.
-%mode utrans1*  +N +E +J1 -G.
-%mode utrans*   +N +E +J1 +J3 -G.
+- : utrans0* _ nat_eq_ (stp/trans0 (stp/arrow S1 S2))   TL (stp/transl (stp/arrow S1 S2) TL).
+- : utrans0* _ nat_eq_ (stp/trans0 (stp/bind S1 S2))    TL (stp/transl (stp/bind S1 S2) TL).
 
-- : utrans0* _ nat_eq_ stp/top stp/top.
-- : utrans0* _ nat_eq_ stp/bot stp/bot.
+- : utrans0* _ nat_eq_ (stp/trans0 (stp/sel2 D1 D3)) (stp/llsel1 DL) DL''
+      <- utrans0* _ nat_eq_ D3 DL DL'
+      <- utrans0* _ nat_eq_ D1 DL' DL''.
 
-- : utrans0* _ nat_eq_ (stp/sel1 D) (stp/sel1 D).
-- : utrans0* _ nat_eq_ (stp/sel2 D1 D2 D3) (stp/sel2 D1 D2 D3).
-- : utrans0* _ nat_eq_ (stp/arrow S1 S2) (stp/arrow S1 S2).
-- : utrans0* _ nat_eq_ (stp/bind S1 S2) (stp/bind S1 S2).
+%{
+- : utrans0* _ nat_eq_ (stp/trans0 (stp/sel2 D1 D2 D3)) stp/transe (stp/llsel2 D')
+      <- utrans0* _ nat_eq_ D1 stp/transe D'.
 
-- : utrans0* _ nat_eq_ (stp/trans S1 S2) S12 <- utrans* _ nat_eq_ S1 S2 S12.
-
-- : utrans1* _ nat_eq_ stp/top stp/top.
-- : utrans1* _ nat_eq_ stp/bot stp/bot.
-
-- : utrans1* _ nat_eq_ (stp/sel1 D) (stp/sel1 D).
-- : utrans1* _ nat_eq_ (stp/sel2 D1 D2 D3) (stp/sel2 D1 D2 D3).
-- : utrans1* _ nat_eq_ (stp/arrow S1 S2) (stp/arrow S1 S2).
-- : utrans1* _ nat_eq_ (stp/bind S1 S2) (stp/bind S1 S2).
-
-- : utrans1* _ nat_eq_ (stp/trans S1 S2) S12 <- utrans* _ nat_eq_ S1 S2 S12.
-
-
-
-- : utrans* _ nat_eq_ _ stp/top stp/top.
-- : utrans* _ nat_eq_ stp/bot _ stp/bot.
-
-
-- : utrans* _ nat_eq_ (stp/sel2 STL STU SLU) (stp/sel1 SUT) STT 
-      <- utrans* _ nat_eq_ STU SUT STT.
-
-- : utrans* _ nat_eq_ (stp/sel1 SUT) S2 (stp/sel1 (stp/trans SUT S2)).
-
-- : utrans* _ nat_eq_ S1 (stp/sel2 STL STU SLU) (stp/sel2 (stp/trans S1 STL) (stp/trans S1 STU) SLU).
-
-
-- : utrans* _ nat_eq_ S1 S2 (stp/trans2 S1' S2')
-     <- utrans0* _ nat_eq_ S1 S1'
-     <- utrans1* _ nat_eq_ S2 S2'.
-
-%worlds () (utrans0* _ _ _ _)(utrans1* _ _ _ _)(utrans* _ _ _ _ _).
-%total {[(A A')(A A')] (N N') } (utrans0* N _ A _)(utrans1* N'' _ B _)(utrans* N' _ A' B' _).
-
-
-
-
-utrans* : {J1:mode2}{J3:mode2}{G: tenv}{S: tp}{Q: tp}{T: tp}
-     {Ncase:nat}
-     nat_eq Ncase z
-%%
-    -> stp notrans J1 oksel G S Q
-    -> stp notrans oksel J3 G Q T
-%%
-    -> stp notrans J1 nosel G S Q
-    -> stp notrans nosel J3 G S Q
-    -> type.
-
-%mode utrans*   +J1 +J3 +G +S +Q +T +C +E +X1 +X2 -X3 -X4.
-
-% - : utrans (stp/sel1 (S1: stp oktrans oksel oksel (tcons _ G) T1))
-
+- : utrans0* _ nat_eq_ (stp/trans0 (stp/sel2 D1 D2 D3)) (stp/llsel2 D) (stp/llsel2 D')
+      <- utrans0* _ nat_eq_ D1 stp/transe D'.
 }%
 
 
+- : utrans0* _ nat_eq_ (stp/trans S1 S2) TL TL''
+  <- utrans0* _ nat_eq_ S2 TL TL'
+  <- utrans0* _ nat_eq_ S1 TL' TL''.
+
+
+%worlds ()(utrans0* _ _ _ _ _).
+%total {A} (utrans0* N0 _ A _ _).
+
+
+
+
+trans* : {J1:mode2}{J3:mode2}{G: tenv}{S: tp}{Q: tp}{T: tp}
+     {Ncase:nat}
+     nat_eq Ncase z
+%%
+    -> stp notrans J1 nosel G S Q
+    -> stp notrans nosel J3 G Q T
+%%
+    -> stp notrans J1 J3 G S T
+    -> type.
+
+%mode trans*   +J1 +J3 +G +S +Q +T +C +E +X1 +X2 -X3.
+%worlds () (trans* _ _ _ _ _ _ _ _ _ _ _).
+%trustme %% proved below
+%total {Q1} (trans* J1 J3 G1 _ Q1 _ N1 _ D1 E1 _).
+
+
+% given linear version, remove top-level trans nodes
+
+utrans1* : 
+  stp notrans I1 nosel G T1 T2 ->
+  stpl nosel I3 G T2 T3 -> 
+  stp notrans I1 I3 H T1 T3 ->
+  type.
+%mode utrans1* +A +B -C.
+
+- : utrans1* S1 (stp/transl S2 TL) S13 
+        <- trans* _ _ _ _ _ _ _ nat_eq_ S1 S2 S12
+        <- utrans1* S12 TL S13.
+
+- : utrans1* S1 stp/transe S1.
+
+%worlds () (utrans1* _ _ _).
+%total {B} (utrans1* A B C).
+
+
+
+% --------------- push trans nodes one level down ------------- %
+
+% -------------------------------------------------------------------
+%%   FIXME: this part currently hangs b/c arrow and bind
+%%          are defined as 'nosel' instead of parametric oksel/nosel
+% -------------------------------------------------------------------
 
 
 trans* : {J1:mode2}{J3:mode2}{G: tenv}{S: tp}{Q: tp}{T: tp}
@@ -497,9 +505,9 @@ narrow* : {J1:mode2}{J3:mode2}{G:tenv}{P:dc}{Q:dc}{M:tp}{N:tp}
 
 
 
--bot    : narrow* _ _ _ _ _ _ _ _ nat_eq_ stp/bot _ stp/bot.
+-bot    : narrow* _ _ _ _ _ _ _ _ nat_eq_ (stp/trans0 stp/bot) _ (stp/trans0 stp/bot).
 
--top    : narrow* _ _ _ _ _ _ _ _ nat_eq_ stp/top _ stp/top.
+-top    : narrow* _ _ _ _ _ _ _ _ nat_eq_ (stp/trans0 stp/top) _ (stp/trans0 stp/top).
 
 
 -trans  : narrow* _ _ _ _ _ _ _ _ nat_eq_ (stp/trans D1 D2) Dsub (stp/trans D1' D2')
@@ -512,25 +520,25 @@ narrow* : {J1:mode2}{J3:mode2}{G:tenv}{P:dc}{Q:dc}{M:tp}{N:tp}
        <- narrow* _ _ _ _ _ _ _ _ nat_eq_ D2 Dsub D2'.
 }%
 
--var    : narrow* _ _ _ _ _ _ _ _ nat_eq_ (stp/sel1 D) (sdc/rect Lsub Dsub X1 X2) (stp/sel1 (stp/trans Dsub' D'))
+-var    : narrow* _ _ _ _ _ _ _ _ nat_eq_ (stp/trans0 (stp/sel1 D)) (sdc/rect Lsub Dsub X1 X2) (stp/trans0 (stp/sel1 (stp/trans Dsub' D')))
        <- extend-stp Dsub _ Dsub'
        <- narrow* _ _ _ _ _ _ _ _ nat_eq_ D (sdc/rect Lsub Dsub X1 X2) D'.
 %       <- trans*  _ _ _ _ _ _ _ nat_eq_ Dsub' D' D''.
 
 
--var2   : narrow* _ _ _ _ _ _ _ _ nat_eq_ (stp/sel2 L D) (sdc/rect Lsub Dsub XX1 XX2) (stp/sel2 (stp/trans L' Lsub') XX1')
+-var2   : narrow* _ _ _ _ _ _ _ _ nat_eq_ (stp/trans0 (stp/sel2 L D)) (sdc/rect Lsub Dsub XX1 XX2) (stp/trans0 (stp/sel2 (stp/trans L' Lsub') XX1'))
        <- extend-stp Lsub _ Lsub'
        <- extend-stp XX1 _ XX1'
        <- narrow* _ _ _ _ _ _ _ _ nat_eq_ L (sdc/rect Lsub Dsub XX1 XX2) L'.
 %       <- trans*  _ _ _ _ _ _ _ nat_eq_ L' Lsub' L''.
 
 
--arrow  : narrow* _ _ _ _ _ _ _ _ nat_eq_ (stp/arrow (D2) (D1)) Dsub (stp/arrow (D2') (D1'))
+-arrow  : narrow* _ _ _ _ _ _ _ _ nat_eq_ (stp/trans0 (stp/arrow (D2) (D1))) Dsub (stp/trans0 (stp/arrow (D2') (D1')))
        <- narrow* _ _ _ _ _ _ _ _ nat_eq_ D1 Dsub D1'
        <- narrow* _ _ _ _ _ _ _ _ nat_eq_ D2 Dsub D2'.
 
 
--bind   : narrow* _ _ _ _ _ _ _ _ nat_eq_ (stp/bind (D2) (D1)) Dsub (stp/bind (D2) (D1))
+-bind   : narrow* _ _ _ _ _ _ _ _ nat_eq_ (stp/trans0 (stp/bind (D2) (D1))) Dsub (stp/trans0 (stp/bind (D2) (D1)))
        % <- narrow* _ _ _ _ _ _ _ _ _ nat_eq_ D1 Dsub D1'
        % <- narrow* _ _ _ _ _ _ _ _ _ nat_eq_ (D2) Dsub (D2').
        .
