@@ -263,6 +263,11 @@ narrow* :
        <- narrow* D1 Dsub D1'
        <- narrow* D2 Dsub D2'.
 
+-var    : narrow* (stp/trans0 (stp/sel1 BU K)) BDS (stp/trans0 (stp/sel1 BU'' K'))
+       <- narrow* BU BDS BUN
+       <- inv-sdcs BDS K K' (sdc/rect _ BU' _ _)
+       <- ttrans* BU' BUN BU''.
+
 %worlds () (narrow* _ _ _).
 %total (A) (narrow* A _ _).
 
