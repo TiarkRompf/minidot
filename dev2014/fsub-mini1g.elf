@@ -147,8 +147,45 @@ stp/trans   : stp oktrans     G T1 T3
            <- stp oktrans     G T1 T2
             .
 
-% --------------- helper lemmas ------------- %
+% --------------- uniqueness ------------- %
 
+id-tp : tp -> tp -> type.
+id-tp/refl : id-tp D D.
+
+id-topt : topt -> topt -> type.
+id-topt/refl : id-topt D D.
+
+id-dc : dc -> dc -> type.
+id-dc/refl : id-dc D D.
+
+dlk-unique : dlk DS X D -> dlk DS X D' -> id-dc D D' -> type.
+%mode dlk-unique +A +B -EQ.
+
+dlk-unique/z : dlk-unique dlk/z _ id-dc/refl.
+dlk-unique/s : dlk-unique (dlk/s A) (dlk/s B) EQ
+            <- dlk-unique A B EQ.
+
+%worlds () (dlk-unique _ _ _).
+%total (A) (dlk-unique A _ _).
+
+eq-rect : id-dc (rect L U) (rect L' U') -> id-topt L L' -> id-tp U U' -> type.
+%mode eq-rect +A -EQL -EQU.
+
+eq-rect/refl : eq-rect id-dc/refl id-topt/refl id-tp/refl.
+
+%worlds () (eq-rect _ _ _).
+%total (A) (eq-rect A _ _).
+
+eq-stp-u : id-tp U U' -> stp I G L U -> stp I G L U' -> type.
+%mode eq-stp-u +EQU +B -C.
+
+- : eq-stp-u id-tp/refl B B.
+
+%worlds () (eq-stp-u _ _ _).
+%total (A) (eq-stp-u A _ _).
+%reduces C <= B (eq-stp-u _ B C).
+
+% --------------- helper lemmas ------------- %
 
 extend-stp: stp I1 tnil T1 T2 -> {T3}stp I1 (tcons T3 tnil) T1 T2 -> type.
 %mode extend-stp +A +B -D.
@@ -427,22 +464,23 @@ stp/transl   : stpl (s N)     G T1 T3
             <- issel T1 z
              .
 
-stp/lltop2   : stpl (s z)     (tcons (rect top U) tnil) L (sel z)
-            <- stp oktrans    (tcons (rect top U) tnil) top U  %% WF
+stp/lltop2   : stpl (s z)     (tcons DS tnil) L (sel z X)
+            <- dlk DS X (rect (tsome top) U)
+            <- stp oktrans    (tcons DS tnil) top U
             .
 
 stp/lltopx   : stpl (s z)     G _ top.
 
 stp/transe   : stpl z         G T1 T1.
 
-stp/llbot    : stpl (s z)     G bot _.
-
-stp/llsel2    : stpl z        (tcons (rect L U) tnil) L (sel z)
-             <- stp oktrans   (tcons (rect L U) tnil) L U  %% WF
+stp/llsel2    : stpl z        (tcons DS tnil) L (sel z X)
+             <- dlk DS X (rect (tsome L) U)
+             <- stp oktrans   (tcons DS tnil) L U
              .
 
-stp/llsel1   : stpl (s N)     (tcons (rect L U) tnil) (sel z) T
-            <- stpl (s N)     (tcons (rect L U) tnil) U T
+stp/llsel1   : stpl (s N)     (tcons DS tnil) (sel z X) T
+            <- dlk DS X (rect L U)
+            <- stpl (s N)     (tcons DS tnil) U T
              .
 
 
@@ -456,30 +494,31 @@ utrans0* :
 
 %mode utrans0*  +S1 +S2 -S12.
 
-- : utrans0* (stp/trans0 stp/bot) TL stp/llbot.
-
-- : utrans0* (stp/trans0 (stp/top)) (stp/llsel2 D) (stp/lltop2 D).
+- : utrans0* (stp/trans0 (stp/top)) (stp/llsel2 D K) (stp/lltop2 D K).
 - : utrans0* (stp/trans0 (stp/top)) stp/transe stp/lltopx.
 
 - : utrans0* (stp/trans0 _) (stp/lltopx) (stp/lltopx).
-- : utrans0* (stp/trans0 _) (stp/lltop2 D) (stp/lltop2 D).
+- : utrans0* (stp/trans0 _) (stp/lltop2 D K) (stp/lltop2 D K).
 
 
-- : utrans0* (stp/trans0 (stp/sel1 D)) TL (stp/llsel1 DL)
+- : utrans0* (stp/trans0 (stp/sel1 D K)) TL (stp/llsel1 DL K)
       <- utrans0* D TL DL.
 
-- : utrans0* (stp/trans0 (stp/arrow S1 S2))   TL (stp/transl is/arrow is/arrow (stp/arrow S1 S2) TL).
-- : utrans0* (stp/trans0 (stp/bind S))    TL (stp/transl is/bind is/bind (stp/bind S) TL).
+- : utrans0* (stp/trans0 (stp/bind A B))    TL (stp/transl is/bind is/bind (stp/bind A B) TL).
 
-- : utrans0* (stp/trans0 (stp/sel2 D1 D3)) (stp/llsel1 DL) DL''
-      <- utrans0* D3 DL DL'
+- : utrans0* (stp/trans0 (stp/sel2 D1 D3 K)) (stp/llsel1 DL K') DL''
+      <- dlk-unique K K' EQ
+      <- eq-rect EQ EQL EQU
+      <- eq-stp-u EQU D3 D3'
+      <- utrans0* D3' DL DL'
       <- utrans0* D1 DL' DL''.
 
-- : utrans0* (stp/trans0 (stp/sel2 D1 D3)) stp/transe DL'
-      <- utrans0* D1 (stp/llsel2 D3) DL'.
+- : utrans0* (stp/trans0 (stp/sel2 D1 D3 K)) stp/transe DL'
+      <- utrans0* D1 (stp/llsel2 D3 K) DL'.
 
-- : utrans0* (stp/trans0 (stp/sel2 D1 D3)) (stp/llsel2 _) DL'
-      <- utrans0* D1 (stp/llsel2 D3) DL'.
+- : utrans0* (stp/trans0 (stp/sel2 BTL BLU K)) (stp/llsel2 BLU' K') BTL''
+      <- utrans0* BTL (stp/llsel2 BLU K) BTL'
+      . % NOTE(namin): BTL' != BTL'' because selection label differs
 
 - : utrans0* (stp/trans S1 S2) TL TL''
   <- utrans0* S2 TL TL'
