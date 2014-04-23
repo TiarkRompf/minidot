@@ -43,7 +43,7 @@ bot     : tp.
 top     : tp.
 sel     : nat -> tp.
 arrow   : tp -> tp -> tp.
-bind    : nat -> dc -> tp -> tp.  %% for all x<:T1 in T2
+bind    : nat -> dc -> tp.
 
 rect: tp -> tp -> dc.
 
@@ -54,7 +54,7 @@ tcons: dc -> tenv -> tenv.
 
 issel: tp -> nat -> type.
 is/arrow: issel (arrow _ _) z.
-is/bind: issel (bind _ _ _) z.
+is/bind: issel (bind _ _) z.
 is/bot: issel bot (s z).
 is/top: issel top (s z).
 is/sel: issel (sel _) (s z).
@@ -97,9 +97,8 @@ stp/arrow   : stp notrans    G (arrow S1 S2) (arrow T1 T2)
             .
 
 
-stp/bind    : stp notrans    G (bind z S1 S2) (bind z T1 T2)
-           <- sdc oktrans    tnil S1 T1 
-           <- stp oktrans    (tcons S1 tnil) S2 T2
+stp/bind    : stp notrans    G (bind z T1) (bind z T2)
+           <- sdc oktrans    (tcons T1 tnil) T1 T2
            .
 
 stp/trans0   : stp oktrans   G T1 T2
@@ -170,51 +169,17 @@ m1 = notrans.
 %query 1 1 sdc m1 g1 (rect top top) (rect bot top).
 
 
-%query 1 1 stp m1 tnil (bind z d1 top) (bind z d1 top).
+%query 1 1 stp m1 tnil (bind z d1) (bind z d1).
 
-%query 1 1 stp m1 tnil (bind z d2 top) (bind z d2 top).
+%query 1 1 stp m1 tnil (bind z d2) (bind z d2).
 
-%query 1 1 stp m1 tnil (bind z d1 top) (bind z d2 top).
+%query 1 1 stp m1 tnil (bind z d1) (bind z d2).
 
 
 
 %query 1 1 stp m1 (tcons (rect top top) tnil) (sel z) (sel z).
 
 %query 1 1 stp m1 (tcons (rect bot (arrow top top)) tnil) (sel z) (arrow top top).
-
-%query 1 1 stp m1 tnil (bind z (rect bot (arrow top top)) (sel z))
-                             (bind z (rect bot (arrow top top)) (arrow bot top)).
-
-
-%{
-  { z => type A: X .. X;   def id(z.A):z.A } <:
-  { z => type A: bot..top; def id(z.A):z.A } <:
-  { z => type A: bot..top; def id(bot):top } <:
-}%
-
-t1 = (bind z (rect (arrow top top) (arrow top top)) (arrow (sel z) (sel z))).
-t2 = (bind z (rect bot top) (arrow (sel z) (sel z))).
-
-t3 = (bind z (rect bot top) (arrow bot top)).
-
-
-%query 1 1 stp m1 tnil t1 t2.
-
-%query 0 * stp m1 tnil t2 t1.
-
-%query 1 1 stp m1 tnil t2 t3.
-
-%query 1 1 stp m1 tnil t1 t3.
-
-
-%{
-  type Nats = {
-    type Nat = { def succ: Nat }
-    def zero: Nat
-  }
-}%
-
-
 
 %% now define trans axiom!
 stp/trans   : stp oktrans     G T1 T3
@@ -235,7 +200,7 @@ extend-stp: stp I1 tnil T1 T2 -> {T3}stp I1 (tcons T3 tnil) T1 T2 -> type.
 -/arrow: extend-stp (stp/arrow S2 S1) _ (stp/arrow S2' S1')
         <- extend-stp S2 _ S2'
         <- extend-stp S1 _ S1'.
--/bind: extend-stp (stp/bind S2 S1) _ (stp/bind S2 S1).
+-/bind: extend-stp (stp/bind S2) _ (stp/bind S2).
 -/trans0: extend-stp (stp/trans0 S) _ (stp/trans0 S') 
         <- extend-stp S _ S'.
 -/trans: extend-stp (stp/trans S1 S2) _ (stp/trans S1' S2') 
@@ -296,10 +261,10 @@ ttransdc* :
 % --------------- narrowing (oktrans mode) ------------- %
 
 narrow* : 
-    stp oktrans (tcons Q G) M N ->
-    sdc oktrans G P Q ->
+    stp oktrans (tcons Q tnil) M N ->
+    sdc oktrans (tcons P tnil) P Q ->
 %%
-    stp oktrans (tcons P G) M N -> 
+    stp oktrans (tcons P tnil) M N ->
     type.
 
 %mode narrow*  +X1 +X2 -X3.
@@ -315,16 +280,13 @@ narrow* :
 
 
 -var    : narrow* (stp/trans0 (stp/sel1 D)) (sdc/rect Lsub Dsub X1 X2) (stp/trans0 (stp/sel1 D''))
-       <- extend-stp Dsub _ Dsub'
        <- narrow* D (sdc/rect Lsub Dsub X1 X2) D'
-       <- ttrans*  Dsub' D' D''.
+       <- ttrans*  Dsub D' D''.
 
 
--var2   : narrow* (stp/trans0 (stp/sel2 L D)) (sdc/rect Lsub Dsub XX1 XX2) (stp/trans0 (stp/sel2 L'' XX1'))
-       <- extend-stp Lsub _ Lsub'
-       <- extend-stp XX1 _ XX1'
+-var2   : narrow* (stp/trans0 (stp/sel2 L D)) (sdc/rect Lsub Dsub XX1 XX2) (stp/trans0 (stp/sel2 L'' XX1))
        <- narrow* L (sdc/rect Lsub Dsub XX1 XX2) L'
-       <- ttrans* L' Lsub' L''.
+       <- ttrans* L' Lsub L''.
 
 
 -arrow  : narrow* (stp/trans0 (stp/arrow (D2) (D1))) Dsub (stp/trans0 (stp/arrow (D2') (D1')))
@@ -332,7 +294,7 @@ narrow* :
        <- narrow* D2 Dsub D2'.
 
 
--bind   : narrow* (stp/trans0 (stp/bind (D2) (D1))) Dsub (stp/trans0 (stp/bind (D2) (D1)))
+-bind   : narrow* (stp/trans0 (stp/bind (D2))) Dsub (stp/trans0 (stp/bind (D2)))
        % once we have more identifiers:
        % <- narrow* D1 Dsub D1'
        % <- narrow* (D2) Dsub (D2').
@@ -342,12 +304,24 @@ narrow* :
 %worlds () (narrow* _ _ _).
 %total (A) (narrow* A _ _).
 
+narrowdc* :
+    sdc oktrans (tcons Q tnil) M N ->
+    sdc oktrans (tcons P tnil) P Q ->
+%%
+    sdc oktrans (tcons P tnil) M N ->
+    type.
 
+%mode narrowdc*  +X1 +X2 -X3.
 
+-rect : narrowdc* (sdc/rect A B C D) S (sdc/rect A' B' C' D')
+         <- narrow* A S A'
+         <- narrow* B S B'
+         <- narrow* C S C'
+         <- narrow* D S D'
+         .
 
-
-
-
+%worlds () (narrowdc* _ _ _).
+%total (A) (narrowdc* A _ _).
 
 % --------------- transitivity (notrans mode, exlude middle p.L ) ------------- %
 
@@ -387,10 +361,9 @@ trans* :
             (stp/arrow (stp/trans D1b D2b) (stp/trans D2a D1a)).
 
 
--tbind  : trans* _ (stp/bind D1b D1a) (stp/bind D2b D2a) (stp/bind Db Da)
-       <- ttransdc* D1a D2a Da
-       <- narrow* D2b D1a D2b'
-       <- ttrans* D1b D2b' Db.
+-tbind  : trans* _ (stp/bind D1) (stp/bind D2) (stp/bind D)
+       <- narrowdc* D2 D1 D2'
+       <- ttransdc* D1 D2' D.
 
 
 %worlds () (trans* _ _ _ _).
@@ -456,7 +429,7 @@ utrans0* :
       <- utrans0* D TL DL.
 
 - : utrans0* (stp/trans0 (stp/arrow S1 S2))   TL (stp/transl is/arrow is/arrow (stp/arrow S1 S2) TL).
-- : utrans0* (stp/trans0 (stp/bind S1 S2))    TL (stp/transl is/bind is/bind (stp/bind S1 S2) TL).
+- : utrans0* (stp/trans0 (stp/bind S))    TL (stp/transl is/bind is/bind (stp/bind S) TL).
 
 - : utrans0* (stp/trans0 (stp/sel2 D1 D3)) (stp/llsel1 DL) DL''
       <- utrans0* D3 DL DL'
