@@ -1,0 +1,552 @@
+% indirect transitivity: 
+%   - admit trans axiom
+%   - prove lemma: top-level uses of axiom can be 
+%     pushed further down into derivation
+%   - inversion lemmas remain straighforward
+
+
+%%%%%  Natural numbers  %%%%%
+
+nat : type.  %name nat N.
+
+z : nat.
+s : nat -> nat.
+
+nat_eq : nat -> nat -> type.
+nat_eq_     : nat_eq N N.
+
+
+add : nat -> nat -> nat -> type. %name add A.
+add/z: add z N N.
+add/s: add (s N1) N2 (s N3) <- add N1 N2 N3.
+
+
+
+add-reduces: {N1}{N2}{N3}add N1 N2 N3 -> type.
+%mode add-reduces +N1 +N2 +N3 +A.
+- : add-reduces _ _ _ (add/z).
+- : add-reduces _ _ _ (add/s A) <- add-reduces _ _ _ A.
+%worlds () (add-reduces _ _ _ _).
+%total (A) (add-reduces A _ _ _).
+%reduces N2 <= N3 (add-reduces N1 N2 N3 A).
+
+
+
+
+%%%%%  Syntax  %%%%%
+
+tp : type.  %name tp T.
+
+dc: type. %name dc D.
+
+bot     : tp.
+top     : tp.
+sel     : nat -> tp.
+arrow   : tp -> tp -> tp.
+bind    : nat -> dc -> tp.
+
+rect: tp -> tp -> dc.
+
+tenv: type. %name tenv G.
+tnil: tenv.
+tcons: dc -> tenv -> tenv.
+
+
+issel: tp -> nat -> type.
+is/arrow: issel (arrow _ _) z.
+is/bind: issel (bind _ _) z.
+is/bot: issel bot (s z).
+is/top: issel top (s z).
+is/sel: issel (sel _) (s z).
+
+%mode issel +T -N.
+%worlds () (issel _ _).
+%total (A) (issel A _).
+
+
+%%%%%  Semantics  %%%%%
+
+
+mode1: type.
+notrans: mode1.
+oktrans: mode1.
+
+
+stp  : {I1:mode1} tenv -> tp -> tp -> type.
+
+sdc  : {I1:mode1} tenv -> dc -> dc -> type.
+
+
+stp/bot     : stp notrans    G bot _.
+         
+stp/top     : stp notrans    G _ top.
+
+stp/sel1    : stp notrans    (tcons (rect L U) tnil) (sel z) T
+           <- stp oktrans    (tcons (rect L U) tnil) U T
+           .
+
+
+stp/sel2    : stp notrans    (tcons (rect L U) tnil) T (sel z)
+           <- stp oktrans    (tcons (rect L U) tnil) L U
+           <- stp oktrans    (tcons (rect L U) tnil) T L
+           .
+
+stp/arrow   : stp notrans    G (arrow S1 S2) (arrow T1 T2)
+           <- stp oktrans    G T1 S1
+           <- stp oktrans    G S2 T2
+            .
+
+
+stp/bind    : stp notrans    G (bind z T1) (bind z T2)
+           <- sdc oktrans    (tcons T1 tnil) T1 T2
+           .
+
+stp/trans0   : stp oktrans   G T1 T2
+            <- stp notrans   G T1 T2
+            .
+
+%{
+%% defined below after queries!
+stp/trans   : stp oktrans    G T1 T3
+           <- stp oktrans    G T2 T3
+           <- stp oktrans    G T1 T2
+            .
+}%
+
+sdc/rect    : sdc I0         G (rect L1 U1) (rect L2 U2)
+           <- stp I0         G L2 U2
+           <- stp I0         G L1 U1
+           <- stp I0         G U1 U2
+           <- stp I0         G L2 L1
+            .
+
+% ---------- queries ---------- %
+
+
+tX = top.
+
+d1 = (rect top top).
+d2 = (rect bot top).
+g1 = (tcons d1 tnil).
+g2 = (tcons d2 tnil).
+
+1 = (s z).
+2 = (s 1).
+3 = (s 2).
+4 = (s 3).
+5 = (s 4).
+6 = (s 5).
+depth = 6.
+
+m1 = notrans.
+
+%query 1 1 stp m1 tnil bot top.
+
+%query 1 1 stp m1 tnil top top.
+
+%query 1 1 stp m1 tnil (arrow top top) (arrow top top).
+
+%query 1 1 sdc m1 tnil (rect top top) (rect top top).
+
+%query 1 1 sdc m1 tnil (rect top top) (rect bot top).
+
+
+%query 1 1 stp m1 g1 top top.
+
+%query 1 1 stp m1 g1 (arrow top top) (arrow top top).
+
+%query 1 1 sdc m1 g1 (rect top top) (rect top top).
+
+%query 1 1 sdc m1 g1 (rect top top) (rect bot top).
+
+
+%query 1 1 stp m1 g1 top top.
+
+%query 1 1 stp m1 g1 (arrow top top) (arrow top top).
+
+%query 1 1 sdc m1 g1 (rect top top) (rect top top).
+
+%query 1 1 sdc m1 g1 (rect top top) (rect bot top).
+
+
+%query 1 1 stp m1 tnil (bind z d1) (bind z d1).
+
+%query 1 1 stp m1 tnil (bind z d2) (bind z d2).
+
+%query 1 1 stp m1 tnil (bind z d1) (bind z d2).
+
+
+
+%query 1 1 stp m1 (tcons (rect top top) tnil) (sel z) (sel z).
+
+%query 1 1 stp m1 (tcons (rect bot (arrow top top)) tnil) (sel z) (arrow top top).
+
+%% now define trans axiom!
+stp/trans   : stp oktrans     G T1 T3
+           <- stp oktrans     G T2 T3
+           <- stp oktrans     G T1 T2
+            .
+
+
+
+% --------------- helper lemmas ------------- %
+
+
+extend-stp: stp I1 tnil T1 T2 -> {T3}stp I1 (tcons T3 tnil) T1 T2 -> type.
+%mode extend-stp +A +B -D.
+
+-/bot: extend-stp stp/bot _ stp/bot.
+-/top: extend-stp stp/top _ stp/top.
+-/arrow: extend-stp (stp/arrow S2 S1) _ (stp/arrow S2' S1')
+        <- extend-stp S2 _ S2'
+        <- extend-stp S1 _ S1'.
+-/bind: extend-stp (stp/bind S2) _ (stp/bind S2).
+-/trans0: extend-stp (stp/trans0 S) _ (stp/trans0 S') 
+        <- extend-stp S _ S'.
+-/trans: extend-stp (stp/trans S1 S2) _ (stp/trans S1' S2') 
+        <- extend-stp S1 _ S1'
+        <- extend-stp S2 _ S2'.
+
+%worlds () (extend-stp _ _ _).
+%total (A) (extend-stp A _ _).
+
+
+to-oktrans: stp notrans G T1 T2 -> stp oktrans G T1 T2 -> type.
+%mode to-oktrans +A -B.
+
+- : to-oktrans S (stp/trans0 S).
+
+%worlds () (to-oktrans _ _).
+%total (A) (to-oktrans A _).
+
+
+% --------------- transitivity (oktrans mode) ------------- %
+
+ttrans* : 
+    stp oktrans G S Q ->
+    stp oktrans G Q T ->
+%%
+    stp oktrans G S T ->
+    type.
+
+%mode ttrans*   +X1 +X2 -X3.
+
+- : ttrans* S1 S2 (stp/trans S1 S2).
+
+%worlds () (ttrans* _ _ _ ).
+%total (Q1) (ttrans* Q1 _ _).
+
+
+ttransdc* : 
+    sdc oktrans G S Q ->
+    sdc oktrans G Q T ->
+%%
+    sdc oktrans G S T ->
+    type.
+
+%mode ttransdc* +X1 +X2 -X3.
+
+- : ttransdc*  (sdc/rect L1 U1 X1 X2) (sdc/rect L2 U2 X2' X3) (sdc/rect L3 U3 X1 X3)
+        <- ttrans* L2 L1 L3
+        <- ttrans* U1 U2 U3.
+
+
+%worlds () (ttransdc* _ _ _).
+%total (Q1') (ttransdc* Q1' _ _).
+
+
+
+
+
+% --------------- narrowing (oktrans mode) ------------- %
+
+narrow* : 
+    stp oktrans (tcons Q tnil) M N ->
+    sdc oktrans (tcons P tnil) P Q ->
+%%
+    stp oktrans (tcons P tnil) M N ->
+    type.
+
+%mode narrow*  +X1 +X2 -X3.
+
+-bot    : narrow* (stp/trans0 stp/bot) _ (stp/trans0 stp/bot).
+
+-top    : narrow* (stp/trans0 stp/top) _ (stp/trans0 stp/top).
+
+
+-trans  : narrow* (stp/trans D1 D2) Dsub (stp/trans D1' D2')
+       <- narrow* D1 Dsub D1'
+       <- narrow* D2 Dsub D2'.
+
+
+-var    : narrow* (stp/trans0 (stp/sel1 D)) (sdc/rect Lsub Dsub X1 X2) (stp/trans0 (stp/sel1 D''))
+       <- narrow* D (sdc/rect Lsub Dsub X1 X2) D'
+       <- ttrans*  Dsub D' D''.
+
+
+-var2   : narrow* (stp/trans0 (stp/sel2 L D)) (sdc/rect Lsub Dsub XX1 XX2) (stp/trans0 (stp/sel2 L'' XX1))
+       <- narrow* L (sdc/rect Lsub Dsub XX1 XX2) L'
+       <- ttrans* L' Lsub L''.
+
+
+-arrow  : narrow* (stp/trans0 (stp/arrow (D2) (D1))) Dsub (stp/trans0 (stp/arrow (D2') (D1')))
+       <- narrow* D1 Dsub D1'
+       <- narrow* D2 Dsub D2'.
+
+
+-bind   : narrow* (stp/trans0 (stp/bind (D2))) Dsub (stp/trans0 (stp/bind (D2)))
+       % once we have more identifiers:
+       % <- narrow* D1 Dsub D1'
+       % <- narrow* (D2) Dsub (D2').
+       .
+
+
+%worlds () (narrow* _ _ _).
+%total (A) (narrow* A _ _).
+
+narrowdc* :
+    sdc oktrans (tcons Q tnil) M N ->
+    sdc oktrans (tcons P tnil) P Q ->
+%%
+    sdc oktrans (tcons P tnil) M N ->
+    type.
+
+%mode narrowdc*  +X1 +X2 -X3.
+
+-rect : narrowdc* (sdc/rect A B C D) S (sdc/rect A' B' C' D')
+         <- narrow* A S A'
+         <- narrow* B S B'
+         <- narrow* C S C'
+         <- narrow* D S D'
+         .
+
+%worlds () (narrowdc* _ _ _).
+%total (A) (narrowdc* A _ _).
+
+% --------------- transitivity (notrans mode, exlude middle p.L ) ------------- %
+
+
+trans* :  
+    issel Q z ->
+    stp notrans G S Q ->
+    stp notrans G Q T ->
+%%
+    stp notrans G S T ->
+    type.
+
+%mode trans*   +I +X1 +X2 -X3.
+
+-top    : trans* _ stp/bot D stp/bot.
+
+-top    : trans* _ D stp/top stp/top.
+
+
+-var    : trans* _ (stp/sel1 U2) D (stp/sel1 U2')
+        <- to-oktrans D D'
+        <- ttrans* U2 D' U2'.
+
+-var2   : trans* _ D (stp/sel2 L2 U2) (stp/sel2 L2' U2)
+        <- to-oktrans D D'
+        <- ttrans* D' L2 L2'.
+
+
+%{ exluded!!
+-varx   :  trans* _ (stp/sel2 T1L LU) (stp/sel1 UT2) T1T2
+        <- trans* _ T1L LU T1U
+        <- trans* _ T1U UT2 T1T2
+        .
+}%
+
+-arrow  : trans* _ (stp/arrow D1b D1a) (stp/arrow D2b D2a) 
+            (stp/arrow (stp/trans D1b D2b) (stp/trans D2a D1a)).
+
+
+-tbind  : trans* _ (stp/bind D1) (stp/bind D2) (stp/bind D)
+       <- narrowdc* D2 D1 D2'
+       <- ttransdc* D1 D2' D.
+
+
+%worlds () (trans* _ _ _ _).
+%total (A) (trans* _ A _ _).
+
+
+
+
+% --------------- linearize trans nodes, remove paths ------------- %
+
+
+% linked-list data structure so we can traverse left -> right
+% (is this necessary?)
+
+stpl  : nat -> tenv -> tp -> tp -> type.
+
+stp/transl   : stpl (s N)     G T1 T3
+            <- stpl N         G T2 T3
+            <- stp notrans    G T1 T2
+            <- issel T2 z
+            <- issel T1 z
+             .
+
+stp/lltop2   : stpl (s z)     (tcons (rect top U) tnil) L (sel z)
+            <- stp oktrans    (tcons (rect top U) tnil) top U  %% WF
+            .
+
+stp/lltopx   : stpl (s z)     G _ top.
+
+stp/transe   : stpl z         G T1 T1.
+
+stp/llbot    : stpl (s z)     G bot _.
+
+stp/llsel2    : stpl z        (tcons (rect L U) tnil) L (sel z)
+             <- stp oktrans   (tcons (rect L U) tnil) L U  %% WF
+             .
+
+stp/llsel1   : stpl (s N)     (tcons (rect L U) tnil) (sel z) T
+            <- stpl (s N)     (tcons (rect L U) tnil) U T
+             .
+
+
+% linearize a derivation that uses transitivity
+
+utrans0* : 
+  stp oktrans  G T1 T2 -> 
+  stpl _ G T2 T3 -> 
+  stpl (s _) G T1 T3 -> 
+  type.
+
+%mode utrans0*  +S1 +S2 -S12.
+
+- : utrans0* (stp/trans0 stp/bot) TL stp/llbot.
+
+- : utrans0* (stp/trans0 (stp/top)) (stp/llsel2 D) (stp/lltop2 D).
+- : utrans0* (stp/trans0 (stp/top)) stp/transe stp/lltopx.
+
+- : utrans0* (stp/trans0 _) (stp/lltopx) (stp/lltopx).
+- : utrans0* (stp/trans0 _) (stp/lltop2 D) (stp/lltop2 D).
+
+
+- : utrans0* (stp/trans0 (stp/sel1 D)) TL (stp/llsel1 DL)
+      <- utrans0* D TL DL.
+
+- : utrans0* (stp/trans0 (stp/arrow S1 S2))   TL (stp/transl is/arrow is/arrow (stp/arrow S1 S2) TL).
+- : utrans0* (stp/trans0 (stp/bind S))    TL (stp/transl is/bind is/bind (stp/bind S) TL).
+
+- : utrans0* (stp/trans0 (stp/sel2 D1 D3)) (stp/llsel1 DL) DL''
+      <- utrans0* D3 DL DL'
+      <- utrans0* D1 DL' DL''.
+
+- : utrans0* (stp/trans0 (stp/sel2 D1 D3)) stp/transe DL'
+      <- utrans0* D1 (stp/llsel2 D3) DL'.
+
+- : utrans0* (stp/trans0 (stp/sel2 D1 D3)) (stp/llsel2 _) DL'
+      <- utrans0* D1 (stp/llsel2 D3) DL'.
+
+- : utrans0* (stp/trans S1 S2) TL TL''
+  <- utrans0* S2 TL TL'
+  <- utrans0* S1 TL' TL''.
+
+
+%worlds ()(utrans0* _ _ _).
+%total {A} (utrans0* A _ _).
+
+
+utrans0 : 
+  stp oktrans  G T1 T2 -> 
+  stpl (s _) G T1 T2 -> 
+  type.
+
+%mode utrans0  +S2 -S12.
+
+- : utrans0 S1 S1' <- utrans0* S1 stp/transe S1'.
+
+%worlds ()(utrans0 _ _).
+%total {A} (utrans0 A _).
+
+
+
+
+% given linear version, remove top-level trans nodes
+
+utrans1* : 
+  issel T2 z ->
+  stp notrans G T1 T2 ->
+  stpl _ G T2 T3 -> 
+  stp notrans G T1 T3 ->
+  type.
+%mode utrans1* +I2 +A +B -C.
+
+- : utrans1* I2 S1 (stp/transl I1' I2' S2 TL) S13 
+        <- trans* I1' S1 S2 S12
+        <- utrans1* I2' S12 TL S13.
+
+- : utrans1* I2 S1 stp/transe S1.
+
+- : utrans1* I2 S1 stp/lltopx stp/top.
+
+- : utrans1* I2 S1 (stp/lltop2 D) (stp/sel2 (stp/trans0 stp/top) D).
+
+- : utrans1* I2 S1 (stp/llsel2 D) (stp/sel2 (stp/trans0 S1) D).
+
+
+%worlds () (utrans1* _ _ _ _).
+%total {B} (utrans1* _ A B C).
+
+
+utrans1 : 
+  stpl (s _) G T1 T3 -> 
+  stp notrans G T1 T3 ->
+  type.
+%mode utrans1 +A -B.
+
+- : utrans1 (stp/transl I1' I2' S2 TL) S13 
+        <- utrans1* I2' S2 TL S13.
+
+- : utrans1 (stp/llsel1 D) (stp/sel1 (stp/trans0 D'))
+        <- utrans1 D D'.
+
+- : utrans1 stp/llbot stp/bot.
+
+- : utrans1 stp/lltopx stp/top.
+
+- : utrans1 (stp/lltop2 D) (stp/sel2 (stp/trans0 stp/top) D).
+
+%worlds () (utrans1 _ _).
+%total (A) (utrans1 A B).
+
+
+% now put it together for our main lemma ...
+
+
+% --------------- inversion lemma / remove top-level transitivity ------------- %
+
+invert-trans : 
+  stp oktrans G T1 T2 ->
+  stp notrans G T1 T2 ->
+  type.
+%mode invert-trans +A -C.
+
+- : invert-trans S12 S12'
+        <- utrans0 S12 SL12
+        <- utrans1 SL12 S12'.
+
+%worlds () (invert-trans _ _).
+%total (A) (invert-trans A B).
+
+
+
+% example inversion lemma
+
+invert-fun :
+  stp oktrans G (arrow T1 T2) (arrow T3 T4) ->
+  stp oktrans G T3 T1 ->
+  stp oktrans G T2 T4 ->
+  type.
+
+%mode invert-fun +A -B -C.
+
+- : invert-fun A S1 S2 <- invert-trans A (stp/arrow S2 S1).
+
+%worlds () (invert-fun _ _ _).
+%total (A) (invert-fun A _ _).
+
+
