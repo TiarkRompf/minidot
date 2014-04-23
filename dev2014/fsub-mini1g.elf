@@ -44,9 +44,12 @@ top     : tp.
 sel     : nat -> nat -> tp.
 bind    : nat -> dcs -> tp.
 
+topt : type.
+tnone : topt.
+tsome : tp -> topt.
+
 arrow   : tp -> tp -> dc.
-rect    : tp -> tp -> dc.
-rectu   : tp -> dc.
+rect    : topt -> tp -> dc.
 
 dnil: dcs.
 dcons: dc -> dcs -> dcs.
@@ -73,22 +76,11 @@ dlk/z : dlk (dcons D DS) z D.
 dlk/s : dlk (dcons D DS) (s N) D' <- dlk DS N D'.
 
 xpd : tenv -> tp -> dcs -> type.
-has-upper : dcs -> nat -> tp -> type.
 
 xpd/sel : xpd (tcons DS tnil) (sel z X) DSU
-       <- has-upper DS X U
+       <- dlk DS X (rect _ U)
        <- xpd (tcons DS tnil) U DSU.
 xpd/sel : xpd tnil (bind z DS) DS.
-
-has-rect  : dcs -> nat -> tp -> tp -> type.
-has-rect/yes : has-rect DS X L U
-            <- dlk DS X (rect L U).
-
-has-upper/rect : has-upper DS X U
-              <- dlk DS X (rect L U).
-
-has-upper/rectu : has-upper DS X U
-              <- dlk DS X (rectu U).
 
 mode1: type.
 notrans: mode1.
@@ -103,13 +95,13 @@ sdc  : {I1:mode1} tenv -> dc -> dc -> type.
 stp/top     : stp notrans    G _ top.
 
 stp/sel1    : stp notrans    (tcons DS tnil) (sel z X) T
+           <- dlk DS X (rect _ U)
            <- stp oktrans    (tcons DS tnil) U T
-           <- has-upper D X U
            .
 
 
 stp/sel2    : stp notrans    (tcons DS tnil) T (sel z X)
-           <- has-rect DS X L U
+           <- dlk DS X (rect (tsome L) U)
            <- stp oktrans    (tcons DS tnil) L U
            <- stp oktrans    (tcons DS tnil) T L
            .
@@ -128,16 +120,16 @@ sdc/arrow   : sdc I0         G (arrow L1 U1) (arrow L2 U2)
            <- stp I0         G L2 L1
             .
 
-sdc/rectuu  : sdc I0         G (rectu U1) (rectu U2)
+sdc/rectnn  : sdc I0         G (rect tnone U1) (rect tnone U2)
            <- stp I0         G U1 U2
             .
 
-sdc/rectu   : sdc I0         G (rect L1 U1) (rectu U2)
+sdc/rectsn  : sdc I0         G (rect (tsome L1) U1) (rect tnone U2)
            <- stp I0         G L1 U1
            <- stp I0         G U1 U2
             .
 
-sdc/rect    : sdc I0         G (rect L1 U1) (rect L2 U2)
+sdc/rectss  : sdc I0         G (rect (tsome L1) U1) (rect (tsome L2) U2)
            <- stp I0         G L2 U2
            <- stp I0         G L1 U1
            <- stp I0         G U1 U2
@@ -213,16 +205,16 @@ ttransdc* :
         <- ttrans* L2 L1 L3
         <- ttrans* U1 U2 U3.
 
-- : ttransdc*  (sdc/rectuu U1) (sdc/rectuu U2) (sdc/rectuu U3)
+- : ttransdc*  (sdc/rectnn U1) (sdc/rectnn U2) (sdc/rectnn U3)
         <- ttrans* U1 U2 U3.
 
-- : ttransdc*  (sdc/rectu U1 X1) (sdc/rectuu U2) (sdc/rectu U3 X1)
+- : ttransdc*  (sdc/rectsn U1 X1) (sdc/rectnn U2) (sdc/rectsn U3 X1)
         <- ttrans* U1 U2 U3.
 
-- : ttransdc*  (sdc/rect L1 U1 X1 X2) (sdc/rectu U2 X1') (sdc/rectu U3 X1)
+- : ttransdc*  (sdc/rectss L1 U1 X1 X2) (sdc/rectsn U2 X1') (sdc/rectsn U3 X1)
         <- ttrans* U1 U2 U3.
 
-- : ttransdc*  (sdc/rect L1 U1 X1 X2) (sdc/rect L2 U2 X2' X3) (sdc/rect L3 U3 X1 X3)
+- : ttransdc*  (sdc/rectss L1 U1 X1 X2) (sdc/rectss L2 U2 X2' X3) (sdc/rectss L3 U3 X1 X3)
         <- ttrans* L2 L1 L3
         <- ttrans* U1 U2 U3.
 
