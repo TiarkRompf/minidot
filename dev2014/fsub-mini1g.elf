@@ -230,6 +230,23 @@ ttransdc* :
 
 % --------------- narrowing (oktrans mode) ------------- %
 
+inv-sdcs :
+    sdcs oktrans G DS' DS ->
+    (dlk DS X DX) ->
+%%
+    (dlk DS' X DX') ->
+    sdc oktrans G DX' DX ->
+    type.
+
+%mode inv-sdcs +A +B -C -D.
+
+- : inv-sdcs (sdcs/cons BDS BD) dlk/z dlk/z BD.
+- : inv-sdcs (sdcs/cons BDS BD) (dlk/s K) (dlk/s K') BD'
+ <- inv-sdcs BDS K K' BD'.
+
+%worlds () (inv-sdcs _ _ _ _).
+%total (A) (inv-sdcs A _ _ _).
+
 narrow* : 
     stp oktrans (tcons Q tnil) M N ->
     sdcs oktrans (tcons P tnil) P Q ->
