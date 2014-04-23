@@ -90,7 +90,14 @@ oktrans: mode1.
 stp  : {I1:mode1} tenv -> tp -> tp -> type.
 sdcs : {I1:mode1} tenv -> dcs -> dcs -> type.
 sdc  : {I1:mode1} tenv -> dc -> dc -> type.
+stpo : {I1:mode1} tenv -> topt -> tp -> type.
+stpoo: {I1:mode1} tenv -> topt -> topt -> type.
 
+stpo/n : stpo I0 G tnone U.
+stpo/s : stpo I0 G (tsome S) U <- stp I0 G S U.
+stpoo/nn : stpoo I0 G tnone tnone.
+stpoo/ns : stpoo I0 G tnone (tsome U).
+stpoo/ss : stpoo I0 G (tsome S) (tsome U) <- stp I0 G S U.
 
 stp/top     : stp notrans    G _ top.
 
@@ -120,20 +127,11 @@ sdc/arrow   : sdc I0         G (arrow L1 U1) (arrow L2 U2)
            <- stp I0         G L2 L1
             .
 
-sdc/rectnn  : sdc I0         G (rect tnone U1) (rect tnone U2)
+sdc/rect    : sdc I0         G (rect OL1 U1) (rect OL2 U2)
+           <- stpo I0        G OL2 U2
+           <- stpo I0        G OL1 U1
            <- stp I0         G U1 U2
-            .
-
-sdc/rectsn  : sdc I0         G (rect (tsome L1) U1) (rect tnone U2)
-           <- stp I0         G L1 U1
-           <- stp I0         G U1 U2
-            .
-
-sdc/rectss  : sdc I0         G (rect (tsome L1) U1) (rect (tsome L2) U2)
-           <- stp I0         G L2 U2
-           <- stp I0         G L1 U1
-           <- stp I0         G U1 U2
-           <- stp I0         G L2 L1
+           <- stpoo I0       G OL2 OL1
             .
 
 sdcs/nil    : sdcs I0 G dnil dnil.
@@ -191,6 +189,23 @@ ttrans* :
 %worlds () (ttrans* _ _ _ ).
 %total (Q1) (ttrans* Q1 _ _).
 
+ttransoo* :
+    stpoo oktrans G S Q ->
+    stpoo oktrans G Q T ->
+%%
+    stpoo oktrans G S T ->
+    type.
+
+%mode ttransoo*   +X1 +X2 -X3.
+
+- : ttransoo* stpoo/nn stpoo/nn stpoo/nn.
+- : ttransoo* stpoo/nn stpoo/ns stpoo/ns.
+- : ttransoo* stpoo/ns (stpoo/ss _) stpoo/ns.
+- : ttransoo* (stpoo/ss A) (stpoo/ss B) (stpoo/ss C)
+ <- ttrans* A B C.
+
+%worlds () (ttransoo* _ _ _ ).
+%total (Q1) (ttransoo* Q1 _ _).
 
 ttransdc* : 
     sdc oktrans G S Q ->
@@ -205,24 +220,12 @@ ttransdc* :
         <- ttrans* L2 L1 L3
         <- ttrans* U1 U2 U3.
 
-- : ttransdc*  (sdc/rectnn U1) (sdc/rectnn U2) (sdc/rectnn U3)
-        <- ttrans* U1 U2 U3.
-
-- : ttransdc*  (sdc/rectsn U1 X1) (sdc/rectnn U2) (sdc/rectsn U3 X1)
-        <- ttrans* U1 U2 U3.
-
-- : ttransdc*  (sdc/rectss L1 U1 X1 X2) (sdc/rectsn U2 X1') (sdc/rectsn U3 X1)
-        <- ttrans* U1 U2 U3.
-
-- : ttransdc*  (sdc/rectss L1 U1 X1 X2) (sdc/rectss L2 U2 X2' X3) (sdc/rectss L3 U3 X1 X3)
-        <- ttrans* L2 L1 L3
+- : ttransdc*  (sdc/rect OL1 U1 X1 X2) (sdc/rect OL2 U2 X2' X3) (sdc/rect OL3 U3 X1 X3)
+        <- ttransoo* OL2 OL1 OL3
         <- ttrans* U1 U2 U3.
 
 %worlds () (ttransdc* _ _ _).
 %total (Q1') (ttransdc* Q1' _ _).
-
-
-
 
 
 % --------------- narrowing (oktrans mode) ------------- %
