@@ -136,7 +136,8 @@ sdc/rect    : sdc I0         G (rect OL1 U1) (rect OL2 U2)
 
 sdcs/nil    : sdcs I0 G dnil dnil.
 sdcs/ext    : sdcs I0 G (dcons D DS) dnil
-           <- sdcs I0 G (dcons D DS) (dcons D DS).
+           % <- sdcs I0 G (dcons D DS) (dcons D DS)
+            .
 sdcs/cons   : sdcs I0 G (dcons D1 DS1) (dcons D2 DS2)
            <- sdc I0 G D1 D2
            <- sdcs I0 G DS1 DS2.
@@ -175,7 +176,7 @@ to-oktrans: stp notrans G T1 T2 -> stp oktrans G T1 T2 -> type.
 
 % --------------- transitivity (oktrans mode) ------------- %
 
-ttrans* : 
+ttrans* :
     stp oktrans G S Q ->
     stp oktrans G Q T ->
 %%
@@ -207,7 +208,7 @@ ttransoo* :
 %worlds () (ttransoo* _ _ _ ).
 %total (Q1) (ttransoo* Q1 _ _).
 
-ttransdc* : 
+ttransdc* :
     sdc oktrans G S Q ->
     sdc oktrans G Q T ->
 %%
@@ -227,6 +228,27 @@ ttransdc* :
 %worlds () (ttransdc* _ _ _).
 %total (Q1') (ttransdc* Q1' _ _).
 
+ttransdcs* :
+    sdcs oktrans G S Q ->
+    sdcs oktrans G Q T ->
+%%
+    sdcs oktrans G S T ->
+    type.
+
+%mode ttransdcs* +X1 +X2 -X3.
+
+- : ttransdcs* sdcs/nil sdcs/nil sdcs/nil.
+
+- : ttransdcs* sdcs/ext sdcs/nil sdcs/ext.
+
+- : ttransdcs* (sdcs/cons _ _) sdcs/ext sdcs/ext.
+
+- : ttransdcs* (sdcs/cons BDS1 BD1) (sdcs/cons BDS2 BD2) (sdcs/cons BDS3 BD3)
+ <- ttransdc* BD1 BD2 BD3
+ <- ttransdcs* BDS1 BDS2 BDS3.
+
+%worlds () (ttransdcs* _ _ _).
+%total (Q1') (ttransdcs* Q1' _ _).
 
 % --------------- narrowing (oktrans mode) ------------- %
 
@@ -336,6 +358,26 @@ narrowdc* :
 %worlds () (narrowdc* _ _ _).
 %total (A) (narrowdc* A _ _).
 
+narrowdcs* :
+    sdcs oktrans (tcons Q tnil) M N ->
+    sdcs oktrans (tcons P tnil) P Q ->
+%%
+    sdcs oktrans (tcons P tnil) M N ->
+    type.
+
+%mode narrowdcs*  +X1 +X2 -X3.
+
+-nil : narrowdcs* sdcs/nil BDS sdcs/nil.
+-ext : narrowdcs* sdcs/ext BDS sdcs/ext
+    % <- narrowdcs* A BDS A'
+    .
+-cons: narrowdcs* (sdcs/cons A BD) BDS (sdcs/cons A' BD')
+    <- narrowdc* BD BDS BD'
+    <- narrowdcs* A BDS A'.
+
+%worlds () (narrowdcs* _ _ _).
+%total (A) (narrowdcs* A _ _).
+
 % --------------- transitivity (notrans mode, exlude middle p.L ) ------------- %
 
 
@@ -349,35 +391,20 @@ trans* :
 
 %mode trans*   +I +X1 +X2 -X3.
 
--top    : trans* _ stp/bot D stp/bot.
-
 -top    : trans* _ D stp/top stp/top.
 
 
--var    : trans* _ (stp/sel1 U2) D (stp/sel1 U2')
+-var    : trans* _ (stp/sel1 U2 K) D (stp/sel1 U2' K)
         <- to-oktrans D D'
         <- ttrans* U2 D' U2'.
 
--var2   : trans* _ D (stp/sel2 L2 U2) (stp/sel2 L2' U2)
+-var2   : trans* _ D (stp/sel2 L2 U2 K) (stp/sel2 L2' U2 K)
         <- to-oktrans D D'
         <- ttrans* D' L2 L2'.
 
-
-%{ exluded!!
--varx   :  trans* _ (stp/sel2 T1L LU) (stp/sel1 UT2) T1T2
-        <- trans* _ T1L LU T1U
-        <- trans* _ T1U UT2 T1T2
-        .
-}%
-
--arrow  : trans* _ (stp/arrow D1b D1a) (stp/arrow D2b D2a) 
-            (stp/arrow (stp/trans D1b D2b) (stp/trans D2a D1a)).
-
-
--tbind  : trans* _ (stp/bind D1) (stp/bind D2) (stp/bind D)
-       <- narrowdc* D2 D1 D2'
-       <- ttransdc* D1 D2' D.
-
+-tbind  : trans* _ (stp/bind D12 D22) (stp/bind D23 D33) (stp/bind D13 D33)
+       <- narrowdcs* D23 D12 D23'
+       <- ttransdcs* D12 D23' D13.
 
 %worlds () (trans* _ _ _ _).
 %total (A) (trans* _ A _ _).
