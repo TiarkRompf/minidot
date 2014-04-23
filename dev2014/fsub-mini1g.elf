@@ -279,9 +279,42 @@ narrow* :
 %worlds () (narrow* _ _ _).
 %total (A) (narrow* A _ _).
 
+narrowo* :
+    stpo oktrans (tcons Q tnil) M N ->
+    sdcs oktrans (tcons P tnil) P Q ->
+%%
+    stpo oktrans (tcons P tnil) M N ->
+    type.
+
+%mode narrowo*  +X1 +X2 -X3.
+
+-n : narrowo* stpo/n BDS stpo/n.
+-s : narrowo* (stpo/s BU) BDS (stpo/s BU')
+  <- narrow* BU BDS BU'.
+
+%worlds () (narrowo* _ _ _).
+%total (A) (narrowo* A _ _).
+
+narrowoo* :
+    stpoo oktrans (tcons Q tnil) M N ->
+    sdcs oktrans (tcons P tnil) P Q ->
+%%
+    stpoo oktrans (tcons P tnil) M N ->
+    type.
+
+%mode narrowoo*  +X1 +X2 -X3.
+
+-nn : narrowoo* stpoo/nn BDS stpoo/nn.
+-ns : narrowoo* stpoo/ns BDS stpoo/ns.
+-ss : narrowoo* (stpoo/ss BU) BDS (stpoo/ss BU')
+  <- narrow* BU BDS BU'.
+
+%worlds () (narrowoo* _ _ _).
+%total (A) (narrowoo* A _ _).
+
 narrowdc* :
     sdc oktrans (tcons Q tnil) M N ->
-    sdc oktrans (tcons P tnil) P Q ->
+    sdcs oktrans (tcons P tnil) P Q ->
 %%
     sdc oktrans (tcons P tnil) M N ->
     type.
@@ -289,10 +322,15 @@ narrowdc* :
 %mode narrowdc*  +X1 +X2 -X3.
 
 -rect : narrowdc* (sdc/rect A B C D) S (sdc/rect A' B' C' D')
+         <- narrowoo* A S A'
+         <- narrow* B S B'
+         <- narrowo* C S C'
+         <- narrowo* D S D'
+         .
+
+-arrow : narrowdc* (sdc/arrow A B) S (sdc/arrow A' B')
          <- narrow* A S A'
          <- narrow* B S B'
-         <- narrow* C S C'
-         <- narrow* D S D'
          .
 
 %worlds () (narrowdc* _ _ _).
