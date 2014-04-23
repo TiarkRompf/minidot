@@ -38,26 +38,28 @@ add-reduces: {N1}{N2}{N3}add N1 N2 N3 -> type.
 tp : type.  %name tp T.
 
 dc: type. %name dc D.
+dcs: type.
 
-bot     : tp.
 top     : tp.
-sel     : nat -> tp.
-arrow   : tp -> tp -> tp.
-bind    : nat -> dc -> tp.
+sel     : nat -> nat -> tp.
+bind    : nat -> dcs -> tp.
 
-rect: tp -> tp -> dc.
+arrow   : tp -> tp -> dc.
+rect    : tp -> tp -> dc.
+rectu   : tp -> dc.
+
+dnil: dcs.
+dcons: dc -> dcs -> dcs.
 
 tenv: type. %name tenv G.
 tnil: tenv.
-tcons: dc -> tenv -> tenv.
+tcons: dcs -> tenv -> tenv.
 
 
 issel: tp -> nat -> type.
-is/arrow: issel (arrow _ _) z.
 is/bind: issel (bind _ _) z.
-is/bot: issel bot (s z).
 is/top: issel top (s z).
-is/sel: issel (sel _) (s z).
+is/sel: issel (sel _ _) (s z).
 
 %mode issel +T -N.
 %worlds () (issel _ _).
@@ -66,6 +68,27 @@ is/sel: issel (sel _) (s z).
 
 %%%%%  Semantics  %%%%%
 
+dlk : dcs -> nat -> dc -> type.
+dlk/z : dlk (dcons D DS) z D.
+dlk/s : dlk (dcons D DS) (s N) D' <- dlk DS N D'.
+
+xpd : tenv -> tp -> dcs -> type.
+has-upper : dcs -> nat -> tp -> type.
+
+xpd/sel : xpd (tcons DS tnil) (sel z X) DSU
+       <- has-upper DS X U
+       <- xpd (tcons DS tnil) U DSU.
+xpd/sel : xpd tnil (bind z DS) DS.
+
+has-rect  : dcs -> nat -> tp -> tp -> type.
+has-rect/yes : has-rect DS X L U
+            <- dlk DS X (rect L U).
+
+has-upper/rect : has-upper DS X U
+              <- dlk DS X (rect L U).
+
+has-upper/rectu : has-upper DS X U
+              <- dlk DS X (rectu U).
 
 mode1: type.
 notrans: mode1.
@@ -73,45 +96,46 @@ oktrans: mode1.
 
 
 stp  : {I1:mode1} tenv -> tp -> tp -> type.
-
+sdcs : {I1:mode1} tenv -> dcs -> dcs -> type.
 sdc  : {I1:mode1} tenv -> dc -> dc -> type.
 
 
-stp/bot     : stp notrans    G bot _.
-         
 stp/top     : stp notrans    G _ top.
 
-stp/sel1    : stp notrans    (tcons (rect L U) tnil) (sel z) T
-           <- stp oktrans    (tcons (rect L U) tnil) U T
+stp/sel1    : stp notrans    (tcons DS tnil) (sel z X) T
+           <- stp oktrans    (tcons DS tnil) U T
+           <- has-upper D X U
            .
 
 
-stp/sel2    : stp notrans    (tcons (rect L U) tnil) T (sel z)
-           <- stp oktrans    (tcons (rect L U) tnil) L U
-           <- stp oktrans    (tcons (rect L U) tnil) T L
+stp/sel2    : stp notrans    (tcons DS tnil) T (sel z X)
+           <- has-rect DS X L U
+           <- stp oktrans    (tcons DS tnil) L U
+           <- stp oktrans    (tcons DS tnil) T L
            .
 
-stp/arrow   : stp notrans    G (arrow S1 S2) (arrow T1 T2)
-           <- stp oktrans    G T1 S1
-           <- stp oktrans    G S2 T2
-            .
-
-
-stp/bind    : stp notrans    G (bind z T1) (bind z T2)
-           <- sdc oktrans    (tcons T1 tnil) T1 T2
+stp/bind    : stp notrans    G (bind z DS1) (bind z DS2)
+           <- sdcs oktrans    (tcons DS2 tnil) DS2 DS2
+           <- sdcs oktrans    (tcons DS1 tnil) DS1 DS2
            .
 
 stp/trans0   : stp oktrans   G T1 T2
             <- stp notrans   G T1 T2
             .
 
-%{
-%% defined below after queries!
-stp/trans   : stp oktrans    G T1 T3
-           <- stp oktrans    G T2 T3
-           <- stp oktrans    G T1 T2
+sdc/arrow   : sdc I0         G (arrow L1 U1) (arrow L2 U2)
+           <- stp I0         G U1 U2
+           <- stp I0         G L2 L1
             .
-}%
+
+sdc/rectuu  : sdc I0         G (rectu U1) (rectu U2)
+           <- stp I0         G U1 U2
+            .
+
+sdc/rectu   : sdc I0         G (rect L1 U1) (rectu U2)
+           <- stp I0         G L1 U1
+           <- stp I0         G U1 U2
+            .
 
 sdc/rect    : sdc I0         G (rect L1 U1) (rect L2 U2)
            <- stp I0         G L2 U2
@@ -120,74 +144,17 @@ sdc/rect    : sdc I0         G (rect L1 U1) (rect L2 U2)
            <- stp I0         G L2 L1
             .
 
-% ---------- queries ---------- %
+sdcs/nil    : sdcs I0 G dnil dnil.
+sdcs/ext    : sdcs I0 G (dcons D DS) dnil
+           <- sdcs I0 G (dcons D DS) (dcons D DS).
+sdcs/cons   : sdcs I0 G (dcons D1 DS1) (dcons D2 DS2)
+           <- sdc I0 G D1 D2
+           <- sdcs I0 G DS1 DS2.
 
-
-tX = top.
-
-d1 = (rect top top).
-d2 = (rect bot top).
-g1 = (tcons d1 tnil).
-g2 = (tcons d2 tnil).
-
-1 = (s z).
-2 = (s 1).
-3 = (s 2).
-4 = (s 3).
-5 = (s 4).
-6 = (s 5).
-depth = 6.
-
-m1 = notrans.
-
-%query 1 1 stp m1 tnil bot top.
-
-%query 1 1 stp m1 tnil top top.
-
-%query 1 1 stp m1 tnil (arrow top top) (arrow top top).
-
-%query 1 1 sdc m1 tnil (rect top top) (rect top top).
-
-%query 1 1 sdc m1 tnil (rect top top) (rect bot top).
-
-
-%query 1 1 stp m1 g1 top top.
-
-%query 1 1 stp m1 g1 (arrow top top) (arrow top top).
-
-%query 1 1 sdc m1 g1 (rect top top) (rect top top).
-
-%query 1 1 sdc m1 g1 (rect top top) (rect bot top).
-
-
-%query 1 1 stp m1 g1 top top.
-
-%query 1 1 stp m1 g1 (arrow top top) (arrow top top).
-
-%query 1 1 sdc m1 g1 (rect top top) (rect top top).
-
-%query 1 1 sdc m1 g1 (rect top top) (rect bot top).
-
-
-%query 1 1 stp m1 tnil (bind z d1) (bind z d1).
-
-%query 1 1 stp m1 tnil (bind z d2) (bind z d2).
-
-%query 1 1 stp m1 tnil (bind z d1) (bind z d2).
-
-
-
-%query 1 1 stp m1 (tcons (rect top top) tnil) (sel z) (sel z).
-
-%query 1 1 stp m1 (tcons (rect bot (arrow top top)) tnil) (sel z) (arrow top top).
-
-%% now define trans axiom!
 stp/trans   : stp oktrans     G T1 T3
            <- stp oktrans     G T2 T3
            <- stp oktrans     G T1 T2
             .
-
-
 
 % --------------- helper lemmas ------------- %
 
@@ -195,12 +162,8 @@ stp/trans   : stp oktrans     G T1 T3
 extend-stp: stp I1 tnil T1 T2 -> {T3}stp I1 (tcons T3 tnil) T1 T2 -> type.
 %mode extend-stp +A +B -D.
 
--/bot: extend-stp stp/bot _ stp/bot.
 -/top: extend-stp stp/top _ stp/top.
--/arrow: extend-stp (stp/arrow S2 S1) _ (stp/arrow S2' S1')
-        <- extend-stp S2 _ S2'
-        <- extend-stp S1 _ S1'.
--/bind: extend-stp (stp/bind S2) _ (stp/bind S2).
+-/bind: extend-stp (stp/bind S1 S2) _ (stp/bind S1 S2).
 -/trans0: extend-stp (stp/trans0 S) _ (stp/trans0 S') 
         <- extend-stp S _ S'.
 -/trans: extend-stp (stp/trans S1 S2) _ (stp/trans S1' S2') 
@@ -246,10 +209,22 @@ ttransdc* :
 
 %mode ttransdc* +X1 +X2 -X3.
 
-- : ttransdc*  (sdc/rect L1 U1 X1 X2) (sdc/rect L2 U2 X2' X3) (sdc/rect L3 U3 X1 X3)
+- : ttransdc*  (sdc/arrow L1 U1) (sdc/arrow L2 U2) (sdc/arrow L3 U3)
         <- ttrans* L2 L1 L3
         <- ttrans* U1 U2 U3.
 
+- : ttransdc*  (sdc/rectuu U1) (sdc/rectuu U2) (sdc/rectuu U3)
+        <- ttrans* U1 U2 U3.
+
+- : ttransdc*  (sdc/rectu U1 X1) (sdc/rectuu U2) (sdc/rectu U3 X1)
+        <- ttrans* U1 U2 U3.
+
+- : ttransdc*  (sdc/rect L1 U1 X1 X2) (sdc/rectu U2 X1') (sdc/rectu U3 X1)
+        <- ttrans* U1 U2 U3.
+
+- : ttransdc*  (sdc/rect L1 U1 X1 X2) (sdc/rect L2 U2 X2' X3) (sdc/rect L3 U3 X1 X3)
+        <- ttrans* L2 L1 L3
+        <- ttrans* U1 U2 U3.
 
 %worlds () (ttransdc* _ _ _).
 %total (Q1') (ttransdc* Q1' _ _).
@@ -262,14 +237,12 @@ ttransdc* :
 
 narrow* : 
     stp oktrans (tcons Q tnil) M N ->
-    sdc oktrans (tcons P tnil) P Q ->
+    sdcs oktrans (tcons P tnil) P Q ->
 %%
     stp oktrans (tcons P tnil) M N ->
     type.
 
 %mode narrow*  +X1 +X2 -X3.
-
--bot    : narrow* (stp/trans0 stp/bot) _ (stp/trans0 stp/bot).
 
 -top    : narrow* (stp/trans0 stp/top) _ (stp/trans0 stp/top).
 
@@ -277,29 +250,6 @@ narrow* :
 -trans  : narrow* (stp/trans D1 D2) Dsub (stp/trans D1' D2')
        <- narrow* D1 Dsub D1'
        <- narrow* D2 Dsub D2'.
-
-
--var    : narrow* (stp/trans0 (stp/sel1 D)) (sdc/rect Lsub Dsub X1 X2) (stp/trans0 (stp/sel1 D''))
-       <- narrow* D (sdc/rect Lsub Dsub X1 X2) D'
-       <- ttrans*  Dsub D' D''.
-
-
--var2   : narrow* (stp/trans0 (stp/sel2 L D)) (sdc/rect Lsub Dsub XX1 XX2) (stp/trans0 (stp/sel2 L'' XX1))
-       <- narrow* L (sdc/rect Lsub Dsub XX1 XX2) L'
-       <- ttrans* L' Lsub L''.
-
-
--arrow  : narrow* (stp/trans0 (stp/arrow (D2) (D1))) Dsub (stp/trans0 (stp/arrow (D2') (D1')))
-       <- narrow* D1 Dsub D1'
-       <- narrow* D2 Dsub D2'.
-
-
--bind   : narrow* (stp/trans0 (stp/bind (D2))) Dsub (stp/trans0 (stp/bind (D2)))
-       % once we have more identifiers:
-       % <- narrow* D1 Dsub D1'
-       % <- narrow* (D2) Dsub (D2').
-       .
-
 
 %worlds () (narrow* _ _ _).
 %total (A) (narrow* A _ _).
