@@ -465,8 +465,9 @@ stp/transl   : stpl (s N)     G T1 T3
              .
 
 stp/lltop2   : stpl (s z)     (tcons DS tnil) L (sel z X)
-            <- dlk DS X (rect (tsome top) U)
+            <- dlk DS Y (rect (tsome top) U)
             <- stp oktrans    (tcons DS tnil) top U
+            <- stpl z         (tcons DS tnil) (sel z Y) (sel z X)
             .
 
 stp/lltopx   : stpl (s z)     G _ top.
@@ -474,8 +475,9 @@ stp/lltopx   : stpl (s z)     G _ top.
 stp/transe   : stpl z         G T1 T1.
 
 stp/llsel2    : stpl z        (tcons DS tnil) L (sel z X)
-             <- dlk DS X (rect (tsome L) U)
+             <- dlk DS Y (rect (tsome L) U)
              <- stp oktrans   (tcons DS tnil) L U
+             <- stpl z        (tcons DS tnil) (sel z Y) (sel z X)
              .
 
 stp/llsel1   : stpl (s N)     (tcons DS tnil) (sel z X) T
@@ -494,11 +496,11 @@ utrans0* :
 
 %mode utrans0*  +S1 +S2 -S12.
 
-- : utrans0* (stp/trans0 (stp/top)) (stp/llsel2 D K) (stp/lltop2 D K).
+- : utrans0* (stp/trans0 (stp/top)) (stp/llsel2 D0 D K) (stp/lltop2 D0 D K).
 - : utrans0* (stp/trans0 (stp/top)) stp/transe stp/lltopx.
 
 - : utrans0* (stp/trans0 _) (stp/lltopx) (stp/lltopx).
-- : utrans0* (stp/trans0 _) (stp/lltop2 D K) (stp/lltop2 D K).
+- : utrans0* (stp/trans0 _) (stp/lltop2 D0 D K) (stp/lltop2 D0 D K).
 
 
 - : utrans0* (stp/trans0 (stp/sel1 D K)) TL (stp/llsel1 DL K)
@@ -514,10 +516,10 @@ utrans0* :
       <- utrans0* D1 DL' DL''.
 
 - : utrans0* (stp/trans0 (stp/sel2 D1 D3 K)) stp/transe DL'
-      <- utrans0* D1 (stp/llsel2 D3 K) DL'.
+      <- utrans0* D1 (stp/llsel2 stp/transe D3 K) DL'.
 
-- : utrans0* (stp/trans0 (stp/sel2 BTL BLU K)) (stp/llsel2 BLU' K') BTL''
-      <- utrans0* BTL (stp/llsel2 BLU K) BTL'
+- : utrans0* (stp/trans0 (stp/sel2 BTL BLU K)) (stp/llsel2 D0 BLU' K') BTL''
+      <- utrans0* BTL (stp/llsel2 (stp/llsel2 D0 BLU' K') BLU K) BTL''
       . % NOTE(namin): BTL' != BTL'' because selection label differs
 
 - : utrans0* (stp/trans S1 S2) TL TL''
@@ -546,6 +548,21 @@ utrans0 :
 
 % given linear version, remove top-level trans nodes
 
+utrans1s* : 
+  stp notrans G T1 (sel z N2) ->
+  stpl z G (sel z N2) (sel z N3) -> 
+  stp notrans G T1 (sel z N3) ->
+  type.
+%mode utrans1s* +A +B -C.
+
+- : utrans1s* S1 stp/transe S1.
+
+- : utrans1s* S1 (stp/llsel2 D0 D E) DX
+      <- utrans1s* (stp/sel2 (stp/trans0 S1) D E) D0 DX.
+
+%worlds () (utrans1s* _ _ _).
+%total {B} (utrans1s* A B C).
+
 utrans1* : 
   issel T2 z ->
   stp notrans G T1 T2 ->
@@ -562,13 +579,16 @@ utrans1* :
 
 - : utrans1* I2 S1 stp/lltopx stp/top.
 
-- : utrans1* I2 S1 (stp/lltop2 D) (stp/sel2 (stp/trans0 stp/top) D).
+ - : utrans1* I2 S1 (stp/lltop2 D0 D E) DX 
+      <- utrans1s* (stp/sel2 (stp/trans0 stp/top) D E) D0 DX.
 
-- : utrans1* I2 S1 (stp/llsel2 D) (stp/sel2 (stp/trans0 S1) D).
+- : utrans1* I2 S1 (stp/llsel2 D0 D E) DX % (stp/sel2 (stp/trans0 S1) D E)
+      <- utrans1s* (stp/sel2 (stp/trans0 S1) D E) D0 DX.
 
 
 %worlds () (utrans1* _ _ _ _).
 %total {B} (utrans1* _ A B C).
+
 
 
 utrans1 : 
@@ -580,14 +600,13 @@ utrans1 :
 - : utrans1 (stp/transl I1' I2' S2 TL) S13 
         <- utrans1* I2' S2 TL S13.
 
-- : utrans1 (stp/llsel1 D) (stp/sel1 (stp/trans0 D'))
+- : utrans1 (stp/llsel1 D E) (stp/sel1 (stp/trans0 D') E)
         <- utrans1 D D'.
-
-- : utrans1 stp/llbot stp/bot.
 
 - : utrans1 stp/lltopx stp/top.
 
-- : utrans1 (stp/lltop2 D) (stp/sel2 (stp/trans0 stp/top) D).
+- : utrans1 (stp/lltop2 D0 D E) DX
+      <- utrans1s* (stp/sel2 (stp/trans0 stp/top) D E) D0 DX.
 
 %worlds () (utrans1 _ _).
 %total (A) (utrans1 A B).
