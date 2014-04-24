@@ -40,7 +40,6 @@ tp : type.  %name tp T.
 dc: type. %name dc D.
 dcs: type.
 
-top     : tp.
 sel     : nat -> nat -> tp.
 bind    : nat -> dcs -> tp.
 
@@ -61,7 +60,6 @@ tcons: dcs -> tenv -> tenv.
 
 issel: tp -> nat -> type.
 is/bind: issel (bind _ _) z.
-is/top: issel top (s z).
 is/sel: issel (sel _ _) (s z).
 
 %mode issel +T -N.
@@ -86,7 +84,6 @@ mode1: type.
 notrans: mode1.
 oktrans: mode1.
 
-
 stp  : {I1:mode1} tenv -> tp -> tp -> type.
 sdcs : {I1:mode1} tenv -> dcs -> dcs -> type.
 sdc  : {I1:mode1} tenv -> dc -> dc -> type.
@@ -98,8 +95,6 @@ stpo/s : stpo I0 G (tsome S) U <- stp I0 G S U.
 stpoo/nn : stpoo I0 G tnone tnone.
 stpoo/ns : stpoo I0 G tnone (tsome U).
 stpoo/ss : stpoo I0 G (tsome S) (tsome U) <- stp I0 G S U.
-
-stp/top     : stp notrans    G _ top.
 
 stp/sel1    : stp notrans    (tcons DS tnil) (sel z X) T
            <- dlk DS X (rect _ U)
@@ -190,7 +185,6 @@ eq-stp-u : id-tp U U' -> stp I G L U -> stp I G L U' -> type.
 extend-stp: stp I1 tnil T1 T2 -> {T3}stp I1 (tcons T3 tnil) T1 T2 -> type.
 %mode extend-stp +A +B -D.
 
--/top: extend-stp stp/top _ stp/top.
 -/bind: extend-stp (stp/bind S1 S2) _ (stp/bind S1 S2).
 -/trans0: extend-stp (stp/trans0 S) _ (stp/trans0 S') 
         <- extend-stp S _ S'.
@@ -315,9 +309,6 @@ narrow* :
 
 %mode narrow*  +X1 +X2 -X3.
 
--top    : narrow* (stp/trans0 stp/top) _ (stp/trans0 stp/top).
-
-
 -trans  : narrow* (stp/trans D1 D2) Dsub (stp/trans D1' D2')
        <- narrow* D1 Dsub D1'
        <- narrow* D2 Dsub D2'.
@@ -428,9 +419,6 @@ trans* :
 
 %mode trans*   +I +X1 +X2 -X3.
 
--top    : trans* _ D stp/top stp/top.
-
-
 -var    : trans* _ (stp/sel1 U2 K) D (stp/sel1 U2' K)
         <- to-oktrans D D'
         <- ttrans* U2 D' U2'.
@@ -445,187 +433,3 @@ trans* :
 
 %worlds () (trans* _ _ _ _).
 %total (A) (trans* _ A _ _).
-
-
-
-
-% --------------- linearize trans nodes, remove paths ------------- %
-
-
-% linked-list data structure so we can traverse left -> right
-% (is this necessary?)
-
-stpl  : nat -> tenv -> tp -> tp -> type.
-
-stp/transl   : stpl (s N)     G T1 T3
-            <- stpl N         G T2 T3
-            <- stp notrans    G T1 T2
-            <- issel T2 z
-            <- issel T1 z
-             .
-
-stp/lltop2   : stpl (s z)     (tcons DS tnil) L (sel z X)
-            <- dlk DS X (rect (tsome top) U)
-            <- stp oktrans    (tcons DS tnil) top U
-            .
-
-stp/lltopx   : stpl (s z)     G _ top.
-
-stp/transe   : stpl z         G T1 T1.
-
-stp/llsel2    : stpl z        (tcons DS tnil) L (sel z X)
-             <- dlk DS X (rect (tsome L) U)
-             <- stp oktrans   (tcons DS tnil) L U
-             .
-
-stp/llsel1   : stpl (s N)     (tcons DS tnil) (sel z X) T
-            <- dlk DS X (rect L U)
-            <- stpl (s N)     (tcons DS tnil) U T
-             .
-
-
-% linearize a derivation that uses transitivity
-
-utrans0* : 
-  stp oktrans  G T1 T2 -> 
-  stpl _ G T2 T3 -> 
-  stpl (s _) G T1 T3 -> 
-  type.
-
-%mode utrans0*  +S1 +S2 -S12.
-
-- : utrans0* (stp/trans0 (stp/top)) (stp/llsel2 D K) (stp/lltop2 D K).
-- : utrans0* (stp/trans0 (stp/top)) stp/transe stp/lltopx.
-
-- : utrans0* (stp/trans0 _) (stp/lltopx) (stp/lltopx).
-- : utrans0* (stp/trans0 _) (stp/lltop2 D K) (stp/lltop2 D K).
-
-
-- : utrans0* (stp/trans0 (stp/sel1 D K)) TL (stp/llsel1 DL K)
-      <- utrans0* D TL DL.
-
-- : utrans0* (stp/trans0 (stp/bind A B))    TL (stp/transl is/bind is/bind (stp/bind A B) TL).
-
-- : utrans0* (stp/trans0 (stp/sel2 D1 D3 K)) (stp/llsel1 DL K') DL''
-      <- dlk-unique K K' EQ
-      <- eq-rect EQ EQL EQU
-      <- eq-stp-u EQU D3 D3'
-      <- utrans0* D3' DL DL'
-      <- utrans0* D1 DL' DL''.
-
-- : utrans0* (stp/trans0 (stp/sel2 D1 D3 K)) stp/transe DL'
-      <- utrans0* D1 (stp/llsel2 D3 K) DL'.
-
-- : utrans0* (stp/trans0 (stp/sel2 BTL BLU K)) (stp/llsel2 BLU' K') BTL''
-      <- utrans0* BTL (stp/llsel2 BLU K) BTL'
-      . % NOTE(namin): BTL' != BTL'' because selection label differs
-
-- : utrans0* (stp/trans S1 S2) TL TL''
-  <- utrans0* S2 TL TL'
-  <- utrans0* S1 TL' TL''.
-
-
-%worlds ()(utrans0* _ _ _).
-%total {A} (utrans0* A _ _).
-
-
-utrans0 : 
-  stp oktrans  G T1 T2 -> 
-  stpl (s _) G T1 T2 -> 
-  type.
-
-%mode utrans0  +S2 -S12.
-
-- : utrans0 S1 S1' <- utrans0* S1 stp/transe S1'.
-
-%worlds ()(utrans0 _ _).
-%total {A} (utrans0 A _).
-
-
-
-
-% given linear version, remove top-level trans nodes
-
-utrans1* : 
-  issel T2 z ->
-  stp notrans G T1 T2 ->
-  stpl _ G T2 T3 -> 
-  stp notrans G T1 T3 ->
-  type.
-%mode utrans1* +I2 +A +B -C.
-
-- : utrans1* I2 S1 (stp/transl I1' I2' S2 TL) S13 
-        <- trans* I1' S1 S2 S12
-        <- utrans1* I2' S12 TL S13.
-
-- : utrans1* I2 S1 stp/transe S1.
-
-- : utrans1* I2 S1 stp/lltopx stp/top.
-
-- : utrans1* I2 S1 (stp/lltop2 D) (stp/sel2 (stp/trans0 stp/top) D).
-
-- : utrans1* I2 S1 (stp/llsel2 D) (stp/sel2 (stp/trans0 S1) D).
-
-
-%worlds () (utrans1* _ _ _ _).
-%total {B} (utrans1* _ A B C).
-
-
-utrans1 : 
-  stpl (s _) G T1 T3 -> 
-  stp notrans G T1 T3 ->
-  type.
-%mode utrans1 +A -B.
-
-- : utrans1 (stp/transl I1' I2' S2 TL) S13 
-        <- utrans1* I2' S2 TL S13.
-
-- : utrans1 (stp/llsel1 D) (stp/sel1 (stp/trans0 D'))
-        <- utrans1 D D'.
-
-- : utrans1 stp/llbot stp/bot.
-
-- : utrans1 stp/lltopx stp/top.
-
-- : utrans1 (stp/lltop2 D) (stp/sel2 (stp/trans0 stp/top) D).
-
-%worlds () (utrans1 _ _).
-%total (A) (utrans1 A B).
-
-
-% now put it together for our main lemma ...
-
-
-% --------------- inversion lemma / remove top-level transitivity ------------- %
-
-invert-trans : 
-  stp oktrans G T1 T2 ->
-  stp notrans G T1 T2 ->
-  type.
-%mode invert-trans +A -C.
-
-- : invert-trans S12 S12'
-        <- utrans0 S12 SL12
-        <- utrans1 SL12 S12'.
-
-%worlds () (invert-trans _ _).
-%total (A) (invert-trans A B).
-
-
-
-% example inversion lemma
-
-invert-fun :
-  stp oktrans G (arrow T1 T2) (arrow T3 T4) ->
-  stp oktrans G T3 T1 ->
-  stp oktrans G T2 T4 ->
-  type.
-
-%mode invert-fun +A -B -C.
-
-- : invert-fun A S1 S2 <- invert-trans A (stp/arrow S2 S1).
-
-%worlds () (invert-fun _ _ _).
-%total (A) (invert-fun A _ _).
-
-
