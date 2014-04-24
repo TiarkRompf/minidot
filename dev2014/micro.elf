@@ -1,10 +1,3 @@
-% indirect transitivity: 
-%   - admit trans axiom
-%   - prove lemma: top-level uses of axiom can be 
-%     pushed further down into derivation
-%   - inversion lemmas remain straighforward
-
-
 %%%%%  Natural numbers  %%%%%
 
 nat : type.  %name nat N.
@@ -84,20 +77,27 @@ mode1: type.
 notrans: mode1.
 oktrans: mode1.
 
+wtp  : tenv -> tp -> type.
+wdcs : tenv -> dcs -> type.
+wdc  : tenv -> dc -> type.
+wtpo : tenv -> topt -> type.
 stp  : {I1:mode1} tenv -> tp -> tp -> type.
 sdcs : {I1:mode1} tenv -> dcs -> dcs -> type.
 sdc  : {I1:mode1} tenv -> dc -> dc -> type.
 stpo : {I1:mode1} tenv -> topt -> tp -> type.
 stpoo: {I1:mode1} tenv -> topt -> topt -> type.
 
-stpo/n : stpo I0 G tnone U.
+stpo/n : stpo I0 G tnone U
+      <- wtp G U.
 stpo/s : stpo I0 G (tsome S) U <- stp I0 G S U.
 stpoo/nn : stpoo I0 G tnone tnone.
-stpoo/ns : stpoo I0 G tnone (tsome U).
+stpoo/ns : stpoo I0 G tnone (tsome U)
+        <- wtp G U.
 stpoo/ss : stpoo I0 G (tsome S) (tsome U) <- stp I0 G S U.
 
 stp/sel1    : stp notrans    (tcons DS tnil) (sel z X) T
-           <- dlk DS X (rect _ U)
+           <- dlk DS X (rect OL U)
+           <- stpo oktrans   (tcons DS tnil) OL U
            <- stp oktrans    (tcons DS tnil) U T
            .
 
@@ -109,7 +109,7 @@ stp/sel2    : stp notrans    (tcons DS tnil) T (sel z X)
            .
 
 stp/bind    : stp notrans    G (bind z DS1) (bind z DS2)
-           <- sdcs oktrans    (tcons DS2 tnil) DS2 DS2
+           <- wtp tnil (bind z DS2)
            <- sdcs oktrans    (tcons DS1 tnil) DS1 DS2
            .
 
@@ -141,6 +141,25 @@ stp/trans   : stp oktrans     G T1 T3
            <- stp oktrans     G T2 T3
            <- stp oktrans     G T1 T2
             .
+
+wtp/sel     : wtp (tcons DS tnil) (sel z X)
+           <- dlk DS X (rect OL U)
+           <- stpo oktrans (tcons DS tnil) OL U.
+
+wtp/bind    : wtp G (bind z DS)
+           <- wdcs (tcons DS tnil) DS.
+
+wdc/rect    : wdc G (rect OL U)
+           <- stpo oktrans G OL U.
+
+wdc/arrow   : wdc G (arrow L U)
+           <- wtp G L
+           <- wtp G U.
+
+wdcs/nil    : wdcs G dnil.
+wdcs/cons   : wdcs G (dcons D DS)
+           <- wdc G D
+           <- wdcs G DS.
 
 % --------------- uniqueness ------------- %
 
@@ -231,7 +250,7 @@ ttransoo* :
 %mode ttransoo*   +X1 +X2 -X3.
 
 - : ttransoo* stpoo/nn stpoo/nn stpoo/nn.
-- : ttransoo* stpoo/nn stpoo/ns stpoo/ns.
+- : ttransoo* stpoo/nn (stpoo/ns WU) (stpoo/ns WU).
 - : ttransoo* stpoo/ns (stpoo/ss _) stpoo/ns.
 - : ttransoo* (stpoo/ss A) (stpoo/ss B) (stpoo/ss C)
  <- ttrans* A B C.
