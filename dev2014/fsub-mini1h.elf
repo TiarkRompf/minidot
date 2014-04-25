@@ -482,13 +482,18 @@ narrow* :
        <- narrow* BU BDS BUN
        <- ttrans* BUK BUN BU'.
 
-%{
--var2   : narrow* (stp/trans0 (stp/sel2 BS BSU K)) BDS (stp/trans0 (stp/sel2 BS'' BSU' K'))
-       <- narrow* BS BDS BSN
-       <- narrow* BSU BDS BSUN
-       <- inv-sdcs BDS K K' (sdc/rect (stpoo/ss BS') _ (stpo/s BSU') _)
-       <- ttrans* BSN BS' BS''.
+-var2   : narrow* (stp/trans0 (stp/sel2 BTL BLU K (tl (tl/miss E0) A N))) BDS (stp/trans0 (stp/sel2 BTL' BLU' K (tl (tl/miss E0) A N')))
+      <- tsize-swap N _ N'
+      <- narrow* BLU BDS BLU'
+      <- narrow* BTL BDS BTL'.
 
+-var2hit: narrow* (stp/trans0 (stp/sel2 BTL BLU K (tl tl/hit A N))) BDS (stp/trans0 (stp/sel2 BTL' BLU' K' (tl tl/hit A N')))
+      <- tsize-swap N _ N'
+      <- inv-sdcs BDS K K' (sdc/rect (stpoo/ss BLK) _ (stpo/s BLU') _)
+      <- narrow* BTL BDS BTLN
+      <- ttrans* BTLN BLK BTL'.
+
+%{
 -bind   : narrow* (stp/trans0 (stp/bind BD12 BD22)) BDS (stp/trans0 (stp/bind BD12 BD22)).
 }%
 
