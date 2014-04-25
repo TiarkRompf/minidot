@@ -623,21 +623,33 @@ invert-trans :
 %worlds () (invert-trans _ _).
 %total (A) (invert-trans A B).
 
-
-
 % example inversion lemma
 
-invert-fun :
-  stp oktrans G (arrow T1 T2) (arrow T3 T4) ->
-  stp oktrans G T3 T1 ->
-  stp oktrans G T2 T4 ->
+invert-bind :
+  stp oktrans G (bind z DS1) (bind z DS2) ->
+%%
+  sdcs oktrans (tcons DS1 tnil) DS1 DS2 ->
   type.
+%mode invert-bind +A -B.
 
-%mode invert-fun +A -B -C.
+- : invert-bind A B <- invert-trans A (stp/bind B _).
 
-- : invert-fun A S1 S2 <- invert-trans A (stp/arrow S2 S1).
+%worlds () (invert-bind _ _).
+%total (A) (invert-bind A _).
 
-%worlds () (invert-fun _ _ _).
-%total (A) (invert-fun A _ _).
+invert-fun :
+  stp oktrans G (bind z DS1) (bind z DS2) ->
+  dlk DS2 X (arrow S2 U2) ->
+%%
+  dlk DS1 X (arrow S1 U1) ->
+  stp oktrans (tcons DS1 tnil) S2 S1 ->
+  stp oktrans (tcons DS1 tnil) U1 U2 ->
+  type.
+%mode invert-fun +A +B -C -D -E.
 
+- : invert-fun B K K' BS' BU'
+ <- invert-bind B BD
+ <- inv-sdcs BD K K' (sdc/arrow BS' BU').
 
+%worlds () (invert-fun _ _ _ _ _).
+%total (A) (invert-fun A _ _ _ _).
