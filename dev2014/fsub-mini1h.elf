@@ -12,15 +12,9 @@ nat : type.  %name nat N.
 z : nat.
 s : nat -> nat.
 
-nat_eq : nat -> nat -> type.
-nat_eq_     : nat_eq N N.
-
-
 add : nat -> nat -> nat -> type. %name add A.
 add/z: add z N N.
 add/s: add (s N1) N2 (s N3) <- add N1 N2 N3.
-
-
 
 add-reduces: {N1}{N2}{N3}add N1 N2 N3 -> type.
 %mode add-reduces +N1 +N2 +N3 +A.
@@ -30,8 +24,15 @@ add-reduces: {N1}{N2}{N3}add N1 N2 N3 -> type.
 %total (A) (add-reduces A _ _ _).
 %reduces N2 <= N3 (add-reduces N1 N2 N3 A).
 
+add-inc: add A B C -> add A (s B) (s C) -> type.
+%mode add-inc +E1 -E2.
 
+- : add-inc add/z add/z.
+- : add-inc (add/s A1) (add/s A2)
+  <- add-inc A1 A2.
 
+%worlds () (add-inc _ _).
+%total {A} (add-inc A _).
 
 %%%%%  Syntax  %%%%%
 
@@ -68,6 +69,35 @@ is/sel: issel (sel _ _) (s z).
 %worlds () (issel _ _).
 %total (A) (issel A _).
 
+%{ ------- environments ----- }%
+
+tlookup-zero: tenv -> nat -> dcs -> type.
+tl/hit  : tlookup-zero (tcons V G) z V.
+tl/miss : tlookup-zero (tcons V' G) (s N) V <- tlookup-zero G N V.
+
+tsize : tenv -> nat -> type.
+tf/n   : tsize tnil z.
+tf/c   : tsize (tcons V G) (s N) <- tsize G N.
+
+%worlds () (tsize _ _).
+
+tlookup: tenv -> nat -> dcs -> type.
+tl  : tlookup G N V
+  <- tsize G S
+  <- add (s N) M S
+  <- tlookup-zero G M V.
+
+% Partial ordering on environments
+
+sub-env: tenv -> tenv -> type.
+
+sub-env/refl: sub-env G G.
+sub-env/ext: sub-env G1 (tcons Z G2) <- sub-env G1 G2.
+
+sub-env-size: tenv -> nat -> tenv -> type.
+ses: sub-env-size GN N G
+      <- sub-env GN G
+      <- tsize GN N.
 
 %%%%%  Semantics  %%%%%
 
@@ -94,21 +124,24 @@ stpoo/ss : stpoo I0 G (tsome S) (tsome U) <- stp I0 G S U.
 
 stp/top     : stp notrans    G _ top.
 
-stp/sel1    : stp notrans    (tcons DS tnil) (sel z X) T
+stp/sel1    : stp notrans    G (sel N X) T
+           <- tlookup G N DS
            <- dlk DS X (rect _ U)
-           <- stp oktrans    (tcons DS tnil) U T
+           <- stp oktrans    G U T
            .
 
 
-stp/sel2    : stp notrans    (tcons DS tnil) T (sel z X)
+stp/sel2    : stp notrans    G T (sel N X)
+           <- tlookup G N DS
            <- dlk DS X (rect (tsome L) U)
-           <- stp oktrans    (tcons DS tnil) L U
-           <- stp oktrans    (tcons DS tnil) T L
+           <- stp oktrans    G L U
+           <- stp oktrans    G T L
            .
 
-stp/bind    : stp notrans    G (bind z DS1) (bind z DS2)
-           <- sdcs oktrans    (tcons DS2 tnil) DS2 DS2
-           <- sdcs oktrans    (tcons DS1 tnil) DS1 DS2
+stp/bind    : stp notrans    G (bind N DS1) (bind N DS2)
+           <- sub-env-size   GN N G
+           <- sdcs oktrans   (tcons DS2 GN) DS2 DS2
+           <- sdcs oktrans   (tcons DS1 GN) DS1 DS2
            .
 
 stp/trans0   : stp oktrans   G T1 T2
@@ -140,7 +173,35 @@ stp/trans   : stp oktrans     G T1 T3
            <- stp oktrans     G T1 T2
             .
 
-% --------------- uniqueness ------------- %
+% --------------- uniqueness lemmas ------------- %
+
+eq-nat : nat -> nat -> type.
+eq-nat/z : eq-nat z z.
+eq-nat/s : eq-nat (s N1) (s N2)
+   <- eq-nat N1 N2.
+
+id-nat : nat -> nat -> type.
+id-nat/refl : id-nat N N.
+
+s-injective : id-nat N1 N2 -> id-nat (s N1) (s N2) -> type.
+%mode s-injective +A -B.
+
+s-injective/refl : s-injective id-nat/refl id-nat/refl.
+
+%worlds () (s-injective _ _).
+%total (A) (s-injective A _).
+
+eq2id-nat : eq-nat N1 N2 -> id-nat N1 N2 -> type.
+%mode eq2id-nat +A -B.
+
+eq2id-nat/z : eq2id-nat eq-nat/z id-nat/refl.
+
+eq2id-nat/s : eq2id-nat (eq-nat/s A) OUT
+           <- eq2id-nat A B
+           <- s-injective B OUT.
+
+%worlds () (eq2id-nat _ _).
+%total (A) (eq2id-nat A _).
 
 id-tp : tp -> tp -> type.
 id-tp/refl : id-tp D D.
@@ -150,6 +211,11 @@ id-topt/refl : id-topt D D.
 
 id-dc : dc -> dc -> type.
 id-dc/refl : id-dc D D.
+
+id-dcs : dcs -> dcs -> type.
+id-dcs/refl : id-dcs D D.
+
+false: type.
 
 dlk-unique : dlk DS X D -> dlk DS X D' -> id-dc D D' -> type.
 %mode dlk-unique +A +B -EQ.
@@ -178,15 +244,70 @@ eq-stp-u : id-tp U U' -> stp I G L U -> stp I G L U' -> type.
 %total (A) (eq-stp-u A _ _).
 %reduces C <= B (eq-stp-u _ B C).
 
-% --------------- helper lemmas ------------- %
+tlookup-zero-unique: tlookup-zero G2 E T1 -> tlookup-zero G2 E T2 -> id-dcs T1 T2 -> type.
+%mode tlookup-zero-unique +P1 +P2 -SBT.
 
-extend-stp: stp I1 tnil T1 T2 -> {T3}stp I1 (tcons T3 tnil) T1 T2 -> type.
+- : tlookup-zero-unique tl/hit tl/hit id-dcs/refl.
+- : tlookup-zero-unique (tl/miss A) (tl/miss B) X <- tlookup-zero-unique A B X.
+
+%worlds () (tlookup-zero-unique _ _ _).
+%total {T2} (tlookup-zero-unique T2 _ _).
+
+tsize-unique-eq: tsize G2 N1 -> tsize G2 N2 -> eq-nat N1 N2 -> type.
+%mode tsize-unique-eq +P1 +P2 -SBT.
+
+- : tsize-unique-eq tf/n tf/n eq-nat/z.
+- : tsize-unique-eq (tf/c A) (tf/c B) (eq-nat/s X) <- tsize-unique-eq A B X.
+
+%worlds () (tsize-unique-eq _ _ _).
+%total {T2} (tsize-unique-eq T2 _ _).
+
+% --------------- extension lemmas ------------- %
+
+extend-wf-lkpz: tlookup-zero G N T -> {Z: dcs} tlookup-zero (tcons Z G) (s N) T -> type.
+%mode extend-wf-lkpz +A +B -D.
+- : extend-wf-lkpz tl/hit _ (tl/miss tl/hit).
+- : extend-wf-lkpz (tl/miss A) _ (tl/miss B) <- extend-wf-lkpz A _ B.
+%worlds () (extend-wf-lkpz _ _ _).
+%total A (extend-wf-lkpz A _ _).
+
+size-inc: tsize G N -> {Z: dcs} tsize (tcons Z G) (s N) -> type.
+%mode size-inc +A +B -D.
+- : size-inc tf/n T (tf/c tf/n).
+- : size-inc (tf/c S) T (tf/c S') <- size-inc S _ S'.
+%worlds () (size-inc _ _ _).
+%total A (size-inc A _ _).
+
+extend-wf-lkp: tlookup G N T -> {Z: dcs} tlookup (tcons Z G) N T -> type.
+%mode extend-wf-lkp +A +B -C.
+- : extend-wf-lkp (tl L A S) Z (tl L' A' S')
+      <- size-inc S Z S'
+      <- add-inc A A'
+      <- extend-wf-lkpz L Z L'.
+%worlds () (extend-wf-lkp _ _ _).
+%total A (extend-wf-lkp A _ _).
+
+extend-wf-lkp-mult: tlookup G N T -> sub-env G G1 -> tlookup G1 N T -> type.
+%mode extend-wf-lkp-mult +A +B -C.
+- : extend-wf-lkp-mult L sub-env/refl L.
+- : extend-wf-lkp-mult L (sub-env/ext S) L2
+    <- extend-wf-lkp-mult L S L1
+    <- extend-wf-lkp L1 _ L2.
+%worlds () (extend-wf-lkp-mult _ _ _).
+%total A (extend-wf-lkp-mult _ A _).
+
+%. %%% TODO %%%
+
+extend-stp: stp I1 G T1 T2 -> {T3} stp I1 (tcons T3 G) T1 T2 -> type.
 %mode extend-stp +A +B -D.
 
 -/top: extend-stp stp/top _ stp/top.
+
 -/bind: extend-stp (stp/bind S1 S2) _ (stp/bind S1 S2).
+
 -/trans0: extend-stp (stp/trans0 S) _ (stp/trans0 S') 
         <- extend-stp S _ S'.
+
 -/trans: extend-stp (stp/trans S1 S2) _ (stp/trans S1' S2') 
         <- extend-stp S1 _ S1'
         <- extend-stp S2 _ S2'.
@@ -194,6 +315,7 @@ extend-stp: stp I1 tnil T1 T2 -> {T3}stp I1 (tcons T3 tnil) T1 T2 -> type.
 %worlds () (extend-stp _ _ _).
 %total (A) (extend-stp A _ _).
 
+% --------------- (notrans -> oktrans) ------------- %
 
 to-oktrans: stp notrans G T1 T2 -> stp oktrans G T1 T2 -> type.
 %mode to-oktrans +A -B.
