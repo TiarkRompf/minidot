@@ -448,11 +448,19 @@ inv-sdcs :
 %worlds () (inv-sdcs _ _ _ _).
 %total (A) (inv-sdcs A _ _ _).
 
+tsize-swap : tsize (tcons Z G) N -> {Z'} tsize (tcons Z' G) N -> type.
+%mode tsize-swap +A +Z -B.
+
+-/n : tsize-swap (tf/c A) Z (tf/c A).
+
+%worlds () (tsize-swap _ _ _).
+%total (A) (tsize-swap A _ _).
+
 narrow* : 
-    stp oktrans (tcons Q tnil) M N ->
-    sdcs oktrans (tcons P tnil) P Q ->
+    stp oktrans (tcons Q G) M N ->
+    sdcs oktrans (tcons P G) P Q ->
 %%
-    stp oktrans (tcons P tnil) M N ->
+    stp oktrans (tcons P G) M N ->
     type.
 
 %mode narrow*  +X1 +X2 -X3.
@@ -464,11 +472,17 @@ narrow* :
        <- narrow* D1 Dsub D1'
        <- narrow* D2 Dsub D2'.
 
--var    : narrow* (stp/trans0 (stp/sel1 BU K)) BDS (stp/trans0 (stp/sel1 BU'' K'))
-       <- narrow* BU BDS BUN
-       <- inv-sdcs BDS K K' (sdc/rect _ BU' _ _)
-       <- ttrans* BU' BUN BU''.
+-var1   : narrow* (stp/trans0 (stp/sel1 BU K (tl (tl/miss E0) A N))) BDS (stp/trans0 (stp/sel1 BU' K (tl (tl/miss E0) A N')))
+       <- tsize-swap N _ N'
+       <- narrow* BU BDS BU'.
 
+-var1hit: narrow* (stp/trans0 (stp/sel1 BU K (tl tl/hit A N))) BDS (stp/trans0 (stp/sel1 BU' K' (tl tl/hit A N')))
+       <- tsize-swap N _ N'
+       <- inv-sdcs BDS K K' (sdc/rect _ BUK _ _)
+       <- narrow* BU BDS BUN
+       <- ttrans* BUK BUN BU'.
+
+%{
 -var2   : narrow* (stp/trans0 (stp/sel2 BS BSU K)) BDS (stp/trans0 (stp/sel2 BS'' BSU' K'))
        <- narrow* BS BDS BSN
        <- narrow* BSU BDS BSUN
@@ -476,6 +490,7 @@ narrow* :
        <- ttrans* BSN BS' BS''.
 
 -bind   : narrow* (stp/trans0 (stp/bind BD12 BD22)) BDS (stp/trans0 (stp/bind BD12 BD22)).
+}%
 
 %worlds () (narrow* _ _ _).
 %total (A) (narrow* A _ _).
