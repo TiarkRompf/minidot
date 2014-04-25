@@ -493,9 +493,12 @@ narrow* :
       <- narrow* BTL BDS BTLN
       <- ttrans* BTLN BLK BTL'.
 
-%{
--bind   : narrow* (stp/trans0 (stp/bind BD12 BD22)) BDS (stp/trans0 (stp/bind BD12 BD22)).
-}%
+-bind-ext: narrow* (stp/trans0 (stp/bind BD12 BD22 (ses N (sub-env/ext SE)))) BDS (stp/trans0 (stp/bind BD12 BD22 (ses N (sub-env/ext SE)))).
+
+-bind-refl: narrow* (stp/trans0 (stp/bind BD12 BD22 (ses N sub-env/refl))) BDS (stp/trans0 (stp/bind BD12' BD22' (ses N' sub-env/refl)))
+      <- tsize-swap N _ N'
+      % NOTE(namin): uh-oh, narrowed position is now second in env, not first!
+      .
 
 %worlds () (narrow* _ _ _).
 %total (A) (narrow* A _ _).
