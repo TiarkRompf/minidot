@@ -262,6 +262,16 @@ tsize-unique-eq: tsize G2 N1 -> tsize G2 N2 -> eq-nat N1 N2 -> type.
 %worlds () (tsize-unique-eq _ _ _).
 %total {T2} (tsize-unique-eq T2 _ _).
 
+tsize-unique: tsize G2 N1 -> tsize G2 N2 -> id-nat N1 N2 -> type.
+%mode tsize-unique +P1 +P2 -SBT.
+
+- : tsize-unique A B ID
+ <- tsize-unique-eq A B EQ
+ <- eq2id-nat EQ ID.
+
+%worlds () (tsize-unique _ _ _).
+%total {T2} (tsize-unique T2 _ _).
+
 % --------------- extension lemmas ------------- %
 
 extend-wf-lkpz: tlookup-zero G N T -> {Z: dcs} tlookup-zero (tcons Z G) (s N) T -> type.
@@ -296,14 +306,31 @@ extend-wf-lkp-mult: tlookup G N T -> sub-env G G1 -> tlookup G1 N T -> type.
 %worlds () (extend-wf-lkp-mult _ _ _).
 %total A (extend-wf-lkp-mult _ A _).
 
-%. %%% TODO %%%
+extend-sub-env-size: sub-env-size GN N G -> {Z} sub-env-size GN N (tcons Z G) -> type.
+%mode extend-sub-env-size +A +Z -B.
+
+- : extend-sub-env-size (ses N E) Z (ses N (sub-env/ext E)).
+
+%worlds () (extend-sub-env-size _ _ _).
+%total A (extend-sub-env-size A _ _).
 
 extend-stp: stp I1 G T1 T2 -> {T3} stp I1 (tcons T3 G) T1 T2 -> type.
 %mode extend-stp +A +B -D.
 
 -/top: extend-stp stp/top _ stp/top.
 
--/bind: extend-stp (stp/bind S1 S2) _ (stp/bind S1 S2).
+-/sel1: extend-stp (stp/sel1 BUT K E) Z (stp/sel1 BUT' K E')
+     <- extend-wf-lkp E Z E'
+     <- extend-stp BUT Z BUT'.
+
+-/sel2: extend-stp (stp/sel2 BTL BLU K E) Z (stp/sel2 BTL' BLU' K E')
+     <- extend-wf-lkp E Z E'
+     <- extend-stp BLU Z BLU'
+     <- extend-stp BTL Z BTL'.
+
+-/bind: extend-stp (stp/bind BDS12 BDS22 SE) Z (stp/bind BDS12 BDS22 SE')
+     <- extend-sub-env-size SE Z SE'
+     .
 
 -/trans0: extend-stp (stp/trans0 S) _ (stp/trans0 S') 
         <- extend-stp S _ S'.
