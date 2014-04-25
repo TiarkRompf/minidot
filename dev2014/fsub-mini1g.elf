@@ -75,13 +75,6 @@ dlk : dcs -> nat -> dc -> type.
 dlk/z : dlk (dcons D DS) z D.
 dlk/s : dlk (dcons D DS) (s N) D' <- dlk DS N D'.
 
-xpd : tenv -> tp -> dcs -> type.
-
-xpd/sel : xpd (tcons DS tnil) (sel z X) DSU
-       <- dlk DS X (rect _ U)
-       <- xpd (tcons DS tnil) U DSU.
-xpd/sel : xpd tnil (bind z DS) DS.
-
 mode1: type.
 notrans: mode1.
 oktrans: mode1.
