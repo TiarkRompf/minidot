@@ -628,14 +628,15 @@ sev-sub-size :
  <- sev-sub-size (ses N SE) BE (ses N' SE') BE'.
 
 - : sev-sub-size (ses (tf/c N) sub-env/refl) (sev/refl BE) (ses (tf/c N') sub-env/refl) (sev/refl BE)
- <- tsize-sev BE N N'
-  .
+ <- tsize-sev BE N N'.
 
 - : sev-sub-size (ses N (sub-env/ext SE)) (sev/sub BD BE) (ses N' (sub-env/ext SE')) BE'
  <- sev-sub-size (ses N SE) BE (ses N' SE') BE'.
 
+- : sev-sub-size (ses (tf/c N) sub-env/refl) (sev/sub BD BE) (ses (tf/c N') sub-env/refl) (sev/sub BD BE)
+ <- tsize-sev BE N N'.
+
 %worlds () (sev-sub-size _ _ _ _).
-%trustme
 %total (A) (sev-sub-size _ A _ _).
 
 
