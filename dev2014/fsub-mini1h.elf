@@ -631,6 +631,9 @@ sev-sub-size :
  <- tsize-sev BE N N'
   .
 
+- : sev-sub-size (ses N (sub-env/ext SE)) (sev/sub BD BE) (ses N' (sub-env/ext SE')) BE'
+ <- sev-sub-size (ses N SE) BE (ses N' SE') BE'.
+
 %worlds () (sev-sub-size _ _ _ _).
 %trustme
 %total (A) (sev-sub-size _ A _ _).
