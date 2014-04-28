@@ -221,6 +221,26 @@ eq2id-nat/s : eq2id-nat (eq-nat/s A) OUT
 %worlds () (eq2id-nat _ _).
 %total (A) (eq2id-nat A _).
 
+eq-nat-refl : {N} eq-nat N N -> type.
+%mode eq-nat-refl +N -EQ.
+
+eq-nat-refl/z : eq-nat-refl z eq-nat/z.
+
+eq-nat-refl/s : eq-nat-refl (s N) (eq-nat/s EQ)
+<- eq-nat-refl N EQ.
+
+%worlds () (eq-nat-refl _ _).
+%total (N) (eq-nat-refl N _).
+
+id2eq-nat : id-nat N1 N2 -> eq-nat N1 N2 -> type.
+%mode id2eq-nat +A -B.
+
+- : id2eq-nat id-nat/refl EQ
+ <- eq-nat-refl _ EQ.
+
+%worlds () (id2eq-nat _ _).
+%total (A) (id2eq-nat A _).
+
 id-tp : tp -> tp -> type.
 id-tp/refl : id-tp D D.
 
@@ -248,7 +268,14 @@ dlk-unique/s : dlk-unique (dlk/s A) (dlk/s B) EQ
 %worlds () (dlk-unique _ _ _).
 %total (A) (dlk-unique A _ _).
 
+dlk-unique-rec : dlk DS X D -> dlk DS' X D' -> id-dcs DS DS' -> id-dc D D' -> type.
+%mode dlk-unique-rec +A +B +EQDS -EQD.
 
+- : dlk-unique-rec A B id-dcs/refl EQD
+ <- dlk-unique A B EQD.
+
+%worlds () (dlk-unique-rec _ _ _ _).
+%total (EQ) (dlk-unique-rec _ _ EQ _).
 
 eq-rect : id-dc (rect L U) (rect L' U') -> id-topt L L' -> id-tp U U' -> type.
 %mode eq-rect +A -EQL -EQU.
@@ -276,6 +303,15 @@ tlookup-zero-unique: tlookup-zero G2 E T1 -> tlookup-zero G2 E T2 -> id-dcs T1 T
 %worlds () (tlookup-zero-unique _ _ _).
 %total {T2} (tlookup-zero-unique T2 _ _).
 
+tlookup-zero-unique-rec: tlookup-zero G2 E T1 -> tlookup-zero G2 E' T2 -> id-nat E E' -> id-dcs T1 T2 -> type.
+%mode tlookup-zero-unique-rec +P1 +P2 +EQ -SBT.
+
+- : tlookup-zero-unique-rec A B id-nat/refl C
+ <- tlookup-zero-unique A B C.
+
+%worlds () (tlookup-zero-unique-rec _ _ _ _).
+%total (EQ) (tlookup-zero-unique-rec _ _ EQ _).
+
 tsize-unique-eq: tsize G2 N1 -> tsize G2 N2 -> eq-nat N1 N2 -> type.
 %mode tsize-unique-eq +P1 +P2 -SBT.
 
@@ -295,12 +331,63 @@ tsize-unique: tsize G2 N1 -> tsize G2 N2 -> id-nat N1 N2 -> type.
 %worlds () (tsize-unique _ _ _).
 %total {T2} (tsize-unique T2 _ _).
 
-hasmem-unique : has-mem G N X D -> has-mem G N X D' -> id-dc D D' -> type.
-%mode hasmem-unique +A +B -EQ.
+subadd-eq: eq-nat A1 A2 -> eq-nat C1 C2 -> add A1 B1 C1 -> add A2 B2 C2 -> eq-nat B1 B2 -> type.
+%mode subadd-eq +E1 +E2 +A1 +A2 -E3.
 
-%worlds () (hasmem-unique _ _ _).
-%trustme
-%total (A) (hasmem-unique A _ _).
+- : subadd-eq eq-nat/z E add/z add/z E.
+- : subadd-eq (eq-nat/s E1) (eq-nat/s E2) (add/s A1) (add/s A2) E3
+  <- subadd-eq E1 E2 A1 A2 E3.
+
+%worlds () (subadd-eq _ _ _ _ _).
+%total {A} (subadd-eq A _ _ _ _).
+
+subadd-unique: id-nat A1 A2 -> id-nat C1 C2 -> add A1 B1 C1 -> add A2 B2 C2 -> id-nat B1 B2 -> type.
+%mode subadd-unique +E1 +E2 +A1 +A2 -E3.
+
+- : subadd-unique IDA IDC ADD1 ADD2 IDB
+ <- id2eq-nat IDA EQA
+ <- id2eq-nat IDC EQC
+ <- subadd-eq EQA EQC ADD1 ADD2 EQB
+ <- eq2id-nat EQB IDB.
+
+%worlds () (subadd-unique _ _ _ _ _).
+%total {A} (subadd-unique A _ _ _ _).
+
+tlookup-unique-rec: tlookup G X DS -> tlookup G X' DS' -> id-nat X X' -> id-dcs DS DS' -> type.
+%mode tlookup-unique-rec +A +B +EQX -EQ.
+
+- : tlookup-unique-rec
+     (tl L1 (add/s A1) (tf/c F1))
+     (tl L2 (add/s A2) (tf/c F2))
+     EQX
+     EQDS
+ <- tsize-unique F1 F2 EQS
+ <- subadd-unique EQX EQS A1 A2 EQM
+ <- tlookup-zero-unique-rec L1 L2 EQM EQDS
+ .
+%worlds () (tlookup-unique-rec _ _ _ _).
+%total (A) (tlookup-unique-rec A _ _ _).
+
+tlookup-unique: tlookup G X DS -> tlookup G X DS' -> id-dcs DS DS' -> type.
+%mode tlookup-unique +A +B -EQ.
+
+- : tlookup-unique A B EQDS
+ <- tlookup-unique-rec A B id-nat/refl EQDS
+ .
+
+%worlds () (tlookup-unique _ _ _).
+%total (A) (tlookup-unique A _ _).
+
+has-mem-unique : has-mem G N X D -> has-mem G N X D' -> id-dc D D' -> type.
+%mode has-mem-unique +A +B -EQ.
+
+- : has-mem-unique (has K L) (has K' L') EQD
+ <- tlookup-unique L L' EQDS
+ <- dlk-unique-rec K K' EQDS EQD
+ .
+
+%worlds () (has-mem-unique _ _ _).
+%total (A) (has-mem-unique A _ _).
 
 
 % --------------- extension lemmas ------------- %
@@ -788,7 +875,7 @@ utrans0* :
 - : utrans0* (stp/trans0 (stp/bind A B SE))    TL (stp/transl is/bind is/bind (stp/bind A B SE) TL).
 
 - : utrans0* (stp/trans0 (stp/sel2 D1 D3 K)) (stp/llsel1 DL K') DL''
-      <- hasmem-unique K K' EQ
+      <- has-mem-unique K K' EQ
       <- eq-rect EQ EQL EQU
       <- eq-stp-u EQU D3 D3'
       <- utrans0* D3' DL DL'
