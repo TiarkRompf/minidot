@@ -256,8 +256,6 @@ id-dcs/refl : id-dcs D D.
 id-tenv : tenv -> tenv -> type.
 id-tenv/refl : id-tenv G G.
 
-false: type.
-
 dlk-unique : dlk DS X D -> dlk DS X D' -> id-dc D D' -> type.
 %mode dlk-unique +A +B -EQ.
 
@@ -554,6 +552,30 @@ ttransdcs* :
 %worlds () (ttransdcs* _ _ _).
 %total (Q1') (ttransdcs* Q1' _ _).
 
+% --------------- contradictions ------------- %
+
+false: type.
+
+tlookup-contra : tlookup tnil N DS -> false -> type.
+%mode tlookup-contra +A -B.
+%worlds () (tlookup-contra _ _).
+%total (A) (tlookup-contra A _).
+
+contra-tlookup : false -> {G} {N} {DS} tlookup G N DS -> type.
+%mode contra-tlookup +CONTRA -G -N -DS -A.
+%worlds () (contra-tlookup _ _ _ _ _).
+%total (A) (contra-tlookup A _ _ _ _).
+
+contra-has-mem : false -> {G} {N} {X} {D} has-mem G N X D -> type.
+%mode contra-has-mem +CONTRA -G -N -X -D -A.
+%worlds () (contra-has-mem _ _ _ _ _ _).
+%total (A) (contra-has-mem A _ _ _ _ _).
+
+contra-sdc : false -> {G} {D1} {D2} sdc oktrans G D1 D2 -> type.
+%mode contra-sdc +CONTRA -G -D1 -D2 -A.
+%worlds () (contra-sdc _ _ _ _ _).
+%total (A) (contra-sdc A _ _ _ _).
+
 % --------------- narrowing (oktrans mode) ------------- %
 
 inv-sdcs :
@@ -649,6 +671,11 @@ narrow-lk :
     type.
 
 %mode narrow-lk  +X1 +X2 -X3 -X4.
+
+- : narrow-lk (has K L) sev/nil M' BD'
+ <- tlookup-contra L CONTRA
+ <- contra-has-mem CONTRA _ _ _ _ M'
+ <- contra-sdc CONTRA _ _ _ BD'.
 
 %worlds () (narrow-lk _ _ _ _).
 %trustme
