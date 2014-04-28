@@ -389,8 +389,10 @@ has-mem-unique : has-mem G N X D -> has-mem G N X D' -> id-dc D D' -> type.
 
 eq-dc-has-mem : id-dc D D' -> has-mem G N X D -> has-mem G N X D' -> type.
 %mode eq-dc-has-mem +A +B -C.
+
+- : eq-dc-has-mem id-dc/refl B B.
+
 %worlds () (eq-dc-has-mem _ _ _).
-%trustme
 %total (A) (eq-dc-has-mem A _ _).
 
 % --------------- extension lemmas ------------- %
@@ -673,8 +675,10 @@ rsdc/sdc  : sdc oktrans G D1 D2 -> rsdc G D1 D2.
 
 eq-rsdc-l : id-dc D1 D1' -> rsdc G D1 D2 -> rsdc G D1' D2 -> type.
 %mode eq-rsdc-l +A +B -C.
+
+- : eq-rsdc-l id-dc/refl B B.
+
 %worlds () (eq-rsdc-l _ _ _).
-%trustme
 %total (A) (eq-rsdc-l A _ _).
 
 ruttrans* :
@@ -734,8 +738,12 @@ rsdc-output-factor :
     id-dc (rect OL1 U1) (rect (tsome L1) U1) ->
     type.
 %mode rsdc-output-factor +A -B.
+
+-/refl : rsdc-output-factor rsdc/refl id-dc/refl.
+
+-/sdc  : rsdc-output-factor (rsdc/sdc (sdc/rect (stpoo/ss _) _ _ _)) id-dc/refl.
+
 %worlds () (rsdc-output-factor _ _).
-%trustme
 %total (A) (rsdc-output-factor A _).
 
 narrow-lkss :
