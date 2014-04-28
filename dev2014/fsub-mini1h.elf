@@ -581,6 +581,37 @@ tsize-swap : tsize (tcons Z G) N -> {Z'} tsize (tcons Z' G) N -> type.
 %worlds () (tsize-swap _ _ _).
 %total (A) (tsize-swap A _ _).
 
+nil-sub-env : {G} sub-env tnil G -> type.
+%mode nil-sub-env +G -A.
+
+-/nil  : nil-sub-env tnil sub-env/refl.
+-/cons : nil-sub-env (tcons _ G) (sub-env/ext A)
+      <- nil-sub-env G A.
+
+%worlds () (nil-sub-env _ _).
+%total (A) (nil-sub-env A _).
+
+sev-refl : {G} sev oktrans G G G -> type.
+%mode sev-refl +G -A.
+
+-/nil  : sev-refl tnil sev/nil.
+-/cons : sev-refl (tcons _ G) (sev/refl A)
+      <- sev-refl G A.
+
+%worlds () (sev-refl _ _).
+%total (A) (sev-refl A _).
+
+tsize-sev : sev I G2 G2 G1 -> tsize G1 N -> tsize G2 N -> type.
+%mode tsize-sev +A +B -C.
+
+-/nil  : tsize-sev sev/nil B tf/n.
+-/sub  : tsize-sev (sev/sub _ A) (tf/c B) (tf/c C)
+      <- tsize-sev A B C.
+-/refl : tsize-sev (sev/refl A) (tf/c B) (tf/c C)
+      <- tsize-sev A B C.
+
+%worlds () (tsize-sev _ _ _).
+%total (A) (tsize-sev A _ _).
 
 sev-sub-size : 
     sub-env-size G20 N G2 ->
@@ -589,12 +620,20 @@ sev-sub-size :
     sub-env-size G10 N G1 ->
     sev oktrans G10 G10 G20 ->
     type.
-
 %mode sev-sub-size  +X1 +X2 -X3 -X4.
+
+- : sev-sub-size (ses tf/n sub-env/refl) sev/nil (ses tf/n sub-env/refl) sev/nil.
+
+- : sev-sub-size (ses N (sub-env/ext SE)) (sev/refl BE) (ses N' (sub-env/ext SE')) BE'
+ <- sev-sub-size (ses N SE) BE (ses N' SE') BE'.
+
+- : sev-sub-size (ses (tf/c N) sub-env/refl) (sev/refl BE) (ses (tf/c N') sub-env/refl) (sev/refl BE)
+ <- tsize-sev BE N N'
+  .
 
 %worlds () (sev-sub-size _ _ _ _).
 %trustme
-%total (A) (sev-sub-size A _ _ _).
+%total (A) (sev-sub-size _ A _ _).
 
 
 narrow-lk : 
@@ -744,18 +783,10 @@ narrowdcs* :
 
 % --------------- transitivity (notrans mode, exlude middle p.L ) ------------- %
 
-sev-refl: {G} sev oktrans G G G -> type.
-%mode sev-refl   +G -S.
-
-- : sev-refl tnil sev/nil.
-- : sev-refl (tcons DS G) (sev/refl S) <- sev-refl G S.
-
-%worlds () (sev-refl _ _).
-%total (A) (sev-refl A _).
-
-
 sub-env-size-eq: sub-env-size GN N G -> sub-env-size GN' N G -> id-tenv GN GN' -> type.
 %mode sub-env-size-eq +A +B -C.
+
+
 %worlds () (sub-env-size-eq _ _ _).
 %trustme
 %total A (sub-env-size-eq A _ _).
