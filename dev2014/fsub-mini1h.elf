@@ -387,6 +387,11 @@ has-mem-unique : has-mem G N X D -> has-mem G N X D' -> id-dc D D' -> type.
 %worlds () (has-mem-unique _ _ _).
 %total (A) (has-mem-unique A _ _).
 
+eq-dc-has-mem : id-dc D D' -> has-mem G N X D -> has-mem G N X D' -> type.
+%mode eq-dc-has-mem +A +B -C.
+%worlds () (eq-dc-has-mem _ _ _).
+%trustme
+%total (A) (eq-dc-has-mem A _ _).
 
 % --------------- extension lemmas ------------- %
 
@@ -662,17 +667,59 @@ sev-sub-size :
 %total (A) (sev-sub-size _ A _ _).
 
 
+rsdc : tenv -> dc -> dc -> type.
+rsdc/refl : rsdc G D D.
+rsdc/sdc  : sdc oktrans G D1 D2 -> rsdc G D1 D2.
+
+eq-rsdc-l : id-dc D1 D1' -> rsdc G D1 D2 -> rsdc G D1' D2 -> type.
+%mode eq-rsdc-l +A +B -C.
+%worlds () (eq-rsdc-l _ _ _).
+%trustme
+%total (A) (eq-rsdc-l A _ _).
+
+ruttrans* :
+    rsdc G (rect OL1 U1) (rect OL2 U2) ->
+    stp oktrans G U2 U3 ->
+%%
+    stp oktrans G U1 U3 ->
+    type.
+%mode ruttrans* +A +B -C.
+
+-/refl : ruttrans* rsdc/refl B B.
+-/sdc  : ruttrans* (rsdc/sdc (sdc/rect _ A _ _)) B C
+      <- ttrans* A B C.
+
+%worlds () (ruttrans* _ _ _).
+%total (A) (ruttrans* A _ _).
+
+rlttrans* :
+    rsdc G (rect (tsome L1) U1) (rect (tsome L2) U2) ->
+    stp oktrans G L3 L2 ->
+    stp oktrans G L2 U2 ->
+%%
+    stp oktrans G L3 L1 ->
+    stp oktrans G L1 U1 ->
+    type.
+%mode rlttrans* +A +B +C -D -E.
+
+-/refl : rlttrans* rsdc/refl B C B C.
+-/sdc  : rlttrans* (rsdc/sdc (sdc/rect (stpoo/ss A) _ (stpo/s E) _)) B C D E
+      <- ttrans* B A D.
+
+%worlds () (rlttrans* _ _ _ _ _).
+%total (A) (rlttrans* A _ _ _ _).
+
 narrow-lk : 
     has-mem G2 N X D2 ->
     sev oktrans G1 G1 G2 ->
 %%
     has-mem G1 N X D1 ->
-    sdc oktrans G1 D1 D2 -> %% need to think about id/refl case
+    rsdc G1 D1 D2 ->
     type.
 
 %mode narrow-lk  +X1 +X2 -X3 -X4.
 
-- : narrow-lk (has K L) sev/nil M' BD'
+- : narrow-lk (has K L) sev/nil M' (rsdc/sdc BD')
  <- tlookup-contra L CONTRA
  <- contra-has-mem CONTRA _ _ _ _ M'
  <- contra-sdc CONTRA _ _ _ BD'.
@@ -680,6 +727,35 @@ narrow-lk :
 %worlds () (narrow-lk _ _ _ _).
 %trustme
 %total (A) (narrow-lk A _ _ _).
+
+rsdc-output-factor :
+    rsdc G1 (rect OL1 U1) (rect (tsome L2) U2) ->
+%%
+    id-dc (rect OL1 U1) (rect (tsome L1) U1) ->
+    type.
+%mode rsdc-output-factor +A -B.
+%worlds () (rsdc-output-factor _ _).
+%trustme
+%total (A) (rsdc-output-factor A _).
+
+narrow-lkss :
+    has-mem G2 N X (rect (tsome L2) U2) ->
+    sev oktrans G1 G1 G2 ->
+%%
+    has-mem G1 N X (rect (tsome L1) U1) ->
+    rsdc G1 (rect (tsome L1) U1) (rect (tsome L2) U2) ->
+    type.
+
+%mode narrow-lkss  +X1 +X2 -X3 -X4.
+
+- : narrow-lkss M E M' E'
+ <- narrow-lk M E MX EX
+ <- rsdc-output-factor EX EQ
+ <- eq-dc-has-mem EQ MX M'
+ <- eq-rsdc-l EQ EX E'.
+
+%worlds () (narrow-lkss _ _ _ _).
+%total (A) (narrow-lkss A _ _ _).
 
 
 narrowdcs* :
@@ -694,7 +770,6 @@ narrowdcs* :
 %worlds () (narrowdcs* _ _ _).
 %trustme %% need mutual induction?
 %total (A) (narrowdcs* A _ _).
-
 
 narrow* : 
     stp oktrans G2 M N ->
@@ -713,14 +788,15 @@ narrow* :
        <- narrow* D2 Dsub D2'.
 
 -sel1   : narrow* (stp/trans0 (stp/sel1 BU E)) BDS (stp/trans0 (stp/sel1 BU' E'))
-       <- narrow-lk E BDS E' (sdc/rect _ BUK _ _)
+       <- narrow-lk E BDS E' OB
        <- narrow* BU BDS BUN
-       <- ttrans* BUK BUN BU'.
+       <- ruttrans* OB BUN BU'.
 
 -sel2   : narrow* (stp/trans0 (stp/sel2 BTL BLU E)) BDS (stp/trans0 (stp/sel2 BTL' BLU' E'))
-       <- narrow-lk E BDS E' (sdc/rect (stpoo/ss BLK) _ (stpo/s BLU') _)
+       <- narrow-lkss E BDS E' OB
        <- narrow* BTL BDS BTLN
-       <- ttrans* BTLN BLK BTL'.
+       <- narrow* BLU BDS BLUN
+       <- rlttrans* OB BTLN BLUN BTL' BLU'.
 
 -bind   : narrow* (stp/trans0 (stp/bind BD12 BD22 SE)) BDS (stp/trans0 (stp/bind BD12' BD22' SE'))
         <- sev-sub-size SE BDS SE' BDS'
