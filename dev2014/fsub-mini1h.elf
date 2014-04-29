@@ -34,6 +34,16 @@ add-inc: add A B C -> add A (s B) (s C) -> type.
 %worlds () (add-inc _ _).
 %total {A} (add-inc A _).
 
+add-swap: add A (s B) C -> add (s A) B C -> type.
+%mode add-swap +E1 -E2.
+
+- : add-swap add/z (add/s add/z).
+- : add-swap (add/s A) (add/s B)
+ <- add-swap A B.
+
+%worlds () (add-swap _ _).
+%total {A} (add-swap A _).
+
 %%%%%  Syntax  %%%%%
 
 tp : type.  %name tp T.
@@ -472,6 +482,43 @@ extend-stp: stp I1 G T1 T2 -> {T3} stp I1 (tcons T3 G) T1 T2 -> type.
 %worlds () (extend-stp _ _ _).
 %total (A) (extend-stp A _ _).
 
+extend-stpo: stpo I G T1 T2 -> {Z} stpo I (tcons Z G) T1 T2 -> type.
+%mode extend-stpo +A +B -C.
+
+-/n : extend-stpo stpo/n _ stpo/n.
+-/s : extend-stpo (stpo/s A) Z (stpo/s A')
+   <- extend-stp A Z A'.
+
+%worlds () (extend-stpo _ _ _).
+%total (A) (extend-stpo A _ _).
+
+extend-stpoo: stpoo I G T1 T2 -> {Z} stpoo I (tcons Z G) T1 T2 -> type.
+%mode extend-stpoo +A +B -C.
+
+-/nn : extend-stpoo stpoo/nn _ stpoo/nn.
+-/ns : extend-stpoo stpoo/ns _ stpoo/ns.
+-/ss : extend-stpoo (stpoo/ss A) Z (stpoo/ss A')
+   <- extend-stp A Z A'.
+
+%worlds () (extend-stpoo _ _ _).
+%total (A) (extend-stpoo A _ _).
+
+
+extend-sdc: sdc I G D1 D2 -> {Z} sdc I (tcons Z G) D1 D2 -> type.
+%mode extend-sdc +A +B -C.
+
+-/arrow : extend-sdc (sdc/arrow A B) Z (sdc/arrow A' B')
+       <- extend-stp A Z A'
+       <- extend-stp B Z B'.
+-/rect  : extend-sdc (sdc/rect OOA B OC OD) Z (sdc/rect OOA' B' OC' OD')
+       <- extend-stpoo OOA Z OOA'
+       <- extend-stp B Z B'
+       <- extend-stpo OC Z OC'
+       <- extend-stpo OD Z OD'.
+
+%worlds () (extend-sdc _ _ _).
+%total (A) (extend-sdc A _ _).
+
 % --------------- (notrans -> oktrans) ------------- %
 
 to-oktrans: stp notrans G T1 T2 -> stp oktrans G T1 T2 -> type.
@@ -681,6 +728,16 @@ eq-rsdc-l : id-dc D1 D1' -> rsdc G D1 D2 -> rsdc G D1' D2 -> type.
 %worlds () (eq-rsdc-l _ _ _).
 %total (A) (eq-rsdc-l A _ _).
 
+extend-rsdc : rsdc G D1 D2 -> {Z: dcs} rsdc (tcons Z G) D1 D2 -> type.
+%mode extend-rsdc +A +B -C.
+
+-/refl : extend-rsdc rsdc/refl _ rsdc/refl.
+-/sdc  : extend-rsdc (rsdc/sdc A) Z (rsdc/sdc A')
+      <- extend-sdc A Z A'.
+
+%worlds () (extend-rsdc _ _ _).
+%total (A) (extend-rsdc A _ _).
+
 ruttrans* :
     rsdc G (rect OL1 U1) (rect OL2 U2) ->
     stp oktrans G U2 U3 ->
@@ -728,9 +785,19 @@ narrow-lk :
  <- contra-has-mem CONTRA _ _ _ _ M'
  <- contra-sdc CONTRA _ _ _ BD'.
 
+- : narrow-lk (has K (tl tl/hit A (tf/c N))) (sev/refl BE) (has K (tl tl/hit A (tf/c N'))) rsdc/refl
+ <- tsize-sev BE N N'.
+
+- : narrow-lk (has K (tl (tl/miss L) (add/s A) (tf/c N))) (sev/refl BE) M'' OBD''
+ <- add-swap A AR
+ <- narrow-lk (has K (tl L AR N)) BE M' OBD'
+ <- extend-wf-mem M' _ M''
+ <- extend-rsdc OBD' _ OBD''
+  .
+
 %worlds () (narrow-lk _ _ _ _).
 %trustme
-%total (A) (narrow-lk A _ _ _).
+%total (A) (narrow-lk _ A _ _).
 
 rsdc-output-factor :
     rsdc G1 (rect OL1 U1) (rect (tsome L2) U2) ->
