@@ -967,7 +967,7 @@ narrowdc* :
 %worlds () (narrowdcs* _ _ _) (narrow* _ _ _) (narrowo* _ _ _) (narrowoo* _ _ _) (narrowdc* _ _ _).
 %total (A B C D E) (narrowdcs* A _ _) (narrow* B _ _) (narrowo* C _ _) (narrowoo* D _ _) (narrowdc* E _ _).
 
-% --------------- transitivity (notrans mode, exlude middle p.L ) ------------- %
+% --------------- misc helpers (mostly more uniqueness lemmas) ------------- %
 
 eq-lte : eq-nat NA NB -> lte NA NB -> type.
 %mode eq-lte +A -B.
@@ -1065,7 +1065,7 @@ eq-env: id-tenv G2 G2' -> sdcs IO G2 T1 T2 -> sdcs IO G2' T1 T2 -> type.
 %total {A} (eq-env A _ _).
 %reduces N3 <= N2 (eq-env _ N2  N3).
 
-
+% --------------- transitivity (notrans mode, exlude middle p.L ) ------------- %
 
 trans* :  
     issel Q z ->
