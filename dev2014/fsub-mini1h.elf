@@ -780,11 +780,6 @@ narrow-lk :
 
 %mode narrow-lk  +X1 +X2 -X3 -X4.
 
-- : narrow-lk (has K L) sev/nil M' (rsdc/sdc BD')
- <- tlookup-contra L CONTRA
- <- contra-has-mem CONTRA _ _ _ _ M'
- <- contra-sdc CONTRA _ _ _ BD'.
-
 - : narrow-lk (has K (tl tl/hit A (tf/c N))) (sev/refl BE) (has K (tl tl/hit A (tf/c N'))) rsdc/refl
  <- tsize-sev BE N N'.
 
