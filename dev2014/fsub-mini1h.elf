@@ -848,10 +848,6 @@ narrowdcs* :
 
 %mode narrowdcs*  +X1 +X2 -X3.
 
-%worlds () (narrowdcs* _ _ _).
-%trustme %% need mutual induction?
-%total (A) (narrowdcs* A _ _).
-
 narrow* : 
     stp oktrans G2 M N ->
     sev oktrans G1 G1 G2 ->
@@ -884,14 +880,6 @@ narrow* :
         <- narrowdcs* BD12 (sev/refl BDS') BD12' 
         <- narrowdcs* BD22 (sev/refl BDS') BD22'.
 
-
-
-%worlds () (narrow* _ _ _).
-%total (A) (narrow* A _ _).
-
-
-
-
 narrowo* :
     stpo oktrans G2 M N ->
     sev oktrans G1 G1 G2 ->
@@ -904,9 +892,6 @@ narrowo* :
 -n : narrowo* stpo/n BDS stpo/n.
 -s : narrowo* (stpo/s BU) BDS (stpo/s BU')
   <- narrow* BU BDS BU'.
-
-%worlds () (narrowo* _ _ _).
-%total (A) (narrowo* A _ _).
 
 narrowoo* :
     stpoo oktrans G2 M N ->
@@ -921,9 +906,6 @@ narrowoo* :
 -ns : narrowoo* stpoo/ns BDS stpoo/ns.
 -ss : narrowoo* (stpoo/ss BU) BDS (stpoo/ss BU')
   <- narrow* BU BDS BU'.
-
-%worlds () (narrowoo* _ _ _).
-%total (A) (narrowoo* A _ _).
 
 narrowdc* :
     sdc oktrans G2 M N ->
@@ -946,18 +928,6 @@ narrowdc* :
          <- narrow* B S B'
          .
 
-%worlds () (narrowdc* _ _ _).
-%total (A) (narrowdc* A _ _).
-
-narrowdcs* :
-    sdcs oktrans G2 M N ->
-    sev  oktrans G1 G1 G2 ->
-%%
-    sdcs oktrans G1 M N ->
-    type.
-
-%mode narrowdcs*  +X1 +X2 -X3.
-
 -nil : narrowdcs* sdcs/nil BDS sdcs/nil.
 -ext : narrowdcs* sdcs/ext BDS sdcs/ext
     % <- narrowdcs* A BDS A'
@@ -966,8 +936,8 @@ narrowdcs* :
     <- narrowdc* BD BDS BD'
     <- narrowdcs* A BDS A'.
 
-%worlds () (narrowdcs* _ _ _).
-%total (A) (narrowdcs* A _ _).
+%worlds () (narrowdcs* _ _ _) (narrow* _ _ _) (narrowo* _ _ _) (narrowoo* _ _ _) (narrowdc* _ _ _).
+%total (A B C D E) (narrowdcs* A _ _) (narrow* B _ _) (narrowo* C _ _) (narrowoo* D _ _) (narrowdc* E _ _).
 
 % --------------- transitivity (notrans mode, exlude middle p.L ) ------------- %
 
