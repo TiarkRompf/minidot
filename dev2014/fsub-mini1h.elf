@@ -795,6 +795,11 @@ narrow-lk :
  <- extend-rsdc OBD' _ OBD''
   .
 
+- : narrow-lk (has K (tl tl/hit A (tf/c N))) (sev/sub BDS BE) (has K' (tl tl/hit A (tf/c N'))) (rsdc/sdc BD')
+ <- tsize-sev BE N N'
+ <- inv-sdcs BDS K K' BD'
+  .
+
 %worlds () (narrow-lk _ _ _ _).
 %trustme
 %total (A) (narrow-lk _ A _ _).
