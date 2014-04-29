@@ -800,8 +800,14 @@ narrow-lk :
  <- inv-sdcs BDS K K' BD'
   .
 
+- : narrow-lk (has K (tl (tl/miss L) (add/s A) (tf/c N))) (sev/sub BDS BE) M'' OBD''
+ <- add-swap A AR
+ <- narrow-lk (has K (tl L AR N)) BE M' OBD'
+ <- extend-wf-mem M' _ M''
+ <- extend-rsdc OBD' _ OBD''
+  .
+
 %worlds () (narrow-lk _ _ _ _).
-%trustme
 %total (A) (narrow-lk _ A _ _).
 
 rsdc-output-factor :
