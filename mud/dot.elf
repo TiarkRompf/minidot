@@ -228,12 +228,17 @@ sdcs/cons   : sdcs I0 G (dcons D1 DS1) (dcons D2 DS2)
            <- sdc I0 G D1 D2
            <- sdcs I0 G DS1 DS2.
 
+wf-tp : tenv -> tp -> type.
+subrefl : wf-tp G T <- stp oktrans G T G T.
+
+typ : tenv -> tm -> tp -> type.
+
+% EOF
+
 stp/trans   : stp oktrans     G T1 G T3
            <- stp oktrans     G T2 G T3
            <- stp oktrans     G T1 G T2
             .
-
-% EOF
 
 %%% PROOFS %%%
 
