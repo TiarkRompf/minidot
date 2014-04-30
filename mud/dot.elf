@@ -165,7 +165,6 @@ oktrans: mode1.
 stp  : {I1:mode1} tenv -> tp -> tp -> type.
 sdcs : {I1:mode1} tenv -> dcs -> dcs -> type.
 sdc  : {I1:mode1} tenv -> dc -> dc -> type.
-sev  : {I1:mode1} tenv -> tenv -> tenv -> type.
 stpo : {I1:mode1} tenv -> topt -> tp -> type.
 stpoo: {I1:mode1} tenv -> topt -> topt -> type.
 
@@ -224,6 +223,11 @@ stp/trans   : stp oktrans     G T1 T3
            <- stp oktrans     G T1 T2
             .
 
+% EOF
+
+%%% PROOFS %%%
+
+sev  : {I1:mode1} tenv -> tenv -> tenv -> type.
 
 sev/nil     : sev IO tnil tnil tnil.
 
@@ -233,10 +237,6 @@ sev/sub     : sev IO (tcons P G) (tcons P G1) (tcons Q G2)
 
 sev/refl    : sev IO (tcons P G) (tcons P G1) (tcons P G2) 
            <- sev IO G G1 G2.
-
-% EOF
-
-%%% PROOFS %%%
 
 % --------------- basic math ------------- %
 
