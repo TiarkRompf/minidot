@@ -14,52 +14,16 @@ lte/z : lte z N.
 lte/s : lte (s N1) (s N2)
    <- lte N1 N2.
 
-add-reduces: {N1}{N2}{N3}add N1 N2 N3 -> type.
-%mode add-reduces +N1 +N2 +N3 +A.
-- : add-reduces _ _ _ (add/z).
-- : add-reduces _ _ _ (add/s A) <- add-reduces _ _ _ A.
-%worlds () (add-reduces _ _ _ _).
-%total (A) (add-reduces A _ _ _).
-%reduces N2 <= N3 (add-reduces N1 N2 N3 A).
-
-add-inc: add A B C -> add A (s B) (s C) -> type.
-%mode add-inc +E1 -E2.
-
-- : add-inc add/z add/z.
-- : add-inc (add/s A1) (add/s A2)
-  <- add-inc A1 A2.
-
-%worlds () (add-inc _ _).
-%total {A} (add-inc A _).
-
-add-swap: add A (s B) C -> add (s A) B C -> type.
-%mode add-swap +E1 -E2.
-
-- : add-swap add/z (add/s add/z).
-- : add-swap (add/s A) (add/s B)
- <- add-swap A B.
-
-%worlds () (add-swap _ _).
-%total {A} (add-swap A _).
-
-lte-inc : lte A B -> lte A (s B) -> type.
-%mode lte-inc +A -B.
-
-- : lte-inc lte/z lte/z.
-
-- : lte-inc (lte/s A) (lte/s B)
-     <- lte-inc A B.
-
-%worlds () (lte-inc _ _).
-%total A (lte-inc A _).
-
 %%%%%  Syntax  %%%%%
+
+% sorts
 
 tp : type.  %name tp T.
 
 dc: type. %name dc D.
 dcs: type.
 
+% types
 top     : tp.
 sel     : nat -> nat -> tp.
 bind    : nat -> dcs -> tp.
@@ -68,25 +32,17 @@ topt : type.
 tnone : topt.
 tsome : tp -> topt.
 
+% declarations
 arrow   : tp -> tp -> dc.
 rect    : topt -> tp -> dc.
 
 dnil: dcs.
 dcons: dc -> dcs -> dcs.
 
+% environments
 tenv: type. %name tenv G.
 tnil: tenv.
 tcons: dcs -> tenv -> tenv.
-
-
-issel: tp -> nat -> type.
-is/bind: issel (bind _ _) z.
-is/top: issel top (s z).
-is/sel: issel (sel _ _) (s z).
-
-%mode issel +T -N.
-%worlds () (issel _ _).
-%total (A) (issel A _).
 
 %{ ------- environments ----- }%
 
@@ -211,6 +167,47 @@ sev/refl    : sev IO (tcons P G) (tcons P G1) (tcons P G2)
 % EOF
 
 %%% PROOFS %%%
+
+% --------------- basic math ------------- %
+
+add-reduces: {N1}{N2}{N3}add N1 N2 N3 -> type.
+%mode add-reduces +N1 +N2 +N3 +A.
+- : add-reduces _ _ _ (add/z).
+- : add-reduces _ _ _ (add/s A) <- add-reduces _ _ _ A.
+%worlds () (add-reduces _ _ _ _).
+%total (A) (add-reduces A _ _ _).
+%reduces N2 <= N3 (add-reduces N1 N2 N3 A).
+
+add-inc: add A B C -> add A (s B) (s C) -> type.
+%mode add-inc +E1 -E2.
+
+- : add-inc add/z add/z.
+- : add-inc (add/s A1) (add/s A2)
+  <- add-inc A1 A2.
+
+%worlds () (add-inc _ _).
+%total {A} (add-inc A _).
+
+add-swap: add A (s B) C -> add (s A) B C -> type.
+%mode add-swap +E1 -E2.
+
+- : add-swap add/z (add/s add/z).
+- : add-swap (add/s A) (add/s B)
+ <- add-swap A B.
+
+%worlds () (add-swap _ _).
+%total {A} (add-swap A _).
+
+lte-inc : lte A B -> lte A (s B) -> type.
+%mode lte-inc +A -B.
+
+- : lte-inc lte/z lte/z.
+
+- : lte-inc (lte/s A) (lte/s B)
+     <- lte-inc A B.
+
+%worlds () (lte-inc _ _).
+%total A (lte-inc A _).
 
 % --------------- uniqueness lemmas ------------- %
 
@@ -1061,6 +1058,15 @@ eq-env: id-tenv G2 G2' -> sdcs IO G2 T1 T2 -> sdcs IO G2' T1 T2 -> type.
 %reduces N3 <= N2 (eq-env _ N2  N3).
 
 % --------------- transitivity (notrans mode, exlude middle p.L ) ------------- %
+
+issel: tp -> nat -> type.
+is/bind: issel (bind _ _) z.
+is/top: issel top (s z).
+is/sel: issel (sel _ _) (s z).
+
+%mode issel +T -N.
+%worlds () (issel _ _).
+%total (A) (issel A _).
 
 trans* :  
     issel Q z ->
