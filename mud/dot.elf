@@ -23,7 +23,7 @@ dc: type. %name dc D.
 dcs: type.
 
 tm : type.
-vl : type.
+val : type.
 
 ic: type.
 ics: type.
@@ -58,7 +58,7 @@ tcons: dcs -> tenv -> tenv.
 
 venv: type.
 vnil: venv.
-vcons: vl -> venv -> venv.
+vcons: val -> venv -> venv.
 
 % terms / expressions
 new: dcs -> ics -> tm.
@@ -74,9 +74,26 @@ let: tm -> tp -> tm -> tp -> tm
           e1).
 
 % values
-clo: venv -> ics -> vl.
+clo: venv -> ics -> val.
 
 %{ ------- environments ----- }%
+
+vlookup-zero : venv -> nat -> val -> type.
+vl/hit  : vlookup-zero (vcons V H) z V.
+vl/miss : vlookup-zero (vcons V' H) (s N) V <- vlookup-zero H N V.
+
+vsize : venv -> nat -> type.
+%mode vsize +A -B.
+vf/n   : vsize vnil z.
+vf/c   : vsize (vcons V H) (s N) <- vsize H N.
+%worlds () (vsize _ _).
+%total A (vsize A _).
+
+vlookup: venv -> nat -> val -> type.
+vl  : vlookup G N V
+  <- vsize G S
+  <- add (s N) M S
+  <- vlookup-zero G M V.
 
 tlookup-zero: tenv -> nat -> dcs -> type.
 tl/hit  : tlookup-zero (tcons V G) z V.
@@ -195,6 +212,11 @@ sev/sub     : sev IO (tcons P G) (tcons P G1) (tcons Q G2)
 
 sev/refl    : sev IO (tcons P G) (tcons P G1) (tcons P G2) 
            <- sev IO G G1 G2.
+
+% --------------- evaluation ------------- %
+
+eval : venv -> tm -> val -> type.
+
 
 % EOF
 
