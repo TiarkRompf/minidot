@@ -28,15 +28,9 @@ val : type.
 ic: type.
 ics: type.
 
-vr: type.
-
-% vars
-gvr: nat -> vr.
-lvr: nat -> vr.
-
 % types
 top     : tp.
-sel     : vr -> nat -> tp.
+sel     : nat -> nat -> tp.
 bind    : nat -> dcs -> tp.
 
 topt : type.
@@ -67,15 +61,14 @@ vnil: venv.
 vcons: val -> venv -> venv.
 
 % terms / expressions
-new: nat -> dcs -> ics -> tm.
+new: dcs -> ics -> tm.
 app: tm -> nat -> tm -> tm.
 var: nat -> tm.
 
 %abbrev
 let: tm -> tp -> tm -> tp -> tm
    = [e1] [t1] [e2] [t2]
-     (app (new z
-               (dcons (arrow t1 t2) dnil)
+     (app (new (dcons (arrow t1 t2) dnil)
                (icons (fun e2) inil))
           z
           e1).
@@ -143,7 +136,7 @@ eval : venv -> tm -> val -> type.
 e/var: eval G (var N) V
     <- vlookup G N V.
 
-e/new: eval G (new _ DS IS) (clo G IS).
+e/new: eval G (new DS IS) (clo G IS).
 
 e/app: eval G (app E1 X E2) V3
     <- eval G E1 (clo G1 IS)
@@ -183,13 +176,13 @@ stpoo/ss : stpoo I0 G (tsome S) (tsome U) <- stp I0 G S U.
 
 stp/top     : stp notrans    G _ top.
 
-stp/sel1    : stp notrans    G (sel (lvr N) X) T
+stp/sel1    : stp notrans    G (sel N X) T
            <- has-mem G N X (rect _ U)
            <- stp oktrans    G U T
            .
 
 
-stp/sel2    : stp notrans    G T (sel (lvr N) X)
+stp/sel2    : stp notrans    G T (sel N X)
            <- has-mem G N X (rect (tsome L) U)
            <- stp oktrans    G L U
            <- stp oktrans    G T L
@@ -1196,23 +1189,23 @@ stp/transl   : stpl (s N)     G T1 T3
             <- issel T1 z
              .
 
-stp/lltop2   : stpl (s z)     G L (sel (lvr N) X)
+stp/lltop2   : stpl (s z)     G L (sel N X)
             <- has-mem G M Y (rect (tsome top) U)
             <- stp oktrans    G top U
-            <- stpl z         G (sel (lvr M) Y) (sel (lvr N) X)
+            <- stpl z         G (sel M Y) (sel N X)
             .
 
 stp/lltopx   : stpl (s z)     G _ top.
 
 stp/transe   : stpl z         G T1 T1.
 
-stp/llsel2    : stpl z        G L (sel (lvr N) X)
+stp/llsel2    : stpl z        G L (sel N X)
              <- has-mem G M Y (rect (tsome L) U)
              <- stp oktrans   G L U
-             <- stpl z        G (sel (lvr M) Y) (sel (lvr N) X)
+             <- stpl z        G (sel M Y) (sel N X)
              .
 
-stp/llsel1   : stpl (s N)     G (sel (lvr M) X) T
+stp/llsel1   : stpl (s N)     G (sel M X) T
             <- has-mem G M X (rect L U)
             <- stpl (s N)     G U T
              .
