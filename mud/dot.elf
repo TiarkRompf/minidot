@@ -17,11 +17,16 @@ lte/s : lte (s N1) (s N2)
 %%%%%  Syntax  %%%%%
 
 % sorts
-
 tp : type.  %name tp T.
 
 dc: type. %name dc D.
 dcs: type.
+
+tm : type.
+vl : type.
+
+ic: type.
+ics: type.
 
 % types
 top     : tp.
@@ -39,10 +44,37 @@ rect    : topt -> tp -> dc.
 dnil: dcs.
 dcons: dc -> dcs -> dcs.
 
+% initializations
+fun: tm -> ic.
+non: ic. % place holder for type member
+
+inil: ics.
+icons: ic -> ics -> ics.
+
 % environments
 tenv: type. %name tenv G.
 tnil: tenv.
 tcons: dcs -> tenv -> tenv.
+
+venv: type.
+vnil: venv.
+vcons: vl -> venv -> venv.
+
+% terms / expressions
+new: dcs -> ics -> tm.
+app: tm -> nat -> tm -> tm.
+var: nat -> tm.
+
+%abbrev
+let: tm -> tp -> tm -> tp -> tm
+   = [e1] [t1] [e2] [t2]
+     (app (new (dcons (arrow t1 t2) dnil)
+               (icons (fun e2) inil))
+          z
+          e1).
+
+% values
+clo: venv -> ics -> vl.
 
 %{ ------- environments ----- }%
 
