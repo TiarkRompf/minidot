@@ -239,11 +239,11 @@ stp/trans   : stp oktrans     G T1 G T3
 
 sev  : {I1:mode1} tenv -> tenv -> tenv -> type.
 
-sev/sub     : sev IO (tcons (bind N P) G) (tcons (bind N P) G1) (tcons (bind N Q) G2) 
-           <- sev IO G G1 G2 
+sev/sub     : sev IO (tcons (bind N P) G) (tcons (bind N P) G1) (tcons (bind N Q) G2)
+           <- sev IO G G1 G2
            <- sdcs IO (tcons (bind N P) G) P Q.
 
-sev/refl0   : sev IO (tcons (bind N P) G) (tcons (bind N P) G1) (tcons (bind N P) G2) 
+sev/refl0   : sev IO (tcons (bind N P) G) (tcons (bind N P) G1) (tcons (bind N P) G2)
            <- sev IO G G1 G2.
 
 sev/refl    : sev IO G G1 G1.
@@ -815,10 +815,10 @@ extend-stp: stp I1 G T1 G T2 -> {Z} stp I1 (tcons Z G) T1 (tcons Z G) T2 -> type
      <- extend-sub-env-size SE1 Z SE1'
      <- extend-sub-env-size SE2 Z SE2'.
 
--/trans0: extend-stp (stp/trans0 S) _ (stp/trans0 S') 
+-/trans0: extend-stp (stp/trans0 S) _ (stp/trans0 S')
         <- extend-stp S _ S'.
 
--/trans: extend-stp (stp/trans S1 S2) _ (stp/trans S1' S2') 
+-/trans: extend-stp (stp/trans S1 S2) _ (stp/trans S1' S2')
         <- extend-stp S1 _ S1'
         <- extend-stp S2 _ S2'.
 
@@ -1006,7 +1006,7 @@ tsize-sev : sev I G2 G2 G1 -> tsize G1 N -> tsize G2 N -> type.
 %worlds () (tsize-sev _ _ _).
 %total (A) (tsize-sev A _ _).
 
-sev-sub-size : 
+sev-sub-size :
     sub-env-size G20 N G2 ->
     sev oktrans G1 G1 G2 ->
 %%
@@ -1092,7 +1092,7 @@ rlttrans* :
 %worlds () (rlttrans* _ _ _ _ _).
 %total (A) (rlttrans* A _ _ _ _).
 
-narrow-lk : 
+narrow-lk :
     has-mem G2 N X D2 ->
     sev oktrans G1 G1 G2 ->
 %%
@@ -1185,7 +1185,7 @@ narrowdcs* :
 
 %mode narrowdcs*  +X1 +X2 -X3.
 
-narrow* : 
+narrow* :
     stp oktrans G2 M G2 N ->
     sev oktrans G1 G1 G2 ->
 %%
@@ -1214,7 +1214,7 @@ narrow* :
 
 -bind   : narrow* (stp/trans0 (stp/bind BD12 BD22 SE1 SE2)) BDS (stp/trans0 (stp/bind BD12' BD22' SE' SE'))
         <- sev-sub-size SE1 BDS SE' BDS'
-        <- narrowdcs* BD12 (sev/refl0 BDS') BD12' 
+        <- narrowdcs* BD12 (sev/refl0 BDS') BD12'
         <- narrowdcs* BD22 (sev/refl0 BDS') BD22'.
 
 narrowo* :
@@ -1287,7 +1287,7 @@ is/sel: issel (sel _ _) (s z).
 %worlds () (issel _ _).
 %total (A) (issel A _).
 
-trans* :  
+trans* :
     issel Q z ->
     stp notrans G S G Q ->
     stp notrans G Q G T ->
@@ -1362,10 +1362,10 @@ stp/llsel1   : stpl (s N)     G (sel M X) T
 
 % linearize a derivation that uses transitivity
 
-utrans0* : 
+utrans0* :
   stp oktrans  G T1 G T2 ->
-  stpl _ G T2 T3 -> 
-  stpl (s _) G T1 T3 -> 
+  stpl _ G T2 T3 ->
+  stpl (s _) G T1 T3 ->
   type.
 
 %mode utrans0*  +S1 +S2 -S12.
@@ -1405,9 +1405,9 @@ utrans0* :
 %total {A} (utrans0* A _ _).
 
 
-utrans0 : 
+utrans0 :
   stp oktrans  G T1 G T2 ->
-  stpl (s _) G T1 T2 -> 
+  stpl (s _) G T1 T2 ->
   type.
 
 %mode utrans0  +S2 -S12.
@@ -1422,9 +1422,9 @@ utrans0 :
 
 % given linear version, remove top-level trans nodes
 
-utrans1s* : 
+utrans1s* :
   stp notrans G T1 G (sel N2 X2) ->
-  stpl z G (sel N2 X2) (sel N3 X3) -> 
+  stpl z G (sel N2 X2) (sel N3 X3) ->
   stp notrans G T1 G (sel N3 X3) ->
   type.
 %mode utrans1s* +A +B -C.
@@ -1437,15 +1437,15 @@ utrans1s* :
 %worlds () (utrans1s* _ _ _).
 %total {B} (utrans1s* A B C).
 
-utrans1* : 
+utrans1* :
   issel T2 z ->
   stp notrans G T1 G T2 ->
-  stpl _ G T2 T3 -> 
+  stpl _ G T2 T3 ->
   stp notrans G T1 G T3 ->
   type.
 %mode utrans1* +I2 +A +B -C.
 
-- : utrans1* I2 S1 (stp/transl I1' I2' S2 TL) S13 
+- : utrans1* I2 S1 (stp/transl I1' I2' S2 TL) S13
         <- trans* I1' S1 S2 S12
         <- utrans1* I2' S12 TL S13.
 
@@ -1453,7 +1453,7 @@ utrans1* :
 
 - : utrans1* I2 S1 stp/lltopx stp/top.
 
- - : utrans1* I2 S1 (stp/lltop2 D0 D E) DX 
+ - : utrans1* I2 S1 (stp/lltop2 D0 D E) DX
       <- utrans1s* (stp/sel2 (stp/trans0 stp/top) D E) D0 DX.
 
 - : utrans1* I2 S1 (stp/llsel2 D0 D E) DX % (stp/sel2 (stp/trans0 S1) D E)
@@ -1465,13 +1465,13 @@ utrans1* :
 
 
 
-utrans1 : 
-  stpl (s _) G T1 T3 -> 
+utrans1 :
+  stpl (s _) G T1 T3 ->
   stp notrans G T1 G T3 ->
   type.
 %mode utrans1 +A -B.
 
-- : utrans1 (stp/transl I1' I2' S2 TL) S13 
+- : utrans1 (stp/transl I1' I2' S2 TL) S13
         <- utrans1* I2' S2 TL S13.
 
 - : utrans1 (stp/llsel1 D E) (stp/sel1 (stp/trans0 D') E)
@@ -1491,7 +1491,7 @@ utrans1 :
 
 % --------------- inversion lemma / remove top-level transitivity ------------- %
 
-invert-trans : 
+invert-trans :
   stp oktrans G T1 G T2 ->
   stp notrans G T1 G T2 ->
   type.
