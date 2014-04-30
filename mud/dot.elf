@@ -171,51 +171,52 @@ notrans: mode1.
 oktrans: mode1.
 
 
-stp  : {I1:mode1} tenv -> tp -> tp -> type.
+stp  : {I1:mode1} tenv -> tp -> tenv -> tp -> type.
 sdcs : {I1:mode1} tenv -> dcs -> dcs -> type.
 sdc  : {I1:mode1} tenv -> dc -> dc -> type.
 stpo : {I1:mode1} tenv -> topt -> tp -> type.
 stpoo: {I1:mode1} tenv -> topt -> topt -> type.
 
 stpo/n : stpo I0 G tnone U.
-stpo/s : stpo I0 G (tsome S) U <- stp I0 G S U.
+stpo/s : stpo I0 G (tsome S) U <- stp I0 G S G U.
 stpoo/nn : stpoo I0 G tnone tnone.
 stpoo/ns : stpoo I0 G tnone (tsome U).
-stpoo/ss : stpoo I0 G (tsome S) (tsome U) <- stp I0 G S U.
+stpoo/ss : stpoo I0 G (tsome S) (tsome U) <- stp I0 G S G U.
 
-stp/top     : stp notrans    G _ top.
+stp/top     : stp notrans    G1 _ G2 top.
 
-stp/sel1    : stp notrans    G (sel N X) T
-           <- has-mem G N X (rect _ U)
-           <- stp oktrans    G U T
+stp/sel1    : stp notrans    G1 (sel N X) G2 T
+           <- has-mem G1 N X (rect _ U)
+           <- stp oktrans    G1 U G2 T
            .
 
 
-stp/sel2    : stp notrans    G T (sel N X)
-           <- has-mem G N X (rect (tsome L) U)
-           <- stp oktrans    G L U
-           <- stp oktrans    G T L
+stp/sel2    : stp notrans    G1 T G2 (sel N X)
+           <- has-mem G2 N X (rect (tsome L) U)
+           <- stp oktrans    G2 L G2 U
+           <- stp oktrans    G1 T G2 L
            .
 
-stp/bind    : stp notrans    G (bind N DS1) (bind N DS2)
-           <- sub-env-size   GN N G
+stp/bind    : stp notrans    G1 (bind N DS1) G2 (bind N DS2)
+           <- sub-env-size   GN N G2
+           <- sub-env-size   GN N G1
            <- sdcs oktrans   (tcons (bind N DS2) GN) DS2 DS2
            <- sdcs oktrans   (tcons (bind N DS1) GN) DS1 DS2
            .
 
-stp/trans0   : stp oktrans   G T1 T2
-            <- stp notrans   G T1 T2
+stp/trans0   : stp oktrans   G1 T1 G2 T2
+            <- stp notrans   G1 T1 G2 T2
             .
 
 sdc/arrow   : sdc I0         G (arrow L1 U1) (arrow L2 U2)
-           <- stp I0         G U1 U2
-           <- stp I0         G L2 L1
+           <- stp I0         G U1 G U2
+           <- stp I0         G L2 G L1
             .
 
 sdc/rect    : sdc I0         G (rect OL1 U1) (rect OL2 U2)
            <- stpo I0        G OL2 U2
            <- stpo I0        G OL1 U1
-           <- stp I0         G U1 U2
+           <- stp I0         G U1 G U2
            <- stpoo I0       G OL2 OL1
             .
 
@@ -227,9 +228,9 @@ sdcs/cons   : sdcs I0 G (dcons D1 DS1) (dcons D2 DS2)
            <- sdc I0 G D1 D2
            <- sdcs I0 G DS1 DS2.
 
-stp/trans   : stp oktrans     G T1 T3
-           <- stp oktrans     G T2 T3
-           <- stp oktrans     G T1 T2
+stp/trans   : stp oktrans     G T1 G T3
+           <- stp oktrans     G T2 G T3
+           <- stp oktrans     G T1 G T2
             .
 
 % EOF
@@ -440,7 +441,7 @@ eq-rect/refl : eq-rect id-dc/refl id-topt/refl id-tp/refl.
 %worlds () (eq-rect _ _ _).
 %total (A) (eq-rect A _ _).
 
-eq-stp-u : id-tp U U' -> stp I G L U -> stp I G L U' -> type.
+eq-stp-u : id-tp U U' -> stp I G L G U -> stp I G L G U' -> type.
 %mode eq-stp-u +EQU +B -C.
 
 - : eq-stp-u id-tp/refl B B.
@@ -796,7 +797,7 @@ extend-sub-env-size: sub-env-size GN N G -> {Z} sub-env-size GN N (tcons Z G) ->
 %worlds () (extend-sub-env-size _ _ _).
 %total A (extend-sub-env-size A _ _).
 
-extend-stp: stp I1 G T1 T2 -> {T3} stp I1 (tcons T3 G) T1 T2 -> type.
+extend-stp: stp I1 G T1 G T2 -> {Z} stp I1 (tcons Z G) T1 (tcons Z G) T2 -> type.
 %mode extend-stp +A +B -D.
 
 -/top: extend-stp stp/top _ stp/top.
@@ -810,9 +811,9 @@ extend-stp: stp I1 G T1 T2 -> {T3} stp I1 (tcons T3 G) T1 T2 -> type.
      <- extend-stp BLU Z BLU'
      <- extend-stp BTL Z BTL'.
 
--/bind: extend-stp (stp/bind BDS12 BDS22 SE) Z (stp/bind BDS12 BDS22 SE')
-     <- extend-sub-env-size SE Z SE'
-     .
+-/bind: extend-stp (stp/bind BDS12 BDS22 SE1 SE2) Z (stp/bind BDS12 BDS22 SE1' SE2')
+     <- extend-sub-env-size SE1 Z SE1'
+     <- extend-sub-env-size SE2 Z SE2'.
 
 -/trans0: extend-stp (stp/trans0 S) _ (stp/trans0 S') 
         <- extend-stp S _ S'.
@@ -863,7 +864,7 @@ extend-sdc: sdc I G D1 D2 -> {Z} sdc I (tcons Z G) D1 D2 -> type.
 
 % --------------- (notrans -> oktrans) ------------- %
 
-to-oktrans: stp notrans G T1 T2 -> stp oktrans G T1 T2 -> type.
+to-oktrans: stp notrans G T1 G T2 -> stp oktrans G T1 G T2 -> type.
 %mode to-oktrans +A -B.
 
 - : to-oktrans S (stp/trans0 S).
@@ -875,10 +876,10 @@ to-oktrans: stp notrans G T1 T2 -> stp oktrans G T1 T2 -> type.
 % --------------- transitivity (oktrans mode) ------------- %
 
 ttrans* :
-    stp oktrans G S Q ->
-    stp oktrans G Q T ->
+    stp oktrans G S G Q ->
+    stp oktrans G Q G T ->
 %%
-    stp oktrans G S T ->
+    stp oktrans G S G T ->
     type.
 
 %mode ttrans*   +X1 +X2 -X3.
@@ -1061,9 +1062,9 @@ extend-rsdc : rsdc G D1 D2 -> {Z} rsdc (tcons Z G) D1 D2 -> type.
 
 ruttrans* :
     rsdc G (rect OL1 U1) (rect OL2 U2) ->
-    stp oktrans G U2 U3 ->
+    stp oktrans G U2 G U3 ->
 %%
-    stp oktrans G U1 U3 ->
+    stp oktrans G U1 G U3 ->
     type.
 %mode ruttrans* +A +B -C.
 
@@ -1076,11 +1077,11 @@ ruttrans* :
 
 rlttrans* :
     rsdc G (rect (tsome L1) U1) (rect (tsome L2) U2) ->
-    stp oktrans G L3 L2 ->
-    stp oktrans G L2 U2 ->
+    stp oktrans G L3 G L2 ->
+    stp oktrans G L2 G U2 ->
 %%
-    stp oktrans G L3 L1 ->
-    stp oktrans G L1 U1 ->
+    stp oktrans G L3 G L1 ->
+    stp oktrans G L1 G U1 ->
     type.
 %mode rlttrans* +A +B +C -D -E.
 
@@ -1185,10 +1186,10 @@ narrowdcs* :
 %mode narrowdcs*  +X1 +X2 -X3.
 
 narrow* : 
-    stp oktrans G2 M N ->
+    stp oktrans G2 M G2 N ->
     sev oktrans G1 G1 G2 ->
 %%
-    stp oktrans G1 M N ->
+    stp oktrans G1 M G1 N ->
     type.
 
 %mode narrow*  +X1 +X2 -X3.
@@ -1211,8 +1212,8 @@ narrow* :
        <- narrow* BLU BDS BLUN
        <- rlttrans* OB BTLN BLUN BTL' BLU'.
 
--bind   : narrow* (stp/trans0 (stp/bind BD12 BD22 SE)) BDS (stp/trans0 (stp/bind BD12' BD22' SE'))
-        <- sev-sub-size SE BDS SE' BDS'
+-bind   : narrow* (stp/trans0 (stp/bind BD12 BD22 SE1 SE2)) BDS (stp/trans0 (stp/bind BD12' BD22' SE' SE'))
+        <- sev-sub-size SE1 BDS SE' BDS'
         <- narrowdcs* BD12 (sev/refl0 BDS') BD12' 
         <- narrowdcs* BD22 (sev/refl0 BDS') BD22'.
 
@@ -1288,10 +1289,10 @@ is/sel: issel (sel _ _) (s z).
 
 trans* :  
     issel Q z ->
-    stp notrans G S Q ->
-    stp notrans G Q T ->
+    stp notrans G S G Q ->
+    stp notrans G Q G T ->
 %%
-    stp notrans G S T ->
+    stp notrans G S G T ->
     type.
 
 %mode trans*   +I +X1 +X2 -X3.
@@ -1307,9 +1308,9 @@ trans* :
         <- to-oktrans D D'
         <- ttrans* D' L2 L2'.
 
--tbind  : trans* _ (stp/bind D12 D22 SE) (stp/bind D23 D33 SE') (stp/bind D13 D33 SE')
+-tbind  : trans* _ (stp/bind D12 D22 SE1 SE2) (stp/bind D23 D33 SE1' SE2') (stp/bind D13 D33 SE1' SE2')
        <- sev-refl _ DG
-       <- sub-env-size-eq SE SE' ID
+       <- sub-env-size-eq SE1 SE1' ID
        <- extend-id ID _ ID'
        <- eq-env ID' D12 D12'
        <- narrowdcs* D23 (sev/sub D12' DG) D23'
@@ -1332,14 +1333,14 @@ stpl  : nat -> tenv -> tp -> tp -> type.
 
 stp/transl   : stpl (s N)     G T1 T3
             <- stpl N         G T2 T3
-            <- stp notrans    G T1 T2
+            <- stp notrans    G T1 G T2
             <- issel T2 z
             <- issel T1 z
              .
 
 stp/lltop2   : stpl (s z)     G L (sel N X)
             <- has-mem G M Y (rect (tsome top) U)
-            <- stp oktrans    G top U
+            <- stp oktrans    G top G U
             <- stpl z         G (sel M Y) (sel N X)
             .
 
@@ -1349,7 +1350,7 @@ stp/transe   : stpl z         G T1 T1.
 
 stp/llsel2    : stpl z        G L (sel N X)
              <- has-mem G M Y (rect (tsome L) U)
-             <- stp oktrans   G L U
+             <- stp oktrans   G L G U
              <- stpl z        G (sel M Y) (sel N X)
              .
 
@@ -1362,7 +1363,7 @@ stp/llsel1   : stpl (s N)     G (sel M X) T
 % linearize a derivation that uses transitivity
 
 utrans0* : 
-  stp oktrans  G T1 T2 -> 
+  stp oktrans  G T1 G T2 ->
   stpl _ G T2 T3 -> 
   stpl (s _) G T1 T3 -> 
   type.
@@ -1379,7 +1380,7 @@ utrans0* :
 - : utrans0* (stp/trans0 (stp/sel1 D K)) TL (stp/llsel1 DL K)
       <- utrans0* D TL DL.
 
-- : utrans0* (stp/trans0 (stp/bind A B SE))    TL (stp/transl is/bind is/bind (stp/bind A B SE) TL).
+- : utrans0* (stp/trans0 (stp/bind A B SE1 SE2))    TL (stp/transl is/bind is/bind (stp/bind A B SE1 SE2) TL).
 
 - : utrans0* (stp/trans0 (stp/sel2 D1 D3 K)) (stp/llsel1 DL K') DL''
       <- has-mem-unique K K' EQ
@@ -1405,7 +1406,7 @@ utrans0* :
 
 
 utrans0 : 
-  stp oktrans  G T1 T2 -> 
+  stp oktrans  G T1 G T2 ->
   stpl (s _) G T1 T2 -> 
   type.
 
@@ -1422,9 +1423,9 @@ utrans0 :
 % given linear version, remove top-level trans nodes
 
 utrans1s* : 
-  stp notrans G T1 (sel N2 X2) ->
+  stp notrans G T1 G (sel N2 X2) ->
   stpl z G (sel N2 X2) (sel N3 X3) -> 
-  stp notrans G T1 (sel N3 X3) ->
+  stp notrans G T1 G (sel N3 X3) ->
   type.
 %mode utrans1s* +A +B -C.
 
@@ -1438,9 +1439,9 @@ utrans1s* :
 
 utrans1* : 
   issel T2 z ->
-  stp notrans G T1 T2 ->
+  stp notrans G T1 G T2 ->
   stpl _ G T2 T3 -> 
-  stp notrans G T1 T3 ->
+  stp notrans G T1 G T3 ->
   type.
 %mode utrans1* +I2 +A +B -C.
 
@@ -1466,7 +1467,7 @@ utrans1* :
 
 utrans1 : 
   stpl (s _) G T1 T3 -> 
-  stp notrans G T1 T3 ->
+  stp notrans G T1 G T3 ->
   type.
 %mode utrans1 +A -B.
 
@@ -1491,8 +1492,8 @@ utrans1 :
 % --------------- inversion lemma / remove top-level transitivity ------------- %
 
 invert-trans : 
-  stp oktrans G T1 T2 ->
-  stp notrans G T1 T2 ->
+  stp oktrans G T1 G T2 ->
+  stp notrans G T1 G T2 ->
   type.
 %mode invert-trans +A -C.
 
@@ -1506,24 +1507,24 @@ invert-trans :
 % example inversion lemma
 
 invert-bind :
-  stp oktrans G (bind z DS1) (bind z DS2) ->
+  stp oktrans G (bind z DS1) G (bind z DS2) ->
 %%
   sdcs oktrans (tcons (bind z DS1) tnil) DS1 DS2 ->
   type.
 %mode invert-bind +A -B.
 
-- : invert-bind A B <- invert-trans A (stp/bind B _ _).
+- : invert-bind A B <- invert-trans A (stp/bind B _ _ _).
 
 %worlds () (invert-bind _ _).
 %total (A) (invert-bind A _).
 
 invert-fun :
-  stp oktrans G (bind z DS1) (bind z DS2) ->
+  stp oktrans G (bind z DS1) G (bind z DS2) ->
   dlk DS2 X (arrow S2 U2) ->
 %%
   dlk DS1 X (arrow S1 U1) ->
-  stp oktrans (tcons (bind z DS1) tnil) S2 S1 ->
-  stp oktrans (tcons (bind z DS1) tnil) U1 U2 ->
+  stp oktrans (tcons (bind z DS1) tnil) S2 (tcons (bind z DS1) tnil) S1 ->
+  stp oktrans (tcons (bind z DS1) tnil) U1 (tcons (bind z DS1) tnil) U2 ->
   type.
 %mode invert-fun +A +B -C -D -E.
 
