@@ -1091,14 +1091,6 @@ rlttrans* :
 %worlds () (rlttrans* _ _ _ _ _).
 %total (A) (rlttrans* A _ _ _ _).
 
-narrow-xp :
-    xp G2 T N U ->
-    sev oktrans G1 G1 G2 ->
-%%
-    xp G1 T N U ->
-    type.
-%mode narrow-xp +A +B -C.
-
 narrow-lk : 
     has-mem G2 N X D2 ->
     sev oktrans G1 G1 G2 ->
