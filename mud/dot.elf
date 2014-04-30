@@ -125,6 +125,25 @@ ses: sub-env-size GN N G
 
 %%%%%  Semantics  %%%%%
 
+% --------------- operational (evaluation) ------------- %
+
+ilk : ics -> nat -> ic -> type.
+ilk/z : ilk (icons D DS) z D.
+ilk/s : ilk (icons D DS) (s N) D' <- ilk DS N D'.
+
+eval : venv -> tm -> val -> type.
+
+e/var: eval G (var N) V
+    <- vlookup G N V.
+
+e/new: eval G (new DS IS) (clo G IS).
+
+e/app: eval G (app E1 X E2) V3
+    <- eval G E1 (clo G1 IS)
+    <- ilk IS X (fun E3)
+    <- eval G E2 V2
+    <- eval (vcons V2 G1) E3 V3.
+
 % --------------- typing ------------- %
 
 dlk : dcs -> nat -> dc -> type.
@@ -214,25 +233,6 @@ sev/sub     : sev IO (tcons P G) (tcons P G1) (tcons Q G2)
 
 sev/refl    : sev IO (tcons P G) (tcons P G1) (tcons P G2) 
            <- sev IO G G1 G2.
-
-% --------------- operational (evaluation) ------------- %
-
-ilk : ics -> nat -> ic -> type.
-ilk/z : ilk (icons D DS) z D.
-ilk/s : ilk (icons D DS) (s N) D' <- ilk DS N D'.
-
-eval : venv -> tm -> val -> type.
-
-e/var: eval G (var N) V
-    <- vlookup G N V.
-
-e/new: eval G (new DS IS) (clo G IS).
-
-e/app: eval G (app E1 X E2) V3
-    <- eval G E1 (clo G1 IS)
-    <- ilk IS X (fun E3)
-    <- eval G E2 V2
-    <- eval (vcons V2 G1) E3 V3.
 
 % EOF
 
