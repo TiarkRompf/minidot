@@ -1,0 +1,1316 @@
+% indirect transitivity: 
+%   - admit trans axiom
+%   - prove lemma: top-level uses of axiom can be 
+%     pushed further down into derivation
+%   - inversion lemmas remain straighforward
+
+
+%%%%%  Natural numbers  %%%%%
+
+nat : type.  %name nat N.
+
+z : nat.
+s : nat -> nat.
+
+add : nat -> nat -> nat -> type. %name add A.
+add/z: add z N N.
+add/s: add (s N1) N2 (s N3) <- add N1 N2 N3.
+
+lte : nat -> nat -> type.
+lte/z : lte z N.
+lte/s : lte (s N1) (s N2)
+   <- lte N1 N2.
+
+add-reduces: {N1}{N2}{N3}add N1 N2 N3 -> type.
+%mode add-reduces +N1 +N2 +N3 +A.
+- : add-reduces _ _ _ (add/z).
+- : add-reduces _ _ _ (add/s A) <- add-reduces _ _ _ A.
+%worlds () (add-reduces _ _ _ _).
+%total (A) (add-reduces A _ _ _).
+%reduces N2 <= N3 (add-reduces N1 N2 N3 A).
+
+add-inc: add A B C -> add A (s B) (s C) -> type.
+%mode add-inc +E1 -E2.
+
+- : add-inc add/z add/z.
+- : add-inc (add/s A1) (add/s A2)
+  <- add-inc A1 A2.
+
+%worlds () (add-inc _ _).
+%total {A} (add-inc A _).
+
+add-swap: add A (s B) C -> add (s A) B C -> type.
+%mode add-swap +E1 -E2.
+
+- : add-swap add/z (add/s add/z).
+- : add-swap (add/s A) (add/s B)
+ <- add-swap A B.
+
+%worlds () (add-swap _ _).
+%total {A} (add-swap A _).
+
+lte-inc : lte A B -> lte A (s B) -> type.
+%mode lte-inc +A -B.
+
+- : lte-inc lte/z lte/z.
+
+- : lte-inc (lte/s A) (lte/s B)
+     <- lte-inc A B.
+
+%worlds () (lte-inc _ _).
+%total A (lte-inc A _).
+
+%%%%%  Syntax  %%%%%
+
+tp : type.  %name tp T.
+
+dc: type. %name dc D.
+dcs: type.
+
+top     : tp.
+sel     : nat -> nat -> tp.
+bind    : nat -> dcs -> tp.
+
+topt : type.
+tnone : topt.
+tsome : tp -> topt.
+
+arrow   : tp -> tp -> dc.
+rect    : topt -> tp -> dc.
+
+dnil: dcs.
+dcons: dc -> dcs -> dcs.
+
+tenv: type. %name tenv G.
+tnil: tenv.
+tcons: dcs -> tenv -> tenv.
+
+
+issel: tp -> nat -> type.
+is/bind: issel (bind _ _) z.
+is/top: issel top (s z).
+is/sel: issel (sel _ _) (s z).
+
+%mode issel +T -N.
+%worlds () (issel _ _).
+%total (A) (issel A _).
+
+%{ ------- environments ----- }%
+
+tlookup-zero: tenv -> nat -> dcs -> type.
+tl/hit  : tlookup-zero (tcons V G) z V.
+tl/miss : tlookup-zero (tcons V' G) (s N) V <- tlookup-zero G N V.
+
+tsize : tenv -> nat -> type.
+tf/n   : tsize tnil z.
+tf/c   : tsize (tcons V G) (s N) <- tsize G N.
+
+%worlds () (tsize _ _).
+
+tlookup: tenv -> nat -> dcs -> type.
+tl  : tlookup G N V
+  <- tsize G S
+  <- add (s N) M S
+  <- tlookup-zero G M V.
+
+% Partial ordering on environments
+
+sub-env: tenv -> tenv -> type.
+
+sub-env/refl: sub-env G G.
+sub-env/ext: sub-env G1 (tcons Z G2) <- sub-env G1 G2.
+
+sub-env-size: tenv -> nat -> tenv -> type.
+ses: sub-env-size GN N G
+      <- sub-env GN G
+      <- tsize GN N.
+
+%%%%%  Semantics  %%%%%
+
+dlk : dcs -> nat -> dc -> type.
+dlk/z : dlk (dcons D DS) z D.
+dlk/s : dlk (dcons D DS) (s N) D' <- dlk DS N D'.
+
+
+has-mem : tenv -> nat -> nat -> dc -> type.
+has : has-mem G N X D
+        <- tlookup G N DS
+        <- dlk DS X D.
+
+
+mode1: type.
+notrans: mode1.
+oktrans: mode1.
+
+
+stp  : {I1:mode1} tenv -> tp -> tp -> type.
+sdcs : {I1:mode1} tenv -> dcs -> dcs -> type.
+sdc  : {I1:mode1} tenv -> dc -> dc -> type.
+sev  : {I1:mode1} tenv -> tenv -> tenv -> type.
+stpo : {I1:mode1} tenv -> topt -> tp -> type.
+stpoo: {I1:mode1} tenv -> topt -> topt -> type.
+
+stpo/n : stpo I0 G tnone U.
+stpo/s : stpo I0 G (tsome S) U <- stp I0 G S U.
+stpoo/nn : stpoo I0 G tnone tnone.
+stpoo/ns : stpoo I0 G tnone (tsome U).
+stpoo/ss : stpoo I0 G (tsome S) (tsome U) <- stp I0 G S U.
+
+stp/top     : stp notrans    G _ top.
+
+stp/sel1    : stp notrans    G (sel N X) T
+           <- has-mem G N X (rect _ U)
+           <- stp oktrans    G U T
+           .
+
+
+stp/sel2    : stp notrans    G T (sel N X)
+           <- has-mem G N X (rect (tsome L) U)
+           <- stp oktrans    G L U
+           <- stp oktrans    G T L
+           .
+
+stp/bind    : stp notrans    G (bind N DS1) (bind N DS2)
+           <- sub-env-size   GN N G
+           <- sdcs oktrans   (tcons DS2 GN) DS2 DS2 
+           <- sdcs oktrans   (tcons DS1 GN) DS1 DS2
+           .
+
+stp/trans0   : stp oktrans   G T1 T2
+            <- stp notrans   G T1 T2
+            .
+
+sdc/arrow   : sdc I0         G (arrow L1 U1) (arrow L2 U2)
+           <- stp I0         G U1 U2
+           <- stp I0         G L2 L1
+            .
+
+sdc/rect    : sdc I0         G (rect OL1 U1) (rect OL2 U2)
+           <- stpo I0        G OL2 U2
+           <- stpo I0        G OL1 U1
+           <- stp I0         G U1 U2
+           <- stpoo I0       G OL2 OL1
+            .
+
+sdcs/nil    : sdcs I0 G dnil dnil.
+sdcs/ext    : sdcs I0 G (dcons D DS) dnil
+           % <- sdcs I0 G (dcons D DS) (dcons D DS)
+            .
+sdcs/cons   : sdcs I0 G (dcons D1 DS1) (dcons D2 DS2)
+           <- sdc I0 G D1 D2
+           <- sdcs I0 G DS1 DS2.
+
+stp/trans   : stp oktrans     G T1 T3
+           <- stp oktrans     G T2 T3
+           <- stp oktrans     G T1 T2
+            .
+
+
+sev/nil     : sev IO tnil tnil tnil.
+
+sev/sub     : sev IO (tcons P G) (tcons P G1) (tcons Q G2) 
+           <- sev IO G G1 G2 
+           <- sdcs IO (tcons P G) P Q.
+
+sev/refl    : sev IO (tcons P G) (tcons P G1) (tcons P G2) 
+           <- sev IO G G1 G2.
+
+
+
+% --------------- uniqueness lemmas ------------- %
+
+eq-nat : nat -> nat -> type.
+eq-nat/z : eq-nat z z.
+eq-nat/s : eq-nat (s N1) (s N2)
+   <- eq-nat N1 N2.
+
+id-nat : nat -> nat -> type.
+id-nat/refl : id-nat N N.
+
+s-injective : id-nat N1 N2 -> id-nat (s N1) (s N2) -> type.
+%mode s-injective +A -B.
+
+s-injective/refl : s-injective id-nat/refl id-nat/refl.
+
+%worlds () (s-injective _ _).
+%total (A) (s-injective A _).
+
+eq2id-nat : eq-nat N1 N2 -> id-nat N1 N2 -> type.
+%mode eq2id-nat +A -B.
+
+eq2id-nat/z : eq2id-nat eq-nat/z id-nat/refl.
+
+eq2id-nat/s : eq2id-nat (eq-nat/s A) OUT
+           <- eq2id-nat A B
+           <- s-injective B OUT.
+
+%worlds () (eq2id-nat _ _).
+%total (A) (eq2id-nat A _).
+
+eq-nat-refl : {N} eq-nat N N -> type.
+%mode eq-nat-refl +N -EQ.
+
+eq-nat-refl/z : eq-nat-refl z eq-nat/z.
+
+eq-nat-refl/s : eq-nat-refl (s N) (eq-nat/s EQ)
+<- eq-nat-refl N EQ.
+
+%worlds () (eq-nat-refl _ _).
+%total (N) (eq-nat-refl N _).
+
+id2eq-nat : id-nat N1 N2 -> eq-nat N1 N2 -> type.
+%mode id2eq-nat +A -B.
+
+- : id2eq-nat id-nat/refl EQ
+ <- eq-nat-refl _ EQ.
+
+%worlds () (id2eq-nat _ _).
+%total (A) (id2eq-nat A _).
+
+id-tp : tp -> tp -> type.
+id-tp/refl : id-tp D D.
+
+id-topt : topt -> topt -> type.
+id-topt/refl : id-topt D D.
+
+id-dc : dc -> dc -> type.
+id-dc/refl : id-dc D D.
+
+id-dcs : dcs -> dcs -> type.
+id-dcs/refl : id-dcs D D.
+
+id-tenv : tenv -> tenv -> type.
+id-tenv/refl : id-tenv G G.
+
+dlk-unique : dlk DS X D -> dlk DS X D' -> id-dc D D' -> type.
+%mode dlk-unique +A +B -EQ.
+
+dlk-unique/z : dlk-unique dlk/z _ id-dc/refl.
+dlk-unique/s : dlk-unique (dlk/s A) (dlk/s B) EQ
+            <- dlk-unique A B EQ.
+
+%worlds () (dlk-unique _ _ _).
+%total (A) (dlk-unique A _ _).
+
+dlk-unique-rec : dlk DS X D -> dlk DS' X D' -> id-dcs DS DS' -> id-dc D D' -> type.
+%mode dlk-unique-rec +A +B +EQDS -EQD.
+
+- : dlk-unique-rec A B id-dcs/refl EQD
+ <- dlk-unique A B EQD.
+
+%worlds () (dlk-unique-rec _ _ _ _).
+%total (EQ) (dlk-unique-rec _ _ EQ _).
+
+eq-rect : id-dc (rect L U) (rect L' U') -> id-topt L L' -> id-tp U U' -> type.
+%mode eq-rect +A -EQL -EQU.
+
+eq-rect/refl : eq-rect id-dc/refl id-topt/refl id-tp/refl.
+
+%worlds () (eq-rect _ _ _).
+%total (A) (eq-rect A _ _).
+
+eq-stp-u : id-tp U U' -> stp I G L U -> stp I G L U' -> type.
+%mode eq-stp-u +EQU +B -C.
+
+- : eq-stp-u id-tp/refl B B.
+
+%worlds () (eq-stp-u _ _ _).
+%total (A) (eq-stp-u A _ _).
+%reduces C <= B (eq-stp-u _ B C).
+
+tlookup-zero-unique: tlookup-zero G2 E T1 -> tlookup-zero G2 E T2 -> id-dcs T1 T2 -> type.
+%mode tlookup-zero-unique +P1 +P2 -SBT.
+
+- : tlookup-zero-unique tl/hit tl/hit id-dcs/refl.
+- : tlookup-zero-unique (tl/miss A) (tl/miss B) X <- tlookup-zero-unique A B X.
+
+%worlds () (tlookup-zero-unique _ _ _).
+%total {T2} (tlookup-zero-unique T2 _ _).
+
+tlookup-zero-unique-rec: tlookup-zero G2 E T1 -> tlookup-zero G2 E' T2 -> id-nat E E' -> id-dcs T1 T2 -> type.
+%mode tlookup-zero-unique-rec +P1 +P2 +EQ -SBT.
+
+- : tlookup-zero-unique-rec A B id-nat/refl C
+ <- tlookup-zero-unique A B C.
+
+%worlds () (tlookup-zero-unique-rec _ _ _ _).
+%total (EQ) (tlookup-zero-unique-rec _ _ EQ _).
+
+tsize-unique-eq: tsize G2 N1 -> tsize G2 N2 -> eq-nat N1 N2 -> type.
+%mode tsize-unique-eq +P1 +P2 -SBT.
+
+- : tsize-unique-eq tf/n tf/n eq-nat/z.
+- : tsize-unique-eq (tf/c A) (tf/c B) (eq-nat/s X) <- tsize-unique-eq A B X.
+
+%worlds () (tsize-unique-eq _ _ _).
+%total {T2} (tsize-unique-eq T2 _ _).
+
+tsize-unique: tsize G2 N1 -> tsize G2 N2 -> id-nat N1 N2 -> type.
+%mode tsize-unique +P1 +P2 -SBT.
+
+- : tsize-unique A B ID
+ <- tsize-unique-eq A B EQ
+ <- eq2id-nat EQ ID.
+
+%worlds () (tsize-unique _ _ _).
+%total {T2} (tsize-unique T2 _ _).
+
+subadd-eq: eq-nat A1 A2 -> eq-nat C1 C2 -> add A1 B1 C1 -> add A2 B2 C2 -> eq-nat B1 B2 -> type.
+%mode subadd-eq +E1 +E2 +A1 +A2 -E3.
+
+- : subadd-eq eq-nat/z E add/z add/z E.
+- : subadd-eq (eq-nat/s E1) (eq-nat/s E2) (add/s A1) (add/s A2) E3
+  <- subadd-eq E1 E2 A1 A2 E3.
+
+%worlds () (subadd-eq _ _ _ _ _).
+%total {A} (subadd-eq A _ _ _ _).
+
+subadd-unique: id-nat A1 A2 -> id-nat C1 C2 -> add A1 B1 C1 -> add A2 B2 C2 -> id-nat B1 B2 -> type.
+%mode subadd-unique +E1 +E2 +A1 +A2 -E3.
+
+- : subadd-unique IDA IDC ADD1 ADD2 IDB
+ <- id2eq-nat IDA EQA
+ <- id2eq-nat IDC EQC
+ <- subadd-eq EQA EQC ADD1 ADD2 EQB
+ <- eq2id-nat EQB IDB.
+
+%worlds () (subadd-unique _ _ _ _ _).
+%total {A} (subadd-unique A _ _ _ _).
+
+tlookup-unique-rec: tlookup G X DS -> tlookup G X' DS' -> id-nat X X' -> id-dcs DS DS' -> type.
+%mode tlookup-unique-rec +A +B +EQX -EQ.
+
+- : tlookup-unique-rec
+     (tl L1 (add/s A1) (tf/c F1))
+     (tl L2 (add/s A2) (tf/c F2))
+     EQX
+     EQDS
+ <- tsize-unique F1 F2 EQS
+ <- subadd-unique EQX EQS A1 A2 EQM
+ <- tlookup-zero-unique-rec L1 L2 EQM EQDS
+ .
+%worlds () (tlookup-unique-rec _ _ _ _).
+%total (A) (tlookup-unique-rec A _ _ _).
+
+tlookup-unique: tlookup G X DS -> tlookup G X DS' -> id-dcs DS DS' -> type.
+%mode tlookup-unique +A +B -EQ.
+
+- : tlookup-unique A B EQDS
+ <- tlookup-unique-rec A B id-nat/refl EQDS
+ .
+
+%worlds () (tlookup-unique _ _ _).
+%total (A) (tlookup-unique A _ _).
+
+has-mem-unique : has-mem G N X D -> has-mem G N X D' -> id-dc D D' -> type.
+%mode has-mem-unique +A +B -EQ.
+
+- : has-mem-unique (has K L) (has K' L') EQD
+ <- tlookup-unique L L' EQDS
+ <- dlk-unique-rec K K' EQDS EQD
+ .
+
+%worlds () (has-mem-unique _ _ _).
+%total (A) (has-mem-unique A _ _).
+
+eq-dc-has-mem : id-dc D D' -> has-mem G N X D -> has-mem G N X D' -> type.
+%mode eq-dc-has-mem +A +B -C.
+
+- : eq-dc-has-mem id-dc/refl B B.
+
+%worlds () (eq-dc-has-mem _ _ _).
+%total (A) (eq-dc-has-mem A _ _).
+
+% --------------- extension lemmas ------------- %
+
+extend-wf-lkpz: tlookup-zero G N T -> {Z: dcs} tlookup-zero (tcons Z G) (s N) T -> type.
+%mode extend-wf-lkpz +A +B -D.
+- : extend-wf-lkpz tl/hit _ (tl/miss tl/hit).
+- : extend-wf-lkpz (tl/miss A) _ (tl/miss B) <- extend-wf-lkpz A _ B.
+%worlds () (extend-wf-lkpz _ _ _).
+%total A (extend-wf-lkpz A _ _).
+
+size-inc: tsize G N -> {Z: dcs} tsize (tcons Z G) (s N) -> type.
+%mode size-inc +A +B -D.
+- : size-inc tf/n T (tf/c tf/n).
+- : size-inc (tf/c S) T (tf/c S') <- size-inc S _ S'.
+%worlds () (size-inc _ _ _).
+%total A (size-inc A _ _).
+
+extend-wf-lkp: tlookup G N T -> {Z: dcs} tlookup (tcons Z G) N T -> type.
+%mode extend-wf-lkp +A +B -C.
+- : extend-wf-lkp (tl L A S) Z (tl L' A' S')
+      <- size-inc S Z S'
+      <- add-inc A A'
+      <- extend-wf-lkpz L Z L'.
+%worlds () (extend-wf-lkp _ _ _).
+%total A (extend-wf-lkp A _ _).
+
+extend-wf-mem: has-mem G N X T -> {Z: dcs} has-mem (tcons Z G) N X T -> type.
+%mode extend-wf-mem +A +B -C.
+- : extend-wf-mem (has D L) Z (has D L')
+      <- extend-wf-lkp L Z L'.
+%worlds () (extend-wf-mem _ _ _).
+%total A (extend-wf-mem A _ _).
+
+extend-wf-lkp-mult: tlookup G N T -> sub-env G G1 -> tlookup G1 N T -> type.
+%mode extend-wf-lkp-mult +A +B -C.
+- : extend-wf-lkp-mult L sub-env/refl L.
+- : extend-wf-lkp-mult L (sub-env/ext S) L2
+    <- extend-wf-lkp-mult L S L1
+    <- extend-wf-lkp L1 _ L2.
+%worlds () (extend-wf-lkp-mult _ _ _).
+%total A (extend-wf-lkp-mult _ A _).
+
+extend-sub-env-size: sub-env-size GN N G -> {Z} sub-env-size GN N (tcons Z G) -> type.
+%mode extend-sub-env-size +A +Z -B.
+
+- : extend-sub-env-size (ses N E) Z (ses N (sub-env/ext E)).
+
+%worlds () (extend-sub-env-size _ _ _).
+%total A (extend-sub-env-size A _ _).
+
+extend-stp: stp I1 G T1 T2 -> {T3} stp I1 (tcons T3 G) T1 T2 -> type.
+%mode extend-stp +A +B -D.
+
+-/top: extend-stp stp/top _ stp/top.
+
+-/sel1: extend-stp (stp/sel1 BUT E) Z (stp/sel1 BUT' E')
+     <- extend-wf-mem E Z E'
+     <- extend-stp BUT Z BUT'.
+
+-/sel2: extend-stp (stp/sel2 BTL BLU E) Z (stp/sel2 BTL' BLU' E')
+     <- extend-wf-mem E Z E'
+     <- extend-stp BLU Z BLU'
+     <- extend-stp BTL Z BTL'.
+
+-/bind: extend-stp (stp/bind BDS12 BDS22 SE) Z (stp/bind BDS12 BDS22 SE')
+     <- extend-sub-env-size SE Z SE'
+     .
+
+-/trans0: extend-stp (stp/trans0 S) _ (stp/trans0 S') 
+        <- extend-stp S _ S'.
+
+-/trans: extend-stp (stp/trans S1 S2) _ (stp/trans S1' S2') 
+        <- extend-stp S1 _ S1'
+        <- extend-stp S2 _ S2'.
+
+%worlds () (extend-stp _ _ _).
+%total (A) (extend-stp A _ _).
+
+extend-stpo: stpo I G T1 T2 -> {Z} stpo I (tcons Z G) T1 T2 -> type.
+%mode extend-stpo +A +B -C.
+
+-/n : extend-stpo stpo/n _ stpo/n.
+-/s : extend-stpo (stpo/s A) Z (stpo/s A')
+   <- extend-stp A Z A'.
+
+%worlds () (extend-stpo _ _ _).
+%total (A) (extend-stpo A _ _).
+
+extend-stpoo: stpoo I G T1 T2 -> {Z} stpoo I (tcons Z G) T1 T2 -> type.
+%mode extend-stpoo +A +B -C.
+
+-/nn : extend-stpoo stpoo/nn _ stpoo/nn.
+-/ns : extend-stpoo stpoo/ns _ stpoo/ns.
+-/ss : extend-stpoo (stpoo/ss A) Z (stpoo/ss A')
+   <- extend-stp A Z A'.
+
+%worlds () (extend-stpoo _ _ _).
+%total (A) (extend-stpoo A _ _).
+
+
+extend-sdc: sdc I G D1 D2 -> {Z} sdc I (tcons Z G) D1 D2 -> type.
+%mode extend-sdc +A +B -C.
+
+-/arrow : extend-sdc (sdc/arrow A B) Z (sdc/arrow A' B')
+       <- extend-stp A Z A'
+       <- extend-stp B Z B'.
+-/rect  : extend-sdc (sdc/rect OOA B OC OD) Z (sdc/rect OOA' B' OC' OD')
+       <- extend-stpoo OOA Z OOA'
+       <- extend-stp B Z B'
+       <- extend-stpo OC Z OC'
+       <- extend-stpo OD Z OD'.
+
+%worlds () (extend-sdc _ _ _).
+%total (A) (extend-sdc A _ _).
+
+% --------------- (notrans -> oktrans) ------------- %
+
+to-oktrans: stp notrans G T1 T2 -> stp oktrans G T1 T2 -> type.
+%mode to-oktrans +A -B.
+
+- : to-oktrans S (stp/trans0 S).
+
+%worlds () (to-oktrans _ _).
+%total (A) (to-oktrans A _).
+
+
+% --------------- transitivity (oktrans mode) ------------- %
+
+ttrans* :
+    stp oktrans G S Q ->
+    stp oktrans G Q T ->
+%%
+    stp oktrans G S T ->
+    type.
+
+%mode ttrans*   +X1 +X2 -X3.
+
+- : ttrans* S1 S2 (stp/trans S1 S2).
+
+%worlds () (ttrans* _ _ _ ).
+%total (Q1) (ttrans* Q1 _ _).
+
+ttransoo* :
+    stpoo oktrans G S Q ->
+    stpoo oktrans G Q T ->
+%%
+    stpoo oktrans G S T ->
+    type.
+
+%mode ttransoo*   +X1 +X2 -X3.
+
+- : ttransoo* stpoo/nn stpoo/nn stpoo/nn.
+- : ttransoo* stpoo/nn stpoo/ns stpoo/ns.
+- : ttransoo* stpoo/ns (stpoo/ss _) stpoo/ns.
+- : ttransoo* (stpoo/ss A) (stpoo/ss B) (stpoo/ss C)
+ <- ttrans* A B C.
+
+%worlds () (ttransoo* _ _ _ ).
+%total (Q1) (ttransoo* Q1 _ _).
+
+ttransdc* :
+    sdc oktrans G S Q ->
+    sdc oktrans G Q T ->
+%%
+    sdc oktrans G S T ->
+    type.
+
+%mode ttransdc* +X1 +X2 -X3.
+
+- : ttransdc*  (sdc/arrow L1 U1) (sdc/arrow L2 U2) (sdc/arrow L3 U3)
+        <- ttrans* L2 L1 L3
+        <- ttrans* U1 U2 U3.
+
+- : ttransdc*  (sdc/rect OL1 U1 X1 X2) (sdc/rect OL2 U2 X2' X3) (sdc/rect OL3 U3 X1 X3)
+        <- ttransoo* OL2 OL1 OL3
+        <- ttrans* U1 U2 U3.
+
+%worlds () (ttransdc* _ _ _).
+%total (Q1') (ttransdc* Q1' _ _).
+
+ttransdcs* :
+    sdcs oktrans G S Q ->
+    sdcs oktrans G Q T ->
+%%
+    sdcs oktrans G S T ->
+    type.
+
+%mode ttransdcs* +X1 +X2 -X3.
+
+- : ttransdcs* sdcs/nil sdcs/nil sdcs/nil.
+
+- : ttransdcs* sdcs/ext sdcs/nil sdcs/ext.
+
+- : ttransdcs* (sdcs/cons _ _) sdcs/ext sdcs/ext.
+
+- : ttransdcs* (sdcs/cons BDS1 BD1) (sdcs/cons BDS2 BD2) (sdcs/cons BDS3 BD3)
+ <- ttransdc* BD1 BD2 BD3
+ <- ttransdcs* BDS1 BDS2 BDS3.
+
+%worlds () (ttransdcs* _ _ _).
+%total (Q1') (ttransdcs* Q1' _ _).
+
+% --------------- contradictions ------------- %
+
+false: type.
+
+lte-s-false: lte (s N) N -> false -> type.
+%mode lte-s-false +A -B.
+- : lte-s-false (lte/s A) CONTRA
+     <- lte-s-false A CONTRA.
+%worlds () (lte-s-false _ _).
+%total A (lte-s-false A _).
+
+tlookup-contra : tlookup tnil N DS -> false -> type.
+%mode tlookup-contra +A -B.
+%worlds () (tlookup-contra _ _).
+%total (A) (tlookup-contra A _).
+
+contra-tlookup : false -> {G} {N} {DS} tlookup G N DS -> type.
+%mode contra-tlookup +CONTRA -G -N -DS -A.
+%worlds () (contra-tlookup _ _ _ _ _).
+%total (A) (contra-tlookup A _ _ _ _).
+
+contra-has-mem : false -> {G} {N} {X} {D} has-mem G N X D -> type.
+%mode contra-has-mem +CONTRA -G -N -X -D -A.
+%worlds () (contra-has-mem _ _ _ _ _ _).
+%total (A) (contra-has-mem A _ _ _ _ _).
+
+contra-sdc : false -> {G} {D1} {D2} sdc oktrans G D1 D2 -> type.
+%mode contra-sdc +CONTRA -G -D1 -D2 -A.
+%worlds () (contra-sdc _ _ _ _ _).
+%total (A) (contra-sdc A _ _ _ _).
+
+contra-dcs : false -> {Z1}{Z2} id-dcs Z1 Z2 -> type.
+%mode contra-dcs +CONTRA +Z1 +Z2 -A.
+%worlds () (contra-dcs _ _ _ _).
+%total (A) (contra-dcs A _ _ _).
+
+% --------------- narrowing (oktrans mode) ------------- %
+
+inv-sdcs :
+    sdcs oktrans G DS' DS ->
+    (dlk DS X DX) ->
+%%
+    (dlk DS' X DX') ->
+    sdc oktrans G DX' DX ->
+    type.
+
+%mode inv-sdcs +A +B -C -D.
+
+- : inv-sdcs (sdcs/cons BDS BD) dlk/z dlk/z BD.
+- : inv-sdcs (sdcs/cons BDS BD) (dlk/s K) (dlk/s K') BD'
+ <- inv-sdcs BDS K K' BD'.
+
+%worlds () (inv-sdcs _ _ _ _).
+%total (A) (inv-sdcs A _ _ _).
+
+tsize-swap : tsize (tcons Z G) N -> {Z'} tsize (tcons Z' G) N -> type.
+%mode tsize-swap +A +Z -B.
+
+-/n : tsize-swap (tf/c A) Z (tf/c A).
+
+%worlds () (tsize-swap _ _ _).
+%total (A) (tsize-swap A _ _).
+
+nil-sub-env : {G} sub-env tnil G -> type.
+%mode nil-sub-env +G -A.
+
+-/nil  : nil-sub-env tnil sub-env/refl.
+-/cons : nil-sub-env (tcons _ G) (sub-env/ext A)
+      <- nil-sub-env G A.
+
+%worlds () (nil-sub-env _ _).
+%total (A) (nil-sub-env A _).
+
+sev-refl : {G} sev oktrans G G G -> type.
+%mode sev-refl +G -A.
+
+-/nil  : sev-refl tnil sev/nil.
+-/cons : sev-refl (tcons _ G) (sev/refl A)
+      <- sev-refl G A.
+
+%worlds () (sev-refl _ _).
+%total (A) (sev-refl A _).
+
+tsize-sev : sev I G2 G2 G1 -> tsize G1 N -> tsize G2 N -> type.
+%mode tsize-sev +A +B -C.
+
+-/nil  : tsize-sev sev/nil B tf/n.
+-/sub  : tsize-sev (sev/sub _ A) (tf/c B) (tf/c C)
+      <- tsize-sev A B C.
+-/refl : tsize-sev (sev/refl A) (tf/c B) (tf/c C)
+      <- tsize-sev A B C.
+
+%worlds () (tsize-sev _ _ _).
+%total (A) (tsize-sev A _ _).
+
+sev-sub-size : 
+    sub-env-size G20 N G2 ->
+    sev oktrans G1 G1 G2 ->
+%%
+    sub-env-size G10 N G1 ->
+    sev oktrans G10 G10 G20 ->
+    type.
+%mode sev-sub-size  +X1 +X2 -X3 -X4.
+
+- : sev-sub-size (ses tf/n sub-env/refl) sev/nil (ses tf/n sub-env/refl) sev/nil.
+
+- : sev-sub-size (ses N (sub-env/ext SE)) (sev/refl BE) (ses N' (sub-env/ext SE')) BE'
+ <- sev-sub-size (ses N SE) BE (ses N' SE') BE'.
+
+- : sev-sub-size (ses (tf/c N) sub-env/refl) (sev/refl BE) (ses (tf/c N') sub-env/refl) (sev/refl BE)
+ <- tsize-sev BE N N'.
+
+- : sev-sub-size (ses N (sub-env/ext SE)) (sev/sub BD BE) (ses N' (sub-env/ext SE')) BE'
+ <- sev-sub-size (ses N SE) BE (ses N' SE') BE'.
+
+- : sev-sub-size (ses (tf/c N) sub-env/refl) (sev/sub BD BE) (ses (tf/c N') sub-env/refl) (sev/sub BD BE)
+ <- tsize-sev BE N N'.
+
+%worlds () (sev-sub-size _ _ _ _).
+%total (A) (sev-sub-size _ A _ _).
+
+
+rsdc : tenv -> dc -> dc -> type.
+rsdc/refl : rsdc G D D.
+rsdc/sdc  : sdc oktrans G D1 D2 -> rsdc G D1 D2.
+
+eq-rsdc-l : id-dc D1 D1' -> rsdc G D1 D2 -> rsdc G D1' D2 -> type.
+%mode eq-rsdc-l +A +B -C.
+
+- : eq-rsdc-l id-dc/refl B B.
+
+%worlds () (eq-rsdc-l _ _ _).
+%total (A) (eq-rsdc-l A _ _).
+
+extend-rsdc : rsdc G D1 D2 -> {Z: dcs} rsdc (tcons Z G) D1 D2 -> type.
+%mode extend-rsdc +A +B -C.
+
+-/refl : extend-rsdc rsdc/refl _ rsdc/refl.
+-/sdc  : extend-rsdc (rsdc/sdc A) Z (rsdc/sdc A')
+      <- extend-sdc A Z A'.
+
+%worlds () (extend-rsdc _ _ _).
+%total (A) (extend-rsdc A _ _).
+
+ruttrans* :
+    rsdc G (rect OL1 U1) (rect OL2 U2) ->
+    stp oktrans G U2 U3 ->
+%%
+    stp oktrans G U1 U3 ->
+    type.
+%mode ruttrans* +A +B -C.
+
+-/refl : ruttrans* rsdc/refl B B.
+-/sdc  : ruttrans* (rsdc/sdc (sdc/rect _ A _ _)) B C
+      <- ttrans* A B C.
+
+%worlds () (ruttrans* _ _ _).
+%total (A) (ruttrans* A _ _).
+
+rlttrans* :
+    rsdc G (rect (tsome L1) U1) (rect (tsome L2) U2) ->
+    stp oktrans G L3 L2 ->
+    stp oktrans G L2 U2 ->
+%%
+    stp oktrans G L3 L1 ->
+    stp oktrans G L1 U1 ->
+    type.
+%mode rlttrans* +A +B +C -D -E.
+
+-/refl : rlttrans* rsdc/refl B C B C.
+-/sdc  : rlttrans* (rsdc/sdc (sdc/rect (stpoo/ss A) _ (stpo/s E) _)) B C D E
+      <- ttrans* B A D.
+
+%worlds () (rlttrans* _ _ _ _ _).
+%total (A) (rlttrans* A _ _ _ _).
+
+narrow-lk : 
+    has-mem G2 N X D2 ->
+    sev oktrans G1 G1 G2 ->
+%%
+    has-mem G1 N X D1 ->
+    rsdc G1 D1 D2 ->
+    type.
+
+%mode narrow-lk  +X1 +X2 -X3 -X4.
+
+- : narrow-lk (has K (tl tl/hit A (tf/c N))) (sev/refl BE) (has K (tl tl/hit A (tf/c N'))) rsdc/refl
+ <- tsize-sev BE N N'.
+
+- : narrow-lk (has K (tl (tl/miss L) (add/s A) (tf/c N))) (sev/refl BE) M'' OBD''
+ <- add-swap A AR
+ <- narrow-lk (has K (tl L AR N)) BE M' OBD'
+ <- extend-wf-mem M' _ M''
+ <- extend-rsdc OBD' _ OBD''
+  .
+
+- : narrow-lk (has K (tl tl/hit A (tf/c N))) (sev/sub BDS BE) (has K' (tl tl/hit A (tf/c N'))) (rsdc/sdc BD')
+ <- tsize-sev BE N N'
+ <- inv-sdcs BDS K K' BD'
+  .
+
+- : narrow-lk (has K (tl (tl/miss L) (add/s A) (tf/c N))) (sev/sub BDS BE) M'' OBD''
+ <- add-swap A AR
+ <- narrow-lk (has K (tl L AR N)) BE M' OBD'
+ <- extend-wf-mem M' _ M''
+ <- extend-rsdc OBD' _ OBD''
+  .
+
+%worlds () (narrow-lk _ _ _ _).
+%total (A) (narrow-lk _ A _ _).
+
+rsdc-output-factor :
+    rsdc G1 (rect OL1 U1) (rect (tsome L2) U2) ->
+%%
+    id-dc (rect OL1 U1) (rect (tsome L1) U1) ->
+    type.
+%mode rsdc-output-factor +A -B.
+
+-/refl : rsdc-output-factor rsdc/refl id-dc/refl.
+
+-/sdc  : rsdc-output-factor (rsdc/sdc (sdc/rect (stpoo/ss _) _ _ _)) id-dc/refl.
+
+%worlds () (rsdc-output-factor _ _).
+%total (A) (rsdc-output-factor A _).
+
+narrow-lkss :
+    has-mem G2 N X (rect (tsome L2) U2) ->
+    sev oktrans G1 G1 G2 ->
+%%
+    has-mem G1 N X (rect (tsome L1) U1) ->
+    rsdc G1 (rect (tsome L1) U1) (rect (tsome L2) U2) ->
+    type.
+
+%mode narrow-lkss  +X1 +X2 -X3 -X4.
+
+- : narrow-lkss M E M' E'
+ <- narrow-lk M E MX EX
+ <- rsdc-output-factor EX EQ
+ <- eq-dc-has-mem EQ MX M'
+ <- eq-rsdc-l EQ EX E'.
+
+%worlds () (narrow-lkss _ _ _ _).
+%total (A) (narrow-lkss A _ _ _).
+
+
+narrowdcs* :
+    sdcs oktrans G2 M N ->
+    sev  oktrans G1 G1 G2 ->
+%%
+    sdcs oktrans G1 M N ->
+    type.
+
+%mode narrowdcs*  +X1 +X2 -X3.
+
+narrow* : 
+    stp oktrans G2 M N ->
+    sev oktrans G1 G1 G2 ->
+%%
+    stp oktrans G1 M N ->
+    type.
+
+%mode narrow*  +X1 +X2 -X3.
+
+-top    : narrow* (stp/trans0 stp/top) _ (stp/trans0 stp/top).
+
+
+-trans  : narrow* (stp/trans D1 D2) Dsub (stp/trans D1' D2')
+       <- narrow* D1 Dsub D1'
+       <- narrow* D2 Dsub D2'.
+
+-sel1   : narrow* (stp/trans0 (stp/sel1 BU E)) BDS (stp/trans0 (stp/sel1 BU' E'))
+       <- narrow-lk E BDS E' OB
+       <- narrow* BU BDS BUN
+       <- ruttrans* OB BUN BU'.
+
+-sel2   : narrow* (stp/trans0 (stp/sel2 BTL BLU E)) BDS (stp/trans0 (stp/sel2 BTL' BLU' E'))
+       <- narrow-lkss E BDS E' OB
+       <- narrow* BTL BDS BTLN
+       <- narrow* BLU BDS BLUN
+       <- rlttrans* OB BTLN BLUN BTL' BLU'.
+
+-bind   : narrow* (stp/trans0 (stp/bind BD12 BD22 SE)) BDS (stp/trans0 (stp/bind BD12' BD22' SE'))
+        <- sev-sub-size SE BDS SE' BDS'
+        <- narrowdcs* BD12 (sev/refl BDS') BD12' 
+        <- narrowdcs* BD22 (sev/refl BDS') BD22'.
+
+narrowo* :
+    stpo oktrans G2 M N ->
+    sev oktrans G1 G1 G2 ->
+%%
+    stpo oktrans G1 M N ->
+    type.
+
+%mode narrowo*  +X1 +X2 -X3.
+
+-n : narrowo* stpo/n BDS stpo/n.
+-s : narrowo* (stpo/s BU) BDS (stpo/s BU')
+  <- narrow* BU BDS BU'.
+
+narrowoo* :
+    stpoo oktrans G2 M N ->
+    sev oktrans G1 G1 G2 ->
+%%
+    stpoo oktrans G1 M N ->
+    type.
+
+%mode narrowoo*  +X1 +X2 -X3.
+
+-nn : narrowoo* stpoo/nn BDS stpoo/nn.
+-ns : narrowoo* stpoo/ns BDS stpoo/ns.
+-ss : narrowoo* (stpoo/ss BU) BDS (stpoo/ss BU')
+  <- narrow* BU BDS BU'.
+
+narrowdc* :
+    sdc oktrans G2 M N ->
+    sev oktrans G1 G1 G2 ->
+%%
+    sdc oktrans G1 M N ->
+    type.
+
+%mode narrowdc*  +X1 +X2 -X3.
+
+-rect : narrowdc* (sdc/rect A B C D) S (sdc/rect A' B' C' D')
+         <- narrowoo* A S A'
+         <- narrow* B S B'
+         <- narrowo* C S C'
+         <- narrowo* D S D'
+         .
+
+-arrow : narrowdc* (sdc/arrow A B) S (sdc/arrow A' B')
+         <- narrow* A S A'
+         <- narrow* B S B'
+         .
+
+-nil : narrowdcs* sdcs/nil BDS sdcs/nil.
+-ext : narrowdcs* sdcs/ext BDS sdcs/ext
+    % <- narrowdcs* A BDS A'
+    .
+-cons: narrowdcs* (sdcs/cons A BD) BDS (sdcs/cons A' BD')
+    <- narrowdc* BD BDS BD'
+    <- narrowdcs* A BDS A'.
+
+%worlds () (narrowdcs* _ _ _) (narrow* _ _ _) (narrowo* _ _ _) (narrowoo* _ _ _) (narrowdc* _ _ _).
+%total (A B C D E) (narrowdcs* A _ _) (narrow* B _ _) (narrowo* C _ _) (narrowoo* D _ _) (narrowdc* E _ _).
+
+% --------------- misc helpers (mostly more uniqueness lemmas) ------------- %
+
+eq-lte : eq-nat NA NB -> lte NA NB -> type.
+%mode eq-lte +A -B.
+
+- : eq-lte eq-nat/z lte/z.
+
+- : eq-lte (eq-nat/s A) (lte/s B)
+     <- eq-lte A B.
+
+%worlds () (eq-lte _ _).
+%total A (eq-lte A _).
+
+sub-env-size-lte: sub-env GN G -> tsize GN NN -> tsize G N -> lte NN N -> type.
+%mode sub-env-size-lte +A +B +C -D.
+- : sub-env-size-lte sub-env/refl A B LT
+     <- tsize-unique-eq A B EQ
+     <- eq-lte EQ LT.
+- : sub-env-size-lte (sub-env/ext S) A (tf/c B) LT'
+     <- sub-env-size-lte S A B LT
+     <- lte-inc LT LT'.
+%worlds () (sub-env-size-lte _ _ _ _).
+%total A (sub-env-size-lte A _ _ _).
+
+eq-env-cons: id-tenv G G' -> id-dcs T T' -> id-tenv (tcons T G) (tcons T' G') -> type.
+%mode eq-env-cons +A +B -C.
+- : eq-env-cons id-tenv/refl id-dcs/refl id-tenv/refl.
+%worlds () (eq-env-cons _ _ _).
+%total A (eq-env-cons A _ _).
+
+sub-env-size-eq-cons: id-tenv G1 G2 -> sub-env (tcons T1 G1) G -> sub-env (tcons T2 G2) G -> tsize G1 N -> tsize G2 N -> id-dcs T1 T2 -> type.
+%mode sub-env-size-eq-cons +A +B +C +D +E -F.
+
+- : sub-env-size-eq-cons GEQ sub-env/refl sub-env/refl N1 N2 id-dcs/refl.
+- : sub-env-size-eq-cons GEQ (sub-env/ext A1) (sub-env/ext A2) N1 N2 TEQ
+     <- sub-env-size-eq-cons GEQ A1 A2 N1 N2 TEQ.
+- : sub-env-size-eq-cons GEQ sub-env/refl (sub-env/ext A2) N1 N2 TEQ
+     <- sub-env-size-lte A2 (tf/c N2) N1 LT
+     <- lte-s-false LT CONTRA
+     <- contra-dcs CONTRA _ _ TEQ.
+- : sub-env-size-eq-cons GEQ (sub-env/ext A1) sub-env/refl N1 N2 TEQ
+     <- sub-env-size-lte A1 (tf/c N1) N2 LT
+     <- lte-s-false LT CONTRA
+     <- contra-dcs CONTRA _ _ TEQ.
+%worlds () (sub-env-size-eq-cons _ _ _ _ _ _).
+%total A (sub-env-size-eq-cons _ A _ _ _ _).
+
+sub-env-cons: sub-env (tcons T GN) G -> sub-env GN G -> type.
+%mode sub-env-cons +A -B.
+
+- : sub-env-cons sub-env/refl (sub-env/ext sub-env/refl).
+- : sub-env-cons (sub-env/ext S) (sub-env/ext S')
+     <- sub-env-cons S S'.
+
+%worlds () (sub-env-cons _ _).
+%total A (sub-env-cons A _).
+
+sub-env-size-split-eq: sub-env GN G -> tsize GN N -> sub-env GN' G -> tsize GN' N -> id-tenv GN GN' -> type.
+%mode sub-env-size-split-eq +A +B +C +D -E.
+
+- : sub-env-size-split-eq A1 tf/n A2 tf/n id-tenv/refl.
+
+- : sub-env-size-split-eq A1 (tf/c N1) A2 (tf/c N2) EQ
+     <- sub-env-cons A1 A1'
+     <- sub-env-cons A2 A2'
+     <- sub-env-size-split-eq A1' N1 A2' N2 GEQ
+     <- sub-env-size-eq-cons GEQ A1 A2 N1 N2 TEQ
+     <- eq-env-cons GEQ TEQ EQ.
+
+%worlds () (sub-env-size-split-eq _ _ _ _ _).
+%total A (sub-env-size-split-eq _ A _ _ _).
+
+sub-env-size-eq: sub-env-size GN N G -> sub-env-size GN' N G -> id-tenv GN GN' -> type.
+%mode sub-env-size-eq +A +B -C.
+
+- : sub-env-size-eq (ses N1 A1) (ses N2 A2) EQ
+     <- sub-env-size-split-eq A1 N1 A2 N2 EQ.
+
+%worlds () (sub-env-size-eq _ _ _).
+%total A (sub-env-size-eq A _ _).
+
+extend-id: id-tenv GN GN' ->  {DS} id-tenv (tcons DS GN) (tcons DS GN') -> type.
+%mode extend-id +A +B -C.
+
+- : extend-id id-tenv/refl _ id-tenv/refl.
+
+%worlds () (extend-id _ _ _).
+%total A (extend-id A _ _).
+
+eq-env: id-tenv G2 G2' -> sdcs IO G2 T1 T2 -> sdcs IO G2' T1 T2 -> type.
+%mode eq-env +P1 +P2 -SBT.
+
+- : eq-env id-tenv/refl S S.
+
+%worlds () (eq-env _ _ _).
+%total {A} (eq-env A _ _).
+%reduces N3 <= N2 (eq-env _ N2  N3).
+
+% --------------- transitivity (notrans mode, exlude middle p.L ) ------------- %
+
+trans* :  
+    issel Q z ->
+    stp notrans G S Q ->
+    stp notrans G Q T ->
+%%
+    stp notrans G S T ->
+    type.
+
+%mode trans*   +I +X1 +X2 -X3.
+
+-top    : trans* _ D stp/top stp/top.
+
+
+-var    : trans* _ (stp/sel1 U2 K) D (stp/sel1 U2' K)
+        <- to-oktrans D D'
+        <- ttrans* U2 D' U2'.
+
+-var2   : trans* _ D (stp/sel2 L2 U2 K) (stp/sel2 L2' U2 K)
+        <- to-oktrans D D'
+        <- ttrans* D' L2 L2'.
+
+-tbind  : trans* _ (stp/bind D12 D22 SE) (stp/bind D23 D33 SE') (stp/bind D13 D33 SE')
+       <- sev-refl _ DG
+       <- sub-env-size-eq SE SE' ID
+       <- extend-id ID _ ID'
+       <- eq-env ID' D12 D12'
+       <- narrowdcs* D23 (sev/sub D12' DG) D23'
+       <- ttransdcs* D12' D23' D13
+       .
+
+%worlds () (trans* _ _ _ _).
+%total (A) (trans* _ A _ _).
+
+
+
+
+% --------------- linearize trans nodes, remove paths ------------- %
+
+
+% linked-list data structure so we can traverse left -> right
+% (is this necessary?)
+
+stpl  : nat -> tenv -> tp -> tp -> type.
+
+stp/transl   : stpl (s N)     G T1 T3
+            <- stpl N         G T2 T3
+            <- stp notrans    G T1 T2
+            <- issel T2 z
+            <- issel T1 z
+             .
+
+stp/lltop2   : stpl (s z)     G L (sel N X)
+            <- has-mem G M Y (rect (tsome top) U)
+            <- stp oktrans    G top U
+            <- stpl z         G (sel M Y) (sel N X)
+            .
+
+stp/lltopx   : stpl (s z)     G _ top.
+
+stp/transe   : stpl z         G T1 T1.
+
+stp/llsel2    : stpl z        G L (sel N X)
+             <- has-mem G M Y (rect (tsome L) U)
+             <- stp oktrans   G L U
+             <- stpl z        G (sel M Y) (sel N X)
+             .
+
+stp/llsel1   : stpl (s N)     G (sel M X) T
+            <- has-mem G M X (rect L U)
+            <- stpl (s N)     G U T
+             .
+
+
+% linearize a derivation that uses transitivity
+
+utrans0* : 
+  stp oktrans  G T1 T2 -> 
+  stpl _ G T2 T3 -> 
+  stpl (s _) G T1 T3 -> 
+  type.
+
+%mode utrans0*  +S1 +S2 -S12.
+
+- : utrans0* (stp/trans0 (stp/top)) (stp/llsel2 D0 D K) (stp/lltop2 D0 D K).
+- : utrans0* (stp/trans0 (stp/top)) stp/transe stp/lltopx.
+
+- : utrans0* (stp/trans0 _) (stp/lltopx) (stp/lltopx).
+- : utrans0* (stp/trans0 _) (stp/lltop2 D0 D K) (stp/lltop2 D0 D K).
+
+
+- : utrans0* (stp/trans0 (stp/sel1 D K)) TL (stp/llsel1 DL K)
+      <- utrans0* D TL DL.
+
+- : utrans0* (stp/trans0 (stp/bind A B SE))    TL (stp/transl is/bind is/bind (stp/bind A B SE) TL).
+
+- : utrans0* (stp/trans0 (stp/sel2 D1 D3 K)) (stp/llsel1 DL K') DL''
+      <- has-mem-unique K K' EQ
+      <- eq-rect EQ EQL EQU
+      <- eq-stp-u EQU D3 D3'
+      <- utrans0* D3' DL DL'
+      <- utrans0* D1 DL' DL''.
+
+- : utrans0* (stp/trans0 (stp/sel2 D1 D3 K)) stp/transe DL'
+      <- utrans0* D1 (stp/llsel2 stp/transe D3 K) DL'.
+
+- : utrans0* (stp/trans0 (stp/sel2 BTL BLU K)) (stp/llsel2 D0 BLU' K') BTL''
+      <- utrans0* BTL (stp/llsel2 (stp/llsel2 D0 BLU' K') BLU K) BTL''
+      . % NOTE(namin): BTL' != BTL'' because selection label differs
+
+- : utrans0* (stp/trans S1 S2) TL TL''
+  <- utrans0* S2 TL TL'
+  <- utrans0* S1 TL' TL''.
+
+
+%worlds ()(utrans0* _ _ _).
+%total {A} (utrans0* A _ _).
+
+
+utrans0 : 
+  stp oktrans  G T1 T2 -> 
+  stpl (s _) G T1 T2 -> 
+  type.
+
+%mode utrans0  +S2 -S12.
+
+- : utrans0 S1 S1' <- utrans0* S1 stp/transe S1'.
+
+%worlds ()(utrans0 _ _).
+%total {A} (utrans0 A _).
+
+
+
+
+% given linear version, remove top-level trans nodes
+
+utrans1s* : 
+  stp notrans G T1 (sel N2 X2) ->
+  stpl z G (sel N2 X2) (sel N3 X3) -> 
+  stp notrans G T1 (sel N3 X3) ->
+  type.
+%mode utrans1s* +A +B -C.
+
+- : utrans1s* S1 stp/transe S1.
+
+- : utrans1s* S1 (stp/llsel2 D0 D E) DX
+      <- utrans1s* (stp/sel2 (stp/trans0 S1) D E) D0 DX.
+
+%worlds () (utrans1s* _ _ _).
+%total {B} (utrans1s* A B C).
+
+utrans1* : 
+  issel T2 z ->
+  stp notrans G T1 T2 ->
+  stpl _ G T2 T3 -> 
+  stp notrans G T1 T3 ->
+  type.
+%mode utrans1* +I2 +A +B -C.
+
+- : utrans1* I2 S1 (stp/transl I1' I2' S2 TL) S13 
+        <- trans* I1' S1 S2 S12
+        <- utrans1* I2' S12 TL S13.
+
+- : utrans1* I2 S1 stp/transe S1.
+
+- : utrans1* I2 S1 stp/lltopx stp/top.
+
+ - : utrans1* I2 S1 (stp/lltop2 D0 D E) DX 
+      <- utrans1s* (stp/sel2 (stp/trans0 stp/top) D E) D0 DX.
+
+- : utrans1* I2 S1 (stp/llsel2 D0 D E) DX % (stp/sel2 (stp/trans0 S1) D E)
+      <- utrans1s* (stp/sel2 (stp/trans0 S1) D E) D0 DX.
+
+
+%worlds () (utrans1* _ _ _ _).
+%total {B} (utrans1* _ A B C).
+
+
+
+utrans1 : 
+  stpl (s _) G T1 T3 -> 
+  stp notrans G T1 T3 ->
+  type.
+%mode utrans1 +A -B.
+
+- : utrans1 (stp/transl I1' I2' S2 TL) S13 
+        <- utrans1* I2' S2 TL S13.
+
+- : utrans1 (stp/llsel1 D E) (stp/sel1 (stp/trans0 D') E)
+        <- utrans1 D D'.
+
+- : utrans1 stp/lltopx stp/top.
+
+- : utrans1 (stp/lltop2 D0 D E) DX
+      <- utrans1s* (stp/sel2 (stp/trans0 stp/top) D E) D0 DX.
+
+%worlds () (utrans1 _ _).
+%total (A) (utrans1 A B).
+
+
+% now put it together for our main lemma ...
+
+
+% --------------- inversion lemma / remove top-level transitivity ------------- %
+
+invert-trans : 
+  stp oktrans G T1 T2 ->
+  stp notrans G T1 T2 ->
+  type.
+%mode invert-trans +A -C.
+
+- : invert-trans S12 S12'
+        <- utrans0 S12 SL12
+        <- utrans1 SL12 S12'.
+
+%worlds () (invert-trans _ _).
+%total (A) (invert-trans A B).
+
+% example inversion lemma
+
+invert-bind :
+  stp oktrans G (bind z DS1) (bind z DS2) ->
+%%
+  sdcs oktrans (tcons DS1 tnil) DS1 DS2 ->
+  type.
+%mode invert-bind +A -B.
+
+- : invert-bind A B <- invert-trans A (stp/bind B _ _).
+
+%worlds () (invert-bind _ _).
+%total (A) (invert-bind A _).
+
+invert-fun :
+  stp oktrans G (bind z DS1) (bind z DS2) ->
+  dlk DS2 X (arrow S2 U2) ->
+%%
+  dlk DS1 X (arrow S1 U1) ->
+  stp oktrans (tcons DS1 tnil) S2 S1 ->
+  stp oktrans (tcons DS1 tnil) U1 U2 ->
+  type.
+%mode invert-fun +A +B -C -D -E.
+
+- : invert-fun B K K' BS' BU'
+ <- invert-bind B BD
+ <- inv-sdcs BD K K' (sdc/arrow BS' BU').
+
+%worlds () (invert-fun _ _ _ _ _).
+%total (A) (invert-fun A _ _ _ _).
