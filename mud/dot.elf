@@ -54,7 +54,7 @@ icons: ic -> ics -> ics.
 % environments
 tenv: type. %name tenv G.
 tnil: tenv.
-tcons: dcs -> tenv -> tenv.
+tcons: tp -> tenv -> tenv.
 
 venv: type.
 vnil: venv.
@@ -95,7 +95,7 @@ vl  : vlookup G N V
   <- add (s N) M S
   <- vlookup-zero G M V.
 
-tlookup-zero: tenv -> nat -> dcs -> type.
+tlookup-zero: tenv -> nat -> tp -> type.
 tl/hit  : tlookup-zero (tcons V G) z V.
 tl/miss : tlookup-zero (tcons V' G) (s N) V <- tlookup-zero G N V.
 
@@ -105,7 +105,7 @@ tf/c   : tsize (tcons V G) (s N) <- tsize G N.
 
 %worlds () (tsize _ _).
 
-tlookup: tenv -> nat -> dcs -> type.
+tlookup: tenv -> nat -> tp -> type.
 tl  : tlookup G N V
   <- tsize G S
   <- add (s N) M S
@@ -153,7 +153,7 @@ dlk/s : dlk (dcons D DS) (s N) D' <- dlk DS N D'.
 
 has-mem : tenv -> nat -> nat -> dc -> type.
 has : has-mem G N X D
-        <- tlookup G N DS
+        <- tlookup G N (bind N DS)
         <- dlk DS X D.
 
 
@@ -190,8 +190,8 @@ stp/sel2    : stp notrans    G T (sel N X)
 
 stp/bind    : stp notrans    G (bind N DS1) (bind N DS2)
            <- sub-env-size   GN N G
-           <- sdcs oktrans   (tcons DS2 GN) DS2 DS2 
-           <- sdcs oktrans   (tcons DS1 GN) DS1 DS2
+           <- sdcs oktrans   (tcons (bind N DS2) GN) DS2 DS2
+           <- sdcs oktrans   (tcons (bind N DS1) GN) DS1 DS2
            .
 
 stp/trans0   : stp oktrans   G T1 T2
@@ -231,9 +231,9 @@ sev  : {I1:mode1} tenv -> tenv -> tenv -> type.
 
 sev/nil     : sev IO tnil tnil tnil.
 
-sev/sub     : sev IO (tcons P G) (tcons P G1) (tcons Q G2) 
+sev/sub     : sev IO (tcons (bind N P) G) (tcons (bind N P) G1) (tcons (bind N Q) G2) 
            <- sev IO G G1 G2 
-           <- sdcs IO (tcons P G) P Q.
+           <- sdcs IO (tcons (bind N P) G) P Q.
 
 sev/refl    : sev IO (tcons P G) (tcons P G1) (tcons P G2) 
            <- sev IO G G1 G2.
@@ -380,16 +380,16 @@ eq-stp-u : id-tp U U' -> stp I G L U -> stp I G L U' -> type.
 %total (A) (eq-stp-u A _ _).
 %reduces C <= B (eq-stp-u _ B C).
 
-tlookup-zero-unique: tlookup-zero G2 E T1 -> tlookup-zero G2 E T2 -> id-dcs T1 T2 -> type.
+tlookup-zero-unique: tlookup-zero G2 E T1 -> tlookup-zero G2 E T2 -> id-tp T1 T2 -> type.
 %mode tlookup-zero-unique +P1 +P2 -SBT.
 
-- : tlookup-zero-unique tl/hit tl/hit id-dcs/refl.
+- : tlookup-zero-unique tl/hit tl/hit id-tp/refl.
 - : tlookup-zero-unique (tl/miss A) (tl/miss B) X <- tlookup-zero-unique A B X.
 
 %worlds () (tlookup-zero-unique _ _ _).
 %total {T2} (tlookup-zero-unique T2 _ _).
 
-tlookup-zero-unique-rec: tlookup-zero G2 E T1 -> tlookup-zero G2 E' T2 -> id-nat E E' -> id-dcs T1 T2 -> type.
+tlookup-zero-unique-rec: tlookup-zero G2 E T1 -> tlookup-zero G2 E' T2 -> id-nat E E' -> id-tp T1 T2 -> type.
 %mode tlookup-zero-unique-rec +P1 +P2 +EQ -SBT.
 
 - : tlookup-zero-unique-rec A B id-nat/refl C
@@ -439,7 +439,7 @@ subadd-unique: id-nat A1 A2 -> id-nat C1 C2 -> add A1 B1 C1 -> add A2 B2 C2 -> i
 %worlds () (subadd-unique _ _ _ _ _).
 %total {A} (subadd-unique A _ _ _ _).
 
-tlookup-unique-rec: tlookup G X DS -> tlookup G X' DS' -> id-nat X X' -> id-dcs DS DS' -> type.
+tlookup-unique-rec: tlookup G X DS -> tlookup G X' DS' -> id-nat X X' -> id-tp DS DS' -> type.
 %mode tlookup-unique-rec +A +B +EQX -EQ.
 
 - : tlookup-unique-rec
@@ -454,7 +454,7 @@ tlookup-unique-rec: tlookup G X DS -> tlookup G X' DS' -> id-nat X X' -> id-dcs 
 %worlds () (tlookup-unique-rec _ _ _ _).
 %total (A) (tlookup-unique-rec A _ _ _).
 
-tlookup-unique: tlookup G X DS -> tlookup G X DS' -> id-dcs DS DS' -> type.
+tlookup-unique: tlookup G X DS -> tlookup G X DS' -> id-tp DS DS' -> type.
 %mode tlookup-unique +A +B -EQ.
 
 - : tlookup-unique A B EQDS
@@ -464,11 +464,20 @@ tlookup-unique: tlookup G X DS -> tlookup G X DS' -> id-dcs DS DS' -> type.
 %worlds () (tlookup-unique _ _ _).
 %total (A) (tlookup-unique A _ _).
 
+eq-bind : id-tp (bind N DS) (bind N DS') -> id-dcs DS DS' -> type.
+%mode eq-bind +A -B.
+
+- : eq-bind id-tp/refl id-dcs/refl.
+
+%worlds () (eq-bind _ _).
+%total (A) (eq-bind A _).
+
 has-mem-unique : has-mem G N X D -> has-mem G N X D' -> id-dc D D' -> type.
 %mode has-mem-unique +A +B -EQ.
 
 - : has-mem-unique (has K L) (has K' L') EQD
- <- tlookup-unique L L' EQDS
+ <- tlookup-unique L L' EQT
+ <- eq-bind EQT EQDS
  <- dlk-unique-rec K K' EQDS EQD
  .
 
@@ -485,21 +494,21 @@ eq-dc-has-mem : id-dc D D' -> has-mem G N X D -> has-mem G N X D' -> type.
 
 % --------------- extension lemmas ------------- %
 
-extend-wf-lkpz: tlookup-zero G N T -> {Z: dcs} tlookup-zero (tcons Z G) (s N) T -> type.
+extend-wf-lkpz: tlookup-zero G N T -> {Z} tlookup-zero (tcons Z G) (s N) T -> type.
 %mode extend-wf-lkpz +A +B -D.
 - : extend-wf-lkpz tl/hit _ (tl/miss tl/hit).
 - : extend-wf-lkpz (tl/miss A) _ (tl/miss B) <- extend-wf-lkpz A _ B.
 %worlds () (extend-wf-lkpz _ _ _).
 %total A (extend-wf-lkpz A _ _).
 
-size-inc: tsize G N -> {Z: dcs} tsize (tcons Z G) (s N) -> type.
+size-inc: tsize G N -> {Z} tsize (tcons Z G) (s N) -> type.
 %mode size-inc +A +B -D.
 - : size-inc tf/n T (tf/c tf/n).
 - : size-inc (tf/c S) T (tf/c S') <- size-inc S _ S'.
 %worlds () (size-inc _ _ _).
 %total A (size-inc A _ _).
 
-extend-wf-lkp: tlookup G N T -> {Z: dcs} tlookup (tcons Z G) N T -> type.
+extend-wf-lkp: tlookup G N T -> {Z} tlookup (tcons Z G) N T -> type.
 %mode extend-wf-lkp +A +B -C.
 - : extend-wf-lkp (tl L A S) Z (tl L' A' S')
       <- size-inc S Z S'
@@ -508,7 +517,7 @@ extend-wf-lkp: tlookup G N T -> {Z: dcs} tlookup (tcons Z G) N T -> type.
 %worlds () (extend-wf-lkp _ _ _).
 %total A (extend-wf-lkp A _ _).
 
-extend-wf-mem: has-mem G N X T -> {Z: dcs} has-mem (tcons Z G) N X T -> type.
+extend-wf-mem: has-mem G N X T -> {Z} has-mem (tcons Z G) N X T -> type.
 %mode extend-wf-mem +A +B -C.
 - : extend-wf-mem (has D L) Z (has D L')
       <- extend-wf-lkp L Z L'.
@@ -720,6 +729,11 @@ contra-dcs : false -> {Z1}{Z2} id-dcs Z1 Z2 -> type.
 %worlds () (contra-dcs _ _ _ _).
 %total (A) (contra-dcs A _ _ _).
 
+contra-tp : false -> {T1}{T2} id-tp T1 T2 -> type.
+%mode contra-tp +CONTRA +Z1 +Z2 -A.
+%worlds () (contra-tp _ _ _ _).
+%total (A) (contra-tp A _ _ _).
+
 % --------------- narrowing (oktrans mode) ------------- %
 
 inv-sdcs :
@@ -818,7 +832,7 @@ eq-rsdc-l : id-dc D1 D1' -> rsdc G D1 D2 -> rsdc G D1' D2 -> type.
 %worlds () (eq-rsdc-l _ _ _).
 %total (A) (eq-rsdc-l A _ _).
 
-extend-rsdc : rsdc G D1 D2 -> {Z: dcs} rsdc (tcons Z G) D1 D2 -> type.
+extend-rsdc : rsdc G D1 D2 -> {Z} rsdc (tcons Z G) D1 D2 -> type.
 %mode extend-rsdc +A +B -C.
 
 -/refl : extend-rsdc rsdc/refl _ rsdc/refl.
@@ -1053,26 +1067,26 @@ sub-env-size-lte: sub-env GN G -> tsize GN NN -> tsize G N -> lte NN N -> type.
 %worlds () (sub-env-size-lte _ _ _ _).
 %total A (sub-env-size-lte A _ _ _).
 
-eq-env-cons: id-tenv G G' -> id-dcs T T' -> id-tenv (tcons T G) (tcons T' G') -> type.
+eq-env-cons: id-tenv G G' -> id-tp T T' -> id-tenv (tcons T G) (tcons T' G') -> type.
 %mode eq-env-cons +A +B -C.
-- : eq-env-cons id-tenv/refl id-dcs/refl id-tenv/refl.
+- : eq-env-cons id-tenv/refl id-tp/refl id-tenv/refl.
 %worlds () (eq-env-cons _ _ _).
 %total A (eq-env-cons A _ _).
 
-sub-env-size-eq-cons: id-tenv G1 G2 -> sub-env (tcons T1 G1) G -> sub-env (tcons T2 G2) G -> tsize G1 N -> tsize G2 N -> id-dcs T1 T2 -> type.
+sub-env-size-eq-cons: id-tenv G1 G2 -> sub-env (tcons T1 G1) G -> sub-env (tcons T2 G2) G -> tsize G1 N -> tsize G2 N -> id-tp T1 T2 -> type.
 %mode sub-env-size-eq-cons +A +B +C +D +E -F.
 
-- : sub-env-size-eq-cons GEQ sub-env/refl sub-env/refl N1 N2 id-dcs/refl.
+- : sub-env-size-eq-cons GEQ sub-env/refl sub-env/refl N1 N2 id-tp/refl.
 - : sub-env-size-eq-cons GEQ (sub-env/ext A1) (sub-env/ext A2) N1 N2 TEQ
      <- sub-env-size-eq-cons GEQ A1 A2 N1 N2 TEQ.
 - : sub-env-size-eq-cons GEQ sub-env/refl (sub-env/ext A2) N1 N2 TEQ
      <- sub-env-size-lte A2 (tf/c N2) N1 LT
      <- lte-s-false LT CONTRA
-     <- contra-dcs CONTRA _ _ TEQ.
+     <- contra-tp CONTRA _ _ TEQ.
 - : sub-env-size-eq-cons GEQ (sub-env/ext A1) sub-env/refl N1 N2 TEQ
      <- sub-env-size-lte A1 (tf/c N1) N2 LT
      <- lte-s-false LT CONTRA
-     <- contra-dcs CONTRA _ _ TEQ.
+     <- contra-tp CONTRA _ _ TEQ.
 %worlds () (sub-env-size-eq-cons _ _ _ _ _ _).
 %total A (sub-env-size-eq-cons _ A _ _ _ _).
 
@@ -1360,7 +1374,7 @@ invert-trans :
 invert-bind :
   stp oktrans G (bind z DS1) (bind z DS2) ->
 %%
-  sdcs oktrans (tcons DS1 tnil) DS1 DS2 ->
+  sdcs oktrans (tcons (bind z DS1) tnil) DS1 DS2 ->
   type.
 %mode invert-bind +A -B.
 
@@ -1374,8 +1388,8 @@ invert-fun :
   dlk DS2 X (arrow S2 U2) ->
 %%
   dlk DS1 X (arrow S1 U1) ->
-  stp oktrans (tcons DS1 tnil) S2 S1 ->
-  stp oktrans (tcons DS1 tnil) U1 U2 ->
+  stp oktrans (tcons (bind z DS1) tnil) S2 S1 ->
+  stp oktrans (tcons (bind z DS1) tnil) U1 U2 ->
   type.
 %mode invert-fun +A +B -C -D -E.
 
