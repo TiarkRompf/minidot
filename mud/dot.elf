@@ -268,6 +268,10 @@ t/fun : typcs G (icons (fun E) ICS) (dcons (arrow S U) DCS)
 t/non : typcs G (icons non ICS) (dcons (rect S U) DCS)
     <- typcs G ICS DCS
       .
+t/sub : typ G E U
+     <- typ G E T
+     <- stp oktrans G T G U
+      .
 
 % EOF
 
