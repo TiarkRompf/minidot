@@ -124,6 +124,16 @@ ses: sub-env-size GN N G
       <- sub-env GN G
       <- tsize GN N.
 
+sub-venv: venv -> venv -> type.
+
+sub-venv/refl: sub-venv G G.
+sub-venv/ext: sub-venv G1 (vcons Z G2) <- sub-venv G1 G2.
+
+sub-venv-size: venv -> nat -> venv -> type.
+svs: sub-venv-size GN N G
+      <- sub-venv GN G
+      <- vsize GN N.
+
 %%%%%  Semantics  %%%%%
 
 % --------------- operational (evaluation) ------------- %
@@ -135,15 +145,17 @@ ilk/s : ilk (icons D DS) (s N) D' <- ilk DS N D'.
 eval : venv -> tm -> val -> type.
 
 e/var: eval G (var N) V
-    <- vlookup G N V.
-
-e/new: eval G (new N DS IS) (clo G IS).
-
+    <- vlookup G N V
+     .
+e/new: eval G (new N DS IS) (clo GN IS)
+    <- sub-venv-size GN N G
+     .
 e/app: eval G (app E1 X E2) V3
     <- eval G E1 (clo G1 IS)
     <- ilk IS X (fun E3)
     <- eval G E2 V2
-    <- eval (vcons V2 (vcons (clo G1 IS) G1)) E3 V3.
+    <- eval (vcons V2 (vcons (clo G1 IS) G1)) E3 V3
+     .
 
 % --------------- typing ------------- %
 
