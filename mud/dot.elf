@@ -61,14 +61,15 @@ vnil: venv.
 vcons: val -> venv -> venv.
 
 % terms / expressions
-new: dcs -> ics -> tm.
+new: nat -> dcs -> ics -> tm.
 app: tm -> nat -> tm -> tm.
 var: nat -> tm.
 
 %abbrev
 let: tm -> tp -> tm -> tp -> tm
    = [e1] [t1] [e2] [t2]
-     (app (new (dcons (arrow t1 t2) dnil)
+     (app (new _
+               (dcons (arrow t1 t2) dnil)
                (icons (fun e2) inil))
           z
           e1).
@@ -136,7 +137,7 @@ eval : venv -> tm -> val -> type.
 e/var: eval G (var N) V
     <- vlookup G N V.
 
-e/new: eval G (new DS IS) (clo G IS).
+e/new: eval G (new N DS IS) (clo G IS).
 
 e/app: eval G (app E1 X E2) V3
     <- eval G E1 (clo G1 IS)
@@ -229,9 +230,44 @@ sdcs/cons   : sdcs I0 G (dcons D1 DS1) (dcons D2 DS2)
            <- sdcs I0 G DS1 DS2.
 
 wf-tp : tenv -> tp -> type.
-subrefl : wf-tp G T <- stp oktrans G T G T.
+stprefl : wf-tp G T <- stp oktrans G T G T.
+
+wf-dc : tenv -> dc -> type.
+sdcrefl : wf-dc G D <- sdc oktrans G D D.
 
 typ : tenv -> tm -> tp -> type.
+typcs: tenv -> ics -> dcs -> type.
+has-mem-tm : tenv -> tm -> nat -> dc -> type.
+
+has-vr: has-mem-tm G (var N) X D
+     <- has-mem G N X D
+      .
+has-tm: has-mem-tm G E1 X D
+     <- typ G E1 T
+     <- sub-env-size GN N G
+     <- xp GN T N DS
+     <- dlk DS X D
+     <- wf-dc GN D
+      .
+t/var : typ G (var N) T
+     <- tlookup G N T
+      .
+t/new : typ G (new N DCS ICS) (bind N DCS)
+     <- sub-env-size GN N G
+     <- typcs (tcons (bind N DCS) GN) ICS DCS
+      .
+t/app : typ G (app E1 X E2) T
+     <- has-mem-tm G E1 X (arrow T2 T)
+     <- typ G E2 T2
+      .
+t/nil : typcs G inil dnil.
+t/fun : typcs G (icons (fun E) ICS) (dcons (arrow S U) DCS)
+    <- typ (tcons S G) E U
+    <- typcs G ICS DCS
+      .
+t/non : typcs G (icons non ICS) (dcons (rect S U) DCS)
+    <- typcs G ICS DCS
+      .
 
 % EOF
 
