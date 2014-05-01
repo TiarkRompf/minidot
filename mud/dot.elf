@@ -66,9 +66,9 @@ app: tm -> nat -> tm -> tm.
 var: nat -> tm.
 
 %abbrev
-let: tm -> tp -> tm -> tp -> tm
-   = [e1] [t1] [e2] [t2]
-     (app (new _
+let: nat -> tm -> tp -> tm -> tp -> tm
+   = [n] [e1] [t1] [e2] [t2]
+     (app (new n
                (dcons (arrow t1 t2) dnil)
                (icons (fun e2) inil))
           z
@@ -210,6 +210,12 @@ stp/sel2    : stp notrans    G1 T G2 (sel N X)
            <- stp oktrans    G1 T G2 L
            .
 
+stp/selx    : stp notrans    G1 (sel N X) G2 (sel N X)
+           <- sub-env-size GN (s N) G2
+           <- sub-env-size GN (s N) G1
+           <- has-mem GN N X (rect _ _ )
+           .
+
 stp/bind    : stp notrans    G1 (bind N DS1) G2 (bind N DS2)
            <- sub-env-size   GN N G2
            <- sub-env-size   GN N G1
@@ -302,6 +308,31 @@ wfe/n : wf-env vnil tnil.
 wfe/c : wf-env (vcons V H) (tcons T G)
      <- wf-val V (tcons T G) T
      <- wf-env H G.
+
+%%% QUERIES %%%
+
+%query 1 1 stp oktrans tnil top tnil top.
+%query 1 1 stp oktrans tnil (bind z dnil) tnil top.
+%query 1 1 stp oktrans tnil (bind z dnil) tnil (bind z dnil).
+
+%query 1 1 stp oktrans tnil (bind z (dcons (rect tnone top) dnil))
+                       tnil (bind z (dcons (rect tnone top) dnil)).
+%query 1 1 stp oktrans tnil (bind z (dcons (rect (tsome top) top) dnil))
+                       tnil (bind z (dcons (rect tnone top) dnil)).
+%query 1 1 stp oktrans tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) top) dnil)))
+                       tnil (bind z (dcons (rect tnone top) dnil)).
+%query 1 1 stp oktrans tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
+                       tnil (bind z (dcons (rect tnone top) dnil)).
+%query 1 1 stp oktrans tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
+                       tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil))).
+%query 1 1 stp oktrans tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) (sel z z)) dnil)))
+                       tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) (sel z z)) dnil))).
+%query 1 1 stp oktrans tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
+                       tnil (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))).
+%query 1 1 stp oktrans tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) top) dnil)))
+                       tnil (bind z (dcons (rect tnone top) (dcons (arrow (sel z z) top) dnil))).
+%query 1 1 stp oktrans tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) (sel z z)) dnil)))
+                       tnil (bind z (dcons (rect tnone top) (dcons (arrow (sel z z) (sel z z)) dnil))).
 
 % EOF
 
@@ -886,6 +917,10 @@ extend-stp: stp I1 G T1 G T2 -> {Z} stp I1 (tcons Z G) T1 (tcons Z G) T2 -> type
      <- extend-stp BLU Z BLU'
      <- extend-stp BTL Z BTL'.
 
+-/selx: extend-stp (stp/selx M SE1 SE2) Z (stp/selx M SE1' SE2')
+     <- extend-sub-env-size SE1 Z SE1'
+     <- extend-sub-env-size SE2 Z SE2'.
+
 -/bind: extend-stp (stp/bind BDS12 BDS22 SE1 SE2) Z (stp/bind BDS12 BDS22 SE1' SE2')
      <- extend-sub-env-size SE1 Z SE1'
      <- extend-sub-env-size SE2 Z SE2'.
@@ -1250,6 +1285,36 @@ narrow-lkss :
 %worlds () (narrow-lkss _ _ _ _).
 %total (A) (narrow-lkss A _ _ _).
 
+rsdc-output-factor-r :
+    rsdc G1 D1 (rect OL2 U2) ->
+%%
+    id-dc D1 (rect OL1 U1) ->
+    type.
+%mode rsdc-output-factor-r +A -B.
+
+-/refl : rsdc-output-factor-r rsdc/refl id-dc/refl.
+
+-/sdc  : rsdc-output-factor-r (rsdc/sdc (sdc/rect _ _ _ _)) id-dc/refl.
+
+%worlds () (rsdc-output-factor-r _ _).
+%total (A) (rsdc-output-factor-r A _).
+
+narrow-lkr :
+    has-mem G2 N X (rect OL2 U2) ->
+    sev oktrans G1 G1 G2 ->
+%%
+    has-mem G1 N X (rect OL1 U1) ->
+    type.
+
+%mode narrow-lkr  +X1 +X2 -X3.
+
+- : narrow-lkr M E M'
+ <- narrow-lk M E MX EX
+ <- rsdc-output-factor-r EX EQ
+ <- eq-dc-has-mem EQ MX M'.
+
+%worlds () (narrow-lkr _ _ _).
+%total (A) (narrow-lkr A _ _).
 
 narrowdcs* :
     sdcs oktrans G2 M N ->
@@ -1286,6 +1351,11 @@ narrow* :
        <- narrow* BTL BDS BTLN
        <- narrow* BLU BDS BLUN
        <- rlttrans* OB BTLN BLUN BTL' BLU'.
+
+-selx   : narrow* (stp/trans0 (stp/selx M SE1 SE2)) BDS (stp/trans0 (stp/selx M' SE' SE'))
+       <- sev-sub-size SE1 BDS SE' BDS'
+       <- narrow-lkr M BDS' M'
+        .
 
 -bind   : narrow* (stp/trans0 (stp/bind BD12 BD22 SE1 SE2)) BDS (stp/trans0 (stp/bind BD12' BD22' SE' SE'))
         <- sev-sub-size SE1 BDS SE' BDS'
@@ -1434,6 +1504,11 @@ stp/llsel1   : stpl (s N)     G (sel M X) T
             <- stpl (s N)     G U T
              .
 
+stp/llselx   : stpl (s z)     G (sel N X) T
+            <- sub-env-size GN (s N) G
+            <- has-mem GN N X (rect OL U)
+            <- stpl z         G (sel N X) T
+             .
 
 % linearize a derivation that uses transitivity
 
@@ -1470,6 +1545,15 @@ utrans0* :
 - : utrans0* (stp/trans0 (stp/sel2 BTL BLU K)) (stp/llsel2 D0 BLU' K') BTL''
       <- utrans0* BTL (stp/llsel2 (stp/llsel2 D0 BLU' K') BLU K) BTL''
       . % NOTE(namin): BTL' != BTL'' because selection label differs
+
+- : utrans0* (stp/trans0 (stp/sel2 D1 D3 K)) (stp/llselx stp/transe _ _) DL'
+      <- utrans0* D1 (stp/llsel2 stp/transe D3 K) DL'.
+
+- : utrans0* (stp/trans0 (stp/sel2 BTL BLU K)) (stp/llselx (stp/llsel2 D0 BLU' K') _ _) BTL''
+      <- utrans0* BTL (stp/llsel2 (stp/llsel2 D0 BLU' K') BLU K) BTL''.
+
+- : utrans0* (stp/trans0 (stp/selx _ _ _)) (TL: stpl (s _) _ _ _) TL.
+- : utrans0* (stp/trans0 (stp/selx M SE1 SE2)) (TL: stpl z _ _ _) (stp/llselx TL M SE1).
 
 - : utrans0* (stp/trans S1 S2) TL TL''
   <- utrans0* S2 TL TL'
@@ -1556,6 +1640,9 @@ utrans1 :
 
 - : utrans1 (stp/lltop2 D0 D E) DX
       <- utrans1s* (stp/sel2 (stp/trans0 stp/top) D E) D0 DX.
+
+- : utrans1 (stp/llselx A M SE) B
+      <- utrans1s* (stp/selx M SE SE) A B.
 
 %worlds () (utrans1 _ _).
 %total (A) (utrans1 A B).
