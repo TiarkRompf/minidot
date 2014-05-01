@@ -285,6 +285,24 @@ t/sub : typ G E U
      <- stp oktrans G T G U
       .
 
+wf-val   : val -> tenv -> tp -> type.
+wf-env   : venv -> tenv -> type.
+
+v/clo : wf-val (clo H ICS) G T
+     <- wf-env H GC
+     <- typcs (tcons TC GC) ICS DCS
+     <- stp oktrans (tcons TC GC) TC G T
+      .
+v/sub : wf-val V G U
+     <- wf-val V G0 T
+     <- stp oktrans G0 T G U
+      .
+
+wfe/n : wf-env vnil tnil.
+wfe/c : wf-env (vcons V H) (tcons T G)
+     <- wf-val V (tcons T G) T
+     <- wf-env H G.
+
 % EOF
 
 stp/trans   : stp oktrans     G T1 G T3
