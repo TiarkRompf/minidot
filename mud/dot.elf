@@ -243,9 +243,16 @@ sdcs/cons   : sdcs I0 G (dcons D1 DS1) (dcons D2 DS2)
            <- sdc I0 G D1 D2
            <- sdcs I0 G DS1 DS2.
 
+wf-tp : tenv -> tp -> type.
+stprefl : wf-tp G T <- stp notrans G T T.
+
+wf-dc : tenv -> dc -> type.
+sdcrefl : wf-dc G D <- sdc notrans G D D.
+
 stp2  : tenv -> tp -> tenv -> tp -> type.
 
-stp2/top  : stp2 G1 T1 G2 top.
+stp2/top  : stp2 G1 T1 G2 top
+         <- wf-tp G1 T1.
 
 stp2/sel1 : stp2 G1 (sel N X) G2 T
          <- sub-env-size GN (s N) G1
@@ -271,14 +278,9 @@ stp2/bind : stp2 G1 (bind N DS1) G2 (bind N DS2)
          <- sub-env-size GN N G2
          <- sub-env-size GN N G1
          <- sdcs oktrans   (tcons (bind N DS2) GN) DS2 DS2
+         <- sdcs oktrans   (tcons (bind N DS1) GN) DS1 DS1
          <- sdcs oktrans   (tcons (bind N DS1) GN) DS1 DS2
           .
-
-wf-tp : tenv -> tp -> type.
-stprefl : wf-tp G T <- stp oktrans G T T.
-
-wf-dc : tenv -> dc -> type.
-sdcrefl : wf-dc G D <- sdc oktrans G D D.
 
 typ : tenv -> tm -> tp -> type.
 typcs: tenv -> ics -> dcs -> type.
@@ -411,6 +413,21 @@ add-swap: add A (s B) C -> add (s A) B C -> type.
 %worlds () (add-swap _ _).
 %total {A} (add-swap A _).
 
+add-commute : {N1}{N2}{N3}add N1 N2 N3 -> add N2 N1 N3 -> type.
+%mode add-commute +X1 +X2 +X3 +X4 -X5.
+
+-: add-commute z (s M) _ add/z (add/s D)
+    <- add-commute z M _ add/z D.
+
+-: add-commute _ z _ _ add/z.
+
+-: add-commute (s N1) N2 _ (add/s D) D''
+    <- add-commute N1 N2 _ D D'
+    <- add-inc D' D''.
+
+%worlds () (add-commute _ _ _ _ _).
+%total [N1 N2] (add-commute N1 N2 _ _ _).
+
 lte-inc : lte A B -> lte A (s B) -> type.
 %mode lte-inc +A -B.
 
@@ -471,6 +488,14 @@ id2eq-nat : id-nat N1 N2 -> eq-nat N1 N2 -> type.
 
 %worlds () (id2eq-nat _ _).
 %total (A) (id2eq-nat A _).
+
+id-nat-sym : id-nat N1 N2 -> id-nat N2 N1 -> type.
+%mode id-nat-sym +A -B.
+
+- : id-nat-sym id-nat/refl id-nat/refl.
+
+%worlds () (id-nat-sym _ _).
+%total (A) (id-nat-sym A _).
 
 id-tp : tp -> tp -> type.
 id-tp/refl : id-tp D D.
@@ -536,6 +561,48 @@ contra-tp : false -> {T1}{T2} id-tp T1 T2 -> type.
 %mode contra-tp +CONTRA +Z1 +Z2 -A.
 %worlds () (contra-tp _ _ _ _).
 %total (A) (contra-tp A _ _ _).
+
+contra-nat : false -> {N1} {N2} id-nat N1 N2 -> type.
+%mode contra-nat +CONTRA +Z1 +Z2 -A.
+%worlds () (contra-nat _ _ _ _).
+%total (A) (contra-nat A _ _ _).
+
+contra-sub-env : false -> {G1} {G2} sub-env G1 G2 -> type.
+%mode contra-sub-env +CONTRA +G1 +G2 -A.
+%worlds () (contra-sub-env _ _ _ _).
+%total (A) (contra-sub-env A _ _ _).
+
+% --------------- more arithmetic lemmas ------------- %
+
+add-zero : add N N0 N -> id-nat N0 z -> type.
+%mode add-zero +A -B.
+
+- : add-zero add/z id-nat/refl.
+
+- : add-zero (add/s A) ID
+ <- add-zero A ID.
+
+%worlds () (add-zero _ _).
+%total (A) (add-zero A _).
+
+add-z : add z N1 N2 -> id-nat N1 N2 -> type.
+%mode add-z +A -B.
+
+- : add-z add/z id-nat/refl.
+
+%worlds () (add-z _ _).
+%total (A) (add-z A _).
+
+add-dec : add A (s B) (s C) -> add A B C -> type.
+%mode add-dec +A -B.
+
+- : add-dec add/z add/z.
+
+- : add-dec (add/s A) (add/s B)
+ <- add-dec A B.
+
+%worlds () (add-dec _ _).
+%total {A} (add-dec A _).
 
 % --------------- uniqueness lemmas ------------- %
 
@@ -776,22 +843,22 @@ eq-env-cons: id-tenv G G' -> id-tp T T' -> id-tenv (tcons T G) (tcons T' G') -> 
 %worlds () (eq-env-cons _ _ _).
 %total A (eq-env-cons A _ _).
 
-sub-env-size-eq-cons: id-tenv G1 G2 -> sub-env (tcons T1 G1) G -> sub-env (tcons T2 G2) G -> tsize G1 N -> tsize G2 N -> id-tp T1 T2 -> type.
-%mode sub-env-size-eq-cons +A +B +C +D +E -F.
+sub-env-size-unique-cons: id-tenv G1 G2 -> sub-env (tcons T1 G1) G -> sub-env (tcons T2 G2) G -> tsize G1 N -> tsize G2 N -> id-tp T1 T2 -> type.
+%mode sub-env-size-unique-cons +A +B +C +D +E -F.
 
-- : sub-env-size-eq-cons GEQ sub-env/refl sub-env/refl N1 N2 id-tp/refl.
-- : sub-env-size-eq-cons GEQ (sub-env/ext A1) (sub-env/ext A2) N1 N2 TEQ
-     <- sub-env-size-eq-cons GEQ A1 A2 N1 N2 TEQ.
-- : sub-env-size-eq-cons GEQ sub-env/refl (sub-env/ext A2) N1 N2 TEQ
+- : sub-env-size-unique-cons GEQ sub-env/refl sub-env/refl N1 N2 id-tp/refl.
+- : sub-env-size-unique-cons GEQ (sub-env/ext A1) (sub-env/ext A2) N1 N2 TEQ
+     <- sub-env-size-unique-cons GEQ A1 A2 N1 N2 TEQ.
+- : sub-env-size-unique-cons GEQ sub-env/refl (sub-env/ext A2) N1 N2 TEQ
      <- sub-env-size-lte A2 (tf/c N2) N1 LT
      <- lte-s-false LT CONTRA
      <- contra-tp CONTRA _ _ TEQ.
-- : sub-env-size-eq-cons GEQ (sub-env/ext A1) sub-env/refl N1 N2 TEQ
+- : sub-env-size-unique-cons GEQ (sub-env/ext A1) sub-env/refl N1 N2 TEQ
      <- sub-env-size-lte A1 (tf/c N1) N2 LT
      <- lte-s-false LT CONTRA
      <- contra-tp CONTRA _ _ TEQ.
-%worlds () (sub-env-size-eq-cons _ _ _ _ _ _).
-%total A (sub-env-size-eq-cons _ A _ _ _ _).
+%worlds () (sub-env-size-unique-cons _ _ _ _ _ _).
+%total A (sub-env-size-unique-cons _ A _ _ _ _).
 
 sub-env-cons: sub-env (tcons T GN) G -> sub-env GN G -> type.
 %mode sub-env-cons +A -B.
@@ -812,20 +879,20 @@ sub-env-size-split-eq: sub-env GN G -> tsize GN N -> sub-env GN' G -> tsize GN' 
      <- sub-env-cons A1 A1'
      <- sub-env-cons A2 A2'
      <- sub-env-size-split-eq A1' N1 A2' N2 GEQ
-     <- sub-env-size-eq-cons GEQ A1 A2 N1 N2 TEQ
+     <- sub-env-size-unique-cons GEQ A1 A2 N1 N2 TEQ
      <- eq-env-cons GEQ TEQ EQ.
 
 %worlds () (sub-env-size-split-eq _ _ _ _ _).
 %total A (sub-env-size-split-eq _ A _ _ _).
 
-sub-env-size-eq: sub-env-size GN N G -> sub-env-size GN' N G -> id-tenv GN GN' -> type.
-%mode sub-env-size-eq +A +B -C.
+sub-env-size-unique: sub-env-size GN N G -> sub-env-size GN' N G -> id-tenv GN GN' -> type.
+%mode sub-env-size-unique +A +B -C.
 
-- : sub-env-size-eq (ses N1 A1) (ses N2 A2) EQ
+- : sub-env-size-unique (ses N1 A1) (ses N2 A2) EQ
      <- sub-env-size-split-eq A1 N1 A2 N2 EQ.
 
-%worlds () (sub-env-size-eq _ _ _).
-%total A (sub-env-size-eq A _ _).
+%worlds () (sub-env-size-unique _ _ _).
+%total A (sub-env-size-unique A _ _).
 
 extend-id: id-tenv GN GN' ->  {DS} id-tenv (tcons DS GN) (tcons DS GN') -> type.
 %mode extend-id +A +B -C.
@@ -834,6 +901,33 @@ extend-id: id-tenv GN GN' ->  {DS} id-tenv (tcons DS GN) (tcons DS GN') -> type.
 
 %worlds () (extend-id _ _ _).
 %total A (extend-id A _ _).
+
+eqg-tlookup-zero: id-tenv G G' -> tlookup-zero G N T -> tlookup-zero G' N T -> type.
+%mode eqg-tlookup-zero +A +B -C.
+
+- : eqg-tlookup-zero id-tenv/refl L L.
+
+%worlds () (eqg-tlookup-zero _ _ _).
+%total (A) (eqg-tlookup-zero A _ _).
+%reduces C <= B (eqg-tlookup-zero _ B  C).
+
+eq-tlookup-zero: id-nat N N' -> tlookup-zero G N T -> tlookup-zero G N' T -> type.
+%mode eq-tlookup-zero +A +B -C.
+
+- : eq-tlookup-zero id-nat/refl L L.
+
+%worlds () (eq-tlookup-zero _ _ _).
+%total (A) (eq-tlookup-zero A _ _).
+%reduces C <= B (eq-tlookup-zero _ B  C).
+
+eq-tlookup: id-nat N N' -> tlookup G N T -> tlookup G N' T -> type.
+%mode eq-tlookup +A +B -C.
+
+- : eq-tlookup id-nat/refl L L.
+
+%worlds () (eq-tlookup _ _ _).
+%total (A) (eq-tlookup A _ _).
+%reduces C <= B (eq-tlookup _ B  C).
 
 eq-env: id-tenv G2 G2' -> sdcs IO G2 T1 T2 -> sdcs IO G2' T1 T2 -> type.
 %mode eq-env +P1 +P2 -SBT.
@@ -886,7 +980,7 @@ has-mem-unique : has-mem G N X D -> has-mem G N X D' -> id-dc D D' -> type.
 
 - : has-mem-unique (has K X SE L) (has K' X' SE' L') EQD
  <- tlookup-unique L L' EQT
- <- sub-env-size-eq SE SE' EQG
+ <- sub-env-size-unique SE SE' EQG
  <- eq-env-cons EQG EQT EQTG
  <- eq-xp X EQT XE
  <- eq-tenv-xp XE EQTG XEE
@@ -951,6 +1045,55 @@ exists-sub-env-size :
 
 %worlds () (exists-sub-env-size _ _ _ _).
 %total (X) (exists-sub-env-size _ _ X _).
+
+sub-env-size-sub-rec :
+  sub-env G2 G1 ->
+  sub-env G3 G1 ->
+  tsize G2 (s N) ->
+  tsize G3 N ->
+%%
+  sub-env G3 G2 ->
+  type.
+%mode sub-env-size-sub-rec +A +B +C +D -E.
+
+- : sub-env-size-sub-rec sub-env/refl B  _ _ B.
+
+- : sub-env-size-sub-rec (sub-env/ext A) (sub-env/ext B) TA TB C
+ <- sub-env-size-sub-rec A B TA TB C.
+
+- : sub-env-size-sub-rec (sub-env/ext A) sub-env/refl TA (tf/c TB) C
+ <- sub-env-size-lte A TA TB LTE
+ <- lte-inc LTE LTE'
+ <- lte-s-false LTE' CONTRA
+ <- contra-sub-env CONTRA _ _ C.
+
+%worlds () (sub-env-size-sub-rec _ _ _ _ _).
+%total {A B} (sub-env-size-sub-rec A B _ _ _).
+
+sub-env-size-sub :
+  sub-env-size G2 (s N) G1 ->
+  sub-env-size G3 N G1 ->
+%%
+  sub-env-size G3 N G2 ->
+  type.
+%mode sub-env-size-sub +A +B -C.
+
+- : sub-env-size-sub (ses TA EA) (ses TB EB) (ses TB C)
+ <- sub-env-size-sub-rec EA EB TA TB C.
+
+%worlds () (sub-env-size-sub _ _ _).
+%total {} (sub-env-size-sub _ _ _).
+
+% --------------- extraction lemmas ------------- %
+
+extract-sub-env-size : sub-env-size G N G' -> tsize G N -> sub-env G G' -> type.
+%mode extract-sub-env-size +A -B -C.
+
+- : extract-sub-env-size (ses TG E) TG E.
+
+%worlds () (extract-sub-env-size _ _ _).
+%total (A) (extract-sub-env-size A _ _).
+
 % --------------- extension lemmas ------------- %
 
 extend-wf-lkpz: tlookup-zero G N T -> {Z} tlookup-zero (tcons Z G) (s N) T -> type.
@@ -1108,10 +1251,20 @@ to-oktrans: stp notrans G T1 T2 -> stp oktrans G T1 T2 -> type.
 %worlds () (to-oktrans _ _).
 %total (A) (to-oktrans A _).
 
+extend-wf-tp: wf-tp G T -> {Z} wf-tp (tcons Z G) T -> type.
+%mode extend-wf-tp +A +B -C.
+
+- : extend-wf-tp (stprefl A) Z (stprefl A')
+ <- extend-stp A Z A'.
+
+%worlds () (extend-wf-tp _ _ _).
+%total {} (extend-wf-tp _ _ _).
+
 extend-stp2: stp2 G1 T1 G2 T2 -> {Z} stp2 (tcons Z G1) T1 (tcons Z G2) T2 -> stp2 (tcons Z G1) T1 G2 T2 -> stp2 G1 T1 (tcons Z G2) T2 -> type.
 %mode extend-stp2 +A +B -C -D -E.
 
--/top: extend-stp2 stp2/top _ stp2/top stp2/top stp2/top.
+-/top: extend-stp2 (stp2/top W1) Z (stp2/top W1') (stp2/top W1') (stp2/top W1)
+    <- extend-wf-tp W1 Z W1'.
 
 -/sel1: extend-stp2 (stp2/sel1 BUT M SE) Z (stp2/sel1 BUT2 M SE') (stp2/sel1 BUT M SE') (stp2/sel1 BUT2 M SE)
      <- extend-sub-env-size SE Z SE'
@@ -1126,7 +1279,7 @@ extend-stp2: stp2 G1 T1 G2 T2 -> {Z} stp2 (tcons Z G1) T1 (tcons Z G2) T2 -> stp
      <- extend-sub-env-size SE1 Z SE1'
      <- extend-sub-env-size SE2 Z SE2'.
 
--/bind: extend-stp2 (stp2/bind BDS12 BDS22 SE1 SE2) Z (stp2/bind BDS12 BDS22 SE1' SE2') (stp2/bind BDS12 BDS22 SE1' SE2) (stp2/bind BDS12 BDS22 SE1 SE2')
+-/bind: extend-stp2 (stp2/bind BDS12 BDS11 BDS22 SE1 SE2) Z (stp2/bind BDS12 BDS11 BDS22 SE1' SE2') (stp2/bind BDS12 BDS11 BDS22 SE1' SE2) (stp2/bind BDS12 BDS11 BDS22 SE1 SE2')
      <- extend-sub-env-size SE1 Z SE1'
      <- extend-sub-env-size SE2 Z SE2'.
 
@@ -1604,7 +1757,7 @@ trans* :
 
 -tbind  : trans* _ (stp/bind D12 D22 SE) (stp/bind D23 D33 SE') (stp/bind D13 D33 SE')
        <- sev-refl _ DG
-       <- sub-env-size-eq SE SE' ID
+       <- sub-env-size-unique SE SE' ID
        <- extend-id ID _ ID'
        <- eq-env ID' D12 D12'
        <- narrowdcs* D23 (sev/sub D12' DG) D23'
@@ -1814,6 +1967,157 @@ invert-trans :
 %worlds () (invert-trans _ _).
 %total (A) (invert-trans A B).
 
+% --------------- stp2 regular and reflexive ------------- %
+
+stp2-reg-rec :
+  stp2 G1 T1 G2 T2 ->
+%%
+  stp notrans G1 T1 T1 ->
+  stp notrans G2 T2 T2 ->
+  type.
+%mode stp2-reg-rec +A -B -C.
+
+-/top : stp2-reg-rec (stp2/top (stprefl B)) B stp/top.
+
+-/sel1: stp2-reg-rec (stp2/sel1 A M SE) (stp/selx M') C
+     <- extract-sub-env-size SE _ E
+     <- extend-wf-mem-mult M E M'
+     <- stp2-reg-rec A _ C.
+
+-/sel2: stp2-reg-rec (stp2/sel2 A _ _ M SE) B (stp/selx M')
+     <- extract-sub-env-size SE _ E
+     <- extend-wf-mem-mult M E M'
+     <- stp2-reg-rec A B _.
+
+-/selx: stp2-reg-rec (stp2/selx M SE1 SE2) (stp/selx M1) (stp/selx M2)
+     <- extract-sub-env-size SE1 _ E1
+     <- extract-sub-env-size SE2 _ E2
+     <- extend-wf-mem-mult M E1 M1
+     <- extend-wf-mem-mult M E2 M2.
+
+-/bind: stp2-reg-rec (stp2/bind _ A B SE1 SE2) (stp/bind A A SE1) (stp/bind B B SE2).
+
+%worlds () (stp2-reg-rec _ _ _).
+%total (A) (stp2-reg-rec A _ _).
+
+stp2-reg :
+  stp2 G1 T1 G2 T2 ->
+%%
+  wf-tp G1 T1 ->
+  wf-tp G2 T2 ->
+  type.
+%mode stp2-reg +A -B -C.
+
+- : stp2-reg A (stprefl B) (stprefl C)
+ <- stp2-reg-rec A B C.
+
+%worlds () (stp2-reg _ _ _).
+%total {} (stp2-reg _ _ _).
+
+lookup-sub-env-size-rec :
+  tlookup-zero G M T ->
+  add (s N) M S ->
+  tsize G S ->
+%%
+  tsize GN (s N) ->
+  sub-env GN G ->
+  type.
+%mode lookup-sub-env-size-rec +A1 +A2 +A3 -B -C.
+
+- : lookup-sub-env-size-rec tl/hit A TG TN sub-env/refl
+ <- add-commute _ _ _ A A'
+ <- add-z A' EQN
+ <- id-nat-sym EQN EQN'
+ <- eq-tsize TG EQN' TN
+  .
+
+- : lookup-sub-env-size-rec (tl/miss L) A (tf/c TG) TN (sub-env/ext E)
+ <- add-dec A A'
+ <- lookup-sub-env-size-rec L A' TG TN E
+  .
+
+%worlds () (lookup-sub-env-size-rec _ _ _ _ _).
+%total (A) (lookup-sub-env-size-rec A _ _ _ _).
+
+lookup-sub-env-size:
+  tlookup-zero G M T ->
+  add (s N) M S ->
+  tsize G S ->
+%%
+  sub-env-size GN (s N) G ->
+  type.
+%mode lookup-sub-env-size +A1 +A2 +A3 -B.
+
+- : lookup-sub-env-size A B C (ses TN E)
+ <- lookup-sub-env-size-rec A B C TN E.
+
+%worlds () (lookup-sub-env-size _ _ _ _).
+%total (A) (lookup-sub-env-size A _ _ _).
+
+restrict-lookup-rec :
+  tlookup-zero G M T ->
+  add (s N) M S ->
+  tsize G S ->
+  tsize GN (s N) ->
+  sub-env GN G ->
+%%
+  tlookup-zero GN z T ->
+  type.
+%mode restrict-lookup-rec +A1 +A2 +A3 +B +C -D.
+
+- : restrict-lookup-rec L A TG TN sub-env/refl L'
+ <- tsize-unique TG TN EQN
+ <- eq-add A EQN A'
+ <- add-zero A' EQZ
+ <- eq-tlookup-zero EQZ L L'.
+
+- : restrict-lookup-rec tl/hit A TG TN E L'
+ <- add-commute _ _ _ A A'
+ <- add-z A' EQN
+ <- eq-tsize TN EQN TN'
+ <- sub-env-size-unique (ses TG sub-env/refl) (ses TN' E) EQG
+ <- eqg-tlookup-zero EQG tl/hit L'
+  .
+
+- : restrict-lookup-rec (tl/miss L) A (tf/c TG) TN (sub-env/ext E) L'
+ <- add-dec A A'
+ <- restrict-lookup-rec L A' TG TN E L'
+  .
+
+%worlds () (restrict-lookup-rec _ _ _ _ _ _).
+%total {A C} (restrict-lookup-rec A _ _ _ C _).
+
+restrict-lookup :
+  tlookup G N T ->
+  sub-env-size GN (s N) G ->
+%%
+  tlookup GN N T ->
+  type.
+%mode restrict-lookup +A +B -C.
+
+- : restrict-lookup (tl L A TG) (ses TN E) (tl L' A' TN)
+ <- restrict-lookup-rec L A TG TN E L'
+ <- add-commute _ _ _ add/z A'
+  .
+
+%worlds () (restrict-lookup _ _ _).
+%total (B) (restrict-lookup _ B _).
+
+restrict-has-mem :
+  has-mem G N X D ->
+  sub-env-size GN (s N) G ->
+%%
+  has-mem GN N X D ->
+  type.
+%mode restrict-has-mem +A +B -C.
+
+- : restrict-has-mem (has A B C L) SE (has A B C' L')
+ <- restrict-lookup L SE L'
+ <- sub-env-size-sub SE C C'.
+
+%worlds () (restrict-has-mem _ _ _).
+%total (A) (restrict-has-mem A _ _).
+
 % --------------- generalized transitivity ------------- %
 
 trans2 :
@@ -1824,7 +2128,8 @@ trans2 :
   type.
 %mode trans2 +A +B -C.
 
--/top : trans2 _ stp2/top stp2/top.
+-/top : trans2 B12 (stp2/top W2) (stp2/top W1)
+     <- stp2-reg B12 W1 _.
 
 -/sel1: trans2 (stp2/sel1 BUT M SE1) B23 (stp2/sel1 BUT' M SE1)
      <- trans2 BUT B23 BUT'.
@@ -1834,7 +2139,7 @@ trans2 :
      <- trans2 B12 BTU BTU'.
 
 -/sl21: trans2 (stp2/sel2 BTL BTU BLU M SE2) (stp2/sel1 BUT M' SE2') OUT
-     <- sub-env-size-eq SE2 SE2' EQG
+     <- sub-env-size-unique SE2 SE2' EQG
      <- eq-tenv-mem M EQG M0
      <- has-mem-unique M' M0 EQD
      <- eq-rect EQD _ EQU
@@ -1844,7 +2149,7 @@ trans2 :
       .
 
 -/slx1: trans2 (stp2/selx M SE1 SE2) (stp2/sel1 BUT M' SE2') (stp2/sel1 BUT' M SE1)
-     <- sub-env-size-eq SE2' SE2 EQG
+     <- sub-env-size-unique SE2' SE2 EQG
      <- eq-tenv-mem M' EQG M0'
      <- has-mem-unique M0' M EQD
      <- eq-rect EQD _ EQU
@@ -1853,22 +2158,23 @@ trans2 :
       .
 
 -/sl2x: trans2 (stp2/sel2 BTL BTU BLU M SE2) (stp2/selx M' SE2' SE3) (stp2/sel2 BTL BTU BLU M SE3')
-     <- sub-env-size-eq SE2' SE2 EQG
+     <- sub-env-size-unique SE2' SE2 EQG
      <- eq-sub-env-size-l EQG SE3 SE3'
       .
 
 -/slxx: trans2 (stp2/selx M SE1 SE2) (stp2/selx M' SE2' SE3) (stp2/selx M SE1 SE3')
-     <- sub-env-size-eq SE2' SE2 EQG
+     <- sub-env-size-unique SE2' SE2 EQG
      <- eq-sub-env-size-l EQG SE3 SE3'
       .
 
--/bind: trans2 (stp2/bind BDS12 BDS22 SE1 SE2) (stp2/bind BDS23 BDS33 SE2' SE3) (stp2/bind BDS13 BDS33 SE1' SE3)
-     <- sub-env-size-eq SE2 SE2' EQG
+-/bind: trans2 (stp2/bind BDS12 BDS11 BDS22 SE1 SE2) (stp2/bind BDS23 BDS22' BDS33 SE2' SE3) (stp2/bind BDS13 BDS11' BDS33 SE1' SE3)
+     <- sub-env-size-unique SE2 SE2' EQG
      <- eq-sub-env-size-l EQG SE1 SE1'
      <- eq-env-cons EQG id-tp/refl EQGX
      <- eq-sdcs-g EQGX BDS12 BDS12'
      <- narrowdcs* BDS23 (sev/sub BDS12' sev/refl) BDS23'
-     <- ttransdcs* BDS12' BDS23' BDS13.
+     <- ttransdcs* BDS12' BDS23' BDS13
+     <- eq-sdcs-g EQGX BDS11 BDS11'.
 
 %worlds () (trans2 _ _ _).
 %total {A B} (trans2 A B _).
