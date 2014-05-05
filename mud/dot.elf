@@ -315,7 +315,7 @@ t/non : typcs G (icons non ICS) (dcons (rect S U) DCS)
       .
 t/sub : typ G E U
      <- typ G E T
-     <- stp oktrans G T U
+     <- stp2 G T G U
       .
 
 wf-val   : val -> tenv -> tp -> type.
@@ -338,28 +338,28 @@ wfe/c : wf-env (vcons V H) (tcons T G)
 
 %%% QUERIES %%%
 
-%query 1 1 stp oktrans tnil top top.
-%query 1 1 stp oktrans tnil (bind z dnil) top.
-%query 1 1 stp oktrans tnil (bind z dnil) (bind z dnil).
+%query 1 1 stp2 tnil top tnil top.
+%query 1 1 stp2 tnil (bind z dnil) tnil top.
+%query 1 1 stp2 tnil (bind z dnil) tnil (bind z dnil).
 
-%query 1 1 stp oktrans tnil (bind z (dcons (rect tnone top) dnil))
-                            (bind z (dcons (rect tnone top) dnil)).
-%query 1 1 stp oktrans tnil (bind z (dcons (rect (tsome top) top) dnil))
-                            (bind z (dcons (rect tnone top) dnil)).
-%query 1 1 stp oktrans tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) top) dnil)))
-                            (bind z (dcons (rect tnone top) dnil)).
-%query 1 1 stp oktrans tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
-                            (bind z (dcons (rect tnone top) dnil)).
-%query 1 1 stp oktrans tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
-                            (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil))).
-%query 1 1 stp oktrans tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) (sel z z)) dnil)))
-                            (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) (sel z z)) dnil))).
-%query 1 1 stp oktrans tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
-                            (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))).
-%query 1 1 stp oktrans tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) top) dnil)))
-                            (bind z (dcons (rect tnone top) (dcons (arrow (sel z z) top) dnil))).
-%query 1 1 stp oktrans tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) (sel z z)) dnil)))
-                            (bind z (dcons (rect tnone top) (dcons (arrow (sel z z) (sel z z)) dnil))).
+%query 1 1 stp2 tnil (bind z (dcons (rect tnone top) dnil))
+                tnil (bind z (dcons (rect tnone top) dnil)).
+%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) dnil))
+                tnil (bind z (dcons (rect tnone top) dnil)).
+%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) top) dnil)))
+                tnil (bind z (dcons (rect tnone top) dnil)).
+%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
+                tnil (bind z (dcons (rect tnone top) dnil)).
+%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
+                tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil))).
+%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) (sel z z)) dnil)))
+                tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) (sel z z)) dnil))).
+%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
+                tnil (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))).
+%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) top) dnil)))
+                tnil (bind z (dcons (rect tnone top) (dcons (arrow (sel z z) top) dnil))).
+%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) (sel z z)) dnil)))
+                tnil (bind z (dcons (rect tnone top) (dcons (arrow (sel z z) (sel z z)) dnil))).
 
 % EOF
 
