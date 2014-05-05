@@ -993,6 +993,18 @@ extend-wf-mem: has-mem G N X T -> {Z} has-mem (tcons Z G) N X T -> type.
 %worlds () (extend-wf-mem _ _ _) (extend-wf-xp _ _ _).
 %total (A B) (extend-wf-mem A _ _) (extend-wf-xp B _ _).
 
+extend-wf-mem-mult: has-mem GN N X T -> sub-env GN G -> has-mem G N X T -> type.
+%mode extend-wf-mem-mult +A +B -C.
+
+- : extend-wf-mem-mult A sub-env/refl A.
+
+- : extend-wf-mem-mult A (sub-env/ext B) C
+ <- extend-wf-mem-mult A B C0
+ <- extend-wf-mem C0 _ C.
+
+%worlds () (extend-wf-mem-mult _ _ _).
+%total (X) (extend-wf-mem-mult _ X _).
+
 extend-wf-lkp-mult: tlookup G N T -> sub-env G G1 -> tlookup G1 N T -> type.
 %mode extend-wf-lkp-mult +A +B -C.
 - : extend-wf-lkp-mult L sub-env/refl L.
@@ -1096,6 +1108,30 @@ to-oktrans: stp notrans G T1 T2 -> stp oktrans G T1 T2 -> type.
 %worlds () (to-oktrans _ _).
 %total (A) (to-oktrans A _).
 
+extend-stp2: stp2 G1 T1 G2 T2 -> {Z} stp2 (tcons Z G1) T1 (tcons Z G2) T2 -> stp2 (tcons Z G1) T1 G2 T2 -> stp2 G1 T1 (tcons Z G2) T2 -> type.
+%mode extend-stp2 +A +B -C -D -E.
+
+-/top: extend-stp2 stp2/top _ stp2/top stp2/top stp2/top.
+
+-/sel1: extend-stp2 (stp2/sel1 BUT M SE) Z (stp2/sel1 BUT2 M SE') (stp2/sel1 BUT M SE') (stp2/sel1 BUT2 M SE)
+     <- extend-sub-env-size SE Z SE'
+     <- extend-stp2 BUT Z _ _ BUT2.
+
+-/sel2: extend-stp2 (stp2/sel2 BTL BTU BLU M SE) Z (stp2/sel2 BTL1 BTU1 BLU M SE') (stp2/sel2 BTL1 BTU1 BLU M SE) (stp2/sel2 BTL BTU BLU M SE')
+     <- extend-sub-env-size SE Z SE'
+     <- extend-stp2 BTL Z _ BTL1 _
+     <- extend-stp2 BTU Z _ BTU1 _.
+
+-/selx: extend-stp2 (stp2/selx M SE1 SE2) Z (stp2/selx M SE1' SE2') (stp2/selx M SE1' SE2) (stp2/selx M SE1 SE2')
+     <- extend-sub-env-size SE1 Z SE1'
+     <- extend-sub-env-size SE2 Z SE2'.
+
+-/bind: extend-stp2 (stp2/bind BDS12 BDS22 SE1 SE2) Z (stp2/bind BDS12 BDS22 SE1' SE2') (stp2/bind BDS12 BDS22 SE1' SE2) (stp2/bind BDS12 BDS22 SE1 SE2')
+     <- extend-sub-env-size SE1 Z SE1'
+     <- extend-sub-env-size SE2 Z SE2'.
+
+%worlds () (extend-stp2 _ _ _ _ _).
+%total (A) (extend-stp2 A _ _ _ _).
 
 % --------------- transitivity (oktrans mode) ------------- %
 
@@ -1837,7 +1873,9 @@ trans2 :
 %worlds () (trans2 _ _ _).
 %total {A B} (trans2 A B _).
 
-% example inversion lemma
+% --------------- relating stp2 and stp (sanity checks) ------------- %
+
+% --------------- example inversion lemma ------------- %
 
 invert-bind :
   stp oktrans G (bind z DS1) (bind z DS2) ->
