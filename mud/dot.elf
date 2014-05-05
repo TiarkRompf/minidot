@@ -243,22 +243,35 @@ sdcs/cons   : sdcs I0 G (dcons D1 DS1) (dcons D2 DS2)
            <- sdc I0 G D1 D2
            <- sdcs I0 G DS1 DS2.
 
-stp2  : {I1:mode1} tenv -> tp -> tenv -> tp -> type.
+stp2  : tenv -> tp -> tenv -> tp -> type.
 
-stp2/stp  : stp2 I1 G1 T1 G2 T2
-         <- sub-env G G1
-         <- sub-env G G2
-         <- stp I1 G T1 T2.
-stp2/sel1 : stp2 notrans G1 (sel N X) G2 T
+stp2/top  : stp2 G1 T1 G2 top.
+
+stp2/sel1 : stp2 G1 (sel N X) G2 T
          <- sub-env-size GN (s N) G1
          <- has-mem GN N X (rect _ U)
-         <- stp2 oktrans GN U G2 T
+         <- stp2 GN U G2 T
           .
-stp2/sel2 : stp2 notrans G1 T G2 (sel N X)
+
+stp2/sel2 : stp2 G1 T G2 (sel N X)
          <- sub-env-size GN (s N) G2
          <- has-mem GN N X (rect (tsome L) U)
          <- stp oktrans GN L U
-         <- stp2 oktrans G1 T GN L
+         <- stp2 G1 T GN U
+         <- stp2 G1 T GN L
+          .
+
+stp2/selx : stp2 G1 (sel N X) G2 (sel N X)
+         <- sub-env-size GN (s N) G2
+         <- sub-env-size GN (s N) G1
+         <- has-mem GN N X (rect _ _)
+          .
+
+stp2/bind : stp2 G1 (bind N DS1) G2 (bind N DS2)
+         <- sub-env-size GN N G2
+         <- sub-env-size GN N G1
+         <- sdcs oktrans   (tcons (bind N DS2) GN) DS2 DS2
+         <- sdcs oktrans   (tcons (bind N DS1) GN) DS1 DS2
           .
 
 wf-tp : tenv -> tp -> type.
@@ -311,11 +324,11 @@ wf-env   : venv -> tenv -> type.
 v/clo : wf-val (clo H ICS) G T
      <- wf-env H GC
      <- typcs (tcons TC GC) ICS DCS
-     <- stp2 oktrans (tcons TC GC) TC G T
+     <- stp2 (tcons TC GC) TC G T
       .
 v/sub : wf-val V G U
      <- wf-val V G0 T
-     <- stp2 oktrans G0 T G U
+     <- stp2 G0 T G U
       .
 
 wfe/n : wf-env vnil tnil.
@@ -553,6 +566,14 @@ dlk-unique-rec : dlk DS X D -> dlk DS' X D' -> id-dcs DS DS' -> id-dc D D' -> ty
 %worlds () (dlk-unique-rec _ _ _ _).
 %total (EQ) (dlk-unique-rec _ _ EQ _).
 
+eq-some : id-topt (tsome L) (tsome L') -> id-tp L L' -> type.
+%mode eq-some +A -B.
+
+eq-some/refl : eq-some id-topt/refl id-tp/refl.
+
+%worlds () (eq-some _ _).
+%total (A) (eq-some A _).
+
 eq-rect : id-dc (rect L U) (rect L' U') -> id-topt L L' -> id-tp U U' -> type.
 %mode eq-rect +A -EQL -EQU.
 
@@ -561,14 +582,86 @@ eq-rect/refl : eq-rect id-dc/refl id-topt/refl id-tp/refl.
 %worlds () (eq-rect _ _ _).
 %total (A) (eq-rect A _ _).
 
+eq-sub-env-size-l : id-tenv G1 G1' -> sub-env-size G1 N G2 -> sub-env-size G1' N G2 -> type.
+%mode eq-sub-env-size-l +EQ +A -B.
+
+- : eq-sub-env-size-l id-tenv/refl B B.
+
+%worlds () (eq-sub-env-size-l _ _ _).
+%total (A) (eq-sub-env-size-l A _ _).
+%reduces C <= B (eq-sub-env-size-l _ B C).
+
+eq-stp-l : id-tp L L' -> stp I G L U -> stp I G L' U -> type.
+%mode eq-stp-l +EQ +B -C.
+
+- : eq-stp-l id-tp/refl B B.
+
+%worlds () (eq-stp-l _ _ _).
+%total (A) (eq-stp-l A _ _).
+%reduces C <= B (eq-stp-l _ B C).
+
 eq-stp-u : id-tp U U' -> stp I G L U -> stp I G L U' -> type.
-%mode eq-stp-u +EQU +B -C.
+%mode eq-stp-u +EQ +B -C.
 
 - : eq-stp-u id-tp/refl B B.
 
 %worlds () (eq-stp-u _ _ _).
 %total (A) (eq-stp-u A _ _).
 %reduces C <= B (eq-stp-u _ B C).
+
+eq-stp-g : id-tenv G G' -> stp I G L U -> stp I G' L U -> type.
+%mode eq-stp-g +EQ +B -C.
+
+- : eq-stp-g id-tenv/refl B B.
+
+%worlds () (eq-stp-g _ _ _).
+%total (A) (eq-stp-g A _ _).
+%reduces C <= B (eq-stp-g _ B C).
+
+eq-stp2-l : id-tp L L' -> stp2 G1 L G2 U -> stp2 G1 L' G2 U -> type.
+%mode eq-stp2-l +EQ +B -C.
+
+- : eq-stp2-l id-tp/refl B B.
+
+%worlds () (eq-stp2-l _ _ _).
+%total (A) (eq-stp2-l A _ _).
+%reduces C <= B (eq-stp2-l _ B C).
+
+eq-stp2-u : id-tp U U' -> stp2 G1 L G2 U -> stp2 G1 L G2 U' -> type.
+%mode eq-stp2-u +EQ +B -C.
+
+- : eq-stp2-u id-tp/refl B B.
+
+%worlds () (eq-stp2-u _ _ _).
+%total (A) (eq-stp2-u A _ _).
+%reduces C <= B (eq-stp2-u _ B C).
+
+eq-stp2-gu : id-tenv G2 G2' -> stp2 G1 L G2 U -> stp2 G1 L G2' U -> type.
+%mode eq-stp2-gu +EQ +B -C.
+
+- : eq-stp2-gu id-tenv/refl B B.
+
+%worlds () (eq-stp2-gu _ _ _).
+%total (A) (eq-stp2-gu A _ _).
+%reduces C <= B (eq-stp2-gu _ B C).
+
+eq-stp2-lu : id-tenv G1 G1' -> stp2 G1 L G2 U -> stp2 G1' L G2 U -> type.
+%mode eq-stp2-lu +EQ +B -C.
+
+- : eq-stp2-lu id-tenv/refl B B.
+
+%worlds () (eq-stp2-lu _ _ _).
+%total (A) (eq-stp2-lu A _ _).
+%reduces C <= B (eq-stp2-lu _ B C).
+
+eq-sdcs-g : id-tenv G G' -> sdcs I G A B -> sdcs I G' A B -> type.
+%mode eq-sdcs-g +EQ +A -B.
+
+- : eq-sdcs-g id-tenv/refl B B.
+
+%worlds () (eq-sdcs-g _ _ _).
+%total (A) (eq-sdcs-g A _ _).
+%reduces C <= B (eq-sdcs-g _ B C).
 
 tlookup-zero-unique: tlookup-zero G2 E T1 -> tlookup-zero G2 E T2 -> id-tp T1 T2 -> type.
 %mode tlookup-zero-unique +P1 +P2 -SBT.
@@ -983,6 +1076,15 @@ extend-sdc: sdc I G D1 D2 -> {Z} sdc I (tcons Z G) D1 D2 -> type.
 
 %worlds () (extend-sdc _ _ _).
 %total (A) (extend-sdc A _ _).
+
+extend-stp-mult: stp I1 G T1 T2 -> sub-env G G' -> stp I1 G' T1 T2 -> type.
+%mode extend-stp-mult +A +B -C.
+- : extend-stp-mult A sub-env/refl A.
+- : extend-stp-mult A (sub-env/ext B) C
+ <- extend-stp-mult A B C0
+ <- extend-stp C0 _ C.
+%worlds () (extend-stp-mult _ _ _).
+%total (X) (extend-stp-mult _ X _).
 
 % --------------- (notrans -> oktrans) ------------- %
 
@@ -1675,6 +1777,65 @@ invert-trans :
 
 %worlds () (invert-trans _ _).
 %total (A) (invert-trans A B).
+
+% --------------- generalized transitivity ------------- %
+
+trans2 :
+  stp2 G1 T1 G2 T2 ->
+  stp2 G2 T2 G3 T3 ->
+%%
+  stp2 G1 T1 G3 T3 ->
+  type.
+%mode trans2 +A +B -C.
+
+-/top : trans2 _ stp2/top stp2/top.
+
+-/sel1: trans2 (stp2/sel1 BUT M SE1) B23 (stp2/sel1 BUT' M SE1)
+     <- trans2 BUT B23 BUT'.
+
+-/sel2: trans2 B12 (stp2/sel2 BTL BTU BLU M SE2) (stp2/sel2 BTL' BTU' BLU M SE2)
+     <- trans2 B12 BTL BTL'
+     <- trans2 B12 BTU BTU'.
+
+-/sl21: trans2 (stp2/sel2 BTL BTU BLU M SE2) (stp2/sel1 BUT M' SE2') OUT
+     <- sub-env-size-eq SE2 SE2' EQG
+     <- eq-tenv-mem M EQG M0
+     <- has-mem-unique M' M0 EQD
+     <- eq-rect EQD _ EQU
+     <- eq-stp2-l EQU BUT BUT'
+     <- eq-stp2-gu EQG BTU BTU'
+     <- trans2 BTU' BUT' OUT
+      .
+
+-/slx1: trans2 (stp2/selx M SE1 SE2) (stp2/sel1 BUT M' SE2') (stp2/sel1 BUT' M SE1)
+     <- sub-env-size-eq SE2' SE2 EQG
+     <- eq-tenv-mem M' EQG M0'
+     <- has-mem-unique M0' M EQD
+     <- eq-rect EQD _ EQU
+     <- eq-stp2-l EQU BUT BUT0
+     <- eq-stp2-lu EQG BUT0 BUT'
+      .
+
+-/sl2x: trans2 (stp2/sel2 BTL BTU BLU M SE2) (stp2/selx M' SE2' SE3) (stp2/sel2 BTL BTU BLU M SE3')
+     <- sub-env-size-eq SE2' SE2 EQG
+     <- eq-sub-env-size-l EQG SE3 SE3'
+      .
+
+-/slxx: trans2 (stp2/selx M SE1 SE2) (stp2/selx M' SE2' SE3) (stp2/selx M SE1 SE3')
+     <- sub-env-size-eq SE2' SE2 EQG
+     <- eq-sub-env-size-l EQG SE3 SE3'
+      .
+
+-/bind: trans2 (stp2/bind BDS12 BDS22 SE1 SE2) (stp2/bind BDS23 BDS33 SE2' SE3) (stp2/bind BDS13 BDS33 SE1' SE3)
+     <- sub-env-size-eq SE2 SE2' EQG
+     <- eq-sub-env-size-l EQG SE1 SE1'
+     <- eq-env-cons EQG id-tp/refl EQGX
+     <- eq-sdcs-g EQGX BDS12 BDS12'
+     <- narrowdcs* BDS23 (sev/sub BDS12' sev/refl) BDS23'
+     <- ttransdcs* BDS12' BDS23' BDS13.
+
+%worlds () (trans2 _ _ _).
+%total {A B} (trans2 A B _).
 
 % example inversion lemma
 
