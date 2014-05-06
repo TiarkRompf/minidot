@@ -259,22 +259,30 @@ stp2/top  : stp2 G1 T1 G2 top
 stp2/sel1 : stp2 G1 (sel N X) G2 T
          <- sub-env-size GN (s N) G1
          <- has-mem GN N X (rect _ U)
-         <- stp2 GN U G2 T
+         <- stp2 G1 U G2 T
           .
 
 stp2/sel2 : stp2 G1 T G2 (sel N X)
          <- sub-env-size GN (s N) G2
          <- has-mem GN N X (rect (tsome L) U)
          <- stp oktrans GN L U
-         <- stp2 G1 T GN U
-         <- stp2 G1 T GN L
+         <- stp2 G1 T G2 U
+         <- stp2 G1 T G2 L
           .
 
-stp2/selx : stp2 G1 (sel N X) G2 (sel N X)
+stp2/selxn: stp2 G1 (sel N X) G2 (sel N X)
          <- sub-env-size GN (s N) G2
          <- sub-env-size GN (s N) G1
-         <- has-mem GN N X (rect OL U)
-         <- wf-dc GN (rect OL U)
+         <- has-mem GN N X (rect tnone U)
+         <- stp2 G1 U G2 U
+          .
+
+stp2/selxs: stp2 G1 (sel N X) G2 (sel N X)
+         <- sub-env-size GN (s N) G2
+         <- sub-env-size GN (s N) G1
+         <- has-mem GN N X (rect (tsome L) U)
+         <- stp2 G1 U G2 U
+         <- stp2 G1 L G2 L
           .
 
 stp2/bind : stp2 G1 (bind N DS1) G2 (bind N DS2)
@@ -535,6 +543,11 @@ add-contra : add (s N1) N2 N1 -> false -> type.
 %worlds () (add-contra _ _).
 %total (A) (add-contra A _).
 
+id-topt-contra : id-topt tnone (tsome T) -> false -> type.
+%mode id-topt-contra +A -B.
+%worlds () (id-topt-contra _ _).
+%total (A) (id-topt-contra A _).
+
 tlookup-contra : tlookup tnil N DS -> false -> type.
 %mode tlookup-contra +A -B.
 %worlds () (tlookup-contra _ _).
@@ -574,6 +587,11 @@ contra-sub-env : false -> {G1} {G2} sub-env G1 G2 -> type.
 %mode contra-sub-env +CONTRA +G1 +G2 -A.
 %worlds () (contra-sub-env _ _ _ _).
 %total (A) (contra-sub-env A _ _ _).
+
+contra-stp2 : false -> {G1} {T1} {G2} {T2} stp2 G1 T1 G2 T2 -> type.
+%mode contra-stp2 +CONTRA +G1 +T1 +G2 +T2 -A.
+%worlds () (contra-stp2 _ _ _ _ _ _).
+%total (A) (contra-stp2 A _ _ _ _ _).
 
 % --------------- more arithmetic lemmas ------------- %
 
@@ -1307,18 +1325,25 @@ extend-stp2: stp2 G1 T1 G2 T2 -> {Z} stp2 (tcons Z G1) T1 (tcons Z G2) T2 -> stp
 -/top: extend-stp2 (stp2/top W1) Z (stp2/top W1') (stp2/top W1') (stp2/top W1)
     <- extend-wf-tp W1 Z W1'.
 
--/sel1: extend-stp2 (stp2/sel1 BUT M SE) Z (stp2/sel1 BUT2 M SE') (stp2/sel1 BUT M SE') (stp2/sel1 BUT2 M SE)
+-/sel1: extend-stp2 (stp2/sel1 BUT M SE) Z (stp2/sel1 BUT' M SE') (stp2/sel1 BUT1 M SE') (stp2/sel1 BUT2 M SE)
      <- extend-sub-env-size SE Z SE'
      <- extend-stp2 BUT Z BUT' BUT1 BUT2.
 
--/sel2: extend-stp2 (stp2/sel2 BTL BTU BLU M SE) Z (stp2/sel2 BTL1 BTU1 BLU M SE') (stp2/sel2 BTL1 BTU1 BLU M SE) (stp2/sel2 BTL BTU BLU M SE')
+-/sel2: extend-stp2 (stp2/sel2 BTL BTU BLU M SE) Z (stp2/sel2 BTL' BTU' BLU M SE') (stp2/sel2 BTL1 BTU1 BLU M SE) (stp2/sel2 BTL2 BTU2 BLU M SE')
      <- extend-sub-env-size SE Z SE'
      <- extend-stp2 BTL Z BTL' BTL1 BTL2
      <- extend-stp2 BTU Z BTU' BTU1 BTU2.
 
--/selx: extend-stp2 (stp2/selx WD M SE1 SE2) Z (stp2/selx WD M SE1' SE2') (stp2/selx WD M SE1' SE2) (stp2/selx WD M SE1 SE2')
+-/selxn: extend-stp2 (stp2/selxn BU M SE1 SE2) Z (stp2/selxn BU' M SE1' SE2') (stp2/selxn BU1 M SE1' SE2) (stp2/selxn BU2 M SE1 SE2')
      <- extend-sub-env-size SE1 Z SE1'
-     <- extend-sub-env-size SE2 Z SE2'.
+     <- extend-sub-env-size SE2 Z SE2'
+     <- extend-stp2 BU Z BU' BU1 BU2.
+
+-/selxs: extend-stp2 (stp2/selxs BS BU M SE1 SE2) Z (stp2/selxs BS' BU' M SE1' SE2') (stp2/selxs BS1 BU1 M SE1' SE2) (stp2/selxs BS2 BU2 M SE1 SE2')
+     <- extend-sub-env-size SE1 Z SE1'
+     <- extend-sub-env-size SE2 Z SE2'
+     <- extend-stp2 BU Z BU' BU1 BU2
+     <- extend-stp2 BS Z BS' BS1 BS2.
 
 -/bind: extend-stp2 (stp2/bind BDS12 BDS11 BDS22 SE1 SE2) Z (stp2/bind BDS12 BDS11 BDS22 SE1' SE2') (stp2/bind BDS12 BDS11 BDS22 SE1' SE2) (stp2/bind BDS12 BDS11 BDS22 SE1 SE2')
      <- extend-sub-env-size SE1 Z SE1'
@@ -2150,7 +2175,7 @@ invert-trans :
 %worlds () (invert-trans _ _).
 %total (A) (invert-trans A B).
 
-% --------------- stp2 regular and reflexive ------------- %
+% --------------- stp2 regular ------------- %
 
 stp2-reg-rec :
   stp2 G1 T1 G2 T2 ->
@@ -2172,7 +2197,13 @@ stp2-reg-rec :
      <- extend-wf-mem-mult M E M'
      <- stp2-reg-rec A B _.
 
--/selx: stp2-reg-rec (stp2/selx WD M SE1 SE2) (stp/selx M1) (stp/selx M2)
+-/selxn: stp2-reg-rec (stp2/selxn _ M SE1 SE2) (stp/selx M1) (stp/selx M2)
+     <- extract-sub-env-size SE1 _ E1
+     <- extract-sub-env-size SE2 _ E2
+     <- extend-wf-mem-mult M E1 M1
+     <- extend-wf-mem-mult M E2 M2.
+
+-/selxs: stp2-reg-rec (stp2/selxs _ _ M SE1 SE2) (stp/selx M1) (stp/selx M2)
      <- extract-sub-env-size SE1 _ E1
      <- extract-sub-env-size SE2 _ E2
      <- extend-wf-mem-mult M E1 M1
@@ -2328,27 +2359,96 @@ trans2 :
      <- has-mem-unique M' M0 EQD
      <- eq-rect EQD _ EQU
      <- eq-stp2-l EQU BUT BUT'
-     <- eq-stp2-gu EQG BTU BTU'
-     <- trans2 BTU' BUT' OUT
+     <- trans2 BTU BUT' OUT
       .
 
--/slx1: trans2 (stp2/selx _ M SE1 SE2) (stp2/sel1 BUT M' SE2') (stp2/sel1 BUT' M SE1)
+-/slx1n: trans2 (stp2/selxn BU12 M SE1 SE2) (stp2/sel1 BUT M' SE2') (stp2/sel1 BUT' M SE1)
      <- sub-env-size-unique SE2' SE2 EQG
      <- eq-tenv-mem M' EQG M0'
      <- has-mem-unique M0' M EQD
      <- eq-rect EQD _ EQU
      <- eq-stp2-l EQU BUT BUT0
-     <- eq-stp2-gl EQG BUT0 BUT'
+     <- trans2 BU12 BUT0 BUT'
       .
 
--/sl2x: trans2 (stp2/sel2 BTL BTU BLU M SE2) (stp2/selx _ M' SE2' SE3) (stp2/sel2 BTL BTU BLU M SE3')
+-/slx1s: trans2 (stp2/selxs _ BU12 M SE1 SE2) (stp2/sel1 BUT M' SE2') (stp2/sel1 BUT' M SE1)
      <- sub-env-size-unique SE2' SE2 EQG
-     <- eq-sub-env-size-l EQG SE3 SE3'
+     <- eq-tenv-mem M' EQG M0'
+     <- has-mem-unique M0' M EQD
+     <- eq-rect EQD _ EQU
+     <- eq-stp2-l EQU BUT BUT0
+     <- trans2 BU12 BUT0 BUT'
       .
 
--/slxx: trans2 (stp2/selx W1 M SE1 SE2) (stp2/selx _ M' SE2' SE3) (stp2/selx W1 M SE1 SE3')
+-/sl2xn: trans2 (stp2/sel2 BTL BTU BLU M SE2) (stp2/selxn BU M' SE2' SE3) OUT
      <- sub-env-size-unique SE2' SE2 EQG
      <- eq-sub-env-size-l EQG SE3 SE3'
+     <- eq-tenv-mem M' EQG M0'
+     <- has-mem-unique M0' M EQD
+     <- eq-rect EQD EQOL EQU
+     <- id-topt-contra EQOL CONTRA
+     <- contra-stp2 CONTRA _ _ _ _ OUT
+      .
+
+-/sl2xs: trans2 (stp2/sel2 BTL BTU BLU M SE2) (stp2/selxs BS BU M' SE2' SE3) (stp2/sel2 BTL' BTU' BLU M SE3')
+     <- sub-env-size-unique SE2' SE2 EQG
+     <- eq-sub-env-size-l EQG SE3 SE3'
+     <- eq-tenv-mem M' EQG M0'
+     <- has-mem-unique M0' M EQD
+     <- eq-rect EQD EQOL EQU
+     <- eq-some EQOL EQL
+     <- eq-stp2-l EQL BS BS'
+     <- eq-stp2-u EQL BS' BS''
+     <- eq-stp2-l EQU BU BU'
+     <- eq-stp2-u EQU BU' BU''
+     <- trans2 BTL BS'' BTL'
+     <- trans2 BTU BU'' BTU'
+      .
+
+-/slxxnn: trans2 (stp2/selxn BU12 M SE1 SE2) (stp2/selxn BU23 M' SE2' SE3) (stp2/selxn BU13 M SE1 SE3')
+     <- sub-env-size-unique SE2' SE2 EQG
+     <- eq-sub-env-size-l EQG SE3 SE3'
+     <- eq-tenv-mem M' EQG M0'
+     <- has-mem-unique M0' M EQD
+     <- eq-rect EQD _ EQU
+     <- eq-stp2-l EQU BU23 BU23'
+     <- eq-stp2-u EQU BU23' BU23''
+     <- trans2 BU12 BU23'' BU13
+      .
+
+-/slxxss: trans2 (stp2/selxs BS12 BU12 M SE1 SE2) (stp2/selxs BS23 BU23 M' SE2' SE3) (stp2/selxs BS13 BU13 M SE1 SE3')
+     <- sub-env-size-unique SE2' SE2 EQG
+     <- eq-sub-env-size-l EQG SE3 SE3'
+     <- eq-tenv-mem M' EQG M0'
+     <- has-mem-unique M0' M EQD
+     <- eq-rect EQD EQOL EQU
+     <- eq-stp2-l EQU BU23 BU23'
+     <- eq-stp2-u EQU BU23' BU23''
+     <- trans2 BU12 BU23'' BU13
+     <- eq-some EQOL EQL
+     <- eq-stp2-l EQL BS23 BS23'
+     <- eq-stp2-u EQL BS23' BS23''
+     <- trans2 BS12 BS23'' BS13
+      .
+
+-/slxxns: trans2 (stp2/selxn BU12 M SE1 SE2) (stp2/selxs BS23 BU23 M' SE2' SE3) OUT
+     <- sub-env-size-unique SE2' SE2 EQG
+     <- eq-sub-env-size-l EQG SE3 SE3'
+     <- eq-tenv-mem M' EQG M0'
+     <- has-mem-unique M M0' EQD
+     <- eq-rect EQD EQOL EQU
+     <- id-topt-contra EQOL CONTRA
+     <- contra-stp2 CONTRA _ _ _ _ OUT
+      .
+
+-/slxxsn: trans2 (stp2/selxs BS12 BU12 M SE1 SE2) (stp2/selxn BU23 M' SE2' SE3) OUT
+     <- sub-env-size-unique SE2' SE2 EQG
+     <- eq-sub-env-size-l EQG SE3 SE3'
+     <- eq-tenv-mem M' EQG M0'
+     <- has-mem-unique M0' M EQD
+     <- eq-rect EQD EQOL EQU
+     <- id-topt-contra EQOL CONTRA
+     <- contra-stp2 CONTRA _ _ _ _ OUT
       .
 
 -/bind: trans2 (stp2/bind BDS12 BDS11 BDS22 SE1 SE2) (stp2/bind BDS23 BDS22' BDS33 SE2' SE3) (stp2/bind BDS13 BDS11' BDS33 SE1' SE3)
@@ -2363,7 +2463,22 @@ trans2 :
 %worlds () (trans2 _ _ _).
 %total {A B} (trans2 A B _).
 
-% --------------- relating stp2 and stp (sanity checks) ------------- %
+% --------------- stp2 reflexive ------------- %
+
+%{
+stp2-refl-rec :
+  stp oktrans G T T ->
+%%
+  stp2 G T G T ->
+  type.
+%mode stp2-refl-rec +A -B.
+
+-/top: stp2-refl-rec (stp/trans0 stp/top) (stp2/top (stprefl stp/top)).
+
+
+%worlds () (stp2-refl-rec _ _).
+%total (A) (stp2-refl-rec A _).
+}%
 
 % --------------- example inversion lemma ------------- %
 
