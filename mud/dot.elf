@@ -2682,7 +2682,6 @@ trans2 :
 
 % --------------- relations between stp and stp2 ------------- %
 
-%{
 stp-to-stp2 :
   stp oktrans G T1 T2 ->
 %%
@@ -2695,7 +2694,7 @@ stp-to-stp2 :
 -/top : stp-to-stp2 (stp/trans0 (stp/top W)) (stp2/top (stprefl W'))
 <- invert-trans W W'.
 
--/sel1: stp-to-stp2 (stp/trans0 (stp/sel1 BUT M SE)) (stp2/sel1 BUT' M SE)
+-/sel1: stp-to-stp2 (stp/trans0 (stp/sel1 BUT WOL M SE)) (stp2/sel1 BUT' WOL M SE)
 <- stp-to-stp2 BUT BUT'.
 
 -/sel2: stp-to-stp2 (stp/trans0 (stp/sel2 BTL BLU M SE)) (stp2/sel2 BTL' BTU' BLU M SE)
@@ -2705,10 +2704,22 @@ stp-to-stp2 :
 <- extend-stp2-mult BLU' E BLU''
 <- trans2 BTL' BLU'' BTU'.
 
+-/selxn: stp-to-stp2 (stp/trans0 (stp/selx stpoo/nn WU M SE)) (stp2/selxn WU' M SE SE)
+<- stp-to-stp2 WU WU'.
+
+-/selxs: stp-to-stp2 (stp/trans0 (stp/selx (stpoo/ss WL) WU M SE)) (stp2/selxs WL' WU' M SE SE)
+<- stp-to-stp2 WU WU'
+<- stp-to-stp2 WL WL'.
+
+-/bind: stp-to-stp2 (stp/trans0 (stp/bind A B C SE)) (stp2/bind A B C SE SE).
+
+-/trans: stp-to-stp2 (stp/trans A12 A23) OUT
+<- stp-to-stp2 A12 A12'
+<- stp-to-stp2 A23 A23'
+<- trans2 A12' A23' OUT.
 
 %worlds () (stp-to-stp2 _ _).
 %total (A) (stp-to-stp2 A _).
-}%
 
 % --------------- example inversion lemma ------------- %
 
