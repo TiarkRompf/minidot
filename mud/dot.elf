@@ -2734,33 +2734,3 @@ stp2refl/wf : stp2refl (stprefl A) B
 %worlds () (stp2refl _ _).
 %total (A) (stp2refl A _).
 
-% --------------- example inversion lemma ------------- %
-
-invert-bind :
-  stp oktrans G (bind z DS1) (bind z DS2) ->
-%%
-  sdcs oktrans (tcons (bind z DS1) tnil) DS1 DS2 ->
-  type.
-%mode invert-bind +A -B.
-
-- : invert-bind A B <- invert-trans A (stp/bind B _ _ _).
-
-%worlds () (invert-bind _ _).
-%total (A) (invert-bind A _).
-
-invert-fun :
-  stp oktrans G (bind z DS1) (bind z DS2) ->
-  dlk DS2 X (arrow S2 U2) ->
-%%
-  dlk DS1 X (arrow S1 U1) ->
-  stp oktrans (tcons (bind z DS1) tnil) S2 S1 ->
-  stp oktrans (tcons (bind z DS1) tnil) U1 U2 ->
-  type.
-%mode invert-fun +A +B -C -D -E.
-
-- : invert-fun B K K' BS' BU'
- <- invert-bind B BD
- <- inv-sdcs BD K K' (sdc/arrow BS' BU').
-
-%worlds () (invert-fun _ _ _ _ _).
-%total (A) (invert-fun A _ _ _ _).
