@@ -2721,6 +2721,19 @@ stp-to-stp2 :
 %worlds () (stp-to-stp2 _ _).
 %total (A) (stp-to-stp2 A _).
 
+stp2refl :
+  wf-tp G T ->
+%%
+  stp2 G T G T ->
+  type.
+%mode stp2refl +A -B.
+
+stp2refl/wf : stp2refl (stprefl A) B
+<- stp-to-stp2 (stp/trans0 A) B.
+
+%worlds () (stp2refl _ _).
+%total (A) (stp2refl A _).
+
 % --------------- example inversion lemma ------------- %
 
 invert-bind :
