@@ -1,0 +1,193 @@
+nat: type.
+z: nat.
+s: nat -> nat.
+
+add: nat -> nat -> nat -> type.
+add/z: add z N N.
+add/s: add (s N1) N2 (s N3) <- add N1 N2 N3.
+
+lte: nat -> nat -> type.
+lte/z: lte z N.
+lte/s: lte (s N1) (s N2)
+    <- lte N1 N2.
+
+id-nat: nat -> nat -> type.
+id-nat/rfl: id-nat X X.
+
+eq-nat: nat -> nat -> type.
+eq-nat/z: eq-nat z z.
+eq-nat/s: eq-nat (s N1) (s N2)
+       <- eq-nat N1 N2.
+
+s-injective: id-nat N1 N2 -> id-nat (s N1) (s N2) -> type.
+%mode s-injective +A -B.
+
+s-injective/rfl: s-injective id-nat/rfl id-nat/rfl.
+
+%worlds () (s-injective _ _).
+%total (A) (s-injective A _).
+
+eq2id-nat: eq-nat N1 N2 -> id-nat N1 N2 -> type.
+%mode eq2id-nat +A -B.
+
+eq2id-nat/z: eq2id-nat eq-nat/z id-nat/rfl.
+
+eq2id-nat/s: eq2id-nat (eq-nat/s A) OUT
+          <- eq2id-nat A B
+          <- s-injective B OUT.
+
+%worlds () (eq2id-nat _ _).
+%total (A) (eq2id-nat A _).
+
+eq-nat-rfl: {N} eq-nat N N -> type.
+%mode eq-nat-rfl +N -EQ.
+
+eq-nat-rfl/z: eq-nat-rfl z eq-nat/z.
+
+eq-nat-rfl/s: eq-nat-rfl (s N) (eq-nat/s EQ)
+<- eq-nat-rfl N EQ.
+
+%worlds () (eq-nat-rfl _ _).
+%total (N) (eq-nat-rfl N _).
+
+id2eq-nat: id-nat N1 N2 -> eq-nat N1 N2 -> type.
+%mode id2eq-nat +A -B.
+
+- : id2eq-nat id-nat/rfl EQ
+ <- eq-nat-rfl _ EQ.
+
+%worlds () (id2eq-nat _ _).
+%total (A) (id2eq-nat A _).
+
+add-inc: add A B C -> add A (s B) (s C) -> type.
+%mode add-inc +E1 -E2.
+
+- : add-inc add/z add/z.
+- : add-inc (add/s A1) (add/s A2)
+  <- add-inc A1 A2.
+
+%worlds () (add-inc _ _).
+%total {A} (add-inc A _).
+
+exp: type.
+cst: nat -> exp.
+var: nat -> exp.
+pls: exp -> exp -> exp.
+
+nat-list: type.
+nat-nil: nat-list.
+nat-cons: nat -> nat-list -> nat-list.
+
+exp-list: type.
+exp-nil: exp-list.
+exp-cons: exp -> exp-list -> exp-list.
+
+nat-list-size: nat-list -> nat -> type.
+nat-list-size/nil  : nat-list-size nat-nil z.
+nat-list-size/cons : nat-list-size (nat-cons _ L) (s N)
+                  <- nat-list-size L N.
+
+sub-nat-list: nat-list -> nat-list -> type.
+sub-nat-list/rfl: sub-nat-list L L.
+sub-nat-list/ext: sub-nat-list L1 (nat-cons _ L2)
+               <- sub-nat-list L1 L2.
+
+exp-list-size: exp-list -> nat -> type.
+exp-list-size/nil  : exp-list-size exp-nil z.
+exp-list-size/cons : exp-list-size (exp-cons _ L) (s N)
+                  <- exp-list-size L N.
+
+sub-exp-list: exp-list -> exp-list -> type.
+sub-exp-list/rfl: sub-exp-list L L.
+sub-exp-list/ext: sub-exp-list L1 (exp-cons _ L2)
+               <- sub-exp-list L1 L2.
+
+exp-list-size-eq: exp-list-size L N -> exp-list-size L N' -> eq-nat N N' -> type.
+%mode exp-list-size-eq +A +B -C.
+- : exp-list-size-eq exp-list-size/nil exp-list-size/nil eq-nat/z.
+- : exp-list-size-eq (exp-list-size/cons S1) (exp-list-size/cons S2) (eq-nat/s EQ)
+ <- exp-list-size-eq S1 S2 EQ.
+%worlds () (exp-list-size-eq _ _ _).
+%total (A) (exp-list-size-eq A _ _).
+
+exp-list-size-id: exp-list-size L N -> exp-list-size L N' -> id-nat N N' -> type.
+%mode exp-list-size-id +A +B -C.
+- : exp-list-size-id S1 S2 ID
+ <- exp-list-size-eq S1 S2 EQ
+ <- eq2id-nat EQ ID.
+%worlds () (exp-list-size-id _ _ _).
+%total (A) (exp-list-size-id A _ _).
+
+lkp0: nat-list -> nat -> nat %{element type}% -> type.
+lkp0/hit : lkp0 (nat-cons X L) z X.
+lkp0/miss: lkp0 (nat-cons _ G) (s I0) X
+        <- lkp0 G I0 X.
+
+lkp: nat-list -> nat -> nat %{element-type}% -> type.
+lkp/rev  : lkp G I X
+        <- nat-list-size G N
+        <- add (s I) I0 N % I0=N-1-I
+        <- lkp0 G I0 X.
+
+shift-lkp0: lkp0 G I0 X -> {Z} lkp0 (nat-cons Z G) (s I0) X -> type.
+%mode shift-lkp0 +A +Z -B.
+- : shift-lkp0 lkp0/hit _ (lkp0/miss lkp0/hit).
+- : shift-lkp0 (lkp0/miss A) _ (lkp0/miss B)
+ <- shift-lkp0 A _ B.
+%worlds () (shift-lkp0 _ _ _).
+%total (A) (shift-lkp0 A _ _).
+
+nat-list-size-inc: nat-list-size L N -> {Z} nat-list-size (nat-cons Z L) (s N) -> type.
+%mode nat-list-size-inc +A +Z -B.
+- : nat-list-size-inc nat-list-size/nil _ (nat-list-size/cons nat-list-size/nil).
+- : nat-list-size-inc (nat-list-size/cons A) _ (nat-list-size/cons B)
+ <- nat-list-size-inc A _ B.
+%worlds () (nat-list-size-inc _ _ _).
+%total A (nat-list-size-inc A _ _).
+
+ext-lkp: lkp G I X -> {Z} lkp (nat-cons Z G) I X -> type.
+%mode ext-lkp +A +Z -B.
+- : ext-lkp (lkp/rev L A S) Z (lkp/rev L' A' S')
+ <- nat-list-size-inc S Z S'
+ <- add-inc A A'
+ <- shift-lkp0 L Z L'.
+%worlds () (ext-lkp _ _ _).
+%total (A) (ext-lkp A _ _).
+
+exts-lkp: lkp G I X -> sub-nat-list G G' -> lkp G' I X -> type.
+%mode exts-lkp +A +S -B.
+- : exts-lkp A sub-nat-list/rfl A.
+- : exts-lkp A (sub-nat-list/ext S) B
+ <- exts-lkp A S B0
+ <- ext-lkp B0 _ B.
+%worlds () (exts-lkp _ _ _).
+%total (S) (exts-lkp _ S _).
+
+ev: nat-list -> exp -> nat -> type.
+ev/cst : ev G (cst N) N.
+ev/var : ev G (var I) N
+      <- lkp G I N.
+ev/pls : ev G (pls E1 E2) N
+      <- ev G E1 N1
+      <- ev G E2 N2
+      <- add N1 N2 N.
+
+ext-ev: ev G I V -> {Z} ev (nat-cons Z G) I V -> type.
+%mode ext-ev +A +Z -B.
+-/cst : ext-ev ev/cst _ ev/cst.
+-/var : ext-ev (ev/var L) _ (ev/var L')
+     <- ext-lkp L _ L'.
+-/pls : ext-ev (ev/pls A E2 E1) _ (ev/pls A E2' E1')
+     <- ext-ev E1 _ E1'
+     <- ext-ev E2 _ E2'.
+%worlds () (ext-ev _ _ _).
+%total (A) (ext-ev A _ _).
+
+exts-ev: ev G I V -> sub-nat-list G G' -> ev G' I V -> type.
+%mode exts-ev +A +S -B.
+- : exts-ev A sub-nat-list/rfl A.
+- : exts-ev A (sub-nat-list/ext S) B
+ <- exts-ev A S B0
+ <- ext-ev B0 _ B.
+%worlds () (exts-ev _ _ _).
+%total (S) (exts-ev _ S _).
