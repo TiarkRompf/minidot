@@ -328,6 +328,7 @@ t/new : typ G (new N DCS ICS) (bind N DCS)
 t/app : typ G (app E1 X E2) T
      <- has-mem-tm G E1 X (arrow T2 T)
      <- typ G E2 T2
+     <- wf-tp G T
       .
 t/nil : typcs G inil dnil.
 t/fun : typcs G (icons (fun E) ICS) (dcons (arrow S U) DCS)
@@ -2944,6 +2945,25 @@ invert-new :
 %worlds () (invert-new _ _ _ _).
 %total (A) (invert-new A _ _ _).
 
+invert-app:
+  typ G (app E1 X E2) T ->
+%%
+  has-mem-tm G E1 X (arrow T2 T0) ->
+  typ G E2 T2 ->
+  stp2 G T0 G T ->
+  type.
+%mode invert-app +A -B -C -D.
+
+-/app : invert-app (t/app W A M) M A B
+     <- stp2refl W B.
+
+-/sub : invert-app (t/sub B A) M' A' B'
+     <- invert-app A M' A' B0
+     <- trans2 B0 B B'.
+
+%worlds () (invert-app _ _ _ _).
+%total (A) (invert-app A _ _ _).
+
 %{ ------- lookup preservation --- }%
 
 lookup-zero-safe: wf-env H G -> tlookup-zero G N2 T -> vlookup-zero H N1 V -> eq-nat N1 N2 -> wf-val V G T -> type.
@@ -2983,6 +3003,11 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
 -/new : eval-safe A E (e/new SV) (v/clo BA ADS E')
      <- invert-new A SE ADS BA
      <- wf-sub-env-size E SV SE E'.
+
+-/app : eval-safe A E (e/app EV3 EV2 IL EV1) V
+     <- invert-app A MA A2 BA
+     <- eval-safe A2 E EV2 V2
+      .
 
 %worlds () (eval-safe _ _ _ _).
 %total EV (eval-safe _ _ EV _).
