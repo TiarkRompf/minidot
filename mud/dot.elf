@@ -323,6 +323,7 @@ t/var : typ G (var N) T
 t/new : typ G (new N DCS ICS) (bind N DCS)
      <- sub-env-size GN N G
      <- typcs (tcons (bind N DCS) GN) ICS DCS
+     <- wf-tp GN (bind N DCS)
       .
 t/app : typ G (app E1 X E2) T
      <- has-mem-tm G E1 X (arrow T2 T)
@@ -346,8 +347,8 @@ wf-env   : venv -> tenv -> type.
 
 v/clo : wf-val (clo H ICS) G T
      <- wf-env H GC
-     <- typcs (tcons TC GC) ICS DCS
-     <- stp2 (tcons TC GC) TC G T
+     <- typcs (tcons (bind N DCS) GC) ICS DCS
+     <- stp2 GC (bind N DCS) G T
       .
 v/sub : wf-val V G U
      <- wf-val V G0 T
@@ -1143,6 +1144,136 @@ extract-sub-env-size : sub-env-size G N G' -> tsize G N -> sub-env G G' -> type.
 %worlds () (extract-sub-env-size _ _ _).
 %total (A) (extract-sub-env-size A _ _).
 
+%{ ------- env lemmas ----- }%
+
+vsize-calc : {H} vsize H N -> type.
+%mode vsize-calc +H -NH.
+- : vsize-calc vnil vf/n.
+- : vsize-calc (vcons _ H) (vf/c NH)
+ <- vsize-calc H NH.
+%worlds () (vsize-calc _ _).
+%total (H) (vsize-calc H _).
+
+tsize-calc : {G} tsize G N -> type.
+%mode tsize-calc +G -NG.
+- : tsize-calc tnil tf/n.
+- : tsize-calc (tcons _ G) (tf/c NG)
+ <- tsize-calc G NG.
+%worlds () (tsize-calc _ _).
+%total (G) (tsize-calc G _).
+
+wf-env-size-eq: wf-env H G -> vsize H N1 -> tsize G N2 -> eq-nat N1 N2 -> type.
+%mode wf-env-size-eq +A +B +C -D.
+-      : wf-env-size-eq wfe/n vf/n tf/n eq-nat/z.
+-      : wf-env-size-eq (wfe/c G _) (vf/c VS) (tf/c TS) (eq-nat/s E) <- wf-env-size-eq G VS TS E.
+%worlds () (wf-env-size-eq _ _ _ _).
+%total A (wf-env-size-eq A _ _ _).
+
+wf-env-size-same: wf-env H G -> vsize H N1 -> tsize G N2 -> id-nat N1 N2 -> type.
+%mode wf-env-size-same +A +B +C -D.
+
+- : wf-env-size-same E NH NG ID
+ <- wf-env-size-eq E NH NG EQ
+ <- eq2id-nat EQ ID.
+
+%worlds () (wf-env-size-same _ _ _ _).
+%total {} (wf-env-size-same _ _ _ _).
+
+vsize-unique-eq: vsize G2 N1 -> vsize G2 N2 -> eq-nat N1 N2 -> type.
+%mode vsize-unique-eq +P1 +P2 -SBT.
+
+- : vsize-unique-eq vf/n vf/n eq-nat/z.
+- : vsize-unique-eq (vf/c A) (vf/c B) (eq-nat/s X) <- vsize-unique-eq A B X.
+
+%worlds () (vsize-unique-eq _ _ _).
+%total {T2} (vsize-unique-eq T2 _ _).
+
+sub-venv-size-lte: sub-venv GN G -> vsize GN NN -> vsize G N -> lte NN N -> type.
+%mode sub-venv-size-lte +A +B +C -D.
+- : sub-venv-size-lte sub-venv/refl A B LT
+     <- vsize-unique-eq A B EQ
+     <- eq-lte EQ LT.
+- : sub-venv-size-lte (sub-venv/ext S) A (vf/c B) LT'
+     <- sub-venv-size-lte S A B LT
+     <- lte-inc LT LT'.
+%worlds () (sub-venv-size-lte _ _ _ _).
+%total A (sub-venv-size-lte A _ _ _).
+
+vsize-contra : vsize H N -> vsize (vcons V H) N -> false -> type.
+%mode vsize-contra +A +B -C.
+- : vsize-contra (vf/c A) (vf/c B) C
+ <- vsize-contra A B C.
+%worlds () (vsize-contra _ _ _).
+%total (A) (vsize-contra A _ _).
+
+vsize-contra-lte : lte N' N -> vsize H N -> vsize (vcons V H) N' -> false -> type.
+%mode vsize-contra-lte +L +A +B -C.
+- : vsize-contra-lte (lte/s L) (vf/c A) (vf/c B) C
+ <- vsize-contra-lte L A B C.
+%worlds () (vsize-contra-lte _ _ _ _).
+%total (A) (vsize-contra-lte _ A _ _).
+
+vsize-sub-contra : sub-venv HN H -> vsize HN N -> vsize (vcons V H) N -> false -> type.
+%mode vsize-sub-contra +A +B +C -D.
+- : vsize-sub-contra S TN (vf/c TH) OUT
+ <- sub-venv-size-lte S TN TH LTE
+ <- lte-s-false LTE OUT.
+%worlds () (vsize-sub-contra _ _ _ _).
+%total (A) (vsize-sub-contra A _ _ _).
+
+tsize-sub-contra : sub-env GN G -> tsize GN N -> tsize (tcons T G) N -> false -> type.
+%mode tsize-sub-contra +A +B +C -D.
+- : tsize-sub-contra S TN (tf/c TG) OUT
+ <- sub-env-size-lte S TN TG LTE
+ <- lte-s-false LTE OUT.
+%worlds () (tsize-sub-contra _ _ _ _).
+%total (A) (tsize-sub-contra A _ _ _).
+
+contra-wf-env : false -> {H} {G} wf-env H G -> type.
+%mode contra-wf-env +CONTRA +H +G -A.
+%worlds () (contra-wf-env _ _ _ _).
+%total (A) (contra-wf-env A _ _ _).
+
+eq-vsize : vsize G N -> id-nat N N' -> vsize G N' -> type.
+%mode eq-vsize +A +EQ -B.
+
+- : eq-vsize A id-nat/refl A.
+
+%worlds () (eq-vsize _ _ _).
+%total (EQ) (eq-vsize _ EQ _ ).
+
+wf-sub-env-size-rec: wf-env H G -> sub-venv HN H -> sub-env GN G -> vsize HN N -> tsize GN N -> wf-env HN GN -> type.
+%mode wf-sub-env-size-rec +A +B +C +D +E -F.
+
+- : wf-sub-env-size-rec E sub-venv/refl sub-env/refl _ _ E.
+
+- : wf-sub-env-size-rec (wfe/c E _) (sub-venv/ext SH) (sub-env/ext SG) NH TH OUT
+ <- wf-sub-env-size-rec E SH SG NH TH OUT.
+
+- : wf-sub-env-size-rec E (sub-venv/ext SH) sub-env/refl NH NG OUT
+ <- vsize-calc _ NH'
+ <- wf-env-size-same E NH' NG EQN
+ <- eq-vsize NH' EQN NH''
+ <- vsize-sub-contra SH NH NH'' CONTRA
+ <- contra-wf-env CONTRA _ _ OUT.
+
+- : wf-sub-env-size-rec E sub-venv/refl (sub-env/ext SG) NH NG OUT
+ <- tsize-calc _ NG'
+ <- wf-env-size-same E NH NG' EQN
+ <- eq-tsize NG EQN NG0
+ <- tsize-sub-contra SG NG0 NG' CONTRA
+ <- contra-wf-env CONTRA _ _ OUT.
+
+%worlds () (wf-sub-env-size-rec _ _ _ _ _ _).
+%total {B C} (wf-sub-env-size-rec _ B C _ _ _).
+
+wf-sub-env-size: wf-env H G -> sub-venv-size HN N H -> sub-env-size GN N G -> wf-env HN GN -> type.
+%mode wf-sub-env-size +A +B +C -D.
+- : wf-sub-env-size E (svs TH SH) (ses TG SG) OUT
+ <- wf-sub-env-size-rec E SH SG TH TG OUT.
+%worlds () (wf-sub-env-size _ _ _ _).
+%total (A) (wf-sub-env-size A _ _ _).
+
 % --------------- extension lemmas ------------- %
 
 extend-wf-lkpz: tlookup-zero G N T -> {Z} tlookup-zero (tcons Z G) (s N) T -> type.
@@ -1396,6 +1527,15 @@ extend-stp2-mult: stp2 G T1 G T2 -> sub-env G G' -> stp2 G' T1 G' T2 -> type.
  <- extend-stp2 C0 _ C _ _.
 %worlds () (extend-stp2-mult _ _ _).
 %total (X) (extend-stp2-mult _ X _).
+
+extend-stp2-mult2: stp2 G1 T1 G2 T2 -> sub-env G2 G2' -> stp2 G1 T1 G2' T2 -> type.
+%mode extend-stp2-mult2 +A +B -C.
+- : extend-stp2-mult2 A sub-env/refl A.
+- : extend-stp2-mult2 A (sub-env/ext B) C
+ <- extend-stp2-mult2 A B C0
+ <- extend-stp2 C0 _ _ _ C.
+%worlds () (extend-stp2-mult2 _ _ _).
+%total (X) (extend-stp2-mult2 _ X _).
 
 % --------------- transitivity (oktrans mode) ------------- %
 
@@ -2782,6 +2922,28 @@ invert-var:
 %worlds () (invert-var _ _ _).
 %total (A) (invert-var A _ _).
 
+invert-new :
+  typ G (new N DCS ICS) T ->
+%%
+  sub-env-size GN N G ->
+  typcs (tcons (bind N DCS) GN) ICS DCS ->
+  stp2 GN (bind N DCS) G T ->
+  type.
+%mode invert-new +A -B -C -D.
+
+-/new : invert-new (t/new W ADS SE) SE ADS B
+     <- stp2refl W B0
+     <- extract-sub-env-size SE _ E
+     <- extend-stp2-mult2 B0 E B.
+
+-/sub : invert-new (t/sub B A) SE' ADS' B'
+     <- invert-new A SE' ADS' B0
+     <- trans2 B0 B B'
+      .
+
+%worlds () (invert-new _ _ _ _).
+%total (A) (invert-new A _ _ _).
+
 %{ ------- lookup preservation --- }%
 
 lookup-zero-safe: wf-env H G -> tlookup-zero G N2 T -> vlookup-zero H N1 V -> eq-nat N1 N2 -> wf-val V G T -> type.
@@ -2794,13 +2956,6 @@ lookup-zero-safe: wf-env H G -> tlookup-zero G N2 T -> vlookup-zero H N1 V -> eq
 
 %worlds () (lookup-zero-safe _ _ _ _ _).
 %total A (lookup-zero-safe A _ _ _ _). % induction on first arg
-
-wf-env-size-eq: wf-env H G -> vsize H N1 -> tsize G N2 -> eq-nat N1 N2 -> type.
-%mode wf-env-size-eq +A +B +C -D.
--      : wf-env-size-eq wfe/n vf/n tf/n eq-nat/z.
--      : wf-env-size-eq (wfe/c G _) (vf/c VS) (tf/c TS) (eq-nat/s E) <- wf-env-size-eq G VS TS E.
-%worlds () (wf-env-size-eq _ _ _ _).
-%total A (wf-env-size-eq A _ _ _).
 
 lookup-safe: wf-env H G -> tlookup G N T -> vlookup H N V -> wf-val V G T -> type.
 %mode lookup-safe +A +B +C -D.
@@ -2824,6 +2979,10 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
      <- lookup-safe E LA L V'
      <- wfv-widen BA V' V
       .
+
+-/new : eval-safe A E (e/new SV) (v/clo BA ADS E')
+     <- invert-new A SE ADS BA
+     <- wf-sub-env-size E SV SE E'.
 
 %worlds () (eval-safe _ _ _ _).
 %total EV (eval-safe _ _ EV _).
