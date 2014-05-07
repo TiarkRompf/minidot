@@ -334,7 +334,7 @@ ext-ev: ev G I V -> {Z} ev (nat-cons Z G) I V -> type.
 extensions. Basically, copy-paste the proof of <code>exts-lkp</code>
 and replace <code>-lkp</code> with <code>-ev</code>:</p>
 
-<div class="live" id="exts-ev" data-lib="nat exp list nat-list lkp ext-lkp ev exts-ev">
+<div class="live" id="exts-ev" data-lib="nat exp list nat-list lkp ext-lkp ev ext-ev">
 exts-ev: ev G I V -> sub-nat-list G G' -> ev G' I V -> type.
 %mode exts-ev +A +S -B.
 - : exts-ev A sub-nat-list/rfl A.
