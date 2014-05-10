@@ -1,3 +1,10 @@
+%{
++ add bottom type
+- 'strong subtyping' relation from paper
+}%
+
+
+
 %%%%%  Natural numbers  %%%%%
 
 nat : type.  %name nat N.
@@ -29,6 +36,7 @@ ic: type.
 ics: type.
 
 % types
+bot     : tp.
 top     : tp.
 sel     : nat -> nat -> tp.
 bind    : nat -> dcs -> tp.
@@ -196,6 +204,11 @@ stpoo/nn : stpoo I0 G tnone tnone.
 stpoo/ns : stpoo I0 G tnone (tsome U).
 stpoo/ss : stpoo I0 G (tsome S) (tsome U) <- stp I0 G S U.
 
+stp/bot2    : stp notrans G bot bot.
+
+stp/bot     : stp notrans G bot A
+           <- stp oktrans G A A.
+
 stp/top2    : stp notrans G top top.
 
 stp/top     : stp notrans G A top
@@ -260,6 +273,9 @@ wf-dc : tenv -> dc -> type.
 sdcrefl : wf-dc G D <- sdc notrans G D D.
 
 stp2  : tenv -> tp -> tenv -> tp -> type.
+
+stp2/bot  : stp2 G1 bot G2 T2
+         <- wf-tp G2 T2.
 
 stp2/top  : stp2 G1 T1 G2 top
          <- wf-tp G1 T1.
@@ -1361,6 +1377,11 @@ extend-sub-env-size-mult: sub-env-size GN N G -> sub-env G G' -> sub-env-size GN
 extend-stp: stp I1 G T1 T2 -> {Z} stp I1 (tcons Z G) T1 T2 -> type.
 %mode extend-stp +A +B -D.
 
+-/bot2: extend-stp stp/bot2 _ stp/bot2.
+
+-/bot : extend-stp (stp/bot A) Z (stp/bot A')
+     <- extend-stp A Z A'.
+
 -/top2: extend-stp stp/top2 _ stp/top2.
 
 -/top : extend-stp (stp/top A) Z (stp/top A')
@@ -1487,6 +1508,9 @@ extend-wf-dc: wf-dc G D -> {Z} wf-dc (tcons Z G) D -> type.
 
 extend-stp2: stp2 G1 T1 G2 T2 -> {Z} stp2 (tcons Z G1) T1 (tcons Z G2) T2 -> stp2 (tcons Z G1) T1 G2 T2 -> stp2 G1 T1 (tcons Z G2) T2 -> type.
 %mode extend-stp2 +A +B -C -D -E.
+
+-/bot: extend-stp2 (stp2/bot W1) Z (stp2/bot W1') (stp2/bot W1) (stp2/bot W1')
+    <- extend-wf-tp W1 Z W1'.
 
 -/top: extend-stp2 (stp2/top W1) Z (stp2/top W1') (stp2/top W1') (stp2/top W1)
     <- extend-wf-tp W1 Z W1'.
@@ -1623,6 +1647,10 @@ stp-reg-rec :
   stp oktrans G T2 T2 ->
   type.
 %mode stp-reg-rec +A -B -C.
+
+-/bot2: stp-reg-rec (stp/trans0 stp/bot2) (stp/trans0 stp/bot2) (stp/trans0 stp/bot2).
+
+-/bot : stp-reg-rec (stp/trans0 (stp/bot B)) (stp/trans0 stp/bot2) B.
 
 -/top2: stp-reg-rec (stp/trans0 stp/top2) (stp/trans0 stp/top2) (stp/trans0 stp/top2).
 
@@ -2041,6 +2069,11 @@ narrow* :
 
 %mode narrow*  +X1 +X2 -X3.
 
+-bot2   : narrow* (stp/trans0 stp/bot2) _ (stp/trans0 stp/bot2).
+
+-bot    : narrow* (stp/trans0 (stp/bot A)) BDS (stp/trans0 (stp/bot A'))
+       <- narrow* A BDS A'.
+
 -top2   : narrow* (stp/trans0 stp/top2) _ (stp/trans0 stp/top2).
 
 -top    : narrow* (stp/trans0 (stp/top A)) BDS (stp/trans0 (stp/top A'))
@@ -2160,6 +2193,7 @@ narrowdc* :
 
 issel: tp -> nat -> type.
 is/bind: issel (bind _ _) z.
+is/bot: issel bot (s z).
 is/top: issel top (s z).
 is/sel: issel (sel _ _) (s z).
 
@@ -2176,6 +2210,9 @@ trans* :
     type.
 
 %mode trans*   +I +X1 +X2 -X3.
+
+-bot    : trans* _ (stp/bot _) A12 (stp/bot W2)
+        <- stp-reg-rec (stp/trans0 A12) _ W2.
 
 -top2   : trans* _ stp/top2 stp/top2 stp/top2.
 
@@ -2224,6 +2261,9 @@ stp/transl   : stpl (s N)     G T1 T3
             <- issel T1 z
              .
 
+stp/llbot    : stpl (s z)     G bot T
+            <- stp oktrans G T T.
+
 stp/lltop2   : stpl (s z)     G L (sel N X)
             <- sub-env-size GM (s M) G
             <- has-mem GM M Y (rect (tsome top) U)
@@ -2265,6 +2305,9 @@ extend-stpl: stpl N G T1 T2 -> {Z} stpl N (tcons Z G) T1 T2 -> type.
 -/transl : extend-stpl (stp/transl I1 I2 B A) Z (stp/transl I1 I2 B' A')
 <- extend-stpl A Z A'
 <- extend-stp B Z B'.
+
+-/llbot : extend-stpl (stp/llbot W) Z (stp/llbot W')
+<- extend-stp W Z W'.
 
 -/lltop2 : extend-stpl (stp/lltop2 W A B M SE) Z (stp/lltop2 W' A' B M SE')
 <- extend-sub-env-size SE Z SE'
@@ -2335,6 +2378,9 @@ stpl-reg-rec :
 
 -/lltopx : stpl-reg-rec (stp/lltopx W1) W1 (stp/trans0 stp/top2).
 
+-/llbot : stpl-reg-rec (stp/llbot W1) (stp/trans0 stp/bot2) W1.
+
+
 -/transe : stpl-reg-rec (stp/transe W) W W.
 
 -/llsel2 : stpl-reg-rec (stp/llsel2 A B M SE) W1' W2
@@ -2362,6 +2408,12 @@ utrans0* :
   type.
 
 %mode utrans0*  +S1 +E +S2 -S12.
+
+- : utrans0* (stp/trans0 stp/bot2) E TL (stp/llbot W2)
+      <- stpl-reg-rec TL _ W2.
+
+- : utrans0* (stp/trans0 (stp/bot W0)) E TL (stp/llbot W2)
+      <- stpl-reg-rec TL _ W2.
 
 - : utrans0* (stp/trans0 stp/top2) _ (stp/llsel2 D0 D M SE) (stp/lltop2 (stp/trans0 stp/top2) D0 D M SE).
 
@@ -2508,6 +2560,8 @@ utrans1 :
 - : utrans1 (stp/llsel1 D WOL M SE) (stp/sel1 (stp/trans0 D') WOL M SE)
         <- utrans1 D D'.
 
+- : utrans1 (stp/llbot W) (stp/bot W).
+
 - : utrans1 (stp/lltopx W) (stp/top W).
 
 - : utrans1 (stp/lltop2 W D0 D M SE) DX
@@ -2547,6 +2601,8 @@ stp2-reg-rec :
   stp notrans G2 T2 T2 ->
   type.
 %mode stp2-reg-rec +A -B -C.
+
+-/bot : stp2-reg-rec (stp2/bot (stprefl B)) stp/bot2 B.
 
 -/top : stp2-reg-rec (stp2/top (stprefl B)) B stp/top2.
 
@@ -2701,6 +2757,9 @@ trans2 :
   type.
 %mode trans2 +A +B -C.
 
+-/bot : trans2 (stp2/bot W2) B23 (stp2/bot W3)
+     <- stp2-reg B23 _ W3.
+
 -/top : trans2 B12 (stp2/top W2) (stp2/top W1)
      <- stp2-reg B12 W1 _.
 
@@ -2830,6 +2889,11 @@ stp-to-stp2 :
   stp2 G T1 G T2 ->
   type.
 %mode stp-to-stp2 +A -B.
+
+-/bot2: stp-to-stp2 (stp/trans0 stp/bot2) (stp2/bot (stprefl stp/bot2)).
+
+-/bot : stp-to-stp2 (stp/trans0 (stp/bot W)) (stp2/bot (stprefl W'))
+<- invert-trans W W'.
 
 -/top2: stp-to-stp2 (stp/trans0 stp/top2) (stp2/top (stprefl stp/top2)).
 
@@ -2989,8 +3053,10 @@ lookup-safe: wf-env H G -> tlookup G N T -> vlookup H N V -> wf-val V G T -> typ
 %worlds () (lookup-safe _ _ _ _).
 %total A (lookup-safe A _ _ _).
 
+
 %{ ------- type preservation ----- }%
 
+%{
 eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
 %mode eval-safe +A +B +C -D.
 
@@ -3011,3 +3077,4 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
 
 %worlds () (eval-safe _ _ _ _).
 %total EV (eval-safe _ _ EV _).
+}%
