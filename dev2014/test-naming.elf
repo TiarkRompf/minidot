@@ -8,35 +8,13 @@ add/z: add z N N.
 add/s: add (s N1) N2 (s N3) <- add N1 N2 N3.
 
 
-subeyy: add N1 N2 N3 -> add (s N1) N2 (s N3) -> type.
-%mode subeyy +G1 -F2.
-
-- : subeyy A (add/s A).
-
-%block add-block : some {N1}{N2}{N3} block {A:add N1 N2 N3}.
-
-%worlds (add-block) (subeyy _ _).
-%total (A) (subeyy A _).
-
-
-
-subexx: {N1}{N2}{N3} (add N1 N2 N3 -> add (s N1) N2 (s N3)) -> type.
-%mode subexx +N1 +N2 +N3 -F2.
-
-- : subexx N1 N2 N3 ([A] AF A)
-		<- ({A:add N1 N2 N3} subeyy A (AF A)).
-
-%worlds () (subexx _ _ _ _).
-%total (A) (subexx _ _ A _).
-
-
 % ---------- types ---------- %
 
 tp : type.  %name tp T.
 
 top     : tp.
-sel     : nat -> tp.			    % x.T
-bind    : tp -> (nat -> tp) -> tp.	% { z:T<A => B }
+sel     : nat -> tp.                % x.T
+bind    : tp -> (nat -> tp) -> tp.  % { z:T<A => B }
 
 arrow   : tp -> tp -> tp.
 
@@ -72,14 +50,27 @@ stp/sel1    : stp     G (sel N) T
            .
 
 stp/bind    : stp     G (bind D1 DS1) (bind D2 DS2)
+           <- tsize G N 
            <- stp G D1 D2
-           <- (sub-env G GN -> tsize GN N -> stp (tcons D1 GN) (DS1 N) (DS2 N))
+           <- stp (tcons D1 G) (DS1 N) (DS2 N)
            .
 
 stp/arrow   : stp         G (arrow L1 U1) (arrow L2 U2)
            <- stp         G U1 U2
            <- stp         G L2 L1
             .
+
+sev  : tenv -> tenv -> tenv -> type.
+
+sev/nil     : sev tnil tnil tnil.
+
+sev/sub     : sev (tcons P G) (tcons P G1) (tcons Q G2) 
+           <- sev G G1 G2 
+           <- stp (tcons P G) P Q.
+
+sev/refl    : sev (tcons P G) (tcons P G1) (tcons P G2) 
+           <- sev G G1 G2.
+
 
 %query 1 1 stp tnil (bind top [n] (arrow top top)) (bind top [n] (arrow top top)).
 
@@ -99,15 +90,85 @@ extend-tlk: tlookup G N T -> {Z} tlookup (tcons Z G) N T -> type.
 %worlds () (extend-tlk _ _ _).
 %total (A) (extend-tlk A _ _).
 
-%block env-block : some {G}{G'} block {A:sub-env G G'}.
+%block env-block : some {G1} block {G2}{SE:sub-env G1 G2}.
 
-extend-snv: sub-env (tcons Z G1) G2 -> sub-env G1 G2 -> type.
-%mode extend-snv +A -C.
+extend-snv: {G2}sub-env (tcons Z G1) G2 -> sub-env G1 G2 -> type.
+%mode extend-snv +G +A -C.
 
-- : extend-snv E (sub-env/cons E).
+- : extend-snv G E (sub-env/cons E).
 
-%worlds (env-block) (extend-snv _ _).
-%total (A) (extend-snv A _).
+%worlds (env-block) (extend-snv _ _ _).
+%total (A) (extend-snv _ A _).
+
+
+extend-stpf: 
+    {T1}{T2}
+    tsize G N -> 
+    stp (tcons Z G) (T1 N) (T2 N) -> 
+    sub-env G G2 ->
+    tsize G2 N2 ->
+    stp (tcons Z G2) (T1 N2) (T2 N2) -> 
+    type.
+%mode extend-stpf +T1 +T2 +A +B +C +D -E.
+
+%worlds () (extend-stpf _ _ _ _ _ _ _).
+%trustme
+%total (A) (extend-stpf _ _ A _ _ _ _).
+
+
+extend-stpf2: 
+    {T3:nat -> nat -> tp} 
+    {T4:nat -> nat -> tp}
+    {N:tsize G1 N1}
+    {T1:nat -> tp}
+    {T2}
+    {S2:stp (tcons (T1 N1) (tcons T2 G1)) (T3 N1 N2) (T4 N1 N2)}
+    {Z}
+    {S2':stp (tcons (T1 (s N1)) (tcons T2 (tcons Z G1))) (T3 (s N1) (s (s N1))) (T4 (s N1) (s (s N1)))}
+    type.
+%mode extend-stpf2 +F1 +F2 +N +T +Z +Y +B -E.
+
+%worlds () (extend-stpf2 _ _ _ _ _ _ _ _).
+%trustme %total (A) (extend-stpf2 _ _ _ _ _ A _ _).
+
+extend-stpf: 
+    {T3:nat -> tp} 
+    {T4:nat -> tp}
+    {N:tsize G1 N1}
+    {T1}
+    {S2:stp (tcons T1 G1) (T3 N1) (T4 N1)}
+    {Z}
+    {S2':stp (tcons T1 (tcons Z G1)) (T3 (s N1)) (T4 (s N1))}
+    type.
+%mode extend-stpf +F1 +F2 +T1 +N +Z +B -E.
+
+- : extend-stpf _ ([x] top) _ _ _ _ stp/top.
+
+%{
+- : extend-stpf ([x] sel x) ([x] sel x) _ _ stp/selx _ stp/selx.
+
+- : extend-stpf ([x] sel N) ([x] sel N) _ _ stp/selx _ stp/selx.
+
+- : extend-stpf ([x] sel N) F2 _ _ (stp/sel1 S L) _ (stp/sel1 S' L')
+        <- extend-tlk L _ L''
+        <- extend-stpf ([x] _) F2 _ S _ S'.
+}%
+
+- : extend-stpf ([x] arrow (T1 x) (T2 x)) ([x] arrow (T3 x) (T4 x)) N T
+    (stp/arrow S1 S2) Z (stp/arrow S1' S2')
+        <- extend-stpf T3 T1 N T S1 Z S1'
+        <- extend-stpf T2 T4 N T S2 Z S2'.
+
+- : extend-stpf ([x] bind (T1 x) (T2 x)) ([x] bind (T3 x) (T4 x)) (N: tsize G1 N1) T
+    (stp/bind S2 S1 NX) Z (stp/bind S2' S1' (tsize/s (tsize/s N)))
+        <- extend-stpf T1 T3 N T S1 Z S1'
+        <- extend-stpf2 T2 T4 N T1 T S2 Z S2'.
+
+
+%worlds () (extend-stpf _ _ _ _ _ _ _).
+%total (A) (extend-stpf _ _ _ _ A _ _).
+
+
 
 
 extend-stp: stp G T1 T2 -> {Z} stp (tcons Z G) T1 T2 -> type.
@@ -116,17 +177,88 @@ extend-stp: stp G T1 T2 -> {Z} stp (tcons Z G) T1 T2 -> type.
 - : extend-stp stp/top _ stp/top.
 - : extend-stp stp/selx _ stp/selx.
 - : extend-stp (stp/sel1 S L) _ (stp/sel1 S' L')
-		<- extend-tlk L _ L'
-		<- extend-stp S _ S'.
+        <- extend-tlk L _ L'
+        <- extend-stp S _ S'.
 - : extend-stp (stp/arrow S1 S2) _ (stp/arrow S1' S2')
-		<- extend-stp S1 _ S1'
-		<- extend-stp S2 _ S2'.
+        <- extend-stp S1 _ S1'
+        <- extend-stp S2 _ S2'.
 
-- : extend-stp (stp/bind S2 S1) _ (stp/bind ([SE][TS] S2 (SEF SE) TS) S1')
-		<- extend-stp S1 _ S1'
-		<- ({SE} extend-snv SE (SEF SE)).
+- : extend-stp ((stp/bind S2 S1 N): stp G (bind D1 DS1) (bind D2 DS2)) Z (stp/bind S2' S1' (tsize/s N))
+        <- extend-stp S1 Z S1'
+        <- extend-stpf DS1 DS2 N Z S2 S2'.
 
 %worlds () (extend-stp _ _ _).
 %total (A) (extend-stp A _ _).
+
+
+
+trans : stp G S1 S2 -> stp G S2 S3 -> stp G S1 S3 -> type.
+%mode trans +X1 +X2 -X3.
+
+%worlds () (trans _ _ _).
+%trustme
+%total {A} (trans A _ _).
+
+
+
+narrow-lkp : 
+      tlookup G2 N T2 ->
+      sev G1 G1 G2 ->
+%%
+      tlookup G1 N T1 ->
+      stp G1 T1 T2 -> 
+      type.
+
+%mode narrow-lkp +X2 +X3 -X4 -X5.
+%worlds () (narrow-lkp _ _ _ _).
+%trustme
+%total (A) (narrow-lkp A _ _ _).
+
+
+narrow-sz : 
+      tsize G2 N ->
+      sev G1 G1 G2 ->
+%%
+      tsize G1 N ->
+      type.
+
+%mode narrow-sz +X2 +X3 -X4.
+%worlds () (narrow-sz _ _  _).
+%trustme
+%total (A) (narrow-sz A _ _).
+
+narrow : 
+      stp G2 M N
+      -> sev G1 G1 G2
+%%
+      -> stp G1 M N -> type.
+
+%mode narrow +X2 +X3 -X4.
+
+-top    : narrow stp/top _ stp/top.
+
+-var/h  : narrow (stp/selx) Dsub (stp/selx).
+
+-var/h  : narrow (stp/sel1 D TL) Dsub 
+                              (stp/sel1 D'' TL')
+       <- narrow-lkp TL Dsub TL' BB
+       <- narrow D Dsub D'
+       <- trans  BB D' D''.
+
+-arrow  : narrow (stp/arrow (D2) (D1)) Dsub (stp/arrow (D2') (D1'))
+       <- narrow D1 Dsub D1'
+       <- narrow D2 Dsub D2'.
+
+-forall : narrow (stp/bind (D2) (D1) N) Dsub (stp/bind (D2') (D1') N')
+       <- narrow-sz N Dsub N'
+       <- narrow D1 Dsub D1'
+       <- narrow D2 (sev/refl Dsub) D2'.
+
+
+%worlds () (narrow _ _ _).
+%total {D2} (narrow D2 _ _).
+
+
+
 
 

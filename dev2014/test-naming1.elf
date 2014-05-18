@@ -1,0 +1,335 @@
+nat : type.  %name nat N.
+
+z : nat.
+s : nat -> nat.
+
+add : nat -> nat -> nat -> type. %name add A.
+add/z: add z N N.
+add/s: add (s N1) N2 (s N3) <- add N1 N2 N3.
+
+
+subeyy: add N1 N2 N3 -> add (s N1) N2 (s N3) -> type.
+%mode subeyy +G1 -F2.
+
+- : subeyy A (add/s A).
+
+%block add-block : some {N1}{N2}{N3} block {A:add N1 N2 N3}.
+
+%worlds (add-block) (subeyy _ _).
+%total (A) (subeyy A _).
+
+
+
+subexx: {N1}{N2}{N3} (add N1 N2 N3 -> add (s N1) N2 (s N3)) -> type.
+%mode subexx +N1 +N2 +N3 -F2.
+
+- : subexx N1 N2 N3 ([A] AF A)
+		<- ({A:add N1 N2 N3} subeyy A (AF A)).
+
+%worlds () (subexx _ _ _ _).
+%total (A) (subexx _ _ A _).
+
+
+% ---------- types ---------- %
+
+tp : type.  %name tp T.
+
+top     : tp.
+sel     : nat -> tp.			    % x.T
+bind    : tp -> (nat -> tp) -> tp.	% { z:T<A => B }
+
+arrow   : tp -> tp -> tp.
+
+
+tenv: type. %name tenv G.
+tnil: tenv.
+tcons: tp -> tenv -> tenv.
+
+
+tsize: tenv -> nat -> type.
+tsize/z : tsize tnil z.
+tsize/s : tsize (tcons T G) (s N) <- tsize G N.
+
+tlookup : tenv -> nat -> tp -> type.
+tlookup/z : tlookup (tcons T DS) z T.
+tlookup/s : tlookup (tcons T DS) N T' <- tlookup DS N T'.
+tlookup/h : tlookup (tcons T DS) N T <- tsize DS N.
+
+sub-env: tenv -> tenv -> type.
+% sub-env/refl : sub-env G G.
+% sub-env/cons : sub-env G G' <- sub-env (tcons T G) G'.
+
+sub-env/refl : sub-env G G.
+sub-env/cons : sub-env G (tcons T G') <- sub-env G G'.
+
+
+
+stp  : tenv -> tp -> tp -> type.
+
+stp/top     : stp    G _ top.
+
+stp/selx    : stp     G (sel N) (sel N)
+           .
+stp/sel1    : stp     G (sel N) T
+           <- tlookup G N U
+           <- stp     G U T
+           .
+
+stp/bind    : stp     G (bind D1 DS1) (bind D2 DS2)
+           <- stp G D1 D2
+           <- ({GN}{N} sub-env G GN -> tsize GN N -> stp (tcons D1 GN) (DS1 N) (DS2 N))
+           .
+
+stp/arrow   : stp         G (arrow L1 U1) (arrow L2 U2)
+           <- stp         G U1 U2
+           <- stp         G L2 L1
+            .
+
+sev  : tenv -> tenv -> tenv -> type.
+
+sev/nil     : sev tnil tnil tnil.
+
+sev/sub     : sev (tcons P G) (tcons P G1) (tcons Q G2) 
+           <- sev G G1 G2 
+           <- stp (tcons P G) P Q.
+
+sev/refl    : sev (tcons P G) (tcons P G1) (tcons P G2) 
+           <- sev G G1 G2.
+
+
+%query 1 1 stp tnil (bind top [n] (arrow top top)) (bind top [n] (arrow top top)).
+
+%query 1 1 stp tnil (bind top [n] (arrow top) (sel n)) (bind top [n] (arrow top top)).
+
+%query 1 1 stp tnil (bind top [n] (arrow top) (sel n)) (bind top [n] (arrow top (sel n))).
+
+%query 1 1 stp tnil (bind top [n] (arrow (sel n)) (sel n)) (bind top [n] (arrow (sel n) (sel n))).
+
+
+
+tsize: tenv -> nat -> type.
+tsize/z : tsize tnil z.
+tsize/s : tsize (tcons T G) (s N) <- tsize G N.
+
+
+invert-tsize: {G1} tsize (tcons Z G1) (s N) -> tsize G1 N -> type.
+%mode invert-tsize +G +N -C.
+
+- : invert-tsize _ (tsize/s E) E.
+
+%worlds () (invert-tsize _ _ _).
+%total (A) (invert-tsize _ A _).
+
+
+
+%block env-block : some {N2} block {G2}{TS:tsize G2 N2}.
+
+
+invert-tsize: {G1} tsize (tcons Z G1) (s N) -> tsize G1 N -> type.
+%mode invert-tsize +G +N -C.
+
+- : invert-tsize _ (tsize/s E) E.
+
+%worlds (env-block) (invert-tsize _ _ _).
+%total (A) (invert-tsize _ A _).
+
+
+
+
+
+
+
+
+%.
+
+
+extend-tlk: tlookup G N T -> {Z} tlookup (tcons Z G) N T -> type.
+%mode extend-tlk +A +B -C.
+
+- : extend-tlk (tlookup/s L) _ (tlookup/s L') <- extend-tlk L _ L'.
+- : extend-tlk L _ (tlookup/s L).
+
+%worlds () (extend-tlk _ _ _).
+%total (A) (extend-tlk A _ _).
+
+
+
+extend-snv: {G2}sub-env (tcons Z G1) G2 -> sub-env G1 G2 -> type.
+%mode extend-snv +G +N -C.
+
+- : extend-snv _ (sub-env/cons E) (sub-env/cons E') <- extend-snv _ E E'.
+
+- : extend-snv _ (sub-env/refl) (sub-env/cons (sub-env/refl)).
+
+%worlds () (extend-snv _ _ _).
+%total (A) (extend-snv _ A _).
+
+
+case : sub-env G1 G2 -> type.
+case/refl : case (sub-env/refl).
+case/cons : case (sub-env/cons SE) <- case SE.
+case/var  : {SE} case SE.
+
+can-case : {SE} case SE -> type.
+
+%block env-block : some {G1} block {G2}{SE:sub-env G1 G2}{C:can-case SE (case/var SE)}.
+
+can-case/refl: can-case sub-env/refl case/refl.
+can-case/cons: can-case (sub-env/cons SE) (case/cons CE) <- can-case SE CE.
+
+%mode can-case +E -C.
+%worlds (env-block) (can-case _ _).
+%total T (can-case T _).
+
+
+
+extend-snv: {G2} {SE:sub-env (tcons Z G1) G2} case SE -> sub-env G1 G2 -> type.
+%mode extend-snv +G +SE +N -C.
+
+- : extend-snv _ _ (case/cons E) (sub-env/cons E') <- extend-snv _ _ E E'.
+
+- : extend-snv _ _ (case/refl) (sub-env/cons (sub-env/refl)).
+
+- : extend-snv _ _ (case/var SE) E <- can-case SE CE <- extend-snv _ _ CE E.
+
+
+%{
+- : extend-snv _ #env-block_SE X1
+      <- ({G2:tenv} 
+          {SE:sub-env (tcons T1 G1) G2}
+          {C:can-case SE (case/var SE)})
+
+   {#env-block:{G2:tenv} {SE:sub-env (tcons T1 G1) G2}
+       {C:can-case SE (case/var SE)}}
+   
+   {X1:sub-env G1 #env-block_G2}
+   
+   |- extend-snv #env-block_G2 #env-block_SE X1.
+
+
+{#env-block:{G2:tenv} {SE:sub-env (tcons T1 G1) G2} {C:can-case SE (case/var SE)}}
+
+}%
+
+%worlds (env-block) (extend-snv _ _ _ _).
+%total {A} (extend-snv _ A C _).
+
+
+
+%.
+
+%block env-block : some {G1} block {G2}{N}{SE:sub-env G1 G2}{TS:tsize G2 N}.
+
+extend-snv: {G2}{N}sub-env (tcons Z G1) G2 -> tsize G2 N -> sub-env G1 G2 -> type.
+%mode extend-snv +G +N +A +B -C.
+
+- : extend-snv G _ (sub-env/cons E) _ E.
+
+%worlds (env-block) (extend-snv _ _ _ _ _).
+%total (A) (extend-snv _ _ A _ _).
+
+
+
+extend-stp: stp G T1 T2 -> {Z} stp (tcons Z G) T1 T2 -> type.
+%mode extend-stp +A +B -C.
+
+- : extend-stp stp/top _ stp/top.
+- : extend-stp stp/selx _ stp/selx.
+- : extend-stp (stp/sel1 S L) _ (stp/sel1 S' L')
+		<- extend-tlk L _ L'
+		<- extend-stp S _ S'.
+- : extend-stp (stp/arrow S1 S2) _ (stp/arrow S1' S2')
+		<- extend-stp S1 _ S1'
+		<- extend-stp S2 _ S2'.
+
+- : extend-stp (stp/bind S2 S1) _ (stp/bind ([GN][N][SE][TS] S2 GN N (SEF GN N SE) TS) S1')
+		<- extend-stp S1 _ S1'
+		<- ({G}{N}{SE}{TS} extend-snv G N SE TS (SEF G N SE)).
+
+%worlds () (extend-stp _ _ _).
+%total (A) (extend-stp A _ _).
+
+
+
+trans : stp G S1 S2 -> stp G S2 S3 -> stp G S1 S3 -> type.
+%mode trans +X1 +X2 -X3.
+
+%worlds (env-block) (trans _ _ _).
+%trustme
+%total {A} (trans A _ _).
+
+
+
+narrow-lkp : 
+      tlookup G2 N T2 ->
+      sev G1 G1 G2 ->
+%%
+	    tlookup G1 N T1 ->
+      stp G1 T1 T2 -> 
+      type.
+
+%mode narrow-lkp +X2 +X3 -X4 -X5.
+%worlds (env-block) (narrow-lkp _ _ _ _).
+%trustme
+%total (A) (narrow-lkp A _ _ _).
+
+
+
+
+
+
+narrow-sz : 
+      {G20}{N}
+      sub-env G2 G20 ->
+      tsize G20 N ->
+      sev G2 G2 G1 ->
+%%
+      sub-env G1 G10 ->
+      tsize G10 N ->
+      sev G20 G20 G10 ->
+      type.
+
+- : narrow-sz _ N SE TS (sev/nil) sub-env/refl TS (sev/nil).
+
+
+%mode narrow-sz +GN +N +SE +TS +Dsub -SE' -TS' -Dsub'.
+%worlds (env-block) (narrow-sz _ _ _ _ _ _ _ _).
+%total (A) (narrow-sz A _ _ _ _ _ _ _).
+
+
+narrow : 
+      stp G2 M N
+      -> sev G1 G1 G2
+%%
+      -> stp G1 M N -> type.
+
+%mode narrow +X2 +X3 -X4.
+
+-top    : narrow stp/top _ stp/top.
+
+-var/h  : narrow (stp/selx) Dsub (stp/selx).
+
+-var/h  : narrow (stp/sel1 D TL) Dsub 
+                              (stp/sel1 D'' TL')
+       <- narrow-lkp TL Dsub TL' BB
+       <- narrow D Dsub D'
+       <- trans  BB D' D''.
+
+-arrow  : narrow (stp/arrow (D2) (D1)) Dsub (stp/arrow (D2') (D1'))
+       <- narrow D1 Dsub D1'
+       <- narrow D2 Dsub D2'.
+
+-forall : narrow (stp/bind (D2) (D1)) Dsub (stp/bind (D2') (D1'))
+       <- narrow D1 Dsub D1'
+       <- ({GN}{N}{SE}{TS} narrow-sz GN N SE TS Dsub (SE' GN SE) (TS' GN N TS) (Dsub' GN))
+       <- ({GN}{N}{SE}{TS} 
+              narrow (D2 GN N (SE' GN SE) (TS' GN N TS)) (sev/refl (Dsub' GN)) (D2' GN N SE TS)).
+
+
+%worlds (env-block) (narrow _ _ _).
+%total {D2} (narrow D2 _ _).
+
+
+
+
+

@@ -1,0 +1,802 @@
+nat : type.  %name nat N.
+
+z : nat.
+s : nat -> nat.
+
+add : nat -> nat -> nat -> type. %name add A.
+add/z: add z N N.
+add/s: add (s N1) N2 (s N3) <- add N1 N2 N3.
+
+
+% ---------- types ---------- %
+
+tp : type.  %name tp T.
+
+top     : tp.
+ref     : nat -> tp.                % x.T pre-type index (DeBruijn)
+sel     : nat -> tp.                % x.T
+bind    : tp -> tp -> tp.  % { z:T<A => B }
+
+arrow   : tp -> tp -> tp.
+
+
+tenv: type. %name tenv G.
+tnil: tenv.
+tcons: tp -> tenv -> tenv.
+
+
+tsize: tenv -> nat -> type.
+tsize/z : tsize tnil z.
+tsize/s : tsize (tcons T G) (s N) <- tsize G N.
+
+
+tlookup : tenv -> nat -> tp -> type.
+tlookup/z : tlookup (tcons T DS) z T.
+tlookup/s : tlookup (tcons T DS) N T' <- tlookup DS N T'.
+tlookup/h : tlookup (tcons T DS) N T <- tsize DS N.
+
+sub-env: tenv -> tenv -> type.
+sub-env/refl : sub-env G G.
+sub-env/cons : sub-env G G' <- sub-env (tcons T G) G'.
+
+open: tp -> nat -> nat -> tp -> type.
+
+op/top: open top I O top.
+
+op/sel: open (sel X) I O (sel X) <- add (s _) X O.
+
+op/hit: open (ref I) I O (sel O). % rule out (s x) etc ...
+
+op/mis: open (ref J) I O (ref J) <- add (s _) J I.
+
+op/arrow: open (arrow F1 F2) I O (arrow T1 T2) <- open F2 I O T2 <- open F1 I O T1 .
+
+op/bind: open (bind F1 F2) I O (bind F1 T2) %% XXXX T1 !!
+    % <- open F1 I O T1 
+    <- open F2 (s I) O T2.
+
+
+%query 1 1 open (bind top (bind (ref (s z)) (arrow (ref (s z)) (ref (s (s z)))))) z (s (s (s z))) T.
+
+
+
+
+stp  : tenv -> tp -> tp -> type.
+
+stp/top     : stp    G _ top.
+
+stp/selx    : stp     G (sel N) (sel N).
+
+stp/sel1    : stp     G (sel N) T
+           <- tlookup G N U
+           <- stp     G U T
+           .
+
+stp/bind    : stp     G (bind D1 DS1) (bind D2 DS2)
+           <- tsize G N 
+           <- open DS1 z N DS1N
+           <- open DS2 z N DS2N
+           <- stp G D1 D2
+           <- stp (tcons D1 G) (DS1N) (DS2N)
+           .
+
+stp/arrow   : stp         G (arrow L1 U1) (arrow L2 U2)
+           <- stp         G U1 U2
+           <- stp         G L2 L1
+            .
+
+
+wft  : tenv -> tp -> type.
+
+wft/top     : wft    G top.
+
+wft/sel1    : wft     G (sel N)
+           <- tlookup G N U
+           <- wft     G U
+           .
+
+wft/bind    : wft     G (bind D1 DS1)
+           <- tsize G N 
+           <- open D1 z N D1
+           <- open DS1 z N DS1N  %% could require open D1 = D1 ??
+           <- wft G D1
+           <- wft (tcons D1 G) (DS1N)
+           .
+
+wft/arrow   : wft     G (arrow L1 U1)
+           <- wft     G U1
+           <- wft     G L1
+            .
+
+
+
+
+
+sev  : tenv -> tenv -> tenv -> type.
+
+sev/nil     : sev tnil tnil tnil.
+
+sev/sub     : sev (tcons P G) (tcons P G1) (tcons Q G2) 
+           <- sev G G1 G2 
+           <- stp (tcons P G) P Q.
+
+sev/refl    : sev (tcons P G) (tcons P G1) (tcons P G2) 
+           <- sev G G1 G2.
+
+
+%query 1 1 stp tnil (bind top (arrow top top)) (bind top (arrow top top)).
+
+%query 1 1 stp tnil (bind top (arrow top (ref z))) (bind top (arrow top top)).
+
+%query 1 1 stp tnil (bind top (arrow top (ref z))) (bind top (arrow top (ref z))).
+
+%query 1 1 stp tnil (bind top (arrow (ref z) (ref z))) (bind top (arrow (ref z) (ref z))).
+
+
+%{ ----- uniqueness ----- }%
+
+id-nat: nat -> nat -> type.
+id-nat/refl: id-nat N N.
+
+s-injective : id-nat N1 N2 -> id-nat (s N1) (s N2) -> type.
+%mode s-injective +A -B.
+
+s-injective/refl : s-injective id-nat/refl id-nat/refl.
+
+%worlds () (s-injective _ _).
+%total (A) (s-injective A _).
+
+eq2id-nat : add N1 z N2 -> id-nat N1 N2 -> type.
+%mode eq2id-nat +A -B.
+
+eq2id-nat/z : eq2id-nat add/z id-nat/refl.
+
+eq2id-nat/s : eq2id-nat (add/s A) OUT
+           <- eq2id-nat A B
+           <- s-injective B OUT.
+
+%worlds () (eq2id-nat _ _).
+%total (A) (eq2id-nat A _).
+
+tsize-unique-eq: tsize G N1 -> tsize G N2 -> add N1 z N2 -> type.
+
+%mode tsize-unique-eq +G +G' -N.
+
+- : tsize-unique-eq tsize/z tsize/z add/z.
+- : tsize-unique-eq (tsize/s N1) (tsize/s N2) (add/s E)
+      <- tsize-unique-eq N1 N2 E.
+
+%worlds () (tsize-unique-eq _ _ _).
+%total (A) (tsize-unique-eq A _ _).
+
+tsize-unique: tsize G N1 -> tsize G N2 -> id-nat N1 N2 -> type.
+
+%mode tsize-unique +G +G' -N.
+
+- : tsize-unique N1 N2 E'
+      <- tsize-unique-eq N1 N2 E
+      <- eq2id-nat E E'.
+
+%worlds () (tsize-unique _ _ _).
+%total (A) (tsize-unique A _ _).
+
+
+
+eq-open-o: id-nat N1 N2 -> open T1 I N1 T2 -> open T1 I N2 T2 -> type.
+%mode eq-open-o +G +G' -N.
+- : eq-open-o id-nat/refl O O.
+%worlds () (eq-open-o _ _ _).
+%total (A) (eq-open-o A _ _).
+
+
+
+%{ ----- weakening ----- }%
+
+
+
+
+
+extend-tlk: tlookup G N T -> {Z} tlookup (tcons Z G) N T -> type.
+%mode extend-tlk +A +B -C.
+
+- : extend-tlk (tlookup/s L) _ (tlookup/s L') <- extend-tlk L _ L'.
+- : extend-tlk L _ (tlookup/s L).
+
+%worlds () (extend-tlk _ _ _).
+%total (A) (extend-tlk A _ _).
+
+%block env-block : some {G1} block {G2}{SE:sub-env G1 G2}.
+
+extend-snv: {G2}sub-env (tcons Z G1) G2 -> sub-env G1 G2 -> type.
+%mode extend-snv +G +A -C.
+
+- : extend-snv G E (sub-env/cons E).
+
+%worlds (env-block) (extend-snv _ _ _).
+%total (A) (extend-snv _ A _).
+
+
+extend-open: open F1 I O T1 -> open F1 I (s O) T1' -> type.
+%mode extend-open +N -F.
+
+- : extend-open op/top op/top.
+
+- : extend-open (op/hit) (op/hit).
+
+- : extend-open (op/sel A) (op/sel (add/s A)).
+
+- : extend-open (op/mis A) (op/mis A).
+
+- : extend-open (op/arrow S1 S2) (op/arrow S1' S2')
+      <- extend-open S1 S1'
+      <- extend-open S2 S2'
+      .
+
+- : extend-open (op/bind S2) (op/bind S2')
+      % <- extend-open S1 S1'
+      <- extend-open S2 S2'
+      .
+
+%worlds () (extend-open _ _).
+%total (A) (extend-open A _).
+
+extend-open-id: open F1 I O F1 -> open F1 I (s O) F1 -> type.
+%mode extend-open-id +N -F.
+
+%worlds () (extend-open-id _ _).
+%trustme
+%total (A) (extend-open-id A _).
+
+
+xxx-h1:
+      {NS:tsize G1 N1}
+      {A:add N4 N2 N1}
+      {W:wft (tcons T1 G1) T3}
+      {L:tlookup (tcons T1 G1) N2 T3}
+      {T2}
+      {W':wft (tcons T1 (tcons T2 G1)) T3}
+      {L':tlookup (tcons T1 (tcons T2 G1)) N2 T3}
+      type.
+%mode xxx-h1 +A +B +W +L +Z -W' -L'.
+%worlds () (xxx-h1 _ _ _ _ _ _ _).
+%trustme
+%total (A) (xxx-h1 A _ _ _ _ _ _).
+
+xxx-h2:
+      {NS:tsize G1 N1}
+      {W:wft (tcons T1 G1) T3} 
+      {L:tlookup (tcons T1 G1) N1 T3} %% must really be T1 !
+      {T2}
+      {W':wft (tcons T1 (tcons T2 G1)) T1}
+      {L':tlookup (tcons T1 (tcons T2 G1)) (s N1) T1}
+      type.
+%mode xxx-h2 +A +W +L +Z -W' -L'.
+%worlds () (xxx-h2 _ _ _ _ _ _).
+%trustme
+%total (A) (xxx-h2 A _ _ _ _ _).
+
+
+%{
+  
+G 
+  { top => { top => { top => (ref 2 => ref 0) }}}   T
+
+G n0:top
+  { top => { top => (sel n0 => ref 0) }}            T open z n0
+
+G n0:top n1:top
+  { top => (sel n0 => ref 0) }                      T open z n0 open z n1
+
+G n0:top n1:top n2:top
+  (sel n0 => sel n2)                                T open z n0 open z n1 open z n2
+
+-----------------
+
+G n0:Z
+  { top => { top => { top => (ref 2 => ref 0) }}}
+
+G n0:Z n1:top
+  { top => { top => (sel n1 => ref 0) }}
+
+G n0:Z n1:top n2:top
+  { top => (sel n1 => ref 0) }
+
+G n0:Z n1:top n2:top n3:top
+  (sel n1 => sel n3)
+
+
+}%
+
+
+
+splice: tenv -> nat -> tp -> tenv -> tenv -> type.
+splice/refl : splice G N Z G (tcons Z G) <- tsize G N.
+splice/ext  : splice G0 N Z (tcons T G1) (tcons T G2) <- splice G0 N Z G1 G2.
+
+shift: tp -> nat -> nat -> tp -> type.
+
+
+%query 1 1 open (bind top (bind top (arrow (ref (s (s (s z)))) (sel (z))))) (s z) (s z)  T.
+
+
+openm: tp -> nat -> nat -> nat -> tp -> type.
+
+opm/top : openm top I O D top.
+
+opm/sel : openm (sel X) I O z (sel X) <- add (s _) X O.
+
+opm/selr: openm (sel X) I O (s D) (sel X) <- add (s _) X O <- openm (sel X) (s I) (s O) D (sel X).
+
+opm/hit : openm (ref I) I O D (sel O). % rule out (s x) etc ...
+
+opm/mis : openm (ref J) I O D (ref J) <- add (s _) J I.
+
+opm/arrow: openm (arrow F1 F2) I O D (arrow T1 T2) <- openm F2 I O D T2 <- openm F1 I O D T1 .
+
+opm/bind: openm (bind F1 F2) I O D (bind F1 T2) %% XXXX T1 !!
+    % <- openm F1 I O D T1 
+    <- openm F2 (s I) O D T2.
+
+
+
+openm-unit: open T1 I O T2 -> openm T1 I O z T3 -> type.
+
+%mode openm-unit +A -C.
+%worlds () (openm-unit _ _).
+%trustme
+%total (A) (openm-unit A _).
+
+
+
+
+openm-plus: openm T1 (s z) N D T2 -> open T2 z (s N) T3 -> openm T1 z (s N) (s D) T3 -> type.
+
+- : openm-plus opm/top op/top opm/top.
+
+- : openm-plus (opm/sel A) (op/sel A') (opm/selr (opm/sel (add/s A)) A).
+
+
+%mode openm-plus +A +B -C.
+%worlds () (openm-plus _ _ _).
+%total (A) (openm-plus A _ _).
+
+
+extend-openm: openm F1 I O D T1 -> openm F1 I (s O) D T1' -> type.
+%mode extend-openm +N -F.
+
+%{
+- : extend-open op/top op/top.
+
+- : extend-open (op/hit) (op/hit).
+
+- : extend-open (op/sel A) (op/sel (add/s A)).
+
+- : extend-open (op/mis A) (op/mis A).
+
+- : extend-open (op/arrow S1 S2) (op/arrow S1' S2')
+      <- extend-open S1 S1'
+      <- extend-open S2 S2'
+      .
+
+- : extend-open (op/bind S2) (op/bind S2')
+      % <- extend-open S1 S1'
+      <- extend-open S2 S2'
+      .
+}%
+
+%worlds () (extend-openm _ _).
+%trustme
+%total (A) (extend-openm A _).
+
+
+%% too restrictive -- it means there are no binds in T
+extend-splice0:
+      splice G0 N Z G2 G2' ->
+      {N3:tsize G2 N2}
+      {N3:tsize G2' (s N2)}
+      {OX1:open T8 z N2 T8} 
+      {S2 :wft G2 T8}
+      {OX1':open T8 z (s N2) T8}
+      {S2':wft G2' T8}
+      type.
+%mode extend-splice0 +SP +N1 +N2 +O +W +O' -W'.
+%worlds () (extend-splice0 _ _ _ _ _ _ _).
+%trustme
+%total (A) (extend-splice0 A _ _ _ _ _ _).
+
+
+extend-splice:
+      splice G0 N Z G2 G2' ->
+      {N3:tsize G2 N2}
+      {N3:tsize G2' (s N2)}
+      {OX1:openm T7 z N2 D T8} 
+      {S2 :wft (tcons T G2) T8}
+      {OX1':openm T7 z (s N2) D T9}
+      {S2':wft (tcons T G2') T9}
+      type.
+
+%mode extend-splice +SP +N1 +N2 +O +W +O' -W'.
+
+- : extend-splice SP 
+      NS1 NS1'
+      (opm/bind O2) (wft/bind S2 S1 OX2x OX1x (tsize/s NS1x))
+      (opm/bind O2') (wft/bind S2' S1' OX2' OX1' (tsize/s NS1'))
+
+      <- tsize-unique NS1x NS1 EQN  %% uniqueness on NS1!!
+      <- s-injective EQN EQSN
+      <- eq-open-o EQSN OX1x OX1
+      <- eq-open-o EQSN OX2x OX2
+
+      <- extend-open-id OX1 OX1'
+      <- extend-splice0 (splice/ext SP) (tsize/s NS1) (tsize/s NS1') OX1 S1 OX1' S1'
+      
+      <- openm-plus O2 OX2 OM
+      
+      <- extend-openm O2 O2'
+      <- extend-open OX2 OX2'
+      <- openm-plus O2' OX2' OM'
+      
+      <- extend-splice (splice/ext SP) (tsize/s NS1) (tsize/s NS1') OM S2 OM' S2'
+
+      .
+
+%{
+      {SP:splice G1 N1 T1 G2 G3}
+      {NS1:tsize G2 N2} 
+      {NS1xx:tsize G2 N4}
+      {NS1':tsize G3 (s N2)} 
+
+      {OX1:open T2 z (s N4) T2}               --->  {OX1:open T2 z (s N2) T2} 
+      {OX1':open T2 z (s (s N2)) T2}
+
+      {S1:wft (tcons T5 G2) T2} 
+      {S1':wft (tcons T5 G3) T2}
+
+      {O2:openm T3 (s z) N2 N3 T4}
+      {OX2:open T4 z (s N4) T7}               ----> {OX2:open T4 z (s N2) T7}
+
+      {O2':openm T3 (s z) (s N2) N3 T6} 
+      {OX2':open T6 z (s (s N2)) T8} 
+
+      {S2:wft (tcons T2 (tcons T5 G2)) T7}
+      {S2':wft (tcons T2 (tcons T5 G3)) T8} 
+
+
+}%
+
+
+
+
+%mode extend-splice +A +B +C +D +E +F -C.
+%worlds () (extend-splice _ _ _ _ _ _ _).
+% %trustme
+%total (A) (extend-splice _ _ _ _ A _ _).
+
+
+
+extend-wftf2:
+      {N:tsize G1 N1}
+      
+      {T1}{Z}
+
+      {O2:open T3 (s z) N1 T4} 
+      {O2':open T3 (s z) (s N1) T2}
+
+      {OX2:open T4 z (s N1) T5} 
+      {OX2':open T2 z (s (s N1)) T2}
+
+      {S2:wft (tcons TX (tcons T1 G1)) T5}
+      {S2':wft (tcons TX (tcons T1 (tcons Z G1))) T2}
+
+      type.
+
+%mode extend-wftf2 +N +T4 +T5 +O2 -O2' +OX2 -OX2' +S2 -S2'.
+
+- : extend-wftf2 N _ Z (op/bind O1 ) (op/bind O1' ) (op/bind O2 ) (op/bind O2' ) (wft/bind S2 S1 OX2 OX1 N2)
+                       (wft/bind S2' S1' OX2' OX1' N2')
+      .
+
+
+      {N:tsize G1 N1} 
+      {N3:tsize (tcons T6 (tcons T7 G1)) N2}
+      {N2':tsize (tcons T6 (tcons T7 (tcons Z G1))) N4}
+
+      {O1 :open T2 (s (s z)) N1 T3}
+      {O1':open T2 (s (s z)) (s N1) T4}
+
+      {O2 :open T3 (s z) (s N1) T5}
+      {O2':open T4 (s z) (s (s N1)) T4} 
+
+      {OX2 :open T5 z (s (s N1) T8}
+      {OX2':open T4 z (s (s (s N1)) T9}
+      
+      {S2:wft (tcons T1 (tcons T6 (tcons T7 G1))) T8}
+      {S2':wft (tcons T1 (tcons T6 (tcons T7 (tcons Z G1)))) T9}
+
+
+%worlds () (extend-wftf2 _ _ _ _ _ _ _ _ _).
+%trustme
+%total (A) (extend-wftf2 A _ _ _ _ _ _ _ _).
+
+
+%% XXX not true in general ...
+extend-wft2: wft (tcons T G) T1 -> {Z} wft (tcons T (tcons Z G)) T1 -> type.
+%mode extend-wft2 +A +B -C.
+%worlds () (extend-wft2 _ _ _).
+%trustme
+%total (A) (extend-wft2 A _ _).
+
+
+extend-wftf: 
+    tsize G1 N ->
+    {T} 
+    {Z}
+    open F1 z N T1 ->
+    wft (tcons T G1) T1 ->
+    open F1 z (s N) T1' ->
+    wft (tcons T (tcons Z G1)) T1' ->
+    type.
+%mode extend-wftf +N +F1 +F2 +O1 +W1 -O1 -W2.
+
+- : extend-wftf _ _ _ _ wft/top op/top wft/top.
+
+- : extend-wftf NS _ _ (op/sel A) (wft/sel1 W L) (op/sel (add/s A)) (wft/sel1 W' L')
+      <- xxx-h1 NS A W L _ W' L'.
+
+- : extend-wftf NS _ _ op/hit (wft/sel1 W L) op/hit (wft/sel1 W' L')
+      <- xxx-h2 NS W L _ W' L'.
+
+- : extend-wftf N _ _ (op/arrow O1 O2) (wft/arrow S1 S2)
+                      (op/arrow O1' O2') (wft/arrow S1' S2')
+      <- extend-wftf N _ _ O1 S1 O1' S1'
+      <- extend-wftf N _ _ O2 S2 O2' S2'.
+
+- : extend-wftf N _ Z (op/bind O2 ) (wft/bind S2 S1 OX2 O1 _)
+                      (op/bind O2' ) (wft/bind S2' S1' OX2' O1' (tsize/s (tsize/s N)))      
+      <- extend-open-id O1 O1'
+      <- extend-wft2 S1 Z S1'
+      <- extend-wftf2 
+          N  % should do uniqueness N3 = (s N1)
+          _ _ O2 O2' OX2 OX2' S2 S2'
+      .
+
+
+
+%worlds () (extend-wftf _ _ _ _ _ _ _).
+%total (A) (extend-wftf _ _ _ _ A _ _).
+
+
+
+extend-wft: wft G T1 -> {Z} wft (tcons Z G) T1 -> type.
+%mode extend-wft +A +B -C.
+
+- : extend-wft wft/top _ wft/top.
+- : extend-wft (wft/sel1 S L) _ (wft/sel1 S' L')
+        <- extend-tlk L _ L'
+        <- extend-wft S _ S'.
+- : extend-wft (wft/arrow S1 S2) _ (wft/arrow S1' S2')
+        <- extend-wft S1 _ S1'
+        <- extend-wft S2 _ S2'.
+
+- : extend-wft (wft/bind S2 S1 O2 N) Z (wft/bind S2' S1' O2' (tsize/s N))
+        <- extend-wft S1 Z S1'
+        <- extend-wftf N _ _ O2 S2 O2' S2'.
+
+%worlds () (extend-wft _ _ _).
+%total (A) (extend-wft A _ _).
+
+
+
+
+
+
+%{
+
+extend-stpf: 
+    {T1}{T2}
+    tsize G N -> 
+    stp (tcons Z G) (T1 N) (T2 N) -> 
+    sub-env G G2 ->
+    tsize G2 N2 ->
+    stp (tcons Z G2) (T1 N2) (T2 N2) -> 
+    type.
+%mode extend-stpf +T1 +T2 +A +B +C +D -E.
+
+%worlds () (extend-stpf _ _ _ _ _ _ _).
+%trustme
+%total (A) (extend-stpf _ _ A _ _ _ _).
+
+%{
+extend-stpf2: 
+    {T3:nat -> nat -> tp} 
+    {T4:nat -> nat -> tp}
+    {N:tsize G1 N1}
+    {T1:nat -> tp}
+    {T2}
+    {S2:stp (tcons (T1 N1) (tcons T2 G1)) (T3 N1 N2) (T4 N1 N2)}
+    {Z}
+    {S2':stp (tcons (T1 (s N1)) (tcons T2 (tcons Z G1))) (T3 (s N1) (s (s N1))) (T4 (s N1) (s (s N1)))}
+    type.
+%mode extend-stpf2 +F1 +F2 +N +T +Z +Y +B -E.
+
+%worlds () (extend-stpf2 _ _ _ _ _ _ _ _).
+%trustme %total (A) (extend-stpf2 _ _ _ _ _ A _ _).
+
+extend-stpf: 
+    {T3:nat -> tp} 
+    {T4:nat -> tp}
+    {N:tsize G1 N1}
+    {T1}
+    {S2:stp (tcons T1 G1) (T3 N1) (T4 N1)}
+    {Z}
+    {S2':stp (tcons T1 (tcons Z G1)) (T3 (s N1)) (T4 (s N1))}
+    type.
+%mode extend-stpf +F1 +F2 +T1 +N +Z +B -E.
+
+- : extend-stpf _ ([x] top) _ _ _ _ stp/top.
+
+%{
+- : extend-stpf ([x] sel x) ([x] sel x) _ _ stp/selx _ stp/selx.
+
+- : extend-stpf ([x] sel N) ([x] sel N) _ _ stp/selx _ stp/selx.
+
+- : extend-stpf ([x] sel N) F2 _ _ (stp/sel1 S L) _ (stp/sel1 S' L')
+        <- extend-tlk L _ L''
+        <- extend-stpf ([x] _) F2 _ S _ S'.
+}%
+
+- : extend-stpf ([x] arrow (T1 x) (T2 x)) ([x] arrow (T3 x) (T4 x)) N T
+    (stp/arrow S1 S2) Z (stp/arrow S1' S2')
+        <- extend-stpf T3 T1 N T S1 Z S1'
+        <- extend-stpf T2 T4 N T S2 Z S2'.
+
+- : extend-stpf ([x] bind (T1 x) (T2 x)) ([x] bind (T3 x) (T4 x)) (N: tsize G1 N1) T
+    (stp/bind S2 S1 NX) Z (stp/bind S2' S1' (tsize/s (tsize/s N)))
+        <- extend-stpf T1 T3 N T S1 Z S1'
+        <- extend-stpf2 T2 T4 N T1 T S2 Z S2'.
+
+
+%worlds () (extend-stpf _ _ _ _ _ _ _).
+%total (A) (extend-stpf _ _ _ _ A _ _).
+
+}%
+
+
+
+extend-open: open F1 I O T1 -> open F1 I (s O) T1' -> type.
+%mode extend-open +N -F.
+%worlds () (extend-open _ _).
+%trustme
+%total (A) (extend-open A _).
+
+extend-stpf: 
+    tsize G1 N ->
+    open F1 I N T1 ->
+    open F2 I N T2 ->
+    {T}
+    stp (tcons T G1) T1 T2 ->
+    {Z}
+    open F1 I (s N) T1' ->
+    open F2 I (s N) T2' ->
+    stp (tcons T (tcons Z G1)) T1' T2' ->
+    type.
+%mode extend-stpf +N +F1 +F2 +T1 +S1 +Z -O1 -O2 -E.
+
+- : extend-stpf _ O1 _ _ stp/top _ O1' op/top stp/top <- extend-open O1 O1'.
+
+%{
+- : extend-stpf _ op/sel op/sel _ stp/selx _ op/sel op/sel stp/selx.
+- : extend-stpf _ op/hit op/sel _ stp/selx _ op/hit op/sel stp/selx.
+- : extend-stpf _ op/sel op/hit _ stp/selx _ op/sel op/hit stp/selx.
+- : extend-stpf _ op/hit op/hit _ stp/selx _ op/hit op/hit stp/selx.
+}%
+
+- : extend-stpf _ op/hit O2 _ (stp/sel1 S1 L) _ op/hit O2' (stp/sel1 S1' L').
+
+
+- : extend-stpf N (op/arrow O1 O2) (op/arrow O3 O4) T (stp/arrow S1 S2) Z  
+                  (op/arrow O1' O2') (op/arrow O3' O4') (stp/arrow S1' S2')
+      <- extend-stpf N O3 O1 T S1 Z O3' O1' S1'
+      <- extend-stpf N O2 O4 T S2 Z O2' O4' S2'
+      .
+
+%worlds () (extend-stpf _ _ _ _ _ _ _ _ _).
+%total (A) (extend-stpf _ _ _ _ A _ _ _ _).
+
+
+
+
+extend-stp: stp G T1 T2 -> {Z} stp (tcons Z G) T1 T2 -> type.
+%mode extend-stp +A +B -C.
+
+- : extend-stp stp/top _ stp/top.
+- : extend-stp stp/selx _ stp/selx.
+- : extend-stp (stp/sel1 S L) _ (stp/sel1 S' L')
+        <- extend-tlk L _ L'
+        <- extend-stp S _ S'.
+- : extend-stp (stp/arrow S1 S2) _ (stp/arrow S1' S2')
+        <- extend-stp S1 _ S1'
+        <- extend-stp S2 _ S2'.
+
+- : extend-stp (stp/bind S2 S1 O2 O1 N) Z (stp/bind S2' S1' O2' O1' (tsize/s N))
+        <- extend-stp S1 Z S1'
+        <- extend-stpf N O1 O2 _ S2 _ O1' O2' S2'.
+
+%worlds () (extend-stp _ _ _).
+%total (A) (extend-stp A _ _).
+
+}%
+
+
+trans : stp G S1 S2 -> stp G S2 S3 -> stp G S1 S3 -> type.
+%mode trans +X1 +X2 -X3.
+
+%worlds () (trans _ _ _).
+%trustme
+%total {A} (trans A _ _).
+
+
+
+narrow-lkp : 
+      tlookup G2 N T2 ->
+      sev G1 G1 G2 ->
+%%
+      tlookup G1 N T1 ->
+      stp G1 T1 T2 -> 
+      type.
+
+%mode narrow-lkp +X2 +X3 -X4 -X5.
+%worlds () (narrow-lkp _ _ _ _).
+%trustme
+%total (A) (narrow-lkp A _ _ _).
+
+
+narrow-sz : 
+      tsize G2 N ->
+      sev G1 G1 G2 ->
+%%
+      tsize G1 N ->
+      type.
+
+%mode narrow-sz +X2 +X3 -X4.
+%worlds () (narrow-sz _ _  _).
+%trustme
+%total (A) (narrow-sz A _ _).
+
+
+
+narrow : 
+      stp G2 M N
+      -> sev G1 G1 G2
+%%
+      -> stp G1 M N -> type.
+
+%mode narrow +X2 +X3 -X4.
+
+-top    : narrow stp/top _ stp/top.
+
+-var/h  : narrow (stp/selx) Dsub (stp/selx).
+
+-var/h  : narrow (stp/sel1 D TL) Dsub 
+                              (stp/sel1 D'' TL')
+       <- narrow-lkp TL Dsub TL' BB
+       <- narrow D Dsub D'
+       <- trans  BB D' D''.
+
+-arrow  : narrow (stp/arrow (D2) (D1)) Dsub (stp/arrow (D2') (D1'))
+       <- narrow D1 Dsub D1'
+       <- narrow D2 Dsub D2'.
+
+-forall : narrow (stp/bind (D2) (D1) O2 O1 N) Dsub (stp/bind (D2') (D1') O2 O1 N')
+       <- narrow-sz N Dsub N'
+       <- narrow D1 Dsub D1'
+       <- narrow D2 (sev/refl Dsub) D2'.
+
+
+%worlds () (narrow _ _ _).
+%total {D2} (narrow D2 _ _).
+
+
+
+
+
