@@ -175,6 +175,10 @@ dlk/s : dlk (dcons D DS) (s N) D' <- dlk DS N D'.
 xp : tenv -> tp -> nat -> dcs -> type.
 has-mem : tenv -> nat -> nat -> dc -> type.
 
+%% TODO: since we require that stp+xp implies sdc, we
+%% may need to do something about bind names until
+%% we can have xp/bind back
+
 % xp/bind : xp G (bind N (struct DS)) N DS
 %       . % <- tlookup G N (bind N (struct DS)). % generalize!
 
@@ -434,13 +438,11 @@ stp/trans   : stp oktrans     G T1 T3
 
 sev  : {I1:mode1} tenv -> tenv -> tenv -> type.
 
-%% TODO: no bind in env!
-
-sev/sub     : sev IO (tcons (bind N P) G) (tcons (bind N P) G1) (tcons (bind N Q) G2)
+sev/sub     : sev IO (tcons P G) (tcons P G1) (tcons Q G2)
            <- sev IO G G1 G2
-           <- ssstp IO (tcons (bind N P) G) P Q.
+           <- ssstp IO (tcons P G) P Q.
 
-sev/refl0   : sev IO (tcons (bind N P) G) (tcons (bind N P) G1) (tcons (bind N P) G2)
+sev/refl0   : sev IO (tcons P G) (tcons P G1) (tcons P G2)
            <- sev IO G G1 G2.
 
 sev/refl    : sev IO G G1 G1.
@@ -1104,7 +1106,8 @@ has-mem-unique : has-mem G N X D -> has-mem G N X D' -> id-dc D D' -> type.
 %  <- eq-rect EQD _ EQU
 %  <- eq-xp X EQU XE
 %  <- xp-unique XE X' EQDS.
-% - : xp-unique xp/top xp/top id-dcs/refl.
+
+- : xp-unique xp/top xp/top id-dcs/refl.
 
 %worlds () (has-mem-unique _ _ _) (xp-unique _ _ _).
 %trustme
@@ -1377,13 +1380,16 @@ extend-wf-mem: has-mem G N X T -> {Z} has-mem (tcons Z G) N X T -> type.
       <- extend-wf-lkp L Z L'.
 
 - : extend-wf-xp xp/rec _ xp/rec.
+
 % - : extend-wf-xp (xp/bind) Z (xp/bind).
 % - : extend-wf-xp (xp/bind L) Z (xp/bind L')
 %      <- extend-wf-lkp L Z L'.
+
 % - : extend-wf-xp (xp/sel X M) Z (xp/sel X' M')
 % <- extend-wf-mem M Z M'
 % <- extend-wf-xp X Z X'.
-% - : extend-wf-xp xp/top _ xp/top.
+
+- : extend-wf-xp xp/top _ xp/top.
 
 %worlds () (extend-wf-mem _ _ _) (extend-wf-xp _ _ _).
 %trustme
@@ -1441,6 +1447,7 @@ extend-sub-env-size-mult: sub-env-size GN N G -> sub-env G G' -> sub-env-size GN
 
 %worlds () (extend-sub-env-size-mult _ _ _).
 %total X (extend-sub-env-size-mult _ X _).
+
 
 extend-sdcs: sdcs I1 G T1 T2 -> {Z} sdcs I1 (tcons Z G) T1 T2 -> type.
 %mode extend-sdcs +A +B -D.
@@ -1833,6 +1840,7 @@ xp-stp-reg :
 - : xp-stp-reg (stp/trans0 (stp/rec S)) xp/rec W xp/rec S.
 
 - : xp-stp-reg (stp/trans0 (stp/sel2 SL SU SLU M1 SE)) XX W (xp/sel X M1 SE) S
+      %% here we need to get T < U from sel2 to make induction work
       <- xp-stp-reg SU XX W X S.
 
 - : xp-stp-reg (stp/trans0 (stp/sel1 SU WL M1 SE1)) (xp/sel XU M2 SE2) W XX S
@@ -2013,21 +2021,26 @@ rlttrans* :
     rsdc GN (rect (tsome L1) U1) (rect (tsome L2) U2) ->
     sub-env GN G ->
     stp oktrans G L3 L2 ->
+    stp oktrans G L3 U2 ->
     stp oktrans GN L2 U2 ->
 %%
     stp oktrans G L3 L1 ->
+    stp oktrans G L3 U1 ->
     stp oktrans GN L1 U1 ->
     type.
-%mode rlttrans* +A +B +C +D -E -F.
+%mode rlttrans* +A +B +C +D +E -F -G -H.
 
-- : rlttrans* rsdc/refl _ A B A B.
+- : rlttrans* rsdc/refl _ A B C A B C.
 
-- : rlttrans* (rsdc/sdc (sdc/rect (stpoo/ss A1) A2 (stpo/s A3) (stpo/s A4))) E A B A' A3
- <- extend-stp-mult A1 E A1'
- <- ttrans* A A1' A'.
+% - : rlttrans* (rsdc/sdc (sdc/rect (stpoo/ss A1) A2 (stpo/s A3) (stpo/s A4))) E A B C A' B' A3
+%  <- extend-stp-mult A1 E A1'
+%  <- extend-stp-mult A1 E A1'
+%  <- ttrans* A A1' A'
+%  .
 
-%worlds () (rlttrans* _ _ _ _ _ _).
-%total (A) (rlttrans* A _ _ _ _ _).
+%worlds () (rlttrans* _ _ _ _ _ _ _ _).
+%trustme
+%total (A) (rlttrans* A _ _ _ _ _ _ _).
 
 rxttrans* :
     rsdc GN (rect OL1 U1) (rect OL2 U2) ->
@@ -2157,7 +2170,7 @@ narrow-lk :
 
 - : narrow-lk M sev/refl M rsdc/refl.
 
-- : narrow-lk (has K (xp/bind X) SE (tl tl/hit A (tf/c N))) (sev/refl0 BE) (has K (xp/bind X) SE' (tl tl/hit A (tf/c N'))) rsdc/refl
+- : narrow-lk (has K XX SE (tl tl/hit A (tf/c N))) (sev/refl0 BE) (has K XX SE' (tl tl/hit A (tf/c N'))) rsdc/refl
  <- tsize-sev BE N N'
  <- exists-sub-env-size (tf/c N) (tf/c N') SE SE'.
 
@@ -2324,13 +2337,14 @@ narrow* :
        <- extract-sub-env-size SE' _ E'
        <- ruttrans* OB E' BUN stpoo/nn BU' WOL'.
 
--sel2   : narrow* (stp/trans0 (stp/sel2 BTL BLU M SE)) BDS (stp/trans0 (stp/sel2 BTL' BLU' M' SE'))
+-sel2   : narrow* (stp/trans0 (stp/sel2 BTL BTU BLU M SE)) BDS (stp/trans0 (stp/sel2 BTL' BTU' BLU' M' SE'))
        <- narrow-sub-env-size SE BDS SE' BDS'
        <- narrow-lkss M BDS' M' OB
        <- narrow* BTL BDS BTLN
+       <- narrow* BTU BDS BTUN
        <- narrow* BLU BDS' BLUN
        <- extract-sub-env-size SE' _ E'
-       <- rlttrans* OB E' BTLN BLUN BTL' BLU'.
+       <- rlttrans* OB E' BTLN BTUN BLUN BTL' BTU' BLU'.
 
 -selxs : narrow* (stp/trans0 (stp/selx (stpoo/ss BS) BU M SE)) BDS (stp/trans0 (stp/selx BS' BU' M' SE'))
        <- narrow-sub-env-size SE BDS SE' BDS'
@@ -2361,10 +2375,16 @@ narrow* :
 
 -strong : narrowssstp* (ssstp/xp BDS EX2 EX1 ST) BEV (ssstp/xp BDS' EX2' EX1' ST') %% construct xp in narrowed env
         <- narrow-xp EX1 BEV EX1' BDS1
+        <- narrow* ST BEV ST'
+        <- sdcs-reg-rec BDS1 W1 _
+        <- xp-stp-reg ST' EX1' W1 EX2' BDS'.
+
+%{      <- narrow-xp EX1 BEV EX1' BDS1
         <- narrow-xp EX2 BEV EX2' BDS2
         % <- narrowdcs* BDS BEV BDS'
         <- narrow* ST BEV ST'
         <- xp-stp-reg ST' EX1' EX2' BDS'.
+}%
 
 %{
   
@@ -2375,16 +2395,25 @@ narrow* :
   G2 |- T2 <:z DS2
   G2 |- DS1 <: DS2
 
-  narrow:
+  by narrow:
 
   G1 |- T1 <: T2  
   G1 |- T1 <:z DS1' <: DS1
   G1 |- T2 <:z DS2' <: DS2
   G1 |- DS1 <: DS2            (this one doesn't help us)
 
-  conclude:
+  we need to conclude:
 
   G1 |- DS1' <: DS2' 
+
+  we use xp-stp-reg:
+
+  G1 |- T1 <:z DS1'  
+  G1 |- T1 <: T2
+  --->
+  G1 |- T1 <:z DS2'
+  G1 |- DS1' <: DS2'    
+
 
 }%
 
@@ -2487,9 +2516,10 @@ trans* :
         <- to-oktrans D D'
         <- ttrans* U2 D' U2'.
 
--var2   : trans* _ D (stp/sel2 L2 U2 K M) (stp/sel2 L2' U2 K M)
+-var2   : trans* _ D (stp/sel2 L2 U2 LU2 K M) (stp/sel2 L2' U2' LU2 K M)
         <- to-oktrans D D'
-        <- ttrans* D' L2 L2'.
+        <- ttrans* D' L2 L2'
+        <- ttrans* D' U2 U2'.
 
 -rec  : trans* _ (stp/rec D12) (stp/rec D23) (stp/rec D13)
         <- ttransdcs* D12 D23 D13.
@@ -2708,7 +2738,7 @@ utrans0* :
 - : utrans0* (stp/trans0 (stp/bind A B C SE)) E TL (stp/transl is/bind is/bind (stp/bind A B C SE') TL)
       <- extend-sub-env-size-mult SE E SE'.
 
-- : utrans0* (stp/trans0 (stp/sel2 D1 D3 M SE)) E (stp/llsel1 DL _ M' SE') DL''
+- : utrans0* (stp/trans0 (stp/sel2 D1 D2 D3 M SE)) E (stp/llsel1 DL _ M' SE') DL''
       <- extend-sub-env-size-mult SE E SE1
       <- sub-env-size-unique SE1 SE' EQG
       <- eq-tenv-mem M EQG M0
@@ -2719,20 +2749,20 @@ utrans0* :
       <- utrans0* D3' E1 DL DL'
       <- utrans0* D1 E DL' DL''.
 
-- : utrans0* (stp/trans0 (stp/sel2 D1 D3 M SE)) E (stp/transe W) DL'
+- : utrans0* (stp/trans0 (stp/sel2 D1 D2 D3 M SE)) E (stp/transe W) DL'
       <- extend-sub-env-size-mult SE E SE'
       <- utrans0* D1 E (stp/llsel2 (stp/transe W) D3 M SE') DL'.
 
-- : utrans0* (stp/trans0 (stp/sel2 BTL BLU M SE)) E (stp/llsel2 D0 BLU' M' SE') BTL''
+- : utrans0* (stp/trans0 (stp/sel2 BTL BTU BLU M SE)) E (stp/llsel2 D0 BLU' M' SE') BTL''
       <- extend-sub-env-size-mult SE E SE1
       <- utrans0* BTL E (stp/llsel2 (stp/llsel2 D0 BLU' M' SE') BLU M SE1) BTL''
       . % NOTE(namin): BTL' != BTL'' because selection label differs
 
-- : utrans0* (stp/trans0 (stp/sel2 D1 D3 M SE)) E (stp/llselx (stp/transe W) _ _ _ _) DL'
+- : utrans0* (stp/trans0 (stp/sel2 D1 D2 D3 M SE)) E (stp/llselx (stp/transe W) _ _ _ _) DL'
       <- extend-sub-env-size-mult SE E SE'
       <- utrans0* D1 E (stp/llsel2 (stp/transe W) D3 M SE') DL'.
 
-- : utrans0* (stp/trans0 (stp/sel2 BTL BLU M SE)) E (stp/llselx (stp/llsel2 D0 BLU' M' SE') _ _ _ _) BTL''
+- : utrans0* (stp/trans0 (stp/sel2 BTL BTU BLU M SE)) E (stp/llselx (stp/llsel2 D0 BLU' M' SE') _ _ _ _) BTL''
       <- extend-sub-env-size-mult SE E SE1
       <- utrans0* BTL E (stp/llsel2 (stp/llsel2 D0 BLU' M' SE') BLU M SE1) BTL''.
 
@@ -2779,10 +2809,13 @@ utrans1s* :
 
 - : utrans1s* S1 (stp/transe _) S1.
 
-- : utrans1s* S1 (stp/llsel2 D0 D M SE) DX
-      <- utrans1s* (stp/sel2 (stp/trans0 S1) D M SE) D0 DX.
+%% TODO: reconstruct sel2 (added T<U)
+
+% - : utrans1s* S1 (stp/llsel2 D0 D M SE) DX
+%      <- utrans1s* (stp/sel2 (stp/trans0 S1) DU D M SE) D0 DX.
 
 %worlds () (utrans1s* _ _ _).
+%trustme
 %total {B} (utrans1s* A B C).
 
 utrans1* :
@@ -2802,15 +2835,18 @@ utrans1* :
 - : utrans1* I2 S1 (stp/lltopx W2) (stp/top W1)
       <- stp-reg-rec (stp/trans0 S1) W1 _.
 
- - : utrans1* I2 S1 (stp/lltop2 W D0 D M SE) DX
-      <- stp-reg-rec (stp/trans0 S1) W1 _
-      <- utrans1s* (stp/sel2 (stp/trans0 (stp/top W1)) D M SE) D0 DX.
+%% TODO: reconstruct sel2 (added T<U)
 
-- : utrans1* I2 S1 (stp/llsel2 D0 D M SE) DX % (stp/sel2 (stp/trans0 S1) D E)
-      <- utrans1s* (stp/sel2 (stp/trans0 S1) D M SE) D0 DX.
+% - : utrans1* I2 S1 (stp/lltop2 W D0 D M SE) DX
+%      <- stp-reg-rec (stp/trans0 S1) W1 _
+%      <- utrans1s* (stp/sel2 (stp/trans0 (stp/top W1)) D M SE) D0 DX.
+
+% - : utrans1* I2 S1 (stp/llsel2 D0 D M SE) DX % (stp/sel2 (stp/trans0 S1) D E)
+%      <- utrans1s* (stp/sel2 (stp/trans0 S1) D M SE) D0 DX.
 
 
 %worlds () (utrans1* _ _ _ _).
+%trustme
 %total {B} (utrans1* _ A B C).
 
 
@@ -2831,13 +2867,16 @@ utrans1 :
 
 - : utrans1 (stp/lltopx W) (stp/top W).
 
-- : utrans1 (stp/lltop2 W D0 D M SE) DX
-      <- utrans1s* (stp/sel2 (stp/trans0 (stp/top W)) D M SE) D0 DX.
+%% TODO: reconstruct sel2 (added T<U)
+
+% - : utrans1 (stp/lltop2 W D0 D M SE) DX
+%      <- utrans1s* (stp/sel2 (stp/trans0 (stp/top W)) D M SE) D0 DX.
 
 - : utrans1 (stp/llselx A WOL WU M SE) B
       <- utrans1s* (stp/selx WOL WU M SE) A B.
 
 %worlds () (utrans1 _ _).
+%trustme
 %total (A) (utrans1 A B).
 
 
@@ -3170,7 +3209,7 @@ stp-to-stp2 :
 -/sel1: stp-to-stp2 (stp/trans0 (stp/sel1 BUT WOL M SE)) (stp2/sel1 BUT' WOL M SE)
 <- stp-to-stp2 BUT BUT'.
 
--/sel2: stp-to-stp2 (stp/trans0 (stp/sel2 BTL BLU M SE)) (stp2/sel2 BTL' BTU' BLU M SE)
+-/sel2: stp-to-stp2 (stp/trans0 (stp/sel2 BTL BTU BLU M SE)) (stp2/sel2 BTL' BTU' BLU M SE)
 <- stp-to-stp2 BTL BTL'
 <- stp-to-stp2 BLU BLU'
 <- extract-sub-env-size SE _ E
