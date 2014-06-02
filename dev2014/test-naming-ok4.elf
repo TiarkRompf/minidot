@@ -391,6 +391,7 @@ lookup-splice-var:
 
 
 
+
 % ---------- second version ---------- %
 
 %% move term from index I to I + D = O
@@ -593,9 +594,9 @@ add-xx2:
 
 
 split-move:
-      {S12':move (s I) (s D) (s (s (s O))) (s (s (s N2))) G E1 E3}
-      {S1':move (s I) D (s (s O)) (s (s (s N2))) G E1 E5}
-      {S2':move (s (s O)) (s z) (s (s (s O))) (s (s (s N2))) G E5 E3}
+      {S12':move (I) (s D) (s (s O)) N2 G E1 E3}
+      {S1':move (I) D (s O) N2 G E1 E5}
+      {S2':move (s (O)) (s z) (s (s O)) N2 G E5 E3}
       type.
 
 %mode split-move +S12 -S1 -S2.
@@ -655,11 +656,11 @@ extend to G'
 
 
 extend-splice-wf:
-      splice N G0 Z (s N2) G2 G2' ->
-      {S2 :move N D (s N2) (s N2) G2 E1 E1'}
-      {W2 :wft (s N2) G2 E1' U}
-      {S2':move (s N) D (s (s N2)) (s (s N2)) G2' E1 E1''}
-      {W2':wft (s (s N2)) G2' E1'' U}
+      splice N G0 Z (N2) G2 G2' ->
+      {S2 :move N D (N2) (N2) G2 E1 E1'}
+      {W2 :wft (N2) G2 E1' U}
+      {S2':move (s N) D (s (N2)) (s (N2)) G2' E1 E1''}
+      {W2':wft (s (N2)) G2' E1'' U}
       type.
 
 %mode extend-splice-wf +SP +S1 +W1 -S2 -W2.
@@ -687,59 +688,31 @@ extend-splice-wf:
 %total (A) (extend-splice-wf _ _ A _ _).
 
 
-%{
-
-extend-splice-wf:
-      splice N2 G0 Z N2 G2 G2' ->  %%%% careful, we're cheating: N = N2 means append aat end !!!
-      {S2 :wft N2 G2 E1 U}
-      {S2':wft (s N2) G2' E1 U}
-      type.
-
-%mode extend-splice-wf +SP +W1 -W2.
-
-- : extend-splice-wf SP (wft/var A L) (wft/var (add/s A) L')
-      <- lookup-splice-var SP L A L'.
-
-- : extend-splice-wf SP (wft/lam W S2) (wft/lam W' S2')
-      <- extend-splice-mv (splice/ext SP) S2 S2'
-      .
-
-- : extend-splice-wf SP (wft/app S1 S2) (wft/app S1' S2')
-     <- extend-splice-wf SP S1 S1'
-     <- extend-splice-wf SP S2 S2'
-     .
-
-
-%worlds () (extend-splice-wf _ _ _).
-%total (A) (extend-splice-wf _ A _).
-
-extract-mv:
-      {S2 :wft N G E1 U}
-      {M: move I z I N G E1 E1}
-      type.
-
-%mode extract-mv +S -W2.
-
-% - : extract-mv (wft/var L) (wft/var L')
-
-%worlds () (extract-mv _ _).
-%trustme
-%total (A) (extract-mv A _).
 
 extend-wf:
-      {S2 :wft N G E1 U}
+      {S2 :wft N2 G2 E1 U}
       {T}
-      {S2':wft (s N) (tcons T G) E1 U}
+      {S2':wft (s N2) (tcons T G2) E1 U}
       type.
 
 %mode extend-wf +SP +W1 -W2.
 
-- : extend-wf S1 Z S2
-      <- extract-mv S1 M1
-      <- extend-splice-wf splice/refl M1 S1 M2 S2.
+- : extend-wf (wft/var L) T (wft/var (tlookup/s L)).
+
+- : extend-wf (wft/lam W S2) T (wft/lam W' S2')
+      <- extend-splice-wf (splice/ext splice/refl) S2 W S2' W'.
+
+- : extend-wf (wft/app S1 S2) T (wft/app S1' S2')
+     <- extend-wf S1 _ S1'
+     <- extend-wf S2 _ S2'.
 
 %worlds () (extend-wf _ _ _).
-%total (A) (extend-wf _ A _).
+%total (A) (extend-wf A _ _).
 
-}%
+
+% TODO:
+% 1) + extract-wf (here)
+% 2) - types (here)
+% 3) - integrate with mud/dot-ext1.elf
+
 
