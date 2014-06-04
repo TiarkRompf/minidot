@@ -3039,6 +3039,8 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
 -/app : eval-safe A E (e/app EV3 EV2 IL EV1) V
      <- invert-app A MA A2 BA
      <- eval-safe A2 E EV2 V2
+     <- invert-has-mem-tm MA A1 SE1 EX1 DL1
+     <- eval-safe A1 E EV1 V1
       .
 
 %worlds () (eval-safe _ _ _ _).
