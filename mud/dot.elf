@@ -2980,6 +2980,26 @@ invert-app:
 %worlds () (invert-app _ _ _ _ _ _ _ _).
 %total (A) (invert-app A _ _ _ _ _ _ _).
 
+%{ ------- inversion of value typing ----- }%
+
+invert-wfv:
+  wf-val (clo H IS) G T ->
+%%
+  wf-env H GC ->
+  typcs (tcons (bind N DS0) GC) IS DS0 ->
+  stp2 GC (bind N DS0) G T ->
+  type.
+%mode invert-wfv +A -B -C -D.
+
+-/clo : invert-wfv (v/clo B ADS WE) WE ADS B.
+
+-/sub : invert-wfv (v/sub B A) WE ADS B'
+     <- invert-wfv A WE ADS B0
+     <- trans2 B0 B B'.
+
+%worlds () (invert-wfv _ _ _ _).
+%total (A) (invert-wfv A _ _ _).
+
 %{ ------- lookup preservation --- }%
 
 lookup-zero-safe: wf-env H G -> tlookup-zero G N2 T -> vlookup-zero H N1 V -> eq-nat N1 N2 -> wf-val V G T -> type.
@@ -3024,6 +3044,7 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
      <- invert-app A SE A1 A2 DL W2 W0 BA
      <- eval-safe A2 E EV2 V2
      <- eval-safe A1 E EV1 V1
+     <- invert-wfv V1 E1 AS1 B1
       .
 
 %worlds () (eval-safe _ _ _ _).
