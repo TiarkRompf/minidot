@@ -308,6 +308,8 @@ has-mem-tm : tenv -> tm -> nat -> dc -> type.
 
 has-vr: has-mem-tm G (var N) X D
      <- has-mem G N X D
+     <- tlookup G N T
+     <- wf-tp G T
       .
 has-tm: has-mem-tm G E1 X D
      <- typ G E1 T
@@ -690,6 +692,14 @@ eq-sub-env-size-l : id-tenv G1 G1' -> sub-env-size G1 N G2 -> sub-env-size G1' N
 %worlds () (eq-sub-env-size-l _ _ _).
 %total (A) (eq-sub-env-size-l A _ _).
 %reduces C <= B (eq-sub-env-size-l _ B C).
+
+eq-wf-tp : id-tp T T' -> wf-tp G T -> wf-tp G T' -> type.
+%mode eq-wf-tp +EQ +B -C.
+
+- : eq-wf-tp id-tp/refl B B.
+
+%worlds () (eq-wf-tp _ _ _).
+%total (A) (eq-wf-tp A _ _).
 
 eq-stp-l : id-tp L L' -> stp I G L U -> stp I G L' U -> type.
 %mode eq-stp-l +EQ +B -C.
@@ -2901,6 +2911,28 @@ wfv-widen/sub : wfv-widen B W (v/sub B W).
 
 %worlds () (wfv-widen _ _ _).
 %total (A) (wfv-widen A _ _).
+
+%{ ------- misc inversion ----- }%
+
+invert-has-mem-tm :
+  has-mem-tm G E X D ->
+%%
+  typ G E T ->
+  sub-env-size GN N G ->
+  xp (tcons T GN) T N DS ->
+  dlk DS X D ->
+  type.
+%mode invert-has-mem-tm +A -B -C -D -E.
+
+-/var : invert-has-mem-tm (has-vr WT TL' (has DL EX SE TL)) (t/var WT' TL) SE EX DL
+<- tlookup-unique TL' TL EQT
+<- eq-wf-tp EQT WT WT'.
+
+-/tm  : invert-has-mem-tm (has-tm WD DL EX SE TP) TP SE EX' DL
+<- extend-wf-xp EX _ EX'.
+
+%worlds () (invert-has-mem-tm _ _ _ _ _).
+%total (A) (invert-has-mem-tm A _ _ _ _).
 
 %{ ------- inversion of typing ----- }%
 
