@@ -41,6 +41,7 @@ tsome : tp -> topt.
 arrow   : tp -> tp -> dc.
 rect    : topt -> tp -> dc.
 
+
 dnil: dcs.
 dcons: dc -> dcs -> dcs.
 
@@ -304,20 +305,7 @@ stp2/bind : stp2 G1 (bind N DS1) G2 (bind N DS2)
 
 typ : tenv -> tm -> tp -> type.
 typcs: tenv -> ics -> dcs -> type.
-has-mem-tm : tenv -> tm -> nat -> dc -> type.
 
-has-vr: has-mem-tm G (var N) X D
-     <- has-mem G N X D
-     <- tlookup G N T
-     <- wf-tp G T
-      .
-has-tm: has-mem-tm G E1 X D
-     <- typ G E1 T
-     <- sub-env-size GN N G
-     <- xp GN T N DS
-     <- dlk DS X D
-     <- wf-dc GN D
-      .
 t/var : typ G (var N) T
      <- tlookup G N T
      <- wf-tp G T
@@ -328,9 +316,12 @@ t/new : typ G (new N DCS ICS) (bind N DCS)
      <- wf-tp GN (bind N DCS)
       .
 t/app : typ G (app E1 X E2) T
-     <- has-mem-tm G E1 X (arrow T2 T)
+     <- sub-env-size GN N G
+     <- typ G E1 (bind N DS)
      <- typ G E2 T2
-     <- wf-tp G T
+     <- dlk DS X (arrow T2 T)
+     <- wf-tp GN T2
+     <- wf-tp GN T
       .
 t/nil : typcs G inil dnil.
 t/fun : typcs G (icons (fun E) ICS) (dcons (arrow S U) DCS)
@@ -1485,6 +1476,15 @@ extend-wf-tp: wf-tp G T -> {Z} wf-tp (tcons Z G) T -> type.
 
 %worlds () (extend-wf-tp _ _ _).
 %total {} (extend-wf-tp _ _ _).
+
+extend-wf-tp-mult: wf-tp G T -> sub-env G G' -> wf-tp G' T -> type.
+%mode extend-wf-tp-mult +A +B -C.
+- : extend-wf-tp-mult A sub-env/refl A.
+- : extend-wf-tp-mult A (sub-env/ext B) C
+ <- extend-wf-tp-mult A B C0
+ <- extend-wf-tp C0 _ C.
+%worlds () (extend-wf-tp-mult _ _ _).
+%total (X) (extend-wf-tp-mult _ X _).
 
 extend-wf-dc: wf-dc G D -> {Z} wf-dc (tcons Z G) D -> type.
 %mode extend-wf-dc +A +B -C.
@@ -2912,28 +2912,6 @@ wfv-widen/sub : wfv-widen B W (v/sub B W).
 %worlds () (wfv-widen _ _ _).
 %total (A) (wfv-widen A _ _).
 
-%{ ------- misc inversion ----- }%
-
-invert-has-mem-tm :
-  has-mem-tm G E X D ->
-%%
-  typ G E T ->
-  sub-env-size GN N G ->
-  xp (tcons T GN) T N DS ->
-  dlk DS X D ->
-  type.
-%mode invert-has-mem-tm +A -B -C -D -E.
-
--/var : invert-has-mem-tm (has-vr WT TL' (has DL EX SE TL)) (t/var WT' TL) SE EX DL
-<- tlookup-unique TL' TL EQT
-<- eq-wf-tp EQT WT WT'.
-
--/tm  : invert-has-mem-tm (has-tm WD DL EX SE TP) TP SE EX' DL
-<- extend-wf-xp EX _ EX'.
-
-%worlds () (invert-has-mem-tm _ _ _ _ _).
-%total (A) (invert-has-mem-tm A _ _ _ _).
-
 %{ ------- inversion of typing ----- }%
 
 invert-var:
@@ -2980,21 +2958,27 @@ invert-new :
 invert-app:
   typ G (app E1 X E2) T ->
 %%
-  has-mem-tm G E1 X (arrow T2 T0) ->
+  sub-env-size GN N G ->
+  typ G E1 (bind N DS) ->
   typ G E2 T2 ->
+  dlk DS X (arrow T2 T0) ->
+  wf-tp GN T2 ->
+  wf-tp GN T0 ->
   stp2 G T0 G T ->
   type.
-%mode invert-app +A -B -C -D.
+%mode invert-app +A -B -C -D -E -F -G -H.
 
--/app : invert-app (t/app W A M) M A B
+-/app : invert-app (t/app WT1 WT2 DL TP2 TP1 SES) SES TP1 TP2 DL WT2 WT1 B
+     <- extract-sub-env-size SES _ SE
+     <- extend-wf-tp-mult WT1 SE W
      <- stp2refl W B.
 
--/sub : invert-app (t/sub B A) M' A' B'
-     <- invert-app A M' A' B0
+-/sub : invert-app (t/sub B A) SES TP1 TP2 DL WT2 WT1 B'
+     <- invert-app A SES TP1 TP2 DL WT2 WT1 B0
      <- trans2 B0 B B'.
 
-%worlds () (invert-app _ _ _ _).
-%total (A) (invert-app A _ _ _).
+%worlds () (invert-app _ _ _ _ _ _ _ _).
+%total (A) (invert-app A _ _ _ _ _ _ _).
 
 %{ ------- lookup preservation --- }%
 
@@ -3037,9 +3021,8 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
      <- wf-sub-env-size E SV SE E'.
 
 -/app : eval-safe A E (e/app EV3 EV2 IL EV1) V
-     <- invert-app A MA A2 BA
+     <- invert-app A SE A1 A2 DL W2 W0 BA
      <- eval-safe A2 E EV2 V2
-     <- invert-has-mem-tm MA A1 SE1 EX1 DL1
      <- eval-safe A1 E EV1 V1
       .
 
