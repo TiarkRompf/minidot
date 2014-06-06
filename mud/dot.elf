@@ -2980,6 +2980,28 @@ invert-app:
 %worlds () (invert-app _ _ _ _ _ _ _ _).
 %total (A) (invert-app A _ _ _ _ _ _ _).
 
+%{ ------- inversion of declaration typing ----- }%
+
+invert-fun:
+  typcs G IS DS ->
+  ilk IS X (fun E) ->
+%%
+  dlk DS X (arrow T1 T2) ->
+  typ (tcons T1 G) E T2 ->
+  type.
+%mode invert-fun +A +B -C -D.
+
+-/z : invert-fun (t/fun _ A) ilk/z dlk/z A.
+
+-/s : invert-fun (t/fun A _) (ilk/s B) (dlk/s C) D
+   <- invert-fun A B C D.
+
+-/s2: invert-fun (t/non A) (ilk/s B) (dlk/s C) D
+   <- invert-fun A B C D.
+
+%worlds () (invert-fun _ _ _ _).
+%total {A B} (invert-fun A B _ _).
+
 %{ ------- inversion of value typing ----- }%
 
 invert-wfv:
@@ -3045,6 +3067,7 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
      <- eval-safe A2 E EV2 V2
      <- eval-safe A1 E EV1 V1
      <- invert-wfv V1 E1 AS1 B1
+     <- invert-fun AS1 IL DL A3
       .
 
 %worlds () (eval-safe _ _ _ _).
