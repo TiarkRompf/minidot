@@ -3070,6 +3070,8 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
      <- invert-fun AS1 IL DL A3
      <- extend-wfv V2 _ V2'
      <- eval-safe A3 (wfe/c (wfe/c E1 V1) V2') EV3 V3
+     <- extend-stp2 BA _ _ BA' _
+     <- wfv-widen BA' V3 V
       .
 
 %worlds () (eval-safe _ _ _ _).
