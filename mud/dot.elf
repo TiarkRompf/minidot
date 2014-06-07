@@ -316,10 +316,10 @@ t/new : typ G (new N DCS ICS) (bind N DCS)
      <- wf-tp GN (bind N DCS)
       .
 t/app : typ G (app E1 X E2) T
-     <- sub-env-size GN N G
      <- typ G E1 (bind N DS)
      <- dlk DS X (arrow T2 T)
      <- typ G E2 T2
+     <- sub-env-size GN N G
      <- wf-tp GN T2
      <- wf-tp GN T
       .
@@ -407,6 +407,15 @@ wfe/c : wf-env (vcons V H) (tcons T G)
                          z
                          (new z (dcons (arrow top top) dnil) (icons (fun (var (s z))) inil)))
                     top.
+%query 1 1 typ tnil (let z (new z (dcons (rect (tsome top) top) dnil) (icons non inil)) top (var (s z)) top) top.
+%query 1 1 typ tnil (let z (new z (dcons (rect (tsome top) top) dnil) (icons non inil)) (bind z (dcons (rect tnone top) dnil)) (var (s z)) top) top.
+%query 1 1 typ tnil (let z (new z (dcons (rect (tsome top) top) (dcons (arrow top top) dnil)) (icons non (icons (fun (var (s z))) inil))) (bind z (dcons (rect tnone top) dnil)) (var (s z)) top) top.
+%query 1 1 typ tnil (let z (new z (dcons (rect (tsome top) top) (dcons (arrow top top) dnil)) (icons non (icons (fun (var (s z))) inil))) (bind z (dcons (rect tnone top) (dcons (arrow top top) dnil))) (var (s z)) top) top.
+%query 1 1 typ tnil (let z (new z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)) (icons non (icons (fun (var (s z))) inil))) (bind z (dcons (rect tnone top) (dcons (arrow top top) dnil))) (var (s z)) top) top.
+%query 1 1 typ tnil (let z (new z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)) (icons non (icons (fun (var (s z))) inil))) (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) (var (s z)) top) top.
+%query 1 1 typ (tcons (bind z (dcons (arrow top top) dnil)) tnil) (var z) top.
+%query 1 1 typ (tcons (bind z (dcons (arrow top top) dnil)) tnil) (var z) (bind z (dcons (arrow top top) dnil)).
+%query 1 1 typ (tcons (bind z (dcons (arrow top top) dnil)) tnil) (app (var z) z (var z)) top.
 
 % EOF
 
@@ -3048,7 +3057,7 @@ invert-app:
   type.
 %mode invert-app +A -B -C -D -E -F -G -H.
 
--/app : invert-app (t/app WT1 WT2 TP2 DL TP1 SES) SES TP1 TP2 DL WT2 WT1 B
+-/app : invert-app (t/app WT1 WT2 SES TP2 DL TP1) SES TP1 TP2 DL WT2 WT1 B
      <- extract-sub-env-size SES _ SE
      <- extend-wf-tp-mult WT1 SE W
      <- stp2refl W B.
