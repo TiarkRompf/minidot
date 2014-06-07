@@ -3062,18 +3062,21 @@ invert-wfv:
   wf-env H GC ->
   tsize GC N ->
   typcs (tcons (bind N DS0) GC) IS DS0 ->
+  wf-val (clo H IS) GC (bind N DS0) ->
   stp2 GC (bind N DS0) G T ->
   type.
-%mode invert-wfv +A -B -C -D -E.
+%mode invert-wfv +A -B -C -D -E -F.
 
--/clo : invert-wfv (v/clo B ADS SN WE) WE SN ADS B.
+-/clo : invert-wfv (v/clo B ADS SN WE) WE SN ADS (v/clo B0 ADS SN WE) B
+     <- stp2-reg B W0 _
+     <- stp2refl W0 B0.
 
--/sub : invert-wfv (v/sub B A) WE SN ADS B'
-     <- invert-wfv A WE SN ADS B0
+-/sub : invert-wfv (v/sub B A) WE SN ADS WV B'
+     <- invert-wfv A WE SN ADS WV B0
      <- trans2 B0 B B'.
 
-%worlds () (invert-wfv _ _ _ _ _).
-%total (A) (invert-wfv A _ _ _ _).
+%worlds () (invert-wfv _ _ _ _ _ _).
+%total (A) (invert-wfv A _ _ _ _ _).
 
 %{ ------- inversion of subtyping ----- }%
 
@@ -3205,14 +3208,13 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
      <- invert-app A SE A1 A2 DL2 W2 W0 BA
      <- eval-safe A2 E EV2 V2
      <- eval-safe A1 E EV1 V1
-     <- invert-wfv V1 E1 SN1 AS1 B1
-     <- invert-fun AS1 IL DL1 A3.
-     <- stp2-inv-bind B1 EQN12 SE1 SE2 B1R
+     <- invert-wfv V1 E1 SN1 AS1 V1' B1
+     <- invert-fun AS1 IL DL1 A3
+     <- stp2-inv-fun B1 DL1 DL2 EQN SE1 SE2 SA SB
      <- sub-env-size-unique (ses SN1 sub-env/refl) SE1 EQG1
      <- sub-env-size-unique SE2 SE EQG2
      <- id-tenv-trans EQG1 EQG2 EQG
      <- id-tenv-sym EQG EQG'
-     <- wfv-widen B1R V1 V1'
      <- stp2refl W2 B2
      <- extract-sub-env-size SE _ EU2
      <- extend-stp2-mult1 B2 EU2 B2'
@@ -3222,13 +3224,14 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
      <- extend-wfv V2' _ V2''
      <- extend-wfv V2'' _ V2'''
      <- eval-safe A3 (wfe/c (wfe/c E1 V1'') V2''') EV3 V3
+     <- extend-stp2 SB _ _ SB' _
+     <- wfv-widen SB' V3 V3'
      <- stp2refl W0 B0
      <- eq-stp2-gl EQG' B0 B0'
      <- extend-stp2 B0' _ _ B0'' _
-     <- extend-stp2 B0'' _ _ B0''' _
-     <- extend-stp2-mult2 B0''' EU2 B0''''
-     <- wfv-widen B0'''' V3 V3'
-     <- wfv-widen BA V3' V
+     <- extend-stp2-mult2 B0'' EU2 B0'''
+     <- wfv-widen B0''' V3' V3''
+     <- wfv-widen BA V3'' V
       .
 
 %worlds () (eval-safe _ _ _ _).
