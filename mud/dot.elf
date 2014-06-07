@@ -677,6 +677,14 @@ dlk-unique-rec : dlk DS X D -> dlk DS' X D' -> id-dcs DS DS' -> id-dc D D' -> ty
 %worlds () (dlk-unique-rec _ _ _ _).
 %total (EQ) (dlk-unique-rec _ _ EQ _).
 
+eq-bind : id-nat N N' -> {DS} id-tp (bind N DS) (bind N' DS) -> type.
+%mode eq-bind +A +B -C.
+
+- : eq-bind id-nat/refl _ id-tp/refl.
+
+%worlds () (eq-bind _ _ _).
+%total (A) (eq-bind A _ _).
+
 eq-some : id-topt (tsome L) (tsome L') -> id-tp L L' -> type.
 %mode eq-some +A -B.
 
@@ -717,6 +725,15 @@ eq-wf-tp-g : id-tenv G G' -> wf-tp G T -> wf-tp G' T -> type.
 
 %worlds () (eq-wf-tp-g _ _ _).
 %total (A) (eq-wf-tp-g A _ _).
+
+eq-sdc-l : id-dc L L' -> sdc I G L U -> sdc I G L' U -> type.
+%mode eq-sdc-l +EQ +B -C.
+
+- : eq-sdc-l id-dc/refl B B.
+
+%worlds () (eq-sdc-l _ _ _).
+%total (A) (eq-sdc-l A _ _).
+%reduces C <= B (eq-sdc-l _ B C).
 
 eq-stp-l : id-tp L L' -> stp I G L U -> stp I G L' U -> type.
 %mode eq-stp-l +EQ +B -C.
@@ -3060,20 +3077,88 @@ invert-wfv:
 
 %{ ------- inversion of subtyping ----- }%
 
-stp2-inv-bind:
-  stp2 G1 (bind N1 DS) G2 (bind N2 DS) ->
+stp2-bind-eq:
+  stp2 G1 (bind N1 DS1) G2 (bind N2 DS2) ->
+%%
+  id-nat N1 N2 ->
+  type.
+%mode stp2-bind-eq +A -B.
+
+- : stp2-bind-eq (stp2/bind _ _ _ _ _) id-nat/refl.
+
+%worlds () (stp2-bind-eq _ _).
+%total (A) (stp2-bind-eq A _).
+
+extract-stp2-bind:
+  stp2 G1 (bind N1 DS1) G2 (bind N2 DS2) ->
 %%
   id-nat N1 N2 ->
   sub-env-size GN N1 G1 ->
   sub-env-size GN N2 G2 ->
-  stp2 G2 (bind N2 DS) G1 (bind N1 DS) ->
+  sdcs oktrans (tcons (bind N1 DS1) GN) DS1 DS2 ->
+  sdcs oktrans (tcons (bind N1 DS1) GN) DS1 DS1 ->
+  sdcs oktrans (tcons (bind N2 DS2) GN) DS2 DS2 ->
   type.
-%mode stp2-inv-bind +A -B -C -D -E.
+%mode extract-stp2-bind +A -B -C -D -E -F -G.
 
--/bind :stp2-inv-bind (stp2/bind DS12 DS1 DS2 SE1 SE2) id-nat/refl SE1 SE2 (stp2/bind DS12 DS1 DS2 SE2 SE1).
+-/bind : extract-stp2-bind (stp2/bind DS12 DS1 DS2 SE1 SE2) id-nat/refl SE1 SE2 DS12 DS1 DS2.
 
-%worlds () (stp2-inv-bind _ _ _ _ _).
-%total (A) (stp2-inv-bind A _ _ _ _).
+%worlds () (extract-stp2-bind _ _ _ _ _ _ _).
+%total (A) (extract-stp2-bind A _ _ _ _ _ _).
+
+inv-sdc-arrow:
+  sdc oktrans G (arrow TA1 TB1) (arrow TA2 TB2) ->
+%%
+  stp oktrans G TA2 TA1 ->
+  stp oktrans G TB1 TB2 ->
+  type.
+%mode inv-sdc-arrow +A -B -C.
+
+- : inv-sdc-arrow (sdc/arrow SA SB) SA SB.
+
+%worlds () (inv-sdc-arrow _ _ _).
+%total (A) (inv-sdc-arrow A _ _).
+
+inv-sdcs-arrow:
+  sdcs oktrans G DS1 DS2 ->
+  dlk DS1 X (arrow TA1 TB1) ->
+  dlk DS2 X (arrow TA2 TB2) ->
+%%
+  stp oktrans G TA2 TA1 ->
+  stp oktrans G TB1 TB2 ->
+  type.
+%mode inv-sdcs-arrow +A +B +C -D -E.
+
+- : inv-sdcs-arrow ADS DL1 DL2 SA SB
+ <- inv-sdcs ADS DL2 DL1' SD'
+ <- dlk-unique DL1' DL1 EQD1
+ <- eq-sdc-l EQD1 SD' SD
+ <- inv-sdc-arrow SD SA SB.
+
+%worlds () (inv-sdcs-arrow _ _ _ _ _).
+%total {} (inv-sdcs-arrow _ _ _ _ _).
+
+stp2-inv-fun:
+  stp2 G1 (bind N1 DS1) G2 (bind N2 DS2) ->
+  dlk DS1 X (arrow TA1 TB1) ->
+  dlk DS2 X (arrow TA2 TB2) ->
+%%
+  id-nat N1 N2 ->
+  sub-env-size GN N1 G1 ->
+  sub-env-size GN N2 G2 ->
+  stp2 (tcons (bind N1 DS1) GN) TA2 (tcons (bind N1 DS1) GN) TA1 ->
+  stp2 (tcons (bind N1 DS1) GN) TB1 (tcons (bind N1 DS1) GN) TB2 ->
+  type.
+%mode stp2-inv-fun +A +B +C -D -E -F -G -H.
+
+- : stp2-inv-fun B DL1 DL2 EQN SE1 SE2 SA' SB'
+ <- extract-stp2-bind B EQN SE1 SE2 DS12 DS11 DS22
+ <- inv-sdcs-arrow DS12 DL1 DL2 SA SB
+ <- stp-to-stp2 SA SA'
+ <- stp-to-stp2 SB SB'.
+
+%worlds () (stp2-inv-fun _ _ _ _ _ _ _ _).
+%total { } (stp2-inv-fun _ _ _ _ _ _ _ _).
 
 %{ ------- lookup preservation --- }%
 
@@ -3117,11 +3202,11 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
      <- extract-sub-env-size SE SN _.
 
 -/app : eval-safe A E (e/app EV3 EV2 IL EV1) V
-     <- invert-app A SE A1 A2 DL W2 W0 BA
+     <- invert-app A SE A1 A2 DL2 W2 W0 BA
      <- eval-safe A2 E EV2 V2
      <- eval-safe A1 E EV1 V1
      <- invert-wfv V1 E1 SN1 AS1 B1
-     <- invert-fun AS1 IL DL' A3.
+     <- invert-fun AS1 IL DL1 A3.
      <- stp2-inv-bind B1 EQN12 SE1 SE2 B1R
      <- sub-env-size-unique (ses SN1 sub-env/refl) SE1 EQG1
      <- sub-env-size-unique SE2 SE EQG2
