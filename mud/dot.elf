@@ -3222,8 +3222,9 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
      <- wfv-widen B2'' V2 V2'
      <- extend-wfv V1' _ V1''
      <- extend-wfv V2' _ V2''
-     <- extend-wfv V2'' _ V2'''
-     <- eval-safe A3 (wfe/c (wfe/c E1 V1'') V2''') EV3 V3
+     <- wfv-widen SA V2'' V2'''
+     <- extend-wfv V2''' _ V2''''
+     <- eval-safe A3 (wfe/c (wfe/c E1 V1'') V2'''') EV3 V3
      <- extend-stp2 SB _ _ SB' _
      <- wfv-widen SB' V3 V3'
      <- stp2refl W0 B0
