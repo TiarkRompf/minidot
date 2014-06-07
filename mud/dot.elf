@@ -710,6 +710,14 @@ eq-wf-tp : id-tp T T' -> wf-tp G T -> wf-tp G T' -> type.
 %worlds () (eq-wf-tp _ _ _).
 %total (A) (eq-wf-tp A _ _).
 
+eq-wf-tp-g : id-tenv G G' -> wf-tp G T -> wf-tp G' T -> type.
+%mode eq-wf-tp-g +EQ +B -C.
+
+- : eq-wf-tp-g id-tenv/refl B B.
+
+%worlds () (eq-wf-tp-g _ _ _).
+%total (A) (eq-wf-tp-g A _ _).
+
 eq-stp-l : id-tp L L' -> stp I G L U -> stp I G L' U -> type.
 %mode eq-stp-l +EQ +B -C.
 
@@ -3129,9 +3137,13 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
      <- extend-wfv V2' _ V2''
      <- extend-wfv V2'' _ V2'''
      <- eval-safe A3 (wfe/c (wfe/c E1 V1'') V2''') EV3 V3
-     <- extend-stp2 BA _ _ BA' _
-     <- extend-stp2 BA' _ _ BA'' _
-     <- wfv-widen BA'' V3 V
+     <- stp2refl W0 B0
+     <- eq-stp2-gl EQG' B0 B0'
+     <- extend-stp2 B0' _ _ B0'' _
+     <- extend-stp2 B0'' _ _ B0''' _
+     <- extend-stp2-mult2 B0''' EU2 B0''''
+     <- wfv-widen B0'''' V3 V3'
+     <- wfv-widen BA V3' V
       .
 
 %worlds () (eval-safe _ _ _ _).
