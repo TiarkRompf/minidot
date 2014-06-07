@@ -2982,40 +2982,25 @@ invert-app:
 
 %{ ------- inversion of declaration typing ----- }%
 
-invert-fun-rec:
+invert-fun:
   typcs G IS DS ->
   ilk IS X (fun E) ->
 %%
   dlk DS X (arrow T1 T2) ->
   typ (tcons T1 G) E T2 ->
   type.
-%mode invert-fun-rec +A +B -C -D.
-
--/z : invert-fun-rec (t/fun _ A) ilk/z dlk/z A.
-
--/s : invert-fun-rec (t/fun A _) (ilk/s B) (dlk/s C) D
-   <- invert-fun-rec A B C D.
-
--/s2: invert-fun-rec (t/non A) (ilk/s B) (dlk/s C) D
-   <- invert-fun-rec A B C D.
-
-%worlds () (invert-fun-rec _ _ _ _).
-%total {A B} (invert-fun-rec A B _ _).
-
-invert-fun:
-  typcs (tcons (bind N DS) G) IS DS ->
-  ilk IS X (fun E) ->
-%%
-  dlk DS X (arrow T1 T2) ->
-  typ (tcons T1 (tcons (bind N DS) G)) E T2 ->
-  type.
 %mode invert-fun +A +B -C -D.
 
-- : invert-fun A B C D
- <- invert-fun-rec A B C D.
+-/z : invert-fun (t/fun _ A) ilk/z dlk/z A.
+
+-/s : invert-fun (t/fun A _) (ilk/s B) (dlk/s C) D
+   <- invert-fun A B C D.
+
+-/s2: invert-fun (t/non A) (ilk/s B) (dlk/s C) D
+   <- invert-fun A B C D.
 
 %worlds () (invert-fun _ _ _ _).
-%total { } (invert-fun _ _ _ _).
+%total {A B} (invert-fun A B _ _).
 
 %{ ------- inversion of value typing ----- }%
 
