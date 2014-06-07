@@ -417,6 +417,79 @@ wfe/c : wf-env (vcons V H) (tcons T G)
 %query 1 1 typ (tcons (bind z (dcons (arrow top top) dnil)) tnil) (var z) (bind z (dcons (arrow top top) dnil)).
 %query 1 1 typ (tcons (bind z (dcons (arrow top top) dnil)) tnil) (app (var z) z (var z)) top.
 
+%query 1 1 typ (tcons (bind z (dcons (rect tnone top) (dcons (arrow top top) dnil))) tnil) (app (var z) (s z) (var z)) top.
+%query 1 1 typ (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+               (tcons (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil))) tnil))
+               (var z) top.
+%query 1 1 typ (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+               (tcons (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil))) tnil))
+               (var (s z)) top.
+%query 1 1 typ (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+               (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
+               (var z) top.
+%query 1 1 typ (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+               (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
+               (var (s z)) top.
+
+%query 1 1 stp2 (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+                (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
+                (sel z z)
+                (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+                (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
+                (sel z z).
+%query 1 1 stp oktrans
+                (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+                (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
+                (sel z z)
+                (sel z z).
+%query 1 1 stp2 (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+                (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
+                (sel z z)
+                (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+                (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
+                top.
+%query 1 1 stp2 (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
+                (sel z z)
+                (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
+                top.
+
+%query 1 1 typ (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+               (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
+               (var (s z)) (bind (s z) (dcons (arrow top (sel z z)) dnil)).
+%query 1 1 typ (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+               (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
+               (app (var (s z)) z (new z dnil inil)) (sel z z).
+%query 1 1 typ (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+               (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
+               (let (s z) (app (var (s z)) z (new z dnil inil)) (sel z z) (var (s (s z))) (sel z z)) (sel z z).
+%query 1 1 typ (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+               (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
+               (let (s z) (app (var (s z)) z (new z dnil inil)) (sel z z) (var (s (s z))) top) top.
+
+%query 1 1 typ tnil
+  (let z
+       (new z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)) (icons non (icons (fun (var (s z))) inil)))
+       (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil)))
+  (let (s z)
+       (new (s z) (dcons (arrow top top) dnil) (icons (fun (new z dnil inil)) inil))
+       (bind (s z) (dcons (arrow top top) dnil))
+       (new z dnil inil)
+       top)
+  top)
+  top.
+
+%query 1 1 typ tnil
+  (let z
+       (new z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)) (icons non (icons (fun (var (s z))) inil)))
+       (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil)))
+  (let (s z)
+       (var z)
+       (top)
+       (new z dnil inil)
+       top)
+  top)
+  top.
+
 % EOF
 
 stp/trans   : stp oktrans     G T1 T3
