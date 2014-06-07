@@ -379,6 +379,16 @@ wfe/c : wf-env (vcons V H) (tcons T G)
                 tnil (bind z (dcons (rect tnone top) (dcons (arrow (sel z z) top) dnil))).
 %query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) (sel z z)) dnil)))
                 tnil (bind z (dcons (rect tnone top) (dcons (arrow (sel z z) (sel z z)) dnil))).
+%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) dnil)) tnil (bind z dnil).
+
+%query 1 1 typ tnil (new z dnil inil) top.
+%query 1 1 typ tnil (new z (dcons (rect (tsome top) top) dnil) (icons non inil)) top.
+%query 1 1 typ tnil (new z (dcons (arrow top top) dnil) (icons (fun (var (s z))) inil)) top.
+%query 1 1 typ tnil (new z (dcons (arrow top top) dnil) (icons (fun (var (s z))) inil)) (bind z (dcons (arrow top top) dnil)).
+%query 1 1 typ tnil (new z (dcons (rect (tsome top) top) (dcons (arrow top top) dnil)) (icons non (icons (fun (var (s z))) inil))) top. 
+%query 1 1 typ tnil (new z (dcons (rect (tsome top) top) (dcons (arrow top top) dnil)) (icons non (icons (fun (var (s z))) inil))) (bind z (dcons (rect (tsome top) top) (dcons (arrow top top) dnil))).
+%query 1 1 typ tnil (new z (dcons (rect (tsome top) top) (dcons (arrow top top) dnil)) (icons non (icons (fun (var (s z))) inil))) (bind z (dcons (rect tnone top) (dcons (arrow top top) dnil))).
+%query 1 1 typ tnil (new z (dcons (rect (tsome top) top) (dcons (arrow top top) dnil)) (icons non (icons (fun (var (s z))) inil))) (bind z (dcons (rect tnone top) dnil)).
 
 % EOF
 
