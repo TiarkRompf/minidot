@@ -490,6 +490,33 @@ wfe/c : wf-env (vcons V H) (tcons T G)
   top)
   top.
 
+%query 1 1 typ tnil (new z (dcons (rect (tsome top) top) (dcons (arrow top (bind (s z) (dcons (arrow top (sel z z)) dnil))) dnil))
+                           (icons non (icons (fun (new (s z) (dcons (arrow top (sel z z)) dnil)
+                                                             (icons (fun (var (s (s z)))) inil))) inil))) top.
+
+%query 1 1 typ tnil (new z (dcons (rect (tsome top) top) (dcons (arrow top (bind (s z) (dcons (arrow top (sel z z)) dnil))) dnil))
+                           (icons non (icons (fun (new (s z) (dcons (arrow top (sel z z)) dnil)
+                                                             (icons (fun (var (s (s z)))) inil))) inil)))
+                    (bind z (dcons (rect (tsome top) top) (dcons (arrow top (bind (s z) (dcons (arrow top (sel z z)) dnil))) dnil))).
+
+%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (bind (s z) (dcons (arrow top (sel z z)) dnil))) dnil)))
+                tnil (bind z (dcons (rect  tnone      top) (dcons (arrow top (bind (s z) (dcons (arrow top (sel z z)) dnil))) dnil))).
+
+%query 1 1 typ tnil (new z (dcons (rect (tsome top) top) (dcons (arrow top (bind (s z) (dcons (arrow top (sel z z)) dnil))) dnil))
+                           (icons non (icons (fun (new (s z) (dcons (arrow top (sel z z)) dnil)
+                                                             (icons (fun (var (s (s z)))) inil))) inil)))
+                    (bind z (dcons (rect tnone top) (dcons (arrow top (bind (s z) (dcons (arrow top (sel z z)) dnil))) dnil))).
+
+%query 1 1 typ tnil
+ (let z
+      (new z (dcons (rect (tsome top) top) (dcons (arrow top (bind (s z) (dcons (arrow top (sel z z)) dnil))) dnil))
+             (icons non (icons (fun (new (s z) (dcons (arrow top (sel z z)) dnil)
+                                               (icons (fun (var (s (s z)))) inil))) inil)))
+      (bind z (dcons (rect tnone top) (dcons (arrow top (bind (s z) (dcons (arrow top (sel z z)) dnil))) dnil)))
+      (var z)
+      top)
+  top.
+
 % EOF
 
 stp/trans   : stp oktrans     G T1 T3
