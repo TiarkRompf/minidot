@@ -3206,6 +3206,7 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
 
 -/app : eval-safe A E (e/app EV3 EV2 IL EV1) V
      <- invert-app A SE A1 A2 DL2 W2 W0 BA
+     <- extract-sub-env-size SE _ EC
      <- eval-safe A2 E EV2 V2
      <- eval-safe A1 E EV1 V1
      <- invert-wfv V1 E1 SN1 AS1 V1' B1
@@ -3215,22 +3216,26 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
      <- sub-env-size-unique SE2 SE EQG2
      <- id-tenv-trans EQG1 EQG2 EQG
      <- id-tenv-sym EQG EQG'
-     <- stp2refl W2 B2
-     <- extract-sub-env-size SE _ EU2
-     <- extend-stp2-mult1 B2 EU2 B2'
-     <- eq-stp2-gu EQG' B2' B2''
-     <- wfv-widen B2'' V2 V2'
      <- extend-wfv V1' _ V1''
+     <- stp2refl W2 B2
+     <- extend-stp2-mult1 B2 EC B2'
+     <- id-tenv-sym EQG2 EQG2'
+     <- eq-stp2-gu EQG2' B2' B2''
+     <- wfv-widen B2'' V2 V2'
      <- extend-wfv V2' _ V2''
-     <- wfv-widen SA V2'' V2'''
+     <- id-tenv-sym EQG1 EQG1'
+     <- eq-env-cons EQG1' id-tp/refl EQG1P
+     <- eq-stp2-gu EQG1P SA SA'
+     <- wfv-widen SA' V2'' V2'''
      <- extend-wfv V2''' _ V2''''
      <- eval-safe A3 (wfe/c (wfe/c E1 V1'') V2'''') EV3 V3
-     <- extend-stp2 SB _ _ SB' _
-     <- wfv-widen SB' V3 V3'
+     <- eq-stp2-gl EQG1P SB SB'
+     <- extend-stp2 SB' _ _ SB'' _
+     <- wfv-widen SB'' V3 V3'
      <- stp2refl W0 B0
-     <- eq-stp2-gl EQG' B0 B0'
+     <- eq-stp2-gl EQG2' B0 B0'
      <- extend-stp2 B0' _ _ B0'' _
-     <- extend-stp2-mult2 B0'' EU2 B0'''
+     <- extend-stp2-mult2 B0'' EC B0'''
      <- wfv-widen B0''' V3' V3''
      <- wfv-widen BA V3'' V
       .
