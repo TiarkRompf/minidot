@@ -3556,7 +3556,7 @@ res-add/some : res-add N1 N2 N3 <- add N1 N2 N3.
 
 eq-res-add : res-add N1 N2 N3 -> res-add N1 N2 N3 -> type.
 eq-res-add/stuck : eq-res-add res-add/stuck res-add/stuck.
-eq-res-add/some  : eq-res-add (res-add/some _) (res-add/some _).
+eq-res-add/some  : eq-res-add (res-add/some A) (res-add/some A).
 
 res-add-inc: res-add N1 N2 N3 -> res-add (s N1) N2 (s N3) -> type.
 %mode res-add-inc +A -B.
@@ -3844,6 +3844,26 @@ wf-res-widen: stp2 G1 T1 G2 T2 -> wf-res OV G1 T1 -> wf-res OV G2 T2 -> type.
 
 %worlds () (wf-res-widen _ _ _).
 %total A (wf-res-widen _ A _).
+
+res-add-inc-some : eq-res-add A (res-add/some A') -> res-add-inc A O -> eq-res-add O (res-add/some (add/s A')) -> type.
+%mode res-add-inc-some +A +B -C.
+
+- : res-add-inc-some eq-res-add/some res-add-inc/some eq-res-add/some.
+
+%worlds () (res-add-inc-some _ _ _).
+%total (A) (res-add-inc-some A _ _).
+
+eq-minus : eq-nat N NH -> id-nat N NH -> minus NH N N' A -> {A'} eq-res-add A (res-add/some A') -> type.
+%mode eq-minus +A +B +C -D -E.
+
+- : eq-minus _ id-nat/refl minus/z add/z eq-res-add/some.
+
+- : eq-minus (eq-nat/s EQ) id-nat/refl (minus/s INC R) (add/s A) O'
+ <- eq-minus EQ id-nat/refl R A O
+ <- res-add-inc-some O INC O'.
+
+%worlds () (eq-minus _ _ _ _ _).
+%total {A B C} (eq-minus A B C _ _).
 
 minus-safe : sub-venv HN H -> vsize HN N -> vsize H NH -> minus NH N N' A -> eq-res-add A (res-add/some A') -> type.
 %mode minus-safe +A +B +C +D -E.
