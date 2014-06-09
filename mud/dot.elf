@@ -4032,5 +4032,14 @@ eval-safe-res : typ G E T -> wf-env H G -> eval-res N H E OV -> wf-res OV G T ->
      <- extract-sub-env-size SE SN _
      <- eval-new-safe-res NH NM R SV E (v/clo BA ADS SN E') V.
 
+- : eval-safe-res A E (er/app EV3 EV2 EV1) V
+     <- invert-app A SE A1 A2 DL2 W2 W0 BA
+     <- eval-safe-res A1 E EV1 OV1
+     <- eval-safe-res A2 E EV2 OV2
+     <- eval-app-safe-res OV1 DL2 OV2 EV3 OV3
+     <- wf-res-widen BA OV3 V.
+
+- : eval-safe-res A E er/timeout wf-res/timeout.
+
 %worlds () (eval-safe-res _ _ _ _) (eval-app-safe-res _ _ _ _ _).
 %total (C1 C2) (eval-safe-res _ _ C1 _) (eval-app-safe-res _ _ _ C2 _).
