@@ -785,6 +785,11 @@ contra-nat : false -> {N1} {N2} id-nat N1 N2 -> type.
 %worlds () (contra-nat _ _ _ _).
 %total (A) (contra-nat A _ _ _).
 
+contra-venv : false -> {N1} {N2} id-venv N1 N2 -> type.
+%mode contra-venv +CONTRA +Z1 +Z2 -A.
+%worlds () (contra-venv _ _ _ _).
+%total (A) (contra-venv A _ _ _).
+
 contra-sub-env : false -> {G1} {G2} sub-env G1 G2 -> type.
 %mode contra-sub-env +CONTRA +G1 +G2 -A.
 %worlds () (contra-sub-env _ _ _ _).
@@ -3897,12 +3902,94 @@ minus-safe : sub-venv HN H -> vsize HN N -> vsize H NH -> minus NH N N' A -> eq-
 %worlds () (minus-safe _ _ _ _ _).
 %total {A D} (minus-safe A _ _ D _).
 
-res-clo-safe : minus NH N N' A ->  sub-venv HN H -> vsize HN N -> eq-res-add A (res-add/some A') -> res-clo N' A H IS OV -> id-res-val (res-val/some (clo HN IS)) OV -> type.
-%mode res-clo-safe +A +B +C +D +E -F.
+res-clo-minus-venv: res-clo N' (res-add/some A') H IS OV -> minus-venv N' H H' -> type.
+%mode res-clo-minus-venv +A -B.
 
-%worlds () (res-clo-safe _ _ _ _ _ _).
-%trustme
-%total (C) (res-clo-safe _ _ _ C _ _).
+- : res-clo-minus-venv (res-clo/ok ME) ME.
+
+%worlds () (res-clo-minus-venv _ _).
+%total (A) (res-clo-minus-venv A _).
+
+minus-venv-eq : sub-venv HN H -> vsize HN N -> vsize H NH -> add N' N NH -> minus-venv N' H H' -> id-venv H' HN -> type.
+%mode minus-venv-eq +A +B +C +D +E -F.
+
+- : minus-venv-eq HN SN SH add/z minus-venv/z EQ
+ <- sub-venv-size-unique (svs SH sub-venv/refl) (svs SN HN) EQ.
+
+- : minus-venv-eq (sub-venv/ext HN) SN (vf/c SH) (add/s A) (minus-venv/s ME) EQ
+ <- minus-venv-eq HN SN SH A ME EQ.
+
+- : minus-venv-eq sub-venv/refl (vf/c SN) (vf/c SH) (add/s A) (minus-venv/s ME) EQ
+ <- vsize-unique SH SN EQN
+ <- add-commute _ _ _ A A'
+ <- eq-add A' EQN A''
+ <- add-contra A'' CONTRA
+ <- contra-venv CONTRA _ _ EQ.
+
+%worlds () (minus-venv-eq _ _ _ _ _ _).
+%total {A E} (minus-venv-eq A _ _ _ E _).
+
+eq-res-clo : eq-res-add A A' -> res-clo N' A H IS OV -> res-clo N' A' H IS OV -> type.
+%mode eq-res-clo +A +B -C.
+
+- : eq-res-clo eq-res-add/stuck B B.
+- : eq-res-clo eq-res-add/some B B.
+
+%worlds () (eq-res-clo _ _ _).
+%total (A) (eq-res-clo A _ _).
+
+eq-res-minus : eq-res-add A A' -> minus NH N N' A -> minus NH N N' A' -> type.
+
+- : eq-res-minus eq-res-add/stuck B B.
+- : eq-res-minus eq-res-add/some B B.
+
+%mode eq-res-minus +A +B -C.
+%worlds () (eq-res-minus _ _ _).
+%total (A) (eq-res-minus A _ _).
+
+eq-res-val-some-clo : {IS} id-venv H H' -> id-res-val (res-val/some (clo H IS)) (res-val/some (clo H' IS)) -> type.
+%mode eq-res-val-some-clo +A +B -C.
+
+- : eq-res-val-some-clo IS id-venv/refl id-res-val/refl.
+
+%worlds () (eq-res-val-some-clo _ _ _).
+%total (B) (eq-res-val-some-clo _ B _).
+
+res-clo-safe0 : add N N' NH -> res-clo N' (res-add/some A') H IS OV -> sub-venv HN H -> vsize HN N -> vsize H NH -> id-res-val (res-val/some (clo HN IS)) OV -> type.
+%mode res-clo-safe0 +A +B +C +D +E -F.
+
+- : res-clo-safe0 A (res-clo/ok ME) HN SN SH EQ
+ <- add-commute _ _ _ A A'
+ <- minus-venv-eq HN SN SH A' ME EQH
+ <- id-venv-sym EQH EQH'
+ <- eq-res-val-some-clo _ EQH' EQ.
+
+%worlds () (res-clo-safe0 _ _ _ _ _ _).
+%total { } (res-clo-safe0 _ _ _ _ _ _).
+
+extract-add-from-minus : minus NH N N' (res-add/some A') -> add N N' NH -> type.
+%mode extract-add-from-minus +A -B.
+
+- : extract-add-from-minus minus/z add/z.
+- : extract-add-from-minus (minus/s _ M) O''
+ <- extract-add-from-minus M O
+ <- add-inc O O'
+ <- add-swap O' O''.
+
+%worlds () (extract-add-from-minus _ _).
+%total (A) (extract-add-from-minus A _).
+
+res-clo-safe : minus NH N N' A ->  sub-venv HN H -> vsize HN N -> vsize H NH -> eq-res-add A (res-add/some A') -> res-clo N' A H IS OV -> id-res-val (res-val/some (clo HN IS)) OV -> type.
+%mode res-clo-safe +A +B +C +D +E +F -G.
+
+- : res-clo-safe M HN SN SH EQR R OUT
+ <- eq-res-minus EQR M M'
+ <- eq-res-clo EQR R R'
+ <- extract-add-from-minus M' A
+ <- res-clo-safe0 A R' HN SN SH OUT.
+
+%worlds () (res-clo-safe _ _ _ _ _ _ _).
+%total { } (res-clo-safe _ _ _ _ _ _ _).
 
 eq-wf-res : id-res-val V V' -> wf-res V G T -> wf-res V' G T -> type.
 %mode eq-wf-res +A +B -C.
@@ -3920,7 +4007,7 @@ eval-new-safe-res :
 
 - : eval-new-safe-res SH M R (svs SN HN) E V W
  <- minus-safe HN SN SH M EQA
- <- res-clo-safe M HN SN EQA R EQV
+ <- res-clo-safe M HN SN SH EQA R EQV
  <- eq-wf-res EQV (wf-res/some V) W.
 
 %worlds () (eval-new-safe-res _ _ _ _ _ _ _).
