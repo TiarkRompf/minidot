@@ -3843,6 +3843,16 @@ wf-res-widen: stp2 G1 T1 G2 T2 -> wf-res OV G1 T1 -> wf-res OV G2 T2 -> type.
 %worlds () (wf-res-widen _ _ _).
 %total A (wf-res-widen _ A _).
 
+eval-new-safe-res :
+  vsize H NH -> minus NH N N' A -> res-clo N' A H IS OV ->
+  sub-venv-size HN N H -> wf-env H G -> wf-val (clo HN IS) G T ->
+  wf-res OV G T -> type.
+%mode eval-new-safe-res +A +B +C +D +E +F -G.
+%worlds () (eval-new-safe-res _ _ _ _ _ _ _).
+%trustme
+%total {} (eval-new-safe-res _ _ _ _ _ _ _).
+
+
 eval-app-safe-res : wf-res OVF G0 (bind N DS) -> dlk DS X (arrow T1 T2) -> wf-res OVX G0 T1 -> eval-app-res N X OVF OVX OVA -> wf-res OVA G0 T2 -> type.
 %mode eval-app-safe-res +A +A' +B +C -D.
 
@@ -3855,10 +3865,11 @@ eval-safe-res : typ G E T -> wf-env H G -> eval-res N H E OV -> wf-res OV G T ->
      <- to-case-some VG VW V
      <- wf-res-widen ST V V2.
 
-- : eval-safe-res A E (er/new R NM NH) (wf-res/some (v/clo BA ADS SN E'))
+- : eval-safe-res A E (er/new R NM NH) V
      <- invert-new A SE ADS BA
      <- wf-sub-env-size0 E SE SV E'
-     <- extract-sub-env-size SE SN _.
+     <- extract-sub-env-size SE SN _
+     <- eval-new-safe-res NH NM R SV E (v/clo BA ADS SN E') V.
 
 %worlds () (eval-safe-res _ _ _ _) (eval-app-safe-res _ _ _ _ _).
 %total (C1 C2) (eval-safe-res _ _ C1 _) (eval-app-safe-res _ _ _ C2 _).
