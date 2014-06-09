@@ -3492,22 +3492,17 @@ stp2-inv-fun0:
   dlk DS2 X (arrow TA2 TB2) ->
 %%
   dlk DS1 X (arrow TA1 TB1) ->
-  id-nat N1 N2 ->
-  sub-env-size GN N1 G1 ->
-  sub-env-size GN N2 G2 ->
-  stp2 (tcons (bind N1 DS1) GN) TA2 (tcons (bind N1 DS1) GN) TA1 ->
-  stp2 (tcons (bind N1 DS1) GN) TB1 (tcons (bind N1 DS1) GN) TB2 ->
   type.
-%mode stp2-inv-fun0 +A +B -C -D -E -F -G -H.
+%mode stp2-inv-fun0 +A +B -C.
 
-- : stp2-inv-fun0 B DL2 DL1 EQN SE1 SE2 SA' SB'
+- : stp2-inv-fun0 B DL2 DL1
  <- extract-stp2-bind B EQN SE1 SE2 DS12 DS11 DS22
  <- inv-sdcs-arrow0 DS12 DL2 DL1 SA SB
  <- stp-to-stp2 SA SA'
  <- stp-to-stp2 SB SB'.
 
-%worlds () (stp2-inv-fun0 _ _ _ _ _ _ _ _).
-%total { } (stp2-inv-fun0 _ _ _ _ _ _ _ _).
+%worlds () (stp2-inv-fun0 _ _ _).
+%total { } (stp2-inv-fun0 _ _ _).
 
 %{ ------- lookup preservation --- }%
 
@@ -4076,7 +4071,7 @@ eval-new-safe-res :
 %worlds () (eval-new-safe-res _ _ _ _ _ _ _).
 %total { } (eval-new-safe-res _ _ _ _ _ _ _).
 
-eval-call-ok : id-ic E0 (fun E) -> eval-res-call N H E0 OV -> eval-res N G E OV -> type.
+eval-call-ok : id-ic E0 (fun E) -> eval-res-call N H E0 OV -> eval-res N H E OV -> type.
 %mode eval-call-ok +A +B -C.
 
 - : eval-call-ok id-ic/refl (ec/ok R) R.
@@ -4091,30 +4086,30 @@ eval-app-safe-res : sub-env-size GN N G -> wf-tp GN T2 -> wf-tp GN T0 -> stp2 G 
 eval-safe-res : typ G E T -> wf-env H G -> eval-res N H E OV -> wf-res OV G T -> type.
 %mode eval-safe-res +A +B +C -D.
 
-- : eval-safe-res ZT E (er/var L2) V2
+-/var : eval-safe-res ZT E (er/var L2) V2
      <- invert-var ZT L ST
      <- lookup-safe-res E L L2 VG VW
      <- to-case-some VG VW V
      <- wf-res-widen ST V V2.
 
-- : eval-safe-res A E (er/new R NM NH) V
+-/new : eval-safe-res A E (er/new R NM NH) V
      <- invert-new A SE ADS BA
      <- wf-sub-env-size0 E SE SV E'
      <- extract-sub-env-size SE SN _
      <- eval-new-safe-res NH NM R SV E (v/clo BA ADS SN E') V.
 
-- : eval-safe-res A E (er/app EV3 EV2 EV1) OV3
+-/app : eval-safe-res A E (er/app EV3 EV2 EV1) OV3
      <- invert-app A SE A1 A2 DL2 W2 W0 BA
      <- eval-safe-res A1 E EV1 OV1
      <- eval-safe-res A2 E EV2 OV2
      <- eval-app-safe-res SE W2 W0 BA OV1 DL2 OV2 EV3 OV3.
 
-- : eval-safe-res A E er/timeout wf-res/timeout.
+-/ert : eval-safe-res A E er/timeout wf-res/timeout.
 
-- : eval-app-safe-res SE W2 W0 BA (wf-res/some V1) DL2 (wf-res/some V2) (ea/ok C ILO) V
+-/aok : eval-app-safe-res SE W2 W0 BA (wf-res/some V1) DL2 (wf-res/some V2) (ea/ok C ILO) V
      <- extract-sub-env-size SE _ EC
      <- invert-wfv V1 E1 SN1 AS1 V1' B1
-     <- stp2-inv-fun0 B1 DL2 DL1X EQNX SE1X SE2X SAX SBX
+     <- stp2-inv-fun0 B1 DL2 DL1X
      <- invert-fun0 AS1 ILO DL1X IL EQI
      <- invert-fun AS1 IL DL1 A3
      <- stp2-inv-fun B1 DL1 DL2 EQN SE1 SE2 SA SB
@@ -4147,9 +4142,9 @@ eval-safe-res : typ G E T -> wf-env H G -> eval-res N H E OV -> wf-res OV G T ->
      <- wf-res-widen BA V3'' V
       .
 
-- : eval-app-safe-res _ _ _ _ _ _ _ ea/timeout wf-res/timeout.
-- : eval-app-safe-res _ _ _ _ _ _ _ ea/timeout1 wf-res/timeout.
-- : eval-app-safe-res _ _ _ _ _ _ _ ea/timeout2 wf-res/timeout.
+-/at  : eval-app-safe-res _ _ _ _ _ _ _ ea/timeout wf-res/timeout.
+-/at1 : eval-app-safe-res _ _ _ _ _ _ _ ea/timeout1 wf-res/timeout.
+-/at2 : eval-app-safe-res _ _ _ _ _ _ _ ea/timeout2 wf-res/timeout.
 
 %worlds () (eval-safe-res _ _ _ _) (eval-app-safe-res _ _ _ _ _ _ _ _ _).
 %total (C1 C2) (eval-safe-res _ _ C1 _) (eval-app-safe-res _ _ _ _ _ _ _ C2 _).
