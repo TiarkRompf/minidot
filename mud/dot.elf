@@ -3695,8 +3695,8 @@ wf-res-widen: stp2 G1 T1 G2 T2 -> wf-res OV G1 T1 -> wf-res OV G2 T2 -> type.
 %worlds () (wf-res-widen _ _ _).
 %total A (wf-res-widen _ A _).
 
-% eval-app-safe-res : wf-res OVF G0 (arrow X T1 T2) -> wf-res OVX G0 T1 -> eval-app-res N X OVF OVX OVA -> wf-res OVA G0 T2 -> type.
-% %mode eval-app-safe-res +A +B +C -D.
+eval-app-safe-res : wf-res OVF G0 (bind N DS) -> dlk DS X (arrow T1 T2) -> wf-res OVX G0 T1 -> eval-app-res N X OVF OVX OVA -> wf-res OVA G0 T2 -> type.
+%mode eval-app-safe-res +A +A' +B +C -D.
 
 eval-safe-res : typ G E T -> wf-env H G -> eval-res N H E OV -> wf-res OV G T -> type.
 %mode eval-safe-res +A +B +C -D.
@@ -3707,7 +3707,10 @@ eval-safe-res : typ G E T -> wf-env H G -> eval-res N H E OV -> wf-res OV G T ->
      <- to-case-some VG VW V
      <- wf-res-widen ST V V2.
 
-% %worlds () (eval-safe-res _ _ _ _) (eval-app-safe-res _ _ _ _).
-% %total (C1 C2) (eval-safe-res _ _ C1 _) (eval-app-safe-res _ _ C2 _).
-%worlds () (eval-safe-res _ _ _ _).
-%total (C1) (eval-safe-res _ _ C1 _).
+- : eval-safe-res A E (er/new R NM NH) (v/clo BA ADS SN E')
+     <- invert-new A SE ADS BA
+     <- wf-sub-env-size E SV SE E'
+     <- extract-sub-env-size SE SN _.
+
+%worlds () (eval-safe-res _ _ _ _) (eval-app-safe-res _ _ _ _ _).
+%total (C1 C2) (eval-safe-res _ _ C1 _) (eval-app-safe-res _ _ _ C2 _).
