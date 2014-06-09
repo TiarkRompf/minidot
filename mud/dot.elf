@@ -4147,5 +4147,9 @@ eval-safe-res : typ G E T -> wf-env H G -> eval-res N H E OV -> wf-res OV G T ->
      <- wf-res-widen BA V3'' V
       .
 
+- : eval-app-safe-res _ _ _ _ _ _ _ ea/timeout wf-res/timeout.
+- : eval-app-safe-res _ _ _ _ _ _ _ ea/timeout1 wf-res/timeout.
+- : eval-app-safe-res _ _ _ _ _ _ _ ea/timeout2 wf-res/timeout.
+
 %worlds () (eval-safe-res _ _ _ _) (eval-app-safe-res _ _ _ _ _ _ _ _ _).
 %total (C1 C2) (eval-safe-res _ _ C1 _) (eval-app-safe-res _ _ _ _ _ _ _ C2 _).
