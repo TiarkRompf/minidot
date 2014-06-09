@@ -1420,6 +1420,16 @@ vsize-unique-eq: vsize G2 N1 -> vsize G2 N2 -> eq-nat N1 N2 -> type.
 %worlds () (vsize-unique-eq _ _ _).
 %total {T2} (vsize-unique-eq T2 _ _).
 
+vsize-unique: vsize G2 N1 -> vsize G2 N2 -> id-nat N1 N2 -> type.
+%mode vsize-unique +P1 +P2 -SBT.
+
+- : vsize-unique A B ID
+ <- vsize-unique-eq A B EQ
+ <- eq2id-nat EQ ID.
+
+%worlds () (vsize-unique _ _ _).
+%total {T2} (vsize-unique T2 _ _).
+
 sub-venv-size-lte: sub-venv GN G -> vsize GN NN -> vsize G N -> lte NN N -> type.
 %mode sub-venv-size-lte +A +B +C -D.
 - : sub-venv-size-lte sub-venv/refl A B LT
@@ -3865,15 +3875,27 @@ eq-minus : eq-nat N NH -> id-nat N NH -> minus NH N N' A -> {A'} eq-res-add A (r
 %worlds () (eq-minus _ _ _ _ _).
 %total {A B C} (eq-minus A B C _ _).
 
+lte-minus : lte N NH -> minus NH N N' A -> {A'} eq-res-add A (res-add/some A') -> type.
+%mode lte-minus +A +B -C -D.
+
+- : lte-minus lte/z minus/z add/z eq-res-add/some.
+
+- : lte-minus (lte/s L) (minus/s INC M) (add/s A) O'
+ <- lte-minus L M A O
+ <- res-add-inc-some O INC O'.
+
+%worlds () (lte-minus _ _ _ _).
+%total (A) (lte-minus A _ _ _).
+
 minus-safe : sub-venv HN H -> vsize HN N -> vsize H NH -> minus NH N N' A -> eq-res-add A (res-add/some A') -> type.
 %mode minus-safe +A +B +C +D -E.
 
-% - : minus-safe sub-venv/refl SN SH M EQ
-% <- vsize-unique-eq SN SH EQN.
+- : minus-safe HN SN SH M O
+ <- sub-venv-size-lte HN SN SH LTE
+ <- lte-minus LTE M _ O.
 
 %worlds () (minus-safe _ _ _ _ _).
-%trustme
-%total (A) (minus-safe A _ _ _ _).
+%total {A D} (minus-safe A _ _ D _).
 
 res-clo-safe : minus NH N N' A ->  sub-venv HN H -> vsize HN N -> eq-res-add A (res-add/some A') -> res-clo N' A H IS OV -> id-res-val (res-val/some (clo HN IS)) OV -> type.
 %mode res-clo-safe +A +B +C +D +E -F.
