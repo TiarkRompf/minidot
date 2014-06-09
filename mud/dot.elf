@@ -3855,9 +3855,9 @@ eval-safe-res : typ G E T -> wf-env H G -> eval-res N H E OV -> wf-res OV G T ->
      <- to-case-some VG VW V
      <- wf-res-widen ST V V2.
 
-- : eval-safe-res A E (er/new R NM NH) (v/clo BA ADS SN E')
+- : eval-safe-res A E (er/new R NM NH) (wf-res/some (v/clo BA ADS SN E'))
      <- invert-new A SE ADS BA
-     <- wf-sub-env-size E SV SE E'
+     <- wf-sub-env-size0 E SE SV E'
      <- extract-sub-env-size SE SN _.
 
 %worlds () (eval-safe-res _ _ _ _) (eval-app-safe-res _ _ _ _ _).
