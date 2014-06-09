@@ -3539,6 +3539,8 @@ res-val/stuck : res-val.
 res-val/timeout : res-val.
 res-val/some : val -> res-val.
 
+id-res-val : res-val -> res-val -> type.
+id-res-val/refl : id-res-val V V.
 
 vlookup-zero-res : venv -> nat -> res-val -> type.
 %mode vlookup-zero-res +A +B -C.
@@ -3843,14 +3845,44 @@ wf-res-widen: stp2 G1 T1 G2 T2 -> wf-res OV G1 T1 -> wf-res OV G2 T2 -> type.
 %worlds () (wf-res-widen _ _ _).
 %total A (wf-res-widen _ A _).
 
+minus-safe : sub-venv HN H -> vsize HN N -> vsize H NH -> minus NH N N' A -> eq-res-add A (res-add/some A') -> type.
+%mode minus-safe +A +B +C +D -E.
+
+% - : minus-safe sub-venv/refl SN SH M EQ
+% <- vsize-unique-eq SN SH EQN.
+
+%worlds () (minus-safe _ _ _ _ _).
+%trustme
+%total (A) (minus-safe A _ _ _ _).
+
+res-clo-safe : minus NH N N' A ->  sub-venv HN H -> vsize HN N -> eq-res-add A (res-add/some A') -> res-clo N' A H IS OV -> id-res-val (res-val/some (clo HN IS)) OV -> type.
+%mode res-clo-safe +A +B +C +D +E -F.
+
+%worlds () (res-clo-safe _ _ _ _ _ _).
+%trustme
+%total (C) (res-clo-safe _ _ _ C _ _).
+
+eq-wf-res : id-res-val V V' -> wf-res V G T -> wf-res V' G T -> type.
+%mode eq-wf-res +A +B -C.
+
+- : eq-wf-res id-res-val/refl B B.
+
+%worlds () (eq-wf-res _ _ _).
+%total (A) (eq-wf-res A _ _).
+
 eval-new-safe-res :
   vsize H NH -> minus NH N N' A -> res-clo N' A H IS OV ->
   sub-venv-size HN N H -> wf-env H G -> wf-val (clo HN IS) G T ->
   wf-res OV G T -> type.
 %mode eval-new-safe-res +A +B +C +D +E +F -G.
+
+- : eval-new-safe-res SH M R (svs SN HN) E V W
+ <- minus-safe HN SN SH M EQA
+ <- res-clo-safe M HN SN EQA R EQV
+ <- eq-wf-res EQV (wf-res/some V) W.
+
 %worlds () (eval-new-safe-res _ _ _ _ _ _ _).
-%trustme
-%total {} (eval-new-safe-res _ _ _ _ _ _ _).
+%total { } (eval-new-safe-res _ _ _ _ _ _ _).
 
 
 eval-app-safe-res : wf-res OVF G0 (bind N DS) -> dlk DS X (arrow T1 T2) -> wf-res OVX G0 T1 -> eval-app-res N X OVF OVX OVA -> wf-res OVA G0 T2 -> type.
