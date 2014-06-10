@@ -1,6 +1,20 @@
 {% extends "base_livecode.html" %}
 {% block title %}Twelf{% endblock %}
 
+{% block body_top_extra %}
+{{ super() }}
+<style type="text/css">
+.CodeMirror {
+  border: 1px solid #eee;
+  height: 10em;
+}
+.CodeMirror-scroll {
+  overflow-y: auto;
+  overflow-x: auto;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="live" id="f1">
 </div>
