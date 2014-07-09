@@ -172,7 +172,39 @@ e/app: eval G (app E1 X E2) V3
 
 inst-tp: nat -> nat -> nat -> nat -> tp -> tp -> type.
 intst/all: inst-tp I D O N T T'.
-% TODO
+
+%{
+  --> TODO <--
+
+  For now we treat name instantiation axiomatically.
+
+  inst-tp I D O N T T' means:
+
+    Instantiate T to T', moving boundary between free
+    and bound identifiers from input level I to I+D=O 
+    with total environment size N.
+
+  Requirements:
+
+    inst-tp-unique: 
+        inst-tp I D O N T1 T2 -> 
+        inst-tp I D' O N T1 T2' -> 
+        id-tp T2 T2' -> 
+        type.
+    %mode inst-tp-unique +A +B -EQ.
+
+    extend-inst-ssstp: 
+        inst-tp I D N N T1X T1 -> 
+        inst-tp I D N N T2X T2 -> 
+        ssstp I1 (tcons T G) N1 T1 T2 -> 
+        {Z} 
+        inst-tp (s I) D (s N) (s N) T1X T1 -> 
+        inst-tp (s I) D (s N) (s N) T2X T2 -> 
+        ssstp I1 (tcons T (tcons Z G)) (s N1) T1 T2 -> 
+        type.
+    %mode extend-inst-ssstp +A +B +C +D -E -F -G.
+
+}%
 
 
 dlk : dcs -> nat -> dc -> type.
@@ -1983,6 +2015,17 @@ xp-stp-reg :
 - : xp-stp-reg (stp/trans0 (stp/bind S12 S11 S22 INST1 INST2 SZ)) (xp/bind X1 INST1N) W (xp/bind X2 INST2N) S2.
 }%
 
+{G1:tenv} {T1:tp} {T2:tp} {N1:nat} {DS1:dcs} {DS2:dcs} {N2:nat} {T3:tp} {T4:tp}
+   {X1:ssstp oktrans (tcons (bind T1) G1) N2 T3 T4}
+   {X2:ssstp oktrans (tcons (bind T1) G1) N2 T3 T3}
+   {X3:ssstp oktrans (tcons (bind T2) G1) N2 T4 T4} {X4:tsize G1 N2} {T5:tp}
+   {X5:xp G1 T5 N1 DS1} {X6:sdcs oktrans G1 DS1 DS1} {X7:xp G1 (bind T2) N1 DS2}
+   {X8:sdcs oktrans G1 DS1 DS2}
+   |- xp-stp-reg (stp/trans0 (stp/bind X1 X2 X3 intst/all intst/all X4))
+         (xp/bind X5 intst/all) X6 X7 X8.
+
+
+
 - : xp-stp-reg (stp/trans S12 S23) XP1 W1 XP3 SD13
       <- xp-stp-reg S12 XP1 W1 XP2 SD12
       <- sdcs-reg-rec SD12 _ W2
@@ -1991,7 +2034,6 @@ xp-stp-reg :
 
 
 %worlds () (xp-stp-reg _ _ _ _ _).
-%trustme
 %total {A B} (xp-stp-reg A B _ _ _).
 
 
