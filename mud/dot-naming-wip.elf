@@ -756,6 +756,33 @@ eq-stp-u : id-tp U U' -> stp I G L U -> stp I G L U' -> type.
 %total (A) (eq-stp-u A _ _).
 %reduces C <= B (eq-stp-u _ B C).
 
+eq-sdcs-g : id-tenv G G' -> sdcs I G A B -> sdcs I G' A B -> type.
+%mode eq-sdcs-g +EQ +A -B.
+
+- : eq-sdcs-g id-tenv/refl B B.
+
+%worlds () (eq-sdcs-g _ _ _).
+%total (A) (eq-sdcs-g A _ _).
+%reduces C <= B (eq-sdcs-g _ B C).
+
+eq-sdcs-l : id-dcs A A' -> sdcs I G A B -> sdcs I G A' B -> type.
+%mode eq-sdcs-l +EQ +A -B.
+
+- : eq-sdcs-l id-dcs/refl B B.
+
+%worlds () (eq-sdcs-l _ _ _).
+%total (A) (eq-sdcs-l A _ _).
+%reduces C <= B (eq-sdcs-l _ B C).
+
+eq-ssstp-g : id-tenv G G' -> ssstp I G N A B -> ssstp I G' N A B -> type.
+%mode eq-ssstp-g +EQ +A -B.
+
+- : eq-ssstp-g id-tenv/refl B B.
+
+%worlds () (eq-ssstp-g _ _ _).
+%total (A) (eq-ssstp-g A _ _).
+%reduces C <= B (eq-ssstp-g _ B C).
+
 eq-ssstp-l : id-tp L L' -> ssstp I G N L U -> ssstp I G N L' U -> type.
 %mode eq-ssstp-l +EQ +B -C.
 
@@ -830,23 +857,7 @@ eq-stp2-gl : id-tenv G1 G1' -> stp2 G1 L G2 U -> stp2 G1' L G2 U -> type.
 %total (A) (eq-stp2-gl A _ _).
 %reduces C <= B (eq-stp2-gl _ B C).
 
-eq-sdcs-g : id-tenv G G' -> sdcs I G A B -> sdcs I G' A B -> type.
-%mode eq-sdcs-g +EQ +A -B.
 
-- : eq-sdcs-g id-tenv/refl B B.
-
-%worlds () (eq-sdcs-g _ _ _).
-%total (A) (eq-sdcs-g A _ _).
-%reduces C <= B (eq-sdcs-g _ B C).
-
-eq-ssstp-g : id-tenv G G' -> ssstp I G N A B -> ssstp I G' N A B -> type.
-%mode eq-ssstp-g +EQ +A -B.
-
-- : eq-ssstp-g id-tenv/refl B B.
-
-%worlds () (eq-ssstp-g _ _ _).
-%total (A) (eq-ssstp-g A _ _).
-%reduces C <= B (eq-ssstp-g _ B C).
 
 
 eq-sev-l : id-tenv G1 G1' -> sev oktrans G1 G1 G2 -> sev oktrans G1' G1' G2 -> type.
@@ -1815,8 +1826,17 @@ ttransssstp* :
 
 %mode ttransssstp* +X1 +X2 -X3.
 
+- : ttransssstp* 
+      (ssstp/xp SD12 X2 X1 ST12) 
+      (ssstp/xp SD23 X3 X2' ST23) 
+      (ssstp/xp SD13 X3 X1 ST13)
+  <- xp-unique X2' X2 ID
+  <- eq-sdcs-l ID SD23 SD23'
+  <- ttransdcs* SD12 SD23' SD13
+  <- ttrans* ST12 ST23 ST13
+  .
+
 %worlds () (ttransssstp* _ _ _).
-%trustme
 %total (Q1') (ttransssstp* Q1' _ _).
 
 
