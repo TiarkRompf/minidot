@@ -65,6 +65,7 @@ vcons: val -> venv -> venv.
 new: nat -> dcs -> ics -> tm.
 app: tm -> nat -> tm -> tm.
 var: nat -> tm.
+appvar: nat -> nat -> tm -> tm.
 
 %abbrev
 let: nat -> tm -> tp -> tm -> tp -> tm
@@ -156,6 +157,9 @@ e/app: eval G (app E1 X E2) V3
     <- ilk IS X (fun E3)
     <- eval G E2 V2
     <- eval (vcons V2 (vcons (clo G1 IS) G1)) E3 V3
+     .
+e/appvar: eval G (appvar N1 X E2) V3
+    <- eval G (app (var N1) X E2) V3
      .
 
 % --------------- typing ------------- %
@@ -314,6 +318,17 @@ t/new : typ G (new N DCS ICS) (bind N DCS)
      <- sub-env-size GN N G
      <- typcs (tcons (bind N DCS) GN) ICS DCS
      <- wf-tp GN (bind N DCS)
+      .
+t/appvar : typ G (appvar N X E2) T
+     <- typ G (var N) (bind N DS)
+     <- dlk DS X (arrow T2 T)
+     <- typ G E2 T2
+     <- sub-env-size GN N G
+     <- wf-tp (tcons (bind N DS) GN) T2
+     <- wf-tp (tcons (bind N DS) GN) T
+     <- sub-env-size GN1 (s N) G
+     <- wf-tp GN1 T2
+     <- wf-tp GN1 T
       .
 t/app : typ G (app E1 X E2) T
      <- typ G E1 (bind N DS)
@@ -517,6 +532,10 @@ wfe/c : wf-env (vcons V H) (tcons T G)
       top)
   top.
 
+% query 1 1 typ (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil) (appvar z (s z) (var z)) (sel z z).
+
+% query 1 1 typ (tcons (bind z (dcons (rect top top) (dcons (arrow (sel z z) (sel z z)) dnil))) tnil) (appvar z (s z) (var z)) (sel z z).
+
 %solve ex-a-fun : typ
   (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
   (var z)
@@ -539,6 +558,32 @@ wfe/c : wf-env (vcons V H) (tcons T G)
   z
   (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil).
 %solve ex-wf-top : wf-tp tnil top.
+
+% counterexample to eval-safe
+
+%solve cex-b-typ : typ
+  (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
+  (appvar z (s z) (var z))
+  (sel z z).
+
+%solve wf-env-nil : wf-env vnil tnil.
+%solve tsize-nil : tsize tnil z.
+
+%solve cex-b-clo-typcs : typcs
+  (tcons (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil))) tnil)
+  (icons non (icons (fun (var (s z))) inil))
+  (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)).
+
+%solve cex-b-clo-stp2 : stp2
+  tnil
+  (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
+  tnil
+  (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))).
+
+%solve cex-b-eval : eval
+  (vcons (clo vnil (icons non (icons (fun (var (s z))) inil))) vnil)
+  (appvar z (s z) (var z))
+  (clo vnil (icons non (icons (fun (var (s z))) inil))).
 
 % EOF
 
@@ -920,6 +965,15 @@ eq-sub-env-size-l : id-tenv G1 G1' -> sub-env-size G1 N G2 -> sub-env-size G1' N
 %total (A) (eq-sub-env-size-l A _ _).
 %reduces C <= B (eq-sub-env-size-l _ B C).
 
+eq-sub-env-size-r : id-tenv G2 G2' -> sub-env-size G1 N G2 -> sub-env-size G1 N G2' -> type.
+%mode eq-sub-env-size-r +EQ +A -B.
+
+- : eq-sub-env-size-r id-tenv/refl B B.
+
+%worlds () (eq-sub-env-size-r _ _ _).
+%total (A) (eq-sub-env-size-r A _ _).
+%reduces C <= B (eq-sub-env-size-r _ B C).
+
 eq-wf-env-v : id-venv H H' -> wf-env H G -> wf-env H' G -> type.
 %mode eq-wf-env-v +A +B -C.
 
@@ -1241,6 +1295,15 @@ eq-tlookup: id-nat N N' -> tlookup G N T -> tlookup G N' T -> type.
 %worlds () (eq-tlookup _ _ _).
 %total (A) (eq-tlookup A _ _).
 %reduces C <= B (eq-tlookup _ B  C).
+
+eq-tlookup-env: id-tenv G G' -> tlookup G N T -> tlookup G' N T -> type.
+%mode eq-tlookup-env +A +B -C.
+
+- : eq-tlookup-env id-tenv/refl L L.
+
+%worlds () (eq-tlookup-env _ _ _).
+%total (A) (eq-tlookup-env A _ _).
+%reduces C <= B (eq-tlookup-env _ B  C).
 
 eq-env: id-tenv G2 G2' -> sdcs IO G2 T1 T2 -> sdcs IO G2' T1 T2 -> type.
 %mode eq-env +P1 +P2 -SBT.
@@ -3362,6 +3425,34 @@ invert-app:
 %worlds () (invert-app _ _ _ _ _ _ _ _).
 %total (A) (invert-app A _ _ _ _ _ _ _).
 
+invert-appvar:
+  typ G (appvar N X E2) T ->
+%%
+  sub-env-size GN N G ->
+  sub-env-size GN1 (s N) G ->
+  typ G E1 (bind N DS) ->
+  typ G E2 T2 ->
+  dlk DS X (arrow T2 T0) ->
+  wf-tp (tcons (bind N DS) GN) T2 ->
+  wf-tp (tcons (bind N DS) GN) T0 ->
+  wf-tp GN1 T2 ->
+  wf-tp GN1 T0 ->
+  stp2 G T0 G T ->
+  type.
+%mode invert-appvar +A -B -C -D -E -F -G -H -I -J -K.
+
+-/appvar : invert-appvar (t/appvar WT1P WT2P SESP WT1 WT2 SES TP2 DL TP1) SES SESP TP1 TP2 DL WT2 WT1 WT2P WT1P B
+     <- extract-sub-env-size SESP _ SE
+     <- extend-wf-tp-mult WT1P SE W
+     <- stp2refl W B.
+
+-/sub : invert-appvar (t/sub B A) SES SESP TP1 TP2 DL WT2 WT1 WT2P WT1P B'
+     <- invert-appvar A SES SESP TP1 TP2 DL WT2 WT1 WT2P WT1P B0
+     <- trans2 B0 B B'.
+
+%worlds () (invert-appvar _ _ _ _ _ _ _ _ _ _ _).
+%total (A) (invert-appvar A _ _ _ _ _ _ _ _ _ _).
+
 %{ ------- inversion of declaration typing ----- }%
 
 invert-fun:
@@ -3493,6 +3584,24 @@ stp2-inv-fun:
 %worlds () (stp2-inv-fun _ _ _ _ _ _ _ _).
 %total { } (stp2-inv-fun _ _ _ _ _ _ _ _).
 
+stp2-inv-fun-bind:
+  stp2 G1 (bind N DS1) G2 (bind N DS2) ->
+  dlk DS1 X (arrow TA1 TB1) ->
+  dlk DS2 X (arrow TA2 TB2) ->
+%%
+  sub-env-size GN N G1 ->
+  sub-env-size GN N G2 ->
+  stp2 (tcons (bind N DS1) GN) TA2 (tcons (bind N DS1) GN) TA1 ->
+  stp2 (tcons (bind N DS1) GN) TB1 (tcons (bind N DS1) GN) TB2 ->
+  type.
+%mode stp2-inv-fun-bind +A +B +C -D -E -F -G.
+
+- : stp2-inv-fun-bind B DL1 DL2 SE1 SE2 SA' SB'
+ <- stp2-inv-fun B DL1 DL2 EQN SE1 SE2 SA' SB'.
+
+%worlds () (stp2-inv-fun-bind _ _ _ _ _ _ _).
+%total { } (stp2-inv-fun-bind _ _ _ _ _ _ _).
+
 inv-sdcs-arrow0:
   sdcs oktrans G DS1 DS2 ->
   dlk DS2 X (arrow TA2 TB2) ->
@@ -3527,6 +3636,55 @@ stp2-inv-fun0:
 %worlds () (stp2-inv-fun0 _ _ _).
 %total { } (stp2-inv-fun0 _ _ _).
 
+%{ ------- inversion of value typing: closure/bind case ----- }%
+
+eq-typcs : typcs (tcons (bind N DS0) GC) IS DS0 -> id-nat N N' -> typcs (tcons (bind N' DS0) GC) IS DS0 -> type.
+%mode eq-typcs +A +EQ -B.
+
+- : eq-typcs A id-nat/refl A.
+
+%worlds ()  (eq-typcs _ _ _).
+%total (EQ) (eq-typcs _ EQ _).
+
+eq-wf-val-bind : wf-val (clo H IS) GC (bind N DS0) -> id-nat N N' -> wf-val (clo H IS) GC (bind N' DS0) -> type.
+%mode eq-wf-val-bind +A +EQ -B.
+
+- : eq-wf-val-bind A id-nat/refl A.
+
+%worlds ()  (eq-wf-val-bind _ _ _).
+%total (EQ) (eq-wf-val-bind _ EQ _).
+
+eq-stp2-bind :  stp2 GC (bind N DS0) G (bind N' DS) -> id-nat N N' -> stp2 GC (bind N' DS0) G (bind N' DS) -> type.
+%mode eq-stp2-bind +A +EQ -B.
+
+- : eq-stp2-bind A id-nat/refl A.
+
+%worlds ()  (eq-stp2-bind _ _ _).
+%total (EQ) (eq-stp2-bind _ EQ _).
+
+invert-wfv-bind:
+  wf-val (clo H IS) G (bind N DS) ->
+%%
+  wf-env H GC ->
+  tsize GC N ->
+  typcs (tcons (bind N DS0) GC) IS DS0 ->
+  wf-val (clo H IS) GC (bind N DS0) ->
+  stp2 GC (bind N DS0) G (bind N DS) ->
+  type.
+%mode invert-wfv-bind +A -B -C -D -E -F.
+
+- : invert-wfv-bind A B C' D' E' F'
+ <- invert-wfv A B C D E F
+ <- stp2-bind-eq F IDN
+ <- eq-tsize C IDN C'
+ <- eq-typcs D IDN D'
+ <- eq-wf-val-bind E IDN E'
+ <- eq-stp2-bind F IDN F'
+  .
+
+%worlds () (invert-wfv-bind _ _ _ _ _ _).
+%total {} (invert-wfv-bind _ _ _ _ _ _).
+
 %{ ------- lookup preservation --- }%
 
 lookup-zero-safe: wf-env H G -> tlookup-zero G N2 T -> vlookup-zero H N1 V -> eq-nat N1 N2 -> wf-val V G T -> type.
@@ -3554,6 +3712,7 @@ lookup-safe: wf-env H G -> tlookup G N T -> vlookup H N V -> wf-val V G T -> typ
 
 %{ ------- type preservation ----- }%
 
+%{
 eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
 %mode eval-safe +A +B +C -D.
 
@@ -3606,6 +3765,7 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
 
 %worlds () (eval-safe _ _ _ _).
 %total EV (eval-safe _ _ EV _).
+}%
 
 %{ ------- type safety ----- }%
 
@@ -3745,6 +3905,9 @@ er/new      : eval-res _ G (new N DS IS) OV
                <- vsize G NG
                <- minus NG N N' A
                <- res-clo N' A G IS OV.
+
+er/appvar   : eval-res (s N) G (appvar N1 X E2) OV3
+            <- eval-res N G (app (var N1) X E2) OV3.
 
 er/app      : eval-res (s N) G (app E1 X E2) OV3
             <- eval-res N G E1 OV1
@@ -4103,6 +4266,7 @@ eval-call-ok : id-ic E0 (fun E) -> eval-res-call N H E0 OV -> eval-res N H E OV 
 %total {A B} (eval-call-ok A B _).
 %reduces R <= C (eval-call-ok _ C R).
 
+%{
 eval-app-safe-res : sub-env-size GN N G -> wf-tp GN T2 -> wf-tp GN T0 -> stp2 G T0 G T -> wf-res OVF G (bind N DS) -> dlk DS X (arrow T2 T0) -> wf-res OVX G T2 -> eval-app-res NF X OVF OVX OVA -> wf-res OVA G T -> type.
 %mode eval-app-safe-res +A +B +C +D +E +F +G +H -I.
 
@@ -4171,6 +4335,7 @@ eval-safe-res : typ G E T -> wf-env H G -> eval-res N H E OV -> wf-res OV G T ->
 
 %worlds () (eval-safe-res _ _ _ _) (eval-app-safe-res _ _ _ _ _ _ _ _ _).
 %total (C1 C2) (eval-safe-res _ _ C1 _) (eval-app-safe-res _ _ _ _ _ _ _ C2 _).
+}%
 
 %%% EXTRA MANUAL QUERIES %%%
 
@@ -4181,3 +4346,85 @@ ex-a : typ (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) d
 
 %worlds () (ex-a _).
 %total { } (ex-a _).
+
+cex-b-clo : wf-val
+  (clo vnil (icons non (icons (fun (var (s z))) inil)))
+  tnil
+  (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil)))
+  -> type.
+%mode cex-b-clo -A.
+
+- : cex-b-clo (v/clo cex-b-clo-stp2 cex-b-clo-typcs tsize-nil wf-env-nil).
+
+%worlds () (cex-b-clo _).
+%total { } (cex-b-clo _).
+
+cex-b-wf-env : wf-env
+  (vcons (clo vnil (icons non (icons (fun (var (s z))) inil))) vnil)
+  (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
+  -> type.
+%mode cex-b-wf-env -A.
+
+- : cex-b-wf-env (wfe/c wf-env-nil A')
+  <- cex-b-clo A
+  <- extend-wfv A _ A'.
+
+%worlds () (cex-b-wf-env _).
+%total { } (cex-b-wf-env _).
+
+tsize-nil-contra : tsize tnil (s N) -> false -> type.
+%mode tsize-nil-contra +A -CONTRA.
+
+%worlds () (tsize-nil-contra _ _).
+%total {A} (tsize-nil-contra A _).
+
+sub-env-size-contra : sub-env-size G (s N) tnil -> false -> type.
+%mode sub-env-size-contra +A -CONTRA.
+
+- : sub-env-size-contra (ses NE sub-env/refl) CONTRA
+ <- tsize-nil-contra NE CONTRA.
+
+%worlds () (sub-env-size-contra _ _).
+%total {A} (sub-env-size-contra A _).
+
+stp2-contra : stp2
+  G T
+  (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
+  (sel z z)
+  -> false
+  -> type.
+%mode stp2-contra +A -CONTRA.
+
+- : stp2-contra (stp2/sel2 BTL BTU BLU (has DLK XP SE TL) SE2) CONTRA
+ <- sub-env-size-unique SE2 (ses (tf/c tf/n) sub-env/refl) EQG2
+ <- eq-sub-env-size-r EQG2 SE SE'
+ <- sub-env-size-unique SE' (ses tf/n (sub-env/ext sub-env/refl)) EQGN
+ <- eq-tlookup-env EQG2 TL TL'
+ <- tlookup-unique TL' (tl tl/hit (add/s add/z) (tf/c tf/n)) EQT
+ <- eq-xp XP EQT XP'
+ <- xp-unique xp/bind XP' EQDS
+ <- dlk-unique-rec dlk/z DLK EQDS EQD
+ <- eq-rect EQD EQOS EQU
+ <- id-topt-contra EQOS CONTRA
+  .
+
+%worlds () (stp2-contra _ _).
+%trustme
+%total {A} (stp2-contra A _).
+
+cex-b-not-wf-val : wf-val
+  (clo vnil (icons non (icons (fun (var (s z))) inil)))
+  (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
+  (sel z z)
+  -> false
+  -> type.
+%mode cex-b-not-wf-val +A -CONTRA.
+
+- : cex-b-not-wf-val (v/clo B BDS TN WF) CONTRA
+ <- stp2-contra B CONTRA.
+
+- : cex-b-not-wf-val (v/sub B A) CONTRA
+ <- stp2-contra B CONTRA.
+
+%worlds () (cex-b-not-wf-val _ _).
+%total {A} (cex-b-not-wf-val A _).
