@@ -260,42 +260,42 @@ stprefl : wf-tp G T <- stp notrans G T T.
 wf-dc : tenv -> dc -> type.
 sdcrefl : wf-dc G D <- sdc notrans G D D.
 
-stp2  : tenv -> tp -> tenv -> tp -> type.
+stp2  : nat -> tenv -> tp -> tenv -> tp -> type.
 
-stp2/top  : stp2 G1 T1 G2 top
+stp2/top  : stp2 R G1 T1 G2 top
          <- wf-tp G1 T1.
 
-stp2/sel1 : stp2 G1 (sel N X) G2 T
+stp2/sel1 : stp2 R G1 (sel N X) G2 T
          <- sub-env-size GN (s N) G1
          <- has-mem GN N X (rect OL U)
          <- stpoo oktrans G1 OL OL
-         <- stp2 G1 U G2 T
+         <- stp2 R G1 U G2 T
           .
 
-stp2/sel2 : stp2 G1 T G2 (sel N X)
+stp2/sel2 : stp2 R G1 T G2 (sel N X)
          <- sub-env-size GN (s N) G2
          <- has-mem GN N X (rect (tsome L) U)
          <- stp oktrans GN L U
-         <- stp2 G1 T G2 U
-         <- stp2 G1 T G2 L
+         <- stp2 R G1 T G2 U
+         <- stp2 R G1 T G2 L
           .
 
-stp2/selxn: stp2 G1 (sel N X) G2 (sel N X)
+stp2/selxn: stp2 R G1 (sel N X) G2 (sel N X)
          <- sub-env-size GN (s N) G2
          <- sub-env-size GN (s N) G1
          <- has-mem GN N X (rect tnone U)
-         <- stp2 G1 U G2 U
+         <- stp2 R G1 U G2 U
           .
 
-stp2/selxs: stp2 G1 (sel N X) G2 (sel N X)
+stp2/selxs: stp2 R G1 (sel N X) G2 (sel N X)
          <- sub-env-size GN (s N) G2
          <- sub-env-size GN (s N) G1
          <- has-mem GN N X (rect (tsome L) U)
-         <- stp2 G1 U G2 U
-         <- stp2 G1 L G2 L
+         <- stp2 R G1 U G2 U
+         <- stp2 R G1 L G2 L
           .
 
-stp2/bind : stp2 G1 (bind N DS1) G2 (bind N DS2)
+stp2/bind : stp2 R G1 (bind N DS1) G2 (bind N DS2)
          <- sub-env-size GN N G2
          <- sub-env-size GN N G1
          <- sdcs oktrans   (tcons (bind N DS2) GN) DS2 DS2
@@ -333,7 +333,7 @@ t/non : typcs G (icons non ICS) (dcons (rect S U) DCS)
       .
 t/sub : typ G E U
      <- typ G E T
-     <- stp2 G T G U
+     <- stp2 z G T G U
       .
 
 wf-val   : val -> tenv -> tp -> type.
@@ -343,11 +343,11 @@ v/clo : wf-val (clo H ICS) G T
      <- wf-env H GC
      <- tsize GC N
      <- typcs (tcons (bind N DCS) GC) ICS DCS
-     <- stp2 GC (bind N DCS) G T
+     <- stp2 z GC (bind N DCS) G T
       .
 v/sub : wf-val V G U
      <- wf-val V G0 T
-     <- stp2 G0 T G U
+     <- stp2 z G0 T G U
       .
 
 wfe/n : wf-env vnil tnil.
@@ -357,33 +357,33 @@ wfe/c : wf-env (vcons V H) (tcons T G)
 
 %%% QUERIES %%%
 
-%query 1 1 stp2 tnil top tnil top.
-%query 1 1 stp2 tnil (bind z dnil) tnil top.
-%query 1 1 stp2 tnil (bind z dnil) tnil (bind z dnil).
+%query 1 1 stp2 z tnil top tnil top.
+%query 1 1 stp2 z tnil (bind z dnil) tnil top.
+%query 1 1 stp2 z tnil (bind z dnil) tnil (bind z dnil).
 
-%query 1 1 stp2 tnil (bind z (dcons (rect tnone top) dnil))
+%query 1 1 stp2 z tnil (bind z (dcons (rect tnone top) dnil))
+                  tnil (bind z (dcons (rect tnone top) dnil)).
+%query 1 1 stp2 z tnil (bind z (dcons (rect (tsome top) top) dnil))
+                  tnil (bind z (dcons (rect tnone top) dnil)).
+%query 1 1 stp2 z tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) top) dnil)))
                 tnil (bind z (dcons (rect tnone top) dnil)).
-%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) dnil))
-                tnil (bind z (dcons (rect tnone top) dnil)).
-%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) top) dnil)))
-                tnil (bind z (dcons (rect tnone top) dnil)).
-%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
-                tnil (bind z (dcons (rect tnone top) dnil)).
-%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
-                tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil))).
-%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) (sel z z)) dnil)))
-                tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) (sel z z)) dnil))).
-%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
-                tnil (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))).
-%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) top) dnil)))
-                tnil (bind z (dcons (rect tnone top) (dcons (arrow (sel z z) top) dnil))).
-%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) (sel z z)) dnil)))
-                tnil (bind z (dcons (rect tnone top) (dcons (arrow (sel z z) (sel z z)) dnil))).
-%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) dnil)) tnil (bind z dnil).
-%query 1 1 stp2 tnil (bind z (dcons (rect  tnone      top) (dcons (arrow top (sel z z)) dnil)))
-                tnil (bind z (dcons (rect  tnone      top) (dcons (arrow top (sel z z)) dnil))).
-%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
-                tnil (bind z (dcons (rect  tnone      top) (dcons (arrow top (sel z z)) dnil))).
+%query 1 1 stp2 z tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
+                  tnil (bind z (dcons (rect tnone top) dnil)).
+%query 1 1 stp2 z tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
+                  tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil))).
+%query 1 1 stp2 z tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) (sel z z)) dnil)))
+                  tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) (sel z z)) dnil))).
+%query 1 1 stp2 z tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
+                  tnil (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))).
+%query 1 1 stp2 z tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) top) dnil)))
+                  tnil (bind z (dcons (rect tnone top) (dcons (arrow (sel z z) top) dnil))).
+%query 1 1 stp2 z tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) (sel z z)) dnil)))
+                  tnil (bind z (dcons (rect tnone top) (dcons (arrow (sel z z) (sel z z)) dnil))).
+%query 1 1 stp2 z tnil (bind z (dcons (rect (tsome top) top) dnil)) tnil (bind z dnil).
+%query 1 1 stp2 z tnil (bind z (dcons (rect  tnone      top) (dcons (arrow top (sel z z)) dnil)))
+                  tnil (bind z (dcons (rect  tnone      top) (dcons (arrow top (sel z z)) dnil))).
+%query 1 1 stp2 z tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (sel z z)) dnil)))
+                  tnil (bind z (dcons (rect  tnone      top) (dcons (arrow top (sel z z)) dnil))).
 
 %query 1 1 typ tnil (new z dnil inil) top.
 %query 1 1 typ tnil (new z (dcons (rect (tsome top) top) dnil) (icons non inil)) top.
@@ -431,27 +431,27 @@ wfe/c : wf-env (vcons V H) (tcons T G)
                (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
                (var (s z)) top.
 
-%query 1 1 stp2 (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
-                (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
-                (sel z z)
-                (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
-                (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
-                (sel z z).
+%query 1 1 stp2 z (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+                  (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
+                  (sel z z)
+                  (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+                  (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
+                  (sel z z).
 %query 1 1 stp oktrans
-                (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
-                (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
-                (sel z z)
-                (sel z z).
-%query 1 1 stp2 (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
-                (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
-                (sel z z)
-                (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
-                (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
-                top.
-%query 1 1 stp2 (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
-                (sel z z)
-                (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
-                top.
+                  (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+                  (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
+                  (sel z z)
+                  (sel z z).
+%query 1 1 stp2 z (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+                  (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
+                  (sel z z)
+                  (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
+                  (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
+                  top.
+%query 1 1 stp2 z (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
+                  (sel z z)
+                  (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
+                  top.
 
 %query 1 1 typ (tcons (bind (s z) (dcons (arrow top (sel z z)) dnil))
                (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil))
@@ -499,8 +499,8 @@ wfe/c : wf-env (vcons V H) (tcons T G)
                                                              (icons (fun (var (s (s z)))) inil))) inil)))
                     (bind z (dcons (rect (tsome top) top) (dcons (arrow top (bind (s z) (dcons (arrow top (sel z z)) dnil))) dnil))).
 
-%query 1 1 stp2 tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (bind (s z) (dcons (arrow top (sel z z)) dnil))) dnil)))
-                tnil (bind z (dcons (rect  tnone      top) (dcons (arrow top (bind (s z) (dcons (arrow top (sel z z)) dnil))) dnil))).
+%query 1 1 stp2 z tnil (bind z (dcons (rect (tsome top) top) (dcons (arrow top (bind (s z) (dcons (arrow top (sel z z)) dnil))) dnil)))
+                  tnil (bind z (dcons (rect  tnone      top) (dcons (arrow top (bind (s z) (dcons (arrow top (sel z z)) dnil))) dnil))).
 
 %query 1 1 typ tnil (new z (dcons (rect (tsome top) top) (dcons (arrow top (bind (s z) (dcons (arrow top (sel z z)) dnil))) dnil))
                            (icons non (icons (fun (new (s z) (dcons (arrow top (sel z z)) dnil)
@@ -521,7 +521,7 @@ wfe/c : wf-env (vcons V H) (tcons T G)
   (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
   (var z)
   (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))).
-%solve ex-a-fun-stp2 : stp2
+%solve ex-a-fun-stp2 : stp2 z
   (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
   (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil)))
   (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
@@ -821,10 +821,10 @@ contra-sub-env : false -> {G1} {G2} sub-env G1 G2 -> type.
 %worlds () (contra-sub-env _ _ _ _).
 %total (A) (contra-sub-env A _ _ _).
 
-contra-stp2 : false -> {G1} {T1} {G2} {T2} stp2 G1 T1 G2 T2 -> type.
-%mode contra-stp2 +CONTRA +G1 +T1 +G2 +T2 -A.
-%worlds () (contra-stp2 _ _ _ _ _ _).
-%total (A) (contra-stp2 A _ _ _ _ _).
+contra-stp2 : false -> {R} {G1} {T1} {G2} {T2} stp2 R G1 T1 G2 T2 -> type.
+%mode contra-stp2 +CONTRA +R +G1 +T1 +G2 +T2 -A.
+%worlds () (contra-stp2 _ _ _ _ _ _ _).
+%total (A) (contra-stp2 A _ _ _ _ _ _).
 
 % --------------- more arithmetic lemmas ------------- %
 
@@ -980,7 +980,7 @@ eq-stp-g : id-tenv G G' -> stp I G L U -> stp I G' L U -> type.
 %total (A) (eq-stp-g A _ _).
 %reduces C <= B (eq-stp-g _ B C).
 
-eq-stp2-l : id-tp L L' -> stp2 G1 L G2 U -> stp2 G1 L' G2 U -> type.
+eq-stp2-l : id-tp L L' -> stp2 R G1 L G2 U -> stp2 R G1 L' G2 U -> type.
 %mode eq-stp2-l +EQ +B -C.
 
 - : eq-stp2-l id-tp/refl B B.
@@ -989,7 +989,7 @@ eq-stp2-l : id-tp L L' -> stp2 G1 L G2 U -> stp2 G1 L' G2 U -> type.
 %total (A) (eq-stp2-l A _ _).
 %reduces C <= B (eq-stp2-l _ B C).
 
-eq-stp2-u : id-tp U U' -> stp2 G1 L G2 U -> stp2 G1 L G2 U' -> type.
+eq-stp2-u : id-tp U U' -> stp2 R G1 L G2 U -> stp2 R G1 L G2 U' -> type.
 %mode eq-stp2-u +EQ +B -C.
 
 - : eq-stp2-u id-tp/refl B B.
@@ -998,7 +998,7 @@ eq-stp2-u : id-tp U U' -> stp2 G1 L G2 U -> stp2 G1 L G2 U' -> type.
 %total (A) (eq-stp2-u A _ _).
 %reduces C <= B (eq-stp2-u _ B C).
 
-eq-stp2-gu : id-tenv G2 G2' -> stp2 G1 L G2 U -> stp2 G1 L G2' U -> type.
+eq-stp2-gu : id-tenv G2 G2' -> stp2 R G1 L G2 U -> stp2 R G1 L G2' U -> type.
 %mode eq-stp2-gu +EQ +B -C.
 
 - : eq-stp2-gu id-tenv/refl B B.
@@ -1007,7 +1007,7 @@ eq-stp2-gu : id-tenv G2 G2' -> stp2 G1 L G2 U -> stp2 G1 L G2' U -> type.
 %total (A) (eq-stp2-gu A _ _).
 %reduces C <= B (eq-stp2-gu _ B C).
 
-eq-stp2-gl : id-tenv G1 G1' -> stp2 G1 L G2 U -> stp2 G1' L G2 U -> type.
+eq-stp2-gl : id-tenv G1 G1' -> stp2 R G1 L G2 U -> stp2 R G1' L G2 U -> type.
 %mode eq-stp2-gl +EQ +B -C.
 
 - : eq-stp2-gl id-tenv/refl B B.
@@ -1868,7 +1868,7 @@ extend-wf-dc: wf-dc G D -> {Z} wf-dc (tcons Z G) D -> type.
 %worlds () (extend-wf-dc _ _ _).
 %total {} (extend-wf-dc _ _ _).
 
-extend-stp2: stp2 G1 T1 G2 T2 -> {Z} stp2 (tcons Z G1) T1 (tcons Z G2) T2 -> stp2 (tcons Z G1) T1 G2 T2 -> stp2 G1 T1 (tcons Z G2) T2 -> type.
+extend-stp2: stp2 R G1 T1 G2 T2 -> {Z} stp2 R (tcons Z G1) T1 (tcons Z G2) T2 -> stp2 R (tcons Z G1) T1 G2 T2 -> stp2 R G1 T1 (tcons Z G2) T2 -> type.
 %mode extend-stp2 +A +B -C -D -E.
 
 -/top: extend-stp2 (stp2/top W1) Z (stp2/top W1') (stp2/top W1') (stp2/top W1)
@@ -1903,7 +1903,7 @@ extend-stp2: stp2 G1 T1 G2 T2 -> {Z} stp2 (tcons Z G1) T1 (tcons Z G2) T2 -> stp
 %worlds () (extend-stp2 _ _ _ _ _).
 %total (A) (extend-stp2 A _ _ _ _).
 
-extend-stp2-mult: stp2 G T1 G T2 -> sub-env G G' -> stp2 G' T1 G' T2 -> type.
+extend-stp2-mult: stp2 R G T1 G T2 -> sub-env G G' -> stp2 R G' T1 G' T2 -> type.
 %mode extend-stp2-mult +A +B -C.
 - : extend-stp2-mult A sub-env/refl A.
 - : extend-stp2-mult A (sub-env/ext B) C
@@ -1912,7 +1912,7 @@ extend-stp2-mult: stp2 G T1 G T2 -> sub-env G G' -> stp2 G' T1 G' T2 -> type.
 %worlds () (extend-stp2-mult _ _ _).
 %total (X) (extend-stp2-mult _ X _).
 
-extend-stp2-mult1: stp2 G1 T1 G2 T2 -> sub-env G1 G1' -> stp2 G1' T1 G2 T2 -> type.
+extend-stp2-mult1: stp2 R G1 T1 G2 T2 -> sub-env G1 G1' -> stp2 R G1' T1 G2 T2 -> type.
 %mode extend-stp2-mult1 +A +B -C.
 - : extend-stp2-mult1 A sub-env/refl A.
 - : extend-stp2-mult1 A (sub-env/ext B) C
@@ -1921,7 +1921,7 @@ extend-stp2-mult1: stp2 G1 T1 G2 T2 -> sub-env G1 G1' -> stp2 G1' T1 G2 T2 -> ty
 %worlds () (extend-stp2-mult1 _ _ _).
 %total (X) (extend-stp2-mult1 _ X _).
 
-extend-stp2-mult2: stp2 G1 T1 G2 T2 -> sub-env G2 G2' -> stp2 G1 T1 G2' T2 -> type.
+extend-stp2-mult2: stp2 R G1 T1 G2 T2 -> sub-env G2 G2' -> stp2 R G1 T1 G2' T2 -> type.
 %mode extend-stp2-mult2 +A +B -C.
 - : extend-stp2-mult2 A sub-env/refl A.
 - : extend-stp2-mult2 A (sub-env/ext B) C
@@ -2933,7 +2933,7 @@ invert-trans :
 % --------------- stp2 regular ------------- %
 
 stp2-reg-rec :
-  stp2 G1 T1 G2 T2 ->
+  stp2 R G1 T1 G2 T2 ->
 %%
   stp notrans G1 T1 T1 ->
   stp notrans G2 T2 T2 ->
@@ -2965,7 +2965,7 @@ stp2-reg-rec :
 %total (A) (stp2-reg-rec A _ _).
 
 stp2-reg :
-  stp2 G1 T1 G2 T2 ->
+  stp2 R G1 T1 G2 T2 ->
 %%
   wf-tp G1 T1 ->
   wf-tp G2 T2 ->
@@ -3086,10 +3086,10 @@ restrict-has-mem :
 % --------------- generalized transitivity ------------- %
 
 trans2 :
-  stp2 G1 T1 G2 T2 ->
-  stp2 G2 T2 G3 T3 ->
+  stp2 R G1 T1 G2 T2 ->
+  stp2 R G2 T2 G3 T3 ->
 %%
-  stp2 G1 T1 G3 T3 ->
+  stp2 R G1 T1 G3 T3 ->
   type.
 %mode trans2 +A +B -C.
 
@@ -3138,7 +3138,7 @@ trans2 :
      <- has-mem-unique M0' M EQD
      <- eq-rect EQD EQOL EQU
      <- id-topt-contra EQOL CONTRA
-     <- contra-stp2 CONTRA _ _ _ _ OUT
+     <- contra-stp2 CONTRA _ _ _ _ _ OUT
       .
 
 -/sl2xs: trans2 (stp2/sel2 BTL BTU BLU M SE2) (stp2/selxs BS BU M' SE2' SE3) (stp2/sel2 BTL' BTU' BLU M SE3')
@@ -3189,7 +3189,7 @@ trans2 :
      <- has-mem-unique M M0' EQD
      <- eq-rect EQD EQOL EQU
      <- id-topt-contra EQOL CONTRA
-     <- contra-stp2 CONTRA _ _ _ _ OUT
+     <- contra-stp2 CONTRA _ _ _ _ _ OUT
       .
 
 -/slxxsn: trans2 (stp2/selxs BS12 BU12 M SE1 SE2) (stp2/selxn BU23 M' SE2' SE3) OUT
@@ -3199,7 +3199,7 @@ trans2 :
      <- has-mem-unique M0' M EQD
      <- eq-rect EQD EQOL EQU
      <- id-topt-contra EQOL CONTRA
-     <- contra-stp2 CONTRA _ _ _ _ OUT
+     <- contra-stp2 CONTRA _ _ _ _ _ OUT
       .
 
 -/bind: trans2 (stp2/bind BDS12 BDS11 BDS22 SE1 SE2) (stp2/bind BDS23 BDS22' BDS33 SE2' SE3) (stp2/bind BDS13 BDS11' BDS33 SE1' SE3)
@@ -3219,7 +3219,7 @@ trans2 :
 stp-to-stp2 :
   stp oktrans G T1 T2 ->
 %%
-  stp2 G T1 G T2 ->
+  stp2 z G T1 G T2 ->
   type.
 %mode stp-to-stp2 +A -B.
 
@@ -3258,7 +3258,7 @@ stp-to-stp2 :
 stp2refl :
   wf-tp G T ->
 %%
-  stp2 G T G T ->
+  stp2 z G T G T ->
   type.
 %mode stp2refl +A -B.
 
@@ -3286,7 +3286,7 @@ extend-wfv: wf-val V G T -> {Z} wf-val V (tcons Z G) T -> type.
 
 %{ ------- widening lemmas ------- }%
 
-wfv-widen: stp2 G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
+wfv-widen: stp2 z G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
 %mode wfv-widen +A +B -C.
 
 wfv-widen/sub : wfv-widen B W (v/sub B W).
@@ -3300,7 +3300,7 @@ invert-var:
   typ G (var N) T ->
 %%
   tlookup G N T0 ->
-  stp2 G T0 G T ->
+  stp2 z G T0 G T ->
   type.
 %mode invert-var +A -B -C.
 
@@ -3320,7 +3320,7 @@ invert-new :
 %%
   sub-env-size GN N G ->
   typcs (tcons (bind N DCS) GN) ICS DCS ->
-  stp2 GN (bind N DCS) G T ->
+  stp2 z GN (bind N DCS) G T ->
   type.
 %mode invert-new +A -B -C -D.
 
@@ -3346,7 +3346,7 @@ invert-app:
   dlk DS X (arrow T2 T0) ->
   wf-tp GN T2 ->
   wf-tp GN T0 ->
-  stp2 G T0 G T ->
+  stp2 z G T0 G T ->
   type.
 %mode invert-app +A -B -C -D -E -F -G -H.
 
@@ -3393,7 +3393,7 @@ invert-wfv:
   tsize GC N ->
   typcs (tcons (bind N DS0) GC) IS DS0 ->
   wf-val (clo H IS) GC (bind N DS0) ->
-  stp2 GC (bind N DS0) G T ->
+  stp2 z GC (bind N DS0) G T ->
   type.
 %mode invert-wfv +A -B -C -D -E -F.
 
@@ -3411,7 +3411,7 @@ invert-wfv:
 %{ ------- inversion of subtyping ----- }%
 
 stp2-bind-eq:
-  stp2 G1 (bind N1 DS1) G2 (bind N2 DS2) ->
+  stp2 z G1 (bind N1 DS1) G2 (bind N2 DS2) ->
 %%
   id-nat N1 N2 ->
   type.
@@ -3423,7 +3423,7 @@ stp2-bind-eq:
 %total (A) (stp2-bind-eq A _).
 
 extract-stp2-bind:
-  stp2 G1 (bind N1 DS1) G2 (bind N2 DS2) ->
+  stp2 z G1 (bind N1 DS1) G2 (bind N2 DS2) ->
 %%
   id-nat N1 N2 ->
   sub-env-size GN N1 G1 ->
@@ -3472,15 +3472,15 @@ inv-sdcs-arrow:
 %total {} (inv-sdcs-arrow _ _ _ _ _).
 
 stp2-inv-fun:
-  stp2 G1 (bind N1 DS1) G2 (bind N2 DS2) ->
+  stp2 z G1 (bind N1 DS1) G2 (bind N2 DS2) ->
   dlk DS1 X (arrow TA1 TB1) ->
   dlk DS2 X (arrow TA2 TB2) ->
 %%
   id-nat N1 N2 ->
   sub-env-size GN N1 G1 ->
   sub-env-size GN N2 G2 ->
-  stp2 (tcons (bind N1 DS1) GN) TA2 (tcons (bind N1 DS1) GN) TA1 ->
-  stp2 (tcons (bind N1 DS1) GN) TB1 (tcons (bind N1 DS1) GN) TB2 ->
+  stp2 z (tcons (bind N1 DS1) GN) TA2 (tcons (bind N1 DS1) GN) TA1 ->
+  stp2 z (tcons (bind N1 DS1) GN) TB1 (tcons (bind N1 DS1) GN) TB2 ->
   type.
 %mode stp2-inv-fun +A +B +C -D -E -F -G -H.
 
@@ -3511,7 +3511,7 @@ inv-sdcs-arrow0:
 %total {} (inv-sdcs-arrow0 _ _ _ _ _).
 
 stp2-inv-fun0:
-  stp2 G1 (bind N1 DS1) G2 (bind N2 DS2) ->
+  stp2 z G1 (bind N1 DS1) G2 (bind N2 DS2) ->
   dlk DS2 X (arrow TA2 TB2) ->
 %%
   dlk DS1 X (arrow TA1 TB1) ->
@@ -3930,7 +3930,7 @@ to-case-some : res-val-get OV V -> wf-val V G T -> wf-res OV G T -> type.
 %worlds () (to-case-some _ _ _).
 %total A (to-case-some A _ _).
 
-wf-res-widen: stp2 G1 T1 G2 T2 -> wf-res OV G1 T1 -> wf-res OV G2 T2 -> type.
+wf-res-widen: stp2 z G1 T1 G2 T2 -> wf-res OV G1 T1 -> wf-res OV G2 T2 -> type.
 %mode wf-res-widen +A +B -C.
 
 - : wf-res-widen S (wf-res/some W) (wf-res/some W')
@@ -4103,7 +4103,7 @@ eval-call-ok : id-ic E0 (fun E) -> eval-res-call N H E0 OV -> eval-res N H E OV 
 %total {A B} (eval-call-ok A B _).
 %reduces R <= C (eval-call-ok _ C R).
 
-eval-app-safe-res : sub-env-size GN N G -> wf-tp GN T2 -> wf-tp GN T0 -> stp2 G T0 G T -> wf-res OVF G (bind N DS) -> dlk DS X (arrow T2 T0) -> wf-res OVX G T2 -> eval-app-res NF X OVF OVX OVA -> wf-res OVA G T -> type.
+eval-app-safe-res : sub-env-size GN N G -> wf-tp GN T2 -> wf-tp GN T0 -> stp2 z G T0 G T -> wf-res OVF G (bind N DS) -> dlk DS X (arrow T2 T0) -> wf-res OVX G T2 -> eval-app-res NF X OVF OVX OVA -> wf-res OVA G T -> type.
 %mode eval-app-safe-res +A +B +C +D +E +F +G +H -I.
 
 eval-safe-res : typ G E T -> wf-env H G -> eval-res N H E OV -> wf-res OV G T -> type.
