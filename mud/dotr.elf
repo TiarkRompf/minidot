@@ -3186,6 +3186,30 @@ extract-ser : stp2 R G1 T1 G2 T2 -> ser R G1 G2 -> type.
 %total (A) (extract-ser A _).
 %reduces B < A (extract-ser A B).
 
+extract-selx :
+  stp notrans G (sel N X) (sel N X) ->
+%%
+  sub-env-size GN (s N) G ->
+  has-mem GN N X (rect OL U) ->
+  stp oktrans G U U ->
+  stpoo oktrans G OL OL ->
+  type.
+%mode extract-selx +A -B -C -D -E.
+
+-/selx : extract-selx (stp/selx OBS BU M SES) SES M BU OBS.
+
+-/sel1 : extract-selx (stp/sel1 BUT OBS M SES) SES M BU OBS
+      <- stp-reg-rec BUT BU _.
+
+-/sel2 : extract-selx (stp/sel2 BTL BLU M SES) SES M BU (stpoo/ss BL)
+      <- stp-reg-rec BTL _ BL
+      <- stp-reg-rec BLU _ BUN
+      <- extract-sub-env-size SES _ SE
+      <- extend-stp-mult BUN SE BU.
+
+%worlds () (extract-selx _ _ _ _ _).
+%total (A) (extract-selx A _ _ _ _).
+
 trans2 :
   stp2 R G1 T1 G2 T2 ->
   stp2 R G2 T2 G3 T3 ->
@@ -3323,6 +3347,13 @@ trans2 :
      <- narrowdcs* BDS23 (sev/sub BDS12' sev/refl) BDS23'
      <- ttransdcs* BDS12' BDS23' BDS13
      <- eq-sdcs-g EQGX BDS11 BDS11'.
+
+%{ TODO
+-/selxr1: trans2 (stp2/selxr B1 B2 R12) (stp2/sel1 BU23 OBS2 M2 SE2 R23) (stp2/sel1 BU13 OBS1 M1 SE1 R13)
+     <- ser-trans R12 R23 R13
+     <- extract-selx B1 SE1 M1 BU1 OBS1
+      .
+}%
 
 %worlds () (trans2 _ _ _).
 %total {A B} (trans2 A B _).
