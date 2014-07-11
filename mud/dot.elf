@@ -517,6 +517,39 @@ wfe/c : wf-env (vcons V H) (tcons T G)
       top)
   top.
 
+%solve ex-a-fun : typ
+  (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
+  (var z)
+  (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))).
+%solve ex-a-fun-stp2 : stp2
+  (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
+  (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil)))
+  (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
+  (bind z (dcons (rect tnone top) (dcons (arrow top top) dnil))).
+%solve ex-a-dlk : dlk
+  (dcons (rect tnone top) (dcons (arrow top top) dnil))
+  (s z)
+  (arrow top top).
+%solve ex-a-arg : typ
+  (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil)
+  (var z)
+  top.
+%solve ex-a-ses : sub-env-size
+  tnil
+  z
+  (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil).
+%solve ex-wf-top : wf-tp tnil top.
+
+ex-a : typ (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil) (app (var z) (s z) (var z)) top -> type.
+%mode ex-a -A.
+
+- : ex-a (t/app ex-wf-top ex-wf-top ex-a-ses ex-a-arg ex-a-dlk (t/sub ex-a-fun-stp2 ex-a-fun)).
+
+%worlds () (ex-a _).
+%total { } (ex-a _).
+
+%.
+
 % EOF
 
 stp/trans   : stp oktrans     G T1 T3
