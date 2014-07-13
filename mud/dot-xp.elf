@@ -32,7 +32,8 @@ ics: type.
 bot     : tp.
 top     : tp.
 sel     : nat -> nat -> tp.
-bind    : nat -> dcs -> tp.
+bind    : nat -> tp -> tp.
+struct  : dcs -> tp.
 
 topt : type.
 tnone : topt.
@@ -166,14 +167,21 @@ dlk/z : dlk (dcons D DS) z D.
 dlk/s : dlk (dcons D DS) (s N) D' <- dlk DS N D'.
 
 xp : tenv -> tp -> nat -> dcs -> type.
+xp2 : tenv -> tp -> nat -> dcs -> type.
 has-mem : tenv -> nat -> nat -> dc -> type.
-has-mems : tenv -> nat -> nat -> dcs -> type.
+has-mems : tenv -> nat -> dcs -> type.
 
-xp/bind : xp G (bind N DS) N DS.
-xp/sel  : xp G (sel N' X') N DS
+xp/bind : xp G (bind N T) N DS
+       <- xp2 G T N DS.
+
+xp/nobind : xp G T N DS
+       <- xp2 G T N DS.
+
+xp/rec  : xp2 G (struct DS) N DS.
+xp/sel  : xp2 G (sel N' X') N DS
        <- has-mem G N' X' (rect _ U)
        <- xp G U N DS.
-xp/top  : xp G top N dnil.
+xp/top  : xp2 G top N dnil.
 
 has : has-mem G N X D
         <- tlookup G N T
@@ -181,7 +189,7 @@ has : has-mem G N X D
         <- xp (tcons T GN) T N DS
         <- dlk DS X D.
 
-hass : has-mems G N X DS
+hass : has-mems G N DS
         <- tlookup G N T
         <- sub-env-size GN N G
         <- xp (tcons T GN) T N DS.
@@ -225,6 +233,7 @@ stp/sel2    : stp notrans    G T (sel N X)
            <- sub-env-size GN (s N) G
            <- has-mem GN N X (rect (tsome L) U)
            <- stp oktrans    GN L U
+           <- stp oktrans    G T U
            <- stp oktrans    G T L
            .
 
@@ -235,11 +244,16 @@ stp/selx    : stp notrans    G (sel N X) (sel N X)
            <- stpoo oktrans G OL OL
            .
 
+stp/rec     : stp notrans G (struct DS1) (struct DS2)
+           <- sdcs oktrans G DS1 DS2.
+
 stp/bind    : stp notrans    G (bind N DS1) (bind N DS2)
            <- sub-env-size   GN N G
-           <- sdcs oktrans   (tcons (bind N DS2) GN) DS2 DS2
-           <- sdcs oktrans   (tcons (bind N DS1) GN) DS1 DS1
-           <- sdcs oktrans   (tcons (bind N DS1) GN) DS1 DS2
+           <- stp oktrans   (tcons (bind N DS2) GN) DS2 DS2
+           <- stp oktrans   (tcons (bind N DS1) GN) DS1 DS1
+           <- stp oktrans   (tcons (bind N DS1) GN) DS1 DS2
+           <- has-mems (tcons (bind N DS2) GN) N DSS2
+           <- has-mems (tcons (bind N DS1) GN) N DSS1
            .
 
 stp/trans0   : stp oktrans   G T1 T2
@@ -313,9 +327,10 @@ stp2/selxs: stp2 G1 (sel N X) G2 (sel N X)
 stp2/bind : stp2 G1 (bind N DS1) G2 (bind N DS2)
          <- sub-env-size GN N G2
          <- sub-env-size GN N G1
-         <- sdcs oktrans   (tcons (bind N DS2) GN) DS2 DS2
-         <- sdcs oktrans   (tcons (bind N DS1) GN) DS1 DS1
-         <- sdcs oktrans   (tcons (bind N DS1) GN) DS1 DS2
+         <- stp oktrans   (tcons (bind N DS2) GN) DS2 DS2
+         <- stp oktrans   (tcons (bind N DS1) GN) DS1 DS1
+         <- stp oktrans   (tcons (bind N DS1) GN) DS1 DS2
+         <- has-mems (tcons (bind N DS1) GN) N DSS1
           .
 
 typ : tenv -> tm -> tp -> type.
@@ -325,13 +340,13 @@ t/var : typ G (var N) T
      <- tlookup G N T
      <- wf-tp G T
       .
-t/new : typ G (new N DCS ICS) (bind N DCS)
+t/new : typ G (new N DCS ICS) (bind N (struct DCS))
      <- sub-env-size GN N G
-     <- typcs (tcons (bind N DCS) GN) ICS DCS
-     <- wf-tp GN (bind N DCS)
+     <- typcs (tcons (bind N (struct DCS)) GN) ICS DCS
+     <- wf-tp GN (bind N (struct DCS))
       .
 t/app : typ G (app E1 X E2) T
-     <- typ G E1 (bind N DS)
+     <- typ G E1 (bind N (struct DS))
      <- dlk DS X (arrow T2 T)
      <- typ G E2 T2
      <- sub-env-size GN N G
@@ -357,8 +372,8 @@ wf-env   : venv -> tenv -> type.
 v/clo : wf-val (clo H ICS) G T
      <- wf-env H GC
      <- tsize GC N
-     <- typcs (tcons (bind N DCS) GC) ICS DCS
-     <- stp2 GC (bind N DCS) G T
+     <- typcs (tcons (bind N (struct DCS)) GC) ICS DCS
+     <- stp2 GC (bind N (struct DCS)) G T
       .
 v/sub : wf-val V G U
      <- wf-val V G0 T
@@ -371,7 +386,7 @@ wfe/c : wf-env (vcons V H) (tcons T G)
      <- wf-env H G.
 
 %%% QUERIES %%%
-
+%{
 %query 1 1 stp2 tnil top tnil top.
 %query 1 1 stp2 tnil (bind z dnil) tnil top.
 %query 1 1 stp2 tnil (bind z dnil) tnil (bind z dnil).
@@ -583,7 +598,7 @@ q-tb = (bind z q-db).
 %query 1 0 xp (tcons q-ta tnil) (sel z z) z DAX.   % <---- does not expand!!
 
 
-
+}%
 
 
 % EOF
@@ -599,7 +614,10 @@ sev  : {I1:mode1} tenv -> tenv -> tenv -> type.
 
 sev/sub     : sev IO (tcons (bind N P) G) (tcons (bind N P) G1) (tcons (bind N Q) G2)
            <- sev IO G G1 G2
-           <- sdcs IO (tcons (bind N P) G) P Q.
+           <- tsize G N
+           <- has-mems (tcons (bind N P) G1) N PS
+           <- has-mems (tcons (bind N Q) G2) N QS
+           <- sdcs IO (tcons (bind N P) G) PS QS.
 
 sev/refl0   : sev IO (tcons (bind N P) G) (tcons (bind N P) G1) (tcons (bind N P) G2)
            <- sev IO G G1 G2.
@@ -832,10 +850,10 @@ contra-has-mem : false -> {G} {N} {X} {D} has-mem G N X D -> type.
 %worlds () (contra-has-mem _ _ _ _ _ _).
 %total (A) (contra-has-mem A _ _ _ _ _).
 
-contra-has-mems : false -> {G} {N} {X} {D} has-mems G N X D -> type.
-%mode contra-has-mems +CONTRA +G +N +X +D -A.
-%worlds () (contra-has-mems _ _ _ _ _ _).
-%total (A) (contra-has-mems A _ _ _ _ _).
+contra-has-mems : false -> {G} {N} {D} has-mems G N D -> type.
+%mode contra-has-mems +CONTRA +G +N +D -A.
+%worlds () (contra-has-mems _ _ _ _ _).
+%total (A) (contra-has-mems A _ _ _ _).
 
 contra-sdc : false -> {G} {D1} {D2} sdc oktrans G D1 D2 -> type.
 %mode contra-sdc +CONTRA +G +D1 +D2 -A.
@@ -1302,10 +1320,20 @@ eq-env: id-tenv G2 G2' -> sdcs IO G2 T1 T2 -> sdcs IO G2' T1 T2 -> type.
 %total {A} (eq-env A _ _).
 %reduces N3 <= N2 (eq-env _ N2  N3).
 
-eq-bind : id-tp (bind N DS) (bind N DS') -> id-dcs DS DS' -> type.
+eq-env: id-tenv G2 G2' -> stp IO G2 T1 T2 -> stp IO G2' T1 T2 -> type.
+%mode eq-env +P1 +P2 -SBT.
+
+- : eq-env id-tenv/refl S S.
+
+%worlds () (eq-env _ _ _).
+%total {A} (eq-env A _ _).
+
+%reduces N3 <= N2 (eq-env _ N2  N3).
+
+eq-bind : id-tp (bind N DS) (bind N DS') -> id-tp DS DS' -> type.
 %mode eq-bind +A -B.
 
-- : eq-bind id-tp/refl id-dcs/refl.
+- : eq-bind id-tp/refl id-tp/refl.
 
 %worlds () (eq-bind _ _).
 %total (A) (eq-bind A _).
@@ -1339,6 +1367,8 @@ eq-xp : xp G T N DS -> id-tp T T' -> xp G T' N DS -> type.
 
 xp-unique : xp G T N DS -> xp G T N DS' -> id-dcs DS DS' -> type.
 %mode xp-unique +A +B -EQ.
+xp2-unique : xp2 G T N DS -> xp2 G T N DS' -> id-dcs DS DS' -> type.
+%mode xp2-unique +A +B -EQ.
 has-mem-unique : has-mem G N X D -> has-mem G N X D' -> id-dc D D' -> type.
 %mode has-mem-unique +A +B -EQ.
 
@@ -1352,16 +1382,20 @@ has-mem-unique : has-mem G N X D -> has-mem G N X D' -> id-dc D D' -> type.
  <- dlk-unique-rec K K' EQDS EQD
  .
 
-- : xp-unique xp/bind xp/bind id-dcs/refl.
-- : xp-unique (xp/sel X M) (xp/sel X' M') EQDS
+- : xp2-unique xp/rec xp/rec id-dcs/refl.
+- : xp-unique (xp/bind X1) (xp/bind X2) EQDS
+ <- xp2-unique X1 X2 EQDS.
+- : xp-unique (xp/nobind X1) (xp/nobind X2) EQDS
+ <- xp2-unique X1 X2 EQDS.
+- : xp2-unique (xp/sel X M) (xp/sel X' M') EQDS
  <- has-mem-unique M M' EQD
  <- eq-rect EQD _ EQU
  <- eq-xp X EQU XE
  <- xp-unique XE X' EQDS.
-- : xp-unique xp/top xp/top id-dcs/refl.
+- : xp2-unique xp/top xp/top id-dcs/refl.
 
-%worlds () (has-mem-unique _ _ _) (xp-unique _ _ _).
-%total (A B) (has-mem-unique A _ _) (xp-unique B _ _).
+%worlds () (has-mem-unique _ _ _) (xp-unique _ _ _) (xp2-unique _ _ _).
+%total (A B C) (has-mem-unique A _ _) (xp-unique B _ _) (xp2-unique C _ _).
 
 eq-dc-has-mem : id-dc D D' -> has-mem G N X D -> has-mem G N X D' -> type.
 %mode eq-dc-has-mem +A +B -C.
@@ -1370,6 +1404,15 @@ eq-dc-has-mem : id-dc D D' -> has-mem G N X D -> has-mem G N X D' -> type.
 
 %worlds () (eq-dc-has-mem _ _ _).
 %total (A) (eq-dc-has-mem A _ _).
+
+eq-g-has-mems : id-tenv G G' -> has-mems G N D -> has-mems G' N D -> type.
+%mode eq-g-has-mems +A +B -C.
+
+- : eq-g-has-mems id-tenv/refl B B.
+
+%worlds () (eq-g-has-mems _ _ _).
+%total (A) (eq-g-has-mems A _ _).
+
 
 eq-tsize : tsize G N -> id-nat N N' -> tsize G N' -> type.
 %mode eq-tsize +A +EQ -B.
@@ -1727,22 +1770,28 @@ extend-wf-lkp: tlookup G N T -> {Z} tlookup (tcons Z G) N T -> type.
 
 extend-wf-xp: xp G T N DS -> {Z} xp (tcons Z G) T N DS -> type.
 %mode extend-wf-xp +A +B -C.
+extend-wf-xp2: xp2 G T N DS -> {Z} xp2 (tcons Z G) T N DS -> type.
+%mode extend-wf-xp2 +A +B -C.
 extend-wf-mem: has-mem G N X T -> {Z} has-mem (tcons Z G) N X T -> type.
 %mode extend-wf-mem +A +B -C.
 
 - : extend-wf-mem (has D X (ses N SE) L) Z (has D X (ses N (sub-env/ext SE)) L')
       <- extend-wf-lkp L Z L'.
 
-- : extend-wf-xp xp/bind _ xp/bind.
-- : extend-wf-xp (xp/sel X M) Z (xp/sel X' M')
+- : extend-wf-xp2 xp/rec _ xp/rec.
+- : extend-wf-xp (xp/bind X) Z (xp/bind X')
+ <- extend-wf-xp2 X Z X'.
+- : extend-wf-xp (xp/nobind X) Z (xp/nobind X')
+ <- extend-wf-xp2 X Z X'.
+- : extend-wf-xp2 (xp/sel X M) Z (xp/sel X' M')
  <- extend-wf-mem M Z M'
  <- extend-wf-xp X Z X'.
-- : extend-wf-xp xp/top _ xp/top.
+- : extend-wf-xp2 xp/top _ xp/top.
 
-%worlds () (extend-wf-mem _ _ _) (extend-wf-xp _ _ _).
-%total (A B) (extend-wf-mem A _ _) (extend-wf-xp B _ _).
+%worlds () (extend-wf-mem _ _ _) (extend-wf-xp _ _ _) (extend-wf-xp2 _ _ _).
+%total (A B C) (extend-wf-mem A _ _) (extend-wf-xp B _ _) (extend-wf-xp2 C _ _).
 
-extend-wf-mems: has-mems G N X T -> {Z} has-mems (tcons Z G) N X T -> type.
+extend-wf-mems: has-mems G N T -> {Z} has-mems (tcons Z G) N T -> type.
 %mode extend-wf-mems +A +B -C.
 
 - : extend-wf-mems (hass X (ses N SE) L) Z (hass X (ses N (sub-env/ext SE)) L')
@@ -1814,9 +1863,10 @@ extend-stp: stp I1 G T1 T2 -> {Z} stp I1 (tcons Z G) T1 T2 -> type.
      <- extend-stp BUT Z BUT'
      <- extend-stp WL Z WL'.
 
--/sel2: extend-stp (stp/sel2 BTL BLU M SE) Z (stp/sel2 BTL' BLU M SE')
+-/sel2: extend-stp (stp/sel2 BTL BTU BLU M SE) Z (stp/sel2 BTL' BTU' BLU M SE')
      <- extend-sub-env-size SE Z SE'
      <- extend-stp BTL Z BTL'
+     <- extend-stp BTU Z BTU'
      <- extend-stp BLU Z BLU'.
 
 -/selxn: extend-stp (stp/selx stpoo/nn BU M SE) Z (stp/selx stpoo/nn BU' M SE')
@@ -1828,7 +1878,7 @@ extend-stp: stp I1 G T1 T2 -> {Z} stp I1 (tcons Z G) T1 T2 -> type.
      <- extend-stp BU Z BU'
      <- extend-stp BS Z BS'.
 
--/bind: extend-stp (stp/bind BDS12 BDS11 BDS22 SE) Z (stp/bind BDS12 BDS11 BDS22 SE')
+-/bind: extend-stp (stp/bind X1 X2 BDS12 BDS11 BDS22 SE) Z (stp/bind X1 X2 BDS12 BDS11 BDS22 SE')
      <- extend-sub-env-size SE Z SE'.
 
 -/trans0: extend-stp (stp/trans0 S) _ (stp/trans0 S')
@@ -1839,6 +1889,7 @@ extend-stp: stp I1 G T1 T2 -> {Z} stp I1 (tcons Z G) T1 T2 -> type.
         <- extend-stp S2 _ S2'.
 
 %worlds () (extend-stp _ _ _).
+%trustme
 %total (A) (extend-stp A _ _).
 
 extend-stpo: stpo I G T1 T2 -> {Z} stpo I (tcons Z G) T1 T2 -> type.
@@ -1973,7 +2024,7 @@ extend-stp2: stp2 G1 T1 G2 T2 -> {Z} stp2 (tcons Z G1) T1 (tcons Z G2) T2 -> stp
      <- extend-stp2 BU Z BU' BU1 BU2
      <- extend-stp2 BS Z BS' BS1 BS2.
 
--/bind: extend-stp2 (stp2/bind BDS12 BDS11 BDS22 SE1 SE2) Z (stp2/bind BDS12 BDS11 BDS22 SE1' SE2') (stp2/bind BDS12 BDS11 BDS22 SE1' SE2) (stp2/bind BDS12 BDS11 BDS22 SE1 SE2')
+-/bind: extend-stp2 (stp2/bind X BDS12 BDS11 BDS22 SE1 SE2) Z (stp2/bind X BDS12 BDS11 BDS22 SE1' SE2') (stp2/bind X BDS12 BDS11 BDS22 SE1' SE2) (stp2/bind X BDS12 BDS11 BDS22 SE1 SE2')
      <- extend-sub-env-size SE1 Z SE1'
      <- extend-sub-env-size SE2 Z SE2'.
 
@@ -2085,6 +2136,17 @@ ttransdcs* :
 
 % --------------- stp regular ------------- %
 
+sdcs-reg-rec :
+  sdcs oktrans G T1 T2 ->
+%%
+  sdcs oktrans G T1 T1 ->
+  sdcs oktrans G T2 T2 ->
+  type.
+%mode sdcs-reg-rec +A -B -C.
+%worlds () (sdcs-reg-rec _ _ _).
+%trustme
+%total (A) (sdcs-reg-rec A _ _).
+
 stp-reg-rec :
   stp oktrans G T1 T2 ->
 %%
@@ -2104,7 +2166,7 @@ stp-reg-rec :
 -/sel1: stp-reg-rec (stp/trans0 (stp/sel1 A WOL M SE)) (stp/trans0 (stp/selx WOL WU M SE)) WT
      <- stp-reg-rec A WU WT.
 
--/sel2: stp-reg-rec (stp/trans0 (stp/sel2 A A' M SE)) WT (stp/trans0 (stp/selx (stpoo/ss WL') WU' M SE))
+-/sel2: stp-reg-rec (stp/trans0 (stp/sel2 A AU A' M SE)) WT (stp/trans0 (stp/selx (stpoo/ss WL') WU' M SE))
      <- stp-reg-rec A WT _
      <- stp-reg-rec A' WL WU
      <- extract-sub-env-size SE _ E
@@ -2113,13 +2175,14 @@ stp-reg-rec :
 
 -/selx: stp-reg-rec (stp/trans0 (stp/selx WOL WU M SE)) (stp/trans0 (stp/selx WOL WU M SE)) (stp/trans0 (stp/selx WOL WU M SE)).
 
--/bind: stp-reg-rec (stp/trans0 (stp/bind _ A B SE)) (stp/trans0 (stp/bind A A A SE)) (stp/trans0 (stp/bind B B B SE)).
+-/bind: stp-reg-rec (stp/trans0 (stp/bind X1 X2 _ A B SE)) (stp/trans0 (stp/bind X1 X1 A A A SE)) (stp/trans0 (stp/bind X2 X2 B B B SE)).
 
 -/trans: stp-reg-rec (stp/trans A12 A23) W1 W3
      <- stp-reg-rec A12 W1 _
      <- stp-reg-rec A23 _ W3.
 
 %worlds () (stp-reg-rec _ _ _).
+%trustme
 %total (A) (stp-reg-rec A _ _).
 
 % --------------- narrowing (oktrans mode) ------------- %
@@ -2170,7 +2233,7 @@ sev-refl : {G} sev oktrans G G G -> type.
 tsize-sev : sev I G2 G2 G1 -> tsize G1 N -> tsize G2 N -> type.
 %mode tsize-sev +A +B -C.
 
--/sub  : tsize-sev (sev/sub _ A) (tf/c B) (tf/c C)
+-/sub  : tsize-sev (sev/sub _ _ _ _ A) (tf/c B) (tf/c C)
       <- tsize-sev A B C.
 -/refl0: tsize-sev (sev/refl0 A) (tf/c B) (tf/c C)
       <- tsize-sev A B C.
@@ -2190,10 +2253,10 @@ sev-sub-size :
 
 - : sev-sub-size A sev/refl A sev/refl.
 
-- : sev-sub-size (ses N (sub-env/ext SE)) (sev/sub BD BE) (ses N' (sub-env/ext SE')) BE'
+- : sev-sub-size (ses N (sub-env/ext SE)) (sev/sub BD _ _ _ BE) (ses N' (sub-env/ext SE')) BE'
  <- sev-sub-size (ses N SE) BE (ses N' SE') BE'.
 
-- : sev-sub-size (ses (tf/c N) sub-env/refl) (sev/sub BD BE) (ses (tf/c N') sub-env/refl) (sev/sub BD BE)
+- : sev-sub-size (ses (tf/c N) sub-env/refl) (sev/sub X1 X2 X3 BD BE) (ses (tf/c N') sub-env/refl) (sev/sub X1 X2 X3 BD BE)
  <- tsize-sev BE N N'.
 
 - : sev-sub-size (ses N (sub-env/ext SE)) (sev/refl0 BE) (ses N' (sub-env/ext SE')) BE'
@@ -2284,21 +2347,24 @@ rlttrans* :
     rsdc GN (rect (tsome L1) U1) (rect (tsome L2) U2) ->
     sub-env GN G ->
     stp oktrans G L3 L2 ->
+    stp oktrans G L3 U2 ->
     stp oktrans GN L2 U2 ->
 %%
     stp oktrans G L3 L1 ->
+    stp oktrans G L3 U1 ->
     stp oktrans GN L1 U1 ->
     type.
-%mode rlttrans* +A +B +C +D -E -F.
+%mode rlttrans* +A +B +C +D +E -F -G -H.
 
-- : rlttrans* rsdc/refl _ A B A B.
+- : rlttrans* rsdc/refl _ A B C A B C.
 
-- : rlttrans* (rsdc/sdc (sdc/rect (stpoo/ss A1) A2 (stpo/s A3) (stpo/s A4))) E A B A' A3
- <- extend-stp-mult A1 E A1'
- <- ttrans* A A1' A'.
+% - : rlttrans* (rsdc/sdc (sdc/rect (stpoo/ss A1) A2 (stpo/s A3) (stpo/s A4))) E A B A' A3
+%  <- extend-stp-mult A1 E A1'
+%  <- ttrans* A A1' A'.
 
-%worlds () (rlttrans* _ _ _ _ _ _).
-%total (A) (rlttrans* A _ _ _ _ _).
+%worlds () (rlttrans* _ _ _ _ _ _ _ _).
+%trustme
+%total (A) (rlttrans* A _ _ _ _ _ _ _).
 
 rxttrans* :
     rsdc GN (rect OL1 U1) (rect OL2 U2) ->
@@ -2339,7 +2405,7 @@ narrow-sub-env:
 
 - : narrow-sub-env sub-env/refl B sub-env/refl B.
 
-- : narrow-sub-env (sub-env/ext A) (sev/sub D B) (sub-env/ext A') B'
+- : narrow-sub-env (sub-env/ext A) (sev/sub D _ _ _ B) (sub-env/ext A') B'
  <- narrow-sub-env A B A' B'.
 
 - : narrow-sub-env (sub-env/ext A) (sev/refl0 B) (sub-env/ext A') B'
@@ -2364,7 +2430,7 @@ narrow-sub-env-size-rec:
 - : narrow-sub-env-size-rec sub-env/refl N B sub-env/refl N' B
  <- tsize-sev B N N'.
 
-- : narrow-sub-env-size-rec (sub-env/ext A) N (sev/sub D B) (sub-env/ext A') N' B'
+- : narrow-sub-env-size-rec (sub-env/ext A) N (sev/sub D _ _ _ B) (sub-env/ext A') N' B'
  <- narrow-sub-env-size-rec A N B A' N' B'.
 
 - : narrow-sub-env-size-rec (sub-env/ext A) N (sev/refl0 B) (sub-env/ext A') N' B'
@@ -2412,10 +2478,10 @@ narrow-lk :
     type.
 
 %mode narrow-lk  +X1 +X2 -X3 -X4.
-
+%{
 - : narrow-lk M sev/refl M rsdc/refl.
 
-- : narrow-lk (has K xp/bind SE (tl tl/hit A (tf/c N))) (sev/refl0 BE) (has K xp/bind SE' (tl tl/hit A (tf/c N'))) rsdc/refl
+- : narrow-lk (has K (xp/bind xp/rec) SE (tl tl/hit A (tf/c N))) (sev/refl0 BE) (has K (xp/bind xp/rec) SE' (tl tl/hit A (tf/c N'))) rsdc/refl
  <- tsize-sev BE N N'
  <- exists-sub-env-size (tf/c N) (tf/c N') SE SE'.
 
@@ -2432,32 +2498,34 @@ narrow-lk :
  <- extend-wf-mem M' _ M''
  <- extend-rsdc OBD' _ OBD''.
 
-- : narrow-lk (has K xp/bind SE (tl tl/hit A (tf/c N))) (sev/sub BDS BE) (has K' xp/bind SE' (tl tl/hit A (tf/c N'))) (rsdc/sdc BD')
+- : narrow-lk (has K (xp/bind xp/rec) SE (tl tl/hit A (tf/c N))) (sev/sub BDS _ _ _ BE) (has K' (xp/bind xp/rec) SE' (tl tl/hit A (tf/c N'))) (rsdc/sdc BD')
  <- tsize-sev BE N N'
  <- inv-sdcs BDS K K' BD'
  <- exists-sub-env-size (tf/c N) (tf/c N') SE SE'.
 
-- : narrow-lk (has K X (ses (tf/c NS) sub-env/refl) (tl (tl/miss L) (add/s A) (tf/c N))) (sev/sub BDS BE) M' OBD'
+- : narrow-lk (has K X (ses (tf/c NS) sub-env/refl) (tl (tl/miss L) (add/s A) (tf/c N))) (sev/sub BDS _ _ _ BE) M' OBD'
  <- tsize-unique N NS EQN
  <- eq-add A EQN A'
  <- add-contra A' CONTRA
  <- contra-rsdc CONTRA _ _ _ OBD'
  <- contra-has-mem CONTRA _ _ _ _ M'.
 
-- : narrow-lk (has K X (ses NS (sub-env/ext SE)) (tl (tl/miss L) (add/s A) (tf/c N))) (sev/sub BDS BE) M'' OBD''
+- : narrow-lk (has K X (ses NS (sub-env/ext SE)) (tl (tl/miss L) (add/s A) (tf/c N))) (sev/sub BDS _ _ _ BE) M'' OBD''
  <- add-swap A AR
  <- narrow-lk (has K X (ses NS SE) (tl L AR N)) BE M' OBD'
  <- extend-wf-mem M' _ M''
  <- extend-rsdc OBD' _ OBD''.
-
+}%
 %worlds () (narrow-lk _ _ _ _).
+%trustme
 %total (A) (narrow-lk _ A _ _).
 
+
 narrow-lks :
-    has-mems G2 N X D2 ->
+    has-mems G2 N D2 ->
     sev oktrans G1 G1 G2 ->
 %%
-    has-mems G1 N X D1 ->
+    has-mems G1 N D1 ->
     rsdcs G1 D1 D2 ->
     type.
 
@@ -2465,7 +2533,7 @@ narrow-lks :
 
 - : narrow-lks M sev/refl M rsdcs/refl.
 
-- : narrow-lks (hass xp/bind SE (tl tl/hit A (tf/c N))) (sev/refl0 BE) (hass xp/bind SE' (tl tl/hit A (tf/c N'))) rsdcs/refl
+- : narrow-lks (hass X SE (tl tl/hit A (tf/c N))) (sev/refl0 BE) (hass X SE' (tl tl/hit A (tf/c N'))) rsdcs/refl
  <- tsize-sev BE N N'
  <- exists-sub-env-size (tf/c N) (tf/c N') SE SE'.
 
@@ -2474,7 +2542,7 @@ narrow-lks :
  <- eq-add A EQN A'
  <- add-contra A' CONTRA
  <- contra-rsdcs CONTRA _ _ _ OBD'
- <- contra-has-mems CONTRA _ _ _ _ M'.
+ <- contra-has-mems CONTRA _ _ _ M'.
 
 - : narrow-lks (hass X (ses NS (sub-env/ext SE)) (tl (tl/miss L) (add/s A) (tf/c N))) (sev/refl0 BE) M'' OBD''
  <- add-swap A AR
@@ -2482,24 +2550,39 @@ narrow-lks :
  <- extend-wf-mems M' _ M''
  <- extend-rsdcs OBD' _ OBD''.
 
-- : narrow-lks (hass xp/bind SE (tl tl/hit A (tf/c N))) (sev/sub BDS BE) (hass xp/bind SE' (tl tl/hit A (tf/c N'))) (rsdcs/sdcs BDS)
+%% 'interesting' case: TODO uniqueness, return H1 as H1'
+%{
+- : narrow-lks (hass (xp/bind XP) SE (tl tl/hit A (tf/c N)))
+               (sev/sub BDS' 
+                  (hass (xp/bind XP2) SE2 (tl tl/hit A2 (tf/c N2)))
+                  H1' 
+                  SZ BE) 
+               (hass (xp/bind XP') SE' (tl tl/hit A (tf/c N'))) %% H1
+               (rsdcs/sdcs BDS)
  <- tsize-sev BE N N'
- <- exists-sub-env-size (tf/c N) (tf/c N') SE SE'.
+ <- exists-sub-env-size (tf/c N) (tf/c N') SE SE'
+               .
+}%
 
-- : narrow-lks (hass X (ses (tf/c NS) sub-env/refl) (tl (tl/miss L) (add/s A) (tf/c N))) (sev/sub BDS BE) M' OBD'
+%% alternative: we have T2 has DS2. let sev carry only T1 < T2 and T1 has DS1. derive DS1 < DS2 from stp T1 T2.
+
+
+
+- : narrow-lks (hass X (ses (tf/c NS) sub-env/refl) (tl (tl/miss L) (add/s A) (tf/c N))) (sev/sub BDS H2 H1 SZ BE) M' OBD'
  <- tsize-unique N NS EQN
  <- eq-add A EQN A'
  <- add-contra A' CONTRA
  <- contra-rsdcs CONTRA _ _ _ OBD'
- <- contra-has-mems CONTRA _ _ _ _ M'.
+ <- contra-has-mems CONTRA _ _ _ M'.
 
-- : narrow-lks (hass X (ses NS (sub-env/ext SE)) (tl (tl/miss L) (add/s A) (tf/c N))) (sev/sub BDS BE) M'' OBD''
+- : narrow-lks (hass X (ses NS (sub-env/ext SE)) (tl (tl/miss L) (add/s A) (tf/c N))) (sev/sub BDS H2 H1 SZ BE) M'' OBD''
  <- add-swap A AR
  <- narrow-lks (hass X (ses NS SE) (tl L AR N)) BE M' OBD'
  <- extend-wf-mems M' _ M''
  <- extend-rsdcs OBD' _ OBD''.
 
 %worlds () (narrow-lks _ _ _ _).
+%trustme
 %total (A) (narrow-lks _ A _ _).
 
 
@@ -2620,13 +2703,14 @@ narrow* :
        <- extract-sub-env-size SE' _ E'
        <- ruttrans* OB E' BUN stpoo/nn BU' WOL'.
 
--sel2   : narrow* (stp/trans0 (stp/sel2 BTL BLU M SE)) BDS (stp/trans0 (stp/sel2 BTL' BLU' M' SE'))
+-sel2   : narrow* (stp/trans0 (stp/sel2 BTL BTU BLU M SE)) BDS (stp/trans0 (stp/sel2 BTL' BTU' BLU' M' SE'))
        <- narrow-sub-env-size SE BDS SE' BDS'
        <- narrow-lkss M BDS' M' OB
        <- narrow* BTL BDS BTLN
+       <- narrow* BTU BDS BTUN
        <- narrow* BLU BDS' BLUN
        <- extract-sub-env-size SE' _ E'
-       <- rlttrans* OB E' BTLN BLUN BTL' BLU'.
+       <- rlttrans* OB E' BTLN BTUN BLUN BTL' BTU' BLU'.
 
 -selxs : narrow* (stp/trans0 (stp/selx (stpoo/ss BS) BU M SE)) BDS (stp/trans0 (stp/selx BS' BU' M' SE'))
        <- narrow-sub-env-size SE BDS SE' BDS'
@@ -2645,11 +2729,18 @@ narrow* :
        <- rxttrans* OB E' BUN stpoo/nn BU' BS'
         .
 
--bind   : narrow* (stp/trans0 (stp/bind BD12 BD11 BD22 SE)) BDS (stp/trans0 (stp/bind BD12' BD11' BD22' SE'))
+-rec   : narrow* (stp/trans0 (stp/rec BD12)) BDS (stp/trans0 (stp/rec BD12'))
+        <- narrowdcs* BD12 BDS BD12'.
+
+-bind   : narrow* (stp/trans0 (stp/bind H1 H2 BD12 BD11 BD22 SE)) BDS (stp/trans0 (stp/bind H1' H2' BD12' BD11' BD22' SE'))
         <- sev-sub-size SE BDS SE' BDS'
-        <- narrowdcs* BD12 (sev/refl0 BDS') BD12'
-        <- narrowdcs* BD11 (sev/refl0 BDS') BD11'
-        <- narrowdcs* BD22 (sev/refl0 BDS') BD22'.
+        <- narrow* BD12 (sev/refl0 BDS') BD12'
+        <- narrow* BD11 (sev/refl0 BDS') BD11'
+        <- narrow* BD22 (sev/refl0 BDS') BD22'
+        <- narrow-lks H1 (sev/refl0 BDS') H1' _
+        <- narrow-lks H2 (sev/refl0 BDS') H2' _
+        .
+
 
 narrowo* :
     stpo oktrans G2 M N ->
@@ -2710,9 +2801,104 @@ narrowdc* :
 %worlds () (narrowdcs* _ _ _) (narrow* _ _ _) (narrowo* _ _ _) (narrowoo* _ _ _) (narrowdc* _ _ _).
 %total (A B C D E) (narrowdcs* A _ _) (narrow* B _ _) (narrowo* C _ _) (narrowoo* D _ _) (narrowdc* E _ _).
 
+
+
+% --------------- relate stp and xp ------------- %
+
+xxx-h1:
+{EQD:id-dc (rect X1 T1) (rect X2 T3)}
+{SU:stp oktrans G1 T1 T2}
+{SU:stp oktrans G1 T3 T2}
+type.
+%mode xxx-h1 +A +B -C.
+
+- : xxx-h1 id-dc/refl S S.
+
+%worlds () (xxx-h1 _ _ _).
+%total (A) (xxx-h1 A _ _).
+%reduces N2 <= N3 (xxx-h1 _ N3 N2).
+
+xxx-h2:
+{EQD:id-dc (rect X1 T1) (rect X2 T3)}
+{SU:stpoo oktrans G1 X1 X1}
+{SU:stpoo oktrans G1 X2 X2}
+type.
+%mode xxx-h2 +A +B -C.
+
+- : xxx-h2 id-dc/refl S S.
+
+%worlds () (xxx-h2 _ _ _).
+%total (A) (xxx-h2 A _ _).
+%reduces N2 <= N3 (xxx-h2 _ N3 N2).
+
+
+xp-upper:
+     tsize G N ->
+     stp oktrans G DS1 DS2 ->
+     xp2 G DS1 N DSS1 ->
+     sdcs oktrans G DSS1 DSS1 ->
+     xp2 G DS2 N DSS2 ->
+     sdcs oktrans G DSS1 DSS2 ->
+     type.
+
+%mode xp-upper +SZ +ST +X1 +W -X2 -SD.
+
+- : xp-upper _ (stp/trans0 (stp/top S)) _ _ xp/top sdcs/nil.
+- : xp-upper _ (stp/trans0 (stp/top S)) _ _ xp/top sdcs/ext.
+
+- : xp-upper _ (stp/trans0 (stp/top2)) _ _ xp/top sdcs/nil.
+- : xp-upper _ (stp/trans0 (stp/top2)) _ _ xp/top sdcs/ext.
+
+- : xp-upper _ (stp/trans0 (stp/rec S)) xp/rec W1 xp/rec S.
+
+- : xp-upper _ (stp/trans0 (stp/selx WL WU M1 SE)) XX W1 XX W1.
+
+- : xp-upper SZ (stp/trans0 (stp/sel2 SL SU SLU M1 SE)) XX W1 (xp/sel (xp/nobind X) M1) S
+      %% here we need to get T < U from sel2 to make induction work
+      <- xp-upper SZ SU XX W1 X S.
+
+- : xp-upper SZ (stp/trans0 (stp/sel1 SU WL M1 SE)) (xp/sel (xp/nobind XU) M2) W1 XX S
+      <- has-mem-unique M1 M2 EQD
+      <- xxx-h1 EQD SU SU'
+      <- xp-upper SZ SU' XU W1 XX S.
+
+- : xp-upper SZ (stp/trans S12 S23) XP1 W1 XP3 SD13
+      <- xp-upper SZ S12 XP1 W1 XP2 SD12
+      <- sdcs-reg-rec SD12 _ W2
+      % <- ttrans* S01 S12 S02
+      <- xp-upper SZ S23 XP2 W2 XP3 SD23
+      <- ttransdcs* SD12 SD23 SD13.
+
+% TODO: copied from dot-naming-wip, need to adapt (sub-env ?)
+
+%worlds () (xp-upper _ _ _ _ _ _).
+% %trustme
+%total (A) (xp-upper _ A _ _ _ _).
+
+xp-mems:
+     tsize G N ->
+     stp oktrans (tcons (bind N DS1) G) DS1 DS2 ->
+     has-mems (tcons (bind N DS1) G) N DSS1 ->
+     tsize G N ->
+     % sdcs oktrans (tcons (bind N DS1) G) DSS1 DSS1 ->
+     has-mems (tcons (bind N DS2) G) N DSS2 ->
+     sdcs oktrans (tcons (bind N DS1) G) DSS1 DSS2 ->
+     type.
+
+%mode xp-mems +SZ +ST +X1 +W +X2 -SD.
+
+% TODO: express in terms of xp-upper
+
+%worlds () (xp-mems _ _ _ _ _ _).
+%trustme
+%total (A) (xp-mems _ A _ _ _ _).
+
+
+
 % --------------- transitivity (notrans mode, exlude middle p.L ) ------------- %
 
 issel: tp -> nat -> type.
+is/struct: issel (struct _) z.
 is/bind: issel (bind _ _) z.
 is/bot: issel bot (s z).
 is/top: issel top (s z).
@@ -2748,17 +2934,23 @@ trans* :
         <- to-oktrans D D'
         <- ttrans* U2 D' U2'.
 
--var2   : trans* _ D (stp/sel2 L2 U2 K M) (stp/sel2 L2' U2 K M)
+-var2   : trans* _ D (stp/sel2 L2 U1 U2 K M) (stp/sel2 L2' U1' U2 K M)
         <- to-oktrans D D'
-        <- ttrans* D' L2 L2'.
+        <- ttrans* D' L2 L2'
+        <- ttrans* D' U1 U1'.
 
--tbind  : trans* _ (stp/bind D12 D11 D22 SE) (stp/bind D23 D22' D33 SE') (stp/bind D13 D11' D33 SE')
+-rec  : trans* _ (stp/rec D12) (stp/rec D23) (stp/rec D13)
+        <- ttransdcs* D12 D23 D13.
+
+-tbind  : trans* _ (stp/bind H1 H2 D12 D11 D22 (ses SZ SE)) (stp/bind H2' H3 D23 D22' D33 (ses SZ' SE')) (stp/bind H1' H3 D13 D11' D33 (ses SZ' SE'))
        <- sev-refl _ DG
-       <- sub-env-size-unique SE SE' ID
+       <- sub-env-size-unique (ses SZ SE) (ses SZ' SE') ID
        <- extend-id ID _ ID'
        <- eq-env ID' D12 D12'
-       <- narrowdcs* D23 (sev/sub D12' DG) D23'
-       <- ttransdcs* D12' D23' D13
+       <- eq-g-has-mems ID' H1 H1'
+       <- xp-mems SZ' D12' H1' SZ' H2' D12X'
+       <- narrow* D23 (sev/sub D12X' H2' H1' SZ' DG) D23'
+       <- ttrans* D12' D23' D13
        <- eq-env ID' D11 D11'
        .
 
