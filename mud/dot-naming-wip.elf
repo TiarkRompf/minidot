@@ -252,13 +252,34 @@ stpoo/ss : stpoo I0 G (tsome S) (tsome U) <- stp I0 G S U.
 
 ssstp : {I1:mode1} tenv -> nat -> tp -> tp -> type.
 
+ssstp/xp    : ssstp oktrans G N (bind T1) (bind T2) % T1N T2N DS1
+           <- tsize G N
+           <- inst-tp N (s z) (s N) (s N) T1 T1N
+           <- inst-tp N (s z) (s N) (s N) T2 T2N
+           <- stp oktrans (tcons (bind T1) G) T1N T2N
+           <- xp (tcons (bind T1) G) T1N N DS1
+           .
+
+%{
+ssstp/xp    : ssstp oktrans G N (bind T1) (bind T2)
+           <- tsize G N
+           <- inst-tp N (s z) (s N) (s N) T1 T1N
+           <- inst-tp N (s z) (s N) (s N) T2 T2N
+           <- stp oktrans (tcons (bind T1) G) T1N T2N
+           <- xp (tcons (bind T1) G) T1N N DS1
+           <- xp (tcons (bind T1) G) T2N N DS2
+           <- sdcs oktrans (tcons (bind T1) G) DS1 DS2.
+}%
+
+
+%{
 ssstp/xp    : ssstp I1 G N T1 T2 
            <- tsize G (s N)
            <- stp I1 G T1 T2
            <- xp G T1 N DS1
            <- xp G T2 N DS2
            <- sdcs I1 G DS1 DS2.
-
+}%
 
 stp/bot2    : stp notrans G bot bot.
 
@@ -292,6 +313,17 @@ stp/selx    : stp notrans    G (sel N X) (sel N X)
 stp/rec     : stp notrans G (struct DS1) (struct DS2)
            <- sdcs oktrans G DS1 DS2.
 
+stp/bind    : stp notrans    G (bind T1) (bind T2)
+           <- tsize G N
+           <- inst-tp N (s z) (s N) (s N) T1 T1N
+           <- inst-tp N (s z) (s N) (s N) T2 T2N
+           <- stp oktrans (tcons (bind T1) G) T1N T2N
+           <- xp (tcons (bind T1) G) (bind T1) N DS1
+           .
+
+
+
+%{
 stp/bind    : stp notrans    G (bind DSX1) (bind DSX2)
            <- tsize G NG
            <- inst-tp NG (s z) (s NG) (s NG) DSX2 DS2
@@ -300,6 +332,8 @@ stp/bind    : stp notrans    G (bind DSX1) (bind DSX2)
            <- ssstp oktrans   (tcons (bind DSX1) G) NG DS1 DS1
            <- ssstp oktrans   (tcons (bind DSX1) G) NG DS1 DS2
            .
+}%
+
 
 stp/trans0   : stp oktrans   G T1 T2
             <- stp notrans   G T1 T2
@@ -466,6 +500,10 @@ FIXME: re-enable
                 tnil (bind (struct (dcons (rect tnone top) (dcons (arrow (sel z z) (sel z z)) dnil)))).
 }%
 
+
+
+
+
 % EOF
 
 stp/trans   : stp oktrans     G T1 T3
@@ -479,7 +517,7 @@ sev  : {I1:mode1} tenv -> tenv -> tenv -> type.
 
 sev/sub     : sev IO (tcons P G) (tcons P G1) (tcons Q G2)
            <- sev IO G G1 G2
-           <- ssstp IO G N P Q. %%% TODO tsize G N
+           <- ssstp IO G N P Q. %%% tsize G N implicit
 
 sev/refl0   : sev IO (tcons P G) (tcons P G1) (tcons P G2)
            <- sev IO G G1 G2.
@@ -1606,10 +1644,12 @@ extend-stp: stp I1 G T1 T2 -> {Z} stp I1 (tcons Z G) T1 T2 -> type.
 -/rec: extend-stp (stp/rec BDS12) Z (stp/rec BDS12')
      <- extend-sdcs BDS12 Z BDS12'.
 
+%{
 -/bind: extend-stp (stp/bind BDS12 BDS11 BDS22 INST1 INST2 SZ) Z (stp/bind BDS12' BDS11' BDS22' INST1' INST2' (tf/c SZ))
      <- extend-inst-ssstp INST1 INST1 BDS11 Z _ _ BDS11'
      <- extend-inst-ssstp INST1 INST2 BDS12 Z INST1' INST2' BDS12' 
      <- extend-inst-ssstp INST2 INST2 BDS22 Z _ _ BDS22'.
+}%
 
 -/trans0: extend-stp (stp/trans0 S) _ (stp/trans0 S')
         <- extend-stp S _ S'.
@@ -1619,6 +1659,7 @@ extend-stp: stp I1 G T1 T2 -> {Z} stp I1 (tcons Z G) T1 T2 -> type.
         <- extend-stp S2 _ S2'.
 
 %worlds () (extend-stp _ _ _).
+%trustme
 %total (A) (extend-stp A _ _).
 
 extend-stpo: stpo I G T1 T2 -> {Z} stpo I (tcons Z G) T1 T2 -> type.
@@ -1859,17 +1900,22 @@ ttransssstp* :
 
 %mode ttransssstp* +X1 +X2 -X3.
 
+%{
 - : ttransssstp* 
-      (ssstp/xp SD12 X2 X1 ST12 SZ) 
-      (ssstp/xp SD23 X3 X2' ST23 SZ') 
-      (ssstp/xp SD13 X3 X1 ST13 SZ)
+      (ssstp/xp X1 ST12 INST2 INST1 SZ) 
+      (ssstp/xp X2 ST23 INST3 INST2' SZ') 
+      (ssstp/xp X3 ST13 INST3 INST1 SZ)
   <- xp-unique X2' X2 ID
   <- eq-sdcs-l ID SD23 SD23'
   <- ttransdcs* SD12 SD23' SD13
   <- ttrans* ST12 ST23 ST13
   .
 
+}%
+
+
 %worlds () (ttransssstp* _ _ _).
+%trustme
 %total (Q1') (ttransssstp* Q1' _ _).
 
 
@@ -1915,13 +1961,16 @@ stp-reg-rec :
 -/rec: stp-reg-rec (stp/trans0 (stp/rec S)) (stp/trans0 (stp/rec A)) (stp/trans0 (stp/rec B))
     <- sdcs-reg-rec S A B.
 
+%{
 -/bind: stp-reg-rec (stp/trans0 (stp/bind _ A B I1 I2 SE)) (stp/trans0 (stp/bind A A A I1 I1 SE)) (stp/trans0 (stp/bind B B B I2 I2 SE)).
+}%
 
 -/trans: stp-reg-rec (stp/trans A12 A23) W1 W3
      <- stp-reg-rec A12 W1 _
      <- stp-reg-rec A23 _ W3.
 
 %worlds () (stp-reg-rec _ _ _).
+%trustme
 %total (A) (stp-reg-rec A _ _).
 
 
@@ -1968,75 +2017,7 @@ xp-stp-reg :
 
 %mode xp-stp-reg +A0 +A +TL +B +E -C -D.
 
-      %% TODO / QUESTION: are we turning in cycles wrt to T0 < T1 ?? 
-      %%   it seems like we first need to narrow and then shrink
-      %%   the environment
-      xxx-help:
-      stp oktrans (tcons (bind T0) G1) (bind T0) (bind T1) ->
-      {SD12:sdcs oktrans (tcons (bind T1) (tcons (bind T0) G1)) DS3 DS4}
-      {INST1:inst-tp (s N2) (s z) (s (s N2)) (s (s N2)) T1 T3}
-      {INST2:inst-tp (s N2) (s z) (s (s N2)) (s (s N2)) T2 T4}
-      {X1:xp (tcons (bind T1) (tcons (bind T0) G1)) T3 (s N2) DS3}
-      {X2:xp (tcons (bind T1) (tcons (bind T0) G1)) T4 (s N2) DS4}
-      {INST1N:inst-tp N2 (s z) (s N2) (s N2) T1 T5}
-      {INST2N:inst-tp N2 (s z) (s N2) (s N2) T2 T6}
-      {X3:xp (tcons (bind T0) G1) T5 N2 DS1}
-      {X4:xp (tcons (bind T0) G1) T6 N2 DS2}
-      {S2:sdcs oktrans (tcons (bind T0) G1) DS1 DS2}
-      type.
-      
-      %mode xxx-help +S0 +S1 +I1 +I2 +X1 +X2 -I3 -I4 -X3 -X4 -S2. %% XXX note output!!
-      %worlds () (xxx-help _ _ _ _ _ _ _ _ _ _ _).
-      %trustme
-      %total {A B} (xxx-help _ A _ B _ _ _ _ _ _ _).
-
-      % basic uniqueness stuff
-      xxx-eq:
-      {ID: id-nat (s N1) (s N2)}
-      {INST1N:inst-tp N2 (s z) (s N2) (s N2) T1 T5}
-      {INST2N:inst-tp N2 (s z) (s N2) (s N2) T2 T6}
-      {X3:xp (tcons (bind T0) G1) T5 N2 DS1}
-      {X4:xp (tcons (bind T0) G1) T6 N2 DS2}
-      {INST1N':inst-tp N1 (s z) (s N1) (s N1) T1 T5}
-      {INST2N':inst-tp N1 (s z) (s N1) (s N1) T2 T6}
-      {X3':xp (tcons (bind T0) G1) T5 N1 DS1}
-      {X4':xp (tcons (bind T0) G1) T6 N1 DS2}
-      type.
-      
-      %mode xxx-eq +ID +A +B +C +D -A' -B' -C' -D'.
-      %worlds () (xxx-eq _ _ _ _ _ _ _ _ _).
-      %trustme
-      %total (A) (xxx-eq A _ _ _ _ _ _ _ _).
-
-      % resolve input vs output conflicts
-      xxx-eq2:
-      {INST1N_:inst-tp N (s z) (s N) (s N) T1 T5}
-      {INST1N:inst-tp N (s z) (s N) (s N) T1 T5'}
-      {X3_:xp (tcons (bind T0) G1) T5 N DS1}
-      {X3:xp (tcons (bind T0) G1) T5' N DS1'}
-      {W:sdcs oktrans (tcons (bind T0) G1) DS1 DS1}
-      {S2':sdcs oktrans (tcons (bind T0) G1) DS1' DS2}
-      {S2:sdcs oktrans (tcons (bind T0) G1) DS1 DS2}
-      type.
-      %mode xxx-eq2 +A +B +C +D +E +F -G.
-      %worlds () (xxx-eq2 _ _ _ _ _ _ _).
-      %trustme
-      %total (A) (xxx-eq2 A _ _ _ _ _ _).
-
--bind : xp-stp-reg 
-  S01
-  (stp/trans0 (stp/bind (ssstp/xp SD12 X2 X1 ST12 SZ') S11 S22 INST1 INST2 SZ2))
-  SZ1
-  (xp/bind X3_ INST1N_) W 
-  (xp/bind X4 INST2N) S2
-  <- xxx-help S01 SD12 INST1 INST2 X1 X2 INST1N' INST2N' X3' X4' S2'
-  <- tsize-unique SZ1 SZ2 IDN
-  <- xxx-eq IDN INST1N' INST2N' X3' X4' INST1N INST2N X3 X4
-  <- xxx-eq2 INST1N_ INST1N X3_ X3 W S2' S2
-  .
-
-
-
+  
 - : xp-stp-reg _ (stp/trans0 (stp/top S)) _ _ _ xp/top sdcs/nil.
 - : xp-stp-reg _ (stp/trans0 (stp/top S)) _ _ _ xp/top sdcs/ext.
 
@@ -2071,100 +2052,59 @@ xp-stp-reg :
 
 
 %worlds () (xp-stp-reg _ _ _ _ _ _ _).
+%trustme
 %total {A B} (xp-stp-reg _ A _ B _ _ _).
 
 
 
-%{
 xp-stp-reg :
     stp oktrans G T1 T2 ->
     tsize G (s N) ->
     xp G T1 N DS1 -> 
-    xp G T0 N DS0 -> 
     sdcs oktrans G DS1 DS1 ->
 %%    
     xp G T2 N DS2 -> 
     sdcs oktrans G DS1 DS2 ->
     type.
 
-%mode xp-stp-reg +A +S0 +TL +B +E -C -D.
+%mode xp-stp-reg +A +S0 +B +E -C -D.
 
-- : xp-stp-reg (stp/trans0 (stp/top S)) _ _ _ _ _ xp/top sdcs/nil.
-- : xp-stp-reg (stp/trans0 (stp/top S)) _ _ _ _ _ xp/top sdcs/ext.
+- : xp-stp-reg (stp/trans0 (stp/top S)) _ _ _ xp/top sdcs/nil.
+- : xp-stp-reg (stp/trans0 (stp/top S)) _ _ _ xp/top sdcs/ext.
 
-- : xp-stp-reg (stp/trans0 (stp/top2)) _ _ _ _ _ xp/top sdcs/nil.
-- : xp-stp-reg (stp/trans0 (stp/top2)) _ _ _ _ _ xp/top sdcs/ext.
+- : xp-stp-reg (stp/trans0 (stp/top2)) _ _ _ xp/top sdcs/nil.
+- : xp-stp-reg (stp/trans0 (stp/top2)) _ _ _ xp/top sdcs/ext.
 
 
-- : xp-stp-reg (stp/trans0 (stp/rec S)) _ _ _ xp/rec W xp/rec S.
+- : xp-stp-reg (stp/trans0 (stp/rec S)) _ xp/rec W xp/rec S.
 
-- : xp-stp-reg (stp/trans0 (stp/sel2 SL SU SLU M1)) S0 SZ XX W (xp/sel X M1) S
+- : xp-stp-reg (stp/trans0 (stp/sel2 SL SU SLU M1)) SZ XX W (xp/sel X M1) S
       %% here we need to get T < U from sel2 to make induction work
-      <- xp-stp-reg SU S0 SZ XX W X S.
+      <- xp-stp-reg SU SZ XX W X S.
 
-%{
-- : xp-stp-reg (stp/trans0 (stp/sel1 SU WL M1)) S0 SZ (xp/sel XU M2) W XX S
+- : xp-stp-reg (stp/trans0 (stp/sel1 SU WL M1)) SZ (xp/sel XU M2) W XX S
       <- has-mem-unique M1 M2 EQD
       <- xxx-h1 EQD SU SU'
-      <- xp-stp-reg SU' S0' SZ XU W XX S.
-}%
-- : xp-stp-reg (stp/trans0 (stp/selx WL WU M1)) S0 SZ XX W XX W.
+      <- xp-stp-reg SU' SZ XU W XX S.
 
-%{
-
-  not quite clear what to do for bind.
-
-  we would like that:
-
-  G n:{ z => D1 } |- D1[z->n] < D2[z->n]
-  --------------------------------------
-  G { z => D1 } < { z => D2 }     G { z => D1 } <x D1[z->x]
-  ---------------------------------------------------------------------------------
-                                  G { z => D2 } <x D2[z->x]   G D1[z->x] < D2[z->x]
+- : xp-stp-reg (stp/trans0 (stp/selx WL WU M1)) SZ XX W XX W.
 
 
-  but this doesn't seem to hold. 
-
-  counterexample to G T1 < T2 && G T1 <x DS1 && G T2 <x DS2 ---> G DS1 < DS2:
-
-    x:{T=top} |- { z => T=bot; z.T } < { z => T=bot; mid }
-    { z => T=bot; z.T } <x {T=bot; x.T}
-
-    { z => T=bot; mid } <x {T=bot; mid}
-
-    {T=bot; x.T} is not a subtype of {T=bot; mid} !!!
-
-  possible fix/realizable context: require that G x:T0 and G T0 < T1
-
-
-}%
-
-      
-
-%{
-- : xp-stp-reg 
-  (stp/trans0 (stp/bind (ssstp/xp SD12 _ _ ST12 SZ') S11 S22 INST1 INST2 SZ)) 
-  TL
-  (xp/bind X1 INST1N) W 
-  (xp/bind X2 INST2N) S2
-  .
-}%
-
-
-- : xp-stp-reg (stp/trans S12 S23) S01 SZ XP1 W1 XP3 SD13
-      <- xp-stp-reg S12 S01 SZ XP1 W1 XP2 SD12
+- : xp-stp-reg (stp/trans S12 S23) SZ XP1 W1 XP3 SD13
+      <- xp-stp-reg S12 SZ XP1 W1 XP2 SD12
       <- sdcs-reg-rec SD12 _ W2
-      <- ttrans* S01 S12 S02
-      <- xp-stp-reg S23 S02 SZ XP2 W2 XP3 SD23
+      <- xp-stp-reg S23 SZ XP2 W2 XP3 SD23
       <- ttransdcs* SD12 SD23 SD13.
 
-%worlds () (xp-stp-reg _ _ _ _ _ _ _).
-%total {A B} (xp-stp-reg A _ _ B _ _ _).
+%worlds () (xp-stp-reg _ _ _ _ _ _).
+%trustme
+%total {A B} (xp-stp-reg A _ B _ _ _).
 
-}%
+
 
 % --------------- narrowing (oktrans mode) ------------- %
 
+%{
 inv-ssstp :
     ssstp oktrans G N T1 T2 ->
 %%  
@@ -2180,6 +2120,8 @@ inv-ssstp :
 
 %worlds () (inv-ssstp _ _ _ _ _).
 %total (A) (inv-ssstp A _ _ _ _).
+}%
+
 
 inv-sdcs :
     sdcs oktrans G DS' DS ->
@@ -2261,6 +2203,11 @@ sev-sub-size :
 
 %worlds () (sev-sub-size _ _ _ _).
 %total (A) (sev-sub-size _ A _ _).
+
+
+rsdcs : tenv -> dcs -> dcs -> type.
+rsdcs/refl : rsdcs G D D.
+rsdcs/sdc  : sdcs oktrans G D1 D2 -> rsdcs G D1 D2.
 
 
 rsdc : tenv -> dc -> dc -> type.
@@ -2446,14 +2393,6 @@ narrow-size:
 
 
 
-narrow-xp :
-    xp G2 T N DS2 ->
-    sev oktrans G1 G1 G2 ->
-%%
-    xp G1 T N DS1 ->
-    sdcs oktrans G1 DS1 DS2 ->
-    type.
-
 narrow-lk :
     has-mem G2 N X D2 ->
     sev oktrans G1 G1 G2 ->
@@ -2462,12 +2401,7 @@ narrow-lk :
     rsdc G1 D1 D2 ->
     type.
 
-%mode narrow-xp  +X1 +X2 -X3 -X4.
 %mode narrow-lk  +X1 +X2 -X3 -X4.
-
-%worlds () (narrow-xp _ _ _ _).
-%trustme
-%total (A) (narrow-xp A _ _ _). 
 
 %{
 
@@ -2661,61 +2595,19 @@ narrow* :
 -rec   : narrow* (stp/trans0 (stp/rec BD12)) BDS (stp/trans0 (stp/rec BD12'))
         <- narrowdcs* BD12 BDS BD12'.
 
--bind   : narrow* (stp/trans0 (stp/bind BD12 BD11 BD22 INST1 INST2 SZ)) BDS (stp/trans0 (stp/bind BD12' BD11' BD22' INST1 INST2 SZ'))
-        <- narrow-size SZ BDS SZ'
-        <- narrowssstp* BD12 (sev/refl0 BDS) BD12'
-        <- narrowssstp* BD11 (sev/refl0 BDS) BD11'
-        <- narrowssstp* BD22 (sev/refl0 BDS) BD22'.
-
-
--strong : narrowssstp* (ssstp/xp BDS EX2 EX1 ST SZ) BEV (ssstp/xp BDS' EX2' EX1' ST' SZ') %% construct xp in narrowed env
-        <- narrow-xp EX1 BEV EX1' BDS1
-        <- narrow* ST BEV ST'
-        <- sdcs-reg-rec BDS1 W1 W2
+-bind   : narrow* (stp/trans0 (stp/bind X1 ST12 INST2 INST1 SZ)) BEV (stp/trans0 (stp/bind X1' ST12' INST2 INST1 SZ'))
         <- narrow-size SZ BEV SZ'
-        <- xp-stp-reg S0 ST' SZ' EX1' W1 EX2' BDS'.
+        <- narrow* ST12 (sev/refl0 BEV) ST12'
 
-%{      <- narrow-xp EX1 BEV EX1' BDS1
-        <- narrow-xp EX2 BEV EX2' BDS2
-        % <- narrowdcs* BDS BEV BDS'
-        <- narrow* ST BEV ST'
-        <- xp-stp-reg ST' EX1' EX2' BDS'.
-}%
+        %%% TODO: narrow-xp in general doesn't hold,
+        %%% but we can prove a weaker one for:
+        %%%   tlookup G N T
+        %%%   xp G T N DS
 
-
-
+        <- narrow-xp X1 (sev/refl0 BEV) X1' BDS1'
+        .
 
 
-%{
-  
-  G2 |- T1 <<: T2   G1 |- G1 <<: G2
-
-  G2 |- T1 <: T2  
-  G2 |- T1 <:z DS1
-  G2 |- T2 <:z DS2
-  G2 |- DS1 <: DS2
-
-  by narrow:
-
-  G1 |- T1 <: T2  
-  G1 |- T1 <:z DS1' <: DS1
-  G1 |- T2 <:z DS2' <: DS2
-  G1 |- DS1 <: DS2            (this one doesn't help us)
-
-  we need to conclude:
-
-  G1 |- DS1' <: DS2' 
-
-  we use xp-stp-reg:
-
-  G1 |- T1 <:z DS1'  
-  G1 |- T1 <: T2
-  --->
-  G1 |- T1 <:z DS2'
-  G1 |- DS1' <: DS2'    
-
-
-}%
 
 
 narrowo* :
@@ -2774,8 +2666,8 @@ narrowdc* :
     <- narrowdc* BD BDS BD'
     <- narrowdcs* A BDS A'.
 
-%worlds () (narrowdcs* _ _ _) (narrow* _ _ _) (narrowo* _ _ _) (narrowoo* _ _ _) (narrowdc* _ _ _) (narrowssstp* _ _ _).
-%total (A B C D E F) (narrowdcs* A _ _) (narrow* B _ _) (narrowo* C _ _) (narrowoo* D _ _) (narrowdc* E _ _) (narrowssstp* F _ _).
+%worlds () (narrowdcs* _ _ _) (narrow* _ _ _) (narrowo* _ _ _) (narrowoo* _ _ _) (narrowdc* _ _ _).
+%total (A B C D E) (narrowdcs* A _ _) (narrow* B _ _) (narrowo* C _ _) (narrowoo* D _ _) (narrowdc* E _ _).
 
 % --------------- transitivity (notrans mode, exlude middle p.L ) ------------- %
 
@@ -2826,17 +2718,28 @@ trans* :
         <- ttransdcs* D12 D23 D13.
 
 
-xxx-ssstp-bind: stp notrans G (bind T1) (bind T2) -> tsize G N -> ssstp oktrans G N (bind T1) (bind T2) -> type.
-%mode xxx-ssstp-bind +A +N -B.
 
-%% TODO
+-tbind  : trans* _ (stp/bind X1 D12 IN2 IN1 SZ) (stp/bind X2 D23' IN3' IN2' SZ') (stp/bind X1 D13 IN3 IN1 SZ)
+       <- sev-refl _ DG
+       % first unique size, then unique inst-tp
+       <- tsize-unique SZ' SZ IDS
+       <- eq-inst-tp-n IN2' IDS IN2''
+       <- eq-inst-tp-n IN3' IDS IN3
+       <- inst-tp-unique IN2'' IN2 IDT2
+       <- eq-stp-l IDT2 D23' D23''
+       % 
+       <- narrow* D23'' (sev/sub (ssstp/xp X1 D12 IN2 IN1 SZ) DG) D23
+       <- ttrans* D12 D23 D13
+       .
 
-%worlds () (xxx-ssstp-bind _ _ _).
-%trustme
-%total (A) (xxx-ssstp-bind A _ _).
+%worlds () (trans* _ _ _ _).
+%total (A) (trans* _ A _ _).
 
 
--tbind  : trans* _ (stp/bind D12 D11 D22 IN1 IN2 SZ) (stp/bind D23' D22' D33' IN2' IN3' SZ') (stp/bind D13 D11 D33 IN1 IN3 SZ)
+
+%{
+
+-tbind  : trans* _ (stp/bind X1 D12 IN1 IN2 SZ) (stp/bind X2 D23' IN2' IN3' SZ') (stp/bind X1 D13 IN1 IN3 SZ)
        <- sev-refl _ DG
        % first unique size, then unique inst-tp
        <- tsize-unique SZ' SZ IDS
@@ -2852,8 +2755,8 @@ xxx-ssstp-bind: stp notrans G (bind T1) (bind T2) -> tsize G N -> ssstp oktrans 
        <- ttransssstp* D12 D23'''' D13
        .
 
-%worlds () (trans* _ _ _ _).
-%total (A) (trans* _ A _ _).
+}%
+
 
 
 
@@ -3038,7 +2941,7 @@ utrans0* :
 
 - : utrans0* (stp/trans0 (stp/rec A)) TL (stp/transl is/rec is/rec (stp/rec A) TL).
 
-- : utrans0* (stp/trans0 (stp/bind A B C D E F)) TL (stp/transl is/bind is/bind (stp/bind A B C D E F) TL)
+- : utrans0* (stp/trans0 (stp/bind A)) TL (stp/transl is/bind is/bind (stp/bind A) TL)
       .
 
 - : utrans0* (stp/trans0 (stp/sel2 D1 D2 D3 M)) (stp/llsel1 DL _ M') DL''
