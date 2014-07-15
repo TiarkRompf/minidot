@@ -76,7 +76,7 @@ let: nat -> tm -> tp -> tm -> tp -> tm
           e1).
 
 % values
-clo: venv -> ics -> val.
+clo: venv -> dcs -> ics -> val.
 
 %{ ------- environments ----- }%
 
@@ -148,14 +148,14 @@ eval : venv -> tm -> val -> type.
 e/var: eval G (var N) V
     <- vlookup G N V
      .
-e/new: eval G (new N DS IS) (clo GN IS)
+e/new: eval G (new N DS IS) (clo GN DS IS)
     <- sub-venv-size GN N G
      .
 e/app: eval G (app E1 X E2) V3
-    <- eval G E1 (clo G1 IS)
+    <- eval G E1 (clo G1 DS IS)
     <- ilk IS X (fun E3)
     <- eval G E2 V2
-    <- eval (vcons V2 (vcons (clo G1 IS) G1)) E3 V3
+    <- eval (vcons V2 (vcons (clo G1 DS IS) G1)) E3 V3
      .
 
 % --------------- typing ------------- %
@@ -339,23 +339,34 @@ t/sub : typ G E U
      <- stp1 G S U
       .
 
-wf-val   : val -> tenv -> tp -> type.
-wf-env   : venv -> tenv -> type.
+xt-val : val -> tp -> type.
+xtv/clo: xt-val (clo HC DCS ICS) (bind N DCS)
+      <- vsize HC N.
 
-v/clo : wf-val (clo H ICS) G T
-     <- wf-env H GC
+xt-env : venv -> tenv -> type.
+xte/n : xt-env vnil tnil.
+xte/c : xt-env (vcons V H) (tcons T G)
+     <- xt-val V T
+     <- xt-env H G
+      .
+
+wf-val: val -> venv -> tp -> type.
+v/clo : wf-val (clo HC DCS ICS) H T
+     <- xt-env H G
+     <- xt-env HC GC
      <- tsize GC N
      <- typcs (tcons (bind N DCS) GC) ICS DCS
      <- stp2 GC (bind N DCS) G T
       .
-v/sub : wf-val V G U
-     <- wf-val V G0 T
-     <- stp2 G0 T G U
-      .
 
+wf-env: venv -> tenv -> type.
 wfe/n : wf-env vnil tnil.
 wfe/c : wf-env (vcons V H) (tcons T G)
-     <- wf-val V (tcons T G) T
+     <- wf-val V H T
+     <- xt-val V T0
+     <- xt-env H G0
+     <- stp1 G0 T0 T
+     <- wf-tp G T
      <- wf-env H G.
 
 %%% QUERIES %%%
@@ -912,13 +923,13 @@ dlk-unique-rec : dlk DS X D -> dlk DS' X D' -> id-dcs DS DS' -> id-dc D D' -> ty
 %worlds () (dlk-unique-rec _ _ _ _).
 %total (EQ) (dlk-unique-rec _ _ EQ _).
 
-eq-bind : id-nat N N' -> {DS} id-tp (bind N DS) (bind N' DS) -> type.
-%mode eq-bind +A +B -C.
+eq-nat-bind : id-nat N N' -> {DS} id-tp (bind N DS) (bind N' DS) -> type.
+%mode eq-nat-bind +A +B -C.
 
-- : eq-bind id-nat/refl _ id-tp/refl.
+- : eq-nat-bind id-nat/refl _ id-tp/refl.
 
-%worlds () (eq-bind _ _ _).
-%total (A) (eq-bind A _ _).
+%worlds () (eq-nat-bind _ _ _).
+%total (A) (eq-nat-bind A _ _).
 
 eq-some : id-topt (tsome L) (tsome L') -> id-tp L L' -> type.
 %mode eq-some +A -B.
@@ -1453,7 +1464,7 @@ tsize-calc : {G} tsize G N -> type.
 wf-env-size-eq: wf-env H G -> vsize H N1 -> tsize G N2 -> eq-nat N1 N2 -> type.
 %mode wf-env-size-eq +A +B +C -D.
 -      : wf-env-size-eq wfe/n vf/n tf/n eq-nat/z.
--      : wf-env-size-eq (wfe/c G _) (vf/c VS) (tf/c TS) (eq-nat/s E) <- wf-env-size-eq G VS TS E.
+-      : wf-env-size-eq (wfe/c G _ _ _ _ _) (vf/c VS) (tf/c TS) (eq-nat/s E) <- wf-env-size-eq G VS TS E.
 %worlds () (wf-env-size-eq _ _ _ _).
 %total A (wf-env-size-eq A _ _ _).
 
@@ -1610,7 +1621,7 @@ wf-sub-env-size-rec: wf-env H G -> sub-venv HN H -> sub-env GN G -> vsize HN N -
 
 - : wf-sub-env-size-rec E sub-venv/refl sub-env/refl _ _ E.
 
-- : wf-sub-env-size-rec (wfe/c E _) (sub-venv/ext SH) (sub-env/ext SG) NH NG OUT
+- : wf-sub-env-size-rec (wfe/c E _ _ _ _ _) (sub-venv/ext SH) (sub-env/ext SG) NH NG OUT
  <- wf-sub-env-size-rec E SH SG NH NG OUT.
 
 - : wf-sub-env-size-rec E (sub-venv/ext SH) sub-env/refl NH NG OUT
@@ -1653,14 +1664,14 @@ wf-sub-env-size-rec0: wf-env H G -> sub-env GN G -> tsize GN N -> sub-venv HN H 
 
 - : wf-sub-env-size-rec0 wfe/n sub-env/refl tf/n sub-venv/refl vf/n.
 
-- : wf-sub-env-size-rec0 (wfe/c E WV) sub-env/refl (tf/c NG) SHO (vf/c NH)
+- : wf-sub-env-size-rec0 (wfe/c E _ _ _ _ WV) sub-env/refl (tf/c NG) SHO (vf/c NH)
  <- wf-sub-env-size-rec0 E sub-env/refl NG SH NH
  <- wf-env-size-same0 E NG NH'
  <- sub-venv-size-unique (svs NH SH) (svs NH' sub-venv/refl) EQH
  <- eq-venv-cons EQH id-val/refl EQH'
  <- sub-venv-refl EQH' SHO.
 
-- : wf-sub-env-size-rec0 (wfe/c E _) (sub-env/ext SG) NG (sub-venv/ext SH) NH
+- : wf-sub-env-size-rec0 (wfe/c E _ _ _ _ _) (sub-env/ext SG) NG (sub-venv/ext SH) NH
  <- wf-sub-env-size-rec0 E SG NG SH NH.
 
 %worlds () (wf-sub-env-size-rec0 _ _ _ _ _).
@@ -3328,24 +3339,74 @@ extend-stp1-mult: stp1 G T1 T2 -> sub-env G G' -> stp1 G' T1 T2 -> type.
 %worlds () (extend-stp1-mult _ _ _).
 %total  (A) (extend-stp1-mult A _ _).
 
+eq-stp1-l : id-tp L L' -> stp1 G L U -> stp1 G L' U -> type.
+%mode eq-stp1-l +EQ +B -C.
+
+- : eq-stp1-l id-tp/refl B B.
+
+%worlds () (eq-stp1-l _ _ _).
+%total (A) (eq-stp1-l A _ _).
+%reduces C <= B (eq-stp1-l _ B C).
+
+eq-stp1-g : id-tenv G G' -> stp1 G L U -> stp1 G' L U -> type.
+%mode eq-stp1-g +EQ +B -C.
+
+- : eq-stp1-g id-tenv/refl B B.
+
+%worlds () (eq-stp1-g _ _ _).
+%total (A) (eq-stp1-g A _ _).
+%reduces C <= B (eq-stp1-g _ B C).
+
 %{ ------- term and value typing lemmas ---- }%
+
+%{ ------- xt-* lemmas ------- }%
+
+xt-val-calc : {V} xt-val V T -> type.
+%mode xt-val-calc +V -XT.
+
+-/clo : xt-val-calc (clo HC DCS ICS) (xtv/clo VN)
+     <- vsize-calc HC VN.
+
+%worlds () (xt-val-calc _ _).
+%total (A) (xt-val-calc A _).
+
+xt-val-unique : xt-val V T -> xt-val V T' -> id-tp T T' -> type.
+%mode xt-val-unique +A +B -C.
+
+- : xt-val-unique (xtv/clo NA) (xtv/clo NB) IDT
+ <- vsize-unique NA NB IDN
+ <- eq-nat-bind IDN _ IDT.
+
+%worlds () (xt-val-unique _ _ _).
+%total {A B} (xt-val-unique A B _).
+
+xt-env-unique : xt-env H G -> xt-env H G' -> id-tenv G G' -> type.
+%mode xt-env-unique +A +B -C.
+
+- : xt-env-unique xte/n xte/n id-tenv/refl.
+- : xt-env-unique (xte/c A VA) (xte/c B VB) ID
+ <- xt-val-unique VA VB IDV
+ <- xt-env-unique A B ID0
+ <- eq-env-cons ID0 IDV ID.
+
+%worlds () (xt-env-unique _ _ _).
+%total {A B} (xt-env-unique A B _).
 
 %{ ------- extension lemmas ------- }%
 
-extend-wfv: wf-val V G T -> {Z} wf-val V (tcons Z G) T -> type.
+extend-wfv: wf-val V H T -> {Z} wf-val V (vcons Z H) T -> type.
 %mode extend-wfv +A +B -C.
 
--/clo : extend-wfv (v/clo B ADS SN WE) Z (v/clo B2 ADS SN WE)
-     <- extend-stp2 B Z _ _ B2.
-
--/sub : extend-wfv (v/sub B A) Z (v/sub B2 A)
-     <- extend-stp2 B Z _ _ B2.
+-/clo : extend-wfv (v/clo B ADS SN XEC XE) Z (v/clo B2 ADS SN XEC (xte/c XE XZ))
+     <- xt-val-calc Z XZ
+     <- extend-stp2 B _ _ _ B2.
 
 %worlds () (extend-wfv _ _ _).
 %total (A) (extend-wfv A _ _).
 
 %{ ------- widening lemmas ------- }%
 
+%{ -- TODO revisit
 wfv-widen: stp2 G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
 %mode wfv-widen +A +B -C.
 
@@ -3353,6 +3414,7 @@ wfv-widen/sub : wfv-widen B W (v/sub B W).
 
 %worlds () (wfv-widen _ _ _).
 %total (A) (wfv-widen A _ _).
+}%
 
 %{ ------- inversion of typing ----- }%
 
@@ -3447,24 +3509,31 @@ invert-fun:
 
 %{ ------- inversion of value typing ----- }%
 
-invert-wfv:
-  wf-val (clo H IS) G T ->
+invert-xtv:
+  xt-val (clo HC DS IS) (bind N' DS') ->
 %%
-  wf-env H GC ->
+  vsize HC N' ->
+  id-dcs DS DS' ->
+  type.
+%mode invert-xtv +A -B -C.
+
+-/clo : invert-xtv (xtv/clo NH) NH id-dcs/refl.
+
+%worlds () (invert-xtv _ _ _).
+%total (A) (invert-xtv A _ _).
+
+invert-wfv:
+  wf-val (clo HC DCS ICS) H T ->
+%%
+  xt-env H G ->
+  xt-env HC GC ->
   tsize GC N ->
-  typcs (tcons (bind N DS0) GC) IS DS0 ->
-  wf-val (clo H IS) GC (bind N DS0) ->
-  stp2 GC (bind N DS0) G T ->
+  typcs (tcons (bind N DCS) GC) ICS DCS ->
+  stp2 GC (bind N DCS) G T ->
   type.
 %mode invert-wfv +A -B -C -D -E -F.
 
--/clo : invert-wfv (v/clo B ADS SN WE) WE SN ADS (v/clo B0 ADS SN WE) B
-     <- stp2-reg B W0 _
-     <- stp2refl W0 B0.
-
--/sub : invert-wfv (v/sub B A) WE SN ADS WV B'
-     <- invert-wfv A WE SN ADS WV B0
-     <- trans2 B0 B B'.
+-/clo : invert-wfv (v/clo B ADS SN WEC WE) WE WEC SN ADS B.
 
 %worlds () (invert-wfv _ _ _ _ _ _).
 %total (A) (invert-wfv A _ _ _ _ _).
@@ -3587,6 +3656,43 @@ stp2-inv-fun0:
 
 %worlds () (stp2-inv-fun0 _ _ _).
 %total { } (stp2-inv-fun0 _ _ _).
+
+%{ ----- generalized narrowing ----- }%
+%{ -- lhs: comes from xt-env, so
+      - all binds
+      - should remain realizable in extensions
+   -- rhs: comes from wf-env, so
+      - arbitrary types
+      - approximates lhs, i.e. weaker,
+        hence lhs realizable implies rhs realizable
+}%
+
+seg : tenv -> tenv -> type.
+
+seg/sub  : seg (tcons (bind N1 DS1) G1) (tcons T2 G2)
+        <- seg G1 G2
+        <- wf-tp G2 T2
+        <- stp1 G1 (bind N1 DS1) T2.
+
+seg/refl : seg G G.
+
+xt-seg: xt-env H GH -> wf-env H G -> seg GH G -> type.
+%mode xt-seg +A +B -C.
+
+- : xt-seg xte/n wfe/n seg/refl.
+
+- : xt-seg (xte/c XE XV) (wfe/c WE WT B' XE' XV' WV) (seg/sub BR WT R)
+ <- xt-seg XE WE R
+ <- xt-val-unique XV' XV EQT
+ <- xt-env-unique XE' XE EQG
+ <- eq-stp1-l EQT B' B''
+ <- eq-stp1-g EQG B'' BR
+  .
+
+%worlds () (xt-seg _ _ _).
+%total {A B} (xt-seg A B _).
+
+% TODO: revisit until end of file
 
 %{ ------- lookup preservation --- }%
 
