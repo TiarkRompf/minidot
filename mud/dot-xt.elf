@@ -556,7 +556,7 @@ sev  : {I1:mode1} tenv -> tenv -> type.
 
 sev/sbg     : sev IO (tcons (bind N P) G1) (tcons T2 G2)
            <- sev IO G1 G2
-           <- stp I0 G1 (bind N P) T2.
+           <- stp notrans G1 (bind N P) T2.
 
 sev/sub     : sev IO (tcons (bind N P) G1) (tcons (bind N Q) G2)
            <- sev IO G1 G2
