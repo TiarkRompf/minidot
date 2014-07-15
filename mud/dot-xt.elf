@@ -260,6 +260,9 @@ stprefl : wf-tp G T <- stp notrans G T T.
 wf-dc : tenv -> dc -> type.
 sdcrefl : wf-dc G D <- sdc notrans G D D.
 
+stp1  : tenv -> tp -> tp -> type.
+stp1/a: stp1 G S U <- stp notrans G S U.
+
 stp2  : tenv -> tp -> tenv -> tp -> type.
 
 stp2/top  : stp2 G1 T1 G2 top
@@ -332,8 +335,8 @@ t/non : typcs G (icons non ICS) (dcons (rect S U) DCS)
     <- typcs G ICS DCS
       .
 t/sub : typ G E U
-     <- typ G E T
-     <- stp2 G T G U
+     <- typ G E S
+     <- stp1 G S U
       .
 
 wf-val   : val -> tenv -> tp -> type.
@@ -3268,6 +3271,41 @@ stp2refl/wf : stp2refl (stprefl A) B
 %worlds () (stp2refl _ _).
 %total (A) (stp2refl A _).
 
+%{ ------- stp1 lemmas ------- }%
+
+stp1refl :
+  wf-tp G T ->
+%%
+  stp1 G T T ->
+  type.
+%mode stp1refl +A -B.
+
+stp1refl/wf : stp1refl (stprefl A) (stp1/a A).
+
+%worlds () (stp1refl _ _).
+%total (A) (stp1refl A _).
+
+trans1 :
+  stp1 G T1 T2 ->
+  stp1 G T2 T3 ->
+%%
+  stp1 G T1 T3 ->
+  type.
+%mode trans1 +A +B -C.
+
+- : trans1 (stp1/a A) (stp1/a B) (stp1/a C)
+ <- invert-trans (stp/trans (stp/trans0 A) (stp/trans0 B)) C.
+
+%worlds () (trans1 _ _ _).
+%total {A B} (trans1 A B _).
+
+extend-stp1-mult: stp1 G T1 T2 -> sub-env G G' -> stp1 G' T1 T2 -> type.
+%mode extend-stp1-mult +A +B -C.
+- : extend-stp1-mult (stp1/a A) B (stp1/a C)
+ <- extend-stp-mult A B C.
+%worlds () (extend-stp1-mult _ _ _).
+%total  (A) (extend-stp1-mult A _ _).
+
 %{ ------- term and value typing lemmas ---- }%
 
 %{ ------- extension lemmas ------- }%
@@ -3300,16 +3338,16 @@ invert-var:
   typ G (var N) T ->
 %%
   tlookup G N T0 ->
-  stp2 G T0 G T ->
+  stp1 G T0 T ->
   type.
 %mode invert-var +A -B -C.
 
 -/var : invert-var (t/var W L) L B
-     <- stp2refl W B.
+     <- stp1refl W B.
 
 -/sub : invert-var (t/sub B A) L' B'
      <- invert-var A L' B0
-     <- trans2 B0 B B'
+     <- trans1 B0 B B'
       .
 
 %worlds () (invert-var _ _ _).
@@ -3320,22 +3358,23 @@ invert-new :
 %%
   sub-env-size GN N G ->
   typcs (tcons (bind N DCS) GN) ICS DCS ->
-  stp2 GN (bind N DCS) G T ->
+  wf-tp GN (bind N DCS) ->
+  stp1 G (bind N DCS) T ->
   type.
-%mode invert-new +A -B -C -D.
+%mode invert-new +A -B -C -D -E.
 
--/new : invert-new (t/new W ADS SE) SE ADS B
-     <- stp2refl W B0
+-/new : invert-new (t/new W ADS SE) SE ADS W B
+     <- stp1refl W B0
      <- extract-sub-env-size SE _ E
-     <- extend-stp2-mult2 B0 E B.
+     <- extend-stp1-mult B0 E B.
 
--/sub : invert-new (t/sub B A) SE' ADS' B'
-     <- invert-new A SE' ADS' B0
-     <- trans2 B0 B B'
+-/sub : invert-new (t/sub B A) SE' ADS' W' B'
+     <- invert-new A SE' ADS' W' B0
+     <- trans1 B0 B B'
       .
 
-%worlds () (invert-new _ _ _ _).
-%total (A) (invert-new A _ _ _).
+%worlds () (invert-new _ _ _ _ _).
+%total (A) (invert-new A _ _ _ _).
 
 invert-app:
   typ G (app E1 X E2) T ->
@@ -3346,18 +3385,18 @@ invert-app:
   dlk DS X (arrow T2 T0) ->
   wf-tp GN T2 ->
   wf-tp GN T0 ->
-  stp2 G T0 G T ->
+  stp1 G T0 T ->
   type.
 %mode invert-app +A -B -C -D -E -F -G -H.
 
 -/app : invert-app (t/app WT1 WT2 SES TP2 DL TP1) SES TP1 TP2 DL WT2 WT1 B
      <- extract-sub-env-size SES _ SE
      <- extend-wf-tp-mult WT1 SE W
-     <- stp2refl W B.
+     <- stp1refl W B.
 
 -/sub : invert-app (t/sub B A) SES TP1 TP2 DL WT2 WT1 B'
      <- invert-app A SES TP1 TP2 DL WT2 WT1 B0
-     <- trans2 B0 B B'.
+     <- trans1 B0 B B'.
 
 %worlds () (invert-app _ _ _ _ _ _ _ _).
 %total (A) (invert-app A _ _ _ _ _ _ _).
