@@ -554,6 +554,10 @@ stp/trans   : stp oktrans     G T1 T3
 
 sev  : {I1:mode1} tenv -> tenv -> type.
 
+sev/sbg     : sev IO (tcons (bind N P) G1) (tcons T2 G2)
+           <- sev IO G1 G2
+           <- stp I0 G1 (bind N P) T2.
+
 sev/sub     : sev IO (tcons (bind N P) G1) (tcons (bind N Q) G2)
            <- sev IO G1 G2
            <- sdcs IO (tcons (bind N P) G1) P Q.
@@ -862,6 +866,28 @@ add-dec : add A (s B) (s C) -> add A B C -> type.
 %total {A} (add-dec A _).
 
 % --------------- uniqueness lemmas ------------- %
+
+add-unique-eq : add N1 N2 N3 -> add N1 N2 N3' -> eq-nat N3 N3' -> type.
+%mode add-unique-eq +A +B -EQ.
+
+-/z : add-unique-eq add/z add/z EQN
+   <- eq-nat-refl _ EQN.
+
+-/s : add-unique-eq (add/s A) (add/s B) (eq-nat/s C)
+   <- add-unique-eq A B C.
+
+%worlds () (add-unique-eq _ _ _).
+%total {A B} (add-unique-eq A B _).
+
+add-unique : add N1 N2 N3 -> add N1 N2 N3' -> id-nat N3 N3' -> type.
+%mode add-unique +A +B -EQ.
+
+- : add-unique A B C
+ <- add-unique-eq A B C0
+ <- eq2id-nat C0 C.
+
+%worlds () (add-unique _ _ _).
+%total {} (add-unique _ _ _).
 
 eq-add : add N1 N2 N3 -> id-nat N3 N3' -> add N1 N2 N3' -> type.
 %mode eq-add +A +EQ -B.
@@ -2092,6 +2118,8 @@ sev-refl : {G} sev oktrans G G -> type.
 tsize-sev : sev I G2 G1 -> tsize G1 N -> tsize G2 N -> type.
 %mode tsize-sev +A +B -C.
 
+-/sbg  : tsize-sev (sev/sbg _ A) (tf/c B) (tf/c C)
+      <- tsize-sev A B C.
 -/sub  : tsize-sev (sev/sub _ A) (tf/c B) (tf/c C)
       <- tsize-sev A B C.
 -/refl0: tsize-sev (sev/refl0 A) (tf/c B) (tf/c C)
@@ -2111,6 +2139,12 @@ sev-sub-size :
 %mode sev-sub-size  +X1 +X2 -X3 -X4.
 
 - : sev-sub-size A sev/refl A sev/refl.
+
+- : sev-sub-size (ses N (sub-env/ext SE)) (sev/sbg BD BE) (ses N' (sub-env/ext SE')) BE'
+ <- sev-sub-size (ses N SE) BE (ses N' SE') BE'.
+
+- : sev-sub-size (ses (tf/c N) sub-env/refl) (sev/sbg BD BE) (ses (tf/c N') sub-env/refl) (sev/sbg BD BE)
+ <- tsize-sev BE N N'.
 
 - : sev-sub-size (ses N (sub-env/ext SE)) (sev/sub BD BE) (ses N' (sub-env/ext SE')) BE'
  <- sev-sub-size (ses N SE) BE (ses N' SE') BE'.
@@ -2238,6 +2272,9 @@ narrow-sub-env:
 
 - : narrow-sub-env sub-env/refl B sub-env/refl B.
 
+- : narrow-sub-env (sub-env/ext A) (sev/sbg D B) (sub-env/ext A') B'
+ <- narrow-sub-env A B A' B'.
+
 - : narrow-sub-env (sub-env/ext A) (sev/sub D B) (sub-env/ext A') B'
  <- narrow-sub-env A B A' B'.
 
@@ -2262,6 +2299,9 @@ narrow-sub-env-size-rec:
 
 - : narrow-sub-env-size-rec sub-env/refl N B sub-env/refl N' B
  <- tsize-sev B N N'.
+
+- : narrow-sub-env-size-rec (sub-env/ext A) N (sev/sbg D B) (sub-env/ext A') N' B'
+ <- narrow-sub-env-size-rec A N B A' N' B'.
 
 - : narrow-sub-env-size-rec (sub-env/ext A) N (sev/sub D B) (sub-env/ext A') N' B'
  <- narrow-sub-env-size-rec A N B A' N' B'.
@@ -2326,6 +2366,31 @@ narrow-lk :
  <- contra-has-mem CONTRA _ _ _ _ M'.
 
 - : narrow-lk (has K X (ses NS (sub-env/ext SE)) (tl (tl/miss L) (add/s A) (tf/c N))) (sev/refl0 BE) M'' OBD''
+ <- add-swap A AR
+ <- narrow-lk (has K X (ses NS SE) (tl L AR N)) BE M' OBD'
+ <- extend-wf-mem M' _ M''
+ <- extend-rsdc OBD' _ OBD''.
+
+- : narrow-lk (has K xp/bind SE (tl tl/hit A (tf/c N))) (sev/sbg (stp/bind BDS BDS11 BDS22 SES) BE) (has K' xp/bind SE' (tl tl/hit A (tf/c N'))) (rsdc/sdc BD')
+ <- tsize-sev BE N N'
+ <- add-commute _ _ _ A A'
+ <- add-unique-eq A' add/z (eq-nat/s EQN)
+ <- eq2id-nat EQN IDN
+ <- eq-tsize N' IDN N''
+ <- sub-env-size-unique SES (ses N'' sub-env/refl) EQG
+ <- eq-env-cons EQG id-tp/refl EQG'
+ <- eq-sdcs-g EQG' BDS BDS'
+ <- inv-sdcs BDS' K K' BD'
+ <- exists-sub-env-size (tf/c N) (tf/c N') SE SE'.
+
+- : narrow-lk (has K X (ses (tf/c NS) sub-env/refl) (tl (tl/miss L) (add/s A) (tf/c N))) (sev/sbg _ BE) M' OBD'
+ <- tsize-unique N NS EQN
+ <- eq-add A EQN A'
+ <- add-contra A' CONTRA
+ <- contra-rsdc CONTRA _ _ _ OBD'
+ <- contra-has-mem CONTRA _ _ _ _ M'.
+
+- : narrow-lk (has K X (ses NS (sub-env/ext SE)) (tl (tl/miss L) (add/s A) (tf/c N))) (sev/sbg _ BE) M'' OBD''
  <- add-swap A AR
  <- narrow-lk (has K X (ses NS SE) (tl L AR N)) BE M' OBD'
  <- extend-wf-mem M' _ M''
