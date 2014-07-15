@@ -552,16 +552,16 @@ stp/trans   : stp oktrans     G T1 T3
 
 %%% PROOFS %%%
 
-sev  : {I1:mode1} tenv -> tenv -> tenv -> type.
+sev  : {I1:mode1} tenv -> tenv -> type.
 
-sev/sub     : sev IO (tcons (bind N P) G) (tcons (bind N P) G1) (tcons (bind N Q) G2)
-           <- sev IO G G1 G2
-           <- sdcs IO (tcons (bind N P) G) P Q.
+sev/sub     : sev IO (tcons (bind N P) G1) (tcons (bind N Q) G2)
+           <- sev IO G1 G2
+           <- sdcs IO (tcons (bind N P) G1) P Q.
 
-sev/refl0   : sev IO (tcons (bind N P) G) (tcons (bind N P) G1) (tcons (bind N P) G2)
-           <- sev IO G G1 G2.
+sev/refl0   : sev IO (tcons (bind N P) G1) (tcons (bind N P) G2)
+           <- sev IO G1 G2.
 
-sev/refl    : sev IO G G1 G1.
+sev/refl    : sev IO G1 G1.
 
 % --------------- basic math ------------- %
 
@@ -1028,7 +1028,7 @@ eq-sdcs-g : id-tenv G G' -> sdcs I G A B -> sdcs I G' A B -> type.
 %total (A) (eq-sdcs-g A _ _).
 %reduces C <= B (eq-sdcs-g _ B C).
 
-eq-sev-l : id-tenv G1 G1' -> sev oktrans G1 G1 G2 -> sev oktrans G1' G1' G2 -> type.
+eq-sev-l : id-tenv G1 G1' -> sev oktrans G1 G2 -> sev oktrans G1' G2 -> type.
 %mode eq-sev-l +EQ +B -C.
 
 - : eq-sev-l id-tenv/refl B B.
@@ -2081,7 +2081,7 @@ nil-sub-env : {G} sub-env tnil G -> type.
 %worlds () (nil-sub-env _ _).
 %total (A) (nil-sub-env A _).
 
-sev-refl : {G} sev oktrans G G G -> type.
+sev-refl : {G} sev oktrans G G -> type.
 %mode sev-refl +G -A.
 
 - : sev-refl G sev/refl.
@@ -2089,7 +2089,7 @@ sev-refl : {G} sev oktrans G G G -> type.
 %worlds () (sev-refl _ _).
 %total (A) (sev-refl A _).
 
-tsize-sev : sev I G2 G2 G1 -> tsize G1 N -> tsize G2 N -> type.
+tsize-sev : sev I G2 G1 -> tsize G1 N -> tsize G2 N -> type.
 %mode tsize-sev +A +B -C.
 
 -/sub  : tsize-sev (sev/sub _ A) (tf/c B) (tf/c C)
@@ -2103,10 +2103,10 @@ tsize-sev : sev I G2 G2 G1 -> tsize G1 N -> tsize G2 N -> type.
 
 sev-sub-size :
     sub-env-size G20 N G2 ->
-    sev oktrans G1 G1 G2 ->
+    sev oktrans G1 G2 ->
 %%
     sub-env-size G10 N G1 ->
-    sev oktrans G10 G10 G20 ->
+    sev oktrans G10 G20 ->
     type.
 %mode sev-sub-size  +X1 +X2 -X3 -X4.
 
@@ -2229,10 +2229,10 @@ rxttrans* :
 
 narrow-sub-env:
     sub-env GN2 G2 ->
-    sev oktrans G1 G1 G2 ->
+    sev oktrans G1 G2 ->
 %%
     sub-env GN1 G1 ->
-    sev oktrans GN1 GN1 GN2 ->
+    sev oktrans GN1 GN2 ->
     type.
 %mode narrow-sub-env +A +C -D -F.
 
@@ -2252,11 +2252,11 @@ narrow-sub-env:
 narrow-sub-env-size-rec:
     sub-env GN2 G2 ->
     tsize GN2 N ->
-    sev oktrans G1 G1 G2 ->
+    sev oktrans G1 G2 ->
 %%
     sub-env GN1 G1 ->
     tsize GN1 N ->
-    sev oktrans GN1 GN1 GN2 ->
+    sev oktrans GN1 GN2 ->
     type.
 %mode narrow-sub-env-size-rec +A +B +C -D -E -F.
 
@@ -2276,10 +2276,10 @@ narrow-sub-env-size-rec:
 
 narrow-sub-env-size:
     sub-env-size GN2 N G2 ->
-    sev oktrans G1 G1 G2 ->
+    sev oktrans G1 G2 ->
 %%
     sub-env-size GN1 N G1 ->
-    sev oktrans GN1 GN1 GN2 ->
+    sev oktrans GN1 GN2 ->
     type.
 %mode narrow-sub-env-size +A +B -C -D.
 - : narrow-sub-env-size (ses N A) B (ses N' A') B'
@@ -2289,10 +2289,10 @@ narrow-sub-env-size:
 
 narrow-sub-env-size-out:
     sub-env-size GN2 N G2 ->
-    sev oktrans G1 G1 G2 ->
+    sev oktrans G1 G2 ->
     sub-env-size GN1 N G1 ->
 %%
-    sev oktrans GN1 GN1 GN2 ->
+    sev oktrans GN1 GN2 ->
     type.
 %mode narrow-sub-env-size-out +A +B +C -D.
 - : narrow-sub-env-size-out A B C D
@@ -2304,7 +2304,7 @@ narrow-sub-env-size-out:
 
 narrow-lk :
     has-mem G2 N X D2 ->
-    sev oktrans G1 G1 G2 ->
+    sev oktrans G1 G2 ->
 %%
     has-mem G1 N X D1 ->
     rsdc G1 D1 D2 ->
@@ -2368,7 +2368,7 @@ rsdc-output-factor :
 
 narrow-lkss :
     has-mem G2 N X (rect (tsome L2) U2) ->
-    sev oktrans G1 G1 G2 ->
+    sev oktrans G1 G2 ->
 %%
     has-mem G1 N X (rect (tsome L1) U1) ->
     rsdc G1 (rect (tsome L1) U1) (rect (tsome L2) U2) ->
@@ -2401,7 +2401,7 @@ rsdc-output-factor-r :
 
 narrow-lkr :
     has-mem G2 N X (rect OL2 U2) ->
-    sev oktrans G1 G1 G2 ->
+    sev oktrans G1 G2 ->
 %%
     has-mem G1 N X (rect OL1 U1) ->
     rsdc G1 (rect OL1 U1) (rect OL2 U2) ->
@@ -2420,7 +2420,7 @@ narrow-lkr :
 
 narrowdcs* :
     sdcs oktrans G2 M N ->
-    sev  oktrans G1 G1 G2 ->
+    sev  oktrans G1 G2 ->
 %%
     sdcs oktrans G1 M N ->
     type.
@@ -2429,7 +2429,7 @@ narrowdcs* :
 
 narrow* :
     stp oktrans G2 M N ->
-    sev oktrans G1 G1 G2 ->
+    sev oktrans G1 G2 ->
 %%
     stp oktrans G1 M N ->
     type.
@@ -2494,7 +2494,7 @@ narrow* :
 
 narrowo* :
     stpo oktrans G2 M N ->
-    sev oktrans G1 G1 G2 ->
+    sev oktrans G1 G2 ->
 %%
     stpo oktrans G1 M N ->
     type.
@@ -2507,7 +2507,7 @@ narrowo* :
 
 narrowoo* :
     stpoo oktrans G2 M N ->
-    sev oktrans G1 G1 G2 ->
+    sev oktrans G1 G2 ->
 %%
     stpoo oktrans G1 M N ->
     type.
@@ -2521,7 +2521,7 @@ narrowoo* :
 
 narrowdc* :
     sdc oktrans G2 M N ->
-    sev oktrans G1 G1 G2 ->
+    sev oktrans G1 G2 ->
 %%
     sdc oktrans G1 M N ->
     type.
