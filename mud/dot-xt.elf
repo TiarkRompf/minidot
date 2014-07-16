@@ -3808,6 +3808,41 @@ narrow1-sub-env-size-out:
 %worlds () (narrow1-sub-env-size-out _ _ _ _).
 %total {} (narrow1-sub-env-size-out _ _ _ _).
 
+narrow1-lk :
+    has-mem G2 N X D2 ->
+    seg G1 G2 ->
+%%
+    has-mem G1 N X D1 ->
+    rsdc G1 D1 D2 ->
+    type.
+
+%mode narrow1-lk  +X1 +X2 -X3 -X4.
+
+- : narrow1-lk M seg/refl M rsdc/refl.
+
+%{
+- : narrow1-lk (has K xp/bind SE (tl tl/hit A (tf/c N))) (seg/sub BDS BE) (has K' xp/bind SE' (tl tl/hit A (tf/c N'))) (rsdc/sdc BD')
+ <- tsize-seg BE N N'
+ <- inv-sdcs BDS K K' BD'
+ <- exists-sub-env-size (tf/c N) (tf/c N') SE SE'.
+}%
+
+- : narrow1-lk (has K X (ses (tf/c NS) sub-env/refl) (tl (tl/miss L) (add/s A) (tf/c N))) (seg/sub _ _ BE) M' OBD'
+ <- tsize-unique N NS EQN
+ <- eq-add A EQN A'
+ <- add-contra A' CONTRA
+ <- contra-rsdc CONTRA _ _ _ OBD'
+ <- contra-has-mem CONTRA _ _ _ _ M'.
+
+- : narrow1-lk (has K X (ses NS (sub-env/ext SE)) (tl (tl/miss L) (add/s A) (tf/c N))) (seg/sub _ _ BE) M'' OBD''
+ <- add-swap A AR
+ <- narrow1-lk (has K X (ses NS SE) (tl L AR N)) BE M' OBD'
+ <- extend-wf-mem M' _ M''
+ <- extend-rsdc OBD' _ OBD''.
+
+%worlds () (narrow1-lk _ _ _ _).
+%total (A) (narrow1-lk _ A _ _).
+
 % TODO: revisit until end of file
 %.
 
