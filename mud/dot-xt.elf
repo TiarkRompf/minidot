@@ -3827,6 +3827,18 @@ narrow1-lk :
  <- exists-sub-env-size (tf/c N) (tf/c N') SE SE'.
 }%
 
+- : narrow1-lk (has K xp/bind SE (tl tl/hit A (tf/c N))) (seg/sub (stp1/a (stp/bind BDS BDS11 BDS22 SES)) _ BE) (has K' xp/bind SE' (tl tl/hit A (tf/c N'))) (rsdc/sdc BD')
+ <- tsize-seg BE N N'
+ <- add-commute _ _ _ A A'
+ <- add-unique-eq A' add/z (eq-nat/s EQN)
+ <- eq2id-nat EQN IDN
+ <- eq-tsize N' IDN N''
+ <- sub-env-size-unique SES (ses N'' sub-env/refl) EQG
+ <- eq-env-cons EQG id-tp/refl EQG'
+ <- eq-sdcs-g EQG' BDS BDS'
+ <- inv-sdcs BDS' K K' BD'
+ <- exists-sub-env-size (tf/c N) (tf/c N') SE SE'.
+
 - : narrow1-lk (has K X (ses (tf/c NS) sub-env/refl) (tl (tl/miss L) (add/s A) (tf/c N))) (seg/sub _ _ BE) M' OBD'
  <- tsize-unique N NS EQN
  <- eq-add A EQN A'
