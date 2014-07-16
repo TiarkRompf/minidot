@@ -3676,6 +3676,15 @@ seg/sub  : seg (tcons (bind N1 DS1) G1) (tcons T2 G2)
 
 seg/refl : seg G G.
 
+eq-seg-l : id-tenv G1 G1' -> seg G1 G2 -> seg G1' G2 -> type.
+%mode eq-seg-l +EQ +B -C.
+
+- : eq-seg-l id-tenv/refl B B.
+
+%worlds () (eq-seg-l _ _ _).
+%total (A) (eq-seg-l A _ _).
+%reduces C <= B (eq-seg-l _ B C).
+
 xt-seg: xt-env H GH -> wf-env H G -> seg GH G -> type.
 %mode xt-seg +A +B -C.
 
@@ -3692,7 +3701,115 @@ xt-seg: xt-env H GH -> wf-env H G -> seg GH G -> type.
 %worlds () (xt-seg _ _ _).
 %total {A B} (xt-seg A B _).
 
+seg-refl : {G} seg G G -> type.
+%mode seg-refl +G -A.
+
+- : seg-refl G seg/refl.
+
+%worlds () (seg-refl _ _).
+%total (A) (seg-refl A _).
+
+tsize-seg : seg G2 G1 -> tsize G1 N -> tsize G2 N -> type.
+%mode tsize-seg +A +B -C.
+
+-/sub  : tsize-seg (seg/sub _ _ A) (tf/c B) (tf/c C)
+      <- tsize-seg A B C.
+-/refl : tsize-seg seg/refl B B.
+
+%worlds () (tsize-seg _ _ _).
+%total (A) (tsize-seg A _ _).
+
+seg-sub-size :
+    sub-env-size G20 N G2 ->
+    seg G1 G2 ->
+%%
+    sub-env-size G10 N G1 ->
+    seg G10 G20 ->
+    type.
+%mode seg-sub-size  +X1 +X2 -X3 -X4.
+
+- : seg-sub-size A seg/refl A seg/refl.
+
+- : seg-sub-size (ses N (sub-env/ext SE)) (seg/sub _ _ BE) (ses N' (sub-env/ext SE')) BE'
+ <- seg-sub-size (ses N SE) BE (ses N' SE') BE'.
+
+- : seg-sub-size (ses (tf/c N) sub-env/refl) (seg/sub B W BE) (ses (tf/c N') sub-env/refl) (seg/sub B W BE)
+ <- tsize-seg BE N N'.
+
+%worlds () (seg-sub-size _ _ _ _).
+%total (A) (seg-sub-size _ A _ _).
+
+narrow1-sub-env:
+    sub-env GN2 G2 ->
+    seg G1 G2 ->
+%%
+    sub-env GN1 G1 ->
+    seg GN1 GN2 ->
+    type.
+%mode narrow1-sub-env +A +C -D -F.
+
+- : narrow1-sub-env sub-env/refl B sub-env/refl B.
+
+- : narrow1-sub-env (sub-env/ext A) (seg/sub _ _ B) (sub-env/ext A') B'
+ <- narrow1-sub-env A B A' B'.
+
+- : narrow1-sub-env (sub-env/ext A) seg/refl (sub-env/ext A) seg/refl.
+
+%worlds () (narrow1-sub-env _ _ _ _ ).
+%total {A B} (narrow1-sub-env A B _ _).
+
+narrow1-sub-env-size-rec:
+    sub-env GN2 G2 ->
+    tsize GN2 N ->
+    seg G1 G2 ->
+%%
+    sub-env GN1 G1 ->
+    tsize GN1 N ->
+    seg GN1 GN2 ->
+    type.
+%mode narrow1-sub-env-size-rec +A +B +C -D -E -F.
+
+- : narrow1-sub-env-size-rec sub-env/refl N B sub-env/refl N' B
+ <- tsize-seg B N N'.
+
+- : narrow1-sub-env-size-rec (sub-env/ext A) N (seg/sub _ _ B) (sub-env/ext A') N' B'
+ <- narrow1-sub-env-size-rec A N B A' N' B'.
+
+- : narrow1-sub-env-size-rec (sub-env/ext A) N seg/refl (sub-env/ext A) N seg/refl.
+
+%worlds () (narrow1-sub-env-size-rec _ _ _ _ _ _).
+%total {A B} (narrow1-sub-env-size-rec A _ B _ _ _).
+
+narrow1-sub-env-size:
+    sub-env-size GN2 N G2 ->
+    seg G1 G2 ->
+%%
+    sub-env-size GN1 N G1 ->
+    seg GN1 GN2 ->
+    type.
+%mode narrow1-sub-env-size +A +B -C -D.
+- : narrow1-sub-env-size (ses N A) B (ses N' A') B'
+ <- narrow1-sub-env-size-rec A N B A' N' B'.
+%worlds () (narrow1-sub-env-size _ _ _ _).
+%total {A B} (narrow1-sub-env-size A B _ _).
+
+narrow1-sub-env-size-out:
+    sub-env-size GN2 N G2 ->
+    seg G1 G2 ->
+    sub-env-size GN1 N G1 ->
+%%
+    seg GN1 GN2 ->
+    type.
+%mode narrow1-sub-env-size-out +A +B +C -D.
+- : narrow1-sub-env-size-out A B C D
+ <- narrow1-sub-env-size A B C' D'
+ <- sub-env-size-unique C' C EQG
+ <- eq-seg-l EQG D' D.
+%worlds () (narrow1-sub-env-size-out _ _ _ _).
+%total {} (narrow1-sub-env-size-out _ _ _ _).
+
 % TODO: revisit until end of file
+%.
 
 %{ ------- lookup preservation --- }%
 
