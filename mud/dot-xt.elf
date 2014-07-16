@@ -3825,6 +3825,8 @@ extract-wf-tp-sel :
 %worlds () (extract-wf-tp-sel _ _).
 %total {A} (extract-wf-tp-sel A _).
 
+%{ ------- end of helper interlude ---- }%
+
 narrow1-lk :
     has-mem G2 N X D2 ->
     seg G1 G2 ->
