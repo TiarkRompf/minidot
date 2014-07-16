@@ -179,7 +179,6 @@ has : has-mem G N X D
         <- xp (tcons T GN) T N DS
         <- dlk DS X D.
 
-
 mode1: type.
 notrans: mode1.
 oktrans: mode1.
@@ -3808,6 +3807,24 @@ narrow1-sub-env-size-out:
 %worlds () (narrow1-sub-env-size-out _ _ _ _).
 %total {} (narrow1-sub-env-size-out _ _ _ _).
 
+%{ ------- interlude: helper lemmas ---- }%
+
+extract-wf-tp-sel :
+    wf-tp G (sel N X) ->
+%%
+    sub-env-size GN (s N) G ->
+    type.
+%mode extract-wf-tp-sel +A -B.
+
+-/selx : extract-wf-tp-sel (stprefl (stp/selx _ _ _ SES)) SES.
+
+-/sel1 : extract-wf-tp-sel (stprefl (stp/sel1 _ _ _ SES)) SES.
+
+-/sel2 : extract-wf-tp-sel (stprefl (stp/sel2 _ _ _ SES)) SES.
+
+%worlds () (extract-wf-tp-sel _ _).
+%total {A} (extract-wf-tp-sel A _).
+
 narrow1-lk :
     has-mem G2 N X D2 ->
     seg G1 G2 ->
@@ -3820,12 +3837,16 @@ narrow1-lk :
 
 - : narrow1-lk M seg/refl M rsdc/refl.
 
-%{
-- : narrow1-lk (has K xp/bind SE (tl tl/hit A (tf/c N))) (seg/sub BDS BE) (has K' xp/bind SE' (tl tl/hit A (tf/c N'))) (rsdc/sdc BD')
- <- tsize-seg BE N N'
- <- inv-sdcs BDS K K' BD'
- <- exists-sub-env-size (tf/c N) (tf/c N') SE SE'.
-}%
+- : narrow1-lk (has K (xp/sel SX SM) SE (tl tl/hit A (tf/c TN2))) (seg/sub (stp1/a (stp/sel2 BTL2 BLU2 M2 SES)) WT2 BE) OM OD
+ <- tsize-seg BE TN2 TN1
+ <- extract-wf-tp-sel WT2 SES2
+ <- restrict-has-mem SM ISE SM'
+ <- add-commute _ _ _ A A'
+ <- add-unique-eq A' add/z (eq-nat/s EQN2)
+ <- eq2id-nat EQN2 IDN2
+ <- eq-tsize TN2 IDN2 TN2'
+ <- sub-env-size-unique SE (ses TN2' (sub-env/ext sub-env/refl)) EQG2
+  .
 
 - : narrow1-lk (has K xp/bind SE (tl tl/hit A (tf/c N))) (seg/sub (stp1/a (stp/bind BDS BDS11 BDS22 SES)) _ BE) (has K' xp/bind SE' (tl tl/hit A (tf/c N'))) (rsdc/sdc BD')
  <- tsize-seg BE N N'
