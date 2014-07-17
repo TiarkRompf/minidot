@@ -3312,6 +3312,22 @@ stp2refl/wf : stp2refl (stprefl A) B
 %worlds () (stp2refl _ _).
 %total (A) (stp2refl A _).
 
+stp-reg :
+  stp oktrans G T1 T2 ->
+%%
+  wf-tp G T1 ->
+  wf-tp G T2 ->
+  type.
+%mode stp-reg +A -B -C.
+
+- : stp-reg A (stprefl B') (stprefl C')
+ <- stp-reg-rec A B C
+ <- invert-trans B B'
+ <- invert-trans C C'.
+
+%worlds () (stp-reg _ _ _).
+%total { } (stp-reg _ _ _).
+
 %{ ------- stp1 lemmas ------- }%
 
 stp1refl :
@@ -3364,6 +3380,20 @@ eq-stp1-g : id-tenv G G' -> stp1 G L U -> stp1 G' L U -> type.
 %worlds () (eq-stp1-g _ _ _).
 %total (A) (eq-stp1-g A _ _).
 %reduces C <= B (eq-stp1-g _ B C).
+
+stp1-reg :
+  stp1 G T1 T2 ->
+%%
+  wf-tp G T1 ->
+  wf-tp G T2 ->
+  type.
+%mode stp1-reg +A -B -C.
+
+- : stp1-reg (stp1/a A) B C
+ <- stp-reg (stp/trans0 A) B C.
+
+%worlds () (stp1-reg _ _ _).
+%total { } (stp1-reg _ _ _).
 
 %{ ------- term and value typing lemmas ---- }%
 
@@ -3793,6 +3823,58 @@ narrow1-sub-env-size-out:
 %total {} (narrow1-sub-env-size-out _ _ _ _).
 %reduces O <= I (narrow1-sub-env-size-out _ I _ O).
 
+seg-reg1 :
+    seg G1 G2 ->
+    tlookup G1 N T ->
+%%
+    sub-env-size GN1 N G1 ->
+    wf-tp GN1 T ->
+    type.
+%mode seg-reg1 +A +B -C -D.
+
+- : seg-reg1 (seg/sub B1 W2 BE) (tl tl/hit A (tf/c N1)) (ses N1' (sub-env/ext sub-env/refl)) W1
+ <- add-commute _ _ _ A A'
+ <- add-unique-eq A' add/z (eq-nat/s EQN)
+ <- eq2id-nat EQN IDN
+ <- eq-tsize N1 IDN N1'
+ <- stp1-reg B1 W1 _.
+
+- : seg-reg1 (seg/sub _ _ BE) (tl (tl/miss L) (add/s A) (tf/c N)) SES1' W1
+ <- add-swap A AR
+ <- seg-reg1 BE (tl L AR N) SES1 W1
+ <- extend-sub-env-size SES1 _ SES1'.
+
+%worlds () (seg-reg1 _ _ _ _).
+%total {A B} (seg-reg1 A B _ _).
+
+seg-reg2 :
+    seg G1 G2 ->
+    tlookup G2 N T ->
+%%
+    sub-env-size GN2 N G2 ->
+    sub-env-size GN1 N G1 ->
+    wf-tp GN2 T ->
+    wf-tp GN1 T ->
+    type.
+%mode seg-reg2 +A +B -C -D -E -F.
+
+- : seg-reg2 (seg/sub B1 W2 BE) (tl tl/hit A (tf/c N2)) (ses N2' (sub-env/ext sub-env/refl)) (ses N1' (sub-env/ext sub-env/refl)) W2 W1
+ <- add-commute _ _ _ A A'
+ <- add-unique-eq A' add/z (eq-nat/s EQN)
+ <- eq2id-nat EQN IDN
+ <- eq-tsize N2 IDN N2'
+ <- tsize-seg BE N2' N1'
+ <- stp1-reg B1 _ W1.
+
+- : seg-reg2 (seg/sub _ _ BE) (tl (tl/miss L) (add/s A) (tf/c N)) SES2' SES1' W2 W1
+ <- add-swap A AR
+ <- seg-reg2 BE (tl L AR N) SES2 SES1 W2 W1
+ <- extend-sub-env-size SES2 _ SES2'
+ <- extend-sub-env-size SES1 _ SES1'.
+
+%worlds () (seg-reg2 _ _ _ _ _ _).
+%total {A B} (seg-reg2 A B _ _ _ _).
+
 %{ ------- interlude: helper lemmas ---- }%
 
 extract-wf-tp-sel :
@@ -3824,6 +3906,19 @@ narrow1-lk :
 %mode narrow1-lk  +X1 +X2 -X3 -X4.
 
 - : narrow1-lk M seg/nil M rsdc/refl.
+
+%{
+- : narrow1-lk (has K (xp/sel SX SM) SE (tl tl/hit A (tf/c TN2))) (seg/sub (stp1/a (stp/sel2 BTL2 BLU2 M2 SES)) WT2 BE) OM OD
+ <- tsize-seg BE TN2 TN1
+ <- extract-wf-tp-sel WT2 SES2
+ <- restrict-has-mem SM ISE SM'
+ <- add-commute _ _ _ A A'
+ <- add-unique-eq A' add/z (eq-nat/s EQN2)
+ <- eq2id-nat EQN2 IDN2
+ <- eq-tsize TN2 IDN2 TN2'
+ <- sub-env-size-unique SE (ses TN2' (sub-env/ext sub-env/refl)) EQG2
+  .
+}%
 
 %{
 - : narrow1-lk (has K (xp/sel SX SM) SE (tl tl/hit A (tf/c TN2))) (seg/sub (stp1/a (stp/sel2 BTL2 BLU2 M2 SES)) WT2 seg/refl) OM OD
