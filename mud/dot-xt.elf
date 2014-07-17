@@ -3825,19 +3825,33 @@ narrow1-lk :
 
 - : narrow1-lk M seg/nil M rsdc/refl.
 
-- : narrow1-lk (has K (xp/sel SX SM) SE (tl tl/hit A (tf/c TN2))) (seg/sub (stp1/a (stp/sel2 BTL2 BLU2 M2 SES)) WT2 BE) OM OD
+%{
+- : narrow1-lk (has K (xp/sel SX SM) SE (tl tl/hit A (tf/c TN2))) (seg/sub (stp1/a (stp/sel2 BTL2 BLU2 M2 SES)) WT2 seg/refl) OM OD
  <- extract-wf-tp-sel WT2 SES2
  <- add-commute _ _ _ A A'
  <- add-unique-eq A' add/z (eq-nat/s EQN2)
  <- eq2id-nat EQN2 IDN2
  <- eq-tsize TN2 IDN2 TN2'
  <- sub-env-size-unique SE (ses TN2' (sub-env/ext sub-env/refl)) EQG2
- % <- sub-env-size-unique SES2 SES EQGN
- % <- eq-sub-env-size-u EQG2 SES2 SES2'
- % <- eq-sub-env-size-l EQGN SES2' SES2''
- % <- extend-sub-env-size SES2'' _ SES2X
- % <- restrict-has-mem SM SES2X SM'
+ <- sub-env-size-unique SES2 SES EQGN
+ <- eq-sub-env-size-u EQG2 SES2 SES2'
+ <- eq-sub-env-size-l EQGN SES2' SES2''
+ <- extend-sub-env-size SES2'' _ SES2X
+ <- restrict-has-mem SM SES2X SM'
+ <- has-mem-unique SM' M2 EQD
   .
+
+- : narrow1-lk (has K (xp/sel SX SM) SE (tl tl/hit A (tf/c TN2))) (seg/sub (stp1/a (stp/sel2 BTL2 BLU2 M2 SES)) WT2 BE) OM OD
+ <- tsize-seg BE TN2 TN1
+ <- extract-wf-tp-sel WT2 SES2
+ <- restrict-has-mem SM ISE SM'
+ <- add-commute _ _ _ A A'
+ <- add-unique-eq A' add/z (eq-nat/s EQN2)
+ <- eq2id-nat EQN2 IDN2
+ <- eq-tsize TN2 IDN2 TN2'
+ <- sub-env-size-unique SE (ses TN2' (sub-env/ext sub-env/refl)) EQG2
+  .
+}%
 
 - : narrow1-lk (has K xp/bind SE (tl tl/hit A (tf/c N))) (seg/sub (stp1/a (stp/bind BDS BDS11 BDS22 SES)) _ BE) (has K' xp/bind SE' (tl tl/hit A (tf/c N'))) (rsdc/sdc BD')
  <- tsize-seg BE N N'
