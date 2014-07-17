@@ -3832,11 +3832,11 @@ narrow1-lk :
  <- eq2id-nat EQN2 IDN2
  <- eq-tsize TN2 IDN2 TN2'
  <- sub-env-size-unique SE (ses TN2' (sub-env/ext sub-env/refl)) EQG2
- <- sub-env-size-unique SES2 SES EQGN
- <- eq-sub-env-size-u EQG2 SES2 SES2'
- <- eq-sub-env-size-l EQGN SES2' SES2''
- <- extend-sub-env-size SES2'' _ SES2X
- <- restrict-has-mem SM SES2X SM'
+ % <- sub-env-size-unique SES2 SES EQGN
+ % <- eq-sub-env-size-u EQG2 SES2 SES2'
+ % <- eq-sub-env-size-l EQGN SES2' SES2''
+ % <- extend-sub-env-size SES2'' _ SES2X
+ % <- restrict-has-mem SM SES2X SM'
   .
 
 - : narrow1-lk (has K xp/bind SE (tl tl/hit A (tf/c N))) (seg/sub (stp1/a (stp/bind BDS BDS11 BDS22 SES)) _ BE) (has K' xp/bind SE' (tl tl/hit A (tf/c N'))) (rsdc/sdc BD')
