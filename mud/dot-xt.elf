@@ -3895,6 +3895,23 @@ extract-wf-tp-sel :
 
 %{ ------- end of helper interlude ---- }%
 
+narrow1-xp :
+    seg G1 G2 ->
+    stp notrans G1 T1 T2 ->
+    wf-tp G2 T2 ->
+    xp G2 T2 X DS2 ->
+    dlk DS2 X D2 ->
+%%
+    xp G1 T1 X DS1 ->
+    dlk DS1 X D1 ->
+    rsdc (tcons T1 G1) D1 D2 ->
+    type.
+%mode narrow1-xp +A +B +C +D +E -F -G -H.
+
+- : narrow1-xp BE (stp/bind BDS12 BDS11 BDS22 SE) W2 xp/bind DL2 xp/bind DL1 (rsdc/sdc BD12')
+ <- inv-sdcs BDS12 DL2 DL1 BD12
+  .
+
 narrow1-lk :
     has-mem G2 N X D2 ->
     seg G1 G2 ->
@@ -3903,7 +3920,7 @@ narrow1-lk :
     rsdc G1 D1 D2 ->
     type.
 
-%mode narrow1-lk  +X1 +X2 -X3 -X4.
+%mode narrow1-lk +A +B -C -D.
 
 - : narrow1-lk M seg/nil M rsdc/refl.
 
@@ -3973,8 +3990,8 @@ narrow1-lk :
  <- extend-wf-mem M' _ M''
  <- extend-rsdc OBD' _ OBD''.
 
-%worlds () (narrow1-lk _ _ _ _).
-%total (A) (narrow1-lk _ A _ _).
+%worlds () (narrow1-xp _ _ _ _ _ _ _ _) (narrow1-lk _ _ _ _).
+%total (A1 A2) (narrow1-xp A1 _ _ _ _ _ _ _) (narrow1-lk _ A2 _ _).
 
 % TODO: revisit until end of file
 %.
