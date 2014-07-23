@@ -3953,7 +3953,7 @@ lookup-zero-safe: wf-env H G -> tlookup-zero G N2 T -> vlookup-zero H N1 V -> eq
 %worlds () (lookup-zero-safe _ _ _ _ _).
 %total A (lookup-zero-safe A _ _ _ _). % induction on first arg
 
-lookup-safe: wf-env H G -> tlookup G N T -> vlookup H N V -> wf-val V G T -> type.
+lookup-safe: wf-env H G -> tlookup G N T -> vlookup H N V -> wf-val V H T -> type.
 %mode lookup-safe +A +B +C -D.
 
 -      : lookup-safe WE (tl TL TA TS) (vl VL VA VS) WV
