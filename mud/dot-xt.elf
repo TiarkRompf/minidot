@@ -3875,6 +3875,38 @@ seg-reg2 :
 %worlds () (seg-reg2 _ _ _ _ _ _).
 %total {A B} (seg-reg2 A B _ _ _ _).
 
+seg-refl1 :
+  seg G1 G2 ->
+%%
+  seg G1 G1 ->
+  type.
+%mode seg-refl1 +A -B.
+
+-/sub : seg-refl1 (seg/sub B _ R) (seg/sub B' W' R')
+     <- seg-refl1 R R'
+     <- stp1-reg B W' _
+     <- stp1refl W' B'.
+
+-/nil : seg-refl1 seg/nil seg/nil.
+
+%worlds () (seg-refl1 _ _).
+%total (A) (seg-refl1 A _).
+
+seg-refl-cons :
+  seg G1 G2 ->
+  wf-tp G2 (bind N BDS) ->
+  wf-tp G1 (bind N BDS) ->
+%%
+  seg (tcons (bind N BDS) G1) (tcons (bind N BDS) G2) ->
+  type.
+%mode seg-refl-cons +A +B +C -D.
+
+- : seg-refl-cons R W2 W1 (seg/sub B1 W2 R)
+ <- stp1refl W1 B1.
+
+%worlds () (seg-refl-cons _ _ _ _).
+%total { } (seg-refl-cons _ _ _ _).
+
 %{ ------- interlude: helper lemmas ---- }%
 
 extract-wf-tp-sel :
@@ -3999,6 +4031,180 @@ narrow1-lk :
 %worlds () (narrow1-lk _ _ _ _).
 %trustme
 %total (A) (narrow1-lk _ A _ _).
+
+narrow1-lkss :
+    has-mem G2 N X (rect (tsome L2) U2) ->
+    seg G1 G2 ->
+%%
+    has-mem G1 N X (rect (tsome L1) U1) ->
+    rsdc G1 (rect (tsome L1) U1) (rect (tsome L2) U2) ->
+    type.
+
+%mode narrow1-lkss  +X1 +X2 -X3 -X4.
+
+- : narrow1-lkss M E M' E'
+ <- narrow1-lk M E MX EX
+ <- rsdc-output-factor EX EQ
+ <- eq-dc-has-mem EQ MX M'
+ <- eq-rsdc-l EQ EX E'.
+
+%worlds () (narrow1-lkss _ _ _ _).
+%total (A) (narrow1-lkss A _ _ _).
+
+narrow1-lkr :
+    has-mem G2 N X (rect OL2 U2) ->
+    seg G1 G2 ->
+%%
+    has-mem G1 N X (rect OL1 U1) ->
+    rsdc G1 (rect OL1 U1) (rect OL2 U2) ->
+    type.
+
+%mode narrow1-lkr +X1 +X2 -X3 -X4.
+
+- : narrow1-lkr M E M' EX'
+ <- narrow1-lk M E MX EX
+ <- rsdc-output-factor-r EX EQ
+ <- eq-dc-has-mem EQ MX M'
+ <- eq-rsdc-l EQ EX EX'.
+
+%worlds () (narrow1-lkr _ _ _ _).
+%total (A) (narrow1-lkr A _ _ _).
+
+narrow1dcs* :
+    sdcs oktrans G2 M N ->
+    seg  G1 G2 ->
+%%
+    sdcs oktrans G1 M N ->
+    type.
+
+%mode narrow1dcs*  +X1 +X2 -X3.
+
+narrow1* :
+    stp oktrans G2 M N ->
+    seg G1 G2 ->
+%%
+    stp oktrans G1 M N ->
+    type.
+
+%mode narrow1*  +X1 +X2 -X3.
+
+-top2   : narrow1* (stp/trans0 stp/top2) _ (stp/trans0 stp/top2).
+
+-top    : narrow1* (stp/trans0 (stp/top A)) BDS (stp/trans0 (stp/top A'))
+       <- narrow1* A BDS A'.
+
+
+-trans  : narrow1* (stp/trans D1 D2) Dsub (stp/trans D1' D2')
+       <- narrow1* D1 Dsub D1'
+       <- narrow1* D2 Dsub D2'.
+
+-sel1s  : narrow1* (stp/trans0 (stp/sel1 BU (stpoo/ss WL) M SE)) BDS (stp/trans0 (stp/sel1 BU' WOL' M' SE'))
+       <- narrow1-sub-env-size SE BDS SE' BDS'
+       <- narrow1-lk M BDS' M' OB
+       <- narrow1* BU BDS BUN
+       <- narrow1* WL BDS WLN
+       <- extract-sub-env-size SE' _ E'
+       <- ruttrans* OB E' BUN (stpoo/ss WLN) BU' WOL'.
+
+-sel1n  : narrow1* (stp/trans0 (stp/sel1 BU stpoo/nn M SE)) BDS (stp/trans0 (stp/sel1 BU' WOL' M' SE'))
+       <- narrow1-sub-env-size SE BDS SE' BDS'
+       <- narrow1-lk M BDS' M' OB
+       <- narrow1* BU BDS BUN
+       <- extract-sub-env-size SE' _ E'
+       <- ruttrans* OB E' BUN stpoo/nn BU' WOL'.
+
+-sel2   : narrow1* (stp/trans0 (stp/sel2 BTL BLU M SE)) BDS (stp/trans0 (stp/sel2 BTL' BLU' M' SE'))
+       <- narrow1-sub-env-size SE BDS SE' BDS'
+       <- narrow1-lkss M BDS' M' OB
+       <- narrow1* BTL BDS BTLN
+       <- narrow1* BLU BDS' BLUN
+       <- extract-sub-env-size SE' _ E'
+       <- rlttrans* OB E' BTLN BLUN BTL' BLU'.
+
+-selxs : narrow1* (stp/trans0 (stp/selx (stpoo/ss BS) BU M SE)) BDS (stp/trans0 (stp/selx BS' BU' M' SE'))
+       <- narrow1-sub-env-size SE BDS SE' BDS'
+       <- narrow1-lkr M BDS' M' OB
+       <- narrow1* BU BDS BUN
+       <- narrow1* BS BDS BSN
+       <- extract-sub-env-size SE' _ E'
+       <- rxttrans* OB E' BUN (stpoo/ss BSN) BU' BS'
+        .
+
+-selxn : narrow1* (stp/trans0 (stp/selx stpoo/nn BU M SE)) BDS (stp/trans0 (stp/selx BS' BU' M' SE'))
+       <- narrow1-sub-env-size SE BDS SE' BDS'
+       <- narrow1-lkr M BDS' M' OB
+       <- narrow1* BU BDS BUN
+       <- extract-sub-env-size SE' _ E'
+       <- rxttrans* OB E' BUN stpoo/nn BU' BS'
+        .
+
+-bind   : narrow1* (stp/trans0 (stp/bind BD12 BD11 BD22 SE)) BDS (stp/trans0 (stp/bind BD12' BD11' BD22' SE'))
+        <- extract-sub-env-size SE TE _
+        <- seg-sub-size SE BDS SE' BDS'
+        <- seg-refl-cons BDS' (stprefl (stp/bind BD22 BD22 BD22 (ses TE sub-env/refl))) (stprefl (stp/bind BD11 BD11 BD11 (ses TE sub-env/refl))) RBDS'
+        <- narrow1dcs* BD12 RBDS' BD12'
+        <- narrow1dcs* BD11 RBDS' BD11'
+        <- narrow1dcs* BD22 RBDS' BD22'
+         .
+
+narrow1o* :
+    stpo oktrans G2 M N ->
+    seg G1 G2 ->
+%%
+    stpo oktrans G1 M N ->
+    type.
+
+%mode narrow1o*  +X1 +X2 -X3.
+
+-n : narrow1o* stpo/n BDS stpo/n.
+-s : narrow1o* (stpo/s BU) BDS (stpo/s BU')
+  <- narrow1* BU BDS BU'.
+
+narrow1oo* :
+    stpoo oktrans G2 M N ->
+    seg G1 G2 ->
+%%
+    stpoo oktrans G1 M N ->
+    type.
+
+%mode narrow1oo*  +X1 +X2 -X3.
+
+-nn : narrow1oo* stpoo/nn BDS stpoo/nn.
+-ns : narrow1oo* stpoo/ns BDS stpoo/ns.
+-ss : narrow1oo* (stpoo/ss BU) BDS (stpoo/ss BU')
+  <- narrow1* BU BDS BU'.
+
+narrow1dc* :
+    sdc oktrans G2 M N ->
+    seg G1 G2 ->
+%%
+    sdc oktrans G1 M N ->
+    type.
+
+%mode narrow1dc*  +X1 +X2 -X3.
+
+-rect : narrow1dc* (sdc/rect A B C D) S (sdc/rect A' B' C' D')
+         <- narrow1oo* A S A'
+         <- narrow1* B S B'
+         <- narrow1o* C S C'
+         <- narrow1o* D S D'
+         .
+
+-arrow : narrow1dc* (sdc/arrow A B) S (sdc/arrow A' B')
+         <- narrow1* A S A'
+         <- narrow1* B S B'
+         .
+
+-nil : narrow1dcs* sdcs/nil BDS sdcs/nil.
+-ext : narrow1dcs* sdcs/ext BDS sdcs/ext
+    % <- narrow1dcs* A BDS A'
+    .
+-cons: narrow1dcs* (sdcs/cons A BD) BDS (sdcs/cons A' BD')
+    <- narrow1dc* BD BDS BD'
+    <- narrow1dcs* A BDS A'.
+
+%worlds () (narrow1dcs* _ _ _) (narrow1* _ _ _) (narrow1o* _ _ _) (narrow1oo* _ _ _) (narrow1dc* _ _ _).
+%total (A B C D E) (narrow1dcs* A _ _) (narrow1* B _ _) (narrow1o* C _ _) (narrow1oo* D _ _) (narrow1dc* E _ _).
 
 % TODO: revisit until end of file
 %.
