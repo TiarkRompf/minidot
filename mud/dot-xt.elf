@@ -3985,6 +3985,39 @@ wfv-widen: wf-env H G -> stp1 G T1 T2 -> wf-val V H T1 -> wf-val V H T2 -> type.
 %worlds () (wfv-widen _ _ _ _).
 %total (C) (wfv-widen _ _ C _).
 
+%{ ------- env helpers ----- }%
+
+wf-env-to-xt-env : wf-env H G -> xt-env H GC -> type.
+%mode wf-env-to-xt-env +A -B.
+
+-/n : wf-env-to-xt-env wfe/n xte/n.
+-/c : wf-env-to-xt-env (wfe/c _ _ _ XE XV _) (xte/c XE XV).
+
+%worlds () (wf-env-to-xt-env _ _).
+%total (A) (wf-env-to-xt-env A _).
+
+xt-env-vsize : xt-env H GH -> vsize H N -> tsize GH N -> type.
+%mode xt-env-vsize +A +B -C.
+
+-/n : xt-env-vsize xte/n vf/n tf/n.
+
+-/c : xt-env-vsize (xte/c A _) (vf/c B) (tf/c C)
+   <- xt-env-vsize A B C.
+
+%worlds () (xt-env-vsize _ _ _).
+%total {A B} (xt-env-vsize A B _).
+
+xt-env-tsize : wf-env H G -> xt-env H GH -> tsize G N -> tsize GH N -> type.
+%mode xt-env-tsize +A +B +C -D.
+
+-/n : xt-env-tsize wfe/n xte/n tf/n tf/n.
+
+-/c : xt-env-tsize (wfe/c A _ _ _ _ _) (xte/c B _) (tf/c C) (tf/c D)
+   <- xt-env-tsize A B C D.
+
+%worlds () (xt-env-tsize _ _ _ _).
+%total {A B C} (xt-env-tsize A B C _).
+
 %{ ------- type preservation ----- }%
 
 eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
@@ -3996,6 +4029,15 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- wfv-widen E BA V' V
       .
 
+-/new : eval-safe A E (e/new SV) (v/clo OB OTDS SC XEC XE)
+     <- invert-new A SE TDS WC BC
+     <- wf-sub-env-size E SV SE E'
+     <- extract-sub-env-size SE SN _
+     <- wf-env-to-xt-env E XE
+     <- wf-env-to-xt-env E' XEC
+     <- xt-env-tsize E' XEC SN SC
+      .
+%{
 -/new : eval-safe A E (e/new SV) (v/clo BA ADS SN E')
      <- invert-new A SE ADS BA
      <- wf-sub-env-size E SV SE E'
@@ -4036,6 +4078,7 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- wfv-widen B0''' V3' V3''
      <- wfv-widen BA V3'' V
       .
+}%
 
 %worlds () (eval-safe _ _ _ _).
 %total EV (eval-safe _ _ EV _).
