@@ -3895,22 +3895,26 @@ extract-wf-tp-sel :
 
 %{ ------- end of helper interlude ---- }%
 
-narrow1-xp :
-    seg G1 G2 ->
-    stp notrans G1 T1 T2 ->
-    wf-tp G2 T2 ->
-    xp G2 T2 X DS2 ->
-    dlk DS2 X D2 ->
-%%
-    xp G1 T1 X DS1 ->
-    dlk DS1 X D1 ->
-    rsdc (tcons T1 G1) D1 D2 ->
-    type.
-%mode narrow1-xp +A +B +C +D +E -F -G -H.
+% not-dnil : dcs -> type.
+% not-dnil/cons : not-dnil (dcons _ _).
 
-- : narrow1-xp BE (stp/bind BDS12 BDS11 BDS22 SE) W2 xp/bind DL2 xp/bind DL1 (rsdc/sdc BD12')
- <- inv-sdcs BDS12 DL2 DL1 BD12
-  .
+% narrow1-xp :
+%    seg G1 G2 ->
+%    tlookup G2 N OT2 ->
+%    tlookup G1 N OT1 ->
+%
+%    stp notrans G1 T1 T2 ->
+%    wf-tp G2 T2 ->
+%    xp G2 T2 X DS2 ->
+%    not-dnil DS2 ->
+% %%
+%    xp G1 T1 X DS1 ->
+%    sdcs oktrans G1 DS1 DS2 ->
+%    type.
+% %mode narrow1-xp +A +B +C +D +E -F -G.
+%
+% - : narrow1-xp BE (stp/bind BDS12 BDS11 BDS22 SE) W2 xp/bind DL2 xp/bind BDS12'
+%  .
 
 narrow1-lk :
     has-mem G2 N X D2 ->
@@ -3990,8 +3994,11 @@ narrow1-lk :
  <- extend-wf-mem M' _ M''
  <- extend-rsdc OBD' _ OBD''.
 
-%worlds () (narrow1-xp _ _ _ _ _ _ _ _) (narrow1-lk _ _ _ _).
-%total (A1 A2) (narrow1-xp A1 _ _ _ _ _ _ _) (narrow1-lk _ A2 _ _).
+% %worlds () (narrow1-xp _ _ _ _ _ _ _) (narrow1-lk _ _ _ _).
+% %total (A1 A2) (narrow1-xp A1 _ _ _ _ _ _) (narrow1-lk _ A2 _ _).
+%worlds () (narrow1-lk _ _ _ _).
+%trustme
+%total (A) (narrow1-lk _ A _ _).
 
 % TODO: revisit until end of file
 %.
