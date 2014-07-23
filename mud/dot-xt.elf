@@ -3395,6 +3395,19 @@ stp1-reg :
 %worlds () (stp1-reg _ _ _).
 %total { } (stp1-reg _ _ _).
 
+stp1-to-stp2 :
+  stp1 G T1 T2 ->
+%%
+  stp2 G T1 G T2 ->
+  type.
+%mode stp1-to-stp2 +A -B.
+
+- : stp1-to-stp2 (stp1/a A) B
+ <- stp-to-stp2 (stp/trans0 A) B.
+
+%worlds () (stp1-to-stp2 _ _).
+%total (A) (stp1-to-stp2 A _).
+
 %{ ------- term and value typing lemmas ---- }%
 
 %{ ------- xt-* lemmas ------- }%
@@ -3441,18 +3454,6 @@ extend-wfv: wf-val V H T -> {Z} wf-val V (vcons Z H) T -> type.
 
 %worlds () (extend-wfv _ _ _).
 %total (A) (extend-wfv A _ _).
-
-%{ ------- widening lemmas ------- }%
-
-%{ -- TODO revisit
-wfv-widen: stp2 G1 T1 G2 T2 -> wf-val V G1 T1 -> wf-val V G2 T2 -> type.
-%mode wfv-widen +A +B -C.
-
-wfv-widen/sub : wfv-widen B W (v/sub B W).
-
-%worlds () (wfv-widen _ _ _).
-%total (A) (wfv-widen A _ _).
-}%
 
 %{ ------- inversion of typing ----- }%
 
@@ -3965,15 +3966,34 @@ lookup-safe: wf-env H G -> tlookup G N T -> vlookup H N V -> wf-val V H T -> typ
 %worlds () (lookup-safe _ _ _ _).
 %total A (lookup-safe A _ _ _).
 
+%{ ------- widening lemmas ------- }%
+
+wfv-widen: wf-env H G -> stp1 G T1 T2 -> wf-val V H T1 -> wf-val V H T2 -> type.
+%mode wfv-widen +A +B +C -D.
+
+- : wfv-widen
+     WE
+     B12
+     (v/clo BC1 TDS TC XEC XE)
+     (v/clo BC2 TDS TC XEC XE)
+ <- xt-seg XE WE BE
+ <- narrow1* B12 BE B12'
+ <- stp1-to-stp2 B12' B12''
+ <- trans2 BC1 B12'' BC2
+  .
+
+%worlds () (wfv-widen _ _ _ _).
+%total (C) (wfv-widen _ _ C _).
+
 %{ ------- type preservation ----- }%
 
-eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V G T -> type.
+eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
 %mode eval-safe +A +B +C -D.
 
 -/var : eval-safe A E (e/var L) V
      <- invert-var A LA BA
      <- lookup-safe E LA L V'
-     <- wfv-widen BA V' V
+     <- wfv-widen E BA V' V
       .
 
 -/new : eval-safe A E (e/new SV) (v/clo BA ADS SN E')
