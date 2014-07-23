@@ -4070,6 +4070,18 @@ narrow1-lkr :
 %worlds () (narrow1-lkr _ _ _ _).
 %total (A) (narrow1-lkr A _ _ _).
 
+narrow1dcs*-bind :
+    sdcs oktrans (tcons (bind N DSB) G2) DSB DSB ->
+    sdcs oktrans (tcons (bind N DSA) G2) DSA DSA ->
+    sdcs oktrans (tcons (bind N DSA) G2) DSA DSB ->
+    seg G1 G2 ->
+%%
+    sdcs oktrans (tcons (bind N DSB) G1) DSB DSB ->
+    sdcs oktrans (tcons (bind N DSA) G1) DSA DSA ->
+    sdcs oktrans (tcons (bind N DSA) G1) DSA DSB ->
+    type.
+%mode narrow1dcs*-bind +A +B +C +D -E -F -G.
+
 narrow1dcs* :
     sdcs oktrans G2 M N ->
     seg  G1 G2 ->
@@ -4138,13 +4150,9 @@ narrow1* :
        <- rxttrans* OB E' BUN stpoo/nn BU' BS'
         .
 
--bind   : narrow1* (stp/trans0 (stp/bind BD12 BD11 BD22 SE)) BDS (stp/trans0 (stp/bind BD12' BD11' BD22' SE'))
-        <- extract-sub-env-size SE TE _
-        <- seg-sub-size SE BDS SE' BDS'
-        <- seg-refl-cons BDS' (stprefl (stp/bind BD22 BD22 BD22 (ses TE sub-env/refl))) (stprefl (stp/bind BD11 BD11 BD11 (ses TE sub-env/refl))) RBDS'
-        <- narrow1dcs* BD12 RBDS' BD12'
-        <- narrow1dcs* BD11 RBDS' BD11'
-        <- narrow1dcs* BD22 RBDS' BD22'
+-bind   : narrow1* (stp/trans0 (stp/bind BD12 BD11 BD22 SE2)) BDS (stp/trans0 (stp/bind BD12' BD11' BD22' SE1))
+        <- seg-sub-size SE2 BDS SE1 BDS'
+        <- narrow1dcs*-bind BD22 BD11 BD12 BDS' BD22' BD11' BD12'
          .
 
 narrow1o* :
@@ -4203,8 +4211,22 @@ narrow1dc* :
     <- narrow1dc* BD BDS BD'
     <- narrow1dcs* A BDS A'.
 
-%worlds () (narrow1dcs* _ _ _) (narrow1* _ _ _) (narrow1o* _ _ _) (narrow1oo* _ _ _) (narrow1dc* _ _ _).
-%total (A B C D E) (narrow1dcs* A _ _) (narrow1* B _ _) (narrow1o* C _ _) (narrow1oo* D _ _) (narrow1dc* E _ _).
+- : narrow1dcs*-bind
+      sdcs/nil sdcs/nil sdcs/nil
+      BDS
+      sdcs/nil sdcs/nil sdcs/nil
+  .
+
+- : narrow1dcs*-bind
+      sdcs/nil (sdcs/cons R2 D2) sdcs/ext
+      BDS
+      sdcs/nil (sdcs/cons R1 D1) sdcs/ext
+ <- narrow1dc* D2 BDS D1
+ <- narrow1dcs* R2 BDS R1
+  .
+
+%worlds () (narrow1dcs*-bind _ _ _ _ _ _ _) (narrow1dcs* _ _ _) (narrow1* _ _ _) (narrow1o* _ _ _) (narrow1oo* _ _ _) (narrow1dc* _ _ _).
+%total (Z1 A B C D E) (narrow1dcs*-bind Z1 _ _ _ _ _ _) (narrow1dcs* A _ _) (narrow1* B _ _) (narrow1o* C _ _) (narrow1oo* D _ _) (narrow1dc* E _ _).
 
 % TODO: revisit until end of file
 %.
