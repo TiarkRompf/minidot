@@ -3938,18 +3938,17 @@ narrow1*:
 %trustme
 %total { } (narrow1* _ _ _).
 
-% TODO: revisit until end of file
-%.
-
 %{ ------- lookup preservation --- }%
 
-lookup-zero-safe: wf-env H G -> tlookup-zero G N2 T -> vlookup-zero H N1 V -> eq-nat N1 N2 -> wf-val V G T -> type.
+lookup-zero-safe: wf-env H G -> tlookup-zero G N2 T -> vlookup-zero H N1 V -> eq-nat N1 N2 -> wf-val V H T -> type.
 %mode lookup-zero-safe +A +B +C +D -E.
 
--      : lookup-zero-safe (wfe/c G V) tl/hit vl/hit eq-nat/z V.
--      : lookup-zero-safe (wfe/c G V) (tl/miss A) (vl/miss B) (eq-nat/s E) Z1
+-      : lookup-zero-safe (wfe/c _ _ _ _ _ V) tl/hit vl/hit eq-nat/z V'
+      <- extend-wfv V _ V'
+       .
+-      : lookup-zero-safe (wfe/c G _ _ _ _ _) (tl/miss A) (vl/miss B) (eq-nat/s E) Z'
          <- lookup-zero-safe G A B E Z
-         <- extend-wfv Z _ Z1.
+         <- extend-wfv Z _ Z'.
 
 %worlds () (lookup-zero-safe _ _ _ _ _).
 %total A (lookup-zero-safe A _ _ _ _). % induction on first arg
