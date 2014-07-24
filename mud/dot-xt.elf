@@ -3939,6 +3939,33 @@ narrow1*:
 %trustme
 %total { } (narrow1* _ _ _).
 
+%{
+narrow1-typ:
+  typ G2 E T ->
+  seg G1 G2 ->
+%%
+  typ G1 E T ->
+  type.
+%mode narrow1-typ +A +B -C.
+
+narrow1-typcs:
+  typcs G2 ICS DCS ->
+  seg G1 G2 ->
+%%
+  typcs G1 ICS DCS ->
+  type.
+%mode narrow1-typcs +A +B -C.
+
+-/nil : narrow1-typcs t/nil BE t/nil.
+
+-/fun : narrow1-typcs (t/fun R P) BE (t/fun R' P')
+     <- narrow1-typ P BE P'
+     <- narrow1-typcs
+
+%worlds () (narrow1-typ _ _ _) (narrow1-typcs _ _ _).
+%total (A1 A2) (narrow1-typ A1 _ _) (narrow1-typcs A2 _ _).
+}%
+
 %{ ------- lookup preservation --- }%
 
 lookup-zero-safe: wf-env H G -> tlookup-zero G N2 T -> vlookup-zero H N1 V -> eq-nat N1 N2 -> wf-val V H T -> type.
