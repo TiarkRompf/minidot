@@ -327,6 +327,7 @@ t/app : typ G (app E1 X E2) T
       .
 t/nil : typcs G inil dnil.
 t/fun : typcs G (icons (fun E) ICS) (dcons (arrow S U) DCS)
+    <- wf-tp G S
     <- typ (tcons S G) E U
     <- typcs G ICS DCS
       .
@@ -3356,6 +3357,13 @@ trans1 :
 %worlds () (trans1 _ _ _).
 %total {A B} (trans1 A B _).
 
+extend-stp1: stp1 G T1 T2 -> {Z} stp1 (tcons Z G) T1 T2 -> type.
+%mode extend-stp1 +A +B -C.
+- : extend-stp1 (stp1/a A) B (stp1/a C)
+ <- extend-stp A B C.
+%worlds () (extend-stp1 _ _ _).
+%total (A) (extend-stp1 A _ _).
+
 extend-stp1-mult: stp1 G T1 T2 -> sub-env G G' -> stp1 G' T1 T2 -> type.
 %mode extend-stp1-mult +A +B -C.
 - : extend-stp1-mult (stp1/a A) B (stp1/a C)
@@ -3535,9 +3543,9 @@ invert-fun:
   type.
 %mode invert-fun +A +B -C -D.
 
--/z : invert-fun (t/fun _ A) ilk/z dlk/z A.
+-/z : invert-fun (t/fun _ A _) ilk/z dlk/z A.
 
--/s : invert-fun (t/fun A _) (ilk/s B) (dlk/s C) D
+-/s : invert-fun (t/fun A _ _) (ilk/s B) (dlk/s C) D
    <- invert-fun A B C D.
 
 -/s2: invert-fun (t/non A) (ilk/s B) (dlk/s C) D
@@ -3697,21 +3705,13 @@ stp2-inv-fun0:
 %total { } (stp2-inv-fun0 _ _ _).
 
 %{ ----- generalized narrowing ----- }%
-%{ -- lhs: comes from xt-env, so
-      - all binds
-      - should remain realizable in extensions
-   -- rhs: comes from wf-env, so
-      - arbitrary types
-      - approximates lhs, i.e. weaker,
-        hence lhs realizable implies rhs realizable
-}%
 
 seg : tenv -> tenv -> type.
 
-seg/sub  : seg (tcons (bind N1 DS1) G1) (tcons T2 G2)
+seg/sub  : seg (tcons T1 G1) (tcons T2 G2)
         <- seg G1 G2
         <- wf-tp G2 T2
-        <- stp1 G1 (bind N1 DS1) T2.
+        <- stp1 G1 T1 T2.
 
 seg/nil  : seg tnil tnil.
 
@@ -3895,10 +3895,10 @@ seg-refl1 :
 
 seg-refl-cons :
   seg G1 G2 ->
-  wf-tp G2 (bind N BDS) ->
-  wf-tp G1 (bind N BDS) ->
+  wf-tp G2 T ->
+  wf-tp G1 T ->
 %%
-  seg (tcons (bind N BDS) G1) (tcons (bind N BDS) G2) ->
+  seg (tcons T G1) (tcons T G2) ->
   type.
 %mode seg-refl-cons +A +B +C -D.
 
@@ -3928,6 +3928,41 @@ extract-wf-tp-sel :
 
 %{ ------- end of helper interlude ---- }%
 
+narrow1-tlookup-zero:
+  tlookup-zero G2 N T2 ->
+  seg G1 G2 ->
+%%
+  tlookup-zero G1 N T1 ->
+  stp1 G1 T1 T2 ->
+  type.
+%mode narrow1-tlookup-zero +A +B -C -D.
+
+-/hit  : narrow1-tlookup-zero tl/hit (seg/sub B _ _) tl/hit B'
+      <- extend-stp1 B _ B'.
+
+-/miss : narrow1-tlookup-zero (tl/miss A) (seg/sub _ _ B) (tl/miss C) D'
+      <- narrow1-tlookup-zero A B C D
+      <- extend-stp1 D _ D'.
+
+%worlds () (narrow1-tlookup-zero _ _ _ _).
+%total (A) (narrow1-tlookup-zero A _ _ _).
+
+narrow1-tlookup:
+  tlookup G2 N T2 ->
+  seg G1 G2 ->
+%%
+  tlookup G1 N T1 ->
+  stp1 G1 T1 T2 ->
+  type.
+%mode narrow1-tlookup +A +B -C -D.
+
+- : narrow1-tlookup (tl L A S) BE (tl L' A S') B'
+ <- tsize-seg BE S S'
+ <- narrow1-tlookup-zero L BE L' B'.
+
+%worlds () (narrow1-tlookup _ _ _ _).
+%total (A) (narrow1-tlookup A _ _ _).
+
 narrow1*:
   stp1 G2 S U ->
   seg G1 G2 ->
@@ -3939,7 +3974,21 @@ narrow1*:
 %trustme
 %total { } (narrow1* _ _ _).
 
-%{
+narrow1-wf:
+  wf-tp G2 T ->
+  seg G1 G2 ->
+%%
+  wf-tp G1 T ->
+  type.
+%mode narrow1-wf +A +B -C.
+
+- : narrow1-wf (stprefl A) B C'
+ <- narrow1* (stp1/a A) B C
+ <- stp1-reg C C' _.
+
+%worlds () (narrow1-wf _ _ _).
+%total (A) (narrow1-wf A _ _).
+
 narrow1-typ:
   typ G2 E T ->
   seg G1 G2 ->
@@ -3956,15 +4005,26 @@ narrow1-typcs:
   type.
 %mode narrow1-typcs +A +B -C.
 
+-/var : narrow1-typ (t/var W L) BE (t/var W' L')
+     <- narrow1-tlookup L BE L' B
+     <- stp1-reg B W' _.
+
+-/new : narrow1-typ (t/new W P SE) BE (t/new W' P' SE')
+     <- seg-sub-size SE BE SE' BE'
+     <- narrow1-wf W BE' W'
+     <- seg-refl-cons BE' W W' BE''
+     <- narrow1-typcs P BE'' P'.
+
 -/nil : narrow1-typcs t/nil BE t/nil.
 
--/fun : narrow1-typcs (t/fun R P) BE (t/fun R' P')
-     <- narrow1-typ P BE P'
-     <- narrow1-typcs
+-/fun : narrow1-typcs (t/fun R P W) BE (t/fun R' P' W')
+     <- narrow1-wf W BE W'
+     <- seg-refl-cons BE W W' BE'
+     <- narrow1-typ P BE' P'
+     <- narrow1-typcs R BE R'.
 
 %worlds () (narrow1-typ _ _ _) (narrow1-typcs _ _ _).
 %total (A1 A2) (narrow1-typ A1 _ _) (narrow1-typcs A2 _ _).
-}%
 
 %{ ------- lookup preservation --- }%
 
