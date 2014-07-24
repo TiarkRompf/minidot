@@ -4015,7 +4015,12 @@ narrow1-typcs:
      <- seg-refl-cons BE' W W' BE''
      <- narrow1-typcs P BE'' P'.
 
--/app: narrow1-typ (t/app WTR WT2 SE A2 DL A1) BE (t/app WTR' WT2' SE' A2' DL' A1')
+-/app: narrow1-typ (t/app WTR WT2 SE A2 DL A1) BE (t/app WTR' WT2' SE' A2' DL A1')
+    <- narrow1-typ A1 BE A1'
+    <- narrow1-typ A2 BE A2'
+    <- seg-sub-size SE BE SE' BE'
+    <- narrow1-wf WT2 BE' WT2'
+    <- narrow1-wf WTR BE' WTR'
      .
 
 -/nil : narrow1-typcs t/nil BE t/nil.
