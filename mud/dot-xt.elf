@@ -4036,6 +4036,9 @@ narrow1-typcs:
     <- narrow1-typ P BE' P'
     <- narrow1-typcs R BE R'.
 
+-/non: narrow1-typcs (t/non R) BE (t/non R')
+    <- narrow1-typcs R BE R'.
+
 %worlds () (narrow1-typ _ _ _) (narrow1-typcs _ _ _).
 %total (A1 A2) (narrow1-typ A1 _ _) (narrow1-typcs A2 _ _).
 
