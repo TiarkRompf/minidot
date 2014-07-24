@@ -4137,6 +4137,11 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- wf-env-to-xt-env E XE
      <- wf-env-to-xt-env E' XEC
      <- xt-env-tsize E' XEC SN SC
+     <- xt-seg XE E BE
+     <- seg-sub-size SE BE SEN BEN
+     <- narrow1-wf WC BEN WC'
+     <- seg-refl-cons BEN WC WC' BEN'
+     <- narrow1-typcs TDS BEN' TDS'
       .
 %{
 -/new : eval-safe A E (e/new SV) (v/clo BA ADS SN E')
