@@ -4005,7 +4005,7 @@ narrow1-typcs:
   type.
 %mode narrow1-typcs +A +B -C.
 
--/var : narrow1-typ (t/var W L) BE (t/var W' L')
+-/var : narrow1-typ (t/var W L) BE (t/sub B (t/var W' L'))
      <- narrow1-tlookup L BE L' B
      <- stp1-reg B W' _.
 
