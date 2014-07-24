@@ -3451,6 +3451,16 @@ xt-env-unique : xt-env H G -> xt-env H G' -> id-tenv G G' -> type.
 %worlds () (xt-env-unique _ _ _).
 %total {A B} (xt-env-unique A B _).
 
+eq-xt-env : id-tenv G G' -> xt-env H G -> xt-env H G' -> type.
+%mode eq-xt-env +EQ +A -B.
+
+- : eq-xt-env id-tenv/refl B B.
+
+%worlds () (eq-xt-env _ _ _).
+%total (A) (eq-xt-env A _ _).
+%reduces C <= B (eq-xt-env _ B C).
+
+
 %{ ------- extension lemmas ------- }%
 
 extend-wfv: wf-val V H T -> {Z} wf-val V (vcons Z H) T -> type.
@@ -4119,6 +4129,40 @@ xt-env-tsize : wf-env H G -> xt-env H GH -> tsize G N -> tsize GH N -> type.
 %worlds () (xt-env-tsize _ _ _ _).
 %total {A B C} (xt-env-tsize A B C _).
 
+xt-env-sub :
+  xt-env H G -> sub-venv-size HN N H ->
+%%
+  xt-env HN GN -> sub-env-size GN N G ->
+  type.
+%mode xt-env-sub +A +B -C -D.
+
+- : xt-env-sub xte/n (svs vf/n sub-venv/refl) xte/n (ses tf/n sub-env/refl).
+
+- : xt-env-sub (xte/c XE XV) (svs (vf/c NH) sub-venv/refl) (xte/c XE XV) (ses (tf/c NG) sub-env/refl)
+ <- xt-env-vsize XE NH NG.
+
+- : xt-env-sub (xte/c XE XV) (svs NH (sub-venv/ext SH)) XE' SGS'
+ <- xt-env-sub XE (svs NH SH) XE' SGS
+ <- extend-sub-env-size SGS _ SGS'.
+
+%worlds () (xt-env-sub _ _ _ _).
+%total {A B} (xt-env-sub A B _ _).
+
+xt-env-sub-out :
+  xt-env H G -> sub-venv-size HN N H -> sub-env-size GN N G ->
+%%
+  xt-env HN GN ->
+  type.
+%mode xt-env-sub-out +A +B +C -D.
+
+- : xt-env-sub-out XE SH SG OUT
+ <- xt-env-sub XE SH XE' SG'
+ <- sub-env-size-unique SG' SG EQG
+ <- eq-xt-env EQG XE' OUT.
+
+%worlds () (xt-env-sub-out _ _ _ _).
+%total { } (xt-env-sub-out _ _ _ _).
+
 %{ ------- type preservation ----- }%
 
 eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
@@ -4130,18 +4174,25 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- wfv-widen E BA V' V
       .
 
--/new : eval-safe A E (e/new SV) (v/clo OB OTDS SC XEC XE)
+-/new : eval-safe A E (e/new SV) (v/clo B' TDS' SC XEC XE)
      <- invert-new A SE TDS WC BC
      <- wf-sub-env-size E SV SE E'
-     <- extract-sub-env-size SE SN _
+     % <- extract-sub-env-size SE SN _
      <- wf-env-to-xt-env E XE
-     <- wf-env-to-xt-env E' XEC
-     <- xt-env-tsize E' XEC SN SC
+     % <- wf-env-to-xt-env E' XEC
+     % <- xt-env-tsize E' XEC SN SC
      <- xt-seg XE E BE
      <- seg-sub-size SE BE SEN BEN
      <- narrow1-wf WC BEN WC'
      <- seg-refl-cons BEN WC WC' BEN'
      <- narrow1-typcs TDS BEN' TDS'
+     <- xt-env-sub-out XE SV SEN XEC
+     <- extract-sub-env-size SEN SC SE'
+     <- narrow1* BC BE BC'
+     <- stp1-to-stp2 BC' BC''
+     <- stp2refl WC' BW'
+     <- extend-stp2-mult2 BW' SE' BW''
+     <- trans2 BW'' BC'' B'
       .
 %{
 -/new : eval-safe A E (e/new SV) (v/clo BA ADS SN E')
