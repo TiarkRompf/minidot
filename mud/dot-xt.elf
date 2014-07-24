@@ -4028,13 +4028,13 @@ narrow1-typcs:
     <- narrow1* B BE B'
      .
 
--/nil : narrow1-typcs t/nil BE t/nil.
+-/nil: narrow1-typcs t/nil BE t/nil.
 
--/fun : narrow1-typcs (t/fun R P W) BE (t/fun R' P' W')
-     <- narrow1-wf W BE W'
-     <- seg-refl-cons BE W W' BE'
-     <- narrow1-typ P BE' P'
-     <- narrow1-typcs R BE R'.
+-/fun: narrow1-typcs (t/fun R P W) BE (t/fun R' P' W')
+    <- narrow1-wf W BE W'
+    <- seg-refl-cons BE W W' BE'
+    <- narrow1-typ P BE' P'
+    <- narrow1-typcs R BE R'.
 
 %worlds () (narrow1-typ _ _ _) (narrow1-typcs _ _ _).
 %total (A1 A2) (narrow1-typ A1 _ _) (narrow1-typcs A2 _ _).
