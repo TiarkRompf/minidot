@@ -4015,6 +4015,9 @@ narrow1-typcs:
      <- seg-refl-cons BE' W W' BE''
      <- narrow1-typcs P BE'' P'.
 
+-/app: narrow1-typ (t/app WTR WT2 SE A2 DL A1) BE (t/app WTR' WT2' SE' A2' DL' A1')
+     .
+
 -/nil : narrow1-typcs t/nil BE t/nil.
 
 -/fun : narrow1-typcs (t/fun R P W) BE (t/fun R' P' W')
