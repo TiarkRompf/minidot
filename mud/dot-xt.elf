@@ -4023,6 +4023,11 @@ narrow1-typcs:
     <- narrow1-wf WTR BE' WTR'
      .
 
+-/sub: narrow1-typ (t/sub B A) BE (t/sub B' A')
+    <- narrow1-typ A BE A'
+    <- narrow1* B BE B'
+     .
+
 -/nil : narrow1-typcs t/nil BE t/nil.
 
 -/fun : narrow1-typcs (t/fun R P W) BE (t/fun R' P' W')
