@@ -4441,11 +4441,12 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- wf-sub-env-size EH (svs SC'' SH) SECH EC
      <- stp2-to-stp1-bind BC BCC
      <- stp1-reg BCC WC0 WC1
+     <- wfv-restrict E (svs SC'' SH) V1 V1'
      <- eval-safe A3
         (wfe/c
            (wfe/c
-              EC WC1 BCC XEC VC1 XVC1 V1')
-           WC2 BCC2 XEC2 VC12 XVC2 V2')
+              EC WC1O BCCO XECO VC1O XVC1O V1'O)
+           WC2O BCC2O XEC2O VC12O XVC2O V2'O)
         EV3
         V3
       .
