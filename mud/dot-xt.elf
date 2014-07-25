@@ -3567,7 +3567,7 @@ invert-appvar:
 %%
   sub-env-size GN N G ->
   sub-env-size GN1 (s N) G ->
-  typ G E1 (bind N DS) ->
+  typ G (var N) (bind N DS) ->
   typ G E2 T2 ->
   dlk DS X (arrow T2 T0) ->
   wf-tp GN (bind N DS) ->
@@ -4255,6 +4255,16 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- extend-stp2-mult2 BW' SE' BW''
      <- trans2 BW'' BC'' B'
       .
+
+-/appvar : eval-safe A E (e/appvar (e/app EV3 EV2 IL EV1)) V
+     <- invert-appvar A SE SEP A1 A2 DL2 WB WB2 WB0 WP2 WP0 BA
+     <- eval-safe A2 E EV2 V2
+     <- eval-safe A1 E EV1 V1
+     <- invert-wfv V1 XE XEC SC TDS BC
+     <- invert-fun TDS IL DL1 A3
+     <- stp2-inv-fun BC DL1 DL2 EQN SE1 SE2 BC2 BC0
+      .
+
 %{
 -/new : eval-safe A E (e/new SV) (v/clo BA ADS SN E')
      <- invert-new A SE ADS BA
