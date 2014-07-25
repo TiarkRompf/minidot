@@ -380,6 +380,7 @@ wfe/n : wf-env vnil tnil.
 wfe/c : wf-env (vcons V H) (tcons T G)
      <- wf-val V H T
      <- xt-val V T0
+     <- wf-val V H T0
      <- xt-env H G0
      <- stp1 G0 T0 T
      <- wf-tp G T
@@ -1509,7 +1510,7 @@ tsize-calc : {G} tsize G N -> type.
 wf-env-size-eq: wf-env H G -> vsize H N1 -> tsize G N2 -> eq-nat N1 N2 -> type.
 %mode wf-env-size-eq +A +B +C -D.
 -      : wf-env-size-eq wfe/n vf/n tf/n eq-nat/z.
--      : wf-env-size-eq (wfe/c G _ _ _ _ _) (vf/c VS) (tf/c TS) (eq-nat/s E) <- wf-env-size-eq G VS TS E.
+-      : wf-env-size-eq (wfe/c G _ _ _ _ _ _) (vf/c VS) (tf/c TS) (eq-nat/s E) <- wf-env-size-eq G VS TS E.
 %worlds () (wf-env-size-eq _ _ _ _).
 %total A (wf-env-size-eq A _ _ _).
 
@@ -1666,7 +1667,7 @@ wf-sub-env-size-rec: wf-env H G -> sub-venv HN H -> sub-env GN G -> vsize HN N -
 
 - : wf-sub-env-size-rec E sub-venv/refl sub-env/refl _ _ E.
 
-- : wf-sub-env-size-rec (wfe/c E _ _ _ _ _) (sub-venv/ext SH) (sub-env/ext SG) NH NG OUT
+- : wf-sub-env-size-rec (wfe/c E _ _ _ _ _ _) (sub-venv/ext SH) (sub-env/ext SG) NH NG OUT
  <- wf-sub-env-size-rec E SH SG NH NG OUT.
 
 - : wf-sub-env-size-rec E (sub-venv/ext SH) sub-env/refl NH NG OUT
@@ -1709,14 +1710,14 @@ wf-sub-env-size-rec0: wf-env H G -> sub-env GN G -> tsize GN N -> sub-venv HN H 
 
 - : wf-sub-env-size-rec0 wfe/n sub-env/refl tf/n sub-venv/refl vf/n.
 
-- : wf-sub-env-size-rec0 (wfe/c E _ _ _ _ WV) sub-env/refl (tf/c NG) SHO (vf/c NH)
+- : wf-sub-env-size-rec0 (wfe/c E _ _ _ _ _ WV) sub-env/refl (tf/c NG) SHO (vf/c NH)
  <- wf-sub-env-size-rec0 E sub-env/refl NG SH NH
  <- wf-env-size-same0 E NG NH'
  <- sub-venv-size-unique (svs NH SH) (svs NH' sub-venv/refl) EQH
  <- eq-venv-cons EQH id-val/refl EQH'
  <- sub-venv-refl EQH' SHO.
 
-- : wf-sub-env-size-rec0 (wfe/c E _ _ _ _ _) (sub-env/ext SG) NG (sub-venv/ext SH) NH
+- : wf-sub-env-size-rec0 (wfe/c E _ _ _ _ _ _) (sub-env/ext SG) NG (sub-venv/ext SH) NH
  <- wf-sub-env-size-rec0 E SG NG SH NH.
 
 %worlds () (wf-sub-env-size-rec0 _ _ _ _ _).
@@ -3524,7 +3525,7 @@ wf-env-to-xt-env : wf-env H G -> xt-env H GC -> type.
 %mode wf-env-to-xt-env +A -B.
 
 -/n : wf-env-to-xt-env wfe/n xte/n.
--/c : wf-env-to-xt-env (wfe/c _ _ _ XE XV _) (xte/c XE XV).
+-/c : wf-env-to-xt-env (wfe/c _ _ _ XE _ XV _) (xte/c XE XV).
 
 %worlds () (wf-env-to-xt-env _ _).
 %total (A) (wf-env-to-xt-env A _).
@@ -3556,7 +3557,7 @@ xt-env-tsize : wf-env H G -> xt-env H GH -> tsize G N -> tsize GH N -> type.
 
 -/n : xt-env-tsize wfe/n xte/n tf/n tf/n.
 
--/c : xt-env-tsize (wfe/c A _ _ _ _ _) (xte/c B _) (tf/c C) (tf/c D)
+-/c : xt-env-tsize (wfe/c A _ _ _ _ _ _) (xte/c B _) (tf/c C) (tf/c D)
    <- xt-env-tsize A B C D.
 
 %worlds () (xt-env-tsize _ _ _ _).
@@ -3896,7 +3897,7 @@ xt-seg: xt-env H GH -> wf-env H G -> seg GH G -> type.
 
 - : xt-seg xte/n wfe/n seg/nil.
 
-- : xt-seg (xte/c XE XV) (wfe/c WE WT B' XE' XV' WV) (seg/sub BR WT R)
+- : xt-seg (xte/c XE XV) (wfe/c WE WT B' XE' _ XV' WV) (seg/sub BR WT R)
  <- xt-seg XE WE R
  <- xt-val-unique XV' XV EQT
  <- xt-env-unique XE' XE EQG
@@ -4219,6 +4220,23 @@ narrow1-typcs:
 %worlds () (narrow1-typ _ _ _) (narrow1-typcs _ _ _).
 %total (A1 A2) (narrow1-typ A1 _ _) (narrow1-typcs A2 _ _).
 
+extract-wfv:
+  wf-val V H T ->
+%%
+  id-val V (clo HC DS IS) ->
+  xt-env H G ->
+  xt-env HC GC ->
+  tsize GC N ->
+  typcs (tcons (bind N DS) GC) IS DS ->
+  stp2 GC (bind N DS) G T ->
+  type.
+%mode extract-wfv +A -B -C -D -E -F -G.
+
+- : extract-wfv (v/clo B TDS SC XEC XE) id-val/refl XE XEC SC TDS B.
+
+%worlds () (extract-wfv _ _ _ _ _ _ _).
+%total (A) (extract-wfv A _ _ _ _ _ _).
+
 narrow1-env:
   wf-env H G ->
   xt-env H GH ->
@@ -4229,21 +4247,15 @@ narrow1-env:
 
 -/n : narrow1-env wfe/n XE wfe/n.
 
--/c : narrow1-env (wfe/c R W1 B01 XE0 XV0 (v/clo B01' TDS SC XE0' XE')) (xte/c XE XV) (wfe/c R' W2' B02' XE0 XV0 WV2')
+-/c : narrow1-env (wfe/c R WT B0T XE0 WVT0 XV0 WVT) (xte/c XE XV) (wfe/c R' WTH BHH XE WVTH XV WVTH)
    <- narrow1-env R XE R'
-   <- stp2-reg B01' WTC _
-   <- stp2refl WTC BC
-   <- xt-env-tvsize XE0' SC SV
-   <- xt-val-unique (xtv/clo SV) XV EQT
-   <- eq-wf-val EQT (v/clo BC TDS SC XE0' XE') WV2'
-   <- xt-env-unique XE0' XE0 EQG
-   <- eq-wf-tp-g EQG WTC WTC'
-   <- eq-wf-tp EQT WTC' WTC''
-   <- stp1refl WTC'' B00
-   <- xt-val-unique XV XV0 EQT0
-   <- eq-stp1-l EQT0 B00 B02'
-   <- xt-env-unique XE0 XE EQG0
-   <- eq-wf-tp-g EQG0 WTC'' W2'
+   <- xt-val-unique XV0 XV EQT0H
+   <- eq-wf-val EQT0H WVT0 WVTH
+   <- xt-env-unique XE0 XE EQG0H
+   <- stp1-reg B0T WT0 _
+   <- eq-wf-tp-g EQG0H WT0 WTH0
+   <- eq-wf-tp EQT0H WTH0 WTH
+   <- stp1refl WTH BHH
     .
 
 %worlds () (narrow1-env _ _ _).
@@ -4254,10 +4266,10 @@ narrow1-env:
 lookup-zero-safe: wf-env H G -> tlookup-zero G N2 T -> vlookup-zero H N1 V -> eq-nat N1 N2 -> wf-val V H T -> type.
 %mode lookup-zero-safe +A +B +C +D -E.
 
--      : lookup-zero-safe (wfe/c _ _ _ _ _ V) tl/hit vl/hit eq-nat/z V'
+-      : lookup-zero-safe (wfe/c _ _ _ _ _ _ V) tl/hit vl/hit eq-nat/z V'
       <- extend-wfv V _ V'
        .
--      : lookup-zero-safe (wfe/c G _ _ _ _ _) (tl/miss A) (vl/miss B) (eq-nat/s E) Z'
+-      : lookup-zero-safe (wfe/c G _ _ _ _ _ _) (tl/miss A) (vl/miss B) (eq-nat/s E) Z'
          <- lookup-zero-safe G A B E Z
          <- extend-wfv Z _ Z'.
 
