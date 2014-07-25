@@ -4277,8 +4277,11 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- eval-safe A2 E EV2 V2
      <- eval-safe A1 E EV1 V1
      <- invert-wfv V1 XE XEC SC TDS BC VC1 XVC1
+     <- stp2-reg BC WBC _
+     <- stp1refl WBC B1C
      <- invert-fun TDS IL DL1 A3
      <- stp2-inv-fun BC DL1 DL2 EQN SE1 SE2 BC2 BC0
+     <- sub-env-size-unique SE1 (ses SC sub-env/refl) EQGC
       .
 
 %{
