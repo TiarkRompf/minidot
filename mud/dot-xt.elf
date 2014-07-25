@@ -4445,7 +4445,7 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- eval-safe A3
         (wfe/c
            (wfe/c
-              EC WC1O BCCO XECO VC1O XVC1O V1'O)
+              EC WBC B1C XEC VC1 XVC1 VC1)
            WC2O BCC2O XEC2O VC12O XVC2O V2'O)
         EV3
         V3
