@@ -3636,13 +3636,16 @@ invert-wfv:
   tsize GC N ->
   typcs (tcons (bind N DCS) GC) ICS DCS ->
   stp2 GC (bind N DCS) G T ->
+  wf-val (clo HC DCS ICS) HC (bind N DCS) ->
   type.
-%mode invert-wfv +A -B -C -D -E -F.
+%mode invert-wfv +A -B -C -D -E -F -G.
 
--/clo : invert-wfv (v/clo B ADS SN WEC WE) WE WEC SN ADS B.
+-/clo : invert-wfv (v/clo B ADS SN WEC WE) WE WEC SN ADS B (v/clo BC ADS SN WEC WEC)
+     <- stp2-reg B WC _
+     <- stp2refl WC BC.
 
-%worlds () (invert-wfv _ _ _ _ _ _).
-%total (A) (invert-wfv A _ _ _ _ _).
+%worlds () (invert-wfv _ _ _ _ _ _ _).
+%total (A) (invert-wfv A _ _ _ _ _ _).
 
 %{ ------- inversion of subtyping ----- }%
 
@@ -4260,7 +4263,7 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- invert-appvar A SE SEP A1 A2 DL2 WB WB2 WB0 WP2 WP0 BA
      <- eval-safe A2 E EV2 V2
      <- eval-safe A1 E EV1 V1
-     <- invert-wfv V1 XE XEC SC TDS BC
+     <- invert-wfv V1 XE XEC SC TDS BC VC1
      <- invert-fun TDS IL DL1 A3
      <- stp2-inv-fun BC DL1 DL2 EQN SE1 SE2 BC2 BC0
       .
