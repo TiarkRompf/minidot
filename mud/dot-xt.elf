@@ -3493,6 +3493,84 @@ extend-wfv: wf-val V H T -> {Z} wf-val V (vcons Z H) T -> type.
 %worlds () (extend-wfv _ _ _).
 %total (A) (extend-wfv A _ _).
 
+%{ ------- env helpers ----- }%
+
+wf-env-to-xt-env : wf-env H G -> xt-env H GC -> type.
+%mode wf-env-to-xt-env +A -B.
+
+-/n : wf-env-to-xt-env wfe/n xte/n.
+-/c : wf-env-to-xt-env (wfe/c _ _ _ XE XV _) (xte/c XE XV).
+
+%worlds () (wf-env-to-xt-env _ _).
+%total (A) (wf-env-to-xt-env A _).
+
+xt-env-vsize : xt-env H GH -> vsize H N -> tsize GH N -> type.
+%mode xt-env-vsize +A +B -C.
+
+-/n : xt-env-vsize xte/n vf/n tf/n.
+
+-/c : xt-env-vsize (xte/c A _) (vf/c B) (tf/c C)
+   <- xt-env-vsize A B C.
+
+%worlds () (xt-env-vsize _ _ _).
+%total {A B} (xt-env-vsize A B _).
+
+xt-env-tvsize : xt-env H GH -> tsize GH N -> vsize H N -> type.
+%mode xt-env-tvsize +A +B -C.
+
+-/n : xt-env-tvsize xte/n tf/n vf/n.
+
+-/c : xt-env-tvsize (xte/c A _) (tf/c B) (vf/c C)
+   <- xt-env-tvsize A B C.
+
+%worlds () (xt-env-tvsize _ _ _).
+%total {A B} (xt-env-tvsize A B _).
+
+xt-env-tsize : wf-env H G -> xt-env H GH -> tsize G N -> tsize GH N -> type.
+%mode xt-env-tsize +A +B +C -D.
+
+-/n : xt-env-tsize wfe/n xte/n tf/n tf/n.
+
+-/c : xt-env-tsize (wfe/c A _ _ _ _ _) (xte/c B _) (tf/c C) (tf/c D)
+   <- xt-env-tsize A B C D.
+
+%worlds () (xt-env-tsize _ _ _ _).
+%total {A B C} (xt-env-tsize A B C _).
+
+xt-env-sub :
+  xt-env H G -> sub-venv-size HN N H ->
+%%
+  xt-env HN GN -> sub-env-size GN N G ->
+  type.
+%mode xt-env-sub +A +B -C -D.
+
+- : xt-env-sub xte/n (svs vf/n sub-venv/refl) xte/n (ses tf/n sub-env/refl).
+
+- : xt-env-sub (xte/c XE XV) (svs (vf/c NH) sub-venv/refl) (xte/c XE XV) (ses (tf/c NG) sub-env/refl)
+ <- xt-env-vsize XE NH NG.
+
+- : xt-env-sub (xte/c XE XV) (svs NH (sub-venv/ext SH)) XE' SGS'
+ <- xt-env-sub XE (svs NH SH) XE' SGS
+ <- extend-sub-env-size SGS _ SGS'.
+
+%worlds () (xt-env-sub _ _ _ _).
+%total {A B} (xt-env-sub A B _ _).
+
+xt-env-sub-out :
+  xt-env H G -> sub-venv-size HN N H -> sub-env-size GN N G ->
+%%
+  xt-env HN GN ->
+  type.
+%mode xt-env-sub-out +A +B +C -D.
+
+- : xt-env-sub-out XE SH SG OUT
+ <- xt-env-sub XE SH XE' SG'
+ <- sub-env-size-unique SG' SG EQG
+ <- eq-xt-env EQG XE' OUT.
+
+%worlds () (xt-env-sub-out _ _ _ _).
+%total { } (xt-env-sub-out _ _ _ _).
+
 %{ ------- inversion of typing ----- }%
 
 invert-var:
@@ -3637,15 +3715,17 @@ invert-wfv:
   typcs (tcons (bind N DCS) GC) ICS DCS ->
   stp2 GC (bind N DCS) G T ->
   wf-val (clo HC DCS ICS) HC (bind N DCS) ->
+  xt-val (clo HC DCS ICS) (bind N DCS) ->
   type.
-%mode invert-wfv +A -B -C -D -E -F -G.
+%mode invert-wfv +A -B -C -D -E -F -G -H.
 
--/clo : invert-wfv (v/clo B ADS SN WEC WE) WE WEC SN ADS B (v/clo BC ADS SN WEC WEC)
+-/clo : invert-wfv (v/clo B ADS SN WEC WE) WE WEC SN ADS B (v/clo BC ADS SN WEC WEC) (xtv/clo SV)
      <- stp2-reg B WC _
-     <- stp2refl WC BC.
+     <- stp2refl WC BC
+     <- xt-env-tvsize WEC SN SV.
 
-%worlds () (invert-wfv _ _ _ _ _ _ _).
-%total (A) (invert-wfv A _ _ _ _ _ _).
+%worlds () (invert-wfv _ _ _ _ _ _ _ _).
+%total (A) (invert-wfv A _ _ _ _ _ _ _).
 
 %{ ------- inversion of subtyping ----- }%
 
@@ -4160,73 +4240,6 @@ wfv-widen: wf-env H G -> stp1 G T1 T2 -> wf-val V H T1 -> wf-val V H T2 -> type.
 %worlds () (wfv-widen _ _ _ _).
 %total (C) (wfv-widen _ _ C _).
 
-%{ ------- env helpers ----- }%
-
-wf-env-to-xt-env : wf-env H G -> xt-env H GC -> type.
-%mode wf-env-to-xt-env +A -B.
-
--/n : wf-env-to-xt-env wfe/n xte/n.
--/c : wf-env-to-xt-env (wfe/c _ _ _ XE XV _) (xte/c XE XV).
-
-%worlds () (wf-env-to-xt-env _ _).
-%total (A) (wf-env-to-xt-env A _).
-
-xt-env-vsize : xt-env H GH -> vsize H N -> tsize GH N -> type.
-%mode xt-env-vsize +A +B -C.
-
--/n : xt-env-vsize xte/n vf/n tf/n.
-
--/c : xt-env-vsize (xte/c A _) (vf/c B) (tf/c C)
-   <- xt-env-vsize A B C.
-
-%worlds () (xt-env-vsize _ _ _).
-%total {A B} (xt-env-vsize A B _).
-
-xt-env-tsize : wf-env H G -> xt-env H GH -> tsize G N -> tsize GH N -> type.
-%mode xt-env-tsize +A +B +C -D.
-
--/n : xt-env-tsize wfe/n xte/n tf/n tf/n.
-
--/c : xt-env-tsize (wfe/c A _ _ _ _ _) (xte/c B _) (tf/c C) (tf/c D)
-   <- xt-env-tsize A B C D.
-
-%worlds () (xt-env-tsize _ _ _ _).
-%total {A B C} (xt-env-tsize A B C _).
-
-xt-env-sub :
-  xt-env H G -> sub-venv-size HN N H ->
-%%
-  xt-env HN GN -> sub-env-size GN N G ->
-  type.
-%mode xt-env-sub +A +B -C -D.
-
-- : xt-env-sub xte/n (svs vf/n sub-venv/refl) xte/n (ses tf/n sub-env/refl).
-
-- : xt-env-sub (xte/c XE XV) (svs (vf/c NH) sub-venv/refl) (xte/c XE XV) (ses (tf/c NG) sub-env/refl)
- <- xt-env-vsize XE NH NG.
-
-- : xt-env-sub (xte/c XE XV) (svs NH (sub-venv/ext SH)) XE' SGS'
- <- xt-env-sub XE (svs NH SH) XE' SGS
- <- extend-sub-env-size SGS _ SGS'.
-
-%worlds () (xt-env-sub _ _ _ _).
-%total {A B} (xt-env-sub A B _ _).
-
-xt-env-sub-out :
-  xt-env H G -> sub-venv-size HN N H -> sub-env-size GN N G ->
-%%
-  xt-env HN GN ->
-  type.
-%mode xt-env-sub-out +A +B +C -D.
-
-- : xt-env-sub-out XE SH SG OUT
- <- xt-env-sub XE SH XE' SG'
- <- sub-env-size-unique SG' SG EQG
- <- eq-xt-env EQG XE' OUT.
-
-%worlds () (xt-env-sub-out _ _ _ _).
-%total { } (xt-env-sub-out _ _ _ _).
-
 %{ ------- type preservation ----- }%
 
 eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
@@ -4263,7 +4276,7 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- invert-appvar A SE SEP A1 A2 DL2 WB WB2 WB0 WP2 WP0 BA
      <- eval-safe A2 E EV2 V2
      <- eval-safe A1 E EV1 V1
-     <- invert-wfv V1 XE XEC SC TDS BC VC1
+     <- invert-wfv V1 XE XEC SC TDS BC VC1 XVC1
      <- invert-fun TDS IL DL1 A3
      <- stp2-inv-fun BC DL1 DL2 EQN SE1 SE2 BC2 BC0
       .
