@@ -64,6 +64,7 @@ vcons: val -> venv -> venv.
 % terms / expressions
 new: nat -> dcs -> ics -> tm.
 app: tm -> nat -> tm -> tm.
+appvar: nat -> nat -> tm -> tm.
 var: nat -> tm.
 
 %abbrev
@@ -156,6 +157,9 @@ e/app: eval G (app E1 X E2) V3
     <- ilk IS X (fun E3)
     <- eval G E2 V2
     <- eval (vcons V2 (vcons (clo G1 DS IS) G1)) E3 V3
+     .
+e/appvar: eval G (appvar N1 X E2) V3
+    <- eval G (app (var N1) X E2) V3
      .
 
 % --------------- typing ------------- %
@@ -316,6 +320,18 @@ t/new : typ G (new N DCS ICS) (bind N DCS)
      <- sub-env-size GN N G
      <- typcs (tcons (bind N DCS) GN) ICS DCS
      <- wf-tp GN (bind N DCS)
+      .
+t/appvar : typ G (appvar N X E2) T
+     <- typ G (var N) (bind N DS)
+     <- dlk DS X (arrow T2 T)
+     <- typ G E2 T2
+     <- sub-env-size GN N G
+     <- wf-tp GN (bind N DS)
+     <- wf-tp (tcons (bind N DS) GN) T2
+     <- wf-tp (tcons (bind N DS) GN) T
+     <- sub-env-size GN1 (s N) G
+     <- wf-tp GN1 T2
+     <- wf-tp GN1 T
       .
 t/app : typ G (app E1 X E2) T
      <- typ G E1 (bind N DS)
@@ -553,6 +569,10 @@ wfe/c : wf-env (vcons V H) (tcons T G)
   z
   (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil).
 %solve ex-wf-top : wf-tp tnil top.
+
+%query 1 1 typ (tcons (bind z (dcons (rect tnone top) (dcons (arrow top (sel z z)) dnil))) tnil) (appvar z (s z) (var z)) (sel z z).
+
+%query 1 1 typ (tcons (bind z (dcons (rect (tsome top) top) (dcons (arrow (sel z z) (sel z z)) dnil))) tnil) (appvar z (s z) (var z)) (sel z z).
 
 % EOF
 
@@ -4031,6 +4051,18 @@ narrow1-typcs:
     <- seg-sub-size SE BE SE' BE'
     <- narrow1-wf WT2 BE' WT2'
     <- narrow1-wf WTR BE' WTR'
+     .
+-/appvar: narrow1-typ (t/appvar W1TR W1T2 SE1 WBTR WBT2 WB SE A2 DL A1) BE (t/appvar W1TR' W1T2' SE1' WBTR' WBT2' WB' SE' A2' DL A1')
+    <- narrow1-typ A1 BE A1'
+    <- narrow1-typ A2 BE A2'
+    <- seg-sub-size SE BE SE' BE'
+    <- seg-sub-size SE1 BE SE1' BE1'
+    <- narrow1-wf WB BE' WB'
+    <- seg-refl-cons BE' WB WB' BEB'
+    <- narrow1-wf WBT2 BEB'  WBT2'
+    <- narrow1-wf WBTR BEB'  WBTR'
+    <- narrow1-wf W1T2 BE1'  W1T2'
+    <- narrow1-wf W1TR BE1'  W1TR'
      .
 -/sub: narrow1-typ (t/sub B A) BE (t/sub B' A')
     <- narrow1-typ A BE A'
