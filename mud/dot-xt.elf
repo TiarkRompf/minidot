@@ -4439,14 +4439,18 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- xt-env-tvsize XEC SC SC'
      <- eq-vsize SC' EQN SC''
      <- wf-sub-env-size EH (svs SC'' SH) SECH EC
-     <- stp2-to-stp1-bind BC BCC
-     <- stp1-reg BCC WC0 WC1
-     <- wfv-restrict E (svs SC'' SH) V1 V1'
+     % <- stp2-to-stp1-bind BC BCC
+     % <- stp1-reg BCC WC0 WC1
+     % <- wfv-restrict E (svs SC'' SH) V1 V1'
+     <- stp2-reg BC2 _ W2
+     <- eq-env-cons EQGC id-tp/refl EQGB
+     <- eq-wf-tp-g EQGB W2 W2'
+     <- extract-wfv V2 EQV2 XE2 XEC2 SC2 S2CH TDS2 B2CT
      <- eval-safe A3
         (wfe/c
            (wfe/c
               EC WBC B1C XEC VC1 XVC1 VC1)
-           WC2O BCC2O XEC2O VC12O XVC2O V2'O)
+           W2' BCC2O (xte/c XEC XVC1) VC12O XV2O V2'O)
         EV3
         V3
       .
