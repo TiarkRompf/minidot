@@ -3848,6 +3848,19 @@ stp2-inv-fun:
 %worlds () (stp2-inv-fun _ _ _ _ _ _ _ _).
 %total { } (stp2-inv-fun _ _ _ _ _ _ _ _).
 
+stp2-to-stp1-bind:
+  stp2 G1 (bind N1 DS1) G2 (bind N2 DS2) ->
+%%
+  stp1 G1 (bind N1 DS1) (bind N2 DS2) ->
+  type.
+%mode stp2-to-stp1-bind +A -B.
+
+- : stp2-to-stp1-bind IN (stp1/a (stp/bind BDS12 BDS11 BDS22 SE1))
+ <- extract-stp2-bind IN EQN SE1 SE2 BDS12 BDS11 BDS22.
+
+%worlds () (stp2-to-stp1-bind _ _).
+%total { } (stp2-to-stp1-bind _ _).
+
 inv-sdcs-arrow0:
   sdcs oktrans G DS1 DS2 ->
   dlk DS2 X (arrow TA2 TB2) ->
@@ -4367,6 +4380,15 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- xt-env-tvsize XEC SC SC'
      <- eq-vsize SC' EQN SC''
      <- wf-sub-env-size EH (svs SC'' SH) SECH EC
+     <- stp2-to-stp1-bind BC BCC
+     <- stp1-reg BCC WC0 WC1
+     <- eval-safe A3
+        (wfe/c
+           (wfe/c
+              EC WC1 BCC XEC VC1 XVC1 V1')
+           WC2 BCC2 XEC2 VC12 XVC2 V2')
+        EV3
+        V3
       .
 
 %{
