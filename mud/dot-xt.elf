@@ -3562,6 +3562,35 @@ invert-app:
 %worlds () (invert-app _ _ _ _ _ _ _ _).
 %total (A) (invert-app A _ _ _ _ _ _ _).
 
+invert-appvar:
+  typ G (appvar N X E2) T ->
+%%
+  sub-env-size GN N G ->
+  sub-env-size GN1 (s N) G ->
+  typ G E1 (bind N DS) ->
+  typ G E2 T2 ->
+  dlk DS X (arrow T2 T0) ->
+  wf-tp GN (bind N DS) ->
+  wf-tp (tcons (bind N DS) GN) T2 ->
+  wf-tp (tcons (bind N DS) GN) T0 ->
+  wf-tp GN1 T2 ->
+  wf-tp GN1 T0 ->
+  stp1 G T0 T ->
+  type.
+%mode invert-appvar +A -B -C -D -E -F -G -H -I -J -K -L.
+
+-/appvar : invert-appvar (t/appvar WT1P WT2P SESP WT1 WT2 WB SES TP2 DL TP1) SES SESP TP1 TP2 DL WB WT2 WT1 WT2P WT1P B
+     <- extract-sub-env-size SESP _ SE
+     <- extend-wf-tp-mult WT1P SE W
+     <- stp1refl W B.
+
+-/sub : invert-appvar (t/sub B A) SES SESP TP1 TP2 DL WB WT2 WT1 WT2P WT1P B'
+     <- invert-appvar A SES SESP TP1 TP2 DL WB WT2 WT1 WT2P WT1P B0
+     <- trans1 B0 B B'.
+
+%worlds () (invert-appvar _ _ _ _ _ _ _ _ _ _ _ _).
+%total (A) (invert-appvar A _ _ _ _ _ _ _ _ _ _ _).
+
 %{ ------- inversion of declaration typing ----- }%
 
 invert-fun:
