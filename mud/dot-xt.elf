@@ -719,6 +719,14 @@ eq-nat-sym : eq-nat C C' -> eq-nat C' C -> type.
 id-tp : tp -> tp -> type.
 id-tp/refl : id-tp D D.
 
+id-tp-trans : id-tp T1 T2 -> id-tp T2 T3 -> id-tp T1 T3 -> type.
+%mode id-tp-trans +A +B -C.
+
+- : id-tp-trans id-tp/refl id-tp/refl id-tp/refl.
+
+%worlds () (id-tp-trans _ _ _).
+%total {A B} (id-tp-trans A B _).
+
 id-topt : topt -> topt -> type.
 id-topt/refl : id-topt D D.
 
@@ -984,6 +992,14 @@ eq-sub-env-size-u : id-tenv G2 G2' -> sub-env-size G1 N G2 -> sub-env-size G1 N 
 %worlds () (eq-sub-env-size-u _ _ _).
 %total (A) (eq-sub-env-size-u A _ _).
 %reduces C <= B (eq-sub-env-size-u _ B C).
+
+eq-wf-val : id-tp T T' -> wf-val V H T -> wf-val V H T' -> type.
+%mode eq-wf-val +A +B -C.
+
+- : eq-wf-val id-tp/refl B B.
+
+%worlds () (eq-wf-val _ _ _).
+%total (A) (eq-wf-val A _ _).
 
 eq-wf-env-v : id-venv H H' -> wf-env H G -> wf-env H' G -> type.
 %mode eq-wf-env-v +A +B -C.
@@ -3459,6 +3475,15 @@ xt-val-unique : xt-val V T -> xt-val V T' -> id-tp T T' -> type.
 %worlds () (xt-val-unique _ _ _).
 %total {A B} (xt-val-unique A B _).
 
+eq-xt-val : id-tp T T' -> xt-val V T -> xt-val V T' -> type.
+%mode eq-xt-val +EQ +A -B.
+
+- : eq-xt-val id-tp/refl B B.
+
+%worlds () (eq-xt-val _ _ _).
+%total (A) (eq-xt-val A _ _).
+%reduces C <= B (eq-xt-val _ B C).
+
 xt-env-unique : xt-env H G -> xt-env H G' -> id-tenv G G' -> type.
 %mode xt-env-unique +A +B -C.
 
@@ -4193,6 +4218,36 @@ narrow1-typcs:
      .
 %worlds () (narrow1-typ _ _ _) (narrow1-typcs _ _ _).
 %total (A1 A2) (narrow1-typ A1 _ _) (narrow1-typcs A2 _ _).
+
+narrow1-env:
+  wf-env H G ->
+  xt-env H GH ->
+%%
+  wf-env H GH ->
+  type.
+%mode narrow1-env +A +B -C.
+
+-/n : narrow1-env wfe/n XE wfe/n.
+
+-/c : narrow1-env (wfe/c R W1 B01 XE0 XV0 (v/clo B01' TDS SC XE0' XE')) (xte/c XE XV) (wfe/c R' W2' B02' XE0 XV0 WV2')
+   <- narrow1-env R XE R'
+   <- stp2-reg B01' WTC _
+   <- stp2refl WTC BC
+   <- xt-env-tvsize XE0' SC SV
+   <- xt-val-unique (xtv/clo SV) XV EQT
+   <- eq-wf-val EQT (v/clo BC TDS SC XE0' XE') WV2'
+   <- xt-env-unique XE0' XE0 EQG
+   <- eq-wf-tp-g EQG WTC WTC'
+   <- eq-wf-tp EQT WTC' WTC''
+   <- stp1refl WTC'' B00
+   <- xt-val-unique XV XV0 EQT0
+   <- eq-stp1-l EQT0 B00 B02'
+   <- xt-env-unique XE0 XE EQG0
+   <- eq-wf-tp-g EQG0 WTC'' W2'
+    .
+
+%worlds () (narrow1-env _ _ _).
+%total (A) (narrow1-env A _ _).
 
 %{ ------- lookup preservation --- }%
 
