@@ -1361,6 +1361,33 @@ eq-tlookup: id-nat N N' -> tlookup G N T -> tlookup G N' T -> type.
 %total (A) (eq-tlookup A _ _).
 %reduces C <= B (eq-tlookup _ B  C).
 
+eqh-vlookup-zero: id-venv G G' -> vlookup-zero G N T -> vlookup-zero G' N T -> type.
+%mode eqh-vlookup-zero +A +B -C.
+
+- : eqh-vlookup-zero id-venv/refl L L.
+
+%worlds () (eqh-vlookup-zero _ _ _).
+%total (A) (eqh-vlookup-zero A _ _).
+%reduces C <= B (eqh-vlookup-zero _ B  C).
+
+eq-vlookup-zero: id-nat N N' -> vlookup-zero G N T -> vlookup-zero G N' T -> type.
+%mode eq-vlookup-zero +A +B -C.
+
+- : eq-vlookup-zero id-nat/refl L L.
+
+%worlds () (eq-vlookup-zero _ _ _).
+%total (A) (eq-vlookup-zero A _ _).
+%reduces C <= B (eq-vlookup-zero _ B  C).
+
+eq-vlookup: id-nat N N' -> vlookup G N T -> vlookup G N' T -> type.
+%mode eq-vlookup +A +B -C.
+
+- : eq-vlookup id-nat/refl L L.
+
+%worlds () (eq-vlookup _ _ _).
+%total (A) (eq-vlookup A _ _).
+%reduces C <= B (eq-vlookup _ B  C).
+
 eq-env: id-tenv G2 G2' -> sdcs IO G2 T1 T2 -> sdcs IO G2' T1 T2 -> type.
 %mode eq-env +P1 +P2 -SBT.
 
@@ -3209,6 +3236,54 @@ restrict-has-mem :
 %worlds () (restrict-has-mem _ _ _).
 %total (A) (restrict-has-mem A _ _).
 
+restrict-vlookup-rec :
+  vlookup-zero G M T ->
+  add (s N) M S ->
+  vsize G S ->
+  vsize GN (s N) ->
+  sub-venv GN G ->
+%%
+  vlookup-zero GN z T ->
+  type.
+%mode restrict-vlookup-rec +A1 +A2 +A3 +B +C -D.
+
+- : restrict-vlookup-rec L A TG TN sub-venv/refl L'
+ <- vsize-unique TG TN EQN
+ <- eq-add A EQN A'
+ <- add-zero A' EQZ
+ <- eq-vlookup-zero EQZ L L'.
+
+- : restrict-vlookup-rec vl/hit A TG TN E L'
+ <- add-commute _ _ _ A A'
+ <- add-z A' EQN
+ <- eq-vsize TN EQN TN'
+ <- sub-venv-size-unique (svs TG sub-venv/refl) (svs TN' E) EQG
+ <- eqh-vlookup-zero EQG vl/hit L'
+  .
+
+- : restrict-vlookup-rec (vl/miss L) A (vf/c TG) TN (sub-venv/ext E) L'
+ <- add-dec A A'
+ <- restrict-vlookup-rec L A' TG TN E L'
+  .
+
+%worlds () (restrict-vlookup-rec _ _ _ _ _ _).
+%total {A C} (restrict-vlookup-rec A _ _ _ C _).
+
+restrict-vlookup :
+  vlookup G N T ->
+  sub-venv-size GN (s N) G ->
+%%
+  vlookup GN N T ->
+  type.
+%mode restrict-vlookup +A +B -C.
+
+- : restrict-vlookup (vl L A TG) (svs TN E) (vl L' A' TN)
+ <- restrict-vlookup-rec L A TG TN E L'
+ <- add-commute _ _ _ add/z A'
+  .
+
+%worlds () (restrict-vlookup _ _ _).
+%total (B) (restrict-vlookup _ B _).
 
 % --------------- generalized transitivity ------------- %
 
@@ -3998,6 +4073,23 @@ seg-sub-size :
 %total (A) (seg-sub-size _ A _ _).
 %reduces O <= I (seg-sub-size _ I _ O).
 
+seg-sub-size-out :
+    sub-env-size G20 N G2 ->
+    seg G1 G2 ->
+    sub-env-size G10 N G1 ->
+%%
+    seg G10 G20 ->
+    type.
+%mode seg-sub-size-out +A +B +C -D.
+
+- : seg-sub-size-out A B C D
+ <- seg-sub-size A B C' D'
+ <- sub-env-size-unique C' C EQD
+ <- eq-seg-l EQD D' D.
+
+%worlds () (seg-sub-size-out _ _ _ _).
+%total (A) (seg-sub-size-out A _ _ _).
+
 narrow1-sub-env:
     sub-env GN2 G2 ->
     seg G1 G2 ->
@@ -4390,6 +4482,21 @@ wfv-restrict: wf-env H G -> sub-venv-size HN N H -> wf-val V H (bind N DS) -> wf
 %worlds () (wfv-restrict _ _ _ _).
 %total (C) (wfv-restrict _ _ C _).
 
+invert-vlookup: vlookup H N V -> sub-venv-size HN N H -> sub-venv-size (vcons V HN) (s N) H -> type.
+%mode invert-vlookup +A +B -C.
+
+%worlds () (invert-vlookup _ _ _).
+%total (A) (invert-vlookup A _ _).
+
+invert-eval-var: eval H (var N) V -> sub-venv-size HN N H -> sub-venv-size (vcons V HN) (s N) H -> type.
+%mode invert-eval-var +A +B -C.
+
+- : invert-eval-var (e/var VL) SE OUT
+ <- invert-vlookup VL SE OUT.
+
+%worlds () (invert-eval-var _ _ _).
+%total (A) (invert-eval-var A _ _).
+
 %{ ------- type preservation ----- }%
 
 eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
@@ -4445,6 +4552,8 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- stp2-reg BC2 _ W2
      <- eq-env-cons EQGC id-tp/refl EQGB
      <- eq-wf-tp-g EQGB W2 W2'
+     <- xt-seg XE E BE
+     <- seg-sub-size-out SE BE SE2 BEN
      <- extract-wfv V2 EQV2 XE2 XEC2 SC2 S2CH TDS2 B2CT
      <- eval-safe A3
         (wfe/c
