@@ -995,6 +995,42 @@ eq-sub-env-size-u : id-tenv G2 G2' -> sub-env-size G1 N G2 -> sub-env-size G1 N 
 %total (A) (eq-sub-env-size-u A _ _).
 %reduces C <= B (eq-sub-env-size-u _ B C).
 
+eq-sub-venv-size-l : id-venv G1 G1' -> sub-venv-size G1 N G2 -> sub-venv-size G1' N G2 -> type.
+%mode eq-sub-venv-size-l +EQ +A -B.
+
+- : eq-sub-venv-size-l id-venv/refl B B.
+
+%worlds () (eq-sub-venv-size-l _ _ _).
+%total (A) (eq-sub-venv-size-l A _ _).
+%reduces C <= B (eq-sub-venv-size-l _ B C).
+
+eq-sub-venv-size-u : id-venv G2 G2' -> sub-venv-size G1 N G2 -> sub-venv-size G1 N G2' -> type.
+%mode eq-sub-venv-size-u +EQ +A -B.
+
+- : eq-sub-venv-size-u id-venv/refl B B.
+
+%worlds () (eq-sub-venv-size-u _ _ _).
+%total (A) (eq-sub-venv-size-u A _ _).
+%reduces C <= B (eq-sub-venv-size-u _ B C).
+
+eq-sub-venv-l : id-venv G1 G1' -> sub-venv G1 G2 -> sub-venv G1' G2 -> type.
+%mode eq-sub-venv-l +EQ +A -B.
+
+- : eq-sub-venv-l id-venv/refl B B.
+
+%worlds () (eq-sub-venv-l _ _ _).
+%total (A) (eq-sub-venv-l A _ _).
+%reduces C <= B (eq-sub-venv-l _ B C).
+
+eq-sub-venv-u : id-venv G2 G2' -> sub-venv G1 G2 -> sub-venv G1 G2' -> type.
+%mode eq-sub-venv-u +EQ +A -B.
+
+- : eq-sub-venv-u id-venv/refl B B.
+
+%worlds () (eq-sub-venv-u _ _ _).
+%total (A) (eq-sub-venv-u A _ _).
+%reduces C <= B (eq-sub-venv-u _ B C).
+
 eq-wf-val : id-tp T T' -> wf-val V H T -> wf-val V H T' -> type.
 %mode eq-wf-val +A +B -C.
 
@@ -4330,6 +4366,29 @@ wfv-widen: wf-env H G -> stp1 G T1 T2 -> wf-val V H T1 -> wf-val V H T2 -> type.
 
 %worlds () (wfv-widen _ _ _ _).
 %total (C) (wfv-widen _ _ C _).
+
+wfv-restrict: wf-env H G -> sub-venv-size HN N H -> wf-val V H (bind N DS) -> wf-val V HN (bind N DS) -> type.
+%mode wfv-restrict +A +B +C -D.
+
+- : wfv-restrict
+     WE
+     SE
+     (v/clo BC TDS SH TC XEC XE)
+     (v/clo BC' TDS SH' TC XEC XE')
+ <- extract-stp2-bind BC EQN SE1 SE2 BDS12 BDS11 BDS22
+ <- xt-env-sub-out XE SE SE2 XE'
+ <- xt-env-tvsize XEC TC SC
+ <- eq-vsize SC EQN SC'
+ <- sub-venv-size-unique (svs SC' SH) SE EQHN
+ <- eq-sub-venv-u EQHN sub-venv/refl SH'
+ <- sub-env-size-unique (ses TC sub-env/refl) SE1 EQG
+ <- stp2-to-stp1-bind BC BC1
+ <- stp1-to-stp2 BC1 BC1'
+ <- eq-stp2-gu EQG BC1' BC'
+  .
+
+%worlds () (wfv-restrict _ _ _ _).
+%total (C) (wfv-restrict _ _ C _).
 
 %{ ------- type preservation ----- }%
 
