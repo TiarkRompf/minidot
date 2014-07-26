@@ -367,15 +367,17 @@ xte/c : xt-env (vcons V H) (tcons T G)
       .
 
 wf-val: val -> venv -> tp -> type.
+wf-env: venv -> tenv -> type.
+
 v/clo : wf-val (clo HC DCS ICS) H T
      <- xt-env H G
      <- xt-env HC GC
+     <- wf-env HC GC
      <- tsize GC N
      <- typcs (tcons (bind N DCS) GC) ICS DCS
      <- stp2 GC (bind N DCS) G T
       .
 
-wf-env: venv -> tenv -> type.
 wfe/n : wf-env vnil tnil.
 wfe/c : wf-env (vcons V H) (tcons T G)
      <- wf-val V H T
@@ -3631,7 +3633,7 @@ eq-xt-env : id-tenv G G' -> xt-env H G -> xt-env H G' -> type.
 extend-wfv: wf-val V H T -> {Z} wf-val V (vcons Z H) T -> type.
 %mode extend-wfv +A +B -C.
 
--/clo : extend-wfv (v/clo B ADS SN XEC XE) Z (v/clo B2 ADS SN XEC (xte/c XE XZ))
+-/clo : extend-wfv (v/clo B ADS SN WEC XEC XE) Z (v/clo B2 ADS SN WEC XEC (xte/c XE XZ))
      <- xt-val-calc Z XZ
      <- extend-stp2 B _ _ _ B2.
 
@@ -3856,21 +3858,22 @@ invert-wfv:
 %%
   xt-env H G ->
   xt-env HC GC ->
+  wf-env HC GC ->
   tsize GC N ->
   typcs (tcons (bind N DCS) GC) ICS DCS ->
   stp2 GC (bind N DCS) G T ->
   wf-val (clo HC DCS ICS) HC (bind N DCS) ->
   xt-val (clo HC DCS ICS) (bind N DCS) ->
   type.
-%mode invert-wfv +A -B -C -D -E -F -G -H.
+%mode invert-wfv +A -B -C -D -E -F -G -H -J.
 
--/clo : invert-wfv (v/clo B ADS SN WEC WE) WE WEC SN ADS B (v/clo BC ADS SN WEC WEC) (xtv/clo SV)
+-/clo : invert-wfv (v/clo B ADS SN WEC XEC XE) XE XEC WEC SN ADS B (v/clo BC ADS SN WEC XEC XEC) (xtv/clo SV)
      <- stp2-reg B WC _
      <- stp2refl WC BC
-     <- xt-env-tvsize WEC SN SV.
+     <- xt-env-tvsize XEC SN SV.
 
-%worlds () (invert-wfv _ _ _ _ _ _ _ _).
-%total (A) (invert-wfv A _ _ _ _ _ _ _).
+%worlds () (invert-wfv _ _ _ _ _ _ _ _ _).
+%total (A) (invert-wfv A _ _ _ _ _ _ _ _).
 
 %{ ------- inversion of subtyping ----- }%
 
@@ -4375,16 +4378,17 @@ extract-wfv:
   id-val V (clo HC DS IS) ->
   xt-env H G ->
   xt-env HC GC ->
+  wf-env HC GC ->
   tsize GC N ->
   typcs (tcons (bind N DS) GC) IS DS ->
   stp2 GC (bind N DS) G T ->
   type.
-%mode extract-wfv +A -B -C -D -E -F -G.
+%mode extract-wfv +A -B -C -D -E -F -G -H.
 
-- : extract-wfv (v/clo B TDS SC XEC XE) id-val/refl XE XEC SC TDS B.
+- : extract-wfv (v/clo B TDS SC WEC XEC XE) id-val/refl XE XEC WEC SC TDS B.
 
-%worlds () (extract-wfv _ _ _ _ _ _ _).
-%total (A) (extract-wfv A _ _ _ _ _ _).
+%worlds () (extract-wfv _ _ _ _ _ _ _ _).
+%total (A) (extract-wfv A _ _ _ _ _ _ _).
 
 narrow1-env:
   wf-env H G ->
@@ -4445,8 +4449,8 @@ wfv-widen: wf-env H G -> stp1 G T1 T2 -> wf-val V H T1 -> wf-val V H T2 -> type.
 - : wfv-widen
      WE
      B12
-     (v/clo BC1 TDS TC XEC XE)
-     (v/clo BC2 TDS TC XEC XE)
+     (v/clo BC1 TDS TC WEC XEC XE)
+     (v/clo BC2 TDS TC WEC XEC XE)
  <- xt-seg XE WE BE
  <- narrow1* B12 BE B12'
  <- stp1-to-stp2 B12' B12''
@@ -4467,7 +4471,7 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- wfv-widen E BA V' V
       .
 
--/new : eval-safe A E (e/new SV) (v/clo B' TDS' SC XEC XE)
+-/new : eval-safe A E (e/new SV) (v/clo B' TDS' SC E' XEC XE)
      <- invert-new A SE TDS WC BC
      <- wf-sub-env-size E SV SE E'
      <- wf-env-to-xt-env E XE
