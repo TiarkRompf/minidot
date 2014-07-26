@@ -203,6 +203,7 @@ wf-env   : venv -> tenv -> type.
 wfv/f    : wf-val (vcons (clos (arrow (tsome S1) T3 T4) R H) H)
                   (clos (arrow (tsome S1) T3 T4) R H) 
                         (arrow (tsome S1) T3 T4)
+            <- sub-venv (vcons (clos (arrow (tsome S1) T3 T4) R H) H) N Hfull NZ
             <- wf-env H G
             <- type-exp (tcons T3 (tcons (arrow (tsome S1) T3 T4) G)) R T4
             <- wf-tp (tcons (arrow (tsome S1) T3 T4) G) T4
@@ -215,9 +216,13 @@ wfv/fsub    : wf-val H V (arrow tnone T3 T4)
 
 wfv/abs    : wf-val H V (sel N)
             <- wf-val H V TX
-            <- wf-val H V1 (arrow (tsome TX) _ _)
-            <- sub-venv (vcons V1 HN) (s N) H HG
+            <- sub-venv (vcons (clos (arrow (tsome TX) TA TB) RX HX) HN) (s N) H HG
             .
+
+wfv/ext : wf-val (vcons V1 H) V T
+            <- wf-val H V T
+            <- wf-env H G
+            <- wf-tp G T.
 
 
 
@@ -338,7 +343,8 @@ t12 = (arrow tnone       (sel (s z)) t00).
 
 
 wfv-extend: wf-val H V T -> {V1: val} wf-val (vcons V1 H) V T -> type.
-%mode wfv-extend +A +B -C.
+%mode wfv-extend +A +B -E.
+% - : wfv-extend W WE WF Z (wfv/ext )
 %worlds () (wfv-extend _ _ _).
 %trustme
 %total A (wfv-extend A _ _).
@@ -370,6 +376,15 @@ lookup-safe: wf-env H G ->
 %total A (lookup-safe A _ _ _).
 
 
+sub-venv-refl0: {G}
+             sub-venv G N G z -> 
+             type.
+%mode sub-venv-refl0 +A -C.
+
+%worlds () (sub-venv-refl0 _ _).
+%trustme
+%total {A} (sub-venv-refl0 A _).
+
 
 sub-venv-refl: wf-env H1 G1 -> 
              sub-env G N G1 z -> 
@@ -383,6 +398,7 @@ sub-venv-refl: wf-env H1 G1 ->
 
 %worlds () (sub-venv-refl _ _ _).
 %total A (sub-venv-refl A _ _).
+
 
 lookup-safe-cons: wf-env H G -> 
              sub-env (tcons T GN) (s X) G N -> 
@@ -402,40 +418,140 @@ lookup-safe-cons: wf-env H G ->
 %total A (lookup-safe-cons A _ _ _).
 
 
+lookup-safe-cons-fun2: 
+             wf-val HS V (arrow (tsome T1) T2 T3) -> 
+             sub-venv (vcons V HN) N H z -> 
+             sub-venv (vcons (clos (arrow (tsome T1) T2 T3) RX HX) HN) N H z -> 
+             type.
+%mode lookup-safe-cons-fun2 +A +B -C.
+
+-      : lookup-safe-cons-fun2 (wfv/f _ _ _ _) SE SE.
+-      : lookup-safe-cons-fun2 (wfv/ext _ _ W) SE SE' <- lookup-safe-cons-fun2 W SE SE'.
+
+%worlds () (lookup-safe-cons-fun2 _ _ _).
+%total (A) (lookup-safe-cons-fun2 A _ _).
+
+
+lookup-safe-cons-fun: 
+             wf-env H G -> 
+             sub-env (tcons (arrow (tsome T1) T2 T3) GN) (s X) G N -> 
+             sub-venv (vcons (clos (arrow (tsome T1) T2 T3) RX HX) HN) (s X) H N -> 
+             type.
+%mode lookup-safe-cons-fun +A +B -C.
+
+-      : lookup-safe-cons-fun (wfe/c W1 WV) (sub-env/sz G1) G3 
+          <- sub-venv-refl W1 G1 G2
+          <- lookup-safe-cons-fun2 WV (sub-venv/sz G2) G3.
+
+-      : lookup-safe-cons-fun (wfe/c W1 V) (sub-env/ext G1) (sub-venv/ext H1)
+           <- lookup-safe-cons-fun W1 G1 H1
+         .
+
+%worlds () (lookup-safe-cons-fun _ _ _).
+%total (A) (lookup-safe-cons-fun _ A _).
+
+
+
+
+
+eq-nat: nat -> nat -> type.
+id-nat: eq-nat N N.
+
+eq-nat-e: eq-nat N1 N2 -> eq-nat (s N1) (s N2) -> type.
+%mode eq-nat-e +A -C.
+- : eq-nat-e id-nat id-nat.
+%worlds () (eq-nat-e _ _).
+%total (A) (eq-nat-e A _).
+
+
+
+
+sub-venv-size-unique: 
+             sub-venv HN1 N H NH1 ->
+             sub-venv HN2 N H NH2 ->
+             eq-nat NH1 NH2 ->
+             type.
+%mode sub-venv-size-unique +A +B -C.
+
+- : sub-venv-size-unique sub-venv/z sub-venv/z id-nat.
+- : sub-venv-size-unique (sub-venv/sz _) (sub-venv/sz _) id-nat.
+- : sub-venv-size-unique (sub-venv/ext G1) (sub-venv/ext G2) E'
+      <- sub-venv-size-unique G1 G2 E
+      <- eq-nat-e E E'.
+
+%% TODO: contradiction cases
+
+%worlds () (sub-venv-size-unique _ _ _).
+%trustme
+%total (A) (sub-venv-size-unique A _ _).
+
+
+
+
+lookup-sel-safe2: 
+             sub-venv (vcons (clos (arrow (tsome T1) T1A T1B) R1 P1) H1) (s N) H HN1 ->
+             sub-venv (vcons (clos (arrow (tsome T2) T2A T2B) R2 P2) H2) (s N) H HN2 ->
+             eq-nat HN1 HN2 ->
+             wf-val HX V T1 -> 
+             wf-val HX V T2 ->
+             type.
+
+%mode lookup-sel-safe2 +A +B +C +D -G.
+
+- : lookup-sel-safe2 (sub-venv/ext H1) (sub-venv/ext H2) id-nat W1 W2
+        <- lookup-sel-safe2 H1 H2 id-nat W1 W2.
+
+- : lookup-sel-safe2 (sub-venv/sz H1) (sub-venv/sz H2) id-nat W W.
+
+%worlds () (lookup-sel-safe2 _ _ _ _ _).
+%total (A) (lookup-sel-safe2 A _ _ _ _).
+
+
+
+
+
+
+extract-wf: wf-val H V T -> wf-env H G -> wf-tp G T -> type.
+%mode extract-wf +A -C -D.
+
+%worlds () (extract-wf _ _ _).
+%trustme
+%total (A) (extract-wf A _ _).
+
 
 lookup-sel-safe: 
              wf-env H G -> 
              wf-val H V (sel N) -> 
-             wf-val H V1 (arrow (tsome TX) _ _) ->
-             sub-venv (vcons V1 HN) (s N) H NNG ->
+             sub-venv (vcons (clos (arrow (tsome TX) TA TB) RX HX) HN) (s N) H NNG ->
              sub-env (tcons (arrow (tsome TX) _ _) GN) (s N) G NNG ->
              wf-val H V TX -> type.
-%mode lookup-sel-safe +A +B +D +E +F -G.
+%mode lookup-sel-safe +A +B +D +F -G.
 
-% - : lookup-sel-safe WE (wfv/abs LVN WVF WVX) WVF1 LVN1 LN1 WVX1.
+- : lookup-sel-safe WE (wfv/abs LVN WVX) LVN1 LN1 WVX1
+      <- sub-venv-size-unique LVN LVN1 EQ
+      <- lookup-sel-safe2 LVN LVN1 EQ WVX WVX1.
+
+- : lookup-sel-safe (wfe/c WE'' _) (wfv/ext (wf-tp/sel _) WE' V) (sub-venv/ext LVN1) (sub-env/ext LN1) (wfv/ext XXX WE' V')
+      <- lookup-sel-safe WE'' V LVN1 LN1 V'
+      <- extract-wf V' WE''' XXX.
+
 
 %{
-      TODO: uniqueness!
 
-      {WE:wf-env H G}
+recursive case -- can't really happen:
 
-      {LVN:sub-venv (vcons X14 X15) (s X4) H X16}
-      {LVN1:sub-venv (vcons X5 X9) (s X4) H X10}    <--- unique
-
-      {LN1:sub-env (tcons (arrow (tsome X6) X11 X12) X13) (s X4) G X10}
-
-      {WVF:wf-val H X14 (arrow (tsome X17) X18 X19)} 
-      {WVF1:wf-val H X5 (arrow (tsome X6) X7 X8)}   <--- unique
+wf-val (clos (arrow (tsome TX) TA TB) RX HX) (sel N)
 
 
-      {WVX:wf-val H X3 X17}
-      {WVX1:wf-val H X3 X6}
+- : lookup-sel-safe (wfe/c WE'' _) (wfv/ext (wf-tp/sel _) WE' V) (sub-venv/sz LVN1) (sub-env/sz LN1) (wfv/ext XXX WE''' V')
+      <- lookup-sel-safe WE'' V LVN1 LN1 V'
+      <- extract-wf V' WE''' XXX
+      .
 }%
 
 
-%worlds () (lookup-sel-safe _ _ _ _ _ _).
-%trustme
-%total A (lookup-sel-safe A _ _ _ _ _).
+%worlds () (lookup-sel-safe _ _ _ _ _).
+%total (A) (lookup-sel-safe _ A _ _ _).
 
 
 
@@ -457,6 +573,7 @@ eval-app-safe: wf-val H1 (clos (arrow S1 TA1 TA2) E H) (arrow S T1 T2) ->
               WF
               (TR : type-exp (tcons T3 (tcons _ G0)) R T4)
               (WE1: wf-env HC0 G0)
+              SE
           )
           WVX EV3 Z'
 
@@ -464,11 +581,12 @@ eval-app-safe: wf-val H1 (clos (arrow S1 TA1 TA2) E H) (arrow S T1 T2) ->
 
           <- eval-safe                 % eval F(X)
               (TR: type-exp (tcons T3 (tcons _ G0)) R T4)
-              (wfe/c (wfe/c WE1 (wfv/f WF TR WE1)) WVX')
+
+              (wfe/c (wfe/c WE1 (wfv/f WF TR WE1 SE)) WVX')
               (EV3: eval-exp (vcons V2 (vcons _ HC0)) R V3) 
               (Z: wf-val _ V3 T4)
 
-          <- wfv-restrict Z (wfe/c WE1 (wfv/f WF TR WE1)) WF Z'
+          <- wfv-restrict Z (wfe/c WE1 (wfv/f WF TR WE1 SE)) WF Z'
           .
 
 -       : eval-app-safe 
@@ -476,24 +594,38 @@ eval-app-safe: wf-val H1 (clos (arrow S1 TA1 TA2) E H) (arrow S T1 T2) ->
           <- eval-app-safe WFX WVX EV3 Z
           .
 
+-       : eval-app-safe 
+          (wfv/fsub WFX) WVX EV3 Z
+          <- eval-app-safe WFX WVX EV3 Z
+          .
+
+-       : eval-app-safe 
+          (wfv/ext (wf-tp/fun WR WA _) WE WFX) WVX EV3 Z'
+          <- wfv-restrict WVX WE WA WVX'
+          <- eval-app-safe WFX WVX' EV3 Z
+          <- wfv-extend Z _ Z'
+          .
+
+
 
 -       : eval-safe (t/var W L) E (e/var L2) V
           <- lookup-safe E L L2 V
           .
 
--       : eval-safe (t/vara W L2 L1) E (e/var LH) (wfv/abs LH2 V2 V)
+-       : eval-safe (t/vara W L2 L1) E (e/var LH) (wfv/abs LH2 V)
           <- lookup-safe E L1 LH V
-          <- lookup-safe-cons E L2 LH2 V2
+          <- lookup-safe-cons-fun E L2 LH2
           .
 
 -       : eval-safe (t/varc W L2 L1) E (e/var LH) V'
           <- lookup-safe E L1 LH V
-          <- lookup-safe-cons E L2 LH2 V2
-          <- lookup-sel-safe E V V2 LH2 L2 V'
+          <- lookup-safe-cons-fun E L2 LH2
+          <- lookup-sel-safe E V LH2 L2 V'
           .
 
 
--      : eval-safe (t/fun _ (wf-tp/fun WFR _ _) TS) (wfe/c E _) (e/fun) (wfv/fsub (wfv/f WFR TS E)).
+-      : eval-safe (t/fun _ (wf-tp/fun WFR _ _) TS) (wfe/c E _) (e/fun) (wfv/fsub (wfv/f WFR TS E SE))
+          <- sub-venv-refl0 _ SE.
 
 -      : eval-safe 
             (t/app ST TX TF)
