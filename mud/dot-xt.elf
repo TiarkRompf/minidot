@@ -371,7 +371,6 @@ v/clo : wf-val (clo HC DCS ICS) H T
      <- xt-env H G
      <- xt-env HC GC
      <- tsize GC N
-     <- sub-venv HC H % limiting, but kind of implies by bind encoding
      <- typcs (tcons (bind N DCS) GC) ICS DCS
      <- stp2 GC (bind N DCS) G T
       .
@@ -3632,7 +3631,7 @@ eq-xt-env : id-tenv G G' -> xt-env H G -> xt-env H G' -> type.
 extend-wfv: wf-val V H T -> {Z} wf-val V (vcons Z H) T -> type.
 %mode extend-wfv +A +B -C.
 
--/clo : extend-wfv (v/clo B ADS SV SN XEC XE) Z (v/clo B2 ADS (sub-venv/ext SV) SN XEC (xte/c XE XZ))
+-/clo : extend-wfv (v/clo B ADS SN XEC XE) Z (v/clo B2 ADS SN XEC (xte/c XE XZ))
      <- xt-val-calc Z XZ
      <- extend-stp2 B _ _ _ B2.
 
@@ -3858,21 +3857,20 @@ invert-wfv:
   xt-env H G ->
   xt-env HC GC ->
   tsize GC N ->
-  sub-venv HC H ->
   typcs (tcons (bind N DCS) GC) ICS DCS ->
   stp2 GC (bind N DCS) G T ->
   wf-val (clo HC DCS ICS) HC (bind N DCS) ->
   xt-val (clo HC DCS ICS) (bind N DCS) ->
   type.
-%mode invert-wfv +A -B -C -D -E -F -G -H -I.
+%mode invert-wfv +A -B -C -D -E -F -G -H.
 
--/clo : invert-wfv (v/clo B ADS SH SN WEC WE) WE WEC SN SH ADS B (v/clo BC ADS sub-venv/refl SN WEC WEC) (xtv/clo SV)
+-/clo : invert-wfv (v/clo B ADS SN WEC WE) WE WEC SN ADS B (v/clo BC ADS SN WEC WEC) (xtv/clo SV)
      <- stp2-reg B WC _
      <- stp2refl WC BC
      <- xt-env-tvsize WEC SN SV.
 
-%worlds () (invert-wfv _ _ _ _ _ _ _ _ _).
-%total (A) (invert-wfv A _ _ _ _ _ _ _ _).
+%worlds () (invert-wfv _ _ _ _ _ _ _ _).
+%total (A) (invert-wfv A _ _ _ _ _ _ _).
 
 %{ ------- inversion of subtyping ----- }%
 
@@ -4378,16 +4376,15 @@ extract-wfv:
   xt-env H G ->
   xt-env HC GC ->
   tsize GC N ->
-  sub-venv HC H ->
   typcs (tcons (bind N DS) GC) IS DS ->
   stp2 GC (bind N DS) G T ->
   type.
-%mode extract-wfv +A -B -C -D -E -F -G -I.
+%mode extract-wfv +A -B -C -D -E -F -G.
 
-- : extract-wfv (v/clo B TDS SH SC XEC XE) id-val/refl XE XEC SC SH TDS B.
+- : extract-wfv (v/clo B TDS SC XEC XE) id-val/refl XE XEC SC TDS B.
 
-%worlds () (extract-wfv _ _ _ _ _ _ _ _).
-%total (A) (extract-wfv A _ _ _ _ _ _ _).
+%worlds () (extract-wfv _ _ _ _ _ _ _).
+%total (A) (extract-wfv A _ _ _ _ _ _).
 
 narrow1-env:
   wf-env H G ->
@@ -4448,8 +4445,8 @@ wfv-widen: wf-env H G -> stp1 G T1 T2 -> wf-val V H T1 -> wf-val V H T2 -> type.
 - : wfv-widen
      WE
      B12
-     (v/clo BC1 TDS SH TC XEC XE)
-     (v/clo BC2 TDS SH TC XEC XE)
+     (v/clo BC1 TDS TC XEC XE)
+     (v/clo BC2 TDS TC XEC XE)
  <- xt-seg XE WE BE
  <- narrow1* B12 BE B12'
  <- stp1-to-stp2 B12' B12''
@@ -4458,44 +4455,6 @@ wfv-widen: wf-env H G -> stp1 G T1 T2 -> wf-val V H T1 -> wf-val V H T2 -> type.
 
 %worlds () (wfv-widen _ _ _ _).
 %total (C) (wfv-widen _ _ C _).
-
-wfv-restrict: wf-env H G -> sub-venv-size HN N H -> wf-val V H (bind N DS) -> wf-val V HN (bind N DS) -> type.
-%mode wfv-restrict +A +B +C -D.
-
-- : wfv-restrict
-     WE
-     SE
-     (v/clo BC TDS SH TC XEC XE)
-     (v/clo BC' TDS SH' TC XEC XE')
- <- extract-stp2-bind BC EQN SE1 SE2 BDS12 BDS11 BDS22
- <- xt-env-sub-out XE SE SE2 XE'
- <- xt-env-tvsize XEC TC SC
- <- eq-vsize SC EQN SC'
- <- sub-venv-size-unique (svs SC' SH) SE EQHN
- <- eq-sub-venv-u EQHN sub-venv/refl SH'
- <- sub-env-size-unique (ses TC sub-env/refl) SE1 EQG
- <- stp2-to-stp1-bind BC BC1
- <- stp1-to-stp2 BC1 BC1'
- <- eq-stp2-gu EQG BC1' BC'
-  .
-
-%worlds () (wfv-restrict _ _ _ _).
-%total (C) (wfv-restrict _ _ C _).
-
-invert-vlookup: vlookup H N V -> sub-venv-size HN N H -> sub-venv-size (vcons V HN) (s N) H -> type.
-%mode invert-vlookup +A +B -C.
-
-%worlds () (invert-vlookup _ _ _).
-%total (A) (invert-vlookup A _ _).
-
-invert-eval-var: eval H (var N) V -> sub-venv-size HN N H -> sub-venv-size (vcons V HN) (s N) H -> type.
-%mode invert-eval-var +A +B -C.
-
-- : invert-eval-var (e/var VL) SE OUT
- <- invert-vlookup VL SE OUT.
-
-%worlds () (invert-eval-var _ _ _).
-%total (A) (invert-eval-var A _ _).
 
 %{ ------- type preservation ----- }%
 
@@ -4508,14 +4467,10 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- wfv-widen E BA V' V
       .
 
--/new : eval-safe A E (e/new SV) (v/clo B' TDS' SH SC XEC XE)
+-/new : eval-safe A E (e/new SV) (v/clo B' TDS' SC XEC XE)
      <- invert-new A SE TDS WC BC
      <- wf-sub-env-size E SV SE E'
-     <- extract-sub-venv-size SV _ SH
-     % <- extract-sub-env-size SE SN _
      <- wf-env-to-xt-env E XE
-     % <- wf-env-to-xt-env E' XEC
-     % <- xt-env-tsize E' XEC SN SC
      <- xt-seg XE E BE
      <- seg-sub-size SE BE SEN BEN
      <- narrow1-wf WC BEN WC'
@@ -4530,11 +4485,12 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- trans2 BW'' BC'' B'
       .
 
+%{
 -/appvar : eval-safe A E (e/appvar (e/app EV3 EV2 IL EV1)) V
      <- invert-appvar A SE SEP A1 A2 DL2 WB WB2 WB0 WP2 WP0 BA
      <- eval-safe A2 E EV2 V2
      <- eval-safe A1 E EV1 V1
-     <- invert-wfv V1 XE XEC SC SH TDS BC VC1 XVC1
+     <- invert-wfv V1 XE XEC SC TDS BC VC1 XVC1
      <- stp2-reg BC WBC _
      <- stp1refl WBC B1C
      <- invert-fun TDS IL DL1 A3
@@ -4545,7 +4501,7 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      % <- wf-sub-env-size0 EH SECH SVCH EC
      <- xt-env-tvsize XEC SC SC'
      <- eq-vsize SC' EQN SC''
-     <- wf-sub-env-size EH (svs SC'' SH) SECH EC
+     % <- wf-sub-env-size EH (svs SC'' SH) SECH EC
      % <- stp2-to-stp1-bind BC BCC
      % <- stp1-reg BCC WC0 WC1
      % <- wfv-restrict E (svs SC'' SH) V1 V1'
@@ -4554,7 +4510,7 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- eq-wf-tp-g EQGB W2 W2'
      <- xt-seg XE E BE
      <- seg-sub-size-out SE BE SE2 BEN
-     <- extract-wfv V2 EQV2 XE2 XEC2 SC2 S2CH TDS2 B2CT
+     % <- extract-wfv V2 EQV2 XE2 XEC2 SC2 TDS2 B2CT
      <- eval-safe A3
         (wfe/c
            (wfe/c
@@ -4563,6 +4519,7 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
         EV3
         V3
       .
+}%
 
 %{
 -/new : eval-safe A E (e/new SV) (v/clo BA ADS SN E')
