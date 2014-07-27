@@ -4757,11 +4757,33 @@ invert-vlookup: vlookup H N V -> sub-venv-size HN N H -> sub-venv-size (vcons V 
 %worlds () (invert-vlookup _ _ _).
 %total { } (invert-vlookup _ _ _).
 
+invert-eval-var-out: eval H (var N) V -> sub-venv-size HN N H -> sub-venv-size (vcons V HN) (s N) H -> type.
+%mode invert-eval-var-out +A +B -C.
+
+- : invert-eval-var-out (e/var VL) SE OUT
+ <- invert-vlookup VL SE OUT.
+
+%worlds () (invert-eval-var-out _ _ _).
+%total (A) (invert-eval-var-out A _ _).
+
+sub-venv-size-succ: sub-venv-size HSN (s N) H -> sub-venv-size HN N H -> type.
+%mode sub-venv-size-succ +A -B.
+
+- : sub-venv-size-succ (svs (vf/c NH) SH) (svs NH SH')
+ <- sub-venv-cons SH SH'
+  .
+
+%worlds () (sub-venv-size-succ _ _).
+%total (A) (sub-venv-size-succ A _).
+
 invert-eval-var: eval H (var N) V -> sub-venv-size HN N H -> sub-venv-size (vcons V HN) (s N) H -> type.
-%mode invert-eval-var +A +B -C.
+%mode invert-eval-var +A -B -C.
 
 - : invert-eval-var (e/var VL) SE OUT
- <- invert-vlookup VL SE OUT.
+ <- vlookup-sub-size VL SH
+ <- sub-venv-size-succ SH SE
+ <- invert-eval-var-out (e/var VL) SE OUT
+  .
 
 %worlds () (invert-eval-var _ _ _).
 %total (A) (invert-eval-var A _ _).
