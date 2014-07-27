@@ -3749,6 +3749,14 @@ eq-xt-env : id-tenv G G' -> xt-env H G -> xt-env H G' -> type.
 %total (A) (eq-xt-env A _ _).
 %reduces C <= B (eq-xt-env _ B C).
 
+xt-env-cons : xt-env H G -> xt-val V T -> xt-env (vcons V H) (tcons T G) -> type.
+%mode xt-env-cons +A +B -C.
+
+- : xt-env-cons XE XV (xte/c XE XV).
+
+%worlds () (xt-env-cons _ _ _).
+%total { } (xt-env-cons _ _ _).
+
 xt-env-vcons : xt-env (vcons (clo HC DS IS) H) G -> vsize HC NC -> xt-env H G0 -> id-tenv G (tcons (bind NC DS) G0) -> type.
 %mode xt-env-vcons +A -B -C -D.
 
@@ -4190,6 +4198,15 @@ eq-seg-l : id-tenv G1 G1' -> seg G1 G2 -> seg G1' G2 -> type.
 %total (A) (eq-seg-l A _ _).
 %reduces C <= B (eq-seg-l _ B C).
 
+eq-seg-u : id-tenv G2 G2' -> seg G1 G2 -> seg G1 G2' -> type.
+%mode eq-seg-u +EQ +B -C.
+
+- : eq-seg-u id-tenv/refl B B.
+
+%worlds () (eq-seg-u _ _ _).
+%total (A) (eq-seg-u A _ _).
+%reduces C <= B (eq-seg-l _ B C).
+
 xt-seg: xt-env H GH -> wf-env H G -> seg GH G -> type.
 %mode xt-seg +A +B -C.
 
@@ -4539,6 +4556,7 @@ extract-wfv:
   wf-val V H T ->
 %%
   id-val V (clo HC DS IS) ->
+  xt-val V (bind N DS) ->
   xt-env H G ->
   xt-env HC GC ->
   wf-env HC GC ->
@@ -4546,12 +4564,17 @@ extract-wfv:
   typcs (tcons (bind N DS) GC) IS DS ->
   stp2 GC (bind N DS) G T ->
   type.
-%mode extract-wfv +A -B -C -D -E -F -G -H.
+%mode extract-wfv +A -B -C -D -E -F -G -H -I.
 
-- : extract-wfv (v/clo B TDS SC WEC XEC XE) id-val/refl XE XEC WEC SC TDS B.
+- : extract-wfv (v/clo B TDS SC WEC XEC XE)
+     id-val/refl
+     (xtv/clo SV)
+     XE XEC WEC SC TDS B
+ <- xt-env-tvsize XEC SC SV
+  .
 
-%worlds () (extract-wfv _ _ _ _ _ _ _ _).
-%total (A) (extract-wfv A _ _ _ _ _ _ _).
+%worlds () (extract-wfv _ _ _ _ _ _ _ _ _).
+%total (A) (extract-wfv A _ _ _ _ _ _ _ _).
 
 narrow1-env:
   wf-env H G ->
@@ -4849,19 +4872,34 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- stp2-reg BC WTC1 _
      <- stp1refl WTC1 BC1R
      <- invert-eval-var EV1 SH1 SHS1
-     <- xt-env-sub-out XE SH1 SE2 XE2
+     <- xt-env-sub-out XE SH1 SE2 XEN
+     <- wf-sub-env-size E SH1 SE2 WEN
      <- wf-sub-env-size E SHS1 SEP EP
-     <- xt-env-sub XE SHS1 XEP SGS1
+     <- xt-env-sub-out XE SHS1 SEP XEP
+     <- xt-env-tvsize XEC SC SHC
+     <- xt-env-vcons-out XEP SHC XEN EQGP
+     <- xt-env-cons XEC (xtv/clo SHC) XEC2
+     <- wfv-widen-wf XE SHS1 SEP WP2 V2 V2P
+     <- xt-env-cons XEN (xtv/clo SHC) XENP
+     <- sub-env-size-unique (ses SC sub-env/refl) SE1 EQGC
+     <- eq-env-cons EQGC id-tp/refl EQGC'
+     <- eq-xt-env EQGC' XEC2 XEC2'
+     <- wfv-widen-h XENP XEC2' BC2 V2P V2C
+     <- stp2-reg BC2 _ WC2'
+     <- id-tenv-sym EQGC' EQGC''
+     <- eq-wf-tp-g EQGC'' WC2' WC2
+     <- extract-wfv V2C EQV2 XVC2 XE2A XEC2A WEC2A SC2A TDS2A B2A
+     <- xt-env-unique XE2A XEC2 EQG2A
      <- eval-safe A3
         (
          (wfe/c
             (wfe/c WEC WTC1 BC1R XEC VC1 XVC1 VC1)
-            WTC2'
+            WC2
             BC2R'
-            XEC2'
+            XEC2
             WVC2'
-            XVC2'
-            WVC2'')
+            XVC2
+            V2C)
          :
          (wf-env
             (vcons VA2 (vcons (clo HC DS IS) HC))
