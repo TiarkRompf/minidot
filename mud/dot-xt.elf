@@ -671,6 +671,14 @@ s-injective/refl : s-injective id-nat/refl id-nat/refl.
 %worlds () (s-injective _ _).
 %total (A) (s-injective A _).
 
+s-unique : id-nat (s N1) (s N2) -> id-nat N1 N2 -> type.
+%mode s-unique +A -B.
+
+- : s-unique id-nat/refl id-nat/refl.
+
+%worlds () (s-unique _ _).
+%total (A) (s-unique A _).
+
 eq2id-nat : eq-nat N1 N2 -> id-nat N1 N2 -> type.
 %mode eq2id-nat +A -B.
 
@@ -865,6 +873,21 @@ contra-sub-env : false -> {G1} {G2} sub-env G1 G2 -> type.
 %mode contra-sub-env +CONTRA +G1 +G2 -A.
 %worlds () (contra-sub-env _ _ _ _).
 %total (A) (contra-sub-env A _ _ _).
+
+contra-sub-venv : false -> {G1} {G2} sub-venv G1 G2 -> type.
+%mode contra-sub-venv +CONTRA +G1 +G2 -A.
+%worlds () (contra-sub-venv _ _ _ _).
+%total (A) (contra-sub-venv A _ _ _).
+
+contra-sub-env-size : false -> {G1} {N} {G2} sub-env-size G1 N G2 -> type.
+%mode contra-sub-env-size +CONTRA +G1 +N +G2 -A.
+%worlds () (contra-sub-env-size _ _ _ _ _).
+%total (A) (contra-sub-env-size A _ _ _ _).
+
+contra-sub-venv-size : false -> {G1} {N} {G2} sub-venv-size G1 N G2 -> type.
+%mode contra-sub-venv-size +CONTRA +G1 +N +G2 -A.
+%worlds () (contra-sub-venv-size _ _ _ _ _).
+%total (A) (contra-sub-venv-size A _ _ _ _).
 
 contra-stp2 : false -> {G1} {T1} {G2} {T2} stp2 G1 T1 G2 T2 -> type.
 %mode contra-stp2 +CONTRA +G1 +T1 +G2 +T2 -A.
@@ -1259,6 +1282,16 @@ eq-lte : eq-nat NA NB -> lte NA NB -> type.
 %worlds () (eq-lte _ _).
 %total A (eq-lte A _).
 
+id-lte : id-nat NA NB -> lte NA NB -> type.
+%mode id-lte +A -B.
+
+- : id-lte A B
+ <- id2eq-nat A A'
+ <- eq-lte A' B.
+
+%worlds () (id-lte _ _).
+%total { } (id-lte _ _).
+
 sub-env-size-lte: sub-env GN G -> tsize GN NN -> tsize G N -> lte NN N -> type.
 %mode sub-env-size-lte +A +B +C -D.
 - : sub-env-size-lte sub-env/refl A B LT
@@ -1544,6 +1577,121 @@ sub-env-size-sub :
 %worlds () (sub-env-size-sub _ _ _).
 %total {} (sub-env-size-sub _ _ _).
 
+eq-vsize : vsize G N -> id-nat N N' -> vsize G N' -> type.
+%mode eq-vsize +A +EQ -B.
+
+- : eq-vsize A id-nat/refl A.
+
+%worlds () (eq-vsize _ _ _).
+%total (EQ) (eq-vsize _ EQ _ ).
+
+eq-vsize-v : vsize G N -> id-venv G G' -> vsize G' N -> type.
+%mode eq-vsize-v +A +EQ -B.
+
+- : eq-vsize-v A id-venv/refl A.
+
+%worlds () (eq-vsize-v _ _ _).
+%total (EQ) (eq-vsize-v _ EQ _ ).
+
+vsize-unique-eq: vsize G2 N1 -> vsize G2 N2 -> eq-nat N1 N2 -> type.
+%mode vsize-unique-eq +P1 +P2 -SBT.
+
+- : vsize-unique-eq vf/n vf/n eq-nat/z.
+- : vsize-unique-eq (vf/c A) (vf/c B) (eq-nat/s X) <- vsize-unique-eq A B X.
+
+%worlds () (vsize-unique-eq _ _ _).
+%total {T2} (vsize-unique-eq T2 _ _).
+
+vsize-unique: vsize G2 N1 -> vsize G2 N2 -> id-nat N1 N2 -> type.
+%mode vsize-unique +P1 +P2 -SBT.
+
+- : vsize-unique A B ID
+ <- vsize-unique-eq A B EQ
+ <- eq2id-nat EQ ID.
+
+%worlds () (vsize-unique _ _ _).
+%total {T2} (vsize-unique T2 _ _).
+
+sub-venv-size-lte: sub-venv GN G -> vsize GN NN -> vsize G N -> lte NN N -> type.
+%mode sub-venv-size-lte +A +B +C -D.
+- : sub-venv-size-lte sub-venv/refl A B LT
+     <- vsize-unique-eq A B EQ
+     <- eq-lte EQ LT.
+- : sub-venv-size-lte (sub-venv/ext S) A (vf/c B) LT'
+     <- sub-venv-size-lte S A B LT
+     <- lte-inc LT LT'.
+%worlds () (sub-venv-size-lte _ _ _ _).
+%total A (sub-venv-size-lte A _ _ _).
+
+exists-sub-venv-size-rec :
+  vsize G1 N -> vsize G2 N -> vsize GX1 NX -> sub-venv GX1 G1 ->
+%%
+  vsize GX2 NX ->
+  sub-venv GX2 G2 ->
+  type.
+%mode exists-sub-venv-size-rec +A +B +C +D -E -F.
+
+- : exists-sub-venv-size-rec A1 A2 AX1 sub-venv/refl AX2 sub-venv/refl
+ <- vsize-unique A1 AX1 EQX
+ <- eq-vsize A2 EQX AX2.
+
+- : exists-sub-venv-size-rec (vf/c A1) (vf/c A2) AX1 (sub-venv/ext B1) AX2 (sub-venv/ext B2)
+ <- exists-sub-venv-size-rec A1 A2 AX1 B1 AX2 B2.
+
+%worlds () (exists-sub-venv-size-rec _ _ _ _ _ _).
+%total (X) (exists-sub-venv-size-rec _ _ _ X _ _).
+
+exists-sub-venv-size :
+  vsize G1 N -> vsize G2 N -> sub-venv-size GX1 NX G1 ->
+%%
+  sub-venv-size GX2 NX G2 ->
+  type.
+%mode exists-sub-venv-size +A +B +C -D.
+
+- : exists-sub-venv-size A1 A2 (svs AX1 SE1) (svs AX2 SE2)
+ <- exists-sub-venv-size-rec A1 A2 AX1 SE1 AX2 SE2.
+
+%worlds () (exists-sub-venv-size _ _ _ _).
+%total (X) (exists-sub-venv-size _ _ X _).
+
+sub-venv-size-sub-rec :
+  sub-venv G2 G1 ->
+  sub-venv G3 G1 ->
+  vsize G2 (s N) ->
+  vsize G3 N ->
+%%
+  sub-venv G3 G2 ->
+  type.
+%mode sub-venv-size-sub-rec +A +B +C +D -E.
+
+- : sub-venv-size-sub-rec sub-venv/refl B  _ _ B.
+
+- : sub-venv-size-sub-rec (sub-venv/ext A) (sub-venv/ext B) TA TB C
+ <- sub-venv-size-sub-rec A B TA TB C.
+
+- : sub-venv-size-sub-rec (sub-venv/ext A) sub-venv/refl TA (vf/c TB) C
+ <- sub-venv-size-lte A TA TB LTE
+ <- lte-inc LTE LTE'
+ <- lte-s-false LTE' CONTRA
+ <- contra-sub-venv CONTRA _ _ C.
+
+%worlds () (sub-venv-size-sub-rec _ _ _ _ _).
+%total {A B} (sub-venv-size-sub-rec A B _ _ _).
+
+sub-venv-size-sub :
+  sub-venv-size G2 (s N) G1 ->
+  sub-venv-size G3 N G1 ->
+%%
+  sub-venv-size G3 N G2 ->
+  type.
+%mode sub-venv-size-sub +A +B -C.
+
+- : sub-venv-size-sub (svs TA EA) (svs TB EB) (svs TB C)
+ <- sub-venv-size-sub-rec EA EB TA TB C.
+
+%worlds () (sub-venv-size-sub _ _ _).
+%total {} (sub-venv-size-sub _ _ _).
+
 % --------------- extraction lemmas ------------- %
 
 extract-sub-env-size : sub-env-size G N G' -> tsize G N -> sub-env G G' -> type.
@@ -1596,36 +1744,6 @@ wf-env-size-same: wf-env H G -> vsize H N1 -> tsize G N2 -> id-nat N1 N2 -> type
 
 %worlds () (wf-env-size-same _ _ _ _).
 %total {} (wf-env-size-same _ _ _ _).
-
-vsize-unique-eq: vsize G2 N1 -> vsize G2 N2 -> eq-nat N1 N2 -> type.
-%mode vsize-unique-eq +P1 +P2 -SBT.
-
-- : vsize-unique-eq vf/n vf/n eq-nat/z.
-- : vsize-unique-eq (vf/c A) (vf/c B) (eq-nat/s X) <- vsize-unique-eq A B X.
-
-%worlds () (vsize-unique-eq _ _ _).
-%total {T2} (vsize-unique-eq T2 _ _).
-
-vsize-unique: vsize G2 N1 -> vsize G2 N2 -> id-nat N1 N2 -> type.
-%mode vsize-unique +P1 +P2 -SBT.
-
-- : vsize-unique A B ID
- <- vsize-unique-eq A B EQ
- <- eq2id-nat EQ ID.
-
-%worlds () (vsize-unique _ _ _).
-%total {T2} (vsize-unique T2 _ _).
-
-sub-venv-size-lte: sub-venv GN G -> vsize GN NN -> vsize G N -> lte NN N -> type.
-%mode sub-venv-size-lte +A +B +C -D.
-- : sub-venv-size-lte sub-venv/refl A B LT
-     <- vsize-unique-eq A B EQ
-     <- eq-lte EQ LT.
-- : sub-venv-size-lte (sub-venv/ext S) A (vf/c B) LT'
-     <- sub-venv-size-lte S A B LT
-     <- lte-inc LT LT'.
-%worlds () (sub-venv-size-lte _ _ _ _).
-%total A (sub-venv-size-lte A _ _ _).
 
 eq-venv-cons: id-venv G G' -> id-val T T' -> id-venv (vcons T G) (vcons T' G') -> type.
 %mode eq-venv-cons +A +B -C.
@@ -1718,22 +1836,6 @@ contra-wf-env : false -> {H} {G} wf-env H G -> type.
 %mode contra-wf-env +CONTRA +H +G -A.
 %worlds () (contra-wf-env _ _ _ _).
 %total (A) (contra-wf-env A _ _ _).
-
-eq-vsize : vsize G N -> id-nat N N' -> vsize G N' -> type.
-%mode eq-vsize +A +EQ -B.
-
-- : eq-vsize A id-nat/refl A.
-
-%worlds () (eq-vsize _ _ _).
-%total (EQ) (eq-vsize _ EQ _ ).
-
-eq-vsize-v : vsize G N -> id-venv G G' -> vsize G' N -> type.
-%mode eq-vsize-v +A +EQ -B.
-
-- : eq-vsize-v A id-venv/refl A.
-
-%worlds () (eq-vsize-v _ _ _).
-%total (EQ) (eq-vsize-v _ EQ _ ).
 
 wf-sub-env-size-rec: wf-env H G -> sub-venv HN H -> sub-env GN G -> vsize HN N -> tsize GN N -> wf-env HN GN -> type.
 %mode wf-sub-env-size-rec +A +B +C +D +E -F.
@@ -4487,6 +4589,143 @@ wfv-widen-wf: xt-env H G -> sub-venv-size HN N H -> sub-env-size GN N G -> wf-tp
 %worlds () (wfv-widen-wf _ _ _ _ _ _).
 %total { } (wfv-widen-wf _ _ _ _ _ _).
 
+%{ ------ some more basic math ----- }%
+
+add-lte : add A B C -> lte A C -> lte B C -> type.
+%mode add-lte +A -B -C.
+
+-/z : add-lte add/z lte/z R
+   <- id-lte id-nat/refl R.
+
+-/s : add-lte (add/s A) (lte/s B) C'
+   <- add-lte A B C
+   <- lte-inc C C'.
+
+%worlds () (add-lte _ _ _).
+%total (A) (add-lte A _ _).
+
+%{ ------ eval-var interlude ----- }%
+
+vlookup-size-lte: vlookup H N V -> vsize H NH -> lte (s N) NH -> type.
+%mode vlookup-size-lte +A -B -C.
+
+- : vlookup-size-lte (vl LZ A NH) NH LTE
+ <- add-lte A LTE _.
+
+%worlds () (vlookup-size-lte _ _ _).
+%total (A) (vlookup-size-lte A _ _).
+
+lteq : nat -> nat -> type.
+lteq/refl : lteq N N.
+lteq/succ : lteq A (s B) <- lteq A B.
+
+lteqz : {N} lteq z N -> type.
+%mode lteqz +A -B.
+
+-/z : lteqz z lteq/refl.
+
+-/s : lteqz (s A) (lteq/succ B)
+   <- lteqz A B.
+
+%worlds () (lteqz _ _).
+%total (A) (lteqz A _).
+
+lteqs : lteq A B -> lteq (s A) (s B) -> type.
+%mode lteqs +A -B.
+
+-/refl : lteqs lteq/refl lteq/refl.
+
+-/succ : lteqs (lteq/succ A) (lteq/succ B)
+      <- lteqs A B.
+
+%worlds () (lteqs _ _).
+%total (A) (lteqs A _).
+
+lte2lteq : lte A B -> lteq A B -> type.
+%mode lte2lteq +A -B.
+
+-/z : lte2lteq lte/z B
+ <- lteqz _ B.
+
+-/s : lte2lteq (lte/s A) B'
+ <- lte2lteq A B
+ <- lteqs B B'.
+
+%worlds () (lte2lteq _ _).
+%total (A) (lte2lteq A _).
+
+exists-sub-venv-size-lte-rec: vsize H NH -> lteq N NH -> vsize HN N -> sub-venv HN H -> type.
+%mode exists-sub-venv-size-lte-rec +A +B -C -D.
+
+-/refl : exists-sub-venv-size-lte-rec NH lteq/refl NH sub-venv/refl.
+
+-/succ : exists-sub-venv-size-lte-rec (vf/c A) (lteq/succ B) C (sub-venv/ext D)
+      <- exists-sub-venv-size-lte-rec A B C D.
+
+%worlds () (exists-sub-venv-size-lte-rec _ _ _ _).
+%total {B A} (exists-sub-venv-size-lte-rec A B _ _).
+
+exists-sub-venv-size-lte: vsize H NH -> lte N NH -> sub-venv-size HN N H -> type.
+%mode exists-sub-venv-size-lte +A +B -C.
+
+- : exists-sub-venv-size-lte A B (svs C D)
+ <- lte2lteq B B'
+ <- exists-sub-venv-size-lte-rec A B' C D.
+
+%worlds () (exists-sub-venv-size-lte _ _ _).
+%total { } (exists-sub-venv-size-lte _ _ _).
+
+vlookup-sub-size: vlookup H N V -> sub-venv-size HSN (s N) H -> type.
+%mode vlookup-sub-size +A -B.
+
+- : vlookup-sub-size VL OUT
+ <- vlookup-size-lte VL NH LTE
+ <- exists-sub-venv-size-lte NH LTE OUT
+  .
+
+%worlds () (vlookup-sub-size _ _).
+%total { } (vlookup-sub-size _ _).
+
+invert-vlookup-last: vlookup HSN N V -> sub-venv-size HN N H -> sub-venv-size HSN (s N) H -> sub-venv-size (vcons V HN) (s N) H -> type.
+%mode invert-vlookup-last +A +B +C -D.
+
+- : invert-vlookup-last (vl vl/hit A (vf/c NH)) (svs NH0 SH0) (svs (vf/c NH1) SSH) (svs (vf/c NH0) SSH')
+ <- sub-venv-cons SSH SH1
+ <- sub-venv-size-unique (svs NH1 SH1) (svs NH0 SH0) EQHN
+ <- eq-venv-cons EQHN id-val/refl EQHSN
+ <- eq-sub-venv-l EQHSN SSH SSH'
+  .
+
+- : invert-vlookup-last (vl (vl/miss L) (add/s A) (vf/c NH)) (svs NH0 SH0) (svs (vf/c NH1) SSH) OUT
+ <- vsize-unique NH NH1 EQN
+ <- eq-add A EQN A'
+ <- add-swap A' A''
+ <- add-contra A'' CONTRA
+ <- contra-sub-venv-size CONTRA _ _ _ OUT
+  .
+
+%worlds () (invert-vlookup-last _ _ _ _).
+%total (A) (invert-vlookup-last A _ _ _).
+
+invert-vlookup: vlookup H N V -> sub-venv-size HN N H -> sub-venv-size (vcons V HN) (s N) H -> type.
+%mode invert-vlookup +A +B -C.
+
+- : invert-vlookup VL SH OUT
+ <- vlookup-sub-size VL SSH
+ <- restrict-vlookup VL SSH VL'
+ <- invert-vlookup-last VL' SH SSH OUT.
+
+%worlds () (invert-vlookup _ _ _).
+%total { } (invert-vlookup _ _ _).
+
+invert-eval-var: eval H (var N) V -> sub-venv-size HN N H -> sub-venv-size (vcons V HN) (s N) H -> type.
+%mode invert-eval-var +A +B -C.
+
+- : invert-eval-var (e/var VL) SE OUT
+ <- invert-vlookup VL SE OUT.
+
+%worlds () (invert-eval-var _ _ _).
+%total (A) (invert-eval-var A _ _).
 
 %{ ------- type preservation ----- }%
 
