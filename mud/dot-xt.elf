@@ -3749,6 +3749,28 @@ eq-xt-env : id-tenv G G' -> xt-env H G -> xt-env H G' -> type.
 %total (A) (eq-xt-env A _ _).
 %reduces C <= B (eq-xt-env _ B C).
 
+xt-env-vcons : xt-env (vcons (clo HC DS IS) H) G -> vsize HC NC -> xt-env H G0 -> id-tenv G (tcons (bind NC DS) G0) -> type.
+%mode xt-env-vcons +A -B -C -D.
+
+- : xt-env-vcons (xte/c XE (xtv/clo VN)) VN XE id-tenv/refl.
+
+%worlds () (xt-env-vcons _ _ _ _).
+%total (A) (xt-env-vcons A _ _ _).
+
+xt-env-vcons-out : xt-env (vcons (clo HC DS IS) H) G -> vsize HC NC -> xt-env H G0 -> id-tenv G (tcons (bind NC DS) G0) -> type.
+%mode xt-env-vcons-out +A +B +C -D.
+
+- : xt-env-vcons-out XEC VN XE EQ
+ <- xt-env-vcons XEC VN' XE' EQ'
+ <- vsize-unique VN' VN EQN
+ <- xt-env-unique XE' XE EQG
+ <- eq-nat-bind EQN _ EQT
+ <- eq-env-cons EQG EQT EQTG
+ <- id-tenv-trans EQ' EQTG EQ
+  .
+
+%worlds () (xt-env-vcons-out _ _ _ _).
+%total { } (xt-env-vcons-out _ _ _ _).
 
 %{ ------- extension lemmas ------- }%
 
