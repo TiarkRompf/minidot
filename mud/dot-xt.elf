@@ -4473,6 +4473,21 @@ wfv-widen-h: xt-env H G -> xt-env H' G' -> stp2 G T G' T' -> wf-val V H T -> wf-
 %worlds () (wfv-widen-h _ _ _ _ _).
 %total (V) (wfv-widen-h _ _ _ V _).
 
+wfv-widen-wf: xt-env H G -> sub-venv-size HN N H -> sub-env-size GN N G -> wf-tp GN T -> wf-val V H T -> wf-val V HN T -> type.
+%mode wfv-widen-wf +A +B +C +D +E -F.
+
+- : wfv-widen-wf XE SH SG WT WV WV'
+ <- xt-env-sub-out XE SH SG XE'
+ <- stp2refl WT BR
+ <- extract-sub-env-size SG _ SE
+ <- extend-stp2-mult1 BR SE BN
+ <- wfv-widen-h XE XE' BN WV WV'
+  .
+
+%worlds () (wfv-widen-wf _ _ _ _ _ _).
+%total { } (wfv-widen-wf _ _ _ _ _ _).
+
+
 %{ ------- type preservation ----- }%
 
 eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
