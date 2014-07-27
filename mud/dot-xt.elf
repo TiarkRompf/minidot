@@ -1989,6 +1989,26 @@ extend-sub-env-size-mult: sub-env-size GN N G -> sub-env G G' -> sub-env-size GN
 %worlds () (extend-sub-env-size-mult _ _ _).
 %total X (extend-sub-env-size-mult _ X _).
 
+extend-sub-venv-size: sub-venv-size GN N G -> {Z} sub-venv-size GN N (vcons Z G) -> type.
+%mode extend-sub-venv-size +A +Z -B.
+
+- : extend-sub-venv-size (svs N E) Z (svs N (sub-venv/ext E)).
+
+%worlds () (extend-sub-venv-size _ _ _).
+%total A (extend-sub-venv-size A _ _).
+
+extend-sub-venv-size-mult: sub-venv-size GN N G -> sub-venv G G' -> sub-venv-size GN N G' -> type.
+%mode extend-sub-venv-size-mult +A +B -C.
+
+- : extend-sub-venv-size-mult A sub-venv/refl A.
+
+- : extend-sub-venv-size-mult A (sub-venv/ext B) C
+ <- extend-sub-venv-size-mult A B C0
+ <- extend-sub-venv-size C0 _ C.
+
+%worlds () (extend-sub-venv-size-mult _ _ _).
+%total X (extend-sub-venv-size-mult _ X _).
+
 extend-stp: stp I1 G T1 T2 -> {Z} stp I1 (tcons Z G) T1 T2 -> type.
 %mode extend-stp +A +B -D.
 
@@ -3804,6 +3824,25 @@ xt-env-sub :
 
 %worlds () (xt-env-sub _ _ _ _).
 %total {A B} (xt-env-sub A B _ _).
+
+xt-tenv-sub :
+  xt-env H G -> sub-env-size GN N G ->
+%%
+  xt-env HN GN -> sub-venv-size HN N H ->
+  type.
+%mode xt-tenv-sub +A +B -C -D.
+
+- : xt-tenv-sub xte/n (ses tf/n sub-env/refl) xte/n (svs vf/n sub-venv/refl).
+
+- : xt-tenv-sub (xte/c XE XV) (ses (tf/c NH) sub-env/refl) (xte/c XE XV) (svs (vf/c NG) sub-venv/refl)
+ <- xt-env-tvsize XE NH NG.
+
+- : xt-tenv-sub (xte/c XE XV) (ses NH (sub-env/ext SH)) XE' SGS'
+ <- xt-tenv-sub XE (ses NH SH) XE' SGS
+ <- extend-sub-venv-size SGS _ SGS'.
+
+%worlds () (xt-tenv-sub _ _ _ _).
+%total {A B} (xt-tenv-sub A B _ _).
 
 xt-env-sub-out :
   xt-env H G -> sub-venv-size HN N H -> sub-env-size GN N G ->
