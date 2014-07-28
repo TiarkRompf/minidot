@@ -376,7 +376,8 @@ v/clo : wf-val (clo HC DCS ICS) H T
      <- wf-env HC GC
      <- tsize GC N
      <- typcs (tcons (bind N DCS) GC) ICS DCS
-     <- stp2 GC (bind N DCS) G T
+     <- stp2 GC (bind N DCS) G (bind N DCS)
+     <- stp1 G (bind N DCS) T
       .
 
 wfe/n : wf-env vnil tnil.
@@ -4081,10 +4082,13 @@ invert-wfv:
   type.
 %mode invert-wfv +A -B -C -D -E -F -G -H -I -J.
 
--/clo : invert-wfv (v/clo B ADS SN WEC XEC WE XE) XE WE XEC WEC SN ADS B (v/clo BC ADS SN WEC XEC WEC XEC) (xtv/clo SV)
-     <- stp2-reg B WC _
+-/clo : invert-wfv (v/clo B0 B1 ADS SN WEC XEC WE XE) XE WE XEC WEC SN ADS B (v/clo BC1 BC ADS SN WEC XEC WEC XEC) (xtv/clo SV)
+     <- stp2-reg B1 WC _
      <- stp2refl WC BC
-     <- xt-env-tvsize XEC SN SV.
+     <- stp1refl WC BC1
+     <- xt-env-tvsize XEC SN SV
+     <- stp1-to-stp2 B0 B02
+     <- trans2 B1 B02 B.
 
 %worlds () (invert-wfv _ _ _ _ _ _ _ _ _ _).
 %total (A) (invert-wfv A _ _ _ _ _ _ _ _ _).
@@ -4594,10 +4598,12 @@ extract-wfv:
   type.
 %mode extract-wfv +A -B -C -D -E -F -G -H -I -J.
 
-- : extract-wfv (v/clo B TDS SC WEC XEC WE XE)
+- : extract-wfv (v/clo B1 B0 TDS SC WEC XEC WE XE)
      id-val/refl
      (xtv/clo SV)
      XE WE XEC WEC SC TDS B
+ <- stp1-to-stp2 B1 B12
+ <- trans2 B0 B12 B
  <- xt-env-tvsize XEC SC SV
   .
 
@@ -4681,7 +4687,11 @@ xt-seg: xt-env H GH -> wf-env H GH -> wf-env H G -> seg GH G -> type.
 
 - : xt-seg xte/n wfe/n wfe/n seg/nil.
 
-- : xt-seg (xte/c XE (xtv/clo SV)) (wfe/c WEC WTC (v/clo B2A TDSA SGA WECA XECA _ XEA)) (wfe/c WE WT (v/clo B2B TDSB SGB WECB XECB _ XEB)) (seg/sub BR WT R)
+- : xt-seg (xte/c XE (xtv/clo SV)) (wfe/c WEC WTC (v/clo B2A1 B2A0 TDSA SGA WECA XECA _ XEA)) (wfe/c WE WT (v/clo B2B1 B2B0 TDSB SGB WECB XECB _ XEB)) (seg/sub BR WT R)
+ <- stp1-to-stp2 B2A1 B2A2
+ <- trans2 B2A0 B2A2 B2A
+ <- stp1-to-stp2 B2B1 B2B2
+ <- trans2 B2B0 B2B2 B2B
  <- xt-seg XE WEC WE R
  <- xt-env-unique XEA XE EQGA0
  <- xt-env-unique XEB XEA EQGBA
@@ -4715,8 +4725,8 @@ wfv-reg:
   type.
 %mode wfv-reg +A -B -C.
 
-- : wfv-reg (v/clo B _ _ _ _ _ XE) XE W
- <- stp2-reg B _ W.
+- : wfv-reg (v/clo B _ _ _ _ _ _ XE) XE W
+ <- stp1-reg B _ W.
 
 %worlds () (wfv-reg _ _ _).
 %total (A) (wfv-reg A _ _).
@@ -4740,13 +4750,17 @@ wfv-reg-out:
 
 %{ ------- wfv extension lemmas ------- }%
 
-extend-wfv: wf-val V H T -> wf-val V H ZT -> wf-val V (vcons Z H) T -> type.
+extend-wfv: wf-val V H T -> wf-val Z H ZT -> wf-val V (vcons Z H) T -> type.
 %mode extend-wfv +A +B -C.
 
--/clo : extend-wfv (v/clo B ADS SN WEC XEC WE XE) WVZ (v/clo B2 ADS SN WEC XEC (wfe/c WE WZ WVZ) (xte/c XE XZ))
-     <- wfv-reg-out WVZ XE WZ
-     <- xt-val-calc _ XZ
-     <- extend-stp2 B _ _ _ B2.
+-/clo : extend-wfv (v/clo B1 B0 ADS SN WEC XEC WE XE) (v/clo B1Z B0Z ADSZ SNZ WECZ XECZ WEZ XEZ) (v/clo B1' B0' ADS SN WEC XEC (wfe/c WE WZ (v/clo BRZ B0Z ADSZ SNZ WECZ XECZ WEZ XEZ)) (xte/c XE (xtv/clo SNZH)))
+     <- xt-env-tvsize XECZ SNZ SNZH
+     <- stp1-reg B1Z W1Z _
+     <- stp1refl W1Z BRZ
+     <- xt-env-unique XEZ XE EQG
+     <- eq-wf-tp-g EQG W1Z WZ
+     <- extend-stp2 B0 _ _ _ B0'
+     <- extend-stp1 B1 _ B1'.
 
 %worlds () (extend-wfv _ _ _).
 %total (A) (extend-wfv A _ _).
@@ -4757,11 +4771,11 @@ lookup-zero-safe: wf-env H G -> tlookup-zero G N2 T -> vlookup-zero H N1 V -> eq
 %mode lookup-zero-safe +A +B +C +D -E.
 
 -      : lookup-zero-safe (wfe/c _ _ V) tl/hit vl/hit eq-nat/z V'
-      <- extend-wfv V _ V'
+      <- extend-wfv V V V'
        .
--      : lookup-zero-safe (wfe/c G _ _) (tl/miss A) (vl/miss B) (eq-nat/s E) Z'
+-      : lookup-zero-safe (wfe/c G _ V) (tl/miss A) (vl/miss B) (eq-nat/s E) Z'
          <- lookup-zero-safe G A B E Z
-         <- extend-wfv Z _ Z'.
+         <- extend-wfv Z V Z'.
 
 %worlds () (lookup-zero-safe _ _ _ _ _).
 %total A (lookup-zero-safe A _ _ _ _). % induction on first arg
@@ -4786,12 +4800,11 @@ wfv-widen: wf-env H G -> stp1 G T1 T2 -> wf-val V H T1 -> wf-val V H T2 -> type.
 - : wfv-widen
      WE
      B12
-     (v/clo BC1 TDS TC WEC XEC WE' XE)
-     (v/clo BC2 TDS TC WEC XEC WE' XE)
+     (v/clo BC1 BC0 TDS TC WEC XEC WE' XE)
+     (v/clo BC2 BC0 TDS TC WEC XEC WE' XE)
  <- xt-seg XE WE' WE BE
  <- narrow1* B12 BE B12'
- <- stp1-to-stp2 B12' B12''
- <- trans2 BC1 B12'' BC2
+ <- trans1 BC1 B12' BC2
   .
 
 %worlds () (wfv-widen _ _ _ _).
@@ -4801,11 +4814,11 @@ wfv-widen-h: xt-env H G -> xt-env H' G' -> stp2 G T G' T' -> wf-val V H T -> wf-
 %mode wfv-widen-h +A +B +C +D -E.
 
 - : wfv-widen-h XE XE' B
-     (v/clo B0 TDS TC WEC XEC XE0)
-     (v/clo B' TDS TC WEC XEC XE')
+     (v/clo B1 B0 TDS TC WEC XEC XE0)
+     (v/clo B1' B0' TDS TC WEC XEC XE')
  <- xt-env-unique XE0 XE EQG
  <- eq-stp2-gu EQG B0 B0'
- <- trans2 B0' B B'.
+ <- trans1 B0' B B'.
 
 %worlds () (wfv-widen-h _ _ _ _ _).
 %total (V) (wfv-widen-h _ _ _ V _).
