@@ -316,10 +316,10 @@ t/var : typ G (var N) T
      <- tlookup G N T
      <- wf-tp G T
       .
-t/new : typ G (new N DCS ICS) (bind N DCS)
+t/new : typ G (new N DS IS) (bind N DS)
      <- sub-env-size GN N G
-     <- typcs (tcons (bind N DCS) GN) ICS DCS
-     <- wf-tp GN (bind N DCS)
+     <- typcs (tcons (bind N DS) GN) IS DS
+     <- wf-tp GN (bind N DS)
       .
 t/appvar : typ G (appvar N X E2) T
      <- typ G (var N) (bind N DS)
@@ -342,13 +342,13 @@ t/app : typ G (app E1 X E2) T
      <- wf-tp GN T
       .
 t/nil : typcs G inil dnil.
-t/fun : typcs G (icons (fun E) ICS) (dcons (arrow S U) DCS)
+t/fun : typcs G (icons (fun E) IS) (dcons (arrow S U) DS)
     <- wf-tp G S
     <- typ (tcons S G) E U
-    <- typcs G ICS DCS
+    <- typcs G IS DS
       .
-t/non : typcs G (icons non ICS) (dcons (rect S U) DCS)
-    <- typcs G ICS DCS
+t/non : typcs G (icons non IS) (dcons (rect S U) DS)
+    <- typcs G IS DS
       .
 t/sub : typ G E U
      <- typ G E S
@@ -356,12 +356,12 @@ t/sub : typ G E U
       .
 
 xt-val : val -> tp -> type.
-xtv/clo: xt-val (clo HC DCS ICS) (bind N DCS)
+xtv/clo: xt-val (clo HC DS IS) (bind N DS)
       <- vsize HC N.
 
 xt-env : venv -> tenv -> type.
 xte/n : xt-env vnil tnil.
-xte/c : xt-env (vcons V H) (tcons T G)
+xte/c : xt-env (vcons V H) (tcons T' G)
      <- xt-val V T
      <- xt-env H G
       .
@@ -369,13 +369,13 @@ xte/c : xt-env (vcons V H) (tcons T G)
 wf-val: val -> venv -> tp -> type.
 wf-env: venv -> tenv -> type.
 
-v/clo : wf-val (clo HC DCS ICS) H T
+v/clo : wf-val (clo HC DS IS) H T
      <- xt-env H G
      <- xt-env HC GC
      <- wf-env HC GC
      <- tsize GC N
-     <- typcs (tcons (bind N DCS) GC) ICS DCS
-     <- stp2 GC (bind N DCS) G T
+     <- typcs (tcons (bind N DS) GC) IS DS
+     <- stp2 GC (bind N DS) G T
       .
 
 wfe/n : wf-env vnil tnil.
@@ -3749,7 +3749,7 @@ stp1-to-stp-oktrans :
 xt-val-calc : {V} xt-val V T -> type.
 %mode xt-val-calc +V -XT.
 
--/clo : xt-val-calc (clo HC DCS ICS) (xtv/clo VN)
+-/clo : xt-val-calc (clo HC DS IS) (xtv/clo VN)
      <- vsize-calc HC VN.
 
 %worlds () (xt-val-calc _ _).
@@ -3971,12 +3971,12 @@ invert-var:
 %total (A) (invert-var A _ _).
 
 invert-new :
-  typ G (new N DCS ICS) T ->
+  typ G (new N DS IS) T ->
 %%
   sub-env-size GN N G ->
-  typcs (tcons (bind N DCS) GN) ICS DCS ->
-  wf-tp GN (bind N DCS) ->
-  stp1 G (bind N DCS) T ->
+  typcs (tcons (bind N DS) GN) IS DS ->
+  wf-tp GN (bind N DS) ->
+  stp1 G (bind N DS) T ->
   type.
 %mode invert-new +A -B -C -D -E.
 
@@ -4085,16 +4085,16 @@ invert-xtv:
 %total (A) (invert-xtv A _ _).
 
 invert-wfv:
-  wf-val (clo HC DCS ICS) H T ->
+  wf-val (clo HC DS IS) H T ->
 %%
   xt-env H G ->
   xt-env HC GC ->
   wf-env HC GC ->
   tsize GC N ->
-  typcs (tcons (bind N DCS) GC) ICS DCS ->
-  stp2 GC (bind N DCS) G T ->
-  wf-val (clo HC DCS ICS) HC (bind N DCS) ->
-  xt-val (clo HC DCS ICS) (bind N DCS) ->
+  typcs (tcons (bind N DS) GC) IS DS ->
+  stp2 GC (bind N DS) G T ->
+  wf-val (clo HC DS IS) HC (bind N DS) ->
+  xt-val (clo HC DS IS) (bind N DS) ->
   type.
 %mode invert-wfv +A -B -C -D -E -F -G -H -J.
 
@@ -4542,10 +4542,10 @@ narrow1-typ:
 %mode narrow1-typ +A +B -C.
 
 narrow1-typcs:
-  typcs G2 ICS DCS ->
+  typcs G2 IS DS ->
   seg G1 G2 ->
 %%
-  typcs G1 ICS DCS ->
+  typcs G1 IS DS ->
   type.
 %mode narrow1-typcs +A +B -C.
 
