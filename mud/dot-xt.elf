@@ -823,6 +823,21 @@ lte-s-false: lte (s N) N -> false -> type.
 %worlds () (lte-s-false _ _).
 %total A (lte-s-false A _).
 
+lte-sz-false: lte (s N) z -> false -> type.
+%mode lte-sz-false +A -B.
+
+%worlds () (lte-sz-false _ _).
+%total A (lte-sz-false A _).
+
+lte-contra: lte A B -> lte (s B) A -> false -> type.
+%mode lte-contra +A +B -C.
+
+- : lte-contra (lte/s A) (lte/s B) OUT
+ <- lte-contra A B OUT.
+
+%worlds () (lte-contra _ _ _).
+%total {A B} (lte-contra A B _).
+
 add-contra : add (s N1) N2 N1 -> false -> type.
 %mode add-contra +A -B.
 
@@ -1313,6 +1328,15 @@ id-lte : id-nat NA NB -> lte NA NB -> type.
 
 %worlds () (id-lte _ _).
 %total { } (id-lte _ _).
+
+eq-lte-r : id-nat NB NB' -> lte NA NB -> lte NA NB' -> type.
+%mode eq-lte-r +A +B -C.
+
+- : eq-lte-r id-nat/refl B B.
+
+%worlds () (eq-lte-r _ _ _).
+%total (A) (eq-lte-r A _ _).
+%reduces C <= B (eq-lte-r _ B  C).
 
 sub-env-size-lte: sub-env GN G -> tsize GN NN -> tsize G N -> lte NN N -> type.
 %mode sub-env-size-lte +A +B +C -D.
@@ -3845,14 +3869,60 @@ eq-xt-val : id-tp T T' -> xt-val V T -> xt-val V T' -> type.
 %total (A) (eq-xt-val A _ _).
 %reduces C <= B (eq-xt-val _ B C).
 
+eq-ok-or-top : id-tp T1 T1' -> ok-or-top G T1 T2 -> ok-or-top G T1' T2 -> type.
+%mode eq-ok-or-top +A +B -C.
+
+- : eq-ok-or-top id-tp/refl B B.
+
+%worlds () (eq-ok-or-top _ _ _).
+%total (A) (eq-ok-or-top A _ _).
+%reduces C <= B (eq-ok-or-top _ B C).
+
+eq-ok-or-top-g : id-tenv G G' -> ok-or-top G T1 T2 -> ok-or-top G' T1 T2 -> type.
+%mode eq-ok-or-top-g +A +B -C.
+
+- : eq-ok-or-top-g id-tenv/refl B B.
+
+%worlds () (eq-ok-or-top-g _ _ _).
+%total (A) (eq-ok-or-top-g A _ _).
+%reduces C <= B (eq-ok-or-top-g _ B C).
+
+ok-or-top-unique : ok-or-top G T1 T2 -> ok-or-top G T1 T2' -> id-tp T2 T2' -> type.
+%mode ok-or-top-unique +A +B -C.
+
+- : ok-or-top-unique (ot/ok _ _) (ot/ok _ _) id-tp/refl.
+
+- : ok-or-top-unique (ot/top _ _) (ot/top _ _) id-tp/refl.
+
+- : ok-or-top-unique (ot/ok LTE SG) (ot/top GT SG') OUT
+ <- tsize-unique SG SG' EQNG
+ <- eq-lte-r EQNG LTE LTE'
+ <- lte-contra LTE' GT CONTRA
+ <- contra-tp CONTRA _ _ OUT
+  .
+
+- : ok-or-top-unique (ot/top GT SG') (ot/ok LTE SG) OUT
+ <- tsize-unique SG SG' EQNG
+ <- eq-lte-r EQNG LTE LTE'
+ <- lte-contra LTE' GT CONTRA
+ <- contra-tp CONTRA _ _ OUT
+  .
+
+%worlds () (ok-or-top-unique _ _ _).
+%total {A B} (ok-or-top-unique A B _).
+
 xt-env-unique : xt-env H G -> xt-env H G' -> id-tenv G G' -> type.
 %mode xt-env-unique +A +B -C.
 
 - : xt-env-unique xte/n xte/n id-tenv/refl.
-- : xt-env-unique (xte/c A VA) (xte/c B VB) ID
+
+- : xt-env-unique (xte/c A OA VA) (xte/c B OB VB) ID
  <- xt-val-unique VA VB IDV
- <- xt-env-unique A B ID0
- <- eq-env-cons ID0 IDV ID.
+ <- xt-env-unique A B IDG
+ <- eq-ok-or-top IDV OA OA'
+ <- eq-ok-or-top-g IDG OA' OA''
+ <- ok-or-top-unique OA'' OB IDT
+ <- eq-env-cons IDG IDT ID.
 
 %worlds () (xt-env-unique _ _ _).
 %total {A B} (xt-env-unique A B _).
@@ -3866,6 +3936,7 @@ eq-xt-env : id-tenv G G' -> xt-env H G -> xt-env H G' -> type.
 %total (A) (eq-xt-env A _ _).
 %reduces C <= B (eq-xt-env _ B C).
 
+%{
 xt-env-cons : xt-env H G -> xt-val V T -> xt-env (vcons V H) (tcons T G) -> type.
 %mode xt-env-cons +A +B -C.
 
@@ -3896,14 +3967,16 @@ xt-env-vcons-out : xt-env (vcons (clo HC DS IS) H) G -> vsize HC NC -> xt-env H 
 
 %worlds () (xt-env-vcons-out _ _ _ _).
 %total { } (xt-env-vcons-out _ _ _ _).
+}%
 
 %{ ------- extension lemmas ------- }%
 
 extend-wfv: wf-val V H T -> {Z} wf-val V (vcons Z H) T -> type.
 %mode extend-wfv +A +B -C.
 
--/clo : extend-wfv (v/clo B ADS SN WEC XEC XE) Z (v/clo B2 ADS SN WEC XEC (xte/c XE XZ))
+-/clo : extend-wfv (v/clo B ADS SN WEC XEC XE) Z (v/clo B2 ADS SN WEC XEC (xte/c XE OZ XZ))
      <- xt-val-calc Z XZ
+     <- ok-or-top-calc _ _ _ OZ
      <- extend-stp2 B _ _ _ B2.
 
 %worlds () (extend-wfv _ _ _).
@@ -3915,9 +3988,10 @@ wf-env-to-xt-env : wf-env H G -> xt-env H GC -> type.
 %mode wf-env-to-xt-env +A -B.
 
 -/n : wf-env-to-xt-env wfe/n xte/n.
--/c : wf-env-to-xt-env (wfe/c _ _ _) (xte/c XE XV)
+-/c : wf-env-to-xt-env (wfe/c _ _ _) (xte/c XE OV XV)
    <- xt-val-calc _ XV
-   <- xt-env-calc _ XE.
+   <- xt-env-calc _ XE
+   <- ok-or-top-calc _ _ _ OV.
 
 %worlds () (wf-env-to-xt-env _ _).
 %total (A) (wf-env-to-xt-env A _).
@@ -3927,7 +4001,7 @@ xt-env-vsize : xt-env H GH -> vsize H N -> tsize GH N -> type.
 
 -/n : xt-env-vsize xte/n vf/n tf/n.
 
--/c : xt-env-vsize (xte/c A _) (vf/c B) (tf/c C)
+-/c : xt-env-vsize (xte/c A _ _) (vf/c B) (tf/c C)
    <- xt-env-vsize A B C.
 
 %worlds () (xt-env-vsize _ _ _).
@@ -3938,7 +4012,7 @@ xt-env-tvsize : xt-env H GH -> tsize GH N -> vsize H N -> type.
 
 -/n : xt-env-tvsize xte/n tf/n vf/n.
 
--/c : xt-env-tvsize (xte/c A _) (tf/c B) (vf/c C)
+-/c : xt-env-tvsize (xte/c A _ _) (tf/c B) (vf/c C)
    <- xt-env-tvsize A B C.
 
 %worlds () (xt-env-tvsize _ _ _).
@@ -3949,7 +4023,7 @@ xt-env-tsize : wf-env H G -> xt-env H GH -> tsize G N -> tsize GH N -> type.
 
 -/n : xt-env-tsize wfe/n xte/n tf/n tf/n.
 
--/c : xt-env-tsize (wfe/c A _ _) (xte/c B _) (tf/c C) (tf/c D)
+-/c : xt-env-tsize (wfe/c A _ _) (xte/c B _ _) (tf/c C) (tf/c D)
    <- xt-env-tsize A B C D.
 
 %worlds () (xt-env-tsize _ _ _ _).
@@ -3964,10 +4038,10 @@ xt-env-sub :
 
 - : xt-env-sub xte/n (svs vf/n sub-venv/refl) xte/n (ses tf/n sub-env/refl).
 
-- : xt-env-sub (xte/c XE XV) (svs (vf/c NH) sub-venv/refl) (xte/c XE XV) (ses (tf/c NG) sub-env/refl)
+- : xt-env-sub (xte/c XE OV XV) (svs (vf/c NH) sub-venv/refl) (xte/c XE OV XV) (ses (tf/c NG) sub-env/refl)
  <- xt-env-vsize XE NH NG.
 
-- : xt-env-sub (xte/c XE XV) (svs NH (sub-venv/ext SH)) XE' SGS'
+- : xt-env-sub (xte/c XE OV XV) (svs NH (sub-venv/ext SH)) XE' SGS'
  <- xt-env-sub XE (svs NH SH) XE' SGS
  <- extend-sub-env-size SGS _ SGS'.
 
@@ -3983,10 +4057,10 @@ xt-tenv-sub :
 
 - : xt-tenv-sub xte/n (ses tf/n sub-env/refl) xte/n (svs vf/n sub-venv/refl).
 
-- : xt-tenv-sub (xte/c XE XV) (ses (tf/c NH) sub-env/refl) (xte/c XE XV) (svs (vf/c NG) sub-venv/refl)
+- : xt-tenv-sub (xte/c XE OV XV) (ses (tf/c NH) sub-env/refl) (xte/c XE OV XV) (svs (vf/c NG) sub-venv/refl)
  <- xt-env-tvsize XE NH NG.
 
-- : xt-tenv-sub (xte/c XE XV) (ses NH (sub-env/ext SH)) XE' SGS'
+- : xt-tenv-sub (xte/c XE OV XV) (ses NH (sub-env/ext SH)) XE' SGS'
  <- xt-tenv-sub XE (ses NH SH) XE' SGS
  <- extend-sub-venv-size SGS _ SGS'.
 
