@@ -4946,19 +4946,18 @@ invert-eval-var: eval H (var N) V -> sub-venv-size HN N H -> sub-venv-size (vcon
 
 %{ ------- type preservation ----- }%
 
-eval-safe: typ G E T -> wf-env H G -> xt-env H GH -> wf-env H GH -> eval H E V -> wf-val V H T -> type.
+eval-safe: typ G E T -> wf-env H G -> xt-env H GH -> seg GH G -> eval H E V -> wf-val V H T -> type.
 %mode eval-safe +A +B +C +D +E -F.
 
--/var : eval-safe A E XE EX (e/var L) V
+-/var : eval-safe A E XE BE (e/var L) V
      <- invert-var A LA BA
      <- lookup-safe E LA L V'
-     <- wfv-widen XE EX E BA V' V
+     <- wfv-widen-seg XE E BE BA V' V
       .
 
--/new : eval-safe A E XE EX (e/new SV) (v/clo B' TDS' SC E' XEC XE)
+-/new : eval-safe A E XE BE (e/new SV) (v/clo B' TDS' SC E' XEC XE)
      <- invert-new A SE TDS WC BC
      <- wf-sub-env-size E SV SE E'
-     <- xt-seg XE EX E BE
      <- seg-sub-size SE BE SEN BEN
      <- narrow1-wf WC BEN WC'
      <- seg-refl-cons BEN WC WC' BEN'
@@ -4972,10 +4971,10 @@ eval-safe: typ G E T -> wf-env H G -> xt-env H GH -> wf-env H GH -> eval H E V -
      <- trans2 BW'' BC'' B'
       .
 
--/appvar : eval-safe A E XE_IN EX_IN (e/appvar (e/app EV3 EV2 IL EV1)) V
+-/appvar : eval-safe A E XE_IN BE_IN (e/appvar (e/app EV3 EV2 IL EV1)) V
      <- invert-appvar A SE SEP A1 A2 DL2 WB WB2 WB0 WP2 WP0 BA
-     <- eval-safe A2 E XE_IN EX_IN EV2 (V2: wf-val VA2 H TA2)
-     <- eval-safe A1 E XE_IN EX_IN EV1 (V1: wf-val (clo HC DS IS) H (bind NA DSA))
+     <- eval-safe A2 E XE_IN BE_IN EV2 (V2: wf-val VA2 H TA2)
+     <- eval-safe A1 E XE_IN BE_IN EV1 (V1: wf-val (clo HC DS IS) H (bind NA DSA))
      <- invert-wfv V1 XE XEC WEC SC TDS BC VC1 XVC1
      <- invert-fun TDS IL DL1 A3
      <- stp2-inv-fun BC DL1 DL2 EQN SE1 SE2 BC2 BC0
@@ -5010,7 +5009,8 @@ eval-safe: typ G E T -> wf-env H G -> xt-env H GH -> wf-env H GH -> eval H E V -
             (tcons TC2 (tcons (bind N DS) GC))))
          % old reqs (BC2R') XEC2 XVC2
         (xte/c (xte/c XEC XVC1) XVC2)
-        (wfe/c (wfe/c WEC WTC1 VC1) WTC2_OUT WC2_OUT)
+        % (wfe/c (wfe/c WEC WTC1 VC1) WTC2_OUT WC2_OUT)
+        BE_OUT
         EV3 V3
       .
 
