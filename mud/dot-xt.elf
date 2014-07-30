@@ -4737,6 +4737,26 @@ wfv-widen: xt-env H GH -> wf-env H GH -> wf-env H G -> stp1 G T1 T2 -> wf-val V 
 %worlds () (wfv-widen _ _ _ _ _ _).
 %total (V) (wfv-widen _ _ _ _ V _).
 
+wfv-widen-seg: xt-env H GH -> wf-env H G -> seg GH G -> stp1 G T1 T2 -> wf-val V H T1 -> wf-val V H T2 -> type.
+%mode wfv-widen-seg +A +B +C +D +E -F.
+
+- : wfv-widen-seg
+     XE
+     WE
+     SEG
+     B12
+     (v/clo BC1 TDS TC WEC XEC XE')
+     (v/clo BC2 TDS TC WEC XEC XE')
+ <- xt-env-unique XE XE' EQGH
+ <- eq-seg-l EQGH SEG SEG'
+ <- narrow1* B12 SEG' B12'
+ <- stp1-to-stp2 B12' B12''
+ <- trans2 BC1 B12'' BC2
+  .
+
+%worlds () (wfv-widen-seg _ _ _ _ _ _).
+%total (V) (wfv-widen-seg _ _ _ _ V _).
+
 wfv-widen-h: xt-env H G -> xt-env H' G' -> stp2 G T G' T' -> wf-val V H T -> wf-val V H' T' -> type.
 %mode wfv-widen-h +A +B +C +D -E.
 
