@@ -359,10 +359,19 @@ xt-val : val -> tp -> type.
 xtv/clo: xt-val (clo HC DS IS) (bind N DS)
       <- vsize HC N.
 
+ok-or-top : tenv -> tp -> tp -> type.
+ot/ok : ok-or-top G (bind N DS) (bind N DS)
+     <- tsize G NG
+     <- lte N NG.
+ot/top: ok-or-top G (bind N DS) top
+     <- tsize G NG
+     <- lte (s NG) N.
+
 xt-env : venv -> tenv -> type.
 xte/n : xt-env vnil tnil.
 xte/c : xt-env (vcons V H) (tcons T' G)
      <- xt-val V T
+     <- ok-or-top G T T'
      <- xt-env H G
       .
 
@@ -3746,7 +3755,7 @@ stp1-to-stp-oktrans :
 
 %{ ------- xt-* lemmas ------- }%
 
-xt-val-calc : {V} xt-val V T -> type.
+xt-val-calc : {V} xt-val V (bind N DS) -> type.
 %mode xt-val-calc +V -XT.
 
 -/clo : xt-val-calc (clo HC DS IS) (xtv/clo VN)
@@ -3755,14 +3764,64 @@ xt-val-calc : {V} xt-val V T -> type.
 %worlds () (xt-val-calc _ _).
 %total (A) (xt-val-calc A _).
 
+lte-or-gt : nat -> nat -> type.
+lte-or-gt/lte : lte-or-gt A B <- lte A B.
+lte-or-gt/gt  : lte-or-gt A B <- lte (s B) A.
+
+lte-or-gt-succ : lte-or-gt A B -> lte-or-gt (s A) (s B) -> type.
+%mode lte-or-gt-succ +A -B.
+
+-/lte : lte-or-gt-succ (lte-or-gt/lte A) (lte-or-gt/lte (lte/s A)).
+
+-/gt  : lte-or-gt-succ (lte-or-gt/gt A) (lte-or-gt/gt (lte/s A)).
+
+%worlds () (lte-or-gt-succ _ _).
+%total (A) (lte-or-gt-succ A _).
+
+lte-or-gt-calc : {A} {B} lte-or-gt A B -> type.
+%mode lte-or-gt-calc +A +B -C.
+
+-/zn : lte-or-gt-calc z N (lte-or-gt/lte lte/z).
+
+-/sz : lte-or-gt-calc (s N) z (lte-or-gt/gt (lte/s lte/z)).
+
+-/ss : lte-or-gt-calc (s N1) (s N2) C'
+    <- lte-or-gt-calc N1 N2 C
+    <- lte-or-gt-succ C C'.
+
+%worlds () (lte-or-gt-calc _ _ _).
+%total {A B} (lte-or-gt-calc A B _).
+
+ok-or-top-calc-rec : tsize G NG -> lte-or-gt N NG -> {DS} ok-or-top G (bind N DS) T' -> type.
+%mode ok-or-top-calc-rec +A +B +C -D.
+
+-/lte : ok-or-top-calc-rec SG (lte-or-gt/lte B) DS (ot/ok B SG).
+
+-/gt  : ok-or-top-calc-rec SG (lte-or-gt/gt B) DS (ot/top B SG).
+
+%worlds () (ok-or-top-calc-rec _ _ _ _).
+%total (B) (ok-or-top-calc-rec _ B _ _).
+
+ok-or-top-calc : {G} {N} {DS} ok-or-top G (bind N DS) T' -> type.
+%mode ok-or-top-calc +G +N +DS -O.
+
+- : ok-or-top-calc G N DS O
+ <- tsize-calc G SG
+ <- lte-or-gt-calc _ _ C
+ <- ok-or-top-calc-rec SG C DS O.
+
+%worlds () (ok-or-top-calc _ _ _ _).
+%total { } (ok-or-top-calc _ _ _ _).
+
 xt-env-calc : {H} xt-env H G -> type.
 %mode xt-env-calc +H -XG.
 
 -/n : xt-env-calc vnil xte/n.
 
--/c : xt-env-calc (vcons V H) (xte/c XE XV)
+-/c : xt-env-calc (vcons V H) (xte/c XE OK XV)
    <- xt-val-calc V XV
-   <- xt-env-calc H XE.
+   <- xt-env-calc H XE
+   <- ok-or-top-calc _ _ _ OK.
 
 %worlds () (xt-env-calc _ _).
 %total (A) (xt-env-calc A _).
