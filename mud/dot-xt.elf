@@ -4989,8 +4989,8 @@ eval-safe: typ G E T -> wf-env H G -> xt-env H GH -> wf-env H GH -> eval H E V -
             (vcons VA2 (vcons (clo HC DS IS) HC))
             (tcons TC2 (tcons (bind N DS) GC))))
          % old reqs (BC2R') XEC2 XVC2
-        XE_OUT
-        EX_OUT
+        (xte/c (xte/c XEC XVC1) XVC2)
+        (wfe/c (wfe/c WEC WTC1 VC1) WTC2_OUT WC2_OUT)
         EV3 V3
       .
 
