@@ -5225,10 +5225,10 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- trans2 BW'' BC'' B'
       .
 
--/appvar : eval-safe A E XE_IN BE_IN (e/appvar (e/app EV3 EV2 IL EV1)) V
+-/appvar : eval-safe A E (e/appvar (e/app EV3 EV2 IL EV1)) V
      <- invert-appvar A SE SEP A1 A2 DL2 WB WB2 WB0 WP2 WP0 BA
-     <- eval-safe A2 E XE_IN BE_IN EV2 (V2: wf-val VA2 H TA2)
-     <- eval-safe A1 E XE_IN BE_IN EV1 (V1: wf-val (clo HC DS IS) H (bind NA DSA))
+     <- eval-safe A2 E EV2 (V2: wf-val VA2 H TA2)
+     <- eval-safe A1 E EV1 (V1: wf-val (clo HC DS IS) H (bind NA DSA))
      <- invert-wfv V1 XE XEC WEC SC TDS BC VC1 XVC1
      <- invert-fun TDS IL DL1 A3
      <- stp2-inv-fun BC DL1 DL2 EQN SE1 SE2 BC2 BC0
