@@ -5243,7 +5243,9 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- wf-sub-env-size E SHS1 SEP EP
      <- xt-env-sub-out XE SHS1 SEP XEP
      <- xt-env-tvsize XEC SC SHC
+
      <- lterefl _ LTE1
+
      <- eval-safe A3
         (wfe/c
            (wfe/c WEC WTC1 VC1 VC1 (ot/ok LTE1 SC) XVC1)
