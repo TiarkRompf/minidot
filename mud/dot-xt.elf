@@ -5240,6 +5240,27 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- wf-sub-env-size E SHS1 SEP EP
      <- xt-env-sub-out XE SHS1 SEP XEP
      <- xt-env-tvsize XEC SC SHC
+     <- eval-safe A3
+        (wfe/c (wfe/c WEC1' WT1' WV1' WV10' OT1' XV10') WT2' WV2' WV20' OT2' XV20')
+        EV3 V3
+      .
+
+%{
+-/appvar : eval-safe A E (e/appvar (e/app EV3 EV2 IL EV1)) V
+     <- invert-appvar A SE SEP A1 A2 DL2 WB WB2 WB0 WP2 WP0 BA
+     <- eval-safe A2 E EV2 (V2: wf-val VA2 H TA2)
+     <- eval-safe A1 E EV1 (V1: wf-val (clo HC DS IS) H (bind NA DSA))
+     <- invert-wfv V1 XE XEC WEC SC TDS BC VC1 XVC1
+     <- invert-fun TDS IL DL1 A3
+     <- stp2-inv-fun BC DL1 DL2 EQN SE1 SE2 BC2 BC0
+     <- stp2-reg BC WTC1 _
+     <- stp1refl WTC1 BC1R
+     <- invert-eval-var EV1 SH1 SHS1
+     <- xt-env-sub-out XE SH1 SE2 XEN
+     <- wf-sub-env-size E SH1 SE2 WEN
+     <- wf-sub-env-size E SHS1 SEP EP
+     <- xt-env-sub-out XE SHS1 SEP XEP
+     <- xt-env-tvsize XEC SC SHC
      <- xt-env-vcons-out XEP SHC XEN EQGP
      <- xt-env-cons XEC (xtv/clo SHC) XEC2
      <- wfv-widen-wf XE SHS1 SEP WP2 V2 V2P
@@ -5267,6 +5288,7 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
         BE_OUT
         EV3 V3
       .
+}%
 
 %{
 -/appvar : eval-safe A E (e/appvar (e/app EV3 EV2 IL EV1)) V
