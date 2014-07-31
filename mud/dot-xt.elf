@@ -3975,6 +3975,14 @@ xt-env-cons : xt-env H G -> ok-or-top G T T' -> xt-val V T -> xt-env (vcons V H)
 %worlds () (xt-env-cons _ _ _ _).
 %total { } (xt-env-cons _ _ _ _).
 
+xt-env-cons-ok : xt-env H G -> xt-val (clo HC DS IS) (bind NC DS) -> tsize G N -> lte NC N -> xt-env (vcons V H) (tcons T G) -> type.
+%mode xt-env-cons-ok +A +B +C +D -E.
+
+- : xt-env-cons-ok XE XV SG LTE (xte/c XE (ot/ok LTE SG) XV).
+
+%worlds () (xt-env-cons-ok _ _ _ _ _).
+%total { } (xt-env-cons-ok _ _ _ _ _).
+
 xt-env-vcons : xt-env (vcons (clo HC DS IS) H) G -> vsize HC NC -> xt-env H G0 -> id-tenv G (tcons (bind NC DS) G0) -> type.
 %mode xt-env-vcons +A -B -C -D.
 
