@@ -389,6 +389,9 @@ v/clo : wf-val (clo HC DS IS) H T
 
 wfe/n : wf-env vnil tnil.
 wfe/c : wf-env (vcons V H) (tcons T G)
+     <- xt-val V T0
+     <- ok-or-top G T0 T0'
+     <- wf-val V H T0'
      <- wf-val V H T
      <- wf-tp G T
      <- wf-env H G.
@@ -1790,7 +1793,7 @@ tsize-calc : {G} tsize G N -> type.
 wf-env-size-eq: wf-env H G -> vsize H N1 -> tsize G N2 -> eq-nat N1 N2 -> type.
 %mode wf-env-size-eq +A +B +C -D.
 -      : wf-env-size-eq wfe/n vf/n tf/n eq-nat/z.
--      : wf-env-size-eq (wfe/c G _ _) (vf/c VS) (tf/c TS) (eq-nat/s E) <- wf-env-size-eq G VS TS E.
+-      : wf-env-size-eq (wfe/c G _ _ _ _ _) (vf/c VS) (tf/c TS) (eq-nat/s E) <- wf-env-size-eq G VS TS E.
 %worlds () (wf-env-size-eq _ _ _ _).
 %total A (wf-env-size-eq A _ _ _).
 
@@ -1901,7 +1904,7 @@ wf-sub-env-size-rec: wf-env H G -> sub-venv HN H -> sub-env GN G -> vsize HN N -
 
 - : wf-sub-env-size-rec E sub-venv/refl sub-env/refl _ _ E.
 
-- : wf-sub-env-size-rec (wfe/c E _ _) (sub-venv/ext SH) (sub-env/ext SG) NH NG OUT
+- : wf-sub-env-size-rec (wfe/c E _ _ _ _ _) (sub-venv/ext SH) (sub-env/ext SG) NH NG OUT
  <- wf-sub-env-size-rec E SH SG NH NG OUT.
 
 - : wf-sub-env-size-rec E (sub-venv/ext SH) sub-env/refl NH NG OUT
@@ -1944,14 +1947,14 @@ wf-sub-env-size-rec0: wf-env H G -> sub-env GN G -> tsize GN N -> sub-venv HN H 
 
 - : wf-sub-env-size-rec0 wfe/n sub-env/refl tf/n sub-venv/refl vf/n.
 
-- : wf-sub-env-size-rec0 (wfe/c E _ WV) sub-env/refl (tf/c NG) SHO (vf/c NH)
+- : wf-sub-env-size-rec0 (wfe/c E _ WV _ _ _) sub-env/refl (tf/c NG) SHO (vf/c NH)
  <- wf-sub-env-size-rec0 E sub-env/refl NG SH NH
  <- wf-env-size-same0 E NG NH'
  <- sub-venv-size-unique (svs NH SH) (svs NH' sub-venv/refl) EQH
  <- eq-venv-cons EQH id-val/refl EQH'
  <- sub-venv-refl EQH' SHO.
 
-- : wf-sub-env-size-rec0 (wfe/c E _ _) (sub-env/ext SG) NG (sub-venv/ext SH) NH
+- : wf-sub-env-size-rec0 (wfe/c E _ _ _ _ _) (sub-env/ext SG) NG (sub-venv/ext SH) NH
  <- wf-sub-env-size-rec0 E SG NG SH NH.
 
 %worlds () (wf-sub-env-size-rec0 _ _ _ _ _).
@@ -3993,7 +3996,7 @@ wf-env-to-xt-env : wf-env H G -> xt-env H GC -> type.
 %mode wf-env-to-xt-env +A -B.
 
 -/n : wf-env-to-xt-env wfe/n xte/n.
--/c : wf-env-to-xt-env (wfe/c _ _ _) (xte/c XE OV XV)
+-/c : wf-env-to-xt-env (wfe/c _ _ _ _ _ _) (xte/c XE OV XV)
    <- xt-val-calc _ XV
    <- xt-env-calc _ XE
    <- ok-or-top-calc _ _ _ OV.
@@ -4028,7 +4031,7 @@ xt-env-tsize : wf-env H G -> xt-env H GH -> tsize G N -> tsize GH N -> type.
 
 -/n : xt-env-tsize wfe/n xte/n tf/n tf/n.
 
--/c : xt-env-tsize (wfe/c A _ _) (xte/c B _ _) (tf/c C) (tf/c D)
+-/c : xt-env-tsize (wfe/c A _ _ _ _ _) (xte/c B _ _) (tf/c C) (tf/c D)
    <- xt-env-tsize A B C D.
 
 %worlds () (xt-env-tsize _ _ _ _).
@@ -4841,7 +4844,7 @@ xt-seg: xt-env H GH -> wf-env H G -> seg GH G -> type.
 
 -/n : xt-seg xte/n wfe/n seg/nil.
 
--/c : xt-seg (xte/c XE (ot/top GT SG) (xtv/clo SHC)) (wfe/c WE WT (v/clo BT TDS SGC WEC XEC XE')) (seg/sub (stp1/a B1) WT R)
+-/c : xt-seg (xte/c XE (ot/top GT SG) (xtv/clo SHC)) (wfe/c WE WT (v/clo BT TDS SGC WEC XEC XE') _ _ _) (seg/sub (stp1/a B1) WT R)
    <- xt-seg XE WE R
    <- xt-env-unique XE' XE EQGH
    <- xt-env-tvsize XEC SGC SHC'
@@ -4852,13 +4855,31 @@ xt-seg: xt-env H GH -> wf-env H G -> seg GH G -> type.
    <- inv-stp2-bind-top BT'' SG GT B1
     .
 
--/cb: xt-seg (xte/c XE (ot/ok LTE SG) (xtv/clo SHC)) (wfe/c WE WT (v/clo BT TDS SGC WEC XEC XE')) (seg/sub B WT R)
+-/cb: xt-seg (xte/c XE (ot/ok LTE SG) (xtv/clo SHC)) (wfe/c WE WT (v/clo BT TDS SGC WEC XEC XE') (v/clo BT0 TDS0 SGC0 WEC0 XEC0 XE0) (ot/ok LTE0 SG0) (xtv/clo SHC0)) (seg/sub B WT R)
+   <- xt-seg XE WE R
+
    <- xt-env-unique XE' XE EQGH
    <- xt-env-tvsize XEC SGC SHC'
    <- vsize-unique SHC' SHC EQN
    <- eq-stp2-gu EQGH BT BT'
    <- eq-nat-bind EQN _ EQT
    <- eq-stp2-l EQT BT' BT''
+
+   <- xt-env-unique XE0 XE EQGH0
+   <- xt-env-tvsize XEC0 SGC0 SHC0'
+   <- vsize-unique SHC0' SHC0 EQN0
+   <- eq-stp2-gu EQGH0 BT0 BT0'
+   <- eq-nat-bind EQN0 _ EQT0
+   <- eq-stp2-l EQT0 BT0' BT0''
+
+   <- xt-env-unique XEC XEC0 EQGC
+   <- eq-stp2-gl EQGC BT'' BT'''
+   <- vsize-unique SHC0 SHC EQN'
+   <- eq-nat-bind EQN' _ EQT'
+   <- eq-stp2-l EQT' BT0'' BT0'''
+   <- eq-stp2-u EQT' BT0''' BT0''''
+
+   <- stp2-to-stp1-via-bind BT0'''' BT''' B
     .
 
 %worlds () (xt-seg _ _ _).
