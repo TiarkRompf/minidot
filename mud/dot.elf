@@ -887,13 +887,13 @@ dlk-unique-rec : dlk DS X D -> dlk DS' X D' -> id-dcs DS DS' -> id-dc D D' -> ty
 %worlds () (dlk-unique-rec _ _ _ _).
 %total (EQ) (dlk-unique-rec _ _ EQ _).
 
-eq-bind : id-nat N N' -> {DS} id-tp (bind N DS) (bind N' DS) -> type.
-%mode eq-bind +A +B -C.
+eq-nat-bind : id-nat N N' -> {DS} id-tp (bind N DS) (bind N' DS) -> type.
+%mode eq-nat-bind +A +B -C.
 
-- : eq-bind id-nat/refl _ id-tp/refl.
+- : eq-nat-bind id-nat/refl _ id-tp/refl.
 
-%worlds () (eq-bind _ _ _).
-%total (A) (eq-bind A _ _).
+%worlds () (eq-nat-bind _ _ _).
+%total (A) (eq-nat-bind A _ _).
 
 eq-some : id-topt (tsome L) (tsome L') -> id-tp L L' -> type.
 %mode eq-some +A -B.
