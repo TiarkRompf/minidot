@@ -3983,29 +3983,13 @@ xt-env-cons-ok : xt-env H G -> xt-val (clo HC DS IS) (bind NC DS) -> tsize G N -
 %worlds () (xt-env-cons-ok _ _ _ _ _).
 %total { } (xt-env-cons-ok _ _ _ _ _).
 
-xt-env-vcons : xt-env (vcons (clo HC DS IS) H) G -> vsize HC NC -> xt-env H G0 -> id-tenv G (tcons (bind NC DS) G0) -> type.
-%mode xt-env-vcons +A -B -C -D.
+xt-env-vcons : xt-env (vcons V H) G -> xt-env H G0 -> ok-or-top G0 T T' -> xt-val V T -> id-tenv G (tcons T' G0) -> type.
+%mode xt-env-vcons +A -B -C -D -E.
 
-- : xt-env-vcons (xte/c XE (xtv/clo VN)) VN XE id-tenv/refl.
+- : xt-env-vcons (xte/c XE OT XV) XE OT XV id-tenv/refl.
 
-%worlds () (xt-env-vcons _ _ _ _).
-%total (A) (xt-env-vcons A _ _ _).
-
-xt-env-vcons-out : xt-env (vcons (clo HC DS IS) H) G -> vsize HC NC -> xt-env H G0 -> id-tenv G (tcons (bind NC DS) G0) -> type.
-%mode xt-env-vcons-out +A +B +C -D.
-
-- : xt-env-vcons-out XEC VN XE EQ
- <- xt-env-vcons XEC VN' XE' EQ'
- <- vsize-unique VN' VN EQN
- <- xt-env-unique XE' XE EQG
- <- eq-nat-bind EQN _ EQT
- <- eq-env-cons EQG EQT EQTG
- <- id-tenv-trans EQ' EQTG EQ
-  .
-
-%worlds () (xt-env-vcons-out _ _ _ _).
-%total { } (xt-env-vcons-out _ _ _ _).
-}%
+%worlds () (xt-env-vcons _ _ _ _ _).
+%total (A) (xt-env-vcons A _ _ _ _).
 
 %{ ------- extension lemmas ------- }%
 
@@ -4119,6 +4103,39 @@ xt-env-sub-out :
 
 %worlds () (xt-env-sub-out _ _ _ _).
 %total { } (xt-env-sub-out _ _ _ _).
+
+
+xt-env-vcons-ok : xt-env (vcons (clo HC DS IS) H) G -> vsize H N -> vsize HC NC -> lte NC N -> xt-env H G0 -> id-tenv G (tcons (bind NC DS) G0) -> type.
+%mode xt-env-vcons-ok +A +B +C +D -E -F.
+
+- : xt-env-vcons-ok (xte/c XE OT (xtv/clo SHC')) SH SHC LTE XE EQG
+ <- xt-env-vsize XE SH SG
+ <- vsize-unique SHC' SHC EQN
+ <- eq-nat-bind EQN _ EQB
+ <- eq-ok-or-top EQB OT OT'
+ <- ok-or-top-unique OT' (ot/ok LTE SG) EQT
+ <- eq-env-cons id-tenv/refl EQT EQG
+  .
+
+%worlds () (xt-env-vcons-ok _ _ _ _ _ _).
+%total (A) (xt-env-vcons-ok A _ _ _ _ _).
+
+%{
+xt-env-vcons-out : xt-env (vcons (clo HC DS IS) H) G -> vsize HC NC -> xt-env H G0 -> id-tenv G (tcons (bind NC DS) G0) -> type.
+%mode xt-env-vcons-out +A +B +C -D.
+
+- : xt-env-vcons-out XEC VN XE EQ
+ <- xt-env-vcons XEC VN' XE' EQ'
+ <- vsize-unique VN' VN EQN
+ <- xt-env-unique XE' XE EQG
+ <- eq-nat-bind EQN _ EQT
+ <- eq-env-cons EQG EQT EQTG
+ <- id-tenv-trans EQ' EQTG EQ
+  .
+
+%worlds () (xt-env-vcons-out _ _ _ _).
+%total { } (xt-env-vcons-out _ _ _ _).
+}%
 
 %{ ------- inversion of typing ----- }%
 
