@@ -310,10 +310,10 @@ t/var : typ G (var N) T
      <- tlookup G N T
      <- wf-tp G T
       .
-t/new : typ G (new N DCS ICS) (bind N DCS)
+t/new : typ G (new N DS IS) (bind N DS)
      <- sub-env-size GN N G
-     <- typcs (tcons (bind N DCS) GN) ICS DCS
-     <- wf-tp GN (bind N DCS)
+     <- typcs (tcons (bind N DS) GN) IS DS
+     <- wf-tp GN (bind N DS)
       .
 t/app : typ G (app E1 X E2) T
      <- typ G E1 (bind N DS)
@@ -324,12 +324,12 @@ t/app : typ G (app E1 X E2) T
      <- wf-tp GN T
       .
 t/nil : typcs G inil dnil.
-t/fun : typcs G (icons (fun E) ICS) (dcons (arrow S U) DCS)
+t/fun : typcs G (icons (fun E) IS) (dcons (arrow S U) DS)
     <- typ (tcons S G) E U
-    <- typcs G ICS DCS
+    <- typcs G IS DS
       .
-t/non : typcs G (icons non ICS) (dcons (rect S U) DCS)
-    <- typcs G ICS DCS
+t/non : typcs G (icons non IS) (dcons (rect S U) DS)
+    <- typcs G IS DS
       .
 t/sub : typ G E U
      <- typ G E T
@@ -339,11 +339,11 @@ t/sub : typ G E U
 wf-val   : val -> tenv -> tp -> type.
 wf-env   : venv -> tenv -> type.
 
-v/clo : wf-val (clo H ICS) G T
+v/clo : wf-val (clo H IS) G T
      <- wf-env H GC
      <- tsize GC N
-     <- typcs (tcons (bind N DCS) GC) ICS DCS
-     <- stp2 GC (bind N DCS) G T
+     <- typcs (tcons (bind N DS) GC) IS DS
+     <- stp2 GC (bind N DS) G T
       .
 v/sub : wf-val V G U
      <- wf-val V G0 T
@@ -3738,11 +3738,11 @@ invert-var:
 %total (A) (invert-var A _ _).
 
 invert-new :
-  typ G (new N DCS ICS) T ->
+  typ G (new N DS IS) T ->
 %%
   sub-env-size GN N G ->
-  typcs (tcons (bind N DCS) GN) ICS DCS ->
-  stp2 GN (bind N DCS) G T ->
+  typcs (tcons (bind N DS) GN) IS DS ->
+  stp2 GN (bind N DS) G T ->
   type.
 %mode invert-new +A -B -C -D.
 
