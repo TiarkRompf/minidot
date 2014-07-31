@@ -1342,6 +1342,15 @@ id-lte : id-nat NA NB -> lte NA NB -> type.
 %worlds () (id-lte _ _).
 %total { } (id-lte _ _).
 
+lterefl : {N} lte N N -> type.
+%mode lterefl +N -LTE.
+
+- : lterefl _ LTE
+ <- id-lte id-nat/refl LTE.
+
+%worlds () (lterefl _ _).
+%total { } (lterefl _ _).
+
 eq-lte-l : id-nat NA NA' -> lte NA NB -> lte NA' NB -> type.
 %mode eq-lte-l +A +B -C.
 
@@ -5240,8 +5249,11 @@ eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
      <- wf-sub-env-size E SHS1 SEP EP
      <- xt-env-sub-out XE SHS1 SEP XEP
      <- xt-env-tvsize XEC SC SHC
+     <- lterefl _ LTE1
      <- eval-safe A3
-        (wfe/c (wfe/c WEC1' WT1' WV1' WV10' OT1' XV10') WT2' WV2' WV20' OT2' XV20')
+        (wfe/c
+           (wfe/c WEC WTC1 VC1 VC1 (ot/ok LTE1 SC) XVC1)
+           WT2' WV2' WV20' OT2' XV20')
         EV3 V3
       .
 
