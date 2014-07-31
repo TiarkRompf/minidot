@@ -4820,6 +4820,22 @@ inv-stp2-bind-top:
 %worlds () (inv-stp2-bind-top _ _ _ _).
 %total (A) (inv-stp2-bind-top A _ _ _).
 
+%{
+inv-stp2-bind-ok:
+      stp2 G1 (bind N1 DS) G2 T2 ->
+      tsize G2 N2 ->
+      lte N1 N2 ->
+%%
+      stp notrans G2 (bind N1 DS) T2 ->
+      type.
+%mode inv-stp2-bind-ok +A +B +C -D.
+
+-/top : inv-stp2-bind-ok (stp2/top _) _ _ (stp/top OUT).
+
+%worlds () (inv-stp2-bind-ok _ _ _ _).
+%total (A) (inv-stp2-bind-ok A _ _ _).
+}%
+
 xt-seg: xt-env H GH -> wf-env H G -> seg GH G -> type.
 %mode xt-seg +A +B -C.
 
@@ -4834,6 +4850,15 @@ xt-seg: xt-env H GH -> wf-env H G -> seg GH G -> type.
    <- eq-nat-bind EQN _ EQT
    <- eq-stp2-l EQT BT' BT''
    <- inv-stp2-bind-top BT'' SG GT B1
+    .
+
+-/cb: xt-seg (xte/c XE (ot/ok LTE SG) (xtv/clo SHC)) (wfe/c WE WT (v/clo BT TDS SGC WEC XEC XE')) (seg/sub B WT R)
+   <- xt-env-unique XE' XE EQGH
+   <- xt-env-tvsize XEC SGC SHC'
+   <- vsize-unique SHC' SHC EQN
+   <- eq-stp2-gu EQGH BT BT'
+   <- eq-nat-bind EQN _ EQT
+   <- eq-stp2-l EQT BT' BT''
     .
 
 %worlds () (xt-seg _ _ _).
