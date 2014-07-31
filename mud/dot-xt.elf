@@ -922,6 +922,11 @@ contra-stp2 : false -> {G1} {T1} {G2} {T2} stp2 G1 T1 G2 T2 -> type.
 %worlds () (contra-stp2 _ _ _ _ _ _).
 %total (A) (contra-stp2 A _ _ _ _ _).
 
+contra-stp : false -> {I1} {G} {T1} {T2} stp I1 G T1 T2 -> type.
+%mode contra-stp +CONTRA +I1 +G +T1 +T2 -A.
+%worlds () (contra-stp _ _ _ _ _ _).
+%total (A) (contra-stp A _ _ _ _ _).
+
 % --------------- more arithmetic lemmas ------------- %
 
 add-zero : add N N0 N -> id-nat N0 z -> type.
@@ -4791,6 +4796,50 @@ stp2-to-stp1-via-bind:
 %worlds () (stp2-to-stp1-via-bind _ _ _).
 %total {A B} (stp2-to-stp1-via-bind A B _).
 
+inv-stp2-bind-top:
+      stp2 G1 (bind N1 DS) G2 T2 ->
+      tsize G2 N2 ->
+      lte (s N2) N1 ->
+%%
+      stp notrans G2 top T2 ->
+      type.
+%mode inv-stp2-bind-top +A +B +C -D.
+
+-/top : inv-stp2-bind-top (stp2/top _) _ _ stp/top2.
+
+-/sel2: inv-stp2-bind-top (stp2/sel2 BTL BTU BLU M SE) SG2 LTE (stp/sel2 (stp/trans0 RL) BLU M SE)
+     <- inv-stp2-bind-top BTL SG2 LTE RL.
+
+-/bind: inv-stp2-bind-top (stp2/bind BDS12 BDS11 BDS22 SE1 SE2) SG2 LTE OUT
+     <- extract-sub-env-size SE2 SGN2 EN2
+     <- sub-env-size-lte EN2 SGN2 SG2 LTEN2
+     <- lte-contra LTEN2 LTE CONTRA
+     <- contra-stp CONTRA _ _ _ _ OUT
+      .
+
+%worlds () (inv-stp2-bind-top _ _ _ _).
+%total (A) (inv-stp2-bind-top A _ _ _).
+
+xt-seg: xt-env H GH -> wf-env H G -> seg GH G -> type.
+%mode xt-seg +A +B -C.
+
+-/n : xt-seg xte/n wfe/n seg/nil.
+
+-/c : xt-seg (xte/c XE (ot/top GT SG) (xtv/clo SHC)) (wfe/c WE WT (v/clo BT TDS SGC WEC XEC XE')) (seg/sub (stp1/a B1) WT R)
+   <- xt-seg XE WE R
+   <- xt-env-unique XE' XE EQGH
+   <- xt-env-tvsize XEC SGC SHC'
+   <- vsize-unique SHC' SHC EQN
+   <- eq-stp2-gu EQGH BT BT'
+   <- eq-nat-bind EQN _ EQT
+   <- eq-stp2-l EQT BT' BT''
+   <- inv-stp2-bind-top BT'' SG GT B1
+    .
+
+%worlds () (xt-seg _ _ _).
+%total {A B} (xt-seg A B _).
+
+%{
 xt-seg: xt-env H GH -> wf-env H GH -> wf-env H G -> seg GH G -> type.
 %mode xt-seg +A +B +C -D.
 
@@ -4819,6 +4868,7 @@ xt-seg: xt-env H GH -> wf-env H GH -> wf-env H G -> seg GH G -> type.
 
 %worlds () (xt-seg _ _ _ _).
 %total {A B C} (xt-seg A B C _).
+}%
 
 %{ ------- lookup preservation --- }%
 
