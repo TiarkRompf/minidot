@@ -930,6 +930,11 @@ contra-stp : false -> {I1} {G} {T1} {T2} stp I1 G T1 T2 -> type.
 %worlds () (contra-stp _ _ _ _ _ _).
 %total (A) (contra-stp A _ _ _ _ _).
 
+contra-stp1 : false -> {G} {T1} {T2} stp1 G T1 T2 -> type.
+%mode contra-stp1 +CONTRA +G +T1 +T2 -A.
+%worlds () (contra-stp1 _ _ _ _ _).
+%total (A) (contra-stp1 A _ _ _ _).
+
 % --------------- more arithmetic lemmas ------------- %
 
 add-zero : add N N0 N -> id-nat N0 z -> type.
@@ -1336,6 +1341,15 @@ id-lte : id-nat NA NB -> lte NA NB -> type.
 
 %worlds () (id-lte _ _).
 %total { } (id-lte _ _).
+
+eq-lte-l : id-nat NA NA' -> lte NA NB -> lte NA' NB -> type.
+%mode eq-lte-l +A +B -C.
+
+- : eq-lte-l id-nat/refl B B.
+
+%worlds () (eq-lte-l _ _ _).
+%total (A) (eq-lte-l A _ _).
+%reduces C <= B (eq-lte-l _ B  C).
 
 eq-lte-r : id-nat NB NB' -> lte NA NB -> lte NA NB' -> type.
 %mode eq-lte-r +A +B -C.
@@ -4880,6 +4894,19 @@ xt-seg: xt-env H GH -> wf-env H G -> seg GH G -> type.
    <- eq-stp2-u EQT' BT0''' BT0''''
 
    <- stp2-to-stp1-via-bind BT0'''' BT''' B
+    .
+
+-/cn: xt-seg (xte/c XE (ot/ok LTE SG) (xtv/clo SHC)) (wfe/c WE WT (v/clo BT TDS SGC WEC XEC XE') (v/clo BT0 TDS0 SGC0 WEC0 XEC0 XE0) (ot/top GT0 SG0) (xtv/clo SHC0)) (seg/sub B WT R)
+   <- xt-seg XE WE R
+
+   <- tsize-seg R SG0 SG'
+   <- tsize-unique SG SG' EQN0
+   <- vsize-unique SHC SHC0 EQN'
+   <- eq-lte-l EQN' LTE LTE'
+   <- eq-lte-r EQN0 LTE' LTE''
+   <- lte-contra LTE'' GT0 CONTRA
+
+   <- contra-stp1 CONTRA _ _ _ B
     .
 
 %worlds () (xt-seg _ _ _).
