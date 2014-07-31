@@ -4948,10 +4948,10 @@ xt-seg: xt-env H GH -> wf-env H GH -> wf-env H G -> seg GH G -> type.
 lookup-zero-safe: wf-env H G -> tlookup-zero G N2 T -> vlookup-zero H N1 V -> eq-nat N1 N2 -> wf-val V H T -> type.
 %mode lookup-zero-safe +A +B +C +D -E.
 
--      : lookup-zero-safe (wfe/c _ _ V) tl/hit vl/hit eq-nat/z V'
+-      : lookup-zero-safe (wfe/c _ _ V _ _ _) tl/hit vl/hit eq-nat/z V'
       <- extend-wfv V _ V'
        .
--      : lookup-zero-safe (wfe/c G _ _) (tl/miss A) (vl/miss B) (eq-nat/s E) Z'
+-      : lookup-zero-safe (wfe/c G _ _ _ _ _) (tl/miss A) (vl/miss B) (eq-nat/s E) Z'
          <- lookup-zero-safe G A B E Z
          <- extend-wfv Z _ Z'.
 
@@ -4972,26 +4972,22 @@ lookup-safe: wf-env H G -> tlookup G N T -> vlookup H N V -> wf-val V H T -> typ
 
 %{ ------- widening lemmas ------- }%
 
-wfv-widen: xt-env H GH -> wf-env H GH -> wf-env H G -> stp1 G T1 T2 -> wf-val V H T1 -> wf-val V H T2 -> type.
-%mode wfv-widen +A +B +C +D +E -F.
+wfv-widen: wf-env H G -> stp1 G T1 T2 -> wf-val V H T1 -> wf-val V H T2 -> type.
+%mode wfv-widen +A +B +C -D.
 
 - : wfv-widen
-     XE
-     WEX
      WE
      B12
-     (v/clo BC1 TDS TC WEC XEC XE')
-     (v/clo BC2 TDS TC WEC XEC XE')
- <- xt-env-unique XE XE' EQGH
- <- eq-wf-env EQGH WEX WEX'
- <- xt-seg XE' WEX' WE BE
+     (v/clo BC1 TDS TC WEC XEC XE)
+     (v/clo BC2 TDS TC WEC XEC XE)
+ <- xt-seg XE WE BE
  <- narrow1* B12 BE B12'
  <- stp1-to-stp2 B12' B12''
  <- trans2 BC1 B12'' BC2
   .
 
-%worlds () (wfv-widen _ _ _ _ _ _).
-%total (V) (wfv-widen _ _ _ _ V _).
+%worlds () (wfv-widen _ _ _ _).
+%total (V) (wfv-widen _ _ V _).
 
 wfv-widen-seg: xt-env H GH -> wf-env H G -> seg GH G -> stp1 G T1 T2 -> wf-val V H T1 -> wf-val V H T2 -> type.
 %mode wfv-widen-seg +A +B +C +D +E -F.
@@ -5202,18 +5198,20 @@ invert-eval-var: eval H (var N) V -> sub-venv-size HN N H -> sub-venv-size (vcon
 
 %{ ------- type preservation ----- }%
 
-eval-safe: typ G E T -> wf-env H G -> xt-env H GH -> seg GH G -> eval H E V -> wf-val V H T -> type.
-%mode eval-safe +A +B +C +D +E -F.
+eval-safe: typ G E T -> wf-env H G -> eval H E V -> wf-val V H T -> type.
+%mode eval-safe +A +B +C -D.
 
--/var : eval-safe A E XE BE (e/var L) V
+-/var : eval-safe A E (e/var L) V
      <- invert-var A LA BA
      <- lookup-safe E LA L V'
-     <- wfv-widen-seg XE E BE BA V' V
+     <- wfv-widen E BA V' V
       .
 
--/new : eval-safe A E XE BE (e/new SV) (v/clo B' TDS' SC E' XEC XE)
+-/new : eval-safe A E (e/new SV) (v/clo B' TDS' SC E' XEC XE)
      <- invert-new A SE TDS WC BC
      <- wf-sub-env-size E SV SE E'
+     <- wf-env-to-xt-env E XE
+     <- xt-seg XE E BE
      <- seg-sub-size SE BE SEN BEN
      <- narrow1-wf WC BEN WC'
      <- seg-refl-cons BEN WC WC' BEN'
