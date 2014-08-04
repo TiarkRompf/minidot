@@ -1,0 +1,628 @@
+% echo "set unsafe true 
+% loadFile xxx.elf" |/Users/me/Desktop/tryout/twelf/bin/twelf-server
+
+
+nat: type.
+z: nat.
+s: nat -> nat.
+
+add : nat -> nat -> nat -> type.
+add/z : add z N N.
+add/s : add (s N1) N2 (s N3)
+   <- add N1 N2 N3.
+
+%mode add +N1 +N2 -N3.
+
+lte : nat -> nat -> type.
+lte/z : lte z N.
+lte/s : lte (s N1) (s N2) 
+   <- lte N1 N2.
+
+%mode lte +N1 +N2.
+
+
+ne : nat -> nat -> type.
+ne/z : ne z (s N).
+ne/z : ne (s N) z.
+ne/s : ne (s N1) (s N2) 
+   <- ne N1 N2.
+
+%mode ne +N1 +N2.
+
+
+%query 0 * lte (s (s z)) (s z).
+%query 1 * lte (s (s z)) (s (s z)).
+
+
+
+%{ ------- language ----- }%
+
+% sorts
+exp: type.
+tpe: type.
+val: type.
+
+venv: type.
+tenv: type.
+
+
+% expressions
+lit: nat -> exp.
+var: nat -> nat -> exp. %% second nat is env size - X for (var X). removes need for uniqueness lemmas.
+fun: tpe -> exp -> exp.
+app: exp -> exp -> exp.
+
+% type or no type
+topt  : type.
+tsome : tpe -> topt.
+tnone : topt.
+
+% types
+int  : tpe.
+bool : tpe.
+top  : tpe.
+bot  : tpe.
+arrow: topt -> tpe -> tpe -> tpe.
+sel  : nat -> tpe.
+
+% values
+cst: nat -> val.
+clos: tpe -> exp -> venv -> val.
+
+% environments
+vnil  : venv.
+vcons : val -> venv -> venv.
+tnil  : tenv.
+tcons : tpe -> tenv -> tenv.
+
+
+%{ ------- environments ----- }%
+
+
+
+vsize : venv -> nat -> type.
+%mode vsize +A -B.
+vf/n   : vsize vnil z.
+vf/c   : vsize (vcons V H) (s N) <- vsize H N.
+%worlds () (vsize _ _).
+%total A (vsize A _).
+
+tsize : tenv -> nat -> type.
+tf/n   : tsize tnil z.
+tf/c   : tsize (tcons V G) (s N) <- tsize G N.
+
+
+sub-env: tenv -> nat -> tenv -> nat -> type.
+
+sub-env/z: sub-env tnil z tnil z.
+sub-env/sz: sub-env (tcons T G1) (s N) (tcons T G2) z <- sub-env G1 N G2 z.
+sub-env/ext: sub-env G1 N1 (tcons Z G2) (s N2) <- sub-env G1 N1 G2 N2.
+
+sub-env-size: tenv -> nat -> tenv -> type.
+ses: sub-env-size GN N G
+      <- sub-env GN N G N2.
+
+sub-venv: venv -> nat -> venv -> nat -> type.
+
+sub-venv/z: sub-venv vnil z vnil z.
+sub-venv/sz: sub-venv (vcons T G1) (s N) (vcons T G2) z <- sub-venv G1 N G2 z.
+sub-venv/ext: sub-venv G1 N1 (vcons Z G2) (s N2) <- sub-venv G1 N1 G2 N2.
+
+sub-venv-size: venv -> nat -> venv -> type.
+svs: sub-venv-size GN N G
+      <- sub-venv GN N G N2.
+
+
+
+
+%{ ------- subtyping ------ }%
+
+wf-tp : tenv -> tpe -> type.
+
+wf-tpo : tenv -> topt -> type.
+
+
+wf-tp/int  : wf-tp G1 int.
+wf-tp/top  : wf-tp G1 top.
+
+wf-tp/fun  : wf-tp G1 (arrow S1 T1 T2)
+              <- wf-tpo G1 S1
+              <- wf-tp G1 T1
+              <- wf-tp G1 T2
+              .
+
+wf-tpo/abs  : wf-tpo G1 (tsome T2)
+              <- wf-tp G1 T2.
+wf-tpo/refl  : wf-tpo G1 tnone.
+
+wf-tp/sel  : wf-tp G1 (sel X)
+                <- sub-env-size (tcons (arrow _ _ _) GN) (s X) G1
+                .
+
+
+stp : venv -> tpe -> venv -> tpe -> type.
+
+stpo : venv -> topt -> venv -> topt -> type.
+
+
+stp/int  : stp H1 int H2 int.
+stp/top  : stp H1 T1 H2 top.
+
+stp/fun  : stp H1 (arrow S1 T1 T2) H2 (arrow S2 T3 T4)
+              <- stpo H1 S1 H2 S2
+              <- stp H2 T3 H1 T1
+              <- stp H1 T2 H2 T4
+              .
+
+stpo/abs  : stpo H1 (tsome TX) H2 tnone
+              <- stp H1 TX H2 TX
+              <- stp H2 TX H1 TX.
+stpo/some  : stpo H1 (tsome TX) H2 (tsome TX)
+              <- stp H1 TX H2 TX
+              <- stp H2 TX H1 TX.
+stpo/none  : stpo H1 tnone H2 tnone.
+
+
+stp/sel1  : stp H1 (sel N) H2 T2
+              <- sub-venv (vcons (clos (arrow (tsome TX) TA TB) RX HX) HN) (s N) H1 HG
+              <- stp (vcons (clos (arrow (tsome TX) TA TB) RX HX) HX) TX H2 T2
+              .
+
+stp/sel2  : stp H1 T1 H2 (sel N)
+              <- sub-venv (vcons (clos (arrow (tsome TX) TA TB) RX HX) HN) (s N) H2 HG
+              <- stp H1 T1 (vcons (clos (arrow (tsome TX) TA TB) RX HX) HX) TX
+              .
+
+
+
+
+%{ ------- eval-exp / type-exp ----- }%
+
+eval-exp   : venv -> exp -> val -> type.
+
+e/lit      : eval-exp G (lit C) (cst C).
+
+e/var      : eval-exp G (var X NG) V 
+                <- sub-venv (vcons V GN) (s X) G NG.
+
+e/fun      : eval-exp (vcons (clos T R G) G) (fun T R) (clos T R G).
+
+
+e/app      : eval-exp   (vcons (clos (arrow S1 T1 T2) R G1) G2) (app E1 E2) V3
+            <- eval-exp (vcons (clos (arrow S1 T1 T2) R G1) G2) E1 (clos (arrow S1 T1 T2) R G1)
+            <- eval-exp (vcons (clos (arrow S1 T1 T2) R G1) G2) E2 V2
+            <- eval-exp (vcons V2 (vcons (clos (arrow S1 T1 T2) R G1) G1)) R V3.
+
+
+type-exp   : tenv -> exp -> tpe -> type.
+
+t/var      : type-exp G (var X NG) T 
+                <- sub-env (tcons T GN) (s X) G NG
+                <- wf-tp G T
+                .
+
+t/vara      : type-exp G (var X NG) (sel N) 
+                <- sub-env (tcons TX GX) (s X) G NG
+                <- sub-env (tcons (arrow (tsome TX) _ _) GN) (s N) G _ %% ??
+                <- wf-tp G (sel N)
+                .
+
+t/varc      : type-exp G (var X NG) TX 
+                <- sub-env (tcons (sel N) GX) (s X) G NG
+                <- sub-env (tcons (arrow (tsome TX) _ _) GN) (s N) G _ %% ??
+                <- wf-tp G (sel N)
+                .
+
+
+t/fun      : type-exp (tcons (arrow tnone T1 T2) G) (fun (arrow (tsome S1) T1 T2) R) (arrow tnone T1 T2)
+                <- type-exp (tcons T1 (tcons (arrow (tsome S1) T1 T2) G)) R T2
+                <- wf-tp (tcons (arrow (tsome S1) T1 T2) G) (arrow (tsome S1) T1 T2)
+                <- wf-tp (tcons (arrow tnone T1 T2) G) (arrow (tsome S1) T1 T2)
+                .
+
+t/app       : type-exp  (tcons (arrow S1 T1 T2) G) (app E1 E2) T2
+            <- type-exp (tcons (arrow S1 T1 T2) G) E1 (arrow S1 T1 T2) 
+            <- type-exp (tcons (arrow S1 T1 T2) G) E2 T1
+            <- wf-tp    (tcons (arrow S1 T1 T2) G) T2
+            .
+
+
+%{ ------- well-formedness / typing for values and environment ----- }%
+
+wf-val   : venv -> val -> tpe -> type.
+wf-env   : venv -> tenv -> type.
+
+
+wfv/f    : wf-val HE (clos (arrow (tsome S1) T3 T4) R H) TE
+            <- wf-env H G
+            <- type-exp (tcons T3 (tcons (arrow (tsome S1) T3 T4) G)) R T4
+            <- wf-tp (tcons (arrow (tsome S1) T3 T4) G) T4
+            <- stp (vcons (clos (arrow (tsome S1) T3 T4) R H) H)
+                                (arrow (tsome S1) T3 T4)
+                    HE TE
+            .
+
+
+wfe/n    : wf-env vnil tnil. 
+wfe/c    : wf-env (vcons V H) (tcons T G) 
+            <- wf-val (vcons V H) V T 
+            <- wf-env H G.
+
+
+
+%{ ------- queries ----- }%
+
+
+%query 1 1 type-exp (tcons int (tcons top tnil)) (var z _) top.
+%query 1 1 type-exp (tcons int (tcons top tnil)) (var (s z) _) int.
+
+
+% --- test 1: return a fresh function and assign it a type selection
+
+
+t01 = (arrow (tsome int) int int).
+
+t11 = (arrow tnone int int).
+
+t02 = (arrow (tsome int) (sel (s z)) (sel (s z))).
+
+t12 = (arrow tnone (sel (s z)) (sel (s z))).
+
+
+%query 1 1 type-exp (tcons t11 (tcons int tnil)) (fun t01 (var (s (s z)) _)) t11.
+
+%query 1 1 type-exp (tcons t12 (tcons int tnil)) (fun t02 (var (s (s z)) _)) t12.
+
+
+
+%query 1 1 type-exp (tcons t11 (tcons int tnil)) (app (fun t01 (var (s (s z)) _)) (var (z) _)) int.
+
+%query 1 1 type-exp (tcons t12 (tcons (sel (s z)) tnil)) (app (fun t02 (var (s (s z)) _)) (var (z) _)) (sel (s z)).
+
+%query 1 0 type-exp (tcons t12 (tcons (sel (s z)) tnil)) (app (fun t01 (var (s (s z)) _)) (var (z) _)) T.
+
+
+t00 = (arrow tnone int int).
+
+t01 = (arrow (tsome t00) t00 t00).
+
+t11 = (arrow tnone t00 t00).
+
+t02 = (arrow (tsome t00) (sel (s z)) (sel (s z))).
+
+t12 = (arrow tnone (sel (s z)) (sel (s z))).
+
+
+%query 1 1 type-exp (tcons t11 (tcons t00 tnil)) (app (fun t01 (var (s (s z)) _)) (var (z) _)) t00.
+
+%query 1 1 type-exp (tcons t12 (tcons (sel (s z)) tnil)) (app (fun t02 (var (s (s z)) _)) (var (z) _)) (sel (s z)).
+
+%query 1 0 type-exp (tcons t12 (tcons (sel (s z)) tnil)) (app (fun t01 (var (s (s z)) _)) (var (z) _)) T.
+
+
+% --- now test branding/abstraction: take a value of a concrete type and return it as path dependent type
+
+t00 = (arrow tnone int int).
+
+t01 = (arrow (tsome t00) t00 t00).
+
+t11 = (arrow tnone       t00 t00).
+
+t02 = (arrow (tsome t00) t00 (sel (s z))).
+
+t12 = (arrow tnone       t00 (sel (s z))).
+
+
+%query 1 1 type-exp (tcons t11 (tcons t00 tnil)) (fun t01 (var (s (s z)) _)) T.
+
+%query 1 1 type-exp (tcons t12 (tcons t00 tnil)) (fun t02 (var (s (s z)) _)) T.
+
+
+
+%query 1 1 type-exp (tcons t11 (tcons t00 tnil)) (app (fun t01 (var (s (s z)) _)) (var (z) _)) t00.
+
+%query 1 1 type-exp (tcons t12 (tcons t00 tnil)) (app (fun t02 (var (s (s z)) _)) (var (z) _)) (sel (s z)).
+
+%query 1 0 type-exp (tcons t12 (tcons (sel (s z)) tnil)) (app (fun t01 (var (s (s z)) _)) (var (z) _)) T.
+
+
+
+
+% --- now test un-branding: take a path dependent type and return it as value of a concrete type
+
+t00 = (arrow tnone int int).
+
+t01 = (arrow (tsome t00) t00 t00).
+
+t11 = (arrow tnone       t00 t00).
+
+t02 = (arrow (tsome t00) (sel (s z)) t00).
+
+t12 = (arrow tnone       (sel (s z)) t00).
+
+
+%query 1 1 type-exp (tcons t11 (tcons t00 tnil)) (fun t01 (var (s (s z)) _)) T.
+
+%query 1 1 type-exp (tcons t12 (tcons t00 tnil)) (fun t02 (var (s (s z)) _)) T.
+
+
+
+%query 1 1 type-exp (tcons t11 (tcons t00 tnil)) (app (fun t01 (var (s (s z)) _)) (var (z) _)) t00.
+
+%query 1 1 type-exp (tcons t12 (tcons (sel (s z)) tnil)) (app (fun t02 (var (s (s z)) _)) (var (z) _)) t00.
+
+%query 1 0 type-exp (tcons t12 (tcons (sel (s z)) tnil)) (app (fun t01 (var (s (s z)) _)) (var (z) _)) T.
+
+
+
+
+%%  ---- TODO: begin trustmes ----
+
+%% connect 
+
+stp-refl:
+{W:wf-tp G T}
+{WE:wf-env H G}
+{STX1:stp H T H T}
+type.
+%mode stp-refl +A +B -C.
+%worlds () (stp-refl _ _ _).
+%trustme
+%total (A) (stp-refl A _ _).
+
+stp-extract:
+{ST12:stp H1 T1 H2 T2}
+{ST1:stp H1 T1 H1 T1}
+{ST2:stp H2 T2 H2 T2}
+type.
+%mode stp-extract +A -B -C.
+%worlds () (stp-extract _ _ _).
+%trustme
+%total (A) (stp-extract A _ _).
+
+stp-extend1:
+{ST:stp H1 T1 H2 T2}
+{Z}
+{ST':stp (vcons Z H1) T1 H2 T2}
+type.
+%mode stp-extend1 +A +B -C.
+%worlds () (stp-extend1 _ _ _).
+%trustme
+%total (A) (stp-extend1 A _ _).
+
+stp-extend2:
+{ST:stp H1 T1 H2 T2}
+{Z}
+{ST':stp H1 T1 (vcons Z H2) T2}
+type.
+%mode stp-extend2 +A +B -C.
+%worlds () (stp-extend2 _ _ _).
+%trustme
+%total (A) (stp-extend2 A _ _).
+
+stp-trans: stp H1 T1 H2 T2 -> stp H2 T2 H3 T3 -> stp H1 T1 H3 T3 -> type.
+%mode stp-trans +A +B -E.
+%worlds () (stp-trans _ _ _).
+%trustme
+%total A (stp-trans A _ _).
+
+
+%%% ---- end trustmes ----
+
+
+wfv-widen: wf-val H V T -> stp H T H1 T1 -> wf-val H1 V T1 -> type.
+%mode wfv-widen +A +B -E.
+
+- : wfv-widen (wfv/f ST A B C) ST2 (wfv/f ST' A B C) <- stp-trans ST ST2 ST'.
+
+%worlds () (wfv-widen _ _ _).
+%total A (wfv-widen A _ _).
+
+
+wfv-extend: wf-val H V T -> {V1: val} wf-val (vcons V1 H) V T -> type.
+%mode wfv-extend +A +B -E.
+
+- : wfv-extend (wfv/f ST A B C) V (wfv/f ST' A B C) 
+      <- stp-extend2 ST V ST'.
+
+%worlds () (wfv-extend _ _ _).
+%total A (wfv-extend A _ _).
+
+
+
+% lookup safe
+
+lookup-safe: wf-env H G -> 
+             sub-env (tcons T GN) (s X) G N -> 
+             sub-venv (vcons V HN) (s X) H N -> 
+             wf-val H V T -> type.
+%mode lookup-safe +A +B +C -D.
+
+-      : lookup-safe (wfe/c W1 V) (sub-env/sz _) (sub-venv/sz _) V. 
+
+-      : lookup-safe (wfe/c W1 V) (sub-env/ext G1) (sub-venv/ext H1) V''
+           <- lookup-safe W1 G1 H1 V'
+           <- wfv-extend V' _ V''.
+
+%worlds () (lookup-safe _ _ _ _).
+%total A (lookup-safe A _ _ _).
+
+
+
+sub-venv-refl0: {G}
+             sub-venv G N G z -> 
+             type.
+%mode sub-venv-refl0 +A -C.
+
+-      : sub-venv-refl0 vnil sub-venv/z.
+-      : sub-venv-refl0 (vcons V H) (sub-venv/sz E) <- sub-venv-refl0 H E.
+
+%worlds () (sub-venv-refl0 _ _).
+%total {A} (sub-venv-refl0 A _).
+
+
+
+sub-venv-refl: wf-env H1 G1 -> 
+             sub-env G N G1 z -> 
+             sub-venv H N H1 z -> 
+             type.
+%mode sub-venv-refl +A +B -C.
+
+-      : sub-venv-refl wfe/n sub-env/z sub-venv/z.
+-      : sub-venv-refl (wfe/c W1 V) (sub-env/sz G1) (sub-venv/sz G2)
+          <- sub-venv-refl W1 G1 G2.
+
+%worlds () (sub-venv-refl _ _ _).
+%total A (sub-venv-refl A _ _).
+
+
+lookup-safe-cons: wf-env H G -> 
+             sub-env (tcons T GN) (s X) G N -> 
+             sub-venv (vcons V HN) (s X) H N -> 
+             wf-val H V T -> type.
+%mode lookup-safe-cons +A +B -C -D.
+
+-      : lookup-safe-cons (wfe/c W1 V) (sub-env/sz G1) (sub-venv/sz G2) V
+          <- sub-venv-refl W1 G1 G2.
+
+-      : lookup-safe-cons (wfe/c W1 V) (sub-env/ext G1) (sub-venv/ext H1) V''
+           <- lookup-safe-cons W1 G1 H1 V'
+           <- wfv-extend V' _ V''
+         .
+
+%worlds () (lookup-safe-cons _ _ _ _).
+%total A (lookup-safe-cons A _ _ _).
+
+
+lookup-safe-cons-fun2: 
+             wf-val H V (arrow (tsome T1) T2 T3) -> 
+             sub-venv (vcons V HN) N H z -> 
+             sub-venv (vcons (clos (arrow (tsome T1) T2' T3') RX HX) HN) N H z -> 
+             stp H T1 (vcons (clos (arrow (tsome T1) T2' T3') RX HX) HX) T1 ->
+             stp (vcons (clos (arrow (tsome T1) T2' T3') RX HX) HX) T1 H T1 ->
+             type.
+%mode lookup-safe-cons-fun2 +A +B -C -D -E.
+
+-      : lookup-safe-cons-fun2 (wfv/f (stp/fun _ _ (stpo/some SXDD1 SXDD2)) _ _ _) SE SE SXDD1 SXDD2.
+
+%worlds () (lookup-safe-cons-fun2 _ _ _ _ _).
+%total (A) (lookup-safe-cons-fun2 A _ _ _ _).
+
+
+lookup-safe-cons-fun: 
+             wf-env H G -> 
+             sub-env (tcons (arrow (tsome T1) T2 T3) GN) (s X) G N -> 
+             sub-venv (vcons (clos (arrow (tsome T1) T2' T3') RX HX) HN) (s X) H N -> 
+             stp H T1 (vcons (clos (arrow (tsome T1) T2' T3') RX HX) HX) T1 ->
+             stp (vcons (clos (arrow (tsome T1) T2' T3') RX HX) HX) T1 H T1 ->
+             type.
+%mode lookup-safe-cons-fun +A +B -C -E -F.
+
+-      : lookup-safe-cons-fun (wfe/c W1 WV) (sub-env/sz G1) G3 SXDD1 SXDD2
+          <- sub-venv-refl W1 G1 G2
+          <- lookup-safe-cons-fun2 WV (sub-venv/sz G2) G3 SXDD1 SXDD2.
+
+-      : lookup-safe-cons-fun (wfe/c W1 V) (sub-env/ext G1) (sub-venv/ext H1) SXDD1' SXDD2'
+           <- lookup-safe-cons-fun W1 G1 H1 SXDD1 SXDD2
+           <- stp-extend1 SXDD1 _ SXDD1'
+           <- stp-extend2 SXDD2 _ SXDD2'
+         .
+
+%worlds () (lookup-safe-cons-fun _ _ _ _ _).
+%total (A) (lookup-safe-cons-fun _ A _ _ _).
+
+
+
+
+
+eval-safe: type-exp G E T -> wf-env H G -> eval-exp H E V -> wf-val H V T -> type.
+%mode eval-safe +A +B +C -D.
+
+
+eval-app-safe: wf-val H1 (clos (arrow S1 TA1 TA2) E H) (arrow S T1 T2) ->
+               wf-val H1 V2 T1 -> 
+               eval-exp (vcons V2 (vcons (clos (arrow S1 TA1 TA2) E H) H)) E V3 -> 
+               wf-val H1 V3 T2 -> type.
+%mode eval-app-safe +A +B +D -C.
+
+-       : eval-app-safe  
+          (wfv/f 
+              (stp/fun SR SA SM)
+              WF
+              (TR : type-exp (tcons T3 (tcons _ G0)) R T4)
+              (WE1: wf-env HC0 G0)
+          )
+          WVX EV3 Z'
+
+          <- stp-extract (stp/fun SR SA SM) SF _
+
+          <- stp-extend2 SA _ SA'
+          <- stp-extend1 SR _ SR'
+
+          <- wfv-widen WVX SA' WVX'
+
+          <- eval-safe                 % eval F(X)
+              (TR: type-exp (tcons T3 (tcons _ G0)) R T4)
+
+              (wfe/c (wfe/c WE1 (wfv/f SF WF TR WE1)) WVX')
+              (EV3: eval-exp (vcons V2 (vcons _ HC0)) R V3) 
+              (Z: wf-val _ V3 T4)
+
+          <- wfv-widen Z SR' Z'
+          .
+
+
+
+-       : eval-safe (t/var W L) E (e/var L2) V
+          <- lookup-safe E L L2 V
+          .
+-       : eval-safe (t/vara W L2 L1) E (e/var LH) V'
+          <- lookup-safe E L1 LH V
+          <- lookup-safe-cons-fun E L2 LH2 STX _
+          <- wfv-widen V (stp/sel2 STX LH2) V'
+          .
+
+-       : eval-safe (t/varc W L2 L1) E (e/var LH) V'
+          <- lookup-safe E L1 LH V
+          <- lookup-safe-cons-fun E L2 LH2 _ STX
+          <- wfv-widen V (stp/sel1 STX LH2) V'
+          .
+
+
+-      : eval-safe (t/fun (wf-tp/fun WFR WFA (wf-tpo/abs WFX)) (wf-tp/fun WFR' _ _) TS) 
+                   (wfe/c E EX) (e/fun) 
+                   (wfv/f (stp/fun SR SA (stpo/abs SX SX)) WFR' TS E)
+          <- stp-refl WFR (wfe/c E EX) SR
+          <- stp-refl WFA (wfe/c E EX) SA
+          <- stp-refl WFX (wfe/c E EX) SX
+          .
+
+
+-      : eval-safe 
+            (t/app ST TX TF)
+            (WE: wf-env _ (tcons _ _))
+            (e/app
+              (EV3: eval-exp (vcons V2 (vcons _ HC0)) R V3) 
+              (EVX: eval-exp _ EXP2 V2) 
+              (EVF: eval-exp _ EXP1 (clos _ R HC0))
+            )
+            Z2
+
+          <- eval-safe          % eval X
+              (TX: type-exp _ _ T1)
+              WE 
+              EVX 
+              (WVX: wf-val _ V2 T1)
+
+          <- eval-safe          % eval F
+              TF
+              WE 
+              (EVF: eval-exp _ EXP1 (clos _ R HC0))
+              (ZF: wf-val _ _ (arrow _ T1 T2))
+
+          <- eval-app-safe ZF WVX EV3 Z2
+          .
+
+%worlds () (eval-safe _ _ _ _)(eval-app-safe _ _ _ _).
+%total {(C C') (A A')} (eval-safe A _ C _)(eval-app-safe A' _ C' _). % induction on eval-exp
+
