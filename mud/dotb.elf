@@ -1578,11 +1578,6 @@ tsize-sub-contra : sub-env GN G -> tsize GN N -> tsize (tcons T G) N -> false ->
 %worlds () (tsize-sub-contra _ _ _ _).
 %total (A) (tsize-sub-contra A _ _ _).
 
-contra-wf-env : false -> {H} {G} wf-env H G -> type.
-%mode contra-wf-env +CONTRA +H +G -A.
-%worlds () (contra-wf-env _ _ _ _).
-%total (A) (contra-wf-env A _ _ _).
-
 eq-vsize : vsize G N -> id-nat N N' -> vsize G N' -> type.
 %mode eq-vsize +A +EQ -B.
 
@@ -3439,16 +3434,6 @@ no-res-val-get : false -> {OV} {V} res-val-get OV V -> type.
 %mode no-res-val-get +A +B -C -D.
 %worlds () (no-res-val-get _ _ _ _).
 %total A (no-res-val-get A _ _ _).
-
-no-wfv : false -> {V} {G} {T} wf-val V G T -> type.
-%mode no-wfv +A +B +C +D -E.
-%worlds () (no-wfv _ _ _ _ _).
-%total A (no-wfv A _ _ _ _).
-
-no-wf-res : false -> {OV} {G} {T} wf-res OV G T -> type.
-%mode no-wf-res +A +B +C +D -E.
-%worlds () (no-wf-res _ _ _ _ _).
-%total A (no-wf-res A _ _ _ _).
 
 minus-to-add : add X MG S -> minus S X MH R -> add X MH S -> eq-nat MG MH -> type.
 %mode minus-to-add +A +B -C -D.
