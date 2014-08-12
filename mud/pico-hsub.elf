@@ -173,7 +173,10 @@ stp/sel2  : stp H1 T1 H2 (sel N)
               <- stp H1 T1 (vcons (clos (arrow (tsome TX) TA TB) RX HX) HX) TX
               .
 
-
+stp/selx  : stp H1 (sel N1) H2 (sel N2)
+              <- sub-venv (vcons (clos (arrow (tsome TX) TA TB) RX HX) HN1) (s N1) H1 HG1
+              <- sub-venv (vcons (clos (arrow (tsome TX) TA TB) RX HX) HN2) (s N2) H2 HG2
+              .
 
 
 %{ ------- eval-exp / type-exp ----- }%
@@ -355,10 +358,33 @@ t12 = (arrow tnone       (sel (s z)) t00).
 
 
 
+%%  ---- connect ----
 
-%%  ---- TODO: begin trustmes ----
+wf-sub-env-val:
+  wf-env H G ->
+  sub-env-size (tcons T GN) (s X) G ->
+%%
+  sub-venv (vcons V HN) (s X) H HG ->
+  wf-val (vcons V HN) V T ->
+  type.
+%mode wf-sub-env-val +A +B -C -D.
 
-%% connect 
+%worlds () (wf-sub-env-val _ _ _ _).
+%trustme
+%total {A B} (wf-sub-env-val A B _ _).
+
+wf-val-arrow-extract:
+  wf-val (vcons V HN) V (arrow _ _ _) ->
+  sub-venv (vcons V HN) X H HG ->
+%%
+  sub-venv (vcons (clos (arrow (tsome T1) T2 T3) RX HX) HN) X H HG ->
+  type.
+%mode wf-val-arrow-extract +A +B -C.
+
+-/f : wf-val-arrow-extract (wfv/f _ _ _ _) SHS SHS.
+
+%worlds () (wf-val-arrow-extract _ _ _).
+%total (A) (wf-val-arrow-extract A _ _).
 
 stp-refl:
 {W:wf-tp G T}
@@ -366,9 +392,34 @@ stp-refl:
 {STX1:stp H T H T}
 type.
 %mode stp-refl +A +B -C.
-%worlds () (stp-refl _ _ _).
-%trustme
-%total (A) (stp-refl A _ _).
+stpo-refl:
+{W:wf-tpo G T}
+{WE:wf-env H G}
+{STX1:stpo H T H T}
+type.
+%mode stpo-refl +A +B -C.
+
+-/int : stp-refl wf-tp/int _ stp/int.
+
+-/top : stp-refl wf-tp/top _ stp/top.
+
+-/fun : stp-refl (wf-tp/fun WT2 WT1 WS1) WE (stp/fun BT2 BT1 BS1)
+     <- stp-refl WT2 WE BT2
+     <- stp-refl WT1 WE BT1
+     <- stpo-refl WS1 WE BS1.
+
+-/sel : stp-refl (wf-tp/sel SES) WE (stp/selx SHS' SHS')
+     <- wf-sub-env-val WE SES SHS WV
+     <- wf-val-arrow-extract WV SHS SHS'
+      .
+
+-/abs : stpo-refl (wf-tpo/abs W) WE (stpo/some B B)
+     <- stp-refl W WE B.
+
+-/refl: stpo-refl wf-tpo/refl _ stpo/none.
+
+%worlds () (stp-refl _ _ _) (stpo-refl _ _ _).
+%total (A1 A2) (stp-refl A1 _ _) (stpo-refl A2 _ _).
 
 stp-extract:
 {ST12:stp H1 T1 H2 T2}
