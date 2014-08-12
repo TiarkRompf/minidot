@@ -146,7 +146,9 @@ stpo : venv -> topt -> venv -> topt -> type.
 
 
 stp/int  : stp H1 int H2 int.
-stp/top  : stp H1 T1 H2 top.
+stp/top2 : stp H1 top H2 top.
+stp/top  : stp H1 T1 H2 top
+              <- stp H1 T1 H1 T1. % for regularity
 
 stp/fun  : stp H1 (arrow S1 T1 T2) H2 (arrow S2 T3 T4)
               <- stpo H1 S1 H2 S2
@@ -469,7 +471,7 @@ type.
 
 -/int : stp-refl wf-tp/int _ stp/int.
 
--/top : stp-refl wf-tp/top _ stp/top.
+-/top : stp-refl wf-tp/top _ stp/top2.
 
 -/fun : stp-refl (wf-tp/fun WT2 WT1 WS1) WE (stp/fun BT2 BT1 BS1)
      <- stp-refl WT2 WE BT2
@@ -495,9 +497,47 @@ stp-extract:
 {ST2:stp H2 T2 H2 T2}
 type.
 %mode stp-extract +A -B -C.
-%worlds () (stp-extract _ _ _).
-%trustme
-%total (A) (stp-extract A _ _).
+stpo-extract:
+{ST12:stpo H1 T1 H2 T2}
+{ST1:stpo H1 T1 H1 T1}
+{ST2:stpo H2 T2 H2 T2}
+type.
+%mode stpo-extract +A -B -C.
+
+-/int : stp-extract stp/int stp/int stp/int.
+
+-/top2: stp-extract stp/top2 stp/top2 stp/top2.
+
+-/top : stp-extract (stp/top B1) B1 stp/top2.
+
+-/fun : stp-extract (stp/fun BR BP BS) (stp/fun BR1 BP1 BS1) (stp/fun BR2 BP2 BS2)
+     <- stpo-extract BS BS1 BS2
+     <- stp-extract BP BP2 BP1
+     <- stp-extract BR BR1 BR2
+      .
+
+-/sel1: stp-extract (stp/sel1 B SHS) (stp/selx SHS SHS) B2
+     <- stp-extract B B1 B2
+      .
+
+-/sel2: stp-extract (stp/sel2 B SHS) B1 (stp/selx SHS SHS)
+     <- stp-extract B B1 B2
+      .
+
+-/selx: stp-extract (stp/selx SHS2 SHS1) (stp/selx SHS1 SHS1) (stp/selx SHS2 SHS2).
+
+-/abs : stpo-extract (stpo/abs B21 B12) (stpo/some B11 B11) stpo/none
+     <- stp-extract B12 B11 B22
+      .
+
+-/some: stpo-extract (stpo/some B21 B12) (stpo/some B11 B11) (stpo/some B22 B22)
+     <- stp-extract B12 B11 B22
+      .
+
+-/none: stpo-extract stpo/none stpo/none stpo/none.
+
+%worlds () (stp-extract _ _ _) (stpo-extract _ _ _).
+%total (A1 A2) (stp-extract A1 _ _) (stpo-extract A2 _ _).
 
 stp-extend1:
 {ST:stp H1 T1 H2 T2}
