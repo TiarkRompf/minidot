@@ -633,9 +633,36 @@ type.
 
 stp-trans: stp H1 T1 H2 T2 -> stp H2 T2 H3 T3 -> stp H1 T1 H3 T3 -> type.
 %mode stp-trans +A +B -E.
-%worlds () (stp-trans _ _ _).
+stpo-trans: stpo H1 T1 H2 T2 -> stpo H2 T2 H3 T3 -> stpo H1 T1 H3 T3 -> type.
+%mode stpo-trans +A +B -E.
+stp-trans-r: stp H1 T1 H2 T2 -> stp H2 T2 H3 T3 -> stp H1 T1 H3 T3 -> type.
+%mode stp-trans-r +A +B -E.
+stpo-trans-r: stpo H1 T1 H2 T2 -> stpo H2 T2 H3 T3 -> stpo H1 T1 H3 T3 -> type.
+%mode stpo-trans-r +A +B -E.
+
+-/int-int : stp-trans stp/int stp/int stp/int.
+
+-/top2-top2 : stp-trans stp/top2 stp/top2 stp/top2.
+
+-/top-top2 : stp-trans (stp/top W1) stp/top2 (stp/top W1).
+
+-/*-top : stp-trans B12 (stp/top B22) (stp/top B11)
+  <- stp-extract B12 B11 _.
+
+-/fun-fun : stp-trans (stp/fun BR12 BP21 BS12) (stp/fun BR23 BP32 BS23) (stp/fun BR13 BP31 BS13)
+  <- stpo-trans BS12 BS23 BS13
+  <- stp-trans-r BP32 BP21 BP31
+  <- stp-trans BR12 BR23 BR13.
+
+-/sel1-* : stp-trans (stp/sel1 BX12 SE1) B23 (stp/sel1 BX13 SE1)
+  <- stp-trans BX12 B23 BX13.
+
+-/*-sel2 : stp-trans B12 (stp/sel2 B23X SE3) (stp/sel2 B13X SE3)
+  <- stp-trans B12 B23X B13X.
+
+%worlds () (stp-trans _ _ _) (stpo-trans _ _ _) (stp-trans-r _ _ _) (stpo-trans-r _ _ _).
 %trustme
-%total A (stp-trans A _ _).
+%total {(A1 A2 A3 A4) (B1 B2 B3 B4)} (stp-trans A1 B1 _) (stpo-trans A2 B2 _) (stp-trans-r B3 A3 _) (stpo-trans-r B4 A4 _).
 
 wfv-widen: wf-val H V T -> stp H T H1 T1 -> wf-val H1 V T1 -> type.
 %mode wfv-widen +A +B -E.
