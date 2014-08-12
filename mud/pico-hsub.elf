@@ -539,15 +539,84 @@ type.
 %worlds () (stp-extract _ _ _) (stpo-extract _ _ _).
 %total (A1 A2) (stp-extract A1 _ _) (stpo-extract A2 _ _).
 
+sub-venv-extend:
+  sub-venv HN N H NH -> {Z}
+%%
+  sub-venv HN N (vcons Z H) (s NH) ->
+  type.
+%mode sub-venv-extend +A +B -C.
+
+- : sub-venv-extend SE Z (sub-venv/ext SE).
+
+%worlds () (sub-venv-extend _ _ _).
+%total (A) (sub-venv-extend A _ _).
+
+stp-extend:
+  stp H1 T1 H2 T2 -> {Z}
+%%
+  stp (vcons Z H1) T1 (vcons Z H2) T2 ->
+  stp (vcons Z H1) T1 H2 T2 ->
+  stp H1 T1 (vcons Z H2) T2 ->
+  type.
+%mode stp-extend +A +B -C -D -E.
+stpo-extend:
+  stpo H1 T1 H2 T2 -> {Z}
+%%
+  stpo (vcons Z H1) T1 (vcons Z H2) T2 ->
+  stpo (vcons Z H1) T1 H2 T2 ->
+  stpo H1 T1 (vcons Z H2) T2 ->
+  type.
+%mode stpo-extend +A +B -C -D -E.
+
+-/int : stp-extend stp/int _ stp/int stp/int stp/int.
+
+-/top2: stp-extend stp/top2 _ stp/top2 stp/top2 stp/top2.
+
+-/top : stp-extend (stp/top B11) Z (stp/top B11') (stp/top B11') (stp/top B11)
+     <- stp-extend B11 Z B11' _ _.
+
+-/fun : stp-extend (stp/fun BR BP BS) Z (stp/fun BR' BP' BS') (stp/fun BR1 BP1 BS1) (stp/fun BR2 BP2 BS2)
+     <- stpo-extend BS Z BS' BS1 BS2
+     <- stp-extend BP Z BP' BP2 BP1
+     <- stp-extend BR Z BR' BR1 BR2.
+
+-/sel1: stp-extend (stp/sel1 BX2 SE) Z (stp/sel1 BX2' SE') (stp/sel1 BX2 SE') (stp/sel1 BX2' SE)
+     <- sub-venv-extend SE Z SE'
+     <- stp-extend BX2 Z _ _ BX2'.
+
+-/sel2: stp-extend (stp/sel2 BX1 SE) Z (stp/sel2 BX1' SE') (stp/sel2 BX1' SE) (stp/sel2 BX1 SE')
+     <- sub-venv-extend SE Z SE'
+     <- stp-extend BX1 Z _ BX1' _.
+
+-/selx: stp-extend (stp/selx SE2 SE1) Z (stp/selx SE2' SE1') (stp/selx SE2 SE1') (stp/selx SE2' SE1)
+     <- sub-venv-extend SE1 Z SE1'
+     <- sub-venv-extend SE2 Z SE2'.
+
+-/abs : stpo-extend (stpo/abs B21 B12) Z (stpo/abs B21' B12') (stpo/abs B21_1 B12_1) (stpo/abs B21_2 B12_2)
+     <- stp-extend B12 Z B12' B12_1 B12_2
+     <- stp-extend B21 Z B21' B21_2 B21_1.
+
+-/some: stpo-extend (stpo/some B21 B12) Z (stpo/some B21' B12') (stpo/some B21_1 B12_1) (stpo/some B21_2 B12_2)
+     <- stp-extend B12 Z B12' B12_1 B12_2
+     <- stp-extend B21 Z B21' B21_2 B21_1.
+
+-/none: stpo-extend stpo/none _ stpo/none stpo/none stpo/none.
+
+%worlds () (stp-extend _ _ _ _ _) (stpo-extend _ _ _ _ _).
+%total (A1 A2) (stp-extend A1 _ _ _ _) (stpo-extend A2 _ _ _ _).
+
 stp-extend1:
 {ST:stp H1 T1 H2 T2}
 {Z}
 {ST':stp (vcons Z H1) T1 H2 T2}
 type.
 %mode stp-extend1 +A +B -C.
+
+- : stp-extend1 B Z B1
+ <- stp-extend B Z B' B1 B2.
+
 %worlds () (stp-extend1 _ _ _).
-%trustme
-%total (A) (stp-extend1 A _ _).
+%total { } (stp-extend1 _ _ _).
 
 stp-extend2:
 {ST:stp H1 T1 H2 T2}
@@ -555,19 +624,18 @@ stp-extend2:
 {ST':stp H1 T1 (vcons Z H2) T2}
 type.
 %mode stp-extend2 +A +B -C.
+
+- : stp-extend2 B Z B2
+ <- stp-extend B Z B' B1 B2.
+
 %worlds () (stp-extend2 _ _ _).
-%trustme
-%total (A) (stp-extend2 A _ _).
+%total { } (stp-extend2 _ _ _).
 
 stp-trans: stp H1 T1 H2 T2 -> stp H2 T2 H3 T3 -> stp H1 T1 H3 T3 -> type.
 %mode stp-trans +A +B -E.
 %worlds () (stp-trans _ _ _).
 %trustme
 %total A (stp-trans A _ _).
-
-
-%%% ---- end trustmes ----
-
 
 wfv-widen: wf-val H V T -> stp H T H1 T1 -> wf-val H1 V T1 -> type.
 %mode wfv-widen +A +B -E.
