@@ -360,6 +360,72 @@ t12 = (arrow tnone       (sel (s z)) t00).
 
 %%  ---- connect ----
 
+sub-env-size-z:
+  sub-env GN N G z ->
+%%
+  sub-env G N G z ->
+  type.
+%mode sub-env-size-z +A -B.
+
+-/z  : sub-env-size-z sub-env/z sub-env/z.
+
+-/sz : sub-env-size-z (sub-env/sz A) (sub-env/sz A')
+    <- sub-env-size-z A A'.
+
+%worlds () (sub-env-size-z _ _).
+%total (A) (sub-env-size-z A _).
+
+sub-venv-size-z:
+  sub-venv GN N G z ->
+%%
+  sub-venv G N G z ->
+  type.
+%mode sub-venv-size-z +A -B.
+
+-/z  : sub-venv-size-z sub-venv/z sub-venv/z.
+
+-/sz : sub-venv-size-z (sub-venv/sz A) (sub-venv/sz A')
+    <- sub-venv-size-z A A'.
+
+%worlds () (sub-venv-size-z _ _).
+%total (A) (sub-venv-size-z A _).
+
+wf-env-size:
+  wf-env H G ->
+  sub-env G N G z ->
+%%
+  sub-venv H N H z ->
+  type.
+%mode wf-env-size +A +B -C.
+
+-/z  : wf-env-size wfe/n sub-env/z sub-venv/z.
+
+-/sz : wf-env-size (wfe/c WE _) (sub-env/sz SE) (sub-venv/sz SV)
+    <- wf-env-size WE SE SV.
+
+%worlds () (wf-env-size _ _ _).
+%total {A B} (wf-env-size A B _).
+
+wf-sub-env-val-rec:
+  wf-env H G ->
+  sub-env (tcons T GN) (s X) G N ->
+%%
+  sub-venv (vcons V HN) (s X) H N ->
+  wf-val (vcons V HN) V T ->
+  type.
+%mode wf-sub-env-val-rec +A +B -C -D.
+
+- : wf-sub-env-val-rec (wfe/c WE WV) (sub-env/ext SE) (sub-venv/ext SV) WV'
+ <- wf-sub-env-val-rec WE SE SV WV'.
+
+- : wf-sub-env-val-rec (wfe/c WE WV) (sub-env/sz SE) (sub-venv/sz SV) WV
+ <- sub-env-size-z SE SE'
+ <- wf-env-size WE SE' SV
+  .
+
+%worlds () (wf-sub-env-val-rec _ _ _ _).
+%total {A B} (wf-sub-env-val-rec A B _ _).
+
 wf-sub-env-val:
   wf-env H G ->
   sub-env-size (tcons T GN) (s X) G ->
@@ -369,9 +435,11 @@ wf-sub-env-val:
   type.
 %mode wf-sub-env-val +A +B -C -D.
 
+- : wf-sub-env-val WE (ses SE) SV WV
+ <- wf-sub-env-val-rec WE SE SV WV.
+
 %worlds () (wf-sub-env-val _ _ _ _).
-%trustme
-%total {A B} (wf-sub-env-val A B _ _).
+%total { } (wf-sub-env-val _ _ _ _).
 
 wf-val-arrow-extract:
   wf-val (vcons V HN) V (arrow _ _ _) ->
