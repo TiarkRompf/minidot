@@ -156,6 +156,28 @@ stp/fun  : stp H1 (arrow S1 T1 T2) H2 (arrow S2 T3 T4)
               <- stp H1 T2 H2 T4
               .
 
+%{
+possible extension for self types:
+
+assuming 
+  arrow: tpe -> tpe -> tpe.
+  bind:  nat -> topt -> tpe -> tpe.
+
+stp/bind : stp H1 (bind N S1 T1) H2 (bind N S2 T2)
+              <- stpo H1 S1 H2 S2 %% no cyclic type members for now
+
+              <- sub-venv H1N N H1 NH1
+              <- sub-venv H2N N H2 NH2
+
+              % use H1N and T1 in mock closure to extend H2N
+              <- stp (vcons (clos T1 empty H1N) H1N) T1 
+                     (vcons (clos T1 empty H1N) H2N) T2
+              .
+
+}%
+
+
+
 stpo/abs  : stpo H1 (tsome TX) H2 tnone
               <- stp H1 TX H2 TX
               <- stp H2 TX H1 TX.
