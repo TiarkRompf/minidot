@@ -1,3 +1,20 @@
+\newcommand{\tbnd}[2]{\{#1 \Rightarrow #2\}}
+\newcommand{\tmem}[3]{\textbf{type } #1 : #2 .. #3 }
+\newcommand{\tmemup}[2]{\textbf{type } #1 <: #2 }
+\newcommand{\tdef}[3]{\textbf{def } #1 : #2 \rightarrow #3 }
+\newcommand{\inew}[2]{\textbf{new }(#1 \Rightarrow #2)}
+\newcommand{\idef}[5]{\textbf{def } #1(#2: #3): #4 = #5}
+\newcommand{\vclo}[3]{\ $<$ #1 \Rightarrow #2 {\bf \ in \ } #3 $>$\ }
+\newcommand{\vdef}[3]{\textbf{def } #1(#2) = #3}
+\newcommand{\ev}[0]{\Downarrow\ }
+\newcommand{\evn}[1]{\Downarrow_{#1}}
+\newcommand{\st}[0]{\dashv}
+\newcommand{\ilet}[4]{\textbf{val } #1: #2 = #3; #4}
+\newcommand{\timeout}[0]{\textbf{timeout}}
+\newcommand{\stuck}[0]{\textbf{stuck}}
+
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   Language abstraction commands     %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -32,6 +49,8 @@
 \newcommand{\expand}{\prec}
 \newcommand{\weakexpand}{\prec^W}
 \newcommand{\spcomma}{~,~}
+\newcommand{\spsep}{~;~}
+
 
 %% Relations
 % Subtype 
@@ -71,6 +90,7 @@
 \newcommand{\ldefs}[1]{\left\{#1\right\}}
 \newcommand{\mlldefs}[1]{\{#1\}}
 % Member sequences
+\newcommand{\seqforall}[2]{\overbrace{#1}^{\forall #2}}
 \newcommand{\seq}[1]{\overline{#1}}
 % Lambda
 \newcommand{\dabs}[3]{(#1\!:\!#2)\Rightarrow #3}
