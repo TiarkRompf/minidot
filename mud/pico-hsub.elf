@@ -59,7 +59,6 @@ tnone : topt.
 
 % types
 int  : tpe.
-bool : tpe.
 top  : tpe.
 bot  : tpe.
 arrow: topt -> tpe -> tpe -> tpe.
