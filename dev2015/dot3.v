@@ -1,4 +1,3 @@
-(*Require Export Basics.*)
 Require Export SfLib.
 
 Require Export Arith.EqNat.
@@ -11,16 +10,38 @@ type safety for minidot-like calculus:
 - self types
 *)
 
+(*
+TODO
 
-(* syntax *)
+- object creation without let
+    (but we can already encode it)
+- other static stp rules
+    and, fun, mem, bot, top etc
+- subsumption for has_type rules
+
+
+- extend dyn stp rules with
+  static tenv for self refs
+- pack/unpack in subtyping
+
+
+- multiple type members
+- lower and upper bounds
+
+*)
+
+
+(* ############################################################ *)
+(* Syntax *)
+(* ############################################################ *)
 
 Module DOT.
 
 Definition id := nat.
 
-
 Inductive ty : Type :=
-  | TTop   : ty
+  | TNoF   : ty (* marker for empty method list *)
+               
   | TBool  : ty
   | TAnd   : ty -> ty -> ty
   | TFun   : id -> ty -> ty -> ty
@@ -31,10 +52,6 @@ Inductive ty : Type :=
   | TBind  : ty -> ty
 .
   
-
-Definition TArrow p x y := TAnd (TMem p) (TAnd (TFun 0 x y) TTop).
-
-
 Inductive tm : Type :=
   | ttrue : tm
   | tfalse : tm
@@ -46,17 +63,25 @@ with dc: Type :=
   | dfun : ty -> ty -> id -> tm -> dc (* def m:T = x => y *)
 .
 
+Fixpoint dc_type_and (dcs: list(nat*dc)) :=
+  match dcs with
+    | nil => TNoF
+    | (n, dfun T1 T2 _ _)::dcs =>
+      TAnd (TFun (length dcs) T1 T2)  (dc_type_and dcs)
+  end.
+
+
+Definition TObj p dcs := TAnd (TMem p) (dc_type_and dcs).
+Definition TArrow p x y := TAnd (TMem p) (TAnd (TFun 0 x y) TNoF).
+
 
 Inductive vl : Type :=
 | vbool : bool -> vl
 | vabs  : list (id*vl) -> id -> ty -> list (id * dc) -> vl. (* clos env f:T = x => y *)
 
 
-Fixpoint length {X: Type} (l : list X): nat :=
-  match l with
-    | [] => 0
-    | _::l' => 1 + length l'
-  end.
+Definition env := list (nat*vl).
+Definition tenv := list (nat*ty).
 
 Fixpoint index {X : Type} (n : nat)
                (l : list (nat * X)) : option X :=
@@ -67,62 +92,125 @@ Fixpoint index {X : Type} (n : nat)
   end.
 
 
-Definition env := list (nat*vl).
-Definition tenv := list (nat*ty).
+(* LOCALLY NAMELESS *)
+
+Inductive closed_rec: nat -> ty -> Prop :=
+| cl_top: forall k,
+    closed_rec k TNoF
+| cl_bool: forall k,
+    closed_rec k TBool
+| cl_mem_n: forall k,
+    closed_rec k (TMem None)
+| cl_mem_s: forall k T1,
+    closed_rec k T1 ->
+    closed_rec k (TMem (Some T1))
+| cl_fun: forall k m T1 T2,
+    closed_rec k T1 ->
+    closed_rec k T2 ->
+    closed_rec k (TFun m T1 T2)
+| cl_and: forall k T1 T2,
+    closed_rec k T1 ->
+    closed_rec k T2 ->
+    closed_rec k (TAnd T1 T2)
+| cl_bind: forall k T1,
+    closed_rec (S k) T1 ->
+    closed_rec k (TBind T1)
+| cl_sel: forall k x,
+    closed_rec k (TSel x)
+| cl_selb: forall k i,
+    k > i ->
+    closed_rec k (TSelB i)
+.
+
+Hint Constructors closed_rec.
+
+Definition closed j T := closed_rec j T.
 
 
-
-Fixpoint dc_type_and (dcs: list(nat*dc)) :=
-  match dcs with
-    | nil => TTop
-    | (n, dfun T1 T2 _ _)::dcs =>
-      TAnd (TFun (length dcs) T1 T2)  (dc_type_and dcs)
+Fixpoint open_rec (k: nat) (u: id) (T: ty) { struct T }: ty :=
+  match T with
+    | TSel x      => TSel x (* free var remains free. functional, so we can't check for conflict *)
+    | TSelB i     => if beq_nat k i then TSel u else TSelB i
+    | TBind T1    => TBind (open_rec (S k) u T1)
+    | TNoF        => TNoF
+    | TBool       => TBool
+    | TAnd T1 T2  => TAnd (open_rec k u T1) (open_rec k u T2)
+    | TMem (Some T1) => TMem (Some (open_rec k u T1))
+    | TMem None   => TMem None                             
+    | TFun m T1 T2  => TFun m (open_rec k u T1) (open_rec k u T2)
   end.
 
+Definition open u T := open_rec 0 u T.
 
-Definition TObj p dcs := TAnd (TMem p) (dc_type_and dcs).
+(* sanity check *)
+Example open_ex1: open 9 (TBind (TAnd (TMem None) (TFun 0 (TSelB 1) (TSelB 0)))) =
+                      (TBind (TAnd (TMem None) (TFun 0 (TSel  9) (TSelB 0)))).
+Proof. compute. eauto. Qed.
 
 
+Lemma closed_no_open: forall T x j,
+  closed_rec j T ->
+  T = open_rec j x T.
+Proof.
+  intros. induction H; intros; eauto;
+  try solve [compute; compute in IHclosed_rec; rewrite <-IHclosed_rec; auto];
+  try solve [compute; compute in IHclosed_rec1; compute in IHclosed_rec2; rewrite <-IHclosed_rec1; rewrite <-IHclosed_rec2; auto].
+
+  Case "TSelB".
+    unfold open_rec. assert (k <> i). omega. 
+    apply beq_nat_false_iff in H0.
+    rewrite H0. auto.
+Qed.
+
+Lemma closed_upgrade: forall i j T,
+ closed_rec i T ->
+ j >= i ->
+ closed_rec j T.
+Proof.
+ intros. generalize dependent j. induction H; intros; eauto.
+ Case "TBind". econstructor. eapply IHclosed_rec. omega.
+ Case "TSelB". econstructor. omega.
+Qed.
 
 
-(* get the canonical type and internal env from an
-   object in a runtime environment *)
-Definition resolve e n: option (env * ty) :=
-  match (index n e) with
-    | Some(v) =>
-      match v with
-        | vabs GC f TC dcs =>
-            Some ((f,v)::GC,(TObj (Some TC) dcs))
-        | vbool b => Some (nil,TBool)
-      end
-    | _ => None
-  end.
+Hint Unfold open.
+Hint Unfold closed.
+
+
+(* ############################################################ *)
+(* Static properties: type assignment, subtyping, ... *)
+(* ############################################################ *)
 
 (* static type expansion.
-   needs to imply dynamic subtyping. *)
-Inductive tresolve: ty -> ty -> Prop :=
-  | tr_self: forall T,
-             tresolve T T
-  | tr_and1: forall T1 T2 T,
-             tresolve T1 T ->
-             tresolve (TAnd T1 T2) T
-  | tr_and2: forall T1 T2 T,
-             tresolve T2 T ->
-             tresolve (TAnd T1 T2) T
-.                      
+   needs to imply dynamic subtyping / value typing. *)
+Inductive tresolve: id -> ty -> ty -> Prop :=
+  | tr_self: forall x T,
+             tresolve x T T
+  | tr_and1: forall x T1 T2 T,
+             tresolve x T1 T ->
+             tresolve x (TAnd T1 T2) T
+  | tr_and2: forall x T1 T2 T,
+             tresolve x T2 T ->
+             tresolve x (TAnd T1 T2) T
+  | tr_unpack: forall x T2 T3 T,
+             open x T2 = T3 ->
+             tresolve x T3 T ->
+             tresolve x (TBind T2) T
+.
 
 Tactic Notation "tresolve_cases" tactic(first) ident(c) :=
   first;
   [ Case_aux c "Self" |
     Case_aux c "And1" |
-    Case_aux c "And2" ].
+    Case_aux c "And2" |
+    Case_aux c "Bind" ].
 
 
 (* static type well-formedness.
    needs to imply dynamic subtyping. *)
 Inductive wf_type : tenv -> ty -> Prop :=
 | wf_top: forall env,
-    wf_type env TTop
+    wf_type env TNoF
 | wf_bool: forall env,
     wf_type env TBool
 | wf_and: forall env T1 T2,
@@ -141,7 +229,7 @@ Inductive wf_type : tenv -> ty -> Prop :=
                      
 | wf_sel: forall envz x TE TA,
             index x envz = Some (TE) ->
-            tresolve TE (TMem TA) ->
+            tresolve x TE (TMem TA) ->
             wf_type envz (TSel x)
 
 | wf_selb: forall envz x, (* note: disregarding bind-scope *)
@@ -166,52 +254,16 @@ Tactic Notation "wf_cases" tactic(first) ident(c) :=
 
 
 
-
-(* LOCALLY NAMELESS *)
-
-Fixpoint open_rec_typ (k: nat) (u: id) (T: ty) { struct T }: ty :=
-  match T with
-    | TSel x      => TSel x (* free var remains free. functional, so we can't check for conflict *)
-    | TSelB i     => if beq_nat k i then TSel u else TSelB i
-    | TBind T1    => TBind (open_rec_typ (S k) u T1)
-    | TTop        => TTop
-    | TBool       => TBool
-    | TAnd T1 T2  => TAnd (open_rec_typ k u T1) (open_rec_typ k u T2)
-    | TMem (Some T1) => TMem (Some (open_rec_typ k u T1))
-    | TMem None   => TMem None                             
-    | TFun m T1 T2  => TFun m (open_rec_typ k u T1) (open_rec_typ k u T2)
-  end.
-
-Definition open u T := open_rec_typ 0 u T.
-
-Example open1: open 9 (TBind (TAnd (TMem None) (TFun 0 (TSelB 1) (TSelB 0)))) =
-                      (TBind (TAnd (TMem None) (TFun 0 (TSel  9) (TSelB 0)))).
-Proof. compute. eauto. Qed.
-
-Definition closed j T := forall x, T = open_rec_typ j x T.
-
-
-Lemma closed_upgrade: forall i j T,
- closed i T ->
- j >= i ->
- closed j T.
-Proof. admit. Qed.
-
-
-Hint Unfold open.
-Hint Unfold closed.
-
-
 (* static subtyping: during type checking/assignment. 
    needs to imply dynamic subtyping *)
 Inductive atp: tenv -> ty -> ty -> Prop :=
 | atp_sel2: forall x env T TF,
     index x env = Some TF ->
-    tresolve TF (TMem (Some T)) ->
+    tresolve x TF (TMem (Some T)) ->
     atp env T (TSel x)
 | atp_sel1: forall x env T TF,
     index x env = Some TF ->
-    tresolve TF (TMem (Some T)) ->
+    tresolve x TF (TMem (Some T)) ->
     atp env (TSel x) T
 .
 
@@ -220,32 +272,83 @@ Tactic Notation "atp_cases" tactic(first) ident(c) :=
   [ Case_aux c "? < Sel" | Case_aux c "Sel < ?" ].
 
 
-(* impossible subtyping cases, uses for contradictions *)
-Inductive nostp: ty -> ty -> Prop :=
-| nostp_top_fun: forall m T1 T2,
-   nostp TTop (TFun m T1 T2)
-| nostp_top_mem: forall TA,
-   nostp TTop (TMem TA)
-| nostp_fun: forall T1 T2 T3 T4 n1 n2,
-   not (n1 = n2) ->
-   nostp (TFun n1 T1 T2) (TFun n2 T3 T4)
-| nostp_fun_mem: forall m TA T1 T2,
-   nostp (TMem TA) (TFun m T1 T2)
-| nostp_mem_fun: forall m TA T1 T2,
-   nostp (TFun m T1 T2) (TMem TA)
-| nostp_and: forall T1 T2 T,
-    nostp T1 T ->
-    nostp T2 T ->
-    nostp (TAnd T1 T2) T
+
+
+Inductive has_type : list (nat*ty) -> tm -> ty -> Prop :=
+| t_true: forall env,
+           has_type env ttrue TBool
+| t_false: forall env,
+           has_type env tfalse TBool
+| t_var: forall n (env:list (nat*ty)) t1,
+           index n env = Some t1 ->
+           wf_type env t1 ->
+           has_type env (tvar n) t1
+| t_vara: forall n env T T2,
+           index n env = Some T ->
+           atp env T T2 -> 
+           wf_type env T2 ->
+           has_type env (tvar n) T2
+
+| t_var_pack: forall n env T T2,
+           index n env = Some T ->
+           open n T2 = T ->
+           wf_type env T ->
+           wf_type env (TBind T2) ->
+           has_type env (tvar n) (TBind T2)
+
+| t_var_unpack: forall n env T T2,
+           index n env = Some (TBind T2) ->
+           open n T2 = T ->
+           wf_type env T ->
+           wf_type env (TBind T2) ->
+           has_type env (tvar n) T
+
+| t_app: forall env f m x TF T1 T2,
+           index f env = Some TF ->
+           tresolve f TF (TFun m T1 T2) ->
+           wf_type env T1 ->
+           wf_type env T2 ->
+           has_type env x T1 ->
+           has_type env (tapp f m x) T2
+| t_abs: forall env TF TFN f z dcs TA T3,
+           TF  = (TObj (Some TA) dcs) ->
+           TFN = (TObj None      dcs) ->
+           closed 0 TA -> (* should be implied by WF below *)
+           dc_has_type ((f,TF)::env) dcs ->
+
+           has_type ((f,TFN)::env) z T3 -> 
+
+           wf_type ((f,TF)::env) TF ->
+           wf_type env T3 ->
+           has_type env (tabs f TA dcs z) T3
+| t_let: forall env x y z T1 T3,
+           has_type env y T1 ->
+           has_type ((x,T1)::env) z T3 -> 
+           wf_type env T3 ->
+           has_type env (tlet x T1 y z) T3
+
+ with dc_has_type: list(nat * ty) -> list (nat*dc) -> Prop :=
+      | dt_fun: forall env x y m T1 T2 dcs,
+          has_type ((x,T1)::env) y T2 ->
+          dc_has_type env dcs ->
+          m = length dcs ->
+          dc_has_type env ((m, dfun T1 T2 x y)::dcs)
+      | dt_nil: forall env,
+           dc_has_type env nil
 .
 
-Hint Constructors nostp.
+
+
+
+(* ############################################################ *)
+(* Dynamic properties: value typing, evaluation, ... *)
+(* ############################################################ *)
 
 
 (* dynamic subtyping: during execution *)
 Inductive stp : nat -> env -> ty -> env -> ty -> Prop :=
 | stp_top: forall n1 G1 G2,
-    stp n1 G1 TTop G2 TTop (* don't want to deal with it now *)
+    stp n1 G1 TNoF G2 TNoF (* don't want to deal with it now *)
   
 | stp_bool: forall n1 G1 G2,
     stp n1 G1 TBool G2 TBool
@@ -266,10 +369,9 @@ Inductive stp : nat -> env -> ty -> env -> ty -> Prop :=
 | stp_mema_nn: forall n1 G1 G2,
     stp n1 G1 (TMem None) G2 (TMem None)
 
-| stp_bind: forall n1 n2 G1 G2 TA1 TA2,
+| stp_bind: forall n1 G1 G2 TA1 TA2,
     stp n1 G1 TA1 G2 TA2 ->
-    stp n2 G2 TA2 G1 TA1 ->
-    stp (S (n1+n2)) G1 (TBind TA1) G2 (TBind TA2) (* may relax to diff types *)
+    stp (S n1+n1) G1 (TBind TA1) G2 (TBind TA2) (* may relax to diff types *)
         
 | stp_and11: forall n1 n2 G1 G2 T1 T2 T,
     stp n1 G1 T1 G2 T ->
@@ -327,465 +429,6 @@ Definition stpd G1 T1 G2 T2 := exists n, stp n G1 T1 G2 T2.
 
 
 
-(* INVERSION CASES *)
-
-Lemma stp_mem_invA: forall G1 G2 TA1 TA2,
-    stpd G1 (TMem (Some TA1)) G2 (TMem (Some TA2)) ->
-    stpd G1 TA1 G2 TA2.
-Proof. intros. destruct H. inversion H. eexists. eauto. Qed.
-
-Lemma stp_mem_invB: forall G1 G2 TA1 TA2,
-    stpd G1 (TMem (Some TA1)) G2 (TMem (Some TA2)) ->
-    stpd G2 TA2 G1 TA1.
-Proof. intros. destruct H. inversion H. eexists. eauto. Qed.
-
-        
-Lemma stp_funA: forall m G1 G2 T11 T12 T21 T22,
-    stpd G1 (TFun m T11 T12) G2 (TFun m T21 T22) ->
-    stpd G2 T21 G1 T11.
-Proof. intros. destruct H. inversion H. eexists. eauto. Qed.
-Lemma stp_funB: forall m G1 G2 T11 T12 T21 T22,
-    stpd G1 (TFun m T11 T12) G2 (TFun m T21 T22) ->
-    stpd G1 T12 G2 T22.
-Proof. intros. destruct H. inversion H. eexists. eauto. Qed.
-
-(* invert `and` if one branch is impossible *)
-Lemma nostp_no_rhs_and: forall T1 T2 T,
-      nostp T (TAnd T1 T2) ->
-      False.
-Proof. intros. remember (TAnd T1 T2). induction H; inversion Heqt.
-       eauto.
-Qed.
-Lemma nostp_no_rhs_sel: forall T x,
-      nostp T (TSel x) ->
-      False.
-Proof. intros. remember (TSel x). induction H; inversion Heqt.
-       eauto.
-Qed.
-
-Hint Resolve ex_intro.
-
-Lemma stp_contra: forall T1 T2 G1 G2,
-      nostp T1 T2 ->
-      stpd G1 T1 G2 T2 ->
-      False.
-Proof. intros. induction H; destruct H0 as [n H0]; inversion H0; subst; eauto.
-       eapply IHnostp1. eexists. eauto.
-       eapply IHnostp2. eexists. eauto.
-       eapply nostp_no_rhs_and. eauto. 
-       eapply nostp_no_rhs_sel. eauto. 
-Qed.
-       
-Lemma stp_andA: forall G1 G2 T1 T2 T,
-    stpd G1 (TAnd T1 T2) G2 T ->
-    nostp T2 T ->          
-    stpd G1 T1 G2 T.
-Proof. intros. destruct H. inversion H.
-       subst. eexists. eauto. 
-       eapply stp_contra in H0. contradiction. exists n1. eauto.
-       subst. eapply nostp_no_rhs_and in H0. contradiction.
-       subst. eapply nostp_no_rhs_sel in H0. contradiction.
-Qed.
-Lemma stp_andB: forall G1 G2 T1 T2 T,
-    stpd G1 (TAnd T1 T2) G2 T ->
-    nostp T1 T ->           
-    stpd G1 T2 G2 T.
-Proof. intros. destruct H. inversion H.
-       eapply stp_contra in H0. contradiction. exists n1. eauto.
-       subst. eexists. eauto.
-       subst. eapply nostp_no_rhs_and in H0. contradiction.
-       subst. eapply nostp_no_rhs_sel in H0. contradiction.
-Qed.
-
-Lemma stp_and2A: forall G1 G2 T1 T2 T,
-    stpd G1 T G2 (TAnd T1 T2) ->
-    stpd G1 T G2 T1.
-Proof. intros. remember (TAnd T1 T2). destruct H. induction H; inversion Heqt.
-       eapply IHstp1 in H1. destruct H1.
-       eexists. eapply stp_and11. eauto. eauto.
-       eapply IHstp1 in H1. destruct H1.
-       eexists. eapply stp_and12. eauto. eauto.
-       subst. eexists. eauto.
-       eapply IHstp in H2. destruct H2. 
-       subst. eexists. eapply stp_sel1. eauto. eauto. eauto.
-Qed.
-
-Lemma stp_and2B: forall G1 G2 T1 T2 T,
-    stpd G1 T G2 (TAnd T1 T2) ->
-    stpd G1 T G2 T2.
-Proof. intros. remember (TAnd T1 T2). destruct H. induction H; inversion Heqt.
-       eapply IHstp1 in H1. destruct H1.
-       eexists. eapply stp_and11. eauto. eauto.
-       eapply IHstp1 in H1. destruct H1.
-       eexists. eapply stp_and12. eauto. eauto.
-       subst. eexists. eauto.
-       eapply IHstp in H2. destruct H2.
-       subst. eexists. eapply stp_sel1. eauto. eauto. eauto.
-Qed.
-
-
-(* EXTENSION *)
-
-Hint Constructors stp.
-
-Lemma index_extend : forall X n G1 x v (T:X),
-    index n G1 = Some T ->
-    index n((x,v)::G1) = Some T.
-Proof. admit. Qed.
-
-Hint Resolve index_extend.
-
-Lemma resolve_extend : forall n x v G1 GC TC,
-    resolve G1 n = Some (GC,TC) ->
-    resolve ((x,v)::G1) n = Some (GC,TC).
-Proof. intros. unfold resolve in H. remember (index n G1). destruct o. symmetry in Heqo.
-       assert (index n ((x,v)::G1) = Some v0). eapply index_extend; eauto.
-       remember (resolve ((x,v)::G1) n). unfold resolve in Heqo0. rewrite H0 in Heqo0.
-       rewrite H in Heqo0. eauto.
-       inversion H.
-Qed.
-
-Hint Resolve resolve_extend.
-       
-Lemma stp_extend : forall SF G1 G2 T1 T2 x v,
-    stp SF G1 T1 G2 T2 ->
-    stp SF ((x,v)::G1) T1 G2 T2 /\
-    stp SF G1 T1 ((x,v)::G2) T2 /\
-    stp SF ((x,v)::G1) T1 ((x,v)::G2) T2.
-Proof. intros. stp_cases (induction H) Case;
-         try inversion IHstp as [IH_1 [IH_2 IH_12]];
-         try inversion IHstp1 as [IH1_1 [IH1_2 IH1_12]];
-         try inversion IHstp2 as [IH2_1 [IH2_2 IH2_12]];
-         split; try solve [eauto; constructor; eauto].
-Qed.
-
-Lemma stp_extend1 : forall SF G1 G2 T1 T2 x v,
-    stp SF G1 T1 G2 T2 ->
-    stp SF ((x,v)::G1) T1 G2 T2.
-Proof. intros. eapply stp_extend. eauto. Qed.
-
-Lemma stp_extend2 : forall SF G1 G2 T1 T2 x v,
-    stp SF G1 T1 G2 T2 ->
-    stp SF G1 T1 ((x,v)::G2) T2.
-Proof. intros. eapply stp_extend. eauto. Qed.
-
-
-(* REGULARITY *)
-
-Lemma stp_reg : forall G1 G2 T1 T2,
-    stpd G1 T1 G2 T2 ->
-    stpd G1 T1 G1 T1 /\ stpd G2 T2 G2 T2.
-Proof. intros. destruct H. stp_cases (induction H) Case;
-         try inversion IHstp as [[IH_n1 IH_1] [IH_n2 IH_2]];
-         try inversion IHstp1 as [[IH_n1 IH_1] [IH_n2 IH_2]];
-         try inversion IHstp2 as [[IH_n3 IH_3] [IH_n4 IH_4]];
-         split;
-         try solve [exists 0; eauto];
-         try solve [eexists; eauto].
-Qed.
-
-
-Lemma stp_reg1 : forall G1 G2 T1 T2,
-    stpd G1 T1 G2 T2 ->
-    stpd G1 T1 G1 T1.
-Proof. intros. eapply stp_reg in H. inversion H. eauto. Qed.
-
-Lemma stp_reg2 : forall G1 G2 T1 T2,
-    stpd G1 T1 G2 T2 ->
-    stpd G2 T2 G2 T2.
-Proof. intros. eapply stp_reg in H. inversion H. eauto. Qed.
-
-(* HELPERS *)
-
-Lemma stpd_sel2: forall G1 T1 G2 GC TA f x dcs,
-                      index x G2 = Some(vabs GC f TA dcs) ->
-                      closed 0 TA ->
-                      stpd G1 T1 ((f,vabs GC f TA dcs)::GC) TA ->
-                      stpd G1 T1 G2 (TSel x)
-.
-Proof. admit. Qed.
-
-
-Lemma stpd_sel1: forall G1 GC TA T2 G2 f x dcs,
-                      index x G1 = Some(vabs GC f TA dcs) ->
-                      closed 0 TA ->
-                      stpd ((f,vabs GC f TA dcs)::GC) TA G2 T2 ->
-                      stpd G1 (TSel x) G2 T2
-.
-Proof. admit. Qed.
-
-
-Lemma stpd_and11: forall G1 G2 T1 T2 T,
-                      stpd G1 T1 G2 T ->
-                      stpd G1 T2 G1 T2 ->
-                      stpd G1 (TAnd T1 T2) G2 T
-.
-Proof. admit. Qed.
-
-Lemma stpd_and12: forall G1 G2 T1 T2 T,
-                      stpd G1 T2 G2 T ->
-                      stpd G1 T1 G1 T1 ->
-                      stpd G1 (TAnd T1 T2) G2 T
-.
-Proof. admit. Qed.
-
-
-Lemma stpd_and2: forall G1 G2 T1 T2 T,
-                      stpd G1 T G2 T1 ->
-                      stpd G1 T G2 T2 ->
-                      stpd G1 T G2 (TAnd T1 T2)
-.
-Proof. admit. Qed.
-
-Lemma stpd_fun:  forall m G1 G2 T11 T12 T21 T22,
-    stpd G2 T21 G1 T11 ->
-    stpd G1 T12 G2 T22 ->
-    stpd G1 (TFun m T11 T12) G2 (TFun m T21 T22)
-.
-Proof. intros.  admit. Qed.
-
-Lemma stpd_mem_ss: forall G1 G2 TA1 TA2,
-    stpd G1 TA1 G2 TA2 ->
-    stpd G2 TA2 G1 TA1 ->
-    stpd G1 (TMem (Some TA1)) G2 (TMem (Some TA2)).
-Proof. admit. Qed.
-
-Lemma stpd_mema_sn: forall G1 G2 TA,
-    stpd G1 TA G1 TA -> (* regularity *)
-    stpd G1 (TMem (Some TA)) G2 (TMem None).
-Proof. admit. Qed.
-
-Lemma stpd_mema_nn: forall G1 G2,
-    stpd G1 (TMem None) G2 (TMem None).
-Proof. admit. Qed.
-
-Lemma stpd_bind: forall G1 G2 TA1 TA2,
-    stpd G1 TA1 G2 TA2 ->
-    stpd G2 TA2 G1 TA1 ->
-    stpd G1 (TBind TA1) G2 (TBind TA2).
-Proof. admit. Qed.
-
-
-(* TRANSITIVITY *)
-
-Definition trans_on n12 n23 := 
-                      forall  T1 T2 T3 G1 G2 G3, 
-                      stp n12 G1 T1 G2 T2 ->
-                      stp n23 G2 T2 G3 T3 ->
-                      stpd G1 T1 G3 T3.
-Hint Unfold trans_on.
-
-Definition trans_up n := forall n12 n23, n12 + n23 <= n ->
-                      trans_on n12 n23.
-Hint Unfold trans_up.
-
-Lemma trans_le: forall n n1 n2,
-                      trans_up n ->
-                      n1 + n2 <= n ->
-                      trans_on n1 n2
-.
-Proof. intros. unfold trans_up in H. eapply H. eauto. Qed.
-
-
-Lemma nostp_inv_dcs_mem: forall dcs TA, (* not needed? *)
-  nostp (dc_type_and dcs) (TMem TA).
-Proof.
-  intros.
-  induction dcs.
-  Case "nil". eauto.
-  Case "cons".
-    unfold dc_type_and. destruct a. destruct d.
-    eapply nostp_and.
-      eapply nostp_mem_fun.
-      eapply IHdcs.
-Qed.
-
-
-
-Lemma stp_trans: forall n, trans_up n.
-Proof. intros n.
-       induction n.
-       Case "z".
-       unfold trans_up. unfold trans_on.
-       intros.
-       assert (n12 = 0). omega. assert (n23 = 0). omega. subst.
-       inversion H0; inversion H1; subst;
-       try solve [inversion H0];
-       try solve [inversion H1];
-       try solve [exists 0; eauto].
-
-       SCase "Sel < Sel".
-       inversion H13. subst. rewrite H3 in H9. inversion H9. subst.
-       exists 0. eapply stp_selx. eauto. eauto.
-
-       SCase "SelB < SelB".
-       inversion H9. subst.
-       exists 0. eapply stp_selbx.
-
-       Case "S n".
-       unfold trans_up. intros n12 n23 NE   T1 T2 T3 G1 G2 G3    S12 S23.
-
-       (* case analysis takes a long time! >= 144 cases to start with *)
-       stp_cases(inversion S12) SCase;  stp_cases(inversion S23) SSCase;  subst;
-
-       try solve [SSCase "? < Sel";
-         eapply stpd_sel2; [eauto | eauto | eapply trans_le in IHn; [ eapply IHn; eauto | omega ]]];
-
-       try solve [SCase "Sel < ?";
-         eapply stpd_sel1; [eauto | eauto | eapply trans_le in IHn; [ eapply IHn; eauto | omega ]]];
-
-       try solve [SSCase "? < ? & ?";
-         eapply stpd_and2; [ eapply trans_le in IHn; [ eapply IHn; eauto | omega] |
-                             eapply trans_le in IHn; [ eapply IHn; eauto | omega]]];
-
-       try solve [SCase "T & ? < T";
-         eapply stpd_and11; [ eapply trans_le in IHn; [ eapply IHn; eauto | omega] | eexists; eauto]];
-
-       try solve [SCase "? & T < T";
-         eapply stpd_and12; [ eapply trans_le in IHn; [ eapply IHn; eauto | omega] | eexists; eauto]];
-
-
-       try solve [exists 0; eauto];
-       try solve by inversion;
-       idtac. 
-
-(*
-       SCase "Bool < Bool". SSCase "Bool < Bool".
-       eapply ex_intro with 0. eapply stp_bool.
-*)
-       idtac.
-       
-       SCase "Fun < Fun". SSCase "Fun < Fun". inversion H10. subst.
-       eapply stpd_fun. eapply trans_le in IHn. eapply IHn. eauto. eauto. omega.
-                        eapply trans_le in IHn. eapply IHn. eauto. eauto. omega.
-
-       SCase "Mem Some < Mem Some". SSCase "Mem Some < Mem Some". inversion H10. subst.
-       eapply stpd_mem_ss. eapply trans_le in IHn. eapply IHn. eauto. eauto. omega.
-                           eapply trans_le in IHn. eapply IHn. eauto. eauto. omega.
-
-       SCase "Mem Some < Mem Some". SSCase "Mem Some < Mem None". inversion H9. subst.
-       eapply stpd_mema_sn. eapply trans_le in IHn. eapply IHn. eauto. eauto. omega.
-
-       SCase "Mem Some < Mem None". SSCase "Mem None < Mem None". 
-       eapply stpd_mema_sn. eapply trans_le in IHn. eapply IHn. eauto. eauto. omega.
-                           
-       SCase "Bind < Bind". SSCase "Bind < Bind". inversion H10. subst.
-       eapply stpd_bind. eapply trans_le in IHn. eapply IHn. eauto. eauto. omega.
-                         eapply trans_le in IHn. eapply IHn. eauto. eauto. omega.
-       
-       SCase "? < ? & ?". SSCase "T & ? < T". inversion H10. subst.
-       eapply trans_le in IHn. eapply IHn. apply H. apply H6. omega.
-
-       SCase "? < ? & ?". SSCase "? & T < T". inversion H10. subst.
-       eapply trans_le in IHn. eapply IHn. apply H0. apply H6. omega.
-
-       SCase "? < Sel". SSCase "Sel < ?". (* proper mid *)
-       assert (trans_on n2 n0) as IHX. eapply trans_le; [ eauto | omega ].
-       (* invert TSel x = TSel x0 *)
-       inversion H12. subst x0. rewrite H in H7. inversion H7. subst.
-       eapply IHX. apply H1. apply H9.
-       
-       SCase "? < Sel". SSCase "Sel < Sel".
-       inversion H11. subst x1. rewrite H in H7. inversion H7. subst.
-       eapply stpd_sel2. eauto. eauto. eexists. eapply H1. 
-
-       SCase "Sel < Sel". SSCase "Sel < ?".
-       inversion H11. subst x2. rewrite H0 in H6. inversion H6. subst.
-       eapply stpd_sel1. eauto. eauto. eexists. eapply H8.
-
-       SCase "Sel < Sel". SSCase "Sel < Sel".
-       exists 0. eapply stp_selx. eauto. eauto.  inversion H10. subst.
-         rewrite H0 in H6. inversion H6. subst. eapply H7.
-
-       SCase "SelB < SelB". SSCase "SelB < SelB".
-       inversion H6. subst.
-       exists 0. eapply stp_selbx. 
-Qed.
-
-
-
-
-Lemma stpd_trans: forall G1 G2 G3 T1 T2 T3,
-    stpd G1 T1 G2 T2 ->
-    stpd G2 T2 G3 T3 ->
-    stpd G1 T1 G3 T3.
-Proof. intros.
-    destruct H. destruct H0. eapply (stp_trans (x+x0) x x0). eauto. eapply H. eapply H0.
-Qed.
-
-
-
-
-Inductive has_type : list (nat*ty) -> tm -> ty -> Prop :=
-| t_true: forall env,
-           has_type env ttrue TBool
-| t_false: forall env,
-           has_type env tfalse TBool
-| t_var: forall n (env:list (nat*ty)) t1,
-           index n env = Some t1 ->
-           wf_type env t1 ->
-           has_type env (tvar n) t1
-| t_vara: forall n env T T2,
-           index n env = Some T ->
-           atp env T T2 -> 
-           wf_type env T2 ->
-           has_type env (tvar n) T2
-
-| t_var_pack: forall n env T T2,
-           index n env = Some T ->
-           open n T2 = T ->
-           wf_type env T ->
-           wf_type env (TBind T2) ->
-           has_type env (tvar n) (TBind T2)
-
-| t_var_unpack: forall n env T T2,
-           index n env = Some (TBind T2) ->
-           open n T2 = T ->
-           wf_type env T ->
-           wf_type env (TBind T2) ->
-           has_type env (tvar n) T
-
-                    
-(*
-| t_var_pack: forall n env T T2,
-           index n env = Some T ->
-           wf_type env T ->
-           has_type env (tvar n) (TBind n T)
-*)
-
-| t_app: forall env f m x TF T1 T2,
-           index f env = Some TF ->
-           tresolve TF (TFun m T1 T2) ->
-           wf_type env T1 ->
-           wf_type env T2 ->
-           has_type env x T1 ->
-           has_type env (tapp f m x) T2
-| t_abs: forall env TF TFN f z dcs TA T3,
-           TF  = (TObj (Some TA) dcs) ->
-           TFN = (TObj None      dcs) ->
-
-           dc_has_type ((f,TF)::env) dcs ->
-
-           has_type ((f,TFN)::env) z T3 -> 
-
-           wf_type ((f,TF)::env) TF ->
-           wf_type env T3 ->
-           has_type env (tabs f TA dcs z) T3
-| t_let: forall env x y z T1 T3,
-           has_type env y T1 ->
-           has_type ((x,T1)::env) z T3 -> 
-           wf_type env T3 ->
-           has_type env (tlet x T1 y z) T3
-
- with dc_has_type: list(nat * ty) -> list (nat*dc) -> Prop :=
-      | dt_fun: forall env x y m T1 T2 dcs,
-          has_type ((x,T1)::env) y T2 ->
-          dc_has_type env dcs ->
-          m = length dcs ->
-          dc_has_type env ((m, dfun T1 T2 x y)::dcs)
-      | dt_nil: forall env,
-           dc_has_type env nil
-.
 
 Inductive wf_env : list (nat*vl) -> list (nat*ty) -> Prop := 
 | wfe_nil : wf_env nil nil
@@ -798,7 +441,7 @@ with val_type : env -> vl -> ty -> Prop :=
     val_type venv (vbool b) T
 | v_abs: forall env venv tenv TW TF f dcs TA,
     TF  = (TObj (Some TA) dcs) ->
-    closed 0 TA ->
+    closed 0 TA -> (* should be implied by WF below *)
     dc_has_type ((f,TF)::tenv) dcs ->
     
     wf_env env tenv ->
@@ -815,7 +458,7 @@ with val_type : env -> vl -> ty -> Prop :=
 .
 
 
-(* could use do-notation to clean up syntax *)
+(* evaluation. could use do-notation to clean up syntax *)
 Fixpoint teval(n: nat)(env: env)(t: tm){struct n}: option (option vl) :=
   match n with
     | 0 => None
@@ -852,6 +495,7 @@ Fixpoint teval(n: nat)(env: env)(t: tm){struct n}: option (option vl) :=
       end
   end.
 
+(* not used, just for completeness *)
 Inductive eval : env -> tm -> option vl -> Prop :=
 | e_true: forall env, 
     eval env ttrue (Some (vbool true))
@@ -872,7 +516,9 @@ Inductive eval : env -> tm -> option vl -> Prop :=
 
 
 
-
+(* ############################################################ *)
+(* Examples *)
+(* ############################################################ *)
 
 Hint Constructors ty.
 Hint Constructors tm.
@@ -897,11 +543,8 @@ Hint Constructors list.
 
 Hint Unfold index.
 Hint Unfold length.
-Hint Unfold resolve.
 
 Hint Constructors tresolve.
-
-
 
 Hint Resolve ex_intro.
 
@@ -999,7 +642,8 @@ Ltac crush_has_tp :=
   try solve [econstructor; compute; eauto; crush_has_tp];
   try solve [eapply t_vara; compute; eauto; crush_has_tp];
   try solve [eapply t_var_unpack; compute; eauto; crush_has_tp];
-  try solve [eapply t_var_pack; compute; eauto; crush_has_tp].
+  try solve [eapply t_var_pack; compute; eauto; crush_has_tp];
+  try solve [eapply tr_unpack; crush_has_tp].
 
 (*
 let f: { A = Nat; Nat => f.A } = x => x
@@ -1026,6 +670,25 @@ Example tp5 : has_type nil
 Proof.
   crush_has_tp.
 Qed.
+
+
+
+(*
+branding/unbranding. roughly this:
+
+val a = new {
+  type A = Nat
+  def intro(x:Nat): a.A = x
+  def elim(x:a.A): Nat = x 
+} // type A abstract outside
+
+val x: a.A = a.intro(7)
+val y: Nat = a.elim(x)
+
+val z: a.A = 7 // fail
+val u: Nat = x // fail 
+*)
+
 
 (*
 BRANDING
@@ -1065,35 +728,89 @@ Proof.
 Qed.
 
 
-(*
-branding/unbranding needs two methods
-
-val a = new {
-  type A = Nat
-  def intro(x:Nat): a.A = x
-  def elim(x:a.A): Nat = x 
-} // type A abstract outside
-
-val x: a.A = a.intro(7)
-val y: Nat = a.elim(x)
-
-val z: a.A = 7 // fail
-val u: Nat = x // fail 
-
-*)
 
 
 (*
-SELF TYPES
+SELF TYPES: PACK
 let f: { A = Nat; Nat => f.A } = x => x
 f
 *)
 Example tp8 : has_type nil
    (tabs f TNat [idx 0 TNat (TSel f)]
      (tvar f))
-   (TBind (TAnd (TMem None) (TAnd (TFun 0 TNat (TSelB 0)) TTop))).
+   (TBind (TAnd (TMem None) (TAnd (TFun 0 TNat (TSelB 0)) TNoF))).
 Proof.
   crush_has_tp.
+Qed.
+
+(*
+SELF TYPES: return from function
+let f: { A = Nat; Nat => f.A } = x => x
+f
+ *)
+
+(* 
+Expand bind so that the (TSel f) becomes well-formed.
+*)
+
+Example tp91 : has_type
+    [(f,(TBind (TAnd (TMem None) (TAnd (TFun 0 TNat (TSelB 0)) TNoF))))]
+    (tvar f)
+    (TAnd (TMem None) (TAnd (TFun 0 TNat (TSel f)) TNoF)).
+Proof.
+  crush_has_tp.
+Qed.
+
+
+Example tp92 : has_type
+    [(f,(TBind (TAnd (TMem None) (TAnd (TFun 0 TNat (TSelB 0)) TNoF))))]
+    (tapp f 0 ttrue)
+    (TSel f).
+Proof.
+  econstructor; crush_has_tp.
+Qed.
+
+
+Example tp93 : has_type nil
+  (tlet f (TBind (TAnd (TMem None) (TAnd (TFun 0 TNat (TSelB 0)) TNoF)))
+    (tabs f TNat [idx 0 TNat (TSel f)]
+      (tvar f))
+    (tlet x (TAnd (TMem None) (TAnd (TFun 0 TNat (TSel f)) TNoF)) (tvar f)
+      ttrue))  (* note that x.fun has type Nat -> f.A *)
+  TBool.       (* if we want Nat -> x.A we need to assign a Bind to x *)
+Proof.
+  crush_has_tp.
+Qed.
+
+
+Example tp94 : has_type nil
+  (tlet f (TBind (TAnd (TMem None) (TAnd (TFun 1 (TSelB 0) TNat) (TAnd (TFun 0 TNat (TSelB 0)) TNoF))))
+    (tabs f TNat [idx 1 (TSel f) TNat; idx 0 TNat (TSel f)]
+          (tvar f))
+    (* x binding is not used. just a sanity check that we derive the correct type *)
+    (tlet x (TAnd (TMem None) (TAnd (TFun 1 (TSel f) TNat) (TAnd (TFun 0 TNat (TSel f)) TNoF))) (tvar f)
+      (tlet y (TSel f) (tapp f 0 (ttrue)) (* call intro *)
+         (tlet z TNat (tapp f 1 (tvar y))   (* call elim *)
+           (tvar z)))))
+  TBool.
+Proof.
+  econstructor; crush_has_tp.
+  econstructor; crush_has_tp.
+  econstructor; crush_has_tp.
+  econstructor; crush_has_tp.
+  econstructor; crush_has_tp.
+  econstructor; crush_has_tp.
+Qed.
+
+
+
+(* ############################################################ *)
+(* Proofs *)
+(* ############################################################ *)
+
+
+Lemma hastp_wf: forall G e T, has_type G e T -> wf_type G T.
+  Proof. intros. induction H; eauto.
 Qed.
 
 
@@ -1118,7 +835,7 @@ Proof.
 Qed.
 
   
-Lemma index_extend1 : forall X vs n a (T: X),
+Lemma index_extend : forall X vs n a (T: X),
                        index n vs = Some T ->
                        index n (a::vs) = Some T.
 
@@ -1142,6 +859,162 @@ Proof. intros. induction H; eauto.  Qed.
 Hint Resolve wft_extend.
 
 
+
+
+
+
+
+
+(* impossible subtyping cases, uses for contradictions *)
+Inductive nostp: ty -> ty -> Prop :=
+| nostp_top_fun: forall m T1 T2,
+   nostp TNoF (TFun m T1 T2)
+| nostp_top_mem: forall TA,
+   nostp TNoF (TMem TA)
+| nostp_fun: forall T1 T2 T3 T4 n1 n2,
+   not (n1 = n2) ->
+   nostp (TFun n1 T1 T2) (TFun n2 T3 T4)
+| nostp_fun_mem: forall m TA T1 T2,
+   nostp (TMem TA) (TFun m T1 T2)
+| nostp_mem_fun: forall m TA T1 T2,
+   nostp (TFun m T1 T2) (TMem TA)
+| nostp_and: forall T1 T2 T,
+    nostp T1 T ->
+    nostp T2 T ->
+    nostp (TAnd T1 T2) T
+.
+
+Hint Constructors nostp.
+
+(* INVERSION CASES *)
+
+Lemma stp_mem_invA: forall G1 G2 TA1 TA2,
+    stpd G1 (TMem (Some TA1)) G2 (TMem (Some TA2)) ->
+    stpd G1 TA1 G2 TA2.
+Proof. intros. destruct H. inversion H. eexists. eauto. Qed.
+
+Lemma stp_mem_invB: forall G1 G2 TA1 TA2,
+    stpd G1 (TMem (Some TA1)) G2 (TMem (Some TA2)) ->
+    stpd G2 TA2 G1 TA1.
+Proof. intros. destruct H. inversion H. eexists. eauto. Qed.
+
+        
+Lemma stp_funA: forall m G1 G2 T11 T12 T21 T22,
+    stpd G1 (TFun m T11 T12) G2 (TFun m T21 T22) ->
+    stpd G2 T21 G1 T11.
+Proof. intros. destruct H. inversion H. eexists. eauto. Qed.
+Lemma stp_funB: forall m G1 G2 T11 T12 T21 T22,
+    stpd G1 (TFun m T11 T12) G2 (TFun m T21 T22) ->
+    stpd G1 T12 G2 T22.
+Proof. intros. destruct H. inversion H. eexists. eauto. Qed.
+
+(* invert `and` if one branch is impossible *)
+Lemma nostp_no_rhs_and: forall T1 T2 T,
+      nostp T (TAnd T1 T2) ->
+      False.
+Proof. intros. remember (TAnd T1 T2). induction H; inversion Heqt.
+       eauto.
+Qed.
+Lemma nostp_no_rhs_sel: forall T x,
+      nostp T (TSel x) ->
+      False.
+Proof. intros. remember (TSel x0). induction H; inversion Heqt. 
+       eauto.
+Qed.
+
+Hint Resolve ex_intro.
+
+Lemma stp_contra: forall T1 T2 G1 G2,
+      nostp T1 T2 ->
+      stpd G1 T1 G2 T2 ->
+      False.
+Proof. intros. induction H; destruct H0 as [n H0]; inversion H0; subst; eauto.
+
+(*
+       eapply IHnostp1. eexists. eauto.
+       eapply IHnostp2. eexists. eauto.
+*)
+       eapply nostp_no_rhs_and. eauto. 
+       eapply nostp_no_rhs_sel. eauto.
+       
+
+       
+Qed.
+       
+Lemma stp_andA: forall G1 G2 T1 T2 T,
+    stpd G1 (TAnd T1 T2) G2 T ->
+    nostp T2 T ->          
+    stpd G1 T1 G2 T.
+Proof. intros. destruct H. inversion H.
+       subst. eexists. eauto. 
+       eapply stp_contra in H0. contradiction. exists n1. eauto.
+       subst. eapply nostp_no_rhs_and in H0. contradiction.
+       subst. eapply nostp_no_rhs_sel in H0. contradiction.
+Qed.
+Lemma stp_andB: forall G1 G2 T1 T2 T,
+    stpd G1 (TAnd T1 T2) G2 T ->
+    nostp T1 T ->           
+    stpd G1 T2 G2 T.
+Proof. intros. destruct H. inversion H.
+       eapply stp_contra in H0. contradiction. exists n1. eauto.
+       subst. eexists. eauto.
+       subst. eapply nostp_no_rhs_and in H0. contradiction.
+       subst. eapply nostp_no_rhs_sel in H0. contradiction.
+Qed.
+
+Lemma stp_and2A: forall G1 G2 T1 T2 T,
+    stpd G1 T G2 (TAnd T1 T2) ->
+    stpd G1 T G2 T1.
+Proof. intros. remember (TAnd T1 T2). destruct H. induction H; inversion Heqt.
+       eapply IHstp1 in H1. destruct H1.
+       eexists. eapply stp_and11. eauto. eauto.
+       eapply IHstp1 in H1. destruct H1.
+       eexists. eapply stp_and12. eauto. eauto.
+       subst. eexists. eauto.
+       eapply IHstp in H2. destruct H2. 
+       subst. eexists. eapply stp_sel1. eauto. eauto. eauto.
+Qed.
+
+Lemma stp_and2B: forall G1 G2 T1 T2 T,
+    stpd G1 T G2 (TAnd T1 T2) ->
+    stpd G1 T G2 T2.
+Proof. intros. remember (TAnd T1 T2). destruct H. induction H; inversion Heqt.
+       eapply IHstp1 in H1. destruct H1.
+       eexists. eapply stp_and11. eauto. eauto.
+       eapply IHstp1 in H1. destruct H1.
+       eexists. eapply stp_and12. eauto. eauto.
+       subst. eexists. eauto.
+       eapply IHstp in H2. destruct H2.
+       subst. eexists. eapply stp_sel1. eauto. eauto. eauto.
+Qed.
+
+
+(* EXTENSION *)
+
+Hint Constructors stp.
+
+Lemma stp_extend : forall SF G1 G2 T1 T2 x v,
+    stp SF G1 T1 G2 T2 ->
+    stp SF ((x,v)::G1) T1 G2 T2 /\
+    stp SF G1 T1 ((x,v)::G2) T2 /\
+    stp SF ((x,v)::G1) T1 ((x,v)::G2) T2.
+Proof. intros. stp_cases (induction H) Case;
+         try inversion IHstp as [IH_1 [IH_2 IH_12]];
+         try inversion IHstp1 as [IH1_1 [IH1_2 IH1_12]];
+         try inversion IHstp2 as [IH2_1 [IH2_2 IH2_12]];
+         split; try solve [eauto; constructor; eauto].
+Qed.
+
+Lemma stp_extend1 : forall SF G1 G2 T1 T2 x v,
+    stp SF G1 T1 G2 T2 ->
+    stp SF ((x,v)::G1) T1 G2 T2.
+Proof. intros. eapply stp_extend. eauto. Qed.
+
+Lemma stp_extend2 : forall SF G1 G2 T1 T2 x v,
+    stp SF G1 T1 G2 T2 ->
+    stp SF G1 T1 ((x,v)::G2) T2.
+Proof. intros. eapply stp_extend. eauto. Qed.
+
 Lemma stpd_extend1 : forall G1 G2 T1 T2 x v,
                        stpd G1 T1 G2 T2 ->
                        stpd ((x,v)::G1) T1 G2 T2.
@@ -1157,9 +1030,259 @@ Proof. intros. destruct H. eexists. eapply stp_extend2. apply H. Qed.
 Hint Resolve stp_extend2.
 
 
+(* REGULARITY *)
 
+Lemma stp_reg : forall G1 G2 T1 T2,
+    stpd G1 T1 G2 T2 ->
+    stpd G1 T1 G1 T1 /\ stpd G2 T2 G2 T2.
+Proof. intros. destruct H. stp_cases (induction H) Case;
+         try inversion IHstp as [[IH_n1 IH_1] [IH_n2 IH_2]];
+         try inversion IHstp1 as [[IH_n1 IH_1] [IH_n2 IH_2]];
+         try inversion IHstp2 as [[IH_n3 IH_3] [IH_n4 IH_4]];
+         split;
+         try solve [exists 0; eauto];
+         try solve [eexists; eauto].
+Qed.
+
+
+Lemma stp_reg1 : forall G1 G2 T1 T2,
+    stpd G1 T1 G2 T2 ->
+    stpd G1 T1 G1 T1.
+Proof. intros. eapply stp_reg in H. inversion H. eauto. Qed.
+
+Lemma stp_reg2 : forall G1 G2 T1 T2,
+    stpd G1 T1 G2 T2 ->
+    stpd G2 T2 G2 T2.
+Proof. intros. eapply stp_reg in H. inversion H. eauto. Qed.
+
+
+(* HELPERS *)
+
+Lemma stpd_sel2: forall G1 T1 G2 GC TA f x dcs,
+                      index x G2 = Some(vabs GC f TA dcs) ->
+                      closed 0 TA ->
+                      stpd G1 T1 ((f,vabs GC f TA dcs)::GC) TA ->
+                      stpd G1 T1 G2 (TSel x)
+.
+Proof. intros. destruct H1. eexists. eapply stp_sel2; eauto. Qed.
+
+
+Lemma stpd_sel1: forall G1 GC TA T2 G2 f x dcs,
+                      index x G1 = Some(vabs GC f TA dcs) ->
+                      closed 0 TA ->
+                      stpd ((f,vabs GC f TA dcs)::GC) TA G2 T2 ->
+                      stpd G1 (TSel x) G2 T2
+.
+Proof. intros. destruct H1. eexists. eapply stp_sel1; eauto. Qed.
+
+
+Lemma stpd_and11: forall G1 G2 T1 T2 T,
+                      stpd G1 T1 G2 T ->
+                      stpd G1 T2 G1 T2 ->
+                      stpd G1 (TAnd T1 T2) G2 T
+.
+Proof. intros. destruct H. destruct H0. eexists. eapply stp_and11; eauto. Qed.
+
+Lemma stpd_and12: forall G1 G2 T1 T2 T,
+                      stpd G1 T2 G2 T ->
+                      stpd G1 T1 G1 T1 ->
+                      stpd G1 (TAnd T1 T2) G2 T
+.
+Proof. intros. destruct H. destruct H0. eexists. eapply stp_and12; eauto. Qed.
+
+
+Lemma stpd_and2: forall G1 G2 T1 T2 T,
+                      stpd G1 T G2 T1 ->
+                      stpd G1 T G2 T2 ->
+                      stpd G1 T G2 (TAnd T1 T2)
+.
+Proof. intros. destruct H. destruct H0. eexists. eapply stp_and2; eauto. Qed.
+
+Lemma stpd_fun:  forall m G1 G2 T11 T12 T21 T22,
+    stpd G2 T21 G1 T11 ->
+    stpd G1 T12 G2 T22 ->
+    stpd G1 (TFun m T11 T12) G2 (TFun m T21 T22)
+.
+Proof. intros. destruct H. destruct H0. eexists. eapply stp_fun; eauto. Qed.
+
+Lemma stpd_mem_ss: forall G1 G2 TA1 TA2,
+    stpd G1 TA1 G2 TA2 ->
+    stpd G2 TA2 G1 TA1 ->
+    stpd G1 (TMem (Some TA1)) G2 (TMem (Some TA2)).
+Proof. intros. destruct H. destruct H0. eexists. eapply stp_mem_ss; eauto. Qed.
+
+Lemma stpd_mema_sn: forall G1 G2 TA,
+    stpd G1 TA G1 TA -> (* regularity *)
+    stpd G1 (TMem (Some TA)) G2 (TMem None).
+Proof. intros. destruct H. eexists. eapply stp_mema_sn; eauto. Qed.
+
+Lemma stpd_mema_nn: forall G1 G2,
+    stpd G1 (TMem None) G2 (TMem None).
+Proof. intros. exists 0. eapply stp_mema_nn; eauto. Qed.
+
+Lemma stpd_bind: forall G1 G2 TA1 TA2,
+    stpd G1 TA1 G2 TA2 ->
+    stpd G1 (TBind TA1) G2 (TBind TA2).
+Proof. intros. destruct H. eexists. eapply stp_bind; eauto. Qed.
+
+
+(* TRANSITIVITY *)
+
+Definition trans_on n12 n23 := 
+                      forall  T1 T2 T3 G1 G2 G3, 
+                      stp n12 G1 T1 G2 T2 ->
+                      stp n23 G2 T2 G3 T3 ->
+                      stpd G1 T1 G3 T3.
+Hint Unfold trans_on.
+
+Definition trans_up n := forall n12 n23, n12 + n23 <= n ->
+                      trans_on n12 n23.
+Hint Unfold trans_up.
+
+Lemma trans_le: forall n n1 n2,
+                      trans_up n ->
+                      n1 + n2 <= n ->
+                      trans_on n1 n2
+.
+Proof. intros. unfold trans_up in H. eapply H. eauto. Qed.
+
+
+Lemma stp_trans: forall n, trans_up n.
+Proof. intros n.
+       induction n.
+       Case "z".
+       unfold trans_up. unfold trans_on.
+       intros.
+       assert (n12 = 0). omega. assert (n23 = 0). omega. subst.
+       inversion H0; inversion H1; subst;
+       try solve [inversion H0];
+       try solve [inversion H1];
+       try solve [exists 0; eauto].
+
+       SCase "Sel < Sel".
+       inversion H13. subst. rewrite H3 in H9. inversion H9. subst.
+       exists 0. eapply stp_selx. eauto. eauto.
+
+       SCase "SelB < SelB".
+       inversion H9. subst.
+       exists 0. eapply stp_selbx.
+
+       Case "S n".
+       unfold trans_up. intros n12 n23 NE   T1 T2 T3 G1 G2 G3    S12 S23.
+
+       (* case analysis takes a long time! >= 144 cases to start with *)
+       stp_cases(inversion S12) SCase;  stp_cases(inversion S23) SSCase;  subst;
+
+       try solve [SSCase "? < Sel";
+         eapply stpd_sel2; [eauto | eauto | eapply trans_le in IHn; [ eapply IHn; eauto | omega ]]];
+
+       try solve [SCase "Sel < ?";
+         eapply stpd_sel1; [eauto | eauto | eapply trans_le in IHn; [ eapply IHn; eauto | omega ]]];
+
+       try solve [SSCase "? < ? & ?";
+         eapply stpd_and2; [ eapply trans_le in IHn; [ eapply IHn; eauto | omega] |
+                             eapply trans_le in IHn; [ eapply IHn; eauto | omega]]];
+
+       try solve [SCase "T & ? < T";
+         eapply stpd_and11; [ eapply trans_le in IHn; [ eapply IHn; eauto | omega] | eexists; eauto]];
+
+       try solve [SCase "? & T < T";
+         eapply stpd_and12; [ eapply trans_le in IHn; [ eapply IHn; eauto | omega] | eexists; eauto]];
+
+
+       try solve [exists 0; eauto];
+       try solve by inversion;
+       idtac. 
+
+(*
+       SCase "Bool < Bool". SSCase "Bool < Bool".
+       eapply ex_intro with 0. eapply stp_bool.
+*)
+       idtac.
+       
+       SCase "Fun < Fun". SSCase "Fun < Fun". inversion H10. subst.
+       eapply stpd_fun. eapply trans_le in IHn. eapply IHn. eauto. eauto. omega.
+                        eapply trans_le in IHn. eapply IHn. eauto. eauto. omega.
+
+       SCase "Mem Some < Mem Some". SSCase "Mem Some < Mem Some". inversion H10. subst.
+       eapply stpd_mem_ss. eapply trans_le in IHn. eapply IHn. eauto. eauto. omega.
+                           eapply trans_le in IHn. eapply IHn. eauto. eauto. omega.
+
+       SCase "Mem Some < Mem Some". SSCase "Mem Some < Mem None". inversion H9. subst.
+       eapply stpd_mema_sn. eapply trans_le in IHn. eapply IHn. eauto. eauto. omega.
+
+       SCase "Mem Some < Mem None". SSCase "Mem None < Mem None". 
+       eapply stpd_mema_sn. eapply trans_le in IHn. eapply IHn. eauto. eauto. omega.
+                           
+       SCase "Bind < Bind". SSCase "Bind < Bind". inversion H8. subst.
+       eapply stpd_bind. eapply trans_le in IHn. eapply IHn. eauto. eauto. omega.
+       
+       SCase "? < ? & ?". SSCase "T & ? < T". inversion H10. subst.
+       eapply trans_le in IHn. eapply IHn. apply H. apply H6. omega.
+
+       SCase "? < ? & ?". SSCase "? & T < T". inversion H10. subst.
+       eapply trans_le in IHn. eapply IHn. apply H0. apply H6. omega.
+
+       SCase "? < Sel". SSCase "Sel < ?". (* proper mid *)
+       assert (trans_on n2 n0) as IHX. eapply trans_le; [ eauto | omega ].
+       (* invert TSel x = TSel x0 *)
+       inversion H12. subst x0. rewrite H in H7. inversion H7. subst.
+       eapply IHX. apply H1. apply H9.
+       
+       SCase "? < Sel". SSCase "Sel < Sel".
+       inversion H11. subst x1. rewrite H in H7. inversion H7. subst.
+       eapply stpd_sel2. eauto. eauto. eexists. eapply H1. 
+
+       SCase "Sel < Sel". SSCase "Sel < ?".
+       inversion H11. subst x2. rewrite H0 in H6. inversion H6. subst.
+       eapply stpd_sel1. eauto. eauto. eexists. eapply H8.
+
+       SCase "Sel < Sel". SSCase "Sel < Sel".
+       exists 0. eapply stp_selx. eauto. eauto.  inversion H10. subst.
+         rewrite H0 in H6. inversion H6. subst. eapply H7.
+
+       SCase "SelB < SelB". SSCase "SelB < SelB".
+       inversion H6. subst.
+       exists 0. eapply stp_selbx. 
+Qed.
+
+
+
+
+Lemma stpd_trans: forall G1 G2 G3 T1 T2 T3,
+    stpd G1 T1 G2 T2 ->
+    stpd G2 T2 G3 T3 ->
+    stpd G1 T1 G3 T3.
+Proof. intros.
+    destruct H. destruct H0. eapply (stp_trans (x0+x1) x0 x1). eauto. eapply H. eapply H0.
+Qed.
+
+
+(* HELPERS SPECIFIC TO OBJ TYPES *)
 
 (* used in abs preservation case *)
+Lemma stpd_obj_reg_mem : forall G1 TA dcs,
+                      stpd G1 (TObj (Some TA) dcs) G1 (TObj (Some TA) dcs)  ->
+                      stpd G1 TA G1 TA.
+Proof. 
+  intros.
+  assert (stpd G1 (TObj (Some TA) dcs) G1 (TMem (Some TA))).
+  eapply stp_and2A. eauto.
+  eapply stp_mem_invA. eapply stp_reg2. eauto.
+Qed.
+
+Lemma stpd_obj_reg_dcs : forall G1 TA dcs,
+                      stpd G1 (TObj (Some TA) dcs) G1 (TObj (Some TA) dcs)  ->
+                      stpd G1 (dc_type_and dcs) G1 (dc_type_and dcs).
+Proof. 
+  intros.
+  assert (stpd G1 (TObj (Some TA) dcs) G1 (dc_type_and dcs)).
+  eapply stp_and2B. eauto.
+  eapply stp_reg2. eauto.
+Qed.
+
+
+
 Lemma stpd_mem_abs : forall G1 TA dcs,
                       stpd G1 (TObj (Some TA) dcs) G1 (TObj (Some TA) dcs)  ->
                       stpd G1 (TObj (Some TA) dcs) G1 (TObj None dcs).
@@ -1168,18 +1291,94 @@ Proof.
   intros. unfold TObj. unfold TObj in H.
 
   eapply stpd_and2. eapply stpd_and11. eapply stpd_mema_sn.
-    admit. (* TODO: TA < TA regularity *)
-    admit. (* TODO: dcs < dcs regularity *)
+    eapply stpd_obj_reg_mem. eauto. 
+    eapply stpd_obj_reg_dcs. eauto. 
     eapply stp_and2B. apply H.
 Qed.
 
+Lemma nostp_inv_dcs_mem: forall dcs TA, (* not needed? *)
+  nostp (dc_type_and dcs) (TMem TA).
+Proof.
+  intros.
+  induction dcs.
+  Case "nil". eauto.
+  Case "cons".
+    unfold dc_type_and. destruct a. destruct d.
+    eapply nostp_and.
+      eapply nostp_mem_fun.
+      eapply IHdcs.
+Qed.
 
-Hint Resolve stpd_extend2.
+Lemma stp_inv_obj_ex_mem: forall env0 env1 dcs TA TA2,
+  stpd env0 (TObj (Some TA) dcs) env1 (TMem (Some TA2)) ->
+      stpd env0 TA env1 TA2 /\ stpd env1 TA2 env0 TA.
+Proof. intros.
+       unfold TObj in H.
+       assert (nostp (dc_type_and dcs) (TMem (Some TA2))). eapply nostp_inv_dcs_mem.
+       eapply stp_andA in H. destruct H. inversion H.
+       split; eexists; eauto.
+       eauto. (* nostp *)
+Qed.
+
+Lemma stp_inv_obj_ex_mem0: forall env0 env1 dcs TA TA2,
+  stpd env0 (TObj (Some TA) dcs) env1 (TMem (Some TA2)) ->
+      stpd env0 (TObj (Some TA) dcs) env0 (TMem (Some TA)).
+Proof. intros.
+       assert (stpd env0 (dc_type_and dcs) env0 (dc_type_and dcs)).
+         eapply stpd_obj_reg_dcs. eapply stp_reg1. eauto.
+       unfold TObj in H.
+       assert (nostp (dc_type_and dcs) (TMem (Some TA2))). eapply nostp_inv_dcs_mem.
+       eapply stp_andA in H. destruct H. inversion H.
+       subst.
+       eapply stpd_and11. eapply stpd_mem_ss.
+         eapply stpd_trans. eexists; eauto. eexists; eauto.
+         eapply stpd_trans. eexists; eauto. eexists; eauto.
+       eauto. (* dcs regularity *)
+       eauto. (* nostp *)  
+Qed.
+
+(* could use nostp *)
+Lemma stp_inv_obj_bind_contra: forall env0 env1 dcs TA TB,
+  stpd env0 (TObj (Some TA) dcs) env1 (TBind TB) ->
+  False.
+Proof.
+  intros. destruct H. inversion H. inversion H4. subst. clear H.
+  clear H7. generalize dependent n1.
+  induction dcs; intros. inversion H4.
+  simpl in H4. destruct a; destruct d.
+  inversion H4; subst; inversion H3; eapply IHdcs; eapply H3.
+Qed.
+
+Lemma nostp_inv_dcs: forall m dcs T3 T4,
+  length dcs <= m ->
+  nostp (dc_type_and dcs) (TFun m T3 T4).
+Proof.
+  intros.
+  induction dcs.
+  Case "nil". eauto.
+  Case "cons".
+    assert (S (length dcs) = length (a::dcs)) as L. eauto.
+    unfold dc_type_and. destruct a. destruct d.
+    eapply nostp_and.
+      eapply nostp_fun. omega.
+      eapply IHdcs. omega. 
+Qed.
+
+
+
+
+(* SOUNDNESS HELPERS / CONNECT STATIC <-> DYNAMIC *)
+
+Hint Resolve stp_extend1.
+Hint Resolve stp_extend2.
+Hint Resolve stp_reg1.
+
+Hint Resolve wft_extend.
 
 Lemma valtp_extend : forall vs x v v1 T,
                        val_type vs v T ->
                        val_type ((x,v1)::vs) v T.
-Proof. intros. induction H; eauto. Qed.
+Proof. intros. induction H; eauto using stpd_extend2. Qed.
 
 Lemma valtp_widen: forall G1 G2 T1 T2 v,
                      val_type G1 v T1 ->
@@ -1250,7 +1449,145 @@ Proof. intros.
  Qed.
 
 
-(* important *)
+
+
+
+(* structural helpers -- these could be tactified directly *)
+Lemma clos_extract_fun: forall x1 (venv1:env) v j m T1 T2,
+  (index x1 venv1 = Some v) \/ (closed j (TFun m T1 T2)) ->
+  ((index x1 venv1 = Some v) \/ (closed j T1)) /\
+  ((index x1 venv1 = Some v) \/ (closed j T2)).
+Proof.
+  intros. destruct H.
+  split. left. eauto. left. eauto.
+  inversion H.
+  split. right. eauto. right. eauto.
+Qed.
+
+Lemma clos_extract_and: forall x1 (venv1:env) v j T1 T2,
+  (index x1 venv1 = Some v) \/ (closed j (TAnd T1 T2)) ->
+  ((index x1 venv1 = Some v) \/ (closed j T1)) /\
+  ((index x1 venv1 = Some v) \/ (closed j T2)).
+Proof.
+  intros. destruct H.
+  split. left. eauto. left. eauto.
+  inversion H.
+  split. right. eauto. right. eauto.
+Qed.
+
+
+Lemma clos_extract_mem: forall x1 (venv1:env) v j T1,
+  (index x1 venv1 = Some v) \/ (closed j (TMem (Some T1))) ->
+  (index x1 venv1 = Some v) \/ (closed j T1).
+Proof.
+  intros. inversion H.
+  left. eauto. 
+  right. inversion H0. eauto.
+Qed.
+
+Lemma clos_extract_bind: forall x1 (venv1:env) v j T1,
+  (index x1 venv1 = Some v) \/ (closed j (TBind T1)) ->
+  (index x1 venv1 = Some v) \/ (closed (S j) T1).
+Proof.
+  intros. inversion H.
+  left. eauto. 
+  right. inversion H0. eauto. 
+Qed.
+
+
+(* self type/bind packing / unpacking *)
+Lemma open2stp: forall venv0 venv1 x0 x1 j v n1 T1 T2,
+  (index x0 venv0 = Some v) \/ (closed j T1) ->
+  (index x1 venv1 = Some v) \/ (closed j T2) ->
+  stp n1 venv0 T1 venv1 T2 ->
+  stpd venv0 (open_rec j x0 T1) venv1 (open_rec j x1 T2).
+Proof.
+  intros.
+  remember (n1) as n. rewrite Heqn in H1.
+  assert (n1 <= n). omega. clear Heqn.
+  gen n1 venv0 venv1 x0 x1 j T1 T2.
+  induction n.
+  (*0*) intros. assert (n1 = 0). omega. subst.
+  inversion H1; subst; 
+  try solve [inversion H1]; try solve [inversion H2];
+  try solve [exists 0; eauto].
+
+  SCase "SelB < SelB". inversion H1. subst. eauto.
+    unfold open. unfold open_rec.
+    case_eq (beq_nat j x2); intros E. eapply beq_nat_true_iff in E.
+    exists 0. eapply stp_selx. 
+      inversion H. eauto. inversion H3. omega.
+      inversion H0. eauto. inversion H3. omega.
+      eauto.
+
+  (* S n *)
+  intros. (* sloooow *)
+    
+  inversion H1; subst; eauto; try solve by inversion.
+
+  Ltac vc H := try (eapply clos_extract_fun in H; inversion H; clear H);
+               try (eapply clos_extract_mem in H);
+               try (eapply clos_extract_and in H; inversion H; clear H);
+               try (eapply clos_extract_bind in H).
+  
+  Case "Fun < Fun". vc H. vc H0. eapply stpd_fun.
+    eapply IHn with n0. omega. eauto. eauto. eauto. 
+    eapply IHn with n2. omega. eauto. eauto. eauto.
+
+  Case "Mem < Mem". vc H. vc H0.  eapply stpd_mem_ss. 
+    eapply IHn with n0. omega. eauto. eauto. eauto.
+    eapply IHn with n2. omega. eauto. eauto. eauto.
+
+  Case "Mem < Mem None". vc H. eapply stpd_mema_sn. 
+    eapply IHn with n0. omega. eauto. eauto. eauto.
+    
+  Case "Bind < Bind". vc H. vc H0.  eapply stpd_bind.
+    eapply IHn with n0. omega. eauto. eauto. eauto.
+
+  Case "And1 < ?". vc H. vc H0.  eapply stpd_and11. 
+    eapply IHn with n0. omega. eauto. eauto. eauto.
+    eapply IHn with n2. omega. eauto. eauto. eauto.
+
+  Case "And2 < ?". vc H. vc H0.  eapply stpd_and12.
+    eapply IHn with n0. omega. eauto. eauto. eauto.
+    eapply IHn with n2. omega. eauto. eauto. eauto.
+
+  Case "? < And2". vc H. vc H0.  eapply stpd_and2.
+    eapply IHn with n0. omega. eauto. eauto. eauto.
+    eapply IHn with n2. omega. eauto. eauto. eauto.
+
+  (* for SEL, we rely on TA being closed *)
+  Case "? < Sel". eapply stpd_sel2.
+    eauto. eauto.    
+    assert (closed j TA) as CLOS. eapply closed_upgrade; eauto. omega.
+    assert (TA = open_rec j x TA) as OPEN_ID.
+      eapply closed_no_open; eauto.
+    
+    remember ((f0, vabs GC f0 TA dcs) :: GC) as GC0.
+    rewrite OPEN_ID.
+    eapply IHn with n2. omega. eauto. right. apply CLOS. eauto.
+
+
+  Case "Sel < ?". eapply stpd_sel1.
+    eauto. eauto.
+    assert (closed j TA) as CLOS. eapply closed_upgrade; eauto. omega.
+    assert (TA = open_rec j x TA) as OPEN_ID.
+      eapply closed_no_open; eauto.
+    
+    remember ((f0, vabs GC f0 TA dcs) :: GC) as GC0.
+    rewrite OPEN_ID.
+    eapply IHn with n2. omega. right. apply CLOS. eauto. eauto.
+
+Qed.
+
+
+
+
+
+
+
+(* STATIC WF IMPLIES DYNAMIC STP *)
+
 Lemma stp_wf_refl: forall G1 H1 T1,
                      wf_env H1 G1 ->
                      wf_type G1 T1 ->
@@ -1276,7 +1613,6 @@ Qed.
 
 
 
-(* important: used in eval_abs_safe *)
 Lemma stp_cf_refl: forall G1 H1 T1 TA f dc,
                      wf_env H1 G1 ->
                      wf_type ((f,TObj (Some TA) dc)::G1) T1 ->
@@ -1312,10 +1648,11 @@ will become part of the extended wf_env!
 *)         
 
 
-
-Lemma tresolve2stp: forall H1 H2 T1 T2 T3,
+(* STATIC STP IMPLIES DYNAMIC STP *)
+(*
+Lemma tresolve2stp: forall x H1 H2 T1 T2 T3,
                  stpd H1 T1 H2 T2 ->
-                 tresolve T2 T3 ->
+                 tresolve x T2 T3 ->
                  stpd H1 T1 H2 T3.
 Proof.
   intros.
@@ -1323,58 +1660,41 @@ Proof.
   Case "Self". eauto.
   Case "And1". eapply IHtresolve. eapply stp_and2A. eauto.
   Case "And2". eapply IHtresolve. eapply stp_and2B. eauto.
+  Case "Bind". eapply IHtresolve. inversion H. inversion H4. subst.
 Qed.
-
-Lemma valtp_widen_tresolve: forall G1 T1 T2 v,
+*)
+Lemma valtp_widen_tresolve: forall G1 T1 T2 x v,
+                     index x G1 = Some v ->
                      val_type G1 v T1 ->
-                     tresolve T1 T2 ->
+                     tresolve x T1 T2 ->
                      val_type G1 v T2.
 Proof.
-  intros. induction H; econstructor.
+  intros.
+  tresolve_cases (induction H1) Case.
+  Case "Self". eauto.
+  Case "And1".
+    eapply IHtresolve. eauto. inversion H0; subst; econstructor; repeat eauto.
+    (*b*) eapply stp_and2A; eauto.
+    (*a*) eapply stp_and2A; eauto.
+    (*p*) inversion H5. inversion H4. eauto.
+  Case "And2".
+    eapply IHtresolve. eauto. inversion H0; subst; econstructor; repeat eauto.
+    (*b*) eapply stp_and2B; eauto.
+    (*a*) eapply stp_and2B; eauto.
+    (*p*) inversion H5. inversion H4. eauto.
+  Case "Bind".
+    (* bool *) inversion H0. subst. destruct H3. inversion H1.
+    (* abs  *) assert False. eapply stp_inv_obj_bind_contra. subst. eauto. contradiction.
+    (* pack *) subst. inversion H6. inversion H1. 
+    eapply IHtresolve. eauto. eapply valtp_widen. apply H4. eapply open2stp; eauto. 
+(*  
+  induction H; econstructor.
     Case "Bool". eapply tresolve2stp; eauto.
     Case "Abs". eauto. eauto. eauto. eauto. eauto. eapply tresolve2stp;  eauto.
-    Case "Pack". eauto. eauto. eauto. eapply tresolve2stp; eauto.
+    Case "Pack". eauto. eauto. eauto. eapply tresolve2stp; eauto. *)
 Qed.
 
 
-
-Lemma stp_inv_obj_ex_mem: forall env0 env1 dcs TA TA2,
-  stpd env0 (TObj (Some TA) dcs) env1 (TMem (Some TA2)) ->
-      stpd env0 TA env1 TA2 /\ stpd env1 TA2 env0 TA.
-Proof. intros.
-       unfold TObj in H.
-       assert (nostp (dc_type_and dcs) (TMem (Some TA2))). eapply nostp_inv_dcs_mem.
-       eapply stp_andA in H. destruct H. inversion H.
-       split; eexists; eauto.
-       eauto. (* nostp *)
-Qed.
-
-Lemma stp_inv_obj_ex_mem0: forall env0 env1 dcs TA TA2,
-  stpd env0 (TObj (Some TA) dcs) env1 (TMem (Some TA2)) ->
-      stpd env0 (TObj (Some TA) dcs) env0 (TMem (Some TA)).
-Proof. intros.
-       unfold TObj in H.
-       assert (nostp (dc_type_and dcs) (TMem (Some TA2))). eapply nostp_inv_dcs_mem.
-       eapply stp_andA in H. destruct H. inversion H.
-       subst.
-       eapply stpd_and11. eapply stpd_mem_ss.
-         eapply stpd_trans. eexists; eauto. eexists; eauto.
-         eapply stpd_trans. eexists; eauto. eexists; eauto.
-       admit. (* dcs regularity *)
-       eauto. (* nostp *)  
-Qed.
-
-(* could use nostp *)
-Lemma stp_inv_obj_bind_contra: forall env0 env1 dcs TA TB,
-  stpd env0 (TObj (Some TA) dcs) env1 (TBind TB) ->
-  False.
-Proof.
-  intros. destruct H. inversion H. inversion H4. subst. clear H.
-  clear H7. generalize dependent n1.
-  induction dcs; intros. inversion H4.
-  simpl in H4. destruct a; destruct d.
-  inversion H4; subst; inversion H3; eapply IHdcs; eapply H3.
-Qed.
 
        
 Lemma atp2stp: forall G1 H1 T1 T2,
@@ -1431,7 +1751,6 @@ Proof.
       SSCase "vpack".
         destruct H6. inversion H6.
 Qed.
-      
 
 
 Lemma valtp_widen_atp: forall G H T1 T2 v,
@@ -1445,144 +1764,10 @@ Qed.
 
 
 
-Lemma clos_extract_fun: forall x1 (venv1:env) v j m T1 T2,
-  (index x1 venv1 = Some v) \/ (closed j (TFun m T1 T2)) ->
-  ((index x1 venv1 = Some v) \/ (closed j T1)) /\
-  ((index x1 venv1 = Some v) \/ (closed j T2)).
-Proof.
-  intros. inversion H.
-  split. left. eauto. left. eauto.
-  admit.
-Qed.
-
-Lemma clos_extract_and: forall x1 (venv1:env) v j T1 T2,
-  (index x1 venv1 = Some v) \/ (closed j (TAnd T1 T2)) ->
-  ((index x1 venv1 = Some v) \/ (closed j T1)) /\
-  ((index x1 venv1 = Some v) \/ (closed j T2)).
-Proof.
-  intros. inversion H.
-  split. left. eauto. left. eauto.
-  admit.
-Qed.
-
-
-Lemma clos_extract_mem: forall x1 (venv1:env) v j T1,
-  (index x1 venv1 = Some v) \/ (closed j (TMem (Some T1))) ->
-  (index x1 venv1 = Some v) \/ (closed j T1).
-Proof.
-  intros. inversion H.
-  left. eauto. 
-  right. admit.
-Qed.
-
-Lemma clos_extract_bind: forall x1 (venv1:env) v j T1,
-  (index x1 venv1 = Some v) \/ (closed j (TBind T1)) ->
-  (index x1 venv1 = Some v) \/ (closed (S j) T1).
-Proof.
-  intros. inversion H.
-  left. eauto. 
-  right. admit.
-Qed.
 
 
 
-(*
-Ltac val_or_closed := admit.
-*)
-Lemma open2stp: forall venv0 venv1 x0 x1 j v n1 T1 T2,
-  (index x0 venv0 = Some v) \/ (closed j T1) ->
-  (index x1 venv1 = Some v) \/ (closed j T2) ->
-  stp n1 venv0 T1 venv1 T2 ->
-  stpd venv0 (open_rec_typ j x0 T1) venv1 (open_rec_typ j x1 T2).
-Proof.
-  intros.
-  remember (n1) as n. rewrite Heqn in H1.
-  assert (n1 <= n). omega. clear Heqn.
-  gen n1 venv0 venv1 x0 x1 j T1 T2.
-  induction n.
-  (*0*) intros. assert (n1 = 0). omega. subst.
-  inversion H1; subst; 
-  try solve [inversion H1]; try solve [inversion H2];
-  try solve [exists 0; eauto].
-
-  SCase "SelB < SelB". inversion H1. subst. eauto.
-    unfold open. unfold open_rec_typ.
-    case_eq (beq_nat j x2); intros E.
-    exists 0. eapply stp_selx. 
-      inversion H. eauto. unfold closed in H3. specialize H3 with x2. inversion H3. rewrite E in H5. inversion H5. eauto.
-      inversion H0. eauto. unfold closed in H3. specialize H3 with x2. inversion H3. rewrite E in H5. inversion H5. eauto.
-
-  (* S n *)
-  intros. (* sloooow *)
-    
-  inversion H1; subst; eauto; try solve by inversion.
-
-  Ltac vc H := try (eapply clos_extract_fun in H; inversion H; clear H);
-               try (eapply clos_extract_mem in H);
-               try (eapply clos_extract_and in H; inversion H; clear H);
-               try (eapply clos_extract_bind in H).
-  
-  Case "Fun < Fun". vc H. vc H0. eapply stpd_fun.
-    eapply IHn with n0. omega. eauto. eauto. eauto. 
-    eapply IHn with n2. omega. eauto. eauto. eauto.
-
-  Case "Mem < Mem". vc H. vc H0.  eapply stpd_mem_ss. 
-    eapply IHn with n0. omega. eauto. eauto. eauto.
-    eapply IHn with n2. omega. eauto. eauto. eauto.
-
-  Case "Mem < Mem None". vc H. eapply stpd_mema_sn. 
-    eapply IHn with n0. omega. eauto. eauto. eauto.
-    
-  Case "Bind < Bind". vc H. vc H0.  eapply stpd_bind.
-    eapply IHn with n0. omega. eauto. eauto. eauto.
-    eapply IHn with n2. omega. eauto. eauto. eauto.
-
-  Case "And1 < ?". vc H. vc H0.  eapply stpd_and11. 
-    eapply IHn with n0. omega. eauto. eauto. eauto.
-    eapply IHn with n2. omega. eauto. eauto. eauto.
-
-  Case "And2 < ?". vc H. vc H0.  eapply stpd_and12.
-    eapply IHn with n0. omega. eauto. eauto. eauto.
-    eapply IHn with n2. omega. eauto. eauto. eauto.
-
-  Case "? < And2". vc H. vc H0.  eapply stpd_and2.
-    eapply IHn with n0. omega. eauto. eauto. eauto.
-    eapply IHn with n2. omega. eauto. eauto. eauto.
-
-  (* for SEL, we rely on TA being closed *)
-  Case "? < Sel". eapply stpd_sel2.
-    eauto. eauto.    
-    assert (closed j TA) as CLOS. eapply closed_upgrade; eauto. omega.
-    assert (TA = open_rec_typ j x TA) as OPEN_ID.
-      unfold closed in CLOS. eauto.
-    
-    remember ((f0, vabs GC f0 TA dcs) :: GC) as GC0.
-    rewrite OPEN_ID.
-    eapply IHn with n2. omega. eauto. right. apply CLOS. eauto.
-
-
-  Case "Sel < ?". eapply stpd_sel1.
-    eauto. eauto.
-    assert (closed j TA) as CLOS. eapply closed_upgrade; eauto. omega.
-    assert (TA = open_rec_typ j x TA) as OPEN_ID.
-      unfold closed in CLOS. eauto.
-    
-    remember ((f0, vabs GC f0 TA dcs) :: GC) as GC0.
-    rewrite OPEN_ID.
-    eapply IHn with n2. omega. right. apply CLOS. eauto. eauto.
-
-Qed.
-
-
-
-
-
-
-
-
-Lemma hastp_wf: forall G e T, has_type G e T -> wf_type G T.
-  Proof. intros. induction H; eauto.
-Qed.
+(* VALUE TYPING INVERSION LEMMAS *)
 
 
 Hint Resolve stp_extend1.
@@ -1592,28 +1777,6 @@ Hint Resolve stp_wf_refl.
 
 Hint Resolve wft_extend.
 Hint Resolve valtp_widen.
-
-
-
-Lemma nostp_inv_dcs: forall m dcs T3 T4,
-  length dcs <= m ->
-  nostp (dc_type_and dcs) (TFun m T3 T4).
-Proof.
-  intros.
-  induction dcs.
-  Case "nil". eauto.
-  Case "cons".
-    assert (S (length dcs) = length (a::dcs)) as L. eauto.
-    unfold dc_type_and. destruct a. destruct d.
-    eapply nostp_and.
-      eapply nostp_fun. omega.
-      eapply IHdcs. omega. 
-Qed.
-
-
-
-
-
 
 Lemma stp_inv_obj_ex: forall m dcs env0 env1 T3 T4 TA,
   stpd env0 (TObj (Some TA) dcs) env1 (TFun m T3 T4) ->
@@ -1676,6 +1839,7 @@ Lemma invert_abs: forall venv vf vx m T1 T2,
     vf = (vabs env f TA dcs) /\
     wf_env env tenv /\
     wf_type ((f,TF)::tenv) TF /\
+    closed 0 TA /\
     dc_has_type ((f, TF) :: tenv) dcs /\
     index m dcs = Some (dfun T3 T4 x y) /\
     has_type ((x,T3)::(f,TF)::tenv) y T4 /\
@@ -1695,12 +1859,15 @@ Proof.
   destruct ST as [nx ST]. inversion ST.
 
   repeat eexists. 
-  eauto. eauto. eauto. eauto. eauto. eapply dc_inv_has_type; eauto.
+  eauto. eauto. eauto. eauto. eauto. eauto. eapply dc_inv_has_type; eauto.
   eauto. eauto.
 
   (*pack*) inversion H3. inversion H7.
 Qed.
 
+
+
+(* FINAL THEOREM *)
 
 Inductive res_type: env -> option vl -> ty -> Prop :=
 | not_stuck: forall v T venv,
@@ -1710,8 +1877,7 @@ Inductive res_type: env -> option vl -> ty -> Prop :=
 Hint Constructors res_type.
 Hint Resolve not_stuck.
 
-(* if not a timeout, then result not stuck and well-typed *)
-
+(* if not timed out, then result is not stuck, and well-typed *)
 Theorem full_safety : forall n e tenv venv res T,
   teval n venv e = Some res -> has_type tenv e T -> wf_env venv tenv ->
   res_type venv res T.
@@ -1765,7 +1931,8 @@ Proof.
     subst i0.
     destruct (invert_abs venv vf vx m T1 T2) as
         [env1 [tenv [f1 [x1 [y1 [dcs [T3 [T4 [TA [TF1
-        [ETF [EVF [WFE [WFT [HDCS [HDC [HTY [STX STY]]]]]]]]]]]]]]]]]]. eapply V.
+        [ETF [EVF [WFE [WFT [ CLS [HDCS [HDC [HTY [STX STY
+        ]]]]]]]]]]]]]]]]]]]. eapply V.
     (* now we know it's a closure, and we have has_type evidence,
     so we can check the body *)
 
@@ -1774,7 +1941,7 @@ Proof.
       SCase "HRY".
         subst. rewrite HDC in H3. eapply IHn. eauto. eauto.
         (* wf_env f x *) econstructor. eapply valtp_widen; eauto.
-        (* wf_env f   *) econstructor. eapply v_abs; eauto. admit. (*closed *) eapply stp_cf_refl; eauto.
+        (* wf_env f   *) econstructor. eapply v_abs; eauto.  eapply stp_cf_refl; eauto.
         eauto.
 
     inversion HRY as [vy].
@@ -1797,7 +1964,7 @@ Proof.
      assert (stpd venvf TF venvf TFA) as STA. SCase "STA".
        subst. eapply stpd_mem_abs. eauto.
      assert (res_type venvf res T) as HI. SCase "HI".
-       subst. eapply IHn; eauto. constructor. admit. admit. (*closed*)
+       subst. eapply IHn; eauto. 
      inversion HI.
        
      subst. eapply not_stuck. eapply valtp_widen. eauto.
