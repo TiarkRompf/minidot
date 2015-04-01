@@ -694,7 +694,7 @@ val u: Nat = x // fail
 BRANDING
 let f: { A = Nat; Nat => f.A } = x => x
 let x: { A; Nat => f.A } = f
-let y: Nat = x(7)
+let f.A: Nat = x(7)
 true
 *)
 Example tp6 : has_type nil
