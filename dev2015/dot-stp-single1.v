@@ -73,23 +73,21 @@ Inductive vl : Type :=
 | vmock : list (id*vl) -> ty -> id -> id -> vl
 .
 
-Definition env := list (nat*vl).
-Definition tenv := list (nat*ty).
+Definition env := list vl.
+Definition tenv := list ty.
 
 Fixpoint index {X : Type} (n : nat)
-               (l : list (nat * X)) : option X :=
+               (l : list X) : option X :=
   match l with
     | [] => None
-    (* for now, ignore binding value n' !!! *)
-    | (n',a) :: l'  => if beq_nat n (length l') then Some a else index n l'
+    | x :: l'  => if beq_nat n 0 then Some x else index (n-1) l'
   end.
 
 Fixpoint update {X : Type} (n : nat) (x: X)
-               (l : list (nat * X)) { struct l }: list (nat * X) :=
+                (l : list X) { struct l }: list X :=
   match l with
     | [] => []
-    (* for now, ignore binding value n' !!! *)
-    | (n',a) :: l'  => if beq_nat n (length l') then (n',x)::l' else (n',a) :: update n x l'
+    | x' :: l'  => if beq_nat n 0 then x::l' else x' :: update (n-1) x l'
   end.
 
 
