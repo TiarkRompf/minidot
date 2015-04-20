@@ -608,6 +608,7 @@ Lemma upd_miss: forall {X} G G' x x' (T:X) T',
               beq_nat x x' = false ->
               index x G' = Some T.
 Proof. admit. Qed.
+
 Lemma index_ext_same: forall {X} G x x' (T:X) (T':X),
               index x G = Some T ->
               index x ((x',T')::G) = Some T.
@@ -615,12 +616,12 @@ Proof.
   intros X G x x' T T' H.
   assert (x < length G) as A by solve [eapply index_range; apply H].
   generalize dependent T'. generalize dependent x'.
-  induction G.
+  destruct G.
   - inversion H.
   - assert (beq_nat x (S (length G)) = false) as A'.
       apply false_beq_nat. simpl in A. omega.
-    intros x' T'. destruct a as [x1 T1].
-    simpl. rewrite A'. simpl in IHG.
+    intros x' T'. destruct p as [x1 T1].
+    simpl. rewrite A'.
     remember (beq_nat x (length G)).
     destruct b.
     + inversion H. rewrite <- Heqb. reflexivity.
