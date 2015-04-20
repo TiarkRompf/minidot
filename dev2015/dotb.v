@@ -611,7 +611,22 @@ Proof. admit. Qed.
 Lemma index_ext_same: forall {X} G x x' (T:X) (T':X),
               index x G = Some T ->
               index x ((x',T')::G) = Some T.
-Proof. admit. Qed.
+Proof.
+  intros X G x x' T T' H.
+  assert (x < length G) as A by solve [eapply index_range; apply H].
+  generalize dependent T'. generalize dependent x'.
+  induction G.
+  - inversion H.
+  - assert (beq_nat x (S (length G)) = false) as A'.
+      apply false_beq_nat. simpl in A. omega.
+    intros x' T'. destruct a as [x1 T1].
+    simpl. rewrite A'. simpl in IHG.
+    remember (beq_nat x (length G)).
+    destruct b.
+    + inversion H. rewrite <- Heqb. reflexivity.
+    + inversion H. rewrite <- Heqb. reflexivity.
+Qed.
+
 Lemma update_ext_same: forall {X} G x x' (T:X) (T':X) Gu (Tu:X),
               index x G = Some T ->
               update x Tu G = Gu ->
