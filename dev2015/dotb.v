@@ -596,6 +596,24 @@ Proof.
        specialize (IHstp2 Hu). inversion IHstp2. assumption.
 Qed.
 
+Lemma stp1_not_fv: forall m G T1 T2 n u,
+  stp m G T1 T2 n ->
+  u >= length G ->
+  not_fv u T1.
+Proof.
+  intros m G T1 T2 n u H Hu.
+  apply (proj1 (stp_not_fv m G T1 T2 n u H Hu)).
+Qed.
+
+Lemma stp2_not_fv: forall m G T1 T2 n u,
+  stp m G T1 T2 n ->
+  u >= length G ->
+  not_fv u T2.
+Proof.
+  intros m G T1 T2 n u H Hu.
+  apply (proj2 (stp_not_fv m G T1 T2 n u H Hu)).
+Qed.
+
 Lemma upd_hit: forall {X} G G' x x' (T:X) T',
               index x G = Some T ->
               update x' T' G = G' ->
@@ -648,19 +666,38 @@ Proof.
     + inversion Hu. unfold update. rewrite <- Heqb. reflexivity.
 Qed.
 
-(*
+Lemma stp_ext_open: forall m n x Tx y G T1 T2,
+  stp m ((x,Tx)::(y,(open (length G) T1))::G) (open (length G) T1) (open (length G) T2) n ->
+  stp m ((y,(open (length ((x,Tx)::G)) T1))::(x,Tx)::G) (open (length ((x,Tx)::G)) T1) (open (length ((x,Tx)::G)) T2) n.
+Proof.
+  admit.
+Qed.
+
 Lemma stp_ext: forall m G T1 T2 n x Tx,
   stp m G T1 T2 n ->
   stp m ((x,Tx)::G) T1 T2 n.
 Proof.
-  intros m G T1 T2 n x Tx H. generalize G.
+  intros m G T1 T2 n x Tx H.
   stp_cases (induction H) Case; eauto.
-  - Case "? < Sel". eapply stp_sel2. eapply index_ext_same. apply H. apply IHstp.
-  - Case "Sel < ?". eapply stp_sel1. eapply index_ext_same. apply H. apply IHstp.
-  - Case "Bind < Bind". eapply stp_bindx. eapply IHstp.
-      eapply index_ext_same. eapply H2.
-      eapply update_ext_same. eapply H2. eapply H3.
-*)
+  - Case "? < Sel". eapply stp_sel2.
+      eapply index_ext_same. apply H. apply IHstp.
+  - Case "Sel < ?". eapply stp_sel1.
+      eapply index_ext_same. apply H. apply IHstp.
+  - Case "Sel < Sel". eapply stp_selx.
+      eapply index_ext_same. apply H. apply H0.
+  - Case "Bind < Bind". eapply stp_bindx.
+    + subst. eapply stp_ext_open. apply IHstp.
+    + subst. eapply not_fv_open_up with (x:=length G1).
+        simpl. omega.
+        eapply stp1_not_fv. apply H.
+        simpl. omega.
+    + reflexivity.
+    + subst. eapply not_fv_open_up with (x:=length G1).
+        simpl. omega.
+        eapply stp2_not_fv. apply H.
+        simpl. omega.
+    + reflexivity.
+Qed.
 
 Lemma stp_narrow: forall m G1 T1 T2 n1,
   stpd m G1 T1 T2 ->
