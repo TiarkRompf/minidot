@@ -129,8 +129,40 @@ Inductive closed_rec: nat -> ty -> Prop :=
 
 Hint Constructors closed_rec.
 
-Definition closed j T := closed_rec j T.
+Definition closed T := closed_rec 0 T.
 
+Inductive not_fv: id -> ty -> Prop :=
+| nfv_nof: forall u,
+    not_fv u TNoF
+| nfv_top: forall u,
+    not_fv u TTop
+| nfv_bot: forall u,
+    not_fv u TBot
+| nfv_bool: forall u,
+    not_fv u TBool
+| nfv_fun: forall u m T1 T2,
+    not_fv u T1 ->
+    not_fv u T2 ->
+    not_fv u (TFun m T1 T2)
+| nfv_mem: forall u T1 T2,
+    not_fv u T1 ->
+    not_fv u T2 ->
+    not_fv u (TMem T1 T2)
+| nfv_and: forall u T1 T2,
+    not_fv u T1 ->
+    not_fv u T2 ->
+    not_fv u (TAnd T1 T2)
+| nfv_bind: forall u T1,
+    not_fv u T1 ->
+    not_fv u (TBind T1)
+| nfv_selb: forall u i,
+    not_fv u (TSelB i)
+| nfv_sel: forall u x,
+    x <> u ->
+    not_fv u (TSel x)
+.
+
+Hint Constructors not_fv.
 
 Fixpoint open_rec (k: nat) (u: id) (T: ty) { struct T }: ty :=
   match T with
@@ -220,29 +252,26 @@ Inductive wf_type : tenv -> ty -> Prop :=
 | wf_bool: forall env,
     wf_type env TBool
 | wf_and: forall env T1 T2,
-             wf_type env T1 ->
-             wf_type env T2 ->
-             wf_type env (TAnd T1 T2)
+    wf_type env T1 ->
+    wf_type env T2 ->
+    wf_type env (TAnd T1 T2)
 | wf_mem: forall env TL TU,
-             wf_type env TL ->
-             wf_type env TU ->
-             wf_type env (TMem TL TU)
+    wf_type env TL ->
+    wf_type env TU ->
+    wf_type env (TMem TL TU)
 | wf_fun: forall env f T1 T2,
-             wf_type env T1 ->
-             wf_type env T2 ->
-             wf_type env (TFun f T1 T2)
-                     
-| wf_sel: forall envz x TE TL TU,
-            index x envz = Some (TE) ->
-            tresolve x TE (TMem TL TU) ->
-            wf_type envz (TSel x)
-
-| wf_selb: forall envz x, (* note: disregarding bind-scope *)
-             wf_type envz (TSelB x)
-| wf_bind: forall envz T,
-             wf_type envz T ->
-             wf_type envz (TBind T)
-
+    wf_type env T1 ->
+    wf_type env T2 ->
+    wf_type env (TFun f T1 T2)
+| wf_sel: forall env x TE TL TU,
+    index x env = Some (TE) ->
+    tresolve x TE (TMem TL TU) ->
+    wf_type env (TSel x)
+| wf_bind: forall f env T TA,
+    not_fv (length env) TA ->
+    open (length env) TA = T ->
+    wf_type ((f,T)::env) T ->
+    wf_type env (TBind TA)
 .
 
 Tactic Notation "wf_cases" tactic(first) ident(c) :=
@@ -250,11 +279,9 @@ Tactic Notation "wf_cases" tactic(first) ident(c) :=
   [ Case_aux c "Top" |
     Case_aux c "Bool" |
     Case_aux c "And" |
-    Case_aux c "MemA" |
     Case_aux c "Mem" |
     Case_aux c "Fun" |
     Case_aux c "Sel" |
-    Case_aux x "SelB" |
     Case_aux c "Bind" ].
 
 
@@ -304,12 +331,14 @@ Inductive stp : bool -> tenv -> ty -> ty -> nat -> Prop :=
     open (length G1) TA1 = T1 ->                
     stp true G1 (TBind TA1) T2 (S n1)
 ... or at least...
+*)
 | stp_bindx: forall f G1 T1 T2 TA1 TA2 n1,
     stp true ((f,T1)::G1) T1 T2 n1 ->
-    open (length G1) TA1 = T1 ->                
+    not_fv (length G1) TA1 ->
+    open (length G1) TA1 = T1 ->
+    not_fv (length G1) TA2 ->
     open (length G1) TA2 = T2 ->
     stp true G1 (TBind TA1) (TBind TA2) (S n1)
-*)
 | stp_transf: forall G1 T1 T2 T3 n1 n2,
     stp true G1 T1 T2 n1 ->
     stp false G1 T2 T3 n2 ->           
@@ -336,6 +365,7 @@ Tactic Notation "stp_cases" tactic(first) ident(c) :=
     Case_aux c "? < Sel" |
     Case_aux c "Sel < ?" |
     Case_aux c "Sel < Sel" |
+    Case_aux c "Bind < Bind" |
     Case_aux c "Trans" |
     Case_aux c "Wrap"
   ].
@@ -385,6 +415,14 @@ Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd_selx: forall x G1,
     stpd true G1 (TSel x) (TSel x).
 Proof. intros. repeat eu. exists 0. eauto. Qed.
+Lemma stpd_bindx: forall f G1 T1 T2 TA1 TA2,
+    stpd true ((f,T1)::G1) T1 T2 ->
+    not_fv (length G1) TA1 ->
+    open (length G1) TA1 = T1 ->
+    not_fv (length G1) TA2 ->
+    open (length G1) TA2 = T2 ->
+    stpd true G1 (TBind TA1) (TBind TA2).
+Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd_transf: forall G1 T1 T2 T3,
     stpd true G1 T1 T2 ->
     stpd false G1 T2 T3 ->           
@@ -437,6 +475,48 @@ Lemma trans_le: forall n n1,
 .
 Proof. intros. unfold trans_up in H. eapply H. eauto. Qed.
 
+Lemma closed_open_up_rec: forall k j x T,
+  k >= j ->
+  closed_rec j (open_rec k x T) ->
+  closed_rec (S k) T.
+Proof.
+  intros k j x T Hcmp H.
+  generalize dependent j. generalize dependent k.
+  induction T;
+    intros k j Hcmp H;
+    eauto; try solve [inversion H; subst; eauto].
+  - Case "SelB".
+    unfold open_rec in H.
+    remember (beq_nat k i). destruct b.
+    + apply cl_selb. apply beq_nat_eq in Heqb. subst. omega.
+    + inversion H. subst. apply cl_selb. omega.
+  - Case "Bind".
+    apply cl_bind. apply IHT with (j:=(S k)). omega. inversion H. subst.
+    apply closed_upgrade with (i:=(S j)). assumption. omega.
+Qed.
+
+Lemma closed_open_up: forall x T,
+  closed (open x T) ->
+  closed_rec 1 T.
+Proof.
+  intros x T H. unfold closed in H. unfold open in H.
+  apply closed_open_up_rec with (x:=x) (j:=0).
+  - omega.
+  - assumption.
+Qed.
+
+Lemma stp_closed: forall m G T1 T2 n,
+  stp m G T1 T2 n ->
+  closed T1 /\ closed T2.
+Proof.
+  intros. stp_cases (induction H) Case; eauto;
+   try solve [inversion IHstp; split; eauto];
+   try solve [inversion IHstp1; inversion IHstp2; split; eauto];
+   try solve [inversion IHstp as [IHX IHMem]; inversion IHMem; subst; split; eauto].
+  - Case "Bind < Bind".
+    inversion IHstp as [IHstp1 IHstp2]. subst. unfold closed.
+    split; solve [apply cl_bind; apply closed_open_up with (x:=length G1); assumption].
+Qed.
 
 Lemma upd_hit: forall {X} G G' x x' (T:X) T',
               index x G = Some T ->
@@ -450,7 +530,29 @@ Lemma upd_miss: forall {X} G G' x x' (T:X) T',
               beq_nat x x' = false ->
               index x G' = Some T.
 Proof. admit. Qed.
+Lemma index_ext_same: forall {X} G x x' (T:X) (T':X),
+              index x G = Some T ->
+              index x ((x',T')::G) = Some T.
+Proof. admit. Qed.
+Lemma update_ext_same: forall {X} G x x' (T:X) (T':X) Gu (Tu:X),
+              index x G = Some T ->
+              update x Tu G = Gu ->
+              update x Tu ((x',T')::G) = (x',T')::Gu.
+Proof. admit. Qed.
 
+(*
+Lemma stp_ext: forall m G T1 T2 n x Tx,
+  stp m G T1 T2 n ->
+  stp m ((x,Tx)::G) T1 T2 n.
+Proof.
+  intros m G T1 T2 n x Tx H. generalize G.
+  stp_cases (induction H) Case; eauto.
+  - Case "? < Sel". eapply stp_sel2. eapply index_ext_same. apply H. apply IHstp.
+  - Case "Sel < ?". eapply stp_sel1. eapply index_ext_same. apply H. apply IHstp.
+  - Case "Bind < Bind". eapply stp_bindx. eapply IHstp.
+      eapply index_ext_same. eapply H2.
+      eapply update_ext_same. eapply H2. eapply H3.
+*)
 
 Lemma stp_narrow: forall m G1 T1 T2 n1,
   stpd m G1 T1 T2 ->
@@ -491,6 +593,9 @@ Proof.
         eapply stpd_sel1. eapply upd_miss; eauto. eapply IHstp. eapply H1. eauto. eauto. eauto.
     }
   - Case "Selx". eapply stpd_selx.
+  - Case "Bindx". eapply stpd_bindx. eapply IHstp.
+      eapply index_ext_same. eapply H2.
+      eapply update_ext_same. eapply H2. eapply H3.
   - Case "Trans". eapply stpd_transf. eapply IHstp1; eauto. eapply IHstp2; eauto.
   - Case "Wrap". eapply stpd_wrapf. eapply IHstp; eauto.
 Qed.
