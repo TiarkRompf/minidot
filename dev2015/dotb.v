@@ -525,7 +525,15 @@ Qed.
 Lemma index_range: forall {X} i G (T:X),
   index i G = Some T ->
   i < length G.
-Proof. admit. Qed.
+Proof.
+  intros X i G T H. induction G.
+  - inversion H.
+  - simpl. simpl in H.
+    remember (beq_nat i (length G)).
+    destruct b.
+    + apply beq_nat_eq in Heqb. omega.
+    + apply lt_S. apply IHG. destruct a as [j G']. assumption.
+Qed.
 
 Lemma index_neq: forall {X} i j G (T:X),
   index i G = Some T ->
