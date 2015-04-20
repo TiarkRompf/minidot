@@ -319,7 +319,9 @@ Inductive stp : bool -> tenv -> ty -> ty -> nat -> Prop :=
     index x G1 = Some TX ->
     stp true G1 TX (TMem TBot T2) n1->
     stp true G1 (TSel x) T2 (S n1)
-| stp_selx: forall x G1 n1,
+| stp_selx: forall x TX TL TU G1 n1,
+    index x G1 = Some TX ->
+    tresolve x TX (TMem TL TU) ->
     stp true G1 (TSel x) (TSel x) n1
 (* TODO!
 | stp_bind2: forall f G1 T1 T2 TA2 n1,
@@ -412,7 +414,9 @@ Lemma stpd_sel1:  forall x T2 TX G1,
     stpd true G1 TX (TMem TBot T2) ->
     stpd true G1 (TSel x) T2.
 Proof. intros. repeat eu. eauto. Qed.
-Lemma stpd_selx: forall x G1,
+Lemma stpd_selx: forall x TX TL TU G1,
+    index x G1 = Some TX ->
+    tresolve x TX (TMem TL TU) ->
     stpd true G1 (TSel x) (TSel x).
 Proof. intros. repeat eu. exists 0. eauto. Qed.
 Lemma stpd_bindx: forall f G1 T1 T2 TA1 TA2,
@@ -516,6 +520,72 @@ Proof.
   - Case "Bind < Bind".
     inversion IHstp as [IHstp1 IHstp2]. subst. unfold closed.
     split; solve [apply cl_bind; apply closed_open_up with (x:=length G1); assumption].
+Qed.
+
+Lemma index_range: forall {X} i G (T:X),
+  index i G = Some T ->
+  i < length G.
+Proof. admit. Qed.
+
+Lemma index_neq: forall {X} i j G (T:X),
+  index i G = Some T ->
+  j >= length G ->
+  i <> j.
+Proof.
+  intros. apply index_range in H. omega.
+Qed.
+
+Lemma not_fv_open_up_rec: forall u x T j,
+  u <> x ->
+  not_fv u (open_rec j x T) ->
+  not_fv u T.
+Proof.
+  intros u x T j Hneq H. generalize dependent j.
+  induction T; intros; eauto;
+    try solve [inversion H; subst; constructor; eauto].
+Qed.
+
+Lemma not_fv_open_up: forall u x T,
+  u <> x ->
+  not_fv u (open x T) ->
+  not_fv u T.
+Proof.
+  intros u x T. apply (not_fv_open_up_rec u x T 0).
+Qed.
+
+Lemma stp_not_fv: forall m G T1 T2 n u,
+  stp m G T1 T2 n ->
+  u >= length G ->
+  not_fv u T1 /\ not_fv u T2.
+Proof.
+  intros m G T1 T2 n u H Hu. stp_cases (induction H) Case; eauto;
+  try solve [
+    specialize (IHstp1 Hu); specialize (IHstp2 Hu);
+    inversion IHstp1; inversion IHstp2;
+    split; constructor; assumption];
+  try solve [
+    specialize (IHstp Hu);
+    inversion IHstp as [IHX IHMem]; inversion IHMem; subst;
+    split; eauto; constructor; eapply index_neq; eauto].
+  - Case "Sel < Sel".
+    split; constructor; eapply index_neq; eauto.
+  - Case "Bind < Bind".
+    remember (beq_nat u (length G1)).
+    destruct b.
+    + apply beq_nat_eq in Heqb. subst. split; eauto.
+    + symmetry in Heqb. apply beq_nat_false in Heqb.
+      subst.
+      assert (u >= length ((f, open (length G1) TA1) :: G1)) as A
+      by solve [simpl; omega].
+      specialize (IHstp A).
+      inversion IHstp as [IH1 IH2].
+      split.
+        constructor. eapply not_fv_open_up. apply Heqb. assumption.
+        constructor. eapply not_fv_open_up. apply Heqb. assumption.
+   - Case "Trans".
+     split.
+       specialize (IHstp1 Hu). inversion IHstp1. assumption.
+       specialize (IHstp2 Hu). inversion IHstp2. assumption.
 Qed.
 
 Lemma upd_hit: forall {X} G G' x x' (T:X) T',
