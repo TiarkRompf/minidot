@@ -632,7 +632,21 @@ Lemma update_ext_same: forall {X} G x x' (T:X) (T':X) Gu (Tu:X),
               index x G = Some T ->
               update x Tu G = Gu ->
               update x Tu ((x',T')::G) = (x',T')::Gu.
-Proof. admit. Qed.
+Proof.
+  intros X G x x' T T' Gu Tu H Hu.
+  assert (x < length G) as A by solve [eapply index_range; apply H].
+  generalize dependent T'. generalize dependent x'.
+  destruct G.
+  - inversion H.
+  - assert (beq_nat x (S (length G)) = false) as A'.
+      apply false_beq_nat. simpl in A. omega.
+    intros x' T'. destruct p as [x1 T1].
+    simpl. rewrite A'.
+    remember (beq_nat x (length G)).
+    destruct b.
+    + inversion Hu. unfold update. rewrite <- Heqb. reflexivity.
+    + inversion Hu. unfold update. rewrite <- Heqb. reflexivity.
+Qed.
 
 (*
 Lemma stp_ext: forall m G T1 T2 n x Tx,
