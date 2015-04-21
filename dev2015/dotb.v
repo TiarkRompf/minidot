@@ -698,6 +698,8 @@ Qed.
 Lemma stp_ext_open: forall m n x Tx y G T1 T2,
   bound_fvs (length G) G ->
   length G >= max_fv Tx ->
+  not_fv (length G) T1 ->
+  not_fv (length G) T2 ->
   stp m ((x,Tx)::(y,(open (length G) T1))::G) (open (length G) T1) (open (length G) T2) n ->
   stp m ((y,(open (length ((x,Tx)::G)) T1))::(x,Tx)::G) (open (length ((x,Tx)::G)) T1) (open (length ((x,Tx)::G)) T2) n.
 Proof.
@@ -724,6 +726,8 @@ Proof.
     + subst. eapply stp_ext_open.
         assumption.
         assumption.
+        apply H1.
+        apply H3.
         apply IHstp. simpl. omega.
     + subst. eapply not_fv_open_up with (x:=length G1).
         simpl. omega.
