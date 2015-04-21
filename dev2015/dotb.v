@@ -10,8 +10,10 @@ subtyping:
   - new pushback proof structure: transitivity axiom only 
     needed in contravariant positions
 
+ DOING:
+  - add bindx (and/or bind2/bind1) rules
+
  TODO:
-  - add bindx and/or bind2/bind1 rules
   - transitivity will only hold in realizable context
 
  QUESTIONS: 
