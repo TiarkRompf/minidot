@@ -705,6 +705,17 @@ Proof.
     destruct (beq_nat 0 i); inversion H.
 Qed.
 
+Lemma open_TFun: forall n T m T1 T2,
+  open n T = (TFun m T1 T2) ->
+  exists TO1 TO2, T = TFun m TO1 TO2 /\ T1 = open n TO1 /\ T2 = open n TO2.
+Proof.
+  intros n T m T1 T2 H. induction T; try solve [compute in H; inversion H].
+  - inversion H. unfold open. subst. exists T3. exists T4.
+    split. reflexivity. split; reflexivity.
+  - unfold open in H. unfold open_rec in H.
+    destruct (beq_nat 0 i); inversion H.
+Qed.
+
 Lemma stp_ext_open: forall m n x Tx y G T1 T2,
   bound_fvs (length G) G ->
   length G >= max_fv Tx ->
@@ -722,7 +733,11 @@ Proof.
     apply open_TBool in HeqTO1. apply open_TBool in HeqTO2. subst.
     simpl. compute. apply stp_bool.
   - Case "Fun < Fun".
-    (* wip *)
+    apply open_TFun in HeqTO1. apply open_TFun in HeqTO2.
+    inversion HeqTO1 as [TO11 [TO12 [HO1 [HO11 HO12]]]].
+    inversion HeqTO2 as [TO21 [TO22 [HO2 [HO21 HO22]]]].
+    subst. simpl. apply stp_fun. fold open_rec.
+    (* wip: the induction hypothesis are all wrong, need to generalize... *)
 Qed.
 
 Lemma stp_ext: forall m G T1 T2 n x Tx,
