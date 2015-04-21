@@ -166,6 +166,30 @@ Inductive not_fv: id -> ty -> Prop :=
 
 Hint Constructors not_fv.
 
+Fixpoint max_fv_rec (u: id) (T: ty) { struct T }: id :=
+  match T with
+   | TSel x       => max u x
+   | TSelB i      => u
+   | TBind T1     => max_fv_rec u T1
+   | TNoF         => u
+   | TBot         => u
+   | TTop         => u
+   | TBool        => u
+   | TAnd T1 T2   => max (max_fv_rec u T1) (max_fv_rec u T2)
+   | TMem T1 T2   => max (max_fv_rec u T1) (max_fv_rec u T2)
+   | TFun m T1 T2 => max (max_fv_rec u T1) (max_fv_rec u T2)
+  end.
+
+Definition max_fv T := max_fv_rec 0 T.
+
+Inductive bound_fvs: id -> tenv -> Prop :=
+| bound_fvs_nil : forall u,
+    bound_fvs u []
+| bound_fvs_cons: forall u x T G,
+    u > max_fv T ->
+    bound_fvs u ((x,T)::G)
+.
+
 Fixpoint open_rec (k: nat) (u: id) (T: ty) { struct T }: ty :=
   match T with
     | TSel x      => TSel x (* free var remains free. functional, so we can't check for conflict *)
@@ -270,6 +294,7 @@ Inductive wf_type : tenv -> ty -> Prop :=
     tresolve x TE (TMem TL TU) ->
     wf_type env (TSel x)
 | wf_bind: forall f env T TA,
+    bound_fvs (length env) env ->
     not_fv (length env) TA ->
     open (length env) TA = T ->
     wf_type ((f,T)::env) T ->
@@ -337,6 +362,7 @@ Inductive stp : bool -> tenv -> ty -> ty -> nat -> Prop :=
 ... or at least...
 *)
 | stp_bindx: forall f G1 T1 T2 TA1 TA2 n1,
+    bound_fvs (length G1) G1 ->
     stp true ((f,T1)::G1) T1 T2 n1 ->
     not_fv (length G1) TA1 ->
     open (length G1) TA1 = T1 ->
@@ -422,6 +448,7 @@ Lemma stpd_selx: forall x TX TL TU G1,
     stpd true G1 (TSel x) (TSel x).
 Proof. intros. repeat eu. exists 0. eauto. Qed.
 Lemma stpd_bindx: forall f G1 T1 T2 TA1 TA2,
+    bound_fvs (length G1) G1 ->
     stpd true ((f,T1)::G1) T1 T2 ->
     not_fv (length G1) TA1 ->
     open (length G1) TA1 = T1 ->
@@ -669,6 +696,8 @@ Proof.
 Qed.
 
 Lemma stp_ext_open: forall m n x Tx y G T1 T2,
+  bound_fvs (length G) G ->
+  length G >= max_fv Tx ->
   stp m ((x,Tx)::(y,(open (length G) T1))::G) (open (length G) T1) (open (length G) T2) n ->
   stp m ((y,(open (length ((x,Tx)::G)) T1))::(x,Tx)::G) (open (length ((x,Tx)::G)) T1) (open (length ((x,Tx)::G)) T2) n.
 Proof.
@@ -677,26 +706,33 @@ Qed.
 
 Lemma stp_ext: forall m G T1 T2 n x Tx,
   stp m G T1 T2 n ->
+  (length G) >= max_fv Tx ->
   stp m ((x,Tx)::G) T1 T2 n.
 Proof.
-  intros m G T1 T2 n x Tx H.
+  intros m G T1 T2 n x Tx H Hmax.
   stp_cases (induction H) Case; eauto.
   - Case "? < Sel". eapply stp_sel2.
       eapply index_ext_same. apply H. apply IHstp.
+      assumption.
   - Case "Sel < ?". eapply stp_sel1.
       eapply index_ext_same. apply H. apply IHstp.
+      assumption.
   - Case "Sel < Sel". eapply stp_selx.
       eapply index_ext_same. apply H. apply H0.
   - Case "Bind < Bind". eapply stp_bindx.
-    + subst. eapply stp_ext_open. apply IHstp.
+    + subst. apply bound_fvs_cons. simpl. omega.
+    + subst. eapply stp_ext_open.
+        assumption.
+        assumption.
+        apply IHstp. simpl. omega.
     + subst. eapply not_fv_open_up with (x:=length G1).
         simpl. omega.
-        eapply stp1_not_fv. apply H.
+        eapply stp1_not_fv. apply H0.
         simpl. omega.
     + reflexivity.
     + subst. eapply not_fv_open_up with (x:=length G1).
         simpl. omega.
-        eapply stp2_not_fv. apply H.
+        eapply stp2_not_fv. apply H0.
         simpl. omega.
     + reflexivity.
 Qed.
