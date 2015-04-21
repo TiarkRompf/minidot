@@ -695,6 +695,16 @@ Proof.
     + inversion Hu. unfold update. rewrite <- Heqb. reflexivity.
 Qed.
 
+Lemma open_TBool: forall n T,
+  open n T = TBool ->
+  T = TBool.
+Proof.
+  intros n T H. induction T; try solve [compute in H; inversion H].
+  - reflexivity.
+  - unfold open in H. unfold open_rec in H.
+    destruct (beq_nat 0 i); inversion H.
+Qed.
+
 Lemma stp_ext_open: forall m n x Tx y G T1 T2,
   bound_fvs (length G) G ->
   length G >= max_fv Tx ->
@@ -703,7 +713,16 @@ Lemma stp_ext_open: forall m n x Tx y G T1 T2,
   stp m ((x,Tx)::(y,(open (length G) T1))::G) (open (length G) T1) (open (length G) T2) n ->
   stp m ((y,(open (length ((x,Tx)::G)) T1))::(x,Tx)::G) (open (length ((x,Tx)::G)) T1) (open (length ((x,Tx)::G)) T2) n.
 Proof.
-  admit.
+  intros m n x Tx y G T1 T2 Henv HTx HT1 HT2 H.
+  remember (open (length G) T1) as TO1.
+  remember (open (length G) T2) as TO2.
+  symmetry in HeqTO1. symmetry in HeqTO2.
+  stp_cases (induction H) Case.
+  - Case "Bool < Bool".
+    apply open_TBool in HeqTO1. apply open_TBool in HeqTO2. subst.
+    simpl. compute. apply stp_bool.
+  - Case "Fun < Fun".
+    (* wip *)
 Qed.
 
 Lemma stp_ext: forall m G T1 T2 n x Tx,
