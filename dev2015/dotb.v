@@ -730,6 +730,33 @@ Proof.
   apply (swap_open_rec n x y T Tx Ty 0 HT Hnx Hny HTx HTy).
 Qed.
 
+Lemma swap_bound: forall n x y T,
+  bound_fv n T ->
+  x >= n ->
+  y >= n ->
+  swap x y T = T.
+Proof.
+  intros n x y T HT Hx Hy.
+  induction T;
+  try solve [compute; reflexivity];
+  try solve [unfold swap; fold swap; f_equal;
+    try solve [apply IHT1; inversion HT; subst; assumption];
+    try solve [apply IHT2; inversion HT; subst; assumption]].
+  - Case "Sel".
+    unfold swap. inversion HT. subst.
+    remember (beq_nat x i) as bxi.
+    destruct bxi.
+    + apply beq_nat_eq in Heqbxi. omega.
+    + remember (beq_nat y i) as byi.
+      destruct byi.
+        apply beq_nat_eq in Heqbyi. omega.
+        reflexivity.
+  - Case "Bind".
+    simpl. f_equal.
+    apply IHT; try reflexivity.
+    + inversion HT. subst. assumption.
+Qed.
+
 Lemma stp_swap: forall n x Tx y Ty G T1 T2 m,
   bound_fvs (length G) G ->
   stp m ((x,Tx)::(y,Ty)::G) T1 T2 n ->
@@ -746,7 +773,7 @@ Qed.
 
 Lemma stp_ext_swap: forall n x Tx y G T1 T2,
   bound_fvs (length G) G ->
-  bound_fv (S (length G)) Tx ->
+  bound_fv (length G) Tx ->
   stp true ((x,Tx)::(y,T1)::G) T1 T2 n ->
   stp true
       ((y,(swap (length G) (S (length G)) T1))::(x,Tx)::G)
@@ -755,15 +782,19 @@ Lemma stp_ext_swap: forall n x Tx y G T1 T2,
       n.
 Proof.
   intros n x Tx y G T1 T2 HbG HbTx H.
-  assert (swap (length G) (S (length G)) Tx = Tx) as Heq.
-    admit.
+  assert (swap (length G) (S (length G)) Tx = Tx) as Heq. {
+    apply swap_bound with (n:=length G).
+      assumption.
+      omega.
+      omega.
+  }
   rewrite <- Heq.
   apply stp_swap; assumption.
 Qed.
 
 Lemma stp_ext_open: forall n x Tx y G T1 T2,
   bound_fvs (length G) G ->
-  bound_fv (S (length G)) Tx ->
+  bound_fv (length G) Tx ->
   bound_fv (length G) T1 ->
   bound_fv (length G) T2 ->
   stp true ((x,Tx)::(y,(open (length G) T1))::G) (open (length G) T1) (open (length G) T2) n ->
@@ -775,20 +806,22 @@ Proof.
   remember (open (length G) T2) as TO2.
   remember (open (S (length G)) T1) as TS1.
   remember (open (S (length G)) T2) as TS2.
-  assert (swap (length G) (S (length G)) TO1 = TS1) as HOS1.
+  assert (swap (length G) (S (length G)) TO1 = TS1) as HOS1. {
     apply swap_open with (n:=length G) (T:=T1).
       assumption.
       omega.
       omega.
       rewrite HeqTO1. reflexivity.
       rewrite HeqTS1. reflexivity.
-  assert (swap (length G) (S (length G)) TO2 = TS2) as HOS2.
+  }
+  assert (swap (length G) (S (length G)) TO2 = TS2) as HOS2. {
     apply swap_open with (n:=length G) (T:=T2).
       assumption.
       omega.
       omega.
       rewrite HeqTO2. reflexivity.
       rewrite HeqTS2. reflexivity.
+  }
   rewrite <- HOS1. rewrite <- HOS2.
   apply stp_ext_swap.
     assumption.
@@ -798,7 +831,7 @@ Qed.
 
 Lemma stp_ext: forall m G T1 T2 n x Tx,
   stp m G T1 T2 n ->
-  bound_fv (S (length G)) Tx ->
+  bound_fv (length G) Tx -> (* Tx cannot refer to self b/c of swapping in Bind case *)
   stp m ((x,Tx)::G) T1 T2 n.
 Proof.
   intros m G T1 T2 n x Tx H Hmax.
@@ -812,7 +845,7 @@ Proof.
   - Case "Sel < Sel". eapply stp_selx.
       eapply index_ext_same. apply H. apply H0.
   - Case "Bind < Bind". eapply stp_bindx.
-    + subst. apply bound_fvs_cons. simpl. assumption.
+    + subst. apply bound_fvs_cons. simpl. apply bound_fv_inc. assumption.
     + subst. simpl. apply bound_fv_inc. assumption.
     + subst. simpl. apply bound_fv_inc. assumption.
     + subst. eapply stp_ext_open.
