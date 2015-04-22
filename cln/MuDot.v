@@ -223,22 +223,22 @@ Definition fv_ctx_types(G: ctx): vars := (fv_in_values (fun T => fv_typ T) G).
 (** ** Evaluation *)
 
 Inductive val: Type :=
-  | val_clo: env val -> var -> defs -> val.
+  | val_clo: env val -> defs -> val.
 
 Inductive ev: env val -> trm -> val -> Prop :=
 | ev_var: forall H x v,
   binds x v H ->
   ev H (trm_var (avar_f x)) v
-| ev_new: forall H ds x,
-  x # H ->
-  ev H (trm_new ds) (val_clo H x (open_defs x ds))
+| ev_new: forall H ds,
+  ev H (trm_new ds) (val_clo H ds)
 | ev_call: forall H e1 m e2 H1 x1 ds1 body v2 x2 T1 T2 v,
-  ev H e1 (val_clo H1 x1 ds1) ->
+  ev H e1 (val_clo H1 ds1) ->
   ev H e2 v2 ->
-  defs_has ds1 (def_mtd m T1 T2 body) ->
+  x1 # H1 ->
+  defs_has (open_defs x1 ds1) (def_mtd m T1 T2 body) ->
   x2 # H1 ->
   x2 <> x1 ->
-  ev (H1 & (x1 ~ (val_clo H1 x1 ds1)) & (x2 ~ v2)) (open_trm x2 body) v ->
+  ev (H1 & (x1 ~ (val_clo H1 ds1)) & (x2 ~ v2)) (open_trm x2 body) v ->
   ev H (trm_call e1 m e2) v
 .
 
@@ -281,58 +281,54 @@ Module EvExamples.
 
 Definition m := labels.m.
 Definition t0 := (trm_new defs_nil).
-Definition v0 x := (val_clo empty x defs_nil).
+Definition v0 := (val_clo empty defs_nil).
 Definition fm t := (trm_new (defs_cons (def_mtd m typ_top typ_top t) defs_nil)).
-Definition vm x t := (val_clo empty x (open_defs x (defs_cons (def_mtd m typ_top typ_top t) defs_nil))).
+Definition vm t := (val_clo empty (defs_cons (def_mtd m typ_top typ_top t) defs_nil)).
 Definition fi i := fm (trm_var (avar_b i)).
-Definition vi x i := vm x (trm_var (avar_b i)).
+Definition vi i := vm (trm_var (avar_b i)).
 
 Example ev1:
-  exists x, ev empty t0 (v0 x).
+  ev empty t0 v0.
 Proof.
-  pick_fresh x. exists x. apply ev_new; auto.
+  apply ev_new.
 Qed.
 
 Example ev2:
-  exists x, ev empty (trm_call (fi 0) m t0) (v0 x).
+  ev empty (trm_call (fi 0) m t0) v0.
 Proof.
-  pick_fresh x1. pick_fresh x2. exists x2.
+  pick_fresh x1. pick_fresh x2.
   eapply ev_call with (x1:=x1) (x2:=x2) (H1:=empty); auto.
-  apply ev_new with (x:=x1); auto.
-  apply ev_new with (x:=x2); auto.
+  apply ev_new.
+  apply ev_new.
   unfold open_defs. simpl. apply defs_has_hit. apply defs_hasnt_nil.
-  rewrite If_r; auto.
-  unfold open_trm. unfold open_rec_trm. simpl.
-  rewrite If_l; auto.
+  erewrite If_r; auto. compute. erewrite If_l; auto.
   apply ev_var; auto.
 Qed.
 
 Example ev3:
-  exists x, ev empty (trm_call (fi 1) m t0) (vi x 1).
+  ev empty (trm_call (fi 1) m t0) (vi 1).
 Proof.
-  pick_fresh x1. pick_fresh x2. exists x1.
+  pick_fresh x1. pick_fresh x2.
   eapply ev_call with (x1:=x1) (x2:=x2) (H1:=empty); auto.
-  apply ev_new with (x:=x1); auto.
-  apply ev_new with (x:=x2); auto.
+  apply ev_new.
+  apply ev_new.
   unfold open_defs. simpl. apply defs_has_hit. apply defs_hasnt_nil.
-  rewrite If_l; auto.
-  unfold open_trm. unfold open_rec_trm. simpl.
+  erewrite If_l; auto. compute.
   apply ev_var; auto.
 Qed.
 
 Example ev4:
-  exists x1 x2 x3,
+  exists x1 x2,
   ev empty (trm_call (fm t0) m t0)
-     (val_clo (empty & (x1 ~ (vm x1 t0)) & (x2 ~ (v0 x2))) x3 defs_nil)
+     (val_clo (empty & (x1 ~ (vm t0)) & (x2 ~ v0)) defs_nil)
   .
 Proof.
-  pick_fresh x1. pick_fresh x2. pick_fresh x3. exists x1 x2 x3.
+  pick_fresh x1. pick_fresh x2. exists x1 x2.
   eapply ev_call with (x1:=x1) (x2:=x2) (H1:=empty); auto.
-  apply ev_new with (x:=x1); auto.
-  apply ev_new with (x:=x2); auto.
+  apply ev_new.
+  apply ev_new.
   unfold open_defs. simpl. apply defs_has_hit. apply defs_hasnt_nil.
-  compute.
-  apply ev_new with (x:=x3); auto.
+  compute. apply ev_new.
 Qed.
 
 End EvExamples.
