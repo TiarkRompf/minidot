@@ -730,6 +730,20 @@ Proof.
   apply (swap_open_rec n x y T Tx Ty 0 HT Hnx Hny HTx HTy).
 Qed.
 
+Lemma stp_swap: forall n x Tx y Ty G T1 T2 m,
+  bound_fvs (length G) G ->
+  stp m ((x,Tx)::(y,Ty)::G) T1 T2 n ->
+  stp m
+      ((y,(swap (length G) (S (length G)) Ty))::
+       (x,(swap (length G) (S (length G)) Tx))
+       ::G)
+      (swap (length G) (S (length G)) T1)
+      (swap (length G) (S (length G)) T2)
+      n.
+Proof.
+  admit.
+Qed.
+
 Lemma stp_ext_swap: forall n x Tx y G T1 T2,
   bound_fvs (length G) G ->
   bound_fv (S (length G)) Tx ->
@@ -740,7 +754,11 @@ Lemma stp_ext_swap: forall n x Tx y G T1 T2,
       (swap (length G) (S (length G)) T2)
       n.
 Proof.
-  admit.
+  intros n x Tx y G T1 T2 HbG HbTx H.
+  assert (swap (length G) (S (length G)) Tx = Tx) as Heq.
+    admit.
+  rewrite <- Heq.
+  apply stp_swap; assumption.
 Qed.
 
 Lemma stp_ext_open: forall n x Tx y G T1 T2,
