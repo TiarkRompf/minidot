@@ -133,60 +133,44 @@ Hint Constructors closed_rec.
 
 Definition closed T := closed_rec 0 T.
 
-Inductive not_fv: id -> ty -> Prop :=
-| nfv_nof: forall u,
-    not_fv u TNoF
-| nfv_top: forall u,
-    not_fv u TTop
-| nfv_bot: forall u,
-    not_fv u TBot
-| nfv_bool: forall u,
-    not_fv u TBool
-| nfv_fun: forall u m T1 T2,
-    not_fv u T1 ->
-    not_fv u T2 ->
-    not_fv u (TFun m T1 T2)
-| nfv_mem: forall u T1 T2,
-    not_fv u T1 ->
-    not_fv u T2 ->
-    not_fv u (TMem T1 T2)
-| nfv_and: forall u T1 T2,
-    not_fv u T1 ->
-    not_fv u T2 ->
-    not_fv u (TAnd T1 T2)
-| nfv_bind: forall u T1,
-    not_fv u T1 ->
-    not_fv u (TBind T1)
-| nfv_selb: forall u i,
-    not_fv u (TSelB i)
-| nfv_sel: forall u x,
-    x <> u ->
-    not_fv u (TSel x)
+Inductive bound_fv: id -> ty -> Prop :=
+| bfv_nof: forall u,
+    bound_fv u TNoF
+| bfv_top: forall u,
+    bound_fv u TTop
+| bfv_bot: forall u,
+    bound_fv u TBot
+| bfv_bool: forall u,
+    bound_fv u TBool
+| bfv_fun: forall u m T1 T2,
+    bound_fv u T1 ->
+    bound_fv u T2 ->
+    bound_fv u (TFun m T1 T2)
+| bfv_mem: forall u T1 T2,
+    bound_fv u T1 ->
+    bound_fv u T2 ->
+    bound_fv u (TMem T1 T2)
+| bfv_and: forall u T1 T2,
+    bound_fv u T1 ->
+    bound_fv u T2 ->
+    bound_fv u (TAnd T1 T2)
+| bfv_bind: forall u T1,
+    bound_fv u T1 ->
+    bound_fv u (TBind T1)
+| bfv_selb: forall u i,
+    bound_fv u (TSelB i)
+| bfv_sel: forall u x,
+    u > x ->
+    bound_fv u (TSel x)
 .
 
-Hint Constructors not_fv.
-
-Fixpoint max_fv_rec (u: id) (T: ty) { struct T }: id :=
-  match T with
-   | TSel x       => max u x
-   | TSelB i      => u
-   | TBind T1     => max_fv_rec u T1
-   | TNoF         => u
-   | TBot         => u
-   | TTop         => u
-   | TBool        => u
-   | TAnd T1 T2   => max (max_fv_rec u T1) (max_fv_rec u T2)
-   | TMem T1 T2   => max (max_fv_rec u T1) (max_fv_rec u T2)
-   | TFun m T1 T2 => max (max_fv_rec u T1) (max_fv_rec u T2)
-  end.
-
-Definition max_fv T := max_fv_rec 0 T.
+Hint Constructors bound_fv.
 
 Inductive bound_fvs: id -> tenv -> Prop :=
 | bound_fvs_nil : forall u,
     bound_fvs u []
 | bound_fvs_cons: forall u x T G,
-    u > max_fv T ->
+    bound_fv u T ->
     bound_fvs u ((x,T)::G)
 .
 
@@ -295,7 +279,7 @@ Inductive wf_type : tenv -> ty -> Prop :=
     wf_type env (TSel x)
 | wf_bind: forall f env T TA,
     bound_fvs (length env) env ->
-    not_fv (length env) TA ->
+    bound_fv (length env) TA ->
     open (length env) TA = T ->
     wf_type ((f,T)::env) T ->
     wf_type env (TBind TA)
@@ -363,10 +347,10 @@ Inductive stp : bool -> tenv -> ty -> ty -> nat -> Prop :=
 *)
 | stp_bindx: forall f G1 T1 T2 TA1 TA2 n1,
     bound_fvs (length G1) G1 ->
+    bound_fv (length G1) TA1 ->
+    bound_fv (length G1) TA2 ->
     stp true ((f,T1)::G1) T1 T2 n1 ->
-    not_fv (length G1) TA1 ->
     open (length G1) TA1 = T1 ->
-    not_fv (length G1) TA2 ->
     open (length G1) TA2 = T2 ->
     stp true G1 (TBind TA1) (TBind TA2) (S n1)
 | stp_transf: forall G1 T1 T2 T3 n1 n2,
@@ -449,10 +433,10 @@ Lemma stpd_selx: forall x TX TL TU G1,
 Proof. intros. repeat eu. exists 0. eauto. Qed.
 Lemma stpd_bindx: forall f G1 T1 T2 TA1 TA2,
     bound_fvs (length G1) G1 ->
+    bound_fv (length G1) TA1 ->
+    bound_fv (length G1) TA2 ->
     stpd true ((f,T1)::G1) T1 T2 ->
-    not_fv (length G1) TA1 ->
     open (length G1) TA1 = T1 ->
-    not_fv (length G1) TA2 ->
     open (length G1) TA2 = T2 ->
     stpd true G1 (TBind TA1) (TBind TA2).
 Proof. intros. repeat eu. eauto. Qed.
@@ -572,89 +556,48 @@ Proof.
   intros. apply index_range in H. omega.
 Qed.
 
-Lemma not_fv_open_up_rec: forall u x T j,
-  u <> x ->
-  not_fv u (open_rec j x T) ->
-  not_fv u T.
-Proof.
-  intros u x T j Hneq H. generalize dependent j.
-  induction T; intros; eauto;
-    try solve [inversion H; subst; constructor; eauto].
-Qed.
-
-Lemma not_fv_open_up: forall u x T,
-  u <> x ->
-  not_fv u (open x T) ->
-  not_fv u T.
-Proof.
-  intros u x T. apply (not_fv_open_up_rec u x T 0).
-Qed.
-
-Lemma stp_not_fv: forall m G T1 T2 n u,
+Lemma stp_bound_fv: forall m G T1 T2 n,
   stp m G T1 T2 n ->
-  u >= length G ->
-  not_fv u T1 /\ not_fv u T2.
+  bound_fv (length G) T1 /\ bound_fv (length G) T2.
 Proof.
-  intros m G T1 T2 n u H Hu. stp_cases (induction H) Case; eauto;
+  intros m G T1 T2 n H. stp_cases (induction H) Case; eauto;
   try solve [
-    specialize (IHstp1 Hu); specialize (IHstp2 Hu);
     inversion IHstp1; inversion IHstp2;
-    split; constructor; assumption];
-  try solve [
-    specialize (IHstp Hu);
-    inversion IHstp as [IHX IHMem]; inversion IHMem; subst;
-    split; eauto; constructor; eapply index_neq; eauto].
+    split; try constructor; assumption].
+  - Case "? < Sel".
+    inversion IHstp as [IHX IHMem]. inversion IHMem; subst.
+    split; eauto. constructor. unfold ">".
+    eapply index_range. apply H.
+  - Case "Sel < ?".
+    inversion IHstp as [IHX IHMem]. inversion IHMem; subst.
+    split; eauto. constructor. unfold ">".
+    eapply index_range. apply H.
   - Case "Sel < Sel".
-    split; constructor; eapply index_neq; eauto.
-  - Case "Bind < Bind".
-    remember (beq_nat u (length G1)).
-    destruct b.
-    + apply beq_nat_eq in Heqb. subst. split; eauto.
-    + symmetry in Heqb. apply beq_nat_false in Heqb.
-      subst.
-      assert (u >= length ((f, open (length G1) TA1) :: G1)) as A
-      by solve [simpl; omega].
-      specialize (IHstp A).
-      inversion IHstp as [IH1 IH2].
-      split.
-        constructor. eapply not_fv_open_up. apply Heqb. assumption.
-        constructor. eapply not_fv_open_up. apply Heqb. assumption.
-   - Case "Trans".
-     split.
-       specialize (IHstp1 Hu). inversion IHstp1. assumption.
-       specialize (IHstp2 Hu). inversion IHstp2. assumption.
+    split; constructor; eapply index_range; eauto.
 Qed.
 
-Lemma stp1_not_fv: forall m G T1 T2 n u,
-  stp m G T1 T2 n ->
-  u >= length G ->
-  not_fv u T1.
+Lemma bound_fv_inc: forall u T,
+  bound_fv u T ->
+  bound_fv (S u) T.
 Proof.
-  intros m G T1 T2 n u H Hu.
-  apply (proj1 (stp_not_fv m G T1 T2 n u H Hu)).
+  intros u T H. induction H; eauto.
 Qed.
 
-Lemma stp2_not_fv: forall m G T1 T2 n u,
+Lemma stp1_bound_fv: forall m G T1 T2 n,
   stp m G T1 T2 n ->
-  u >= length G ->
-  not_fv u T2.
+  bound_fv (length G) T1.
 Proof.
-  intros m G T1 T2 n u H Hu.
-  apply (proj2 (stp_not_fv m G T1 T2 n u H Hu)).
+  intros m G T1 T2 n H.
+  apply (proj1 (stp_bound_fv m G T1 T2 n H)).
 Qed.
 
-Lemma upd_hit: forall {X} G G' x x' (T:X) T',
-              index x G = Some T ->
-              update x' T' G = G' ->
-              beq_nat x x' = true ->
-              index x G' = Some T'.
-Proof. admit. Qed.
-Lemma upd_miss: forall {X} G G' x x' (T:X) T',
-              index x G = Some T ->
-              update x' T' G = G' ->
-              beq_nat x x' = false ->
-              index x G' = Some T.
-Proof. admit. Qed.
+Lemma stp2_bound_fv: forall m G T1 T2 n,
+  stp m G T1 T2 n ->
+  bound_fv (length G) T2.
+Proof.
+  intros m G T1 T2 n H.
+  apply (proj2 (stp_bound_fv m G T1 T2 n H)).
+Qed.
 
 Lemma index_ext_same: forall {X} G x x' (T:X) (T':X),
               index x G = Some T ->
@@ -695,54 +638,20 @@ Proof.
     + inversion Hu. unfold update. rewrite <- Heqb. reflexivity.
 Qed.
 
-Lemma open_TBool: forall n T,
-  open n T = TBool ->
-  T = TBool.
-Proof.
-  intros n T H. induction T; try solve [compute in H; inversion H].
-  - reflexivity.
-  - unfold open in H. unfold open_rec in H.
-    destruct (beq_nat 0 i); inversion H.
-Qed.
-
-Lemma open_TFun: forall n T m T1 T2,
-  open n T = (TFun m T1 T2) ->
-  exists TO1 TO2, T = TFun m TO1 TO2 /\ T1 = open n TO1 /\ T2 = open n TO2.
-Proof.
-  intros n T m T1 T2 H. induction T; try solve [compute in H; inversion H].
-  - inversion H. unfold open. subst. exists T3. exists T4.
-    split. reflexivity. split; reflexivity.
-  - unfold open in H. unfold open_rec in H.
-    destruct (beq_nat 0 i); inversion H.
-Qed.
-
-Lemma stp_ext_open: forall m n x Tx y G T1 T2,
+Lemma stp_ext_open: forall n x Tx y G T1 T2,
   bound_fvs (length G) G ->
-  length G >= max_fv Tx ->
-  not_fv (length G) T1 ->
-  not_fv (length G) T2 ->
-  stp m ((x,Tx)::(y,(open (length G) T1))::G) (open (length G) T1) (open (length G) T2) n ->
-  stp m ((y,(open (length ((x,Tx)::G)) T1))::(x,Tx)::G) (open (length ((x,Tx)::G)) T1) (open (length ((x,Tx)::G)) T2) n.
+  bound_fv (S (length G)) Tx ->
+  bound_fv (length G) T1 ->
+  bound_fv (length G) T2 ->
+  stp true ((x,Tx)::(y,(open (length G) T1))::G) (open (length G) T1) (open (length G) T2) n ->
+  stp true ((y,(open (length ((x,Tx)::G)) T1))::(x,Tx)::G) (open (length ((x,Tx)::G)) T1) (open (length ((x,Tx)::G)) T2) n.
 Proof.
-  intros m n x Tx y G T1 T2 Henv HTx HT1 HT2 H.
-  remember (open (length G) T1) as TO1.
-  remember (open (length G) T2) as TO2.
-  symmetry in HeqTO1. symmetry in HeqTO2.
-  stp_cases (induction H) Case.
-  - Case "Bool < Bool".
-    apply open_TBool in HeqTO1. apply open_TBool in HeqTO2. subst.
-    simpl. compute. apply stp_bool.
-  - Case "Fun < Fun".
-    apply open_TFun in HeqTO1. apply open_TFun in HeqTO2.
-    inversion HeqTO1 as [TO11 [TO12 [HO1 [HO11 HO12]]]].
-    inversion HeqTO2 as [TO21 [TO22 [HO2 [HO21 HO22]]]].
-    subst. simpl. apply stp_fun. fold open_rec.
-    (* wip: the induction hypothesis are all wrong, need to generalize... *)
+  admit.
 Qed.
 
 Lemma stp_ext: forall m G T1 T2 n x Tx,
   stp m G T1 T2 n ->
-  (length G) >= max_fv Tx ->
+  bound_fv (S (length G)) Tx ->
   stp m ((x,Tx)::G) T1 T2 n.
 Proof.
   intros m G T1 T2 n x Tx H Hmax.
@@ -756,24 +665,32 @@ Proof.
   - Case "Sel < Sel". eapply stp_selx.
       eapply index_ext_same. apply H. apply H0.
   - Case "Bind < Bind". eapply stp_bindx.
-    + subst. apply bound_fvs_cons. simpl. omega.
+    + subst. apply bound_fvs_cons. simpl. assumption.
+    + subst. simpl. apply bound_fv_inc. assumption.
+    + subst. simpl. apply bound_fv_inc. assumption.
     + subst. eapply stp_ext_open.
         assumption.
         assumption.
+        apply H0.
         apply H1.
-        apply H3.
-        apply IHstp. simpl. omega.
-    + subst. eapply not_fv_open_up with (x:=length G1).
-        simpl. omega.
-        eapply stp1_not_fv. apply H0.
-        simpl. omega.
+        apply IHstp.
+        simpl. apply bound_fv_inc. assumption.
     + reflexivity.
-    + subst. eapply not_fv_open_up with (x:=length G1).
-        simpl. omega.
-        eapply stp2_not_fv. apply H0.
-        simpl. omega.
     + reflexivity.
 Qed.
+
+Lemma upd_hit: forall {X} G G' x x' (T:X) T',
+              index x G = Some T ->
+              update x' T' G = G' ->
+              beq_nat x x' = true ->
+              index x G' = Some T'.
+Proof. admit. Qed.
+Lemma upd_miss: forall {X} G G' x x' (T:X) T',
+              index x G = Some T ->
+              update x' T' G = G' ->
+              beq_nat x x' = false ->
+              index x G' = Some T.
+Proof. admit. Qed.
 
 Lemma stp_narrow: forall m G1 T1 T2 n1,
   stpd m G1 T1 T2 ->
