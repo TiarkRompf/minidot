@@ -757,6 +757,63 @@ Proof.
     + inversion HT. subst. assumption.
 Qed.
 
+Lemma stp_swap_rec: forall n x Tx y Ty G0 G T1 T2 m,
+  bound_fvs (length G) G ->
+  stp m (G0++(x,Tx)::(y,Ty)::G) T1 T2 n ->
+  stp m
+      (G0++
+       (y,(swap (length G) (S (length G)) Ty))::
+       (x,(swap (length G) (S (length G)) Tx))
+       ::G)
+      (swap (length G) (S (length G)) T1)
+      (swap (length G) (S (length G)) T2)
+      n.
+Proof.
+  intros n x Tx y Ty G0 G T1 T2 m Hb H.
+  remember (G0++(x,Tx)::(y,Ty)::G) as Gt.
+  generalize dependent G0.
+  stp_cases (induction H) Case; intros; auto.
+  - Case "Fun < Fun".
+    simpl. apply stp_fun.
+    + apply IHstp1; assumption.
+    + apply IHstp2; assumption.
+  - Case "Mem < Mem".
+    simpl. apply stp_mem.
+    + apply IHstp1; assumption.
+    + apply IHstp2; assumption.
+  - Case "? < Sel".
+    (*
+    This is gettign too unwiedly.
+    There are four cases to consider:
+    TSel x0, such that
+    x0 is in G0. we still need to express that G0 may contain swaps.
+    x0 is either length G or (S (length G)) in which case swapping occurs. OK.
+    x0 is in G. swapping is not possible.
+    *)
+    (*
+    simpl. remember (beq_nat (length G) x0). destruct b.
+    + apply beq_nat_eq in Heqb. subst.
+      assert (index (length G) (G0 ++ (x, Tx) :: (y, Ty) :: G) = Some Ty) as HeqX.
+        admit.
+      rewrite H in HeqX. inversion HeqX. clear HeqX. subst.
+      apply stp_sel2 with (TX:=swap (length G) (S (length G)) Ty).
+      admit.
+      apply IHstp. reflexivity.
+    + (* sigh *)
+    *)
+    admit.
+  - Case "Sel < ?".
+    admit.
+  - Case "Sel < Sel".
+    admit.
+  - Case "Bind < Bind".
+    admit.
+  - Case "Trans".
+    simpl. eapply stp_transf.
+    + apply IHstp1; assumption.
+    + apply IHstp2; assumption.
+Qed.
+
 Lemma stp_swap: forall n x Tx y Ty G T1 T2 m,
   bound_fvs (length G) G ->
   stp m ((x,Tx)::(y,Ty)::G) T1 T2 n ->
@@ -768,7 +825,8 @@ Lemma stp_swap: forall n x Tx y Ty G T1 T2 m,
       (swap (length G) (S (length G)) T2)
       n.
 Proof.
-  admit.
+  intros n x Tx y Ty G T1 T2 m Hb H.
+  apply (stp_swap_rec n x Tx y Ty [] G T1 T2 m Hb H).
 Qed.
 
 Lemma stp_ext_swap: forall n x Tx y G T1 T2,
