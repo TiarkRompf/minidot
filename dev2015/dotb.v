@@ -599,6 +599,18 @@ Proof.
   apply (proj2 (stp_bound_fv m G T1 T2 n H)).
 Qed.
 
+Lemma index_shrink: forall {X} i x (Tx:X) G (T:X),
+  index i ((x,Tx)::G) = Some T ->
+  i < length G ->
+  index i G = Some T.
+Proof.
+  intros. inversion H.
+  remember (beq_nat i (length G)).
+  induction b.
+  + apply beq_nat_eq in Heqb. omega.
+  + reflexivity.
+Qed.
+
 Lemma index_ext_same: forall {X} G x x' (T:X) (T':X),
               index x G = Some T ->
               index x ((x',T')::G) = Some T.
@@ -646,7 +658,39 @@ Lemma stp_ext_open: forall n x Tx y G T1 T2,
   stp true ((x,Tx)::(y,(open (length G) T1))::G) (open (length G) T1) (open (length G) T2) n ->
   stp true ((y,(open (length ((x,Tx)::G)) T1))::(x,Tx)::G) (open (length ((x,Tx)::G)) T1) (open (length ((x,Tx)::G)) T2) n.
 Proof.
-  admit.
+ admit.
+(*
+  intros n x Tx y G T1 T2 Henv HTx HT1 HT2 H.
+  simpl.
+  induction T1; induction T2; try solve [compute in H; inversion H].
+
+  compute in H. inversion H. subst. inversion HT2. subst.
+  compute. apply stp_sel2 with (TX:=TX).
+  apply index_shrink in H1. apply index_shrink in H1.
+  apply index_ext_same. apply index_ext_same.
+  assumption.
+  omega. simpl. omega.
+  assumption.
+
+  simpl.
+  remember (open (length G) T1) as TO1.
+  remember (open (length G) T2) as TO2.
+  remember (open (S (length G)) T1) as TS1.
+  remember (open (S (length G)) T2) as TS2.
+  induction T1. subst. inversion H. subst. inversion H2.
+  symmetry in HeqTO1. symmetry in HeqTO2.
+  generalize dependent TS2. generalize dependent TS1.
+  stp_cases (induction H) Case; intros TS1 TS2.
+  - Case "Bool < Bool".
+    apply open_TBool in HeqTO1. apply open_TBool in HeqTO2. subst.
+    simpl. compute. apply stp_bool.
+  - Case "Fun < Fun".
+    apply open_TFun in HeqTO1. apply open_TFun in HeqTO2.
+    inversion HeqTO1 as [TO11 [TO12 [HO1 [HO11 HO12]]]].
+    inversion HeqTO2 as [TO21 [TO22 [HO2 [HO21 HO22]]]].
+    subst. simpl. apply stp_fun.
+    + fold open_rec. apply IHstp1.
+*)
 Qed.
 
 Lemma stp_ext: forall m G T1 T2 n x Tx,
