@@ -190,6 +190,20 @@ Fixpoint open_rec (k: nat) (u: id) (T: ty) { struct T }: ty :=
 
 Definition open u T := open_rec 0 u T.
 
+Fixpoint subst_typ (k: id) (u: id) (T: ty)  { struct T }: ty :=
+  match T with
+    | TSel x       => if beq_nat k x then TSel u else TSel x
+    | TSelB i      => TSelB i
+    | TBind T1     => TBind (subst_typ k u T1)
+    | TNoF         => TNoF
+    | TBot         => TBot
+    | TTop         => TTop
+    | TBool        => TBool
+    | TAnd T1 T2   => TAnd (subst_typ k u T1) (subst_typ k u T2)
+    | TMem T1 T2   => TMem (subst_typ k u T1) (subst_typ k u T2)
+    | TFun m T1 T2 => TFun m (subst_typ k u T1) (subst_typ k u T2)
+  end.
+
 (* sanity check *)
 Example open_ex1: open 9 (TBind (TAnd (TMem TBot TTop) (TFun 0 (TSelB 1) (TSelB 0)))) =
                       (TBind (TAnd (TMem TBot TTop) (TFun 0 (TSel  9) (TSelB 0)))).
@@ -648,6 +662,55 @@ Proof.
     destruct b.
     + inversion Hu. unfold update. rewrite <- Heqb. reflexivity.
     + inversion Hu. unfold update. rewrite <- Heqb. reflexivity.
+Qed.
+
+Lemma subst_open_rec: forall n x y T Tx Ty k,
+  bound_fv n T ->
+  x >= n ->
+  y >= n ->
+  open_rec k x T = Tx ->
+  open_rec k y T = Ty ->
+  subst_typ x y Tx = Ty.
+Proof.
+  intros n x y T Tx Ty k HT Hnx Hny HTx HTy.
+  generalize dependent Ty. generalize dependent Tx. generalize dependent k.
+  induction T;
+  intros k Tx HTx Ty HTy;
+  try solve [
+    compute in HTx; compute in HTy; subst; compute; reflexivity];
+  try solve [
+    unfold open_rec in HTx; fold open_rec in HTx;
+    unfold open_rec in HTy; fold open_rec in HTy;
+    subst; unfold subst_typ; fold subst_typ;
+    f_equal;
+     try solve [
+     apply IHT1 with (k:=k);
+       try solve [inversion HT; subst; assumption];
+       try solve [reflexivity]];
+     try solve [
+     apply IHT2 with (k:=k);
+       try solve [inversion HT; subst; assumption];
+       try solve [reflexivity]]].
+  - Case "Sel".
+    compute in HTx. compute in HTy. subst.
+    unfold subst_typ. inversion HT. subst.
+    remember (beq_nat x i).
+    destruct b.
+    + apply beq_nat_eq in Heqb. omega.
+    + reflexivity.
+  - Case "SelB".
+    unfold open_rec in HTx.
+    unfold open_rec in HTy.
+    remember (beq_nat k i).
+    destruct b.
+    + subst. unfold subst_typ. rewrite <- beq_nat_refl. reflexivity.
+    + subst. compute. reflexivity.
+  - Case "Bind".
+    unfold open_rec in HTx. fold open_rec in HTx.
+    unfold open_rec in HTy. fold open_rec in HTy.
+    subst. simpl. f_equal.
+    apply IHT with (k:=S k); try reflexivity.
+    + inversion HT. subst. assumption.
 Qed.
 
 Lemma stp_ext_open: forall n x Tx y G T1 T2,
