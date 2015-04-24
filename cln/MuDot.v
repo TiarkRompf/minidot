@@ -368,9 +368,9 @@ Inductive same_typ: ctx -> typ -> typ -> ctx -> Prop :=
            (typ_sel (pth_var (avar_f x1)) M)
            (typ_sel (pth_var (avar_f x2)) M)
            G2
-| same_bind: forall G DS,
+| same_bind: forall G Ds,
   (* TODO: do we need to go in there? *)
-  same_typ G (typ_bind DS) (typ_bind DS) G
+  same_typ G (typ_bind Ds) (typ_bind Ds) G
 .
 
 (* TODO: regularity? *)
