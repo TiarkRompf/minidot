@@ -52,7 +52,10 @@ with defs: Set :=
   | defs_nil : defs
   | defs_cons: def -> defs -> defs.
 
-Definition ctx := env typ.
+Inductive ctyp: Type :=
+  | typ_clo: env ctyp -> typ -> ctyp.
+
+Definition ctx := env ctyp.
 
 (* ###################################################################### *)
 (** ** Definition list membership *)
@@ -217,7 +220,7 @@ with fv_defs(ds: defs): vars :=
   | defs_cons d tl   => (fv_defs tl) \u (fv_def d)
   end.
 
-Definition fv_ctx_types(G: ctx): vars := (fv_in_values (fun T => fv_typ T) G).
+Definition fv_ctx_types(G: ctx): vars := (fv_in_values (fun ct => match ct with typ_clo _ T => fv_typ T end) G).
 
 (* ###################################################################### *)
 (** ** Evaluation *)
@@ -226,6 +229,8 @@ Inductive val: Type :=
   | val_clo: env val -> defs -> val.
 
 Definition vctx := env val.
+
+Definition fv_ctx_values(H: vctx): vars := (fv_in_values (fun v => match v with val_clo _ ds => fv_defs ds end) H).
 
 Inductive ev: vctx -> trm -> val -> Prop :=
 | ev_var: forall H x v,
@@ -260,7 +265,7 @@ Ltac gather_vars :=
   let A := gather_vars_with (fun x: vars      => x         ) in
   let B := gather_vars_with (fun x: var       => \{ x }    ) in
   let C := gather_vars_with (fun x: ctx       => (dom x) \u (fv_ctx_types x)) in
-  let D := gather_vars_with (fun x: vctx      => dom x     ) in
+  let D := gather_vars_with (fun x: vctx      => (dom x) \u (fv_ctx_values x)) in
   let E := gather_vars_with (fun x: avar      => fv_avar  x) in
   let F := gather_vars_with (fun x: trm       => fv_trm   x) in
   let G := gather_vars_with (fun x: def       => fv_def   x) in
@@ -344,62 +349,56 @@ Fixpoint def_to_dec (d: def): dec :=
   | def_tyu L TU => dec_tyu L TU
   | def_mtd m T1 T2 t => dec_mtd m T1 T2
   end
-with defs_to_decs (ds: defs): decs :=
+.
+Fixpoint defs_to_decs (ds: defs): decs :=
   match ds with
   | defs_nil => decs_nil
   | defs_cons d ds => decs_cons (def_to_dec d) (defs_to_decs ds)
   end
 .
 
-Inductive stp: ctx -> vctx -> typ -> typ -> ctx -> vctx -> Prop :=
- (* TODO: regularity? *)
-| stp_top: forall G1 H1 T1 G2 H2,
-  stp G1 H1 T1 typ_top G2 H2
-| stp_sel2: forall G1 H1 T1 G2 H2 p L TL TU Gp Hp,
-  pth_has G2 H2 p (dec_typ L TL TU) Gp Hp ->
-  stp G1 H1 T1 TL Gp Hp ->
-  stp G1 H1 T1 (typ_sel p L) G2 H2
-| stp_sel1: forall G1 H1 G2 H2 T2 p L TL TU Gp Hp,
-  pth_has G1 H1 p (dec_typ L TL TU) Gp Hp ->
-  stp Gp Hp TU T2 G2 H2 ->
-  stp G1 H1 (typ_sel p L) T2 G2 H2
-| stp_sel1u: forall G1 H1 G2 H2 T2 p L TU Gp Hp,
-  pth_has G1 H1 p (dec_tyu L TU) Gp Hp ->
-  stp Gp Hp TU T2 G2 H2 ->
-  stp G1 H1 (typ_sel p L) T2 G2 H2
+(* TODO: regularity? *)
+Inductive stp: ctx -> typ -> typ -> ctx -> Prop :=
+| stp_top: forall G1 T1 G2,
+  stp G1 T1 typ_top G2
+| stp_sel2: forall G1 T1 G2 p L TL TU Gp,
+  pth_has G2 p (dec_typ L TL TU) Gp ->
+  stp G1 T1 TL Gp ->
+  stp G1 T1 (typ_sel p L) G2
+| stp_sel1: forall G1 G2 T2 p L TL TU Gp,
+  pth_has G1 p (dec_typ L TL TU) Gp ->
+  stp Gp TU T2 G2 ->
+  stp G1 (typ_sel p L) T2 G2
+| stp_sel1u: forall G1 G2 T2 p L TU Gp,
+  pth_has G1 p (dec_tyu L TU) Gp ->
+  stp Gp TU T2 G2 ->
+  stp G1 (typ_sel p L) T2 G2
 (*
-tricky because of env hopping
-desribed in resolution paragraph of section 7 of OOPSLA'14 paper
-(Foundations of Path-Dependent Types)
+TODO: need to identify identical "closed types"
 | stp_selx: forall G1 H1 G2 H2 x L,
 *)
-| stp_bind: forall L G1 H1 DS1 G2 H2 DS2,
+| stp_bind: forall L G1 DS1 G2 DS2,
   (forall x, x \notin L ->
-   (* we cannot just use DS1 for both sides, since
-      DS1 might not make sense given H2 instead of H1 *)
-   sdcs (G1 & (x ~ typ_bind DS1)) H1 DS1 DS2 (G2 & (x ~ typ_bind DS2)) H2
+   sdcs (G1 & (x ~ typ_clo G1 (typ_bind DS1)))
+        DS1 DS2
+        (G2 & (x ~ typ_clo G1 (typ_bind DS1)))
   ) ->
-  stp G1 H1 (typ_bind DS1) (typ_bind DS2) G2 H2
-with sdcs: ctx -> vctx -> decs -> decs -> ctx -> vctx -> Prop :=
-with exp: ctx -> vctx -> typ -> decs -> ctx -> vctx -> Prop :=
-| exp_top: forall G H,
-  exp G H typ_top decs_nil G H
-| exp_bind: forall G H Ds,
-  exp G H (typ_bind Ds) Ds G H
-| exp_sel: forall G H G' H' G'' H'' p L TL TU Ds,
-  pth_has G H p (dec_typ L TL TU) G' H' ->
-  exp G' H' TU Ds G'' H'' ->
-  exp G H (typ_sel p L) Ds G'' H''
-with pth_has: ctx -> vctx -> pth -> dec -> ctx -> vctx -> Prop :=
-| pth_has_t: forall G H G' H' x T Ds D,
-  binds x T G ->
-  exp G H T Ds G' H' ->
+  stp G1 (typ_bind DS1) (typ_bind DS2) G2
+with sdcs: ctx -> decs -> decs -> ctx -> Prop :=
+with exp: ctx -> typ -> decs -> ctx -> Prop :=
+| exp_top: forall G,
+  exp G typ_top decs_nil G
+| exp_bind: forall G Ds,
+  exp G (typ_bind Ds) Ds G
+| exp_sel: forall G G' G'' p L TL TU Ds,
+  pth_has G p (dec_typ L TL TU) G' ->
+  exp G' TU Ds G'' ->
+  exp G (typ_sel p L) Ds G''
+with pth_has: ctx -> pth -> dec -> ctx -> Prop :=
+| pth_has_any: forall G x Gx Tx Ds D G' x',
+  binds x (typ_clo Gx Tx) G ->
+  exp Gx Tx Ds G' ->
   decs_has Ds D ->
-  pth_has G H (pth_var (avar_f x)) (open_dec x D) G' H'
-| pth_has_v: forall G H x x' Hx ds Ds D,
-  binds x (val_clo Hx ds) H ->
-  (defs_to_decs ds) = Ds ->
-  decs_has Ds D ->
-  x' # Hx ->
-  pth_has G H (pth_var (avar_f x)) (open_dec x' D) empty (Hx & (x' ~ (val_clo Hx ds)))
+  x' # G' ->
+  pth_has G (pth_var (avar_f x)) (open_dec x' D) (G' & (x' ~ (typ_clo Gx Tx)))
 .
