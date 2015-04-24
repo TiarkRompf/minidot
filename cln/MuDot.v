@@ -357,7 +357,20 @@ Fixpoint defs_to_decs (ds: defs): decs :=
   end
 .
 
-Inductive same_ish: ctx -> typ -> typ -> ctx -> Prop :=
+Inductive same_typ: ctx -> typ -> typ -> ctx -> Prop :=
+| same_top: forall G1 G2,
+  same_typ G1 typ_top typ_top G2
+| same_sel: forall G1 G2 x1 x2 L Gx1 Tx1 Gx2 Tx2,
+  binds x1 (typ_clo Gx1 Tx1) G1 ->
+  binds x2 (typ_clo Gx2 Tx2) G2 ->
+  same_typ Gx1 Tx1 Tx2 Gx2 ->
+  same_typ G1
+           (typ_sel (pth_var (avar_f x1)) L)
+           (typ_sel (pth_var (avar_f x2)) L)
+           G2
+| same_bind: forall G DS,
+  (* TODO: do we need to go in there? *)
+  same_typ G (typ_bind DS) (typ_bind DS) G
 .
 
 (* TODO: regularity? *)
@@ -379,8 +392,8 @@ Inductive stp: ctx -> typ -> typ -> ctx -> Prop :=
 | stp_selx: forall G1 G2 p1 p2 L TL1 TU1 TL2 TU2 Gp1 Gp2,
   pth_has G1 p1 (dec_typ L TL1 TU1) Gp1 ->
   pth_has G2 p2 (dec_typ L TL2 TU2) Gp2 ->
-  same_ish Gp2 TL2 TL1 Gp1 ->
-  same_ish Gp1 TU1 TU2 Gp2 ->
+  same_typ Gp2 TL2 TL1 Gp1 ->
+  same_typ Gp1 TU1 TU2 Gp2 ->
   stp G1 (typ_sel p1 L) (typ_sel p2 L) G2
 | stp_bind: forall L G1 DS1 G2 DS2,
   (forall x, x \notin L ->
