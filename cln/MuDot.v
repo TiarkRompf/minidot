@@ -420,3 +420,41 @@ with pth_has: ctx -> pth -> dec -> ctx -> Prop :=
   x' # G' ->
   pth_has G (pth_var (avar_f x)) (open_dec x' D) (G' & (x' ~ (typ_clo Gx Tx)))
 .
+
+Inductive env_to_ctx: list var -> env typ -> ctx -> Prop :=
+| e2c_nil: forall E,
+  env_to_ctx nil E empty
+| e2c_cons: forall v V E G T,
+  binds v T E ->
+  env_to_ctx V E G ->
+  env_to_ctx (v::V) E (G & (v ~ typ_clo G T))
+.
+
+Inductive tc_trm: list var -> env typ -> trm -> typ -> Prop :=
+| tc_var: forall V x T E,
+  binds x T E ->
+  tc_trm V E (trm_var (avar_f x)) T
+| tc_new: forall L V E ds Ds,
+  defs_to_decs ds = Ds ->
+  (forall x, x \notin L ->
+   tc_defs (x::V) (E & (x ~ (typ_bind Ds))) (open_defs x ds) (open_decs x Ds)) ->
+  tc_trm V E (trm_new ds) (typ_bind Ds)
+| tc_call: forall V E t1 m t2 T2 T,
+  trm_has V E t1 (dec_mtd m T2 T) ->
+  tc_trm V E t2 T2 ->
+  tc_trm V E (trm_call t1 m t2) T
+| tc_sub: forall V E G t T TU,
+  tc_trm V E t T ->
+  env_to_ctx V E G ->
+  stp G T TU G ->
+  tc_trm V E t TU
+with tc_def: list var -> env typ -> def -> dec -> Prop :=
+with trm_has: list var -> env typ -> trm -> dec -> Prop :=
+with tc_defs: list var -> env typ -> defs -> decs -> Prop :=
+| tc_nil: forall V E,
+  tc_defs V E defs_nil decs_nil
+| tc_cons: forall V E d ds D Ds,
+  tc_def V E d D ->
+  tc_defs V E ds Ds ->
+  tc_defs V E (defs_cons d ds) (decs_cons D Ds)
+.
