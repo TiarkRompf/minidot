@@ -357,6 +357,9 @@ Fixpoint defs_to_decs (ds: defs): decs :=
   end
 .
 
+Inductive same_ish: ctx -> typ -> typ -> ctx -> Prop :=
+.
+
 (* TODO: regularity? *)
 Inductive stp: ctx -> typ -> typ -> ctx -> Prop :=
 | stp_top: forall G1 T1 G2,
@@ -373,10 +376,12 @@ Inductive stp: ctx -> typ -> typ -> ctx -> Prop :=
   pth_has G1 p (dec_tyu L TU) Gp ->
   stp Gp TU T2 G2 ->
   stp G1 (typ_sel p L) T2 G2
-(*
-TODO: need to identify identical "closed types"
-| stp_selx: forall G1 H1 G2 H2 x L,
-*)
+| stp_selx: forall G1 G2 p1 p2 L TL1 TU1 TL2 TU2 Gp1 Gp2,
+  pth_has G1 p1 (dec_typ L TL1 TU1) Gp1 ->
+  pth_has G2 p2 (dec_typ L TL2 TU2) Gp2 ->
+  same_ish Gp2 TL2 TL1 Gp1 ->
+  same_ish Gp1 TU1 TU2 Gp2 ->
+  stp G1 (typ_sel p1 L) (typ_sel p2 L) G2
 | stp_bind: forall L G1 DS1 G2 DS2,
   (forall x, x \notin L ->
    sdcs (G1 & (x ~ typ_clo G1 (typ_bind DS1)))
