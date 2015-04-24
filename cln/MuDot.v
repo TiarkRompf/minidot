@@ -260,7 +260,7 @@ Ltac gather_vars :=
   let A := gather_vars_with (fun x: vars      => x         ) in
   let B := gather_vars_with (fun x: var       => \{ x }    ) in
   let C := gather_vars_with (fun x: ctx       => (dom x) \u (fv_ctx_types x)) in
-  let D := gather_vars_with (fun x: env val   => dom x     ) in
+  let D := gather_vars_with (fun x: vctx      => dom x     ) in
   let E := gather_vars_with (fun x: avar      => fv_avar  x) in
   let F := gather_vars_with (fun x: trm       => fv_trm   x) in
   let G := gather_vars_with (fun x: def       => fv_def   x) in
