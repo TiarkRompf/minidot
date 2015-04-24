@@ -225,7 +225,9 @@ Definition fv_ctx_types(G: ctx): vars := (fv_in_values (fun T => fv_typ T) G).
 Inductive val: Type :=
   | val_clo: env val -> defs -> val.
 
-Inductive ev: env val -> trm -> val -> Prop :=
+Definition vctx := env val.
+
+Inductive ev: vctx -> trm -> val -> Prop :=
 | ev_var: forall H x v,
   binds x v H ->
   ev H (trm_var (avar_f x)) v
