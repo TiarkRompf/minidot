@@ -373,9 +373,9 @@ Inductive same_typ: ctx -> typ -> typ -> ctx -> Prop :=
   same_typ G (typ_bind Ds) (typ_bind Ds) G
 .
 
-(* TODO: regularity? *)
 Inductive stp: ctx -> typ -> typ -> ctx -> Prop :=
 | stp_top: forall G1 T1 G2,
+  wf_typ G1 T1 ->
   stp G1 T1 typ_top G2
 | stp_sel2: forall G1 T1 G2 p M TL TU Gp,
   pth_has G2 p (dec_typ M TL TU) Gp ->
@@ -396,12 +396,14 @@ Inductive stp: ctx -> typ -> typ -> ctx -> Prop :=
   same_typ Gp1 TU1 TU2 Gp2 ->
   stp G1 (typ_sel p1 M) (typ_sel p2 M) G2
 | stp_bind: forall L G1 Ds1 G2 Ds2,
+  wf_typ G2 (typ_bind Ds2) ->
   (forall x, x \notin L ->
    sdcs (G1 & (x ~ typ_clo G1 (typ_bind Ds1)))
         Ds1 Ds2
         (G2 & (x ~ typ_clo G1 (typ_bind Ds1)))
   ) ->
   stp G1 (typ_bind Ds1) (typ_bind Ds2) G2
+
 with sdc: ctx -> dec -> dec -> ctx -> Prop :=
 | sdc_typ: forall G1 G2 M TL1 TL2 TU1 TU2,
   stp G2 TL2 TL1 G1 ->
@@ -411,12 +413,12 @@ with sdc: ctx -> dec -> dec -> ctx -> Prop :=
   stp G1 TU1 TU2 G2 ->
   sdc G1 (dec_tyu M TU1) (dec_tyu M TU2) G2
 | sdc_typu: forall G1 G2 M TL1 TU1 TU2,
-  (* wf_typ G1 TL1 -> *)
+  wf_typ G1 TL1 ->
   stp G1 TU1 TU2 G2 ->
   sdc G1 (dec_typ M TL1 TU1) (dec_tyu M TU2) G2
 with sdcs: ctx -> decs -> decs -> ctx -> Prop :=
 | sdcs_nil: forall G1 Ds1 G2,
-  (* wf_decs G Ds1 -> *)
+  wf_decs G1 Ds1 ->
   sdcs G1 Ds1 decs_nil G2
 | sdcs_cons: forall G1 Ds1 G2 Ds2 D1 D2,
   decs_has Ds1 D1 ->
@@ -424,6 +426,12 @@ with sdcs: ctx -> decs -> decs -> ctx -> Prop :=
   sdcs G1 Ds1 Ds2 G2 ->
   decs_hasnt Ds2 (label_of_dec D2) ->
   sdcs G1 Ds1 (decs_cons D2 Ds2) G2
+with wf_typ: ctx -> typ -> Prop :=
+(* TODO *)
+with wf_dec: ctx -> dec -> Prop :=
+(* TODO *)
+with wf_decs: ctx -> decs -> Prop :=
+(* TODO *)
 with exp: ctx -> typ -> decs -> ctx -> Prop :=
 | exp_top: forall G,
   exp G typ_top decs_nil G
@@ -440,10 +448,6 @@ with pth_has: ctx -> pth -> dec -> ctx -> Prop :=
   decs_has Ds D ->
   x' # G' ->
   pth_has G (pth_var (avar_f x)) (open_dec x' D) (G' & (x' ~ (typ_clo Gx Tx)))
-.
-
-Inductive wf_typ: ctx -> typ -> Prop :=
-(* TODO *)
 .
 
 Inductive env_to_ctx: list var -> env typ -> ctx -> Prop :=
