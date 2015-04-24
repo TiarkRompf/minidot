@@ -395,14 +395,35 @@ Inductive stp: ctx -> typ -> typ -> ctx -> Prop :=
   same_typ Gp2 TL2 TL1 Gp1 ->
   same_typ Gp1 TU1 TU2 Gp2 ->
   stp G1 (typ_sel p1 M) (typ_sel p2 M) G2
-| stp_bind: forall L G1 DS1 G2 DS2,
+| stp_bind: forall L G1 Ds1 G2 Ds2,
   (forall x, x \notin L ->
-   sdcs (G1 & (x ~ typ_clo G1 (typ_bind DS1)))
-        DS1 DS2
-        (G2 & (x ~ typ_clo G1 (typ_bind DS1)))
+   sdcs (G1 & (x ~ typ_clo G1 (typ_bind Ds1)))
+        Ds1 Ds2
+        (G2 & (x ~ typ_clo G1 (typ_bind Ds1)))
   ) ->
-  stp G1 (typ_bind DS1) (typ_bind DS2) G2
+  stp G1 (typ_bind Ds1) (typ_bind Ds2) G2
+with sdc: ctx -> dec -> dec -> ctx -> Prop :=
+| sdc_typ: forall G1 G2 M TL1 TL2 TU1 TU2,
+  stp G2 TL2 TL1 G1 ->
+  stp G1 TU1 TU2 G2 ->
+  sdc G1 (dec_typ M TL1 TU1) (dec_typ M TL2 TU2) G2
+| sdc_tyu: forall G1 G2 M TU1 TU2,
+  stp G1 TU1 TU2 G2 ->
+  sdc G1 (dec_tyu M TU1) (dec_tyu M TU2) G2
+| sdc_typu: forall G1 G2 M TL1 TU1 TU2,
+  (* wf_typ G1 TL1 -> *)
+  stp G1 TU1 TU2 G2 ->
+  sdc G1 (dec_typ M TL1 TU1) (dec_tyu M TU2) G2
 with sdcs: ctx -> decs -> decs -> ctx -> Prop :=
+| sdcs_nil: forall G1 Ds1 G2,
+  (* wf_decs G Ds1 -> *)
+  sdcs G1 Ds1 decs_nil G2
+| sdcs_cons: forall G1 Ds1 G2 Ds2 D1 D2,
+  decs_has Ds1 D1 ->
+  sdc G1 D1 D2 G2 ->
+  sdcs G1 Ds1 Ds2 G2 ->
+  decs_hasnt Ds2 (label_of_dec D2) ->
+  sdcs G1 Ds1 (decs_cons D2 Ds2) G2
 with exp: ctx -> typ -> decs -> ctx -> Prop :=
 | exp_top: forall G,
   exp G typ_top decs_nil G
