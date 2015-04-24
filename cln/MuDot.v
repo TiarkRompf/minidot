@@ -17,7 +17,7 @@ Inductive label: Set :=
 | label_mtd: mtd_label -> label.
 
 Module labels.
-  Parameter L: typ_label.
+  Parameter M: typ_label.
   Parameter m: mtd_label.
 End labels.
 
@@ -61,14 +61,14 @@ Definition ctx := env ctyp.
 (** ** Definition list membership *)
 
 Definition label_of_def(d: def): label := match d with
-| def_typ L _ _ => label_typ L
-| def_tyu L _ => label_typ L
+| def_typ M _ _ => label_typ M
+| def_tyu M _ => label_typ M
 | def_mtd m _ _ _ => label_mtd m
 end.
 
 Definition label_of_dec(D: dec): label := match D with
-| dec_typ L _ _ => label_typ L
-| dec_tyu L _ => label_typ L
+| dec_typ M _ _ => label_typ M
+| dec_tyu M _ => label_typ M
 | dec_mtd m _ _ => label_mtd m
 end.
 
@@ -128,12 +128,12 @@ Fixpoint open_rec_typ (k: nat) (u: var) (T: typ) { struct T }: typ :=
   match T with
   | typ_top     => typ_top
   | typ_bind Ds => typ_bind (open_rec_decs (S k) u Ds)
-  | typ_sel p L => typ_sel (open_rec_pth k u p) L
+  | typ_sel p M => typ_sel (open_rec_pth k u p) M
   end
 with open_rec_dec (k: nat) (u: var) (D: dec) { struct D }: dec :=
   match D with
-  | dec_typ L T U => dec_typ L (open_rec_typ k u T) (open_rec_typ k u U)
-  | dec_tyu L U => dec_tyu L (open_rec_typ k u U)
+  | dec_typ M T U => dec_typ M (open_rec_typ k u T) (open_rec_typ k u U)
+  | dec_tyu M U => dec_tyu M (open_rec_typ k u U)
   | dec_mtd m T U => dec_mtd m (open_rec_typ k u T) (open_rec_typ k u U)
   end
 with open_rec_decs (k: nat) (u: var) (Ds: decs) { struct Ds }: decs :=
@@ -150,8 +150,8 @@ Fixpoint open_rec_trm (k: nat) (u: var) (t: trm) { struct t }: trm :=
   end
 with open_rec_def (k: nat) (u: var) (d: def) { struct d }: def :=
   match d with
-  | def_typ L T U => def_typ L (open_rec_typ k u T) (open_rec_typ k u U)
-  | def_tyu L U => def_tyu L (open_rec_typ k u U)
+  | def_typ M T U => def_typ M (open_rec_typ k u T) (open_rec_typ k u U)
+  | def_tyu M U => def_tyu M (open_rec_typ k u U)
   | def_mtd m T U e => def_mtd m (open_rec_typ k u T) (open_rec_typ k u U) (open_rec_trm (S k) u e)
   end
 with open_rec_defs (k: nat) (u: var) (ds: defs) { struct ds }: defs :=
@@ -188,7 +188,7 @@ Fixpoint fv_typ (T: typ) { struct T }: vars :=
   match T with
   | typ_top     => \{}
   | typ_bind Ds => fv_decs Ds
-  | typ_sel p L => fv_pth p
+  | typ_sel p M => fv_pth p
   end
 with fv_dec (D: dec) { struct D }: vars :=
   match D with
@@ -345,8 +345,8 @@ End EvExamples.
 
 Fixpoint def_to_dec (d: def): dec :=
   match d with
-  | def_typ L TL TU => dec_typ L TL TU
-  | def_tyu L TU => dec_tyu L TU
+  | def_typ M TL TU => dec_typ M TL TU
+  | def_tyu M TU => dec_tyu M TU
   | def_mtd m T1 T2 t => dec_mtd m T1 T2
   end
 .
@@ -360,13 +360,13 @@ Fixpoint defs_to_decs (ds: defs): decs :=
 Inductive same_typ: ctx -> typ -> typ -> ctx -> Prop :=
 | same_top: forall G1 G2,
   same_typ G1 typ_top typ_top G2
-| same_sel: forall G1 G2 x1 x2 L Gx1 Tx1 Gx2 Tx2,
+| same_sel: forall G1 G2 x1 x2 M Gx1 Tx1 Gx2 Tx2,
   binds x1 (typ_clo Gx1 Tx1) G1 ->
   binds x2 (typ_clo Gx2 Tx2) G2 ->
   same_typ Gx1 Tx1 Tx2 Gx2 ->
   same_typ G1
-           (typ_sel (pth_var (avar_f x1)) L)
-           (typ_sel (pth_var (avar_f x2)) L)
+           (typ_sel (pth_var (avar_f x1)) M)
+           (typ_sel (pth_var (avar_f x2)) M)
            G2
 | same_bind: forall G DS,
   (* TODO: do we need to go in there? *)
@@ -377,24 +377,24 @@ Inductive same_typ: ctx -> typ -> typ -> ctx -> Prop :=
 Inductive stp: ctx -> typ -> typ -> ctx -> Prop :=
 | stp_top: forall G1 T1 G2,
   stp G1 T1 typ_top G2
-| stp_sel2: forall G1 T1 G2 p L TL TU Gp,
-  pth_has G2 p (dec_typ L TL TU) Gp ->
+| stp_sel2: forall G1 T1 G2 p M TL TU Gp,
+  pth_has G2 p (dec_typ M TL TU) Gp ->
   stp G1 T1 TL Gp ->
-  stp G1 T1 (typ_sel p L) G2
-| stp_sel1: forall G1 G2 T2 p L TL TU Gp,
-  pth_has G1 p (dec_typ L TL TU) Gp ->
+  stp G1 T1 (typ_sel p M) G2
+| stp_sel1: forall G1 G2 T2 p M TL TU Gp,
+  pth_has G1 p (dec_typ M TL TU) Gp ->
   stp Gp TU T2 G2 ->
-  stp G1 (typ_sel p L) T2 G2
-| stp_sel1u: forall G1 G2 T2 p L TU Gp,
-  pth_has G1 p (dec_tyu L TU) Gp ->
+  stp G1 (typ_sel p M) T2 G2
+| stp_sel1u: forall G1 G2 T2 p M TU Gp,
+  pth_has G1 p (dec_tyu M TU) Gp ->
   stp Gp TU T2 G2 ->
-  stp G1 (typ_sel p L) T2 G2
-| stp_selx: forall G1 G2 p1 p2 L TL1 TU1 TL2 TU2 Gp1 Gp2,
-  pth_has G1 p1 (dec_typ L TL1 TU1) Gp1 ->
-  pth_has G2 p2 (dec_typ L TL2 TU2) Gp2 ->
+  stp G1 (typ_sel p M) T2 G2
+| stp_selx: forall G1 G2 p1 p2 M TL1 TU1 TL2 TU2 Gp1 Gp2,
+  pth_has G1 p1 (dec_typ M TL1 TU1) Gp1 ->
+  pth_has G2 p2 (dec_typ M TL2 TU2) Gp2 ->
   same_typ Gp2 TL2 TL1 Gp1 ->
   same_typ Gp1 TU1 TU2 Gp2 ->
-  stp G1 (typ_sel p1 L) (typ_sel p2 L) G2
+  stp G1 (typ_sel p1 M) (typ_sel p2 M) G2
 | stp_bind: forall L G1 DS1 G2 DS2,
   (forall x, x \notin L ->
    sdcs (G1 & (x ~ typ_clo G1 (typ_bind DS1)))
@@ -408,10 +408,10 @@ with exp: ctx -> typ -> decs -> ctx -> Prop :=
   exp G typ_top decs_nil G
 | exp_bind: forall G Ds,
   exp G (typ_bind Ds) Ds G
-| exp_sel: forall G G' G'' p L TL TU Ds,
-  pth_has G p (dec_typ L TL TU) G' ->
+| exp_sel: forall G G' G'' p M TL TU Ds,
+  pth_has G p (dec_typ M TL TU) G' ->
   exp G' TU Ds G'' ->
-  exp G (typ_sel p L) Ds G''
+  exp G (typ_sel p M) Ds G''
 with pth_has: ctx -> pth -> dec -> ctx -> Prop :=
 | pth_has_any: forall G x Gx Tx Ds D G' x',
   binds x (typ_clo Gx Tx) G ->
