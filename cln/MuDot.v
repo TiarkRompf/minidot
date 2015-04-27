@@ -29,7 +29,6 @@ Inductive pth: Set :=
   | pth_var: avar -> pth.
 
 Inductive typ: Set :=
-  | typ_top : typ
   | typ_bind: decs -> typ
   | typ_sel: pth -> typ_label -> typ
 with dec: Set :=
@@ -126,7 +125,6 @@ Definition open_rec_pth (k: nat) (u: var) (p: pth): pth :=
 
 Fixpoint open_rec_typ (k: nat) (u: var) (T: typ) { struct T }: typ :=
   match T with
-  | typ_top     => typ_top
   | typ_bind Ds => typ_bind (open_rec_decs (S k) u Ds)
   | typ_sel p M => typ_sel (open_rec_pth k u p) M
   end
@@ -186,7 +184,6 @@ Definition fv_pth (p: pth): vars :=
 
 Fixpoint fv_typ (T: typ) { struct T }: vars :=
   match T with
-  | typ_top     => \{}
   | typ_bind Ds => fv_decs Ds
   | typ_sel p M => fv_pth p
   end
@@ -286,6 +283,7 @@ Tactic Notation "apply_fresh" constr(T) "as" ident(x) :=
 
 Module EvExamples.
 
+Definition typ_top := typ_bind decs_nil.
 Definition m := labels.m.
 Definition t0 := (trm_new defs_nil).
 Definition v0 := (val_clo empty defs_nil).
@@ -358,8 +356,6 @@ Fixpoint defs_to_decs (ds: defs): decs :=
 .
 
 Inductive same_typ: ctx -> typ -> typ -> ctx -> Prop :=
-| same_top: forall G1 G2,
-  same_typ G1 typ_top typ_top G2
 | same_sel: forall G1 G2 x1 x2 M Gx1 Tx1 Gx2 Tx2,
   binds x1 (typ_clo Gx1 Tx1) G1 ->
   binds x2 (typ_clo Gx2 Tx2) G2 ->
@@ -374,9 +370,9 @@ Inductive same_typ: ctx -> typ -> typ -> ctx -> Prop :=
 .
 
 Inductive stp: ctx -> typ -> typ -> ctx -> Prop :=
-| stp_top: forall G1 T1 G2,
-  wf_typ G1 T1 ->
-  stp G1 T1 typ_top G2
+| stp_refl: forall G T,
+  wf_typ G T ->
+  stp G T T G
 | stp_sel2: forall G1 T1 G2 p M TL TU Gp,
   pth_has G2 p (dec_typ M TL TU) Gp ->
   stp Gp TL TU Gp ->
@@ -384,6 +380,7 @@ Inductive stp: ctx -> typ -> typ -> ctx -> Prop :=
   stp G1 T1 (typ_sel p M) G2
 | stp_sel1: forall G1 G2 T2 p M TL TU Gp,
   pth_has G1 p (dec_typ M TL TU) Gp ->
+  stp Gp TL TU Gp ->
   stp Gp TU T2 G2 ->
   stp G1 (typ_sel p M) T2 G2
 | stp_sel1u: forall G1 G2 T2 p M TU Gp,
@@ -436,8 +433,6 @@ with sdcs: ctx -> decs -> decs -> ctx -> Prop :=
   sdcs G1 Ds1 (decs_cons D2 Ds2) G2
 
 with wf_typ: ctx -> typ -> Prop :=
-| wf_top: forall G,
-  wf_typ G typ_top
 | wf_sel: forall G p M TL TU Gp,
   pth_has G p (dec_typ M TL TU) Gp ->
   stp Gp TL TU Gp ->
@@ -474,8 +469,6 @@ with wf_decs: ctx -> decs -> Prop :=
   wf_decs G (decs_cons D Ds)
 
 with exp: ctx -> typ -> decs -> ctx -> Prop :=
-| exp_top: forall G,
-  exp G typ_top decs_nil G
 | exp_bind: forall G Ds,
   exp G (typ_bind Ds) Ds G
 | exp_sel: forall G G' G'' p M TL TU Ds,
@@ -502,8 +495,6 @@ Inductive env_to_ctx: list var -> env typ -> ctx -> Prop :=
 
 (* (necessary?) duplication from above with env instead of ctx *)
 Inductive env_exp: env typ -> typ -> decs -> Prop :=
-| env_exp_top: forall E,
-  env_exp E typ_top decs_nil
 | env_exp_bind: forall E Ds,
   env_exp E (typ_bind Ds) Ds
 | env_exp_sel: forall E p M TL TU Ds,
