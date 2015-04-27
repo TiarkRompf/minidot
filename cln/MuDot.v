@@ -379,6 +379,7 @@ Inductive stp: ctx -> typ -> typ -> ctx -> Prop :=
   stp G1 T1 typ_top G2
 | stp_sel2: forall G1 T1 G2 p M TL TU Gp,
   pth_has G2 p (dec_typ M TL TU) Gp ->
+  stp Gp TL TU Gp ->
   stp G1 T1 TL Gp ->
   stp G1 T1 (typ_sel p M) G2
 | stp_sel1: forall G1 G2 T2 p M TL TU Gp,
@@ -406,6 +407,8 @@ Inductive stp: ctx -> typ -> typ -> ctx -> Prop :=
 
 with sdc: ctx -> dec -> dec -> ctx -> Prop :=
 | sdc_typ: forall G1 G2 M TL1 TL2 TU1 TU2,
+  stp G1 TL1 TU1 G1 ->
+  stp G2 TL2 TU2 G2 ->
   stp G2 TL2 TL1 G1 ->
   stp G1 TU1 TU2 G2 ->
   sdc G1 (dec_typ M TL1 TU1) (dec_typ M TL2 TU2) G2
@@ -413,9 +416,14 @@ with sdc: ctx -> dec -> dec -> ctx -> Prop :=
   stp G1 TU1 TU2 G2 ->
   sdc G1 (dec_tyu M TU1) (dec_tyu M TU2) G2
 | sdc_typu: forall G1 G2 M TL1 TU1 TU2,
-  wf_typ G1 TL1 ->
+  stp G1 TL1 TU1 G1 ->
   stp G1 TU1 TU2 G2 ->
   sdc G1 (dec_typ M TL1 TU1) (dec_tyu M TU2) G2
+| sdc_mtd: forall G1 G2 m TL1 TL2 TU1 TU2,
+  stp G2 TL2 TL1 G1 ->
+  stp G1 TU1 TU2 G2 ->
+  sdc G1 (dec_mtd m TL1 TU1) (dec_mtd m TL2 TU2) G2
+
 with sdcs: ctx -> decs -> decs -> ctx -> Prop :=
 | sdcs_nil: forall G1 Ds1 G2,
   wf_decs G1 Ds1 ->
@@ -426,12 +434,45 @@ with sdcs: ctx -> decs -> decs -> ctx -> Prop :=
   sdcs G1 Ds1 Ds2 G2 ->
   decs_hasnt Ds2 (label_of_dec D2) ->
   sdcs G1 Ds1 (decs_cons D2 Ds2) G2
+
 with wf_typ: ctx -> typ -> Prop :=
-(* TODO *)
+| wf_top: forall G,
+  wf_typ G typ_top
+| wf_sel: forall G p M TL TU Gp,
+  pth_has G p (dec_typ M TL TU) Gp ->
+  stp Gp TL TU Gp ->
+  wf_typ G (typ_sel p M)
+| wf_selu: forall G p M TU Gp,
+  pth_has G p (dec_tyu M TU) Gp ->
+  wf_typ Gp TU ->
+  wf_typ G (typ_sel p M)
+| wf_bind: forall L G Ds,
+  (forall x, x \notin L ->
+   wf_decs (G & (x ~ typ_clo G (typ_bind Ds))) Ds
+  ) ->
+  wf_typ G (typ_bind Ds)
+
 with wf_dec: ctx -> dec -> Prop :=
-(* TODO *)
+| wf_dec_typ: forall G M TL TU,
+  stp G TL TU G ->
+  wf_dec G (dec_typ M TL TU)
+| wf_dec_tyu: forall G M TU,
+  wf_typ G TU ->
+  wf_dec G (dec_tyu M TU)
+| wf_dec_mtd: forall G m TL TU,
+  wf_typ G TL ->
+  wf_typ G TU ->
+  wf_dec G (dec_typ m TL TU)
+
 with wf_decs: ctx -> decs -> Prop :=
-(* TODO *)
+| wf_decs_nil: forall G,
+  wf_decs G decs_nil
+| wf_decs_cons: forall G Ds D,
+  wf_dec G D ->
+  wf_decs G Ds ->
+  decs_hasnt Ds (label_of_dec D) ->
+  wf_decs G (decs_cons D Ds)
+
 with exp: ctx -> typ -> decs -> ctx -> Prop :=
 | exp_top: forall G,
   exp G typ_top decs_nil G
