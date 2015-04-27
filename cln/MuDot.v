@@ -548,9 +548,13 @@ with tc_defs: ctx -> defs -> decs -> Prop :=
 .
 
 Inductive tc_val: val -> ctyp -> Prop :=
-| tc_val_clo: forall H ds G Ds,
+| tc_val_clo: forall L H ds G Ds,
   tc_ctx H G ->
   Ds = defs_to_decs ds ->
+  (forall z, z \notin L ->
+   tc_defs (G & (z ~ (typ_clo G (typ_bind Ds))))
+           (open_defs z ds) (open_decs z Ds)
+  ) ->
   tc_val (val_clo H ds) (typ_clo G (typ_bind Ds))
 with tc_ctx: vctx -> ctx -> Prop :=
 | tc_ctx_empty:
@@ -559,4 +563,11 @@ with tc_ctx: vctx -> ctx -> Prop :=
   tc_val v CT ->
   tc_ctx H G ->
   tc_ctx (H & (x ~ v)) (G & (x ~ CT))
+.
+
+Inductive wf_val: ctx -> val -> typ -> Prop :=
+| wf_val_any: forall G v T Gv Tv,
+  tc_val v (typ_clo Gv Tv) ->
+  stp Gv Tv T G ->
+  wf_val G v T
 .
