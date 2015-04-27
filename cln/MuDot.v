@@ -573,6 +573,25 @@ Inductive wf_val: ctx -> val -> typ -> Prop :=
 .
 
 (* ###################################################################### *)
+(** ** Lemmas *)
+
+Lemma binds_preserved: forall H G x v CT,
+  tc_ctx H G ->
+  binds x CT G ->
+  binds x v H ->
+  tc_val v CT.
+Proof.
+  intros H G x v CT H_HG H_G H_H.
+  induction H_HG.
+  - unfold binds in H_G. rewrite get_empty in H_G. inversion H_G.
+  - unfold binds in H_G. rewrite get_push in H_G.
+    unfold binds in H_H. rewrite get_push in H_H.
+    destruct (classicT (x = x0)).
+    + inversion H_G. inversion H_H. subst. assumption.
+    + unfold binds in IHH_HG. apply IHH_HG; assumption.
+Qed.
+
+(* ###################################################################### *)
 (** ** Preservation *)
 
 Theorem preservation: forall t H v G T,
@@ -584,6 +603,7 @@ Proof.
   intros t H v G T Hev HG Ht.
   induction Hev.
   (* TODO *)
+  inversion Ht. subst.
   admit.
   admit.
   admit.
