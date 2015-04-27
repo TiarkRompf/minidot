@@ -370,9 +370,6 @@ Inductive same_typ: ctx -> typ -> typ -> ctx -> Prop :=
 .
 
 Inductive stp: ctx -> typ -> typ -> ctx -> Prop :=
-| stp_refl: forall G T,
-  wf_typ G T ->
-  stp G T T G
 | stp_sel2: forall G1 T1 G2 p M TL TU Gp,
   pth_has G2 p (dec_typ M TL TU) Gp ->
   stp Gp TL TU Gp ->
@@ -390,7 +387,16 @@ Inductive stp: ctx -> typ -> typ -> ctx -> Prop :=
 | stp_selx: forall G1 G2 p1 p2 M TL1 TU1 TL2 TU2 Gp1 Gp2,
   pth_has G1 p1 (dec_typ M TL1 TU1) Gp1 ->
   pth_has G2 p2 (dec_typ M TL2 TU2) Gp2 ->
+  stp Gp1 TL1 TU1 Gp1 ->
+  stp Gp2 TL2 TU2 Gp2 ->
   same_typ Gp2 TL2 TL1 Gp1 ->
+  same_typ Gp1 TU1 TU2 Gp2 ->
+  stp G1 (typ_sel p1 M) (typ_sel p2 M) G2
+| stp_selxu: forall G1 G2 p1 p2 M TU1 TU2 Gp1 Gp2,
+  pth_has G1 p1 (dec_tyu M TU1) Gp1 ->
+  pth_has G2 p2 (dec_tyu M TU2) Gp2 ->
+  wf_typ Gp1 TU1 ->
+  wf_typ Gp2 TU2 ->
   same_typ Gp1 TU1 TU2 Gp2 ->
   stp G1 (typ_sel p1 M) (typ_sel p2 M) G2
 | stp_bind: forall L G1 Ds1 G2 Ds2,
