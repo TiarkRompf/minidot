@@ -573,6 +573,23 @@ Inductive wf_val: ctx -> val -> typ -> Prop :=
 .
 
 (* ###################################################################### *)
+(** ** Preservation *)
+
+Theorem preservation: forall t H v G T,
+  ev H t v ->
+  tc_ctx H G ->
+  tc_trm G t T ->
+  wf_val G v T.
+Proof.
+  intros t H v G T Hev HG Ht.
+  induction Hev.
+  (* TODO *)
+  admit.
+  admit.
+  admit.
+Qed.
+
+(* ###################################################################### *)
 (** ** Examples *)
 
 Module Examples.
