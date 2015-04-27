@@ -635,4 +635,57 @@ Proof.
       }
 Qed.
 
+
+Example tc3:
+  tc_trm empty
+         (trm_new (defs_cons (def_typ M typ_top typ_top) (defs_cons (def_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top (trm_var (avar_b 0))) defs_nil)))
+         (typ_bind (decs_cons (dec_typ M typ_top typ_top) (decs_cons (dec_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top) decs_nil))).
+Proof.
+  apply tc_new with (L:=\{}).
+  - simpl. reflexivity.
+  - intros z Fr. compute.
+    apply tc_defs_cons.
+    {apply tc_def_typ.
+     + apply stp_bind with (L:=\{}).
+      - apply wf_bind with (L:=\{}). intros x Frx. apply wf_decs_nil.
+      - intros x Frx. apply sdcs_nil. apply wf_decs_nil.
+    }
+    apply tc_defs_cons.
+    {apply tc_def_mtd with (L:=\{z}).
+     + simpl. erewrite If_l; auto.
+       eapply wf_sel with (TL:=(typ_bind decs_nil)) (TU:=(typ_bind decs_nil)).
+       change (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil)) with
+              (open_dec z (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil))).
+       eapply pth_has_any.
+       auto.
+       apply exp_bind.
+       apply decs_has_hit. apply decs_hasnt_cons. apply decs_hasnt_nil.
+       simpl. discriminate.
+       auto.
+       apply stp_bind with (L:=\{}). apply wf_bind with (L:=\{}).
+       intros x Frx. apply wf_decs_nil.
+       intros x Frx. apply sdcs_nil. apply wf_decs_nil.
+     + intros x Frx. erewrite If_l; auto. erewrite If_r; auto.
+       unfold open_trm. unfold open_rec_trm.
+       unfold open_rec_avar. erewrite If_l; auto.
+       eapply tc_var. auto.
+       eapply stp_sel1 with (TL:=(typ_bind decs_nil)) (TU:=(typ_bind decs_nil)).
+       change (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil)) with
+              (open_dec z (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil))).
+       eapply pth_has_any.
+       auto.
+       apply exp_bind.
+       apply decs_has_hit. apply decs_hasnt_cons. apply decs_hasnt_nil.
+       simpl. discriminate.
+       auto.
+       apply stp_bind with (L:=\{}). apply wf_bind with (L:=\{}).
+       intros x' Frx'. apply wf_decs_nil.
+       intros x' Frx'. apply sdcs_nil. apply wf_decs_nil.
+       apply stp_bind with (L:=\{}). apply wf_bind with (L:=\{}).
+       intros x' Frx'. apply wf_decs_nil.
+       intros x' Frx'. apply sdcs_nil. apply wf_decs_nil.
+    }
+    + apply tc_defs_nil.
+Qed.
+
 End Examples.
