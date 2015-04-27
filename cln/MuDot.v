@@ -571,3 +571,17 @@ with tc_defs: list var -> env typ -> defs -> decs -> Prop :=
   tc_defs V E ds Ds ->
   tc_defs V E (defs_cons d ds) (decs_cons D Ds)
 .
+
+Inductive tc_val: val -> ctyp -> Prop :=
+| tc_val_clo: forall H ds G Ds,
+  tc_ctx H G ->
+  Ds = defs_to_decs ds ->
+  tc_val (val_clo H ds) (typ_clo G (typ_bind Ds))
+with tc_ctx: vctx -> ctx -> Prop :=
+| tc_ctx_empty:
+  tc_ctx empty empty
+| tc_ctx_rec: forall H G x v CT,
+  tc_val v CT ->
+  tc_ctx H G ->
+  tc_ctx (H & (x ~ v)) (G & (x ~ CT))
+.
