@@ -620,21 +620,34 @@ Parameter m_in: mtd_label.
 Parameter m_out: mtd_label.
 
 
+Hint Constructors stp sdc sdcs wf_typ wf_dec wf_decs tc_trm tc_def tc_defs.
+Hint Constructors exp.
+Hint Constructors decs_has decs_hasnt.
+
+Lemma ex_stp_top_top: forall G1 G2,
+  stp G1 (typ_bind decs_nil) (typ_bind decs_nil) G2.
+Proof.
+  intros.
+  apply stp_bind with (L:=\{}); intros; auto.
+  apply wf_bind with (L:=\{}); intros; auto.
+Qed.
+
+Hint Resolve ex_stp_top_top.
+
+Ltac crush :=
+  try solve [intros; constructor; compute; auto; crush];
+  try solve [apply stp_bind with (L:=\{}); crush];
+  try solve [apply wf_bind with (L:=\{}); crush];
+  try solve [discriminate; auto; crush].
+
 Example tc1:
   tc_trm empty
          (trm_new (defs_cons (def_typ M typ_top typ_top) defs_nil))
          (typ_bind (decs_cons (dec_typ M typ_top typ_top) decs_nil)).
 Proof.
-  apply tc_new with (L:=\{}).
-  - simpl. reflexivity.
-  - intros z Fr. compute. apply tc_defs_cons.
-    + apply tc_def_typ. {
-      apply stp_bind with (L:=\{}).
-      - apply wf_bind with (L:=\{}). intros x Frx. apply wf_decs_nil.
-      - intros x Frx. apply sdcs_nil. apply wf_decs_nil.
-    }
-    + apply tc_defs_nil.
+  apply tc_new with (L:=\{}); crush.
 Qed.
+
 
 Example tc2:
   tc_trm empty
@@ -643,33 +656,9 @@ Example tc2:
 Proof.
   apply tc_sub with (T:=(typ_bind (decs_cons (dec_typ M typ_top typ_top) decs_nil))).
   + apply tc1.
-  + apply stp_bind with (L:=\{}).
-    - apply wf_bind with (L:=\{}). {
-      + intros x Frx. apply wf_decs_cons.
-        - apply wf_dec_tyu. {
-            + unfold typ_top. apply wf_bind with (L:=\{}).
-              intros x' Fr'. apply wf_decs_nil.
-          }
-        - apply wf_decs_nil.
-        - apply decs_hasnt_nil.
-      }
-    - intros x Frx. {
-      apply sdcs_cons with (D1:=dec_typ M typ_top typ_top).
-      + apply decs_has_hit. apply decs_hasnt_nil.
-      + apply sdc_typu. apply stp_bind with (L:=\{}).
-        - apply wf_bind with (L:=\{}). intros. apply wf_decs_nil.
-        - intros x' Fr'. apply sdcs_nil. apply wf_decs_nil.
-        - apply stp_bind with (L:=\{}). {
-            + apply wf_bind with (L:=\{}). intros. apply wf_decs_nil.
-          }
-          intros x' Fr'. apply sdcs_nil. apply wf_decs_nil.
-      + apply sdcs_nil. apply wf_decs_cons.
-        apply wf_dec_typ. apply stp_bind with (L:=\{}).
-        apply wf_bind with (L:=\{}). intros. apply wf_decs_nil.
-        intros x' Fr'. apply sdcs_nil. apply wf_decs_nil.
-        apply wf_decs_nil. apply decs_hasnt_nil.
-      + apply decs_hasnt_nil.
-      }
+  + apply stp_bind with (L:=\{}); crush.
+    intros.
+    apply sdcs_cons with (D1:=(dec_typ M typ_top typ_top)); crush.
 Qed.
 
 
@@ -678,51 +667,24 @@ Example tc3:
          (trm_new (defs_cons (def_typ M typ_top typ_top) (defs_cons (def_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top (trm_var (avar_b 0))) defs_nil)))
          (typ_bind (decs_cons (dec_typ M typ_top typ_top) (decs_cons (dec_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top) decs_nil))).
 Proof.
-  apply tc_new with (L:=\{}).
-  - simpl. reflexivity.
-  - intros z Fr. compute.
-    apply tc_defs_cons.
-    {apply tc_def_typ.
-     + apply stp_bind with (L:=\{}).
-      - apply wf_bind with (L:=\{}). intros x Frx. apply wf_decs_nil.
-      - intros x Frx. apply sdcs_nil. apply wf_decs_nil.
-    }
-    apply tc_defs_cons.
-    {apply tc_def_mtd with (L:=\{z}).
-     + simpl. erewrite If_l; auto.
-       eapply wf_sel with (TL:=(typ_bind decs_nil)) (TU:=(typ_bind decs_nil)).
-       change (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil)) with
-              (open_dec z (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil))).
-       eapply pth_has_any.
-       auto.
-       apply exp_bind.
-       apply decs_has_hit. apply decs_hasnt_cons. apply decs_hasnt_nil.
-       simpl. discriminate.
-       auto.
-       apply stp_bind with (L:=\{}). apply wf_bind with (L:=\{}).
-       intros x Frx. apply wf_decs_nil.
-       intros x Frx. apply sdcs_nil. apply wf_decs_nil.
-     + intros x Frx. erewrite If_l; auto. erewrite If_r; auto.
-       unfold open_trm. unfold open_rec_trm.
-       unfold open_rec_avar. erewrite If_l; auto.
-       eapply tc_var. auto.
-       eapply stp_sel1 with (TL:=(typ_bind decs_nil)) (TU:=(typ_bind decs_nil)).
-       change (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil)) with
-              (open_dec z (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil))).
-       eapply pth_has_any.
-       auto.
-       apply exp_bind.
-       apply decs_has_hit. apply decs_hasnt_cons. apply decs_hasnt_nil.
-       simpl. discriminate.
-       auto.
-       apply stp_bind with (L:=\{}). apply wf_bind with (L:=\{}).
-       intros x' Frx'. apply wf_decs_nil.
-       intros x' Frx'. apply sdcs_nil. apply wf_decs_nil.
-       apply stp_bind with (L:=\{}). apply wf_bind with (L:=\{}).
-       intros x' Frx'. apply wf_decs_nil.
-       intros x' Frx'. apply sdcs_nil. apply wf_decs_nil.
-    }
-    + apply tc_defs_nil.
+  apply tc_new with (L:=\{}); crush.
+  + intros.
+    apply tc_defs_cons; crush.
+    apply tc_defs_cons; crush.
+    apply tc_def_mtd with (L:=\{z}); crush.
+    - compute. erewrite If_l; auto.
+      eapply wf_sel with (TL:=(typ_bind decs_nil)) (TU:=(typ_bind decs_nil)); crush.
+      change (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil)) with
+             (open_dec z (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil))).
+      eapply pth_has_any; auto; crush.
+    - intros x Frx. simpl. erewrite If_l; auto. erewrite If_r; auto.
+      unfold open_trm. unfold open_rec_trm.
+      unfold open_rec_avar. erewrite If_l; auto.
+      eapply tc_var. auto.
+      eapply stp_sel1 with (TL:=(typ_bind decs_nil)) (TU:=(typ_bind decs_nil)); crush.
+      change (dec_typ M (typ_bind decs_nil) (typ_bind decs_nil)) with
+             (open_dec z (dec_typ M (typ_bind decs_nil) (typ_bind decs_nil))).
+       eapply pth_has_any; auto; crush.
 Qed.
 
 End Examples.
