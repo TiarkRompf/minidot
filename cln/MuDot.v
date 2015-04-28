@@ -687,4 +687,54 @@ Proof.
        eapply pth_has_any; auto; crush.
 Qed.
 
+Example tc4:
+  tc_trm empty
+         (trm_new (defs_cons
+                     (def_typ M typ_top typ_top)
+                  (defs_cons
+                     (def_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top
+                              (trm_var (avar_b 0)))
+                  (defs_cons
+                     (def_mtd m_out typ_top (typ_sel (pth_var (avar_b 0)) M)
+                              (trm_var (avar_b 0)))
+                  defs_nil))))
+         (typ_bind (decs_cons
+                      (dec_typ M typ_top typ_top)
+                   (decs_cons
+                      (dec_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top)
+                   (decs_cons
+                      (dec_mtd m_out typ_top (typ_sel (pth_var (avar_b 0)) M))
+                   decs_nil)))).
+Proof.
+  apply tc_new with (L:=\{}); crush.
+  + intros.
+    apply tc_defs_cons; crush.
+    apply tc_defs_cons; crush.
+    apply tc_def_mtd with (L:=\{z}); crush.
+    - compute. erewrite If_l; auto.
+      eapply wf_sel with (TL:=(typ_bind decs_nil)) (TU:=(typ_bind decs_nil)); crush.
+      change (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil)) with
+             (open_dec z (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil))).
+      eapply pth_has_any; auto; crush.
+    - intros x Frx. simpl. erewrite If_l; auto. erewrite If_r; auto.
+      unfold open_trm. unfold open_rec_trm.
+      unfold open_rec_avar. erewrite If_l; auto.
+      eapply tc_var. auto.
+      eapply stp_sel1 with (TL:=(typ_bind decs_nil)) (TU:=(typ_bind decs_nil)); crush.
+      change (dec_typ M (typ_bind decs_nil) (typ_bind decs_nil)) with
+             (open_dec z (dec_typ M (typ_bind decs_nil) (typ_bind decs_nil))).
+       eapply pth_has_any; auto; crush.
+    - apply tc_defs_cons; crush. {
+    apply tc_def_mtd with (L:=\{z}); crush.
+    - intros x Frx. simpl. erewrite If_r; auto. erewrite If_l; auto.
+      unfold open_trm. unfold open_rec_trm.
+      unfold open_rec_avar. erewrite If_l; auto.
+      eapply tc_var. auto.
+      eapply stp_sel2 with (TL:=(typ_bind decs_nil)) (TU:=(typ_bind decs_nil)); crush.
+      change (dec_typ M (typ_bind decs_nil) (typ_bind decs_nil)) with
+             (open_dec z (dec_typ M (typ_bind decs_nil) (typ_bind decs_nil))).
+       eapply pth_has_any; auto; crush.
+    }
+Qed.
+
 End Examples.
