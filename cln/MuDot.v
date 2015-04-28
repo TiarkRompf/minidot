@@ -582,7 +582,81 @@ Inductive wf_val: ctx -> val -> typ -> Prop :=
 .
 
 (* ###################################################################### *)
+(** ** Induction principles *)
+
+Scheme stp_mutst  := Induction for stp  Sort Prop
+with   sdc_mutst  := Induction for sdc  Sort Prop
+with   sdcs_mutst := Induction for sdcs Sort Prop.
+Combined Scheme sub_mutind from stp_mutst, sdc_mutst, sdcs_mutst.
+
+(* ###################################################################### *)
 (** ** Properties *)
+
+Theorem sub_reg:
+  (forall b G1 T1 T2 G2, stp b G1 T1 T2 G2 -> wf_typ G1 T1 /\ wf_typ G2 T2) /\
+  (forall G1 D1 D2 G2, sdc G1 D1 D2 G2 -> wf_dec G1 D1 /\ wf_dec G2 D2) /\
+  (forall G1 Ds1 Ds2 G2, sdcs G1 Ds1 Ds2 G2 -> wf_decs G1 Ds1 /\ wf_decs G2 Ds2).
+Proof.
+  apply sub_mutind; intros.
+  - (* T1 <: p.M -- sel2 *)
+    split.
+    + inversion H0. assumption.
+    + eapply wf_sel. apply p0. assumption.
+  - (* p.M <: T2 -- sel1 *)
+    split.
+    + eapply wf_sel. apply p0. assumption.
+    + inversion H0. assumption.
+  - (* p.M <: T2 -- sel1u *)
+    split.
+    + eapply wf_selu. apply p0. inversion H. assumption.
+    + inversion H. assumption.
+  - (* p.M <: p.M -- selx *)
+    split.
+    + eapply wf_sel. apply p. assumption.
+    + eapply wf_sel. apply p0. assumption.
+  - (* p.M <: p.M -- selxu *)
+    split.
+    + eapply wf_selu. apply p. assumption.
+    + eapply wf_selu. apply p0. assumption.
+  - (* bind *)
+    split.
+    + apply wf_bind with (L:=L). intros x Frx.
+      specialize (H x Frx). inversion H. assumption.
+    + assumption.
+  - (* transf *)
+    split.
+    + inversion H. assumption.
+    + inversion H0. assumption.
+  - (* wrapf *)
+    assumption.
+  - (* typ *)
+    split.
+    + apply wf_dec_typ. assumption.
+    + apply wf_dec_typ. assumption.
+  - (* tyu *)
+    split.
+    + apply wf_dec_tyu. inversion H. assumption.
+    + apply wf_dec_tyu. inversion H. assumption.
+  - (* typu *)
+    split.
+    + apply wf_dec_typ. assumption.
+    + apply wf_dec_tyu. inversion H0. assumption.
+  - (* mtd *)
+    split.
+    + apply wf_dec_mtd. inversion H. assumption. inversion H0. assumption.
+    + apply wf_dec_mtd. inversion H. assumption. inversion H0. assumption.
+  - (* Ds1 <: {} -- nil *)
+    split.
+    + assumption.
+    + apply wf_decs_nil.
+  - (* Ds1 <: D2::Ds2 -- cons *)
+    split.
+    + inversion H0. assumption.
+    + apply wf_decs_cons.
+        inversion H. assumption.
+        inversion H0. assumption.
+        assumption.
+Qed.
 
 Theorem trans: forall G1 T1 G2 T2 G3 T3,
   stp true G1 T1 T2 G2 ->
