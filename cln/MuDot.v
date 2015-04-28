@@ -369,36 +369,36 @@ Inductive same_typ: ctx -> typ -> typ -> ctx -> Prop :=
   same_typ G (typ_bind Ds) (typ_bind Ds) G
 .
 
-Inductive stp: ctx -> typ -> typ -> ctx -> Prop :=
+Inductive stp: bool -> ctx -> typ -> typ -> ctx -> Prop :=
 | stp_sel2: forall G1 T1 G2 p M TL TU Gp,
   pth_has G2 p (dec_typ M TL TU) Gp ->
-  stp Gp TL TU Gp ->
-  stp G1 T1 TL Gp ->
-  stp G1 T1 (typ_sel p M) G2
+  stp true Gp TL TU Gp ->
+  stp true G1 T1 TL Gp ->
+  stp true G1 T1 (typ_sel p M) G2
 | stp_sel1: forall G1 G2 T2 p M TL TU Gp,
   pth_has G1 p (dec_typ M TL TU) Gp ->
-  stp Gp TL TU Gp ->
-  stp Gp TU T2 G2 ->
-  stp G1 (typ_sel p M) T2 G2
+  stp true Gp TL TU Gp ->
+  stp true Gp TU T2 G2 ->
+  stp true G1 (typ_sel p M) T2 G2
 | stp_sel1u: forall G1 G2 T2 p M TU Gp,
   pth_has G1 p (dec_tyu M TU) Gp ->
-  stp Gp TU T2 G2 ->
-  stp G1 (typ_sel p M) T2 G2
+  stp true Gp TU T2 G2 ->
+  stp true G1 (typ_sel p M) T2 G2
 | stp_selx: forall G1 G2 p1 p2 M TL1 TU1 TL2 TU2 Gp1 Gp2,
   pth_has G1 p1 (dec_typ M TL1 TU1) Gp1 ->
   pth_has G2 p2 (dec_typ M TL2 TU2) Gp2 ->
-  stp Gp1 TL1 TU1 Gp1 ->
-  stp Gp2 TL2 TU2 Gp2 ->
+  stp true Gp1 TL1 TU1 Gp1 ->
+  stp true Gp2 TL2 TU2 Gp2 ->
   same_typ Gp2 TL2 TL1 Gp1 ->
   same_typ Gp1 TU1 TU2 Gp2 ->
-  stp G1 (typ_sel p1 M) (typ_sel p2 M) G2
+  stp true G1 (typ_sel p1 M) (typ_sel p2 M) G2
 | stp_selxu: forall G1 G2 p1 p2 M TU1 TU2 Gp1 Gp2,
   pth_has G1 p1 (dec_tyu M TU1) Gp1 ->
   pth_has G2 p2 (dec_tyu M TU2) Gp2 ->
   wf_typ Gp1 TU1 ->
   wf_typ Gp2 TU2 ->
   same_typ Gp1 TU1 TU2 Gp2 ->
-  stp G1 (typ_sel p1 M) (typ_sel p2 M) G2
+  stp true G1 (typ_sel p1 M) (typ_sel p2 M) G2
 | stp_bind: forall L G1 Ds1 G2 Ds2,
   wf_typ G2 (typ_bind Ds2) ->
   (forall x, x \notin L ->
@@ -407,25 +407,32 @@ Inductive stp: ctx -> typ -> typ -> ctx -> Prop :=
         (open_decs x Ds2)
         (G2 & (x ~ typ_clo G1 (typ_bind Ds1)))
   ) ->
-  stp G1 (typ_bind Ds1) (typ_bind Ds2) G2
+  stp true G1 (typ_bind Ds1) (typ_bind Ds2) G2
+| stp_transf: forall G1 G2 G3 T1 T2 T3,
+  stp true G1 T1 T2 G2 ->
+  stp false G2 T2 T3 G3 ->
+  stp false G1 T1 T3 G3
+| stp_wrapf: forall G1 G2 T1 T2,
+  stp true G1 T1 T2 G2 ->
+  stp false G1 T1 T2 G2
 
 with sdc: ctx -> dec -> dec -> ctx -> Prop :=
 | sdc_typ: forall G1 G2 M TL1 TL2 TU1 TU2,
-  stp G1 TL1 TU1 G1 ->
-  stp G2 TL2 TU2 G2 ->
-  stp G2 TL2 TL1 G1 ->
-  stp G1 TU1 TU2 G2 ->
+  stp true G1 TL1 TU1 G1 ->
+  stp true G2 TL2 TU2 G2 ->
+  stp false G2 TL2 TL1 G1 ->
+  stp true G1 TU1 TU2 G2 ->
   sdc G1 (dec_typ M TL1 TU1) (dec_typ M TL2 TU2) G2
 | sdc_tyu: forall G1 G2 M TU1 TU2,
-  stp G1 TU1 TU2 G2 ->
+  stp true G1 TU1 TU2 G2 ->
   sdc G1 (dec_tyu M TU1) (dec_tyu M TU2) G2
 | sdc_typu: forall G1 G2 M TL1 TU1 TU2,
-  stp G1 TL1 TU1 G1 ->
-  stp G1 TU1 TU2 G2 ->
+  stp true G1 TL1 TU1 G1 ->
+  stp true G1 TU1 TU2 G2 ->
   sdc G1 (dec_typ M TL1 TU1) (dec_tyu M TU2) G2
 | sdc_mtd: forall G1 G2 m TL1 TL2 TU1 TU2,
-  stp G2 TL2 TL1 G1 ->
-  stp G1 TU1 TU2 G2 ->
+  stp false G2 TL2 TL1 G1 ->
+  stp true G1 TU1 TU2 G2 ->
   sdc G1 (dec_mtd m TL1 TU1) (dec_mtd m TL2 TU2) G2
 
 with sdcs: ctx -> decs -> decs -> ctx -> Prop :=
@@ -442,7 +449,7 @@ with sdcs: ctx -> decs -> decs -> ctx -> Prop :=
 with wf_typ: ctx -> typ -> Prop :=
 | wf_sel: forall G p M TL TU Gp,
   pth_has G p (dec_typ M TL TU) Gp ->
-  stp Gp TL TU Gp ->
+  stp true Gp TL TU Gp ->
   wf_typ G (typ_sel p M)
 | wf_selu: forall G p M TU Gp,
   pth_has G p (dec_tyu M TU) Gp ->
@@ -457,7 +464,7 @@ with wf_typ: ctx -> typ -> Prop :=
 
 with wf_dec: ctx -> dec -> Prop :=
 | wf_dec_typ: forall G M TL TU,
-  stp G TL TU G ->
+  stp true G TL TU G ->
   wf_dec G (dec_typ M TL TU)
 | wf_dec_tyu: forall G M TU,
   wf_typ G TU ->
@@ -495,7 +502,7 @@ with pth_has: ctx -> pth -> dec -> ctx -> Prop :=
 Inductive tc_trm: ctx -> trm -> typ -> Prop :=
 | tc_var: forall G T x Gx Tx,
   binds x (typ_clo Gx Tx) G ->
-  stp Gx Tx T G ->
+  stp true Gx Tx T G ->
   tc_trm G (trm_var (avar_f x)) T
 | tc_new: forall L G ds Ds,
   defs_to_decs ds = Ds ->
@@ -510,11 +517,11 @@ Inductive tc_trm: ctx -> trm -> typ -> Prop :=
   tc_trm G (trm_call t1 m t2) T
 | tc_sub: forall G t T TU,
   tc_trm G t T ->
-  stp G T TU G ->
+  stp true G T TU G ->
   tc_trm G t TU
 with tc_def: ctx -> def -> dec -> Prop :=
 | tc_def_typ: forall G M TL TU,
-  stp G TL TU G ->
+  stp true G TL TU G ->
   tc_def G (def_typ M TL TU) (dec_typ M TL TU)
 | tc_def_tyu: forall G M TU,
   wf_typ G TU ->
@@ -570,7 +577,7 @@ with tc_ctx: vctx -> ctx -> Prop :=
 Inductive wf_val: ctx -> val -> typ -> Prop :=
 | wf_val_any: forall G v T Gv Tv,
   tc_val v (typ_clo Gv Tv) ->
-  stp Gv Tv T G ->
+  stp true Gv Tv T G ->
   wf_val G v T
 .
 
@@ -578,9 +585,9 @@ Inductive wf_val: ctx -> val -> typ -> Prop :=
 (** ** Properties *)
 
 Theorem trans: forall G1 T1 G2 T2 G3 T3,
-  stp G1 T1 T2 G2 ->
-  stp G2 T2 T3 G3 ->
-  stp G1 T1 T3 G3.
+  stp true G1 T1 T2 G2 ->
+  stp true G2 T2 T3 G3 ->
+  stp true G1 T1 T3 G3.
 Proof. admit. Qed.
 
 (* ###################################################################### *)
@@ -588,7 +595,7 @@ Proof. admit. Qed.
 
 Lemma invert_tc_var: forall G x T,
   tc_trm G (trm_var (avar_f x)) T ->
-  exists Gx Tx, binds x (typ_clo Gx Tx) G /\ stp Gx Tx T G.
+  exists Gx Tx, binds x (typ_clo Gx Tx) G /\ stp true Gx Tx T G.
 Proof.
   intros G x T H.
   remember (trm_var (avar_f x)) as t.
@@ -655,7 +662,7 @@ Hint Constructors exp.
 Hint Constructors decs_has decs_hasnt.
 
 Lemma ex_stp_top_top: forall G1 G2,
-  stp G1 (typ_bind decs_nil) (typ_bind decs_nil) G2.
+  stp true G1 (typ_bind decs_nil) (typ_bind decs_nil) G2.
 Proof.
   intros.
   apply stp_bind with (L:=\{}); intros; auto.
@@ -768,7 +775,7 @@ Proof.
 Qed.
 
 Example ex_stp_in_out:
-  stp empty
+  stp true empty
          (typ_bind (decs_cons
                       (dec_typ M typ_top typ_top)
                    (decs_cons
@@ -811,6 +818,7 @@ Proof.
     apply decs_hasnt_cons; crush.
     simpl. assert (m_in <> m_out). apply m_in_neq_out. congruence.
     apply sdc_mtd; crush.
+    apply stp_wrapf.
     eapply stp_selx with (TL1:=typ_bind decs_nil) (TU1:=typ_bind decs_nil) (TL2:=typ_bind decs_nil) (TU2:=typ_bind decs_nil); crush.
     change (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil)) with
     (open_dec z (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil))); crush.
@@ -940,6 +948,7 @@ Proof.
   simpl. assert (m_in <> m_out). apply m_in_neq_out. congruence.
   compute. erewrite If_l; auto.
   apply sdc_mtd; crush.
+  apply stp_wrapf.
   eapply stp_selxu with (TU1:=typ_bind decs_nil) (TU2:=typ_bind decs_nil); crush.
   change (dec_tyu labels.M (typ_bind decs_nil)) with
   (open_dec x (dec_tyu labels.M (typ_bind decs_nil))); crush.
@@ -996,6 +1005,7 @@ Proof.
   intros x Fr.
   simpl. erewrite If_r; auto.
   apply sdc_mtd; crush.
+  apply stp_wrapf.
   apply stp_bind with (L:=\{}); crush.
   apply wf_bind with (L:=\{}); crush.
   intros z Fr.
@@ -1023,6 +1033,7 @@ Proof.
   apply decs_hasnt_cons; crush.
   simpl. assert (m_in <> m_out). apply m_in_neq_out. congruence.
   apply sdc_mtd; crush.
+  apply stp_wrapf.
   eapply stp_selxu with (TU1:=typ_bind decs_nil) (TU2:=typ_bind decs_nil); crush.
   change (dec_tyu labels.M (typ_bind decs_nil)) with
   (open_dec z (dec_tyu labels.M (typ_bind decs_nil))); crush.
