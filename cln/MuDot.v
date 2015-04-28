@@ -577,10 +577,31 @@ Inductive wf_val: ctx -> val -> typ -> Prop :=
 (* ###################################################################### *)
 (** ** Properties *)
 
-
+Theorem trans: forall G1 T1 G2 T2 G3 T3,
+  stp G1 T1 T2 G2 ->
+  stp G2 T2 T3 G3 ->
+  stp G1 T1 T3 G3.
+Proof. admit. Qed.
 
 (* ###################################################################### *)
-(** ** Lemmas *)
+(** ** Inversion Lemmas *)
+
+Lemma invert_tc_var: forall G x T,
+  tc_trm G (trm_var (avar_f x)) T ->
+  exists Gx Tx, binds x (typ_clo Gx Tx) G /\ stp Gx Tx T G.
+Proof.
+  intros G x T H.
+  remember (trm_var (avar_f x)) as t.
+  induction H; inversion Heqt; subst.
+  + exists Gx Tx. split; assumption.
+  + specialize (IHtc_trm H1). inversion IHtc_trm as [Gx [Tx [IHb IHstp]]].
+    exists Gx Tx. split.
+    - assumption.
+    - apply trans with (G2:=G) (T2:=T); assumption.
+Qed.
+
+(* ###################################################################### *)
+(** ** Preservation Lemmas *)
 
 Lemma binds_preserved: forall H G x v CT,
   tc_ctx H G ->
@@ -609,10 +630,10 @@ Theorem preservation: forall t H v G T,
 Proof.
   intros t H v G T Hev HG Ht.
   induction Hev.
-  + inversion Ht; subst.
-    - apply wf_val_any with (Tv:=Tx) (Gv:=Gx); try assumption.
-      apply binds_preserved with (H:=H) (G:=G) (x:=x); assumption.
-    - admit.
+  + apply invert_tc_var in Ht.
+    inversion Ht as [Gx [Tx [IHb IHstp]]].
+    apply wf_val_any with (Tv:=Tx) (Gv:=Gx); try assumption.
+    apply binds_preserved with (H:=H) (G:=G) (x:=x); assumption.
   + admit.
   + admit.
 Qed.
