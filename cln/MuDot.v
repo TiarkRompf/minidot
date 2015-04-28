@@ -463,7 +463,7 @@ with wf_dec: ctx -> dec -> Prop :=
 | wf_dec_mtd: forall G m TL TU,
   wf_typ G TL ->
   wf_typ G TU ->
-  wf_dec G (dec_typ m TL TU)
+  wf_dec G (dec_mtd m TL TU)
 
 with wf_decs: ctx -> decs -> Prop :=
 | wf_decs_nil: forall G,
