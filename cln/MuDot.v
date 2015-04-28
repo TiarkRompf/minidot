@@ -403,7 +403,8 @@ Inductive stp: ctx -> typ -> typ -> ctx -> Prop :=
   wf_typ G2 (typ_bind Ds2) ->
   (forall x, x \notin L ->
    sdcs (G1 & (x ~ typ_clo G1 (typ_bind Ds1)))
-        Ds1 Ds2
+        (open_decs x Ds1)
+        (open_decs x Ds2)
         (G2 & (x ~ typ_clo G1 (typ_bind Ds1)))
   ) ->
   stp G1 (typ_bind Ds1) (typ_bind Ds2) G2
@@ -449,7 +450,8 @@ with wf_typ: ctx -> typ -> Prop :=
   wf_typ G (typ_sel p M)
 | wf_bind: forall L G Ds,
   (forall x, x \notin L ->
-   wf_decs (G & (x ~ typ_clo G (typ_bind Ds))) Ds
+   wf_decs (G & (x ~ typ_clo G (typ_bind Ds)))
+           (open_decs x Ds)
   ) ->
   wf_typ G (typ_bind Ds)
 
