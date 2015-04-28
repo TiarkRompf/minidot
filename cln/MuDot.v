@@ -620,7 +620,7 @@ Definition M := labels.M.
 Definition m := labels.m.
 Parameter m_in: mtd_label.
 Parameter m_out: mtd_label.
-
+Parameter m_in_neq_out: m_in <> m_out.
 
 Hint Constructors stp sdc sdcs wf_typ wf_dec wf_decs tc_trm tc_def tc_defs.
 Hint Constructors exp.
@@ -737,6 +737,88 @@ Proof.
              (open_dec z (dec_typ M (typ_bind decs_nil) (typ_bind decs_nil))).
        eapply pth_has_any; auto; crush.
     }
+Qed.
+
+Example ex_stp_in_out:
+  stp empty
+         (typ_bind (decs_cons
+                      (dec_typ M typ_top typ_top)
+                   (decs_cons
+                      (dec_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top)
+                   (decs_cons
+                      (dec_mtd m_out typ_top (typ_sel (pth_var (avar_b 0)) M))
+                   decs_nil))))
+         (typ_bind (decs_cons
+                      (dec_tyu M typ_top)
+                   (decs_cons
+                      (dec_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top)
+                   (decs_cons
+                      (dec_mtd m_out typ_top (typ_sel (pth_var (avar_b 0)) M))
+                   decs_nil))))
+      empty.
+Proof.
+  apply stp_bind with (L:=\{}); crush.
+  + apply wf_bind with (L:=\{}); crush.
+    intros z Fr.
+    apply wf_decs_cons; crush.
+    apply wf_decs_cons; crush.
+    apply wf_dec_mtd; crush.
+    eapply wf_selu with (TU:=typ_top); crush.
+    simpl. erewrite If_l; auto.
+    change (dec_tyu M typ_top) with (open_dec z (dec_tyu M typ_top)).
+    eapply pth_has_any; auto; crush.
+    apply wf_decs_cons; crush.
+    apply wf_dec_mtd; crush.
+    eapply wf_selu with (TU:=typ_top); crush.
+    simpl. erewrite If_l; auto.
+    change (dec_tyu M typ_top) with (open_dec z (dec_tyu M typ_top)).
+    eapply pth_has_any; auto; crush.
+    simpl. apply decs_hasnt_cons; crush.
+    simpl. assert (m_in <> m_out). apply m_in_neq_out. congruence.
+  + intros z Fr.
+    compute. erewrite If_l; auto.
+    apply sdcs_cons with (D1:=dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil)); crush.
+    apply sdcs_cons with (D1:=dec_mtd m_in (typ_sel (pth_var (avar_f z)) labels.M) (typ_bind decs_nil)); crush.
+    apply decs_has_skip; crush. apply decs_has_hit; crush.
+    apply decs_hasnt_cons; crush.
+    simpl. assert (m_in <> m_out). apply m_in_neq_out. congruence.
+    apply sdc_mtd; crush.
+    eapply stp_selx with (TL1:=typ_bind decs_nil) (TU1:=typ_bind decs_nil) (TL2:=typ_bind decs_nil) (TU2:=typ_bind decs_nil); crush.
+    change (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil)) with
+    (open_dec z (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil))); crush.
+    eapply pth_has_any; auto; crush.
+    change (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil)) with
+    (open_dec z (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil))); crush.
+    eapply pth_has_any; auto; crush.
+    apply sdcs_cons with (D1:=dec_mtd m_out (typ_bind decs_nil) (typ_sel (pth_var (avar_f z)) labels.M)); crush.
+    apply decs_has_skip; crush. apply decs_has_skip; crush.
+    simpl. assert (m_in <> m_out). apply m_in_neq_out. congruence.
+    apply sdc_mtd; crush.
+    eapply stp_selx with (TL1:=typ_bind decs_nil) (TU1:=typ_bind decs_nil) (TL2:=typ_bind decs_nil) (TU2:=typ_bind decs_nil); crush.
+    change (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil)) with
+    (open_dec z (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil))); crush.
+    eapply pth_has_any; auto; crush.
+    change (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil)) with
+    (open_dec z (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil))); crush.
+    eapply pth_has_any; auto; crush.
+    apply sdcs_nil; crush.
+    apply wf_decs_cons; crush.
+    apply wf_decs_cons; crush.
+    apply wf_dec_mtd; crush.
+    eapply wf_sel with (TL:=typ_bind decs_nil) (TU:=typ_bind decs_nil); crush.
+    change (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil)) with
+    (open_dec z (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil))); crush.
+    eapply pth_has_any; auto; crush.
+    apply wf_decs_cons; crush.
+    apply wf_dec_mtd; crush.
+    eapply wf_sel with (TL:=typ_bind decs_nil) (TU:=typ_bind decs_nil); crush.
+    change (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil)) with
+    (open_dec z (dec_typ labels.M (typ_bind decs_nil) (typ_bind decs_nil))); crush.
+    eapply pth_has_any; auto; crush.
+    apply decs_hasnt_cons; crush.
+    simpl. assert (m_in <> m_out). apply m_in_neq_out. congruence.
+    apply decs_hasnt_cons; crush.
+    simpl. assert (m_in <> m_out). apply m_in_neq_out. congruence.
 Qed.
 
 End Examples.
