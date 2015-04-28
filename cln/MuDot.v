@@ -603,7 +603,6 @@ Proof.
   intros t H v G T Hev HG Ht.
   induction Hev.
   (* TODO *)
-  inversion Ht. subst.
   admit.
   admit.
   admit.
@@ -619,6 +618,7 @@ Definition M := labels.M.
 Definition m := labels.m.
 Parameter m_in: mtd_label.
 Parameter m_out: mtd_label.
+
 
 Example tc1:
   tc_trm empty
