@@ -906,7 +906,76 @@ Example th6:
                    decs_nil))))
          typ_top).
 Proof.
-  admit. (* TODO *)
+  eapply trm_has_trm with (L:=\{}) (G:=empty).
+  apply tc6.
+  auto.
+  crush.
+  intros x Fr.
+  simpl. erewrite If_r; auto.
+  apply sdc_mtd; crush.
+  apply stp_bind with (L:=\{}); crush.
+  apply wf_bind with (L:=\{}); crush.
+  intros z Fr.
+  compute. erewrite If_l; auto.
+  apply wf_decs_cons; crush.
+  apply wf_decs_cons; crush.
+  apply wf_dec_mtd; crush.
+  eapply wf_selu with (TU:=typ_bind decs_nil); crush.
+  change (dec_tyu labels.M (typ_bind decs_nil)) with
+  (open_dec z (dec_tyu labels.M (typ_bind decs_nil))); crush.
+  eapply pth_has_any; auto; crush.
+  apply wf_decs_cons; crush.
+  apply wf_dec_mtd; crush.
+  eapply wf_selu with (TU:=typ_bind decs_nil); crush.
+  change (dec_tyu labels.M (typ_bind decs_nil)) with
+  (open_dec z (dec_tyu labels.M (typ_bind decs_nil))); crush.
+  eapply pth_has_any; auto; crush.
+  apply decs_hasnt_cons; crush.
+  simpl. assert (m_in <> m_out). apply m_in_neq_out. congruence.
+  intros z Fr.
+  compute. erewrite If_l; auto.
+  apply sdcs_cons with (D1:=dec_tyu labels.M (typ_bind decs_nil)); crush.
+  apply sdcs_cons with (D1:=dec_mtd m_in (typ_sel (pth_var (avar_f z)) labels.M) (typ_bind decs_nil)); crush.
+  apply decs_has_skip; crush. apply decs_has_hit; crush.
+  apply decs_hasnt_cons; crush.
+  simpl. assert (m_in <> m_out). apply m_in_neq_out. congruence.
+  apply sdc_mtd; crush.
+  eapply stp_selxu with (TU1:=typ_bind decs_nil) (TU2:=typ_bind decs_nil); crush.
+  change (dec_tyu labels.M (typ_bind decs_nil)) with
+  (open_dec z (dec_tyu labels.M (typ_bind decs_nil))); crush.
+  eapply pth_has_any; auto; crush.
+  change (dec_tyu labels.M (typ_bind decs_nil)) with
+  (open_dec z (dec_tyu labels.M (typ_bind decs_nil))); crush.
+  eapply pth_has_any; auto; crush.
+  apply sdcs_cons with (D1:=dec_mtd m_out (typ_bind decs_nil) (typ_sel (pth_var (avar_f z)) labels.M)); crush.
+  apply decs_has_skip; crush. apply decs_has_skip; crush.
+  simpl. assert (m_in <> m_out). apply m_in_neq_out. congruence.
+  apply sdc_mtd; crush.
+  eapply stp_selxu with (TU1:=typ_bind decs_nil) (TU2:=typ_bind decs_nil); crush.
+  change (dec_tyu labels.M (typ_bind decs_nil)) with
+  (open_dec z (dec_tyu labels.M (typ_bind decs_nil))); crush.
+  eapply pth_has_any; auto; crush.
+  change (dec_tyu labels.M (typ_bind decs_nil)) with
+  (open_dec z (dec_tyu labels.M (typ_bind decs_nil))); crush.
+  eapply pth_has_any; auto; crush.
+  apply sdcs_nil.
+  apply wf_decs_cons; crush.
+  apply wf_decs_cons; crush.
+  apply wf_dec_mtd; crush.
+  eapply wf_selu with (TU:=typ_bind decs_nil); crush.
+  change (dec_tyu labels.M (typ_bind decs_nil)) with
+  (open_dec z (dec_tyu labels.M (typ_bind decs_nil))); crush.
+  eapply pth_has_any; auto; crush.
+  apply wf_decs_cons; crush.
+  apply wf_dec_mtd; crush.
+  eapply wf_selu with (TU:=typ_bind decs_nil); crush.
+  change (dec_tyu labels.M (typ_bind decs_nil)) with
+  (open_dec z (dec_tyu labels.M (typ_bind decs_nil))); crush.
+  eapply pth_has_any; auto; crush.
+  apply decs_hasnt_cons; crush.
+  simpl. assert (m_in <> m_out). apply m_in_neq_out. congruence.
+  apply decs_hasnt_cons; crush.
+  simpl. assert (m_in <> m_out). apply m_in_neq_out. congruence.
 Qed.
 
 Example tc7:
