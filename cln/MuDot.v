@@ -575,6 +575,11 @@ Inductive wf_val: ctx -> val -> typ -> Prop :=
 .
 
 (* ###################################################################### *)
+(** ** Properties *)
+
+
+
+(* ###################################################################### *)
 (** ** Lemmas *)
 
 Lemma binds_preserved: forall H G x v CT,
@@ -604,10 +609,12 @@ Theorem preservation: forall t H v G T,
 Proof.
   intros t H v G T Hev HG Ht.
   induction Hev.
-  (* TODO *)
-  admit.
-  admit.
-  admit.
+  + inversion Ht; subst.
+    - apply wf_val_any with (Tv:=Tx) (Gv:=Gx); try assumption.
+      apply binds_preserved with (H:=H) (G:=G) (x:=x); assumption.
+    - admit.
+  + admit.
+  + admit.
 Qed.
 
 (* ###################################################################### *)
