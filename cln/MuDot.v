@@ -821,4 +821,132 @@ Proof.
     simpl. assert (m_in <> m_out). apply m_in_neq_out. congruence.
 Qed.
 
+Example tc5:
+  tc_trm empty
+         (trm_new (defs_cons
+                     (def_typ M typ_top typ_top)
+                  (defs_cons
+                     (def_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top
+                              (trm_var (avar_b 0)))
+                  (defs_cons
+                     (def_mtd m_out typ_top (typ_sel (pth_var (avar_b 0)) M)
+                              (trm_var (avar_b 0)))
+                  defs_nil))))
+         (typ_bind (decs_cons
+                      (dec_tyu M typ_top)
+                   (decs_cons
+                      (dec_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top)
+                   (decs_cons
+                      (dec_mtd m_out typ_top (typ_sel (pth_var (avar_b 0)) M))
+                   decs_nil)))).
+Proof.
+  apply tc_sub with (T:=(typ_bind
+                   (decs_cons
+                      (dec_typ M typ_top typ_top)
+                   (decs_cons
+                      (dec_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top)
+                   (decs_cons
+                      (dec_mtd m_out typ_top (typ_sel (pth_var (avar_b 0)) M))
+                   decs_nil))))).
+  + apply tc4.
+  + apply ex_stp_in_out.
+Qed.
+
+Example tc6:
+  tc_trm empty
+         (trm_new (defs_cons (def_mtd m
+         (typ_bind (decs_cons
+                      (dec_tyu M typ_top)
+                   (decs_cons
+                      (dec_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top)
+                   (decs_cons
+                      (dec_mtd m_out typ_top (typ_sel (pth_var (avar_b 0)) M))
+                   decs_nil))))
+         typ_top
+         (trm_call (trm_var (avar_b 0)) m_in
+         (trm_call (trm_var (avar_b 0)) m_out
+         (trm_new defs_nil))))
+         defs_nil))
+         (typ_bind (decs_cons (dec_mtd m
+         (typ_bind (decs_cons
+                      (dec_tyu M typ_top)
+                   (decs_cons
+                      (dec_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top)
+                   (decs_cons
+                      (dec_mtd m_out typ_top (typ_sel (pth_var (avar_b 0)) M))
+                   decs_nil))))
+         typ_top)
+         decs_nil)).
+Proof.
+  admit. (* TODO *)
+Qed.
+
+Example th6:
+  trm_has empty
+         (trm_new (defs_cons (def_mtd m
+         (typ_bind (decs_cons
+                      (dec_tyu M typ_top)
+                   (decs_cons
+                      (dec_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top)
+                   (decs_cons
+                      (dec_mtd m_out typ_top (typ_sel (pth_var (avar_b 0)) M))
+                   decs_nil))))
+         typ_top
+         (trm_call (trm_var (avar_b 0)) m_in
+         (trm_call (trm_var (avar_b 0)) m_out
+         (trm_new defs_nil))))
+         defs_nil))
+         (dec_mtd m
+         (typ_bind (decs_cons
+                      (dec_tyu M typ_top)
+                   (decs_cons
+                      (dec_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top)
+                   (decs_cons
+                      (dec_mtd m_out typ_top (typ_sel (pth_var (avar_b 0)) M))
+                   decs_nil))))
+         typ_top).
+Proof.
+  admit. (* TODO *)
+Qed.
+
+Example tc7:
+  tc_trm empty
+         (trm_call
+         (trm_new (defs_cons (def_mtd m
+         (typ_bind (decs_cons
+                      (dec_tyu M typ_top)
+                   (decs_cons
+                      (dec_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top)
+                   (decs_cons
+                      (dec_mtd m_out typ_top (typ_sel (pth_var (avar_b 0)) M))
+                   decs_nil))))
+         typ_top
+         (trm_call (trm_var (avar_b 0)) m_in
+         (trm_call (trm_var (avar_b 0)) m_out
+         (trm_new defs_nil))))
+         defs_nil))
+         m
+         (trm_new (defs_cons
+                     (def_typ M typ_top typ_top)
+                  (defs_cons
+                     (def_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top
+                              (trm_var (avar_b 0)))
+                  (defs_cons
+                     (def_mtd m_out typ_top (typ_sel (pth_var (avar_b 0)) M)
+                              (trm_var (avar_b 0)))
+                  defs_nil)))))
+         typ_top.
+Proof.
+  apply tc_call with (T2:=(typ_bind
+                   (decs_cons
+                      (dec_tyu M typ_top)
+                   (decs_cons
+                      (dec_mtd m_in (typ_sel (pth_var (avar_b 0)) M) typ_top)
+                   (decs_cons
+                      (dec_mtd m_out typ_top (typ_sel (pth_var (avar_b 0)) M))
+                   decs_nil))))).
+  + apply th6.
+  + apply tc5.
+Qed.
+
 End Examples.
