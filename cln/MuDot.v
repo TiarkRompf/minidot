@@ -878,7 +878,62 @@ Example tc6:
          typ_top)
          decs_nil)).
 Proof.
-  admit. (* TODO *)
+  apply tc_new with (L:=\{}); crush.
+  intros z Fr.
+  compute. erewrite If_r; auto.
+  apply tc_defs_cons; crush.
+  apply tc_def_mtd with (L:=\{z}); crush.
+  apply wf_bind with (L:=\{z}); crush.
+  intros x Frx.
+  apply wf_decs_cons; crush.
+  apply wf_decs_cons; crush.
+  apply wf_dec_mtd; crush.
+  compute. erewrite If_l; auto.
+  eapply wf_selu with (TU:=typ_bind decs_nil); crush.
+  change (dec_tyu labels.M (typ_bind decs_nil)) with
+  (open_dec x (dec_tyu labels.M (typ_bind decs_nil))); crush.
+  eapply pth_has_any; auto; crush.
+  apply wf_decs_cons; crush.
+  apply wf_dec_mtd; crush.
+  eapply wf_selu with (TU:=typ_bind decs_nil); crush.
+  compute. erewrite If_l; auto.
+  change (dec_tyu labels.M (typ_bind decs_nil)) with
+  (open_dec x (dec_tyu labels.M (typ_bind decs_nil))); crush.
+  eapply pth_has_any; auto; crush.
+  apply decs_hasnt_cons; crush.
+  simpl. assert (m_in <> m_out). apply m_in_neq_out. congruence.
+  intros x Frx.
+  compute. erewrite If_l; auto.
+  apply tc_call with (T2:=(typ_sel (pth_var (avar_f x)) labels.M)); crush.
+  eapply trm_has_var with (Dp:=(open_dec x (dec_mtd m_in (typ_sel (pth_var (avar_b 0)) labels.M) (typ_bind decs_nil)))).
+  eapply pth_has_any; auto; crush.
+  apply decs_has_skip; crush. apply decs_has_hit; crush.
+  apply decs_hasnt_cons; crush.
+  simpl. assert (m_in <> m_out). apply m_in_neq_out. congruence.
+  compute. erewrite If_l; auto.
+  apply sdc_mtd; crush.
+  eapply stp_selxu with (TU1:=typ_bind decs_nil) (TU2:=typ_bind decs_nil); crush.
+  change (dec_tyu labels.M (typ_bind decs_nil)) with
+  (open_dec x (dec_tyu labels.M (typ_bind decs_nil))); crush.
+  eapply pth_has_any; auto; crush.
+  change (dec_tyu labels.M (typ_bind decs_nil)) with
+  (open_dec x (dec_tyu labels.M (typ_bind decs_nil))); crush.
+  eapply pth_has_any; auto; crush.
+  apply tc_call with (T2:=typ_bind decs_nil); crush.
+  eapply trm_has_var with (Dp:=(open_dec x (dec_mtd m_out (typ_bind decs_nil) (typ_sel (pth_var (avar_b 0)) labels.M)))).
+  eapply pth_has_any; auto; crush.
+  apply decs_has_skip; crush. apply decs_has_skip; crush.
+  simpl. assert (m_in <> m_out). apply m_in_neq_out. congruence.
+  compute. erewrite If_l; auto.
+  apply sdc_mtd; crush.
+  eapply stp_selxu with (TU1:=typ_bind decs_nil) (TU2:=typ_bind decs_nil); crush.
+  change (dec_tyu labels.M (typ_bind decs_nil)) with
+  (open_dec x (dec_tyu labels.M (typ_bind decs_nil))); crush.
+  eapply pth_has_any; auto; crush.
+  change (dec_tyu labels.M (typ_bind decs_nil)) with
+  (open_dec x (dec_tyu labels.M (typ_bind decs_nil))); crush.
+  eapply pth_has_any; auto; crush.
+  apply tc_new with (L:=\{}); crush.
 Qed.
 
 Example th6:
