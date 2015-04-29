@@ -356,6 +356,10 @@ Fixpoint defs_to_decs (ds: defs): decs :=
 .
 
 Inductive same_typ: ctx -> typ -> typ -> ctx -> Prop :=
+(*
+| same_rfl: forall G T,
+  same_typ G T T G
+*)
 | same_sel: forall G1 G2 x1 x2 M Gx1 Tx1 Gx2 Tx2,
   binds x1 (typ_clo Gx1 Tx1) G1 ->
   binds x2 (typ_clo Gx2 Tx2) G2 ->
@@ -594,6 +598,14 @@ with   wf_dec_mut_wf  := Induction for wf_dec  Sort Prop
 with   wf_decs_mut_wf := Induction for wf_decs Sort Prop.
 Combined Scheme wf_mutind from wf_typ_mut_wf, wf_dec_mut_wf, wf_decs_mut_wf.
 
+Scheme stp_mut_sw  := Induction for stp  Sort Prop
+with   sdc_mut_sw  := Induction for sdc  Sort Prop
+with   sdcs_mut_sw := Induction for sdcs Sort Prop
+with   wf_typ_mut_sw  := Induction for wf_typ  Sort Prop
+with   wf_dec_mut_sw  := Induction for wf_dec  Sort Prop
+with   wf_decs_mut_sw := Induction for wf_decs Sort Prop.
+Combined Scheme sw_mutind from stp_mut_sw, sdc_mut_sw, sdcs_mut_sw, wf_typ_mut_sw, wf_dec_mut_sw, wf_decs_mut_sw.
+
 (* ###################################################################### *)
 (** ** Properties *)
 
@@ -662,6 +674,147 @@ Proof.
         inversion H0. assumption.
         assumption.
 Qed.
+
+Definition stp_reg := proj1 sub_reg.
+Definition sdc_reg := proj1 (proj2 sub_reg).
+Definition sdcs_reg := proj2 (proj2 sub_reg).
+
+Lemma stp_reg1: forall b G1 T1 T2 G2,
+  stp b G1 T1 T2 G2 ->
+  wf_typ G1 T1.
+Proof.
+  intros b G1 T1 T2 G2 H.
+  apply (proj1 (stp_reg H)).
+Qed.
+
+Lemma sdc_reg2: forall G1 D1 D2 G2,
+  sdc G1 D1 D2 G2 ->
+  wf_dec G2 D2.
+Proof.
+  intros G1 Ds1 Ds2 G2 H.
+  apply (proj2 (sdc_reg H)).
+Qed.
+
+Lemma sdcs_reg1: forall G1 Ds1 Ds2 G2,
+  sdcs G1 Ds1 Ds2 G2 ->
+  wf_decs G1 Ds1.
+Proof.
+  intros G1 Ds1 Ds2 G2 H.
+  apply (proj1 (sdcs_reg H)).
+Qed.
+
+(*
+Theorem sub_refl:
+  (forall b G1 T1 T2 G2, stp b G1 T1 T2 G2 -> stp b G1 T1 T1 G1 /\ stp b G2 T2 T2 G2) /\
+  (forall G1 D1 D2 G2, sdc G1 D1 D2 G2 -> sdc G1 D1 D1 G1 /\ sdc G2 D2 D2 G2) /\
+  (forall G1 Ds1 Ds2 G2, sdcs G1 Ds1 Ds2 G2 -> sdcs G1 Ds1 Ds1 G1 /\ sdcs G2 Ds2 Ds2 G2) /\
+  (forall G T, wf_typ G T -> stp true G T T G) /\
+  (forall G D, wf_dec G D -> sdc G D D G) /\
+  (forall G Ds, wf_decs G Ds -> sdcs G Ds Ds G).
+Proof.
+  apply sw_mutind; intros.
+  - (* T1 <: p.M -- sel2 *)
+    split.
+    + inversion H0. assumption.
+    + eapply stp_selx.
+      apply p0. apply p0.
+      assumption. assumption.
+      apply same_rfl. apply same_rfl.
+  - (* p.M <: T2 -- sel1 *)
+    split.
+    + eapply stp_selx.
+      apply p0. apply p0.
+      assumption. assumption.
+      apply same_rfl. apply same_rfl.
+    + inversion H0. assumption.
+  - (* p.M <: T2 -- sel1u *)
+    split.
+    + eapply stp_selxu.
+      apply p0. apply p0.
+      inversion H. eapply stp_reg1. apply H0.
+      inversion H. eapply stp_reg1. apply H0.
+      apply same_rfl.
+    + inversion H. assumption.
+  - (* p.M <: p.M -- selx *)
+    split.
+    + eapply stp_selx.
+      apply p. apply p.
+      assumption. assumption.
+      apply same_rfl. apply same_rfl.
+    + eapply stp_selx.
+      apply p0. apply p0.
+      assumption. assumption.
+      apply same_rfl. apply same_rfl.
+  - (* p.M <: p.M -- selxu *)
+    split.
+    + eapply stp_selxu.
+      apply p. apply p.
+      assumption. assumption.
+      apply same_rfl.
+    + eapply stp_selxu.
+      apply p0. apply p0.
+      assumption. assumption.
+      apply same_rfl.
+  - (* bind *)
+    split.
+    + apply stp_bind with (L:=L).
+      apply wf_bind with (L:=L).
+      intros x Frx. eapply sdcs_reg1. specialize (s x Frx). apply s.
+      intros x Frx. specialize (H0 x Frx). inversion H0. assumption.
+    + assumption.
+  - (* transf *)
+    split.
+    + inversion H. apply stp_wrapf. assumption.
+    + inversion H0. assumption.
+  - (* wrapf *)
+    split.
+    + inversion H. apply stp_wrapf. assumption.
+    + inversion H. apply stp_wrapf. assumption.
+  - (* sdc_typ *)
+    split.
+    + apply sdc_typ; try assumption.
+      inversion H1. assumption.
+      inversion H. assumption.
+    + apply sdc_typ; try assumption.
+      inversion H1. assumption.
+      inversion H0. assumption.
+  - (* sdc_tyu *)
+    split.
+    + apply sdc_tyu. inversion H. assumption.
+    + apply sdc_tyu. inversion H. assumption.
+  - (* sdc_typu *)
+    split.
+    + apply sdc_typ; try assumption.
+      inversion H. apply stp_wrapf. assumption.
+      inversion H. assumption.
+    + apply sdc_tyu. inversion H0. assumption.
+  - (* sdc_mtd *)
+    split.
+    + apply sdc_mtd. inversion H. assumption. inversion H0. assumption.
+    + apply sdc_mtd. inversion H. assumption. inversion H0. assumption.
+  - (* Ds1 <: {} -- nil *)
+    split.
+    + assumption.
+    + apply sdcs_nil. apply wf_decs_nil.
+  - (* Ds1 <: D2::Ds2 -- cons *)
+    split.
+    + inversion H0. assumption.
+    + apply sdcs_cons with (D1:=D2).
+        apply decs_has_hit. assumption.
+        inversion H. assumption.
+        induction Ds2.
+        apply sdcs_nil.
+          apply wf_decs_cons.
+            inversion H. eapply sdc_reg2. apply H2.
+            apply wf_decs_nil.
+            assumption.
+        apply sdcs_cons with (D1:=d1).
+          apply decs_has_skip. apply decs_has_hit.
+            inversion s0. subst. assumption.
+            inversion d0. subst. congruence.
+          inversion H0. inversion H2. subst.
+        (* stuck *)
+*)
 
 Theorem trans: forall G1 T1 G2 T2 G3 T3,
   stp true G1 T1 T2 G2 ->
