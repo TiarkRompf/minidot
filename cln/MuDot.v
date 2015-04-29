@@ -813,7 +813,27 @@ Proof.
             inversion s0. subst. assumption.
             inversion d0. subst. congruence.
           inversion H0. inversion H2. subst.
-        (* stuck *)
+          inversion H6; subst.
+            inversion H5; subst.
+              assumption.
+              compute in H15.
+              assert False as Contra. apply H15. reflexivity.
+              inversion Contra.
+            inversion H5; subst.
+              assumption.
+              compute in H12.
+              assert False as Contra. apply H12. reflexivity.
+              inversion Contra.
+            inversion H5; subst.
+              compute in H13.
+              assert False as Contra. apply H13. reflexivity.
+              inversion Contra.
+            inversion H5; subst.
+              assumption.
+              compute in H13.
+              assert False as Contra. apply H13. reflexivity.
+              inversion Contra.
+          (* stuck *)
 *)
 
 Theorem trans: forall G1 T1 G2 T2 G3 T3,
