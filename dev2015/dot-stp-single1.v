@@ -9,6 +9,7 @@ subtyping:
   - looking at single-environment case again.
   - new pushback proof structure: transitivity axiom only 
     needed in contravariant positions
+  - realizable type: precise expansion has good bounds
 
  TODO:
   - add bindx and/or bind2/bind1 rules
@@ -258,15 +259,17 @@ Tactic Notation "wf_cases" tactic(first) ident(c) :=
     Case_aux c "Bind" ].
 
 
-
-(* TODO: need to see what to do for expansion / 'has' *)
-(*
-  x: { z => Tz }
-  x: Tx
-
-  x: y.A(L..U)
-  x: U
- *)
+(* expansion / membership *)
+(* this is the precise version! no slack in lookup *)
+Inductive exp : tenv -> ty -> ty -> Prop :=
+| exp_mem: forall G1 T1 T2,
+    exp G1 (TMem T1 T2) (TMem T1 T2)
+| exp_sel: forall G1 x T T2 T3 T4 T5,
+    index x G1 = Some T ->
+    exp G1 T (TMem T2 T3) ->
+    exp G1 T3 (TMem T4 T5) ->
+    exp G1 (TSel x) (TMem T4 T5) 
+.
 
 
 Inductive stp : bool -> tenv -> ty -> ty -> nat -> Prop := 
@@ -290,10 +293,11 @@ Inductive stp : bool -> tenv -> ty -> ty -> nat -> Prop :=
     stp true G1 T1 (TSel x) (S n1)
 | stp_sel1: forall x T2 TX G1 n1,
     index x G1 = Some TX ->
-    stp true G1 TX (TMem TBot T2) n1->
+    stp true G1 TX (TMem TBot T2) n1 ->
     stp true G1 (TSel x) T2 (S n1)
 | stp_selx: forall x G1 n1,
-    stp true G1 (TSel x) (TSel x) n1
+    stp true G1 (TSel x) (TSel x) (S n1)
+                  
 (* TODO!
 | stp_bind2: forall f G1 T1 T2 TA2 n1,
     stp true ((f,T1)::G1) T1 T2 n1 ->
@@ -384,7 +388,7 @@ Lemma stpd_sel1:  forall x T2 TX G1,
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd_selx: forall x G1,
     stpd true G1 (TSel x) (TSel x).
-Proof. intros. repeat eu. exists 0. eauto. Qed.
+Proof. intros. repeat eu. exists 1. eauto. Qed.
 Lemma stpd_transf: forall G1 T1 T2 T3,
     stpd true G1 T1 T2 ->
     stpd false G1 T2 T3 ->           
@@ -419,6 +423,9 @@ Proof.
     + eapply stpd_transf. eexists. eapply H2. eexists. eapply H0.
 Qed.  
 
+
+(* left:  may use axiom but has size. must shrink *)
+(* right: no axiom but can grow *)
 Definition trans_on n1 := 
                       forall  m T1 T2 T3 G1, 
                       stp m G1 T1 T2 n1 ->
@@ -449,7 +456,72 @@ Lemma upd_miss: forall {X} G G' x x' (T:X) T',
               update x' T' G = G' ->
               beq_nat x x' = false ->
               index x G' = Some T.
+Proof. admit. Qed. 
+
+
+
+
+(* implementable type: expands and has good bounds *)
+Definition itp G T n := exists T1 T2 n1, exp G T (TMem T1 T2) /\ stp true G T1 T2 n1 /\ n1 <= n.
+
+(* implementable context *)
+Definition env_itp G n := forall x T, index x G = Some T -> itp G T n.
+
+
+
+
+Lemma exp_unique: forall G1 T1 TA1 TA2 TA1L TA2L, 
+  exp G1 T1 (TMem TA1L TA1) ->
+  exp G1 T1 (TMem TA2L TA2) ->
+  TA1 = TA2.
 Proof. admit. Qed.
+  
+(* key lemma that relates exp and stp. result has bounded size. *)
+Lemma stpd_inv_mem: forall n n1 G1, 
+
+  forall TA1 TA2 TA1L TA2L T1,
+  exp G1 T1 (TMem TA1L TA1) ->
+  stp true G1 T1 (TMem TA2L TA2) n1 ->
+  n1 <= n ->
+  exists n3, stp true G1 (TMem TA1L TA1) (TMem TA2L TA2) n3 /\ n3 <= n1. (* should be semantic eq! *)
+Proof.
+  intros n1. induction n1.
+  (*z*) intros. inversion H0; subst; inversion H1; subst; try omega.
+  (* s n *)
+  intros. inversion H.
+  - Case "mem". subst. exists n0. auto. (*inversion H0. subst. exists n3. split. eauto. omega. *)
+  - Case "sel".
+    subst.
+    inversion H0.
+    repeat index_subst. clear H4.
+    
+    assert (exists n0 : nat, stp true G1 (TMem T2 T3) (TMem TBot (TMem TA2L TA2)) n0 /\ n0 <= n2).
+    eapply (IHn1 n2). apply H7. apply H5. omega.
+
+    destruct H2. destruct H2. inversion H2. subst.
+
+    assert (exists n0 : nat, stp true G1 (TMem TA1L TA1) (TMem TA2L TA2) n0 /\ n0 <= n3).
+    eapply (IHn1 n3). apply H8. apply H15. omega.
+
+    destruct H6. destruct H6.
+    
+    eexists. split. apply H6. omega.
+Qed.
+
+
+(* dual case *)
+Lemma stpd_build_mem: forall n1 G1, 
+  forall TA1 TA2 TA1L TA2L T1,
+  exp G1 T1 (TMem TA1L TA1) ->
+  stp true G1 (TMem TA1L TA1) (TMem TA2L TA2) n1 ->
+  exists n3, stp true G1 T1 (TMem TA2L TA2) n3.
+Proof.
+  
+  (* TODO! *)
+  
+  admit.
+Qed.
+
 
 
 Lemma stp_narrow: forall m G1 T1 T2 n1,
@@ -462,7 +534,7 @@ Lemma stp_narrow: forall m G1 T1 T2 n1,
     stp true G1' TX1 TX2 n1 ->
     trans_on n1 ->
 
-    stpd m G1' T1 T2.  
+    stpd m G1' T1 T2.
 Proof.
   intros m G1 T1 T2 n1 H. destruct H as [n2 H].
   induction H; intros.
@@ -475,7 +547,7 @@ Proof.
   - Case "Sel2". intros.
     { case_eq (beq_nat x x0); intros E.
       (* hit updated binding *)
-      + assert (x = x0) as EX. eapply beq_nat_true_iff; eauto. subst. index_subst. index_subst. 
+      + assert (x = x0) as EX. eapply beq_nat_true_iff; eauto. subst. index_subst. index_subst.
         eapply stpd_sel2. eapply upd_hit; eauto. eapply H4. eapply H3. eapply IHstp; eauto.
       (* other binding *)
       + assert (x <> x0) as EX. eapply beq_nat_false_iff; eauto.
@@ -496,56 +568,61 @@ Proof.
 Qed.
 
 
-Inductive simple_type: ty -> Prop :=
-| simple_mem: forall T1,
-  simple_type (TMem T1 T1)  (* otherwise, would need trans_on T1 T2 *)
-.                           
-
-(* no induction, no trans (?) *)
-(* proper realizability evidence? *)
-Lemma stpd_trans_lo: forall G1 T1 T2 TX,
+Lemma stpd_trans_lo: forall G1 T1 T2 TX TXL TXU,
   stpd true G1 T1 T2 ->                     
   stpd true G1 TX (TMem T2 TTop) ->
-  simple_type TX ->
+  exp G1 TX (TMem TXL TXU) ->
   stpd true G1 TX (TMem T1 TTop).
 Proof.
-  intros. repeat eu. inversion H0; inversion H1.
-  - eapply stpd_mem. eapply stpd_transf. eexists. eapply H. eexists. subst. eauto. eauto. 
-  - subst. inversion H4. (* NEED TO HANDLE THIS CASE? PROBABLY YES .... *)
+  intros. repeat eu.
+  assert (exists nx, stp true G1 (TMem TXL TXU) (TMem T2 TTop) nx /\ nx <= x) as E. eapply (stpd_inv_mem x). eauto. eauto. omega.
+  destruct E as [nx [ST X]].
+  inversion ST. subst.
+
+  eapply stpd_build_mem. eauto. eapply stp_mem. eapply stp_transf. eauto. eauto. eauto.
 Qed.
 
 
-(* proper realizability evidence? *)
-Lemma stpd_trans_hi: forall G1 T1 T2 TX n1,
-                       (* trans_on *)
+Lemma stpd_trans_hi: forall G1 T1 T2 TX n1 TXL TXU,
   stpd true G1 T1 T2 ->                     
   stp true G1 TX (TMem TBot T1) n1 ->
-  simple_type TX ->
+  exp G1 TX (TMem TXL TXU) ->
   trans_up n1 ->
   stpd true G1 TX (TMem TBot T2).
 Proof.
-  intros.
-  inversion H1. subst TX.
-  inversion H0. subst.
+  intros. repeat eu.
+  assert (exists nx, stp true G1 (TMem TXL TXU) (TMem TBot T1) nx /\ nx <= n1) as E. eapply (stpd_inv_mem n1). eauto. eauto. omega.
+  destruct E as [nx [ST X]].
+  inversion ST. subst.
+
   assert (trans_on n2) as IH. { eapply trans_le; eauto. omega. }
-  eapply stpd_mem. eauto. eapply IH; eauto.
+  assert (stpd true G1 TXU T2) as ST1. { eapply IH. eauto. eauto. }
+  destruct ST1.
+  eapply stpd_build_mem. eauto. eapply stp_mem. eauto. eauto.
 Qed.
 
-(* need to invert mem. will require proper realizability
-   evidence *)
-Lemma stpd_trans_cross: forall G1 TX T1 T2 n1,
+(* need to invert mem. requires proper realizability evidence *)
+Lemma stpd_trans_cross: forall G1 TX T1 T2 TXL TXU n1 n2,
                           (* trans_on *)
   stp true G1 TX (TMem T1 TTop) n1 ->
   stpd true G1 TX (TMem TBot T2) ->
-  simple_type TX ->
-  trans_up n1 ->
+  exp G1 TX (TMem TXL TXU) ->
+  stp true G1 TXL TXU n2 ->
+  trans_up (n1+n2) ->
   stpd true G1 T1 T2.
 Proof.
-  intros.
-  inversion H1. subst TX.
-  inversion H. destruct H0. inversion H0. subst.
-  assert (trans_on n0) as IH. { eapply trans_le. eauto. omega. }
-  eapply IH. eauto. eexists. eauto.
+  intros. eu.
+  assert (exists n3, stp true G1 (TMem TXL TXU) (TMem T1 TTop) n3 /\ n3 <= n1) as SM1. eapply (stpd_inv_mem n1). eauto. eauto. omega.
+  assert (exists n3, stp true G1 (TMem TXL TXU) (TMem TBot T2) n3 /\ n3 <= x) as SM2. eapply (stpd_inv_mem x). eauto. eauto. omega.
+  destruct SM1 as [n3 [SM1 E3]].
+  destruct SM2 as [n4 [SM2 E4]].
+  inversion SM1. inversion SM2.
+  subst. clear SM1 SM2.
+  
+  assert (trans_on n0) as IH0. { eapply trans_le; eauto. omega. }
+  assert (trans_on n2) as IH1. { eapply trans_le; eauto. omega. }
+
+  eapply IH0. eauto. eapply IH1. eauto. eauto.
 Qed.
 
 
@@ -557,16 +634,14 @@ Proof.
   unfold trans_up. intros n1 NE  b T1 T2 T3 G1 S12 S23.
   destruct S23 as [n2 S23].
 
-  (* SHOTGUN: construct `simple` evidence out of thin air.
-     This needs to become a parameter, but need to figure out
-     how to integrate it exactly. *)
-  assert (forall x T, index x G1 = Some T -> simple_type T) as IMP. admit.
-  
-  stp_cases(inversion S12) SCase.  (* stp_cases(inversion S23) SSCase;  subst; *)
+(* TODO: pass in externally -- what about induction with bind?? *)
+  assert (env_itp G1 n) as IMP. admit.
+
+  stp_cases(inversion S12) SCase. 
   
   - SCase "Bool < Bool". inversion S23; subst; try solve by inversion.
     + SSCase "Bool". eapply stpd_bool; eauto.
-    + SSCase "Sel2". eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
+    + SSCase "Sel2". eapply stpd_sel2. eauto.  eexists. eapply H5. 
   - SCase "Fun < Fun". inversion S23; subst; try solve by inversion.
     + SSCase "Fun". inversion H10. subst.
       eapply stpd_fun.
@@ -574,7 +649,10 @@ Proof.
       * assert (trans_on n3) as IH.
         { eapply trans_le; eauto. omega. }
         eapply IH; eauto.
-    + SSCase "Sel2". eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
+    + SSCase "Sel2".
+      assert (itp G1 TX n) as E. { eapply IMP. eauto. }
+      destruct E as [TL [TU [n1 [E [SX C]]]]].
+      eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
   - SCase "Mem < Mem". inversion S23; subst; try solve by inversion.
     + SSCase "Mem". inversion H10. subst.
       eapply stpd_mem.
@@ -582,23 +660,35 @@ Proof.
       * assert (trans_on n3) as IH.
         { eapply trans_le; eauto. omega. }
         eapply IH; eauto.
-    + SSCase "Sel2". eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
+    + SSCase "Sel2". 
+      assert (itp G1 TX n) as E. { eapply IMP. eauto. }
+      destruct E as [TL [TU [n1 [E [SX C]]]]].
+      eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
   - SCase "? < Sel". inversion S23; subst; try solve by inversion.
-    + SSCase "Sel2". eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
+    + SSCase "Sel2". 
+      assert (itp G1 TX0 n) as E. { eapply IMP. eauto. }
+      destruct E as [TL [TU [n1 [E [SX C]]]]].
+      eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
     + SSCase "Sel1". (* interesting case *)
       index_subst.
-      assert (trans_up n0) as IH.
-      { unfold trans_up. intros. apply IHn. omega. }
+      assert (itp G1 TX0 n) as E. { eapply IMP. eauto. }
+      destruct E as [TL [TU [n1 [E [SX C]]]]].
+      assert (trans_up (n0+n1)) as IH.
+      { unfold trans_up. intros. apply IHn. admit (* TODO: size for E. omega *). }
       inversion H10. subst. index_subst. eapply stpd_trans_cross; eauto.
     + SSCase "Selx". inversion H8. index_subst. subst. index_subst. subst.
       eapply stpd_sel2. eauto. eauto.
   - SCase "Sel < ?".
-      (* TODO: use stpd_trans_hi? *)
       assert (trans_up n0) as IH.
       { unfold trans_up. intros. eapply IHn. omega. }
+      assert (itp G1 TX n) as E. { eapply IMP. eauto. }
+      destruct E as [TL [TU [nx [E [SX C]]]]].
       eapply stpd_sel1. eauto. eapply stpd_trans_hi; eauto.
   - SCase "Sel < Sel". inversion S23; subst; try solve by inversion.
-     + SSCase "Sel2". eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
+     + SSCase "Sel2". 
+       assert (itp G1 TX n) as E. { eapply IMP. eauto. }
+       destruct E as [TL [TU [n1 [E [SX C]]]]].
+       eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
      + SSCase "Sel1". inversion H8. index_subst. subst. index_subst. subst.
        eapply stpd_sel1. eauto. eauto.
      + SSCase "Selx". inversion H6. subst. repeat index_subst.
