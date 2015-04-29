@@ -604,6 +604,16 @@ with   wf_dec_mut_sw  := Induction for wf_dec  Sort Prop
 with   wf_decs_mut_sw := Induction for wf_decs Sort Prop.
 Combined Scheme sw_mutind from stp_mut_sw, sdc_mut_sw, sdcs_mut_sw, wf_typ_mut_sw, wf_dec_mut_sw, wf_decs_mut_sw.
 
+Scheme stp_mut_sa  := Induction for stp  Sort Prop
+with   sdc_mut_sa  := Induction for sdc  Sort Prop
+with   sdcs_mut_sa := Induction for sdcs Sort Prop
+with   wf_typ_mut_sa  := Induction for wf_typ  Sort Prop
+with   wf_dec_mut_sa  := Induction for wf_dec  Sort Prop
+with   wf_decs_mut_sa := Induction for wf_decs Sort Prop
+with   exp_mut_sa     := Induction for exp Sort Prop
+with   pth_has_mut_sa := Induction for pth_has Sort Prop.
+Combined Scheme sa_mutind from stp_mut_sa, sdc_mut_sa, sdcs_mut_sa, wf_typ_mut_sa, wf_dec_mut_sa, wf_decs_mut_sa, exp_mut_sa, pth_has_mut_sa.
+
 (* ###################################################################### *)
 (** ** Properties *)
 
@@ -859,6 +869,87 @@ Proof.
     + apply decs_has_hit. assumption.
     + apply sdcs_cons1; try assumption.
 Qed.
+
+(*
+Theorem sub_extend: forall L,
+  (forall b G1 T1 T2 G2, stp b G1 T1 T2 G2 ->
+   forall x CTx, x \notin L ->
+     stp b (G1 & (x ~ CTx)) T1 T2 G2 /\
+     stp b G1 T1 T2 (G2 & (x ~ CTx)) /\
+     stp b (G1 & (x ~ CTx)) T1 T2 (G2 & (x ~ CTx))
+  ) /\
+  (forall G1 D1 D2 G2, sdc G1 D1 D2 G2 ->
+   forall x CTx, x \notin L ->
+     sdc (G1 & (x ~ CTx)) D1 D2 G2 /\
+     sdc G1 D1 D2 (G2 & (x ~ CTx)) /\
+     sdc (G1 & (x ~ CTx)) D1 D2 (G2 & (x ~ CTx))
+  ) /\
+  (forall G1 Ds1 Ds2 G2, sdcs G1 Ds1 Ds2 G2 ->
+   forall x CTx, x \notin L ->
+     sdcs (G1 & (x ~ CTx)) Ds1 Ds2 G2 /\
+     sdcs G1 Ds1 Ds2 (G2 & (x ~ CTx)) /\
+     sdcs (G1 & (x ~ CTx)) Ds1 Ds2 (G2 & (x ~ CTx))
+  ) /\
+  (forall G T, wf_typ G T ->
+   forall x CTx, x \notin L ->
+     wf_typ (G & (x ~ CTx)) T
+  ) /\
+  (forall G D, wf_dec G D ->
+   forall x CTx, x \notin L ->
+     wf_dec (G & (x ~ CTx)) D
+  ) /\
+  (forall G Ds, wf_decs G Ds ->
+   forall x CTx, x \notin L ->
+     wf_decs (G & (x ~ CTx)) Ds
+  ) /\
+  (forall G T Ds G', exp G T Ds G' ->
+   forall x CTx, x \notin L ->
+     exp (G & (x ~ CTx)) T Ds G' \/
+     exp (G & (x ~ CTx)) T Ds (G' & (x ~ CTx))) /\
+  (forall G p D Gp, pth_has G p D Gp ->
+   forall x CTx, x \notin L ->
+     pth_has (G & (x ~ CTx)) p D Gp).
+Proof.
+  intros L.
+  apply sa_mutind; intros.
+  - (* stp_sel2 *)
+    split; try split.
+    + apply stp_sel2 with (TL:=TL) (TU:=TU) (Gp:=Gp); try assumption.
+      specialize (H1 x CTx H2). apply (proj1 H1).
+    + apply stp_sel2 with (TL:=TL) (TU:=TU) (Gp:=Gp); try assumption.
+      specialize (H x CTx H2). apply H.
+    + apply stp_sel2 with (TL:=TL) (TU:=TU) (Gp:=Gp); try assumption.
+      specialize (H x CTx H2). apply H.
+      specialize (H1 x CTx H2). apply (proj1 H1).
+  - (* stp_sel1 *)
+    split; try split.
+    + apply stp_sel1 with (TL:=TL) (TU:=TU) (Gp:=Gp); try assumption.
+      specialize (H x CTx H2). apply H.
+    + apply stp_sel1 with (TL:=TL) (TU:=TU) (Gp:=Gp); try assumption.
+      specialize (H1 x CTx H2). apply (proj1 (proj2 H1)).
+    + apply stp_sel1 with (TL:=TL) (TU:=TU) (Gp:=Gp); try assumption.
+      specialize (H x CTx H2). apply H.
+      specialize (H1 x CTx H2). apply (proj1 (proj2 H1)).
+  - (* stp_sel1u *)
+    split; try split.
+    + apply stp_sel1u with (TU:=TU) (Gp:=Gp); try assumption.
+      specialize (H x CTx H1). apply H.
+    + apply stp_sel1u with (TU:=TU) (Gp:=Gp); try assumption.
+      specialize (H0 x CTx H1). apply (proj1 (proj2 H0)).
+    + apply stp_sel1u with (TU:=TU) (Gp:=Gp); try assumption.
+      specialize (H x CTx H1). apply H.
+      specialize (H0 x CTx H1). apply (proj1 (proj2 H0)).
+  - (* stp_selx *)
+    admit. (* TODO: need same_extends *)
+  - (* stp_selxu *)
+    admit. (* TODO: need same_extends *)
+  - (* stp_bind *)
+    split; try split.
+    + apply stp_bind with (L:=L); try assumption.
+      intros z Fr.
+      (* stuck, induction hypotheses mess up th L's *)
+Qed.
+*)
 
 Theorem trans: forall G1 T1 G2 T2 G3 T3,
   stp true G1 T1 T2 G2 ->
