@@ -356,10 +356,8 @@ Fixpoint defs_to_decs (ds: defs): decs :=
 .
 
 Inductive same_typ: ctx -> typ -> typ -> ctx -> Prop :=
-(*
 | same_rfl: forall G T,
   same_typ G T T G
-*)
 | same_sel: forall G1 G2 x1 x2 M Gx1 Tx1 Gx2 Tx2,
   binds x1 (typ_clo Gx1 Tx1) G1 ->
   binds x2 (typ_clo Gx2 Tx2) G2 ->
@@ -703,7 +701,23 @@ Proof.
   apply (proj1 (sdcs_reg H)).
 Qed.
 
-(*
+Lemma sdcs_cons1: forall G1 Ds1 Ds2 G2 D1,
+  sdcs G1 Ds1 Ds2 G2 ->
+  wf_dec G1 D1 ->
+  decs_hasnt Ds1 (label_of_dec D1) ->
+  sdcs G1 (decs_cons D1 Ds1) Ds2 G2.
+Proof.
+  intros.
+  induction H.
+  + apply sdcs_nil. apply wf_decs_cons; assumption.
+  + apply sdcs_cons with (D1:=D0).
+    - apply decs_has_skip. assumption.
+      (* TODO *) admit.
+    - assumption.
+    - apply IHsdcs. assumption. assumption.
+    - assumption.
+Qed.
+
 Theorem sub_refl:
   (forall b G1 T1 T2 G2, stp b G1 T1 T2 G2 -> stp b G1 T1 T1 G1 /\ stp b G2 T2 T2 G2) /\
   (forall G1 D1 D2 G2, sdc G1 D1 D2 G2 -> sdc G1 D1 D1 G1 /\ sdc G2 D2 D2 G2) /\
@@ -802,39 +816,36 @@ Proof.
     + apply sdcs_cons with (D1:=D2).
         apply decs_has_hit. assumption.
         inversion H. assumption.
-        induction Ds2.
-        apply sdcs_nil.
-          apply wf_decs_cons.
-            inversion H. eapply sdc_reg2. apply H2.
-            apply wf_decs_nil.
-            assumption.
-        apply sdcs_cons with (D1:=d1).
-          apply decs_has_skip. apply decs_has_hit.
-            inversion s0. subst. assumption.
-            inversion d0. subst. congruence.
-          inversion H0. inversion H2. subst.
-          inversion H6; subst.
-            inversion H5; subst.
-              assumption.
-              compute in H15.
-              assert False as Contra. apply H15. reflexivity.
-              inversion Contra.
-            inversion H5; subst.
-              assumption.
-              compute in H12.
-              assert False as Contra. apply H12. reflexivity.
-              inversion Contra.
-            inversion H5; subst.
-              compute in H13.
-              assert False as Contra. apply H13. reflexivity.
-              inversion Contra.
-            inversion H5; subst.
-              assumption.
-              compute in H13.
-              assert False as Contra. apply H13. reflexivity.
-              inversion Contra.
-          (* stuck *)
-*)
+        apply sdcs_cons1.
+          inversion H0. assumption.
+          eapply sdc_reg2. apply s.
+          assumption.
+          assumption.
+  - (* wf_sel *)
+    apply stp_selx with (TL1:=TL) (TL2:=TL) (TU1:=TU) (TU2:=TU) (Gp1:=Gp) (Gp2:=Gp);
+    try assumption; try solve [apply same_rfl].
+  - (* wf_selu *)
+    apply stp_selxu with (TU1:=TU) (TU2:=TU) (Gp1:=Gp) (Gp2:=Gp);
+    try assumption; try solve [apply same_rfl].
+  - (* wf_bind *)
+    apply stp_bind with (L:=L); try assumption.
+    apply wf_bind with (L:=L); assumption.
+  - (* wf_dec_typ *)
+    inversion H.
+    apply sdc_typ; try assumption.
+    apply stp_wrapf. assumption.
+  - (* wf_dec_tyu *)
+    apply sdc_tyu; try assumption.
+  - (* wf_dec_mtd *)
+    apply sdc_mtd; try assumption.
+    apply stp_wrapf. assumption.
+  - (* wf_decs_nil *)
+    apply sdcs_nil. apply wf_decs_nil.
+  - (* wf_decs_cons *)
+    apply sdcs_cons with (D1:=D); try assumption.
+    + apply decs_has_hit. assumption.
+    + apply sdcs_cons1; try assumption.
+Qed.
 
 Theorem trans: forall G1 T1 G2 T2 G3 T3,
   stp true G1 T1 T2 G2 ->
