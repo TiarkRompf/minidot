@@ -870,6 +870,141 @@ Proof.
     + apply sdcs_cons1; try assumption.
 Qed.
 
+Theorem sub_extending:
+  (forall b G1 T1 T2 G2, stp b G1 T1 T2 G2 ->
+   forall G1A G1B G1C G2A G2B G2C,
+     G1 = G1A & G1C ->
+     G2 = G2A & G2C ->
+     stp b (G1A & G1B & G1C) T1 T2 (G2A & G2B & G2C)
+  ) /\
+  (forall G1 D1 D2 G2, sdc G1 D1 D2 G2 ->
+   forall G1A G1B G1C G2A G2B G2C,
+     G1 = G1A & G1C ->
+     G2 = G2A & G2C ->
+     sdc (G1A & G1B & G1C) D1 D2 (G2A & G2B & G2C)
+  ) /\
+  (forall G1 Ds1 Ds2 G2, sdcs G1 Ds1 Ds2 G2 ->
+   forall G1A G1B G1C G2A G2B G2C,
+     G1 = G1A & G1C ->
+     G2 = G2A & G2C ->
+     sdcs (G1A & G1B & G1C) Ds1 Ds2 (G2A & G2B & G2C)
+  ) /\
+  (forall G T, wf_typ G T ->
+   forall GA GB GC,
+     G = GA & GC ->
+     wf_typ (GA & GB & GC) T
+  ) /\
+  (forall G D, wf_dec G D ->
+   forall GA GB GC,
+     G = GA & GC ->
+     wf_dec (GA & GB & GC) D
+  ) /\
+  (forall G Ds, wf_decs G Ds ->
+   forall GA GB GC,
+     G = GA & GC ->
+     wf_decs (GA & GB & GC) Ds
+  ) /\
+  (forall G T Ds G', exp G T Ds G' ->
+   forall GA GB GC GA' GB' GC',
+     G = GA & GC ->
+     G' = GA' & GC' ->
+     exp (GA & GB & GC) T Ds (GA' & GB' & GC')
+  ) /\
+  (forall G p D Gp, pth_has G p D Gp ->
+   forall GA GB GC GAp GBp GCp,
+     G = GA & GC ->
+     Gp = GAp & GCp ->
+     pth_has (GA & GB & GC) p D (GAp & GBp & GCp)
+  ).
+Proof.
+  apply sa_mutind; intros.
+  - (* stp_sel2 *)
+    apply stp_sel2 with (TL:=TL) (TU:=TU) (Gp:= Gp & empty & empty); auto.
+    apply H; try assumption.
+    rewrite concat_empty_r. reflexivity.
+    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
+    apply H1; try assumption.
+    rewrite concat_empty_r. reflexivity.
+  - (* stp_sel1 *)
+    apply stp_sel1 with (TL:=TL) (TU:=TU) (Gp:= Gp & empty & empty); auto.
+    apply H; try assumption.
+    rewrite concat_empty_r. reflexivity.
+    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
+    apply H1; try assumption.
+    rewrite concat_empty_r. reflexivity.
+  - (* stp_sel1u *)
+    apply stp_sel1u with (TU:=TU) (Gp:= Gp & empty & empty); auto.
+    apply H; try assumption.
+    rewrite concat_empty_r. reflexivity.
+    apply H0; try assumption.
+    rewrite concat_empty_r. reflexivity.
+  - (* stp_selx *)
+    admit. (* TODO: need same_extending *)
+  - (* stp_selxu *)
+    admit. (* TODO: need same_extending *)
+  - (* stp_bind *)
+    apply stp_bind with (L:=L).
+    apply H. assumption.
+    intros z Fr.
+    admit. (* TODO *)
+    (* tricky because the bind closes over the extended env now,
+       while the induction hypothesis closes over the non-extended one
+     *)
+  - (* stp_transf *)
+    apply stp_transf with (T2:=T2) (G2:=G2 & empty & empty); auto.
+    apply H; try assumption.
+    rewrite concat_empty_r. reflexivity.
+    apply H0; try assumption.
+    rewrite concat_empty_r. reflexivity.
+  - (* stp_wrapf *)
+    apply stp_wrapf; auto.
+  - (* sdc_typ *)
+    apply sdc_typ; auto.
+  - (* sdc_tyu *)
+    apply sdc_tyu; auto.
+  - (* sdc_typu *)
+    apply sdc_typu; auto.
+  - (* sdc_mtd *)
+    apply sdc_mtd; auto.
+  - (* sdcs_nil *)
+    apply sdcs_nil; auto.
+  - (* sdcs_cons *)
+    apply sdcs_cons with (D1:=D1); auto.
+  - (* wf_typ *)
+    apply wf_sel with (TL:=TL) (TU:=TU) (Gp:=Gp & empty & empty); auto.
+    apply H; try assumption.
+    rewrite concat_empty_r. reflexivity.
+    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
+  - (* wf_tyu *)
+    apply wf_selu with (TU:=TU) (Gp:=Gp & empty & empty); auto.
+    apply H; try assumption.
+    rewrite concat_empty_r. reflexivity.
+    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
+  - (* wf_bind *)
+    admit. (* tricky like stp_bind *)
+  - (* wf_dec_typ *)
+    apply wf_dec_typ; auto.
+  - (* wf_dec_tyu *)
+    apply wf_dec_tyu; auto.
+  - (* wf_dec_mtd *)
+    apply wf_dec_mtd; auto.
+  - (* wf_decs_nil *)
+    apply wf_decs_nil; auto.
+  - (* wf_decs_cons *)
+    apply wf_decs_cons; auto.
+  - (* exp_bind *)
+    admit. (* TODO: issue unifying the input and output envs *)
+  - (* exp_sel *)
+    apply exp_sel with (TL:=TL) (TU:=TU) (G':=G' & empty & empty).
+    apply H; try assumption.
+    rewrite concat_empty_r. reflexivity.
+    apply H0; try assumption.
+    rewrite concat_empty_r. reflexivity.
+  - (* pth_has_any *)
+    admit. (* TODO: output env doesn't match expected pattern *)
+Qed.
+
+
 Theorem trans: forall G1 T1 G2 T2 G3 T3,
   stp true G1 T1 T2 G2 ->
   stp true G2 T2 T3 G3 ->
