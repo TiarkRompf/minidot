@@ -701,6 +701,19 @@ Proof.
   apply (proj1 (sdcs_reg H)).
 Qed.
 
+Lemma decs_has_or_hasnt: forall Ds D D',
+  decs_hasnt Ds (label_of_dec D) ->
+  decs_has Ds D' ->
+  label_of_dec D <> label_of_dec D'.
+Proof.
+  intros Ds D D' H H'.
+  induction H.
+  + inversion H'.
+  + inversion H'; subst.
+    - congruence.
+    - apply IHdecs_hasnt. assumption.
+Qed.
+
 Lemma sdcs_cons1: forall G1 Ds1 Ds2 G2 D1,
   sdcs G1 Ds1 Ds2 G2 ->
   wf_dec G1 D1 ->
@@ -712,7 +725,7 @@ Proof.
   + apply sdcs_nil. apply wf_decs_cons; assumption.
   + apply sdcs_cons with (D1:=D0).
     - apply decs_has_skip. assumption.
-      (* TODO *) admit.
+      apply decs_has_or_hasnt with (Ds:=Ds1); assumption.
     - assumption.
     - apply IHsdcs. assumption. assumption.
     - assumption.
