@@ -584,10 +584,15 @@ Inductive wf_val: ctx -> val -> typ -> Prop :=
 (* ###################################################################### *)
 (** ** Induction principles *)
 
-Scheme stp_mutst  := Induction for stp  Sort Prop
-with   sdc_mutst  := Induction for sdc  Sort Prop
-with   sdcs_mutst := Induction for sdcs Sort Prop.
-Combined Scheme sub_mutind from stp_mutst, sdc_mutst, sdcs_mutst.
+Scheme stp_mut_sub  := Induction for stp  Sort Prop
+with   sdc_mut_sub  := Induction for sdc  Sort Prop
+with   sdcs_mut_sub := Induction for sdcs Sort Prop.
+Combined Scheme sub_mutind from stp_mut_sub, sdc_mut_sub, sdcs_mut_sub.
+
+Scheme wf_typ_mut_wf  := Induction for wf_typ  Sort Prop
+with   wf_dec_mut_wf  := Induction for wf_dec  Sort Prop
+with   wf_decs_mut_wf := Induction for wf_decs Sort Prop.
+Combined Scheme wf_mutind from wf_typ_mut_wf, wf_dec_mut_wf, wf_decs_mut_wf.
 
 (* ###################################################################### *)
 (** ** Properties *)
