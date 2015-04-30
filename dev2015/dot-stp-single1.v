@@ -357,6 +357,50 @@ Hint Resolve ex_intro.
 
 Hint Constructors stp.
 
+
+(* ############################################################ *)
+(* Examples *)
+(* ############################################################ *)
+
+
+Example ex1: exists n, stp true nil (TBind TBot) (TBind TTop) n.
+Proof.
+ eexists. info_eauto.
+Grab Existential Variables. apply 0.
+Qed.
+
+Example ex2: exists n, stp true nil
+   (TBind (TMem TBool TBool))
+   (TBind (TMem TBot TTop)) n.
+Proof.
+  eexists. eapply stp_bindx. eapply stp_mem. eapply stp_wrapf. eapply stp_bot.
+  eapply stp_top. compute. eauto. compute. eauto.
+Grab Existential Variables. apply 0. apply 0.
+Qed.
+
+Example ex3: exists n, stp true nil
+   (TBind (TMem TBool TBool))
+   (TBind (TMem (TSelB 0) (TSelB 0))) n. (* can't do much with this *)
+Proof.
+  eexists. eapply stp_bindx.
+  instantiate (3 := (TMem TBool TBool)).
+  instantiate (2 := (TMem (TSel 0) (TSel 0))).
+
+  eapply stp_mem. eapply stp_wrapf.
+  eapply stp_sel1. compute. eauto. eapply stp_mem. eauto. eauto.
+  eapply stp_sel2. compute. eauto. eauto.
+  eauto. eauto.
+Grab Existential Variables. apply 0. apply 0. apply 0. apply 0.
+Qed.
+
+
+
+(* ############################################################ *)
+(* Proofs *)
+(* ############################################################ *)
+
+
+
 Definition stpd b G1 T1 T2 := exists n, stp b G1 T1 T2 n.
 
 Hint Unfold stpd.
