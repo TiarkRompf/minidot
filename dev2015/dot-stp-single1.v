@@ -188,6 +188,8 @@ Hint Unfold closed.
 (* Static properties: type assignment, subtyping, ... *)
 (* ############################################################ *)
 
+(* TODO: wf is not up to date *)
+
 (* static type expansion.
    needs to imply dynamic subtyping / value typing. *)
 Inductive tresolve: id -> ty -> ty -> Prop :=
@@ -273,7 +275,13 @@ Inductive exp : tenv -> ty -> ty -> Prop :=
 
 
 Inductive stp : bool -> tenv -> ty -> ty -> nat -> Prop := 
-  
+
+| stp_bot: forall G1 T n1,
+    stp true G1 TBot T n1
+
+| stp_top: forall G1 T n1,
+    stp true G1 T TTop n1
+             
 | stp_bool: forall G1 n1,
     stp true G1 TBool TBool n1
 
@@ -308,12 +316,15 @@ Inductive stp : bool -> tenv -> ty -> ty -> nat -> Prop :=
     open (length G1) TA1 = T1 ->                
     stp true G1 (TBind TA1) T2 (S n1)
 ... or at least...
-| stp_bindx: forall f G1 T1 T2 TA1 TA2 n1,
-    stp true ((f,T1)::G1) T1 T2 n1 ->
+*)
+| stp_bindx: forall G1 T1 T2 TA1 TA2 n1,
+    (* most likely, we will need exp T1 D here, too *)
+    (* but we need to check how this interacts with narrowing *)           
+    stp true ((length G1,T1)::G1) T1 T2 n1 ->
     open (length G1) TA1 = T1 ->                
     open (length G1) TA2 = T2 ->
     stp true G1 (TBind TA1) (TBind TA2) (S n1)
-*)
+
 | stp_transf: forall G1 T1 T2 T3 n1 n2,
     stp true G1 T1 T2 n1 ->
     stp false G1 T2 T3 n2 ->           
@@ -328,18 +339,15 @@ Inductive stp : bool -> tenv -> ty -> ty -> nat -> Prop :=
 Tactic Notation "stp_cases" tactic(first) ident(c) :=
   first;
   [ 
+    Case_aux c "Bot < ?" |
+    Case_aux c "? < Top" |
     Case_aux c "Bool < Bool" |
     Case_aux c "Fun < Fun" |
     Case_aux c "Mem < Mem" |
-(*
-    Case_aux c "Bind < Bind" |
-    Case_aux c "T & ? < T" |
-    Case_aux c "? & T < T" |
-    Case_aux c "? < ? & ?" |
-*)
     Case_aux c "? < Sel" |
     Case_aux c "Sel < ?" |
     Case_aux c "Sel < Sel" |
+    Case_aux c "Bind < Bind" |
     Case_aux c "Trans" |
     Case_aux c "Wrap"
   ].
@@ -363,6 +371,12 @@ Ltac eu := match goal with
                destruct H as [e P] *)
            end.
 
+Lemma stpd_bot: forall G1 T,
+    stpd true G1 TBot T.
+Proof. intros. exists 0. eauto. Qed.
+Lemma stpd_top: forall G1 T,
+    stpd true G1 T TTop.
+Proof. intros. exists 0. eauto. Qed.
 Lemma stpd_bool: forall G1,
     stpd true G1 TBool TBool.
 Proof. intros. exists 0. eauto. Qed.
@@ -389,6 +403,12 @@ Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd_selx: forall x G1,
     stpd true G1 (TSel x) (TSel x).
 Proof. intros. repeat eu. exists 1. eauto. Qed.
+Lemma stpd_bindx: forall G1 T1 T2 TA1 TA2,
+    stpd true ((length G1,T1)::G1) T1 T2 ->
+    open (length G1) TA1 = T1 ->                
+    open (length G1) TA2 = T2 ->
+    stpd true G1 (TBind TA1) (TBind TA2).
+Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd_transf: forall G1 T1 T2 T3,
     stpd true G1 T1 T2 ->
     stpd false G1 T2 T3 ->           
@@ -459,6 +479,54 @@ Lemma upd_miss: forall {X} G G' x x' (T:X) T',
 Proof. admit. Qed. 
 
 
+Lemma index_max : forall X vs n (T: X),
+                       index n vs = Some T ->
+                       n < length vs.
+Proof.
+  intros X vs. induction vs.
+  Case "nil". intros. inversion H.
+  Case "cons".
+  intros. inversion H. destruct a.
+  case_eq (beq_nat n (length vs)); intros E.
+  SCase "hit".
+  rewrite E in H1. inversion H1. subst.
+  eapply beq_nat_true in E. 
+  unfold length. unfold length in E. rewrite E. eauto.
+  SCase "miss".
+  rewrite E in H1.
+  assert (n < length vs). eapply IHvs. apply H1.
+  compute. eauto.
+Qed.
+
+  
+Lemma index_extend : forall X vs n a (T: X),
+                       index n vs = Some T ->
+                       index n (a::vs) = Some T.
+
+Proof.
+  intros.
+  assert (n < length vs). eapply index_max. eauto.
+  assert (n <> length vs). omega.
+  assert (beq_nat n (length vs) = false) as E. eapply beq_nat_false_iff; eauto.
+  unfold index. unfold index in H. rewrite H. rewrite E. destruct a. reflexivity.
+Qed.
+
+Lemma update_extend: forall X (TX1: X) G1 G1' x a, 
+  update x TX1 G1 = G1' ->
+  update x TX1 (a::G1) = (a::G1').
+Proof. admit. Qed.
+
+Lemma update_pres_len: forall X (TX1: X) G1 G1' x, 
+  update x TX1 G1 = G1' ->
+  length G1 = length G1'.
+Proof. admit. Qed.
+
+Lemma stp_extend : forall m G1 T1 T2 x v n,
+                       stp m G1 T1 T2 n ->
+                       stp m ((x,v)::G1) T1 T2 n.
+Proof. admit. (*intros. destruct H. eexists. eapply stp_extend1. apply H.*) Qed.
+
+
 
 
 (* implementable type: expands and has good bounds *)
@@ -486,7 +554,7 @@ Lemma stpd_inv_mem: forall n n1 G1,
   exists n3, stp true G1 (TMem TA1L TA1) (TMem TA2L TA2) n3 /\ n3 <= n1. (* should be semantic eq! *)
 Proof.
   intros n1. induction n1.
-  (*z*) intros. inversion H0; subst; inversion H1; subst; try omega.
+  (*z*) intros. inversion H0; subst; inversion H1; subst; try omega. try inversion H.
   (* s n *)
   intros. inversion H.
   - Case "mem". subst. exists n0. auto. (*inversion H0. subst. exists n3. split. eauto. omega. *)
@@ -538,6 +606,10 @@ Lemma stp_narrow: forall m G1 T1 T2 n1,
 Proof.
   intros m G1 T1 T2 n1 H. destruct H as [n2 H].
   induction H; intros.
+  - Case "Bot".
+    intros. eapply stpd_bot.
+  - Case "Top".
+    intros. eapply stpd_top.
   - Case "Bool". 
     intros. eapply stpd_bool.
   - Case "Fun". 
@@ -563,6 +635,21 @@ Proof.
         eapply stpd_sel1. eapply upd_miss; eauto. eapply IHstp. eapply H1. eauto. eauto. eauto.
     }
   - Case "Selx". eapply stpd_selx.
+  - Case "Bindx".
+    assert (length G1 = length G1'). { eapply update_pres_len; eauto. }
+    remember (length G1) as L. clear HeqL. subst L.
+    eapply stpd_bindx. { eapply IHstp.
+    eapply index_extend; eauto.
+    eapply update_extend; eauto.
+    eapply stp_extend; eauto.
+    apply H5. } eauto. eauto.
+
+    (* TODO: if we require a realizable context, we need to provide
+       corresponding evidence for the lhs type on induction. 
+       this evidence will need to come from the stp_bindx derivation.
+       ergo, we also need to narrow it *)
+
+    
   - Case "Trans". eapply stpd_transf. eapply IHstp1; eauto. eapply IHstp2; eauto.
   - Case "Wrap". eapply stpd_wrapf. eapply IHstp; eauto.
 Qed.
@@ -601,6 +688,7 @@ Proof.
   eapply stpd_build_mem. eauto. eapply stp_mem. eauto. eauto.
 Qed.
 
+
 (* need to invert mem. requires proper realizability evidence *)
 Lemma stpd_trans_cross: forall G1 TX T1 T2 TXL TXU n1 n2,
                           (* trans_on *)
@@ -638,11 +726,19 @@ Proof.
   assert (env_itp G1 n) as IMP. admit.
 
   stp_cases(inversion S12) SCase. 
-  
+  - SCase "Bot < ?". eapply stpd_bot.
+  - SCase "? < Top". subst. inversion S23; subst.
+    + SSCase "Top". eapply stpd_top.
+    + SSCase "Sel2".
+      assert (itp G1 TX n) as E. { eapply IMP. eauto. }
+      destruct E as [TL [TU [nx [E [SX C]]]]].
+      eapply stpd_sel2; eauto. eapply stpd_trans_lo; eauto.
   - SCase "Bool < Bool". inversion S23; subst; try solve by inversion.
+    + SSCase "Top". eauto.
     + SSCase "Bool". eapply stpd_bool; eauto.
     + SSCase "Sel2". eapply stpd_sel2. eauto.  eexists. eapply H5. 
   - SCase "Fun < Fun". inversion S23; subst; try solve by inversion.
+    + SSCase "Top". eapply stpd_top.
     + SSCase "Fun". inversion H10. subst.
       eapply stpd_fun.
       * eapply stp0f_trans; eauto.
@@ -654,6 +750,7 @@ Proof.
       destruct E as [TL [TU [n1 [E [SX C]]]]].
       eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
   - SCase "Mem < Mem". inversion S23; subst; try solve by inversion.
+    + SSCase "Top". eapply stpd_top.
     + SSCase "Mem". inversion H10. subst.
       eapply stpd_mem.
       * eapply stp0f_trans; eauto.
@@ -665,6 +762,7 @@ Proof.
       destruct E as [TL [TU [n1 [E [SX C]]]]].
       eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
   - SCase "? < Sel". inversion S23; subst; try solve by inversion.
+    + SSCase "Top". eapply stpd_top.
     + SSCase "Sel2". 
       assert (itp G1 TX0 n) as E. { eapply IMP. eauto. }
       destruct E as [TL [TU [n1 [E [SX C]]]]].
@@ -685,7 +783,8 @@ Proof.
       destruct E as [TL [TU [nx [E [SX C]]]]].
       eapply stpd_sel1. eauto. eapply stpd_trans_hi; eauto.
   - SCase "Sel < Sel". inversion S23; subst; try solve by inversion.
-     + SSCase "Sel2". 
+    + SSCase "Top". eapply stpd_top.
+    + SSCase "Sel2". 
        assert (itp G1 TX n) as E. { eapply IMP. eauto. }
        destruct E as [TL [TU [n1 [E [SX C]]]]].
        eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
@@ -693,6 +792,27 @@ Proof.
        eapply stpd_sel1. eauto. eauto.
      + SSCase "Selx". inversion H6. subst. repeat index_subst.
        eapply stpd_selx; eauto.
+  - SCase "Bind < Bind". inversion S23; subst; try solve by inversion.
+    + SSCase "Top". eapply stpd_top.
+    + SSCase "Sel2". 
+      assert (itp G1 TX n) as E. { eapply IMP. eauto. }
+      destruct E as [TL [TU [n1 [E [SX C]]]]].
+      eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
+    + SSCase "Bind".
+      inversion H12. subst.
+      assert (trans_up n0) as IH.
+      { unfold trans_up. intros. eapply IHn. omega. }
+      (* first narrow, then trans *)
+      assert (stpd true ((length G1, open (length G1) TA1) :: G1)
+                   (open (length G1) TA2) (open (length G1) TA3)) as NRW.
+      { 
+        assert (beq_nat (length G1) (length G1) = true) as E.
+        { eapply beq_nat_true_iff. eauto. }
+        eapply stp_narrow. eauto.
+        instantiate (2 := length G1). unfold index. rewrite E. eauto.
+        instantiate (1 := open (length G1) TA1). unfold update. rewrite E. eauto.
+        eauto. eauto. }
+      eapply stpd_bindx. eapply IH. eauto. eapply H. eapply NRW. eauto. eauto.
   - SCase "Trans". subst.
     assert (trans_on n3) as IH2.
     { eapply trans_le; eauto. omega. }
