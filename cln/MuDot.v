@@ -905,10 +905,7 @@ Theorem sub_extending:
      wf_decs (GA & GB & GC) Ds
   ) /\
   (forall G T Ds G', exp G T Ds G' ->
-   forall GA GB GC,
-     G = GA & GC ->
-     exp (GA & GB & GC) T Ds (GA & GB & GC) \/
-     exp (GA & GB & GC) T Ds G'
+   True
   ) /\
   (forall G p D Gp, pth_has G p D Gp ->
    forall GA GB GC,
@@ -997,11 +994,9 @@ Proof.
   - (* wf_decs_cons *)
     apply wf_decs_cons; auto.
   - (* exp_bind *)
-    left.
-    apply exp_bind.
+    auto.
   - (* exp_sel *)
-    right.
-    apply exp_sel with (TL:=TL) (TU:=TU) (G':=G'); auto.
+    auto.
   - (* pth_has_any *)
     apply pth_has_any with (Ds:=Ds); auto.
     subst. apply binds_weaken.
