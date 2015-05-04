@@ -1003,7 +1003,10 @@ Proof.
     right.
     apply exp_sel with (TL:=TL) (TU:=TU) (G':=G'); auto.
   - (* pth_has_any *)
-    admit. (* TODO *)
+    apply pth_has_any with (Ds:=Ds); auto.
+    subst. apply binds_weaken.
+      assumption.
+      admit (* ok (GA & GB & GC) *).
 Qed.
 
 
