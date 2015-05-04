@@ -905,43 +905,52 @@ Theorem sub_extending:
      wf_decs (GA & GB & GC) Ds
   ) /\
   (forall G T Ds G', exp G T Ds G' ->
-   forall GA GB GC GA' GB' GC',
+   forall GA GB GC,
      G = GA & GC ->
-     G' = GA' & GC' ->
-     exp (GA & GB & GC) T Ds (GA' & GB' & GC')
+     exp (GA & GB & GC) T Ds (GA & GB & GC)
   ) /\
   (forall G p D Gp, pth_has G p D Gp ->
-   forall GA GB GC GAp GBp GCp,
+   forall GA GB GC,
      G = GA & GC ->
-     Gp = GAp & GCp ->
-     pth_has (GA & GB & GC) p D (GAp & GBp & GCp)
+     pth_has (GA & GB & GC) p D Gp
   ).
 Proof.
   apply sa_mutind; intros.
   - (* stp_sel2 *)
-    apply stp_sel2 with (TL:=TL) (TU:=TU) (Gp:= Gp & empty & empty); auto.
+    apply stp_sel2 with (TL:=TL) (TU:=TU) (Gp:=Gp & empty & empty); auto.
+    rewrite concat_empty_r.
+    rewrite concat_empty_r.
     apply H; try assumption.
+    apply H0; try assumption.
     rewrite concat_empty_r. reflexivity.
-    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
+    rewrite concat_empty_r. reflexivity.
     apply H1; try assumption.
     rewrite concat_empty_r. reflexivity.
   - (* stp_sel1 *)
     apply stp_sel1 with (TL:=TL) (TU:=TU) (Gp:= Gp & empty & empty); auto.
+    rewrite concat_empty_r.
+    rewrite concat_empty_r.
     apply H; try assumption.
+    apply H0; try assumption.
     rewrite concat_empty_r. reflexivity.
-    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
+    rewrite concat_empty_r. reflexivity.
     apply H1; try assumption.
     rewrite concat_empty_r. reflexivity.
   - (* stp_sel1u *)
     apply stp_sel1u with (TU:=TU) (Gp:= Gp & empty & empty); auto.
+    rewrite concat_empty_r.
+    rewrite concat_empty_r.
     apply H; try assumption.
-    rewrite concat_empty_r. reflexivity.
     apply H0; try assumption.
     rewrite concat_empty_r. reflexivity.
   - (* stp_selx *)
-    admit. (* TODO: need same_extending *)
+    apply stp_selx
+    with (TL1:=TL1) (TL2:=TL2) (TU1:=TU1) (TU2:=TU2) (Gp1:=Gp1) (Gp2:=Gp2);
+    auto.
   - (* stp_selxu *)
-    admit. (* TODO: need same_extending *)
+    apply stp_selxu
+    with (TU1:=TU1) (TU2:=TU2) (Gp1:=Gp1) (Gp2:=Gp2);
+    auto.
   - (* stp_bind *)
     apply stp_bind with (L:=L).
     apply H. assumption.
@@ -971,15 +980,9 @@ Proof.
   - (* sdcs_cons *)
     apply sdcs_cons with (D1:=D1); auto.
   - (* wf_typ *)
-    apply wf_sel with (TL:=TL) (TU:=TU) (Gp:=Gp & empty & empty); auto.
-    apply H; try assumption.
-    rewrite concat_empty_r. reflexivity.
-    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
+    apply wf_sel with (TL:=TL) (TU:=TU) (Gp:=Gp); auto.
   - (* wf_tyu *)
-    apply wf_selu with (TU:=TU) (Gp:=Gp & empty & empty); auto.
-    apply H; try assumption.
-    rewrite concat_empty_r. reflexivity.
-    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
+    apply wf_selu with (TU:=TU) (Gp:=Gp); auto.
   - (* wf_bind *)
     admit. (* tricky like stp_bind *)
   - (* wf_dec_typ *)
@@ -993,13 +996,9 @@ Proof.
   - (* wf_decs_cons *)
     apply wf_decs_cons; auto.
   - (* exp_bind *)
-    admit. (* TODO: issue unifying the input and output envs *)
+    apply exp_bind.
   - (* exp_sel *)
-    apply exp_sel with (TL:=TL) (TU:=TU) (G':=G' & empty & empty).
-    apply H; try assumption.
-    rewrite concat_empty_r. reflexivity.
-    apply H0; try assumption.
-    rewrite concat_empty_r. reflexivity.
+    admit. (* TODO: now exp_bind is easy but exp_sel tricky *)
   - (* pth_has_any *)
     admit. (* TODO: output env doesn't match expected pattern *)
 Qed.
