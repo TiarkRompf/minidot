@@ -907,7 +907,8 @@ Theorem sub_extending:
   (forall G T Ds G', exp G T Ds G' ->
    forall GA GB GC,
      G = GA & GC ->
-     exp (GA & GB & GC) T Ds (GA & GB & GC)
+     exp (GA & GB & GC) T Ds (GA & GB & GC) \/
+     exp (GA & GB & GC) T Ds G'
   ) /\
   (forall G p D Gp, pth_has G p D Gp ->
    forall GA GB GC,
@@ -996,11 +997,13 @@ Proof.
   - (* wf_decs_cons *)
     apply wf_decs_cons; auto.
   - (* exp_bind *)
+    left.
     apply exp_bind.
   - (* exp_sel *)
-    admit. (* TODO: now exp_bind is easy but exp_sel tricky *)
+    right.
+    apply exp_sel with (TL:=TL) (TU:=TU) (G':=G'); auto.
   - (* pth_has_any *)
-    admit. (* TODO: output env doesn't match expected pattern *)
+    admit. (* TODO *)
 Qed.
 
 
