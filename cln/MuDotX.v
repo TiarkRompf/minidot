@@ -401,13 +401,17 @@ Inductive stp: bool -> ctx -> typ -> typ -> ctx -> Prop :=
   wf_typ Gp2 TU2 ->
   same_typ Gp1 TU1 TU2 Gp2 ->
   stp true G1 (typ_sel p1 M) (typ_sel p2 M) G2
-| stp_bind: forall L G1 Ds1 G2 Ds2,
+| stp_bind: forall L G1 Ds1 G2 Ds2 G1A G1B G1C G1X G2A G2B G2C G2X,
   wf_typ G2 (typ_bind Ds2) ->
+  G1 = G1A & G1B & G1C ->
+  G1X = G1A & G1C ->
+  G2 = G2A & G2B & G2C ->
+  G2X = G2A & G2C ->
   (forall x, x \notin L ->
-   sdcs (G1 & (x ~ typ_clo G1 (typ_bind Ds1)))
+   sdcs (G1X & (x ~ typ_clo G1X (typ_bind Ds1)))
         (open_decs x Ds1)
         (open_decs x Ds2)
-        (G2 & (x ~ typ_clo G1 (typ_bind Ds1)))
+        (G2X & (x ~ typ_clo G1X (typ_bind Ds1)))
   ) ->
   stp true G1 (typ_bind Ds1) (typ_bind Ds2) G2
 | stp_transf: forall G1 G2 G3 T1 T2 T3,
@@ -457,9 +461,11 @@ with wf_typ: ctx -> typ -> Prop :=
   pth_has G p (dec_tyu M TU) Gp ->
   wf_typ Gp TU ->
   wf_typ G (typ_sel p M)
-| wf_bind: forall L G Ds,
+| wf_bind: forall L G GA GB GC GX Ds,
+  G = GA & GB & GC ->
+  GX = GA & GC ->
   (forall x, x \notin L ->
-   wf_decs (G & (x ~ typ_clo G (typ_bind Ds)))
+   wf_decs (GX & (x ~ typ_clo GX (typ_bind Ds)))
            (open_decs x Ds)
   ) ->
   wf_typ G (typ_bind Ds)
@@ -645,7 +651,8 @@ Proof.
     + eapply wf_selu. apply p0. assumption.
   - (* bind *)
     split.
-    + apply wf_bind with (L:=L). intros x Frx.
+    + apply wf_bind with (L:=L) (GA:=G1A) (GB:=G1B) (GC:=G1C) (GX:=G1X); try assumption.
+      intros x Frx.
       specialize (H x Frx). inversion H. assumption.
     + assumption.
   - (* transf *)
@@ -794,9 +801,14 @@ Proof.
       apply same_rfl.
   - (* bind *)
     split.
-    + apply stp_bind with (L:=L).
-      apply wf_bind with (L:=L).
+    + apply stp_bind with (L:=L)
+        (G1A:=G1A) (G1B:=G1B) (G1C:=G1C) (G1X:=G1X)
+        (G2A:=G1A) (G2B:=G1B) (G2C:=G1C) (G2X:=G1X).
+      apply wf_bind with (L:=L)
+        (GA:=G1A) (GB:=G1B) (GC:=G1C) (GX:=G1X).
+      assumption. assumption.
       intros x Frx. eapply sdcs_reg1. specialize (s x Frx). apply s.
+      assumption. assumption. assumption. assumption.
       intros x Frx. specialize (H0 x Frx). inversion H0. assumption.
     + assumption.
   - (* transf *)
@@ -851,8 +863,13 @@ Proof.
     apply stp_selxu with (TU1:=TU) (TU2:=TU) (Gp1:=Gp) (Gp2:=Gp);
     try assumption; try solve [apply same_rfl].
   - (* wf_bind *)
-    apply stp_bind with (L:=L); try assumption.
-    apply wf_bind with (L:=L); assumption.
+    apply stp_bind with (L:=L)
+      (G1A:=GA) (G1B:=GB) (G1C:=GC) (G1X:=GX)
+      (G2A:=GA) (G2B:=GB) (G2C:=GC) (G2X:=GX);
+    try assumption.
+    apply wf_bind with (L:=L)
+      (GA:=GA) (GB:=GB) (GC:=GC) (GX:=GX);
+    assumption.
   - (* wf_dec_typ *)
     inversion H.
     apply sdc_typ; try assumption.
@@ -950,13 +967,14 @@ Proof.
     with (TU1:=TU1) (TU2:=TU2) (Gp1:=Gp1) (Gp2:=Gp2);
     auto.
   - (* stp_bind *)
-    apply stp_bind with (L:=L).
+    subst.
+    apply stp_bind with (L:=L)
+      (G1A:=G1A) (G1B:=G2B & G1B0) (G1C:=G1C) (G1X:=G1A & G1C)
+      (G2A:=G2A) (G2B:=G2B & G2B0) (G2C:=G2C) (G2X:=G2A & G2C).
     apply H. assumption.
-    intros z Fr.
-    admit. (* TODO *)
-    (* tricky because the bind closes over the extended env now,
-       while the induction hypothesis closes over the non-extended one
-     *)
+    admit (* re-ordering env concats *). reflexivity.
+    admit (* ditto *). reflexivity.
+    assumption.
   - (* stp_transf *)
     apply stp_transf with (T2:=T2) (G2:=G2 & empty & empty); auto.
     apply H; try assumption.
@@ -982,7 +1000,11 @@ Proof.
   - (* wf_tyu *)
     apply wf_selu with (TU:=TU) (Gp:=Gp); auto.
   - (* wf_bind *)
-    admit. (* tricky like stp_bind *)
+    subst.
+    apply wf_bind with (L:=L)
+      (GA:=GA) (GB:=GB & GB0) (GC:=GC) (GX:=GA & GC).
+    admit (* re-ordering env concats *). reflexivity.
+    assumption.
   - (* wf_dec_typ *)
     apply wf_dec_typ; auto.
   - (* wf_dec_tyu *)
