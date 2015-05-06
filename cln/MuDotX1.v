@@ -371,6 +371,22 @@ Inductive same_typ: ctx -> typ -> typ -> ctx -> Prop :=
   same_typ G (typ_bind Ds) (typ_bind Ds) G
 .
 
+Inductive exp: ctx -> typ -> decs -> ctx -> Prop :=
+| exp_bind: forall G Ds,
+  exp G (typ_bind Ds) Ds G
+| exp_sel: forall G G' G'' p M TL TU Ds,
+  pth_has G p (dec_typ M TL TU) G' ->
+  exp G' TU Ds G'' ->
+  exp G (typ_sel p M) Ds G''
+with pth_has: ctx -> pth -> dec -> ctx -> Prop :=
+| pth_has_any: forall G x Gx Tx Ds D G' x',
+  binds x (typ_clo Gx Tx) G ->
+  exp Gx Tx Ds G' ->
+  decs_has Ds D ->
+  x' # G' ->
+  pth_has G (pth_var (avar_f x)) (open_dec x' D) (G' & (x' ~ (typ_clo Gx Tx)))
+.
+
 Inductive stp: bool -> ctx -> typ -> typ -> ctx -> Prop :=
 | stp_sel2: forall G1 T1 G2 p M TL TU Gp,
   pth_has G2 p (dec_typ M TL TU) Gp ->
@@ -490,21 +506,6 @@ with wf_decs: ctx -> decs -> Prop :=
   wf_decs G Ds ->
   decs_hasnt Ds (label_of_dec D) ->
   wf_decs G (decs_cons D Ds)
-
-with exp: ctx -> typ -> decs -> ctx -> Prop :=
-| exp_bind: forall G Ds,
-  exp G (typ_bind Ds) Ds G
-| exp_sel: forall G G' G'' p M TL TU Ds,
-  pth_has G p (dec_typ M TL TU) G' ->
-  exp G' TU Ds G'' ->
-  exp G (typ_sel p M) Ds G''
-with pth_has: ctx -> pth -> dec -> ctx -> Prop :=
-| pth_has_any: forall G x Gx Tx Ds D G' x',
-  binds x (typ_clo Gx Tx) G ->
-  exp Gx Tx Ds G' ->
-  decs_has Ds D ->
-  x' # G' ->
-  pth_has G (pth_var (avar_f x)) (open_dec x' D) (G' & (x' ~ (typ_clo Gx Tx)))
 .
 
 Inductive tc_trm: ctx -> trm -> typ -> Prop :=
@@ -610,15 +611,9 @@ with   wf_dec_mut_sw  := Induction for wf_dec  Sort Prop
 with   wf_decs_mut_sw := Induction for wf_decs Sort Prop.
 Combined Scheme sw_mutind from stp_mut_sw, sdc_mut_sw, sdcs_mut_sw, wf_typ_mut_sw, wf_dec_mut_sw, wf_decs_mut_sw.
 
-Scheme stp_mut_sa  := Induction for stp  Sort Prop
-with   sdc_mut_sa  := Induction for sdc  Sort Prop
-with   sdcs_mut_sa := Induction for sdcs Sort Prop
-with   wf_typ_mut_sa  := Induction for wf_typ  Sort Prop
-with   wf_dec_mut_sa  := Induction for wf_dec  Sort Prop
-with   wf_decs_mut_sa := Induction for wf_decs Sort Prop
-with   exp_mut_sa     := Induction for exp Sort Prop
-with   pth_has_mut_sa := Induction for pth_has Sort Prop.
-Combined Scheme sa_mutind from stp_mut_sa, sdc_mut_sa, sdcs_mut_sa, wf_typ_mut_sa, wf_dec_mut_sa, wf_decs_mut_sa, exp_mut_sa, pth_has_mut_sa.
+Scheme exp_mut_ep     := Induction for exp Sort Prop
+with   pth_has_mut_ep := Induction for pth_has Sort Prop.
+Combined Scheme ep_mutind from exp_mut_ep, pth_has_mut_ep.
 
 (* ###################################################################### *)
 (** ** Properties *)
@@ -887,6 +882,20 @@ Proof.
     + apply sdcs_cons1; try assumption.
 Qed.
 
+Theorem pth_has_extending:
+  (forall G p D Gp, pth_has G p D Gp ->
+   forall GA GB GC,
+     G = GA & GC ->
+     pth_has (GA & GB & GC) p D Gp
+  ).
+Proof.
+  intros. inversion H. subst.
+  apply pth_has_any with (Ds:=Ds); auto.
+  subst. apply binds_weaken.
+    assumption.
+    admit (* ok (GA & GB & GC) *).
+Qed.
+
 Theorem sub_extending:
   (forall b G1 T1 T2 G2, stp b G1 T1 T2 G2 ->
    forall G1A G1B G1C G2A G2B G2C,
@@ -920,52 +929,44 @@ Theorem sub_extending:
    forall GA GB GC,
      G = GA & GC ->
      wf_decs (GA & GB & GC) Ds
-  ) /\
-  (forall G T Ds G', exp G T Ds G' ->
-   True
-  ) /\
-  (forall G p D Gp, pth_has G p D Gp ->
-   forall GA GB GC,
-     G = GA & GC ->
-     pth_has (GA & GB & GC) p D Gp
   ).
 Proof.
-  apply sa_mutind; intros.
+  apply sw_mutind; intros.
   - (* stp_sel2 *)
     apply stp_sel2 with (TL:=TL) (TU:=TU) (Gp:=Gp & empty & empty); auto.
-    rewrite concat_empty_r.
-    rewrite concat_empty_r.
-    apply H; try assumption.
+    apply pth_has_extending with (G:=G2).
+    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
+    assumption.
+    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
     apply H0; try assumption.
-    rewrite concat_empty_r. reflexivity.
-    rewrite concat_empty_r. reflexivity.
-    apply H1; try assumption.
     rewrite concat_empty_r. reflexivity.
   - (* stp_sel1 *)
     apply stp_sel1 with (TL:=TL) (TU:=TU) (Gp:= Gp & empty & empty); auto.
-    rewrite concat_empty_r.
-    rewrite concat_empty_r.
-    apply H; try assumption.
+    apply pth_has_extending with (G:=G1).
+    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
+    assumption.
+    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
     apply H0; try assumption.
-    rewrite concat_empty_r. reflexivity.
-    rewrite concat_empty_r. reflexivity.
-    apply H1; try assumption.
     rewrite concat_empty_r. reflexivity.
   - (* stp_sel1u *)
     apply stp_sel1u with (TU:=TU) (Gp:= Gp & empty & empty); auto.
-    rewrite concat_empty_r.
-    rewrite concat_empty_r.
+    apply pth_has_extending with (G:=G1).
+    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
+    assumption.
     apply H; try assumption.
-    apply H0; try assumption.
     rewrite concat_empty_r. reflexivity.
   - (* stp_selx *)
     apply stp_selx
     with (TL1:=TL1) (TL2:=TL2) (TU1:=TU1) (TU2:=TU2) (Gp1:=Gp1) (Gp2:=Gp2);
     auto.
+    apply pth_has_extending with (G:=G1); assumption.
+    apply pth_has_extending with (G:=G2); assumption.
   - (* stp_selxu *)
     apply stp_selxu
     with (TU1:=TU1) (TU2:=TU2) (Gp1:=Gp1) (Gp2:=Gp2);
     auto.
+    apply pth_has_extending with (G:=G1); assumption.
+    apply pth_has_extending with (G:=G2); assumption.
   - (* stp_bind *)
     subst.
     apply stp_bind with (L:=L)
@@ -997,8 +998,10 @@ Proof.
     apply sdcs_cons with (D1:=D1); auto.
   - (* wf_typ *)
     apply wf_sel with (TL:=TL) (TU:=TU) (Gp:=Gp); auto.
+    apply pth_has_extending with (G:=G); assumption.
   - (* wf_tyu *)
     apply wf_selu with (TU:=TU) (Gp:=Gp); auto.
+    apply pth_has_extending with (G:=G); assumption.
   - (* wf_bind *)
     subst.
     apply wf_bind with (L:=L)
@@ -1015,15 +1018,6 @@ Proof.
     apply wf_decs_nil; auto.
   - (* wf_decs_cons *)
     apply wf_decs_cons; auto.
-  - (* exp_bind *)
-    auto.
-  - (* exp_sel *)
-    auto.
-  - (* pth_has_any *)
-    apply pth_has_any with (Ds:=Ds); auto.
-    subst. apply binds_weaken.
-      assumption.
-      admit (* ok (GA & GB & GC) *).
 Qed.
 
 
