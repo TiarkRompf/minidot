@@ -383,7 +383,7 @@ with pth_has: ctx -> pth -> dec -> ctx -> Prop :=
   binds x (typ_clo Gx Tx) G ->
   exp Gx Tx Ds G' ->
   decs_has Ds D ->
-  x' # G' ->
+  x' = var_gen (dom G') ->
   pth_has G (pth_var (avar_f x)) (open_dec x' D) (G' & (x' ~ (typ_clo Gx Tx)))
 .
 
@@ -1020,6 +1020,74 @@ Proof.
     apply wf_decs_cons; auto.
 Qed.
 
+Lemma lookup_unique: forall {A} x G (a: A) (a': A),
+  binds x a  G ->
+  binds x a' G ->
+  a' = a.
+Proof.
+  introv Hb1 Hb2.
+  inversion Hb1 as [Hb1'].
+  inversion Hb2 as [Hb2'].
+  rewrite Hb2' in Hb1'.
+  inversion Hb1'.
+  reflexivity.
+Qed.
+
+Lemma decs_has_unique: forall Ds D1 D2,
+  decs_has Ds D1 ->
+  decs_has Ds D2 ->
+  label_of_dec D1 = label_of_dec D2 ->
+  D1 = D2.
+Proof.
+  introv H1. induction H1.
+  - introv H2 Eq. inversions H2.
+    * reflexivity.
+    * rewrite Eq in H5. false H5. reflexivity.
+  - introv H2 Eq. inversions H2.
+    * rewrite Eq in H. false H. reflexivity.
+    * apply (IHdecs_has H4 Eq).
+Qed.
+
+Lemma ep_unique:
+  (forall G T Ds Ge, exp G T Ds Ge ->
+   forall Ds' Ge',
+   exp G T Ds' Ge' ->
+   Ds' = Ds /\ Ge' = Ge) /\
+  (forall G p D Gp, pth_has G p D Gp ->
+   forall D' Gp',
+   pth_has G p D' Gp' ->
+   label_of_dec D' = label_of_dec D ->
+   D' = D /\ Gp' = Gp).
+Proof.
+  apply ep_mutind.
+  - (* exp_bind *)
+    intros; inversion H; subst; split; reflexivity.
+  - (* exp_sel *)
+    intros G Gp Gpe p M TL TU Ds Hp HIp He HIe Ds' Ge' H.
+    inversion H; subst.
+    assert (dec_typ M TL0 TU0 = dec_typ M TL TU /\ G' = Gp) as A.
+    apply HIp; try assumption.
+    compute. reflexivity.
+    inversion A as [A1 A2]. inversion A1. subst.
+    apply HIe. assumption.
+  - (* pth_has_any *)
+    intros G x Gx Tx Ds D Gp z Hb He HIe Hd Hz D' Gp' H Hl.
+    inversion H. subst.
+    assert (typ_clo Gx0 Tx0 = typ_clo Gx Tx) as A. {
+      eapply lookup_unique. apply Hb. assumption.
+    }
+    inversions A.
+    assert (Ds0 = Ds /\ G' = Gp) as A. {
+      apply HIe. assumption.
+    }
+    inversions A.
+    assert (D0 = D) as A. {
+      apply decs_has_unique with (Ds:=Ds); try assumption.
+      induction D; induction D0; compute; compute in Hl; apply Hl.
+    }
+    subst.
+    split; reflexivity.
+Qed.
 
 Theorem trans: forall G1 T1 G2 T2 G3 T3,
   stp true G1 T1 T2 G2 ->
