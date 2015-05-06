@@ -1089,6 +1089,17 @@ Proof.
     split; reflexivity.
 Qed.
 
+Theorem pth_has_unique: forall G p D Gp D' Gp',
+  pth_has G p D Gp ->
+  pth_has G p D' Gp' ->
+  label_of_dec D' = label_of_dec D ->
+  D' = D /\ Gp' = Gp.
+Proof.
+  introv H1.
+  apply (proj2 ep_unique).
+  apply H1.
+Qed.
+
 Theorem trans: forall G1 T1 G2 T2 G3 T3,
   stp true G1 T1 T2 G2 ->
   stp true G2 T2 T3 G3 ->
