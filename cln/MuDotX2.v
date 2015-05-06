@@ -1138,6 +1138,85 @@ Proof.
   apply H1.
 Qed.
 
+(* Transivity *)
+
+Definition trans_on n12 n23 :=
+  forall G1 T1 G2 T2 G3 T3,
+  stp n12 true G1 T1 T2 G2 ->
+  stp n23 true G2 T2 T3 G3 ->
+  stpn true G1 T1 T3 G3.
+Hint Unfold trans_on.
+
+Definition trans_up n :=
+  forall n12 n23, n12 + n23 <= n ->
+  trans_on n12 n23.
+Hint Unfold trans_up.
+
+Lemma trans_le: forall n n12 n23,
+  trans_up n ->
+  n12 + n23 <= n ->
+  trans_on n12 n23.
+Proof.
+  intros. unfold trans_up in H. apply H. auto.
+Qed.
+
+Lemma stpn_sel2: forall G1 T1 G2 p M TL TU Gp,
+  pth_has G2 p (dec_typ M TL TU) Gp ->
+  stpn true Gp TL TU Gp ->
+  stpn true G1 T1 TL Gp ->
+  stpn true G1 T1 (typ_sel p M) G2.
+Proof.
+  intros. inversion H0 as [n1 H1']. inversion H1 as [n2 H2'].
+  exists (S (n1+n2)).
+  eapply stp_sel2; try eassumption.
+Qed.
+
+Lemma stpn_sel1: forall G1 G2 T2 p M TL TU Gp,
+  pth_has G1 p (dec_typ M TL TU) Gp ->
+  stpn true Gp TL TU Gp ->
+  stpn true Gp TU T2 G2 ->
+  stpn true G1 (typ_sel p M) T2 G2.
+Proof.
+  intros. inversion H0 as [n1 H1']. inversion H1 as [n2 H2'].
+  exists (S (n1+n2)).
+  eapply stp_sel1; try eassumption.
+Qed.
+
+Lemma stp_trans: forall n, trans_up n.
+Proof.
+  intros n. induction n.
+  - unfold trans_up. unfold trans_on. intros.
+    assert (n12 = 0) by omega. assert (n23 = 0) by omega. subst.
+    inversion H0; inversion H1.
+  - unfold trans_up.
+    intros n12 n23 Hneq G1 T1 T2 G2 G3 T3 HS12 HS23.
+
+    inversion HS12; inversion HS23; subst;
+    (* 36 cases total *)
+    (* 6 cases, stp_sel2 right *)
+    try solve [eapply stpn_sel2; [
+        eassumption |
+        eexists; eassumption |
+        eapply trans_le in IHn; [
+            eapply IHn; eassumption |
+            omega
+        ]
+    ]];
+    (* 5 cases, stp_sel1 left *)
+    try solve [eapply stpn_sel1; [
+        eassumption |
+        eexists; eassumption |
+        eapply trans_le in IHn; [
+            eapply IHn; eassumption |
+            omega
+        ]
+    ]];
+
+    (* TODO *)
+    admit.
+
+Qed.
+
 Theorem trans: forall G1 T1 G2 T2 G3 T3,
   stpn true G1 T1 T2 G2 ->
   stpn true G2 T2 T3 G3 ->
