@@ -628,12 +628,26 @@ Lemma stpd_build_mem: forall n1 G1,
   stp true G1 (TMem TA1L TA1) (TMem TA2L TA2) n1 ->
   exists n3, stp true G1 T1 (TMem TA2L TA2) n3.
 Proof.
-  
-  (* TODO! *)
-  
-  admit.
+  intros.
+  generalize dependent n1.
+  generalize dependent TA2.
+  generalize dependent TA2L.
+  induction H.
+  - Case "mem".
+    subst. eexists. eauto.
+  - Case "sel".
+    intros. subst.
+    assert (exists n3, stp true G1 T3 (TMem TA2L TA2) n3) as IX2. {
+      eapply IHexp2. eauto.
+    }
+    destruct IX2 as [n2 IX2].
+    assert (exists n3, stp true G1 T (TMem TBot (TMem TA2L TA2)) n3) as IX. {
+      eapply IHexp1. eapply stp_mem. eapply stp_wrapf. eapply stp_bot. apply IX2. 
+    }
+    destruct IX.
+    subst. eexists. eapply stp_sel1. eauto. eauto.
+    Grab Existential Variables. apply 0.
 Qed.
-
 
 
 Lemma stp_narrow: forall m G1 T1 T2 n1,
