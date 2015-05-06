@@ -1104,31 +1104,7 @@ Theorem trans: forall G1 T1 G2 T2 G3 T3,
   stp true G1 T1 T2 G2 ->
   stp true G2 T2 T3 G3 ->
   stp true G1 T1 T3 G3.
-Proof.
-  introv H12 H23. inductions H23.
-  - (* stp_sel2 *)
-    apply stp_sel2 with (TL:=TL) (TU:=TU) (Gp:=Gp).
-    assumption. assumption.
-    apply IHstp2. apply H12.
-  - (* stp_sel1 *)
-    inductions H12.
-    + (* stp_sel2 *)
-      assert (dec_typ M TL0 TU0 = dec_typ M TL TU /\ Gp0 = Gp) as A. {
-        apply pth_has_unique with (G:=G2) (p:=p).
-        assumption. assumption.
-        compute. reflexivity.
-      }
-      inversion A as [A1 A2]. inversions A1. clear A.
-      apply IHstp3. apply IHstp0. assumption.
-    + (* stp_sel1 *) admit.
-    + admit.
-    + admit.
-    + admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-Qed.
+Proof. admit. Qed.
 
 (* ###################################################################### *)
 (** ** Inversion Lemmas *)
