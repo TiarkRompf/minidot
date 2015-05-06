@@ -371,91 +371,108 @@ Inductive same_typ: ctx -> typ -> typ -> ctx -> Prop :=
   same_typ G (typ_bind Ds) (typ_bind Ds) G
 .
 
-Inductive stp: bool -> ctx -> typ -> typ -> ctx -> Prop :=
-| stp_sel2: forall G1 T1 G2 p M TL TU Gp,
+Inductive exp: ctx -> typ -> decs -> ctx -> Prop :=
+| exp_bind: forall G Ds,
+  exp G (typ_bind Ds) Ds G
+| exp_sel: forall G G' G'' p M TL TU Ds,
+  pth_has G p (dec_typ M TL TU) G' ->
+  exp G' TU Ds G'' ->
+  exp G (typ_sel p M) Ds G''
+with pth_has: ctx -> pth -> dec -> ctx -> Prop :=
+| pth_has_any: forall G x Gx Tx Ds D G' x',
+  binds x (typ_clo Gx Tx) G ->
+  exp Gx Tx Ds G' ->
+  decs_has Ds D ->
+  x' = var_gen (dom G') ->
+  pth_has G (pth_var (avar_f x)) (open_dec x' D) (G' & (x' ~ (typ_clo Gx Tx)))
+.
+
+Inductive stp: nat -> bool -> ctx -> typ -> typ -> ctx -> Prop :=
+| stp_sel2: forall n1 n2 G1 T1 G2 p M TL TU Gp,
   pth_has G2 p (dec_typ M TL TU) Gp ->
-  stp true Gp TL TU Gp ->
-  stp true G1 T1 TL Gp ->
-  stp true G1 T1 (typ_sel p M) G2
-| stp_sel1: forall G1 G2 T2 p M TL TU Gp,
+  stp n1 true Gp TL TU Gp ->
+  stp n2 true G1 T1 TL Gp ->
+  stp (S (n1+n2)) true G1 T1 (typ_sel p M) G2
+| stp_sel1: forall n1 n2 G1 G2 T2 p M TL TU Gp,
   pth_has G1 p (dec_typ M TL TU) Gp ->
-  stp true Gp TL TU Gp ->
-  stp true Gp TU T2 G2 ->
-  stp true G1 (typ_sel p M) T2 G2
-| stp_sel1u: forall G1 G2 T2 p M TU Gp,
+  stp n1 true Gp TL TU Gp ->
+  stp n2 true Gp TU T2 G2 ->
+  stp (S (n1+n2)) true G1 (typ_sel p M) T2 G2
+| stp_sel1u: forall n1 G1 G2 T2 p M TU Gp,
   pth_has G1 p (dec_tyu M TU) Gp ->
-  stp true Gp TU T2 G2 ->
-  stp true G1 (typ_sel p M) T2 G2
-| stp_selx: forall G1 G2 p1 p2 M TL1 TU1 TL2 TU2 Gp1 Gp2,
+  stp n1 true Gp TU T2 G2 ->
+  stp (S n1) true G1 (typ_sel p M) T2 G2
+| stp_selx: forall n1 n2 G1 G2 p1 p2 M TL1 TU1 TL2 TU2 Gp1 Gp2,
   pth_has G1 p1 (dec_typ M TL1 TU1) Gp1 ->
   pth_has G2 p2 (dec_typ M TL2 TU2) Gp2 ->
-  stp true Gp1 TL1 TU1 Gp1 ->
-  stp true Gp2 TL2 TU2 Gp2 ->
+  stp n1 true Gp1 TL1 TU1 Gp1 ->
+  stp n2 true Gp2 TL2 TU2 Gp2 ->
   same_typ Gp2 TL2 TL1 Gp1 ->
   same_typ Gp1 TU1 TU2 Gp2 ->
-  stp true G1 (typ_sel p1 M) (typ_sel p2 M) G2
-| stp_selxu: forall G1 G2 p1 p2 M TU1 TU2 Gp1 Gp2,
+  stp (S (n1+n2)) true G1 (typ_sel p1 M) (typ_sel p2 M) G2
+| stp_selxu: forall n1 G1 G2 p1 p2 M TU1 TU2 Gp1 Gp2,
   pth_has G1 p1 (dec_tyu M TU1) Gp1 ->
   pth_has G2 p2 (dec_tyu M TU2) Gp2 ->
   wf_typ Gp1 TU1 ->
   wf_typ Gp2 TU2 ->
   same_typ Gp1 TU1 TU2 Gp2 ->
-  stp true G1 (typ_sel p1 M) (typ_sel p2 M) G2
-| stp_bind: forall L G1 Ds1 G2 Ds2 G1A G1B G1C G1X G2A G2B G2C G2X,
+  stp (S n1) true G1 (typ_sel p1 M) (typ_sel p2 M) G2
+| stp_bind: forall n1 L G1 Ds1 G2 Ds2 G1A G1B G1C G1X G2A G2B G2C G2X,
   wf_typ G2 (typ_bind Ds2) ->
   G1 = G1A & G1B & G1C ->
   G1X = G1A & G1C ->
   G2 = G2A & G2B & G2C ->
   G2X = G2A & G2C ->
   (forall x, x \notin L ->
-   sdcs (G1X & (x ~ typ_clo G1X (typ_bind Ds1)))
+   sdcs n1
+        (G1X & (x ~ typ_clo G1X (typ_bind Ds1)))
         (open_decs x Ds1)
         (open_decs x Ds2)
         (G2X & (x ~ typ_clo G1X (typ_bind Ds1)))
   ) ->
-  stp true G1 (typ_bind Ds1) (typ_bind Ds2) G2
-| stp_transf: forall G1 G2 G3 T1 T2 T3,
-  stp true G1 T1 T2 G2 ->
-  stp false G2 T2 T3 G3 ->
-  stp false G1 T1 T3 G3
-| stp_wrapf: forall G1 G2 T1 T2,
-  stp true G1 T1 T2 G2 ->
-  stp false G1 T1 T2 G2
+  stp (S n1) true G1 (typ_bind Ds1) (typ_bind Ds2) G2
+| stp_transf: forall n1 n2 G1 G2 G3 T1 T2 T3,
+  stp n1 true G1 T1 T2 G2 ->
+  stp n2 false G2 T2 T3 G3 ->
+  stp (S (n1+n2)) false G1 T1 T3 G3
+| stp_wrapf: forall n1 G1 G2 T1 T2,
+  stp n1 true G1 T1 T2 G2 ->
+  stp (S n1) false G1 T1 T2 G2
 
-with sdc: ctx -> dec -> dec -> ctx -> Prop :=
-| sdc_typ: forall G1 G2 M TL1 TL2 TU1 TU2,
-  stp true G1 TL1 TU1 G1 ->
-  stp true G2 TL2 TU2 G2 ->
-  stp false G2 TL2 TL1 G1 ->
-  stp true G1 TU1 TU2 G2 ->
-  sdc G1 (dec_typ M TL1 TU1) (dec_typ M TL2 TU2) G2
-| sdc_tyu: forall G1 G2 M TU1 TU2,
-  stp true G1 TU1 TU2 G2 ->
-  sdc G1 (dec_tyu M TU1) (dec_tyu M TU2) G2
-| sdc_typu: forall G1 G2 M TL1 TU1 TU2,
-  stp true G1 TL1 TU1 G1 ->
-  stp true G1 TU1 TU2 G2 ->
-  sdc G1 (dec_typ M TL1 TU1) (dec_tyu M TU2) G2
-| sdc_mtd: forall G1 G2 m TL1 TL2 TU1 TU2,
-  stp false G2 TL2 TL1 G1 ->
-  stp true G1 TU1 TU2 G2 ->
-  sdc G1 (dec_mtd m TL1 TU1) (dec_mtd m TL2 TU2) G2
+with sdc: nat -> ctx -> dec -> dec -> ctx -> Prop :=
+| sdc_typ: forall n1 n2 n3 n4 G1 G2 M TL1 TL2 TU1 TU2,
+  stp n1 true G1 TL1 TU1 G1 ->
+  stp n2 true G2 TL2 TU2 G2 ->
+  stp n3 false G2 TL2 TL1 G1 ->
+  stp n4 true G1 TU1 TU2 G2 ->
+  sdc (S (n1+n2+n3+n4)) G1 (dec_typ M TL1 TU1) (dec_typ M TL2 TU2) G2
+| sdc_tyu: forall n1 G1 G2 M TU1 TU2,
+  stp n1 true G1 TU1 TU2 G2 ->
+  sdc (S n1) G1 (dec_tyu M TU1) (dec_tyu M TU2) G2
+| sdc_typu: forall n1 n2 G1 G2 M TL1 TU1 TU2,
+  stp n1 true G1 TL1 TU1 G1 ->
+  stp n2 true G1 TU1 TU2 G2 ->
+  sdc (S (n1+n2)) G1 (dec_typ M TL1 TU1) (dec_tyu M TU2) G2
+| sdc_mtd: forall n1 n2 G1 G2 m TL1 TL2 TU1 TU2,
+  stp n1 false G2 TL2 TL1 G1 ->
+  stp n2 true G1 TU1 TU2 G2 ->
+  sdc (S (n1+n2)) G1 (dec_mtd m TL1 TU1) (dec_mtd m TL2 TU2) G2
 
-with sdcs: ctx -> decs -> decs -> ctx -> Prop :=
-| sdcs_nil: forall G1 Ds1 G2,
+with sdcs: nat -> ctx -> decs -> decs -> ctx -> Prop :=
+| sdcs_nil: forall n1 G1 Ds1 G2,
   wf_decs G1 Ds1 ->
-  sdcs G1 Ds1 decs_nil G2
-| sdcs_cons: forall G1 Ds1 G2 Ds2 D1 D2,
+  sdcs (S n1) G1 Ds1 decs_nil G2
+| sdcs_cons: forall n1 n2 G1 Ds1 G2 Ds2 D1 D2,
   decs_has Ds1 D1 ->
-  sdc G1 D1 D2 G2 ->
-  sdcs G1 Ds1 Ds2 G2 ->
+  sdc n1 G1 D1 D2 G2 ->
+  sdcs n2 G1 Ds1 Ds2 G2 ->
   decs_hasnt Ds2 (label_of_dec D2) ->
-  sdcs G1 Ds1 (decs_cons D2 Ds2) G2
+  sdcs (S (n1+n2)) G1 Ds1 (decs_cons D2 Ds2) G2
 
 with wf_typ: ctx -> typ -> Prop :=
-| wf_sel: forall G p M TL TU Gp,
+| wf_sel: forall n1 G p M TL TU Gp,
   pth_has G p (dec_typ M TL TU) Gp ->
-  stp true Gp TL TU Gp ->
+  stp n1 true Gp TL TU Gp ->
   wf_typ G (typ_sel p M)
 | wf_selu: forall G p M TU Gp,
   pth_has G p (dec_tyu M TU) Gp ->
@@ -471,8 +488,8 @@ with wf_typ: ctx -> typ -> Prop :=
   wf_typ G (typ_bind Ds)
 
 with wf_dec: ctx -> dec -> Prop :=
-| wf_dec_typ: forall G M TL TU,
-  stp true G TL TU G ->
+| wf_dec_typ: forall n1 G M TL TU,
+  stp n1 true G TL TU G ->
   wf_dec G (dec_typ M TL TU)
 | wf_dec_tyu: forall G M TU,
   wf_typ G TU ->
@@ -490,27 +507,16 @@ with wf_decs: ctx -> decs -> Prop :=
   wf_decs G Ds ->
   decs_hasnt Ds (label_of_dec D) ->
   wf_decs G (decs_cons D Ds)
-
-with exp: ctx -> typ -> decs -> ctx -> Prop :=
-| exp_bind: forall G Ds,
-  exp G (typ_bind Ds) Ds G
-| exp_sel: forall G G' G'' p M TL TU Ds,
-  pth_has G p (dec_typ M TL TU) G' ->
-  exp G' TU Ds G'' ->
-  exp G (typ_sel p M) Ds G''
-with pth_has: ctx -> pth -> dec -> ctx -> Prop :=
-| pth_has_any: forall G x Gx Tx Ds D G' x',
-  binds x (typ_clo Gx Tx) G ->
-  exp Gx Tx Ds G' ->
-  decs_has Ds D ->
-  x' # G' ->
-  pth_has G (pth_var (avar_f x)) (open_dec x' D) (G' & (x' ~ (typ_clo Gx Tx)))
 .
+
+Definition stpn b G1 T1 T2 G2 := exists n, stp n b G1 T1 T2 G2.
+Definition sdcn G1 D1 D2 G2 := exists n, sdc n G1 D1 D2 G2.
+Definition sdcsn G1 Ds1 Ds2 G2 := exists n, sdcs n G1 Ds1 Ds2 G2.
 
 Inductive tc_trm: ctx -> trm -> typ -> Prop :=
 | tc_var: forall G T x Gx Tx,
   binds x (typ_clo Gx Tx) G ->
-  stp true Gx Tx T G ->
+  stpn true Gx Tx T G ->
   tc_trm G (trm_var (avar_f x)) T
 | tc_new: forall L G ds Ds,
   defs_to_decs ds = Ds ->
@@ -525,11 +531,11 @@ Inductive tc_trm: ctx -> trm -> typ -> Prop :=
   tc_trm G (trm_call t1 m t2) T
 | tc_sub: forall G t T TU,
   tc_trm G t T ->
-  stp true G T TU G ->
+  stpn true G T TU G ->
   tc_trm G t TU
 with tc_def: ctx -> def -> dec -> Prop :=
 | tc_def_typ: forall G M TL TU,
-  stp true G TL TU G ->
+  stpn true G TL TU G ->
   tc_def G (def_typ M TL TU) (dec_typ M TL TU)
 | tc_def_tyu: forall G M TU,
   wf_typ G TU ->
@@ -544,7 +550,7 @@ with tc_def: ctx -> def -> dec -> Prop :=
 with trm_has: ctx -> trm -> dec -> Prop :=
 | trm_has_var: forall G x D Gp Dp,
   pth_has G (pth_var (avar_f x)) Dp Gp ->
-  sdc Gp Dp D G ->
+  sdcn Gp Dp D G ->
   trm_has G (trm_var (avar_f x)) D
 | trm_has_trm: forall L G G' t T Ds D,
   tc_trm G t T ->
@@ -553,7 +559,7 @@ with trm_has: ctx -> trm -> dec -> Prop :=
   (forall x, x \notin L ->
    x \notin fv_dec (open_dec x D)
   ) ->
-  sdc G' D D G ->
+  sdcn G' D D G ->
   trm_has G t D
 with tc_defs: ctx -> defs -> decs -> Prop :=
 | tc_defs_nil: forall G,
@@ -585,7 +591,7 @@ with tc_ctx: vctx -> ctx -> Prop :=
 Inductive wf_val: ctx -> val -> typ -> Prop :=
 | wf_val_any: forall G v T Gv Tv,
   tc_val v (typ_clo Gv Tv) ->
-  stp true Gv Tv T G ->
+  stpn true Gv Tv T G ->
   wf_val G v T
 .
 
@@ -610,32 +616,26 @@ with   wf_dec_mut_sw  := Induction for wf_dec  Sort Prop
 with   wf_decs_mut_sw := Induction for wf_decs Sort Prop.
 Combined Scheme sw_mutind from stp_mut_sw, sdc_mut_sw, sdcs_mut_sw, wf_typ_mut_sw, wf_dec_mut_sw, wf_decs_mut_sw.
 
-Scheme stp_mut_sa  := Induction for stp  Sort Prop
-with   sdc_mut_sa  := Induction for sdc  Sort Prop
-with   sdcs_mut_sa := Induction for sdcs Sort Prop
-with   wf_typ_mut_sa  := Induction for wf_typ  Sort Prop
-with   wf_dec_mut_sa  := Induction for wf_dec  Sort Prop
-with   wf_decs_mut_sa := Induction for wf_decs Sort Prop
-with   exp_mut_sa     := Induction for exp Sort Prop
-with   pth_has_mut_sa := Induction for pth_has Sort Prop.
-Combined Scheme sa_mutind from stp_mut_sa, sdc_mut_sa, sdcs_mut_sa, wf_typ_mut_sa, wf_dec_mut_sa, wf_decs_mut_sa, exp_mut_sa, pth_has_mut_sa.
+Scheme exp_mut_ep     := Induction for exp Sort Prop
+with   pth_has_mut_ep := Induction for pth_has Sort Prop.
+Combined Scheme ep_mutind from exp_mut_ep, pth_has_mut_ep.
 
 (* ###################################################################### *)
 (** ** Properties *)
 
 Theorem sub_reg:
-  (forall b G1 T1 T2 G2, stp b G1 T1 T2 G2 -> wf_typ G1 T1 /\ wf_typ G2 T2) /\
-  (forall G1 D1 D2 G2, sdc G1 D1 D2 G2 -> wf_dec G1 D1 /\ wf_dec G2 D2) /\
-  (forall G1 Ds1 Ds2 G2, sdcs G1 Ds1 Ds2 G2 -> wf_decs G1 Ds1 /\ wf_decs G2 Ds2).
+  (forall n b G1 T1 T2 G2, stp n b G1 T1 T2 G2 -> wf_typ G1 T1 /\ wf_typ G2 T2) /\
+  (forall n G1 D1 D2 G2, sdc n G1 D1 D2 G2 -> wf_dec G1 D1 /\ wf_dec G2 D2) /\
+  (forall n G1 Ds1 Ds2 G2, sdcs n G1 Ds1 Ds2 G2 -> wf_decs G1 Ds1 /\ wf_decs G2 Ds2).
 Proof.
   apply sub_mutind; intros.
   - (* T1 <: p.M -- sel2 *)
     split.
     + inversion H0. assumption.
-    + eapply wf_sel. apply p0. assumption.
+    + eapply wf_sel. apply p0. eassumption.
   - (* p.M <: T2 -- sel1 *)
     split.
-    + eapply wf_sel. apply p0. assumption.
+    + eapply wf_sel. apply p0. eassumption.
     + inversion H0. assumption.
   - (* p.M <: T2 -- sel1u *)
     split.
@@ -643,8 +643,8 @@ Proof.
     + inversion H. assumption.
   - (* p.M <: p.M -- selx *)
     split.
-    + eapply wf_sel. apply p. assumption.
-    + eapply wf_sel. apply p0. assumption.
+    + eapply wf_sel. apply p. eassumption.
+    + eapply wf_sel. apply p0. eassumption.
   - (* p.M <: p.M -- selxu *)
     split.
     + eapply wf_selu. apply p. assumption.
@@ -663,15 +663,15 @@ Proof.
     assumption.
   - (* typ *)
     split.
-    + apply wf_dec_typ. assumption.
-    + apply wf_dec_typ. assumption.
+    + eapply wf_dec_typ. eassumption.
+    + eapply wf_dec_typ. eassumption.
   - (* tyu *)
     split.
     + apply wf_dec_tyu. inversion H. assumption.
     + apply wf_dec_tyu. inversion H. assumption.
   - (* typu *)
     split.
-    + apply wf_dec_typ. assumption.
+    + eapply wf_dec_typ. eassumption.
     + apply wf_dec_tyu. inversion H0. assumption.
   - (* mtd *)
     split.
@@ -694,27 +694,27 @@ Definition stp_reg := proj1 sub_reg.
 Definition sdc_reg := proj1 (proj2 sub_reg).
 Definition sdcs_reg := proj2 (proj2 sub_reg).
 
-Lemma stp_reg1: forall b G1 T1 T2 G2,
-  stp b G1 T1 T2 G2 ->
+Lemma stp_reg1: forall n b G1 T1 T2 G2,
+  stp n b G1 T1 T2 G2 ->
   wf_typ G1 T1.
 Proof.
-  intros b G1 T1 T2 G2 H.
+  intros n b G1 T1 T2 G2 H.
   apply (proj1 (stp_reg H)).
 Qed.
 
-Lemma sdc_reg2: forall G1 D1 D2 G2,
-  sdc G1 D1 D2 G2 ->
+Lemma sdc_reg2: forall n G1 D1 D2 G2,
+  sdc n G1 D1 D2 G2 ->
   wf_dec G2 D2.
 Proof.
-  intros G1 Ds1 Ds2 G2 H.
+  intros n G1 Ds1 Ds2 G2 H.
   apply (proj2 (sdc_reg H)).
 Qed.
 
-Lemma sdcs_reg1: forall G1 Ds1 Ds2 G2,
-  sdcs G1 Ds1 Ds2 G2 ->
+Lemma sdcs_reg1: forall n G1 Ds1 Ds2 G2,
+  sdcs n G1 Ds1 Ds2 G2 ->
   wf_decs G1 Ds1.
 Proof.
-  intros G1 Ds1 Ds2 G2 H.
+  intros n G1 Ds1 Ds2 G2 H.
   apply (proj1 (sdcs_reg H)).
 Qed.
 
@@ -731,11 +731,11 @@ Proof.
     - apply IHdecs_hasnt. assumption.
 Qed.
 
-Lemma sdcs_cons1: forall G1 Ds1 Ds2 G2 D1,
-  sdcs G1 Ds1 Ds2 G2 ->
+Lemma sdcs_cons1: forall n G1 Ds1 Ds2 G2 D1,
+  sdcs n G1 Ds1 Ds2 G2 ->
   wf_dec G1 D1 ->
   decs_hasnt Ds1 (label_of_dec D1) ->
-  sdcs G1 (decs_cons D1 Ds1) Ds2 G2.
+  sdcs n G1 (decs_cons D1 Ds1) Ds2 G2.
 Proof.
   intros.
   induction H.
@@ -749,59 +749,66 @@ Proof.
 Qed.
 
 Theorem sub_refl:
-  (forall b G1 T1 T2 G2, stp b G1 T1 T2 G2 -> stp b G1 T1 T1 G1 /\ stp b G2 T2 T2 G2) /\
-  (forall G1 D1 D2 G2, sdc G1 D1 D2 G2 -> sdc G1 D1 D1 G1 /\ sdc G2 D2 D2 G2) /\
-  (forall G1 Ds1 Ds2 G2, sdcs G1 Ds1 Ds2 G2 -> sdcs G1 Ds1 Ds1 G1 /\ sdcs G2 Ds2 Ds2 G2) /\
-  (forall G T, wf_typ G T -> stp true G T T G) /\
-  (forall G D, wf_dec G D -> sdc G D D G) /\
-  (forall G Ds, wf_decs G Ds -> sdcs G Ds Ds G).
+  (forall n b G1 T1 T2 G2, stp n b G1 T1 T2 G2 -> stpn b G1 T1 T1 G1 /\ stpn b G2 T2 T2 G2) /\
+  (forall n G1 D1 D2 G2, sdc n G1 D1 D2 G2 -> sdcn G1 D1 D1 G1 /\ sdcn G2 D2 D2 G2) /\
+  (forall n G1 Ds1 Ds2 G2, sdcs n G1 Ds1 Ds2 G2 -> sdcsn G1 Ds1 Ds1 G1 /\ sdcsn G2 Ds2 Ds2 G2) /\
+  (forall G T, wf_typ G T -> stpn true G T T G) /\
+  (forall G D, wf_dec G D -> sdcn G D D G) /\
+  (forall G Ds, wf_decs G Ds -> sdcsn G Ds Ds G).
 Proof.
   apply sw_mutind; intros.
   - (* T1 <: p.M -- sel2 *)
     split.
     + inversion H0. assumption.
-    + eapply stp_selx.
+    + exists (S (n1+n1)). eapply stp_selx.
       apply p0. apply p0.
       assumption. assumption.
       apply same_rfl. apply same_rfl.
   - (* p.M <: T2 -- sel1 *)
     split.
-    + eapply stp_selx.
+    + exists (S (n1+n1)). eapply stp_selx.
       apply p0. apply p0.
       assumption. assumption.
       apply same_rfl. apply same_rfl.
     + inversion H0. assumption.
   - (* p.M <: T2 -- sel1u *)
     split.
-    + eapply stp_selxu.
+    + assert (wf_typ Gp TU) as HwfU. {
+        inversion H as [H1 H2].
+        inversion H1 as [n H1'].
+        apply stp_reg1 with (n:=n) (b:=true) (T2:=TU) (G2:=Gp).
+        assumption.
+      }
+      exists (S 0).
+      eapply stp_selxu.
       apply p0. apply p0.
-      inversion H. eapply stp_reg1. apply H0.
-      inversion H. eapply stp_reg1. apply H0.
+      assumption. assumption.
       apply same_rfl.
     + inversion H. assumption.
   - (* p.M <: p.M -- selx *)
     split.
-    + eapply stp_selx.
+    + exists (S (n1+n1)). eapply stp_selx.
       apply p. apply p.
       assumption. assumption.
       apply same_rfl. apply same_rfl.
-    + eapply stp_selx.
+    + exists (S (n2+n2)). eapply stp_selx.
       apply p0. apply p0.
       assumption. assumption.
       apply same_rfl. apply same_rfl.
   - (* p.M <: p.M -- selxu *)
     split.
-    + eapply stp_selxu.
+    + exists (S 0). eapply stp_selxu.
       apply p. apply p.
       assumption. assumption.
       apply same_rfl.
-    + eapply stp_selxu.
+    + exists (S 0). eapply stp_selxu.
       apply p0. apply p0.
       assumption. assumption.
       apply same_rfl.
   - (* bind *)
     split.
-    + apply stp_bind with (L:=L)
+    + admit. (* TODO: problem with scoping of existential *) (*
+      apply stp_bind with (L:=L)
         (G1A:=G1A) (G1B:=G1B) (G1C:=G1C) (G1X:=G1X)
         (G2A:=G1A) (G2B:=G1B) (G2C:=G1C) (G2X:=G1X).
       apply wf_bind with (L:=L)
@@ -809,60 +816,76 @@ Proof.
       assumption. assumption.
       intros x Frx. eapply sdcs_reg1. specialize (s x Frx). apply s.
       assumption. assumption. assumption. assumption.
-      intros x Frx. specialize (H0 x Frx). inversion H0. assumption.
+      intros x Frx. specialize (H0 x Frx). inversion H0. inversion H1. assumption.
+      *)
     + assumption.
   - (* transf *)
     split.
-    + inversion H. apply stp_wrapf. assumption.
+    + inversion H. inversion H1 as [n H1']. exists (S n). apply stp_wrapf. assumption.
     + inversion H0. assumption.
   - (* wrapf *)
     split.
-    + inversion H. apply stp_wrapf. assumption.
-    + inversion H. apply stp_wrapf. assumption.
+    + inversion H. inversion H0 as [n H0']. exists (S n). apply stp_wrapf. assumption.
+    + inversion H. inversion H1 as [n H1']. exists (S n). apply stp_wrapf. assumption.
   - (* sdc_typ *)
     split.
-    + apply sdc_typ; try assumption.
-      inversion H1. assumption.
-      inversion H. assumption.
-    + apply sdc_typ; try assumption.
-      inversion H1. assumption.
-      inversion H0. assumption.
+    + inversion H1 as [_ HL]. inversion HL as [nl HL'].
+      inversion H2 as [HU _]. inversion HU as [nu HU'].
+      exists (S (n1+n1+nl+nu)). apply sdc_typ; assumption.
+    + inversion H1 as [HL _]. inversion HL as [nl HL'].
+      inversion H2 as [_ HU]. inversion HU as [nu HU'].
+      exists (S (n2+n2+nl+nu)). apply sdc_typ; assumption.
   - (* sdc_tyu *)
     split.
-    + apply sdc_tyu. inversion H. assumption.
-    + apply sdc_tyu. inversion H. assumption.
+    + inversion H as [HU _]. inversion HU as [nu HU'].
+      exists (S nu). apply sdc_tyu; assumption.
+    + inversion H as [_ HU]. inversion HU as [nu HU'].
+      exists (S nu). apply sdc_tyu; assumption.
   - (* sdc_typu *)
     split.
-    + apply sdc_typ; try assumption.
-      inversion H. apply stp_wrapf. assumption.
-      inversion H. assumption.
-    + apply sdc_tyu. inversion H0. assumption.
+    + inversion H as [HL HU].
+      inversion HL as [nl HL'].
+      inversion HU as [nu HU'].
+      exists (S (n1+n1+(S nl)+nu)). apply sdc_typ; try assumption.
+      apply stp_wrapf. assumption.
+    + inversion H0 as [_ HU]. inversion HU as [nu HU'].
+      exists (S nu). apply sdc_tyu. assumption.
   - (* sdc_mtd *)
     split.
-    + apply sdc_mtd. inversion H. assumption. inversion H0. assumption.
-    + apply sdc_mtd. inversion H. assumption. inversion H0. assumption.
+    + inversion H as [_ HL]. inversion HL as [nl HL'].
+      inversion H0 as [HU _]. inversion HU as [nu HU'].
+      exists (S (nl+nu)). apply sdc_mtd; assumption.
+    + inversion H as [HL _]. inversion HL as [nl HL'].
+      inversion H0 as [_ HU]. inversion HU as [nu HU'].
+      exists (S (nl+nu)). apply sdc_mtd; assumption.
   - (* Ds1 <: {} -- nil *)
     split.
     + assumption.
-    + apply sdcs_nil. apply wf_decs_nil.
+    + exists (S 0). apply sdcs_nil. apply wf_decs_nil.
   - (* Ds1 <: D2::Ds2 -- cons *)
     split.
     + inversion H0. assumption.
-    + apply sdcs_cons with (D1:=D2).
-        apply decs_has_hit. assumption.
-        inversion H. assumption.
+    + inversion H0 as [_ HDs2]. inversion HDs2 as [n2' HDS2'].
+      inversion H as [_ HD2]. inversion HD2 as [n1' HD2'].
+      exists (S (n1'+n2')).
+      apply sdcs_cons with (D1:=D2).
+        apply decs_has_hit; assumption.
+        assumption.
         apply sdcs_cons1.
-          inversion H0. assumption.
+          assumption.
           eapply sdc_reg2. apply s.
           assumption.
           assumption.
   - (* wf_sel *)
+    exists (S (n1+n1)).
     apply stp_selx with (TL1:=TL) (TL2:=TL) (TU1:=TU) (TU2:=TU) (Gp1:=Gp) (Gp2:=Gp);
     try assumption; try solve [apply same_rfl].
   - (* wf_selu *)
+    exists (S 0).
     apply stp_selxu with (TU1:=TU) (TU2:=TU) (Gp1:=Gp) (Gp2:=Gp);
     try assumption; try solve [apply same_rfl].
   - (* wf_bind *)
+    admit. (* TODO: like stp_bind. *) (*
     apply stp_bind with (L:=L)
       (G1A:=GA) (G1B:=GB) (G1C:=GC) (G1X:=GX)
       (G2A:=GA) (G2B:=GB) (G2C:=GC) (G2X:=GX);
@@ -870,41 +893,65 @@ Proof.
     apply wf_bind with (L:=L)
       (GA:=GA) (GB:=GB) (GC:=GC) (GX:=GX);
     assumption.
+    *)
   - (* wf_dec_typ *)
-    inversion H.
-    apply sdc_typ; try assumption.
+    inversion H as [HL HU].
+    inversion HL as [nl HL'].
+    inversion HU as [nu HU'].
+    exists (S (n1+n1+(S nl)+nu)). apply sdc_typ; try assumption.
     apply stp_wrapf. assumption.
   - (* wf_dec_tyu *)
-    apply sdc_tyu; try assumption.
+    inversion H as [nu HU'].
+    exists (S nu). apply sdc_tyu; assumption.
   - (* wf_dec_mtd *)
+    inversion H as [nl HL'].
+    inversion H0 as [nu HU'].
+    exists (S ((S nl)+nu)).
     apply sdc_mtd; try assumption.
     apply stp_wrapf. assumption.
   - (* wf_decs_nil *)
-    apply sdcs_nil. apply wf_decs_nil.
+    exists (S 0). apply sdcs_nil. apply wf_decs_nil.
   - (* wf_decs_cons *)
+    inversion H0 as [n2 HDS'].
+    inversion H as [n1 HD'].
+    exists (S (n1+n2)).
     apply sdcs_cons with (D1:=D); try assumption.
     + apply decs_has_hit. assumption.
     + apply sdcs_cons1; try assumption.
 Qed.
 
+Theorem pth_has_extending:
+  (forall G p D Gp, pth_has G p D Gp ->
+   forall GA GB GC,
+     G = GA & GC ->
+     pth_has (GA & GB & GC) p D Gp
+  ).
+Proof.
+  intros. inversion H. subst.
+  apply pth_has_any with (Ds:=Ds); auto.
+  subst. apply binds_weaken.
+    assumption.
+    admit (* ok (GA & GB & GC) *).
+Qed.
+
 Theorem sub_extending:
-  (forall b G1 T1 T2 G2, stp b G1 T1 T2 G2 ->
+  (forall n b G1 T1 T2 G2, stp n b G1 T1 T2 G2 ->
    forall G1A G1B G1C G2A G2B G2C,
      G1 = G1A & G1C ->
      G2 = G2A & G2C ->
-     stp b (G1A & G1B & G1C) T1 T2 (G2A & G2B & G2C)
+     stp n b (G1A & G1B & G1C) T1 T2 (G2A & G2B & G2C)
   ) /\
-  (forall G1 D1 D2 G2, sdc G1 D1 D2 G2 ->
+  (forall n G1 D1 D2 G2, sdc n G1 D1 D2 G2 ->
    forall G1A G1B G1C G2A G2B G2C,
      G1 = G1A & G1C ->
      G2 = G2A & G2C ->
-     sdc (G1A & G1B & G1C) D1 D2 (G2A & G2B & G2C)
+     sdc n (G1A & G1B & G1C) D1 D2 (G2A & G2B & G2C)
   ) /\
-  (forall G1 Ds1 Ds2 G2, sdcs G1 Ds1 Ds2 G2 ->
+  (forall n G1 Ds1 Ds2 G2, sdcs n G1 Ds1 Ds2 G2 ->
    forall G1A G1B G1C G2A G2B G2C,
      G1 = G1A & G1C ->
      G2 = G2A & G2C ->
-     sdcs (G1A & G1B & G1C) Ds1 Ds2 (G2A & G2B & G2C)
+     sdcs n (G1A & G1B & G1C) Ds1 Ds2 (G2A & G2B & G2C)
   ) /\
   (forall G T, wf_typ G T ->
    forall GA GB GC,
@@ -920,52 +967,44 @@ Theorem sub_extending:
    forall GA GB GC,
      G = GA & GC ->
      wf_decs (GA & GB & GC) Ds
-  ) /\
-  (forall G T Ds G', exp G T Ds G' ->
-   True
-  ) /\
-  (forall G p D Gp, pth_has G p D Gp ->
-   forall GA GB GC,
-     G = GA & GC ->
-     pth_has (GA & GB & GC) p D Gp
   ).
 Proof.
-  apply sa_mutind; intros.
+  apply sw_mutind; intros.
   - (* stp_sel2 *)
     apply stp_sel2 with (TL:=TL) (TU:=TU) (Gp:=Gp & empty & empty); auto.
-    rewrite concat_empty_r.
-    rewrite concat_empty_r.
-    apply H; try assumption.
+    apply pth_has_extending with (G:=G2).
+    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
+    assumption.
+    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
     apply H0; try assumption.
-    rewrite concat_empty_r. reflexivity.
-    rewrite concat_empty_r. reflexivity.
-    apply H1; try assumption.
     rewrite concat_empty_r. reflexivity.
   - (* stp_sel1 *)
     apply stp_sel1 with (TL:=TL) (TU:=TU) (Gp:= Gp & empty & empty); auto.
-    rewrite concat_empty_r.
-    rewrite concat_empty_r.
-    apply H; try assumption.
+    apply pth_has_extending with (G:=G1).
+    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
+    assumption.
+    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
     apply H0; try assumption.
-    rewrite concat_empty_r. reflexivity.
-    rewrite concat_empty_r. reflexivity.
-    apply H1; try assumption.
     rewrite concat_empty_r. reflexivity.
   - (* stp_sel1u *)
     apply stp_sel1u with (TU:=TU) (Gp:= Gp & empty & empty); auto.
-    rewrite concat_empty_r.
-    rewrite concat_empty_r.
+    apply pth_has_extending with (G:=G1).
+    rewrite concat_empty_r. rewrite concat_empty_r. assumption.
+    assumption.
     apply H; try assumption.
-    apply H0; try assumption.
     rewrite concat_empty_r. reflexivity.
   - (* stp_selx *)
     apply stp_selx
     with (TL1:=TL1) (TL2:=TL2) (TU1:=TU1) (TU2:=TU2) (Gp1:=Gp1) (Gp2:=Gp2);
     auto.
+    apply pth_has_extending with (G:=G1); assumption.
+    apply pth_has_extending with (G:=G2); assumption.
   - (* stp_selxu *)
     apply stp_selxu
     with (TU1:=TU1) (TU2:=TU2) (Gp1:=Gp1) (Gp2:=Gp2);
     auto.
+    apply pth_has_extending with (G:=G1); assumption.
+    apply pth_has_extending with (G:=G2); assumption.
   - (* stp_bind *)
     subst.
     apply stp_bind with (L:=L)
@@ -996,9 +1035,11 @@ Proof.
   - (* sdcs_cons *)
     apply sdcs_cons with (D1:=D1); auto.
   - (* wf_typ *)
-    apply wf_sel with (TL:=TL) (TU:=TU) (Gp:=Gp); auto.
+    apply wf_sel with (n1:=n1) (TL:=TL) (TU:=TU) (Gp:=Gp); auto.
+    apply pth_has_extending with (G:=G); assumption.
   - (* wf_tyu *)
     apply wf_selu with (TU:=TU) (Gp:=Gp); auto.
+    apply pth_has_extending with (G:=G); assumption.
   - (* wf_bind *)
     subst.
     apply wf_bind with (L:=L)
@@ -1006,7 +1047,7 @@ Proof.
     admit (* re-ordering env concats *). reflexivity.
     assumption.
   - (* wf_dec_typ *)
-    apply wf_dec_typ; auto.
+    apply wf_dec_typ with (n1:=n1); auto.
   - (* wf_dec_tyu *)
     apply wf_dec_tyu; auto.
   - (* wf_dec_mtd *)
@@ -1015,22 +1056,171 @@ Proof.
     apply wf_decs_nil; auto.
   - (* wf_decs_cons *)
     apply wf_decs_cons; auto.
-  - (* exp_bind *)
-    auto.
-  - (* exp_sel *)
-    auto.
-  - (* pth_has_any *)
-    apply pth_has_any with (Ds:=Ds); auto.
-    subst. apply binds_weaken.
-      assumption.
-      admit (* ok (GA & GB & GC) *).
 Qed.
 
+Lemma lookup_unique: forall {A} x G (a: A) (a': A),
+  binds x a  G ->
+  binds x a' G ->
+  a' = a.
+Proof.
+  introv Hb1 Hb2.
+  inversion Hb1 as [Hb1'].
+  inversion Hb2 as [Hb2'].
+  rewrite Hb2' in Hb1'.
+  inversion Hb1'.
+  reflexivity.
+Qed.
+
+Lemma decs_has_unique: forall Ds D1 D2,
+  decs_has Ds D1 ->
+  decs_has Ds D2 ->
+  label_of_dec D1 = label_of_dec D2 ->
+  D1 = D2.
+Proof.
+  introv H1. induction H1.
+  - introv H2 Eq. inversions H2.
+    * reflexivity.
+    * rewrite Eq in H5. false H5. reflexivity.
+  - introv H2 Eq. inversions H2.
+    * rewrite Eq in H. false H. reflexivity.
+    * apply (IHdecs_has H4 Eq).
+Qed.
+
+Lemma ep_unique:
+  (forall G T Ds Ge, exp G T Ds Ge ->
+   forall Ds' Ge',
+   exp G T Ds' Ge' ->
+   Ds' = Ds /\ Ge' = Ge) /\
+  (forall G p D Gp, pth_has G p D Gp ->
+   forall D' Gp',
+   pth_has G p D' Gp' ->
+   label_of_dec D' = label_of_dec D ->
+   D' = D /\ Gp' = Gp).
+Proof.
+  apply ep_mutind.
+  - (* exp_bind *)
+    intros; inversion H; subst; split; reflexivity.
+  - (* exp_sel *)
+    intros G Gp Gpe p M TL TU Ds Hp HIp He HIe Ds' Ge' H.
+    inversion H; subst.
+    assert (dec_typ M TL0 TU0 = dec_typ M TL TU /\ G' = Gp) as A.
+    apply HIp; try assumption.
+    compute. reflexivity.
+    inversion A as [A1 A2]. inversion A1. subst.
+    apply HIe. assumption.
+  - (* pth_has_any *)
+    intros G x Gx Tx Ds D Gp z Hb He HIe Hd Hz D' Gp' H Hl.
+    inversion H. subst.
+    assert (typ_clo Gx0 Tx0 = typ_clo Gx Tx) as A. {
+      eapply lookup_unique. apply Hb. assumption.
+    }
+    inversions A.
+    assert (Ds0 = Ds /\ G' = Gp) as A. {
+      apply HIe. assumption.
+    }
+    inversions A.
+    assert (D0 = D) as A. {
+      apply decs_has_unique with (Ds:=Ds); try assumption.
+      induction D; induction D0; compute; compute in Hl; apply Hl.
+    }
+    subst.
+    split; reflexivity.
+Qed.
+
+Theorem pth_has_unique: forall G p D Gp D' Gp',
+  pth_has G p D Gp ->
+  pth_has G p D' Gp' ->
+  label_of_dec D' = label_of_dec D ->
+  D' = D /\ Gp' = Gp.
+Proof.
+  introv H1.
+  apply (proj2 ep_unique).
+  apply H1.
+Qed.
+
+(* Transivity *)
+
+Definition trans_on n12 n23 :=
+  forall G1 T1 G2 T2 G3 T3,
+  stp n12 true G1 T1 T2 G2 ->
+  stp n23 true G2 T2 T3 G3 ->
+  stpn true G1 T1 T3 G3.
+Hint Unfold trans_on.
+
+Definition trans_up n :=
+  forall n12 n23, n12 + n23 <= n ->
+  trans_on n12 n23.
+Hint Unfold trans_up.
+
+Lemma trans_le: forall n n12 n23,
+  trans_up n ->
+  n12 + n23 <= n ->
+  trans_on n12 n23.
+Proof.
+  intros. unfold trans_up in H. apply H. auto.
+Qed.
+
+Lemma stpn_sel2: forall G1 T1 G2 p M TL TU Gp,
+  pth_has G2 p (dec_typ M TL TU) Gp ->
+  stpn true Gp TL TU Gp ->
+  stpn true G1 T1 TL Gp ->
+  stpn true G1 T1 (typ_sel p M) G2.
+Proof.
+  intros. inversion H0 as [n1 H1']. inversion H1 as [n2 H2'].
+  exists (S (n1+n2)).
+  eapply stp_sel2; try eassumption.
+Qed.
+
+Lemma stpn_sel1: forall G1 G2 T2 p M TL TU Gp,
+  pth_has G1 p (dec_typ M TL TU) Gp ->
+  stpn true Gp TL TU Gp ->
+  stpn true Gp TU T2 G2 ->
+  stpn true G1 (typ_sel p M) T2 G2.
+Proof.
+  intros. inversion H0 as [n1 H1']. inversion H1 as [n2 H2'].
+  exists (S (n1+n2)).
+  eapply stp_sel1; try eassumption.
+Qed.
+
+Lemma stp_trans: forall n, trans_up n.
+Proof.
+  intros n. induction n.
+  - unfold trans_up. unfold trans_on. intros.
+    assert (n12 = 0) by omega. assert (n23 = 0) by omega. subst.
+    inversion H0; inversion H1.
+  - unfold trans_up.
+    intros n12 n23 Hneq G1 T1 T2 G2 G3 T3 HS12 HS23.
+
+    inversion HS12; inversion HS23; subst;
+    (* 36 cases total *)
+    (* 6 cases, stp_sel2 right *)
+    try solve [eapply stpn_sel2; [
+        eassumption |
+        eexists; eassumption |
+        eapply trans_le in IHn; [
+            eapply IHn; eassumption |
+            omega
+        ]
+    ]];
+    (* 5 cases, stp_sel1 left *)
+    try solve [eapply stpn_sel1; [
+        eassumption |
+        eexists; eassumption |
+        eapply trans_le in IHn; [
+            eapply IHn; eassumption |
+            omega
+        ]
+    ]];
+
+    (* TODO *)
+    admit.
+
+Qed.
 
 Theorem trans: forall G1 T1 G2 T2 G3 T3,
-  stp true G1 T1 T2 G2 ->
-  stp true G2 T2 T3 G3 ->
-  stp true G1 T1 T3 G3.
+  stpn true G1 T1 T2 G2 ->
+  stpn true G2 T2 T3 G3 ->
+  stpn true G1 T1 T3 G3.
 Proof. admit. Qed.
 
 (* ###################################################################### *)
@@ -1038,7 +1228,7 @@ Proof. admit. Qed.
 
 Lemma invert_tc_var: forall G x T,
   tc_trm G (trm_var (avar_f x)) T ->
-  exists Gx Tx, binds x (typ_clo Gx Tx) G /\ stp true Gx Tx T G.
+  exists Gx Tx, binds x (typ_clo Gx Tx) G /\ stpn true Gx Tx T G.
 Proof.
   intros G x T H.
   remember (trm_var (avar_f x)) as t.
