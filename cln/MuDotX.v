@@ -1233,7 +1233,8 @@ Proof.
   eapply stp_sel1u; try eassumption.
 Qed.
 
-Lemma sdcs_trans: forall x Ds1 Ds2 Ds3 G1A G1C G2A G2C G1A0 G1C0 G2A0 G2C0,
+Lemma sdcs_trans: forall x Ds1 Ds2 Ds3 G1A G2B G1C G2A G2C G1A0 G1B0 G1C0 G2A0 G2C0,
+   G2A & G2B & G2C = G1A0 & G1B0 & G1C0 ->
    sdcs (G1A & G1C & x ~ typ_clo (G1A & G1C) (typ_bind Ds1))
         (open_decs x Ds1) (open_decs x Ds2)
         (G2A & G2C & x ~ typ_clo (G1A & G1C) (typ_bind Ds1))
