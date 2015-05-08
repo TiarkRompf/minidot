@@ -1397,7 +1397,7 @@ Proof.
     }
     inversion A as [A1 A2]. inversions A1. clear A.
 
-    eexists. eapply stp_selxu; try eassumption.
+    exists (S 0). eapply stp_selxu; try eassumption.
     apply same_typ_trans with (T2:=TU0) (G2:=Gp0); assumption.
 
   + inversion H18.
