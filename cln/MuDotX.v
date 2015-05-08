@@ -388,11 +388,12 @@ with pth_has: ctx -> pth -> dec -> ctx -> Prop :=
 .
 
 Inductive stp: nat -> bool -> ctx -> typ -> typ -> ctx -> Prop :=
-| stp_sel2: forall n1 n2 G1 T1 G2 p M TL TU Gp,
+| stp_sel2: forall n1 n2 n3 G1 T1 G2 p M TL TU Gp,
   pth_has G2 p (dec_typ M TL TU) Gp ->
   stp n1 true Gp TL TU Gp ->
   stp n2 true G1 T1 TL Gp ->
-  stp (S (n1+n2)) true G1 T1 (typ_sel p M) G2
+  stp n3 true G1 T1 TU Gp ->
+  stp (S (n1+n2+n3)) true G1 T1 (typ_sel p M) G2
 | stp_sel1: forall n1 n2 G1 G2 T2 p M TL TU Gp,
   pth_has G1 p (dec_typ M TL TU) Gp ->
   stp n1 true Gp TL TU Gp ->
@@ -972,6 +973,8 @@ Proof.
     rewrite concat_empty_r. rewrite concat_empty_r. assumption.
     apply H0; try assumption.
     rewrite concat_empty_r. reflexivity.
+    apply H1; try assumption.
+    rewrite concat_empty_r. reflexivity.
   - (* stp_sel1 *)
     apply stp_sel1 with (TL:=TL) (TU:=TU) (Gp:= Gp & empty & empty); auto.
     apply pth_has_extending with (G:=G1).
@@ -1158,10 +1161,14 @@ Lemma stpn_sel2: forall G1 T1 G2 p M TL TU Gp,
   pth_has G2 p (dec_typ M TL TU) Gp ->
   stpn true Gp TL TU Gp ->
   stpn true G1 T1 TL Gp ->
+  stpn true G1 T1 TU Gp ->
   stpn true G1 T1 (typ_sel p M) G2.
 Proof.
-  intros. inversion H0 as [n1 H1']. inversion H1 as [n2 H2'].
-  exists (S (n1+n2)).
+  intros.
+  inversion H0 as [n1 H1'].
+  inversion H1 as [n2 H2'].
+  inversion H2 as [n3 H3'].
+  exists (S (n1+n2+n3)).
   eapply stp_sel2; try eassumption.
 Qed.
 
@@ -1194,6 +1201,10 @@ Proof.
         eapply trans_le in IHn; [
             eapply IHn; eassumption |
             omega
+        ] |
+        eapply trans_le in IHn; [
+            eapply IHn; eassumption |
+            omega
         ]
     ]];
     (* 5 cases, stp_sel1 left *)
@@ -1204,10 +1215,43 @@ Proof.
             eapply IHn; eassumption |
             omega
         ]
-    ]];
+    ]].
 
-    (* TODO *)
-    admit.
+  + (* sel2 - sel1 *)
+    inversions H14.
+    assert (dec_typ M TL0 TU0 = dec_typ M TL TU /\ Gp0 = Gp) as A. {
+      eapply pth_has_unique; try eassumption.
+      compute. reflexivity.
+    }
+    inversion A as [A1 A2]. inversions A1. clear A.
+    eapply trans_le in IHn.
+    eapply IHn. apply H2. eassumption.
+    omega.
+
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
 
 Qed.
 
