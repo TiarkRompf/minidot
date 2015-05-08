@@ -1165,6 +1165,16 @@ Proof.
   admit.
 Qed.
 
+Lemma same_typ_trans: forall G1 T1 G2 T2 G3 T3,
+  same_typ G1 T1 T2 G2 ->
+  same_typ G2 T2 T3 G3 ->
+  same_typ G1 T1 T3 G3.
+Proof.
+  introv H12 H23. induction H12; try assumption.
+  (* tricky *)
+  admit.
+Qed.
+
 (* Transivity *)
 
 Definition trans_on n12 n23 :=
@@ -1330,7 +1340,16 @@ Proof.
     inversion A as [A1 A2]. inversion A1.
 
   + (* selx - selx *)
-    admit.
+    inversions H19.
+    assert (dec_typ M TL2 TU2 = dec_typ M TL0 TU0 /\ Gp2 = Gp0) as A. {
+      eapply pth_has_unique; try eassumption.
+      compute. reflexivity.
+    }
+    inversion A as [A1 A2]. inversions A1. clear A.
+
+    eexists. eapply stp_selx; try eassumption.
+    apply same_typ_trans with (T2:=TL0) (G2:=Gp0); assumption.
+    apply same_typ_trans with (T2:=TU0) (G2:=Gp0); assumption.
 
   + (* selx - selxu *)
     inversions H18.
@@ -1371,7 +1390,15 @@ Proof.
     inversion A as [A1 A2]. inversion A1.
 
   + (* selxu - selxu *)
-    admit.
+    inversions H17.
+    assert (dec_tyu M TU2 = dec_tyu M TU0 /\ Gp2 = Gp0) as A. {
+      eapply pth_has_unique; try eassumption.
+      compute. reflexivity.
+    }
+    inversion A as [A1 A2]. inversions A1. clear A.
+
+    eexists. eapply stp_selxu; try eassumption.
+    apply same_typ_trans with (T2:=TU0) (G2:=Gp0); assumption.
 
   + inversion H18.
 
