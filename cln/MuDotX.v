@@ -1259,7 +1259,15 @@ Theorem trans: forall G1 T1 G2 T2 G3 T3,
   stpn true G1 T1 T2 G2 ->
   stpn true G2 T2 T3 G3 ->
   stpn true G1 T1 T3 G3.
-Proof. admit. Qed.
+Proof.
+  introv H12 H23.
+  destruct H12 as [n12 H12'].
+  destruct H23 as [n23 H23'].
+  eapply stp_trans with (n:=n12+n23) (n12:=n12) (n23:=n23).
+  omega.
+  eassumption.
+  assumption.
+Qed.
 
 (* ###################################################################### *)
 (** ** Inversion Lemmas *)
