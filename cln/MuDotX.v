@@ -1233,6 +1233,23 @@ Proof.
   eapply stp_sel1u; try eassumption.
 Qed.
 
+Lemma sdcs_trans: forall x Ds1 Ds2 Ds3 G1A G1C G2A G2C G1A0 G1C0 G2A0 G2C0,
+   sdcs (G1A & G1C & x ~ typ_clo (G1A & G1C) (typ_bind Ds1))
+        (open_decs x Ds1) (open_decs x Ds2)
+        (G2A & G2C & x ~ typ_clo (G1A & G1C) (typ_bind Ds1))
+   ->
+   sdcs (G1A0 & G1C0 & x ~ typ_clo (G1A0 & G1C0) (typ_bind Ds2))
+        (open_decs x Ds2) (open_decs x Ds3)
+        (G2A0 & G2C0 & x ~ typ_clo (G1A0 & G1C0) (typ_bind Ds2))
+   ->
+   sdcs (G1A & G1C & x ~ typ_clo (G1A & G1C) (typ_bind Ds1))
+     (open_decs x Ds1) (open_decs x Ds3)
+     (G2A0 & G2C0 & x ~ typ_clo (G1A & G1C) (typ_bind Ds1))
+   .
+Proof.
+  admit.
+Qed.
+
 Lemma stp_trans: forall n, trans_up n.
 Proof.
   intros n. induction n.
@@ -1411,8 +1428,14 @@ Proof.
   + inversion H18.
 
   + (* bind - bind *)
-    admit.
-
+    inversions H19.
+    exists (S 0).
+    apply stp_bind with (L:=L \u L0) (G1A:=G1A) (G1B:=G1B) (G1C:=G1C) (G1X:=G1A & G1C) (G2A:=G2A0) (G2B:=G2B0) (G2C:=G2C0) (G2X:=G2A0 & G2C0); try assumption; try reflexivity.
+    intros x Frx.
+    assert (x \notin L) as FrL by auto.
+    assert (x \notin L0) as FrL0 by auto.
+    specialize (H4 x FrL). specialize (H15 x FrL0).
+    eapply sdcs_trans; eassumption.
 Qed.
 
 Theorem trans: forall G1 T1 G2 T2 G3 T3,
