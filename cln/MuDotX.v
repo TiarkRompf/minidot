@@ -1254,24 +1254,83 @@ Proof.
     }
     inversion A as [A1 A2]. inversion A1. (* contradiction *)
 
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
+  + (* sel2 - selx *)
+    inversions H17.
+    assert (dec_typ M TL1 TU1 = dec_typ M TL TU /\ Gp1 = Gp) as A. {
+      eapply pth_has_unique; try eassumption.
+      compute. reflexivity.
+    }
+    inversion A as [A1 A2]. inversions A1. clear A.
+    admit. (* same_typ *)
+
+  + (* sel2 - selxu *)
+    inversions H16.
+    assert (dec_tyu M TU1 = dec_typ M TL TU /\ Gp1 = Gp) as A. {
+      eapply pth_has_unique; try eassumption.
+      compute. reflexivity.
+    }
+    inversion A as [A1 A2]. inversion A1.
+
+  + inversion H17.
+
+  + (* selx - sel1 *)
+    admit.
+
+  + (* selxu - sel1 *)
+    inversions H15.
+    assert (dec_tyu M TU = dec_typ M TL2 TU2 /\ Gp = Gp2) as A. {
+      eapply pth_has_unique; try eassumption.
+      compute. reflexivity.
+    }
+    inversion A as [A1 A2]. inversion A1.
+
+  + (* selx - selx *)
+    admit.
+
+  + (* selx - selxu *)
+    inversions H18.
+    assert (dec_tyu M TU0 = dec_typ M TL2 TU2 /\ Gp0 = Gp2) as A. {
+      eapply pth_has_unique; try eassumption.
+      compute. reflexivity.
+    }
+    inversion A as [A1 A2]. inversion A1.
+
+  + inversion H19.
+
+  + (* selx - sel1u *)
+    inversions H15.
+    assert (dec_tyu M TU2 = dec_typ M TL TU /\ Gp2 = Gp) as A. {
+      eapply pth_has_unique; try eassumption.
+      compute. reflexivity.
+    }
+    inversion A as [A1 A2]. inversion A1.
+
+  + (* selxu - sel1u *)
+    admit.
+
+  + (* selxu - selx *)
+    inversions H18.
+    assert (dec_tyu M TU2 = dec_typ M TL1 TU0 /\ Gp2 = Gp0) as A. {
+      eapply pth_has_unique; try eassumption.
+      compute. reflexivity.
+    }
+    inversion A as [A1 A2]. inversion A1.
+
+  + (* selxu - selxu *)
+    admit.
+
+  + inversion H18.
+
+  + inversion H16.
+
+  + inversion H15.
+
+  + inversion H19.
+
+  + inversion H18.
+
+  + (* bind - bind *)
+    admit.
 
 Qed.
 
