@@ -1228,7 +1228,14 @@ Proof.
     eapply IHn. apply H2. eassumption.
     omega.
 
-  + admit.
+  + (* sel2 - sel1u *)
+    inversions H13.
+    assert (dec_tyu M TU0 = dec_typ M TL TU /\ Gp0 = Gp) as A. {
+      eapply pth_has_unique; try eassumption.
+      compute. reflexivity.
+    }
+    inversion A as [A1 A2]. inversion A1. (* contradiction *)
+
   + admit.
   + admit.
   + admit.
