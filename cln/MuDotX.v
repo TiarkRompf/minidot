@@ -1135,6 +1135,36 @@ Proof.
   apply H1.
 Qed.
 
+(* same_typ lemmas *)
+
+Lemma same_typ_sym: forall G1 T1 G2 T2,
+  same_typ G1 T1 T2 G2 ->
+  same_typ G2 T2 T1 G1.
+Proof.
+  introv H. induction H.
+  - apply same_rfl.
+  - eapply same_sel; eassumption.
+  - apply same_bind.
+Qed.
+
+Lemma same_stp2: forall n G1 T1 G2 T2 G3 T3,
+  stp n true G1 T1 T2 G2 ->
+  same_typ G2 T2 T3 G3 ->
+  stp n true G1 T1 T3 G3.
+Proof.
+  introv Hstp Hsame. gen G1 T1. induction Hsame; intros; try assumption.
+  (* tricky *)
+  admit.
+Qed.
+
+Lemma same_stp1: forall n G1 T1 G2 T2 G3 T3,
+  stp n true G2 T2 T3 G3 ->
+  same_typ G1 T1 T2 G2 ->
+  stp n true G1 T1 T3 G3.
+Proof.
+  admit.
+Qed.
+
 (* Transivity *)
 
 Definition trans_on n12 n23 :=
@@ -1261,7 +1291,13 @@ Proof.
       compute. reflexivity.
     }
     inversion A as [A1 A2]. inversions A1. clear A.
-    admit. (* same_typ *)
+
+    eexists. eapply stp_sel2; try eassumption.
+
+    apply same_stp2 with (T2:=TL) (G2:=Gp); try eassumption.
+    apply same_typ_sym. assumption.
+
+    apply same_stp2 with (T2:=TU) (G2:=Gp); eassumption.
 
   + (* sel2 - selxu *)
     inversions H16.
@@ -1274,7 +1310,16 @@ Proof.
   + inversion H17.
 
   + (* selx - sel1 *)
-    admit.
+    inversions H16.
+    assert (dec_typ M TL2 TU2 = dec_typ M TL TU /\ Gp2 = Gp) as A. {
+      eapply pth_has_unique; try eassumption.
+      compute. reflexivity.
+    }
+    inversion A as [A1 A2]. inversions A1. clear A.
+
+    eexists. eapply stp_sel1; try eassumption.
+
+    apply same_stp1 with (T2:=TU) (G2:=Gp); try eassumption.
 
   + (* selxu - sel1 *)
     inversions H15.
@@ -1306,7 +1351,16 @@ Proof.
     inversion A as [A1 A2]. inversion A1.
 
   + (* selxu - sel1u *)
-    admit.
+    inversions H14.
+    assert (dec_tyu M TU2 = dec_tyu M TU /\ Gp2 = Gp) as A. {
+      eapply pth_has_unique; try eassumption.
+      compute. reflexivity.
+    }
+    inversion A as [A1 A2]. inversions A1. clear A.
+
+    eexists. eapply stp_sel1u; try eassumption.
+
+    apply same_stp1 with (T2:=TU) (G2:=Gp); try eassumption.
 
   + (* selxu - selx *)
     inversions H18.
