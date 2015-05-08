@@ -1183,7 +1183,7 @@ Proof.
     assert (n12 = 0) by omega. assert (n23 = 0) by omega. subst.
     inversion H0; inversion H1.
   - unfold trans_up.
-    intros n12 n23 Hneq G1 T1 T2 G2 G3 T3 HS12 HS23.
+    intros n12 n23 Hneq G1 T1 G2 T2 G3 T3 HS12 HS23.
 
     inversion HS12; inversion HS23; subst;
     (* 36 cases total *)
