@@ -424,7 +424,7 @@ Inductive stp: nat -> bool -> ctx -> typ -> typ -> ctx -> Prop :=
   G2 = G2A & G2B & G2C ->
   G2X = G2A & G2C ->
   (forall x, x \notin L ->
-   sdcs n1
+   sdcs
         (G1X & (x ~ typ_clo G1X (typ_bind Ds1)))
         (open_decs x Ds1)
         (open_decs x Ds2)
@@ -458,16 +458,16 @@ with sdc: nat -> ctx -> dec -> dec -> ctx -> Prop :=
   stp n2 true G1 TU1 TU2 G2 ->
   sdc (S (n1+n2)) G1 (dec_mtd m TL1 TU1) (dec_mtd m TL2 TU2) G2
 
-with sdcs: nat -> ctx -> decs -> decs -> ctx -> Prop :=
-| sdcs_nil: forall n1 G1 Ds1 G2,
+with sdcs: ctx -> decs -> decs -> ctx -> Prop :=
+| sdcs_nil: forall G1 Ds1 G2,
   wf_decs G1 Ds1 ->
-  sdcs (S n1) G1 Ds1 decs_nil G2
-| sdcs_cons: forall n1 n2 G1 Ds1 G2 Ds2 D1 D2,
+  sdcs G1 Ds1 decs_nil G2
+| sdcs_cons: forall n1 G1 Ds1 G2 Ds2 D1 D2,
   decs_has Ds1 D1 ->
   sdc n1 G1 D1 D2 G2 ->
-  sdcs n2 G1 Ds1 Ds2 G2 ->
+  sdcs G1 Ds1 Ds2 G2 ->
   decs_hasnt Ds2 (label_of_dec D2) ->
-  sdcs (S (n1+n2)) G1 Ds1 (decs_cons D2 Ds2) G2
+  sdcs G1 Ds1 (decs_cons D2 Ds2) G2
 
 with wf_typ: ctx -> typ -> Prop :=
 | wf_sel: forall n1 G p M TL TU Gp,
@@ -511,7 +511,6 @@ with wf_decs: ctx -> decs -> Prop :=
 
 Definition stpn b G1 T1 T2 G2 := exists n, stp n b G1 T1 T2 G2.
 Definition sdcn G1 D1 D2 G2 := exists n, sdc n G1 D1 D2 G2.
-Definition sdcsn G1 Ds1 Ds2 G2 := exists n, sdcs n G1 Ds1 Ds2 G2.
 
 Inductive tc_trm: ctx -> trm -> typ -> Prop :=
 | tc_var: forall G T x Gx Tx,
@@ -626,7 +625,7 @@ Combined Scheme ep_mutind from exp_mut_ep, pth_has_mut_ep.
 Theorem sub_reg:
   (forall n b G1 T1 T2 G2, stp n b G1 T1 T2 G2 -> wf_typ G1 T1 /\ wf_typ G2 T2) /\
   (forall n G1 D1 D2 G2, sdc n G1 D1 D2 G2 -> wf_dec G1 D1 /\ wf_dec G2 D2) /\
-  (forall n G1 Ds1 Ds2 G2, sdcs n G1 Ds1 Ds2 G2 -> wf_decs G1 Ds1 /\ wf_decs G2 Ds2).
+  (forall G1 Ds1 Ds2 G2, sdcs G1 Ds1 Ds2 G2 -> wf_decs G1 Ds1 /\ wf_decs G2 Ds2).
 Proof.
   apply sub_mutind; intros.
   - (* T1 <: p.M -- sel2 *)
@@ -710,11 +709,11 @@ Proof.
   apply (proj2 (sdc_reg H)).
 Qed.
 
-Lemma sdcs_reg1: forall n G1 Ds1 Ds2 G2,
-  sdcs n G1 Ds1 Ds2 G2 ->
+Lemma sdcs_reg1: forall G1 Ds1 Ds2 G2,
+  sdcs G1 Ds1 Ds2 G2 ->
   wf_decs G1 Ds1.
 Proof.
-  intros n G1 Ds1 Ds2 G2 H.
+  intros G1 Ds1 Ds2 G2 H.
   apply (proj1 (sdcs_reg H)).
 Qed.
 
@@ -731,16 +730,16 @@ Proof.
     - apply IHdecs_hasnt. assumption.
 Qed.
 
-Lemma sdcs_cons1: forall n G1 Ds1 Ds2 G2 D1,
-  sdcs n G1 Ds1 Ds2 G2 ->
+Lemma sdcs_cons1: forall G1 Ds1 Ds2 G2 D1,
+  sdcs G1 Ds1 Ds2 G2 ->
   wf_dec G1 D1 ->
   decs_hasnt Ds1 (label_of_dec D1) ->
-  sdcs n G1 (decs_cons D1 Ds1) Ds2 G2.
+  sdcs G1 (decs_cons D1 Ds1) Ds2 G2.
 Proof.
   intros.
   induction H.
   + apply sdcs_nil. apply wf_decs_cons; assumption.
-  + apply sdcs_cons with (D1:=D0).
+  + apply sdcs_cons with (D1:=D0) (n1:=n1).
     - apply decs_has_skip. assumption.
       apply decs_has_or_hasnt with (Ds:=Ds1); assumption.
     - assumption.
@@ -751,10 +750,10 @@ Qed.
 Theorem sub_refl:
   (forall n b G1 T1 T2 G2, stp n b G1 T1 T2 G2 -> stpn b G1 T1 T1 G1 /\ stpn b G2 T2 T2 G2) /\
   (forall n G1 D1 D2 G2, sdc n G1 D1 D2 G2 -> sdcn G1 D1 D1 G1 /\ sdcn G2 D2 D2 G2) /\
-  (forall n G1 Ds1 Ds2 G2, sdcs n G1 Ds1 Ds2 G2 -> sdcsn G1 Ds1 Ds1 G1 /\ sdcsn G2 Ds2 Ds2 G2) /\
+  (forall G1 Ds1 Ds2 G2, sdcs G1 Ds1 Ds2 G2 -> sdcs G1 Ds1 Ds1 G1 /\ sdcs G2 Ds2 Ds2 G2) /\
   (forall G T, wf_typ G T -> stpn true G T T G) /\
   (forall G D, wf_dec G D -> sdcn G D D G) /\
-  (forall G Ds, wf_decs G Ds -> sdcsn G Ds Ds G).
+  (forall G Ds, wf_decs G Ds -> sdcs G Ds Ds G).
 Proof.
   apply sw_mutind; intros.
   - (* T1 <: p.M -- sel2 *)
@@ -807,7 +806,7 @@ Proof.
       apply same_rfl.
   - (* bind *)
     split.
-    + admit. (* TODO: problem with scoping of existential *) (*
+    + exists (S 0).
       apply stp_bind with (L:=L)
         (G1A:=G1A) (G1B:=G1B) (G1C:=G1C) (G1X:=G1X)
         (G2A:=G1A) (G2B:=G1B) (G2C:=G1C) (G2X:=G1X).
@@ -816,8 +815,7 @@ Proof.
       assumption. assumption.
       intros x Frx. eapply sdcs_reg1. specialize (s x Frx). apply s.
       assumption. assumption. assumption. assumption.
-      intros x Frx. specialize (H0 x Frx). inversion H0. inversion H1. assumption.
-      *)
+      intros x Frx. specialize (H0 x Frx). inversion H0. assumption.
     + assumption.
   - (* transf *)
     split.
@@ -861,14 +859,13 @@ Proof.
   - (* Ds1 <: {} -- nil *)
     split.
     + assumption.
-    + exists (S 0). apply sdcs_nil. apply wf_decs_nil.
+    + apply sdcs_nil. apply wf_decs_nil.
   - (* Ds1 <: D2::Ds2 -- cons *)
     split.
     + inversion H0. assumption.
-    + inversion H0 as [_ HDs2]. inversion HDs2 as [n2' HDS2'].
+    + inversion H0 as [_ HDs2].
       inversion H as [_ HD2]. inversion HD2 as [n1' HD2'].
-      exists (S (n1'+n2')).
-      apply sdcs_cons with (D1:=D2).
+      apply sdcs_cons with (D1:=D2) (n1:=n1').
         apply decs_has_hit; assumption.
         assumption.
         apply sdcs_cons1.
@@ -885,7 +882,7 @@ Proof.
     apply stp_selxu with (TU1:=TU) (TU2:=TU) (Gp1:=Gp) (Gp2:=Gp);
     try assumption; try solve [apply same_rfl].
   - (* wf_bind *)
-    admit. (* TODO: like stp_bind. *) (*
+    exists (S 0).
     apply stp_bind with (L:=L)
       (G1A:=GA) (G1B:=GB) (G1C:=GC) (G1X:=GX)
       (G2A:=GA) (G2B:=GB) (G2C:=GC) (G2X:=GX);
@@ -893,7 +890,6 @@ Proof.
     apply wf_bind with (L:=L)
       (GA:=GA) (GB:=GB) (GC:=GC) (GX:=GX);
     assumption.
-    *)
   - (* wf_dec_typ *)
     inversion H as [HL HU].
     inversion HL as [nl HL'].
@@ -910,12 +906,10 @@ Proof.
     apply sdc_mtd; try assumption.
     apply stp_wrapf. assumption.
   - (* wf_decs_nil *)
-    exists (S 0). apply sdcs_nil. apply wf_decs_nil.
+    apply sdcs_nil. apply wf_decs_nil.
   - (* wf_decs_cons *)
-    inversion H0 as [n2 HDS'].
     inversion H as [n1 HD'].
-    exists (S (n1+n2)).
-    apply sdcs_cons with (D1:=D); try assumption.
+    apply sdcs_cons with (D1:=D) (n1:=n1); try assumption.
     + apply decs_has_hit. assumption.
     + apply sdcs_cons1; try assumption.
 Qed.
@@ -947,11 +941,11 @@ Theorem sub_extending:
      G2 = G2A & G2C ->
      sdc n (G1A & G1B & G1C) D1 D2 (G2A & G2B & G2C)
   ) /\
-  (forall n G1 Ds1 Ds2 G2, sdcs n G1 Ds1 Ds2 G2 ->
+  (forall G1 Ds1 Ds2 G2, sdcs G1 Ds1 Ds2 G2 ->
    forall G1A G1B G1C G2A G2B G2C,
      G1 = G1A & G1C ->
      G2 = G2A & G2C ->
-     sdcs n (G1A & G1B & G1C) Ds1 Ds2 (G2A & G2B & G2C)
+     sdcs (G1A & G1B & G1C) Ds1 Ds2 (G2A & G2B & G2C)
   ) /\
   (forall G T, wf_typ G T ->
    forall GA GB GC,
@@ -1033,7 +1027,7 @@ Proof.
   - (* sdcs_nil *)
     apply sdcs_nil; auto.
   - (* sdcs_cons *)
-    apply sdcs_cons with (D1:=D1); auto.
+    apply sdcs_cons with (D1:=D1) (n1:=n1); auto.
   - (* wf_typ *)
     apply wf_sel with (n1:=n1) (TL:=TL) (TU:=TU) (Gp:=Gp); auto.
     apply pth_has_extending with (G:=G); assumption.
