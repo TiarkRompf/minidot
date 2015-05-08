@@ -1183,6 +1183,16 @@ Proof.
   eapply stp_sel1; try eassumption.
 Qed.
 
+Lemma stpn_sel1u: forall G1 G2 T2 p M TU Gp,
+  pth_has G1 p (dec_tyu M TU) Gp ->
+  stpn true Gp TU T2 G2 ->
+  stpn true G1 (typ_sel p M) T2 G2.
+Proof.
+  intros. inversion H0 as [n1 H1'].
+  exists (S n1).
+  eapply stp_sel1u; try eassumption.
+Qed.
+
 Lemma stp_trans: forall n, trans_up n.
 Proof.
   intros n. induction n.
@@ -1215,6 +1225,14 @@ Proof.
             eapply IHn; eassumption |
             omega
         ]
+    ]];
+    (* 5 cases, stp_sel1u left *)
+    try solve [eapply stpn_sel1u; [
+        eassumption |
+        eapply trans_le in IHn; [
+            eapply IHn; eassumption |
+            omega
+        ]
     ]].
 
   + (* sel2 - sel1 *)
@@ -1236,11 +1254,6 @@ Proof.
     }
     inversion A as [A1 A2]. inversion A1. (* contradiction *)
 
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
   + admit.
   + admit.
   + admit.
