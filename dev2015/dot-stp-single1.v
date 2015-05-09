@@ -263,6 +263,7 @@ Tactic Notation "wf_cases" tactic(first) ident(c) :=
 
 (* expansion / membership *)
 (* this is the precise version! no slack in lookup *)
+(* TODO: need the name for bind? *)
 Inductive exp : tenv -> ty -> ty -> Prop :=
 | exp_mem: forall G1 T1 T2,
     exp G1 (TMem T1 T2) (TMem T1 T2)
@@ -317,13 +318,15 @@ Inductive stp : bool -> tenv -> ty -> ty -> nat -> Prop :=
     stp true G1 (TBind TA1) T2 (S n1)
 ... or at least...
 *)
-| stp_bindx: forall G1 T1 T2 TA1 TA2 n1,
-    (* most likely, we will need exp T1 D here, too *)
-    (* but we need to check how this interacts with narrowing *)           
+| stp_bindx: forall G1 T1 T2 TA1 TA2 TL TU n1 n2,
     stp true ((length G1,T1)::G1) T1 T2 n1 ->
     open (length G1) TA1 = T1 ->                
     open (length G1) TA2 = T2 ->
-    stp true G1 (TBind TA1) (TBind TA2) (S n1)
+    (* we need exp T1 D here *)
+    (* how will this interact with narrowing? *)
+    exp ((length G1,T1)::G1) T1 (TMem TL TU) ->
+    stp true ((length G1,T1)::G1) TL TU n2 ->
+    stp true G1 (TBind TA1) (TBind TA2) (S (n1+n2))
 
 | stp_transf: forall G1 T1 T2 T3 n1 n2,
     stp true G1 T1 T2 n1 ->
@@ -363,19 +366,23 @@ Hint Constructors stp.
 (* ############################################################ *)
 
 
+(*
+THIS IS NOW FALSE: lhs must expand.
+
 Example ex1: exists n, stp true nil (TBind TBot) (TBind TTop) n.
 Proof.
- eexists. info_eauto.
+ eexists. eapply stp_bindx. eapply stp_bot. eauto. (* false - bot doesn't exp! *).
 Grab Existential Variables. apply 0.
 Qed.
+ *)
 
 Example ex2: exists n, stp true nil
    (TBind (TMem TBool TBool))
    (TBind (TMem TBot TTop)) n.
 Proof.
   eexists. eapply stp_bindx. eapply stp_mem. eapply stp_wrapf. eapply stp_bot.
-  eapply stp_top. compute. eauto. compute. eauto.
-Grab Existential Variables. apply 0. apply 0.
+  eapply stp_top. compute. eauto. compute. eauto. eapply exp_mem. eauto.
+Grab Existential Variables. apply 0. apply 0. apply 0.
 Qed.
 
 Example ex3: exists n, stp true nil
@@ -389,8 +396,8 @@ Proof.
   eapply stp_mem. eapply stp_wrapf.
   eapply stp_sel1. compute. eauto. eapply stp_mem. eauto. eauto.
   eapply stp_sel2. compute. eauto. eauto.
-  eauto. eauto.
-Grab Existential Variables. apply 0. apply 0. apply 0. apply 0.
+  eauto. eauto. eapply exp_mem. eauto.
+Grab Existential Variables. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 
@@ -452,7 +459,7 @@ Lemma stpd_bindx: forall G1 T1 T2 TA1 TA2,
     open (length G1) TA1 = T1 ->                
     open (length G1) TA2 = T2 ->
     stpd true G1 (TBind TA1) (TBind TA2).
-Proof. intros. repeat eu. eauto. Qed.
+Proof. intros. repeat eu. eauto. admit. Qed. (* FIXME later *)
 Lemma stpd_transf: forall G1 T1 T2 T3,
     stpd true G1 T1 T2 ->
     stpd false G1 T2 T3 ->           
@@ -488,23 +495,45 @@ Proof.
 Qed.  
 
 
+
+(* implementable type: expands and has good bounds *)
+Definition itp G T n := exists T1 T2 n1, exp G T (TMem T1 T2) /\ stp true G T1 T2 n1 /\ n1 <= n.
+
+(* implementable context *)
+Definition env_itp G n := forall x T, index x G = Some T -> itp G T n.
+
+
+
+
 (* left:  may use axiom but has size. must shrink *)
 (* right: no axiom but can grow *)
-Definition trans_on n1 := 
-                      forall  m T1 T2 T3 G1, 
-                      stp m G1 T1 T2 n1 ->
-                      stpd true G1 T2 T3 ->
-                      stpd true G1 T1 T3.
+
+Definition trans_env_on G1 n2 :=
+  forall m T1 T2 T3,
+      stp m G1 T1 T2 n2 ->
+      stpd true G1 T2 T3 ->
+      stpd true G1 T1 T3.
+
+Hint Unfold trans_env_on.
+
+Definition trans_on n1 n2 := 
+  forall G1,  
+    env_itp G1 n1 ->
+    trans_env_on G1 n2.
+    
 Hint Unfold trans_on.
 
-Definition trans_up n := forall n1, n1 <= n ->
-                      trans_on n1.
+
+
+
+Definition trans_up n := forall n1 n2, n1 + n2 <= n ->
+                      trans_on n1 n2.
 Hint Unfold trans_up.
 
-Lemma trans_le: forall n n1,
+Lemma trans_le: forall n n1 n2,
                       trans_up n ->
-                      n1 <= n ->
-                      trans_on n1
+                      n1+n2 <= n ->
+                      trans_on n1 n2
 .
 Proof. intros. unfold trans_up in H. eapply H. eauto. Qed.
 
@@ -571,13 +600,16 @@ Lemma stp_extend : forall m G1 T1 T2 x v n,
 Proof. admit. (*intros. destruct H. eexists. eapply stp_extend1. apply H.*) Qed.
 
 
+Lemma itp_extend: forall G T n x v,
+                         itp G T n ->
+                         itp ((x,v)::G) T n.
+Proof. admit. Qed.
 
-
-(* implementable type: expands and has good bounds *)
-Definition itp G T n := exists T1 T2 n1, exp G T (TMem T1 T2) /\ stp true G T1 T2 n1 /\ n1 <= n.
-
-(* implementable context *)
-Definition env_itp G n := forall x T, index x G = Some T -> itp G T n.
+Lemma env_itp_extend : forall G T n x v,
+                       env_itp G n ->
+                       itp ((x,v)::G) T n ->  
+                       env_itp ((x,v)::G) n.
+Proof. admit. (*intros. destruct H. eexists. eapply stp_extend1. apply H.*) Qed.
 
 
 
@@ -653,12 +685,14 @@ Qed.
 Lemma stp_narrow: forall m G1 T1 T2 n1,
   stpd m G1 T1 T2 ->
                     
-  forall x TX1 TX2 G1',
+  forall x TX1 TX2 G1' nG,
 
     index x G1 = Some TX2 ->
     update x TX1 G1 = G1' ->
     stp true G1' TX1 TX2 n1 ->
-    trans_on n1 ->
+    env_itp G1 nG ->
+    itp G1' TX1 nG ->
+    trans_on nG n1 ->
 
     stpd m G1' T1 T2.
 Proof.
@@ -676,37 +710,81 @@ Proof.
     intros. eapply stpd_mem. eapply IHstp1; eauto. eapply IHstp2; eauto.
   - Case "Sel2". intros.
     { case_eq (beq_nat x x0); intros E.
+      assert (env_itp G1' nG). admit.
       (* hit updated binding *)
       + assert (x = x0) as EX. eapply beq_nat_true_iff; eauto. subst. index_subst. index_subst.
-        eapply stpd_sel2. eapply upd_hit; eauto. eapply H4. eapply H3. eapply IHstp; eauto.
+        eapply stpd_sel2. eapply upd_hit; eauto. eapply H6. eapply H7. eapply H3. eapply IHstp; eauto.
       (* other binding *)
       + assert (x <> x0) as EX. eapply beq_nat_false_iff; eauto.
-        eapply stpd_sel2. eapply upd_miss; eauto. eapply IHstp. eapply H1. eauto. eauto. eauto.
+        eapply stpd_sel2. eapply upd_miss; eauto. eapply IHstp. eapply H1. eauto. eauto. eauto. eauto. eauto.
     }
   - Case "Sel1". intros.
     { case_eq (beq_nat x x0); intros E.
+      assert (env_itp G1' nG). admit.
       (* hit updated binding *)
       + assert (x = x0) as EX. eapply beq_nat_true_iff; eauto. subst. index_subst. index_subst. 
-        eapply stpd_sel1. eapply upd_hit; eauto. eapply H4. eapply H3. eapply IHstp; eauto.
+        eapply stpd_sel1. eapply upd_hit; eauto. eapply H6. eapply H7. eapply H3. eapply IHstp; eauto.
       (* other binding *)
       + assert (x <> x0) as EX. eapply beq_nat_false_iff; eauto.
-        eapply stpd_sel1. eapply upd_miss; eauto. eapply IHstp. eapply H1. eauto. eauto. eauto.
+        eapply stpd_sel1. eapply upd_miss; eauto. eapply IHstp. eapply H1. eauto. eauto. eauto. eauto. eauto.
     }
   - Case "Selx". eapply stpd_selx.
   - Case "Bindx".
+    (* Now that we require a realizable context, we need to provide
+       corresponding evidence for the lhs type on induction. 
+       This evidence will need to come from the stp_bindx derivation.
+       ergo, we also need to narrow it.
+
+       This may be tough, because narrowing may increase the size.
+       
+       TODO: there are sill some cases to consider.
+       TODO: need to figure out the size bounds
+    *)
+
     assert (length G1 = length G1'). { eapply update_pres_len; eauto. }
     remember (length G1) as L. clear HeqL. subst L.
-    eapply stpd_bindx. { eapply IHstp.
-    eapply index_extend; eauto.
-    eapply update_extend; eauto.
-    eapply stp_extend; eauto.
-    apply H5. } eauto. eauto.
+    (* we know that LHS type is realizable in new, extended, env *)
+    (* now show that it is realizable in new, extended, env *)
+    assert (itp ((length G1', T1) :: G1') T1 nG). {
+      remember (TMem TL TU). remember ((length G1', T1) :: G1).
+      (* from bindx evidence, we know that it is realizable in old env *)
+      induction H2.
+      + (* 'easy' case: exp mem *)
+        (* we know we're expanding to the same TL TU as before *)
+        inversion Heqt. subst T1 T0 G0.
+        unfold itp.
+        (* narrow TL <: TU inductively *)
+        assert (stpd true ((length G1', TMem TL TU) :: G1') TL TU). {
+          eapply IHstp2.
+          eapply index_extend. eauto.
+          eapply update_extend. eauto.
+          eapply stp_extend. eauto.
+          eapply env_itp_extend. eauto. unfold itp.
+          repeat eexists. eapply exp_mem. eapply H3. admit. (* n2 <= nG !?! *)
+          eapply itp_extend. eauto. eauto. 
+        }
+        destruct H2.
+        repeat eexists. eapply exp_mem. apply H2. admit. (* x0 <= nG !?! *)
+      + (* exp sel *) admit. (* TODO *)
+        (* two cases to consider:
+           - we're expanding to type that is not changed. just narrow TL <: TU
+           - expansion has changed. need to get TL1 <: TU1 from input
+        *)
 
-    (* TODO: if we require a realizable context, we need to provide
-       corresponding evidence for the lhs type on induction. 
-       this evidence will need to come from the stp_bindx derivation.
-       ergo, we also need to narrow it *)
-
+    }
+    (* now construct bindx evidence *)
+    (* narrow z:TX2 <: T1 <: T2 inductively *)
+    eapply stpd_bindx. {
+      eapply IHstp1.
+      eapply index_extend; eauto.
+      eapply update_extend; eauto.
+      eapply stp_extend; eauto.
+    
+      eapply env_itp_extend. eauto. unfold itp.
+      repeat eexists. eauto. eauto. admit. (* n2 <= nG *)
+      eapply itp_extend. eauto. eauto.
+    }
+    eauto. eauto.
     
   - Case "Trans". eapply stpd_transf. eapply IHstp1; eauto. eapply IHstp2; eauto.
   - Case "Wrap". eapply stpd_wrapf. eapply IHstp; eauto.
