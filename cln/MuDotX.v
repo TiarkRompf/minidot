@@ -1203,24 +1203,34 @@ Qed.
 
 (* Transivity *)
 
-Definition trans_on n12 n23 :=
+Definition stp_trans_on n12 n23 :=
   forall G1 T1 G2 T2 G3 T3,
   stp n12 true G1 T1 T2 G2 ->
   stp n23 true G2 T2 T3 G3 ->
   stpn true G1 T1 T3 G3.
-Hint Unfold trans_on.
 
-Definition trans_up n :=
+Definition sdc_trans_on n12 n23 :=
+  forall G1 D1 G2 D2 G3 D3,
+  sdc n12 G1 D1 D2 G2 ->
+  sdc n23 G2 D2 D3 G3 ->
+  sdcn G1 D1 D3 G3.
+
+Definition sdcs_trans_on n12 n23 :=
+  forall G1 Ds1 G2 Ds2 G3 Ds3,
+  sdcs n12 G1 Ds1 Ds2 G2 ->
+  sdcs n23 G2 Ds2 Ds3 G3 ->
+  sdcsn G1 Ds1 Ds3 G3.
+
+Definition trans_up (P: nat -> nat -> Prop) n :=
   forall n12 n23, n12 + n23 <= n ->
-  trans_on n12 n23.
-Hint Unfold trans_up.
+  P n12 n23.
 
-Lemma trans_le: forall n n12 n23,
-  trans_up n ->
+Lemma trans_le: forall P n n12 n23,
+  trans_up P n ->
   n12 + n23 <= n ->
-  trans_on n12 n23.
+  P n12 n23.
 Proof.
-  intros. unfold trans_up in H. apply H. auto.
+  introv H Heq. unfold trans_up in H. apply H. auto.
 Qed.
 
 Lemma stpn_sel2: forall G1 T1 G2 p M TL TU Gp,
@@ -1259,13 +1269,24 @@ Proof.
   eapply stp_sel1u; try eassumption.
 Qed.
 
-Lemma stp_trans: forall n, trans_up n.
+Lemma sub_trans: forall n,
+  trans_up stp_trans_on n /\
+  trans_up sdc_trans_on n /\
+  trans_up sdcs_trans_on n.
 Proof.
-  intros n. induction n.
-  - unfold trans_up. unfold trans_on. intros.
-    assert (n12 = 0) by omega. assert (n23 = 0) by omega. subst.
+  intros n.
+  unfold trans_up.
+  unfold stp_trans_on.
+  unfold sdc_trans_on.
+  unfold sdcs_trans_on.
+  induction n.
+  - split; try split; intros;
+    assert (n12 = 0) by omega;
+    assert (n23 = 0) by omega;
+    subst;
     inversion H0; inversion H1.
-  - unfold trans_up.
+  - inversion IHn as [IHn_stp [IHn_sdc IHn_sdcs]].
+    split; try split;
     intros n12 n23 Hneq G1 T1 G2 T2 G3 T3 HS12 HS23.
 
     inversion HS12; inversion HS23; subst;
@@ -1274,12 +1295,12 @@ Proof.
     try solve [eapply stpn_sel2; [
         eassumption |
         eexists; eassumption |
-        eapply trans_le in IHn; [
-            eapply IHn; eassumption |
+        eapply trans_le in IHn_stp; [
+            eapply IHn_stp; eassumption |
             omega
         ] |
-        eapply trans_le in IHn; [
-            eapply IHn; eassumption |
+        eapply trans_le in IHn_stp; [
+            eapply IHn_stp; eassumption |
             omega
         ]
     ]];
@@ -1287,16 +1308,16 @@ Proof.
     try solve [eapply stpn_sel1; [
         eassumption |
         eexists; eassumption |
-        eapply trans_le in IHn; [
-            eapply IHn; eassumption |
+        eapply trans_le in IHn_stp; [
+            eapply IHn_stp; eassumption |
             omega
         ]
     ]];
     (* 5 cases, stp_sel1u left *)
     try solve [eapply stpn_sel1u; [
         eassumption |
-        eapply trans_le in IHn; [
-            eapply IHn; eassumption |
+        eapply trans_le in IHn_stp; [
+            eapply IHn_stp; eassumption |
             omega
         ]
     ]].
@@ -1308,8 +1329,8 @@ Proof.
       compute. reflexivity.
     }
     inversion A as [A1 A2]. inversions A1. clear A.
-    eapply trans_le in IHn.
-    eapply IHn. apply H2. eassumption.
+    eapply trans_le in IHn_stp.
+    eapply IHn_stp. apply H2. eassumption.
     omega.
 
   + (* sel2 - sel1u *)
@@ -1445,7 +1466,12 @@ Proof.
     assert (x \notin L0) as FrL0 by auto.
     specialize (H4 x FrL). specialize (H15 x FrL0).
     admit.
+
+  + admit.
+  + admit.
 Qed.
+
+Definition stp_trans n := proj1 (sub_trans n).
 
 Theorem trans: forall G1 T1 G2 T2 G3 T3,
   stpn true G1 T1 T2 G2 ->
