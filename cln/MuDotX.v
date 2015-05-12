@@ -433,7 +433,7 @@ Inductive stp: nat -> bool -> ctx -> typ -> typ -> ctx -> Prop :=
   ) ->
   stp (S n1) true G1 (typ_bind Ds1) (typ_bind Ds2) G2
 | stp_transf: forall n1 n2 G1 G2 G3 T1 T2 T3,
-  stp n1 true G1 T1 T2 G2 ->
+  stp n1 false G1 T1 T2 G2 ->
   stp n2 false G2 T2 T3 G3 ->
   stp (S (n1+n2)) false G1 T1 T3 G3
 | stp_wrapf: forall n1 G1 G2 T1 T2,
@@ -842,7 +842,7 @@ Proof.
     + assumption.
   - (* transf *)
     split.
-    + inversion H. inversion H1 as [n H1']. exists (S n). apply stp_wrapf. assumption.
+    + inversion H. inversion H1 as [n H1']. exists n. assumption.
     + inversion H0. assumption.
   - (* wrapf *)
     split.
@@ -1287,7 +1287,7 @@ Proof.
     inversion H0; inversion H1.
   - inversion IHn as [IHn_stp [IHn_sdc IHn_sdcs]].
     split; try split;
-    intros n12 n23 Hneq G1 T1 G2 T2 G3 T3 HS12 HS23.
+    intros n12 n23 Hneq G1 T1 G2 T2 G3 T3 HS12 HS23;
 
     inversion HS12; inversion HS23; subst;
     (* 36 cases total *)
@@ -1467,8 +1467,44 @@ Proof.
     specialize (H4 x FrL). specialize (H15 x FrL0).
     admit.
 
+  + (* sdc_typ - sdc_typ *)
+    inversions H14.
+    assert (stpn true G1 TU1 TU3 G3) as HU13. {
+     eapply trans_le in IHn_stp; [
+        eapply IHn_stp; eassumption |
+        omega
+      ].
+    }
+    inversion HU13 as [nu HU13'].
+    assert (stpn false G3 TL3 TL1 G1) as HL31. {
+      exists (S (n6+n3)).
+      apply stp_transf with (G2:=G2) (T2:=TL2);
+      assumption.
+    }
+    inversion HL31 as [nl HL31'].
+    exists (S (n1+n5+nl+nu)).
+    apply sdc_typ; assumption.
+
   + admit.
   + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+
 Qed.
 
 Definition stp_trans n := proj1 (sub_trans n).
