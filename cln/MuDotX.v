@@ -1561,10 +1561,19 @@ Proof.
     exists (S (nl+nu)).
     apply sdc_mtd; assumption.
 
-  + admit.
-  + admit.
-  + admit.
-  + admit.
+  + (* sdcs_nil - sdcs_nil *)
+    exists (S 0). apply sdcs_nil. assumption.
+
+  + (* sdcs_nil - sdcs_cons -- Ds1 <: [] <: D3::Ds3 *)
+    inversion H5. (* decs_has [] D1 *)
+
+  + (* sdcs_cons - sdcs_nil -- Ds1 <: Ds2 <: [] *)
+    exists (S 0). apply sdcs_nil.
+    eapply sdcs_reg1. apply HS12.
+
+  + (* sdcs_cons - sdcs_cons -- Ds1 <: D2::Ds2 <: D3::Ds3 *)
+    (* tricky because D2 and D3 might not have same label *)
+    admit.
 
 Qed.
 
