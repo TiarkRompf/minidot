@@ -1485,21 +1485,82 @@ Proof.
     exists (S (n1+n5+nl+nu)).
     apply sdc_typ; assumption.
 
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
+  + inversion H11.
+
+  + (* sdc_typ - sdc_typu *)
+    inversions H12.
+    assert (stpn true G1 TU1 TU3 G3) as HU13. {
+     eapply trans_le in IHn_stp; [
+        eapply IHn_stp; eassumption |
+        omega
+      ].
+    }
+    inversion HU13 as [nu HU13'].
+    exists (S (n1+nu)).
+    apply sdc_typu; assumption.
+
+  + inversion H12.
+
+  + inversion H11.
+
+  + (* sdc_tyu - sdc_tyu *)
+    inversions H8.
+    assert (stpn true G1 TU1 TU3 G3) as HU13. {
+     eapply trans_le in IHn_stp; [
+        eapply IHn_stp; eassumption |
+        omega
+      ].
+    }
+    inversion HU13 as [nu HU13'].
+    exists (S nu).
+    apply sdc_tyu; assumption.
+
+  + inversion H9.
+
+  + inversion H9.
+
+  + inversion H12.
+
+  + (* sdc_typu - sdc_tyu *)
+    inversions H9.
+    assert (stpn true G1 TU1 TU3 G3) as HU13. {
+     eapply trans_le in IHn_stp; [
+        eapply IHn_stp; eassumption |
+        omega
+      ].
+    }
+    inversion HU13 as [nu HU13'].
+    exists (S (n1+nu)).
+    apply sdc_typu; assumption.
+
+  + inversion H10.
+
+  + inversion H10.
+
+  + inversion H12.
+
+  + inversion H9.
+
+  + inversion H10.
+
+  + (* sdc_mtd - sdc_mtd *)
+    inversions H10.
+    assert (stpn true G1 TU1 TU3 G3) as HU13. {
+     eapply trans_le in IHn_stp; [
+        eapply IHn_stp; eassumption |
+        omega
+      ].
+    }
+    inversion HU13 as [nu HU13'].
+    assert (stpn false G3 TL3 TL1 G1) as HL31. {
+      exists (S (n0+n1)).
+      apply stp_transf with (G2:=G2) (T2:=TL2);
+      assumption.
+    }
+    inversion HL31 as [nl HL31'].
+    exists (S (nl+nu)).
+    apply sdc_mtd; assumption.
+
   + admit.
   + admit.
   + admit.
