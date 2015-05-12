@@ -265,6 +265,10 @@ Tactic Notation "wf_cases" tactic(first) ident(c) :=
 (* this is the precise version! no slack in lookup *)
 (* TODO: need the name for bind? *)
 Inductive exp : tenv -> ty -> ty -> Prop :=
+(*
+| exp_bot: forall G1,
+    exp G1 TBot (TMem TTop TBot)  (* causes trouble in inv_mem: need to build stp deriv with smaller n *)
+*)
 | exp_mem: forall G1 T1 T2,
     exp G1 (TMem T1 T2) (TMem T1 T2)
 | exp_sel: forall G1 x T T2 T3 T4 T5,
@@ -424,7 +428,7 @@ Ltac eu := match goal with
 
 Lemma stpd_bot: forall G1 T,
     stpd true G1 TBot T.
-Proof. intros. exists 0. eauto. Qed.
+Proof. intros. exists 2. eauto. Qed.
 Lemma stpd_top: forall G1 T,
     stpd true G1 T TTop.
 Proof. intros. exists 0. eauto. Qed.
@@ -499,7 +503,19 @@ Qed.
 
 
 (* implementable type: expands and has good bounds *)
-Definition itp G T (n:nat) := exists T1 T2 n1, exp G T (TMem T1 T2) /\ stp true G T1 T2 n1 /\ n1 <= n.
+(* Definition itp G T (n:nat) := exists T1 T2 n1, exp G T (TMem T1 T2) /\ stp true G T1 T2 n1 /\ n1 <= n. *)
+
+Inductive itp: tenv -> ty -> nat -> Prop :=
+
+| itp_top: forall G1 n1,
+    itp G1 TTop n1
+| itp_mem: forall G1 T T1 T2 n1 n,
+    exp G1 T (TMem T1 T2) ->
+    stp true G1 T1 T2 n1 ->
+    n1 <= n ->
+    itp G1 T n.
+
+(* TODO: now make it recurse into upper bounds *)
 
 (* implementable context *)
 Definition env_itp G n := forall x T, index x G = Some T -> itp G T n.
@@ -615,13 +631,16 @@ Proof. admit. (*intros. destruct H. eexists. eapply stp_extend1. apply H.*) Qed.
 
 
 
-
+(*
+NOT NEEDED (?)
 Lemma exp_unique: forall G1 T1 TA1 TA2 TA1L TA2L, 
   exp G1 T1 (TMem TA1L TA1) ->
   exp G1 T1 (TMem TA2L TA2) ->
   TA1 = TA2.
 Proof. admit. Qed.
-  
+*)
+
+
 (* key lemma that relates exp and stp. result has bounded size. *)
 Lemma stpd_inv_mem: forall n n1 G1, 
 
@@ -635,6 +654,7 @@ Proof.
   (*z*) intros. inversion H0; subst; inversion H1; subst; try omega. try inversion H.
   (* s n *)
   intros. inversion H.
+(*  - Case "bot". subst. exists 0. split. eapply stp_mem. eauto. eauto. inversion H0.  subst. omega. *)
   - Case "mem". subst. exists n0. auto. (*inversion H0. subst. exists n3. split. eauto. omega. *)
   - Case "sel".
     subst.
@@ -712,7 +732,7 @@ Proof.
     intros. eapply stpd_mem. eapply IHstp1; eauto. eapply IHstp2; eauto.
   - Case "Sel2". intros.
     { case_eq (beq_nat x x0); intros E.
-      assert (env_itp G1' nG). admit. (*TODO*)
+      assert (env_itp G1' nG). auto.
       (* hit updated binding *)
       + assert (x = x0) as EX. eapply beq_nat_true_iff; eauto. subst. index_subst. index_subst.
         eapply stpd_sel2. eapply upd_hit; eauto. eapply H6. eapply H7. eapply H3. eapply IHstp; eauto.
@@ -722,7 +742,7 @@ Proof.
     }
   - Case "Sel1". intros.
     { case_eq (beq_nat x x0); intros E.
-      assert (env_itp G1' nG). admit. (* TODO *)
+      assert (env_itp G1' nG). auto.
       (* hit updated binding *)
       + assert (x = x0) as EX. eapply beq_nat_true_iff; eauto. subst. index_subst. index_subst. 
         eapply stpd_sel1. eapply upd_hit; eauto. eapply H6. eapply H7. eapply H3. eapply IHstp; eauto.
@@ -743,10 +763,11 @@ Proof.
     remember (length G1) as L. clear HeqL. subst L.
 
 
-    assert (itp G1 T1 n2). unfold itp. repeat eexists. eauto. eauto. eauto.
+    assert (itp G1 T1 n2). eapply itp_mem. eauto. eauto. eauto.
     (* will do induction with extended env. need to prove T1 realizable in G1' *)
     assert (exists nx, itp G1' T1 nx) as IE. {
-      unfold itp.
+
+      
       remember (TMem TL TU).
       assert (stpd true G1' TL TU) as SLU. {
         eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
@@ -754,9 +775,10 @@ Proof.
       destruct SLU.
       clear IHstp2 IHstp1. (* still a lot of garbage ... *)
       (* itp-narrow *)
+      eexists x0. eapply itp_mem.
       induction H2.
       + SCase "mem".
-        inversion Heqt. subst. repeat eexists. eapply exp_mem. eauto. eauto.
+        inversion Heqt. subst. repeat eexists. eapply exp_mem. 
       + SCase "sel".
         case_eq (beq_nat x x1); intros E.
         (* hit updated binding *)
@@ -777,12 +799,26 @@ Proof.
                 but we do not know how to construct
                    exp G1' x2 (TMem ...)
 
+             IDEA:
+                we know that TX1 < TX2, and therefore T0 < x < x2 < T3
+                it is indeed possible that T3 expands, but not x2.
+                but then T0 can't expand either!
+
+                so: if previous lower bound expanded
+
+                if previous lower bound did not expand, then it
+                can never be used in a sel2 position.                
+
            *)
         * admit.
           (* first part is straightforward induction, but 
              bound may have changed so we can't apply second *)
+      + eauto.
+      + eauto.
     }
-    repeat destruct IE as [? IE].
+    repeat destruct IE as [? IE]. inversion IE; subst.
+    rewrite <-H12 in H2. inversion H2. (* exp Top TMem .. impossible *)
+    (* case mem *)
     
     eapply stpd_bindx. {
       eapply IHstp1.
@@ -882,7 +918,7 @@ Proof.
     + SSCase "Top". eapply stpd_top.
     + SSCase "Sel2".
       assert (itp G1 TX nG) as E. { eapply IMP. eauto. }
-      destruct E as [TL [TU [nx [E [SX C]]]]].
+      inversion E. subst. inversion H0.
       eapply stpd_sel2; eauto. eapply stpd_trans_lo; eauto.
   - SCase "Bool < Bool". inversion S23; subst; try solve by inversion.
     + SSCase "Top". eauto.
@@ -898,7 +934,7 @@ Proof.
         eapply IH; eauto.
     + SSCase "Sel2".
       assert (itp G1 TX nG) as E. { eapply IMP. eauto. }
-      destruct E as [TL [TU [n1 [E [SX C]]]]].
+      inversion E. subst. inversion H7.
       eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
   - SCase "Mem < Mem". inversion S23; subst; try solve by inversion.
     + SSCase "Top". eapply stpd_top.
@@ -910,18 +946,18 @@ Proof.
         eapply IH; eauto.
     + SSCase "Sel2". 
       assert (itp G1 TX nG) as E. { eapply IMP. eauto. }
-      destruct E as [TL [TU [n1 [E [SX C]]]]].
+      inversion E. subst. inversion H7.
       eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
   - SCase "? < Sel". inversion S23; subst; try solve by inversion.
     + SSCase "Top". eapply stpd_top.
     + SSCase "Sel2". 
       assert (itp G1 TX0 nG) as E. { eapply IMP. eauto. }
-      destruct E as [TL [TU [n1 [E [SX C]]]]].
+      inversion E. subst. inversion H7.
       eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
     + SSCase "Sel1". (* interesting case *)
       index_subst.
       assert (itp G1 TX0 nG) as E. { eapply IMP. eauto. }
-      destruct E as [TL [TU [n1 [E [SX C]]]]].
+      inversion E. subst. inversion H7.
       assert (trans_up (n0+n1+nG)) as IH.
       { unfold trans_up. intros. apply IHn. admit. (* FIXME n0+n1+nG <= n. *) }
       inversion H10. subst. index_subst. eapply stpd_trans_cross; eauto.
@@ -931,13 +967,13 @@ Proof.
       assert (trans_up (nG+n0)) as IH.
       { unfold trans_up. intros. eapply IHn. omega. }
       assert (itp G1 TX nG) as E. { eapply IMP. eauto. }
-      destruct E as [TL [TU [nx [E [SX C]]]]].
+      inversion E. subst. inversion H0.
       eapply stpd_sel1. eauto. eapply stpd_trans_hi; eauto.
   - SCase "Sel < Sel". inversion S23; subst; try solve by inversion.
     + SSCase "Top". eapply stpd_top.
     + SSCase "Sel2". 
        assert (itp G1 TX nG) as E. { eapply IMP. eauto. }
-       destruct E as [TL [TU [n1 [E [SX C]]]]].
+       inversion E. subst. inversion H5.
        eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
      + SSCase "Sel1". inversion H8. index_subst. subst. index_subst. subst.
        eapply stpd_sel1. eauto. eauto.
@@ -947,16 +983,16 @@ Proof.
     + SSCase "Top". eapply stpd_top.
     + SSCase "Sel2". 
       assert (itp G1 TX nG) as E. { eapply IMP. eauto. }
-      destruct E as [TL1 [TU1 [n1 [E [SX C]]]]].
+      inversion E. subst. inversion H10.
       eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
     + SSCase "Bind".
       inversion H16. subst.
       assert (trans_up (nG+n0)) as IH.
       { unfold trans_up. intros. eapply IHn. omega. }
       (* realizable in old env *) 
-      assert (itp G1 (open (length G1) TA2) nG). { unfold itp. repeat eexists. eauto. eauto. admit. (* FIXME n5 <= nG *) }
+      assert (itp G1 (open (length G1) TA2) nG). { eapply itp_mem. eauto. eauto. admit. (* FIXME n5 <= nG *) }
       (* realizable in new env *)
-      assert (itp G1 (open (length G1) TA1) nG). { unfold itp. repeat eexists. eauto. eauto. admit. (* FIXME n3 <= nG *) }
+      assert (itp G1 (open (length G1) TA1) nG). { eapply itp_mem.  eauto. eauto. admit. (* FIXME n3 <= nG *) }
       (* first narrow, then trans *)
       assert (stpd true ((length G1, open (length G1) TA1) :: G1)
                    (open (length G1) TA2) (open (length G1) TA3)) as NRW.
