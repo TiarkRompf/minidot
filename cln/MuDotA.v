@@ -744,20 +744,19 @@ Proof.
 Qed.
 
 (* Problem with cofinite quantification and index-based induction scheme. *)
-Axiom sdcs_cofinite_switch: forall L Ds1 Ds2 G1X G2X,
+Axiom sdcs_cofinite_switch: forall L Ds1 Ds2 Ds3 G1 G2 G3,
   (forall x, x \notin L ->
-   sdcsn
-        (G1X & (x ~ typ_clo G1X (typ_bind Ds1)))
-        (open_decs x Ds1)
+   sdcsn (G2 & (x ~ typ_clo G1 (typ_bind Ds1)))
         (open_decs x Ds2)
-        (G2X & (x ~ typ_clo G1X (typ_bind Ds1)))) ->
+        (open_decs x Ds3)
+        (G3 & (x ~ typ_clo G1 (typ_bind Ds1)))) ->
   exists n,
   (forall x, x \notin L ->
    sdcs n
-        (G1X & (x ~ typ_clo G1X (typ_bind Ds1)))
-        (open_decs x Ds1)
+        (G2 & (x ~ typ_clo G1 (typ_bind Ds1)))
         (open_decs x Ds2)
-        (G2X & (x ~ typ_clo G1X (typ_bind Ds1)))).
+        (open_decs x Ds3)
+        (G3 & (x ~ typ_clo G1 (typ_bind Ds1)))).
 
 Theorem sub_refl:
   (forall n b G1 T1 T2 G2, stp n b G1 T1 T2 G2 -> stpn b G1 T1 T1 G1 /\ stpn b G2 T2 T2 G2) /\
@@ -1430,13 +1429,34 @@ Proof.
     apply same_typ_trans with (T2:=TU0) (G2:=Gp0); assumption.
 
   + (* bind - bind *)
-    exists (S n).
+    remember (L \u L0) as L'.
+    assert (
+        forall x, x \notin L' ->
+        sdcsn (G2 & x ~ typ_clo G1 (typ_bind Ds1))
+              (open_decs x Ds2) (open_decs x Ds3)
+              (G3 & x ~ typ_clo G1 (typ_bind Ds1))) as HNarrow. {
+      admit.
+    }
+    apply sdcs_cofinite_switch in HNarrow.
+    inversion HNarrow as [n' HNarrow'].
+    assert (
+        forall x, x \notin L' ->
+        sdcsn (G1 & x ~ typ_clo G1 (typ_bind Ds1))
+              (open_decs x Ds1) (open_decs x Ds3)
+              (G3 & x ~ typ_clo G1 (typ_bind Ds1))) as HTrans. {
+      intros x Frx'.
+      specialize (HNarrow' x Frx').
+      assert (x \notin L) as Frx by solve [subst; auto].
+      specialize (H0 x Frx).
+      eapply trans_le in IHn_sdcs.
+      eapply IHn_sdcs; try eassumption.
+      admit. (* omega. -- we need to change recursion scheme *)
+    }
+    apply sdcs_cofinite_switch in HTrans.
+    inversion HTrans as [nb' HTrans'].
+    exists (S nb').
     apply stp_bind with (L:=L \u L0); try assumption; try reflexivity.
-    intros x Frx.
-    assert (x \notin L) as FrL by auto.
-    assert (x \notin L0) as FrL0 by auto.
-    specialize (H0 x FrL). specialize (H7 x FrL0).
-    admit.
+    subst. assumption.
 
   + (* sdc_typ - sdc_typ *)
     assert (stpn true G1 TU1 TU3 G3) as HU13. {
