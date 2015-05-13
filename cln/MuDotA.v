@@ -418,18 +418,14 @@ Inductive stp: nat -> bool -> ctx -> typ -> typ -> ctx -> Prop :=
   wf_typ Gp2 TU2 ->
   same_typ Gp1 TU1 TU2 Gp2 ->
   stp (S n1) true G1 (typ_sel p1 M) (typ_sel p2 M) G2
-| stp_bind: forall n1 L G1 Ds1 G2 Ds2 G1A G1B G1C G1X G2A G2B G2C G2X,
+| stp_bind: forall n1 L G1 Ds1 G2 Ds2,
   wf_typ G2 (typ_bind Ds2) ->
-  G1 = G1A & G1B & G1C ->
-  G1X = G1A & G1C ->
-  G2 = G2A & G2B & G2C ->
-  G2X = G2A & G2C ->
   (forall x, x \notin L ->
    sdcs n1
-        (G1X & (x ~ typ_clo G1X (typ_bind Ds1)))
+        (G1 & (x ~ typ_clo G1 (typ_bind Ds1)))
         (open_decs x Ds1)
         (open_decs x Ds2)
-        (G2X & (x ~ typ_clo G1X (typ_bind Ds1)))
+        (G2 & (x ~ typ_clo G1 (typ_bind Ds1)))
   ) ->
   stp (S n1) true G1 (typ_bind Ds1) (typ_bind Ds2) G2
 | stp_transf: forall n1 n2 G1 G2 G3 T1 T2 T3,
@@ -479,11 +475,9 @@ with wf_typ: ctx -> typ -> Prop :=
   pth_has G p (dec_tyu M TU) Gp ->
   wf_typ Gp TU ->
   wf_typ G (typ_sel p M)
-| wf_bind: forall L G GA GB GC GX Ds,
-  G = GA & GB & GC ->
-  GX = GA & GC ->
+| wf_bind: forall L G Ds,
   (forall x, x \notin L ->
-   wf_decs (GX & (x ~ typ_clo GX (typ_bind Ds)))
+   wf_decs (G & (x ~ typ_clo G (typ_bind Ds)))
            (open_decs x Ds)
   ) ->
   wf_typ G (typ_bind Ds)
@@ -652,7 +646,7 @@ Proof.
     + eapply wf_selu. apply p0. assumption.
   - (* bind *)
     split.
-    + apply wf_bind with (L:=L) (GA:=G1A) (GB:=G1B) (GC:=G1C) (GX:=G1X); try assumption.
+    + apply wf_bind with (L:=L); try assumption.
       intros x Frx.
       specialize (H x Frx). inversion H. assumption.
     + assumption.
@@ -825,19 +819,16 @@ Proof.
   - (* bind *)
     split.
     + assert (forall x, x \notin L ->
-       sdcsn (G1X & x ~ typ_clo G1X (typ_bind Ds1))
+       sdcsn (G1 & x ~ typ_clo G1 (typ_bind Ds1))
          (open_decs x Ds1) (open_decs x Ds1)
-         (G1X & x ~ typ_clo G1X (typ_bind Ds1))) as A. {
+         (G1 & x ~ typ_clo G1 (typ_bind Ds1))) as A. {
         intros x Fr. specialize (H0 x Fr). inversion H0.
         assumption.
       }
       apply sdcs_cofinite_switch in A. inversion A as [n' A'].
       exists (S n').
-      apply stp_bind with (L:=L)
-        (G1A:=G1A) (G1B:=G1B) (G1C:=G1C) (G1X:=G1X)
-        (G2A:=G1A) (G2B:=G1B) (G2C:=G1C) (G2X:=G1X); auto.
-      apply wf_bind with (L:=L)
-        (GA:=G1A) (GB:=G1B) (GC:=G1C) (GX:=G1X); auto.
+      apply stp_bind with (L:=L); auto.
+      apply wf_bind with (L:=L); auto.
       intros x Frx. eapply sdcs_reg1. specialize (s x Frx). apply s.
     + assumption.
   - (* transf *)
@@ -908,12 +899,9 @@ Proof.
   - (* wf_bind *)
     apply sdcs_cofinite_switch in H. inversion H as [n' H'].
     exists (S n').
-    apply stp_bind with (L:=L)
-      (G1A:=GA) (G1B:=GB) (G1C:=GC) (G1X:=GX)
-      (G2A:=GA) (G2B:=GB) (G2C:=GC) (G2X:=GX);
+    apply stp_bind with (L:=L);
     try assumption.
-    apply wf_bind with (L:=L)
-      (GA:=GA) (GB:=GB) (GC:=GC) (GX:=GX);
+    apply wf_bind with (L:=L);
     assumption.
   - (* wf_dec_typ *)
     inversion H as [HL HU].
@@ -955,6 +943,7 @@ Proof.
     admit (* ok (GA & GB & GC) *).
 Qed.
 
+(*
 Theorem sub_extending:
   (forall n b G1 T1 T2 G2, stp n b G1 T1 T2 G2 ->
    forall G1A G1B G1C G2A G2B G2C,
@@ -1080,6 +1069,7 @@ Proof.
   - (* wf_decs_cons *)
     apply wf_decs_cons; auto.
 Qed.
+ *)
 
 Lemma lookup_unique: forall {A} x G (a: A) (a': A),
   binds x a  G ->
@@ -1269,6 +1259,11 @@ Proof.
   eapply stp_sel1u; try eassumption.
 Qed.
 
+Ltac inversion_eq :=
+  match goal with
+    | [ H : _ = _ |- _ ] => inversions H
+  end.
+
 Lemma sub_trans: forall n,
   trans_up stp_trans_on n /\
   trans_up sdc_trans_on n /\
@@ -1290,7 +1285,7 @@ Proof.
     intros n12 n23 Hneq G1 T1 G2 T2 G3 T3 HS12 HS23;
 
     inversion HS12; inversion HS23; subst;
-    (* 36 cases total *)
+    (* 56 cases total *)
     (* 6 cases, stp_sel2 right *)
     try solve [eapply stpn_sel2; [
         eassumption |
@@ -1320,10 +1315,12 @@ Proof.
             eapply IHn_stp; eassumption |
             omega
         ]
-    ]].
+    ]];
+    (* 18 cases *)
+    try solve [inversion_eq];
+    try inversion_eq.
 
   + (* sel2 - sel1 *)
-    inversions H14.
     assert (dec_typ M TL0 TU0 = dec_typ M TL TU /\ Gp0 = Gp) as A. {
       eapply pth_has_unique; try eassumption.
       compute. reflexivity.
@@ -1334,7 +1331,6 @@ Proof.
     omega.
 
   + (* sel2 - sel1u *)
-    inversions H13.
     assert (dec_tyu M TU0 = dec_typ M TL TU /\ Gp0 = Gp) as A. {
       eapply pth_has_unique; try eassumption.
       compute. reflexivity.
@@ -1342,7 +1338,6 @@ Proof.
     inversion A as [A1 A2]. inversion A1. (* contradiction *)
 
   + (* sel2 - selx *)
-    inversions H17.
     assert (dec_typ M TL1 TU1 = dec_typ M TL TU /\ Gp1 = Gp) as A. {
       eapply pth_has_unique; try eassumption.
       compute. reflexivity.
@@ -1357,17 +1352,13 @@ Proof.
     apply same_stp2 with (T2:=TU) (G2:=Gp); eassumption.
 
   + (* sel2 - selxu *)
-    inversions H16.
     assert (dec_tyu M TU1 = dec_typ M TL TU /\ Gp1 = Gp) as A. {
       eapply pth_has_unique; try eassumption.
       compute. reflexivity.
     }
     inversion A as [A1 A2]. inversion A1.
 
-  + inversion H17.
-
   + (* selx - sel1 *)
-    inversions H16.
     assert (dec_typ M TL2 TU2 = dec_typ M TL TU /\ Gp2 = Gp) as A. {
       eapply pth_has_unique; try eassumption.
       compute. reflexivity.
@@ -1379,7 +1370,6 @@ Proof.
     apply same_stp1 with (T2:=TU) (G2:=Gp); try eassumption.
 
   + (* selxu - sel1 *)
-    inversions H15.
     assert (dec_tyu M TU = dec_typ M TL2 TU2 /\ Gp = Gp2) as A. {
       eapply pth_has_unique; try eassumption.
       compute. reflexivity.
@@ -1387,7 +1377,6 @@ Proof.
     inversion A as [A1 A2]. inversion A1.
 
   + (* selx - selx *)
-    inversions H19.
     assert (dec_typ M TL2 TU2 = dec_typ M TL0 TU0 /\ Gp2 = Gp0) as A. {
       eapply pth_has_unique; try eassumption.
       compute. reflexivity.
@@ -1399,17 +1388,13 @@ Proof.
     apply same_typ_trans with (T2:=TU0) (G2:=Gp0); assumption.
 
   + (* selx - selxu *)
-    inversions H18.
     assert (dec_tyu M TU0 = dec_typ M TL2 TU2 /\ Gp0 = Gp2) as A. {
       eapply pth_has_unique; try eassumption.
       compute. reflexivity.
     }
     inversion A as [A1 A2]. inversion A1.
 
-  + inversion H19.
-
   + (* selx - sel1u *)
-    inversions H15.
     assert (dec_tyu M TU2 = dec_typ M TL TU /\ Gp2 = Gp) as A. {
       eapply pth_has_unique; try eassumption.
       compute. reflexivity.
@@ -1417,7 +1402,6 @@ Proof.
     inversion A as [A1 A2]. inversion A1.
 
   + (* selxu - sel1u *)
-    inversions H14.
     assert (dec_tyu M TU2 = dec_tyu M TU /\ Gp2 = Gp) as A. {
       eapply pth_has_unique; try eassumption.
       compute. reflexivity.
@@ -1429,7 +1413,6 @@ Proof.
     apply same_stp1 with (T2:=TU) (G2:=Gp); try eassumption.
 
   + (* selxu - selx *)
-    inversions H18.
     assert (dec_tyu M TU2 = dec_typ M TL1 TU0 /\ Gp2 = Gp0) as A. {
       eapply pth_has_unique; try eassumption.
       compute. reflexivity.
@@ -1437,7 +1420,6 @@ Proof.
     inversion A as [A1 A2]. inversion A1.
 
   + (* selxu - selxu *)
-    inversions H17.
     assert (dec_tyu M TU2 = dec_tyu M TU0 /\ Gp2 = Gp0) as A. {
       eapply pth_has_unique; try eassumption.
       compute. reflexivity.
@@ -1447,28 +1429,16 @@ Proof.
     exists (S 0). eapply stp_selxu; try eassumption.
     apply same_typ_trans with (T2:=TU0) (G2:=Gp0); assumption.
 
-  + inversion H18.
-
-  + inversion H16.
-
-  + inversion H15.
-
-  + inversion H19.
-
-  + inversion H18.
-
   + (* bind - bind *)
-    inversions H19.
     exists (S n).
-    apply stp_bind with (L:=L \u L0) (G1A:=G1A) (G1B:=G1B) (G1C:=G1C) (G1X:=G1A & G1C) (G2A:=G2A0) (G2B:=G2B0) (G2C:=G2C0) (G2X:=G2A0 & G2C0); try assumption; try reflexivity.
+    apply stp_bind with (L:=L \u L0); try assumption; try reflexivity.
     intros x Frx.
     assert (x \notin L) as FrL by auto.
     assert (x \notin L0) as FrL0 by auto.
-    specialize (H4 x FrL). specialize (H15 x FrL0).
+    specialize (H0 x FrL). specialize (H7 x FrL0).
     admit.
 
   + (* sdc_typ - sdc_typ *)
-    inversions H14.
     assert (stpn true G1 TU1 TU3 G3) as HU13. {
      eapply trans_le in IHn_stp; [
         eapply IHn_stp; eassumption |
@@ -1485,10 +1455,7 @@ Proof.
     exists (S (n1+n5+nl+nu)).
     apply sdc_typ; assumption.
 
-  + inversion H11.
-
   + (* sdc_typ - sdc_typu *)
-    inversions H12.
     assert (stpn true G1 TU1 TU3 G3) as HU13. {
      eapply trans_le in IHn_stp; [
         eapply IHn_stp; eassumption |
@@ -1499,12 +1466,7 @@ Proof.
     exists (S (n1+nu)).
     apply sdc_typu; assumption.
 
-  + inversion H12.
-
-  + inversion H11.
-
   + (* sdc_tyu - sdc_tyu *)
-    inversions H8.
     assert (stpn true G1 TU1 TU3 G3) as HU13. {
      eapply trans_le in IHn_stp; [
         eapply IHn_stp; eassumption |
@@ -1515,14 +1477,7 @@ Proof.
     exists (S nu).
     apply sdc_tyu; assumption.
 
-  + inversion H9.
-
-  + inversion H9.
-
-  + inversion H12.
-
   + (* sdc_typu - sdc_tyu *)
-    inversions H9.
     assert (stpn true G1 TU1 TU3 G3) as HU13. {
      eapply trans_le in IHn_stp; [
         eapply IHn_stp; eassumption |
@@ -1533,18 +1488,7 @@ Proof.
     exists (S (n1+nu)).
     apply sdc_typu; assumption.
 
-  + inversion H10.
-
-  + inversion H10.
-
-  + inversion H12.
-
-  + inversion H9.
-
-  + inversion H10.
-
   + (* sdc_mtd - sdc_mtd *)
-    inversions H10.
     assert (stpn true G1 TU1 TU3 G3) as HU13. {
      eapply trans_le in IHn_stp; [
         eapply IHn_stp; eassumption |
