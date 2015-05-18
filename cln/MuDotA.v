@@ -1318,6 +1318,7 @@ Proof.
     (* 18 cases *)
     try solve [inversion_eq];
     try inversion_eq.
+    (* 22 cases remaining *)
 
   + (* sel2 - sel1 *)
     assert (dec_typ M TL0 TU0 = dec_typ M TL TU /\ Gp0 = Gp) as A. {
