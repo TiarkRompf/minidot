@@ -1279,6 +1279,16 @@ Proof.
   admit.
 Qed.
 
+Lemma sub_decs: forall n12 G1 Ds1 G2 Ds2 G3 Ds3 D2 D3,
+  sdcs n12 G1 Ds1 Ds2 G2 ->
+  sdcsn G2 Ds2 (decs_cons D3 Ds3) G3 ->
+  decs_has Ds2 D2 ->
+  sdcn G2 D2 D3 G3 ->
+  exists D1 n12', decs_has Ds1 D1 /\ sdc n12' G1 D1 D2 G2 /\ n12' < n12.
+Proof.
+  admit.
+Qed.
+
 Lemma sub_trans: forall n,
   trans_up stp_trans_on n /\
   trans_up sdc_trans_on n /\
@@ -1570,9 +1580,37 @@ Proof.
     eapply sdcs_reg1. apply HS12.
 
   + (* sdcs_cons - sdcs_cons -- Ds1 <: D2::Ds2 <: D3::Ds3 *)
-    (* tricky because D2 and D3 might not have same label *)
-    admit.
-
+    rename Ds6 into Ds3. rename Ds4 into Ds2.
+    assert (exists D1 n12', decs_has Ds1 D1 /\ sdc n12' G1 D1 D0 G2 /\ n12' < S (n1 + n2)) as HS. {
+      eapply sub_decs.
+      apply HS12.
+      apply HS23.
+      assumption.
+      eexists. eassumption.
+    }
+    inversion HS as [D1' [n12' [HShas [HS12' Hn12]]]].
+    assert (sdcn G1 D1' D3 G3) as HD. {
+      eapply trans_le in IHn_sdc.
+      eapply IHn_sdc.
+      apply HS12'.
+      exists n0. assumption.
+      omega.
+    }
+    inversion HD as [nd12 HD'].
+    assert (sdcsn G1 Ds1 Ds3 G3) as HDs. {
+      eapply trans_le in IHn_sdcs.
+      eapply IHn_sdcs.
+      apply HS12.
+      eexists. eassumption.
+      admit. (* omega -- termination issue, b/c of use HS12 *)
+    }
+    inversion HDs as [nds12 HDs'].
+    exists (S (nd12 + nds12)).
+    apply sdcs_cons with (D1:=D1').
+    assumption.
+    apply HD'.
+    apply HDs'.
+    assumption.
 Qed.
 
 Definition stp_trans n := proj1 (sub_trans n).
