@@ -391,8 +391,8 @@ Inductive stp: nat -> bool -> ctx -> typ -> typ -> ctx -> Prop :=
 | stp_sel2: forall n1 n2 n3 G1 T1 G2 p M TL TU Gp,
   pth_has G2 p (dec_typ M TL TU) Gp ->
   stp n1 true Gp TL TU Gp ->
-  stp n2 true G1 T1 TL Gp ->
-  stp n3 true G1 T1 TU Gp ->
+  stp n2 false G1 T1 TL Gp ->
+  stp n3 false G1 T1 TU Gp ->
   stp (S (n1+n2+n3)) true G1 T1 (typ_sel p M) G2
 | stp_sel1: forall n1 n2 G1 G2 T2 p M TL TU Gp,
   pth_has G1 p (dec_typ M TL TU) Gp ->
@@ -758,6 +758,7 @@ Axiom sdcs_cofinite_switch: forall L Ds1 Ds2 Ds3 G1 G2 G3,
         (open_decs x Ds3)
         (G3 & (x ~ typ_clo G1 (typ_bind Ds1)))).
 
+(*
 Theorem sub_refl:
   (forall n b G1 T1 T2 G2, stp n b G1 T1 T2 G2 -> stpn b G1 T1 T1 G1 /\ stpn b G2 T2 T2 G2) /\
   (forall n G1 D1 D2 G2, sdc n G1 D1 D2 G2 -> sdcn G1 D1 D1 G1 /\ sdcn G2 D2 D2 G2) /\
@@ -927,6 +928,7 @@ Proof.
     + apply decs_has_hit. assumption.
     + apply sdcs_cons1; try assumption.
 Qed.
+*)
 
 Theorem pth_has_extending:
   (forall G p D Gp, pth_has G p D Gp ->
@@ -1162,20 +1164,20 @@ Proof.
   - apply same_bind.
 Qed.
 
-Lemma same_stp2: forall n G1 T1 G2 T2 G3 T3,
-  stp n true G1 T1 T2 G2 ->
+Lemma same_stp2: forall n m G1 T1 G2 T2 G3 T3,
+  stp n m G1 T1 T2 G2 ->
   same_typ G2 T2 T3 G3 ->
-  stp n true G1 T1 T3 G3.
+  stp n m G1 T1 T3 G3.
 Proof.
   introv Hstp Hsame. gen G1 T1. induction Hsame; intros; try assumption.
   (* tricky *)
   admit.
 Qed.
 
-Lemma same_stp1: forall n G1 T1 G2 T2 G3 T3,
-  stp n true G2 T2 T3 G3 ->
+Lemma same_stp1: forall n m G1 T1 G2 T2 G3 T3,
+  stp n m G2 T2 T3 G3 ->
   same_typ G1 T1 T2 G2 ->
-  stp n true G1 T1 T3 G3.
+  stp n m G1 T1 T3 G3.
 Proof.
   admit.
 Qed.
@@ -1192,41 +1194,41 @@ Qed.
 
 (* Transivity *)
 
-Definition stp_trans_on n12 n23 :=
-  forall G1 T1 G2 T2 G3 T3,
-  stp n12 true G1 T1 T2 G2 ->
-  stp n23 true G2 T2 T3 G3 ->
+Definition stp_trans_on n12 :=
+  forall m G1 T1 G2 T2 G3 T3,
+  stp n12 m G1 T1 T2 G2 ->
+  stpn true G2 T2 T3 G3 ->
   stpn true G1 T1 T3 G3.
 
-Definition sdc_trans_on n12 n23 :=
+Definition sdc_trans_on n12 :=
   forall G1 D1 G2 D2 G3 D3,
   sdc n12 G1 D1 D2 G2 ->
-  sdc n23 G2 D2 D3 G3 ->
+  sdcn G2 D2 D3 G3 ->
   sdcn G1 D1 D3 G3.
 
-Definition sdcs_trans_on n12 n23 :=
+Definition sdcs_trans_on n12 :=
   forall G1 Ds1 G2 Ds2 G3 Ds3,
   sdcs n12 G1 Ds1 Ds2 G2 ->
-  sdcs n23 G2 Ds2 Ds3 G3 ->
+  sdcsn G2 Ds2 Ds3 G3 ->
   sdcsn G1 Ds1 Ds3 G3.
 
-Definition trans_up (P: nat -> nat -> Prop) n :=
-  forall n12 n23, n12 + n23 <= n ->
-  P n12 n23.
+Definition trans_up (P: nat -> Prop) n :=
+  forall n12, n12 <= n ->
+  P n12.
 
-Lemma trans_le: forall P n n12 n23,
+Lemma trans_le: forall P n n12,
   trans_up P n ->
-  n12 + n23 <= n ->
-  P n12 n23.
+  n12 <= n ->
+  P n12.
 Proof.
-  introv H Heq. unfold trans_up in H. apply H. auto.
+  introv H Heq. unfold trans_up in H. eauto.
 Qed.
 
 Lemma stpn_sel2: forall G1 T1 G2 p M TL TU Gp,
   pth_has G2 p (dec_typ M TL TU) Gp ->
   stpn true Gp TL TU Gp ->
-  stpn true G1 T1 TL Gp ->
-  stpn true G1 T1 TU Gp ->
+  stpn false G1 T1 TL Gp ->
+  stpn false G1 T1 TU Gp ->
   stpn true G1 T1 (typ_sel p M) G2.
 Proof.
   intros.
@@ -1276,27 +1278,20 @@ Proof.
   induction n.
   - split; try split; intros;
     assert (n12 = 0) by omega;
-    assert (n23 = 0) by omega;
     subst;
-    inversion H0; inversion H1.
+    inversion H0.
   - inversion IHn as [IHn_stp [IHn_sdc IHn_sdcs]].
     split; try split;
-    intros n12 n23 Hneq G1 T1 G2 T2 G3 T3 HS12 HS23;
+    introv Hneq HS12 HS23;
 
-    inversion HS12; inversion HS23; subst;
-    (* 56 cases total *)
-    (* 6 cases, stp_sel2 right *)
+    inversion HS12; inversion HS23 as [n23' HS23']; inversion HS23'; subst;
+    (* 68 cases total *)
+    (* 7 cases, stp_sel2 right *)
     try solve [eapply stpn_sel2; [
         eassumption |
         eexists; eassumption |
-        eapply trans_le in IHn_stp; [
-            eapply IHn_stp; eassumption |
-            omega
-        ] |
-        eapply trans_le in IHn_stp; [
-            eapply IHn_stp; eassumption |
-            omega
-        ]
+        eexists; eapply stp_transf; [ eapply stp_wrapf; eassumption | eassumption ] |
+        eexists; eapply stp_transf; [ eapply stp_wrapf; eassumption | eassumption ]
     ]];
     (* 5 cases, stp_sel1 left *)
     try solve [eapply stpn_sel1; [
@@ -1318,7 +1313,7 @@ Proof.
     (* 18 cases *)
     try solve [inversion_eq];
     try inversion_eq.
-    (* 22 cases remaining *)
+    (* 33 cases remaining *)
 
   + (* sel2 - sel1 *)
     assert (dec_typ M TL0 TU0 = dec_typ M TL TU /\ Gp0 = Gp) as A. {
@@ -1327,7 +1322,7 @@ Proof.
     }
     inversion A as [A1 A2]. inversions A1. clear A.
     eapply trans_le in IHn_stp.
-    eapply IHn_stp. apply H2. eassumption.
+    eapply IHn_stp. apply H2. eexists. eassumption.
     omega.
 
   + (* sel2 - sel1u *)
@@ -1451,7 +1446,8 @@ Proof.
       specialize (H0 x Frx).
       eapply trans_le in IHn_sdcs.
       eapply IHn_sdcs; try eassumption.
-      admit. (* omega. -- we need to change recursion scheme *)
+      eexists. eassumption.
+      omega.
     }
     apply sdcs_cofinite_switch in HTrans.
     inversion HTrans as [nb' HTrans'].
@@ -1459,12 +1455,26 @@ Proof.
     apply stp_bind with (L:=L \u L0); try assumption; try reflexivity.
     subst. assumption.
 
+  (* new cases because of stp false possibilities *)
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+  + admit.
+
   + (* sdc_typ - sdc_typ *)
     assert (stpn true G1 TU1 TU3 G3) as HU13. {
-     eapply trans_le in IHn_stp; [
-        eapply IHn_stp; eassumption |
-        omega
-      ].
+     eapply trans_le in IHn_stp.
+     eapply IHn_stp.
+     eauto.
+     eexists. eassumption.
+     omega.
     }
     inversion HU13 as [nu HU13'].
     assert (stpn false G3 TL3 TL1 G1) as HL31. {
@@ -1478,10 +1488,11 @@ Proof.
 
   + (* sdc_typ - sdc_typu *)
     assert (stpn true G1 TU1 TU3 G3) as HU13. {
-     eapply trans_le in IHn_stp; [
-        eapply IHn_stp; eassumption |
-        omega
-      ].
+     eapply trans_le in IHn_stp.
+     eapply IHn_stp.
+     eauto.
+     eexists. eassumption.
+     omega.
     }
     inversion HU13 as [nu HU13'].
     exists (S (n1+nu)).
@@ -1489,10 +1500,11 @@ Proof.
 
   + (* sdc_tyu - sdc_tyu *)
     assert (stpn true G1 TU1 TU3 G3) as HU13. {
-     eapply trans_le in IHn_stp; [
-        eapply IHn_stp; eassumption |
-        omega
-      ].
+     eapply trans_le in IHn_stp.
+     eapply IHn_stp.
+     eauto.
+     eexists. eassumption.
+     omega.
     }
     inversion HU13 as [nu HU13'].
     exists (S nu).
@@ -1500,10 +1512,11 @@ Proof.
 
   + (* sdc_typu - sdc_tyu *)
     assert (stpn true G1 TU1 TU3 G3) as HU13. {
-     eapply trans_le in IHn_stp; [
-        eapply IHn_stp; eassumption |
-        omega
-      ].
+     eapply trans_le in IHn_stp.
+     eapply IHn_stp.
+     eauto.
+     eexists. eassumption.
+     omega.
     }
     inversion HU13 as [nu HU13'].
     exists (S (n1+nu)).
@@ -1511,10 +1524,11 @@ Proof.
 
   + (* sdc_mtd - sdc_mtd *)
     assert (stpn true G1 TU1 TU3 G3) as HU13. {
-     eapply trans_le in IHn_stp; [
-        eapply IHn_stp; eassumption |
-        omega
-      ].
+     eapply trans_le in IHn_stp.
+     eapply IHn_stp.
+     eauto.
+     eexists. eassumption.
+     omega.
     }
     inversion HU13 as [nu HU13'].
     assert (stpn false G3 TL3 TL1 G1) as HL31. {
@@ -1552,10 +1566,10 @@ Proof.
   introv H12 H23.
   destruct H12 as [n12 H12'].
   destruct H23 as [n23 H23'].
-  eapply stp_trans with (n:=n12+n23) (n12:=n12) (n23:=n23).
+  eapply stp_trans with (n:=n12+n23) (n12:=n12).
   omega.
   eassumption.
-  assumption.
+  eexists. eassumption.
 Qed.
 
 (* ###################################################################### *)
