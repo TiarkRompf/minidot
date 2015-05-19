@@ -1265,6 +1265,20 @@ Ltac inversion_eq :=
     | [ H : _ = _ |- _ ] => inversions H
   end.
 
+Lemma sdcs_narrow: forall x G1 G2 G3 Ds1 Ds2 Ds3,
+   sdcsn (G1 & x ~ typ_clo G1 (typ_bind Ds1))
+         (open_decs x Ds1) (open_decs x Ds2)
+         (G2 & x ~ typ_clo G1 (typ_bind Ds1)) ->
+   sdcsn (G2 & x ~ typ_clo G2 (typ_bind Ds2))
+         (open_decs x Ds2) (open_decs x Ds3)
+         (G3 & x ~ typ_clo G2 (typ_bind Ds2)) ->
+   sdcsn (G2 & x ~ typ_clo G1 (typ_bind Ds1))
+         (open_decs x Ds2) (open_decs x Ds3)
+         (G3 & x ~ typ_clo G1 (typ_bind Ds1)).
+Proof.
+  admit.
+Qed.
+
 Lemma sub_trans: forall n,
   trans_up stp_trans_on n /\
   trans_up sdc_trans_on n /\
@@ -1446,7 +1460,10 @@ Proof.
         sdcsn (G2 & x ~ typ_clo G1 (typ_bind Ds1))
               (open_decs x Ds2) (open_decs x Ds3)
               (G3 & x ~ typ_clo G1 (typ_bind Ds1))) as HNarrow. {
-      admit.
+      intros x FrL'.
+      apply sdcs_narrow.
+      exists n1. apply H0. subst. auto.
+      exists n0. apply H8. subst. auto.
     }
     apply sdcs_cofinite_switch in HNarrow.
     inversion HNarrow as [n' HNarrow'].
