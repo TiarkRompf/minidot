@@ -1312,8 +1312,23 @@ Proof.
     ]];
     (* 18 cases *)
     try solve [inversion_eq];
-    try inversion_eq.
-    (* 33 cases remaining *)
+    try inversion_eq;
+    (* 6 cases, stp_transf left *)
+    try solve [
+      remember IHn_stp as IHn_stp2; clear HeqIHn_stp2;
+      eapply trans_le in IHn_stp; [
+      eapply IHn_stp; [ apply H |
+      eapply trans_le in IHn_stp2; [
+      eapply IHn_stp2; eauto | omega ]] |
+      omega
+    ]];
+    (* 5 cases, stp_wrapf left *)
+    try solve [
+      eapply trans_le in IHn_stp; [
+      eapply IHn_stp; [ apply H | assumption ] |
+      omega
+    ]].
+    (* 22 cases remaining *)
 
   + (* sel2 - sel1 *)
     assert (dec_typ M TL0 TU0 = dec_typ M TL TU /\ Gp0 = Gp) as A. {
@@ -1454,19 +1469,6 @@ Proof.
     exists (S nb').
     apply stp_bind with (L:=L \u L0); try assumption; try reflexivity.
     subst. assumption.
-
-  (* new cases because of stp false possibilities *)
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
-  + admit.
 
   + (* sdc_typ - sdc_typ *)
     assert (stpn true G1 TU1 TU3 G3) as HU13. {
