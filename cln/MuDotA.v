@@ -1287,10 +1287,11 @@ Lemma pth_has_narrowing: forall x G1 G2 Ds1 Ds2,
         (G2 & x ~ typ_clo G1 (typ_bind Ds1)) ->
   (forall G p D Gp, pth_has G p D Gp ->
    forall Gn, narrowed G Gn ->
-   exists Gpn, pth_has Gn p D Gpn /\ narrowed Gp Gpn).
+   exists Gpn Dn,
+   pth_has Gn p Dn Gpn /\
+   narrowed Gp Gpn /\
+   sdcn Gpn Dn D Gp).
 Proof.
-  (* TODO: this doesn't hold, as D can become more precise.
-     Furthermore, p must be in both G1 and G2 for nwd_focus. *)
   admit.
 Qed.
 
@@ -1321,12 +1322,27 @@ Proof.
   - (* stp_sel2 *)
     apply pth_has_narrowing with (x:=x) (G1:=G1) (G2:=G2) (Ds1:=Ds1) (Ds2:=Ds2) (Gn:=G2n) in p0;
     try assumption.
-    inversion p0 as [Gpn [p0' HGpn]].
-    specialize (H0 Gpn Gpn HGpn HGpn). inversion H0 as [n0' H0'].
-    specialize (H1 G1n Gpn H3 HGpn). inversion H1 as [n1' H1'].
-    specialize (H2 G1n Gpn H3 HGpn). inversion H2 as [n2' H2'].
+    inversion p0 as [Gpn [Dn [p0' [HGpn HDn]]]].
+    inversion HDn as [dn' HDn'].
+    inversion HDn'. subst.
+    assert (narrowed Gp Gp) as HGp by apply nwd_refl.
+    specialize (H1 G1n Gp H3 HGp). inversion H1 as [n1' H1'].
+    specialize (H2 G1n Gp H3 HGp). inversion H2 as [n2' H2'].
+    assert (stpn false G1n T1 TL1 Gpn) as HTL1n. {
+      eexists.
+      eapply stp_transf.
+      apply H1'. eassumption.
+    }
+    inversion HTL1n as [l1n HTL1n'].
+    assert (stpn false G1n T1 TU1 Gpn) as HTU1n. {
+      eexists.
+      eapply stp_transf.
+      apply HTL1n'.
+      apply stp_wrapf. eassumption.
+    }
+    inversion HTU1n as [u1n HTU1n'].
     eexists.
-    apply stp_sel2 with (TL:=TL) (TU:=TU) (Gp:=Gpn); eauto.
+    apply stp_sel2 with (TL:=TL1) (TU:=TU1) (Gp:=Gpn); eauto.
   - admit.
   - admit.
   - admit.
