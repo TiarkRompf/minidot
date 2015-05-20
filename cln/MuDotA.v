@@ -1265,6 +1265,91 @@ Ltac inversion_eq :=
     | [ H : _ = _ |- _ ] => inversions H
   end.
 
+
+Inductive narrowed: ctx -> ctx -> Prop :=
+| nwd_refl : forall G,
+    narrowed G G
+| nwd_init: forall x G1 G2 Ds1 Ds2 G3 G3b,
+    sdcsn (G1 & x ~ typ_clo G1 (typ_bind Ds1))
+          (open_decs x Ds1) (open_decs x Ds2)
+          (G2 & x ~ typ_clo G1 (typ_bind Ds1)) ->
+    narrowed (G3 & x ~ typ_clo G2 (typ_bind Ds2) & G3b)
+             (G3 & x ~ typ_clo G1 (typ_bind Ds1) & G3b)
+| nwd_focus: forall x G1 G2 Ds1 Ds2,
+    sdcsn (G1 & x ~ typ_clo G1 (typ_bind Ds1))
+          (open_decs x Ds1) (open_decs x Ds2)
+          (G2 & x ~ typ_clo G1 (typ_bind Ds1)) ->
+    narrowed G2 G1.
+
+Lemma pth_has_narrowing: forall x G1 G2 Ds1 Ds2,
+  sdcsn (G1 & x ~ typ_clo G1 (typ_bind Ds1))
+        (open_decs x Ds1) (open_decs x Ds2)
+        (G2 & x ~ typ_clo G1 (typ_bind Ds1)) ->
+  (forall G p D Gp, pth_has G p D Gp ->
+   forall Gn, narrowed G Gn ->
+   exists Gpn, pth_has Gn p D Gpn /\ narrowed Gp Gpn).
+Proof.
+  (* TODO: this doesn't hold, as D can become more precise.
+     Furthermore, p must be in both G1 and G2 for nwd_focus. *)
+  admit.
+Qed.
+
+Lemma narrowing: forall x G1 G2 Ds1 Ds2,
+  sdcsn (G1 & x ~ typ_clo G1 (typ_bind Ds1))
+        (open_decs x Ds1) (open_decs x Ds2)
+        (G2 & x ~ typ_clo G1 (typ_bind Ds1)) ->
+  (forall n m G1 T1 T2 G2, stp n m G1 T1 T2 G2 ->
+   forall G1n G2n, narrowed G1 G1n -> narrowed G2 G2n ->
+   stpn m G1n T1 T2 G2n) /\
+  (forall n G1 D1 D2 G2, sdc n G1 D1 D2 G2 ->
+   forall G1n G2n, narrowed G1 G1n -> narrowed G2 G2n ->
+   sdcn G1n D1 D2 G2n) /\
+  (forall n G1 Ds1 Ds2 G2, sdcs n G1 Ds1 Ds2 G2 ->
+   forall G1n G2n, narrowed G1 G1n -> narrowed G2 G2n ->
+   sdcsn G1n Ds1 Ds2 G2n) /\
+  (forall G T, wf_typ G T ->
+   forall Gn, narrowed G Gn ->
+   wf_typ Gn T) /\
+  (forall G D, wf_dec G D ->
+   forall Gn, narrowed G Gn ->
+   wf_dec Gn D) /\
+  (forall G Ds, wf_decs G Ds ->
+   forall Gn, narrowed G Gn ->
+   wf_decs Gn Ds).
+Proof.
+  intros. apply sw_mutind; intros.
+  - (* stp_sel2 *)
+    apply pth_has_narrowing with (x:=x) (G1:=G1) (G2:=G2) (Ds1:=Ds1) (Ds2:=Ds2) (Gn:=G2n) in p0;
+    try assumption.
+    inversion p0 as [Gpn [p0' HGpn]].
+    specialize (H0 Gpn Gpn HGpn HGpn). inversion H0 as [n0' H0'].
+    specialize (H1 G1n Gpn H3 HGpn). inversion H1 as [n1' H1'].
+    specialize (H2 G1n Gpn H3 HGpn). inversion H2 as [n2' H2'].
+    eexists.
+    apply stp_sel2 with (TL:=TL) (TU:=TU) (Gp:=Gpn); eauto.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+Qed.
+
 Lemma sdcs_narrow: forall x G1 G2 G3 Ds1 Ds2 Ds3,
    sdcsn (G1 & x ~ typ_clo G1 (typ_bind Ds1))
          (open_decs x Ds1) (open_decs x Ds2)
