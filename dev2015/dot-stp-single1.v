@@ -730,6 +730,14 @@ Proof.
 Qed.
 
 
+Lemma itp_exp: forall G1 T1 TL TU TL1 TU1 n1 n2,
+  itp G1 T1 n1 ->
+  stp true G1 T1 (TMem TL TU) n2 ->
+  exp G1 T1 (TMem TL1 TU1).
+Proof. admit. Qed.
+
+
+
 Lemma stp_narrow: forall m G1 T1 T2 n1,
   stpd m G1 T1 T2 ->
                     
@@ -908,7 +916,7 @@ Proof.
     + SSCase "Top". eapply stpd_top.
     + SSCase "Sel2".
       assert (itp G1 TX nG) as E. { eapply IMP. eauto. }
-      inversion E. subst. inversion H0.
+      eapply itp_exp in E; eauto.
       eapply stpd_sel2; eauto. eapply stpd_trans_lo; eauto.
   - SCase "Bool < Bool". inversion S23; subst; try solve by inversion.
     + SSCase "Top". eauto.
@@ -924,7 +932,7 @@ Proof.
         eapply IH; eauto.
     + SSCase "Sel2".
       assert (itp G1 TX nG) as E. { eapply IMP. eauto. }
-      inversion E. subst. inversion H7.
+      eapply itp_exp in E; eauto.
       eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
   - SCase "Mem < Mem". inversion S23; subst; try solve by inversion.
     + SSCase "Top". eapply stpd_top.
@@ -936,35 +944,36 @@ Proof.
         eapply IH; eauto.
     + SSCase "Sel2". 
       assert (itp G1 TX nG) as E. { eapply IMP. eauto. }
-      inversion E. subst. inversion H7.
+      eapply itp_exp in E; eauto.
       eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
   - SCase "? < Sel". inversion S23; subst; try solve by inversion.
     + SSCase "Top". eapply stpd_top.
     + SSCase "Sel2". 
       assert (itp G1 TX0 nG) as E. { eapply IMP. eauto. }
-      inversion E. subst. inversion H7.
+      eapply itp_exp in E; eauto.
       eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
     + SSCase "Sel1". (* interesting case *)
       index_subst.
       assert (itp G1 TX0 nG) as E. { eapply IMP. eauto. }
-      inversion E. subst. inversion H7.
-      assert (trans_up (n0+n1+nG)) as IH.
-      { unfold trans_up. intros. apply IHn. admit. (* FIXME n0+n1+nG <= n. *) }
+      eapply itp_exp in E; eauto.
       inversion H10. subst. index_subst. eapply stpd_trans_cross; eauto.
+      assert (trans_up (n0+n0+nG)) as IH. 
+      { unfold trans_up. intros. apply IHn. admit. (* FIXME n0+n0+nG <= n. *) }
+      apply IH.
     + SSCase "Selx". inversion H8. index_subst. subst. index_subst. subst.
       eapply stpd_sel2. eauto. eauto.
   - SCase "Sel < ?".
       assert (trans_up (nG+n0)) as IH.
       { unfold trans_up. intros. eapply IHn. omega. }
       assert (itp G1 TX nG) as E. { eapply IMP. eauto. }
-      inversion E. subst. inversion H0.
-      eapply stpd_sel1. eauto. eapply stpd_trans_hi; eauto.
+      eapply itp_exp in E.
+      eapply stpd_sel1. eauto. eapply stpd_trans_hi; eauto. eauto.
   - SCase "Sel < Sel". inversion S23; subst; try solve by inversion.
     + SSCase "Top". eapply stpd_top.
     + SSCase "Sel2". 
        assert (itp G1 TX nG) as E. { eapply IMP. eauto. }
-       inversion E. subst. inversion H5.
-       eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
+       eapply itp_exp in E; eauto. 
+       (* eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto. *)
      + SSCase "Sel1". inversion H8. index_subst. subst. index_subst. subst.
        eapply stpd_sel1. eauto. eauto.
      + SSCase "Selx". inversion H6. subst. repeat index_subst.
@@ -973,23 +982,23 @@ Proof.
     + SSCase "Top". eapply stpd_top.
     + SSCase "Sel2". 
       assert (itp G1 TX nG) as E. { eapply IMP. eauto. }
-      inversion E. subst. inversion H10.
+      eapply itp_exp in E; eauto.
       eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
     + SSCase "Bind".
-      inversion H16. subst.
+      inversion H14. subst.
       assert (trans_up (nG+n0)) as IH.
       { unfold trans_up. intros. eapply IHn. omega. }
       (* realizable in old env *) 
-      assert (itp G1 (open (length G1) TA2) nG). { eapply itp_mem. eauto. eauto. admit. (* FIXME n5 <= nG *) }
+      assert (itp G1 (open (length G1) TA2) n5). auto. 
       (* realizable in new env *)
-      assert (itp G1 (open (length G1) TA1) nG). { eapply itp_mem.  eauto. eauto. admit. (* FIXME n3 <= nG *) }
+      assert (itp G1 (open (length G1) TA1) n3). auto. 
       (* first narrow, then trans *)
       assert (stpd true ((length G1, open (length G1) TA1) :: G1)
                    (open (length G1) TA2) (open (length G1) TA3)) as NRW.
       { 
         assert (beq_nat (length G1) (length G1) = true) as E.
         { eapply beq_nat_true_iff. eauto. }
-        inversion H16. subst.
+        inversion H14. subst.
         eapply stp_narrow. eauto.
         instantiate (2 := length G1). unfold index. rewrite E. eauto.
         instantiate (1 := open (length G1) TA1). unfold update. rewrite E. eauto.
@@ -997,9 +1006,11 @@ Proof.
         eapply env_itp_extend. eauto. eapply itp_extend. eauto. (* itp with TA2 in env *)
         eapply itp_extend. eauto. (* itp with TA1 in env *)
         eauto.
+        admit. (* TODO: slack in size! *)
+        auto.
       }
       eapply stpd_bindx. eapply IH. eauto.
-      eapply env_itp_extend. eauto. eapply itp_extend. eauto. eauto. eauto. eauto. eauto. eauto. eauto.  
+      eapply env_itp_extend. eauto. eapply itp_extend. eauto. eauto. eauto. eauto. eauto. eauto. 
   - SCase "Trans". subst.
     assert (trans_on nG n3) as IH2.
     { eapply trans_le; eauto. omega. }
@@ -1013,6 +1024,12 @@ Proof.
     assert (trans_on nG n0) as IH.
     { eapply trans_le; eauto. omega. }
     eapply IH; eauto.
+Grab Existential Variables.
+apply TBot. apply TBot. apply TBot.
+apply TBot. apply TBot. apply TBot.
+apply TBot. apply TBot. apply TBot.
+apply TBot. apply TBot. apply TBot.
+apply TBot. apply TBot.
 Qed.
 
 
