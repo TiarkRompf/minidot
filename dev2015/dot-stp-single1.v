@@ -322,14 +322,15 @@ Inductive stp : bool -> tenv -> ty -> ty -> nat -> Prop :=
     stp true G1 (TBind TA1) T2 (S n1)
 ... or at least...
 *)
-| stp_bindx: forall G1 T1 T2 TA1 TA2 TL TU n1 n2,
+| stp_bindx: forall G1 T1 T2 TA1 TA2 n1 n2,
     stp true ((length G1,T1)::G1) T1 T2 n1 ->
     open (length G1) TA1 = T1 ->                
     open (length G1) TA2 = T2 ->
     (* we need exp T1 D here *)
     (* how will this interact with narrowing? *)
-    exp G1 T1 (TMem TL TU) ->
-    stp true G1 TL TU n2 ->
+    (* exp G1 T1 (TMem TL TU) -> *)
+    (* stp true G1 TL TU n2 -> *)
+    itp G1 T1 n2 ->
     stp true G1 (TBind TA1) (TBind TA2) (S (n1+n2))
 
 | stp_transf: forall G1 T1 T2 T3 n1 n2,
@@ -340,7 +341,29 @@ Inductive stp : bool -> tenv -> ty -> ty -> nat -> Prop :=
 | stp_wrapf: forall G1 T1 T2 n1,
     stp true G1 T1 T2 n1 ->
     stp false G1 T1 T2 (S n1)       
+
+with itp: tenv -> ty -> nat -> Prop :=
+
+| itp_top: forall G1 n1,
+    itp G1 TTop n1
+| itp_bool: forall G1 n1,
+    itp G1 TBool n1
+(* TODO: we should have another mem case,
+   if lower bound is bot, upper bound need
+   not be realizable (?) *)
+| itp_mem: forall G1 TL TU n1 n2,
+    stp true G1 TL TU n1 ->
+    itp G1 TU n2 -> 
+    itp G1 (TMem TL TU) (n1+n2)
+| itp_sel: forall G1 TX x n1,
+    index x G1 = Some TX ->
+    itp G1 TX n1 ->
+    itp G1 (TSel x) n1
 .
+
+
+
+
 
 
 Tactic Notation "stp_cases" tactic(first) ident(c) :=
@@ -363,7 +386,7 @@ Tactic Notation "stp_cases" tactic(first) ident(c) :=
 Hint Resolve ex_intro.
 
 Hint Constructors stp.
-
+Hint Constructors itp.
 
 (* ############################################################ *)
 (* Examples *)
@@ -385,8 +408,8 @@ Example ex2: exists n, stp true nil
    (TBind (TMem TBot TTop)) n.
 Proof.
   eexists. eapply stp_bindx. eapply stp_mem. eapply stp_wrapf. eapply stp_bot.
-  eapply stp_top. compute. eauto. compute. eauto. eapply exp_mem. eauto.
-Grab Existential Variables. apply 0. apply 0. apply 0.
+  eapply stp_top. compute. eauto. compute. eauto. eauto. 
+Grab Existential Variables. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Example ex3: exists n, stp true nil
@@ -400,8 +423,8 @@ Proof.
   eapply stp_mem. eapply stp_wrapf.
   eapply stp_sel1. compute. eauto. eapply stp_mem. eauto. eauto.
   eapply stp_sel2. compute. eauto. eauto.
-  eauto. eauto. eapply exp_mem. eauto.
-Grab Existential Variables. apply 0. apply 0. apply 0. apply 0. apply 0.
+  eauto. eauto. eauto.
+Grab Existential Variables. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 
@@ -458,14 +481,15 @@ Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd_selx: forall x G1,
     stpd true G1 (TSel x) (TSel x).
 Proof. intros. repeat eu. exists 1. eauto. Qed.
-Lemma stpd_bindx: forall G1 T1 T2 TA1 TA2 TL TU,
+Lemma stpd_bindx: forall G1 T1 T2 TA1 TA2,
     stpd true ((length G1,T1)::G1) T1 T2 ->
     open (length G1) TA1 = T1 ->                
     open (length G1) TA2 = T2 ->
-    exp G1 T1 (TMem TL TU) ->
-    stpd true G1 TL TU ->
+    (* exp G1 T1 (TMem TL TU) -> *)
+    (* stpd true G1 TL TU -> *)
+    (exists n, itp G1 T1 n) ->
     stpd true G1 (TBind TA1) (TBind TA2).
-Proof. intros. repeat eu. eauto. Qed.
+Proof. intros. repeat eu. destruct H2. eauto. Qed.
 Lemma stpd_transf: forall G1 T1 T2 T3,
     stpd true G1 T1 T2 ->
     stpd false G1 T2 T3 ->           
@@ -505,6 +529,7 @@ Qed.
 (* implementable type: expands and has good bounds *)
 (* Definition itp G T (n:nat) := exists T1 T2 n1, exp G T (TMem T1 T2) /\ stp true G T1 T2 n1 /\ n1 <= n. *)
 
+(*
 Inductive itp: tenv -> ty -> nat -> Prop :=
 
 | itp_top: forall G1 n1,
@@ -514,6 +539,7 @@ Inductive itp: tenv -> ty -> nat -> Prop :=
     stp true G1 T1 T2 n1 ->
     n1 <= n ->
     itp G1 T n.
+*)
 
 (* TODO: now make it recurse into upper bounds *)
 
@@ -754,74 +780,39 @@ Proof.
   - Case "Bindx".
     (* 
        Now considering only non-recursive bounds.
-
-       This eliminates some issues. But we still need to
-       narrow expansion evidence, which seems difficult.
+       All upper bounds must be realizable (deep, via itp).
     *)
 
     assert (length G1 = length G1'). { eapply update_pres_len; eauto. }
     remember (length G1) as L. clear HeqL. subst L.
 
-
-    assert (itp G1 T1 n2). eapply itp_mem. eauto. eauto. eauto.
+    assert (itp G1 T1 n2). eauto. (* already have it! *)
     (* will do induction with extended env. need to prove T1 realizable in G1' *)
     assert (exists nx, itp G1' T1 nx) as IE. {
-
-      
-      remember (TMem TL TU).
-      assert (stpd true G1' TL TU) as SLU. {
-        eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
-      }
-      destruct SLU.
-      clear IHstp2 IHstp1. (* still a lot of garbage ... *)
-      (* itp-narrow *)
-      eexists x0. eapply itp_mem.
+      clear IHstp. clear H. clear H0.
       induction H2.
+      + SCase "top". exists 0. eauto.
+      + SCase "bool". exists 0. eauto.
       + SCase "mem".
-        inversion Heqt. subst. repeat eexists. eapply exp_mem. 
+        assert (exists nx : nat, itp G1' TU nx) as IH. eapply IHitp; eauto.
+        assert (exists nx : nat, stp true G1' TL TU nx) as IHS. admit. (* ind narrow! *)
+        (* TODO: need to be able to do induction on stp_narrow *)
+        destruct IH. destruct IHS.
+        eexists. eapply itp_mem. eauto. eauto.
       + SCase "sel".
-        case_eq (beq_nat x x1); intros E.
-        (* hit updated binding *)
-        * assert (x = x1) as EX. eapply beq_nat_true_iff; eauto. subst. index_subst. index_subst.
-          repeat destruct H8 as [? H8].
-          admit.
-          (* repeat eexists. eapply exp_sel. eapply upd_hit; eauto. eauto. *)
-          (* 
-             PROBLEM:
-
-                we have
-                   exp G1 TX2 (TMem T0 T3)
-                   exp (update x1 TX1 G1) TX1 (TMem x x2)
-
-                and via induction we could get
-                   exp G1 T3 (TMem T1 T2)
-
-                but we do not know how to construct
-                   exp G1' x2 (TMem ...)
-
-             IDEA:
-                we know that TX1 < TX2, and therefore T0 < x < x2 < T3
-                it is indeed possible that T3 expands, but not x2.
-                but then T0 can't expand either!
-
-                so: if previous lower bound expanded
-
-                if previous lower bound did not expand, then it
-                can never be used in a sel2 position.                
-
-           *)
-        * admit.
-          (* first part is straightforward induction, but 
-             bound may have changed so we can't apply second *)
-      + eauto.
-      + eauto.
+        assert (exists nx : nat, itp G1' TX nx) as IH. eauto.
+        destruct IH.
+        case_eq (beq_nat x0 x); intros E.
+        * assert (x0 = x) as EX. eapply beq_nat_true_iff; eauto.
+          subst. index_subst. index_subst.
+          eexists. eapply itp_sel. eapply upd_hit. eauto. eauto. eauto. eauto.
+        * assert (x0 <> x) as EX. eapply beq_nat_false_iff; eauto.
+          subst.
+          eexists. eapply itp_sel. eapply upd_miss. eauto. eauto. eauto. eauto.
     }
-    repeat destruct IE as [? IE]. inversion IE; subst.
-    rewrite <-H12 in H2. inversion H2. (* exp Top TMem .. impossible *)
-    (* case mem *)
-    
+
     eapply stpd_bindx. {
-      eapply IHstp1.
+      eapply IHstp.
       eapply index_extend; eauto.
       eapply update_extend; eauto.
       eapply stp_extend; eauto.
@@ -830,7 +821,6 @@ Proof.
       eapply itp_extend. eauto. eauto.
       eapply itp_extend. eauto. eauto.
     }
-    eauto.
     eauto.
     eauto.
     eauto.
