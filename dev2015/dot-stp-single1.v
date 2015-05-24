@@ -894,7 +894,12 @@ Lemma stpd_trans_lo: forall G1 T1 T2 TX n1,
   stpd true G1 TX (TMem T2 TTop) ->
   itp G1 TX n1 ->
   stpd true G1 TX (TMem T1 TTop).
-Proof. admit. Qed.
+Proof.
+  intros. eu.
+  assert (exists TL TU, exp G1 TX (TMem TL TU)) as HH. { eapply itp_exp; eauto. }
+  repeat destruct HH as [? HH].
+  eapply stpde_trans_lo; eauto.
+Qed.
 
 
 Lemma stpde_trans_hi: forall G1 T1 T2 TX n1 nG TXL TXU,
@@ -923,7 +928,12 @@ Lemma stpd_trans_hi: forall G1 T1 T2 TX n1 nG n2,
   env_itp G1 nG ->
   trans_up (nG + n1) ->
   stpd true G1 TX (TMem TBot T2).
-Proof. admit. Qed.
+Proof.
+  intros. eu.
+  assert (exists TL TU, exp G1 TX (TMem TL TU)) as HH. { eapply itp_exp; eauto. }
+  repeat destruct HH as [? HH].
+  eapply stpde_trans_hi; eauto.
+Qed.
 
 
 (* need to invert mem. requires proper realizability evidence *)
@@ -960,9 +970,17 @@ Lemma stpd_trans_cross: forall G1 TX T1 T2 n1 n2 nG,
   trans_up (n1+n2+nG) ->
   stpd true G1 T1 T2.
 Proof.
+  intros. eu.
+  assert (exists TL TU, exp G1 TX (TMem TL TU)) as HH. { eapply itp_exp; eauto. }
+  repeat destruct HH as [? HH].
+  eapply stpde_trans_cross; eauto. inversion H1. subst. inversion HH. subst. inversion HH. subst.
+  inversion HH. subst. eauto. inversion HH. subst. eauto. inversion H1. subst. eauto. (* TODO: bounds size !! *)
+  admit.
+  subst.
+  (* TODO: need to figure out itp x.A case *)
+  (* maybe it's easier without exp, doing induction on itp directly? *)
   admit.
 Qed.
-
 
 
 
@@ -1024,8 +1042,8 @@ Proof.
       assert (itp G1 TX0 nG) as E. { eapply IMP. eauto. }
       eapply itp_exp in E; eauto.
       inversion H10. subst. index_subst. eapply stpd_trans_cross; eauto.
-      assert (trans_up (n0+n0+nG)) as IH. 
-      { unfold trans_up. intros. apply IHn. admit. (* FIXME n0+n0+nG <= n. *) }
+      assert (trans_up (n0+nG+nG)) as IH. 
+      { unfold trans_up. intros. apply IHn. admit. (* FIXME n0+nG+nG <= n. *) }
       apply IH.
     + SSCase "Selx". inversion H8. index_subst. subst. index_subst. subst.
       eapply stpd_sel2. eauto. eauto.
@@ -1091,12 +1109,6 @@ Proof.
     assert (trans_on nG n0) as IH.
     { eapply trans_le; eauto. omega. }
     eapply IH; eauto.
-Grab Existential Variables.
-apply TBot. apply TBot. apply TBot.
-apply TBot. apply TBot. apply TBot.
-apply TBot. apply TBot. apply TBot.
-apply TBot. apply TBot. apply TBot.
-apply TBot. apply TBot.
 Qed.
 
 
