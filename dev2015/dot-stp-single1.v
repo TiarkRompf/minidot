@@ -730,39 +730,49 @@ Proof.
 Qed.
 
 
-Lemma itp_exp: forall n G1, forall T1 TL TU n1 n2 n3,
+Lemma itp_exp_internal: forall n G1, forall T1 TL TU n1 n3,
   n1 <= n ->
   itp G1 T1 n1 ->
-  env_itp G1 n2 ->
   stp true G1 T1 (TMem TL TU) n3 ->
   exists TL1 TU1 n4, exp G1 T1 (TMem TL1 TU1) /\ itp G1 TU1 n4 /\ n4 <= n.
 Proof.
   intros n1 G1.
   induction n1.
-  Case "z". intros. inversion H; subst. inversion H0; subst; inversion H2. subst.
-  Case "S n". intros. inversion H0; subst; inversion H2. subst.
+  Case "z". intros. inversion H; subst. inversion H0; subst; inversion H1. subst.
+  Case "S n". intros. inversion H0; subst; inversion H1. subst.
   - SCase "mem".
     repeat eexists. eapply exp_mem. eauto. omega.
   - SCase "sel".
     index_subst.
 
     (* first half *)
-    assert (n4 <= n1) as E. omega.
-    assert (exists TL1 TU1 n4, exp G1 TX0 (TMem TL1 TU1) /\ itp G1 TU1 n4 /\ n4 <= n1) as IH. { eapply IHn1. apply E. eauto. eauto. eauto. }
+    assert (n2 <= n1) as E. omega.
+    assert (exists TL1 TU1 n4, exp G1 TX0 (TMem TL1 TU1) /\ itp G1 TU1 n4 /\ n4 <= n1) as IH. { eapply IHn1. apply E. eauto. eauto. }
     repeat destruct IH as [? IH].
 
     (* obtain stp for second half input *)
     assert (exists n, stp true G1 (TMem x0 x1) (TMem TBot (TMem TL TU)) n /\ n <= n0) as IX.
     { eapply stpd_inv_mem. eauto. eauto. eauto. }
-    repeat destruct IX as [? IX]. inversion H9. subst.
+    repeat destruct IX as [? IX]. inversion H8. subst.
 
     
-    assert (exists TL1 TU1 n4, exp G1 x1 (TMem TL1 TU1) /\ itp G1 TU1 n4 /\ n4 <= n1) as IH2. { eapply IHn1. apply IH. eauto. eauto. eauto. } 
+    assert (exists TL1 TU1 n4, exp G1 x1 (TMem TL1 TU1) /\ itp G1 TU1 n4 /\ n4 <= n1) as IH2. { eapply IHn1. apply IH. eauto. eauto. } 
     repeat destruct IH2 as [? IH2].                                                                                 
     repeat eexists. index_subst.
     eapply exp_sel. eauto. eauto. eauto. eauto. omega.
 Qed.
 
+
+Lemma itp_exp: forall G1 T1 TL TU n1 n2,
+  itp G1 T1 n1 ->
+  stp true G1 T1 (TMem TL TU) n2 ->
+  exists TL1 TU1, exp G1 T1 (TMem TL1 TU1).
+Proof.
+  intros.
+  assert (exists TL1 TU1 n4, exp G1 T1 (TMem TL1 TU1) /\ itp G1 TU1 n4 /\ n4 <= n1) as HH. eapply itp_exp_internal; eauto.
+  repeat destruct HH as [? HH].
+  repeat eexists. eauto.
+Qed.
 
 
 Lemma stp_narrow: forall m G1 T1 T2 n1,
