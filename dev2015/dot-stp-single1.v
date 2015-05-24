@@ -875,7 +875,7 @@ Proof.
 Qed.
 
 
-Lemma stpd_trans_lo: forall G1 T1 T2 TX TXL TXU,
+Lemma stpde_trans_lo: forall G1 T1 T2 TX TXL TXU,
   stpd true G1 T1 T2 ->                     
   stpd true G1 TX (TMem T2 TTop) ->
   exp G1 TX (TMem TXL TXU) ->
@@ -889,8 +889,15 @@ Proof.
   eapply stpd_build_mem. eauto. eapply stp_mem. eapply stp_transf. eauto. eauto. eauto.
 Qed.
 
+Lemma stpd_trans_lo: forall G1 T1 T2 TX n1,
+  stpd true G1 T1 T2 ->                     
+  stpd true G1 TX (TMem T2 TTop) ->
+  itp G1 TX n1 ->
+  stpd true G1 TX (TMem T1 TTop).
+Proof. admit. Qed.
 
-Lemma stpd_trans_hi: forall G1 T1 T2 TX n1 nG TXL TXU,
+
+Lemma stpde_trans_hi: forall G1 T1 T2 TX n1 nG TXL TXU,
   stpd true G1 T1 T2 ->                     
   stp true G1 TX (TMem TBot T1) n1 ->
   exp G1 TX (TMem TXL TXU) ->
@@ -909,9 +916,18 @@ Proof.
   eapply stpd_build_mem. eauto. eapply stp_mem. eauto. eauto.
 Qed.
 
+Lemma stpd_trans_hi: forall G1 T1 T2 TX n1 nG n2,
+  stpd true G1 T1 T2 ->                     
+  stp true G1 TX (TMem TBot T1) n1 ->
+  itp G1 TX n2 ->
+  env_itp G1 nG ->
+  trans_up (nG + n1) ->
+  stpd true G1 TX (TMem TBot T2).
+Proof. admit. Qed.
+
 
 (* need to invert mem. requires proper realizability evidence *)
-Lemma stpd_trans_cross: forall G1 TX T1 T2 TXL TXU n1 n2 nG,
+Lemma stpde_trans_cross: forall G1 TX T1 T2 TXL TXU n1 n2 nG,
                           (* trans_on *)
   stp true G1 TX (TMem T1 TTop) n1 ->
   stpd true G1 TX (TMem TBot T2) ->
@@ -934,6 +950,20 @@ Proof.
 
   eapply IH0. eauto. eauto. eapply IH1. eauto. eauto. eauto.
 Qed.
+
+Lemma stpd_trans_cross: forall G1 TX T1 T2 n1 n2 nG,
+                          (* trans_on *)
+  stp true G1 TX (TMem T1 TTop) n1 ->
+  stpd true G1 TX (TMem TBot T2) ->
+  itp G1 TX n2 ->
+  env_itp G1 nG ->
+  trans_up (n1+n2+nG) ->
+  stpd true G1 T1 T2.
+Proof.
+  admit.
+Qed.
+
+
 
 
 Lemma stp1_trans: forall n, trans_up n.
