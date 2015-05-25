@@ -342,7 +342,7 @@ with itp: tenv -> ty -> nat -> Prop :=
    if lower bound is bot, upper bound need
    not be realizable (?) *)
 | itp_mem: forall G1 TL TU n1 n2,
-    stp true G1 TL TU n1 -> (* as it looks now, this may not even be needed !! *)
+(*    stp true G1 TL TU n1 -> (* as it looks now, this may not even be needed !! *) *)
     itp G1 TU n2 -> 
     itp G1 (TMem TL TU) (S (n1+n2))
 | itp_sel: forall G1 TX x n1,
@@ -700,10 +700,8 @@ Proof.
       + SCase "bool". exists 0. eauto.
       + SCase "mem".
         assert (exists nx : nat, itp G1' TU nx) as IH. eapply IHitp; eauto.
-        assert (exists nx : nat, stp true G1' TL TU nx) as IHS. admit. (* ind narrow! *)
-        (* TODO: need to be able to do induction on stp_narrow *)
-        destruct IH. destruct IHS.
-        eexists. eapply itp_mem. eauto. eauto.
+        destruct IH. 
+        eexists. eapply itp_mem. eauto.
       + SCase "sel".
         assert (exists nx : nat, itp G1' TX nx) as IH. eauto.
         destruct IH.
@@ -732,6 +730,7 @@ Proof.
 
   - Case "Trans". eapply stpd_transf. eapply IHstp1; eauto. eapply IHstp2; eauto.
   - Case "Wrap". eapply stpd_wrapf. eapply IHstp; eauto.
+Grab Existential Variables. apply 0.
 Qed.
 
 
