@@ -9,16 +9,16 @@ subtyping:
   - looking at single-environment case again.
   - new pushback proof structure: transitivity axiom only 
     needed in contravariant positions
-  - realizable type: precise expansion has good bounds
+  - realizable type: precise expansion has good bounds,
+    and upper bounds are also realizable
 
- TODO:
-  - add bindx and/or bind2/bind1 rules
-  - transitivity will only hold in realizable context
-
- QUESTIONS: 
-  - exact statement of transitivity? 
-  - what's the right notion of realizable types/contexts?
-  - how can we do induction across realizability evidence?
+ TODO/QUESTIONs:
+  - figure out exact size bound structure
+  - bind2/bind1 rules?
+  - intersection/union types?
+  - restrictions: recursive members?
+  - if lower bound is bottom, must upper bound still be realizable?
+    --> cannot be part of nontrivial T1 < x.A < T2 chain
 *)
 
 
@@ -261,22 +261,7 @@ Tactic Notation "wf_cases" tactic(first) ident(c) :=
     Case_aux c "Bind" ].
 
 
-(* expansion / membership *)
-(* this is the precise version! no slack in lookup *)
-(* TODO: need the name for bind? *)
-Inductive exp : tenv -> ty -> ty -> Prop :=
-(*
-| exp_bot: forall G1,
-    exp G1 TBot (TMem TTop TBot)  (* causes trouble in inv_mem: need to build stp deriv with smaller n *)
-*)
-| exp_mem: forall G1 T1 T2,
-    exp G1 (TMem T1 T2) (TMem T1 T2)
-| exp_sel: forall G1 x T T2 T3 T4 T5,
-    index x G1 = Some T ->
-    exp G1 T (TMem T2 T3) ->
-    exp G1 T3 (TMem T4 T5) ->
-    exp G1 (TSel x) (TMem T4 T5) 
-.
+
 
 
 Inductive stp : bool -> tenv -> ty -> ty -> nat -> Prop := 
@@ -342,6 +327,8 @@ Inductive stp : bool -> tenv -> ty -> ty -> nat -> Prop :=
     stp true G1 T1 T2 n1 ->
     stp false G1 T1 T2 (S n1)       
 
+
+(* implementable types *)
 with itp: tenv -> ty -> nat -> Prop :=
 
 | itp_top: forall G1 n1,
@@ -436,8 +423,10 @@ Qed.
 
 
 Definition stpd b G1 T1 T2 := exists n, stp b G1 T1 T2 n.
+Definition itpd G1 T1 := exists n, itp G1 T1 n.
 
 Hint Unfold stpd.
+Hint Unfold itpd.
 
 Ltac ep := match goal with
              | [ |- stp ?M ?G1 ?T1 ?T2 ?N ] => assert (exists (x:nat), stp M G1 T1 T2 x) as EEX
@@ -525,23 +514,6 @@ Proof.
 Qed.  
 
 
-
-(* implementable type: expands and has good bounds *)
-(* Definition itp G T (n:nat) := exists T1 T2 n1, exp G T (TMem T1 T2) /\ stp true G T1 T2 n1 /\ n1 <= n. *)
-
-(*
-Inductive itp: tenv -> ty -> nat -> Prop :=
-
-| itp_top: forall G1 n1,
-    itp G1 TTop n1
-| itp_mem: forall G1 T T1 T2 n1 n,
-    exp G1 T (TMem T1 T2) ->
-    stp true G1 T1 T2 n1 ->
-    n1 <= n ->
-    itp G1 T n.
-*)
-
-(* TODO: now make it recurse into upper bounds *)
 
 (* implementable context *)
 Definition env_itp G n := forall x T, index x G = Some T -> itp G T n.
@@ -657,123 +629,6 @@ Proof. admit. (*intros. destruct H. eexists. eapply stp_extend1. apply H.*) Qed.
 
 
 
-(*
-NOT NEEDED (?)
-Lemma exp_unique: forall G1 T1 TA1 TA2 TA1L TA2L, 
-  exp G1 T1 (TMem TA1L TA1) ->
-  exp G1 T1 (TMem TA2L TA2) ->
-  TA1 = TA2.
-Proof. admit. Qed.
-*)
-
-
-(* key lemma that relates exp and stp. result has bounded size. *)
-Lemma stpd_inv_mem: forall n n1 G1, 
-
-  forall TA1 TA2 TA1L TA2L T1,
-  exp G1 T1 (TMem TA1L TA1) ->
-  stp true G1 T1 (TMem TA2L TA2) n1 ->
-  n1 <= n ->
-  exists n3, stp true G1 (TMem TA1L TA1) (TMem TA2L TA2) n3 /\ n3 <= n1. (* should be semantic eq! *)
-Proof.
-  intros n1. induction n1.
-  (*z*) intros. inversion H0; subst; inversion H1; subst; try omega. try inversion H.
-  (* s n *)
-  intros. inversion H.
-(*  - Case "bot". subst. exists 0. split. eapply stp_mem. eauto. eauto. inversion H0.  subst. omega. *)
-  - Case "mem". subst. exists n0. auto. (*inversion H0. subst. exists n3. split. eauto. omega. *)
-  - Case "sel".
-    subst.
-    inversion H0.
-    repeat index_subst. clear H4.
-    
-    assert (exists n0 : nat, stp true G1 (TMem T2 T3) (TMem TBot (TMem TA2L TA2)) n0 /\ n0 <= n2).
-    eapply (IHn1 n2). apply H7. apply H5. omega.
-
-    destruct H2. destruct H2. inversion H2. subst.
-
-    assert (exists n0 : nat, stp true G1 (TMem TA1L TA1) (TMem TA2L TA2) n0 /\ n0 <= n3).
-    eapply (IHn1 n3). apply H8. apply H15. omega.
-
-    destruct H6. destruct H6.
-    
-    eexists. split. apply H6. omega.
-Qed.
-
-
-(* dual case *)
-Lemma stpd_build_mem: forall n1 G1, 
-  forall TA1 TA2 TA1L TA2L T1,
-  exp G1 T1 (TMem TA1L TA1) ->
-  stp true G1 (TMem TA1L TA1) (TMem TA2L TA2) n1 ->
-  exists n3, stp true G1 T1 (TMem TA2L TA2) n3.
-Proof.
-  intros.
-  generalize dependent n1.
-  generalize dependent TA2.
-  generalize dependent TA2L.
-  induction H.
-  - Case "mem".
-    subst. eexists. eauto.
-  - Case "sel".
-    intros. subst.
-    assert (exists n3, stp true G1 T3 (TMem TA2L TA2) n3) as IX2. {
-      eapply IHexp2. eauto.
-    }
-    destruct IX2 as [n2 IX2].
-    assert (exists n3, stp true G1 T (TMem TBot (TMem TA2L TA2)) n3) as IX. {
-      eapply IHexp1. eapply stp_mem. eapply stp_wrapf. eapply stp_bot. apply IX2. 
-    }
-    destruct IX.
-    subst. eexists. eapply stp_sel1. eauto. eauto.
-    Grab Existential Variables. apply 0.
-Qed.
-
-
-Lemma itp_exp_internal: forall n G1, forall T1 TL TU n1 n3,
-  n1 <= n ->
-  itp G1 T1 n1 ->
-  stp true G1 T1 (TMem TL TU) n3 ->
-  exists TL1 TU1 n4, exp G1 T1 (TMem TL1 TU1) /\ itp G1 TU1 n4 /\ n4 <= n.
-Proof.
-  intros n1 G1.
-  induction n1.
-  Case "z". intros. inversion H; subst. inversion H0; subst; inversion H1. subst.
-  Case "S n". intros. inversion H0; subst; inversion H1. subst.
-  - SCase "mem".
-    repeat eexists. eapply exp_mem. eauto. omega.
-  - SCase "sel".
-    index_subst.
-
-    (* first half *)
-    assert (n2 <= n1) as E. omega.
-    assert (exists TL1 TU1 n4, exp G1 TX0 (TMem TL1 TU1) /\ itp G1 TU1 n4 /\ n4 <= n1) as IH. { eapply IHn1. apply E. eauto. eauto. }
-    repeat destruct IH as [? IH].
-
-    (* obtain stp for second half input *)
-    assert (exists n, stp true G1 (TMem x0 x1) (TMem TBot (TMem TL TU)) n /\ n <= n0) as IX.
-    { eapply stpd_inv_mem. eauto. eauto. eauto. }
-    repeat destruct IX as [? IX]. inversion H8. subst.
-
-    
-    assert (exists TL1 TU1 n4, exp G1 x1 (TMem TL1 TU1) /\ itp G1 TU1 n4 /\ n4 <= n1) as IH2. { eapply IHn1. apply IH. eauto. eauto. } 
-    repeat destruct IH2 as [? IH2].                                                                                 
-    repeat eexists. index_subst.
-    eapply exp_sel. eauto. eauto. eauto. eauto. omega.
-Qed.
-
-
-Lemma itp_exp: forall G1 T1 TL TU n1 n2,
-  itp G1 T1 n1 ->
-  stp true G1 T1 (TMem TL TU) n2 ->
-  exists TL1 TU1, exp G1 T1 (TMem TL1 TU1).
-Proof.
-  intros.
-  assert (exists TL1 TU1 n4, exp G1 T1 (TMem TL1 TU1) /\ itp G1 TU1 n4 /\ n4 <= n1) as HH. eapply itp_exp_internal; eauto.
-  repeat destruct HH as [? HH].
-  repeat eexists. eauto.
-Qed.
-
 
 Lemma stp_narrow: forall m G1 T1 T2 n1,
   stpd m G1 T1 T2 ->
@@ -875,6 +730,158 @@ Proof.
 Qed.
 
 
+
+
+(* ---------- EXPANSION / MEMBERSHIP ---------- *)
+(* In the current version, expansion as an implementation
+   detail. We just use it to derive some helper lemmas
+   that essentially show that implementable types have 
+   good bounds.
+*)
+
+
+(* expansion / membership *)
+(* this is the precise version! no slack in lookup *)
+(* TODO: need the name for bind? *)
+Inductive exp : tenv -> ty -> ty -> Prop :=
+(*
+| exp_bot: forall G1,
+    exp G1 TBot (TMem TTop TBot)  (* causes trouble in inv_mem: need to build stp deriv with smaller n *)
+*)
+| exp_mem: forall G1 T1 T2,
+    exp G1 (TMem T1 T2) (TMem T1 T2)
+| exp_sel: forall G1 x T T2 T3 T4 T5,
+    index x G1 = Some T ->
+    exp G1 T (TMem T2 T3) ->
+    exp G1 T3 (TMem T4 T5) ->
+    exp G1 (TSel x) (TMem T4 T5) 
+.
+
+(*
+NOT NEEDED (apparently)
+Lemma exp_unique: forall G1 T1 TA1 TA2 TA1L TA2L, 
+  exp G1 T1 (TMem TA1L TA1) ->
+  exp G1 T1 (TMem TA2L TA2) ->
+  TA1 = TA2.
+Proof. admit. Qed.
+*)
+
+
+(* key lemma that relates exp and stp. result has bounded size. *)
+Lemma stpd_inv_mem: forall n n1 G1, 
+
+  forall TA1 TA2 TA1L TA2L T1,
+  exp G1 T1 (TMem TA1L TA1) ->
+  stp true G1 T1 (TMem TA2L TA2) n1 ->
+  n1 <= n ->
+  exists n3, stp true G1 (TMem TA1L TA1) (TMem TA2L TA2) n3 /\ n3 <= n1. (* should be semantic eq! *)
+Proof.
+  intros n1. induction n1.
+  (*z*) intros. inversion H0; subst; inversion H1; subst; try omega. try inversion H.
+  (* s n *)
+  intros. inversion H.
+(*  - Case "bot". subst. exists 0. split. eapply stp_mem. eauto. eauto. inversion H0.  subst. omega. *)
+  - Case "mem". subst. exists n0. auto. (*inversion H0. subst. exists n3. split. eauto. omega. *)
+  - Case "sel".
+    subst.
+    inversion H0.
+    repeat index_subst. clear H4.
+    
+    assert (exists n0 : nat, stp true G1 (TMem T2 T3) (TMem TBot (TMem TA2L TA2)) n0 /\ n0 <= n2).
+    eapply (IHn1 n2). apply H7. apply H5. omega.
+
+    destruct H2. destruct H2. inversion H2. subst.
+
+    assert (exists n0 : nat, stp true G1 (TMem TA1L TA1) (TMem TA2L TA2) n0 /\ n0 <= n3).
+    eapply (IHn1 n3). apply H8. apply H15. omega.
+
+    destruct H6. destruct H6.
+    
+    eexists. split. apply H6. omega.
+Qed.
+
+
+(* dual case *)
+Lemma stpd_build_mem: forall n1 G1, 
+  forall TA1 TA2 TA1L TA2L T1,
+  exp G1 T1 (TMem TA1L TA1) ->
+  stp true G1 (TMem TA1L TA1) (TMem TA2L TA2) n1 ->
+  exists n3, stp true G1 T1 (TMem TA2L TA2) n3.
+Proof.
+  intros.
+  generalize dependent n1.
+  generalize dependent TA2.
+  generalize dependent TA2L.
+  induction H.
+  - Case "mem".
+    subst. eexists. eauto.
+  - Case "sel".
+    intros. subst.
+    assert (exists n3, stp true G1 T3 (TMem TA2L TA2) n3) as IX2. {
+      eapply IHexp2. eauto.
+    }
+    destruct IX2 as [n2 IX2].
+    assert (exists n3, stp true G1 T (TMem TBot (TMem TA2L TA2)) n3) as IX. {
+      eapply IHexp1. eapply stp_mem. eapply stp_wrapf. eapply stp_bot. apply IX2. 
+    }
+    destruct IX.
+    subst. eexists. eapply stp_sel1. eauto. eauto.
+    Grab Existential Variables. apply 0.
+Qed.
+
+
+
+(* if a type is realizable, it expands *)
+Lemma itp_exp_internal: forall n G1, forall T1 TL TU n1 n3,
+  n1 <= n ->
+  itp G1 T1 n1 ->
+  stp true G1 T1 (TMem TL TU) n3 ->
+  exists TL1 TU1 n4 n5, exp G1 T1 (TMem TL1 TU1) /\ stp true G1 TL1 TU1 n5 /\ itp G1 TU1 n4 /\ n4 <= n /\ n5 <= n.
+Proof.
+  intros n1 G1.
+  induction n1.
+  Case "z". intros. inversion H; subst. inversion H0; subst; inversion H1. subst.
+  Case "S n". intros. inversion H0; subst; inversion H1. subst.
+  - SCase "mem".
+    repeat eexists. eapply exp_mem. eauto. eauto. omega. omega.
+  - SCase "sel".
+    index_subst.
+
+    (* first half *)
+    assert (n2 <= n1) as E. omega.
+    assert (exists TL1 TU1 n4 n5, exp G1 TX0 (TMem TL1 TU1) /\ stp true G1 TL1 TU1 n5 /\ itp G1 TU1 n4 /\ n4 <= n1 /\ n5 <= n1) as IH. { eapply IHn1. apply E. eauto. eauto. }
+    repeat destruct IH as [? IH].
+
+    (* obtain stp for second half input *)
+    assert (exists n, stp true G1 (TMem x0 x1) (TMem TBot (TMem TL TU)) n /\ n <= n0) as IX.
+    { eapply stpd_inv_mem. eauto. eauto. eauto. }
+    repeat destruct IX as [? IX]. inversion H10. subst.
+
+    
+    assert (exists TL1 TU1 n4 n5, exp G1 x1 (TMem TL1 TU1) /\ stp true G1 TL1 TU1 n5 /\ itp G1 TU1 n4 /\ n4 <= n1 /\ n5 <= n1) as IH2. { eapply IHn1. apply H9. eauto. eauto. } 
+    repeat destruct IH2 as [? IH2].
+    repeat eexists. index_subst.
+    eapply exp_sel. eauto. eauto. eauto. eauto. eauto. omega. omega.
+Qed.
+
+
+Lemma itp_exp: forall G1 T1 TL TU n1 n2,
+  itp G1 T1 n1 ->
+  stp true G1 T1 (TMem TL TU) n2 ->
+  exists TL1 TU1, exp G1 T1 (TMem TL1 TU1).
+Proof.
+  intros.
+  assert (exists TL1 TU1 n4 n5, exp G1 T1 (TMem TL1 TU1) /\ stp true G1 TL1 TU1 n5 /\ itp G1 TU1 n4 /\ n4 <= n1 /\ n5 <= n1) as HH. eapply itp_exp_internal; eauto.
+  repeat destruct HH as [? HH].
+  repeat eexists. eauto.
+Qed.
+
+
+
+
+
+(* trans helpers *)
+
 Lemma stpde_trans_lo: forall G1 T1 T2 TX TXL TXU,
   stpd true G1 T1 T2 ->                     
   stpd true G1 TX (TMem T2 TTop) ->
@@ -888,19 +895,6 @@ Proof.
 
   eapply stpd_build_mem. eauto. eapply stp_mem. eapply stp_transf. eauto. eauto. eauto.
 Qed.
-
-Lemma stpd_trans_lo: forall G1 T1 T2 TX n1,
-  stpd true G1 T1 T2 ->                     
-  stpd true G1 TX (TMem T2 TTop) ->
-  itp G1 TX n1 ->
-  stpd true G1 TX (TMem T1 TTop).
-Proof.
-  intros. eu.
-  assert (exists TL TU, exp G1 TX (TMem TL TU)) as HH. { eapply itp_exp; eauto. }
-  repeat destruct HH as [? HH].
-  eapply stpde_trans_lo; eauto.
-Qed.
-
 
 Lemma stpde_trans_hi: forall G1 T1 T2 TX n1 nG TXL TXU,
   stpd true G1 T1 T2 ->                     
@@ -920,21 +914,6 @@ Proof.
   destruct ST1.
   eapply stpd_build_mem. eauto. eapply stp_mem. eauto. eauto.
 Qed.
-
-Lemma stpd_trans_hi: forall G1 T1 T2 TX n1 nG n2,
-  stpd true G1 T1 T2 ->                     
-  stp true G1 TX (TMem TBot T1) n1 ->
-  itp G1 TX n2 ->
-  env_itp G1 nG ->
-  trans_up (nG + n1) ->
-  stpd true G1 TX (TMem TBot T2).
-Proof.
-  intros. eu.
-  assert (exists TL TU, exp G1 TX (TMem TL TU)) as HH. { eapply itp_exp; eauto. }
-  repeat destruct HH as [? HH].
-  eapply stpde_trans_hi; eauto.
-Qed.
-
 
 (* need to invert mem. requires proper realizability evidence *)
 Lemma stpde_trans_cross: forall G1 TX T1 T2 TXL TXU n1 n2 nG,
@@ -961,8 +940,37 @@ Proof.
   eapply IH0. eauto. eauto. eapply IH1. eauto. eauto. eauto.
 Qed.
 
+(* ----- end expansion  ----- *)
+
+
+Lemma stpd_trans_lo: forall G1 T1 T2 TX n1,
+  stpd true G1 T1 T2 ->                     
+  stpd true G1 TX (TMem T2 TTop) ->
+  itp G1 TX n1 ->
+  stpd true G1 TX (TMem T1 TTop).
+Proof.
+  intros. eu.
+  assert (exists TL TU, exp G1 TX (TMem TL TU)) as HH. { eapply itp_exp; eauto. }
+  repeat destruct HH as [? HH].
+  eapply stpde_trans_lo; eauto.
+Qed.
+
+Lemma stpd_trans_hi: forall G1 T1 T2 TX n1 nG n2,
+  stpd true G1 T1 T2 ->                     
+  stp true G1 TX (TMem TBot T1) n1 ->
+  itp G1 TX n2 ->
+  env_itp G1 nG ->
+  trans_up (nG + n1) ->
+  stpd true G1 TX (TMem TBot T2).
+Proof.
+  intros. eu.
+  assert (exists TL TU, exp G1 TX (TMem TL TU)) as HH. { eapply itp_exp; eauto. }
+  repeat destruct HH as [? HH].
+  eapply stpde_trans_hi; eauto.
+Qed.
+
+(* need to invert mem. requires proper realizability evidence *)
 Lemma stpd_trans_cross: forall G1 TX T1 T2 n1 n2 nG,
-                          (* trans_on *)
   stp true G1 TX (TMem T1 TTop) n1 ->
   stpd true G1 TX (TMem TBot T2) ->
   itp G1 TX n2 ->
@@ -971,15 +979,12 @@ Lemma stpd_trans_cross: forall G1 TX T1 T2 n1 n2 nG,
   stpd true G1 T1 T2.
 Proof.
   intros. eu.
-  assert (exists TL TU, exp G1 TX (TMem TL TU)) as HH. { eapply itp_exp; eauto. }
-  repeat destruct HH as [? HH].
-  eapply stpde_trans_cross; eauto. inversion H1. subst. inversion HH. subst. inversion HH. subst.
-  inversion HH. subst. eauto. inversion HH. subst. eauto. inversion H1. subst. eauto. (* TODO: bounds size !! *)
-  admit.
-  subst.
-  (* TODO: need to figure out itp x.A case *)
-  (* maybe it's easier without exp, doing induction on itp directly? *)
-  admit.
+  assert (exists TL TU n4 n5, exp G1 TX (TMem TL TU) /\ stp true G1 TL TU n5 /\ itp G1 TU n4 /\ n4 <= n2 /\ n5 <= n2) as HH. { eapply itp_exp_internal; eauto. }
+                                                                                         repeat destruct HH as [? HH].
+
+  assert (trans_up (n1 + x3 + nG)). { unfold trans_up. intros. eapply H3. omega. }
+  
+  eapply stpde_trans_cross; eauto.
 Qed.
 
 
@@ -991,9 +996,6 @@ Proof.
   Case "S n".
   unfold trans_up. intros nG n1 NE G1 IMP  b T1 T2 T3 S12 S23.
   destruct S23 as [n2 S23].
-
-(* TODO: pass in externally -- what about induction with bind?? *)
-  (* assert (env_itp G1 n) as IMP. admit. *)
 
   stp_cases(inversion S12) SCase. 
   - SCase "Bot < ?". eapply stpd_bot.
@@ -1091,7 +1093,7 @@ Proof.
         eapply env_itp_extend. eauto. eapply itp_extend. eauto. (* itp with TA2 in env *)
         eapply itp_extend. eauto. (* itp with TA1 in env *)
         eauto.
-        admit. (* TODO: slack in size! *)
+        admit. (* TODO: slack in size! want nG, have n3 *)
         auto.
       }
       eapply stpd_bindx. eapply IH. eauto.
