@@ -315,7 +315,7 @@ Inductive stp : bool -> tenv -> ty -> ty -> nat -> Prop :=
     (* how will this interact with narrowing? *)
     (* exp G1 T1 (TMem TL TU) -> *)
     (* stp true G1 TL TU n2 -> *)
-    itp G1 T1 n2 ->
+    itp ((length G1,T1)::G1) T1 n2 ->
     stp true G1 (TBind TA1) (TBind TA2) (S (n1+n2))
 
 | stp_transf: forall G1 T1 T2 T3 n1 n2,
@@ -478,7 +478,7 @@ Lemma stpd_bindx: forall G1 T1 T2 TA1 TA2,
     open (length G1) TA2 = T2 ->
     (* exp G1 T1 (TMem TL TU) -> *)
     (* stpd true G1 TL TU -> *)
-    (exists n, itp G1 T1 n) ->
+    itpd ((length G1,T1)::G1) T1 ->
     stpd true G1 (TBind TA1) (TBind TA2).
 Proof. intros. repeat eu. destruct H2. eauto. Qed.
 Lemma stpd_transf: forall G1 T1 T2 T3,
@@ -641,16 +641,16 @@ Proof.
 Qed.
 
 
-Lemma itp_narrow: forall nG G1 G1' T1 x TX1 TX2,
+Lemma itp_narrow: forall G1 G1' T1 x TX1 TX2,
     itpd G1 T1 ->
     index x G1 = Some TX2 ->
     update x TX1 G1 = G1' ->
-    env_itp G1' nG ->
+    (* env_itp G1 nG ->  right now not needed at all! *)
     itpd G1' TX1 ->
     itpd G1' T1.
 Proof.
   intros.
-  destruct H. destruct H3.
+  destruct H. destruct H2.
   induction H.
   + SCase "top". exists 0. eauto.
   + SCase "bool". exists 0. eauto.
@@ -721,16 +721,27 @@ Proof.
   - Case "Selx". eapply stpd_selx.
   - Case "Bindx".
     (* 
-       Now considering only non-recursive bounds (itp G1, not extended G1).
+       Note: there is a choice to make whether itp_narrow can use
+       the extended G1 (i.e. members can refer to this) or
+       whether it can rely on env_itp. Both together seems tricky,
+       because env_itp_extend would need result of itp_narrow
+       (and vice versa).
+
        All upper bounds must be realizable (deep, via itp).
     *)
 
     assert (length G1 = length G1'). { eapply update_pres_len; eauto. }
     remember (length G1) as L. clear HeqL. subst L.
 
-    assert (itp G1 T1 n2). { eauto. } (* already have it! *)
+    assert (itp ((length G1', T1)::G1) T1 n2). { eauto. } (* already have it! *)
     (* will do induction with extended env. need to prove T1 realizable in G1' *)
-    assert (exists nx, itp G1' T1 nx) as IE. { eapply itp_narrow; eauto. }
+    assert (exists nx, itp ((length G1', T1)::G1') T1 nx) as IE. {
+      eapply itp_narrow.
+      eexists. eapply H2.
+      eapply index_extend; eauto.
+      eapply update_extend; eauto.
+      eexists. eapply itp_extend; eauto.
+    }
     destruct IE.
     
     eapply stpd_bindx. {
@@ -739,8 +750,7 @@ Proof.
       eapply update_extend; eauto.
       eapply stp_extend; eauto.
     
-      eapply env_itp_extend. eauto. 
-      eapply itp_extend. eauto. eauto.
+      eapply env_itp_extend. eauto. eauto.
       eapply itp_extend. eauto. eauto.
     }
     eauto.
@@ -1261,9 +1271,9 @@ Proof.
       assert (trans_up (nG+n0)) as IH.
       { unfold trans_up. intros. eapply IHn. omega. }
       (* realizable in old env *) 
-      assert (itp G1 (open (length G1) TA2) n5). auto. 
+      (* assert (itp G1 (open (length G1) TA2) n5). auto. *)
       (* realizable in new env *)
-      assert (itp G1 (open (length G1) TA1) n3). auto. 
+      (* assert (itp G1 (open (length G1) TA1) n3). auto. *)
       (* first narrow, then trans *)
       assert (stpd true ((length G1, open (length G1) TA1) :: G1)
                    (open (length G1) TA2) (open (length G1) TA3)) as NRW.
@@ -1275,12 +1285,18 @@ Proof.
         instantiate (2 := length G1). unfold index. rewrite E. eauto.
         instantiate (1 := open (length G1) TA1). unfold update. rewrite E. eauto.
         eauto.
-        eapply env_itp_extend. eauto. eapply itp_extend. eauto. (* itp with TA2 in env *)
-        eapply itp_extend. eauto. (* itp with TA1 in env *)
+        eapply env_itp_extend. eauto. eauto.
+        eauto. 
         eauto.
       }
-      eapply stpd_bindx. eapply IH. eauto.
-      eapply env_itp_extend. eauto. eapply itp_extend. eauto. eauto. eauto. eauto. eauto. eauto. 
+      eapply stpd_bindx. eapply IH.
+      eauto.
+      eapply env_itp_extend. eauto. eapply H2.
+      eauto.
+      eauto.
+      eauto.
+      eauto.
+      eauto.
   - SCase "Trans". subst.
     assert (trans_on nG n3) as IH2.
     { eapply trans_le; eauto. omega. }
