@@ -811,12 +811,16 @@ Definition env_good_bounds G1 :=
     exp G1 TX (TMem T2 T3) ->
     exists n2, stp true G1 T2 T3 n2.
 
+(*
+could go this route, if itp contains L<U evidence,
+but currently not needed.
+
 Lemma env_itp_gb: forall G1 n1,
   env_itp G1 n1 ->
   env_good_bounds G1.                  
-Proof.
-  admit.
-Qed.
+Proof. Qed.
+*)
+
 
 (* dual case *)
 Lemma stpd_build_mem: forall n1 G1, 
@@ -855,6 +859,77 @@ Proof.
     Grab Existential Variables. apply 0.
 Qed.
 
+
+
+(* trans helpers -- these are based on exp only and currently not used *)
+
+Lemma stpde_trans_lo: forall G1 T1 T2 TX TXL TXU,
+  stpd true G1 T1 T2 ->                     
+  stpd true G1 TX (TMem T2 TTop) ->
+  exp G1 TX (TMem TXL TXU) ->
+  env_good_bounds G1 ->
+  stpd true G1 TX (TMem T1 TTop).
+Proof.
+  intros. repeat eu.
+  assert (exists nx, stp true G1 (TMem TXL TXU) (TMem T2 TTop) nx /\ nx <= x) as E. eapply (stpd_inv_mem x). eauto. eauto. omega.
+  destruct E as [nx [ST X]].
+  inversion ST. subst.
+
+  eapply stpd_build_mem. eauto. eauto. eapply stp_mem. eapply stp_transf. eauto. eauto. eauto. eauto.
+Qed.
+
+Lemma stpde_trans_hi: forall G1 T1 T2 TX n1 nG TXL TXU,
+  stpd true G1 T1 T2 ->                     
+  stp true G1 TX (TMem TBot T1) n1 ->
+  exp G1 TX (TMem TXL TXU) ->
+  env_itp G1 nG ->
+  env_good_bounds G1 ->
+  trans_up (nG + n1) ->
+  stpd true G1 TX (TMem TBot T2).
+Proof.
+  intros. repeat eu.
+  assert (exists nx, stp true G1 (TMem TXL TXU) (TMem TBot T1) nx /\ nx <= n1) as E. eapply (stpd_inv_mem n1). eauto. eauto. omega.
+  destruct E as [nx [ST X]].
+  inversion ST. subst.
+
+  assert (trans_on nG n3) as IH. { eapply trans_le; eauto. omega. }
+  assert (stpd true G1 TXU T2) as ST1. { eapply IH. eauto. eauto. eauto. }
+  destruct ST1.
+  eapply stpd_build_mem. eauto. eauto. eapply stp_mem. eauto. eauto. eauto.
+Qed.
+
+(* need to invert mem. requires proper realizability evidence *)
+Lemma stpde_trans_cross: forall G1 TX T1 T2 TXL TXU n1 n2 nG n,
+                          (* trans_on *)
+  stp true G1 TX (TMem T1 TTop) n1 ->
+  stpd true G1 TX (TMem TBot T2) ->
+  exp G1 TX (TMem TXL TXU) ->
+  stp true G1 TXL TXU n2 ->
+  env_itp G1 nG ->
+  trans_up n ->
+  nG + n2 <= n ->
+  nG + n1 <= n ->
+  nG <= n ->
+  stpd true G1 T1 T2.
+Proof.
+  intros. eu.
+  assert (exists n3, stp true G1 (TMem TXL TXU) (TMem T1 TTop) n3 /\ n3 <= n1) as SM1. eapply (stpd_inv_mem n1). eauto. eauto. omega.
+  assert (exists n3, stp true G1 (TMem TXL TXU) (TMem TBot T2) n3 /\ n3 <= x) as SM2. eapply (stpd_inv_mem x). eauto. eauto. omega.
+  destruct SM1 as [n3 [SM1 E3]].
+  destruct SM2 as [n4 [SM2 E4]].
+  inversion SM1. inversion SM2.
+  subst. clear SM1 SM2.
+  
+  assert (trans_on nG n0) as IH0. { eapply trans_le; eauto. omega. }
+  assert (trans_on nG n2) as IH1. { eapply trans_le; eauto. }
+  eapply IH0. eauto. eauto. eapply IH1. eauto. eauto. eauto.
+Qed.
+
+(* ----- end expansion  ----- *)
+
+
+
+(* -- trans helpers: based on imp *)
 
 
 (* if a type is realizable, it expands *)
@@ -933,88 +1008,37 @@ Proof.
   repeat eexists. eauto.
 Qed.
 
-
-
-
-
-(* trans helpers *)
-
-Lemma stpde_trans_lo: forall G1 T1 T2 TX nG TXL TXU,
-  stpd true G1 T1 T2 ->                     
-  stpd true G1 TX (TMem T2 TTop) ->
-  exp G1 TX (TMem TXL TXU) ->
-  env_itp G1 nG ->
-  stpd true G1 TX (TMem T1 TTop).
-Proof.
-  intros. repeat eu.
-  assert (exists nx, stp true G1 (TMem TXL TXU) (TMem T2 TTop) nx /\ nx <= x) as E. eapply (stpd_inv_mem x). eauto. eauto. omega.
-  destruct E as [nx [ST X]].
-  inversion ST. subst.
-
-  eapply stpd_build_mem. eauto. eapply env_itp_gb. eauto. eapply stp_mem. eapply stp_transf. eauto. eauto. eauto. eauto.
-Qed.
-
-Lemma stpde_trans_hi: forall G1 T1 T2 TX n1 nG TXL TXU,
-  stpd true G1 T1 T2 ->                     
-  stp true G1 TX (TMem TBot T1) n1 ->
-  exp G1 TX (TMem TXL TXU) ->
-  env_itp G1 nG ->
-  trans_up (nG + n1) ->
-  stpd true G1 TX (TMem TBot T2).
-Proof.
-  intros. repeat eu.
-  assert (exists nx, stp true G1 (TMem TXL TXU) (TMem TBot T1) nx /\ nx <= n1) as E. eapply (stpd_inv_mem n1). eauto. eauto. omega.
-  destruct E as [nx [ST X]].
-  inversion ST. subst.
-
-  assert (trans_on nG n3) as IH. { eapply trans_le; eauto. omega. }
-  assert (stpd true G1 TXU T2) as ST1. { eapply IH. eauto. eauto. eauto. }
-  destruct ST1.
-  eapply stpd_build_mem. eauto. eapply env_itp_gb. eauto. eapply stp_mem. eauto. eauto. eauto.
-Qed.
-
 (* need to invert mem. requires proper realizability evidence *)
-Lemma stpde_trans_cross: forall G1 TX T1 T2 TXL TXU n1 n2 nG n,
-                          (* trans_on *)
+Lemma stpd_trans_cross: forall G1 TX T1 T2 n1 n2 nG n,
   stp true G1 TX (TMem T1 TTop) n1 ->
   stpd true G1 TX (TMem TBot T2) ->
-  exp G1 TX (TMem TXL TXU) ->
-  stp true G1 TXL TXU n2 ->
+  itp G1 TX n2 ->
   env_itp G1 nG ->
-  trans_up n ->
-  nG + n2 <= n ->
   nG + n1 <= n ->
   nG <= n ->
+  trans_up n ->
   stpd true G1 T1 T2.
 Proof.
   intros. eu.
-  assert (exists n3, stp true G1 (TMem TXL TXU) (TMem T1 TTop) n3 /\ n3 <= n1) as SM1. eapply (stpd_inv_mem n1). eauto. eauto. omega.
-  assert (exists n3, stp true G1 (TMem TXL TXU) (TMem TBot T2) n3 /\ n3 <= x) as SM2. eapply (stpd_inv_mem x). eauto. eauto. omega.
-  destruct SM1 as [n3 [SM1 E3]].
-  destruct SM2 as [n4 [SM2 E4]].
-  inversion SM1. inversion SM2.
-  subst. clear SM1 SM2.
-  
-  assert (trans_on nG n0) as IH0. { eapply trans_le; eauto. omega. }
-  assert (trans_on nG n2) as IH1. { eapply trans_le; eauto. }
-  eapply IH0. eauto. eauto. eapply IH1. eauto. eauto. eauto.
-Qed.
-
-(* ----- end expansion  ----- *)
-
-
-Lemma stpd_trans_lo: forall G1 T1 T2 TX n1 nG,
-  stpd true G1 T1 T2 ->                     
-  stpd true G1 TX (TMem T2 TTop) ->
-  itp G1 TX n1 ->
-  env_itp G1 nG ->
-  stpd true G1 TX (TMem T1 TTop).
-Proof.
-  intros. eu.
-  assert (exists TL TU, exp G1 TX (TMem TL TU)) as HH. { eapply itp_exp; eauto. }
+  assert (exists TL1 TU1, exists TL TU n4 n5 n6,
+            exp G1 TX (TMem TL TU) /\
+            stp true G1 TL TU n5 /\
+            stp true G1 (TMem TL TU) (TMem TL1 TU1) n6 /\
+            itp G1 TU n4 /\
+            n4 <= n2 /\
+            n5 <= n1 /\
+            n6 <= n1
+         ) as HH. { eexists. eexists. eapply itp_exp_internal; eauto. }
   repeat destruct HH as [? HH].
-  eapply stpde_trans_lo; eauto.
+
+  eapply stpde_trans_cross; eauto. omega.
 Qed.
+
+
+
+
+
+
 
 Lemma stpd_trans_hi: forall G1 T1 T2 TX n1 nG n2,
   stpd true G1 T1 T2 ->                     
@@ -1025,9 +1049,27 @@ Lemma stpd_trans_hi: forall G1 T1 T2 TX n1 nG n2,
   stpd true G1 TX (TMem TBot T2).
 Proof.
   intros. eu.
-  assert (exists TL TU, exp G1 TX (TMem TL TU)) as HH. { eapply itp_exp; eauto. }
-  repeat destruct HH as [? HH].
-  eapply stpde_trans_hi; eauto.
+  generalize dependent T1.
+  generalize dependent T2.
+  generalize dependent x.
+  generalize dependent n1.
+  induction H1; intros.
+  - inversion H0.
+  - inversion H0.
+  - Case "mem".
+    inversion H0. subst.
+    assert (trans_on nG n5) as IH. { eapply trans_le; eauto. omega. }
+
+    eapply stpd_mem. eauto. eauto. eapply IH. eauto. eauto. eauto.
+  - Case "sel".
+    inversion H4. subst. index_subst.
+    assert (nG + n2 <= nG + (S n2)). omega.
+    assert (trans_up (nG + n2)) as IH. { unfold trans_up. intros. eapply trans_le; eauto. omega. }
+    eapply stpd_sel1. eauto.
+    + eapply IHitp. eauto. eauto.
+      (* arg: (TMem TBot T1) <: (TMem TBot T2) *)
+      eapply stp_mem. eapply stp_wrapf. eapply stp_bot. eapply stp_bot. eapply H0. eapply H7.
+Grab Existential Variables. apply 0. apply 0.
 Qed.
 
 (* need to invert mem. requires proper realizability evidence *)
