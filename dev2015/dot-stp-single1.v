@@ -641,6 +641,37 @@ Proof.
 Qed.
 
 
+Lemma itp_narrow: forall nG G1 G1' T1 x TX1 TX2,
+    itpd G1 T1 ->
+    index x G1 = Some TX2 ->
+    update x TX1 G1 = G1' ->
+    env_itp G1' nG ->
+    itpd G1' TX1 ->
+    itpd G1' T1.
+Proof.
+  intros.
+  destruct H. destruct H3.
+  induction H.
+  + SCase "top". exists 0. eauto.
+  + SCase "bool". exists 0. eauto.
+  + SCase "mem".
+    assert (exists nx : nat, itp G1' TU nx) as IH. eapply IHitp; eauto.
+    destruct IH. 
+    eexists. eapply itp_mem. eauto.
+  + SCase "sel".
+    assert (exists nx : nat, itp G1' TX nx) as IH. eapply IHitp; eauto.
+    destruct IH.
+    case_eq (beq_nat x0 x); intros E.
+    * assert (x0 = x) as EX. eapply beq_nat_true_iff; eauto.
+      subst. index_subst. index_subst.
+      eexists. eapply itp_sel. eapply upd_hit. eauto. eauto. eauto. eauto.
+    * assert (x0 <> x) as EX. eapply beq_nat_false_iff; eauto.
+      subst.
+      eexists. eapply itp_sel. eapply upd_miss. eauto. eauto. eauto. eauto.
+
+Grab Existential Variables. apply 0.
+Qed.
+  
 Lemma stp_narrow: forall m G1 T1 T2 n1,
   stpd m G1 T1 T2 ->
                     
@@ -697,29 +728,11 @@ Proof.
     assert (length G1 = length G1'). { eapply update_pres_len; eauto. }
     remember (length G1) as L. clear HeqL. subst L.
 
-    assert (itp G1 T1 n2). eauto. (* already have it! *)
+    assert (itp G1 T1 n2). { eauto. } (* already have it! *)
     (* will do induction with extended env. need to prove T1 realizable in G1' *)
-    assert (exists nx, itp G1' T1 nx) as IE. {
-      clear IHstp. clear H. clear H0.
-      induction H2.
-      + SCase "top". exists 0. eauto.
-      + SCase "bool". exists 0. eauto.
-      + SCase "mem".
-        assert (exists nx : nat, itp G1' TU nx) as IH. eapply IHitp; eauto.
-        destruct IH. 
-        eexists. eapply itp_mem. eauto.
-      + SCase "sel".
-        assert (exists nx : nat, itp G1' TX nx) as IH. eauto.
-        destruct IH.
-        case_eq (beq_nat x0 x); intros E.
-        * assert (x0 = x) as EX. eapply beq_nat_true_iff; eauto.
-          subst. index_subst. index_subst.
-          eexists. eapply itp_sel. eapply upd_hit. eauto. eauto. eauto. eauto.
-        * assert (x0 <> x) as EX. eapply beq_nat_false_iff; eauto.
-          subst.
-          eexists. eapply itp_sel. eapply upd_miss. eauto. eauto. eauto. eauto.
-    }
+    assert (exists nx, itp G1' T1 nx) as IE. { eapply itp_narrow; eauto. }
     destruct IE.
+    
     eapply stpd_bindx. {
       eapply IHstp.
       eapply index_extend; eauto.
@@ -736,17 +749,15 @@ Proof.
 
   - Case "Trans". eapply stpd_transf. eapply IHstp1; eauto. eapply IHstp2; eauto.
   - Case "Wrap". eapply stpd_wrapf. eapply IHstp; eauto.
-Grab Existential Variables. apply 0.
 Qed.
 
 
 
 
 (* ---------- EXPANSION / MEMBERSHIP ---------- *)
-(* In the current version, expansion as an implementation
+(* In the current version, expansion is an implementation
    detail. We just use it to derive some helper lemmas
-   that essentially show that implementable types have 
-   good bounds.
+   to show that implementable types have good bounds.
 *)
 
 
