@@ -9,13 +9,10 @@ subtyping:
   - looking at single-environment case again.
   - new pushback proof structure: transitivity axiom only 
     needed in contravariant positions
-  - realizable type: precise expansion has good bounds,
-    and upper bounds are also realizable
+  - realizable type: precise expansion, and upper bounds 
+    are also realizable
 
  TODO/QUESTIONs:
-  - figure out exact size bound structure
-  - switch narrow to induction on n
-  - narrowing for itp: fix recursion structure
   - bind2/bind1 rules?
   - intersection/union types?
   - restrictions: recursive members?
@@ -525,7 +522,6 @@ Definition env_itp G (n:nat) := forall x T, index x G = Some T -> exists n2, itp
 
 
 
-
 (* left:  may use axiom but has size. must shrink *)
 (* right: no axiom but can grow *)
 
@@ -626,25 +622,35 @@ Lemma itp_extend: forall G T n x v,
                          itp ((x,v)::G) T n.
 Proof. admit. Qed.
 
-Lemma env_itp_extend : forall G T n x v n2,  (* right now, n / n2 unrelated *)
+(* currently n,n2 unrelated, but may change. keep in sync with env_itp definition *)
+Lemma env_itp_extend : forall G n x v n2,  
                        env_itp G n ->
-                       itp ((x,v)::G) T n2 ->  
+                       itp ((x,v)::G) v n2 ->  
                        env_itp ((x,v)::G) n.
-Proof. admit. (*intros. destruct H. eexists. eapply stp_extend1. apply H.*) Qed.
-
-
+Proof.
+  intros. unfold env_itp in H. unfold env_itp. intros.
+  case_eq (beq_nat x0 (length G)); intros.
+  - assert (x0 = (length G)). eapply beq_nat_true_iff; eauto.
+    subst x0. unfold index in H1. rewrite H2 in H1. inversion H1. subst v.
+    eexists. eapply H0.
+  - assert (x0 <> (length G)). eapply beq_nat_false_iff; eauto.
+    assert (x0 < length ((x,v)::G)). eapply index_max; eauto.
+    
+    unfold index in H1. rewrite H2 in H1.
+    eapply H in H1. destruct H1. eexists. eapply itp_extend. apply H1.
+Qed.
 
 
 Lemma stp_narrow: forall m G1 T1 T2 n1,
   stpd m G1 T1 T2 ->
                     
-  forall x TX1 TX2 G1' nG,
+  forall x TX1 TX2 G1' nG nI,
 
     index x G1 = Some TX2 ->
     update x TX1 G1 = G1' ->
     stp true G1' TX1 TX2 n1 ->
     env_itp G1' nG ->
-    itp G1' TX1 nG ->
+    itp G1' TX1 nI ->
     trans_on nG n1 ->
 
     stpd m G1' T1 T2.
@@ -684,7 +690,7 @@ Proof.
   - Case "Selx". eapply stpd_selx.
   - Case "Bindx".
     (* 
-       Now considering only non-recursive bounds.
+       Now considering only non-recursive bounds (itp G1, not extended G1).
        All upper bounds must be realizable (deep, via itp).
     *)
 
@@ -713,7 +719,7 @@ Proof.
           subst.
           eexists. eapply itp_sel. eapply upd_miss. eauto. eauto. eauto. eauto.
     }
-
+    destruct IE.
     eapply stpd_bindx. {
       eapply IHstp.
       eapply index_extend; eauto.
@@ -767,7 +773,7 @@ Lemma exp_unique: forall G1 T1 TA1 TA2 TA1L TA2L,
   exp G1 T1 (TMem TA1L TA1) ->
   exp G1 T1 (TMem TA2L TA2) ->
   TA1 = TA2.
-Proof. admit. Qed.
+Proof.  Qed.
 *)
 
 
@@ -1072,39 +1078,86 @@ Proof.
 Grab Existential Variables. apply 0. apply 0.
 Qed.
 
-(* need to invert mem. requires proper realizability evidence *)
-Lemma stpd_trans_cross: forall G1 TX T1 T2 n1 n2 nG n,
-  stp true G1 TX (TMem T1 TTop) n1 ->
-  stpd true G1 TX (TMem TBot T2) ->
+
+Inductive trivial_stp: ty -> ty -> Prop :=
+| trivial_mem: forall T1 T2,
+    trivial_stp (TMem T1 TTop) (TMem T2 TTop)
+| trivial_nest: forall T1 T2,
+    trivial_stp T1 T2 ->
+    trivial_stp (TMem TBot T1) (TMem TBot T2).
+
+(* TODO: should be able to do this without itp *)
+(* by induction on TX < T1 *)
+Lemma stpd_trans_triv: forall G1 T1 T2 TX n2,
+  trivial_stp T1 T2 ->
+  stpd true G1 T1 T2 ->                     
+  stpd true G1 TX T1 ->
   itp G1 TX n2 ->
-  env_itp G1 nG ->
-  nG + n1 <= n ->
-  nG <= n ->
-  trans_up n ->
-  stpd true G1 T1 T2.
+  stpd true G1 TX T2.
 Proof.
   intros. eu.
-  assert (exists TL1 TU1, exists TL TU n4 n5 n6,
-            exp G1 TX (TMem TL TU) /\
-            stp true G1 TL TU n5 /\
-            stp true G1 (TMem TL TU) (TMem TL1 TU1) n6 /\
-            itp G1 TU n4 /\
-            n4 <= n2 /\
-            n5 <= n1 /\
-            n6 <= n1
-         ) as HH. { eexists. eexists. eapply itp_exp_internal; eauto. }
-  repeat destruct HH as [? HH].
-
-(*  assert (trans_up (n1 + x3 + nG)). { unfold trans_up. intros. eapply H3. omega. } *)
-  
-  eapply stpde_trans_cross; eauto. omega.
+  generalize dependent T1.
+  generalize dependent T2.
+  generalize dependent x.
+  induction H2; intros.
+  - inversion H; subst; inversion H1.
+  - inversion H; subst; inversion H1.
+  - Case "mem".
+    (* remember (TMem TL TU) as TX.
+    generalize dependent TX. *)
+    induction H.
+    + SCase "trivial mem".
+      inversion H0. inversion H1. subst. inversion H. subst.
+      eapply stpd_mem. eapply stp0f_trans. eauto. eauto. eauto. eauto. eauto.
+    + SCase "trivial nest".
+      inversion H0. inversion H1. subst. inversion H3. subst.
+      eapply stpd_mem. eauto. eauto. eapply IHitp. eauto. eauto. eauto.
+  - Case "sel".
+    inversion H0.
+    + SCase "trivial mem". subst.
+      inversion H3. subst. index_subst.
+      eapply stpd_sel1. eauto. eapply IHitp. eauto. eapply trivial_nest. eauto.
+      eapply stpd_mem. eauto. eauto. eauto. eauto.
+    + SCase "trivial nest". subst.
+      inversion H3. subst. index_subst.
+      eapply stpd_sel1. eauto. eapply IHitp. eauto. eapply trivial_nest. eauto.
+      eapply stpd_mem. eauto. eauto. eauto. eauto.
+Grab Existential Variables. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 
+
+Lemma stpd_trans_lo: forall G1 T1 T2 TX n2,
+  stpd true G1 T1 T2 ->                     
+  stpd true G1 TX (TMem T2 TTop) ->
+  itp G1 TX n2 ->
+  stpd true G1 TX (TMem T1 TTop).
+Proof.
+  intros. eapply stpd_trans_triv. eapply trivial_mem.
+  eapply stpd_mem. eapply stpd_wrapf. eauto. eauto. eauto. eauto. eauto.
+  Grab Existential Variables. apply 0. apply 0.
+Qed.
+
+
+(* proper trans lemma *)
 Lemma stp1_trans: forall n, trans_up n.
 Proof.
-  intros n. induction n.
-  Case "z". admit.
+  intros n. induction n. {
+    Case "z".
+    unfold trans_up. intros nG n1 NE1 G1 IMP  b T1 T2 T3 S12 S23.
+    destruct S23 as [? S23].
+    stp_cases(inversion S12) SCase; subst; 
+    try (assert (1=0) as HX; omega; inversion HX). (* most cases cannot happen *)
+    - SCase "Bot < ?". eapply stpd_bot.
+    - SCase "? < Top". inversion S23; subst.
+      + SSCase "Top". eauto.
+      + SSCase "Sel2".
+        assert (index x0 G1 = Some TX). eauto.
+        eapply IMP in H. destruct H. subst.
+        eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto.
+    - SCase "Bool < Bool". eauto.
+  }
+  
   Case "S n".
   unfold trans_up. intros nG n1 NE1 G1 IMP  b T1 T2 T3 S12 S23.
   destruct S23 as [n2 S23].
@@ -1214,8 +1267,6 @@ Proof.
         eapply env_itp_extend. eauto. eapply itp_extend. eauto. (* itp with TA2 in env *)
         eapply itp_extend. eauto. (* itp with TA1 in env *)
         eauto.
-        admit. (* TODO: slack in size! want nG, have n3 *)
-        auto.
       }
       eapply stpd_bindx. eapply IH. eauto.
       eapply env_itp_extend. eauto. eapply itp_extend. eauto. eauto. eauto. eauto. eauto. eauto. 
