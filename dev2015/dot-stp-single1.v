@@ -752,9 +752,9 @@ Proof.
 Grab Existential Variables. apply 0.
 Qed.
   
-Lemma stp_narrow: forall m G1 T1 T2 n1,
-  stpd m G1 T1 T2 ->
-                    
+Lemma stp_narrow: forall n, forall m G1 T1 T2 n1 n0,
+  stp m G1 T1 T2 n0 ->
+  n0 <= n ->                    
   forall x TX1 TX2 G1' nG nI,
 
     index x G1 = Some TX2 ->
@@ -766,8 +766,12 @@ Lemma stp_narrow: forall m G1 T1 T2 n1,
 
     stpd m G1' T1 T2.
 Proof.
-  intros m G1 T1 T2 n1 H. destruct H as [n2 H].
-  induction H; intros.
+  intros n.
+  induction n.
+  (* z *) intros. admit.
+  (* s n *)
+  intros m G1 T1 T2 n1 n0 H NE.
+  inversion H; intros.
   - Case "Bot".
     intros. eapply stpd_bot.
   - Case "Top".
@@ -775,9 +779,9 @@ Proof.
   - Case "Bool". 
     intros. eapply stpd_bool.
   - Case "Fun". 
-    intros. eapply stpd_fun. eapply IHstp1; eauto. eapply IHstp2; eauto.
+    intros. eapply stpd_fun. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
   - Case "Mem". 
-    intros. eapply stpd_mem. eapply IHstp1; eauto. eapply IHstp2; eauto. eapply IHstp3; eauto.
+    intros. eapply stpd_mem. eapply IHn; eauto. omega. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
   - Case "Sel2". intros.
     { case_eq (beq_nat x x0); intros E.
       assert (env_itp G1' nG). auto.
@@ -787,7 +791,7 @@ Proof.
         (* already have itp *)
         eauto.
         (* trans, and narrow by induction *)
-        eapply H7. eapply H5. eapply H4. eapply IHstp; eauto.
+        eapply H13. eapply H11. eapply H10. eapply IHn; eauto. omega.
       (* other binding *)
       + assert (x <> x0) as EX. eapply beq_nat_false_iff; eauto.
         eapply stpd_sel2. eapply upd_miss; eauto.
@@ -796,7 +800,7 @@ Proof.
         (* alt 2 -- call itp_narrow *)
         eapply itp_narrow; eauto.
         (* narrow stp by induction *)
-        eapply IHstp; eauto. 
+        eapply IHn; eauto. omega.
     }
   - Case "Sel1". intros.
     { case_eq (beq_nat x x0); intros E.
@@ -807,14 +811,14 @@ Proof.
         (* already have itp *)
         eauto.
         (* trans, and narrow by induction *)
-        eapply H7. eapply H8. eapply H4. eapply IHstp; eauto.
+        eapply H13. eapply H11. eapply H10. eapply IHn; eauto. omega.
       (* other binding *)
       + assert (x <> x0) as EX. eapply beq_nat_false_iff; eauto.
         eapply stpd_sel1. eapply upd_miss; eauto.
         (* new itp: see above for alternatives *)
         eapply itp_narrow; eauto.
         (* narrow stp by induction *)
-        eapply IHstp; eauto. 
+        eapply IHn; eauto. omega.
     }
   - Case "Selx". eapply stpd_selx.
   - Case "Bindx".
@@ -831,11 +835,11 @@ Proof.
     assert (length G1 = length G1'). { eapply update_pres_len; eauto. }
     remember (length G1) as L. clear HeqL. subst L.
 
-    assert (itp ((length G1', T1)::G1) T1 n2). { eauto. } (* already have it! *)
+    assert (itp ((length G1', T0)::G1) T0 n3). { eauto. } (* already have it! *)
     (* will do induction with extended env. need to prove T1 realizable in G1' *)
-    assert (exists nx, itp ((length G1', T1)::G1') T1 nx) as IE. {
+    assert (itpd ((length G1', T0)::G1') T0) as IE. {
       eapply itp_narrow.
-      eexists. eapply H2.
+      eexists. eapply H3.
       eapply index_extend; eauto.
       eapply update_extend; eauto.
       eexists. eapply itp_extend; eauto.
@@ -843,7 +847,7 @@ Proof.
     destruct IE.
     
     eapply stpd_bindx. {
-      eapply IHstp.
+      eapply IHn. eauto. omega.
       eapply index_extend; eauto.
       eapply update_extend; eauto.
       eapply stp_extend; eauto.
@@ -855,8 +859,8 @@ Proof.
     eauto.
     eauto.
 
-  - Case "Trans". eapply stpd_transf. eapply IHstp1; eauto. eapply IHstp2; eauto.
-  - Case "Wrap". eapply stpd_wrapf. eapply IHstp; eauto.
+  - Case "Trans". eapply stpd_transf. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
+  - Case "Wrap". eapply stpd_wrapf. eapply IHn; eauto. omega.
 Qed.
 
 
@@ -1383,7 +1387,7 @@ Proof.
         assert (beq_nat (length G1) (length G1) = true) as E.
         { eapply beq_nat_true_iff. eauto. }
         inversion H14. subst.
-        eapply stp_narrow. eauto.
+        eapply stp_narrow. eauto. eauto.
         instantiate (2 := length G1). unfold index. rewrite E. eauto.
         instantiate (1 := open (length G1) TA1). unfold update. rewrite E. eauto.
         eauto.
