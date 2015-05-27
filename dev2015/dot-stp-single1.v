@@ -344,9 +344,84 @@ with itp: tenv -> ty -> nat -> Prop :=
     itp G1 (TMem TL TU) (S (n1+n2))
 | itp_sel: forall G1 TX x n1,
     index x G1 = Some TX ->
-    itp G1 TX n1 ->
+    itp G1 TX n1 -> (* could / should we rely on env_itp to provide this? see itp_narrow for additional circularity considerations *)
     itp G1 (TSel x) (S n1)
 .
+
+
+(*
+
+what about intersection types:
+
+STP
+
+  T <: T1,  T <: T2
+  -----------------
+  T <: T1 /\ T2
+
+
+  T1 <: T,  T2 wfe
+  ----------------
+  T1 /\ T2 <: T
+
+
+  T1 wfe,  T2 <: T 
+  ----------------
+  T1 /\ T2 <: T
+
+
+EXP
+
+  T1 <x {A: L1..U1},  T2 <x {A: L2..U2}
+  ------------------------------------
+  T1 /\ T2 <x {A: L1 \/ L2 .. U1 /\ U2 }
+
+
+  T1 <x {A: L1..U1},  A not in dom(T2)
+  ------------------------------------
+  T1 /\ T2 <x {A: L1..U1}
+
+
+  A not in dom(T1),  T2 <x {A: L2..U2}
+  ------------------------------------
+  T1 /\ T2 <x {A: L2..U2}
+
+
+Problem case (bad bounds):
+
+  (Int..Int) /\ (String..String)
+
+Expansion:
+
+  (Int \/ String) .. (Int /\ String) <--- not <:
+
+
+CONSTRAINTS:
+  - need good bounds (L < U) for stpd_trans_cross
+  - not part of regular stp. needs to come from env
+  - but need to be able to do induction on it
+
+HYPOTHESIS:
+  - put itp in stp_sel1,sel2 evidence: this mirrors 
+    env_itp, but enables induction
+  - narrow uses env_itp to get new itp (output size 
+    doesn't matter)
+
+
+
+Need itp_exp (example):
+
+  itp (L1..U1) /\ (L2..U2)
+  (L1..U1) /\ (L2..U2) <: L..U  [n+1]
+--->
+  (L1..U1) /\ (L2..U2)  <x  (L1 \/ L2 .. U1 /\ U2)
+  (L1 \/ L2  <:  U1 /\ U2)   [n]
+  
+  (L1 \/ L2 .. U1 /\ U2)  <:  L..U
+  itp U1 /\ U2
+*)
+
+
 
 
 
