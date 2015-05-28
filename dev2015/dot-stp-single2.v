@@ -398,7 +398,7 @@ Inductive stp2 : bool -> tenv -> ty -> ty -> nat -> Prop :=
     stp true G1 (TBind TA1) T2 (S n1)
 ... or at least...
 *)
-| stp2_bindx: forall G1 T1 T2 TA1 TA2 n1 n2,
+| stp2_bindx: forall G1 T1 T2 TA1 TA2 n1,
     stp false ((length G1,T1)::G1) T1 T2 n1 ->  (* TAKING THE OTHER ONE *)
     open (length G1) TA1 = T1 ->                
     open (length G1) TA2 = T2 ->
@@ -406,8 +406,8 @@ Inductive stp2 : bool -> tenv -> ty -> ty -> nat -> Prop :=
     (* how will this interact with narrowing? *)
     (* exp G1 T1 (TMem TL TU) -> *)
     (* stp true G1 TL TU n2 -> *)
-    itp2 ((length G1,T1)::G1) T1 n2 ->
-    stp2 true G1 (TBind TA1) (TBind TA2) (S (n1+n2))
+    (* itp2 ((length G1,T1)::G1) T1 n2 -> *)
+    stp2 true G1 (TBind TA1) (TBind TA2) (S n1)
 
 | stp2_transf: forall G1 T1 T2 T3 n1 n2,
     stp2 true G1 T1 T2 n1 ->
@@ -756,7 +756,7 @@ Lemma stpd2_bindx: forall G1 T1 T2 TA1 TA2,
     open (length G1) TA2 = T2 ->
     (* exp G1 T1 (TMem TL TU) -> *)
     (* stpd true G1 TL TU -> *)
-    itpd2 ((length G1,T1)::G1) T1 ->
+    (* itpd2 ((length G1,T1)::G1) T1 -> *)
     stpd2 true G1 (TBind TA1) (TBind TA2).
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_transf: forall G1 T1 T2 T3,
@@ -1446,7 +1446,7 @@ Qed.
 
 
 (* proper trans lemma *)
-Lemma stp1_trans: forall n, trans_up n.
+Lemma stp2_trans: forall n, trans_up n.
 Proof.
   intros n. induction n. {
     Case "z".
@@ -1552,27 +1552,20 @@ Proof.
       eapply itp_exp in E; eauto.
       eapply stpd2_sel2. eauto. eauto. eapply stpd_trans_lo; eauto.
     + SSCase "Bind".
-      inversion H14. subst.
-      assert (trans_up (nG+n0)) as IH.
-      { unfold trans_up. intros. eapply IHn. omega. }
-      (* realizable in old env *) 
-      (* assert (itp G1 (open (length G1) TA2) n5). auto. *)
-      (* realizable in new env *)
-      (* assert (itp G1 (open (length G1) TA1) n3). auto. *)
-      (* first narrow, then trans *)
+      inversion H12. subst.
       assert (stpd false ((length G1, open (length G1) TA1) :: G1)
                    (open (length G1) TA2) (open (length G1) TA3)) as NRW.
       { 
         assert (beq_nat (length G1) (length G1) = true) as E.
         { eapply beq_nat_true_iff. eauto. }
-        inversion H14. subst.
+        inversion H12. subst.
         eapply stp_narrow. eauto. eauto.
         instantiate (2 := length G1). unfold index. rewrite E. eauto.
         instantiate (1 := open (length G1) TA1). unfold update. rewrite E. eauto.
         eauto.
       }
       eapply stpd2_bindx. eapply stp0f_trans. eapply H. eapply NRW. eauto.
-      eauto. eauto. eauto.
+      eauto. eauto.
   - SCase "Trans". subst.
     assert (trans_on nG n3) as IH2.
     { eapply trans_le; eauto. omega. }
@@ -1588,11 +1581,62 @@ Proof.
     eapply IH; eauto.
 Qed.
 
-(* TODO: prove stp -> stp2 *)
 
+(* TODO: prove stp to stp2 *)
 
+Lemma stp2_untrans: forall n, forall G1 T1 T2 n0,
+  stp2 false G1 T1 T2 n0 ->
+  n0 <= n ->
+  env_itp G1 0 ->
+  stpd2 true G1 T1 T2.
+Proof.
+  intros n. induction n.
+  - Case "z".
+    intros. inversion H; inversion H0; subst; eauto; try solve by inversion.
+  - Case "s n".
+    intros. inversion H; subst.
+    + SCase "transf". eapply stp2_trans. eauto. eauto. eapply H2. eapply IHn. eauto. omega. eauto.
+      + SCase "wrapf". eauto.
+Qed.
 
-
+Lemma stp_convert: forall n, forall m G1 T1 T2 n0,
+  stp m G1 T1 T2 n0 ->
+  n0 <= n ->
+  env_itp G1 0 ->
+  stpd2 m G1 T1 T2.
+Proof.
+  intros n.
+  induction n.
+  - Case "z".
+    intros. inversion H; inversion H0; subst; eauto; try solve by inversion.
+  - Case "s n".
+    intros.
+    inversion H.
+    + SCase "bot". eauto.
+    + SCase "top". eauto.
+    + SCase "bool". eauto.
+    + SCase "fun". eapply stpd2_fun. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
+    + SCase "mem". eapply stpd2_mem. eapply IHn; eauto. omega. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
+    + SCase "sel2".
+      assert (stpd2 false G1 TX (TMem T1 TTop)) as ST. { eapply IHn; eauto. omega. }
+      assert (stpd2 true G1 TX (TMem T1 TTop)). { destruct ST. eapply stp2_untrans; eauto. } 
+      assert (itpd2 G1 TX). { admit. } (* from env_itp *)
+      eapply stpd2_sel2; eauto.
+    + SCase "sel1".
+      assert (stpd2 false G1 TX (TMem TBot T2)) as ST. { eapply IHn; eauto. omega. }
+      assert (stpd2 true G1 TX (TMem TBot T2)). { destruct ST. eapply stp2_untrans; eauto. } (* un-trans *)
+      assert (itpd2 G1 TX). { admit. } (* from env_itp *)
+      eapply stpd2_sel1; eauto.
+    + SCase "selx".
+      eapply stpd2_selx; eauto.
+    + SCase "bindx".
+      eapply stpd2_bindx; eauto.
+    + SCase "transf".
+      eapply stpd2_transf. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
+    + SCase "wrapf".
+      eapply stpd2_wrapf. eapply IHn; eauto. omega.
+Grab Existential Variables. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+Qed.
 
 End DOT.
 
