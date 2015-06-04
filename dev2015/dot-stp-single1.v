@@ -750,10 +750,23 @@ Proof.
   unfold index. unfold index in H. rewrite H. rewrite E. destruct a. reflexivity.
 Qed.
 
-Lemma update_extend: forall X (TX1: X) G1 G1' x a, 
+Lemma update_extend: forall X (T1: X) (TX1: X) G1 G1' x a,
+  index x G1 = Some T1 ->
   update x TX1 G1 = G1' ->
   update x TX1 (a::G1) = (a::G1').
-Proof. admit. Qed.
+Proof.
+  intros X T1 TX1 G1 G1' x a Hi Hu.
+  assert (x < length G1) as Hlt. {
+    eapply index_max.
+    eauto.
+  }
+  assert (x <> length G1) as Hneq by omega.
+  assert (beq_nat x (length G1) = false) as E. {
+    eapply beq_nat_false_iff; eauto.
+  }
+  destruct a as [n' Ta].
+  simpl. rewrite E. rewrite Hu. reflexivity.
+Qed.
 
 Lemma update_pres_len: forall X (TX1: X) G1 G1' x, 
   update x TX1 G1 = G1' ->
