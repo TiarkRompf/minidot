@@ -784,7 +784,15 @@ Proof. admit. (*intros. destruct H. eexists. eapply stp_extend1. apply H.*) Qed.
 Lemma itp_extend: forall G T n x v,
                          itp G T n ->
                          itp ((x,v)::G) T n.
-Proof. admit. Qed.
+Proof.
+  intros. induction H.
+  - apply itp_top.
+  - apply itp_bool.
+  - apply itp_mem. assumption.
+  - apply itp_sel with (TX:=TX).
+    apply index_extend. assumption.
+    assumption.
+Qed.
 
 (* currently n,n2 unrelated, but may change. keep in sync with env_itp definition *)
 Lemma env_itp_extend : forall G n x v n2,  
