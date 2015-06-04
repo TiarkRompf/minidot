@@ -635,18 +635,87 @@ Lemma trans_le: forall n n1 n2,
 Proof. intros. unfold trans_up in H. eapply H. eauto. Qed.
 
 
+Lemma upd_length_same: forall {X} G x (T:X),
+              length G = length (update x T G).
+Proof.
+  intros X G x T. induction G.
+  - simpl. reflexivity.
+  - destruct a as [n' Ta]. simpl.
+    remember (beq_nat x (length G)).
+    destruct b.
+    + simpl. reflexivity.
+    + simpl. f_equal. apply IHG.
+Qed.
+
 Lemma upd_hit: forall {X} G G' x x' (T:X) T',
               index x G = Some T ->
               update x' T' G = G' ->
               beq_nat x x' = true ->
               index x G' = Some T'.
-Proof. admit. Qed.
+Proof.
+  intros X G G' x x' T T' Hi Hu Heq.
+  subst. induction G.
+  - simpl in Hi. inversion Hi.
+  - destruct a as [n' Ta]. simpl in Hi.
+    remember (beq_nat x (length G)).
+    apply beq_nat_true in Heq.
+    destruct b.
+    + simpl.
+      apply beq_nat_eq in Heqb.
+      subst. subst.
+      rewrite <- beq_nat_refl.
+      simpl.
+      rewrite <- beq_nat_refl.
+      reflexivity.
+    + simpl.
+      subst.
+      rewrite <- Heqb.
+      simpl.
+      assert ((length G) = (length (update x' T' G))) as HnG. {
+        apply upd_length_same.
+      }
+      rewrite <- HnG.
+      rewrite <- Heqb.
+      apply IHG.
+      apply Hi.
+Qed.
+
 Lemma upd_miss: forall {X} G G' x x' (T:X) T',
               index x G = Some T ->
               update x' T' G = G' ->
               beq_nat x x' = false ->
               index x G' = Some T.
-Proof. admit. Qed. 
+Proof.
+  intros X G G' x x' T T' Hi Hu Heq.
+  subst. induction G.
+  - simpl in Hi. inversion Hi.
+  - destruct a as [n' Ta]. simpl in Hi. simpl.
+    remember (beq_nat x (length G)).
+    destruct b.
+    + apply beq_nat_eq in Heqb.
+      subst.
+      rewrite beq_nat_sym. rewrite Heq.
+      simpl.
+      assert ((length G) = (length (update x' T' G))) as HnG. {
+        apply upd_length_same.
+      }
+      rewrite <- HnG.
+      rewrite <- beq_nat_refl.
+      apply Hi.
+    + remember (beq_nat x' (length G)) as b'.
+      destruct b'.
+      * simpl.
+        rewrite <- Heqb.
+        apply Hi.
+      * simpl.
+        assert ((length G) = (length (update x' T' G))) as HnG. {
+          apply upd_length_same.
+        }
+        rewrite <- HnG.
+        rewrite <- Heqb.
+        apply IHG.
+        apply Hi.
+Qed.
 
 
 Lemma index_max : forall X vs n (T: X),
