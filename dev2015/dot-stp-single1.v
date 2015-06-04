@@ -758,7 +758,9 @@ Proof. admit. Qed.
 Lemma update_pres_len: forall X (TX1: X) G1 G1' x, 
   update x TX1 G1 = G1' ->
   length G1 = length G1'.
-Proof. admit. Qed.
+Proof.
+  intros X TX1 G1 G1' x H. subst. apply upd_length_same.
+Qed.
 
 Lemma stp_extend : forall m G1 T1 T2 x v n,
                        stp m G1 T1 T2 n ->
