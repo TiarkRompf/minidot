@@ -852,7 +852,12 @@ Lemma stp_narrow: forall n, forall m G1 T1 T2 n1 n0,
 Proof.
   intros n.
   induction n.
-  (* z *) intros. admit.
+  (* z *)
+  intros m G1 T1 T2 n1 n0 H NE.
+  inversion H; intros; try solve [ omega ].
+    eapply stpd_bot.
+    eapply stpd_top.
+    eapply stpd_bool.
   (* s n *)
   intros m G1 T1 T2 n1 n0 H NE.
   inversion H; intros.
