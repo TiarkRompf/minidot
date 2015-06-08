@@ -785,13 +785,7 @@ Lemma itp_extend: forall G T n x v,
                          itp G T n ->
                          itp ((x,v)::G) T n.
 Proof.
-  intros. induction H.
-  - apply itp_top.
-  - apply itp_bool.
-  - apply itp_mem. assumption.
-  - apply itp_sel with (TX:=TX).
-    apply index_extend. assumption.
-    assumption.
+  intros. induction H; eauto using index_extend.
 Qed.
 
 (* currently n,n2 unrelated, but may change. keep in sync with env_itp definition *)
