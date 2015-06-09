@@ -1,40 +1,37 @@
 (* Full safety for STLC *)
 
+
 Require Export SfLib.
 
 Require Export Arith.EqNat.
 Require Export Arith.Le.
 
-Module DOT.
+Module STLC.
 
 Definition id := nat.
-
 
 Inductive ty : Type :=
   | TBool  : ty
   | TFun   : ty -> ty -> ty
 .
 
-  
-
 Inductive tm : Type :=
   | ttrue : tm
   | tfalse : tm
   | tvar : id -> tm
   | tapp : tm -> tm -> tm (* f(x) *)
-  | tabs : id -> id -> tm -> tm (* \f x.y *)
+  | tabs : tm -> tm (* \f x.y *)
 .
-
 
 Inductive vl : Type :=
 | vbool : bool -> vl
-| vabs  : list (id*vl) -> id -> id -> tm -> vl
+| vabs  : list vl -> tm -> vl
 .
 
-Definition env := list (id*vl).
-Definition tenv := list (id*ty).
+Definition venv := list vl.
+Definition tenv := list ty.
 
-Hint Unfold env.
+Hint Unfold venv.
 Hint Unfold tenv.
 
 Fixpoint length {X: Type} (l : list X): nat :=
@@ -43,11 +40,10 @@ Fixpoint length {X: Type} (l : list X): nat :=
     | _::l' => 1 + length l'
   end.
 
-Fixpoint index {X : Type} (n : id) (l : list (id * X)) : option X :=
+Fixpoint index {X : Type} (n : id) (l : list X) : option X :=
   match l with
     | [] => None
-    (* ignore binding value n' !!! *)
-    | (n',a) :: l'  => if beq_nat n (length l') then Some a else index n l'
+    | a :: l'  => if beq_nat n (length l') then Some a else index n l'
   end.
 
 
@@ -63,25 +59,25 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env f (TFun T1 T2) ->
            has_type env x T1 ->
            has_type env (tapp f x) T2
-| t_abs: forall env f x y T1 T2,
-           has_type ((x,T1)::(f,TFun T1 T2)::env) y T2 -> 
-           has_type env (tabs f x y) (TFun T1 T2)
+| t_abs: forall env y T1 T2,
+           has_type (T1::(TFun T1 T2)::env) y T2 -> 
+           has_type env (tabs y) (TFun T1 T2)
 .
 
-Inductive wf_env : env -> tenv -> Prop := 
+Inductive wf_env : venv -> tenv -> Prop := 
 | wfe_nil : wf_env nil nil
-| wfe_cons : forall n v t vs ts,
+| wfe_cons : forall v t vs ts,
     val_type v t ->
     wf_env vs ts ->
-    wf_env (cons (n,v) vs) (cons (n,t) ts)                                    
+    wf_env (cons v vs) (cons t ts)
 
 with val_type : vl -> ty -> Prop :=
 | v_bool: forall b,
     val_type (vbool b) TBool
-| v_abs: forall env tenv f x y T1 T2,
-    wf_env env tenv ->
-    has_type ((x,T1)::(f,TFun T1 T2)::tenv) y T2 ->
-    val_type (vabs env f x y) (TFun T1 T2)
+| v_abs: forall venv tenv y T1 T2,
+    wf_env venv tenv ->
+    has_type (T1::(TFun T1 T2)::tenv) y T2 ->
+    val_type (vabs venv y) (TFun T1 T2)
 .
 
 
@@ -95,7 +91,7 @@ Some (Some v))   means result v
 Could use do-notation to clean up syntax.
  *)
 
-Fixpoint teval(n: nat)(env: env)(t: tm){struct n}: option (option vl) :=
+Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
   match n with
     | 0 => None
     | S n =>
@@ -103,18 +99,18 @@ Fixpoint teval(n: nat)(env: env)(t: tm){struct n}: option (option vl) :=
         | ttrue      => Some (Some (vbool true))
         | tfalse     => Some (Some (vbool false))
         | tvar x     => Some (index x env)
-        | tabs f x y => Some (Some (vabs env f x y))
+        | tabs y     => Some (Some (vabs env y))
         | tapp ef ex   =>
           match teval n env ef with
             | None => None
             | Some None => Some None
             | Some (Some (vbool _)) => Some None
-            | Some (Some (vabs env2 f x ey)) =>
+            | Some (Some (vabs env2 ey)) =>
               match teval n env ex with
                 | None => None
                 | Some None => Some None
                 | Some (Some vx) =>
-                  teval n ((x,vx)::(f,vabs env2 f x ey)::env2) ey
+                  teval n (vx::(vabs env2 ey)::env2) ey
               end
           end
       end
@@ -138,20 +134,13 @@ Hint Unfold length.
 
 Hint Resolve ex_intro.
 
-Require Import LibTactics.
-(*
-Require Import Coq.Program.Equality.
-Require Import Coq.Classes.Equivalence.
-Require Import Coq.Classes.EquivDec.
-Require Import Coq.Logic.Decidable.
-*)
 Lemma wf_length : forall vs ts,
                     wf_env vs ts ->
                     (length vs = length ts).
 Proof.
   intros. induction H. auto.
-  assert ((length ((n,v)::vs)) = 1 + length vs). constructor.
-  assert ((length ((n,t)::ts)) = 1 + length ts). constructor.
+  assert ((length (v::vs)) = 1 + length vs). constructor.
+  assert ((length (t::ts)) = 1 + length ts). constructor.
   rewrite IHwf_env in H1. auto.
 Qed.
 
@@ -164,7 +153,7 @@ Proof.
   intros X vs. induction vs.
   Case "nil". intros. inversion H.
   Case "cons".
-  intros. inversion H. destruct a.
+  intros. inversion H. 
   case_eq (beq_nat n (length vs)); intros E.
   SCase "hit".
   rewrite E in H1. inversion H1. subst.
@@ -186,7 +175,7 @@ Proof.
   assert (n < length vs). eapply index_max. eauto.
   assert (n <> length vs). omega.
   assert (beq_nat n (length vs) = false) as E. eapply beq_nat_false_iff; eauto.
-  unfold index. unfold index in H. rewrite H. rewrite E. destruct a. reflexivity.
+  unfold index. unfold index in H. rewrite H. rewrite E. reflexivity.
 Qed.
 
 
@@ -202,7 +191,7 @@ Proof. intros. induction H.
              intros E.
              rewrite E in H3. inversion H3. subst t.
              assert (beq_nat i (length vs) = true). eauto.
-             assert (index i ((n, v) :: vs) = Some v). eauto.  unfold index. rewrite H2. eauto.
+             assert (index i (v :: vs) = Some v). eauto.  unfold index. rewrite H2. eauto.
              eauto.
            SCase "miss".
              intros E.
@@ -231,14 +220,14 @@ Proof.
   Case "False". eexists. split. eauto. eapply v_bool.
 
   Case "Var".
-    destruct (index_safe_ex venv tenv0 T i) as [v IV]. eauto. eauto. 
+    destruct (index_safe_ex venv0 tenv0 T i) as [v IV]. eauto. eauto. 
     inversion IV as [I V]. 
 
     rewrite I. eexists. split. eauto. eapply V.
 
   Case "App". 
-    remember (teval n venv e1) as tf. (* not stuck *)
-    remember (teval n venv e2) as tx. 
+    remember (teval n venv0 e1) as tf. (* not stuck *)
+    remember (teval n venv0 e2) as tx. 
     subst T.
     
     destruct tf as [rf|]; destruct tx as [rx|]; try solve by inversion.
@@ -262,4 +251,4 @@ Proof.
     eexists. split. eauto. eapply v_abs; eauto.
 Qed.
 
-End DOT.
+End STLC.
