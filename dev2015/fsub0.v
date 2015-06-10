@@ -205,7 +205,7 @@ Does it make a difference? It seems like we can always widen f?
 | t_tabs: forall env y T1 T2,
            (forall G2, sub_env env G2 -> has_type ((TMem T1)::G2) y (open (TSel (length G2)) T2)) -> 
            has_type env (ttabs T1 y) (TAll T1 T2)
-(* TODO: sumsumption *)
+(* TODO: subsumption *)
 .
 
 
@@ -472,8 +472,17 @@ Lemma invert_tabs: forall venv vf T1 T2,
     stp2 ((vty env T3)::env) (open (TSel (length tenv)) T4) venv (open T1 T2).
 Proof.
   intros. inversion H; try solve by inversion. inversion H2. subst. repeat eexists; repeat eauto. eapply H1. eapply se_refl.
-  (* final stp2 *)admit.
-  (* from val_type we get wf: (open T1 T2) <: (open T1 T2) *)
+  (* inversion of TAll < TAll *)
+  assert (stp2 venv0 T1 venv1 T1). admit.
+  assert (stp2 (vty venv1 T1 :: venv1) (open (TSel (length venv1)) T2)
+               (vty venv1 T1 :: venv0) (open (TSel (length venv0)) T2)). admit.
+
+  (* not quite clear how to get this *)
+  assert (stp2 (vty venv1 T1 :: venv1) (open (TSel (length venv1)) T2)
+               venv0 (open T1 T2)). admit.
+
+  assert (length venv1 = length tenv0) as E. eauto.
+  rewrite <- E. eauto.
 Qed.
 
 
