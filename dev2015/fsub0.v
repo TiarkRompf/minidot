@@ -259,13 +259,31 @@ Inductive stp2: venv -> ty -> venv -> ty -> Prop :=
     index y G2 = Some (vtya GX TX) ->
     stp2 G1 (TSel x) G2 (TSel y)
 
+
 | stp2_all: forall G1 G2 T1 T2 T3 T4,
     stp2 G2 T3 G1 T1 ->
-    (* watch out -- we put X<:T in the env, not X=T *)          
+    (* watch out -- we put X<:T in the env, not X=T *)
     stp2 ((vtya G2 T3)::G1) (open (TSel (length G1)) T2)
          ((vtya G2 T3)::G2) (open (TSel (length G2)) T4) ->
     stp2 G1 (TAll T1 T2) G2 (TAll T3 T4)
+
+(*         
+| stp2_all: forall G1 G2 T1 T2 T3 T4 ok,
+    stp2 G2 T3 G1 T1 ->
+    (* watch out -- we put X<:T in the env, not X=T *)
+    (forall (x:id), ok x ->
+    stp2 ((vtya G2 T3)::G1) (open (TSel (length G1)) T2)
+         ((vtya G2 T3)::G2) (open (TSel (length G2)) T4)) ->
+    stp2 G1 (TAll T1 T2) G2 (TAll T3 T4)
+ *)
+(*
+narrowing: need to prevent accidental bindings.
+perhaps:
+- add a name to vtya
+- pick a fresh one (not used in either G1,G2)
+*)
 .
+
 
 
 
@@ -494,6 +512,33 @@ Lemma stp2_trans: forall G1 G2 G3 T1 T2 T3,
   stp2 G1 T1 G3 T3.
 Proof. admit. Qed.
 
+(* used in trans -- need to generalize interface for induction *)
+Lemma stp2_narrow: forall G1 G2 G3 G4 T1 T2 T3 T4,
+  stp2 G1 T1 G2 T2 ->
+  stp2 ((vtya G2 T2)::G3) T3 ((vtya G2 T2)::G4) T4 ->
+  stp2 ((vtya G1 T1)::G3) T3 ((vtya G1 T1)::G4) T4.
+Proof. admit. Qed.
+
+(* used in inversion *)
+Lemma stp2_narrow_concrete: forall G2 G3 G4 T2 T3 T4,
+  stp2 ((vtya G2 T2)::G3) T3 ((vtya G2 T2)::G4) T4 ->
+  stp2 ((vty G2 T2)::G3) T3 ((vty G2 T2)::G4) T4.
+Proof.
+  admit.
+  (* selx becomes sel1/sel2 *)
+Qed.
+
+(* stp_subst *)
+Lemma stp2_subst: forall G1 T1 G2 T2 TX,
+  stp2 G1 T1 (vty G2 TX :: G2) (open (TSel (length G2)) T2) ->
+  stp2 G1 T1 (vty G2 TX :: G2) (open TX T2).
+Proof.
+  admit.
+Qed.
+
+
+
+
 Lemma stp_to_stp2: forall G H T1 T2,
   wf_env H G ->
   stp G T1 T2 ->
@@ -551,11 +596,12 @@ Proof.
 
   (* narrow vtya to vty: X<T to X=T *)
   assert (stp2 (vty venv0 T1 :: venv1) (open (TSel (length venv1)) T3)
-               (vty venv0 T1 :: venv0) (open (TSel (length venv0)) T2)). admit.
+               (vty venv0 T1 :: venv0) (open (TSel (length venv0)) T2)). eapply stp2_narrow_concrete. eauto.
 
   (* substitute *)
   assert (stp2 (vty venv0 T1 :: venv1) (open (TSel (length venv1)) T3)
-               (vty venv0 T1 :: venv0) (open T1 T2)). admit.
+               (vty venv0 T1 :: venv0) (open T1 T2)).
+  eapply stp2_subst. eauto.
   
   (* smaller env -- ok because val_type venv vf (TAll T1 T2) *)
   assert (stp2 (vty venv0 T1 :: venv1) (open (TSel (length venv1)) T3)
@@ -563,7 +609,7 @@ Proof.
 
   assert (length venv1 = length tenv0) as E. eauto.
   rewrite <- E. eauto.
-Qed.
+Qed. 
 
 
 
