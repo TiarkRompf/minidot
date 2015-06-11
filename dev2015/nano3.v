@@ -46,11 +46,17 @@ Fixpoint length {X: Type} (l : list X): nat :=
     | _::l' => 1 + length l'
   end.
 
+Fixpoint fresh {X: Type} (l : list (id * X)): nat :=
+  match l with
+    | [] => 0
+    | (n',a)::l' => 1 + n'
+  end.
+
 Fixpoint index {X : Type} (n : id) (l : list (id * X)) : option X :=
   match l with
     | [] => None
     | (n',a) :: l'  =>
-      if beq_nat n' (length l') then
+      if le_lt_dec (fresh l') n' then
         if (beq_nat n n') then Some a else index n l'
       else None
   end.
@@ -149,38 +155,34 @@ Hint Unfold length.
 
 Hint Resolve ex_intro.
 
-Lemma wf_length : forall vs ts,
+Lemma wf_fresh : forall vs ts,
                     wf_env vs ts ->
-                    (length vs = length ts).
+                    (fresh vs = fresh ts).
 Proof.
   intros. induction H. auto.
-  assert ((length ((n,v)::vs)) = 1 + length vs). constructor.
-  assert ((length ((n,t)::ts)) = 1 + length ts). constructor.
-  rewrite IHwf_env in H1. auto.
+  compute. eauto.
 Qed.
 
-Hint Immediate wf_length.
+Hint Immediate wf_fresh.
 
 Lemma index_max : forall X vs n (T: X),
                        index n vs = Some T ->
-                       n < length vs.
+                       n < fresh vs.
 Proof.
   intros X vs. induction vs.
   - Case "nil". intros. inversion H.
   - Case "cons".
     intros. inversion H. destruct a.
-    case_eq (beq_nat i (length vs)); intros E1.
+    case_eq (le_lt_dec (fresh vs) i); intros ? E1.
     + SCase "ok".
       rewrite E1 in H1.
-      eapply beq_nat_true in E1. 
       case_eq (beq_nat n i); intros E2.
       * SSCase "hit".
-        eapply beq_nat_true in E2.
-        unfold length. unfold length in E1. rewrite <-E1. omega.
+        eapply beq_nat_true in E2. subst n. compute. eauto.
       * SSCase "miss".
         rewrite E2 in H1.
-        assert (n < length vs). eapply IHvs. apply H1.
-        compute. eauto.
+        assert (n < fresh vs). eapply IHvs. apply H1.
+        compute. omega.
     + SCase "bad".
       rewrite E1 in H1. inversion H1.
 Qed.
@@ -190,18 +192,29 @@ Lemma valtp_extend : forall vs x v v1 T,
                        val_type ((x,v1)::vs) v T.
 Proof. intros. induction H; eauto. Qed.
 
-Lemma index_extend : forall X vs n x (T: X),
+Lemma le_xx : forall a b,
+                       a <= b ->
+                       exists E, le_lt_dec a b = left E.
+Proof. intros.
+  case_eq (le_lt_dec a b). intros. eauto.
+  intros. omega.     
+Qed.
+
+Lemma index_extend : forall X vs n n' x (T: X),
                        index n vs = Some T ->
-                       index n ((length vs,x)::vs) = Some T.
+                       fresh vs <= n' ->
+                       index n ((n',x)::vs) = Some T.
 
 Proof.
   intros.
-  assert (n < length vs). eapply index_max. eauto.
-  assert (n <> length vs). omega.
-  assert (beq_nat n (length vs) = false) as E. eapply beq_nat_false_iff; eauto.
-  assert (beq_nat (length vs) (length vs) = true) as E2. eapply beq_nat_true_iff; eauto.
-  unfold index. unfold index in H. rewrite H. rewrite E. rewrite E2. reflexivity.
+  assert (n < fresh vs). eapply index_max. eauto.
+  assert (n <> n'). omega.
+  assert (beq_nat n n' = false) as E. eapply beq_nat_false_iff; eauto.
+  assert (fresh vs <= n') as E2. omega.
+  elim (le_xx (fresh vs) n' E2). intros ? EX.
+  unfold index. unfold index in H. rewrite H. rewrite E. rewrite EX. reflexivity.
 Qed.
+
 
 
 Lemma index_safe_ex: forall H1 G1 TF i,
@@ -211,22 +224,23 @@ Lemma index_safe_ex: forall H1 G1 TF i,
 Proof. intros. induction H.
    - Case "nil". inversion H0.
    - Case "cons". inversion H0.
-     case_eq (beq_nat n (length ts)); intros E1.
+     case_eq (le_lt_dec (fresh ts) n); intros ? E1.
      + SCase "ok".
-       rewrite E1 in H3. 
+       rewrite E1 in H3.
+       assert ((fresh ts) <= n) as QF. eauto. rewrite <-(wf_fresh vs ts H1) in QF.
+       elim (le_xx (fresh vs) n QF). intros ? EX.
+
        case_eq (beq_nat i n); intros E2.
-       * SSCase "hit".
-         assert (beq_nat n (length vs) = true). eauto.
-         assert (index i ((n, v) :: vs) = Some v). eauto.  unfold index. rewrite H2. rewrite E2. eauto.
+       * SSCase "hit".         
+         assert (index i ((n, v) :: vs) = Some v). eauto. unfold index. rewrite EX. rewrite E2. eauto.
          assert (t = TF).
          unfold index in H0. rewrite E1 in H0. rewrite E2 in H0. inversion H0. eauto.
          subst t. eauto.
        * SSCase "miss".
          rewrite E2 in H3.
          assert (exists v0, index i vs = Some v0 /\ val_type vs v0 TF) as HI. eapply IHwf_env. eauto.
-       inversion HI as [v0 HI1]. inversion HI1.
-       assert (n = length vs). eapply beq_nat_true_iff. eauto. unfold index in H0. rewrite E1 in H0. 
-       eexists. econstructor. subst n. eapply index_extend; eauto. eapply valtp_extend; eauto.
+         inversion HI as [v0 HI1]. inversion HI1.
+         eexists. econstructor. eapply index_extend; eauto. eapply valtp_extend; eauto.
      + SSCase "bad".
        rewrite E1 in H3. inversion H3.
 Qed.
