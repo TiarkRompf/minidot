@@ -549,7 +549,15 @@ Proof.
   assert (stp2 (vtya venv0 T1 :: venv1) (open (TSel (length venv1)) T3)
                (vtya venv0 T1 :: venv0) (open (TSel (length venv0)) T2)). eauto.
 
-  (* not quite clear how to get this *)
+  (* narrow vtya to vty: X<T to X=T *)
+  assert (stp2 (vty venv0 T1 :: venv1) (open (TSel (length venv1)) T3)
+               (vty venv0 T1 :: venv0) (open (TSel (length venv0)) T2)). admit.
+
+  (* substitute *)
+  assert (stp2 (vty venv0 T1 :: venv1) (open (TSel (length venv1)) T3)
+               (vty venv0 T1 :: venv0) (open T1 T2)). admit.
+  
+  (* smaller env -- ok because val_type venv vf (TAll T1 T2) *)
   assert (stp2 (vty venv0 T1 :: venv1) (open (TSel (length venv1)) T3)
                venv0 (open T1 T2)). admit.
 
