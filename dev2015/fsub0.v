@@ -344,7 +344,7 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
             | Some (Some (vtya _ _)) => Some None
             | Some (Some (vabs _ _)) => Some None
             | Some (Some (vtabs env2 T ey)) =>
-              teval n ((vty env2 T)::env2) ey
+              teval n ((vty env ex)::env2) ey
           end
       end
   end.
@@ -541,7 +541,7 @@ Lemma invert_tabs: forall venv vf T1 T2,
     wf_env env tenv /\
     has_type ((TMem T3)::tenv) y (open (TSel (length tenv)) T4) /\
     stp2 venv T1 env T3 /\
-    stp2 ((vty env T3)::env) (open (TSel (length tenv)) T4) venv (open T1 T2).
+    stp2 ((vty venv T1)::env) (open (TSel (length tenv)) T4) venv (open T1 T2).
 Proof.
   intros. inversion H; try solve by inversion. inversion H2. subst. repeat eexists; repeat eauto. eapply H1. eapply se_refl.
   (* inversion of TAll < TAll *)
@@ -550,7 +550,7 @@ Proof.
                (vtya venv0 T1 :: venv0) (open (TSel (length venv0)) T2)). eauto.
 
   (* not quite clear how to get this *)
-  assert (stp2 (vty venv1 T0 :: venv1) (open (TSel (length venv1)) T3)
+  assert (stp2 (vty venv0 T1 :: venv1) (open (TSel (length venv1)) T3)
                venv0 (open T1 T2)). admit.
 
   assert (length venv1 = length tenv0) as E. eauto.
@@ -623,12 +623,12 @@ Proof.
         [env1 [tenv [y0 [T3 [T4 [EF [WF [HTY [STX STY]]]]]]]]]. eauto.
     (* now we know it's a closure, and we have has_type evidence *)
 
-    assert (res_type ((vty env1 T3)::env1) res (open (TSel (length tenv)) T4)) as HRY.
+    assert (res_type ((vty venv0 T11)::env1) res (open (TSel (length tenv)) T4)) as HRY.
       SCase "HRY".
         subst. eapply IHn. eauto. eauto.
         (* wf_env x *) econstructor. eapply v_ty. 
         (* wf_env   *) eauto.
-    eapply stp2_extend2. eapply stp2_mem. eapply stp2_reg2. eauto.
+    eapply stp2_extend2. eapply stp2_mem. eauto.
     eauto.
     inversion HRY as [? vy].
 
