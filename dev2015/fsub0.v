@@ -26,7 +26,8 @@ Inductive ty : Type :=
   | TTop   : ty           
   | TFun   : ty -> ty -> ty
   | TMem   : ty -> ty
-  | TSel   : id -> ty           
+  | TMemE  : ty -> ty (* exact *)
+  | TSel   : id -> ty
   | TAll   : ty -> ty -> ty
 
   | TSelB  : id -> ty                           
@@ -44,6 +45,7 @@ Inductive tm : Type :=
 
 Inductive vl : Type :=
 | vty   : list vl -> ty -> vl
+| vtya  : list vl -> ty -> vl (* X<T, only used in stp2_all *)
 | vbool : bool -> vl
 | vabs  : list vl -> tm -> vl
 | vtabs : list vl -> ty -> tm -> vl
@@ -101,6 +103,9 @@ Inductive closed_rec: nat -> ty -> Prop :=
 | cl_mem: forall k T1,
     closed_rec k T1 ->
     closed_rec k (TMem T1)
+| cl_meme: forall k T1,
+    closed_rec k T1 ->
+    closed_rec k (TMemE T1)
 | cl_bind: forall k T1 T2,
     closed_rec k T1 ->
     closed_rec (S k) T2 ->
@@ -125,6 +130,7 @@ Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
     | TTop => TTop
     | TBool       => TBool
     | TMem T1     => TMem (open_rec k u T1)
+    | TMemE T1    => TMemE (open_rec k u T1)
     | TFun T1 T2  => TFun (open_rec k u T1) (open_rec k u T2)
   end.
 
@@ -166,11 +172,22 @@ Hint Unfold closed.
 
 
 Inductive stp: tenv -> ty -> ty -> Prop :=
-| stp_refl: forall G1 T,
-    stp G1 T T
+| stp_fun: forall G1 T1 T2 T3 T4,
+    stp G1 T3 T1 ->
+    stp G1 T2 T4 ->
+    stp G1 (TFun T1 T2) (TFun T3 T4)             
+| stp_mem: forall G1 T1 T2,
+    stp G1 T1 T2 ->
+    stp G1 (TMem T1) (TMem T2)         
 | stp_sel1: forall G1 T x,
     index x G1 = Some (TMem T) ->
     stp G1 (TSel x) T
+| stp_selx: forall G1 x,
+    stp G1 (TSel x) (TSel x)
+| stp_all: forall G1 T1 T2 T3 T4,
+    stp G1 T3 T1 ->
+    stp ((TMem T3)::G1) (open (TSel (length G1)) T2) (open (TSel (length G1)) T4) ->
+    stp G1 (TAll T1 T2) (TAll T3 T4)
 .
 (* TODO *)
 
@@ -210,12 +227,44 @@ Does it make a difference? It seems like we can always widen f?
 
 
 Inductive stp2: venv -> ty -> venv -> ty -> Prop :=
-| stp2_refl: forall G1 G2 T,
-   stp2 G1 T G2 T
+| stp2_bool: forall G1 G2,
+    stp2 G1 TBool G2 TBool
+| stp2_fun: forall G1 G2 T1 T2 T3 T4,
+    stp2 G2 T3 G1 T1 ->
+    stp2 G1 T2 G2 T4 ->
+    stp2 G1 (TFun T1 T2) G2 (TFun T3 T4)             
+| stp2_mem: forall G1 G2 T1 T2,
+    stp2 G1 T1 G2 T2 ->
+    stp2 G1 (TMem T1) G2 (TMem T2)         
+
 | stp2_sel1: forall G1 G2 GX TX x T2,
-   index x G1 = Some (vty GX TX) ->
-   stp2 GX TX G2 T2 ->
-   stp2 G1 (TSel x) G2 T2
+    index x G1 = Some (vty GX TX) ->
+    stp2 GX TX G2 T2 ->
+    stp2 G1 (TSel x) G2 T2
+
+| stp2_sel2: forall G1 G2 GX TX x T1,
+    index x G1 = Some (vty GX TX) ->
+    stp2 G1 T1 GX TX ->
+    stp2 G1 T1 G2 (TSel x)
+
+(* X<T, one sided *)
+| stp2_sela1: forall G1 G2 GX TX x T2,
+    index x G1 = Some (vtya GX TX) ->
+    stp2 GX TX G2 T2 ->
+    stp2 G1 (TSel x) G2 T2
+
+         
+| stp2_selx: forall G1 G2 GX TX x y,
+    index x G1 = Some (vtya GX TX) ->
+    index y G2 = Some (vtya GX TX) ->
+    stp2 G1 (TSel x) G2 (TSel y)
+
+| stp2_all: forall G1 G2 T1 T2 T3 T4,
+    stp2 G2 T3 G1 T1 ->
+    (* watch out -- we put X<:T in the env, not X=T *)          
+    stp2 ((vtya G2 T3)::G1) (open (TSel (length G1)) T2)
+         ((vtya G2 T3)::G2) (open (TSel (length G2)) T4) ->
+    stp2 G1 (TAll T1 T2) G2 (TAll T3 T4)
 .
 
 
@@ -280,6 +329,7 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
                 | Some None => Some None
                 | Some (Some (vbool _)) => Some None
                 | Some (Some (vty _ _)) => Some None
+                | Some (Some (vtya _ _)) => Some None
                 | Some (Some (vtabs _ _ _)) => Some None
                 | Some (Some (vabs env2 ey)) =>
                   teval n (vx::(vabs env2 ey)::env2) ey
@@ -291,6 +341,7 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
             | Some None => Some None
             | Some (Some (vbool _)) => Some None
             | Some (Some (vty _ _)) => Some None
+            | Some (Some (vtya _ _)) => Some None
             | Some (Some (vabs _ _)) => Some None
             | Some (Some (vtabs env2 T ey)) =>
               teval n ((vty env2 T)::env2) ey
@@ -369,12 +420,29 @@ Lemma stp_extend : forall v1 G1 T1 T2,
                        stp (v1::G1) T1 T2.
 Proof. intros. induction H; eauto.
        eapply stp_sel1. eapply index_extend; eauto.
+admit. (* TAll *)
 Qed.
 
 Lemma stp2_extend2 : forall v1 G1 G2 T1 T2,
                        stp2 G1 T1 G2 T2 ->
                        stp2 G1 T1 (v1::G2) T2.
 Proof. admit. Qed.
+
+Lemma stp2_extend1 : forall v1 G1 G2 T1 T2,
+                       stp2 G1 T1 G2 T2 ->
+                       stp2 (v1::G1) T1 G2 T2.
+Proof. admit. Qed.
+
+Lemma stp2_reg2 : forall G1 G2 T1 T2,
+                       stp2 G1 T1 G2 T2 ->
+                       stp2 G2 T2 G2 T2.
+Proof. admit. Qed.
+
+Lemma stp2_reg1 : forall G1 G2 T1 T2,
+                       stp2 G1 T1 G2 T2 ->
+                       stp2 G1 T1 G1 T1.
+Proof. admit. Qed.
+
 
 
 Lemma valtp_extend : forall vs v v1 T,
@@ -432,13 +500,17 @@ Lemma stp_to_stp2: forall G H T1 T2,
   stp2 H T1 H T2.
 Proof.
   intros. inversion H1. eauto.
-  (* sel *)
+  - Case "fun". admit.
+  - Case "mem". admit.
+  - Case "sel1". 
   assert (exists v : vl, index x H = Some v /\ val_type H v (TMem T2)) as A.
     eapply index_safe_ex. eauto. eauto.
   destruct A as [? [? VT]].
   inversion VT; try solve by inversion.  subst.
     
   eapply stp2_sel1; eauto. inversion H8. subst. eauto.
+  - Case "selx". admit.
+  - Case "all". admit.
 Qed.
 
 Lemma valtp_widen: forall vf H1 H2 T1 T2,
@@ -450,14 +522,14 @@ Proof.
 Qed.
 
 
-Lemma invert_abs: forall venv vf vx T1 T2,
+Lemma invert_abs: forall venv vf T1 T2,
   val_type venv vf (TFun T1 T2) ->
   exists env tenv y T3 T4,
     vf = (vabs env y) /\ 
     wf_env env tenv /\
     has_type (T3::(TFun T3 T4)::tenv) y T4 /\
-    stp2 venv T1 (vx::vf::env) T3 /\
-    stp2 (vx::vf::env) T4 venv T2.
+    stp2 venv T1 env T3 /\
+    stp2 env T4 venv T2.
 Proof.
   intros. inversion H; try solve by inversion. inversion H2. subst. repeat eexists; repeat eauto.
 Qed.
@@ -468,17 +540,17 @@ Lemma invert_tabs: forall venv vf T1 T2,
     vf = (vtabs env T3 y) /\ 
     wf_env env tenv /\
     has_type ((TMem T3)::tenv) y (open (TSel (length tenv)) T4) /\
-    stp2 venv T1 ((vty env T3)::env) T3 /\
+    stp2 venv T1 env T3 /\
     stp2 ((vty env T3)::env) (open (TSel (length tenv)) T4) venv (open T1 T2).
 Proof.
   intros. inversion H; try solve by inversion. inversion H2. subst. repeat eexists; repeat eauto. eapply H1. eapply se_refl.
   (* inversion of TAll < TAll *)
-  assert (stp2 venv0 T1 venv1 T1). admit.
-  assert (stp2 (vty venv1 T1 :: venv1) (open (TSel (length venv1)) T2)
-               (vty venv1 T1 :: venv0) (open (TSel (length venv0)) T2)). admit.
+  assert (stp2 venv0 T1 venv1 T0). eauto.
+  assert (stp2 (vtya venv0 T1 :: venv1) (open (TSel (length venv1)) T3)
+               (vtya venv0 T1 :: venv0) (open (TSel (length venv0)) T2)). eauto.
 
   (* not quite clear how to get this *)
-  assert (stp2 (vty venv1 T1 :: venv1) (open (TSel (length venv1)) T2)
+  assert (stp2 (vty venv1 T0 :: venv1) (open (TSel (length venv1)) T3)
                venv0 (open T1 T2)). admit.
 
   assert (length venv1 = length tenv0) as E. eauto.
@@ -519,24 +591,24 @@ Proof.
     assert (res_type venv0 rf (TFun T1 T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
     inversion HRF as [? vf].
 
-    destruct (invert_abs venv0 vf vx T1 T2) as
+    destruct (invert_abs venv0 vf T1 T2) as
         [env1 [tenv [y0 [T3 [T4 [EF [WF [HTY [STX STY]]]]]]]]]. eauto.
     (* now we know it's a closure, and we have has_type evidence *)
 
     assert (res_type (vx::vf::env1) res T4) as HRY.
       SCase "HRY".
         subst. eapply IHn. eauto. eauto.
-        (* wf_env f x *) econstructor. eapply valtp_widen; eauto.
-        (* wf_env f   *) econstructor. eapply v_abs; eauto.
-        eauto.
+        (* wf_env f x *) econstructor. eapply valtp_widen; eauto. eapply stp2_extend2. eapply stp2_extend2. eauto.
+        (* wf_env f   *) econstructor. eapply v_abs; eauto. eapply stp2_extend2. eapply stp2_fun. eapply stp2_reg2. eauto. eapply stp2_reg1. eauto.
+        eauto. 
 
     inversion HRY as [? vy].
 
-    eapply not_stuck. eapply valtp_widen; eauto.
+    eapply not_stuck. eapply valtp_widen; eauto. eapply stp2_extend1. eapply stp2_extend1. eauto.
     
   Case "Abs". intros. inversion H. inversion H0.
     subst. inversion H11. subst.
-    eapply not_stuck. eapply v_abs; eauto.
+    eapply not_stuck. eapply v_abs; eauto. admit. (* has_type_wf *)
 
   Case "TApp".
     remember (teval n venv0 e) as tf.
@@ -556,14 +628,15 @@ Proof.
         subst. eapply IHn. eauto. eauto.
         (* wf_env x *) econstructor. eapply v_ty. 
         (* wf_env   *) eauto.
-    eauto. eauto.
+    eapply stp2_extend2. eapply stp2_mem. eapply stp2_reg2. eauto.
+    eauto.
     inversion HRY as [? vy].
 
     eapply not_stuck. eapply valtp_widen; eauto.
 
   Case "TAbs". intros. inversion H. inversion H0.
     subst. inversion H11. subst.
-    eapply not_stuck. eapply v_tabs; eauto.
+    eapply not_stuck. eapply v_tabs; eauto. admit. (* has_type_wf *)
     
 Qed.
 
