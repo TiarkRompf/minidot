@@ -101,35 +101,36 @@ Inductive sub_env {X:Type}: list (id*X) -> list (id*X) -> Prop :=
 
 (* LOCALLY NAMELESS *)
 
-Inductive closed_rec: nat -> ty -> Prop :=
-| cl_top: forall k,
-    closed_rec k TTop
-| cl_bool: forall k,
-    closed_rec k TBool
-| cl_fun: forall k T1 T2,
-    closed_rec k T1 ->
-    closed_rec k T2 ->
-    closed_rec k (TFun T1 T2)
-| cl_mem: forall k T1,
-    closed_rec k T1 ->
-    closed_rec k (TMem T1)
-| cl_meme: forall k T1,
-    closed_rec k T1 ->
-    closed_rec k (TMemE T1)
-| cl_bind: forall k T1 T2,
-    closed_rec k T1 ->
-    closed_rec (S k) T2 ->
-    closed_rec k (TAll T1 T2)
-| cl_sel: forall k x,
-    closed_rec k (TSel x)
-| cl_selb: forall k i,
+Inductive closed_rec: nat -> nat -> ty -> Prop :=
+| cl_top: forall k l,
+    closed_rec k l TTop
+| cl_bool: forall k l,
+    closed_rec k l TBool
+| cl_fun: forall k l T1 T2,
+    closed_rec k l T1 ->
+    closed_rec k l T2 ->
+    closed_rec k l (TFun T1 T2)
+| cl_mem: forall k l T1,
+    closed_rec k l T1 ->
+    closed_rec k l (TMem T1)
+| cl_meme: forall k l T1,
+    closed_rec k l T1 ->
+    closed_rec k l (TMemE T1)
+| cl_bind: forall k l T1 T2,
+    closed_rec k l T1 ->
+    closed_rec (S k) l T2 ->
+    closed_rec k l (TAll T1 T2)
+| cl_sel: forall k l x,
+    l > x ->
+    closed_rec k l (TSel x)
+| cl_selb: forall k l i,
     k > i ->
-    closed_rec k (TSelB i)
+    closed_rec k l (TSelB i)
 .
 
 Hint Constructors closed_rec.
 
-Definition closed j T := closed_rec j T.
+Definition closed j l T := closed_rec j l T.
 
 
 Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
@@ -152,8 +153,8 @@ Example open_ex1: open (TSel 9) (TAll TBool (TFun (TSelB 1) (TSelB 0))) =
 Proof. compute. eauto. Qed.
 
 
-Lemma closed_no_open: forall T x j,
-  closed_rec j T ->
+Lemma closed_no_open: forall T x l j,
+  closed_rec j l T ->
   T = open_rec j x T.
 Proof.
   intros. induction H; intros; eauto;
@@ -166,10 +167,10 @@ Proof.
     rewrite H0. auto.
 Qed.
 
-Lemma closed_upgrade: forall i j T,
- closed_rec i T ->
+Lemma closed_upgrade: forall i j l T,
+ closed_rec i l T ->
  j >= i ->
- closed_rec j T.
+ closed_rec j l T.
 Proof.
  intros. generalize dependent j. induction H; intros; eauto.
  Case "TBind". econstructor. eapply IHclosed_rec1. omega. eapply IHclosed_rec2. omega.
@@ -264,7 +265,7 @@ Inductive stp2: venv -> ty -> venv -> ty -> Prop :=
     stp2 G1 (TSel x) G2 T2
 
 | stp2_sel2: forall G1 G2 GX TX x T1,
-    index x G1 = Some (vty GX TX) ->
+    index x G2 = Some (vty GX TX) ->
     stp2 G1 T1 GX TX ->
     stp2 G1 T1 G2 (TSel x)
 
@@ -605,21 +606,124 @@ Lemma stp2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4,
 Proof. admit. Qed.
 
 (* used in inversion *)
-Lemma stp2_narrow_concrete: forall x G2 G3 G4 T2 T3 T4,
-  stp2 ((x,vtya G2 T2)::G3) T3 ((x,vtya G2 T2)::G4) T4 ->
-  stp2 ((x,vty G2 T2)::G3) T3 ((x,vty G2 T2)::G4) T4.
+
+(* used in inversion *)
+
+Lemma open2stp: forall venv0 venv1 x j l v T1 T2,
+  (index x venv0 = Some v) \/ (closed j l T1) ->
+  (index x venv1 = Some v) \/ (closed j l T2) ->
+  stp2 venv0 T1 venv1 T2 ->
+  stp2 venv0 (open_rec j (TSel x) T1) venv1 (open_rec j (TSel x) T2).
+Proof. admit. Qed.
+
+
+Lemma index_miss {X}: forall x x1 (B:X) A G,
+  index x ((x1,B)::G) = A ->
+  fresh G <= x1 ->                      
+  x <> x1 ->
+  index x G = A.
 Proof.
-  admit.
-  (* selx becomes sel1/sel2 *)
+  intros.
+  unfold index in H.
+  elim (le_xx (fresh G) x1 H0). intros.
+  rewrite H2 in H.
+  assert (beq_nat x x1 = false). eapply beq_nat_false_iff. eauto.
+  rewrite H3 in H. eapply H.
 Qed.
 
-(* stp_subst *)
-Lemma stp2_subst: forall x G1 T1 G2 T2 TX,
-  stp2 G1 T1 ((x,vty G2 TX) :: G2) (open (TSel (length G2)) T2) ->
-  stp2 G1 T1 ((x,vty G2 TX) :: G2) (open TX T2).
+Lemma index_hit {X}: forall x x1 (B:X) A G,
+  index x ((x1,B)::G) = Some A ->
+  fresh G <= x1 ->                      
+  x = x1 ->
+  B = A.
 Proof.
-  admit.
+  intros.
+  unfold index in H.
+  elim (le_xx (fresh G) x1 H0). intros.
+  rewrite H2 in H.
+  assert (beq_nat x x1 = true). eapply beq_nat_true_iff. eauto.
+  rewrite H3 in H. inversion H. eauto.
 Qed.
+
+
+Lemma stp2_narrow_concreteX: forall xx G1 G2 G3 T1 T2 T3,
+  stp2 ((xx,vtya G1 T1) :: G3) (open (TSel xx) T3)
+       ((xx,vtya G1 T1) :: G2) (open (TSel xx) T2) ->
+  stp2 ((xx,vty G1 T1) :: G3) (open (TSel xx) T3)
+       ((xx,vty G1 T1) :: G2) (open (TSel xx) T2).
+Proof. admit. Qed.
+
+
+
+(* likely need to revise this slightly: 
+  don't drop binding, and enable larger env 
+*)
+Lemma stp2_concrete_subst: forall xx G1 GX TX T1 T2,
+  stp2 G1 T1 ((xx,vty GX TX) :: GX) (open (TSel xx) T2) ->
+  stp2 GX TX GX TX -> (* may not be necessary ? *)
+  closed 1 (fresh GX) T2 ->
+  fresh GX <= xx ->
+  stp2 G1 T1 GX (open TX T2).
+Proof.
+  intros.
+  remember ((xx, vty GX TX) :: GX) as G2'.
+  remember (open (TSel xx) T2) as T2'.
+  generalize dependent GX.
+  generalize dependent T2.
+  generalize dependent TX.
+  generalize dependent xx.
+  induction H; intros.
+  - Case "bool". admit.
+  - Case "fun". admit. (* TODO: contravariant case! *)
+  - Case "mem". admit.
+  - Case "sel1-exact".
+    eapply stp2_sel1; eauto.
+  - Case "sel2-exact".
+    destruct T2; try solve by inversion.
+    + (* sel i *)
+      assert (x = i).  inversion HeqT2'. eauto.
+      subst.
+      compute.
+      eapply stp2_sel2. eauto.
+      inversion H2. subst.
+      eapply index_miss in H. eauto. eauto. omega. eauto.
+    + (* selB i *)
+      inversion H2. subst.
+      assert (0 = i). omega. subst. inversion HeqT2'.
+      eapply index_hit in H. subst. compute. inversion H. eauto.
+      eauto. eauto.
+  - Case "sel1".
+    eapply stp2_sela1; eauto. (* good *)
+  - Case "selx".
+    case_eq (beq_nat x xx); intros E.
+    + subst G2. eapply index_hit in H0.
+      inversion H0. eauto. eapply beq_nat_true_iff. eauto. (* contra *)
+    + subst G2. eapply index_miss in H0.
+      destruct T2; try solve by inversion.
+      * compute in HeqT2'. inversion HeqT2'. subst. compute.
+        eapply stp2_selx. eauto. eauto.
+      * assert (0 = i). inversion H2. omega.
+        compute in HeqT2'. inversion HeqT2'. subst. inversion H6.
+        assert (beq_nat x xx = true). eapply beq_nat_true_iff. eauto.
+        rewrite E in H4. inversion H4. (* contra *)
+    * eauto. * eauto. eapply beq_nat_false_iff. eauto.
+    
+  - Case "all".
+    (* TODO: need to extend signature ... *)
+    admit.
+ Qed.
+
+Lemma stp2_concrete_rename: forall x xx G1 G2 GX TX T1 T2,
+  stp2 ((xx,vty GX TX) :: G1) (open (TSel xx) T1) G2 T2 ->
+  closed 1 (fresh G1) T1 ->
+  fresh G1 <= x ->
+  x <= xx ->
+  stp2 ((x,vty GX TX) :: G1) (open (TSel x) T1) G2 T2.
+Proof. admit. Qed.
+
+
+(* --------------------------------- *)
+
 
 Lemma stp_wf_subst: forall G1 T11 T12 x,
   stp G1 T11 T11 ->
@@ -744,28 +848,37 @@ Lemma invert_tabs: forall venv vf T1 T2,
     stp2 ((x,vty venv T1)::env) (open (TSel x) T4) venv (open T1 T2).
 Proof.
   intros. inversion H; try solve by inversion. inversion H3. subst. repeat eexists; repeat eauto.
-  remember (fresh venv1 + fresh venv0) as xx.
+  remember (x + fresh venv0) as xx.
+
+  assert (closed 1 (fresh venv1) T3). admit. (* premise ? *)
+  assert (closed 1 (fresh venv0) T2). admit. (* premise ? *)
   
   (* inversion of TAll < TAll *)
   assert (stp2 venv0 T1 venv1 T0). eauto.
   assert (stp2 ((xx,vtya venv0 T1) :: venv1) (open (TSel xx) T3)
                ((xx,vtya venv0 T1) :: venv0) (open (TSel xx) T2)).
-         eapply H14. eauto. eauto. omega. omega.
-  (* narrow vtya to vty: X<T to X=T *)
-  assert (stp2 ((xx,vty venv0 T1) :: venv1) (open (TSel xx) T3)
-               ((xx,vty venv0 T1) :: venv0) (open (TSel xx) T2)). eapply stp2_narrow_concrete. eauto.
-
-  (* substitute *)
-  assert (stp2 ((x,vty venv0 T1) :: venv1) (open (TSel x) T3)
-               ((x,vty venv0 T1) :: venv0) (open T1 T2)).
-  eapply stp2_subst. eauto.
+  eapply H14. eauto. eauto. omega. omega.
   
-  (* smaller env -- ok because val_type venv vf (TAll T1 T2) *)
-  assert (stp2 ((x,vty venv0 T1) :: venv1) (open (TSel x) T3)
-               venv0 (open T1 T2)). admit.
+  (* make all abstract types concrete: narrow vtya to vty: X<T to X=T *)
+  assert (stp2 ((xx,vty venv0 T1) :: venv1) (open (TSel xx) T3)
+               ((xx,vty venv0 T1) :: venv0) (open (TSel xx) T2)).
+  eapply stp2_narrow_concreteX. eauto.
 
-  assert (fresh tenv0 = fresh venv1) as E. eapply wf_fresh.
-  rewrite <- E. eauto.*)
+  (* in a concrete environment we can substitute! *)
+  assert (stp2 ((xx,vty venv0 T1) :: venv1) (open (TSel xx) T3)
+               venv0 (open T1 T2)).
+  eapply stp2_concrete_subst. eauto. eapply stp2_reg1. eauto. eauto. omega.
+     
+  (* could we also get the smaller env via transitivity and
+     regularity of  val_type venv vf (TAll T1 T2)? *)
+
+  (* now rename *)
+  assert (stp2 ((x,vty venv0 T1) :: venv1) (open (TSel x) T3)
+               venv0 (open T1 T2)).
+  eapply stp2_concrete_rename. eauto. eauto. eauto. omega.
+
+  (* done *)
+  eauto.
 Qed. 
 
 
