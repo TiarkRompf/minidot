@@ -90,9 +90,10 @@ Fixpoint update {X : Type} (n : nat) (x: X)
 Inductive sub_env {X:Type}: list (id*X) -> list (id*X) -> Prop :=
 | se_refl: forall G,
     sub_env G G
-| se_ext:  forall G1 G2 x,
+| se_ext:  forall G1 G2 x v,
     sub_env G1 G2 ->
-    sub_env G1 (x::G2)
+    fresh G2 <= x ->
+    sub_env G1 ((x,v)::G2)
 .
 
 
@@ -193,7 +194,8 @@ Inductive stp: tenv -> ty -> ty -> Prop :=
 | stp_sel1: forall G1 T x,
     index x G1 = Some (TMem T) ->
     stp G1 (TSel x) T
-| stp_selx: forall G1 x,
+| stp_selx: forall G1 T x,
+    index x G1 = Some (TMem T) ->
     stp G1 (TSel x) (TSel x)
 | stp_all: forall G1 T1 T2 T3 T4,
     stp G1 T3 T1 ->
@@ -255,6 +257,7 @@ Inductive stp2: venv -> ty -> venv -> ty -> Prop :=
     stp2 G1 T1 G2 T2 ->
     stp2 G1 (TMem T1) G2 (TMem T2)         
 
+(* atm not clear if these are needed *)
 | stp2_sel1: forall G1 G2 GX TX x T2,
     index x G1 = Some (vty GX TX) ->
     stp2 GX TX G2 T2 ->
@@ -272,10 +275,10 @@ Inductive stp2: venv -> ty -> venv -> ty -> Prop :=
     stp2 G1 (TSel x) G2 T2
 
          
-| stp2_selx: forall G1 G2 GX TX x y,
+| stp2_selx: forall G1 G2 GX TX x,
     index x G1 = Some (vtya GX TX) ->
-    index y G2 = Some (vtya GX TX) ->
-    stp2 G1 (TSel x) G2 (TSel y)
+    index x G2 = Some (vtya GX TX) ->
+    stp2 G1 (TSel x) G2 (TSel x)
 
 
 | stp2_all: forall G1 G2 T1 T2 T3 T4,
@@ -322,6 +325,10 @@ with val_type : venv -> vl -> ty -> Prop :=
     wf_env venv tenv -> (* T1 wf in tenv ? *)
     stp2 venv (TMem T1) env TE ->
     val_type env (vty venv T1) TE
+| v_tya: forall env venv tenv T1 TE,
+    wf_env venv tenv -> (* T1 wf in tenv ? *)
+    stp2 venv (TMem T1) env TE ->
+    val_type env (vtya venv T1) TE
 | v_bool: forall venv b TE,
     stp2 [] TBool venv TE ->
     val_type venv (vbool b) TE
@@ -470,13 +477,14 @@ Qed.
 
 Lemma sub_env_xx {X}: forall (G1:list(id*X)) G2 x v1,
   sub_env ((x,v1)::G1) G2 ->
+  fresh G1 <= x ->                      
   sub_env G1 G2.
 Proof.
   intros.
   remember ((x, v1) :: G1) as GX.
   induction H.
-  - subst G. eapply se_ext. eapply se_refl.
-  - subst G0. eapply se_ext. eauto.
+  - subst G. eapply se_ext; eauto. 
+  - subst G0. eapply se_ext; eauto.
 Qed.
 
 Lemma stp_extend : forall G1 T1 T2,
@@ -485,6 +493,7 @@ Lemma stp_extend : forall G1 T1 T2,
                        stp ((x,v1)::G1) T1 T2.
 Proof. intros G1 T1 T2 H. induction H; intros; eauto.
   - Case "sel". eapply stp_sel1. eapply index_extend; eauto.
+  - Case "selx". eapply stp_selx. eapply index_extend; eauto.
   - Case "all". eapply stp_all. eauto. intros. eapply H0. eapply sub_env_xx; eauto. eauto.
 Qed.
 
@@ -622,23 +631,46 @@ Proof.
     eauto.
 Qed.
 
-Lemma stp_to_stp2: forall G H T1 T2,
-  wf_env H G ->
+
+Lemma sub_env_fresh {X}: forall (G1: list(id*X)) G2,
+  sub_env G1 G2 -> fresh G1 <= fresh G2.
+Proof.
+  intros. induction H. eauto.
+  assert ((fresh ((x, v) :: G2)) = 1+x). eauto. rewrite H1. omega.
+Qed.
+
+Lemma stp_to_stp2: forall G T1 T2,
   stp G T1 T2 ->
+  forall H, wf_env H G ->
   stp2 H T1 H T2.
 Proof.
-  intros. inversion H1. eauto.
-  - Case "fun". admit.
-  - Case "mem". admit.
+  intros G T1 T2 H1. induction H1; intros GX W.
+  - Case "bool". eauto.
+  - Case "fun". eauto.
+  - Case "mem". eauto.
   - Case "sel1". 
-  assert (exists v : vl, index x H = Some v /\ val_type H v (TMem T2)) as A.
+    assert (exists v : vl, index x GX = Some v /\ val_type GX v (TMem T)) as A.
     eapply index_safe_ex. eauto. eauto.
-  destruct A as [? [? VT]].
-  inversion VT; try solve by inversion.  subst.
-    
-  eapply stp2_sel1; eauto. inversion H8. subst. eauto.
-  - Case "selx". admit.
-  - Case "all". admit.
+    destruct A as [? [? VT]].
+    inversion VT; try solve by inversion; subst.
+    eapply stp2_sel1; eauto. inversion H2. subst. eauto.
+    eapply stp2_sela1; eauto. inversion H2. subst. eauto.
+  - Case "selx". eauto.
+    assert (exists v : vl, index x GX = Some v /\ val_type GX v (TMem T)) as A.
+    eapply index_safe_ex. eauto. eauto.
+    destruct A as [? [? VT]].
+    inversion VT; try solve by inversion; subst.
+    eapply stp2_sel2. eauto. eapply stp2_sel1. eauto.
+    inversion H2. subst.
+    eapply stp2_reg1. eauto.
+    eapply stp2_selx. eauto. eauto.
+  - Case "all".
+    eapply stp2_all. eauto. intros.
+    assert (fresh GX <= fresh G1'). eapply sub_env_fresh; eauto.
+    assert (fresh GX = fresh G1). eauto.
+    eapply H0. eauto. omega. econstructor. econstructor. eauto.
+    eapply stp2_mem. eapply stp2_extend2. eapply stp2_reg1. eauto.
+    omega. eauto.
 Qed.
 
 Lemma valtp_widen: forall vf H1 H2 T1 T2,
@@ -751,7 +783,7 @@ Proof.
     
   Case "Abs". intros. inversion H. inversion H0.
     subst. inversion H19. subst.
-    eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh venv0 tenv0 H1). eauto. eapply stp_to_stp2. eauto. eapply has_type_wf; eauto. 
+    eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh venv0 tenv0 H1). eauto. eapply stp_to_stp2. eauto. eauto. 
 
   Case "TApp".
     remember (teval n venv0 e) as tf.
@@ -779,7 +811,7 @@ Proof.
 
   Case "TAbs". intros. inversion H. inversion H0.
     subst. inversion H17. subst.
-    eapply not_stuck. eapply v_tabs; eauto. rewrite (wf_fresh venv0 tenv0 H1). eauto. eapply stp_to_stp2. eauto. eapply has_type_wf; eauto.
+    eapply not_stuck. eapply v_tabs; eauto. rewrite (wf_fresh venv0 tenv0 H1). eauto. eapply stp_to_stp2. eauto. eauto. 
     
 Qed.
 
