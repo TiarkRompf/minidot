@@ -213,7 +213,9 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env x T1 ->
            has_type env (tapp f x) T2
 | t_abs: forall env f x y T1 T2,
-           has_type ((x,T1)::(f,TFun T1 T2)::env) y T2 -> 
+           has_type ((x,T1)::(f,TFun T1 T2)::env) y T2 ->
+           fresh env <= f ->
+           1+f <= x ->
            has_type env (tabs f x y) (TFun T1 T2)
 | t_tapp: forall env f T11 T12 ,
            has_type env f (TAll T11 T12) ->
@@ -230,6 +232,7 @@ Does it make a difference? It seems like we can always widen f?
 *)                    
 | t_tabs: forall env x y T1 T2,
            has_type ((x,TMem T1)::env) y (open (TSel x) T2) -> 
+           fresh env <= x ->
            has_type env (ttabs x T1 y) (TAll T1 T2)
 (* TODO: subsumption *)
 .
@@ -316,11 +319,14 @@ with val_type : venv -> vl -> ty -> Prop :=
 | v_abs: forall env venv tenv f x y T1 T2 TE,
     wf_env venv tenv ->
     has_type ((x,T1)::(f,TFun T1 T2)::tenv) y T2 ->
+    fresh venv <= f ->
+    1 + f <= x ->
     stp2 venv (TFun T1 T2) env TE -> 
     val_type env (vabs venv f x y) TE
 | v_tabs: forall env venv tenv x y T1 T2 TE,
     wf_env venv tenv ->
     has_type ((x,TMem T1)::tenv) y (open (TSel x) T2) ->
+    fresh venv <= x ->
     stp2 venv (TAll T1 T2) env TE ->
     val_type env (vtabs venv x T1 y) TE
 .
@@ -607,9 +613,7 @@ Lemma invert_abs: forall venv vf T1 T2,
     stp2 venv T1 env T3 /\
     stp2 env T4 venv T2.
 Proof.
-  intros. inversion H; try solve by inversion. inversion H2. subst. repeat eexists; repeat eauto.
-  admit. (* fresh *)
-  admit.
+  intros. inversion H; try solve by inversion. inversion H4. subst. repeat eexists; repeat eauto.
 Qed.
 
 Lemma invert_tabs: forall venv vf T1 T2,
@@ -622,8 +626,7 @@ Lemma invert_tabs: forall venv vf T1 T2,
     stp2 venv T1 env T3 /\
     stp2 ((x,vty venv T1)::env) (open (TSel x) T4) venv (open T1 T2).
 Proof.
-  intros. inversion H; try solve by inversion. inversion H2. subst. repeat eexists; repeat eauto.
-  admit.
+  intros. inversion H; try solve by inversion. inversion H3. subst. repeat eexists; repeat eauto.
   admit.
   (*
   remember fresh
@@ -700,7 +703,7 @@ Proof.
     
   Case "Abs". intros. inversion H. inversion H0.
     subst. inversion H12. subst.
-    eapply not_stuck. eapply v_abs; eauto. admit. (* has_type_wf *)
+    eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh venv0 tenv0 H1). eauto. admit. (* has_type_ef *)
 
   Case "TApp".
     remember (teval n venv0 e) as tf.
@@ -727,8 +730,8 @@ Proof.
     eapply not_stuck. eapply valtp_widen; eauto.
 
   Case "TAbs". intros. inversion H. inversion H0.
-    subst. inversion H12. subst.
-    eapply not_stuck. eapply v_tabs; eauto. admit. (* has_type_wf *)
+    subst. inversion H14. subst.
+    eapply not_stuck. eapply v_tabs; eauto. rewrite (wf_fresh venv0 tenv0 H1). eauto. admit. (* has_type_wf *)
     
 Qed.
 
