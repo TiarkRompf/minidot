@@ -653,6 +653,11 @@ Proof.
 Qed. 
 
 
+Lemma has_type_wf: forall G1 t T,
+  has_type G1 t T ->
+  stp G1 T T.
+Proof. admit. Qed.
+
 
 (* if not a timeout, then result not stuck and well-typed *)
 
@@ -702,8 +707,8 @@ Proof.
     eapply not_stuck. eapply valtp_widen; eauto. eapply stp2_extend1. eapply stp2_extend1. eauto. eauto. eauto.
     
   Case "Abs". intros. inversion H. inversion H0.
-    subst. inversion H12. subst.
-    eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh venv0 tenv0 H1). eauto. admit. (* has_type_ef *)
+    subst. inversion H12. inversion H17. subst.
+    eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh venv0 tenv0 H1). eauto. eapply stp_to_stp2. eauto. eapply has_type_wf; eauto. 
 
   Case "TApp".
     remember (teval n venv0 e) as tf.
@@ -731,7 +736,7 @@ Proof.
 
   Case "TAbs". intros. inversion H. inversion H0.
     subst. inversion H14. subst.
-    eapply not_stuck. eapply v_tabs; eauto. rewrite (wf_fresh venv0 tenv0 H1). eauto. admit. (* has_type_wf *)
+    eapply not_stuck. eapply v_tabs; eauto. rewrite (wf_fresh venv0 tenv0 H1). eauto. eapply stp_to_stp2. eauto. eapply has_type_wf; eauto.
     
 Qed.
 
