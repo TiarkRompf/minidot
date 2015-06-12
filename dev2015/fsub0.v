@@ -87,7 +87,7 @@ Fixpoint update {X : Type} (n : nat) (x: X)
   end.
 *)
 
-Inductive sub_env: tenv -> tenv -> Prop :=
+Inductive sub_env {X:Type}: list (id*X) -> list (id*X) -> Prop :=
 | se_refl: forall G,
     sub_env G G
 | se_ext:  forall G1 G2 x,
@@ -195,9 +195,10 @@ Inductive stp: tenv -> ty -> ty -> Prop :=
     stp G1 (TSel x) T
 | stp_selx: forall G1 x,
     stp G1 (TSel x) (TSel x)
-| stp_all: forall G1 T1 T2 T3 T4 n,
+| stp_all: forall G1 T1 T2 T3 T4,
     stp G1 T3 T1 ->
-    (forall x, n <= x -> stp ((x,TMem T3)::G1) (open (TSel x) T2) (open (TSel x) T4)) ->
+    (forall G2 x, sub_env G1 G2 -> fresh G2 <= x ->
+       stp ((x,TMem T3)::G2) (open (TSel x) T2) (open (TSel x) T4)) ->
     stp G1 (TAll T1 T2) (TAll T3 T4)
 .
 (* TODO *)
@@ -277,12 +278,14 @@ Inductive stp2: venv -> ty -> venv -> ty -> Prop :=
     stp2 G1 (TSel x) G2 (TSel y)
 
 
-| stp2_all: forall G1 G2 T1 T2 T3 T4 n,
+| stp2_all: forall G1 G2 T1 T2 T3 T4,
     stp2 G2 T3 G1 T1 ->
     (* watch out -- we put X<:T in the env, not X=T *)
-    (forall x, n <= x -> stp2
-         ((x,vtya G2 T3)::G1) (open (TSel x) T2)
-         ((x,vtya G2 T3)::G2) (open (TSel x) T4)) ->
+    (forall G1' G2' x,
+       sub_env G1 G1' -> sub_env G2 G2' ->
+       fresh G1' <= x -> fresh G2' <= x ->
+       stp2 ((x,vtya G2 T3)::G1) (open (TSel x) T2)
+            ((x,vtya G2 T3)::G2) (open (TSel x) T4)) ->
     stp2 G1 (TAll T1 T2) G2 (TAll T3 T4)
 
 (*         
@@ -398,6 +401,8 @@ Hint Constructors has_type.
 Hint Constructors val_type.
 Hint Constructors wf_env.
 Hint Constructors stp.
+Hint Constructors stp2.
+Hint Constructors sub_env.
 
 Hint Constructors option.
 Hint Constructors list.
@@ -463,13 +468,24 @@ Proof.
 Qed.
 
 
-Lemma stp_extend : forall x v1 G1 T1 T2,
+Lemma sub_env_xx {X}: forall (G1:list(id*X)) G2 x v1,
+  sub_env ((x,v1)::G1) G2 ->
+  sub_env G1 G2.
+Proof.
+  intros.
+  remember ((x, v1) :: G1) as GX.
+  induction H.
+  - subst G. eapply se_ext. eapply se_refl.
+  - subst G0. eapply se_ext. eauto.
+Qed.
+
+Lemma stp_extend : forall G1 T1 T2,
                        stp G1 T1 T2 ->
-                       fresh G1 <= x ->
+                       forall x v1, fresh G1 <= x ->
                        stp ((x,v1)::G1) T1 T2.
-Proof. intros. induction H; eauto.
-       eapply stp_sel1. eapply index_extend; eauto.
-admit. (* TAll *)
+Proof. intros G1 T1 T2 H. induction H; intros; eauto.
+  - Case "sel". eapply stp_sel1. eapply index_extend; eauto.
+  - Case "all". eapply stp_all. eauto. intros. eapply H0. eapply sub_env_xx; eauto. eauto.
 Qed.
 
 Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2,
