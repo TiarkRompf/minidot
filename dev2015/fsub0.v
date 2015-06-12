@@ -287,8 +287,8 @@ Inductive stp2: venv -> ty -> venv -> ty -> Prop :=
     (forall G1' G2' x,
        sub_env G1 G1' -> sub_env G2 G2' ->
        fresh G1' <= x -> fresh G2' <= x ->
-       stp2 ((x,vtya G2 T3)::G1) (open (TSel x) T2)
-            ((x,vtya G2 T3)::G2) (open (TSel x) T4)) ->
+       stp2 ((x,vtya G2 T3)::G1') (open (TSel x) T2)
+            ((x,vtya G2 T3)::G2') (open (TSel x) T4)) ->
     stp2 G1 (TAll T1 T2) G2 (TAll T3 T4)
 
 (*         
@@ -474,6 +474,12 @@ Proof.
   unfold index. unfold index in H. rewrite H. rewrite E. rewrite EX. reflexivity.
 Qed.
 
+Lemma index_extend_mult : forall X n vs vs2 (T: X),
+                       index n vs = Some T ->
+                       sub_env vs vs2 ->
+                       index n vs2 = Some T.
+Proof. admit. Qed.
+
 
 Lemma sub_env_xx {X}: forall (G1:list(id*X)) G2 x v1,
   sub_env ((x,v1)::G1) G2 ->
@@ -508,6 +514,19 @@ Lemma stp2_extend1 : forall x v1 G1 G2 T1 T2,
                        fresh G1 <= x ->
                        stp2 ((x,v1)::G1) T1 G2 T2.
 Proof. admit. Qed.
+
+Lemma stp2_extend2_mult : forall G1 G2 G2' T1 T2,
+                       stp2 G1 T1 G2 T2 ->
+                       sub_env G2 G2' ->
+                       stp2 G1 T1 G2' T2.
+Proof. admit. Qed.
+
+Lemma stp2_extend1_mult : forall G1 G1' G2 T1 T2,
+                       stp2 G1 T1 G2 T2 ->
+                       sub_env G1 G1' ->    
+                       stp2 G1' T1 G2 T2.
+Proof. admit. Qed.
+
 
 Lemma stp2_reg2 : forall G1 G2 T1 T2,
                        stp2 G1 T1 G2 T2 ->
@@ -639,10 +658,26 @@ Proof.
   assert ((fresh ((x, v) :: G2)) = 1+x). eauto. rewrite H1. omega.
 Qed.
 
+
+
+Lemma stp_splice: forall x v G1 G2 G1' G2' T1 T2,
+  stp2 ((x,v)::G1) (open (TSel x) T1) ((x,v)::G2) (open (TSel x) T2) ->
+  sub_env G1 G1' ->
+  sub_env G2 G2' ->
+  fresh G1' <= x ->
+  fresh G2' <= x ->
+  stp2 ((x,v)::G1') (open (TSel x) T1) ((x,v)::G2') (open (TSel x) T2).
+Proof.
+  (* not clear if this is any easier to prove ... *)
+  admit.
+Qed.
+
+
+
 Lemma stp_to_stp2: forall G T1 T2,
   stp G T1 T2 ->
-  forall H, wf_env H G ->
-  stp2 H T1 H T2.
+  forall GX, wf_env GX G ->            
+  stp2 GX T1 GX T2.
 Proof.
   intros G T1 T2 H1. induction H1; intros GX W.
   - Case "bool". eauto.
@@ -653,24 +688,26 @@ Proof.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
     inversion VT; try solve by inversion; subst.
-    eapply stp2_sel1; eauto. inversion H2. subst. eauto.
-    eapply stp2_sela1; eauto. inversion H2. subst. eauto.
+    eapply stp2_sel1; eauto. inversion H2. subst. eauto. 
+    eapply stp2_sela1; eauto. inversion H2. subst. eauto. 
   - Case "selx". eauto.
     assert (exists v : vl, index x GX = Some v /\ val_type GX v (TMem T)) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
     inversion VT; try solve by inversion; subst.
-    eapply stp2_sel2. eauto. eapply stp2_sel1. eauto.
+    eapply stp2_sel2. eauto. eapply stp2_sel1. eauto. 
     inversion H2. subst.
     eapply stp2_reg1. eauto.
-    eapply stp2_selx. eauto. eauto.
+    eapply stp2_selx. eauto. eauto. 
   - Case "all".
     eapply stp2_all. eauto. intros.
     assert (fresh GX <= fresh G1'). eapply sub_env_fresh; eauto.
     assert (fresh GX = fresh G1). eauto.
-    eapply H0. eauto. omega. econstructor. econstructor. eauto.
-    eapply stp2_mem. eapply stp2_extend2. eapply stp2_reg1. eauto.
-    omega. eauto.
+    assert (forall x, fresh G1 <= x -> stp2 ((x, vtya GX T3)::GX) (open (TSel x) T2) ((x, vtya GX T3)::GX) (open (TSel x) T4)). intros. eapply H0. eauto. eauto.
+    econstructor. econstructor. eapply W.
+    eapply stp2_mem. eapply stp2_extend2. eapply stp2_reg1. eauto. omega. eauto.
+
+    eapply stp_splice. eapply H8. omega. eauto. eauto. omega. omega.
 Qed.
 
 Lemma valtp_widen: forall vf H1 H2 T1 T2,
@@ -707,17 +744,16 @@ Lemma invert_tabs: forall venv vf T1 T2,
     stp2 ((x,vty venv T1)::env) (open (TSel x) T4) venv (open T1 T2).
 Proof.
   intros. inversion H; try solve by inversion. inversion H3. subst. repeat eexists; repeat eauto.
-  admit.
-  (*
-  remember fresh
+  remember (fresh venv1 + fresh venv0) as xx.
+  
   (* inversion of TAll < TAll *)
   assert (stp2 venv0 T1 venv1 T0). eauto.
-  assert (stp2 ((x,vtya venv0 T1) :: venv1) (open (TSel x) T3)
-               ((x,vtya venv0 T1) :: venv0) (open (TSel x) T2)). eauto.
-
+  assert (stp2 ((xx,vtya venv0 T1) :: venv1) (open (TSel xx) T3)
+               ((xx,vtya venv0 T1) :: venv0) (open (TSel xx) T2)).
+         eapply H14. eauto. eauto. omega. omega.
   (* narrow vtya to vty: X<T to X=T *)
-  assert (stp2 ((x,vty venv0 T1) :: venv1) (open (TSel x) T3)
-               ((x,vty venv0 T1) :: venv0) (open (TSel x) T2)). eapply stp2_narrow_concrete. eauto.
+  assert (stp2 ((xx,vty venv0 T1) :: venv1) (open (TSel xx) T3)
+               ((xx,vty venv0 T1) :: venv0) (open (TSel xx) T2)). eapply stp2_narrow_concrete. eauto.
 
   (* substitute *)
   assert (stp2 ((x,vty venv0 T1) :: venv1) (open (TSel x) T3)
