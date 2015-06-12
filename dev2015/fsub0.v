@@ -181,6 +181,8 @@ Hint Unfold closed.
 
 
 Inductive stp: tenv -> ty -> ty -> Prop :=
+| stp_bool: forall G1,
+    stp G1 TBool TBool
 | stp_fun: forall G1 T1 T2 T3 T4,
     stp G1 T3 T1 ->
     stp G1 T2 T4 ->
@@ -207,6 +209,7 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env tfalse TBool
 | t_var: forall x env T1,
            index x env = Some T1 ->
+           stp env T1 T1 ->
            has_type env (tvar x) T1
 | t_app: forall env f x T1 T2,
            has_type env f (TFun T1 T2) ->
@@ -214,6 +217,7 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env (tapp f x) T2
 | t_abs: forall env f x y T1 T2,
            has_type ((x,T1)::(f,TFun T1 T2)::env) y T2 ->
+           stp env (TFun T1 T2) (TFun T1 T2) ->
            fresh env <= f ->
            1+f <= x ->
            has_type env (tabs f x y) (TFun T1 T2)
@@ -232,6 +236,7 @@ Does it make a difference? It seems like we can always widen f?
 *)                    
 | t_tabs: forall env x y T1 T2,
            has_type ((x,TMem T1)::env) y (open (TSel x) T2) -> 
+           stp env (TAll T1 T2) (TAll T1 T2) ->
            fresh env <= x ->
            has_type env (ttabs x T1 y) (TAll T1 T2)
 (* TODO: subsumption *)
@@ -571,8 +576,34 @@ Proof.
   admit.
 Qed.
 
+Lemma stp_wf_subst: forall G1 T11 T12,
+  stp G1 T11 T11 ->
+  stp ((fresh G1, TMem T11) :: G1) (open (TSel (fresh G1)) T12) (open (TSel (fresh G1)) T12) ->
+  stp G1 (open T11 T12) (open T11 T12).
+Proof.
+  admit.
+Qed.
 
 
+Lemma has_type_wf: forall G1 t T,
+  has_type G1 t T ->
+  stp G1 T T.
+Proof.
+  intros. induction H.
+  - Case "true". eauto.
+  - Case "false". eauto.
+  - Case "var". eauto.
+  - Case "app".
+    assert (stp env (TFun T1 T2) (TFun T1 T2)) as WF. eauto.
+    inversion WF. eauto.
+  - Case "abs".
+    eauto.
+  - Case "tapp".
+    assert (stp env (TAll T11 T12) (TAll T11 T12)) as WF. eauto.
+    inversion WF. subst. eapply stp_wf_subst; eauto.
+  - Case "tabs".
+    eauto.
+Qed.
 
 Lemma stp_to_stp2: forall G H T1 T2,
   wf_env H G ->
@@ -652,11 +683,6 @@ Proof.
   rewrite <- E. eauto.*)
 Qed. 
 
-
-Lemma has_type_wf: forall G1 t T,
-  has_type G1 t T ->
-  stp G1 T T.
-Proof. admit. Qed.
 
 
 (* if not a timeout, then result not stuck and well-typed *)
