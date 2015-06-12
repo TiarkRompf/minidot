@@ -195,9 +195,9 @@ Inductive stp: tenv -> ty -> ty -> Prop :=
     stp G1 (TSel x) T
 | stp_selx: forall G1 x,
     stp G1 (TSel x) (TSel x)
-| stp_all: forall G1 T1 T2 T3 T4,
+| stp_all: forall G1 T1 T2 T3 T4 n,
     stp G1 T3 T1 ->
-    stp ((fresh G1,TMem T3)::G1) (open (TSel (fresh G1)) T2) (open (TSel (fresh G1)) T4) ->
+    (forall x, n <= x -> stp ((x,TMem T3)::G1) (open (TSel x) T2) (open (TSel x) T4)) ->
     stp G1 (TAll T1 T2) (TAll T3 T4)
 .
 (* TODO *)
@@ -277,11 +277,12 @@ Inductive stp2: venv -> ty -> venv -> ty -> Prop :=
     stp2 G1 (TSel x) G2 (TSel y)
 
 
-| stp2_all: forall G1 G2 T1 T2 T3 T4,
+| stp2_all: forall G1 G2 T1 T2 T3 T4 n,
     stp2 G2 T3 G1 T1 ->
     (* watch out -- we put X<:T in the env, not X=T *)
-    stp2 ((fresh G1,vtya G2 T3)::G1) (open (TSel (fresh G1)) T2)
-         ((fresh G2,vtya G2 T3)::G2) (open (TSel (fresh G2)) T4) ->
+    (forall x, n <= x -> stp2
+         ((x,vtya G2 T3)::G1) (open (TSel x) T2)
+         ((x,vtya G2 T3)::G2) (open (TSel x) T4)) ->
     stp2 G1 (TAll T1 T2) G2 (TAll T3 T4)
 
 (*         
@@ -576,9 +577,9 @@ Proof.
   admit.
 Qed.
 
-Lemma stp_wf_subst: forall G1 T11 T12,
+Lemma stp_wf_subst: forall G1 T11 T12 x,
   stp G1 T11 T11 ->
-  stp ((fresh G1, TMem T11) :: G1) (open (TSel (fresh G1)) T12) (open (TSel (fresh G1)) T12) ->
+  stp ((x, TMem T11) :: G1) (open (TSel x) T12) (open (TSel x) T12) ->
   stp G1 (open T11 T12) (open T11 T12).
 Proof.
   admit.
@@ -733,7 +734,7 @@ Proof.
     eapply not_stuck. eapply valtp_widen; eauto. eapply stp2_extend1. eapply stp2_extend1. eauto. eauto. eauto.
     
   Case "Abs". intros. inversion H. inversion H0.
-    subst. inversion H12. inversion H17. subst.
+    subst. inversion H19. subst.
     eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh venv0 tenv0 H1). eauto. eapply stp_to_stp2. eauto. eapply has_type_wf; eauto. 
 
   Case "TApp".
@@ -761,7 +762,7 @@ Proof.
     eapply not_stuck. eapply valtp_widen; eauto.
 
   Case "TAbs". intros. inversion H. inversion H0.
-    subst. inversion H14. subst.
+    subst. inversion H17. subst.
     eapply not_stuck. eapply v_tabs; eauto. rewrite (wf_fresh venv0 tenv0 H1). eauto. eapply stp_to_stp2. eauto. eapply has_type_wf; eauto.
     
 Qed.
