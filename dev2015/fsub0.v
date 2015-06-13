@@ -28,6 +28,7 @@ Inductive ty : Type :=
   | TMem   : ty -> ty
   | TMemE  : ty -> ty (* exact *)
   | TSel   : id -> ty
+  | TSelH  : id -> ty
   | TAll   : ty -> ty -> ty
 
   | TSelB  : id -> ty                           
@@ -78,6 +79,14 @@ Fixpoint index {X : Type} (n : id) (l : list (id * X)) : option X :=
       else None
   end.
 
+Fixpoint indexr {X : Type} (n : id) (l : list (id * X)) : option X :=
+  match l with
+    | [] => None
+    | (n',a) :: l'  => (* DeBrujin *)
+      if (beq_nat n 0) then Some a else index (n-1) l'
+  end.
+
+
 (*
 Fixpoint update {X : Type} (n : nat) (x: X)
                (l : list X) { struct l }: list X :=
@@ -121,8 +130,10 @@ Inductive closed_rec: nat -> nat -> ty -> Prop :=
     closed_rec (S k) l T2 ->
     closed_rec k l (TAll T1 T2)
 | cl_sel: forall k l x,
-    l > x ->
     closed_rec k l (TSel x)
+| cl_selh: forall k l x,
+    l > x ->
+    closed_rec k l (TSelH x)
 | cl_selb: forall k l i,
     k > i ->
     closed_rec k l (TSelB i)
@@ -136,6 +147,7 @@ Definition closed j l T := closed_rec j l T.
 Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
   match T with
     | TSel x      => TSel x (* free var remains free. functional, so we can't check for conflict *)
+    | TSelH x     => TSelH x
     | TSelB i     => if beq_nat k i then u else TSelB i
     | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
     | TTop => TTop
@@ -247,66 +259,47 @@ Does it make a difference? It seems like we can always widen f?
 .
 
 
-Inductive stp2: venv -> ty -> venv -> ty -> Prop :=
-| stp2_bool: forall G1 G2,
-    stp2 G1 TBool G2 TBool
-| stp2_fun: forall G1 G2 T1 T2 T3 T4,
-    stp2 G2 T3 G1 T1 ->
-    stp2 G1 T2 G2 T4 ->
-    stp2 G1 (TFun T1 T2) G2 (TFun T3 T4)             
-| stp2_mem: forall G1 G2 T1 T2,
-    stp2 G1 T1 G2 T2 ->
-    stp2 G1 (TMem T1) G2 (TMem T2)         
+Inductive stp2: venv -> ty -> venv -> ty -> venv  -> Prop :=
+| stp2_bool: forall G1 G2 GH,
+    stp2 G1 TBool G2 TBool GH
+| stp2_fun: forall G1 G2 T1 T2 T3 T4 GH,
+    stp2 G2 T3 G1 T1 GH ->
+    stp2 G1 T2 G2 T4 GH ->
+    stp2 G1 (TFun T1 T2) G2 (TFun T3 T4) GH
+| stp2_mem: forall G1 G2 T1 T2 GH,
+    stp2 G1 T1 G2 T2 GH ->
+    stp2 G1 (TMem T1) G2 (TMem T2) GH
 
 (* atm not clear if these are needed *)
-| stp2_sel1: forall G1 G2 GX TX x T2,
+| stp2_sel1: forall G1 G2 GX TX x T2 GH,
     index x G1 = Some (vty GX TX) ->
-    stp2 GX TX G2 T2 ->
-    stp2 G1 (TSel x) G2 T2
+    stp2 GX TX G2 T2 GH ->
+    stp2 G1 (TSel x) G2 T2 GH
 
-| stp2_sel2: forall G1 G2 GX TX x T1,
+| stp2_sel2: forall G1 G2 GX TX x T1 GH,
     index x G2 = Some (vty GX TX) ->
-    stp2 G1 T1 GX TX ->
-    stp2 G1 T1 G2 (TSel x)
+    stp2 G1 T1 GX TX GH ->
+    stp2 G1 T1 G2 (TSel x) GH
 
 (* X<T, one sided *)
-| stp2_sela1: forall G1 G2 GX TX x T2,
-    index x G1 = Some (vtya GX TX) ->
-    stp2 GX TX G2 T2 ->
-    stp2 G1 (TSel x) G2 T2
+| stp2_sela1: forall G1 G2 GX TX x T2 GH,
+    indexr x GH = Some (vtya GX TX) ->
+    stp2 GX TX G2 T2 GH ->
+    stp2 G1 (TSelH x) G2 T2 GH
 
          
-| stp2_selx: forall G1 G2 GX TX x,
-    index x G1 = Some (vtya GX TX) ->
-    index x G2 = Some (vtya GX TX) ->
-    stp2 G1 (TSel x) G2 (TSel x)
+| stp2_selx: forall G1 G2 GX TX x GH,
+    indexr x GH = Some (vtya GX TX) ->
+    indexr x GH = Some (vtya GX TX) ->
+    stp2 G1 (TSelH x) G2 (TSelH x) GH
 
 
-| stp2_all: forall G1 G2 T1 T2 T3 T4,
-    stp2 G2 T3 G1 T1 ->
+| stp2_all: forall G1 G2 T1 T2 T3 T4 GH,
+    stp2 G2 T3 G1 T1 GH ->
+    (* watch out: need to be able to extend G2 ! *)
     (* watch out -- we put X<:T in the env, not X=T *)
-    (forall G1' G2' x,
-       sub_env G1 G1' -> sub_env G2 G2' ->
-       fresh G1' <= x -> fresh G2' <= x ->
-       stp2 ((x,vtya G2 T3)::G1') (open (TSel x) T2)
-            ((x,vtya G2 T3)::G2') (open (TSel x) T4)) ->
-    stp2 G1 (TAll T1 T2) G2 (TAll T3 T4)
-
-(*         
-| stp2_all: forall G1 G2 T1 T2 T3 T4 ok,
-    stp2 G2 T3 G1 T1 ->
-    (* watch out -- we put X<:T in the env, not X=T *)
-    (forall (x:id), ok x ->
-    stp2 ((vtya G2 T3)::G1) (open (TSel (length G1)) T2)
-         ((vtya G2 T3)::G2) (open (TSel (length G2)) T4)) ->
-    stp2 G1 (TAll T1 T2) G2 (TAll T3 T4)
- *)
-(*
-narrowing: need to prevent accidental bindings.
-perhaps:
-- add a name to vtya
-- pick a fresh one (not used in either G1,G2)
-*)
+       stp2 G1 T2 G2 T4 ((0,vtya G2 T3)::GH) ->
+    stp2 G1 (TAll T1 T2) G2 (TAll T3 T4) GH
 .
 
 
@@ -324,28 +317,38 @@ Inductive wf_env : venv -> tenv -> Prop :=
 with val_type : venv -> vl -> ty -> Prop :=
 | v_ty: forall env venv tenv T1 TE,
     wf_env venv tenv -> (* T1 wf in tenv ? *)
-    stp2 venv (TMem T1) env TE ->
+    stp2 venv (TMem T1) env TE [] ->
     val_type env (vty venv T1) TE
-| v_tya: forall env venv tenv T1 TE,
-    wf_env venv tenv -> (* T1 wf in tenv ? *)
-    stp2 venv (TMem T1) env TE ->
-    val_type env (vtya venv T1) TE
 | v_bool: forall venv b TE,
-    stp2 [] TBool venv TE ->
+    stp2 [] TBool venv TE [] ->
     val_type venv (vbool b) TE
 | v_abs: forall env venv tenv f x y T1 T2 TE,
     wf_env venv tenv ->
     has_type ((x,T1)::(f,TFun T1 T2)::tenv) y T2 ->
     fresh venv <= f ->
     1 + f <= x ->
-    stp2 venv (TFun T1 T2) env TE -> 
+    stp2 venv (TFun T1 T2) env TE [] -> 
     val_type env (vabs venv f x y) TE
 | v_tabs: forall env venv tenv x y T1 T2 TE,
     wf_env venv tenv ->
     has_type ((x,TMem T1)::tenv) y (open (TSel x) T2) ->
     fresh venv <= x ->
-    stp2 venv (TAll T1 T2) env TE ->
+    stp2 venv (TAll T1 T2) env TE [] ->
     val_type env (vtabs venv x T1 y) TE
+.
+
+Inductive wf_envh : venv -> tenv -> Prop := 
+| wfeh_nil : wf_envh nil nil
+| wfeh_cons : forall n v t vs ts,
+    valh_type ((n,v)::vs) v t ->
+    wf_envh vs ts ->
+    wf_envh (cons (n,v) vs) (cons (n,t) ts)
+
+with valh_type : venv -> vl -> ty -> Prop :=
+| v_tya: forall env venv tenv T1 TE,
+    wf_envh venv tenv -> (* T1 wf in tenv ? *)
+    stp2 venv (TMem T1) env TE [] ->
+    valh_type env (vtya venv T1) TE
 .
 
 
@@ -504,39 +507,39 @@ Proof. intros G1 T1 T2 H. induction H; intros; eauto.
   - Case "all". eapply stp_all. eauto. intros. eapply H0. eapply sub_env_xx; eauto. eauto.
 Qed.
 
-Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2,
-                       stp2 G1 T1 G2 T2 ->
+Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2 H,
+                       stp2 G1 T1 G2 T2 H ->
                        fresh G2 <= x ->
-                       stp2 G1 T1 ((x,v1)::G2) T2.
+                       stp2 G1 T1 ((x,v1)::G2) T2 H.
 Proof. admit. Qed.
 
-Lemma stp2_extend1 : forall x v1 G1 G2 T1 T2,
-                       stp2 G1 T1 G2 T2 ->
+Lemma stp2_extend1 : forall x v1 G1 G2 T1 T2 H,
+                       stp2 G1 T1 G2 T2 H ->
                        fresh G1 <= x ->
-                       stp2 ((x,v1)::G1) T1 G2 T2.
+                       stp2 ((x,v1)::G1) T1 G2 T2 H.
 Proof. admit. Qed.
 
-Lemma stp2_extend2_mult : forall G1 G2 G2' T1 T2,
-                       stp2 G1 T1 G2 T2 ->
+Lemma stp2_extend2_mult : forall G1 G2 G2' T1 T2 H,
+                       stp2 G1 T1 G2 T2 H ->
                        sub_env G2 G2' ->
-                       stp2 G1 T1 G2' T2.
+                       stp2 G1 T1 G2' T2 H.
 Proof. admit. Qed.
 
-Lemma stp2_extend1_mult : forall G1 G1' G2 T1 T2,
-                       stp2 G1 T1 G2 T2 ->
+Lemma stp2_extend1_mult : forall G1 G1' G2 T1 T2 H,
+                       stp2 G1 T1 G2 T2 H ->
                        sub_env G1 G1' ->    
-                       stp2 G1' T1 G2 T2.
+                       stp2 G1' T1 G2 T2 H.
 Proof. admit. Qed.
 
 
-Lemma stp2_reg2 : forall G1 G2 T1 T2,
-                       stp2 G1 T1 G2 T2 ->
-                       stp2 G2 T2 G2 T2.
+Lemma stp2_reg2 : forall G1 G2 T1 T2 H ,
+                       stp2 G1 T1 G2 T2 H ->
+                       stp2 G2 T2 G2 T2 H.
 Proof. admit. Qed.
 
-Lemma stp2_reg1 : forall G1 G2 T1 T2,
-                       stp2 G1 T1 G2 T2 ->
-                       stp2 G1 T1 G1 T1.
+Lemma stp2_reg1 : forall G1 G2 T1 T2 H,
+                       stp2 G1 T1 G2 T2 H ->
+                       stp2 G1 T1 G1 T1 H.
 Proof. admit. Qed.
 
 
@@ -592,28 +595,28 @@ Hint Resolve not_stuck.
 Hint Constructors stp2.
 
 
-Lemma stp2_trans: forall G1 G2 G3 T1 T2 T3,
-  stp2 G1 T1 G2 T2 ->
-  stp2 G2 T2 G3 T3 ->
-  stp2 G1 T1 G3 T3.
+Lemma stp2_trans: forall G1 G2 G3 T1 T2 T3 H,
+  stp2 G1 T1 G2 T2 H ->
+  stp2 G2 T2 G3 T3 H ->
+  stp2 G1 T1 G3 T3 H.
 Proof. admit. Qed.
 
 (* used in trans -- need to generalize interface for induction *)
-Lemma stp2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4,
-  stp2 G1 T1 G2 T2 ->
-  stp2 ((x,vtya G2 T2)::G3) T3 ((x,vtya G2 T2)::G4) T4 ->
-  stp2 ((x,vtya G1 T1)::G3) T3 ((x,vtya G1 T1)::G4) T4.
+Lemma stp2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4 H,
+  stp2 G1 T1 G2 T2 H ->
+  stp2 ((x,vtya G2 T2)::G3) T3 ((x,vtya G2 T2)::G4) T4 H ->
+  stp2 ((x,vtya G1 T1)::G3) T3 ((x,vtya G1 T1)::G4) T4 H.
 Proof. admit. Qed.
 
 (* used in inversion *)
 
 (* used in inversion *)
 
-Lemma open2stp: forall venv0 venv1 x j l v T1 T2,
+Lemma open2stp: forall venv0 venv1 x j l v T1 T2 H,
   (index x venv0 = Some v) \/ (closed j l T1) ->
   (index x venv1 = Some v) \/ (closed j l T2) ->
-  stp2 venv0 T1 venv1 T2 ->
-  stp2 venv0 (open_rec j (TSel x) T1) venv1 (open_rec j (TSel x) T2).
+  stp2 venv0 T1 venv1 T2 H ->
+  stp2 venv0 (open_rec j (TSel x) T1) venv1 (open_rec j (TSel x) T2) H.
 Proof. admit. Qed.
 
 
@@ -646,24 +649,27 @@ Proof.
 Qed.
 
 
-Lemma stp2_narrow_concreteX: forall xx G1 G2 G3 T1 T2 T3,
-  stp2 ((xx,vtya G1 T1) :: G3) (open (TSel xx) T3)
-       ((xx,vtya G1 T1) :: G2) (open (TSel xx) T2) ->
-  stp2 ((xx,vty G1 T1) :: G3) (open (TSel xx) T3)
-       ((xx,vty G1 T1) :: G2) (open (TSel xx) T2).
+Lemma stp2_concretize: forall x G1 G2 T1 T2 TX GX GH,
+  stp2 G1 T1 G2 T2 ((0,vtya GX TX)::GH) ->
+  (fresh G1 <= x -> GX = G2 ->
+   stp2 ((x,vty G2 TX) :: G1) (open (TSel x) T1) G2 (open TX T2) GH) /\
+  (fresh G2 <= x -> GX = G1 ->
+   stp2 G1 (open TX T1) ((x,vty G1 TX) :: G2) (open (TSel x) T2) GH).
 Proof. admit. Qed.
 
 
 
 (* likely need to revise this slightly: 
   don't drop binding, and enable larger env 
-*)
-Lemma stp2_concrete_subst: forall xx G1 GX TX T1 T2,
-  stp2 G1 T1 ((xx,vty GX TX) :: GX) (open (TSel xx) T2) ->
-  stp2 GX TX GX TX -> (* may not be necessary ? *)
+ *)
+
+(*
+Lemma stp2_concrete_subst: forall xx G1 GX TX T1 T2 GH,
+  stp2 G1 T1 ((xx,vty GX TX) :: GX) (open (TSel xx) T2) GH ->
+  stp2 GX TX GX TX GH -> (* may not be necessary ? *)
   closed 1 (fresh GX) T2 ->
   fresh GX <= xx ->
-  stp2 G1 T1 GX (open TX T2).
+  stp2 G1 T1 GX (open TX T2) GH.
 Proof.
   intros.
   remember ((xx, vty GX TX) :: GX) as G2'.
@@ -695,6 +701,9 @@ Proof.
   - Case "sel1".
     eapply stp2_sela1; eauto. (* good *)
   - Case "selx".
+  (* eapply stp2_selx; eauto. *)
+    admit.
+(*
     case_eq (beq_nat x xx); intros E.
     + subst G2. eapply index_hit in H0.
       inversion H0. eauto. eapply beq_nat_true_iff. eauto. (* contra *)
@@ -707,20 +716,20 @@ Proof.
         assert (beq_nat x xx = true). eapply beq_nat_true_iff. eauto.
         rewrite E in H4. inversion H4. (* contra *)
     * eauto. * eauto. eapply beq_nat_false_iff. eauto.
-    
+ *)   
   - Case "all".
     (* TODO: need to extend signature ... *)
     admit.
  Qed.
 
-Lemma stp2_concrete_rename: forall x xx G1 G2 GX TX T1 T2,
-  stp2 ((xx,vty GX TX) :: G1) (open (TSel xx) T1) G2 T2 ->
+Lemma stp2_concrete_rename: forall x xx G1 G2 GX TX T1 T2 GH,
+  stp2 ((xx,vty GX TX) :: G1) (open (TSel xx) T1) G2 T2 GH ->
   closed 1 (fresh G1) T1 ->
   fresh G1 <= x ->
   x <= xx ->
-  stp2 ((x,vty GX TX) :: G1) (open (TSel x) T1) G2 T2.
+  stp2 ((x,vty GX TX) :: G1) (open (TSel x) T1) G2 T2 GH.
 Proof. admit. Qed.
-
+*)
 
 (* --------------------------------- *)
 
@@ -764,26 +773,34 @@ Qed.
 
 
 
-Lemma stp_splice: forall x v G1 G2 G1' G2' T1 T2,
-  stp2 ((x,v)::G1) (open (TSel x) T1) ((x,v)::G2) (open (TSel x) T2) ->
+Lemma stp_splice: forall x v G1 G2 G1' G2' T1 T2 GH,
+  stp2 ((x,v)::G1) (open (TSel x) T1) ((x,v)::G2) (open (TSel x) T2) GH ->
   sub_env G1 G1' ->
   sub_env G2 G2' ->
   fresh G1' <= x ->
   fresh G2' <= x ->
-  stp2 ((x,v)::G1') (open (TSel x) T1) ((x,v)::G2') (open (TSel x) T2).
+  stp2 ((x,v)::G1') (open (TSel x) T1) ((x,v)::G2') (open (TSel x) T2) GH.
 Proof.
   (* not clear if this is any easier to prove ... *)
   admit.
 Qed.
 
 
+(* TODO *)
+Lemma stp_to_stp2: forall G1 T1 T2,
+  stp G1 T1 T2 ->
+  forall GX, wf_env GX G1 -> 
+  stp2 GX T1 GX T2 [].
+Proof. admit. Qed.
 
-Lemma stp_to_stp2: forall G T1 T2,
-  stp G T1 T2 ->
-  forall GX, wf_env GX G ->            
-  stp2 GX T1 GX T2.
+(*
+Lemma stp_to_stp2: forall G1 G2 T1 T2,
+  stp G2 T1 T2 ->
+  sub_env G1 G2 ->                   
+  forall GX GH, wf_env GX G1 -> wf_envh GH G2 ->
+  stp2 GX T1 GX T2 GH.
 Proof.
-  intros G T1 T2 H1. induction H1; intros GX W.
+  intros G1 G2  T1 T2 ST SE. induction ST; intros GX GH WX WH.
   - Case "bool". eauto.
   - Case "fun". eauto.
   - Case "mem". eauto.
@@ -813,10 +830,11 @@ Proof.
 
     eapply stp_splice. eapply H8. omega. eauto. eauto. omega. omega.
 Qed.
+*)
 
 Lemma valtp_widen: forall vf H1 H2 T1 T2,
   val_type H1 vf T1 ->
-  stp2 H1 T1 H2 T2 ->
+  stp2 H1 T1 H2 T2 [] ->
   val_type H2 vf T2.
 Proof.
   intros. inversion H; econstructor; eauto; eapply stp2_trans; eauto.
@@ -831,8 +849,8 @@ Lemma invert_abs: forall venv vf T1 T2,
     1 + f <= x /\
     wf_env env tenv /\
     has_type ((x,T3)::(f,TFun T3 T4)::tenv) y T4 /\
-    stp2 venv T1 env T3 /\
-    stp2 env T4 venv T2.
+    stp2 venv T1 env T3 [] /\
+    stp2 env T4 venv T2 [].
 Proof.
   intros. inversion H; try solve by inversion. inversion H4. subst. repeat eexists; repeat eauto.
 Qed.
@@ -844,8 +862,8 @@ Lemma invert_tabs: forall venv vf T1 T2,
     fresh env <= x /\
     wf_env env tenv /\
     has_type ((x,TMem T3)::tenv) y (open (TSel x) T4) /\
-    stp2 venv T1 env T3 /\
-    stp2 ((x,vty venv T1)::env) (open (TSel x) T4) venv (open T1 T2).
+    stp2 venv T1 env T3 [] /\
+    stp2 ((x,vty venv T1)::env) (open (TSel x) T4) venv (open T1 T2) [].
 Proof.
   intros. inversion H; try solve by inversion. inversion H3. subst. repeat eexists; repeat eauto.
   remember (x + fresh venv0) as xx.
@@ -854,28 +872,14 @@ Proof.
   assert (closed 1 (fresh venv0) T2). admit. (* premise ? *)
   
   (* inversion of TAll < TAll *)
-  assert (stp2 venv0 T1 venv1 T0). eauto.
-  assert (stp2 ((xx,vtya venv0 T1) :: venv1) (open (TSel xx) T3)
-               ((xx,vtya venv0 T1) :: venv0) (open (TSel xx) T2)).
-  eapply H14. eauto. eauto. omega. omega.
+  assert (stp2 venv0 T1 venv1 T0 []). eauto.
+  assert (stp2 venv1 T3 venv0 T2 [(0,vtya venv0 T1)]).
+  eapply H15. 
   
-  (* make all abstract types concrete: narrow vtya to vty: X<T to X=T *)
-  assert (stp2 ((xx,vty venv0 T1) :: venv1) (open (TSel xx) T3)
-               ((xx,vty venv0 T1) :: venv0) (open (TSel xx) T2)).
-  eapply stp2_narrow_concreteX. eauto.
-
-  (* in a concrete environment we can substitute! *)
-  assert (stp2 ((xx,vty venv0 T1) :: venv1) (open (TSel xx) T3)
-               venv0 (open T1 T2)).
-  eapply stp2_concrete_subst. eauto. eapply stp2_reg1. eauto. eauto. omega.
-     
-  (* could we also get the smaller env via transitivity and
-     regularity of  val_type venv vf (TAll T1 T2)? *)
-
   (* now rename *)
   assert (stp2 ((x,vty venv0 T1) :: venv1) (open (TSel x) T3)
-               venv0 (open T1 T2)).
-  eapply stp2_concrete_rename. eauto. eauto. eauto. omega.
+               venv0 (open T1 T2) []).
+  eapply stp2_concretize. eauto. eauto. eauto.
 
   (* done *)
   eauto.
