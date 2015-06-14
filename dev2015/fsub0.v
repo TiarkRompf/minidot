@@ -686,48 +686,51 @@ Qed.
 
 Hint Unfold open.
 
-Lemma stp2_concretize: forall G1 G2 T1 T2 TX GX GH,
-  stp2 G1 T1 G2 T2 ((0,vtya GX TX)::GH) ->
+Lemma stp2_concretize: forall G1 G2 T1 T2 TX GX GH L,
+  stp2 G1 T1 G2 T2 ([(0,vtya GX TX)] ++ GH) ->
+  length GH = L ->                       
   closed 0 (fresh GX) TX ->
   (forall x, fresh G1 <= x -> GX = G2 ->
-   stp2 ((x,vty GX TX) :: G1) (open (TSel x) T1) G2 (open TX T2) GH) /\
+   stp2 ((x,vty GX TX) :: G1) (open_rec L (TSel x) T1) G2 (open_rec L TX T2) GH) /\
   (forall x, fresh G2 <= x -> GX = G1 ->
-   stp2 G1 (open TX T1) ((x,vty GX TX) :: G2) (open (TSel x) T2) GH) /\
-  (forall x, fresh G1 <= x -> closed 0 (fresh G2) T2 ->
-   stp2 ((x,vty GX TX) :: G1) (open (TSel x) T1) G2 T2 GH) /\
-  (forall x, fresh G2 <= x -> closed 0 (fresh G1) T1 ->
-   stp2 G1 T1 ((x,vty GX TX) :: G2) (open (TSel x) T2) GH) /\
-  (GX = G2 -> closed 0 (fresh G1) T1 ->
-   stp2 G1 T1 G2 (open TX T2) GH) /\
-  (GX = G1 -> closed 0 (fresh G2) T2 ->
-   stp2 G1 (open TX T1) G2 T2 GH) /\
-  (closed 0 (fresh G1) T1 -> closed 0 (fresh G2) T2 ->
+   stp2 G1 (open_rec L TX T1) ((x,vty GX TX) :: G2) (open_rec L (TSel x) T2) GH) /\
+  (forall x, fresh G1 <= x -> closed L (fresh G2) T2 ->
+   stp2 ((x,vty GX TX) :: G1) (open_rec L (TSel x) T1) G2 T2 GH) /\
+  (forall x, fresh G2 <= x -> closed L (fresh G1) T1 ->
+   stp2 G1 T1 ((x,vty GX TX) :: G2) (open_rec L (TSel x) T2) GH) /\
+  (GX = G2 -> closed L (fresh G1) T1 ->
+   stp2 G1 T1 G2 (open_rec L TX T2) GH) /\
+  (GX = G1 -> closed L (fresh G2) T2 ->
+   stp2 G1 (open_rec L TX T1) G2 T2 GH) /\
+  (closed L (fresh G1) T1 -> closed L (fresh G2) T2 ->
    stp2 G1 T1 G2 T2 GH).
 Proof.
   intros.
-  remember ((0,vtya GX TX)::GH) as GH0.
+  remember ([(0,vtya GX TX)]++GH) as GH0.
+  assert (forall n1 n2 T, closed 0 n2 T -> closed n1 n2 T). intros. eapply closed_upgrade. eauto. omega.
+  subst L.
   generalize dependent GH.
   induction H; intros GH0 ?.
   - Case "1bool". repeat split; intros; eauto. 
   - Case "fun". repeat split; intros.
     eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
     eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
-    inversion H3. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
-    inversion H3. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
-    inversion H3. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
-    inversion H3. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
-    inversion H2. inversion H3. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+    inversion H4. subst. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+    inversion H4. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+    inversion H4. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+    inversion H4. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+    inversion H4. inversion H3. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
   - Case "mem". repeat split; intros.
     eapply stp2_mem. eapply IHstp2; eauto.
     eapply stp2_mem. eapply IHstp2; eauto.
-    inversion H2. eapply stp2_mem. eapply IHstp2; eauto.
-    inversion H2. eapply stp2_mem. eapply IHstp2; eauto.
-    inversion H2. eapply stp2_mem. eapply IHstp2; eauto.
-    inversion H2. eapply stp2_mem. eapply IHstp2; eauto.
-    inversion H1. inversion H2. eapply stp2_mem. eapply IHstp2; eauto.
+    inversion H3. eapply stp2_mem. eapply IHstp2; eauto.
+    inversion H3. eapply stp2_mem. eapply IHstp2; eauto.
+    inversion H3. eapply stp2_mem. eapply IHstp2; eauto.
+    inversion H3. eapply stp2_mem. eapply IHstp2; eauto.
+    inversion H3. inversion H0. eapply stp2_mem. eapply IHstp2; eauto.
   - Case "sel1". repeat split; intros.
-    eapply stp2_sel1. eapply index_extend; eauto. eauto. eapply IHstp2; eauto.
-    eapply stp2_sel1. eauto. eauto. eapply IHstp2; eauto.
+    eapply stp2_sel1. eapply index_extend; eauto. eauto. eapply IHstp2; eauto. 
+    eapply stp2_sel1. eauto. eauto. eapply IHstp2; eauto. 
     eapply stp2_sel1. eapply index_extend; eauto. eauto. eapply IHstp2; eauto.
     eapply stp2_sel1. eauto. eauto. eapply IHstp2; eauto.
     eapply stp2_sel1. eauto. eauto. eapply IHstp2; eauto.
@@ -742,15 +745,16 @@ Proof.
     eapply stp2_sel2. eauto. eauto. eapply IHstp2; eauto.
     eapply stp2_sel2. eauto. eauto. eapply IHstp2; eauto.
   - Case "sela1".
-    case_eq (beq_nat 0 x); intros E.
+    case_eq (beq_nat (length GH0) x); intros E.
     + SCase "hit".
-      assert (0 = x). eapply beq_nat_true_iff; eauto. subst x.
+      assert (length GH0 = x). eapply beq_nat_true_iff; eauto. subst x.
       (* assert (forall z, open (TSel z) (TSelH 0) = (TSel z)). compute. eauto. *)
       (* subst GH. eapply indexr_hit in H. inversion H. subst. clear H. *)
       assert (forall x, beq_nat x x = true). intros. eapply beq_nat_true_iff. eauto.
       repeat split; intros.
-      * elim (le_xx (fresh G1) x H4). intros.
-        eapply stp2_sel1. unfold index. rewrite H6. rewrite H3. eauto. eauto.
+      * elim (le_xx (fresh G1) x H5). intros.
+        (* FIXME *)
+        eapply stp2_sel1. unfold index. rewrite H7. rewrite H3. eauto. eauto.
         subst. eapply indexr_hit in H. inversion H. subst.
         eapply IHstp2. eauto. eauto. eauto. compute. eauto. 
       * subst. eapply indexr_hit in H. inversion H. subst.
@@ -767,9 +771,9 @@ Proof.
     + SCase "miss".
       assert (0 <> x). eapply beq_nat_false_iff; eauto.
       subst.
+      assert (forall T, open T (TSelH x) = (TSelH x)) as OP. unfold open. unfold open_rec. rewrite E. eauto.
       repeat split; intros.
-      * subst. eapply indexr_miss in H. subst.
-        assert (forall T, open T (TSelH x) = (TSelH x)). unfold open. unfold open_rec. rewrite E. eauto.
+      * subst. eapply indexr_miss in H. subst. rewrite OP.
         eapply stp2_sela1.
         eapply IHstp2.
       
