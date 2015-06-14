@@ -83,7 +83,7 @@ Fixpoint indexr {X : Type} (n : id) (l : list (id * X)) : option X :=
   match l with
     | [] => None
     | (n',a) :: l'  => (* DeBrujin *)
-      if (beq_nat n 0) then Some a else index (n-1) l'
+      if (beq_nat n 0) then Some a else indexr (n-1) l'
   end.
 
 
@@ -130,9 +130,10 @@ Inductive closed_rec: nat -> nat -> ty -> Prop :=
     closed_rec (S k) l T2 ->
     closed_rec k l (TAll T1 T2)
 | cl_sel: forall k l x,
+    l > x ->
     closed_rec k l (TSel x)
 | cl_selh: forall k l x,
-    l > x ->
+    k > x ->
     closed_rec k l (TSelH x)
 | cl_selb: forall k l i,
     k > i ->
@@ -147,7 +148,7 @@ Definition closed j l T := closed_rec j l T.
 Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
   match T with
     | TSel x      => TSel x (* free var remains free. functional, so we can't check for conflict *)
-    | TSelH x     => TSelH x
+    | TSelH i     => if beq_nat k i then u else TSelH i
     | TSelB i     => if beq_nat k i then u else TSelB i
     | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
     | TTop => TTop
@@ -173,6 +174,11 @@ Proof.
   try solve [compute; compute in IHclosed_rec; rewrite <-IHclosed_rec; auto];
   try solve [compute; compute in IHclosed_rec1; compute in IHclosed_rec2; rewrite <-IHclosed_rec1; rewrite <-IHclosed_rec2; auto].
 
+  Case "TSelH".
+    unfold open_rec. assert (k <> x0). omega. 
+    apply beq_nat_false_iff in H0.
+    rewrite H0. auto.
+  
   Case "TSelB".
     unfold open_rec. assert (k <> i). omega. 
     apply beq_nat_false_iff in H0.
@@ -186,6 +192,7 @@ Lemma closed_upgrade: forall i j l T,
 Proof.
  intros. generalize dependent j. induction H; intros; eauto.
  Case "TBind". econstructor. eapply IHclosed_rec1. omega. eapply IHclosed_rec2. omega.
+ Case "TSelH". econstructor. omega.
  Case "TSelB". econstructor. omega.
 Qed.
 
@@ -273,17 +280,20 @@ Inductive stp2: venv -> ty -> venv -> ty -> venv  -> Prop :=
 (* atm not clear if these are needed *)
 | stp2_sel1: forall G1 G2 GX TX x T2 GH,
     index x G1 = Some (vty GX TX) ->
+    closed 0 (fresh GX) TX ->
     stp2 GX TX G2 T2 GH ->
     stp2 G1 (TSel x) G2 T2 GH
 
 | stp2_sel2: forall G1 G2 GX TX x T1 GH,
     index x G2 = Some (vty GX TX) ->
+    closed 0 (fresh GX) TX ->
     stp2 G1 T1 GX TX GH ->
     stp2 G1 T1 G2 (TSel x) GH
 
 (* X<T, one sided *)
 | stp2_sela1: forall G1 G2 GX TX x T2 GH,
     indexr x GH = Some (vtya GX TX) ->
+    closed x (fresh GX) TX ->
     stp2 GX TX G2 T2 GH ->
     stp2 G1 (TSelH x) G2 T2 GH
 
@@ -291,6 +301,7 @@ Inductive stp2: venv -> ty -> venv -> ty -> venv  -> Prop :=
 | stp2_selx: forall G1 G2 GX TX x GH,
     indexr x GH = Some (vtya GX TX) ->
     indexr x GH = Some (vtya GX TX) ->
+    closed x (fresh GX) TX ->
     stp2 G1 (TSelH x) G2 (TSelH x) GH
 
 
@@ -648,14 +659,128 @@ Proof.
   rewrite H3 in H. inversion H. eauto.
 Qed.
 
+Lemma indexr_miss {X}: forall x x1 (B:X) A G,
+  indexr x ((x1,B)::G) = A ->
+  x <> 0 ->
+  indexr (x-1) G = A.
+Proof.
+  intros.
+  unfold indexr in H.
+  assert (beq_nat x 0 = false). eapply beq_nat_false_iff. eauto.
+  rewrite H1 in H. eauto.
+Qed.
 
-Lemma stp2_concretize: forall x G1 G2 T1 T2 TX GX GH,
+Lemma indexr_hit {X}: forall x x1 (B:X) A G,
+  indexr x ((x1,B)::G) = Some A ->
+  x = 0 ->
+  B = A.
+Proof.
+  intros.
+  unfold indexr in H.
+  assert (beq_nat x 0 = true). eapply beq_nat_true_iff. eauto.
+  rewrite H1 in H. inversion H. eauto.
+Qed.
+
+
+
+
+Hint Unfold open.
+
+Lemma stp2_concretize: forall G1 G2 T1 T2 TX GX GH,
   stp2 G1 T1 G2 T2 ((0,vtya GX TX)::GH) ->
-  (fresh G1 <= x -> GX = G2 ->
-   stp2 ((x,vty G2 TX) :: G1) (open (TSel x) T1) G2 (open TX T2) GH) /\
-  (fresh G2 <= x -> GX = G1 ->
-   stp2 G1 (open TX T1) ((x,vty G1 TX) :: G2) (open (TSel x) T2) GH).
-Proof. admit. Qed.
+  closed 0 (fresh GX) TX ->
+  (forall x, fresh G1 <= x -> GX = G2 ->
+   stp2 ((x,vty GX TX) :: G1) (open (TSel x) T1) G2 (open TX T2) GH) /\
+  (forall x, fresh G2 <= x -> GX = G1 ->
+   stp2 G1 (open TX T1) ((x,vty GX TX) :: G2) (open (TSel x) T2) GH) /\
+  (forall x, fresh G1 <= x -> closed 0 (fresh G2) T2 ->
+   stp2 ((x,vty GX TX) :: G1) (open (TSel x) T1) G2 T2 GH) /\
+  (forall x, fresh G2 <= x -> closed 0 (fresh G1) T1 ->
+   stp2 G1 T1 ((x,vty GX TX) :: G2) (open (TSel x) T2) GH) /\
+  (GX = G2 -> closed 0 (fresh G1) T1 ->
+   stp2 G1 T1 G2 (open TX T2) GH) /\
+  (GX = G1 -> closed 0 (fresh G2) T2 ->
+   stp2 G1 (open TX T1) G2 T2 GH) /\
+  (closed 0 (fresh G1) T1 -> closed 0 (fresh G2) T2 ->
+   stp2 G1 T1 G2 T2 GH).
+Proof.
+  intros.
+  remember ((0,vtya GX TX)::GH) as GH0.
+  generalize dependent GH.
+  induction H; intros GH0 ?.
+  - Case "1bool". repeat split; intros; eauto. 
+  - Case "fun". repeat split; intros.
+    eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+    eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+    inversion H3. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+    inversion H3. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+    inversion H3. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+    inversion H3. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+    inversion H2. inversion H3. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+  - Case "mem". repeat split; intros.
+    eapply stp2_mem. eapply IHstp2; eauto.
+    eapply stp2_mem. eapply IHstp2; eauto.
+    inversion H2. eapply stp2_mem. eapply IHstp2; eauto.
+    inversion H2. eapply stp2_mem. eapply IHstp2; eauto.
+    inversion H2. eapply stp2_mem. eapply IHstp2; eauto.
+    inversion H2. eapply stp2_mem. eapply IHstp2; eauto.
+    inversion H1. inversion H2. eapply stp2_mem. eapply IHstp2; eauto.
+  - Case "sel1". repeat split; intros.
+    eapply stp2_sel1. eapply index_extend; eauto. eauto. eapply IHstp2; eauto.
+    eapply stp2_sel1. eauto. eauto. eapply IHstp2; eauto.
+    eapply stp2_sel1. eapply index_extend; eauto. eauto. eapply IHstp2; eauto.
+    eapply stp2_sel1. eauto. eauto. eapply IHstp2; eauto.
+    eapply stp2_sel1. eauto. eauto. eapply IHstp2; eauto.
+    eapply stp2_sel1. eauto. eauto. eapply IHstp2; eauto.
+    eapply stp2_sel1. eauto. eauto. eapply IHstp2; eauto.
+  - Case "sel2". repeat split; intros.
+    eapply stp2_sel2. eauto. eauto. eapply IHstp2; eauto.
+    eapply stp2_sel2. eapply index_extend; eauto. eauto. eapply IHstp2; eauto.
+    eapply stp2_sel2. eauto. eauto. eapply IHstp2; eauto.
+    eapply stp2_sel2. eapply index_extend; eauto. eauto. eapply IHstp2; eauto.
+    eapply stp2_sel2. eauto. eauto. eapply IHstp2; eauto.
+    eapply stp2_sel2. eauto. eauto. eapply IHstp2; eauto.
+    eapply stp2_sel2. eauto. eauto. eapply IHstp2; eauto.
+  - Case "sela1".
+    case_eq (beq_nat 0 x); intros E.
+    + SCase "hit".
+      assert (0 = x). eapply beq_nat_true_iff; eauto. subst x.
+      (* assert (forall z, open (TSel z) (TSelH 0) = (TSel z)). compute. eauto. *)
+      (* subst GH. eapply indexr_hit in H. inversion H. subst. clear H. *)
+      assert (forall x, beq_nat x x = true). intros. eapply beq_nat_true_iff. eauto.
+      repeat split; intros.
+      * elim (le_xx (fresh G1) x H4). intros.
+        eapply stp2_sel1. unfold index. rewrite H6. rewrite H3. eauto. eauto.
+        subst. eapply indexr_hit in H. inversion H. subst.
+        eapply IHstp2. eauto. eauto. eauto. compute. eauto. 
+      * subst. eapply indexr_hit in H. inversion H. subst.
+        eapply IHstp2. eauto. eauto. eauto. eauto.
+      * subst. eapply indexr_hit in H. inversion H. subst.
+        elim (le_xx (fresh G1) x H4). intros.
+        eapply stp2_sel1. unfold index. rewrite H6. rewrite H3. eauto. eauto.
+        eapply IHstp2; eauto. eauto.
+      * inversion H5. solve by inversion.
+      * inversion H5. solve by inversion.
+      * subst. eapply indexr_hit in H. inversion H. subst.
+        eapply IHstp2; eauto. eauto.
+      * inversion H4. solve by inversion.
+    + SCase "miss".
+      assert (0 <> x). eapply beq_nat_false_iff; eauto.
+      subst.
+      repeat split; intros.
+      * subst. eapply indexr_miss in H. subst.
+        assert (forall T, open T (TSelH x) = (TSelH x)). unfold open. unfold open_rec. rewrite E. eauto.
+        eapply stp2_sela1.
+        eapply IHstp2.
+      
+        
+    
+    
+ "stp2 GX0 (open TX TX0) ((?4354, vty GX0 TX) :: G2)(open (TSel ?4354) T2) GH0"
+ "stp2 GX0 TX0 G2 (open TX T2) GH0".
+
+
+Qed.
 
 
 
