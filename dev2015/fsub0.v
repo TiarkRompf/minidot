@@ -670,7 +670,7 @@ Proof.
   rewrite H1 in H. eauto.
 Qed.
 
-Lemma indexr_hit {X}: forall x x1 (B:X) A G,
+Lemma indexr_hit0 {X}: forall x x1 (B:X) A G,
   indexr x ((x1,B)::G) = Some A ->
   x = 0 ->
   B = A.
@@ -679,6 +679,15 @@ Proof.
   unfold indexr in H.
   assert (beq_nat x 0 = true). eapply beq_nat_true_iff. eauto.
   rewrite H1 in H. inversion H. eauto.
+Qed.
+
+
+Lemma indexr_hit {X}: forall x x1 (B:X) A G,
+  indexr x ([(x1,B)]++G) = Some A ->
+  x = length G ->
+  B = A.
+Proof.
+admit.
 Qed.
 
 
@@ -750,31 +759,32 @@ Proof.
       assert (length GH0 = x). eapply beq_nat_true_iff; eauto. subst x.
       (* assert (forall z, open (TSel z) (TSelH 0) = (TSel z)). compute. eauto. *)
       (* subst GH. eapply indexr_hit in H. inversion H. subst. clear H. *)
-      assert (forall x, beq_nat x x = true). intros. eapply beq_nat_true_iff. eauto.
+      assert (forall x, beq_nat x x = true) as EX. intros. eapply beq_nat_true_iff. eauto.
+      assert (forall T, (open_rec (length GH0) T (TSelH (length GH0)) = T)) as OP. unfold open_rec. rewrite E. eauto.
       repeat split; intros.
-      * elim (le_xx (fresh G1) x H5). intros.
-        (* FIXME *)
-        eapply stp2_sel1. unfold index. rewrite H7. rewrite H3. eauto. eauto.
+      * eapply le_xx in H4. destruct H4 as [? LE].
+        rewrite OP. 
+        eapply stp2_sel1. unfold index. rewrite LE. rewrite EX. eauto. eauto.
         subst. eapply indexr_hit in H. inversion H. subst.
         eapply IHstp2. eauto. eauto. eauto. compute. eauto. 
-      * subst. eapply indexr_hit in H. inversion H. subst.
+      * subst. eapply indexr_hit in H. inversion H. subst. rewrite OP.
         eapply IHstp2. eauto. eauto. eauto. eauto.
-      * subst. eapply indexr_hit in H. inversion H. subst.
-        elim (le_xx (fresh G1) x H4). intros.
-        eapply stp2_sel1. unfold index. rewrite H6. rewrite H3. eauto. eauto.
+      * subst. eapply indexr_hit in H. inversion H. subst. rewrite OP.
+        eapply le_xx in H4. destruct H4 as [? LE].
+        eapply stp2_sel1. unfold index. rewrite LE. rewrite EX. eauto. eauto.
         eapply IHstp2; eauto. eauto.
-      * inversion H5. solve by inversion.
-      * inversion H5. solve by inversion.
-      * subst. eapply indexr_hit in H. inversion H. subst.
+      * inversion H5. omega. (* contra *)
+      * inversion H5. omega. (* contra *)
+      * subst. eapply indexr_hit in H. inversion H. subst. rewrite OP.
         eapply IHstp2; eauto. eauto.
-      * inversion H4. solve by inversion.
+      * inversion H4. omega. (* contra *)
     + SCase "miss".
-      assert (0 <> x). eapply beq_nat_false_iff; eauto.
+      assert (length GH0 <> x). eapply beq_nat_false_iff; eauto.
       subst.
-      assert (forall T, open T (TSelH x) = (TSelH x)) as OP. unfold open. unfold open_rec. rewrite E. eauto.
+      assert (forall T, open_rec (length GH0) T (TSelH x) = (TSelH x)) as OP. unfold open. unfold open_rec. rewrite E. eauto.
       repeat split; intros.
       * subst. eapply indexr_miss in H. subst. rewrite OP.
-        eapply stp2_sela1.
+        eapply stp2_sela1. (* TODO *)
         eapply IHstp2.
       
         
