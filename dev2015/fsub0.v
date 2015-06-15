@@ -308,7 +308,7 @@ Inductive stp2: venv -> ty -> venv -> ty -> venv  -> Prop :=
 
 | stp2_all: forall G1 G2 T1 T2 T3 T4 GH,
     stp2 G2 T3 G1 T1 GH ->
-    closed (length GH) (fresh G2) T3 ->      
+    (*closed (length GH) (fresh G2) T3 ->*)
     (* watch out: need to be able to extend G2 ! *)
     (* watch out -- we put X<:T in the env, not X=T *)
     stp2 G1 T2 G2 T4 ((0,vtya G2 T3)::GH) ->
@@ -544,7 +544,7 @@ Lemma stp_extend : forall G1 T1 T2,
 Proof. intros G1 T1 T2 H. induction H; intros; eauto.
   - Case "sel". eapply stp_sel1. eapply index_extend; eauto.
   - Case "selx". eapply stp_selx. eapply index_extend; eauto.
-  - Case "all". eapply stp_all. eauto. intros. eapply H0. eapply sub_env_xx; eauto. eauto.
+  - Case "all". admit. (* eapply stp_all. eauto. intros. eapply H0. eapply sub_env_xx; eauto. eauto. *)
 Qed.
 
 Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2 H,
@@ -643,9 +643,9 @@ Proof. admit. Qed.
 
 (* used in trans -- need to generalize interface for induction *)
 Lemma stp2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4 H,
-  stp2 G1 T1 G2 T2 H ->
-  stp2 ((x,vtya G2 T2)::G3) T3 ((x,vtya G2 T2)::G4) T4 H ->
-  stp2 ((x,vtya G1 T1)::G3) T3 ((x,vtya G1 T1)::G4) T4 H.
+  stp2 G1 T1 G2 T2 H -> (* careful about H! *)
+  stp2 G3 T3 G4 T4 ((x,vtya G2 T2)::H) ->
+  stp2 G3 T3 G4 T4 ((x,vtya G1 T1)::H).
 Proof. admit. Qed.
 
 (* used in inversion *)
@@ -874,41 +874,37 @@ Proof.
     
   - Case "all".
     assert (open_rec (length GH0) TX T3 = T3) as OP. admit.
-
+    (* SHAKY!! opening with the smaller one may not be true*)
+    
+    assert (length ((0, vtya G2 T3) :: GH0) = S (length GH0)). eauto.
+    
     repeat split; intros.
     + eapply stp2_all.
       repeat fold open_rec. eapply IHstp2_1; eauto. 
-      repeat fold open_rec. rewrite OP. eauto. admit. (* todo induction *)
+      (* repeat fold open_rec. rewrite OP. eauto. admit. (* todo induction *) *)
       eauto.
 
       repeat fold open_rec.
 
       remember ((0, vtya G2 T3) :: GH0) as GH1.
       assert ((0, vtya GX T3) :: GH = GH1 ++ [(0, vtya GX TX)]) as EQ.
-      admit.
-      assert ((0, vtya GX T3) :: GH = GH1 ++ [(0, vtya GX TX)]) as EQ2.
-      admit.
+      subst GH1. subst GH. subst G2. eauto. 
       
       assert ( stp2 ((x, vty GX TX) :: G1) (open_rec ((length GH1)) (TSel x) T2) G2
      (open_rec ((length GH1)) TX T4)  GH1) as IH.
 
       eapply (IHstp2_2 GH1). eauto. subst G2. eauto. eauto. eauto.
+      subst GH1.
 
+      rewrite H3 in IH.
+      
       rewrite OP. eapply IH.
 
-      
-      eapply IH.
-        
-      assert ((0, vtya G2 T3) :: GH0 = GH ++ [(0, vtya G2 TX)]).
-      assert ((0, vtya G2 T3) :: GH1 = GH ++ [(0, vtya G2 TX)]
+    + eapply stp2_all.
+      repeat fold open_rec. eapply IHstp2_1; eauto.
+      eauto.
 
-      
-      
-      stp2 ((x, vty G2 TX) :: G1) (open_rec (S (length GH0)) (TSel x) T2)
-                              G2  (open_rec (S (length GH0)) TX T4)
-      ((0, vtya G2 (open_rec (length GH0) TX T3)) :: GH0)
-      
-      eapply IHstp2_2.
+      repeat fold open_rec.
     admit.
 Qed.
 
