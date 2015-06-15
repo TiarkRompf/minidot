@@ -217,12 +217,13 @@ Inductive stp: tenv -> ty -> ty -> Prop :=
 | stp_selx: forall G1 T x,
     index x G1 = Some (TMem T) ->
     stp G1 (TSel x) (TSel x)
-| stp_all: forall G1 T1 T2 T3 T4,
+| stp_all: forall G1 T1 T2 T3 T4 x,
     stp G1 T3 T1 ->
-    (forall G2 x, sub_env G1 G2 -> fresh G2 <= x ->
-       stp ((x,TMem T3)::G2) (open (TSel x) T2) (open (TSel x) T4)) ->
+    x = length G1 ->
+    stp ((x,TMem T3)::G1) (open (TSel x) T2) (open (TSel x) T4) ->
     stp G1 (TAll T1 T2) (TAll T3 T4)
 .
+
 (* TODO *)
 
 Inductive has_type : tenv -> tm -> ty -> Prop :=
@@ -307,9 +308,10 @@ Inductive stp2: venv -> ty -> venv -> ty -> venv  -> Prop :=
 
 | stp2_all: forall G1 G2 T1 T2 T3 T4 GH,
     stp2 G2 T3 G1 T1 GH ->
+    closed (length GH) (fresh G2) T3 ->      
     (* watch out: need to be able to extend G2 ! *)
     (* watch out -- we put X<:T in the env, not X=T *)
-       stp2 G1 T2 G2 T4 ((0,vtya G2 T3)::GH) ->
+    stp2 G1 T2 G2 T4 ((0,vtya G2 T3)::GH) ->
     stp2 G1 (TAll T1 T2) G2 (TAll T3 T4) GH
 .
 
@@ -709,7 +711,7 @@ Proof.
 Qed.
 
 Lemma indexr_miss {X}: forall x x1 (B:X) A G,
-  indexr x ([(x1,B)]++G) = A ->
+  indexr x (G++[(x1,B)]) = A ->
   x <> length G ->
   indexr x G = A.
 Proof.
@@ -717,7 +719,7 @@ Proof.
 Qed.
 
 Lemma indexr_hit {X}: forall x x1 (B:X) A G,
-  indexr x ([(x1,B)]++G) = Some A ->
+  indexr x (G++[(x1,B)]) = Some A ->
   x = length G ->
   B = A.
 Proof.
@@ -725,12 +727,15 @@ Proof.
 Qed.
 
 
-
-
+Lemma stp2_refl: forall G1 T1 GH,
+  closed (length GH) (fresh G1) T1 ->
+  stp2 G1 T1 G1 T1 GH.                 
+Proof. admit. Qed.
+       
 Hint Unfold open.
 
 Lemma stp2_concretize: forall G1 G2 T1 T2 TX GX GH L,
-  stp2 G1 T1 G2 T2 ([(0,vtya GX TX)] ++ GH) ->
+  stp2 G1 T1 G2 T2 (GH ++ [(0,vtya GX TX)]) ->
   length GH = L ->                       
   closed 0 (fresh GX) TX ->
   (forall x, fresh G1 <= x -> GX = G2 ->
@@ -749,7 +754,7 @@ Lemma stp2_concretize: forall G1 G2 T1 T2 TX GX GH L,
    stp2 G1 T1 G2 T2 GH).
 Proof.
   intros.
-  remember ([(0,vtya GX TX)]++GH) as GH0.
+  remember (GH++[(0,vtya GX TX)]) as GH0.
   assert (forall n1 n2 T, closed 0 n2 T -> closed n1 n2 T). intros. eapply closed_upgrade. eauto. omega.
   subst L.
   generalize dependent GH.
@@ -791,8 +796,6 @@ Proof.
     case_eq (beq_nat (length GH0) x); intros E.
     + SCase "hit".
       assert (length GH0 = x). eapply beq_nat_true_iff; eauto. subst x.
-      (* assert (forall z, open (TSel z) (TSelH 0) = (TSel z)). compute. eauto. *)
-      (* subst GH. eapply indexr_hit in H. inversion H. subst. clear H. *)
       assert (forall x, beq_nat x x = true) as EX. intros. eapply beq_nat_true_iff. eauto.
       assert (forall T, (open_rec (length GH0) T (TSelH (length GH0)) = T)) as OP. unfold open_rec. rewrite E. eauto.
       repeat split; intros.
@@ -814,22 +817,99 @@ Proof.
       * inversion H4. omega. (* contra *)
     + SCase "miss".
       assert (x < length GH). eapply indexr_max; eauto.
-      assert (length GH = 1 + length GH0). subst GH. eapply app_length. 
+      assert (length GH = length GH0+1). subst GH. eapply app_length. 
       assert (x < length GH0). eapply beq_nat_false_iff in E. omega.
+      assert (x <> length GH0). eapply beq_nat_false_iff in E. omega.
+      assert (forall n2 T, closed x n2 T -> closed (length GH0) n2 T). intros. eapply closed_upgrade. eauto. omega.
+
       subst.
       assert (forall T, open_rec (length GH0) T (TSelH x) = (TSelH x)) as OP. unfold open. unfold open_rec. rewrite E. eauto.
       repeat split; intros.
-      * subst. eapply indexr_miss in H. subst. rewrite OP.
-        eapply stp2_sela1. eauto. eauto. eauto.
-        eapply IHstp2; eauto. eauto. eapply closed_upgrade; eauto. omega. assert (length GH0 <> x). eapply beq_nat_false_iff; eauto. unfold not in H8. unfold not. intros. symmetry in H9. eauto.
-      * admit. (* TODO *)
-      * admit.
-      * admit.
-      * admit.
-      * admit.
-      * admit.
-   - Case "selx". admit.
-   - Case "all". admit.
+      * try rewrite OP. eapply stp2_sela1; eauto. eapply indexr_miss; eauto. eapply IHstp2; eauto.
+      * try rewrite OP. eapply stp2_sela1; eauto. eapply indexr_miss; eauto. eapply IHstp2; eauto.
+      * try rewrite OP. eapply stp2_sela1; eauto. eapply indexr_miss; eauto. eapply IHstp2; eauto.
+      * try rewrite OP. eapply stp2_sela1; eauto. eapply indexr_miss; eauto. eapply IHstp2; eauto.
+      * try rewrite OP. eapply stp2_sela1; eauto. eapply indexr_miss; eauto. eapply IHstp2; eauto.
+      * try rewrite OP. eapply stp2_sela1; eauto. eapply indexr_miss; eauto. eapply IHstp2; eauto.
+      * try rewrite OP. eapply stp2_sela1; eauto. eapply indexr_miss; eauto. eapply IHstp2; eauto.
+  - Case "selx".
+    case_eq (beq_nat (length GH0) x); intros E.
+    + SCase "hit".
+      assert (length GH0 = x). eapply beq_nat_true_iff; eauto. subst x.
+      assert (forall x, beq_nat x x = true) as EX. intros. eapply beq_nat_true_iff. eauto.
+      assert (forall T, (open_rec (length GH0) T (TSelH (length GH0)) = T)) as OP. unfold open_rec. rewrite E. eauto.
+      repeat split; intros.
+      * subst. eapply indexr_hit in H. inversion H. subst.
+        eapply le_xx in H4. destruct H4 as [? LE].
+        repeat rewrite OP. 
+        eapply stp2_sel1. unfold index. rewrite LE. rewrite EX. eauto. eauto.        
+        eapply stp2_refl; eauto. eauto.
+      * subst. eapply indexr_hit in H. inversion H. subst. 
+        eapply le_xx in H4. destruct H4 as [? LE].
+        repeat rewrite OP.
+        eapply stp2_sel2. unfold index. rewrite LE. rewrite EX. eauto. eauto.
+        eapply stp2_refl; eauto. eauto.
+      * inversion H5. omega. (* contra *)
+      * inversion H5. omega. (* contra *)
+      * inversion H5. omega. (* contra *)
+      * inversion H5. omega. (* contra *)
+      * inversion H5. omega. (* contra *)
+    + SCase "miss".
+      assert (x < length GH). eapply indexr_max; eauto.
+      assert (length GH = length GH0+1). subst GH. eapply app_length. 
+      assert (x < length GH0). eapply beq_nat_false_iff in E. omega.
+      assert (x <> length GH0). eapply beq_nat_false_iff in E. omega.
+      assert (forall n2 T, closed x n2 T -> closed (length GH0) n2 T). intros. eapply closed_upgrade. eauto. omega.
+
+      subst.
+      assert (forall T, open_rec (length GH0) T (TSelH x) = (TSelH x)) as OP. unfold open. unfold open_rec. rewrite E. eauto.
+      repeat split; intros.
+      * repeat rewrite OP. eapply stp2_selx; eauto. eapply indexr_miss; eauto. eapply indexr_miss; eauto.
+      * repeat rewrite OP. eapply stp2_selx; eauto. eapply indexr_miss; eauto. eapply indexr_miss; eauto.
+      * repeat rewrite OP. eapply stp2_selx; eauto. eapply indexr_miss; eauto. eapply indexr_miss; eauto.
+      * repeat rewrite OP. eapply stp2_selx; eauto. eapply indexr_miss; eauto. eapply indexr_miss; eauto.
+      * repeat rewrite OP. eapply stp2_selx; eauto. eapply indexr_miss; eauto. eapply indexr_miss; eauto.
+      * repeat rewrite OP. eapply stp2_selx; eauto. eapply indexr_miss; eauto. eapply indexr_miss; eauto.
+      * repeat rewrite OP. eapply stp2_selx; eauto. eapply indexr_miss; eauto. eapply indexr_miss; eauto.
+    
+  - Case "all".
+    assert (open_rec (length GH0) TX T3 = T3) as OP. admit.
+
+    repeat split; intros.
+    + eapply stp2_all.
+      repeat fold open_rec. eapply IHstp2_1; eauto. 
+      repeat fold open_rec. rewrite OP. eauto. admit. (* todo induction *)
+      eauto.
+
+      repeat fold open_rec.
+
+      remember ((0, vtya G2 T3) :: GH0) as GH1.
+      assert ((0, vtya GX T3) :: GH = GH1 ++ [(0, vtya GX TX)]) as EQ.
+      admit.
+      assert ((0, vtya GX T3) :: GH = GH1 ++ [(0, vtya GX TX)]) as EQ2.
+      admit.
+      
+      assert ( stp2 ((x, vty GX TX) :: G1) (open_rec ((length GH1)) (TSel x) T2) G2
+     (open_rec ((length GH1)) TX T4)  GH1) as IH.
+
+      eapply (IHstp2_2 GH1). eauto. subst G2. eauto. eauto. eauto.
+
+      rewrite OP. eapply IH.
+
+      
+      eapply IH.
+        
+      assert ((0, vtya G2 T3) :: GH0 = GH ++ [(0, vtya G2 TX)]).
+      assert ((0, vtya G2 T3) :: GH1 = GH ++ [(0, vtya G2 TX)]
+
+      
+      
+      stp2 ((x, vty G2 TX) :: G1) (open_rec (S (length GH0)) (TSel x) T2)
+                              G2  (open_rec (S (length GH0)) TX T4)
+      ((0, vtya G2 (open_rec (length GH0) TX T3)) :: GH0)
+      
+      eapply IHstp2_2.
+    admit.
 Qed.
 
 
