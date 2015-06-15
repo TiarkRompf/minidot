@@ -57,13 +57,13 @@ Definition tenv := list (id*ty).
 
 Hint Unfold venv.
 Hint Unfold tenv.
-
+(*
 Fixpoint length {X: Type} (l : list X): nat :=
   match l with
     | [] => 0
     | _::l' => 1 + length l'
   end.
-
+*)
 Fixpoint fresh {X: Type} (l : list (id * X)): nat :=
   match l with
     | [] => 0
@@ -466,6 +466,33 @@ Proof.
       rewrite E1 in H1. inversion H1.
 Qed.
 
+Lemma indexr_max : forall X vs n (T: X),
+                       indexr n vs = Some T ->
+                       n < length vs.
+Proof.
+  (*
+  intros X vs. induction vs.
+  - Case "nil". intros. inversion H.
+  - Case "cons".
+    intros. inversion H. destruct a.
+    case_eq (le_lt_dec (fresh vs) i); intros ? E1.
+    + SCase "ok".
+      rewrite E1 in H1.
+      case_eq (beq_nat n i); intros E2.
+      * SSCase "hit".
+        eapply beq_nat_true in E2. subst n. compute. eauto.
+      * SSCase "miss".
+        rewrite E2 in H1.
+        assert (n < fresh vs). eapply IHvs. apply H1.
+        compute. omega.
+    + SCase "bad".
+      rewrite E1 in H1. inversion H1.
+   *)
+  admit.
+Qed.
+
+
+
 Lemma le_xx : forall a b,
                        a <= b ->
                        exists E, le_lt_dec a b = left E.
@@ -659,7 +686,7 @@ Proof.
   rewrite H3 in H. inversion H. eauto.
 Qed.
 
-Lemma indexr_miss {X}: forall x x1 (B:X) A G,
+Lemma indexr_miss0 {X}: forall x x1 (B:X) A G,
   indexr x ((x1,B)::G) = A ->
   x <> 0 ->
   indexr (x-1) G = A.
@@ -681,13 +708,20 @@ Proof.
   rewrite H1 in H. inversion H. eauto.
 Qed.
 
+Lemma indexr_miss {X}: forall x x1 (B:X) A G,
+  indexr x ([(x1,B)]++G) = A ->
+  x <> length G ->
+  indexr x G = A.
+Proof.
+  admit.
+Qed.
 
 Lemma indexr_hit {X}: forall x x1 (B:X) A G,
   indexr x ([(x1,B)]++G) = Some A ->
   x = length G ->
   B = A.
 Proof.
-admit.
+  admit.
 Qed.
 
 
@@ -779,96 +813,25 @@ Proof.
         eapply IHstp2; eauto. eauto.
       * inversion H4. omega. (* contra *)
     + SCase "miss".
-      assert (length GH0 <> x). eapply beq_nat_false_iff; eauto.
+      assert (x < length GH). eapply indexr_max; eauto.
+      assert (length GH = 1 + length GH0). subst GH. eapply app_length. 
+      assert (x < length GH0). eapply beq_nat_false_iff in E. omega.
       subst.
       assert (forall T, open_rec (length GH0) T (TSelH x) = (TSelH x)) as OP. unfold open. unfold open_rec. rewrite E. eauto.
       repeat split; intros.
       * subst. eapply indexr_miss in H. subst. rewrite OP.
-        eapply stp2_sela1. (* TODO *)
-        eapply IHstp2.
-      
-        
-    
-    
- "stp2 GX0 (open TX TX0) ((?4354, vty GX0 TX) :: G2)(open (TSel ?4354) T2) GH0"
- "stp2 GX0 TX0 G2 (open TX T2) GH0".
-
-
+        eapply stp2_sela1. eauto. eauto. eauto.
+        eapply IHstp2; eauto. eauto. eapply closed_upgrade; eauto. omega. assert (length GH0 <> x). eapply beq_nat_false_iff; eauto. unfold not in H8. unfold not. intros. symmetry in H9. eauto.
+      * admit. (* TODO *)
+      * admit.
+      * admit.
+      * admit.
+      * admit.
+      * admit.
+   - Case "selx". admit.
+   - Case "all". admit.
 Qed.
 
-
-
-(* likely need to revise this slightly: 
-  don't drop binding, and enable larger env 
- *)
-
-(*
-Lemma stp2_concrete_subst: forall xx G1 GX TX T1 T2 GH,
-  stp2 G1 T1 ((xx,vty GX TX) :: GX) (open (TSel xx) T2) GH ->
-  stp2 GX TX GX TX GH -> (* may not be necessary ? *)
-  closed 1 (fresh GX) T2 ->
-  fresh GX <= xx ->
-  stp2 G1 T1 GX (open TX T2) GH.
-Proof.
-  intros.
-  remember ((xx, vty GX TX) :: GX) as G2'.
-  remember (open (TSel xx) T2) as T2'.
-  generalize dependent GX.
-  generalize dependent T2.
-  generalize dependent TX.
-  generalize dependent xx.
-  induction H; intros.
-  - Case "bool". admit.
-  - Case "fun". admit. (* TODO: contravariant case! *)
-  - Case "mem". admit.
-  - Case "sel1-exact".
-    eapply stp2_sel1; eauto.
-  - Case "sel2-exact".
-    destruct T2; try solve by inversion.
-    + (* sel i *)
-      assert (x = i).  inversion HeqT2'. eauto.
-      subst.
-      compute.
-      eapply stp2_sel2. eauto.
-      inversion H2. subst.
-      eapply index_miss in H. eauto. eauto. omega. eauto.
-    + (* selB i *)
-      inversion H2. subst.
-      assert (0 = i). omega. subst. inversion HeqT2'.
-      eapply index_hit in H. subst. compute. inversion H. eauto.
-      eauto. eauto.
-  - Case "sel1".
-    eapply stp2_sela1; eauto. (* good *)
-  - Case "selx".
-  (* eapply stp2_selx; eauto. *)
-    admit.
-(*
-    case_eq (beq_nat x xx); intros E.
-    + subst G2. eapply index_hit in H0.
-      inversion H0. eauto. eapply beq_nat_true_iff. eauto. (* contra *)
-    + subst G2. eapply index_miss in H0.
-      destruct T2; try solve by inversion.
-      * compute in HeqT2'. inversion HeqT2'. subst. compute.
-        eapply stp2_selx. eauto. eauto.
-      * assert (0 = i). inversion H2. omega.
-        compute in HeqT2'. inversion HeqT2'. subst. inversion H6.
-        assert (beq_nat x xx = true). eapply beq_nat_true_iff. eauto.
-        rewrite E in H4. inversion H4. (* contra *)
-    * eauto. * eauto. eapply beq_nat_false_iff. eauto.
- *)   
-  - Case "all".
-    (* TODO: need to extend signature ... *)
-    admit.
- Qed.
-
-Lemma stp2_concrete_rename: forall x xx G1 G2 GX TX T1 T2 GH,
-  stp2 ((xx,vty GX TX) :: G1) (open (TSel xx) T1) G2 T2 GH ->
-  closed 1 (fresh G1) T1 ->
-  fresh G1 <= x ->
-  x <= xx ->
-  stp2 ((x,vty GX TX) :: G1) (open (TSel x) T1) G2 T2 GH.
-Proof. admit. Qed.
-*)
 
 (* --------------------------------- *)
 
@@ -1009,16 +972,17 @@ Proof.
 
   assert (closed 1 (fresh venv1) T3). admit. (* premise ? *)
   assert (closed 1 (fresh venv0) T2). admit. (* premise ? *)
+  assert (closed 0 (fresh venv0) T1). admit. (* premise ? *)
   
   (* inversion of TAll < TAll *)
   assert (stp2 venv0 T1 venv1 T0 []). eauto.
-  assert (stp2 venv1 T3 venv0 T2 [(0,vtya venv0 T1)]).
+  assert (stp2 venv1 T3 venv0 T2 ([(0,vtya venv0 T1)]++[])).
   eapply H15. 
   
   (* now rename *)
   assert (stp2 ((x,vty venv0 T1) :: venv1) (open (TSel x) T3)
                venv0 (open T1 T2) []).
-  eapply stp2_concretize. eauto. eauto. eauto.
+  eapply (stp2_concretize venv1 venv0 T3 T2); eauto.
 
   (* done *)
   eauto.
