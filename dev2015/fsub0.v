@@ -306,7 +306,7 @@ Inductive stp2: venv -> ty -> venv -> ty -> venv  -> Prop :=
     (*closed (length GH) (fresh G2) T3 ->*)
     (* watch out: need to be able to extend G2 ! *)
     (* watch out -- we put X<:T in the env, not X=T *)
-    stp2 G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) (((length GH),vtya G2 T3)::GH) ->
+    stp2 G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) ((0,vtya G2 T3)::GH) ->
     stp2 G1 (TAll T1 T2) G2 (TAll T3 T4) GH
 .
 
@@ -776,18 +776,8 @@ T1 = (open_rec 1 (TSelH (length GH)-1) T0)
 T2 = (open_rec 0 (TSelH (length GH)) T1)
 *)     
 
-Lemma stp2_concretize0: forall G1 G2 T1 T2 GH,
-   stp2 G1 T1 G2 T2 GH ->
-   forall T1X T2X GH0 GX TX,
-   GH = (GH0 ++ [(0,vtya GX TX)]) ->
-   T1 = openm_rec 0 (length GH0) T1X ->
-   T2 = openm_rec 0 (length GH0) T2X ->
-   stp2 G1 T1 G2 T2 GH.
-Proof. admit. Qed.
- 
-
-Lemma open_more: forall T1X2 L i,
-  open (TSelH L) (openm_rec (S i) L T1X2) = openm_rec i (S L) T1X2.
+Lemma open_more: forall T1X2 L j i,
+  open (TSelH L) (openm_rec (S i) j L T1X2) = openm_rec i j (S L) T1X2.
 Proof.
   intros T.
   induction T; intros.
@@ -802,8 +792,8 @@ Proof.
   - admit.
 Qed.
 
-Lemma open_upgrade: forall T1X2 L i,
-  openm_rec (S i) L T1X2 = openm_rec i (S L) T1X2.
+Lemma open_upgrade: forall T1X2 L i j,
+  openm_rec (S i) j L T1X2 = openm_rec i j (S L) T1X2.
 Proof.
   intros T.
   induction T; intros.
@@ -828,13 +818,41 @@ Qed.
 
 *)
 
+
+Fixpoint openm_env (u:nat) (G: venv): venv :=
+  match G with
+    | nil => nil
+    | (x,vtya GX TX)::xs =>
+      (x,vtya GX (openm_rec 0 u (length xs) TX)) :: (openm_env u xs)
+    | _ => G                      
+  end.
+
+Lemma openm_env_length: forall u G,
+   length G = length (openm_env u G).
+Proof. admit. Qed.
+
+Lemma openm_env_cons: forall G2 GH0 T2X1,
+   (0, vtya G2 (openm_rec 0 0 (length (openm_env 0 GH0)) T2X1)) :: openm_env 0 GH0
+    = openm_env 0 ((0,vtya G2 T2X1)::GH0).
+Proof. admit. Qed.
+
+Lemma open_inv_all: forall i j k T1 T2 T1X,
+     TAll T1 T2 = openm_rec i j k T1X ->
+     T1X = TAll (openm_rec i j k T1) (openm_rec (S i) j k T2).
+Proof.  admit. Qed.
+
+
+Hint Immediate openm_env_length.
+
 Lemma stp2_conc_induction_stub: forall G1 G2 T1 T2 GH,
    stp2 G1 T1 G2 T2 GH ->
    forall T1X T2X GH0 GX TX,
-   GH = (GH0 ++ [(0,vtya GX TX)]) ->
-   T1 = openm_rec 1 (length GH) T1X ->
-   T2 = openm_rec 1 (length GH) T2X ->
-   stp2 G1 (openm_rec 0 (length GH0) T1X) G2 (openm_rec 0 (length GH0) T2X) GH0.
+   GH = openm_env 1 (GH0 ++ [(0,vtya GX TX)]) ->
+   T1 = openm_rec 0 1 (length GH) T1X ->
+   T2 = openm_rec 0 1 (length GH) T2X ->
+stp2 G1 (openm_rec 0 0 (length (openm_env 0 GH0)) T1X)
+     G2 (openm_rec 0 0 (length (openm_env 0 GH0)) T2X)
+     (openm_env 0 GH0).
 Proof.
   intros G1 G2 T1 T2 GH H.
   induction H.
@@ -846,41 +864,38 @@ Proof.
   - admit.
   - admit.
   - intros T1X T2X GH0 GX TX ? MO1 MO2.
-    assert ((length (GH0 ++ [(0, vtya GX TX)]), vtya G2 T3)
-              :: GH0 ++ [(0, vtya GX TX)] =
-            ((length (GH0 ++ [(0, vtya GX TX)]), vtya G2 T3)
-              :: GH0) ++ [(0, vtya GX TX)]) as EV. eauto.
+
     destruct T1X; inversion MO1.
     destruct T2X; inversion MO2.
+    
+    assert ((0,vtya G2 (openm_rec 0 1 (length (openm_env 1 (GH0 ++ [(0, vtya GX TX)]))) T2X1))
+   :: openm_env 1 (GH0 ++ [(0, vtya GX TX)]) =
+   openm_env 1 (((0, vtya G2 T2X1) :: GH0) ++ [(0, vtya GX TX)])) as EV. admit.
+    
+    
 
     eapply stp2_all.
-    repeat fold openm_rec. eapply IHstp2_1. eauto. eauto. eauto.
+    repeat fold openm_rec. eapply IHstp2_1. eauto. eauto. eauto. eauto.
 
-    assert (stp2 G2 (openm_rec 0 (length GH0) T2X1) G1 (openm_rec 0 (length GH0) T1X1)
-     GH0) as IH1. eapply IHstp2_1. eauto. eauto. eauto.
-    
-    repeat fold openm_rec. repeat rewrite open_more.
+    repeat fold openm_rec. (* repeat rewrite open_more. *)
 
-    remember ((length GH, vtya G2 T3) :: GH0) as GH1.
-    assert ((length GH1) = S (length GH0)) as R. subst GH. admit.
+    remember (openm_env 0 ((0, vtya G2 T2X1) :: GH0)) as GH2.
+    assert ((length GH2) = S (length (openm_env 0 GH0))) as R. subst GH2. admit.
     
-    assert (stp2 G1 (openm_rec 0 (length GH1) T1X2) G2
-                                 (openm_rec 0 (length GH1) T2X2) GH1).
-    eapply IHstp2_2. subst. eapply EV.
-    subst. eapply open_more.
-    subst. eapply open_more.
-    rewrite <-R. subst GH1. eapply H2.
+    assert (stp2 G1 (openm_rec 0 0 (length GH2) T1X2)
+                 G2 (openm_rec 0 0 (length GH2) T2X2)
+                 GH2) as IH. {
+      subst. eapply IHstp2_2. subst. eapply EV.
+      subst. eapply open_more.
+      subst. eapply open_more.
+    }
 
-    assert
+    rewrite open_more. rewrite open_more.
+    rewrite <-R. rewrite openm_env_cons. rewrite <-HeqGH2. eapply IH.
+    (* done *)
+    eapply open_inv_all in MO1. subst.
     
-    eauto.
     
-    eapply IHstp2_2.
-    rewrite <-H5. rewrite <-H4. rewrite <-H6.
-    subst. rewrite R. rewrite open_more.
-    eapply IHstp2_2. subst. eauto.
-    subst. eapply open_more.
-    subst. eapply open_more.
 Qed.
 
 
