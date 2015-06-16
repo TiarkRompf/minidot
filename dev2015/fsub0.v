@@ -148,7 +148,7 @@ Definition closed j l T := closed_rec j l T.
 Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
   match T with
     | TSel x      => TSel x (* free var remains free. functional, so we can't check for conflict *)
-    | TSelH i     => if beq_nat k i then u else TSelH i
+    | TSelH i     => TSelH i (*if beq_nat k i then u else TSelH i *)
     | TSelB i     => if beq_nat k i then u else TSelB i
     | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
     | TTop => TTop
@@ -174,11 +174,6 @@ Proof.
   try solve [compute; compute in IHclosed_rec; rewrite <-IHclosed_rec; auto];
   try solve [compute; compute in IHclosed_rec1; compute in IHclosed_rec2; rewrite <-IHclosed_rec1; rewrite <-IHclosed_rec2; auto].
 
-  Case "TSelH".
-    unfold open_rec. assert (k <> x0). omega. 
-    apply beq_nat_false_iff in H0.
-    rewrite H0. auto.
-  
   Case "TSelB".
     unfold open_rec. assert (k <> i). omega. 
     apply beq_nat_false_iff in H0.
@@ -192,7 +187,7 @@ Lemma closed_upgrade: forall i j l T,
 Proof.
  intros. generalize dependent j. induction H; intros; eauto.
  Case "TBind". econstructor. eapply IHclosed_rec1. omega. eapply IHclosed_rec2. omega.
- Case "TSelH". econstructor. omega.
+admit. (*XXX TSelH *)
  Case "TSelB". econstructor. omega.
 Qed.
 
@@ -311,7 +306,7 @@ Inductive stp2: venv -> ty -> venv -> ty -> venv  -> Prop :=
     (*closed (length GH) (fresh G2) T3 ->*)
     (* watch out: need to be able to extend G2 ! *)
     (* watch out -- we put X<:T in the env, not X=T *)
-    stp2 G1 T2 G2 T4 ((0,vtya G2 T3)::GH) ->
+    stp2 G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) (((length GH),vtya G2 T3)::GH) ->
     stp2 G1 (TAll T1 T2) G2 (TAll T3 T4) GH
 .
 
@@ -733,6 +728,243 @@ Lemma stp2_refl: forall G1 T1 GH,
 Proof. admit. Qed.
        
 Hint Unfold open.
+
+
+Inductive openm: nat -> nat -> ty -> ty -> Prop :=
+| mo_z: forall n T1,
+    openm n 0 T1 T1
+| mo_s: forall i n T1 T2,
+    openm (S i) n T1 T2 ->
+    openm i (S n) (open_rec i (TSelH (S n)) T1) T2.
+
+Fixpoint openm_rec (k: nat) (u: nat) (v:nat) (T: ty) { struct T }: ty :=
+  match T with
+    | TSel x      => TSel x (* free var remains free. functional, so we can't check for conflict *)
+    | TSelH i     => TSelH i (*if beq_nat k i then u else TSelH i *)
+    | TSelB i     => if le_lt_dec k (v+i) then if le_lt_dec u (v+i-k) then TSelH (v+i-k) else TSelB i else TSelB i
+    | TAll T1 T2  => TAll (openm_rec k u v T1) (openm_rec (S k) u v T2)
+    | TTop => TTop
+    | TBool       => TBool
+    | TMem T1     => TMem (openm_rec k u v T1)
+    | TMemE T1    => TMemE (openm_rec k u v T1)
+    | TFun T1 T2  => TFun (openm_rec k u v T1) (openm_rec k u v T2)
+  end.
+
+Example openm_ex1: openm_rec 0 0 9 (TAll TBool (TFun (TSelB 1) (TSelB 0))) =
+                      (TAll TBool (TFun (TSelH 9) (TSelH 8))).
+Proof. compute. eauto. Qed.
+
+
+Example openm_ex2: openm_rec 4 5 9 (TAll TBool (TFun (TSelB 5) (TSelB 0))) =
+                      (TAll TBool (TFun (TSelH 9) (TSelB 0))).
+Proof. compute. eauto. Qed.
+
+Example openm_ex3: openm_rec 4 0 9 (TAll TBool (TFun (TSelB 5) (TSelB 0))) =
+                      (TAll TBool (TFun (TSelH 9) (TSelH 4))).
+Proof. compute. eauto. Qed.
+
+
+
+Hint Constructors openm.
+
+(*
+openm (S i) n T1 T2 ->
+openm (open_rec i (TSel (S n)) T1) T2
+
+T0 = T1X2
+T1 = (open_rec 1 (TSelH (length GH)-1) T0)
+T2 = (open_rec 0 (TSelH (length GH)) T1)
+*)     
+
+Lemma stp2_concretize0: forall G1 G2 T1 T2 GH,
+   stp2 G1 T1 G2 T2 GH ->
+   forall T1X T2X GH0 GX TX,
+   GH = (GH0 ++ [(0,vtya GX TX)]) ->
+   T1 = openm_rec 0 (length GH0) T1X ->
+   T2 = openm_rec 0 (length GH0) T2X ->
+   stp2 G1 T1 G2 T2 GH.
+Proof. admit. Qed.
+ 
+
+Lemma open_more: forall T1X2 L i,
+  open (TSelH L) (openm_rec (S i) L T1X2) = openm_rec i (S L) T1X2.
+Proof.
+  intros T.
+  induction T; intros.
+  - compute. eauto.
+  - compute. eauto.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+Qed.
+
+Lemma open_upgrade: forall T1X2 L i,
+  openm_rec (S i) L T1X2 = openm_rec i (S L) T1X2.
+Proof.
+  intros T.
+  induction T; intros.
+  - compute. eauto.
+  - compute. eauto.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+Qed.
+
+
+(*
+
+[GX TX] (TAll TBool (TSelH 0)) -->
+[]      (TAll TBool (TSelH 0))
+
+
+
+*)
+
+Lemma stp2_conc_induction_stub: forall G1 G2 T1 T2 GH,
+   stp2 G1 T1 G2 T2 GH ->
+   forall T1X T2X GH0 GX TX,
+   GH = (GH0 ++ [(0,vtya GX TX)]) ->
+   T1 = openm_rec 1 (length GH) T1X ->
+   T2 = openm_rec 1 (length GH) T2X ->
+   stp2 G1 (openm_rec 0 (length GH0) T1X) G2 (openm_rec 0 (length GH0) T2X) GH0.
+Proof.
+  intros G1 G2 T1 T2 GH H.
+  induction H.
+  - admit.
+  - admit.
+  - admit.      
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - intros T1X T2X GH0 GX TX ? MO1 MO2.
+    assert ((length (GH0 ++ [(0, vtya GX TX)]), vtya G2 T3)
+              :: GH0 ++ [(0, vtya GX TX)] =
+            ((length (GH0 ++ [(0, vtya GX TX)]), vtya G2 T3)
+              :: GH0) ++ [(0, vtya GX TX)]) as EV. eauto.
+    destruct T1X; inversion MO1.
+    destruct T2X; inversion MO2.
+
+    eapply stp2_all.
+    repeat fold openm_rec. eapply IHstp2_1. eauto. eauto. eauto.
+
+    assert (stp2 G2 (openm_rec 0 (length GH0) T2X1) G1 (openm_rec 0 (length GH0) T1X1)
+     GH0) as IH1. eapply IHstp2_1. eauto. eauto. eauto.
+    
+    repeat fold openm_rec. repeat rewrite open_more.
+
+    remember ((length GH, vtya G2 T3) :: GH0) as GH1.
+    assert ((length GH1) = S (length GH0)) as R. subst GH. admit.
+    
+    assert (stp2 G1 (openm_rec 0 (length GH1) T1X2) G2
+                                 (openm_rec 0 (length GH1) T2X2) GH1).
+    eapply IHstp2_2. subst. eapply EV.
+    subst. eapply open_more.
+    subst. eapply open_more.
+    rewrite <-R. subst GH1. eapply H2.
+
+    assert
+    
+    eauto.
+    
+    eapply IHstp2_2.
+    rewrite <-H5. rewrite <-H4. rewrite <-H6.
+    subst. rewrite R. rewrite open_more.
+    eapply IHstp2_2. subst. eauto.
+    subst. eapply open_more.
+    subst. eapply open_more.
+Qed.
+
+
+    
+  
+Lemma stp2_concretize: forall G1 G2 T1 T2 TX GX GH L,
+  stp2 G1 T1 G2 T2 (GH ++ [(0,vtya GX TX)]) ->
+  length GH = L ->                       
+  closed 0 (fresh GX) TX ->
+  (forall i x T1X T2X, fresh G1 <= x -> GX = G2 ->
+   T1 = open_rec 0 (TSelH i) T1X ->
+   T2 = open_rec 0 (TSelH i) T2X ->
+   stp2 ((x,vty GX TX) :: G1) (open_rec 0 (TSel x) T1X) G2 (open_rec 0 TX T2X) GH) /\
+  (forall (x:nat), x = x). (*/\
+  (forall x, fresh G2 <= x -> GX = G1 ->
+   stp2 G1 (open_rec L TX T1) ((x,vty GX TX) :: G2) (open_rec L (TSel x) T2) GH).
+  (forall x, fresh G1 <= x -> closed L (fresh G2) T2 ->
+   stp2 ((x,vty GX TX) :: G1) (open_rec L (TSel x) T1) G2 T2 GH) /\
+  (forall x, fresh G2 <= x -> closed L (fresh G1) T1 ->
+   stp2 G1 T1 ((x,vty GX TX) :: G2) (open_rec L (TSel x) T2) GH) /\
+  (GX = G2 -> closed L (fresh G1) T1 ->
+   stp2 G1 T1 G2 (open_rec L TX T2) GH) /\
+  (GX = G1 -> closed L (fresh G2) T2 ->
+   stp2 G1 (open_rec L TX T1) G2 T2 GH) /\
+  (closed L (fresh G1) T1 -> closed L (fresh G2) T2 ->
+   stp2 G1 T1 G2 T2 GH). *)
+Proof.
+  intros.
+  remember (GH++[(0,vtya GX TX)]) as GH0.
+  assert (forall n1 n2 T, closed 0 n2 T -> closed n1 n2 T). intros. eapply closed_upgrade. eauto. omega.
+  subst L.
+  generalize dependent GH.
+  induction H; intros GH0 ?.
+  - Case "1bool". admit.
+  - Case "fun". admit.
+  (*repeat split; intros.
+    eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+    eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+    inversion H4. subst. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+    inversion H4. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+    inversion H4. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+    inversion H4. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+    inversion H4. inversion H3. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
+  - Case "mem". repeat split; intros.
+    eapply stp2_mem. eapply IHstp2; eauto.
+    eapply stp2_mem. eapply IHstp2; eauto.
+    inversion H3. eapply stp2_mem. eapply IHstp2; eauto.
+    inversion H3. eapply stp2_mem. eapply IHstp2; eauto.
+    inversion H3. eapply stp2_mem. eapply IHstp2; eauto.
+    inversion H3. eapply stp2_mem. eapply IHstp2; eauto. *)
+  - Case "mem". admit.
+  - admit.
+  - admit.
+  - Case "sela1". admit.
+  - Case "selx". admit.
+  - Case "all".
+    repeat split; intros.
+    destruct T1X; try inversion H6; destruct T2X; try inversion H7. subst.
+    + eapply stp2_all.
+      admit.
+      reflexivity.
+      repeat fold open_rec. repeat unfold open.
+
+      remember (length (GH0 ++ [(0, vtya G2 TX)])) as L1.
+            
+      assert (stp2 ((x, vty G2 TX) :: G1) (open_rec 0 (TSel x) T1X2)
+                   G2                     (open_rec 0 TX T2X2)
+                   ((length (GH0 ++ [(0, vtya G2 TX)]), vtya G2 (open_rec 0 (TSelH i) T2X1))
+   :: GH0)).
+
+      eapply IHstp2_2; eauto. 
+      
+      assert (stp2 ((x, vty G2 TX) :: G1)
+    (open_rec 0 (TSelH (length GH0)) (open_rec 1 (TSel x) T1X2)) G2
+    (open_rec 0 (TSelH (length GH0)) (open_rec 1 TX T2X2))
+    ((length GH0, vtya G2 (open_rec 0 TX T2X1)) :: GH0)).
+      
+      eapply IHstp2_2.
+      
+
+      admit.
+Qed.
+
+
 
 Lemma stp2_concretize: forall G1 G2 T1 T2 TX GX GH L,
   stp2 G1 T1 G2 T2 (GH ++ [(0,vtya GX TX)]) ->
