@@ -844,7 +844,7 @@ Proof.  admit. Qed.
 
 Hint Immediate openm_env_length.
 
-Lemma stp2_conc_induction_stub: forall G1 G2 T1 T2 GH,
+Lemma stp2_hyp_strengthen: forall G1 G2 T1 T2 GH,
    stp2 G1 T1 G2 T2 GH ->
    forall T1X T2X GH0 GX TX,
    GH = openm_env 1 (GH0 ++ [(0,vtya GX TX)]) ->
@@ -872,8 +872,6 @@ Proof.
    :: openm_env 1 (GH0 ++ [(0, vtya GX TX)]) =
    openm_env 1 (((0, vtya G2 T2X1) :: GH0) ++ [(0, vtya GX TX)])) as EV. admit.
     
-    
-
     eapply stp2_all.
     repeat fold openm_rec. eapply IHstp2_1. eauto. eauto. eauto. eauto.
 
@@ -893,9 +891,8 @@ Proof.
     rewrite open_more. rewrite open_more.
     rewrite <-R. rewrite openm_env_cons. rewrite <-HeqGH2. eapply IH.
     (* done *)
-    eapply open_inv_all in MO1. subst.
-    
-    
+    admit.
+    admit.    
 Qed.
 
 
