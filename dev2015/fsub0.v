@@ -819,6 +819,18 @@ Qed.
 *)
 
 
+Fixpoint open_env (GY:venv)(TY:ty) (G: venv): venv :=
+  match G with
+    | nil => nil
+    | (x,vtya GX TX)::xs =>
+      (x,vtya GX (open_rec 0 TY TX)) :: (open_env GY TY xs)
+    | _ => G                      
+  end.
+
+Lemma open_env_length: forall g t G,
+   length (open_env g t G) = length G.
+Proof. admit. Qed.
+
 Fixpoint openm_env (u:nat) (G: venv): venv :=
   match G with
     | nil => nil
@@ -828,7 +840,7 @@ Fixpoint openm_env (u:nat) (G: venv): venv :=
   end.
 
 Lemma openm_env_length: forall u G,
-   length G = length (openm_env u G).
+   length (openm_env u G) = length G.
 Proof. admit. Qed.
 
 Lemma openm_env_cons: forall G2 GH0 T2X1,
@@ -836,23 +848,35 @@ Lemma openm_env_cons: forall G2 GH0 T2X1,
     = openm_env 0 ((0,vtya G2 T2X1)::GH0).
 Proof. admit. Qed.
 
-Lemma open_inv_all: forall i j k T1 T2 T1X,
-     TAll T1 T2 = openm_rec i j k T1X ->
-     T1X = TAll (openm_rec i j k T1) (openm_rec (S i) j k T2).
-Proof.  admit. Qed.
 
 
 Hint Immediate openm_env_length.
 
+
+(*
+
+example:
+
+A0 <: Int |- { X1 <: A0 => X1 -> X1 } < { Y1 <: A0 => A0 -> Y1 }
+A0 <: Int, Y1 <: A0, Y1 -> Y1 < A0 -> Y1
+
+-->
+
+|- { X0 <: Int => X0 -> X0 } < { Y0 <: Int => Int -> Y0 }
+Y0 <: Int |- Y0 -> Y0 < Int -> Y0
+
+*)
+
+
 Lemma stp2_hyp_strengthen: forall G1 G2 T1 T2 GH,
    stp2 G1 T1 G2 T2 GH ->
    forall T1X T2X GH0 GX TX,
-   GH = openm_env 1 (GH0 ++ [(0,vtya GX TX)]) ->
-   T1 = openm_rec 0 1 (length GH) T1X ->
-   T2 = openm_rec 0 1 (length GH) T2X ->
-stp2 G1 (openm_rec 0 0 (length (openm_env 0 GH0)) T1X)
-     G2 (openm_rec 0 0 (length (openm_env 0 GH0)) T2X)
-     (openm_env 0 GH0).
+   GH = openm_env 0 (GH0 ++ [(0,vtya GX TX)]) ->
+   T1 = openm_rec 0 0 (length GH) T1X ->
+   T2 = openm_rec 0 0 (length GH) T2X ->
+stp2 G1 (openm_rec 0 0 (length GH0) (open_rec (length GH0) (TSel (fresh G1)) T1X))
+     G2 (openm_rec 0 0 (length GH0) (open_rec (length GH0) (TSel (fresh G2)) T2X))
+     (openm_env 0 (open_env GX TX GH0)).
 Proof.
   intros G1 G2 T1 T2 GH H.
   induction H.
@@ -868,37 +892,65 @@ Proof.
     destruct T1X; inversion MO1.
     destruct T2X; inversion MO2.
     
-    assert ((0,vtya G2 (openm_rec 0 1 (length (openm_env 1 (GH0 ++ [(0, vtya GX TX)]))) T2X1))
-   :: openm_env 1 (GH0 ++ [(0, vtya GX TX)]) =
-   openm_env 1 (((0, vtya G2 T2X1) :: GH0) ++ [(0, vtya GX TX)])) as EV. admit.
-    
     eapply stp2_all.
     repeat fold openm_rec. eapply IHstp2_1. eauto. eauto. eauto. eauto.
 
-    repeat fold openm_rec. (* repeat rewrite open_more. *)
+    repeat fold openm_rec. repeat fold open_rec. (* repeat rewrite open_more. *)
 
-    remember (openm_env 0 ((0, vtya G2 T2X1) :: GH0)) as GH2.
-    assert ((length GH2) = S (length (openm_env 0 GH0))) as R. subst GH2. admit.
+(*
+    (0, vtya G2 T3) :: openm_env 0 (GH0 ++ [(0, vtya GX TX)]) = 
+                       openm_env 0 (GH2 ++ [(0, vtya GX TX)])
+
+    --->
+
+    (0, vtya G2 openm_rec 0 0 (S (length GH0)) T2X1 :: openm_env 0 (GH0 ++ [(0, vtya GX TX)]) = 
+    openm_env 0 ((0, vtya G2 T2X1)::GH0 ++ [(0, vtya GX TX)])
+
+    --->
+
+    GH2 = (0, vtya G2 T2X1)::GH0
+
+*)
+    remember (((0,vtya G2 T2X1)::GH0)) as GH2.
+    assert (length GH = length GH0 + 1). { subst. rewrite openm_env_length. eapply app_length. }
+    assert (length GH2 = S (length GH0)) as EL. { subst. eauto. }
+
+    assert ((0, vtya G2 (openm_rec 0 0 (length GH) T2X1)) :: openm_env 0 (GH0 ++ [(0, vtya GX TX)]) =
+             openm_env 0 (((0, vtya G2 T2X1) :: GH0) ++ [(0, vtya GX TX)])) as EV1. {
+       subst. rewrite (openm_env_length 0).
+       admit.
+    }
     
-    assert (stp2 G1 (openm_rec 0 0 (length GH2) T1X2)
-                 G2 (openm_rec 0 0 (length GH2) T2X2)
-                 GH2) as IH. {
-      subst. eapply IHstp2_2. subst. eapply EV.
+    specialize IHstp2_2 with (T1X:=T1X2) (T2X:=T2X2) (GH0:=GH2) (GX:=GX) (TX:=TX).
+
+    assert (stp2 G1
+               (openm_rec 0 0 (length GH2)
+                  (open_rec (length GH2) (TSel (fresh G1)) T1X2)) G2
+               (openm_rec 0 0 (length GH2)
+                  (open_rec (length GH2) (TSel (fresh G2)) T2X2))
+               (openm_env 0 (open_env GX TX GH2))) as IH. {
+      subst. eapply IHstp2_2. subst. eapply EV1.
       subst. eapply open_more.
       subst. eapply open_more.
     }
-
+    rewrite openm_env_length. rewrite open_env_length.
     rewrite open_more. rewrite open_more.
-    rewrite <-R. rewrite openm_env_cons. rewrite <-HeqGH2. eapply IH.
-    (* done *)
-    admit.
-    admit.    
+
+    assert ((openm_env 0 (open_env GX TX GH2)) = ((0,
+      vtya G2
+        (openm_rec 0 0 (length GH0) (open_rec (length GH0) (TSel (fresh G2)) T2X1)))
+                 :: openm_env 0 (open_env GX TX GH0))) as EV2. {
+      admit.
+    }
+    rewrite <-EV2. rewrite <- EL.
+    eapply IH.
 Qed.
 
 
-    
+
+
   
-Lemma stp2_concretize: forall G1 G2 T1 T2 TX GX GH L,
+Lemma stp2_concretize0: forall G1 G2 T1 T2 TX GX GH L,
   stp2 G1 T1 G2 T2 (GH ++ [(0,vtya GX TX)]) ->
   length GH = L ->                       
   closed 0 (fresh GX) TX ->
@@ -949,34 +1001,13 @@ Proof.
   - Case "sela1". admit.
   - Case "selx". admit.
   - Case "all".
-    repeat split; intros.
-    destruct T1X; try inversion H6; destruct T2X; try inversion H7. subst.
-    + eapply stp2_all.
-      admit.
-      reflexivity.
-      repeat fold open_rec. repeat unfold open.
-
-      remember (length (GH0 ++ [(0, vtya G2 TX)])) as L1.
-            
-      assert (stp2 ((x, vty G2 TX) :: G1) (open_rec 0 (TSel x) T1X2)
-                   G2                     (open_rec 0 TX T2X2)
-                   ((length (GH0 ++ [(0, vtya G2 TX)]), vtya G2 (open_rec 0 (TSelH i) T2X1))
-   :: GH0)).
-
-      eapply IHstp2_2; eauto. 
-      
-      assert (stp2 ((x, vty G2 TX) :: G1)
-    (open_rec 0 (TSelH (length GH0)) (open_rec 1 (TSel x) T1X2)) G2
-    (open_rec 0 (TSelH (length GH0)) (open_rec 1 TX T2X2))
-    ((length GH0, vtya G2 (open_rec 0 TX T2X1)) :: GH0)).
-      
-      eapply IHstp2_2.
-      
-
-      admit.
+    admit.
+    (*repeat split; intros.
+    destruct T1X; try inversion H6; destruct T2X; try inversion H7. subst. *)
+    
 Qed.
 
-
+(*
 
 Lemma stp2_concretize: forall G1 G2 T1 T2 TX GX GH L,
   stp2 G1 T1 G2 T2 (GH ++ [(0,vtya GX TX)]) ->
@@ -1152,6 +1183,8 @@ Proof.
     admit.
 Qed.
 
+*)
+
 
 (* --------------------------------- *)
 
@@ -1296,7 +1329,7 @@ Proof.
   
   (* inversion of TAll < TAll *)
   assert (stp2 venv0 T1 venv1 T0 []). eauto.
-  assert (stp2 venv1 T3 venv0 T2 ([(0,vtya venv0 T1)]++[])).
+  assert (stp2 venv1 (open_rec 0 0 1 T3) venv0 (openm_rec 0 0 1 T2) ([(0,vtya venv0 T1)]++[])). 
   eapply H15. 
   
   (* now rename *)
