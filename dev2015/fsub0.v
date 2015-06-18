@@ -823,7 +823,7 @@ Fixpoint open_env (GY:venv)(TY:ty) (G: venv): venv :=
   match G with
     | nil => nil
     | (x,vtya GX TX)::xs =>
-      (x,vtya GX (open_rec (length xs) (TSel (fresh GX)) TX)) :: (open_env GY TY xs)
+      (x,vtya ((fresh GX,vty GY TY)::GX) (open_rec (length xs) (TSel (fresh GX)) TX)) :: (open_env GY TY xs)
     | _ => G                      
   end.
 
@@ -879,9 +879,10 @@ Lemma stp2_hyp_strengthen: forall G1 G2 T1 T2 GH,
    GH = openm_env 0 (GH0 ++ [(0,vtya GX TX)]) ->
    T1 = openm_rec 0 0 (length GH) T1X ->
    T2 = openm_rec 0 0 (length GH) T2X ->
-stp2 G1 (openm_rec 0 0 (length GH0) (open_rec (length GH0) (TSel (fresh G1)) T1X))
-     G2 (openm_rec 0 0 (length GH0) (open_rec (length GH0) (TSel (fresh G2)) T2X))
+stp2 ((fresh G1, vty GX TX)::G1) (openm_rec 0 0 (length GH0) (open_rec (length GH0) (TSel (fresh G1)) T1X))
+     ((fresh G2, vty GX TX)::G2) (openm_rec 0 0 (length GH0) (open_rec (length GH0) (TSel (fresh G2)) T2X))
      (openm_env 0 (open_env GX TX GH0)).
+(* TODO: cases for GX = G1 or GX = G2 *)
 Proof.
   intros G1 G2 T1 T2 GH H.
   induction H.
@@ -928,11 +929,13 @@ Proof.
     
     specialize IHstp2_2 with (T1X:=T1X2) (T2X:=T2X2) (GH0:=GH2) (GX:=GX) (TX:=TX).
 
-    assert (stp2 G1
+    assert (stp2
+              ((fresh G1, vty GX TX) :: G1)
                (openm_rec 0 0 (length GH2)
-                  (open_rec (length GH2) (TSel (fresh G1)) T1X2)) G2
+                          (open_rec (length GH2) (TSel (fresh G1)) T1X2))
+               ((fresh G2, vty GX TX) :: G2)
                (openm_rec 0 0 (length GH2)
-                  (open_rec (length GH2) (TSel (fresh G2)) T2X2))
+                          (open_rec (length GH2) (TSel (fresh G2)) T2X2))
                (openm_env 0 (open_env GX TX GH2))) as IH. {
       subst. eapply IHstp2_2. subst. eapply EV1.
       subst. eapply open_more.
@@ -942,7 +945,7 @@ Proof.
     rewrite open_more. rewrite open_more.
 
     assert ((openm_env 0 (open_env GX TX GH2)) = ((0,
-      vtya G2
+      vtya ((fresh G2, vty GX TX) :: G2)
         (openm_rec 0 0 (length GH0) (open_rec (length GH0) (TSel (fresh G2)) T2X1)))
                  :: openm_env 0 (open_env GX TX GH0))) as EV2. {
       subst GH2. 
