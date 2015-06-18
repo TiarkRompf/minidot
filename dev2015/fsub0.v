@@ -823,13 +823,9 @@ Fixpoint open_env (GY:venv)(TY:ty) (G: venv): venv :=
   match G with
     | nil => nil
     | (x,vtya GX TX)::xs =>
-      (x,vtya GX (open_rec 0 TY TX)) :: (open_env GY TY xs)
+      (x,vtya GX (open_rec (length xs) (TSel (fresh GX)) TX)) :: (open_env GY TY xs)
     | _ => G                      
   end.
-
-Lemma open_env_length: forall g t G,
-   length (open_env g t G) = length G.
-Proof. admit. Qed.
 
 Fixpoint openm_env (u:nat) (G: venv): venv :=
   match G with
@@ -839,17 +835,27 @@ Fixpoint openm_env (u:nat) (G: venv): venv :=
     | _ => G                      
   end.
 
+Lemma open_env_length: forall g t G,
+   length (open_env g t G) = length G.
+Proof. intros. induction G. eauto. destruct a. destruct v; eauto.
+       unfold open_env. fold open_env. unfold length. unfold length in IHG.
+       eauto.
+Qed.       
+
 Lemma openm_env_length: forall u G,
    length (openm_env u G) = length G.
-Proof. admit. Qed.
+Proof. intros. induction G. eauto. destruct a. destruct v; eauto.
+       unfold openm_env. fold openm_env. unfold length. unfold length in IHG.
+       eauto.
+Qed.
 
 Lemma openm_env_cons: forall G2 GH0 T2X1,
-   (0, vtya G2 (openm_rec 0 0 (length (openm_env 0 GH0)) T2X1)) :: openm_env 0 GH0
+   (0, vtya G2 (openm_rec 0 0 (length (GH0)) T2X1)) :: openm_env 0 GH0
     = openm_env 0 ((0,vtya G2 T2X1)::GH0).
-Proof. admit. Qed.
+Proof. intros. unfold openm_env. fold openm_env. eauto.
+Qed.
 
-
-
+Hint Immediate open_env_length.
 Hint Immediate openm_env_length.
 
 
@@ -866,7 +872,6 @@ A0 <: Int, Y1 <: A0, Y1 -> Y1 < A0 -> Y1
 Y0 <: Int |- Y0 -> Y0 < Int -> Y0
 
 *)
-
 
 Lemma stp2_hyp_strengthen: forall G1 G2 T1 T2 GH,
    stp2 G1 T1 G2 T2 GH ->
@@ -893,9 +898,9 @@ Proof.
     destruct T2X; inversion MO2.
     
     eapply stp2_all.
-    repeat fold openm_rec. eapply IHstp2_1. eauto. eauto. eauto. eauto.
+    + repeat fold openm_rec. eapply IHstp2_1. eauto. eauto. eauto. 
 
-    repeat fold openm_rec. repeat fold open_rec. (* repeat rewrite open_more. *)
+    + repeat fold openm_rec. repeat fold open_rec. (* repeat rewrite open_more. *)
 
 (*
     (0, vtya G2 T3) :: openm_env 0 (GH0 ++ [(0, vtya GX TX)]) = 
@@ -917,8 +922,8 @@ Proof.
 
     assert ((0, vtya G2 (openm_rec 0 0 (length GH) T2X1)) :: openm_env 0 (GH0 ++ [(0, vtya GX TX)]) =
              openm_env 0 (((0, vtya G2 T2X1) :: GH0) ++ [(0, vtya GX TX)])) as EV1. {
-       subst. rewrite (openm_env_length 0).
-       admit.
+      subst. rewrite (openm_env_length 0). 
+      rewrite openm_env_cons. eauto.
     }
     
     specialize IHstp2_2 with (T1X:=T1X2) (T2X:=T2X2) (GH0:=GH2) (GX:=GX) (TX:=TX).
@@ -940,7 +945,10 @@ Proof.
       vtya G2
         (openm_rec 0 0 (length GH0) (open_rec (length GH0) (TSel (fresh G2)) T2X1)))
                  :: openm_env 0 (open_env GX TX GH0))) as EV2. {
-      admit.
+      subst GH2. 
+      unfold open_env. fold open_env. unfold openm_env. fold openm_env.
+      rewrite open_env_length.
+      eauto.
     }
     rewrite <-EV2. rewrite <- EL.
     eapply IH.
