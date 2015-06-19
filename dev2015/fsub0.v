@@ -133,7 +133,7 @@ Inductive closed_rec: nat -> nat -> ty -> Prop :=
     l > x ->
     closed_rec k l (TSel x)
 | cl_selh: forall k l x,
-    k > x ->
+    l > x ->
     closed_rec k l (TSelH x)
 | cl_selb: forall k l i,
     k > i ->
@@ -187,7 +187,6 @@ Lemma closed_upgrade: forall i j l T,
 Proof.
  intros. generalize dependent j. induction H; intros; eauto.
  Case "TBind". econstructor. eapply IHclosed_rec1. omega. eapply IHclosed_rec2. omega.
-admit. (*XXX TSelH *)
  Case "TSelB". econstructor. omega.
 Qed.
 
