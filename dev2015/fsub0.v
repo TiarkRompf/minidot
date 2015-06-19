@@ -83,7 +83,7 @@ Fixpoint indexr {X : Type} (n : id) (l : list (id * X)) : option X :=
   match l with
     | [] => None
     | (n',a) :: l'  => (* DeBrujin *)
-      if (beq_nat n 0) then Some a else indexr (n-1) l'
+      if (beq_nat n (length l')) then Some a else indexr n l'
   end.
 
 
@@ -683,43 +683,28 @@ Proof.
   rewrite H3 in H. inversion H. eauto.
 Qed.
 
-Lemma indexr_miss0 {X}: forall x x1 (B:X) A G,
+Lemma indexr_miss {X}: forall x x1 (B:X) A G,
   indexr x ((x1,B)::G) = A ->
-  x <> 0 ->
-  indexr (x-1) G = A.
+  x <> (length G)  ->
+  indexr x G = A.
 Proof.
   intros.
   unfold indexr in H.
-  assert (beq_nat x 0 = false). eapply beq_nat_false_iff. eauto.
+  assert (beq_nat x (length G) = false). eapply beq_nat_false_iff. eauto.
   rewrite H1 in H. eauto.
 Qed.
 
-Lemma indexr_hit0 {X}: forall x x1 (B:X) A G,
+Lemma indexr_hit {X}: forall x x1 (B:X) A G,
   indexr x ((x1,B)::G) = Some A ->
-  x = 0 ->
+  x = length G ->
   B = A.
 Proof.
   intros.
   unfold indexr in H.
-  assert (beq_nat x 0 = true). eapply beq_nat_true_iff. eauto.
+  assert (beq_nat x (length G) = true). eapply beq_nat_true_iff. eauto.
   rewrite H1 in H. inversion H. eauto.
 Qed.
 
-Lemma indexr_miss {X}: forall x x1 (B:X) A G,
-  indexr x (G++[(x1,B)]) = A ->
-  x <> length G ->
-  indexr x G = A.
-Proof.
-  admit.
-Qed.
-
-Lemma indexr_hit {X}: forall x x1 (B:X) A G,
-  indexr x (G++[(x1,B)]) = Some A ->
-  x = length G ->
-  B = A.
-Proof.
-  admit.
-Qed.
 
 
 Lemma stp2_refl: forall G1 T1 GH,
@@ -730,18 +715,11 @@ Proof. admit. Qed.
 Hint Unfold open.
 
 
-Inductive openm: nat -> nat -> ty -> ty -> Prop :=
-| mo_z: forall n T1,
-    openm n 0 T1 T1
-| mo_s: forall i n T1 T2,
-    openm (S i) n T1 T2 ->
-    openm i (S n) (open_rec i (TSelH (S n)) T1) T2.
-
 Fixpoint openm_rec (k: nat) (u: nat) (v:nat) (T: ty) { struct T }: ty :=
   match T with
     | TSel x      => TSel x (* free var remains free. functional, so we can't check for conflict *)
     | TSelH i     => TSelH i (*if beq_nat k i then u else TSelH i *)
-    | TSelB i     => if le_lt_dec k (v+i) then if le_lt_dec u (v+i-k) then TSelH (v+i-k) else TSelB i else TSelB i
+    | TSelB i     => if le_lt_dec k i  then TSelH (v+k-i-1) else TSelB i
     | TAll T1 T2  => TAll (openm_rec k u v T1) (openm_rec (S k) u v T2)
     | TTop => TTop
     | TBool       => TBool
@@ -750,11 +728,18 @@ Fixpoint openm_rec (k: nat) (u: nat) (v:nat) (T: ty) { struct T }: ty :=
     | TFun T1 T2  => TFun (openm_rec k u v T1) (openm_rec k u v T2)
   end.
 
-Example openm_ex1: openm_rec 0 0 9 (TAll TBool (TFun (TSelB 1) (TSelB 0))) =
-                      (TAll TBool (TFun (TSelH 9) (TSelH 8))).
+
+Example openm_ex0: open_rec 0 (TSelH 9) (TAll TBool (TFun (TSelB 1) (TSelB 0))) =
+                      (TAll TBool (TFun (TSelH 9) (TSelB 0))).
 Proof. compute. eauto. Qed.
 
 
+Example openm_ex1: openm_rec 0 0 9 (TAll TBool (TFun (TSelB 1) (TSelB 0))) =
+                      (TAll TBool (TFun (TSelH 8) (TSelB 0))).
+Proof. compute. eauto. Qed.
+
+
+(*
 Example openm_ex2: openm_rec 4 5 9 (TAll TBool (TFun (TSelB 5) (TSelB 0))) =
                       (TAll TBool (TFun (TSelH 9) (TSelB 0))).
 Proof. compute. eauto. Qed.
@@ -762,10 +747,8 @@ Proof. compute. eauto. Qed.
 Example openm_ex3: openm_rec 4 0 9 (TAll TBool (TFun (TSelB 5) (TSelB 0))) =
                       (TAll TBool (TFun (TSelH 9) (TSelH 4))).
 Proof. compute. eauto. Qed.
+*)
 
-
-
-Hint Constructors openm.
 
 (*
 openm (S i) n T1 T2 ->
@@ -776,47 +759,33 @@ T1 = (open_rec 1 (TSelH (length GH)-1) T0)
 T2 = (open_rec 0 (TSelH (length GH)) T1)
 *)     
 
-Lemma open_more: forall T1X2 L j i,
-  open (TSelH L) (openm_rec (S i) j L T1X2) = openm_rec i j (S L) T1X2.
+Lemma open_more: forall T1X2 L i,
+  open_rec i (TSelH (L)) (openm_rec (S i) 0 L T1X2) = openm_rec i 0 (S L) T1X2.
 Proof.
   intros T.
   induction T; intros.
-  - compute. eauto.
-  - compute. eauto.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
+  - Case "bool". compute. eauto.
+  - Case "top". compute. eauto.
+  - Case "fun".
+    unfold open, open_rec, openm_rec. fold openm_rec. fold open_rec.
+    rewrite IHT1. rewrite IHT2. eauto.
+  - unfold open, open_rec, openm_rec. fold openm_rec. fold open_rec.
+    rewrite IHT. eauto.
+  - unfold open, open_rec, openm_rec. fold openm_rec. fold open_rec.
+    rewrite IHT. eauto.
+  - eauto.
+  - eauto.
+  - unfold open, open_rec, openm_rec. fold openm_rec. fold open_rec.
+    rewrite IHT1. rewrite IHT2. eauto.
+  - unfold openm_rec. unfold open_rec.
+    case_eq (le_lt_dec (S i0) (i)); intros E1 EV1;
+    case_eq (le_lt_dec (i0) (i)); intros E3 EV3;
+    (case_eq (beq_nat i0 i); intros E5; [ eapply beq_nat_true_iff in E5 |
+                                          eapply beq_nat_false_iff in E5]) ; subst; try omega; try eauto.
+
+    assert (L + S i0 - i = S L + i0 - i). omega. eauto.
+    assert (L = S L + i - i - 1). unfold id. omega. eauto.
 Qed.
-
-Lemma open_upgrade: forall T1X2 L i j,
-  openm_rec (S i) j L T1X2 = openm_rec i j (S L) T1X2.
-Proof.
-  intros T.
-  induction T; intros.
-  - compute. eauto.
-  - compute. eauto.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-Qed.
-
-
-(*
-
-[GX TX] (TAll TBool (TSelH 0)) -->
-[]      (TAll TBool (TSelH 0))
-
-
-
-*)
 
 
 Fixpoint open_env (GY:venv)(TY:ty) (G: venv): venv :=
@@ -941,7 +910,7 @@ Proof.
       subst. eapply open_more.
       subst. eapply open_more.
     }
-    rewrite openm_env_length. rewrite open_env_length.
+    rewrite openm_env_length. rewrite open_env_length. unfold open.
     rewrite open_more. rewrite open_more.
 
     assert ((openm_env 0 (open_env GX TX GH2)) = ((0,
