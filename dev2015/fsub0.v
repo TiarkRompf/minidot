@@ -256,7 +256,7 @@ Does it make a difference? It seems like we can always widen f?
 | t_tabs: forall env x y T1 T2,
            has_type ((x,TMem T1)::env) y (open (TSel x) T2) -> 
            stp env (TAll T1 T2) (TAll T1 T2) ->
-           fresh env <= x ->
+           fresh env = x ->
            has_type env (ttabs x T1 y) (TAll T1 T2)
 (* TODO: subsumption *)
 .
@@ -340,7 +340,7 @@ with val_type : venv -> vl -> ty -> Prop :=
 | v_tabs: forall env venv tenv x y T1 T2 TE,
     wf_env venv tenv ->
     has_type ((x,TMem T1)::tenv) y (open (TSel x) T2) ->
-    fresh venv <= x ->
+    fresh venv = x ->
     stp2 venv (TAll T1 T2) env TE [] ->
     val_type env (vtabs venv x T1 y) TE
 .
@@ -715,17 +715,18 @@ Proof. admit. Qed.
 Hint Unfold open.
 
 
-Fixpoint openm_rec (k: nat) (u: nat) (v:nat) (T: ty) { struct T }: ty :=
+Fixpoint openm_rec (k: nat) (v:nat) (T: ty) { struct T }: ty :=
   match T with
     | TSel x      => TSel x (* free var remains free. functional, so we can't check for conflict *)
-    | TSelH i     => TSelH i (*if beq_nat k i then u else TSelH i *)
+    | TSelH i     => TSelH i
+                           (* TODO: check k i <> 0 ? *)
     | TSelB i     => if le_lt_dec k i  then TSelH (v+k-i-1) else TSelB i
-    | TAll T1 T2  => TAll (openm_rec k u v T1) (openm_rec (S k) u v T2)
+    | TAll T1 T2  => TAll (openm_rec k v T1) (openm_rec (S k) v T2) 
     | TTop => TTop
     | TBool       => TBool
-    | TMem T1     => TMem (openm_rec k u v T1)
-    | TMemE T1    => TMemE (openm_rec k u v T1)
-    | TFun T1 T2  => TFun (openm_rec k u v T1) (openm_rec k u v T2)
+    | TMem T1     => TMem (openm_rec k v T1)
+    | TMemE T1    => TMemE (openm_rec k v T1)
+    | TFun T1 T2  => TFun (openm_rec k v T1) (openm_rec k v T2)
   end.
 
 
@@ -734,20 +735,9 @@ Example openm_ex0: open_rec 0 (TSelH 9) (TAll TBool (TFun (TSelB 1) (TSelB 0))) 
 Proof. compute. eauto. Qed.
 
 
-Example openm_ex1: openm_rec 0 0 9 (TAll TBool (TFun (TSelB 1) (TSelB 0))) =
+Example openm_ex1: openm_rec 0 9 (TAll TBool (TFun (TSelB 1) (TSelB 0))) =
                       (TAll TBool (TFun (TSelH 8) (TSelB 0))).
 Proof. compute. eauto. Qed.
-
-
-(*
-Example openm_ex2: openm_rec 4 5 9 (TAll TBool (TFun (TSelB 5) (TSelB 0))) =
-                      (TAll TBool (TFun (TSelH 9) (TSelB 0))).
-Proof. compute. eauto. Qed.
-
-Example openm_ex3: openm_rec 4 0 9 (TAll TBool (TFun (TSelB 5) (TSelB 0))) =
-                      (TAll TBool (TFun (TSelH 9) (TSelH 4))).
-Proof. compute. eauto. Qed.
-*)
 
 
 (*
@@ -760,7 +750,7 @@ T2 = (open_rec 0 (TSelH (length GH)) T1)
 *)     
 
 Lemma open_more: forall T1X2 L i,
-  open_rec i (TSelH (L)) (openm_rec (S i) 0 L T1X2) = openm_rec i 0 (S L) T1X2.
+  open_rec i (TSelH (L)) (openm_rec (S i) L T1X2) = openm_rec i (S L) T1X2.
 Proof.
   intros T.
   induction T; intros.
@@ -796,11 +786,11 @@ Fixpoint open_env (GY:venv)(TY:ty) (G: venv): venv :=
     | _ => G                      
   end.
 
-Fixpoint openm_env (u:nat) (G: venv): venv :=
+Fixpoint openm_env (G: venv): venv :=
   match G with
     | nil => nil
     | (x,vtya GX TX)::xs =>
-      (x,vtya GX (openm_rec 0 u (length xs) TX)) :: (openm_env u xs)
+      (x,vtya GX (openm_rec 0 (length xs) TX)) :: (openm_env xs)
     | _ => G                      
   end.
 
@@ -811,16 +801,16 @@ Proof. intros. induction G. eauto. destruct a. destruct v; eauto.
        eauto.
 Qed.       
 
-Lemma openm_env_length: forall u G,
-   length (openm_env u G) = length G.
+Lemma openm_env_length: forall G,
+   length (openm_env G) = length G.
 Proof. intros. induction G. eauto. destruct a. destruct v; eauto.
        unfold openm_env. fold openm_env. unfold length. unfold length in IHG.
        eauto.
 Qed.
 
 Lemma openm_env_cons: forall G2 GH0 T2X1,
-   (0, vtya G2 (openm_rec 0 0 (length (GH0)) T2X1)) :: openm_env 0 GH0
-    = openm_env 0 ((0,vtya G2 T2X1)::GH0).
+   (0, vtya G2 (openm_rec 0 (length (GH0)) T2X1)) :: openm_env GH0
+    = openm_env ((0,vtya G2 T2X1)::GH0).
 Proof. intros. unfold openm_env. fold openm_env. eauto.
 Qed.
 
@@ -842,16 +832,16 @@ Y0 <: Int |- Y0 -> Y0 < Int -> Y0
 
 *)
 
-Lemma stp2_hyp_strengthen: forall G1 G2 T1 T2 GH,
+Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
    stp2 G1 T1 G2 T2 GH ->
    forall T1X T2X GH0 GX TX,
-   GH = openm_env 0 (GH0 ++ [(0,vtya GX TX)]) ->
-   T1 = openm_rec 0 0 (length GH) T1X ->
-   T2 = openm_rec 0 0 (length GH) T2X ->
-stp2 ((fresh G1, vty GX TX)::G1) (openm_rec 0 0 (length GH0) (open_rec (length GH0) (TSel (fresh G1)) T1X))
-     ((fresh G2, vty GX TX)::G2) (openm_rec 0 0 (length GH0) (open_rec (length GH0) (TSel (fresh G2)) T2X))
-     (openm_env 0 (open_env GX TX GH0)).
-(* TODO: cases for GX = G1 or GX = G2 *)
+   GH = openm_env (GH0 ++ [(0,vtya GX TX)]) ->
+   T1 = openm_rec 0 (length GH) T1X ->
+   T2 = openm_rec 0 (length GH) T2X ->
+stp2 ((fresh G1, vty GX TX)::G1) (openm_rec 0 (length GH0) (open_rec (length GH0) (TSel (fresh G1)) T1X))
+     ((fresh G2, vty GX TX)::G2) (openm_rec 0 (length GH0) (open_rec (length GH0) (TSel (fresh G2)) T2X))
+     (openm_env (open_env GX TX GH0)).
+(* TODO: cases for GX = G1 or GX = G2. asymetric, see below *)
 Proof.
   intros G1 G2 T1 T2 GH H.
   induction H.
@@ -862,7 +852,8 @@ Proof.
   - admit.
   - admit.
   - admit.
-  - intros T1X T2X GH0 GX TX ? MO1 MO2.
+  - Case "all".
+    intros T1X T2X GH0 GX TX ? MO1 MO2.
 
     destruct T1X; inversion MO1.
     destruct T2X; inversion MO2.
@@ -890,9 +881,9 @@ Proof.
     assert (length GH = length GH0 + 1). { subst. rewrite openm_env_length. eapply app_length. }
     assert (length GH2 = S (length GH0)) as EL. { subst. eauto. }
 
-    assert ((0, vtya G2 (openm_rec 0 0 (length GH) T2X1)) :: openm_env 0 (GH0 ++ [(0, vtya GX TX)]) =
-             openm_env 0 (((0, vtya G2 T2X1) :: GH0) ++ [(0, vtya GX TX)])) as EV1. {
-      subst. rewrite (openm_env_length 0). 
+    assert ((0, vtya G2 (openm_rec 0 (length GH) T2X1)) :: openm_env (GH0 ++ [(0, vtya GX TX)]) =
+             openm_env (((0, vtya G2 T2X1) :: GH0) ++ [(0, vtya GX TX)])) as EV1. {
+      subst. rewrite (openm_env_length). 
       rewrite openm_env_cons. eauto.
     }
     
@@ -900,12 +891,12 @@ Proof.
 
     assert (stp2
               ((fresh G1, vty GX TX) :: G1)
-               (openm_rec 0 0 (length GH2)
+               (openm_rec 0 (length GH2)
                           (open_rec (length GH2) (TSel (fresh G1)) T1X2))
                ((fresh G2, vty GX TX) :: G2)
-               (openm_rec 0 0 (length GH2)
+               (openm_rec 0 (length GH2)
                           (open_rec (length GH2) (TSel (fresh G2)) T2X2))
-               (openm_env 0 (open_env GX TX GH2))) as IH. {
+               (openm_env (open_env GX TX GH2))) as IH. {
       subst. eapply IHstp2_2. subst. eapply EV1.
       subst. eapply open_more.
       subst. eapply open_more.
@@ -913,10 +904,10 @@ Proof.
     rewrite openm_env_length. rewrite open_env_length. unfold open.
     rewrite open_more. rewrite open_more.
 
-    assert ((openm_env 0 (open_env GX TX GH2)) = ((0,
+    assert ((openm_env (open_env GX TX GH2)) = ((0,
       vtya ((fresh G2, vty GX TX) :: G2)
-        (openm_rec 0 0 (length GH0) (open_rec (length GH0) (TSel (fresh G2)) T2X1)))
-                 :: openm_env 0 (open_env GX TX GH0))) as EV2. {
+        (openm_rec 0 (length GH0) (open_rec (length GH0) (TSel (fresh G2)) T2X1)))
+                 :: openm_env (open_env GX TX GH0))) as EV2. {
       subst GH2. 
       unfold open_env. fold open_env. unfold openm_env. fold openm_env.
       rewrite open_env_length.
@@ -927,65 +918,33 @@ Proof.
 Qed.
 
 
-
-
-  
-Lemma stp2_concretize0: forall G1 G2 T1 T2 TX GX GH L,
-  stp2 G1 T1 G2 T2 (GH ++ [(0,vtya GX TX)]) ->
-  length GH = L ->                       
-  closed 0 (fresh GX) TX ->
-  (forall i x T1X T2X, fresh G1 <= x -> GX = G2 ->
-   T1 = open_rec 0 (TSelH i) T1X ->
-   T2 = open_rec 0 (TSelH i) T2X ->
-   stp2 ((x,vty GX TX) :: G1) (open_rec 0 (TSel x) T1X) G2 (open_rec 0 TX T2X) GH) /\
-  (forall (x:nat), x = x). (*/\
-  (forall x, fresh G2 <= x -> GX = G1 ->
-   stp2 G1 (open_rec L TX T1) ((x,vty GX TX) :: G2) (open_rec L (TSel x) T2) GH).
-  (forall x, fresh G1 <= x -> closed L (fresh G2) T2 ->
-   stp2 ((x,vty GX TX) :: G1) (open_rec L (TSel x) T1) G2 T2 GH) /\
-  (forall x, fresh G2 <= x -> closed L (fresh G1) T1 ->
-   stp2 G1 T1 ((x,vty GX TX) :: G2) (open_rec L (TSel x) T2) GH) /\
-  (GX = G2 -> closed L (fresh G1) T1 ->
-   stp2 G1 T1 G2 (open_rec L TX T2) GH) /\
-  (GX = G1 -> closed L (fresh G2) T2 ->
-   stp2 G1 (open_rec L TX T1) G2 T2 GH) /\
-  (closed L (fresh G1) T1 -> closed L (fresh G2) T2 ->
-   stp2 G1 T1 G2 T2 GH). *)
+Lemma stp2_concretize_aux: forall G1 G2 T1 T2 GH,
+   stp2 G1 T1 G2 T2 GH ->
+   forall T1X T2X GH0 TX,
+   GH = openm_env (GH0 ++ [(0,vtya G2 TX)]) ->
+   T1 = openm_rec 0 (length GH) T1X ->
+   T2 = openm_rec 0 (length GH) T2X ->
+stp2 ((fresh G1, vty G2 TX)::G1) (openm_rec 0 (length GH0) (open_rec (length GH0) (TSel (fresh G1)) T1X))
+     G2 (openm_rec 0 (length GH0) (open_rec (length GH0) TX T2X))
+     (openm_env (open_env G2 TX GH0)).
 Proof.
-  intros.
-  remember (GH++[(0,vtya GX TX)]) as GH0.
-  assert (forall n1 n2 T, closed 0 n2 T -> closed n1 n2 T). intros. eapply closed_upgrade. eauto. omega.
-  subst L.
-  generalize dependent GH.
-  induction H; intros GH0 ?.
-  - Case "1bool". admit.
-  - Case "fun". admit.
-  (*repeat split; intros.
-    eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
-    eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
-    inversion H4. subst. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
-    inversion H4. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
-    inversion H4. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
-    inversion H4. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
-    inversion H4. inversion H3. eapply stp2_fun. eapply IHstp2_1; eauto. eapply IHstp2_2; eauto.
-  - Case "mem". repeat split; intros.
-    eapply stp2_mem. eapply IHstp2; eauto.
-    eapply stp2_mem. eapply IHstp2; eauto.
-    inversion H3. eapply stp2_mem. eapply IHstp2; eauto.
-    inversion H3. eapply stp2_mem. eapply IHstp2; eauto.
-    inversion H3. eapply stp2_mem. eapply IHstp2; eauto.
-    inversion H3. eapply stp2_mem. eapply IHstp2; eauto. *)
-  - Case "mem". admit.
-  - admit.
-  - admit.
-  - Case "sela1". admit.
-  - Case "selx". admit.
-  - Case "all".
-    admit.
-    (*repeat split; intros.
-    destruct T1X; try inversion H6; destruct T2X; try inversion H7. subst. *)
-    
+  admit. (* asymmetric version -- abstract over this *)
 Qed.
+
+
+
+
+Lemma stp2_concretize: forall G1 G2 T1X T2X TX,
+   stp2 G1 (open (TSelH 0) T1X) G2 (open (TSelH 0) T2X) [(0,vtya G2 TX)] ->
+   stp2 ((fresh G1, vty G2 TX)::G1) (open (TSel (fresh G1)) T1X)
+     G2 (open TX T2X) [].
+Proof.
+  admit. (* call aux version above *)
+Qed.
+
+
+
+
 
 (*
 
@@ -1294,31 +1253,31 @@ Lemma invert_tabs: forall venv vf T1 T2,
   val_type venv vf (TAll T1 T2) ->
   exists env tenv x y T3 T4,
     vf = (vtabs env x T3 y) /\
-    fresh env <= x /\
+    fresh env = x /\
     wf_env env tenv /\
     has_type ((x,TMem T3)::tenv) y (open (TSel x) T4) /\
     stp2 venv T1 env T3 [] /\
     stp2 ((x,vty venv T1)::env) (open (TSel x) T4) venv (open T1 T2) [].
 Proof.
   intros. inversion H; try solve by inversion. inversion H3. subst. repeat eexists; repeat eauto.
+  remember (fresh venv1) as x.
   remember (x + fresh venv0) as xx.
 
-  assert (closed 1 (fresh venv1) T3). admit. (* premise ? *)
-  assert (closed 1 (fresh venv0) T2). admit. (* premise ? *)
-  assert (closed 0 (fresh venv0) T1). admit. (* premise ? *)
-  
   (* inversion of TAll < TAll *)
   assert (stp2 venv0 T1 venv1 T0 []). eauto.
-  assert (stp2 venv1 (open_rec 0 0 1 T3) venv0 (openm_rec 0 0 1 T2) ([(0,vtya venv0 T1)]++[])). 
-  eapply H15. 
+  assert (stp2 venv1 (open (TSelH 0) T3) venv0 (open (TSelH 0) T2) [(0,vtya venv0 T1)]). {
+    eapply H15.
+  }
   
   (* now rename *)
-  assert (stp2 ((x,vty venv0 T1) :: venv1) (open (TSel x) T3)
-               venv0 (open T1 T2) []).
-  eapply (stp2_concretize venv1 venv0 T3 T2); eauto.
+  
+  assert (stp2 ((fresh venv1,vty venv0 T1) :: venv1) (open_rec 0 (TSel (fresh venv1)) T3)
+               venv0 (open T1 T2) []). {
+    eapply stp2_concretize; eauto.
+  }
 
   (* done *)
-  eauto.
+  subst. eauto.
 Qed. 
 
 
@@ -1400,7 +1359,7 @@ Proof.
 
   Case "TAbs". intros. inversion H. inversion H0.
     subst. inversion H17. subst.
-    eapply not_stuck. eapply v_tabs; eauto. rewrite (wf_fresh venv0 tenv0 H1). eauto. eapply stp_to_stp2. eauto. eauto. 
+    eapply not_stuck. eapply v_tabs; eauto. (* rewrite (wf_fresh venv0 tenv0 H1).*) eauto. eapply stp_to_stp2. eauto. eauto. 
     
 Qed.
 
