@@ -110,6 +110,21 @@ Inductive sub_env {X:Type}: list (id*X) -> list (id*X) -> Prop :=
 
 (* LOCALLY NAMELESS *)
 
+(*
+Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
+  match T with
+    | TSel x      => TSel x (* free var remains free. functional, so we can't check for conflict *)
+    | TSelH i     => TSelH i (*if beq_nat k i then u else TSelH i *)
+    | TSelB i     => if beq_nat k i then u else TSelB i
+    | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
+    | TTop => TTop
+    | TBool       => TBool
+    | TMem T1     => TMem (open_rec k u T1)
+    | TMemE T1    => TMemE (open_rec k u T1)
+    | TFun T1 T2  => TFun (open_rec k u T1) (open_rec k u T2)
+  end.
+*)
+
 Inductive closed_rec: nat -> nat -> ty -> Prop :=
 | cl_top: forall k l,
     closed_rec k l TTop
@@ -130,7 +145,6 @@ Inductive closed_rec: nat -> nat -> ty -> Prop :=
     closed_rec (S k) l T2 ->
     closed_rec k l (TAll T1 T2)
 | cl_sel: forall k l x,
-    l > x ->
     closed_rec k l (TSel x)
 | cl_selh: forall k l x,
     l > x ->
@@ -466,25 +480,17 @@ Lemma indexr_max : forall X vs n (T: X),
                        indexr n vs = Some T ->
                        n < length vs.
 Proof.
-  (*
   intros X vs. induction vs.
   - Case "nil". intros. inversion H.
   - Case "cons".
     intros. inversion H. destruct a.
-    case_eq (le_lt_dec (fresh vs) i); intros ? E1.
-    + SCase "ok".
-      rewrite E1 in H1.
-      case_eq (beq_nat n i); intros E2.
-      * SSCase "hit".
-        eapply beq_nat_true in E2. subst n. compute. eauto.
-      * SSCase "miss".
-        rewrite E2 in H1.
-        assert (n < fresh vs). eapply IHvs. apply H1.
-        compute. omega.
-    + SCase "bad".
-      rewrite E1 in H1. inversion H1.
-   *)
-  admit.
+    case_eq (beq_nat n (length vs)); intros E2.
+    + SSCase "hit".
+      eapply beq_nat_true in E2. subst n. compute. eauto.
+    + SSCase "miss".
+      rewrite E2 in H1.
+      assert (n < length vs). eapply IHvs. apply H1.
+      compute. eauto. 
 Qed.
 
 
@@ -512,6 +518,7 @@ Proof.
   unfold index. unfold index in H. rewrite H. rewrite E. rewrite EX. reflexivity.
 Qed.
 
+(*
 Lemma index_extend_mult : forall X n vs vs2 (T: X),
                        index n vs = Some T ->
                        sub_env vs vs2 ->
@@ -540,6 +547,7 @@ Proof. intros G1 T1 T2 H. induction H; intros; eauto.
   - Case "selx". eapply stp_selx. eapply index_extend; eauto.
   - Case "all". admit. (* eapply stp_all. eauto. intros. eapply H0. eapply sub_env_xx; eauto. eauto. *)
 Qed.
+*)
 
 Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2 H,
                        stp2 G1 T1 G2 T2 H ->
@@ -553,6 +561,7 @@ Lemma stp2_extend1 : forall x v1 G1 G2 T1 T2 H,
                        stp2 ((x,v1)::G1) T1 G2 T2 H.
 Proof. admit. Qed.
 
+(*
 Lemma stp2_extend2_mult : forall G1 G2 G2' T1 T2 H,
                        stp2 G1 T1 G2 T2 H ->
                        sub_env G2 G2' ->
@@ -564,7 +573,7 @@ Lemma stp2_extend1_mult : forall G1 G1' G2 T1 T2 H,
                        sub_env G1 G1' ->    
                        stp2 G1' T1 G2 T2 H.
 Proof. admit. Qed.
-
+*)
 
 Lemma stp2_reg2 : forall G1 G2 T1 T2 H ,
                        stp2 G1 T1 G2 T2 H ->
@@ -646,13 +655,14 @@ Proof. admit. Qed.
 
 (* used in inversion *)
 
+(*
 Lemma open2stp: forall venv0 venv1 x j l v T1 T2 H,
   (index x venv0 = Some v) \/ (closed j l T1) ->
   (index x venv1 = Some v) \/ (closed j l T2) ->
   stp2 venv0 T1 venv1 T2 H ->
   stp2 venv0 (open_rec j (TSel x) T1) venv1 (open_rec j (TSel x) T2) H.
 Proof. admit. Qed.
-
+*)
 
 Lemma index_miss {X}: forall x x1 (B:X) A G,
   index x ((x1,B)::G) = A ->
@@ -682,6 +692,21 @@ Proof.
   rewrite H3 in H. inversion H. eauto.
 Qed.
 
+Lemma index_hit2 {X}: forall x x1 (B:X) A G,
+  fresh G <= x1 ->                      
+  x = x1 ->
+  B = A ->
+  index x ((x1,B)::G) = Some A.
+Proof.
+  intros.
+  unfold index.
+  elim (le_xx (fresh G) x1 H). intros.
+  rewrite H2.
+  assert (beq_nat x x1 = true). eapply beq_nat_true_iff. eauto.
+  rewrite H3. rewrite H1. eauto.
+Qed.
+
+
 Lemma indexr_miss {X}: forall x x1 (B:X) A G,
   indexr x ((x1,B)::G) = A ->
   x <> (length G)  ->
@@ -705,12 +730,13 @@ Proof.
 Qed.
 
 
-
+(*
 Lemma stp2_refl: forall G1 T1 GH,
   closed (length GH) (fresh G1) T1 ->
   stp2 G1 T1 G1 T1 GH.                 
 Proof. admit. Qed.
-       
+*)  
+     
 Hint Unfold open.
 
 
@@ -831,6 +857,11 @@ Y0 <: Int |- Y0 -> Y0 < Int -> Y0
 
 *)
 
+Lemma xxf: forall A B C,
+             A < C -> B < C -> C - A = C - B -> A = B.
+  Proof. intros. omega. Qed.
+
+
 Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
    stp2 G1 T1 G2 T2 GH ->
    forall T1X T2X GH0 GX TX,
@@ -850,7 +881,40 @@ Proof.
   - admit.
   - admit.
   - admit.
-  - admit.
+  - Case "selx".
+    intros T1X T2X GH0 GX1 TX1 ? MO1 MO2.
+
+    assert (closed_rec (length GH) 0 T1X) as C1. admit. (* TODO: pass this in *)
+    assert (closed_rec (length GH) 0 T2X) as C2. admit.
+    
+    destruct T1X; inversion MO1; inversion C1; try omega.
+    destruct T2X; inversion MO2; inversion C2; try omega. 
+
+    subst.
+    remember (length GH0) as L.
+    remember (length (openm_env (GH0 ++ [(0, vtya GX1 TX1)]))) as L1.
+    assert (L1 = L+1). { subst. rewrite openm_env_length. rewrite app_length. simpl. eauto. }
+    assert (i1 = i) as IE. { eapply xxf. eauto. eauto. omega. } subst i1. 
+    
+    case_eq (beq_nat L i); intros E.
+    + assert (L = i). eapply beq_nat_true_iff. eauto.
+      simpl. rewrite E. simpl.
+      eapply stp2_sel1. eapply index_hit2; eauto. admit. (* closed 0 (fresh GX1) TX1 *)
+      eapply stp2_sel2. eapply index_hit2; eauto. admit.
+      admit. (* reflexivity:  stp2 GX1 TX1 GX1 TX1 (openm_env (open_env GX1 TX1 GH0)) *)
+    + assert (L <> i). eapply beq_nat_false_iff; eauto.
+      assert (L > i). omega.
+      simpl. rewrite E. simpl.
+
+      assert (indexr (L + 1 + 0 - i - 1) (openm_env (GH0 ++ [(0, vtya GX1 TX1)])) =
+      Some (vtya GX TX)). rewrite H2 in H0. simpl in H0. eapply H0.
+      assert (indexr (L + 0 - i - 1) (openm_env (open_env GX1 TX1 GH0)) =
+   Some (vtya GX TX)).  admit.   (* maybe not same GX TX ! *)
+      
+      eapply stp2_selx. (* TODO: relate indexr and openm_env *)
+      eapply H6. eapply H6.
+      admit. (* closed (L + 0 - i - 1) (fresh GX) TX   --  we have it for L1. Can we downgrade?  *)    
+    
   - Case "all".
     intros T1X T2X GH0 GX TX ? MO1 MO2.
 
