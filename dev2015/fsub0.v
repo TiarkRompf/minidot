@@ -304,7 +304,7 @@ Inductive stp2: venv -> ty -> venv -> ty -> venv  -> Prop :=
 (* X<T, one sided *)
 | stp2_sela1: forall G1 G2 GX TX x T2 GH,
     indexr x GH = Some (vtya GX TX) ->
-    closed 0 x TX ->
+    (*closed 0 x TX ->*)
     stp2 GX TX G2 T2 GH ->
     stp2 G1 (TSelH x) G2 T2 GH
 
@@ -312,7 +312,7 @@ Inductive stp2: venv -> ty -> venv -> ty -> venv  -> Prop :=
 | stp2_selx: forall G1 G2 GX TX x GH,
     indexr x GH = Some (vtya GX TX) ->
     indexr x GH = Some (vtya GX TX) ->
-    closed 0 x TX ->
+    (*closed 0 x TX ->*)
     stp2 G1 (TSelH x) G2 (TSelH x) GH
 
 
@@ -953,31 +953,29 @@ Proof.
       eapply IHGH; eauto.
 Qed.
 
-(*
-
-  
-Lemma wtf: forall GH0 L GX1 TX1,
-indexr (L + 1) (openm_env (GH0 ++ [(0, vtya GX1 TX1)])) =
-
-indexr (L) (openm_env (open_env GX1 TX1 GH0)) .
+Lemma indexr_hit0: forall GH GX0 TX0,
+      indexr 0 (openm_env (GH ++ [(0,vtya GX0 TX0)])) =
+      Some (vtya GX0 (openm_rec 0 0 TX0)).
 Proof.
-  intros GH0. induction GH0.
-  - intros. simpl. case_eq (beq_nat (L+1) 0); intros E.
-    assert ((L+1) = 0). eapply beq_nat_true_iff; eauto. 
-    omega. eauto.
-  - intros.
-    (* specialize IHGH0 with (L:=L) (GX1:=GX1) (TX1:=TX1).*)
-    simpl. destruct a. destruct v.
-    + simpl. admit.
-    + simpl.  (* *)
-      rewrite
-      
-      
-    + simpl. admit.
-    + simpl. admit.
-    + simpl. admit.
+  intros GH. induction GH.
+  - intros. simpl. eauto. 
+  - intros. simpl. destruct a. simpl. rewrite openm_env_length. rewrite app_length. simpl.
+    assert (length GH + 1 = S (length GH)). omega. rewrite H.
+    eauto.
 Qed.
-*)
+
+Lemma indexr_hit02: forall GH GX0 TX0,
+      closed_rec 0 0 TX0 ->
+      indexr 0 (openm_env (GH ++ [(0,vtya GX0 TX0)])) =
+      Some (vtya GX0 TX0).
+Proof.
+  intros GH. induction GH.
+  - intros. simpl. rewrite <- (closed_no_openm TX0 0 0 0). eauto. eauto.
+  - intros. simpl. destruct a. simpl. rewrite openm_env_length. rewrite app_length. simpl.
+    assert (length GH + 1 = S (length GH)). omega. rewrite H0.
+    eauto.
+Qed.
+
 
   
 Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
@@ -1012,10 +1010,16 @@ Proof.
     remember (length (openm_env (GH0 ++ [(0, vtya GX1 TX1)]))) as L1.
     assert (L1 = L+1). { subst. rewrite openm_env_length. rewrite app_length. simpl. eauto. }
 
+                       
+                       
     case_eq (beq_nat L i); intros E.
     + assert (L = i). eapply beq_nat_true_iff. eauto.
-      simpl. rewrite E. simpl.
-      assert (vtya GX TX = vtya GX1 TX1) as EQ. admit. (* index L hits zeroth element *)
+      assert (L1 + 0 - i - 1 = 0) as EL1. omega.
+      simpl. rewrite E. simpl. 
+      assert (vtya GX TX = vtya GX1 TX1) as EQ. {
+        eapply indexr_hit02 in CX. rewrite EL1 in H.
+        rewrite CX in H. inversion H. eauto.
+      }
       inversion EQ. subst GX1 TX1. clear EQ.
       eapply stp2_sel1. eapply index_hit2; eauto.
       eauto.
@@ -1038,11 +1042,20 @@ Proof.
       simpl. rewrite E. simpl.
 
       assert (indexr (L + 1 + 0 - i - 1) (openm_env (GH0 ++ [(0, vtya GX1 TX1)])) =
-              Some (vtya GX TX)). rewrite H2 in H. simpl in H. eapply H.
-      assert (indexr (L + 0 - i - 1) (openm_env (open_env GX1 TX1 GH0)) =
-   Some (vtya GX TX)).  admit.   (* maybe not same GX TX ! *)
+              Some (vtya GX TX)). rewrite H1 in H. simpl in H. eapply H.
+      assert (L1 + 0 -i -1 = (L+0-i-1+1)). rewrite H1. assert (i <=L). omega. omega.
+      rewrite H5 in H.
+      eapply indexr_wtf2 in H. destruct H as [TXX [? ?]].
 
-      eapply stp2_sela1. eapply H6.
+      
+      eapply stp2_sela1. eapply H7.
+
+      eapply IHstp2.
+      rewrite <-H.
+      
+      (* TODO: closed *)
+
+      
       admit. (* closed (L + 0 - i - 1) (fresh GX) TX   --  we have it for L1. Can we downgrade?  *)    
 
       assert (stp2 ((fresh GX, vty GX TX) :: GX)
