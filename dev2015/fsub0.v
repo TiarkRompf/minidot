@@ -1117,7 +1117,7 @@ Proof.
       eapply stp2_selx; eauto.
     
   - Case "all".
-    intros T1X T2X GH0 GX TX ? MO1 MO2.
+    intros T1X T2X GH0 GX TX D1 D2 ? MO1 MO2.
 
     destruct T1X; inversion MO1.
     destruct T2X; inversion MO2.
