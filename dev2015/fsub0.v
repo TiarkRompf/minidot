@@ -977,15 +977,30 @@ Proof.
 Qed.
 
 
+(* 
+sketch: 
+
+
+
+
+
+*)
+
+
+
+
+
+
+
   
 Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
    stp2 G1 T1 G2 T2 GH ->
-   forall T1X T2X GH0 GX TX,
+   forall T1X T2X GH0 GX TX D1 D2,
    GH = openm_env (GH0 ++ [(0,vtya GX TX)]) ->
-   T1 = openm_rec 0 (length GH) T1X ->
-   T2 = openm_rec 0 (length GH) T2X ->
-stp2 ((fresh G1, vty GX TX)::G1) (openm_rec 0 (length GH0) (open_rec (length GH0) (TSel (fresh G1)) T1X))
-     ((fresh G2, vty GX TX)::G2) (openm_rec 0 (length GH0) (open_rec (length GH0) (TSel (fresh G2)) T2X))
+   T1 = openm_rec 0 (D1+1) T1X ->
+   T2 = openm_rec 0 (D2+1) T2X ->
+stp2 ((fresh G1, vty GX TX)::G1) (openm_rec 0 D1 (open_rec D1 (TSel (fresh G1)) T1X))
+     ((fresh G2, vty GX TX)::G2) (openm_rec 0 D2 (open_rec D2 (TSel (fresh G2)) T2X))
      (openm_env (open_env GX TX GH0)).
 (* TODO: cases for GX = G1 or GX = G2. asymetric, see below *)
 Proof.
@@ -997,24 +1012,25 @@ Proof.
   - admit.
   - admit.
   - Case "selax".
-    intros T1X T2X GH0 GX1 TX1 ? MO1 MO2.
+    intros T1X T2X GH0 GX1 TX1 D1 D2 ? MO1 MO2.
 
-    assert (closed_rec (length GH) 0 T1X) as C1. admit. (* TODO: pass this in *)
-    assert (closed_rec (length GH) 0 T2X) as C2. admit.
+    assert (closed_rec (D1+1) 0 T1X) as C1. admit. (* TODO: pass this in *)
+    assert (closed_rec (D2+1) 0 T2X) as C2. admit.
     assert (closed_rec 0 0 TX1) as CX. admit.
     
     destruct T1X; inversion MO1; inversion C1; try omega.
 
     subst.
+(*
     remember (length GH0) as L.
     remember (length (openm_env (GH0 ++ [(0, vtya GX1 TX1)]))) as L1.
     assert (L1 = L+1). { subst. rewrite openm_env_length. rewrite app_length. simpl. eauto. }
-
+*)
                        
                        
-    case_eq (beq_nat L i); intros E.
-    + assert (L = i). eapply beq_nat_true_iff. eauto.
-      assert (L1 + 0 - i - 1 = 0) as EL1. omega.
+    case_eq (beq_nat D1 i); intros E.
+    + assert (D1 = i). eapply beq_nat_true_iff. eauto.
+      assert (D1 + 1 + 0 - i - 1 = 0) as EL1. omega.
       simpl. rewrite E. simpl. 
       assert (vtya GX TX = vtya GX1 TX1) as EQ. {
         eapply indexr_hit02 in CX. rewrite EL1 in H.
@@ -1024,81 +1040,81 @@ Proof.
       eapply stp2_sel1. eapply index_hit2; eauto.
       eauto.
       assert (stp2 ((fresh GX, vty GX TX) :: GX)
-                   (openm_rec 0 L (open_rec L (TSel (fresh GX)) TX))
+                   (openm_rec 0 D1 (open_rec D1 (TSel (fresh GX)) TX))
                    ((fresh G2, vty GX TX) :: G2)
-                   (openm_rec 0 L (open_rec L (TSel (fresh G2)) T2X))
+                   (openm_rec 0 D2 (open_rec D2 (TSel (fresh G2)) T2X))
                    (openm_env (open_env GX TX GH0))) as IH.
-      subst L. eapply IHstp2; eauto. eapply closed_no_openm; eauto.
+      subst D1. eapply IHstp2; eauto. eapply closed_no_openm; eauto.
 
-      rewrite <-(closed_no_open TX (TSel (fresh GX)) 0 L) in IH.
-      rewrite <-(closed_no_openm TX L 0) in IH.
+      rewrite <-(closed_no_open TX (TSel (fresh GX)) 0 D1) in IH.
+      rewrite <-(closed_no_openm TX D1 0) in IH.
 
       admit. (* use IH, but right now it has an extra x,v in G1 *)
+      (* it is closed 0, so we should be able to drop the thing in G1 *)
 
       eauto. (* closed ... *)
       eapply closed_upgrade. eauto. omega.
-    + assert (L <> i). eapply beq_nat_false_iff; eauto.
-      assert (L > i). omega.
+    + assert (D1 <> i). eapply beq_nat_false_iff; eauto.
+      assert (D1 > i). omega.
       simpl. rewrite E. simpl.
 
-      assert (indexr (L + 1 + 0 - i - 1) (openm_env (GH0 ++ [(0, vtya GX1 TX1)])) =
-              Some (vtya GX TX)). rewrite H1 in H. simpl in H. eapply H.
-      assert (L1 + 0 -i -1 = (L+0-i-1+1)). rewrite H1. assert (i <=L). omega. omega.
-      rewrite H5 in H.
+      assert (D1 +1 + 0 -i -1 = (D1+0-i-1+1)). omega. 
+      rewrite H3 in H.
       eapply indexr_wtf2 in H. destruct H as [TXX [? ?]].
 
       
-      eapply stp2_sela1. eapply H7.
+      eapply stp2_sela1. eapply H4.
 
-      eapply IHstp2.
-      rewrite <-H.
-      
-      (* TODO: closed *)
-
-      
-      admit. (* closed (L + 0 - i - 1) (fresh GX) TX   --  we have it for L1. Can we downgrade?  *)    
-
-      assert (stp2 ((fresh GX, vty GX TX) :: GX)
-                   (openm_rec 0 L (open_rec L (TSel (fresh GX)) TX))
-                   ((fresh G2, vty GX TX) :: G2)
-                   (openm_rec 0 L (open_rec L (TSel (fresh G2)) T2X))
-                   (openm_env (open_env GX TX GH0))) as IH.
-      subst L. eapply IHstp2; eauto. eapply closed_no_openm; eauto.
-      
+      eapply IHstp2; eauto.
       
   - Case "selx".
-    intros T1X T2X GH0 GX1 TX1 ? MO1 MO2.
+    intros T1X T2X GH0 GX1 TX1 D1 D2 ? MO1 MO2.
 
-    assert (closed_rec (length GH) 0 T1X) as C1. admit. (* TODO: pass this in *)
-    assert (closed_rec (length GH) 0 T2X) as C2. admit.
+    assert (closed_rec (D1+1) 0 T1X) as C1. admit. (* TODO: pass this in *)
+    assert (closed_rec (D2+1) 0 T2X) as C2. admit.
     
     destruct T1X; inversion MO1; inversion C1; try omega.
     destruct T2X; inversion MO2; inversion C2; try omega. 
 
-    subst.
-    remember (length GH0) as L.
-    remember (length (openm_env (GH0 ++ [(0, vtya GX1 TX1)]))) as L1.
-    assert (L1 = L+1). { subst. rewrite openm_env_length. rewrite app_length. simpl. eauto. }
-    assert (i1 = i) as IE. { eapply xxf. eauto. eauto. omega. } subst i1. 
-    
-    case_eq (beq_nat L i); intros E.
-    + assert (L = i). eapply beq_nat_true_iff. eauto.
-      simpl. rewrite E. simpl.
-      eapply stp2_sel1. eapply index_hit2; eauto. admit. (* closed 0 (fresh GX1) TX1 *)
+    (* subst. *)
+
+    case_eq (beq_nat x 0); intros E.
+    + assert (x = 0). eapply beq_nat_true_iff. eauto.
+      assert (D1 = i). omega.
+      assert (D2 = i1). omega.
+      assert (beq_nat D1 i = true) as E1. eapply beq_nat_true_iff; eauto.
+      assert (beq_nat D2 i1 = true) as E2. eapply beq_nat_true_iff; eauto.
+      subst.
+      simpl. rewrite E1. rewrite E2. simpl. 
+      eapply stp2_sel1. eapply index_hit2; eauto. admit. (* closed 0 0 TX1 *)
       eapply stp2_sel2. eapply index_hit2; eauto. admit.
       admit. (* reflexivity:  stp2 GX1 TX1 GX1 TX1 (openm_env (open_env GX1 TX1 GH0)) *)
-    + assert (L <> i). eapply beq_nat_false_iff; eauto.
-      assert (L > i). omega.
-      simpl. rewrite E. simpl.
+    + assert (x <> 0). eapply beq_nat_false_iff; eauto.
+      assert (x >= 0). omega.
+      assert (forall n, n >= 0 -> n <> 0 -> n > 0). intros. omega.
+      assert (x > 0). eapply H14; eauto. clear H14.
+      assert (D1 > i). omega.
+      assert (D2 > i1). omega.
+      assert (beq_nat D1 i = false) as E1. eapply beq_nat_false_iff; eauto. omega.
+      assert (beq_nat D2 i1 = false) as E2. eapply beq_nat_false_iff; eauto. omega.
 
-      assert (indexr (L + 1 + 0 - i - 1) (openm_env (GH0 ++ [(0, vtya GX1 TX1)])) =
-      Some (vtya GX TX)). rewrite H2 in H0. simpl in H0. eapply H0.
-      assert (indexr (L + 0 - i - 1) (openm_env (open_env GX1 TX1 GH0)) =
-   Some (vtya GX TX)).  admit.   (* maybe not same GX TX ! *)
+      assert (x = (D1 +0 - i - 1) + 1) as E3. subst. admit. (* omega! *)
+      assert (x = (D2 +0- i1 - 1) + 1) as E4. subst. admit. (* omega! *)
+
+      rewrite E3 in H.
+      rewrite E4 in H0.
+      rewrite H1 in H. rewrite H1 in H0.
+      eapply indexr_wtf2 with (n:= D1+0-i-1) in H.
+      eapply indexr_wtf2 with (n:= D2+0-i1-1) in H0.
+
+      (*      remember *)
+      remember (D1+0-i-1) as y.
+      assert (D2 + 0-i1-1 = y). subst. admit. (*omega.*)
+      simpl. rewrite E1. rewrite E2. simpl. rewrite H17. rewrite <-Heqy.
+
+      destruct H as [TXX [? ?]].
       
-      eapply stp2_selx. (* TODO: relate indexr and openm_env *)
-      eapply H6. eapply H6.
-      admit. (* closed (L + 0 - i - 1) (fresh GX) TX   --  we have it for L1. Can we downgrade?  *)    
+      eapply stp2_selx; eauto.
     
   - Case "all".
     intros T1X T2X GH0 GX TX ? MO1 MO2.
