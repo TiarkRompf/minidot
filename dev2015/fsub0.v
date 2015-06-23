@@ -218,10 +218,14 @@ Definition substt (UX: ty) (V: (id*ty)) :=
   end.
 
 
-Definition substvb (GX:venv) (UX: ty) (V: (id*vl)) :=
+Definition substvb (UX: ty) (V: (id*(venv*ty))) :=
   match V with
-    | (x,vtya G T) => (x-1,vtya G (subst UX T))
-    | _ => V
+    | (x,(G,T)) => (x-1,(G, (subst UX T)))
+  end.
+
+Definition substb (UX: ty) (UY: ty) (V: (id*(bool*ty))) :=
+  match V with
+    | (x,(b, T)) => (x-1,(b, (subst (if b then UX else UY) T)))
   end.
 
 
@@ -312,8 +316,15 @@ Does it make a difference? It seems like we can always widen f?
 (* TODO: subsumption *)
 .
 
+Definition sel (b:bool) (G1:venv) (G2:venv) := if b then G1 else G2.
 
-Inductive stp2: venv -> ty -> venv -> ty -> venv  -> Prop :=
+Definition swap (p:id*(bool*ty)) :=
+  match p with
+    | (x, (b, T)) => (x, (negb b, T))
+  end.
+
+
+Inductive stp2: venv -> ty -> venv -> ty -> list (id*(venv*ty))  -> Prop :=
 | stp2_bool: forall G1 G2 GH,
     stp2 G1 TBool G2 TBool GH
 | stp2_fun: forall G1 G2 T1 T2 T3 T4 GH,
@@ -339,15 +350,15 @@ Inductive stp2: venv -> ty -> venv -> ty -> venv  -> Prop :=
 
 (* X<T, one sided *)
 | stp2_sela1: forall G1 G2 GX TX x T2 GH,
-    indexr x GH = Some (vtya GX TX) ->
+    indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
     stp2 GX TX G2 T2 GH ->
     stp2 G1 (TSelH x) G2 T2 GH
 
          
 | stp2_selx: forall G1 G2 GX TX x GH,
-    indexr x GH = Some (vtya GX TX) ->
-    indexr x GH = Some (vtya GX TX) ->
+    indexr x GH = Some (GX, TX) ->
+    indexr x GH = Some (GX, TX) ->
     (*closed 0 x TX ->*)
     stp2 G1 (TSelH x) G2 (TSelH x) GH
 
@@ -356,7 +367,7 @@ Inductive stp2: venv -> ty -> venv -> ty -> venv  -> Prop :=
     stp2 G2 T3 G1 T1 GH ->
     closed 1 (length GH) T2 -> (* must not accidentally bind x *)
     closed 1 (length GH) T4 -> 
-    stp2 G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) ((0,vtya G2 T3)::GH) ->
+    stp2 G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) ((0,(G2, T3))::GH) ->
     stp2 G1 (TAll T1 T2) G2 (TAll T3 T4) GH
 .
 
@@ -689,11 +700,13 @@ Lemma stp2_trans: forall G1 G2 G3 T1 T2 T3 H,
 Proof. admit. Qed.
 
 (* used in trans -- need to generalize interface for induction *)
+(*
 Lemma stp2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4 H,
   stp2 G1 T1 G2 T2 H -> (* careful about H! *)
   stp2 G3 T3 G4 T4 ((x,vtya G2 T2)::H) ->
   stp2 G3 T3 G4 T4 ((x,vtya G1 T1)::H).
 Proof. admit. Qed.
+ *)
 
 (* used in inversion *)
 
@@ -1166,6 +1179,37 @@ Proof.
        eauto. subst. eauto.
 Qed.
 
+Lemma indexr_subst2: forall GH0 x bx TX TX1 TX2 b T,
+   indexr x (GH0 ++ [(0, (bx,TX))]) = Some (b,T) ->
+   x = 0 /\ bx = b /\ TX = T \/
+   x > 0 /\ indexr (x-1) (map (substb TX1 TX2) GH0) = Some (b, (subst (if b then TX1 else TX2) T)).
+Proof.
+  intros GH0. induction GH0; intros.
+  - simpl in H. case_eq (beq_nat x 0); intros E.
+    + rewrite E in H. inversion H.
+      left. split. eapply beq_nat_true_iff. eauto. eauto.
+    + rewrite E in H. inversion H.
+  -  destruct a. unfold id in H. remember ((length (GH0 ++ [(0, (bx,TX))]))) as L.
+     case_eq (beq_nat x L); intros E. 
+     + assert (x = L). eapply beq_nat_true_iff. eauto.
+       eapply indexr_hit in H.
+       right. split. rewrite app_length in HeqL. simpl in HeqL. omega.
+       assert ((x - 1) = (length (map (substb TX1 TX2) GH0))).
+       rewrite map_length. rewrite app_length in HeqL. simpl in HeqL. unfold id. omega.
+       simpl.
+       eapply beq_nat_true_iff in H1. unfold id in H1. unfold id. rewrite H1. subst. destruct b; eauto. eauto. eauto. subst. eauto. 
+     + assert (x <> L). eapply beq_nat_false_iff. eauto.
+       eapply indexr_miss in H. eapply IHGH0 in H.
+       inversion H. left. eapply H1.
+       right. inversion H1. split. eauto.
+       simpl.
+       assert ((x - 1) <> (length (map (substb TX1 TX2) GH0))).
+       rewrite app_length in HeqL. simpl in HeqL. rewrite map_length.
+       unfold not. intros. subst L. unfold id in H0. unfold id in H2. unfold not in H0. eapply H0. unfold id in H4. rewrite <-H4. omega.
+       eapply beq_nat_false_iff in H4. unfold id in H4. unfold id. rewrite H4.
+       destruct p. eauto. subst. eauto. 
+Qed.
+
 Lemma closed_no_subst: forall T j TX,
    closed_rec j 0 T ->
    subst TX T = T.
@@ -1243,20 +1287,302 @@ Qed.
 
 (* SCRATCH SPACE *)
 
+(*
+when and how we can replace with multiple environments:
 
-(open (TSelH (length GH0)) (subst TX T2))
-(subst TX (open (TSelH x) T2))
- x = length (GH0 ++ [(0, TX)])
+stp2 G1 T1 G2 T2 (GH0 ++ [(0,vtya GX TX)])
+
+1) T1 closed
+
+   stp2 G1 T1 G2' T2' (subst GH0)
+
+2) G1 contains (GX TX) at some index x1
+
+   index x1 G1 = (GX TX)
+   stp2 G (subst (TSel x1) T1) G2' T2'
+
+3) G1 = GX
+
+   stp2 G1 (subst TX T1) G2' T2'
+
+4) G1 and GX unrelated
+
+
+   stp2 ((GX,TX) :: G1) (subst (TSel (length G1)) T1) G2' T2'
+
+*)
+
+
+Lemma swap_subst_comm: forall G TX TY,
+   (map swap (map (substb TX TY) G)) = (map (substb TY TX) (map swap G)).
+Proof.
+  intros.
+  induction G.
+  simpl. eauto.
+  simpl. rewrite IHG. remember (map (substb TX TY) (map swap G)) as TL.
+  unfold swap. unfold substb. destruct a. simpl.
+  destruct p; destruct b; eauto.
+Qed.
+
+Lemma swap_if: forall (b:bool) (G1: ty) (G2:ty),
+   (if b then G1 else G2) = (if negb b then G2 else G1).
+Proof.
+  intros. simpl.
+  destruct b. eauto. eauto.
+Qed.
+
+
+
+
+
+
+Lemma closed_subst: forall n x T, closed 1 (n+1) T -> closed 1 (n) (subst (TSel x) T).
+Proof. admit. Qed.
+
+Lemma closed_subst2: forall n TX T, closed 1 (n+1) T -> closed 0 0 TX -> closed 1 (n) (subst TX T).
+Proof. admit. Qed.
+
+    
+Lemma subst_open_commute: forall n TX T2, closed 1 (n+1) T2 -> closed 0 0 TX ->
+    subst TX (open (TSelH (n+1)) T2) = open (TSelH n) (subst TX T2).
+Proof. admit. Qed.
+
+(*
+Lemma closed_open: forall n T, closed 0 0 (open_rec 0 (TSelH n) T).
+Proof. admit. Qed.
+*)
+
+Lemma Forall2_length: forall A B f (G1:list A) (G2:list B), Forall2 f G1 G2 -> length G1 = length G2.
+Proof. admit. Qed.
+
+
+
+(* compat helpers --- possible results of substitution, with relation to venv *)
+
+Definition compat (GX:venv) (TX: ty) (G1:venv) (T1:ty) (T1':ty) :=
+  (exists x1, index x1 G1 = Some (vty GX TX) /\ T1' = (subst (TSel x1) T1)) \/ 
+  (G1 = GX /\ T1' = (subst TX T1)) \/
+  (closed 0 0 T1 /\ T1' = T1) \/
+  (T1' = subst TTop T1). (* catchall case, this means env doesn't matter *)
+                        
+Definition check (GX:venv) (TX: ty) (G1:venv) (T1:ty) :=
+  (exists x1, index x1 G1 = Some (vty GX TX)) \/ 
+  (G1 = GX) \/
+  (closed 0 0 T1).
+
+
+Definition compat2 (GX:venv) (TX: ty) (p1:id*(venv*ty)) (p2:id*(venv*ty)) :=
+  match p1, p2 with
+      (n1,(G1,T1)), (n2,(G2,T2)) => n1=n2(*+1 disregarded*) /\ G1 = G2 /\ compat GX TX G1 T1 T2
+  end.
+
+
+Lemma compat_all: forall GX TX G1 T1 T2 T1' n,
+    compat GX TX G1 (TAll T1 T2) T1' ->
+    closed 0 0 TX -> closed 1 (n+1) T2 ->
+    exists TA TB, T1' = TAll TA TB /\
+                  closed 1 n TB /\
+                  compat GX TX G1 T1 TA /\
+                  compat GX TX G1 (open (TSelH (n+1)) T2) (open (TSelH n) TB).
+Proof.
+  intros ? ? ? ? ? ? ? CC CLX CL2. destruct CC.
+
+    simpl in H. destruct H. destruct H. repeat eexists. eauto. eapply closed_subst2. eauto. eauto.  unfold compat. eauto. unfold compat. left. exists x. eauto. rewrite subst_open_commute. eauto. eauto. eauto.
+
+    destruct H. destruct H. simpl in H0. repeat eexists. eauto. eapply closed_subst2. eauto. eauto. unfold compat. eauto. unfold compat. right. left. rewrite subst_open_commute. eauto. eauto. eauto.
+
+    destruct H. destruct H. inversion H. repeat eexists. eauto. subst. eapply closed_upgrade_free. eauto. omega. unfold compat. eauto. unfold compat. eauto. right. right. right. rewrite subst_open_commute. rewrite (closed_no_subst T2 1). eauto. eauto. eauto. eauto.
+
+    simpl in H. repeat eexists. eauto. eapply closed_subst2. eauto. eauto. unfold compat. eauto. unfold compat. eauto. right. right. right. rewrite subst_open_commute. eauto. eauto. eauto.
+    Qed.
+
+
+
+
+
+
+
+
+
+
+
 
 Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
    stp2 G1 T1 G2 T2 GH ->
-   forall GH0 GX TX x1 x2,
-     GH = (GH0 ++ [(0,vtya GX TX)]) ->
-     index x1 G1 = Some (vty GX TX) \/ closed 0 0 T1 ->
-     index x2 G2 = Some (vty GX TX) \/ closed 0 0 T2 ->
+   forall GH0 GH0' GX TX T1' T2',
+     GH = (GH0 ++ [(0,(GX, TX))]) ->
+     closed 0 0 TX ->
+     compat GX TX G1 T1 T1' ->
+     compat GX TX G2 T2 T2' ->
+     Forall2 (compat2 GX TX) GH0 GH0' ->
+     stp2 G1 T1'
+          G2 T2'
+          GH0'.
+Proof.
+  intros G1 G2 T1 T2 GH H.
+  induction H.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - Case "all".
+    intros GH0 GH0' GX TX T1' T2' ? CX IX1 IX2 FA.
+    
+    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
+    
+    eapply compat_all in IX1. repeat destruct IX1 as [? IX1].
+    eapply compat_all in IX2. repeat destruct IX2 as [? IX2].
+
+    subst.
+    
+    eapply stp2_all. 
+    + eapply IHstp2_1. eauto. eauto. eauto. eauto. eauto.
+    + eauto.
+    + eauto.
+    + subst. specialize IHstp2_2 with (GH1 := (0, (G2, T3))::GH0).
+      eapply IHstp2_2.
+      reflexivity.
+      eauto.
+      rewrite app_length. simpl. rewrite EL. eauto.
+      rewrite app_length. simpl. rewrite EL. eauto.
+      eapply Forall2_cons. simpl. eauto. eauto.
+    + eauto.
+    + eapply closed_upgrade_free. eauto. omega.
+    + eauto.
+    + eapply closed_upgrade_free. eauto. omega.
+Qed.
+
+
+
+Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
+   stp2 G1 T1 G2 T2 GH ->
+   forall GH0 TX x1,
+     GH = (GH0 ++ [(0,(false, TX))]) ->
+     closed 0 0 TX ->
+     index x1 G1 = Some (vty G2 TX) \/ closed 0 0 T1 ->
+     stp2 G1 (subst (TSel x1) T1)
+          G2 (subst TX T2)
+          (map (substb (TSel x1) TX) GH0).
+Proof.
+  intros G1 G2 T1 T2 GH H.
+  induction H.
+  - admit.
+  - admit.
+  - admit.      
+  - admit.
+  - admit.
+  - Case "sela1".
+
+    intros GH0 TXX x1 ? ? IX1.
+    subst GH. specialize (indexr_subst2 _ x _ TXX (TSel x1) TXX _ _ H). intros. 
+    destruct H1; destruct H1. 
+    + destruct H3. subst. simpl. 
+      
+      specialize (IHstp2 GH0 TX x1).
+
+      eapply stp2_sel1. destruct IX1. eauto. inversion H1. omega.
+      simpl. simpl in IHstp2. 
+      
+      assert (subst (TSel x1) TX = TX). eapply closed_no_subst; eauto.
+      rewrite H1 in IHstp2.
+      eapply IHstp2. eauto. eauto. eauto.
+
+    + subst. simpl.
+      assert (beq_nat x 0 = false). eapply beq_nat_false_iff; omega. rewrite H4. 
+
+      destruct b.
+      eapply stp2_sela1. eapply H3. simpl. simpl in IHstp2.
+      eapply IHstp2. eauto. eauto. 
+      destruct IX1. eauto. inversion H5. omega. simpl. simpl in IX1.
+       eapply stp2_sela1. eapply H3. simpl. eapply stp2_substitute_same.
+
+      
+      (* simpl. destruct b. *)
+      * eapply stp2_sela1. instantiate (2 := true). instantiate (1:= snd (snd (substb (TSel x1) (TSel x2) (x-1,(true,TX))))).
+         admit.
+         simpl. eapply IHstp2. eauto. eauto. simpl. simpl. destruct bb. simpl. eauto. simpl.
+      destruct IX1. eauto. inversion H5. omega. simpl. simpl in IX1.
+      destruct IX1. eauto. inversion H5. omega.
+      destruct IX2. eauto. eauto.
+      * eapply stp2_sela1. instantiate (2 := false). instantiate (1:= snd (snd (substb (TSel x1) (TSel x2) (x-1,(true,TX))))).
+        admit.
+        simpl. eapply IHstp2. eauto. eauto. simpl. simpl. destruct bb. simpl. eauto. simpl.
+      destruct IX1. eauto. inversion H5. omega. simpl. simpl in IX1.
+      destruct IX1. eauto. inversion H5. omega.
+      destruct IX2. eauto. eauto.
+        eauto.
+
+
+    
+  - Case "selx".
+    admit.
+  - Case "all".
+    intros GH0 TX x1 ? CX IX1.
+    
+    simpl. unfold id in x1. 
+
+    (* lemmas *)
+    assert (forall n x T, closed 1 (n+1) T -> closed 1 (n) (subst (TSel x) T)) as closed_subst. admit.
+
+    assert (forall n TX T, closed 1 (n+1) T -> closed 0 0 TX -> closed 1 (n) (subst TX T)) as closed_subst2. admit.
+
+    
+    assert (forall n TX T2, closed 1 (n+1) T2 -> closed 0 0 TX ->
+    subst TX (open (TSelH (n+1)) T2) = open (TSelH n) (subst TX T2)) as subst_open_commute. admit.
+
+    assert (forall n T, closed 0 0 (open_rec 0 (TSelH n) T)) as
+        closed_open. admit.
+
+    
+    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    
+    eapply stp2_all. 
+    + (* rewrite swap_subst_comm. simpl in IHstp2_1.
+      specialize (IHstp2_1 (map swap GH0) GX TX x2 x1 (negb b)). 
+      assert ([(0, (negb b, TX))] = map swap [(0, (b, TX))]).
+      eauto.
+      
+      eapply IHstp2_1. eauto. rewrite H5. rewrite <-map_app. rewrite H3. eauto.
+      destruct IX2 as [?|IX2]. eauto. inversion IX2. eauto.
+      destruct IX1 as [?|IX1]. eauto. inversion IX1. eauto. *)
+      admit. (* contravariant *)
+    + simpl. rewrite map_length. eapply closed_subst. unfold id. rewrite <-H4. eauto.
+    + simpl. rewrite map_length. eapply closed_subst2. unfold id. rewrite <-H4. eauto. eauto.
+    + specialize IHstp2_2 with (GH0:= (0, (false, T3))::GH0)
+                                 (TX:= TX)
+                                 (x1:=x1)
+      .
+
+      rewrite H4 in IHstp2_2. unfold id in IHstp2_2.
+      rewrite subst_open_commute in IHstp2_2.
+      rewrite subst_open_commute in IHstp2_2.      
+      rewrite map_length.
+      simpl in IHstp2_2.
+      eapply IHstp2_2. subst GH. eauto. eauto.
+
+      destruct IX1 as [IX1|IX1]. eauto. inversion IX1. eauto.
+      subst GH. rewrite app_length in H1. simpl in H1. eauto. eauto.
+      subst GH. rewrite app_length in H0. simpl in H0. eauto. eauto.
+Qed.
+
+
+
+
+    
+Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
+   stp2 G1 T1 G2 T2 GH ->
+   forall GH0 TX x1 x2 b,
+     GH = (GH0 ++ [(0,(b, TX))]) ->
+     closed 0 0 TX ->
+     index x1 G1 = Some (vty (sel b G1 G2) TX) \/ closed 0 0 T1 ->
+     index x2 G2 = Some (vty (sel b G1 G2) TX) \/ closed 0 0 T2 ->
      stp2 G1 (subst (TSel x1) T1)
           G2 (subst (TSel x2) T2)
-          (map (substvb GX (TSel x2)) GH0).
+          (map (if b then substb (TSel x1) (TSel x2) else substb (TSel x2) (TSel x1)) GH0).
 (* TODO: cases for GX = G1 or GX = G2. asymetric, see below *)
 Proof.
   intros G1 G2 T1 T2 GH H.
@@ -1266,10 +1592,54 @@ Proof.
   - admit.      
   - admit.
   - admit.
-  - admit.
+  - Case "sela1".
+    intros GH0 TXX x1 x2 bb ? ? IX1 IX2.
+    destruct bb. admit.
+    subst GH. specialize (indexr_subst2 _ x _ TXX (TSel x2) (TSel x1)_ _ H). intros. 
+    destruct H1; destruct H1. 
+    + destruct H3. subst. simpl. 
+      
+      specialize (IHstp2 GH0 TX x1 x2 false).
+
+      (* destruct b. *)
+      eapply stp2_sel1. destruct IX1. eauto. inversion H1. omega.
+      simpl. simpl in IHstp2. 
+      
+      assert (subst (TSel x1) TX = TX). eapply closed_no_subst; eauto.
+      rewrite H1 in IHstp2.
+      eapply IHstp2. eauto. eauto. eauto. eauto.
+
+      (*destruct b. eauto. eauto.*)
+
+    + subst. simpl.
+      assert (beq_nat x 0 = false). eapply beq_nat_false_iff; omega. rewrite H4. 
+
+      destruct b.
+      eapply stp2_sela1. eapply H3. simpl. simpl in IHstp2.
+      specialize IHstp2 with (b := false).
+      eapply IHstp2.
+
+      
+      (* simpl. destruct b. *)
+      * eapply stp2_sela1. instantiate (2 := true). instantiate (1:= snd (snd (substb (TSel x1) (TSel x2) (x-1,(true,TX))))).
+         admit.
+         simpl. eapply IHstp2. eauto. eauto. simpl. simpl. destruct bb. simpl. eauto. simpl.
+      destruct IX1. eauto. inversion H5. omega. simpl. simpl in IX1.
+      destruct IX1. eauto. inversion H5. omega.
+      destruct IX2. eauto. eauto.
+      * eapply stp2_sela1. instantiate (2 := false). instantiate (1:= snd (snd (substb (TSel x1) (TSel x2) (x-1,(true,TX))))).
+        admit.
+        simpl. eapply IHstp2. eauto. eauto. simpl. simpl. destruct bb. simpl. eauto. simpl.
+      destruct IX1. eauto. inversion H5. omega. simpl. simpl in IX1.
+      destruct IX1. eauto. inversion H5. omega.
+      destruct IX2. eauto. eauto.
+        eauto.
+
+
+    
   - admit.
   - Case "all".
-    intros GH0 GX TX x1 x2 ? IX1 IX2.
+    intros GH0 GX TX x1 x2 b ? IX1 IX2.
     
     simpl. unfold id in x1. unfold id in x2.
 
@@ -1279,83 +1649,42 @@ Proof.
     assert (forall n x1 T2, closed 1 (n+1) T2 ->
     subst (TSel x1) (open (TSelH (n+1)) T2) = open (TSelH n) (subst (TSel x1) T2)) as subst_open_commute. admit.
 
+    assert (forall n T, closed 0 0 (open_rec 0 (TSelH n) T)) as
+        closed_open. admit.
+
     
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     
     eapply stp2_all. 
-    + eapply IHstp2_1. eauto.
+    + rewrite swap_subst_comm. simpl in IHstp2_1.
+      specialize (IHstp2_1 (map swap GH0) GX TX x2 x1 (negb b)). 
+      assert ([(0, (negb b, TX))] = map swap [(0, (b, TX))]).
+      eauto.
+      
+      eapply IHstp2_1. eauto. rewrite H5. rewrite <-map_app. rewrite H3. eauto.
       destruct IX2 as [?|IX2]. eauto. inversion IX2. eauto.
       destruct IX1 as [?|IX1]. eauto. inversion IX1. eauto.
     + simpl. rewrite map_length. eapply closed_subst. unfold id. rewrite <-H4. eauto.
     + simpl. rewrite map_length. eapply closed_subst. unfold id. rewrite <-H4. eauto.
     +
-      specialize IHstp2_2 with (GH0:= (0, vtya G2 T3)::GH0)
+      specialize IHstp2_2 with (GH0:= (0, (false, T3))::GH0)
                                  (GX:=GX) (TX:= TX)
-                                 (x1:=x1) 
-                                 (x2 := x2).
+                                 (x1:=x1) (x2:=x2) (b:=b)
+      .
 
       rewrite H4 in IHstp2_2. unfold id in IHstp2_2.
-      simpl in IHstp2_2.
       rewrite subst_open_commute in IHstp2_2.
       rewrite subst_open_commute in IHstp2_2.
       rewrite map_length.
-      
-      eapply IHstp2_2.
+      simpl in IHstp2_2.
+      eapply IHstp2_2. subst GH. eauto.
 
-
-(*
-    (0, vtya G2 T3) :: openm_env 0 (GH0 ++ [(0, vtya GX TX)]) = 
-                       openm_env 0 (GH2 ++ [(0, vtya GX TX)])
-
-    --->
-
-    (0, vtya G2 openm_rec 0 0 (S (length GH0)) T2X1 :: openm_env 0 (GH0 ++ [(0, vtya GX TX)]) = 
-    openm_env 0 ((0, vtya G2 T2X1)::GH0 ++ [(0, vtya GX TX)])
-
-    --->
-
-    GH2 = (0, vtya G2 T2X1)::GH0
-
-*)
-    remember (((0,vtya G2 T2X1)::GH0)) as GH2.
-    assert (length GH = length GH0 + 1). { subst. rewrite openm_env_length. eapply app_length. }
-    assert (length GH2 = S (length GH0)) as EL. { subst. eauto. }
-
-    assert ((0, vtya G2 (openm_rec 0 (length GH) T2X1)) :: openm_env (GH0 ++ [(0, vtya GX TX)]) =
-             openm_env (((0, vtya G2 T2X1) :: GH0) ++ [(0, vtya GX TX)])) as EV1. {
-      subst. rewrite (openm_env_length). 
-      rewrite openm_env_cons. eauto.
-    }
-
-    specialize IHstp2_2 with (T1X:=T1X2) (T2X:=T2X2) (GH0:=GH2) (GX:=GX) (TX:=TX)
-      (D1:= D1) (D2:=D2).
-    assert (stp2
-              G1
-               (openm_rec 0 D1
-                          (open_rec D1 (TSel x1) T1X2))
-               G2
-               (openm_rec 0 D2
-                          (open_rec D2 (TSel x2) T2X2))
-               (openm_env (open_env GX TX GH2))) as IH. {
-      subst. eapply IHstp2_2. reflexivity. eapply EV1.
-      subst. eapply open_more.
-      subst. eapply open_more.
-    }
-    rewrite openm_env_length. rewrite open_env_length. unfold open.
-    rewrite open_more. rewrite open_more.
-
-    assert ((openm_env (open_env GX TX GH2)) = ((0,
-      vtya ((fresh G2, vty GX TX) :: G2)
-        (openm_rec 0 (length GH0) (open_rec (length GH0) (TSel (fresh G2)) T2X1)))
-                 :: openm_env (open_env GX TX GH0))) as EV2. {
-      subst GH2. 
-      unfold open_env. fold open_env. unfold openm_env. fold openm_env.
-      rewrite open_env_length.
-      eauto.
-    }
-    rewrite <-EV2. rewrite <- EL.
-    eapply IH.
+      destruct IX1 as [IX1|IX1]. eauto. inversion IX1. eauto.
+      destruct IX2 as [IX2|IX2]. eauto. inversion IX2. eauto.
+      subst GH. rewrite app_length in H1. simpl in H1. eauto.
+      subst GH. rewrite app_length in H0. simpl in H0. eauto.
 Qed.
+
 
   
 Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
