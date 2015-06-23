@@ -1336,24 +1336,40 @@ Qed.
 
 
 
-Lemma closed_subst: forall n x T, closed 1 (n+1) T -> closed 1 (n) (subst (TSel x) T).
-Proof. admit. Qed.
+Lemma closed_subst: forall j n TX T, closed j (n+1) T -> closed 0 0 TX -> closed j (n) (subst TX T).
+Proof.
+  intros. generalize dependent j. induction T; intros; inversion H; unfold closed; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
 
-Lemma closed_subst2: forall n TX T, closed 1 (n+1) T -> closed 0 0 TX -> closed 1 (n) (subst TX T).
-Proof. admit. Qed.
+  - Case "TSelH". simpl.
+    case_eq (beq_nat i 0); intros E. eapply closed_upgrade. eapply closed_upgrade_free. eauto. omega. eauto. omega.
+    econstructor. assert (i > 0). eapply beq_nat_false_iff in E. omega. omega.
+Qed.
 
     
-Lemma subst_open_commute: forall n TX T2, closed 1 (n+1) T2 -> closed 0 0 TX ->
-    subst TX (open (TSelH (n+1)) T2) = open (TSelH n) (subst TX T2).
-Proof. admit. Qed.
+Lemma subst_open_commute: forall j n TX T2, closed (j+1) (n+1) T2 -> closed 0 0 TX ->
+    subst TX (open_rec j (TSelH (n+1)) T2) = open_rec j (TSelH n) (subst TX T2).
+Proof.
+  intros. generalize dependent j. generalize dependent n.
+  induction T2; intros; inversion H; simpl; eauto;
+          try rewrite IHT2_1; try rewrite IHT2_2; try rewrite IHT2; eauto.
 
-(*
-Lemma closed_open: forall n T, closed 0 0 (open_rec 0 (TSelH n) T).
-Proof. admit. Qed.
-*)
+  - Case "TSelH". simpl. case_eq (beq_nat i 0); intros E.
+    eapply closed_no_open. eapply closed_upgrade. eauto. omega.
+    eauto.
+  - Case "TSelB". simpl. case_eq (beq_nat j i); intros E.
+    simpl. case_eq (beq_nat (n+1) 0); intros E2. eapply beq_nat_true_iff in E2. omega.
+    assert (n+1-1 = n). omega. eauto.
+    eauto.
+Qed.
+  
 
-Lemma Forall2_length: forall A B f (G1:list A) (G2:list B), Forall2 f G1 G2 -> length G1 = length G2.
-Proof. admit. Qed.
+Lemma Forall2_length: forall A B f (G1:list A) (G2:list B),
+                        Forall2 f G1 G2 -> length G1 = length G2.
+Proof.
+  intros. induction H.
+  eauto.
+  simpl. eauto.
+Qed.
 
 
 
@@ -1365,12 +1381,6 @@ Definition compat (GX:venv) (TX: ty) (G1:venv) (T1:ty) (T1':ty) :=
   (closed 0 0 T1 /\ T1' = T1) \/
   (T1' = subst TTop T1). (* catchall case, this means env doesn't matter *)
                         
-Definition check (GX:venv) (TX: ty) (G1:venv) (T1:ty) :=
-  (exists x1, index x1 G1 = Some (vty GX TX)) \/ 
-  (G1 = GX) \/
-  (closed 0 0 T1).
-
-
 Definition compat2 (GX:venv) (TX: ty) (p1:id*(venv*ty)) (p2:id*(venv*ty)) :=
   match p1, p2 with
       (n1,(G1,T1)), (n2,(G2,T2)) => n1=n2(*+1 disregarded*) /\ G1 = G2 /\ compat GX TX G1 T1 T2
@@ -1383,18 +1393,18 @@ Lemma compat_all: forall GX TX G1 T1 T2 T1' n,
     exists TA TB, T1' = TAll TA TB /\
                   closed 1 n TB /\
                   compat GX TX G1 T1 TA /\
-                  compat GX TX G1 (open (TSelH (n+1)) T2) (open (TSelH n) TB).
+                  compat GX TX G1 (open_rec 0 (TSelH (n+1)) T2) (open_rec 0 (TSelH n) TB).
 Proof.
   intros ? ? ? ? ? ? ? CC CLX CL2. destruct CC.
 
-    simpl in H. destruct H. destruct H. repeat eexists. eauto. eapply closed_subst2. eauto. eauto.  unfold compat. eauto. unfold compat. left. exists x. eauto. rewrite subst_open_commute. eauto. eauto. eauto.
+    simpl in H. destruct H. destruct H. repeat eexists. eauto. eapply closed_subst. eauto. eauto.  unfold compat. eauto. unfold compat. left. exists x. eauto. rewrite subst_open_commute. eauto. eauto. eauto.
 
-    destruct H. destruct H. simpl in H0. repeat eexists. eauto. eapply closed_subst2. eauto. eauto. unfold compat. eauto. unfold compat. right. left. rewrite subst_open_commute. eauto. eauto. eauto.
+    destruct H. destruct H. simpl in H0. repeat eexists. eauto. eapply closed_subst. eauto. eauto. unfold compat. eauto. unfold compat. right. left. rewrite subst_open_commute. eauto. eauto. eauto.
 
     destruct H. destruct H. inversion H. repeat eexists. eauto. subst. eapply closed_upgrade_free. eauto. omega. unfold compat. eauto. unfold compat. eauto. right. right. right. rewrite subst_open_commute. rewrite (closed_no_subst T2 1). eauto. eauto. eauto. eauto.
 
-    simpl in H. repeat eexists. eauto. eapply closed_subst2. eauto. eauto. unfold compat. eauto. unfold compat. eauto. right. right. right. rewrite subst_open_commute. eauto. eauto. eauto.
-    Qed.
+    simpl in H. repeat eexists. eauto. eapply closed_subst. eauto. eauto. unfold compat. eauto. unfold compat. eauto. right. right. right. rewrite subst_open_commute. eauto. eauto. eauto.
+Qed.
 
 
 
