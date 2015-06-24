@@ -30,7 +30,6 @@ Inductive ty : Type :=
   | TSel   : id -> ty
   | TSelH  : id -> ty
   | TAll   : ty -> ty -> ty
-
   | TSelB  : id -> ty                           
 .
 
@@ -209,6 +208,19 @@ Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
     | TSel i       => TSel i
     | TSelH i      => if beq_nat i 0 then U else TSelH (i-1)
     | TAll T1 T2   => TAll (subst U T1) (subst U T2)
+  end.
+
+Fixpoint nosubst (T : ty) {struct T} : Prop :=
+  match T with
+    | TTop         => True
+    | TBool        => True
+    | TMem T1      => nosubst T1
+    | TMemE T1     => nosubst T1
+    | TFun T1 T2   => nosubst T1 /\ nosubst T2
+    | TSelB i      => True
+    | TSel i       => True
+    | TSelH i      => i <> 0
+    | TAll T1 T2   => nosubst T1 /\ nosubst T2
   end.
 
 
@@ -1333,10 +1345,18 @@ Qed.
 
 
 
+Lemma closed_open: forall j n TX T, closed (j+1) n T -> closed j n TX -> closed j n (open_rec j TX T).
+Proof.
+  intros. generalize dependent j. induction T; intros; inversion H; unfold closed; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto. eapply closed_upgrade. eauto. eauto.
+
+  - Case "TSelB". simpl.
+    case_eq (beq_nat j i); intros E. eapply closed_upgrade. eauto. omega. 
+    
+    econstructor. eapply beq_nat_false_iff in E. omega.
+Qed.
 
 
-
-Lemma closed_subst: forall j n TX T, closed j (n+1) T -> closed 0 0 TX -> closed j (n) (subst TX T).
+Lemma closed_subst: forall j n TX T, closed j (n+1) T -> closed 0 n TX -> closed j (n) (subst TX T).
 Proof.
   intros. generalize dependent j. induction T; intros; inversion H; unfold closed; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
 
@@ -1345,8 +1365,19 @@ Proof.
     econstructor. assert (i > 0). eapply beq_nat_false_iff in E. omega. omega.
 Qed.
 
+Lemma closed_subst_e: forall j n TX T, closed j n T -> closed 0 n TX -> closed j n (subst TX T).
+Proof.
+  intros. generalize dependent j. induction T; intros; inversion H; unfold closed; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
+
+  - Case "TSelH". simpl.
+    case_eq (beq_nat i 0); intros E. eapply closed_upgrade. eapply closed_upgrade_free. eauto. omega. eauto. omega.
+    econstructor. assert (i > 0). eapply beq_nat_false_iff in E. omega. omega.
+Qed.
+
+
+
     
-Lemma subst_open_commute: forall j n TX T2, closed (j+1) (n+1) T2 -> closed 0 0 TX ->
+Lemma subst_open_commute_m: forall j n m TX T2, closed (j+1) (n+1) T2 -> closed 0 m TX ->
     subst TX (open_rec j (TSelH (n+1)) T2) = open_rec j (TSelH n) (subst TX T2).
 Proof.
   intros. generalize dependent j. generalize dependent n.
@@ -1361,7 +1392,13 @@ Proof.
     assert (n+1-1 = n). omega. eauto.
     eauto.
 Qed.
-  
+
+Lemma subst_open_commute: forall j n TX T2, closed (j+1) (n+1) T2 -> closed 0 0 TX ->
+    subst TX (open_rec j (TSelH (n+1)) T2) = open_rec j (TSelH n) (subst TX T2).
+Proof.
+  intros. eapply subst_open_commute_m; eauto.
+Qed.
+
 
 Lemma Forall2_length: forall A B f (G1:list A) (G2:list B),
                         Forall2 f G1 G2 -> length G1 = length G2.
@@ -1375,11 +1412,37 @@ Qed.
 
 (* compat helpers --- possible results of substitution, with relation to venv *)
 
+(*
+Fixpoint 
+*)
+
+
+    
+Lemma nosubst_intro: forall j T, closed j 0 T -> nosubst T.
+Proof.
+  admit.
+Qed.
+
+Lemma nosubst_open: forall j TX T2, nosubst TX -> nosubst (open_rec j TX T2).
+Proof.
+  admit.
+Qed.
+
+
+Inductive chain: ty -> ty -> Prop :=
+| sm_refl: forall T1,
+  chain T1 T1
+| sm_step: forall T1' T2' n,
+  chain T1' T2' ->
+  chain (open_rec 0 (TSelH n) T1') (open_rec 0 (TSelH (n+1)) T2').
+       
 Definition compat (GX:venv) (TX: ty) (G1:venv) (T1:ty) (T1':ty) :=
   (exists x1, index x1 G1 = Some (vty GX TX) /\ T1' = (subst (TSel x1) T1)) \/ 
   (G1 = GX /\ T1' = (subst TX T1)) \/
   (closed 0 0 T1 /\ T1' = T1) \/
-  (T1' = subst TTop T1). (* catchall case, this means env doesn't matter *)
+  (nosubst T1 /\ T1' = subst TTop T1).
+    
+(*  (exists n, closed 0 n T1 /\ chain T1' T1). (* catchall case, this means env doesn't matter. we really want to say (TSelH 0) does not occure in T1  *) *)
                         
 Definition compat2 (GX:venv) (TX: ty) (p1:id*(venv*ty)) (p2:id*(venv*ty)) :=
   match p1, p2 with
@@ -1399,16 +1462,73 @@ Proof.
 
     simpl in H. destruct H. destruct H. repeat eexists. eauto. eapply closed_subst. eauto. eauto.  unfold compat. eauto. unfold compat. left. exists x. eauto. rewrite subst_open_commute. eauto. eauto. eauto.
 
-    destruct H. destruct H. simpl in H0. repeat eexists. eauto. eapply closed_subst. eauto. eauto. unfold compat. eauto. unfold compat. right. left. rewrite subst_open_commute. eauto. eauto. eauto.
+    destruct H. destruct H. simpl in H0. repeat eexists. eauto. eapply closed_subst. eauto. eapply closed_upgrade_free. eauto. omega. unfold compat. eauto. unfold compat. right. left. rewrite subst_open_commute. eauto. eauto. eauto.
 
-    destruct H. destruct H. inversion H. repeat eexists. eauto. subst. eapply closed_upgrade_free. eauto. omega. unfold compat. eauto. unfold compat. eauto. right. right. right. rewrite subst_open_commute. rewrite (closed_no_subst T2 1). eauto. eauto. eauto. eauto.
+    destruct H. destruct H. inversion H. repeat eexists. eauto. subst. eapply closed_upgrade_free. eauto. omega. unfold compat. eauto. unfold compat. eauto. right. right. 
 
-    simpl in H. repeat eexists. eauto. eapply closed_subst. eauto. eauto. unfold compat. eauto. unfold compat. eauto. right. right. right. rewrite subst_open_commute. eauto. eauto. eauto.
+(*
+  CLX : closed 0 0 TX
+  CL1 : closed 0 n T1
+  CL2 : closed 1 (n + 1) T2
+  H5 : closed_rec 0 0 T1
+  H6 : closed_rec 1 0 T2
+  ============================
+   closed 0 0 (open_rec 0 (TSelH (n + 1)) T2) /\
+   open_rec 0 (TSelH n) T2 = open_rec 0 (TSelH (n + 1)) T2
+*)
+    right. split. eapply nosubst_open. simpl. omega. symmetry.
+    assert (T2 = subst TTop T2). symmetry. eapply closed_no_subst. eauto.
+    remember (open_rec 0 (TSelH n) T2) as XX. rewrite H7 in HeqXX. subst XX.
+    eapply subst_open_commute. eauto. eauto.
+
+    simpl in H. destruct H. destruct H. repeat eexists. eauto. eapply closed_subst. eauto. eauto. 
+    unfold compat. right. right. right. eauto. 
+    unfold compat. right. right. right. split. eapply nosubst_open. simpl. omega.
+    rewrite subst_open_commute. eauto. eauto. eauto.
 Qed.
 
 
 
+Lemma compat_selh: forall GX TX G1 T1' GH0 GH0' (GXX:venv) (TXX:ty) x,
+    compat GX TX G1 (TSelH x) T1' ->
+    closed 0 0 TX ->
+    indexr x (GH0 ++ [(0, (GX, TX))]) = Some (GXX, TXX) ->
+    Forall2 (compat2 GX TX) GH0 GH0' ->
+    (x = 0 /\ GXX = GX /\ TXX = TX) \/
+    exists TXX',
+      x > 0 /\ T1' = TSelH (x-1) /\
+      indexr (x-1) GH0' = Some (GXX, TXX') /\
+      compat GX TX GXX TXX TXX'
+.
+Proof.
+  admit.
+Qed.
 
+(*
+  H : indexr x GH = Some (GX, TX)
+  H0 : stp2 GX TX G2 T2 GH
+  IHstp2 : forall (GH0 : list (nat * (venv * ty)))
+             (GH0' : list (id * (venv * ty))) (GX0 : venv) 
+             (TX0 T1' T2' : ty),
+           GH = GH0 ++ [(0, (GX0, TX0))] ->
+           closed 0 0 TX0 ->
+           compat GX0 TX0 GX TX T1' ->
+           compat GX0 TX0 G2 T2 T2' ->
+           Forall2 (compat2 GX0 TX0) GH0 GH0' -> stp2 GX T1' G2 T2' GH0'
+  GH0 : list (nat * (venv * ty))
+  GH0' : list (id * (venv * ty))
+  GXX : venv
+  TXX : ty
+  T1' : ty
+  T2' : ty
+  H1 : GH = GH0 ++ [(0, (GXX, TXX))]
+  CX : closed 0 0 TXX
+  IX1 : compat GXX TXX G1 (TSelH x) T1'
+  IX2 : compat GXX TXX G2 T2 T2'
+  FA : Forall2 (compat2 GXX TXX) GH0 GH0'
+  H2 : length GH = length GH0 + 1
+  EL : length GH0 = length GH0'
+*)
 
 
 
@@ -1425,9 +1545,7 @@ Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
      compat GX TX G1 T1 T1' ->
      compat GX TX G2 T2 T2' ->
      Forall2 (compat2 GX TX) GH0 GH0' ->
-     stp2 G1 T1'
-          G2 T2'
-          GH0'.
+     stp2 G1 T1' G2 T2' GH0'.
 Proof.
   intros G1 G2 T1 T2 GH H.
   induction H.
@@ -1436,8 +1554,47 @@ Proof.
   - admit.
   - admit.
   - admit.
-  - admit.
-  - admit.
+  - Case "sela1".
+    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA.
+    
+    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
+
+    assert (compat GXX TXX G1 (TSelH x) T1') as IXX. eauto.
+    
+    eapply (compat_selh GXX TXX G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
+
+    destruct IX1.
+    + destruct H3. destruct H4. subst.
+
+      assert (compat GXX TXX GXX TXX TXX) as CPX. admit.
+      
+      inversion IXX.
+
+      destruct H1. destruct H1. subst. simpl.
+      eapply stp2_sel1. eauto.
+      eapply IHstp2. eauto. eauto. eauto. eauto. eauto.
+      
+      inversion H1.
+
+      destruct H3. subst. simpl.
+      eapply IHstp2. eauto. eauto. eauto. eauto. eauto.
+
+      inversion H3.
+
+      destruct H4. inversion H4. omega. (* contra *)
+
+      destruct H4. simpl in H4. destruct H4. eauto. (* contra *)
+    + destruct H3. destruct H3. destruct H4. destruct H5.
+      subst T1'. eapply stp2_sela1. eauto.
+      eapply IHstp2. eauto. eauto. eauto. eauto. eauto.
+
+    + eauto.
+    + subst GH. eauto.
+    + eauto.
+
+      
+  - Case "selx". admit.
   - Case "all".
     intros GH0 GH0' GX TX T1' T2' ? CX IX1 IX2 FA.
     
@@ -1461,9 +1618,9 @@ Proof.
       rewrite app_length. simpl. rewrite EL. eauto.
       eapply Forall2_cons. simpl. eauto. eauto.
     + eauto.
-    + eapply closed_upgrade_free. eauto. omega.
+    + eauto. subst GH. rewrite <-EL. eapply closed_upgrade_free. eauto. omega.
     + eauto.
-    + eapply closed_upgrade_free. eauto. omega.
+    + eauto. subst GH. rewrite <-EL. eapply closed_upgrade_free. eauto. omega.
 Qed.
 
 
@@ -1578,6 +1735,12 @@ Proof.
       subst GH. rewrite app_length in H1. simpl in H1. eauto. eauto.
       subst GH. rewrite app_length in H0. simpl in H0. eauto. eauto.
 Qed.
+
+
+
+(* DONE *)
+
+
 
 
 
