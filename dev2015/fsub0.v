@@ -1462,6 +1462,81 @@ Definition compat2 (GX:venv) (TX: ty) (p1:id*(venv*ty)) (p2:id*(venv*ty)) :=
   end.
 
 
+
+
+
+
+Lemma indexr_miss0: forall GH GH' GX TX (GXX:venv) (TXX:ty) n,
+      Forall2 (compat2 GX TX) GH GH' ->
+      indexr (n+1) (GH ++ [(0,(GX, TX))]) = Some (GXX,TXX) ->
+      exists TXX', indexr n GH' = Some (GXX,TXX') /\ compat GX TX GXX TXX TXX'.
+Proof.
+  intros. revert n H0. induction H.
+  - intros. simpl. eauto. simpl in H0. assert (n+1 <> 0). omega. eapply beq_nat_false_iff in H. rewrite H in H0. inversion H0.
+  - intros. simpl. destruct y.
+    case_eq (beq_nat n (length l')); intros E.
+    + simpl in H1. destruct x. rewrite app_length in H1. simpl in H1.
+      assert (n = length l'). eapply beq_nat_true_iff. eauto.
+      assert (beq_nat (n+1) (length l + 1) = true). eapply beq_nat_true_iff.
+      rewrite (Forall2_length _ _ _ _ _ H0). omega.
+      rewrite H3 in H1. destruct p. destruct p0. inversion H1. subst. simpl in H.
+      destruct H. destruct H2. subst. inversion H1. subst.
+      eexists. eauto.
+    + simpl in H1. destruct x.
+      assert (n <> length l'). eapply beq_nat_false_iff. eauto.
+      assert (beq_nat (n+1) (length l + 1) = false). eapply beq_nat_false_iff.
+      rewrite (Forall2_length _ _ _ _ _ H0). omega.
+      rewrite app_length in H1. simpl in H1.
+      rewrite H3 in H1.
+      eapply IHForall2. eapply H1.
+Qed.
+
+Lemma compat_sel: forall GX TX G1 T1' (GXX:venv) (TXX:ty) x,
+    compat GX TX G1 (TSel x) T1' ->
+    closed 0 0 TX ->
+    closed 0 0 TXX ->
+    index x G1 = Some (vty GXX TXX) ->
+    exists TXX', T1' = (TSel x) /\ compat GX TX GXX TXX TXX'
+.
+Proof.
+  intros ? ? ? ? ? ? ? CC CL CL1 IX.
+
+  destruct CC.
+  destruct H. destruct H. simpl in H0. eexists. split. eauto. right. right. left. eauto.
+  destruct H. destruct H. simpl in H0. eexists. split. eauto. right. right. left. eauto.
+  destruct H. destruct H. simpl in H0. eexists. split. eauto. right. right. left. eauto.
+  destruct H. destruct H. simpl in H0. eexists. split. eauto. right. right. left. eauto.
+Qed.
+
+Lemma compat_selh: forall GX TX G1 T1' GH0 GH0' (GXX:venv) (TXX:ty) x,
+    compat GX TX G1 (TSelH x) T1' ->
+    closed 0 0 TX ->
+    indexr x (GH0 ++ [(0, (GX, TX))]) = Some (GXX, TXX) ->
+    Forall2 (compat2 GX TX) GH0 GH0' ->
+    (x = 0 /\ GXX = GX /\ TXX = TX) \/
+    exists TXX',
+      x > 0 /\ T1' = TSelH (x-1) /\
+      indexr (x-1) GH0' = Some (GXX, TXX') /\
+      compat GX TX GXX TXX TXX'
+.
+Proof.
+  intros ? ? ? ? ? ? ? ? ? CC CL IX FA. 
+  
+  case_eq (beq_nat x 0); intros E.
+  - left. assert (x = 0). eapply beq_nat_true_iff. eauto. subst x. rewrite indexr_hit0 in IX. inversion IX. eauto.
+  - right. assert (x <> 0). eapply beq_nat_false_iff. eauto.
+    assert (x > 0). unfold id. unfold id in H. omega.
+    eapply (indexr_miss0) in FA. destruct FA.
+    destruct CC.
+    + simpl in H2. rewrite E in H2.
+      destruct H2. destruct H2. eexists. eauto.
+    + destruct H2. destruct H2. eexists. eauto. simpl in H3. rewrite E in H3.
+      eauto.
+      destruct H2. destruct H2. inversion H2. subst. omega.
+      destruct H2. simpl in H3. rewrite E in H3. eauto.
+    + assert (x-1+1=x). omega. rewrite H1. eauto.
+Qed.
+
 Lemma compat_all: forall GX TX G1 T1 T2 T1' n,
     compat GX TX G1 (TAll T1 T2) T1' ->
     closed 0 0 TX -> closed 1 (n+1) T2 ->
@@ -1499,81 +1574,6 @@ Proof.
     rewrite subst_open_commute. eauto. eauto. eauto.
 Qed.
 
-
-
-
-Lemma indexr_miss0: forall GH GH' GX TX (GXX:venv) (TXX:ty) n,
-      Forall2 (compat2 GX TX) GH GH' ->
-      indexr (n+1) (GH ++ [(0,(GX, TX))]) = Some (GXX,TXX) ->
-      exists TXX', indexr n GH' = Some (GXX,TXX') /\ compat GX TX GXX TXX TXX'.
-Proof.
-  intros. revert n H0. induction H.
-  - intros. simpl. eauto. simpl in H0. assert (n+1 <> 0). omega. eapply beq_nat_false_iff in H. rewrite H in H0. inversion H0.
-  - intros. simpl. destruct y.
-    case_eq (beq_nat n (length l')); intros E.
-    + simpl in H1. destruct x. rewrite app_length in H1. simpl in H1.
-      assert (n = length l'). eapply beq_nat_true_iff. eauto.
-      assert (beq_nat (n+1) (length l + 1) = true). eapply beq_nat_true_iff.
-      rewrite (Forall2_length _ _ _ _ _ H0). omega.
-      rewrite H3 in H1. destruct p. destruct p0. inversion H1. subst. simpl in H.
-      destruct H. destruct H2. subst. inversion H1. subst.
-      eexists. eauto.
-    + simpl in H1. destruct x.
-      assert (n <> length l'). eapply beq_nat_false_iff. eauto.
-      assert (beq_nat (n+1) (length l + 1) = false). eapply beq_nat_false_iff.
-      rewrite (Forall2_length _ _ _ _ _ H0). omega.
-      rewrite app_length in H1. simpl in H1.
-      rewrite H3 in H1.
-      eapply IHForall2. eapply H1.
-Qed.
-
-
-Lemma compat_selh: forall GX TX G1 T1' GH0 GH0' (GXX:venv) (TXX:ty) x,
-    compat GX TX G1 (TSelH x) T1' ->
-    closed 0 0 TX ->
-    indexr x (GH0 ++ [(0, (GX, TX))]) = Some (GXX, TXX) ->
-    Forall2 (compat2 GX TX) GH0 GH0' ->
-    (x = 0 /\ GXX = GX /\ TXX = TX) \/
-    exists TXX',
-      x > 0 /\ T1' = TSelH (x-1) /\
-      indexr (x-1) GH0' = Some (GXX, TXX') /\
-      compat GX TX GXX TXX TXX'
-.
-Proof.
-  intros ? ? ? ? ? ? ? ? ? CC CL IX FA. 
-  
-  case_eq (beq_nat x 0); intros E.
-  - left. assert (x = 0). eapply beq_nat_true_iff. eauto. subst x. rewrite indexr_hit0 in IX. inversion IX. eauto.
-  - right. assert (x <> 0). eapply beq_nat_false_iff. eauto.
-    assert (x > 0). unfold id. unfold id in H. omega.
-    eapply (indexr_miss0) in FA. destruct FA.
-    destruct CC.
-    + simpl in H2. rewrite E in H2.
-      destruct H2. destruct H2. eexists. eauto.
-    + destruct H2. destruct H2. eexists. eauto. simpl in H3. rewrite E in H3.
-      eauto.
-      destruct H2. destruct H2. inversion H2. subst. omega.
-      destruct H2. simpl in H3. rewrite E in H3. eauto.
-    + assert (x-1+1=x). omega. rewrite H1. eauto.
-Qed.
-
-
-Lemma compat_sel: forall GX TX G1 T1' (GXX:venv) (TXX:ty) x,
-    compat GX TX G1 (TSel x) T1' ->
-    closed 0 0 TX ->
-    closed 0 0 TXX ->
-    index x G1 = Some (vty GXX TXX) ->
-    exists TXX', T1' = (TSel x) /\ compat GX TX GXX TXX TXX'
-.
-Proof.
-  intros ? ? ? ? ? ? ? CC CL CL1 IX.
-
-  destruct CC.
-  destruct H. destruct H. simpl in H0. eexists. split. eauto. right. right. left. eauto.
-  destruct H. destruct H. simpl in H0. eexists. split. eauto. right. right. left. eauto.
-  destruct H. destruct H. simpl in H0. eexists. split. eauto. right. right. left. eauto.
-  destruct H. destruct H. simpl in H0. eexists. split. eauto. right. right. left. eauto.
-Qed.
   
 
 
@@ -1591,9 +1591,12 @@ Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
 Proof.
   intros G1 G2 T1 T2 GH H.
   induction H.
-  - admit.
-  - admit.
-  - admit.
+  - Case "bool".
+    intros.
+    
+  - Case "fun".
+  - Case "mem".
+    
   - Case "sel1". 
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
     
