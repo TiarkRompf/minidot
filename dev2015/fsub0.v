@@ -284,6 +284,8 @@ Does it make a difference? It seems like we can always widen f?
 
 
 Inductive stp2: venv -> ty -> venv -> ty -> list (id*(venv*ty))  -> Prop :=
+| stp2_top: forall G1 G2 GH T,
+    stp2 G1 T G2 TTop GH
 | stp2_bool: forall G1 G2 GH,
     stp2 G1 TBool G2 TBool GH
 | stp2_fun: forall G1 G2 T1 T2 T3 T4 GH,
@@ -296,13 +298,13 @@ Inductive stp2: venv -> ty -> venv -> ty -> list (id*(venv*ty))  -> Prop :=
 
 (* atm not clear if these are needed *)
 | stp2_sel1: forall G1 G2 GX TX x T2 GH,
-    index x G1 = Some (vty GX TX) ->
+    index x G1 = Some (vty GX (TMem TX)) ->
     closed 0 0 TX ->
     stp2 GX TX G2 T2 GH ->
     stp2 G1 (TSel x) G2 T2 GH
 
 | stp2_sel2: forall G1 G2 GX TX x T1 GH,
-    index x G2 = Some (vty GX TX) ->
+    index x G2 = Some (vty GX (TMem TX)) ->
     closed 0 0 TX ->
     stp2 G1 T1 GX TX GH ->
     stp2 G1 T1 G2 (TSel x) GH
@@ -1099,7 +1101,7 @@ Qed.
 
 
 Definition compat (GX:venv) (TX: ty) (G1:venv) (T1:ty) (T1':ty) :=
-  (exists x1, index x1 G1 = Some (vty GX TX) /\ T1' = (subst (TSel x1) T1)) \/ 
+  (exists x1, index x1 G1 = Some (vty GX (TMem TX)) /\ T1' = (subst (TSel x1) T1)) \/ 
   (G1 = GX /\ T1' = (subst TX T1)) \/
   (closed 0 0 T1 /\ T1' = T1) \/ (* this one is for convenience: redundant with next *)
   (nosubst T1 /\ T1' = subst TTop T1).    
@@ -1286,6 +1288,11 @@ Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
 Proof.
   intros G1 G2 T1 T2 GH H.
   induction H.
+  - Case "top".
+    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    (* eapply compat_top in IX2. *)
+    admit.
+    
   - Case "bool".
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
     eapply compat_bool in IX1.
@@ -1519,16 +1526,9 @@ Lemma stp_to_stp2: forall G1 GH T1 T2,
   stp G1 GH T1 T2 ->
   forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
   stp2 GX T1 GX T2 GY.
-Proof. admit. Qed.
-
-(*
-Lemma stp_to_stp2: forall G1 G2 T1 T2,
-  stp G2 T1 T2 ->
-  sub_env G1 G2 ->                   
-  forall GX GH, wf_env GX G1 -> wf_envh GH G2 ->
-  stp2 GX T1 GX T2 GH.
 Proof.
-  intros G1 G2  T1 T2 ST SE. induction ST; intros GX GH WX WH.
+  intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY.
+  - Case "top". eauto.
   - Case "bool". eauto.
   - Case "fun". eauto.
   - Case "mem". eauto.
@@ -1537,7 +1537,8 @@ Proof.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
     inversion VT; try solve by inversion; subst.
-    eapply stp2_sel1; eauto. inversion H2. subst. eauto. 
+    eapply stp2_sel1; eauto. inversion H2. subst. eapply stp2_closed1 in H7. eauto.
+    inversion H2. subst. eapply IHST.
     eapply stp2_sela1; eauto. inversion H2. subst. eauto. 
   - Case "selx". eauto.
     assert (exists v : vl, index x GX = Some v /\ val_type GX v (TMem T)) as A.
