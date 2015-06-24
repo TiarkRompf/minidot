@@ -306,7 +306,7 @@ Inductive stp2: venv -> ty -> venv -> ty -> list (id*(venv*ty))  -> Prop :=
     stp2 G1 (TSelH x) G2 T2 GH
 
          
-| stp2_selx: forall G1 G2 GX TX x GH,
+| stp2_selax: forall G1 G2 GX TX x GH,
     indexr x GH = Some (GX, TX) ->
     indexr x GH = Some (GX, TX) ->
     (*closed 0 x TX ->*)
@@ -1320,7 +1320,7 @@ Proof.
     + destruct H3. destruct H4. omega.
     + destruct H3. destruct H3. destruct H5. destruct H6.
       destruct H4. destruct H4. destruct H8. destruct H9.
-      subst. eapply stp2_selx. eauto. eauto.
+      subst. eapply stp2_selax. eauto. eauto.
 
     + eauto.
     + subst GH. eauto.
