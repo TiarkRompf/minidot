@@ -370,21 +370,18 @@ with val_type : venv -> vl -> ty -> Prop :=
     val_type env (vtabs venv x T1 y) TE
 .
 
+
 Inductive wf_envh : venv -> aenv -> tenv -> Prop := 
 | wfeh_nil : forall vvs, wf_envh vvs nil nil
-| wfeh_cons : forall n v t vs vvs ts,
-    valh_type vvs vs v t  ->
+| wfeh_cons : forall n t vs vvs ts,
     wf_envh vvs vs ts ->
-    wf_envh vvs (cons (n,v) vs) (cons (n,t) ts)
-
-(* TODO: need to figure out how this should look! *)            
-with valh_type : venv -> aenv -> (venv*ty) -> ty -> Prop :=
-| v_tya: forall aenv env venv tenv T1 TE,
-    wf_envh venv aenv tenv -> (* T1 wf in tenv ? what about recursion?? *)
-    stp2 venv (TMem T1) env TE aenv ->
-    valh_type env aenv (venv, T1) TE 
+    wf_envh vvs (cons (n,(vvs,t)) vs) (cons (n,TMem t) ts)
 .
-
+                 
+Inductive valh_type : venv -> aenv -> (venv*ty) -> ty -> Prop :=
+| v_tya: forall aenv venv T1,
+    valh_type venv aenv (venv, T1) (TMem T1)
+.
 
 
 
@@ -711,6 +708,11 @@ Lemma stp2_extendH_mult : forall G1 G2 T1 T2 H H2,
                        stp2 G1 T1 G2 T2 (H2++H).
 Proof. admit. Qed.
 
+Lemma stp2_extendH_mult0 : forall G1 G2 T1 T2 H2,
+                       stp2 G1 T1 G2 T2 [] ->
+                       stp2 G1 T1 G2 T2 H2.
+Proof. admit. Qed.
+
 
 Lemma stp2_reg2 : forall G1 G2 T1 T2 H ,
                        stp2 G1 T1 G2 T2 H ->
@@ -742,14 +744,6 @@ Lemma valtp_extend : forall vs v x v1 T,
                        val_type ((x,v1)::vs) v T.
 Proof.
   intros. induction H; eauto; econstructor; eauto; eapply stp2_extend2; eauto.
-Qed.
-
-Lemma valhtp_extend : forall vvs vs v x v1 T,
-                       valh_type vvs vs v T ->
-                       valh_type vvs ((x,v1)::vs) v T.
-Proof.
-  (* TODO: tricky induction *)
-  admit.
 Qed.
 
 
@@ -789,20 +783,20 @@ Lemma index_safeh_ex: forall H1 H2 G1 GH TF i,
 Proof. intros. induction H0.
    - Case "nil". inversion H3.
    - Case "cons". inversion H3.
-       case_eq (beq_nat i (length ts)); intros E2.
-       * SSCase "hit".         
-         assert (indexr i ((n, v) :: vs) = Some v). eauto. unfold index. rewrite E2 in H4.
-         inversion H4. subst. eauto. assert (length ts = length vs). admit.
-         simpl in H3. rewrite E2 in H3. 
-         rewrite H2 in E2. simpl. rewrite E2. eauto.
-         eexists. split. eauto. simpl in H3. rewrite E2 in H4. inversion H4. subst t. eauto. eapply valhtp_extend; eauto.
-       * SSCase "miss".
-         assert (length ts = length vs). admit.
-         rewrite E2 in H4. simpl in H3. rewrite E2 in H3. simpl. rewrite H2 in E2. rewrite E2.
-         simpl in H0. 
-         assert (exists v0, indexr i vs = Some v0 /\ valh_type vvs vs v0 TF) as HI. eapply IHwf_envh. eauto. eauto.
-         inversion HI as [v0 HI1]. inversion HI1.
-         eexists. econstructor. eauto. eapply valhtp_extend; eauto.
+     case_eq (beq_nat i (length ts)); intros E2.
+     * SSCase "hit".
+       rewrite E2 in H2. inversion H2. subst. clear H2.
+       assert (length ts = length vs). symmetry. eapply wfh_length. eauto.
+       simpl. rewrite H1 in E2. rewrite E2.
+       eexists. split. eauto. econstructor.
+     * SSCase "miss".
+       rewrite E2 in H2.
+       assert (exists v : venv * ty,
+                 indexr i vs = Some v /\ valh_type vvs vs v TF). eauto.
+       destruct H1. destruct H1.
+       eexists. split. eapply indexr_extend. eauto.
+       inversion H4. subst.
+       eapply v_tya. (* aenv is not constrained -- bit of a cheat?*)
 Qed.
 
   
@@ -1615,19 +1609,19 @@ Proof.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v (TMem T)) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. destruct x0.
-    inversion VT. subst. inversion H7. subst.
-    eapply stp2_sela1. eauto. eapply stp2_trans. eauto. eapply IHST; eauto.
+    inversion VT. subst. 
+    eapply stp2_sela1. eauto. eapply IHST. eauto. eauto.
   - Case "selax". eauto.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v (TMem T)) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. destruct x0.
+    destruct VT. subst.
     eapply stp2_selax. eauto. eauto.
   - Case "all".
     subst x. assert (length GY = length GH). eapply wfh_length; eauto.
     eapply stp2_all. eauto. rewrite H. eauto. rewrite H.  eauto.
     rewrite H.
-    eapply IHST2. eauto. econstructor. econstructor. eauto. eauto.
-    eapply stp2_mem. eapply stp2_reg1. eapply IHST1. eauto. eauto. eauto.
+    eapply IHST2. eauto. eapply wfeh_cons. eauto.
 Qed.
 
 
