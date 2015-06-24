@@ -658,6 +658,18 @@ Lemma stp2_reg1 : forall G1 G2 T1 T2 H,
 Proof. admit. Qed.
 
 
+Lemma stp2_closed2 : forall G1 G2 T1 T2 H ,
+                       stp2 G1 T1 G2 T2 H ->
+                       closed 0 (length H) T2.
+Proof. admit. Qed.
+
+Lemma stp2_closed1 : forall G1 G2 T1 T2 H,
+                       stp2 G1 T1 G2 T2 H ->
+                       closed 0 (length H) T1.
+Proof. admit. Qed.
+
+
+
 
 Lemma valtp_extend : forall vs v x v1 T,
                        val_type vs v T ->
@@ -1408,6 +1420,19 @@ Proof.
   intros. eapply subst_open_commute_m; eauto.
 Qed.
 
+Lemma subst_open_zero: forall j k TX T2, closed k 0 T2 ->
+    subst TX (open_rec j (TSelH 0) T2) = open_rec j TX T2.
+Proof.
+  intros. generalize dependent k. generalize dependent j. induction T2; intros; inversion H; simpl; eauto; try rewrite (IHT2_1 _ k); try rewrite (IHT2_2 _ (S k)); try rewrite (IHT2_2 _ (S k)); try rewrite (IHT2 _ k); eauto.
+
+  eapply closed_upgrade; eauto.
+
+  case_eq (beq_nat i 0); intros E. omega. omega.
+
+  case_eq (beq_nat j i); intros E. eauto. eauto.
+Qed.
+
+
 
 Lemma Forall2_length: forall A B f (G1:list A) (G2:list B),
                         Forall2 f G1 G2 -> length G1 = length G2.
@@ -1833,7 +1858,7 @@ Proof.
 Qed.
 
 
-
+(*
 Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
    stp2 G1 T1 G2 T2 GH ->
    forall GH0 TX x1,
@@ -2469,7 +2494,7 @@ Proof.
     admit.
 Qed.
 
-*)
+*)*)
 
 
 (* --------------------------------- *)
@@ -2477,7 +2502,7 @@ Qed.
 
 Lemma stp_wf_subst: forall G1 T11 T12 x,
   stp G1 T11 T11 ->
-  stp ((x, TMem T11) :: G1) (open (TSel x) T12) (open (TSel x) T12) ->
+  stp ((x, TMem T11) :: G1) (open (TSelH x) T12) (open (TSelH x) T12) ->
   stp G1 (open T11 T12) (open T11 T12).
 Proof.
   admit.
@@ -2612,15 +2637,24 @@ Proof.
 
   (* inversion of TAll < TAll *)
   assert (stp2 venv0 T1 venv1 T0 []). eauto.
-  assert (stp2 venv1 (open (TSelH 0) T3) venv0 (open (TSelH 0) T2) [(0,vtya venv0 T1)]). {
-    eapply H15.
+  assert (stp2 venv1 (open (TSelH 0) T3) venv0 (open (TSelH 0) T2) [(0,(venv0, T1))]). {
+    eapply H17.
   }
+
+  (* need reflexivity *)
+  assert (stp2 venv0 T1 venv0 T1 []). eapply stp2_reg1. eauto.                            assert (closed 0 0 T1). eapply stp2_closed1 in H5. simpl in H5. eauto.
   
   (* now rename *)
   
-  assert (stp2 ((fresh venv1,vty venv0 T1) :: venv1) (open_rec 0 (TSel (fresh venv1)) T3)
-               venv0 (open T1 T2) []). {
-    eapply stp2_concretize; eauto.
+  assert (stp2 ((fresh venv1,vty venv0 T1) :: venv1) (open_rec 0 (TSel (fresh venv1)) T3) venv0 (open T1 T2) []). {
+    eapply stp2_substitute with (GH0:=nil).
+    eapply stp2_extend1. eapply H4. eauto.
+    simpl. eauto.
+    eauto.
+    eauto.
+    left. eexists. split. eapply index_hit2. eauto. eauto. eauto. unfold open. rewrite (subst_open_zero 0 1). subst x. eauto. eauto.
+    right. left. split. eauto. unfold open. rewrite (subst_open_zero 0 1). eauto. eauto.
+    eauto.
   }
 
   (* done *)
