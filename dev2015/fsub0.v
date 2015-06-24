@@ -1594,7 +1594,22 @@ Proof.
   - admit.
   - admit.
   - admit.
-  - admit.
+  - Case "sel1". 
+    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    
+    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
+
+    eapply (compat_sel GXX TXX G1 T1' GX TX) in IX1. repeat destruct IX1 as [? IX1].
+
+    assert (compat GXX TXX GX TX TX) as CPX. right. right. left. eauto. 
+
+    subst.
+    eapply stp2_sel1. eauto. eauto.
+    eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
+    eauto. eauto. eauto.
+
+
   - Case "sel2". 
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
     
