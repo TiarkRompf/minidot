@@ -222,7 +222,7 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH T T2 ->   
     stp G1 GH (TSel x) T2
 | stp_selx: forall G1 GH T x,
-    index x GH = Some (TMem T) ->
+    index x G1 = Some (TMem T) ->
     stp G1 GH (TSel x) (TSel x)
 | stp_sela1: forall G1 GH T T2 x,
     indexr x GH = Some (TMem T) ->
@@ -296,15 +296,16 @@ Inductive stp2: venv -> ty -> venv -> ty -> list (id*(venv*ty))  -> Prop :=
     stp2 G1 T1 G2 T2 GH ->
     stp2 G1 (TMem T1) G2 (TMem T2) GH
 
+(* we do not require TMem TX here, just TX -- the vty is marker enough *)
 (* atm not clear if these are needed *)
 | stp2_sel1: forall G1 G2 GX TX x T2 GH,
-    index x G1 = Some (vty GX (TMem TX)) ->
+    index x G1 = Some (vty GX TX) ->
     closed 0 0 TX ->
     stp2 GX TX G2 T2 GH ->
     stp2 G1 (TSel x) G2 T2 GH
 
 | stp2_sel2: forall G1 G2 GX TX x T1 GH,
-    index x G2 = Some (vty GX (TMem TX)) ->
+    index x G2 = Some (vty GX TX) ->
     closed 0 0 TX ->
     stp2 G1 T1 GX TX GH ->
     stp2 G1 T1 G2 (TSel x) GH
@@ -370,15 +371,16 @@ with val_type : venv -> vl -> ty -> Prop :=
 Inductive wf_envh : venv -> aenv -> tenv -> Prop := 
 | wfeh_nil : forall vvs, wf_envh vvs nil nil
 | wfeh_cons : forall n v t vs vvs ts,
-    valh_type vvs ((n,v)::vs) v t ->
+    valh_type vvs vs v t  ->
     wf_envh vvs vs ts ->
     wf_envh vvs (cons (n,v) vs) (cons (n,t) ts)
 
+(* TODO: need to figure out how this should look! *)            
 with valh_type : venv -> aenv -> (venv*ty) -> ty -> Prop :=
 | v_tya: forall aenv env venv tenv T1 TE,
-    wf_envh venv aenv tenv -> (* T1 wf in tenv ? *)
+    wf_envh venv aenv tenv -> (* T1 wf in tenv ? what about recursion?? *)
     stp2 venv (TMem T1) env TE aenv ->
-    valh_type env aenv (venv, T1) TE
+    valh_type env aenv (venv, T1) TE 
 .
 
 
@@ -638,7 +640,6 @@ Proof.
   revert G0 G1 HeqG.
   induction H; intros; subst GH; simpl; eauto.
   - admit.
-  - admit.
   - Case "sela".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
     + eapply stp_sela1. eapply indexr_splice_hi with (T:=TMem T). eauto. eauto.
@@ -688,6 +689,11 @@ Lemma stp2_extendH : forall x v1 G1 G2 T1 T2 H,
                        stp2 G1 T1 G2 T2 ((x,v1)::H).
 Proof. admit. Qed.
 
+Lemma stp2_extendH_mult : forall G1 G2 T1 T2 H H2,
+                       stp2 G1 T1 G2 T2 H ->
+                       stp2 G1 T1 G2 T2 (H2++H).
+Proof. admit. Qed.
+
 
 Lemma stp2_reg2 : forall G1 G2 T1 T2 H ,
                        stp2 G1 T1 G2 T2 H ->
@@ -721,6 +727,14 @@ Proof.
   intros. induction H; eauto; econstructor; eauto; eapply stp2_extend2; eauto.
 Qed.
 
+Lemma valhtp_extend : forall vvs vs v x v1 T,
+                       valh_type vvs vs v T ->
+                       valh_type vvs ((x,v1)::vs) v T.
+Proof.
+  (* TODO: tricky induction *)
+  admit.
+Qed.
+
 
 Lemma index_safe_ex: forall H1 G1 TF i,
              wf_env H1 G1 ->
@@ -750,6 +764,29 @@ Proof. intros. induction H.
        rewrite E1 in H3. inversion H3.
 Qed.
 
+
+Lemma index_safeh_ex: forall H1 H2 G1 GH TF i,
+             wf_env H1 G1 -> wf_envh H1 H2 GH ->
+             indexr i GH = Some TF ->
+             exists v, indexr i H2 = Some v /\ valh_type H1 H2 v TF.
+Proof. intros. induction H0.
+   - Case "nil". inversion H3.
+   - Case "cons". inversion H3.
+       case_eq (beq_nat i (length ts)); intros E2.
+       * SSCase "hit".         
+         assert (indexr i ((n, v) :: vs) = Some v). eauto. unfold index. rewrite E2 in H4.
+         inversion H4. subst. eauto. assert (length ts = length vs). admit.
+         simpl in H3. rewrite E2 in H3. 
+         rewrite H2 in E2. simpl. rewrite E2. eauto.
+         eexists. split. eauto. simpl in H3. rewrite E2 in H4. inversion H4. subst t. eauto. eapply valhtp_extend; eauto.
+       * SSCase "miss".
+         assert (length ts = length vs). admit.
+         rewrite E2 in H4. simpl in H3. rewrite E2 in H3. simpl. rewrite H2 in E2. rewrite E2.
+         simpl in H0. 
+         assert (exists v0, indexr i vs = Some v0 /\ valh_type vvs vs v0 TF) as HI. eapply IHwf_envh. eauto. eauto.
+         inversion HI as [v0 HI1]. inversion HI1.
+         eexists. econstructor. eauto. eapply valhtp_extend; eauto.
+Qed.
 
   
 Inductive res_type: venv -> option vl -> ty -> Prop :=
@@ -1101,7 +1138,7 @@ Qed.
 
 
 Definition compat (GX:venv) (TX: ty) (G1:venv) (T1:ty) (T1':ty) :=
-  (exists x1, index x1 G1 = Some (vty GX (TMem TX)) /\ T1' = (subst (TSel x1) T1)) \/ 
+  (exists x1, index x1 G1 = Some (vty GX TX) /\ T1' = (subst (TSel x1) T1)) \/ 
   (G1 = GX /\ T1' = (subst TX T1)) \/
   (closed 0 0 T1 /\ T1' = T1) \/ (* this one is for convenience: redundant with next *)
   (nosubst T1 /\ T1' = subst TTop T1).    
@@ -1538,28 +1575,38 @@ Proof.
     destruct A as [? [? VT]].
     inversion VT; try solve by inversion; subst.
     eapply stp2_sel1; eauto. inversion H2. subst. eapply stp2_closed1 in H7. eauto.
-    inversion H2. subst. eapply IHST.
-    eapply stp2_sela1; eauto. inversion H2. subst. eauto. 
+    inversion H2. subst.
+    eapply stp2_extendH_mult with (H2:=GY) in H7. rewrite app_nil_r in H7.
+    eapply stp2_trans. eapply H7. eapply IHST; eauto.
   - Case "selx". eauto.
     assert (exists v : vl, index x GX = Some v /\ val_type GX v (TMem T)) as A.
-    eapply index_safe_ex. eauto. eauto.
+    eapply index_safe_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]].
     inversion VT; try solve by inversion; subst.
-    eapply stp2_sel2. eauto. eapply stp2_sel1. eauto. 
     inversion H2. subst.
-    eapply stp2_reg1. eauto.
-    eapply stp2_selx. eauto. eauto. 
+    eapply stp2_sel2. eauto. eapply stp2_closed1 in H7. eauto. 
+    eapply stp2_sel1. eauto. eapply stp2_closed1 in H7. eauto.
+    eapply stp2_extendH_mult with (H2:=GY) in H7. rewrite app_nil_r in H7.
+    eapply stp2_reg1. eapply H7.
+  - Case "sela1". eauto.
+    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v (TMem T)) as A.
+    eapply index_safeh_ex. eauto. eauto. eauto.
+    destruct A as [? [? VT]]. destruct x0.
+    inversion VT. subst. inversion H7. subst.
+    eapply stp2_sela1. eauto. eapply stp2_trans. eauto. eapply IHST; eauto.
+  - Case "selax". eauto.
+    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v (TMem T)) as A.
+    eapply index_safeh_ex. eauto. eauto. eauto.
+    destruct A as [? [? VT]]. destruct x0.
+    eapply stp2_selax. eauto. eauto.
   - Case "all".
-    eapply stp2_all. eauto. intros.
-    assert (fresh GX <= fresh G1'). eapply sub_env_fresh; eauto.
-    assert (fresh GX = fresh G1). eauto.
-    assert (forall x, fresh G1 <= x -> stp2 ((x, vtya GX T3)::GX) (open (TSel x) T2) ((x, vtya GX T3)::GX) (open (TSel x) T4)). intros. eapply H0. eauto. eauto.
-    econstructor. econstructor. eapply W.
-    eapply stp2_mem. eapply stp2_extend2. eapply stp2_reg1. eauto. omega. eauto.
-
-    eapply stp_splice. eapply H8. omega. eauto. eauto. omega. omega.
+    eapply stp2_all. eauto. admit. admit. (* TODO: closed 1 ! *)
+    subst x. assert (length GY = length GH). admit.
+    rewrite H.
+    eapply IHST2. eauto. econstructor. econstructor. eauto. eauto.
+    eapply stp2_mem. eapply stp2_reg1. eapply IHST1. eauto. eauto. eauto.
 Qed.
-*)
+
 
 Lemma valtp_widen: forall vf H1 H2 T1 T2,
   val_type H1 vf T1 ->
