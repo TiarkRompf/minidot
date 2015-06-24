@@ -1491,6 +1491,64 @@ Proof.
       eapply IHForall2. eapply H1.
 Qed.
 
+
+Lemma compat_bool: forall GX TX G1 T1',
+    compat GX TX G1 TBool T1' ->
+    closed 0 0 TX -> 
+    T1' = TBool.
+Proof.
+  intros ? ? ? ? CC CLX. destruct CC.
+
+  simpl in H. destruct H. destruct H. repeat eexists. eauto.
+
+  simpl in H. destruct H. destruct H. repeat eexists. eauto.
+
+  simpl in H. destruct H. destruct H. inversion H. repeat eexists. eauto. 
+
+  simpl in H. destruct H. repeat eexists. eauto. 
+Qed.
+
+
+Lemma compat_mem: forall GX TX G1 T1 T1',
+    compat GX TX G1 (TMem T1) T1' ->
+    closed 0 0 TX -> 
+    exists TA, T1' = TMem TA /\
+                  compat GX TX G1 T1 TA.
+Proof.
+  intros ? ? ? ? ? CC CLX. destruct CC.
+
+  simpl in H. destruct H. destruct H. repeat eexists. eauto. unfold compat. eauto. 
+
+  simpl in H. destruct H. destruct H. repeat eexists. eauto. unfold compat. eauto. 
+
+  simpl in H. destruct H. destruct H. inversion H. repeat eexists. eauto. unfold compat. eauto. 
+
+  simpl in H. destruct H. repeat eexists. eauto. unfold compat. eauto. 
+Qed.
+
+
+Lemma compat_fun: forall GX TX G1 T1 T2 T1',
+    compat GX TX G1 (TFun T1 T2) T1' ->
+    closed 0 0 TX -> 
+    exists TA TB, T1' = TFun TA TB /\
+                  compat GX TX G1 T1 TA /\
+                  compat GX TX G1 T2 TB.
+Proof.
+  intros ? ? ? ? ? ? CC CLX. destruct CC.
+
+  simpl in H. destruct H. destruct H. repeat eexists. eauto. unfold compat. eauto. unfold compat. eauto.
+
+  simpl in H. destruct H. destruct H. repeat eexists. eauto. unfold compat. eauto. unfold compat. eauto.
+
+  simpl in H. destruct H. destruct H. inversion H. repeat eexists. eauto.
+  unfold compat. eauto. unfold compat. eauto.
+
+  simpl in H. destruct H. destruct H. repeat eexists. eauto. unfold compat. eauto. unfold compat. eauto.
+Qed.
+
+
+
+
 Lemma compat_sel: forall GX TX G1 T1' (GXX:venv) (TXX:ty) x,
     compat GX TX G1 (TSel x) T1' ->
     closed 0 0 TX ->
@@ -1592,11 +1650,23 @@ Proof.
   intros G1 G2 T1 T2 GH H.
   induction H.
   - Case "bool".
-    intros.
+    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    eapply compat_bool in IX1.
+    eapply compat_bool in IX2.
+    subst. eauto. eauto. eauto.
     
   - Case "fun".
+    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    eapply compat_fun in IX1. repeat destruct IX1 as [? IX1].
+    eapply compat_fun in IX2. repeat destruct IX2 as [? IX2].
+    subst. eauto. eauto. eauto. 
+
   - Case "mem".
-    
+    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    eapply compat_mem in IX1. repeat destruct IX1 as [? IX1].
+    eapply compat_mem in IX2. repeat destruct IX2 as [? IX2].
+    subst. eauto. eauto. eauto. 
+                                
   - Case "sel1". 
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
     
@@ -1646,7 +1716,7 @@ Proof.
       inversion IXX.
 
       destruct H1. destruct H1. subst. simpl.
-      eapply stp2_sel1. eauto.
+      eapply stp2_sel1. eauto. eauto.
       eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
       
       inversion H1.
@@ -1688,12 +1758,12 @@ Proof.
 
       destruct H1. destruct H1. subst. simpl.
       destruct H3. destruct H3. subst. simpl.
-      eapply stp2_sel1. eauto.
-      eapply stp2_sel2. eauto. eauto.
+      eapply stp2_sel1. eauto. eauto.
+      eapply stp2_sel2. eauto. eauto. eauto.
 
       destruct H1. destruct H1. subst. simpl.
       destruct H3. destruct H3. subst. simpl.
-      eapply stp2_sel1. eauto. eauto.
+      eapply stp2_sel1. eauto. eauto. eauto.
 
       destruct H3. destruct H3. subst. simpl.
       inversion H3. omega. (* contra *)
@@ -1704,7 +1774,7 @@ Proof.
       
       destruct H1. destruct H1. subst. simpl.
       destruct H3. destruct H1. subst. simpl.
-      eapply stp2_sel2. eauto. eauto.
+      eapply stp2_sel2. eauto. eauto. eauto.
 
       destruct H1. destruct H1. inversion H1. omega. (* contra *)
 
