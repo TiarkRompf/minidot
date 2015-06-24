@@ -350,13 +350,13 @@ Inductive stp2: venv -> ty -> venv -> ty -> list (id*(venv*ty))  -> Prop :=
 (* atm not clear if these are needed *)
 | stp2_sel1: forall G1 G2 GX TX x T2 GH,
     index x G1 = Some (vty GX TX) ->
-    (* closed 0 0 TX -> *)
+    closed 0 0 TX ->
     stp2 GX TX G2 T2 GH ->
     stp2 G1 (TSel x) G2 T2 GH
 
 | stp2_sel2: forall G1 G2 GX TX x T1 GH,
     index x G2 = Some (vty GX TX) ->
-    (* closed 0 0 TX -> *)
+    closed 0 0 TX ->
     stp2 G1 T1 GX TX GH ->
     stp2 G1 T1 G2 (TSel x) GH
 
@@ -1558,6 +1558,25 @@ Proof.
 Qed.
 
 
+Lemma compat_sel: forall GX TX G1 T1' (GXX:venv) (TXX:ty) x,
+    compat GX TX G1 (TSel x) T1' ->
+    closed 0 0 TX ->
+    closed 0 0 TXX ->
+    index x G1 = Some (vty GXX TXX) ->
+    exists TXX', T1' = (TSel x) /\ compat GX TX GXX TXX TXX'
+.
+Proof.
+  intros ? ? ? ? ? ? ? CC CL CL1 IX.
+
+  destruct CC.
+  destruct H. destruct H. simpl in H0. eexists. split. eauto. right. right. left. eauto.
+  destruct H. destruct H. simpl in H0. eexists. split. eauto. right. right. left. eauto.
+  destruct H. destruct H. simpl in H0. eexists. split. eauto. right. right. left. eauto.
+  destruct H. destruct H. simpl in H0. eexists. split. eauto. right. right. left. eauto.
+Qed.
+  
+
+
 
 Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
    stp2 G1 T1 G2 T2 GH ->
@@ -1576,7 +1595,21 @@ Proof.
   - admit.
   - admit.
   - admit.
-  - admit.
+  - Case "sel2". 
+    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    
+    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
+
+    eapply (compat_sel GXX TXX G2 T2' GX TX) in IX2. repeat destruct IX2 as [? IX2].
+
+    assert (compat GXX TXX GX TX TX) as CPX. right. right. left. eauto. 
+
+    subst.
+    eapply stp2_sel2. eauto. eauto.
+    eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
+    eauto. eauto. eauto.
+
   - Case "sela1".
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
     
@@ -1701,7 +1734,7 @@ Proof.
     + subst. specialize IHstp2_2 with (GH1 := (0, (G2, T3))::GH0).
       eapply IHstp2_2.
       reflexivity.
-      eauto. eapply stp2_extend.
+      eapply stp2_extendH. eauto. eauto.
       rewrite app_length. simpl. rewrite EL. eauto.
       rewrite app_length. simpl. rewrite EL. eauto.
       eapply Forall2_cons. simpl. eauto. eauto.
