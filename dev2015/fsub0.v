@@ -652,10 +652,9 @@ Qed.
 Lemma stp_extend : forall G1 T1 T2 x v1,
                        stp G1 T1 T2 ->
                        stp ((x,v1)::G1) T1 T2.
-Proof. intros G1 T1 T2 x v1 H. induction H; intros; eauto.
-  - Case "sel". eapply stp_sel1. eapply indexr_extend; eauto. eauto.
-  - Case "selx". eapply stp_selx. eapply indexr_extend; eauto.
-  - Case "all". admit. (* todo *)
+Proof.
+  (* use stp_splice: we need to have that env and types are well-formed *)
+  admit.
 Qed.
 
 
