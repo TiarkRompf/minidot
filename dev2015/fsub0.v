@@ -628,6 +628,11 @@ Lemma stp2_extend1 : forall x v1 G1 G2 T1 T2 H,
                        stp2 ((x,v1)::G1) T1 G2 T2 H.
 Proof. admit. Qed.
 
+Lemma stp2_extendH : forall x v1 G1 G2 T1 T2 H,
+                       stp2 G1 T1 G2 T2 H ->
+                       stp2 G1 T1 G2 T2 ((x,v1)::H).
+Proof. admit. Qed.
+
 (*
 Lemma stp2_extend2_mult : forall G1 G2 G2' T1 T2 H,
                        stp2 G1 T1 G2 T2 H ->
@@ -1558,6 +1563,7 @@ Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
    stp2 G1 T1 G2 T2 GH ->
    forall GH0 GH0' GX TX T1' T2',
      GH = (GH0 ++ [(0,(GX, TX))]) ->
+     stp2 GX TX GX TX GH0' ->
      closed 0 0 TX ->
      compat GX TX G1 T1 T1' ->
      compat GX TX G2 T2 T2' ->
@@ -1572,7 +1578,7 @@ Proof.
   - admit.
   - admit.
   - Case "sela1".
-    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
     
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -1584,18 +1590,18 @@ Proof.
     destruct IX1.
     + destruct H3. destruct H4. subst.
 
-      assert (compat GXX TXX GXX TXX TXX) as CPX. admit.
+      assert (compat GXX TXX GXX TXX TXX) as CPX. right. left. split. eauto. symmetry. eapply closed_no_subst. eauto.
       
       inversion IXX.
 
       destruct H1. destruct H1. subst. simpl.
       eapply stp2_sel1. eauto.
-      eapply IHstp2. eauto. eauto. eauto. eauto. eauto.
+      eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
       
       inversion H1.
 
       destruct H3. subst. simpl.
-      eapply IHstp2. eauto. eauto. eauto. eauto. eauto.
+      eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
 
       inversion H3.
 
@@ -1604,16 +1610,81 @@ Proof.
       destruct H4. simpl in H4. destruct H4. eauto. (* contra *)
     + destruct H3. destruct H3. destruct H4. destruct H5.
       subst T1'. eapply stp2_sela1. eauto.
-      eapply IHstp2. eauto. eauto. eauto. eauto. eauto.
+      eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
 
     + eauto.
     + subst GH. eauto.
     + eauto.
 
       
-  - Case "selx". admit.
+  - Case "selx".
+
+    intros GH0 GH0' GXX TXX T1' T2' ? RFL CX IX1 IX2 FA.
+    
+    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
+
+    assert (compat GXX TXX G1 (TSelH x) T1') as IXX1. eauto.
+    assert (compat GXX TXX G2 (TSelH x) T2') as IXX2. eauto.
+    
+    eapply (compat_selh GXX TXX G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
+    eapply (compat_selh GXX TXX G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
+
+    destruct IX1; destruct IX2.
+    + destruct H3. destruct H4. subst. (* x = 0 *)
+
+      inversion IXX1; inversion IXX2.
+
+      destruct H1. destruct H1. subst. simpl.
+      destruct H3. destruct H3. subst. simpl.
+      eapply stp2_sel1. eauto.
+      eapply stp2_sel2. eauto. eauto.
+
+      destruct H1. destruct H1. subst. simpl.
+      destruct H3. destruct H3. subst. simpl.
+      eapply stp2_sel1. eauto. eauto.
+
+      destruct H3. destruct H3. subst. simpl.
+      inversion H3. omega. (* contra *)
+
+      destruct H3. destruct H3. eauto. (* contra *)
+
+      (* --- *)
+      
+      destruct H1. destruct H1. subst. simpl.
+      destruct H3. destruct H1. subst. simpl.
+      eapply stp2_sel2. eauto. eauto.
+
+      destruct H1. destruct H1. inversion H1. omega. (* contra *)
+
+      destruct H1. destruct H1. eauto. (* contra *)
+
+      (* --- *)
+      
+      destruct H1. destruct H1. subst. simpl.
+      destruct H3. destruct H1. subst. simpl.
+      eauto.
+      
+      destruct H1. destruct H1. inversion H1. omega.
+      destruct H1. destruct H1. eauto.
+      destruct H1. destruct H1. inversion H1. omega.
+      destruct H1. destruct H1. eauto.
+      
+    + destruct H3. destruct H4. omega.
+    + destruct H3. destruct H4. omega.
+    + destruct H3. destruct H3. destruct H5. destruct H6.
+      destruct H4. destruct H4. destruct H8. destruct H9.
+      subst. eapply stp2_selx. eauto. eauto.
+
+    + eauto.
+    + subst GH. eauto.
+    + eauto.
+    + eauto.
+    + eauto. subst GH. eauto.
+    + eauto.
+    
   - Case "all".
-    intros GH0 GH0' GX TX T1' T2' ? CX IX1 IX2 FA.
+    intros GH0 GH0' GX TX T1' T2' ? RFL CX IX1 IX2 FA.
     
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -1624,13 +1695,13 @@ Proof.
     subst.
     
     eapply stp2_all. 
-    + eapply IHstp2_1. eauto. eauto. eauto. eauto. eauto.
+    + eapply IHstp2_1. eauto. eauto. eauto. eauto. eauto. eauto.
     + eauto.
     + eauto.
     + subst. specialize IHstp2_2 with (GH1 := (0, (G2, T3))::GH0).
       eapply IHstp2_2.
       reflexivity.
-      eauto.
+      eauto. eapply stp2_extend.
       rewrite app_length. simpl. rewrite EL. eauto.
       rewrite app_length. simpl. rewrite EL. eauto.
       eapply Forall2_cons. simpl. eauto. eauto.
