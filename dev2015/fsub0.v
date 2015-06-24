@@ -1420,12 +1420,15 @@ Fixpoint
     
 Lemma nosubst_intro: forall j T, closed j 0 T -> nosubst T.
 Proof.
-  admit.
+  intros. generalize dependent j. induction T; intros; inversion H; simpl; eauto.
+  omega.
 Qed.
 
-Lemma nosubst_open: forall j TX T2, nosubst TX -> nosubst (open_rec j TX T2).
+Lemma nosubst_open: forall j TX T2, nosubst TX -> nosubst T2 -> nosubst (open_rec j TX T2).
 Proof.
-  admit.
+  intros. generalize dependent j. induction T2; intros; try inversion H0; simpl; eauto.
+
+  case_eq (beq_nat j i); intros E. eauto. eauto.
 Qed.
 
 
@@ -1476,17 +1479,16 @@ Proof.
    closed 0 0 (open_rec 0 (TSelH (n + 1)) T2) /\
    open_rec 0 (TSelH n) T2 = open_rec 0 (TSelH (n + 1)) T2
 *)
-    right. split. eapply nosubst_open. simpl. omega. symmetry.
+    right. split. eapply nosubst_open. simpl. omega. eapply nosubst_intro. eauto. symmetry.
     assert (T2 = subst TTop T2). symmetry. eapply closed_no_subst. eauto.
     remember (open_rec 0 (TSelH n) T2) as XX. rewrite H7 in HeqXX. subst XX.
     eapply subst_open_commute. eauto. eauto.
 
     simpl in H. destruct H. destruct H. repeat eexists. eauto. eapply closed_subst. eauto. eauto. 
     unfold compat. right. right. right. eauto. 
-    unfold compat. right. right. right. split. eapply nosubst_open. simpl. omega.
+    unfold compat. right. right. right. split. eapply nosubst_open. simpl. omega. eauto.
     rewrite subst_open_commute. eauto. eauto. eauto.
 Qed.
-
 
 
 Lemma compat_selh: forall GX TX G1 T1' GH0 GH0' (GXX:venv) (TXX:ty) x,
