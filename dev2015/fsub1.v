@@ -1351,6 +1351,30 @@ Ltac eu := repeat match goal with
                     | H: _ /\  _ |- _ => destruct H
            end.
 
+
+Lemma compat_top: forall GX TX G1 T1',
+    compat GX TX G1 TTop T1' ->
+    closed 0 0 TX -> 
+    T1' = TTop.
+Proof.
+  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC].
+  - eu. eauto. 
+  - eu. eauto.
+  - eu. eauto.
+Qed.
+
+Lemma compat_bot: forall GX TX G1 T1',
+    compat GX TX G1 TBot T1' ->
+    closed 0 0 TX -> 
+    T1' = TBot.
+Proof.
+  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC].
+  - eu. eauto. 
+  - eu. eauto.
+  - eu. eauto.
+Qed.
+
+
 Lemma compat_bool: forall GX TX G1 T1',
     compat GX TX G1 TBool T1' ->
     closed 0 0 TX -> 
