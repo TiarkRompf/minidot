@@ -198,6 +198,10 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     index x G1 = Some (TMem TL TU) ->
     stp G1 GH TU T2 ->   
     stp G1 GH (TSel x) T2
+| stp_sel2: forall G1 GH TL TU T1 x,
+    index x G1 = Some (TMem TL TU) ->
+    stp G1 GH T1 TL ->   
+    stp G1 GH T1 (TSel x)
 | stp_selx: forall G1 GH TL TU x,
     index x G1 = Some (TMem TL TU) ->
     stp G1 GH (TSel x) (TSel x)
@@ -205,6 +209,10 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     indexr x GH = Some (TMem TL TU) ->
     stp G1 GH TU T2 ->   
     stp G1 GH (TSelH x) T2
+| stp_sela2: forall G1 GH TL TU T1 x,
+    indexr x GH = Some (TMem TL TU) ->
+    stp G1 GH T1 TL ->
+    stp G1 GH T1 (TSelH x)
 | stp_selax: forall G1 GH TL TU x,
     indexr x GH = Some (TMem TL TU) ->
     stp G1 GH (TSelH x) (TSelH x)
@@ -213,7 +221,7 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     x = length GH ->
     closed 1 (length GH) T2 -> (* must not accidentally bind x *)
     closed 1 (length GH) T4 -> 
-    stp G1 ((0,TMem T3 T3)::GH) (open (TSelH x) T2) (open (TSelH x) T4) ->
+    stp G1 ((0,T3)::GH) (open (TSelH x) T2) (open (TSelH x) T4) ->
     stp G1 GH (TAll T1 T2) (TAll T3 T4)
 .
 
@@ -240,10 +248,11 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            fresh env <= f ->
            1+f <= x ->
            has_type env (tabs f x y) (TFun T1 T2)
-| t_tapp: forall env f T11 T12 T,
-           has_type env f (TAll T11 T12) ->
-           T = open T11 T12 -> 
-           has_type env (ttapp f T11) T
+| t_tapp: forall env f T11 T12,
+           has_type env f (TAll (TMem T11 T11) T12) ->
+           (* T = open T11 T12 -> *)
+           stp env [] T12 T12 ->
+           has_type env (ttapp f T11) T12
 (*
 NOTE: both the POPLmark paper and Cardelli's paper use this rule:
 Does it make a difference? It seems like we can always widen f?
@@ -255,7 +264,7 @@ Does it make a difference? It seems like we can always widen f?
 
 *)                    
 | t_tabs: forall env x y T1 T2,
-           has_type ((x,TMem TBot T1)::env) y (open (TSel x) T2) -> 
+           has_type ((x,T1)::env) y (open (TSel x) T2) -> 
            stp env [] (TAll T1 T2) (TAll T1 T2) ->
            fresh env = x ->
            has_type env (ttabs x T1 y) (TAll T1 T2)
@@ -298,10 +307,10 @@ Inductive stp2: venv -> ty -> venv -> ty -> list (id*(venv*ty))  -> Prop :=
     stp2 G1 T1 G2 (TSel x) GH
 
 (* X<T, one sided *)
-| stp2_sela1: forall G1 G2 GX TX x T2 GH,
-    indexr x GH = Some (GX, TX) ->
+| stp2_sela1: forall G1 G2 GX TL TU x T2 GH,
+    indexr x GH = Some (GX, (TMem TL TU)) ->
     (* closed 0 x TX -> *)
-    stp2 GX TX G2 T2 GH ->
+    stp2 GX TU G2 T2 GH ->
     stp2 G1 (TSelH x) G2 T2 GH
 
          
@@ -474,11 +483,11 @@ Ltac crush2 :=
 
 (* define polymorphic identity function *)
 
-Definition polyId := TAll TTop (TFun (TSelB 0) (TSelB 0)).
+Definition polyId := TAll (TMem TBot TTop) (TFun (TSelB 0) (TSelB 0)).
 
-Example ex1: has_type [] (ttabs 0 TTop (tabs 1 2 (tvar 2))) polyId.
+Example ex1: has_type [] (ttabs 0 (TMem TBot TTop) (tabs 1 2 (tvar 2))) polyId.
 Proof.
-  crush_has_tp.
+  crush2.
 Qed.
 
 
@@ -490,17 +499,15 @@ Proof.
   eapply stp_all. eauto. eauto.
   crush_has_tp.  crush_has_tp.   crush_has_tp. compute.
   
-  eapply stp_all.  eauto. eauto. econstructor. eauto. eauto.
-  eapply cl_fun. eapply cl_selb. eauto. eapply cl_selb. eauto.
-  crush_has_tp. crush_has_tp.
-Qed.  
+  eapply stp_all. crush2. crush2. crush2. crush2. crush2. crush2.
+Qed.
        
 
 
 (* define brand / unbrand client function *)
 
 Definition brandUnbrand :=
-  TAll TTop
+  TAll (TMem TBot TTop)
        (TFun
           (TFun TBool (TSelB 0)) (* brand *)
           (TFun
@@ -509,13 +516,13 @@ Definition brandUnbrand :=
 
 Example ex3:
   has_type []
-           (ttabs 0 TTop
+           (ttabs 0 (TMem TBot TTop)
                   (tabs 1 2
                         (tabs 3 4
                               (tapp (tvar 4) (tapp (tvar 2) ttrue)))))
            brandUnbrand.
 Proof.
-  crush_has_tp.
+  crush2.
 Qed.
 
 
@@ -523,7 +530,7 @@ Qed.
 
 Example ex4:
   has_type [(1,TFun TBool TBool);(0,brandUnbrand)]
-           (tvar 0) (TAll TBool (TFun (TFun TBool (TSelB 0)) (TFun (TFun (TSelB 0) TBool) TBool))).
+           (tvar 0) (TAll (TMem TBool TBool) (TFun (TFun TBool TBool) (TFun (TFun TBool TBool) TBool))).
 Proof.
   eapply t_sub. crush2. crush2.
 Qed.
