@@ -140,42 +140,6 @@ Example open_ex1: open (TSel 9) (TAll TBool (TFun (TSelB 1) (TSelB 0))) =
 Proof. compute. eauto. Qed.
 
 
-Lemma closed_no_open: forall T x l j,
-  closed_rec j l T ->
-  T = open_rec j x T.
-Proof.
-  intros. induction H; intros; eauto;
-  try solve [compute; compute in IHclosed_rec; rewrite <-IHclosed_rec; auto];
-  try solve [compute; compute in IHclosed_rec1; compute in IHclosed_rec2; rewrite <-IHclosed_rec1; rewrite <-IHclosed_rec2; auto].
-
-  Case "TSelB".
-    unfold open_rec. assert (k <> i). omega. 
-    apply beq_nat_false_iff in H0.
-    rewrite H0. auto.
-Qed.
-
-
-
-Lemma closed_upgrade: forall i j l T,
- closed_rec i l T ->
- j >= i ->
- closed_rec j l T.
-Proof.
- intros. generalize dependent j. induction H; intros; eauto.
- Case "TBind". econstructor. eapply IHclosed_rec1. omega. eapply IHclosed_rec2. omega.
- Case "TSelB". econstructor. omega.
-Qed.
-
-Lemma closed_upgrade_free: forall i l k T,
- closed_rec i l T ->
- k >= l ->
- closed_rec i k T.
-Proof.
- intros. generalize dependent k. induction H; intros; eauto.
- Case "TSelH". econstructor. omega. 
-Qed.
-
-
 Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
@@ -911,6 +875,44 @@ Qed.
 Hint Resolve beq_nat_true_iff.
 Hint Resolve beq_nat_false_iff.
 
+
+Lemma closed_no_open: forall T x l j,
+  closed_rec j l T ->
+  T = open_rec j x T.
+Proof.
+  intros. induction H; intros; eauto;
+  try solve [compute; compute in IHclosed_rec; rewrite <-IHclosed_rec; auto];
+  try solve [compute; compute in IHclosed_rec1; compute in IHclosed_rec2; rewrite <-IHclosed_rec1; rewrite <-IHclosed_rec2; auto].
+
+  Case "TSelB".
+    unfold open_rec. assert (k <> i). omega. 
+    apply beq_nat_false_iff in H0.
+    rewrite H0. auto.
+Qed.
+
+
+
+Lemma closed_upgrade: forall i j l T,
+ closed_rec i l T ->
+ j >= i ->
+ closed_rec j l T.
+Proof.
+ intros. generalize dependent j. induction H; intros; eauto.
+ Case "TBind". econstructor. eapply IHclosed_rec1. omega. eapply IHclosed_rec2. omega.
+ Case "TSelB". econstructor. omega.
+Qed.
+
+Lemma closed_upgrade_free: forall i l k T,
+ closed_rec i l T ->
+ k >= l ->
+ closed_rec i k T.
+Proof.
+ intros. generalize dependent k. induction H; intros; eauto.
+ Case "TSelH". econstructor. omega. 
+Qed.
+
+
+
 Lemma open_subst_commute: forall T2 TX (n:nat) x j,
 closed j n TX ->
 (open_rec j (TSelH x) (subst TX T2)) =
@@ -1544,7 +1546,7 @@ Qed.
 
 (* --------------------------------- *)
 
-
+(*
 Lemma stp_wf_subst: forall G1 GH T11 T12 x,
   stp G1 GH T11 T11 ->
   stp G1 ((x, TMem T11) :: GH) (open (TSelH x) T12) (open (TSelH x) T12) ->
@@ -1573,7 +1575,7 @@ Proof.
   - Case "tabs".
     eauto.
 Qed.
-
+*)
 
 (* TODO *)
 Lemma stp_to_stp2: forall G1 GH T1 T2,
