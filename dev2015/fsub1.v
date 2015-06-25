@@ -2,10 +2,13 @@
 (* values well-typed with respect to runtime environment *)
 (* inversion lemma structure *)
 
+(* both lower and upper bounds *)
+(* type objects *)
+
 (*
 TODO:
-- stp -> stp2 translation
 - stp2 trans + narrowing 
+- var pack/unpack rules
 *)
 
 Require Export SfLib.
@@ -21,7 +24,7 @@ Inductive ty : Type :=
   | TBool  : ty
   | TTop   : ty           
   | TFun   : ty -> ty -> ty
-  | TMem   : ty -> ty
+  | TMem   : ty -> ty -> ty
   | TSel   : id -> ty
   | TSelH  : id -> ty
   | TSelB  : id -> ty
@@ -98,9 +101,10 @@ Inductive closed_rec: nat -> nat -> ty -> Prop :=
     closed_rec k l T1 ->
     closed_rec k l T2 ->
     closed_rec k l (TFun T1 T2)
-| cl_mem: forall k l T1,
+| cl_mem: forall k l T1 T2,
     closed_rec k l T1 ->
-    closed_rec k l (TMem T1)
+    closed_rec k l T2 ->
+    closed_rec k l (TMem T1 T2)
 | cl_bind: forall k l T1 T2,
     closed_rec k l T1 ->
     closed_rec (S k) l T2 ->
@@ -128,7 +132,7 @@ Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
     | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
     | TTop => TTop
     | TBool       => TBool
-    | TMem T1     => TMem (open_rec k u T1)
+    | TMem T1 T2  => TMem (open_rec k u T1) (open_rec k u T2)
     | TFun T1 T2  => TFun (open_rec k u T1) (open_rec k u T2)
   end.
 
@@ -144,7 +148,7 @@ Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
     | TBool        => TBool
-    | TMem T1      => TMem (subst U T1)
+    | TMem T1 T2   => TMem (subst U T1) (subst U T2)
     | TFun T1 T2   => TFun (subst U T1) (subst U T2)
     | TSelB i      => TSelB i
     | TSel i       => TSel i
@@ -156,7 +160,7 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
   match T with
     | TTop         => True
     | TBool        => True
-    | TMem T1      => nosubst T1
+    | TMem T1 T2   => nosubst T1 /\ nosubst T2
     | TFun T1 T2   => nosubst T1 /\ nosubst T2
     | TSelB i      => True
     | TSel i       => True
@@ -178,29 +182,30 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH T3 T1 ->
     stp G1 GH T2 T4 ->
     stp G1 GH (TFun T1 T2) (TFun T3 T4)             
-| stp_mem: forall G1 GH T1 T2,
-    stp G1 GH T1 T2 ->
-    stp G1 GH (TMem T1) (TMem T2)         
-| stp_sel1: forall G1 GH T T2 x,
-    index x G1 = Some (TMem T) ->
-    stp G1 GH T T2 ->   
+| stp_mem: forall G1 GH T1 T2 T3 T4,
+    stp G1 GH T3 T1 ->
+    stp G1 GH T2 T4 ->
+    stp G1 GH (TMem T1 T2) (TMem T3 T4)
+| stp_sel1: forall G1 GH TL TU T2 x,
+    index x G1 = Some (TMem TL TU) ->
+    stp G1 GH TU T2 ->   
     stp G1 GH (TSel x) T2
-| stp_selx: forall G1 GH T x,
-    index x G1 = Some (TMem T) ->
+| stp_selx: forall G1 GH TL TU x,
+    index x G1 = Some (TMem TL TU) ->
     stp G1 GH (TSel x) (TSel x)
-| stp_sela1: forall G1 GH T T2 x,
-    indexr x GH = Some (TMem T) ->
-    stp G1 GH T T2 ->   
+| stp_sela1: forall G1 GH TL TU T2 x,
+    indexr x GH = Some (TMem TL TU) ->
+    stp G1 GH TU T2 ->   
     stp G1 GH (TSelH x) T2
-| stp_selax: forall G1 GH T x,
-    indexr x GH = Some (TMem T) ->
+| stp_selax: forall G1 GH TL TU x,
+    indexr x GH = Some (TMem TL TU) ->
     stp G1 GH (TSelH x) (TSelH x)
 | stp_all: forall G1 GH T1 T2 T3 T4 x,
     stp G1 GH T3 T1 ->
     x = length GH ->
     closed 1 (length GH) T2 -> (* must not accidentally bind x *)
     closed 1 (length GH) T4 -> 
-    stp G1 ((0,TMem T3)::GH) (open (TSelH x) T2) (open (TSelH x) T4) ->
+    stp G1 ((0,TMem T3 T3)::GH) (open (TSelH x) T2) (open (TSelH x) T4) ->
     stp G1 GH (TAll T1 T2) (TAll T3 T4)
 .
 
@@ -242,7 +247,7 @@ Does it make a difference? It seems like we can always widen f?
 
 *)                    
 | t_tabs: forall env x y T1 T2,
-           has_type ((x,TMem T1)::env) y (open (TSel x) T2) -> 
+           has_type ((x,TMem T1 T1)::env) y (open (TSel x) T2) -> 
            stp env [] (TAll T1 T2) (TAll T1 T2) ->
            fresh env = x ->
            has_type env (ttabs x T1 y) (TAll T1 T2)
@@ -263,9 +268,10 @@ Inductive stp2: venv -> ty -> venv -> ty -> list (id*(venv*ty))  -> Prop :=
     stp2 G2 T3 G1 T1 GH ->
     stp2 G1 T2 G2 T4 GH ->
     stp2 G1 (TFun T1 T2) G2 (TFun T3 T4) GH
-| stp2_mem: forall G1 G2 T1 T2 GH,
-    stp2 G1 T1 G2 T2 GH ->
-    stp2 G1 (TMem T1) G2 (TMem T2) GH
+| stp2_mem: forall G1 G2 T1 T2 T3 T4 GH,
+    stp2 G2 T3 G1 T1 GH ->
+    stp2 G1 T2 G2 T4 GH ->
+    stp2 G1 (TMem T1 T2) G2 (TMem T3 T4) GH
 
 (* we do not require TMem TX here, just TX -- the vty is marker enough *)
 (* atm not clear if these are needed *)
@@ -319,7 +325,7 @@ Inductive wf_env : venv -> tenv -> Prop :=
 with val_type : venv -> vl -> ty -> Prop :=
 | v_ty: forall env venv tenv T1 TE,
     wf_env venv tenv -> (* T1 wf in tenv ? *)
-    stp2 venv (TMem T1) env TE [] ->
+    stp2 venv (TMem T1 T1) env TE [] ->
     val_type env (vty venv T1) TE
 | v_bool: forall venv b TE,
     stp2 [] TBool venv TE [] ->
@@ -333,7 +339,7 @@ with val_type : venv -> vl -> ty -> Prop :=
     val_type env (vabs venv f x y) TE
 | v_tabs: forall env venv tenv x y T1 T2 TE,
     wf_env venv tenv ->
-    has_type ((x,TMem T1)::tenv) y (open (TSel x) T2) ->
+    has_type ((x,TMem T1 T1)::tenv) y (open (TSel x) T2) ->
     fresh venv = x ->
     stp2 venv (TAll T1 T2) env TE [] ->
     val_type env (vtabs venv x T1 y) TE
@@ -344,12 +350,12 @@ Inductive wf_envh : venv -> aenv -> tenv -> Prop :=
 | wfeh_nil : forall vvs, wf_envh vvs nil nil
 | wfeh_cons : forall n t vs vvs ts,
     wf_envh vvs vs ts ->
-    wf_envh vvs (cons (n,(vvs,t)) vs) (cons (n,TMem t) ts)
+    wf_envh vvs (cons (n,(vvs,t)) vs) (cons (n,TMem t t) ts)
 .
                  
 Inductive valh_type : venv -> aenv -> (venv*ty) -> ty -> Prop :=
 | v_tya: forall aenv venv T1,
-    valh_type venv aenv (venv, T1) (TMem T1)
+    valh_type venv aenv (venv, T1) (TMem T1 T1)
 .
 
 
@@ -645,7 +651,7 @@ Fixpoint splice n (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
     | TBool        => TBool
-    | TMem T1      => TMem (splice n T1)
+    | TMem T1 T2   => TMem (splice n T1) (splice n T2)
     | TFun T1 T2   => TFun (splice n T1) (splice n T2)
     | TSelB i      => TSelB i
     | TSel i       => TSel i
@@ -734,14 +740,14 @@ Proof.
   - admit.
   - Case "sela".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
-    + eapply stp_sela1. eapply indexr_splice_hi with (T:=TMem T). eauto. eauto.
+    + eapply stp_sela1. eapply indexr_splice_hi with (T:=TMem TL TU). eauto. eauto.
       eapply IHstp. eauto. eauto.
-    + eapply stp_sela1. eapply indexr_splice_lo with (T:=TMem T). eauto. eauto. eauto.
+    + eapply stp_sela1. eapply indexr_splice_lo with (T:=TMem TL TU). eauto. eauto. eauto.
       eapply IHstp. eauto. eauto.
   - Case "selax".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
-    + eapply stp_selax. eapply indexr_splice_hi with (T:=TMem T). eauto. eauto.
-    + eapply stp_selax. eapply indexr_splice_lo with (T:=TMem T). eauto. eauto. eauto.
+    + eapply stp_selax. eapply indexr_splice_hi with (T:=TMem TL TU). eauto. eauto.
+    + eapply stp_selax. eapply indexr_splice_lo with (T:=TMem TL TU). eauto. eauto. eauto.
   - Case "all".
     eapply stp_all.
     eapply IHstp1. eauto. eauto. eauto.
@@ -749,7 +755,7 @@ Proof.
     admit. (* closed *) 
     admit. (* closed *)
     
-    specialize IHstp2 with (G3:=G0) (G4:=(0, TMem T3) :: G2).
+    specialize IHstp2 with (G3:=G0) (G4:=(0, TMem T3 T3) :: G2).
     simpl in IHstp2. rewrite map_length. rewrite app_length. simpl.
     repeat rewrite splice_open_permute with (j:=0). subst x0.
     rewrite app_length in IHstp2. simpl in IHstp2.
@@ -1038,7 +1044,7 @@ closed j n TX ->
 Proof.
   intros T2 TX n. induction T2; intros; eauto.
   -  simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.
-  -  simpl. rewrite IHT2. eauto. eauto.
+  -  simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.
   -  simpl. case_eq (beq_nat i 0); intros E. symmetry. eapply closed_no_open. eauto. simpl. eauto.  
   - simpl. case_eq (beq_nat j i); intros E. simpl.
     assert (x+1<>0). omega. eapply beq_nat_false_iff in H0.
@@ -1056,12 +1062,14 @@ Lemma closed_no_subst: forall T j TX,
    subst TX T = T.
 Proof.
   intros T. induction T; intros; inversion H; simpl; eauto;
-            try rewrite (IHT j TX); eauto; try rewrite (IHT2 (S j) TX); eauto; try rewrite (IHT1 j TX); eauto.
+            try rewrite (IHT j TX); eauto; try rewrite (IHT2 (S j) TX); eauto; try rewrite (IHT1 j TX); eauto; try rewrite (IHT2 j TX); eauto.
 
   eapply closed_upgrade. eauto. eauto.
+    eapply closed_upgrade. eauto. eauto.
 
   subst. omega. 
 Qed.
+
 Lemma closed_open: forall j n TX T, closed (j+1) n T -> closed j n TX -> closed j n (open_rec j TX T).
 Proof.
   intros. generalize dependent j. induction T; intros; inversion H; unfold closed; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto. eapply closed_upgrade. eauto. eauto.
@@ -1114,6 +1122,7 @@ Proof.
   intros. generalize dependent k. generalize dependent j. induction T2; intros; inversion H; simpl; eauto; try rewrite (IHT2_1 _ k); try rewrite (IHT2_2 _ (S k)); try rewrite (IHT2_2 _ (S k)); try rewrite (IHT2 _ k); eauto.
 
   eapply closed_upgrade; eauto.
+  eapply closed_upgrade; eauto.
 
   case_eq (beq_nat i 0); intros E. omega. omega.
 
@@ -1154,17 +1163,17 @@ Definition substt (UX: ty) (V: (id*ty)) :=
     | (x,T) => (x-1,(subst UX T))
   end.
 
-Lemma indexr_subst: forall GH0 x TX T,
-   indexr x (GH0 ++ [(0, TMem TX)]) = Some (TMem T) ->
-   x = 0 /\ TX = T \/
-   x > 0 /\ indexr (x-1) (map (substt TX) GH0) = Some (TMem (subst TX T)).
+Lemma indexr_subst: forall GH0 x TX TL TU,
+   indexr x (GH0 ++ [(0, TMem TX TX)]) = Some (TMem TL TU) ->
+   x = 0 /\ TX = TU \/
+   x > 0 /\ indexr (x-1) (map (substt TX) GH0) = Some (TMem (subst TX TL) (subst TX TU)).
 Proof.
   intros GH0. induction GH0; intros.
   - simpl in H. case_eq (beq_nat x 0); intros E.
     + rewrite E in H. inversion H.
       left. split. eapply beq_nat_true_iff. eauto. eauto.
     + rewrite E in H. inversion H.
-  -  destruct a. unfold id in H. remember ((length (GH0 ++ [(0, TMem TX)]))) as L.
+  -  destruct a. unfold id in H. remember ((length (GH0 ++ [(0, TMem TX TX)]))) as L.
      case_eq (beq_nat x L); intros E. 
      + assert (x = L). eapply beq_nat_true_iff. eauto.
        eapply indexr_hit in H.
@@ -1189,7 +1198,7 @@ Qed.
 Lemma stp_substitute: forall T1 T2 GX GH,
    stp GX GH T1 T2 ->
    forall GH0 TX,
-     GH = (GH0 ++ [(0,TMem TX)]) ->
+     GH = (GH0 ++ [(0,TMem TX TX)]) ->
      closed 0 0 TX ->
      stp GX (map (substt TX) GH0) TX TX ->
      stp GX (map (substt TX) GH0)
@@ -1201,22 +1210,22 @@ Proof.
   - Case "top". eauto.
   - Case "bool". eauto.
   - Case "fun". intros. simpl. eapply stp_fun. eauto. eauto.
-  - Case "mem". intros. simpl. eapply stp_mem. eauto.
+  - Case "mem". intros. simpl. eapply stp_mem. eauto. eauto.
   - Case "sel1". admit.
   - Case "selx". admit.
   - Case "sela1". intros GH0 TX ? ? ?. simpl.
-    subst GH. specialize (indexr_subst _ x TX T H). intros. 
+    subst GH. specialize (indexr_subst _ x TX TL TU H). intros. 
     destruct H1; destruct H1.
     + subst. simpl.
-      specialize (IHstp GH0 T). 
-      assert (subst T T = T). eapply closed_no_subst; eauto.
+      specialize (IHstp GH0 TU). 
+      assert (subst TU TU = TU). eapply closed_no_subst; eauto.
       rewrite H1 in IHstp.
       eapply IHstp. eauto. eauto. eauto.
     + subst. simpl.
       assert (beq_nat x 0 = false). eapply beq_nat_false_iff; omega. rewrite H5. simpl.
       eapply stp_sela1. eapply H4. eapply IHstp. eauto. eauto. eauto.
   - Case "selax". intros GH0 TX ? ? ?. simpl.
-    subst GH. specialize (indexr_subst _ x TX T H). intros.
+    subst GH. specialize (indexr_subst _ x TX TL TU H). intros.
     destruct H0; destruct H0.
     + subst. simpl. eauto.
     + subst. simpl. assert (beq_nat x 0 = false). eapply beq_nat_false_iff. omega. rewrite H4. eapply stp_selax. eauto.
@@ -1231,7 +1240,7 @@ Proof.
     + rewrite map_length. eapply closed_subst. subst GH.
       rewrite app_length in H2. simpl in H2. eauto.
       eapply closed_upgrade_free; eauto. omega.
-    + specialize IHstp2 with (GH0:=(0, TMem T3)::GH0) (TX:=TX).
+    + specialize IHstp2 with (GH0:=(0, TMem T3 T3)::GH0) (TX:=TX).
       subst GH. simpl in IHstp2.
       unfold open. unfold open in IHstp2.
       subst x.
@@ -1331,21 +1340,22 @@ Proof.
 Qed.
 
 
-Lemma compat_mem: forall GX TX G1 T1 T1',
-    compat GX TX G1 (TMem T1) T1' ->
+Lemma compat_mem: forall GX TX G1 T1 T2 T1',
+    compat GX TX G1 (TMem T1 T2) T1' ->
     closed 0 0 TX -> 
-    exists TA, T1' = TMem TA /\
-                  compat GX TX G1 T1 TA.
+    exists TA TB, T1' = TMem TA TB /\
+                  compat GX TX G1 T1 TA /\
+                  compat GX TX G1 T2 TB.
 Proof.
-  intros ? ? ? ? ? CC CLX. destruct CC.
+  intros ? ? ? ? ? ? CC CLX. destruct CC.
 
-  simpl in H. destruct H. destruct H. repeat eexists. eauto. unfold compat. eauto. 
+  simpl in H. destruct H. destruct H. repeat eexists. eauto. unfold compat. eauto. unfold compat. eauto.
 
-  simpl in H. destruct H. destruct H. repeat eexists. eauto. unfold compat. eauto. 
+  simpl in H. destruct H. destruct H. repeat eexists. eauto. unfold compat. eauto. unfold compat. eauto.
 
-  simpl in H. destruct H. destruct H. inversion H. repeat eexists. eauto. unfold compat. eauto. 
+  simpl in H. destruct H. destruct H. inversion H. repeat eexists. eauto. unfold compat. eauto. unfold compat. eauto.
 
-  simpl in H. destruct H. repeat eexists. eauto. unfold compat. eauto. 
+  simpl in H. destruct H. destruct H. repeat eexists. eauto. unfold compat. eauto. unfold compat. eauto.
 Qed.
 
 
