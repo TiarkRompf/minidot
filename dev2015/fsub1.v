@@ -358,7 +358,7 @@ with val_type : venv -> vl -> ty -> Prop :=
     val_type env (vabs venv f x y) TE
 | v_tabs: forall env venv tenv x y T1 T2 TE,
     wf_env venv tenv ->
-    has_type ((x,TMem TBot T1)::tenv) y (open (TSel x) T2) ->
+    has_type ((x,T1)::tenv) y (open (TSel x) T2) ->
     fresh venv = x ->
     stp2 venv (TAll T1 T2) env TE [] ->
     val_type env (vtabs venv x T1 y) TE
@@ -369,12 +369,12 @@ Inductive wf_envh : venv -> aenv -> tenv -> Prop :=
 | wfeh_nil : forall vvs, wf_envh vvs nil nil
 | wfeh_cons : forall n t vs vvs ts,
     wf_envh vvs vs ts ->
-    wf_envh vvs (cons (n,(vvs,t)) vs) (cons (n,TMem t t) ts)
+    wf_envh vvs (cons (n,(vvs,t)) vs) (cons (n,t) ts)
 .
                  
 Inductive valh_type : venv -> aenv -> (venv*ty) -> ty -> Prop :=
 | v_tya: forall aenv venv T1,
-    valh_type venv aenv (venv, T1) (TMem T1 T1)
+    valh_type venv aenv (venv, T1) T1
 .
 
 
@@ -773,7 +773,7 @@ Proof.
     admit. (* closed *) 
     admit. (* closed *)
     
-    specialize IHstp2 with (G3:=G0) (G4:=(0, TMem T3 T3) :: G2).
+    specialize IHstp2 with (G3:=G0) (G4:=(0, T3) :: G2).
     simpl in IHstp2. rewrite map_length. rewrite app_length. simpl.
     repeat rewrite splice_open_permute with (j:=0). subst x0.
     rewrite app_length in IHstp2. simpl in IHstp2.
@@ -1182,7 +1182,7 @@ Definition substt (UX: ty) (V: (id*ty)) :=
   end.
 
 Lemma indexr_subst: forall GH0 x TX TL TU,
-   indexr x (GH0 ++ [(0, TMem TX TX)]) = Some (TMem TL TU) ->
+   indexr x (GH0 ++ [(0, TMem TBot TX)]) = Some (TMem TL TU) ->
    x = 0 /\ TX = TU \/
    x > 0 /\ indexr (x-1) (map (substt TX) GH0) = Some (TMem (subst TX TL) (subst TX TU)).
 Proof.
@@ -1191,7 +1191,7 @@ Proof.
     + rewrite E in H. inversion H.
       left. split. eapply beq_nat_true_iff. eauto. eauto.
     + rewrite E in H. inversion H.
-  -  destruct a. unfold id in H. remember ((length (GH0 ++ [(0, TMem TX TX)]))) as L.
+  -  destruct a. unfold id in H. remember ((length (GH0 ++ [(0, TMem TBot TX)]))) as L.
      case_eq (beq_nat x L); intros E. 
      + assert (x = L). eapply beq_nat_true_iff. eauto.
        eapply indexr_hit in H.
@@ -1216,7 +1216,7 @@ Qed.
 Lemma stp_substitute: forall T1 T2 GX GH,
    stp GX GH T1 T2 ->
    forall GH0 TX,
-     GH = (GH0 ++ [(0,TMem TX TX)]) ->
+     GH = (GH0 ++ [(0,TMem TBot TX)]) ->
      closed 0 0 TX ->
      stp GX (map (substt TX) GH0) TX TX ->
      stp GX (map (substt TX) GH0)
@@ -1259,7 +1259,7 @@ Proof.
     + rewrite map_length. eapply closed_subst. subst GH.
       rewrite app_length in H2. simpl in H2. eauto.
       eapply closed_upgrade_free; eauto. omega.
-    + specialize IHstp2 with (GH0:=(0, TMem T3 T3)::GH0) (TX:=TX).
+    + specialize IHstp2 with (GH0:=(0, T3)::GH0) (TX:=TX).
       subst GH. simpl in IHstp2.
       unfold open. unfold open in IHstp2.
       subst x.
@@ -1269,6 +1269,7 @@ Proof.
       eapply IHstp2; eauto. eapply stp_extend; eauto.
       eauto. eauto.
 Qed.
+
 
 (*
 when and how we can replace with multiple environments:
