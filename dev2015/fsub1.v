@@ -22,7 +22,8 @@ Definition id := nat.
 
 Inductive ty : Type :=
   | TBool  : ty
-  | TTop   : ty           
+  | TBot   : ty           
+  | TTop   : ty    
   | TFun   : ty -> ty -> ty
   | TMem   : ty -> ty -> ty
   | TSel   : id -> ty
@@ -95,6 +96,8 @@ Fixpoint update {X : Type} (n : nat) (x: X)
 Inductive closed_rec: nat -> nat -> ty -> Prop :=
 | cl_top: forall k l,
     closed_rec k l TTop
+| cl_bot: forall k l,
+    closed_rec k l TBot
 | cl_bool: forall k l,
     closed_rec k l TBool
 | cl_fun: forall k l T1 T2,
@@ -130,7 +133,8 @@ Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
     | TSelH i     => TSelH i (*if beq_nat k i then u else TSelH i *)
     | TSelB i     => if beq_nat k i then u else TSelB i
     | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
-    | TTop => TTop
+    | TTop        => TTop
+    | TBot        => TBot
     | TBool       => TBool
     | TMem T1 T2  => TMem (open_rec k u T1) (open_rec k u T2)
     | TFun T1 T2  => TFun (open_rec k u T1) (open_rec k u T2)
@@ -147,6 +151,7 @@ Proof. compute. eauto. Qed.
 Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
+    | TBot         => TBot
     | TBool        => TBool
     | TMem T1 T2   => TMem (subst U T1) (subst U T2)
     | TFun T1 T2   => TFun (subst U T1) (subst U T2)
@@ -159,6 +164,7 @@ Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
 Fixpoint nosubst (T : ty) {struct T} : Prop :=
   match T with
     | TTop         => True
+    | TBot         => True
     | TBool        => True
     | TMem T1 T2   => nosubst T1 /\ nosubst T2
     | TFun T1 T2   => nosubst T1 /\ nosubst T2
@@ -176,6 +182,8 @@ Hint Unfold closed.
 Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_top: forall G1 GH T1,
     stp G1 GH T1 TTop
+| stp_bot: forall G1 GH T2,
+    stp G1 GH TBot T2
 | stp_bool: forall G1 GH,
     stp G1 GH TBool TBool
 | stp_fun: forall G1 GH T1 T2 T3 T4,
@@ -247,7 +255,7 @@ Does it make a difference? It seems like we can always widen f?
 
 *)                    
 | t_tabs: forall env x y T1 T2,
-           has_type ((x,TMem T1 T1)::env) y (open (TSel x) T2) -> 
+           has_type ((x,TMem TBot T1)::env) y (open (TSel x) T2) -> 
            stp env [] (TAll T1 T2) (TAll T1 T2) ->
            fresh env = x ->
            has_type env (ttabs x T1 y) (TAll T1 T2)
@@ -262,6 +270,8 @@ Does it make a difference? It seems like we can always widen f?
 Inductive stp2: venv -> ty -> venv -> ty -> list (id*(venv*ty))  -> Prop :=
 | stp2_top: forall G1 G2 GH T,
     stp2 G1 T G2 TTop GH
+| stp2_bot: forall G1 G2 GH T,
+    stp2 G1 TBot G2 T GH
 | stp2_bool: forall G1 G2 GH,
     stp2 G1 TBool G2 TBool GH
 | stp2_fun: forall G1 G2 T1 T2 T3 T4 GH,
@@ -325,7 +335,7 @@ Inductive wf_env : venv -> tenv -> Prop :=
 with val_type : venv -> vl -> ty -> Prop :=
 | v_ty: forall env venv tenv T1 TE,
     wf_env venv tenv -> (* T1 wf in tenv ? *)
-    stp2 venv (TMem T1 T1) env TE [] ->
+    stp2 venv (TMem TBot T1) env TE [] ->
     val_type env (vty venv T1) TE
 | v_bool: forall venv b TE,
     stp2 [] TBool venv TE [] ->
@@ -339,7 +349,7 @@ with val_type : venv -> vl -> ty -> Prop :=
     val_type env (vabs venv f x y) TE
 | v_tabs: forall env venv tenv x y T1 T2 TE,
     wf_env venv tenv ->
-    has_type ((x,TMem T1 T1)::tenv) y (open (TSel x) T2) ->
+    has_type ((x,TMem TBot T1)::tenv) y (open (TSel x) T2) ->
     fresh venv = x ->
     stp2 venv (TAll T1 T2) env TE [] ->
     val_type env (vtabs venv x T1 y) TE
@@ -650,6 +660,7 @@ Qed.
 Fixpoint splice n (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
+    | TBot         => TBot
     | TBool        => TBool
     | TMem T1 T2   => TMem (splice n T1) (splice n T2)
     | TFun T1 T2   => TFun (splice n T1) (splice n T2)
@@ -1208,6 +1219,7 @@ Proof.
   intros T1 T2 GX GH H.
   induction H.
   - Case "top". eauto.
+  - Case "bot". eauto.
   - Case "bool". eauto.
   - Case "fun". intros. simpl. eapply stp_fun. eauto. eauto.
   - Case "mem". intros. simpl. eapply stp_mem. eauto. eauto.
@@ -1476,6 +1488,10 @@ Proof.
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
     (* eapply compat_top in IX2. *)
     admit.
+  - Case "bot".
+    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    (* eapply compat_top in IX2. *)
+    admit.
     
   - Case "bool".
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
@@ -1713,36 +1729,37 @@ Lemma stp_to_stp2: forall G1 GH T1 T2,
 Proof.
   intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY.
   - Case "top". eauto.
+  - Case "bot". eauto.
   - Case "bool". eauto.
   - Case "fun". eauto.
   - Case "mem". eauto.
   - Case "sel1". 
-    assert (exists v : vl, index x GX = Some v /\ val_type GX v (TMem T)) as A.
+    assert (exists v : vl, index x GX = Some v /\ val_type GX v (TMem TL TU)) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
     inversion VT; try solve by inversion; subst.
-    eapply stp2_sel1; eauto. inversion H2. subst. eapply stp2_closed1 in H7. eauto.
+    eapply stp2_sel1; eauto. inversion H2. subst. eapply stp2_closed1 in H11. eauto.
     inversion H2. subst.
-    eapply stp2_extendH_mult with (H2:=GY) in H7. rewrite app_nil_r in H7.
-    eapply stp2_trans. eapply H7. eapply IHST; eauto.
+    eapply stp2_extendH_mult with (H2:=GY) in H11. rewrite app_nil_r in H11.
+    eapply stp2_trans. eapply H11. eapply IHST; eauto.
   - Case "selx". eauto.
-    assert (exists v : vl, index x GX = Some v /\ val_type GX v (TMem T)) as A.
+    assert (exists v : vl, index x GX = Some v /\ val_type GX v (TMem TL TU)) as A.
     eapply index_safe_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]].
     inversion VT; try solve by inversion; subst.
     inversion H2. subst.
-    eapply stp2_sel2. eauto. eapply stp2_closed1 in H7. eauto. 
-    eapply stp2_sel1. eauto. eapply stp2_closed1 in H7. eauto.
-    eapply stp2_extendH_mult with (H2:=GY) in H7. rewrite app_nil_r in H7.
-    eapply stp2_reg1. eapply H7.
+    eapply stp2_sel2. eauto. eapply stp2_closed1 in H11. eauto. 
+    eapply stp2_sel1. eauto. eapply stp2_closed1 in H11. eauto.
+    eapply stp2_extendH_mult with (H2:=GY) in H11. rewrite app_nil_r in H11.
+    eapply stp2_reg1. eapply H11.
   - Case "sela1". eauto.
-    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v (TMem T)) as A.
+    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v (TMem TL TU)) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. destruct x0.
     inversion VT. subst. 
     eapply stp2_sela1. eauto. eapply IHST. eauto. eauto.
   - Case "selax". eauto.
-    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v (TMem T)) as A.
+    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v (TMem TL TU)) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. destruct x0.
     destruct VT. subst.
@@ -1792,7 +1809,7 @@ Lemma invert_tabs: forall venv vf T1 T2,
     vf = (vtabs env x T3 y) /\
     fresh env = x /\
     wf_env env tenv /\
-    has_type ((x,TMem T3)::tenv) y (open (TSel x) T4) /\
+    has_type ((x,TMem TBot T3)::tenv) y (open (TSel x) T4) /\
     stp2 venv T1 env T3 [] /\
     stp2 ((x,vty venv T1)::env) (open (TSel x) T4) venv (open T1 T2) [].
 Proof.
@@ -1914,7 +1931,7 @@ Proof.
           subst. eapply IHn. eauto. eauto.
           (* wf_env x *) econstructor. eapply v_ty. 
           (* wf_env   *) eauto.
-      eapply stp2_extend2. eapply stp2_mem. eauto. eauto.
+      eapply stp2_extend2. eapply stp2_mem. eauto. eauto. eauto.
       eauto.
       inversion HRY as [? vy].
 
