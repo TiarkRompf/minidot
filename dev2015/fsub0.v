@@ -227,9 +227,10 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            fresh env <= f ->
            1+f <= x ->
            has_type env (tabs f x y) (TFun T1 T2)
-| t_tapp: forall env f T11 T12 ,
+| t_tapp: forall env f T11 T12 T,
            has_type env f (TAll T11 T12) ->
-           has_type env (ttapp f T11) (open T11 T12)
+           T = open T11 T12 -> 
+           has_type env (ttapp f T11) T
 (*
 NOTE: both the POPLmark paper and Cardelli's paper use this rule:
 Does it make a difference? It seems like we can always widen f?
@@ -245,7 +246,11 @@ Does it make a difference? It seems like we can always widen f?
            stp env [] (TAll T1 T2) (TAll T1 T2) ->
            fresh env = x ->
            has_type env (ttabs x T1 y) (TAll T1 T2)
-(* TODO: subsumption *)
+
+| t_sub: forall env e T1 T2,
+           has_type env e T1 ->
+           stp env [] T1 T2 ->
+           has_type env e T2
 .
 
 
@@ -402,7 +407,7 @@ Hint Constructors ty.
 Hint Constructors tm.
 Hint Constructors vl.
 
-
+Hint Constructors closed_rec.
 Hint Constructors has_type.
 Hint Constructors val_type.
 Hint Constructors wf_env.
@@ -414,8 +419,121 @@ Hint Constructors list.
 
 Hint Unfold index.
 Hint Unfold length.
+Hint Unfold closed.
+Hint Unfold open.
 
 Hint Resolve ex_intro.
+
+
+
+(* ############################################################ *)
+(* Examples *)
+(* ############################################################ *)
+
+
+(*
+match goal with
+        | |- has_type _ (tvar _) _ =>
+          try solve [apply t_vara;
+                      repeat (econstructor; eauto)]
+          | _ => idtac
+      end;
+*)
+
+Ltac crush_has_tp :=
+  try solve [eapply stp_selx; compute; eauto; crush_has_tp];
+  try solve [eapply stp_selax; compute; eauto; crush_has_tp];
+  try solve [eapply cl_selb; compute; eauto; crush_has_tp];
+  try solve [(econstructor; compute; eauto; crush_has_tp)].
+
+Ltac crush2 :=
+  try solve [(eapply stp_selx; compute; eauto; crush2)];
+  try solve [(eapply stp_selax; compute; eauto; crush2)];
+  try solve [(eapply stp_sel1; compute; eauto; crush2)];
+  try solve [(eapply stp_sela1; compute; eauto; crush2)];
+  try solve [(eapply cl_selb; compute; eauto; crush2)];
+  try solve [(econstructor; compute; eauto; crush2)];
+  try solve [(eapply t_sub; eapply t_var; compute; eauto; crush2)].
+
+
+(* define polymorphic identity function *)
+
+Definition polyId := TAll TTop (TFun (TSelB 0) (TSelB 0)).
+
+Example ex1: has_type [] (ttabs 0 TTop (tabs 1 2 (tvar 2))) polyId.
+Proof.
+  crush_has_tp.
+Qed.
+
+
+(* instantiate it to bool *)
+
+Example ex2: has_type [(0,polyId)] (ttapp (tvar 0) TBool) (TFun TBool TBool).
+Proof.
+  eapply t_tapp. eapply t_sub. eapply t_var. simpl. eauto.
+  eapply stp_all. eauto. eauto.
+  crush_has_tp.  crush_has_tp.   crush_has_tp. compute.
+  
+  eapply stp_all.  eauto. eauto. econstructor. eauto. eauto.
+  eapply cl_fun. eapply cl_selb. eauto. eapply cl_selb. eauto.
+  crush_has_tp. crush_has_tp.
+Qed.  
+       
+
+
+(* define brand / unbrand client function *)
+
+Definition brandUnbrand :=
+  TAll TTop
+       (TFun
+          (TFun TBool (TSelB 0)) (* brand *)
+          (TFun
+             (TFun (TSelB 0) TBool) (* unbrand *)
+             TBool)).
+
+Example ex3:
+  has_type []
+           (ttabs 0 TTop
+                  (tabs 1 2
+                        (tabs 3 4
+                              (tapp (tvar 4) (tapp (tvar 2) ttrue)))))
+           brandUnbrand.
+Proof.
+  crush_has_tp.
+Qed.
+
+
+(* instantiating it at bool is admissible *)
+
+Example ex4:
+  has_type [(1,TFun TBool TBool);(0,brandUnbrand)]
+           (tvar 0) (TAll TBool (TFun (TFun TBool (TSelB 0)) (TFun (TFun (TSelB 0) TBool) TBool))).
+Proof.
+  eapply t_sub. crush2. crush2.
+Qed.
+
+Hint Resolve ex4.
+
+(* apply it to identity functions *)
+
+Example ex5:
+  has_type [(1,TFun TBool TBool);(0,brandUnbrand)]
+           (tapp (tapp (ttapp (tvar 0) TBool) (tvar 1)) (tvar 1)) TBool.
+Proof.
+  crush2.
+Qed.
+
+
+
+
+
+(* ############################################################ *)
+(* Proofs *)
+(* ############################################################ *)
+
+
+
+
 
 Lemma wf_fresh : forall vs ts,
                     wf_env vs ts ->
