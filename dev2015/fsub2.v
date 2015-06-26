@@ -1963,20 +1963,20 @@ Proof.
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "TApp".
-    remember (ttapp e t) as xe. induction H0; inversion Heqxe; subst.
+    remember (ttapp e1 e2) as e. induction H0; inversion Heqe; subst.
     +
-      remember t as T11.
-      remember (teval n venv0 e) as tf.
-      remember (vty venv0 T11) as vx.
+      remember (teval n venv0 e1) as tf.
+      remember (teval n venv0 e2) as tx.
       
+      destruct tx as [rx|]; try solve by inversion.
+      assert (res_type venv0 rx T11) as HRX. SCase "HRX". subst. eapply IHn; eauto.
+      inversion HRX as [? vx]. 
+
       destruct tf as [rf|]; try solve by inversion.  
-      assert (res_type venv0 rf (TAll (TMem T11 T11) T12)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
+      assert (res_type venv0 rf (TAll T11 T12)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
       inversion HRF as [? vf].
 
-      assert (val_type venv0 vx (TMem T11 T11)). subst vx. eapply v_ty. eauto. eapply stp_to_stp2; eauto. econstructor.
-      
-      subst t.
-      destruct (invert_tabs venv0 vf vx (TMem T11 T11) T12) as
+      destruct (invert_tabs venv0 vf vx T11 T12) as
           [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]].
       eauto. eauto. eapply stp_to_stp2; eauto. econstructor.
       (* now we know it's a closure, and we have has_type evidence *)
@@ -1984,12 +1984,10 @@ Proof.
       assert (res_type ((x0,vx)::env1) res (open (TSel x0) T4)) as HRY.
         SCase "HRY".
           subst. eapply IHn. eauto. eauto.
-          (* wf_env x *) econstructor. eapply v_ty. 
-             eauto.
-             eapply stp2_extend2. eauto. eauto. eauto.
+          (* wf_env x *) econstructor. eapply valtp_widen; eauto. eapply stp2_extend2. eauto. eauto. eauto.
       inversion HRY as [? vy].
 
-      eapply not_stuck. eapply valtp_widen; eauto.
+      eapply not_stuck. eapply valtp_widen. eauto. eauto.
 
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stp2; eauto. econstructor.
 
