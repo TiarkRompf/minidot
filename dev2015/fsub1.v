@@ -344,7 +344,7 @@ Inductive wf_env : venv -> tenv -> Prop :=
 with val_type : venv -> vl -> ty -> Prop :=
 | v_ty: forall env venv tenv T1 TE,
     wf_env venv tenv -> (* T1 wf in tenv ? *)
-    stp2 venv (TMem TBot T1) env TE [] ->
+    stp2 venv (TMem T1 T1) env TE [] ->
     val_type env (vty venv T1) TE
 | v_bool: forall venv b TE,
     stp2 [] TBool venv TE [] ->
@@ -1289,7 +1289,7 @@ stp2 G1 T1 G2 T2 (GH0 ++ [(0,vtya GX TX)])
    index x1 G1 = (GX TX)
    stp2 G (subst (TSel x1) T1) G2' T2'
 
-3) G1 = GX
+3) G1 = GX <----- valid for Fsub, but not for DOT !
 
    stp2 G1 (subst TX T1) G2' T2'
 
@@ -1353,37 +1353,22 @@ Ltac eu := repeat match goal with
 
 
 Lemma compat_top: forall GX TX G1 T1',
-    compat GX TX G1 TTop T1' ->
-    closed 0 0 TX -> 
-    T1' = TTop.
+  compat GX TX G1 TTop T1' -> closed 0 0 TX -> T1' = TTop.
 Proof.
-  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC].
-  - eu. eauto. 
-  - eu. eauto.
-  - eu. eauto.
+  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC]; eu; eauto.
 Qed.
 
 Lemma compat_bot: forall GX TX G1 T1',
-    compat GX TX G1 TBot T1' ->
-    closed 0 0 TX -> 
-    T1' = TBot.
+  compat GX TX G1 TBot T1' -> closed 0 0 TX -> T1' = TBot.
 Proof.
-  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC].
-  - eu. eauto. 
-  - eu. eauto.
-  - eu. eauto.
+  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC]; eu; eauto.
 Qed.
 
 
 Lemma compat_bool: forall GX TX G1 T1',
-    compat GX TX G1 TBool T1' ->
-    closed 0 0 TX -> 
-    T1' = TBool.
+  compat GX TX G1 TBool T1' -> closed 0 0 TX -> T1' = TBool.
 Proof.
-  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC].
-  - eu. eauto. 
-  - eu. eauto.
-  - eu. eauto.
+  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC]; eu; eauto.
 Qed.
 
 Lemma compat_mem: forall GX TX G1 T1 T2 T1',
@@ -1494,18 +1479,17 @@ Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
      Forall2 (compat2 GX TX) GH0 GH0' ->
      stp2 G1 T1' G2 T2' GH0'.
 Proof.
-admit.
-  (*
   intros G1 G2 T1 T2 GH H.
   induction H.
   - Case "top".
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
-    (* eapply compat_top in IX2. *)
-    admit.
+    eapply compat_top in IX2.
+    subst. eauto. eauto.
+    
   - Case "bot".
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
-    (* eapply compat_top in IX2. *)
-    admit.
+    eapply compat_bot in IX1.
+    subst. eauto. eauto.
     
   - Case "bool".
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
@@ -1564,39 +1548,25 @@ admit.
 
     assert (compat GXX TXX G1 (TSelH x) T1') as IXX. eauto.
     
-    eapply (compat_selh GXX TXX G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
-
-    destruct IX1.
-    + destruct H3. destruct H4. subst.
-
-      assert (compat GXX TXX GXX TXX TXX) as CPX. right. left. split. eauto. symmetry. eapply closed_no_subst. eauto.
+    eapply (compat_selh GXX TXX G1 T1' GH0 GH0' GX (TMem TL TU)) in IX1. repeat destruct IX1 as [? IX1].
+    
+    destruct IX1. 
+    + SCase "x = 0".
+      repeat destruct IXX as [|IXX]; eu.
+      * subst. simpl. inversion H6. inversion CX. subst.
+        eapply stp2_sel1. eauto. eauto.
+        eapply IHstp2; eauto.
+        right. left. eauto.
+      * subst x. inversion H4. omega.
+      * subst x. destruct H4. eauto.
+    + SCase "x > 0".
+      eu. subst.
+      eapply compat_mem in H6. eu. subst.
+      eapply stp2_sela1. eauto. eapply IHstp2; eauto. eauto.
+    (* remaining obligations *)
+    + eauto. + subst GH. eauto. + eauto.
       
-      inversion IXX.
-
-      destruct H1. destruct H1. subst. simpl.
-      eapply stp2_sel1. eauto. eauto.
-      eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
-      
-      inversion H1.
-
-      destruct H3. subst. simpl.
-      eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
-
-      inversion H3.
-
-      destruct H4. inversion H4. omega. (* contra *)
-
-      destruct H4. simpl in H4. destruct H4. eauto. (* contra *)
-    + destruct H3. destruct H3. destruct H4. destruct H5.
-      subst T1'. eapply stp2_sela1. eauto.
-      eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
-
-    + eauto.
-    + subst GH. eauto.
-    + eauto.
-
-      
-  - Case "selx".
+  - Case "selax".
 
     intros GH0 GH0' GXX TXX T1' T2' ? RFL CX IX1 IX2 FA.
     
@@ -1609,59 +1579,23 @@ admit.
     eapply (compat_selh GXX TXX G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
     eapply (compat_selh GXX TXX G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
 
-    destruct IX1; destruct IX2.
-    + destruct H3. destruct H4. subst. (* x = 0 *)
+    destruct x; destruct IX1; eu; try omega; destruct IX2; eu; try omega; subst.
+    + SCase "x = 0".
+      assert (not (nosubst (TSelH 0))). admit.
+      assert (not (closed 0 0 (TSelH 0))). admit.
+      destruct IXX1 as [IXX1|IXX1]; destruct IXX1; eu; try contradiction. 
+      destruct IXX2 as [IXX2|IXX2]; destruct IXX2; eu; try contradiction.
+      * SSCase "sel-sel".
+        (* NOTE: we rely on inverting RFL = stp (TMem TX TX) (TMem TX TX) here!! *)
+        (* since this is passed in externally we should be safe. *)
+        (* otherwise we could take wf evidence and apply reflexivity *)
+        subst. inversion CX. inversion H13. (* TMem = TMem *) inversion RFL. subst.
+        simpl. eapply stp2_sel1. eauto. eauto. eapply stp2_sel2. eauto. eauto. eauto.
+    + SCase "x > 0".
+      destruct IXX1; destruct IXX2; eu; subst; eapply stp2_selax; eauto.
+    (* leftovers *)
+    + eauto. + subst. eauto. + eauto. + eauto. + subst. eauto. + eauto. 
 
-      inversion IXX1; inversion IXX2.
-
-      destruct H1. destruct H1. subst. simpl.
-      destruct H3. destruct H3. subst. simpl.
-      eapply stp2_sel1. eauto. eauto.
-      eapply stp2_sel2. eauto. eauto. eauto.
-
-      destruct H1. destruct H1. subst. simpl.
-      destruct H3. destruct H3. subst. simpl.
-      eapply stp2_sel1. eauto. eauto. eauto.
-
-      destruct H3. destruct H3. subst. simpl.
-      inversion H3. omega. (* contra *)
-
-      destruct H3. destruct H3. eauto. (* contra *)
-
-      (* --- *)
-      
-      destruct H1. destruct H1. subst. simpl.
-      destruct H3. destruct H1. subst. simpl.
-      eapply stp2_sel2. eauto. eauto. eauto.
-
-      destruct H1. destruct H1. inversion H1. omega. (* contra *)
-
-      destruct H1. destruct H1. eauto. (* contra *)
-
-      (* --- *)
-      
-      destruct H1. destruct H1. subst. simpl.
-      destruct H3. destruct H1. subst. simpl.
-      eauto.
-      
-      destruct H1. destruct H1. inversion H1. omega.
-      destruct H1. destruct H1. eauto.
-      destruct H1. destruct H1. inversion H1. omega.
-      destruct H1. destruct H1. eauto.
-      
-    + destruct H3. destruct H4. omega.
-    + destruct H3. destruct H4. omega.
-    + destruct H3. destruct H3. destruct H5. destruct H6.
-      destruct H4. destruct H4. destruct H8. destruct H9.
-      subst. eapply stp2_selax. eauto. eauto.
-
-    + eauto.
-    + subst GH. eauto.
-    + eauto.
-    + eauto.
-    + eauto. subst GH. eauto.
-    + eauto.
-    
   - Case "all".
     intros GH0 GH0' GX TX T1' T2' ? RFL CX IX1 IX2 FA.
     
@@ -1688,7 +1622,6 @@ admit.
     + eauto. subst GH. rewrite <-EL. eapply closed_upgrade_free. eauto. omega.
     + eauto.
     + eauto. subst GH. rewrite <-EL. eapply closed_upgrade_free. eauto. omega.
-*)
 Qed.
 
 
