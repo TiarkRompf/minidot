@@ -207,16 +207,17 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_selx: forall G1 GH TL TU x,
     index x G1 = Some (TMem TL TU) ->
     stp G1 GH (TSel x) (TSel x)
-| stp_sela1: forall G1 GH TL TU T2 x,
-    indexr x GH = Some (TMem TL TU) ->
-    stp G1 GH TU T2 ->   
+| stp_sela1: forall G1 GH TX T2 x,
+    indexr x GH = Some TX -> 
+    stp G1 GH TX (TMem TBot T2) ->   
     stp G1 GH (TSelH x) T2
-| stp_sela2: forall G1 GH TL TU T1 x,
-    indexr x GH = Some (TMem TL TU) ->
-    stp G1 GH T1 TL ->
+| stp_sela2: forall G1 GH TX T1 x,
+    indexr x GH = Some TX ->
+    stp G1 GH TX (TMem T1 TTop) ->
     stp G1 GH T1 (TSelH x)
-| stp_selax: forall G1 GH TL TU x,
-    indexr x GH = Some (TMem TL TU) ->
+| stp_selax: forall G1 GH TX x,
+    indexr x GH = Some TX  ->
+    stp G1 GH TX (TMem TBot TTop) ->
     stp G1 GH (TSelH x) (TSelH x)
 | stp_all: forall G1 GH T1 T2 T3 T4 x,
     stp G1 GH T3 T1 ->
@@ -505,10 +506,10 @@ Proof.
   eapply t_tapp. eapply t_sub. eapply t_var. simpl. eauto.
   eapply stp_all. eauto. eauto. crush_has_tp. crush_has_tp. crush_has_tp.
   compute.
-  eapply stp_all.
-    eapply stp_mem. instantiate (1:= TBool). crush2. crush2. crush2. crush2. crush2.
+  eapply stp_all. instantiate (1:= (TMem TBool TBool)).
+    eapply stp_mem. crush2. crush2. crush2. crush2. crush2.
     eapply stp_fun. crush2. crush2.
-  eapply t_typ. crush2.
+  eapply t_sub. eapply t_typ. crush2. crush2.
   
   eapply stp_fun; crush2.
 Qed.
