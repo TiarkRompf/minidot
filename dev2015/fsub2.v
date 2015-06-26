@@ -1919,6 +1919,11 @@ Proof.
 
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stp2; eauto. econstructor.
 
+  - Case "Typ".
+    remember (ttyp t) as e. induction H0; inversion Heqe; subst.
+    + eapply not_stuck. eapply v_ty; eauto. eapply stp_to_stp2; eauto. econstructor.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stp2; eauto. econstructor.
+      
   - Case "App".
     remember (tapp e1 e2) as e. induction H0; inversion Heqe; subst.
     +
