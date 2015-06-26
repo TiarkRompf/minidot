@@ -929,13 +929,13 @@ Lemma stp2_trans: forall G1 G2 G3 T1 T2 T3 H,
 Proof. admit. Qed.
 
 (* used in trans -- need to generalize interface for induction *)
-(*
+
 Lemma stp2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4 H,
   stp2 G1 T1 G2 T2 H -> (* careful about H! *)
-  stp2 G3 T3 G4 T4 ((x,vtya G2 T2)::H) ->
-  stp2 G3 T3 G4 T4 ((x,vtya G1 T1)::H).
+  stp2 G3 T3 G4 T4 ((x,(G2,T2))::H) ->
+  stp2 G3 T3 G4 T4 ((x,(G1,T1))::H).
 Proof. admit. Qed.
- *)
+
 
 Lemma index_miss {X}: forall x x1 (B:X) A G,
   index x ((x1,B)::G) = A ->
@@ -1173,6 +1173,22 @@ Proof.
   intros. generalize dependent j. induction T2; intros; try inversion H0; simpl; eauto.
 
   case_eq (beq_nat j i); intros E. eauto. eauto.
+Qed.
+
+Lemma nosubst_open_rev: forall j TX T2, nosubst (open_rec j TX T2) -> nosubst TX -> nosubst T2.
+Proof.
+  intros. generalize dependent j. induction T2; intros; try inversion H; simpl; eauto.
+Qed.
+
+Lemma nosubst_zero_closed: forall j T2, nosubst (open_rec j (TSelH 0) T2) -> closed_rec (j+1) 0 T2 -> closed_rec j 0 T2.
+Proof.
+  intros. generalize dependent j. induction T2; intros; simpl in H; try destruct H; inversion H0; eauto.
+
+  omega.
+  econstructor.
+
+  case_eq (beq_nat j i); intros E. rewrite E in H. destruct H. eauto.
+  eapply beq_nat_false_iff in E. omega.
 Qed.
 
 
@@ -1460,19 +1476,49 @@ Proof.
     + unfold compat. left. eexists; eauto.
     + unfold compat. left. repeat eexists; eauto. rewrite subst_open_commute; eauto.
 
+  - eu. simpl in H0. repeat eexists; eauto. eapply closed_subst. eauto. eauto.
+    + unfold compat. right. left. eauto.
+    + unfold compat. right. left. split.
+      * eauto.
+      * rewrite subst_open_commute; eauto. 
+
   - eu. simpl in H0. inversion H. repeat eexists; eauto. eapply closed_upgrade_free; eauto. omega.
-    + unfold compat. right. right. split. eapply nosubst_intro; eauto. symmetry. eapply closed_no_subst; eauto.
-    + unfold compat. right. right. split.
+    + unfold compat. right. right. right. split. eapply nosubst_intro; eauto. symmetry. eapply closed_no_subst; eauto.
+    + unfold compat. right. right. right. split.
       * eapply nosubst_open. simpl. omega. eapply nosubst_intro. eauto.
       * rewrite subst_open_commute.  assert (T2 = subst TTop T2) as E. symmetry. eapply closed_no_subst; eauto. rewrite <-E. eauto. eauto. eauto.
       
   - eu. simpl in H0. destruct H. repeat eexists; eauto. eapply closed_subst; eauto. eauto.
-    + unfold compat. right. right. eauto.
-    + unfold compat. right. right. split.
+    + unfold compat. right. right. right. eauto.
+    + unfold compat. right. right. right. split.
       * eapply nosubst_open. simpl. omega. eauto.
       * rewrite subst_open_commute; eauto.
 Qed.
 
+
+Lemma stp2_no_mem_nosubst: forall G1 G2 T1 T2 GH GX TX,
+   stp2 G1 T1 G2 T2 GH ->
+   forall GH0,
+     GH = (GH0 ++ [(0,(GX, TX))]) ->
+     (forall TA TB, TX <> TMem TA TB) ->
+     nosubst T1 /\ nosubst T2.
+Proof.
+  intros G1 G2 T1 T2 GH GX TX H.
+  induction H; intros; simpl; repeat split; try eapply IHstp2; try eapply IHstp2_1; eauto; try eapply IHstp2_2; eauto.
+                             
+  admit. (* top regularity *)
+  admit. (* bot regularity *)
+
+  (* sela1 *)
+  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. destruct (H2 TL TU). eauto. omega.
+  (* selax *)
+  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. destruct (H2 TL TU). eauto. omega.
+  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. destruct (H2 TL TU). eauto. omega.
+  
+  (* all *)
+  subst GH. eapply nosubst_open_rev. eapply (IHstp2_2 ((0, (G2, T3)) :: GH0)); eauto. rewrite app_length. simpl. omega.
+    subst GH. eapply nosubst_open_rev. eapply (IHstp2_2 ((0, (G2, T3)) :: GH0)); eauto. rewrite app_length. simpl. omega.
+Qed.
 
 
 Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
@@ -1762,48 +1808,74 @@ Proof.
   intros. inversion H; try solve by inversion. inversion H4. subst. repeat eexists; repeat eauto.
 Qed.
 
-Lemma invert_tabs: forall venv vf T1 T2,
-  val_type venv vf (TAll (TMem T1 T1) T2) ->
+Lemma invert_tabs: forall venv vf vx T1 T2,
+  val_type venv vf (TAll T1 T2) ->
+  val_type venv vx T1 ->
   stp2 venv T2 venv T2 [] ->                 
   exists env tenv x y T3 T4,
     vf = (vtabs env x T3 y) /\
     fresh env = x /\
     wf_env env tenv /\
     has_type ((x,T3)::tenv) y (open (TSel x) T4) /\
-    stp2 venv (TMem T1 T1) env T3 [] /\
-    stp2 ((x,vty venv T1)::env) (open (TSel x) T4) venv T2 []. (* (open T1 T2) []. *)
+    stp2 venv T1 env T3 [] /\
+    stp2 ((x,vx)::env) (open (TSel x) T4) venv T2 []. (* (open T1 T2) []. *)
 Proof.
-  intros. inversion H; try solve by inversion. inversion H4. subst. repeat eexists; repeat eauto.
+  intros venv0 vf vx T1 T2 VF VX STY. inversion VF; try solve by inversion. inversion H2. subst. repeat eexists; repeat eauto.
   remember (fresh venv1) as x.
   remember (x + fresh venv0) as xx.
 
   (* inversion of TAll < TAll *)
-  assert (stp2 venv0 (TMem T1 T1) venv1 T0 []). eauto.
-  assert (stp2 venv1 (open (TSelH 0) T3) venv0 (open (TSelH 0) T2) [(0,(venv0, TMem T1 T1))]). {
+  assert (stp2 venv0 T1 venv1 T0 []) as ARG. eauto.
+  assert (stp2 venv1 (open (TSelH 0) T3) venv0 (open (TSelH 0) T2) [(0,(venv0, T1))]) as KEY. {
     eauto.
   }
 
   (* need reflexivity *)
   assert (stp2 venv0 T1 venv0 T1 []). eapply stp2_reg1. eauto.
-  assert (closed 0 0 T1). eapply stp2_closed1 in H6. simpl in H6. eauto.
+  assert (closed 0 0 T1). eapply stp2_closed1 in H1. simpl in H1. eauto.
   
   (* now rename *)
   
-  assert (stp2 ((fresh venv1,vty venv0 T1) :: venv1) (open_rec 0 (TSel (fresh venv1)) T3) venv0 (T2) []). { (* was open T1 T2 *)
-    assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
-    assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
-    eapply stp2_substitute with (GH0:=nil).
-    eapply stp2_extend1. eapply H5. eauto.
-    simpl. eauto.
-    eauto.
-    eauto.
-    left. eexists. eexists. split. eapply index_hit2. eauto. eauto. eauto. unfold open. rewrite (subst_open_zero 0 1). subst x. eauto. eauto.
-    right. left. split. rewrite OP2. eauto. eauto. eauto.
+  assert (stp2 ((fresh venv1,vx) :: venv1) (open_rec 0 (TSel (fresh venv1)) T3) venv0 (T2) []). { (* T2 was open T1 T2 *)
+    assert ((exists TA TB, T1 = TMem TA TB) \/ forall TA TB, T1 <> TMem TA TB) as D.
+    destruct T1; try solve [right; intros; unfold not; intros U; inversion U].
+    left. eauto.
+
+    destruct D as [D|D].
+    + Case "Mem".
+      destruct D as[TA [TB ?]]. subst T1.
+      inversion VX; try solve by inversion. subst. (* val_type vx (TMem TA TB) *)
+      assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
+      assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
+      eapply stp2_substitute with (GH0:=nil).
+      eapply stp2_extend1. eapply stp2_narrow. eapply H5. eapply KEY. eauto.
+      simpl. eauto.
+      eapply stp2_reg1; eapply H5.
+      eapply stp2_closed1 in H5. simpl in H5. eapply H5.
+      (* prove: either x:T3 is TMem, or it can't be used! *)
+
+      left. eexists. eexists. split. eapply index_hit2. eauto. eauto. eauto. unfold open. rewrite (subst_open_zero 0 1). eauto. eauto.
+      right. right. left. split. rewrite OP2. eauto. eauto. eauto.
+    + Case "not Mem".
+
+      assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
+      assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
+      eapply stp2_substitute with (GH0:=nil).
+      eapply stp2_extend1. eapply KEY. eauto.
+      simpl. eauto.
+      eapply stp2_reg1; eapply ARG. eauto.
+
+      assert (nosubst (open_rec 0 (TSelH 0) T3)). eapply stp2_no_mem_nosubst; eauto.
+      assert (closed 0 0 T3). eapply nosubst_zero_closed; eauto.
+      right. right. right. split. eauto.
+      repeat rewrite <-(closed_no_open T3 _ 0 0).
+      symmetry. eapply closed_no_subst; eauto. eauto. eauto.
+      right. right. left. split. rewrite OP2. eauto. eauto. eauto.
   }
 
   (* done *)
   subst. eauto.
-Grab Existential Variables. apply nil.
+Grab Existential Variables. apply nil. apply nil. apply nil. apply nil.
 Qed. 
 
 
