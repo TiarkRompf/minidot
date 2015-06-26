@@ -1871,16 +1871,14 @@ Proof.
   (* now rename *)
   
   assert (stp2 ((fresh venv1,vx) :: venv1) (open_rec 0 (TSel (fresh venv1)) T3) venv0 (T2) []). { (* T2 was open T1 T2 *)
-    assert ((exists TA TB, T1 = (TMem TA TB)) \/ forall TA TB, T1 <> TMem TA TB) as D.
-    destruct T1; try solve [right; intros; unfold not; intros U; inversion U].
-    left. eauto.
 
-    (* TODO: decide on proof strategy, dispatch on type or on valtp? *)
+    (* now that sela1/sela2 can use subtyping, it is better to dispatch on the
+       valtp evidence (instead of the type, as before) *)
 
-    destruct D as [D|D].
-    + Case "Mem".
-      destruct D as[TA [TB ?]]. subst T1.
-      inversion VX; try solve by inversion. subst. (* val_type vx (TMem TA TB) *)
+    (* TODO: cleanup. copy+paste is ugly *)
+    
+    inversion VX; subst.
+    + Case "VTy".
       assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
       assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
       eapply stp2_substitute with (GH0:=nil).
@@ -1892,32 +1890,66 @@ Proof.
 
       left. eexists. eexists. split. eapply index_hit2. eauto. eauto. eauto. unfold open. rewrite (subst_open_zero 0 1). eauto. eauto.
       right. left. split. rewrite OP2. eauto. eauto. eauto.
-      
-    + Case "not Mem".
 
-      assert (forall GM TA TB GY, not (stp2 venv0 T1 GM (TMem TA TB) GY)).
-      intros. unfold not. intros.
-
-
-      
+    + Case "VBool".
       assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
       assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
+      assert (forall GX GM TA TB GY, not (stp2 GX TBool GM (TMem TA TB) GY)). intros. unfold not. intros E. inversion E.
+      assert (nosubst (open_rec 0 (TSelH 0) T3)). eapply stp2_no_mem_nosubst; eauto.
+      assert (closed 0 0 T3). eapply nosubst_zero_closed; eauto.
+      
       eapply stp2_substitute with (GH0:=nil).
       eapply stp2_extend1. eapply KEY. eauto.
       simpl. eauto.
       eapply stp2_reg1; eapply ARG. eauto.
 
-      assert (nosubst (open_rec 0 (TSelH 0) T3)). eapply stp2_no_mem_nosubst; eauto.
-      assert (closed 0 0 T3). eapply nosubst_zero_closed; eauto.
-      right. right. right. split. eauto.
+      right. right. split. eauto.
       repeat rewrite <-(closed_no_open T3 _ 0 0).
       symmetry. eapply closed_no_subst; eauto. eauto. eauto.
-      right. right. left. split. rewrite OP2. eauto. eauto. eauto.
+      right. left. split. rewrite OP2. eauto. eauto. eauto.
+
+    + Case "VTAbs".
+      assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
+      assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
+      assert (forall GX GM TA TB GY, not (stp2 GX TBool GM (TMem TA TB) GY)). intros. unfold not. intros E. inversion E.
+      assert (nosubst (open_rec 0 (TSelH 0) T3)). eapply stp2_no_mem_nosubst; eauto.
+      assert (closed 0 0 T3). eapply nosubst_zero_closed; eauto.
+      
+      eapply stp2_substitute with (GH0:=nil).
+      eapply stp2_extend1. eapply KEY. eauto.
+      simpl. eauto.
+      eapply stp2_reg1; eapply ARG. eauto.
+
+      right. right. split. eauto.
+      repeat rewrite <-(closed_no_open T3 _ 0 0).
+      symmetry. eapply closed_no_subst; eauto. eauto. eauto.
+      right. left. split. rewrite OP2. eauto. eauto. eauto.
+
+    + Case "VAbs".
+      assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
+      assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
+      assert (forall GX GM TA TB GY, not (stp2 GX TBool GM (TMem TA TB) GY)). intros. unfold not. intros E. inversion E.
+      assert (nosubst (open_rec 0 (TSelH 0) T3)). eapply stp2_no_mem_nosubst; eauto.
+      assert (closed 0 0 T3). eapply nosubst_zero_closed; eauto.
+      
+      eapply stp2_substitute with (GH0:=nil).
+      eapply stp2_extend1. eapply KEY. eauto.
+      simpl. eauto.
+      eapply stp2_reg1; eapply ARG. eauto.
+
+      right. right. split. eauto.
+      repeat rewrite <-(closed_no_open T3 _ 0 0).
+      symmetry. eapply closed_no_subst; eauto. eauto. eauto.
+      right. left. split. rewrite OP2. eauto. eauto. eauto.
+
   }
 
   (* done *)
   subst. eauto.
-Grab Existential Variables. apply nil. apply nil. apply nil. apply nil.
+  Grab Existential Variables.
+  apply nil. apply nil. apply nil. apply nil. apply nil.
+  apply nil. apply nil. apply nil. apply nil. apply nil.
+  apply nil. apply nil.
 Qed. 
 
 
