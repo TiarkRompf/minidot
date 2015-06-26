@@ -1340,7 +1340,7 @@ stp2 G1 T1 G2 T2 (GH0 ++ [(0,vtya GX TX)])
 (* need to think about how to do both kinds of bounds. *)
 
 Definition compat (GX:venv) (TX: ty) (G1:venv) (T1:ty) (T1':ty) :=
-  (exists x1 TX0, index x1 G1 = Some (vty GX TX0) /\ T1' = (subst (TSel x1) T1) /\ TX = (TMem TBot TX0)) \/ 
+  (exists x1 TX0, index x1 G1 = Some (vty GX TX0) /\ T1' = (subst (TSel x1) T1) /\ ((TX = TMem TBot TX0) \/ (TX = TMem TX0 TTop) \/ (TX = TMem TX0 TX0))) \/ 
   (*  (G1 = GX /\ T1' = (subst TX T1)) \/ *)   (* this is doesn't work for DOT *)
   (* ((forall TA TB, TX <> TMem TA TB) /\ T1' = subst TTop T1) \/ *)(* can remove all term-only bindings -- may not be necessary after all since it applies nosubst *)
   (closed_rec 0 0 T1 /\ T1' = T1) \/ (* this one is for convenience: redundant with next *)
@@ -1388,7 +1388,7 @@ Ltac eu := repeat match goal with
 Lemma compat_top: forall GX TX G1 T1',
   compat GX TX G1 TTop T1' -> closed 0 0 TX -> T1' = TTop.
 Proof.
-  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC]; eu; eauto.
+  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC]; eu; eauto. 
 Qed.
 
 Lemma compat_bot: forall GX TX G1 T1',
@@ -1622,13 +1622,22 @@ Proof.
     destruct IX1. 
     + SCase "x = 0".
       repeat destruct IXX as [|IXX]; eu.
-      * subst. simpl. inversion CX. subst.
+      * subst. simpl.
+        repeat destruct H6 as [|H6]; subst TXX; inversion CX; subst.
+        (*Bot..T*)
         eapply stp2_sel1. eauto. eauto.
         assert (stp2 GXX (TMem TBot x1) G2 (TMem TBot T2') GH0').  {
-        eapply IHstp2; eauto.
-        right. left. eauto.
-        eapply compat_mem_fwd2; eauto. }
-        inversion H1. eauto.     (* NOTE: inverting stp_mem !! *)                                 * subst. inversion H4. omega.
+          eapply IHstp2; eauto.
+          right. left. eauto.
+          eapply compat_mem_fwd2; eauto. }
+        inversion H1. eauto.     (* NOTE: inverting stp_mem !! *)
+        (*T..Top*)
+        eapply stp2_sel1. eauto. eauto.
+        admit. (* TODO *)
+        (*T..T*)
+        eapply stp2_sel1. eauto. eauto.
+        admit.
+      * subst. inversion H4. omega.
       * subst. destruct H4. eauto.
     + SCase "x > 0".
       eu. subst.
@@ -1659,8 +1668,9 @@ Proof.
         (* NOTE: we rely on inverting RFL = stp (TMem TX TX) (TMem TX TX) here!! *)
         (* since this is passed in externally we should be safe. *)
         (* otherwise we could take wf evidence and apply reflexivity *)
-        subst. inversion CX. inversion RFL. subst. inversion H14. subst.
-        simpl. eapply stp2_sel1. eauto. eauto. eapply stp2_sel2. eauto. eauto. eauto.
+        subst. admit. (* TODO: Bot/Top cases *)
+        (* inversion CX. inversion RFL. subst. inversion H14. subst.
+        simpl. eapply stp2_sel1. eauto. eauto. eapply stp2_sel2. eauto. eauto. eauto. *)
     + SCase "x > 0".
       destruct IXX1; destruct IXX2; eu; subst; eapply stp2_selax; eauto.
       * inversion H12. subst. eauto. eapply IHstp2. eauto. eauto. eauto. eauto. eapply compat_mem_fwd2.
@@ -1788,11 +1798,11 @@ Proof.
     eapply stp2_sela1. eauto. eapply IHST. eauto. eauto.
   - Case "sela2". admit.
   - Case "selax". eauto.
-    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v (TMem TL TU)) as A.
+    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. 
     inversion VT. subst.
-    eapply stp2_selax. eauto. eauto.
+    eapply stp2_selax. eauto. eauto. eapply IHST. eauto. eauto.
   - Case "all".
     subst x. assert (length GY = length GH). eapply wfh_length; eauto.
     eapply stp2_all. eauto. rewrite H. eauto. rewrite H.  eauto.
@@ -1861,9 +1871,11 @@ Proof.
   (* now rename *)
   
   assert (stp2 ((fresh venv1,vx) :: venv1) (open_rec 0 (TSel (fresh venv1)) T3) venv0 (T2) []). { (* T2 was open T1 T2 *)
-    assert ((exists TA TB, T1 = TMem TA TB) \/ forall TA TB, T1 <> TMem TA TB) as D.
+    assert ((exists TA TB, T1 = (TMem TA TB)) \/ forall TA TB, T1 <> TMem TA TB) as D.
     destruct T1; try solve [right; intros; unfold not; intros U; inversion U].
     left. eauto.
+
+    (* TODO: decide on proof strategy, dispatch on type or on valtp? *)
 
     destruct D as [D|D].
     + Case "Mem".
@@ -1879,9 +1891,15 @@ Proof.
       (* prove: either x:T3 is TMem, or it can't be used! *)
 
       left. eexists. eexists. split. eapply index_hit2. eauto. eauto. eauto. unfold open. rewrite (subst_open_zero 0 1). eauto. eauto.
-      right. right. left. split. rewrite OP2. eauto. eauto. eauto.
+      right. left. split. rewrite OP2. eauto. eauto. eauto.
+      
     + Case "not Mem".
 
+      assert (forall GM TA TB GY, not (stp2 venv0 T1 GM (TMem TA TB) GY)).
+      intros. unfold not. intros.
+
+
+      
       assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
       assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
       eapply stp2_substitute with (GH0:=nil).
