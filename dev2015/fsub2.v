@@ -3,7 +3,8 @@
 (* inversion lemma structure *)
 
 (* this version adds bottom and lower bounds to fsub0.v *)
-
+(* it also turns types into proper first class objects, *)
+(* compared to fsub1.v *)
 
 
 (*
