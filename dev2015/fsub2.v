@@ -502,13 +502,17 @@ Qed.
 
 (* instantiate it to bool *)
 
-Example ex2: has_type [(0,polyId)] (ttapp (tvar 0) TBool) (TFun TBool TBool).
+Example ex2: has_type [(0,polyId)] (ttapp (tvar 0) (ttyp TBool)) (TFun TBool TBool).
 Proof.
   eapply t_tapp. eapply t_sub. eapply t_var. simpl. eauto.
-  eapply stp_all. eauto. eauto.
-  crush_has_tp.  crush_has_tp.   crush_has_tp. compute.
+  eapply stp_all. eauto. eauto. crush_has_tp. crush_has_tp. crush_has_tp.
+  compute.
+  eapply stp_all.
+    eapply stp_mem. instantiate (1:= TBool). crush2. crush2. crush2. crush2. crush2.
+    eapply stp_fun. crush2. crush2.
+  eapply t_typ. crush2.
   
-  eapply stp_all. crush2. crush2. crush2. crush2. crush2. crush2. crush2.
+  eapply stp_fun; crush2.
 Qed.
        
 
@@ -550,7 +554,7 @@ Hint Resolve ex4.
 
 Example ex5:
   has_type [(1,TFun TBool TBool);(0,brandUnbrand)]
-           (tapp (tapp (ttapp (tvar 0) TBool) (tvar 1)) (tvar 1)) TBool.
+           (tapp (tapp (ttapp (tvar 0) (ttyp TBool)) (tvar 1)) (tvar 1)) TBool.
 Proof.
   crush2.
 Qed.
