@@ -253,6 +253,7 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
 | t_tapp: forall env f T11 T12,
            has_type env f (TAll (TMem T11 T11) T12) ->
            (* T = open T11 T12 -> *)
+           stp env [] T11 T11 ->
            stp env [] T12 T12 ->
            has_type env (ttapp f T11) T12
 (*
@@ -501,7 +502,7 @@ Proof.
   eapply stp_all. eauto. eauto.
   crush_has_tp.  crush_has_tp.   crush_has_tp. compute.
   
-  eapply stp_all. crush2. crush2. crush2. crush2. crush2. crush2.
+  eapply stp_all. crush2. crush2. crush2. crush2. crush2. crush2. crush2.
 Qed.
        
 
@@ -1951,17 +1952,21 @@ Proof.
     +
       remember t as T11.
       remember (teval n venv0 e) as tf.
-
+      remember (vty venv0 T11) as vx.
+      
       destruct tf as [rf|]; try solve by inversion.  
       assert (res_type venv0 rf (TAll (TMem T11 T11) T12)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
       inversion HRF as [? vf].
 
+      assert (val_type venv0 vx (TMem T11 T11)). subst vx. eapply v_ty. eauto. eapply stp_to_stp2; eauto. econstructor.
+      
       subst t.
-      destruct (invert_tabs venv0 vf T11 T12) as
-          [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]]. eauto. eapply stp_to_stp2; eauto. econstructor.
+      destruct (invert_tabs venv0 vf vx (TMem T11 T11) T12) as
+          [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]].
+      eauto. eauto. eapply stp_to_stp2; eauto. econstructor.
       (* now we know it's a closure, and we have has_type evidence *)
 
-      assert (res_type ((x0,vty venv0 T11)::env1) res (open (TSel x0) T4)) as HRY.
+      assert (res_type ((x0,vx)::env1) res (open (TSel x0) T4)) as HRY.
         SCase "HRY".
           subst. eapply IHn. eauto. eauto.
           (* wf_env x *) econstructor. eapply v_ty. 
