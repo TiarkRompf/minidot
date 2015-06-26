@@ -1643,24 +1643,32 @@ Proof.
     assert (compat GXX TXX G1 (TSelH x) T1') as IXX1. eauto.
     assert (compat GXX TXX G2 (TSelH x) T2') as IXX2. eauto.
     
-    eapply (compat_selh GXX TXX G1 T1' GH0 GH0' GX (TMem TL TU)) in IX1. repeat destruct IX1 as [? IX1].
-    eapply (compat_selh GXX TXX G2 T2' GH0 GH0' GX (TMem TL TU)) in IX2. repeat destruct IX2 as [? IX2].
+    eapply (compat_selh GXX TXX G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
+    eapply (compat_selh GXX TXX G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
+    assert (not (nosubst (TSelH 0))). unfold not. intros. simpl in H1. eauto.
+    assert (not (closed 0 0 (TSelH 0))). unfold not. intros. inversion H5. omega.
 
     destruct x; destruct IX1; eu; try omega; destruct IX2; eu; try omega; subst.
     + SCase "x = 0".
-      assert (not (nosubst (TSelH 0))). unfold not. intros. simpl in H1. eauto.
-      assert (not (closed 0 0 (TSelH 0))). unfold not. intros. inversion H4. omega.
-      repeat destruct IXX1 as [IXX1|IXX1]; eu; try contradiction; try (destruct (H5 TL TU); eauto). 
-      repeat destruct IXX2 as [IXX2|IXX2]; eu; try contradiction; try (destruct (H11 TL TU); eauto). 
+      repeat destruct IXX1 as [IXX1|IXX1]; eu; try contradiction.
+      repeat destruct IXX2 as [IXX2|IXX2]; eu; try contradiction. 
       * SSCase "sel-sel".
         (* NOTE: we rely on inverting RFL = stp (TMem TX TX) (TMem TX TX) here!! *)
         (* since this is passed in externally we should be safe. *)
         (* otherwise we could take wf evidence and apply reflexivity *)
-        subst. inversion CX. inversion H13. (* TMem = TMem *) inversion RFL. subst. inversion H10. subst.
+        subst. inversion CX. inversion RFL. subst. inversion H14. subst.
         simpl. eapply stp2_sel1. eauto. eauto. eapply stp2_sel2. eauto. eauto. eauto.
     + SCase "x > 0".
-      eapply compat_mem in H10. eu. subst.
-      destruct IXX1; destruct IXX2; eu; subst; eapply stp2_selax; eauto. eauto.
+      destruct IXX1; destruct IXX2; eu; subst; eapply stp2_selax; eauto.
+      * inversion H12. subst. eauto. eapply IHstp2. eauto. eauto. eauto. eauto. eapply compat_mem_fwd2.
+      right. left. eauto. eauto.
+      * destruct H7. eu. rewrite H12 in H8. inversion H8. subst.
+        eapply IHstp2; eauto. eapply compat_mem_fwd2. right. left. eauto. 
+        destruct H7. eu. rewrite H12 in H8. inversion H8. subst.
+        eapply IHstp2; eauto. eapply compat_mem_fwd2. right. left. eauto.
+      * destruct H2. eu. eapply IHstp2; eauto. eapply compat_mem_fwd2. right. left. eauto.
+        eapply IHstp2; eauto. eapply compat_mem_fwd2. right. left. eauto.
+      * destruct H7; destruct H2; eu; eapply IHstp2; eauto; eapply compat_mem_fwd2; right; left; eauto.
     (* leftovers *)
     + eauto. + subst. eauto. + eauto. + eauto. + subst. eauto. + eauto. 
 
@@ -1692,7 +1700,7 @@ Proof.
     + eauto. subst GH. rewrite <-EL. eapply closed_upgrade_free. eauto. omega.
 Qed.
 
-
+(*
 (* not used right now, but could be a useful helper *)
 Lemma stp2_concretize: forall G1 G2 T1X T2X TX,
    stp2 G1 (open (TSelH 0) T1X) G2 (open (TSelH 0) T2X) [(0,(G2, TX))] ->
@@ -1701,7 +1709,7 @@ Lemma stp2_concretize: forall G1 G2 T1X T2X TX,
 Proof.
   admit. (* call aux version above *)
 Qed.
-
+*)
 
 
 (* --------------------------------- *)
