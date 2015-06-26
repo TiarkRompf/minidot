@@ -321,6 +321,7 @@ Inductive stp2: venv -> ty -> venv -> ty -> list (id*(venv*ty))  -> Prop :=
 | stp2_selax: forall G1 G2 GX TX x GH,
     indexr x GH = Some (GX, TX) ->
     indexr x GH = Some (GX, TX) ->
+    stp2 GX TX G2 (TMem TBot TTop) GH ->
     (*closed 0 x TX ->*)
     stp2 G1 (TSelH x) G2 (TSelH x) GH
 
@@ -1510,7 +1511,7 @@ Lemma stp2_no_mem_nosubst: forall G1 G2 T1 T2 GH GX TX,
    stp2 G1 T1 G2 T2 GH ->
    forall GH0,
      GH = (GH0 ++ [(0,(GX, TX))]) ->
-     (forall TA TB, TX <> TMem TA TB) ->
+     (forall GM TA TB GY, not (stp2 GX TX GM (TMem TA TB) GY)) ->
      nosubst T1 /\ nosubst T2.
 Proof.
   intros G1 G2 T1 T2 GH GX TX H.
@@ -1520,14 +1521,14 @@ Proof.
   admit. (* bot regularity *)
 
   (* sela1 *)
-  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. destruct (H2 TL TU). eauto. omega.
+  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst. destruct (H2 G2 TBot T2 (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
   (* selax *)
-  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. destruct (H2 TL TU). eauto. omega.
-  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. destruct (H2 TL TU). eauto. omega.
+  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst. destruct (H3 G2 TBot TTop (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
+  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst.  destruct (H3 G2 TBot TTop (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
   
   (* all *)
   subst GH. eapply nosubst_open_rev. eapply (IHstp2_2 ((0, (G2, T3)) :: GH0)); eauto. rewrite app_length. simpl. omega.
-    subst GH. eapply nosubst_open_rev. eapply (IHstp2_2 ((0, (G2, T3)) :: GH0)); eauto. rewrite app_length. simpl. omega.
+  subst GH. eapply nosubst_open_rev. eapply (IHstp2_2 ((0, (G2, T3)) :: GH0)); eauto. rewrite app_length. simpl. omega.
 Qed.
 
 
