@@ -771,15 +771,17 @@ Proof.
   - admit. 
   - Case "sela1".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
-    + eapply stp_sela1. eapply indexr_splice_hi with (T:=TMem TL TU). eauto. eauto.
+    + eapply stp_sela1. eapply indexr_splice_hi with (T:=TX). eauto. eauto.
       eapply IHstp. eauto. eauto.
-    + eapply stp_sela1. eapply indexr_splice_lo with (T:=TMem TL TU). eauto. eauto. eauto.
+    + eapply stp_sela1. eapply indexr_splice_lo with (T:=TX). eauto. eauto. eauto.
       eapply IHstp. eauto. eauto.
   - Case "sela2". admit.
   - Case "selax".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
-    + eapply stp_selax. eapply indexr_splice_hi with (T:=TMem TL TU). eauto. eauto.
-    + eapply stp_selax. eapply indexr_splice_lo with (T:=TMem TL TU). eauto. eauto. eauto.
+    + eapply stp_selax. eapply indexr_splice_hi with (T:=TX). eauto. eauto.
+      eapply IHstp. eauto. eauto.
+    + eapply stp_selax. eapply indexr_splice_lo with (T:=TX). eauto. eauto. eauto.
+      eapply IHstp. eauto. eauto.
   - Case "all".
     eapply stp_all.
     eapply IHstp1. eauto. eauto. eauto.
@@ -1211,17 +1213,17 @@ Definition substt (UX: ty) (V: (id*ty)) :=
     | (x,T) => (x-1,(subst UX T))
   end.
 
-Lemma indexr_subst: forall GH0 x TX TL TU,
-   indexr x (GH0 ++ [(0, TMem TBot TX)]) = Some (TMem TL TU) ->
-   x = 0 /\ TX = TU \/
-   x > 0 /\ indexr (x-1) (map (substt TX) GH0) = Some (TMem (subst TX TL) (subst TX TU)).
+Lemma indexr_subst: forall GH0 x TX TX',
+   indexr x (GH0 ++ [(0, TX)]) = Some (TX') ->
+   x = 0 /\ TX = TX' \/
+   x > 0 /\ indexr (x-1) (map (substt TX) GH0) = Some (subst TX TX').
 Proof.
   intros GH0. induction GH0; intros.
   - simpl in H. case_eq (beq_nat x 0); intros E.
     + rewrite E in H. inversion H.
       left. split. eapply beq_nat_true_iff. eauto. eauto.
     + rewrite E in H. inversion H.
-  -  destruct a. unfold id in H. remember ((length (GH0 ++ [(0, TMem TBot TX)]))) as L.
+  -  destruct a. unfold id in H. remember ((length (GH0 ++ [(0, TX)]))) as L.
      case_eq (beq_nat x L); intros E. 
      + assert (x = L). eapply beq_nat_true_iff. eauto.
        eapply indexr_hit in H.
@@ -1242,16 +1244,16 @@ Proof.
        eauto. subst. eauto.
 Qed.
 
-
+(*
 Lemma stp_substitute: forall T1 T2 GX GH,
    stp GX GH T1 T2 ->
-   forall GH0 TX,
-     GH = (GH0 ++ [(0,TMem TBot TX)]) ->
-     closed 0 0 TX ->
-     stp GX (map (substt TX) GH0) TX TX ->
-     stp GX (map (substt TX) GH0)
-         (subst TX T1)
-         (subst TX T2).
+   forall GH0 TX0,
+     GH = (GH0 ++ [(0,TMem TBot TX0)]) ->
+     closed 0 0 TX0 ->
+     stp GX (map (substt TX0) GH0) TX0 TX0 ->
+     stp GX (map (substt TX0) GH0)
+         (subst TX0 T1)
+         (subst TX0 T2).
 Proof.
   intros T1 T2 GX GH H.
   induction H.
@@ -1263,13 +1265,13 @@ Proof.
   - Case "sel1". admit.
   - Case "sel2". admit.
   - Case "selx". admit.
-  - Case "sela1". intros GH0 TX ? ? ?. simpl.
-    subst GH. specialize (indexr_subst _ x TX TL TU H). intros. 
+  - Case "sela1". intros GH0 TX1 ? ? ?. simpl.
+    subst GH. specialize (indexr_subst _ x (TMem TBot TX1) _ H). intros. 
     destruct H1; destruct H1.
     + subst. simpl.
-      specialize (IHstp GH0 TU). 
-      assert (subst TU TU = TU). eapply closed_no_subst; eauto.
-      rewrite H1 in IHstp.
+      specialize (IHstp GH0 TX1). 
+      assert (subst TX1 TX1 = TX1). eapply closed_no_subst; eauto.
+      (* rewrite H1 in IHstp. *)
       eapply IHstp. eauto. eauto. eauto.
     + subst. simpl.
       assert (beq_nat x 0 = false). eapply beq_nat_false_iff; omega. rewrite H5. simpl.
@@ -1301,7 +1303,7 @@ Proof.
       eapply IHstp2; eauto. eapply stp_extend; eauto.
       eauto. eauto.
 Qed.
-
+*)
 
 (*
 when and how we can replace with multiple environments:
