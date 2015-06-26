@@ -1755,6 +1755,7 @@ Qed.
 
 Lemma invert_tabs: forall venv vf T1 T2,
   val_type venv vf (TAll (TMem T1 T1) T2) ->
+  stp2 venv T2 venv T2 [] ->                 
   exists env tenv x y T3 T4,
     vf = (vtabs env x T3 y) /\
     fresh env = x /\
@@ -1763,34 +1764,37 @@ Lemma invert_tabs: forall venv vf T1 T2,
     stp2 venv (TMem T1 T1) env T3 [] /\
     stp2 ((x,vty venv T1)::env) (open (TSel x) T4) venv T2 []. (* (open T1 T2) []. *)
 Proof.
-  intros. inversion H; try solve by inversion. inversion H3. subst. repeat eexists; repeat eauto.
+  intros. inversion H; try solve by inversion. inversion H4. subst. repeat eexists; repeat eauto.
   remember (fresh venv1) as x.
   remember (x + fresh venv0) as xx.
 
   (* inversion of TAll < TAll *)
   assert (stp2 venv0 (TMem T1 T1) venv1 T0 []). eauto.
   assert (stp2 venv1 (open (TSelH 0) T3) venv0 (open (TSelH 0) T2) [(0,(venv0, TMem T1 T1))]). {
-    eapply H17.
+    eauto.
   }
 
   (* need reflexivity *)
-  assert (stp2 venv0 T1 venv0 T1 []). eapply stp2_reg1. eauto.                            assert (closed 0 0 T1). eapply stp2_closed1 in H5. simpl in H5. eauto.
+  assert (stp2 venv0 T1 venv0 T1 []). eapply stp2_reg1. eauto.
+  assert (closed 0 0 T1). eapply stp2_closed1 in H6. simpl in H6. eauto.
   
   (* now rename *)
   
   assert (stp2 ((fresh venv1,vty venv0 T1) :: venv1) (open_rec 0 (TSel (fresh venv1)) T3) venv0 (T2) []). { (* was open T1 T2 *)
+    assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
+    assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
     eapply stp2_substitute with (GH0:=nil).
-    eapply stp2_extend1. eapply H4. eauto.
+    eapply stp2_extend1. eapply H5. eauto.
     simpl. eauto.
     eauto.
     eauto.
-    left. eexists. split. eapply index_hit2. eauto. eauto. eauto. unfold open. 
-    right. left. split. eauto. unfold open. rewrite (subst_open_zero 0 1). eauto. eauto.
-    eauto.
-  }*)
+    left. eexists. eexists. split. eapply index_hit2. eauto. eauto. eauto. unfold open. rewrite (subst_open_zero 0 1). subst x. eauto. eauto.
+    right. left. split. rewrite OP2. eauto. eauto. eauto.
+  }
 
   (* done *)
-  subst. eauto. admit.
+  subst. eauto.
+Grab Existential Variables. apply nil.
 Qed. 
 
 
@@ -1873,16 +1877,15 @@ Proof.
 
       subst t.
       destruct (invert_tabs venv0 vf T11 T12) as
-          [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]]. eauto.
+          [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]]. eauto. eapply stp_to_stp2; eauto. econstructor.
       (* now we know it's a closure, and we have has_type evidence *)
 
       assert (res_type ((x0,vty venv0 T11)::env1) res (open (TSel x0) T4)) as HRY.
         SCase "HRY".
           subst. eapply IHn. eauto. eauto.
           (* wf_env x *) econstructor. eapply v_ty. 
-          (* wf_env   *) eauto.
-      eapply stp2_extend2. eapply stp2_mem. eauto. eauto. eauto.
-      eauto.
+             eauto.
+             eapply stp2_extend2. eauto. eauto. eauto.
       inversion HRY as [? vy].
 
       eapply not_stuck. eapply valtp_widen; eauto.
