@@ -297,8 +297,7 @@ Inductive stp2: venv -> ty -> venv -> ty -> list (id*(venv*ty))  -> Prop :=
     stp2 G1 T2 G2 T4 GH ->
     stp2 G1 (TMem T1 T2) G2 (TMem T3 T4) GH
 
-(* we do not require TMem TX here, just TX -- the vty is marker enough *)
-(* atm not clear if these are needed *)
+(* the type of (vty GX TX) is (TMem TX TX), so there is no additional TMem here *)
 | stp2_sel1: forall G1 G2 GX TX x T2 GH,
     index x G1 = Some (vty GX TX) ->
     closed 0 0 TX ->
@@ -312,16 +311,16 @@ Inductive stp2: venv -> ty -> venv -> ty -> list (id*(venv*ty))  -> Prop :=
     stp2 G1 T1 G2 (TSel x) GH
 
 (* X<T, one sided *)
-| stp2_sela1: forall G1 G2 GX TL TU x T2 GH,
-    indexr x GH = Some (GX, (TMem TL TU)) ->
+| stp2_sela1: forall G1 G2 GX TX  x T2 GH,
+    indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
-    stp2 GX TU G2 T2 GH ->
+    stp2 GX TX G2 (TMem TBot T2) GH ->
     stp2 G1 (TSelH x) G2 T2 GH
 
          
-| stp2_selax: forall G1 G2 GX TL TU x GH,
-    indexr x GH = Some (GX, (TMem TL TU)) ->
-    indexr x GH = Some (GX, (TMem TL TU)) ->
+| stp2_selax: forall G1 G2 GX TX x GH,
+    indexr x GH = Some (GX, TX) ->
+    indexr x GH = Some (GX, TX) ->
     (*closed 0 x TX ->*)
     stp2 G1 (TSelH x) G2 (TSelH x) GH
 
@@ -1970,7 +1969,9 @@ Proof.
       
       destruct tx as [rx|]; try solve by inversion.
       assert (res_type venv0 rx T11) as HRX. SCase "HRX". subst. eapply IHn; eauto.
-      inversion HRX as [? vx]. 
+      inversion HRX as [? vx].
+
+      subst rx.
 
       destruct tf as [rf|]; try solve by inversion.  
       assert (res_type venv0 rf (TAll T11 T12)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
