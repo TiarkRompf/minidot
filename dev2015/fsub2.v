@@ -402,6 +402,7 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
         | tvar x     => Some (index x env)
         | tabs f x y => Some (Some (vabs env f x y))
         | ttabs x T y  => Some (Some (vtabs env x T y))
+        | ttyp T     => Some (Some (vty env T))
         | tapp ef ex   =>
           match teval n env ex with
             | None => None
@@ -412,22 +413,25 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
                 | Some None => Some None
                 | Some (Some (vbool _)) => Some None
                 | Some (Some (vty _ _)) => Some None
-                | Some (Some (vtya _ _)) => Some None
                 | Some (Some (vtabs _ _ _ _)) => Some None
                 | Some (Some (vabs env2 f x ey)) =>
                   teval n ((x,vx)::(f,vabs env2 f x ey)::env2) ey
               end
           end
         | ttapp ef ex   =>
-          match teval n env ef with
+          match teval n env ex with
             | None => None
             | Some None => Some None
-            | Some (Some (vbool _)) => Some None
-            | Some (Some (vty _ _)) => Some None
-            | Some (Some (vtya _ _)) => Some None
-            | Some (Some (vabs _ _ _ _)) => Some None
-            | Some (Some (vtabs env2 x T ey)) =>
-              teval n ((x,vty env ex)::env2) ey
+            | Some (Some vx) =>
+              match teval n env ef with
+                | None => None
+                | Some None => Some None
+                | Some (Some (vbool _)) => Some None
+                | Some (Some (vty _ _)) => Some None
+                | Some (Some (vabs _ _ _ _)) => Some None
+                | Some (Some (vtabs env2 x T ey)) =>
+                  teval n ((x,vx)::env2) ey
+              end
           end
       end
   end.
