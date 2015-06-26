@@ -2,13 +2,14 @@
 (* values well-typed with respect to runtime environment *)
 (* inversion lemma structure *)
 
-(* both lower and upper bounds *)
-(* type objects *)
+(* this version adds bottom and lower bounds to fsub0.v *)
+
+
 
 (*
 TODO:
 - stp2 trans + narrowing 
-- var pack/unpack rules
+- stp/stp2 weakening and regularity
 *)
 
 Require Export SfLib.

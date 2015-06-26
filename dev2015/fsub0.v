@@ -2,10 +2,12 @@
 (* values well-typed with respect to runtime environment *)
 (* inversion lemma structure *)
 
+(* this version aims to be as close to published Fsub as possible *)
+
 (*
 TODO:
-- stp -> stp2 translation
 - stp2 trans + narrowing 
+- stp/stp2 weakening and regularity
 *)
 
 Require Export SfLib.
@@ -1652,6 +1654,7 @@ Qed.
 
 
 (* not used right now, but could be a useful helper *)
+(*
 Lemma stp2_concretize: forall G1 G2 T1X T2X TX,
    stp2 G1 (open (TSelH 0) T1X) G2 (open (TSelH 0) T2X) [(0,(G2, TX))] ->
    stp2 ((fresh G1, vty G2 TX)::G1) (open (TSel (fresh G1)) T1X)
@@ -1659,7 +1662,7 @@ Lemma stp2_concretize: forall G1 G2 T1X T2X TX,
 Proof.
   admit. (* call aux version above *)
 Qed.
-
+*)
 
 
 (* --------------------------------- *)
