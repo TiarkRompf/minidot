@@ -1781,7 +1781,7 @@ Proof.
     eapply stp2_extendH_mult with (H2:=GY) in H11. rewrite app_nil_r in H11.
     eapply stp2_reg1. eapply H11.
   - Case "sela1". eauto.
-    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v (TMem TL TU)) as A.
+    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. destruct x0.
     inversion VT. subst. 
