@@ -835,17 +835,22 @@ Proof. admit. Qed.
 Lemma stp2_extendH : forall x v1 G1 G2 T1 T2 H,
                        stp2 G1 T1 G2 T2 H ->
                        stp2 G1 T1 G2 T2 ((x,v1)::H).
-Proof. admit. Qed.
+Proof.
+  admit. (* (NOT) TODO (NOW): use splice *)
+Qed.
 
 Lemma stp2_extendH_mult : forall G1 G2 T1 T2 H H2,
                        stp2 G1 T1 G2 T2 H ->
                        stp2 G1 T1 G2 T2 (H2++H).
-Proof. admit. Qed.
+Proof. intros. induction H2.
+  simpl. eauto. destruct a.
+  simpl. eapply stp2_extendH. eauto.
+Qed.
 
 Lemma stp2_extendH_mult0 : forall G1 G2 T1 T2 H2,
                        stp2 G1 T1 G2 T2 [] ->
                        stp2 G1 T1 G2 T2 H2.
-Proof. admit. Qed.
+Proof. intros. eapply stp2_extendH_mult with (H2:=H2) in H; eauto. rewrite app_nil_r in H. eauto. Qed.
 
 
 Lemma stp2_reg2 : forall G1 G2 T1 T2 H ,
