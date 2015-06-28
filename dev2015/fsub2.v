@@ -305,63 +305,78 @@ Does it make a difference? It seems like we can always widen f?
 .
 
 
-Inductive stp2: venv -> ty -> venv -> ty -> list (id*(venv*ty))  -> Prop :=
-| stp2_topx: forall G1 GH,
-    stp2 G1 TTop G1 TTop GH
-| stp2_botx: forall G1 GH,
-    stp2 G1 TBot G1 TBot GH
-| stp2_top: forall G1 G2 GH T,
-    stp2 G1 T G1 T GH ->
-    stp2 G1 T G2 TTop GH
-| stp2_bot: forall G1 G2 GH T,
-    stp2 G2 T G2 T GH ->
-    stp2 G1 TBot G2 T GH
-| stp2_bool: forall G1 G2 GH,
-    stp2 G1 TBool G2 TBool GH
-| stp2_fun: forall G1 G2 T1 T2 T3 T4 GH,
-    stp2 G2 T3 G1 T1 GH ->
-    stp2 G1 T2 G2 T4 GH ->
-    stp2 G1 (TFun T1 T2) G2 (TFun T3 T4) GH
-| stp2_mem: forall G1 G2 T1 T2 T3 T4 GH,
-    stp2 G2 T3 G1 T1 GH ->
-    stp2 G1 T2 G2 T4 GH ->
-    stp2 G1 (TMem T1 T2) G2 (TMem T3 T4) GH
+Inductive stp2: bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -> nat -> Prop :=
+| stp2_topx: forall G1 GH n1,
+    stp2 true G1 TTop G1 TTop GH n1
+| stp2_botx: forall G1 GH n1,
+    stp2 true G1 TBot G1 TBot GH n1
+| stp2_top: forall G1 G2 GH T n1,
+    stp2 true G1 T G1 T GH n1 ->
+    stp2 true G1 T G2 TTop GH (S n1)
+| stp2_bot: forall G1 G2 GH T n1,
+    stp2 true G2 T G2 T GH n1 ->
+    stp2 true G1 TBot G2 T GH (S n1)
+| stp2_bool: forall G1 G2 GH n1,
+    stp2 true G1 TBool G2 TBool GH n1
+| stp2_fun: forall G1 G2 T1 T2 T3 T4 GH n1 n2,
+    stp2 false G2 T3 G1 T1 GH n1 ->
+    stp2 false G1 T2 G2 T4 GH n2 ->
+    stp2 true G1 (TFun T1 T2) G2 (TFun T3 T4) GH (S (n1+n2))
+| stp2_mem: forall G1 G2 T1 T2 T3 T4 GH n1 n2,
+    stp2 false G2 T3 G1 T1 GH n1 ->
+    stp2 false G1 T2 G2 T4 GH n2 ->
+    stp2 true G1 (TMem T1 T2) G2 (TMem T3 T4) GH (S (n1+n2))
 
 (* the type of (vty GX TX) is (TMem TX TX), so there is no additional TMem here *)
-| stp2_sel1: forall G1 G2 GX TX x T2 GH,
+| stp2_sel1: forall G1 G2 GX TX x T2 GH n1,
     index x G1 = Some (vty GX TX) ->
     closed 0 0 TX ->
-    stp2 GX TX G2 T2 GH ->
-    stp2 G1 (TSel x) G2 T2 GH
+    stp2 false GX TX G2 T2 GH n1 ->
+    stp2 true G1 (TSel x) G2 T2 GH (S n1)
 
-| stp2_sel2: forall G1 G2 GX TX x T1 GH,
+| stp2_sel2: forall G1 G2 GX TX x T1 GH n1,
     index x G2 = Some (vty GX TX) ->
     closed 0 0 TX ->
-    stp2 G1 T1 GX TX GH ->
-    stp2 G1 T1 G2 (TSel x) GH
+    stp2 false G1 T1 GX TX GH n1 ->
+    stp2 true G1 T1 G2 (TSel x) GH (S n1)
 
 (* X<T, one sided *)
-| stp2_sela1: forall G1 G2 GX TX  x T2 GH,
+| stp2_sela1: forall G1 G2 GX TX x T2 GH n1,
     indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
-    stp2 GX TX G2 (TMem TBot T2) GH ->
-    stp2 G1 (TSelH x) G2 T2 GH
+    stp2 false GX TX G2 (TMem TBot T2) GH n1 ->
+    stp2 true G1 (TSelH x) G2 T2 GH (S n1)
+
+| stp2_sela2: forall G1 G2 GX TX x T1 GH n1,
+    indexr x GH = Some (GX, TX) ->
+    (* closed 0 x TX -> *)
+    stp2 false GX TX G2 (TMem T1 TTop) GH n1 ->
+    stp2 true G1 T1 G2 (TSelH x) GH (S n1)
 
          
-| stp2_selax: forall G1 G2 GX TX x GH,
+| stp2_selax: forall G1 G2 GX TX x GH n1,
     indexr x GH = Some (GX, TX) ->
     indexr x GH = Some (GX, TX) ->
-    stp2 GX TX G2 (TMem TBot TTop) GH ->
+    stp2 false GX TX G2 (TMem TBot TTop) GH n1 ->
     (*closed 0 x TX ->*)
-    stp2 G1 (TSelH x) G2 (TSelH x) GH
+    stp2 true G1 (TSelH x) G2 (TSelH x) GH (S n1)
 
 
-| stp2_all: forall G1 G2 T1 T2 T3 T4 GH,
-    stp2 G2 T3 G1 T1 GH ->
+| stp2_all: forall G1 G2 T1 T2 T3 T4 GH n1 n2, 
+    stp2 false G2 T3 G1 T1 GH n1 ->
     closed 1 (length GH) T2 -> (* must not accidentally bind x *)
     closed 1 (length GH) T4 -> 
-    stp2 G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) ((0,(G2, T3))::GH) ->
-    stp2 G1 (TAll T1 T2) G2 (TAll T3 T4) GH
+    stp2 false G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) ((0,(G2, T3))::GH) n2 ->
+    stp2 true G1 (TAll T1 T2) G2 (TAll T3 T4) GH (S (n1+n2))
+
+| stp_transf: forall G1 G2 G3 T1 T2 T3 GH n1 n2,
+    stp2 true G1 T1 G2 T2 GH n1 ->
+    stp2 false G2 T2 G3 T3 GH n2 ->           
+    stp2 false G1 T1 G3 T3 GH (S (n1+n2))
+
+| stp_wrapf: forall G1 G2 T1 T2 GH n1,
+    stp2 true G1 T1 G2 T2 GH n1 ->
+    stp2 false G1 T1 G2 T2 GH (S n1)
 .
 
 
