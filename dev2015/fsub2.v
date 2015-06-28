@@ -1786,6 +1786,8 @@ Lemma stp_to_stp2: forall G1 GH T1 T2,
   stp2 GX T1 GX T2 GY.
 Proof.
   intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY.
+  - Case "topx". eauto.
+  - Case "botx". eauto.
   - Case "top". eauto.
   - Case "bot". eauto.
   - Case "bool". eauto.
