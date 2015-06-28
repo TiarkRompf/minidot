@@ -1917,8 +1917,25 @@ Proof.
     + Case "VBool".
       assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
       assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
-      assert (forall GX GM TA TB GY, not (stp2 GX TBool GM (TMem TA TB) GY)). intros. unfold not. intros E. inversion E.
-      assert (nosubst (open_rec 0 (TSelH 0) T3)). eapply stp2_no_mem_nosubst; eauto.
+      assert (forall GM TA TB GY, not (stp2 venv0 T1 GM (TMem TA TB) GY)). intros. unfold not. intros E. eapply stp2_extendH_mult0 in H4. eapply stp2_trans with (1:=H4) in E. inversion E. 
+      assert (nosubst (open_rec 0 (TSelH 0) T3)). eapply (stp2_no_mem_nosubst) with (1:=KEY) (GH0:=nil). simpl. eauto. eauto. 
+      assert (closed 0 0 T3). eapply nosubst_zero_closed; eauto. eauto.
+      
+      eapply stp2_substitute with (GH0:=nil).
+      eapply stp2_extend1. eapply KEY. eauto.
+      simpl. eauto.
+      eapply stp2_reg1; eapply ARG. eauto.
+
+      right. right. split. eauto.
+      repeat rewrite <-(closed_no_open T3 _ 0 0).
+      symmetry. eapply closed_no_subst; eauto. eauto. eauto.
+      right. left. split. rewrite OP2. eauto. eauto. eauto.
+
+    + Case "VAbs".
+      assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
+      assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
+      assert (forall GM TA TB GY, not (stp2 venv0 T1 GM (TMem TA TB) GY)). intros. unfold not. intros E. eapply stp2_extendH_mult0 in H8. eapply stp2_trans with (1:=H8) in E. inversion E.
+      assert (nosubst (open_rec 0 (TSelH 0) T3)). eapply stp2_no_mem_nosubst with (1:=KEY) (GH0:=nil). simpl. eauto. eauto.
       assert (closed 0 0 T3). eapply nosubst_zero_closed; eauto.
       
       eapply stp2_substitute with (GH0:=nil).
@@ -1934,25 +1951,8 @@ Proof.
     + Case "VTAbs".
       assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
       assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
-      assert (forall GX GM TA TB GY, not (stp2 GX TBool GM (TMem TA TB) GY)). intros. unfold not. intros E. inversion E.
-      assert (nosubst (open_rec 0 (TSelH 0) T3)). eapply stp2_no_mem_nosubst; eauto.
-      assert (closed 0 0 T3). eapply nosubst_zero_closed; eauto.
-      
-      eapply stp2_substitute with (GH0:=nil).
-      eapply stp2_extend1. eapply KEY. eauto.
-      simpl. eauto.
-      eapply stp2_reg1; eapply ARG. eauto.
-
-      right. right. split. eauto.
-      repeat rewrite <-(closed_no_open T3 _ 0 0).
-      symmetry. eapply closed_no_subst; eauto. eauto. eauto.
-      right. left. split. rewrite OP2. eauto. eauto. eauto.
-
-    + Case "VAbs".
-      assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
-      assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
-      assert (forall GX GM TA TB GY, not (stp2 GX TBool GM (TMem TA TB) GY)). intros. unfold not. intros E. inversion E.
-      assert (nosubst (open_rec 0 (TSelH 0) T3)). eapply stp2_no_mem_nosubst; eauto.
+      assert (forall GM TA TB GY, not (stp2 venv0 T1 GM (TMem TA TB) GY)). intros. unfold not. intros E. eapply stp2_extendH_mult0 in H7. eapply stp2_trans with (1:=H7) in E. inversion E.
+      assert (nosubst (open_rec 0 (TSelH 0) T3)). eapply stp2_no_mem_nosubst with (1:=KEY) (GH0:=nil). simpl. eauto. eauto.
       assert (closed 0 0 T3). eapply nosubst_zero_closed; eauto.
       
       eapply stp2_substitute with (GH0:=nil).
@@ -1969,10 +1969,6 @@ Proof.
 
   (* done *)
   subst. eauto.
-  Grab Existential Variables.
-  apply nil. apply nil. apply nil. apply nil. apply nil.
-  apply nil. apply nil. apply nil. apply nil. apply nil.
-  apply nil. apply nil.
 Qed. 
 
 
