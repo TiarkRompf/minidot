@@ -289,9 +289,9 @@ Does it make a difference? It seems like we can always widen f?
 
 
 Inductive stp2: venv -> ty -> venv -> ty -> list (id*(venv*ty))  -> Prop :=
-| stp2_toptop: forall G1 GH,
+| stp2_topx: forall G1 GH,
     stp2 G1 TTop G1 TTop GH
-| stp2_botbot: forall G1 GH,
+| stp2_botx: forall G1 GH,
     stp2 G1 TBot G1 TBot GH
 | stp2_top: forall G1 G2 GH T,
     stp2 G1 T G1 T GH ->
@@ -1559,10 +1559,22 @@ Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
 Proof.
   intros G1 G2 T1 T2 GH H.
   induction H.
+  - Case "topx".
+    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    eapply compat_top in IX1.
+    eapply compat_top in IX2.
+    subst. eauto. eauto. eauto.
+    
+  - Case "botx".
+    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    eapply compat_bot in IX1.
+    eapply compat_bot in IX2.
+    subst. eauto. eauto. eauto.
+    
   - Case "top".
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
     eapply compat_top in IX2.
-    subst. eauto. eauto.
+    subst. eauto. eauto. 
     
   - Case "bot".
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
@@ -1573,7 +1585,7 @@ Proof.
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
     eapply compat_bool in IX1.
     eapply compat_bool in IX2.
-    subst. eauto. eauto. eauto.
+    subst. eauto. eauto. eauto. 
     
   - Case "fun".
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
