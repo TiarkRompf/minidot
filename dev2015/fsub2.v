@@ -182,9 +182,15 @@ Hint Unfold closed.
 
 
 Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
+| stp_topx: forall G1 GH,
+    stp G1 GH TTop TTop
+| stp_botx: forall G1 GH,
+    stp G1 GH TBot TBot
 | stp_top: forall G1 GH T1,
+    stp G1 GH T1 T1 ->
     stp G1 GH T1 TTop
 | stp_bot: forall G1 GH T2,
+    stp G1 GH T2 T2 ->
     stp G1 GH TBot T2
 | stp_bool: forall G1 GH,
     stp G1 GH TBool TBool
@@ -283,9 +289,15 @@ Does it make a difference? It seems like we can always widen f?
 
 
 Inductive stp2: venv -> ty -> venv -> ty -> list (id*(venv*ty))  -> Prop :=
+| stp2_toptop: forall G1 GH,
+    stp2 G1 TTop G1 TTop GH
+| stp2_botbot: forall G1 GH,
+    stp2 G1 TBot G1 TBot GH
 | stp2_top: forall G1 G2 GH T,
+    stp2 G1 T G1 T GH ->
     stp2 G1 T G2 TTop GH
 | stp2_bot: forall G1 G2 GH T,
+    stp2 G2 T G2 T GH ->
     stp2 G1 TBot G2 T GH
 | stp2_bool: forall G1 G2 GH,
     stp2 G1 TBool G2 TBool GH
