@@ -1131,21 +1131,19 @@ Hint Constructors res_type.
 Hint Resolve not_stuck.
 
 
-Hint Constructors stp2.
 
-
-Lemma stp2_trans: forall G1 G2 G3 T1 T2 T3 H,
-  stp2 G1 T1 G2 T2 H ->
-  stp2 G2 T2 G3 T3 H ->
-  stp2 G1 T1 G3 T3 H.
+Lemma stpd2_trans: forall G1 G2 G3 T1 T2 T3 H m,
+  stpd2 m G1 T1 G2 T2 H ->
+  stpd2 m G2 T2 G3 T3 H ->
+  stpd2 m G1 T1 G3 T3 H.
 Proof. admit. Qed.
 
 (* used in trans -- need to generalize interface for induction *)
 
-Lemma stp2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4 H,
-  stp2 G1 T1 G2 T2 H -> (* careful about H! *)
-  stp2 G3 T3 G4 T4 ((x,(G2,T2))::H) ->
-  stp2 G3 T3 G4 T4 ((x,(G1,T1))::H).
+Lemma stpd2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4 H m,
+  stpd2 m G1 T1 G2 T2 H -> (* careful about H! *)
+  stpd2 m G3 T3 G4 T4 ((x,(G2,T2))::H) ->
+  stpd2 m G3 T3 G4 T4 ((x,(G1,T1))::H).
 Proof. admit. Qed.
 
 
@@ -1579,7 +1577,7 @@ Proof.
       eapply IHForall2. eapply H1.
 Qed.
 
-Ltac eu := repeat match goal with
+Ltac ev := repeat match goal with
                     | H: exists _, _ |- _ => destruct H
                     | H: _ /\  _ |- _ => destruct H
            end.
@@ -1588,20 +1586,20 @@ Ltac eu := repeat match goal with
 Lemma compat_top: forall GX TX G1 T1',
   compat GX TX G1 TTop T1' -> closed 0 0 TX -> T1' = TTop.
 Proof.
-  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC]; eu; eauto. 
+  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC]; ev; eauto. 
 Qed.
 
 Lemma compat_bot: forall GX TX G1 T1',
   compat GX TX G1 TBot T1' -> closed 0 0 TX -> T1' = TBot.
 Proof.
-  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC]; eu; eauto.
+  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC]; ev; eauto.
 Qed.
 
 
 Lemma compat_bool: forall GX TX G1 T1',
   compat GX TX G1 TBool T1' -> closed 0 0 TX -> T1' = TBool.
 Proof.
-  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC]; eu; eauto.
+  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC]; ev; eauto.
 Qed.
 
 Lemma compat_mem: forall GX TX G1 T1 T2 T1',
@@ -1612,9 +1610,9 @@ Lemma compat_mem: forall GX TX G1 T1 T2 T1',
                   compat GX TX G1 T2 TB.
 Proof.
   intros ? ? ? ? ? ? CC CLX. repeat destruct CC as [|CC].
-  - eu. repeat eexists; eauto. + left. repeat eexists; eauto. + left. repeat eexists; eauto.
-  - eu. repeat eexists; eauto. + right. left. inversion H. eauto. + right. left. inversion H. eauto.
-  - eu. repeat eexists; eauto. + right. right. inversion H. eauto. + right. right. inversion H. eauto.
+  - ev. repeat eexists; eauto. + left. repeat eexists; eauto. + left. repeat eexists; eauto.
+  - ev. repeat eexists; eauto. + right. left. inversion H. eauto. + right. left. inversion H. eauto.
+  - ev. repeat eexists; eauto. + right. right. inversion H. eauto. + right. right. inversion H. eauto.
 Qed.
 
 
@@ -1623,9 +1621,9 @@ Lemma compat_mem_fwd2: forall GX TX G1 T2 T2',
     compat GX TX G1 (TMem TBot T2) (TMem TBot T2').
 Proof.
   intros. repeat destruct H as [|H].
-  - eu. repeat eexists; eauto. + left. repeat eexists; eauto. rewrite H0. eauto.
-  - eu. repeat eexists; eauto. + right. left. subst. eauto. 
-  - eu. repeat eexists; eauto. + right. right. subst. simpl. eauto.
+  - ev. repeat eexists; eauto. + left. repeat eexists; eauto. rewrite H0. eauto.
+  - ev. repeat eexists; eauto. + right. left. subst. eauto. 
+  - ev. repeat eexists; eauto. + right. right. subst. simpl. eauto.
 Qed.
 
 
@@ -1637,9 +1635,9 @@ Lemma compat_fun: forall GX TX G1 T1 T2 T1',
                   compat GX TX G1 T2 TB.
 Proof.
   intros ? ? ? ? ? ? CC CLX. repeat destruct CC as [|CC].
-  - eu. repeat eexists; eauto. + left. repeat eexists; eauto. + left. repeat eexists; eauto.
-  - eu. repeat eexists; eauto. + right. left. inversion H. eauto. + right. left. inversion H. eauto.
-  - eu. repeat eexists; eauto. + right. right. inversion H. eauto. + right. right. inversion H. eauto.
+  - ev. repeat eexists; eauto. + left. repeat eexists; eauto. + left. repeat eexists; eauto.
+  - ev. repeat eexists; eauto. + right. left. inversion H. eauto. + right. left. inversion H. eauto.
+  - ev. repeat eexists; eauto. + right. right. inversion H. eauto. + right. right. inversion H. eauto.
 Qed.
 
 Lemma compat_sel: forall GX TX G1 T1' (GXX:venv) (TXX:ty) x,
@@ -1651,9 +1649,9 @@ Lemma compat_sel: forall GX TX G1 T1' (GXX:venv) (TXX:ty) x,
 .
 Proof.
   intros ? ? ? ? ? ? ? CC CL CL1 IX. repeat destruct CC as [|CC].
-  - eu. repeat eexists; eauto. + right. left. simpl in H0. eauto.
-  - eu. repeat eexists; eauto. + right. left. simpl in H0. eauto.
-  - eu. repeat eexists; eauto. + right. left. simpl in H0. eauto.
+  - ev. repeat eexists; eauto. + right. left. simpl in H0. eauto.
+  - ev. repeat eexists; eauto. + right. left. simpl in H0. eauto.
+  - ev. repeat eexists; eauto. + right. left. simpl in H0. eauto.
 Qed.
 
 
@@ -1677,9 +1675,9 @@ Proof.
     assert (x > 0). omega. remember (x-1) as y. assert (x = y+1) as Y. omega. subst x.
     eapply (indexr_compat_miss0 GH0 GH0' _ _ _ _ _ FA) in IX.
     repeat destruct CC as [|CC].
-    + eu. simpl in H4. rewrite E in H4. rewrite <-Heqy in H4. eexists. eauto.
-    + eu. inversion H1. omega. 
-    + eu. simpl in H4. rewrite E in H4. rewrite <-Heqy in H4. eexists. eauto.
+    + ev. simpl in H4. rewrite E in H4. rewrite <-Heqy in H4. eexists. eauto.
+    + ev. inversion H1. omega. 
+    + ev. simpl in H4. rewrite E in H4. rewrite <-Heqy in H4. eexists. eauto.
 Qed.
 
 
@@ -1694,17 +1692,17 @@ Lemma compat_all: forall GX TX G1 T1 T2 T1' n,
 Proof.
   intros ? ? ? ? ? ? ? CC CLX CL2. repeat destruct CC as [|CC].
 
-  - eu. simpl in H0. repeat eexists; eauto. eapply closed_subst; eauto.
+  - ev. simpl in H0. repeat eexists; eauto. eapply closed_subst; eauto.
     + unfold compat. left. eexists; eauto.
     + unfold compat. left. repeat eexists; eauto. rewrite subst_open_commute; eauto.
 
-  - eu. simpl in H0. inversion H. repeat eexists; eauto. eapply closed_upgrade_free; eauto. omega.
+  - ev. simpl in H0. inversion H. repeat eexists; eauto. eapply closed_upgrade_free; eauto. omega.
     + unfold compat. right. right. split. eapply nosubst_intro; eauto. symmetry. eapply closed_no_subst; eauto.
     + unfold compat. right. right. split.
       * eapply nosubst_open. simpl. omega. eapply nosubst_intro. eauto.
       * rewrite subst_open_commute.  assert (T2 = subst TTop T2) as E. symmetry. eapply closed_no_subst; eauto. rewrite <-E. eauto. eauto. eauto.
       
-  - eu. simpl in H0. destruct H. repeat eexists; eauto. eapply closed_subst; eauto. eauto.
+  - ev. simpl in H0. destruct H. repeat eexists; eauto. eapply closed_subst; eauto. eauto.
     + unfold compat. right. right. eauto.
     + unfold compat. right. right. split.
       * eapply nosubst_open. simpl. omega. eauto.
@@ -1712,18 +1710,20 @@ Proof.
 Qed.
 
 
-Lemma stp2_no_mem_nosubst: forall G1 G2 T1 T2 GH GX TX,
-   stp2 G1 T1 G2 T2 GH ->
+Lemma stpd2_no_mem_nosubst: forall m G1 G2 T1 T2 GH GX TX,
+   stpd2 m G1 T1 G2 T2 GH ->
    forall GH0,
      GH = (GH0 ++ [(0,(GX, TX))]) ->
-     (forall GM TA TB GY, not (stp2 GX TX GM (TMem TA TB) GY)) ->
+     (forall GM TA TB GY, not (stpd2 false GX TX GM (TMem TA TB) GY)) ->
      nosubst T1 /\ nosubst T2.
 Proof.
-  intros G1 G2 T1 T2 GH GX TX H.
-  induction H; intros; simpl; repeat split; try eapply IHstp2; try eapply IHstp2_1; eauto; try eapply IHstp2_2; eauto.
+  intros m G1 G2 T1 T2 GH GX TX H.
+  eu; induction H; intros; simpl; repeat split; try eapply IHstp2; try eapply IHstp2_1; eauto; try eapply IHstp2_2; eauto.
                              
   (* sela1 *)
   destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst. destruct (H2 G2 TBot T2 (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
+  (* sela2 *)
+  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst. destruct (H2 G2 T1 TTop (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
   (* selax *)
   destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst. destruct (H3 G2 TBot TTop (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
   destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst.  destruct (H3 G2 TBot TTop (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
