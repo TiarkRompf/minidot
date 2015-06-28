@@ -202,13 +202,13 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH T3 T1 ->
     stp G1 GH T2 T4 ->
     stp G1 GH (TMem T1 T2) (TMem T3 T4)
-| stp_sel1: forall G1 GH TL TU T2 x,
-    index x G1 = Some (TMem TL TU) ->
-    stp G1 GH TU T2 ->   
+| stp_sel1: forall G1 GH TX T2 x,
+    index x G1 = Some TX ->
+    stp G1 GH TX (TMem TBot T2) ->   
     stp G1 GH (TSel x) T2
-| stp_sel2: forall G1 GH TL TU T1 x,
-    index x G1 = Some (TMem TL TU) ->
-    stp G1 GH T1 TL ->   
+| stp_sel2: forall G1 GH TX T1 x,
+    index x G1 = Some TX ->
+    stp G1 GH TX (TMem T1 TTop) ->
     stp G1 GH T1 (TSel x)
 | stp_selx: forall G1 GH TL TU x,
     index x G1 = Some (TMem TL TU) ->
@@ -232,6 +232,23 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     closed 1 (length GH) T4 -> 
     stp G1 ((0,T3)::GH) (open (TSelH x) T2) (open (TSelH x) T4) ->
     stp G1 GH (TAll T1 T2) (TAll T3 T4)
+
+(*        
+with path_type: tenv -> tenv -> id -> ty -> Prop :=
+| pt_var: forall G1 GH TX x,
+    index x G1 = Some TX ->
+    path_type G1 GH x TX
+| pt_sub: forall G1 GH TX x,
+    path_type has_type env e T1 ->
+           stp env [] T1 T2 ->
+           has_type env e T2
+
+with pathH_type: tenv -> tenv -> id -> ty -> Prop :=
+| pth_var: forall G1 GH TX T x,
+    indexr x GH = Some TX ->
+    stp G1 GH TX T ->        
+    pathH_type G1 GH x T
+*)
 .
 
 Hint Constructors stp.
@@ -1799,14 +1816,23 @@ Proof.
   - Case "fun". eauto.
   - Case "mem". eauto.
   - Case "sel1". 
-    assert (exists v : vl, index x GX = Some v /\ val_type GX v (TMem TL TU)) as A.
+    assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
-    inversion VT; try solve by inversion; subst.
-    eapply stp2_sel1; eauto. inversion H2. subst. eapply stp2_closed1 in H11. eauto.
-    inversion H2. subst.
-    eapply stp2_extendH_mult with (H2:=GY) in H11. rewrite app_nil_r in H11.
-    eapply stp2_trans. eapply H11. eapply IHST; eauto.
+    inversion VT; subst.
+    + assert (stp2 venv0 (TMem T1 T1) GX (TMem TBot T2) GY) as STM.
+      eapply stp2_trans. rewrite <-app_nil_r. eapply stp2_extendH_mult. eauto. eapply IHST; eauto.
+      eapply stp2_sel1. eauto. eapply stp2_closed1 in H2. simpl in H2. inversion H2. eapply H7.
+      inversion STM. eauto.
+    + assert (stp2 [] TBool GX (TMem TBot T2) GY) as STM.
+      eapply stp2_trans. rewrite <-app_nil_r. eapply stp2_extendH_mult. eauto. eapply IHST; eauto.
+      inversion STM.
+    + assert (stp2 venv0 (TFun T1 T0) GX (TMem TBot T2) GY) as STM.
+      eapply stp2_trans. rewrite <-app_nil_r. eapply stp2_extendH_mult. eauto. eapply IHST; eauto.
+      inversion STM.
+    + assert (stp2 venv0 (TAll T1 T0) GX (TMem TBot T2) GY) as STM.
+      eapply stp2_trans. rewrite <-app_nil_r. eapply stp2_extendH_mult. eauto. eapply IHST; eauto.
+      inversion STM.
   - Case "sel2". admit.
   - Case "selx". eauto.
     assert (exists v : vl, index x GX = Some v /\ val_type GX v (TMem TL TU)) as A.
