@@ -1007,7 +1007,57 @@ Lemma stp2_closed1 : forall G1 G2 T1 T2 H m n1,
                        closed 0 (length H) T1.
 Proof. admit. Qed.
 
-(* TODO: add stpd2 variants *)
+(* stpd2 variants below *)
+
+Lemma stpd2_extend2 : forall x v1 G1 G2 T1 T2 H m,
+                       stpd2 m G1 T1 G2 T2 H ->
+                       fresh G2 <= x ->
+                       stpd2 m G1 T1 ((x,v1)::G2) T2 H.
+Proof. admit. Qed.
+
+Lemma stpd2_extend1 : forall x v1 G1 G2 T1 T2 H m,
+                       stpd2 m G1 T1 G2 T2 H ->
+                       fresh G1 <= x ->
+                       stpd2 m ((x,v1)::G1) T1 G2 T2 H.
+Proof. admit. Qed.
+
+Lemma stpd2_extendH : forall x v1 G1 G2 T1 T2 H m,
+                       stpd2 m G1 T1 G2 T2 H ->
+                       stpd2 m G1 T1 G2 T2 ((x,v1)::H).
+Proof. admit. Qed.
+
+Lemma stpd2_extendH_mult : forall G1 G2 T1 T2 H H2 m,
+                       stpd2 m G1 T1 G2 T2 H->
+                       stpd2 m G1 T1 G2 T2 (H2++H).
+Proof. admit. Qed.
+
+Lemma stpd2_extendH_mult0 : forall G1 G2 T1 T2 H2 m,
+                       stpd2 m G1 T1 G2 T2 [] ->
+                       stpd2 m G1 T1 G2 T2 H2.
+Proof. admit. Qed.
+
+
+Lemma stpd2_reg2 : forall G1 G2 T1 T2 H m,
+                       stpd2 m G1 T1 G2 T2 H ->
+                       stpd2 m G2 T2 G2 T2 H.
+Proof. admit. Qed.
+
+Lemma stpd2_reg1 : forall G1 G2 T1 T2 H m,
+                       stpd2 m G1 T1 G2 T2 H ->
+                       stpd2 m G1 T1 G1 T1 H.
+Proof. admit. Qed.
+
+
+Lemma stpd2_closed2 : forall G1 G2 T1 T2 H m,
+                       stpd2 m G1 T1 G2 T2 H ->
+                       closed 0 (length H) T2.
+Proof. admit. Qed.
+
+Lemma stpd2_closed1 : forall G1 G2 T1 T2 H m,
+                       stpd2 m G1 T1 G2 T2 H ->
+                       closed 0 (length H) T1.
+Proof. admit. Qed.
+
 
 
 Lemma valtp_extend : forall vs v x v1 T,
@@ -1015,7 +1065,7 @@ Lemma valtp_extend : forall vs v x v1 T,
                        fresh vs <= x ->
                        val_type ((x,v1)::vs) v T.
 Proof.
-  intros. induction H; eauto; econstructor; eauto; eapply stp2_extend2; eauto.
+  intros. induction H; eauto; econstructor; eauto; eapply stpd2_extend2; eauto.
 Qed.
 
 
