@@ -953,61 +953,61 @@ Proof.
 Qed.
 
 
-Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2 H,
-                       stp2 G1 T1 G2 T2 H ->
+Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2 H m n1,
+                       stp2 m G1 T1 G2 T2 H n1 ->
                        fresh G2 <= x ->
-                       stp2 G1 T1 ((x,v1)::G2) T2 H.
+                       stp2 m G1 T1 ((x,v1)::G2) T2 H n1.
 Proof. admit. Qed.
 
-Lemma stp2_extend1 : forall x v1 G1 G2 T1 T2 H,
-                       stp2 G1 T1 G2 T2 H ->
+Lemma stp2_extend1 : forall x v1 G1 G2 T1 T2 H m n1,
+                       stp2 m G1 T1 G2 T2 H n1 ->
                        fresh G1 <= x ->
-                       stp2 ((x,v1)::G1) T1 G2 T2 H.
+                       stp2 m ((x,v1)::G1) T1 G2 T2 H n1.
 Proof. admit. Qed.
 
-Lemma stp2_extendH : forall x v1 G1 G2 T1 T2 H,
-                       stp2 G1 T1 G2 T2 H ->
-                       stp2 G1 T1 G2 T2 ((x,v1)::H).
+Lemma stp2_extendH : forall x v1 G1 G2 T1 T2 H m n1,
+                       stp2 m G1 T1 G2 T2 H n1 ->
+                       stp2 m G1 T1 G2 T2 ((x,v1)::H) n1.
 Proof.
   admit. (* (NOT) TODO (NOW): use splice *)
 Qed.
 
-Lemma stp2_extendH_mult : forall G1 G2 T1 T2 H H2,
-                       stp2 G1 T1 G2 T2 H ->
-                       stp2 G1 T1 G2 T2 (H2++H).
+Lemma stp2_extendH_mult : forall G1 G2 T1 T2 H H2 m n1,
+                       stp2 m G1 T1 G2 T2 H n1->
+                       stp2 m G1 T1 G2 T2 (H2++H) n1.
 Proof. intros. induction H2.
   simpl. eauto. destruct a.
   simpl. eapply stp2_extendH. eauto.
 Qed.
 
-Lemma stp2_extendH_mult0 : forall G1 G2 T1 T2 H2,
-                       stp2 G1 T1 G2 T2 [] ->
-                       stp2 G1 T1 G2 T2 H2.
+Lemma stp2_extendH_mult0 : forall G1 G2 T1 T2 H2 m n1,
+                       stp2 m G1 T1 G2 T2 [] n1 ->
+                       stp2 m G1 T1 G2 T2 H2 n1.
 Proof. intros. eapply stp2_extendH_mult with (H2:=H2) in H; eauto. rewrite app_nil_r in H. eauto. Qed.
 
 
-Lemma stp2_reg2 : forall G1 G2 T1 T2 H ,
-                       stp2 G1 T1 G2 T2 H ->
-                       stp2 G2 T2 G2 T2 H.
+Lemma stp2_reg2 : forall G1 G2 T1 T2 H m n1,
+                       stp2 m G1 T1 G2 T2 H n1 ->
+                       stp2 m G2 T2 G2 T2 H n1.
 Proof. admit. Qed.
 
-Lemma stp2_reg1 : forall G1 G2 T1 T2 H,
-                       stp2 G1 T1 G2 T2 H ->
-                       stp2 G1 T1 G1 T1 H.
+Lemma stp2_reg1 : forall G1 G2 T1 T2 H m n1,
+                       stp2 m G1 T1 G2 T2 H n1 ->
+                       stp2 m G1 T1 G1 T1 H n1.
 Proof. admit. Qed.
 
 
-Lemma stp2_closed2 : forall G1 G2 T1 T2 H ,
-                       stp2 G1 T1 G2 T2 H ->
+Lemma stp2_closed2 : forall G1 G2 T1 T2 H m n1,
+                       stp2 m G1 T1 G2 T2 H n1 ->
                        closed 0 (length H) T2.
 Proof. admit. Qed.
 
-Lemma stp2_closed1 : forall G1 G2 T1 T2 H,
-                       stp2 G1 T1 G2 T2 H ->
+Lemma stp2_closed1 : forall G1 G2 T1 T2 H m n1,
+                       stp2 m G1 T1 G2 T2 H n1 ->
                        closed 0 (length H) T1.
 Proof. admit. Qed.
 
-
+(* TODO: add stpd2 variants *)
 
 
 Lemma valtp_extend : forall vs v x v1 T,
