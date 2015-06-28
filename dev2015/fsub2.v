@@ -1534,9 +1534,6 @@ Proof.
   intros G1 G2 T1 T2 GH GX TX H.
   induction H; intros; simpl; repeat split; try eapply IHstp2; try eapply IHstp2_1; eauto; try eapply IHstp2_2; eauto.
                              
-  admit. (* top regularity *)
-  admit. (* bot regularity *)
-
   (* sela1 *)
   destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst. destruct (H2 G2 TBot T2 (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
   (* selax *)
