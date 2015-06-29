@@ -1840,30 +1840,25 @@ Lemma stpd2_no_mem_nosubst: forall m G1 G2 T1 T2 GH GX TX,
    stpd2 m G1 T1 G2 T2 GH ->
    forall GH0,
      GH = (GH0 ++ [(0,(GX, TX))]) ->
-     (forall GM TA TB GY, not (stpd2 false GX TX GM (TMem TA TB) GY)) ->
+     (forall m GM TA TB GY, not (stpd2 m GX TX GM (TMem TA TB) GY)) ->
      nosubst T1 /\ nosubst T2.
 Proof.
   intros m G1 G2 T1 T2 GH GX TX H. eu. remember false as flag.
   induction H; inversion Heqflag; intros; simpl; repeat split; try eapply IHstp2; try eapply IHstp2_1; eauto; try eapply IHstp2_2; eauto.
                              
   (* sela1 *)
-  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst. destruct (H2 G2 TBot T2 (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
+  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst. destruct (H2 false G2 TBot T2 (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
   (* sela2 *)
-  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst. destruct (H2 G2 T1 TTop (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
+  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst. destruct (H2 false G2 T1 TTop (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
   (* selax *)
-  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst. destruct (H3 G2 TBot TTop (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
-  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst.  destruct (H3 G2 TBot TTop (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
+  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst. destruct (H3 false G2 TBot TTop (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
+  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst.  destruct (H3 false G2 TBot TTop (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
   
   (* all *)
   subst GH. eapply nosubst_open_rev. eapply (IHstp2_2 _ ((0, (G2, T3)) :: GH0)); eauto. rewrite app_length. simpl. omega.
   subst GH. eapply nosubst_open_rev. eapply (IHstp2_2 _ ((0, (G2, T3)) :: GH0)); eauto. rewrite app_length. simpl. omega.
 
-  (* wrap/trans *)
-  admit.
-  admit.
-  admit.
-  admit.
-  Grab Existential Variables. eauto. eauto.
+Grab Existential Variables. eauto. eauto.
 Qed.
 
 
