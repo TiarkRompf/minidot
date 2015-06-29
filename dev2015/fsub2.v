@@ -1215,10 +1215,10 @@ Lemma stpd2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4 H,
 Proof. admit. Qed.
 
 
-Lemma sstpd2_trans: forall G1 G2 G3 T1 T2 T3 H,
-  sstpd2 true G1 T1 G2 T2 H ->
-  sstpd2 true G2 T2 G3 T3 H ->
-  sstpd2 true G1 T1 G3 T3 H.
+Lemma sstpd2_trans: forall G1 G2 G3 T1 T2 T3,
+  sstpd2 true G1 T1 G2 T2 nil ->
+  sstpd2 true G2 T2 G3 T3 nil ->
+  sstpd2 true G1 T1 G3 T3 nil.
 Proof. admit. Qed.
 
 
