@@ -1158,19 +1158,49 @@ Hint Resolve not_stuck.
 
 
 
-Lemma stpd2_trans: forall G1 G2 G3 T1 T2 T3 H m,
-  stpd2 m G1 T1 G2 T2 H ->
-  stpd2 m G2 T2 G3 T3 H ->
-  stpd2 m G1 T1 G3 T3 H.
+Lemma stpd2_trans: forall G1 G2 G3 T1 T2 T3 H,
+  stpd2 false G1 T1 G2 T2 H ->
+  stpd2 false G2 T2 G3 T3 H ->
+  stpd2 false G1 T1 G3 T3 H.
 Proof. admit. Qed.
 
 (* used in trans -- need to generalize interface for induction *)
 
-Lemma stpd2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4 H m,
-  stpd2 m G1 T1 G2 T2 H -> (* careful about H! *)
-  stpd2 m G3 T3 G4 T4 ((x,(G2,T2))::H) ->
-  stpd2 m G3 T3 G4 T4 ((x,(G1,T1))::H).
+Lemma stpd2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4 H,
+  stpd2 false G1 T1 G2 T2 H -> (* careful about H! *)
+  stpd2 false G3 T3 G4 T4 ((x,(G2,T2))::H) ->
+  stpd2 false G3 T3 G4 T4 ((x,(G1,T1))::H).
 Proof. admit. Qed.
+
+
+Lemma sstpd2_trans: forall G1 G2 G3 T1 T2 T3 H,
+  sstpd2 true G1 T1 G2 T2 H ->
+  sstpd2 true G2 T2 G3 T3 H ->
+  sstpd2 true G1 T1 G3 T3 H.
+Proof. admit. Qed.
+
+
+Lemma stpd2_to_sstpd2: forall G1 G2 G3 T1 T2 T3 H m,
+  stpd2 m G1 T1 G2 T2 H ->
+  sstpd2 m G2 T2 G3 T3 H.
+Proof. admit. Qed.
+
+Lemma sstpd2_untrans: forall G1 G2 G3 T1 T2 T3 H,
+  stpd2 false G1 T1 G2 T2 H ->
+  sstpd2 true G2 T2 G3 T3 H.
+Proof. admit. Qed.
+
+
+
+Lemma stpd2_upgrade: forall G1 G2 G3 T1 T2 T3 H,
+  stpd2 false G1 T1 G2 T2 H ->
+  sstpd2 true G2 T2 G3 T3 H.
+Proof.
+  (* via stp2_to_sstpd2, then sstpd2_untrans *)
+  admit.
+Qed.
+
+
 
 
 Lemma index_miss {X}: forall x x1 (B:X) A G,
