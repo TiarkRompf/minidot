@@ -1390,7 +1390,7 @@ Qed.
 Lemma stpd2_to_sstpd2: forall G1 G2 T1 T2 m,
   stpd2 m G1 T1 G2 T2 nil ->
   sstpd2 m G1 T1 G2 T2 nil.
-Proof. admit. Qed.
+Proof. intros. repeat eu. eapply stpd2_to_sstpd2_aux; eauto. Qed.
 
 
 Lemma sstpd2_untrans_aux: forall n, forall G1 G2 T1 T2 n1,
