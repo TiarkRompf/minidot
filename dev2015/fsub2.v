@@ -1818,8 +1818,8 @@ Lemma stp2_substitute: forall m G1 G2 T1 T2 GH n1,
      Forall2 (compat2 GX TX) GH0 GH0' ->
      stpd2 m G1 T1' G2 T2' GH0'.
 Proof.
-  intros m G1 G2 T1 T2 GH n1 H.
-  induction H.
+  intros m G1 G2 T1 T2 GH n1 H. remember false as flag.
+  induction H; inversion Heqflag.
   - Case "topx".
     intros GH0 GH0' GXX TXX T1' T2' n2 ? RF CX IX1 IX2 FA.
     eapply compat_top in IX1.
@@ -1873,7 +1873,7 @@ Proof.
     subst.
     eapply stpd2_sel1. eauto. eauto.
     eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
-    eauto. eauto. eauto.
+    eauto. eauto. eauto. eauto.
 
 
   - Case "sel2". 
@@ -1889,7 +1889,7 @@ Proof.
     subst.
     eapply stpd2_sel2. eauto. eauto.
     eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
-    eauto. eauto. eauto.
+    eauto. eauto. eauto. eauto.
 
   - Case "sela1".
     intros GH0 GH0' GXX TXX T1' T2' ? ? RF CX IX1 IX2 FA.
@@ -1905,15 +1905,20 @@ Proof.
     + SCase "x = 0".
       repeat destruct IXX as [|IXX]; ev.
       * subst. simpl.
+        eapply stpd2_sel1. eauto. eauto. admit. (* closed *)
+        eapply IHstp2. eauto. eauto. eauto. eauto. eauto. admit. (* compat *) admit.
+        eauto.
+        
         repeat destruct H6 as [|H6]; subst TXX; inversion CX; subst.
         (*Bot..T*)
         eapply stpd2_sel1. eauto. eauto.
         assert (stpd2 false GXX (TMem TBot x1) G2 (TMem TBot T2') GH0') as IH.  {
-          eapply IHstp2; eauto.
+          eapply IHstp2. eauto. eauto. eauto. eauto.
           right. left. eauto.
           eapply compat_mem_fwd2; eauto. }
-        eapply stp2_untrans in IH; eauto.
-        eu. inversion IH. eauto.     (* need untrans, inverting stp_mem !! *)
+        admit.
+        (* eapply stp2_untrans in IH; eauto.
+        eu. inversion IH. eauto.     (* need untrans, inverting stp_mem !! *) *)
         (*T..Top*)
         eapply stpd2_sel1. eauto. eauto.
         admit. (* TODO *)
