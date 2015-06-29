@@ -1193,9 +1193,9 @@ Proof. admit. Qed.
 
 
 
-Lemma stpd2_upgrade: forall G1 G2 G3 T1 T2 T3 H,
+Lemma stpd2_upgrade: forall G1 G2 T1 T2 H,
   stpd2 false G1 T1 G2 T2 H ->
-  sstpd2 true G2 T2 G3 T3 H.
+  sstpd2 true G1 T1 G2 T2 H.
 Proof.
   (* via stp2_to_sstpd2, then sstpd2_untrans *)
   admit.
