@@ -1360,9 +1360,9 @@ Lemma sstpd2_trans: forall G1 G2 G3 T1 T2 T3,
 Proof. intros. repeat eu. eapply sstpd2_trans_aux; eauto. eexists. eauto. Qed.
 
 
-Lemma stpd2_to_sstpd2: forall G1 G2 G3 T1 T2 T3 m,
+Lemma stpd2_to_sstpd2: forall G1 G2 T1 T2 m,
   stpd2 m G1 T1 G2 T2 nil ->
-  sstpd2 m G2 T2 G3 T3 nil.
+  sstpd2 m G1 T1 G2 T2 nil.
 Proof. admit. Qed.
 
 
@@ -1370,31 +1370,25 @@ Lemma sstpd2_untrans_aux: forall n, forall G1 G2 T1 T2 n1,
   stp2 true false G1 T1 G2 T2 nil n1 -> n1 < n ->
   sstpd2 true G1 T1 G2 T2 nil.
 Proof.
-  intros n. repeat eu. eapply sstpd2_trans_aux. eapply stp2_reg1.
-
+  intros n. induction n; intros; try omega.
   inversion H; subst.
   - Case "wrapf". eexists. eauto.
-  - Case "transf". eapply sstpd2_trans_aux. eapply H0. eauto.
+  - Case "transf". eapply sstpd2_trans_aux. eapply H1. eauto. eapply IHn. eauto. omega.
 Qed.
 
 Lemma sstpd2_untrans: forall G1 G2 T1 T2,
   sstpd2 false G1 T1 G2 T2 nil ->
   sstpd2 true G1 T1 G2 T2 nil.
-Proof.
-  intros. repeat eu. eapply sstpd2_trans_aux. eapply stp2_reg1.
-
-  inversion H; subst.
-  - Case "wrapf". eexists. eauto.
-  - Case "transf". eapply sstpd2_trans_aux. eapply H0. eauto.
-Qed.
+Proof. intros. repeat eu. eapply sstpd2_untrans_aux; eauto. Qed.
 
 
 
-Lemma stpd2_upgrade: forall G1 G2 T1 T2 nil,
+Lemma stpd2_upgrade: forall G1 G2 T1 T2,
   stpd2 false G1 T1 G2 T2 nil ->
   sstpd2 true G1 T1 G2 T2 nil.
 Proof.
-  admit.
+  intros.
+  eapply sstpd2_untrans. eapply stpd2_to_sstpd2. eauto.
 Qed.
 
 Lemma sstpd2_downgrade: forall G1 G2 T1 T2 H,
