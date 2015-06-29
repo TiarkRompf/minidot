@@ -1962,8 +1962,8 @@ Proof.
     + SCase "x = 0".
       repeat destruct IXX as [|IXX]; ev.
       * subst. simpl.
-        eapply stpd2_sel1. eauto. admit. (* { repeat destruct H6 as [|H6]; subst TXX; inversion CX; eauto. } *)
-        eapply IHstp2. eauto. eauto. eauto. eauto. eauto. admit. (* compat *)
+        eapply stpd2_sel1. eauto. { repeat destruct H6 as [|H6]; subst TXX; inversion CX; eauto. }
+        eapply IHstp2. eauto. eauto. eauto. eauto. { repeat destruct H6 as [|H6]; subst TXX; right; left; eauto. }
         eapply compat_mem_fwd2. eauto.
         eauto.
       * subst. inversion H4. omega.
@@ -1996,24 +1996,24 @@ Proof.
       repeat destruct IXX1 as [IXX1|IXX1]; ev; try contradiction.
       repeat destruct IXX2 as [IXX2|IXX2]; ev; try contradiction. 
       * SSCase "sel-sel".
-        (* NOTE: we rely on inverting RFL = stp (TMem TX TX) (TMem TX TX) here!! *)
-        (* since this is passed in externally we should be safe. *)
-        (* otherwise we could take wf evidence and apply reflexivity *)
-        subst. admit. (* TODO: Bot/Top cases *)
-        (* inversion CX. inversion RFL. subst. inversion H14. subst.
-        simpl. eapply stp2_sel1. eauto. eauto. eapply stp2_sel2. eauto. eauto. eauto. *)
+        assert (TXX = TMem x0 x0). { repeat destruct H8 as [|H8]; eauto. }
+        assert (TXX = TMem x2 x2). { repeat destruct H14 as [|H14]; eauto. } subst TXX.
+        (* NOTE: inverting RFL. possible issue when we add TBind ? *)
+        inversion H16. inversion CX. subst. inversion RFL. subst.
+        simpl. eapply stpd2_sel1. eauto. eauto.
+        eapply stpd2_wrapf. eapply stpd2_mem. eapply stpd2_wrapf. eapply stpd2_bot. eauto.
+        eapply stpd2_wrapf. eapply stpd2_sel2. eauto. eauto.
+        eapply stpd2_wrapf. eapply stpd2_mem. eauto. eauto.
     + SCase "x > 0".
-      admit. (*
       destruct IXX1; destruct IXX2; ev; subst; eapply stpd2_selax; eauto.
-      * inversion H12. subst. eauto. eapply IHstp2. eauto. eauto. eauto. eauto. eapply compat_mem_fwd2.
-      right. left. eauto. eauto.
+      * inversion H12. subst. eauto. eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eapply compat_mem_fwd2. right. left. eauto. eauto.
       * destruct H7. ev. rewrite H12 in H8. inversion H8. subst.
         eapply IHstp2; eauto. eapply compat_mem_fwd2. right. left. eauto. 
         destruct H7. ev. rewrite H12 in H8. inversion H8. subst.
         eapply IHstp2; eauto. eapply compat_mem_fwd2. right. left. eauto.
       * destruct H2. ev. eapply IHstp2; eauto. eapply compat_mem_fwd2. right. left. eauto.
         eapply IHstp2; eauto. eapply compat_mem_fwd2. right. left. eauto.
-      * destruct H7; destruct H2; ev; eapply IHstp2; eauto; eapply compat_mem_fwd2; right; left; eauto. *)
+      * destruct H7; destruct H2; ev; eapply IHstp2; eauto; eapply compat_mem_fwd2; right; left; eauto.
     (* leftovers *)
     + eauto. + subst. eauto. + eauto. + eauto. + subst. eauto. + eauto. 
 
@@ -2050,8 +2050,8 @@ Proof.
     intros. subst. eapply stpd2_wrapf. eapply IHstp2; eauto.
   - Case "transf".
 
-    (* TODO / FIXME:  
-       What about middle man in trans ??? 
+    (* TODO:  
+       About the middle man in trans:
        We don't know that we can safely remove x.
        However, we can extend G2 without increasing
        the size of the derivations, and obtain the
