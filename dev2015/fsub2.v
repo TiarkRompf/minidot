@@ -1626,6 +1626,16 @@ Proof.
   - ev. repeat eexists; eauto. + right. right. subst. simpl. eauto.
 Qed.
 
+Lemma compat_mem_fwd1: forall GX TX G1 T2 T2',
+    compat GX TX G1 T2 T2' ->
+    compat GX TX G1 (TMem T2 TTop) (TMem T2' TTop).
+Proof.
+  intros. repeat destruct H as [|H].
+  - ev. repeat eexists; eauto. + left. repeat eexists; eauto. rewrite H0. eauto.
+  - ev. repeat eexists; eauto. + right. left. subst. eauto. 
+  - ev. repeat eexists; eauto. + right. right. subst. simpl. eauto.
+Qed.
+
 
 Lemma compat_fun: forall GX TX G1 T1 T2 T1',
     compat GX TX G1 (TFun T1 T2) T1' ->
@@ -1757,13 +1767,13 @@ Proof.
     intros GH0 GH0' GXX TXX T1' T2' n2 ? RF CX IX1 IX2 FA.
     eapply compat_top in IX1.
     eapply compat_top in IX2.
-    subst. eauto. eauto. eauto.
+    subst. eapply stpd2_topx. eauto. eauto.
     
   - Case "botx".
     intros GH0 GH0' GXX TXX T1' T2' n2 ? RF CX IX1 IX2 FA.
     eapply compat_bot in IX1.
     eapply compat_bot in IX2.
-    subst. eauto. eauto. eauto.
+    subst. eapply stpd2_botx. eauto. eauto.
     
   - Case "top".
     intros GH0 GH0' GXX TXX T1' T2' n2 ? RF CX IX1 IX2 FA.
@@ -1943,8 +1953,9 @@ Proof.
        necessary compat evidence. For this, we'll need
        to do induction on the size n.
      *)
-    intros. subst. eapply stpd2_transf. eapply IHstp2_1; eauto.
+    admit. (*intros. subst. eapply stpd2_transf. eapply IHstp2_1. eappy IHstp2_2. *)
 Qed.
+
 
 (*
 (* not used right now, but could be a useful helper *)
@@ -1995,7 +2006,7 @@ Qed.
 Lemma stp_to_stp2: forall G1 GH T1 T2,
   stp G1 GH T1 T2 ->
   forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
-  stp2 GX T1 GX T2 GY.
+  stpd2 true GX T1 GX T2 GY.
 Proof.
   intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY.
   - Case "topx". eauto.
