@@ -1462,7 +1462,14 @@ Proof.
     assert (closed 0 (length ([]:aenv)) x1). eapply stp2_closed2; eauto.
     assert (sstpd2 false G1 T1 x0 x1 []). eapply IHn. eauto. omega.
     eu. eexists. eapply stp2_strong_sel2. eauto. eauto. eauto. omega.
-  - Case "selx". admit.
+  - Case "selx".
+    eapply IHn in H7. eapply sstpd2_untrans in H7. eapply valtp_widen with (2:=H7) in H4.
+    eapply IHn in H8. eapply sstpd2_untrans in H8. eapply valtp_widen with (2:=H8) in H5.
+    eapply invert_typ in H4. ev. eu. eu. subst.
+    eapply invert_typ in H5. ev. eu. eu. subst.
+    simpl in H3. subst.
+    (* TODO: we cannot create selx here, because we don't know that v1 and vs are the same! *)
+    admit. omega. omega.
   - Case "selh1". inversion H1. 
   - Case "selh2". inversion H1. 
   - Case "selhx". inversion H1.
@@ -1480,9 +1487,6 @@ Lemma stpd2_to_sstpd2: forall G1 G2 T1 T2 m,
   stpd2 m G1 T1 G2 T2 nil ->
   sstpd2 m G1 T1 G2 T2 nil.
 Proof. intros. repeat eu. eapply stpd2_to_sstpd2_aux; eauto. Qed.
-
-
-
 
 
 Lemma stpd2_upgrade: forall G1 G2 T1 T2,
