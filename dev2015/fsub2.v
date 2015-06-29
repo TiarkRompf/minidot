@@ -969,57 +969,57 @@ Proof.
 Qed.
 
 
-Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2 H m n1,
-                       stp2 m G1 T1 G2 T2 H n1 ->
+Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2 H s m n1,
+                       stp2 s m G1 T1 G2 T2 H n1 ->
                        fresh G2 <= x ->
-                       stp2 m G1 T1 ((x,v1)::G2) T2 H n1.
+                       stp2 s m G1 T1 ((x,v1)::G2) T2 H n1.
 Proof. admit. Qed.
 
-Lemma stp2_extend1 : forall x v1 G1 G2 T1 T2 H m n1,
-                       stp2 m G1 T1 G2 T2 H n1 ->
+Lemma stp2_extend1 : forall x v1 G1 G2 T1 T2 H s m n1,
+                       stp2 s m G1 T1 G2 T2 H n1 ->
                        fresh G1 <= x ->
-                       stp2 m ((x,v1)::G1) T1 G2 T2 H n1.
+                       stp2 s m ((x,v1)::G1) T1 G2 T2 H n1.
 Proof. admit. Qed.
 
-Lemma stp2_extendH : forall x v1 G1 G2 T1 T2 H m n1,
-                       stp2 m G1 T1 G2 T2 H n1 ->
-                       stp2 m G1 T1 G2 T2 ((x,v1)::H) n1.
+Lemma stp2_extendH : forall x v1 G1 G2 T1 T2 H s m n1,
+                       stp2 s m G1 T1 G2 T2 H n1 ->
+                       stp2 s m G1 T1 G2 T2 ((x,v1)::H) n1.
 Proof.
   admit. (* (NOT) TODO (NOW): use splice *)
 Qed.
 
-Lemma stp2_extendH_mult : forall G1 G2 T1 T2 H H2 m n1,
-                       stp2 m G1 T1 G2 T2 H n1->
-                       stp2 m G1 T1 G2 T2 (H2++H) n1.
+Lemma stp2_extendH_mult : forall G1 G2 T1 T2 H H2 s m n1,
+                       stp2 s m G1 T1 G2 T2 H n1->
+                       stp2 s m G1 T1 G2 T2 (H2++H) n1.
 Proof. intros. induction H2.
   simpl. eauto. destruct a.
   simpl. eapply stp2_extendH. eauto.
 Qed.
 
-Lemma stp2_extendH_mult0 : forall G1 G2 T1 T2 H2 m n1,
-                       stp2 m G1 T1 G2 T2 [] n1 ->
-                       stp2 m G1 T1 G2 T2 H2 n1.
+Lemma stp2_extendH_mult0 : forall G1 G2 T1 T2 H2 s m n1,
+                       stp2 s m G1 T1 G2 T2 [] n1 ->
+                       stp2 s m G1 T1 G2 T2 H2 n1.
 Proof. intros. eapply stp2_extendH_mult with (H2:=H2) in H; eauto. rewrite app_nil_r in H. eauto. Qed.
 
 
-Lemma stp2_reg2 : forall G1 G2 T1 T2 H m n1,
-                       stp2 m G1 T1 G2 T2 H n1 ->
-                       stp2 m G2 T2 G2 T2 H n1.
+Lemma stp2_reg2 : forall G1 G2 T1 T2 H s m n1,
+                       stp2 s m G1 T1 G2 T2 H n1 ->
+                       stp2 s m G2 T2 G2 T2 H n1.
 Proof. admit. Qed.
 
-Lemma stp2_reg1 : forall G1 G2 T1 T2 H m n1,
-                       stp2 m G1 T1 G2 T2 H n1 ->
-                       stp2 m G1 T1 G1 T1 H n1.
+Lemma stp2_reg1 : forall G1 G2 T1 T2 H s m n1,
+                       stp2 s m G1 T1 G2 T2 H n1 ->
+                       stp2 s m G1 T1 G1 T1 H n1.
 Proof. admit. Qed.
 
 
-Lemma stp2_closed2 : forall G1 G2 T1 T2 H m n1,
-                       stp2 m G1 T1 G2 T2 H n1 ->
+Lemma stp2_closed2 : forall G1 G2 T1 T2 H s m n1,
+                       stp2 s m G1 T1 G2 T2 H n1 ->
                        closed 0 (length H) T2.
 Proof. admit. Qed.
 
-Lemma stp2_closed1 : forall G1 G2 T1 T2 H m n1,
-                       stp2 m G1 T1 G2 T2 H n1 ->
+Lemma stp2_closed1 : forall G1 G2 T1 T2 H s m n1,
+                       stp2 s m G1 T1 G2 T2 H n1 ->
                        closed 0 (length H) T1.
 Proof. admit. Qed.
 
@@ -1075,13 +1075,23 @@ Lemma stpd2_closed1 : forall G1 G2 T1 T2 H m,
 Proof. admit. Qed.
 
 
+(* sstpd2 variants below *)
+
+Lemma sstpd2_extend2 : forall x v1 G1 G2 T1 T2 H m,
+                       sstpd2 m G1 T1 G2 T2 H ->
+                       fresh G2 <= x ->
+                       sstpd2 m G1 T1 ((x,v1)::G2) T2 H.
+Proof. admit. Qed.
+
+
+
 
 Lemma valtp_extend : forall vs v x v1 T,
                        val_type vs v T ->
                        fresh vs <= x ->
                        val_type ((x,v1)::vs) v T.
 Proof.
-  intros. induction H; eauto; econstructor; eauto; eapply stpd2_extend2; eauto.
+  intros. induction H; eauto; econstructor; eauto; eapply sstpd2_extend2; eauto.
 Qed.
 
 
