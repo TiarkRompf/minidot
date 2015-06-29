@@ -1783,8 +1783,8 @@ Lemma stpd2_no_mem_nosubst: forall m G1 G2 T1 T2 GH GX TX,
      (forall GM TA TB GY, not (stpd2 false GX TX GM (TMem TA TB) GY)) ->
      nosubst T1 /\ nosubst T2.
 Proof.
-  intros m G1 G2 T1 T2 GH GX TX H.
-  eu; induction H; intros; simpl; repeat split; try eapply IHstp2; try eapply IHstp2_1; eauto; try eapply IHstp2_2; eauto.
+  intros m G1 G2 T1 T2 GH GX TX H. eu. remember false as flag.
+  induction H; inversion Heqflag; intros; simpl; repeat split; try eapply IHstp2; try eapply IHstp2_1; eauto; try eapply IHstp2_2; eauto.
                              
   (* sela1 *)
   destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst. destruct (H2 G2 TBot T2 (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
@@ -1795,22 +1795,23 @@ Proof.
   destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst.  destruct (H3 G2 TBot TTop (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
   
   (* all *)
-  subst GH. eapply nosubst_open_rev. eapply (IHstp2_2 ((0, (G2, T3)) :: GH0)); eauto. rewrite app_length. simpl. omega.
-  subst GH. eapply nosubst_open_rev. eapply (IHstp2_2 ((0, (G2, T3)) :: GH0)); eauto. rewrite app_length. simpl. omega.
+  subst GH. eapply nosubst_open_rev. eapply (IHstp2_2 _ ((0, (G2, T3)) :: GH0)); eauto. rewrite app_length. simpl. omega.
+  subst GH. eapply nosubst_open_rev. eapply (IHstp2_2 _ ((0, (G2, T3)) :: GH0)); eauto. rewrite app_length. simpl. omega.
+
+  (* wrap/trans *)
+  admit.
+  admit.
+  admit.
+  admit.
+  Grab Existential Variables. eauto. eauto.
 Qed.
 
 
-Lemma stp2_untrans: forall G1 G2 GH T1 T2,
-  stpd2 false G1 T1 G2 T2 GH ->
-  stpd2 true G1 T1 G2 T2 GH.
-Proof. admit. Qed.  
-
-
 Lemma stp2_substitute: forall m G1 G2 T1 T2 GH n1,
-   stp2 m G1 T1 G2 T2 GH n1 ->
+   stp2 false m G1 T1 G2 T2 GH n1 ->
    forall GH0 GH0' GX TX T1' T2' n2,
      GH = (GH0 ++ [(0,(GX, TX))]) ->
-     stp2 true GX TX GX TX GH0' n2  ->
+     stp2 true true GX TX GX TX GH0' n2  ->
      closed 0 0 TX ->
      compat GX TX G1 T1 T1' ->
      compat GX TX G2 T2 T2' ->
@@ -2165,10 +2166,12 @@ Lemma invert_abs: forall venv vf T1 T2,
     1 + f <= x /\
     wf_env env tenv /\
     has_type ((x,T3)::(f,TFun T3 T4)::tenv) y T4 /\
-    stpd2 false venv T1 env T3 [] /\
-    stpd2 false env T4 venv T2 [].
+    stpd2 true venv T1 env T3 [] /\
+    stpd2 true env T4 venv T2 [].
 Proof.
-  intros. inversion H; eu; try solve by inversion. inversion H4. subst. repeat eexists; repeat eauto.
+  intros. inversion H; repeat eu; try solve by inversion. inversion H4. subst.
+
+  repeat eexists; repeat eauto.
 Qed.
 
 Lemma invert_tabs: forall venv vf vx T1 T2,
