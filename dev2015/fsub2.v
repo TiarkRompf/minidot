@@ -305,83 +305,99 @@ Does it make a difference? It seems like we can always widen f?
 .
 
 
-Inductive stp2: bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -> nat -> Prop :=
-| stp2_topx: forall G1 G2 GH n1,
-    stp2 true G1 TTop G2 TTop GH n1
-| stp2_botx: forall G1 G2 GH n1,
-    stp2 true G1 TBot G2 TBot GH n1
-| stp2_top: forall G1 G2 GH T n1,
-    stp2 false G1 T G1 T GH n1 ->
-    stp2 true G1 T G2 TTop GH (S n1)
-| stp2_bot: forall G1 G2 GH T n1,
-    stp2 false G2 T G2 T GH n1 ->
-    stp2 true G1 TBot G2 T GH (S n1)
-| stp2_bool: forall G1 G2 GH n1,
-    stp2 true G1 TBool G2 TBool GH n1
-| stp2_fun: forall G1 G2 T1 T2 T3 T4 GH n1 n2,
-    stp2 false G2 T3 G1 T1 GH n1 ->
-    stp2 false G1 T2 G2 T4 GH n2 ->
-    stp2 true G1 (TFun T1 T2) G2 (TFun T3 T4) GH (S (n1+n2))
-| stp2_mem: forall G1 G2 T1 T2 T3 T4 GH n1 n2,
-    stp2 false G2 T3 G1 T1 GH n1 ->
-    stp2 false G1 T2 G2 T4 GH n2 ->
-    stp2 true G1 (TMem T1 T2) G2 (TMem T3 T4) GH (S (n1+n2))
+Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -> nat -> Prop :=
+| stp2_topx: forall m G1 G2 GH n1,
+    stp2 m true G1 TTop G2 TTop GH n1
+| stp2_botx: forall m G1 G2 GH n1,
+    stp2 m true G1 TBot G2 TBot GH n1
+| stp2_top: forall m G1 G2 GH T n1,
+    stp2 false  false G1 T G1 T GH n1 ->
+    stp2 m true G1 T G2 TTop GH (S n1)
+| stp2_bot: forall m G1 G2 GH T n1,
+    stp2 false false G2 T G2 T GH n1 ->
+    stp2 m true G1 TBot G2 T GH (S n1)
+| stp2_bool: forall m G1 G2 GH n1,
+    stp2 m true G1 TBool G2 TBool GH n1
+| stp2_fun: forall m G1 G2 T1 T2 T3 T4 GH n1 n2,
+    stp2 false false G2 T3 G1 T1 GH n1 ->
+    stp2 false false G1 T2 G2 T4 GH n2 ->
+    stp2 m true G1 (TFun T1 T2) G2 (TFun T3 T4) GH (S (n1+n2))
+| stp2_mem: forall m G1 G2 T1 T2 T3 T4 GH n1 n2,
+    stp2 false false G2 T3 G1 T1 GH n1 ->
+    stp2 false false G1 T2 G2 T4 GH n2 ->
+    stp2 m true G1 (TMem T1 T2) G2 (TMem T3 T4) GH (S (n1+n2))
 
+
+(* strong version, with precise/invertible bounds *)
+| stp2_strong_sel1: forall G1 G2 GX TX x T2 GH n1,
+    index x G1 = Some (vty GX TX) ->
+    closed 0 0 TX ->
+    stp2 true true GX TX G2 T2 GH n1 ->
+    stp2 true true G1 (TSel x) G2 T2 GH (S n1)
+
+| stp2_strong_sel2: forall G1 G2 GX TX x T1 GH n1,
+    index x G2 = Some (vty GX TX) ->
+    closed 0 0 TX ->
+    stp2 true true G1 T1 GX TX GH n1 ->
+    stp2 true true G1 T1 G2 (TSel x) GH (S n1)
+
+         
 (* the type of (vty GX TX) is (TMem TX TX), so there is no additional TMem here *)
 | stp2_sel1: forall G1 G2 GX TX x T2 GH n1,
     index x G1 = Some (vty GX TX) ->
     closed 0 0 TX ->
-    stp2 false GX TX G2 T2 GH n1 ->
-    stp2 true G1 (TSel x) G2 T2 GH (S n1)
+    stp2 false false GX TX G2 T2 GH n1 ->
+    stp2 false true G1 (TSel x) G2 T2 GH (S n1)
 
 | stp2_sel2: forall G1 G2 GX TX x T1 GH n1,
     index x G2 = Some (vty GX TX) ->
     closed 0 0 TX ->
-    stp2 false G1 T1 GX TX GH n1 ->
-    stp2 true G1 T1 G2 (TSel x) GH (S n1)
+    stp2 false false G1 T1 GX TX GH n1 ->
+    stp2 false true G1 T1 G2 (TSel x) GH (S n1)
 
 (* X<T, one sided *)
 | stp2_sela1: forall G1 G2 GX TX x T2 GH n1,
     indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
-    stp2 false GX TX G2 (TMem TBot T2) GH n1 ->
-    stp2 true G1 (TSelH x) G2 T2 GH (S n1)
+    stp2 false false GX TX G2 (TMem TBot T2) GH n1 ->
+    stp2 false true G1 (TSelH x) G2 T2 GH (S n1)
 
 | stp2_sela2: forall G1 G2 GX TX x T1 GH n1,
     indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
-    stp2 false GX TX G2 (TMem T1 TTop) GH n1 ->
-    stp2 true G1 T1 G2 (TSelH x) GH (S n1)
+    stp2 false false GX TX G2 (TMem T1 TTop) GH n1 ->
+    stp2 false true G1 T1 G2 (TSelH x) GH (S n1)
 
          
 | stp2_selax: forall G1 G2 GX TX x GH n1,
     indexr x GH = Some (GX, TX) ->
     indexr x GH = Some (GX, TX) ->
-    stp2 false GX TX G2 (TMem TBot TTop) GH n1 ->
+    stp2 false false GX TX G2 (TMem TBot TTop) GH n1 ->
     (*closed 0 x TX ->*)
-    stp2 true G1 (TSelH x) G2 (TSelH x) GH (S n1)
+    stp2 false true G1 (TSelH x) G2 (TSelH x) GH (S n1)
 
 
-| stp2_all: forall G1 G2 T1 T2 T3 T4 GH n1 n2, 
-    stp2 false G2 T3 G1 T1 GH n1 ->
+| stp2_all: forall m G1 G2 T1 T2 T3 T4 GH n1 n2, 
+    stp2 false false G2 T3 G1 T1 GH n1 ->
     closed 1 (length GH) T2 -> (* must not accidentally bind x *)
     closed 1 (length GH) T4 -> 
-    stp2 false G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) ((0,(G2, T3))::GH) n2 ->
-    stp2 true G1 (TAll T1 T2) G2 (TAll T3 T4) GH (S (n1+n2))
+    stp2 false false G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) ((0,(G2, T3))::GH) n2 ->
+    stp2 m true G1 (TAll T1 T2) G2 (TAll T3 T4) GH (S (n1+n2))
 
-| stp2_wrapf: forall G1 G2 T1 T2 GH n1,
-    stp2 true G1 T1 G2 T2 GH n1 ->
-    stp2 false G1 T1 G2 T2 GH (S n1)
-| stp2_transf: forall G1 G2 G3 T1 T2 T3 GH n1 n2,
-    stp2 true G1 T1 G2 T2 GH n1 ->
-    stp2 false G2 T2 G3 T3 GH n2 ->           
-    stp2 false G1 T1 G3 T3 GH (S (n1+n2))
+| stp2_wrapf: forall m G1 G2 T1 T2 GH n1,
+    stp2 m true G1 T1 G2 T2 GH n1 ->
+    stp2 m false G1 T1 G2 T2 GH (S n1)
+| stp2_transf: forall m G1 G2 G3 T1 T2 T3 GH n1 n2,
+    stp2 m true G1 T1 G2 T2 GH n1 ->
+    stp2 m false G2 T2 G3 T3 GH n2 ->           
+    stp2 m false G1 T1 G3 T3 GH (S (n1+n2))
 .
 
-Definition stpd2 b G1 T1 G2 T2 GH := exists n, stp2 b G1 T1 G2 T2 GH n.
+Definition stpd2 b G1 T1 G2 T2 GH := exists n, stp2 false b G1 T1 G2 T2 GH n.
+Definition sstpd2 b G1 T1 G2 T2 GH := exists n, stp2 true b G1 T1 G2 T2 GH n.
 
 Ltac ep := match goal with
-             | [ |- stp ?M ?G1 ?T1 ?T2 ?N ] => assert (exists (x:nat), stp M G1 T1 T2 x) as EEX
+             | [ |- stp2 ?M1 ?M2 ?G1 ?T1 ?G2 ?T2 ?GH ?N ] => assert (exists (x:nat), stp2 M1 M2 G1 T1 G2 T2 GH x) as EEX
            end.
 
 Ltac eu := match goal with
