@@ -332,13 +332,13 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
 | stp2_strong_sel1: forall G1 G2 GX TX x T2 GH n1,
     index x G1 = Some (vty GX TX) ->
     closed 0 0 TX ->
-    stp2 true true GX TX G2 T2 GH n1 ->
+    stp2 true true GX (TMem TX TX) G2 (TMem TBot T2) GH n1 ->
     stp2 true true G1 (TSel x) G2 T2 GH (S n1)
 
 | stp2_strong_sel2: forall G1 G2 GX TX x T1 GH n1,
     index x G2 = Some (vty GX TX) ->
     closed 0 0 TX ->
-    stp2 true true G1 T1 GX TX GH n1 ->
+    stp2 true true GX (TMem TX TX) G1 (TMem T1 TTop) GH n1 ->
     stp2 true true G1 T1 G2 (TSel x) GH (S n1)
 
          
@@ -346,13 +346,13 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
 | stp2_sel1: forall G1 G2 GX TX x T2 GH n1,
     index x G1 = Some (vty GX TX) ->
     closed 0 0 TX ->
-    stp2 false false GX TX G2 T2 GH n1 ->
+    stp2 false false GX (TMem TX TX) G2 (TMem TBot T2) GH n1 ->
     stp2 false true G1 (TSel x) G2 T2 GH (S n1)
 
 | stp2_sel2: forall G1 G2 GX TX x T1 GH n1,
     index x G2 = Some (vty GX TX) ->
     closed 0 0 TX ->
-    stp2 false false G1 T1 GX TX GH n1 ->
+    stp2 false false GX (TMem TX TX) G1 (TMem T1 TTop) GH n1 ->
     stp2 false true G1 T1 G2 (TSel x) GH (S n1)
 
 (* X<T, one sided *)
@@ -440,14 +440,14 @@ Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_sel1: forall G1 G2 GX TX x T2 GH,
     index x G1 = Some (vty GX TX) ->
     closed 0 0 TX ->
-    stpd2 false GX TX G2 T2 GH ->
+    stpd2 false GX (TMem TX TX) G2 (TMem TBot T2) GH ->
     stpd2 true G1 (TSel x) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
 
 Lemma stpd2_sel2: forall G1 G2 GX TX x T1 GH,
     index x G2 = Some (vty GX TX) ->
     closed 0 0 TX ->
-    stpd2 false G1 T1 GX TX GH ->
+    stpd2 false GX (TMem TX TX) G1 (TMem T1 TTop) GH ->
     stpd2 true G1 T1 G2 (TSel x) GH.
 Proof. intros. repeat eu. eauto. Qed.
 
