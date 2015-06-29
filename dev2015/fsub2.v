@@ -1427,8 +1427,24 @@ Proof.
   - Case "bool". eexists. eauto.
   - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
   - Case "mem". eexists. eapply stp2_mem. eauto. eauto.
-  - Case "sel1". admit.
-  - Case "sel2". admit.
+  - Case "sel1".
+    (* TODO: val_type should take size bound parameter (if we do it like this) *)
+    (* alternative: sstp2_mem returns sstp2 *)
+    eapply IHn in H4. eapply sstpd2_untrans in H4. eapply valtp_widen with (2:=H4) in H2.
+    eapply invert_typ in H2. ev. eu. eu. subst.
+    assert (x3 < n). admit. (* this is safe, because the val_tp was part of our argument *)
+    assert (x2 < n). admit.
+    assert (closed 0 (length ([]:aenv)) x1). eapply stp2_closed2; eauto.
+    assert (sstpd2 true x0 x1 G2 T2 []). eapply sstpd2_untrans. eapply IHn. eauto. omega.
+    eu. eexists. eapply stp2_strong_sel1. eauto. eauto. eauto. omega.
+  - Case "sel2".
+    eapply IHn in H4. eapply sstpd2_untrans in H4. eapply valtp_widen with (2:=H4) in H2.
+    eapply invert_typ in H2. ev. eu. eu. subst.
+    assert (x3 < n). admit. (* this is safe, because the val_tp was part of our argument *)
+    assert (x2 < n). admit.
+    assert (closed 0 (length ([]:aenv)) x1). eapply stp2_closed2; eauto.
+    assert (sstpd2 false G1 T1 x0 x1 []). eapply IHn. eauto. omega.
+    eu. eexists. eapply stp2_strong_sel2. eauto. eauto. eauto. omega.
   - Case "selx". admit.
   - Case "selh1". inversion H1. 
   - Case "selh2". inversion H1. 
@@ -1449,20 +1465,6 @@ Lemma stpd2_to_sstpd2: forall G1 G2 T1 T2 m,
 Proof. intros. repeat eu. eapply stpd2_to_sstpd2_aux; eauto. Qed.
 
 
-Lemma sstpd2_untrans_aux: forall n, forall G1 G2 T1 T2 n1,
-  stp2 true false G1 T1 G2 T2 nil n1 -> n1 < n ->
-  sstpd2 true G1 T1 G2 T2 nil.
-Proof.
-  intros n. induction n; intros; try omega.
-  inversion H; subst.
-  - Case "wrapf". eexists. eauto.
-  - Case "transf". eapply sstpd2_trans_aux. eapply H1. eauto. eapply IHn. eauto. omega.
-Qed.
-
-Lemma sstpd2_untrans: forall G1 G2 T1 T2,
-  sstpd2 false G1 T1 G2 T2 nil ->
-  sstpd2 true G1 T1 G2 T2 nil.
-Proof. intros. repeat eu. eapply sstpd2_untrans_aux; eauto. Qed.
 
 
 
