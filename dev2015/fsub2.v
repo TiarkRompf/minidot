@@ -1377,9 +1377,9 @@ Proof.
   - Case "sel1". admit.
   - Case "sel2". admit.
   - Case "selx". admit.
-  - Case "selh1". admit.  
-  - Case "selh2". admit.
-  - Case "selhx". admit.
+  - Case "selh1". inversion H1. 
+  - Case "selh2". inversion H1. 
+  - Case "selhx". inversion H1.
   - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto.
   - Case "wrapf". eapply IHn in H1. eu. eexists. eapply stp2_wrapf. eauto. omega.
   - Case "transf". eapply IHn in H1. eapply IHn in H2. eu. eu. eexists.
