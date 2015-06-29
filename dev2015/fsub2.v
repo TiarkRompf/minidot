@@ -1957,6 +1957,21 @@ Proof.
 Qed.
 
 
+Lemma stpd2_substitute: forall m G1 G2 T1 T2 GH,
+   stpd2 m G1 T1 G2 T2 GH ->
+   forall GH0 GH0' GX TX T1' T2',
+     GH = (GH0 ++ [(0,(GX, TX))]) ->
+     stpd2 true GX TX GX TX GH0' ->
+     closed 0 0 TX ->
+     compat GX TX G1 T1 T1' ->
+     compat GX TX G2 T2 T2' ->
+     Forall2 (compat2 GX TX) GH0 GH0' ->
+     stpd2 m G1 T1' G2 T2' GH0'.
+Proof. intros. repeat eu. eapply stp2_substitute; eauto. Qed.
+
+
+
+
 (*
 (* not used right now, but could be a useful helper *)
 Lemma stp2_concretize: forall G1 G2 T1X T2X TX,
@@ -2006,19 +2021,20 @@ Qed.
 Lemma stp_to_stp2: forall G1 GH T1 T2,
   stp G1 GH T1 T2 ->
   forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
-  stpd2 true GX T1 GX T2 GY.
-Proof.
-  intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY.
-  - Case "topx". eauto.
-  - Case "botx". eauto.
-  - Case "top". eauto.
-  - Case "bot". eauto.
-  - Case "bool". eauto.
-  - Case "fun". eauto.
-  - Case "mem". eauto.
+  stpd2 false GX T1 GX T2 GY.
+Proof with stpd2_wrapf.
+  intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY; eapply stpd2_wrapf.
+  - Case "topx". eapply stpd2_topx.
+  - Case "botx". eapply stpd2_botx.
+  - Case "top". eapply stpd2_top; eauto.
+  - Case "bot". eapply stpd2_bot; eauto.
+  - Case "bool". eapply stpd2_bool; eauto.
+  - Case "fun". eapply stpd2_fun; eauto.
+  - Case "mem". eapply stpd2_mem; eauto.
   - Case "sel1". 
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
     eapply index_safe_ex. eauto. eauto.
+    (* We're gonna do this differently ... 
     destruct A as [? [? VT]].
     inversion VT; subst.
     + assert (stp2 venv0 (TMem T1 T1) GX (TMem TBot T2) GY) as STM.
@@ -2033,34 +2049,36 @@ Proof.
       inversion STM.
     + assert (stp2 venv0 (TAll T1 T0) GX (TMem TBot T2) GY) as STM.
       eapply stp2_trans. rewrite <-app_nil_r. eapply stp2_extendH_mult. eauto. eapply IHST; eauto.
-      inversion STM.
+      inversion STM. *)
+      admit.
   - Case "sel2". admit.
   - Case "selx". eauto.
     assert (exists v : vl, index x GX = Some v /\ val_type GX v (TMem TL TU)) as A.
     eapply index_safe_ex. eauto. eauto. eauto.
-    destruct A as [? [? VT]].
+    (* TODO revisit *) admit. 
+    (* destruct A as [? [? VT]].
     inversion VT; try solve by inversion; subst.
     inversion H2. subst.
-    eapply stp2_sel2. eauto. eapply stp2_closed1 in H11. eauto. 
-    eapply stp2_sel1. eauto. eapply stp2_closed1 in H11. eauto.
-    eapply stp2_extendH_mult with (H2:=GY) in H11. rewrite app_nil_r in H11.
-    eapply stp2_reg1. eapply H11.
+    eapply stpd2_sel2. eauto. eapply stpd2_closed1 in H2. inversion H2. eauto. 
+    eapply stpd2_wrapf. eapply stpd2_sel1. eauto. eapply stpd2_closed1 in H2. inversion H2. eauto.
+    eapply stpd2_extendH_mult with (H2:=GY) in H2. rewrite app_nil_r in H2.
+    eapply stpd2_reg1. eapply H2. *)
   - Case "sela1". eauto.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. destruct x0.
     inversion VT. subst. 
-    eapply stp2_sela1. eauto. eapply IHST. eauto. eauto.
+    eapply stpd2_sela1. eauto. eapply IHST. eauto. eauto.
   - Case "sela2". admit.
   - Case "selax". eauto.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. 
     inversion VT. subst.
-    eapply stp2_selax. eauto. eauto. eapply IHST. eauto. eauto.
+    eapply stpd2_selax. eauto. eauto. eapply IHST. eauto. eauto.
   - Case "all".
     subst x. assert (length GY = length GH). eapply wfh_length; eauto.
-    eapply stp2_all. eauto. rewrite H. eauto. rewrite H.  eauto.
+    eapply stpd2_all. eauto. rewrite H. eauto. rewrite H.  eauto.
     rewrite H.
     eapply IHST2. eauto. eapply wfeh_cons. eauto.
 Qed.
@@ -2068,15 +2086,15 @@ Qed.
 
 Lemma valtp_widen: forall vf H1 H2 T1 T2,
   val_type H1 vf T1 ->
-  stp2 H1 T1 H2 T2 [] ->
+  stpd2 true H1 T1 H2 T2 [] ->
   val_type H2 vf T2.
 Proof.
-  intros. inversion H; econstructor; eauto; eapply stp2_trans; eauto.
+  intros. inversion H; econstructor; eauto; eapply stpd2_trans; eauto.
 Qed.
 
 Lemma restp_widen: forall vf H1 H2 T1 T2,
   res_type H1 vf T1 ->
-  stp2 H1 T1 H2 T2 [] ->
+  stpd2 true H1 T1 H2 T2 [] ->
   res_type H2 vf T2.
 Proof.
   intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto.
@@ -2091,41 +2109,43 @@ Lemma invert_abs: forall venv vf T1 T2,
     1 + f <= x /\
     wf_env env tenv /\
     has_type ((x,T3)::(f,TFun T3 T4)::tenv) y T4 /\
-    stp2 venv T1 env T3 [] /\
-    stp2 env T4 venv T2 [].
+    stpd2 false venv T1 env T3 [] /\
+    stpd2 false env T4 venv T2 [].
 Proof.
-  intros. inversion H; try solve by inversion. inversion H4. subst. repeat eexists; repeat eauto.
+  intros. inversion H; eu; try solve by inversion. inversion H4. subst. repeat eexists; repeat eauto.
 Qed.
 
 Lemma invert_tabs: forall venv vf vx T1 T2,
   val_type venv vf (TAll T1 T2) ->
   val_type venv vx T1 ->
-  stp2 venv T2 venv T2 [] ->                 
+  stpd2 true venv T2 venv T2 [] ->                 
   exists env tenv x y T3 T4,
     vf = (vtabs env x T3 y) /\
     fresh env = x /\
     wf_env env tenv /\
     has_type ((x,T3)::tenv) y (open (TSel x) T4) /\
-    stp2 venv T1 env T3 [] /\
-    stp2 ((x,vx)::env) (open (TSel x) T4) venv T2 []. (* (open T1 T2) []. *)
+    stpd2 false venv T1 env T3 [] /\
+    stpd2 false ((x,vx)::env) (open (TSel x) T4) venv T2 []. (* (open T1 T2) []. *)
 Proof.
-  intros venv0 vf vx T1 T2 VF VX STY. inversion VF; try solve by inversion. inversion H2. subst. repeat eexists; repeat eauto.
+  intros venv0 vf vx T1 T2 VF VX STY. inversion VF; eu; try solve by inversion. inversion H2. subst.
+  eauto. eexists. eexists. eexists. eexists. eexists. eexists.
+  repeat split; eauto. 
   remember (fresh venv1) as x.
   remember (x + fresh venv0) as xx.
 
   (* inversion of TAll < TAll *)
-  assert (stp2 venv0 T1 venv1 T0 []) as ARG. eauto.
-  assert (stp2 venv1 (open (TSelH 0) T3) venv0 (open (TSelH 0) T2) [(0,(venv0, T1))]) as KEY. {
+  assert (stpd2 false venv0 T1 venv1 T0 []) as ARG. eauto.
+  assert (stpd2 false venv1 (open (TSelH 0) T3) venv0 (open (TSelH 0) T2) [(0,(venv0, T1))]) as KEY. {
     eauto.
   }
 
   (* need reflexivity *)
-  assert (stp2 venv0 T1 venv0 T1 []). eapply stp2_reg1. eauto.
-  assert (closed 0 0 T1). eapply stp2_closed1 in H1. simpl in H1. eauto.
+  assert (stpd2 false venv0 T1 venv0 T1 []). eapply stpd2_reg1. eauto.
+  assert (closed 0 0 T1). eapply stpd2_closed1 in H1. simpl in H1. eauto.
   
   (* now rename *)
   
-  assert (stp2 ((fresh venv1,vx) :: venv1) (open_rec 0 (TSel (fresh venv1)) T3) venv0 (T2) []). { (* T2 was open T1 T2 *)
+  assert (stpd2 false ((fresh venv1,vx) :: venv1) (open_rec 0 (TSel (fresh venv1)) T3) venv0 (T2) []). { (* T2 was open T1 T2 *)
 
     (* now that sela1/sela2 can use subtyping, it is better to dispatch on the
        valtp evidence (instead of the type, as before) *)
@@ -2134,29 +2154,29 @@ Proof.
     
     inversion VX; subst.
     + Case "VTy".
-      assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
+      assert (closed 0 (length ([]:aenv)) T2). eapply stpd2_closed1; eauto.
       assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
-      eapply stp2_substitute with (GH0:=nil).
-      eapply stp2_extend1. eapply stp2_narrow. eapply H5. eapply KEY. eauto.
+      eapply stpd2_substitute with (GH0:=nil).
+      eapply stpd2_extend1. eapply stpd2_narrow. eapply stpd2_wrapf. eapply H5. eapply KEY. eauto.
       simpl. eauto.
-      eapply stp2_reg1; eapply H5.
-      eapply stp2_closed1 in H5. simpl in H5. eapply H5.
+      eapply stpd2_reg1; eapply H5.
+      eapply stpd2_closed1 in H5. simpl in H5. eapply H5.
       (* prove: either x:T3 is TMem, or it can't be used! *)
 
       left. eexists. eexists. split. eapply index_hit2. eauto. eauto. eauto. unfold open. rewrite (subst_open_zero 0 1). eauto. eauto.
       right. left. split. rewrite OP2. eauto. eauto. eauto.
 
     + Case "VBool".
-      assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
+      assert (closed 0 (length ([]:aenv)) T2). eapply stpd2_closed1; eauto.
       assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
-      assert (forall GM TA TB GY, not (stp2 venv0 T1 GM (TMem TA TB) GY)). intros. unfold not. intros E. eapply stp2_extendH_mult0 in H4. eapply stp2_trans with (1:=H4) in E. inversion E. 
-      assert (nosubst (open_rec 0 (TSelH 0) T3)). eapply (stp2_no_mem_nosubst) with (1:=KEY) (GH0:=nil). simpl. eauto. eauto. 
+      assert (forall GM TA TB GY, not (stpd2 false venv0 T1 GM (TMem TA TB) GY)). intros. unfold not. intros E. eapply stpd2_extendH_mult0 in H4. eapply stpd2_trans with (1:= stpd2_wrapf _ _ _ _ _ H4) in E. eapply stp2_untrans in E. repeat eu. inversion E. 
+      assert (nosubst (open_rec 0 (TSelH 0) T3)). eapply (stpd2_no_mem_nosubst) with (1:=KEY) (GH0:=nil). simpl. eauto. eauto. 
       assert (closed 0 0 T3). eapply nosubst_zero_closed; eauto. eauto.
       
-      eapply stp2_substitute with (GH0:=nil).
-      eapply stp2_extend1. eapply KEY. eauto.
+      eapply stpd2_substitute with (GH0:=nil).
+      eapply stpd2_extend1. eapply KEY. eauto.
       simpl. eauto.
-      eapply stp2_reg1; eapply ARG. eauto.
+      eapply stp2_untrans. eapply stpd2_reg1; eapply ARG. eauto.
 
       right. right. split. eauto.
       repeat rewrite <-(closed_no_open T3 _ 0 0).
@@ -2164,6 +2184,7 @@ Proof.
       right. left. split. rewrite OP2. eauto. eauto. eauto.
 
     + Case "VAbs".
+      admit. (* revisit ...
       assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
       assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
       assert (forall GM TA TB GY, not (stp2 venv0 T1 GM (TMem TA TB) GY)). intros. unfold not. intros E. eapply stp2_extendH_mult0 in H8. eapply stp2_trans with (1:=H8) in E. inversion E.
@@ -2178,9 +2199,10 @@ Proof.
       right. right. split. eauto.
       repeat rewrite <-(closed_no_open T3 _ 0 0).
       symmetry. eapply closed_no_subst; eauto. eauto. eauto.
-      right. left. split. rewrite OP2. eauto. eauto. eauto.
+      right. left. split. rewrite OP2. eauto. eauto. eauto.*)
 
     + Case "VTAbs".
+      admit. (* revisit ...
       assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
       assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
       assert (forall GM TA TB GY, not (stp2 venv0 T1 GM (TMem TA TB) GY)). intros. unfold not. intros E. eapply stp2_extendH_mult0 in H7. eapply stp2_trans with (1:=H7) in E. inversion E.
@@ -2195,12 +2217,12 @@ Proof.
       right. right. split. eauto.
       repeat rewrite <-(closed_no_open T3 _ 0 0).
       symmetry. eapply closed_no_subst; eauto. eauto. eauto.
-      right. left. split. rewrite OP2. eauto. eauto. eauto.
+      right. left. split. rewrite OP2. eauto. eauto. eauto.*)
 
   }
 
   (* done *)
-  subst. eauto.
+  subst. repeat eu. eauto.
 Qed. 
 
 
