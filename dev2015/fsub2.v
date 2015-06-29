@@ -1260,6 +1260,7 @@ Proof.
   - Case "transf". eapply stpd2_transf. eauto. eapply IHn. eauto. omega. eauto.
 Qed.
 
+(*
 Lemma sstpd2_trans_axiom: forall n, forall G1 G2 G3 T1 T2 T3 H n1,
   stp2 true false G1 T1 G2 T2 H n1 -> n1 < n ->
   sstpd2 false G2 T2 G3 T3 H ->
@@ -1269,7 +1270,7 @@ Proof.
   - Case "wrapf". eexists. eapply stp2_transf; eauto.
   - Case "transf". admit. (*eexists. eapply stp2_transf. eauto. ep. eapply IHn. eauto. omega. eauto. eauto. *)
 Qed.
-
+*)
 
 
 Lemma stpd2_trans: forall G1 G2 G3 T1 T2 T3 H,
