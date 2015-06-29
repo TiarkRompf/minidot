@@ -385,7 +385,7 @@ Ltac ep := match goal with
            end.
 
 Ltac eu := match goal with
-             | H: stpd2 _ _ _ _ _ _ |- _ => destruct H
+             | H: stpd2 _ _ _ _ _ _ |- _ => destruct H as [? H]
 (*             | H: exists n: nat ,  _ |- _  =>
                destruct H as [e P] *)
            end.
@@ -1734,61 +1734,67 @@ Proof.
 Qed.
 
 
-Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
-   stp2 G1 T1 G2 T2 GH ->
-   forall GH0 GH0' GX TX T1' T2',
+Lemma stp2_untrans: forall G1 G2 GH T1 T2,
+  stpd2 false G1 T1 G2 T2 GH ->
+  stpd2 true G1 T1 G2 T2 GH.
+Proof. admit. Qed.  
+
+
+Lemma stp2_substitute: forall m G1 G2 T1 T2 GH n1,
+   stp2 m G1 T1 G2 T2 GH n1 ->
+   forall GH0 GH0' GX TX T1' T2' n2,
      GH = (GH0 ++ [(0,(GX, TX))]) ->
-     stp2 GX TX GX TX GH0' ->
+     stp2 true GX TX GX TX GH0' n2  ->
      closed 0 0 TX ->
      compat GX TX G1 T1 T1' ->
      compat GX TX G2 T2 T2' ->
      Forall2 (compat2 GX TX) GH0 GH0' ->
-     stp2 G1 T1' G2 T2' GH0'.
+     stpd2 m G1 T1' G2 T2' GH0'.
 Proof.
-  intros G1 G2 T1 T2 GH H.
+  intros m G1 G2 T1 T2 GH n1 H.
   induction H.
   - Case "topx".
-    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' n2 ? RF CX IX1 IX2 FA.
     eapply compat_top in IX1.
     eapply compat_top in IX2.
     subst. eauto. eauto. eauto.
     
   - Case "botx".
-    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' n2 ? RF CX IX1 IX2 FA.
     eapply compat_bot in IX1.
     eapply compat_bot in IX2.
     subst. eauto. eauto. eauto.
     
   - Case "top".
-    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' n2 ? RF CX IX1 IX2 FA.
     eapply compat_top in IX2.
-    subst. eauto. eauto. 
+    subst. eapply stpd2_top; eauto. eauto. 
     
   - Case "bot".
-    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' n2 ? RF CX IX1 IX2 FA.
     eapply compat_bot in IX1.
-    subst. eauto. eauto.
+    subst. eapply stpd2_bot; eauto. eauto.
     
   - Case "bool".
-    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' n2 ? RF CX IX1 IX2 FA.
     eapply compat_bool in IX1.
     eapply compat_bool in IX2.
-    subst. eauto. eauto. eauto. 
+    subst. eapply stpd2_bool; eauto. eauto. eauto. 
     
   - Case "fun".
-    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' ? ? RF CX IX1 IX2 FA.
     eapply compat_fun in IX1. repeat destruct IX1 as [? IX1].
     eapply compat_fun in IX2. repeat destruct IX2 as [? IX2].
-    subst. eauto. eauto. eauto. 
+    subst. eapply stpd2_fun; eauto. eauto. eauto. 
 
   - Case "mem".
-    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' ? ? RF CX IX1 IX2 FA.
     eapply compat_mem in IX1. repeat destruct IX1 as [? IX1].
     eapply compat_mem in IX2. repeat destruct IX2 as [? IX2].
-    subst. eauto. eauto. eauto. 
+    subst. eapply stpd2_mem; eauto. eauto. eauto. 
                                 
   - Case "sel1". 
-    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' ? ? RF CX IX1 IX2 FA.
     
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -1798,13 +1804,13 @@ Proof.
     assert (compat GXX TXX GX TX TX) as CPX. right. left. eauto. 
 
     subst.
-    eapply stp2_sel1. eauto. eauto.
+    eapply stpd2_sel1. eauto. eauto.
     eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
     eauto. eauto. eauto.
 
 
   - Case "sel2". 
-    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' ? ? RF CX IX1 IX2 FA.
     
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -1814,12 +1820,12 @@ Proof.
     assert (compat GXX TXX GX TX TX) as CPX. right. left. eauto. 
 
     subst.
-    eapply stp2_sel2. eauto. eauto.
+    eapply stpd2_sel2. eauto. eauto.
     eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
     eauto. eauto. eauto.
 
   - Case "sela1".
-    intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' ? ? RF CX IX1 IX2 FA.
     
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -1830,33 +1836,36 @@ Proof.
     
     destruct IX1. 
     + SCase "x = 0".
-      repeat destruct IXX as [|IXX]; eu.
+      repeat destruct IXX as [|IXX]; ev.
       * subst. simpl.
         repeat destruct H6 as [|H6]; subst TXX; inversion CX; subst.
         (*Bot..T*)
-        eapply stp2_sel1. eauto. eauto.
-        assert (stp2 GXX (TMem TBot x1) G2 (TMem TBot T2') GH0').  {
+        eapply stpd2_sel1. eauto. eauto.
+        assert (stpd2 false GXX (TMem TBot x1) G2 (TMem TBot T2') GH0') as IH.  {
           eapply IHstp2; eauto.
           right. left. eauto.
           eapply compat_mem_fwd2; eauto. }
-        inversion H1. eauto.     (* NOTE: inverting stp_mem !! *)
+        eapply stp2_untrans in IH; eauto.
+        eu. inversion IH. eauto.     (* need untrans, inverting stp_mem !! *)
         (*T..Top*)
-        eapply stp2_sel1. eauto. eauto.
+        eapply stpd2_sel1. eauto. eauto.
         admit. (* TODO *)
         (*T..T*)
-        eapply stp2_sel1. eauto. eauto.
+        eapply stpd2_sel1. eauto. eauto.
         admit.
       * subst. inversion H4. omega.
       * subst. destruct H4. eauto.
     + SCase "x > 0".
-      eu. subst.
-      eapply stp2_sela1. eauto. eapply IHstp2; eauto. eauto. eapply compat_mem_fwd2. eauto.
+      ev. subst.
+      eapply stpd2_sela1. eauto. eapply IHstp2; eauto. eauto. eapply compat_mem_fwd2. eauto.
     (* remaining obligations *)
     + eauto. + subst GH. eauto. + eauto.
       
+  - Case "sela2". admit.
+    
   - Case "selax".
 
-    intros GH0 GH0' GXX TXX T1' T2' ? RFL CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' ? ? RFL CX IX1 IX2 FA.
     
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -1869,10 +1878,10 @@ Proof.
     assert (not (nosubst (TSelH 0))). unfold not. intros. simpl in H1. eauto.
     assert (not (closed 0 0 (TSelH 0))). unfold not. intros. inversion H5. omega.
 
-    destruct x; destruct IX1; eu; try omega; destruct IX2; eu; try omega; subst.
+    destruct x; destruct IX1; ev; try omega; destruct IX2; ev; try omega; subst.
     + SCase "x = 0".
-      repeat destruct IXX1 as [IXX1|IXX1]; eu; try contradiction.
-      repeat destruct IXX2 as [IXX2|IXX2]; eu; try contradiction. 
+      repeat destruct IXX1 as [IXX1|IXX1]; ev; try contradiction.
+      repeat destruct IXX2 as [IXX2|IXX2]; ev; try contradiction. 
       * SSCase "sel-sel".
         (* NOTE: we rely on inverting RFL = stp (TMem TX TX) (TMem TX TX) here!! *)
         (* since this is passed in externally we should be safe. *)
@@ -1881,21 +1890,21 @@ Proof.
         (* inversion CX. inversion RFL. subst. inversion H14. subst.
         simpl. eapply stp2_sel1. eauto. eauto. eapply stp2_sel2. eauto. eauto. eauto. *)
     + SCase "x > 0".
-      destruct IXX1; destruct IXX2; eu; subst; eapply stp2_selax; eauto.
+      destruct IXX1; destruct IXX2; ev; subst; eapply stpd2_selax; eauto.
       * inversion H12. subst. eauto. eapply IHstp2. eauto. eauto. eauto. eauto. eapply compat_mem_fwd2.
       right. left. eauto. eauto.
-      * destruct H7. eu. rewrite H12 in H8. inversion H8. subst.
+      * destruct H7. ev. rewrite H12 in H8. inversion H8. subst.
         eapply IHstp2; eauto. eapply compat_mem_fwd2. right. left. eauto. 
-        destruct H7. eu. rewrite H12 in H8. inversion H8. subst.
+        destruct H7. ev. rewrite H12 in H8. inversion H8. subst.
         eapply IHstp2; eauto. eapply compat_mem_fwd2. right. left. eauto.
-      * destruct H2. eu. eapply IHstp2; eauto. eapply compat_mem_fwd2. right. left. eauto.
+      * destruct H2. ev. eapply IHstp2; eauto. eapply compat_mem_fwd2. right. left. eauto.
         eapply IHstp2; eauto. eapply compat_mem_fwd2. right. left. eauto.
-      * destruct H7; destruct H2; eu; eapply IHstp2; eauto; eapply compat_mem_fwd2; right; left; eauto.
+      * destruct H7; destruct H2; ev; eapply IHstp2; eauto; eapply compat_mem_fwd2; right; left; eauto.
     (* leftovers *)
     + eauto. + subst. eauto. + eauto. + eauto. + subst. eauto. + eauto. 
 
   - Case "all".
-    intros GH0 GH0' GX TX T1' T2' ? RFL CX IX1 IX2 FA.
+    intros GH0 GH0' GX TX T1' T2' ? ? RFL CX IX1 IX2 FA.
     
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -1905,7 +1914,7 @@ Proof.
 
     subst.
     
-    eapply stp2_all. 
+    eapply stpd2_all. 
     + eapply IHstp2_1. eauto. eauto. eauto. eauto. eauto. eauto.
     + eauto.
     + eauto.
@@ -1920,6 +1929,21 @@ Proof.
     + eauto. subst GH. rewrite <-EL. eapply closed_upgrade_free. eauto. omega.
     + eauto.
     + eauto. subst GH. rewrite <-EL. eapply closed_upgrade_free. eauto. omega.
+
+
+  - Case "wrapf".
+    intros. subst. eapply stpd2_wrapf. eapply IHstp2; eauto.
+  - Case "transf".
+
+    (* TODO / FIXME:  
+       What about middle man in trans ??? 
+       We don't know that we can safely remove x.
+       However, we can extend G2 without increasing
+       the size of the derivations, and obtain the
+       necessary compat evidence. For this, we'll need
+       to do induction on the size n.
+     *)
+    intros. subst. eapply stpd2_transf. eapply IHstp2_1; eauto.
 Qed.
 
 (*
