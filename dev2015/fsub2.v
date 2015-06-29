@@ -402,6 +402,7 @@ Ltac ep := match goal with
 
 Ltac eu := match goal with
              | H: stpd2 _ _ _ _ _ _ |- _ => destruct H as [? H]
+             | H: sstpd2 _ _ _ _ _ _ |- _ => destruct H as [? H]
 (*             | H: exists n: nat ,  _ |- _  =>
                destruct H as [e P] *)
            end.
