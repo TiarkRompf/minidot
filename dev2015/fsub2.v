@@ -1338,6 +1338,18 @@ Proof.
       eapply IHn. eapply H4. omega. eexists. eauto.
     + SCase "ssel2".
       eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
+    + SCase "sselx".
+      subst. rewrite H2 in H6. inversion H6. subst.
+      eexists. eapply stp2_strong_sel2. eauto. eauto. eauto.
+  - Case "sselx". subst. inversion H1.
+    + SCase "top". admit.
+    + SCase "ssel1".
+      subst. rewrite H5 in H3. inversion H3. subst.
+      eexists. eapply stp2_strong_sel1. eauto. eauto. eauto.
+    + SCase "ssel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
+    + SCase "sselx".
+      subst. rewrite H5 in H3. inversion H3. subst.
+      eexists. eapply stp2_strong_selx. eauto. eauto.
   - Case "all". subst. inversion H1.
     + SCase "top". admit.
     + SCase "ssel2".
@@ -1355,7 +1367,7 @@ Proof.
   - Case "transf". subst. eapply IHn. eapply H2. omega. eapply IHn. eapply H3. omega. eexists. eauto.
 
 Grab Existential Variables.
-  apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma sstpd2_trans: forall G1 G2 G3 T1 T2 T3,
