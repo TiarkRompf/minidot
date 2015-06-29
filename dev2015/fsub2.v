@@ -1360,6 +1360,33 @@ Lemma sstpd2_trans: forall G1 G2 G3 T1 T2 T3,
 Proof. intros. repeat eu. eapply sstpd2_trans_aux; eauto. eexists. eauto. Qed.
 
 
+
+Lemma stpd2_to_sstpd2_aux: forall n, forall G1 G2 T1 T2 m n1,
+  stp2 false m G1 T1 G2 T2 nil n1 -> n1 < n ->
+  sstpd2 m G1 T1 G2 T2 nil.
+Proof.
+  intros n. induction n; intros; try omega.
+  inversion H.
+  - Case "botx". admit.
+  - Case "topx". admit.
+  - Case "bot". admit.
+  - Case "top". admit.
+  - Case "bool". admit.
+  - Case "fun". admit.
+  - Case "mem". admit.
+  - Case "sel1". admit.
+  - Case "sel2". admit.
+  - Case "selx". admit.
+  - Case "selh1". admit.  
+  - Case "selh2". admit.
+  - Case "selhx". admit.
+  - Case "all". admit.
+  - Case "wrapf". admit.
+  - Case "transf". admit.
+Qed.
+
+
+
 Lemma stpd2_to_sstpd2: forall G1 G2 T1 T2 m,
   stpd2 m G1 T1 G2 T2 nil ->
   sstpd2 m G1 T1 G2 T2 nil.
