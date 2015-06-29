@@ -1391,11 +1391,11 @@ Proof.
   eapply sstpd2_untrans. eapply stpd2_to_sstpd2. eauto.
 Qed.
 
+(* not essential *)
 Lemma sstpd2_downgrade: forall G1 G2 T1 T2 H,
   sstpd2 true G1 T1 G2 T2 H ->
   stpd2 false G1 T1 G2 T2 H.
 Proof.
-  (* via stp2_to_sstpd2, then sstpd2_untrans *)
   admit.
 Qed.
 
