@@ -1365,10 +1365,28 @@ Lemma stpd2_to_sstpd2: forall G1 G2 G3 T1 T2 T3 m,
   sstpd2 m G2 T2 G3 T3 nil.
 Proof. admit. Qed.
 
-Lemma sstpd2_untrans: forall G1 G2 G3 T1 T2 T3,
-  stpd2 false G1 T1 G2 T2 nil ->
-  sstpd2 true G2 T2 G3 T3 nil.
-Proof. admit. Qed.
+
+Lemma sstpd2_untrans_aux: forall n, forall G1 G2 T1 T2 n1,
+  stp2 true false G1 T1 G2 T2 nil n1 -> n1 < n ->
+  sstpd2 true G1 T1 G2 T2 nil.
+Proof.
+  intros n. repeat eu. eapply sstpd2_trans_aux. eapply stp2_reg1.
+
+  inversion H; subst.
+  - Case "wrapf". eexists. eauto.
+  - Case "transf". eapply sstpd2_trans_aux. eapply H0. eauto.
+Qed.
+
+Lemma sstpd2_untrans: forall G1 G2 T1 T2,
+  sstpd2 false G1 T1 G2 T2 nil ->
+  sstpd2 true G1 T1 G2 T2 nil.
+Proof.
+  intros. repeat eu. eapply sstpd2_trans_aux. eapply stp2_reg1.
+
+  inversion H; subst.
+  - Case "wrapf". eexists. eauto.
+  - Case "transf". eapply sstpd2_trans_aux. eapply H0. eauto.
+Qed.
 
 
 
@@ -1376,7 +1394,6 @@ Lemma stpd2_upgrade: forall G1 G2 T1 T2 nil,
   stpd2 false G1 T1 G2 T2 nil ->
   sstpd2 true G1 T1 G2 T2 nil.
 Proof.
-  (* via stp2_to_sstpd2, then sstpd2_untrans *)
   admit.
 Qed.
 
