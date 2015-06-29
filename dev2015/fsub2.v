@@ -341,13 +341,13 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
 | stp2_strong_sel1: forall G1 G2 GX TX x T2 GH n1,
     index x G1 = Some (vty GX TX) ->
     closed 0 0 TX ->
-    stp2 true true GX (TMem TX TX) G2 (TMem TBot T2) GH n1 ->
+    stp2 true true GX TX G2 T2 GH n1 ->
     stp2 true true G1 (TSel x) G2 T2 GH (S n1)
 
 | stp2_strong_sel2: forall G1 G2 GX TX x T1 GH n1,
     index x G2 = Some (vty GX TX) ->
     closed 0 0 TX ->
-    stp2 true true GX (TMem TX TX) G1 (TMem T1 TTop) GH n1 ->
+    stp2 true false G1 T1 GX TX GH n1 ->
     stp2 true true G1 T1 G2 (TSel x) GH (S n1)
 
          
@@ -1250,11 +1250,33 @@ Hint Resolve not_stuck.
 
 
 
+Lemma stpd2_trans_aux: forall n, forall G1 G2 G3 T1 T2 T3 H n1,
+  stp2 false false G1 T1 G2 T2 H n1 -> n1 < n ->
+  stpd2 false G2 T2 G3 T3 H ->
+  stpd2 false G1 T1 G3 T3 H.
+Proof.
+  intros n. induction n; intros; try omega; repeat eu; subst; inversion H0.
+  - Case "wrapf". eapply stpd2_transf; eauto.
+  - Case "transf". eapply stpd2_transf. eauto. eapply IHn. eauto. omega. eauto.
+Qed.
+
+Lemma sstpd2_trans_axiom: forall n, forall G1 G2 G3 T1 T2 T3 H n1,
+  stp2 true false G1 T1 G2 T2 H n1 -> n1 < n ->
+  sstpd2 false G2 T2 G3 T3 H ->
+  sstpd2 false G1 T1 G3 T3 H.
+Proof.
+  intros n. induction n; intros; try omega; repeat eu; subst; inversion H0.
+  - Case "wrapf". eexists. eapply stp2_transf; eauto.
+  - Case "transf". admit. (*eexists. eapply stp2_transf. eauto. ep. eapply IHn. eauto. omega. eauto. eauto. *)
+Qed.
+
+
+
 Lemma stpd2_trans: forall G1 G2 G3 T1 T2 T3 H,
   stpd2 false G1 T1 G2 T2 H ->
   stpd2 false G2 T2 G3 T3 H ->
   stpd2 false G1 T1 G3 T3 H.
-Proof. admit. Qed.
+Proof. intros. repeat eu. eapply stpd2_trans_aux; eauto. Qed.
 
 (* used in trans -- need to generalize interface for induction *)
 
@@ -1265,11 +1287,69 @@ Lemma stpd2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4 H,
 Proof. admit. Qed.
 
 
+Lemma sstpd2_trans_aux: forall n, forall m G1 G2 G3 T1 T2 T3 n1,
+  stp2 true m G1 T1 G2 T2 nil n1 -> n1 < n ->
+  sstpd2 true G2 T2 G3 T3 nil ->
+  sstpd2 true G1 T1 G3 T3 nil.
+Proof.
+  intros n. induction n; intros; try omega. eu.
+  inversion H.
+  - Case "topx". subst. inversion H1.
+    + SCase "topx". eexists. eauto.
+    + SCase "top". eexists. eauto.
+    + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
+  - Case "botx". subst. inversion H1.
+    + SCase "botx". eexists. eauto.
+    + SCase "top". eexists. eauto.
+    + SCase "?". eexists. eauto.
+    + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
+  - Case "top". subst. inversion H1.
+    + SCase "topx". eexists. eauto.
+    + SCase "top". eexists. eauto.
+    + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
+  - Case "bot". admit. 
+  - Case "bool". subst. inversion H1.
+    + SCase "top". eexists. eauto.
+    + SCase "bool". eexists. eauto.
+    + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
+  - Case "fun". subst. inversion H1.
+    + SCase "top". eexists. eapply stp2_top. subst. eapply stp2_wrapf. eapply stp2_fun. eapply stp2_reg2. eauto. eapply stp2_reg1. eauto.
+    + SCase "fun".
+      admit.
+      (* eexists. eapply stp2_fun. ep. eapply stpd2_trans. eauto. eauto. destruct EEX. eauto. *)
+    + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
+  - Case "mem". subst. inversion H1.
+    + SCase "top". admit.
+    + SCase "mem". admit.
+    + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
+  - Case "ssel1".
+    assert (sstpd2 true GX TX G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1. 
+    eu. eexists. eapply stp2_strong_sel1. eauto. eauto. eauto.
+  - Case "ssel2". subst. inversion H1.
+    + SCase "top". admit.
+    + SCase "ssel1".  (* interesting one *)
+      subst. rewrite H6 in H2. inversion H2. subst.
+      eapply IHn. eapply H4. omega. eexists. eauto.
+    + SCase "ssel2".
+      eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
+  - Case "all". subst. inversion H1.
+    + SCase "top". admit.
+    + SCase "ssel2".
+      eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
+    + SCase "all". admit.
+
+  - Case "wrapf". subst. eapply IHn. eapply H2. omega. eexists. eauto.
+  - Case "transf". subst. eapply IHn. eapply H2. omega. eapply IHn. eapply H3. omega. eexists. eauto.
+
+Grab Existential Variables.
+  apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+Qed.
+
 Lemma sstpd2_trans: forall G1 G2 G3 T1 T2 T3,
   sstpd2 true G1 T1 G2 T2 nil ->
   sstpd2 true G2 T2 G3 T3 nil ->
   sstpd2 true G1 T1 G3 T3 nil.
-Proof. admit. Qed.
+Proof. intros. repeat eu. eapply sstpd2_trans_aux; eauto. eexists. eauto. Qed.
 
 
 Lemma stpd2_to_sstpd2: forall G1 G2 G3 T1 T2 T3 m,
