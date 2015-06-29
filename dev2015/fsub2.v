@@ -350,6 +350,11 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
     stp2 true false G1 T1 GX TX GH n1 ->
     stp2 true true G1 T1 G2 (TSel x) GH (S n1)
 
+| stp2_strong_selx: forall G1 G2 GX TX x1 x2 GH n1,
+    index x1 G1 = Some (vty GX TX) ->
+    index x2 G2 = Some (vty GX TX) ->
+    stp2 true true G1 (TSel x1) G2 (TSel x2) GH n1
+         
          
 (* existing object, but imprecise type *)
 | stp2_sel1: forall G1 G2 TX x T2 GH n1 v,
