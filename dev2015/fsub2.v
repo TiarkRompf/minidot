@@ -2416,7 +2416,7 @@ Proof.
           (* wf_env f   *) econstructor. eapply v_abs; eauto. eapply sstpd2_extend2.
           eapply sstpd2_downgrade in STX. eapply sstpd2_downgrade in STY. repeat eu.
           eexists. eapply stp2_fun. eapply stp2_reg2. eapply STX. eapply stp2_reg1. eauto. eauto.
-          eauto. 
+          eauto. (* TODO: sstpd2_fun constructor *)
 
       inversion HRY as [? vy].
 
