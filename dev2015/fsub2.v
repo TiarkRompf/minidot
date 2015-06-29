@@ -1360,6 +1360,59 @@ Lemma sstpd2_trans: forall G1 G2 G3 T1 T2 T3,
 Proof. intros. repeat eu. eapply sstpd2_trans_aux; eauto. eexists. eauto. Qed.
 
 
+Lemma sstpd2_untrans_aux: forall n, forall G1 G2 T1 T2 n1,
+  stp2 true false G1 T1 G2 T2 nil n1 -> n1 < n ->
+  sstpd2 true G1 T1 G2 T2 nil.
+Proof.
+  intros n. induction n; intros; try omega.
+  inversion H; subst.
+  - Case "wrapf". eexists. eauto.
+  - Case "transf". eapply sstpd2_trans_aux. eapply H1. eauto. eapply IHn. eauto. omega.
+Qed.
+
+Lemma sstpd2_untrans: forall G1 G2 T1 T2,
+  sstpd2 false G1 T1 G2 T2 nil ->
+  sstpd2 true G1 T1 G2 T2 nil.
+Proof. intros. repeat eu. eapply sstpd2_untrans_aux; eauto. Qed.
+
+
+
+Lemma valtp_widen: forall vf H1 H2 T1 T2,
+  val_type H1 vf T1 ->
+  sstpd2 true H1 T1 H2 T2 [] ->
+  val_type H2 vf T2.
+Proof.
+  intros. inversion H; econstructor; eauto; eapply sstpd2_trans; eauto.
+Qed.
+
+Lemma restp_widen: forall vf H1 H2 T1 T2,
+  res_type H1 vf T1 ->
+  sstpd2 true H1 T1 H2 T2 [] ->
+  res_type H2 vf T2.
+Proof.
+  intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto.
+Qed.
+
+Ltac ev := repeat match goal with
+                    | H: exists _, _ |- _ => destruct H
+                    | H: _ /\  _ |- _ => destruct H
+           end.
+
+Lemma invert_typ: forall venv vx T1 T2,
+  val_type venv vx (TMem T1 T2) ->
+  exists GX TX,
+    vx = (vty GX TX) /\
+    stpd2 false venv T1 GX TX [] /\
+    stpd2 false GX TX venv T2 [].
+Proof.
+  intros. inversion H; ev; try solve by inversion. inversion H1.
+  subst.
+  assert (stpd2 false venv0 T1 venv1 T0 []) as E1. eauto.
+  assert (stpd2 false venv1 T0 venv0 T2 []) as E2. eauto.
+  repeat eu. repeat eexists; eauto. 
+Qed.
+
+
 
 Lemma stpd2_to_sstpd2_aux: forall n, forall G1 G2 T1 T2 m n1,
   stp2 false m G1 T1 G2 T2 nil n1 -> n1 < n ->
@@ -1862,10 +1915,6 @@ Proof.
       eapply IHForall2. eapply H1.
 Qed.
 
-Ltac ev := repeat match goal with
-                    | H: exists _, _ |- _ => destruct H
-                    | H: _ /\  _ |- _ => destruct H
-           end.
 
 
 Lemma compat_top: forall GX TX G1 T1',
@@ -2390,21 +2439,6 @@ Proof with stpd2_wrapf.
 Qed.
 
 
-Lemma valtp_widen: forall vf H1 H2 T1 T2,
-  val_type H1 vf T1 ->
-  sstpd2 true H1 T1 H2 T2 [] ->
-  val_type H2 vf T2.
-Proof.
-  intros. inversion H; econstructor; eauto; eapply sstpd2_trans; eauto.
-Qed.
-
-Lemma restp_widen: forall vf H1 H2 T1 T2,
-  res_type H1 vf T1 ->
-  sstpd2 true H1 T1 H2 T2 [] ->
-  res_type H2 vf T2.
-Proof.
-  intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto.
-Qed.
 
 
 Lemma invert_abs: forall venv vf T1 T2,
