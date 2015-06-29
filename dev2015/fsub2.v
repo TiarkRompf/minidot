@@ -1336,7 +1336,14 @@ Proof.
     + SCase "top". admit.
     + SCase "ssel2".
       eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
-    + SCase "all". admit.
+    + SCase "all".
+      subst.
+      assert (stpd2 false G3 T7 G1 T0 []). eapply stpd2_trans. eauto. eauto.
+      assert (stpd2 false G1 (open (TSelH (length ([]:aenv))) T4)
+                          G3 (open (TSelH (length ([]:aenv))) T8)
+                          [(0, (G3, T7))]).
+        eapply stpd2_trans. eapply stpd2_narrow. eexists. eapply H8. eauto. eauto. 
+      repeat eu. eexists. eapply stp2_all. eauto. eauto. eauto. eauto.
 
   - Case "wrapf". subst. eapply IHn. eapply H2. omega. eexists. eauto.
   - Case "transf". subst. eapply IHn. eapply H2. omega. eapply IHn. eapply H3. omega. eexists. eauto.
