@@ -1381,8 +1381,11 @@ Proof.
   - Case "selh2". admit.
   - Case "selhx". admit.
   - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto.
-  - Case "wrapf". admit.
-  - Case "transf". admit.
+  - Case "wrapf". eapply IHn in H1. eu. eexists. eapply stp2_wrapf. eauto. omega.
+  - Case "transf". eapply IHn in H1. eapply IHn in H2. eu. eu. eexists.
+    eapply stp2_transf. eauto. eauto. omega. omega.
+    Grab Existential Variables.
+    apply 0. apply 0. apply 0.
 Qed.
 
 
