@@ -509,23 +509,23 @@ Inductive wf_env : venv -> tenv -> Prop :=
 with val_type : venv -> vl -> ty -> Prop :=
 | v_ty: forall env venv tenv T1 TE,
     wf_env venv tenv -> (* T1 wf in tenv ? *)
-    stpd2 true venv (TMem T1 T1) env TE [] ->
+    sstpd2 true venv (TMem T1 T1) env TE [] ->
     val_type env (vty venv T1) TE
 | v_bool: forall venv b TE,
-    stpd2 true [] TBool venv TE [] ->
+    sstpd2 true [] TBool venv TE [] ->
     val_type venv (vbool b) TE
 | v_abs: forall env venv tenv f x y T1 T2 TE,
     wf_env venv tenv ->
     has_type ((x,T1)::(f,TFun T1 T2)::tenv) y T2 ->
     fresh venv <= f ->
     1 + f <= x ->
-    stpd2 true venv (TFun T1 T2) env TE [] -> 
+    sstpd2 true venv (TFun T1 T2) env TE [] -> 
     val_type env (vabs venv f x y) TE
 | v_tabs: forall env venv tenv x y T1 T2 TE,
     wf_env venv tenv ->
     has_type ((x,T1)::tenv) y (open (TSel x) T2) ->
     fresh venv = x ->
-    stpd2 true venv (TAll T1 T2) env TE [] ->
+    sstpd2 true venv (TAll T1 T2) env TE [] ->
     val_type env (vtabs venv x T1 y) TE
 .
 
