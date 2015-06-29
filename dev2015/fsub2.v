@@ -1084,6 +1084,47 @@ Lemma sstpd2_extend2 : forall x v1 G1 G2 T1 T2 H m,
                        sstpd2 m G1 T1 ((x,v1)::G2) T2 H.
 Proof. admit. Qed.
 
+Lemma sstpd2_extend1 : forall x v1 G1 G2 T1 T2 H m,
+                       sstpd2 m G1 T1 G2 T2 H ->
+                       fresh G1 <= x ->
+                       sstpd2 m ((x,v1)::G1) T1 G2 T2 H.
+Proof. admit. Qed.
+
+Lemma sstpd2_extendH : forall x v1 G1 G2 T1 T2 H m,
+                       sstpd2 m G1 T1 G2 T2 H ->
+                       sstpd2 m G1 T1 G2 T2 ((x,v1)::H).
+Proof. admit. Qed.
+
+Lemma sstpd2_extendH_mult : forall G1 G2 T1 T2 H H2 m,
+                       sstpd2 m G1 T1 G2 T2 H->
+                       sstpd2 m G1 T1 G2 T2 (H2++H).
+Proof. admit. Qed.
+
+Lemma sstpd2_extendH_mult0 : forall G1 G2 T1 T2 H2 m,
+                       sstpd2 m G1 T1 G2 T2 [] ->
+                       sstpd2 m G1 T1 G2 T2 H2.
+Proof. admit. Qed.
+
+Lemma sstpd2_reg2 : forall G1 G2 T1 T2 H m,
+                       sstpd2 m G1 T1 G2 T2 H ->
+                       sstpd2 m G2 T2 G2 T2 H.
+Proof. admit. Qed.
+
+Lemma sstpd2_reg1 : forall G1 G2 T1 T2 H m,
+                       sstpd2 m G1 T1 G2 T2 H ->
+                       sstpd2 m G1 T1 G1 T1 H.
+Proof. admit. Qed.
+
+Lemma sstpd2_closed2 : forall G1 G2 T1 T2 H m,
+                       sstpd2 m G1 T1 G2 T2 H ->
+                       closed 0 (length H) T2.
+Proof. admit. Qed.
+
+Lemma sstpd2_closed1 : forall G1 G2 T1 T2 H m,
+                       sstpd2 m G1 T1 G2 T2 H ->
+                       closed 0 (length H) T1.
+Proof. admit. Qed.
+
 
 
 
@@ -1181,21 +1222,29 @@ Lemma sstpd2_trans: forall G1 G2 G3 T1 T2 T3 H,
 Proof. admit. Qed.
 
 
-Lemma stpd2_to_sstpd2: forall G1 G2 G3 T1 T2 T3 H m,
-  stpd2 m G1 T1 G2 T2 H ->
-  sstpd2 m G2 T2 G3 T3 H.
+Lemma stpd2_to_sstpd2: forall G1 G2 G3 T1 T2 T3 m,
+  stpd2 m G1 T1 G2 T2 nil ->
+  sstpd2 m G2 T2 G3 T3 nil.
 Proof. admit. Qed.
 
-Lemma sstpd2_untrans: forall G1 G2 G3 T1 T2 T3 H,
-  stpd2 false G1 T1 G2 T2 H ->
-  sstpd2 true G2 T2 G3 T3 H.
+Lemma sstpd2_untrans: forall G1 G2 G3 T1 T2 T3,
+  stpd2 false G1 T1 G2 T2 nil ->
+  sstpd2 true G2 T2 G3 T3 nil.
 Proof. admit. Qed.
 
 
 
-Lemma stpd2_upgrade: forall G1 G2 T1 T2 H,
-  stpd2 false G1 T1 G2 T2 H ->
-  sstpd2 true G1 T1 G2 T2 H.
+Lemma stpd2_upgrade: forall G1 G2 T1 T2 nil,
+  stpd2 false G1 T1 G2 T2 nil ->
+  sstpd2 true G1 T1 G2 T2 nil.
+Proof.
+  (* via stp2_to_sstpd2, then sstpd2_untrans *)
+  admit.
+Qed.
+
+Lemma sstpd2_downgrade: forall G1 G2 T1 T2 H,
+  sstpd2 true G1 T1 G2 T2 H ->
+  stpd2 false G1 T1 G2 T2 H.
 Proof.
   (* via stp2_to_sstpd2, then sstpd2_untrans *)
   admit.
@@ -2180,6 +2229,10 @@ Proof.
   repeat eu. repeat eexists; eauto. 
 Qed.
 
+
+
+
+
 Lemma invert_tabs: forall venv vf vx T1 T2,
   val_type venv vf (TAll T1 T2) ->
   val_type venv vx T1 ->
@@ -2193,17 +2246,22 @@ Lemma invert_tabs: forall venv vf vx T1 T2,
     sstpd2 true ((x,vx)::env) (open (TSel x) T4) venv T2 []. (* (open T1 T2) []. *)
 Proof.
   intros venv0 vf vx T1 T2 VF VX STY. inversion VF; eu; try solve by inversion. inversion H2. subst.
-  eauto. eexists. eexists. eexists. eexists. eexists. eexists.
+  eexists. eexists. eexists. eexists. eexists. eexists.
   repeat split; eauto. 
   remember (fresh venv1) as x.
   remember (x + fresh venv0) as xx.
 
+  eapply stpd2_upgrade; eauto.
+
+  (* -- new goal: result -- *)
+  
   (* inversion of TAll < TAll *)
   assert (stpd2 false venv0 T1 venv1 T0 []) as ARG. eauto.
   assert (stpd2 false venv1 (open (TSelH 0) T3) venv0 (open (TSelH 0) T2) [(0,(venv0, T1))]) as KEY. {
     eauto.
   }
-
+  eapply stpd2_upgrade in ARG.                                                                                                     
+  
   (* need reflexivity *)
   assert (stpd2 false venv0 T1 venv0 T1 []). eapply stpd2_reg1. eauto.
   assert (closed 0 0 T1). eapply stpd2_closed1 in H1. simpl in H1. eauto.
@@ -2219,29 +2277,34 @@ Proof.
     
     inversion VX; subst.
     + Case "VTy".
-      assert (closed 0 (length ([]:aenv)) T2). eapply stpd2_closed1; eauto.
+      assert (closed 0 (length ([]:aenv)) T2). eapply sstpd2_closed1. eauto.
       assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
       eapply stpd2_substitute with (GH0:=nil).
-      eapply stpd2_extend1. eapply stpd2_narrow. eapply stpd2_wrapf. eapply H5. eapply KEY. eauto.
+      eapply stpd2_extend1. eapply stpd2_narrow. eapply sstpd2_downgrade. eapply H5. eapply KEY. eauto.
       simpl. eauto.
-      eapply stpd2_reg1; eapply H5.
-      eapply stpd2_closed1 in H5. simpl in H5. eapply H5.
+      eapply sstpd2_reg1. eapply H5.
+      eapply sstpd2_closed1 in H5. simpl in H5. eapply H5.
       (* prove: either x:T3 is TMem, or it can't be used! *)
 
       left. eexists. eexists. split. eapply index_hit2. eauto. eauto. eauto. unfold open. rewrite (subst_open_zero 0 1). eauto. eauto.
       right. left. split. rewrite OP2. eauto. eauto. eauto.
 
     + Case "VBool".
-      assert (closed 0 (length ([]:aenv)) T2). eapply stpd2_closed1; eauto.
+      assert (closed 0 (length ([]:aenv)) T2). eapply sstpd2_closed1; eauto.
       assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
-      assert (forall GM TA TB GY, not (stpd2 false venv0 T1 GM (TMem TA TB) GY)). intros. unfold not. intros E. eapply stpd2_extendH_mult0 in H4. eapply stpd2_trans with (1:= stpd2_wrapf _ _ _ _ _ H4) in E. eapply stp2_untrans in E. repeat eu. inversion E. 
+
+      
+      assert (forall GM TA TB GY, not (stpd2 false venv0 T1 GM (TMem TA TB) GY)). admit.
+      (*intros. unfold not. intros E. eapply sstpd2_extendH_mult0 in H4. eapply sstpd2_trans with (1:=H4) in E. repeat eu. inversion E. *)
+      (* FIXME: need to figure out how to do this exactly! *)
+      
       assert (nosubst (open_rec 0 (TSelH 0) T3)). eapply (stpd2_no_mem_nosubst) with (1:=KEY) (GH0:=nil). simpl. eauto. eauto. 
       assert (closed 0 0 T3). eapply nosubst_zero_closed; eauto. eauto.
       
       eapply stpd2_substitute with (GH0:=nil).
       eapply stpd2_extend1. eapply KEY. eauto.
       simpl. eauto.
-      eapply stp2_untrans. eapply stpd2_reg1; eapply ARG. eauto.
+      eapply sstpd2_reg1; eapply ARG. eauto.
 
       right. right. split. eauto.
       repeat rewrite <-(closed_no_open T3 _ 0 0).
@@ -2249,7 +2312,7 @@ Proof.
       right. left. split. rewrite OP2. eauto. eauto. eauto.
 
     + Case "VAbs".
-      admit. (* revisit ...
+      admit. (* revisit: same as VBool ...
       assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
       assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
       assert (forall GM TA TB GY, not (stp2 venv0 T1 GM (TMem TA TB) GY)). intros. unfold not. intros E. eapply stp2_extendH_mult0 in H8. eapply stp2_trans with (1:=H8) in E. inversion E.
@@ -2267,7 +2330,7 @@ Proof.
       right. left. split. rewrite OP2. eauto. eauto. eauto.*)
 
     + Case "VTAbs".
-      admit. (* revisit ...
+      admit. (* revisit: same as VBool ...
       assert (closed 0 (length ([]:aenv)) T2). eapply stp2_closed1; eauto.
       assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
       assert (forall GM TA TB GY, not (stp2 venv0 T1 GM (TMem TA TB) GY)). intros. unfold not. intros E. eapply stp2_extendH_mult0 in H7. eapply stp2_trans with (1:=H7) in E. inversion E.
@@ -2285,9 +2348,11 @@ Proof.
       right. left. split. rewrite OP2. eauto. eauto. eauto.*)
 
   }
+  eapply stpd2_upgrade in H4.
 
+                                                                                                       
   (* done *)
-  subst. repeat eu. eauto.
+  subst. eauto.
 Qed. 
 
 
@@ -2305,25 +2370,25 @@ Proof.
   
   - Case "True".
     remember (ttrue) as e. induction H0; inversion Heqe; subst.
-    + eapply not_stuck. eapply v_bool; eauto.
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stp2; eauto. econstructor.
+    + eapply not_stuck. eapply v_bool; eauto. exists 0. eauto.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "False".
     remember (tfalse) as e. induction H0; inversion Heqe; subst.
-    + eapply not_stuck. eapply v_bool; eauto.
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stp2; eauto. econstructor.
+    + eapply not_stuck. eapply v_bool; eauto. exists 0. eauto.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
       
   - Case "Var".
     remember (tvar i) as e. induction H0; inversion Heqe; subst.
     + destruct (index_safe_ex venv0 env T1 i) as [v [I V]]; eauto. 
       rewrite I. eapply not_stuck. eapply V.
 
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stp2; eauto. econstructor.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "Typ".
     remember (ttyp t) as e. induction H0; inversion Heqe; subst.
-    + eapply not_stuck. eapply v_ty; eauto. eapply stp_to_stp2; eauto. econstructor.
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stp2; eauto. econstructor.
+    + eapply not_stuck. eapply v_ty; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
       
   - Case "App".
     remember (tapp e1 e2) as e. induction H0; inversion Heqe; subst.
@@ -2347,21 +2412,23 @@ Proof.
       assert (res_type ((x0,vx)::(f0,vf)::env1) res T4) as HRY.
         SCase "HRY".
           subst. eapply IHn. eauto. eauto.
-          (* wf_env f x *) econstructor. eapply valtp_widen; eauto. eapply stp2_extend2. eapply stp2_extend2. eauto. eauto. eauto. 
-          (* wf_env f   *) econstructor. eapply v_abs; eauto. eapply stp2_extend2. eapply stp2_fun. eapply stp2_reg2. eauto. eapply stp2_reg1. eauto. eauto.
+          (* wf_env f x *) econstructor. eapply valtp_widen; eauto. eapply sstpd2_extend2. eapply sstpd2_extend2. eauto. eauto. eauto. 
+          (* wf_env f   *) econstructor. eapply v_abs; eauto. eapply sstpd2_extend2.
+          eapply sstpd2_downgrade in STX. eapply sstpd2_downgrade in STY. repeat eu.
+          eexists. eapply stp2_fun. eapply stp2_reg2. eapply STX. eapply stp2_reg1. eauto. eauto.
           eauto. 
 
       inversion HRY as [? vy].
 
-      eapply not_stuck. eapply valtp_widen; eauto. eapply stp2_extend1. eapply stp2_extend1. eauto. eauto. eauto.
+      eapply not_stuck. eapply valtp_widen; eauto. eapply sstpd2_extend1. eapply sstpd2_extend1. eauto. eauto. eauto.
 
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stp2; eauto. econstructor.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
       
     
   - Case "Abs".
     remember (tabs i i0 e) as xe. induction H0; inversion Heqxe; subst.
-    + eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh venv0 env H1). eauto. eapply stp_to_stp2. eauto. eauto. econstructor.
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stp2; eauto. econstructor.
+    + eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh venv0 env H1). eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "TApp".
     remember (ttapp e1 e2) as e. induction H0; inversion Heqe; subst.
@@ -2381,23 +2448,23 @@ Proof.
 
       destruct (invert_tabs venv0 vf vx T11 T12) as
           [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]].
-      eauto. eauto. eapply stp_to_stp2; eauto. econstructor.
+      eauto. eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
       (* now we know it's a closure, and we have has_type evidence *)
 
       assert (res_type ((x0,vx)::env1) res (open (TSel x0) T4)) as HRY.
         SCase "HRY".
           subst. eapply IHn. eauto. eauto.
-          (* wf_env x *) econstructor. eapply valtp_widen; eauto. eapply stp2_extend2. eauto. eauto. eauto.
+          (* wf_env x *) econstructor. eapply valtp_widen; eauto. eapply sstpd2_extend2. eauto. eauto. eauto.
       inversion HRY as [? vy].
 
       eapply not_stuck. eapply valtp_widen. eauto. eauto.
 
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stp2; eauto. econstructor.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "TAbs".
     remember (ttabs i t e) as xe. induction H0; inversion Heqxe; subst.
-    + eapply not_stuck. eapply v_tabs; eauto. subst i. eauto. rewrite (wf_fresh venv0 env H1). eauto. eapply stp_to_stp2. eauto. eauto. econstructor.
-    +  eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stp2; eauto. econstructor.
+    + eapply not_stuck. eapply v_tabs; eauto. subst i. eauto. rewrite (wf_fresh venv0 env H1). eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
+    +  eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
     
 Qed.
 
