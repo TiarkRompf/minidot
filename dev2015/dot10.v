@@ -2551,12 +2551,12 @@ Lemma inv_vtp_half: forall G v T GH,
   exists T0, val_type (base v) v T0 /\ closed 0 0 T0 /\ stpd2 false (base v) T0 G T GH.
 Proof. admit. Qed.
   
-Lemma stp_to_stp2: forall G1 GH T1 T2,
-  stp G1 GH T1 T2 ->
+Lemma stp_to_stp2: forall G1 GH S T1 T2,
+  stp G1 GH S T1 T2 ->
   forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
   stpd2 false GX T1 GX T2 GY.
 Proof with stpd2_wrapf.
-  intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY; eapply stpd2_wrapf.
+  intros G1 G2 S T1 T2 ST. induction ST; intros GX GY WX WY; eapply stpd2_wrapf.
   - Case "topx". eapply stpd2_topx.
   - Case "botx". eapply stpd2_botx.
   - Case "top". eapply stpd2_top; eauto.
