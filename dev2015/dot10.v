@@ -207,24 +207,20 @@ Inductive stp: tenv -> tenv -> option (bool * id) -> ty -> ty -> Prop :=
     stp G1 GH None T3 T1 ->
     stp G1 GH None T2 T4 ->
     stp G1 GH S (TMem T1 T2) (TMem T3 T4)
-| stp_sel1: forall G1 GH S TX T2 x,
-    index x G1 = Some TX ->
-    stp G1 GH (Some (true,x)) TX (TMem TBot T2) ->   
+| stp_sel1: forall G1 GH S T2 x,
+    path_type G1 GH (TSel x) (TMem TBot T2) -> 
     stp G1 GH S (TSel x) T2
-| stp_sel2: forall G1 GH S TX T1 x,
-    index x G1 = Some TX ->
-    stp G1 GH (Some (true,x)) TX (TMem T1 TTop) ->
+| stp_sel2: forall G1 GH S T1 x,
+    path_type G1 GH (TSel x) (TMem T1 TTop) ->
     stp G1 GH S T1 (TSel x)
 | stp_selx: forall G1 GH S TX x,
     index x G1 = Some TX ->
     stp G1 GH S (TSel x) (TSel x)
-| stp_sela1: forall G1 GH S TX T2 x,
-    indexr x GH = Some TX -> 
-    stp G1 GH (Some (false,x)) TX (TMem TBot T2) ->   (* not using self name for now *)
+| stp_sela1: forall G1 GH S T2 x,
+    path_type G1 GH (TSelH x) (TMem TBot T2) ->   (* not using self name for now *)
     stp G1 GH S (TSelH x) T2
-| stp_sela2: forall G1 GH S TX T1 x,
-    indexr x GH = Some TX ->
-    stp G1 GH (Some (false,x)) TX (TMem T1 TTop) ->   (* not using self name for now *)
+| stp_sela2: forall G1 GH S T1 x,
+    path_type G1 GH (TSelH x) (TMem T1 TTop) ->   (* not using self name for now *)
     stp G1 GH S T1 (TSelH x)
 | stp_selax: forall G1 GH S TX x,
     indexr x GH = Some TX  ->
@@ -242,41 +238,25 @@ Inductive stp: tenv -> tenv -> option (bool * id) -> ty -> ty -> Prop :=
     closed 1 (length GH) T2 -> 
     stp G1 ((0,open (TSelH x) T1)::GH) S (open (TSelH x) T1) (open (TSelH x) T2) ->
     stp G1 GH S (TBind T1) (TBind T2)
-| stp_bind1: forall G1 GH T1 T2 x,
-    closed 1 (length GH) T1 -> (* must not accidentally bind x *)
-    stp G1 GH (Some (true,x)) (open (TSel x) T1) T2 ->
-    stp G1 GH (Some (true,x)) (TBind T1) T2
-| stp_bind2: forall G1 GH T1 T2 x,
-    closed 1 (length GH) T2 -> 
-    stp G1 GH (Some (true,x)) T1 (open (TSel x) T2) ->
-    stp G1 GH (Some (true,x)) T1 (TBind T2)
-| stp_binda1: forall G1 GH T1 T2 x,
-    closed 1 (length GH) T1 -> (* must not accidentally bind x *)
-    stp G1 GH (Some (false,x)) (open (TSelH x) T1) T2 ->
-    stp G1 GH (Some (false,x)) (TBind T1) T2
-| stp_binda2: forall G1 GH T1 T2 x,
-    closed 1 (length GH) T2 -> 
-    stp G1 GH (Some (false,x)) T1 (open (TSelH x) T2) ->
-    stp G1 GH (Some (false,x)) T1 (TBind T2)
+
+with path_type : tenv -> tenv -> ty -> ty -> Prop :=
+| p_var: forall x G1 GH T1 T2,
+           index x G1 = Some T1 ->
+           stp G1 GH None T1 T2 ->
+           path_type G1 GH (TSel x) T2
+| p_vara: forall x G1 GH T1 T2,
+           indexr x GH = Some T1 ->
+           stp G1 GH None T1 T2 -> 
+           path_type G1 GH (TSelH x) T2
+| p_pack: forall x G1 GH T1 T2,
+           path_type G1 GH x (open x T1) ->
+           stp G1 GH None (TBind T1) T2 -> 
+           path_type G1 GH x T2
+| p_unpack: forall x G1 GH T1 T2,
+           path_type G1 GH x (TBind T1) ->
+           stp G1 GH None (open x T1) T2 ->
+           path_type G1 GH x T2
 .
-
-
-(*        
-with path_type: tenv -> tenv -> id -> ty -> Prop :=
-| pt_var: forall G1 GH TX x,
-    index x G1 = Some TX ->
-    path_type G1 GH x TX
-| pt_sub: forall G1 GH TX x,
-    path_type has_type env e T1 ->
-           stp env [] T1 T2 ->
-           has_type env e T2
-
-with pathH_type: tenv -> tenv -> id -> ty -> Prop :=
-| pth_var: forall G1 GH TX T x,
-    indexr x GH = Some TX ->
-    stp G1 GH TX T ->        
-    pathH_type G1 GH x T
-*)
 
 
 Hint Constructors stp.
