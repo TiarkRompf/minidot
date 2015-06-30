@@ -1282,7 +1282,7 @@ Proof. intros. repeat eu. eapply stpd2_trans_aux; eauto. Qed.
 (* used in trans -- need to generalize interface for induction *)
 
 Lemma stpd2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4 H,
-  stpd2 false G1 T1 G2 T2 H -> (* careful about H! *)
+  stpd2 false G1 T1 G2 T2 ((x,(G1,T1))::H) -> (* careful about H! *)
   stpd2 false G3 T3 G4 T4 ((x,(G2,T2))::H) ->
   stpd2 false G3 T3 G4 T4 ((x,(G1,T1))::H).
 Proof. admit. Qed.
