@@ -1014,9 +1014,9 @@ Proof.
   - Case "sela1".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
     + eapply stp_sela1. eapply indexr_splice_hi with (T:=TX). eauto. eauto.
-      eapply IHstp. eauto. eauto.
+      eapply IHstp. eauto. eauto. eauto.
     + eapply stp_sela1. eapply indexr_splice_lo with (T:=TX). eauto. eauto. eauto.
-      eapply IHstp. eauto. eauto.
+      eapply IHstp. eauto. eauto. eauto.
   - Case "sela2". admit.
   - Case "selax".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
@@ -1024,7 +1024,7 @@ Proof.
     + eapply stp_selax. eapply indexr_splice_lo with (T:=TX). eauto. eauto. eauto.
   - Case "all".
     eapply stp_all.
-    eapply IHstp1. eauto. eauto. eauto.
+    eapply IHstp1. eauto. eauto. eauto. eauto.
     admit. (* closed *) 
     admit. (* closed *)
 
@@ -1032,16 +1032,18 @@ Proof.
     simpl in IHstp2. rewrite map_length. rewrite app_length. simpl.
     repeat rewrite splice_open_permute with (j:=0). subst x0.
     rewrite app_length in IHstp2. simpl in IHstp2.
-    eapply IHstp2. eauto. eauto.
+    eapply IHstp2. eauto. eauto. eauto.
   - Case "bind". admit.
+  - Case "bind1". admit.
+  - Case "bind2". admit.
 Qed.
 
 
 
 
-Lemma stp_extend : forall G1 GH T1 T2 x v1,
-                       stp G1 GH T1 T2 ->
-                       stp G1 ((x,v1)::GH) T1 T2.
+Lemma stp_extend : forall G1 GH S T1 T2 x v1,
+                       stp G1 GH S T1 T2 ->
+                       stp G1 ((x,v1)::GH) S T1 T2.
 Proof.
   (* use stp_splice: we need to have that env and types are well-formed *)
   admit.
@@ -1288,6 +1290,12 @@ Proof.
   - Case "transf". eapply stpd2_transf. eauto. eapply IHn. eauto. omega. eauto.
 Qed.
 
+Lemma stpd2_trans: forall G1 G2 G3 T1 T2 T3 H,
+  stpd2 false G1 T1 G2 T2 H ->
+  stpd2 false G2 T2 G3 T3 H ->
+  stpd2 false G1 T1 G3 T3 H.
+Proof. intros. repeat eu. eapply stpd2_trans_aux; eauto. Qed.
+
 (*
 Lemma sstpd2_trans_axiom: forall n, forall G1 G2 G3 T1 T2 T3 H n1,
   stp2 true false G1 T1 G2 T2 H n1 -> n1 < n ->
@@ -1301,11 +1309,6 @@ Qed.
 *)
 
 
-Lemma stpd2_trans: forall G1 G2 G3 T1 T2 T3 H,
-  stpd2 false G1 T1 G2 T2 H ->
-  stpd2 false G2 T2 G3 T3 H ->
-  stpd2 false G1 T1 G3 T3 H.
-Proof. intros. repeat eu. eapply stpd2_trans_aux; eauto. Qed.
 
 (* used in trans -- need to generalize interface for induction *)
 
