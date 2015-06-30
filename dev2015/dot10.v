@@ -220,11 +220,11 @@ Inductive stp: tenv -> tenv -> option (bool * id) -> ty -> ty -> Prop :=
     stp G1 GH S (TSel x) (TSel x)
 | stp_sela1: forall G1 GH S TX T2 x,
     indexr x GH = Some TX -> 
-    stp G1 GH None TX (TMem TBot T2) ->   (* not using self name for now *)
+    stp G1 GH (Some (false,x)) TX (TMem TBot T2) ->   (* not using self name for now *)
     stp G1 GH S (TSelH x) T2
 | stp_sela2: forall G1 GH S TX T1 x,
     indexr x GH = Some TX ->
-    stp G1 GH None TX (TMem T1 TTop) ->   (* not using self name for now *)
+    stp G1 GH (Some (false,x)) TX (TMem T1 TTop) ->   (* not using self name for now *)
     stp G1 GH S T1 (TSelH x)
 | stp_selax: forall G1 GH S TX x,
     indexr x GH = Some TX  ->
