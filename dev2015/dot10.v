@@ -186,62 +186,74 @@ Hint Unfold open.
 Hint Unfold closed.
 
 
-Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
-| stp_topx: forall G1 GH,
-    stp G1 GH TTop TTop
-| stp_botx: forall G1 GH,
-    stp G1 GH TBot TBot
-| stp_top: forall G1 GH T1,
-    stp G1 GH T1 T1 ->
-    stp G1 GH T1 TTop
-| stp_bot: forall G1 GH T2,
-    stp G1 GH T2 T2 ->
-    stp G1 GH TBot T2
-| stp_bool: forall G1 GH,
-    stp G1 GH TBool TBool
-| stp_fun: forall G1 GH T1 T2 T3 T4,
-    stp G1 GH T3 T1 ->
-    stp G1 GH T2 T4 ->
-    stp G1 GH (TFun T1 T2) (TFun T3 T4)             
-| stp_mem: forall G1 GH T1 T2 T3 T4,
-    stp G1 GH T3 T1 ->
-    stp G1 GH T2 T4 ->
-    stp G1 GH (TMem T1 T2) (TMem T3 T4)
-| stp_sel1: forall G1 GH TX T2 x,
+Inductive stp: tenv -> tenv -> option id -> ty -> ty -> Prop :=
+| stp_topx: forall G1 GH S,
+    stp G1 GH S TTop TTop
+| stp_botx: forall G1 GH S,
+    stp G1 GH S TBot TBot
+| stp_top: forall G1 GH S T1,
+    stp G1 GH S T1 T1 ->
+    stp G1 GH S T1 TTop
+| stp_bot: forall G1 GH S T2,
+    stp G1 GH S T2 T2 ->
+    stp G1 GH S TBot T2
+| stp_bool: forall G1 GH S,
+    stp G1 GH S TBool TBool
+| stp_fun: forall G1 GH S T1 T2 T3 T4,
+    stp G1 GH None T3 T1 ->
+    stp G1 GH None T2 T4 ->
+    stp G1 GH S (TFun T1 T2) (TFun T3 T4)             
+| stp_mem: forall G1 GH S T1 T2 T3 T4,
+    stp G1 GH None T3 T1 ->
+    stp G1 GH None T2 T4 ->
+    stp G1 GH S (TMem T1 T2) (TMem T3 T4)
+| stp_sel1: forall G1 GH S TX T2 x,
     index x G1 = Some TX ->
-    stp G1 GH TX (TMem TBot T2) ->   
-    stp G1 GH (TSel x) T2
-| stp_sel2: forall G1 GH TX T1 x,
+    stp G1 GH (Some x) TX (TMem TBot T2) ->   
+    stp G1 GH S (TSel x) T2
+| stp_sel2: forall G1 GH S TX T1 x,
     index x G1 = Some TX ->
-    stp G1 GH TX (TMem T1 TTop) ->
-    stp G1 GH T1 (TSel x)
-| stp_selx: forall G1 GH TX x,
+    stp G1 GH (Some x) TX (TMem T1 TTop) ->
+    stp G1 GH S T1 (TSel x)
+| stp_selx: forall G1 GH S TX x,
     index x G1 = Some TX ->
-    stp G1 GH (TSel x) (TSel x)
-| stp_sela1: forall G1 GH TX T2 x,
+    stp G1 GH S (TSel x) (TSel x)
+| stp_sela1: forall G1 GH S TX T2 x,
     indexr x GH = Some TX -> 
-    stp G1 GH TX (TMem TBot T2) ->   
-    stp G1 GH (TSelH x) T2
-| stp_sela2: forall G1 GH TX T1 x,
+    stp G1 GH (Some x) TX (TMem TBot T2) ->   
+    stp G1 GH S (TSelH x) T2
+| stp_sela2: forall G1 GH S TX T1 x,
     indexr x GH = Some TX ->
-    stp G1 GH TX (TMem T1 TTop) ->
-    stp G1 GH T1 (TSelH x)
-| stp_selax: forall G1 GH TX x,
+    stp G1 GH (Some x) TX (TMem T1 TTop) ->
+    stp G1 GH S T1 (TSelH x)
+| stp_selax: forall G1 GH S TX x,
     indexr x GH = Some TX  ->
-    stp G1 GH (TSelH x) (TSelH x)
-| stp_all: forall G1 GH T1 T2 T3 T4 x,
-    stp G1 GH T3 T1 ->
+    stp G1 GH S (TSelH x) (TSelH x)
+| stp_all: forall G1 GH S T1 T2 T3 T4 x,
+    stp G1 GH None T3 T1 ->
     x = length GH ->
     closed 1 (length GH) T2 -> (* must not accidentally bind x *)
     closed 1 (length GH) T4 -> 
-    stp G1 ((0,T3)::GH) (open (TSelH x) T2) (open (TSelH x) T4) ->
-    stp G1 GH (TAll T1 T2) (TAll T3 T4)
-| stp_bindx: forall G1 GH T1 T2 x,
+    stp G1 ((0,T3)::GH) None (open (TSelH x) T2) (open (TSelH x) T4) ->
+    stp G1 GH S (TAll T1 T2) (TAll T3 T4)
+| stp_bindx: forall G1 GH S T1 T2 x,
     x = length GH ->
     closed 1 (length GH) T1 -> (* must not accidentally bind x *)
     closed 1 (length GH) T2 -> 
-    stp G1 ((0,open (TSelH x) T1)::GH) (open (TSelH x) T1) (open (TSelH x) T2) ->
-    stp G1 GH (TBind T1) (TBind T2)
+    stp G1 ((0,open (TSelH x) T1)::GH) S (open (TSelH x) T1) (open (TSelH x) T2) ->
+    stp G1 GH S (TBind T1) (TBind T2)
+| stp_bind1: forall G1 GH T1 T2 x,
+    (* only TSel, not TSelH for now *)
+    closed 1 (length GH) T2 -> 
+    stp G1 GH (Some x) T1 (open (TSel x) T2) ->
+    stp G1 GH (Some x) T1 (TBind T2)
+| stp_bind2: forall G1 GH T1 T2 x,
+    (* only TSel, not TSelH for now *)
+    closed 1 (length GH) T1 -> (* must not accidentally bind x *)
+    stp G1 GH (Some x) (open (TSel x) T1) T2 ->
+    stp G1 GH (Some x) (TBind T1) T2
+.
+
 
 (*        
 with path_type: tenv -> tenv -> id -> ty -> Prop :=
@@ -259,7 +271,7 @@ with pathH_type: tenv -> tenv -> id -> ty -> Prop :=
     stp G1 GH TX T ->        
     pathH_type G1 GH x T
 *)
-.
+
 
 Hint Constructors stp.
 
