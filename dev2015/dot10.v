@@ -284,10 +284,10 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env tfalse TBool
 | t_var: forall x env T1,
            index x env = Some T1 ->
-           stp env [] T1 T1 ->
+           stp env [] (Some x) T1 T1 ->
            has_type env (tvar x) T1
 | t_typ: forall env T1,
-           stp env [] T1 T1 ->
+           stp env [] None T1 T1 ->
            has_type env (ttyp T1) (TMem T1 T1)
 | t_app: forall env f x T1 T2,
            has_type env f (TFun T1 T2) ->
@@ -295,14 +295,14 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env (tapp f x) T2
 | t_abs: forall env f x y T1 T2,
            has_type ((x,T1)::(f,TFun T1 T2)::env) y T2 ->
-           stp env [] (TFun T1 T2) (TFun T1 T2) ->
+           stp env [] None (TFun T1 T2) (TFun T1 T2) ->
            fresh env <= f ->
            1+f <= x ->
            has_type env (tabs f x y) (TFun T1 T2)
 | t_tapp: forall env f x T11 T12,
            has_type env f (TAll T11 T12) ->
            has_type env x T11 ->
-           stp env [] T12 T12 ->
+           stp env [] None T12 T12 ->
            has_type env (ttapp f x) T12
 (*
 NOTE: both the POPLmark paper and Cardelli's paper use this rule:
@@ -316,13 +316,13 @@ Does it make a difference? It seems like we can always widen f?
 *)                    
 | t_tabs: forall env x y T1 T2,
            has_type ((x,T1)::env) y (open (TSel x) T2) -> 
-           stp env [] (TAll T1 T2) (TAll T1 T2) ->
+           stp env [] None (TAll T1 T2) (TAll T1 T2) ->
            fresh env = x ->
            has_type env (ttabs x T1 y) (TAll T1 T2)
 
 | t_sub: forall env e T1 T2,
            has_type env e T1 ->
-           stp env [] T1 T2 ->
+           stp env [] None T1 T2 ->
            has_type env e T2
 .
 
