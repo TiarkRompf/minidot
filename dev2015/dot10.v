@@ -705,7 +705,10 @@ Hint Constructors has_type.
 Hint Constructors val_type.
 Hint Constructors wf_env.
 Hint Constructors stp.
+Hint Constructors path_type.
 Hint Constructors stp2.
+Hint Constructors ptp2.
+Hint Constructors ptpa2.
 
 Hint Constructors option.
 Hint Constructors list.
@@ -767,7 +770,12 @@ Proof.
     { eapply t_sub.
       { eapply t_var. simpl. eauto. }
       { eapply stp_all; eauto. { eapply stp_bindx; crush2. } compute. eapply cl_fun; eauto.
-        eapply stp_fun; compute; crush2. } }
+        eapply stp_fun; compute; crush2.
+        eapply stp_sela2. eapply p_unpack. eapply p_vara. compute. eauto.
+        instantiate (1:= (TMem TBool TBool)).
+        eapply stp_bindx. eauto. eauto. eauto. compute. crush2. crush2.
+        eapply stp_sela1. eapply p_unpack. eapply p_vara. compute. eauto.
+        instantiate (1:= (TMem TBool TBool)). crush2. compute. crush2. }}
     { eapply t_typ; crush2. }
     crush2.
 Qed.
@@ -802,7 +810,10 @@ Example ex4:
   has_type [(1,TFun TBool TBool);(0,brandUnbrand)]
            (tvar 0) (TAll (TBind (TMem TBool TBool)) (TFun (TFun TBool TBool) (TFun (TFun TBool TBool) TBool))).
 Proof.
-  eapply t_sub. crush2. crush2.
+  eapply t_sub. crush2. eapply stp_all. crush2. crush2. crush2. crush2. compute.
+  eapply stp_fun.  { eapply stp_fun. eauto. eapply stp_sela2. eapply p_unpack. eapply p_vara.
+  crush2. instantiate (1:= (TMem TBool TBool)). crush2. crush2. }
+                   { eapply stp_fun. eapply stp_fun. eapply stp_sela1. eapply p_unpack. eapply p_vara. crush2. instantiate (1:= (TMem TBool TBool)). crush2. crush2. crush2. crush2. }
 Qed.
 
 Hint Resolve ex4.
@@ -838,12 +849,10 @@ Proof.
   assert (T = open (TSel 1) (TFun TBool (TSelB 0))). compute. eauto.
   rewrite H.
   eapply stp_sel1. compute. eauto.
-  eapply stp_sel1. compute. eauto.
-  eapply stp_mem. eauto.
-  admit.
-(*
-  eapply stp_bind1. (* FIXME: can't apply because S = None *)
-*)
+  eapply p_unpack. eapply p_var. compute. eauto.
+  instantiate (1:=(TMem TBot (TFun TBool (TSelB 0)))).
+  eapply stp_sel1. eapply p_var. compute. eauto. crush2.
+  crush2. 
 Qed.
 
 
