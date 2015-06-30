@@ -186,7 +186,7 @@ Hint Unfold open.
 Hint Unfold closed.
 
 
-Inductive stp: tenv -> tenv -> option id -> ty -> ty -> Prop :=
+Inductive stp: tenv -> tenv -> option (bool * id) -> ty -> ty -> Prop :=
 | stp_topx: forall G1 GH S,
     stp G1 GH S TTop TTop
 | stp_botx: forall G1 GH S,
@@ -209,11 +209,11 @@ Inductive stp: tenv -> tenv -> option id -> ty -> ty -> Prop :=
     stp G1 GH S (TMem T1 T2) (TMem T3 T4)
 | stp_sel1: forall G1 GH S TX T2 x,
     index x G1 = Some TX ->
-    stp G1 GH (Some x) TX (TMem TBot T2) ->   
+    stp G1 GH (Some (true,x)) TX (TMem TBot T2) ->   
     stp G1 GH S (TSel x) T2
 | stp_sel2: forall G1 GH S TX T1 x,
     index x G1 = Some TX ->
-    stp G1 GH (Some x) TX (TMem T1 TTop) ->
+    stp G1 GH (Some (true,x)) TX (TMem T1 TTop) ->
     stp G1 GH S T1 (TSel x)
 | stp_selx: forall G1 GH S TX x,
     index x G1 = Some TX ->
@@ -243,15 +243,21 @@ Inductive stp: tenv -> tenv -> option id -> ty -> ty -> Prop :=
     stp G1 ((0,open (TSelH x) T1)::GH) S (open (TSelH x) T1) (open (TSelH x) T2) ->
     stp G1 GH S (TBind T1) (TBind T2)
 | stp_bind1: forall G1 GH T1 T2 x,
-    (* only TSel, not TSelH for now *)
-    closed 1 (length GH) T2 -> 
-    stp G1 GH (Some x) T1 (open (TSel x) T2) ->
-    stp G1 GH (Some x) T1 (TBind T2)
-| stp_bind2: forall G1 GH T1 T2 x,
-    (* only TSel, not TSelH for now *)
     closed 1 (length GH) T1 -> (* must not accidentally bind x *)
-    stp G1 GH (Some x) (open (TSel x) T1) T2 ->
-    stp G1 GH (Some x) (TBind T1) T2
+    stp G1 GH (Some (true,x)) (open (TSel x) T1) T2 ->
+    stp G1 GH (Some (true,x)) (TBind T1) T2
+| stp_bind2: forall G1 GH T1 T2 x,
+    closed 1 (length GH) T2 -> 
+    stp G1 GH (Some (true,x)) T1 (open (TSel x) T2) ->
+    stp G1 GH (Some (true,x)) T1 (TBind T2)
+| stp_binda1: forall G1 GH T1 T2 x,
+    closed 1 (length GH) T1 -> (* must not accidentally bind x *)
+    stp G1 GH (Some (false,x)) (open (TSelH x) T1) T2 ->
+    stp G1 GH (Some (false,x)) (TBind T1) T2
+| stp_binda2: forall G1 GH T1 T2 x,
+    closed 1 (length GH) T2 -> 
+    stp G1 GH (Some (false,x)) T1 (open (TSelH x) T2) ->
+    stp G1 GH (Some (false,x)) T1 (TBind T2)
 .
 
 
