@@ -1467,9 +1467,7 @@ Proof.
     eapply IHn in H8. eapply sstpd2_untrans in H8. eapply valtp_widen with (2:=H8) in H5.
     eapply invert_typ in H4. ev. eu. eu. subst.
     eapply invert_typ in H5. ev. eu. eu. subst.
-    simpl in H3. subst.
-    (* TODO: we cannot create selx here, because we don't know that v1 and vs are the same! *)
-    admit. omega. omega.
+    eexists. eapply stp2_strong_selx. eauto. eauto. omega. omega.
   - Case "selh1". inversion H1. 
   - Case "selh2". inversion H1. 
   - Case "selhx". inversion H1.
@@ -1478,7 +1476,7 @@ Proof.
   - Case "transf". eapply IHn in H1. eapply IHn in H2. eu. eu. eexists.
     eapply stp2_transf. eauto. eauto. omega. omega.
     Grab Existential Variables.
-    apply 0. apply 0. apply 0.
+    apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 
