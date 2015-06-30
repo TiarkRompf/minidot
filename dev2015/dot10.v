@@ -236,6 +236,11 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     closed 1 (length GH) T4 -> 
     stp G1 ((0,T3)::GH) (open (TSelH x) T2) (open (TSelH x) T4) ->
     stp G1 GH (TAll T1 T2) (TAll T3 T4)
+| stp_bindx: forall G1 GH T1 T2 x,
+    closed 1 (length GH) T1 -> (* must not accidentally bind x *)
+    closed 1 (length GH) T2 -> 
+    stp G1 ((0,open (TSelH x) T1)::GH) (open (TSelH x) T1) (open (TSelH x) T2) ->
+    stp G1 GH (TBind T1) (TBind T2)
 
 (*        
 with path_type: tenv -> tenv -> id -> ty -> Prop :=
@@ -406,6 +411,12 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
     stp2 false false G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) ((0,(G2, T3))::GH) n2 ->
     stp2 m true G1 (TAll T1 T2) G2 (TAll T3 T4) GH (S (n1+n2))
 
+| stp2_bind: forall m G1 G2 T1 T2 GH n1, 
+    closed 1 (length GH) T1 -> (* must not accidentally bind x *)
+    closed 1 (length GH) T2 -> 
+    stp2 false false G1 (open (TSelH (length GH)) T1) G2 (open (TSelH (length GH)) T2) ((0,(G1, open (TSelH (length GH)) T1))::GH) n1 ->
+    stp2 m true G1 (TBind T1) G2 (TBind T2) GH (S n1)
+         
 | stp2_wrapf: forall m G1 G2 T1 T2 GH n1,
     stp2 m true G1 T1 G2 T2 GH n1 ->
     stp2 m false G1 T1 G2 T2 GH (S n1)
@@ -564,6 +575,13 @@ Lemma stpd2_all: forall G1 G2 T1 T2 T3 T4 GH,
     stpd2 true G1 (TAll T1 T2) G2 (TAll T3 T4) GH.
 Proof. intros. repeat eu. eauto. Qed.
 
+Lemma stpd2_bind: forall G1 G2 T1 T2 GH, 
+    closed 1 (length GH) T1 -> 
+    closed 1 (length GH) T2 -> 
+    stpd2 false G1 (open (TSelH (length GH)) T1) G2 (open (TSelH (length GH)) T2) ((0,(G1, open (TSelH (length GH)) T1))::GH) ->
+    stpd2 true G1 (TBind T1) G2 (TBind T2) GH.
+Proof. intros. repeat eu. eauto. Qed.
+
 Lemma stpd2_wrapf: forall G1 G2 T1 T2 GH,
     stpd2 true G1 T1 G2 T2 GH ->
     stpd2 false G1 T1 G2 T2 GH.
@@ -573,12 +591,6 @@ Lemma stpd2_transf: forall G1 G2 G3 T1 T2 T3 GH,
     stpd2 false G2 T2 G3 T3 GH ->           
     stpd2 false G1 T1 G3 T3 GH.
 Proof. intros. repeat eu. eauto. Qed.
-
-
-
-
-
-
 
 
 
