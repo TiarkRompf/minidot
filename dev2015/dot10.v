@@ -375,14 +375,14 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
     index x G1 = Some v ->
     val_type (base v) v TX ->
     closed 0 0 TX ->
-    stp2 false false (base v) TX G2 (TMem TBot T2) GH n1 ->
+    ptp2 v (base v) TX G2 (TMem TBot T2) GH n1 ->
     stp2 false true G1 (TSel x) G2 T2 GH (S n1)
 
 | stp2_sel2: forall G1 G2 TX x T1 GH n1 v,
     index x G2 = Some v ->
     val_type (base v) v TX ->           
     closed 0 0 TX ->
-    stp2 false false (base v) TX G1 (TMem T1 TTop) GH n1 ->
+    ptp2 v (base v) TX G1 (TMem T1 TTop) GH n1 ->
     stp2 false true G1 T1 G2 (TSel x) GH (S n1)
          
 | stp2_selx: forall G1 G2 v x1 x2 GH n1,
@@ -394,13 +394,13 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
 | stp2_sela1: forall G1 G2 GX TX x T2 GH n1,
     indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
-    stp2 false false GX TX G2 (TMem TBot T2) GH n1 ->
+    ptpa2 x GX TX G2 (TMem TBot T2) GH n1 ->
     stp2 false true G1 (TSelH x) G2 T2 GH (S n1)
 
 | stp2_sela2: forall G1 G2 GX TX x T1 GH n1,
     indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
-    stp2 false false GX TX G2 (TMem T1 TTop) GH n1 ->
+    ptpa2 x GX TX G2 (TMem T1 TTop) GH n1 ->
     stp2 false true G1 T1 G2 (TSelH x) GH (S n1)
 
          
