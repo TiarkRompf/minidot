@@ -374,7 +374,7 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
 | stp2_selx: forall G1 G2 TX x1 x2 GH v1 v2 n1 n2,
     index x1 G1 = Some v1 ->
     index x2 G2 = Some v2 ->
-    (base v1) = (base v2) ->
+    v1 = v2 ->
     val_type (base v1) v1 TX ->
     val_type (base v2) v2 TX ->
     closed 0 0 TX ->
@@ -537,7 +537,7 @@ Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_selx: forall G1 G2 TX x1 x2 GH v1 v2,
     index x1 G1 = Some v1 ->
     index x2 G2 = Some v2 ->
-    (base v1) = (base v2) ->
+    v1 = v2 ->
     val_type (base v1) v1 TX ->
     val_type (base v2) v2 TX ->
     closed 0 0 TX ->
