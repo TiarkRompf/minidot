@@ -2529,7 +2529,7 @@ Proof.
 
     
     eapply stpd2_substitute with (GH0:=nil). 
-    eapply stpd2_extend1. eapply stpd2_narrow. eapply H6. eapply KEY.
+    eapply stpd2_extend1. eapply stpd2_narrow. eapply stpd2_extendH. eapply H6. eapply KEY.
     eauto. simpl. eauto. eauto. 
     left. repeat eexists. eapply index_hit2. eauto. eauto. eauto. eauto.
     rewrite (subst_open_zero 0 1). eauto. eauto.
