@@ -1512,13 +1512,13 @@ Lemma invert_typ: forall venv vx T1 T2,
   val_type venv vx (TMem T1 T2) ->
   exists GX TX,
     vx = (vty GX TX) /\
-    stpd2 false venv T1 GX TX [] /\
-    stpd2 false GX TX venv T2 [].
+    sstpd2 true venv T1 GX TX [] /\
+    sstpd2 true GX TX venv T2 [].
 Proof.
   intros. inversion H; ev; try solve by inversion. inversion H1.
   subst.
-  assert (stpd2 false venv0 T1 venv1 T0 []) as E1. eauto.
-  assert (stpd2 false venv1 T0 venv0 T2 []) as E2. eauto.
+  assert (sstpd2 true venv0 T1 venv1 T0 []) as E1. admit. (* TODO: fix mem!! *)
+  assert (sstpd2 true venv1 T0 venv0 T2 []) as E2. admit. (* TODO: fix mem!! *)
   repeat eu. repeat eexists; eauto. 
 Qed.
 
@@ -1538,14 +1538,12 @@ Proof.
   - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
   - Case "mem". eexists. eapply stp2_mem. eauto. eauto.
   - Case "sel1".
-    (* TODO: val_type should take size bound parameter (if we do it like this) *)
-    (* alternative: sstp2_mem returns sstp2 *)
-    eapply IHn in H4. eapply sstpd2_untrans in H4. eapply valtp_widen with (2:=H4) in H2.
+    assert (sstpd2 false (base v) TX G2 (TMem TBot T2) []) as ST.
+    admit.
+    eapply sstpd2_untrans in ST. eapply valtp_widen with (2:=ST) in H2.
     eapply invert_typ in H2. ev. eu. eu. subst.
-    assert (x3 < n). admit. (* this is safe, because the val_tp was part of our argument *)
-    assert (x2 < n). admit.
     assert (closed 0 (length ([]:aenv)) x1). eapply stp2_closed2; eauto.
-    assert (sstpd2 true x0 x1 G2 T2 []). eapply sstpd2_untrans. eapply IHn. eauto. omega.
+    assert (sstpd2 true x0 x1 G2 T2 []). eapply sstpd2_untrans. eauto.
     eu. eexists. eapply stp2_strong_sel1. eauto. eauto. eauto. omega.
   - Case "sel2".
     eapply IHn in H4. eapply sstpd2_untrans in H4. eapply valtp_widen with (2:=H4) in H2.
