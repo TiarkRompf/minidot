@@ -444,8 +444,41 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
     stp2 m false G2 T2 G3 T3 GH n2 ->           
     stp2 m false G1 T1 G3 T3 GH (S (n1+n2))
 
+with ptp2 : vl -> venv -> ty -> venv ->  ty -> aenv -> nat -> Prop :=
+| ptp2_var: forall G1 G2 GH T1 T2 v n1,
+           stp2 false false G1 T1 G2 T2 GH n1 ->
+           ptp2 v G1 T1 G2 T2 GH (S n1)
+| ptp2_pack: forall G1 G2 G3 GH T1 T2 T2' T3 x v n1 n2,
+           ptp2 v G1 T1 G2 T2 GH n1 ->
+           index x G2 = Some v ->
+           T2 = open (TSel x) T2' ->
+           (* need true (=notrans) here to invert!*)
+           stp2 false true G2 (TBind T2') G3 T3 GH n2 ->
+           ptp2 v G1 T1 G3 T3 GH (S (n1+n2))
+| ptp2_unpack: forall G1 G2 G3 GH T1 T2 T2' T3 x v n1 n2,
+           ptp2 v G1 T1 G2 (TBind T2') GH n1 ->
+           index x G2 = Some v ->
+           T2 = open (TSel x) T2' ->
+           stp2 false true G2 T2 G3 T3 GH n2 ->
+           ptp2 v G1 T1 G3 T3 GH (S (n1+n2))
 
+with ptpa2 : id -> venv -> ty -> venv -> ty -> aenv -> nat -> Prop :=
+| ptp2_vara: forall x G1 G2 GH T1 T2 n1,
+           stp2 false false G1 T1 G2 T2 GH n1 ->
+           ptpa2 x G1 T1 G2 T2 GH (S n1)
 
+| ptp2_packa: forall x G1 G2 G3 GH T1 T2 T2' T3 n1 n2,
+           ptpa2 x G1 T1 G2 T2 GH n1 ->
+           T2 = open (TSelH x) T2' ->
+           (* need true here to invert!*)
+           stp2 false true G2 (TBind T2') G3 T3 GH n2 -> 
+           ptpa2 x G1 T1 G3 T3 GH (S (n1+n2))
+
+| ptp2_unpacka: forall x G1 G2 G3 GH T1 T2 T2' T3 n1 n2,
+           ptpa2 x G1 T1 G2 (TBind T2') GH n1 ->
+           T2 = open (TSel x) T2' ->
+           stp2 false true G2 T2 G3 T3 GH n2 ->
+           ptpa2 x G1 T1 G3 T3 GH (S (n1+n2))
 
 with wf_env : venv -> tenv -> Prop := 
 | wfe_nil : wf_env nil nil
