@@ -429,6 +429,19 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
     closed 1 (length GH) T2 -> 
     stp2 false false G1 (open (TSelH (length GH)) T1) G2 (open (TSelH (length GH)) T2) ((0,(G1, open (TSelH (length GH)) T1))::GH) n1 ->
     stp2 m true G1 (TBind T1) G2 (TBind T2) GH (S n1)
+
+
+| stp2_bind1: forall m G1 G2 GH T1 T2 n1,
+    (* only TSel, not TSelH for now *)
+    closed 1 (length GH) T1 -> (* must not accidentally bind x *)
+    stp2 m true G1 (open (TSel 0) T1) G2 T2 GH n1 ->
+    stp2 m true G1 (TBind T1) G2 T2 GH (S n1)
+| stp2_bind2: forall m G1 G2 GH T1 T2 n1,  (* TODO: self name! fixed to 0 for now *)
+    (* only TSel, not TSelH for now *)
+    closed 1 (length GH) T2 -> 
+    stp2 m false G1 T1 G2 (open (TSel 0) T2) GH n1 ->
+    stp2 m true G1 T1 G2 (TBind T2) GH (S n1)
+
          
 | stp2_wrapf: forall m G1 G2 T1 T2 GH n1,
     stp2 m true G1 T1 G2 T2 GH n1 ->
@@ -594,6 +607,8 @@ Lemma stpd2_bind: forall G1 G2 T1 T2 GH,
     stpd2 false G1 (open (TSelH (length GH)) T1) G2 (open (TSelH (length GH)) T2) ((0,(G1, open (TSelH (length GH)) T1))::GH) ->
     stpd2 true G1 (TBind T1) G2 (TBind T2) GH.
 Proof. intros. repeat eu. eauto. Qed.
+
+(* TODO: bind1, bind2 *)
 
 Lemma stpd2_wrapf: forall G1 G2 T1 T2 GH,
     stpd2 true G1 T1 G2 T2 GH ->
