@@ -2063,9 +2063,8 @@ Qed.
 
 Lemma stp2_substitute: forall m G1 G2 T1 T2 GH n1,
    stp2 false m G1 T1 G2 T2 GH n1 ->
-   forall GH0 GH0' GX TX T1' T2' V n2,
+   forall GH0 GH0' GX TX T1' T2' V,
      GH = (GH0 ++ [(0,(GX, TX))]) ->
-     stp2 true true GX TX GX TX GH0' n2  ->
      closed 0 0 TX ->
      compat GX TX V G1 T1 T1' ->
      compat GX TX V G2 T2 T2' ->
@@ -2075,47 +2074,47 @@ Proof.
   intros m G1 G2 T1 T2 GH n1 H. remember false as flag.
   induction H; inversion Heqflag.
   - Case "topx".
-    intros GH0 GH0' GXX TXX T1' T2' V n2 ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
     eapply compat_top in IX1.
     eapply compat_top in IX2.
     subst. eapply stpd2_topx. eauto. eauto.
     
   - Case "botx".
-    intros GH0 GH0' GXX TXX T1' T2' V n2 ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
     eapply compat_bot in IX1.
     eapply compat_bot in IX2.
     subst. eapply stpd2_botx. eauto. eauto.
     
   - Case "top".
-    intros GH0 GH0' GXX TXX T1' T2' V n2 ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
     eapply compat_top in IX2.
     subst. eapply stpd2_top; eauto. eauto. 
     
   - Case "bot".
-    intros GH0 GH0' GXX TXX T1' T2' V n2 ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
     eapply compat_bot in IX1.
     subst. eapply stpd2_bot; eauto. eauto.
     
   - Case "bool".
-    intros GH0 GH0' GXX TXX T1' T2' V n2 ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
     eapply compat_bool in IX1.
     eapply compat_bool in IX2.
     subst. eapply stpd2_bool; eauto. eauto. eauto. 
     
   - Case "fun".
-    intros GH0 GH0' GXX TXX T1' T2' V ? ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
     eapply compat_fun in IX1. repeat destruct IX1 as [? IX1].
     eapply compat_fun in IX2. repeat destruct IX2 as [? IX2].
     subst. eapply stpd2_fun; eauto. eauto. eauto. 
 
   - Case "mem".
-    intros GH0 GH0' GXX TXX T1' T2' V ? ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
     eapply compat_mem in IX1. repeat destruct IX1 as [? IX1].
     eapply compat_mem in IX2. repeat destruct IX2 as [? IX2].
     subst. eapply stpd2_mem; eauto. eauto. eauto. 
                                 
   - Case "sel1". 
-    intros GH0 GH0' GXX TXX T1' T2' V ? ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
     
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -2131,7 +2130,7 @@ Proof.
     eauto. eauto. eauto. eauto. eauto.
 
   - Case "sel2". 
-    intros GH0 GH0' GXX TXX T1' T2' V ? ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
     
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -2148,7 +2147,7 @@ Proof.
 
   - Case "selx". 
 
-    intros GH0 GH0' GXX TXX T1' T2' V ? ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
     
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -2160,7 +2159,7 @@ Proof.
     eapply stpd2_selx. eauto. eauto. 
 
   - Case "sela1".
-    intros GH0 GH0' GXX TXX T1' T2' ? ? ? RF CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
     
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -2189,7 +2188,7 @@ Proof.
     
   - Case "selax".
 
-    intros GH0 GH0' GXX TXX T1' T2' V ? ? RFL CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
     
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -2215,7 +2214,7 @@ Proof.
     + eauto. + subst. eauto. + eauto. + eauto. + subst. eauto. + eauto. 
 
   - Case "all".
-    intros GH0 GH0' GX TX T1' T2' ? ? RFL CX IX1 IX2 FA.
+    intros GH0 GH0' GX TX T1' T2' V ? CX IX1 IX2 FA.
     
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -2226,14 +2225,14 @@ Proof.
     subst.
     
     eapply stpd2_all. 
-    + eapply IHstp2_1. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+    + eapply IHstp2_1. eauto. eauto. eauto. eauto. eauto. eauto. 
     + eauto.
     + eauto.
     + subst. 
       specialize (IHstp2_2 H3) with (GH1 := (0, (G2, T3))::GH0).
-      eapply IHstp2_2. eauto.
+      eapply IHstp2_2. 
       reflexivity.
-      eapply stp2_extendH. eauto. eauto.
+      eauto.
       rewrite app_length. simpl. rewrite EL. eauto.
       rewrite app_length. simpl. rewrite EL. eauto.
       eapply Forall2_cons. simpl. eauto. eauto.
@@ -2263,11 +2262,10 @@ Lemma stpd2_substitute: forall m G1 G2 T1 T2 GH,
    stpd2 m G1 T1 G2 T2 GH ->
    forall GH0 GH0' GX TX T1' T2' V,
      GH = (GH0 ++ [(0,(GX, TX))]) ->
-     sstpd2 true GX TX GX TX GH0' ->
      closed 0 0 TX ->
-     compat GX TX G1 T1 T1' V ->
-     compat GX TX G2 T2 T2' V ->
-     Forall2 (compat2 GX TX) GH0 GH0' ->
+     compat GX TX V G1 T1 T1' ->
+     compat GX TX V G2 T2 T2' ->
+     Forall2 (compat2 GX TX V) GH0 GH0' ->
      stpd2 m G1 T1' G2 T2' GH0'.
 Proof. intros. repeat eu. eapply stp2_substitute; eauto. Qed.
 
