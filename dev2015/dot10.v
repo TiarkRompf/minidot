@@ -2095,7 +2095,7 @@ Proof.
 Qed.
 
 
-Lemma compat_bind: forall GX TX V G1 T1 T1' n,
+Lemma compat_bind: forall GX TX V G1 T2 T1' n,
     compat GX TX V G1 (TBind T2) T1' ->
     closed 0 0 TX ->
     closed 1 (n+1) T2 ->
@@ -2103,20 +2103,17 @@ Lemma compat_bind: forall GX TX V G1 T1 T1' n,
                   closed 1 n TB /\
                   compat GX TX V G1 (open_rec 0 (TSelH (n+1)) T2) (open_rec 0 (TSelH n) TB).
 Proof.
-  intros ? ? ? ? ? ? ? ? CC CLX CL2. repeat destruct CC as [|CC].
+  intros ? ? ? ? ? ? ? CC CLX CL2. repeat destruct CC as [|CC].
 
   - ev. simpl in H0. repeat eexists; eauto. eapply closed_subst; eauto.
-    + unfold compat. left. repeat eexists; eauto.
     + unfold compat. left. repeat eexists; eauto. rewrite subst_open_commute; eauto.
 
   - ev. simpl in H0. inversion H. repeat eexists; eauto. eapply closed_upgrade_free; eauto. omega.
-    + unfold compat. right. right. split. eapply nosubst_intro; eauto. symmetry. eapply closed_no_subst; eauto.
     + unfold compat. right. right. split.
       * eapply nosubst_open. simpl. omega. eapply nosubst_intro. eauto.
       * rewrite subst_open_commute.  assert (T2 = subst TTop T2) as E. symmetry. eapply closed_no_subst; eauto. rewrite <-E. eauto. eauto. eauto.
       
-  - ev. simpl in H0. destruct H. repeat eexists; eauto. eapply closed_subst; eauto. eauto.
-    + unfold compat. right. right. eauto.
+  - ev. simpl in H0. simpl in H. repeat eexists; eauto. eapply closed_subst; eauto. eauto.
     + unfold compat. right. right. split.
       * eapply nosubst_open. simpl. omega. eauto.
       * rewrite subst_open_commute; eauto.
