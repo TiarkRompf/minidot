@@ -2323,9 +2323,9 @@ Proof.
       rewrite app_length. simpl. rewrite EL. eauto.
       eapply Forall2_cons. simpl. eauto. eauto. repeat split. rewrite app_length. simpl. rewrite EL. eapply IX1. eauto.
     + eauto.
-    + eauto. subst GH. admit. (* rewrite <- EL. eapply closed_upgrade_free. eauto. omega. *)
+    + eauto. subst GH. fold id. rewrite <- EL. eapply closed_upgrade_free. eauto. omega.
     + eauto.
-    + eauto. subst GH. admit. (* rewrite <-EL. eapply closed_upgrade_free. eauto. omega. *)
+    + eauto. subst GH. fold id. rewrite <-EL. eapply closed_upgrade_free. eauto. omega.
       (* TODO: rewrite match error. probably need to unfold something. *)
       
   - Case "wrapf".
