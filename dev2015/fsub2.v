@@ -212,7 +212,6 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH T1 (TSel x)
 | stp_selx: forall G1 GH TX x,
     index x G1 = Some TX ->
-    stp G1 GH TX (TMem TBot TTop) ->
     stp G1 GH (TSel x) (TSel x)
 | stp_sela1: forall G1 GH TX T2 x,
     indexr x GH = Some TX -> 
@@ -224,7 +223,6 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH T1 (TSelH x)
 | stp_selax: forall G1 GH TX x,
     indexr x GH = Some TX  ->
-    stp G1 GH TX (TMem TBot TTop) ->
     stp G1 GH (TSelH x) (TSelH x)
 | stp_all: forall G1 GH T1 T2 T3 T4 x,
     stp G1 GH T3 T1 ->
@@ -350,9 +348,9 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
     stp2 true false G1 T1 GX TX GH n1 ->
     stp2 true true G1 T1 G2 (TSel x) GH (S n1)
 
-| stp2_strong_selx: forall G1 G2 GX TX x1 x2 GH n1,
-    index x1 G1 = Some (vty GX TX) ->
-    index x2 G2 = Some (vty GX TX) ->
+| stp2_strong_selx: forall G1 G2 v x1 x2 GH n1,
+    index x1 G1 = Some v ->
+    index x2 G2 = Some v ->
     stp2 true true G1 (TSel x1) G2 (TSel x2) GH n1
          
          
@@ -371,16 +369,10 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
     stp2 false false (base v) TX G1 (TMem T1 TTop) GH n1 ->
     stp2 false true G1 T1 G2 (TSel x) GH (S n1)
          
-| stp2_selx: forall G1 G2 TX x1 x2 GH v1 v2 n1 n2,
-    index x1 G1 = Some v1 ->
-    index x2 G2 = Some v2 ->
-    v1 = v2 ->
-    val_type (base v1) v1 TX ->
-    val_type (base v2) v2 TX ->
-    closed 0 0 TX ->
-    stp2 false false (base v1) TX G1 (TMem TBot TTop) GH n1 ->
-    stp2 false false (base v2) TX G2 (TMem TBot TTop) GH n2 ->
-    stp2 false true G1 (TSel x1) G2 (TSel x2) GH (S (n1+n2))
+| stp2_selx: forall G1 G2 v x1 x2 GH n1,
+    index x1 G1 = Some v ->
+    index x2 G2 = Some v ->
+    stp2 false true G1 (TSel x1) G2 (TSel x2) GH n1
          
 (* hypothetical object *)
 | stp2_sela1: forall G1 G2 GX TX x T2 GH n1,
@@ -396,13 +388,10 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
     stp2 false true G1 T1 G2 (TSelH x) GH (S n1)
 
          
-| stp2_selax: forall G1 G2 GX TX x GH n1 n2,
+| stp2_selax: forall G1 G2 GX TX x GH n1,
     indexr x GH = Some (GX, TX) ->
     indexr x GH = Some (GX, TX) ->
-    stp2 false false GX TX G1 (TMem TBot TTop) GH n1 ->
-    stp2 false false GX TX G2 (TMem TBot TTop) GH n2 ->
-    (*closed 0 x TX ->*)
-    stp2 false true G1 (TSelH x) G2 (TSelH x) GH (S (n1+n2))
+    stp2 false true G1 (TSelH x) G2 (TSelH x) GH n1
 
 
 | stp2_all: forall m G1 G2 T1 T2 T3 T4 GH n1 n2, 
@@ -534,17 +523,11 @@ Lemma stpd2_sel2: forall G1 G2 TX x T1 GH v,
     stpd2 true G1 T1 G2 (TSel x) GH.
 Proof. intros. repeat eu. eauto. Qed.
 
-Lemma stpd2_selx: forall G1 G2 TX x1 x2 GH v1 v2,
-    index x1 G1 = Some v1 ->
-    index x2 G2 = Some v2 ->
-    v1 = v2 ->
-    val_type (base v1) v1 TX ->
-    val_type (base v2) v2 TX ->
-    closed 0 0 TX ->
-    stpd2 false (base v1) TX G1 (TMem TBot TTop) GH ->
-    stpd2 false (base v2) TX G2 (TMem TBot TTop) GH ->
+Lemma stpd2_selx: forall G1 G2 x1 x2 GH v,
+    index x1 G1 = Some v ->
+    index x2 G2 = Some v ->
     stpd2 true G1 (TSel x1) G2 (TSel x2) GH.
-Proof. intros. repeat eu. eauto. Qed.
+Proof. intros. exists 0. eauto. Qed.
 
 Lemma stpd2_sela1: forall G1 G2 GX TX x T2 GH,
     indexr x GH = Some (GX, TX) ->
@@ -564,11 +547,8 @@ Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_selax: forall G1 G2 GX TX x GH,
     indexr x GH = Some (GX, TX) ->
     indexr x GH = Some (GX, TX) ->
-    stpd2 false GX TX G1 (TMem TBot TTop) GH ->
-    stpd2 false GX TX G2 (TMem TBot TTop) GH ->
-    (*closed 0 x TX ->*)
     stpd2 true G1 (TSelH x) G2 (TSelH x) GH.
-Proof. intros. repeat eu. eauto. Qed.
+Proof. intros. exists 0. eauto. Qed.
 
 
 Lemma stpd2_all: forall G1 G2 T1 T2 T3 T4 GH, 
@@ -985,7 +965,6 @@ Proof.
   induction H; intros; subst GH; simpl; eauto.
   - admit.
   - admit.
-  - admit.
   - Case "sela1".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
     + eapply stp_sela1. eapply indexr_splice_hi with (T:=TX). eauto. eauto.
@@ -996,9 +975,7 @@ Proof.
   - Case "selax".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
     + eapply stp_selax. eapply indexr_splice_hi with (T:=TX). eauto. eauto.
-      eapply IHstp. eauto. eauto.
     + eapply stp_selax. eapply indexr_splice_lo with (T:=TX). eauto. eauto. eauto.
-      eapply IHstp. eauto. eauto.
   - Case "all".
     eapply stp_all.
     eapply IHstp1. eauto. eauto. eauto.
@@ -1463,11 +1440,7 @@ Proof.
     assert (sstpd2 false G1 T1 x0 x1 []). eapply IHn. eauto. omega.
     eu. eexists. eapply stp2_strong_sel2. eauto. eauto. eauto. omega.
   - Case "selx".
-    eapply IHn in H7. eapply sstpd2_untrans in H7. eapply valtp_widen with (2:=H7) in H4.
-    eapply IHn in H8. eapply sstpd2_untrans in H8. eapply valtp_widen with (2:=H8) in H5.
-    eapply invert_typ in H4. ev. eu. eu. subst.
-    eapply invert_typ in H5. ev. eu. eu. subst.
-    eexists. eapply stp2_strong_selx. eauto. eauto. omega. omega.
+    eexists. eapply stp2_strong_selx. eauto. eauto. 
   - Case "selh1". inversion H1. 
   - Case "selh2". inversion H1. 
   - Case "selhx". inversion H1.
@@ -2086,30 +2059,6 @@ Proof.
 Qed.
 
 
-Lemma stpd2_no_mem_nosubst: forall m G1 G2 T1 T2 GH GX TX,
-   stpd2 m G1 T1 G2 T2 GH ->
-   forall GH0,
-     GH = (GH0 ++ [(0,(GX, TX))]) ->
-     (forall m GM TA TB GY, not (stpd2 m GX TX GM (TMem TA TB) GY)) ->
-     nosubst T1 /\ nosubst T2.
-Proof.
-  intros m G1 G2 T1 T2 GH GX TX H. eu. remember false as flag.
-  induction H; inversion Heqflag; intros; simpl; repeat split; try eapply IHstp2; try eapply IHstp2_1; eauto; try eapply IHstp2_2; eauto.
-                             
-  (* sela1 *)
-  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst. destruct (H2 false G2 TBot T2 (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
-  (* sela2 *)
-  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst. destruct (H2 false G2 T1 TTop (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
-  (* selax *)
-  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst. destruct (H4 false G2 TBot TTop (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
-  destruct x. subst GH. rewrite indexr_hit0 in H. inversion H. subst.  destruct (H4 false G2 TBot TTop (GH0 ++ [(0, (GX0, TX0))])). eauto. omega.
-  
-  (* all *)
-  subst GH. eapply nosubst_open_rev. eapply (IHstp2_2 _ ((0, (G2, T3)) :: GH0)); eauto. rewrite app_length. simpl. omega.
-  subst GH. eapply nosubst_open_rev. eapply (IHstp2_2 _ ((0, (G2, T3)) :: GH0)); eauto. rewrite app_length. simpl. omega.
-
-Grab Existential Variables. eauto. eauto.
-Qed.
 
 
 Lemma stp2_substitute: forall m G1 G2 T1 T2 GH n1,
@@ -2204,22 +2153,11 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    assert (closed 0 0 TX). eauto.
-    
-    eapply (compat_sel GXX TXX V G1 T1' (base v1) TX) in IX1. repeat destruct IX1 as [? IX1].
-    eapply (compat_sel GXX TXX V G2 T2' (base v2) TX) in IX2. repeat destruct IX2 as [? IX2].
-
-    assert (compat GXX TXX V (base v2) TX TX) as CPX1. right. left. subst. eauto.
-    assert (compat GXX TXX V (base v1) TX TX) as CPX2. right. left. subst. eauto.
+    assert (T1' = TSel x1). destruct IX1. ev. eauto. destruct H3. ev. auto. ev. eauto.
+    assert (T2' = TSel x2). destruct IX2. ev. eauto. destruct H4. ev. auto. ev. eauto.
     
     subst.
-    eapply stpd2_selx. eauto. eauto. eauto. eauto. eauto. eauto.
-    eapply IHstp2_1. eauto. eauto. eauto. eauto. eauto.
-    right. left. eauto. eauto.
-    eapply IHstp2_2. eauto. eauto. eauto. eauto. eauto.
-    right. left. eauto. eauto.
-
-    eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+    eapply stpd2_selx. eauto. eauto. 
 
   - Case "sela1".
     intros GH0 GH0' GXX TXX T1' T2' ? ? ? RF CX IX1 IX2 FA.
@@ -2262,39 +2200,17 @@ Proof.
     eapply (compat_selh GXX TXX V G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
     eapply (compat_selh GXX TXX V G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
     assert (not (nosubst (TSelH 0))). unfold not. intros. simpl in H1. eauto.
-    assert (not (closed 0 0 (TSelH 0))). unfold not. intros. inversion H6. omega.
+    assert (not (closed 0 0 (TSelH 0))). unfold not. intros. inversion H4. omega.
 
     destruct x; destruct IX1; ev; try omega; destruct IX2; ev; try omega; subst.
     + SCase "x = 0".
       repeat destruct IXX1 as [IXX1|IXX1]; ev; try contradiction.
       repeat destruct IXX2 as [IXX2|IXX2]; ev; try contradiction. 
       * SSCase "sel-sel".
-        (* NOTE: inverting RFL. possible issue when we add TBind ? *)
-        subst. inversion H16. subst.
-        simpl. eapply stpd2_selx. eauto. eauto. eauto. eauto. eauto. rewrite <-H15. eauto. eauto.
-        eapply IHstp2_1; eauto. right. left. eauto. right. left. eauto.
-        rewrite <-H15.
-        eapply IHstp2_2; eauto. right. left. eauto. right. left. eauto.
+        subst. inversion H14. subst.
+        simpl. eapply stpd2_selx. eauto. eauto.
     + SCase "x > 0".
-      destruct IXX1; destruct IXX2; ev; subst; eapply stpd2_selax; eauto. (* this is slow! *)
-      * inversion H12. subst.
-        eapply IHstp2_1. eauto. eauto. eauto. eauto. eauto. eapply compat_mem_fwd2. right. left. eauto. eauto.
-      * inversion H12. subst.
-        eapply IHstp2_2. eauto. eauto. eauto. eauto. eauto. eapply compat_mem_fwd2. right. left. eauto. eauto.
-      * destruct H8. ev. inversion H12. omega.
-        eapply IHstp2_1; eauto. right. left. eauto.
-      * destruct H8. ev. inversion H12. omega.
-        eapply IHstp2_2; eauto. right. left. eauto.
-      * destruct H3. ev. inversion H12. omega.
-        eapply IHstp2_1; eauto. right. left. eauto.
-      * destruct H3. ev. inversion H12. omega.
-        eapply IHstp2_2; eauto. right. left. eauto.
-      * destruct H8. ev. inversion H12. omega.
-        destruct H3. ev. inversion H12. omega.
-        eapply IHstp2_1; eauto. right. left. eauto.
-      * destruct H8. ev. inversion H12. omega.
-        destruct H3. ev. inversion H12. omega.
-        eapply IHstp2_2; eauto. right. left. eauto.
+      destruct IXX1; destruct IXX2; ev; subst; eapply stpd2_selax; eauto.
     (* leftovers *)
     + eauto. + subst. eauto. + eauto. + eauto. + subst. eauto. + eauto. 
 
