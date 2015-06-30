@@ -900,6 +900,7 @@ Fixpoint splice n (T : ty) {struct T} : ty :=
     | TSel i       => TSel i
     | TSelH i      => if le_lt_dec n i  then TSelH (i+1) else TSelH i
     | TAll T1 T2   => TAll (splice n T1) (splice n T2)
+    | TBind T2   => TBind (splice n T2)
   end.
 
 Definition splicett n (V: (id*ty)) :=
@@ -996,15 +997,15 @@ Proof.
   - Case "all".
     eapply stp_all.
     eapply IHstp1. eauto. eauto. eauto.
-
     admit. (* closed *) 
     admit. (* closed *)
-    
+
     specialize IHstp2 with (G3:=G0) (G4:=(0, T3) :: G2).
     simpl in IHstp2. rewrite map_length. rewrite app_length. simpl.
     repeat rewrite splice_open_permute with (j:=0). subst x0.
     rewrite app_length in IHstp2. simpl in IHstp2.
     eapply IHstp2. eauto. eauto.
+  - Case "bind". admit.
 Qed.
 
 
