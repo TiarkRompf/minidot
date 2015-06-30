@@ -2345,12 +2345,8 @@ Proof with stpd2_wrapf.
   - Case "sel2". admit.
   - Case "selx". 
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
-    eapply index_safe_ex. eauto. eauto. eauto.
-    destruct A as [? [? VT]].
-    eapply inv_vtp_half in VT. ev.
-    eapply stpd2_selx. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
-    eapply stpd2_trans. eauto. eauto.
-    eapply stpd2_trans. eauto. eauto.
+    eapply index_safe_ex. eauto. eauto. ev.
+    eapply stpd2_selx. eauto. eauto. 
   - Case "sela1". eauto.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
@@ -2360,10 +2356,8 @@ Proof with stpd2_wrapf.
   - Case "sela2". admit.
   - Case "selax". eauto.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
-    eapply index_safeh_ex. eauto. eauto. eauto.
-    destruct A as [? [? VT]]. 
-    inversion VT. subst.
-    eapply stpd2_selax. eauto. eauto. eapply IHST. eauto. eauto. eapply IHST. eauto. eauto.
+    eapply index_safeh_ex. eauto. eauto. eauto. ev. destruct x0.
+    eapply stpd2_selax. eauto. eauto. 
   - Case "all".
     subst x. assert (length GY = length GH). eapply wfh_length; eauto.
     eapply stpd2_all. eauto. rewrite H. eauto. rewrite H.  eauto.
@@ -2444,7 +2438,7 @@ Proof.
     
     eapply stpd2_substitute with (GH0:=nil). 
     eapply stpd2_extend1. eapply stpd2_narrow. eapply H6. eapply KEY.
-    eauto. simpl. eauto. eauto. eapply stpd2_upgrade. eapply stpd2_reg1. eapply H6. eauto.
+    eauto. simpl. eauto. eauto. 
     left. repeat eexists. eapply index_hit2. eauto. eauto. eauto. eauto.
     rewrite (subst_open_zero 0 1). eauto. eauto.
     right. left. split. rewrite OP2. eauto. eauto. eauto. 
