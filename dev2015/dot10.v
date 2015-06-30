@@ -2300,7 +2300,34 @@ Proof.
     + eauto.
     + eauto. subst GH. rewrite <-EL. eapply closed_upgrade_free. eauto. omega.
 
+  - Case "bind".
+    intros GH0 GH0' GX TX T1' T2' V ? CX IX1 IX2 FA.
+    
+    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
+    
+    eapply compat_bind in IX1. repeat destruct IX1 as [? IX1].
+    eapply compat_bind in IX2. repeat destruct IX2 as [? IX2].
 
+    subst. 
+    
+    eapply stpd2_bind. 
+    + eauto.
+    + eauto.
+    + subst. 
+      specialize (IHstp2 H2) with (GH1 := (0, (G1,  open (TSelH (length (GH0 ++ [(0, (GX, TX))]))) T1))::GH0).
+      eapply IHstp2. 
+      reflexivity.
+      eauto.
+      rewrite app_length. simpl. rewrite EL. eauto.
+      rewrite app_length. simpl. rewrite EL. eauto.
+      eapply Forall2_cons. simpl. eauto. eauto. repeat split. rewrite app_length. simpl. rewrite EL. eapply IX1. eauto.
+    + eauto.
+    + eauto. subst GH. admit. (* rewrite <- EL. eapply closed_upgrade_free. eauto. omega. *)
+    + eauto.
+    + eauto. subst GH. admit. (* rewrite <-EL. eapply closed_upgrade_free. eauto. omega. *)
+      (* TODO: rewrite match error. probably need to unfold something. *)
+      
   - Case "wrapf".
     intros. subst. eapply stpd2_wrapf. eapply IHstp2; eauto.
   - Case "transf".
