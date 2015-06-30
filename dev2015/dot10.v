@@ -1,14 +1,12 @@
-(* Full safety for F-sub (WIP) *)
-(* values well-typed with respect to runtime environment *)
-(* inversion lemma structure *)
+(* Full safety for DOT (WIP) *)
 
-(* this version adds bottom and lower bounds to fsub0.v *)
-(* it also turns types into proper first class objects, *)
-(* compared to fsub1.v *)
-
+(* this version is based on fsub2.v *)
+(* based on that, it adds self types *)
 
 (*
 TODO:
+- intersection types
+
 - stp2 trans + narrowing 
 - stp/stp2 weakening and regularity
 *)
@@ -32,6 +30,7 @@ Inductive ty : Type :=
   | TSelH  : id -> ty
   | TSelB  : id -> ty
   | TAll   : ty -> ty -> ty
+  | TBind  : ty -> ty
 .
 
 Inductive tm : Type :=
@@ -110,10 +109,13 @@ Inductive closed_rec: nat -> nat -> ty -> Prop :=
     closed_rec k l T1 ->
     closed_rec k l T2 ->
     closed_rec k l (TMem T1 T2)
-| cl_bind: forall k l T1 T2,
+| cl_all: forall k l T1 T2,
     closed_rec k l T1 ->
     closed_rec (S k) l T2 ->
     closed_rec k l (TAll T1 T2)
+| cl_bind: forall k l T2,
+    closed_rec (S k) l T2 ->
+    closed_rec k l (TBind T2)
 | cl_sel: forall k l x,
     closed_rec k l (TSel x)
 | cl_selh: forall k l x,
@@ -135,6 +137,7 @@ Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
     | TSelH i     => TSelH i (*if beq_nat k i then u else TSelH i *)
     | TSelB i     => if beq_nat k i then u else TSelB i
     | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
+    | TBind T2    => TBind (open_rec (S k) u T2)
     | TTop        => TTop
     | TBot        => TBot
     | TBool       => TBool
@@ -161,6 +164,7 @@ Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
     | TSel i       => TSel i
     | TSelH i      => if beq_nat i 0 then U else TSelH (i-1)
     | TAll T1 T2   => TAll (subst U T1) (subst U T2)
+    | TBind T2     => TBind (subst U T2)
   end.
 
 Fixpoint nosubst (T : ty) {struct T} : Prop :=
@@ -174,6 +178,7 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
     | TSel i       => True
     | TSelH i      => i <> 0
     | TAll T1 T2   => nosubst T1 /\ nosubst T2
+    | TBind T2     => nosubst T2
   end.
 
 
