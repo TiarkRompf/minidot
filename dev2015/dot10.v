@@ -811,6 +811,36 @@ Proof.
 Qed.
 
 
+(* test expansion *)
+
+Example ex6:
+  has_type [(1,TSel 0);(0,TMem TBot (TBind (TFun TBool (TSelB 0))))]
+           (tvar 1) (TFun TBool (TSel 1)).
+Proof.
+  remember (TFun TBool (TSel 1)) as T.
+  assert (T = open (TSel 1) (TFun TBool (TSelB 0))). compute. eauto.
+  rewrite H.
+  eapply t_var_unpack. eapply t_sub. eapply t_var. compute. eauto. crush2.
+Qed.
+
+
+Example ex7:
+  stp [(1,TSel 0);(0,TMem TBot (TBind (TMem TBot (TFun TBool (TSelB 0)))))] [] None
+           (TSel 1) (TFun TBool(TSel 1)).
+Proof.
+  remember (TFun TBool (TSel 1)) as T.
+  assert (T = open (TSel 1) (TFun TBool (TSelB 0))). compute. eauto.
+  rewrite H.
+  eapply stp_sel1. compute. eauto.
+  eapply stp_sel1. compute. eauto.
+  eapply stp_mem. eauto.
+  admit.
+(*
+  eapply stp_bind1. (* FIXME: can't apply because S = None *)
+*)
+Qed.
+
+
 
 
 
