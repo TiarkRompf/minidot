@@ -2455,27 +2455,27 @@ Proof.
   - Case "transf".
     intros. subst.
 
-    assert (compat GX TX V G2 T2 T2').
+    assert (exists vx T3',
+              compat GX TX (Some vx) G1 T1 T1' /\
+              compat GX TX (Some vx) G2 T2 T2' /\
+              compat GX TX (Some vx) ((fresh G3,vx)::G3) T3 T3' /\
+              Forall2 (compat2 GX TX (Some vx)) GH0 GH0').
+    {
+      (* TODO: If V is None, use vx = vty GX TX. (may need to pass in val_type evidence 
+               If V is Some v, use v. However v might never actually be used.
+               In that case, process as with V = None. *)
+      admit.
+    }
+    ev.
     
-    destruct V.
-    +
-      assert (stp2 false true G1 T1 ((fresh G3,v)::G3) T3 (GH0 ++ [(0, (GX, TX))]) n0) as S1.
-      eapply stp2_extend2; eauto.
-      assert (stp2 false false ((fresh G3,v)::G3) T3 G2 T2 (GH0 ++ [(0, (GX, TX))]) n2) as S2.
-      eapply stp2_extend1; eauto.
+    assert (stp2 false true G1 T1 ((fresh G3,x)::G3) T3 (GH0 ++ [(0, (GX, TX))]) n0) as S1.
+    eapply stp2_extend2; eauto.
+    assert (stp2 false false ((fresh G3,x)::G3) T3 G2 T2 (GH0 ++ [(0, (GX, TX))]) n2) as S2.
+    eapply stp2_extend1; eauto.
       
-      eapply stp2_transf.
-      eapply IHn. eauto. omega. eauto. eauto. eauto. left. repeat eexists. eapply index_hit2. eauto. eauto. eauto. eauto. eauto.
-    left. exists (fresh G3). exists v. repeat split. eapply index_hit2. eauto. eauto. reflexivity. eauto.
-    (* TODO:  
-       About the middle man in trans:
-       We don't know that we can safely remove x.
-       However, we can extend G2 without increasing
-       the size of the derivations, and obtain the
-       necessary compat evidence. For this, we'll need
-       to do induction on the size n.
-     *)
-    admit. (*intros. subst. eapply stpd2_transf. eapply IHstp2_1. eappy IHstp2_2. *)
+    eapply stp2_transf.
+    eapply IHn. eauto. omega. eauto. eauto. eauto. eauto. eauto.
+    eapply IHn. eauto. omega. eauto. eauto. eauto. eauto. eauto.
 Qed.
 
 
@@ -2488,7 +2488,7 @@ Lemma stpd2_substitute: forall m G1 G2 T1 T2 GH,
      compat GX TX V G2 T2 T2' ->
      Forall2 (compat2 GX TX V) GH0 GH0' ->
      stpd2 m G1 T1' G2 T2' GH0'.
-Proof. intros. repeat eu. eapply stp2_substitute; eauto. Qed.
+Proof. intros. repeat eu. eexists. eapply stp2_substitute_aux; eauto. Qed.
 
 
 
