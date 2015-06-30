@@ -745,9 +745,9 @@ Ltac crush2 :=
 
 (* define polymorphic identity function *)
 
-Definition polyId := TAll (TMem TBot TTop) (TFun (TSelB 0) (TSelB 0)).
+Definition polyId := TAll (TBind (TMem TBot TTop)) (TFun (TSelB 0) (TSelB 0)).
 
-Example ex1: has_type [] (ttabs 0 (TMem TBot TTop) (tabs 1 2 (tvar 2))) polyId.
+Example ex1: has_type [] (ttabs 0 (TBind (TMem TBot TTop)) (tabs 1 2 (tvar 2))) polyId.
 Proof.
   crush2.
 Qed.
@@ -757,15 +757,13 @@ Qed.
 
 Example ex2: has_type [(0,polyId)] (ttapp (tvar 0) (ttyp TBool)) (TFun TBool TBool).
 Proof.
-  eapply t_tapp. eapply t_sub. eapply t_var. simpl. eauto.
-  eapply stp_all. eauto. eauto. crush_has_tp. crush_has_tp. crush_has_tp.
-  compute.
-  eapply stp_all. instantiate (1:= (TMem TBool TBool)).
-    eapply stp_mem. crush2. crush2. crush2. crush2. crush2.
-    eapply stp_fun. crush2. crush2.
-  eapply t_sub. eapply t_typ. crush2. crush2.
-  
-  eapply stp_fun; crush2.
+  eapply t_tapp. instantiate (1:= (TBind (TMem TBool TBool))).
+    { eapply t_sub.
+      { eapply t_var. simpl. eauto. }
+      { eapply stp_all; eauto. { eapply stp_bindx; crush2. } compute. eapply cl_fun; eauto.
+        eapply stp_fun; compute; crush2. } }
+    { eapply t_typ; crush2. }
+    crush2.
 Qed.
        
 
@@ -773,7 +771,7 @@ Qed.
 (* define brand / unbrand client function *)
 
 Definition brandUnbrand :=
-  TAll (TMem TBot TTop)
+  TAll (TBind (TMem TBot TTop))
        (TFun
           (TFun TBool (TSelB 0)) (* brand *)
           (TFun
@@ -782,7 +780,7 @@ Definition brandUnbrand :=
 
 Example ex3:
   has_type []
-           (ttabs 0 (TMem TBot TTop)
+           (ttabs 0 (TBind (TMem TBot TTop))
                   (tabs 1 2
                         (tabs 3 4
                               (tapp (tvar 4) (tapp (tvar 2) ttrue)))))
@@ -796,7 +794,7 @@ Qed.
 
 Example ex4:
   has_type [(1,TFun TBool TBool);(0,brandUnbrand)]
-           (tvar 0) (TAll (TMem TBool TBool) (TFun (TFun TBool TBool) (TFun (TFun TBool TBool) TBool))).
+           (tvar 0) (TAll (TBind (TMem TBool TBool)) (TFun (TFun TBool TBool) (TFun (TFun TBool TBool) TBool))).
 Proof.
   eapply t_sub. crush2. crush2.
 Qed.
