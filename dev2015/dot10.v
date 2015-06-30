@@ -1616,7 +1616,8 @@ Lemma closed_upgrade: forall i j l T,
  closed_rec j l T.
 Proof.
  intros. generalize dependent j. induction H; intros; eauto.
- Case "TBind". econstructor. eapply IHclosed_rec1. omega. eapply IHclosed_rec2. omega.
+ Case "TAll". econstructor. eapply IHclosed_rec1. omega. eapply IHclosed_rec2. omega.
+ Case "TBind". econstructor. eapply IHclosed_rec. omega. 
  Case "TSelB". econstructor. omega.
 Qed.
 
@@ -1646,6 +1647,7 @@ Proof.
     rewrite H0. eauto.
     simpl. eauto.
   -  simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eapply closed_upgrade. eauto. eauto. eauto.
+  -  simpl. rewrite IHT2. eauto. eapply closed_upgrade. eauto. eauto. 
 Qed.
 
 
@@ -1656,12 +1658,15 @@ Lemma closed_no_subst: forall T j TX,
    subst TX T = T.
 Proof.
   intros T. induction T; intros; inversion H; simpl; eauto;
-            try rewrite (IHT j TX); eauto; try rewrite (IHT2 (S j) TX); eauto; try rewrite (IHT1 j TX); eauto; try rewrite (IHT2 j TX); eauto.
-
+    try rewrite (IHT (S j) TX); eauto;
+    try rewrite (IHT2 (S j) TX); eauto;
+    try rewrite (IHT j TX); eauto;
+    try rewrite (IHT1 j TX); eauto;
+    try rewrite (IHT2 j TX); eauto.
+            
   eapply closed_upgrade. eauto. eauto.
-    eapply closed_upgrade. eauto. eauto.
-
-  subst. omega. 
+  eapply closed_upgrade. eauto. eauto.
+  subst. omega.
 Qed.
 
 Lemma closed_open: forall j n TX T, closed (j+1) n T -> closed j n TX -> closed j n (open_rec j TX T).
@@ -1674,6 +1679,7 @@ Proof.
     econstructor. eapply beq_nat_false_iff in E. omega.
 
   - eauto.
+  - eapply closed_upgrade; eauto.
   - eapply closed_upgrade; eauto.
 Qed.
 
@@ -1713,7 +1719,7 @@ Qed.
 Lemma subst_open_zero: forall j k TX T2, closed k 0 T2 ->
     subst TX (open_rec j (TSelH 0) T2) = open_rec j TX T2.
 Proof.
-  intros. generalize dependent k. generalize dependent j. induction T2; intros; inversion H; simpl; eauto; try rewrite (IHT2_1 _ k); try rewrite (IHT2_2 _ (S k)); try rewrite (IHT2_2 _ (S k)); try rewrite (IHT2 _ k); eauto.
+  intros. generalize dependent k. generalize dependent j. induction T2; intros; inversion H; simpl; eauto; try rewrite (IHT2_1 _ k); try rewrite (IHT2_2 _ (S k)); try rewrite (IHT2_2 _ (S k)); try rewrite (IHT2 _ (S k)); try rewrite (IHT2 _ k); eauto.
 
   eapply closed_upgrade; eauto.
   eapply closed_upgrade; eauto.
@@ -1749,7 +1755,7 @@ Qed.
 
 Lemma nosubst_open_rev: forall j TX T2, nosubst (open_rec j TX T2) -> nosubst TX -> nosubst T2.
 Proof.
-  intros. generalize dependent j. induction T2; intros; try inversion H; simpl; eauto.
+  intros. generalize dependent j. induction T2; intros; try inversion H; simpl in H; simpl; eauto.
 Qed.
 
 Lemma nosubst_zero_closed: forall j T2, nosubst (open_rec j (TSelH 0) T2) -> closed_rec (j+1) 0 T2 -> closed_rec j 0 T2.
@@ -2089,6 +2095,32 @@ Proof.
 Qed.
 
 
+Lemma compat_bind: forall GX TX V G1 T1 T1' n,
+    compat GX TX V G1 (TBind T2) T1' ->
+    closed 0 0 TX ->
+    closed 1 (n+1) T2 ->
+    exists TB, T1' = TBind TB /\
+                  closed 1 n TB /\
+                  compat GX TX V G1 (open_rec 0 (TSelH (n+1)) T2) (open_rec 0 (TSelH n) TB).
+Proof.
+  intros ? ? ? ? ? ? ? ? CC CLX CL2. repeat destruct CC as [|CC].
+
+  - ev. simpl in H0. repeat eexists; eauto. eapply closed_subst; eauto.
+    + unfold compat. left. repeat eexists; eauto.
+    + unfold compat. left. repeat eexists; eauto. rewrite subst_open_commute; eauto.
+
+  - ev. simpl in H0. inversion H. repeat eexists; eauto. eapply closed_upgrade_free; eauto. omega.
+    + unfold compat. right. right. split. eapply nosubst_intro; eauto. symmetry. eapply closed_no_subst; eauto.
+    + unfold compat. right. right. split.
+      * eapply nosubst_open. simpl. omega. eapply nosubst_intro. eauto.
+      * rewrite subst_open_commute.  assert (T2 = subst TTop T2) as E. symmetry. eapply closed_no_subst; eauto. rewrite <-E. eauto. eauto. eauto.
+      
+  - ev. simpl in H0. destruct H. repeat eexists; eauto. eapply closed_subst; eauto. eauto.
+    + unfold compat. right. right. eauto.
+    + unfold compat. right. right. split.
+      * eapply nosubst_open. simpl. omega. eauto.
+      * rewrite subst_open_commute; eauto.
+Qed.
 
 
 Lemma stp2_substitute: forall m G1 G2 T1 T2 GH n1,
