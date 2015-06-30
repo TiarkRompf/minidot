@@ -1001,13 +1001,13 @@ Proof.
 Qed.  
 
 
-Lemma stp_splice : forall GX G0 G1 T1 T2 x v1,
-   stp GX (G1++G0) T1 T2 ->
+Lemma stp_splice : forall GX G0 G1 T1 T2 S x v1,
+   stp GX (G1++G0) S T1 T2 ->
    map (splicett (length G0)) G0 = G0 ->                  
-   stp GX (map (splicett (length G0)) (G1++(x,v1)::G0)) (splice (length G0) T1) (splice (length G0) T2).
+   stp GX (map (splicett (length G0)) (G1++(x,v1)::G0)) S (splice (length G0) T1) (splice (length G0) T2).
 Proof.
-  intros GX G0 G1 T1 T2 x v1 H. remember (G1++G0) as G.
-  revert G0 G1 HeqG.
+  intros GX G0 G1 T1 T2 S x v1 H. remember (G1++G0) as G. remember S as S'.
+  revert G0 G1 HeqG S HeqS'.
   induction H; intros; subst GH; simpl; eauto.
   - admit.
   - admit.
