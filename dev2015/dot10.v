@@ -375,14 +375,14 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
     index x G1 = Some v ->
     val_type (base v) v TX ->
     closed 0 0 TX ->
-    ptp2 v (base v) TX G2 (TMem TBot T2) GH n1 ->
+    ptp2 false v (base v) TX G2 (TMem TBot T2) GH n1 ->
     stp2 false true G1 (TSel x) G2 T2 GH (S n1)
 
 | stp2_sel2: forall G1 G2 TX x T1 GH n1 v,
     index x G2 = Some v ->
     val_type (base v) v TX ->           
     closed 0 0 TX ->
-    ptp2 v (base v) TX G1 (TMem T1 TTop) GH n1 ->
+    ptp2 false v (base v) TX G1 (TMem T1 TTop) GH n1 ->
     stp2 false true G1 T1 G2 (TSel x) GH (S n1)
          
 | stp2_selx: forall G1 G2 v x1 x2 GH n1,
@@ -432,24 +432,34 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
     stp2 m false G2 T2 G3 T3 GH n2 ->           
     stp2 m false G1 T1 G3 T3 GH (S (n1+n2))
 
-with ptp2 : vl -> venv -> ty -> venv ->  ty -> aenv -> nat -> Prop :=
-| ptp2_var: forall G1 G2 GH T1 T2 v n1,
+with ptp2 : bool -> vl -> venv -> ty -> venv ->  ty -> aenv -> nat -> Prop :=
+| ptp2_var: forall m G1 G2 GH T1 T2 v n1,
            stp2 false false G1 T1 G2 T2 GH n1 ->
-           ptp2 v G1 T1 G2 T2 GH (S n1)
-| ptp2_pack: forall G1 G2 G3 GH T1 T2 T2' T3 x v n1 n2,
-           ptp2 v G1 T1 G2 T2 GH n1 ->
+           ptp2 m v G1 T1 G2 T2 GH (S n1)
+| ptp2_pack: forall m G1 G2 G3 GH T1 T2 T2' T3 x v n1 n2,
+           stp2 m v G1 T1 G2 T2 GH n1 ->
            index x G2 = Some v ->
            T2 = open (TSel x) T2' ->
            (* need true (=notrans) here to invert!*)
            stp2 false true G2 (TBind T2') G3 T3 GH n2 ->
-           ptp2 v G1 T1 G3 T3 GH (S (n1+n2))
+           ptp2 m v G1 T1 G3 T3 GH (S (n1+n2))
 | ptp2_unpack: forall G1 G2 G3 GH T1 T2 T2' T3 x v n1 n2,
-           ptp2 v G1 T1 G2 (TBind T2') GH n1 ->
+           ptp2 false v G1 T1 G2 (TBind T2') GH n1 ->
            index x G2 = Some v ->
            T2 = open (TSel x) T2' ->
            stp2 false true G2 T2 G3 T3 GH n2 ->
-           ptp2 v G1 T1 G3 T3 GH (S (n1+n2))
+           ptp2 false v G1 T1 G3 T3 GH (S (n1+n2))
+| ptp2_repack: forall G1 G2 G3 GH T1 T2 T2' T3 x v n1 n2,
+           ptp2 true v G1 T1 G2 T2 GH n1 ->
+           index x1 G2 = Some v ->
+           T2 = open (TSel x1) T2' ->
+           stp2 false true G2 (TBind T2') G3 (TBind T3') GH n2 ->
+           index x2 G3 = Some v ->
+           T3 = open (TSel x2) T3' ->
+           stp2 false true G2 T2 G3 T3 GH n2 ->
+           ptp2 true v G1 T1 G3 T3 GH (S (n1+n2))
 
+                
 with ptpa2 : id -> venv -> ty -> venv -> ty -> aenv -> nat -> Prop :=
 | ptp2_vara: forall x G1 G2 GH T1 T2 n1,
            stp2 false false G1 T1 G2 T2 GH n1 ->
@@ -1538,21 +1548,51 @@ Proof.
   - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
   - Case "mem". eexists. eapply stp2_mem. eauto. eauto.
   - Case "sel1".
-    assert (sstpd2 false (base v) TX G2 (TMem TBot T2) []) as ST.
-    admit.
+    (* invert bind *)
+    assert (forall n', n' < n ->
+       forall n0 G2 T2,
+         ptp2 false v (base v) TX G2 T2 [] n0 -> n0 < n' ->
+         ptp2 true v (base v) TX G2 T2 [] n0) as ST. {
+      intros n' E. induction n'; intros. subst. omega. 
+      inversion H5; subst.
+      - SCase "var".
+        eapply ptp2_var. eauto.
+      - SCase "pack".
+        eapply IHn' in H14. ev.
+        eapply ptp2_pack. eauto. eauto. eauto. eauto. omega. omega.
+      - SCase "unpack".
+        eapply IHn' in H14.
+        inversion H14; subst.
+        + SSCase "var".
+          eapply IHn in H6.
+          assert (val_type G6 v (TBind T2')). eapply valtp_widen. eauto. eapply sstpd2_untrans. eauto.
+          { inversion H7; ev; subst. 
+            * inversion H9. * inversion H8. * inversion H12. * inversion H11. * admit. } (* v_pack *)
+          omega. 
+        + SSCase "pack".
+          inversion H9. subst.
+          
+          
+    }
+    (* invert mem *)
+    assert (forall n', n' < n ->
+       forall n0 G2 T2,
+         ptp2 v (base v) TX G2 (TMem TBot T2) [] n0 -> n0 < n' ->
+         sstpd2 true (base v) TX G2 (TMem TBot T2) []) as ST. {
+      intros n' E. induction n'; intros. subst. omega. 
+      inversion H5; subst.
+      - SCase "var".
+        eapply IHn in H14. eapply sstpd2_untrans in H14. eauto. omega.
+      - SCase "pack".
+        inversion H17.
+      - SCase "unpack". 
+    }
     eapply sstpd2_untrans in ST. eapply valtp_widen with (2:=ST) in H2.
-    eapply invert_typ in H2. ev. eu. eu. subst.
+    eapply invert_typ in H2. ev. repeat eu. subst.
     assert (closed 0 (length ([]:aenv)) x1). eapply stp2_closed2; eauto.
-    assert (sstpd2 true x0 x1 G2 T2 []). eapply sstpd2_untrans. eauto.
-    eu. eexists. eapply stp2_strong_sel1. eauto. eauto. eauto. omega.
+    eexists. eapply stp2_strong_sel1. eauto. eauto. eauto.
   - Case "sel2".
-    eapply IHn in H4. eapply sstpd2_untrans in H4. eapply valtp_widen with (2:=H4) in H2.
-    eapply invert_typ in H2. ev. eu. eu. subst.
-    assert (x3 < n). admit. (* this is safe, because the val_tp was part of our argument *)
-    assert (x2 < n). admit.
-    assert (closed 0 (length ([]:aenv)) x1). eapply stp2_closed2; eauto.
-    assert (sstpd2 false G1 T1 x0 x1 []). eapply IHn. eauto. omega.
-    eu. eexists. eapply stp2_strong_sel2. eauto. eauto. eauto. omega.
+    admit.
   - Case "selx".
     eexists. eapply stp2_strong_selx. eauto. eauto. 
   - Case "selh1". inversion H1. 
@@ -1560,8 +1600,6 @@ Proof.
   - Case "selhx". inversion H1.
   - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto.
   - Case "bind". eexists. eapply stp2_bind. eauto. eauto. eauto.
-  - Case "bind1". admit. (* eexists. eapply stp2_bind1. eauto. admit.*) (* TODO *)
-  - Case "bind2". admit. (* eexists. eapply stp2_bind2. eauto. admit.*) (* TODO *)
   - Case "wrapf". eapply IHn in H1. eu. eexists. eapply stp2_wrapf. eauto. omega.
   - Case "transf". eapply IHn in H1. eapply IHn in H2. eu. eu. eexists.
     eapply stp2_transf. eauto. eauto. omega. omega.
