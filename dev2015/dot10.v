@@ -763,7 +763,7 @@ Proof.
     { eapply t_sub.
       { eapply t_var. simpl. eauto. }
       { eapply stp_all; eauto. { eapply stp_bindx; crush2. } compute. eapply cl_fun; eauto.
-        eapply stp_fun; compute; crush2. } }
+        eapply stp_fun. compute. eapply stp_selab2. crush2. crush2. instantiate (1:=TBool). crush2. crush2. compute. eapply stp_selab1; crush2. instantiate(1:=TBool). crush2. crush2. } }
     { eapply t_typ; crush2. }
     crush2.
 Qed.
@@ -798,7 +798,9 @@ Example ex4:
   has_type [(1,TFun TBool TBool);(0,brandUnbrand)]
            (tvar 0) (TAll (TBind (TMem TBool TBool)) (TFun (TFun TBool TBool) (TFun (TFun TBool TBool) TBool))).
 Proof.
-  eapply t_sub. crush2. crush2.
+  eapply t_sub. crush2. crush2. eapply stp_all; crush2. compute. eapply stp_fun. eapply stp_fun. crush2. eapply stp_selab2; crush2. instantiate(1:=TBool). crush2. crush2.
+  eapply stp_fun. crush2. eapply stp_fun. eapply stp_selab1; crush2. instantiate(1:=TBool). crush2. crush2. crush2.
+  crush2.
 Qed.
 
 Hint Resolve ex4.
@@ -833,13 +835,10 @@ Proof.
   remember (TFun TBool (TSel 1)) as T.
   assert (T = open (TSel 1) (TFun TBool (TSelB 0))). compute. eauto.
   rewrite H.
-  eapply stp_sel1. compute. eauto.
+  eapply stp_selb1. compute. eauto.
   eapply stp_sel1. compute. eauto.
   eapply stp_mem. eauto.
-  admit.
-(*
-  eapply stp_bind1. (* FIXME: can't apply because S = None *)
-*)
+  eapply stp_bindx. eauto. crush2. crush2. crush2.
 Qed.
 
 
@@ -1374,7 +1373,6 @@ Proof.
     + SCase "topx". eexists. eauto.
     + SCase "top". eexists. eauto.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
-    + SCase "bind2". eexists. eapply stp2_bind2. eauto. eapply stp2_transf. eauto. eauto.
   - Case "botx". subst. inversion H1.
     + SCase "botx". eexists. eauto.
     + SCase "top". eexists. eauto.
