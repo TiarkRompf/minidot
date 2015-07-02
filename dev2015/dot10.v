@@ -1372,30 +1372,25 @@ Proof.
     + SCase "top". eexists. eauto.
     + SCase "?". eexists. eauto.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
-    + SCase "bind2". eexists. eapply stp2_bind2. eauto. eapply stp2_transf. eauto. eauto.
   - Case "top". subst. inversion H1.
     + SCase "topx". eexists. eauto.
     + SCase "top". eexists. eauto.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
-    + SCase "bind2". eexists. eapply stp2_bind2. eauto. eapply stp2_transf. eauto. eauto.
   - Case "bot". admit. 
   - Case "bool". subst. inversion H1.
     + SCase "top". eexists. eauto.
     + SCase "bool". eexists. eauto.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
-    + SCase "bind2". eexists. eapply stp2_bind2. eauto. eapply stp2_transf. eauto. eauto.
   - Case "fun". subst. inversion H1.
     + SCase "top". eexists. eapply stp2_top. subst. eapply stp2_wrapf. eapply stp2_fun. eapply stp2_reg2. eauto. eapply stp2_reg1. eauto.
     + SCase "fun".
       admit.
       (* eexists. eapply stp2_fun. ep. eapply stpd2_trans. eauto. eauto. destruct EEX. eauto. *)
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
-    + SCase "bind2". eexists. eapply stp2_bind2. eauto. eapply stp2_transf. eauto. eauto.
   - Case "mem". subst. inversion H1.
     + SCase "top". admit.
     + SCase "mem". admit.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
-    + SCase "bind2". eexists. eapply stp2_bind2. eauto. eapply stp2_transf. eauto. eauto.
   - Case "ssel1".
     assert (sstpd2 true GX TX G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1. 
     eu. eexists. eapply stp2_strong_sel1. eauto. eauto. eauto.
@@ -1409,7 +1404,6 @@ Proof.
     + SCase "sselx".
       subst. rewrite H2 in H6. inversion H6. subst.
       eexists. eapply stp2_strong_sel2. eauto. eauto. eauto.
-    + SCase "bind2". eexists. eapply stp2_bind2. eauto. eapply stp2_transf. eauto. eauto.
   - Case "sselx". subst. inversion H1.
     + SCase "top". admit.
     + SCase "ssel1".
@@ -1419,7 +1413,6 @@ Proof.
     + SCase "sselx".
       subst. rewrite H5 in H3. inversion H3. subst.
       eexists. eapply stp2_strong_selx. eauto. eauto.
-    + SCase "bind2". eexists. eapply stp2_bind2. eauto. eapply stp2_transf. eauto. eauto.
   - Case "all". subst. inversion H1.
     + SCase "top". admit.
     + SCase "ssel2".
@@ -1432,8 +1425,6 @@ Proof.
                           [(0, (G3, T7))]).
         eapply stpd2_trans. eapply stpd2_narrow. eapply stpd2_extendH. eexists. eapply H8. eauto. eauto. 
       repeat eu. eexists. eapply stp2_all. eauto. eauto. eauto. eauto.
-
-    + SCase "bind2". eexists. eapply stp2_bind2. eauto. eapply stp2_transf. eauto. eauto.
   - Case "bind". subst. inversion H1.
     + SCase "top". admit.
     + SCase "ssel2".
@@ -1445,34 +1436,6 @@ Proof.
                           [(0, (G1, open (TSelH (length ([]:aenv))) T0))]).
         eapply stpd2_trans. eauto. eapply stpd2_narrow. eexists. eapply H4. eauto. 
       repeat eu. eexists. eapply stp2_bind. eauto. eauto. eauto. 
-
-    + SCase "bind1".
-      admit.
-      (* WILL BE TRICKY:
-       
-        {z => T1} <: {z => T2}  &&  {z=> T2} <: T3
-
-        We could relax the definition of bind1, so absord the bindx.
-
-        But maybe it's better to try and see if we can we rule this case out entirely? 
-        Bind2/bind1 should subsume bindx, so we could have a mode flag that prevents 
-        them from occuring at the same time.
-       *)
-    + SCase "bind2". eexists. eapply stp2_bind2. eauto. eapply stp2_transf. eauto. eauto.
-  - Case "bind1".
-    assert (sstpd2 true G1 (open (TSel 0) T0) G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1.
-    eu. eexists. eapply stp2_bind1. eauto. eauto.
-  - Case "bind2". subst. inversion H1.
-    + SCase "top". admit.
-    + SCase "ssel2".
-      eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
-    + SCase "bind". admit.
-      (* WILL BE TRICKY:
-         T1 <: {z => T2}  &&  {z => T2} <: {z => T3}
-       *)
-    + SCase "bind1". eapply IHn. eapply H3. omega. eexists. eauto.
-    + SCase "bind2". eexists. eapply stp2_bind2. eauto. eapply stp2_transf. eauto. eauto.
-
   - Case "wrapf". subst. eapply IHn. eapply H2. omega. eexists. eauto.
   - Case "transf". subst. eapply IHn. eapply H2. omega. eapply IHn. eapply H3. omega. eexists. eauto.
 Grab Existential Variables.
@@ -1578,8 +1541,6 @@ Proof.
   - Case "selhx". inversion H1.
   - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto.
   - Case "bind". eexists. eapply stp2_bind. eauto. eauto. eauto.
-  - Case "bind1". admit. (* eexists. eapply stp2_bind1. eauto. admit.*) (* TODO *)
-  - Case "bind2". admit. (* eexists. eapply stp2_bind2. eauto. admit.*) (* TODO *)
   - Case "wrapf". eapply IHn in H1. eu. eexists. eapply stp2_wrapf. eauto. omega.
   - Case "transf". eapply IHn in H1. eapply IHn in H2. eu. eu. eexists.
     eapply stp2_transf. eauto. eauto. omega. omega.
@@ -2442,8 +2403,6 @@ Proof.
     + eauto. subst GH. fold id. rewrite <-EL.
       eapply closed_upgrade_free. eauto. unfold id in H5. omega.
 
-  - Case "bind1". admit.
-  - Case "bind2". admit.
   - Case "wrapf".
     intros. subst. eapply stp2_wrapf. eapply IHn; eauto. omega.
   - Case "transf".
@@ -2557,7 +2516,9 @@ Proof with stpd2_wrapf.
     destruct A as [? [? VT]].
     eapply inv_vtp_half in VT. ev.
     eapply stpd2_sel1. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
+  - Case "selb1". admit.
   - Case "sel2". admit.
+  - Case "selb2". admit.
   - Case "selx". 
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
     eapply index_safe_ex. eauto. eauto. ev.
@@ -2569,6 +2530,8 @@ Proof with stpd2_wrapf.
     inversion VT. subst. 
     eapply stpd2_sela1. eauto. eapply IHST. eauto. eauto.
   - Case "sela2". admit.
+  - Case "selab1". admit.
+  - Case "selab2". admit.
   - Case "selax". eauto.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto. ev. destruct x0.
