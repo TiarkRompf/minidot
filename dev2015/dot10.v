@@ -350,26 +350,29 @@ Definition base (v:vl): venv :=
     | vtabs GX _ _ _ => GX
   end.
 
-Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -> nat -> Prop :=
+
+Definition MAX := 1.
+
+Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -> nat -> Prop :=
 | stp2_topx: forall m G1 G2 GH n1,
     stp2 m true G1 TTop G2 TTop GH n1
 | stp2_botx: forall m G1 G2 GH n1,
     stp2 m true G1 TBot G2 TBot GH n1
 | stp2_top: forall m G1 G2 GH T n1,
-    stp2 false  false G1 T G1 T GH n1 ->
+    stp2 MAX false G1 T G1 T GH n1 ->
     stp2 m true G1 T G2 TTop GH (S n1)
 | stp2_bot: forall m G1 G2 GH T n1,
-    stp2 false false G2 T G2 T GH n1 ->
+    stp2 MAX false G2 T G2 T GH n1 ->
     stp2 m true G1 TBot G2 T GH (S n1)
 | stp2_bool: forall m G1 G2 GH n1,
     stp2 m true G1 TBool G2 TBool GH n1
 | stp2_fun: forall m G1 G2 T1 T2 T3 T4 GH n1 n2,
-    stp2 false false G2 T3 G1 T1 GH n1 ->
-    stp2 false false G1 T2 G2 T4 GH n2 ->
+    stp2 MAX false G2 T3 G1 T1 GH n1 ->
+    stp2 MAX false G1 T2 G2 T4 GH n2 ->
     stp2 m true G1 (TFun T1 T2) G2 (TFun T3 T4) GH (S (n1+n2))
 | stp2_mem: forall m G1 G2 T1 T2 T3 T4 GH n1 n2,
-    stp2 false false G2 T3 G1 T1 GH n1 ->
-    stp2 false false G1 T2 G2 T4 GH n2 ->
+    stp2 MAX false G2 T3 G1 T1 GH n1 ->
+    stp2 m true G1 T2 G2 T4 GH n2 ->
     stp2 m true G1 (TMem T1 T2) G2 (TMem T3 T4) GH (S (n1+n2))
 
 
@@ -377,80 +380,80 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
 | stp2_strong_sel1: forall G1 G2 GX TX x T2 GH n1,
     index x G1 = Some (vty GX TX) ->
     closed 0 0 TX ->
-    stp2 true true GX TX G2 T2 GH n1 ->
-    stp2 true true G1 (TSel x) G2 T2 GH (S n1)
+    stp2 0 true GX TX G2 T2 GH n1 ->
+    stp2 0 true G1 (TSel x) G2 T2 GH (S n1)
 
 | stp2_strong_sel2: forall G1 G2 GX TX x T1 GH n1,
     index x G2 = Some (vty GX TX) ->
     closed 0 0 TX ->
-    stp2 true false G1 T1 GX TX GH n1 ->
-    stp2 true true G1 T1 G2 (TSel x) GH (S n1)
+    stp2 0 false G1 T1 GX TX GH n1 ->
+    stp2 0 true G1 T1 G2 (TSel x) GH (S n1)
 
 | stp2_strong_selx: forall G1 G2 v x1 x2 GH n1,
     index x1 G1 = Some v ->
     index x2 G2 = Some v ->
-    stp2 true true G1 (TSel x1) G2 (TSel x2) GH n1
+    stp2 0 true G1 (TSel x1) G2 (TSel x2) GH n1
          
          
 (* existing object, but imprecise type *)
-| stp2_sel1: forall G1 G2 GX TX x T2 GH n1 v,
+| stp2_sel1: forall m G1 G2 GX TX x T2 GH n1 v,
     index x G1 = Some v ->
     val_type GX v TX ->
     closed 0 0 TX ->
-    stp2 false false GX TX G2 (TMem TBot T2) GH n1 ->
-    stp2 false true G1 (TSel x) G2 T2 GH (S n1)
+    stp2 (S m) false GX TX G2 (TMem TBot T2) GH n1 ->
+    stp2 (S m) true G1 (TSel x) G2 T2 GH (S n1)
 
-| stp2_sel1b: forall G1 G2 GX TX x T2 GH n1 v,
+| stp2_sel1b: forall m G1 G2 GX TX x T2 GH n1 v,
     index x G1 = Some v ->
     val_type GX v TX ->
     closed 0 0 TX ->
-    stp2 false false GX TX G2 (TBind (TMem TBot T2)) GH n1 ->
-    stp2 false true G1 (TSel x) G2 (open (TSel x) T2) GH (S n1)
+    stp2 (S (S m)) false GX TX G2 (TBind (TMem TBot T2)) GH n1 ->
+    stp2 (S (S m)) true G1 (TSel x) G2 (open (TSel x) T2) GH (S n1)
 
          
-| stp2_sel2: forall G1 G2 GX TX x T1 GH n1 v,
+| stp2_sel2: forall m G1 G2 GX TX x T1 GH n1 v,
     index x G2 = Some v ->
     val_type GX v TX ->           
     closed 0 0 TX ->
-    stp2 false false GX TX G1 (TMem T1 TTop) GH n1 ->
-    stp2 false true G1 T1 G2 (TSel x) GH (S n1)
+    stp2 (S m) false GX TX G1 (TMem T1 TTop) GH n1 ->
+    stp2 (S m) true G1 T1 G2 (TSel x) GH (S n1)
          
-| stp2_selx: forall G1 G2 v x1 x2 GH n1,
+| stp2_selx: forall m G1 G2 v x1 x2 GH n1,
     index x1 G1 = Some v ->
     index x2 G2 = Some v ->
-    stp2 false true G1 (TSel x1) G2 (TSel x2) GH n1
+    stp2 (S m) true G1 (TSel x1) G2 (TSel x2) GH n1
          
 (* hypothetical object *)
-| stp2_sela1: forall G1 G2 GX TX x T2 GH n1,
+| stp2_sela1: forall m G1 G2 GX TX x T2 GH n1,
     indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
-    stp2 false false GX TX G2 (TMem TBot T2) GH n1 ->
-    stp2 false true G1 (TSelH x) G2 T2 GH (S n1)
+    stp2 (S m) false GX TX G2 (TMem TBot T2) GH n1 ->
+    stp2 (S m) true G1 (TSelH x) G2 T2 GH (S n1)
 
-| stp2_sela2: forall G1 G2 GX TX x T1 GH n1,
+| stp2_sela2: forall m G1 G2 GX TX x T1 GH n1,
     indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
-    stp2 false false GX TX G2 (TMem T1 TTop) GH n1 ->
-    stp2 false true G1 T1 G2 (TSelH x) GH (S n1)
+    stp2 (S m) false GX TX G2 (TMem T1 TTop) GH n1 ->
+    stp2 (S m) true G1 T1 G2 (TSelH x) GH (S n1)
 
          
-| stp2_selax: forall G1 G2 GX TX x GH n1,
+| stp2_selax: forall m G1 G2 GX TX x GH n1,
     indexr x GH = Some (GX, TX) ->
     indexr x GH = Some (GX, TX) ->
-    stp2 false true G1 (TSelH x) G2 (TSelH x) GH n1
+    stp2 (S m) true G1 (TSelH x) G2 (TSelH x) GH n1
 
 
 | stp2_all: forall m G1 G2 T1 T2 T3 T4 GH n1 n2, 
-    stp2 false false G2 T3 G1 T1 GH n1 ->
+    stp2 MAX false G2 T3 G1 T1 GH n1 ->
     closed 1 (length GH) T2 -> (* must not accidentally bind x *)
     closed 1 (length GH) T4 -> 
-    stp2 false false G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) ((0,(G2, T3))::GH) n2 ->
+    stp2 MAX false G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) ((0,(G2, T3))::GH) n2 ->
     stp2 m true G1 (TAll T1 T2) G2 (TAll T3 T4) GH (S (n1+n2))
 
 | stp2_bind: forall m G1 G2 T1 T2 GH n1, 
     closed 1 (length GH) T1 -> (* must not accidentally bind x *)
     closed 1 (length GH) T2 -> 
-    stp2 false false G1 (open (TSelH (length GH)) T1) G2 (open (TSelH (length GH)) T2) ((0,(G1, open (TSelH (length GH)) T1))::GH) n1 ->
+    stp2 MAX false G1 (open (TSelH (length GH)) T1) G2 (open (TSelH (length GH)) T2) ((0,(G1, open (TSelH (length GH)) T1))::GH) n1 ->
     stp2 m true G1 (TBind T1) G2 (TBind T2) GH (S n1)
 
          
@@ -464,7 +467,6 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
 
 
 
-
 with wf_env : venv -> tenv -> Prop := 
 | wfe_nil : wf_env nil nil
 | wfe_cons : forall n v t vs ts,
@@ -475,29 +477,29 @@ with wf_env : venv -> tenv -> Prop :=
 with val_type : venv -> vl -> ty -> Prop :=
 | v_ty: forall env venv tenv T1 TE,
     wf_env venv tenv -> (* T1 wf in tenv ? *)
-    (exists n, stp2 true true venv (TMem T1 T1) env TE [] n)->
+    (exists n, stp2 0 true venv (TMem T1 T1) env TE [] n)->
     val_type env (vty venv T1) TE
 | v_bool: forall venv b TE,
-    (exists n, stp2 true true [] TBool venv TE [] n) ->
+    (exists n, stp2 0 true [] TBool venv TE [] n) ->
     val_type venv (vbool b) TE
 | v_abs: forall env venv tenv f x y T1 T2 TE,
     wf_env venv tenv ->
     has_type ((x,T1)::(f,TFun T1 T2)::tenv) y T2 ->
     fresh venv <= f ->
     1 + f <= x ->
-    (exists n, stp2 true true venv (TFun T1 T2) env TE [] n)-> 
+    (exists n, stp2 0 true venv (TFun T1 T2) env TE [] n)-> 
     val_type env (vabs venv f x y) TE
 | v_tabs: forall env venv tenv x y T1 T2 TE,
     wf_env venv tenv ->
     has_type ((x,T1)::tenv) y (open (TSel x) T2) ->
     fresh venv = x ->
-    (exists n, stp2 true true venv (TAll T1 T2) env TE [] n) ->
+    (exists n, stp2 0 true venv (TAll T1 T2) env TE [] n) ->
     val_type env (vtabs venv x T1 y) TE
 | v_pack: forall venv venv3 x v T T2 T3,
     index x venv = Some v ->
     val_type venv v T ->
     open (TSel x) T2 = T ->
-    (exists n, stp2 true true venv (TBind T2) venv3 T3 [] n) ->
+    (exists n, stp2 0 true venv (TBind T2) venv3 T3 [] n) ->
     val_type venv3 v T3
 .
 
@@ -516,8 +518,8 @@ Inductive valh_type : venv -> aenv -> (venv*ty) -> ty -> Prop :=
 
 
 
-Definition stpd2 b G1 T1 G2 T2 GH := exists n, stp2 false b G1 T1 G2 T2 GH n.
-Definition sstpd2 b G1 T1 G2 T2 GH := exists n, stp2 true b G1 T1 G2 T2 GH n.
+Definition stpd2 b G1 T1 G2 T2 GH := exists n, stp2 MAX b G1 T1 G2 T2 GH n.
+Definition sstpd2 b G1 T1 G2 T2 GH := exists n, stp2 0 b G1 T1 G2 T2 GH n.
 
 
 
