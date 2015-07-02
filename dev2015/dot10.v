@@ -393,18 +393,26 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
          
          
 (* existing object, but imprecise type *)
-| stp2_sel1: forall G1 G2 TX x T2 GH n1 v,
+| stp2_sel1: forall G1 G2 GX TX x T2 GH n1 v,
     index x G1 = Some v ->
-    val_type (base v) v TX ->
+    val_type GX v TX ->
     closed 0 0 TX ->
-    stp2 false false (base v) TX G2 (TMem TBot T2) GH n1 ->
+    stp2 false false GX TX G2 (TMem TBot T2) GH n1 ->
     stp2 false true G1 (TSel x) G2 T2 GH (S n1)
 
-| stp2_sel2: forall G1 G2 TX x T1 GH n1 v,
-    index x G2 = Some v ->
-    val_type (base v) v TX ->           
+| stp2_sel1b: forall G1 G2 GX TX x T2 GH n1 v,
+    index x G1 = Some v ->
+    val_type GX v TX ->
     closed 0 0 TX ->
-    stp2 false false (base v) TX G1 (TMem T1 TTop) GH n1 ->
+    stp2 false false GX TX G2 (TBind (TMem TBot T2)) GH n1 ->
+    stp2 false true G1 (TSel x) G2 (open (TSel x) T2) GH (S n1)
+
+         
+| stp2_sel2: forall G1 G2 GX TX x T1 GH n1 v,
+    index x G2 = Some v ->
+    val_type GX v TX ->           
+    closed 0 0 TX ->
+    stp2 false false GX TX G1 (TMem T1 TTop) GH n1 ->
     stp2 false true G1 T1 G2 (TSel x) GH (S n1)
          
 | stp2_selx: forall G1 G2 v x1 x2 GH n1,
