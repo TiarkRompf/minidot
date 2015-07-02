@@ -1517,23 +1517,46 @@ Proof.
   - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
   - Case "mem". eexists. eapply stp2_mem. eauto. eauto.
   - Case "sel1".
-    (* TODO: val_type should take size bound parameter (if we do it like this) *)
-    (* alternative: sstp2_mem returns sstp2 *)
     eapply IHn in H4. eapply sstpd2_untrans in H4. eapply valtp_widen with (2:=H4) in H2.
-    eapply invert_typ in H2. ev. eu. eu. subst.
-    assert (x3 < n). admit. (* this is safe, because the val_tp was part of our argument *)
-    assert (x2 < n). admit.
+    eapply invert_typ in H2. ev. repeat eu. subst.
     assert (closed 0 (length ([]:aenv)) x1). eapply stp2_closed2; eauto.
-    assert (sstpd2 true x0 x1 G2 T2 []). eapply sstpd2_untrans. eapply IHn. eauto. omega.
-    eu. eexists. eapply stp2_strong_sel1. eauto. eauto. eauto. omega.
+    eexists. eapply stp2_strong_sel1. eauto. eauto. eauto. omega.
+  - Case "sel1b".
+    
+    eapply IHn in H4. eapply sstpd2_untrans in H4. eapply valtp_widen with (2:=H4) in H2.
+    (* now invert base on TBind knowledge *)
+    inversion H2; ev. inversion H13. inversion H5. inversion H16. inversion H15. (* 1 left *)
+    subst. inversion H15. subst.
+    assert (stp2 false false venv0 (open (TSel x0) T3)
+                 G2 (open (TSel x) (TMem TBot T0)) [] n1) as ST.
+    admit. (* get this from substitute *)
+
+    
+    (* NOTE: the following isn't quite legal, because the size is wrong. 
+       We're inverting from valtp, which does not count towards our own size.
+       It may seem that it should. But then it needs to be inserted by stp_substitute,
+       ergo stp_substitute will no longer keep things at const size, and will
+       return larger terms.
+
+       That makes it seem unlikely that we'd be able to use IHn on the result.
+
+       We know the size of what we're putting into ST. But we have the same problem
+       as previously in narrowing: we do not know how many times the added term 
+       is used, so we cannot bound the result size.
+    *)
+    eapply IHn in ST. eapply sstpd2_untrans in ST. unfold open in ST. simpl in ST.
+    eapply valtp_widen with (2:=ST) in H13.
+    eapply invert_typ in H13. ev. repeat eu. subst.
+    assert (closed 0 (length ([]:aenv)) x2). eapply stp2_closed2; eauto.
+    eexists. eapply stp2_strong_sel1. eauto. eauto. eauto.
+    admit. (* SIZE VIOLATION FOR IHn ! *)
+    omega.
+
   - Case "sel2".
     eapply IHn in H4. eapply sstpd2_untrans in H4. eapply valtp_widen with (2:=H4) in H2.
-    eapply invert_typ in H2. ev. eu. eu. subst.
-    assert (x3 < n). admit. (* this is safe, because the val_tp was part of our argument *)
-    assert (x2 < n). admit.
+    eapply invert_typ in H2. ev. repeat eu. subst.
     assert (closed 0 (length ([]:aenv)) x1). eapply stp2_closed2; eauto.
-    assert (sstpd2 false G1 T1 x0 x1 []). eapply IHn. eauto. omega.
-    eu. eexists. eapply stp2_strong_sel2. eauto. eauto. eauto. omega.
+    eexists. eapply stp2_strong_sel2. eauto. eauto. eauto. omega.
   - Case "selx".
     eexists. eapply stp2_strong_selx. eauto. eauto. 
   - Case "selh1". inversion H1. 
