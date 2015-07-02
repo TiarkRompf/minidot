@@ -1539,6 +1539,12 @@ Proof.
                  G2 (open (TSel x) (TMem TBot T0)) [] n1) as ST.
     admit. (* get this from substitute *)
 
+    assert (closed 0 (length (nil:aenv)) (open (TSel x0) T3)). eapply stp2_closed1. eauto.
+
+    assert (stpd2 true G1 (TSel x) G2 (open (TSel x) T0) []) as CP.
+    eexists. eapply stp2_sel1. eauto. eapply H13. eauto. eauto.
+    (* PUSHBACK: we have succesfully created a stp2_sel1 object without TBind usage! *)
+    
     
     (* NOTE: the following isn't quite legal, because the size is wrong. 
        We're inverting from valtp, which does not count towards our own size.
