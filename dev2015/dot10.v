@@ -209,23 +209,41 @@ Inductive stp: tenv -> tenv -> option (bool * id) -> ty -> ty -> Prop :=
     stp G1 GH S (TMem T1 T2) (TMem T3 T4)
 | stp_sel1: forall G1 GH S TX T2 x,
     index x G1 = Some TX ->
-    stp G1 GH (Some (true,x)) TX (TMem TBot T2) ->   
+    stp G1 GH S TX (TMem TBot T2) ->   
     stp G1 GH S (TSel x) T2
 | stp_sel2: forall G1 GH S TX T1 x,
     index x G1 = Some TX ->
-    stp G1 GH (Some (true,x)) TX (TMem T1 TTop) ->
+    stp G1 GH S TX (TMem T1 TTop) ->
     stp G1 GH S T1 (TSel x)
+| stp_selb1: forall G1 GH S TX T2 x,
+    index x G1 = Some TX -> 
+    stp G1 GH S TX (TBind (TMem TBot T2)) ->   (* XXX *)
+    stp G1 GH S (TSel x) (open (TSel x) T2)
+| stp_selb2: forall G1 GH S TX T1 x,
+    index x G1 = Some TX ->
+    stp G1 GH S TX (TBind (TMem T1 TTop)) ->   (* XXX *)
+    stp G1 GH S (open (TSel x) T1) (TSel x)
 | stp_selx: forall G1 GH S TX x,
     index x G1 = Some TX ->
     stp G1 GH S (TSel x) (TSel x)
 | stp_sela1: forall G1 GH S TX T2 x,
     indexr x GH = Some TX -> 
-    stp G1 GH (Some (false,x)) TX (TMem TBot T2) ->   (* not using self name for now *)
+    stp G1 GH S TX (TMem TBot T2) ->   (* not using self name for now *)
     stp G1 GH S (TSelH x) T2
 | stp_sela2: forall G1 GH S TX T1 x,
     indexr x GH = Some TX ->
-    stp G1 GH (Some (false,x)) TX (TMem T1 TTop) ->   (* not using self name for now *)
+    stp G1 GH S TX (TMem T1 TTop) ->   (* not using self name for now *)
     stp G1 GH S T1 (TSelH x)
+| stp_selab1: forall G1 GH S TX T2 T2' x,
+    indexr x GH = Some TX -> 
+    stp G1 GH S TX (TBind (TMem TBot T2)) ->   (* XXX *)
+    T2' = (open (TSelH x) T2) ->
+    stp G1 GH S (TSelH x) T2'
+| stp_selab2: forall G1 GH S TX T1 T1' x,
+    indexr x GH = Some TX ->
+    stp G1 GH S TX (TBind (TMem T1 TTop)) ->   (* XXX *)
+    T1' = (open (TSelH x) T1) ->
+    stp G1 GH S T1' (TSelH x)
 | stp_selax: forall G1 GH S TX x,
     indexr x GH = Some TX  ->
     stp G1 GH S (TSelH x) (TSelH x)
