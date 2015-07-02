@@ -485,6 +485,12 @@ with val_type : venv -> vl -> ty -> Prop :=
     fresh venv = x ->
     (exists n, stp2 true true venv (TAll T1 T2) env TE [] n) ->
     val_type env (vtabs venv x T1 y) TE
+| v_pack: forall venv venv3 x v T T2 T3,
+    index x venv = Some v ->
+    val_type venv v T ->
+    open (TSel x) T2 = T ->
+    (exists n, stp2 true true venv (TBind T2) venv3 T3 [] n) ->
+    val_type venv3 v T3
 .
 
 
