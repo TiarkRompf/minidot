@@ -542,10 +542,10 @@ Hint Unfold stpd2.
 
 Lemma stpd2_topx: forall G1 G2 GH,
     stpd2 true G1 TTop G2 TTop GH.
-Proof. intros. exists 0. eauto. Qed.
+Proof. intros. repeat exists 0. eauto. Qed.
 Lemma stpd2_botx: forall G1 G2 GH,
     stpd2 true G1 TBot G2 TBot GH.
-Proof. intros. exists 0. eauto. Qed.
+Proof. intros. repeat exists 0. eauto. Qed.
 Lemma stpd2_top: forall G1 G2 GH T,
     stpd2 false G1 T G1 T GH ->
     stpd2 true G1 T G2 TTop GH.
@@ -556,7 +556,7 @@ Lemma stpd2_bot: forall G1 G2 GH T,
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_bool: forall G1 G2 GH,
     stpd2 true G1 TBool G2 TBool GH.
-Proof. intros. exists 0. eauto. Qed.
+Proof. intros. repeat exists 0. eauto. Qed.
 Lemma stpd2_fun: forall G1 G2 GH T11 T12 T21 T22,
     stpd2 false G2 T21 G1 T11 GH ->
     stpd2 false G1 T12 G2 T22 GH ->
@@ -564,17 +564,17 @@ Lemma stpd2_fun: forall G1 G2 GH T11 T12 T21 T22,
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_mem: forall G1 G2 GH T11 T12 T21 T22,
     stpd2 false G2 T21 G1 T11 GH ->
-    stpd2 false G1 T12 G2 T22 GH ->
+    stpd2 true G1 T12 G2 T22 GH ->
     stpd2 true G1 (TMem T11 T12) G2 (TMem T21 T22) GH.
 Proof. intros. repeat eu. eauto. Qed.
 
-Lemma stpd2_sel1: forall G1 G2 TX x T2 GH v,
+Lemma stpd2_sel1: forall G1 G2 GX TX x T2 GH v,
     index x G1 = Some v ->
-    val_type (base v) v TX ->                
+    val_type GX v TX ->                
     closed 0 0 TX ->
-    stpd2 false (base v) TX G2 (TMem TBot T2) GH ->
+    stpd2 false GX TX G2 (TMem TBot T2) GH ->
     stpd2 true G1 (TSel x) G2 T2 GH.
-Proof. intros. repeat eu. eauto. Qed.
+Proof. intros. repeat eu. eexists. eapply stp2_sel1; eauto. Qed.
 
 Lemma stpd2_sel2: forall G1 G2 TX x T1 GH v,
     index x G2 = Some v ->
@@ -582,34 +582,34 @@ Lemma stpd2_sel2: forall G1 G2 TX x T1 GH v,
     closed 0 0 TX ->
     stpd2 false (base v) TX G1 (TMem T1 TTop) GH ->
     stpd2 true G1 T1 G2 (TSel x) GH.
-Proof. intros. repeat eu. eauto. Qed.
+Proof. intros. repeat eu. eexists. eapply stp2_sel2; eauto. Qed.
 
 Lemma stpd2_selx: forall G1 G2 x1 x2 GH v,
     index x1 G1 = Some v ->
     index x2 G2 = Some v ->
     stpd2 true G1 (TSel x1) G2 (TSel x2) GH.
-Proof. intros. exists 0. eauto. Qed.
+Proof. intros. eauto. exists 0. eapply stp2_selx; eauto. Qed.
 
 Lemma stpd2_sela1: forall G1 G2 GX TX x T2 GH,
     indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
     stpd2 false GX TX G2 (TMem TBot T2) GH ->
     stpd2 true G1 (TSelH x) G2 T2 GH.
-Proof. intros. repeat eu. eauto. Qed.
+Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela1; eauto. Qed.
 
 Lemma stpd2_sela2: forall G1 G2 GX TX x T1 GH,
     indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
     stpd2 false GX TX G2 (TMem T1 TTop) GH ->
     stpd2 true G1 T1 G2 (TSelH x) GH.
-Proof. intros. repeat eu. eauto. Qed.
+Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela2; eauto. Qed.
 
          
 Lemma stpd2_selax: forall G1 G2 GX TX x GH,
     indexr x GH = Some (GX, TX) ->
     indexr x GH = Some (GX, TX) ->
     stpd2 true G1 (TSelH x) G2 (TSelH x) GH.
-Proof. intros. exists 0. eauto. Qed.
+Proof. intros. exists 1. eauto. eapply stp2_selax; eauto. Qed.
 
 
 Lemma stpd2_all: forall G1 G2 T1 T2 T3 T4 GH, 
@@ -627,8 +627,6 @@ Lemma stpd2_bind: forall G1 G2 T1 T2 GH,
     stpd2 true G1 (TBind T1) G2 (TBind T2) GH.
 Proof. intros. repeat eu. eauto. Qed.
 
-(* TODO: bind1, bind2 *)
-
 Lemma stpd2_wrapf: forall G1 G2 T1 T2 GH,
     stpd2 true G1 T1 G2 T2 GH ->
     stpd2 false G1 T1 G2 T2 GH.
@@ -638,8 +636,6 @@ Lemma stpd2_transf: forall G1 G2 G3 T1 T2 T3 GH,
     stpd2 false G2 T2 G3 T3 GH ->           
     stpd2 false G1 T1 G3 T3 GH.
 Proof. intros. repeat eu. eauto. Qed.
-
-
 
 
 
@@ -1328,7 +1324,7 @@ Hint Resolve not_stuck.
 
 
 Lemma stpd2_trans_aux: forall n, forall G1 G2 G3 T1 T2 T3 H n1,
-  stp2 false false G1 T1 G2 T2 H n1 -> n1 < n ->
+  stp2 MAX false G1 T1 G2 T2 H n1 -> n1 < n ->
   stpd2 false G2 T2 G3 T3 H ->
   stpd2 false G1 T1 G3 T3 H.
 Proof.
@@ -1367,7 +1363,7 @@ Proof. admit. Qed.
 
 
 Lemma sstpd2_trans_aux: forall n, forall m G1 G2 G3 T1 T2 T3 n1,
-  stp2 true m G1 T1 G2 T2 nil n1 -> n1 < n ->
+  stp2 0 m G1 T1 G2 T2 nil n1 -> n1 < n ->
   sstpd2 true G2 T2 G3 T3 nil ->
   sstpd2 true G1 T1 G3 T3 nil.
 Proof.
@@ -1460,7 +1456,7 @@ Proof. intros. repeat eu. eapply sstpd2_trans_aux; eauto. eexists. eauto. Qed.
 
 
 Lemma sstpd2_untrans_aux: forall n, forall G1 G2 T1 T2 n1,
-  stp2 true false G1 T1 G2 T2 nil n1 -> n1 < n ->
+  stp2 0 false G1 T1 G2 T2 nil n1 -> n1 < n ->
   sstpd2 true G1 T1 G2 T2 nil.
 Proof.
   intros n. induction n; intros; try omega.
