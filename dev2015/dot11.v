@@ -1,12 +1,14 @@
 (* Full safety for DOT (WIP) *)
 
 (* this version is based on fsub2.v *)
-(* based on that, it adds self types *)
+(* based on that, it adds self types. *)
+(* copied from dot10.)
+(* based on that, it adds path type assignment (ptp2) WIP!.)
 
 (*
 TODO:
+- figure out bind pushback for TSel
 - intersection types
-
 - stp2 trans + narrowing 
 - stp/stp2 weakening and regularity
 *)
