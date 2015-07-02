@@ -1508,9 +1508,8 @@ Proof.
 Qed.
 
 
-
-Lemma stpd2_to_sstpd2_aux: forall n, forall G1 G2 T1 T2 m n1,
-  stp2 false m G1 T1 G2 T2 nil n1 -> n1 < n ->
+Lemma stpd2_to_sstpd2_aux1: forall n, forall G1 G2 T1 T2 m n1,
+  stp2 1 m G1 T1 G2 T2 nil n1 -> n1 < n ->
   sstpd2 m G1 T1 G2 T2 nil.
 Proof.
   intros n. induction n; intros; try omega.
@@ -1521,63 +1520,97 @@ Proof.
   - Case "top". eexists. eauto.
   - Case "bool". eexists. eauto.
   - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
-  - Case "mem". eexists. eapply stp2_mem. eauto. eauto.
+  - Case "mem".
+    eapply IHn in H2. eu.
+    eexists. eapply stp2_mem. eauto. eauto. omega.
   - Case "sel1".
-    eapply IHn in H4. eapply sstpd2_untrans in H4. eapply valtp_widen with (2:=H4) in H2.
-    eapply invert_typ in H2. ev. repeat eu. subst.
+    eapply IHn in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
+    eapply invert_typ in H3. ev. repeat eu. subst.
     assert (closed 0 (length ([]:aenv)) x1). eapply stp2_closed2; eauto.
     eexists. eapply stp2_strong_sel1. eauto. eauto. eauto. omega.
-  - Case "sel1b".
-    
-    eapply IHn in H4. eapply sstpd2_untrans in H4. eapply valtp_widen with (2:=H4) in H2.
-    (* now invert base on TBind knowledge *)
-    inversion H2; ev. inversion H13. inversion H5. inversion H16. inversion H15. (* 1 left *)
-    subst. inversion H15. subst.
-    assert (stp2 false false venv0 (open (TSel x0) T3)
-                 G2 (open (TSel x) (TMem TBot T0)) [] n1) as ST.
-    admit. (* get this from substitute *)
-
-    assert (closed 0 (length (nil:aenv)) (open (TSel x0) T3)). eapply stp2_closed1. eauto.
-
-    assert (stpd2 true G1 (TSel x) G2 (open (TSel x) T0) []) as CP.
-    eexists. eapply stp2_sel1. eauto. eapply H13. eauto. eauto.
-    (* PUSHBACK: we have succesfully created a stp2_sel1 object without TBind usage! *)
-    
-    
-    (* NOTE: the following isn't quite legal, because the size is wrong. 
-       We're inverting from valtp, which does not count towards our own size.
-       It may seem that it should. But then it needs to be inserted by stp_substitute,
-       ergo stp_substitute will no longer keep things at const size, and will
-       return larger terms.
-
-       That makes it seem unlikely that we'd be able to use IHn on the result.
-
-       We know the size of what we're putting into ST. But we have the same problem
-       as previously in narrowing: we do not know how many times the added term 
-       is used, so we cannot bound the result size.
-    *)
-    eapply IHn in ST. eapply sstpd2_untrans in ST. unfold open in ST. simpl in ST.
-    eapply valtp_widen with (2:=ST) in H13.
-    eapply invert_typ in H13. ev. repeat eu. subst.
-    assert (closed 0 (length ([]:aenv)) x2). eapply stp2_closed2; eauto.
-    eexists. eapply stp2_strong_sel1. eauto. eauto. eauto.
-    admit. (* SIZE VIOLATION FOR IHn ! *)
-    omega.
-
   - Case "sel2".
-    eapply IHn in H4. eapply sstpd2_untrans in H4. eapply valtp_widen with (2:=H4) in H2.
-    eapply invert_typ in H2. ev. repeat eu. subst.
+    eapply IHn in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
+    eapply invert_typ in H3. ev. repeat eu. subst.
     assert (closed 0 (length ([]:aenv)) x1). eapply stp2_closed2; eauto.
     eexists. eapply stp2_strong_sel2. eauto. eauto. eauto. omega.
   - Case "selx".
     eexists. eapply stp2_strong_selx. eauto. eauto. 
-  - Case "selh1". inversion H1. 
-  - Case "selh2". inversion H1. 
-  - Case "selhx". inversion H1.
+  - Case "sela1". inversion H2. 
+  - Case "sela2". inversion H2. 
+  - Case "selax". inversion H2.
   - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto.
   - Case "bind". eexists. eapply stp2_bind. eauto. eauto. eauto.
   - Case "wrapf". eapply IHn in H1. eu. eexists. eapply stp2_wrapf. eauto. omega.
   - Case "transf". eapply IHn in H1. eapply IHn in H2. eu. eu. eexists.
+    eapply stp2_transf. eauto. eauto. omega. omega.
+    Grab Existential Variables.
+    apply 0. apply 0. apply 0. apply 0.
+Qed.
+
+Lemma stpd2_to_sstpd2_aux2: forall n, forall G1 G2 T1 T2 m n1,
+  stp2 2 m G1 T1 G2 T2 [] n1 -> n1 < n ->
+  exists n2, stp2 1 m G1 T1 G2 T2 [] n2.
+Proof.
+  intros n. induction n; intros; try omega.
+  inversion H.
+  - Case "botx". eexists. eauto.
+  - Case "topx". eexists. eauto.
+  - Case "bot". eexists. eauto.
+  - Case "top". eexists. eauto.
+  - Case "bool". eexists. eauto.
+  - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
+  - Case "mem".
+    eapply IHn in H2. ev.
+    eexists. eapply stp2_mem; eauto. omega.
+  - Case "sel1".
+    eapply IHn in H5. ev.
+    eexists. eapply stp2_sel1; eauto. omega.
+  - Case "sel1b".
+    eapply IHn in H5. ev. eapply stpd2_to_sstpd2_aux1 in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
+    (* now invert base on TBind knowledge -- TODO: helper lemma*)
+    inversion H3; ev. inversion H14. inversion H13. inversion H17. inversion H16. (* 1 case left *)
+    subst. inversion H16. subst.
+    assert (stp2 1 false venv0 (open (TSel x1) T3)
+                 G2 (open (TSel x) (TMem TBot T0)) [] n1) as ST.
+    admit. (* get this from substitute *)
+
+    (* NOTE: this crucially depends on the result of inverting stp_bind having
+       level 1, so we don't need to do induction on it.
+
+       Right now, this is quite a limitation: we cannot use level 2 derivations inside binds.
+
+       - We cannot lower levels in hypothetical contexts, because we need to untrans above.
+
+         So we cannot change the bind's body elsewhere, before inverting here.
+
+       - Doing induction on ST here would be difficult, because the size is wrong.
+
+         We're inverting from valtp, which does not count towards our own size.
+         It may seem that it should. But then it needs to be inserted by stp_substitute,
+         ergo stp_substitute will no longer keep things at const size, and will
+         return larger terms.
+
+         That makes it seem unlikely that we'd be able to use IHn on the result.
+
+         We know the size of what we're putting into ST. But we have the same problem
+         as previously in narrowing: we do not know how many times the added term 
+         is used, so we cannot bound the result size.
+    *)
+    
+    assert (closed 0 (length (nil:aenv)) (open (TSel x1) T3)). eapply stp2_closed1. eauto.
+    eexists. eapply stp2_sel1. eauto. eapply H14. eauto. eauto. eauto. omega.
+  - Case "sel2".
+    eapply IHn in H5. ev.
+    eexists. eapply stp2_sel2; eauto. omega.
+  - Case "selx".
+    eexists. eapply stp2_selx. eauto. eauto. 
+  - Case "selh1". inversion H2. 
+  - Case "selh2". inversion H2. 
+  - Case "selhx". inversion H2.
+  - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto.
+  - Case "bind". eexists. eapply stp2_bind. eauto. eauto. eauto.
+  - Case "wrapf". eapply IHn in H1. ev. eexists. eapply stp2_wrapf. eauto. omega.
+  - Case "transf". eapply IHn in H1. eapply IHn in H2. ev. ev. eexists.
     eapply stp2_transf. eauto. eauto. omega. omega.
     Grab Existential Variables.
     apply 0. apply 0. apply 0. apply 0.
