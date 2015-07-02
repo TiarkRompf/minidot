@@ -2660,11 +2660,14 @@ Proof.
     + destruct (index_safe_ex venv0 env T1 i) as [v [I V]]; eauto. 
       rewrite I. eapply not_stuck. eapply V.
 
+    + SCase "pack". admit.
+    + SCase "unpack". admit.
+      
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "Typ".
     remember (ttyp t) as e. induction H0; inversion Heqe; subst.
-    + eapply not_stuck. eapply v_ty; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+    + admit. (* TODO: insert v_pack! *) (*eapply not_stuck. eapply v_pack. eapply v_ty; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor. *)
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
       
   - Case "App".
