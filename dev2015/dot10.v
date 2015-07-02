@@ -1491,13 +1491,13 @@ Lemma invert_typ: forall venv vx T1 T2,
   val_type venv vx (TMem T1 T2) ->
   exists GX TX,
     vx = (vty GX TX) /\
-    stpd2 false venv T1 GX TX [] /\
-    stpd2 false GX TX venv T2 [].
+    sstpd2 false venv T1 GX TX [] /\
+    sstpd2 true GX TX venv T2 [].
 Proof.
   intros. inversion H; ev; try solve by inversion. inversion H1.
   subst.
-  assert (stpd2 false venv0 T1 venv1 T0 []) as E1. eauto.
-  assert (stpd2 false venv1 T0 venv0 T2 []) as E2. eauto.
+  assert (sstpd2 false venv0 T1 venv1 T0 []) as E1. admit. (* FIXME: def of stp_mem *)
+  assert (sstpd2 true venv1 T0 venv0 T2 []) as E2. admit.
   repeat eu. repeat eexists; eauto. 
 Qed.
 
