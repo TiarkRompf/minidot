@@ -260,22 +260,6 @@ Inductive stp: tenv -> tenv -> option (bool * id) -> ty -> ty -> Prop :=
     closed 1 (length GH) T2 -> 
     stp G1 ((0,open (TSelH x) T1)::GH) S (open (TSelH x) T1) (open (TSelH x) T2) ->
     stp G1 GH S (TBind T1) (TBind T2)
-| stp_bind1: forall G1 GH T1 T2 x,
-    closed 1 (length GH) T1 -> (* must not accidentally bind x *)
-    stp G1 GH (Some (true,x)) (open (TSel x) T1) T2 ->
-    stp G1 GH (Some (true,x)) (TBind T1) T2
-| stp_bind2: forall G1 GH T1 T2 x,
-    closed 1 (length GH) T2 -> 
-    stp G1 GH (Some (true,x)) T1 (open (TSel x) T2) ->
-    stp G1 GH (Some (true,x)) T1 (TBind T2)
-| stp_binda1: forall G1 GH T1 T2 x,
-    closed 1 (length GH) T1 -> (* must not accidentally bind x *)
-    stp G1 GH (Some (false,x)) (open (TSelH x) T1) T2 ->
-    stp G1 GH (Some (false,x)) (TBind T1) T2
-| stp_binda2: forall G1 GH T1 T2 x,
-    closed 1 (length GH) T2 -> 
-    stp G1 GH (Some (false,x)) T1 (open (TSelH x) T2) ->
-    stp G1 GH (Some (false,x)) T1 (TBind T2)
 .
 
 
