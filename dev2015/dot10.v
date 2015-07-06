@@ -378,7 +378,8 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
 | stp2_mem2: forall m G1 G2 T1 T2 T3 T4 GH n1 n2,
     stp2 (S m) false G2 T3 G1 T1 GH n1 ->
     stp2 (S m) false G1 T2 G2 T4 GH n2 ->
-    stp2 (S m) true G1 (TMem T1 T2) G2 (TMem T3 T4) GH (S (n1+n2))         
+    stp2 (S m) true G1 (TMem T1 T2) G2 (TMem T3 T4) GH (S (n1+n2))
+
 
 (* strong version, with precise/invertible bounds *)
 | stp2_strong_sel1: forall G1 G2 GX TX x T2 GH n1,
@@ -543,6 +544,7 @@ Ltac ep := match goal with
 
 Ltac eu := match goal with
              | H: stpd2 _ _ _ _ _ _ |- _ => destruct H as [? H]
+             | H: atpd2 _ _ _ _ _ _ |- _ => destruct H as [? H]
              | H: sstpd2 _ _ _ _ _ _ |- _ => destruct H as [? H]
 (*             | H: exists n: nat ,  _ |- _  =>
                destruct H as [e P] *)
@@ -577,7 +579,7 @@ Lemma stpd2_mem: forall G1 G2 GH T11 T12 T21 T22,
     stpd2 false G2 T21 G1 T11 GH ->
     stpd2 false G1 T12 G2 T22 GH ->
     stpd2 true G1 (TMem T11 T12) G2 (TMem T21 T22) GH.
-Proof. intros. repeat eu. eauto. Qed.
+Proof. intros. repeat eu. eauto. unfold stpd2. eexists. eapply stp2_mem2; eauto. Qed.
 
 Lemma stpd2_sel1: forall G1 G2 GX TX x T2 GH v,
     index x G1 = Some v ->
@@ -1546,7 +1548,7 @@ Proof.
   - Case "bool". eexists. eauto.
   - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
   - Case "mem".
-    eapply IHn in H2. eu.
+    eapply IHn in H3. eapply sstpd2_untrans in H3. eu.
     eexists. eapply stp2_mem. eauto. eauto. omega.
   - Case "sel1".
     eapply IHn in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
@@ -1585,8 +1587,8 @@ Proof.
   - Case "bool". eexists. eauto.
   - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
   - Case "mem".
-    eapply IHn in H2. ev.
-    eexists. eapply stp2_mem; eauto. omega.
+    eapply IHn in H2. ev. eapply IHn in H3. ev.
+    eexists. eapply stp2_mem2; eauto. omega. omega.
   - Case "sel1".
     eapply IHn in H5. ev.
     eexists. eapply stp2_sel1; eauto. omega.
@@ -2342,7 +2344,7 @@ Proof.
     intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
     eapply compat_mem in IX1. repeat destruct IX1 as [? IX1].
     eapply compat_mem in IX2. repeat destruct IX2 as [? IX2].
-    subst. eapply stp2_mem. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
+    subst. eapply stp2_mem2. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
     eauto. eauto.
                                 
   - Case "sel1". 
@@ -2614,7 +2616,7 @@ Proof with stpd2_wrapf.
   - Case "bot". eapply stpd2_bot; eauto.
   - Case "bool". eapply stpd2_bool; eauto.
   - Case "fun". eapply stpd2_fun; eauto.
-  - Case "mem". eapply stpd2_mem; eauto. admit. (* FIXME: cannot readily trans here *)
+  - Case "mem". eapply stpd2_mem; eauto. 
   - Case "sel1". 
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
     eapply index_safe_ex. eauto. eauto.
