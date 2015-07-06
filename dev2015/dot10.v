@@ -438,8 +438,8 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
 | stp2_selab1: forall m G1 G2 GX TX x T2 GH n1, (* XXX TODO *)
     indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
-    stp2 (S (S m)) false GX TX G2 (TBind (TMem TBot T2)) GH n1 ->
-    stp2 (S (S m)) true G1 (TSelH x) G2 (open (TSelH x) T2) GH (S n1)
+    stp2 (S m) false GX TX G2 (TBind (TMem TBot T2)) [] n1 ->
+    stp2 (S m) true G1 (TSelH x) G2 (open (TSelH x) T2) GH (S n1)
 
 | stp2_sela2: forall m G1 G2 GX TX x T1 GH n1,
     indexr x GH = Some (GX, TX) ->
@@ -620,7 +620,7 @@ Proof. intros. eauto. exists 0. eapply stp2_selx; eauto. Qed.
 Lemma stpd2_selab1: forall G1 G2 GX TX x T2 GH,
     indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
-    stpd2 false GX TX G2 (TBind (TMem TBot T2)) GH ->
+    stpd2 false GX TX G2 (TBind (TMem TBot T2)) [] -> (* Note GH = [] *)
     stpd2 true G1 (TSelH x) G2 (open (TSelH x) T2) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab1; eauto. Qed.
 
@@ -1583,7 +1583,8 @@ Proof.
     eexists. eapply stp2_strong_sel2. eauto. eauto. eauto. omega.
   - Case "selx".
     eexists. eapply stp2_strong_selx. eauto. eauto. 
-  - Case "sela1". inversion H2. 
+  - Case "sela1". inversion H2.
+  - Case "selab1". inversion H2. 
   - Case "sela2". inversion H2. 
   - Case "selax". inversion H2.
   - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto.
@@ -1631,6 +1632,10 @@ Proof.
 
          So we cannot change the bind's body elsewhere, before inverting here.
 
+         (UPDATE: actually that's what we're doing now. We get away with it
+         because GH = [], which means that we may not be able to  unfold nontrivial 
+         binds for selections on hypothetical vars)
+
        - Doing induction on ST here would be difficult, because the size is wrong.
 
          We're inverting from valtp, which does not count towards our own size.
@@ -1654,7 +1659,11 @@ Proof.
   - Case "selx".
     eexists. eapply stp2_selx. eauto. eauto. 
   - Case "sela1". eapply IHn in H3. ev. eexists. eapply stp2_sela1; eauto. omega.
-  - Case "selab1". admit. (* THIS ONE WILL NOT WORK AS IS! *)
+  - Case "selab1".
+    (* THIS ONE WILL NOT WORK AT LEVEL 2 (no way to remove *)
+    (* so we use it at level 1, and translate during subst *)
+    (* restriction GH = [] ensures that level 2 terms are already removed *)
+    eapply IHn in H3. ev. eexists. eapply stp2_selab1; eauto. omega.
   - Case "sela2". eapply IHn in H3. ev. eexists. eapply stp2_sela2; eauto. omega.
   - Case "selhx". eexists. eapply stp2_selax. eauto. eauto.
   - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto.
@@ -2449,10 +2458,28 @@ Proof.
     + eauto. + subst GH. eauto. + eauto.
       
 
-  - Case "selab1". admit. (* TODO! *)
+  - Case "selab1".
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
+    
+    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-
-
+    assert (compat GXX TXX V G1 (TSelH x) T1') as IXX. eauto.
+    
+    eapply (compat_selh GXX TXX V G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
+    
+    destruct IX1.
+    + SCase "x = 0".
+      assert (d = 0). admit. (* either we are called with m = 1 (from 2->1) or with m = 2, in which case we can call 2->1 *)
+      subst d. 
+      admit. (* TODO! *)        
+        (*
+          Do basically what 2->1 does. Create a sel1 node.
+         *)
+    + SCase "x > 0".
+      ev. subst.
+      admit. (* miss case, eapply stp2_selab1 *)
+    
   - Case "sela2". admit. (* just like sela1 *)
     
   - Case "selax".
