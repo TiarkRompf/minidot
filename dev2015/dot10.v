@@ -438,8 +438,8 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
 | stp2_selab1: forall m G1 G2 GX TX x T2 GH n1, (* XXX TODO *)
     indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
-    stp2 (S m) false GX TX G2 (TBind (TMem TBot T2)) GH n1 ->
-    stp2 (S m) true G1 (TSelH x) G2 (open (TSel x) T2) GH (S n1)
+    stp2 (S (S m)) false GX TX G2 (TBind (TMem TBot T2)) GH n1 ->
+    stp2 (S (S m)) true G1 (TSelH x) G2 (open (TSelH x) T2) GH (S n1)
 
 | stp2_sela2: forall m G1 G2 GX TX x T1 GH n1,
     indexr x GH = Some (GX, TX) ->
@@ -621,7 +621,7 @@ Lemma stpd2_selab1: forall G1 G2 GX TX x T2 GH,
     indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
     stpd2 false GX TX G2 (TBind (TMem TBot T2)) GH ->
-    stpd2 true G1 (TSelH x) G2 (open (TSel x) T2) GH.
+    stpd2 true G1 (TSelH x) G2 (open (TSelH x) T2) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab1; eauto. Qed.
 
 Lemma stpd2_sela1: forall G1 G2 GX TX x T2 GH,
@@ -1653,8 +1653,9 @@ Proof.
     eexists. eapply stp2_sel2; eauto. omega.
   - Case "selx".
     eexists. eapply stp2_selx. eauto. eauto. 
-  - Case "selh1". eapply IHn in H3. ev. eexists. eapply stp2_sela1; eauto. omega.
-  - Case "selh2". eapply IHn in H3. ev. eexists. eapply stp2_sela2; eauto. omega.
+  - Case "sela1". eapply IHn in H3. ev. eexists. eapply stp2_sela1; eauto. omega.
+  - Case "selab1". admit. (* THIS ONE WILL NOT WORK AS IS! *)
+  - Case "sela2". eapply IHn in H3. ev. eexists. eapply stp2_sela2; eauto. omega.
   - Case "selhx". eexists. eapply stp2_selax. eauto. eauto.
   - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto.
   - Case "bind".
@@ -2447,6 +2448,11 @@ Proof.
     (* remaining obligations *)
     + eauto. + subst GH. eauto. + eauto.
       
+
+  - Case "selab1". admit. (* TODO! *)
+
+
+
   - Case "sela2". admit. (* just like sela1 *)
     
   - Case "selax".
@@ -2660,7 +2666,7 @@ Proof with stpd2_wrapf.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
     eapply inv_vtp_half in VT. ev.
-    eapply stpd2_sel1b. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
+    eapply stpd2_sel1b. eauto. eauto. eauto. eapply stpd2_trans. eauto. eapply IHST;eauto. econstructor.
   - Case "selb2". admit.
   - Case "selx". 
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
@@ -2678,7 +2684,12 @@ Proof with stpd2_wrapf.
     destruct A as [? [? VT]]. destruct x0.
     inversion VT. subst. 
     eapply stpd2_sela2. eauto. eapply IHST. eauto. eauto.
-  - Case "selab1". admit.
+  - Case "selab1".
+    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
+    eapply index_safeh_ex. eauto. eauto. eauto.
+    destruct A as [? [? VT]].
+    inversion VT. subst. 
+    eapply stpd2_selab1. eauto. eapply IHST. eauto. eauto.
   - Case "selab2". admit.
   - Case "selax". eauto.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
