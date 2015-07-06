@@ -2623,8 +2623,13 @@ Proof with stpd2_wrapf.
     destruct A as [? [? VT]].
     eapply inv_vtp_half in VT. ev.
     eapply stpd2_sel1. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
+  - Case "sel2".
+    assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
+    eapply index_safe_ex. eauto. eauto.
+    destruct A as [? [? VT]].
+    eapply inv_vtp_half in VT. ev.
+    eapply stpd2_sel2. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
   - Case "selb1". admit.
-  - Case "sel2". admit.
   - Case "selb2". admit.
   - Case "selx". 
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
@@ -2636,7 +2641,12 @@ Proof with stpd2_wrapf.
     destruct A as [? [? VT]]. destruct x0.
     inversion VT. subst. 
     eapply stpd2_sela1. eauto. eapply IHST. eauto. eauto.
-  - Case "sela2". admit.
+  - Case "sela2".
+    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
+    eapply index_safeh_ex. eauto. eauto. eauto.
+    destruct A as [? [? VT]]. destruct x0.
+    inversion VT. subst. 
+    eapply stpd2_sela2. eauto. eapply IHST. eauto. eauto.
   - Case "selab1". admit.
   - Case "selab2". admit.
   - Case "selax". eauto.
