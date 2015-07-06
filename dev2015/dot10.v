@@ -2363,8 +2363,13 @@ Proof.
     eapply compat_mem_fwd2. eauto. eauto.
     eauto. eauto. eauto. eauto.
 
-  - Case "sel1b". admit.
+  - Case "sel1b".
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
 
+    assert (closed 0 (length ([]:aenv)) (TBind (TMem TBot T0))). eapply stp2_closed2; eauto.
+    simpl in  H6. unfold closed in H6. inversion H6. subst. inversion H10. subst. 
+
+    admit. (* eapply stp2_sel1b. arg has GH = [] so nothing to be done (inversion IX2 and then a couple simplifications *)
     
   - Case "sel2". 
     intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
