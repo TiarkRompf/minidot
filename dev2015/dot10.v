@@ -217,11 +217,11 @@ Inductive stp: tenv -> tenv -> option (bool * id) -> ty -> ty -> Prop :=
     stp G1 GH S T1 (TSel x)
 | stp_selb1: forall G1 GH S TX T2 x,
     index x G1 = Some TX -> 
-    stp G1 GH S TX (TBind (TMem TBot T2)) ->   (* XXX *)
+    stp G1 [] S TX (TBind (TMem TBot T2)) ->   (* Note GH = [] *)
     stp G1 GH S (TSel x) (open (TSel x) T2)
 | stp_selb2: forall G1 GH S TX T1 x,
     index x G1 = Some TX ->
-    stp G1 GH S TX (TBind (TMem T1 TTop)) ->   (* XXX *)
+    stp G1 [] S TX (TBind (TMem T1 TTop)) ->   (* Note GH = [] *)
     stp G1 GH S (open (TSel x) T1) (TSel x)
 | stp_selx: forall G1 GH S TX x,
     index x G1 = Some TX ->
@@ -412,7 +412,7 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     index x G1 = Some v ->
     val_type GX v TX ->
     closed 0 0 TX ->
-    stp2 (S (S m)) false GX TX G2 (TBind (TMem TBot T2)) [] n1 ->
+    stp2 (S (S m)) false GX TX G2 (TBind (TMem TBot T2)) [] n1 -> (* Note GH = [] *)
     stp2 (S (S m)) true G1 (TSel x) G2 (open (TSel x) T2) GH (S n1)
 
          
@@ -434,6 +434,12 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     (* closed 0 x TX -> *)
     stp2 (S m) false GX TX G2 (TMem TBot T2) GH n1 ->
     stp2 (S m) true G1 (TSelH x) G2 T2 GH (S n1)
+
+| stp2_selab1: forall m G1 G2 GX TX x T2 GH n1, (* XXX TODO *)
+    indexr x GH = Some (GX, TX) ->
+    (* closed 0 x TX -> *)
+    stp2 (S m) false GX TX G2 (TBind (TMem TBot T2)) GH n1 ->
+    stp2 (S m) true G1 (TSelH x) G2 (open (TSel x) T2) GH (S n1)
 
 | stp2_sela2: forall m G1 G2 GX TX x T1 GH n1,
     indexr x GH = Some (GX, TX) ->
@@ -589,6 +595,14 @@ Lemma stpd2_sel1: forall G1 G2 GX TX x T2 GH v,
     stpd2 true G1 (TSel x) G2 T2 GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel1; eauto. Qed.
 
+Lemma stpd2_sel1b: forall G1 G2 GX TX x T2 GH v,
+    index x G1 = Some v ->
+    val_type GX v TX ->                
+    closed 0 0 TX ->
+    stpd2 false GX TX G2 (TBind (TMem TBot T2)) [] -> (* Note GH = [] *)
+    stpd2 true G1 (TSel x) G2 (open (TSel x) T2) GH.
+Proof. intros. repeat eu. eexists. eapply stp2_sel1b; eauto. Qed.
+
 Lemma stpd2_sel2: forall G1 G2 TX x T1 GH v,
     index x G2 = Some v ->
     val_type (base v) v TX ->                
@@ -602,6 +616,13 @@ Lemma stpd2_selx: forall G1 G2 x1 x2 GH v,
     index x2 G2 = Some v ->
     stpd2 true G1 (TSel x1) G2 (TSel x2) GH.
 Proof. intros. eauto. exists 0. eapply stp2_selx; eauto. Qed.
+
+Lemma stpd2_selab1: forall G1 G2 GX TX x T2 GH,
+    indexr x GH = Some (GX, TX) ->
+    (* closed 0 x TX -> *)
+    stpd2 false GX TX G2 (TBind (TMem TBot T2)) GH ->
+    stpd2 true G1 (TSelH x) G2 (open (TSel x) T2) GH.
+Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab1; eauto. Qed.
 
 Lemma stpd2_sela1: forall G1 G2 GX TX x T2 GH,
     indexr x GH = Some (GX, TX) ->
@@ -2634,7 +2655,12 @@ Proof with stpd2_wrapf.
     destruct A as [? [? VT]].
     eapply inv_vtp_half in VT. ev.
     eapply stpd2_sel2. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
-  - Case "selb1". admit.
+  - Case "selb1".
+    assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
+    eapply index_safe_ex. eauto. eauto.
+    destruct A as [? [? VT]].
+    eapply inv_vtp_half in VT. ev.
+    eapply stpd2_sel1b. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
   - Case "selb2". admit.
   - Case "selx". 
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
