@@ -5,19 +5,7 @@ Require Export Arith.EqNat.
 Require Export Arith.Le.
 
 (* 
-subtyping: 
-  - looking at single-environment case again.
-  - new pushback proof structure: transitivity axiom only 
-    needed in contravariant positions
-  - realizable type: precise expansion, and upper bounds 
-    are also realizable
-
- TODO/QUESTIONs:
-  - bind2/bind1 rules?
-  - intersection/union types?
-  - restrictions: recursive members?
-  - if lower bound is bottom, must upper bound still be realizable?
-    --> cannot be part of nontrivial T1 < x.A < T2 chain
+WIP: experiment with more layers of pushback / translation
 *)
 
 
@@ -1787,10 +1775,181 @@ Definition trans_up3 n := forall n1, n1 <= n ->
                       trans_on3 n1.
 Hint Unfold trans_up3.
 
-(* proper trans lemma *)
+Lemma trans_le3: forall n n1,
+                      trans_up3 n ->
+                      n1 <= n ->
+                      trans_on3 n1
+.
+Proof. intros. unfold trans_up3 in H. eapply H. eauto. Qed.
+
+
+
+Lemma stpd3_trans_hi: forall G1 T1 T2 TX n1 n2,
+  stpd3 true G1 T1 T2 ->                     
+  stp3 true G1 TX (TMem TBot T1) n1 ->
+  itp3 G1 TX n2 ->
+  trans_up3 n1 ->
+  stpd3 true G1 TX (TMem TBot T2).
+Proof.
+  admit.
+Qed.
+
+Lemma stpd3_trans_lo: forall G1 T1 T2 TX n2,
+  stpd3 true G1 T1 T2 ->                     
+  stpd3 true G1 TX (TMem T2 TTop) ->
+  itp3 G1 TX n2 ->
+  stpd3 true G1 TX (TMem T1 TTop).
+Proof.
+  admit.
+Qed.
+
+Lemma itp3_exp: forall G1 T1 TL TU n1 n2,
+  itp3 G1 T1 n1 ->
+  stp3 true G1 T1 (TMem TL TU) n2 ->
+  exists TL1 TU1, exp G1 T1 (TMem TL1 TU1).
+Proof.
+  admit.
+Qed.
+
+Lemma stpd3_trans_cross: forall G1 TX T1 T2 n1 n2 n,
+  stp3 true G1 TX (TMem T1 TTop) n1 ->
+  stpd3 true G1 TX (TMem TBot T2) ->
+  itp3 G1 TX n2 ->
+  n1 <= n ->
+  trans_up3 n ->
+  stpd3 true G1 T1 T2.
+Proof.
+  admit.
+Qed.
+
+
+  (* proper trans lemma *)
 Lemma stp3_trans: forall n, trans_up3 n.
 Proof.
-admit. Qed.
+(*
+  intros n. induction n. {
+    Case "z".
+    unfold trans_up3. intros n1 NE1 b G1 T1 T2 T3 S12 S23.
+    destruct S23 as [? S23].
+    inversion NE1. subst n1.
+    inversion S12; subst.
+    - SCase "Bot < ?". eapply stpd3_bot.
+    - SCase "? < Top". inversion S23; subst.
+      + SSCase "Top". eauto.
+      + SSCase "Sel2".
+        assert (index x0 G1 = Some TX). eauto.
+        (* eapply IMP in H. destruct H. subst. *)
+        eapply stpd3_sel2. eauto. eauto. eapply stpd3_trans_lo; eauto.
+    - SCase "Bool < Bool". eauto.
+  }
+  
+  Case "S n".
+  unfold trans_up3. intros n1 NE1 b G1 T1 T2 T3 S12 S23.
+  destruct S23 as [n2 S23].
+
+  stp_cases(inversion S12) SCase. 
+  - SCase "Bot < ?". eapply stpd3_bot.
+  - SCase "? < Top". subst. inversion S23; subst.
+    + SSCase "Top". eapply stpd3_top.
+    + SSCase "Sel2".
+      assert (itpd G1 TX) as E. eauto. destruct E as [? E].
+      eapply itp3_exp in E; eauto.
+      eapply stpd3_sel2; eauto. eauto. eapply stpd3_trans_lo; eauto.
+  - SCase "Bool < Bool". inversion S23; subst; try solve by inversion.
+    + SSCase "Top". eauto.
+    + SSCase "Bool". eapply stpd3_bool; eauto.
+    + SSCase "Sel2". eapply stpd3_sel2. eauto. eauto. eexists. eapply H6. 
+  - SCase "Fun < Fun". inversion S23; subst; try solve by inversion.
+    + SSCase "Top". eapply stpd3_top.
+    + SSCase "Fun". inversion H10. subst.
+      eapply stpd3_fun.
+      * eapply stp0f2_trans; eauto.
+      * eapply stp2_trans. instantiate (1:=n3). eauto. eauto. eauto.
+    + SSCase "Sel2".
+      assert (itpd3 G1 TX) as E. eauto. destruct E as [? E].
+      eapply itp3_exp in E; eauto.
+      eapply stpd3_sel2. eauto. eauto. eapply stpd3_trans_lo; eauto.
+  - SCase "Mem < Mem". inversion S23; subst; try solve by inversion.
+    + SSCase "Top". eapply stpd3_top.
+    + SSCase "Mem". inversion H10. subst.
+      eapply stpd3_mem.
+      * eapply stp0f2_trans; eauto.
+      * assert (trans_on3 n3) as IH.
+        { eapply trans_le3; eauto. omega. }
+        eapply IH; eauto.
+    + SSCase "Sel2". 
+      assert (itpd G1 TX) as E. eauto. destruct E as [? E].
+      eapply itp3_exp in E; eauto.
+      eapply stpd3_sel2. eauto. eauto. eapply stpd3_trans_lo; eauto.
+  - SCase "? < Sel". inversion S23; subst; try solve by inversion.
+    + SSCase "Top". eapply stpd3_top.
+    + SSCase "Sel2". 
+      assert (itpd G1 TX) as E. eauto. destruct E as [? E].
+      eapply itp3_exp in E; eauto.
+      eapply stpd3_sel2. eauto. eauto. eapply stpd3_trans_lo; eauto.
+    + SSCase "Sel1". (* interesting case *)
+      index_subst.
+      assert (itpd G1 TX) as E. eauto. destruct E as [? E].
+      eapply itp3_exp in E; eauto.
+      inversion H12. subst. index_subst. eauto. eapply stpd3_trans_cross; eauto. 
+      assert (trans_up3 n0) as IH. 
+      { unfold trans_up3. intros. apply IHn. omega. }
+      apply IH.
+    + SSCase "Selx". inversion H9. index_subst. subst. index_subst. subst.
+      eapply stpd3_sel2. eauto. eauto. eauto.
+  - SCase "Sel < ?".
+      assert (trans_up n0) as IH.
+      { unfold trans_up. intros. eapply IHn. omega. }
+      assert (itpd G1 TX) as E. eauto. destruct E as [? E].
+      eapply itp_exp in E; eauto.
+      eapply stpd2_sel1. eauto. eauto. eapply stpd_trans_hi; eauto. 
+  - SCase "Sel < Sel". inversion S23; subst; try solve by inversion.
+    + SSCase "Top". eapply stpd2_top.
+    + SSCase "Sel2". 
+      assert (itpd G1 TX) as E. eauto. destruct E as [? E].
+      eapply itp_exp in E; eauto.
+      (* eapply stpd_sel2. eauto. eapply stpd_trans_lo; eauto. *)
+    + SSCase "Sel1". inversion H9. index_subst. subst. index_subst. subst.
+      eapply stpd2_sel1. eauto. eauto. eauto.
+    + SSCase "Selx". inversion H6. subst. repeat index_subst.
+      eapply stpd2_selx; eauto.
+  - SCase "Bind < Bind". inversion S23; subst; try solve by inversion.
+    + SSCase "Top". eapply stpd2_top.
+    + SSCase "Sel2". 
+      assert (itpd G1 TX) as E. eauto. destruct E as [? E].
+      eapply itp_exp in E; eauto.
+      eapply stpd2_sel2. eauto. eauto. eapply stpd_trans_lo; eauto.
+    + SSCase "Bind".
+      inversion H12. subst.
+      assert (stpd false ((length G1, open (length G1) TA1) :: G1)
+                   (open (length G1) TA2) (open (length G1) TA3)) as NRW.
+      { 
+        assert (beq_nat (length G1) (length G1) = true) as E.
+        { eapply beq_nat_true_iff. eauto. }
+        inversion H12. subst.
+        eapply stp_narrow. eauto. eauto.
+        instantiate (2 := length G1). unfold index. rewrite E. eauto.
+        instantiate (1 := open (length G1) TA1). unfold update. rewrite E. eauto.
+        eauto.
+      }
+      eapply stpd2_bindx. eapply stp0f_trans. eapply H. eapply NRW. eauto.
+      eauto. eauto.
+  - SCase "Trans". subst.
+    assert (trans_on n3) as IH2.
+    { eapply trans_le; eauto. omega. }
+    assert (trans_on n0) as IH1.
+    { eapply trans_le; eauto. omega. }
+    assert (stpd2 true G1 T4 T3) as S123.
+    { eapply IH2; eauto. }
+    destruct S123.
+    eapply IH1; eauto.
+  - SCase "Wrap". subst.
+    assert (trans_on n0) as IH.
+    { eapply trans_le; eauto. omega. }
+    eapply IH; eauto.
+ *)
+  admit.
+Qed.
 
 
 Lemma stp3_untrans: forall n, forall G1 T1 T2 n0,
@@ -1821,7 +1980,7 @@ Lemma stp_convert3: forall n, forall m G1 T1 T2 n0 n1,
   stp m G1 T1 T2 n0 ->
   n0 <= n ->
   env_itp G1 ->
-  stpd3 true G1 T1 T2.
+  stpd3 m G1 T1 T2.
 Proof.
   intros n.
   induction n.
