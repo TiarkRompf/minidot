@@ -2426,7 +2426,7 @@ Proof.
     (* remaining obligations *)
     + eauto. + subst GH. eauto. + eauto.
       
-  - Case "sela2". admit.
+  - Case "sela2". admit. (* just like sela1 *)
     
   - Case "selax".
 
