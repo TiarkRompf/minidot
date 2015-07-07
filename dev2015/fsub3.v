@@ -41,7 +41,7 @@ Inductive tm : Type :=
   | tfalse : tm
   | tvar   : id -> tm
   | ttyp   : ty -> tm
-  | tnew   : ty -> tm
+  | tnew   : tm -> tm
   | tget   : tm -> tm
   | tset   : tm -> tm -> tm
   | tapp   : tm -> tm -> tm (* f(x) *)
@@ -89,14 +89,14 @@ Fixpoint indexr {X : Type} (n : id) (l : list (id * X)) : option X :=
   end.
 
 
-(*
+
 Fixpoint update {X : Type} (n : nat) (x: X)
                (l : list X) { struct l }: list X :=
   match l with
     | [] => []
     | a :: l'  => if beq_nat n (length l') then x::l' else a :: update n x l'
   end.
-*)
+
 
 
 (* LOCALLY NAMELESS *)
@@ -282,9 +282,9 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
 | t_typ: forall env T1,
            stp env [] T1 T1 ->
            has_type env (ttyp T1) (TMem T1 T1)
-| t_new: forall env T1,
-           stp env [] T1 T1 ->
-           has_type env (tnew T1) (TCell T1)
+| t_new: forall env x T1,
+           has_type env x T1 ->
+           has_type env (tnew x) (TCell T1)
 | t_get: forall env T1 x,
            has_type env x (TCell T1) ->
            has_type env (tget x) T1
@@ -459,7 +459,7 @@ with val_type : venv -> venv -> vl -> ty -> Prop :=
     (exists n, stp2 true true [] TBool venv TE [] n) ->
     val_type sto venv (vbool b) TE
 | v_loc: forall sto venv b v T1 TE,
-    index b sto = Some v ->
+    indexr b sto = Some v ->
     val_type sto sto v T1 ->       
     (exists n, stp2 true true [] (TCell T1) venv TE [] n) ->
     val_type sto venv (vloc b) TE
@@ -628,45 +628,82 @@ Some (Some v))   means result v
 Could use do-notation to clean up syntax.
  *)
 
-Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
+Fixpoint teval(n: nat)(sto:venv)(env: venv)(t: tm){struct n}: option (option (venv*vl)) :=
   match n with
     | 0 => None
     | S n =>
       match t with
-        | ttrue      => Some (Some (vbool true))
-        | tfalse     => Some (Some (vbool false))
-        | tvar x     => Some (index x env)
-        | tabs f x y => Some (Some (vabs env f x y))
-        | ttabs x T y  => Some (Some (vtabs env x T y))
-        | ttyp T     => Some (Some (vty env T))
-        | tapp ef ex   =>
-          match teval n env ex with
+        | ttrue       => Some (Some (sto, vbool true))
+        | tfalse      => Some (Some (sto, vbool false))
+        | tvar x      => Some (match (index x env) with | Some v => Some (sto,v) | None => None end)
+        | tabs f x y  => Some (Some (sto, vabs env f x y))
+        | ttabs x T y => Some (Some (sto, vtabs env x T y))
+        | ttyp T      => Some (Some (sto, vty env T))
+        | tnew ex     =>
+          match teval n sto env ex with
             | None => None
             | Some None => Some None
-            | Some (Some vx) =>
-              match teval n env ef with
+            | Some (Some (sto1, v)) => Some (Some ((0,v)::sto1, vloc (length sto1)))
+          end
+        | tget ex    =>
+          match teval n sto env ex with
+            | None => None
+            | Some None => Some None
+            | Some (Some (sto1, vbool _)) => Some None
+            | Some (Some (sto1, vty _ _)) => Some None
+            | Some (Some (sto1, vtabs _ _ _ _)) => Some None
+            | Some (Some (sto1, vabs _ _ _ _)) => Some None
+            | Some (Some (sto1, vloc i)) =>
+              Some (match (indexr i sto1) with
+                      | Some v => Some (sto,v)
+                      | None => None
+                    end)
+          end
+        | tset ex ey   =>
+          match teval n sto env ex with
+            | None => None
+            | Some None => Some None
+            | Some (Some (sto1, vbool _)) => Some None
+            | Some (Some (sto1, vty _ _)) => Some None
+            | Some (Some (sto1, vtabs _ _ _ _)) => Some None
+            | Some (Some (sto1, vabs _ _ _ _)) => Some None
+            | Some (Some (sto1, vloc i)) =>
+              match teval n sto1 env ex with
                 | None => None
                 | Some None => Some None
-                | Some (Some (vbool _)) => Some None
-                | Some (Some (vty _ _)) => Some None
-                | Some (Some (vtabs _ _ _ _)) => Some None
-                | Some (Some (vabs env2 f x ey)) =>
-                  teval n ((x,vx)::(f,vabs env2 f x ey)::env2) ey
+                | Some (Some (sto2, v)) => Some (Some (update i (0,v) sto2, v))
+              end
+          end
+        | tapp ef ex   =>
+          match teval n sto env ex with
+            | None => None
+            | Some None => Some None
+            | Some (Some (sto1, vx)) =>
+              match teval n sto1 env ef with
+                | None => None
+                | Some None => Some None
+                | Some (Some (sto2, vbool _)) => Some None
+                | Some (Some (sto2, vty _ _)) => Some None
+                | Some (Some (sto2, vloc _)) => Some None
+                | Some (Some (sto2, vtabs _ _ _ _)) => Some None
+                | Some (Some (sto2, vabs env2 f x ey)) =>
+                  teval n sto2 ((x,vx)::(f,vabs env2 f x ey)::env2) ey
               end
           end
         | ttapp ef ex   =>
-          match teval n env ex with
+          match teval n sto env ex with
             | None => None
             | Some None => Some None
-            | Some (Some vx) =>
-              match teval n env ef with
+            | Some (Some (sto1, vx)) =>
+              match teval n sto1 env ef with
                 | None => None
                 | Some None => Some None
-                | Some (Some (vbool _)) => Some None
-                | Some (Some (vty _ _)) => Some None
-                | Some (Some (vabs _ _ _ _)) => Some None
-                | Some (Some (vtabs env2 x T ey)) =>
-                  teval n ((x,vx)::env2) ey
+                | Some (Some (sto2, vbool _)) => Some None
+                | Some (Some (sto2, vty _ _)) => Some None
+                | Some (Some (sto2, vloc _)) => Some None
+                | Some (Some (sto2, vabs _ _ _ _)) => Some None
+                | Some (Some (sto2, vtabs env2 x T ey)) =>
+                  teval n sto2 ((x,vx)::env2) ey
               end
           end
       end
