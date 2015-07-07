@@ -443,14 +443,14 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
 
 
 
-with wf_env : venv -> venv -> tenv -> Prop := 
+with wf_env : tenv -> venv -> tenv -> Prop := 
 | wfe_nil : forall sto, wf_env sto nil nil
 | wfe_cons : forall sto n v t vs ts,
     val_type sto ((n,v)::vs) v t ->
     wf_env sto vs ts ->
     wf_env sto (cons (n,v) vs) (cons (n,t) ts)
 
-with val_type : venv -> venv -> vl -> ty -> Prop :=
+with val_type : tenv -> venv -> vl -> ty -> Prop :=
 | v_ty: forall sto env venv tenv T1 TE,
     wf_env sto venv tenv -> (* T1 wf in tenv ? *)
     (exists n, stp2 true true venv (TMem T1 T1) env TE [] n)->
@@ -458,9 +458,8 @@ with val_type : venv -> venv -> vl -> ty -> Prop :=
 | v_bool: forall sto venv b TE,
     (exists n, stp2 true true [] TBool venv TE [] n) ->
     val_type sto venv (vbool b) TE
-| v_loc: forall sto venv b v T1 TE,
-    indexr b sto = Some v ->
-    val_type sto sto v T1 ->       
+| v_loc: forall sto venv b T1 TE,
+    indexr b sto = Some T1 ->
     (exists n, stp2 true true [] (TCell T1) venv TE [] n) ->
     val_type sto venv (vloc b) TE
 | v_abs: forall sto env venv tenv f x y T1 T2 TE,
@@ -1301,10 +1300,11 @@ Proof. intros. induction H0.
 Qed.
 
   
-Inductive res_type: venv -> venv -> option (venv*vl) -> ty -> Prop :=
-| not_stuck: forall sto venv v T,
-      val_type sto venv v T ->
-      res_type sto venv (Some (sto,v)) T.
+Inductive res_type: venv -> tenv -> option (venv*vl) -> ty -> Prop :=
+| not_stuck: forall sto venv senv v T,
+      val_type senv venv v T ->
+      wf_env senv sto senv ->
+      res_type venv senv (Some (sto,v)) T.
 
 Hint Constructors res_type.
 Hint Resolve not_stuck.
