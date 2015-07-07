@@ -236,12 +236,12 @@ Inductive stp: tenv -> tenv -> option (bool * id) -> ty -> ty -> Prop :=
     stp G1 GH S T1 (TSelH x)
 | stp_selab1: forall G1 GH S TX T2 T2' x,
     indexr x GH = Some TX -> 
-    stp G1 GH S TX (TBind (TMem TBot T2)) ->   (* XXX *)
+    stp G1 [] S TX (TBind (TMem TBot T2)) ->   (* XXX Note GH = [] *)
     T2' = (open (TSelH x) T2) ->
     stp G1 GH S (TSelH x) T2'
 | stp_selab2: forall G1 GH S TX T1 T1' x,
     indexr x GH = Some TX ->
-    stp G1 GH S TX (TBind (TMem T1 TTop)) ->   (* XXX *)
+    stp G1 [] S TX (TBind (TMem T1 TTop)) ->   (* XXX Note GH = [] *)
     T1' = (open (TSelH x) T1) ->
     stp G1 GH S T1' (TSelH x)
 | stp_selax: forall G1 GH S TX x,
@@ -603,11 +603,11 @@ Lemma stpd2_sel1b: forall G1 G2 GX TX x T2 GH v,
     stpd2 true G1 (TSel x) G2 (open (TSel x) T2) GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel1b; eauto. Qed.
 
-Lemma stpd2_sel2: forall G1 G2 TX x T1 GH v,
+Lemma stpd2_sel2: forall G1 G2 GX TX x T1 GH v,
     index x G2 = Some v ->
-    val_type (base v) v TX ->                
+    val_type GX v TX ->                
     closed 0 0 TX ->
-    stpd2 false (base v) TX G1 (TMem T1 TTop) GH ->
+    stpd2 false GX TX G1 (TMem T1 TTop) GH ->
     stpd2 true G1 T1 G2 (TSel x) GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel2; eauto. Qed.
 
@@ -2479,7 +2479,9 @@ Proof.
     + SCase "x > 0".
       ev. subst.
       admit. (* miss case, eapply stp2_selab1 *)
-    
+    (* remaining obligations *)
+    + eauto. + subst GH. eauto. + eauto.
+
   - Case "sela2". admit. (* just like sela1 *)
     
   - Case "selax".
@@ -2658,11 +2660,13 @@ Qed.
 *)
 
 
-Lemma inv_vtp_half: forall G v T GH,
-  val_type G v T ->
-  exists T0, val_type (base v) v T0 /\ closed 0 0 T0 /\ stpd2 false (base v) T0 G T GH.
-Proof. admit. Qed.
-  
+
+Lemma valtp_closed: forall G v T,
+  val_type G v T -> closed 0 0 T.
+Proof. admit. Qed. (* from embedded stp2 *)
+
+Hint Constructors wf_envh.
+
 Lemma stp_to_stp2: forall G1 GH S T1 T2,
   stp G1 GH S T1 T2 ->
   forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
@@ -2680,20 +2684,17 @@ Proof with stpd2_wrapf.
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
-    eapply inv_vtp_half in VT. ev.
-    eapply stpd2_sel1. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
+    eapply stpd2_sel1. eauto. eauto. eapply valtp_closed; eauto. eauto.
   - Case "sel2".
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
-    eapply inv_vtp_half in VT. ev.
-    eapply stpd2_sel2. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
+    eapply stpd2_sel2. eauto. eauto. eapply valtp_closed; eauto. eauto.
   - Case "selb1".
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
-    eapply inv_vtp_half in VT. ev.
-    eapply stpd2_sel1b. eauto. eauto. eauto. eapply stpd2_trans. eauto. eapply IHST;eauto. econstructor.
+    eapply stpd2_sel1b. eauto. eauto. eapply valtp_closed; eauto. eauto.
   - Case "selb2". admit.
   - Case "selx". 
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
@@ -2716,7 +2717,7 @@ Proof with stpd2_wrapf.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]].
     inversion VT. subst. 
-    eapply stpd2_selab1. eauto. eapply IHST. eauto. eauto.
+    eapply stpd2_selab1. eauto. eapply IHST. eauto. econstructor.
   - Case "selab2". admit.
   - Case "selax". eauto.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
