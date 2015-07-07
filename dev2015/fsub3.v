@@ -844,8 +844,8 @@ Qed.
 
 
 
-Lemma wf_fresh : forall vs ts,
-                    wf_env vs ts ->
+Lemma wf_fresh : forall sto vs ts,
+                    wf_env sto vs ts ->
                     (fresh vs = fresh ts).
 Proof.
   intros. induction H. auto.
@@ -955,6 +955,7 @@ Fixpoint splice n (T : ty) {struct T} : ty :=
     | TTop         => TTop
     | TBot         => TBot
     | TBool        => TBool
+    | TCell T1     => TCell (splice n T1)
     | TMem T1 T2   => TMem (splice n T1) (splice n T2)
     | TFun T1 T2   => TFun (splice n T1) (splice n T2)
     | TSelB i      => TSelB i
@@ -1238,26 +1239,26 @@ Proof. admit. Qed.
 
 
 
-Lemma valtp_extend : forall vs v x v1 T,
-                       val_type vs v T ->
+Lemma valtp_extend : forall sto vs v x v1 T,
+                       val_type sto vs v T ->
                        fresh vs <= x ->
-                       val_type ((x,v1)::vs) v T.
+                       val_type sto ((x,v1)::vs) v T.
 Proof.
   intros. induction H; eauto; econstructor; eauto; eapply sstpd2_extend2; eauto.
 Qed.
 
 
-Lemma index_safe_ex: forall H1 G1 TF i,
-             wf_env H1 G1 ->
+Lemma index_safe_ex: forall STO H1 G1 TF i,
+             wf_env STO H1 G1 ->
              index i G1 = Some TF ->
-             exists v, index i H1 = Some v /\ val_type H1 v TF.
+             exists v, index i H1 = Some v /\ val_type STO H1 v TF.
 Proof. intros. induction H.
    - Case "nil". inversion H0.
    - Case "cons". inversion H0.
      case_eq (le_lt_dec (fresh ts) n); intros ? E1.
      + SCase "ok".
        rewrite E1 in H3.
-       assert ((fresh ts) <= n) as QF. eauto. rewrite <-(wf_fresh vs ts H1) in QF.
+       assert ((fresh ts) <= n) as QF. eauto. rewrite <-(wf_fresh sto vs ts H1) in QF.
        elim (le_xx (fresh vs) n QF). intros ? EX.
 
        case_eq (beq_nat i n); intros E2.
@@ -1268,7 +1269,7 @@ Proof. intros. induction H.
          subst t. eauto.
        * SSCase "miss".
          rewrite E2 in H3.
-         assert (exists v0, index i vs = Some v0 /\ val_type vs v0 TF) as HI. eapply IHwf_env. eauto.
+         assert (exists v0, index i vs = Some v0 /\ val_type sto vs v0 TF) as HI. eapply IHwf_env. eauto.
          inversion HI as [v0 HI1]. inversion HI1.
          eexists. econstructor. eapply index_extend; eauto. eapply valtp_extend; eauto.
      + SSCase "bad".
@@ -1276,8 +1277,8 @@ Proof. intros. induction H.
 Qed.
 
 
-Lemma index_safeh_ex: forall H1 H2 G1 GH TF i,
-             wf_env H1 G1 -> wf_envh H1 H2 GH ->
+Lemma index_safeh_ex: forall STO H1 H2 G1 GH TF i,
+             wf_env STO H1 G1 -> wf_envh H1 H2 GH ->
              indexr i GH = Some TF ->
              exists v, indexr i H2 = Some v /\ valh_type H1 H2 v TF.
 Proof. intros. induction H0.
@@ -1300,10 +1301,10 @@ Proof. intros. induction H0.
 Qed.
 
   
-Inductive res_type: venv -> option vl -> ty -> Prop :=
-| not_stuck: forall venv v T,
-      val_type venv v T ->
-      res_type venv (Some v) T.
+Inductive res_type: venv -> venv -> option (venv*vl) -> ty -> Prop :=
+| not_stuck: forall sto venv v T,
+      val_type sto venv v T ->
+      res_type sto venv (Some (sto,v)) T.
 
 Hint Constructors res_type.
 Hint Resolve not_stuck.
@@ -1383,6 +1384,10 @@ Proof.
     + SCase "top". admit.
     + SCase "mem". admit.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
+  - Case "cell". subst. inversion H1.
+    + SCase "top". admit.
+    + SCase "cell". admit.
+    + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
   - Case "ssel1".
     assert (sstpd2 true GX TX G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1. 
     eu. eexists. eapply stp2_strong_sel1. eauto. eauto. eauto.
@@ -1449,18 +1454,18 @@ Proof. intros. repeat eu. eapply sstpd2_untrans_aux; eauto. Qed.
 
 
 
-Lemma valtp_widen: forall vf H1 H2 T1 T2,
-  val_type H1 vf T1 ->
+Lemma valtp_widen: forall vf STO H1 H2 T1 T2,
+  val_type STO H1 vf T1 ->
   sstpd2 true H1 T1 H2 T2 [] ->
-  val_type H2 vf T2.
+  val_type STO H2 vf T2.
 Proof.
   intros. inversion H; econstructor; eauto; eapply sstpd2_trans; eauto.
 Qed.
 
-Lemma restp_widen: forall vf H1 H2 T1 T2,
-  res_type H1 vf T1 ->
+Lemma restp_widen: forall vf STO H1 H2 T1 T2,
+  res_type STO H1 vf T1 ->
   sstpd2 true H1 T1 H2 T2 [] ->
-  res_type H2 vf T2.
+  res_type STO H2 vf T2.
 Proof.
   intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto.
 Qed.
@@ -1470,8 +1475,8 @@ Ltac ev := repeat match goal with
                     | H: _ /\  _ |- _ => destruct H
            end.
 
-Lemma invert_typ: forall venv vx T1 T2,
-  val_type venv vx (TMem T1 T2) ->
+Lemma invert_typ: forall sto venv vx T1 T2,
+  val_type sto venv vx (TMem T1 T2) ->
   exists GX TX,
     vx = (vty GX TX) /\
     stpd2 false venv T1 GX TX [] /\
@@ -1499,6 +1504,7 @@ Proof.
   - Case "bool". eexists. eauto.
   - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
   - Case "mem". eexists. eapply stp2_mem. eauto. eauto.
+  - Case "mem". eexists. eapply stp2_cell. eauto. eauto.
   - Case "sel1".
     (* TODO: val_type should take size bound parameter (if we do it like this) *)
     (* alternative: sstp2_mem returns sstp2 *)
@@ -1687,6 +1693,7 @@ Proof.
   intros T2 TX n. induction T2; intros; eauto.
   -  simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.
   -  simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.
+  -  simpl. rewrite IHT2. eauto. eauto.
   -  simpl. case_eq (beq_nat i 0); intros E. symmetry. eapply closed_no_open. eauto. simpl. eauto.  
   - simpl. case_eq (beq_nat j i); intros E. simpl.
     assert (x+1<>0). omega. eapply beq_nat_false_iff in H0.
@@ -1798,6 +1805,7 @@ Qed.
 Lemma nosubst_open_rev: forall j TX T2, nosubst (open_rec j TX T2) -> nosubst TX -> nosubst T2.
 Proof.
   intros. generalize dependent j. induction T2; intros; try inversion H; simpl; eauto.
+  eapply IHT2. eauto. simpl in H.  eauto.
 Qed.
 
 Lemma nosubst_zero_closed: forall j T2, nosubst (open_rec j (TSelH 0) T2) -> closed_rec (j+1) 0 T2 -> closed_rec j 0 T2.
@@ -1946,7 +1954,7 @@ stp2 G1 T1 G2 T2 (GH0 ++ [(0,vtya GX TX)])
 
 
 Definition compat (GX:venv) (TX: ty) (V: option vl) (G1:venv) (T1:ty) (T1':ty) :=
-  (exists x1 v, index x1 G1 = Some v /\ V = Some v /\ GX = base v /\ val_type GX v TX /\ T1' = (subst (TSel x1) T1)) \/
+  (exists x1 v STO, index x1 G1 = Some v /\ V = Some v /\ GX = base v /\ val_type STO GX v TX /\ T1' = (subst (TSel x1) T1)) \/
   (*  (G1 = GX /\ T1' = (subst TX T1)) \/ *)   (* this is doesn't work for DOT *)
   (* ((forall TA TB, TX <> TMem TA TB) /\ T1' = subst TTop T1) \/ *)(* can remove all term-only bindings -- may not be necessary after all since it applies nosubst *)
   (closed_rec 0 0 T1 /\ T1' = T1) \/ (* this one is for convenience: redundant with next *)
@@ -2065,16 +2073,16 @@ Proof.
 Qed.
 
 
-Lemma compat_sel: forall GX TX V G1 T1' (GXX:venv) (TXX:ty) x v,
+Lemma compat_sel: forall STO GX TX V G1 T1' (GXX:venv) (TXX:ty) x v,
     compat GX TX V G1 (TSel x) T1' ->
     closed 0 0 TX ->
     closed 0 0 TXX ->
     index x G1 = Some v ->
-    val_type GXX v TXX ->
+    val_type STO GXX v TXX ->
     exists TXX', T1' = (TSel x) /\ TXX' = TXX /\ compat GX TX V GXX TXX TXX'
 .
 Proof.
-  intros ? ? ? ? ? ? ? ? ? CC CL CL1 IX. repeat destruct CC as [|CC].
+  intros ? ? ? ? ? ? ? ? ? ? CC CL CL1 IX. repeat destruct CC as [|CC].
   - ev. repeat eexists; eauto. + right. left. simpl in H0. eauto.
   - ev. repeat eexists; eauto. + right. left. simpl in H0. eauto.
   - ev. repeat eexists; eauto. + right. left. simpl in H0. eauto.
@@ -2190,14 +2198,19 @@ Proof.
     eapply compat_mem in IX1. repeat destruct IX1 as [? IX1].
     eapply compat_mem in IX2. repeat destruct IX2 as [? IX2].
     subst. eapply stpd2_mem; eauto. eauto. eauto. 
-                                
+
+  - Case "cell".
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
+    admit. (* TODO *)
+
+    
   - Case "sel1". 
     intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
     
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    eapply (compat_sel GXX TXX V G1 T1' (base v) TX) in IX1. repeat destruct IX1 as [? IX1].
+    eapply (compat_sel STO GXX TXX V G1 T1' (base v) TX) in IX1. repeat destruct IX1 as [? IX1].
 
     assert (compat GXX TXX V (base v) TX TX) as CPX. right. left. eauto.
 
@@ -2213,7 +2226,7 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    eapply (compat_sel GXX TXX V G2 T2' (base v) TX) in IX2. repeat destruct IX2 as [? IX2].
+    eapply (compat_sel STO GXX TXX V G2 T2' (base v) TX) in IX2. repeat destruct IX2 as [? IX2].
 
     assert (compat GXX TXX V (base v) TX TX) as CPX. right. left. eauto.
 
@@ -2396,33 +2409,34 @@ Qed.
 *)
 
 
-Lemma inv_vtp_half: forall G v T GH,
-  val_type G v T ->
-  exists T0, val_type (base v) v T0 /\ closed 0 0 T0 /\ stpd2 false (base v) T0 G T GH.
+Lemma inv_vtp_half: forall S G v T GH,
+  val_type S G v T ->
+  exists T0, val_type S (base v) v T0 /\ closed 0 0 T0 /\ stpd2 false (base v) T0 G T GH.
 Proof. admit. Qed.
   
 Lemma stp_to_stp2: forall G1 GH T1 T2,
   stp G1 GH T1 T2 ->
-  forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
+  forall S GX GY, wf_env S GX G1 -> wf_envh GX GY GH ->
   stpd2 false GX T1 GX T2 GY.
 Proof with stpd2_wrapf.
-  intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY; eapply stpd2_wrapf.
+  intros G1 G2 T1 T2 ST. induction ST; intros STO GX GY WX WY; eapply stpd2_wrapf.
   - Case "topx". eapply stpd2_topx.
   - Case "botx". eapply stpd2_botx.
   - Case "top". eapply stpd2_top; eauto.
   - Case "bot". eapply stpd2_bot; eauto.
   - Case "bool". eapply stpd2_bool; eauto.
+  - Case "bool". eapply stpd2_cell; eauto.
   - Case "fun". eapply stpd2_fun; eauto.
   - Case "mem". eapply stpd2_mem; eauto.
   - Case "sel1". 
-    assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
+    assert (exists v : vl, index x GX = Some v /\ val_type STO GX v TX) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
     eapply inv_vtp_half in VT. ev.
     eapply stpd2_sel1. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
   - Case "sel2". admit.
   - Case "selx". 
-    assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
+    assert (exists v : vl, index x GX = Some v /\ val_type STO GX v TX) as A.
     eapply index_safe_ex. eauto. eauto. ev.
     eapply stpd2_selx. eauto. eauto. 
   - Case "sela1". eauto.
@@ -2446,13 +2460,13 @@ Qed.
 
 
 
-Lemma invert_abs: forall venv vf T1 T2,
-  val_type venv vf (TFun T1 T2) ->
+Lemma invert_abs: forall sto venv vf T1 T2,
+  val_type sto venv vf (TFun T1 T2) ->
   exists env tenv f x y T3 T4,
     vf = (vabs env f x y) /\
     fresh env <= f /\
     1 + f <= x /\
-    wf_env env tenv /\
+    wf_env sto env tenv /\
     has_type ((x,T3)::(f,TFun T3 T4)::tenv) y T4 /\
     sstpd2 true venv T1 env T3 [] /\
     sstpd2 true env T4 venv T2 [].
@@ -2468,19 +2482,19 @@ Qed.
 
 
 
-Lemma invert_tabs: forall venv vf vx T1 T2,
-  val_type venv vf (TAll T1 T2) ->
-  val_type venv vx T1 ->
+Lemma invert_tabs: forall sto sto1 venv vf vx T1 T2,
+  val_type sto venv vf (TAll T1 T2) ->
+  val_type sto1 venv vx T1 ->
   sstpd2 true venv T2 venv T2 [] ->
   exists env tenv x y T3 T4,
     vf = (vtabs env x T3 y) /\
     fresh env = x /\
-    wf_env env tenv /\
+    wf_env sto env tenv /\
     has_type ((x,T3)::tenv) y (open (TSel x) T4) /\
     sstpd2 true venv T1 env T3 [] /\
     sstpd2 true ((x,vx)::env) (open (TSel x) T4) venv T2 []. (* (open T1 T2) []. *)
 Proof.
-  intros venv0 vf vx T1 T2 VF VX STY. inversion VF; ev; try solve by inversion. inversion H2. subst.
+  intros sto sto1 venv0 vf vx T1 T2 VF VX STY. inversion VF; ev; try solve by inversion. inversion H2. subst.
   eexists. eexists. eexists. eexists. eexists. eexists.
   repeat split; eauto. 
   remember (fresh venv1) as x.
