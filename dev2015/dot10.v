@@ -2757,8 +2757,10 @@ Proof.
 Qed.
 
 
-
-
+Lemma inv_vtp_half: forall G v T GH,
+  val_type G v T ->
+  exists T0, val_type (base v) v T0 /\ closed 0 0 T0 /\ stpd2 false (base v) T0 G T GH.
+Proof. admit. Qed.
 
 Lemma invert_tabs: forall venv vf vx T1 T2,
   val_type venv vf (TAll T1 T2) ->
@@ -2835,12 +2837,12 @@ Proof.
   - Case "True".
     remember (ttrue) as e. induction H0; inversion Heqe; subst.
     + eapply not_stuck. eapply v_bool; eauto. 
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
   - Case "False".
     remember (tfalse) as e. induction H0; inversion Heqe; subst.
     + eapply not_stuck. eapply v_bool; eauto. 
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
       
   - Case "Var".
     remember (tvar i) as e. induction H0; inversion Heqe; subst.
@@ -2850,12 +2852,12 @@ Proof.
     + SCase "pack". admit.
     + SCase "unpack". admit.
       
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
   - Case "Typ".
     remember (ttyp t) as e. induction H0; inversion Heqe; subst.
     + admit. (* TODO: insert v_pack! *) (*eapply not_stuck. eapply v_pack. eapply v_ty; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor. *)
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
       
   - Case "App".
     remember (tapp e1 e2) as e. induction H0; inversion Heqe; subst.
@@ -2889,13 +2891,13 @@ Proof.
 
       eapply not_stuck. eapply valtp_widen; eauto. eapply sstpd2_extend1. eapply sstpd2_extend1. eauto. eauto. eauto.
 
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
       
     
   - Case "Abs".
     remember (tabs i i0 e) as xe. induction H0; inversion Heqxe; subst.
     + eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh venv0 env H1). eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
   - Case "TApp".
     remember (ttapp e1 e2) as e. induction H0; inversion Heqe; subst.
@@ -2915,7 +2917,7 @@ Proof.
 
       destruct (invert_tabs venv0 vf vx T11 T12) as
           [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]].
-      eauto. eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+      eauto. eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
       (* now we know it's a closure, and we have has_type evidence *)
 
       assert (res_type ((x0,vx)::env1) res (open (TSel x0) T4)) as HRY.
@@ -2926,12 +2928,12 @@ Proof.
 
       eapply not_stuck. eapply valtp_widen. eauto. eauto.
 
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
   - Case "TAbs".
     remember (ttabs i t e) as xe. induction H0; inversion Heqxe; subst.
     + eapply not_stuck. eapply v_tabs; eauto. subst i. eauto. rewrite (wf_fresh venv0 env H1). eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
-    +  eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+    +  eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
        Grab Existential Variables. apply 0. apply 0.
 Qed.
