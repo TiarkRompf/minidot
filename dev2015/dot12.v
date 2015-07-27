@@ -1,12 +1,10 @@
 (* Full safety for DOT (WIP) *)
 
-(* this version is based on fsub2.v *)
-(* based on that, it adds self types *)
+(* this version is based on dot10.v *)
+(* based on that, it adds intersection types from dot3.v *)
 
 (*
 TODO:
-- intersection types
-
 - stp2 trans + narrowing 
 - stp/stp2 weakening and regularity
 *)
@@ -31,6 +29,7 @@ Inductive ty : Type :=
   | TSelB  : id -> ty
   | TAll   : ty -> ty -> ty
   | TBind  : ty -> ty
+  | TAnd   : ty -> ty -> ty
 .
 
 Inductive tm : Type :=
@@ -124,6 +123,10 @@ Inductive closed_rec: nat -> nat -> ty -> Prop :=
 | cl_selb: forall k l i,
     k > i ->
     closed_rec k l (TSelB i)
+| cl_and: forall k l T1 T2,
+    closed_rec k l T1 ->
+    closed_rec k l T2 ->
+    closed_rec k l (TAnd T1 T2)
 .
 
 Hint Constructors closed_rec.
@@ -143,6 +146,7 @@ Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
     | TBool       => TBool
     | TMem T1 T2  => TMem (open_rec k u T1) (open_rec k u T2)
     | TFun T1 T2  => TFun (open_rec k u T1) (open_rec k u T2)
+    | TAnd T1 T2  => TAnd (open_rec k u T1) (open_rec k u T2)
   end.
 
 Definition open u T := open_rec 0 u T.
@@ -165,6 +169,7 @@ Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
     | TSelH i      => if beq_nat i 0 then U else TSelH (i-1)
     | TAll T1 T2   => TAll (subst U T1) (subst U T2)
     | TBind T2     => TBind (subst U T2)
+    | TAnd T1 T2   => TAnd (subst U T1) (subst U T2)
   end.
 
 Fixpoint nosubst (T : ty) {struct T} : Prop :=
@@ -179,6 +184,7 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
     | TSelH i      => i <> 0
     | TAll T1 T2   => nosubst T1 /\ nosubst T2
     | TBind T2     => nosubst T2
+    | TAnd T1 T2 => nosubst T1 /\ nosubst T2
   end.
 
 
@@ -260,6 +266,18 @@ Inductive stp: tenv -> tenv -> option (bool * id) -> ty -> ty -> Prop :=
     closed 1 (length GH) T2 -> 
     stp G1 ((0,open (TSelH x) T1)::GH) S (open (TSelH x) T1) (open (TSelH x) T2) ->
     stp G1 GH S (TBind T1) (TBind T2)
+| stp_and11: forall G1 G2 S T1 T2 T,
+    stp G1 G2 S T1 T ->
+    stp G1 G1 S T2 T2 -> (* regularity *)
+    stp G1 G2 S (TAnd T1 T2) T
+| stp_and12: forall G1 G2 S T1 T2 T,
+    stp G1 G2 S T2 T ->
+    stp G1 G1 S T1 T1 -> (* regularity *)
+    stp G1 G2 S (TAnd T1 T2) T
+| stp_and2: forall G1 G2 S T1 T2 T,
+    stp G1 G2 S T T1 ->
+    stp G1 G2 S T T2 ->
+    stp G1 G2 S T (TAnd T1 T2)
 .
 
 
@@ -473,7 +491,20 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 (S m) false G1 (open (TSelH (length GH)) T1) G2 (open (TSelH (length GH)) T2) ((0,(G1, open (TSelH (length GH)) T1))::GH) n1 ->
     stp2 (S m) true G1 (TBind T1) G2 (TBind T2) GH (S n1)
          
-         
+| stp2_and11: forall m n1 n2 G1 G2 GH T1 T2 T,
+    stp2 m true G1 T1 G2 T GH n1 ->
+    stp2 m true G1 T2 G1 T2 GH n2 -> (* regularity *)
+    stp2 m true G1 (TAnd T1 T2) G2 T GH (S (n1+n2)) 
+| stp2_and12: forall m n1 n2 G1 G2 GH T1 T2 T,
+    stp2 m true G1 T2 G2 T GH n1 ->
+    stp2 m true G1 T1 G1 T1 GH n2 -> (* regularity *)
+    stp2 m true G1 (TAnd T1 T2) G2 T GH (S (n1+n2))
+| stp2_and2: forall m n1 n2 G1 G2 GH T1 T2 T,
+    stp2 MAX false G1 T G2 T1 GH n1 ->
+    stp2 MAX false G1 T G2 T2 GH n2 ->
+    stp2 m true G1 T G2 (TAnd T1 T2) GH (S (n1+n2)) 
+
+
 | stp2_wrapf: forall m G1 G2 T1 T2 GH n1,
     stp2 m true G1 T1 G2 T2 GH n1 ->
     stp2 m false G1 T1 G2 T2 GH (S n1)
@@ -670,9 +701,21 @@ Lemma stpd2_transf: forall G1 G2 G3 T1 T2 T3 GH,
     stpd2 false G2 T2 G3 T3 GH ->           
     stpd2 false G1 T1 G3 T3 GH.
 Proof. intros. repeat eu. eauto. Qed.
-
-
-
+Lemma stpd2_and11: forall G1 G2 GH T1 T2 T,
+    stpd2 true G1 T1 G2 T GH ->
+    stpd2 true G1 T2 G1 T2 GH ->
+    stpd2 true G1 (TAnd T1 T2) G2 T GH.
+Proof. intros. repeat eu. eauto. Qed.
+Lemma stpd2_and12: forall G1 G2 GH T1 T2 T,
+    stpd2 true G1 T2 G2 T GH ->
+    stpd2 true G1 T1 G1 T1 GH ->
+    stpd2 true G1 (TAnd T1 T2) G2 T GH.
+Proof. intros. repeat eu. eauto. Qed.
+Lemma stpd2_and2: forall G1 G2 GH T1 T2 T,
+    stpd2 false G1 T G2 T1 GH ->
+    stpd2 false G1 T G2 T2 GH ->
+    stpd2 true G1 T G2 (TAnd T1 T2) GH.
+Proof. intros. repeat eu. eauto. Qed.
 (*
 None             means timeout
 Some None        means stuck
@@ -1005,6 +1048,7 @@ Fixpoint splice n (T : ty) {struct T} : ty :=
     | TSelH i      => if le_lt_dec n i  then TSelH (i+1) else TSelH i
     | TAll T1 T2   => TAll (splice n T1) (splice n T2)
     | TBind T2   => TBind (splice n T2)
+    | TAnd T1 T2 => TAnd (splice n T1) (splice n T2)
   end.
 
 Definition splicett n (V: (id*ty)) :=
@@ -1421,30 +1465,36 @@ Proof.
     + SCase "topx". eexists. eauto.
     + SCase "top". eexists. eauto.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
+    + SCase "and2". subst. eexists. eauto.
   - Case "botx". subst. inversion H1.
     + SCase "botx". eexists. eauto.
     + SCase "top". eexists. eauto.
     + SCase "?". eexists. eauto.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
+    + SCase "and2". subst. eexists. eauto.
   - Case "top". subst. inversion H1.
     + SCase "topx". eexists. eauto.
     + SCase "top". eexists. eauto.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
+    + SCase "and2". subst. eexists. eapply stp2_and2. ep. eapply stpd2_trans. eexists. eapply stp2_wrapf. eauto. eauto. eauto. eauto.
   - Case "bot". admit. 
   - Case "bool". subst. inversion H1.
     + SCase "top". eexists. eauto.
     + SCase "bool". eexists. eauto.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
+    + SCase "and2". subst. eexists. eauto.
   - Case "fun". subst. inversion H1.
     + SCase "top". eexists. eapply stp2_top. subst. eapply stp2_wrapf. eapply stp2_fun. eapply stp2_reg2. eauto. eapply stp2_reg1. eauto.
     + SCase "fun".
       admit.
       (* eexists. eapply stp2_fun. ep. eapply stpd2_trans. eauto. eauto. destruct EEX. eauto. *)
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
+    + SCase "and2". subst. eexists. eapply stp2_and2. ep. eapply stpd2_trans. eexists. eapply stp2_wrapf. eauto. eauto. eauto. eauto.
   - Case "mem". subst. inversion H1.
     + SCase "top". admit.
     + SCase "mem". admit.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
+    + SCase "and2". admit.
   - Case "ssel1".
     assert (sstpd2 true GX TX G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1. 
     eu. eexists. eapply stp2_strong_sel1. eauto. eauto. eauto.
@@ -1458,6 +1508,7 @@ Proof.
     + SCase "sselx".
       subst. rewrite H2 in H6. inversion H6. subst.
       eexists. eapply stp2_strong_sel2. eauto. eauto. eauto.
+    + SCase "and2". admit.
   - Case "sselx". subst. inversion H1.
     + SCase "top". admit.
     + SCase "ssel1".
@@ -1467,6 +1518,7 @@ Proof.
     + SCase "sselx".
       subst. rewrite H5 in H3. inversion H3. subst.
       eexists. eapply stp2_strong_selx. eauto. eauto.
+    + SCase "and2". admit.
   - Case "all". subst. inversion H1.
     + SCase "top". admit.
     + SCase "ssel2".
@@ -1479,6 +1531,7 @@ Proof.
                           [(0, (G3, T7))]).
         eapply stpd2_trans. eapply stpd2_narrow. eapply stpd2_extendH. eexists. eapply H8. eauto. eauto. 
       repeat eu. eexists. eapply stp2_all. eauto. eauto. eauto. eauto.
+    + SCase "and2". admit.
   - Case "bind". subst. inversion H1.
     + SCase "top". admit.
     + SCase "ssel2".
@@ -1490,10 +1543,28 @@ Proof.
                           [(0, (G1, open (TSelH (length ([]:aenv))) T0))]).
         eapply atpd2_trans_axiom. unfold atpd2. eauto. eapply atpd2_narrow. eexists. eapply H4. unfold atpd2. eauto. 
       unfold atpd2 in H5. destruct H5. repeat eu. eexists. eapply stp2_bind. eauto. eauto. eauto. 
+    + SCase "and2". admit.
+  - Case "and11". subst.
+    assert (sstpd2 true G1 T0 G3 T3 []) as Hn. {
+      eapply IHn. eauto. omega. eexists. eauto.
+    }
+    inversion Hn.
+    eexists. eapply stp2_and11. eassumption. eassumption.
+  - Case "and12". subst.
+    assert (sstpd2 true G1 T4 G3 T3 []) as Hn. {
+      eapply IHn. eauto. omega. eexists. eauto.
+    }
+    inversion Hn.
+    eexists. eapply stp2_and12. eassumption. eassumption.
+  - Case "and2". admit.
+    (*subst. inversion H1.
+    + SCase "top". subst. eexists. eapply stp2_top. eapply stp2_reg1. eauto.
+    + SCase "ssel2".
+      eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.*)
   - Case "wrapf". subst. eapply IHn. eapply H2. omega. eexists. eauto.
   - Case "transf". subst. eapply IHn. eapply H2. omega. eapply IHn. eapply H3. omega. eexists. eauto.
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma sstpd2_trans: forall G1 G2 G3 T1 T2 T3,
@@ -1589,6 +1660,9 @@ Proof.
   - Case "selax". inversion H2.
   - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto.
   - Case "bind". eexists. eapply stp2_bind. eauto. eauto. eauto.
+  - Case "and11". admit.
+  - Case "and12". admit.
+  - Case "and2". admit.
   - Case "wrapf". eapply IHn in H1. eu. eexists. eapply stp2_wrapf. eauto. omega.
   - Case "transf". eapply IHn in H1. eapply IHn in H2. eu. eu. eexists.
     eapply stp2_transf. eauto. eauto. omega. omega.
@@ -1670,6 +1744,9 @@ Proof.
   - Case "bind".
     eapply IHn in H4. ev. 
     eexists. eapply stp2_bindb. eauto. eauto. eauto. omega.
+  - Case "and11". admit.
+  - Case "and12". admit.
+  - Case "and2". admit.
   - Case "wrapf". eapply IHn in H1. ev. eexists. eapply stp2_wrapf. eauto. omega.
   - Case "transf". eapply IHn in H1. eapply IHn in H2. ev. ev. eexists.
     eapply stp2_transf. eauto. eauto. omega. omega.
@@ -1846,7 +1923,8 @@ Proof.
     rewrite H0. eauto.
     simpl. eauto.
   -  simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eapply closed_upgrade. eauto. eauto. eauto.
-  -  simpl. rewrite IHT2. eauto. eapply closed_upgrade. eauto. eauto. 
+  -  simpl. rewrite IHT2. eauto. eapply closed_upgrade. eauto. eauto.
+  - simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. assumption. assumption.
 Qed.
 
 
@@ -1866,6 +1944,7 @@ Proof.
   eapply closed_upgrade. eauto. eauto.
   eapply closed_upgrade. eauto. eauto.
   subst. omega.
+  eapply closed_upgrade. eauto. eauto.
 Qed.
 
 Lemma closed_open: forall j n TX T, closed (j+1) n T -> closed j n TX -> closed j n (open_rec j TX T).
@@ -1926,6 +2005,8 @@ Proof.
   case_eq (beq_nat i 0); intros E. omega. omega.
 
   case_eq (beq_nat j i); intros E. eauto. eauto.
+
+  eapply closed_upgrade; eauto.
 Qed.
 
 
@@ -2571,6 +2652,10 @@ Proof.
     + eauto. subst GH. fold id. rewrite <-EL.
       eapply closed_upgrade_free. eauto. unfold id in H5. omega.
 
+  - Case "and11". admit.
+  - Case "and12". admit.
+  - Case "and2". admit.
+
   - Case "wrapf".
     intros. subst. eapply stp2_wrapf. eapply IHn; eauto. omega.
   - Case "transf".
@@ -2733,6 +2818,9 @@ Proof with stpd2_wrapf.
     eapply stpd2_bind. rewrite H. eauto. rewrite H. eauto.
     rewrite H.
     eapply IHST. eauto. eapply wfeh_cons. eauto.
+  - Case "and11". admit.
+  - Case "and12". admit.
+  - Case "and2". admit.
 Qed.
 
 
@@ -2755,6 +2843,8 @@ Proof.
   eapply stpd2_upgrade in E1. eapply stpd2_upgrade in E2.
   repeat eu. repeat eexists; eauto. 
 Qed.
+
+
 
 
 Lemma inv_vtp_half: forall G v T GH,
