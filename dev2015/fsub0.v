@@ -692,11 +692,27 @@ Proof.
     + rewrite E in H.  eapply IHG2 in H. eapply indexr_extend. eapply H. eauto.
 Qed.
 
+Lemma plus_lt_contra: forall a b,
+  a + b < b -> False.
+Proof.
+  intros a b H. induction a.
+  - simpl in H. apply lt_irrefl in H. assumption.
+  - simpl in H. apply IHa. omega.
+Qed.
+
 Lemma indexr_splice_lo0: forall G0 G2 x0 (T:ty),
     indexr x0 (G2 ++ G0) = Some T ->
     x0 < length G0 ->
     indexr x0 G0 = Some T.
-Proof. admit. Qed.
+Proof.
+  intros G0 G2. induction G2; intros.
+  - simpl in H. apply H.
+  - simpl in H. destruct a.
+    case_eq (beq_nat x0 (length (G2 ++ G0))); intros E.
+    + eapply beq_nat_true_iff in E. subst.
+      rewrite app_length in H0. apply plus_lt_contra in H0. inversion H0.
+    + rewrite E in H. apply IHG2. apply H. apply H0.
+Qed.
 
 Lemma indexr_splice_lo1: forall G0 x0 (T:ty) f,
     indexr x0 G0 = Some T ->
