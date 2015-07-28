@@ -734,7 +734,16 @@ Qed.
 Lemma indexr_extend_mult: forall G0 G2 x0 (T:ty),
     indexr x0 G0 = Some T ->
     indexr x0 (G2++G0) = Some T.
-Proof. admit. Qed.
+Proof.
+  intros G0 G2. induction G2; intros.
+  - simpl. assumption.
+  - destruct a. simpl.
+    case_eq (beq_nat x0 (length (G2 ++ G0))); intros E.
+    + eapply beq_nat_true_iff in E.
+      apply indexr_max in H. subst.
+      rewrite app_length in H. apply plus_lt_contra in H. inversion H.
+    + apply IHG2. assumption.
+Qed.
 
 
 Lemma indexr_splice_lo: forall G0 G2 x0 x v1 T f,
