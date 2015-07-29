@@ -912,12 +912,13 @@ Proof.
   rewrite -> splice_open_permute.
   rewrite -> splice_open_permute.
   assert (map (splicett (length GH)) G1 = G1) as HG1. admit.
-  assert (map (splicett (length GH)) ([(0,TMem T3)]++(x,v1)::GH)=((0, TMem T3)::(x,v1)::GH)) as HGH. admit.
+  assert (map (splicett (length GH)) GH = GH) as HGH. admit.
+  assert (map (splicett (length GH)) ([(0,TMem T3)]++(x,v1)::GH)=((0, TMem T3)::(x,v1)::GH)) as HGX. admit.
   rewrite <- HG1.
-  rewrite <- HGH.
+  rewrite <- HGX.
   apply stp_splice.
   simpl. unfold open in H3. rewrite <- H0. apply H3.
-  admit.
+  apply HGH.
 Qed.
 
 
