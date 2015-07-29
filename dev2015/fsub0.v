@@ -787,13 +787,9 @@ Qed.
 
 Lemma closed_splice: forall j l T n,
   closed j l T ->
-  n <= l ->
   closed j (S l) (splice n T).
 Proof.
   intros. induction H; simpl; eauto.
-  constructor. apply IHclosed_rec1. assumption. apply IHclosed_rec2. assumption.
-  constructor. apply IHclosed_rec. assumption.
-  constructor. apply IHclosed_rec1. assumption. apply IHclosed_rec2. assumption.
   case_eq (le_lt_dec n x); intros E LE.
   unfold closed. apply cl_selh. omega.
   unfold closed. apply cl_selh. omega.
@@ -841,9 +837,9 @@ Proof.
     eapply stp_all.
     eapply IHstp1. eauto. eauto. eauto.
 
-    simpl. rewrite map_length_inc. apply closed_splice. assumption. rewrite app_length. omega.
+    simpl. rewrite map_length_inc. apply closed_splice. assumption.
 
-    simpl. rewrite map_length_inc. apply closed_splice. assumption. rewrite app_length. omega.
+    simpl. rewrite map_length_inc. apply closed_splice. assumption.
     
     specialize IHstp2 with (G3:=G0) (G4:=(0, TMem T3) :: G2).
     simpl in IHstp2. rewrite map_length. rewrite app_length. simpl.
