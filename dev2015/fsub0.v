@@ -891,6 +891,22 @@ Proof.
   apply closed_inc. apply H1.
   apply closed_inc. apply H2.
   simpl.
+  assert (splice (length GH) T2 = T2) as A2. {
+    eapply closed_splice_idem. apply H1. omega.
+  }
+  assert (splice (length GH) T4 = T4) as A4. {
+    eapply closed_splice_idem. apply H2. omega.
+  }
+  assert (TSelH (S (length GH)) = splice (length GH) (TSelH (length GH))) as AH. {
+    simpl. case_eq (le_lt_dec (length GH) (length GH)); intros E LE.
+    simpl. rewrite NPeano.Nat.add_1_r. reflexivity.
+    clear LE. apply lt_irrefl in E. inversion E.
+  }
+  rewrite <- A2. rewrite <- A4.
+  unfold open.
+  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  rewrite -> splice_open_permute.
+  rewrite -> splice_open_permute.
   admit.
 Qed.
 
