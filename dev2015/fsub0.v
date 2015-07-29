@@ -907,6 +907,12 @@ Proof.
   change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
   rewrite -> splice_open_permute.
   rewrite -> splice_open_permute.
+  assert (map (splicett (length GH)) G1 = G1) as HG1. admit.
+  assert (map (splicett (length GH)) ([(0,TMem T3)]++(x,v1)::GH)=((0, TMem T3)::(x,v1)::GH)) as HGH. admit.
+  rewrite <- HG1.
+  rewrite <- HGH.
+  apply stp_splice.
+  simpl. unfold open in H3. rewrite <- H0. apply H3.
   admit.
 Qed.
 
