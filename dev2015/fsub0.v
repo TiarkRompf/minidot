@@ -1355,8 +1355,11 @@ Proof.
   - Case "bool". eauto.
   - Case "fun". intros. simpl. eapply stp_fun. eauto. eauto.
   - Case "mem". intros. simpl. eapply stp_mem. eauto.
-  - Case "sel1". admit.
-  - Case "selx". admit.
+  - Case "sel1". intros. simpl. eapply stp_sel1. apply H.
+    assert (subst TX T = T) as A. admit. (* This is true because any type coming from G1 is closed for indexr, but we don't keep track of this invariant. *)
+    rewrite <- A.
+    apply IHstp; eauto.
+  - Case "selx". intros. simpl. eapply stp_selx. apply H.
   - Case "sela1". intros GH0 TX ? ? ?. simpl.
     subst GH. specialize (indexr_subst _ x TX T H). intros. 
     destruct H1; destruct H1.
