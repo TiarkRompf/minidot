@@ -170,7 +170,11 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
 Hint Unfold open.
 Hint Unfold closed.
 
-
+(*
+the first env is for variables bound in terms
+the second env is for variables bound in types
+first = TSel, second = TSelH
+*)
 Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_top: forall G1 GH T1,
     stp G1 GH T1 TTop
