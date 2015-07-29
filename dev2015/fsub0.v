@@ -785,6 +785,27 @@ Proof.
     inversion H.
 Qed.
 
+Lemma closed_splice: forall j l T n,
+  closed j l T ->
+  n <= l ->
+  closed j (S l) (splice n T).
+Proof.
+  intros. induction H; simpl; eauto.
+  constructor. apply IHclosed_rec1. assumption. apply IHclosed_rec2. assumption.
+  constructor. apply IHclosed_rec. assumption.
+  constructor. apply IHclosed_rec1. assumption. apply IHclosed_rec2. assumption.
+  case_eq (le_lt_dec n x); intros E LE.
+  unfold closed. apply cl_selh. omega.
+  unfold closed. apply cl_selh. omega.
+Qed.
+
+Lemma map_length_inc: forall G0 G2 x v1,
+   (length (map (splicett (length G0)) (G2 ++ (x, v1) :: G0))) = (S (length (G2 ++ G0))).
+Proof.
+  intros. rewrite map_length. induction G2.
+  - simpl. reflexivity.
+  - simpl. rewrite IHG2. reflexivity.
+Qed.
 
 Lemma stp_splice : forall GX G0 G1 T1 T2 x v1,
    stp GX (G1++G0) T1 T2 ->
@@ -820,8 +841,9 @@ Proof.
     eapply stp_all.
     eapply IHstp1. eauto. eauto. eauto.
 
-    admit. (* closed *) 
-    admit. (* closed *)
+    simpl. rewrite map_length_inc. apply closed_splice. assumption. rewrite app_length. omega.
+
+    simpl. rewrite map_length_inc. apply closed_splice. assumption. rewrite app_length. omega.
     
     specialize IHstp2 with (G3:=G0) (G4:=(0, TMem T3) :: G2).
     simpl in IHstp2. rewrite map_length. rewrite app_length. simpl.
