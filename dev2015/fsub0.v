@@ -858,6 +858,27 @@ Proof.
 Qed.
 
 
+Lemma closed_splice_idem: forall k l T n,
+                            closed k l T ->
+                            n >= l ->
+                            splice n T = T.
+Proof.
+  intros. induction H; eauto.
+  simpl.
+  rewrite IHclosed_rec1. rewrite IHclosed_rec2.
+  reflexivity.
+  assumption. assumption.
+  simpl.
+  rewrite IHclosed_rec.
+  reflexivity.
+  assumption.
+  simpl.
+  rewrite IHclosed_rec1. rewrite IHclosed_rec2.
+  reflexivity.
+  assumption. assumption.
+  simpl.
+  case_eq (le_lt_dec n x); intros E LE. omega. reflexivity.
+Qed.
 
 Lemma stp_extend : forall G1 GH T1 T2 x v1,
                        stp G1 GH T1 T2 ->
