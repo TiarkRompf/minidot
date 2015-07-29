@@ -849,13 +849,27 @@ Proof.
 Qed.
 
 
+Lemma closed_inc: forall j l T,
+  closed j l T ->
+  closed j (S l) T.
+Proof.
+  intros. induction H; simpl; eauto.
+  unfold closed. apply cl_selh. omega.
+Qed.
+
 
 
 Lemma stp_extend : forall G1 GH T1 T2 x v1,
                        stp G1 GH T1 T2 ->
                        stp G1 ((x,v1)::GH) T1 T2.
 Proof.
-  (* use stp_splice: we need to have that env and types are well-formed *)
+  intros. induction H; eauto using indexr_extend.
+  apply stp_all with (x:=length ((x,v1) :: GH)).
+  apply IHstp1.
+  reflexivity.
+  apply closed_inc. apply H1.
+  apply closed_inc. apply H2.
+  simpl.
   admit.
 Qed.
 
