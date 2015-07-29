@@ -761,15 +761,51 @@ Proof.
 Qed.  
 
 
+Lemma fresh_splice_ctx: forall G n,
+  fresh G = fresh (map (splicett n) G).
+Proof.
+  intros. induction G.
+  - simpl. reflexivity.
+  - destruct a. simpl. reflexivity.
+Qed.
+
+Lemma index_splice_ctx: forall G x T n,
+  index x G = Some T ->
+  index x (map (splicett n) G) = Some (splice n T).
+Proof.
+  intros. induction G.
+  - simpl in H. inversion H.
+  - destruct a. simpl in H.
+    case_eq (le_lt_dec (fresh G) i); intros E LE; rewrite LE in H.
+    case_eq (beq_nat x i); intros Eq; rewrite Eq in H.
+    inversion H. simpl. erewrite <- (fresh_splice_ctx). rewrite LE.
+    rewrite Eq. reflexivity.
+    simpl. erewrite <- (fresh_splice_ctx). rewrite LE.
+    rewrite Eq. apply IHG. apply H.
+    inversion H.
+Qed.
+
+
 Lemma stp_splice : forall GX G0 G1 T1 T2 x v1,
    stp GX (G1++G0) T1 T2 ->
    map (splicett (length G0)) G0 = G0 ->                  
-   stp GX (map (splicett (length G0)) (G1++(x,v1)::G0)) (splice (length G0) T1) (splice (length G0) T2).
+   stp (map (splicett (length G0)) GX) (map (splicett (length G0)) (G1++(x,v1)::G0)) (splice (length G0) T1) (splice (length G0) T2).
 Proof.
   intros GX G0 G1 T1 T2 x v1 H. remember (G1++G0) as G.
   revert G0 G1 HeqG.
   induction H; intros; subst GH; simpl; eauto.
-  - admit.
+  - Case "sel1".
+    assert (index x0 (map (splicett (length G0)) G1) = Some (splice (length G0) (TMem T))) as A. {
+      eapply index_splice_ctx. assumption.
+    }
+    simpl in A.
+    eapply stp_sel1. apply A. apply IHstp. eauto. assumption.
+  - Case "selx".
+    assert (index x0 (map (splicett (length G0)) G1) = Some (splice (length G0) (TMem T))) as A. {
+      eapply index_splice_ctx. assumption.
+    }
+    simpl in A.
+    eapply stp_selx. apply A.
   - Case "sela".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
     + eapply stp_sela1. eapply indexr_splice_hi with (T:=TMem T). eauto. eauto.
