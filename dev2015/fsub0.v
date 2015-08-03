@@ -950,6 +950,231 @@ Proof.
     rewrite IHGH0. reflexivity. assumption.
 Qed.
 
+Lemma stp2_extend_wip : forall G1 G2 T1 T2 H,
+                      stp2 G1 T1 G2 T2 H ->
+                      (forall x v, fresh G1 <= x ->
+                       stp2 ((x,v)::G1) T1 G2 T2 H) /\
+                      (forall x v, fresh G2 <= x ->
+                       stp2 G1 T1 ((x,v)::G2) T2 H) /\
+                      (forall x0 G0 T0 x1 v1 GH0 GH1, H=GH0++(x0, (G0, T0))::GH1 ->
+                       fresh G0 <= x1 ->
+                       stp2 G1 T1 G2 T2 (GH0++(x0, (((x1,v1)::G0), T0))::GH1)) /\
+                      (forall x0 G0 T0 x1 v1 x v GH0 GH1, H=GH0++(x0, (G0, T0))::GH1 ->
+                       fresh G1 <= x ->
+                       fresh G0 <= x1 ->
+                       stp2 ((x,v)::G1) T1 G2 T2 (GH0++(x0, (((x1,v1)::G0), T0))::GH1)) /\
+                      (forall x0 G0 T0 x1 v1 x v GH0 GH1, H=GH0++(x0, (G0, T0))::GH1 ->
+                       fresh G2 <= x ->
+                       fresh G0 <= x1 ->
+                       stp2 G1 T1 ((x,v)::G2) T2 (GH0++(x0, (((x1,v1)::G0), T0))::GH1)) /\
+                      (forall x0 G0 T0 x1 v1 x v x' v' GH0 GH1, H=GH0++(x0, (G0, T0))::GH1 ->
+                       fresh G1 <= x ->
+                       fresh G2 <= x' ->
+                       fresh G0 <= x1 ->
+                       stp2 ((x,v)::G1) T1 ((x',v')::G2) T2 (GH0++(x0, (((x1,v1)::G0), T0))::GH1)).
+Proof.
+  intros.
+  induction H0; split; try split; try split; try split; try split; intros; eauto;
+  try solve [inversion IHstp2_1 as [? [? [? [? [? ?]]]]]; inversion IHstp2_2 as [? [? [? [? [? ?]]]]]; eauto];
+  try solve [inversion IHstp2 as [? [? [? [? [? ?]]]]]; eauto];
+  try solve [inversion IHstp2 as [? [? [? [? [? ?]]]]]; eauto using index_extend].
+  - Case "sela1".
+    subst. simpl in H.
+    case_eq (beq_nat x (length GH1)); intros E.
+    assert (indexr x (GH0 ++ (x0, (G0, T0)) :: GH1) = Some (G0, T0)) as A. {
+      apply indexr_at_index. assumption.
+    }
+    rewrite A in H. inversion H. subst.
+    assert (indexr x (GH0 ++ (x0, ((x1,v1)::GX, TX)) :: GH1) = Some ((x1,v1)::GX, TX)) as A'. {
+      apply indexr_at_index. assumption.
+    }
+    apply stp2_sela1 with (GX:=(x1,v1)::GX) (TX:=TX).
+    simpl. apply A'.
+    inversion IHstp2 as [_ [_ [_ [IH _]]]].
+    apply IH. reflexivity. assumption. assumption.
+    assert (indexr x (GH0 ++ (x0, ((x1,v1)::G0, T0)) :: GH1) = Some (GX, TX)) as A'. {
+      eapply indexr_same. assumption. eassumption.
+    }
+    apply stp2_sela1 with (GX:=GX) (TX:=TX).
+    simpl. rewrite A'. reflexivity.
+    apply IHstp2. reflexivity. assumption.
+  - Case "sela1 (bis)".
+    subst. simpl in H.
+    case_eq (beq_nat x (length GH1)); intros E.
+    assert (indexr x (GH0 ++ (x0, (G0, T0)) :: GH1) = Some (G0, T0)) as A. {
+      apply indexr_at_index. assumption.
+    }
+    rewrite A in H. inversion H. subst.
+    assert (indexr x (GH0 ++ (x0, ((x1,v1)::GX, TX)) :: GH1) = Some ((x1,v1)::GX, TX)) as A'. {
+      apply indexr_at_index. assumption.
+    }
+    apply stp2_sela1 with (GX:=(x1,v1)::GX) (TX:=TX).
+    simpl. apply A'.
+    inversion IHstp2 as [_ [_ [_ [IH _]]]].
+    apply IH. reflexivity. assumption. assumption.
+    assert (indexr x (GH0 ++ (x0, ((x1,v1)::G0, T0)) :: GH1) = Some (GX, TX)) as A'. {
+      eapply indexr_same. assumption. eassumption.
+    }
+    apply stp2_sela1 with (GX:=GX) (TX:=TX).
+    simpl. rewrite A'. reflexivity.
+    apply IHstp2. reflexivity. assumption.
+  - Case "sela1 (bis bis)".
+    subst. simpl in H.
+    case_eq (beq_nat x (length GH1)); intros E.
+    assert (indexr x (GH0 ++ (x0, (G0, T0)) :: GH1) = Some (G0, T0)) as A. {
+      apply indexr_at_index. assumption.
+    }
+    rewrite A in H. inversion H. subst.
+    assert (indexr x (GH0 ++ (x0, ((x1,v1)::GX, TX)) :: GH1) = Some ((x1,v1)::GX, TX)) as A'. {
+      apply indexr_at_index. assumption.
+    }
+    apply stp2_sela1 with (GX:=(x1,v1)::GX) (TX:=TX).
+    simpl. apply A'.
+    inversion IHstp2 as [_ [_ [_ [_ [_ IH]]]]].
+    apply IH. reflexivity. assumption. assumption. assumption.
+    assert (indexr x (GH0 ++ (x0, ((x1,v1)::G0, T0)) :: GH1) = Some (GX, TX)) as A'. {
+      eapply indexr_same. assumption. eassumption.
+    }
+    apply stp2_sela1 with (GX:=GX) (TX:=TX).
+    simpl. rewrite A'. reflexivity.
+    apply IHstp2. reflexivity. assumption. assumption.
+  - Case "sela1 (bis bis bis)".
+    subst. simpl in H.
+    case_eq (beq_nat x (length GH1)); intros E.
+    assert (indexr x (GH0 ++ (x0, (G0, T0)) :: GH1) = Some (G0, T0)) as A. {
+      apply indexr_at_index. assumption.
+    }
+    rewrite A in H. inversion H. subst.
+    assert (indexr x (GH0 ++ (x0, ((x1,v1)::GX, TX)) :: GH1) = Some ((x1,v1)::GX, TX)) as A'. {
+      apply indexr_at_index. assumption.
+    }
+    apply stp2_sela1 with (GX:=(x1,v1)::GX) (TX:=TX).
+    simpl. apply A'.
+    inversion IHstp2 as [_ [_ [_ [_ [_ IH]]]]].
+    apply IH. reflexivity. assumption. assumption. assumption.
+    assert (indexr x (GH0 ++ (x0, ((x1,v1)::G0, T0)) :: GH1) = Some (GX, TX)) as A'. {
+      eapply indexr_same. assumption. eassumption.
+    }
+    apply stp2_sela1 with (GX:=GX) (TX:=TX).
+    simpl. rewrite A'. reflexivity.
+    apply IHstp2. reflexivity. assumption. assumption.
+  - Case "selax".
+    subst. simpl in H.
+    case_eq (beq_nat x (length GH1)); intros E.
+    assert (indexr x (GH0 ++ (x0, ((x1,v1)::G0, T0)) :: GH1) = Some ((x1,v1)::G0, T0)) as A'. {
+      apply indexr_at_index. assumption.
+    }
+    apply stp2_selax with (GX:=(x1,v1)::G0) (TX:=T0).
+    simpl. rewrite A'. simpl. reflexivity. apply A'.
+    assert (indexr x (GH0 ++ (x0, ((x1,v1)::G0, T0)) :: GH1) = Some (GX, TX)) as A'. {
+      eapply indexr_same. assumption. eassumption.
+    }
+    apply stp2_selax with (GX:=GX) (TX:=TX).
+    simpl. apply A'. apply A'.
+  - Case "selax (bis)".
+    subst. simpl in H.
+    case_eq (beq_nat x (length GH1)); intros E.
+    assert (indexr x (GH0 ++ (x0, ((x1,v1)::G0, T0)) :: GH1) = Some ((x1,v1)::G0, T0)) as A'. {
+      apply indexr_at_index. assumption.
+    }
+    apply stp2_selax with (GX:=(x1,v1)::G0) (TX:=T0).
+    simpl. rewrite A'. simpl. reflexivity. apply A'.
+    assert (indexr x (GH0 ++ (x0, ((x1,v1)::G0, T0)) :: GH1) = Some (GX, TX)) as A'. {
+      eapply indexr_same. assumption. eassumption.
+    }
+    apply stp2_selax with (GX:=GX) (TX:=TX).
+    simpl. apply A'. apply A'.
+  - Case "selax (bis bis)".
+    subst. simpl in H.
+    case_eq (beq_nat x (length GH1)); intros E.
+    assert (indexr x (GH0 ++ (x0, ((x1,v1)::G0, T0)) :: GH1) = Some ((x1,v1)::G0, T0)) as A'. {
+      apply indexr_at_index. assumption.
+    }
+    apply stp2_selax with (GX:=(x1,v1)::G0) (TX:=T0).
+    simpl. rewrite A'. simpl. reflexivity. apply A'.
+    assert (indexr x (GH0 ++ (x0, ((x1,v1)::G0, T0)) :: GH1) = Some (GX, TX)) as A'. {
+      eapply indexr_same. assumption. eassumption.
+    }
+    apply stp2_selax with (GX:=GX) (TX:=TX).
+    simpl. apply A'. apply A'.
+  - Case "selax (bis bis bis)".
+    subst. simpl in H.
+    case_eq (beq_nat x (length GH1)); intros E.
+    assert (indexr x (GH0 ++ (x0, ((x1,v1)::G0, T0)) :: GH1) = Some ((x1,v1)::G0, T0)) as A'. {
+      apply indexr_at_index. assumption.
+    }
+    apply stp2_selax with (GX:=(x1,v1)::G0) (TX:=T0).
+    simpl. rewrite A'. simpl. reflexivity. apply A'.
+    assert (indexr x (GH0 ++ (x0, ((x1,v1)::G0, T0)) :: GH1) = Some (GX, TX)) as A'. {
+      eapply indexr_same. assumption. eassumption.
+    }
+    apply stp2_selax with (GX:=GX) (TX:=TX).
+    simpl. apply A'. apply A'.
+  - Case "TAll (extend G2)".
+    inversion IHstp2_1 as [? [? [? [? [? ?]]]]]. inversion IHstp2_2 as [? [? [? [? [? ?]]]]].
+    constructor; eauto. subst.
+    rewrite <- app_nil_l. apply H12. simpl. reflexivity. assumption. assumption.
+  - Case "TAll (refine GH)".
+    assert ((length (GH0 ++ (x0, (G0, T0)) :: GH1))=(length (GH0 ++ (x0, ((x1, v1) :: G0, T0)) :: GH1))) as A. {
+      clear.
+      simpl. induction GH0.
+      - simpl. reflexivity.
+      - simpl. rewrite IHGH0. reflexivity.
+    }
+    apply stp2_all.
+    apply IHstp2_1; assumption.
+    subst. rewrite <- A. assumption.
+    subst. rewrite <- A. assumption.
+    subst. rewrite <- A.
+    change ((0, (G2, T3)) :: GH0 ++ (x0, ((x1, v1) :: G0, T0)) :: GH1) with (((0, (G2, T3)) :: GH0) ++ (x0, ((x1, v1) :: G0, T0)) :: GH1).
+    apply IHstp2_2.
+    simpl. reflexivity. assumption.
+  - Case "TAll (refine GH bis)".
+    assert ((length (GH0 ++ (x0, (G0, T0)) :: GH1))=(length (GH0 ++ (x0, ((x1, v1) :: G0, T0)) :: GH1))) as A. {
+      clear.
+      simpl. induction GH0.
+      - simpl. reflexivity.
+      - simpl. rewrite IHGH0. reflexivity.
+    }
+    apply stp2_all.
+    apply IHstp2_1; assumption.
+    subst. rewrite <- A. assumption.
+    subst. rewrite <- A. assumption.
+    subst. rewrite <- A.
+    change ((0, (G2, T3)) :: GH0 ++ (x0, ((x1, v1) :: G0, T0)) :: GH1) with (((0, (G2, T3)) :: GH0) ++ (x0, ((x1, v1) :: G0, T0)) :: GH1).
+    apply IHstp2_2.
+    simpl. reflexivity. assumption. assumption.
+  - Case "TAll (refine GH bis bis)".
+    assert ((length (GH0 ++ (x0, (G0, T0)) :: GH1))=(length (GH0 ++ (x0, ((x1, v1) :: G0, T0)) :: GH1))) as A. {
+      clear.
+      simpl. induction GH0.
+      - simpl. reflexivity.
+      - simpl. rewrite IHGH0. reflexivity.
+    }
+    apply stp2_all.
+    apply IHstp2_1; assumption.
+    subst. rewrite <- A. assumption.
+    subst. rewrite <- A. assumption.
+    subst. rewrite <- A.
+    rewrite <- app_nil_l.
+    apply IHstp2_2. simpl. admit. assumption. assumption.
+  - Case "TAll (refine GH bis bis bis)".
+    assert ((length (GH0 ++ (x0, (G0, T0)) :: GH1))=(length (GH0 ++ (x0, ((x1, v1) :: G0, T0)) :: GH1))) as A. {
+      clear.
+      simpl. induction GH0.
+      - simpl. reflexivity.
+      - simpl. rewrite IHGH0. reflexivity.
+    }
+    apply stp2_all.
+    apply IHstp2_1; assumption.
+    subst. rewrite <- A. assumption.
+    subst. rewrite <- A. assumption.
+    subst. rewrite <- A.
+    rewrite <- app_nil_l.
+    apply IHstp2_2. simpl. admit. assumption. assumption. assumption.
+Qed.
+
+
 Lemma stp2_closure_extend : forall G1 T1 G2 T2 x G T GH0 GH x1 v1,
                               stp2 G1 T1 G2 T2 (GH0++(x, (G, T))::GH) ->
                               stp2 G1 T1 G2 T2 (GH0++(x, (((x1,v1)::G), T))::GH).
