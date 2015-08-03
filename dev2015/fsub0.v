@@ -956,7 +956,10 @@ Qed.
 Lemma stp2_extendH : forall x v1 G1 G2 T1 T2 H,
                        stp2 G1 T1 G2 T2 H ->
                        stp2 G1 T1 G2 T2 ((x,v1)::H).
-Proof. admit. Qed.
+Proof.
+  intros. induction H0; eauto using indexr_extend.
+  admit. (* case TAll *)
+Qed.
 
 Lemma stp2_extendH_mult : forall G1 G2 T1 T2 H H2,
                        stp2 G1 T1 G2 T2 H ->
