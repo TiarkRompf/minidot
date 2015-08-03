@@ -921,6 +921,42 @@ Proof.
   apply HGH.
 Qed.
 
+Lemma stp2_closure_extend : forall G1 T1 G2 T2 x G T GH x1 v1,
+                              stp2 G1 T1 G2 T2 ((x, (G, T))::GH) ->
+                              stp2 G1 T1 G2 T2 ((x, (((x1,v1)::G), T))::GH).
+Proof.
+  intros. remember ((x, (G,T))::GH) as GH'. induction H; eauto.
+  - Case "sela1".
+    subst. simpl in H.
+    case_eq (beq_nat x0 (length GH)); intros E.
+    rewrite E in H. inversion H. subst.
+    apply stp2_sela1 with (GX:=(x1,v1)::GX) (TX:=TX).
+    simpl. rewrite E. reflexivity.
+    admit (* need extend *).
+    rewrite E in H.
+    apply stp2_sela1 with (GX:=GX) (TX:=TX).
+    simpl. rewrite E. apply H.
+    apply IHstp2.
+    reflexivity.
+  - Case "selax".
+    subst. simpl in H.
+    case_eq (beq_nat x0 (length GH)); intros E.
+    rewrite E in H. inversion H. subst.
+    apply stp2_selax with (GX:=(x1,v1)::GX) (TX:=TX).
+    simpl. rewrite E. reflexivity.
+    simpl. rewrite E. reflexivity.
+    rewrite E in H.
+    apply stp2_selax with (GX:=GX) (TX:=TX).
+    simpl. rewrite E. apply H.
+    simpl. rewrite E. apply H.
+  - Case "TAll".
+    apply stp2_all.
+    apply IHstp2_1; assumption.
+    subst. simpl. simpl in H0. apply H0.
+    subst. simpl. simpl in H1. apply H1.
+    simpl.
+    admit. (* messed up IH *)
+Qed.
 
 Lemma stp2_extend : forall x v1 G1 G2 T1 T2 H,
                       stp2 G1 T1 G2 T2 H ->
@@ -934,7 +970,19 @@ Proof.
     try solve [split; intros; inversion IHstp2_1; inversion IHstp2_2; eauto];
     try solve [split; intros; inversion IHstp2; eauto];
     try solve [split; intros; inversion IHstp2; eauto using index_extend].
-  admit. (* case TAll *)
+  - Case "TAll".
+    split; intros.
+    + constructor.
+      inversion IHstp2_1 as [_ IH]. apply IH. assumption.
+      assumption.
+      assumption.
+      inversion IHstp2_2 as [IH _]. apply IH. assumption.
+    + constructor.
+      inversion IHstp2_1 as [IH _]. apply IH. assumption.
+      assumption.
+      assumption.
+      inversion IHstp2_2 as [_ IH].
+      apply stp2_closure_extend. apply IH. assumption.
 Qed.
 
 Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2 H,
