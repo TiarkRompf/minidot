@@ -921,6 +921,35 @@ Proof.
   apply HGH.
 Qed.
 
+Lemma indexr_at_index: forall {A} x0 GH0 GH1 x (v:A),
+  beq_nat x0 (length GH1) = true ->
+  indexr x0 (GH0 ++ (x, v) :: GH1) = Some v.
+Proof.
+  intros. apply beq_nat_true in H. subst.
+  induction GH0.
+  - simpl. rewrite <- beq_nat_refl. reflexivity.
+  - destruct a. simpl.
+    rewrite app_length. simpl. rewrite <- plus_n_Sm. rewrite <- plus_Sn_m.
+    rewrite false_beq_nat. assumption. omega.
+Qed.
+
+Lemma indexr_same: forall {A} x0 (v0:A) GH0 GH1 x (v:A) (v':A),
+  beq_nat x0 (length GH1) = false ->
+  indexr x0 (GH0 ++ (x, v) :: GH1) = Some v0 ->
+  indexr x0 (GH0 ++ (x, v') :: GH1) = Some v0.
+Proof.
+  intros ? ? ? ? ? ? ? ? E H.
+  induction GH0.
+  - simpl. rewrite E. simpl in H. rewrite E in H. apply H.
+  - destruct a. simpl.
+    rewrite app_length. simpl.
+    case_eq (beq_nat x0 (length GH0 + S (length GH1))); intros E'.
+    simpl in H. rewrite app_length in H. simpl in H. rewrite E' in H.
+    rewrite H. reflexivity.
+    simpl in H. rewrite app_length in H. simpl in H. rewrite E' in H.
+    rewrite IHGH0. reflexivity. assumption.
+Qed.
+
 Lemma stp2_closure_extend : forall G1 T1 G2 T2 x G T GH0 GH x1 v1,
                               stp2 G1 T1 G2 T2 (GH0++(x, (G, T))::GH) ->
                               stp2 G1 T1 G2 T2 (GH0++(x, (((x1,v1)::G), T))::GH).
@@ -931,38 +960,17 @@ Proof.
     subst. simpl in H.
     case_eq (beq_nat x0 (length GH1)); intros E.
     assert (indexr x0 (GH0 ++ (x, (G, T)) :: GH1) = Some (G, T)) as A. {
-      apply beq_nat_true in E. subst.
-      clear.
-      induction GH0.
-      - simpl. rewrite <- beq_nat_refl. reflexivity.
-      - destruct a. simpl.
-        rewrite app_length. simpl. rewrite <- plus_n_Sm. rewrite <- plus_Sn_m.
-        rewrite false_beq_nat. assumption. omega.
+      apply indexr_at_index. assumption.
     }
     assert (indexr x0 (GH0 ++ (x, ((x1,v1)::G, T)) :: GH1) = Some ((x1,v1)::G, T)) as A'. {
-      apply beq_nat_true in E. subst.
-      clear.
-      induction GH0.
-      - simpl. rewrite <- beq_nat_refl. reflexivity.
-      - destruct a. simpl.
-        rewrite app_length. simpl. rewrite <- plus_n_Sm. rewrite <- plus_Sn_m.
-        rewrite false_beq_nat. assumption. omega.
+      apply indexr_at_index. assumption.
     }
     rewrite A in H. inversion H. subst.
     apply stp2_sela1 with (GX:=(x1,v1)::GX) (TX:=TX).
     simpl. rewrite A'. reflexivity.
     admit (* need extend *).
     assert (indexr x0 (GH0 ++ (x, ((x1,v1)::G, T)) :: GH1) = Some (GX, TX)) as A'. {
-      clear H0 IHstp2.
-      induction GH0.
-      - simpl. rewrite E. simpl in H. rewrite E in H. apply H.
-      - destruct a. simpl.
-        rewrite app_length. simpl.
-        case_eq (beq_nat x0 (length GH0 + S (length GH1))); intros E'.
-        simpl in H. rewrite app_length in H. simpl in H. rewrite E' in H.
-        rewrite H. reflexivity.
-        simpl in H. rewrite app_length in H. simpl in H. rewrite E' in H.
-        rewrite IHGH0. reflexivity. assumption.
+      eapply indexr_same. assumption. eassumption.
     }
     apply stp2_sela1 with (GX:=GX) (TX:=TX).
     simpl. rewrite A'. reflexivity.
@@ -972,27 +980,12 @@ Proof.
     subst. simpl in H.
     case_eq (beq_nat x0 (length GH1)); intros E.
     assert (indexr x0 (GH0 ++ (x, ((x1,v1)::G, T)) :: GH1) = Some ((x1,v1)::G, T)) as A'. {
-      apply beq_nat_true in E. subst.
-      clear.
-      induction GH0.
-      - simpl. rewrite <- beq_nat_refl. reflexivity.
-      - destruct a. simpl.
-        rewrite app_length. simpl. rewrite <- plus_n_Sm. rewrite <- plus_Sn_m.
-        rewrite false_beq_nat. assumption. omega.
+      apply indexr_at_index. assumption.
     }
     apply stp2_selax with (GX:=(x1,v1)::G) (TX:=T).
     simpl. rewrite A'. simpl. reflexivity. apply A'.
     assert (indexr x0 (GH0 ++ (x, ((x1,v1)::G, T)) :: GH1) = Some (GX, TX)) as A'. {
-      clear H0.
-      induction GH0.
-      - simpl. rewrite E. simpl in H. rewrite E in H. apply H.
-      - destruct a. simpl.
-        rewrite app_length. simpl.
-        case_eq (beq_nat x0 (length GH0 + S (length GH1))); intros E'.
-        simpl in H. rewrite app_length in H. simpl in H. rewrite E' in H.
-        rewrite H. reflexivity.
-        simpl in H. rewrite app_length in H. simpl in H. rewrite E' in H.
-        rewrite IHGH0. reflexivity. assumption.
+      eapply indexr_same. assumption. eassumption.
     }
     apply stp2_selax with (GX:=GX) (TX:=TX).
     simpl. apply A'. apply A'.
