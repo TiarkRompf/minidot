@@ -922,17 +922,36 @@ Proof.
 Qed.
 
 
+Lemma stp2_extend : forall x v1 G1 G2 T1 T2 H,
+                      stp2 G1 T1 G2 T2 H ->
+                      (fresh G1 <= x ->
+                       stp2 ((x,v1)::G1) T1 G2 T2 H) /\
+                      (fresh G2 <= x ->
+                       stp2 G1 T1 ((x,v1)::G2) T2 H).
+Proof.
+  intros. induction H0;
+    try solve [split; intros; eauto];
+    try solve [split; intros; inversion IHstp2_1; inversion IHstp2_2; eauto];
+    try solve [split; intros; inversion IHstp2; eauto];
+    try solve [split; intros; inversion IHstp2; eauto using index_extend].
+  admit. (* case TAll *)
+Qed.
+
 Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2 H,
                        stp2 G1 T1 G2 T2 H ->
                        fresh G2 <= x ->
                        stp2 G1 T1 ((x,v1)::G2) T2 H.
-Proof. admit. Qed.
+Proof.
+  intros. apply (proj2 (stp2_extend x v1 G1 G2 T1 T2 H H0)). assumption.
+Qed.
 
 Lemma stp2_extend1 : forall x v1 G1 G2 T1 T2 H,
                        stp2 G1 T1 G2 T2 H ->
                        fresh G1 <= x ->
                        stp2 ((x,v1)::G1) T1 G2 T2 H.
-Proof. admit. Qed.
+Proof.
+  intros. apply (proj1 (stp2_extend x v1 G1 G2 T1 T2 H H0)). assumption.
+Qed.
 
 Lemma stp2_extendH : forall x v1 G1 G2 T1 T2 H,
                        stp2 G1 T1 G2 T2 H ->
