@@ -1007,6 +1007,7 @@ Proof.
     apply IHHext. assumption. assumption.
 Qed.
 
+
 Lemma stp2_closure_extend_rec :
   forall G1 G2 T1 T2 GH,
     stp2 G1 T1 G2 T2 GH ->
@@ -1056,6 +1057,17 @@ Proof.
 Qed.
 
 
+Lemma stp2_closure_extend : forall G1 T1 G2 T2 GH GX T x v,
+                              stp2 G1 T1 G2 T2 ((0,(GX,T))::GH) ->
+                              fresh GX <= x ->
+                              stp2 G1 T1 G2 T2 ((0,((x,v)::GX,T))::GH).
+Proof.
+  intros. eapply stp2_closure_extend_rec. apply H.
+  apply aenv_ext_cons. apply aenv_ext_refl. apply venv_ext_cons.
+  assumption. apply venv_ext_refl. apply venv_ext_refl. apply venv_ext_refl.
+Qed.
+
+
 Lemma stp2_extend : forall x v1 G1 G2 T1 T2 H,
                       stp2 G1 T1 G2 T2 H ->
                       (fresh G1 <= x ->
@@ -1067,28 +1079,8 @@ Proof.
     try solve [split; intros; eauto];
     try solve [split; intros; inversion IHstp2_1; inversion IHstp2_2; eauto];
     try solve [split; intros; inversion IHstp2; eauto];
-    try solve [split; intros; inversion IHstp2; eauto using index_extend].
-  - Case "TAll".
-    split; intros.
-    + constructor.
-      inversion IHstp2_1 as [_ IH]. apply IH. assumption.
-      assumption.
-      assumption.
-      inversion IHstp2_2 as [IH _]. apply IH. assumption.
-    + constructor.
-      inversion IHstp2_1 as [IH _]. apply IH. assumption.
-      assumption.
-      assumption.
-      inversion IHstp2_2 as [_ IH].
-      eapply stp2_closure_extend_rec.
-      apply IH. assumption.
-      apply aenv_ext_cons.
-      apply aenv_ext_refl.
-      apply venv_ext_cons.
-      assumption.
-      apply venv_ext_refl.
-      apply venv_ext_refl.
-      apply venv_ext_refl.
+    try solve [split; intros; inversion IHstp2; eauto using index_extend];
+    try solve [split; intros; inversion IHstp2_1; inversion IHstp2_2; eauto using stp2_closure_extend].
 Qed.
 
 Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2 H,
