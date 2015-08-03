@@ -921,41 +921,96 @@ Proof.
   apply HGH.
 Qed.
 
-Lemma stp2_closure_extend : forall G1 T1 G2 T2 x G T GH x1 v1,
-                              stp2 G1 T1 G2 T2 ((x, (G, T))::GH) ->
-                              stp2 G1 T1 G2 T2 ((x, (((x1,v1)::G), T))::GH).
+Lemma stp2_closure_extend : forall G1 T1 G2 T2 x G T GH0 GH x1 v1,
+                              stp2 G1 T1 G2 T2 (GH0++(x, (G, T))::GH) ->
+                              stp2 G1 T1 G2 T2 (GH0++(x, (((x1,v1)::G), T))::GH).
 Proof.
-  intros. remember ((x, (G,T))::GH) as GH'. induction H; eauto.
+  intros. remember (GH0++(x, (G, T)) :: GH) as GH'.
+  generalize dependent GH.  generalize dependent GH0. induction H; intros; eauto.
   - Case "sela1".
     subst. simpl in H.
-    case_eq (beq_nat x0 (length GH)); intros E.
-    rewrite E in H. inversion H. subst.
+    case_eq (beq_nat x0 (length GH1)); intros E.
+    assert (indexr x0 (GH0 ++ (x, (G, T)) :: GH1) = Some (G, T)) as A. {
+      apply beq_nat_true in E. subst.
+      clear.
+      induction GH0.
+      - simpl. rewrite <- beq_nat_refl. reflexivity.
+      - destruct a. simpl.
+        rewrite app_length. simpl. rewrite <- plus_n_Sm. rewrite <- plus_Sn_m.
+        rewrite false_beq_nat. assumption. omega.
+    }
+    assert (indexr x0 (GH0 ++ (x, ((x1,v1)::G, T)) :: GH1) = Some ((x1,v1)::G, T)) as A'. {
+      apply beq_nat_true in E. subst.
+      clear.
+      induction GH0.
+      - simpl. rewrite <- beq_nat_refl. reflexivity.
+      - destruct a. simpl.
+        rewrite app_length. simpl. rewrite <- plus_n_Sm. rewrite <- plus_Sn_m.
+        rewrite false_beq_nat. assumption. omega.
+    }
+    rewrite A in H. inversion H. subst.
     apply stp2_sela1 with (GX:=(x1,v1)::GX) (TX:=TX).
-    simpl. rewrite E. reflexivity.
+    simpl. rewrite A'. reflexivity.
     admit (* need extend *).
-    rewrite E in H.
+    assert (indexr x0 (GH0 ++ (x, ((x1,v1)::G, T)) :: GH1) = Some (GX, TX)) as A'. {
+      clear H0 IHstp2.
+      induction GH0.
+      - simpl. rewrite E. simpl in H. rewrite E in H. apply H.
+      - destruct a. simpl.
+        rewrite app_length. simpl.
+        case_eq (beq_nat x0 (length GH0 + S (length GH1))); intros E'.
+        simpl in H. rewrite app_length in H. simpl in H. rewrite E' in H.
+        rewrite H. reflexivity.
+        simpl in H. rewrite app_length in H. simpl in H. rewrite E' in H.
+        rewrite IHGH0. reflexivity. assumption.
+    }
     apply stp2_sela1 with (GX:=GX) (TX:=TX).
-    simpl. rewrite E. apply H.
+    simpl. rewrite A'. reflexivity.
     apply IHstp2.
     reflexivity.
   - Case "selax".
     subst. simpl in H.
-    case_eq (beq_nat x0 (length GH)); intros E.
-    rewrite E in H. inversion H. subst.
-    apply stp2_selax with (GX:=(x1,v1)::GX) (TX:=TX).
-    simpl. rewrite E. reflexivity.
-    simpl. rewrite E. reflexivity.
-    rewrite E in H.
+    case_eq (beq_nat x0 (length GH1)); intros E.
+    assert (indexr x0 (GH0 ++ (x, ((x1,v1)::G, T)) :: GH1) = Some ((x1,v1)::G, T)) as A'. {
+      apply beq_nat_true in E. subst.
+      clear.
+      induction GH0.
+      - simpl. rewrite <- beq_nat_refl. reflexivity.
+      - destruct a. simpl.
+        rewrite app_length. simpl. rewrite <- plus_n_Sm. rewrite <- plus_Sn_m.
+        rewrite false_beq_nat. assumption. omega.
+    }
+    apply stp2_selax with (GX:=(x1,v1)::G) (TX:=T).
+    simpl. rewrite A'. simpl. reflexivity. apply A'.
+    assert (indexr x0 (GH0 ++ (x, ((x1,v1)::G, T)) :: GH1) = Some (GX, TX)) as A'. {
+      clear H0.
+      induction GH0.
+      - simpl. rewrite E. simpl in H. rewrite E in H. apply H.
+      - destruct a. simpl.
+        rewrite app_length. simpl.
+        case_eq (beq_nat x0 (length GH0 + S (length GH1))); intros E'.
+        simpl in H. rewrite app_length in H. simpl in H. rewrite E' in H.
+        rewrite H. reflexivity.
+        simpl in H. rewrite app_length in H. simpl in H. rewrite E' in H.
+        rewrite IHGH0. reflexivity. assumption.
+    }
     apply stp2_selax with (GX:=GX) (TX:=TX).
-    simpl. rewrite E. apply H.
-    simpl. rewrite E. apply H.
+    simpl. apply A'. apply A'.
   - Case "TAll".
+    assert ((length (GH0 ++ (x, (G, T)) :: GH1))=(length (GH0 ++ (x, ((x1, v1) :: G, T)) :: GH1))) as A. {
+      clear.
+      simpl. induction GH0.
+      - simpl. reflexivity.
+      - simpl. rewrite IHGH0. reflexivity.
+    }
     apply stp2_all.
     apply IHstp2_1; assumption.
-    subst. simpl. simpl in H0. apply H0.
-    subst. simpl. simpl in H1. apply H1.
-    simpl.
-    admit. (* messed up IH *)
+    subst. rewrite <- A. apply H0.
+    subst. rewrite <- A. apply H1.
+    subst. rewrite <- A.
+    change ((0, (G2, T3)) :: GH0 ++ (x, ((x1, v1) :: G, T)) :: GH1) with (((0, (G2, T3)) :: GH0) ++ (x, ((x1, v1) :: G, T)) :: GH1).
+    apply IHstp2_2.
+    simpl. reflexivity.
 Qed.
 
 Lemma stp2_extend : forall x v1 G1 G2 T1 T2 H,
