@@ -952,12 +952,21 @@ Proof.
 Qed.
 
 Inductive venv_ext : venv -> venv -> Prop :=
-| venv_same : forall G, venv_ext G G
-| venv_cons : forall x T G1 G2, fresh G1 <= x -> venv_ext G1 G2 -> venv_ext ((x,T)::G1) G2.
+| venv_ext_refl : forall G, venv_ext G G
+| venv_ext_cons : forall x T G1 G2, fresh G1 <= x -> venv_ext G1 G2 -> venv_ext ((x,T)::G1) G2.
 
 Inductive aenv_ext : aenv -> aenv -> Prop :=
-| aenv_nil : aenv_ext nil nil
-| aenv_cons : forall x T G' G A A', aenv_ext A' A -> venv_ext G' G -> aenv_ext ((x,(G',T))::A') ((x,(G,T))::A).
+| aenv_ext_nil : aenv_ext nil nil
+| aenv_ext_cons : forall x T G' G A A', aenv_ext A' A -> venv_ext G' G -> aenv_ext ((x,(G',T))::A') ((x,(G,T))::A).
+
+Lemma aenv_ext_refl: forall GH, aenv_ext GH GH.
+Proof.
+  intros. induction GH.
+  - apply aenv_ext_nil.
+  - destruct a. destruct p. apply aenv_ext_cons.
+    assumption.
+    apply venv_ext_refl.
+Qed.
 
 Lemma index_extend_mult : forall G G' x T,
                        index x G = Some T ->
@@ -1014,11 +1023,11 @@ Proof.
   - Case "sel1".
     eapply stp2_sel1. eapply index_extend_mult. apply H.
     assumption. assumption.
-    apply IHstp2. assumption. apply venv_same. assumption.
+    apply IHstp2. assumption. apply venv_ext_refl. assumption.
   - Case "sel2".
     eapply stp2_sel2. eapply index_extend_mult. apply H.
     assumption. assumption.
-    apply IHstp2. assumption. assumption. apply venv_same.
+    apply IHstp2. assumption. assumption. apply venv_ext_refl.
   - Case "sela1".
     assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
       apply indexr_at_ext with (GH:=GH); assumption.
@@ -1043,7 +1052,7 @@ Proof.
     subst. rewrite <- A. assumption.
     subst. rewrite <- A. assumption.
     subst. rewrite <- A.
-    apply IHstp2_2. apply aenv_cons. assumption. assumption. assumption. assumption.
+    apply IHstp2_2. apply aenv_ext_cons. assumption. assumption. assumption. assumption.
 Qed.
 
 
@@ -1073,13 +1082,13 @@ Proof.
       inversion IHstp2_2 as [_ IH].
       eapply stp2_closure_extend_rec.
       apply IH. assumption.
-      apply aenv_cons.
-      admit.
-      apply venv_cons.
+      apply aenv_ext_cons.
+      apply aenv_ext_refl.
+      apply venv_ext_cons.
       assumption.
-      apply venv_same.
-      apply venv_same.
-      apply venv_same.
+      apply venv_ext_refl.
+      apply venv_ext_refl.
+      apply venv_ext_refl.
 Qed.
 
 Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2 H,
