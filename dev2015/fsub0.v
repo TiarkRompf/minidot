@@ -1047,62 +1047,6 @@ Proof.
 Qed.
 
 
-Lemma stp2_closure_extend : forall G1 T1 G2 T2 x G T GH0 GH x1 v1,
-                              stp2 G1 T1 G2 T2 (GH0++(x, (G, T))::GH) ->
-                              stp2 G1 T1 G2 T2 (GH0++(x, (((x1,v1)::G), T))::GH).
-Proof.
-  intros. remember (GH0++(x, (G, T)) :: GH) as GH'.
-  generalize dependent GH.  generalize dependent GH0. induction H; intros; eauto.
-  - Case "sela1".
-    subst. simpl in H.
-    case_eq (beq_nat x0 (length GH1)); intros E.
-    assert (indexr x0 (GH0 ++ (x, (G, T)) :: GH1) = Some (G, T)) as A. {
-      apply indexr_at_index. assumption.
-    }
-    assert (indexr x0 (GH0 ++ (x, ((x1,v1)::G, T)) :: GH1) = Some ((x1,v1)::G, T)) as A'. {
-      apply indexr_at_index. assumption.
-    }
-    rewrite A in H. inversion H. subst.
-    apply stp2_sela1 with (GX:=(x1,v1)::GX) (TX:=TX).
-    simpl. rewrite A'. reflexivity.
-    admit (* need extend *).
-    assert (indexr x0 (GH0 ++ (x, ((x1,v1)::G, T)) :: GH1) = Some (GX, TX)) as A'. {
-      eapply indexr_same. assumption. eassumption.
-    }
-    apply stp2_sela1 with (GX:=GX) (TX:=TX).
-    simpl. rewrite A'. reflexivity.
-    apply IHstp2.
-    reflexivity.
-  - Case "selax".
-    subst. simpl in H.
-    case_eq (beq_nat x0 (length GH1)); intros E.
-    assert (indexr x0 (GH0 ++ (x, ((x1,v1)::G, T)) :: GH1) = Some ((x1,v1)::G, T)) as A'. {
-      apply indexr_at_index. assumption.
-    }
-    apply stp2_selax with (GX:=(x1,v1)::G) (TX:=T).
-    simpl. rewrite A'. simpl. reflexivity. apply A'.
-    assert (indexr x0 (GH0 ++ (x, ((x1,v1)::G, T)) :: GH1) = Some (GX, TX)) as A'. {
-      eapply indexr_same. assumption. eassumption.
-    }
-    apply stp2_selax with (GX:=GX) (TX:=TX).
-    simpl. apply A'. apply A'.
-  - Case "TAll".
-    assert ((length (GH0 ++ (x, (G, T)) :: GH1))=(length (GH0 ++ (x, ((x1, v1) :: G, T)) :: GH1))) as A. {
-      clear.
-      simpl. induction GH0.
-      - simpl. reflexivity.
-      - simpl. rewrite IHGH0. reflexivity.
-    }
-    apply stp2_all.
-    apply IHstp2_1; assumption.
-    subst. rewrite <- A. apply H0.
-    subst. rewrite <- A. apply H1.
-    subst. rewrite <- A.
-    change ((0, (G2, T3)) :: GH0 ++ (x, ((x1, v1) :: G, T)) :: GH1) with (((0, (G2, T3)) :: GH0) ++ (x, ((x1, v1) :: G, T)) :: GH1).
-    apply IHstp2_2.
-    simpl. reflexivity.
-Qed.
-
 Lemma stp2_extend : forall x v1 G1 G2 T1 T2 H,
                       stp2 G1 T1 G2 T2 H ->
                       (fresh G1 <= x ->
@@ -1127,7 +1071,15 @@ Proof.
       assumption.
       assumption.
       inversion IHstp2_2 as [_ IH].
-      apply stp2_closure_extend. apply IH. assumption.
+      eapply stp2_closure_extend_rec.
+      apply IH. assumption.
+      apply aenv_cons.
+      admit.
+      apply venv_cons.
+      assumption.
+      apply venv_same.
+      apply venv_same.
+      apply venv_same.
 Qed.
 
 Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2 H,
