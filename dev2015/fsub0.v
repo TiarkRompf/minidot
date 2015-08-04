@@ -7,7 +7,7 @@
 (*
 TODO:
 - stp2 trans + narrowing 
-- stp/stp2 weakening and regularity
+- stp/stp2 regularity
 *)
 
 Require Export SfLib.
@@ -213,8 +213,6 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 .
 
 Hint Constructors stp.
-
-(* TODO *)
 
 Inductive has_type : tenv -> tm -> ty -> Prop :=
 | t_true: forall env,
@@ -648,7 +646,7 @@ Proof.
 Qed.
 
 
-(* splicing -- for stp_extend. not finished *)
+(* splicing *)
 
 Fixpoint splice n (T : ty) {struct T} : ty :=
   match T with
@@ -1370,7 +1368,7 @@ Lemma stp2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4 H,
   stp2 G1 T1 G2 T2 H -> (* careful about H! *)
   stp2 G3 T3 G4 T4 ((x,vtya G2 T2)::H) ->
   stp2 G3 T3 G4 T4 ((x,vtya G1 T1)::H).
-Proof. admit. Qed.
+Proof. (* ... *) Qed.
  *)
 
 Lemma index_miss {X}: forall x x1 (B:X) A G,
@@ -2127,7 +2125,7 @@ Lemma stp2_concretize: forall G1 G2 T1X T2X TX,
    stp2 ((fresh G1, vty G2 TX)::G1) (open (TSel (fresh G1)) T1X)
      G2 (open TX T2X) [].
 Proof.
-  admit. (* call aux version above *)
+  (* ... *) (* call aux version above *)
 Qed.
 *)
 
@@ -2140,7 +2138,7 @@ Lemma stp_wf_subst: forall G1 GH T11 T12 x,
   stp G1 ((x, TMem T11) :: GH) (open (TSelH x) T12) (open (TSelH x) T12) ->
   stp G1 GH (open T11 T12) (open T11 T12).
 Proof.
-  admit.
+  (* ... *)
 Qed.
 
 
@@ -2165,7 +2163,6 @@ Proof.
 Qed.
 *)
 
-(* TODO *)
 Lemma stp_to_stp2: forall G1 GH T1 T2,
   stp G1 GH T1 T2 ->
   forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
