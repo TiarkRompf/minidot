@@ -1099,12 +1099,17 @@ Proof.
   intros. apply (proj1 (stp2_extend x v1 G1 G2 T1 T2 H H0)). assumption.
 Qed.
 
-Lemma stp2_extendH : forall x v1 G1 G2 T1 T2 H,
-                       stp2 G1 T1 G2 T2 H ->
-                       stp2 G1 T1 G2 T2 ((x,v1)::H).
+Lemma stp2_extendH : forall x v1 G1 G2 T1 T2 GH,
+                       stp2 G1 T1 G2 T2 GH ->
+                       stp2 G1 T1 G2 T2 ((x,v1)::GH).
 Proof.
-  intros. induction H0; eauto using indexr_extend.
-  admit. (* case TAll *)
+  intros. induction H; eauto using indexr_extend.
+  eapply stp2_all.
+  apply IHstp2_1.
+  apply closed_inc. apply H0.
+  apply closed_inc. apply H1.
+  simpl.
+  admit.
 Qed.
 
 Lemma stp2_extendH_mult : forall G1 G2 T1 T2 H H2,
