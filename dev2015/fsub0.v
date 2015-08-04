@@ -260,7 +260,7 @@ Does it make a difference? It seems like we can always widen f?
 .
 
 
-Inductive stp2: venv -> ty -> venv -> ty -> list (id*(venv*ty))  -> Prop :=
+Inductive stp2: venv -> ty -> venv -> ty -> aenv  -> Prop :=
 | stp2_top: forall G1 G2 GH T,
     stp2 G1 T G2 TTop GH
 | stp2_bool: forall G1 G2 GH,
