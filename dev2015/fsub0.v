@@ -189,10 +189,12 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH (TMem T1) (TMem T2)         
 | stp_sel1: forall G1 GH T T2 x,
     index x G1 = Some (TMem T) ->
+    closed 0 0 T ->
     stp G1 GH T T2 ->   
     stp G1 GH (TSel x) T2
 | stp_selx: forall G1 GH T x,
     index x G1 = Some (TMem T) ->
+    closed 0 0 T ->
     stp G1 GH (TSel x) (TSel x)
 | stp_sela1: forall G1 GH T T2 x,
     indexr x GH = Some (TMem T) ->
@@ -869,51 +871,6 @@ Proof.
   - simpl. rewrite IHG2. reflexivity.
 Qed.
 
-Lemma stp_splice : forall GX G0 G1 T1 T2 x v1,
-   stp GX (G1++G0) T1 T2 ->
-   map (splicett (length G0)) G0 = G0 ->                  
-   stp (map (splicett (length G0)) GX) (map (splicett (length G0)) (G1++(x,v1)::G0)) (splice (length G0) T1) (splice (length G0) T2).
-Proof.
-  intros GX G0 G1 T1 T2 x v1 H. remember (G1++G0) as G.
-  revert G0 G1 HeqG.
-  induction H; intros; subst GH; simpl; eauto.
-  - Case "sel1".
-    assert (index x0 (map (splicett (length G0)) G1) = Some (splice (length G0) (TMem T))) as A. {
-      eapply index_splice_ctx. assumption.
-    }
-    simpl in A.
-    eapply stp_sel1. apply A. apply IHstp. eauto. assumption.
-  - Case "selx".
-    assert (index x0 (map (splicett (length G0)) G1) = Some (splice (length G0) (TMem T))) as A. {
-      eapply index_splice_ctx. assumption.
-    }
-    simpl in A.
-    eapply stp_selx. apply A.
-  - Case "sela".
-    case_eq (le_lt_dec (length G0) x0); intros E LE.
-    + eapply stp_sela1. eapply indexr_splice_hi with (T:=TMem T). eauto. eauto.
-      eapply IHstp. eauto. eauto.
-    + eapply stp_sela1. eapply indexr_splice_lo with (T:=TMem T). eauto. eauto. eauto.
-      eapply IHstp. eauto. eauto.
-  - Case "selax".
-    case_eq (le_lt_dec (length G0) x0); intros E LE.
-    + eapply stp_selax. eapply indexr_splice_hi with (T:=TMem T). eauto. eauto.
-    + eapply stp_selax. eapply indexr_splice_lo with (T:=TMem T). eauto. eauto. eauto.
-  - Case "all".
-    eapply stp_all.
-    eapply IHstp1. eauto. eauto. eauto.
-
-    simpl. rewrite map_splice_length_inc. apply closed_splice. assumption.
-
-    simpl. rewrite map_splice_length_inc. apply closed_splice. assumption.
-    
-    specialize IHstp2 with (G3:=G0) (G4:=(0, TMem T3) :: G2).
-    simpl in IHstp2. rewrite map_length. rewrite app_length. simpl.
-    repeat rewrite splice_open_permute with (j:=0). subst x0.
-    rewrite app_length in IHstp2. simpl in IHstp2.
-    eapply IHstp2. eauto. eauto.
-Qed.
-
 
 Lemma closed_inc: forall j l T,
   closed j l T ->
@@ -944,6 +901,46 @@ Proof.
   assumption. assumption.
   simpl.
   case_eq (le_lt_dec n x); intros E LE. omega. reflexivity.
+Qed.
+
+Lemma stp_splice : forall GX G0 G1 T1 T2 x v1,
+   stp GX (G1++G0) T1 T2 ->
+   map (splicett (length G0)) G0 = G0 ->                  
+   stp GX (map (splicett (length G0)) (G1++(x,v1)::G0)) (splice (length G0) T1) (splice (length G0) T2).
+Proof.
+  intros GX G0 G1 T1 T2 x v1 H. remember (G1++G0) as G.
+  revert G0 G1 HeqG.
+  induction H; intros; subst GH; simpl; eauto.
+  - Case "sel1".
+    eapply stp_sel1. apply H. assumption.
+    assert (splice (length G0) T=T) as A. {
+      eapply closed_splice_idem. eassumption. omega.
+    }
+    rewrite <- A. apply IHstp.
+    reflexivity. assumption.
+  - Case "sela".
+    case_eq (le_lt_dec (length G0) x0); intros E LE.
+    + eapply stp_sela1. eapply indexr_splice_hi with (T:=TMem T). eauto. eauto.
+      eapply IHstp. eauto. eauto.
+    + eapply stp_sela1. eapply indexr_splice_lo with (T:=TMem T). eauto. eauto. eauto.
+      eapply IHstp. eauto. eauto.
+  - Case "selax".
+    case_eq (le_lt_dec (length G0) x0); intros E LE.
+    + eapply stp_selax. eapply indexr_splice_hi with (T:=TMem T). eauto. eauto.
+    + eapply stp_selax. eapply indexr_splice_lo with (T:=TMem T). eauto. eauto. eauto.
+  - Case "all".
+    eapply stp_all.
+    eapply IHstp1. eauto. eauto. eauto.
+
+    simpl. rewrite map_splice_length_inc. apply closed_splice. assumption.
+
+    simpl. rewrite map_splice_length_inc. apply closed_splice. assumption.
+    
+    specialize IHstp2 with (G3:=G0) (G4:=(0, TMem T3) :: G2).
+    simpl in IHstp2. rewrite map_length. rewrite app_length. simpl.
+    repeat rewrite splice_open_permute with (j:=0). subst x0.
+    rewrite app_length in IHstp2. simpl in IHstp2.
+    eapply IHstp2. eauto. eauto.
 Qed.
 
 Lemma stp2_splice : forall G1 T1 G2 T2 GH1 GH0 x v1,
@@ -1024,10 +1021,8 @@ Proof.
   change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
   rewrite -> splice_open_permute.
   rewrite -> splice_open_permute.
-  assert (map (splicett (length GH)) G1 = G1) as HG1. admit.
   assert (map (splicett (length GH)) GH = GH) as HGH. admit.
   assert (map (splicett (length GH)) ([(0,TMem T3)]++(x,v1)::GH)=((0, TMem T3)::(x,v1)::GH)) as HGX. admit.
-  rewrite <- HG1.
   rewrite <- HGX.
   apply stp_splice.
   simpl. unfold open in H3. rewrite <- H0. apply H3.
@@ -1671,11 +1666,13 @@ Proof.
   - Case "bool". eauto.
   - Case "fun". intros. simpl. eapply stp_fun. eauto. eauto.
   - Case "mem". intros. simpl. eapply stp_mem. eauto.
-  - Case "sel1". intros. simpl. eapply stp_sel1. apply H.
-    assert (subst TX T = T) as A. admit. (* This is true because any type coming from G1 is closed for indexr, but we don't keep track of this invariant. *)
+  - Case "sel1". intros. simpl. eapply stp_sel1. apply H. assumption.
+    assert (subst TX T = T) as A. {
+      eapply closed_no_subst. eassumption.
+    }
     rewrite <- A.
     apply IHstp; eauto.
-  - Case "selx". intros. simpl. eapply stp_selx. apply H.
+  - Case "selx". intros. simpl. eapply stp_selx. apply H. assumption.
   - Case "sela1". intros GH0 TX ? ? ?. simpl.
     subst GH. specialize (indexr_subst _ x TX T H). intros. 
     destruct H1; destruct H1.
@@ -2184,20 +2181,26 @@ Proof.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
     inversion VT; try solve by inversion; subst.
-    eapply stp2_sel1; eauto. inversion H2. subst. eapply stp2_closed1 in H7. eauto.
-    inversion H2. subst.
-    eapply stp2_extendH_mult with (H2:=GY) in H7. rewrite app_nil_r in H7.
-    eapply stp2_trans. eapply H7. eapply IHST; eauto.
+    eapply stp2_sel1; eauto. inversion H2. subst.
+    eapply stp2_closed1 in H3. eauto. inversion H3. subst. simpl in H7. apply H7.
+    eapply stp2_closed1 in H3. eauto. inversion H3. subst. simpl in H11. apply H11.
+    inversion H3. subst.
+    eapply stp2_extendH_mult with (H2:=GY) in H8. rewrite app_nil_r in H8.
+    eapply stp2_trans. eapply H8. eapply IHST; eauto.
   - Case "selx". eauto.
     assert (exists v : vl, index x GX = Some v /\ val_type GX v (TMem T)) as A.
     eapply index_safe_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]].
     inversion VT; try solve by inversion; subst.
     inversion H2. subst.
-    eapply stp2_sel2. eauto. eapply stp2_closed1 in H7. eauto. 
-    eapply stp2_sel1. eauto. eapply stp2_closed1 in H7. eauto.
-    eapply stp2_extendH_mult with (H2:=GY) in H7. rewrite app_nil_r in H7.
-    eapply stp2_reg1. eapply H7.
+    eapply stp2_sel2. eauto. eapply stp2_closed1 in H3. simpl in H3. inversion H3. subst. apply H7.
+    eapply stp2_sel1. eauto. eapply stp2_closed1 in H3. simpl in H3. inversion H3. subst. apply H7.
+    eapply stp2_extendH_mult with (H2:=GY) in H3. rewrite app_nil_r in H3. inversion H3. subst.
+    eapply stp2_reg1. eapply H8.
+    eapply stp2_sel2. eauto. eapply stp2_closed1 in H3. simpl in H3. inversion H3. subst. apply H11.
+    eapply stp2_sel1. eauto. eapply stp2_closed1 in H3. simpl in H3. inversion H3. subst. apply H11.
+    eapply stp2_extendH_mult with (H2:=GY) in H3. rewrite app_nil_r in H3. inversion H3. subst.
+    eapply stp2_reg1. eapply H12.
   - Case "sela1". eauto.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v (TMem T)) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
