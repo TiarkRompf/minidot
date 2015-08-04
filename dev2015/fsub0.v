@@ -1221,7 +1221,29 @@ Proof.
   apply closed_inc. apply H0.
   apply closed_inc. apply H1.
   simpl.
-  admit.
+  unfold open.
+  assert (splice (length GH) T2 = T2) as A2. {
+    eapply closed_splice_idem. apply H0. omega.
+  }
+  assert (splice (length GH) T4 = T4) as A4. {
+    eapply closed_splice_idem. apply H1. omega.
+  }
+  assert (TSelH (S (length GH)) = splice (length GH) (TSelH (length GH))) as AH. {
+    simpl. case_eq (le_lt_dec (length GH) (length GH)); intros E LE.
+    simpl. rewrite NPeano.Nat.add_1_r. reflexivity.
+    clear LE. apply lt_irrefl in E. inversion E.
+  }
+  rewrite <- A2. rewrite <- A4.
+  unfold open.
+  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  rewrite -> splice_open_permute.
+  rewrite -> splice_open_permute.
+  assert (map (spliceat (length GH)) GH = GH) as HGH. admit.
+  assert (map (spliceat (length GH)) ([(0,(G2, T3))]++(x,v1)::GH)=((0, (G2, T3))::(x,v1)::GH)) as HGX. admit.
+  rewrite <- HGX.
+  apply stp2_splice.
+  simpl. unfold open in H2. apply H2.
+  apply HGH.
 Qed.
 
 Lemma stp2_extendH_mult : forall G1 G2 T1 T2 H H2,
