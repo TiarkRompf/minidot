@@ -87,9 +87,7 @@ with val_type : vl -> ty -> Prop :=
 None             means timeout
 Some None        means stuck
 Some (Some v))   means result v
-
-Could use do-notation to clean up syntax.
- *)
+*)
 
 Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
   match n with
@@ -115,6 +113,64 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
           end
       end
   end.
+
+(* Here is a possible way to use DO notion for cleaner syntax: *)
+
+Notation "'RES' x" := (Some x) (right associativity, at level 60).
+Notation "'VAL' x" := (Some x) (right associativity, at level 60).
+
+Definition STUCK: option (option vl) := Some (None).
+Definition TIMEOUT: option (option vl) := None.
+
+Notation "'DO1' x <== e1 ; e2" 
+   := (match e1 with
+         | Some x => e2
+         | _ => None
+       end)
+   (right associativity, at level 60).
+
+Notation "'DO' x <== e1 ; e2" 
+   := (match e1 with
+         | Some (Some x) => e2
+         | Some _ => Some None
+         | None => None
+       end)
+   (right associativity, at level 60).
+
+
+Notation "'FUEL' n <== e1 ; e2" 
+   := (match e1 with
+         | 0 => TIMEOUT
+         | S n => e2
+       end)
+   (right associativity, at level 60).
+
+Notation "'DO' n <== 'FUEL' e1 ; e2"
+   := (match e1 with
+         | 0 => TIMEOUT
+         | S n => e2
+       end)
+   (right associativity, at level 60).
+
+
+Fixpoint eval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
+  DO n1 <== FUEL n; 
+  match t with
+    | ttrue      => RES VAL (vbool true)
+    | tfalse     => RES VAL (vbool false)
+    | tvar x     => RES (index x env)
+    | tabs y     => RES VAL (vabs env y)
+    | tapp ef ex =>
+      DO vf <== eval n1 env ef;
+        DO vx <==  eval n1 env ex;
+        match vf with
+          | (vabs env2 ey) =>
+            eval n1 (vx::(vabs env2 ey)::env2) ey
+          | _ => STUCK
+        end
+  end.
+
+(* end notation *)
 
 
 Hint Constructors ty.
