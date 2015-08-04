@@ -1780,21 +1780,23 @@ Proof.
       eapply IHForall2. eapply H1.
 Qed.
 
+Ltac eu := repeat match goal with
+                    | H: exists _, _ |- _ => destruct H
+                    | H: _ /\  _ |- _ => destruct H
+           end.
+
+Lemma compat_top: forall GX TX G1 T1',
+  compat GX TX G1 TTop T1' -> closed 0 0 TX -> T1' = TTop.
+Proof.
+  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC]; eu; eauto.
+Qed.
 
 Lemma compat_bool: forall GX TX G1 T1',
     compat GX TX G1 TBool T1' ->
     closed 0 0 TX -> 
     T1' = TBool.
 Proof.
-  intros ? ? ? ? CC CLX. destruct CC.
-
-  simpl in H. destruct H. destruct H. repeat eexists. eauto.
-
-  simpl in H. destruct H. destruct H. repeat eexists. eauto.
-
-  simpl in H. destruct H. destruct H. inversion H. repeat eexists. eauto. 
-
-  simpl in H. destruct H. repeat eexists. eauto. 
+  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC]; eu; eauto.
 Qed.
 
 
@@ -1931,8 +1933,8 @@ Proof.
   induction H.
   - Case "top".
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
-    (* eapply compat_top in IX2. *)
-    admit.
+    eapply compat_top in IX2.
+    subst. eauto. eauto.
     
   - Case "bool".
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
