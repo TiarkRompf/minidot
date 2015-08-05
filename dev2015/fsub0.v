@@ -1992,28 +1992,30 @@ Proof.
     eapply (compat_selh GXX TXX G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
 
     destruct IX1.
-    + destruct H3. destruct H4. subst.
+    + destruct H4. destruct H5. subst.
 
       assert (compat GXX TXX GXX TXX TXX) as CPX. right. left. split. eauto. symmetry. eapply closed_no_subst. eauto.
       
       inversion IXX.
 
-      destruct H1. destruct H1. subst. simpl.
+      destruct H2. destruct H2. subst. simpl.
       eapply stp2_sel1. eauto. eauto.
       eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
-      
-      inversion H1.
 
-      destruct H3. subst. simpl.
+      inversion H2.
+
+      destruct H4. subst. simpl.
       eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
 
-      inversion H3.
+      inversion H4.
 
-      destruct H4. inversion H4. omega. (* contra *)
+      destruct H5. inversion H5. omega. (* contra *)
 
-      destruct H4. simpl in H4. destruct H4. eauto. (* contra *)
-    + destruct H3. destruct H3. destruct H4. destruct H5.
+      destruct H5. simpl in H5. destruct H5. eauto. (* contra *)
+
+    + destruct H4. destruct H4. destruct H5. destruct H6.
       subst T1'. eapply stp2_sela1. eauto.
+      (* closed 0 (x - 1) x0 *) admit.
       eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
 
     + eauto.
@@ -2201,7 +2203,7 @@ Proof.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. destruct x0.
     inversion VT. subst. 
-    eapply stp2_sela1. eauto. eapply IHST. eauto. eauto.
+    eapply stp2_sela1. eauto. assumption. eapply IHST. eauto. eauto.
   - Case "selax". eauto.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v (TMem T)) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
