@@ -878,6 +878,65 @@ Proof.
   case_eq (le_lt_dec n x); intros E LE. omega. reflexivity.
 Qed.
 
+Lemma stp_closed : forall G GH T1 T2,
+                     stp G GH T1 T2 ->
+                     closed 0 (length GH) T1 /\ closed 0 (length GH) T2.
+Proof.
+  intros. induction H;
+    try solve [split; eauto];
+    try solve [inversion IHstp; split; eauto];
+    try solve [inversion IHstp1; inversion IHstp2; split; eauto].
+  - Case "sela1".
+    inversion IHstp as [IH1 IH2].
+    split; eauto.
+    apply cl_selh. eapply indexr_max. eassumption.
+  - Case "selax".
+    split; apply cl_selh; eapply indexr_max; eassumption.
+Qed.
+
+Lemma stp_closed2 : forall G1 GH T1 T2,
+                       stp G1 GH T1 T2 ->
+                       closed 0 (length GH) T2.
+Proof.
+  intros. apply (proj2 (stp_closed G1 GH T1 T2 H)).
+Qed.
+
+Lemma stp_closed1 : forall G1 GH T1 T2,
+                       stp G1 GH T1 T2 ->
+                       closed 0 (length GH) T1.
+Proof.
+  intros. apply (proj1 (stp_closed G1 GH T1 T2 H)).
+Qed.
+
+Lemma stp2_closed: forall G1 G2 T1 T2 GH,
+                     stp2 G1 T1 G2 T2 GH ->
+                     closed 0 (length GH) T1 /\ closed 0 (length GH) T2.
+  intros. induction H;
+    try solve [split; eauto];
+    try solve [inversion IHstp2; split; eauto];
+    try solve [inversion IHstp2_1; inversion IHstp2_2; split; eauto].
+  - Case "sela1".
+    inversion IHstp2 as [IH1 IH2].
+    split; eauto.
+    apply cl_selh. eapply indexr_max. eassumption.
+  - Case "selax".
+    split; apply cl_selh; eapply indexr_max; eassumption.
+Qed.
+
+Lemma stp2_closed2 : forall G1 G2 T1 T2 GH,
+                       stp2 G1 T1 G2 T2 GH ->
+                       closed 0 (length GH) T2.
+Proof.
+  intros. apply (proj2 (stp2_closed G1 G2 T1 T2 GH H)).
+Qed.
+
+Lemma stp2_closed1 : forall G1 G2 T1 T2 GH,
+                       stp2 G1 T1 G2 T2 GH ->
+                       closed 0 (length GH) T1.
+Proof.
+  intros. apply (proj1 (stp2_closed G1 G2 T1 T2 GH H)).
+Qed.
+
 Lemma stp_splice : forall GX G0 G1 T1 T2 x v1,
    stp GX (G1++G0) T1 T2 ->
    stp GX ((map (splicett (length G0)) G1) ++ (x,v1)::G0) (splice (length G0) T1) (splice (length G0) T2).
@@ -986,36 +1045,6 @@ Proof.
     repeat rewrite splice_open_permute with (j:=0).
     rewrite app_length in IHstp2_3. simpl in IHstp2_3.
     eapply IHstp2_3. reflexivity.
-Qed.
-
-Lemma stp_closed : forall G GH T1 T2,
-                     stp G GH T1 T2 ->
-                     closed 0 (length GH) T1 /\ closed 0 (length GH) T2.
-Proof.
-  intros. induction H;
-    try solve [split; eauto];
-    try solve [inversion IHstp; split; eauto];
-    try solve [inversion IHstp1; inversion IHstp2; split; eauto].
-  - Case "sela1".
-    inversion IHstp as [IH1 IH2].
-    split; eauto.
-    apply cl_selh. eapply indexr_max. eassumption.
-  - Case "selax".
-    split; apply cl_selh; eapply indexr_max; eassumption.
-Qed.
-
-Lemma stp_closed2 : forall G1 GH T1 T2,
-                       stp G1 GH T1 T2 ->
-                       closed 0 (length GH) T2.
-Proof.
-  intros. apply (proj2 (stp_closed G1 GH T1 T2 H)).
-Qed.
-
-Lemma stp_closed1 : forall G1 GH T1 T2,
-                       stp G1 GH T1 T2 ->
-                       closed 0 (length GH) T1.
-Proof.
-  intros. apply (proj1 (stp_closed G1 GH T1 T2 H)).
 Qed.
 
 Lemma stp_extend : forall G1 GH T1 T2 x v1,
@@ -1250,35 +1279,6 @@ Lemma stp2_extend1 : forall x v1 G1 G2 T1 T2 H,
                        stp2 ((x,v1)::G1) T1 G2 T2 H.
 Proof.
   intros. apply (proj1 (stp2_extend x v1 G1 G2 T1 T2 H H0)). assumption.
-Qed.
-
-Lemma stp2_closed: forall G1 G2 T1 T2 GH,
-                     stp2 G1 T1 G2 T2 GH ->
-                     closed 0 (length GH) T1 /\ closed 0 (length GH) T2.
-  intros. induction H;
-    try solve [split; eauto];
-    try solve [inversion IHstp2; split; eauto];
-    try solve [inversion IHstp2_1; inversion IHstp2_2; split; eauto].
-  - Case "sela1".
-    inversion IHstp2 as [IH1 IH2].
-    split; eauto.
-    apply cl_selh. eapply indexr_max. eassumption.
-  - Case "selax".
-    split; apply cl_selh; eapply indexr_max; eassumption.
-Qed.
-
-Lemma stp2_closed2 : forall G1 G2 T1 T2 GH,
-                       stp2 G1 T1 G2 T2 GH ->
-                       closed 0 (length GH) T2.
-Proof.
-  intros. apply (proj2 (stp2_closed G1 G2 T1 T2 GH H)).
-Qed.
-
-Lemma stp2_closed1 : forall G1 G2 T1 T2 GH,
-                       stp2 G1 T1 G2 T2 GH ->
-                       closed 0 (length GH) T1.
-Proof.
-  intros. apply (proj1 (stp2_closed G1 G2 T1 T2 GH H)).
 Qed.
 
 Lemma stp2_extendH : forall x v1 G1 G2 T1 T2 GH,
