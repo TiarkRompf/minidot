@@ -314,7 +314,7 @@ Inductive stp2: venv -> ty -> venv -> ty -> aenv  -> Prop :=
     stp2 G2 T3 G1 T1 GH ->
     closed 1 (length GH) T2 -> (* must not accidentally bind x *)
     closed 1 (length GH) T4 ->
-    stp2 G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T2) ((0,(G1, T1))::GH) -> (* regularity *)
+    stp2 G1 (open (TSelH (length GH)) T2) G1 (open (TSelH (length GH)) T2) ((0,(G1, T1))::GH) -> (* regularity *)
     stp2 G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) ((0,(G2, T3))::GH) ->
     stp2 G1 (TAll T1 T2) G2 (TAll T3 T4) GH
 .
@@ -2240,7 +2240,7 @@ Proof.
       reflexivity.
       eapply stp2_extendH. eauto. eauto.
       rewrite app_length. simpl. rewrite EL. eauto.
-      rewrite app_length. simpl. rewrite EL. eauto. admit.
+      rewrite app_length. simpl. rewrite EL. eauto.
       eapply Forall2_cons. simpl. eauto. eauto.
     + subst. specialize IHstp2_3 with (GH1 := (0, (G2, T3))::GH0).
       eapply IHstp2_3.
