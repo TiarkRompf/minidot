@@ -875,6 +875,15 @@ Proof.
   unfold closed. apply cl_selh. omega.
 Qed.
 
+Lemma closed_inc_mult: forall j l l' T,
+  closed j l T ->
+  l' >= l ->
+  closed j l' T.
+Proof.
+  intros j l l' T H LE. induction LE.
+  - assumption.
+  - apply closed_inc. assumption.
+Qed.
 
 Lemma closed_splice_idem: forall k l T n,
                             closed k l T ->
@@ -1688,15 +1697,19 @@ Proof.
   - Case "selx". intros. simpl. eapply stp_selx. apply H. assumption.
   - Case "sela1". intros GH0 TX ? ? ?. simpl.
     subst GH. specialize (indexr_subst _ x TX T H). intros. 
-    destruct H1; destruct H1.
+    destruct H2; destruct H2.
     + subst. simpl.
       specialize (IHstp GH0 T). 
       assert (subst T T = T). eapply closed_no_subst; eauto.
-      rewrite H1 in IHstp.
+      rewrite H2 in IHstp.
       eapply IHstp. eauto. eauto. eauto.
     + subst. simpl.
-      assert (beq_nat x 0 = false). eapply beq_nat_false_iff; omega. rewrite H5. simpl.
-      eapply stp_sela1. eapply H4. eapply IHstp. eauto. eauto. eauto.
+      assert (beq_nat x 0 = false). eapply beq_nat_false_iff; omega. rewrite H6. simpl.
+      eapply stp_sela1. eapply H5.
+      eapply closed_subst.
+      assert (x - 1 + 1 = x) as A by omega.  rewrite A. assumption.
+      eapply closed_inc_mult. eassumption. omega.
+      eauto.
   - Case "selax". intros GH0 TX ? ? ?. simpl.
     subst GH. specialize (indexr_subst _ x TX T H). intros.
     destruct H0; destruct H0.
