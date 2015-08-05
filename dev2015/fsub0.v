@@ -1353,18 +1353,30 @@ Proof.
   apply stp2_extendH_mult. assumption.
 Qed.
 
+Lemma stp2_reg  : forall G1 G2 T1 T2 GH,
+                    stp2 G1 T1 G2 T2 GH ->
+                    stp2 G1 T1 G1 T1 GH /\ stp2 G2 T2 G2 T2 GH.
+Proof.
+  intros. induction H;
+    try solve [split; eauto];
+    try solve [inversion IHstp2; split; eauto];
+    try solve [inversion IHstp2_1; inversion IHstp2_2; split; eauto];
+    try solve [inversion IHstp2_1; inversion IHstp2_2; inversion IHstp2_3; split; eauto].
+Qed.
 
-Lemma stp2_reg2 : forall G1 G2 T1 T2 H ,
-                       stp2 G1 T1 G2 T2 H ->
-                       stp2 G2 T2 G2 T2 H.
-Proof. admit. Qed.
+Lemma stp2_reg2 : forall G1 G2 T1 T2 GH ,
+                       stp2 G1 T1 G2 T2 GH ->
+                       stp2 G2 T2 G2 T2 GH.
+Proof.
+  intros. apply (proj2 (stp2_reg G1 G2 T1 T2 GH H)).
+Qed.
 
-Lemma stp2_reg1 : forall G1 G2 T1 T2 H,
-                       stp2 G1 T1 G2 T2 H ->
-                       stp2 G1 T1 G1 T1 H.
-Proof. admit. Qed.
-
-
+Lemma stp2_reg1 : forall G1 G2 T1 T2 GH,
+                       stp2 G1 T1 G2 T2 GH ->
+                       stp2 G1 T1 G1 T1 GH.
+Proof.
+  intros. apply (proj1 (stp2_reg G1 G2 T1 T2 GH H)).
+Qed.
 
 Lemma valtp_extend : forall vs v x v1 T,
                        val_type vs v T ->
