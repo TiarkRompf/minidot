@@ -176,7 +176,10 @@ the second env is for variables bound in types
 first = TSel, second = TSelH
 *)
 Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
+| stp_topx: forall G1 GH,
+    stp G1 GH TTop TTop
 | stp_top: forall G1 GH T1,
+    stp G1 GH T1 T1 -> (* regularity *)
     stp G1 GH T1 TTop
 | stp_bool: forall G1 GH,
     stp G1 GH TBool TBool
@@ -208,7 +211,8 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH T3 T1 ->
     x = length GH ->
     closed 1 (length GH) T2 -> (* must not accidentally bind x *)
-    closed 1 (length GH) T4 -> 
+    closed 1 (length GH) T4 ->
+    stp G1 ((0,TMem T1)::GH) (open (TSelH x) T2) (open (TSelH x) T2) -> (* regularity *)
     stp G1 ((0,TMem T3)::GH) (open (TSelH x) T2) (open (TSelH x) T4) ->
     stp G1 GH (TAll T1 T2) (TAll T3 T4)
 .
@@ -480,10 +484,11 @@ Proof.
   eapply t_tapp. eapply t_sub. eapply t_var. simpl. eauto.
   eapply stp_all. eauto. eauto.
   crush_has_tp.  crush_has_tp.   crush_has_tp. compute.
+  crush_has_tp.
   
   eapply stp_all.  eauto. eauto. econstructor. eauto. eauto.
   eapply cl_fun. eapply cl_selb. eauto. eapply cl_selb. eauto.
-  crush_has_tp. crush_has_tp.
+  crush_has_tp. crush_has_tp. crush_has_tp.
 Qed.  
        
 
@@ -904,12 +909,18 @@ Proof.
     simpl. rewrite map_splice_length_inc. apply closed_splice. assumption.
 
     simpl. rewrite map_splice_length_inc. apply closed_splice. assumption.
-    
-    specialize IHstp2 with (G3:=G0) (G4:=(0, TMem T3) :: G2).
+
+    specialize IHstp2 with (G3:=G0) (G4:=(0, TMem T1) :: G2).
     simpl in IHstp2. rewrite app_length. rewrite map_length. simpl.
     repeat rewrite splice_open_permute with (j:=0). subst x0.
     rewrite app_length in IHstp2. simpl in IHstp2.
-    eapply IHstp2. eauto. 
+    eapply IHstp2. eauto.
+
+    specialize IHstp3 with (G3:=G0) (G4:=(0, TMem T3) :: G2).
+    simpl in IHstp2. rewrite app_length. rewrite map_length. simpl.
+    repeat rewrite splice_open_permute with (j:=0). subst x0.
+    rewrite app_length in IHstp3. simpl in IHstp3.
+    eapply IHstp3. eauto.
 Qed.
 
 Lemma stp2_splice : forall G1 T1 G2 T2 GH1 GH0 x v1,
@@ -967,28 +978,41 @@ Proof.
     eapply IHstp2_2. reflexivity.
 Qed.
 
+Lemma stp_closed : forall G GH T1 T2,
+                     stp G GH T1 T2 ->
+                     closed 0 (length GH) T1 /\ closed 0 (length GH) T2.
+Proof.
+  intros. induction H;
+    try solve [split; eauto];
+    try solve [inversion IHstp; split; eauto];
+    try solve [inversion IHstp1; inversion IHstp2; split; eauto].
+  - Case "sela1".
+    inversion IHstp as [IH1 IH2].
+    split; eauto.
+    apply cl_selh. eapply indexr_max. eassumption.
+  - Case "selax".
+    split; apply cl_selh; eapply indexr_max; eassumption.
+Qed.
+
 Lemma stp_closed2 : forall G1 GH T1 T2,
                        stp G1 GH T1 T2 ->
                        closed 0 (length GH) T2.
-Proof. admit. Qed.
+Proof.
+  intros. apply (proj2 (stp_closed G1 GH T1 T2 H)).
+Qed.
 
 Lemma stp_closed1 : forall G1 GH T1 T2,
                        stp G1 GH T1 T2 ->
                        closed 0 (length GH) T1.
-Proof. admit. Qed.
-
+Proof.
+  intros. apply (proj1 (stp_closed G1 GH T1 T2 H)).
+Qed.
 
 Lemma stp_extend : forall G1 GH T1 T2 x v1,
                        stp G1 GH T1 T2 ->
                        stp G1 ((x,v1)::GH) T1 T2.
 Proof.
   intros. induction H; eauto using indexr_extend.
-  apply stp_all with (x:=length ((x,v1) :: GH)).
-  apply IHstp1.
-  reflexivity.
-  apply closed_inc. apply H1.
-  apply closed_inc. apply H2.
-  simpl.
   assert (splice (length GH) T2 = T2) as A2. {
     eapply closed_splice_idem. apply H1. omega.
   }
@@ -1000,21 +1024,41 @@ Proof.
     simpl. rewrite NPeano.Nat.add_1_r. reflexivity.
     clear LE. apply lt_irrefl in E. inversion E.
   }
-  rewrite <- A2. rewrite <- A4.
-  unfold open.
+  assert (closed 0 (length GH) T1).  eapply stp_closed2. eauto.
+  assert (splice (length GH) T1 = T1) as A1. {
+    eapply closed_splice_idem. eauto. omega.
+  }
   assert (closed 0 (length GH) T3). eapply stp_closed1. eauto.
   assert (splice (length GH) T3 = T3) as A3. {
     eapply closed_splice_idem. eauto. omega.
   }
-  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
-  rewrite -> splice_open_permute.
-  rewrite -> splice_open_permute.
-  assert (map (splicett (length GH)) [(0,TMem T3)] ++(x,v1)::GH =((0, TMem T3)::(x,v1)::GH)) as HGX. {
+  assert (map (splicett (length GH)) [(0,TMem T1)] ++(x,v1)::GH =((0, TMem T1)::(x,v1)::GH)) as HGX1. {
+    simpl. rewrite A1. eauto.
+  }
+  assert (map (splicett (length GH)) [(0,TMem T3)] ++(x,v1)::GH =((0, TMem T3)::(x,v1)::GH)) as HGX3. {
     simpl. rewrite A3. eauto.
   }
-  rewrite <- HGX.
-  apply stp_splice. 
-  simpl. unfold open in H3. rewrite <- H0. apply H3.
+  apply stp_all with (x:=length ((x,v1) :: GH)).
+  apply IHstp1.
+  reflexivity.
+  apply closed_inc. apply H1.
+  apply closed_inc. apply H2.
+  simpl.
+  rewrite <- A2. rewrite <- A2.
+  unfold open.
+  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  rewrite -> splice_open_permute.
+  rewrite <- HGX1.
+  apply stp_splice.
+  rewrite A2. simpl. unfold open in H3. rewrite <- H0. apply H3.
+  simpl.
+  rewrite <- A2. rewrite <- A4.
+  unfold open.
+  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  rewrite -> splice_open_permute. rewrite -> splice_open_permute.
+  rewrite <- HGX3.
+  apply stp_splice.
+  simpl. unfold open in H4. rewrite <- H0. apply H4.
 Qed.
 
 Lemma indexr_at_index: forall {A} x0 GH0 GH1 x (v:A),
@@ -1652,6 +1696,7 @@ Lemma stp_substitute: forall T1 T2 GX GH,
 Proof.
   intros T1 T2 GX GH H.
   induction H.
+  - Case "topx". eauto.
   - Case "top". eauto.
   - Case "bool". eauto.
   - Case "fun". intros. simpl. eapply stp_fun. eauto. eauto.
@@ -1694,14 +1739,22 @@ Proof.
     + rewrite map_length. eapply closed_subst. subst GH.
       rewrite app_length in H2. simpl in H2. eauto.
       eapply closed_upgrade_free; eauto. omega.
-    + specialize IHstp2 with (GH0:=(0, TMem T3)::GH0) (TX:=TX).
+    + specialize IHstp2 with (GH0:=(0, TMem T1)::GH0) (TX:=TX).
       subst GH. simpl in IHstp2.
       unfold open. unfold open in IHstp2.
       subst x.
       rewrite open_subst_commute with (n:=0).
-      rewrite open_subst_commute with (n:=0).
       rewrite app_length in IHstp2. simpl in IHstp2.
       eapply IHstp2; eauto. eapply stp_extend; eauto.
+      eauto.
+    + specialize IHstp3 with (GH0:=(0, TMem T3)::GH0) (TX:=TX).
+      subst GH. simpl in IHstp3.
+      unfold open. unfold open in IHstp3.
+      subst x.
+      rewrite open_subst_commute with (n:=0).
+      rewrite open_subst_commute with (n:=0).
+      rewrite app_length in IHstp3. simpl in IHstp3.
+      eapply IHstp3; eauto. eapply stp_extend; eauto.
       eauto. eauto.
 Qed.
 
@@ -2169,6 +2222,7 @@ Lemma stp_to_stp2: forall G1 GH T1 T2,
   stp2 GX T1 GX T2 GY.
 Proof.
   intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY.
+  - Case "topx". eauto.
   - Case "top". eauto.
   - Case "bool". eauto.
   - Case "fun". eauto.
@@ -2214,7 +2268,7 @@ Proof.
     subst x. assert (length GY = length GH). eapply wfh_length; eauto.
     eapply stp2_all. eauto. rewrite H. eauto. rewrite H.  eauto.
     rewrite H.
-    eapply IHST2. eauto. eapply wfeh_cons. eauto.
+    eapply IHST3. eauto. eapply wfeh_cons. eauto.
 Qed.
 
 
