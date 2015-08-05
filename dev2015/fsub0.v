@@ -742,40 +742,6 @@ Proof.
     + rewrite E in H. apply IHG2. apply H. apply H0.
 Qed.
 
-Lemma indexr_splice_lo1: forall G0 x0 (T:ty) f,
-    indexr x0 G0 = Some T ->
-    map (splicett f) G0 = G0 ->
-    indexr x0 G0 = Some (splice f T).
-Proof.
-  intros G0. induction G0; intros.
-  - simpl in H. inversion H.
-  - destruct a. simpl.
-    case_eq (beq_nat x0 (length G0)); intros E.
-    + simpl in H0. simpl in H. rewrite E in H.
-      inversion H. subst.
-      inversion H0. rewrite H2. rewrite H2. reflexivity.
-    + simpl in H0. simpl in H. rewrite E in H.
-      apply IHG0. assumption.
-      inversion H0. rewrite H3. rewrite H3. reflexivity.
-Qed.
-
-Lemma indexr_spliceat_lo1: forall G0 x0 G T f,
-    indexr x0 G0 = Some (G, T) ->
-    map (spliceat f) G0 = G0 ->
-    indexr x0 G0 = Some (G, (splice f T)).
-Proof.
-  intros G0. induction G0; intros.
-  - simpl in H. inversion H.
-  - destruct a. simpl.
-    case_eq (beq_nat x0 (length G0)); intros E.
-    + simpl in H0. simpl in H. rewrite E in H.
-      inversion H. subst.
-      inversion H0. rewrite H2. rewrite H2. reflexivity.
-    + simpl in H0. simpl in H. rewrite E in H.
-      apply IHG0. assumption.
-      inversion H0. rewrite H3. rewrite H3. reflexivity.
-Qed.
-
 Lemma indexr_extend_mult: forall {X} G0 G2 x0 (T:X),
     indexr x0 G0 = Some T ->
     indexr x0 (G2++G0) = Some T.
