@@ -2054,7 +2054,9 @@ Proof.
   induction H.
   - Case "topx".
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
-    admit.
+    eapply compat_top in IX1.
+    eapply compat_top in IX2.
+    subst. eauto. eauto. eauto.
 
   - Case "top".
     intros GH0 GH0' GXX TXX T1' T2' ? RF CX IX1 IX2 FA.
