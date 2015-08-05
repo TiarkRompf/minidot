@@ -7,7 +7,6 @@
 (*
 TODO:
 - stp2 trans + narrowing 
-- stp/stp2 regularity
 *)
 
 Require Export SfLib.
@@ -42,7 +41,6 @@ Inductive tm : Type :=
 
 Inductive vl : Type :=
 | vty   : list (id*vl) -> ty -> vl
-| vtya  : list (id*vl) -> ty -> vl (* X<T, only used in stp2_all *)
 | vbool : bool -> vl
 | vabs  : list (id*vl) -> id -> id -> tm -> vl
 | vtabs : list (id*vl) -> id -> ty -> tm -> vl
@@ -305,7 +303,6 @@ Inductive stp2: venv -> ty -> venv -> ty -> aenv  -> Prop :=
          
 | stp2_selax: forall G1 G2 GX TX x GH,
     indexr x GH = Some (GX, TX) ->
-    indexr x GH = Some (GX, TX) ->
     (*closed 0 x TX ->*)
     stp2 G1 (TSelH x) G2 (TSelH x) GH
 
@@ -397,7 +394,6 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
                 | Some None => Some None
                 | Some (Some (vbool _)) => Some None
                 | Some (Some (vty _ _)) => Some None
-                | Some (Some (vtya _ _)) => Some None
                 | Some (Some (vtabs _ _ _ _)) => Some None
                 | Some (Some (vabs env2 f x ey)) =>
                   teval n ((x,vx)::(f,vabs env2 f x ey)::env2) ey
@@ -409,7 +405,6 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
             | Some None => Some None
             | Some (Some (vbool _)) => Some None
             | Some (Some (vty _ _)) => Some None
-            | Some (Some (vtya _ _)) => Some None
             | Some (Some (vabs _ _ _ _)) => Some None
             | Some (Some (vtabs env2 x T ey)) =>
               teval n ((x,vty env ex)::env2) ey
@@ -1022,9 +1017,7 @@ Proof.
     case_eq (le_lt_dec (length GH0) x0); intros E LE.
     + eapply stp2_selax.
       eapply indexr_spliceat_hi. apply H. eauto.
-      eapply indexr_spliceat_hi. eauto. eauto.
     + eapply stp2_selax.
-      eapply indexr_spliceat_lo. apply H. eauto. eauto.
       eapply indexr_spliceat_lo. apply H. eauto.
   - Case "all".
     eapply stp2_all.
@@ -1221,7 +1214,7 @@ Proof.
     }
     inversion A as [GX' [H' HX]].
     apply stp2_selax with (GX:=GX') (TX:=TX).
-    assumption. assumption.
+    assumption.
   - Case "all".
     assert (length GH = length GH') as A. {
       apply aenv_ext__same_length. assumption.
@@ -2172,12 +2165,12 @@ Proof.
 
       inversion IXX1; inversion IXX2.
 
-      destruct H1. destruct H1. subst. simpl.
+      destruct H0. destruct H0. subst. simpl.
       destruct H3. destruct H3. subst. simpl.
       eapply stp2_sel1. eauto. eauto.
       eapply stp2_sel2. eauto. eauto. eauto.
 
-      destruct H1. destruct H1. subst. simpl.
+      destruct H0. destruct H0. subst. simpl.
       destruct H3. destruct H3. subst. simpl.
       eapply stp2_sel1. eauto. eauto. eauto.
 
@@ -2188,30 +2181,30 @@ Proof.
 
       (* --- *)
       
-      destruct H1. destruct H1. subst. simpl.
-      destruct H3. destruct H1. subst. simpl.
+      destruct H0. destruct H0. subst. simpl.
+      destruct H3. destruct H0. subst. simpl.
       eapply stp2_sel2. eauto. eauto. eauto.
 
-      destruct H1. destruct H1. inversion H1. omega. (* contra *)
+      destruct H0. destruct H0. inversion H0. omega. (* contra *)
 
-      destruct H1. destruct H1. eauto. (* contra *)
+      destruct H0. destruct H0. eauto. (* contra *)
 
       (* --- *)
       
-      destruct H1. destruct H1. subst. simpl.
-      destruct H3. destruct H1. subst. simpl.
+      destruct H0. destruct H0. subst. simpl.
+      destruct H3. destruct H0. subst. simpl.
       eauto.
       
-      destruct H1. destruct H1. inversion H1. omega.
-      destruct H1. destruct H1. eauto.
-      destruct H1. destruct H1. inversion H1. omega.
-      destruct H1. destruct H1. eauto.
+      destruct H0. destruct H0. inversion H0. omega.
+      destruct H0. destruct H0. eauto.
+      destruct H0. destruct H0. inversion H0. omega.
+      destruct H0. destruct H0. eauto.
       
-    + destruct H3. destruct H4. omega.
-    + destruct H3. destruct H4. omega.
-    + destruct H3. destruct H3. destruct H5. destruct H6.
-      destruct H4. destruct H4. destruct H8. destruct H9.
-      subst. eapply stp2_selax. eauto. eauto.
+    + destruct H3. destruct H3. omega.
+    + destruct H2. destruct H3. omega.
+    + destruct H2. destruct H2. destruct H4. destruct H5.
+      destruct H3. destruct H3. destruct H7. destruct H8.
+      subst. eapply stp2_selax. eauto.
 
     + eauto.
     + subst GH. eauto.
@@ -2348,7 +2341,7 @@ Proof.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. destruct x0.
     destruct VT. subst.
-    eapply stp2_selax. eauto. eauto.
+    eapply stp2_selax. eauto.
   - Case "all".
     subst x. assert (length GY = length GH). eapply wfh_length; eauto.
     eapply stp2_all. eauto. rewrite H. eauto. rewrite H.  eauto.
