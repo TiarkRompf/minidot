@@ -1378,6 +1378,18 @@ Proof.
   intros. apply (proj1 (stp2_reg G1 G2 T1 T2 GH H)).
 Qed.
 
+(* not used, but for good measure *)
+Lemma stp_reg  : forall G GH T1 T2,
+                    stp G GH T1 T2 ->
+                    stp G GH T1 T1 /\ stp G GH T2 T2.
+Proof.
+  intros. induction H;
+    try solve [split; eauto];
+    try solve [inversion IHstp; split; eauto];
+    try solve [inversion IHstp1; inversion IHstp2; split; eauto];
+    try solve [inversion IHstp1; inversion IHstp2; inversion IHstp3; split; eauto].
+Qed.
+
 Lemma valtp_extend : forall vs v x v1 T,
                        val_type vs v T ->
                        fresh vs <= x ->
