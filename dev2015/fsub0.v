@@ -291,7 +291,7 @@ Inductive stp2: venv -> ty -> venv -> ty -> aenv  -> Prop :=
 (* X<T, one sided *)
 | stp2_sela1: forall G1 G2 GX TX x T2 GH,
     indexr x GH = Some (GX, TX) ->
-    (* closed 0 x TX -> *)
+    closed 0 x TX ->
     stp2 GX TX G2 T2 GH ->
     stp2 G1 (TSelH x) G2 T2 GH
 
@@ -706,7 +706,7 @@ Qed.
 Lemma indexr_spliceat_hi: forall G0 G2 x0 x v1 G T,
     indexr x0 (G2 ++ G0) = Some (G, T) ->
     length G0 <= x0 ->
-    indexr (x0 + 1) (map (spliceat (length G0)) (G2 ++ (x, v1) :: G0)) = Some (G, splice (length G0) T).
+    indexr (x0 + 1) (map (spliceat (length G0)) G2 ++ (x, v1) :: G0) = Some (G, splice (length G0) T).
 Proof.
   intros G0 G2. induction G2; intros.
   - eapply indexr_max in H. simpl in H. omega.
@@ -714,7 +714,7 @@ Proof.
     case_eq (beq_nat x0 (length (G2 ++ G0))); intros E.
     + rewrite E in H. inversion H. subst. simpl.
       rewrite app_length in E.
-      rewrite map_length. rewrite app_length. simpl.
+      rewrite app_length. rewrite map_length. simpl.
       assert (beq_nat (x0 + 1) (length G2 + S (length G0)) = true). eapply beq_nat_true_iff. eapply beq_nat_true_iff in E. omega.
       rewrite H1. eauto.
     + rewrite E in H.  eapply IHG2 in H. destruct p. eapply indexr_extend. eapply H. eauto.
@@ -803,15 +803,11 @@ Qed.
 
 Lemma indexr_spliceat_lo: forall G0 G2 x0 x v1 G T f,
     indexr x0 (G2 ++ G0) = Some (G, T) ->
-    map (spliceat f) G0 = G0 ->
     x0 < length G0 ->
-    indexr x0 (map (spliceat f) (G2 ++ (x, v1) :: G0)) = Some (G, (splice f T)).
+    indexr x0 (map (spliceat f) G2 ++ (x, v1) :: G0) = Some (G, T).
 Proof.
   intros.
   assert (indexr x0 G0 = Some (G, T)). eapply indexr_splice_lo0; eauto.
-  assert (indexr x0 (map (spliceat f) G0) = Some (G, (splice f T))).
-  rewrite H0. eapply indexr_spliceat_lo1. eauto. eauto.
-  rewrite map_app. destruct v1. simpl.
   eapply indexr_extend_mult. eapply indexr_extend. eauto.
 Qed.  
 
@@ -859,11 +855,11 @@ Proof.
 Qed.
 
 Lemma map_spliceat_length_inc: forall G0 G2 x v1,
-   (length (map (spliceat (length G0)) (G2 ++ (x, v1) :: G0))) = (S (length (G2 ++ G0))).
+   (length (map (spliceat (length G0)) G2 ++ (x, v1) :: G0)) = (S (length (G2 ++ G0))).
 Proof.
-  intros. rewrite map_length. induction G2.
+  intros. rewrite app_length. rewrite map_length. induction G2.
   - simpl. reflexivity.
-  - simpl. rewrite IHG2. reflexivity.
+  - simpl. eauto.
 Qed.
 
 
@@ -952,8 +948,7 @@ Qed.
 
 Lemma stp2_splice : forall G1 T1 G2 T2 GH1 GH0 x v1,
    stp2 G1 T1 G2 T2 (GH1++GH0) ->
-   map (spliceat (length GH0)) GH0 = GH0 ->
-   stp2 G1 (splice (length GH0) T1) G2 (splice (length GH0) T2) (map (spliceat (length GH0)) (GH1++(x,v1)::GH0)).
+   stp2 G1 (splice (length GH0) T1) G2 (splice (length GH0) T2) ((map (spliceat (length GH0)) GH1) ++ (x,v1)::GH0).
 Proof.
   intros G1 T1 G2 T2 GH1 GH0 x v1 H. remember (GH1++GH0) as GH.
   revert GH0 GH1 HeqGH.
@@ -964,20 +959,25 @@ Proof.
       eapply closed_splice_idem. eassumption. omega.
     }
     rewrite <- A. apply IHstp2.
-    reflexivity. assumption.
+    reflexivity.
   - Case "sel2".
     eapply stp2_sel2. apply H. assumption.
     assert (splice (length GH0) TX=TX) as A. {
       eapply closed_splice_idem. eassumption. omega.
     }
     rewrite <- A. apply IHstp2.
-    reflexivity. assumption.
+    reflexivity.
   - Case "sela1".
     case_eq (le_lt_dec (length GH0) x0); intros E LE.
     + eapply stp2_sela1. eapply indexr_spliceat_hi. apply H. eauto.
-      eapply IHstp2. eauto. eauto.
+      eapply closed_splice in H0. assert (S x0 = x0 +1) by omega. rewrite <- H2.
+      eapply H0.
+      eapply IHstp2. eauto.
     + eapply stp2_sela1. eapply indexr_spliceat_lo. apply H. eauto. eauto.
-      eapply IHstp2. eauto. eauto.
+      assert (splice (length GH0) TX=TX) as A. {
+        eapply closed_splice_idem. eassumption. omega.
+      }
+      rewrite <- A. eapply IHstp2. eauto.
   - Case "selax".
     case_eq (le_lt_dec (length GH0) x0); intros E LE.
     + eapply stp2_selax.
@@ -985,20 +985,20 @@ Proof.
       eapply indexr_spliceat_hi. eauto. eauto.
     + eapply stp2_selax.
       eapply indexr_spliceat_lo. apply H. eauto. eauto.
-      eapply indexr_spliceat_lo. apply H. eauto. eauto.
+      eapply indexr_spliceat_lo. apply H. eauto.
   - Case "all".
     eapply stp2_all.
-    eapply IHstp2_1. reflexivity. assumption.
+    eapply IHstp2_1. reflexivity.
 
     simpl. rewrite map_spliceat_length_inc. apply closed_splice. assumption.
 
     simpl. rewrite map_spliceat_length_inc. apply closed_splice. assumption.
 
     specialize IHstp2_2 with (GH2:=GH0) (GH3:=(0, (G2, T3)) :: GH1).
-    simpl in IHstp2_2. rewrite map_length. rewrite app_length. simpl.
+    simpl in IHstp2_2. rewrite app_length. rewrite map_length. simpl.
     repeat rewrite splice_open_permute with (j:=0).
     rewrite app_length in IHstp2_2. simpl in IHstp2_2.
-    eapply IHstp2_2. reflexivity. assumption.
+    eapply IHstp2_2. reflexivity.
 Qed.
 
 Lemma stp_closed2 : forall G1 GH T1 T2,
@@ -1164,7 +1164,7 @@ Proof.
     }
     inversion A as [GX' [H' HX]].
     apply stp2_sela1 with (GX:=GX') (TX:=TX).
-    assumption.
+    assumption. assumption.
     apply IHstp2; assumption.
   - Case "selax".
     assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
@@ -1228,6 +1228,16 @@ Proof.
   intros. apply (proj1 (stp2_extend x v1 G1 G2 T1 T2 H H0)). assumption.
 Qed.
 
+Lemma stp2_closed2 : forall G1 G2 T1 T2 H ,
+                       stp2 G1 T1 G2 T2 H ->
+                       closed 0 (length H) T2.
+Proof. admit. Qed.
+
+Lemma stp2_closed1 : forall G1 G2 T1 T2 H,
+                       stp2 G1 T1 G2 T2 H ->
+                       closed 0 (length H) T1.
+Proof. admit. Qed.
+
 Lemma stp2_extendH : forall x v1 G1 G2 T1 T2 GH,
                        stp2 G1 T1 G2 T2 GH ->
                        stp2 G1 T1 G2 T2 ((x,v1)::GH).
@@ -1255,12 +1265,16 @@ Proof.
   change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
   rewrite -> splice_open_permute.
   rewrite -> splice_open_permute.
-  assert (map (spliceat (length GH)) GH = GH) as HGH. admit.
-  assert (map (spliceat (length GH)) ([(0,(G2, T3))]++(x,v1)::GH)=((0, (G2, T3))::(x,v1)::GH)) as HGX. admit.
+  assert (closed 0 (length GH) T3). eapply stp2_closed1. eauto.
+  assert (splice (length GH) T3 = T3) as A3. {
+    eapply closed_splice_idem. eauto. omega.
+  }
+  assert (map (spliceat (length GH)) [(0,(G2, T3))] ++(x,v1)::GH =((0, (G2, T3))::(x,v1)::GH)) as HGX. {
+    simpl. rewrite A3. eauto.
+  }
   rewrite <- HGX.
   apply stp2_splice.
   simpl. unfold open in H2. apply H2.
-  apply HGH.
 Qed.
 
 Lemma stp2_extendH_mult : forall G1 G2 T1 T2 H H2,
@@ -1291,18 +1305,6 @@ Lemma stp2_reg1 : forall G1 G2 T1 T2 H,
                        stp2 G1 T1 G2 T2 H ->
                        stp2 G1 T1 G1 T1 H.
 Proof. admit. Qed.
-
-
-Lemma stp2_closed2 : forall G1 G2 T1 T2 H ,
-                       stp2 G1 T1 G2 T2 H ->
-                       closed 0 (length H) T2.
-Proof. admit. Qed.
-
-Lemma stp2_closed1 : forall G1 G2 T1 T2 H,
-                       stp2 G1 T1 G2 T2 H ->
-                       closed 0 (length H) T1.
-Proof. admit. Qed.
-
 
 
 
