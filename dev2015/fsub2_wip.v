@@ -203,12 +203,14 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_sel1: forall G1 GH TX T2 x,
     index x G1 = Some TX ->
     closed 0 0 TX ->
-    stp G1 GH TX (TMem TBot T2) ->   
+    stp G1 GH TX (TMem TBot T2) ->
+    stp G1 GH T2 T2 -> (* regularity of stp2 *)
     stp G1 GH (TSel x) T2
 | stp_sel2: forall G1 GH TX T1 x,
     index x G1 = Some TX ->
     closed 0 0 TX ->
     stp G1 GH TX (TMem T1 TTop) ->
+    stp G1 GH T1 T1 -> (* regularity of stp2 *)
     stp G1 GH T1 (TSel x)
 | stp_selx: forall G1 GH TX x,
     index x G1 = Some TX ->
@@ -216,12 +218,14 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_sela1: forall G1 GH TX T2 x,
     indexr x GH = Some TX ->
     closed 0 x TX ->
-    stp G1 GH TX (TMem TBot T2) ->   
+    stp G1 GH TX (TMem TBot T2) ->
+    stp G1 GH T2 T2 -> (* regularity of stp2 *)
     stp G1 GH (TSelH x) T2
 | stp_sela2: forall G1 GH TX T1 x,
     indexr x GH = Some TX ->
     closed 0 x TX ->
     stp G1 GH TX (TMem T1 TTop) ->
+    stp G1 GH T1 T1 -> (* regularity of stp2 *)
     stp G1 GH T1 (TSelH x)
 | stp_selax: forall G1 GH TX x,
     indexr x GH = Some TX  ->
@@ -1095,7 +1099,7 @@ Proof.
     try solve [inversion IHstp as [IH1 IH2]; inversion IH2; split; eauto];
     try solve [inversion IHstp1; inversion IHstp2; split; eauto];
     try solve [try inversion IHstp; split; eauto; apply cl_selh; eapply indexr_max; eassumption];
-    try solve [inversion IHstp as [IH1 IH2]; inversion IH2; split; eauto; apply cl_selh; eapply indexr_max; eassumption].
+    try solve [inversion IHstp1 as [IH1 IH2]; inversion IH2; split; eauto; apply cl_selh; eapply indexr_max; eassumption].
 Qed.
 
 Lemma stp_closed2 : forall G1 GH T1 T2,
@@ -1150,35 +1154,41 @@ Proof.
     assert (splice (length G0) TX=TX) as A. {
       eapply closed_splice_idem. eassumption. omega.
     }
-    rewrite <- A. apply IHstp.
-    reflexivity. 
+    rewrite <- A. apply IHstp1. reflexivity.
+    apply IHstp2. reflexivity.
   - Case "sel2".
     eapply stp_sel2. apply H. assumption.
     assert (splice (length G0) TX=TX) as A. {
       eapply closed_splice_idem. eassumption. omega.
     }
-    rewrite <- A. apply IHstp.
-    reflexivity. 
+    rewrite <- A. apply IHstp1. reflexivity.
+    apply IHstp2. reflexivity. 
   - Case "sela1".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
     + eapply stp_sela1. eapply indexr_splice_hi. eauto. eauto.
-      eapply closed_splice in H0. assert (S x0 = x0 +1). omega. rewrite <-H2. eapply H0.
-      eapply IHstp. eauto. 
+      eapply closed_splice in H0. assert (S x0 = x0 +1) as A by omega.
+      rewrite <- A. eapply H0.
+      eapply IHstp1. eauto.
+      eapply IHstp2. eauto.
     + eapply stp_sela1. eapply indexr_splice_lo. eauto. eauto. eauto. eauto.
       assert (splice (length G0) TX=TX) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
-      rewrite <- A. eapply IHstp. eauto. 
+      rewrite <- A. eapply IHstp1. eauto.
+      eapply IHstp2. eauto.
   - Case "sela2".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
     + eapply stp_sela2. eapply indexr_splice_hi. eauto. eauto.
-      eapply closed_splice in H0. assert (S x0 = x0 +1). omega. rewrite <-H2. eapply H0.
-      eapply IHstp. eauto. 
+      eapply closed_splice in H0. assert (S x0 = x0 +1) as A by omega.
+      rewrite <- A. eapply H0.
+      eapply IHstp1. eauto.
+      eapply IHstp2. eauto.
     + eapply stp_sela2. eapply indexr_splice_lo. eauto. eauto. eauto. eauto.
       assert (splice (length G0) TX=TX) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
-      rewrite <- A. eapply IHstp. eauto. 
+      rewrite <- A. eapply IHstp1. eauto. 
+      eapply IHstp2. eauto.
   - Case "selax".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
     + eapply stp_selax. eapply indexr_splice_hi. eauto. eauto.
@@ -2959,8 +2969,14 @@ Proof with stpd2_wrapf.
     destruct A as [? [? VT]].
     eapply inv_vtp_half in VT. ev.
     eapply stpd2_sel1. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
-    admit.
-  - Case "sel2". admit.
+    eauto.
+  - Case "sel2".
+    assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
+    eapply index_safe_ex. eauto. eauto.
+    destruct A as [? [? VT]].
+    eapply inv_vtp_half in VT. ev.
+    eapply stpd2_sel2. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
+    eauto.
   - Case "selx". 
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
     eapply index_safe_ex. eauto. eauto. ev.
@@ -2970,9 +2986,15 @@ Proof with stpd2_wrapf.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. destruct x0.
     inversion VT. subst. 
-    eapply stpd2_sela1. eauto. eauto. eapply IHST. eauto. eauto.
-    admit.
-  - Case "sela2". admit.
+    eapply stpd2_sela1. eauto. eauto. eapply IHST1. eauto. eauto.
+    eapply IHST2. eauto. eauto.
+  - Case "sela2".
+    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
+    eapply index_safeh_ex. eauto. eauto. eauto.
+    destruct A as [? [? VT]]. destruct x0.
+    inversion VT. subst. 
+    eapply stpd2_sela2. eauto. eauto. eapply IHST1. eauto. eauto.
+    eapply IHST2. eauto. eauto.
   - Case "selax". eauto.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto. ev. destruct x0.
