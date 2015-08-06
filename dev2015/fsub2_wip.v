@@ -1899,19 +1899,6 @@ Proof.
   - Case "transf". eapply stpd2_transf. eauto. eapply IHn. eauto. omega. eauto.
 Qed.
 
-(*
-Lemma sstpd2_trans_axiom: forall n, forall G1 G2 G3 T1 T2 T3 H n1,
-  stp2 true false G1 T1 G2 T2 H n1 -> n1 < n ->
-  sstpd2 false G2 T2 G3 T3 H ->
-  sstpd2 false G1 T1 G3 T3 H.
-Proof.
-  intros n. induction n; intros; try omega; repeat eu; subst; inversion H0.
-  - Case "wrapf". eexists. eapply stp2_transf; eauto.
-  - Case "transf". admit. (*eexists. eapply stp2_transf. eauto. ep. eapply IHn. eauto. omega. eauto. eauto. *)
-Qed.
-*)
-
-
 Lemma stpd2_trans: forall G1 G2 G3 T1 T2 T3 H,
   stpd2 false G1 T1 G2 T2 H ->
   stpd2 false G2 T2 G3 T3 H ->
@@ -2131,7 +2118,6 @@ Proof.
   eapply sstpd2_untrans. eapply stpd2_to_sstpd2. eauto.
 Qed.
 
-(* not essential *)
 Lemma sstpd2_downgrade: forall G1 G2 T1 T2 H,
   sstpd2 true G1 T1 G2 T2 H ->
   stpd2 false G1 T1 G2 T2 H.
@@ -2437,66 +2423,6 @@ Proof.
        eauto. subst. eauto.
 Qed.
 
-(*
-Lemma stp_substitute: forall T1 T2 GX GH,
-   stp GX GH T1 T2 ->
-   forall GH0 TX0,
-     GH = (GH0 ++ [(0,TMem TBot TX0)]) ->
-     closed 0 0 TX0 ->
-     stp GX (map (substt TX0) GH0) TX0 TX0 ->
-     stp GX (map (substt TX0) GH0)
-         (subst TX0 T1)
-         (subst TX0 T2).
-Proof.
-  intros T1 T2 GX GH H.
-  induction H.
-  - Case "top". eauto.
-  - Case "bot". eauto.
-  - Case "bool". eauto.
-  - Case "fun". intros. simpl. eapply stp_fun. eauto. eauto.
-  - Case "mem". intros. simpl. eapply stp_mem. eauto. eauto.
-  - Case "sel1". admit.
-  - Case "sel2". admit.
-  - Case "selx". admit.
-  - Case "sela1". intros GH0 TX1 ? ? ?. simpl.
-    subst GH. specialize (indexr_subst _ x (TMem TBot TX1) _ H). intros. 
-    destruct H1; destruct H1.
-    + subst. simpl.
-      specialize (IHstp GH0 TX1). 
-      assert (subst TX1 TX1 = TX1). eapply closed_no_subst; eauto.
-      (* rewrite H1 in IHstp. *)
-      eapply IHstp. eauto. eauto. eauto.
-    + subst. simpl.
-      assert (beq_nat x 0 = false). eapply beq_nat_false_iff; omega. rewrite H5. simpl.
-      eapply stp_sela1. eapply H4. eapply IHstp. eauto. eauto. eauto.
-  - Case "sela2". admit. 
-  - Case "selax". intros GH0 TX ? ? ?. simpl.
-    subst GH. specialize (indexr_subst _ x TX TL TU H). intros.
-    destruct H0; destruct H0.
-    + subst. simpl. eauto.
-    + subst. simpl. assert (beq_nat x 0 = false). eapply beq_nat_false_iff. omega. rewrite H4. eapply stp_selax. eauto.
-  - Case "all".
-    intros GH0 TX ? ? ?.
-    simpl. eapply stp_all.
-    + eapply IHstp1; eauto.
-    + rewrite map_length. eauto.
-    + rewrite map_length. eapply closed_subst. subst GH.
-      rewrite app_length in H1. simpl in H1. eauto.
-      eapply closed_upgrade_free; eauto. omega.
-    + rewrite map_length. eapply closed_subst. subst GH.
-      rewrite app_length in H2. simpl in H2. eauto.
-      eapply closed_upgrade_free; eauto. omega.
-    + specialize IHstp2 with (GH0:=(0, T3)::GH0) (TX:=TX).
-      subst GH. simpl in IHstp2.
-      unfold open. unfold open in IHstp2.
-      subst x.
-      rewrite open_subst_commute with (n:=0).
-      rewrite open_subst_commute with (n:=0).
-      rewrite app_length in IHstp2. simpl in IHstp2.
-      eapply IHstp2; eauto. eapply stp_extend; eauto.
-      eauto. eauto.
-Qed.
-*)
 
 (*
 when and how we can replace with multiple environments:
@@ -2521,10 +2447,6 @@ stp2 G1 T1 G2 T2 (GH0 ++ [(0,vtya GX TX)])
    stp2 ((GX,TX) :: G1) (subst (TSel (length G1)) T1) G2' T2'
 
 *)
-
-
-
-
 
 
 (* ---- two-env substitution. first define what 'compatible' types mean. ---- *)
@@ -2735,8 +2657,6 @@ Proof.
       * eapply nosubst_open. simpl. omega. eauto.
       * rewrite subst_open_commute; eauto.
 Qed.
-
-
 
 
 Lemma stp2_substitute: forall m G1 G2 T1 T2 GH n1,
@@ -2963,53 +2883,7 @@ Lemma stpd2_substitute: forall m G1 G2 T1 T2 GH,
 Proof. intros. repeat eu. eapply stp2_substitute; eauto. Qed.
 
 
-
-
-(*
-(* not used right now, but could be a useful helper *)
-Lemma stp2_concretize: forall G1 G2 T1X T2X TX,
-   stp2 G1 (open (TSelH 0) T1X) G2 (open (TSelH 0) T2X) [(0,(G2, TX))] ->
-   stp2 ((fresh G1, vty G2 TX)::G1) (open (TSel (fresh G1)) T1X)
-     G2 (open TX T2X) [].
-Proof.
-  admit. (* call aux version above *)
-Qed.
-*)
-
-
 (* --------------------------------- *)
-
-(*
-Lemma stp_wf_subst: forall G1 GH T11 T12 x,
-  stp G1 GH T11 T11 ->
-  stp G1 ((x, TMem T11) :: GH) (open (TSelH x) T12) (open (TSelH x) T12) ->
-  stp G1 GH (open T11 T12) (open T11 T12).
-Proof.
-  admit.
-Qed.
-
-
-Lemma has_type_wf: forall G1 t T,
-  has_type G1 t T ->
-  stp G1 [] T T.
-Proof.
-  intros. induction H.
-  - Case "true". eauto.
-  - Case "false". eauto.
-  - Case "var". eauto.
-  - Case "app".
-    assert (stp env [] (TFun T1 T2) (TFun T1 T2)) as WF. eauto.
-    inversion WF. eauto.
-  - Case "abs".
-    eauto.
-  - Case "tapp".
-    assert (stp env [] (TAll T11 T12) (TAll T11 T12)) as WF. eauto.
-    inversion WF. subst. eapply stp_wf_subst; eauto.
-  - Case "tabs".
-    eauto.
-Qed.
-*)
-
 
 Lemma inv_vtp_half: forall G v T GH,
   val_type G v T ->
