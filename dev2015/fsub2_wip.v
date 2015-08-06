@@ -1934,7 +1934,9 @@ Proof.
     + SCase "topx". eexists. eauto.
     + SCase "top". eexists. eauto.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
-  - Case "bot". admit. 
+  - Case "bot". subst.
+    apply stp2_reg2 in H1. inversion H1 as [n1' H1'].
+    exists (S n1'). apply stp2_bot. apply H1'.
   - Case "bool". subst. inversion H1.
     + SCase "top". eexists. eauto.
     + SCase "bool". eexists. eauto.
