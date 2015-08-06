@@ -1662,8 +1662,6 @@ Proof.
   intros. apply (proj1 (stp2_reg G1 G2 T1 T2 GH s m n1 H)).
 Qed.
 
-(* UNTIL HERE *)
-
 (* not used, but for good measure *)
 Lemma stp_reg  : forall G GH T1 T2,
                     stp G GH T1 T2 ->
@@ -1672,6 +1670,7 @@ Proof.
   intros. induction H;
     try solve [split; eauto];
     try solve [inversion IHstp; split; eauto];
+    try solve [inversion IHstp as [IH1 IH2]; inversion IH2; subst; split; eauto];
     try solve [inversion IHstp1; inversion IHstp2; split; eauto];
     try solve [inversion IHstp1; inversion IHstp2; inversion IHstp3; split; eauto].
 Qed.
