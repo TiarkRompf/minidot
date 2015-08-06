@@ -1959,7 +1959,12 @@ Proof.
   - Case "mem". subst. inversion H1.
     + SCase "top".
       apply stp2_reg1 in H. inversion H. eexists. eapply stp2_top. eassumption.
-    + SCase "mem". admit.
+    + SCase "mem". subst.
+      assert (stpd2 false G3 T7 G1 T0 []) as A by solve [eapply stpd2_trans; eauto].
+      inversion A as [na A'].
+      assert (stpd2 false G1 T4 G3 T8 []) as B by solve [eapply stpd2_trans; eauto].
+      inversion B as [nb B'].
+      eexists. eapply stp2_mem. apply A'. apply B'.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
   - Case "ssel1".
     assert (sstpd2 true GX TX G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1. 
