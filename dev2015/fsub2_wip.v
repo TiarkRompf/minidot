@@ -371,7 +371,7 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
 | stp2_sela2: forall G1 G2 GX TX x T1 GH n1 n2,
     indexr x GH = Some (GX, TX) ->
     closed 0 x TX ->
-    stp2 false false GX TX G2 (TMem T1 TTop) GH n1 ->
+    stp2 false false GX TX G1 (TMem T1 TTop) GH n1 ->
     stp2 false false G1 T1 G1 T1 GH n2 -> (* regularity *)
     stp2 false true G1 T1 G2 (TSelH x) GH (S (n1+n2))
 
@@ -530,7 +530,7 @@ Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_sela2: forall G1 G2 GX TX x T1 GH,
     indexr x GH = Some (GX, TX) ->
     closed 0 x TX ->
-    stpd2 false GX TX G2 (TMem T1 TTop) GH ->
+    stpd2 false GX TX G1 (TMem T1 TTop) GH ->
     stpd2 false G1 T1 G1 T1 GH ->
     stpd2 true G1 T1 G2 (TSelH x) GH.
 Proof. intros. repeat eu. eauto. Qed.
@@ -2806,7 +2806,40 @@ Proof.
     (* remaining obligations *)
     + eauto. + subst GH. eauto. + eauto.
       
-  - Case "sela2". admit.
+  - Case "sela2".
+
+     intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
+    
+    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
+
+    assert (compat GXX TXX V G2 (TSelH x) T2') as IXX. eauto.
+    
+    eapply (compat_selh GXX TXX V G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
+    
+    destruct IX2. 
+    + SCase "x = 0".
+      repeat destruct IXX as [|IXX]; ev.
+      * subst. simpl.
+        eapply stpd2_sel2. eauto. eauto. eauto.
+        eapply IHstp2_1. eauto. eauto. eauto. eauto. right. left. auto.
+        eapply compat_mem_fwd1. eauto.
+        eauto. eauto.
+      * subst. inversion H6. omega.
+      * subst. destruct H6. eauto.
+    + SCase "x > 0".
+      ev. subst.
+      eapply stpd2_sela2. eauto. eauto.
+
+      assert (x-1+1=x) as A by omega.
+      remember (x-1) as x1. rewrite <- A in H0.
+      eapply closed_compat. eauto. eapply closed_upgrade_free. eauto. omega. eauto.
+
+      eapply IHstp2_1; eauto. eauto. eapply compat_mem_fwd1. eauto.
+      eapply IHstp2_2; eauto.
+    (* remaining obligations *)
+    + eauto. + subst GH. eauto. + eauto.
+
     
   - Case "selax".
 
