@@ -1648,21 +1648,21 @@ Proof.
   apply 0. apply 0.
 Qed.
 
+Lemma stp2_reg2 : forall G1 G2 T1 T2 GH s m n1,
+                       stp2 s m G1 T1 G2 T2 GH n1 ->
+                       stpd2 false G2 T2 G2 T2 GH.
+Proof.
+  intros. apply (proj2 (stp2_reg G1 G2 T1 T2 GH s m n1 H)).
+Qed.
+
+Lemma stp2_reg1 : forall G1 G2 T1 T2 GH s m n1,
+                       stp2 s m G1 T1 G2 T2 GH n1 ->
+                       stpd2 false G1 T1 G1 T1 GH.
+Proof.
+  intros. apply (proj1 (stp2_reg G1 G2 T1 T2 GH s m n1 H)).
+Qed.
+
 (* UNTIL HERE *)
-
-Lemma stp2_reg2 : forall G1 G2 T1 T2 GH ,
-                       stp2 G1 T1 G2 T2 GH ->
-                       stp2 G2 T2 G2 T2 GH.
-Proof.
-  intros. apply (proj2 (stp2_reg G1 G2 T1 T2 GH H)).
-Qed.
-
-Lemma stp2_reg1 : forall G1 G2 T1 T2 GH,
-                       stp2 G1 T1 G2 T2 GH ->
-                       stp2 G1 T1 G1 T1 GH.
-Proof.
-  intros. apply (proj1 (stp2_reg G1 G2 T1 T2 GH H)).
-Qed.
 
 (* not used, but for good measure *)
 Lemma stp_reg  : forall G GH T1 T2,
