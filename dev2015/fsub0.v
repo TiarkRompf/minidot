@@ -1868,6 +1868,22 @@ Definition compat2 (GX:venv) (TX: ty) (p1:id*(venv*ty)) (p2:id*(venv*ty)) :=
   end.
 
 
+Lemma closed_compat: forall GX TX GXX TXX TXX' j k,
+  compat GX TX GXX TXX TXX' ->
+  closed 0 k TX ->                     
+  closed j (k+1) TXX ->
+  closed j k TXX'.
+Proof.
+  intros. inversion H;[|destruct H2;[|destruct H2]].
+  - destruct H2. destruct H2. rewrite H3.
+    eapply closed_subst. eauto. eauto.
+  - destruct H2. destruct H2. rewrite H3.
+    eapply closed_subst. eauto. eauto.
+  - destruct H2. rewrite H3.
+    eapply closed_upgrade. eapply closed_upgrade_free. eauto. omega. omega.
+  - destruct H2. rewrite H3.
+    eapply closed_subst. eauto. eauto.
+Qed.
 
 Lemma indexr_compat_miss0: forall GH GH' GX TX (GXX:venv) (TXX:ty) n,
       Forall2 (compat2 GX TX) GH GH' ->
@@ -2137,9 +2153,11 @@ Proof.
 
       destruct H5. simpl in H5. destruct H5. eauto. (* contra *)
 
-    + destruct H4. destruct H4. destruct H5. destruct H6.
+    + destruct H4 as [TXX' ?]. destruct H4. destruct H5. destruct H6.
       subst T1'. eapply stp2_sela1. eauto.
-      (* closed 0 (x - 1) x0 *) admit.
+      assert (x-1+1=x) as A by omega.
+      remember (x-1) as x0. rewrite <- A in H0.
+      eapply closed_compat. eauto. eapply closed_upgrade_free. eauto. omega. eauto.
       eapply IHstp2. eauto. eauto. eauto. eauto. eauto. eauto.
 
     + eauto.
