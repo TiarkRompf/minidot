@@ -1970,7 +1970,9 @@ Proof.
     assert (sstpd2 true GX TX G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1. 
     eu. eexists. eapply stp2_strong_sel1. eauto. eauto. eauto.
   - Case "ssel2". subst. inversion H1.
-    + SCase "top". admit.
+    + SCase "top".
+      apply stp2_reg1 in H4. inversion H4.
+      eexists. eapply stp2_top. eassumption.
     + SCase "ssel1".  (* interesting one *)
       subst. rewrite H6 in H2. inversion H2. subst.
       eapply IHn. eapply H4. omega. eexists. eauto.
@@ -1980,7 +1982,9 @@ Proof.
       subst. rewrite H2 in H6. inversion H6. subst.
       eexists. eapply stp2_strong_sel2. eauto. eauto. eauto.
   - Case "sselx". subst. inversion H1.
-    + SCase "top". admit.
+    + SCase "top". subst.
+      apply stp2_reg1 in H. inversion H.
+      eexists. eapply stp2_top. eassumption.
     + SCase "ssel1".
       subst. rewrite H5 in H3. inversion H3. subst.
       eexists. eapply stp2_strong_sel1. eauto. eauto. eauto.
@@ -1989,7 +1993,9 @@ Proof.
       subst. rewrite H5 in H3. inversion H3. subst.
       eexists. eapply stp2_strong_selx. eauto. eauto.
   - Case "all". subst. inversion H1.
-    + SCase "top". admit.
+    + SCase "top".
+      apply stp2_reg1 in H. inversion H.
+      eexists. eapply stp2_top. eassumption.
     + SCase "ssel2".
       eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
     + SCase "all".
