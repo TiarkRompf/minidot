@@ -1957,7 +1957,8 @@ Proof.
       eexists. eapply stp2_fun. apply A'. apply B'.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
   - Case "mem". subst. inversion H1.
-    + SCase "top". admit.
+    + SCase "top".
+      apply stp2_reg1 in H. inversion H. eexists. eapply stp2_top. eassumption.
     + SCase "mem". admit.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
   - Case "ssel1".
