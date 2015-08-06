@@ -339,19 +339,21 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
          
          
 (* existing object, but imprecise type *)
-| stp2_sel1: forall G1 G2 TX x T2 GH n1 v,
+| stp2_sel1: forall G1 G2 TX x T2 GH n1 n2 v,
     index x G1 = Some v ->
     val_type (base v) v TX ->
     closed 0 0 TX ->
     stp2 false false (base v) TX G2 (TMem TBot T2) GH n1 ->
-    stp2 false true G1 (TSel x) G2 T2 GH (S n1)
+    stp2 false false G2 T2 G2 T2 GH n2 -> (* regularity *)
+    stp2 false true G1 (TSel x) G2 T2 GH (S (n1+n2))
 
-| stp2_sel2: forall G1 G2 TX x T1 GH n1 v,
+| stp2_sel2: forall G1 G2 TX x T1 GH n1 n2 v,
     index x G2 = Some v ->
     val_type (base v) v TX ->           
     closed 0 0 TX ->
     stp2 false false (base v) TX G1 (TMem T1 TTop) GH n1 ->
-    stp2 false true G1 T1 G2 (TSel x) GH (S n1)
+    stp2 false false G1 T1 G1 T1 GH n2 -> (* regularity *)
+    stp2 false true G1 T1 G2 (TSel x) GH (S (n1+n2))
          
 | stp2_selx: forall G1 G2 v x1 x2 GH n1,
     index x1 G1 = Some v ->
@@ -359,17 +361,19 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
     stp2 false true G1 (TSel x1) G2 (TSel x2) GH n1
          
 (* hypothetical object *)
-| stp2_sela1: forall G1 G2 GX TX x T2 GH n1,
+| stp2_sela1: forall G1 G2 GX TX x T2 GH n1 n2,
     indexr x GH = Some (GX, TX) ->
     closed 0 x TX ->
     stp2 false false GX TX G2 (TMem TBot T2) GH n1 ->
-    stp2 false true G1 (TSelH x) G2 T2 GH (S n1)
+    stp2 false false G2 T2 G2 T2 GH n2 -> (* regularity *)
+    stp2 false true G1 (TSelH x) G2 T2 GH (S (n1+n2))
 
-| stp2_sela2: forall G1 G2 GX TX x T1 GH n1,
+| stp2_sela2: forall G1 G2 GX TX x T1 GH n1 n2,
     indexr x GH = Some (GX, TX) ->
     closed 0 x TX ->
     stp2 false false GX TX G2 (TMem T1 TTop) GH n1 ->
-    stp2 false true G1 T1 G2 (TSelH x) GH (S n1)
+    stp2 false false G1 T1 G1 T1 GH n2 -> (* regularity *)
+    stp2 false true G1 T1 G2 (TSelH x) GH (S (n1+n2))
 
          
 | stp2_selax: forall G1 G2 GX TX x GH n1,
@@ -496,6 +500,7 @@ Lemma stpd2_sel1: forall G1 G2 TX x T2 GH v,
     val_type (base v) v TX ->                
     closed 0 0 TX ->
     stpd2 false (base v) TX G2 (TMem TBot T2) GH ->
+    stpd2 false G2 T2 G2 T2 GH ->
     stpd2 true G1 (TSel x) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
 
@@ -504,6 +509,7 @@ Lemma stpd2_sel2: forall G1 G2 TX x T1 GH v,
     val_type (base v) v TX ->                
     closed 0 0 TX ->
     stpd2 false (base v) TX G1 (TMem T1 TTop) GH ->
+    stpd2 false G1 T1 G1 T1 GH ->
     stpd2 true G1 T1 G2 (TSel x) GH.
 Proof. intros. repeat eu. eauto. Qed.
 
@@ -517,6 +523,7 @@ Lemma stpd2_sela1: forall G1 G2 GX TX x T2 GH,
     indexr x GH = Some (GX, TX) ->
     closed 0 x TX ->
     stpd2 false GX TX G2 (TMem TBot T2) GH ->
+    stpd2 false G2 T2 G2 T2 GH ->
     stpd2 true G1 (TSelH x) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
 
@@ -524,6 +531,7 @@ Lemma stpd2_sela2: forall G1 G2 GX TX x T1 GH,
     indexr x GH = Some (GX, TX) ->
     closed 0 x TX ->
     stpd2 false GX TX G2 (TMem T1 TTop) GH ->
+    stpd2 false G1 T1 G1 T1 GH ->
     stpd2 true G1 T1 G2 (TSelH x) GH.
 Proof. intros. repeat eu. eauto. Qed.
 
@@ -1112,7 +1120,7 @@ Lemma stp2_closed: forall G1 G2 T1 T2 GH s m n1,
     try solve [inversion IHstp2; split; eauto];
     try solve [inversion IHstp2 as [IH1 IH2]; inversion IH2; split; eauto];
     try solve [inversion IHstp2_1; inversion IHstp2_2; split; eauto];
-    try solve [try inversion IHstp2; split; eauto; apply cl_selh; eapply indexr_max; eassumption];
+    try solve [try inversion IHstp2_1; try inversion IHstp2_2; split; eauto; apply cl_selh; eapply indexr_max; eassumption];
     try solve [inversion IHstp2 as [IH1 IH2]; inversion IH2; split; eauto; apply cl_selh; eapply indexr_max; eassumption].
 Qed.
 
@@ -1222,37 +1230,41 @@ Proof.
     assert (splice (length GH0) TX=TX) as A. {
       eapply closed_splice_idem. eassumption. omega.
     }
-    rewrite <- A. apply IHstp2.
+    rewrite <- A. apply IHstp2_1.
     reflexivity.
+    apply IHstp2_2. reflexivity.
   - Case "sel2".
     eapply stp2_sel2. apply H. eassumption. assumption.
     assert (splice (length GH0) TX=TX) as A. {
       eapply closed_splice_idem. eassumption. omega.
     }
-    rewrite <- A. apply IHstp2.
+    rewrite <- A. apply IHstp2_1.
     reflexivity.
+    apply IHstp2_2. reflexivity.
   - Case "sela1".
     case_eq (le_lt_dec (length GH0) x0); intros E LE.
     + eapply stp2_sela1. eapply indexr_spliceat_hi. apply H. eauto.
-      eapply closed_splice in H0. assert (S x0 = x0 +1) by omega. rewrite <- H2.
+      eapply closed_splice in H0. assert (S x0 = x0 +1) as EQ by omega. rewrite <- EQ.
       eapply H0.
-      eapply IHstp2. eauto.
+      eapply IHstp2_1. eauto.
+      eapply IHstp2_2. eauto.
     + eapply stp2_sela1. eapply indexr_spliceat_lo. apply H. eauto. eauto.
       assert (splice (length GH0) TX=TX) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
-      rewrite <- A. eapply IHstp2. eauto.
+      rewrite <- A. eapply IHstp2_1. eauto. eapply IHstp2_2. eauto.
   - Case "sela2".
     case_eq (le_lt_dec (length GH0) x0); intros E LE.
     + eapply stp2_sela2. eapply indexr_spliceat_hi. apply H. eauto.
-      eapply closed_splice in H0. assert (S x0 = x0 +1) by omega. rewrite <- H2.
+      eapply closed_splice in H0. assert (S x0 = x0 +1) as EQ by omega. rewrite <- EQ.
       eapply H0.
-      eapply IHstp2. eauto.
+      eapply IHstp2_1. eauto.
+      eapply IHstp2_2. eauto.
     + eapply stp2_sela2. eapply indexr_spliceat_lo. apply H. eauto. eauto.
       assert (splice (length GH0) TX=TX) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
-      rewrite <- A. eapply IHstp2. eauto.
+      rewrite <- A. eapply IHstp2_1. eauto. eapply IHstp2_2. eauto.
   - Case "selax".
     case_eq (le_lt_dec (length GH0) x0); intros E LE.
     + eapply stp2_selax.
@@ -1447,11 +1459,13 @@ Proof.
   - Case "sel1".
     eapply stp2_sel1. eapply index_extend_mult. apply H.
     assumption. eassumption. assumption.
-    apply IHstp2. assumption. apply venv_ext_refl. assumption.
+    apply IHstp2_1. assumption. apply venv_ext_refl. assumption.
+    apply IHstp2_2. assumption. assumption. assumption.
   - Case "sel2".
     eapply stp2_sel2. eapply index_extend_mult. apply H.
     assumption. eassumption. assumption.
-    apply IHstp2. assumption. apply venv_ext_refl. assumption.
+    apply IHstp2_1. assumption. apply venv_ext_refl. assumption.
+    apply IHstp2_2. assumption. assumption. assumption.
   - Case "selx".
     eapply stp2_selx.
     eapply index_extend_mult. apply H. assumption.
@@ -1463,7 +1477,8 @@ Proof.
     inversion A as [GX' [H' HX]].
     apply stp2_sela1 with (GX:=GX') (TX:=TX).
     assumption. assumption.
-    apply IHstp2; assumption.
+    apply IHstp2_1; assumption.
+    apply IHstp2_2; assumption.
   - Case "sela2".
     assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
       apply indexr_at_ext with (GH:=GH); assumption.
@@ -1471,7 +1486,8 @@ Proof.
     inversion A as [GX' [H' HX]].
     apply stp2_sela2 with (GX:=GX') (TX:=TX).
     assumption. assumption.
-    apply IHstp2; assumption.
+    apply IHstp2_1; assumption.
+    apply IHstp2_2; assumption.
   - Case "selax".
     assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
       apply indexr_at_ext with (GH:=GH); assumption.
@@ -1525,6 +1541,7 @@ Proof.
     try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eauto];
     try solve [split; try split; intros; inversion IHstp2 as [? [? ?]]; eauto];
     try solve [split; try split; intros; inversion IHstp2 as [? [? ?]]; eauto using index_extend];
+    try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eauto using index_extend];
     try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; inversion IHstp2_3 as [? [? ?]]; constructor; eauto; apply stp2_closure_extend; eauto].
 Qed.
 
@@ -1625,11 +1642,10 @@ Proof.
     try solve [inversion IHstp2 as [[ni1 IH1] [ni2 IH2]]; split; eauto];
     try solve [inversion IHstp2_1 as [[ni11 IH11] [ni12 IH12]]; inversion IHstp2_2 as [[ni21 IH21] [ni22 IH22]]; split; eauto];
     try solve [inversion IHstp2_1 as [[ni11 IH11] [ni12 IH12]]; inversion IHstp2_2 as [[ni21 IH21] [ni22 IH22]]; inversion IHstp2_3 as [[ni31 IH31] [ni32 IH32]]; split; eauto].
-  (* stuck on establishing T <: T when all you have is imprecise (TMem TBot T) <: (TMem Bot T) *)
-  admit. admit. admit. admit.
   Grab Existential Variables.
   apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-  apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+  apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+  apply 0. apply 0.
 Qed.
 
 (* UNTIL HERE *)
