@@ -1949,9 +1949,12 @@ Proof.
       inversion A4 as [na4 HA4].
       eexists. eapply stp2_top. subst. eapply stp2_wrapf. eapply stp2_fun.
       eassumption. eassumption.
-    + SCase "fun".
-      admit.
-      (* eexists. eapply stp2_fun. ep. eapply stpd2_trans. eauto. eauto. destruct EEX. eauto. *)
+    + SCase "fun". subst.
+      assert (stpd2 false G3 T7 G1 T0 []) as A by solve [eapply stpd2_trans; eauto].
+      inversion A as [na A'].
+      assert (stpd2 false G1 T4 G3 T8 []) as B by solve [eapply stpd2_trans; eauto].
+      inversion B as [nb B'].
+      eexists. eapply stp2_fun. apply A'. apply B'.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
   - Case "mem". subst. inversion H1.
     + SCase "top". admit.
