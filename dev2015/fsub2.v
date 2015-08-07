@@ -302,9 +302,9 @@ Definition base (v:vl): venv :=
 
 Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -> nat -> Prop :=
 | stp2_topx: forall m G1 G2 GH n1,
-    stp2 m true G1 TTop G2 TTop GH n1
+    stp2 m true G1 TTop G2 TTop GH (S n1)
 | stp2_botx: forall m G1 G2 GH n1,
-    stp2 m true G1 TBot G2 TBot GH n1
+    stp2 m true G1 TBot G2 TBot GH (S n1)
 | stp2_top: forall m G1 G2 GH T n1,
     stp2 m true G1 T G1 T GH n1 -> (* regularity *)
     stp2 m true G1 T G2 TTop GH (S n1)
@@ -312,7 +312,7 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
     stp2 m true G2 T G2 T GH n1 -> (* regularity *)
     stp2 m true G1 TBot G2 T GH (S n1)
 | stp2_bool: forall m G1 G2 GH n1,
-    stp2 m true G1 TBool G2 TBool GH n1
+    stp2 m true G1 TBool G2 TBool GH (S n1)
 | stp2_fun: forall m G1 G2 T1 T2 T3 T4 GH n1 n2,
     stp2 false false G2 T3 G1 T1 GH n1 ->
     stp2 false false G1 T2 G2 T4 GH n2 ->
@@ -478,10 +478,10 @@ Hint Unfold stpd2.
 
 Lemma stpd2_topx: forall G1 G2 GH,
     stpd2 true G1 TTop G2 TTop GH.
-Proof. intros. exists 0. eauto. Qed.
+Proof. intros. exists (S 0). eauto. Qed.
 Lemma stpd2_botx: forall G1 G2 GH,
     stpd2 true G1 TBot G2 TBot GH.
-Proof. intros. exists 0. eauto. Qed.
+Proof. intros. exists (S 0). eauto. Qed.
 Lemma stpd2_top: forall G1 G2 GH T,
     stpd2 true G1 T G1 T GH ->
     stpd2 true G1 T G2 TTop GH.
@@ -492,7 +492,7 @@ Lemma stpd2_bot: forall G1 G2 GH T,
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_bool: forall G1 G2 GH,
     stpd2 true G1 TBool G2 TBool GH.
-Proof. intros. exists 0. eauto. Qed.
+Proof. intros. exists (S 0). eauto. Qed.
 Lemma stpd2_fun: forall G1 G2 GH T11 T12 T21 T22,
     stpd2 false G2 T21 G1 T11 GH ->
     stpd2 false G1 T12 G2 T22 GH ->
@@ -2078,7 +2078,7 @@ Proof.
       eapply IHn; try eassumption. omega.
       eapply IHn; try eassumption. omega.
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma stpd2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4 H,
