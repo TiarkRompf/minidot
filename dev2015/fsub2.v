@@ -318,7 +318,7 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
     stp2 false false G1 T2 G2 T4 GH n2 ->
     stp2 m true G1 (TFun T1 T2) G2 (TFun T3 T4) GH (S (n1+n2))
 | stp2_mem: forall G1 G2 T1 T2 T3 T4 GH n1 n2,
-    stp2 false false G2 T3 G1 T1 GH n1 ->
+    stp2 true false G2 T3 G1 T1 GH n1 ->
     stp2 true true G1 T2 G2 T4 GH n2 ->
     stp2 true true G1 (TMem T1 T2) G2 (TMem T3 T4) GH (S (n1+n2))
 | stp2_mem2: forall G1 G2 T1 T2 T3 T4 GH n1 n2,
@@ -568,6 +568,18 @@ Lemma stpd2_transf: forall G1 G2 G3 T1 T2 T3 GH,
     stpd2 false G2 T2 G3 T3 GH ->           
     stpd2 false G1 T1 G3 T3 GH.
 Proof. intros. repeat eu. eauto. Qed.
+
+
+
+Lemma sstpd2_wrapf: forall G1 G2 T1 T2 GH,
+    sstpd2 true G1 T1 G2 T2 GH ->
+    sstpd2 false G1 T1 G2 T2 GH.
+Proof. intros. repeat eu. eexists. eapply stp2_wrapf. eauto. Qed.
+Lemma sstpd2_transf: forall G1 G2 G3 T1 T2 T3 GH,
+    sstpd2 true G1 T1 G2 T2 GH ->
+    sstpd2 false G2 T2 G3 T3 GH ->           
+    sstpd2 false G1 T1 G3 T3 GH.
+Proof. intros. repeat eu. eexists. eapply stp2_transf; eauto. Qed.
 
 
 
@@ -1912,11 +1924,31 @@ Proof.
   - Case "transf". eapply stpd2_transf. eauto. eapply IHn. eauto. omega. eauto.
 Qed.
 
+
+Lemma sstpd2_trans_false_aux: forall n, forall G1 G2 G3 T1 T2 T3 H n1,
+  stp2 true false G1 T1 G2 T2 H n1 -> n1 < n ->
+  sstpd2 false G2 T2 G3 T3 H ->
+  sstpd2 false G1 T1 G3 T3 H.
+Proof.
+  intros n. induction n; intros; try omega; repeat eu; subst; inversion H0.
+  - Case "wrapf". eapply sstpd2_transf. eexists. eauto. eexists. eauto.
+  - Case "transf". eapply sstpd2_transf. eexists. eauto. eapply IHn. eauto. omega. eexists. eauto.
+Qed.
+
 Lemma stpd2_trans: forall G1 G2 G3 T1 T2 T3 H,
   stpd2 false G1 T1 G2 T2 H ->
   stpd2 false G2 T2 G3 T3 H ->
   stpd2 false G1 T1 G3 T3 H.
 Proof. intros. repeat eu. eapply stpd2_trans_aux; eauto. Qed.
+
+Lemma sstpd2_trans_false: forall G1 G2 G3 T1 T2 T3 H,
+  sstpd2 false G1 T1 G2 T2 H ->
+  sstpd2 false G2 T2 G3 T3 H ->
+  sstpd2 false G1 T1 G3 T3 H.
+Proof. intros. repeat eu.
+       eapply sstpd2_trans_false_aux; eauto.
+       eexists. eauto.
+Qed.
 
 (* used in trans -- need to generalize interface for induction *)
 
@@ -1973,8 +2005,8 @@ Proof.
     + SCase "top".
       apply stp2_reg1 in H. inversion H. eexists. eapply stp2_top. eassumption.
     + SCase "mem". subst.
-      assert (stpd2 false G3 T7 G1 T0 []) as A. {
-        eapply stpd2_trans; eauto.
+      assert (sstpd2 false G3 T7 G1 T0 []) as A. {
+        eapply sstpd2_trans_false; eexists; eauto.
       }
       inversion A as [na A'].
       assert (sstpd2 true G1 T4 G3 T8 []) as B. {
@@ -2080,12 +2112,14 @@ Lemma invert_typ: forall venv vx T1 T2,
   val_type venv vx (TMem T1 T2) ->
   exists GX TX,
     vx = (vty GX TX) /\
-    stpd2 false venv T1 GX TX [] /\
+    sstpd2 false venv T1 GX TX [] /\
     sstpd2 true GX TX venv T2 [].
 Proof.
   intros. inversion H; ev; try solve by inversion. inversion H1.
   subst.
-  assert (stpd2 false venv0 T1 venv1 T0 []) as E1 by eauto.
+  assert (sstpd2 false venv0 T1 venv1 T0 []) as E1. {
+    eexists. eassumption.
+  }
   assert (sstpd2 true venv1 T0 venv0 T2 []) as E2. {
     eexists. eassumption.
   }
@@ -2108,7 +2142,8 @@ Proof.
   - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
   - Case "mem2".
     eapply IHn in H2. eapply sstpd2_untrans in H2. inversion H2.
-    eexists. eapply stp2_mem. eauto. eauto. omega.
+    eapply IHn in H1. inversion H1.
+    eexists. eapply stp2_mem. eauto. eauto. omega. omega.
   - Case "sel1". subst.
     eapply IHn in H4. eapply sstpd2_untrans in H4. eapply valtp_widen with (2:=H4) in H2.
     eapply invert_typ in H2. ev. repeat eu. subst.
@@ -2118,10 +2153,6 @@ Proof.
     eapply IHn in H4. eapply sstpd2_untrans in H4. eapply valtp_widen with (2:=H4) in H2.
     eapply invert_typ in H2. ev. repeat eu. subst.
     assert (closed 0 (length ([]:aenv)) x1). eapply stp2_closed2; eauto.
-    assert (sstpd2 false G1 T1 x0 x1 []) as A. {
-      eapply IHn. eassumption. (* x2 < n *) admit.
-    }
-    inversion A as [na A'].
     eexists. eapply stp2_strong_sel2. eauto. eauto. eauto. omega.
   - Case "selx".
     eexists. eapply stp2_strong_selx. eauto. eauto. 
