@@ -2194,14 +2194,82 @@ Proof.
   eapply sstpd2_untrans. eapply stpd2_to_sstpd2. eauto.
 Qed.
 
+Lemma sstpd2_downgrade_true: forall G1 G2 T1 T2 H,
+  sstpd2 true G1 T1 G2 T2 H ->
+  stpd2 true G1 T1 G2 T2 H.
+Proof.
+  intros. inversion H0. induction H1; try solve [eexists; eauto].
+  - Case "top".
+    destruct m.
+    + assert (sstpd2 true G1 T G1 T GH) as A. {
+        eexists. eassumption.
+      }
+      specialize (IHstp2 A). inversion IHstp2.
+      eexists. eapply stp2_top; eauto.
+    + eexists; eauto.
+  - Case "bot".
+    destruct m.
+    + assert (sstpd2 true G2 T G2 T GH) as A. {
+        eexists. eassumption.
+      }
+      specialize (IHstp2 A). inversion IHstp2.
+      eexists; eauto.
+    + eexists; eauto.
+  - Case "mem".
+    assert (sstpd2 true G1 T2 G2 T4 GH) as A. eexists. eassumption.
+    specialize (IHstp2_2 A). inversion IHstp2_2.
+    assert (sstpd2 false G2 T3 G1 T1 GH) as B. eexists. eassumption.
+    specialize (IHstp2_1 B). inversion IHstp2_1.
+    eexists. eapply stp2_mem2. eauto. eauto.
+  - Case "sel1".
+    assert (sstpd2 true GX TX G2 T2 GH) as A. {
+      eexists. eassumption.
+    }
+    specialize (IHstp2 A). inversion IHstp2.
+    assert (stpd2 true GX TX GX TX GH) as B. {
+      eapply stp2_reg1. eassumption.
+    }
+    inversion B.
+    assert (stpd2 true G2 T2 G2 T2 GH) as C. {
+      eapply stp2_reg2. eassumption.
+    }
+    inversion C.
+    eexists. eapply stp2_sel1. eassumption. simpl. eassumption. eauto.
+    eapply stp2_wrapf. eapply stp2_mem2.
+    eapply stp2_wrapf. eapply stp2_bot. simpl. eassumption.
+    simpl. eapply stp2_wrapf. eassumption. eassumption.
+  - Case "sel2".
+    assert (sstpd2 false G1 T1 GX TX GH) as A. {
+      eexists. eassumption.
+    }
+    specialize (IHstp2 A). inversion IHstp2.
+    assert (stpd2 true GX TX GX TX GH) as B. {
+      eapply stp2_reg2. eassumption.
+    }
+    inversion B.
+    assert (stpd2 true G1 T1 G1 T1 GH) as C. {
+      eapply stp2_reg1. eassumption.
+    }
+    inversion C.
+    eexists. eapply stp2_sel2. eassumption. simpl. eassumption. eauto.
+    eapply stp2_wrapf. eapply stp2_mem2. eassumption.
+    simpl. eapply stp2_wrapf. eapply stp2_top. eassumption. eassumption.
+  - Case "wrap". destruct m.
+    + eapply stpd2_wrapf. eapply IHstp2. eexists. eassumption.
+    + eexists. eapply stp2_wrapf. eassumption.
+  - Case "trans". destruct m.
+    + eapply stpd2_transf. eapply IHstp2_1. eexists; eauto. eapply IHstp2_2. eexists. eauto.
+    + eexists. eapply stp2_transf. eassumption. eassumption.
+  Grab Existential Variables.
+  apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+Qed.
+
 Lemma sstpd2_downgrade: forall G1 G2 T1 T2 H,
   sstpd2 true G1 T1 G2 T2 H ->
   stpd2 false G1 T1 G2 T2 H.
 Proof.
-  admit.
+  intros. apply stpd2_wrapf. apply sstpd2_downgrade_true. assumption.
 Qed.
-
-
 
 
 Lemma index_miss {X}: forall x x1 (B:X) A G,
