@@ -1104,15 +1104,17 @@ Proof.
   case_eq (le_lt_dec n x); intros E LE. omega. reflexivity.
 Qed.
 
+Ltac ev := repeat match goal with
+                    | H: exists _, _ |- _ => destruct H
+                    | H: _ /\  _ |- _ => destruct H
+           end.
+
 Lemma stp_closed : forall G GH T1 T2,
                      stp G GH T1 T2 ->
                      closed 0 (length GH) T1 /\ closed 0 (length GH) T2.
 Proof.
   intros. induction H;
-    try solve [split; eauto];
-    try solve [inversion IHstp; split; eauto];
-    try solve [inversion IHstp as [IH1 IH2]; inversion IH2; split; eauto];
-    try solve [inversion IHstp1; inversion IHstp2; split; eauto];
+    try solve [repeat ev; split; eauto];
     try solve [try inversion IHstp; split; eauto; apply cl_selh; eapply indexr_max; eassumption];
     try solve [inversion IHstp1 as [IH1 IH2]; inversion IH2; split; eauto; apply cl_selh; eapply indexr_max; eassumption].
 Qed.
@@ -1135,10 +1137,7 @@ Lemma stp2_closed: forall G1 G2 T1 T2 GH s m n1,
                      stp2 s m G1 T1 G2 T2 GH n1 ->
                      closed 0 (length GH) T1 /\ closed 0 (length GH) T2.
   intros. induction H;
-    try solve [split; eauto];
-    try solve [inversion IHstp2; split; eauto];
-    try solve [inversion IHstp2 as [IH1 IH2]; inversion IH2; split; eauto];
-    try solve [inversion IHstp2_1; inversion IHstp2_2; split; eauto];
+    try solve [repeat ev; split; eauto];
     try solve [try inversion IHstp2_1; try inversion IHstp2_2; split; eauto; apply cl_selh; eapply indexr_max; eassumption];
     try solve [inversion IHstp2 as [IH1 IH2]; inversion IH2; split; eauto; apply cl_selh; eapply indexr_max; eassumption].
 Qed.
@@ -1562,11 +1561,7 @@ Lemma stp2_extend : forall x v1 G1 G2 T1 T2 H s m n1,
                        stp2 s m ((x,v1)::G1) T1 ((x,v1)::G2) T2 H n1).
 Proof.
   intros. induction H0;
-    try solve [split; try split; intros; eauto using index_extend];
-    try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eauto];
-    try solve [split; try split; intros; inversion IHstp2 as [? [? ?]]; eauto];
-    try solve [split; try split; intros; inversion IHstp2 as [? [? ?]]; eauto using index_extend];
-    try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eauto using index_extend];
+    try solve [split; try split; repeat ev; intros; eauto using index_extend];
     try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; inversion IHstp2_3 as [? [? ?]]; constructor; eauto; apply stp2_closure_extend; eauto].
 Qed.
 
@@ -1658,11 +1653,6 @@ Proof.
   apply stp2_extendH_mult. assumption.
 Qed.
 
-Ltac ev := repeat match goal with
-                    | H: exists _, _ |- _ => destruct H
-                    | H: _ /\  _ |- _ => destruct H
-           end.
-
 Lemma stp2_reg  : forall G1 G2 T1 T2 GH s m n1,
                     stp2 s m G1 T1 G2 T2 GH n1 ->
                     (exists n0, stp2 s true G1 T1 G1 T1 GH n0) /\
@@ -1695,11 +1685,7 @@ Lemma stp_reg  : forall G GH T1 T2,
                     stp G GH T1 T1 /\ stp G GH T2 T2.
 Proof.
   intros. induction H;
-    try solve [split; eauto];
-    try solve [inversion IHstp; split; eauto];
-    try solve [inversion IHstp as [IH1 IH2]; inversion IH2; subst; split; eauto];
-    try solve [inversion IHstp1; inversion IHstp2; split; eauto];
-    try solve [inversion IHstp1; inversion IHstp2; inversion IHstp3; split; eauto].
+    try solve [repeat ev; split; eauto].
 Qed.
 
 (* stpd2 variants below *)
