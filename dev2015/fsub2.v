@@ -1,4 +1,4 @@
-(* Full safety for F-sub (WIP) *)
+(* Full safety for F-sub *)
 (* values well-typed with respect to runtime environment *)
 (* inversion lemma structure *)
 
