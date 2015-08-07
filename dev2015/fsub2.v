@@ -2937,9 +2937,9 @@ Lemma stp2_substitute_aux: forall n, forall m G1 G2 T1 T2 GH n1,
    forall GH0 GH0' GX TX T1' T2' V,
      GH = (GH0 ++ [(0,(GX, TX))]) ->
      closed 0 0 TX ->
-     compat GX TX V G1 T1 T1' ->
-     compat GX TX V G2 T2 T2' ->
-     Forall2 (compat2 GX TX V) GH0 GH0' ->
+     compat GX TX (Some V) G1 T1 T1' ->
+     compat GX TX (Some V) G2 T2 T2' ->
+     Forall2 (compat2 GX TX (Some V)) GH0 GH0' ->
      stpd2 m G1 T1' G2 T2' GH0'.
 Proof.
   intros n. induction n.
@@ -2998,9 +2998,9 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    eapply (compat_sel GXX TXX V G1 T1' (base v) TX) in IX1. repeat destruct IX1 as [? IX1].
+    eapply (compat_sel GXX TXX (Some V) G1 T1' (base v) TX) in IX1. repeat destruct IX1 as [? IX1].
 
-    assert (compat GXX TXX V (base v) TX TX) as CPX. right. left. eauto.
+    assert (compat GXX TXX (Some V) (base v) TX TX) as CPX. right. left. eauto.
 
     subst.
     eapply stpd2_sel1. eauto. eauto. eauto.
@@ -3015,9 +3015,9 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    eapply (compat_sel GXX TXX V G2 T2' (base v) TX) in IX2. repeat destruct IX2 as [? IX2].
+    eapply (compat_sel GXX TXX (Some V) G2 T2' (base v) TX) in IX2. repeat destruct IX2 as [? IX2].
 
-    assert (compat GXX TXX V (base v) TX TX) as CPX. right. left. eauto.
+    assert (compat GXX TXX (Some V) (base v) TX TX) as CPX. right. left. eauto.
 
     subst.
     eapply stpd2_sel2. eauto. eauto. eauto.
@@ -3045,9 +3045,9 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    assert (compat GXX TXX V G1 (TSelH x) T1') as IXX. eauto.
+    assert (compat GXX TXX (Some V) G1 (TSelH x) T1') as IXX. eauto.
 
-    eapply (compat_selh GXX TXX V G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
+    eapply (compat_selh GXX TXX (Some V) G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
 
     destruct IX1.
     + SCase "x = 0".
@@ -3079,9 +3079,9 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    assert (compat GXX TXX V G2 (TSelH x) T2') as IXX. eauto.
+    assert (compat GXX TXX (Some V) G2 (TSelH x) T2') as IXX. eauto.
 
-    eapply (compat_selh GXX TXX V G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
+    eapply (compat_selh GXX TXX (Some V) G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
 
     destruct IX2.
     + SCase "x = 0".
@@ -3114,11 +3114,11 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    assert (compat GXX TXX V G1 (TSelH x) T1') as IXX1. eauto.
-    assert (compat GXX TXX V G2 (TSelH x) T2') as IXX2. eauto.
+    assert (compat GXX TXX (Some V) G1 (TSelH x) T1') as IXX1. eauto.
+    assert (compat GXX TXX (Some V) G2 (TSelH x) T2') as IXX2. eauto.
 
-    eapply (compat_selh GXX TXX V G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
-    eapply (compat_selh GXX TXX V G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
+    eapply (compat_selh GXX TXX (Some V) G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
+    eapply (compat_selh GXX TXX (Some V) G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
     assert (not (nosubst (TSelH 0))). unfold not. intros. simpl in H1. eauto.
     assert (not (closed 0 0 (TSelH 0))). unfold not. intros. inversion H3. omega.
 
@@ -3128,7 +3128,7 @@ Proof.
       repeat destruct IXX2 as [IXX2|IXX2]; ev; try contradiction.
       * SSCase "sel-sel".
         subst. inversion H13. subst.
-        simpl. eapply stpd2_selx. eauto. eauto.
+        simpl. eapply stpd2_selx. eauto. eauto. inversion H5. subst. assumption.
     + SCase "x > 0".
       destruct IXX1; destruct IXX2; ev; subst; eapply stpd2_selax; eauto.
     (* leftovers *)
@@ -3188,9 +3188,9 @@ Lemma stp2_substitute: forall m G1 G2 T1 T2 GH n1,
    forall GH0 GH0' GX TX T1' T2' V,
      GH = (GH0 ++ [(0,(GX, TX))]) ->
      closed 0 0 TX ->
-     compat GX TX V G1 T1 T1' ->
-     compat GX TX V G2 T2 T2' ->
-     Forall2 (compat2 GX TX V) GH0 GH0' ->
+     compat GX TX (Some V) G1 T1 T1' ->
+     compat GX TX (Some V) G2 T2 T2' ->
+     Forall2 (compat2 GX TX (Some V)) GH0 GH0' ->
      stpd2 m G1 T1' G2 T2' GH0'.
 Proof.
   intros. eapply stp2_substitute_aux; eauto.
@@ -3201,9 +3201,9 @@ Lemma stpd2_substitute: forall m G1 G2 T1 T2 GH,
    forall GH0 GH0' GX TX T1' T2' V,
      GH = (GH0 ++ [(0,(GX, TX))]) ->
      closed 0 0 TX ->
-     compat GX TX V G1 T1 T1' ->
-     compat GX TX V G2 T2 T2' ->
-     Forall2 (compat2 GX TX V) GH0 GH0' ->
+     compat GX TX (Some V) G1 T1 T1' ->
+     compat GX TX (Some V) G2 T2 T2' ->
+     Forall2 (compat2 GX TX (Some V)) GH0 GH0' ->
      stpd2 m G1 T1' G2 T2' GH0'.
 Proof. intros. repeat eu. eapply stp2_substitute; eauto. Qed.
 
