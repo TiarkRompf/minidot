@@ -306,10 +306,10 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
 | stp2_botx: forall m G1 G2 GH n1,
     stp2 m true G1 TBot G2 TBot GH n1
 | stp2_top: forall m G1 G2 GH T n1,
-    stp2 false  false G1 T G1 T GH n1 -> (* regularity *)
+    stp2 m true G1 T G1 T GH n1 -> (* regularity *)
     stp2 m true G1 T G2 TTop GH (S n1)
 | stp2_bot: forall m G1 G2 GH T n1,
-    stp2 false false G2 T G2 T GH n1 -> (* regularity *)
+    stp2 m true G2 T G2 T GH n1 -> (* regularity *)
     stp2 m true G1 TBot G2 T GH (S n1)
 | stp2_bool: forall m G1 G2 GH n1,
     stp2 m true G1 TBool G2 TBool GH n1
@@ -351,7 +351,7 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
     val_type (base v) v TX ->
     closed 0 0 TX ->
     stp2 false false (base v) TX G2 (TMem TBot T2) GH n1 ->
-    stp2 false false G2 T2 G2 T2 GH n2 -> (* regularity *)
+    stp2 false true G2 T2 G2 T2 GH n2 -> (* regularity *)
     stp2 false true G1 (TSel x) G2 T2 GH (S (n1+n2))
 
 | stp2_sel2: forall G1 G2 TX x T1 GH n1 n2 v,
@@ -359,7 +359,7 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
     val_type (base v) v TX ->           
     closed 0 0 TX ->
     stp2 false false (base v) TX G1 (TMem T1 TTop) GH n1 ->
-    stp2 false false G1 T1 G1 T1 GH n2 -> (* regularity *)
+    stp2 false true G1 T1 G1 T1 GH n2 -> (* regularity *)
     stp2 false true G1 T1 G2 (TSel x) GH (S (n1+n2))
          
 | stp2_selx: forall G1 G2 v x1 x2 GH n1,
@@ -372,14 +372,14 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
     indexr x GH = Some (GX, TX) ->
     closed 0 x TX ->
     stp2 false false GX TX G2 (TMem TBot T2) GH n1 ->
-    stp2 false false G2 T2 G2 T2 GH n2 -> (* regularity *)
+    stp2 false true G2 T2 G2 T2 GH n2 -> (* regularity *)
     stp2 false true G1 (TSelH x) G2 T2 GH (S (n1+n2))
 
 | stp2_sela2: forall G1 G2 GX TX x T1 GH n1 n2,
     indexr x GH = Some (GX, TX) ->
     closed 0 x TX ->
     stp2 false false GX TX G1 (TMem T1 TTop) GH n1 ->
-    stp2 false false G1 T1 G1 T1 GH n2 -> (* regularity *)
+    stp2 false true G1 T1 G1 T1 GH n2 -> (* regularity *)
     stp2 false true G1 T1 G2 (TSelH x) GH (S (n1+n2))
 
          
@@ -481,11 +481,11 @@ Lemma stpd2_botx: forall G1 G2 GH,
     stpd2 true G1 TBot G2 TBot GH.
 Proof. intros. exists 0. eauto. Qed.
 Lemma stpd2_top: forall G1 G2 GH T,
-    stpd2 false G1 T G1 T GH ->
+    stpd2 true G1 T G1 T GH ->
     stpd2 true G1 T G2 TTop GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_bot: forall G1 G2 GH T,
-    stpd2 false G2 T G2 T GH ->
+    stpd2 true G2 T G2 T GH ->
     stpd2 true G1 TBot G2 T GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_bool: forall G1 G2 GH,
@@ -507,7 +507,7 @@ Lemma stpd2_sel1: forall G1 G2 TX x T2 GH v,
     val_type (base v) v TX ->                
     closed 0 0 TX ->
     stpd2 false (base v) TX G2 (TMem TBot T2) GH ->
-    stpd2 false G2 T2 G2 T2 GH ->
+    stpd2 true G2 T2 G2 T2 GH ->
     stpd2 true G1 (TSel x) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
 
@@ -516,7 +516,7 @@ Lemma stpd2_sel2: forall G1 G2 TX x T1 GH v,
     val_type (base v) v TX ->                
     closed 0 0 TX ->
     stpd2 false (base v) TX G1 (TMem T1 TTop) GH ->
-    stpd2 false G1 T1 G1 T1 GH ->
+    stpd2 true G1 T1 G1 T1 GH ->
     stpd2 true G1 T1 G2 (TSel x) GH.
 Proof. intros. repeat eu. eauto. Qed.
 
@@ -530,7 +530,7 @@ Lemma stpd2_sela1: forall G1 G2 GX TX x T2 GH,
     indexr x GH = Some (GX, TX) ->
     closed 0 x TX ->
     stpd2 false GX TX G2 (TMem TBot T2) GH ->
-    stpd2 false G2 T2 G2 T2 GH ->
+    stpd2 true G2 T2 G2 T2 GH ->
     stpd2 true G1 (TSelH x) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
 
@@ -538,7 +538,7 @@ Lemma stpd2_sela2: forall G1 G2 GX TX x T1 GH,
     indexr x GH = Some (GX, TX) ->
     closed 0 x TX ->
     stpd2 false GX TX G1 (TMem T1 TTop) GH ->
-    stpd2 false G1 T1 G1 T1 GH ->
+    stpd2 true G1 T1 G1 T1 GH ->
     stpd2 true G1 T1 G2 (TSelH x) GH.
 Proof. intros. repeat eu. eauto. Qed.
 
@@ -1658,31 +1658,33 @@ Proof.
   apply stp2_extendH_mult. assumption.
 Qed.
 
+Ltac ev := repeat match goal with
+                    | H: exists _, _ |- _ => destruct H
+                    | H: _ /\  _ |- _ => destruct H
+           end.
+
 Lemma stp2_reg  : forall G1 G2 T1 T2 GH s m n1,
                     stp2 s m G1 T1 G2 T2 GH n1 ->
-                    stpd2 false G1 T1 G1 T1 GH /\ stpd2 false G2 T2 G2 T2 GH.
+                    (exists n0, stp2 s true G1 T1 G1 T1 GH n0) /\
+                    (exists n0, stp2 s true G2 T2 G2 T2 GH n0).
 Proof.
   intros. induction H;
-    try solve [split; eauto];
-    try solve [inversion IHstp2 as [[ni1 IH1] [ni2 IH2]]; split; eauto];
-    try solve [inversion IHstp2_1 as [[ni11 IH11] [ni12 IH12]]; inversion IHstp2_2 as [[ni21 IH21] [ni22 IH22]]; split; eauto];
-    try solve [inversion IHstp2_1 as [[ni11 IH11] [ni12 IH12]]; inversion IHstp2_2 as [[ni21 IH21] [ni22 IH22]]; inversion IHstp2_3 as [[ni31 IH31] [ni32 IH32]]; split; eauto].
+    try solve [repeat ev; split; eexists; eauto].
   Grab Existential Variables.
-  apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-  apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-  apply 0. apply 0.
+  apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+  apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma stp2_reg2 : forall G1 G2 T1 T2 GH s m n1,
                        stp2 s m G1 T1 G2 T2 GH n1 ->
-                       stpd2 false G2 T2 G2 T2 GH.
+                       (exists n0, stp2 s true G2 T2 G2 T2 GH n0).
 Proof.
   intros. apply (proj2 (stp2_reg G1 G2 T1 T2 GH s m n1 H)).
 Qed.
 
 Lemma stp2_reg1 : forall G1 G2 T1 T2 GH s m n1,
                        stp2 s m G1 T1 G2 T2 GH n1 ->
-                       stpd2 false G1 T1 G1 T1 GH.
+                       (exists n0, stp2 s true G1 T1 G1 T1 GH n0).
 Proof.
   intros. apply (proj1 (stp2_reg G1 G2 T1 T2 GH s m n1 H)).
 Qed.
@@ -1747,7 +1749,7 @@ Qed.
 
 Lemma stpd2_reg2 : forall G1 G2 T1 T2 H m,
                        stpd2 m G1 T1 G2 T2 H ->
-                       stpd2 false G2 T2 G2 T2 H.
+                       stpd2 true G2 T2 G2 T2 H.
 Proof.
   intros. inversion H0 as [n1 Hsub].
   eapply stp2_reg2; eassumption.
@@ -1755,7 +1757,7 @@ Qed.
 
 Lemma stpd2_reg1 : forall G1 G2 T1 T2 H m,
                        stpd2 m G1 T1 G2 T2 H ->
-                       stpd2 false G1 T1 G1 T1 H.
+                       stpd2 true G1 T1 G1 T1 H.
 Proof.
   intros. inversion H0 as [n1 Hsub].
   eapply stp2_reg1; eassumption.
@@ -1821,6 +1823,22 @@ Lemma sstpd2_extendH_mult0 : forall G1 G2 T1 T2 H2 m,
 Proof.
   intros. inversion H as [n1 Hsub]. exists n1.
   apply stp2_extendH_mult0; assumption.
+Qed.
+
+Lemma sstpd2_reg2 : forall G1 G2 T1 T2 H m,
+                       sstpd2 m G1 T1 G2 T2 H ->
+                       sstpd2 true G2 T2 G2 T2 H.
+Proof.
+  intros. inversion H0 as [n1 Hsub].
+  eapply stp2_reg2; eassumption.
+Qed.
+
+Lemma sstpd2_reg1 : forall G1 G2 T1 T2 H m,
+                       sstpd2 m G1 T1 G2 T2 H ->
+                       sstpd2 true G1 T1 G1 T1 H.
+Proof.
+  intros. inversion H0 as [n1 Hsub].
+  eapply stp2_reg1; eassumption.
 Qed.
 
 Lemma sstpd2_closed2 : forall G1 G2 T1 T2 H m,
@@ -1988,11 +2006,11 @@ Proof.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
   - Case "fun". subst. inversion H1.
     + SCase "top". 
-      assert (stpd2 false G1 T0 G1 T0 []) as A0 by solve [eapply stp2_reg2; eassumption].
+      assert (stpd2 false G1 T0 G1 T0 []) as A0 by solve [eapply stpd2_wrapf; eapply stp2_reg2; eassumption].
       inversion A0 as [na0 HA0].
-      assert (stpd2 false G1 T4 G1 T4 []) as A4 by solve [eapply stp2_reg1; eassumption].
+      assert (stpd2 false G1 T4 G1 T4 []) as A4 by solve [eapply stpd2_wrapf; eapply stp2_reg1; eassumption].
       inversion A4 as [na4 HA4].
-      eexists. eapply stp2_top. subst. eapply stp2_wrapf. eapply stp2_fun.
+      eexists. eapply stp2_top. subst. eapply stp2_fun.
       eassumption. eassumption.
     + SCase "fun". subst.
       assert (stpd2 false G3 T7 G1 T0 []) as A by solve [eapply stpd2_trans; eauto].
@@ -2103,11 +2121,6 @@ Proof.
   intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto.
 Qed.
 
-Ltac ev := repeat match goal with
-                    | H: exists _, _ |- _ => destruct H
-                    | H: _ /\  _ |- _ => destruct H
-           end.
-
 Lemma invert_typ: forall venv vx T1 T2,
   val_type venv vx (TMem T1 T2) ->
   exists GX TX,
@@ -2136,11 +2149,13 @@ Proof.
   inversion H.
   - Case "botx". eexists. eauto.
   - Case "topx". eexists. eauto.
-  - Case "bot". eexists. eauto.
-  - Case "top". eexists. eauto.
+  - Case "top". subst.
+    eapply IHn in H1. inversion H1. eexists. eauto. omega.
+  - Case "bot". subst.
+    eapply IHn in H1. inversion H1. eexists. eauto. omega.
   - Case "bool". eexists. eauto.
   - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
-  - Case "mem2".
+  - Case "mem".
     eapply IHn in H2. eapply sstpd2_untrans in H2. inversion H2.
     eapply IHn in H1. inversion H1.
     eexists. eapply stp2_mem. eauto. eauto. omega. omega.
@@ -2996,8 +3011,14 @@ Proof with stpd2_wrapf.
   intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY; eapply stpd2_wrapf.
   - Case "topx". eapply stpd2_topx.
   - Case "botx". eapply stpd2_botx.
-  - Case "top". eapply stpd2_top; eauto.
-  - Case "bot". eapply stpd2_bot; eauto.
+  - Case "top". eapply stpd2_top.
+    specialize (IHST GX GY WX WY).
+    apply stpd2_reg2 in IHST.
+    apply IHST.
+  - Case "bot". eapply stpd2_bot.
+    specialize (IHST GX GY WX WY).
+    apply stpd2_reg2 in IHST.
+    apply IHST.
   - Case "bool". eapply stpd2_bool; eauto.
   - Case "fun". eapply stpd2_fun; eauto.
   - Case "mem". eapply stpd2_mem; eauto.
@@ -3007,14 +3028,18 @@ Proof with stpd2_wrapf.
     destruct A as [? [? VT]].
     eapply inv_vtp_half in VT. ev.
     eapply stpd2_sel1. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
-    eauto.
+    specialize (IHST2 GX GY WX WY).
+    apply stpd2_reg2 in IHST2.
+    apply IHST2.
   - Case "sel2".
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
     eapply inv_vtp_half in VT. ev.
     eapply stpd2_sel2. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
-    eauto.
+    specialize (IHST2 GX GY WX WY).
+    apply stpd2_reg2 in IHST2.
+    apply IHST2.
   - Case "selx". 
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
     eapply index_safe_ex. eauto. eauto. ev.
@@ -3025,14 +3050,18 @@ Proof with stpd2_wrapf.
     destruct A as [? [? VT]]. destruct x0.
     inversion VT. subst. 
     eapply stpd2_sela1. eauto. eauto. eapply IHST1. eauto. eauto.
-    eapply IHST2. eauto. eauto.
+    specialize (IHST2 _ _ WX WY).
+    apply stpd2_reg2 in IHST2.
+    apply IHST2.
   - Case "sela2".
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. destruct x0.
     inversion VT. subst. 
     eapply stpd2_sela2. eauto. eauto. eapply IHST1. eauto. eauto.
-    eapply IHST2. eauto. eauto.
+    specialize (IHST2 _ _ WX WY).
+    apply stpd2_reg2 in IHST2.
+    apply IHST2.
   - Case "selax". eauto.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto. ev. destruct x0.
@@ -3100,7 +3129,7 @@ Proof.
   eapply stpd2_upgrade in ARG.                                                                                                     
   
   (* need reflexivity *)
-  assert (stpd2 false venv0 T1 venv0 T1 []). eapply stpd2_reg1. eauto.
+  assert (stpd2 false venv0 T1 venv0 T1 []). eapply stpd2_wrapf. eapply stpd2_reg1. eauto.
   assert (closed 0 0 T1). eapply stpd2_closed1 in H1. simpl in H1. eauto.
   
   (* now rename *)
@@ -3189,9 +3218,11 @@ Proof.
           (* wf_env f x *) econstructor. eapply valtp_widen; eauto. eapply sstpd2_extend2. eapply sstpd2_extend2. eauto. eauto. eauto. 
           (* wf_env f   *) econstructor. eapply v_abs; eauto. eapply sstpd2_extend2.
           eapply sstpd2_downgrade in STX. eapply sstpd2_downgrade in STY. repeat eu.
-          assert (stpd2 false env1 T3 env1 T3 []) as A3 by solve [eapply stp2_reg2; eauto].
+          assert (stpd2 false env1 T3 env1 T3 []) as A3. {
+            eapply stpd2_wrapf. eapply stpd2_reg2. eauto.
+          }
           inversion A3 as [na3 HA3].
-          assert (stpd2 false env1 T4 env1 T4 []) as A4 by solve [eapply stp2_reg1; eauto].
+          assert (stpd2 false env1 T4 env1 T4 []) as A4 by solve [eapply stpd2_wrapf; eapply stpd2_reg1; eauto].
           inversion A4 as [na4 HA4].
           eexists. eapply stp2_fun. eassumption. eassumption. eauto. eauto. 
           (* TODO: sstpd2_fun constructor *)
