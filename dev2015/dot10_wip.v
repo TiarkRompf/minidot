@@ -1288,6 +1288,20 @@ Proof.
   }
 Qed.
 
+Lemma stp_closed2 : forall G1 GH T1 T2,
+                       stp G1 GH T1 T2 ->
+                       closed 0 (length GH) T2.
+Proof.
+  intros. apply (proj2 (stp_closed G1 GH T1 T2 H)).
+Qed.
+
+Lemma stp_closed1 : forall G1 GH T1 T2,
+                       stp G1 GH T1 T2 ->
+                       closed 0 (length GH) T1.
+Proof.
+  intros. apply (proj1 (stp_closed G1 GH T1 T2 H)).
+Qed.
+
 Lemma stp_splice : forall GX G0 G1 T1 T2 x v1,
    stp GX (G1++G0) T1 T2 ->
    stp GX ((map (splicett (length G0)) G1) ++ (x,v1)::G0) (splice (length G0) T1) (splice (length G0) T2).
@@ -1309,8 +1323,22 @@ Proof.
     }
     rewrite <- A. apply IHstp1. reflexivity.
     apply IHstp2. reflexivity.
-  - Case "selb1". admit.
-  - Case "selb2". admit.
+  - Case "selb1".
+    assert (splice (length G0) (open (TSel x0) T2)=(open (TSel x0) T2)) as A. {
+      eapply closed_splice_idem. apply stp_closed2 in H0. inversion H0. subst.
+      simpl in H4. inversion H4. subst.
+      eapply closed_open. simpl. eassumption. eauto.
+      omega.
+    }
+    rewrite A. eapply stp_selb1; eassumption.
+  - Case "selb2".
+    assert (splice (length G0) (open (TSel x0) T1)=(open (TSel x0) T1)) as A. {
+      eapply closed_splice_idem. apply stp_closed2 in H0. inversion H0. subst.
+      simpl in H4. inversion H4. subst.
+      eapply closed_open. simpl. eassumption. eauto.
+      omega.
+    }
+    rewrite A. eapply stp_selb2; eassumption.
   - Case "sela1".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
     + eapply stp_sela1. eapply indexr_splice_hi. eauto. eauto.
