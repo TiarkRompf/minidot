@@ -1477,12 +1477,117 @@ Proof.
     eapply IHstp2. eauto. omega. omega.
 Qed.
 
-Lemma stp_extend : forall G1 GH S T1 T2 x v1,
-                       stp G1 GH S T1 T2 ->
-                       stp G1 ((x,v1)::GH) S T1 T2.
+Lemma stp_extend : forall G1 GH T1 T2 x v1,
+                       stp G1 GH T1 T2 ->
+                       stp G1 ((x,v1)::GH) T1 T2.
 Proof.
-  (* use stp_splice: we need to have that env and types are well-formed *)
-  admit.
+  intros. induction H; eauto using indexr_extend.
+  - Case "all".
+  assert (splice (length GH) T2 = T2) as A2. {
+    eapply closed_splice_idem. apply H1. omega.
+  }
+  assert (splice (length GH) T4 = T4) as A4. {
+    eapply closed_splice_idem. apply H2. omega.
+  }
+  assert (TSelH (S (length GH)) = splice (length GH) (TSelH (length GH))) as AH. {
+    simpl. case_eq (le_lt_dec (length GH) (length GH)); intros E LE.
+    simpl. rewrite NPeano.Nat.add_1_r. reflexivity.
+    clear LE. apply lt_irrefl in E. inversion E.
+  }
+  assert (closed 0 (length GH) T1).  eapply stp_closed2. eauto.
+  assert (splice (length GH) T1 = T1) as A1. {
+    eapply closed_splice_idem. eauto. omega.
+  }
+  assert (closed 0 (length GH) T3). eapply stp_closed1. eauto.
+  assert (splice (length GH) T3 = T3) as A3. {
+    eapply closed_splice_idem. eauto. omega.
+  }
+  assert (map (splicett (length GH)) [(0,T1)] ++(x,v1)::GH =((0,T1)::(x,v1)::GH)) as HGX1. {
+    simpl. rewrite A1. eauto.
+  }
+  assert (map (splicett (length GH)) [(0,T3)] ++(x,v1)::GH =((0,T3)::(x,v1)::GH)) as HGX3. {
+    simpl. rewrite A3. eauto.
+  }
+  apply stp_all with (x:=length ((x,v1) :: GH)).
+  apply IHstp1.
+  reflexivity.
+  apply closed_inc. apply H1.
+  apply closed_inc. apply H2.
+  simpl.
+  rewrite <- A2. rewrite <- A2.
+  unfold open.
+  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  rewrite -> splice_open_permute.
+  rewrite <- HGX1.
+  apply stp_splice.
+  rewrite A2. simpl. unfold open in H3. rewrite <- H0. apply H3.
+  omega.
+  simpl.
+  rewrite <- A2. rewrite <- A4.
+  unfold open.
+  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  rewrite -> splice_open_permute. rewrite -> splice_open_permute.
+  rewrite <- HGX3.
+  apply stp_splice.
+  simpl. unfold open in H4. rewrite <- H0. apply H4.
+  omega. omega.
+
+  - Case "bind".
+  assert (splice (length GH) T2 = T2) as A2. {
+    eapply closed_splice_idem. apply H1. omega.
+  }
+  assert (splice (length GH) T1 = T1) as A1. {
+    eapply closed_splice_idem. eauto. omega.
+  }
+  apply stp_bindx with (x:=length ((x,v1) :: GH)).
+  reflexivity.
+  apply closed_inc. apply H0.
+  apply closed_inc. apply H1.
+  simpl.
+  unfold open.
+  rewrite <- A2.
+  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  rewrite -> splice_open_permute. simpl.
+  assert (
+      stp G1
+     ((map (splicett (length GH)) [(0, (open_rec 0 (TSelH (length GH)) T2))])++(x, v1)::GH)
+     (splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
+     (splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
+     ->
+     stp G1
+     ((0, splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
+      :: (x, v1) :: GH)
+     (splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
+     (splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
+    ) as HGX1. {
+    simpl. intros A. apply A.
+  }
+  apply HGX1.
+  apply stp_splice.
+  simpl. unfold open in H2. rewrite <- H. apply H2.
+  simpl. apply le_refl.
+  rewrite <- A1. rewrite <- A2.
+  unfold open. simpl.
+  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  rewrite -> splice_open_permute. rewrite -> splice_open_permute.
+  assert (
+     (stp G1
+     ((map (splicett (length GH)) [(0, (open_rec 0 (TSelH (length GH)) T1))])++(x, v1)::GH)
+     (splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T1))
+     (splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T2)))
+     ->
+     (stp G1
+     ((0, splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T1))
+      :: (x, v1) :: GH)
+     (splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T1))
+     (splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T2)))
+    ) as HGX2. {
+    simpl. intros A. apply A.
+  }
+  apply HGX2.
+  apply stp_splice.
+  simpl. unfold open in H3. rewrite <- H. apply H3.
+  simpl. apply le_refl. simpl. apply le_refl.
 Qed.
 
 
