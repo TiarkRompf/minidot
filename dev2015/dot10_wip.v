@@ -1037,9 +1037,10 @@ Definition spliceat n (V: (id*(venv*ty))) :=
     | (x,(G,T)) => (x,(G,splice n T))
   end.
 
-Lemma splice_open_permute: forall (G0:tenv) T2 n j,
-(open_rec j (TSelH (n + S (length G0))) (splice (length G0) T2)) =
-(splice (length G0) (open_rec j (TSelH (n + length G0)) T2)).
+Lemma splice_open_permute: forall (G0:tenv) T2 n j k,
+n + k >= length G0 ->
+(open_rec j (TSelH (n + S k)) (splice (length G0) T2)) =
+(splice (length G0) (open_rec j (TSelH (n + k)) T2)).
 Proof.
   intros G T. induction T; intros; simpl; eauto;
   try rewrite IHT1; try rewrite IHT2; try rewrite IHT; eauto.
@@ -1048,8 +1049,9 @@ Proof.
   case_eq (beq_nat j i); intros E; simpl; eauto.
   case_eq (le_lt_dec (length G) (n + length G)); intros EL LE.
   assert (n + S (length G) = n + length G + 1). omega.
-  rewrite H. eauto.
-  omega.
+  case_eq (le_lt_dec (length G) (n+k)); intros E' LE'; simpl; eauto.
+  assert (n + S k=n + k + 1) as R by omega. rewrite R. reflexivity.
+  omega. omega.
 Qed.
 
 Lemma indexr_splice_hi: forall G0 G2 x0 x v1 T,
@@ -1365,7 +1367,31 @@ Proof.
       }
       rewrite <- A. eapply IHstp1. eauto.
       eapply IHstp2. eauto.
-  - Case "selab1". admit.
+  - Case "selab1".
+    case_eq (le_lt_dec (length G0) x0); intros E LE.
+    + eapply stp_selab1.
+      eapply indexr_splice_hi; eauto.
+      instantiate (1:=T2).
+      assert (splice (length G0) TX=TX) as A. {
+        apply stp_closed1 in H0. simpl in H0.
+        eapply closed_splice_idem.
+        apply H0.
+        omega.
+      }
+      rewrite A. apply H0.
+      rewrite H1.
+      unfold open.
+      assert (TSelH x0=TSelH (x0+0)) as B. {
+        rewrite <- plus_n_O. reflexivity.
+      }
+      rewrite B. rewrite <- splice_open_permute.
+      assert (splice (length G0) T2=T2) as C. {
+        apply stp_closed2 in H0. simpl in H0. inversion H0; subst.
+        inversion H5; subst.
+        eapply closed_splice_idem. eassumption. omega.
+      }
+      rewrite C. reflexivity. omega.
+    + admit.
   - Case "selab2". admit.
   - Case "selax".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
