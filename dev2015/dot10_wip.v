@@ -1458,6 +1458,23 @@ Proof.
     eapply IHstp3. eauto. omega. omega.
 
   - Case "bind".
+    eapply stp_bindx.
+    eauto.
+
+    rewrite map_splice_length_inc. apply closed_splice. assumption.
+    rewrite map_splice_length_inc. apply closed_splice. assumption.
+
+    rewrite app_length. rewrite map_length. simpl.
+    repeat rewrite splice_open_permute with (j:=0). subst x0.
+    specialize IHstp1 with (G3:=G0) (G4:=(0, (open (TSelH (length G2 + length G0)) T2))::G2).
+    rewrite app_length in IHstp1. simpl in IHstp1. unfold open in IHstp1.
+    eapply IHstp1. eauto. omega.
+
+    rewrite app_length. rewrite map_length. simpl.
+    repeat rewrite splice_open_permute with (j:=0). subst x0.
+    specialize IHstp2 with (G3:=G0) (G4:=(0, (open (TSelH (length G2 + length G0)) T1))::G2).
+    rewrite app_length in IHstp2. simpl in IHstp2. unfold open in IHstp2.
+    eapply IHstp2. eauto. omega. omega.
 Qed.
 
 Lemma stp_extend : forall G1 GH S T1 T2 x v1,
