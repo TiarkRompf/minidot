@@ -1391,7 +1391,15 @@ Proof.
         eapply closed_splice_idem. eassumption. omega.
       }
       rewrite C. reflexivity. omega.
-    + admit.
+    + eapply stp_selab1.
+      eapply indexr_splice_lo; eauto.
+      eassumption.
+      rewrite H1.
+      apply stp_closed2 in H0. simpl in H0. inversion H0; subst.
+      inversion H5; subst.
+      apply closed_upgrade_free with (k:=(length G0)) in H7.
+      eapply closed_splice_idem. eapply closed_open. eassumption. apply cl_selh.
+      omega. omega. omega.
   - Case "selab2". admit.
   - Case "selax".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
