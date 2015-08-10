@@ -1449,15 +1449,15 @@ Proof.
     simpl in IHstp2. rewrite app_length. rewrite map_length. simpl.
     repeat rewrite splice_open_permute with (j:=0). subst x0.
     rewrite app_length in IHstp2. simpl in IHstp2.
-    eapply IHstp2. eauto.
+    eapply IHstp2. eauto. omega.
 
     specialize IHstp3 with (G3:=G0) (G4:=(0, T3) :: G2).
     simpl in IHstp2. rewrite app_length. rewrite map_length. simpl.
     repeat rewrite splice_open_permute with (j:=0). subst x0.
     rewrite app_length in IHstp3. simpl in IHstp3.
-    eapply IHstp3. eauto.
+    eapply IHstp3. eauto. omega. omega.
 
-  - Case "bind". admit.
+  - Case "bind".
 Qed.
 
 Lemma stp_extend : forall G1 GH S T1 T2 x v1,
