@@ -1400,7 +1400,39 @@ Proof.
       apply closed_upgrade_free with (k:=(length G0)) in H7.
       eapply closed_splice_idem. eapply closed_open. eassumption. apply cl_selh.
       omega. omega. omega.
-  - Case "selab2". admit.
+  - Case "selab2".
+    case_eq (le_lt_dec (length G0) x0); intros E LE.
+    + eapply stp_selab2.
+      eapply indexr_splice_hi; eauto.
+      instantiate (1:=T1).
+      assert (splice (length G0) TX=TX) as A. {
+        apply stp_closed1 in H0. simpl in H0.
+        eapply closed_splice_idem.
+        apply H0.
+        omega.
+      }
+      rewrite A. apply H0.
+      rewrite H1.
+      unfold open.
+      assert (TSelH x0=TSelH (x0+0)) as B. {
+        rewrite <- plus_n_O. reflexivity.
+      }
+      rewrite B. rewrite <- splice_open_permute.
+      assert (splice (length G0) T1=T1) as C. {
+        apply stp_closed2 in H0. simpl in H0. inversion H0; subst.
+        inversion H5; subst.
+        eapply closed_splice_idem. eassumption. omega.
+      }
+      rewrite C. reflexivity. omega.
+    + eapply stp_selab2.
+      eapply indexr_splice_lo; eauto.
+      eassumption.
+      rewrite H1.
+      apply stp_closed2 in H0. simpl in H0. inversion H0; subst.
+      inversion H5; subst.
+      apply closed_upgrade_free with (k:=(length G0)) in H6.
+      eapply closed_splice_idem. eapply closed_open. eassumption. apply cl_selh.
+      omega. omega. omega.
   - Case "selax".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
     + eapply stp_selax. eapply indexr_splice_hi. eauto. eauto.
