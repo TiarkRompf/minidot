@@ -2565,7 +2565,7 @@ Lemma stp2_narrow_aux: forall n, forall m G1 T1 G2 T2 GH n0,
   forall x GH1 GH0 GH' GX1 TX1 GX2 TX2,
     GH=GH1++[(x,(GX2,TX2))]++GH0 ->
     GH'=GH1++[(x,(GX1,TX1))]++GH0 ->
-    stpd2 false GX1 TX1 GX2 TX2 GH0 ->
+    stpd2 false GX1 TX1 GX2 TX2 [] ->
     stpd2 m G1 T1 G2 T2 GH'.
 Proof.
   intros n.
@@ -2603,9 +2603,9 @@ Proof.
         inversion HX as [nx HX'].
         eapply stpd2_sela1.
         eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
-        apply beq_nat_true in E. rewrite E. eapply stp2_closed1. eassumption.
+        apply beq_nat_true in E. rewrite E. eapply stp2_closed1. eapply stp2_extendH_mult0. eassumption.
         eapply stpd2_trans.
-        eexists. eapply stp2_extendH_mult. eapply stp2_extendH_mult. eassumption.
+        eexists. eapply stp2_extendH_mult0. eassumption.
         eapply IHn; try eassumption. omega.
         reflexivity. reflexivity.
         eapply IHn; try eassumption. omega.
@@ -2631,8 +2631,7 @@ Proof.
         inversion E2. subst.
         eapply stpd2_selab1.
         eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
-        (* narrowing cannot hold in the empty [], if we narrow to something that is not GH-closed! *)
-        admit.
+        eapply stpd2_trans. eassumption. eexists. eassumption.
         eapply IHn; try eassumption. omega.
         reflexivity. reflexivity.
       * assert (indexr x GH' = Some (GX, TX)) as A. {
@@ -2654,9 +2653,9 @@ Proof.
         inversion HX as [nx HX'].
         eapply stpd2_sela2.
         eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
-        apply beq_nat_true in E. rewrite E. eapply stp2_closed1. eassumption.
+        apply beq_nat_true in E. rewrite E. eapply stp2_closed1. eapply stp2_extendH_mult0. eassumption.
         eapply stpd2_trans.
-        eexists. eapply stp2_extendH_mult. eapply stp2_extendH_mult. eassumption.
+        eexists. eapply stp2_extendH_mult0. eassumption.
         eapply IHn; try eassumption. omega.
         reflexivity. reflexivity.
         eapply IHn; try eassumption. omega.
@@ -2757,13 +2756,13 @@ Grab Existential Variables.
 apply 0. apply 0. apply 0.
 Qed.
 
-Lemma stpd2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4 H,
-  stpd2 false G1 T1 G2 T2 H -> (* careful about H! *)
-  stpd2 false G3 T3 G4 T4 ((x,(G2,T2))::H) ->
-  stpd2 false G3 T3 G4 T4 ((x,(G1,T1))::H).
+Lemma stpd2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4,
+  stpd2 false G1 T1 G2 T2 [] -> (* careful about H! *)
+  stpd2 false G3 T3 G4 T4 ((x,(G2,T2))::[]) ->
+  stpd2 false G3 T3 G4 T4 ((x,(G1,T1))::[]).
 Proof.
-  intros. inversion H1 as [n H'].
-  eapply (stp2_narrow_aux n) with (GH1:=[]) (GH0:=H). eapply H'. omega.
+  intros. inversion H0 as [n H'].
+  eapply (stp2_narrow_aux n) with (GH1:=[]) (GH0:=[]). eapply H'. omega.
   simpl. reflexivity. reflexivity.
   assumption.
 Qed.
