@@ -2738,24 +2738,30 @@ Lemma stpd2_to_sstpd2_aux2: forall n, forall G1 G2 GH T1 T2 m n1,
 Proof.
   intros n. induction n; intros; try omega.
   inversion H.
-  - Case "botx". eexists. eauto.
   - Case "topx". eexists. eauto.
-  - Case "bot". eexists. eauto.
-  - Case "top". eexists. eauto.
+  - Case "botx". eexists. eauto.
+  - Case "top". subst.
+    eapply IHn in H1. inversion H1. eexists. eauto. omega.
+  - Case "bot". subst.
+    eapply IHn in H1. inversion H1. eexists. eauto. omega.
   - Case "bool". eexists. eauto.
   - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
   - Case "mem".
     eapply IHn in H2. ev. eapply IHn in H3. ev.
     eexists. eapply stp2_mem2; eauto. omega. omega.
-  - Case "sel1".
-    eapply IHn in H5. ev.
-    eexists. eapply stp2_sel1; eauto. omega.
-  - Case "selb1".
-    eapply IHn in H5. ev. eapply stpd2_to_sstpd2_aux1 in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
+  - Case "sel1". subst.
+    eapply IHn in H5. eapply IHn in H6. ev. ev.
+    eexists. eapply stp2_sel1; eauto. omega. omega.
+  - Case "selb1". subst.
+    eapply IHn in H5. eapply IHn in H6. ev. ev. eapply stpd2_to_sstpd2_aux1 in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
     (* now invert base on TBind knowledge -- TODO: helper lemma*)
-    inversion H3; ev. inversion H14. inversion H13. inversion H17. inversion H16. (* 1 case left *)
-    subst. inversion H16. subst.
-    assert (stp2 1 false venv0 (open (TSel x1) T3)
+    inversion H3; ev. subst.
+    inversion H7. subst.
+    inversion H6. subst.
+    inversion H10.
+    inversion H9. (* 1 case left *)
+    subst. inversion H9. subst.
+    assert (stp2 1 false venv0 (open (TSel x2) T2)
                  G2 (open (TSel x) (TMem TBot T0)) [] n1) as ST.
     admit. (* get this from substitute *)
 
@@ -2785,27 +2791,29 @@ Proof.
          as previously in narrowing: we do not know how many times the added term
          is used, so we cannot bound the result size.
     *)
-
-    assert (closed 0 (length (nil:aenv)) (open (TSel x1) T3)). eapply stp2_closed1. eauto.
-    eexists. eapply stp2_sel1. eauto. eapply H14. eauto.
-    eapply stp2_extendH_mult0. eauto. eauto. omega.
-  - Case "sel2".
-    eapply IHn in H5. ev.
-    eexists. eapply stp2_sel2; eauto. omega.
-  - Case "selx".
+    assert (closed 0 (length (nil:aenv)) (open (TSel x2) T2)) as C. eapply stp2_closed1. eauto. simpl in C.
+    eexists. eapply stp2_sel1. eauto. eapply H7. eauto.
+    eapply stp2_extendH_mult0. eauto. eauto. eauto. omega. omega.
+  - Case "sel2". subst.
+    eapply IHn in H5. eapply IHn in H6. ev. ev.
+    eexists. eapply stp2_sel2; eauto. omega. omega.
+  - Case "selx". subst.
     eexists. eapply stp2_selx. eauto. eauto.
-  - Case "sela1". eapply IHn in H3. ev. eexists. eapply stp2_sela1; eauto. omega.
+  - Case "sela1". subst. eapply IHn in H4. eapply IHn in H5. ev. ev.
+    eexists. eapply stp2_sela1; eauto. omega. omega.
   - Case "selab1".
     (* THIS ONE WILL NOT WORK AT LEVEL 2 (no way to remove *)
     (* so we use it at level 1, and translate during subst *)
     (* restriction GH = [] ensures that level 2 terms are already removed *)
-    eapply IHn in H3. ev. eexists. eapply stp2_selab1; eauto. omega.
-  - Case "sela2". eapply IHn in H3. ev. eexists. eapply stp2_sela2; eauto. omega.
-  - Case "selhx". eexists. eapply stp2_selax. eauto. eauto.
-  - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto.
+    eapply IHn in H3. eapply IHn in H5. ev. ev.
+    eexists. eapply stp2_selab1; eauto. omega. omega.
+  - Case "sela2". eapply IHn in H4. eapply IHn in H5. ev. ev.
+    eexists. eapply stp2_sela2; eauto. omega. omega.
+  - Case "selhx". eexists. eapply stp2_selax. eauto.
+  - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eapply H4. eapply H5.
   - Case "bind".
-    eapply IHn in H4. ev.
-    eexists. eapply stp2_bindb. eauto. eauto. eauto. omega.
+    eapply IHn in H4. eapply IHn in H5. ev. ev.
+    eexists. eapply stp2_bindb. eauto. eauto. eauto. eauto. omega. omega.
   - Case "wrapf". eapply IHn in H1. ev. eexists. eapply stp2_wrapf. eauto. omega.
   - Case "transf". eapply IHn in H1. eapply IHn in H2. ev. ev. eexists.
     eapply stp2_transf. eauto. eauto. omega. omega.
