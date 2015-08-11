@@ -472,7 +472,6 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
 
 | stp2_selax: forall m G1 G2 GX TX x GH n1,
     indexr x GH = Some (GX, TX) ->
-    indexr x GH = Some (GX, TX) ->
     stp2 (S m) true G1 (TSelH x) G2 (TSelH x) GH (S n1)
 
 
@@ -671,7 +670,6 @@ Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela2; eauto. Qed.
 
 
 Lemma stpd2_selax: forall G1 G2 GX TX x GH,
-    indexr x GH = Some (GX, TX) ->
     indexr x GH = Some (GX, TX) ->
     stpd2 true G1 (TSelH x) G2 (TSelH x) GH.
 Proof. intros. exists (S 0). eauto. eapply stp2_selax; eauto. Qed.
@@ -1616,17 +1614,223 @@ Proof.
 Qed.
 
 
+Lemma indexr_at_index: forall {A} x0 GH0 GH1 x (v:A),
+  beq_nat x0 (length GH1) = true ->
+  indexr x0 (GH0 ++ (x, v) :: GH1) = Some v.
+Proof.
+  intros. apply beq_nat_true in H. subst.
+  induction GH0.
+  - simpl. rewrite <- beq_nat_refl. reflexivity.
+  - destruct a. simpl.
+    rewrite app_length. simpl. rewrite <- plus_n_Sm. rewrite <- plus_Sn_m.
+    rewrite false_beq_nat. assumption. omega.
+Qed.
+
+Lemma indexr_same: forall {A} x0 (v0:A) GH0 GH1 x (v:A) (v':A),
+  beq_nat x0 (length GH1) = false ->
+  indexr x0 (GH0 ++ (x, v) :: GH1) = Some v0 ->
+  indexr x0 (GH0 ++ (x, v') :: GH1) = Some v0.
+Proof.
+  intros ? ? ? ? ? ? ? ? E H.
+  induction GH0.
+  - simpl. rewrite E. simpl in H. rewrite E in H. apply H.
+  - destruct a. simpl.
+    rewrite app_length. simpl.
+    case_eq (beq_nat x0 (length GH0 + S (length GH1))); intros E'.
+    simpl in H. rewrite app_length in H. simpl in H. rewrite E' in H.
+    rewrite H. reflexivity.
+    simpl in H. rewrite app_length in H. simpl in H. rewrite E' in H.
+    rewrite IHGH0. reflexivity. assumption.
+Qed.
+
+Inductive venv_ext : venv -> venv -> Prop :=
+| venv_ext_refl : forall G, venv_ext G G
+| venv_ext_cons : forall x T G1 G2, fresh G1 <= x -> venv_ext G1 G2 -> venv_ext ((x,T)::G1) G2.
+
+Inductive aenv_ext : aenv -> aenv -> Prop :=
+| aenv_ext_nil : aenv_ext nil nil
+| aenv_ext_cons : forall x T G' G A A', aenv_ext A' A -> venv_ext G' G -> aenv_ext ((x,(G',T))::A') ((x,(G,T))::A).
+
+Lemma aenv_ext_refl: forall GH, aenv_ext GH GH.
+Proof.
+  intros. induction GH.
+  - apply aenv_ext_nil.
+  - destruct a. destruct p. apply aenv_ext_cons.
+    assumption.
+    apply venv_ext_refl.
+Qed.
+
+Lemma index_extend_mult : forall G G' x T,
+                       index x G = Some T ->
+                       venv_ext G' G ->
+                       index x G' = Some T.
+Proof.
+  intros G G' x T H HV.
+  induction HV.
+  - assumption.
+  - apply index_extend. apply IHHV. apply H. assumption.
+Qed.
+
+Lemma aenv_ext__same_length:
+  forall GH GH',
+    aenv_ext GH' GH ->
+    length GH = length GH'.
+Proof.
+  intros. induction H.
+  - simpl. reflexivity.
+  - simpl. rewrite IHaenv_ext. reflexivity.
+Qed.
+
+Lemma indexr_at_ext :
+  forall GH GH' x T G,
+    aenv_ext GH' GH ->
+    indexr x GH = Some (G, T) ->
+    exists G', indexr x GH' = Some (G', T) /\ venv_ext G' G.
+Proof.
+  intros GH GH' x T G Hext Hindex. induction Hext.
+  - simpl in Hindex. inversion Hindex.
+  - simpl. simpl in Hindex.
+    case_eq (beq_nat x (length A)); intros E.
+    rewrite E in Hindex.  inversion Hindex. subst.
+    rewrite <- (@aenv_ext__same_length A A'). rewrite E.
+    exists G'. split. reflexivity. assumption. assumption.
+    rewrite E in Hindex.
+    rewrite <- (@aenv_ext__same_length A A'). rewrite E.
+    apply IHHext. assumption. assumption.
+Qed.
+
+
+Lemma stp2_closure_extend_rec :
+  forall G1 G2 T1 T2 GH s m n1,
+    stp2 s m G1 T1 G2 T2 GH n1 ->
+    (forall G1' G2' GH',
+       aenv_ext GH' GH ->
+       venv_ext G1' G1 ->
+       venv_ext G2' G2 ->
+       stp2 s m G1' T1 G2' T2 GH' n1).
+Proof.
+  intros G1 G2 T1 T2 GH s m n1 H.
+  induction H; intros; eauto;
+  try solve [inversion IHstp2_1; inversion IHstp2_2; eauto];
+  try solve [inversion IHstp2; eauto].
+  - Case "strong_sel1".
+    eapply stp2_strong_sel1. eapply index_extend_mult. apply H.
+    assumption. assumption. (* assumption. *)
+    apply IHstp2. assumption. apply venv_ext_refl. assumption.
+  - Case "strong_sel2".
+    eapply stp2_strong_sel2. eapply index_extend_mult. apply H.
+    assumption. assumption. (* assumption. *)
+    apply IHstp2. assumption. assumption. apply venv_ext_refl.
+  - Case "strong_selx".
+    eapply stp2_strong_selx.
+    eapply index_extend_mult. apply H. assumption.
+    eapply index_extend_mult. apply H0. assumption.
+  - Case "sel1".
+    eapply stp2_sel1. eapply index_extend_mult. apply H.
+    assumption. eassumption. assumption.
+    apply IHstp2_1. assumption. apply venv_ext_refl. assumption.
+    apply IHstp2_2. assumption. assumption. assumption.
+  - Case "sel1b". admit.
+  - Case "sel2".
+    eapply stp2_sel2. eapply index_extend_mult. apply H.
+    assumption. eassumption. assumption.
+    apply IHstp2_1. assumption. apply venv_ext_refl. assumption.
+    apply IHstp2_2. assumption. assumption. assumption.
+  - Case "selx".
+    eapply stp2_selx.
+    eapply index_extend_mult. apply H. assumption.
+    eapply index_extend_mult. apply H0. assumption.
+  - Case "sela1".
+    assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
+      apply indexr_at_ext with (GH:=GH); assumption.
+    }
+    inversion A as [GX' [H' HX]].
+    apply stp2_sela1 with (GX:=GX') (TX:=TX).
+    assumption. assumption.
+    apply IHstp2_1; assumption.
+    apply IHstp2_2; assumption.
+  - Case "selab1". admit.
+  - Case "sela2".
+    assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
+      apply indexr_at_ext with (GH:=GH); assumption.
+    }
+    inversion A as [GX' [H' HX]].
+    apply stp2_sela2 with (GX:=GX') (TX:=TX).
+    assumption. assumption.
+    apply IHstp2_1; assumption.
+    apply IHstp2_2; assumption.
+  - Case "selax".
+    assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
+      apply indexr_at_ext with (GH:=GH); assumption.
+    }
+    inversion A as [GX' [H' HX]].
+    apply stp2_selax with (GX:=GX') (TX:=TX).
+    assumption.
+  - Case "all".
+    assert (length GH = length GH') as A. {
+      apply aenv_ext__same_length. assumption.
+    }
+    apply stp2_all.
+    apply IHstp2_1; assumption.
+    subst. rewrite <- A. assumption.
+    subst. rewrite <- A. assumption.
+    subst. rewrite <- A.
+    apply IHstp2_2. apply aenv_ext_cons. assumption. assumption. assumption. assumption.
+    subst. rewrite <- A.
+    apply IHstp2_3. apply aenv_ext_cons. assumption. assumption. assumption. assumption.
+  - Case "bind". admit.
+  - Case "bindb". admit.
+  - Case "trans".
+    eapply stp2_transf.
+    eapply IHstp2_1.
+    assumption. assumption. apply venv_ext_refl.
+    eapply IHstp2_2.
+    assumption. apply venv_ext_refl. assumption.
+Qed.
+
+
+Lemma stp2_closure_extend : forall G1 T1 G2 T2 GH GX T x v s m n1,
+                              stp2 s m G1 T1 G2 T2 ((0,(GX,T))::GH) n1 ->
+                              fresh GX <= x ->
+                              stp2 s m G1 T1 G2 T2 ((0,((x,v)::GX,T))::GH) n1.
+Proof.
+  intros. eapply stp2_closure_extend_rec. apply H.
+  apply aenv_ext_cons. apply aenv_ext_refl. apply venv_ext_cons.
+  assumption. apply venv_ext_refl. apply venv_ext_refl. apply venv_ext_refl.
+Qed.
+
+
+Lemma stp2_extend : forall x v1 G1 G2 T1 T2 H s m n1,
+                      stp2 s m G1 T1 G2 T2 H n1 ->
+                      (fresh G1 <= x ->
+                       stp2 s m ((x,v1)::G1) T1 G2 T2 H n1) /\
+                      (fresh G2 <= x ->
+                       stp2 s m G1 T1 ((x,v1)::G2) T2 H n1) /\
+                      (fresh G1 <= x -> fresh G2 <= x ->
+                       stp2 s m ((x,v1)::G1) T1 ((x,v1)::G2) T2 H n1).
+Proof.
+  intros. induction H0;
+    try solve [split; try split; repeat ev; intros; eauto using index_extend];
+    try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; inversion IHstp2_3 as [? [? ?]]; constructor; eauto; apply stp2_closure_extend; eauto];
+    try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eapply stp2_bind; eauto; apply stp2_closure_extend; eauto];
+    try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eapply stp2_bindb; eauto; apply stp2_closure_extend; eauto].
+Qed.
+
 Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2 H s m n1,
                        stp2 s m G1 T1 G2 T2 H n1 ->
                        fresh G2 <= x ->
                        stp2 s m G1 T1 ((x,v1)::G2) T2 H n1.
-Proof. admit. Qed.
+Proof.
+  intros. apply (proj2 (stp2_extend x v1 G1 G2 T1 T2 H s m n1 H0)). assumption.
+Qed.
 
 Lemma stp2_extend1 : forall x v1 G1 G2 T1 T2 H s m n1,
                        stp2 s m G1 T1 G2 T2 H n1 ->
                        fresh G1 <= x ->
                        stp2 s m ((x,v1)::G1) T1 G2 T2 H n1.
-Proof. admit. Qed.
+Proof.
+  intros. apply (proj1 (stp2_extend x v1 G1 G2 T1 T2 H s m n1 H0)). assumption.
+Qed.
 
 Lemma stp2_extendH : forall x v1 G1 G2 T1 T2 H s m n1,
                        stp2 s m G1 T1 G2 T2 H n1 ->
