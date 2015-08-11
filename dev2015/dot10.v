@@ -4103,7 +4103,31 @@ Qed.
 Lemma inv_vtp_half: forall G v T GH,
   val_type G v T ->
   exists T0, val_type (base v) v T0 /\ closed 0 0 T0 /\ stpd2 false (base v) T0 G T GH.
-Proof. admit. Qed.
+Proof.
+  intros. induction H.
+  - eexists. split; try split.
+    + simpl. econstructor. eassumption. ev. eapply stp2_reg1 in H0. apply H0.
+    + ev. eapply stp2_closed1 in H0. simpl in H0. apply H0.
+    + eapply sstpd2_downgrade. ev. eexists. simpl.
+      eapply stp2_extendH_mult0. eassumption.
+  - eexists. split; try split.
+    + simpl. econstructor. ev. eapply stp2_reg1 in H. apply H.
+    + ev. eapply stp2_closed1 in H. simpl in H. apply H.
+    + eapply sstpd2_downgrade. ev. eexists. simpl.
+      eapply stp2_extendH_mult0. eassumption.
+  - eexists. split; try split.
+    + simpl. econstructor; try eassumption. ev. eapply stp2_reg1 in H3. apply H3.
+    + ev. eapply stp2_closed1 in H3. simpl in H3. apply H3.
+    + eapply sstpd2_downgrade. ev. eexists. simpl.
+      eapply stp2_extendH_mult0. eassumption.
+  - eexists. split; try split.
+    + simpl. subst. econstructor; try eassumption. reflexivity. ev. eapply stp2_reg1 in H1. apply H1.
+    + ev. eapply stp2_closed1 in H2. simpl in H2. apply H2.
+    + eapply sstpd2_downgrade. ev. eexists. simpl.
+      eapply stp2_extendH_mult0. eassumption.
+  - repeat ev. eexists. split; try split; try eassumption.
+    + admit.
+Qed.
 
 Lemma invert_tabs: forall venv vf vx T1 T2,
   val_type venv vf (TAll T1 T2) ->
