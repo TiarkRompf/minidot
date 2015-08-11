@@ -385,7 +385,7 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 MAX false G1 T2 G2 T4 GH n2 ->
     stp2 m true G1 (TFun T1 T2) G2 (TFun T3 T4) GH (S (n1+n2))
 | stp2_mem: forall G1 G2 T1 T2 T3 T4 GH n1 n2,
-    stp2 1 false G2 T3 G1 T1 GH n1 ->
+    stp2 0 false G2 T3 G1 T1 GH n1 ->
     stp2 0 true G1 T2 G2 T4 GH n2 ->
     stp2 0 true G1 (TMem T1 T2) G2 (TMem T3 T4) GH (S (n1+n2))
 
@@ -2821,8 +2821,8 @@ Proof.
     + SCase "top".
       apply stp2_reg1 in H. inversion H. eexists. eapply stp2_top. eassumption.
     + SCase "mem". subst.
-      assert (atpd2 false G3 T7 G1 T0 []) as A. {
-        eapply atpd2_trans_axiom; eexists; eauto.
+      assert (sstpd2 false G3 T7 G1 T0 []) as A. {
+        eapply sstpd2_trans_axiom; eexists; eauto.
       }
       inversion A as [na A'].
       assert (sstpd2 true G1 T4 G3 T8 []) as B. {
@@ -2945,10 +2945,15 @@ Lemma invert_typ: forall venv vx T1 T2,
 Proof.
   intros. inversion H; ev; try solve by inversion. inversion H1.
   subst.
-  assert (sstpd2 false venv0 T1 venv1 T0 []) as E1. admit. (* FIXME: def of stp_mem *)
-  assert (sstpd2 true venv1 T0 venv0 T2 []) as E2. admit.
+  assert (sstpd2 false venv0 T1 venv1 T0 []) as E1. {
+    eexists. eassumption.
+  }
+  assert (sstpd2 true venv1 T0 venv0 T2 []) as E2. {
+    eexists. eassumption.
+  }
   repeat eu. repeat eexists; eauto.
 Qed.
+
 
 
 Lemma stpd2_to_sstpd2_aux1: forall n, forall G1 G2 T1 T2 m n1,
@@ -2966,8 +2971,9 @@ Proof.
   - Case "bool". eexists. eauto.
   - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
   - Case "mem".
+    eapply IHn in H2. eapply sstpd2_untrans in H2. eu.
     eapply IHn in H3. eapply sstpd2_untrans in H3. eu.
-    eexists. eapply stp2_mem. eauto. eauto. omega.
+    eexists. eapply stp2_mem. eauto. eauto. omega. omega.
   - Case "sel1".
     eapply IHn in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
     eapply invert_typ in H3. ev. repeat eu. subst.
@@ -4250,7 +4256,7 @@ Proof.
 
 
     eapply stpd2_substitute with (GH0:=nil).
-    eapply stpd2_extend1. eapply stpd2_narrow. eapply stpd2_extendH. eapply H6. eapply KEY.
+    eapply stpd2_extend1. eapply stpd2_narrow. eapply H6. eapply KEY.
     eauto. simpl. eauto. eauto.
     left. repeat eexists. eapply index_hit2. eauto. eauto. eauto. eauto.
     rewrite (subst_open_zero 0 1). eauto. eauto.
