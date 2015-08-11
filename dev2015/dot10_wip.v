@@ -2569,7 +2569,13 @@ Proof.
     + SCase "bool". eexists. eauto.
     + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eapply stp2_transf. eauto. eauto.
   - Case "fun". subst. inversion H1.
-    + SCase "top". eexists. eapply stp2_top. subst. eapply stp2_wrapf. eapply stp2_fun. eapply stp2_reg2. eauto. eapply stp2_reg1. eauto.
+    + SCase "top".
+      assert (stpd2 false G1 T0 G1 T0 []) as A0 by solve [eapply stpd2_wrapf; eapply stp2_reg2; eassumption].
+      inversion A0 as [na0 HA0].
+      assert (stpd2 false G1 T4 G1 T4 []) as A4 by solve [eapply stpd2_wrapf; eapply stp2_reg1; eassumption].
+      inversion A4 as [na4 HA4].
+      eexists. eapply stp2_top. subst. eapply stp2_fun.
+      eassumption. eassumption.
     + SCase "fun".
       admit.
       (* eexists. eapply stp2_fun. ep. eapply stpd2_trans. eauto. eauto. destruct EEX. eauto. *)
@@ -2610,8 +2616,8 @@ Proof.
       assert (stpd2 false G1 (open (TSelH (length ([]:aenv))) T4)
                           G3 (open (TSelH (length ([]:aenv))) T8)
                           [(0, (G3, T7))]).
-        eapply stpd2_trans. eapply stpd2_narrow. eapply stpd2_extendH. eexists. eapply H8. eauto. eauto.
-      repeat eu. eexists. eapply stp2_all. eauto. eauto. eauto. eauto.
+        eapply stpd2_trans. eapply stpd2_narrow. eexists. eapply stp2_extendH. eapply H9. eauto. eauto.
+      repeat eu. eexists. eapply stp2_all. eauto. eauto. eauto. eauto. eapply H8.
   - Case "bind". subst. inversion H1.
     + SCase "top". admit.
     + SCase "ssel2".
@@ -2621,8 +2627,8 @@ Proof.
       assert (atpd2 false G1 (open (TSelH (length ([]:aenv))) T0)
                           G3 (open (TSelH (length ([]:aenv))) T2)
                           [(0, (G1, open (TSelH (length ([]:aenv))) T0))]).
-        eapply atpd2_trans_axiom. unfold atpd2. eauto. eapply atpd2_narrow. eexists. eapply H4. unfold atpd2. eauto.
-      unfold atpd2 in H5. destruct H5. repeat eu. eexists. eapply stp2_bind. eauto. eauto. eauto.
+        eapply atpd2_trans_axiom. unfold atpd2. eauto. eapply atpd2_narrow. eexists. eapply H5. unfold atpd2. eauto.
+      unfold atpd2 in H6. destruct H6. repeat eu. eexists. eapply stp2_bind. eauto. eauto. eauto. eauto.
   - Case "wrapf". subst. eapply IHn. eapply H2. omega. eexists. eauto.
   - Case "transf". subst. eapply IHn. eapply H2. omega. eapply IHn. eapply H3. omega. eexists. eauto.
 Grab Existential Variables.
