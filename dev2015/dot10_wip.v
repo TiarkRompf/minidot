@@ -1547,7 +1547,16 @@ Proof.
     rewrite <- A. apply IHstp2_1.
     reflexivity.
     apply IHstp2_2. reflexivity.
-  - Case "sel1b". admit.
+
+  - Case "sel1b".
+    assert (splice (length GH0) (open (TSel x0) T2)=(open (TSel x0) T2)) as A. {
+      eapply closed_splice_idem. apply stp2_closed2 in H2. inversion H2. subst.
+      simpl in H7. inversion H7. subst.
+      eapply closed_open. simpl. eassumption. eauto.
+      omega.
+    }
+    rewrite A. eapply stp2_sel1b; eauto.
+    rewrite <- A. apply IHstp2_2; eauto.
   - Case "sel2".
     eapply stp2_sel2. apply H. eassumption. assumption.
     assert (splice (length GH0) TX=TX) as A. {
