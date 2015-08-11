@@ -2265,56 +2265,81 @@ Proof.
     try solve [repeat ev; split; eauto].
 Qed.
 
-(* stpd2 variants below *)
-
 Lemma stpd2_extend2 : forall x v1 G1 G2 T1 T2 H m,
                        stpd2 m G1 T1 G2 T2 H ->
                        fresh G2 <= x ->
                        stpd2 m G1 T1 ((x,v1)::G2) T2 H.
-Proof. admit. Qed.
+Proof.
+  intros. inversion H0 as [n1 Hsub]. exists n1.
+  apply stp2_extend2; assumption.
+Qed.
 
 Lemma stpd2_extend1 : forall x v1 G1 G2 T1 T2 H m,
                        stpd2 m G1 T1 G2 T2 H ->
                        fresh G1 <= x ->
                        stpd2 m ((x,v1)::G1) T1 G2 T2 H.
-Proof. admit. Qed.
+Proof.
+  intros. inversion H0 as [n1 Hsub]. exists n1.
+  apply stp2_extend1; assumption.
+Qed.
 
 Lemma stpd2_extendH : forall x v1 G1 G2 T1 T2 H m,
                        stpd2 m G1 T1 G2 T2 H ->
                        stpd2 m G1 T1 G2 T2 ((x,v1)::H).
-Proof. admit. Qed.
+Proof.
+  intros. inversion H0 as [n1 Hsub]. exists n1.
+  apply stp2_extendH; assumption.
+Qed.
 
 Lemma stpd2_extendH_mult : forall G1 G2 T1 T2 H H2 m,
                        stpd2 m G1 T1 G2 T2 H->
                        stpd2 m G1 T1 G2 T2 (H2++H).
-Proof. admit. Qed.
+Proof.
+  intros. inversion H0 as [n1 Hsub]. exists n1.
+  apply stp2_extendH_mult; assumption.
+Qed.
 
 Lemma stpd2_extendH_mult0 : forall G1 G2 T1 T2 H2 m,
                        stpd2 m G1 T1 G2 T2 [] ->
                        stpd2 m G1 T1 G2 T2 H2.
-Proof. admit. Qed.
+Proof.
+  intros. inversion H as [n1 Hsub]. exists n1.
+  apply stp2_extendH_mult0; assumption.
+Qed.
 
 
 Lemma stpd2_reg2 : forall G1 G2 T1 T2 H m,
                        stpd2 m G1 T1 G2 T2 H ->
-                       stpd2 m G2 T2 G2 T2 H.
-Proof. admit. Qed.
+                       stpd2 true G2 T2 G2 T2 H.
+Proof.
+  intros. inversion H0 as [n1 Hsub].
+  eapply stp2_reg2; eassumption.
+Qed.
 
 Lemma stpd2_reg1 : forall G1 G2 T1 T2 H m,
                        stpd2 m G1 T1 G2 T2 H ->
-                       stpd2 m G1 T1 G1 T1 H.
-Proof. admit. Qed.
+                       stpd2 true G1 T1 G1 T1 H.
+Proof.
+  intros. inversion H0 as [n1 Hsub].
+  eapply stp2_reg1; eassumption.
+Qed.
 
 
 Lemma stpd2_closed2 : forall G1 G2 T1 T2 H m,
                        stpd2 m G1 T1 G2 T2 H ->
                        closed 0 (length H) T2.
-Proof. admit. Qed.
+Proof.
+  intros. inversion H0 as [n1 Hsub].
+  eapply stp2_closed2; eassumption.
+Qed.
 
 Lemma stpd2_closed1 : forall G1 G2 T1 T2 H m,
                        stpd2 m G1 T1 G2 T2 H ->
                        closed 0 (length H) T1.
-Proof. admit. Qed.
+Proof.
+  intros. inversion H0 as [n1 Hsub].
+  eapply stp2_closed1; eassumption.
+Qed.
 
 
 (* sstpd2 variants below *)
@@ -2323,51 +2348,75 @@ Lemma sstpd2_extend2 : forall x v1 G1 G2 T1 T2 H m,
                        sstpd2 m G1 T1 G2 T2 H ->
                        fresh G2 <= x ->
                        sstpd2 m G1 T1 ((x,v1)::G2) T2 H.
-Proof. admit. Qed.
+Proof.
+  intros. inversion H0 as [n1 Hsub]. exists n1.
+  apply stp2_extend2; assumption.
+Qed.
 
 Lemma sstpd2_extend1 : forall x v1 G1 G2 T1 T2 H m,
                        sstpd2 m G1 T1 G2 T2 H ->
                        fresh G1 <= x ->
                        sstpd2 m ((x,v1)::G1) T1 G2 T2 H.
-Proof. admit. Qed.
+Proof.
+  intros. inversion H0 as [n1 Hsub]. exists n1.
+  apply stp2_extend1; assumption.
+Qed.
 
 Lemma sstpd2_extendH : forall x v1 G1 G2 T1 T2 H m,
                        sstpd2 m G1 T1 G2 T2 H ->
                        sstpd2 m G1 T1 G2 T2 ((x,v1)::H).
-Proof. admit. Qed.
+Proof.
+  intros. inversion H0 as [n1 Hsub]. exists n1.
+  apply stp2_extendH; assumption.
+Qed.
 
 Lemma sstpd2_extendH_mult : forall G1 G2 T1 T2 H H2 m,
                        sstpd2 m G1 T1 G2 T2 H->
                        sstpd2 m G1 T1 G2 T2 (H2++H).
-Proof. admit. Qed.
+Proof.
+  intros. inversion H0 as [n1 Hsub]. exists n1.
+  apply stp2_extendH_mult; assumption.
+Qed.
 
 Lemma sstpd2_extendH_mult0 : forall G1 G2 T1 T2 H2 m,
                        sstpd2 m G1 T1 G2 T2 [] ->
                        sstpd2 m G1 T1 G2 T2 H2.
-Proof. admit. Qed.
+Proof.
+  intros. inversion H as [n1 Hsub]. exists n1.
+  apply stp2_extendH_mult0; assumption.
+Qed.
 
 Lemma sstpd2_reg2 : forall G1 G2 T1 T2 H m,
                        sstpd2 m G1 T1 G2 T2 H ->
-                       sstpd2 m G2 T2 G2 T2 H.
-Proof. admit. Qed.
+                       sstpd2 true G2 T2 G2 T2 H.
+Proof.
+  intros. inversion H0 as [n1 Hsub].
+  eapply stp2_reg2; eassumption.
+Qed.
 
 Lemma sstpd2_reg1 : forall G1 G2 T1 T2 H m,
                        sstpd2 m G1 T1 G2 T2 H ->
-                       sstpd2 m G1 T1 G1 T1 H.
-Proof. admit. Qed.
+                       sstpd2 true G1 T1 G1 T1 H.
+Proof.
+  intros. inversion H0 as [n1 Hsub].
+  eapply stp2_reg1; eassumption.
+Qed.
 
 Lemma sstpd2_closed2 : forall G1 G2 T1 T2 H m,
                        sstpd2 m G1 T1 G2 T2 H ->
                        closed 0 (length H) T2.
-Proof. admit. Qed.
+Proof.
+  intros. inversion H0 as [n1 Hsub].
+  eapply stp2_closed2; eassumption.
+Qed.
 
 Lemma sstpd2_closed1 : forall G1 G2 T1 T2 H m,
                        sstpd2 m G1 T1 G2 T2 H ->
                        closed 0 (length H) T1.
-Proof. admit. Qed.
-
-
-
+Proof.
+  intros. inversion H0 as [n1 Hsub].
+  eapply stp2_closed1; eassumption.
+Qed.
 
 Lemma valtp_extend : forall vs v x v1 T,
                        val_type vs v T ->
