@@ -1946,9 +1946,10 @@ Proof.
       apply indexr_at_ext with (GH:=GH); assumption.
     }
     inversion A as [GX' [H' HX]].
-    apply stp2_selab1 with (GX:=GX') (TX:=TX).
+    eapply stp2_selab1 with (GX:=GX') (TX:=TX).
     assumption.
     apply IHstp2_1; eauto. apply aenv_ext_refl.
+    assumption.
     apply IHstp2_2; eauto.
   - Case "sela2".
     assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
