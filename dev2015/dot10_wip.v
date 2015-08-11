@@ -1730,7 +1730,11 @@ Proof.
     assumption. eassumption. assumption.
     apply IHstp2_1. assumption. apply venv_ext_refl. assumption.
     apply IHstp2_2. assumption. assumption. assumption.
-  - Case "sel1b". admit.
+  - Case "sel1b".
+    eapply stp2_sel1b. eapply index_extend_mult. apply H.
+    assumption. eassumption. assumption.
+    apply IHstp2_1. apply aenv_ext_refl. apply venv_ext_refl. assumption.
+    apply IHstp2_2. assumption. assumption. assumption.
   - Case "sel2".
     eapply stp2_sel2. eapply index_extend_mult. apply H.
     assumption. eassumption. assumption.
@@ -1749,7 +1753,15 @@ Proof.
     assumption. assumption.
     apply IHstp2_1; assumption.
     apply IHstp2_2; assumption.
-  - Case "selab1". admit.
+  - Case "selab1".
+    assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
+      apply indexr_at_ext with (GH:=GH); assumption.
+    }
+    inversion A as [GX' [H' HX]].
+    apply stp2_selab1 with (GX:=GX') (TX:=TX).
+    assumption.
+    apply IHstp2_1; eauto. apply aenv_ext_refl.
+    apply IHstp2_2; eauto.
   - Case "sela2".
     assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
       apply indexr_at_ext with (GH:=GH); assumption.
@@ -1778,8 +1790,26 @@ Proof.
     apply IHstp2_2. apply aenv_ext_cons. assumption. assumption. assumption. assumption.
     subst. rewrite <- A.
     apply IHstp2_3. apply aenv_ext_cons. assumption. assumption. assumption. assumption.
-  - Case "bind". admit.
-  - Case "bindb". admit.
+  - Case "bind".
+    assert (length GH = length GH') as A. {
+      apply aenv_ext__same_length. assumption.
+    }
+    apply stp2_bind.
+    subst. rewrite A in H. assumption.
+    subst. rewrite A in H0. assumption.
+    rewrite A in IHstp2_1. apply IHstp2_1. apply aenv_ext_cons. assumption. assumption. assumption. assumption.
+    subst.
+    rewrite A in IHstp2_2. apply IHstp2_2. apply aenv_ext_cons. assumption. assumption. assumption. assumption.
+  - Case "bindb".
+    assert (length GH = length GH') as A. {
+      apply aenv_ext__same_length. assumption.
+    }
+    apply stp2_bindb.
+    subst. rewrite A in H. assumption.
+    subst. rewrite A in H0. assumption.
+    rewrite A in IHstp2_1. apply IHstp2_1. apply aenv_ext_cons. assumption. assumption. assumption. assumption.
+    subst.
+    rewrite A in IHstp2_2. apply IHstp2_2. apply aenv_ext_cons. assumption. assumption. assumption. assumption.
   - Case "trans".
     eapply stp2_transf.
     eapply IHstp2_1.
