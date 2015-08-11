@@ -369,17 +369,17 @@ Definition MAX := 2.
 
 Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -> nat -> Prop :=
 | stp2_topx: forall m G1 G2 GH n1,
-    stp2 m true G1 TTop G2 TTop GH n1
+    stp2 m true G1 TTop G2 TTop GH (S n1)
 | stp2_botx: forall m G1 G2 GH n1,
-    stp2 m true G1 TBot G2 TBot GH n1
+    stp2 m true G1 TBot G2 TBot GH (S n1)
 | stp2_top: forall m G1 G2 GH T n1,
-    stp2 MAX false G1 T G1 T GH n1 ->
+    stp2 m true G1 T G1 T GH n1 -> (* regularity *)
     stp2 m true G1 T G2 TTop GH (S n1)
 | stp2_bot: forall m G1 G2 GH T n1,
-    stp2 MAX false G2 T G2 T GH n1 ->
+    stp2 m true G2 T G2 T GH n1 -> (* regularity *)
     stp2 m true G1 TBot G2 T GH (S n1)
 | stp2_bool: forall m G1 G2 GH n1,
-    stp2 m true G1 TBool G2 TBool GH n1
+    stp2 m true G1 TBool G2 TBool GH (S n1)
 | stp2_fun: forall m G1 G2 T1 T2 T3 T4 GH n1 n2,
     stp2 MAX false G2 T3 G1 T1 GH n1 ->
     stp2 MAX false G1 T2 G2 T4 GH n2 ->
@@ -398,12 +398,14 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
 (* strong version, with precise/invertible bounds *)
 | stp2_strong_sel1: forall G1 G2 GX TX x T2 GH n1,
     index x G1 = Some (vty GX TX) ->
+(*  val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)*)
     closed 0 0 TX ->
     stp2 0 true GX TX G2 T2 GH n1 ->
     stp2 0 true G1 (TSel x) G2 T2 GH (S n1)
 
 | stp2_strong_sel2: forall G1 G2 GX TX x T1 GH n1,
     index x G2 = Some (vty GX TX) ->
+(*  val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)*)
     closed 0 0 TX ->
     stp2 0 false G1 T1 GX TX GH n1 ->
     stp2 0 true G1 T1 G2 (TSel x) GH (S n1)
@@ -415,77 +417,86 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
 
 
 (* existing object, but imprecise type *)
-| stp2_sel1: forall m G1 G2 GX TX x T2 GH n1 v,
+| stp2_sel1: forall m G1 G2 GX TX x T2 GH n1 n2 v,
     index x G1 = Some v ->
     val_type GX v TX ->
     closed 0 0 TX ->
     stp2 (S m) false GX TX G2 (TMem TBot T2) GH n1 ->
-    stp2 (S m) true G1 (TSel x) G2 T2 GH (S n1)
+    stp2 (S m) true G2 T2 G2 T2 GH n2 -> (* regularity *)
+    stp2 (S m) true G1 (TSel x) G2 T2 GH (S (n1+n2))
 
-| stp2_sel1b: forall m G1 G2 GX TX x T2 GH n1 v,
+| stp2_sel1b: forall m G1 G2 GX TX x T2 GH n1 n2 v,
     index x G1 = Some v ->
     val_type GX v TX ->
     closed 0 0 TX ->
     stp2 (S (S m)) false GX TX G2 (TBind (TMem TBot T2)) [] n1 -> (* Note GH = [] *)
-    stp2 (S (S m)) true G1 (TSel x) G2 (open (TSel x) T2) GH (S n1)
+    stp2 (S (S m)) true G2 (open (TSel x) T2) G2 (open (TSel x) T2) GH n2 -> (* regularity *)
+    stp2 (S (S m)) true G1 (TSel x) G2 (open (TSel x) T2) GH (S (n1+n2))
 
 
-| stp2_sel2: forall m G1 G2 GX TX x T1 GH n1 v,
+| stp2_sel2: forall m G1 G2 GX TX x T1 GH n1 n2 v,
     index x G2 = Some v ->
     val_type GX v TX ->
     closed 0 0 TX ->
     stp2 (S m) false GX TX G1 (TMem T1 TTop) GH n1 ->
-    stp2 (S m) true G1 T1 G2 (TSel x) GH (S n1)
+    stp2 (S m) true G1 T1 G1 T1 GH n2 -> (* regularity *)
+    stp2 (S m) true G1 T1 G2 (TSel x) GH (S (n1+n2))
 
 | stp2_selx: forall m G1 G2 v x1 x2 GH n1,
     index x1 G1 = Some v ->
     index x2 G2 = Some v ->
-    stp2 (S m) true G1 (TSel x1) G2 (TSel x2) GH n1
+    stp2 (S m) true G1 (TSel x1) G2 (TSel x2) GH (S n1)
 
 (* hypothetical object *)
-| stp2_sela1: forall m G1 G2 GX TX x T2 GH n1,
+| stp2_sela1: forall m G1 G2 GX TX x T2 GH n1 n2,
     indexr x GH = Some (GX, TX) ->
-    (* closed 0 x TX -> *)
+    closed 0 x TX ->
     stp2 (S m) false GX TX G2 (TMem TBot T2) GH n1 ->
-    stp2 (S m) true G1 (TSelH x) G2 T2 GH (S n1)
+    stp2 (S m) true G2 T2 G2 T2 GH n2 -> (* regularity *)
+    stp2 (S m) true G1 (TSelH x) G2 T2 GH (S (n1+n2))
 
-| stp2_selab1: forall m G1 G2 GX TX x T2 GH n1, (* XXX TODO *)
+| stp2_selab1: forall m G1 G2 GX TX x T2 GH n1 n2, (* XXX TODO *)
     indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
     stp2 (S m) false GX TX G2 (TBind (TMem TBot T2)) [] n1 ->
-    stp2 (S m) true G1 (TSelH x) G2 (open (TSelH x) T2) GH (S n1)
+    stp2 (S m) true G2 (open (TSelH x) T2) G2 (open (TSelH x) T2) GH n2 -> (* regularity *)
+    stp2 (S m) true G1 (TSelH x) G2 (open (TSelH x) T2) GH (S (n1+n2))
 
-| stp2_sela2: forall m G1 G2 GX TX x T1 GH n1,
+| stp2_sela2: forall m G1 G2 GX TX x T1 GH n1 n2,
     indexr x GH = Some (GX, TX) ->
-    (* closed 0 x TX -> *)
+    closed 0 x TX ->
     stp2 (S m) false GX TX G2 (TMem T1 TTop) GH n1 ->
-    stp2 (S m) true G1 T1 G2 (TSelH x) GH (S n1)
+    stp2 (S m) true G1 T1 G1 T1 GH n2 -> (* regularity *)
+    stp2 (S m) true G1 T1 G2 (TSelH x) GH (S (n1+n2))
 
 
 | stp2_selax: forall m G1 G2 GX TX x GH n1,
     indexr x GH = Some (GX, TX) ->
     indexr x GH = Some (GX, TX) ->
-    stp2 (S m) true G1 (TSelH x) G2 (TSelH x) GH n1
+    stp2 (S m) true G1 (TSelH x) G2 (TSelH x) GH (S n1)
 
 
-| stp2_all: forall m G1 G2 T1 T2 T3 T4 GH n1 n2,
+| stp2_all: forall m G1 G2 T1 T2 T3 T4 GH n1 n1' n2,
     stp2 MAX false G2 T3 G1 T1 GH n1 ->
     closed 1 (length GH) T2 -> (* must not accidentally bind x *)
     closed 1 (length GH) T4 ->
+    stp2 MAX false G1 (open (TSelH (length GH)) T2) G1 (open (TSelH (length GH)) T2) ((0,(G1, T1))::GH) n1' -> (* regularity *)
     stp2 MAX false G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) ((0,(G2, T3))::GH) n2 ->
-    stp2 m true G1 (TAll T1 T2) G2 (TAll T3 T4) GH (S (n1+n2))
+    stp2 m true G1 (TAll T1 T2) G2 (TAll T3 T4) GH (S (n1+n1'+n2))
 
-| stp2_bind: forall G1 G2 T1 T2 GH n1,
+| stp2_bind: forall G1 G2 T1 T2 GH n1 n2,
     closed 1 (length GH) T1 -> (* must not accidentally bind x *)
     closed 1 (length GH) T2 ->
+    stp2 1 false G2 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T2) ((0,(G2, open (TSelH (length GH)) T2))::GH) n2 -> (* regularity *)
     stp2 1 false G1 (open (TSelH (length GH)) T1) G2 (open (TSelH (length GH)) T2) ((0,(G1, open (TSelH (length GH)) T1))::GH) n1 ->
-    stp2 0 true G1 (TBind T1) G2 (TBind T2) GH (S n1)
+    stp2 0 true G1 (TBind T1) G2 (TBind T2) GH (S (n1+n2))
 
-| stp2_bindb: forall m G1 G2 T1 T2 GH n1,
+| stp2_bindb: forall m G1 G2 T1 T2 GH n1 n2,
     closed 1 (length GH) T1 -> (* must not accidentally bind x *)
     closed 1 (length GH) T2 ->
+    stp2 (S m) false G2 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T2) ((0,(G2, open (TSelH (length GH)) T2))::GH) n2 -> (* regularity *)
     stp2 (S m) false G1 (open (TSelH (length GH)) T1) G2 (open (TSelH (length GH)) T2) ((0,(G1, open (TSelH (length GH)) T1))::GH) n1 ->
-    stp2 (S m) true G1 (TBind T1) G2 (TBind T2) GH (S n1)
+    stp2 (S m) true G1 (TBind T1) G2 (TBind T2) GH (S (n1+n2))
 
 
 | stp2_wrapf: forall m G1 G2 T1 T2 GH n1,
@@ -575,21 +586,21 @@ Hint Unfold stpd2.
 
 Lemma stpd2_topx: forall G1 G2 GH,
     stpd2 true G1 TTop G2 TTop GH.
-Proof. intros. repeat exists 0. eauto. Qed.
+Proof. intros. repeat exists (S 0). eauto. Qed.
 Lemma stpd2_botx: forall G1 G2 GH,
     stpd2 true G1 TBot G2 TBot GH.
-Proof. intros. repeat exists 0. eauto. Qed.
+Proof. intros. repeat exists (S 0). eauto. Qed.
 Lemma stpd2_top: forall G1 G2 GH T,
-    stpd2 false G1 T G1 T GH ->
+    stpd2 true G1 T G1 T GH ->
     stpd2 true G1 T G2 TTop GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_bot: forall G1 G2 GH T,
-    stpd2 false G2 T G2 T GH ->
+    stpd2 true G2 T G2 T GH ->
     stpd2 true G1 TBot G2 T GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_bool: forall G1 G2 GH,
     stpd2 true G1 TBool G2 TBool GH.
-Proof. intros. repeat exists 0. eauto. Qed.
+Proof. intros. repeat exists (S 0). eauto. Qed.
 Lemma stpd2_fun: forall G1 G2 GH T11 T12 T21 T22,
     stpd2 false G2 T21 G1 T11 GH ->
     stpd2 false G1 T12 G2 T22 GH ->
@@ -606,6 +617,7 @@ Lemma stpd2_sel1: forall G1 G2 GX TX x T2 GH v,
     val_type GX v TX ->
     closed 0 0 TX ->
     stpd2 false GX TX G2 (TMem TBot T2) GH ->
+    stpd2 true G2 T2 G2 T2 GH ->
     stpd2 true G1 (TSel x) G2 T2 GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel1; eauto. Qed.
 
@@ -614,6 +626,7 @@ Lemma stpd2_sel1b: forall G1 G2 GX TX x T2 GH v,
     val_type GX v TX ->
     closed 0 0 TX ->
     stpd2 false GX TX G2 (TBind (TMem TBot T2)) [] -> (* Note GH = [] *)
+    stpd2 true G2 (open (TSel x) T2) G2 (open (TSel x) T2) GH ->
     stpd2 true G1 (TSel x) G2 (open (TSel x) T2) GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel1b; eauto. Qed.
 
@@ -622,6 +635,7 @@ Lemma stpd2_sel2: forall G1 G2 GX TX x T1 GH v,
     val_type GX v TX ->
     closed 0 0 TX ->
     stpd2 false GX TX G1 (TMem T1 TTop) GH ->
+    stpd2 true G1 T1 G1 T1 GH ->
     stpd2 true G1 T1 G2 (TSel x) GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel2; eauto. Qed.
 
@@ -629,26 +643,29 @@ Lemma stpd2_selx: forall G1 G2 x1 x2 GH v,
     index x1 G1 = Some v ->
     index x2 G2 = Some v ->
     stpd2 true G1 (TSel x1) G2 (TSel x2) GH.
-Proof. intros. eauto. exists 0. eapply stp2_selx; eauto. Qed.
+Proof. intros. eauto. exists (S 0). eapply stp2_selx; eauto. Qed.
 
 Lemma stpd2_selab1: forall G1 G2 GX TX x T2 GH,
     indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
     stpd2 false GX TX G2 (TBind (TMem TBot T2)) [] -> (* Note GH = [] *)
+    stpd2 true G2 (open (TSelH x) T2) G2 (open (TSelH x) T2) GH ->
     stpd2 true G1 (TSelH x) G2 (open (TSelH x) T2) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab1; eauto. Qed.
 
 Lemma stpd2_sela1: forall G1 G2 GX TX x T2 GH,
     indexr x GH = Some (GX, TX) ->
-    (* closed 0 x TX -> *)
+    closed 0 x TX ->
     stpd2 false GX TX G2 (TMem TBot T2) GH ->
+    stpd2 true G2 T2 G2 T2 GH ->
     stpd2 true G1 (TSelH x) G2 T2 GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela1; eauto. Qed.
 
 Lemma stpd2_sela2: forall G1 G2 GX TX x T1 GH,
     indexr x GH = Some (GX, TX) ->
-    (* closed 0 x TX -> *)
+    closed 0 x TX ->
     stpd2 false GX TX G2 (TMem T1 TTop) GH ->
+    stpd2 true G1 T1 G1 T1 GH ->
     stpd2 true G1 T1 G2 (TSelH x) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela2; eauto. Qed.
 
@@ -657,13 +674,14 @@ Lemma stpd2_selax: forall G1 G2 GX TX x GH,
     indexr x GH = Some (GX, TX) ->
     indexr x GH = Some (GX, TX) ->
     stpd2 true G1 (TSelH x) G2 (TSelH x) GH.
-Proof. intros. exists 1. eauto. eapply stp2_selax; eauto. Qed.
+Proof. intros. exists (S 0). eauto. eapply stp2_selax; eauto. Qed.
 
 
 Lemma stpd2_all: forall G1 G2 T1 T2 T3 T4 GH,
     stpd2 false G2 T3 G1 T1 GH ->
     closed 1 (length GH) T2 ->
     closed 1 (length GH) T4 ->
+    stpd2 false G1 (open (TSelH (length GH)) T2) G1 (open (TSelH (length GH)) T2) ((0,(G1, T1))::GH) ->
     stpd2 false G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) ((0,(G2, T3))::GH) ->
     stpd2 true G1 (TAll T1 T2) G2 (TAll T3 T4) GH.
 Proof. intros. repeat eu. eauto. Qed.
@@ -671,6 +689,7 @@ Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_bind: forall G1 G2 T1 T2 GH,
     closed 1 (length GH) T1 ->
     closed 1 (length GH) T2 ->
+    stpd2 false G2 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T2) ((0,(G2, open (TSelH (length GH)) T2))::GH) ->
     stpd2 false G1 (open (TSelH (length GH)) T1) G2 (open (TSelH (length GH)) T2) ((0,(G1, open (TSelH (length GH)) T1))::GH) ->
     stpd2 true G1 (TBind T1) G2 (TBind T2) GH.
 Proof. intros. repeat eu. eauto. unfold stpd2. eexists. eapply stp2_bindb; eauto. Qed.
@@ -1281,6 +1300,29 @@ Proof.
   intros. apply (proj1 (stp_closed G1 GH T1 T2 H)).
 Qed.
 
+Lemma stp2_closed: forall G1 G2 T1 T2 GH s m n1,
+                     stp2 s m G1 T1 G2 T2 GH n1 ->
+                     closed 0 (length GH) T1 /\ closed 0 (length GH) T2.
+  intros. induction H;
+    try solve [repeat ev; split; eauto];
+    try solve [try inversion IHstp2_1; try inversion IHstp2_2; split; eauto; apply cl_selh; eapply indexr_max; eassumption];
+    try solve [inversion IHstp2 as [IH1 IH2]; inversion IH2; split; eauto; apply cl_selh; eapply indexr_max; eassumption].
+Qed.
+
+Lemma stp2_closed2 : forall G1 G2 T1 T2 GH s m n1,
+                       stp2 s m G1 T1 G2 T2 GH n1 ->
+                       closed 0 (length GH) T2.
+Proof.
+  intros. apply (proj2 (stp2_closed G1 G2 T1 T2 GH s m n1 H)).
+Qed.
+
+Lemma stp2_closed1 : forall G1 G2 T1 T2 GH s m n1,
+                       stp2 s m G1 T1 G2 T2 GH n1 ->
+                       closed 0 (length GH) T1.
+Proof.
+  intros. apply (proj1 (stp2_closed G1 G2 T1 T2 GH s m n1 H)).
+Qed.
+
 Lemma stp_splice : forall GX G0 G1 T1 T2 x v1,
    stp GX (G1++G0) T1 T2 ->
    stp GX ((map (splicett (length G0)) G1) ++ (x,v1)::G0) (splice (length G0) T1) (splice (length G0) T2).
@@ -1606,16 +1648,32 @@ Lemma stp2_extendH_mult0 : forall G1 G2 T1 T2 H2 s m n1,
                        stp2 s m G1 T1 G2 T2 H2 n1.
 Proof. intros. eapply stp2_extendH_mult with (H2:=H2) in H; eauto. rewrite app_nil_r in H. eauto. Qed.
 
+Lemma stp2_reg  : forall G1 G2 T1 T2 GH s m n1,
+                    stp2 s m G1 T1 G2 T2 GH n1 ->
+                    (exists n0, stp2 s true G1 T1 G1 T1 GH n0) /\
+                    (exists n0, stp2 s true G2 T2 G2 T2 GH n0).
+Proof.
+  intros. induction H;
+    try solve [repeat ev; split; eexists; eauto].
+  Grab Existential Variables.
+  apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+  apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+  apply 0. apply 0.
+Qed.
 
-Lemma stp2_reg2 : forall G1 G2 T1 T2 H s m n1,
-                       stp2 s m G1 T1 G2 T2 H n1 ->
-                       stp2 s m G2 T2 G2 T2 H n1.
-Proof. admit. Qed.
+Lemma stp2_reg2 : forall G1 G2 T1 T2 GH s m n1,
+                       stp2 s m G1 T1 G2 T2 GH n1 ->
+                       (exists n0, stp2 s true G2 T2 G2 T2 GH n0).
+Proof.
+  intros. apply (proj2 (stp2_reg G1 G2 T1 T2 GH s m n1 H)).
+Qed.
 
-Lemma stp2_reg1 : forall G1 G2 T1 T2 H s m n1,
-                       stp2 s m G1 T1 G2 T2 H n1 ->
-                       stp2 s m G1 T1 G1 T1 H n1.
-Proof. admit. Qed.
+Lemma stp2_reg1 : forall G1 G2 T1 T2 GH s m n1,
+                       stp2 s m G1 T1 G2 T2 GH n1 ->
+                       (exists n0, stp2 s true G1 T1 G1 T1 GH n0).
+Proof.
+  intros. apply (proj1 (stp2_reg G1 G2 T1 T2 GH s m n1 H)).
+Qed.
 
 Lemma stp_reg  : forall G GH T1 T2,
                     stp G GH T1 T2 ->
@@ -1624,16 +1682,6 @@ Proof.
   intros. induction H;
     try solve [repeat ev; split; eauto].
 Qed.
-
-Lemma stp2_closed2 : forall G1 G2 T1 T2 H s m n1,
-                       stp2 s m G1 T1 G2 T2 H n1 ->
-                       closed 0 (length H) T2.
-Proof. admit. Qed.
-
-Lemma stp2_closed1 : forall G1 G2 T1 T2 H s m n1,
-                       stp2 s m G1 T1 G2 T2 H n1 ->
-                       closed 0 (length H) T1.
-Proof. admit. Qed.
 
 (* stpd2 variants below *)
 
