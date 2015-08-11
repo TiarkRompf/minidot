@@ -1605,8 +1605,42 @@ Proof.
     repeat rewrite splice_open_permute with (j:=0).
     rewrite app_length in IHstp2_3. simpl in IHstp2_3.
     eapply IHstp2_3. reflexivity. omega. omega.
-  - Case "bind". admit.
-  - Case "bindb". admit.
+  - Case "bind".
+    eapply stp2_bind.
+
+    simpl. rewrite map_spliceat_length_inc. apply closed_splice. assumption.
+
+    simpl. rewrite map_spliceat_length_inc. apply closed_splice. assumption.
+
+    rewrite app_length. rewrite map_length. simpl.
+    repeat rewrite splice_open_permute with (j:=0).
+    specialize IHstp2_1 with (GH2:=GH0) (GH3:=(0, (G2,(open (TSelH (length GH1 + length GH0)) T2)))::GH1).
+    rewrite app_length in IHstp2_1. simpl in IHstp2_1. unfold open in IHstp2_1.
+    eapply IHstp2_1. eauto. omega.
+
+    rewrite app_length. rewrite map_length. simpl.
+    repeat rewrite splice_open_permute with (j:=0).
+    specialize IHstp2_2 with (GH2:=GH0) (GH3:=(0, (G1,(open (TSelH (length GH1 + length GH0)) T1)))::GH1).
+    rewrite app_length in IHstp2_2. simpl in IHstp2_2. unfold open in IHstp2_2.
+    eapply IHstp2_2. eauto. omega. omega.
+  - Case "bindb".
+    eapply stp2_bindb.
+
+    simpl. rewrite map_spliceat_length_inc. apply closed_splice. assumption.
+
+    simpl. rewrite map_spliceat_length_inc. apply closed_splice. assumption.
+
+    rewrite app_length. rewrite map_length. simpl.
+    repeat rewrite splice_open_permute with (j:=0).
+    specialize IHstp2_1 with (GH2:=GH0) (GH3:=(0, (G2,(open (TSelH (length GH1 + length GH0)) T2)))::GH1).
+    rewrite app_length in IHstp2_1. simpl in IHstp2_1. unfold open in IHstp2_1.
+    eapply IHstp2_1. eauto. omega.
+
+    rewrite app_length. rewrite map_length. simpl.
+    repeat rewrite splice_open_permute with (j:=0).
+    specialize IHstp2_2 with (GH2:=GH0) (GH3:=(0, (G1,(open (TSelH (length GH1 + length GH0)) T1)))::GH1).
+    rewrite app_length in IHstp2_2. simpl in IHstp2_2. unfold open in IHstp2_2.
+    eapply IHstp2_2. eauto. omega. omega.
 Qed.
 
 Lemma stp_extend : forall G1 GH T1 T2 x v1,
