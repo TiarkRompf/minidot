@@ -3974,7 +3974,13 @@ Proof. intros. repeat eu. eexists. eapply stp2_substitute_aux; eauto. Qed.
 
 Lemma valtp_closed: forall G v T,
   val_type G v T -> closed 0 0 T.
-Proof. admit. Qed. (* from embedded stp2 *)
+Proof.
+  intros. inversion H; subst; repeat ev;
+  match goal with
+      [ H : stp2 ?s ?m ?G1 ?T1 G T [] ?n |- _ ] =>
+      eapply stp2_closed2 in H; simpl in H; apply H
+  end.
+Qed.
 
 Hint Constructors wf_envh.
 
