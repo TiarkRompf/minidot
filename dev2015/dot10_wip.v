@@ -2696,10 +2696,12 @@ Lemma stpd2_to_sstpd2_aux1: forall n, forall G1 G2 T1 T2 m n1,
 Proof.
   intros n. induction n; intros; try omega.
   inversion H.
-  - Case "botx". eexists. eauto.
   - Case "topx". eexists. eauto.
-  - Case "bot". eexists. eauto.
-  - Case "top". eexists. eauto.
+  - Case "botx". eexists. eauto.
+  - Case "top". subst.
+    eapply IHn in H1. inversion H1. eexists. eauto. omega.
+  - Case "bot". subst.
+    eapply IHn in H1. inversion H1. eexists. eauto. omega.
   - Case "bool". eexists. eauto.
   - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
   - Case "mem".
@@ -2721,8 +2723,8 @@ Proof.
   - Case "selab1". inversion H2.
   - Case "sela2". inversion H2.
   - Case "selax". inversion H2.
-  - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto.
-  - Case "bind". eexists. eapply stp2_bind. eauto. eauto. eauto.
+  - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto. eauto.
+  - Case "bind". eexists. eapply stp2_bind. eauto. eauto. eauto. eauto.
   - Case "wrapf". eapply IHn in H1. eu. eexists. eapply stp2_wrapf. eauto. omega.
   - Case "transf". eapply IHn in H1. eapply IHn in H2. eu. eu. eexists.
     eapply stp2_transf. eauto. eauto. omega. omega.
