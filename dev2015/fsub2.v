@@ -547,7 +547,6 @@ Proof. intros. repeat eu. eauto. Qed.
 
 Lemma stpd2_selax: forall G1 G2 GX TX x GH,
     indexr x GH = Some (GX, TX) ->
-    indexr x GH = Some (GX, TX) ->
     stpd2 true G1 (TSelH x) G2 (TSelH x) GH.
 Proof. intros. exists (S 0). eauto. Qed.
 
@@ -2048,12 +2047,11 @@ Proof.
         inversion HX as [nx HX'].
         eapply stpd2_selax.
         eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
-        eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
       * assert (indexr x GH' = Some (GX, TX)) as A. {
           subst.
           eapply indexr_same. apply E. eassumption.
         }
-        eapply stpd2_selax. eapply A. assumption.
+        eapply stpd2_selax. eapply A.
     + SCase "all".
       assert (length GH = length GH') as A. {
         subst. clear.
@@ -3329,7 +3327,7 @@ Proof with stpd2_wrapf.
   - Case "selax". eauto.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto. ev. destruct x0.
-    eapply stpd2_selax. eauto. eauto.
+    eapply stpd2_selax. eauto.
   - Case "all".
     subst x. assert (length GY = length GH). eapply wfh_length; eauto.
     eapply stpd2_all. eauto. rewrite H. eauto. rewrite H.  eauto.
