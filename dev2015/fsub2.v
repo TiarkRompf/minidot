@@ -1930,7 +1930,7 @@ Proof.
 Qed.
 
 
-Lemma sstpd2_trans_false_aux: forall n, forall G1 G2 G3 T1 T2 T3 H n1,
+Lemma sstpd2_trans_axiom_aux: forall n, forall G1 G2 G3 T1 T2 T3 H n1,
   stp2 true false G1 T1 G2 T2 H n1 -> n1 < n ->
   sstpd2 false G2 T2 G3 T3 H ->
   sstpd2 false G1 T1 G3 T3 H.
@@ -1946,12 +1946,12 @@ Lemma stpd2_trans: forall G1 G2 G3 T1 T2 T3 H,
   stpd2 false G1 T1 G3 T3 H.
 Proof. intros. repeat eu. eapply stpd2_trans_aux; eauto. Qed.
 
-Lemma sstpd2_trans_false: forall G1 G2 G3 T1 T2 T3 H,
+Lemma sstpd2_trans_axiom: forall G1 G2 G3 T1 T2 T3 H,
   sstpd2 false G1 T1 G2 T2 H ->
   sstpd2 false G2 T2 G3 T3 H ->
   sstpd2 false G1 T1 G3 T3 H.
 Proof. intros. repeat eu.
-       eapply sstpd2_trans_false_aux; eauto.
+       eapply sstpd2_trans_axiom_aux; eauto.
        eexists. eauto.
 Qed.
 
@@ -2138,7 +2138,7 @@ Proof.
       apply stp2_reg1 in H. inversion H. eexists. eapply stp2_top. eassumption.
     + SCase "mem". subst.
       assert (sstpd2 false G3 T7 G1 T0 []) as A. {
-        eapply sstpd2_trans_false; eexists; eauto.
+        eapply sstpd2_trans_axiom; eexists; eauto.
       }
       inversion A as [na A'].
       assert (sstpd2 true G1 T4 G3 T8 []) as B. {
