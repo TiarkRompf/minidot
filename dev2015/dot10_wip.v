@@ -455,12 +455,13 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 (S m) true G2 T2 G2 T2 GH n2 -> (* regularity *)
     stp2 (S m) true G1 (TSelH x) G2 T2 GH (S (n1+n2))
 
-| stp2_selab1: forall m G1 G2 GX TX x T2 GH n1 n2, (* XXX TODO *)
+| stp2_selab1: forall m G1 G2 GX TX x T2 T2' GH n1 n2, (* XXX TODO *)
     indexr x GH = Some (GX, TX) ->
     (* closed 0 x TX -> *)
     stp2 (S m) false GX TX G2 (TBind (TMem TBot T2)) [] n1 ->
-    stp2 (S m) true G2 (open (TSelH x) T2) G2 (open (TSelH x) T2) GH n2 -> (* regularity *)
-    stp2 (S m) true G1 (TSelH x) G2 (open (TSelH x) T2) GH (S (n1+n2))
+    T2' = (open (TSelH x) T2) ->
+    stp2 (S m) true G2 T2' G2 T2' GH n2 -> (* regularity *)
+    stp2 (S m) true G1 (TSelH x) G2 T2' GH (S (n1+n2))
 
 | stp2_sela2: forall m G1 G2 GX TX x T1 GH n1 n2,
     indexr x GH = Some (GX, TX) ->
@@ -1567,7 +1568,42 @@ Proof.
         eapply closed_splice_idem. eassumption. omega.
       }
       rewrite <- A. eapply IHstp2_1. eauto. eapply IHstp2_2. eauto.
-  - Case "selab1". admit.
+
+  - Case "selab1".
+    case_eq (le_lt_dec (length GH0) x0); intros E LE.
+    + eapply stp2_selab1.
+      eapply indexr_spliceat_hi; eauto.
+      instantiate (1:=T2).
+      assert (splice (length GH0) TX=TX) as A. {
+        apply stp2_closed1 in H0. simpl in H0.
+        eapply closed_splice_idem.
+        apply H0.
+        omega.
+      }
+      rewrite A. apply H0.
+      rewrite H1.
+      unfold open.
+      assert (TSelH x0=TSelH (x0+0)) as B. {
+        rewrite <- plus_n_O. reflexivity.
+      }
+      rewrite B. rewrite <- splice_open_permute.
+      assert (splice (length GH0) T2=T2) as C. {
+        apply stp2_closed2 in H0. simpl in H0. inversion H0; subst.
+        inversion H6; subst.
+        eapply closed_splice_idem. eassumption. omega.
+      }
+      rewrite C. reflexivity. omega.
+      apply IHstp2_2; eauto.
+    + eapply stp2_selab1.
+      eapply indexr_spliceat_lo; eauto.
+      eassumption.
+      rewrite H1.
+      apply stp2_closed2 in H0. simpl in H0. inversion H0; subst.
+      inversion H6; subst.
+      apply closed_upgrade_free with (k:=(length GH0)) in H8.
+      eapply closed_splice_idem. eapply closed_open. eassumption. apply cl_selh.
+      omega. omega. omega.
+      apply IHstp2_2; eauto.
   - Case "sela2".
     case_eq (le_lt_dec (length GH0) x0); intros E LE.
     + eapply stp2_sela2. eapply indexr_spliceat_hi. apply H. eauto.
