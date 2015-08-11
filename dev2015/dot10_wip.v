@@ -425,7 +425,7 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 (S m) true G2 T2 G2 T2 GH n2 -> (* regularity *)
     stp2 (S m) true G1 (TSel x) G2 T2 GH (S (n1+n2))
 
-| stp2_sel1b: forall m G1 G2 GX TX x T2 GH n1 n2 v,
+| stp2_selb1: forall m G1 G2 GX TX x T2 GH n1 n2 v,
     index x G1 = Some v ->
     val_type GX v TX ->
     closed 0 0 TX ->
@@ -621,14 +621,14 @@ Lemma stpd2_sel1: forall G1 G2 GX TX x T2 GH v,
     stpd2 true G1 (TSel x) G2 T2 GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel1; eauto. Qed.
 
-Lemma stpd2_sel1b: forall G1 G2 GX TX x T2 GH v,
+Lemma stpd2_selb1: forall G1 G2 GX TX x T2 GH v,
     index x G1 = Some v ->
     val_type GX v TX ->
     closed 0 0 TX ->
     stpd2 false GX TX G2 (TBind (TMem TBot T2)) [] -> (* Note GH = [] *)
     stpd2 true G2 (open (TSel x) T2) G2 (open (TSel x) T2) GH ->
     stpd2 true G1 (TSel x) G2 (open (TSel x) T2) GH.
-Proof. intros. repeat eu. eexists. eapply stp2_sel1b; eauto. Qed.
+Proof. intros. repeat eu. eexists. eapply stp2_selb1; eauto. Qed.
 
 Lemma stpd2_sel2: forall G1 G2 GX TX x T1 GH v,
     index x G2 = Some v ->
@@ -1548,14 +1548,14 @@ Proof.
     reflexivity.
     apply IHstp2_2. reflexivity.
 
-  - Case "sel1b".
+  - Case "selb1".
     assert (splice (length GH0) (open (TSel x0) T2)=(open (TSel x0) T2)) as A. {
       eapply closed_splice_idem. apply stp2_closed2 in H2. inversion H2. subst.
       simpl in H7. inversion H7. subst.
       eapply closed_open. simpl. eassumption. eauto.
       omega.
     }
-    rewrite A. eapply stp2_sel1b; eauto.
+    rewrite A. eapply stp2_selb1; eauto.
     rewrite <- A. apply IHstp2_2; eauto.
   - Case "sel2".
     eapply stp2_sel2. apply H. eassumption. assumption.
@@ -1918,8 +1918,8 @@ Proof.
     assumption. eassumption. assumption.
     apply IHstp2_1. assumption. apply venv_ext_refl. assumption.
     apply IHstp2_2. assumption. assumption. assumption.
-  - Case "sel1b".
-    eapply stp2_sel1b. eapply index_extend_mult. apply H.
+  - Case "selb1".
+    eapply stp2_selb1. eapply index_extend_mult. apply H.
     assumption. eassumption. assumption.
     apply IHstp2_1. apply aenv_ext_refl. apply venv_ext_refl. assumption.
     apply IHstp2_2. assumption. assumption. assumption.
@@ -2534,7 +2534,7 @@ Proof.
   - Case "sel1".
     eapply IHn in H5. ev.
     eexists. eapply stp2_sel1; eauto. omega.
-  - Case "sel1b".
+  - Case "selb1".
     eapply IHn in H5. ev. eapply stpd2_to_sstpd2_aux1 in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
     (* now invert base on TBind knowledge -- TODO: helper lemma*)
     inversion H3; ev. inversion H14. inversion H13. inversion H17. inversion H16. (* 1 case left *)
@@ -3276,13 +3276,13 @@ Proof.
     eapply compat_mem_fwd2. eauto. eauto.
     eauto. eauto. eauto. eauto.
 
-  - Case "sel1b".
+  - Case "selb1".
     intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
 
     assert (closed 0 (length ([]:aenv)) (TBind (TMem TBot T0))). eapply stp2_closed2; eauto.
     simpl in  H6. unfold closed in H6. inversion H6. subst. inversion H10. subst.
 
-    admit. (* eapply stp2_sel1b. arg has GH = [] so nothing to be done (inversion IX2 and then a couple simplifications *)
+    admit. (* eapply stp2_selb1. arg has GH = [] so nothing to be done (inversion IX2 and then a couple simplifications *)
 
   - Case "sel2".
     intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
@@ -3576,7 +3576,7 @@ Proof with stpd2_wrapf.
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
-    eapply stpd2_sel1b. eauto. eauto. eapply valtp_closed; eauto. eauto.
+    eapply stpd2_selb1. eauto. eauto. eapply valtp_closed; eauto. eauto.
   - Case "selb2". admit.
   - Case "selx".
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
