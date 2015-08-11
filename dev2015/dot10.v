@@ -704,6 +704,22 @@ Lemma stpd2_transf: forall G1 G2 G3 T1 T2 T3 GH,
 Proof. intros. repeat eu. eauto. Qed.
 
 
+Lemma sstpd2_wrapf: forall G1 G2 T1 T2 GH,
+    sstpd2 true G1 T1 G2 T2 GH ->
+    sstpd2 false G1 T1 G2 T2 GH.
+Proof. intros. repeat eu. eexists. eapply stp2_wrapf. eauto. Qed.
+Lemma sstpd2_transf: forall G1 G2 G3 T1 T2 T3 GH,
+    sstpd2 true G1 T1 G2 T2 GH ->
+    sstpd2 false G2 T2 G3 T3 GH ->
+    sstpd2 false G1 T1 G3 T3 GH.
+Proof. intros. repeat eu. eexists. eapply stp2_transf; eauto. Qed.
+
+
+Lemma atpd2_transf: forall G1 G2 G3 T1 T2 T3 GH,
+    atpd2 true G1 T1 G2 T2 GH ->
+    atpd2 false G2 T2 G3 T3 GH ->
+    atpd2 false G1 T1 G3 T3 GH.
+Proof. intros. repeat eu. eexists. eapply stp2_transf; eauto. Qed.
 
 (*
 None             means timeout
@@ -2500,32 +2516,48 @@ Proof.
   - Case "transf". eapply stpd2_transf. eauto. eapply IHn. eauto. omega. eauto.
 Qed.
 
+Lemma sstpd2_trans_axiom_aux: forall n, forall G1 G2 G3 T1 T2 T3 H n1,
+  stp2 0 false G1 T1 G2 T2 H n1 -> n1 < n ->
+  sstpd2 false G2 T2 G3 T3 H ->
+  sstpd2 false G1 T1 G3 T3 H.
+Proof.
+  intros n. induction n; intros; try omega; repeat eu; subst; inversion H0.
+  - Case "wrapf". eapply sstpd2_transf. eexists. eauto. eexists. eauto.
+  - Case "transf". eapply sstpd2_transf. eexists. eauto. eapply IHn. eauto. omega. eexists. eauto.
+Qed.
+
+Lemma atpd2_trans_axiom_aux: forall n, forall G1 G2 G3 T1 T2 T3 H n1,
+  stp2 1 false G1 T1 G2 T2 H n1 -> n1 < n ->
+  atpd2 false G2 T2 G3 T3 H ->
+  atpd2 false G1 T1 G3 T3 H.
+Proof.
+  intros n. induction n; intros; try omega; repeat eu; subst; inversion H0.
+  - Case "wrapf". eapply atpd2_transf. eexists. eauto. eexists. eauto.
+  - Case "transf". eapply atpd2_transf. eexists. eauto. eapply IHn. eauto. omega. eexists. eauto.
+Qed.
+
 Lemma stpd2_trans: forall G1 G2 G3 T1 T2 T3 H,
   stpd2 false G1 T1 G2 T2 H ->
   stpd2 false G2 T2 G3 T3 H ->
   stpd2 false G1 T1 G3 T3 H.
 Proof. intros. repeat eu. eapply stpd2_trans_aux; eauto. Qed.
 
+Lemma sstpd2_trans_axiom: forall G1 G2 G3 T1 T2 T3 H,
+  sstpd2 false G1 T1 G2 T2 H ->
+  sstpd2 false G2 T2 G3 T3 H ->
+  sstpd2 false G1 T1 G3 T3 H.
+Proof. intros. repeat eu.
+       eapply sstpd2_trans_axiom_aux; eauto.
+       eexists. eauto.
+Qed.
+
 Lemma atpd2_trans_axiom: forall G1 G2 G3 T1 T2 T3 H,
   atpd2 false G1 T1 G2 T2 H ->
   atpd2 false G2 T2 G3 T3 H ->
   atpd2 false G1 T1 G3 T3 H.
-Proof. admit. Qed.
-
-
-(*
-Lemma sstpd2_trans_axiom: forall n, forall G1 G2 G3 T1 T2 T3 H n1,
-  stp2 true false G1 T1 G2 T2 H n1 -> n1 < n ->
-  sstpd2 false G2 T2 G3 T3 H ->
-  sstpd2 false G1 T1 G3 T3 H.
 Proof.
-  intros n. induction n; intros; try omega; repeat eu; subst; inversion H0.
-  - Case "wrapf". eexists. eapply stp2_transf; eauto.
-  - Case "transf". admit. (*eexists. eapply stp2_transf. eauto. ep. eapply IHn. eauto. omega. eauto. eauto. *)
+  intros. repeat eu. eapply atpd2_trans_axiom_aux; eauto. eexists. eauto.
 Qed.
-*)
-
-
 
 (* used in trans -- need to generalize interface for induction *)
 
