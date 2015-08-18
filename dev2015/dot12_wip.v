@@ -3345,6 +3345,7 @@ Proof.
     simpl. eauto.
   -  simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eapply closed_upgrade. eauto. eauto. eauto.
   -  simpl. rewrite IHT2. eauto. eapply closed_upgrade. eauto. eauto.
+  - simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.
 Qed.
 
 
@@ -3364,6 +3365,7 @@ Proof.
   eapply closed_upgrade. eauto. eauto.
   eapply closed_upgrade. eauto. eauto.
   subst. omega.
+  subst. eapply closed_upgrade. eassumption. omega.
 Qed.
 
 Lemma closed_subst: forall j n TX T, closed j (n+1) T -> closed 0 n TX -> closed j (n) (subst TX T).
@@ -3409,6 +3411,8 @@ Proof.
   case_eq (beq_nat i 0); intros E. omega. omega.
 
   case_eq (beq_nat j i); intros E. eauto. eauto.
+
+  eapply closed_upgrade; eauto.
 Qed.
 
 
