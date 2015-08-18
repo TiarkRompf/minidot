@@ -459,6 +459,14 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 (S m) true G1 T1 G1 T1 GH n2 -> (* regularity *)
     stp2 (S m) true G1 T1 G2 (TSel x) GH (S (n1+n2))
 
+| stp2_selb2: forall m G1 G2 GX TX x T1 GH n1 n2 v,
+    index x G2 = Some v ->
+    val_type GX v TX ->
+    closed 0 0 TX ->
+    stp2 (S (S m)) false GX TX G1 (TBind (TMem T1 TTop)) [] n1 -> (* Note GH = [] *)
+    stp2 (S (S m)) true G1 (open (TSel x) T1) G1 (open (TSel x) T1) GH n2 -> (* regularity *)
+    stp2 (S (S m)) true G1 (open (TSel x) T1) G2 (TSel x) GH (S (n1+n2))
+
 | stp2_selx: forall m G1 G2 v x1 x2 GH n1,
     index x1 G1 = Some v ->
     index x2 G2 = Some v ->
@@ -667,6 +675,15 @@ Lemma stpd2_sel2: forall G1 G2 GX TX x T1 GH v,
     stpd2 true G1 T1 G1 T1 GH ->
     stpd2 true G1 T1 G2 (TSel x) GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel2; eauto. Qed.
+
+Lemma stpd2_selb2: forall G1 G2 GX TX x T1 GH v,
+    index x G2 = Some v ->
+    val_type GX v TX ->
+    closed 0 0 TX ->
+    stpd2 false GX TX G1 (TBind (TMem T1 TTop)) [] -> (* Note GH = [] *)
+    stpd2 true G1 (open (TSel x) T1) G1 (open (TSel x) T1) GH ->
+    stpd2 true G1 (open (TSel x) T1) G2 (TSel x) GH.
+Proof. intros. repeat eu. eexists. eapply stp2_selb2; eauto. Qed.
 
 Lemma stpd2_selx: forall G1 G2 x1 x2 GH v,
     index x1 G1 = Some v ->
@@ -1627,6 +1644,15 @@ Proof.
     rewrite <- A. apply IHstp2_1.
     reflexivity.
     apply IHstp2_2. reflexivity.
+  - Case "selb1".
+    assert (splice (length GH0) (open (TSel x0) T1)=(open (TSel x0) T1)) as A. {
+      eapply closed_splice_idem. apply stp2_closed2 in H2. inversion H2. subst.
+      simpl in H7. inversion H7. subst.
+      eapply closed_open. simpl. eassumption. eauto.
+      omega.
+    }
+    rewrite A. eapply stp2_selb2; eauto.
+    rewrite <- A. apply IHstp2_2; eauto.
   - Case "sela1".
     case_eq (le_lt_dec (length GH0) x0); intros E LE.
     + eapply stp2_sela1. eapply indexr_spliceat_hi. apply H. eauto.
@@ -1990,6 +2016,11 @@ Proof.
     assumption. eassumption. assumption.
     apply IHstp2_1. assumption. apply venv_ext_refl. assumption.
     apply IHstp2_2. assumption. assumption. assumption.
+  - Case "selb2".
+    eapply stp2_selb2. eapply index_extend_mult. apply H.
+    assumption. eassumption. assumption.
+    apply IHstp2_1. apply aenv_ext_refl. apply venv_ext_refl. assumption.
+    apply IHstp2_2. assumption. assumption. assumption.
   - Case "selx".
     eapply stp2_selx.
     eapply index_extend_mult. apply H. assumption.
@@ -2320,7 +2351,7 @@ Proof.
   Grab Existential Variables.
   apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
   apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-  apply 0. apply 0.
+  apply 0. apply 0. apply 0.
 Qed.
 
 Lemma stp2_reg2 : forall G1 G2 T1 T2 GH s m n1,
@@ -2653,6 +2684,9 @@ Proof.
       eapply IHn; try eassumption. omega.
     + SCase "sel2". eapply stpd2_sel2; try eassumption.
       eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
+    + SCase "selb2". eapply stpd2_selb2; try eassumption.
+      eexists; eassumption.
       eapply IHn; try eassumption. omega.
     + SCase "selx". eapply stpd2_selx; try eassumption.
     + SCase "sela1".
@@ -3171,6 +3205,7 @@ Proof.
   - Case "sel2". subst.
     eapply IHn in H5. eapply IHn in H6. ev. ev.
     eexists. eapply stp2_sel2; eauto. omega. omega.
+  - Case "selb2". admit.
   - Case "selx". subst.
     eexists. eapply stp2_selx. eauto. eauto.
   - Case "sela1". subst. eapply IHn in H4. eapply IHn in H5. ev. ev.
@@ -3874,6 +3909,8 @@ Proof.
     eapply IHn; eauto; try omega.
     eauto. eauto. eauto. eauto.
 
+  - Case "selb2". admit.
+
   - Case "selx".
 
     intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
@@ -4179,7 +4216,15 @@ Proof.
     specialize (IHST2 GX GY WX WY).
     apply stpd2_reg2 in IHST2.
     apply IHST2.
-  - Case "selb2". admit.
+  - Case "selb2".
+    assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
+    eapply index_safe_ex. eauto. eauto.
+    destruct A as [? [? VT]].
+    eapply stpd2_selb2. eauto. eauto. eapply valtp_closed; eauto.
+    eapply stpd2_wrapf. eauto.
+    specialize (IHST2 GX GY WX WY).
+    apply stpd2_reg2 in IHST2.
+    apply IHST2.
   - Case "selx".
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
     eapply index_safe_ex. eauto. eauto. ev.
