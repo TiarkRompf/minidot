@@ -3188,6 +3188,12 @@ Proof.
   - Case "bind".
     eapply IHn in H4. eapply IHn in H5. ev. ev.
     eexists. eapply stp2_bindb. eauto. eauto. eauto. eauto. omega. omega.
+  - Case "and11". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
+    eexists. eapply stp2_and11; eauto. omega. omega.
+  - Case "and12". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
+    eexists. eapply stp2_and12; eauto. omega. omega.
+  - Case "and2". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
+    eexists. eapply stp2_and2; eauto. omega. omega.
   - Case "wrapf". eapply IHn in H1. ev. eexists. eapply stp2_wrapf. eauto. omega.
   - Case "transf". eapply IHn in H1. eapply IHn in H2. ev. ev. eexists.
     eapply stp2_transf. eauto. eauto. omega. omega.
