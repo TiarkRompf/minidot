@@ -2869,10 +2869,12 @@ Proof.
     + SCase "top". eexists. eauto.
     + SCase "?". eexists. eauto.
     + SCase "sel2". eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "top". subst. inversion H1.
     + SCase "topx". eexists. eauto.
     + SCase "top". eexists. eauto.
     + SCase "sel2". eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "bot". subst.
     apply stp2_reg2 in H1. inversion H1 as [n1' H1'].
     exists (S n1'). apply stp2_bot. apply H1'.
@@ -2880,6 +2882,7 @@ Proof.
     + SCase "top". eexists. eauto.
     + SCase "bool". eexists. eauto.
     + SCase "sel2". eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "fun". subst. inversion H1.
     + SCase "top".
       assert (stpd2 false G1 T0 G1 T0 []) as A0 by solve [eapply stpd2_wrapf; eapply stp2_reg2; eassumption].
@@ -2894,7 +2897,8 @@ Proof.
       assert (stpd2 false G1 T4 G3 T8 []) as B by solve [eapply stpd2_trans; eauto].
       inversion B as [nb B'].
       eexists. eapply stp2_fun. apply A'. apply B'.
-    + SCase "sel2". eexists. eapply stp2_strong_sel2. eauto. eauto. eauto.
+    + SCase "sel2". eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "mem". subst. inversion H1.
     + SCase "top".
       apply stp2_reg1 in H. inversion H. eexists. eapply stp2_top. eassumption.
@@ -2909,6 +2913,7 @@ Proof.
       inversion B as [nb B'].
       eexists. eapply stp2_mem. apply A'. apply B'.
     + SCase "sel2". eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "ssel1".
     assert (sstpd2 true GX TX G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1.
     eu. eexists. eapply stp2_strong_sel1; eauto.
@@ -2924,6 +2929,7 @@ Proof.
     + SCase "sselx".
       subst. rewrite H2 in H6. inversion H6. subst.
       eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "sselx". subst. inversion H1.
     + SCase "top". subst.
       apply stp2_reg1 in H. inversion H.
@@ -2935,6 +2941,7 @@ Proof.
     + SCase "sselx".
       subst. rewrite H5 in H3. inversion H3. subst.
       eexists. eapply stp2_strong_selx. eauto. eauto.
+    + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "all". subst. inversion H1.
     + SCase "top".
       apply stp2_reg1 in H. inversion H.
@@ -2948,7 +2955,8 @@ Proof.
                           G3 (open (TSelH (length ([]:aenv))) T8)
                           [(0, (G3, T7))]).
         eapply stpd2_trans. eapply stpd2_narrow. eexists. eapply H9. eauto. eauto.
-      repeat eu. eexists. eapply stp2_all. eauto. eauto. eauto. eauto. eapply H8.
+        repeat eu. eexists. eapply stp2_all. eauto. eauto. eauto. eauto. eapply H8.
+    + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "bind". subst. inversion H1; subst.
     + SCase "top".
       apply stp2_reg1 in H. inversion H.
@@ -2967,6 +2975,10 @@ Proof.
       }
       inversion A.
       eexists. eapply stp2_bind; try eassumption.
+    + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
+  - Case "and11". admit.
+  - Case "and12". admit.
+  - Case "and2". admit.
   - Case "wrapf". subst. eapply IHn. eapply H2. omega. eexists. eauto.
   - Case "transf". subst. eapply IHn. eapply H2. omega. eapply IHn. eapply H3. omega. eexists. eauto.
 
