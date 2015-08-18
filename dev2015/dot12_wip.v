@@ -28,6 +28,7 @@ Inductive ty : Type :=
   | TSelB  : id -> ty
   | TAll   : ty -> ty -> ty
   | TBind  : ty -> ty
+  | TAnd   : ty -> ty -> ty
 .
 
 Inductive tm : Type :=
@@ -115,6 +116,10 @@ Inductive closed_rec: nat -> nat -> ty -> Prop :=
     closed_rec k l (TBind T2)
 | cl_sel: forall k l x,
     closed_rec k l (TSel x)
+| cl_and: forall k l T1 T2,
+    closed_rec k l T1 ->
+    closed_rec k l T2 ->
+    closed_rec k l (TAnd T1 T2)
 | cl_selh: forall k l x,
     l > x ->
     closed_rec k l (TSelH x)
@@ -140,6 +145,7 @@ Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
     | TBool       => TBool
     | TMem T1 T2  => TMem (open_rec k u T1) (open_rec k u T2)
     | TFun T1 T2  => TFun (open_rec k u T1) (open_rec k u T2)
+    | TAnd T1 T2  => TAnd (open_rec k u T1) (open_rec k u T2)
   end.
 
 Definition open u T := open_rec 0 u T.
@@ -162,6 +168,7 @@ Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
     | TSelH i      => if beq_nat i 0 then U else TSelH (i-1)
     | TAll T1 T2   => TAll (subst U T1) (subst U T2)
     | TBind T2     => TBind (subst U T2)
+    | TAnd T1 T2   => TAnd (subst U T1) (subst U T2)
   end.
 
 Fixpoint nosubst (T : ty) {struct T} : Prop :=
@@ -176,6 +183,7 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
     | TSelH i      => i <> 0
     | TAll T1 T2   => nosubst T1 /\ nosubst T2
     | TBind T2     => nosubst T2
+    | TAnd T1 T2   => nosubst T1 /\ nosubst T2
   end.
 
 
@@ -271,6 +279,18 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 ((0,open (TSelH x) T2)::GH) (open (TSelH x) T2) (open (TSelH x) T2) -> (* regularity *)
     stp G1 ((0,open (TSelH x) T1)::GH) (open (TSelH x) T1) (open (TSelH x) T2) ->
     stp G1 GH (TBind T1) (TBind T2)
+| stp_and11: forall G GH T1 T2 T,
+    stp G GH T1 T ->
+    stp G GH T2 T2 -> (* regularity *)
+    stp G GH (TAnd T1 T2) T
+| stp_and12: forall G GH T1 T2 T,
+    stp G GH T2 T ->
+    stp G GH T1 T1 -> (* regularity *)
+    stp G GH (TAnd T1 T2) T
+| stp_and2: forall G GH T1 T2 T,
+    stp G GH T T1 ->
+    stp G GH T T2 ->
+    stp G GH T (TAnd T1 T2)
 .
 
 
@@ -495,6 +515,18 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 (S m) false G1 (open (TSelH (length GH)) T1) G2 (open (TSelH (length GH)) T2) ((0,(G1, open (TSelH (length GH)) T1))::GH) n1 ->
     stp2 (S m) true G1 (TBind T1) G2 (TBind T2) GH (S (n1+n2))
 
+| stp2_and11: forall m n1 n2 G1 G2 GH T1 T2 T,
+    stp2 m true G1 T1 G2 T GH n1 ->
+    stp2 m true G1 T2 G1 T2 GH n2 -> (* regularity *)
+    stp2 m true G1 (TAnd T1 T2) G2 T GH (S (n1+n2)) 
+| stp2_and12: forall m n1 n2 G1 G2 GH T1 T2 T,
+    stp2 m true G1 T2 G2 T GH n1 ->
+    stp2 m true G1 T1 G1 T1 GH n2 -> (* regularity *)
+    stp2 m true G1 (TAnd T1 T2) G2 T GH (S (n1+n2))
+| stp2_and2: forall m n1 n2 G1 G2 GH T1 T2 T,
+    stp2 m true G1 T G2 T1 GH n1 ->
+    stp2 m true G1 T G2 T2 GH n2 ->
+    stp2 m true G1 T G2 (TAnd T1 T2) GH (S (n1+n2)) 
 
 | stp2_wrapf: forall m G1 G2 T1 T2 GH n1,
     stp2 m true G1 T1 G2 T2 GH n1 ->
@@ -689,6 +721,22 @@ Lemma stpd2_bind: forall G1 G2 T1 T2 GH,
     stpd2 false G1 (open (TSelH (length GH)) T1) G2 (open (TSelH (length GH)) T2) ((0,(G1, open (TSelH (length GH)) T1))::GH) ->
     stpd2 true G1 (TBind T1) G2 (TBind T2) GH.
 Proof. intros. repeat eu. eauto. unfold stpd2. eexists. eapply stp2_bindb; eauto. Qed.
+
+Lemma stpd2_and11: forall G1 G2 GH T1 T2 T,
+    stpd2 true G1 T1 G2 T GH ->
+    stpd2 true G1 T2 G1 T2 GH ->
+    stpd2 true G1 (TAnd T1 T2) G2 T GH.
+Proof. intros. repeat eu. eauto. Qed.
+Lemma stpd2_and12: forall G1 G2 GH T1 T2 T,
+    stpd2 true G1 T2 G2 T GH ->
+    stpd2 true G1 T1 G1 T1 GH ->
+    stpd2 true G1 (TAnd T1 T2) G2 T GH.
+Proof. intros. repeat eu. eauto. Qed.
+Lemma stpd2_and2: forall G1 G2 GH T1 T2 T,
+    stpd2 true G1 T G2 T1 GH ->
+    stpd2 true G1 T G2 T2 GH ->
+    stpd2 true G1 T G2 (TAnd T1 T2) GH.
+Proof. intros. repeat eu. eauto. Qed.
 
 Lemma stpd2_wrapf: forall G1 G2 T1 T2 GH,
     stpd2 true G1 T1 G2 T2 GH ->
@@ -1061,6 +1109,7 @@ Fixpoint splice n (T : ty) {struct T} : ty :=
     | TSelH i      => if le_lt_dec n i  then TSelH (i+1) else TSelH i
     | TAll T1 T2   => TAll (splice n T1) (splice n T2)
     | TBind T2   => TBind (splice n T2)
+    | TAnd T1 T2 => TAnd (splice n T1) (splice n T2)
   end.
 
 Definition splicett n (V: (id*ty)) :=
