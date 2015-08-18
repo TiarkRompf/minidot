@@ -3662,6 +3662,19 @@ Proof.
   - ev. repeat eexists; eauto. + right. right. inversion H. eauto. + right. right. inversion H. eauto.
 Qed.
 
+Lemma compat_and: forall GX TX V G1 T1 T2 T1',
+    compat GX TX V G1 (TAnd T1 T2) T1' ->
+    closed_rec 0 0 TX ->
+    exists TA TB, T1' = TAnd TA TB /\
+                  compat GX TX V G1 T1 TA /\
+                  compat GX TX V G1 T2 TB.
+Proof.
+  intros ? ? ? ? ? ? ? CC CLX. repeat destruct CC as [|CC].
+  - ev. repeat eexists; eauto. + left. repeat eexists; eauto. + left. repeat eexists; eauto.
+  - ev. repeat eexists; eauto. + right. left. inversion H. eauto. + right. left. inversion H. eauto.
+  - ev. repeat eexists; eauto. + right. right. inversion H. eauto. + right. right. inversion H. eauto.
+Qed.
+
 
 Lemma compat_sel: forall GX TX V G1 T1' (GXX:venv) (TXX:ty) x v,
     compat GX TX V G1 (TSel x) T1' ->
@@ -4045,6 +4058,24 @@ Proof.
       eapply closed_upgrade_free. eauto. unfold id in H5.
       rewrite app_length. simpl. omega.
 
+  - Case "and11".
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
+    subst. apply compat_and in IX1. repeat destruct IX1 as [? IX1].
+    subst. eapply stp2_and11; eapply IHn; eauto; try omega.
+    eauto.
+
+  - Case "and12".
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
+    subst. apply compat_and in IX1. repeat destruct IX1 as [? IX1].
+    subst. eapply stp2_and12; eapply IHn; eauto; try omega.
+    eauto.
+
+  - Case "and2".
+    intros GH0 GH0' GXX TXX T1' T2' V ? CX IX1 IX2 FA.
+    subst. apply compat_and in IX2. repeat destruct IX2 as [? IX2].
+    subst. eapply stp2_and2; eapply IHn; eauto; try omega.
+    eauto.
+    
   - Case "wrapf".
     intros. subst. eapply stp2_wrapf. eapply IHn; eauto. omega.
   - Case "transf".
