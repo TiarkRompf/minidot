@@ -524,9 +524,9 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 m true G1 T1 G1 T1 GH n2 -> (* regularity *)
     stp2 m true G1 (TAnd T1 T2) G2 T GH (S (n1+n2))
 | stp2_and2: forall m n1 n2 G1 G2 GH T1 T2 T,
-    stp2 m true G1 T G2 T1 GH n1 ->
-    stp2 m true G1 T G2 T2 GH n2 ->
-    stp2 m true G1 T G2 (TAnd T1 T2) GH (S (n1+n2)) 
+    stp2 m false G1 T G2 T1 GH n1 ->
+    stp2 m false G1 T G2 T2 GH n2 ->
+    stp2 m true G1 T G2 (TAnd T1 T2) GH (S (n1+n2))
 
 | stp2_wrapf: forall m G1 G2 T1 T2 GH n1,
     stp2 m true G1 T1 G2 T2 GH n1 ->
@@ -733,8 +733,8 @@ Lemma stpd2_and12: forall G1 G2 GH T1 T2 T,
     stpd2 true G1 (TAnd T1 T2) G2 T GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_and2: forall G1 G2 GH T1 T2 T,
-    stpd2 true G1 T G2 T1 GH ->
-    stpd2 true G1 T G2 T2 GH ->
+    stpd2 false G1 T G2 T1 GH ->
+    stpd2 false G1 T G2 T2 GH ->
     stpd2 true G1 T G2 (TAnd T1 T2) GH.
 Proof. intros. repeat eu. eauto. Qed.
 
@@ -2299,6 +2299,24 @@ Lemma stp2_reg  : forall G1 G2 T1 T2 GH s m n1,
 Proof.
   intros. induction H;
     try solve [repeat ev; split; eexists; eauto].
+  - Case "and11".
+    repeat ev; split; eexists.
+    eapply stp2_and2.
+    eapply stp2_wrapf. eapply stp2_and11; eassumption.
+    eapply stp2_wrapf. eapply stp2_and12; eassumption.
+    eassumption.
+  - Case "and12".
+    repeat ev; split; eexists.
+    eapply stp2_and2.
+    eapply stp2_wrapf. eapply stp2_and11; eassumption.
+    eapply stp2_wrapf. eapply stp2_and12; eassumption.
+    eassumption.
+  - Case "and2".
+    repeat ev; split; eexists.
+    eassumption.
+    eapply stp2_and2.
+    eapply stp2_wrapf. eapply stp2_and11; eassumption.
+    eapply stp2_wrapf. eapply stp2_and12; eassumption.
   Grab Existential Variables.
   apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
   apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
@@ -2845,6 +2863,7 @@ Proof.
     + SCase "topx". eexists. eauto.
     + SCase "top". eexists. eauto.
     + SCase "sel2". eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "botx". subst. inversion H1.
     + SCase "botx". eexists. eauto.
     + SCase "top". eexists. eauto.
