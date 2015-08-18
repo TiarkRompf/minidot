@@ -2791,6 +2791,18 @@ Proof.
       instantiate (5:=(0, (G1, open (TSelH (length GH)) T0)) :: GH1).
       subst. simpl. reflexivity. subst. simpl. reflexivity.
       assumption.
+    + SCase "and11".
+      eapply stpd2_and11.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
+    + SCase "and12".
+      eapply stpd2_and12.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
+    + SCase "and2".
+      eapply stpd2_and2.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
     + SCase "wrapf".
       eapply stpd2_wrapf.
       eapply IHn; try eassumption. omega.
