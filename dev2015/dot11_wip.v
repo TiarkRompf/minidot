@@ -1,12 +1,9 @@
 (* Full safety for DOT (WIP) *)
 
-(* this version is based on fsub2.v *)
-(* based on that, it adds self types *)
+(* this version is based on dot10.v *)
+(* based on that, it adds intersection types *)
 
 (*
-TODO:
-- intersection types
-
 - stp2 trans + narrowing
 - stp/stp2 weakening and regularity
 *)
