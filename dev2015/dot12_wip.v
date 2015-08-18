@@ -2976,8 +2976,14 @@ Proof.
       inversion A.
       eexists. eapply stp2_bind; try eassumption.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
-  - Case "and11". admit.
-  - Case "and12". admit.
+  - Case "and11". subst. inversion H1; subst;
+                         try solve [eapply IHn in H2;
+                         [inversion H2; eexists; eapply stp2_and11; eassumption
+                         | omega | eexists; eassumption]].
+  - Case "and12". subst. inversion H1; subst;
+                         try solve [eapply IHn in H2;
+                         [inversion H2; eexists; eapply stp2_and12; eassumption
+                         | omega | eexists; eassumption]].
   - Case "and2". admit.
   - Case "wrapf". subst. eapply IHn. eapply H2. omega. eexists. eauto.
   - Case "transf". subst. eapply IHn. eapply H2. omega. eapply IHn. eapply H3. omega. eexists. eauto.
