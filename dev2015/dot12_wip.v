@@ -2984,7 +2984,12 @@ Proof.
                          try solve [eapply IHn in H2;
                          [inversion H2; eexists; eapply stp2_and12; eassumption
                          | omega | eexists; eassumption]].
-  - Case "and2". admit.
+  - Case "and2". subst. inversion H1; subst.
+    + SCase "top". eapply stp2_reg1 in H. inversion H. eexists. eapply stp2_top; eassumption.
+    + SCase "sel2". eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "and11". subst. eapply IHn. apply H2. omega. eexists. eassumption.
+    + SCase "and12". subst. eapply IHn. apply H3. omega. eexists. eassumption.
+    + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "wrapf". subst. eapply IHn. eapply H2. omega. eexists. eauto.
   - Case "transf". subst. eapply IHn. eapply H2. omega. eapply IHn. eapply H3. omega. eexists. eauto.
 
