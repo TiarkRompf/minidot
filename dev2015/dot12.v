@@ -4321,45 +4321,64 @@ Proof.
 Qed.
 
 
-Lemma inv_vtp_half: forall G v T GH,
+Definition base1 v := (fresh (base v),v)::(base v).
+
+Lemma inv_vtp_half: forall G v T,
   val_type G v T ->
-  exists T0, val_type ((fresh (base v),v)::(base v)) v T0 /\ closed 0 0 T0 /\ stpd2 false (((fresh (base v)),v)::(base v)) T0 G T GH.
+  exists T0,
+    val_type (base1 v) v T0 /\
+    closed 0 0 T0 /\
+    stpd2 false (base1 v) T0 G T [].
 Proof.
   intros. induction H.
   - eexists. split; try split.
     + simpl. econstructor. eassumption. ev. eapply stp2_reg1 in H0. ev. eapply stp2_extend2 in H0. eexists. apply H0. eauto.
     + ev. eapply stp2_closed1 in H0. simpl in H0. apply H0.
     + eapply sstpd2_downgrade. ev. eexists. simpl.
-      eapply stp2_extendH_mult0. eapply stp2_extend1. eassumption. eauto.
+      eapply stp2_extend1. eassumption. eauto.
   - eexists. split; try split.
     + simpl. econstructor. ev. eapply stp2_reg1 in H. ev. eapply stp2_extend2 in H. eexists. apply H. eauto.
     + ev. eapply stp2_closed1 in H. simpl in H. apply H.
     + eapply sstpd2_downgrade. ev. eexists. simpl.
-      eapply stp2_extendH_mult0. eapply stp2_extend. eassumption. eauto.
+      eapply stp2_extend. eassumption. eauto.
   - eexists. split; try split.
     + simpl. econstructor; try eassumption. ev. eapply stp2_reg1 in H3. ev. eapply stp2_extend2 in H3. eexists. apply H3. eauto.
     + ev. eapply stp2_closed1 in H3. simpl in H3. apply H3.
     + eapply sstpd2_downgrade. ev. eexists. simpl.
-      eapply stp2_extendH_mult0. eapply stp2_extend. eassumption. eauto.
+      eapply stp2_extend. eassumption. eauto.
   - eexists. split; try split.
     + simpl. subst. econstructor; try eassumption. reflexivity. ev. eapply stp2_reg1 in H1. ev. eapply stp2_extend2 in H1. eexists. apply H1. eauto.
     + ev. eapply stp2_closed1 in H2. simpl in H2. apply H2.
     + eapply sstpd2_downgrade. ev. eexists. simpl.
-      eapply stp2_extendH_mult0. eapply stp2_extend. eassumption. eauto.
-  - repeat ev.
-    eexists.
-    remember (((fresh (base v), v) :: base v)) as GXX.
-
-
-    assert (exists n1, stp2 0 true GXX (TBind x0) venv0 (TBind T2) [] n1). admit. (* TODO *)
-    ev.
+      eapply stp2_extend. eassumption. eauto.
+  - repeat ev. eexists.
+    remember (base1 v) as GXX.
+    assert (closed 0 (length ([]:aenv)) (TBind T2)). eapply closed_upgrade. eapply stp2_closed1. eapply H2. eauto.
+    assert (closed 1 (length ([]:aenv)) T2). inversion H6. eauto.
+    assert (sstpd2 true venv0 (TBind T2) venv0 (TBind T2) []). {
+      eapply stp2_reg1 in H2. ev. eexists. eauto. 
+    }
+    assert (exists n1, stp2 1 false GXX x0 venv0 (open (TSelH 0) T2) [(0,(base1 v,x0))] n1). {
+      (* from H5, using a reverse substitution op ? *)
+      (* H5 : stpd2 false GXX x0 venv0 (open (TSel x) T2) [] *)
+      admit.
+    }
+    assert (sstpd2 true GXX (TBind x0) venv0 (TBind T2) []). {
+      destruct H8. inversion H8. subst. destruct H9 as [? H9].
+      eexists. eapply stp2_bind. eapply closed_upgrade. eauto. eauto. eauto.
+      eapply H14.
+      unfold open. rewrite <-closed_no_open with (l:=0).
+      eapply H9. eauto.
+    }
+    eu. eu. eu. ev.
     
     split; try split. eapply v_pack. instantiate (1:=GXX). subst GXX. eapply index_hit2. eauto. eauto. eauto. eauto. instantiate (1:=x0). symmetry. eapply closed_no_open. eauto.
-    eapply stp2_reg1. eapply H6. econstructor. eapply closed_upgrade. eauto. eauto.
+    eapply stp2_reg1. eapply H10. econstructor. eapply closed_upgrade. eauto. eauto.
 
-    assert (sstpd2 true GXX (TBind x0) venv3 T3 []). eapply sstpd2_trans. eexists. eapply H6. eexists. eapply H2.
-
-    eapply sstpd2_downgrade in H7. eapply stpd2_extendH_mult0. eauto.
+    assert (sstpd2 true GXX (TBind x0) venv3 T3 []). {
+      eapply sstpd2_trans. eexists. eapply H10. eexists. eapply H2.
+    }
+    eapply sstpd2_downgrade in H11. eauto.
 Qed.
 
 Lemma invert_tabs: forall venv vf vx T1 T2,
