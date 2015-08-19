@@ -2878,6 +2878,34 @@ Proof.
 Qed.
 
 
+Lemma stpd2_to_atpd2_true: forall G1 G2 T1 T2 GH,
+  stpd2 true G1 T1 G2 T2 GH ->
+  atpd2 true G1 T1 G2 T2 GH.
+Proof.
+  intros. destruct H as [n H]. unfold MAX in H. remember 2 as m. induction H;
+    try solve [eexists; eauto 2];
+    try solve [inversion Heqm];
+    try solve [specialize (IHstp2 Heqm); destruct IHstp2; eexists; econstructor; eauto 2];
+    try solve [specialize (IHstp2_1 Heqm); destruct IHstp2_1;
+               specialize (IHstp2_2 Heqm); destruct IHstp2_2;
+               eexists; econstructor; eauto 2].
+  - Case "selb1".
+    specialize (IHstp2_1 Heqm); destruct IHstp2_1;
+    specialize (IHstp2_2 Heqm); destruct IHstp2_2.
+    admit. (* don't know what to do after: eexists. eapply stp2_sel1; eauto 2. *)
+  - admit.
+  - admit.
+  - Case "and12".
+    specialize (IHstp2_1 Heqm); destruct IHstp2_1;
+    specialize (IHstp2_2 Heqm); destruct IHstp2_2.
+    eexists. eapply stp2_and12; eauto.
+  - Case "trans".
+    specialize (IHstp2_1 Heqm); destruct IHstp2_1;
+    specialize (IHstp2_2 Heqm); destruct IHstp2_2.
+    eexists. eapply stp2_transf; eauto.
+Grab Existential Variables.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+Qed.
 
 Lemma atpd2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4 H,
   atpd2 false G1 T1 G2 T2 ((x,(G1,T1))::H) -> (* careful about H! *)
