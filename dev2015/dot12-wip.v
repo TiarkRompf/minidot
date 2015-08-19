@@ -2878,9 +2878,9 @@ Proof.
 Qed.
 
 
-Lemma atpd2_to_stpd2_true: forall G1 G2 T1 T2 GH,
-  atpd2 true G1 T1 G2 T2 GH ->
-  stpd2 true G1 T1 G2 T2 GH.
+Lemma atpd2_to_stpd2: forall m0 G1 G2 T1 T2 GH,
+  atpd2 m0 G1 T1 G2 T2 GH ->
+  stpd2 m0 G1 T1 G2 T2 GH.
 Proof.
   intros. destruct H as [n H]. remember 1 as m. induction H;
     try solve [eexists; eauto 2];
