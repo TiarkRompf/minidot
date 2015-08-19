@@ -2909,37 +2909,6 @@ Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
-(*
-Lemma stpd2_to_atpd2_true: forall G1 G2 T1 T2 GH,
-  stpd2 true G1 T1 G2 T2 GH ->
-  atpd2 true G1 T1 G2 T2 GH.
-Proof.
-  intros. destruct H as [n H]. unfold MAX in H. remember 2 as m. induction H;
-    try solve [eexists; eauto 2];
-    try solve [inversion Heqm];
-    try solve [specialize (IHstp2 Heqm); destruct IHstp2; eexists; econstructor; eauto 2];
-    try solve [specialize (IHstp2_1 Heqm); destruct IHstp2_1;
-               specialize (IHstp2_2 Heqm); destruct IHstp2_2;
-               eexists; econstructor; eauto 2].
-  - Case "selb1".
-    specialize (IHstp2_1 Heqm); destruct IHstp2_1;
-    specialize (IHstp2_2 Heqm); destruct IHstp2_2.
-    adm1t. (* don't know what to do after: eexists. eapply stp2_sel1; eauto 2. *)
-  - adm1t.
-  - adm1t.
-  - Case "and12".
-    specialize (IHstp2_1 Heqm); destruct IHstp2_1;
-    specialize (IHstp2_2 Heqm); destruct IHstp2_2.
-    eexists. eapply stp2_and12; eauto.
-  - Case "trans".
-    specialize (IHstp2_1 Heqm); destruct IHstp2_1;
-    specialize (IHstp2_2 Heqm); destruct IHstp2_2.
-    eexists. eapply stp2_transf; eauto.
-Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-Qed.
-*)
-
 (* begin atpd helpers *)
 Lemma atpd2_topx: forall G1 G2 GH,
     atpd2 true G1 TTop G2 TTop GH.
@@ -3637,6 +3606,13 @@ Proof.
 Qed.
 
 
+Lemma stpd2_to_atpd2: forall G1 G2 T1 T2 GH m,
+  stpd2 m G1 T1 G2 T2 GH ->
+  atpd2 m G1 T1 G2 T2 GH.
+Proof.
+  intros. eu. eapply stpd2_to_sstpd2_aux2.
+  eassumption. eauto.
+Qed.
 
 Lemma stpd2_to_sstpd2: forall G1 G2 T1 T2 m,
   stpd2 m G1 T1 G2 T2 nil ->
