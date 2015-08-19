@@ -4949,10 +4949,16 @@ Proof.
     }
     (* need to change induction for the i to vary? *)
     admit.
-  - Case "bind". admit.
-  - Case "and". admit.
+  - Case "bind".
+    unfold open. simpl. unfold open in IHT1. simpl in IHT1.
+    destruct H as [n H]. inversion H. subst.
+    (* same deal as all *)
+    admit.
+  - Case "and". (* destruct H as [n H]. inversion H; subst. *) (* 3 options... *)
+    admit.
+    
 Grab Existential Variables.
-apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma inv_closed_open: forall j n TX T, closed j n (open_rec j TX T) -> closed j n TX -> closed (j+1) n T.
