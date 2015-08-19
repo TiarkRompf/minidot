@@ -2660,7 +2660,7 @@ Lemma stp2_narrow_aux: forall n, forall m G1 T1 G2 T2 GH n0,
   forall x GH1 GH0 GH' GX1 TX1 GX2 TX2,
     GH=GH1++[(x,(GX2,TX2))]++GH0 ->
     GH'=GH1++[(x,(GX1,TX1))]++GH0 ->
-    stpd2 false GX1 TX1 GX2 TX2 [] ->
+    stpd2 false GX1 TX1 GX2 TX2 GH0 ->
     stpd2 m G1 T1 G2 T2 GH'.
 Proof.
   intros n.
@@ -2701,9 +2701,9 @@ Proof.
         inversion HX as [nx HX'].
         eapply stpd2_sela1.
         eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
-        apply beq_nat_true in E. rewrite E. eapply stp2_closed1. eapply stp2_extendH_mult0. eassumption.
+        apply beq_nat_true in E. rewrite E. eapply stp2_closed1. eassumption.
         eapply stpd2_trans.
-        eexists. eapply stp2_extendH_mult0. eassumption.
+        eexists. eapply stp2_extendH_mult. eapply stp2_extendH_mult. eassumption.
         eapply IHn; try eassumption. omega.
         reflexivity. reflexivity.
         eapply IHn; try eassumption. omega.
@@ -2715,7 +2715,7 @@ Proof.
         eapply stpd2_sela1. eapply A. assumption.
         eapply IHn; try eassumption. omega.
         eapply IHn; try eassumption. omega.
-    + SCase "selab1".
+    + SCase "selab1". admit. (*
       case_eq (beq_nat x (length GH0)); intros E.
       * assert (indexr x ([(x0, (GX2, TX2))]++GH0) = Some (GX2, TX2)) as A2. {
           simpl. rewrite E. reflexivity.
@@ -2738,7 +2738,7 @@ Proof.
         }
         eapply stpd2_selab1. eapply A.
         eexists. eassumption.
-        eapply IHn; try eassumption. omega.
+        eapply IHn; try eassumption. omega. *)
     + SCase "sela2".
       case_eq (beq_nat x (length GH0)); intros E.
       * assert (indexr x ([(x0, (GX2, TX2))]++GH0) = Some (GX2, TX2)) as A2. {
@@ -2751,9 +2751,9 @@ Proof.
         inversion HX as [nx HX'].
         eapply stpd2_sela2.
         eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
-        apply beq_nat_true in E. rewrite E. eapply stp2_closed1. eapply stp2_extendH_mult0. eassumption.
+        apply beq_nat_true in E. rewrite E. eapply stp2_closed1. eassumption.
         eapply stpd2_trans.
-        eexists. eapply stp2_extendH_mult0. eassumption.
+        eexists. eapply stp2_extendH_mult. eapply stp2_extendH_mult. eassumption.
         eapply IHn; try eassumption. omega.
         reflexivity. reflexivity.
         eapply IHn; try eassumption. omega.
@@ -2909,6 +2909,7 @@ Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
+(*
 Lemma stpd2_to_atpd2_true: forall G1 G2 T1 T2 GH,
   stpd2 true G1 T1 G2 T2 GH ->
   atpd2 true G1 T1 G2 T2 GH.
@@ -2923,9 +2924,9 @@ Proof.
   - Case "selb1".
     specialize (IHstp2_1 Heqm); destruct IHstp2_1;
     specialize (IHstp2_2 Heqm); destruct IHstp2_2.
-    admit. (* don't know what to do after: eexists. eapply stp2_sel1; eauto 2. *)
-  - admit.
-  - admit.
+    adm1t. (* don't know what to do after: eexists. eapply stp2_sel1; eauto 2. *)
+  - adm1t.
+  - adm1t.
   - Case "and12".
     specialize (IHstp2_1 Heqm); destruct IHstp2_1;
     specialize (IHstp2_2 Heqm); destruct IHstp2_2.
@@ -2937,12 +2938,352 @@ Proof.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
+*)
+
+(* begin atpd helpers *)
+Lemma atpd2_topx: forall G1 G2 GH,
+    atpd2 true G1 TTop G2 TTop GH.
+Proof. intros. repeat exists (S 0). eauto. Qed.
+Lemma atpd2_botx: forall G1 G2 GH,
+    atpd2 true G1 TBot G2 TBot GH.
+Proof. intros. repeat exists (S 0). eauto. Qed.
+Lemma atpd2_top: forall G1 G2 GH T,
+    atpd2 true G1 T G1 T GH ->
+    atpd2 true G1 T G2 TTop GH.
+Proof. intros. repeat eu. eexists. econstructor. eauto. Qed.
+Lemma atpd2_bot: forall G1 G2 GH T,
+    atpd2 true G2 T G2 T GH ->
+    atpd2 true G1 TBot G2 T GH.
+Proof. intros. repeat eu. eexists. econstructor. eauto. Qed.
+Lemma atpd2_bool: forall G1 G2 GH,
+    atpd2 true G1 TBool G2 TBool GH.
+Proof. intros. repeat exists (S 0). eauto. Qed.
+Lemma atpd2_fun: forall G1 G2 GH T11 T12 T21 T22,
+    stpd2 false G2 T21 G1 T11 GH ->
+    stpd2 false G1 T12 G2 T22 GH ->
+    atpd2 true G1 (TFun T11 T12) G2 (TFun T21 T22) GH.
+Proof. intros. repeat eu. eexists. econstructor; eauto. Qed.
+Lemma atpd2_mem: forall G1 G2 GH T11 T12 T21 T22,
+    atpd2 false G2 T21 G1 T11 GH ->
+    atpd2 false G1 T12 G2 T22 GH ->
+    atpd2 true G1 (TMem T11 T12) G2 (TMem T21 T22) GH.
+Proof. intros. repeat eu. eauto. unfold atpd2. eexists. eapply stp2_mem2; eauto. Qed.
+
+Lemma atpd2_sel1: forall G1 G2 GX TX x T2 GH v,
+    index x G1 = Some v ->
+    val_type GX v TX ->
+    closed 0 0 TX ->
+    atpd2 false GX TX G2 (TMem TBot T2) GH ->
+    atpd2 true G2 T2 G2 T2 GH ->
+    atpd2 true G1 (TSel x) G2 T2 GH.
+Proof. intros. repeat eu. eexists. eapply stp2_sel1; eauto. Qed.
+
+Lemma atpd2_sel2: forall G1 G2 GX TX x T1 GH v,
+    index x G2 = Some v ->
+    val_type GX v TX ->
+    closed 0 0 TX ->
+    atpd2 false GX TX G1 (TMem T1 TTop) GH ->
+    atpd2 true G1 T1 G1 T1 GH ->
+    atpd2 true G1 T1 G2 (TSel x) GH.
+Proof. intros. repeat eu. eexists. eapply stp2_sel2; eauto. Qed.
+
+Lemma atpd2_selx: forall G1 G2 x1 x2 GH v,
+    index x1 G1 = Some v ->
+    index x2 G2 = Some v ->
+    atpd2 true G1 (TSel x1) G2 (TSel x2) GH.
+Proof. intros. eauto. exists (S 0). eapply stp2_selx; eauto. Qed.
+
+Lemma atpd2_selab1: forall G1 G2 GX TX x T2 GH,
+    indexr x GH = Some (GX, TX) ->
+    (* closed 0 x TX -> *)
+    atpd2 false GX TX G2 (TBind (TMem TBot T2)) [] -> (* Note GH = [] *)
+    atpd2 true G2 (open (TSelH x) T2) G2 (open (TSelH x) T2) GH ->
+    atpd2 true G1 (TSelH x) G2 (open (TSelH x) T2) GH.
+Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab1; eauto. Qed.
+
+Lemma atpd2_sela1: forall G1 G2 GX TX x T2 GH,
+    indexr x GH = Some (GX, TX) ->
+    closed 0 x TX ->
+    atpd2 false GX TX G2 (TMem TBot T2) GH ->
+    atpd2 true G2 T2 G2 T2 GH ->
+    atpd2 true G1 (TSelH x) G2 T2 GH.
+Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela1; eauto. Qed.
+
+Lemma atpd2_sela2: forall G1 G2 GX TX x T1 GH,
+    indexr x GH = Some (GX, TX) ->
+    closed 0 x TX ->
+    atpd2 false GX TX G1 (TMem T1 TTop) GH ->
+    atpd2 true G1 T1 G1 T1 GH ->
+    atpd2 true G1 T1 G2 (TSelH x) GH.
+Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela2; eauto. Qed.
+
+
+Lemma atpd2_selax: forall G1 G2 GX TX x GH,
+    indexr x GH = Some (GX, TX) ->
+    atpd2 true G1 (TSelH x) G2 (TSelH x) GH.
+Proof. intros. exists (S 0). eauto. Qed.
+
+
+Lemma atpd2_all: forall G1 G2 T1 T2 T3 T4 GH,
+    stpd2 false G2 T3 G1 T1 GH ->
+    closed 1 (length GH) T2 ->
+    closed 1 (length GH) T4 ->
+    stpd2 false G1 (open (TSelH (length GH)) T2) G1 (open (TSelH (length GH)) T2) ((0,(G1, T1))::GH) ->
+    stpd2 false G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) ((0,(G2, T3))::GH) ->
+    atpd2 true G1 (TAll T1 T2) G2 (TAll T3 T4) GH.
+Proof. intros. repeat eu. eexists. eapply stp2_all; eauto. Qed.
+
+Lemma atpd2_bind: forall G1 G2 T1 T2 GH,
+    closed 1 (length GH) T1 ->
+    closed 1 (length GH) T2 ->
+    atpd2 false G2 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T2) ((0,(G2, open (TSelH (length GH)) T2))::GH) ->
+    atpd2 false G1 (open (TSelH (length GH)) T1) G2 (open (TSelH (length GH)) T2) ((0,(G1, open (TSelH (length GH)) T1))::GH) ->
+    atpd2 true G1 (TBind T1) G2 (TBind T2) GH.
+Proof. intros. repeat eu. eauto. unfold atpd2. eexists. eapply stp2_bindb; eauto. Qed.
+
+Lemma atpd2_and11: forall G1 G2 GH T1 T2 T,
+    atpd2 true G1 T1 G2 T GH ->
+    atpd2 true G1 T2 G1 T2 GH ->
+    atpd2 true G1 (TAnd T1 T2) G2 T GH.
+Proof. intros. repeat eu. eexists. eapply stp2_and11; eauto. Qed.
+Lemma atpd2_and12: forall G1 G2 GH T1 T2 T,
+    atpd2 true G1 T2 G2 T GH ->
+    atpd2 true G1 T1 G1 T1 GH ->
+    atpd2 true G1 (TAnd T1 T2) G2 T GH.
+Proof. intros. repeat eu. eexists. eapply stp2_and12; eauto. Qed.
+Lemma atpd2_and2: forall G1 G2 GH T1 T2 T,
+    atpd2 false G1 T G2 T1 GH ->
+    atpd2 false G1 T G2 T2 GH ->
+    atpd2 true G1 T G2 (TAnd T1 T2) GH.
+Proof. intros. repeat eu. eexists. eapply stp2_and2; eauto. Qed.
+
+Lemma atpd2_wrapf: forall G1 G2 T1 T2 GH,
+    atpd2 true G1 T1 G2 T2 GH ->
+    atpd2 false G1 T1 G2 T2 GH.
+Proof. intros. repeat eu. eexists. eapply stp2_wrapf; eauto. Qed.
+
+(* end atpd helpers *)
+
+Lemma atpd2_narrow_aux: forall n, forall m G1 T1 G2 T2 GH n0,
+  stp2 1 m G1 T1 G2 T2 GH n0 ->
+  n0 <= n ->
+  forall x GH1 GH0 GH' GX1 TX1 GX2 TX2,
+    GH=GH1++[(x,(GX2,TX2))]++GH0 ->
+    GH'=GH1++[(x,(GX1,TX1))]++GH0 ->
+    atpd2 false GX1 TX1 GX2 TX2 GH0 ->
+    atpd2 m G1 T1 G2 T2 GH'.
+Proof.
+  intros n.
+  induction n.
+  - Case "z". intros. inversion H0. subst. inversion H; eauto.
+  - Case "s n". intros m G1 T1 G2 T2 GH n0 H NE. inversion H; subst;
+    intros x0 GH1 GH0 GH' GX1 TX1 GX2 TX2 EGH EGH' HX.
+    + SCase "topx". eapply atpd2_topx.
+    + SCase "botx". eapply atpd2_botx.
+    + SCase "top". eapply atpd2_top. eapply IHn; try eassumption. omega.
+    + SCase "bot". eapply atpd2_bot. eapply IHn; try eassumption. omega.
+    + SCase "bool". eapply atpd2_bool.
+    + SCase "fun". eapply atpd2_to_stpd2 in HX. eapply atpd2_fun.
+      eapply stp2_narrow_aux; eauto. 
+      eapply stp2_narrow_aux; eauto.
+    + SCase "mem". eapply atpd2_mem.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
+    + SCase "sel1". eapply atpd2_sel1; try eassumption.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
+    + SCase "sel2". eapply atpd2_sel2; try eassumption.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
+    + SCase "selx". eapply atpd2_selx; try eassumption.
+    + SCase "sela1".
+      case_eq (beq_nat x (length GH0)); intros E.
+      * assert (indexr x ([(x0, (GX2, TX2))]++GH0) = Some (GX2, TX2)) as A2. {
+          simpl. rewrite E. reflexivity.
+        }
+        assert (indexr x GH = Some (GX2, TX2)) as A2'. {
+          rewrite EGH. eapply indexr_extend_mult. apply A2.
+        }
+        rewrite A2' in H1. inversion H1. subst.
+        inversion HX as [nx HX'].
+        eapply atpd2_sela1.
+        eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
+        apply beq_nat_true in E. rewrite E. eapply stp2_closed1. eassumption.
+        eapply atpd2_trans_axiom.
+        eexists. eapply stp2_extendH_mult. eapply stp2_extendH_mult. eassumption.
+        eapply IHn; try eassumption. omega.
+        reflexivity. reflexivity.
+        eapply IHn; try eassumption. omega.
+        reflexivity. reflexivity.
+      * assert (indexr x GH' = Some (GX, TX)) as A. {
+          subst.
+          eapply indexr_same. apply E. eassumption.
+        }
+        eapply atpd2_sela1. eapply A. assumption.
+        eapply IHn; try eassumption. omega.
+        eapply IHn; try eassumption. omega.
+    + SCase "selab1". admit. (*
+      case_eq (beq_nat x (length GH0)); intros E.
+      * assert (indexr x ([(x0, (GX2, TX2))]++GH0) = Some (GX2, TX2)) as A2. {
+          simpl. rewrite E. reflexivity.
+        }
+        assert (indexr x GH = Some (GX2, TX2)) as A2'. {
+          rewrite EGH. eapply indexr_extend_mult. apply A2.
+        }
+        assert (Some (GX2,TX2) = Some (GX, TX)) as E2. {
+          rewrite A2' in H1. apply H1.
+        }
+        inversion E2. subst.
+        eapply stpd2_selab1.
+        eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
+        eapply stpd2_trans. eassumption. eexists. eassumption.
+        eapply IHn; try eassumption. omega.
+        reflexivity. reflexivity.
+      * assert (indexr x GH' = Some (GX, TX)) as A. {
+          subst.
+          eapply indexr_same. apply E. eassumption.
+        }
+        eapply stpd2_selab1. eapply A.
+        eexists. eassumption.
+        eapply IHn; try eassumption. omega. *)
+    + SCase "sela2".
+      case_eq (beq_nat x (length GH0)); intros E.
+      * assert (indexr x ([(x0, (GX2, TX2))]++GH0) = Some (GX2, TX2)) as A2. {
+          simpl. rewrite E. reflexivity.
+        }
+        assert (indexr x GH = Some (GX2, TX2)) as A2'. {
+          rewrite EGH. eapply indexr_extend_mult. apply A2.
+        }
+        rewrite A2' in H1. inversion H1. subst.
+        inversion HX as [nx HX'].
+        eapply atpd2_sela2.
+        eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
+        apply beq_nat_true in E. rewrite E. eapply stp2_closed1. eassumption.
+        eapply atpd2_trans_axiom.
+        eexists. eapply stp2_extendH_mult. eapply stp2_extendH_mult. eassumption.
+        eapply IHn; try eassumption. omega.
+        reflexivity. reflexivity.
+        eapply IHn; try eassumption. omega.
+        reflexivity. reflexivity.
+      * assert (indexr x GH' = Some (GX, TX)) as A. {
+          subst.
+          eapply indexr_same. apply E. eassumption.
+        }
+        eapply atpd2_sela2. eapply A. assumption.
+        eapply IHn; try eassumption. omega.
+        eapply IHn; try eassumption. omega.
+    + SCase "selax".
+      case_eq (beq_nat x (length GH0)); intros E.
+      * assert (indexr x ([(x0, (GX2, TX2))]++GH0) = Some (GX2, TX2)) as A2. {
+          simpl. rewrite E. reflexivity.
+        }
+        assert (indexr x GH = Some (GX2, TX2)) as A2'. {
+          rewrite EGH. eapply indexr_extend_mult. apply A2.
+        }
+        rewrite A2' in H1. inversion H1. subst.
+        inversion HX as [nx HX'].
+        eapply atpd2_selax.
+        eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
+      * assert (indexr x GH' = Some (GX, TX)) as A. {
+          subst.
+          eapply indexr_same. apply E. eassumption.
+        }
+        eapply atpd2_selax. eapply A.
+    + SCase "all".
+      assert (length GH = length GH') as A. {
+        subst. clear.
+        induction GH1.
+        - simpl. reflexivity.
+        - simpl. simpl in IHGH1. rewrite IHGH1. reflexivity.
+      }
+      eapply atpd2_to_stpd2 in HX.
+      eapply atpd2_all.
+      eapply stp2_narrow_aux; eauto.
+      rewrite <- A. assumption. rewrite <- A. assumption.
+      rewrite <- A. subst.
+      eapply stp2_narrow_aux with (GH1:=(0, (G1, T0)) :: GH1); try eassumption.
+      simpl. reflexivity. simpl. reflexivity. reflexivity.
+      rewrite <- A. subst.
+      eapply stp2_narrow_aux with (GH1:=(0, (G2, T4)) :: GH1); try eassumption.
+      eauto. simpl. reflexivity. reflexivity.
+    + SCase "bind".
+      assert (length GH = length GH') as A. {
+        subst. clear.
+        induction GH1.
+        - simpl. reflexivity.
+        - simpl. simpl in IHGH1. rewrite IHGH1. reflexivity.
+      }
+      eapply atpd2_bind.
+      assert (closed 1 (length GH) T0 -> closed 1 (length GH') T0) as C0. {
+        rewrite A. intros P. apply P.
+      }
+      apply C0; assumption.
+      assert (closed 1 (length GH) T3 -> closed 1 (length GH') T3) as C3. {
+        rewrite A. intros P. apply P.
+      }
+      apply C3; assumption.
+      assert (
+          atpd2 false G2 (open (TSelH (length GH)) T3) G2
+                (open (TSelH (length GH)) T3)
+                ((0, (G2, open (TSelH (length GH)) T3)) :: GH')
+                ->
+          atpd2 false G2 (open (TSelH (length GH')) T3) G2
+                (open (TSelH (length GH')) T3)
+                ((0, (G2, open (TSelH (length GH')) T3)) :: GH')) as CS1. {
+        rewrite A. intros P. apply P.
+      }
+      apply CS1. eapply IHn. eassumption. omega.
+      instantiate (5:=(0, (G2, open (TSelH (length GH)) T3)) :: GH1).
+      subst. simpl. reflexivity. subst. simpl. reflexivity.
+      assumption.
+      assert (
+          atpd2 false G1 (open (TSelH (length GH)) T0) G2
+                (open (TSelH (length GH)) T3)
+                ((0, (G1, open (TSelH (length GH)) T0)) :: GH')
+                ->
+          atpd2 false G1 (open (TSelH (length GH')) T0) G2
+                (open (TSelH (length GH')) T3)
+                ((0, (G1, open (TSelH (length GH')) T0)) :: GH')
+        ) as CS2. {
+        rewrite A. intros P. apply P.
+      }
+      apply CS2. eapply IHn. eassumption. omega.
+      instantiate (5:=(0, (G1, open (TSelH (length GH)) T0)) :: GH1).
+      subst. simpl. reflexivity. subst. simpl. reflexivity.
+      assumption.
+    + SCase "and11".
+      eapply atpd2_and11.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
+    + SCase "and12".
+      eapply atpd2_and12.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
+    + SCase "and2".
+      eapply atpd2_and2.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
+    + SCase "wrapf".
+      eapply atpd2_wrapf.
+      eapply IHn; try eassumption. omega.
+    + SCase "transf".
+      eapply atpd2_transf.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
+Qed.
 
 Lemma atpd2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4 H,
   atpd2 false G1 T1 G2 T2 ((x,(G1,T1))::H) -> (* careful about H! *)
   atpd2 false G3 T3 G4 T4 ((x,(G2,T2))::H) ->
   atpd2 false G3 T3 G4 T4 ((x,(G1,T1))::H).
-Proof. admit. Qed.
+Proof. 
+  intros. inversion H1 as [n H'].
+  eapply (atpd2_narrow_aux n) with (GH1:=[]).
+  eapply H'. omega.
+  simpl. reflexivity. simpl. reflexivity.
+  (* we need to prove the version without the x extending H *)
+  admit.
+Qed.
 
 
 Lemma sstpd2_trans_aux: forall n, forall m G1 G2 G3 T1 T2 T3 n1,
