@@ -4893,13 +4893,46 @@ Proof. intros. induction H; eapply sstpd2_reg2; eauto. Qed.
 
 (* this one is kind of a reverse of stp2_substitute, but we
 need it only for reflexive typings, so it should be simpler *)
-Lemma bind_refl_intro1: forall G v i T1,
-  index i G = Some v ->
+Lemma bind_refl_intro1: forall G i T1 TX,
   sstpd2 true G (open (TSel i) T1) G (open (TSel i) T1) [] ->
+  closed 0 1 TX ->
   exists n, stp2 1 false G (open (TSelH (length ([]:aenv))) T1)
                          G (open (TSelH (length ([]:aenv))) T1)
-                   [(0, (G, open (TSelH (length ([]:aenv))) T1))] n.
-Proof. admit. Qed.
+                   [(0, (G, TX))] n.
+Proof.
+  intros. induction T1; try solve [compute; eexists; eauto 2].
+  - Case "fun". destruct H as [n H]. inversion H. subst.
+    assert (sstpd2 true G (open (TSel i) T1_1) G (open (TSel i) T1_1) []) as A1. {
+      eapply stpd2_upgrade. eexists. eassumption.
+    }
+    assert (sstpd2 true G (open (TSel i) T1_2) G (open (TSel i) T1_2) []) as A2. {
+      eapply stpd2_upgrade. eexists. eassumption.
+    }
+    specialize (IHT1_1 A1). specialize (IHT1_2 A2).
+    apply atpd2_to_stpd2 in IHT1_1. apply atpd2_to_stpd2 in IHT1_2.
+    destruct IHT1_1 as [n1' IH1']. destruct IHT1_2 as [n2' IH2'].
+    eexists. simpl. simpl in IH1'. simpl in IH2'.
+    unfold open. simpl. eapply stp2_wrapf. eapply stp2_fun; eassumption.
+  - Case "mem".  destruct H as [n H]. inversion H. subst.
+    assert (sstpd2 true G (open (TSel i) T1_1) G (open (TSel i) T1_1) []) as A1. {
+      eapply sstpd2_untrans. eexists. eassumption.
+    }
+    assert (sstpd2 true G (open (TSel i) T1_2) G (open (TSel i) T1_2) []) as A2. {
+      eexists. eassumption.
+    }
+    specialize (IHT1_1 A1). specialize (IHT1_2 A2).
+    destruct IHT1_1 as [n1' IH1']. destruct IHT1_2 as [n2' IH2'].
+    eexists. simpl. simpl in IH1'. simpl in IH2'.
+    unfold open. simpl. eapply stp2_wrapf. eapply stp2_mem2; eassumption.
+  - Case "sel". admit.
+  - Case "selh". admit.
+  - Case "selb". admit.
+  - Case "all". admit.
+  - Case "bind". admit.
+  - Case "and". admit.
+Grab Existential Variables.
+apply 0. apply 0. apply 0.
+Qed.
 
 Lemma inv_closed_open: forall j n TX T, closed j n (open_rec j TX T) -> closed j n TX -> closed (j+1) n T.
 Proof.
