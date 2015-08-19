@@ -4943,7 +4943,12 @@ Proof.
       compute. reflexivity.
     + compute in H.
       eapply sstpd2_to_atpd2. apply sstpd2_extendH. apply H.
-  - Case "all". admit.
+  - Case "all".  destruct H as [n H]. inversion H. subst.
+    assert (sstpd2 true G (open (TSel i) T1_1) G (open (TSel i) T1_1) []) as A1. {
+      eapply stpd2_upgrade. eexists. eassumption.
+    }
+    (* need to change induction for the i to vary? *)
+    admit.
   - Case "bind". admit.
   - Case "and". admit.
 Grab Existential Variables.
