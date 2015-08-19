@@ -491,7 +491,7 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
 | stp2_sela2: forall m G1 G2 GX TX x T1 GH n1 n2,
     indexr x GH = Some (GX, TX) ->
     closed 0 x TX ->
-    stp2 (S m) false GX TX G2 (TMem T1 TTop) GH n1 ->
+    stp2 (S m) false GX TX G1 (TMem T1 TTop) GH n1 ->
     stp2 (S m) true G1 T1 G1 T1 GH n2 -> (* regularity *)
     stp2 (S m) true G1 T1 G2 (TSelH x) GH (S (n1+n2))
 
@@ -710,7 +710,7 @@ Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela1; eauto. Qed.
 Lemma stpd2_sela2: forall G1 G2 GX TX x T1 GH,
     indexr x GH = Some (GX, TX) ->
     closed 0 x TX ->
-    stpd2 false GX TX G2 (TMem T1 TTop) GH ->
+    stpd2 false GX TX G1 (TMem T1 TTop) GH ->
     stpd2 true G1 T1 G1 T1 GH ->
     stpd2 true G1 T1 G2 (TSelH x) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela2; eauto. Qed.
@@ -4054,7 +4054,41 @@ Proof.
     (* remaining obligations *)
     + eauto. + subst GH. eauto. + eauto.
 
-  - Case "sela2". admit. (* just like sela1 *)
+  - Case "sela2".
+    intros GH0 GH0' GXX TXX TXX' T1' T2' V ? VS CX ? IX1 IX2 FA.
+
+    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
+
+    assert (compat GXX TXX TXX' (Some V) G2 (TSelH x) T2') as IXX by eauto.
+
+    eapply (compat_selh GXX TXX TXX' (Some V) G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
+
+    destruct IX2.
+    + SCase "x = 0".
+      repeat destruct IXX as [|IXX]; ev.
+      * subst. simpl. inversion H10. subst.
+        eapply stp2_sel2. eauto. eauto. eapply closed_subst. eapply closed_upgrade_free. eauto. omega. eauto.
+        eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto.
+        right. left. split. eauto. eapply closed_no_subst. eauto.
+        eapply compat_mem_fwd1. eauto.
+        eauto.
+        eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto. eauto. eauto. eauto.
+      * subst. inversion H9. omega.
+      * subst. destruct H9. eauto.
+    + SCase "x > 0".
+      ev. subst.
+      eapply stp2_sela2. eauto.
+
+      assert (x-1+1=x) as A by omega.
+      remember (x-1) as x1. rewrite <- A in H3.
+      eapply closed_compat'. eauto.
+      eapply closed_upgrade_free. eauto. omega. eauto.
+
+      eapply IHn; eauto. omega. eauto. eapply compat_mem_fwd1. eauto.
+      eapply IHn; eauto; try omega.
+    (* remaining obligations *)
+    + eauto. + subst GH. eauto. + eauto.
 
   - Case "selax".
 
