@@ -3593,6 +3593,22 @@ Proof.
     eapply closed_subst. eauto. eauto.
 Qed.
 
+Lemma closed_compat': forall GX TX TX' V GXX TXX TXX' j k,
+  compat GX TX TX' V GXX TXX TXX' ->
+  closed 0 k TX' ->
+  closed j (k+1) TXX ->
+  closed j k TXX'.
+Proof.
+  intros. inversion H;[|destruct H2;[|destruct H2]].
+  - destruct H2. destruct H2. destruct H2. destruct H2. destruct H3.
+    destruct H3. destruct H3. destruct H4. rewrite H4.
+    eapply closed_subst. eauto. eauto.
+  - destruct H2. rewrite H3.
+    eapply closed_upgrade. eapply closed_upgrade_free. eauto. omega. omega.
+  - rewrite H3.
+    eapply closed_subst. eauto. eauto.
+Qed.
+
 Lemma indexr_compat_miss0: forall GH GH' GX TX TX' V (GXX:venv) (TXX:ty) n,
       Forall2 (compat2 GX TX TX' V) GH GH' ->
       indexr (n+1) (GH ++ [(0,(GX, TX))]) = Some (GXX,TXX) ->
@@ -3621,27 +3637,27 @@ Qed.
 
 
 Lemma compat_top: forall GX TX TX' V G1 T1',
-  compat GX TX TX' V G1 TTop T1' -> closed 0 0 TX -> T1' = TTop.
+  compat GX TX TX' V G1 TTop T1' -> closed 0 1 TX -> T1' = TTop.
 Proof.
   intros ? ? ? ? ? ? CC CLX. repeat destruct CC as [|CC]; ev; eauto.
 Qed.
 
 Lemma compat_bot: forall GX TX TX' V G1 T1',
-  compat GX TX TX' V G1 TBot T1' -> closed 0 0 TX -> T1' = TBot.
+  compat GX TX TX' V G1 TBot T1' -> closed 0 1 TX -> T1' = TBot.
 Proof.
   intros ? ? ? ? ? ? CC CLX. repeat destruct CC as [|CC]; ev; eauto.
 Qed.
 
 
 Lemma compat_bool: forall GX TX TX' V G1 T1',
-  compat GX TX TX' V G1 TBool T1' -> closed 0 0 TX -> T1' = TBool.
+  compat GX TX TX' V G1 TBool T1' -> closed 0 1 TX -> T1' = TBool.
 Proof.
   intros ? ? ? ? ? ? CC CLX. repeat destruct CC as [|CC]; ev; eauto.
 Qed.
 
 Lemma compat_mem: forall GX TX TX' V G1 T1 T2 T1',
     compat GX TX TX' V G1 (TMem T1 T2) T1' ->
-    closed 0 0 TX ->
+    closed 0 1 TX ->
     exists TA TB, T1' = TMem TA TB /\
                   compat GX TX TX' V G1 T1 TA /\
                   compat GX TX TX' V G1 T2 TB.
@@ -3686,7 +3702,7 @@ Qed.
 
 Lemma compat_fun: forall GX TX TX' V G1 T1 T2 T1',
     compat GX TX TX' V G1 (TFun T1 T2) T1' ->
-    closed_rec 0 0 TX ->
+    closed_rec 0 1 TX ->
     exists TA TB, T1' = TFun TA TB /\
                   compat GX TX TX' V G1 T1 TA /\
                   compat GX TX TX' V G1 T2 TB.
@@ -3699,7 +3715,7 @@ Qed.
 
 Lemma compat_and: forall GX TX TX' V G1 T1 T2 T1',
     compat GX TX TX' V G1 (TAnd T1 T2) T1' ->
-    closed_rec 0 0 TX ->
+    closed_rec 0 1 TX ->
     exists TA TB, T1' = TAnd TA TB /\
                   compat GX TX TX' V G1 T1 TA /\
                   compat GX TX TX' V G1 T2 TB.
@@ -3713,7 +3729,7 @@ Qed.
 
 Lemma compat_sel: forall GX TX TX' V G1 T1' (GXX:venv) (TXX:ty) x v,
     compat GX TX TX' V G1 (TSel x) T1' ->
-    closed 0 0 TX ->
+    closed 0 1 TX ->
     closed 0 0 TXX ->
     index x G1 = Some v ->
     val_type GXX v TXX ->
@@ -3730,7 +3746,7 @@ Qed.
 
 Lemma compat_selh: forall GX TX TX' V G1 T1' GH0 GH0' (GXX:venv) (TXX:ty) x,
     compat GX TX TX' V G1 (TSelH x) T1' ->
-    closed 0 0 TX ->
+    closed 0 1 TX ->
     indexr x (GH0 ++ [(0, (GX, TX))]) = Some (GXX, TXX) ->
     Forall2 (compat2 GX TX TX' V) GH0 GH0' ->
     (x = 0 /\ GXX = GX /\ TXX = TX) \/
@@ -3756,7 +3772,7 @@ Qed.
 
 Lemma compat_all: forall GX TX TX' V G1 T1 T2 T1' n,
     compat GX TX TX' V G1 (TAll T1 T2) T1' ->
-    closed 0 0 TX ->
+    closed 0 1 TX ->
     closed 1 (n+1) T2 ->
     exists TA TB, T1' = TAll TA TB /\
                   closed 1 n TB /\
@@ -3785,7 +3801,7 @@ Qed.
 
 Lemma compat_bind: forall GX TX TX' V G1 T2 T1' n,
     compat GX TX TX' V G1 (TBind T2) T1' ->
-    closed 0 0 TX ->
+    closed 0 1 TX ->
     closed 1 (n+1) T2 ->
     exists TB, T1' = TBind TB /\
                   closed 1 n TB /\
@@ -3814,7 +3830,10 @@ Lemma stp2_substitute_aux: forall n, forall d m G1 G2 T1 T2 GH n1,
    stp2 (S d) m G1 T1 G2 T2 GH n1 -> n1 < n ->
    forall GH0 GH0' GX TX TX' T1' T2' V,
      GH = (GH0 ++ [(0,(GX, TX))]) ->
-     closed 0 0 TX -> (* TODO: relax *)
+     (* When we're replacing binds from a pack/unpack sequence, the
+        type in GH may refer to itself (contain TSelH 0).
+        It should be safe for TX to refer to itself. *)
+     closed 0 1 TX ->
      closed 0 0 TX' ->
      compat GX TX TX' V G1 T1 T1' ->
      compat GX TX TX' V G2 T2 T2' ->
@@ -3952,7 +3971,8 @@ Proof.
 
       assert (x-1+1=x) as A by omega.
       remember (x-1) as x1. rewrite <- A in H3.
-      eapply closed_compat. eauto. eapply closed_upgrade_free. eauto. omega. eauto.
+      eapply closed_compat'. eauto.
+      eapply closed_upgrade_free. eauto. omega. eauto.
 
       eapply IHn; eauto. omega. eauto. eapply compat_mem_fwd2. eauto.
       eapply IHn; eauto; try omega.
@@ -4147,7 +4167,7 @@ Lemma stpd2_substitute: forall m G1 G2 T1 T2 GH,
    stpd2 m G1 T1 G2 T2 GH ->
    forall GH0 GH0' GX TX TX' T1' T2' V,
      GH = (GH0 ++ [(0,(GX, TX))]) ->
-     closed 0 0 TX ->
+     closed 0 1 TX ->
      closed 0 0 TX' ->
      compat GX TX TX' V G1 T1 T1' ->
      compat GX TX TX' V G2 T2 T2' ->
@@ -4366,7 +4386,7 @@ Proof.
 
     eapply stpd2_substitute with (GH0:=nil).
     eapply stpd2_extend1. eapply KEY. (* previously: stpd2_narrow. inv_vtp_half. eapply KEY. *)
-    eauto. simpl. eauto. eauto. eauto.
+    eauto. simpl. eauto. eauto. eapply closed_upgrade_free. eauto. omega. eauto.
     left. repeat eexists. eapply index_hit2. eauto. eauto. eauto.
     rewrite (closed_no_subst) with (j:=0). eauto. eauto.
     rewrite (subst_open_zero 0 1). eauto. eauto.
@@ -4407,26 +4427,6 @@ Proof.
   eexists. eapply stp2_bind. admit. admit. subst. eauto. subst. eauto.
 Qed.
 
-(* when we're replacing binds from a pack/unpack sequence, the
-type in GH may refer to itself (contain TSelH 0). can we change
-stp2_substitute_aux above to this: *)
-Lemma xxx_stp2_substitute_aux: forall n, forall d m G1 G2 T1 T2 GH n1,
-   stp2 (S d) m G1 T1 G2 T2 GH n1 -> n1 < n ->
-   forall GH0 GH0' GX TX TX' T1' T2' V,
-     GH = (GH0 ++ [(0,(GX, TX))]) ->
-     closed 0 1 TX -> (* <------ original above has closed 0 0 TX. but intuitively it should be safe for TX to refer to itself (?) *)
-     closed 0 0 TX' -> 
-     compat GX TX TX' V G1 T1 T1' ->
-     compat GX TX TX' V G2 T2 T2' ->
-     Forall2 (compat2 GX TX TX' V) GH0 GH0' ->
-     stp2 (S d) m G1 T1' G2 T2' GH0' n1.
-Proof. admit. Qed.
-
-(* the definition of compat is already adapted to allow
-substituting away self-references in TX *)
-
-
-  
 (* if not a timeout, then result not stuck and well-typed *)
 
 Theorem full_safety : forall n e tenv venv res T,
@@ -4466,7 +4466,7 @@ Proof.
       eapply not_stuck. inversion H7. subst.
       
       assert (exists n, stp2 1 false venv1 (open (TSel x) T2) venv0 (open (TSel i) T1) [] n).
-      eexists. eapply xxx_stp2_substitute_aux with (GH0:=nil). eapply H13. eauto. eauto. simpl. eauto. eapply closed_open. eapply closed_upgrade_free. eauto. simpl. eauto. eauto.
+      eexists. eapply stp2_substitute_aux with (GH0:=nil). eapply H13. eauto. eauto. simpl. eauto. eapply closed_open. eapply closed_upgrade_free. eauto. simpl. eauto. eauto.
       instantiate (1:= (TSel x)). eauto.
       
       left. eexists. eexists. split. eauto. split. reflexivity. split. eauto. split. unfold open. rewrite subst_open_zero with (k:=1). eauto. eauto.
