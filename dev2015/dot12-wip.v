@@ -4185,23 +4185,21 @@ Proof.
     intros. subst.
 
     assert (exists T3',
-              compat GX TX TX' (Some V) G1 T1 T1' /\
-              compat GX TX TX' (Some V) G2 T2 T2' /\
-              compat GX TX TX' (Some V) ((fresh G3,V)::G3) T3 T3' /\
-              Forall2 (compat2 GX TX TX' (Some V)) GH0 GH0').
+              compat GX TX TX' (Some V) ((fresh G3,V)::G3) T3 T3') as A.
     {
-      eexists. split; try split; try split; eauto.
+      eexists.
       unfold compat. simpl. left. exists (fresh G3). exists V.
       case_eq (le_lt_dec (fresh G3) (fresh G3)); intros LTE LE.
       rewrite <- beq_nat_refl.
       split; try split; try split; try split; eauto.
-      omega. (* contradiction *)
+      admit.
+      omega.
     }
-    ev.
+    destruct A as [T3' A].
 
-    assert (stp2 (S d) true G1 T1 ((fresh G3,x)::G3) T3 (GH0 ++ [(0, (GX, TX))]) n0) as S1.
+    assert (stp2 (S d) true G1 T1 ((fresh G3,V)::G3) T3 (GH0 ++ [(0, (GX, TX))]) n0) as S1.
     eapply stp2_extend2; eauto.
-    assert (stp2 (S d) false ((fresh G3,x)::G3) T3 G2 T2 (GH0 ++ [(0, (GX, TX))]) n2) as S2.
+    assert (stp2 (S d) false ((fresh G3,V)::G3) T3 G2 T2 (GH0 ++ [(0, (GX, TX))]) n2) as S2.
     eapply stp2_extend1; eauto.
 
     eapply stp2_transf.
@@ -4214,6 +4212,7 @@ Lemma stpd2_substitute: forall m G1 G2 T1 T2 GH,
    stpd2 m G1 T1 G2 T2 GH ->
    forall GH0 GH0' GX TX TX' T1' T2' V,
      GH = (GH0 ++ [(0,(GX, TX))]) ->
+     val_type GX V (subst TX' TX) ->
      closed 0 1 TX ->
      closed 0 0 TX' ->
      compat GX TX TX' (Some V) G1 T1 T1' ->
@@ -4433,7 +4432,9 @@ Proof.
 
     eapply stpd2_substitute with (GH0:=nil).
     eapply stpd2_extend1. eapply KEY. (* previously: stpd2_narrow. inv_vtp_half. eapply KEY. *)
-    eauto. simpl. eauto. eauto. eapply closed_upgrade_free. eauto. omega. eauto.
+    eauto. simpl. eauto.
+    erewrite closed_no_subst. eapply VX. eassumption.
+    eapply closed_upgrade_free. eauto. omega. eauto.
     left. repeat eexists. eapply index_hit2. eauto. eauto. eauto.
     rewrite (closed_no_subst) with (j:=0). eauto. eauto.
     rewrite (subst_open_zero 0 1). eauto. eauto.
