@@ -4321,65 +4321,6 @@ Proof.
 Qed.
 
 
-Definition base1 v := (fresh (base v),v)::(base v).
-
-Lemma inv_vtp_half: forall G v T,
-  val_type G v T ->
-  exists T0,
-    val_type (base1 v) v T0 /\
-    closed 0 0 T0 /\
-    stpd2 false (base1 v) T0 G T [].
-Proof.
-  intros. induction H.
-  - eexists. split; try split.
-    + simpl. econstructor. eassumption. ev. eapply stp2_reg1 in H0. ev. eapply stp2_extend2 in H0. eexists. apply H0. eauto.
-    + ev. eapply stp2_closed1 in H0. simpl in H0. apply H0.
-    + eapply sstpd2_downgrade. ev. eexists. simpl.
-      eapply stp2_extend1. eassumption. eauto.
-  - eexists. split; try split.
-    + simpl. econstructor. ev. eapply stp2_reg1 in H. ev. eapply stp2_extend2 in H. eexists. apply H. eauto.
-    + ev. eapply stp2_closed1 in H. simpl in H. apply H.
-    + eapply sstpd2_downgrade. ev. eexists. simpl.
-      eapply stp2_extend. eassumption. eauto.
-  - eexists. split; try split.
-    + simpl. econstructor; try eassumption. ev. eapply stp2_reg1 in H3. ev. eapply stp2_extend2 in H3. eexists. apply H3. eauto.
-    + ev. eapply stp2_closed1 in H3. simpl in H3. apply H3.
-    + eapply sstpd2_downgrade. ev. eexists. simpl.
-      eapply stp2_extend. eassumption. eauto.
-  - eexists. split; try split.
-    + simpl. subst. econstructor; try eassumption. reflexivity. ev. eapply stp2_reg1 in H1. ev. eapply stp2_extend2 in H1. eexists. apply H1. eauto.
-    + ev. eapply stp2_closed1 in H2. simpl in H2. apply H2.
-    + eapply sstpd2_downgrade. ev. eexists. simpl.
-      eapply stp2_extend. eassumption. eauto.
-  - repeat ev. eexists.
-    remember (base1 v) as GXX.
-    assert (closed 0 (length ([]:aenv)) (TBind T2)). eapply closed_upgrade. eapply stp2_closed1. eapply H2. eauto.
-    assert (closed 1 (length ([]:aenv)) T2). inversion H6. eauto.
-    assert (sstpd2 true venv0 (TBind T2) venv0 (TBind T2) []). {
-      eapply stp2_reg1 in H2. ev. eexists. eauto. 
-    }
-    assert (exists n1, stp2 1 false GXX x0 venv0 (open (TSelH 0) T2) [(0,(base1 v,x0))] n1). {
-      (* from H5, using a reverse substitution op ? *)
-      (* H5 : stpd2 false GXX x0 venv0 (open (TSel x) T2) [] *)
-      admit.
-    }
-    assert (sstpd2 true GXX (TBind x0) venv0 (TBind T2) []). {
-      destruct H8. inversion H8. subst. destruct H9 as [? H9].
-      eexists. eapply stp2_bind. eapply closed_upgrade. eauto. eauto. eauto.
-      eapply H14.
-      unfold open. rewrite <-closed_no_open with (l:=0).
-      eapply H9. eauto.
-    }
-    eu. eu. eu. ev.
-    
-    split; try split. eapply v_pack. instantiate (1:=GXX). subst GXX. eapply index_hit2. eauto. eauto. eauto. eauto. instantiate (1:=x0). symmetry. eapply closed_no_open. eauto.
-    eapply stp2_reg1. eapply H10. econstructor. eapply closed_upgrade. eauto. eauto.
-
-    assert (sstpd2 true GXX (TBind x0) venv3 T3 []). {
-      eapply sstpd2_trans. eexists. eapply H10. eexists. eapply H2.
-    }
-    eapply sstpd2_downgrade in H11. eauto.
-Qed.
 
 Lemma invert_tabs: forall venv vf vx T1 T2,
   val_type venv vf (TAll T1 T2) ->
@@ -4418,17 +4359,11 @@ Proof.
 
   assert (stpd2 false ((fresh venv1,vx) :: venv1) (open_rec 0 (TSel (fresh venv1)) T3) venv0 (T2) []). { (* T2 was open T1 T2 *)
 
-    (* now that sela1/sela2 can use subtyping, it is better to dispatch on the
-       valtp evidence (instead of the type, as before) *)
-
-    eapply inv_vtp_half in VX. ev.
-
     assert (closed 0 (length ([]:aenv)) T2). eapply sstpd2_closed1; eauto.
     assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
 
-
     eapply stpd2_substitute with (GH0:=nil).
-    eapply stpd2_extend1. eapply stpd2_narrow. eapply H6. eapply KEY.
+    eapply stpd2_extend1. eapply KEY. (* previously: stpd2_narrow. inv_vtp_half. eapply KEY. *)
     eauto. simpl. eauto. eauto.
     left. repeat eexists. eapply index_hit2. eauto. eauto. eauto. eauto.
     rewrite (subst_open_zero 0 1). eauto. eauto.
