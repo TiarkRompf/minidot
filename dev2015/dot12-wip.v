@@ -3976,24 +3976,6 @@ Proof.
     eapply FA. eauto. eapply H4. eassumption. eassumption. eassumption. eapply H4.
     eauto. eassumption.
 
-  - Case "sel2".
-    intros GH0 GH0' GXX TXX TXX' T1' T2' V ? ? CX IX1 IX2 FA.
-
-    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
-    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
-
-    eapply (compat_sel GXX TXX TXX' V G2 T2' GX TX) in IX2. repeat destruct IX2 as [? IX2].
-
-    assert (compat GXX TXX TXX' V GX TX TX) as CPX. right. left. eauto.
-
-    subst.
-    eapply stp2_sel2. eauto. eauto. eauto.
-    eapply IHn. eauto. omega. eauto. eauto. eauto. eauto.
-    eapply compat_mem_fwd1. eauto. eauto.
-    eapply IHn; eauto; try omega.
-    eauto. eauto. eauto. eauto.
-
-
   - Case "selx".
 
     intros GH0 GH0' GXX TXX TXX' T1' T2' V ? ? CX IX1 IX2 FA.
