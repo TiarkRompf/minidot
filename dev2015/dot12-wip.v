@@ -3664,6 +3664,13 @@ Proof.
   admit.
 Qed.
 
+Lemma sstpd2_to_atpd2: forall G1 G2 T1 T2 H,
+  sstpd2 true G1 T1 G2 T2 H ->
+  atpd2 false G1 T1 G2 T2 H.
+Proof.
+  admit.
+Qed.
+
 Lemma index_miss {X}: forall x x1 (B:X) A G,
   index x ((x1,B)::G) = A ->
   fresh G <= x1 ->
@@ -4924,9 +4931,18 @@ Proof.
     destruct IHT1_1 as [n1' IH1']. destruct IHT1_2 as [n2' IH2'].
     eexists. simpl. simpl in IH1'. simpl in IH2'.
     unfold open. simpl. eapply stp2_wrapf. eapply stp2_mem2; eassumption.
-  - Case "sel". admit.
-  - Case "selh". admit.
-  - Case "selb". admit.
+  - Case "sel".
+    compute. compute in H.
+    apply sstpd2_to_atpd2. apply sstpd2_extendH. apply H.
+  - Case "selh".
+    compute. compute in H.
+    eapply sstpd2_to_atpd2. apply sstpd2_extendH. apply H.
+  - Case "selb".
+    compute. destruct i0.
+    + compute in H. eexists. apply stp2_wrapf. eapply stp2_selax.
+      compute. reflexivity.
+    + compute in H.
+      eapply sstpd2_to_atpd2. apply sstpd2_extendH. apply H.
   - Case "all". admit.
   - Case "bind". admit.
   - Case "and". admit.
