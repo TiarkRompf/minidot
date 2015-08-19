@@ -3742,6 +3742,27 @@ Proof.
   - ev. repeat eexists; eauto. + right. left. simpl in H0. eauto.
 Qed.
 
+Lemma compat_selb: forall GX TX TX' V G1 T1' (GXX:venv) (TXX:ty) x T0 v,
+    compat GX TX TX' V G1 (open (TSel x) T0) T1' ->
+    closed 0 1 TX ->
+    closed 0 0 TXX ->
+    closed 1 0 T0 ->
+    (* index x G1 = Some v -> *)
+    val_type GXX v TXX ->
+    exists TXX', T1' = (open (TSel x) T0) /\ TXX' = TXX /\ compat GX TX TX' V GXX TXX TXX'
+.
+Proof.
+  intros ? ? ? ? ? ? ? ? ? ? ? CC CL CL1. repeat destruct CC as [|CC].
+  - ev. repeat eexists; eauto.
+    erewrite <- closed_no_subst. eassumption.
+    unfold open. eapply closed_open. simpl. eassumption. eauto.
+    + right. left. simpl in H0. eauto.
+  - ev. repeat eexists; eauto. + right. left. simpl in H0. eauto.
+  - ev. repeat eexists; eauto.
+    erewrite <- closed_no_subst. eassumption.
+    unfold open. eapply closed_open. simpl. eassumption. eauto.
+    + right. left. simpl in H0. eauto.
+Qed.
 
 
 Lemma compat_selh: forall GX TX TX' V G1 T1' GH0 GH0' (GXX:venv) (TXX:ty) x,
@@ -3910,7 +3931,16 @@ Proof.
     assert (closed 0 (length ([]:aenv)) (TBind (TMem TBot T0))). eapply stp2_closed2; eauto.
     simpl in  H6. unfold closed in H8. inversion H8. subst. inversion H12. subst.
 
-    admit. (* eapply stp2_selb1. arg has GH = [] so nothing to be done (inversion IX2 and then a couple simplifications *)
+    eapply compat_selb in IX2.
+    repeat destruct IX2 as [? IX2]. subst.
+    eapply compat_sel in IX1.
+    repeat destruct IX1 as [? IX1]. subst.
+    eapply stp2_selb1; try eassumption.
+    eapply IHn. eapply H6. omega. reflexivity. eassumption. eapply CX.
+    right. left. split. apply closed_open; eauto.  reflexivity.
+    right. left. split. apply closed_open; eauto.  reflexivity.
+    eapply FA. eauto. eapply H4. eassumption. eassumption. eassumption. eapply H4.
+    eauto. eassumption.
 
   - Case "sel2".
     intros GH0 GH0' GXX TXX TXX' T1' T2' V ? ? CX IX1 IX2 FA.
