@@ -3856,9 +3856,9 @@ Lemma stp2_substitute_aux: forall n, forall d m G1 G2 T1 T2 GH n1,
         It should be safe for TX to refer to itself. *)
      closed 0 1 TX ->
      closed 0 0 TX' ->
-     compat GX TX TX' V G1 T1 T1' ->
-     compat GX TX TX' V G2 T2 T2' ->
-     Forall2 (compat2 GX TX TX' V) GH0 GH0' ->
+     compat GX TX TX' (Some V) G1 T1 T1' ->
+     compat GX TX TX' (Some V) G2 T2 T2' ->
+     Forall2 (compat2 GX TX TX' (Some V)) GH0 GH0' ->
      stp2 (S d) m G1 T1' G2 T2' GH0' n1.
 Proof.
   intros n. induction n; intros d m G1 G2 T1 T2 GH n1 H ?. inversion H0.
@@ -3914,9 +3914,9 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    eapply (compat_sel GXX TXX TXX' V G1 T1' GX TX) in IX1. repeat destruct IX1 as [? IX1].
+    eapply (compat_sel GXX TXX TXX' (Some V) G1 T1' GX TX) in IX1. repeat destruct IX1 as [? IX1].
 
-    assert (compat GXX TXX TXX' V GX TX TX) as CPX. right. left. eauto.
+    assert (compat GXX TXX TXX' (Some V) GX TX TX) as CPX. right. left. eauto.
 
     subst.
     eapply stp2_sel1. eauto. eauto. eauto.
@@ -3948,9 +3948,9 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    eapply (compat_sel GXX TXX TXX' V G2 T2' GX TX) in IX2. repeat destruct IX2 as [? IX2].
+    eapply (compat_sel GXX TXX TXX' (Some V) G2 T2' GX TX) in IX2. repeat destruct IX2 as [? IX2].
 
-    assert (compat GXX TXX TXX' V GX TX TX) as CPX. right. left. eauto.
+    assert (compat GXX TXX TXX' (Some V) GX TX TX) as CPX. right. left. eauto.
 
     subst.
     eapply stp2_sel2. eauto. eauto. eauto.
@@ -3995,9 +3995,9 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    assert (compat GXX TXX TXX' V G1 (TSelH x) T1') as IXX. eauto.
+    assert (compat GXX TXX TXX' (Some V) G1 (TSelH x) T1') as IXX. eauto.
 
-    eapply (compat_selh GXX TXX TXX' V G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
+    eapply (compat_selh GXX TXX TXX' (Some V) G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
 
     destruct IX1.
     + SCase "x = 0".
@@ -4031,9 +4031,9 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    assert (compat GXX TXX TXX' V G1 (TSelH x) T1') as IXX. eauto.
+    assert (compat GXX TXX TXX' (Some V) G1 (TSelH x) T1') as IXX. eauto.
 
-    eapply (compat_selh GXX TXX TXX' V G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
+    eapply (compat_selh GXX TXX TXX' (Some V) G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
 
     destruct IX1.
     + SCase "x = 0".
@@ -4058,11 +4058,11 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    assert (compat GXX TXX TXX' V G1 (TSelH x) T1') as IXX1. eauto.
-    assert (compat GXX TXX TXX' V G2 (TSelH x) T2') as IXX2. eauto.
+    assert (compat GXX TXX TXX' (Some V) G1 (TSelH x) T1') as IXX1. eauto.
+    assert (compat GXX TXX TXX' (Some V) G2 (TSelH x) T2') as IXX2. eauto.
 
-    eapply (compat_selh GXX TXX TXX' V G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
-    eapply (compat_selh GXX TXX TXX' V G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
+    eapply (compat_selh GXX TXX TXX' (Some V) G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
+    eapply (compat_selh GXX TXX TXX' (Some V) G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
     assert (not (nosubst (TSelH 0))). unfold not. intros. simpl in H1. eauto.
     assert (not (closed 0 0 (TSelH 0))). unfold not. intros. inversion H6. omega.
 
@@ -4071,8 +4071,8 @@ Proof.
       repeat destruct IXX1 as [IXX1|IXX1]; ev; try contradiction.
       repeat destruct IXX2 as [IXX2|IXX2]; ev; try contradiction.
       * SSCase "sel-sel".
-        subst. inversion H16. subst.
-        simpl. eapply stp2_selx. eauto. eauto.
+        subst. inversion H16. subst. inversion H8. subst.
+        simpl. eapply stp2_selx. subst. eauto. eauto.
     + SCase "x > 0".
       destruct IXX1; destruct IXX2; ev; subst; eapply stp2_selax; eauto.
     (* leftovers *)
@@ -4184,16 +4184,18 @@ Proof.
   - Case "transf".
     intros. subst.
 
-    assert (exists vx T3',
-              compat GX TX TX' (Some vx) G1 T1 T1' /\
-              compat GX TX TX' (Some vx) G2 T2 T2' /\
-              compat GX TX TX' (Some vx) ((fresh G3,vx)::G3) T3 T3' /\
-              Forall2 (compat2 GX TX TX' (Some vx)) GH0 GH0').
+    assert (exists T3',
+              compat GX TX TX' (Some V) G1 T1 T1' /\
+              compat GX TX TX' (Some V) G2 T2 T2' /\
+              compat GX TX TX' (Some V) ((fresh G3,V)::G3) T3 T3' /\
+              Forall2 (compat2 GX TX TX' (Some V)) GH0 GH0').
     {
-      (* TODO: If V is None, use vx = vty GX TX. (may need to pass in val_type evidence
-               If V is Some v, use v. However v might never actually be used.
-               In that case, process as with V = None. *)
-      admit.
+      eexists. split; try split; try split; eauto.
+      unfold compat. simpl. left. exists (fresh G3). exists V.
+      case_eq (le_lt_dec (fresh G3) (fresh G3)); intros LTE LE.
+      rewrite <- beq_nat_refl.
+      split; try split; try split; try split; eauto.
+      omega. (* contradiction *)
     }
     ev.
 
@@ -4214,9 +4216,9 @@ Lemma stpd2_substitute: forall m G1 G2 T1 T2 GH,
      GH = (GH0 ++ [(0,(GX, TX))]) ->
      closed 0 1 TX ->
      closed 0 0 TX' ->
-     compat GX TX TX' V G1 T1 T1' ->
-     compat GX TX TX' V G2 T2 T2' ->
-     Forall2 (compat2 GX TX TX' V) GH0 GH0' ->
+     compat GX TX TX' (Some V) G1 T1 T1' ->
+     compat GX TX TX' (Some V) G2 T2 T2' ->
+     Forall2 (compat2 GX TX TX' (Some V)) GH0 GH0' ->
      stpd2 m G1 T1' G2 T2' GH0'.
 Proof. intros. repeat eu. eexists. eapply stp2_substitute_aux; eauto. Qed.
 
