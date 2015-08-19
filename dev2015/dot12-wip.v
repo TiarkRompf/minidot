@@ -3959,7 +3959,40 @@ Proof.
     eapply IHn; eauto; try omega.
     eauto. eauto. eauto. eauto.
 
-  - Case "selb2". admit.
+  - Case "selb2".
+     intros GH0 GH0' GXX TXX TXX' T1' T2' V ? ? CX IX1 IX2 FA.
+
+    assert (closed 0 (length ([]:aenv)) (TBind (TMem T0 TTop))). eapply stp2_closed2; eauto.
+    simpl in  H6. unfold closed in H8. inversion H8. subst. inversion H12. subst.
+
+    eapply compat_selb in IX1.
+    repeat destruct IX1 as [? IX1]. subst.
+    eapply compat_sel in IX2.
+    repeat destruct IX2 as [? IX2]. subst.
+    eapply stp2_selb2; try eassumption.
+    eapply IHn. eapply H6. omega. reflexivity. eassumption. eapply CX.
+    right. left. split. apply closed_open; eauto.  reflexivity.
+    right. left. split. apply closed_open; eauto.  reflexivity.
+    eapply FA. eauto. eapply H4. eassumption. eassumption. eassumption. eapply H4.
+    eauto. eassumption.
+
+  - Case "sel2".
+    intros GH0 GH0' GXX TXX TXX' T1' T2' V ? ? CX IX1 IX2 FA.
+
+    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
+
+    eapply (compat_sel GXX TXX TXX' V G2 T2' GX TX) in IX2. repeat destruct IX2 as [? IX2].
+
+    assert (compat GXX TXX TXX' V GX TX TX) as CPX. right. left. eauto.
+
+    subst.
+    eapply stp2_sel2. eauto. eauto. eauto.
+    eapply IHn. eauto. omega. eauto. eauto. eauto. eauto.
+    eapply compat_mem_fwd1. eauto. eauto.
+    eapply IHn; eauto; try omega.
+    eauto. eauto. eauto. eauto.
+
 
   - Case "selx".
 
