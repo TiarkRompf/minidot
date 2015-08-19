@@ -4445,6 +4445,28 @@ Lemma bind_refl_intro1: forall G v i T1,
                    [(0, (G, open (TSelH (length ([]:aenv))) T1))] n.
 Proof. admit. Qed.
 
+Lemma inv_closed_open: forall j n TX T, closed j n (open_rec j TX T) -> closed j n TX -> closed (j+1) n T.
+Proof.
+  intros. generalize dependent j. induction T; try solve [
+  intros; inversion H; subst; unfold closed; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto].
+
+  - Case "TSelB". intros. simpl.
+    unfold open_rec in H.
+    case_eq (beq_nat j i); intros E.
+
+    + eapply beq_nat_true_iff in E. subst. eapply cl_selb. omega.
+
+    + rewrite E in H. eapply closed_upgrade; eauto. omega.
+
+  - intros. inversion H. subst. eapply cl_all.
+    eapply IHT1. eassumption. eassumption.
+    simpl. change (S (j+1)) with ((S j) + 1). eapply IHT2. eassumption.
+    eapply closed_upgrade; eauto.
+  - intros. inversion H. subst. eapply cl_bind.
+    simpl. change (S (j+1)) with ((S j) + 1). eapply IHT. eassumption.
+    eapply closed_upgrade; eauto.
+Qed.
+
 Lemma bind_refl_intro: forall G v i T1,
   index i G = Some v ->
   sstpd2 true G (open (TSel i) T1) G (open (TSel i) T1) [] ->
@@ -4454,7 +4476,10 @@ Proof.
   remember ((open (TSelH (length ([]:aenv))) T1)) as T1'.
   assert (exists n1, stp2 1 false G  T1' G T1' [(0, (G, T1'))] n1). subst. eapply bind_refl_intro1. eauto. eauto.
   ev.
-  eexists. eapply stp2_bind. admit. admit. subst. eauto. subst. eauto.
+  eexists. eapply stp2_bind.
+  simpl. change (1) with (0 + 1). eapply inv_closed_open. subst. apply sstpd2_closed1 in H0. simpl in H0. eapply H0. eauto.
+  simpl. change (1) with (0 + 1). eapply inv_closed_open. subst. apply sstpd2_closed1 in H0. simpl in H0. eapply H0. eauto.
+  subst. eauto. subst. eauto.
 Qed.
 
 (* if not a timeout, then result not stuck and well-typed *)
