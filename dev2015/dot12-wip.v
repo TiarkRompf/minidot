@@ -2878,6 +2878,37 @@ Proof.
 Qed.
 
 
+Lemma atpd2_to_stpd2_true: forall G1 G2 T1 T2 GH,
+  atpd2 true G1 T1 G2 T2 GH ->
+  stpd2 true G1 T1 G2 T2 GH.
+Proof.
+  intros. destruct H as [n H]. remember 1 as m. induction H;
+    try solve [eexists; eauto 2];
+    try solve [inversion Heqm];
+    try solve [specialize (IHstp2 Heqm); destruct IHstp2; eexists; econstructor; eauto 2];
+    try solve [specialize (IHstp2_1 Heqm); destruct IHstp2_1;
+               specialize (IHstp2_2 Heqm); destruct IHstp2_2;
+               eexists; econstructor; eauto 2].
+  - Case "selx".
+    eexists. eapply stp2_selx; eauto.
+  - Case "selab1". (* why is selab in atpd? *)
+    specialize (IHstp2_1 Heqm); destruct IHstp2_1;
+    specialize (IHstp2_2 Heqm); destruct IHstp2_2.
+    eexists. eapply stp2_selab1; eauto.
+  - Case "selabx".
+    eexists. eapply stp2_selax; eauto.
+  - Case "and12".
+    specialize (IHstp2_1 Heqm); destruct IHstp2_1;
+    specialize (IHstp2_2 Heqm); destruct IHstp2_2.
+    eexists. eapply stp2_and12; eauto.
+  - Case "transf".
+    specialize (IHstp2_1 Heqm); destruct IHstp2_1;
+    specialize (IHstp2_2 Heqm); destruct IHstp2_2.
+    eexists. eapply stp2_transf; eauto.
+Grab Existential Variables.
+apply 0. apply 0. apply 0. apply 0. apply 0.
+Qed.
+
 Lemma stpd2_to_atpd2_true: forall G1 G2 T1 T2 GH,
   stpd2 true G1 T1 G2 T2 GH ->
   atpd2 true G1 T1 G2 T2 GH.
