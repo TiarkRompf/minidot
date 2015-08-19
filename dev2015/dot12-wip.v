@@ -4990,7 +4990,10 @@ Lemma bind_refl_intro: forall G v i T1,
 Proof.
   intros.
   remember ((open (TSelH (length ([]:aenv))) T1)) as T1'.
-  assert (exists n1, stp2 1 false G  T1' G T1' [(0, (G, T1'))] n1). subst. eapply bind_refl_intro1. eauto. eauto.
+  assert (exists n1, stp2 1 false G  T1' G T1' [(0, (G, T1'))] n1). subst. eapply bind_refl_intro1. eauto.
+  simpl. apply sstpd2_closed1 in H0. simpl in H0.  eapply closed_open.
+  eapply inv_closed_open. eapply closed_upgrade_free. eassumption. omega.
+  eauto. apply cl_selh. omega.
   ev.
   eexists. eapply stp2_bind.
   simpl. change (1) with (0 + 1). eapply inv_closed_open. subst. apply sstpd2_closed1 in H0. simpl in H0. eapply H0. eauto.
