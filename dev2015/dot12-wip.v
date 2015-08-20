@@ -2572,6 +2572,19 @@ Proof. intros. induction H.
 Qed.
 
 
+Lemma index_exists: forall H1 G1 TF i,
+             wf_env H1 G1 ->
+             index i G1 = Some TF ->
+             exists v, index i H1 = Some v.
+Proof.
+  intros.
+  assert (exists v, index i H1 = Some v /\ val_type H1 v TF) as A. {
+    eapply index_safe_ex; eauto.
+  }
+  destruct A as [v [A1 A2]].
+  exists v. apply A1.
+Qed.
+
 Lemma index_safeh_ex: forall H1 H2 G1 GH TF i,
              wf_env H1 G1 -> wf_envh H1 H2 GH ->
              indexr i GH = Some TF ->
@@ -4821,13 +4834,102 @@ Proof.
   intros. eapply stpd2_wrapf. eapply stp_to_stp2_aux; eauto.
 Qed.
 
+
+Require Import Coq.Program.Equality.
+
+Lemma stp_to_stp2_cycle_aux: forall T t G,
+  stp ((fresh G, TMem T T) :: G) [] T T->
+  forall GX, wf_env GX G ->
+  stpd2 true ((fresh G, vty GX t) :: GX) T
+              ((fresh G, vty GX t) :: GX) T [].
+Proof.
+  intros T t G ST. remember (TMem T T) as T0. clear HeqT0. dependent induction ST; intros GX WX.
+  - Case "topx". eapply stpd2_topx.
+  - Case "botx". eapply stpd2_botx.
+  - Case "top".
+    apply stpd2_topx.
+  - Case "bot".
+    apply stpd2_botx.
+  - Case "bool". eapply stpd2_bool; eauto.
+  - Case "fun". eapply stpd2_fun; eapply stpd2_wrapf; eauto.
+  - Case "mem". eapply stpd2_mem; eapply stpd2_wrapf; eauto.
+  - Case "sel1".
+    simpl in H.
+    case_eq (le_lt_dec (fresh G) (fresh G)); intros E1 LE1.
+    rewrite LE1 in H.
+    case_eq (beq_nat x (fresh G)); intros E2.
+    rewrite E2 in H. inversion H. subst.
+    eapply IHST2; eauto.
+    eapply IHST2; eauto.
+    rewrite LE1 in H. inversion H.
+  - Case "sel2".
+    simpl in H.
+    case_eq (le_lt_dec (fresh G) (fresh G)); intros E1 LE1.
+    rewrite LE1 in H.
+    case_eq (beq_nat x (fresh G)); intros E2.
+    rewrite E2 in H. inversion H. subst.
+    eapply IHST2; eauto.
+    eapply IHST2; eauto.
+    rewrite LE1 in H. inversion H.
+  - Case "selb1".
+    simpl in H.
+    case_eq (le_lt_dec (fresh G) (fresh G)); intros E1 LE1.
+    rewrite LE1 in H.
+    case_eq (beq_nat x0 (fresh G)); intros E2.
+    rewrite E2 in H. inversion H. subst.
+    rewrite <- x. eapply IHST2; eauto.
+    rewrite <- x. eapply IHST2; eauto.
+    rewrite LE1 in H. inversion H.
+  - Case "selb2".
+    simpl in H.
+    case_eq (le_lt_dec (fresh G) (fresh G)); intros E1 LE1.
+    rewrite LE1 in H.
+    case_eq (beq_nat x0 (fresh G)); intros E2.
+    rewrite E2 in H. inversion H. subst.
+    eapply IHST2; eauto.
+    eapply IHST2; eauto.
+    rewrite LE1 in H. inversion H.
+  - Case "selx".
+    assert (exists v, index x ((fresh G, vty GX t) :: GX) = Some v) as A. {
+      simpl. simpl in H.
+      case_eq (le_lt_dec (fresh G) (fresh G)); intros E1 LE1.
+      rewrite (wf_fresh GX G). rewrite LE1. rewrite LE1 in H.
+      case_eq (beq_nat x (fresh G)); intros E2.
+      eexists. reflexivity.
+      eapply index_exists. eapply WX. rewrite E2 in H. eapply H.
+      assumption.
+      omega.
+    }
+    destruct A as [v A].
+    eapply stpd2_selx; eapply A.
+  - Case "all". admit. (*
+    subst x. assert (length GY = length GH). eapply wfh_length; eauto.
+    eapply stpd2_all.
+    eapply stpd2_wrapf. eauto.
+    rewrite H. eauto. rewrite H.  eauto.
+    rewrite H.
+    eapply stpd2_wrapf. eapply IHST2. eauto. eapply wfeh_cons. eauto.
+    rewrite H.
+    eapply stpd2_wrapf. apply IHST3; eauto. *)
+  - Case "bind". admit. (*
+    subst x. assert (length GY = length GH). eapply wfh_length; eauto. unfold id in H.
+    eapply stpd2_bind. rewrite H. eauto. rewrite H. eauto.
+    rewrite H.
+    eapply stpd2_wrapf. eapply IHST1. eauto. eapply wfeh_cons. eauto.
+    rewrite H.
+    eapply stpd2_wrapf. eapply IHST2; eauto. *)
+  - Case "and11". admit. (* messed up *)
+  - Case "and12". admit. (* messed up *)
+  - Case "and2". admit. (* messed up *)
+Qed.
+
 Lemma stp_to_stp2_cycle: forall venv env T t,
   wf_env venv env ->
   stp ((fresh env, TMem T T) :: env) [] T T->
   stpd2 false ((fresh env, vty venv t) :: venv) (TMem T T)
               ((fresh env, vty venv t) :: venv) (TMem T T) [].
 Proof.
-  admit.
+  intros. apply stpd2_wrapf. apply stpd2_mem; apply stpd2_wrapf; apply stp_to_stp2_cycle_aux; eauto.
 Qed.
 
 Lemma invert_abs: forall venv vf T1 T2,
