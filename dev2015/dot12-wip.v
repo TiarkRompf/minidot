@@ -420,15 +420,15 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
 | stp2_strong_sel1: forall G1 G2 GX TX x T2 GH n1,
     index x G1 = Some (vty GX TX) ->
 (*  val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)*)
-    closed 0 0 TX ->
-    stp2 0 true GX TX G2 T2 GH n1 ->
+    closed 1 0 TX ->
+    stp2 0 true ((fresh GX, vty GX TX)::GX) (open (TSel (fresh GX)) TX) G2 T2 GH n1 ->
     stp2 0 true G1 (TSel x) G2 T2 GH (S n1)
 
 | stp2_strong_sel2: forall G1 G2 GX TX x T1 GH n1,
     index x G2 = Some (vty GX TX) ->
 (*  val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)*)
-    closed 0 0 TX ->
-    stp2 0 false G1 T1 GX TX GH n1 ->
+    closed 1 0 TX ->
+    stp2 0 false G1 T1 ((fresh GX, vty GX TX)::GX) (open (TSel (fresh GX)) TX) GH n1 ->
     stp2 0 true G1 T1 G2 (TSel x) GH (S n1)
 
 | stp2_strong_selx: forall G1 G2 v x1 x2 GH n1,
@@ -558,9 +558,10 @@ with wf_env : venv -> tenv -> Prop :=
     wf_env (cons (n,v) vs) (cons (n,t) ts)
 
 with val_type : venv -> vl -> ty -> Prop :=
-| v_ty: forall env venv tenv T1 TE,
+| v_ty: forall env venv tenv  T1 T1X TE,
     wf_env venv tenv -> (* T1 wf in tenv ? *)
-    (exists n, stp2 0 true venv (TMem T1 T1) env TE [] n)->
+    open (TSel (fresh venv)) T1 = T1X ->
+    (exists n, stp2 0 true ((fresh venv, vty venv T1)::venv) (TMem T1X T1X) env TE [] n)->
     val_type env (vty venv T1) TE
 | v_bool: forall venv b TE,
     (exists n, stp2 0 true [] TBool venv TE [] n) ->
@@ -1610,15 +1611,15 @@ Proof.
   induction H; intros; subst GH; simpl; eauto.
   - Case "strong_sel1".
     eapply stp2_strong_sel1. apply H. assumption. (*assumption.*)
-    assert (splice (length GH0) TX=TX) as A. {
-      eapply closed_splice_idem. eassumption. omega.
+    assert (splice (length GH0) (open (TSel (fresh GX)) TX)=(open (TSel (fresh GX)) TX)) as A.  {
+      eapply closed_splice_idem. eapply closed_open. eassumption. eauto. omega.
     }
     rewrite <- A. apply IHstp2.
     reflexivity.
   - Case "strong_sel2".
     eapply stp2_strong_sel2. apply H. assumption. (*assumption.*)
-    assert (splice (length GH0) TX=TX) as A. {
-      eapply closed_splice_idem. eassumption. omega.
+    assert (splice (length GH0) (open (TSel (fresh GX)) TX)=(open (TSel (fresh GX)) TX)) as A.  {
+      eapply closed_splice_idem. eapply closed_open. eassumption. eauto. omega.
     }
     rewrite <- A. apply IHstp2.
     reflexivity.
@@ -3322,7 +3323,7 @@ Proof.
     + SCase "sel2". eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "ssel1".
-    assert (sstpd2 true GX TX G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1.
+    assert (sstpd2 true ((fresh GX, vty GX TX) :: GX) (open (TSel (fresh GX)) TX) G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1.
     eu. eexists. eapply stp2_strong_sel1; eauto.
   - Case "ssel2". subst. inversion H1.
     + SCase "top". subst.
@@ -3448,20 +3449,35 @@ Lemma invert_typ: forall venv vx T1 T2,
   val_type venv vx (TMem T1 T2) ->
   exists GX TX,
     vx = (vty GX TX) /\
-    sstpd2 false venv T1 GX TX [] /\
-    sstpd2 true GX TX venv T2 [].
+    sstpd2 false venv T1 ((fresh GX,vty GX TX)::GX) (open (TSel (fresh GX)) TX) [] /\
+    sstpd2 true ((fresh GX,vty GX TX)::GX) (open (TSel (fresh GX)) TX) venv T2 [].
 Proof.
   intros. inversion H; ev; try solve by inversion. inversion H1.
-  subst.
-  assert (sstpd2 false venv0 T1 venv1 T0 []) as E1. {
-    eexists. eassumption.
-  }
-  assert (sstpd2 true venv1 T0 venv0 T2 []) as E2. {
-    eexists. eassumption.
-  }
-  repeat eu. repeat eexists; eauto.
+  subst. inversion H2. subst. eexists. eexists. split. eauto. split. eexists. eauto. eexists. eauto.
 Qed.
 
+
+Lemma inv_closed_open: forall j n TX T, closed j n (open_rec j TX T) -> closed j n TX -> closed (j+1) n T.
+Proof.
+  intros. generalize dependent j. induction T; try solve [
+  intros; inversion H; subst; unfold closed; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto].
+
+  - Case "TSelB". intros. simpl.
+    unfold open_rec in H.
+    case_eq (beq_nat j i); intros E.
+
+    + eapply beq_nat_true_iff in E. subst. eapply cl_selb. omega.
+
+    + rewrite E in H. eapply closed_upgrade; eauto. omega.
+
+  - intros. inversion H. subst. eapply cl_all.
+    eapply IHT1. eassumption. eassumption.
+    simpl. change (S (j+1)) with ((S j) + 1). eapply IHT2. eassumption.
+    eapply closed_upgrade; eauto.
+  - intros. inversion H. subst. eapply cl_bind.
+    simpl. change (S (j+1)) with ((S j) + 1). eapply IHT. eassumption.
+    eapply closed_upgrade; eauto.
+Qed.
 
 
 Lemma stpd2_to_sstpd2_aux1: forall n, forall G1 G2 T1 T2 m n1,
@@ -3485,12 +3501,12 @@ Proof.
   - Case "sel1".
     eapply IHn in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
     eapply invert_typ in H3. ev. repeat eu. subst.
-    assert (closed 0 (length ([]:aenv)) x1). eapply stp2_closed2; eauto.
+    assert (closed (0+1) (length ([]:aenv)) x1). eapply inv_closed_open. eapply stp2_closed2; eauto. eauto. eauto.
     eexists. eapply stp2_strong_sel1. eauto. eauto. eauto. omega.
   - Case "sel2".
     eapply IHn in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
     eapply invert_typ in H3. ev. repeat eu. subst.
-    assert (closed 0 (length ([]:aenv)) x1). eapply stp2_closed2; eauto.
+    assert (closed (0+1) (length ([]:aenv)) x1). eapply inv_closed_open. eapply stp2_closed2; eauto. eauto. eauto.
     eexists. eapply stp2_strong_sel2. eauto. eauto. eauto. omega.
   - Case "selx".
     eexists. eapply stp2_strong_selx. eauto. eauto.
@@ -3537,7 +3553,7 @@ Proof.
     eapply IHn in H5. eapply IHn in H6. ev. ev. eapply stpd2_to_sstpd2_aux1 in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
     (* now invert base on TBind knowledge -- TODO: helper lemma*)
     inversion H3; ev. subst.
-    inversion H7. subst.
+    inversion H8. subst.
     inversion H6. subst.
     inversion H10.
     inversion H9. (* 1 case left *)
@@ -4957,27 +4973,6 @@ Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0.
 Qed.
 
-Lemma inv_closed_open: forall j n TX T, closed j n (open_rec j TX T) -> closed j n TX -> closed (j+1) n T.
-Proof.
-  intros. generalize dependent j. induction T; try solve [
-  intros; inversion H; subst; unfold closed; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto].
-
-  - Case "TSelB". intros. simpl.
-    unfold open_rec in H.
-    case_eq (beq_nat j i); intros E.
-
-    + eapply beq_nat_true_iff in E. subst. eapply cl_selb. omega.
-
-    + rewrite E in H. eapply closed_upgrade; eauto. omega.
-
-  - intros. inversion H. subst. eapply cl_all.
-    eapply IHT1. eassumption. eassumption.
-    simpl. change (S (j+1)) with ((S j) + 1). eapply IHT2. eassumption.
-    eapply closed_upgrade; eauto.
-  - intros. inversion H. subst. eapply cl_bind.
-    simpl. change (S (j+1)) with ((S j) + 1). eapply IHT. eassumption.
-    eapply closed_upgrade; eauto.
-Qed.
 
 Lemma bind_refl_intro: forall G v i T1,
   index i G = Some v ->
@@ -5059,8 +5054,23 @@ Proof.
     + eapply restp_widen. eapply IHhas_type; eauto. eapply has_type_wf; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
     
   - Case "Typ".
-    remember (ttyp t) as e. induction H0; inversion Heqe; subst.
-    + admit. (* TODO: insert v_pack! *) (*eapply not_stuck. eapply v_pack. eapply v_ty; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor. *)
+    remember (ttyp t) as e.
+    induction H0; inversion Heqe; subst.
+    + remember (fresh env) as i.
+      remember (open (TSel i) t) as T1X.
+      remember ((i,vty venv0 t)::venv0) as venv1.
+      assert (index i venv1 = Some (vty venv0 t)). subst. eapply index_hit2. rewrite wf_fresh with (ts := env). eauto. eauto. eauto. eauto.
+      assert (val_type venv1 (vty venv0 t) (TMem T1X T1X)). eapply v_ty. eauto. eauto.
+      assert ((open (TSel (fresh venv0)) t) = T1X). rewrite wf_fresh with (ts:=env). rewrite <-Heqi. eauto. eauto.
+      rewrite H2. 
+
+      (* we have everything as stp and 'just' need to convert to stp2. however we're
+      working with an env that has a self binding, and the wf_env evidence needs
+      the very val_tp what we're trying to construct *)
+      
+      eapply stpd2_upgrade. rewrite wf_fresh with (ts:=env). subst. eapply stp_to_stp2. eauto. econstructor. admit. (* cycle *) eauto. eauto. eauto.
+
+      eapply not_stuck. eapply v_pack. eapply H0. eapply H2. instantiate (1:=TMem t t). simpl. subst T1X. eauto. subst venv1. eapply sstpd2_extend1. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. rewrite wf_fresh with (ts:=env). subst i. eauto. eauto.
 
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
