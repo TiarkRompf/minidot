@@ -4964,22 +4964,20 @@ Proof.
     }
     destruct A as [v A]. destruct v.
     eapply stpd2_selax. eassumption.
-  - Case "all". admit. (*
-    subst x. assert (length GY = length GH). eapply wfh_length; eauto.
+  - Case "all".
+    assert (length GY = length GH) as A. { eapply wfh_length; eauto. }
     eapply stpd2_all.
-    eapply stpd2_wrapf. eauto.
-    rewrite H. eauto. rewrite H.  eauto.
-    rewrite H.
-    eapply stpd2_wrapf. eapply IHST2. eauto. eapply wfeh_cons. eauto.
-    rewrite H.
-    eapply stpd2_wrapf. apply IHST3; eauto. *)
-  - Case "bind". admit. (*
-    subst x. assert (length GY = length GH). eapply wfh_length; eauto. unfold id in H.
-    eapply stpd2_bind. rewrite H. eauto. rewrite H. eauto.
-    rewrite H.
-    eapply stpd2_wrapf. eapply IHST1. eauto. eapply wfeh_cons. eauto.
-    rewrite H.
-    eapply stpd2_wrapf. eapply IHST2; eauto. *)
+    eapply stpd2_wrapf. eapply IHST1; eauto.
+    rewrite A. eauto.
+    rewrite A. eauto.
+    rewrite A. eapply stpd2_wrapf. eapply IHST2; eauto. admit.
+    rewrite A. eapply stpd2_wrapf. eapply IHST3; eauto. admit.
+  - Case "bind".
+    assert (length (GY:aenv) = length GH) as A. { eapply wfh_length; eauto. }
+    assert (closed 1 (length GY) T1) by solve [rewrite A; eauto].
+    eapply stpd2_bind; try eassumption.
+    rewrite <- A in IHST1. eapply stpd2_wrapf. eapply IHST1; eauto. admit.
+    rewrite <- A in IHST2. eapply stpd2_wrapf. eapply IHST2; eauto. admit.
   - Case "and11". admit. (* messed up *)
   - Case "and12". admit. (* messed up *)
   - Case "and2". admit. (* messed up *)
@@ -4991,7 +4989,8 @@ Lemma stp_to_stp2_cycle: forall venv env T t,
   stpd2 false ((fresh env, vty venv t) :: venv) (TMem T T)
               ((fresh env, vty venv t) :: venv) (TMem T T) [].
 Proof.
-  intros. apply stpd2_wrapf. apply stpd2_mem; apply stpd2_wrapf; apply stp_to_stp2_cycle_aux; eauto.
+  intros. apply stpd2_wrapf. apply stpd2_mem; apply stpd2_wrapf;
+  apply stp_to_stp2_cycle_aux with (GH:=[]); eauto.
 Qed.
 
 Lemma invert_abs: forall venv vf T1 T2,
