@@ -3644,13 +3644,6 @@ Proof.
   admit.
 Qed.
 
-Lemma sstpd2_to_atpd2: forall G1 G2 T1 T2 H,
-  sstpd2 true G1 T1 G2 T2 H ->
-  atpd2 false G1 T1 G2 T2 H.
-Proof.
-  admit.
-Qed.
-
 Lemma index_miss {X}: forall x x1 (B:X) A G,
   index x ((x1,B)::G) = A ->
   fresh G <= x1 ->
