@@ -323,17 +323,21 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env tfalse TBool
 | t_var: forall x env T1,
            index x env = Some T1 ->
+           stp env [] T1 T1 ->
            has_type env (tvar x) T1
 | t_var_pack: forall x env T1,
            has_type env (tvar x) (open (TSel x) T1) ->
+           stp env [] (TBind T1) (TBind T1) ->
            has_type env (tvar x) (TBind T1)
 | t_var_unpack: forall x env T1,
            has_type env (tvar x) (TBind T1) ->
+           stp env [] (open (TSel x) T1) (open (TSel x) T1) ->
            has_type env (tvar x) (open (TSel x) T1)
 | t_typ: forall env x T1 T1X,
            fresh env = x ->
            open (TSel x) T1 = T1X ->
            stp ((x,TMem T1X T1X)::env) [] T1X T1X ->
+           stp env [] (TBind (TMem T1 T1)) (TBind (TMem T1 T1)) ->
            has_type env (ttyp T1) (TBind (TMem T1 T1))
 | t_app: forall env f x T1 T2,
            has_type env f (TFun T1 T2) ->
@@ -905,7 +909,7 @@ Example ex2: has_type [(0,polyId)] (ttapp (tvar 0) (ttyp TBool)) (TFun TBool TBo
 Proof.
   eapply t_tapp. instantiate (1:= (TBind (TMem TBool TBool))).
     { eapply t_sub.
-      { eapply t_var. simpl. eauto. }
+      { eapply t_var. simpl. eauto. crush2. }
       { eapply stp_all; eauto. { eapply stp_bindx; crush2. } compute. eapply cl_fun; eauto.
         eapply stp_fun. compute. eapply stp_selax; crush2. crush2.
         eapply stp_fun. compute. eapply stp_selab2. crush2.
@@ -976,7 +980,7 @@ Proof.
   remember (TFun TBool (TSel 1)) as T.
   assert (T = open (TSel 1) (TFun TBool (TSelB 0))). compute. eauto.
   rewrite H.
-  eapply t_var_unpack. eapply t_sub. eapply t_var. compute. eauto. crush2.
+  eapply t_var_unpack. eapply t_sub. eapply t_var. compute. eauto. crush2. crush2. crush2.
 Qed.
 
 
@@ -4874,6 +4878,29 @@ Lemma valtp_reg: forall G v T,
                    sstpd2 true G T G T [].
 Proof. intros. induction H; eapply sstpd2_reg2; eauto. Qed.
 
+
+Lemma has_type_wf: forall G1 t T,
+  has_type G1 t T ->
+  stp G1 [] T T.
+Proof.
+  intros. induction H.
+  - Case "true". eauto.
+  - Case "false". eauto.
+  - Case "var". eauto.
+  - Case "vpack". eauto.
+  - Case "vunpack". eauto.
+  - Case "vtyp". eauto. 
+  - Case "app". eauto.
+    assert (stp env [] (TFun T1 T2) (TFun T1 T2)) as WF. eauto.
+    inversion WF; subst. eauto. rewrite H1 in H2. inversion H2.
+  - Case "abs".
+    eauto.
+  - Case "tapp". eauto.
+  - Case "tabs". eauto.
+  - Case "tsub". eapply stp_reg. eauto.
+Qed.
+
+(*
 (* this one is kind of a reverse of stp2_substitute, but we
 need it only for reflexive typings, so it should be simpler *)
 Lemma bind_refl_intro1: forall G i T1 TX,
@@ -4976,6 +5003,7 @@ Proof.
   simpl. change (1) with (0 + 1). eapply inv_closed_open. subst. apply sstpd2_closed1 in H0. simpl in H0. eapply H0. eauto.
   subst. eauto. subst. eauto.
 Qed.
+ *)
 
 (* if not a timeout, then result not stuck and well-typed *)
 
@@ -4999,25 +5027,27 @@ Proof.
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
   - Case "Var".
-    remember (tvar i) as e. induction H0; inversion Heqe; subst.
+    remember (tvar i) as e.
+    assert (stp tenv0 [] T T). eapply has_type_wf. eauto.
+    induction H0; inversion Heqe; subst.
     + destruct (index_safe_ex venv0 env T1 i) as [v [I V]]; eauto.
       rewrite I. eapply not_stuck. eapply V.
 
     + SCase "pack".
-      assert (res_type venv0 (index i venv0) (open (TSel i) T1)). eapply IHhas_type; eauto.
-      inversion H2. subst.
+      assert (res_type venv0 (index i venv0) (open (TSel i) T1)). eapply IHhas_type; eauto. eapply has_type_wf; eauto.
+      inversion H3. subst.
       eapply not_stuck. eapply v_pack. eauto. eauto. eauto.
-      eapply bind_refl_intro. eauto. eapply valtp_reg. eauto.
+      eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
     + SCase "unpack". 
-      assert (res_type venv0 (index i venv0) (TBind T1)). eapply IHhas_type; eauto.
-      inversion H2. subst.
-      inversion H5; subst; ev; try solve by inversion. 
-      eapply not_stuck. inversion H7. subst.
+      assert (res_type venv0 (index i venv0) (TBind T1)). eapply IHhas_type; eauto. eapply has_type_wf; eauto.
+      inversion H3. subst.
+      inversion H7; subst; ev; try solve by inversion. 
+      eapply not_stuck. inversion H9. subst.
       
       assert (exists n, stp2 1 false venv1 (open (TSel x) T2) venv0 (open (TSel i) T1) [] n).
       eexists. eapply stp2_substitute_aux with (GH0:=nil).
-      eapply H13. eauto. simpl. reflexivity.
+      eapply H15. eauto. simpl. reflexivity.
       unfold open. erewrite subst_open_zero with (k:=1). eauto. eauto.
       eapply closed_open. eapply closed_upgrade_free. eauto. simpl. eauto. eauto.
       eauto.
@@ -5031,9 +5061,9 @@ Proof.
       eauto.
       eapply valtp_widen. eauto.
 
-      ev. eapply sstpd2_untrans. eapply stpd2_to_sstpd2_aux1. eapply H8. eauto.
+      ev. eapply sstpd2_untrans. eapply stpd2_to_sstpd2_aux1. eapply H10. eauto.
 
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply has_type_wf; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
     
   - Case "Typ".
     remember (ttyp t) as e. induction H0; inversion Heqe; subst.
