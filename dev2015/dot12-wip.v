@@ -4850,13 +4850,14 @@ Qed.
 
 Require Import Coq.Program.Equality.
 
-Lemma stp_to_stp2_cycle_aux: forall T t G GH,
+Lemma stp_to_stp2_cycle_aux: forall T v G GH,
   stp ((fresh G, TMem T T) :: G) GH T T->
   forall GX GY, wf_env GX G -> wf_envh GX GY GH ->
-  stpd2 true ((fresh G, vty GX t) :: GX) T
-             ((fresh G, vty GX t) :: GX) T GY.
+  stpd2 true ((fresh G, v) :: GX) T
+             ((fresh G, v) :: GX) T GY.
 Proof.
-  intros T t G GH ST. remember (TMem T T) as T0. clear HeqT0. dependent induction ST; intros GX GY WX WY.
+  intros T t G GH ST. remember (TMem T T) as T0. clear HeqT0.
+  dependent induction ST; intros GX GY WX WY.
   - Case "topx". eapply stpd2_topx.
   - Case "botx". eapply stpd2_botx.
   - Case "top".
@@ -4903,7 +4904,7 @@ Proof.
     eapply IHST2; eauto.
     rewrite LE1 in H. inversion H.
   - Case "selx".
-    assert (exists v, index x ((fresh G, vty GX t) :: GX) = Some v) as A. {
+    assert (exists v, index x ((fresh G, t) :: GX) = Some v) as A. {
       simpl. simpl in H.
       case_eq (le_lt_dec (fresh G) (fresh G)); intros E1 LE1.
       rewrite (wf_fresh GX G). rewrite LE1. rewrite LE1 in H.
