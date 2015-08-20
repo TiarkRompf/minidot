@@ -2609,17 +2609,21 @@ Proof. intros. induction H0.
 Qed.
 
 
-Lemma indexr_exists: forall H1 H2 G1 GH TF i,
-             wf_env H1 G1 -> wf_envh H1 H2 GH ->
+Lemma indexr_exists: forall H1 H2 GH TF i,
+             wf_envh H1 H2 GH ->
              indexr i GH = Some TF ->
              exists v, indexr i H2 = Some v.
 Proof.
-  intros.
-  assert (exists v, indexr i H2 = Some v /\ valh_type H1 H2 v TF) as A. {
-    eapply index_safeh_ex; eauto.
-  }
-  destruct A as [v [A1 A2]].
-  exists v. apply A1.
+  intros. induction H.
+  - inversion H0.
+  - unfold indexr.
+    case_eq (beq_nat i (length vs)); intros E.
+    + eexists. reflexivity.
+    + eapply IHwf_envh. unfold indexr in H0.
+      assert (length vs = length ts) as A. {
+        eapply wfh_length. eauto.
+      }
+      rewrite <- A in H0. rewrite E in H0. unfold indexr. apply H0.
 Qed.
 
 Inductive res_type: venv -> option vl -> ty -> Prop :=
@@ -4852,7 +4856,7 @@ Require Import Coq.Program.Equality.
 
 Lemma stp_to_stp2_cycle_aux: forall T v G GH,
   stp ((fresh G, TMem T T) :: G) GH T T->
-  forall GX GY, wf_env GX G -> wf_envh GX GY GH ->
+  forall GX GY, wf_env GX G -> wf_envh ((fresh G, v)::GX) GY GH ->
   stpd2 true ((fresh G, v) :: GX) T
              ((fresh G, v) :: GX) T GY.
 Proof.
@@ -4918,7 +4922,7 @@ Proof.
     eapply stpd2_selx; eapply A.
   - Case "sela2".
     remember H as H'. clear HeqH'.
-    unfold indexr in H. destruct GH. inversion H. destruct p.
+    unfold indexr in H. destruct GH. inversion H'. destruct p.
     case_eq (beq_nat x (length GH)); intros E.
     rewrite E in H. inversion H. subst.
     eapply IHST2; eauto.
@@ -4971,14 +4975,14 @@ Proof.
     eapply stpd2_wrapf. eapply IHST1; eauto.
     rewrite A. eauto.
     rewrite A. eauto.
-    rewrite A. eapply stpd2_wrapf. eapply IHST2; eauto. admit.
-    rewrite A. eapply stpd2_wrapf. eapply IHST3; eauto. admit.
+    rewrite A. eapply stpd2_wrapf. eapply IHST2; eauto.
+    rewrite A. eapply stpd2_wrapf. eapply IHST3; eauto.
   - Case "bind".
     assert (length (GY:aenv) = length GH) as A. { eapply wfh_length; eauto. }
     assert (closed 1 (length GY) T1) by solve [rewrite A; eauto].
     eapply stpd2_bind; try eassumption.
-    rewrite <- A in IHST1. eapply stpd2_wrapf. eapply IHST1; eauto. admit.
-    rewrite <- A in IHST2. eapply stpd2_wrapf. eapply IHST2; eauto. admit.
+    rewrite <- A in IHST1. eapply stpd2_wrapf. eapply IHST1; eauto.
+    rewrite <- A in IHST2. eapply stpd2_wrapf. eapply IHST2; eauto.
   - Case "and11". admit. (* messed up *)
   - Case "and12". admit. (* messed up *)
   - Case "and2". admit. (* messed up *)
@@ -4991,7 +4995,7 @@ Lemma stp_to_stp2_cycle: forall venv env T t,
               ((fresh env, vty venv t) :: venv) (TMem T T) [].
 Proof.
   intros. apply stpd2_wrapf. apply stpd2_mem; apply stpd2_wrapf;
-  apply stp_to_stp2_cycle_aux with (GH:=[]); eauto.
+  eapply stp_to_stp2_cycle_aux; eauto.
 Qed.
 
 Lemma invert_abs: forall venv vf T1 T2,
