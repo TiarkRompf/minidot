@@ -2609,6 +2609,19 @@ Proof. intros. induction H0.
 Qed.
 
 
+Lemma indexr_exists: forall H1 H2 G1 GH TF i,
+             wf_env H1 G1 -> wf_envh H1 H2 GH ->
+             indexr i GH = Some TF ->
+             exists v, indexr i H2 = Some v.
+Proof.
+  intros.
+  assert (exists v, indexr i H2 = Some v /\ valh_type H1 H2 v TF) as A. {
+    eapply index_safeh_ex; eauto.
+  }
+  destruct A as [v [A1 A2]].
+  exists v. apply A1.
+Qed.
+
 Inductive res_type: venv -> option vl -> ty -> Prop :=
 | not_stuck: forall venv v T,
       val_type venv v T ->
@@ -4837,13 +4850,13 @@ Qed.
 
 Require Import Coq.Program.Equality.
 
-Lemma stp_to_stp2_cycle_aux: forall T t G,
-  stp ((fresh G, TMem T T) :: G) [] T T->
-  forall GX, wf_env GX G ->
+Lemma stp_to_stp2_cycle_aux: forall T t G GH,
+  stp ((fresh G, TMem T T) :: G) GH T T->
+  forall GX GY, wf_env GX G -> wf_envh GX GY GH ->
   stpd2 true ((fresh G, vty GX t) :: GX) T
-              ((fresh G, vty GX t) :: GX) T [].
+             ((fresh G, vty GX t) :: GX) T GY.
 Proof.
-  intros T t G ST. remember (TMem T T) as T0. clear HeqT0. dependent induction ST; intros GX WX.
+  intros T t G GH ST. remember (TMem T T) as T0. clear HeqT0. dependent induction ST; intros GX GY WX WY.
   - Case "topx". eapply stpd2_topx.
   - Case "botx". eapply stpd2_botx.
   - Case "top".
@@ -4902,6 +4915,55 @@ Proof.
     }
     destruct A as [v A].
     eapply stpd2_selx; eapply A.
+  - Case "sela2".
+    remember H as H'. clear HeqH'.
+    unfold indexr in H. destruct GH. inversion H. destruct p.
+    case_eq (beq_nat x (length GH)); intros E.
+    rewrite E in H. inversion H. subst.
+    eapply IHST2; eauto.
+    rewrite E in H.
+    assert (exists v, indexr x GY = Some v) as A. {
+      eapply indexr_exists; eauto.
+    }
+    destruct A as [v A]. destruct v.
+    eapply stpd2_selax. eassumption.
+  - Case "selab1".
+    remember H as H'. clear HeqH'.
+    unfold indexr in H. destruct GH. inversion H. destruct p.
+    case_eq (beq_nat x (length GH)); intros E.
+    rewrite E in H. inversion H. subst.
+    eapply IHST2; eauto.
+    rewrite E in H.
+    assert (exists v, indexr x GY = Some v) as A. {
+      eapply indexr_exists; eauto.
+    }
+    destruct A as [v A]. destruct v.
+    eapply stpd2_selax. eassumption.
+  - Case "selab2".
+    remember H as H'. clear HeqH'.
+    unfold indexr in H. destruct GH. inversion H. destruct p.
+    case_eq (beq_nat x0 (length GH)); intros E.
+    rewrite E in H. inversion H. subst.
+    rewrite <- x. eapply IHST2; eauto.
+    rewrite E in H.
+    assert (exists v, indexr x0 GY = Some v) as A. {
+      eapply indexr_exists; eauto.
+    }
+    destruct A as [v A]. destruct v.
+    eapply stpd2_selax. eassumption.
+  - Case "selax".
+    assert (exists v, indexr x0 GY = Some v) as A. {
+      eapply indexr_exists; eauto.
+    }
+    rewrite <- x.
+    destruct A as [v A]. destruct v.
+    eapply stpd2_selax. eassumption.
+  - Case "selax".
+    assert (exists v, indexr x GY = Some v) as A. {
+      eapply indexr_exists; eauto.
+    }
+    destruct A as [v A]. destruct v.
+    eapply stpd2_selax. eassumption.
   - Case "all". admit. (*
     subst x. assert (length GY = length GH). eapply wfh_length; eauto.
     eapply stpd2_all.
