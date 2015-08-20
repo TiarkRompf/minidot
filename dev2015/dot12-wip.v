@@ -4821,6 +4821,15 @@ Proof.
   intros. eapply stpd2_wrapf. eapply stp_to_stp2_aux; eauto.
 Qed.
 
+Lemma stp_to_stp2_cycle: forall venv env T t,
+  wf_env venv env ->
+  stp ((fresh env, TMem T T) :: env) [] T T->
+  stpd2 false ((fresh env, vty venv t) :: venv) (TMem T T)
+              ((fresh env, vty venv t) :: venv) (TMem T T) [].
+Proof.
+  admit.
+Qed.
+
 Lemma invert_abs: forall venv vf T1 T2,
   val_type venv vf (TFun T1 T2) ->
   exists env tenv f x y T3 T4,
@@ -5000,8 +5009,8 @@ Proof.
       (* we have everything as stp and 'just' need to convert to stp2. however we're
       working with an env that has a self binding, and the wf_env evidence needs
       the very val_tp what we're trying to construct *)
-      
-      eapply stpd2_upgrade. rewrite wf_fresh with (ts:=env). subst. eapply stp_to_stp2. eauto. econstructor. admit. (* cycle *) eauto. eauto. eauto.
+
+      eapply stpd2_upgrade. rewrite wf_fresh with (ts:=env). subst. eapply stp_to_stp2_cycle. eauto. eauto. eauto. eauto.
 
       eapply not_stuck. eapply v_pack. eapply H0. eapply H2. instantiate (1:=TMem t t). simpl. subst T1X. eauto. subst venv1. eapply sstpd2_extend1. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. rewrite wf_fresh with (ts:=env). subst i. eauto. eauto.
 
