@@ -450,7 +450,7 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 (S m) true G1 (TSel x) G2 T2 GH (S (n1+n2))
 
 | stp2_selb1: forall m G1 G2 GX TX x T2 GH n1 n2 v,
-    index x G1 = Some v ->
+    index x G1 = Some v -> index x G2 = Some v ->
     val_type GX v TX ->
     closed 0 0 TX ->
     stp2 (S (S m)) false GX TX G2 (TBind (TMem TBot T2)) [] n1 -> (* Note GH = [] *)
@@ -467,7 +467,7 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 (S m) true G1 T1 G2 (TSel x) GH (S (n1+n2))
 
 | stp2_selb2: forall m G1 G2 GX TX x T1 GH n1 n2 v,
-    index x G2 = Some v ->
+    index x G2 = Some v -> index x G1 = Some v ->
     val_type GX v TX ->
     closed 0 0 TX ->
     stp2 (S (S m)) false GX TX G1 (TBind (TMem T1 TTop)) [] n1 -> (* Note GH = [] *)
@@ -667,7 +667,7 @@ Lemma stpd2_sel1: forall G1 G2 GX TX x T2 GH v,
 Proof. intros. repeat eu. eexists. eapply stp2_sel1; eauto. Qed.
 
 Lemma stpd2_selb1: forall G1 G2 GX TX x T2 GH v,
-    index x G1 = Some v ->
+    index x G1 = Some v -> index x G2 = Some v ->
     val_type GX v TX ->
     closed 0 0 TX ->
     stpd2 false GX TX G2 (TBind (TMem TBot T2)) [] -> (* Note GH = [] *)
@@ -685,7 +685,7 @@ Lemma stpd2_sel2: forall G1 G2 GX TX x T1 GH v,
 Proof. intros. repeat eu. eexists. eapply stp2_sel2; eauto. Qed.
 
 Lemma stpd2_selb2: forall G1 G2 GX TX x T1 GH v,
-    index x G2 = Some v ->
+    index x G2 = Some v -> index x G1 = Some v ->
     val_type GX v TX ->
     closed 0 0 TX ->
     stpd2 false GX TX G1 (TBind (TMem T1 TTop)) [] -> (* Note GH = [] *)
@@ -1658,8 +1658,8 @@ Proof.
 
   - Case "selb1".
     assert (splice (length GH0) (open (TSel x0) T2)=(open (TSel x0) T2)) as A. {
-      eapply closed_splice_idem. apply stp2_closed2 in H2. inversion H2. subst.
-      simpl in H7. inversion H7. subst.
+      eapply closed_splice_idem. apply stp2_closed2 in H3. inversion H3. subst.
+      simpl in H8. inversion H8. subst.
       eapply closed_open. simpl. eassumption. eauto.
       omega.
     }
@@ -1675,8 +1675,8 @@ Proof.
     apply IHstp2_2. reflexivity.
   - Case "selb1".
     assert (splice (length GH0) (open (TSel x0) T1)=(open (TSel x0) T1)) as A. {
-      eapply closed_splice_idem. apply stp2_closed2 in H2. inversion H2. subst.
-      simpl in H7. inversion H7. subst.
+      eapply closed_splice_idem. apply stp2_closed2 in H3. inversion H3. subst.
+      simpl in H8. inversion H8. subst.
       eapply closed_open. simpl. eassumption. eauto.
       omega.
     }
@@ -2040,8 +2040,9 @@ Proof.
     apply IHstp2_1. assumption. apply venv_ext_refl. assumption.
     apply IHstp2_2. assumption. assumption. assumption.
   - Case "selb1".
-    eapply stp2_selb1. eapply index_extend_mult. apply H.
-    assumption. eassumption. assumption.
+    eapply stp2_selb1. eapply index_extend_mult. apply H. assumption.
+    eapply index_extend_mult. apply H0. assumption.
+    eassumption. assumption.
     apply IHstp2_1. apply aenv_ext_refl. apply venv_ext_refl. assumption.
     apply IHstp2_2. assumption. assumption. assumption.
   - Case "sel2".
@@ -2050,8 +2051,9 @@ Proof.
     apply IHstp2_1. assumption. apply venv_ext_refl. assumption.
     apply IHstp2_2. assumption. assumption. assumption.
   - Case "selb2".
-    eapply stp2_selb2. eapply index_extend_mult. apply H.
-    assumption. eassumption. assumption.
+    eapply stp2_selb2. eapply index_extend_mult. apply H. assumption.
+    eapply index_extend_mult. apply H0. assumption.
+    eassumption. assumption.
     apply IHstp2_1. apply aenv_ext_refl. apply venv_ext_refl. assumption.
     apply IHstp2_2. assumption. assumption. assumption.
   - Case "selx".
@@ -2159,6 +2161,10 @@ Proof.
     try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; inversion IHstp2_3 as [? [? ?]]; constructor; eauto; apply stp2_closure_extend; eauto];
     try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eapply stp2_bind; eauto; apply stp2_closure_extend; eauto];
     try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eapply stp2_bindb; eauto; apply stp2_closure_extend; eauto].
+
+  - split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eapply stp2_selb1; eauto using index_extend.
+
+  - split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eapply stp2_selb2; eauto using index_extend.
 Qed.
 
 Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2 H s m n1,
@@ -3694,9 +3700,7 @@ Proof.
     apply 0. apply 0. apply 0. apply 0.
 Qed.
 
-
 (* begin substitute *)
-
 
 Lemma index_miss {X}: forall x x1 (B:X) A G,
   index x ((x1,B)::G) = A ->
@@ -4369,17 +4373,17 @@ Proof.
       eapply stp2_closed2; eauto.
     }
 
-    simpl in H6. unfold closed in H8. inversion H8. subst. inversion H12. subst.
+    simpl in H7. unfold closed in H9. inversion H9. subst. inversion H13. subst.
 
     eapply compat_selb in IX2.
     repeat destruct IX2 as [? IX2]. subst.
     eapply compat_sel in IX1.
     repeat destruct IX1 as [? IX1]. subst.
     eapply stp2_selb1; try eassumption.
-    eapply IHn. eapply H6. omega. reflexivity. eassumption. eapply CX. eauto.
+    eapply IHn. eapply H7. omega. reflexivity. eassumption. eapply CX. eauto.
     right. left. split. apply closed_open; eauto.  reflexivity.
     right. left. split. apply closed_open; eauto.  reflexivity.
-    eapply FA. eauto. eauto. eapply H4. eassumption. eassumption. eassumption. eapply H4.
+    eapply FA. eauto. eauto. eapply H5. eassumption. eassumption. eassumption. eapply H5.
     eauto. eassumption.
 
   - Case "sel2".
@@ -4403,17 +4407,17 @@ Proof.
      intros GH0 GH0' GXX TXX TXX' T1' T2' V ? VS CX ? IX1 IX2 FA IXH.
 
     assert (closed 0 (length ([]:aenv)) (TBind (TMem T0 TTop))). eapply stp2_closed2; eauto.
-    simpl in  H6. unfold closed in H8. inversion H8. subst. inversion H12. subst.
+    simpl in  H7. unfold closed in H9. inversion H9. subst. inversion H13. subst.
 
     eapply compat_selb in IX1.
     repeat destruct IX1 as [? IX1]. subst.
     eapply compat_sel in IX2.
     repeat destruct IX2 as [? IX2]. subst.
     eapply stp2_selb2; try eassumption.
-    eapply IHn. eapply H6. omega. reflexivity. eassumption. eapply CX. eauto.
+    eapply IHn. eapply H7. omega. reflexivity. eassumption. eapply CX. eauto.
     right. left. split. apply closed_open; eauto.  reflexivity.
     right. left. split. apply closed_open; eauto.  reflexivity.
-    eapply FA. eauto. eauto. eapply H4. eassumption. eassumption. eassumption. eapply H4.
+    eapply FA. eauto. eauto. eapply H5. eassumption. eassumption. eassumption. eapply H5.
     eauto. eassumption.
 
   - Case "selx".
@@ -4709,6 +4713,13 @@ Proof. intros. repeat eu. eexists. eapply stp2_substitute_aux; eauto. Qed.
 
 (* end substitute *)
 
+Lemma subst_open1: forall x T,
+closed 1 0 T ->
+(subst (TSel x) (open (TSelH 0) T)) = (open (TSel x) T).
+Proof.
+  admit.
+Qed.
+
 Lemma stpd2_to_sstpd2_aux2: forall n, forall G1 G2 GH T1 T2 m n1,
   stp2 2 m G1 T1 G2 T2 GH n1 -> n1 < n ->
   exists n2, stp2 1 m G1 T1 G2 T2 GH n2.
@@ -4730,18 +4741,46 @@ Proof.
     eapply IHn in H5. eapply IHn in H6. ev. ev.
     eexists. eapply stp2_sel1; eauto. omega. omega.
   - Case "selb1". subst.
-    eapply IHn in H5. eapply IHn in H6. ev. ev. eapply stpd2_to_sstpd2_aux1 in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
+    eapply IHn in H6. eapply IHn in H7. ev. ev. eapply stpd2_to_sstpd2_aux1 in H6. eapply sstpd2_untrans in H6. eapply valtp_widen with (2:=H6) in H4.
+    remember H4 as Hv. clear HeqHv.
     (* now invert base on TBind knowledge -- TODO: helper lemma*)
-    inversion H3; ev. subst.
-    inversion H8. subst.
-    inversion H6. subst.
-    inversion H10.
-    inversion H9. (* 1 case left *)
-    subst. inversion H9. subst.
-    assert (stp2 1 false venv0 (open (TSel x2) T2)
-                 G2 (open (TSel x) (TMem TBot T0)) [] n1) as ST.
-    admit. (* get this from substitute *)
+    inversion H4; ev. subst.
+    inversion H9. subst.
+    inversion H7. subst.
+    inversion H11.
+    inversion H10. (* 1 case left *)
+    subst. inversion H10. subst.
 
+    assert (exists n, stp2 1 false
+                           venv0 (open (TSel x2) T2)
+                           G2 (open (TSel x) (TMem TBot T0)) [] n) as ST. {
+
+      eexists. eapply stp2_substitute_aux with (GH0:=[]).
+      eauto.
+      eauto.
+      simpl. reflexivity.
+      erewrite subst_open1. eassumption. eauto.
+      apply closed_open. simpl. eapply closed_upgrade. eauto. eapply closed_upgrade_free. eauto. simpl. omega. omega. eauto. eauto.
+      left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.
+      split. erewrite subst_open1. eassumption. eauto.
+      rewrite subst_open1. reflexivity. eauto.
+
+      left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.
+
+      split.
+      erewrite subst_open1. eassumption. eauto.
+      simpl. erewrite subst_open1. eauto.
+      eapply valtp_closed in H4. inversion H4. subst. inversion H17. subst. eauto.
+      eauto.
+
+      left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.
+
+      split.
+      erewrite subst_open1. eassumption. eauto.
+      simpl. erewrite subst_open1. eauto.
+      eapply valtp_closed in H4. inversion H4. subst. inversion H17. subst. eauto.
+    }
+    destruct ST as [? ST].
     (* NOTE: this crucially depends on the result of inverting stp_bind having
        level 1, so we don't need to do induction on it.
 
@@ -4769,7 +4808,7 @@ Proof.
          is used, so we cannot bound the result size.
     *)
     assert (closed 0 (length (nil:aenv)) (open (TSel x2) T2)) as C. eapply stp2_closed1. eauto. simpl in C.
-    eexists. eapply stp2_sel1. eauto. eapply H7. eauto.
+    eexists. eapply stp2_sel1. eauto. eapply H8. eauto.
     eapply stp2_extendH_mult0. eauto. eauto. eauto. omega. omega.
   - Case "sel2". subst.
     eapply IHn in H5. eapply IHn in H6. ev. ev.
@@ -4892,6 +4931,7 @@ Proof.
   intros. eapply stpd2_wrapf. eapply sstpd2_downgrade_true. eassumption.
 Qed.
 
+
 (* --------------------------------- *)
 
 Hint Constructors wf_envh.
@@ -4939,7 +4979,7 @@ Proof.
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
-    eapply stpd2_selb1. eauto. eauto. eapply valtp_closed; eauto.
+    eapply stpd2_selb1. eauto. eauto. eauto. eapply valtp_closed; eauto.
     eapply stpd2_wrapf. eauto.
     specialize (IHST2 GX GY WX WY).
     apply stpd2_reg2 in IHST2.
@@ -4948,7 +4988,7 @@ Proof.
     assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
-    eapply stpd2_selb2. eauto. eauto. eapply valtp_closed; eauto.
+    eapply stpd2_selb2. eauto. eauto. eauto. eapply valtp_closed; eauto.
     eapply stpd2_wrapf. eauto.
     specialize (IHST2 GX GY WX WY).
     apply stpd2_reg2 in IHST2.
