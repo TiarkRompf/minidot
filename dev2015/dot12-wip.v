@@ -4856,61 +4856,75 @@ Proof.
 Qed.
 
 
+Inductive wf_tp: tenv -> tenv -> ty -> Prop :=
+| wf_top: forall G1 GH,
+    wf_tp G1 GH TTop
+| wf_bot: forall G1 GH,
+    wf_tp G1 GH TBot
+| wf_bool: forall G1 GH,
+    wf_tp G1 GH TBool
+| wf_fun: forall G1 GH T1 T2,
+    wf_tp G1 GH T1 ->
+    wf_tp G1 GH T2 ->
+    wf_tp G1 GH (TFun T1 T2)
+| wf_mem: forall G1 GH T1 T2,
+    wf_tp G1 GH T1 ->
+    wf_tp G1 GH T2 ->
+    wf_tp G1 GH (TMem T1 T2)
+| wf_sel: forall G1 GH TX x,
+    index x G1 = Some TX ->
+    wf_tp G1 GH (TSel x)
+| wf_sela: forall G1 GH TX x,
+    indexr x GH = Some TX  ->
+    wf_tp G1 GH (TSelH x)
+| wf_all: forall G1 GH T1 T2 x,
+    wf_tp G1 GH T1 ->
+    x = length GH ->
+    closed 1 (length GH) T2 ->
+    wf_tp G1 ((0,T1)::GH) (open (TSelH x) T2) ->
+    wf_tp G1 GH (TAll T1 T2)
+| wf_bind: forall G1 GH T1 x,
+    x = length GH ->
+    closed 1 (length GH) T1 ->
+    wf_tp G1 ((0,open (TSelH x) T1)::GH) (open (TSelH x) T1) ->
+    wf_tp G1 GH (TBind T1)
+| wf_and: forall G1 GH T1 T2,
+    wf_tp G1 GH T1 ->
+    wf_tp G1 GH T2 ->
+    wf_tp G1 GH (TAnd T1 T2)
+.
+Hint Constructors wf_tp.
+
+Lemma stp_to_wf_tp_aux: forall G GH T1 T2,
+                          stp G GH T1 T2 ->
+                          wf_tp G GH T1 /\ wf_tp G GH T2.
+Proof.
+  intros. induction H;
+  try solve [repeat ev; split; eauto].
+Qed.
+
+Lemma stp_to_wf_tp: forall G GH T,
+                      stp G GH T T ->
+                      wf_tp G GH T.
+Proof.
+  intros. apply (proj1 (stp_to_wf_tp_aux G GH T T H)).
+Qed.
+
 Require Import Coq.Program.Equality.
 
-Lemma stp_to_stp2_cycle_aux: forall T v G GH,
-  stp ((fresh G, TMem T T) :: G) GH T T->
+Lemma wf_tp_to_stp2_cycle_aux: forall T v G GH,
+  wf_tp ((fresh G, TMem T T) :: G) GH T ->
   forall GX GY, wf_env GX G -> wf_envh ((fresh G, v)::GX) GY GH ->
   stpd2 true ((fresh G, v) :: GX) T
              ((fresh G, v) :: GX) T GY.
 Proof.
   intros T t G GH ST. remember (TMem T T) as T0. clear HeqT0.
   dependent induction ST; intros GX GY WX WY.
-  - Case "topx". eapply stpd2_topx.
-  - Case "botx". eapply stpd2_botx.
-  - Case "top".
-    apply stpd2_topx.
-  - Case "bot".
-    apply stpd2_botx.
+  - Case "top". eapply stpd2_topx.
+  - Case "bot". eapply stpd2_botx.
   - Case "bool". eapply stpd2_bool; eauto.
   - Case "fun". eapply stpd2_fun; eapply stpd2_wrapf; eauto.
   - Case "mem". eapply stpd2_mem; eapply stpd2_wrapf; eauto.
-  - Case "sel1".
-    simpl in H.
-    case_eq (le_lt_dec (fresh G) (fresh G)); intros E1 LE1.
-    rewrite LE1 in H.
-    case_eq (beq_nat x (fresh G)); intros E2.
-    rewrite E2 in H. inversion H. subst.
-    eapply IHST2; eauto.
-    eapply IHST2; eauto.
-    rewrite LE1 in H. inversion H.
-  - Case "sel2".
-    simpl in H.
-    case_eq (le_lt_dec (fresh G) (fresh G)); intros E1 LE1.
-    rewrite LE1 in H.
-    case_eq (beq_nat x (fresh G)); intros E2.
-    rewrite E2 in H. inversion H. subst.
-    eapply IHST2; eauto.
-    eapply IHST2; eauto.
-    rewrite LE1 in H. inversion H.
-  - Case "selb1".
-    simpl in H.
-    case_eq (le_lt_dec (fresh G) (fresh G)); intros E1 LE1.
-    rewrite LE1 in H.
-    case_eq (beq_nat x0 (fresh G)); intros E2.
-    rewrite E2 in H. inversion H. subst.
-    rewrite <- x. eapply IHST2; eauto.
-    rewrite <- x. eapply IHST2; eauto.
-    rewrite LE1 in H. inversion H.
-  - Case "selb2".
-    simpl in H.
-    case_eq (le_lt_dec (fresh G) (fresh G)); intros E1 LE1.
-    rewrite LE1 in H.
-    case_eq (beq_nat x0 (fresh G)); intros E2.
-    rewrite E2 in H. inversion H. subst.
-    eapply IHST2; eauto.
-    eapply IHST2; eauto.
-    rewrite LE1 in H. inversion H.
   - Case "selx".
     assert (exists v, index x ((fresh G, t) :: GX) = Some v) as A. {
       simpl. simpl in H.
@@ -4924,49 +4938,6 @@ Proof.
     }
     destruct A as [v A].
     eapply stpd2_selx; eapply A.
-  - Case "sela2".
-    remember H as H'. clear HeqH'.
-    unfold indexr in H. destruct GH. inversion H'. destruct p.
-    case_eq (beq_nat x (length GH)); intros E.
-    rewrite E in H. inversion H. subst.
-    eapply IHST2; eauto.
-    rewrite E in H.
-    assert (exists v, indexr x GY = Some v) as A. {
-      eapply indexr_exists; eauto.
-    }
-    destruct A as [v A]. destruct v.
-    eapply stpd2_selax. eassumption.
-  - Case "selab1".
-    remember H as H'. clear HeqH'.
-    unfold indexr in H. destruct GH. inversion H. destruct p.
-    case_eq (beq_nat x (length GH)); intros E.
-    rewrite E in H. inversion H. subst.
-    eapply IHST2; eauto.
-    rewrite E in H.
-    assert (exists v, indexr x GY = Some v) as A. {
-      eapply indexr_exists; eauto.
-    }
-    destruct A as [v A]. destruct v.
-    eapply stpd2_selax. eassumption.
-  - Case "selab2".
-    remember H as H'. clear HeqH'.
-    unfold indexr in H. destruct GH. inversion H. destruct p.
-    case_eq (beq_nat x0 (length GH)); intros E.
-    rewrite E in H. inversion H. subst.
-    rewrite <- x. eapply IHST2; eauto.
-    rewrite E in H.
-    assert (exists v, indexr x0 GY = Some v) as A. {
-      eapply indexr_exists; eauto.
-    }
-    destruct A as [v A]. destruct v.
-    eapply stpd2_selax. eassumption.
-  - Case "selax".
-    assert (exists v, indexr x0 GY = Some v) as A. {
-      eapply indexr_exists; eauto.
-    }
-    rewrite <- x.
-    destruct A as [v A]. destruct v.
-    eapply stpd2_selax. eassumption.
   - Case "selax".
     assert (exists v, indexr x GY = Some v) as A. {
       eapply indexr_exists; eauto.
@@ -4980,16 +4951,17 @@ Proof.
     rewrite A. eauto.
     rewrite A. eauto.
     rewrite A. eapply stpd2_wrapf. eapply IHST2; eauto.
-    rewrite A. eapply stpd2_wrapf. eapply IHST3; eauto.
+    rewrite A. eapply stpd2_wrapf. eapply IHST2; eauto.
   - Case "bind".
     assert (length (GY:aenv) = length GH) as A. { eapply wfh_length; eauto. }
     assert (closed 1 (length GY) T1) by solve [rewrite A; eauto].
     eapply stpd2_bind; try eassumption.
-    rewrite <- A in IHST1. eapply stpd2_wrapf. eapply IHST1; eauto.
-    rewrite <- A in IHST2. eapply stpd2_wrapf. eapply IHST2; eauto.
-  - Case "and11". admit. (* messed up *)
-  - Case "and12". admit. (* messed up *)
-  - Case "and2". admit. (* messed up *)
+    rewrite <- A in IHST. eapply stpd2_wrapf. eapply IHST; eauto.
+    rewrite <- A in IHST. eapply stpd2_wrapf. eapply IHST; eauto.
+  - Case "and".
+    eapply stpd2_and2; eapply stpd2_wrapf.
+    eapply stpd2_and11. eapply IHST1; eauto. eapply IHST2; eauto.
+    eapply stpd2_and12. eapply IHST2; eauto. eapply IHST1; eauto.
 Qed.
 
 Lemma stp_to_stp2_cycle: forall venv env T t,
@@ -4998,8 +4970,9 @@ Lemma stp_to_stp2_cycle: forall venv env T t,
   stpd2 false ((fresh env, vty venv t) :: venv) (TMem T T)
               ((fresh env, vty venv t) :: venv) (TMem T T) [].
 Proof.
-  intros. apply stpd2_wrapf. apply stpd2_mem; apply stpd2_wrapf;
-  eapply stp_to_stp2_cycle_aux; eauto.
+  intros. apply stpd2_wrapf.
+  eapply stp_to_wf_tp in H0.
+  apply stpd2_mem; apply stpd2_wrapf; eapply wf_tp_to_stp2_cycle_aux; eauto.
 Qed.
 
 Lemma invert_abs: forall venv vf T1 T2,
