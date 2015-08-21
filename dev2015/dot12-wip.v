@@ -418,19 +418,21 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
 
 
 (* strong version, with precise/invertible bounds *)
-| stp2_strong_sel1: forall G1 G2 GX TX x T2 GH n1,
+| stp2_strong_sel1: forall G1 G2 GX TX x T2 GH GX' TX' n1 n2,
     index x G1 = Some (vty GX TX) ->
-(*  val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)*)
+    val_type GX' (vty GX TX) TX' -> (* for downgrade *)
+    stp2 0 false GX' TX' G2 (TMem TBot T2) GH n2 -> (* for downgrade *)
     closed 1 0 TX ->
     stp2 0 true ((fresh GX, vty GX TX)::GX) (open (TSel (fresh GX)) TX) G2 T2 GH n1 ->
-    stp2 0 true G1 (TSel x) G2 T2 GH (S n1)
+    stp2 0 true G1 (TSel x) G2 T2 GH (S (n1+n2))
 
-| stp2_strong_sel2: forall G1 G2 GX TX x T1 GH n1,
+| stp2_strong_sel2: forall G1 G2 GX TX x T1 GH GX' TX' n1 n2,
     index x G2 = Some (vty GX TX) ->
-(*  val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)*)
+    val_type GX' (vty GX TX) TX' -> (* for downgrade *)
+    stp2 0 false GX' TX' G1 (TMem T1 TTop) GH n2 -> (* for downgrade *)
     closed 1 0 TX ->
     stp2 0 false G1 T1 ((fresh GX, vty GX TX)::GX) (open (TSel (fresh GX)) TX) GH n1 ->
-    stp2 0 true G1 T1 G2 (TSel x) GH (S n1)
+    stp2 0 true G1 T1 G2 (TSel x) GH (S (n1+n2))
 
 | stp2_strong_selx: forall G1 G2 v x1 x2 GH n1,
     index x1 G1 = Some v ->
@@ -1424,6 +1426,17 @@ Proof.
   intros. apply (proj1 (stp2_closed G1 G2 T1 T2 GH s m n1 H)).
 Qed.
 
+
+Lemma valtp_closed: forall G v T,
+  val_type G v T -> closed 0 0 T.
+Proof.
+  intros. inversion H; subst; repeat ev;
+  match goal with
+      [ H : stp2 ?s ?m ?G1 ?T1 G T [] ?n |- _ ] =>
+      eapply stp2_closed2 in H; simpl in H; apply H
+  end.
+Qed.
+
 Lemma stp_splice : forall GX G0 G1 T1 T2 x v1,
    stp GX (G1++G0) T1 T2 ->
    stp GX ((map (splicett (length G0)) G1) ++ (x,v1)::G0) (splice (length G0) T1) (splice (length G0) T2).
@@ -1611,18 +1624,28 @@ Proof.
   revert GH0 GH1 HeqGH.
   induction H; intros; subst GH; simpl; eauto.
   - Case "strong_sel1".
-    eapply stp2_strong_sel1. apply H. assumption. (*assumption.*)
+    eapply stp2_strong_sel1. apply H. eassumption.
+    assert (splice (length GH0) TX' = TX') as B. {
+      eapply closed_splice_idem. eapply valtp_closed. eassumption. omega.
+    }
+    rewrite <- B. simpl in IHstp2_1. eapply IHstp2_1. reflexivity.
+    eassumption.
     assert (splice (length GH0) (open (TSel (fresh GX)) TX)=(open (TSel (fresh GX)) TX)) as A.  {
       eapply closed_splice_idem. eapply closed_open. eassumption. eauto. omega.
     }
-    rewrite <- A. apply IHstp2.
+    rewrite <- A. apply IHstp2_2.
     reflexivity.
   - Case "strong_sel2".
-    eapply stp2_strong_sel2. apply H. assumption. (*assumption.*)
+    eapply stp2_strong_sel2. apply H. eassumption.
+    assert (splice (length GH0) TX' = TX') as B. {
+      eapply closed_splice_idem. eapply valtp_closed. eassumption. omega.
+    }
+    rewrite <- B. simpl in IHstp2_1. eapply IHstp2_1. reflexivity.
+    eassumption.
     assert (splice (length GH0) (open (TSel (fresh GX)) TX)=(open (TSel (fresh GX)) TX)) as A.  {
       eapply closed_splice_idem. eapply closed_open. eassumption. eauto. omega.
     }
-    rewrite <- A. apply IHstp2.
+    rewrite <- A. apply IHstp2_2.
     reflexivity.
   - Case "sel1".
     eapply stp2_sel1. apply H. eassumption. assumption.
@@ -1997,12 +2020,16 @@ Proof.
   try solve [inversion IHstp2; eauto].
   - Case "strong_sel1".
     eapply stp2_strong_sel1. eapply index_extend_mult. apply H.
-    assumption. assumption. (* assumption. *)
-    apply IHstp2. assumption. apply venv_ext_refl. assumption.
+    assumption. eassumption.
+    apply IHstp2_1. assumption. apply venv_ext_refl. assumption.
+    assumption.
+    apply IHstp2_2. assumption. apply venv_ext_refl. assumption.
   - Case "strong_sel2".
     eapply stp2_strong_sel2. eapply index_extend_mult. apply H.
-    assumption. assumption. (* assumption. *)
-    apply IHstp2. assumption. assumption. apply venv_ext_refl.
+    assumption. eassumption.
+    apply IHstp2_1. assumption. apply venv_ext_refl. assumption.
+    assumption.
+    apply IHstp2_2. assumption. assumption. apply venv_ext_refl.
   - Case "strong_selx".
     eapply stp2_strong_selx.
     eapply index_extend_mult. apply H. assumption.
@@ -3308,18 +3335,42 @@ Proof.
   - Case "topx". subst. inversion H1.
     + SCase "topx". eexists. eauto.
     + SCase "top". eexists. eauto.
-    + SCase "sel2". eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "sel2". subst.
+      assert (sstpd2 false GX' TX' G1 (TMem TTop TTop) []) as A. {
+        eapply sstpd2_trans_axiom. eexists. eassumption.
+        eexists. eapply stp2_wrapf. eapply stp2_mem.
+        eapply stp2_wrapf. eapply stp2_topx.
+        eapply stp2_topx.
+      }
+      destruct A as [? A].
+      eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "botx". subst. inversion H1.
     + SCase "botx". eexists. eauto.
     + SCase "top". eexists. eauto.
     + SCase "?". eexists. eauto.
-    + SCase "sel2". eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "sel2".
+      assert (sstpd2 false GX' TX' G1 (TMem TBot TTop) []) as A. {
+        eapply sstpd2_trans_axiom. eexists. eassumption.
+        eexists. eapply stp2_wrapf. eapply stp2_mem.
+        eapply stp2_wrapf; eapply stp2_botx.
+        eapply stp2_topx.
+      }
+      destruct A as [? A].
+      eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "top". subst. inversion H1.
     + SCase "topx". eexists. eauto.
     + SCase "top". eexists. eauto.
-    + SCase "sel2". eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "sel2". subst.
+      assert (sstpd2 false GX' TX' G1 (TMem T1 TTop) []) as A. {
+        eapply sstpd2_trans_axiom. eexists. eassumption.
+        eexists. eapply stp2_wrapf. eapply stp2_mem.
+        eapply stp2_wrapf. eapply stp2_top. eassumption.
+        eapply stp2_topx.
+      }
+      destruct A as [? A].
+      eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "bot". subst.
     apply stp2_reg2 in H1. inversion H1 as [n1' H1'].
@@ -3327,7 +3378,15 @@ Proof.
   - Case "bool". subst. inversion H1.
     + SCase "top". eexists. eauto.
     + SCase "bool". eexists. eauto.
-    + SCase "sel2". eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "sel2". subst.
+      assert (sstpd2 false GX' TX' G1 (TMem TBool TTop) []) as A. {
+        eapply sstpd2_trans_axiom. eexists. eassumption.
+        eexists. eapply stp2_wrapf. eapply stp2_mem.
+        eapply stp2_wrapf. eapply stp2_bool.
+        eapply stp2_topx.
+      }
+      destruct A as [? A].
+      eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "fun". subst. inversion H1.
     + SCase "top".
@@ -3343,7 +3402,15 @@ Proof.
       assert (stpd2 false G1 T4 G3 T8 []) as B by solve [eapply stpd2_trans; eauto].
       inversion B as [nb B'].
       eexists. eapply stp2_fun. apply A'. apply B'.
-    + SCase "sel2". eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "sel2". subst.
+      assert (sstpd2 false GX' TX' G1 (TMem (TFun T0 T4) TTop) []) as A. {
+        eapply sstpd2_trans_axiom. eexists. eassumption.
+        eexists. eapply stp2_wrapf. eapply stp2_mem.
+        eapply stp2_wrapf. eassumption.
+        eapply stp2_topx.
+      }
+      destruct A as [? A].
+      eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "mem". subst. inversion H1.
     + SCase "top".
@@ -3358,22 +3425,44 @@ Proof.
       }
       inversion B as [nb B'].
       eexists. eapply stp2_mem. apply A'. apply B'.
-    + SCase "sel2". eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "sel2". subst.
+      assert (sstpd2 false GX' TX' G1 (TMem (TMem T0 T4) TTop) []) as A. {
+        eapply sstpd2_trans_axiom. eexists. eassumption.
+        eexists. eapply stp2_wrapf. eapply stp2_mem.
+        eapply stp2_wrapf. eassumption.
+        eapply stp2_topx.
+      }
+      destruct A as [? A].
+      eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
-  - Case "ssel1".
+  - Case "ssel1". subst.
     assert (sstpd2 true ((fresh GX, vty GX TX) :: GX) (open (TSel (fresh GX)) TX) G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1.
-    eu. eexists. eapply stp2_strong_sel1; eauto.
+    assert (sstpd2 false GX' TX' G3 (TMem TBot T3) []). {
+      eapply sstpd2_wrapf. eapply IHn. eassumption. omega.
+      eexists. eapply stp2_mem.
+      eapply stp2_wrapf. eapply stp2_botx.
+      eapply H1.
+    }
+    repeat eu.
+    eexists. eapply stp2_strong_sel1; eauto.
   - Case "ssel2". subst. inversion H1.
     + SCase "top". subst.
-      apply stp2_reg1 in H4. inversion H4.
+      apply stp2_reg1 in H6. inversion H6.
       eexists. eapply stp2_top. eassumption.
     + SCase "ssel1".  (* interesting one *)
-      subst. rewrite H6 in H2. inversion H2. subst.
-      eapply IHn. eapply H4. omega. eexists. eauto.
-    + SCase "ssel2".
+      subst. rewrite H8 in H2. inversion H2. subst.
+      eapply IHn. eapply H6. omega. eexists. eauto.
+    + SCase "ssel2". subst.
+      assert (sstpd2 false GX'0 TX'0 G1 (TMem T1 TTop) []) as A. {
+        eapply sstpd2_trans_axiom. eexists. eassumption.
+        eexists. eapply stp2_wrapf. eapply stp2_mem.
+        eapply stp2_wrapf. eassumption.
+        eapply stp2_topx.
+      }
+      destruct A as [? A].
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "sselx".
-      subst. rewrite H2 in H6. inversion H6. subst.
+      subst. rewrite H2 in H8. inversion H8. subst.
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "sselx". subst. inversion H1.
@@ -3383,7 +3472,15 @@ Proof.
     + SCase "ssel1".
       subst. rewrite H5 in H3. inversion H3. subst.
       eexists. eapply stp2_strong_sel1; eauto.
-    + SCase "ssel2". eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "ssel2". subst.
+      assert (sstpd2 false GX' TX' G1 (TMem (TSel x1) TTop) []) as A. {
+        eapply sstpd2_trans_axiom. eexists. eassumption.
+        eexists. eapply stp2_wrapf. eapply stp2_mem.
+        eapply stp2_wrapf. eassumption.
+        eapply stp2_topx.
+      }
+      destruct A as [? A].
+      eexists. eapply stp2_strong_sel2; eauto.
     + SCase "sselx".
       subst. rewrite H5 in H3. inversion H3. subst.
       eexists. eapply stp2_strong_selx. eauto. eauto.
@@ -3392,7 +3489,14 @@ Proof.
     + SCase "top".
       apply stp2_reg1 in H. inversion H.
       eexists. eapply stp2_top. eassumption.
-    + SCase "ssel2".
+    + SCase "ssel2". subst.
+      assert (sstpd2 false GX' TX' G1 (TMem (TAll T0 T4) TTop) []) as A. {
+        eapply sstpd2_trans_axiom. eexists. eassumption.
+        eexists. eapply stp2_wrapf. eapply stp2_mem.
+        eapply stp2_wrapf. eassumption.
+        eapply stp2_topx.
+      }
+      destruct A as [? A].
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "all".
       subst.
@@ -3407,7 +3511,14 @@ Proof.
     + SCase "top".
       apply stp2_reg1 in H. inversion H.
       eexists. eapply stp2_top. eassumption.
-    + SCase "ssel2".
+    + SCase "ssel2". subst.
+      assert (sstpd2 false GX' TX' G1 (TMem (TBind T0) TTop) []) as A. {
+        eapply sstpd2_trans_axiom. eexists. eassumption.
+        eexists. eapply stp2_wrapf. eapply stp2_mem.
+        eapply stp2_wrapf. eassumption.
+        eapply stp2_topx.
+      }
+      destruct A as [? A].
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "bind".
       subst.
@@ -3432,7 +3543,15 @@ Proof.
                          | omega | eexists; eassumption]].
   - Case "and2". subst. inversion H1; subst.
     + SCase "top". eapply stp2_reg1 in H. inversion H. eexists. eapply stp2_top; eassumption.
-    + SCase "sel2". eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "sel2".
+      assert (sstpd2 false GX' TX' G1 (TMem T1 TTop) []) as A. {
+        eapply sstpd2_trans_axiom. eexists. eassumption.
+        eexists. eapply stp2_wrapf. eapply stp2_mem.
+        eapply stp2_wrapf. eassumption.
+        eapply stp2_topx.
+      }
+      destruct A as [? A].
+      eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and11". subst. eapply IHn. apply H2. omega. eexists. eassumption.
     + SCase "and12". subst. eapply IHn. apply H3. omega. eexists. eassumption.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
@@ -3440,7 +3559,9 @@ Proof.
   - Case "transf". subst. eapply IHn. eapply H2. omega. eapply IHn. eapply H3. omega. eexists. eauto.
 
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma sstpd2_trans: forall G1 G2 G3 T1 T2 T3,
@@ -3537,15 +3658,21 @@ Proof.
     eapply IHn in H3. eapply sstpd2_untrans in H3. eu.
     eexists. eapply stp2_mem. eauto. eauto. omega. omega.
   - Case "sel1".
+    remember H3 as Hv. clear HeqHv.
     eapply IHn in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
     eapply invert_typ in H3. ev. repeat eu. subst.
-    assert (closed (0+1) (length ([]:aenv)) x1). eapply inv_closed_open. eapply stp2_closed2; eauto. eauto. eauto.
-    eexists. eapply stp2_strong_sel1. eauto. eauto. eauto. omega.
+    assert (closed (0+1) (length ([]:aenv)) x1). eapply inv_closed_open. eapply stp2_closed2; eauto. eauto.
+    eexists. eapply stp2_strong_sel1. eauto.
+    eassumption. eapply stp2_wrapf. eassumption.
+    eauto. eauto. omega.
   - Case "sel2".
+    remember H3 as Hv. clear HeqHv.
     eapply IHn in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
     eapply invert_typ in H3. ev. repeat eu. subst.
     assert (closed (0+1) (length ([]:aenv)) x1). eapply inv_closed_open. eapply stp2_closed2; eauto. eauto. eauto.
-    eexists. eapply stp2_strong_sel2. eauto. eauto. eauto. omega.
+    eexists. eapply stp2_strong_sel2. eauto.
+    eassumption. eapply stp2_wrapf. eassumption.
+    eauto. eauto. omega.
   - Case "selx".
     eexists. eapply stp2_strong_selx. eauto. eauto.
   - Case "sela1". inversion H2.
@@ -3690,7 +3817,6 @@ Proof.
   eapply sstpd2_untrans. eapply stpd2_to_sstpd2. eauto.
 Qed.
 
-
 Lemma sstpd2_downgrade_true: forall G1 G2 T1 T2 H,
   sstpd2 true G1 T1 G2 T2 H ->
   stpd2 true G1 T1 G2 T2 H.
@@ -3706,9 +3832,15 @@ Proof.
     eapply IHstp2_1; eauto. eexists. eassumption.
     eapply stpd2_wrapf. eapply IHstp2_2; eauto. eexists. eassumption.
   - Case "sel1".
-    admit.
+    eapply stpd2_sel1.
+    eassumption. eassumption. eapply valtp_closed. eassumption.
+    eapply IHstp2_1. eexists. eassumption. eauto.
+    eapply stpd2_reg2. eapply IHstp2_2. eexists. eassumption. eauto.
   - Case "sel2".
-    admit.
+    eapply stpd2_sel2.
+    eassumption. eassumption. eapply valtp_closed. eassumption.
+    eapply IHstp2_1. eexists. eassumption. eauto.
+    eapply stpd2_reg1. eapply IHstp2_2. eexists. eassumption. eauto.
   - Case "selx".
     eapply stpd2_selx; eauto.
   - Case "bind".
@@ -4756,16 +4888,6 @@ Proof. intros. repeat eu. eexists. eapply stp2_substitute_aux; eauto. Qed.
 
 
 (* --------------------------------- *)
-
-Lemma valtp_closed: forall G v T,
-  val_type G v T -> closed 0 0 T.
-Proof.
-  intros. inversion H; subst; repeat ev;
-  match goal with
-      [ H : stp2 ?s ?m ?G1 ?T1 G T [] ?n |- _ ] =>
-      eapply stp2_closed2 in H; simpl in H; apply H
-  end.
-Qed.
 
 Hint Constructors wf_envh.
 
