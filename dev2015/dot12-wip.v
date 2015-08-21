@@ -4813,7 +4813,53 @@ Proof.
   - Case "sel2". subst.
     eapply IHn in H5. eapply IHn in H6. ev. ev.
     eexists. eapply stp2_sel2; eauto. omega. omega.
-  - Case "selb2". admit.
+  - Case "selb2".
+
+    eapply IHn in H6. eapply IHn in H7. ev. ev. eapply stpd2_to_sstpd2_aux1 in H6. eapply sstpd2_untrans in H6. eapply valtp_widen with (2:=H6) in H4.
+    remember H4 as Hv. clear HeqHv.
+    subst.
+    (* now invert base on TBind knowledge -- TODO: helper lemma*)
+    inversion H4; ev. subst.
+    inversion H9. subst.
+    inversion H1. subst.
+    inversion H11. subst.
+    inversion H10. subst.
+    inversion H10.  subst.
+
+    assert (exists n, stp2 1 false
+                           venv0 (open (TSel x2) T2)
+                           G1 (open (TSel x) (TMem T0 TTop)) [] n) as ST. {
+
+      eexists. eapply stp2_substitute_aux with (GH0:=[]).
+      eauto.
+      eauto.
+      simpl. reflexivity.
+      erewrite subst_open1. eassumption. eauto.
+     apply closed_open. simpl. eapply closed_upgrade. eauto. eapply closed_upgrade_free. eauto. simpl. omega. omega. eauto. eauto.
+      left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.
+      split. erewrite subst_open1. eassumption. eauto.
+      rewrite subst_open1. reflexivity. eauto.
+
+      left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.
+
+      split.
+      erewrite subst_open1. eassumption. eauto.
+      simpl. erewrite subst_open1. eauto.
+      eapply valtp_closed in H4. inversion H4. subst. inversion H17. subst. eauto.
+      eauto.
+
+      left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.
+
+      split.
+      erewrite subst_open1. eassumption. eauto.
+      simpl. erewrite subst_open1. eauto.
+      eapply valtp_closed in H4. inversion H4. subst. inversion H17. subst. eauto.
+    }
+    destruct ST as [? ST].
+
+    assert (closed 0 (length (nil:aenv)) (open (TSel x2) T2)) as C. eapply stp2_closed1. eauto. simpl in C.
+    eexists. eapply stp2_sel2. eauto. eapply H8. eauto.
+    eapply stp2_extendH_mult0. eauto. eauto. eauto. omega. omega.
   - Case "selx". subst.
     eexists. eapply stp2_selx. eauto. eauto.
   - Case "sela1". subst. eapply IHn in H4. eapply IHn in H5. ev. ev.
