@@ -3694,188 +3694,9 @@ Proof.
     apply 0. apply 0. apply 0. apply 0.
 Qed.
 
-Lemma stpd2_to_sstpd2_aux2: forall n, forall G1 G2 GH T1 T2 m n1,
-  stp2 2 m G1 T1 G2 T2 GH n1 -> n1 < n ->
-  exists n2, stp2 1 m G1 T1 G2 T2 GH n2.
-Proof.
-  intros n. induction n; intros; try omega.
-  inversion H.
-  - Case "topx". eexists. eauto.
-  - Case "botx". eexists. eauto.
-  - Case "top". subst.
-    eapply IHn in H1. inversion H1. eexists. eauto. omega.
-  - Case "bot". subst.
-    eapply IHn in H1. inversion H1. eexists. eauto. omega.
-  - Case "bool". eexists. eauto.
-  - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
-  - Case "mem".
-    eapply IHn in H2. ev. eapply IHn in H3. ev.
-    eexists. eapply stp2_mem2; eauto. omega. omega.
-  - Case "sel1". subst.
-    eapply IHn in H5. eapply IHn in H6. ev. ev.
-    eexists. eapply stp2_sel1; eauto. omega. omega.
-  - Case "selb1". subst.
-    eapply IHn in H5. eapply IHn in H6. ev. ev. eapply stpd2_to_sstpd2_aux1 in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
-    (* now invert base on TBind knowledge -- TODO: helper lemma*)
-    inversion H3; ev. subst.
-    inversion H8. subst.
-    inversion H6. subst.
-    inversion H10.
-    inversion H9. (* 1 case left *)
-    subst. inversion H9. subst.
-    assert (stp2 1 false venv0 (open (TSel x2) T2)
-                 G2 (open (TSel x) (TMem TBot T0)) [] n1) as ST.
-    admit. (* get this from substitute *)
 
-    (* NOTE: this crucially depends on the result of inverting stp_bind having
-       level 1, so we don't need to do induction on it.
+(* begin substitute *)
 
-       Right now, this is quite a limitation: we cannot use level 2 derivations inside binds.
-
-       - We cannot lower levels in hypothetical contexts, because we need to untrans above.
-
-         So we cannot change the bind's body elsewhere, before inverting here.
-
-         (UPDATE: actually that's what we're doing now. We get away with it
-         because GH = [], which means that we may not be able to  unfold nontrivial
-         binds for selections on hypothetical vars)
-
-       - Doing induction on ST here would be difficult, because the size is wrong.
-
-         We're inverting from valtp, which does not count towards our own size.
-         It may seem that it should. But then it needs to be inserted by stp_substitute,
-         ergo stp_substitute will no longer keep things at const size, and will
-         return larger terms.
-
-         That makes it seem unlikely that we'd be able to use IHn on the result.
-
-         We know the size of what we're putting into ST. But we have the same problem
-         as previously in narrowing: we do not know how many times the added term
-         is used, so we cannot bound the result size.
-    *)
-    assert (closed 0 (length (nil:aenv)) (open (TSel x2) T2)) as C. eapply stp2_closed1. eauto. simpl in C.
-    eexists. eapply stp2_sel1. eauto. eapply H7. eauto.
-    eapply stp2_extendH_mult0. eauto. eauto. eauto. omega. omega.
-  - Case "sel2". subst.
-    eapply IHn in H5. eapply IHn in H6. ev. ev.
-    eexists. eapply stp2_sel2; eauto. omega. omega.
-  - Case "selb2". admit.
-  - Case "selx". subst.
-    eexists. eapply stp2_selx. eauto. eauto.
-  - Case "sela1". subst. eapply IHn in H4. eapply IHn in H5. ev. ev.
-    eexists. eapply stp2_sela1; eauto. omega. omega.
-  - Case "selab1".
-    (* THIS ONE WILL NOT WORK AT LEVEL 2 (no way to remove *)
-    (* so we use it at level 1, and translate during subst *)
-    (* restriction GH = [] ensures that level 2 terms are already removed *)
-    eapply IHn in H3. eapply IHn in H5. ev. ev.
-    eexists. eapply stp2_selab1; eauto. omega. omega.
-  - Case "sela2". eapply IHn in H4. eapply IHn in H5. ev. ev.
-    eexists. eapply stp2_sela2; eauto. omega. omega.
-  - Case "selhx". eexists. eapply stp2_selax. eauto.
-  - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eapply H4. eapply H5.
-  - Case "bind".
-    eapply IHn in H4. eapply IHn in H5. ev. ev.
-    eexists. eapply stp2_bindb. eauto. eauto. eauto. eauto. omega. omega.
-  - Case "and11". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
-    eexists. eapply stp2_and11; eauto. omega. omega.
-  - Case "and12". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
-    eexists. eapply stp2_and12; eauto. omega. omega.
-  - Case "and2". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
-    eexists. eapply stp2_and2; eauto. omega. omega.
-  - Case "wrapf". eapply IHn in H1. ev. eexists. eapply stp2_wrapf. eauto. omega.
-  - Case "transf". eapply IHn in H1. eapply IHn in H2. ev. ev. eexists.
-    eapply stp2_transf. eauto. eauto. omega. omega.
-    Grab Existential Variables.
-    apply 0. apply 0. apply 0. apply 0. apply 0.
-Qed.
-
-
-Lemma stpd2_to_atpd2: forall G1 G2 T1 T2 GH m,
-  stpd2 m G1 T1 G2 T2 GH ->
-  atpd2 m G1 T1 G2 T2 GH.
-Proof.
-  intros. eu. eapply stpd2_to_sstpd2_aux2.
-  eassumption. eauto.
-Qed.
-
-Lemma stpd2_to_sstpd2: forall G1 G2 T1 T2 m,
-  stpd2 m G1 T1 G2 T2 nil ->
-  sstpd2 m G1 T1 G2 T2 nil.
-Proof.
-  intros. eu.
-  eapply stpd2_to_sstpd2_aux2 in H. ev.
-  eapply stpd2_to_sstpd2_aux1; eauto. eauto.
-Qed.
-
-
-Lemma stpd2_upgrade: forall G1 G2 T1 T2,
-  stpd2 false G1 T1 G2 T2 nil ->
-  sstpd2 true G1 T1 G2 T2 nil.
-Proof.
-  intros.
-  eapply sstpd2_untrans. eapply stpd2_to_sstpd2. eauto.
-Qed.
-
-Lemma sstpd2_downgrade_true: forall G1 G2 T1 T2 H,
-  sstpd2 true G1 T1 G2 T2 H ->
-  stpd2 true G1 T1 G2 T2 H.
-Proof.
-  intros. inversion H0. remember 0 as m. induction H1;
-    try solve [eexists; eauto]; try solve [inversion Heqm].
-  - Case "top".
-    eapply stpd2_top. eapply IHstp2. eapply sstpd2_reg1. eassumption. eauto.
-  - Case "bot".
-    eapply stpd2_bot. eapply IHstp2. eapply sstpd2_reg2. eassumption. eauto.
-  - Case "mem".
-    eapply stpd2_mem.
-    eapply IHstp2_1; eauto. eexists. eassumption.
-    eapply stpd2_wrapf. eapply IHstp2_2; eauto. eexists. eassumption.
-  - Case "sel1".
-    eapply stpd2_sel1.
-    eassumption. eassumption. eapply valtp_closed. eassumption.
-    eapply IHstp2_1. eexists. eassumption. eauto.
-    eapply stpd2_reg2. eapply IHstp2_2. eexists. eassumption. eauto.
-  - Case "sel2".
-    eapply stpd2_sel2.
-    eassumption. eassumption. eapply valtp_closed. eassumption.
-    eapply IHstp2_1. eexists. eassumption. eauto.
-    eapply stpd2_reg1. eapply IHstp2_2. eexists. eassumption. eauto.
-  - Case "selx".
-    eapply stpd2_selx; eauto.
-  - Case "bind".
-    eapply stpd2_bind; eauto.
-    eapply atpd2_to_stpd2. eexists. eassumption.
-    eapply atpd2_to_stpd2. eexists. eassumption.
-  - Case "and11".
-    eapply stpd2_and11; eauto.
-    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
-    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
-  - Case "and12".
-    eapply stpd2_and12; eauto.
-    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
-    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
-  - Case "and2".
-    eapply stpd2_and2; eauto.
-    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
-    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
-  - Case "wrap". destruct m.
-    + eapply stpd2_wrapf. eapply IHstp2. eexists. eassumption. eauto.
-    + inversion Heqm.
-  - Case "trans". destruct m.
-    + eapply stpd2_transf. eapply IHstp2_1. eexists; eauto. eauto.
-      eapply IHstp2_2. eexists. eauto. eauto.
-    + inversion Heqm.
-  Grab Existential Variables.
-  apply 0. apply 0. apply 0.
-Qed.
-
-Lemma sstpd2_downgrade: forall G1 G2 T1 T2 H,
-  sstpd2 true G1 T1 G2 T2 H ->
-  stpd2 false G1 T1 G2 T2 H.
-Proof.
-  intros. eapply stpd2_wrapf. eapply sstpd2_downgrade_true. eassumption.
-Qed.
 
 Lemma index_miss {X}: forall x x1 (B:X) A G,
   index x ((x1,B)::G) = A ->
@@ -4886,6 +4707,190 @@ Lemma stpd2_substitute: forall m G1 G2 T1 T2 GH,
      stpd2 m G1 T1' G2 T2' GH0'.
 Proof. intros. repeat eu. eexists. eapply stp2_substitute_aux; eauto. Qed.
 
+(* end substitute *)
+
+Lemma stpd2_to_sstpd2_aux2: forall n, forall G1 G2 GH T1 T2 m n1,
+  stp2 2 m G1 T1 G2 T2 GH n1 -> n1 < n ->
+  exists n2, stp2 1 m G1 T1 G2 T2 GH n2.
+Proof.
+  intros n. induction n; intros; try omega.
+  inversion H.
+  - Case "topx". eexists. eauto.
+  - Case "botx". eexists. eauto.
+  - Case "top". subst.
+    eapply IHn in H1. inversion H1. eexists. eauto. omega.
+  - Case "bot". subst.
+    eapply IHn in H1. inversion H1. eexists. eauto. omega.
+  - Case "bool". eexists. eauto.
+  - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
+  - Case "mem".
+    eapply IHn in H2. ev. eapply IHn in H3. ev.
+    eexists. eapply stp2_mem2; eauto. omega. omega.
+  - Case "sel1". subst.
+    eapply IHn in H5. eapply IHn in H6. ev. ev.
+    eexists. eapply stp2_sel1; eauto. omega. omega.
+  - Case "selb1". subst.
+    eapply IHn in H5. eapply IHn in H6. ev. ev. eapply stpd2_to_sstpd2_aux1 in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
+    (* now invert base on TBind knowledge -- TODO: helper lemma*)
+    inversion H3; ev. subst.
+    inversion H8. subst.
+    inversion H6. subst.
+    inversion H10.
+    inversion H9. (* 1 case left *)
+    subst. inversion H9. subst.
+    assert (stp2 1 false venv0 (open (TSel x2) T2)
+                 G2 (open (TSel x) (TMem TBot T0)) [] n1) as ST.
+    admit. (* get this from substitute *)
+
+    (* NOTE: this crucially depends on the result of inverting stp_bind having
+       level 1, so we don't need to do induction on it.
+
+       Right now, this is quite a limitation: we cannot use level 2 derivations inside binds.
+
+       - We cannot lower levels in hypothetical contexts, because we need to untrans above.
+
+         So we cannot change the bind's body elsewhere, before inverting here.
+
+         (UPDATE: actually that's what we're doing now. We get away with it
+         because GH = [], which means that we may not be able to  unfold nontrivial
+         binds for selections on hypothetical vars)
+
+       - Doing induction on ST here would be difficult, because the size is wrong.
+
+         We're inverting from valtp, which does not count towards our own size.
+         It may seem that it should. But then it needs to be inserted by stp_substitute,
+         ergo stp_substitute will no longer keep things at const size, and will
+         return larger terms.
+
+         That makes it seem unlikely that we'd be able to use IHn on the result.
+
+         We know the size of what we're putting into ST. But we have the same problem
+         as previously in narrowing: we do not know how many times the added term
+         is used, so we cannot bound the result size.
+    *)
+    assert (closed 0 (length (nil:aenv)) (open (TSel x2) T2)) as C. eapply stp2_closed1. eauto. simpl in C.
+    eexists. eapply stp2_sel1. eauto. eapply H7. eauto.
+    eapply stp2_extendH_mult0. eauto. eauto. eauto. omega. omega.
+  - Case "sel2". subst.
+    eapply IHn in H5. eapply IHn in H6. ev. ev.
+    eexists. eapply stp2_sel2; eauto. omega. omega.
+  - Case "selb2". admit.
+  - Case "selx". subst.
+    eexists. eapply stp2_selx. eauto. eauto.
+  - Case "sela1". subst. eapply IHn in H4. eapply IHn in H5. ev. ev.
+    eexists. eapply stp2_sela1; eauto. omega. omega.
+  - Case "selab1".
+    (* THIS ONE WILL NOT WORK AT LEVEL 2 (no way to remove *)
+    (* so we use it at level 1, and translate during subst *)
+    (* restriction GH = [] ensures that level 2 terms are already removed *)
+    eapply IHn in H3. eapply IHn in H5. ev. ev.
+    eexists. eapply stp2_selab1; eauto. omega. omega.
+  - Case "sela2". eapply IHn in H4. eapply IHn in H5. ev. ev.
+    eexists. eapply stp2_sela2; eauto. omega. omega.
+  - Case "selhx". eexists. eapply stp2_selax. eauto.
+  - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eapply H4. eapply H5.
+  - Case "bind".
+    eapply IHn in H4. eapply IHn in H5. ev. ev.
+    eexists. eapply stp2_bindb. eauto. eauto. eauto. eauto. omega. omega.
+  - Case "and11". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
+    eexists. eapply stp2_and11; eauto. omega. omega.
+  - Case "and12". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
+    eexists. eapply stp2_and12; eauto. omega. omega.
+  - Case "and2". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
+    eexists. eapply stp2_and2; eauto. omega. omega.
+  - Case "wrapf". eapply IHn in H1. ev. eexists. eapply stp2_wrapf. eauto. omega.
+  - Case "transf". eapply IHn in H1. eapply IHn in H2. ev. ev. eexists.
+    eapply stp2_transf. eauto. eauto. omega. omega.
+    Grab Existential Variables.
+    apply 0. apply 0. apply 0. apply 0. apply 0.
+Qed.
+
+
+Lemma stpd2_to_atpd2: forall G1 G2 T1 T2 GH m,
+  stpd2 m G1 T1 G2 T2 GH ->
+  atpd2 m G1 T1 G2 T2 GH.
+Proof.
+  intros. eu. eapply stpd2_to_sstpd2_aux2.
+  eassumption. eauto.
+Qed.
+
+Lemma stpd2_to_sstpd2: forall G1 G2 T1 T2 m,
+  stpd2 m G1 T1 G2 T2 nil ->
+  sstpd2 m G1 T1 G2 T2 nil.
+Proof.
+  intros. eu.
+  eapply stpd2_to_sstpd2_aux2 in H. ev.
+  eapply stpd2_to_sstpd2_aux1; eauto. eauto.
+Qed.
+
+
+Lemma stpd2_upgrade: forall G1 G2 T1 T2,
+  stpd2 false G1 T1 G2 T2 nil ->
+  sstpd2 true G1 T1 G2 T2 nil.
+Proof.
+  intros.
+  eapply sstpd2_untrans. eapply stpd2_to_sstpd2. eauto.
+Qed.
+
+Lemma sstpd2_downgrade_true: forall G1 G2 T1 T2 H,
+  sstpd2 true G1 T1 G2 T2 H ->
+  stpd2 true G1 T1 G2 T2 H.
+Proof.
+  intros. inversion H0. remember 0 as m. induction H1;
+    try solve [eexists; eauto]; try solve [inversion Heqm].
+  - Case "top".
+    eapply stpd2_top. eapply IHstp2. eapply sstpd2_reg1. eassumption. eauto.
+  - Case "bot".
+    eapply stpd2_bot. eapply IHstp2. eapply sstpd2_reg2. eassumption. eauto.
+  - Case "mem".
+    eapply stpd2_mem.
+    eapply IHstp2_1; eauto. eexists. eassumption.
+    eapply stpd2_wrapf. eapply IHstp2_2; eauto. eexists. eassumption.
+  - Case "sel1".
+    eapply stpd2_sel1.
+    eassumption. eassumption. eapply valtp_closed. eassumption.
+    eapply IHstp2_1. eexists. eassumption. eauto.
+    eapply stpd2_reg2. eapply IHstp2_2. eexists. eassumption. eauto.
+  - Case "sel2".
+    eapply stpd2_sel2.
+    eassumption. eassumption. eapply valtp_closed. eassumption.
+    eapply IHstp2_1. eexists. eassumption. eauto.
+    eapply stpd2_reg1. eapply IHstp2_2. eexists. eassumption. eauto.
+  - Case "selx".
+    eapply stpd2_selx; eauto.
+  - Case "bind".
+    eapply stpd2_bind; eauto.
+    eapply atpd2_to_stpd2. eexists. eassumption.
+    eapply atpd2_to_stpd2. eexists. eassumption.
+  - Case "and11".
+    eapply stpd2_and11; eauto.
+    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
+    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
+  - Case "and12".
+    eapply stpd2_and12; eauto.
+    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
+    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
+  - Case "and2".
+    eapply stpd2_and2; eauto.
+    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
+    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
+  - Case "wrap". destruct m.
+    + eapply stpd2_wrapf. eapply IHstp2. eexists. eassumption. eauto.
+    + inversion Heqm.
+  - Case "trans". destruct m.
+    + eapply stpd2_transf. eapply IHstp2_1. eexists; eauto. eauto.
+      eapply IHstp2_2. eexists. eauto. eauto.
+    + inversion Heqm.
+  Grab Existential Variables.
+  apply 0. apply 0. apply 0.
+Qed.
+
+Lemma sstpd2_downgrade: forall G1 G2 T1 T2 H,
+  sstpd2 true G1 T1 G2 T2 H ->
+  stpd2 false G1 T1 G2 T2 H.
+Proof.
+  intros. eapply stpd2_wrapf. eapply sstpd2_downgrade_true. eassumption.
+Qed.
 
 (* --------------------------------- *)
 
