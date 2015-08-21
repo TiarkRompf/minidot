@@ -12,6 +12,7 @@ Require Export SfLib.
 
 Require Export Arith.EqNat.
 Require Export Arith.Le.
+Require Import Coq.Program.Equality.
 
 Module FSUB.
 
@@ -4909,8 +4910,6 @@ Lemma stp_to_wf_tp: forall G GH T,
 Proof.
   intros. apply (proj1 (stp_to_wf_tp_aux G GH T T H)).
 Qed.
-
-Require Import Coq.Program.Equality.
 
 Lemma wf_tp_to_stp2_cycle_aux: forall T v G GH,
   wf_tp ((fresh G, TMem T T) :: G) GH T ->
