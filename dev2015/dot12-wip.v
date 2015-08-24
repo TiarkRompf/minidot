@@ -5025,8 +5025,8 @@ Proof.
   - Case "selab1".
     (* THIS ONE WILL NOT WORK AT LEVEL 2 (no way to remove *)
     (* so we use it at level 1, and translate during subst *)
-    (* restriction GH = [] ensures that level 2 terms are already removed *)
-    eapply IHn in H3. eapply IHn in H5. ev. ev.
+    subst.
+    eapply IHn in H5. eapply IHn in H7. ev. ev.
     eexists. eapply stp2_selab1; eauto. omega. omega.
   - Case "sela2". eapply IHn in H4. eapply IHn in H5. ev. ev.
     eexists. eapply stp2_sela2; eauto. omega. omega.
