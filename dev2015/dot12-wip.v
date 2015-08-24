@@ -2255,6 +2255,13 @@ Lemma stp2_extendH : forall x v1 G1 G2 T1 T2 GH s m n1,
                        stp2 s m G1 T1 G2 T2 ((x,v1)::GH) n1.
 Proof.
   intros. induction H; eauto using indexr_extend.
+  - Case "selab".
+    eapply stp2_selab1. eapply indexr_extend. eassumption.
+    eassumption. eassumption.
+    eassumption. rewrite H3. instantiate (1:=(x, v1)::GU). simpl. reflexivity.
+    eassumption.
+    eassumption.
+    eassumption.
   - Case "all".
   assert (splice (length GH) T2 = T2) as A2. {
     eapply closed_splice_idem. apply H0. omega.
