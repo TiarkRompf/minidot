@@ -5413,12 +5413,12 @@ Proof.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]].
-    inversion VT. subst.
+    inversion VT. subst. admit. (*
     eapply stpd2_selab1. eauto. eauto. eauto.
     eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
     specialize (IHST2 _ _ WX WY).
     apply stpd2_reg2 in IHST2.
-    apply IHST2.
+    apply IHST2. *)
   - Case "selab2". admit.
   - Case "selax".
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
