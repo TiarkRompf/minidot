@@ -4703,7 +4703,32 @@ Proof.
         eauto. eauto.
         inversion H4. subst. inversion H19. subst. eassumption.
 
-        destruct IX2 as [IX21 IX22]. admit.
+        destruct IX2 as [IX21 IX22].
+        assert (T2' = open (TSel x) T0) as A. {
+          unfold open. erewrite open_noop.
+          rewrite IX22. unfold open. erewrite open_noop.
+          reflexivity.
+          eapply closed_open_tselh. eassumption.
+          eapply closed_open_tselh. eassumption.
+        }
+        rewrite A.  
+        eapply stp2_selb1. eassumption. right. eapply closed_open_tselh. eassumption.
+        eassumption. eapply closed_subst. eapply closed_upgrade_free. eauto. omega. eauto.
+        eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto.
+        eauto.
+        right. left. split. eassumption. reflexivity.
+        admit. eauto.
+        eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto.
+        right. left. split. eassumption.
+        unfold open. erewrite open_noop. erewrite open_noop. reflexivity.
+        eapply closed_open_tselh. eassumption.
+        eapply closed_open_tselh. eassumption.
+        right. left. split. eassumption.
+        unfold open. erewrite open_noop. erewrite open_noop. reflexivity.
+        eapply closed_open_tselh. eassumption.
+        eapply closed_open_tselh. eassumption.
+        eauto. eauto.
+
         destruct IX2 as [IX21 IX22]. admit.
 
       * subst. inversion H1. omega.
