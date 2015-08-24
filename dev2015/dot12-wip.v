@@ -4387,6 +4387,60 @@ Proof.
 Qed.
 
 
+Lemma subst_open1_aux: forall j x T,
+closed (j+1) 0 T ->
+(subst (TSel x) (open_rec j (TSelH 0) T)) = (open_rec j (TSel x) T).
+Proof.
+  intros. generalize dependent j. induction T; intros; eauto.
+  - simpl.
+    rewrite <- IHT1.
+    rewrite <- IHT2.
+    reflexivity.
+    inversion H. eauto.
+    inversion H. eauto.
+  - simpl.
+    rewrite <- IHT1.
+    rewrite <- IHT2.
+    reflexivity.
+    inversion H. eauto.
+    inversion H. eauto.
+  - inversion H. subst. inversion H3.
+  - inversion H. subst.
+    simpl.
+    case_eq (beq_nat j i); intros E.
+    + simpl. reflexivity.
+    + simpl. reflexivity.
+  - simpl.
+    rewrite <- IHT1.
+    assert (S j = j+1) as A by omega.
+    rewrite A. rewrite <- IHT2.
+    reflexivity.
+    inversion H. subst.
+    assert (j + 1 + 1 = S (j + 1)) as B by omega.
+    rewrite B. eassumption.
+    inversion H. subst. eauto.
+  - simpl.
+    assert (S j = j+1) as A by omega.
+    rewrite A. rewrite <- IHT.
+    reflexivity.
+    inversion H. subst.
+    assert (j + 1 + 1 = S (j + 1)) as B by omega.
+    rewrite B. eassumption.
+  - simpl.
+    rewrite <- IHT1.
+    rewrite <- IHT2.
+    reflexivity.
+    inversion H. eauto.
+    inversion H. eauto.
+Qed.
+
+Lemma subst_open1: forall x T,
+closed 1 0 T ->
+(subst (TSel x) (open (TSelH 0) T)) = (open (TSel x) T).
+Proof.
+  intros. eapply subst_open1_aux. simpl. eassumption.
+Qed.
+
 (* can be called on level >= 1 *)
 
 Lemma stp2_substitute_aux: forall n, forall d m G1 G2 T1 T2 GH n1,
@@ -4835,60 +4889,6 @@ Lemma stpd2_substitute: forall m G1 G2 T1 T2 GH,
 Proof. intros. repeat eu. eexists. eapply stp2_substitute_aux; eauto. Qed.
 
 (* end substitute *)
-
-Lemma subst_open1_aux: forall j x T,
-closed (j+1) 0 T ->
-(subst (TSel x) (open_rec j (TSelH 0) T)) = (open_rec j (TSel x) T).
-Proof.
-  intros. generalize dependent j. induction T; intros; eauto.
-  - simpl.
-    rewrite <- IHT1.
-    rewrite <- IHT2.
-    reflexivity.
-    inversion H. eauto.
-    inversion H. eauto.
-  - simpl.
-    rewrite <- IHT1.
-    rewrite <- IHT2.
-    reflexivity.
-    inversion H. eauto.
-    inversion H. eauto.
-  - inversion H. subst. inversion H3.
-  - inversion H. subst.
-    simpl.
-    case_eq (beq_nat j i); intros E.
-    + simpl. reflexivity.
-    + simpl. reflexivity.
-  - simpl.
-    rewrite <- IHT1.
-    assert (S j = j+1) as A by omega.
-    rewrite A. rewrite <- IHT2.
-    reflexivity.
-    inversion H. subst.
-    assert (j + 1 + 1 = S (j + 1)) as B by omega.
-    rewrite B. eassumption.
-    inversion H. subst. eauto.
-  - simpl.
-    assert (S j = j+1) as A by omega.
-    rewrite A. rewrite <- IHT.
-    reflexivity.
-    inversion H. subst.
-    assert (j + 1 + 1 = S (j + 1)) as B by omega.
-    rewrite B. eassumption.
-  - simpl.
-    rewrite <- IHT1.
-    rewrite <- IHT2.
-    reflexivity.
-    inversion H. eauto.
-    inversion H. eauto.
-Qed.
-
-Lemma subst_open1: forall x T,
-closed 1 0 T ->
-(subst (TSel x) (open (TSelH 0) T)) = (open (TSel x) T).
-Proof.
-  intros. eapply subst_open1_aux. simpl. eassumption.
-Qed.
 
 Lemma stpd2_to_sstpd2_aux2: forall n, forall G1 G2 GH T1 T2 m n1,
   stp2 2 m G1 T1 G2 T2 GH n1 -> n1 < n ->
