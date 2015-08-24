@@ -2023,7 +2023,29 @@ Proof.
   - simpl. rewrite IHaenv_ext. reflexivity.
 Qed.
 
-Lemma indexr_at_ext :
+Lemma aenv_ext__concat:
+  forall GH GH' GU GL,
+    aenv_ext GH' GH ->
+    GH = GU ++ GL ->
+    exists GU' GL', GH' = GU' ++ GL' /\ aenv_ext GU' GU /\ aenv_ext GL' GL.
+Proof.
+  intros. generalize dependent GU. generalize dependent GL. induction H.
+  - intros. symmetry in H0. apply app_eq_nil in H0. destruct H0.
+    exists []. exists []. simpl. split; eauto. subst. split. apply aenv_ext_refl. apply aenv_ext_refl.
+  - intros. induction GU. rewrite app_nil_l in H1. subst.
+    exists []. eexists. rewrite app_nil_l. split. reflexivity.
+    split. apply aenv_ext_refl.
+    apply aenv_ext_cons. eassumption. eassumption.
+
+    simpl in H1. inversion H1.
+    specialize (IHaenv_ext GL GU H4).
+    destruct IHaenv_ext as [GU' [GL' [IHA [IHU IHL]]]].
+    exists ((x, (G', T))::GU'). exists GL'.
+    split. simpl. rewrite IHA. reflexivity.
+    split. apply aenv_ext_cons. apply IHU. assumption. apply IHL.
+Qed.
+
+ Lemma indexr_at_ext :
   forall GH GH' x T G,
     aenv_ext GH' GH ->
     indexr x GH = Some (G, T) ->
@@ -2111,8 +2133,14 @@ Proof.
       apply indexr_at_ext with (GH:=GH); assumption.
     }
     inversion A as [GX' [H' HX]].
-    eapply stp2_selab1 with (GX:=GX') (TX:=TX).
+    assert (exists GU' GL', GH' = GU' ++ GL' /\ aenv_ext GU' GU /\ aenv_ext GL' GL) as B. {
+      eapply aenv_ext__concat. eassumption. eassumption.
+    }
+    destruct B as [GU' [GL' [BEQ [BU BL]]]].
+    eapply stp2_selab1 with (GX:=GX') (TX:=TX) (GL:=GL') (GU:=GU').
     assumption. eassumption. eassumption.
+    rewrite <- H2. symmetry. apply aenv_ext__same_length. eassumption.
+    eassumption.
     apply IHstp2_1; eauto.
     eassumption.
     apply IHstp2_2; eauto.
