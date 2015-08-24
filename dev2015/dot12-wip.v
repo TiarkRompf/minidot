@@ -3657,7 +3657,6 @@ Proof.
   - Case "selx".
     eexists. eapply stp2_strong_selx. eauto. eauto.
   - Case "sela1". inversion H2.
-  - Case "selab1". inversion H2.
   - Case "sela2". inversion H2.
   - Case "selax". inversion H2.
   - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto. eauto.
