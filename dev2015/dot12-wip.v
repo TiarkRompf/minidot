@@ -4460,9 +4460,9 @@ Proof.
     destruct IX1.
     + SCase "x = 0". ev. subst.
       repeat destruct IXX as [|IXX]; ev.
-      * subst. simpl. inversion H7. subst.
+      * subst. simpl. inversion H9. subst.
         eapply stp2_sel1. eauto. eauto. eapply closed_subst. eapply closed_upgrade_free. eauto. omega. eauto.
-        eapply IHn. apply stp2_extendH_mult0. eauto. omega. eauto. eauto. eapply CX. eauto.
+        eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto.
         eauto.
         admit.
         eauto. eauto.
@@ -4481,10 +4481,9 @@ Proof.
       eapply closed_compat'. eauto.
       eapply closed_upgrade_free. eauto. omega.
       assert (x + 1 = (S x)) as B by omega. rewrite B.
-      eapply closed_upgrade_free. eapply stp2_closed1. eassumption.
-      simpl. omega.
+      eassumption.
 
-      eapply IHn. eapply stp2_extendH_mult0. eauto. omega. eauto. eauto. eauto. eauto. eauto.
+      eapply IHn. eauto. omega. eauto. eauto. eauto. eauto. eauto.
       admit.
       eauto. eauto.
       eapply IHn; eauto; try omega.
