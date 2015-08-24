@@ -2793,7 +2793,7 @@ Proof.
         eapply stpd2_sela1. eapply A. assumption.
         eapply IHn; try eassumption. omega.
         eapply IHn; try eassumption. omega.
-    + SCase "selab1". admit. (*
+    + SCase "selab1".
       case_eq (beq_nat x (length GH0)); intros E.
       * assert (indexr x ([(x0, (GX2, TX2))]++GH0) = Some (GX2, TX2)) as A2. {
           simpl. rewrite E. reflexivity.
@@ -2807,7 +2807,10 @@ Proof.
         inversion E2. subst.
         eapply stpd2_selab1.
         eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
-        eapply stpd2_trans. eassumption. eexists. eassumption.
+        eapply stpd2_closed1 in HX. simpl in HX. eapply beq_nat_true in E. rewrite E. eapply HX.
+        eassumption.
+        eapply stpd2_trans. eapply stpd2_extendH_mult. eapply HX.
+        eapply IHn; try eassumption. omega. reflexivity. reflexivity.
         eapply IHn; try eassumption. omega.
         reflexivity. reflexivity.
       * assert (indexr x GH' = Some (GX, TX)) as A. {
@@ -2815,8 +2818,9 @@ Proof.
           eapply indexr_same. apply E. eassumption.
         }
         eapply stpd2_selab1. eapply A.
-        eexists. eassumption.
-        eapply IHn; try eassumption. omega. *)
+        eassumption. eassumption.
+        eapply IHn; try eassumption. omega.
+        eapply IHn; try eassumption. omega.
     + SCase "sela2".
       case_eq (beq_nat x (length GH0)); intros E.
       * assert (indexr x ([(x0, (GX2, TX2))]++GH0) = Some (GX2, TX2)) as A2. {
