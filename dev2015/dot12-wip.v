@@ -3332,7 +3332,7 @@ Proof.
       * assert (indexr x ([(x0, (GX2, TX2))]++GH0) = Some (GX2, TX2)) as A2. {
           simpl. rewrite E. reflexivity.
         }
-        assert (indexr x GH = Some (GX2, TX2)) as A2'. {
+        assert (indexr x (GU ++ GL) = Some (GX2, TX2)) as A2'. {
           rewrite EGH. eapply indexr_extend_mult. apply A2.
         }
         assert (Some (GX2,TX2) = Some (GX, TX)) as E2. {
@@ -3343,17 +3343,21 @@ Proof.
         eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
         eapply atpd2_closed1 in HX. simpl in HX. eapply beq_nat_true in E. rewrite E. eapply HX.
         eassumption.
-        eapply atpd2_trans_axiom. eapply atpd2_extendH_mult. eapply HX.
-        eapply IHn; try eassumption. omega. reflexivity. reflexivity.
+        instantiate (1:=([(x0, (GX1, TX1))]++GH0)). simpl. apply beq_nat_true in E. rewrite E. reflexivity.
+        reflexivity.
+        eapply atpd2_trans_axiom. eapply HX.
+        eapply IHn; try eassumption. omega. rewrite app_nil_l. admit. simpl. reflexivity.
         eapply IHn; try eassumption. omega.
-        reflexivity. reflexivity.
+        reflexivity.
       * assert (indexr x GH' = Some (GX, TX)) as A. {
           subst.
-          eapply indexr_same. apply E. eassumption.
+          eapply indexr_same. apply E. rewrite EGH in H1. eassumption.
         }
-        eapply atpd2_selab1. eapply A.
+        eapply atpd2_selab1 with (GH:=GH'). eapply A.
         eassumption. eassumption.
-        eapply IHn; try eassumption. omega.
+        instantiate (1:=GL). eassumption.
+        instantiate (1:=GU). admit.
+        eexists. eassumption. (*eapply IHn; try eassumption. omega.*)
         eapply IHn; try eassumption. omega.
     + SCase "sela2".
       case_eq (beq_nat x (length GH0)); intros E.
