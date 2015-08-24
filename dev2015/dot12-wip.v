@@ -491,10 +491,10 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     indexr x GH = Some (GX, TX) ->
     closed 0 (S x) TX ->
     closed 0 0 (TBind (TMem TBot T2)) ->
-    stp2 (S m) false GX TX G2 (TBind (TMem TBot T2)) GH n1 ->
+    stp2 (S (S m)) false GX TX G2 (TBind (TMem TBot T2)) GH n1 ->
     T2' = (open (TSelH x) T2) ->
-    stp2 (S m) true G2 T2' G2 T2' GH n2 -> (* regularity *)
-    stp2 (S m) true G1 (TSelH x) G2 T2' GH (S (n1+n2))
+    stp2 (S (S m)) true G2 T2' G2 T2' GH n2 -> (* regularity *)
+    stp2 (S (S m)) true G1 (TSelH x) G2 T2' GH (S (n1+n2))
 
 | stp2_sela2: forall m G1 G2 GX TX x T1 GH n1 n2,
     indexr x GH = Some (GX, TX) ->
@@ -2975,10 +2975,6 @@ Proof.
                eexists; econstructor; eauto 2].
   - Case "selx".
     eexists. eapply stp2_selx; eauto.
-  - Case "selab1". (* why is selab in atpd? *)
-    specialize (IHstp2_1 Heqm); destruct IHstp2_1;
-    specialize (IHstp2_2 Heqm); destruct IHstp2_2.
-    eexists. eapply stp2_selab1; eauto.
   - Case "selabx".
     eexists. eapply stp2_selax; eauto.
   - Case "and12".
@@ -3045,14 +3041,6 @@ Lemma atpd2_selx: forall G1 G2 x1 x2 GH v,
     index x2 G2 = Some v ->
     atpd2 true G1 (TSel x1) G2 (TSel x2) GH.
 Proof. intros. eauto. exists (S 0). eapply stp2_selx; eauto. Qed.
-
-Lemma atpd2_selab1: forall G1 G2 GX TX x T2 GH,
-    indexr x GH = Some (GX, TX) ->
-    (* closed 0 x TX -> *)
-    atpd2 false GX TX G2 (TBind (TMem TBot T2)) [] -> (* Note GH = [] *)
-    atpd2 true G2 (open (TSelH x) T2) G2 (open (TSelH x) T2) GH ->
-    atpd2 true G1 (TSelH x) G2 (open (TSelH x) T2) GH.
-Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab1; eauto. Qed.
 
 Lemma atpd2_sela1: forall G1 G2 GX TX x T2 GH,
     indexr x GH = Some (GX, TX) ->
@@ -3177,30 +3165,6 @@ Proof.
         eapply atpd2_sela1. eapply A. assumption.
         eapply IHn; try eassumption. omega.
         eapply IHn; try eassumption. omega.
-    + SCase "selab1". admit. (*
-      case_eq (beq_nat x (length GH0)); intros E.
-      * assert (indexr x ([(x0, (GX2, TX2))]++GH0) = Some (GX2, TX2)) as A2. {
-          simpl. rewrite E. reflexivity.
-        }
-        assert (indexr x GH = Some (GX2, TX2)) as A2'. {
-          rewrite EGH. eapply indexr_extend_mult. apply A2.
-        }
-        assert (Some (GX2,TX2) = Some (GX, TX)) as E2. {
-          rewrite A2' in H1. apply H1.
-        }
-        inversion E2. subst.
-        eapply stpd2_selab1.
-        eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
-        eapply stpd2_trans. eassumption. eexists. eassumption.
-        eapply IHn; try eassumption. omega.
-        reflexivity. reflexivity.
-      * assert (indexr x GH' = Some (GX, TX)) as A. {
-          subst.
-          eapply indexr_same. apply E. eassumption.
-        }
-        eapply stpd2_selab1. eapply A.
-        eexists. eassumption.
-        eapply IHn; try eassumption. omega. *)
     + SCase "sela2".
       case_eq (beq_nat x (length GH0)); intros E.
       * assert (indexr x ([(x0, (GX2, TX2))]++GH0) = Some (GX2, TX2)) as A2. {
