@@ -453,13 +453,13 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 (S m) true G2 T2 G2 T2 GH n2 -> (* regularity *)
     stp2 (S m) true G1 (TSel x) G2 T2 GH (S (n1+n2))
 
-| stp2_selb1: forall m G1 G2 GX TX x T2 GH n1 n2 v,
-    index x G1 = Some v -> index x G2 = Some v ->
+| stp2_selb1: forall m G1 G2 GX TX x x' T2 GH n1 n2 v,
+    index x G1 = Some v -> (index x' G2 = Some v \/ closed 0 0 T2) ->
     val_type GX v TX ->
     closed 0 0 TX ->
     stp2 (S (S m)) false GX TX G2 (TBind (TMem TBot T2)) [] n1 -> (* Note GH = [] *)
-    stp2 (S (S m)) true G2 (open (TSel x) T2) G2 (open (TSel x) T2) GH n2 -> (* regularity *)
-    stp2 (S (S m)) true G1 (TSel x) G2 (open (TSel x) T2) GH (S (n1+n2))
+    stp2 (S (S m)) true G2 (open (TSel x') T2) G2 (open (TSel x') T2) GH n2 -> (* regularity *)
+    stp2 (S (S m)) true G1 (TSel x) G2 (open (TSel x') T2) GH (S (n1+n2))
 
 
 | stp2_sel2: forall m G1 G2 GX TX x T1 GH n1 n2 v,
@@ -671,13 +671,13 @@ Lemma stpd2_sel1: forall G1 G2 GX TX x T2 GH v,
     stpd2 true G1 (TSel x) G2 T2 GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel1; eauto. Qed.
 
-Lemma stpd2_selb1: forall G1 G2 GX TX x T2 GH v,
-    index x G1 = Some v -> index x G2 = Some v ->
+Lemma stpd2_selb1: forall G1 G2 GX TX x x' T2 GH v,
+    index x G1 = Some v -> (index x' G2 = Some v \/ closed 0 0 T2) ->
     val_type GX v TX ->
     closed 0 0 TX ->
     stpd2 false GX TX G2 (TBind (TMem TBot T2)) [] -> (* Note GH = [] *)
-    stpd2 true G2 (open (TSel x) T2) G2 (open (TSel x) T2) GH ->
-    stpd2 true G1 (TSel x) G2 (open (TSel x) T2) GH.
+    stpd2 true G2 (open (TSel x') T2) G2 (open (TSel x') T2) GH ->
+    stpd2 true G1 (TSel x) G2 (open (TSel x') T2) GH.
 Proof. intros. repeat eu. eexists. eapply stp2_selb1; eauto. Qed.
 
 Lemma stpd2_sel2: forall G1 G2 GX TX x T1 GH v,
@@ -1671,7 +1671,7 @@ Proof.
     apply IHstp2_2. reflexivity.
 
   - Case "selb1".
-    assert (splice (length GH0) (open (TSel x0) T2)=(open (TSel x0) T2)) as A. {
+    assert (splice (length GH0) (open (TSel x') T2)=(open (TSel x') T2)) as A. {
       eapply closed_splice_idem. apply stp2_closed2 in H3. inversion H3. subst.
       simpl in H8. inversion H8. subst.
       eapply closed_open. simpl. eassumption. eauto.
@@ -2060,7 +2060,7 @@ Proof.
     apply IHstp2_2. assumption. assumption. assumption.
   - Case "selb1".
     eapply stp2_selb1. eapply index_extend_mult. apply H. assumption.
-    eapply index_extend_mult. apply H0. assumption.
+    destruct H0. left. eapply index_extend_mult. eapply H0. assumption. right. eapply H0.
     eassumption. assumption.
     apply IHstp2_1. apply aenv_ext_refl. apply venv_ext_refl. assumption.
     apply IHstp2_2. assumption. assumption. assumption.
@@ -2182,6 +2182,8 @@ Proof.
     try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eapply stp2_bindb; eauto; apply stp2_closure_extend; eauto].
 
   - split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eapply stp2_selb1; eauto using index_extend.
+    inversion H0. left. eauto using index_extend. right. eauto.
+    inversion H0. left. eauto using index_extend. right. eauto.
 
   - split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eapply stp2_selb2; eauto using index_extend.
 Qed.
@@ -4890,6 +4892,22 @@ Proof. intros. repeat eu. eexists. eapply stp2_substitute_aux; eauto. Qed.
 
 (* end substitute *)
 
+Lemma open_noop : forall i j T1 T0,
+                    closed i j T0 ->
+                    open_rec i T1 T0 = T0.
+Proof.
+  intros. induction H; eauto.
+  - simpl. rewrite IHclosed_rec1. rewrite IHclosed_rec2. reflexivity.
+  - simpl. rewrite IHclosed_rec1. rewrite IHclosed_rec2. reflexivity.
+  - simpl. rewrite IHclosed_rec1. rewrite IHclosed_rec2. reflexivity.
+  - simpl. rewrite IHclosed_rec. reflexivity.
+  - simpl. rewrite IHclosed_rec1. rewrite IHclosed_rec2. reflexivity.
+  - simpl. assert (beq_nat k i = false) as E. {
+      apply false_beq_nat. omega.
+    }
+    rewrite E. reflexivity.
+Qed.
+
 Lemma stpd2_to_sstpd2_aux2: forall n, forall G1 G2 GH T1 T2 m n1,
   stp2 2 m G1 T1 G2 T2 GH n1 -> n1 < n ->
   exists n2, stp2 1 m G1 T1 G2 T2 GH n2.
@@ -4923,7 +4941,7 @@ Proof.
 
     assert (exists n, stp2 1 false
                            venv0 (open (TSel x2) T2)
-                           G2 (open (TSel x) (TMem TBot T0)) [] n) as ST. {
+                           G2 (open (TSel x') (TMem TBot T0)) [] n) as ST. {
 
       eexists. eapply stp2_substitute_aux with (GH0:=[]).
       eauto.
@@ -4931,16 +4949,24 @@ Proof.
       simpl. reflexivity.
       erewrite subst_open1. eassumption. eauto.
       apply closed_open. simpl. eapply closed_upgrade. eauto. eapply closed_upgrade_free. eauto. simpl. omega. omega. eauto. eauto.
+
       left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.
       split. erewrite subst_open1. eassumption. eauto.
       rewrite subst_open1. reflexivity. eauto.
 
+      inversion H3.
       left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.
 
       split.
       erewrite subst_open1. eassumption. eauto.
       simpl. erewrite subst_open1. eauto.
-      eapply valtp_closed in H4. inversion H4. subst. inversion H17. subst. eauto.
+      eapply valtp_closed in H4. inversion H4. subst. inversion H18. subst. eauto.
+      eauto.
+
+      right. left. split. simpl. unfold open. erewrite open_noop.
+      eauto. eauto. unfold open. erewrite open_noop. erewrite open_noop.
+      reflexivity. eauto. eauto.
+
       eauto.
 
       left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.
