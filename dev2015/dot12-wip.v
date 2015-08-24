@@ -4736,7 +4736,7 @@ Proof.
   - Case "selab1".
     intros GH0 GH0' GXX TXX TXX' T1' T2' V ? VS CX ? IX1 IX2 FA IXH.
 
-    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length (GU ++ GL) = length GH0 + 1). rewrite H1. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
     assert (compat GXX TXX TXX' (Some V) G1 (TSelH x) T1') as IXX. eauto.
@@ -4746,25 +4746,27 @@ Proof.
     destruct IX1.
     + SCase "x = 0". ev. subst.
       repeat destruct IXX as [|IXX]; ev.
-      * subst. simpl. inversion H9. subst.
+      * subst. simpl. inversion H11. subst.
 
         assert (d = S 0). admit. subst.
-        
+
+        assert (GL = [(0, (GXX, TXX))]) as EQGL. admit.
+
         destruct IX2 as [IX2 | [IX2 | IX2]].
-        repeat destruct IX2 as [|IX2]; ev. inversion H13; subst.
+        repeat destruct IX2 as [|IX2]; ev. inversion H15; subst.
         rewrite subst_open1.
         eapply stp2_selb1. eauto. eauto. eauto. eapply closed_subst. eapply closed_upgrade_free. eauto. omega. eauto.
-        eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto.
+        eapply IHn. eauto. omega. rewrite app_nil_l. eauto. eauto. eapply CX. eauto.
         eauto.
         right. left. split. eassumption. reflexivity.
-        admit. eauto.
+        eauto. eauto.
         eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto.
         left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.  split. eassumption. rewrite subst_open1. reflexivity.
-        inversion H4. subst. inversion H19. subst. eassumption.
+        inversion H4. subst. inversion H21. subst. eassumption.
         left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.  split. eassumption. rewrite subst_open1. reflexivity.
-        inversion H4. subst. inversion H19. subst. eassumption.
+        inversion H4. subst. inversion H21. subst. eassumption.
         eauto. eauto.
-        inversion H4. subst. inversion H19. subst. eassumption.
+        inversion H4. subst. inversion H21. subst. eassumption.
 
         destruct IX2 as [IX21 IX22].
         assert (T2' = open (TSel x) T0) as A. {
@@ -4777,10 +4779,10 @@ Proof.
         rewrite A.  
         eapply stp2_selb1. eassumption. right. eapply closed_open_tselh. eassumption.
         eassumption. eapply closed_subst. eapply closed_upgrade_free. eauto. omega. eauto.
-        eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto.
+        eapply IHn. eauto. omega. rewrite app_nil_l. eauto. eauto. eapply CX. eauto.
         eauto.
         right. left. split. eassumption. reflexivity.
-        admit. eauto.
+        eauto. eauto.
         eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto.
         right. left. split. eassumption.
         unfold open. erewrite open_noop. erewrite open_noop. reflexivity.
@@ -4794,8 +4796,8 @@ Proof.
 
         destruct IX2 as [IX21 IX22]. admit.
 
-      * subst. inversion H1. omega.
-      * subst. destruct H1. eauto.
+      * subst. inversion H10. omega.
+      * subst. destruct H10. eauto.
     + SCase "x > 0".
       ev. subst.
       remember (x-1) as x_1.
@@ -4811,7 +4813,7 @@ Proof.
       eassumption.
 
       eassumption.
-      
+
       eapply IHn. eauto. omega. eauto. eauto. eauto. eauto. eauto.
       right. left. split. eassumption. reflexivity.
       eauto. eauto.
