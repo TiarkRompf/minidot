@@ -1447,6 +1447,52 @@ Proof.
   end.
 Qed.
 
+Lemma concat_same_length: forall {X} (GU: list X) (GL: list X) (GH1: list X) (GH0: list X),
+  GU ++ GL = GH1 ++ GH0 ->
+  length GU = length GH1 ->                          
+  GU=GH1 /\ GL=GH0.
+Proof.
+  intros. generalize dependent GH1. induction GU; intros.
+  - simpl in H0. induction GH1. rewrite app_nil_l in H. rewrite app_nil_l in H.
+    split. reflexivity. apply H.
+    simpl in H0. omega.
+  - simpl in H0. induction GH1. simpl in H0. omega.
+    simpl in H0. inversion H0. simpl in H. inversion H. specialize (IHGU GH1 H4 H2).
+    destruct IHGU. subst. split; reflexivity.
+Qed.
+
+Lemma concat_same_length': forall {X} (GU: list X) (GL: list X) (GH1: list X) (GH0: list X),
+  GU ++ GL = GH1 ++ GH0 ->
+  length GL = length GH0 ->                          
+  GU=GH1 /\ GL=GH0.
+Proof.
+  intros.
+  assert (length (GU ++ GL) = length (GH1 ++ GH0)) as A. {
+    rewrite H. reflexivity.
+  }
+  rewrite app_length in A. rewrite app_length in A.
+  rewrite H0 in A. apply NPeano.Nat.add_cancel_r in A.
+  apply concat_same_length; assumption.
+Qed.
+
+Lemma exists_GH1L: forall {X} (GU: list X) (GL: list X) (GH1: list X) (GH0: list X) x0,
+  length GL = S x0 ->
+  GU ++ GL = GH1 ++ GH0 ->
+  x0 < length GH0 ->
+  exists GH1L, GH1 = GU ++ GH1L /\ GL = GH1L ++ GH0.
+Proof.
+  intros X GU. induction GU; intros.
+  - eexists. rewrite app_nil_l. split. reflexivity. simpl in H0. assumption.
+  - induction GH1.
+
+    simpl in H0. admit. (* something weird *)
+
+    simpl in H0. inversion H0.
+    specialize (IHGU GL GH1 GH0 x0 H H4 H1).
+    destruct IHGU as [GH1L [IHA IHB]].
+    exists GH1L. split. simpl. rewrite IHA. reflexivity. apply IHB.
+Qed.
+
 Lemma stp_splice : forall GX G0 G1 T1 T2 x v1,
    stp GX (G1++G0) T1 T2 ->
    stp GX ((map (splicett (length G0)) G1) ++ (x,v1)::G0) (splice (length G0) T1) (splice (length G0) T2).
