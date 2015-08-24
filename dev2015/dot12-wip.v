@@ -252,13 +252,17 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH T1 (TSelH x)
 | stp_selab1: forall G1 GH TX T2 T2' x,
     indexr x GH = Some TX ->
-    stp G1 [] TX (TBind (TMem TBot T2)) ->   (* XXX Note GH = [] *)
+    closed 0 (S x) TX ->
+    closed 0 0 (TBind (TMem TBot T2)) ->
+    stp G1 GH TX (TBind (TMem TBot T2)) ->
     T2' = (open (TSelH x) T2) ->
     stp G1 GH T2' T2' -> (* regularity *)
     stp G1 GH (TSelH x) T2'
 | stp_selab2: forall G1 GH TX T1 T1' x,
     indexr x GH = Some TX ->
-    stp G1 [] TX (TBind (TMem T1 TTop)) ->   (* XXX Note GH = [] *)
+    closed 0 (S x) TX ->
+    closed 0 0 (TBind (TMem T1 TTop)) ->
+    stp G1 GH TX (TBind (TMem T1 TTop)) ->
     T1' = (open (TSelH x) T1) ->
     stp G1 GH T1' T1' -> (* regularity *)
     stp G1 GH T1' (TSelH x)
@@ -919,9 +923,9 @@ Proof.
       { eapply stp_all; eauto. { eapply stp_bindx; crush2. } compute. eapply cl_fun; eauto.
         eapply stp_fun. compute. eapply stp_selax; crush2. crush2.
         eapply stp_fun. compute. eapply stp_selab2. crush2.
-        instantiate (1:=TBool). crush2. crush2. crush2.
+        crush2. instantiate (1:=TBool). crush2. crush2. crush2. crush2.
         simpl. eapply stp_selab1. crush2.
-        instantiate (1:=TBool). crush2. crush2. crush2.
+        crush2. instantiate (1:=TBool). crush2. crush2. crush2. crush2.
       }
     }
     { eapply t_typ; crush2. }
@@ -959,9 +963,9 @@ Example ex4:
            (tvar 0) (TAll (TBind (TMem TBool TBool)) (TFun (TFun TBool TBool) (TFun (TFun TBool TBool) TBool))).
 Proof.
   eapply t_sub. crush2. crush2. eapply stp_all; crush2. compute. eapply stp_fun. eapply stp_fun. crush2.
-  eapply stp_selab2. crush2. instantiate(1:=TBool). crush2. crush2. crush2.
+  eapply stp_selab2. crush2. crush2. instantiate(1:=TBool). crush2. crush2. crush2. crush2. 
   eapply stp_fun. crush2. eapply stp_fun.
-  eapply stp_selab1. crush2. instantiate(1:=TBool). crush2. crush2. crush2.
+  eapply stp_selab1. crush2. crush2. instantiate(1:=TBool). crush2. crush2. crush2. crush2. 
   crush2. crush2.
 Qed.
 
@@ -1506,73 +1510,81 @@ Proof.
       eapply IHstp2. eauto.
   - Case "selab1".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
-    + eapply stp_selab1.
-      eapply indexr_splice_hi; eauto.
-      instantiate (1:=T2).
-      assert (splice (length G0) TX=TX) as A. {
-        apply stp_closed1 in H0. simpl in H0.
-        eapply closed_splice_idem.
-        apply H0.
-        omega.
+    + assert (S x0 = x0 + 1) as EQ by omega.
+      assert ((splice (length G0) (TBind (TMem TBot T2)))=(TBind (TMem TBot T2))) as A. {
+        eapply closed_splice_idem. eassumption. omega.
       }
-      rewrite A. apply H0.
-      rewrite H1.
-      unfold open.
+      eapply stp_selab1.
+      eapply indexr_splice_hi; eauto.
+      rewrite <- EQ. eapply closed_splice in H0. eapply H0.
+      eassumption.
+      rewrite <- A.
+      eapply IHstp1; eauto.
+      inversion A. unfold open. rewrite splice_open_permute.
+      rewrite H3. unfold open.
       assert (TSelH x0=TSelH (x0+0)) as B. {
         rewrite <- plus_n_O. reflexivity.
       }
-      rewrite B. rewrite <- splice_open_permute.
-      assert (splice (length G0) T2=T2) as C. {
-        apply stp_closed2 in H0. simpl in H0. inversion H0; subst.
-        inversion H6; subst.
+      rewrite <- B. reflexivity.
+      omega.
+      apply IHstp2; eauto.
+    + assert (closed 1 0 T2) as C2. {
+        inversion H1. subst. inversion H8. subst. eassumption.
+      }
+      assert (splice (length G0) TX=TX) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
-      rewrite C. reflexivity. omega.
-      apply IHstp2; eauto.
-    + eapply stp_selab1.
+      assert (splice (length G0) (TBind (TMem TBot T2))=(TBind (TMem TBot T2))) as B. {
+        eapply closed_splice_idem. eassumption. omega.
+      }
+      eapply stp_selab1.
       eapply indexr_splice_lo; eauto.
-      eassumption.
-      rewrite H1.
-      apply stp_closed2 in H0. simpl in H0. inversion H0; subst.
-      inversion H6; subst.
-      apply closed_upgrade_free with (k:=(length G0)) in H8.
-      eapply closed_splice_idem. eapply closed_open. eassumption. apply cl_selh.
-      omega. omega. omega.
+      eassumption. eassumption.
+      rewrite <- A. rewrite <- B.
+      apply IHstp1; eauto.
+      inversion B. rewrite H3. rewrite H6.
+      erewrite closed_splice_idem. reflexivity.
+      eapply closed_open. eapply closed_upgrade_free. eapply C2. omega.
+      eapply cl_selh. instantiate (1:=(length G0)). omega. omega.
       apply IHstp2; eauto.
   - Case "selab2".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
-    + eapply stp_selab2.
-      eapply indexr_splice_hi; eauto.
-      instantiate (1:=T1).
-      assert (splice (length G0) TX=TX) as A. {
-        apply stp_closed1 in H0. simpl in H0.
-        eapply closed_splice_idem.
-        apply H0.
-        omega.
+    + assert (S x0 = x0 + 1) as EQ by omega.
+      assert ((splice (length G0) (TBind (TMem T1 TTop)))=(TBind (TMem T1 TTop))) as A. {
+        eapply closed_splice_idem. eassumption. omega.
       }
-      rewrite A. apply H0.
-      rewrite H1.
-      unfold open.
+      eapply stp_selab2.
+      eapply indexr_splice_hi; eauto.
+      rewrite <- EQ. eapply closed_splice in H0. eapply H0.
+      eassumption.
+      rewrite <- A.
+      eapply IHstp1; eauto.
+      inversion A. unfold open. rewrite splice_open_permute.
+      rewrite H3. unfold open.
       assert (TSelH x0=TSelH (x0+0)) as B. {
         rewrite <- plus_n_O. reflexivity.
       }
-      rewrite B. rewrite <- splice_open_permute.
-      assert (splice (length G0) T1=T1) as C. {
-        apply stp_closed2 in H0. simpl in H0. inversion H0; subst.
-        inversion H6; subst.
+      rewrite <- B. reflexivity.
+      omega.
+      apply IHstp2; eauto.
+    + assert (closed 1 0 T1) as C2. {
+        inversion H1. subst. inversion H8. subst. eassumption.
+      }
+      assert (splice (length G0) TX=TX) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
-      rewrite C. reflexivity. omega.
-      apply IHstp2; eauto.
-    + eapply stp_selab2.
+      assert (splice (length G0) (TBind (TMem T1 TTop))=(TBind (TMem T1 TTop))) as B. {
+        eapply closed_splice_idem. eassumption. omega.
+      }
+      eapply stp_selab2.
       eapply indexr_splice_lo; eauto.
-      eassumption.
-      rewrite H1.
-      apply stp_closed2 in H0. simpl in H0. inversion H0; subst.
-      inversion H6; subst.
-      apply closed_upgrade_free with (k:=(length G0)) in H7.
-      eapply closed_splice_idem. eapply closed_open. eassumption. apply cl_selh.
-      omega. omega. omega.
+      eassumption. eassumption.
+      rewrite <- A. rewrite <- B.
+      apply IHstp1; eauto.
+      inversion B. rewrite H3. rewrite H6.
+      erewrite closed_splice_idem. reflexivity.
+      eapply closed_open. eapply closed_upgrade_free. eapply C2. omega.
+      eapply cl_selh. instantiate (1:=(length G0)). omega. omega.
       apply IHstp2; eauto.
   - Case "selax".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
