@@ -4443,6 +4443,22 @@ Proof.
   intros. eapply subst_open1_aux. simpl. eassumption.
 Qed.
 
+Lemma open_noop : forall i j T1 T0,
+                    closed i j T0 ->
+                    open_rec i T1 T0 = T0.
+Proof.
+  intros. induction H; eauto.
+  - simpl. rewrite IHclosed_rec1. rewrite IHclosed_rec2. reflexivity.
+  - simpl. rewrite IHclosed_rec1. rewrite IHclosed_rec2. reflexivity.
+  - simpl. rewrite IHclosed_rec1. rewrite IHclosed_rec2. reflexivity.
+  - simpl. rewrite IHclosed_rec. reflexivity.
+  - simpl. rewrite IHclosed_rec1. rewrite IHclosed_rec2. reflexivity.
+  - simpl. assert (beq_nat k i = false) as E. {
+      apply false_beq_nat. omega.
+    }
+    rewrite E. reflexivity.
+Qed.
+
 (* can be called on level >= 1 *)
 
 Lemma stp2_substitute_aux: forall n, forall d m G1 G2 T1 T2 GH n1,
@@ -4891,22 +4907,6 @@ Lemma stpd2_substitute: forall m G1 G2 T1 T2 GH,
 Proof. intros. repeat eu. eexists. eapply stp2_substitute_aux; eauto. Qed.
 
 (* end substitute *)
-
-Lemma open_noop : forall i j T1 T0,
-                    closed i j T0 ->
-                    open_rec i T1 T0 = T0.
-Proof.
-  intros. induction H; eauto.
-  - simpl. rewrite IHclosed_rec1. rewrite IHclosed_rec2. reflexivity.
-  - simpl. rewrite IHclosed_rec1. rewrite IHclosed_rec2. reflexivity.
-  - simpl. rewrite IHclosed_rec1. rewrite IHclosed_rec2. reflexivity.
-  - simpl. rewrite IHclosed_rec. reflexivity.
-  - simpl. rewrite IHclosed_rec1. rewrite IHclosed_rec2. reflexivity.
-  - simpl. assert (beq_nat k i = false) as E. {
-      apply false_beq_nat. omega.
-    }
-    rewrite E. reflexivity.
-Qed.
 
 Lemma stpd2_to_sstpd2_aux2: forall n, forall G1 G2 GH T1 T2 m n1,
   stp2 2 m G1 T1 G2 T2 GH n1 -> n1 < n ->
