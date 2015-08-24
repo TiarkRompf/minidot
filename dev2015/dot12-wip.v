@@ -3216,11 +3216,13 @@ Lemma atpd2_selax: forall G1 G2 GX TX x GH,
 Proof. intros. exists (S 0). eauto. Qed.
 
 
-Lemma atpd2_selab1: forall G1 G2 GX TX x T2 GH,
+Lemma atpd2_selab1: forall G1 G2 GX TX x T2 GH GU GL,
     indexr x GH = Some (GX, TX) ->
     closed 0 (S x) TX ->
     closed 0 0 (TBind (TMem TBot T2)) ->
-    atpd2 false GX TX G2 (TBind (TMem TBot T2)) GH ->
+    length GL = (S x) ->
+    GH = GU ++ GL ->
+    atpd2 false GX TX G2 (TBind (TMem TBot T2)) GL ->
     atpd2 true G2 (open (TSelH x) T2) G2 (open (TSelH x) T2) GH ->
     atpd2 true G1 (TSelH x) G2 (open (TSelH x) T2) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab1; eauto. Qed.
