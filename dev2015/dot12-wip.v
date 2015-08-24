@@ -4484,16 +4484,36 @@ Proof.
     eapply (compat_selh GXX TXX TXX' (Some V) G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
 
     destruct IX1.
-    + SCase "x = 0".
-      assert (d = 0). admit. (* either we are called with m = 1 (from 2->1) or with m = 2, in which case we can call 2->1 *)
-      subst d.
-      admit. (* TODO! *)
-        (*
-          Do basically what 2->1 does. Create a sel1 node.
-         *)
+    + SCase "x = 0". ev. subst.
+      repeat destruct IXX as [|IXX]; ev.
+      * subst. simpl. inversion H7. subst.
+        eapply stp2_sel1. eauto. eauto. eapply closed_subst. eapply closed_upgrade_free. eauto. omega. eauto.
+        eapply IHn. apply stp2_extendH_mult0. eauto. omega. eauto. eauto. eapply CX. eauto.
+        eauto.
+        admit.
+        eauto. eauto.
+        eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto. eauto. eauto. eauto. eauto.
+      * subst. inversion H1. omega.
+      * subst. destruct H1. eauto.
     + SCase "x > 0".
       ev. subst.
-      admit. (* miss case, eapply stp2_selab1 *)
+      eapply stp2_sela1. eauto.
+
+      assert (S (x - 1) = x) as A. {
+        destruct x. omega. (* contradiction *)
+        simpl. omega.
+      }
+      rewrite A.
+      eapply closed_compat'. eauto.
+      eapply closed_upgrade_free. eauto. omega.
+      assert (x + 1 = (S x)) as B by omega. rewrite B.
+      eapply closed_upgrade_free. eapply stp2_closed1. eassumption.
+      simpl. omega.
+
+      eapply IHn. eapply stp2_extendH_mult0. eauto. omega. eauto. eauto. eauto. eauto. eauto.
+      admit.
+      eauto. eauto.
+      eapply IHn; eauto; try omega.
     (* remaining obligations *)
     + eauto. + subst GH. eauto. + eauto.
 
