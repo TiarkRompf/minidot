@@ -491,10 +491,10 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     indexr x GH = Some (GX, TX) ->
     closed 0 (S x) TX ->
     closed 0 0 (TBind (TMem TBot T2)) ->
-    stp2 (S (S m)) false GX TX G2 (TBind (TMem TBot T2)) GH n1 ->
+    stp2 (S m) false GX TX G2 (TBind (TMem TBot T2)) GH n1 ->
     T2' = (open (TSelH x) T2) ->
-    stp2 (S (S m)) true G2 T2' G2 T2' GH n2 -> (* regularity *)
-    stp2 (S (S m)) true G1 (TSelH x) G2 T2' GH (S (n1+n2))
+    stp2 (S m) true G2 T2' G2 T2' GH n2 -> (* regularity *)
+    stp2 (S m) true G1 (TSelH x) G2 T2' GH (S (n1+n2))
 
 | stp2_sela2: forall m G1 G2 GX TX x T1 GH n1 n2,
     indexr x GH = Some (GX, TX) ->
@@ -2498,6 +2498,82 @@ Proof.
   eapply stp2_closed1; eassumption.
 Qed.
 
+(* atpd2 variants below *)
+Lemma atpd2_extend2 : forall x v1 G1 G2 T1 T2 H m,
+                       atpd2 m G1 T1 G2 T2 H ->
+                       fresh G2 <= x ->
+                       atpd2 m G1 T1 ((x,v1)::G2) T2 H.
+Proof.
+  intros. inversion H0 as [n1 Hsub]. exists n1.
+  apply stp2_extend2; assumption.
+Qed.
+
+Lemma atpd2_extend1 : forall x v1 G1 G2 T1 T2 H m,
+                       atpd2 m G1 T1 G2 T2 H ->
+                       fresh G1 <= x ->
+                       atpd2 m ((x,v1)::G1) T1 G2 T2 H.
+Proof.
+  intros. inversion H0 as [n1 Hsub]. exists n1.
+  apply stp2_extend1; assumption.
+Qed.
+
+Lemma atpd2_extendH : forall x v1 G1 G2 T1 T2 H m,
+                       atpd2 m G1 T1 G2 T2 H ->
+                       atpd2 m G1 T1 G2 T2 ((x,v1)::H).
+Proof.
+  intros. inversion H0 as [n1 Hsub]. exists n1.
+  apply stp2_extendH; assumption.
+Qed.
+
+Lemma atpd2_extendH_mult : forall G1 G2 T1 T2 H H2 m,
+                       atpd2 m G1 T1 G2 T2 H->
+                       atpd2 m G1 T1 G2 T2 (H2++H).
+Proof.
+  intros. inversion H0 as [n1 Hsub]. exists n1.
+  apply stp2_extendH_mult; assumption.
+Qed.
+
+Lemma atpd2_extendH_mult0 : forall G1 G2 T1 T2 H2 m,
+                       atpd2 m G1 T1 G2 T2 [] ->
+                       atpd2 m G1 T1 G2 T2 H2.
+Proof.
+  intros. inversion H as [n1 Hsub]. exists n1.
+  apply stp2_extendH_mult0; assumption.
+Qed.
+
+
+Lemma atpd2_reg2 : forall G1 G2 T1 T2 H m,
+                       atpd2 m G1 T1 G2 T2 H ->
+                       atpd2 true G2 T2 G2 T2 H.
+Proof.
+  intros. inversion H0 as [n1 Hsub].
+  eapply stp2_reg2; eassumption.
+Qed.
+
+Lemma atpd2_reg1 : forall G1 G2 T1 T2 H m,
+                       atpd2 m G1 T1 G2 T2 H ->
+                       atpd2 true G1 T1 G1 T1 H.
+Proof.
+  intros. inversion H0 as [n1 Hsub].
+  eapply stp2_reg1; eassumption.
+Qed.
+
+
+Lemma atpd2_closed2 : forall G1 G2 T1 T2 H m,
+                       atpd2 m G1 T1 G2 T2 H ->
+                       closed 0 (length H) T2.
+Proof.
+  intros. inversion H0 as [n1 Hsub].
+  eapply stp2_closed2; eassumption.
+Qed.
+
+Lemma atpd2_closed1 : forall G1 G2 T1 T2 H m,
+                       atpd2 m G1 T1 G2 T2 H ->
+                       closed 0 (length H) T1.
+Proof.
+  intros. inversion H0 as [n1 Hsub].
+  eapply stp2_closed1; eassumption.
+Qed.
 
 (* sstpd2 variants below *)
 
@@ -2975,6 +3051,10 @@ Proof.
                eexists; econstructor; eauto 2].
   - Case "selx".
     eexists. eapply stp2_selx; eauto.
+  - Case "selab1".
+    specialize (IHstp2_1 Heqm); destruct IHstp2_1;
+    specialize (IHstp2_2 Heqm); destruct IHstp2_2.
+    eexists. eapply stp2_selab1; eauto.
   - Case "selabx".
     eexists. eapply stp2_selax; eauto.
   - Case "and12".
@@ -3064,6 +3144,15 @@ Lemma atpd2_selax: forall G1 G2 GX TX x GH,
     atpd2 true G1 (TSelH x) G2 (TSelH x) GH.
 Proof. intros. exists (S 0). eauto. Qed.
 
+
+Lemma atpd2_selab1: forall G1 G2 GX TX x T2 GH,
+    indexr x GH = Some (GX, TX) ->
+    closed 0 (S x) TX ->
+    closed 0 0 (TBind (TMem TBot T2)) ->
+    atpd2 false GX TX G2 (TBind (TMem TBot T2)) GH ->
+    atpd2 true G2 (open (TSelH x) T2) G2 (open (TSelH x) T2) GH ->
+    atpd2 true G1 (TSelH x) G2 (open (TSelH x) T2) GH.
+Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab1; eauto. Qed.
 
 Lemma atpd2_all: forall G1 G2 T1 T2 T3 T4 GH,
     stpd2 false G2 T3 G1 T1 GH ->
@@ -3163,6 +3252,34 @@ Proof.
           eapply indexr_same. apply E. eassumption.
         }
         eapply atpd2_sela1. eapply A. assumption.
+        eapply IHn; try eassumption. omega.
+        eapply IHn; try eassumption. omega.
+    + SCase "selab1".
+      case_eq (beq_nat x (length GH0)); intros E.
+      * assert (indexr x ([(x0, (GX2, TX2))]++GH0) = Some (GX2, TX2)) as A2. {
+          simpl. rewrite E. reflexivity.
+        }
+        assert (indexr x GH = Some (GX2, TX2)) as A2'. {
+          rewrite EGH. eapply indexr_extend_mult. apply A2.
+        }
+        assert (Some (GX2,TX2) = Some (GX, TX)) as E2. {
+          rewrite A2' in H1. apply H1.
+        }
+        inversion E2. subst.
+        eapply atpd2_selab1.
+        eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
+        eapply atpd2_closed1 in HX. simpl in HX. eapply beq_nat_true in E. rewrite E. eapply HX.
+        eassumption.
+        eapply atpd2_trans_axiom. eapply atpd2_extendH_mult. eapply HX.
+        eapply IHn; try eassumption. omega. reflexivity. reflexivity.
+        eapply IHn; try eassumption. omega.
+        reflexivity. reflexivity.
+      * assert (indexr x GH' = Some (GX, TX)) as A. {
+          subst.
+          eapply indexr_same. apply E. eassumption.
+        }
+        eapply atpd2_selab1. eapply A.
+        eassumption. eassumption.
         eapply IHn; try eassumption. omega.
         eapply IHn; try eassumption. omega.
     + SCase "sela2".
@@ -3657,6 +3774,7 @@ Proof.
   - Case "selx".
     eexists. eapply stp2_strong_selx. eauto. eauto.
   - Case "sela1". inversion H2.
+  - Case "selab1". inversion H2.
   - Case "sela2". inversion H2.
   - Case "selax". inversion H2.
   - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto. eauto.
