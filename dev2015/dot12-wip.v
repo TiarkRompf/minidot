@@ -2082,9 +2082,9 @@ Proof.
     }
     inversion A as [GX' [H' HX]].
     eapply stp2_selab1 with (GX:=GX') (TX:=TX).
-    assumption.
-    apply IHstp2_1; eauto. apply aenv_ext_refl.
-    assumption.
+    assumption. eassumption. eassumption.
+    apply IHstp2_1; eauto.
+    eassumption.
     apply IHstp2_2; eauto.
   - Case "sela2".
     assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
