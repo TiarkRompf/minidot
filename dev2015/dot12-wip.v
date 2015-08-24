@@ -1497,6 +1497,28 @@ Proof.
     exists GH1L. split. simpl. rewrite IHA. reflexivity. apply IHB.
 Qed.
 
+Lemma exists_GH0U: forall {X} (GH1: list X) (GH0: list X) (GU: list X) (GL: list X) x0,
+  length GL = S x0 ->
+  GU ++ GL = GH1 ++ GH0 ->                   
+  x0 < length GH0 ->
+  exists GH0U, GH0 = GH0U ++ GL.
+Proof.
+  intros X GH1. induction GH1; intros.
+  - simpl in H0. exists GU. symmetry. assumption.
+  - induction GU.
+
+    simpl in H0.
+    assert (length GL = length (a :: GH1 ++ GH0)) as Contra. {
+      rewrite H0. reflexivity.
+    }
+    simpl in Contra. rewrite app_length in Contra. omega.
+
+    simpl in H0. inversion H0.
+    specialize (IHGH1 GH0 GU GL x0 H H4 H1).
+    destruct IHGH1 as [GH0U IH].
+    exists GH0U. apply IH.
+Qed.
+  
 Lemma stp_splice : forall GX G0 G1 T1 T2 x v1,
    stp GX (G1++G0) T1 T2 ->
    stp GX ((map (splicett (length G0)) G1) ++ (x,v1)::G0) (splice (length G0) T1) (splice (length G0) T2).
@@ -1803,7 +1825,7 @@ Proof.
         eapply closed_splice_idem. eassumption. omega.
       }
       assert (exists GH0U, GH0 = GH0U ++ GL) as EQGH. {
-        admit.
+        eapply exists_GH0U. eassumption. eassumption. eassumption.
       }
       destruct EQGH as [GH0U EQGH].
       eapply stp2_selab1.
