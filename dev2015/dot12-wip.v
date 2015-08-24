@@ -4443,6 +4443,27 @@ Proof.
   intros. eapply subst_open1_aux. simpl. eassumption.
 Qed.
 
+Lemma closed_open_tselh: forall j x T,
+                                closed j 0 (open_rec j (TSelH x) T) ->
+                                closed j 0 T.
+Proof.
+  intros. generalize dependent j. induction T; intros; eauto.
+  - simpl in H. inversion H. subst.
+    apply cl_fun. apply IHT1. eassumption. apply IHT2. eassumption.
+  - simpl in H. inversion H. subst.
+    apply cl_mem. apply IHT1. eassumption. apply IHT2. eassumption.
+  - simpl in H.
+    case_eq (beq_nat j i); intros E.
+    + rewrite E in H. inversion H. subst. omega.
+    + rewrite E in H. assumption.
+  - simpl in H. inversion H. subst.
+    apply cl_all. apply IHT1. eassumption. apply IHT2. eassumption.
+  - simpl in H. inversion H. subst.
+    apply cl_bind. apply IHT. eassumption.
+  - simpl in H. inversion H. subst.
+    apply cl_and. apply IHT1. eassumption. apply IHT2. eassumption.
+Qed.
+
 Lemma open_noop : forall i j T1 T0,
                     closed i j T0 ->
                     open_rec i T1 T0 = T0.
@@ -4663,31 +4684,69 @@ Proof.
     + SCase "x = 0". ev. subst.
       repeat destruct IXX as [|IXX]; ev.
       * subst. simpl. inversion H9. subst.
-        eapply stp2_sel1. eauto. eauto. eapply closed_subst. eapply closed_upgrade_free. eauto. omega. eauto.
+
+        assert (d = S 0). admit. subst.
+        
+        destruct IX2 as [IX2 | [IX2 | IX2]].
+        repeat destruct IX2 as [|IX2]; ev. inversion H13; subst.
+        rewrite subst_open1.
+        eapply stp2_selb1. eauto. eauto. eauto. eapply closed_subst. eapply closed_upgrade_free. eauto. omega. eauto.
         eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto.
         eauto.
-        admit.
+        right. left. split. eassumption. reflexivity.
+        admit. eauto.
+        eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto.
+        left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.  split. eassumption. rewrite subst_open1. reflexivity.
+        inversion H4. subst. inversion H19. subst. eassumption.
+        left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.  split. eassumption. rewrite subst_open1. reflexivity.
+        inversion H4. subst. inversion H19. subst. eassumption.
         eauto. eauto.
-        eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto. eauto. eauto. eauto. eauto.
+        inversion H4. subst. inversion H19. subst. eassumption.
+
+        destruct IX2 as [IX21 IX22]. admit.
+        destruct IX2 as [IX21 IX22]. admit.
+
       * subst. inversion H1. omega.
       * subst. destruct H1. eauto.
     + SCase "x > 0".
       ev. subst.
-      eapply stp2_sela1. eauto.
+      remember (x-1) as x_1.
+      eapply stp2_selab1. eauto.
 
-      assert (S (x - 1) = x) as A. {
-        destruct x. omega. (* contradiction *)
-        simpl. omega.
-      }
-      rewrite A.
       eapply closed_compat'. eauto.
       eapply closed_upgrade_free. eauto. omega.
-      assert (x + 1 = (S x)) as B by omega. rewrite B.
+      rewrite Heqx_1. simpl.
+      assert (x - 1 + 1 = x) as B. {
+        omega.
+      }
+      rewrite B.
       eassumption.
 
+      eassumption.
+      
       eapply IHn. eauto. omega. eauto. eauto. eauto. eauto. eauto.
-      admit.
+      right. left. split. eassumption. reflexivity.
       eauto. eauto.
+
+      destruct IX2 as [IX2 | [IX2 | IX2]].
+      repeat destruct IX2 as [|IX2]; ev. inversion H15; subst. inversion H10; subst.
+      remember (x-1) as x_1.
+      assert (x_1 + 1 = x) as C. {
+        omega.
+      }
+      rewrite <- C.
+      unfold open. rewrite subst_open_commute.
+      erewrite closed_no_subst. reflexivity.
+      inversion H4. clear C. subst. inversion H19. subst. eassumption.
+      rewrite C. clear C. simpl. inversion H4. subst. inversion H19. subst. eapply closed_upgrade_free. eassumption. omega. eauto.
+
+      destruct IX2 as [IX2A IX2B]. unfold open. erewrite open_noop.
+      rewrite IX2B. unfold open. erewrite open_noop. reflexivity.
+      eapply closed_open_tselh. eassumption.
+      eapply closed_open_tselh. eassumption.
+
+      destruct IX2 as [IX2A IX2B]. admit.
+
       eapply IHn; eauto; try omega.
     (* remaining obligations *)
     + eauto. + subst GH. eauto. + eauto.
