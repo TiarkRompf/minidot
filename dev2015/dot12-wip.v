@@ -1478,14 +1478,18 @@ Qed.
 Lemma exists_GH1L: forall {X} (GU: list X) (GL: list X) (GH1: list X) (GH0: list X) x0,
   length GL = S x0 ->
   GU ++ GL = GH1 ++ GH0 ->
-  x0 < length GH0 ->
+  length GH0 <= x0 ->
   exists GH1L, GH1 = GU ++ GH1L /\ GL = GH1L ++ GH0.
 Proof.
   intros X GU. induction GU; intros.
   - eexists. rewrite app_nil_l. split. reflexivity. simpl in H0. assumption.
   - induction GH1.
 
-    simpl in H0. admit. (* something weird *)
+    simpl in H0.
+    assert (length (a :: GU ++ GL) = length GH0) as Contra. {
+      rewrite H0. reflexivity.
+    }
+    simpl in Contra. rewrite app_length in Contra. omega.
 
     simpl in H0. inversion H0.
     specialize (IHGU GL GH1 GH0 x0 H H4 H1).
@@ -1766,7 +1770,7 @@ Proof.
         eapply closed_splice_idem. eassumption. omega.
       }
       assert (exists GH1L, GH1 = GU ++ GH1L /\ GL = GH1L ++ GH0) as EQGH. {
-        admit.
+        eapply exists_GH1L. eassumption. eassumption. eassumption.
       }
       destruct EQGH as [GH1L [EQGH1 EQGL]].
       eapply stp2_selab1.
