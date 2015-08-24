@@ -4828,7 +4828,10 @@ Proof.
 
         assert (d = S 0). admit. subst.
 
-        assert (GL = [(0, (GXX, TXX))]) as EQGL. admit.
+        assert (GL = [(0, (GXX, TXX))]) as EQGL. {
+          eapply proj2. eapply concat_same_length'. eassumption.
+          simpl. eassumption.
+        }
 
         destruct IX2 as [IX2 | [IX2 | IX2]].
         repeat destruct IX2 as [|IX2]; ev. inversion H15; subst.
