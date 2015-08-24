@@ -4800,7 +4800,7 @@ Proof.
       * subst. destruct H10. eauto.
     + SCase "x > 0".
       ev. subst.
-      remember (x-1) as x_1.
+      remember (x-1) as x_1. admit. (*
       eapply stp2_selab1. eauto.
 
       eapply closed_compat'. eauto.
@@ -4814,6 +4814,7 @@ Proof.
 
       eassumption.
 
+      
       eapply IHn. eauto. omega. eauto. eauto. eauto. eauto. eauto.
       right. left. split. eassumption. reflexivity.
       eauto. eauto.
@@ -4837,9 +4838,9 @@ Proof.
 
       destruct IX2 as [IX2A IX2B]. admit.
 
-      eapply IHn; eauto; try omega.
+      eapply IHn; eauto; try omega. *)
     (* remaining obligations *)
-    + eauto. + subst GH. eauto. + eauto.
+    + eauto. + rewrite <- H1. eauto. + eauto.
 
   - Case "sela2".
     intros GH0 GH0' GXX TXX TXX' T1' T2' V ? VS CX ? IX1 IX2 FA IXH.
