@@ -3027,7 +3027,10 @@ Proof.
         instantiate (1:=([(x0, (GX1, TX1))]++GH0)). simpl. apply beq_nat_true in E. rewrite E. reflexivity.
         reflexivity.
         eapply stpd2_trans. eapply HX.
-        eapply IHn; try eassumption. omega. rewrite app_nil_l. admit. simpl. reflexivity.
+        eapply IHn; try eassumption. omega. rewrite app_nil_l.
+        eapply proj2. eapply concat_same_length'. eassumption.
+        eapply beq_nat_true in E. subst. eauto.
+        simpl. reflexivity.
         eapply IHn; try eassumption. omega.
         reflexivity.
       * assert (indexr x GH' = Some (GX, TX)) as A. {
