@@ -1654,14 +1654,23 @@ Proof.
       assert ((splice (length G0) (TBind (TMem T1 TTop)))=(TBind (TMem T1 TTop))) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
+      assert (exists GH1L, G2 = GU ++ GH1L /\ GL = GH1L ++ G0) as EQGH. {
+        eapply exists_GH1L. eassumption. eassumption. eassumption.
+      }
+      destruct EQGH as [GH1L [EQGH1 EQGL]].
       eapply stp_selab2.
-      eapply indexr_splice_hi; eauto.
+      eapply indexr_splice_hi; eauto. rewrite <- HeqG. eassumption.
       rewrite <- EQ. eapply closed_splice in H0. eapply H0.
       eassumption.
+      instantiate (1:=(map (splicett (length G0)) GH1L) ++ (x, v1)::G0).
+      rewrite app_length. simpl.
+      rewrite EQGL in H2. rewrite app_length in H2.
+      rewrite map_length. omega.
+      rewrite EQGH1. rewrite map_app. rewrite app_assoc. reflexivity.
       rewrite <- A.
       eapply IHstp1; eauto.
       inversion A. unfold open. rewrite splice_open_permute.
-      rewrite H3. unfold open.
+      rewrite H5. unfold open.
       assert (TSelH x0=TSelH (x0+0)) as B. {
         rewrite <- plus_n_O. reflexivity.
       }
@@ -1669,7 +1678,7 @@ Proof.
       omega.
       apply IHstp2; eauto.
     + assert (closed 1 0 T1) as C2. {
-        inversion H1. subst. inversion H8. subst. eassumption.
+        inversion H1. subst. inversion H9. subst. eassumption.
       }
       assert (splice (length G0) TX=TX) as A. {
         eapply closed_splice_idem. eassumption. omega.
@@ -1677,12 +1686,17 @@ Proof.
       assert (splice (length G0) (TBind (TMem T1 TTop))=(TBind (TMem T1 TTop))) as B. {
         eapply closed_splice_idem. eassumption. omega.
       }
+      assert (exists GH0U, G0 = GH0U ++ GL) as EQGH. {
+        eapply exists_GH0U. eassumption. eassumption. eassumption.
+      }
+      destruct EQGH as [GH0U EQGH].
       eapply stp_selab2.
-      eapply indexr_splice_lo; eauto.
+      eapply indexr_splice_lo; eauto. rewrite <- HeqG. eassumption.
       eassumption. eassumption.
-      rewrite <- A. rewrite <- B.
-      apply IHstp1; eauto.
-      inversion B. rewrite H3. rewrite H6.
+      instantiate (1:=GL). eassumption.
+      rewrite EQGH. instantiate (1:=map (splicett (length (GH0U ++ GL))) G2 ++ (x, v1) :: GH0U). rewrite <- app_assoc. reflexivity.
+      eauto.
+      inversion B. rewrite H5. rewrite H7.
       erewrite closed_splice_idem. reflexivity.
       eapply closed_open. eapply closed_upgrade_free. eapply C2. omega.
       eapply cl_selh. instantiate (1:=(length G0)). omega. omega.
