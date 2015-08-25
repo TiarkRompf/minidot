@@ -3450,11 +3450,35 @@ Proof.
           subst.
           eapply indexr_same. apply E. rewrite EGH in H1. eassumption.
         }
+        simpl in EGH. simpl in EGH'. simpl in IHn. simpl in HX.
+        case_eq (le_lt_dec (S (length GH0)) x); intros E' LE'.
+        assert (exists GH1L, GH1 = GU ++ GH1L /\ GL = GH1L ++ (x0, (GX2, TX2)) :: GH0) as EQGH. {
+          eapply exists_GH1L. eassumption. eassumption. simpl. eassumption.
+        }
+        destruct EQGH as [GH1L [EQGH1 EQGL]].
         eapply atpd2_selab1 with (GH:=GH'). eapply A.
         eassumption. eassumption.
-        instantiate (1:=GL). eassumption.
-        instantiate (1:=GU). admit.
-        eexists. eassumption. (*eapply IHn; try eassumption. omega.*)
+        instantiate (1:=GH1L ++ (x0, (GX1, TX1)) :: GH0).
+        rewrite app_length. simpl.
+        rewrite EQGL in H4. rewrite app_length in H4. simpl in H4. eassumption.
+        instantiate (1:=GU). rewrite app_assoc. rewrite EQGH1 in EGH'. assumption.
+        eapply IHn; try eassumption. omega. reflexivity.
+        eapply IHn; try eassumption. omega.
+        assert (exists GH0U, (x0, (GX2, TX2))::GH0 = GH0U ++ GL) as EQGH. {
+          eapply exists_GH0U. eassumption. eassumption. simpl. eassumption.
+        }
+        destruct EQGH as [GH0U EQGH].
+        destruct GH0U. simpl in EQGH.
+        assert (length ((x0, (GX2, TX2))::GH0)=length GL) as Contra. {
+          rewrite EQGH. reflexivity.
+        }
+        simpl in Contra. rewrite H4 in Contra. inversion Contra. apply beq_nat_false in E. omega.
+        simpl in EQGH. inversion EQGH.
+        eapply atpd2_selab1 with (GH:=GH'). eapply A.
+        eassumption. eassumption. eassumption.
+        rewrite H7 in EGH'. simpl in EGH'. instantiate (1:=GH1 ++ (x0, (GX1, TX1)) :: GH0U).
+        rewrite <- app_assoc. simpl. eapply EGH'.
+        eexists. eassumption.
         eapply IHn; try eassumption. omega.
     + SCase "sela2".
       case_eq (beq_nat x (length GH0)); intros E.
