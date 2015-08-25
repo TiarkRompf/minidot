@@ -4958,7 +4958,10 @@ Proof.
       destruct EQGH as [GH0L [EQGH0 EQGL]].
       assert (exists GU' GL', GH0' = GU' ++ GL' /\
               Forall2 (compat2 GXX TXX TXX' (Some V)) GH0L GL') as EQGH'. {
-        admit.
+        rewrite EQGH0 in FA.
+        eapply Forall2_app_inv_l in FA.
+        destruct FA as [GU' [GL' [FAU [FAL EQFA]]]].
+        exists GU'. exists GL'. split; eassumption.
       }
       destruct EQGH' as [GU' [GL' [EQGH0' FAGL']]].
 
