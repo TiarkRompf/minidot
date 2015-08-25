@@ -1958,6 +1958,14 @@ Lemma stp_extend : forall G1 GH T1 T2 x v1,
                        stp G1 ((x,v1)::GH) T1 T2.
 Proof.
   intros. induction H; eauto using indexr_extend.
+  - Case "selab1".
+    eapply stp_selab1; try eassumption.
+    eapply indexr_extend. eassumption.
+    instantiate (1:=(x,v1)::GU). simpl. rewrite H3. reflexivity.
+  - Case "selab2".
+    eapply stp_selab2; try eassumption.
+    eapply indexr_extend. eassumption.
+    instantiate (1:=(x,v1)::GU). simpl. rewrite H3. reflexivity.
   - Case "all".
   assert (splice (length GH) T2 = T2) as A2. {
     eapply closed_splice_idem. apply H1. omega.
@@ -5629,12 +5637,12 @@ Proof.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]].
-    inversion VT. subst. admit. (*
+    inversion VT. subst.
     eapply stpd2_selab1. eauto. eauto. eauto.
     eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
     specialize (IHST2 _ _ WX WY).
     apply stpd2_reg2 in IHST2.
-    apply IHST2. *)
+    apply IHST2.
   - Case "selab2". admit.
   - Case "selax".
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
