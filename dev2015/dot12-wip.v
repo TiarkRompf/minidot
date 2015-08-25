@@ -3,11 +3,6 @@
 (* this version is based on dot10.v *)
 (* based on that, it adds intersection types *)
 
-(*
-- stp2 trans + narrowing
-- stp/stp2 weakening and regularity
-*)
-
 Require Export SfLib.
 
 Require Export Arith.EqNat.
