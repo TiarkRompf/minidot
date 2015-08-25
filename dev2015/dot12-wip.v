@@ -4918,7 +4918,35 @@ Proof.
         eapply closed_open_tselh. eassumption.
         eauto. eauto.
 
-        destruct IX2 as [IX21 IX22]. admit.
+        destruct IX2 as [IX21 IX22].
+        assert (closed_rec 0 0 T0) as C0. {
+          eapply nosubst_zero_closed. eassumption. simpl. inversion H4. subst. inversion H17. subst.
+          eassumption.
+        }
+        assert (T2' = T0) as C1. {
+          rewrite IX22. erewrite closed_no_subst. unfold open. erewrite open_noop. reflexivity.
+          eauto. unfold open. erewrite open_noop. eassumption. eassumption.
+        }
+        assert (T2' = open (TSel x) T0) as C2. {
+          unfold open. erewrite open_noop. eassumption. eassumption.
+        }
+        rewrite C2.
+        eapply stp2_selb1. eassumption. right. eassumption.
+        eassumption. eapply closed_subst. eapply closed_upgrade_free. eauto. omega. eauto.
+        eapply IHn. eauto. omega. rewrite app_nil_l. eauto. eauto. eapply CX. eauto.
+        eauto.
+        right. left. split. eassumption. reflexivity.
+        eauto. eauto.
+        eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto.
+        right. left. split. unfold open. erewrite open_noop. eassumption. eassumption.
+        unfold open. erewrite open_noop. erewrite open_noop. reflexivity.
+        eassumption.
+        eassumption.
+        right. left. split. unfold open. erewrite open_noop. eassumption. eassumption.
+        unfold open. erewrite open_noop. erewrite open_noop. reflexivity.
+        eassumption.
+        eassumption.
+        eauto. eauto.
 
       * subst. inversion H10. omega.
       * subst. destruct H10. eauto.
