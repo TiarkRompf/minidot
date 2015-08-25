@@ -4953,7 +4953,7 @@ Proof.
     + SCase "x > 0".
       ev. subst.
       assert (exists GH0L, GH0 = GU ++ GH0L /\ GL = GH0L ++ [(0, (GXX, TXX))]) as EQGH. {
-        admit.
+        eapply exists_GH1L. eassumption. eassumption. simpl. omega.
       }
       destruct EQGH as [GH0L [EQGH0 EQGL]].
       assert (exists GU' GL', GH0' = GU' ++ GL' /\
