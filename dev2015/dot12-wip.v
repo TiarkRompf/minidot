@@ -5001,7 +5001,15 @@ Proof.
       eapply closed_open_tselh. eassumption.
       eapply closed_open_tselh. eassumption.
 
-      destruct IX2 as [IX2A IX2B]. admit.
+      destruct IX2 as [IX2A IX2B].
+      assert (x_1 + 1 = x) as C. {
+        omega.
+      }
+      rewrite IX2B. rewrite <- C.
+      unfold open. rewrite subst_open_commute.
+      erewrite closed_no_subst. reflexivity.
+      inversion H4. clear C. subst. inversion H16. subst. eassumption.
+      rewrite C. clear C. simpl. inversion H4. subst. inversion H16. subst. eapply closed_upgrade_free. eassumption. omega. eauto.
 
       eapply IHn; eauto; try omega.
     (* remaining obligations *)
