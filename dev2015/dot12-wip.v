@@ -4952,7 +4952,17 @@ Proof.
       * subst. destruct H10. eauto.
     + SCase "x > 0".
       ev. subst.
-      remember (x-1) as x_1. admit. (*
+      assert (exists GH0L, GH0 = GU ++ GH0L /\ GL = GH0L ++ [(0, (GXX, TXX))]) as EQGH. {
+        admit.
+      }
+      destruct EQGH as [GH0L [EQGH0 EQGL]].
+      assert (exists GU' GL', GH0' = GU' ++ GL' /\
+              Forall2 (compat2 GXX TXX TXX' (Some V)) GH0L GL') as EQGH'. {
+        admit.
+      }
+      destruct EQGH' as [GU' [GL' [EQGH0' FAGL']]].
+
+      remember (x-1) as x_1.
       eapply stp2_selab1. eauto.
 
       eapply closed_compat'. eauto.
@@ -4966,22 +4976,25 @@ Proof.
 
       eassumption.
 
+      instantiate (1:=GL'). rewrite EQGL in H5. rewrite app_length in H5. simpl in H5.
+      rewrite NPeano.Nat.add_1_r in H5. inversion H5. rewrite Heqx_1.
+      erewrite <- Forall2_length; try eassumption. omega.
+      instantiate (1:=GU'). eassumption.
       
-      eapply IHn. eauto. omega. eauto. eauto. eauto. eauto. eauto.
+      eapply IHn. eauto. omega. eapply EQGL. eauto. eauto. eauto. eauto.
       right. left. split. eassumption. reflexivity.
       eauto. eauto.
 
       destruct IX2 as [IX2 | [IX2 | IX2]].
-      repeat destruct IX2 as [|IX2]; ev. inversion H15; subst. inversion H10; subst.
-      remember (x-1) as x_1.
+      repeat destruct IX2 as [|IX2]; ev. inversion H14. subst V. rewrite H17.
       assert (x_1 + 1 = x) as C. {
         omega.
       }
       rewrite <- C.
       unfold open. rewrite subst_open_commute.
       erewrite closed_no_subst. reflexivity.
-      inversion H4. clear C. subst. inversion H19. subst. eassumption.
-      rewrite C. clear C. simpl. inversion H4. subst. inversion H19. subst. eapply closed_upgrade_free. eassumption. omega. eauto.
+      inversion H4. clear C. subst. inversion H21. subst. eassumption.
+      rewrite C. clear C. simpl. inversion H4. subst. inversion H21. subst. eapply closed_upgrade_free. eassumption. omega. eauto.
 
       destruct IX2 as [IX2A IX2B]. unfold open. erewrite open_noop.
       rewrite IX2B. unfold open. erewrite open_noop. reflexivity.
@@ -4990,7 +5003,7 @@ Proof.
 
       destruct IX2 as [IX2A IX2B]. admit.
 
-      eapply IHn; eauto; try omega. *)
+      eapply IHn; eauto; try omega.
     (* remaining obligations *)
     + eauto. + rewrite <- H1. eauto. + eauto.
 
