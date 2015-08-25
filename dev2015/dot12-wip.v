@@ -4217,62 +4217,6 @@ Proof.
 Qed.
 
 
-Lemma stpd2_to_sstpd2_aux1: forall n, forall G1 G2 T1 T2 m n1,
-  stp2 1 m G1 T1 G2 T2 nil n1 -> n1 < n ->
-  sstpd2 m G1 T1 G2 T2 nil.
-Proof.
-  intros n. induction n; intros; try omega.
-  inversion H.
-  - Case "topx". eexists. eauto.
-  - Case "botx". eexists. eauto.
-  - Case "top". subst.
-    eapply IHn in H1. inversion H1. eexists. eauto. omega.
-  - Case "bot". subst.
-    eapply IHn in H1. inversion H1. eexists. eauto. omega.
-  - Case "bool". eexists. eauto.
-  - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
-  - Case "mem".
-    eapply IHn in H2. eapply sstpd2_untrans in H2. eu.
-    eapply IHn in H3. eapply sstpd2_untrans in H3. eu.
-    eexists. eapply stp2_mem. eauto. eauto. omega. omega.
-  - Case "sel1".
-    remember H3 as Hv. clear HeqHv.
-    eapply IHn in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
-    eapply invert_typ in H3. ev. repeat eu. subst.
-    assert (closed (0+1) (length ([]:aenv)) x1). eapply inv_closed_open. eapply stp2_closed2; eauto. eauto.
-    eexists. eapply stp2_strong_sel1. eauto.
-    eassumption. eapply stp2_wrapf. eassumption.
-    eauto. eauto. omega.
-  - Case "sel2".
-    remember H3 as Hv. clear HeqHv.
-    eapply IHn in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
-    eapply invert_typ in H3. ev. repeat eu. subst.
-    assert (closed (0+1) (length ([]:aenv)) x1). eapply inv_closed_open. eapply stp2_closed2; eauto. eauto. eauto.
-    eexists. eapply stp2_strong_sel2. eauto.
-    eassumption. eapply stp2_wrapf. eassumption.
-    eauto. eauto. omega.
-  - Case "selx".
-    eexists. eapply stp2_strong_selx. eauto. eauto.
-  - Case "sela1". inversion H2.
-  - Case "selab1". inversion H2.
-  - Case "selab2". inversion H2.
-  - Case "sela2". inversion H2.
-  - Case "selax". inversion H2.
-  - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto. eauto.
-  - Case "bind". eexists. eapply stp2_bind. eauto. eauto. eauto. eauto.
-  - Case "and11". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
-    eexists. eapply stp2_and11; eauto. omega. omega.
-  - Case "and12". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
-    eexists. eapply stp2_and12; eauto. omega. omega.
-  - Case "and2". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
-    eexists. eapply stp2_and2; eauto. omega. omega.
-  - Case "wrapf". eapply IHn in H1. eu. eexists. eapply stp2_wrapf. eauto. omega.
-  - Case "transf". eapply IHn in H1. eapply IHn in H2. eu. eu. eexists.
-    eapply stp2_transf. eauto. eauto. omega. omega.
-    Grab Existential Variables.
-    apply 0. apply 0. apply 0. apply 0.
-Qed.
-
 (* begin substitute *)
 
 Lemma index_miss {X}: forall x x1 (B:X) A G,
@@ -5673,6 +5617,63 @@ Lemma stpd2_substitute: forall m G1 G2 T1 T2 GH,
 Proof. intros. repeat eu. eexists. eapply stp2_substitute_aux; eauto. Qed.
 
 (* end substitute *)
+
+
+Lemma stpd2_to_sstpd2_aux1: forall n, forall G1 G2 T1 T2 m n1,
+  stp2 1 m G1 T1 G2 T2 nil n1 -> n1 < n ->
+  sstpd2 m G1 T1 G2 T2 nil.
+Proof.
+  intros n. induction n; intros; try omega.
+  inversion H.
+  - Case "topx". eexists. eauto.
+  - Case "botx". eexists. eauto.
+  - Case "top". subst.
+    eapply IHn in H1. inversion H1. eexists. eauto. omega.
+  - Case "bot". subst.
+    eapply IHn in H1. inversion H1. eexists. eauto. omega.
+  - Case "bool". eexists. eauto.
+  - Case "fun". eexists. eapply stp2_fun. eauto. eauto.
+  - Case "mem".
+    eapply IHn in H2. eapply sstpd2_untrans in H2. eu.
+    eapply IHn in H3. eapply sstpd2_untrans in H3. eu.
+    eexists. eapply stp2_mem. eauto. eauto. omega. omega.
+  - Case "sel1".
+    remember H3 as Hv. clear HeqHv.
+    eapply IHn in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
+    eapply invert_typ in H3. ev. repeat eu. subst.
+    assert (closed (0+1) (length ([]:aenv)) x1). eapply inv_closed_open. eapply stp2_closed2; eauto. eauto.
+    eexists. eapply stp2_strong_sel1. eauto.
+    eassumption. eapply stp2_wrapf. eassumption.
+    eauto. eauto. omega.
+  - Case "sel2".
+    remember H3 as Hv. clear HeqHv.
+    eapply IHn in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
+    eapply invert_typ in H3. ev. repeat eu. subst.
+    assert (closed (0+1) (length ([]:aenv)) x1). eapply inv_closed_open. eapply stp2_closed2; eauto. eauto. eauto.
+    eexists. eapply stp2_strong_sel2. eauto.
+    eassumption. eapply stp2_wrapf. eassumption.
+    eauto. eauto. omega.
+  - Case "selx".
+    eexists. eapply stp2_strong_selx. eauto. eauto.
+  - Case "sela1". inversion H2.
+  - Case "selab1". inversion H2.
+  - Case "selab2". inversion H2.
+  - Case "sela2". inversion H2.
+  - Case "selax". inversion H2.
+  - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto. eauto.
+  - Case "bind". eexists. eapply stp2_bind. eauto. eauto. eauto. eauto.
+  - Case "and11". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
+    eexists. eapply stp2_and11; eauto. omega. omega.
+  - Case "and12". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
+    eexists. eapply stp2_and12; eauto. omega. omega.
+  - Case "and2". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
+    eexists. eapply stp2_and2; eauto. omega. omega.
+  - Case "wrapf". eapply IHn in H1. eu. eexists. eapply stp2_wrapf. eauto. omega.
+  - Case "transf". eapply IHn in H1. eapply IHn in H2. eu. eu. eexists.
+    eapply stp2_transf. eauto. eauto. omega. omega.
+    Grab Existential Variables.
+    apply 0. apply 0. apply 0. apply 0.
+Qed.
 
 Lemma stpd2_to_sstpd2_aux2: forall n, forall G1 G2 GH T1 T2 m n1,
   stp2 2 m G1 T1 G2 T2 GH n1 -> n1 < n ->
