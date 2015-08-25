@@ -4876,14 +4876,16 @@ Proof.
           simpl. eassumption.
         }
 
+        assert (stp2 2 false GXX (subst TXX' TXX) G2 (TBind (TMem TBot T0)) [] n0) as SBind. {
+          eapply IHn. eauto. omega. rewrite app_nil_l. eauto. eauto. eapply CX. eauto. eauto.
+          right. left. split. eassumption. reflexivity.
+          eauto. eauto.
+        }
         destruct IX2 as [IX2 | [IX2 | IX2]].
         repeat destruct IX2 as [|IX2]; ev. inversion H15; subst.
         rewrite subst_open1.
         eapply stp2_selb1. eauto. eauto. eauto. eapply closed_subst. eapply closed_upgrade_free. eauto. omega. eauto.
-        eapply IHn. eauto. omega. rewrite app_nil_l. eauto. eauto. eapply CX. eauto.
-        eauto.
-        right. left. split. eassumption. reflexivity.
-        eauto. eauto.
+        eapply SBind.
         eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto.
         left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.  split. eassumption. rewrite subst_open1. reflexivity.
         inversion H4. subst. inversion H21. subst. eassumption.
@@ -4903,10 +4905,7 @@ Proof.
         rewrite A.  
         eapply stp2_selb1. eassumption. right. eapply closed_open_tselh. eassumption.
         eassumption. eapply closed_subst. eapply closed_upgrade_free. eauto. omega. eauto.
-        eapply IHn. eauto. omega. rewrite app_nil_l. eauto. eauto. eapply CX. eauto.
-        eauto.
-        right. left. split. eassumption. reflexivity.
-        eauto. eauto.
+        eapply SBind.
         eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto.
         right. left. split. eassumption.
         unfold open. erewrite open_noop. erewrite open_noop. reflexivity.
@@ -4933,10 +4932,7 @@ Proof.
         rewrite C2.
         eapply stp2_selb1. eassumption. right. eassumption.
         eassumption. eapply closed_subst. eapply closed_upgrade_free. eauto. omega. eauto.
-        eapply IHn. eauto. omega. rewrite app_nil_l. eauto. eauto. eapply CX. eauto.
-        eauto.
-        right. left. split. eassumption. reflexivity.
-        eauto. eauto.
+        eapply SBind.
         eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto.
         right. left. split. unfold open. erewrite open_noop. eassumption. eassumption.
         unfold open. erewrite open_noop. erewrite open_noop. reflexivity.
