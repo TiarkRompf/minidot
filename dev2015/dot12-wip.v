@@ -5552,6 +5552,23 @@ Qed.
 
 Hint Constructors wf_envh.
 
+Lemma exists_GYL: forall GX GY GU GL,
+  wf_envh GX GY (GU ++ GL) ->
+  exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL.                  
+Proof.
+  intros. remember (GU ++ GL) as G. generalize dependent HeqG. generalize dependent GU. generalize dependent GL. induction H; intros.
+  - exists []. exists []. simpl. split. reflexivity. symmetry in HeqG. apply app_eq_nil in HeqG.
+    inversion HeqG. subst. eauto.
+  - induction GU.
+    + rewrite app_nil_l in HeqG.
+      exists []. eexists. rewrite app_nil_l. split. reflexivity.
+      rewrite <- HeqG. eauto.
+    + simpl in HeqG. inversion HeqG.
+      specialize (IHwf_envh GL GU H2). destruct IHwf_envh as [GYU [GYL [IHA IHB]]].
+      exists ((n, (vvs, t))::GYU). exists GYL. split. rewrite IHA. simpl. reflexivity.
+      apply IHB.
+Qed.
+             
 Lemma stp_to_stp2_aux: forall G1 GH T1 T2,
   stp G1 GH T1 T2 ->
   forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
@@ -5639,7 +5656,7 @@ Proof.
     destruct A as [? [? VT]].
     inversion VT. subst.
     assert (exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL) as EQG. {
-      admit.
+      eapply exists_GYL. eassumption.
     }
     destruct EQG as [GYU [GYL [EQY WYL]]].
     eapply stpd2_selab1. eauto. eauto. eauto.
