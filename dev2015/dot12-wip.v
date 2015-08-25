@@ -5638,7 +5638,13 @@ Proof.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]].
     inversion VT. subst.
+    assert (exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL) as EQG. {
+      admit.
+    }
+    destruct EQG as [GYU [GYL [EQY WYL]]].
     eapply stpd2_selab1. eauto. eauto. eauto.
+    instantiate (1:=GYL). erewrite wfh_length. eassumption. eassumption.
+    eassumption.
     eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
     specialize (IHST2 _ _ WX WY).
     apply stpd2_reg2 in IHST2.
