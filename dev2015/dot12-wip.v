@@ -550,7 +550,7 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
 | stp2_and11: forall m n1 n2 G1 G2 GH T1 T2 T,
     stp2 m true G1 T1 G2 T GH n1 ->
     stp2 m true G1 T2 G1 T2 GH n2 -> (* regularity *)
-    stp2 m true G1 (TAnd T1 T2) G2 T GH (S (n1+n2)) 
+    stp2 m true G1 (TAnd T1 T2) G2 T GH (S (n1+n2))
 | stp2_and12: forall m n1 n2 G1 G2 GH T1 T2 T,
     stp2 m true G1 T2 G2 T GH n1 ->
     stp2 m true G1 T1 G1 T1 GH n2 -> (* regularity *)
@@ -998,12 +998,12 @@ Proof.
   eapply stp_selab2. crush2. crush2. instantiate(1:=TBool). crush2.
   instantiate (1:=[(0, TBind (TMem TBool TBool))]). simpl. reflexivity.
   rewrite app_nil_l. reflexivity.
-  crush2. crush2. crush2. 
+  crush2. crush2. crush2.
   eapply stp_fun. crush2. eapply stp_fun.
   eapply stp_selab1. crush2. crush2. instantiate(1:=TBool). crush2.
   instantiate (1:=[(0, TBind (TMem TBool TBool))]). simpl. reflexivity.
   rewrite app_nil_l. reflexivity.
-  crush2. crush2. crush2. 
+  crush2. crush2. crush2.
   crush2. crush2.
 Qed.
 
@@ -1483,7 +1483,7 @@ Qed.
 
 Lemma concat_same_length: forall {X} (GU: list X) (GL: list X) (GH1: list X) (GH0: list X),
   GU ++ GL = GH1 ++ GH0 ->
-  length GU = length GH1 ->                          
+  length GU = length GH1 ->
   GU=GH1 /\ GL=GH0.
 Proof.
   intros. generalize dependent GH1. induction GU; intros.
@@ -1497,7 +1497,7 @@ Qed.
 
 Lemma concat_same_length': forall {X} (GU: list X) (GL: list X) (GH1: list X) (GH0: list X),
   GU ++ GL = GH1 ++ GH0 ->
-  length GL = length GH0 ->                          
+  length GL = length GH0 ->
   GU=GH1 /\ GL=GH0.
 Proof.
   intros.
@@ -1533,7 +1533,7 @@ Qed.
 
 Lemma exists_GH0U: forall {X} (GH1: list X) (GH0: list X) (GU: list X) (GL: list X) x0,
   length GL = S x0 ->
-  GU ++ GL = GH1 ++ GH0 ->                   
+  GU ++ GL = GH1 ++ GH0 ->
   x0 < length GH0 ->
   exists GH0U, GH0 = GH0U ++ GL.
 Proof.
@@ -1552,7 +1552,7 @@ Proof.
     destruct IHGH1 as [GH0U IH].
     exists GH0U. apply IH.
 Qed.
-  
+
 Lemma stp_splice : forall GX G0 G1 T1 T2 x v1,
    stp GX (G1++G0) T1 T2 ->
    stp GX ((map (splicett (length G0)) G1) ++ (x,v1)::G0) (splice (length G0) T1) (splice (length G0) T2).
@@ -3604,7 +3604,7 @@ Proof.
     + SCase "bot". eapply atpd2_bot. eapply IHn; try eassumption. omega.
     + SCase "bool". eapply atpd2_bool.
     + SCase "fun". eapply atpd2_to_stpd2 in HX. eapply atpd2_fun.
-      eapply stp2_narrow_aux; eauto. 
+      eapply stp2_narrow_aux; eauto.
       eapply stp2_narrow_aux; eauto.
     + SCase "mem". eapply atpd2_mem.
       eapply IHn; try eassumption. omega.
@@ -3894,7 +3894,7 @@ Lemma atpd2_narrow: forall x G1 G2 G3 G4 T1 T2 T3 T4 H,
   atpd2 false G1 T1 G2 T2 ((x,(G1,T1))::H) -> (* careful about H! *)
   atpd2 false G3 T3 G4 T4 ((x,(G2,T2))::H) ->
   atpd2 false G3 T3 G4 T4 ((x,(G1,T1))::H).
-Proof. 
+Proof.
   intros. inversion H1 as [n H'].
   eapply (atpd2_narrow_aux n) with (GH1:=[]).
   eapply H'. omega.
@@ -5129,7 +5129,7 @@ Proof.
           eapply closed_open_tselh. eassumption.
           eapply closed_open_tselh. eassumption.
         }
-        rewrite A.  
+        rewrite A.
         eapply stp2_selb1. eassumption. right. eapply closed_open_tselh. eassumption.
         eassumption. eapply closed_subst. eapply closed_upgrade_free. eauto. omega. eauto.
         eapply SBind.
@@ -5206,7 +5206,7 @@ Proof.
       rewrite NPeano.Nat.add_1_r in H5. inversion H5. rewrite Heqx_1.
       erewrite <- Forall2_length; try eassumption. omega.
       instantiate (1:=GU'). eassumption.
-      
+
       eapply IHn. eauto. omega. eapply EQGL. eauto. eauto. eauto. eauto.
       right. left. split. eassumption. reflexivity.
       eauto. eauto.
@@ -5290,7 +5290,7 @@ Proof.
           eapply closed_open_tselh. eassumption.
           eapply closed_open_tselh. eassumption.
         }
-        rewrite A.  
+        rewrite A.
         eapply stp2_selb2. eassumption. right. eapply closed_open_tselh. eassumption.
         eassumption. eapply closed_subst. eapply closed_upgrade_free. eauto. omega. eauto.
         eapply SBind.
@@ -5367,7 +5367,7 @@ Proof.
       rewrite NPeano.Nat.add_1_r in H5. inversion H5. rewrite Heqx_1.
       erewrite <- Forall2_length; try eassumption. omega.
       instantiate (1:=GU'). eassumption.
-      
+
       eapply IHn. eauto. omega. eapply EQGL. eauto. eauto. eauto. eauto.
       right. left. split. eassumption. reflexivity.
       eauto. eauto.
@@ -5401,7 +5401,7 @@ Proof.
       eapply IHn; eauto; try omega.
     (* remaining obligations *)
     + eauto. + rewrite <- H1. eauto. + eauto.
-                                       
+
   - Case "sela2".
     intros GH0 GH0' GXX TXX TXX' T1' T2' V ? VS CX ? IX1 IX2 FA IXH.
 
@@ -5573,7 +5573,7 @@ Proof.
     subst. apply compat_and in IX2. repeat destruct IX2 as [? IX2].
     subst. eapply stp2_and2; eapply IHn; eauto; try omega.
     eauto.
-    
+
   - Case "wrapf".
     intros. subst. eapply stp2_wrapf. eapply IHn; eauto. omega.
   - Case "transf".
@@ -5959,7 +5959,7 @@ Hint Constructors wf_envh.
 
 Lemma exists_GYL: forall GX GY GU GL,
   wf_envh GX GY (GU ++ GL) ->
-  exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL.                  
+  exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL.
 Proof.
   intros. remember (GU ++ GL) as G. generalize dependent HeqG. generalize dependent GU. generalize dependent GL. induction H; intros.
   - exists []. exists []. simpl. split. reflexivity. symmetry in HeqG. apply app_eq_nil in HeqG.
@@ -5973,7 +5973,7 @@ Proof.
       exists ((n, (vvs, t))::GYU). exists GYL. split. rewrite IHA. simpl. reflexivity.
       apply IHB.
 Qed.
-             
+
 Lemma stp_to_stp2_aux: forall G1 GH T1 T2,
   stp G1 GH T1 T2 ->
   forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
@@ -6343,7 +6343,7 @@ Proof.
   - Case "var". eauto.
   - Case "vpack". eauto.
   - Case "vunpack". eauto.
-  - Case "vtyp". eauto. 
+  - Case "vtyp". eauto.
   - Case "app". eauto.
     assert (stp env [] (TFun T1 T2) (TFun T1 T2)) as WF. eauto.
     inversion WF; subst. eauto. rewrite H1 in H2. inversion H2.
@@ -6388,35 +6388,35 @@ Proof.
       eapply not_stuck. eapply v_pack. eauto. eauto. eauto.
       eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
-    + SCase "unpack". 
+    + SCase "unpack".
       assert (res_type venv0 (index i venv0) (TBind T1)). eapply IHhas_type; eauto. eapply has_type_wf; eauto.
       inversion H3. subst.
-      inversion H7; subst; ev; try solve by inversion. 
+      inversion H7; subst; ev; try solve by inversion.
       eapply not_stuck. inversion H9. subst.
-      
+
       assert (exists n, stp2 1 false venv1 (open (TSel x) T2) venv0 (open (TSel i) T1) [] n).
       eexists. eapply stp2_substitute_aux with (GH0:=nil).
       eapply H15. eauto. simpl. reflexivity.
       unfold open. erewrite subst_open_zero with (k:=1). eauto. eauto.
       eapply closed_open. eapply closed_upgrade_free. eauto. simpl. eauto. eauto.
       eauto.
-      
+
       left. eexists. eexists. split. eauto. split. reflexivity. split. eauto. split. unfold open. rewrite subst_open_zero with (k:=1). eauto. eauto.
       symmetry. eapply subst_open_zero. eauto.
-      
+
       left. eexists. eexists. split. eauto. split. reflexivity. split. eauto. split. unfold open. rewrite subst_open_zero with (k:=1). eauto. eauto.
       symmetry. eapply subst_open_zero. eauto.
 
       eauto.
-      
+
       left. eexists. eexists. split. eauto. split. reflexivity. split. eauto. split. unfold open. rewrite subst_open_zero with (k:=1). eauto. eauto. eauto.
-      
+
       eapply valtp_widen. eauto.
 
       ev. eapply sstpd2_untrans. eapply stpd2_to_sstpd2_aux1. eapply H10. eauto.
 
     + eapply restp_widen. eapply IHhas_type; eauto. eapply has_type_wf; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
-    
+
   - Case "Typ".
     remember (ttyp t) as e.
     induction H0; inversion Heqe; subst.
@@ -6426,7 +6426,7 @@ Proof.
       assert (index i venv1 = Some (vty venv0 t)). subst. eapply index_hit2. rewrite wf_fresh with (ts := env). eauto. eauto. eauto. eauto.
       assert (val_type venv1 (vty venv0 t) (TMem T1X T1X)). eapply v_ty. eauto. eauto.
       assert ((open (TSel (fresh venv0)) t) = T1X). rewrite wf_fresh with (ts:=env). rewrite <-Heqi. eauto. eauto.
-      rewrite H2. 
+      rewrite H2.
 
       (* we have everything as stp and 'just' need to convert to stp2. however we're
       working with an env that has a self binding, and the wf_env evidence needs
