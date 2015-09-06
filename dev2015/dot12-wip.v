@@ -4966,6 +4966,8 @@ Lemma stp2_substitute_aux: forall ni nj, forall d m G1 G2 T1 T2 GH n1,
      compat GX TX TX' (Some V) GX TX (subst TX' TX) ->
      stp2 (S d) m G1 T1' G2 T2' GH0' n1.
 Proof.
+  intros ni. induction ni.
+  intros. inversion H2. (* ni=0 case: can't happen, invert val_type *)
   intros n. induction n; intros d m G1 G2 T1 T2 GH n1 H ?. inversion H0.
   inversion H; subst.
   - Case "topx".
@@ -5153,27 +5155,109 @@ Proof.
       repeat destruct IXX as [|IXX]; ev.
       * subst. simpl. inversion H11. subst.
 
-        assert (d = S 0). admit. subst.
 
         assert (GL = [(0, (GXX, TXX))]) as EQGL. {
           eapply proj2. eapply concat_same_length'. eassumption.
           simpl. eassumption.
         }
 
-        assert (stp2 2 false GXX (subst TXX' TXX) G2 (TBind (TMem TBot T0)) [] n0) as SBind. {
+        assert (stp2 (S d) false GXX (subst TXX' TXX) G2 (TBind (TMem TBot T0)) [] n0) as SBind. {
           eapply IHn. eauto. omega. rewrite app_nil_l. eauto. eauto. eapply CX. eauto. eauto.
           right. left. split. eassumption. reflexivity.
           eauto. eauto.
         }
+
+        
+        (* If the input level is 1, we cannot create a selb node.
+           A potential avenue is to create a sel node directly.
+           But this is not straightforward: we have an imprecise bind which we need to invert.
+           Inversion requires transitivity, which increases the size.
+           Then on the internal stp obtained from the inverted bind, we need to call 
+           subst again, but it need not be smaller than our own input.
+           
+           Fortunately, we know that we are unpacking a bind in the valtp,
+           which becomes the new self object, so we can do an outer
+           induction on the valtp depth.
+
+           TODO: Substitution no longer preserves size. We don't seem to rely on
+           it anywhere, but the lemma's signature needs to be generalized.
+
+           TODO: Can we use the same approach for selb, and get rid of the
+           level 2 pushback altogether?
+         *)
+
+        destruct d. { (* first case: level = 1 *)
+
+        assert (exists n1, stp2 0 true GXX (subst TXX' TXX) G2 (TBind (TMem TBot T0)) [] n1) as SBind0. {
+          eapply sstpd2_untrans. eapply stpd2_to_sstpd2_aux1. eauto. eauto.
+        }
+        destruct SBind0 as [n1 SBind0].
+
+        assert (val_type G2 x0 (TBind (TMem TBot T0)) (S ni)) as VSB. eapply valtp_widen. eapply VS. eexists. eapply SBind0.
+        inversion VSB; subst; ev; inversion H14.  (* impossible cases are all H14. good one left. *)
+
+        inversion H14. (* invert bind/bind *) subst. 
+
+
+        assert (closed 0 0 (open (TSel x2) T2)) as CL. eapply closed_open. eauto. eauto.
+
+        assert (compat venv0 (open (TSelH 0) T2) (TSel x2) 
+                       (Some x0) venv0 (open (TSelH 0) T2) 
+                       (open (TSel x2) T2)) as CP1. {
+          left. eexists. eexists. eexists. split. eauto. split. eauto. split. eauto. split. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
+        }
+        assert (compat venv0 (open (TSelH 0) T2) (TSel x2) 
+     (Some x0) G2 (open (TSelH 0) (TMem TBot T0)) 
+     (TMem TBot T2')) as CP2. {
+          destruct IX2 as [IX2 | [IX2 | IX2]].
+        (*1*)repeat destruct IX2 as [|IX2]; ev. inversion H18; subst.
+        rewrite subst_open1.
+        left. eexists. eexists. eexists. split. eauto. split. eauto. split. eauto. split. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
+        inversion H4. inversion H28. eauto. (* closed 1 0 T0 *)
+        (*2*)destruct IX2 as [IX21 IX22]. right. left. split. econstructor; eauto. rewrite IX22. eauto.
+        (*3*)destruct IX2 as [IX21 IX22]. right. right. split. econstructor; simpl; eauto. rewrite IX22. eauto.
+        }
+        assert (compat venv0 (open (TSelH 0) T2) (TSel x2) 
+     (Some x0) venv0 (open (TSelH 0) T2)
+     (subst (TSel x2) (open (TSelH 0) T2))) as CPH. {
+           left. eexists. eexists. eexists. split. eauto. split. eauto. split. eauto. split. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
+        }
+                                                    
+
+        
+        assert (exists n7, stp2 1 false venv0 (open (TSel x2) T2) G2 (TMem TBot T2') [] n7) as ST1. {
+          subst. eexists.
+          eapply IHni in H32. eapply H32. eauto. rewrite app_nil_l. eauto.
+          rewrite subst_open1. eauto. eauto.
+          eapply closed_open. eapply closed_upgrade_free. eauto. eauto. eauto. eauto.
+          eauto. eauto. eauto. eauto.
+        }
+        destruct ST1 as [n7 ST1].
+
+        assert (n7=n0). admit. (* FIXME: enable different size as result *)
+        subst n7.
+
+        assert (stp2 1 false venv0 (open (TSel x2) T2) G2 (TMem TBot T2') GH0' n0) as ST1'.
+        eapply stp2_extendH_mult in ST1. rewrite app_nil_r in ST1. eapply ST1.
+        
+        eapply stp2_sel1. eauto. eauto. eauto.
+        eapply ST1'.
+
+        admit. (* regularity *)
+        }
+                        
+        (* second case: input is at level 2 (or greater). this means we can create a selb node *)
+        (* assert (d = S 0). admit. subst. *)
+
         destruct IX2 as [IX2 | [IX2 | IX2]].
         repeat destruct IX2 as [|IX2]; ev. inversion H15; subst.
         rewrite subst_open1.
         eapply stp2_selb1. eauto. eauto. eauto. eapply closed_subst. eapply closed_upgrade_free. eauto. omega. eauto.
         eapply SBind.
         eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto.
-        left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.  split. eassumption. rewrite subst_open1. reflexivity.
+        left. eexists. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.  split. eassumption. rewrite subst_open1. reflexivity.
         inversion H4. subst. inversion H21. subst. eassumption.
-        left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.  split. eassumption. rewrite subst_open1. reflexivity.
+        left. eexists. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.  split. eassumption. rewrite subst_open1. reflexivity.
         inversion H4. subst. inversion H21. subst. eassumption.
         eauto. eauto.
         inversion H4. subst. inversion H21. subst. eassumption.
@@ -5314,6 +5398,7 @@ Proof.
       repeat destruct IXX as [|IXX]; ev.
       * subst. simpl. inversion H11. subst.
 
+        (* TODO: add missing case from selab1 *)
         assert (d = S 0). admit. subst.
 
         assert (GL = [(0, (GXX, TXX))]) as EQGL. {
@@ -5332,9 +5417,9 @@ Proof.
         eapply stp2_selb2. eauto. eauto. eauto. eapply closed_subst. eapply closed_upgrade_free. eauto. omega. eauto.
         eapply SBind.
         eapply IHn. eauto. omega. eauto. eauto. eapply CX. eauto.
-        left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.  split. eassumption. rewrite subst_open1. reflexivity.
+        left. eexists. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.  split. eassumption. rewrite subst_open1. reflexivity.
         inversion H4. subst. inversion H21. subst. eassumption.
-        left. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.  split. eassumption. rewrite subst_open1. reflexivity.
+        left. eexists. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.  split. eassumption. rewrite subst_open1. reflexivity.
         inversion H4. subst. inversion H21. subst. eassumption.
         eauto. eauto.
         inversion H4. subst. inversion H21. subst. eassumption.
@@ -5640,7 +5725,7 @@ Proof.
               compat GX TX TX' (Some V) ((fresh G3,V)::G3) T3 T3') as A.
     {
       eexists.
-      unfold compat. simpl. left. exists (fresh G3). exists V.
+      unfold compat. simpl. left. exists (fresh G3). exists V. exists (S ni).
       case_eq (le_lt_dec (fresh G3) (fresh G3)); intros LTE LE.
       rewrite <- beq_nat_refl.
       split; try split; try split; try split; eauto.
@@ -6427,7 +6512,7 @@ Proof.
       remember (open (TSel i) t) as T1X.
       remember ((i,vty venv0 t)::venv0) as venv1.
       assert (index i venv1 = Some (vty venv0 t)). subst. eapply index_hit2. rewrite wf_fresh with (ts := env). eauto. eauto. eauto. eauto.
-      assert (val_type venv1 (vty venv0 t) (TMem T1X T1X) 0). eapply v_ty. eauto. eauto.
+      assert (val_type venv1 (vty venv0 t) (TMem T1X T1X) 1). eapply v_ty. eauto. eauto.
       assert ((open (TSel (fresh venv0)) t) = T1X). rewrite wf_fresh with (ts:=env). rewrite <-Heqi. eauto. eauto.
       rewrite H2.
 
