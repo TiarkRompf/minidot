@@ -5240,10 +5240,21 @@ Proof.
         assert (stp2 1 false venv0 (open (TSel x2) T2) G2 (TMem TBot T2') GH0' n0) as ST1'.
         eapply stp2_extendH_mult in ST1. rewrite app_nil_r in ST1. eapply ST1.
         
-        eapply stp2_sel1. eauto. eauto. eauto.
-        eapply ST1'.
+        assert (exists n9, stp2 1 true G2 (TMem TBot T2') G2 (TMem TBot T2') GH0' n9) as REG1.
+        eapply stp2_reg2. eauto.
+        destruct REG1 as [n9 REG1].
 
-        admit. (* regularity *)
+        assert (exists n8, stp2 1 true G2 T2' G2 T2' GH0' n8) as REG1'.
+        inversion REG1.
+        eapply stp2_reg2. eapply H35.
+        destruct REG1' as [n8 REG1'].
+
+        
+        assert (n8=n2). admit. (* FIXME: enable different size as result *)
+        subst n8.
+
+        eapply stp2_sel1. eauto. eauto. eauto.
+        eapply ST1'. eapply REG1'. 
         }
                         
         (* second case: input is at level 2 (or greater). this means we can create a selb node *)
