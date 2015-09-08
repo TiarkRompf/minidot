@@ -4954,7 +4954,7 @@ Lemma stp2_substitute_aux: forall ni nj, forall d m G1 G2 T1 T2 GH n1,
    stp2 (S d) m G1 T1 G2 T2 GH n1 -> n1 < nj ->
    forall GH0 GH0' GX TX TX' T1' T2' V,
      GH = (GH0 ++ [(0,(GX, TX))]) ->
-     val_type GX V (subst TX' TX) ni -> 
+     val_type GX V (subst TX' TX) ni ->
      (* When we're replacing binds from a pack/unpack sequence, the
         type in GH may refer to itself (contain TSelH 0).
         It should be safe for TX to refer to itself. *)
@@ -5163,7 +5163,7 @@ Proof.
       eapply IHn in H4. destruct H4.
       eapply IHn in H5. destruct H5.
       eexists.
-      
+
       eapply stp2_sela1. eauto.
 
       assert (S (x - 1) = x) as A. {
@@ -5209,14 +5209,14 @@ Proof.
           eauto. eauto.
         }
         destruct SBind as [nb SBind].
-        
+
         (* If the input level is 1, we cannot create a selb node.
            A potential avenue is to create a sel node directly.
            But this is not straightforward: we have an imprecise bind which we need to invert.
            Inversion requires transitivity, which increases the size.
-           Then on the internal stp obtained from the inverted bind, we need to call 
+           Then on the internal stp obtained from the inverted bind, we need to call
            subst again, but it need not be smaller than our own input.
-           
+
            Fortunately, we know that we are unpacking a bind in the valtp,
            which becomes the new self object, so we can do an outer
            induction on the valtp depth.
@@ -5235,18 +5235,18 @@ Proof.
         assert (val_type G2 x0 (TBind (TMem TBot T0)) (S ni)) as VSB. eapply valtp_widen. eapply VS. eexists. eapply SBind0.
         inversion VSB; subst; ev; inversion H14.  (* impossible cases are all H14. good one left. *)
 
-        inversion H14. (* invert bind/bind *) subst. 
+        inversion H14. (* invert bind/bind *) subst.
 
 
         assert (closed 0 0 (open (TSel x2) T2)) as CL. eapply closed_open. eauto. eauto.
 
-        assert (compat venv0 (open (TSelH 0) T2) (TSel x2) 
-                       (Some x0) venv0 (open (TSelH 0) T2) 
+        assert (compat venv0 (open (TSelH 0) T2) (TSel x2)
+                       (Some x0) venv0 (open (TSelH 0) T2)
                        (open (TSel x2) T2)) as CP1. {
           left. eexists. eexists. eexists. split. eauto. split. eauto. split. eauto. split. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
         }
-        assert (compat venv0 (open (TSelH 0) T2) (TSel x2) 
-     (Some x0) G2 (open (TSelH 0) (TMem TBot T0)) 
+        assert (compat venv0 (open (TSelH 0) T2) (TSel x2)
+     (Some x0) G2 (open (TSelH 0) (TMem TBot T0))
      (TMem TBot T2')) as CP2. {
           destruct IX2 as [IX2 | [IX2 | IX2]].
         (*1*)repeat destruct IX2 as [|IX2]; ev. inversion H18; subst.
@@ -5256,14 +5256,14 @@ Proof.
         (*2*)destruct IX2 as [IX21 IX22]. right. left. split. econstructor; eauto. rewrite IX22. eauto.
         (*3*)destruct IX2 as [IX21 IX22]. right. right. split. econstructor; simpl; eauto. rewrite IX22. eauto.
         }
-        assert (compat venv0 (open (TSelH 0) T2) (TSel x2) 
+        assert (compat venv0 (open (TSelH 0) T2) (TSel x2)
      (Some x0) venv0 (open (TSelH 0) T2)
      (subst (TSel x2) (open (TSelH 0) T2))) as CPH. {
            left. eexists. eexists. eexists. split. eauto. split. eauto. split. eauto. split. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
         }
-                                                    
 
-        
+
+
         assert (exists n7, stp2 1 false venv0 (open (TSel x2) T2) G2 (TMem TBot T2') [] n7) as ST1. {
           subst.
           eapply IHni in H32. destruct H32 as [? H32].
@@ -5278,7 +5278,7 @@ Proof.
 
         assert (stp2 1 false venv0 (open (TSel x2) T2) G2 (TMem TBot T2') GH0' n7) as ST1'.
         eapply stp2_extendH_mult in ST1. rewrite app_nil_r in ST1. eapply ST1.
-        
+
         assert (exists n9, stp2 1 true G2 (TMem TBot T2') G2 (TMem TBot T2') GH0' n9) as REG1.
         eapply stp2_reg2. eauto.
         destruct REG1 as [n9 REG1].
@@ -5289,9 +5289,9 @@ Proof.
         destruct REG1' as [n8 REG1'].
 
         eexists. eapply stp2_sel1. eauto. eauto. eauto.
-        eapply ST1'. eapply REG1'. 
+        eapply ST1'. eapply REG1'.
         }
-                        
+
         (* second case: input is at level 2 (or greater). this means we can create a selb node *)
 
         destruct IX2 as [IX2 | [IX2 | IX2]].
@@ -5472,7 +5472,7 @@ Proof.
           eauto. eauto.
         }
         destruct SBind as [nb SBind].
-        
+
         destruct d. { (* first case: level = 1 *)
 
         assert (exists n1, stp2 0 true GXX (subst TXX' TXX) G1 (TBind (TMem T0 TTop)) [] n1) as SBind0. {
@@ -5483,18 +5483,18 @@ Proof.
         assert (val_type G1 x0 (TBind (TMem T0 TTop)) (S ni)) as VSB. eapply valtp_widen. eapply VS. eexists. eapply SBind0.
         inversion VSB; subst; ev; inversion H14.  (* impossible cases are all H14. good one left. *)
 
-        inversion H14. (* invert bind/bind *) subst. 
+        inversion H14. (* invert bind/bind *) subst.
 
 
         assert (closed 0 0 (open (TSel x2) T2)) as CL. eapply closed_open. eauto. eauto.
 
-        assert (compat venv0 (open (TSelH 0) T2) (TSel x2) 
-                       (Some x0) venv0 (open (TSelH 0) T2) 
+        assert (compat venv0 (open (TSelH 0) T2) (TSel x2)
+                       (Some x0) venv0 (open (TSelH 0) T2)
                        (open (TSel x2) T2)) as CP1. {
           left. eexists. eexists. eexists. split. eauto. split. eauto. split. eauto. split. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
         }
-        assert (compat venv0 (open (TSelH 0) T2) (TSel x2) 
-     (Some x0) G1 (open (TSelH 0) (TMem T0 TTop)) 
+        assert (compat venv0 (open (TSelH 0) T2) (TSel x2)
+     (Some x0) G1 (open (TSelH 0) (TMem T0 TTop))
      (TMem T1' TTop)) as CP2. {
           destruct IX1 as [IX1 | [IX1 | IX1]].
         (*1*)repeat destruct IX2 as [|IX2]; ev. inversion H18; subst.
@@ -5504,14 +5504,14 @@ Proof.
         (*2*)destruct IX1 as [IX11 IX12]. right. left. split. econstructor; eauto. rewrite IX12. eauto.
         (*3*)destruct IX1 as [IX11 IX12]. right. right. split. econstructor; simpl; eauto. rewrite IX12. eauto.
         }
-        assert (compat venv0 (open (TSelH 0) T2) (TSel x2) 
+        assert (compat venv0 (open (TSelH 0) T2) (TSel x2)
      (Some x0) venv0 (open (TSelH 0) T2)
      (subst (TSel x2) (open (TSelH 0) T2))) as CPH. {
            left. eexists. eexists. eexists. split. eauto. split. eauto. split. eauto. split. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
         }
-                                                    
 
-        
+
+
         assert (exists n7, stp2 1 false venv0 (open (TSel x2) T2) G1 (TMem T1' TTop) [] n7) as ST1. {
           subst.
           eapply IHni in H32. destruct H32 as [? H32].
@@ -5526,7 +5526,7 @@ Proof.
 
         assert (stp2 1 false venv0 (open (TSel x2) T2) G1 (TMem T1' TTop) GH0' n7) as ST1'.
         eapply stp2_extendH_mult in ST1. rewrite app_nil_r in ST1. eapply ST1.
-        
+
         assert (exists n9, stp2 1 true G1 (TMem T1' TTop) G1 (TMem T1' TTop) GH0' n9) as REG1.
         eapply stp2_reg2. eauto.
         destruct REG1 as [n9 REG1].
@@ -5537,9 +5537,9 @@ Proof.
         destruct REG1' as [n8 REG1'].
 
         eexists. eapply stp2_sel2. eauto. eauto. eauto.
-        eapply ST1'. eapply REG1'. 
+        eapply ST1'. eapply REG1'.
         }
-                        
+
         (* second case: input is at level 2 (or greater). this means we can create a selb node *)
 
         destruct IX1 as [IX1 | [IX1 | IX1]].
@@ -5724,7 +5724,7 @@ Proof.
       eapply IHn in H4. destruct H4.
       eapply IHn in H5. destruct H5.
       eexists.
-      
+
       eapply stp2_sela2. eauto.
 
       assert (S (x - 1) = x) as A. {
@@ -5811,7 +5811,7 @@ Proof.
     omega.
       eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
     eauto. subst GH. rewrite <-EL. eapply closed_upgrade_free. eauto. omega.
-    eauto.  
+    eauto.
     eauto. subst GH. rewrite <-EL. eapply closed_upgrade_free. eauto. omega.
 
   - Case "bind".
