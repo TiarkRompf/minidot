@@ -1,4 +1,4 @@
-(* Full safety for DOT (WIP) *)
+(* Full safety for DOT *)
 
 (* this version is based on dot10.v *)
 (* based on that, it adds intersection types *)
