@@ -6757,11 +6757,10 @@ Proof.
   - Case "vpack". eauto.
   - Case "vunpack". eauto.
   - Case "vtyp". eauto.
-  - Case "app". eauto.
-    assert (stp env [] (TFun T1 T2) (TFun T1 T2)) as WF. eauto.
+  - Case "app".
+    assert (stp env [] (TFun l T1 T2) (TFun l T1 T2)) as WF. eauto.
     inversion WF; subst. eauto. rewrite H1 in H2. inversion H2.
-  - Case "abs".
-    eauto.
+  - Case "abs". admit.
   - Case "tapp". eauto.
   - Case "tabs". eauto.
   - Case "tsub". eapply stp_reg. eauto.
