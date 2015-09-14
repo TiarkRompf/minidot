@@ -6897,8 +6897,8 @@ Proof.
 
 
   - Case "Abs".
-    remember (tabs i i0 e) as xe. induction H0; inversion Heqxe; subst.
-    + eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh venv0 env H1). eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
+    remember (tabs i l) as xe. induction H0; inversion Heqxe; subst.
+    + eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh venv0 env H1). eauto. admit. (* eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor. *)
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
   - Case "TApp".
