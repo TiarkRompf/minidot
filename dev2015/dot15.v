@@ -6623,7 +6623,14 @@ Lemma dcs_has_type_stp: forall G G1 G2 ds T T1 T2,
   sstpd2 true G1 T G2 (TFun (length ds) T1 T2) [] ->
   False.
 Proof.
-  admit.
+  intros. remember (length ds) as l. assert (l >= length ds) as A by omega. clear Heql.
+  induction H. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  destruct (tand_shape (TFun m T0 T3) TS).
+  rewrite H6 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  subst. inversion H10. subst. simpl in A. omega.
+  apply IHdcs_has_type. eexists. eassumption. simpl in A. omega.
+  rewrite H6 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  simpl in A. omega.
 Qed.
 
 Lemma invert_abs: forall venv vf l T1 T2 n,
