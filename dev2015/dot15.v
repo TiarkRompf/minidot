@@ -6616,6 +6616,22 @@ Proof.
   apply stpd2_mem; apply stpd2_wrapf; eapply wf_tp_to_stp2_cycle_aux; eauto.
 Qed.
 
+Lemma invert_abs: forall venv vf l T1 T2 n,
+  val_type venv vf (TFun l T1 T2) n ->
+  exists env tenv f TF ds x y T3 T4,
+    vf = (vabs env f ds) /\
+    fresh env <= f /\
+    1 + f = x /\
+    wf_env env tenv /\
+    has_type ((x,T3)::(f,TF)::tenv) y T4 /\
+    sstpd2 true venv T1 env T3 [] /\
+    sstpd2 true env T4 venv T2 [].
+Proof.
+  intros. inversion H; repeat ev; try solve by inversion. subst.
+  admit.
+Qed.
+
+(*
 Lemma invert_abs: forall venv vf T1 T2 n,
   val_type venv vf (TFun T1 T2) n ->
   exists env tenv f x y T3 T4,
@@ -6633,8 +6649,34 @@ Proof.
   eapply stpd2_upgrade in E1. eapply stpd2_upgrade in E2.
   repeat eu. repeat eexists; eauto.
 Qed.
+*)
 
 
+
+Lemma dcs_tall_aux: forall n, forall G ds venv1 T venv0 T1 T2 n0,
+  n0 <= n ->
+  dcs_has_type G ds T ->
+  stp2 0 true venv1 T venv0 (TAll T1 T2) [] n0 ->
+  False.
+Proof.
+  intros n. induction n.
+  intros. inversion H1; omega.
+  intros. eapply dcs_has_type_shape in H0.
+  destruct H0. subst. inversion H1.
+  destruct H0.
+  destruct H0 as [l [T1' [T2' H0]]]. subst. inversion H1.
+  destruct H0 as [l [T1' [T2' [ds' [T' [H0 HR]]]]]]. subst. inversion H1.
+  subst. inversion H4.
+  subst. eapply IHn in HR. apply HR. instantiate (1:=n1). omega. eassumption.
+Qed.
+
+Lemma dcs_tall: forall G ds venv1 T venv0 T1 T2 n0,
+  dcs_has_type G ds T ->
+  stp2 0 true venv1 T venv0 (TAll T1 T2) [] n0 ->
+  False.
+Proof.
+  intros. eapply dcs_tall_aux. instantiate (1:=n0). eauto. eassumption. eassumption.
+Qed.
 
 Lemma invert_tabs: forall venv vf vx T1 T2 nf nx,
   val_type venv vf (TAll T1 T2) nf ->
@@ -6648,7 +6690,9 @@ Lemma invert_tabs: forall venv vf vx T1 T2 nf nx,
     sstpd2 true venv T1 env T3 [] /\
     sstpd2 true ((x,vx)::env) (open (TSel x) T4) venv T2 []. (* (open T1 T2) []. *)
 Proof.
-  intros venv0 vf vx T1 T2 nf nx VF VX STY. inversion VF; ev; try solve by inversion. inversion H2. subst.
+  intros venv0 vf vx T1 T2 nf nx VF VX STY. inversion VF; ev; try solve by inversion.
+  subst. eapply dcs_tall in H0. inversion H0. eassumption.
+  inversion H2. subst.
   eexists. eexists. eexists. eexists. eexists. eexists.
   repeat split; eauto.
   remember (fresh venv1) as x.
