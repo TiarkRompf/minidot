@@ -6618,6 +6618,14 @@ Proof.
   apply stpd2_mem; apply stpd2_wrapf; eapply wf_tp_to_stp2_cycle_aux; eauto.
 Qed.
 
+Lemma dcs_has_type_stp: forall G G1 G2 ds T T1 T2,
+  dcs_has_type G ds T ->
+  sstpd2 true G1 T G2 (TFun (length ds) T1 T2) [] ->
+  False.
+Proof.
+  admit.
+Qed.
+
 Lemma invert_abs: forall venv vf l T1 T2 n,
   val_type venv vf (TFun l T1 T2) n ->
   exists env tenv f TF ds x y T3 T4,
@@ -6649,7 +6657,7 @@ Proof.
     split. rewrite <- A. rewrite H3. eassumption.
     destruct (tand_shape (TFun m T0 T3) TS).
     rewrite H7 in H5. rewrite H5 in B. destruct B as [? B]. inversion B. eapply beq_nat_true in E2. rewrite <- E2 in H11. eexists. eassumption.
-    admit.
+    eapply dcs_has_type_stp in H1. inversion H1. rewrite <- H4. eapply beq_nat_true in E2. rewrite <- E2. eexists. eassumption.
     rewrite H7 in H5. rewrite H5 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. apply B.
     eapply IHdcs_has_type. apply A. destruct (tand_shape (TFun m T0 T3) TS).
     rewrite H7 in H5. rewrite H5 in B. destruct B as [? B]. inversion B. inversion H11. apply beq_nat_false in E2. omega. eexists. eassumption.
