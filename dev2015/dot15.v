@@ -6634,7 +6634,25 @@ Lemma invert_abs: forall venv vf l T1 T2 n,
 Proof.
   intros. inversion H; repeat ev; try solve by inversion. subst.
   exists venv1. exists tenv0. exists f. exists T. exists ds.
-  assert (exists y T3 T4, index l ds = Some (1 + f, y) /\ has_type ((1+f, T3) :: (f, T) :: tenv0) y T4 /\ sstpd2 true venv1 (TFun l T3 T4) venv0 (TFun l T1 T2) []) as A. admit.
+  assert (exists y T3 T4, index l ds = Some (1 + f, y) /\ has_type ((1+f, T3) :: (f, T) :: tenv0) y T4 /\ sstpd2 true venv1 (TFun l T3 T4) venv0 (TFun l T1 T2) []) as A. {
+    clear H. remember ((f, T)::tenv0) as tenv.
+    assert (fresh tenv = S f) as A. { rewrite Heqtenv. simpl. reflexivity. }
+    clear Heqtenv.
+    assert (sstpd2 true venv1 T venv0 (TFun l T1 T2) []) as B. { eexists; eassumption. }
+    clear H3.
+    induction H1. destruct B as [? B]. inversion B.
+    simpl.
+    case_eq (le_lt_dec (fresh dcs) m); intros LE E1.
+    case_eq (beq_nat l m); intros E2.
+    exists y. eexists. eexists.
+    split. rewrite <- A. rewrite H3. reflexivity.
+    split. rewrite <- A. rewrite H3. eassumption.
+    admit.
+    eapply IHdcs_has_type. apply A. destruct (tand_shape (TFun m T0 T3) TS).
+    rewrite H7 in H5. rewrite H5 in B. destruct B as [? B]. inversion B. inversion H11. apply beq_nat_false in E2. omega. eexists. eassumption.
+    rewrite H7 in H5. rewrite H5 in B. destruct B as [? B]. inversion B. apply beq_nat_false in E2. omega.
+    inversion H1; subst. simpl in LE. omega. simpl in LE. omega.
+  }
   destruct A as [y [T3 [T4 [A1 [A2 A3]]]]].
   exists (1 + f). exists y. exists T3. exists T4.
   split. reflexivity. split. assumption. split. reflexivity.
