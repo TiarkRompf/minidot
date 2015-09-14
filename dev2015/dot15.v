@@ -357,6 +357,7 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
 | t_abs: forall env f ds T,
            dcs_has_type ((f,T)::env) ds T ->
            fresh env <= f ->
+           stp env [] T T ->
            has_type env (tabs f ds) T
 | t_tapp: forall env f x T11 T12,
            has_type env f (TAll T11 T12) ->
@@ -393,6 +394,7 @@ with dcs_has_type: tenv -> list (id * (id * tm)) -> ty -> Prop :=
             fresh env = x ->
             m = length dcs ->
             T = tand (TFun m T1 T2) TS ->
+            stp env [] (TFun m T1 T2) (TFun m T1 T2) ->
             dcs_has_type env ((m, (x, y))::dcs) T
 .
 
@@ -6747,25 +6749,38 @@ Lemma valtp_reg: forall G v T n,
                    sstpd2 true G T G T [].
 Proof. intros. induction H; eapply sstpd2_reg2; eauto. Qed.
 
+Scheme has_type_mut := Induction for has_type Sort Prop
+with dcs_has_type_mut := Induction for dcs_has_type Sort Prop.
+Combined Scheme has_type_mutind from has_type_mut, dcs_has_type_mut.
+
+Lemma mut_has_type_wf:
+  (forall G t T, has_type G t T -> stp G [] T T) /\
+  (forall G ds T, dcs_has_type G ds T -> stp G [] T T).
+Proof.
+  apply has_type_mutind; intros; eauto.
+  - inversion H. subst. assumption. rewrite H1 in H2. inversion H2.
+  - eapply stp_reg. eassumption.
+  - destruct (tand_shape (TFun m T1 T2) TS).
+    rewrite H1 in e1. rewrite e1.
+    eapply stp_and2.
+    eapply stp_and11. assumption. assumption.
+    eapply stp_and12. assumption. assumption.
+    rewrite H1 in e1. rewrite e1.
+    assumption.
+Qed.
 
 Lemma has_type_wf: forall G1 t T,
   has_type G1 t T ->
   stp G1 [] T T.
 Proof.
-  intros. induction H.
-  - Case "true". eauto.
-  - Case "false". eauto.
-  - Case "var". eauto.
-  - Case "vpack". eauto.
-  - Case "vunpack". eauto.
-  - Case "vtyp". eauto.
-  - Case "app".
-    assert (stp env [] (TFun l T1 T2) (TFun l T1 T2)) as WF. eauto.
-    inversion WF; subst. eauto. rewrite H1 in H2. inversion H2.
-  - Case "abs". admit.
-  - Case "tapp". eauto.
-  - Case "tabs". eauto.
-  - Case "tsub". eapply stp_reg. eauto.
+  apply (proj1 mut_has_type_wf).
+Qed.
+
+Lemma dcs_has_type_wf: forall G ds T,
+  dcs_has_type G ds T ->
+  stp G [] T T.
+Proof.
+  apply (proj2 mut_has_type_wf).
 Qed.
 
 (* if not a timeout, then result not stuck and well-typed *)
