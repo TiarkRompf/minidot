@@ -6647,7 +6647,10 @@ Proof.
     exists y. eexists. eexists.
     split. rewrite <- A. rewrite H3. reflexivity.
     split. rewrite <- A. rewrite H3. eassumption.
+    destruct (tand_shape (TFun m T0 T3) TS).
+    rewrite H7 in H5. rewrite H5 in B. destruct B as [? B]. inversion B. eapply beq_nat_true in E2. rewrite <- E2 in H11. eexists. eassumption.
     admit.
+    rewrite H7 in H5. rewrite H5 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. apply B.
     eapply IHdcs_has_type. apply A. destruct (tand_shape (TFun m T0 T3) TS).
     rewrite H7 in H5. rewrite H5 in B. destruct B as [? B]. inversion B. inversion H11. apply beq_nat_false in E2. omega. eexists. eassumption.
     rewrite H7 in H5. rewrite H5 in B. destruct B as [? B]. inversion B. apply beq_nat_false in E2. omega.
