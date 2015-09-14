@@ -6627,12 +6627,24 @@ Lemma invert_abs: forall venv vf l T1 T2 n,
     index l ds = Some (x, y) /\
     wf_env env tenv /\
     dcs_has_type ((f, TF)::tenv) ds TF /\
+    sstpd2 true env TF env TF [] /\
     has_type ((x,T3)::(f,TF)::tenv) y T4 /\
     sstpd2 true venv T1 env T3 [] /\
     sstpd2 true env T4 venv T2 [].
 Proof.
   intros. inversion H; repeat ev; try solve by inversion. subst.
-  admit.
+  exists venv1. exists tenv0. exists f. exists T. exists ds.
+  assert (exists y T3 T4, index l ds = Some (1 + f, y) /\ has_type ((1+f, T3) :: (f, T) :: tenv0) y T4 /\ sstpd2 true venv1 (TFun l T3 T4) venv0 (TFun l T1 T2) []) as A. admit.
+  destruct A as [y [T3 [T4 [A1 [A2 A3]]]]].
+  exists (1 + f). exists y. exists T3. exists T4.
+  split. reflexivity. split. assumption. split. reflexivity.
+  split. apply A1.
+  split. assumption. split. assumption.
+  split. eapply sstpd2_reg1. eexists. eassumption.
+  split. apply A2.
+  destruct A3 as [? A3]. inversion A3. subst. split.
+  eapply stpd2_upgrade. eexists. eassumption.
+  eapply stpd2_upgrade. eexists. eassumption.
 Qed.
 
 (*
@@ -6884,25 +6896,14 @@ Proof.
       inversion HRF as [? vf].
 
       destruct (invert_abs venv0 vf i T1 T2 n1) as
-          [env1 [tenv [f0 [TF [ds [x0 [y0 [T3 [T4 [EF [FRF [FRX [EQDS [WF [HDS [HTY [STX STY]]]]]]]]]]]]]]]]]. eauto.
+          [env1 [tenv [f0 [TF [ds [x0 [y0 [T3 [T4 [EF [FRF [FRX [EQDS [WF [HDS [HTF [HTY [STX STY]]]]]]]]]]]]]]]]]]. eauto.
       (* now we know it's a closure, and we have has_type evidence *)
 
       assert (res_type ((x0,vx)::(f0,vf)::env1) res T4) as HRY.
         SCase "HRY".
           subst. eapply IHn. rewrite EQDS in H3. eauto. eauto.
           (* wf_env f x *) econstructor. eapply valtp_widen; eauto. eapply sstpd2_extend2. eapply sstpd2_extend2. eauto. eauto. eauto.
-          (* wf_env f   *) econstructor. eapply v_abs; eauto. eapply sstpd2_extend2.
-          (*
-          eapply sstpd2_downgrade in STX. eapply sstpd2_downgrade in STY. repeat eu.
-          assert (stpd2 false env1 T3 env1 T3 []) as A3. {
-            eapply stpd2_wrapf. eapply stpd2_reg2. eauto.
-          }
-          inversion A3 as [na3 HA3].
-          assert (stpd2 false env1 T4 env1 T4 []) as A4 by solve [eapply stpd2_wrapf; eapply stpd2_reg1; eauto].
-          inversion A4 as [na4 HA4].
-          eexists. eapply stp2_fun. eassumption. eassumption. eauto. eauto.
-          (* should add sstpd2_fun constructor? *)
-           *) admit.
+          (* wf_env f   *) econstructor. eapply v_abs; eauto. eapply sstpd2_extend2. apply HTF.
           eauto. eauto.
       inversion HRY as [? vy].
 
@@ -6913,7 +6914,8 @@ Proof.
 
   - Case "Abs".
     remember (tabs i l) as xe. induction H0; inversion Heqxe; subst.
-    + eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh venv0 env H1). eauto. admit. (* eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor. *)
+    + eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh venv0 env H1). eauto.
+      eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
   - Case "TApp".
