@@ -1,7 +1,7 @@
 (* Full safety for DOT *)
 
-(* this version is based on dot10.v *)
-(* based on that, it adds intersection types *)
+(* this version is based on dot12.v *)
+(* based on that, it adds multiple labels for functions *)
 
 Require Export SfLib.
 
@@ -17,7 +17,7 @@ Inductive ty : Type :=
   | TBool  : ty
   | TBot   : ty
   | TTop   : ty
-  | TFun   : ty -> ty -> ty
+  | TFun   : id -> ty -> ty -> ty
   | TMem   : ty -> ty -> ty
   | TSel   : id -> ty
   | TSelH  : id -> ty
@@ -32,8 +32,8 @@ Inductive tm : Type :=
   | tfalse : tm
   | tvar   : id -> tm
   | ttyp   : ty -> tm
-  | tapp   : tm -> tm -> tm (* f(x) *)
-  | tabs   : id -> id -> tm -> tm (* \f x.y *)
+  | tapp   : tm -> id -> tm -> tm (* \o.m(x) *)
+  | tabs   : id -> list (id * (id * tm)) -> tm (* \o {val m = \x.y} *)
   | ttapp  : tm -> tm -> tm (* f[X] *)
   | ttabs  : id -> ty -> tm -> tm (* \f x.y *)
 .
@@ -41,7 +41,7 @@ Inductive tm : Type :=
 Inductive vl : Type :=
 | vty   : list (id*vl) -> ty -> vl
 | vbool : bool -> vl
-| vabs  : list (id*vl) -> id -> id -> tm -> vl
+| vabs  : list (id*vl) -> id -> list (id * (id * tm)) -> vl
 | vtabs : list (id*vl) -> id -> ty -> tm -> vl
 .
 
@@ -95,10 +95,10 @@ Inductive closed_rec: nat -> nat -> ty -> Prop :=
     closed_rec k l TBot
 | cl_bool: forall k l,
     closed_rec k l TBool
-| cl_fun: forall k l T1 T2,
+| cl_fun: forall k l m T1 T2,
     closed_rec k l T1 ->
     closed_rec k l T2 ->
-    closed_rec k l (TFun T1 T2)
+    closed_rec k l (TFun m T1 T2)
 | cl_mem: forall k l T1 T2,
     closed_rec k l T1 ->
     closed_rec k l T2 ->
@@ -140,15 +140,15 @@ Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
     | TBot        => TBot
     | TBool       => TBool
     | TMem T1 T2  => TMem (open_rec k u T1) (open_rec k u T2)
-    | TFun T1 T2  => TFun (open_rec k u T1) (open_rec k u T2)
+    | TFun m T1 T2  => TFun m (open_rec k u T1) (open_rec k u T2)
     | TAnd T1 T2  => TAnd (open_rec k u T1) (open_rec k u T2)
   end.
 
 Definition open u T := open_rec 0 u T.
 
 (* sanity check *)
-Example open_ex1: open (TSel 9) (TAll TBool (TFun (TSelB 1) (TSelB 0))) =
-                      (TAll TBool (TFun (TSel 9) (TSelB 0))).
+Example open_ex1: open (TSel 9) (TAll TBool (TFun 0 (TSelB 1) (TSelB 0))) =
+                      (TAll TBool (TFun 0 (TSel 9) (TSelB 0))).
 Proof. compute. eauto. Qed.
 
 
@@ -158,7 +158,7 @@ Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
     | TBot         => TBot
     | TBool        => TBool
     | TMem T1 T2   => TMem (subst U T1) (subst U T2)
-    | TFun T1 T2   => TFun (subst U T1) (subst U T2)
+    | TFun m T1 T2   => TFun m (subst U T1) (subst U T2)
     | TSelB i      => TSelB i
     | TSel i       => TSel i
     | TSelH i      => if beq_nat i 0 then U else TSelH (i-1)
@@ -173,7 +173,7 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
     | TBot         => True
     | TBool        => True
     | TMem T1 T2   => nosubst T1 /\ nosubst T2
-    | TFun T1 T2   => nosubst T1 /\ nosubst T2
+    | TFun m T1 T2   => nosubst T1 /\ nosubst T2
     | TSelB i      => True
     | TSel i       => True
     | TSelH i      => i <> 0
@@ -200,10 +200,10 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH TBot T2
 | stp_bool: forall G1 GH,
     stp G1 GH TBool TBool
-| stp_fun: forall G1 GH T1 T2 T3 T4,
+| stp_fun: forall G1 GH m T1 T2 T3 T4,
     stp G1 GH T3 T1 ->
     stp G1 GH T2 T4 ->
-    stp G1 GH (TFun T1 T2) (TFun T3 T4)
+    stp G1 GH (TFun m T1 T2) (TFun m T3 T4)
 | stp_mem: forall G1 GH T1 T2 T3 T4,
     stp G1 GH T3 T1 ->
     stp G1 GH T2 T4 ->
@@ -318,6 +318,13 @@ with pathH_type: tenv -> tenv -> id -> ty -> Prop :=
 
 Hint Constructors stp.
 
+
+Function tand (t1: ty) (t2: ty) :=
+  match t2 with
+    | TTop => t1
+    | _ => TAnd t1 t2
+  end.
+
 (* TODO *)
 
 Inductive has_type : tenv -> tm -> ty -> Prop :=
@@ -343,16 +350,14 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            stp ((x,TMem T1X T1X)::env) [] T1X T1X ->
            stp env [] (TBind (TMem T1 T1)) (TBind (TMem T1 T1)) ->
            has_type env (ttyp T1) (TBind (TMem T1 T1))
-| t_app: forall env f x T1 T2,
-           has_type env f (TFun T1 T2) ->
+| t_app: forall env f l x T1 T2,
+           has_type env f (TFun l T1 T2) ->
            has_type env x T1 ->
-           has_type env (tapp f x) T2
-| t_abs: forall env f x y T1 T2,
-           has_type ((x,T1)::(f,TFun T1 T2)::env) y T2 ->
-           stp env [] (TFun T1 T2) (TFun T1 T2) ->
+           has_type env (tapp f l x) T2
+| t_abs: forall env f ds T,
+           dcs_has_type ((f,T)::env) ds T ->
            fresh env <= f ->
-           1+f <= x ->
-           has_type env (tabs f x y) (TFun T1 T2)
+           has_type env (tabs f ds) T
 | t_tapp: forall env f x T11 T12,
            has_type env f (TAll T11 T12) ->
            has_type env x T11 ->
@@ -378,6 +383,17 @@ Does it make a difference? It seems like we can always widen f?
            has_type env e T1 ->
            stp env [] T1 T2 ->
            has_type env e T2
+
+with dcs_has_type: tenv -> list (id * (id * tm)) -> ty -> Prop :=
+| dt_nil: forall env,
+            dcs_has_type env nil TTop
+| dt_fun: forall env x y m T1 T2 dcs TS T,
+            has_type ((x,T1)::env) y T2 ->
+            dcs_has_type env dcs TS ->
+            fresh env = x ->
+            m = length dcs ->
+            T = tand (TFun m T1 T2) TS ->
+            dcs_has_type env ((m, (x, y))::dcs) T
 .
 
 
@@ -385,7 +401,7 @@ Definition base (v:vl): venv :=
   match v with
     | vty GX _ => GX
     | vbool _ => nil
-    | vabs GX _ _ _ => GX
+    | vabs GX _ _ => GX
     | vtabs GX _ _ _ => GX
   end.
 
@@ -405,10 +421,10 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 m true G1 TBot G2 T GH (S n1)
 | stp2_bool: forall m G1 G2 GH n1,
     stp2 m true G1 TBool G2 TBool GH (S n1)
-| stp2_fun: forall m G1 G2 T1 T2 T3 T4 GH n1 n2,
+| stp2_fun: forall m G1 G2 l T1 T2 T3 T4 GH n1 n2,
     stp2 MAX false G2 T3 G1 T1 GH n1 ->
     stp2 MAX false G1 T2 G2 T4 GH n2 ->
-    stp2 m true G1 (TFun T1 T2) G2 (TFun T3 T4) GH (S (n1+n2))
+    stp2 m true G1 (TFun l T1 T2) G2 (TFun l T3 T4) GH (S (n1+n2))
 | stp2_mem: forall G1 G2 T1 T2 T3 T4 GH n1 n2,
     stp2 0 false G2 T3 G1 T1 GH n1 ->
     stp2 0 true G1 T2 G2 T4 GH n2 ->
@@ -586,13 +602,12 @@ with val_type : venv -> vl -> ty -> nat -> Prop :=
 | v_bool: forall venv b TE,
     (exists n, stp2 0 true [] TBool venv TE [] n) ->
     val_type venv (vbool b) TE 1
-| v_abs: forall env venv tenv f x y T1 T2 TE,
+| v_abs: forall env venv tenv f ds T TE,
     wf_env venv tenv ->
-    has_type ((x,T1)::(f,TFun T1 T2)::tenv) y T2 ->
+    dcs_has_type ((f,T)::tenv) ds T ->
     fresh venv <= f ->
-    1 + f <= x ->
-    (exists n, stp2 0 true venv (TFun T1 T2) env TE [] n)->
-    val_type env (vabs venv f x y) TE 1
+    (exists n, stp2 0 true venv T env TE [] n)->
+    val_type env (vabs venv f ds) TE 1
 | v_tabs: forall env venv tenv x y T1 T2 TE,
     wf_env venv tenv ->
     has_type ((x,T1)::tenv) y (open (TSel x) T2) ->
@@ -663,10 +678,10 @@ Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_bool: forall G1 G2 GH,
     stpd2 true G1 TBool G2 TBool GH.
 Proof. intros. repeat exists (S 0). eauto. Qed.
-Lemma stpd2_fun: forall G1 G2 GH T11 T12 T21 T22,
+Lemma stpd2_fun: forall G1 G2 GH l T11 T12 T21 T22,
     stpd2 false G2 T21 G1 T11 GH ->
     stpd2 false G1 T12 G2 T22 GH ->
-    stpd2 true G1 (TFun T11 T12) G2 (TFun T21 T22) GH.
+    stpd2 true G1 (TFun l T11 T12) G2 (TFun l T21 T22) GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_mem: forall G1 G2 GH T11 T12 T21 T22,
     stpd2 false G2 T21 G1 T11 GH ->
@@ -839,10 +854,10 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
         | ttrue      => Some (Some (vbool true))
         | tfalse     => Some (Some (vbool false))
         | tvar x     => Some (index x env)
-        | tabs f x y => Some (Some (vabs env f x y))
+        | tabs f ds => Some (Some (vabs env f ds))
         | ttabs x T y  => Some (Some (vtabs env x T y))
         | ttyp T     => Some (Some (vty env T))
-        | tapp ef ex   =>
+        | tapp ef m ex   =>
           match teval n env ex with
             | None => None
             | Some None => Some None
@@ -853,8 +868,12 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
                 | Some (Some (vbool _)) => Some None
                 | Some (Some (vty _ _)) => Some None
                 | Some (Some (vtabs _ _ _ _)) => Some None
-                | Some (Some (vabs env2 f x ey)) =>
-                  teval n ((x,vx)::(f,vabs env2 f x ey)::env2) ey
+                | Some (Some (vabs env2 f ds)) =>
+                  match index m ds with
+                    | None => Some None
+                    | Some (x, ey) =>
+                      teval n ((x,vx)::(f,vabs env2 f ds)::env2) ey
+                  end
               end
           end
         | ttapp ef ex   =>
@@ -867,7 +886,7 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
                 | Some None => Some None
                 | Some (Some (vbool _)) => Some None
                 | Some (Some (vty _ _)) => Some None
-                | Some (Some (vabs _ _ _ _)) => Some None
+                | Some (Some (vabs _ _ _)) => Some None
                 | Some (Some (vtabs env2 x T ey)) =>
                   teval n ((x,vx)::env2) ey
               end
@@ -881,7 +900,7 @@ Hint Constructors tm.
 Hint Constructors vl.
 
 Hint Constructors closed_rec.
-Hint Constructors has_type.
+Hint Constructors has_type dcs_has_type.
 Hint Constructors val_type.
 Hint Constructors wf_env.
 Hint Constructors stp.
@@ -896,7 +915,6 @@ Hint Unfold closed.
 Hint Unfold open.
 
 Hint Resolve ex_intro.
-
 
 
 (* ############################################################ *)
@@ -931,9 +949,9 @@ Ltac crush2 :=
 
 (* define polymorphic identity function *)
 
-Definition polyId := TAll (TBind (TMem TBot TTop)) (TFun (TSelB 0) (TSelB 0)).
+Definition polyId := TAll (TBind (TMem TBot TTop)) (TFun 0 (TSelB 0) (TSelB 0)).
 
-Example ex1: has_type [] (ttabs 0 (TBind (TMem TBot TTop)) (tabs 1 2 (tvar 2))) polyId.
+Example ex1: has_type [] (ttabs 0 (TBind (TMem TBot TTop)) (tabs 1 [(0, (2, (tvar 2)))])) polyId.
 Proof.
   crush2.
 Qed.
@@ -941,7 +959,7 @@ Qed.
 
 (* instantiate it to bool *)
 
-Example ex2: has_type [(0,polyId)] (ttapp (tvar 0) (ttyp TBool)) (TFun TBool TBool).
+Example ex2: has_type [(0,polyId)] (ttapp (tvar 0) (ttyp TBool)) (TFun 0 TBool TBool).
 Proof.
   eapply t_tapp. instantiate (1:= (TBind (TMem TBool TBool))).
     { eapply t_sub.
@@ -970,18 +988,18 @@ Qed.
 
 Definition brandUnbrand :=
   TAll (TBind (TMem TBot TTop))
-       (TFun
-          (TFun TBool (TSelB 0)) (* brand *)
-          (TFun
-             (TFun (TSelB 0) TBool) (* unbrand *)
+       (TFun 0
+          (TFun 0 TBool (TSelB 0)) (* brand *)
+          (TFun 0
+             (TFun 0 (TSelB 0) TBool) (* unbrand *)
              TBool)).
 
 Example ex3:
   has_type []
            (ttabs 0 (TBind (TMem TBot TTop))
-                  (tabs 1 2
-                        (tabs 3 4
-                              (tapp (tvar 4) (tapp (tvar 2) ttrue)))))
+                  (tabs 1 [(0, (2,
+                        (tabs 3 [(0, (4,
+                              (tapp (tvar 4) 0 (tapp (tvar 2) 0 ttrue))))])))]))
            brandUnbrand.
 Proof.
   crush2.
@@ -991,8 +1009,8 @@ Qed.
 (* instantiating it at bool is admissible *)
 
 Example ex4:
-  has_type [(1,TFun TBool TBool);(0,brandUnbrand)]
-           (tvar 0) (TAll (TBind (TMem TBool TBool)) (TFun (TFun TBool TBool) (TFun (TFun TBool TBool) TBool))).
+  has_type [(1,TFun 0 TBool TBool);(0,brandUnbrand)]
+           (tvar 0) (TAll (TBind (TMem TBool TBool)) (TFun 0 (TFun 0 TBool TBool) (TFun 0 (TFun 0 TBool TBool) TBool))).
 Proof.
   eapply t_sub. crush2. crush2. eapply stp_all; crush2. compute. eapply stp_fun. eapply stp_fun. crush2.
   eapply stp_selab2. crush2. crush2. instantiate(1:=TBool). crush2.
@@ -1012,8 +1030,8 @@ Hint Resolve ex4.
 (* apply it to identity functions *)
 
 Example ex5:
-  has_type [(1,TFun TBool TBool);(0,brandUnbrand)]
-           (tapp (tapp (ttapp (tvar 0) (ttyp TBool)) (tvar 1)) (tvar 1)) TBool.
+  has_type [(1,TFun 0 TBool TBool);(0,brandUnbrand)]
+           (tapp (tapp (ttapp (tvar 0) (ttyp TBool)) 0 (tvar 1)) 0 (tvar 1)) TBool.
 Proof.
   crush2.
 Qed.
@@ -1022,22 +1040,22 @@ Qed.
 (* test expansion *)
 
 Example ex6:
-  has_type [(1,TSel 0);(0,TMem TBot (TBind (TFun TBool (TSelB 0))))]
-           (tvar 1) (TFun TBool (TSel 1)).
+  has_type [(1,TSel 0);(0,TMem TBot (TBind (TFun 0 TBool (TSelB 0))))]
+           (tvar 1) (TFun 0 TBool (TSel 1)).
 Proof.
-  remember (TFun TBool (TSel 1)) as T.
-  assert (T = open (TSel 1) (TFun TBool (TSelB 0))). compute. eauto.
+  remember (TFun 0 TBool (TSel 1)) as T.
+  assert (T = open (TSel 1) (TFun 0 TBool (TSelB 0))). compute. eauto.
   rewrite H.
   eapply t_var_unpack. eapply t_sub. eapply t_var. compute. eauto. crush2. crush2. crush2.
 Qed.
 
 
 Example ex7:
-  stp [(1,TSel 0);(0,TMem TBot (TBind (TMem TBot (TFun TBool (TSelB 0)))))] []
-           (TSel 1) (TFun TBool(TSel 1)).
+  stp [(1,TSel 0);(0,TMem TBot (TBind (TMem TBot (TFun 0 TBool (TSelB 0)))))] []
+           (TSel 1) (TFun 0 TBool (TSel 1)).
 Proof.
-  remember (TFun TBool (TSel 1)) as T.
-  assert (T = open (TSel 1) (TFun TBool (TSelB 0))). compute. eauto.
+  remember (TFun 0 TBool (TSel 1)) as T.
+  assert (T = open (TSel 1) (TFun 0 TBool (TSelB 0))). compute. eauto.
   rewrite H.
   eapply stp_selb1. compute. eauto.
   eapply stp_sel1. compute. eauto.
