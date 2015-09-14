@@ -1190,7 +1190,7 @@ Fixpoint splice n (T : ty) {struct T} : ty :=
     | TBot         => TBot
     | TBool        => TBool
     | TMem T1 T2   => TMem (splice n T1) (splice n T2)
-    | TFun T1 T2   => TFun (splice n T1) (splice n T2)
+    | TFun m T1 T2   => TFun m (splice n T1) (splice n T2)
     | TSelB i      => TSelB i
     | TSel i       => TSel i
     | TSelH i      => if le_lt_dec n i  then TSelH (i+1) else TSelH i
@@ -3481,10 +3481,10 @@ Proof. intros. repeat eu. eexists. econstructor. eauto. Qed.
 Lemma atpd2_bool: forall G1 G2 GH,
     atpd2 true G1 TBool G2 TBool GH.
 Proof. intros. repeat exists (S 0). eauto. Qed.
-Lemma atpd2_fun: forall G1 G2 GH T11 T12 T21 T22,
+Lemma atpd2_fun: forall G1 G2 GH l T11 T12 T21 T22,
     stpd2 false G2 T21 G1 T11 GH ->
     stpd2 false G1 T12 G2 T22 GH ->
-    atpd2 true G1 (TFun T11 T12) G2 (TFun T21 T22) GH.
+    atpd2 true G1 (TFun l T11 T12) G2 (TFun l T21 T22) GH.
 Proof. intros. repeat eu. eexists. econstructor; eauto. Qed.
 Lemma atpd2_mem: forall G1 G2 GH T11 T12 T21 T22,
     atpd2 false G2 T21 G1 T11 GH ->
@@ -3999,7 +3999,7 @@ Proof.
       inversion B as [nb B'].
       eexists. eapply stp2_fun. apply A'. apply B'.
     + SCase "sel2". subst.
-      assert (sstpd2 false GX' TX' G1 (TMem (TFun T0 T4) TTop) []) as A. {
+      assert (sstpd2 false GX' TX' G1 (TMem (TFun l T0 T4) TTop) []) as A. {
         eapply sstpd2_trans_axiom. eexists. eassumption.
         eexists. eapply stp2_wrapf. eapply stp2_mem.
         eapply stp2_wrapf. eassumption.
@@ -4200,6 +4200,46 @@ Proof.
   intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto.
 Qed.
 
+Lemma tand_shape: forall T1 T2,
+  tand T1 T2 = TAnd T1 T2 \/ tand T1 T2 = T1.
+Proof.
+  intros. destruct T2; eauto.
+Qed.
+
+Lemma dcs_has_type_shape: forall G ds T,
+  dcs_has_type G ds T ->
+  T = TTop \/ (exists l T1 T2, T = TFun l T1 T2) \/
+  (exists l T1 T2 ds' T', T = TAnd (TFun l T1 T2) T' /\
+   dcs_has_type G ds' T').
+Proof.
+  intros. inversion H.
+  - left. reflexivity.
+  - subst. destruct dcs. inversion H1. subst.
+    + right. left. eexists. eexists. eexists.
+      simpl. reflexivity.
+    + right. right. eexists. eexists. eexists. eexists. eexists.
+      split. inversion H1. subst.
+      destruct TS0; try solve [simpl; reflexivity].
+      eassumption.
+Qed.
+
+Lemma dcs_tmem: forall n, forall G ds venv1 T venv0 T1 T2 n0,
+  n0 <= n ->
+  dcs_has_type G ds T ->
+  stp2 0 true venv1 T venv0 (TMem T1 T2) [] n0 ->
+  False.
+Proof.
+  intros n. induction n.
+  intros. inversion H1; omega.
+  intros. eapply dcs_has_type_shape in H0.
+  destruct H0. subst. inversion H1.
+  destruct H0.
+  destruct H0 as [l [T1' [T2' H0]]]. subst. inversion H1.
+  destruct H0 as [l [T1' [T2' [ds' [T' [H0 HR]]]]]]. subst. inversion H1.
+  subst. inversion H4.
+  subst. eapply IHn in HR. apply HR. instantiate (1:=n1). omega. eassumption.
+Qed.
+
 Lemma invert_typ: forall venv vx T1 T2 n,
   val_type venv vx (TMem T1 T2) n ->
   exists GX TX,
@@ -4209,8 +4249,11 @@ Lemma invert_typ: forall venv vx T1 T2 n,
 Proof.
   intros. inversion H; ev; try solve by inversion. inversion H1.
   subst. inversion H2. subst. eexists. eexists. split. eauto. split. eexists. eauto. eexists. eauto.
+  subst. assert False as A. {
+    eapply dcs_tmem. instantiate (1:=x). eauto. eassumption. eassumption.
+  }
+  inversion A.
 Qed.
-
 
 Lemma inv_closed_open: forall j n TX T, closed j n (open_rec j TX T) -> closed j n TX -> closed (j+1) n T.
 Proof.
