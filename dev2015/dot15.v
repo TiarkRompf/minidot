@@ -4223,6 +4223,31 @@ Proof.
       eassumption.
 Qed.
 
+Lemma dcs_tbind_aux: forall n, forall G ds venv1 T venv0 T0 n0,
+  n0 <= n ->
+  dcs_has_type G ds T ->
+  stp2 0 true venv1 T venv0 (TBind T0) [] n0 ->
+  False.
+Proof.
+  intros n. induction n.
+  intros. inversion H1; omega.
+  intros. eapply dcs_has_type_shape in H0.
+  destruct H0. subst. inversion H1.
+  destruct H0.
+  destruct H0 as [l [T1' [T2' H0]]]. subst. inversion H1.
+  destruct H0 as [l [T1' [T2' [ds' [T' [H0 HR]]]]]]. subst. inversion H1.
+  subst. inversion H4.
+  subst. eapply IHn in HR. apply HR. instantiate (1:=n1). omega. eassumption.
+Qed.
+
+Lemma dcs_tbind: forall G ds venv1 T venv0 T0 n0,
+  dcs_has_type G ds T ->
+  stp2 0 true venv1 T venv0 (TBind T0) [] n0 ->
+  False.
+Proof.
+  intros. eapply dcs_tbind_aux. instantiate (1:=n0). eauto. eassumption. eassumption.
+Qed.
+
 Lemma dcs_tmem: forall n, forall G ds venv1 T venv0 T1 T2 n0,
   n0 <= n ->
   dcs_has_type G ds T ->
@@ -4716,14 +4741,14 @@ Proof.
 Qed.
 
 
-Lemma compat_fun: forall GX TX TX' V G1 T1 T2 T1',
-    compat GX TX TX' V G1 (TFun T1 T2) T1' ->
+Lemma compat_fun: forall GX TX TX' V G1 l T1 T2 T1',
+    compat GX TX TX' V G1 (TFun l T1 T2) T1' ->
     closed_rec 0 1 TX ->
-    exists TA TB, T1' = TFun TA TB /\
+    exists TA TB, T1' = TFun l TA TB /\
                   compat GX TX TX' V G1 T1 TA /\
                   compat GX TX TX' V G1 T2 TB.
 Proof.
-  intros ? ? ? ? ? ? ? ? CC CLX. repeat destruct CC as [|CC].
+  intros ? ? ? ? ? ? ? ? ? CC CLX. repeat destruct CC as [|CC].
   - ev. repeat eexists; eauto. + left. repeat eexists; eauto. + left. repeat eexists; eauto.
   - ev. repeat eexists; eauto. + right. left. inversion H. eauto. + right. left. inversion H. eauto.
   - ev. repeat eexists; eauto. + right. right. inversion H. eauto. + right. right. inversion H. eauto.
@@ -5294,8 +5319,11 @@ Proof.
         destruct SBind0 as [n1 SBind0].
 
         assert (val_type G2 x0 (TBind (TMem TBot T0)) (S ni)) as VSB. eapply valtp_widen. eapply VS. eexists. eapply SBind0.
-        inversion VSB; subst; ev; inversion H14.  (* impossible cases are all H14. good one left. *)
-
+        inversion VSB; subst; ev.
+        inversion H14.
+        inversion H14.
+        eapply dcs_tbind in H16. inversion H16. eassumption.
+        inversion H14.
         inversion H14. (* invert bind/bind *) subst.
 
 
@@ -5327,9 +5355,9 @@ Proof.
 
         assert (exists n7, stp2 1 false venv0 (open (TSel x2) T2) G2 (TMem TBot T2') [] n7) as ST1. {
           subst.
-          eapply IHni in H32. destruct H32 as [? H32].
+          eapply IHni in H22. destruct H22 as [? H22].
           eexists.
-          eapply H32.
+          eapply H22.
           eauto. rewrite app_nil_l. eauto.
           rewrite subst_open1. eauto. eauto.
           eapply closed_open. eapply closed_upgrade_free. eauto. eauto. eauto. eauto.
@@ -5346,7 +5374,7 @@ Proof.
 
         assert (exists n8, stp2 1 true G2 T2' G2 T2' GH0' n8) as REG1'.
         inversion REG1.
-        eapply stp2_reg2. eapply H35.
+        eapply stp2_reg2. eapply H31.
         destruct REG1' as [n8 REG1'].
 
         eexists. eapply stp2_sel1. eauto. eauto. eauto.
@@ -5542,8 +5570,11 @@ Proof.
         destruct SBind0 as [n1 SBind0].
 
         assert (val_type G1 x0 (TBind (TMem T0 TTop)) (S ni)) as VSB. eapply valtp_widen. eapply VS. eexists. eapply SBind0.
-        inversion VSB; subst; ev; inversion H14.  (* impossible cases are all H14. good one left. *)
-
+        inversion VSB; subst; ev.
+        inversion H14.
+        inversion H14.
+        eapply dcs_tbind in H16. inversion H16. eassumption.
+        inversion H14.
         inversion H14. (* invert bind/bind *) subst.
 
 
@@ -5575,9 +5606,9 @@ Proof.
 
         assert (exists n7, stp2 1 false venv0 (open (TSel x2) T2) G1 (TMem T1' TTop) [] n7) as ST1. {
           subst.
-          eapply IHni in H32. destruct H32 as [? H32].
+          eapply IHni in H22. destruct H22 as [? H22].
           eexists.
-          eapply H32.
+          eapply H22.
           eauto. rewrite app_nil_l. eauto.
           rewrite subst_open1. eauto. eauto.
           eapply closed_open. eapply closed_upgrade_free. eauto. eauto. eauto. eauto.
@@ -6039,7 +6070,7 @@ Proof.
     inversion H4; ev. subst.
     inversion H9. subst.
     inversion H7. subst.
-    inversion H11.
+    eapply dcs_tbind in H8. inversion H8. eassumption.
     inversion H10. (* 1 case left *)
     subst. inversion H10. subst.
 
@@ -6122,7 +6153,7 @@ Proof.
     inversion H4; ev. subst.
     inversion H9. subst.
     inversion H1. subst.
-    inversion H11. subst.
+    eapply dcs_tbind in H8. inversion H8. eassumption.
     inversion H10. subst.
     inversion H10.  subst.
 
@@ -6475,10 +6506,10 @@ Inductive wf_tp: tenv -> tenv -> ty -> Prop :=
     wf_tp G1 GH TBot
 | wf_bool: forall G1 GH,
     wf_tp G1 GH TBool
-| wf_fun: forall G1 GH T1 T2,
+| wf_fun: forall G1 GH l T1 T2,
     wf_tp G1 GH T1 ->
     wf_tp G1 GH T2 ->
-    wf_tp G1 GH (TFun T1 T2)
+    wf_tp G1 GH (TFun l T1 T2)
 | wf_mem: forall G1 GH T1 T2,
     wf_tp G1 GH T1 ->
     wf_tp G1 GH T2 ->
