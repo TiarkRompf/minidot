@@ -3370,32 +3370,32 @@ Proof.
       }
       apply C3; assumption.
       assert (
-          stpd2 false G2 (open (TSelH (length GH)) T3) G2
-                (open (TSelH (length GH)) T3)
-                ((0, (G2, open (TSelH (length GH)) T3)) :: GH')
+          stpd2 false G2 (open (varH (length GH)) T3) G2
+                (open (varH (length GH)) T3)
+                ((0, (G2, open (varH (length GH)) T3)) :: GH')
                 ->
-          stpd2 false G2 (open (TSelH (length GH')) T3) G2
-                (open (TSelH (length GH')) T3)
-                ((0, (G2, open (TSelH (length GH')) T3)) :: GH')) as CS1. {
+          stpd2 false G2 (open (varH (length GH')) T3) G2
+                (open (varH (length GH')) T3)
+                ((0, (G2, open (varH (length GH')) T3)) :: GH')) as CS1. {
         rewrite A. intros P. apply P.
       }
       apply CS1. eapply IHn. eassumption. omega.
-      instantiate (5:=(0, (G2, open (TSelH (length GH)) T3)) :: GH1).
+      instantiate (5:=(0, (G2, open (varH (length GH)) T3)) :: GH1).
       subst. simpl. reflexivity. subst. simpl. reflexivity.
       assumption.
       assert (
-          stpd2 false G1 (open (TSelH (length GH)) T0) G2
-                (open (TSelH (length GH)) T3)
-                ((0, (G1, open (TSelH (length GH)) T0)) :: GH')
+          stpd2 false G1 (open (varH (length GH)) T0) G2
+                (open (varH (length GH)) T3)
+                ((0, (G1, open (varH (length GH)) T0)) :: GH')
                 ->
-          stpd2 false G1 (open (TSelH (length GH')) T0) G2
-                (open (TSelH (length GH')) T3)
-                ((0, (G1, open (TSelH (length GH')) T0)) :: GH')
+          stpd2 false G1 (open (varH (length GH')) T0) G2
+                (open (varH (length GH')) T3)
+                ((0, (G1, open (varH (length GH')) T0)) :: GH')
         ) as CS2. {
         rewrite A. intros P. apply P.
       }
       apply CS2. eapply IHn. eassumption. omega.
-      instantiate (5:=(0, (G1, open (TSelH (length GH)) T0)) :: GH1).
+      instantiate (5:=(0, (G1, open (varH (length GH)) T0)) :: GH1).
       subst. simpl. reflexivity. subst. simpl. reflexivity.
       assumption.
     + SCase "and11".
@@ -3503,7 +3503,7 @@ Lemma atpd2_sel1: forall G1 G2 GX TX x T2 GH v nv,
     closed 0 0 TX ->
     atpd2 false GX TX G2 (TMem TBot T2) GH ->
     atpd2 true G2 T2 G2 T2 GH ->
-    atpd2 true G1 (TSel x) G2 T2 GH.
+    atpd2 true G1 (TSel (varF x)) G2 T2 GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel1; eauto. Qed.
 
 Lemma atpd2_sel2: forall G1 G2 GX TX x T1 GH v nv,
@@ -3512,13 +3512,13 @@ Lemma atpd2_sel2: forall G1 G2 GX TX x T1 GH v nv,
     closed 0 0 TX ->
     atpd2 false GX TX G1 (TMem T1 TTop) GH ->
     atpd2 true G1 T1 G1 T1 GH ->
-    atpd2 true G1 T1 G2 (TSel x) GH.
+    atpd2 true G1 T1 G2 (TSel (varF x)) GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel2; eauto. Qed.
 
 Lemma atpd2_selx: forall G1 G2 x1 x2 GH v,
     index x1 G1 = Some v ->
     index x2 G2 = Some v ->
-    atpd2 true G1 (TSel x1) G2 (TSel x2) GH.
+    atpd2 true G1 (TSel (varF x1)) G2 (TSel (varF x2)) GH.
 Proof. intros. eauto. exists (S 0). eapply stp2_selx; eauto. Qed.
 
 Lemma atpd2_sela1: forall G1 G2 GX TX x T2 GH,
@@ -3526,7 +3526,7 @@ Lemma atpd2_sela1: forall G1 G2 GX TX x T2 GH,
     closed 0 (S x) TX ->
     atpd2 false GX TX G2 (TMem TBot T2) GH ->
     atpd2 true G2 T2 G2 T2 GH ->
-    atpd2 true G1 (TSelH x) G2 T2 GH.
+    atpd2 true G1 (TSel (varH x)) G2 T2 GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela1; eauto. Qed.
 
 Lemma atpd2_sela2: forall G1 G2 GX TX x T1 GH,
@@ -3534,13 +3534,13 @@ Lemma atpd2_sela2: forall G1 G2 GX TX x T1 GH,
     closed 0 (S x) TX ->
     atpd2 false GX TX G1 (TMem T1 TTop) GH ->
     atpd2 true G1 T1 G1 T1 GH ->
-    atpd2 true G1 T1 G2 (TSelH x) GH.
+    atpd2 true G1 T1 G2 (TSel (varH x)) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela2; eauto. Qed.
 
 
 Lemma atpd2_selax: forall G1 G2 GX TX x GH,
     indexr x GH = Some (GX, TX) ->
-    atpd2 true G1 (TSelH x) G2 (TSelH x) GH.
+    atpd2 true G1 (TSel (varH x)) G2 (TSel (varH x)) GH.
 Proof. intros. exists (S 0). eauto. Qed.
 
 
@@ -3551,8 +3551,8 @@ Lemma atpd2_selab1: forall G1 G2 GX TX x T2 GH GU GL,
     length GL = (S x) ->
     GH = GU ++ GL ->
     atpd2 false GX TX G2 (TBind (TMem TBot T2)) GL ->
-    atpd2 true G2 (open (TSelH x) T2) G2 (open (TSelH x) T2) GH ->
-    atpd2 true G1 (TSelH x) G2 (open (TSelH x) T2) GH.
+    atpd2 true G2 (open (varH x) T2) G2 (open (varH x) T2) GH ->
+    atpd2 true G1 (TSel (varH x)) G2 (open (varH x) T2) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab1; eauto. Qed.
 
 Lemma atpd2_selab2: forall G1 G2 GX TX x T1 T1' GH GU GL,
@@ -3562,25 +3562,25 @@ Lemma atpd2_selab2: forall G1 G2 GX TX x T1 T1' GH GU GL,
     length GL = (S x) ->
     GH = GU ++ GL ->
     atpd2 false GX TX G1 (TBind (TMem T1 TTop)) GL ->
-    T1' = (open (TSelH x) T1) ->
+    T1' = (open (varH x) T1) ->
     atpd2 true G1 T1' G1 T1' GH ->
-    atpd2 true G1 T1' G2 (TSelH x) GH.
+    atpd2 true G1 T1' G2 (TSel (varH x)) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab2; eauto. Qed.
 
 Lemma atpd2_all: forall G1 G2 T1 T2 T3 T4 GH,
     stpd2 false G2 T3 G1 T1 GH ->
     closed 1 (length GH) T2 ->
     closed 1 (length GH) T4 ->
-    stpd2 false G1 (open (TSelH (length GH)) T2) G1 (open (TSelH (length GH)) T2) ((0,(G1, T1))::GH) ->
-    stpd2 false G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) ((0,(G2, T3))::GH) ->
+    stpd2 false G1 (open (varH (length GH)) T2) G1 (open (varH (length GH)) T2) ((0,(G1, T1))::GH) ->
+    stpd2 false G1 (open (varH (length GH)) T2) G2 (open (varH (length GH)) T4) ((0,(G2, T3))::GH) ->
     atpd2 true G1 (TAll T1 T2) G2 (TAll T3 T4) GH.
 Proof. intros. repeat eu. eexists. eapply stp2_all; eauto. Qed.
 
 Lemma atpd2_bind: forall G1 G2 T1 T2 GH,
     closed 1 (length GH) T1 ->
     closed 1 (length GH) T2 ->
-    atpd2 false G2 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T2) ((0,(G2, open (TSelH (length GH)) T2))::GH) ->
-    atpd2 false G1 (open (TSelH (length GH)) T1) G2 (open (TSelH (length GH)) T2) ((0,(G1, open (TSelH (length GH)) T1))::GH) ->
+    atpd2 false G2 (open (varH (length GH)) T2) G2 (open (varH (length GH)) T2) ((0,(G2, open (varH (length GH)) T2))::GH) ->
+    atpd2 false G1 (open (varH (length GH)) T1) G2 (open (varH (length GH)) T2) ((0,(G1, open (varH (length GH)) T1))::GH) ->
     atpd2 true G1 (TBind T1) G2 (TBind T2) GH.
 Proof. intros. repeat eu. eauto. unfold atpd2. eexists. eapply stp2_bindb; eauto. Qed.
 
@@ -3864,32 +3864,32 @@ Proof.
       }
       apply C3; assumption.
       assert (
-          atpd2 false G2 (open (TSelH (length GH)) T3) G2
-                (open (TSelH (length GH)) T3)
-                ((0, (G2, open (TSelH (length GH)) T3)) :: GH')
+          atpd2 false G2 (open (varH (length GH)) T3) G2
+                (open (varH (length GH)) T3)
+                ((0, (G2, open (varH (length GH)) T3)) :: GH')
                 ->
-          atpd2 false G2 (open (TSelH (length GH')) T3) G2
-                (open (TSelH (length GH')) T3)
-                ((0, (G2, open (TSelH (length GH')) T3)) :: GH')) as CS1. {
+          atpd2 false G2 (open (varH (length GH')) T3) G2
+                (open (varH (length GH')) T3)
+                ((0, (G2, open (varH (length GH')) T3)) :: GH')) as CS1. {
         rewrite A. intros P. apply P.
       }
       apply CS1. eapply IHn. eassumption. omega.
-      instantiate (5:=(0, (G2, open (TSelH (length GH)) T3)) :: GH1).
+      instantiate (5:=(0, (G2, open (varH (length GH)) T3)) :: GH1).
       subst. simpl. reflexivity. subst. simpl. reflexivity.
       assumption.
       assert (
-          atpd2 false G1 (open (TSelH (length GH)) T0) G2
-                (open (TSelH (length GH)) T3)
-                ((0, (G1, open (TSelH (length GH)) T0)) :: GH')
+          atpd2 false G1 (open (varH (length GH)) T0) G2
+                (open (varH (length GH)) T3)
+                ((0, (G1, open (varH (length GH)) T0)) :: GH')
                 ->
-          atpd2 false G1 (open (TSelH (length GH')) T0) G2
-                (open (TSelH (length GH')) T3)
-                ((0, (G1, open (TSelH (length GH')) T0)) :: GH')
+          atpd2 false G1 (open (varH (length GH')) T0) G2
+                (open (varH (length GH')) T3)
+                ((0, (G1, open (varH (length GH')) T0)) :: GH')
         ) as CS2. {
         rewrite A. intros P. apply P.
       }
       apply CS2. eapply IHn. eassumption. omega.
-      instantiate (5:=(0, (G1, open (TSelH (length GH)) T0)) :: GH1).
+      instantiate (5:=(0, (G1, open (varH (length GH)) T0)) :: GH1).
       subst. simpl. reflexivity. subst. simpl. reflexivity.
       assumption.
     + SCase "and11".
