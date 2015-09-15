@@ -6542,20 +6542,20 @@ Inductive wf_tp: tenv -> tenv -> ty -> Prop :=
     wf_tp G1 GH (TMem T1 T2)
 | wf_sel: forall G1 GH TX x,
     index x G1 = Some TX ->
-    wf_tp G1 GH (TSel x)
+    wf_tp G1 GH (TSel (varF x))
 | wf_sela: forall G1 GH TX x,
     indexr x GH = Some TX  ->
-    wf_tp G1 GH (TSelH x)
+    wf_tp G1 GH (TSel (varH x))
 | wf_all: forall G1 GH T1 T2 x,
     wf_tp G1 GH T1 ->
     x = length GH ->
     closed 1 (length GH) T2 ->
-    wf_tp G1 ((0,T1)::GH) (open (TSelH x) T2) ->
+    wf_tp G1 ((0,T1)::GH) (open (varH x) T2) ->
     wf_tp G1 GH (TAll T1 T2)
 | wf_bind: forall G1 GH T1 x,
     x = length GH ->
     closed 1 (length GH) T1 ->
-    wf_tp G1 ((0,open (TSelH x) T1)::GH) (open (TSelH x) T1) ->
+    wf_tp G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) ->
     wf_tp G1 GH (TBind T1)
 | wf_and: forall G1 GH T1 T2,
     wf_tp G1 GH T1 ->
@@ -6762,9 +6762,9 @@ Lemma invert_tabs: forall venv vf vx T1 T2 nf nx,
     vf = (vtabs env x T3 y) /\
     fresh env = x /\
     wf_env env tenv /\
-    has_type ((x,T3)::tenv) y (open (TSel x) T4) /\
+    has_type ((x,T3)::tenv) y (open (varF x) T4) /\
     sstpd2 true venv T1 env T3 [] /\
-    sstpd2 true ((x,vx)::env) (open (TSel x) T4) venv T2 []. (* (open T1 T2) []. *)
+    sstpd2 true ((x,vx)::env) (open (varF x) T4) venv T2 []. (* (open T1 T2) []. *)
 Proof.
   intros venv0 vf vx T1 T2 nf nx VF VX STY. inversion VF; ev; try solve by inversion.
   subst. eapply dcs_tall in H0. inversion H0. eassumption.
@@ -6780,7 +6780,7 @@ Proof.
 
   (* inversion of TAll < TAll *)
   assert (stpd2 false venv0 T1 venv1 T0 []) as ARG. eauto.
-  assert (stpd2 false venv1 (open (TSelH 0) T3) venv0 (open (TSelH 0) T2) [(0,(venv0, T1))]) as KEY. {
+  assert (stpd2 false venv1 (open (varH 0) T3) venv0 (open (varH 0) T2) [(0,(venv0, T1))]) as KEY. {
     eauto.
   }
   eapply stpd2_upgrade in ARG.
@@ -6791,10 +6791,10 @@ Proof.
 
   (* now rename *)
 
-  assert (stpd2 false ((fresh venv1,vx) :: venv1) (open_rec 0 (TSel (fresh venv1)) T3) venv0 (T2) []). { (* T2 was open T1 T2 *)
+  assert (stpd2 false ((fresh venv1,vx) :: venv1) (open_rec 0 (varF (fresh venv1)) T3) venv0 (T2) []). { (* T2 was open T1 T2 *)
 
     assert (closed 0 (length ([]:aenv)) T2). eapply sstpd2_closed1; eauto.
-    assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
+    assert (open (varH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
 
     eapply stpd2_substitute with (GH0:=nil).
     eapply stpd2_extend1. eapply KEY. (* previously: stpd2_narrow. inv_vtp_half. eapply KEY. *)
@@ -6812,6 +6812,8 @@ Proof.
 
   (* done *)
   subst. eauto.
+  Grab Existential Variables.
+  apply 0.
 Qed.
 
 
