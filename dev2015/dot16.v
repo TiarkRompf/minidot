@@ -5071,7 +5071,7 @@ Lemma stp2_substitute_aux: forall ni nj, forall d m G1 G2 T1 T2 GH n1,
         type in GH may refer to itself (contain TSelH 0).
         It should be safe for TX to refer to itself. *)
      closed 0 1 TX ->
-     closed 0 0 TX' ->
+     closed 0 0 (TSel TX') ->
      compat GX TX TX' (Some V) G1 T1 T1' ->
      compat GX TX TX' (Some V) G2 T2 T2' ->
      Forall2 (compat2 GX TX TX' (Some V)) GH0 GH0' ->
@@ -5236,8 +5236,8 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    assert (T1' = TSel x1). destruct IX1. ev. eauto. destruct H6. ev. auto. ev. eauto.
-    assert (T2' = TSel x2). destruct IX2. ev. eauto. destruct H7. ev. auto. ev. eauto.
+    assert (T1' = TSel (varF x1)). destruct IX1. ev. eauto. destruct H6. ev. auto. ev. eauto.
+    assert (T2' = TSel (varF x2)). destruct IX2. ev. eauto. destruct H7. ev. auto. ev. eauto.
 
     subst.
     eexists.
@@ -5249,7 +5249,7 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    assert (compat GXX TXX TXX' (Some V) G1 (TSelH x) T1') as IXX. eauto.
+    assert (compat GXX TXX TXX' (Some V) G1 (TSel (varH x)) T1') as IXX. eauto.
 
     eapply (compat_selh GXX TXX TXX' (Some V) G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
 
@@ -5300,7 +5300,7 @@ Proof.
     assert (length (GU ++ GL) = length GH0 + 1). rewrite H1. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    assert (compat GXX TXX TXX' (Some V) G1 (TSelH x) T1') as IXX. eauto.
+    assert (compat GXX TXX TXX' (Some V) G1 (TSel (varH x)) T1') as IXX. eauto.
 
     eapply (compat_selh GXX TXX TXX' (Some V) G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
 
@@ -5353,15 +5353,15 @@ Proof.
         inversion H14. (* invert bind/bind *) subst.
 
 
-        assert (closed 0 0 (open (TSel x2) T2)) as CL. eapply closed_open. eauto. eauto.
+        assert (closed 0 0 (open (varF x2) T2)) as CL. eapply closed_open. eauto. eauto.
 
-        assert (compat venv0 (open (TSelH 0) T2) (TSel x2)
-                       (Some x0) venv0 (open (TSelH 0) T2)
-                       (open (TSel x2) T2)) as CP1. {
+        assert (compat venv0 (open (varH 0) T2) (varF x2)
+                       (Some x0) venv0 (open (varH 0) T2)
+                       (open (varF x2) T2)) as CP1. {
           left. eexists. eexists. eexists. split. eauto. split. eauto. split. eauto. split. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
         }
-        assert (compat venv0 (open (TSelH 0) T2) (TSel x2)
-     (Some x0) G2 (open (TSelH 0) (TMem TBot T0))
+        assert (compat venv0 (open (varH 0) T2) (varF x2)
+     (Some x0) G2 (open (varH 0) (TMem TBot T0))
      (TMem TBot T2')) as CP2. {
           destruct IX2 as [IX2 | [IX2 | IX2]].
         (*1*)repeat destruct IX2 as [|IX2]; ev. inversion H18; subst.
@@ -5371,15 +5371,15 @@ Proof.
         (*2*)destruct IX2 as [IX21 IX22]. right. left. split. econstructor; eauto. rewrite IX22. eauto.
         (*3*)destruct IX2 as [IX21 IX22]. right. right. split. econstructor; simpl; eauto. rewrite IX22. eauto.
         }
-        assert (compat venv0 (open (TSelH 0) T2) (TSel x2)
-     (Some x0) venv0 (open (TSelH 0) T2)
-     (subst (TSel x2) (open (TSelH 0) T2))) as CPH. {
+        assert (compat venv0 (open (varH 0) T2) (varF x2)
+     (Some x0) venv0 (open (varH 0) T2)
+     (subst (varF x2) (open (varH 0) T2))) as CPH. {
            left. eexists. eexists. eexists. split. eauto. split. eauto. split. eauto. split. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
         }
 
 
 
-        assert (exists n7, stp2 1 false venv0 (open (TSel x2) T2) G2 (TMem TBot T2') [] n7) as ST1. {
+        assert (exists n7, stp2 1 false venv0 (open (varF x2) T2) G2 (TMem TBot T2') [] n7) as ST1. {
           subst.
           eapply IHni in H22. destruct H22 as [? H22].
           eexists.
@@ -5391,7 +5391,7 @@ Proof.
         }
         destruct ST1 as [n7 ST1].
 
-        assert (stp2 1 false venv0 (open (TSel x2) T2) G2 (TMem TBot T2') GH0' n7) as ST1'.
+        assert (stp2 1 false venv0 (open (varF x2) T2) G2 (TMem TBot T2') GH0' n7) as ST1'.
         eapply stp2_extendH_mult in ST1. rewrite app_nil_r in ST1. eapply ST1.
 
         assert (exists n9, stp2 1 true G2 (TMem TBot T2') G2 (TMem TBot T2') GH0' n9) as REG1.
@@ -5426,7 +5426,7 @@ Proof.
         inversion H4. subst. inversion H21. subst. eassumption.
 
         destruct IX2 as [IX21 IX22].
-        assert (T2' = open (TSel x) T0) as A. {
+        assert (T2' = open (varF x) T0) as A. {
           unfold open. erewrite open_noop.
           rewrite IX22. unfold open. erewrite open_noop.
           reflexivity.
@@ -5460,7 +5460,7 @@ Proof.
           rewrite IX22. erewrite closed_no_subst. unfold open. erewrite open_noop. reflexivity.
           eauto. unfold open. erewrite open_noop. eassumption. eassumption.
         }
-        assert (T2' = open (TSel x) T0) as C2. {
+        assert (T2' = open (varF x) T0) as C2. {
           unfold open. erewrite open_noop. eassumption. eassumption.
         }
         rewrite C2.
@@ -5566,7 +5566,7 @@ Proof.
     assert (length (GU ++ GL) = length GH0 + 1). rewrite H1. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    assert (compat GXX TXX TXX' (Some V) G2 (TSelH x) T2') as IXX. eauto.
+    assert (compat GXX TXX TXX' (Some V) G2 (TSel (varH x)) T2') as IXX. eauto.
 
     eapply (compat_selh GXX TXX TXX' (Some V) G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
 
@@ -5604,15 +5604,15 @@ Proof.
         inversion H14. (* invert bind/bind *) subst.
 
 
-        assert (closed 0 0 (open (TSel x2) T2)) as CL. eapply closed_open. eauto. eauto.
+        assert (closed 0 0 (open (varF x2) T2)) as CL. eapply closed_open. eauto. eauto.
 
-        assert (compat venv0 (open (TSelH 0) T2) (TSel x2)
-                       (Some x0) venv0 (open (TSelH 0) T2)
-                       (open (TSel x2) T2)) as CP1. {
+        assert (compat venv0 (open (varH 0) T2) (varF x2)
+                       (Some x0) venv0 (open (varH 0) T2)
+                       (open (varF x2) T2)) as CP1. {
           left. eexists. eexists. eexists. split. eauto. split. eauto. split. eauto. split. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
         }
-        assert (compat venv0 (open (TSelH 0) T2) (TSel x2)
-     (Some x0) G1 (open (TSelH 0) (TMem T0 TTop))
+        assert (compat venv0 (open (varH 0) T2) (varF x2)
+     (Some x0) G1 (open (varH 0) (TMem T0 TTop))
      (TMem T1' TTop)) as CP2. {
           destruct IX1 as [IX1 | [IX1 | IX1]].
         (*1*)repeat destruct IX2 as [|IX2]; ev. inversion H18; subst.
@@ -5622,15 +5622,15 @@ Proof.
         (*2*)destruct IX1 as [IX11 IX12]. right. left. split. econstructor; eauto. rewrite IX12. eauto.
         (*3*)destruct IX1 as [IX11 IX12]. right. right. split. econstructor; simpl; eauto. rewrite IX12. eauto.
         }
-        assert (compat venv0 (open (TSelH 0) T2) (TSel x2)
-     (Some x0) venv0 (open (TSelH 0) T2)
-     (subst (TSel x2) (open (TSelH 0) T2))) as CPH. {
+        assert (compat venv0 (open (varH 0) T2) (varF x2)
+     (Some x0) venv0 (open (varH 0) T2)
+     (subst (varF x2) (open (varH 0) T2))) as CPH. {
            left. eexists. eexists. eexists. split. eauto. split. eauto. split. eauto. split. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
         }
 
 
 
-        assert (exists n7, stp2 1 false venv0 (open (TSel x2) T2) G1 (TMem T1' TTop) [] n7) as ST1. {
+        assert (exists n7, stp2 1 false venv0 (open (varF x2) T2) G1 (TMem T1' TTop) [] n7) as ST1. {
           subst.
           eapply IHni in H22. destruct H22 as [? H22].
           eexists.
@@ -5642,7 +5642,7 @@ Proof.
         }
         destruct ST1 as [n7 ST1].
 
-        assert (stp2 1 false venv0 (open (TSel x2) T2) G1 (TMem T1' TTop) GH0' n7) as ST1'.
+        assert (stp2 1 false venv0 (open (varF x2) T2) G1 (TMem T1' TTop) GH0' n7) as ST1'.
         eapply stp2_extendH_mult in ST1. rewrite app_nil_r in ST1. eapply ST1.
 
         assert (exists n9, stp2 1 true G1 (TMem T1' TTop) G1 (TMem T1' TTop) GH0' n9) as REG1.
@@ -5677,7 +5677,7 @@ Proof.
         inversion H4. subst. inversion H21. subst. eassumption.
 
         destruct IX1 as [IX11 IX12].
-        assert (T1' = open (TSel x) T0) as A. {
+        assert (T1' = open (varF x) T0) as A. {
           unfold open. erewrite open_noop.
           rewrite IX12. unfold open. erewrite open_noop.
           reflexivity.
@@ -5711,7 +5711,7 @@ Proof.
           rewrite IX12. erewrite closed_no_subst. unfold open. erewrite open_noop. reflexivity.
           eauto. unfold open. erewrite open_noop. eassumption. eassumption.
         }
-        assert (T1' = open (TSel x) T0) as C2. {
+        assert (T1' = open (varF x) T0) as C2. {
           unfold open. erewrite open_noop. eassumption. eassumption.
         }
         rewrite C2.
@@ -5816,7 +5816,7 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    assert (compat GXX TXX TXX' (Some V) G2 (TSelH x) T2') as IXX by eauto.
+    assert (compat GXX TXX TXX' (Some V) G2 (TSel (varH x)) T2') as IXX by eauto.
 
     eapply (compat_selh GXX TXX TXX' (Some V) G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
 
@@ -5868,13 +5868,13 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    assert (compat GXX TXX TXX' (Some V) G1 (TSelH x) T1') as IXX1. eauto.
-    assert (compat GXX TXX TXX' (Some V) G2 (TSelH x) T2') as IXX2. eauto.
+    assert (compat GXX TXX TXX' (Some V) G1 (TSel (varH x)) T1') as IXX1. eauto.
+    assert (compat GXX TXX TXX' (Some V) G2 (TSel (varH x)) T2') as IXX2. eauto.
 
     eapply (compat_selh GXX TXX TXX' (Some V) G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
     eapply (compat_selh GXX TXX TXX' (Some V) G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
-    assert (not (nosubst (TSelH 0))). unfold not. intros. simpl in H1. eauto.
-    assert (not (closed 0 0 (TSelH 0))). unfold not. intros. inversion H6. omega.
+    assert (not (nosubst (TSel (varH 0)))). unfold not. intros. simpl in H1. eauto.
+    assert (not (closed 0 0 (TSel (varH 0)))). unfold not. intros. inversion H6. omega.
 
     destruct x; destruct IX1; ev; try omega; destruct IX2; ev; try omega; subst.
     + SCase "x = 0".
@@ -5952,7 +5952,7 @@ Proof.
     eauto.
     eauto.
     omega.
-      instantiate (3:=(0, (G1,  open (TSelH (length (GH0 ++ [(0, (GX, TX))]))) T0))::GH0).
+      instantiate (3:=(0, (G1,  open (varH (length (GH0 ++ [(0, (GX, TX))]))) T0))::GH0).
       reflexivity.
       eauto. eapply CX. eauto.
       rewrite app_length. simpl. rewrite EL. eauto.
@@ -5961,9 +5961,9 @@ Proof.
       eauto.
     omega.
       change
-        ((0, (G2, open (TSelH (length (GH0 ++ [(0, (GX, TX))]))) T3))
+        ((0, (G2, open (varH (length (GH0 ++ [(0, (GX, TX))]))) T3))
            :: GH0 ++ [(0, (GX, TX))]) with
-      (((0, (G2, open (TSelH (length (GH0 ++ [(0, (GX, TX))]))) T3))
+      (((0, (G2, open (varH (length (GH0 ++ [(0, (GX, TX))]))) T3))
           :: GH0) ++ [(0, (GX, TX))]).
       reflexivity.
       eauto. eapply CX. eauto.
