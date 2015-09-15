@@ -4037,7 +4037,7 @@ Proof.
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "ssel1". subst.
-    assert (sstpd2 true ((fresh GX, vty GX TX) :: GX) (open (TSel (fresh GX)) TX) G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1.
+    assert (sstpd2 true ((fresh GX, vty GX TX) :: GX) (open (varF (fresh GX)) TX) G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1.
     assert (sstpd2 false GX' TX' G3 (TMem TBot T3) []). {
       eapply sstpd2_wrapf. eapply IHn. eassumption. omega.
       eexists. eapply stp2_mem.
@@ -4074,7 +4074,7 @@ Proof.
       subst. rewrite H5 in H3. inversion H3. subst.
       eexists. eapply stp2_strong_sel1; eauto.
     + SCase "ssel2". subst.
-      assert (sstpd2 false GX' TX' G1 (TMem (TSel x1) TTop) []) as A. {
+      assert (sstpd2 false GX' TX' G1 (TMem (TSel (varF x1)) TTop) []) as A. {
         eapply sstpd2_trans_axiom. eexists. eassumption.
         eexists. eapply stp2_wrapf. eapply stp2_mem.
         eapply stp2_wrapf. eassumption.
@@ -4102,8 +4102,8 @@ Proof.
     + SCase "all".
       subst.
       assert (stpd2 false G3 T7 G1 T0 []). eapply stpd2_trans. eauto. eauto.
-      assert (stpd2 false G1 (open (TSelH (length ([]:aenv))) T4)
-                          G3 (open (TSelH (length ([]:aenv))) T8)
+      assert (stpd2 false G1 (open (varH (length ([]:aenv))) T4)
+                          G3 (open (varH (length ([]:aenv))) T8)
                           [(0, (G3, T7))]).
         eapply stpd2_trans. eapply stpd2_narrow. eexists. eapply H9. eauto. eauto.
         repeat eu. eexists. eapply stp2_all. eauto. eauto. eauto. eauto. eapply H8.
@@ -4123,12 +4123,12 @@ Proof.
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "bind".
       subst.
-      assert (atpd2 false G1 (open (TSelH 0) T0) G3 (open (TSelH 0) T2)
-                    [(0, (G1, open (TSelH 0) T0))]) as A. {
+      assert (atpd2 false G1 (open (varH 0) T0) G3 (open (varH 0) T2)
+                    [(0, (G1, open (varH 0) T0))]) as A. {
         simpl in H5. simpl in H10.
         eapply atpd2_trans_axiom.
         eexists; eauto.
-        change ([(0, (G1, open (TSelH 0) T0))]) with ((0, (G1, open (TSelH 0) T0))::[]).
+        change ([(0, (G1, open (varH 0) T0))]) with ((0, (G1, open (varH 0) T0))::[]).
         eapply atpd2_narrow. eexists. eassumption. eexists. eassumption.
       }
       inversion A.
