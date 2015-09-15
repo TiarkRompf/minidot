@@ -6101,8 +6101,8 @@ Proof.
     subst. inversion H10. subst.
 
     assert (exists n, stp2 1 false
-                           venv0 (open (TSel x2) T2)
-                           G2 (open (TSel x') (TMem TBot T0)) [] n) as ST. {
+                           venv0 (open (varF x2) T2)
+                           G2 (open (varF x') (TMem TBot T0)) [] n) as ST. {
 
       eapply stp2_substitute_aux with (GH0:=[]).
       eauto.
@@ -6164,7 +6164,7 @@ Proof.
          as previously in narrowing: we do not know how many times the added term
          is used, so we cannot bound the result size.
     *)
-    assert (closed 0 (length (nil:aenv)) (open (TSel x2) T2)) as C. eapply stp2_closed1. eauto. simpl in C.
+    assert (closed 0 (length (nil:aenv)) (open (varF x2) T2)) as C. eapply stp2_closed1. eauto. simpl in C.
     eexists. eapply stp2_sel1. eauto. eapply H8. eauto.
     eapply stp2_extendH_mult0. eauto. eauto. eauto. omega. omega.
   - Case "sel2". subst.
@@ -6184,8 +6184,8 @@ Proof.
     inversion H10.  subst.
 
     assert (exists n, stp2 1 false
-                           venv0 (open (TSel x2) T2)
-                           G1 (open (TSel x') (TMem T0 TTop)) [] n) as ST. {
+                           venv0 (open (varF x2) T2)
+                           G1 (open (varF x') (TMem T0 TTop)) [] n) as ST. {
 
       eapply stp2_substitute_aux with (GH0:=[]).
       eauto.
@@ -6222,7 +6222,7 @@ Proof.
     }
     destruct ST as [? ST].
 
-    assert (closed 0 (length (nil:aenv)) (open (TSel x2) T2)) as C. eapply stp2_closed1. eauto. simpl in C.
+    assert (closed 0 (length (nil:aenv)) (open (varF x2) T2)) as C. eapply stp2_closed1. eauto. simpl in C.
     eexists. eapply stp2_sel2. eauto. eapply H8. eauto.
     eapply stp2_extendH_mult0. eauto. eauto. eauto. omega. omega.
   - Case "selx". subst.
