@@ -6057,7 +6057,7 @@ Lemma stpd2_substitute: forall m G1 G2 T1 T2 GH,
      GH = (GH0 ++ [(0,(GX, TX))]) ->
      val_type GX V (subst TX' TX) n ->
      closed 0 1 TX ->
-     closed 0 0 TX' ->
+     closed 0 0 (TSel TX') ->
      compat GX TX TX' (Some V) G1 T1 T1' ->
      compat GX TX TX' (Some V) G2 T2 T2' ->
      compat GX TX TX' (Some V) GX TX (subst TX' TX) ->
