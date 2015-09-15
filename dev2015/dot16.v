@@ -115,7 +115,7 @@ Inductive closed_rec: nat -> nat -> ty -> Prop :=
     closed_rec (S k) l T2 ->
     closed_rec k l (TBind T2)
 | cl_sel: forall k l x,
-    closed_rec k l (TSel x)
+    closed_rec k l (TSel (varF x))
 | cl_and: forall k l T1 T2,
     closed_rec k l T1 ->
     closed_rec k l T2 ->
@@ -970,7 +970,7 @@ Proof.
   eapply t_tapp. instantiate (1:= (TBind (TMem TBool TBool))).
     { eapply t_sub.
       { eapply t_var. simpl. eauto. crush2. }
-      { eapply stp_all; eauto. { eapply stp_bindx; crush2. } compute.
+      { eapply stp_all; eauto. { eapply stp_bindx; crush2. } compute. eapply cl_fun; eauto.
         eapply stp_fun. compute. eapply stp_selax; crush2. crush2.
         eapply stp_fun. compute. eapply stp_selab2. crush2.
         crush2. instantiate (1:=TBool). crush2.
@@ -1197,9 +1197,9 @@ Fixpoint splice n (T : ty) {struct T} : ty :=
     | TBool        => TBool
     | TMem T1 T2   => TMem (splice n T1) (splice n T2)
     | TFun m T1 T2   => TFun m (splice n T1) (splice n T2)
-    | TSelB i      => TSelB i
-    | TSel i       => TSel i
-    | TSelH i      => if le_lt_dec n i  then TSelH (i+1) else TSelH i
+    | TSel (varB i)  => TSel (varB i)
+    | TSel (varF i)  => TSel (varF i)
+    | TSel (varH i)  => TSel (varH (if le_lt_dec n i  then (i+1) else i))
     | TAll T1 T2   => TAll (splice n T1) (splice n T2)
     | TBind T2   => TBind (splice n T2)
     | TAnd T1 T2 => TAnd (splice n T1) (splice n T2)
@@ -1217,19 +1217,17 @@ Definition spliceat n (V: (id*(venv*ty))) :=
 
 Lemma splice_open_permute: forall {X} (G:list (id*X)) T n j k,
 n + k >= length G ->
-(open_rec j (TSelH (n + S k)) (splice (length G) T)) =
-(splice (length G) (open_rec j (TSelH (n + k)) T)).
+(open_rec j (varH (n + S k)) (splice (length G) T)) =
+(splice (length G) (open_rec j (varH (n + k)) T)).
 Proof.
   intros X G T. induction T; intros; simpl; eauto;
   try rewrite IHT1; try rewrite IHT2; try rewrite IHT; eauto.
 
-  case_eq (le_lt_dec (length G) i); intros E LE; simpl; eauto.
+  destruct v; try solve [compute; reflexivity]. simpl.
   case_eq (beq_nat j i); intros E; simpl; eauto.
-  case_eq (le_lt_dec (length G) (n + length G)); intros EL LE.
-  assert (n + S (length G) = n + length G + 1). omega.
-  case_eq (le_lt_dec (length G) (n+k)); intros E' LE'; simpl; eauto.
+  case_eq (le_lt_dec (length G) (n+k)); intros E2 LE; simpl; eauto.
   assert (n + S k=n + k + 1) as R by omega. rewrite R. reflexivity.
-  omega. omega.
+  omega.
 Qed.
 
 Lemma indexr_splice_hi: forall G0 G2 x0 x v1 T,
@@ -1401,7 +1399,8 @@ Lemma closed_splice_idem: forall k l T n,
                             n >= l ->
                             splice n T = T.
 Proof.
-  intros. induction H; simpl; repeat sp; repeat (match goal with
+  intros. remember H. clear Heqc.
+  induction H; simpl; repeat sp; repeat (match goal with
     | H: splice ?N ?T = ?T |- _ => rewrite H
   end); eauto.
   case_eq (le_lt_dec n x); intros E LE. omega. reflexivity.
@@ -1433,7 +1432,7 @@ Proof.
 Qed.
 
 
-Lemma closed_open: forall j n TX T, closed (j+1) n T -> closed j n TX -> closed j n (open_rec j TX T).
+Lemma closed_open: forall j n V T, closed (j+1) n T -> closed j n (TSel V) -> closed j n (open_rec j V T).
 Proof.
   intros. generalize dependent j. induction T; intros; inversion H; unfold closed; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto. eapply closed_upgrade. eauto. eauto.
 
@@ -1599,7 +1598,7 @@ Proof.
     rewrite <- A. apply IHstp1. reflexivity.
     apply IHstp2. reflexivity.
   - Case "selb1".
-    assert (splice (length G0) (open (TSel x0) T2)=(open (TSel x0) T2)) as A. {
+    assert (splice (length G0) (open (varF x0) T2)=(open (varF x0) T2)) as A. {
       eapply closed_splice_idem. apply stp_closed2 in H0. inversion H0. subst.
       simpl in H5. inversion H5. subst.
       eapply closed_open. simpl. eassumption. eauto.
@@ -1608,7 +1607,7 @@ Proof.
     rewrite A. eapply stp_selb1; eauto.
     rewrite <- A. apply IHstp2; eauto.
   - Case "selb2".
-    assert (splice (length G0) (open (TSel x0) T1)=(open (TSel x0) T1)) as A. {
+    assert (splice (length G0) (open (varF x0) T1)=(open (varF x0) T1)) as A. {
       eapply closed_splice_idem. apply stp_closed2 in H0. inversion H0. subst.
       simpl in H5. inversion H5. subst.
       eapply closed_open. simpl. eassumption. eauto.
@@ -1665,7 +1664,7 @@ Proof.
       eapply IHstp1; eauto.
       inversion A. unfold open. rewrite splice_open_permute.
       rewrite H5. unfold open.
-      assert (TSelH x0=TSelH (x0+0)) as B. {
+      assert (varH x0=varH (x0+0)) as B. {
         rewrite <- plus_n_O. reflexivity.
       }
       rewrite <- B. reflexivity.
@@ -1718,7 +1717,7 @@ Proof.
       eapply IHstp1; eauto.
       inversion A. unfold open. rewrite splice_open_permute.
       rewrite H5. unfold open.
-      assert (TSelH x0=TSelH (x0+0)) as B. {
+      assert (varH x0=varH (x0+0)) as B. {
         rewrite <- plus_n_O. reflexivity.
       }
       rewrite <- B. reflexivity.
@@ -1781,13 +1780,13 @@ Proof.
 
     rewrite app_length. rewrite map_length. simpl.
     repeat rewrite splice_open_permute with (j:=0). subst x0.
-    specialize IHstp1 with (G3:=G0) (G4:=(0, (open (TSelH (length G2 + length G0)) T2))::G2).
+    specialize IHstp1 with (G3:=G0) (G4:=(0, (open (varH (length G2 + length G0)) T2))::G2).
     rewrite app_length in IHstp1. simpl in IHstp1. unfold open in IHstp1.
     eapply IHstp1. eauto. omega.
 
     rewrite app_length. rewrite map_length. simpl.
     repeat rewrite splice_open_permute with (j:=0). subst x0.
-    specialize IHstp2 with (G3:=G0) (G4:=(0, (open (TSelH (length G2 + length G0)) T1))::G2).
+    specialize IHstp2 with (G3:=G0) (G4:=(0, (open (varH (length G2 + length G0)) T1))::G2).
     rewrite app_length in IHstp2. simpl in IHstp2. unfold open in IHstp2.
     eapply IHstp2. eauto. omega. omega.
 Qed.
@@ -1806,7 +1805,7 @@ Proof.
     }
     rewrite <- B. simpl in IHstp2_1. eapply IHstp2_1. reflexivity.
     eassumption.
-    assert (splice (length GH0) (open (TSel (fresh GX)) TX)=(open (TSel (fresh GX)) TX)) as A.  {
+    assert (splice (length GH0) (open (varF (fresh GX)) TX)=(open (varF (fresh GX)) TX)) as A.  {
       eapply closed_splice_idem. eapply closed_open. eassumption. eauto. omega.
     }
     rewrite <- A. apply IHstp2_2.
@@ -1818,7 +1817,7 @@ Proof.
     }
     rewrite <- B. simpl in IHstp2_1. eapply IHstp2_1. reflexivity.
     eassumption.
-    assert (splice (length GH0) (open (TSel (fresh GX)) TX)=(open (TSel (fresh GX)) TX)) as A.  {
+    assert (splice (length GH0) (open (varF (fresh GX)) TX)=(open (varF (fresh GX)) TX)) as A.  {
       eapply closed_splice_idem. eapply closed_open. eassumption. eauto. omega.
     }
     rewrite <- A. apply IHstp2_2.
@@ -1833,7 +1832,7 @@ Proof.
     apply IHstp2_2. reflexivity.
 
   - Case "selb1".
-    assert (splice (length GH0) (open (TSel x') T2)=(open (TSel x') T2)) as A. {
+    assert (splice (length GH0) (open (varF x') T2)=(open (varF x') T2)) as A. {
       eapply closed_splice_idem. apply stp2_closed2 in H3. inversion H3. subst.
       simpl in H8. inversion H8. subst.
       eapply closed_open. simpl. eassumption. eauto.
@@ -1850,7 +1849,7 @@ Proof.
     reflexivity.
     apply IHstp2_2. reflexivity.
   - Case "selb2".
-    assert (splice (length GH0) (open (TSel x') T1)=(open (TSel x') T1)) as A. {
+    assert (splice (length GH0) (open (varF x') T1)=(open (varF x') T1)) as A. {
       eapply closed_splice_idem. apply stp2_closed2 in H3. inversion H3. subst.
       simpl in H8. inversion H8. subst.
       eapply closed_open. simpl. eassumption. eauto.
@@ -1895,7 +1894,7 @@ Proof.
       inversion A. unfold open.
       rewrite splice_open_permute.
       rewrite H5. unfold open.
-      assert (TSelH x0=TSelH (x0+0)) as B. {
+      assert (varH x0=varH (x0+0)) as B. {
         rewrite <- plus_n_O. reflexivity.
       }
       rewrite <- B. reflexivity.
@@ -1950,7 +1949,7 @@ Proof.
       inversion A. unfold open.
       rewrite splice_open_permute.
       rewrite H5. unfold open.
-      assert (TSelH x0=TSelH (x0+0)) as B. {
+      assert (varH x0=varH (x0+0)) as B. {
         rewrite <- plus_n_O. reflexivity.
       }
       rewrite <- B. reflexivity.
@@ -2027,13 +2026,13 @@ Proof.
 
     rewrite app_length. rewrite map_length. simpl.
     repeat rewrite splice_open_permute with (j:=0).
-    specialize IHstp2_1 with (GH2:=GH0) (GH3:=(0, (G2,(open (TSelH (length GH1 + length GH0)) T2)))::GH1).
+    specialize IHstp2_1 with (GH2:=GH0) (GH3:=(0, (G2,(open (varH (length GH1 + length GH0)) T2)))::GH1).
     rewrite app_length in IHstp2_1. simpl in IHstp2_1. unfold open in IHstp2_1.
     eapply IHstp2_1. eauto. omega.
 
     rewrite app_length. rewrite map_length. simpl.
     repeat rewrite splice_open_permute with (j:=0).
-    specialize IHstp2_2 with (GH2:=GH0) (GH3:=(0, (G1,(open (TSelH (length GH1 + length GH0)) T1)))::GH1).
+    specialize IHstp2_2 with (GH2:=GH0) (GH3:=(0, (G1,(open (varH (length GH1 + length GH0)) T1)))::GH1).
     rewrite app_length in IHstp2_2. simpl in IHstp2_2. unfold open in IHstp2_2.
     eapply IHstp2_2. eauto. omega. omega.
   - Case "bindb".
@@ -2045,13 +2044,13 @@ Proof.
 
     rewrite app_length. rewrite map_length. simpl.
     repeat rewrite splice_open_permute with (j:=0).
-    specialize IHstp2_1 with (GH2:=GH0) (GH3:=(0, (G2,(open (TSelH (length GH1 + length GH0)) T2)))::GH1).
+    specialize IHstp2_1 with (GH2:=GH0) (GH3:=(0, (G2,(open (varH (length GH1 + length GH0)) T2)))::GH1).
     rewrite app_length in IHstp2_1. simpl in IHstp2_1. unfold open in IHstp2_1.
     eapply IHstp2_1. eauto. omega.
 
     rewrite app_length. rewrite map_length. simpl.
     repeat rewrite splice_open_permute with (j:=0).
-    specialize IHstp2_2 with (GH2:=GH0) (GH3:=(0, (G1,(open (TSelH (length GH1 + length GH0)) T1)))::GH1).
+    specialize IHstp2_2 with (GH2:=GH0) (GH3:=(0, (G1,(open (varH (length GH1 + length GH0)) T1)))::GH1).
     rewrite app_length in IHstp2_2. simpl in IHstp2_2. unfold open in IHstp2_2.
     eapply IHstp2_2. eauto. omega. omega.
 Qed.
