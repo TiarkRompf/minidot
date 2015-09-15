@@ -4556,11 +4556,12 @@ Qed.
 
 (* substitution for one-env stp. not necessary, but good sanity check *)
 
-Definition substt (UX: ty) (V: (id*ty)) :=
+Definition substt (UX: var) (V: (id*ty)) :=
   match V with
     | (x,T) => (x-1,(subst UX T))
   end.
 
+(*
 Lemma indexr_subst: forall GH0 x TX TX',
    indexr x (GH0 ++ [(0, TX)]) = Some (TX') ->
    x = 0 /\ TX = TX' \/
@@ -4591,6 +4592,7 @@ Proof.
        eapply beq_nat_false_iff in H4. unfold id in H4. unfold id. rewrite H4.
        eauto. subst. eauto.
 Qed.
+*)
 
 (*
 when and how we can replace with multiple environments:
@@ -4624,15 +4626,15 @@ stp2 G1 T1 G2 T2 (GH0 ++ [(0,vtya GX TX)])
 (* ---- two-env substitution. first define what 'compatible' types mean. ---- *)
 
 
-Definition compat (GX:venv) (TX: ty) (TX': ty) (V: option vl) (G1:venv) (T1:ty) (T1':ty) :=
-  (exists x1 v nv, index x1 G1 = Some v /\ V = Some v /\ GX = GX /\ val_type GX v (subst TX' TX) nv /\ T1' = (subst (TSel x1) T1)) \/
+Definition compat (GX:venv) (TX: ty) (TX': var) (V: option vl) (G1:venv) (T1:ty) (T1':ty) :=
+  (exists x1 v nv, index x1 G1 = Some v /\ V = Some v /\ GX = GX /\ val_type GX v (subst TX' TX) nv /\ T1' = (subst (varF x1) T1)) \/
   (*  (G1 = GX /\ T1' = (subst TX T1)) \/ *)   (* this is doesn't work for DOT *)
   (* ((forall TA TB, TX <> TMem TA TB) /\ T1' = subst TTop T1) \/ *)(* can remove all term-only bindings -- may not be necessary after all since it applies nosubst *)
   (closed_rec 0 0 T1 /\ T1' = T1) \/ (* this one is for convenience: redundant with next *)
-  (nosubst T1 /\ T1' = subst TTop T1).
+  (nosubst T1 /\ T1' = subst (varF 0) T1).
 
 
-Definition compat2 (GX:venv) (TX: ty) (TX': ty) (V: option vl) (p1:id*(venv*ty)) (p2:id*(venv*ty)) :=
+Definition compat2 (GX:venv) (TX: ty) (TX': var) (V: option vl) (p1:id*(venv*ty)) (p2:id*(venv*ty)) :=
   match p1, p2 with
       (n1,(G1,T1)), (n2,(G2,T2)) => n1=n2(*+1 disregarded*) /\ G1 = G2 /\ compat GX TX TX' V G1 T1 T2
   end.
@@ -4656,7 +4658,7 @@ Qed.
 
 Lemma closed_compat': forall GX TX TX' V GXX TXX TXX' j k,
   compat GX TX TX' V GXX TXX TXX' ->
-  closed 0 k TX' ->
+  closed 0 k (TSel TX') ->
   closed j (k+1) TXX ->
   closed j k TXX'.
 Proof.
@@ -4789,12 +4791,12 @@ Qed.
 
 
 Lemma compat_sel: forall GX TX TX' V G1 T1' (GXX:venv) (TXX:ty) x v n,
-    compat GX TX TX' V G1 (TSel x) T1' ->
+    compat GX TX TX' V G1 (TSel (varF x)) T1' ->
     closed 0 1 TX ->
     closed 0 0 TXX ->
     index x G1 = Some v ->
     val_type GXX v TXX n ->
-    exists TXX', T1' = (TSel x) /\ TXX' = TXX /\ compat GX TX TX' V GXX TXX TXX'
+    exists TXX', T1' = (TSel (varF x)) /\ TXX' = TXX /\ compat GX TX TX' V GXX TXX TXX'
 .
 Proof.
   intros ? ? ? ? ? ? ? ? ? ? ? CC CL CL1 IX. repeat destruct CC as [|CC].
@@ -4804,13 +4806,13 @@ Proof.
 Qed.
 
 Lemma compat_selb: forall GX TX TX' V G1 T1' (GXX:venv) (TXX:ty) x T0 v n,
-    compat GX TX TX' V G1 (open (TSel x) T0) T1' ->
+    compat GX TX TX' V G1 (open (varF x) T0) T1' ->
     closed 0 1 TX ->
     closed 0 0 TXX ->
     closed 1 0 T0 ->
     (* index x G1 = Some v -> *)
     val_type GXX v TXX n ->
-    exists TXX', T1' = (open (TSel x) T0) /\ TXX' = TXX /\ compat GX TX TX' V GXX TXX TXX'
+    exists TXX', T1' = (open (varF x) T0) /\ TXX' = TXX /\ compat GX TX TX' V GXX TXX TXX'
 .
 Proof.
   intros ? ? ? ? ? ? ? ? ? ? ? ? CC CL CL1. repeat destruct CC as [|CC].
@@ -4827,13 +4829,13 @@ Qed.
 
 
 Lemma compat_selh: forall GX TX TX' V G1 T1' GH0 GH0' (GXX:venv) (TXX:ty) x,
-    compat GX TX TX' V G1 (TSelH x) T1' ->
+    compat GX TX TX' V G1 (TSel (varH x)) T1' ->
     closed 0 1 TX ->
     indexr x (GH0 ++ [(0, (GX, TX))]) = Some (GXX, TXX) ->
     Forall2 (compat2 GX TX TX' V) GH0 GH0' ->
     (x = 0 /\ GXX = GX /\ TXX = TX) \/
     exists TXX',
-      x > 0 /\ T1' = TSelH (x-1) /\
+      x > 0 /\ T1' = TSel (varH (x-1)) /\
       indexr (x-1) GH0' = Some (GXX, TXX') /\
       compat GX TX TX' V GXX TXX TXX'
 .
@@ -4859,7 +4861,7 @@ Lemma compat_all: forall GX TX TX' V G1 T1 T2 T1' n,
     exists TA TB, T1' = TAll TA TB /\
                   closed 1 n TB /\
                   compat GX TX TX' V G1 T1 TA /\
-                  compat GX TX TX' V G1 (open_rec 0 (TSelH (n+1)) T2) (open_rec 0 (TSelH n) TB).
+                  compat GX TX TX' V G1 (open_rec 0 (varH (n+1)) T2) (open_rec 0 (varH n) TB).
 Proof.
   intros ? ? ? ? ? ? ? ? ? CC CLX CL2. repeat destruct CC as [|CC].
 
@@ -4871,7 +4873,7 @@ Proof.
     + unfold compat. right. right. split. eapply nosubst_intro; eauto. symmetry. eapply closed_no_subst; eauto.
     + unfold compat. right. right. split.
       * eapply nosubst_open. simpl. omega. eapply nosubst_intro. eauto.
-      * rewrite subst_open_commute.  assert (T2 = subst TTop T2) as E. symmetry. eapply closed_no_subst; eauto. rewrite <-E. eauto. eauto. eauto.
+      * rewrite subst_open_commute.  assert (T2 = subst (varF 0) T2) as E. symmetry. eapply closed_no_subst; eauto. rewrite <-E. eauto. eauto. eauto.
 
   - ev. simpl in H0. destruct H. repeat eexists; eauto. eapply closed_subst; eauto. eauto.
     + unfold compat. right. right. eauto.
@@ -4887,7 +4889,7 @@ Lemma compat_bind: forall GX TX TX' V G1 T2 T1' n,
     closed 1 (n+1) T2 ->
     exists TB, T1' = TBind TB /\
                   closed 1 n TB /\
-                  compat GX TX TX' V G1 (open_rec 0 (TSelH (n+1)) T2) (open_rec 0 (TSelH n) TB).
+                  compat GX TX TX' V G1 (open_rec 0 (varH (n+1)) T2) (open_rec 0 (varH n) TB).
 Proof.
   intros ? ? ? ? ? ? ? ? CC CLX CL2. repeat destruct CC as [|CC].
 
@@ -4897,7 +4899,7 @@ Proof.
   - ev. simpl in H0. inversion H. repeat eexists; eauto. eapply closed_upgrade_free; eauto. omega.
     + unfold compat. right. right. split.
       * eapply nosubst_open. simpl. omega. eapply nosubst_intro. eauto.
-      * rewrite subst_open_commute.  assert (T2 = subst TTop T2) as E. symmetry. eapply closed_no_subst; eauto. rewrite <-E. eauto. eauto. eauto.
+      * rewrite subst_open_commute.  assert (T2 = subst (varF 0) T2) as E. symmetry. eapply closed_no_subst; eauto. rewrite <-E. eauto. eauto. eauto.
 
   - ev. simpl in H0. simpl in H. repeat eexists; eauto. eapply closed_subst; eauto. eauto.
     + unfold compat. right. right. split.
@@ -4908,7 +4910,7 @@ Qed.
 
 Lemma subst_open1_aux: forall j x T,
 closed (j+1) 0 T ->
-(subst (TSel x) (open_rec j (TSelH 0) T)) = (open_rec j (TSel x) T).
+(subst (varF x) (open_rec j (varH 0) T)) = (open_rec j (varF x) T).
 Proof.
   intros. generalize dependent j. induction T; intros; eauto.
   - simpl.
@@ -4923,12 +4925,13 @@ Proof.
     reflexivity.
     inversion H. eauto.
     inversion H. eauto.
-  - inversion H. subst. inversion H3.
-  - inversion H. subst.
-    simpl.
+  - destruct v.
+  + simpl. reflexivity.
+  + simpl. inversion H. subst. omega.
+  + simpl.
     case_eq (beq_nat j i); intros E.
-    + simpl. reflexivity.
-    + simpl. reflexivity.
+    * simpl. reflexivity.
+    * reflexivity.
   - simpl.
     rewrite <- IHT1.
     assert (S j = j+1) as A by omega.
@@ -4955,13 +4958,13 @@ Qed.
 
 Lemma subst_open1: forall x T,
 closed 1 0 T ->
-(subst (TSel x) (open (TSelH 0) T)) = (open (TSel x) T).
+(subst (varF x) (open (varH 0) T)) = (open (varF x) T).
 Proof.
   intros. eapply subst_open1_aux. simpl. eassumption.
 Qed.
 
 Lemma closed_open_tselh: forall j x T,
-                                closed j 0 (open_rec j (TSelH x) T) ->
+                                closed j 0 (open_rec j (varH x) T) ->
                                 closed j 0 T.
 Proof.
   intros. generalize dependent j. induction T; intros; eauto.
@@ -4969,10 +4972,13 @@ Proof.
     apply cl_fun. apply IHT1. eassumption. apply IHT2. eassumption.
   - simpl in H. inversion H. subst.
     apply cl_mem. apply IHT1. eassumption. apply IHT2. eassumption.
-  - simpl in H.
+  - destruct v.
+  + simpl. eauto.
+  + simpl in H. assumption.
+  + simpl in H.
     case_eq (beq_nat j i); intros E.
-    + rewrite E in H. inversion H. subst. omega.
-    + rewrite E in H. assumption.
+    * rewrite E in H. inversion H. subst. omega.
+    * rewrite E in H. assumption.
   - simpl in H. inversion H. subst.
     apply cl_all. apply IHT1. eassumption. apply IHT2. eassumption.
   - simpl in H. inversion H. subst.
