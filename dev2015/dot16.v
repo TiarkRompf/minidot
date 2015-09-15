@@ -4274,8 +4274,8 @@ Lemma invert_typ: forall venv vx T1 T2 n,
   val_type venv vx (TMem T1 T2) n ->
   exists GX TX,
     vx = (vty GX TX) /\
-    sstpd2 false venv T1 ((fresh GX,vty GX TX)::GX) (open (TSel (fresh GX)) TX) [] /\
-    sstpd2 true ((fresh GX,vty GX TX)::GX) (open (TSel (fresh GX)) TX) venv T2 [].
+    sstpd2 false venv T1 ((fresh GX,vty GX TX)::GX) (open (varF (fresh GX)) TX) [] /\
+    sstpd2 true ((fresh GX,vty GX TX)::GX) (open (varF (fresh GX)) TX) venv T2 [].
 Proof.
   intros. inversion H; ev; try solve by inversion. inversion H1.
   subst. inversion H2. subst. eexists. eexists. split. eauto. split. eexists. eauto. eexists. eauto.
@@ -4285,13 +4285,17 @@ Proof.
   inversion A.
 Qed.
 
-Lemma inv_closed_open: forall j n TX T, closed j n (open_rec j TX T) -> closed j n TX -> closed (j+1) n T.
+Lemma inv_closed_open: forall j n V T, closed j n (open_rec j V T) -> closed j n (TSel V) -> closed (j+1) n T.
 Proof.
   intros. generalize dependent j. induction T; try solve [
   intros; inversion H; subst; unfold closed; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto].
 
   - Case "TSelB". intros. simpl.
     unfold open_rec in H.
+    destruct v.
+    eapply closed_upgrade. eauto. omega.
+    eapply closed_upgrade. eauto. omega.
+
     case_eq (beq_nat j i); intros E.
 
     + eapply beq_nat_true_iff in E. subst. eapply cl_selb. omega.
