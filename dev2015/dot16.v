@@ -1,7 +1,7 @@
 (* Full safety for DOT *)
 
-(* this version is based on dot12.v *)
-(* based on that, it adds multiple labels for functions *)
+(* this version is based on dot15.v *)
+(* based on that, it adds proper variables *)
 
 Require Export SfLib.
 
@@ -13,15 +13,19 @@ Module FSUB.
 
 Definition id := nat.
 
+Inductive var : Type :=
+  | varF   : id -> var
+  | varH   : id -> var
+  | varB   : id -> var
+.
+
 Inductive ty : Type :=
   | TBool  : ty
   | TBot   : ty
   | TTop   : ty
   | TFun   : id -> ty -> ty -> ty
   | TMem   : ty -> ty -> ty
-  | TSel   : id -> ty
-  | TSelH  : id -> ty
-  | TSelB  : id -> ty
+  | TSel   : var -> ty
   | TAll   : ty -> ty -> ty
   | TBind  : ty -> ty
   | TAnd   : ty -> ty -> ty
@@ -118,10 +122,10 @@ Inductive closed_rec: nat -> nat -> ty -> Prop :=
     closed_rec k l (TAnd T1 T2)
 | cl_selh: forall k l x,
     l > x ->
-    closed_rec k l (TSelH x)
+    closed_rec k l (TSel (varH x))
 | cl_selb: forall k l i,
     k > i ->
-    closed_rec k l (TSelB i)
+    closed_rec k l (TSel (varB i))
 .
 
 Hint Constructors closed_rec.
@@ -129,11 +133,11 @@ Hint Constructors closed_rec.
 Definition closed j l T := closed_rec j l T.
 
 
-Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
+Fixpoint open_rec (k: nat) (u: var) (T: ty) { struct T }: ty :=
   match T with
-    | TSel x      => TSel x (* free var remains free. functional, so we can't check for conflict *)
-    | TSelH i     => TSelH i (*if beq_nat k i then u else TSelH i *)
-    | TSelB i     => if beq_nat k i then u else TSelB i
+    | TSel (varF x) => TSel (varF x) (* free var remains free. functional, so we can't check for conflict *)
+    | TSel (varH i) => TSel (varH i)
+    | TSel (varB i) => TSel (if beq_nat k i then u else varB i)
     | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
     | TBind T2    => TBind (open_rec (S k) u T2)
     | TTop        => TTop
@@ -147,21 +151,21 @@ Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
 Definition open u T := open_rec 0 u T.
 
 (* sanity check *)
-Example open_ex1: open (TSel 9) (TAll TBool (TFun 0 (TSelB 1) (TSelB 0))) =
-                      (TAll TBool (TFun 0 (TSel 9) (TSelB 0))).
+Example open_ex1: open (varF 9) (TAll TBool (TFun 0 (TSel (varB 1)) (TSel (varB 0)))) =
+                      (TAll TBool (TFun 0 (TSel (varF 9)) (TSel (varB 0)))).
 Proof. compute. eauto. Qed.
 
 
-Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
+Fixpoint subst (U : var) (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
     | TBot         => TBot
     | TBool        => TBool
     | TMem T1 T2   => TMem (subst U T1) (subst U T2)
     | TFun m T1 T2   => TFun m (subst U T1) (subst U T2)
-    | TSelB i      => TSelB i
-    | TSel i       => TSel i
-    | TSelH i      => if beq_nat i 0 then U else TSelH (i-1)
+    | TSel (varB i)  => TSel (varB i)
+    | TSel (varF i)  => TSel (varF i)
+    | TSel (varH i)  => TSel (if beq_nat i 0 then U else varH (i-1))
     | TAll T1 T2   => TAll (subst U T1) (subst U T2)
     | TBind T2     => TBind (subst U T2)
     | TAnd T1 T2   => TAnd (subst U T1) (subst U T2)
@@ -174,9 +178,9 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
     | TBool        => True
     | TMem T1 T2   => nosubst T1 /\ nosubst T2
     | TFun m T1 T2   => nosubst T1 /\ nosubst T2
-    | TSelB i      => True
-    | TSel i       => True
-    | TSelH i      => i <> 0
+    | TSel (varB i)  => True
+    | TSel (varF i)  => True
+    | TSel (varH i)  => i <> 0
     | TAll T1 T2   => nosubst T1 /\ nosubst T2
     | TBind T2     => nosubst T2
     | TAnd T1 T2   => nosubst T1 /\ nosubst T2
@@ -213,38 +217,38 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     closed 0 0 TX ->
     stp G1 GH TX (TMem TBot T2) ->
     stp G1 GH T2 T2 -> (* regularity of stp2 *)
-    stp G1 GH (TSel x) T2
+    stp G1 GH (TSel (varF x)) T2
 | stp_sel2: forall G1 GH TX T1 x,
     index x G1 = Some TX ->
     closed 0 0 TX ->
     stp G1 GH TX (TMem T1 TTop) ->
     stp G1 GH T1 T1 -> (* regularity of stp2 *)
-    stp G1 GH T1 (TSel x)
+    stp G1 GH T1 (TSel (varF x))
 | stp_selb1: forall G1 GH TX T2 x,
     index x G1 = Some TX ->
     stp G1 [] TX (TBind (TMem TBot T2)) ->   (* Note GH = [] *)
-    stp G1 GH (open (TSel x) T2) (open (TSel x) T2) -> (* regularity *)
-    stp G1 GH (TSel x) (open (TSel x) T2)
+    stp G1 GH (open (varF x) T2) (open (varF x) T2) -> (* regularity *)
+    stp G1 GH (TSel (varF x)) (open (varF x) T2)
 | stp_selb2: forall G1 GH TX T1 x,
     index x G1 = Some TX ->
     stp G1 [] TX (TBind (TMem T1 TTop)) ->   (* Note GH = [] *)
-    stp G1 GH (open (TSel x) T1) (open (TSel x) T1) -> (* regularity *)
-    stp G1 GH (open (TSel x) T1) (TSel x)
+    stp G1 GH (open (varF x) T1) (open (varF x) T1) -> (* regularity *)
+    stp G1 GH (open (varF x) T1) (TSel (varF x))
 | stp_selx: forall G1 GH TX x,
     index x G1 = Some TX ->
-    stp G1 GH (TSel x) (TSel x)
+    stp G1 GH (TSel (varF x)) (TSel (varF x))
 | stp_sela1: forall G1 GH TX T2 x,
     indexr x GH = Some TX ->
     closed 0 (S x) TX ->
     stp G1 GH TX (TMem TBot T2) ->   (* not using self name for now *)
     stp G1 GH T2 T2 -> (* regularity of stp2 *)
-    stp G1 GH (TSelH x) T2
+    stp G1 GH (TSel (varH x)) T2
 | stp_sela2: forall G1 GH TX T1 x,
     indexr x GH = Some TX ->
     closed 0 (S x) TX ->
     stp G1 GH TX (TMem T1 TTop) ->   (* not using self name for now *)
     stp G1 GH T1 T1 -> (* regularity of stp2 *)
-    stp G1 GH T1 (TSelH x)
+    stp G1 GH T1 (TSel (varH x))
 | stp_selab1: forall G1 GH GU GL TX T2 T2' x,
     indexr x GH = Some TX ->
     closed 0 (S x) TX ->
@@ -252,9 +256,9 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     length GL = (S x) ->
     GH = GU ++ GL ->
     stp G1 GL TX (TBind (TMem TBot T2)) ->
-    T2' = (open (TSelH x) T2) ->
+    T2' = (open (varH x) T2) ->
     stp G1 GH T2' T2' -> (* regularity *)
-    stp G1 GH (TSelH x) T2'
+    stp G1 GH (TSel (varH x)) T2'
 | stp_selab2: forall G1 GH GU GL TX T1 T1' x,
     indexr x GH = Some TX ->
     closed 0 (S x) TX ->
@@ -262,26 +266,26 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     length GL = (S x) ->
     GH = GU ++ GL ->
     stp G1 GL TX (TBind (TMem T1 TTop)) ->
-    T1' = (open (TSelH x) T1) ->
+    T1' = (open (varH x) T1) ->
     stp G1 GH T1' T1' -> (* regularity *)
-    stp G1 GH T1' (TSelH x)
+    stp G1 GH T1' (TSel (varH x))
 | stp_selax: forall G1 GH TX x,
     indexr x GH = Some TX  ->
-    stp G1 GH (TSelH x) (TSelH x)
+    stp G1 GH (TSel (varH x)) (TSel (varH x))
 | stp_all: forall G1 GH T1 T2 T3 T4 x,
     stp G1 GH T3 T1 ->
     x = length GH ->
     closed 1 (length GH) T2 -> (* must not accidentally bind x *)
     closed 1 (length GH) T4 ->
-    stp G1 ((0,T1)::GH) (open (TSelH x) T2) (open (TSelH x) T2) -> (* regularity *)
-    stp G1 ((0,T3)::GH) (open (TSelH x) T2) (open (TSelH x) T4) ->
+    stp G1 ((0,T1)::GH) (open (varH x) T2) (open (varH x) T2) -> (* regularity *)
+    stp G1 ((0,T3)::GH) (open (varH x) T2) (open (varH x) T4) ->
     stp G1 GH (TAll T1 T2) (TAll T3 T4)
 | stp_bindx: forall G1 GH T1 T2 x,
     x = length GH ->
     closed 1 (length GH) T1 -> (* must not accidentally bind x *)
     closed 1 (length GH) T2 ->
-    stp G1 ((0,open (TSelH x) T2)::GH) (open (TSelH x) T2) (open (TSelH x) T2) -> (* regularity *)
-    stp G1 ((0,open (TSelH x) T1)::GH) (open (TSelH x) T1) (open (TSelH x) T2) ->
+    stp G1 ((0,open (varH x) T2)::GH) (open (varH x) T2) (open (varH x) T2) -> (* regularity *)
+    stp G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) (open (varH x) T2) ->
     stp G1 GH (TBind T1) (TBind T2)
 | stp_and11: forall G GH T1 T2 T,
     stp G GH T1 T ->
@@ -337,16 +341,16 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            stp env [] T1 T1 ->
            has_type env (tvar x) T1
 | t_var_pack: forall x env T1,
-           has_type env (tvar x) (open (TSel x) T1) ->
+           has_type env (tvar x) (open (varF x) T1) ->
            stp env [] (TBind T1) (TBind T1) ->
            has_type env (tvar x) (TBind T1)
 | t_var_unpack: forall x env T1,
            has_type env (tvar x) (TBind T1) ->
-           stp env [] (open (TSel x) T1) (open (TSel x) T1) ->
-           has_type env (tvar x) (open (TSel x) T1)
+           stp env [] (open (varF x) T1) (open (varF x) T1) ->
+           has_type env (tvar x) (open (varF x) T1)
 | t_typ: forall env x T1 T1X,
            fresh env = x ->
-           open (TSel x) T1 = T1X ->
+           open (varF x) T1 = T1X ->
            stp ((x,TMem T1X T1X)::env) [] T1X T1X ->
            stp env [] (TBind (TMem T1 T1)) (TBind (TMem T1 T1)) ->
            has_type env (ttyp T1) (TBind (TMem T1 T1))
@@ -375,7 +379,7 @@ Does it make a difference? It seems like we can always widen f?
 
 *)
 | t_tabs: forall env x y T1 T2,
-           has_type ((x,T1)::env) y (open (TSel x) T2) ->
+           has_type ((x,T1)::env) y (open (varF x) T2) ->
            stp env [] (TAll T1 T2) (TAll T1 T2) ->
            fresh env = x ->
            has_type env (ttabs x T1 y) (TAll T1 T2)
@@ -444,21 +448,21 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     val_type GX' (vty GX TX) TX' nv -> (* for downgrade *)
     stp2 0 false GX' TX' G2 (TMem TBot T2) GH n2 -> (* for downgrade *)
     closed 1 0 TX ->
-    stp2 0 true ((fresh GX, vty GX TX)::GX) (open (TSel (fresh GX)) TX) G2 T2 GH n1 ->
-    stp2 0 true G1 (TSel x) G2 T2 GH (S (n1+n2))
+    stp2 0 true ((fresh GX, vty GX TX)::GX) (open (varF (fresh GX)) TX) G2 T2 GH n1 ->
+    stp2 0 true G1 (TSel (varF x)) G2 T2 GH (S (n1+n2))
 
 | stp2_strong_sel2: forall G1 G2 GX TX x T1 GH GX' TX' n1 n2 nv,
     index x G2 = Some (vty GX TX) ->
     val_type GX' (vty GX TX) TX' nv -> (* for downgrade *)
     stp2 0 false GX' TX' G1 (TMem T1 TTop) GH n2 -> (* for downgrade *)
     closed 1 0 TX ->
-    stp2 0 false G1 T1 ((fresh GX, vty GX TX)::GX) (open (TSel (fresh GX)) TX) GH n1 ->
-    stp2 0 true G1 T1 G2 (TSel x) GH (S (n1+n2))
+    stp2 0 false G1 T1 ((fresh GX, vty GX TX)::GX) (open (varF (fresh GX)) TX) GH n1 ->
+    stp2 0 true G1 T1 G2 (TSel (varF x)) GH (S (n1+n2))
 
 | stp2_strong_selx: forall G1 G2 v x1 x2 GH n1,
     index x1 G1 = Some v ->
     index x2 G2 = Some v ->
-    stp2 0 true G1 (TSel x1) G2 (TSel x2) GH n1
+    stp2 0 true G1 (TSel (varF x1)) G2 (TSel (varF x2)) GH n1
 
 
 (* existing object, but imprecise type *)
@@ -468,15 +472,15 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     closed 0 0 TX ->
     stp2 (S m) false GX TX G2 (TMem TBot T2) GH n1 ->
     stp2 (S m) true G2 T2 G2 T2 GH n2 -> (* regularity *)
-    stp2 (S m) true G1 (TSel x) G2 T2 GH (S (n1+n2))
+    stp2 (S m) true G1 (TSel (varF x)) G2 T2 GH (S (n1+n2))
 
 | stp2_selb1: forall m G1 G2 GX TX x x' T2 GH n1 n2 v nv,
     index x G1 = Some v -> (index x' G2 = Some v \/ closed 0 0 T2) ->
     val_type GX v TX nv ->
     closed 0 0 TX ->
     stp2 (S (S m)) false GX TX G2 (TBind (TMem TBot T2)) [] n1 -> (* Note GH = [] *)
-    stp2 (S (S m)) true G2 (open (TSel x') T2) G2 (open (TSel x') T2) GH n2 -> (* regularity *)
-    stp2 (S (S m)) true G1 (TSel x) G2 (open (TSel x') T2) GH (S (n1+n2))
+    stp2 (S (S m)) true G2 (open (varF x') T2) G2 (open (varF x') T2) GH n2 -> (* regularity *)
+    stp2 (S (S m)) true G1 (TSel (varF x)) G2 (open (varF x') T2) GH (S (n1+n2))
 
 
 | stp2_sel2: forall m G1 G2 GX TX x T1 GH n1 n2 v nv,
@@ -485,20 +489,20 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     closed 0 0 TX ->
     stp2 (S m) false GX TX G1 (TMem T1 TTop) GH n1 ->
     stp2 (S m) true G1 T1 G1 T1 GH n2 -> (* regularity *)
-    stp2 (S m) true G1 T1 G2 (TSel x) GH (S (n1+n2))
+    stp2 (S m) true G1 T1 G2 (TSel (varF x)) GH (S (n1+n2))
 
 | stp2_selb2: forall m G1 G2 GX TX x x' T1 GH n1 n2 v nv,
     index x G2 = Some v -> (index x' G1 = Some v \/ closed 0 0 T1) ->
     val_type GX v TX nv ->
     closed 0 0 TX ->
     stp2 (S (S m)) false GX TX G1 (TBind (TMem T1 TTop)) [] n1 -> (* Note GH = [] *)
-    stp2 (S (S m)) true G1 (open (TSel x') T1) G1 (open (TSel x') T1) GH n2 -> (* regularity *)
-    stp2 (S (S m)) true G1 (open (TSel x') T1) G2 (TSel x) GH (S (n1+n2))
+    stp2 (S (S m)) true G1 (open (varF x') T1) G1 (open (varF x') T1) GH n2 -> (* regularity *)
+    stp2 (S (S m)) true G1 (open (varF x') T1) G2 (TSel (varF x)) GH (S (n1+n2))
 
 | stp2_selx: forall m G1 G2 v x1 x2 GH n1,
     index x1 G1 = Some v ->
     index x2 G2 = Some v ->
-    stp2 (S m) true G1 (TSel x1) G2 (TSel x2) GH (S n1)
+    stp2 (S m) true G1 (TSel (varF x1)) G2 (TSel (varF x2)) GH (S n1)
 
 (* hypothetical object *)
 | stp2_sela1: forall m G1 G2 GX TX x T2 GH n1 n2,
@@ -506,7 +510,7 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     closed 0 (S x) TX ->
     stp2 (S m) false GX TX G2 (TMem TBot T2) GH n1 ->
     stp2 (S m) true G2 T2 G2 T2 GH n2 -> (* regularity *)
-    stp2 (S m) true G1 (TSelH x) G2 T2 GH (S (n1+n2))
+    stp2 (S m) true G1 (TSel (varH x)) G2 T2 GH (S (n1+n2))
 
 | stp2_selab1: forall m G1 G2 GX TX x T2 T2' GH GU GL n1 n2,
     indexr x GH = Some (GX, TX) ->
@@ -515,9 +519,9 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     length GL = (S x) ->
     GH = GU ++ GL ->
     stp2 (S m) false GX TX G2 (TBind (TMem TBot T2)) GL n1 ->
-    T2' = (open (TSelH x) T2) ->
+    T2' = (open (varH x) T2) ->
     stp2 (S m) true G2 T2' G2 T2' GH n2 -> (* regularity *)
-    stp2 (S m) true G1 (TSelH x) G2 T2' GH (S (n1+n2))
+    stp2 (S m) true G1 (TSel (varH x)) G2 T2' GH (S (n1+n2))
 
 | stp2_selab2: forall m G1 G2 GX TX x T1 T1' GH GU GL n1 n2,
     indexr x GH = Some (GX, TX) ->
@@ -526,43 +530,43 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     length GL = (S x) ->
     GH = GU ++ GL ->
     stp2 (S m) false GX TX G1 (TBind (TMem T1 TTop)) GL n1 ->
-    T1' = (open (TSelH x) T1) ->
+    T1' = (open (varH x) T1) ->
     stp2 (S m) true G1 T1' G1 T1' GH n2 -> (* regularity *)
-    stp2 (S m) true G1 T1' G2 (TSelH x) GH (S (n1+n2))
+    stp2 (S m) true G1 T1' G2 (TSel (varH x)) GH (S (n1+n2))
 
 | stp2_sela2: forall m G1 G2 GX TX x T1 GH n1 n2,
     indexr x GH = Some (GX, TX) ->
     closed 0 (S x) TX ->
     stp2 (S m) false GX TX G1 (TMem T1 TTop) GH n1 ->
     stp2 (S m) true G1 T1 G1 T1 GH n2 -> (* regularity *)
-    stp2 (S m) true G1 T1 G2 (TSelH x) GH (S (n1+n2))
+    stp2 (S m) true G1 T1 G2 (TSel (varH x)) GH (S (n1+n2))
 
 
 | stp2_selax: forall m G1 G2 GX TX x GH n1,
     indexr x GH = Some (GX, TX) ->
-    stp2 (S m) true G1 (TSelH x) G2 (TSelH x) GH (S n1)
+    stp2 (S m) true G1 (TSel (varH x)) G2 (TSel (varH x)) GH (S n1)
 
 
 | stp2_all: forall m G1 G2 T1 T2 T3 T4 GH n1 n1' n2,
     stp2 MAX false G2 T3 G1 T1 GH n1 ->
     closed 1 (length GH) T2 -> (* must not accidentally bind x *)
     closed 1 (length GH) T4 ->
-    stp2 MAX false G1 (open (TSelH (length GH)) T2) G1 (open (TSelH (length GH)) T2) ((0,(G1, T1))::GH) n1' -> (* regularity *)
-    stp2 MAX false G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) ((0,(G2, T3))::GH) n2 ->
+    stp2 MAX false G1 (open (varH (length GH)) T2) G1 (open (varH (length GH)) T2) ((0,(G1, T1))::GH) n1' -> (* regularity *)
+    stp2 MAX false G1 (open (varH (length GH)) T2) G2 (open (varH (length GH)) T4) ((0,(G2, T3))::GH) n2 ->
     stp2 m true G1 (TAll T1 T2) G2 (TAll T3 T4) GH (S (n1+n1'+n2))
 
 | stp2_bind: forall G1 G2 T1 T2 GH n1 n2,
     closed 1 (length GH) T1 -> (* must not accidentally bind x *)
     closed 1 (length GH) T2 ->
-    stp2 1 false G2 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T2) ((0,(G2, open (TSelH (length GH)) T2))::GH) n2 -> (* regularity *)
-    stp2 1 false G1 (open (TSelH (length GH)) T1) G2 (open (TSelH (length GH)) T2) ((0,(G1, open (TSelH (length GH)) T1))::GH) n1 ->
+    stp2 1 false G2 (open (varH (length GH)) T2) G2 (open (varH (length GH)) T2) ((0,(G2, open (varH (length GH)) T2))::GH) n2 -> (* regularity *)
+    stp2 1 false G1 (open (varH (length GH)) T1) G2 (open (varH (length GH)) T2) ((0,(G1, open (varH (length GH)) T1))::GH) n1 ->
     stp2 0 true G1 (TBind T1) G2 (TBind T2) GH (S (n1+n2))
 
 | stp2_bindb: forall m G1 G2 T1 T2 GH n1 n2,
     closed 1 (length GH) T1 -> (* must not accidentally bind x *)
     closed 1 (length GH) T2 ->
-    stp2 (S m) false G2 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T2) ((0,(G2, open (TSelH (length GH)) T2))::GH) n2 -> (* regularity *)
-    stp2 (S m) false G1 (open (TSelH (length GH)) T1) G2 (open (TSelH (length GH)) T2) ((0,(G1, open (TSelH (length GH)) T1))::GH) n1 ->
+    stp2 (S m) false G2 (open (varH (length GH)) T2) G2 (open (varH (length GH)) T2) ((0,(G2, open (varH (length GH)) T2))::GH) n2 -> (* regularity *)
+    stp2 (S m) false G1 (open (varH (length GH)) T1) G2 (open (varH (length GH)) T2) ((0,(G1, open (varH (length GH)) T1))::GH) n1 ->
     stp2 (S m) true G1 (TBind T1) G2 (TBind T2) GH (S (n1+n2))
 
 | stp2_and11: forall m n1 n2 G1 G2 GH T1 T2 T,
@@ -598,7 +602,7 @@ with wf_env : venv -> tenv -> Prop :=
 with val_type : venv -> vl -> ty -> nat -> Prop :=
 | v_ty: forall env venv tenv  T1 T1X TE,
     wf_env venv tenv -> (* T1 wf in tenv ? *)
-    open (TSel (fresh venv)) T1 = T1X ->
+    open (varF (fresh venv)) T1 = T1X ->
     (exists n, stp2 0 true ((fresh venv, vty venv T1)::venv) (TMem T1X T1X) env TE [] n)->
     val_type env (vty venv T1) TE 1
 | v_bool: forall venv b TE,
@@ -612,14 +616,14 @@ with val_type : venv -> vl -> ty -> nat -> Prop :=
     val_type env (vabs venv f ds) TE 1
 | v_tabs: forall env venv tenv x y T1 T2 TE,
     wf_env venv tenv ->
-    has_type ((x,T1)::tenv) y (open (TSel x) T2) ->
+    has_type ((x,T1)::tenv) y (open (varF x) T2) ->
     fresh venv = x ->
     (exists n, stp2 0 true venv (TAll T1 T2) env TE [] n) ->
     val_type env (vtabs venv x T1 y) TE 1
 | v_pack: forall venv venv3 x v T T2 T3 n,
     index x venv = Some v ->
     val_type venv v T n ->
-    open (TSel x) T2 = T ->
+    open (varF x) T2 = T ->
     (exists n, stp2 0 true venv (TBind T2) venv3 T3 [] n) ->
     val_type venv3 v T3 (S n)
 .
@@ -697,7 +701,7 @@ Lemma stpd2_sel1: forall G1 G2 GX TX x T2 GH v nv,
     closed 0 0 TX ->
     stpd2 false GX TX G2 (TMem TBot T2) GH ->
     stpd2 true G2 T2 G2 T2 GH ->
-    stpd2 true G1 (TSel x) G2 T2 GH.
+    stpd2 true G1 (TSel (varF x)) G2 T2 GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel1; eauto. Qed.
 
 Lemma stpd2_selb1: forall G1 G2 GX TX x x' T2 GH v nv,
@@ -705,8 +709,8 @@ Lemma stpd2_selb1: forall G1 G2 GX TX x x' T2 GH v nv,
     val_type GX v TX nv ->
     closed 0 0 TX ->
     stpd2 false GX TX G2 (TBind (TMem TBot T2)) [] -> (* Note GH = [] *)
-    stpd2 true G2 (open (TSel x') T2) G2 (open (TSel x') T2) GH ->
-    stpd2 true G1 (TSel x) G2 (open (TSel x') T2) GH.
+    stpd2 true G2 (open (varF x') T2) G2 (open (varF x') T2) GH ->
+    stpd2 true G1 (TSel (varF x)) G2 (open (varF x') T2) GH.
 Proof. intros. repeat eu. eexists. eapply stp2_selb1; eauto. Qed.
 
 Lemma stpd2_sel2: forall G1 G2 GX TX x T1 GH v nv,
@@ -715,7 +719,7 @@ Lemma stpd2_sel2: forall G1 G2 GX TX x T1 GH v nv,
     closed 0 0 TX ->
     stpd2 false GX TX G1 (TMem T1 TTop) GH ->
     stpd2 true G1 T1 G1 T1 GH ->
-    stpd2 true G1 T1 G2 (TSel x) GH.
+    stpd2 true G1 T1 G2 (TSel (varF x)) GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel2; eauto. Qed.
 
 Lemma stpd2_selb2: forall G1 G2 GX TX x x' T1 GH v nv,
@@ -723,14 +727,14 @@ Lemma stpd2_selb2: forall G1 G2 GX TX x x' T1 GH v nv,
     val_type GX v TX nv ->
     closed 0 0 TX ->
     stpd2 false GX TX G1 (TBind (TMem T1 TTop)) [] -> (* Note GH = [] *)
-    stpd2 true G1 (open (TSel x') T1) G1 (open (TSel x') T1) GH ->
-    stpd2 true G1 (open (TSel x') T1) G2 (TSel x) GH.
+    stpd2 true G1 (open (varF x') T1) G1 (open (varF x') T1) GH ->
+    stpd2 true G1 (open (varF x') T1) G2 (TSel (varF x)) GH.
 Proof. intros. repeat eu. eexists. eapply stp2_selb2; eauto. Qed.
 
 Lemma stpd2_selx: forall G1 G2 x1 x2 GH v,
     index x1 G1 = Some v ->
     index x2 G2 = Some v ->
-    stpd2 true G1 (TSel x1) G2 (TSel x2) GH.
+    stpd2 true G1 (TSel (varF x1)) G2 (TSel (varF x2)) GH.
 Proof. intros. eauto. exists (S 0). eapply stp2_selx; eauto. Qed.
 
 Lemma stpd2_selab1: forall G1 G2 GX TX x T2 GH GU GL,
@@ -740,8 +744,8 @@ Lemma stpd2_selab1: forall G1 G2 GX TX x T2 GH GU GL,
     length GL = (S x) ->
     GH = GU ++ GL ->
     stpd2 false GX TX G2 (TBind (TMem TBot T2)) GL ->
-    stpd2 true G2 (open (TSelH x) T2) G2 (open (TSelH x) T2) GH ->
-    stpd2 true G1 (TSelH x) G2 (open (TSelH x) T2) GH.
+    stpd2 true G2 (open (varH x) T2) G2 (open (varH x) T2) GH ->
+    stpd2 true G1 (TSel (varH x)) G2 (open (varH x) T2) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab1; eauto. Qed.
 
 Lemma stpd2_selab2: forall G1 G2 GX TX x T1 T1' GH GU GL,
@@ -751,9 +755,9 @@ Lemma stpd2_selab2: forall G1 G2 GX TX x T1 T1' GH GU GL,
     length GL = (S x) ->
     GH = GU ++ GL ->
     stpd2 false GX TX G1 (TBind (TMem T1 TTop)) GL ->
-    T1' = (open (TSelH x) T1) ->
+    T1' = (open (varH x) T1) ->
     stpd2 true G1 T1' G1 T1' GH ->
-    stpd2 true G1 T1' G2 (TSelH x) GH.
+    stpd2 true G1 T1' G2 (TSel (varH x)) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab2; eauto. Qed.
 
 Lemma stpd2_sela1: forall G1 G2 GX TX x T2 GH,
@@ -761,7 +765,7 @@ Lemma stpd2_sela1: forall G1 G2 GX TX x T2 GH,
     closed 0 (S x) TX ->
     stpd2 false GX TX G2 (TMem TBot T2) GH ->
     stpd2 true G2 T2 G2 T2 GH ->
-    stpd2 true G1 (TSelH x) G2 T2 GH.
+    stpd2 true G1 (TSel (varH x)) G2 T2 GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela1; eauto. Qed.
 
 Lemma stpd2_sela2: forall G1 G2 GX TX x T1 GH,
@@ -769,13 +773,13 @@ Lemma stpd2_sela2: forall G1 G2 GX TX x T1 GH,
     closed 0 (S x) TX ->
     stpd2 false GX TX G1 (TMem T1 TTop) GH ->
     stpd2 true G1 T1 G1 T1 GH ->
-    stpd2 true G1 T1 G2 (TSelH x) GH.
+    stpd2 true G1 T1 G2 (TSel (varH x)) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela2; eauto. Qed.
 
 
 Lemma stpd2_selax: forall G1 G2 GX TX x GH,
     indexr x GH = Some (GX, TX) ->
-    stpd2 true G1 (TSelH x) G2 (TSelH x) GH.
+    stpd2 true G1 (TSel (varH x)) G2 (TSel (varH x)) GH.
 Proof. intros. exists (S 0). eauto. eapply stp2_selax; eauto. Qed.
 
 
@@ -783,16 +787,16 @@ Lemma stpd2_all: forall G1 G2 T1 T2 T3 T4 GH,
     stpd2 false G2 T3 G1 T1 GH ->
     closed 1 (length GH) T2 ->
     closed 1 (length GH) T4 ->
-    stpd2 false G1 (open (TSelH (length GH)) T2) G1 (open (TSelH (length GH)) T2) ((0,(G1, T1))::GH) ->
-    stpd2 false G1 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T4) ((0,(G2, T3))::GH) ->
+    stpd2 false G1 (open (varH (length GH)) T2) G1 (open (varH (length GH)) T2) ((0,(G1, T1))::GH) ->
+    stpd2 false G1 (open (varH (length GH)) T2) G2 (open (varH (length GH)) T4) ((0,(G2, T3))::GH) ->
     stpd2 true G1 (TAll T1 T2) G2 (TAll T3 T4) GH.
 Proof. intros. repeat eu. eauto. Qed.
 
 Lemma stpd2_bind: forall G1 G2 T1 T2 GH,
     closed 1 (length GH) T1 ->
     closed 1 (length GH) T2 ->
-    stpd2 false G2 (open (TSelH (length GH)) T2) G2 (open (TSelH (length GH)) T2) ((0,(G2, open (TSelH (length GH)) T2))::GH) ->
-    stpd2 false G1 (open (TSelH (length GH)) T1) G2 (open (TSelH (length GH)) T2) ((0,(G1, open (TSelH (length GH)) T1))::GH) ->
+    stpd2 false G2 (open (varH (length GH)) T2) G2 (open (varH (length GH)) T2) ((0,(G2, open (varH (length GH)) T2))::GH) ->
+    stpd2 false G1 (open (varH (length GH)) T1) G2 (open (varH (length GH)) T2) ((0,(G1, open (varH (length GH)) T1))::GH) ->
     stpd2 true G1 (TBind T1) G2 (TBind T2) GH.
 Proof. intros. repeat eu. eauto. unfold stpd2. eexists. eapply stp2_bindb; eauto. Qed.
 
@@ -951,7 +955,7 @@ Ltac crush2 :=
 
 (* define polymorphic identity function *)
 
-Definition polyId := TAll (TBind (TMem TBot TTop)) (TFun 0 (TSelB 0) (TSelB 0)).
+Definition polyId := TAll (TBind (TMem TBot TTop)) (TFun 0 (TSel (varB 0)) (TSel (varB 0))).
 
 Example ex1: has_type [] (ttabs 0 (TBind (TMem TBot TTop)) (tabs 1 [(0, (2, (tvar 2)))])) polyId.
 Proof.
@@ -966,7 +970,7 @@ Proof.
   eapply t_tapp. instantiate (1:= (TBind (TMem TBool TBool))).
     { eapply t_sub.
       { eapply t_var. simpl. eauto. crush2. }
-      { eapply stp_all; eauto. { eapply stp_bindx; crush2. } compute. eapply cl_fun; eauto.
+      { eapply stp_all; eauto. { eapply stp_bindx; crush2. } compute.
         eapply stp_fun. compute. eapply stp_selax; crush2. crush2.
         eapply stp_fun. compute. eapply stp_selab2. crush2.
         crush2. instantiate (1:=TBool). crush2.
@@ -991,9 +995,9 @@ Qed.
 Definition brandUnbrand :=
   TAll (TBind (TMem TBot TTop))
        (TFun 0
-          (TFun 0 TBool (TSelB 0)) (* brand *)
+          (TFun 0 TBool (TSel (varB 0))) (* brand *)
           (TFun 0
-             (TFun 0 (TSelB 0) TBool) (* unbrand *)
+             (TFun 0 (TSel (varB 0)) TBool) (* unbrand *)
              TBool)).
 
 Example ex3:
@@ -1042,22 +1046,22 @@ Qed.
 (* test expansion *)
 
 Example ex6:
-  has_type [(1,TSel 0);(0,TMem TBot (TBind (TFun 0 TBool (TSelB 0))))]
-           (tvar 1) (TFun 0 TBool (TSel 1)).
+  has_type [(1,TSel (varF 0));(0,TMem TBot (TBind (TFun 0 TBool (TSel (varB 0)))))]
+           (tvar 1) (TFun 0 TBool (TSel (varF 1))).
 Proof.
-  remember (TFun 0 TBool (TSel 1)) as T.
-  assert (T = open (TSel 1) (TFun 0 TBool (TSelB 0))). compute. eauto.
+  remember (TFun 0 TBool (TSel (varF 1))) as T.
+  assert (T = open (varF 1) (TFun 0 TBool (TSel (varB 0)))). compute. eauto.
   rewrite H.
   eapply t_var_unpack. eapply t_sub. eapply t_var. compute. eauto. crush2. crush2. crush2.
 Qed.
 
 
 Example ex7:
-  stp [(1,TSel 0);(0,TMem TBot (TBind (TMem TBot (TFun 0 TBool (TSelB 0)))))] []
-           (TSel 1) (TFun 0 TBool (TSel 1)).
+  stp [(1,TSel (varF 0));(0,TMem TBot (TBind (TMem TBot (TFun 0 TBool (TSel (varB 0))))))] []
+           (TSel (varF 1)) (TFun 0 TBool (TSel (varF 1))).
 Proof.
-  remember (TFun 0 TBool (TSel 1)) as T.
-  assert (T = open (TSel 1) (TFun 0 TBool (TSelB 0))). compute. eauto.
+  remember (TFun 0 TBool (TSel (varF 1))) as T.
+  assert (T = open (varF 1) (TFun 0 TBool (TSel (varB 0)))). compute. eauto.
   rewrite H.
   eapply stp_selb1. compute. eauto.
   eapply stp_sel1. compute. eauto.
