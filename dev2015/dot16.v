@@ -4414,20 +4414,27 @@ Proof.
 Qed.
 
 
-Lemma open_subst_commute: forall T2 TX (n:nat) x j,
-closed j n TX ->
-(open_rec j (TSelH x) (subst TX T2)) =
-(subst TX (open_rec j (TSelH (x+1)) T2)).
+Lemma open_subst_commute: forall T2 V (n:nat) x j,
+closed j n (TSel V) ->
+(open_rec j (varH x) (subst V T2)) =
+(subst V (open_rec j (varH (x+1)) T2)).
 Proof.
-  intros T2 TX n. induction T2; intros; eauto.
+  intros T2 V n. induction T2; intros; eauto.
   -  simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.
   -  simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.
-  -  simpl. case_eq (beq_nat i 0); intros E. symmetry. eapply closed_no_open. eauto. simpl. eauto.
-  - simpl. case_eq (beq_nat j i); intros E. simpl.
-    assert (x+1<>0). omega. eapply beq_nat_false_iff in H0.
-    assert (x=x+1-1). unfold id. omega.
-    rewrite H0. eauto.
-    simpl. eauto.
+  -  simpl.
+     destruct v; simpl; try reflexivity.
+     + simpl. case_eq (beq_nat i 0); intros E.
+       destruct V; try reflexivity.
+       inversion H. subst.
+       assert (beq_nat j i0 = false) as A. apply false_beq_nat. omega.
+       rewrite A. reflexivity.
+       reflexivity.
+     + simpl. case_eq (beq_nat j i); intros E.
+       assert (x+1<>0). omega. eapply beq_nat_false_iff in H0.
+       assert (x=x+1-1) as A. unfold id. omega.
+       rewrite <- A.  rewrite H0. reflexivity.
+       reflexivity.
   -  simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eapply closed_upgrade. eauto. eauto. eauto.
   -  simpl. rewrite IHT2. eauto. eapply closed_upgrade. eauto. eauto.
   - simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.
@@ -4453,47 +4460,50 @@ Proof.
   subst. eapply closed_upgrade. eassumption. omega.
 Qed.
 
-Lemma closed_subst: forall j n TX T, closed j (n+1) T -> closed 0 n TX -> closed j (n) (subst TX T).
+Lemma closed_subst: forall j n V T, closed j (n+1) T -> closed 0 n (TSel V) -> closed j (n) (subst V T).
 Proof.
   intros. generalize dependent j. induction T; intros; inversion H; unfold closed; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
 
   - Case "TSelH". simpl.
-    case_eq (beq_nat i 0); intros E. eapply closed_upgrade. eapply closed_upgrade_free. eauto. omega. eauto. omega.
-    econstructor. assert (i > 0). eapply beq_nat_false_iff in E. omega. omega.
+    case_eq (beq_nat x 0); intros E. eapply closed_upgrade. eapply closed_upgrade_free. eauto. omega. eauto. omega.
+    econstructor. assert (x > 0). eapply beq_nat_false_iff in E. omega. omega.
 Qed.
 
 
-Lemma subst_open_commute_m: forall j n m TX T2, closed (j+1) (n+1) T2 -> closed 0 m TX ->
-    subst TX (open_rec j (TSelH (n+1)) T2) = open_rec j (TSelH n) (subst TX T2).
+Lemma subst_open_commute_m: forall j n m V T2, closed (j+1) (n+1) T2 -> closed 0 m (TSel V) ->
+    subst V (open_rec j (varH (n+1)) T2) = open_rec j (varH n) (subst V T2).
 Proof.
   intros. generalize dependent j. generalize dependent n.
   induction T2; intros; inversion H; simpl; eauto;
           try rewrite IHT2_1; try rewrite IHT2_2; try rewrite IHT2; eauto.
 
-  - Case "TSelH". simpl. case_eq (beq_nat i 0); intros E.
-    eapply closed_no_open. eapply closed_upgrade. eauto. omega.
-    eauto.
-  - Case "TSelB". simpl. case_eq (beq_nat j i); intros E.
-    simpl. case_eq (beq_nat (n+1) 0); intros E2. eapply beq_nat_true_iff in E2. omega.
-    assert (n+1-1 = n). omega. eauto.
-    eauto.
+  simpl. case_eq (beq_nat x 0); intros E.
+  destruct V; try solve [simpl; reflexivity].
+  unfold closed in H0. inversion H0. subst.
+  case_eq (beq_nat  j i); intros E2.
+  apply beq_nat_true in E2. subst. omega.
+  reflexivity. reflexivity.
+  simpl. case_eq (beq_nat j i); intros E.
+  simpl. case_eq (beq_nat (n+1) 0); intros E2. eapply beq_nat_true_iff in E2. omega.
+  assert (n+1-1 = n). omega. rewrite H5. eauto.
+  eauto.
 Qed.
 
-Lemma subst_open_commute: forall j n TX T2, closed (j+1) (n+1) T2 -> closed 0 0 TX ->
-    subst TX (open_rec j (TSelH (n+1)) T2) = open_rec j (TSelH n) (subst TX T2).
+Lemma subst_open_commute: forall j n V T2, closed (j+1) (n+1) T2 -> closed 0 0 (TSel V) ->
+    subst V (open_rec j (varH (n+1)) T2) = open_rec j (varH n) (subst V T2).
 Proof.
   intros. eapply subst_open_commute_m; eauto.
 Qed.
 
 Lemma subst_open_zero: forall j k TX T2, closed k 0 T2 ->
-    subst TX (open_rec j (TSelH 0) T2) = open_rec j TX T2.
+    subst TX (open_rec j (varH 0) T2) = open_rec j TX T2.
 Proof.
   intros. generalize dependent k. generalize dependent j. induction T2; intros; inversion H; simpl; eauto; try rewrite (IHT2_1 _ k); try rewrite (IHT2_2 _ (S k)); try rewrite (IHT2_2 _ (S k)); try rewrite (IHT2 _ (S k)); try rewrite (IHT2 _ k); eauto.
 
   eapply closed_upgrade; eauto.
   eapply closed_upgrade; eauto.
 
-  case_eq (beq_nat i 0); intros E. omega. omega.
+  case_eq (beq_nat x 0); intros E. omega. omega.
 
   case_eq (beq_nat j i); intros E. eauto. eauto.
 
@@ -4517,27 +4527,28 @@ Proof.
   omega.
 Qed.
 
-Lemma nosubst_open: forall j TX T2, nosubst TX -> nosubst T2 -> nosubst (open_rec j TX T2).
+Lemma nosubst_open: forall j V T2, nosubst (TSel V) -> nosubst T2 -> nosubst (open_rec j V T2).
 Proof.
   intros. generalize dependent j. induction T2; intros; try inversion H0; simpl; eauto.
 
+  destruct v; eauto.
   case_eq (beq_nat j i); intros E. eauto. eauto.
 Qed.
 
-Lemma nosubst_open_rev: forall j TX T2, nosubst (open_rec j TX T2) -> nosubst TX -> nosubst T2.
+Lemma nosubst_open_rev: forall j V T2, nosubst (open_rec j V T2) -> nosubst (TSel V) -> nosubst T2.
 Proof.
   intros. generalize dependent j. induction T2; intros; try inversion H; simpl in H; simpl; eauto.
+  destruct v; eauto.
 Qed.
 
-Lemma nosubst_zero_closed: forall j T2, nosubst (open_rec j (TSelH 0) T2) -> closed_rec (j+1) 0 T2 -> closed_rec j 0 T2.
+Lemma nosubst_zero_closed: forall j T2, nosubst (open_rec j (varH 0) T2) -> closed_rec (j+1) 0 T2 -> closed_rec j 0 T2.
 Proof.
   intros. generalize dependent j. induction T2; intros; simpl in H; try destruct H; inversion H0; eauto.
 
-  omega.
-  econstructor.
-
-  case_eq (beq_nat j i); intros E. rewrite E in H. destruct H. eauto.
-  eapply beq_nat_false_iff in E. omega.
+  destruct v. inversion H1. inversion H1. inversion H1. subst.
+  case_eq (beq_nat j i0); intros E. rewrite E in H. destruct H. eauto.
+  eapply beq_nat_false_iff in E.
+  constructor. omega.
 Qed.
 
 
