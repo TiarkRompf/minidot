@@ -2075,7 +2075,7 @@ Proof.
   assert (splice (length GH) T4 = T4) as A4. {
     eapply closed_splice_idem. apply H2. omega.
   }
-  assert (TSelH (S (length GH)) = splice (length GH) (TSelH (length GH))) as AH. {
+  assert (TSel (varH (S (length GH))) = splice (length GH) (TSel (varH (length GH)))) as AH. {
     simpl. case_eq (le_lt_dec (length GH) (length GH)); intros E LE.
     simpl. rewrite NPeano.Nat.add_1_r. reflexivity.
     clear LE. apply lt_irrefl in E. inversion E.
@@ -2102,7 +2102,7 @@ Proof.
   simpl.
   rewrite <- A2. rewrite <- A2.
   unfold open.
-  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  change (varH (S (length GH))) with (varH (0 + (S (length GH)))).
   rewrite -> splice_open_permute.
   rewrite <- HGX1.
   apply stp_splice.
@@ -2111,7 +2111,7 @@ Proof.
   simpl.
   rewrite <- A2. rewrite <- A4.
   unfold open.
-  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  change (varH (S (length GH))) with (varH (0 + (S (length GH)))).
   rewrite -> splice_open_permute. rewrite -> splice_open_permute.
   rewrite <- HGX3.
   apply stp_splice.
@@ -2132,19 +2132,19 @@ Proof.
   simpl.
   unfold open.
   rewrite <- A2.
-  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  change (varH (S (length GH))) with (varH (0 + (S (length GH)))).
   rewrite -> splice_open_permute. simpl.
   assert (
       stp G1
-     ((map (splicett (length GH)) [(0, (open_rec 0 (TSelH (length GH)) T2))])++(x, v1)::GH)
-     (splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
-     (splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
+     ((map (splicett (length GH)) [(0, (open_rec 0 (varH (length GH)) T2))])++(x, v1)::GH)
+     (splice (length GH) (open_rec 0 (varH (length GH)) T2))
+     (splice (length GH) (open_rec 0 (varH (length GH)) T2))
      ->
      stp G1
-     ((0, splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
+     ((0, splice (length GH) (open_rec 0 (varH (length GH)) T2))
       :: (x, v1) :: GH)
-     (splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
-     (splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
+     (splice (length GH) (open_rec 0 (varH (length GH)) T2))
+     (splice (length GH) (open_rec 0 (varH (length GH)) T2))
     ) as HGX1. {
     simpl. intros A. apply A.
   }
@@ -2154,19 +2154,19 @@ Proof.
   simpl. apply le_refl.
   rewrite <- A1. rewrite <- A2.
   unfold open. simpl.
-  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  change (varH (S (length GH))) with (varH (0 + (S (length GH)))).
   rewrite -> splice_open_permute. rewrite -> splice_open_permute.
   assert (
      (stp G1
-     ((map (splicett (length GH)) [(0, (open_rec 0 (TSelH (length GH)) T1))])++(x, v1)::GH)
-     (splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T1))
-     (splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T2)))
+     ((map (splicett (length GH)) [(0, (open_rec 0 (varH (length GH)) T1))])++(x, v1)::GH)
+     (splice (length GH) (open_rec 0 (varH (0 + length GH)) T1))
+     (splice (length GH) (open_rec 0 (varH (0 + length GH)) T2)))
      ->
      (stp G1
-     ((0, splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T1))
+     ((0, splice (length GH) (open_rec 0 (varH (0 + length GH)) T1))
       :: (x, v1) :: GH)
-     (splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T1))
-     (splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T2)))
+     (splice (length GH) (open_rec 0 (varH (0 + length GH)) T1))
+     (splice (length GH) (open_rec 0 (varH (0 + length GH)) T2)))
     ) as HGX2. {
     simpl. intros A. apply A.
   }
@@ -2507,7 +2507,7 @@ Proof.
   assert (splice (length GH) T4 = T4) as A4. {
     eapply closed_splice_idem. apply H1. omega.
   }
-  assert (TSelH (S (length GH)) = splice (length GH) (TSelH (length GH))) as AH. {
+  assert (TSel (varH (S (length GH))) = splice (length GH) (TSel (varH (length GH)))) as AH. {
     simpl. case_eq (le_lt_dec (length GH) (length GH)); intros E LE.
     simpl. rewrite NPeano.Nat.add_1_r. reflexivity.
     clear LE. apply lt_irrefl in E. inversion E.
@@ -2534,7 +2534,7 @@ Proof.
   unfold open.
   rewrite <- A2.
   unfold open.
-  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  change (varH (S (length GH))) with (varH (0 + (S (length GH)))).
   rewrite -> splice_open_permute.
   rewrite <- HGX1.
   apply stp2_splice.
@@ -2542,7 +2542,7 @@ Proof.
   simpl. omega.
   rewrite <- A2. rewrite <- A4.
   unfold open. simpl.
-  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  change (varH (S (length GH))) with (varH (0 + (S (length GH)))).
   rewrite -> splice_open_permute.
   rewrite -> splice_open_permute.
   rewrite <- HGX3.
@@ -2563,17 +2563,17 @@ Proof.
   simpl.
   unfold open.
   rewrite <- A2.
-  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  change (varH (S (length GH))) with (varH (0 + (S (length GH)))).
   rewrite -> splice_open_permute. simpl.
   assert (
-   stp2 1 false G2 (splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
-     G2 (splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
-     ((map (spliceat (length GH)) [(0, (G2, open_rec 0 (TSelH (length GH)) T2))])++((x, v1)::GH))
+   stp2 1 false G2 (splice (length GH) (open_rec 0 (varH (length GH)) T2))
+     G2 (splice (length GH) (open_rec 0 (varH (length GH)) T2))
+     ((map (spliceat (length GH)) [(0, (G2, open_rec 0 (varH (length GH)) T2))])++((x, v1)::GH))
       n2
    ->
-   stp2 1 false G2 (splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
-     G2 (splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
-     ((0, (G2, splice (length GH) (open_rec 0 (TSelH (length GH)) T2)))
+   stp2 1 false G2 (splice (length GH) (open_rec 0 (varH (length GH)) T2))
+     G2 (splice (length GH) (open_rec 0 (varH (length GH)) T2))
+     ((0, (G2, splice (length GH) (open_rec 0 (varH (length GH)) T2)))
       :: (x, v1) :: GH) n2
     ) as HGX1. {
     simpl. intros A. apply A.
@@ -2584,18 +2584,18 @@ Proof.
   simpl. apply le_refl.
   rewrite <- A1. rewrite <- A2.
   unfold open. simpl.
-  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  change (varH (S (length GH))) with (varH (0 + (S (length GH)))).
   rewrite -> splice_open_permute. rewrite -> splice_open_permute.
   assert (
    stp2 1 false G1
-     (splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T1)) G2
-     (splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T2))
-     ((map (spliceat (length GH)) [(0, (G1, (open_rec 0 (TSelH (0 + length GH)) T1)))])++((x, v1) :: GH)) n1
+     (splice (length GH) (open_rec 0 (varH (0 + length GH)) T1)) G2
+     (splice (length GH) (open_rec 0 (varH (0 + length GH)) T2))
+     ((map (spliceat (length GH)) [(0, (G1, (open_rec 0 (varH (0 + length GH)) T1)))])++((x, v1) :: GH)) n1
       ->
    stp2 1 false G1
-     (splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T1)) G2
-     (splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T2))
-     ((0, (G1, splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T1)))
+     (splice (length GH) (open_rec 0 (varH (0 + length GH)) T1)) G2
+     (splice (length GH) (open_rec 0 (varH (0 + length GH)) T2))
+     ((0, (G1, splice (length GH) (open_rec 0 (varH (0 + length GH)) T1)))
         :: (x, v1) :: GH) n1
    ) as HGX2. {
     simpl. intros A. apply A.
@@ -2618,17 +2618,17 @@ Proof.
   simpl.
   unfold open.
   rewrite <- A2.
-  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  change (varH (S (length GH))) with (varH (0 + (S (length GH)))).
   rewrite -> splice_open_permute. simpl.
   assert (
-   stp2 (S m) false G2 (splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
-     G2 (splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
-     ((map (spliceat (length GH)) [(0, (G2, open_rec 0 (TSelH (length GH)) T2))])++((x, v1)::GH))
+   stp2 (S m) false G2 (splice (length GH) (open_rec 0 (varH (length GH)) T2))
+     G2 (splice (length GH) (open_rec 0 (varH (length GH)) T2))
+     ((map (spliceat (length GH)) [(0, (G2, open_rec 0 (varH (length GH)) T2))])++((x, v1)::GH))
       n2
    ->
-   stp2 (S m) false G2 (splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
-     G2 (splice (length GH) (open_rec 0 (TSelH (length GH)) T2))
-     ((0, (G2, splice (length GH) (open_rec 0 (TSelH (length GH)) T2)))
+   stp2 (S m) false G2 (splice (length GH) (open_rec 0 (varH (length GH)) T2))
+     G2 (splice (length GH) (open_rec 0 (varH (length GH)) T2))
+     ((0, (G2, splice (length GH) (open_rec 0 (varH (length GH)) T2)))
       :: (x, v1) :: GH) n2
     ) as HGX1. {
     simpl. intros A. apply A.
@@ -2639,18 +2639,18 @@ Proof.
   simpl. apply le_refl.
   rewrite <- A1. rewrite <- A2.
   unfold open. simpl.
-  change (TSelH (S (length GH))) with (TSelH (0 + (S (length GH)))).
+  change (varH (S (length GH))) with (varH (0 + (S (length GH)))).
   rewrite -> splice_open_permute. rewrite -> splice_open_permute.
   assert (
    stp2 (S m) false G1
-     (splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T1)) G2
-     (splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T2))
-     ((map (spliceat (length GH)) [(0, (G1, (open_rec 0 (TSelH (0 + length GH)) T1)))])++((x, v1) :: GH)) n1
+     (splice (length GH) (open_rec 0 (varH (0 + length GH)) T1)) G2
+     (splice (length GH) (open_rec 0 (varH (0 + length GH)) T2))
+     ((map (spliceat (length GH)) [(0, (G1, (open_rec 0 (varH (0 + length GH)) T1)))])++((x, v1) :: GH)) n1
       ->
    stp2 (S m) false G1
-     (splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T1)) G2
-     (splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T2))
-     ((0, (G1, splice (length GH) (open_rec 0 (TSelH (0 + length GH)) T1)))
+     (splice (length GH) (open_rec 0 (varH (0 + length GH)) T1)) G2
+     (splice (length GH) (open_rec 0 (varH (0 + length GH)) T2))
+     ((0, (G1, splice (length GH) (open_rec 0 (varH (0 + length GH)) T1)))
         :: (x, v1) :: GH) n1
    ) as HGX2. {
     simpl. intros A. apply A.
