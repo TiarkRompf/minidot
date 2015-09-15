@@ -6886,7 +6886,7 @@ Proof.
       rewrite I. eapply not_stuck. eapply V.
 
     + SCase "pack".
-      assert (res_type venv0 (index i venv0) (open (TSel i) T1)). eapply IHhas_type; eauto. eapply has_type_wf; eauto.
+      assert (res_type venv0 (index i venv0) (open (varF i) T1)). eapply IHhas_type; eauto. eapply has_type_wf; eauto.
       inversion H3. subst.
       eapply not_stuck. eapply v_pack. eauto. eauto. eauto.
       eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
@@ -6898,7 +6898,7 @@ Proof.
       eapply dcs_tbind in H8. inversion H8. eassumption.
       eapply not_stuck. inversion H9. subst.
 
-      assert (exists n, stp2 1 false venv1 (open (TSel x) T2) venv0 (open (TSel i) T1) [] n).
+      assert (exists n, stp2 1 false venv1 (open (varF x) T2) venv0 (open (varF i) T1) [] n).
       eapply stp2_substitute_aux with (GH0:=nil).
       eapply H15. eauto. simpl. reflexivity.
       unfold open. erewrite subst_open_zero with (k:=1). eauto. eauto.
@@ -6925,11 +6925,11 @@ Proof.
     remember (ttyp t) as e.
     induction H0; inversion Heqe; subst.
     + remember (fresh env) as i.
-      remember (open (TSel i) t) as T1X.
+      remember (open (varF i) t) as T1X.
       remember ((i,vty venv0 t)::venv0) as venv1.
       assert (index i venv1 = Some (vty venv0 t)). subst. eapply index_hit2. rewrite wf_fresh with (ts := env). eauto. eauto. eauto. eauto.
       assert (val_type venv1 (vty venv0 t) (TMem T1X T1X) 1). eapply v_ty. eauto. eauto.
-      assert ((open (TSel (fresh venv0)) t) = T1X). rewrite wf_fresh with (ts:=env). rewrite <-Heqi. eauto. eauto.
+      assert ((open (varF (fresh venv0)) t) = T1X). rewrite wf_fresh with (ts:=env). rewrite <-Heqi. eauto. eauto.
       rewrite H2.
 
       (* we have everything as stp and 'just' need to convert to stp2. however we're
@@ -7001,7 +7001,7 @@ Proof.
       eauto. eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
       (* now we know it's a closure, and we have has_type evidence *)
 
-      assert (res_type ((x0,vx)::env1) res (open (TSel x0) T4)) as HRY.
+      assert (res_type ((x0,vx)::env1) res (open (varF x0) T4)) as HRY.
         SCase "HRY".
           subst. eapply IHn. eauto. eauto.
           (* wf_env x *) econstructor. eapply valtp_widen; eauto. eapply sstpd2_extend2. eauto. eauto. eauto.
