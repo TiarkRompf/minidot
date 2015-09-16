@@ -954,9 +954,9 @@ Ltac crush2 :=
 
 (* define polymorphic identity function *)
 
-Definition polyId := TAll (TBind (TMem 0 TBot TTop)) (TFun 0 (TSel (varB 0) 0) (TSel (varB 0) 0)).
+Definition polyId := TAll (TBind (TMem 0 TBot TTop)) (TBind (TFun 0 (TSel (varB 1) 0) (TSel (varB 1) 0))).
 
-Example ex1: has_type [] (ttabs 0 (TBind (TMem 0 TBot TTop)) (tabs 1 [(0, (2, (tvar 2)))])) polyId.
+Example ex1: has_type [] (ttabs 0 (TBind (TMem 0 TBot TTop)) (tobj 1 [(0, (dfun 2 (tvar 2)))])) polyId.
 Proof.
   crush2.
 Qed.
@@ -964,26 +964,43 @@ Qed.
 
 (* instantiate it to bool *)
 
-Example ex2: has_type [(0,polyId)] (ttapp (tvar 0) (ttyp [(0,TBool)])) (TFun 0 TBool TBool).
+Example ex2: has_type [(0,polyId)] (ttapp (tvar 0) (tobj 1 [(0,dmem TBool)])) (TBind (TFun 0 TBool TBool)).
 Proof.
   eapply t_tapp. instantiate (1:= (TBind (TMem 0 TBool TBool))).
     { eapply t_sub.
       { eapply t_var. simpl. eauto. crush2. }
-      { eapply stp_all; eauto. { eapply stp_bindx; crush2. } compute. eapply cl_fun; eauto.
-        eapply stp_fun. compute. eapply stp_selax; crush2. crush2.
-        eapply stp_fun. compute. eapply stp_selab2. crush2.
-        crush2. instantiate (1:=TBool). crush2.
+      { eapply stp_all; eauto. { eapply stp_bindx; crush2. } compute. constructor. eapply cl_fun; eauto.
+        simpl. unfold open. simpl.
+        eapply stp_bindx.
+        simpl. reflexivity.
+        simpl. constructor; eauto.
+        simpl. constructor; eauto.
+        unfold open. simpl.
+        eapply stp_fun. eapply stp_selax; crush2. crush2.
+        unfold open. simpl.
+        eapply stp_fun. eapply stp_selax; crush2. crush2.
+        simpl. unfold open. simpl.
+        eapply stp_bindx.
+        simpl. reflexivity.
+        simpl. constructor; eauto.
+        simpl. constructor; eauto.
+        unfold open. simpl.
+        crush2.
+        unfold open. simpl.
+        eapply stp_fun.
+        eapply stp_selab2.
+        crush2. crush2. instantiate (1:=TBool). crush2.
         instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). simpl. reflexivity.
-        rewrite app_nil_l. reflexivity.
+        instantiate (1:=[(0, TFun 0 (TSel (varH 0) 0) (TSel (varH 0) 0))]). simpl. reflexivity.
         crush2. crush2. crush2.
-        simpl. eapply stp_selab1. crush2.
-        crush2. instantiate (1:=TBool). crush2.
+        eapply stp_selab1.
+        crush2. crush2. instantiate (1:=TBool). crush2.
         instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). simpl. reflexivity.
-        rewrite app_nil_l. reflexivity.
+        instantiate (1:=[(0, TFun 0 (TSel (varH 0) 0) (TSel (varH 0) 0))]). simpl. reflexivity.
         crush2. crush2. crush2.
       }
     }
-    { eapply t_typ; crush2. }
+    { eapply t_obj; crush2. }
     crush2.
 Qed.
 
