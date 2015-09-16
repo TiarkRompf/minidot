@@ -3520,80 +3520,80 @@ Lemma atpd2_fun: forall G1 G2 GH l T11 T12 T21 T22,
     stpd2 false G1 T12 G2 T22 GH ->
     atpd2 true G1 (TFun l T11 T12) G2 (TFun l T21 T22) GH.
 Proof. intros. repeat eu. eexists. econstructor; eauto. Qed.
-Lemma atpd2_mem: forall G1 G2 GH T11 T12 T21 T22,
+Lemma atpd2_mem: forall G1 G2 GH l T11 T12 T21 T22,
     atpd2 false G2 T21 G1 T11 GH ->
     atpd2 false G1 T12 G2 T22 GH ->
-    atpd2 true G1 (TMem T11 T12) G2 (TMem T21 T22) GH.
+    atpd2 true G1 (TMem l T11 T12) G2 (TMem l T21 T22) GH.
 Proof. intros. repeat eu. eauto. unfold atpd2. eexists. eapply stp2_mem2; eauto. Qed.
 
-Lemma atpd2_sel1: forall G1 G2 GX TX x T2 GH v nv,
+Lemma atpd2_sel1: forall G1 G2 GX l TX x T2 GH v nv,
     index x G1 = Some v ->
     val_type GX v TX nv ->
     closed 0 0 TX ->
-    atpd2 false GX TX G2 (TMem TBot T2) GH ->
+    atpd2 false GX TX G2 (TMem l TBot T2) GH ->
     atpd2 true G2 T2 G2 T2 GH ->
-    atpd2 true G1 (TSel (varF x)) G2 T2 GH.
+    atpd2 true G1 (TSel (varF x) l) G2 T2 GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel1; eauto. Qed.
 
-Lemma atpd2_sel2: forall G1 G2 GX TX x T1 GH v nv,
+Lemma atpd2_sel2: forall G1 G2 GX l TX x T1 GH v nv,
     index x G2 = Some v ->
     val_type GX v TX nv ->
     closed 0 0 TX ->
-    atpd2 false GX TX G1 (TMem T1 TTop) GH ->
+    atpd2 false GX TX G1 (TMem l T1 TTop) GH ->
     atpd2 true G1 T1 G1 T1 GH ->
-    atpd2 true G1 T1 G2 (TSel (varF x)) GH.
+    atpd2 true G1 T1 G2 (TSel (varF x) l) GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel2; eauto. Qed.
 
-Lemma atpd2_selx: forall G1 G2 x1 x2 GH v,
+Lemma atpd2_selx: forall G1 G2 l x1 x2 GH v,
     index x1 G1 = Some v ->
     index x2 G2 = Some v ->
-    atpd2 true G1 (TSel (varF x1)) G2 (TSel (varF x2)) GH.
+    atpd2 true G1 (TSel (varF x1) l) G2 (TSel (varF x2) l) GH.
 Proof. intros. eauto. exists (S 0). eapply stp2_selx; eauto. Qed.
 
-Lemma atpd2_sela1: forall G1 G2 GX TX x T2 GH,
+Lemma atpd2_sela1: forall G1 G2 GX l TX x T2 GH,
     indexr x GH = Some (GX, TX) ->
     closed 0 (S x) TX ->
-    atpd2 false GX TX G2 (TMem TBot T2) GH ->
+    atpd2 false GX TX G2 (TMem l TBot T2) GH ->
     atpd2 true G2 T2 G2 T2 GH ->
-    atpd2 true G1 (TSel (varH x)) G2 T2 GH.
+    atpd2 true G1 (TSel (varH x) l) G2 T2 GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela1; eauto. Qed.
 
-Lemma atpd2_sela2: forall G1 G2 GX TX x T1 GH,
+Lemma atpd2_sela2: forall G1 G2 GX l TX x T1 GH,
     indexr x GH = Some (GX, TX) ->
     closed 0 (S x) TX ->
-    atpd2 false GX TX G1 (TMem T1 TTop) GH ->
+    atpd2 false GX TX G1 (TMem l T1 TTop) GH ->
     atpd2 true G1 T1 G1 T1 GH ->
-    atpd2 true G1 T1 G2 (TSel (varH x)) GH.
+    atpd2 true G1 T1 G2 (TSel (varH x) l) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela2; eauto. Qed.
 
 
-Lemma atpd2_selax: forall G1 G2 GX TX x GH,
+Lemma atpd2_selax: forall G1 G2 GX l TX x GH,
     indexr x GH = Some (GX, TX) ->
-    atpd2 true G1 (TSel (varH x)) G2 (TSel (varH x)) GH.
+    atpd2 true G1 (TSel (varH x) l) G2 (TSel (varH x) l) GH.
 Proof. intros. exists (S 0). eauto. Qed.
 
 
-Lemma atpd2_selab1: forall G1 G2 GX TX x T2 GH GU GL,
+Lemma atpd2_selab1: forall G1 G2 GX l TX x T2 GH GU GL,
     indexr x GH = Some (GX, TX) ->
     closed 0 (S x) TX ->
-    closed 0 0 (TBind (TMem TBot T2)) ->
+    closed 0 0 (TBind (TMem l TBot T2)) ->
     length GL = (S x) ->
     GH = GU ++ GL ->
-    atpd2 false GX TX G2 (TBind (TMem TBot T2)) GL ->
+    atpd2 false GX TX G2 (TBind (TMem l TBot T2)) GL ->
     atpd2 true G2 (open (varH x) T2) G2 (open (varH x) T2) GH ->
-    atpd2 true G1 (TSel (varH x)) G2 (open (varH x) T2) GH.
+    atpd2 true G1 (TSel (varH x) l) G2 (open (varH x) T2) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab1; eauto. Qed.
 
-Lemma atpd2_selab2: forall G1 G2 GX TX x T1 T1' GH GU GL,
+Lemma atpd2_selab2: forall G1 G2 GX l TX x T1 T1' GH GU GL,
     indexr x GH = Some (GX, TX) ->
     closed 0 (S x) TX ->
-    closed 0 0 (TBind (TMem T1 TTop)) ->
+    closed 0 0 (TBind (TMem l T1 TTop)) ->
     length GL = (S x) ->
     GH = GU ++ GL ->
-    atpd2 false GX TX G1 (TBind (TMem T1 TTop)) GL ->
+    atpd2 false GX TX G1 (TBind (TMem l T1 TTop)) GL ->
     T1' = (open (varH x) T1) ->
     atpd2 true G1 T1' G1 T1' GH ->
-    atpd2 true G1 T1' G2 (TSel (varH x)) GH.
+    atpd2 true G1 T1' G2 (TSel (varH x) l) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab2; eauto. Qed.
 
 Lemma atpd2_all: forall G1 G2 T1 T2 T3 T4 GH,
