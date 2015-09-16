@@ -970,9 +970,9 @@ Ltac crush2 :=
 
 (* define polymorphic identity function *)
 
-Definition polyId := TAll (TBind (TMem TBot TTop)) (TFun 0 (TSel (varB 0)) (TSel (varB 0))).
+Definition polyId := TAll (TBind (TMem 0 TBot TTop)) (TFun 0 (TSel (varB 0) 0) (TSel (varB 0) 0)).
 
-Example ex1: has_type [] (ttabs 0 (TBind (TMem TBot TTop)) (tabs 1 [(0, (2, (tvar 2)))])) polyId.
+Example ex1: has_type [] (ttabs 0 (TBind (TMem 0 TBot TTop)) (tabs 1 [(0, (2, (tvar 2)))])) polyId.
 Proof.
   crush2.
 Qed.
@@ -980,21 +980,21 @@ Qed.
 
 (* instantiate it to bool *)
 
-Example ex2: has_type [(0,polyId)] (ttapp (tvar 0) (ttyp TBool)) (TFun 0 TBool TBool).
+Example ex2: has_type [(0,polyId)] (ttapp (tvar 0) (ttyp [(0,TBool)])) (TFun 0 TBool TBool).
 Proof.
-  eapply t_tapp. instantiate (1:= (TBind (TMem TBool TBool))).
+  eapply t_tapp. instantiate (1:= (TBind (TMem 0 TBool TBool))).
     { eapply t_sub.
       { eapply t_var. simpl. eauto. crush2. }
       { eapply stp_all; eauto. { eapply stp_bindx; crush2. } compute. eapply cl_fun; eauto.
         eapply stp_fun. compute. eapply stp_selax; crush2. crush2.
         eapply stp_fun. compute. eapply stp_selab2. crush2.
         crush2. instantiate (1:=TBool). crush2.
-        instantiate (1:=[(0, TBind (TMem TBool TBool))]). simpl. reflexivity.
+        instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). simpl. reflexivity.
         rewrite app_nil_l. reflexivity.
         crush2. crush2. crush2.
         simpl. eapply stp_selab1. crush2.
         crush2. instantiate (1:=TBool). crush2.
-        instantiate (1:=[(0, TBind (TMem TBool TBool))]). simpl. reflexivity.
+        instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). simpl. reflexivity.
         rewrite app_nil_l. reflexivity.
         crush2. crush2. crush2.
       }
@@ -1008,16 +1008,16 @@ Qed.
 (* define brand / unbrand client function *)
 
 Definition brandUnbrand :=
-  TAll (TBind (TMem TBot TTop))
+  TAll (TBind (TMem 0 TBot TTop))
        (TFun 0
-          (TFun 0 TBool (TSel (varB 0))) (* brand *)
+          (TFun 0 TBool (TSel (varB 0) 0)) (* brand *)
           (TFun 0
-             (TFun 0 (TSel (varB 0)) TBool) (* unbrand *)
+             (TFun 0 (TSel (varB 0) 0) TBool) (* unbrand *)
              TBool)).
 
 Example ex3:
   has_type []
-           (ttabs 0 (TBind (TMem TBot TTop))
+           (ttabs 0 (TBind (TMem 0 TBot TTop))
                   (tabs 1 [(0, (2,
                         (tabs 3 [(0, (4,
                               (tapp (tvar 4) 0 (tapp (tvar 2) 0 ttrue))))])))]))
@@ -1031,16 +1031,16 @@ Qed.
 
 Example ex4:
   has_type [(1,TFun 0 TBool TBool);(0,brandUnbrand)]
-           (tvar 0) (TAll (TBind (TMem TBool TBool)) (TFun 0 (TFun 0 TBool TBool) (TFun 0 (TFun 0 TBool TBool) TBool))).
+           (tvar 0) (TAll (TBind (TMem 0 TBool TBool)) (TFun 0 (TFun 0 TBool TBool) (TFun 0 (TFun 0 TBool TBool) TBool))).
 Proof.
   eapply t_sub. crush2. crush2. eapply stp_all; crush2. compute. eapply stp_fun. eapply stp_fun. crush2.
   eapply stp_selab2. crush2. crush2. instantiate(1:=TBool). crush2.
-  instantiate (1:=[(0, TBind (TMem TBool TBool))]). simpl. reflexivity.
+  instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). simpl. reflexivity.
   rewrite app_nil_l. reflexivity.
   crush2. crush2. crush2.
   eapply stp_fun. crush2. eapply stp_fun.
   eapply stp_selab1. crush2. crush2. instantiate(1:=TBool). crush2.
-  instantiate (1:=[(0, TBind (TMem TBool TBool))]). simpl. reflexivity.
+  instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). simpl. reflexivity.
   rewrite app_nil_l. reflexivity.
   crush2. crush2. crush2.
   crush2. crush2.
@@ -1052,7 +1052,7 @@ Hint Resolve ex4.
 
 Example ex5:
   has_type [(1,TFun 0 TBool TBool);(0,brandUnbrand)]
-           (tapp (tapp (ttapp (tvar 0) (ttyp TBool)) 0 (tvar 1)) 0 (tvar 1)) TBool.
+           (tapp (tapp (ttapp (tvar 0) (ttyp [(0,TBool)])) 0 (tvar 1)) 0 (tvar 1)) TBool.
 Proof.
   crush2.
 Qed.
@@ -1061,22 +1061,22 @@ Qed.
 (* test expansion *)
 
 Example ex6:
-  has_type [(1,TSel (varF 0));(0,TMem TBot (TBind (TFun 0 TBool (TSel (varB 0)))))]
-           (tvar 1) (TFun 0 TBool (TSel (varF 1))).
+  has_type [(1,TSel (varF 0) 0);(0,TMem 0 TBot (TBind (TFun 0 TBool (TSel (varB 0) 0))))]
+           (tvar 1) (TFun 0 TBool (TSel (varF 1) 0)).
 Proof.
-  remember (TFun 0 TBool (TSel (varF 1))) as T.
-  assert (T = open (varF 1) (TFun 0 TBool (TSel (varB 0)))). compute. eauto.
+  remember (TFun 0 TBool (TSel (varF 1) 0)) as T.
+  assert (T = open (varF 1) (TFun 0 TBool (TSel (varB 0) 0))). compute. eauto.
   rewrite H.
   eapply t_var_unpack. eapply t_sub. eapply t_var. compute. eauto. crush2. crush2. crush2.
 Qed.
 
 
 Example ex7:
-  stp [(1,TSel (varF 0));(0,TMem TBot (TBind (TMem TBot (TFun 0 TBool (TSel (varB 0))))))] []
-           (TSel (varF 1)) (TFun 0 TBool (TSel (varF 1))).
+  stp [(1,TSel (varF 0) 0);(0,TMem 0 TBot (TBind (TMem 0 TBot (TFun 0 TBool (TSel (varB 0) 0)))))] []
+           (TSel (varF 1) 0) (TFun 0 TBool (TSel (varF 1) 0)).
 Proof.
-  remember (TFun 0 TBool (TSel (varF 1))) as T.
-  assert (T = open (varF 1) (TFun 0 TBool (TSel (varB 0)))). compute. eauto.
+  remember (TFun 0 TBool (TSel (varF 1) 0)) as T.
+  assert (T = open (varF 1) (TFun 0 TBool (TSel (varB 0) 0))). compute. eauto.
   rewrite H.
   eapply stp_selb1. compute. eauto.
   eapply stp_sel1. compute. eauto.
