@@ -4486,10 +4486,10 @@ Proof.
         right. eexists. eexists. reflexivity.
 Qed.
 
-Lemma dcs_tbind_aux: forall n, forall G ds venv1 T venv0 T0 n0,
+Lemma dcs_tbind_aux: forall n, forall G ds venv1 T x venv0 T0 n0,
   n0 <= n ->
   dcs_has_type G ds T ->
-  stp2 0 true venv1 T venv0 (TBind T0) [] n0 ->
+  stp2 0 true venv1 (open (varF x) T) venv0 (TBind T0) [] n0 ->
   False.
 Proof.
   intros n. induction n.
@@ -4508,9 +4508,9 @@ Proof.
   instantiate (1:=n1). omega. eassumption.
 Qed.
 
-Lemma dcs_tbind: forall G ds venv1 T venv0 T0 n0,
+Lemma dcs_tbind: forall G ds venv1 T x venv0 T0 n0,
   dcs_has_type G ds T ->
-  stp2 0 true venv1 T venv0 (TBind T0) [] n0 ->
+  stp2 0 true venv1 (open (varF x) T) venv0 (TBind T0) [] n0 ->
   False.
 Proof.
   intros. eapply dcs_tbind_aux. instantiate (1:=n0). eauto. eassumption. eassumption.
@@ -5664,9 +5664,8 @@ Proof.
 
         assert (val_type G2 x0 (TBind (TMem l TBot T0)) (S ni)) as VSB. eapply valtp_widen. eapply VS. eexists. eapply SBind0.
         inversion VSB; subst; ev.
-        eapply dcs_mem_tbind in H17. inversion H17. eassumption.
         inversion H14.
-        eapply dcs_tbind in H16. inversion H16. eassumption.
+        eapply dcs_tbind in H17. inversion H17. eassumption.
         inversion H14.
         inversion H14. (* invert bind/bind *) subst.
 
@@ -5915,9 +5914,8 @@ Proof.
 
         assert (val_type G1 x0 (TBind (TMem l T0 TTop)) (S ni)) as VSB. eapply valtp_widen. eapply VS. eexists. eapply SBind0.
         inversion VSB; subst; ev.
-        eapply dcs_mem_tbind in H17. inversion H17. eassumption.
         inversion H14.
-        eapply dcs_tbind in H16. inversion H16. eassumption.
+        eapply dcs_tbind in H17. inversion H17. eassumption.
         inversion H14.
         inversion H14. (* invert bind/bind *) subst.
 
@@ -6413,9 +6411,8 @@ Proof.
     remember H4 as Hv. clear HeqHv.
     (* now invert base on TBind knowledge -- TODO: helper lemma*)
     inversion H4; ev. subst.
-    eapply dcs_mem_tbind in H9. inversion H9. eassumption.
     inversion H7. subst.
-    eapply dcs_tbind in H8. inversion H8. eassumption.
+    eapply dcs_tbind in H9. inversion H9. eassumption.
     inversion H10. (* 1 case left *)
     subst. inversion H10. subst.
 
@@ -6496,9 +6493,8 @@ Proof.
     subst.
     (* now invert base on TBind knowledge -- TODO: helper lemma*)
     inversion H4; ev. subst.
-    eapply dcs_mem_tbind in H9. inversion H9. eassumption.
     inversion H1. subst.
-    eapply dcs_tbind in H8. inversion H8. eassumption.
+    eapply dcs_tbind in H9. inversion H9. eassumption.
     inversion H10. subst.
     inversion H10.  subst.
 
@@ -6954,8 +6950,8 @@ Qed.
 Lemma stp_to_stp2_cycle: forall venv env T0 T t,
   wf_env venv env ->
   stp ((fresh env, T0) :: env) [] T T->
-  stpd2 false ((fresh env, vty venv t) :: venv) T
-              ((fresh env, vty venv t) :: venv) T [].
+  stpd2 false ((fresh env, vobj venv (fresh venv) t) :: venv) T
+              ((fresh env, vobj venv (fresh venv) t) :: venv) T [].
 Proof.
   intros. apply stpd2_wrapf.
   eapply stp_to_wf_tp in H0.
@@ -6975,6 +6971,11 @@ Proof.
   apply IHdcs_has_type. eexists. eassumption. simpl in A. omega.
   rewrite H6 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
   simpl in A. omega.
+  destruct (tand_shape (TMem m T0 T0) TS).
+  rewrite H5 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  subst. inversion H9.
+  apply IHdcs_has_type. eexists. eassumption. simpl in A. omega.
+  rewrite H5 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
 Qed.
 
 Lemma invert_abs: forall venv vf l T1 T2 n,
