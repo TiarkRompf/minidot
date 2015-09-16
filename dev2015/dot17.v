@@ -6101,11 +6101,11 @@ Qed.
 
 Lemma stpd2_substitute: forall m G1 G2 T1 T2 GH,
    stpd2 m G1 T1 G2 T2 GH ->
-   forall GH0 GH0' GX TX TX' T1' T2' V n,
+   forall GH0 GH0' GX TX TX' l T1' T2' V n,
      GH = (GH0 ++ [(0,(GX, TX))]) ->
      val_type GX V (subst TX' TX) n ->
      closed 0 1 TX ->
-     closed 0 0 (TSel TX') ->
+     closed 0 0 (TSel TX' l) ->
      compat GX TX TX' (Some V) G1 T1 T1' ->
      compat GX TX TX' (Some V) G2 T2 T2' ->
      compat GX TX TX' (Some V) GX TX (subst TX' TX) ->
@@ -6142,7 +6142,7 @@ Proof.
     remember H4 as Hv. clear HeqHv.
     (* now invert base on TBind knowledge -- TODO: helper lemma*)
     inversion H4; ev. subst.
-    inversion H9. subst.
+    admit. (*inversion H9. subst.*)
     inversion H7. subst.
     eapply dcs_tbind in H8. inversion H8. eassumption.
     inversion H10. (* 1 case left *)
@@ -6150,14 +6150,14 @@ Proof.
 
     assert (exists n, stp2 1 false
                            venv0 (open (varF x2) T2)
-                           G2 (open (varF x') (TMem TBot T0)) [] n) as ST. {
+                           G2 (open (varF x') (TMem l TBot T0)) [] n) as ST. {
 
       eapply stp2_substitute_aux with (GH0:=[]).
       eauto.
       eauto.
       simpl. reflexivity.
       erewrite subst_open1. eassumption. eauto.
-      apply closed_open. simpl. eapply closed_upgrade. eauto. eapply closed_upgrade_free. eauto. simpl. omega. omega. eauto. eauto.
+      eapply closed_open. simpl. eapply closed_upgrade. eauto. eapply closed_upgrade_free. eauto. simpl. omega. omega. eauto. eauto.
 
       left. eexists. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.
       split. erewrite subst_open1. eassumption. eauto.
@@ -6225,7 +6225,7 @@ Proof.
     subst.
     (* now invert base on TBind knowledge -- TODO: helper lemma*)
     inversion H4; ev. subst.
-    inversion H9. subst.
+    admit. (*inversion H9. subst.*)
     inversion H1. subst.
     eapply dcs_tbind in H8. inversion H8. eassumption.
     inversion H10. subst.
@@ -6233,14 +6233,14 @@ Proof.
 
     assert (exists n, stp2 1 false
                            venv0 (open (varF x2) T2)
-                           G1 (open (varF x') (TMem T0 TTop)) [] n) as ST. {
+                           G1 (open (varF x') (TMem l T0 TTop)) [] n) as ST. {
 
       eapply stp2_substitute_aux with (GH0:=[]).
       eauto.
       eauto.
       simpl. reflexivity.
       erewrite subst_open1. eassumption. eauto.
-      apply closed_open. simpl. eapply closed_upgrade. eauto. eapply closed_upgrade_free. eauto. simpl. omega. omega. eauto. eauto.
+      eapply closed_open. simpl. eapply closed_upgrade. eauto. eapply closed_upgrade_free. eauto. simpl. omega. omega. eauto. eauto.
 
       left. eexists. eexists. eexists. split. eassumption. split. reflexivity. split. reflexivity.
       split. erewrite subst_open1. eassumption. eauto.
@@ -6305,6 +6305,7 @@ Proof.
     eapply stp2_transf. eauto. eauto. omega. omega.
     Grab Existential Variables.
     apply 0. apply 0. apply 0. apply 0. apply 0.
+    apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 
