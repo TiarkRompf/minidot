@@ -6972,19 +6972,20 @@ Qed.
 
 Lemma invert_abs: forall venv vf l T1 T2 n,
   val_type venv vf (TFun l T1 T2) n ->
-  exists env tenv f TF ds x y T3 T4,
-    vf = (vobj env f ds) /\
-    fresh env = f /\
-    1 + f = x /\
+  exists env tenv TF ds x y T3 T4,
+    vf = (vobj env (fresh env) ds) /\
+    1 + (fresh env) = x /\
     index l ds = Some (dfun x y) /\
     wf_env env tenv /\
-    dcs_has_type ((f, TF)::tenv) ds TF /\
+    dcs_has_type (((fresh env), (open (varF (fresh env)) TF))::tenv) (fresh env) ds TF /\
     sstpd2 true env TF env TF [] /\
-    has_type ((x,T3)::(f,TF)::tenv) y T4 /\
-    sstpd2 true venv T1 env T3 [] /\
-    sstpd2 true env T4 venv T2 [].
+    has_type ((x,(open (varF (fresh env)) T3))::((fresh env),TF)::tenv) y (open (varF (fresh env)) T4) /\
+    sstpd2 true venv T1 (((fresh env), vobj env (fresh env) ds)::env) (open (varF (fresh env)) T3) [] /\
+    sstpd2 true (((fresh env), vobj env (fresh env) ds)::env) (open (varF (fresh env)) T4) venv T2 [].
 Proof.
   intros. inversion H; repeat ev; try solve by inversion.
+
+  (*
   subst.
   exists venv1. exists tenv0. exists (fresh venv1). exists T. exists ds.
   assert (exists y T3 T4, index l ds = Some (dfun (1 + (fresh venv1))  y) /\ has_type ((1+(fresh venv1), T3) :: ((fresh venv1), T) :: tenv0) y T4 /\ sstpd2 true venv1 (TFun l T3 T4) venv0 (TFun l T1 T2) []) as A. {
@@ -7021,6 +7022,8 @@ Proof.
   destruct A3 as [? A3]. inversion A3. subst. split.
   eapply stpd2_upgrade. eexists. eassumption.
   eapply stpd2_upgrade. eexists. eassumption.
+   *)
+  admit.
 Qed.
 
 (*
@@ -7045,10 +7048,10 @@ Qed.
 
 
 
-Lemma dcs_tall_aux: forall n, forall G ds venv1 T venv0 T1 T2 n0,
+Lemma dcs_tall_aux: forall n, forall G f ds venv1 T x venv0 T1 T2 n0,
   n0 <= n ->
-  dcs_has_type G ds T ->
-  stp2 0 true venv1 T venv0 (TAll T1 T2) [] n0 ->
+  dcs_has_type G f ds T ->
+  stp2 0 true venv1 (open (varF x) T) venv0 (TAll T1 T2) [] n0 ->
   False.
 Proof.
   intros n. induction n.
@@ -7056,43 +7059,23 @@ Proof.
   intros. eapply dcs_has_type_shape in H0.
   destruct H0. subst. inversion H1.
   destruct H0.
-  destruct H0 as [l [T1' [T2' H0]]]. subst. inversion H1.
-  destruct H0 as [l [T1' [T2' [ds' [T' [H0 HR]]]]]]. subst. inversion H1.
-  subst. inversion H4.
-  subst. eapply IHn in HR. apply HR. instantiate (1:=n1). omega. eassumption.
+  destruct H0.
+    repeat ev. subst. inversion H1.
+    repeat ev. subst. inversion H1.
+  destruct H0 as [TA [ds' [T' [A1 [A2 A3]]]]].
+  destruct A3; repeat ev; subst.
+  inversion H1. subst. inversion H4. subst. eapply IHn in A2. inversion A2.
+  instantiate (1:=n1). omega. eassumption.
+  inversion H1. subst. inversion H4. subst. eapply IHn in A2. inversion A2.
+  instantiate (1:=n1). omega. eassumption.
 Qed.
 
-Lemma dcs_tall: forall G ds venv1 T venv0 T1 T2 n0,
-  dcs_has_type G ds T ->
-  stp2 0 true venv1 T venv0 (TAll T1 T2) [] n0 ->
+Lemma dcs_tall: forall G f ds venv1 T venv0 x T1 T2 n0,
+  dcs_has_type G f ds T ->
+  stp2 0 true venv1 (open (varF x) T) venv0 (TAll T1 T2) [] n0 ->
   False.
 Proof.
   intros. eapply dcs_tall_aux. instantiate (1:=n0). eauto. eassumption. eassumption.
-Qed.
-
-Lemma dcs_mem_tall_aux: forall n, forall G ds venv1 T TX x venv0 T1 T2 n0,
-  n0 <= n ->
-  dcs_mem_has_type G ds TX T ->
-  stp2 0 true venv1 (open (varF x) T) venv0 (TAll T1 T2) [] n0 ->
-  False.
-Proof.
-  intros n. induction n.
-  intros. inversion H1; omega.
-  intros. eapply dcs_mem_has_type_shape in H0.
-  destruct H0. subst. inversion H1.
-  destruct H0.
-  destruct H0 as [l [T1' H0]]. subst. inversion H1.
-  destruct H0 as [l [T1' [ds' [T' [H0 HR]]]]]. subst. inversion H1.
-  subst. inversion H4.
-  subst. eapply IHn in HR. apply HR. instantiate (1:=n1). omega. eassumption.
-Qed.
-
-Lemma dcs_mem_tall: forall G ds venv1 T TX x venv0 T1 T2 n0,
-  dcs_mem_has_type G ds TX T ->
-  stp2 0 true venv1 (open (varF x) T) venv0 (TAll T1 T2) [] n0 ->
-  False.
-Proof.
-  intros. eapply dcs_mem_tall_aux. instantiate (1:=n0). eauto. eassumption. eassumption.
 Qed.
 
 Lemma invert_tabs: forall venv vf vx T1 T2 nf nx,
@@ -7109,8 +7092,7 @@ Lemma invert_tabs: forall venv vf vx T1 T2 nf nx,
 Proof.
   intros venv0 vf vx T1 T2 nf nx VF VX STY. inversion VF; ev; try solve by inversion.
   subst.
-  eapply dcs_mem_tall in H1. inversion H1. eassumption.
-  eapply dcs_tall in H0. inversion H0. eassumption.
+  eapply dcs_tall in H1. inversion H1. eassumption.
   inversion H2. subst.
   eexists. eexists. eexists. eexists. eexists. eexists.
   repeat split; eauto.
@@ -7172,7 +7154,7 @@ Combined Scheme has_type_mutind from has_type_mut, dcs_has_type_mut.
 
 Lemma mut_has_type_wf:
   (forall G t T, has_type G t T -> stp G [] T T) /\
-  (forall G ds T, dcs_has_type G ds T -> stp G [] T T).
+  (forall G f ds T, dcs_has_type G f ds T -> stp G [] T T).
 Proof.
   apply has_type_mutind; intros; eauto.
   - inversion H. subst. assumption. rewrite H1 in H2. inversion H2.
