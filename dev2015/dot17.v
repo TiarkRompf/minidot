@@ -3966,7 +3966,7 @@ Proof.
     + SCase "topx". eexists. eauto.
     + SCase "top". eexists. eauto.
     + SCase "sel2". subst.
-      assert (sstpd2 false GX' TX' G1 (TMem TTop TTop) []) as A. {
+      assert (sstpd2 false GX' TX' G1 (TMem l TTop TTop) []) as A. {
         eapply sstpd2_trans_axiom. eexists. eassumption.
         eexists. eapply stp2_wrapf. eapply stp2_mem.
         eapply stp2_wrapf. eapply stp2_topx.
@@ -3980,7 +3980,7 @@ Proof.
     + SCase "top". eexists. eauto.
     + SCase "?". eexists. eauto.
     + SCase "sel2".
-      assert (sstpd2 false GX' TX' G1 (TMem TBot TTop) []) as A. {
+      assert (sstpd2 false GX' TX' G1 (TMem l TBot TTop) []) as A. {
         eapply sstpd2_trans_axiom. eexists. eassumption.
         eexists. eapply stp2_wrapf. eapply stp2_mem.
         eapply stp2_wrapf; eapply stp2_botx.
@@ -3993,7 +3993,7 @@ Proof.
     + SCase "topx". eexists. eauto.
     + SCase "top". eexists. eauto.
     + SCase "sel2". subst.
-      assert (sstpd2 false GX' TX' G1 (TMem T1 TTop) []) as A. {
+      assert (sstpd2 false GX' TX' G1 (TMem l T1 TTop) []) as A. {
         eapply sstpd2_trans_axiom. eexists. eassumption.
         eexists. eapply stp2_wrapf. eapply stp2_mem.
         eapply stp2_wrapf. eapply stp2_top. eassumption.
@@ -4009,7 +4009,7 @@ Proof.
     + SCase "top". eexists. eauto.
     + SCase "bool". eexists. eauto.
     + SCase "sel2". subst.
-      assert (sstpd2 false GX' TX' G1 (TMem TBool TTop) []) as A. {
+      assert (sstpd2 false GX' TX' G1 (TMem l TBool TTop) []) as A. {
         eapply sstpd2_trans_axiom. eexists. eassumption.
         eexists. eapply stp2_wrapf. eapply stp2_mem.
         eapply stp2_wrapf. eapply stp2_bool.
@@ -4033,7 +4033,7 @@ Proof.
       inversion B as [nb B'].
       eexists. eapply stp2_fun. apply A'. apply B'.
     + SCase "sel2". subst.
-      assert (sstpd2 false GX' TX' G1 (TMem (TFun l T0 T4) TTop) []) as A. {
+      assert (sstpd2 false GX' TX' G1 (TMem l0 (TFun l T0 T4) TTop) []) as A. {
         eapply sstpd2_trans_axiom. eexists. eassumption.
         eexists. eapply stp2_wrapf. eapply stp2_mem.
         eapply stp2_wrapf. eassumption.
@@ -4056,7 +4056,7 @@ Proof.
       inversion B as [nb B'].
       eexists. eapply stp2_mem. apply A'. apply B'.
     + SCase "sel2". subst.
-      assert (sstpd2 false GX' TX' G1 (TMem (TMem T0 T4) TTop) []) as A. {
+      assert (sstpd2 false GX' TX' G1 (TMem l0 (TMem l T0 T4) TTop) []) as A. {
         eapply sstpd2_trans_axiom. eexists. eassumption.
         eexists. eapply stp2_wrapf. eapply stp2_mem.
         eapply stp2_wrapf. eassumption.
@@ -4066,8 +4066,8 @@ Proof.
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "ssel1". subst.
-    assert (sstpd2 true ((fresh GX, vty GX TX) :: GX) (open (varF (fresh GX)) TX) G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1.
-    assert (sstpd2 false GX' TX' G3 (TMem TBot T3) []). {
+    assert (sstpd2 true ((fresh GX, vty GX ds) :: GX) (open (varF (fresh GX)) TX) G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1.
+    assert (sstpd2 false GX' TX' G3 (TMem l TBot T3) []). {
       eapply sstpd2_wrapf. eapply IHn. eassumption. omega.
       eexists. eapply stp2_mem.
       eapply stp2_wrapf. eapply stp2_botx.
@@ -4077,13 +4077,15 @@ Proof.
     eexists. eapply stp2_strong_sel1; eauto.
   - Case "ssel2". subst. inversion H1.
     + SCase "top". subst.
-      apply stp2_reg1 in H6. inversion H6.
+      apply stp2_reg1 in H7. inversion H7.
       eexists. eapply stp2_top. eassumption.
     + SCase "ssel1".  (* interesting one *)
-      subst. rewrite H8 in H2. inversion H2. subst.
-      eapply IHn. eapply H6. omega. eexists. eauto.
+      subst. rewrite H10 in H2. inversion H2.
+      subst. rewrite H13 in H5. inversion H5.
+      subst.
+      eapply IHn. eapply H7. omega. eexists. eauto.
     + SCase "ssel2". subst.
-      assert (sstpd2 false GX'0 TX'0 G1 (TMem T1 TTop) []) as A. {
+      assert (sstpd2 false GX'0 TX'0 G1 (TMem l0 T1 TTop) []) as A. {
         eapply sstpd2_trans_axiom. eexists. eassumption.
         eexists. eapply stp2_wrapf. eapply stp2_mem.
         eapply stp2_wrapf. eassumption.
@@ -4092,7 +4094,7 @@ Proof.
       destruct A as [? A].
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "sselx".
-      subst. rewrite H2 in H8. inversion H8. subst.
+      subst. rewrite H2 in H10. inversion H10. subst.
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "sselx". subst. inversion H1.
@@ -4100,10 +4102,10 @@ Proof.
       apply stp2_reg1 in H. inversion H.
       eexists. eapply stp2_top. eassumption.
     + SCase "ssel1".
-      subst. rewrite H5 in H3. inversion H3. subst.
+      subst. rewrite H6 in H3. inversion H3. subst.
       eexists. eapply stp2_strong_sel1; eauto.
     + SCase "ssel2". subst.
-      assert (sstpd2 false GX' TX' G1 (TMem (TSel (varF x1)) TTop) []) as A. {
+      assert (sstpd2 false GX' TX' G1 (TMem l0 (TSel (varF x1) l) TTop) []) as A. {
         eapply sstpd2_trans_axiom. eexists. eassumption.
         eexists. eapply stp2_wrapf. eapply stp2_mem.
         eapply stp2_wrapf. eassumption.
@@ -4112,7 +4114,7 @@ Proof.
       destruct A as [? A].
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "sselx".
-      subst. rewrite H5 in H3. inversion H3. subst.
+      subst. rewrite H6 in H3. inversion H3. subst.
       eexists. eapply stp2_strong_selx. eauto. eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "all". subst. inversion H1.
@@ -4120,7 +4122,7 @@ Proof.
       apply stp2_reg1 in H. inversion H.
       eexists. eapply stp2_top. eassumption.
     + SCase "ssel2". subst.
-      assert (sstpd2 false GX' TX' G1 (TMem (TAll T0 T4) TTop) []) as A. {
+      assert (sstpd2 false GX' TX' G1 (TMem l (TAll T0 T4) TTop) []) as A. {
         eapply sstpd2_trans_axiom. eexists. eassumption.
         eexists. eapply stp2_wrapf. eapply stp2_mem.
         eapply stp2_wrapf. eassumption.
@@ -4142,7 +4144,7 @@ Proof.
       apply stp2_reg1 in H. inversion H.
       eexists. eapply stp2_top. eassumption.
     + SCase "ssel2". subst.
-      assert (sstpd2 false GX' TX' G1 (TMem (TBind T0) TTop) []) as A. {
+      assert (sstpd2 false GX' TX' G1 (TMem l (TBind T0) TTop) []) as A. {
         eapply sstpd2_trans_axiom. eexists. eassumption.
         eexists. eapply stp2_wrapf. eapply stp2_mem.
         eapply stp2_wrapf. eassumption.
@@ -4174,7 +4176,7 @@ Proof.
   - Case "and2". subst. inversion H1; subst.
     + SCase "top". eapply stp2_reg1 in H. inversion H. eexists. eapply stp2_top; eassumption.
     + SCase "sel2".
-      assert (sstpd2 false GX' TX' G1 (TMem T1 TTop) []) as A. {
+      assert (sstpd2 false GX' TX' G1 (TMem l T1 TTop) []) as A. {
         eapply sstpd2_trans_axiom. eexists. eassumption.
         eexists. eapply stp2_wrapf. eapply stp2_mem.
         eapply stp2_wrapf. eassumption.
