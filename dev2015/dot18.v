@@ -1,7 +1,7 @@
 (* Full safety for DOT *)
 
-(* this version is based on dot16.v *)
-(* based on that, it adds labels for type members *)
+(* this version is based on dot17.v *)
+(* based on that, it has only one construct for objects with both type and method members *)
 
 Require Export SfLib.
 
@@ -35,17 +35,18 @@ Inductive tm : Type :=
   | ttrue  : tm
   | tfalse : tm
   | tvar   : id -> tm
-  | ttyp   : list (id * ty) -> tm
   | tapp   : tm -> id -> tm -> tm (* \o.m(x) *)
-  | tabs   : id -> list (id * (id * tm)) -> tm (* \o {val m = \x.y} *)
+  | tobj   : id -> list (id * def) -> tm (* \o {d} *)
   | ttapp  : tm -> tm -> tm (* f[X] *)
   | ttabs  : id -> ty -> tm -> tm (* \f x.y *)
+with def : Type :=
+  | dfun   : id -> tm -> def
+  | dmem   : ty -> def                              
 .
 
 Inductive vl : Type :=
-| vty   : list (id*vl) -> list (id * ty) -> vl
 | vbool : bool -> vl
-| vabs  : list (id*vl) -> id -> list (id * (id * tm)) -> vl
+| vobj  : list (id*vl) -> id -> list (id * def) -> vl
 | vtabs : list (id*vl) -> id -> ty -> tm -> vl
 .
 
@@ -348,22 +349,17 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env (tvar x) (TBind T1) ->
            stp env [] (open (varF x) T1) (open (varF x) T1) ->
            has_type env (tvar x) (open (varF x) T1)
-| t_typ: forall env x T TX ds,
-           fresh env = x ->
-           open (varF x) T = TX ->
-           dcs_mem_has_type env ds TX T ->
-           stp ((x, TX)::env) [] TX TX ->
+| t_obj: forall env f ds T TX,
+           fresh env <= f ->
+           open (varF f) T = TX ->
+           dcs_has_type ((f, TX)::env) ds T ->
+           stp ((f, TX)::env) [] TX TX ->
            stp env [] (TBind T) (TBind T) ->
-           has_type env (ttyp ds) (TBind T)
+           has_type env (tobj f ds) (TBind T)
 | t_app: forall env f l x T1 T2,
            has_type env f (TFun l T1 T2) ->
            has_type env x T1 ->
            has_type env (tapp f l x) T2
-| t_abs: forall env f ds T,
-           dcs_has_type ((f,T)::env) ds T ->
-           fresh env <= f ->
-           stp env [] T T ->
-           has_type env (tabs f ds) T
 | t_tapp: forall env f x T11 T12,
            has_type env f (TAll T11 T12) ->
            has_type env x T11 ->
@@ -390,7 +386,7 @@ Does it make a difference? It seems like we can always widen f?
            stp env [] T1 T2 ->
            has_type env e T2
 
-with dcs_has_type: tenv -> list (id * (id * tm)) -> ty -> Prop :=
+with dcs_has_type: tenv -> list (id * def) -> ty -> Prop :=
 | dt_nil: forall env,
             dcs_has_type env nil TTop
 | dt_fun: forall env x y m T1 T2 dcs TS T,
@@ -400,27 +396,21 @@ with dcs_has_type: tenv -> list (id * (id * tm)) -> ty -> Prop :=
             m = length dcs ->
             T = tand (TFun m T1 T2) TS ->
             stp env [] (TFun m T1 T2) (TFun m T1 T2) ->
-            dcs_has_type env ((m, (x, y))::dcs) T
-
-with dcs_mem_has_type: tenv -> list (id * ty) -> ty -> ty -> Prop :=
-| dt_mem_nil: forall env TX,
-                dcs_mem_has_type env nil TX TTop
-| dt_mem: forall env x m T1 T1X dcs TS TX T,
-            dcs_mem_has_type env dcs TX TS ->
+            dcs_has_type env ((m, dfun x y)::dcs) T
+| dt_mem: forall env x m T1 T1X dcs TS T,
+            dcs_has_type env dcs TS ->
             fresh env = x ->
             open (varF x) T1 = T1X ->
             m = length dcs ->
             T = tand (TMem m T1 T1) TS ->
-            stp ((x,TX)::env) [] T1X T1X ->
-            dcs_mem_has_type env ((m, T1)::dcs) TX T
+            dcs_has_type env ((m, dmem T1)::dcs) T
 .
 
 
 Definition base (v:vl): venv :=
   match v with
-    | vty GX _ => GX
     | vbool _ => nil
-    | vabs GX _ _ => GX
+    | vobj GX _ _ => GX
     | vtabs GX _ _ _ => GX
   end.
 
@@ -456,22 +446,22 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
 
 
 (* strong version, with precise/invertible bounds *)
-| stp2_strong_sel1: forall G1 G2 GX l ds TX x T2 GH GX' TX' n1 n2 nv,
-    index x G1 = Some (vty GX ds) ->
-    val_type GX' (vty GX ds) TX' nv -> (* for downgrade *)
+| stp2_strong_sel1: forall G1 G2 GX l f ds TX x T2 GH GX' TX' n1 n2 nv,
+    index x G1 = Some (vobj GX f ds) ->
+    val_type GX' (vobj GX f ds) TX' nv -> (* for downgrade *)
     stp2 0 false GX' TX' G2 (TMem l TBot T2) GH n2 -> (* for downgrade *)
-    index l ds = Some TX ->
+    index l ds = Some (dmem TX) ->
     closed 1 0 TX ->
-    stp2 0 true ((fresh GX, vty GX ds)::GX) (open (varF (fresh GX)) TX) G2 T2 GH n1 ->
+    stp2 0 true ((f, vobj GX f ds)::GX) (open (varF f) TX) G2 T2 GH n1 ->
     stp2 0 true G1 (TSel (varF x) l) G2 T2 GH (S (n1+n2))
 
-| stp2_strong_sel2: forall G1 G2 GX l ds TX x T1 GH GX' TX' n1 n2 nv,
-    index x G2 = Some (vty GX ds) ->
-    val_type GX' (vty GX ds) TX' nv -> (* for downgrade *)
+| stp2_strong_sel2: forall G1 G2 GX l f ds TX x T1 GH GX' TX' n1 n2 nv,
+    index x G2 = Some (vobj GX f ds) ->
+    val_type GX' (vobj GX f ds) TX' nv -> (* for downgrade *)
     stp2 0 false GX' TX' G1 (TMem l T1 TTop) GH n2 -> (* for downgrade *)
-    index l ds = Some TX ->
+    index l ds = Some (dmem TX) ->
     closed 1 0 TX ->
-    stp2 0 false G1 T1 ((fresh GX, vty GX ds)::GX) (open (varF (fresh GX)) TX) GH n1 ->
+    stp2 0 false G1 T1 ((f, vobj GX f ds)::GX) (open (varF f) TX) GH n1 ->
     stp2 0 true G1 T1 G2 (TSel (varF x) l) GH (S (n1+n2))
 
 | stp2_strong_selx: forall G1 G2 l v x1 x2 GH n1,
@@ -615,21 +605,16 @@ with wf_env : venv -> tenv -> Prop :=
     wf_env (cons (n,v) vs) (cons (n,t) ts)
 
 with val_type : venv -> vl -> ty -> nat -> Prop :=
-| v_ty: forall env venv tenv ds T TX TE,
-    wf_env venv tenv ->
-    open (varF (fresh venv)) T = TX ->
-    dcs_mem_has_type tenv ds TX T ->
-    (exists n, stp2 0 true ((fresh venv, vty venv ds)::venv) TX env TE [] n)->
-    val_type env (vty venv ds) TE 1
 | v_bool: forall venv b TE,
     (exists n, stp2 0 true [] TBool venv TE [] n) ->
     val_type venv (vbool b) TE 1
-| v_abs: forall env venv tenv f ds T TE,
+| v_obj: forall env venv tenv f ds T TX TE,
     wf_env venv tenv ->
-    dcs_has_type ((f,T)::tenv) ds T ->
+    open (varF f) T = TX ->
+    dcs_has_type ((f,TX)::tenv) ds T ->
     fresh venv <= f ->
-    (exists n, stp2 0 true venv T env TE [] n)->
-    val_type env (vabs venv f ds) TE 1
+    (exists n, stp2 0 true ((f, vobj venv f ds)::venv) TX env TE [] n)->
+    val_type env (vobj venv f ds) TE 1
 | v_tabs: forall env venv tenv x y T1 T2 TE,
     wf_env venv tenv ->
     has_type ((x,T1)::tenv) y (open (varF x) T2) ->
@@ -876,9 +861,8 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
         | ttrue      => Some (Some (vbool true))
         | tfalse     => Some (Some (vbool false))
         | tvar x     => Some (index x env)
-        | tabs f ds => Some (Some (vabs env f ds))
+        | tobj f ds => Some (Some (vobj env f ds))
         | ttabs x T y  => Some (Some (vtabs env x T y))
-        | ttyp ds     => Some (Some (vty env ds))
         | tapp ef m ex   =>
           match teval n env ex with
             | None => None
@@ -888,13 +872,13 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
                 | None => None
                 | Some None => Some None
                 | Some (Some (vbool _)) => Some None
-                | Some (Some (vty _ _)) => Some None
                 | Some (Some (vtabs _ _ _ _)) => Some None
-                | Some (Some (vabs env2 f ds)) =>
+                | Some (Some (vobj env2 f ds)) =>
                   match index m ds with
                     | None => Some None
-                    | Some (x, ey) =>
-                      teval n ((x,vx)::(f,vabs env2 f ds)::env2) ey
+                    | Some (dmem _) => Some None
+                    | Some (dfun x ey) =>
+                      teval n ((x,vx)::(f,vobj env2 f ds)::env2) ey
                   end
               end
           end
@@ -907,8 +891,7 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
                 | None => None
                 | Some None => Some None
                 | Some (Some (vbool _)) => Some None
-                | Some (Some (vty _ _)) => Some None
-                | Some (Some (vabs _ _ _)) => Some None
+                | Some (Some (vobj _ _ _)) => Some None
                 | Some (Some (vtabs env2 x T ey)) =>
                   teval n ((x,vx)::env2) ey
               end
