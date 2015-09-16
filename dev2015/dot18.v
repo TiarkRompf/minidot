@@ -2015,7 +2015,7 @@ Proof.
     }
     rewrite <- B. simpl in IHstp2_1. eapply IHstp2_1. reflexivity.
     eassumption. eassumption.
-    assert (splice (length GH0) (open (varF (fresh GX)) TX)=(open (varF (fresh GX)) TX)) as A.  {
+    assert (splice (length GH0) (open (varF f) TX)=(open (varF f) TX)) as A.  {
       eapply closed_splice_idem. eapply closed_open. eassumption. eauto. omega.
     }
     rewrite <- A. apply IHstp2_2.
@@ -2027,7 +2027,7 @@ Proof.
     }
     rewrite <- B. simpl in IHstp2_1. eapply IHstp2_1. reflexivity.
     eassumption. eassumption.
-    assert (splice (length GH0) (open (varF (fresh GX)) TX)=(open (varF (fresh GX)) TX)) as A.  {
+    assert (splice (length GH0) (open (varF f) TX)=(open (varF f) TX)) as A.  {
       eapply closed_splice_idem. eapply closed_open. eassumption. eauto. omega.
     }
     rewrite <- A. apply IHstp2_2.
@@ -4254,7 +4254,7 @@ Proof.
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
   - Case "ssel1". subst.
-    assert (sstpd2 true ((fresh GX, vty GX ds) :: GX) (open (varF (fresh GX)) TX) G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1.
+    assert (sstpd2 true ((f, vobj GX f ds) :: GX) (open (varF f) TX) G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1.
     assert (sstpd2 false GX' TX' G3 (TMem l TBot T3) []). {
       eapply sstpd2_wrapf. eapply IHn. eassumption. omega.
       eexists. eapply stp2_mem.
@@ -4432,37 +4432,58 @@ Qed.
 
 Lemma dcs_has_type_shape: forall G ds T,
   dcs_has_type G ds T ->
-  T = TTop \/ (exists l T1 T2, T = TFun l T1 T2) \/
-  (exists l T1 T2 ds' T', T = TAnd (TFun l T1 T2) T' /\
-   dcs_has_type G ds' T').
-Proof.
-  intros. inversion H.
-  - left. reflexivity.
-  - subst. destruct dcs. inversion H1. subst.
-    + right. left. eexists. eexists. eexists.
-      simpl. reflexivity.
-    + right. right. eexists. eexists. eexists. eexists. eexists.
-      split. inversion H1. subst.
-      destruct TS0; try solve [simpl; reflexivity].
-      eassumption.
-Qed.
-
-Lemma dcs_mem_has_type_shape: forall G ds TX T,
-  dcs_mem_has_type G ds TX T ->
-  T = TTop \/ (exists l T1, T = TMem l T1 T1) \/
-  (exists l T1 ds' T', T = TAnd (TMem l T1 T1) T' /\
-   dcs_mem_has_type G ds' TX T').
+  T = TTop \/
+  ((exists l T1 T2, T = TFun l T1 T2) \/ (exists l T1, T = TMem l T1 T1)) \/
+  (exists TA ds' T', T = TAnd TA T' /\
+   dcs_has_type G ds' T' /\
+   ((exists l T1 T2, TA = TFun l T1 T2) \/ (exists l T1, TA = TMem l T1 T1))).
 Proof.
   intros. induction H.
   - left. reflexivity.
-  - destruct IHdcs_mem_has_type; subst.
-    + right. left. eexists. eexists.
+  - destruct IHdcs_has_type; subst.
+    + right. left. left. eexists. eexists. eexists.
       simpl. reflexivity.
     + right. destruct H5; repeat ev.
-      * right. eexists. eexists. eexists. eexists. split.
-        rewrite H0. simpl. reflexivity. eassumption.
-      * right. eexists. eexists. eexists. eexists. split.
-        rewrite H0. simpl. reflexivity. eassumption.
+      * right. destruct H1; repeat ev.
+        eexists. eexists. eexists.
+        split. rewrite H1. simpl. reflexivity.
+        split. eassumption.
+        left. eexists. eexists. eexists. reflexivity.
+        eexists. eexists. eexists.
+        split. rewrite H1. simpl. reflexivity.
+        split. eassumption.
+        left. eexists. eexists. eexists. reflexivity.
+      * right. destruct H3; repeat ev.
+        eexists. eexists. eexists.
+        split. rewrite H1. simpl. reflexivity.
+        split. eassumption.
+        left. eexists. eexists. eexists. reflexivity.
+        eexists. eexists. eexists.
+        split. rewrite H1. simpl. reflexivity.
+        split. eassumption.
+        left. eexists. eexists. eexists. reflexivity.
+  - destruct IHdcs_has_type; subst.
+    + right. left. right. eexists. eexists.
+      simpl. reflexivity.
+    + right. destruct H4; repeat ev.
+      * right. destruct H0; repeat ev.
+        eexists. eexists. eexists.
+        split. rewrite H0. simpl. reflexivity.
+        split. eassumption.
+        right. eexists. eexists. reflexivity.
+        eexists. eexists. eexists.
+        split. rewrite H0. simpl. reflexivity.
+        split. eassumption.
+        right. eexists. eexists. reflexivity.
+      * right. destruct H2; repeat ev.
+        eexists. eexists. eexists.
+        split. rewrite H0. simpl. reflexivity.
+        split. eassumption.
+        right. eexists. eexists. reflexivity.
+        eexists. eexists. eexists.
+        split. rewrite H0. simpl. reflexivity.
+        split. eassumption.
+        right. eexists. eexists. reflexivity.
 Qed.
 
 Lemma dcs_tbind_aux: forall n, forall G ds venv1 T venv0 T0 n0,
@@ -4476,10 +4497,15 @@ Proof.
   intros. eapply dcs_has_type_shape in H0.
   destruct H0. subst. inversion H1.
   destruct H0.
-  destruct H0 as [l [T1' [T2' H0]]]. subst. inversion H1.
-  destruct H0 as [l [T1' [T2' [ds' [T' [H0 HR]]]]]]. subst. inversion H1.
-  subst. inversion H4.
-  subst. eapply IHn in HR. apply HR. instantiate (1:=n1). omega. eassumption.
+  destruct H0.
+    repeat ev. subst. inversion H1.
+    repeat ev. subst. inversion H1.
+  destruct H0 as [TA [ds' [T' [A1 [A2 A3]]]]].
+  destruct A3; repeat ev; subst.
+  inversion H1. subst. inversion H4. subst. eapply IHn in A2. inversion A2.
+  instantiate (1:=n1). omega. eassumption.
+  inversion H1. subst. inversion H4. subst. eapply IHn in A2. inversion A2.
+  instantiate (1:=n1). omega. eassumption.
 Qed.
 
 Lemma dcs_tbind: forall G ds venv1 T venv0 T0 n0,
@@ -4488,65 +4514,6 @@ Lemma dcs_tbind: forall G ds venv1 T venv0 T0 n0,
   False.
 Proof.
   intros. eapply dcs_tbind_aux. instantiate (1:=n0). eauto. eassumption. eassumption.
-Qed.
-
-Lemma dcs_mem_tbind_aux: forall n, forall G ds venv1 TX T x venv0 T0 n0,
-  n0 <= n ->
-  dcs_mem_has_type G ds TX T ->
-  stp2 0 true venv1 (open (varF x) T) venv0 (TBind T0) [] n0 ->
-  False.
-Proof.
-  intros n. induction n.
-  intros. inversion H1; omega.
-  intros. eapply dcs_mem_has_type_shape in H0.
-  destruct H0. subst. inversion H1.
-  destruct H0.
-  destruct H0 as [l [T1' H0]]. subst. inversion H1.
-  destruct H0 as [l [T1' [ds' [T' [H0 HR]]]]]. subst. inversion H1.
-  subst. inversion H4.
-  subst. eapply IHn in HR. apply HR. instantiate (1:=n1). omega. eassumption.
-Qed.
-
-Lemma dcs_mem_tbind: forall G ds venv1 TX T x venv0 T0 n0,
-  dcs_mem_has_type G ds TX T ->
-  stp2 0 true venv1 (open (varF x) T) venv0 (TBind T0) [] n0 ->
-  False.
-Proof.
-  intros. eapply dcs_mem_tbind_aux. instantiate (1:=n0). eauto. eassumption. eassumption.
-Qed.
-
-Lemma dcs_tmem: forall n, forall G ds venv1 T venv0 l T1 T2 n0,
-  n0 <= n ->
-  dcs_has_type G ds T ->
-  stp2 0 true venv1 T venv0 (TMem l T1 T2) [] n0 ->
-  False.
-Proof.
-  intros n. induction n.
-  intros. inversion H1; omega.
-  intros. eapply dcs_has_type_shape in H0.
-  destruct H0. subst. inversion H1.
-  destruct H0.
-  destruct H0 as [l0 [T1' [T2' H0]]]. subst. inversion H1.
-  destruct H0 as [l0 [T1' [T2' [ds' [T' [H0 HR]]]]]]. subst. inversion H1.
-  subst. inversion H4.
-  subst. eapply IHn in HR. apply HR. instantiate (1:=n1). omega. eassumption.
-Qed.
-
-Lemma dcs_mem_tfun: forall n, forall G ds venv1 TX T x venv0 l T1 T2 n0,
-  n0 <= n ->
-  dcs_mem_has_type G ds TX T ->
-  stp2 0 true venv1 (open (varF x) T) venv0 (TFun l T1 T2) [] n0 ->
-  False.
-Proof.
-  intros n. induction n.
-  intros. inversion H1; omega.
-  intros. eapply dcs_mem_has_type_shape in H0.
-  destruct H0. subst. inversion H1.
-  destruct H0.
-  destruct H0 as [l0 [T1' H0]]. subst. inversion H1.
-  destruct H0 as [l0 [T1' [ds' [T' [H0 HR]]]]]. subst. inversion H1.
-  subst. inversion H4.
-  subst. eapply IHn in HR. apply HR. instantiate (1:=n1). omega. eassumption.
 Qed.
 
 Lemma dcs_mem_has_type_stp: forall G G1 G2 ds T TX x T1 T2,
