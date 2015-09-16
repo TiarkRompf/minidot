@@ -1237,13 +1237,14 @@ Hint Resolve ex4.
 
 (* apply it to identity functions *)
 
+(* TODO(namin): introduce let or easy unpacking.
 Example ex5:
   has_type [(1,TFun 0 TBool TBool);(0,brandUnbrand)]
-           (tapp (tapp (ttapp (tvar 0) (ttyp [(0,TBool)])) 0 (tvar 1)) 0 (tvar 1)) TBool.
+           (tapp (ttapp (tvar 0) (tobj 3 [(0,dmem TBool)])) 0 (tobj 5 [(1, dfun 6 (tvar 1)); (0, dfun 6 (tvar 1))])) TBool.
 Proof.
   crush2.
 Qed.
-
+*)
 
 (* test expansion *)
 
