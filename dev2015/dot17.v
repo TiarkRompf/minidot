@@ -704,97 +704,97 @@ Lemma stpd2_fun: forall G1 G2 GH l T11 T12 T21 T22,
     stpd2 false G1 T12 G2 T22 GH ->
     stpd2 true G1 (TFun l T11 T12) G2 (TFun l T21 T22) GH.
 Proof. intros. repeat eu. eauto. Qed.
-Lemma stpd2_mem: forall G1 G2 GH T11 T12 T21 T22,
+Lemma stpd2_mem: forall G1 G2 GH l T11 T12 T21 T22,
     stpd2 false G2 T21 G1 T11 GH ->
     stpd2 false G1 T12 G2 T22 GH ->
-    stpd2 true G1 (TMem T11 T12) G2 (TMem T21 T22) GH.
+    stpd2 true G1 (TMem l T11 T12) G2 (TMem l T21 T22) GH.
 Proof. intros. repeat eu. eauto. unfold stpd2. eexists. eapply stp2_mem2; eauto. Qed.
 
-Lemma stpd2_sel1: forall G1 G2 GX TX x T2 GH v nv,
+Lemma stpd2_sel1: forall G1 G2 GX l TX x T2 GH v nv,
     index x G1 = Some v ->
     val_type GX v TX nv ->
     closed 0 0 TX ->
-    stpd2 false GX TX G2 (TMem TBot T2) GH ->
+    stpd2 false GX TX G2 (TMem l TBot T2) GH ->
     stpd2 true G2 T2 G2 T2 GH ->
-    stpd2 true G1 (TSel (varF x)) G2 T2 GH.
+    stpd2 true G1 (TSel (varF x) l) G2 T2 GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel1; eauto. Qed.
 
-Lemma stpd2_selb1: forall G1 G2 GX TX x x' T2 GH v nv,
+Lemma stpd2_selb1: forall G1 G2 GX l TX x x' T2 GH v nv,
     index x G1 = Some v -> (index x' G2 = Some v \/ closed 0 0 T2) ->
     val_type GX v TX nv ->
     closed 0 0 TX ->
-    stpd2 false GX TX G2 (TBind (TMem TBot T2)) [] -> (* Note GH = [] *)
+    stpd2 false GX TX G2 (TBind (TMem l TBot T2)) [] -> (* Note GH = [] *)
     stpd2 true G2 (open (varF x') T2) G2 (open (varF x') T2) GH ->
-    stpd2 true G1 (TSel (varF x)) G2 (open (varF x') T2) GH.
+    stpd2 true G1 (TSel (varF x) l) G2 (open (varF x') T2) GH.
 Proof. intros. repeat eu. eexists. eapply stp2_selb1; eauto. Qed.
 
-Lemma stpd2_sel2: forall G1 G2 GX TX x T1 GH v nv,
+Lemma stpd2_sel2: forall G1 G2 GX l TX x T1 GH v nv,
     index x G2 = Some v ->
     val_type GX v TX nv ->
     closed 0 0 TX ->
-    stpd2 false GX TX G1 (TMem T1 TTop) GH ->
+    stpd2 false GX TX G1 (TMem l T1 TTop) GH ->
     stpd2 true G1 T1 G1 T1 GH ->
-    stpd2 true G1 T1 G2 (TSel (varF x)) GH.
+    stpd2 true G1 T1 G2 (TSel (varF x) l) GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel2; eauto. Qed.
 
-Lemma stpd2_selb2: forall G1 G2 GX TX x x' T1 GH v nv,
+Lemma stpd2_selb2: forall G1 G2 GX l TX x x' T1 GH v nv,
     index x G2 = Some v -> (index x' G1 = Some v \/ closed 0 0 T1) ->
     val_type GX v TX nv ->
     closed 0 0 TX ->
-    stpd2 false GX TX G1 (TBind (TMem T1 TTop)) [] -> (* Note GH = [] *)
+    stpd2 false GX TX G1 (TBind (TMem l T1 TTop)) [] -> (* Note GH = [] *)
     stpd2 true G1 (open (varF x') T1) G1 (open (varF x') T1) GH ->
-    stpd2 true G1 (open (varF x') T1) G2 (TSel (varF x)) GH.
+    stpd2 true G1 (open (varF x') T1) G2 (TSel (varF x) l) GH.
 Proof. intros. repeat eu. eexists. eapply stp2_selb2; eauto. Qed.
 
-Lemma stpd2_selx: forall G1 G2 x1 x2 GH v,
+Lemma stpd2_selx: forall G1 G2 l x1 x2 GH v,
     index x1 G1 = Some v ->
     index x2 G2 = Some v ->
-    stpd2 true G1 (TSel (varF x1)) G2 (TSel (varF x2)) GH.
+    stpd2 true G1 (TSel (varF x1) l) G2 (TSel (varF x2) l) GH.
 Proof. intros. eauto. exists (S 0). eapply stp2_selx; eauto. Qed.
 
-Lemma stpd2_selab1: forall G1 G2 GX TX x T2 GH GU GL,
+Lemma stpd2_selab1: forall G1 G2 GX l TX x T2 GH GU GL,
     indexr x GH = Some (GX, TX) ->
     closed 0 (S x) TX ->
-    closed 0 0 (TBind (TMem TBot T2)) ->
+    closed 0 0 (TBind (TMem l TBot T2)) ->
     length GL = (S x) ->
     GH = GU ++ GL ->
-    stpd2 false GX TX G2 (TBind (TMem TBot T2)) GL ->
+    stpd2 false GX TX G2 (TBind (TMem l TBot T2)) GL ->
     stpd2 true G2 (open (varH x) T2) G2 (open (varH x) T2) GH ->
-    stpd2 true G1 (TSel (varH x)) G2 (open (varH x) T2) GH.
+    stpd2 true G1 (TSel (varH x) l) G2 (open (varH x) T2) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab1; eauto. Qed.
 
-Lemma stpd2_selab2: forall G1 G2 GX TX x T1 T1' GH GU GL,
+Lemma stpd2_selab2: forall G1 G2 GX l TX x T1 T1' GH GU GL,
     indexr x GH = Some (GX, TX) ->
     closed 0 (S x) TX ->
-    closed 0 0 (TBind (TMem T1 TTop)) ->
+    closed 0 0 (TBind (TMem l T1 TTop)) ->
     length GL = (S x) ->
     GH = GU ++ GL ->
-    stpd2 false GX TX G1 (TBind (TMem T1 TTop)) GL ->
+    stpd2 false GX TX G1 (TBind (TMem l T1 TTop)) GL ->
     T1' = (open (varH x) T1) ->
     stpd2 true G1 T1' G1 T1' GH ->
-    stpd2 true G1 T1' G2 (TSel (varH x)) GH.
+    stpd2 true G1 T1' G2 (TSel (varH x) l) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab2; eauto. Qed.
 
-Lemma stpd2_sela1: forall G1 G2 GX TX x T2 GH,
+Lemma stpd2_sela1: forall G1 G2 GX l TX x T2 GH,
     indexr x GH = Some (GX, TX) ->
     closed 0 (S x) TX ->
-    stpd2 false GX TX G2 (TMem TBot T2) GH ->
+    stpd2 false GX TX G2 (TMem l TBot T2) GH ->
     stpd2 true G2 T2 G2 T2 GH ->
-    stpd2 true G1 (TSel (varH x)) G2 T2 GH.
+    stpd2 true G1 (TSel (varH x) l) G2 T2 GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela1; eauto. Qed.
 
-Lemma stpd2_sela2: forall G1 G2 GX TX x T1 GH,
+Lemma stpd2_sela2: forall G1 G2 GX l TX x T1 GH,
     indexr x GH = Some (GX, TX) ->
     closed 0 (S x) TX ->
-    stpd2 false GX TX G1 (TMem T1 TTop) GH ->
+    stpd2 false GX TX G1 (TMem l T1 TTop) GH ->
     stpd2 true G1 T1 G1 T1 GH ->
-    stpd2 true G1 T1 G2 (TSel (varH x)) GH.
+    stpd2 true G1 T1 G2 (TSel (varH x) l) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela2; eauto. Qed.
 
 
-Lemma stpd2_selax: forall G1 G2 GX TX x GH,
+Lemma stpd2_selax: forall G1 G2 GX l TX x GH,
     indexr x GH = Some (GX, TX) ->
-    stpd2 true G1 (TSel (varH x)) G2 (TSel (varH x)) GH.
+    stpd2 true G1 (TSel (varH x) l) G2 (TSel (varH x) l) GH.
 Proof. intros. exists (S 0). eauto. eapply stp2_selax; eauto. Qed.
 
 
