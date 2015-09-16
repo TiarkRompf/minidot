@@ -1,7 +1,7 @@
 (* Full safety for DOT *)
 
-(* this version is based on dot15.v *)
-(* based on that, it adds proper variables *)
+(* this version is based on dot16.v *)
+(* based on that, it adds labels for type members *)
 
 Require Export SfLib.
 
@@ -24,8 +24,8 @@ Inductive ty : Type :=
   | TBot   : ty
   | TTop   : ty
   | TFun   : id -> ty -> ty -> ty
-  | TMem   : ty -> ty -> ty
-  | TSel   : var -> ty
+  | TMem   : id -> ty -> ty -> ty
+  | TSel   : var -> id -> ty
   | TAll   : ty -> ty -> ty
   | TBind  : ty -> ty
   | TAnd   : ty -> ty -> ty
@@ -35,7 +35,7 @@ Inductive tm : Type :=
   | ttrue  : tm
   | tfalse : tm
   | tvar   : id -> tm
-  | ttyp   : ty -> tm
+  | ttyp   : id -> ty -> tm
   | tapp   : tm -> id -> tm -> tm (* \o.m(x) *)
   | tabs   : id -> list (id * (id * tm)) -> tm (* \o {val m = \x.y} *)
   | ttapp  : tm -> tm -> tm (* f[X] *)
@@ -43,7 +43,7 @@ Inductive tm : Type :=
 .
 
 Inductive vl : Type :=
-| vty   : list (id*vl) -> ty -> vl
+| vty   : list (id*vl) -> list (id * ty) -> vl
 | vbool : bool -> vl
 | vabs  : list (id*vl) -> id -> list (id * (id * tm)) -> vl
 | vtabs : list (id*vl) -> id -> ty -> tm -> vl
@@ -103,10 +103,10 @@ Inductive closed_rec: nat -> nat -> ty -> Prop :=
     closed_rec k l T1 ->
     closed_rec k l T2 ->
     closed_rec k l (TFun m T1 T2)
-| cl_mem: forall k l T1 T2,
+| cl_mem: forall k l m T1 T2,
     closed_rec k l T1 ->
     closed_rec k l T2 ->
-    closed_rec k l (TMem T1 T2)
+    closed_rec k l (TMem m T1 T2)
 | cl_all: forall k l T1 T2,
     closed_rec k l T1 ->
     closed_rec (S k) l T2 ->
@@ -114,18 +114,18 @@ Inductive closed_rec: nat -> nat -> ty -> Prop :=
 | cl_bind: forall k l T2,
     closed_rec (S k) l T2 ->
     closed_rec k l (TBind T2)
-| cl_sel: forall k l x,
-    closed_rec k l (TSel (varF x))
+| cl_sel: forall k l x m,
+    closed_rec k l (TSel (varF x) m)
 | cl_and: forall k l T1 T2,
     closed_rec k l T1 ->
     closed_rec k l T2 ->
     closed_rec k l (TAnd T1 T2)
-| cl_selh: forall k l x,
+| cl_selh: forall k l x m,
     l > x ->
-    closed_rec k l (TSel (varH x))
-| cl_selb: forall k l i,
+    closed_rec k l (TSel (varH x) m)
+| cl_selb: forall k l i m,
     k > i ->
-    closed_rec k l (TSel (varB i))
+    closed_rec k l (TSel (varB i) m)
 .
 
 Hint Constructors closed_rec.
@@ -135,15 +135,15 @@ Definition closed j l T := closed_rec j l T.
 
 Fixpoint open_rec (k: nat) (u: var) (T: ty) { struct T }: ty :=
   match T with
-    | TSel (varF x) => TSel (varF x) (* free var remains free. functional, so we can't check for conflict *)
-    | TSel (varH i) => TSel (varH i)
-    | TSel (varB i) => TSel (if beq_nat k i then u else varB i)
+    | TSel (varF x) m => TSel (varF x) m (* free var remains free. functional, so we can't check for conflict *)
+    | TSel (varH i) m => TSel (varH i) m
+    | TSel (varB i) m => TSel (if beq_nat k i then u else varB i) m
     | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
     | TBind T2    => TBind (open_rec (S k) u T2)
     | TTop        => TTop
     | TBot        => TBot
     | TBool       => TBool
-    | TMem T1 T2  => TMem (open_rec k u T1) (open_rec k u T2)
+    | TMem m T1 T2  => TMem m (open_rec k u T1) (open_rec k u T2)
     | TFun m T1 T2  => TFun m (open_rec k u T1) (open_rec k u T2)
     | TAnd T1 T2  => TAnd (open_rec k u T1) (open_rec k u T2)
   end.
@@ -151,8 +151,8 @@ Fixpoint open_rec (k: nat) (u: var) (T: ty) { struct T }: ty :=
 Definition open u T := open_rec 0 u T.
 
 (* sanity check *)
-Example open_ex1: open (varF 9) (TAll TBool (TFun 0 (TSel (varB 1)) (TSel (varB 0)))) =
-                      (TAll TBool (TFun 0 (TSel (varF 9)) (TSel (varB 0)))).
+Example open_ex1: open (varF 9) (TAll TBool (TFun 0 (TSel (varB 1) 0) (TSel (varB 0) 0))) =
+                      (TAll TBool (TFun 0 (TSel (varF 9) 0) (TSel (varB 0) 0))).
 Proof. compute. eauto. Qed.
 
 
@@ -161,11 +161,11 @@ Fixpoint subst (U : var) (T : ty) {struct T} : ty :=
     | TTop         => TTop
     | TBot         => TBot
     | TBool        => TBool
-    | TMem T1 T2   => TMem (subst U T1) (subst U T2)
+    | TMem m T1 T2   => TMem m (subst U T1) (subst U T2)
     | TFun m T1 T2   => TFun m (subst U T1) (subst U T2)
-    | TSel (varB i)  => TSel (varB i)
-    | TSel (varF i)  => TSel (varF i)
-    | TSel (varH i)  => TSel (if beq_nat i 0 then U else varH (i-1))
+    | TSel (varB i) m => TSel (varB i) m
+    | TSel (varF i) m => TSel (varF i) m
+    | TSel (varH i) m => TSel (if beq_nat i 0 then U else varH (i-1)) m
     | TAll T1 T2   => TAll (subst U T1) (subst U T2)
     | TBind T2     => TBind (subst U T2)
     | TAnd T1 T2   => TAnd (subst U T1) (subst U T2)
@@ -176,11 +176,11 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
     | TTop         => True
     | TBot         => True
     | TBool        => True
-    | TMem T1 T2   => nosubst T1 /\ nosubst T2
+    | TMem m T1 T2   => nosubst T1 /\ nosubst T2
     | TFun m T1 T2   => nosubst T1 /\ nosubst T2
-    | TSel (varB i)  => True
-    | TSel (varF i)  => True
-    | TSel (varH i)  => i <> 0
+    | TSel (varB i) m => True
+    | TSel (varF i) m => True
+    | TSel (varH i) m => i <> 0
     | TAll T1 T2   => nosubst T1 /\ nosubst T2
     | TBind T2     => nosubst T2
     | TAnd T1 T2   => nosubst T1 /\ nosubst T2
@@ -208,70 +208,70 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH T3 T1 ->
     stp G1 GH T2 T4 ->
     stp G1 GH (TFun m T1 T2) (TFun m T3 T4)
-| stp_mem: forall G1 GH T1 T2 T3 T4,
+| stp_mem: forall G1 GH m T1 T2 T3 T4,
     stp G1 GH T3 T1 ->
     stp G1 GH T2 T4 ->
-    stp G1 GH (TMem T1 T2) (TMem T3 T4)
-| stp_sel1: forall G1 GH TX T2 x,
+    stp G1 GH (TMem m T1 T2) (TMem m T3 T4)
+| stp_sel1: forall G1 GH TX m T2 x,
     index x G1 = Some TX ->
     closed 0 0 TX ->
-    stp G1 GH TX (TMem TBot T2) ->
+    stp G1 GH TX (TMem m TBot T2) ->
     stp G1 GH T2 T2 -> (* regularity of stp2 *)
-    stp G1 GH (TSel (varF x)) T2
-| stp_sel2: forall G1 GH TX T1 x,
+    stp G1 GH (TSel (varF x) m) T2
+| stp_sel2: forall G1 GH TX m T1 x,
     index x G1 = Some TX ->
     closed 0 0 TX ->
-    stp G1 GH TX (TMem T1 TTop) ->
+    stp G1 GH TX (TMem m T1 TTop) ->
     stp G1 GH T1 T1 -> (* regularity of stp2 *)
-    stp G1 GH T1 (TSel (varF x))
-| stp_selb1: forall G1 GH TX T2 x,
+    stp G1 GH T1 (TSel (varF x) m)
+| stp_selb1: forall G1 GH TX m T2 x,
     index x G1 = Some TX ->
-    stp G1 [] TX (TBind (TMem TBot T2)) ->   (* Note GH = [] *)
+    stp G1 [] TX (TBind (TMem m TBot T2)) ->   (* Note GH = [] *)
     stp G1 GH (open (varF x) T2) (open (varF x) T2) -> (* regularity *)
-    stp G1 GH (TSel (varF x)) (open (varF x) T2)
-| stp_selb2: forall G1 GH TX T1 x,
+    stp G1 GH (TSel (varF x) m) (open (varF x) T2)
+| stp_selb2: forall G1 GH TX m T1 x,
     index x G1 = Some TX ->
-    stp G1 [] TX (TBind (TMem T1 TTop)) ->   (* Note GH = [] *)
+    stp G1 [] TX (TBind (TMem m T1 TTop)) ->   (* Note GH = [] *)
     stp G1 GH (open (varF x) T1) (open (varF x) T1) -> (* regularity *)
-    stp G1 GH (open (varF x) T1) (TSel (varF x))
-| stp_selx: forall G1 GH TX x,
+    stp G1 GH (open (varF x) T1) (TSel (varF x) m)
+| stp_selx: forall G1 GH TX x m,
     index x G1 = Some TX ->
-    stp G1 GH (TSel (varF x)) (TSel (varF x))
-| stp_sela1: forall G1 GH TX T2 x,
+    stp G1 GH (TSel (varF x) m) (TSel (varF x) m)
+| stp_sela1: forall G1 GH TX m T2 x,
     indexr x GH = Some TX ->
     closed 0 (S x) TX ->
-    stp G1 GH TX (TMem TBot T2) ->   (* not using self name for now *)
+    stp G1 GH TX (TMem m TBot T2) ->   (* not using self name for now *)
     stp G1 GH T2 T2 -> (* regularity of stp2 *)
-    stp G1 GH (TSel (varH x)) T2
-| stp_sela2: forall G1 GH TX T1 x,
+    stp G1 GH (TSel (varH x) m) T2
+| stp_sela2: forall G1 GH TX m T1 x,
     indexr x GH = Some TX ->
     closed 0 (S x) TX ->
-    stp G1 GH TX (TMem T1 TTop) ->   (* not using self name for now *)
+    stp G1 GH TX (TMem m T1 TTop) ->   (* not using self name for now *)
     stp G1 GH T1 T1 -> (* regularity of stp2 *)
-    stp G1 GH T1 (TSel (varH x))
-| stp_selab1: forall G1 GH GU GL TX T2 T2' x,
+    stp G1 GH T1 (TSel (varH x) m)
+| stp_selab1: forall G1 GH GU GL TX m T2 T2' x,
     indexr x GH = Some TX ->
     closed 0 (S x) TX ->
-    closed 0 0 (TBind (TMem TBot T2)) ->
+    closed 0 0 (TBind (TMem m TBot T2)) ->
     length GL = (S x) ->
     GH = GU ++ GL ->
-    stp G1 GL TX (TBind (TMem TBot T2)) ->
+    stp G1 GL TX (TBind (TMem m TBot T2)) ->
     T2' = (open (varH x) T2) ->
     stp G1 GH T2' T2' -> (* regularity *)
-    stp G1 GH (TSel (varH x)) T2'
-| stp_selab2: forall G1 GH GU GL TX T1 T1' x,
+    stp G1 GH (TSel (varH x) m) T2'
+| stp_selab2: forall G1 GH GU GL TX m T1 T1' x,
     indexr x GH = Some TX ->
     closed 0 (S x) TX ->
-    closed 0 0 (TBind (TMem T1 TTop)) ->
+    closed 0 0 (TBind (TMem m T1 TTop)) ->
     length GL = (S x) ->
     GH = GU ++ GL ->
-    stp G1 GL TX (TBind (TMem T1 TTop)) ->
+    stp G1 GL TX (TBind (TMem m T1 TTop)) ->
     T1' = (open (varH x) T1) ->
     stp G1 GH T1' T1' -> (* regularity *)
-    stp G1 GH T1' (TSel (varH x))
-| stp_selax: forall G1 GH TX x,
+    stp G1 GH T1' (TSel (varH x) m)
+| stp_selax: forall G1 GH TX x m,
     indexr x GH = Some TX  ->
-    stp G1 GH (TSel (varH x)) (TSel (varH x))
+    stp G1 GH (TSel (varH x) m) (TSel (varH x) m)
 | stp_all: forall G1 GH T1 T2 T3 T4 x,
     stp G1 GH T3 T1 ->
     x = length GH ->
@@ -399,6 +399,18 @@ with dcs_has_type: tenv -> list (id * (id * tm)) -> ty -> Prop :=
             m = length dcs ->
             T = tand (TFun m T1 T2) TS ->
             stp env [] (TFun m T1 T2) (TFun m T1 T2) ->
+            dcs_has_type env ((m, (x, y))::dcs) T
+
+with dcs_mem_has_type: tenv -> list (id * ty) -> ty -> Prop :=
+| dt_mem_nil: forall env,
+                dcs_mem_has_type env nil TTop
+| dt_fun: forall env x T1 T1X dcs TS T,
+            has_type ((x,T1)::env) y T2 ->
+            dcs_mem_has_type env dcs TS ->
+            fresh env = x ->
+            m = length dcs ->
+            T = tand (TMem m T1 T1) TS ->
+            stp env [] (T m T1 T2) (TFun m T1 T2) ->
             dcs_has_type env ((m, (x, y))::dcs) T
 .
 
