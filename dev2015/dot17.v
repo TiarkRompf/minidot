@@ -4362,6 +4362,21 @@ Proof.
   subst. eapply IHn in HR. apply HR. instantiate (1:=n1). omega. eassumption.
 Qed.
 
+Lemma dcs_mem_has_type_stp: forall G G1 G2 ds T TX x T1 T2,
+  dcs_mem_has_type G ds TX T ->
+  sstpd2 true G1 (open (varF x) T) G2 (TMem (length ds) T1 T2) [] ->
+  False.
+Proof.
+  intros. remember (length ds) as l. assert (l >= length ds) as A by omega. clear Heql.
+  induction H. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  destruct (tand_shape (TMem m T0 T0) TS).
+  rewrite H6 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  subst. inversion H10. subst. simpl in A. omega.
+  apply IHdcs_mem_has_type. eexists. eassumption. simpl in A. omega.
+  rewrite H6 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  simpl in A. omega.
+Qed.
+
 Lemma invert_typ: forall venv vx l T1 T2 n,
   val_type venv vx (TMem l T1 T2) n ->
   exists GX ds TX,
@@ -4373,7 +4388,29 @@ Proof.
   intros. inversion H; ev; try solve by inversion.
   subst.
   exists venv1. exists ds.
-  assert (exists TX, index l ds = Some TX /\ sstpd2 true ((fresh venv1, vty venv1 ds) :: venv1) (TMem l (open (varF (fresh venv1)) TX) (open (varF (fresh venv1)) TX)) venv0 (TMem l T1 T2) []) as A. admit.
+  assert (exists TX, index l ds = Some TX /\ sstpd2 true ((fresh venv1, vty venv1 ds) :: venv1) (TMem l (open (varF (fresh venv1)) TX) (open (varF (fresh venv1)) TX)) venv0 (TMem l T1 T2) []) as A. {
+    clear H. clear H0.
+    remember ((fresh venv1, vty venv1 ds) :: venv1) as venv. clear Heqvenv.
+    remember (open (varF (fresh venv1)) T) as TX.
+    assert (sstpd2 true venv (open (varF (fresh venv1)) T) venv0 (TMem l T1 T2) []) as B. {
+      eexists. rewrite <- HeqTX. eassumption.
+    }
+    clear H3. clear HeqTX.
+    induction H2. destruct B as [? B]. inversion B.
+    simpl.
+    case_eq (le_lt_dec (fresh dcs) m); intros LE E1.
+    case_eq (beq_nat l m); intros E2.
+    exists T0.
+    split. reflexivity.
+    destruct (tand_shape (TMem m T0 T0) TS).
+    rewrite H5 in H3. rewrite H3 in B. destruct B as [? B]. inversion B. eapply beq_nat_true in E2. rewrite E2. rewrite E2 in H9. eexists. eassumption.
+    eapply dcs_mem_has_type_stp in H2. inversion H2. rewrite <- H1. eapply beq_nat_true in E2. rewrite <- E2. eexists. unfold open. eassumption.
+    rewrite H5 in H3. rewrite H3 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. apply B.
+    eapply IHdcs_mem_has_type. destruct (tand_shape (TMem m T0 T0) TS).
+    rewrite H5 in H3. rewrite H3 in B. destruct B as [? B]. inversion B. inversion H9. apply beq_nat_false in E2. omega. eexists. eassumption.
+    rewrite H5 in H3. rewrite H3 in B. destruct B as [? B]. inversion B. apply beq_nat_false in E2. omega.
+    inversion H2; subst. simpl in LE. omega. simpl in LE. omega.
+  }
   destruct A as [TX [A1 A2]].
   exists TX.
   split. reflexivity.
