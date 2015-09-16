@@ -877,7 +877,7 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
         | tvar x     => Some (index x env)
         | tabs f ds => Some (Some (vabs env f ds))
         | ttabs x T y  => Some (Some (vtabs env x T y))
-        | ttyp T     => Some (Some (vty env T))
+        | ttyp ds     => Some (Some (vty env ds))
         | tapp ef m ex   =>
           match teval n env ex with
             | None => None
