@@ -12,7 +12,10 @@ subtyping:
   - realizable type: precise expansion, and upper bounds 
     are also realizable
 
- TODO/QUESTIONs:
+based on dot-stp-single1, but has two subtyping relations.
+one supports narrowing (stp), the other supports transitivity (stp2)
+
+TODO/QUESTIONs:
   - bind2/bind1 rules?
   - intersection/union types?
   - restrictions: recursive members?
