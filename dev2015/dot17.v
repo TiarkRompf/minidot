@@ -352,6 +352,7 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            fresh env = x ->
            open (varF x) T = TX ->
            dcs_mem_has_type env ds TX T ->
+           stp ((x, TX)::env) [] TX TX ->
            stp env [] (TBind T) (TBind T) ->
            has_type env (ttyp ds) (TBind T)
 | t_app: forall env f l x T1 T2,
@@ -6740,15 +6741,15 @@ Proof.
     eapply stpd2_and12. eapply IHST2; eauto. eapply IHST1; eauto.
 Qed.
 
-Lemma stp_to_stp2_cycle: forall venv env T0 T t l,
+Lemma stp_to_stp2_cycle: forall venv env T0 T t,
   wf_env venv env ->
   stp ((fresh env, T0) :: env) [] T T->
-  stpd2 false ((fresh env, vty venv t) :: venv) (TMem l T T)
-              ((fresh env, vty venv t) :: venv) (TMem l T T) [].
+  stpd2 false ((fresh env, vty venv t) :: venv) T
+              ((fresh env, vty venv t) :: venv) T [].
 Proof.
   intros. apply stpd2_wrapf.
   eapply stp_to_wf_tp in H0.
-  apply stpd2_mem; apply stpd2_wrapf; eapply wf_tp_to_stp2_cycle_aux; eauto.
+  eapply wf_tp_to_stp2_cycle_aux; eauto.
 Qed.
 
 Lemma dcs_has_type_stp: forall G G1 G2 ds T T1 T2,
@@ -7064,23 +7065,23 @@ Proof.
     + eapply restp_widen. eapply IHhas_type; eauto. eapply has_type_wf; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
   - Case "Typ".
-    remember (ttyp t) as e.
+    remember (ttyp l) as e.
     induction H0; inversion Heqe; subst.
     + remember (fresh env) as i.
-      remember (open (varF i) t) as T1X.
-      remember ((i,vty venv0 t)::venv0) as venv1.
-      assert (index i venv1 = Some (vty venv0 t)). subst. eapply index_hit2. rewrite wf_fresh with (ts := env). eauto. eauto. eauto. eauto.
-      assert (val_type venv1 (vty venv0 t) (TMem T1X T1X) 1). eapply v_ty. eauto. eauto.
-      assert ((open (varF (fresh venv0)) t) = T1X). rewrite wf_fresh with (ts:=env). rewrite <-Heqi. eauto. eauto.
-      rewrite H2.
+      remember (open (varF i) T) as TX.
+      remember ((i,vty venv0 l)::venv0) as venv1.
+      assert (index i venv1 = Some (vty venv0 l)). subst. eapply index_hit2. rewrite wf_fresh with (ts := env). eauto. eauto. eauto. eauto.
+      assert ((open (varF (fresh venv0)) T) = TX). rewrite wf_fresh with (ts:=env). rewrite <-Heqi. eauto. eauto.
+      assert (val_type venv1 (vty venv0 l) TX 1). eapply v_ty. eauto. eauto.
+      eapply H4.
 
       (* we have everything as stp and 'just' need to convert to stp2. however we're
       working with an env that has a self binding, and the wf_env evidence needs
       the very val_tp what we're trying to construct *)
 
-      eapply stpd2_upgrade. rewrite wf_fresh with (ts:=env). subst. eapply stp_to_stp2_cycle. eauto. eauto. eauto. eauto.
+      eapply stpd2_upgrade. rewrite wf_fresh with (ts:=env). subst. eapply stp_to_stp2_cycle. eauto. eauto. eauto.
 
-      eapply not_stuck. eapply v_pack. eapply H0. eapply H2. instantiate (1:=TMem t t). simpl. subst T1X. eauto. subst venv1. eapply sstpd2_extend1. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. rewrite wf_fresh with (ts:=env). subst i. eauto. eauto.
+      eapply not_stuck. eapply v_pack. eapply H0. eapply H3. instantiate (1:=T). simpl. subst TX. eauto. subst venv1. eapply sstpd2_extend1. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. rewrite wf_fresh with (ts:=env). subst i. eauto. eauto.
 
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
@@ -7158,7 +7159,7 @@ Proof.
     + eapply not_stuck. eapply v_tabs; eauto. subst i. eauto. rewrite (wf_fresh venv0 env H1). eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
     +  eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
-       Grab Existential Variables. apply 0. apply 0.
+       Grab Existential Variables. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 End FSUB.
