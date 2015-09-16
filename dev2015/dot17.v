@@ -1210,11 +1210,11 @@ Fixpoint splice n (T : ty) {struct T} : ty :=
     | TTop         => TTop
     | TBot         => TBot
     | TBool        => TBool
-    | TMem T1 T2   => TMem (splice n T1) (splice n T2)
+    | TMem m T1 T2   => TMem m (splice n T1) (splice n T2)
     | TFun m T1 T2   => TFun m (splice n T1) (splice n T2)
-    | TSel (varB i)  => TSel (varB i)
-    | TSel (varF i)  => TSel (varF i)
-    | TSel (varH i)  => TSel (varH (if le_lt_dec n i  then (i+1) else i))
+    | TSel (varB i) m => TSel (varB i) m
+    | TSel (varF i) m => TSel (varF i) m
+    | TSel (varH i) m => TSel (varH (if le_lt_dec n i  then (i+1) else i)) m
     | TAll T1 T2   => TAll (splice n T1) (splice n T2)
     | TBind T2   => TBind (splice n T2)
     | TAnd T1 T2 => TAnd (splice n T1) (splice n T2)
@@ -1239,7 +1239,7 @@ Proof.
   try rewrite IHT1; try rewrite IHT2; try rewrite IHT; eauto.
 
   destruct v; try solve [compute; reflexivity]. simpl.
-  case_eq (beq_nat j i); intros E; simpl; eauto.
+  case_eq (beq_nat j i0); intros E; simpl; eauto.
   case_eq (le_lt_dec (length G) (n+k)); intros E2 LE; simpl; eauto.
   assert (n + S k=n + k + 1) as R by omega. rewrite R. reflexivity.
   omega.
@@ -1446,13 +1446,17 @@ Proof.
  Case "TSelH". econstructor. omega.
 Qed.
 
+Lemma closed_sel: forall j n V l1 l2, closed j n (TSel V l1) -> closed j n (TSel V l2).
+Proof.
+  intros. inversion H; subst; constructor; assumption.
+Qed.
 
-Lemma closed_open: forall j n V T, closed (j+1) n T -> closed j n (TSel V) -> closed j n (open_rec j V T).
+Lemma closed_open: forall j n V l T, closed (j+1) n T -> closed j n (TSel V l) -> closed j n (open_rec j V T).
 Proof.
   intros. generalize dependent j. induction T; intros; inversion H; unfold closed; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto. eapply closed_upgrade. eauto. eauto.
 
   - Case "TSelB". simpl.
-    case_eq (beq_nat j i); intros E. eauto.
+    case_eq (beq_nat j i0); intros E. eapply closed_sel. eassumption.
 
     econstructor. eapply beq_nat_false_iff in E. omega.
 
@@ -1659,7 +1663,7 @@ Proof.
   - Case "selab1".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
     + assert (S x0 = x0 + 1) as EQ by omega.
-      assert ((splice (length G0) (TBind (TMem TBot T2)))=(TBind (TMem TBot T2))) as A. {
+      assert ((splice (length G0) (TBind (TMem m TBot T2)))=(TBind (TMem m TBot T2))) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
       assert (exists GH1L, G2 = GU ++ GH1L /\ GL = GH1L ++ G0) as EQGH. {
@@ -1691,7 +1695,7 @@ Proof.
       assert (splice (length G0) TX=TX) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
-      assert (splice (length G0) (TBind (TMem TBot T2))=(TBind (TMem TBot T2))) as B. {
+      assert (splice (length G0) (TBind (TMem m TBot T2))=(TBind (TMem m TBot T2))) as B. {
         eapply closed_splice_idem. eassumption. omega.
       }
       assert (exists GH0U, G0 = GH0U ++ GL) as EQGH. {
@@ -1712,7 +1716,7 @@ Proof.
   - Case "selab2".
     case_eq (le_lt_dec (length G0) x0); intros E LE.
     + assert (S x0 = x0 + 1) as EQ by omega.
-      assert ((splice (length G0) (TBind (TMem T1 TTop)))=(TBind (TMem T1 TTop))) as A. {
+      assert ((splice (length G0) (TBind (TMem m T1 TTop)))=(TBind (TMem m T1 TTop))) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
       assert (exists GH1L, G2 = GU ++ GH1L /\ GL = GH1L ++ G0) as EQGH. {
@@ -1744,7 +1748,7 @@ Proof.
       assert (splice (length G0) TX=TX) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
-      assert (splice (length G0) (TBind (TMem T1 TTop))=(TBind (TMem T1 TTop))) as B. {
+      assert (splice (length G0) (TBind (TMem m T1 TTop))=(TBind (TMem m T1 TTop))) as B. {
         eapply closed_splice_idem. eassumption. omega.
       }
       assert (exists GH0U, G0 = GH0U ++ GL) as EQGH. {
@@ -1804,6 +1808,9 @@ Proof.
     specialize IHstp2 with (G3:=G0) (G4:=(0, (open (varH (length G2 + length G0)) T1))::G2).
     rewrite app_length in IHstp2. simpl in IHstp2. unfold open in IHstp2.
     eapply IHstp2. eauto. omega. omega.
+
+    Grab Existential Variables.
+    apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma stp2_splice : forall G1 T1 G2 T2 GH1 GH0 x v1 s m n1,
@@ -1819,7 +1826,7 @@ Proof.
       eapply closed_splice_idem. eapply valtp_closed. eassumption. omega.
     }
     rewrite <- B. simpl in IHstp2_1. eapply IHstp2_1. reflexivity.
-    eassumption.
+    eassumption. eassumption.
     assert (splice (length GH0) (open (varF (fresh GX)) TX)=(open (varF (fresh GX)) TX)) as A.  {
       eapply closed_splice_idem. eapply closed_open. eassumption. eauto. omega.
     }
@@ -1831,7 +1838,7 @@ Proof.
       eapply closed_splice_idem. eapply valtp_closed. eassumption. omega.
     }
     rewrite <- B. simpl in IHstp2_1. eapply IHstp2_1. reflexivity.
-    eassumption.
+    eassumption. eassumption.
     assert (splice (length GH0) (open (varF (fresh GX)) TX)=(open (varF (fresh GX)) TX)) as A.  {
       eapply closed_splice_idem. eapply closed_open. eassumption. eauto. omega.
     }
@@ -1888,7 +1895,7 @@ Proof.
   - Case "selab1".
     case_eq (le_lt_dec (length GH0) x0); intros E LE.
     + assert (S x0 = x0 + 1) as EQ by omega.
-      assert ((splice (length GH0) (TBind (TMem TBot T2)))=(TBind (TMem TBot T2))) as A. {
+      assert ((splice (length GH0) (TBind (TMem l TBot T2)))=(TBind (TMem l TBot T2))) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
       assert (exists GH1L, GH1 = GU ++ GH1L /\ GL = GH1L ++ GH0) as EQGH. {
@@ -1921,7 +1928,7 @@ Proof.
       assert (splice (length GH0) TX=TX) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
-      assert (splice (length GH0) (TBind (TMem TBot T2))=(TBind (TMem TBot T2))) as B. {
+      assert (splice (length GH0) (TBind (TMem l TBot T2))=(TBind (TMem l TBot T2))) as B. {
         eapply closed_splice_idem. eassumption. omega.
       }
       assert (exists GH0U, GH0 = GH0U ++ GL) as EQGH. {
@@ -1943,7 +1950,7 @@ Proof.
   - Case "selab2".
     case_eq (le_lt_dec (length GH0) x0); intros E LE.
     + assert (S x0 = x0 + 1) as EQ by omega.
-      assert ((splice (length GH0) (TBind (TMem T1 TTop)))=(TBind (TMem T1 TTop))) as A. {
+      assert ((splice (length GH0) (TBind (TMem l T1 TTop)))=(TBind (TMem l T1 TTop))) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
       assert (exists GH1L, GH1 = GU ++ GH1L /\ GL = GH1L ++ GH0) as EQGH. {
@@ -1976,7 +1983,7 @@ Proof.
       assert (splice (length GH0) TX=TX) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
-      assert (splice (length GH0) (TBind (TMem T1 TTop))=(TBind (TMem T1 TTop))) as B. {
+      assert (splice (length GH0) (TBind (TMem l T1 TTop))=(TBind (TMem l T1 TTop))) as B. {
         eapply closed_splice_idem. eassumption. omega.
       }
       assert (exists GH0U, GH0 = GH0U ++ GL) as EQGH. {
@@ -2068,6 +2075,9 @@ Proof.
     specialize IHstp2_2 with (GH2:=GH0) (GH3:=(0, (G1,(open (varH (length GH1 + length GH0)) T1)))::GH1).
     rewrite app_length in IHstp2_2. simpl in IHstp2_2. unfold open in IHstp2_2.
     eapply IHstp2_2. eauto. omega. omega.
+
+    Grab Existential Variables.
+    apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma stp_extend : forall G1 GH T1 T2 x v1,
@@ -2090,11 +2100,13 @@ Proof.
   assert (splice (length GH) T4 = T4) as A4. {
     eapply closed_splice_idem. apply H2. omega.
   }
+  (*
   assert (TSel (varH (S (length GH))) = splice (length GH) (TSel (varH (length GH)))) as AH. {
     simpl. case_eq (le_lt_dec (length GH) (length GH)); intros E LE.
     simpl. rewrite NPeano.Nat.add_1_r. reflexivity.
     clear LE. apply lt_irrefl in E. inversion E.
   }
+  *)
   assert (closed 0 (length GH) T1).  eapply stp_closed2. eauto.
   assert (splice (length GH) T1 = T1) as A1. {
     eapply closed_splice_idem. eauto. omega.
