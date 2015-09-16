@@ -6,6 +6,8 @@ Require Export Arith.Le.
 
 (* 
 WIP: experiment with more layers of pushback / translation
+
+especially, invertible bindx rule
 *)
 
 
