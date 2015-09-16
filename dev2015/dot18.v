@@ -1136,17 +1136,99 @@ Qed.
 
 Example ex4:
   has_type [(1,TFun 0 TBool TBool);(0,brandUnbrand)]
-           (tvar 0) (TAll (TBind (TMem 0 TBool TBool)) (TFun 0 (TFun 0 TBool TBool) (TFun 0 (TFun 0 TBool TBool) TBool))).
+           (tvar 0) (TAll (TBind (TMem 0 TBool TBool)) (TBind (TFun 0 (TBind (TAnd (TFun 1 TBool TBool) (TFun 0 TBool TBool))) TBool))).
 Proof.
-  eapply t_sub. crush2. crush2. eapply stp_all; crush2. compute. eapply stp_fun. eapply stp_fun. crush2.
-  eapply stp_selab2. crush2. crush2. instantiate(1:=TBool). crush2.
-  instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). simpl. reflexivity.
-  rewrite app_nil_l. reflexivity.
+  eapply t_sub.
+  eapply t_var. compute. reflexivity.
+  eapply stp_all.
+  crush2. simpl. reflexivity. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_fun. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2.
+  unfold open. simpl.
+  eapply stp_fun. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_fun. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2.
+  unfold open. simpl.
+  eapply stp_fun. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2.
+  eapply stp_all.
+  crush2.
+  simpl. reflexivity.
+  crush2. crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_fun. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2.
+  unfold open. simpl.
+  eapply stp_fun. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_fun. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2.
+  unfold open. simpl.
+  eapply stp_fun. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.
+  eapply stp_fun. crush2. eapply stp_selab2. compute. reflexivity. crush2.
+  instantiate (1:=TBool). crush2.
+  instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). crush2.
+  instantiate (1:=[(0, TAnd (TFun 1 TBool TBool) (TFun 0 TBool TBool));
+   (0,
+   TFun 0
+     (TBind
+        (TAnd (TFun 1 TBool (TSel (varH 0) 0))
+              (TFun 0 (TSel (varH 0) 0) TBool))) TBool)]). crush2.
   crush2. crush2. crush2.
-  eapply stp_fun. crush2. eapply stp_fun.
-  eapply stp_selab1. crush2. crush2. instantiate(1:=TBool). crush2.
-  instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). simpl. reflexivity.
-  rewrite app_nil_l. reflexivity.
+  eapply stp_and12; crush2.
+  eapply stp_fun. crush2. eapply stp_selab1. compute. reflexivity. crush2.
+  instantiate (1:=TBool). crush2.
+  instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). crush2.
+  instantiate (1:=[(0, TAnd (TFun 1 TBool TBool) (TFun 0 TBool TBool));
+   (0,
+   TFun 0
+     (TBind
+        (TAnd (TFun 1 TBool (TSel (varH 0) 0))
+              (TFun 0 (TSel (varH 0) 0) TBool))) TBool)]). crush2.
   crush2. crush2. crush2.
   crush2. crush2.
 Qed.
