@@ -352,7 +352,7 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
 | t_obj: forall env f ds T TX,
            fresh env = f ->
            open (varF f) T = TX ->
-           dcs_has_type ((f, TX)::env) ds T ->
+           dcs_has_type ((f, TX)::env) f ds T ->
            stp ((f, TX)::env) [] TX TX ->
            stp env [] (TBind T) (TBind T) ->
            has_type env (tobj f ds) (TBind T)
@@ -386,24 +386,21 @@ Does it make a difference? It seems like we can always widen f?
            stp env [] T1 T2 ->
            has_type env e T2
 
-with dcs_has_type: tenv -> list (id * def) -> ty -> Prop :=
-| dt_nil: forall env,
-            dcs_has_type env nil TTop
-| dt_fun: forall env x y m T1 T2 dcs TS T,
-            has_type ((x,T1)::env) y T2 ->
-            dcs_has_type env dcs TS ->
+with dcs_has_type: tenv -> id -> list (id * def) -> ty -> Prop :=
+| dt_nil: forall env f,
+            dcs_has_type env f nil TTop
+| dt_fun: forall env f x y m T1 T2 dcs TS T,
+            has_type ((x,open (varF f) T1)::env) y (open (varF f) T2) ->
+            dcs_has_type env f dcs TS ->
             fresh env = x ->
             m = length dcs ->
             T = tand (TFun m T1 T2) TS ->
-            stp env [] (TFun m T1 T2) (TFun m T1 T2) ->
-            dcs_has_type env ((m, dfun x y)::dcs) T
-| dt_mem: forall env x m T1 T1X dcs TS T,
-            dcs_has_type env dcs TS ->
-            fresh env = x ->
-            open (varF x) T1 = T1X ->
+            dcs_has_type env f ((m, dfun x y)::dcs) T
+| dt_mem: forall env f m T1 dcs TS T,
+            dcs_has_type env f dcs TS ->
             m = length dcs ->
             T = tand (TMem m T1 T1) TS ->
-            dcs_has_type env ((m, dmem T1)::dcs) T
+            dcs_has_type env f ((m, dmem T1)::dcs) T
 .
 
 
@@ -611,7 +608,7 @@ with val_type : venv -> vl -> ty -> nat -> Prop :=
 | v_obj: forall env venv tenv f ds T TX TE,
     wf_env venv tenv ->
     open (varF f) T = TX ->
-    dcs_has_type ((f,TX)::tenv) ds T ->
+    dcs_has_type ((f,TX)::tenv) f ds T ->
     fresh venv = f ->
     (exists n, stp2 0 true ((f, vobj venv f ds)::venv) TX env TE [] n)->
     val_type env (vobj venv f ds) TE 1
@@ -1034,6 +1031,7 @@ Proof.
   eapply t_app.
   instantiate (1:=(TSel (varF 0) 0)).
   assert (open (varF 2) (TFun 0 (TSel (varF 0) 0) TBool)=TFun 0 (TSel (varF 0) 0) TBool) as A. { compute. reflexivity. }
+  unfold open. simpl.
   rewrite <- A at 3. eapply t_var_unpack.
   eapply t_sub. eapply t_var. compute. reflexivity.
   eapply stp_bindx. simpl. reflexivity. crush2. crush2.
@@ -1071,6 +1069,15 @@ Proof.
   unfold open. simpl.
   eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
   crush2.
+  eapply stp_bindx. simpl. reflexivity. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_fun. eapply stp_bindx. simpl. reflexivity. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2.
+  unfold open. simpl.
   eapply stp_fun.
   eapply stp_bindx. simpl. reflexivity. crush2. crush2.
   unfold open. simpl.
@@ -1078,22 +1085,7 @@ Proof.
   unfold open. simpl.
   eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
   crush2.
-  eapply stp_bindx. simpl. reflexivity. crush2. crush2.
-  eapply stp_fun.
-  eapply stp_bindx. simpl. eauto. crush2. crush2.
   unfold open. simpl.
-  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
-  unfold open. simpl.
-  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
-  crush2.
-  unfold open. simpl.
-  eapply stp_fun.
-  eapply stp_bindx. simpl. eauto. crush2. crush2.
-  unfold open. simpl.
-  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
-  unfold open. simpl.
-  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
-  crush2.
   eapply stp_all.
   crush2. simpl. reflexivity. crush2. crush2.
   unfold open. simpl.
@@ -4430,12 +4422,12 @@ Proof.
   intros. destruct T2; eauto.
 Qed.
 
-Lemma dcs_has_type_shape: forall G ds T,
-  dcs_has_type G ds T ->
+Lemma dcs_has_type_shape: forall G f ds T,
+  dcs_has_type G f ds T ->
   T = TTop \/
   ((exists l T1 T2, T = TFun l T1 T2) \/ (exists l T1, T = TMem l T1 T1)) \/
   (exists TA ds' T', T = TAnd TA T' /\
-   dcs_has_type G ds' T' /\
+   dcs_has_type G f ds' T' /\
    ((exists l T1 T2, TA = TFun l T1 T2) \/ (exists l T1, TA = TMem l T1 T1))).
 Proof.
   intros. induction H.
@@ -4443,7 +4435,7 @@ Proof.
   - destruct IHdcs_has_type; subst.
     + right. left. left. eexists. eexists. eexists.
       simpl. reflexivity.
-    + right. destruct H5; repeat ev.
+    + right. destruct H4; repeat ev.
       * right. destruct H1; repeat ev.
         eexists. eexists. eexists.
         split. rewrite H1. simpl. reflexivity.
@@ -4465,7 +4457,7 @@ Proof.
   - destruct IHdcs_has_type; subst.
     + right. left. right. eexists. eexists.
       simpl. reflexivity.
-    + right. destruct H4; repeat ev.
+    + right. destruct H2; repeat ev.
       * right. destruct H0; repeat ev.
         eexists. eexists. eexists.
         split. rewrite H0. simpl. reflexivity.
@@ -4486,9 +4478,9 @@ Proof.
         right. eexists. eexists. reflexivity.
 Qed.
 
-Lemma dcs_tbind_aux: forall n, forall G ds venv1 T x venv0 T0 n0,
+Lemma dcs_tbind_aux: forall n, forall G f ds venv1 T x venv0 T0 n0,
   n0 <= n ->
-  dcs_has_type G ds T ->
+  dcs_has_type G f ds T ->
   stp2 0 true venv1 (open (varF x) T) venv0 (TBind T0) [] n0 ->
   False.
 Proof.
@@ -4508,31 +4500,31 @@ Proof.
   instantiate (1:=n1). omega. eassumption.
 Qed.
 
-Lemma dcs_tbind: forall G ds venv1 T x venv0 T0 n0,
-  dcs_has_type G ds T ->
+Lemma dcs_tbind: forall G f ds venv1 T x venv0 T0 n0,
+  dcs_has_type G f ds T ->
   stp2 0 true venv1 (open (varF x) T) venv0 (TBind T0) [] n0 ->
   False.
 Proof.
   intros. eapply dcs_tbind_aux. instantiate (1:=n0). eauto. eassumption. eassumption.
 Qed.
 
-Lemma dcs_mem_has_type_stp: forall G G1 G2 ds T x T1 T2,
-  dcs_has_type G ds T ->
+Lemma dcs_mem_has_type_stp: forall G G1 G2 f ds T x T1 T2,
+  dcs_has_type G f ds T ->
   sstpd2 true G1 (open (varF x) T) G2 (TMem (length ds) T1 T2) [] ->
   False.
 Proof.
   intros. remember (length ds) as l. assert (l >= length ds) as A by omega. clear Heql.
   induction H. simpl in H0. destruct H0 as [? H0]. inversion H0.
   destruct (tand_shape (TFun m T0 T3) TS).
-  rewrite H6 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
-  subst. inversion H10.
-  subst. eapply IHdcs_has_type. eexists. eapply H10. simpl in A. omega.
-  rewrite H6 in H4. rewrite H4 in H0. destruct H0 as [? H0]. inversion H0.
+  rewrite H5 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  subst. inversion H9.
+  subst. eapply IHdcs_has_type. eexists. eapply H9. simpl in A. omega.
+  rewrite H5 in H4. rewrite H4 in H0. destruct H0 as [? H0]. inversion H0.
   destruct (tand_shape (TMem m T0 T0) TS).
-  rewrite H5 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
-  subst. inversion H9. subst. simpl in A. omega.
+  rewrite H3 in H2. rewrite H2 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  subst. inversion H7. subst. simpl in A. omega.
   apply IHdcs_has_type. eexists. eassumption. simpl in A. omega.
-  rewrite H5 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  rewrite H3 in H2. rewrite H2 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
   simpl in A. omega.
 Qed.
 
@@ -4563,12 +4555,12 @@ Proof.
     case_eq (le_lt_dec (fresh dcs) m); intros LE E1.
     case_eq (beq_nat l m); intros E2.
     destruct (tand_shape (TFun m T0 T3) TS).
-    rewrite H5 in H3. rewrite H3 in B. destruct B as [? B]. inversion B. inversion H9.
+    rewrite H4 in H3. rewrite H3 in B. destruct B as [? B]. inversion B. inversion H8.
     eapply dcs_mem_has_type_stp in H2. inversion H2. rewrite <- H1. eapply beq_nat_true in E2. rewrite <- E2. eexists. eassumption.
-    rewrite H5 in H3. rewrite H3 in B. destruct B as [? B]. inversion B.
+    rewrite H4 in H3. rewrite H3 in B. destruct B as [? B]. inversion B.
     eapply IHdcs_has_type.  destruct (tand_shape (TFun m T0 T3) TS).
-    rewrite H5 in H3. rewrite H3 in B. destruct B as [? B]. inversion B. inversion H9. eexists. eassumption.
-    rewrite H5 in H3. rewrite H3 in B. destruct B as [? B]. inversion B.
+    rewrite H4 in H3. rewrite H3 in B. destruct B as [? B]. inversion B. inversion H8. eexists. eassumption.
+    rewrite H4 in H3. rewrite H3 in B. destruct B as [? B]. inversion B.
     inversion H2; subst. simpl in LE. omega. simpl in LE. omega. simpl in LE. omega.
     simpl.
     case_eq (le_lt_dec (fresh dcs) m); intros LE E1.
@@ -4576,12 +4568,12 @@ Proof.
     exists T0.
     split. reflexivity.
     destruct (tand_shape (TMem m T0 T0) TS).
-    rewrite H4 in H3. rewrite H3 in B. destruct B as [? B]. inversion B. eapply beq_nat_true in E2. rewrite E2. rewrite E2 in H8. eexists. eassumption.
-    eapply dcs_mem_has_type_stp in H2. inversion H2. rewrite <- H1. eapply beq_nat_true in E2. rewrite <- E2. eexists. unfold open. eassumption.
-    rewrite H4 in H3. rewrite H3 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. apply B.
+    rewrite H1 in H0. rewrite H0 in B. destruct B as [? B]. inversion B. eapply beq_nat_true in E2. rewrite E2. rewrite E2 in H6. eexists. eassumption.
+    eapply dcs_mem_has_type_stp in H2. inversion H2. rewrite <- H. eapply beq_nat_true in E2. rewrite <- E2. eexists. unfold open. eassumption.
+    rewrite H1 in H0. rewrite H0 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. apply B.
     eapply IHdcs_has_type. destruct (tand_shape (TMem m T0 T0) TS).
-    rewrite H4 in H3. rewrite H3 in B. destruct B as [? B]. inversion B. inversion H8. apply beq_nat_false in E2. omega. eexists. eassumption.
-    rewrite H4 in H3. rewrite H3 in B. destruct B as [? B]. inversion B. apply beq_nat_false in E2. omega.
+    rewrite H1 in H0. rewrite H0 in B. destruct B as [? B]. inversion B. inversion H6. apply beq_nat_false in E2. omega. eexists. eassumption.
+    rewrite H1 in H0. rewrite H0 in B. destruct B as [? B]. inversion B. apply beq_nat_false in E2. omega.
     inversion H2; subst. simpl in LE. omega. simpl in LE. omega. simpl in LE. omega.
   }
   destruct A as [TX [A1 A2]].
@@ -6958,33 +6950,33 @@ Proof.
   eapply wf_tp_to_stp2_cycle_aux; eauto.
 Qed.
 
-Lemma dcs_has_type_stp: forall G G1 G2 ds T T1 T2,
-  dcs_has_type G ds T ->
+Lemma dcs_has_type_stp: forall G G1 G2 f ds T T1 T2,
+  dcs_has_type G f ds T ->
   sstpd2 true G1 T G2 (TFun (length ds) T1 T2) [] ->
   False.
 Proof.
   intros. remember (length ds) as l. assert (l >= length ds) as A by omega. clear Heql.
   induction H. simpl in H0. destruct H0 as [? H0]. inversion H0.
   destruct (tand_shape (TFun m T0 T3) TS).
-  rewrite H6 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
-  subst. inversion H10. subst. simpl in A. omega.
+  rewrite H5 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  subst. inversion H9. subst. simpl in A. omega.
   apply IHdcs_has_type. eexists. eassumption. simpl in A. omega.
-  rewrite H6 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  rewrite H5 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
   simpl in A. omega.
   destruct (tand_shape (TMem m T0 T0) TS).
-  rewrite H5 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
-  subst. inversion H9.
+  rewrite H3 in H2. rewrite H2 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  subst. inversion H7.
   apply IHdcs_has_type. eexists. eassumption. simpl in A. omega.
-  rewrite H5 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  rewrite H3 in H2. rewrite H2 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
 Qed.
 
 Lemma invert_abs: forall venv vf l T1 T2 n,
   val_type venv vf (TFun l T1 T2) n ->
   exists env tenv f TF ds x y T3 T4,
-    vf = (vabs env f ds) /\
-    fresh env <= f /\
+    vf = (vobj env f ds) /\
+    fresh env = f /\
     1 + f = x /\
-    index l ds = Some (x, y) /\
+    index l ds = Some (dfun x y) /\
     wf_env env tenv /\
     dcs_has_type ((f, TF)::tenv) ds TF /\
     sstpd2 true env TF env TF [] /\
@@ -6993,16 +6985,14 @@ Lemma invert_abs: forall venv vf l T1 T2 n,
     sstpd2 true env T4 venv T2 [].
 Proof.
   intros. inversion H; repeat ev; try solve by inversion.
-  subst. assert False as A. {
-    eapply dcs_mem_tfun. instantiate (1:=x). eauto. eassumption. eassumption.
-  }
-  inversion A.
   subst.
-  exists venv1. exists tenv0. exists f. exists T. exists ds.
-  assert (exists y T3 T4, index l ds = Some (1 + f, y) /\ has_type ((1+f, T3) :: (f, T) :: tenv0) y T4 /\ sstpd2 true venv1 (TFun l T3 T4) venv0 (TFun l T1 T2) []) as A. {
-    clear H. remember ((f, T)::tenv0) as tenv.
-    assert (fresh tenv = S f) as A. { rewrite Heqtenv. simpl. reflexivity. }
+  exists venv1. exists tenv0. exists (fresh venv1). exists T. exists ds.
+  assert (exists y T3 T4, index l ds = Some (dfun (1 + (fresh venv1))  y) /\ has_type ((1+(fresh venv1), T3) :: ((fresh venv1), T) :: tenv0) y T4 /\ sstpd2 true venv1 (TFun l T3 T4) venv0 (TFun l T1 T2) []) as A. {
+    clear H.
+    unfold id in H2. remember ((fresh venv1, (open (varF (fresh venv1)) T))::tenv0) as tenv.
+    assert (fresh tenv = S (fresh venv1)) as A. { rewrite Heqtenv. simpl. reflexivity. }
     clear Heqtenv.
+
     assert (sstpd2 true venv1 T venv0 (TFun l T1 T2) []) as B. { eexists; eassumption. }
     clear H3.
     induction H1. destruct B as [? B]. inversion B.
