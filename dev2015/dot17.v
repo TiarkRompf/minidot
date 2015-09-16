@@ -443,120 +443,122 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 MAX false G2 T3 G1 T1 GH n1 ->
     stp2 MAX false G1 T2 G2 T4 GH n2 ->
     stp2 m true G1 (TFun l T1 T2) G2 (TFun l T3 T4) GH (S (n1+n2))
-| stp2_mem: forall G1 G2 T1 T2 T3 T4 GH n1 n2,
+| stp2_mem: forall G1 G2 l T1 T2 T3 T4 GH n1 n2,
     stp2 0 false G2 T3 G1 T1 GH n1 ->
     stp2 0 true G1 T2 G2 T4 GH n2 ->
-    stp2 0 true G1 (TMem T1 T2) G2 (TMem T3 T4) GH (S (n1+n2))
+    stp2 0 true G1 (TMem l T1 T2) G2 (TMem l T3 T4) GH (S (n1+n2))
 
-| stp2_mem2: forall m G1 G2 T1 T2 T3 T4 GH n1 n2,
+| stp2_mem2: forall m G1 G2 l T1 T2 T3 T4 GH n1 n2,
     stp2 (S m) false G2 T3 G1 T1 GH n1 ->
     stp2 (S m) false G1 T2 G2 T4 GH n2 ->
-    stp2 (S m) true G1 (TMem T1 T2) G2 (TMem T3 T4) GH (S (n1+n2))
+    stp2 (S m) true G1 (TMem l T1 T2) G2 (TMem l T3 T4) GH (S (n1+n2))
 
 
 (* strong version, with precise/invertible bounds *)
-| stp2_strong_sel1: forall G1 G2 GX TX x T2 GH GX' TX' n1 n2 nv,
-    index x G1 = Some (vty GX TX) ->
-    val_type GX' (vty GX TX) TX' nv -> (* for downgrade *)
-    stp2 0 false GX' TX' G2 (TMem TBot T2) GH n2 -> (* for downgrade *)
+| stp2_strong_sel1: forall G1 G2 GX l ds TX x T2 GH GX' TX' n1 n2 nv,
+    index x G1 = Some (vty GX ds) ->
+    val_type GX' (vty GX ds) TX' nv -> (* for downgrade *)
+    stp2 0 false GX' TX' G2 (TMem l TBot T2) GH n2 -> (* for downgrade *)
+    index l ds = Some TX ->
     closed 1 0 TX ->
-    stp2 0 true ((fresh GX, vty GX TX)::GX) (open (varF (fresh GX)) TX) G2 T2 GH n1 ->
-    stp2 0 true G1 (TSel (varF x)) G2 T2 GH (S (n1+n2))
+    stp2 0 true ((fresh GX, vty GX ds)::GX) (open (varF (fresh GX)) TX) G2 T2 GH n1 ->
+    stp2 0 true G1 (TSel (varF x) l) G2 T2 GH (S (n1+n2))
 
-| stp2_strong_sel2: forall G1 G2 GX TX x T1 GH GX' TX' n1 n2 nv,
-    index x G2 = Some (vty GX TX) ->
-    val_type GX' (vty GX TX) TX' nv -> (* for downgrade *)
-    stp2 0 false GX' TX' G1 (TMem T1 TTop) GH n2 -> (* for downgrade *)
+| stp2_strong_sel2: forall G1 G2 GX l ds TX x T1 GH GX' TX' n1 n2 nv,
+    index x G2 = Some (vty GX ds) ->
+    val_type GX' (vty GX ds) TX' nv -> (* for downgrade *)
+    stp2 0 false GX' TX' G1 (TMem l T1 TTop) GH n2 -> (* for downgrade *)
+    index l ds = Some TX ->
     closed 1 0 TX ->
-    stp2 0 false G1 T1 ((fresh GX, vty GX TX)::GX) (open (varF (fresh GX)) TX) GH n1 ->
-    stp2 0 true G1 T1 G2 (TSel (varF x)) GH (S (n1+n2))
+    stp2 0 false G1 T1 ((fresh GX, vty GX ds)::GX) (open (varF (fresh GX)) TX) GH n1 ->
+    stp2 0 true G1 T1 G2 (TSel (varF x) l) GH (S (n1+n2))
 
-| stp2_strong_selx: forall G1 G2 v x1 x2 GH n1,
+| stp2_strong_selx: forall G1 G2 l v x1 x2 GH n1,
     index x1 G1 = Some v ->
     index x2 G2 = Some v ->
-    stp2 0 true G1 (TSel (varF x1)) G2 (TSel (varF x2)) GH n1
+    stp2 0 true G1 (TSel (varF x1) l) G2 (TSel (varF x2) l) GH n1
 
 
 (* existing object, but imprecise type *)
-| stp2_sel1: forall m G1 G2 GX TX x T2 GH n1 n2 v nv,
+| stp2_sel1: forall m G1 G2 GX l TX x T2 GH n1 n2 v nv,
     index x G1 = Some v ->
     val_type GX v TX nv ->
     closed 0 0 TX ->
-    stp2 (S m) false GX TX G2 (TMem TBot T2) GH n1 ->
+    stp2 (S m) false GX TX G2 (TMem l TBot T2) GH n1 ->
     stp2 (S m) true G2 T2 G2 T2 GH n2 -> (* regularity *)
-    stp2 (S m) true G1 (TSel (varF x)) G2 T2 GH (S (n1+n2))
+    stp2 (S m) true G1 (TSel (varF x) l) G2 T2 GH (S (n1+n2))
 
-| stp2_selb1: forall m G1 G2 GX TX x x' T2 GH n1 n2 v nv,
+| stp2_selb1: forall m G1 G2 GX l TX x x' T2 GH n1 n2 v nv,
     index x G1 = Some v -> (index x' G2 = Some v \/ closed 0 0 T2) ->
     val_type GX v TX nv ->
     closed 0 0 TX ->
-    stp2 (S (S m)) false GX TX G2 (TBind (TMem TBot T2)) [] n1 -> (* Note GH = [] *)
+    stp2 (S (S m)) false GX TX G2 (TBind (TMem l TBot T2)) [] n1 -> (* Note GH = [] *)
     stp2 (S (S m)) true G2 (open (varF x') T2) G2 (open (varF x') T2) GH n2 -> (* regularity *)
-    stp2 (S (S m)) true G1 (TSel (varF x)) G2 (open (varF x') T2) GH (S (n1+n2))
+    stp2 (S (S m)) true G1 (TSel (varF x) l) G2 (open (varF x') T2) GH (S (n1+n2))
 
 
-| stp2_sel2: forall m G1 G2 GX TX x T1 GH n1 n2 v nv,
+| stp2_sel2: forall m G1 G2 GX l TX x T1 GH n1 n2 v nv,
     index x G2 = Some v ->
     val_type GX v TX nv ->
     closed 0 0 TX ->
-    stp2 (S m) false GX TX G1 (TMem T1 TTop) GH n1 ->
+    stp2 (S m) false GX TX G1 (TMem l T1 TTop) GH n1 ->
     stp2 (S m) true G1 T1 G1 T1 GH n2 -> (* regularity *)
-    stp2 (S m) true G1 T1 G2 (TSel (varF x)) GH (S (n1+n2))
+    stp2 (S m) true G1 T1 G2 (TSel (varF x) l) GH (S (n1+n2))
 
-| stp2_selb2: forall m G1 G2 GX TX x x' T1 GH n1 n2 v nv,
+| stp2_selb2: forall m G1 G2 GX l TX x x' T1 GH n1 n2 v nv,
     index x G2 = Some v -> (index x' G1 = Some v \/ closed 0 0 T1) ->
     val_type GX v TX nv ->
     closed 0 0 TX ->
-    stp2 (S (S m)) false GX TX G1 (TBind (TMem T1 TTop)) [] n1 -> (* Note GH = [] *)
+    stp2 (S (S m)) false GX TX G1 (TBind (TMem l T1 TTop)) [] n1 -> (* Note GH = [] *)
     stp2 (S (S m)) true G1 (open (varF x') T1) G1 (open (varF x') T1) GH n2 -> (* regularity *)
-    stp2 (S (S m)) true G1 (open (varF x') T1) G2 (TSel (varF x)) GH (S (n1+n2))
+    stp2 (S (S m)) true G1 (open (varF x') T1) G2 (TSel (varF x) l) GH (S (n1+n2))
 
-| stp2_selx: forall m G1 G2 v x1 x2 GH n1,
+| stp2_selx: forall m G1 G2 l v x1 x2 GH n1,
     index x1 G1 = Some v ->
     index x2 G2 = Some v ->
-    stp2 (S m) true G1 (TSel (varF x1)) G2 (TSel (varF x2)) GH (S n1)
+    stp2 (S m) true G1 (TSel (varF x1) l) G2 (TSel (varF x2) l) GH (S n1)
 
 (* hypothetical object *)
-| stp2_sela1: forall m G1 G2 GX TX x T2 GH n1 n2,
+| stp2_sela1: forall m G1 G2 GX l TX x T2 GH n1 n2,
     indexr x GH = Some (GX, TX) ->
     closed 0 (S x) TX ->
-    stp2 (S m) false GX TX G2 (TMem TBot T2) GH n1 ->
+    stp2 (S m) false GX TX G2 (TMem l TBot T2) GH n1 ->
     stp2 (S m) true G2 T2 G2 T2 GH n2 -> (* regularity *)
-    stp2 (S m) true G1 (TSel (varH x)) G2 T2 GH (S (n1+n2))
+    stp2 (S m) true G1 (TSel (varH x) l) G2 T2 GH (S (n1+n2))
 
-| stp2_selab1: forall m G1 G2 GX TX x T2 T2' GH GU GL n1 n2,
+| stp2_selab1: forall m G1 G2 GX l TX x T2 T2' GH GU GL n1 n2,
     indexr x GH = Some (GX, TX) ->
     closed 0 (S x) TX ->
-    closed 0 0 (TBind (TMem TBot T2)) ->
+    closed 0 0 (TBind (TMem l TBot T2)) ->
     length GL = (S x) ->
     GH = GU ++ GL ->
-    stp2 (S m) false GX TX G2 (TBind (TMem TBot T2)) GL n1 ->
+    stp2 (S m) false GX TX G2 (TBind (TMem l TBot T2)) GL n1 ->
     T2' = (open (varH x) T2) ->
     stp2 (S m) true G2 T2' G2 T2' GH n2 -> (* regularity *)
-    stp2 (S m) true G1 (TSel (varH x)) G2 T2' GH (S (n1+n2))
+    stp2 (S m) true G1 (TSel (varH x) l) G2 T2' GH (S (n1+n2))
 
-| stp2_selab2: forall m G1 G2 GX TX x T1 T1' GH GU GL n1 n2,
+| stp2_selab2: forall m G1 G2 GX l TX x T1 T1' GH GU GL n1 n2,
     indexr x GH = Some (GX, TX) ->
     closed 0 (S x) TX ->
-    closed 0 0 (TBind (TMem T1 TTop)) ->
+    closed 0 0 (TBind (TMem l T1 TTop)) ->
     length GL = (S x) ->
     GH = GU ++ GL ->
-    stp2 (S m) false GX TX G1 (TBind (TMem T1 TTop)) GL n1 ->
+    stp2 (S m) false GX TX G1 (TBind (TMem l T1 TTop)) GL n1 ->
     T1' = (open (varH x) T1) ->
     stp2 (S m) true G1 T1' G1 T1' GH n2 -> (* regularity *)
-    stp2 (S m) true G1 T1' G2 (TSel (varH x)) GH (S (n1+n2))
+    stp2 (S m) true G1 T1' G2 (TSel (varH x) l) GH (S (n1+n2))
 
-| stp2_sela2: forall m G1 G2 GX TX x T1 GH n1 n2,
+| stp2_sela2: forall m G1 G2 GX l TX x T1 GH n1 n2,
     indexr x GH = Some (GX, TX) ->
     closed 0 (S x) TX ->
-    stp2 (S m) false GX TX G1 (TMem T1 TTop) GH n1 ->
+    stp2 (S m) false GX TX G1 (TMem l T1 TTop) GH n1 ->
     stp2 (S m) true G1 T1 G1 T1 GH n2 -> (* regularity *)
-    stp2 (S m) true G1 T1 G2 (TSel (varH x)) GH (S (n1+n2))
+    stp2 (S m) true G1 T1 G2 (TSel (varH x) l) GH (S (n1+n2))
 
 
-| stp2_selax: forall m G1 G2 GX TX x GH n1,
+| stp2_selax: forall m G1 G2 GX l TX x GH n1,
     indexr x GH = Some (GX, TX) ->
-    stp2 (S m) true G1 (TSel (varH x)) G2 (TSel (varH x)) GH (S n1)
+    stp2 (S m) true G1 (TSel (varH x) l) G2 (TSel (varH x) l) GH (S n1)
 
 
 | stp2_all: forall m G1 G2 T1 T2 T3 T4 GH n1 n1' n2,
@@ -612,11 +614,12 @@ with wf_env : venv -> tenv -> Prop :=
     wf_env (cons (n,v) vs) (cons (n,t) ts)
 
 with val_type : venv -> vl -> ty -> nat -> Prop :=
-| v_ty: forall env venv tenv  T1 T1X TE,
-    wf_env venv tenv -> (* T1 wf in tenv ? *)
-    open (varF (fresh venv)) T1 = T1X ->
-    (exists n, stp2 0 true ((fresh venv, vty venv T1)::venv) (TMem T1X T1X) env TE [] n)->
-    val_type env (vty venv T1) TE 1
+| v_ty: forall env venv tenv ds T TX TE,
+    wf_env venv tenv ->
+    open (varF (fresh venv)) T = TX ->
+    dcs_mem_has_type tenv ds TX T ->
+    (exists n, stp2 0 true ((fresh venv, vty venv ds)::venv) TX env TE [] n)->
+    val_type env (vty venv ds) TE 1
 | v_bool: forall venv b TE,
     (exists n, stp2 0 true [] TBool venv TE [] n) ->
     val_type venv (vbool b) TE 1
