@@ -6585,16 +6585,16 @@ Inductive wf_tp: tenv -> tenv -> ty -> Prop :=
     wf_tp G1 GH T1 ->
     wf_tp G1 GH T2 ->
     wf_tp G1 GH (TFun l T1 T2)
-| wf_mem: forall G1 GH T1 T2,
+| wf_mem: forall G1 GH l T1 T2,
     wf_tp G1 GH T1 ->
     wf_tp G1 GH T2 ->
-    wf_tp G1 GH (TMem T1 T2)
-| wf_sel: forall G1 GH TX x,
+    wf_tp G1 GH (TMem l T1 T2)
+| wf_sel: forall G1 GH TX x l,
     index x G1 = Some TX ->
-    wf_tp G1 GH (TSel (varF x))
-| wf_sela: forall G1 GH TX x,
+    wf_tp G1 GH (TSel (varF x) l)
+| wf_sela: forall G1 GH TX x l,
     indexr x GH = Some TX  ->
-    wf_tp G1 GH (TSel (varH x))
+    wf_tp G1 GH (TSel (varH x) l)
 | wf_all: forall G1 GH T1 T2 x,
     wf_tp G1 GH T1 ->
     x = length GH ->
@@ -6628,13 +6628,13 @@ Proof.
   intros. apply (proj1 (stp_to_wf_tp_aux G GH T T H)).
 Qed.
 
-Lemma wf_tp_to_stp2_cycle_aux: forall T v G GH,
-  wf_tp ((fresh G, TMem T T) :: G) GH T ->
+Lemma wf_tp_to_stp2_cycle_aux: forall T0 T v G GH,
+  wf_tp ((fresh G, T0) :: G) GH T ->
   forall GX GY, wf_env GX G -> wf_envh ((fresh G, v)::GX) GY GH ->
   stpd2 true ((fresh G, v) :: GX) T
              ((fresh G, v) :: GX) T GY.
 Proof.
-  intros T t G GH ST. remember (TMem T T) as T0. clear HeqT0.
+  intros T0 T t G GH ST.
   dependent induction ST; intros GX GY WX WY.
   - Case "top". eapply stpd2_topx.
   - Case "bot". eapply stpd2_botx.
@@ -6680,11 +6680,11 @@ Proof.
     eapply stpd2_and12. eapply IHST2; eauto. eapply IHST1; eauto.
 Qed.
 
-Lemma stp_to_stp2_cycle: forall venv env T t,
+Lemma stp_to_stp2_cycle: forall venv env T0 T t l,
   wf_env venv env ->
-  stp ((fresh env, TMem T T) :: env) [] T T->
-  stpd2 false ((fresh env, vty venv t) :: venv) (TMem T T)
-              ((fresh env, vty venv t) :: venv) (TMem T T) [].
+  stp ((fresh env, T0) :: env) [] T T->
+  stpd2 false ((fresh env, vty venv t) :: venv) (TMem l T T)
+              ((fresh env, vty venv t) :: venv) (TMem l T T) [].
 Proof.
   intros. apply stpd2_wrapf.
   eapply stp_to_wf_tp in H0.
@@ -6720,7 +6720,9 @@ Lemma invert_abs: forall venv vf l T1 T2 n,
     sstpd2 true venv T1 env T3 [] /\
     sstpd2 true env T4 venv T2 [].
 Proof.
-  intros. inversion H; repeat ev; try solve by inversion. subst.
+  intros. inversion H; repeat ev; try solve by inversion.
+  admit.
+  subst.
   exists venv1. exists tenv0. exists f. exists T. exists ds.
   assert (exists y T3 T4, index l ds = Some (1 + f, y) /\ has_type ((1+f, T3) :: (f, T) :: tenv0) y T4 /\ sstpd2 true venv1 (TFun l T3 T4) venv0 (TFun l T1 T2) []) as A. {
     clear H. remember ((f, T)::tenv0) as tenv.
