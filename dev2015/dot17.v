@@ -2329,13 +2329,13 @@ Proof.
     eapply stp2_strong_sel1. eapply index_extend_mult. apply H.
     assumption. eassumption.
     apply IHstp2_1. assumption. apply venv_ext_refl. assumption.
-    assumption.
+    eassumption. assumption.
     apply IHstp2_2. assumption. apply venv_ext_refl. assumption.
   - Case "strong_sel2".
     eapply stp2_strong_sel2. eapply index_extend_mult. apply H.
     assumption. eassumption.
     apply IHstp2_1. assumption. apply venv_ext_refl. assumption.
-    assumption.
+    eassumption. assumption.
     apply IHstp2_2. assumption. assumption. apply venv_ext_refl.
   - Case "strong_selx".
     eapply stp2_strong_selx.
@@ -2534,11 +2534,13 @@ Proof.
   assert (splice (length GH) T4 = T4) as A4. {
     eapply closed_splice_idem. apply H1. omega.
   }
+  (*
   assert (TSel (varH (S (length GH))) = splice (length GH) (TSel (varH (length GH)))) as AH. {
     simpl. case_eq (le_lt_dec (length GH) (length GH)); intros E LE.
     simpl. rewrite NPeano.Nat.add_1_r. reflexivity.
     clear LE. apply lt_irrefl in E. inversion E.
   }
+  *)
   assert (closed 0 (length GH) T1). eapply stp2_closed2. eauto.
   assert (splice (length GH) T1 = T1) as A1. {
     eapply closed_splice_idem. eauto. omega.
