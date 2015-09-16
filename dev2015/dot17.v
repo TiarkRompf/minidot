@@ -4371,11 +4371,16 @@ Lemma invert_typ: forall venv vx l T1 T2 n,
     sstpd2 true ((fresh GX,vty GX ds)::GX) (open (varF (fresh GX)) TX) venv T2 [].
 Proof.
   intros. inversion H; ev; try solve by inversion.
-  (*
-  inversion H1.
-  subst. inversion H2. subst. eexists. eexists. split. eauto. split. eexists. eauto. eexists. eauto.
-  *)
-  admit.
+  subst.
+  exists venv1. exists ds.
+  assert (exists TX, index l ds = Some TX /\ sstpd2 true ((fresh venv1, vty venv1 ds) :: venv1) (TMem l (open (varF (fresh venv1)) TX) (open (varF (fresh venv1)) TX)) venv0 (TMem l T1 T2) []) as A. admit.
+  destruct A as [TX [A1 A2]].
+  exists TX.
+  split. reflexivity.
+  split. apply A1.
+  split.
+  destruct A2 as [? A2]. inversion A2. subst. eexists. eassumption.
+  destruct A2 as [? A2]. inversion A2. subst. eexists. eassumption.
   
   subst. assert False as A. {
     eapply dcs_tmem. instantiate (1:=x). eauto. eassumption. eassumption.
