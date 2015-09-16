@@ -35,7 +35,7 @@ Inductive tm : Type :=
   | ttrue  : tm
   | tfalse : tm
   | tvar   : id -> tm
-  | ttyp   : id -> ty -> tm
+  | ttyp   : list (id * ty) -> tm
   | tapp   : tm -> id -> tm -> tm (* \o.m(x) *)
   | tabs   : id -> list (id * (id * tm)) -> tm (* \o {val m = \x.y} *)
   | ttapp  : tm -> tm -> tm (* f[X] *)
@@ -348,12 +348,12 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env (tvar x) (TBind T1) ->
            stp env [] (open (varF x) T1) (open (varF x) T1) ->
            has_type env (tvar x) (open (varF x) T1)
-| t_typ: forall env x T1 T1X,
+| t_typ: forall env x T TX ds,
            fresh env = x ->
-           open (varF x) T1 = T1X ->
-           stp ((x,TMem T1X T1X)::env) [] T1X T1X ->
-           stp env [] (TBind (TMem T1 T1)) (TBind (TMem T1 T1)) ->
-           has_type env (ttyp T1) (TBind (TMem T1 T1))
+           open (varF x) T = TX ->
+           dcs_mem_has_type env ds TX T ->
+           stp env [] (TBind T) (TBind T) ->
+           has_type env (ttyp ds) (TBind T)
 | t_app: forall env f l x T1 T2,
            has_type env f (TFun l T1 T2) ->
            has_type env x T1 ->
@@ -401,17 +401,17 @@ with dcs_has_type: tenv -> list (id * (id * tm)) -> ty -> Prop :=
             stp env [] (TFun m T1 T2) (TFun m T1 T2) ->
             dcs_has_type env ((m, (x, y))::dcs) T
 
-with dcs_mem_has_type: tenv -> list (id * ty) -> ty -> Prop :=
-| dt_mem_nil: forall env,
-                dcs_mem_has_type env nil TTop
-| dt_fun: forall env x T1 T1X dcs TS T,
-            has_type ((x,T1)::env) y T2 ->
-            dcs_mem_has_type env dcs TS ->
+with dcs_mem_has_type: tenv -> list (id * ty) -> ty -> ty -> Prop :=
+| dt_mem_nil: forall env TX,
+                dcs_mem_has_type env nil TX TTop
+| dt_mem: forall env x m T1 T1X dcs TS TX T,
+            dcs_mem_has_type env dcs TX TS ->
             fresh env = x ->
+            open (varF x) T1 = T1X ->
             m = length dcs ->
             T = tand (TMem m T1 T1) TS ->
-            stp env [] (T m T1 T2) (TFun m T1 T2) ->
-            dcs_has_type env ((m, (x, y))::dcs) T
+            stp ((x,TX)::env) [] T1X T1X ->
+            dcs_mem_has_type env ((m, T1)::dcs) TX T
 .
 
 
