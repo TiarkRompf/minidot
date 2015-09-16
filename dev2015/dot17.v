@@ -4302,6 +4302,31 @@ Proof.
   intros. eapply dcs_tbind_aux. instantiate (1:=n0). eauto. eassumption. eassumption.
 Qed.
 
+Lemma dcs_mem_tbind_aux: forall n, forall G ds venv1 TX T venv0 T0 n0,
+  n0 <= n ->
+  dcs_mem_has_type G ds TX T ->
+  stp2 0 true venv1 T venv0 (TBind T0) [] n0 ->
+  False.
+Proof.
+  intros n. induction n.
+  intros. inversion H1; omega.
+  intros. eapply dcs_mem_has_type_shape in H0.
+  destruct H0. subst. inversion H1.
+  destruct H0.
+  destruct H0 as [l [T1' H0]]. subst. inversion H1.
+  destruct H0 as [l [T1' [ds' [T' [H0 HR]]]]]. subst. inversion H1.
+  subst. inversion H4.
+  subst. eapply IHn in HR. apply HR. instantiate (1:=n1). omega. eassumption.
+Qed.
+
+Lemma dcs_mem_tbind: forall G ds venv1 TX T venv0 T0 n0,
+  dcs_mem_has_type G ds TX T ->
+  stp2 0 true venv1 T venv0 (TBind T0) [] n0 ->
+  False.
+Proof.
+  intros. eapply dcs_mem_tbind_aux. instantiate (1:=n0). eauto. eassumption. eassumption.
+Qed.
+
 Lemma dcs_tmem: forall n, forall G ds venv1 T venv0 l T1 T2 n0,
   n0 <= n ->
   dcs_has_type G ds T ->
