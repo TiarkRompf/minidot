@@ -4516,28 +4516,33 @@ Proof.
   intros. eapply dcs_tbind_aux. instantiate (1:=n0). eauto. eassumption. eassumption.
 Qed.
 
-Lemma dcs_mem_has_type_stp: forall G G1 G2 ds T TX x T1 T2,
-  dcs_mem_has_type G ds TX T ->
+Lemma dcs_mem_has_type_stp: forall G G1 G2 ds T x T1 T2,
+  dcs_has_type G ds T ->
   sstpd2 true G1 (open (varF x) T) G2 (TMem (length ds) T1 T2) [] ->
   False.
 Proof.
   intros. remember (length ds) as l. assert (l >= length ds) as A by omega. clear Heql.
   induction H. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  destruct (tand_shape (TFun m T0 T3) TS).
+  rewrite H6 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  subst. inversion H10.
+  subst. eapply IHdcs_has_type. eexists. eapply H10. simpl in A. omega.
+  rewrite H6 in H4. rewrite H4 in H0. destruct H0 as [? H0]. inversion H0.
   destruct (tand_shape (TMem m T0 T0) TS).
-  rewrite H6 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
-  subst. inversion H10. subst. simpl in A. omega.
-  apply IHdcs_mem_has_type. eexists. eassumption. simpl in A. omega.
-  rewrite H6 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  rewrite H5 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  subst. inversion H9. subst. simpl in A. omega.
+  apply IHdcs_has_type. eexists. eassumption. simpl in A. omega.
+  rewrite H5 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
   simpl in A. omega.
 Qed.
 
 Lemma invert_typ: forall venv vx l T1 T2 n,
   val_type venv vx (TMem l T1 T2) n ->
-  exists GX ds TX,
-    vx = (vty GX ds) /\
-    index l ds = Some TX /\
-    sstpd2 false venv T1 ((fresh GX,vty GX ds)::GX) (open (varF (fresh GX)) TX) [] /\
-    sstpd2 true ((fresh GX,vty GX ds)::GX) (open (varF (fresh GX)) TX) venv T2 [].
+  exists GX f ds TX,
+    vx = (vobj GX f ds) /\
+    index l ds = Some (dmem TX) /\
+    sstpd2 false venv T1 ((f,vobj GX f ds)::GX) (open (varF f) TX) [] /\
+    sstpd2 true ((f,vobj GX f ds)::GX) (open (varF f) TX) venv T2 [].
 Proof.
   intros. inversion H; ev; try solve by inversion.
   subst.
