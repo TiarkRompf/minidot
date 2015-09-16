@@ -4344,6 +4344,23 @@ Proof.
   subst. eapply IHn in HR. apply HR. instantiate (1:=n1). omega. eassumption.
 Qed.
 
+Lemma dcs_mem_tfun: forall n, forall G ds venv1 TX T venv0 l T1 T2 n0,
+  n0 <= n ->
+  dcs_mem_has_type G ds TX T ->
+  stp2 0 true venv1 T venv0 (TFun l T1 T2) [] n0 ->
+  False.
+Proof.
+  intros n. induction n.
+  intros. inversion H1; omega.
+  intros. eapply dcs_mem_has_type_shape in H0.
+  destruct H0. subst. inversion H1.
+  destruct H0.
+  destruct H0 as [l0 [T1' H0]]. subst. inversion H1.
+  destruct H0 as [l0 [T1' [ds' [T' [H0 HR]]]]]. subst. inversion H1.
+  subst. inversion H4.
+  subst. eapply IHn in HR. apply HR. instantiate (1:=n1). omega. eassumption.
+Qed.
+
 Lemma invert_typ: forall venv vx l T1 T2 n,
   val_type venv vx (TMem l T1 T2) n ->
   exists GX ds TX,
