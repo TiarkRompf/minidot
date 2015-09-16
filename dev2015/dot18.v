@@ -7275,11 +7275,32 @@ Proof.
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
 
-  - Case "Abs".
+  - Case "Obj".
     remember (tobj i l) as xe. induction H0; inversion Heqxe; subst.
-    + eapply not_stuck. eapply v_obj; eauto.
-      subst. eauto. rewrite (wf_fresh venv0 env H1). eauto.
-      eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
+    + remember (open (varF i) T) as TX.
+      remember ((i,vobj venv0 i l)::venv0) as venv1.
+      assert (index i venv1 = Some (vobj venv0 i l)). subst. eapply index_hit2. rewrite wf_fresh with (ts := env). eauto. eauto. eauto. eauto.
+      assert ((open (varF (fresh venv0)) T) = TX). rewrite wf_fresh with (ts:=env). rewrite H8. eauto. eauto.
+      assert (val_type venv1 (vobj venv0 i l) TX 1). eapply v_obj. eauto. eauto.
+      rewrite <- H8. eapply H4.
+
+      rewrite wf_fresh with (ts:=env). assumption. eauto.
+
+      (* we have everything as stp and 'just' need to convert to stp2. however we're
+      working with an env that has a self binding, and the wf_env evidence needs
+      the very val_tp what we're trying to construct *)
+
+      eapply stpd2_upgrade. subst.
+      rewrite <- wf_fresh with (ts:=env) (vs:=venv0).
+      unfold id.
+      rewrite wf_fresh with (ts:=env) (vs:=venv0) at 1.
+      rewrite wf_fresh with (ts:=env) (vs:=venv0) at 3.
+      eapply stp_to_stp2_cycle. eauto.
+      rewrite wf_fresh with (ts:=env) (vs:=venv0).
+      eauto. eauto. eauto. eauto. eauto.
+
+      eapply not_stuck. eapply v_pack. eapply H0. eapply H3. instantiate (1:=T). simpl. subst TX. eauto. subst venv1. eapply sstpd2_extend1. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. rewrite wf_fresh with (ts:=env). subst i. eauto. eauto.
+
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
   - Case "TApp".
