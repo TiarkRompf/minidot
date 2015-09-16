@@ -350,7 +350,7 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            stp env [] (open (varF x) T1) (open (varF x) T1) ->
            has_type env (tvar x) (open (varF x) T1)
 | t_obj: forall env f ds T TX,
-           fresh env <= f ->
+           fresh env = f ->
            open (varF f) T = TX ->
            dcs_has_type ((f, TX)::env) ds T ->
            stp ((f, TX)::env) [] TX TX ->
@@ -612,7 +612,7 @@ with val_type : venv -> vl -> ty -> nat -> Prop :=
     wf_env venv tenv ->
     open (varF f) T = TX ->
     dcs_has_type ((f,TX)::tenv) ds T ->
-    fresh venv <= f ->
+    fresh venv = f ->
     (exists n, stp2 0 true ((f, vobj venv f ds)::venv) TX env TE [] n)->
     val_type env (vobj venv f ds) TE 1
 | v_tabs: forall env venv tenv x y T1 T2 TE,
@@ -1010,21 +1010,125 @@ Qed.
 
 Definition brandUnbrand :=
   TAll (TBind (TMem 0 TBot TTop))
-       (TFun 0
-          (TFun 0 TBool (TSel (varB 0) 0)) (* brand *)
-          (TFun 0
-             (TFun 0 (TSel (varB 0) 0) TBool) (* unbrand *)
-             TBool)).
+       (TBind (TFun 0
+                    (TBind (TAnd
+                              (TFun 1 TBool (TSel (varB 2) 0))  (* brand *)
+                              (TFun 0 (TSel (varB 2) 0) TBool) (* unbrand *)
+                           )
+                    )
+                    TBool)).
 
 Example ex3:
   has_type []
            (ttabs 0 (TBind (TMem 0 TBot TTop))
-                  (tabs 1 [(0, (2,
-                        (tabs 3 [(0, (4,
-                              (tapp (tvar 4) 0 (tapp (tvar 2) 0 ttrue))))])))]))
+                  (tobj 1 [(0, dfun 2
+                  (tapp (tvar 2) 0 (tapp (tvar 2) 1 ttrue)))]))
            brandUnbrand.
 Proof.
+  eapply t_tabs.
+  unfold open. simpl. eapply t_obj.
+  simpl. reflexivity.
+  unfold open. simpl. reflexivity.
+  eapply dt_fun.
+  instantiate (2:=(TBind (TAnd (TFun 1 TBool (TSel (varF 0) 0)) (TFun 0 (TSel (varF 0) 0) TBool)))). instantiate (1:=TBool).
+  eapply t_app.
+  instantiate (1:=(TSel (varF 0) 0)).
+  assert (open (varF 2) (TFun 0 (TSel (varF 0) 0) TBool)=TFun 0 (TSel (varF 0) 0) TBool) as A. { compute. reflexivity. }
+  rewrite <- A at 3. eapply t_var_unpack.
+  eapply t_sub. eapply t_var. compute. reflexivity.
+  eapply stp_bindx. simpl. reflexivity. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  eapply stp_bindx. simpl. reflexivity. crush2. crush2.
+  unfold open. simpl.
   crush2.
+  unfold open. simpl.
+  eapply stp_and12; crush2.
+  unfold open. simpl. crush2.
+  eapply t_app.
+  instantiate (1:=TBool).
+  assert (open (varF 2) (TFun 1 TBool (TSel (varF 0) 0))=TFun 1 TBool (TSel (varF 0) 0) ) as A. { compute. reflexivity. }
+  rewrite <- A at 3. eapply t_var_unpack.
+  eapply t_sub. eapply t_var. compute. reflexivity.
+  eapply stp_bindx. simpl. reflexivity. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  eapply stp_bindx. simpl. reflexivity. crush2. crush2.
+  unfold open. simpl.
+  crush2.
+  unfold open. simpl.
+  eapply stp_and11; crush2.
+  unfold open. simpl. crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  eapply stp_fun.
+  eapply stp_bindx. simpl. reflexivity. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2.
+  eapply stp_fun.
+  eapply stp_bindx. simpl. reflexivity. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2.
+  eapply stp_bindx. simpl. reflexivity. crush2. crush2.
+  eapply stp_fun.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2.
+  unfold open. simpl.
+  eapply stp_fun.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2.
+  eapply stp_all.
+  crush2. simpl. reflexivity. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_fun. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2.
+  unfold open. simpl.
+  eapply stp_fun. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_fun. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2.
+  unfold open. simpl.
+  eapply stp_fun. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2.
+  simpl. reflexivity.
 Qed.
 
 
