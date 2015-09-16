@@ -6984,11 +6984,11 @@ Lemma invert_abs: forall venv vf l T1 T2 n,
     sstpd2 true (((fresh env), vobj env (fresh env) ds)::env) (open (varF (fresh env)) T4) venv T2 [].
 Proof.
   intros. inversion H; repeat ev; try solve by inversion.
-
-  (*
   subst.
-  exists venv1. exists tenv0. exists (fresh venv1). exists T. exists ds.
-  assert (exists y T3 T4, index l ds = Some (dfun (1 + (fresh venv1))  y) /\ has_type ((1+(fresh venv1), T3) :: ((fresh venv1), T) :: tenv0) y T4 /\ sstpd2 true venv1 (TFun l T3 T4) venv0 (TFun l T1 T2) []) as A. {
+  exists venv1. exists tenv0. exists T. exists ds.
+  assert (exists y T3 T4, index l ds = Some (dfun (1 + (fresh venv1))  y) /\ has_type ((1+(fresh venv1), (open (varF (fresh venv1)) T3)) :: ((fresh venv1), (open (varF (fresh venv1)) T)) :: tenv0) y (open (varF (fresh venv1)) T4) /\ sstpd2 true (((fresh venv1), vobj venv1 (fresh venv1) ds)::venv1) (open (varF (fresh venv1)) (TFun l T3 T4)) venv0 (TFun l T1 T2) []) as A. {
+    admit.
+    (*
     clear H.
     unfold id in H2. remember ((fresh venv1, (open (varF (fresh venv1)) T))::tenv0) as tenv.
     assert (fresh tenv = S (fresh venv1)) as A. { rewrite Heqtenv. simpl. reflexivity. }
@@ -7011,10 +7011,11 @@ Proof.
     rewrite H7 in H5. rewrite H5 in B. destruct B as [? B]. inversion B. inversion H11. apply beq_nat_false in E2. omega. eexists. eassumption.
     rewrite H7 in H5. rewrite H5 in B. destruct B as [? B]. inversion B. apply beq_nat_false in E2. omega.
     inversion H1; subst. simpl in LE. omega. simpl in LE. omega.
+    *)
   }
   destruct A as [y [T3 [T4 [A1 [A2 A3]]]]].
-  exists (1 + f). exists y. exists T3. exists T4.
-  split. reflexivity. split. assumption. split. reflexivity.
+  exists (1 + (fresh venv1)). exists y. exists T3. exists T4.
+  split. reflexivity. split. reflexivity.
   split. apply A1.
   split. assumption. split. assumption.
   split. eapply sstpd2_reg1. eexists. eassumption.
@@ -7022,8 +7023,6 @@ Proof.
   destruct A3 as [? A3]. inversion A3. subst. split.
   eapply stpd2_upgrade. eexists. eassumption.
   eapply stpd2_upgrade. eexists. eassumption.
-   *)
-  admit.
 Qed.
 
 (*
