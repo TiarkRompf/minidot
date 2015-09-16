@@ -4302,10 +4302,10 @@ Proof.
   intros. eapply dcs_tbind_aux. instantiate (1:=n0). eauto. eassumption. eassumption.
 Qed.
 
-Lemma dcs_mem_tbind_aux: forall n, forall G ds venv1 TX T venv0 T0 n0,
+Lemma dcs_mem_tbind_aux: forall n, forall G ds venv1 TX T x venv0 T0 n0,
   n0 <= n ->
   dcs_mem_has_type G ds TX T ->
-  stp2 0 true venv1 T venv0 (TBind T0) [] n0 ->
+  stp2 0 true venv1 (open (varF x) T) venv0 (TBind T0) [] n0 ->
   False.
 Proof.
   intros n. induction n.
@@ -4319,9 +4319,9 @@ Proof.
   subst. eapply IHn in HR. apply HR. instantiate (1:=n1). omega. eassumption.
 Qed.
 
-Lemma dcs_mem_tbind: forall G ds venv1 TX T venv0 T0 n0,
+Lemma dcs_mem_tbind: forall G ds venv1 TX T x venv0 T0 n0,
   dcs_mem_has_type G ds TX T ->
-  stp2 0 true venv1 T venv0 (TBind T0) [] n0 ->
+  stp2 0 true venv1 (open (varF x) T) venv0 (TBind T0) [] n0 ->
   False.
 Proof.
   intros. eapply dcs_mem_tbind_aux. instantiate (1:=n0). eauto. eassumption. eassumption.
@@ -4344,10 +4344,10 @@ Proof.
   subst. eapply IHn in HR. apply HR. instantiate (1:=n1). omega. eassumption.
 Qed.
 
-Lemma dcs_mem_tfun: forall n, forall G ds venv1 TX T venv0 l T1 T2 n0,
+Lemma dcs_mem_tfun: forall n, forall G ds venv1 TX T x venv0 l T1 T2 n0,
   n0 <= n ->
   dcs_mem_has_type G ds TX T ->
-  stp2 0 true venv1 T venv0 (TFun l T1 T2) [] n0 ->
+  stp2 0 true venv1 (open (varF x) T) venv0 (TFun l T1 T2) [] n0 ->
   False.
 Proof.
   intros n. induction n.
@@ -5453,7 +5453,7 @@ Proof.
 
         assert (val_type G2 x0 (TBind (TMem l TBot T0)) (S ni)) as VSB. eapply valtp_widen. eapply VS. eexists. eapply SBind0.
         inversion VSB; subst; ev.
-        admit.
+        eapply dcs_mem_tbind in H17. inversion H17. eassumption.
         inversion H14.
         eapply dcs_tbind in H16. inversion H16. eassumption.
         inversion H14.
@@ -5704,7 +5704,7 @@ Proof.
 
         assert (val_type G1 x0 (TBind (TMem l T0 TTop)) (S ni)) as VSB. eapply valtp_widen. eapply VS. eexists. eapply SBind0.
         inversion VSB; subst; ev.
-        admit.
+        eapply dcs_mem_tbind in H17. inversion H17. eassumption.
         inversion H14.
         eapply dcs_tbind in H16. inversion H16. eassumption.
         inversion H14.
@@ -6202,7 +6202,7 @@ Proof.
     remember H4 as Hv. clear HeqHv.
     (* now invert base on TBind knowledge -- TODO: helper lemma*)
     inversion H4; ev. subst.
-    admit. (*inversion H9. subst.*)
+    eapply dcs_mem_tbind in H9. inversion H9. eassumption.
     inversion H7. subst.
     eapply dcs_tbind in H8. inversion H8. eassumption.
     inversion H10. (* 1 case left *)
@@ -6285,7 +6285,7 @@ Proof.
     subst.
     (* now invert base on TBind knowledge -- TODO: helper lemma*)
     inversion H4; ev. subst.
-    admit. (*inversion H9. subst.*)
+    eapply dcs_mem_tbind in H9. inversion H9. eassumption.
     inversion H1. subst.
     eapply dcs_tbind in H8. inversion H8. eassumption.
     inversion H10. subst.
@@ -6781,7 +6781,10 @@ Lemma invert_abs: forall venv vf l T1 T2 n,
     sstpd2 true env T4 venv T2 [].
 Proof.
   intros. inversion H; repeat ev; try solve by inversion.
-  admit.
+  subst. assert False as A. {
+    eapply dcs_mem_tfun. instantiate (1:=x). eauto. eassumption. eassumption.
+  }
+  inversion A.
   subst.
   exists venv1. exists tenv0. exists f. exists T. exists ds.
   assert (exists y T3 T4, index l ds = Some (1 + f, y) /\ has_type ((1+f, T3) :: (f, T) :: tenv0) y T4 /\ sstpd2 true venv1 (TFun l T3 T4) venv0 (TFun l T1 T2) []) as A. {
