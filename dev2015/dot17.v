@@ -4259,6 +4259,24 @@ Proof.
       eassumption.
 Qed.
 
+Lemma dcs_mem_has_type_shape: forall G ds TX T,
+  dcs_mem_has_type G ds TX T ->
+  T = TTop \/ (exists l T1, T = TMem l T1 T1) \/
+  (exists l T1 ds' T', T = TAnd (TMem l T1 T1) T' /\
+   dcs_mem_has_type G ds' TX T').
+Proof.
+  intros. induction H.
+  - left. reflexivity.
+  - destruct IHdcs_mem_has_type; subst.
+    + right. left. eexists. eexists.
+      simpl. reflexivity.
+    + right. destruct H5; repeat ev.
+      * right. eexists. eexists. eexists. eexists. split.
+        rewrite H0. simpl. reflexivity. eassumption.
+      * right. eexists. eexists. eexists. eexists. split.
+        rewrite H0. simpl. reflexivity. eassumption.
+Qed.
+
 Lemma dcs_tbind_aux: forall n, forall G ds venv1 T venv0 T0 n0,
   n0 <= n ->
   dcs_has_type G ds T ->
