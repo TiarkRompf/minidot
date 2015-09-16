@@ -7036,6 +7036,7 @@ Proof.
       assert (res_type venv0 (index i venv0) (TBind T1)). eapply IHhas_type; eauto. eapply has_type_wf; eauto.
       inversion H3. subst.
       inversion H7; subst; ev; try solve by inversion.
+      eapply dcs_mem_tbind in H9. inversion H9. eassumption.
       eapply dcs_tbind in H8. inversion H8. eassumption.
       eapply not_stuck. inversion H9. subst.
 
