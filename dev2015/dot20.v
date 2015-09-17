@@ -953,31 +953,84 @@ Qed.
 (* define brand / unbrand client function *)
 
 Definition brandUnbrand :=
-  TAll (TBind (TMem 0 TBot TTop))
-       (TBind (TFun 0
+  TAll 0
+       (TBind (TMem 0 TBot TTop))
+       (TBind (TAll 0
                     (TBind (TAnd
-                              (TFun 1 TBool (TSel (varB 2) 0))  (* brand *)
-                              (TFun 0 (TSel (varB 2) 0) TBool) (* unbrand *)
+                              (TAll 1 TBool (TSel (varB 3) 0))  (* brand *)
+                              (TAll 0 (TSel (varB 2) 0) TBool) (* unbrand *)
                            )
                     )
                     TBool)).
 
+Example ex3a:
+  stp [] [] brandUnbrand brandUnbrand.
+Proof.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+Qed.
+
 Example ex3:
   has_type []
-           (ttabs 0 (TBind (TMem 0 TBot TTop))
-                  (tobj 1 [(0, dfun 2
-                  (tapp (tvar 2) 0 (tapp (tvar 2) 1 ttrue)))]))
+           (tlet 0
+                 (tobj 0 [(0, dfun 1
+                  (tobj 2 [(0, dfun 3
+                  (tapp (tvar 3) 0 (tapp (tvar 3) 1 ttrue)))]))])
+                 (tvar 0))
            brandUnbrand.
 Proof.
-  eapply t_tabs.
+  apply t_let with (Tx:=(TBind brandUnbrand)).
+  apply t_obj with (TX:=brandUnbrand).
+  eauto. compute. reflexivity.
+  eapply dt_fun with (T1:=TBind (TMem 0 TBot TTop))
+                     (T2:=       (TBind (TAll 0
+                    (TBind (TAnd
+                              (TAll 1 TBool (TSel (varB 3) 0))  (* brand *)
+                              (TAll 0 (TSel (varB 2) 0) TBool) (* unbrand *)
+                           )
+                    )
+                    TBool))).
   unfold open. simpl. eapply t_obj.
   simpl. reflexivity.
   unfold open. simpl. reflexivity.
   eapply dt_fun.
-  instantiate (2:=(TBind (TAnd (TFun 1 TBool (TSel (varF 0) 0)) (TFun 0 (TSel (varF 0) 0) TBool)))). instantiate (1:=TBool).
+  instantiate (2:=(TBind (TAnd (TAll 1 TBool (TSel (varF 0) 0)) (TAll 0 (TSel (varF 0) 0) TBool)))). instantiate (1:=TBool).
   eapply t_app.
   instantiate (1:=(TSel (varF 0) 0)).
-  assert (open (varF 2) (TFun 0 (TSel (varF 0) 0) TBool)=TFun 0 (TSel (varF 0) 0) TBool) as A. { compute. reflexivity. }
+  assert (open (varF 3) (TAll 0 (TSel (varF 0) 0) TBool)=TAll 0 (TSel (varF 0) 0) TBool) as A. { compute. reflexivity. }
   unfold open. simpl.
   rewrite <- A at 3. eapply t_var_unpack.
   eapply t_sub. eapply t_var. compute. reflexivity.
@@ -994,7 +1047,7 @@ Proof.
   unfold open. simpl. crush2.
   eapply t_app.
   instantiate (1:=TBool).
-  assert (open (varF 2) (TFun 1 TBool (TSel (varF 0) 0))=TFun 1 TBool (TSel (varF 0) 0) ) as A. { compute. reflexivity. }
+  assert (open (varF 3) (TAll 1 TBool (TSel (varF 0) 0))=TAll 1 TBool (TSel (varF 0) 0) ) as A. { compute. reflexivity. }
   rewrite <- A at 3. eapply t_var_unpack.
   eapply t_sub. eapply t_var. compute. reflexivity.
   eapply stp_bindx. simpl. reflexivity. crush2. crush2.
@@ -1008,66 +1061,247 @@ Proof.
   unfold open. simpl.
   eapply stp_and11; crush2.
   unfold open. simpl. crush2.
+  crush2. crush2. crush2. crush2. crush2. crush2. crush2.
+  eapply stp_all.
+  eapply stp_bindx. simpl. reflexivity. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
   crush2. crush2. crush2. crush2. crush2.
-  eapply stp_fun.
+  eapply stp_bindx. simpl. reflexivity. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. reflexivity. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all.
   eapply stp_bindx. simpl. reflexivity. crush2. crush2.
   unfold open. simpl.
   eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
   unfold open. simpl.
   eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
-  crush2.
-  eapply stp_bindx. simpl. reflexivity. crush2. crush2.
-  unfold open. simpl.
-  eapply stp_fun. eapply stp_bindx. simpl. reflexivity. crush2. crush2.
-  unfold open. simpl.
-  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
-  unfold open. simpl.
-  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
-  crush2.
-  unfold open. simpl.
-  eapply stp_fun.
-  eapply stp_bindx. simpl. reflexivity. crush2. crush2.
-  unfold open. simpl.
-  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
-  unfold open. simpl.
-  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
-  crush2.
-  unfold open. simpl.
+  crush2. crush2. crush2. crush2. crush2.
+  eapply dt_nil. crush2. crush2. crush2.
   eapply stp_all.
   crush2. simpl. reflexivity. crush2. crush2.
   unfold open. simpl.
   eapply stp_bindx. simpl. eauto. crush2. crush2.
   unfold open. simpl.
-  eapply stp_fun. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
   unfold open. simpl.
   eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
   unfold open. simpl.
   eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
-  crush2.
+  crush2. crush2. crush2. crush2. crush2.
   unfold open. simpl.
-  eapply stp_fun. eapply stp_bindx. simpl. eauto. crush2. crush2.
-  unfold open. simpl.
-  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
   unfold open. simpl.
   eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
-  crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
   unfold open. simpl.
   eapply stp_bindx. simpl. eauto. crush2. crush2.
   unfold open. simpl.
-  eapply stp_fun. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
   unfold open. simpl.
   eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
   unfold open. simpl.
   eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
   crush2.
+  assert (open (varF 0) brandUnbrand=brandUnbrand) as A. { compute. reflexivity. }
+  rewrite <- A at 2.
+  eapply t_var_unpack. eapply t_var. simpl. reflexivity.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
   unfold open. simpl.
-  eapply stp_fun. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
   unfold open. simpl.
   eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
   unfold open. simpl.
   eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
   crush2.
-  simpl. reflexivity.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush2. crush2. crush2. crush2. crush2.
+  apply ex3a.
 Qed.
 
 
