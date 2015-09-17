@@ -1,7 +1,7 @@
 (* Full safety for DOT *)
 
-(* this version is based on dot17.v *)
-(* based on that, it has only one construct for objects with both type and method members *)
+(* this version is based on dot18.v *)
+(* based on that, it adds a let construct to enable easy unpacking *)
 
 Require Export SfLib.
 
@@ -37,6 +37,7 @@ Inductive tm : Type :=
   | tvar   : id -> tm
   | tapp   : tm -> id -> tm -> tm (* \o.m(x) *)
   | tobj   : id -> list (id * def) -> tm (* \o {d} *)
+  | tlet   : id -> tm -> tm -> tm (* let \x = t1 in t2 *)
   | ttapp  : tm -> tm -> tm (* f[X] *)
   | ttabs  : id -> ty -> tm -> tm (* \f x.y *)
 with def : Type :=
@@ -360,6 +361,12 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env f (TFun l T1 T2) ->
            has_type env x T1 ->
            has_type env (tapp f l x) T2
+| t_let: forall env x ex e Tx T,
+           has_type env ex Tx ->
+           fresh env <= x ->
+           has_type ((x, Tx)::env) e T ->
+           stp env [] T T ->
+           has_type env (tlet x ex e) T
 | t_tapp: forall env f x T11 T12,
            has_type env f (TAll T11 T12) ->
            has_type env x T11 ->
@@ -878,6 +885,12 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
                       teval n ((x,vx)::(f,vobj env2 f ds)::env2) ey
                   end
               end
+          end
+        | tlet x ex ey =>
+          match teval n env ex with
+            | None => None
+            | Some None => Some None
+            | Some (Some vx) => teval n ((x,vx)::env) ey
           end
         | ttapp ef ex   =>
           match teval n env ex with
@@ -7310,6 +7323,18 @@ Proof.
       eauto. eauto. eauto. eauto. eauto.
 
       eapply not_stuck. eapply v_pack. eapply H0. eapply H3. instantiate (1:=T). simpl. subst TX. eauto. subst venv1. eapply sstpd2_extend1. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. rewrite wf_fresh with (ts:=env). subst i. eauto. eauto.
+
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
+
+  - Case "TLet".
+    remember (tlet i e1 e2) as e. induction H0; inversion Heqe; subst.
+    + remember (teval n venv0 e1) as tx.
+      destruct tx as [rx|]; try solve by inversion.
+      assert (res_type venv0 rx Tx) as HRX. SCase "HRX". subst. eapply IHn; eauto.
+      inversion HRX as [? vx]. subst.
+      assert (res_type ((i, vx) :: venv0) res T) as HR. SCase "HR". subst. eapply IHn; eauto. econstructor. eapply valtp_widen; eauto. eapply sstpd2_extend2. eapply stpd2_upgrade. eapply stp_to_stp2. eapply has_type_wf. eauto. eauto. eauto. rewrite wf_fresh with (ts:=env). eauto. eauto. eauto.
+      inversion HR as [? v]. subst.
+      eapply not_stuck. eapply valtp_widen. eauto. eapply sstpd2_extend1. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. eauto. rewrite wf_fresh with (ts:=env). eauto. eauto.
 
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
