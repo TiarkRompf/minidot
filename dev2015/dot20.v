@@ -1620,11 +1620,11 @@ Qed.
 
 
 Example ex7:
-  stp [(1,TSel (varF 0) 0);(0,TMem 0 TBot (TBind (TMem 0 TBot (TFun 0 TBool (TSel (varB 0) 0)))))] []
-           (TSel (varF 1) 0) (TFun 0 TBool (TSel (varF 1) 0)).
+  stp [(1,TSel (varF 0) 0);(0,TMem 0 TBot (TBind (TMem 0 TBot (TAll 0 TBool (TSel (varB 1) 0)))))] []
+           (TSel (varF 1) 0) (TAll 0 TBool (TSel (varF 1) 0)).
 Proof.
-  remember (TFun 0 TBool (TSel (varF 1) 0)) as T.
-  assert (T = open (varF 1) (TFun 0 TBool (TSel (varB 0) 0))). compute. eauto.
+  remember (TAll 0 TBool (TSel (varF 1) 0)) as T.
+  assert (T = open (varF 1) (TAll 0 TBool (TSel (varB 1) 0))). compute. eauto.
   rewrite H.
   eapply stp_selb1. compute. eauto.
   eapply stp_sel1. compute. eauto.
