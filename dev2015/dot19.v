@@ -964,53 +964,42 @@ Ltac crush2 :=
 
 (* define polymorphic identity function *)
 
-Definition polyId := TAll (TBind (TMem 0 TBot TTop)) (TBind (TFun 0 (TSel (varB 1) 0) (TSel (varB 1) 0))).
+Definition polyId := TAll (TBind (TMem 0 TBot TTop)) (TFun 0 (TSel (varB 0) 0) (TSel (varB 0) 0)).
 
-Example ex1: has_type [] (ttabs 0 (TBind (TMem 0 TBot TTop)) (tobj 1 [(0, (dfun 2 (tvar 2)))])) polyId.
+Example ex1: has_type [] (ttabs 0 (TBind (TMem 0 TBot TTop)) (tlet 1 (tobj 1 [(0, (dfun 2 (tvar 2)))]) (tvar 1))) polyId.
 Proof.
+  eapply t_tabs.
+  unfold open. simpl. apply t_let with (Tx:=(TBind (TFun 0 (TSel (varF 0) 0) (TSel (varF 0) 0)))); crush2.
+  assert ((open (varF 1) (TFun 0 (TSel (varF 0) 0) (TSel (varF 0) 0)))=(TFun 0 (TSel (varF 0) 0) (TSel (varF 0) 0))) as A. { unfold open. simpl. reflexivity. }
+  rewrite <- A at 2.
+  eapply t_var_unpack; crush2.
+  crush2.
   crush2.
 Qed.
 
 
 (* instantiate it to bool *)
 
-Example ex2: has_type [(0,polyId)] (ttapp (tvar 0) (tobj 1 [(0,dmem TBool)])) (TBind (TFun 0 TBool TBool)).
+Example ex2: has_type [(0,polyId)] (ttapp (tvar 0) (tlet 1 (tobj 1 [(0,dmem TBool)]) (tvar 1))) (TFun 0 TBool TBool).
 Proof.
   eapply t_tapp. instantiate (1:= (TBind (TMem 0 TBool TBool))).
     { eapply t_sub.
       { eapply t_var. simpl. eauto. crush2. }
-      { eapply stp_all; eauto. { eapply stp_bindx; crush2. } compute. constructor. eapply cl_fun; eauto.
-        simpl. unfold open. simpl.
-        eapply stp_bindx.
-        simpl. reflexivity.
-        simpl. constructor; eauto.
-        simpl. constructor; eauto.
-        unfold open. simpl.
-        eapply stp_fun. eapply stp_selax; crush2. crush2.
-        unfold open. simpl.
-        eapply stp_fun. eapply stp_selax; crush2. crush2.
-        simpl. unfold open. simpl.
-        eapply stp_bindx.
-        simpl. reflexivity.
-        simpl. constructor; eauto.
-        simpl. constructor; eauto.
-        unfold open. simpl.
-        crush2.
-        unfold open. simpl.
-        eapply stp_fun.
-        eapply stp_selab2.
-        crush2. crush2. instantiate (1:=TBool). crush2.
+      { eapply stp_all; eauto. { eapply stp_bindx; crush2. } compute. eapply cl_fun; eauto.
+        eapply stp_fun. compute. eapply stp_selax; crush2. crush2.
+        eapply stp_fun. compute. eapply stp_selab2. crush2.
+        crush2. instantiate (1:=TBool). crush2.
         instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). simpl. reflexivity.
-        instantiate (1:=[(0, TFun 0 (TSel (varH 0) 0) (TSel (varH 0) 0))]). simpl. reflexivity.
+        rewrite app_nil_l. reflexivity.
         crush2. crush2. crush2.
-        eapply stp_selab1.
-        crush2. crush2. instantiate (1:=TBool). crush2.
+        simpl. eapply stp_selab1. crush2.
+        crush2. instantiate (1:=TBool). crush2.
         instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). simpl. reflexivity.
-        instantiate (1:=[(0, TFun 0 (TSel (varH 0) 0) (TSel (varH 0) 0))]). simpl. reflexivity.
+        rewrite app_nil_l. reflexivity.
         crush2. crush2. crush2.
       }
     }
-    { eapply t_obj; crush2. }
+    { eapply t_let; crush2. }
     crush2.
 Qed.
 
