@@ -1609,11 +1609,11 @@ Qed.
 (* test expansion *)
 
 Example ex6:
-  has_type [(1,TSel (varF 0) 0);(0,TMem 0 TBot (TBind (TFun 0 TBool (TSel (varB 0) 0))))]
-           (tvar 1) (TFun 0 TBool (TSel (varF 1) 0)).
+  has_type [(1,TSel (varF 0) 0);(0,TMem 0 TBot (TBind (TAll 0 TBool (TSel (varB 1) 0))))]
+           (tvar 1) (TAll 0 TBool (TSel (varF 1) 0)).
 Proof.
-  remember (TFun 0 TBool (TSel (varF 1) 0)) as T.
-  assert (T = open (varF 1) (TFun 0 TBool (TSel (varB 0) 0))). compute. eauto.
+  remember (TAll 0 TBool (TSel (varF 1) 0)) as T.
+  assert (T = open (varF 1) (TAll 0 TBool (TSel (varB 1) 0))). compute. eauto.
   rewrite H.
   eapply t_var_unpack. eapply t_sub. eapply t_var. compute. eauto. crush2. crush2. crush2.
 Qed.
