@@ -7611,7 +7611,7 @@ Proof.
 
       destruct (invert_obj_var venv0 vf i T1 T2 n1 vx n0 x) as
           [env1 [tenv [TF [ds [x0 [y0 [T3 [T4 [EF [FRX [EQDS [WF [HDS [HTF [HTY [STX STY]]]]]]]]]]]]]]]]. eauto. eauto.
-      admit.
+      destruct n. inversion Heqtx. simpl in Heqtx. inversion Heqtx. reflexivity.
       eapply stpd2_upgrade. eapply stp_to_stp2. eassumption. eauto. eauto.
       (* now we know it's a closure, and we have has_type evidence *)
 
