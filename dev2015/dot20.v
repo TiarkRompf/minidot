@@ -364,7 +364,7 @@ with dcs_has_type: tenv -> id -> list (id * def) -> ty -> Prop :=
 | dt_nil: forall env f,
             dcs_has_type env f nil TTop
 | dt_fun: forall env f x y m T1 T2 dcs TS T,
-            has_type ((x,open (varF f) T1)::env) y (open (varF x) (open (varF f) T2)) ->
+            has_type ((x,open (varF f) T1)::env) y (open (varF x) (open_rec 1 (varF f) T2)) ->
             dcs_has_type env f dcs TS ->
             fresh env = x ->
             m = length dcs ->
@@ -907,9 +907,9 @@ Proof.
   apply t_obj with (TX:=polyId).
   eauto. compute. reflexivity.
   eapply dt_fun with (T1:=(TBind (TMem 0 TBot TTop))) (T2:=TAll 0 (TSel (varB 0) 0) (TSel (varB 1) 0)).
-  unfold open. simpl. apply t_let with (Tx:=(TBind (TAll 0 (TSel (varF 0) 0) (TSel (varF 0) 0)))); crush2.
-  assert ((open (varF 2) (TAll 0 (TSel (varF 0) 0) (TSel (varF 0) 0)))=(TAll 0 (TSel (varF 0) 0) (TSel (varF 0) 0))) as A. { unfold open. simpl. reflexivity. }
-  rewrite <- A at 2.
+  unfold open. simpl. apply t_let with (Tx:=(TBind (TAll 0 (TSel (varF 1) 0) (TSel (varF 1) 0)))); crush2.
+  assert ((open (varF 2) (TAll 0 (TSel (varF 1) 0) (TSel (varF 1) 0)))=(TAll 0 (TSel (varF 1) 0) (TSel (varF 1) 0))) as A. { unfold open. simpl. reflexivity. }
+  rewrite <- A.
   eapply t_var_unpack; crush2.
   eapply dt_nil.
   crush2. crush2. crush2.
@@ -1027,12 +1027,12 @@ Proof.
   simpl. reflexivity.
   unfold open. simpl. reflexivity.
   eapply dt_fun.
-  instantiate (2:=(TBind (TAnd (TAll 1 TBool (TSel (varF 0) 0)) (TAll 0 (TSel (varF 0) 0) TBool)))). instantiate (1:=TBool).
+  instantiate (2:=(TBind (TAnd (TAll 1 TBool (TSel (varF 1) 0)) (TAll 0 (TSel (varF 1) 0) TBool)))). instantiate (1:=TBool).
   eapply t_app.
-  instantiate (1:=(TSel (varF 0) 0)).
-  assert (open (varF 3) (TAll 0 (TSel (varF 0) 0) TBool)=TAll 0 (TSel (varF 0) 0) TBool) as A. { compute. reflexivity. }
+  instantiate (1:=(TSel (varF 1) 0)).
+  assert (open (varF 3) (TAll 0 (TSel (varF 1) 0) TBool)=TAll 0 (TSel (varF 1) 0) TBool) as A. { compute. reflexivity. }
   unfold open. simpl.
-  rewrite <- A at 3. eapply t_var_unpack.
+  rewrite <- A. eapply t_var_unpack.
   eapply t_sub. eapply t_var. compute. reflexivity.
   eapply stp_bindx. simpl. reflexivity. crush2. crush2.
   unfold open. simpl.
@@ -1047,8 +1047,8 @@ Proof.
   unfold open. simpl. crush2.
   eapply t_app.
   instantiate (1:=TBool).
-  assert (open (varF 3) (TAll 1 TBool (TSel (varF 0) 0))=TAll 1 TBool (TSel (varF 0) 0) ) as A. { compute. reflexivity. }
-  rewrite <- A at 3. eapply t_var_unpack.
+  assert (open (varF 3) (TAll 1 TBool (TSel (varF 1) 0))=TAll 1 TBool (TSel (varF 1) 0) ) as A. { compute. reflexivity. }
+  rewrite <- A. eapply t_var_unpack.
   eapply t_sub. eapply t_var. compute. reflexivity.
   eapply stp_bindx. simpl. reflexivity. crush2. crush2.
   unfold open. simpl.
