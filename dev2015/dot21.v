@@ -1180,9 +1180,92 @@ Proof.
   crush2.
 Qed.
 
+(*
+val listModule = new { m =>
+  type List = { this =>
+    type Elem
+    def head(): this.Elem
+    def tail(): m.List & { type Elem <: this.Elem }
+  }
+  def nil() = new { this =>
+    type Elem = Bot
+    def head() = bot()
+    def tail() = bot()
+  }
+  def cons[T](hd: T)(tl: m.List & { type Elem <: T }) = new { this =>
+    type Elem <: T
+    def head() = hd
+    def tail() = tl
+  }
+}
 
+type ListAPI = { m =>
+  type List <: { this =>
+    type Elem
+    def head(): this.Elem
+    def tail(): m.List & { type Elem <: this.Elem }
+  }
+  def nil(): List & { type Elem = Bot }
+  def cons[T]: T =>
+    m.List & { type Elem <: T } =>
+      m.List & { type Elem <: T }
+}
 
+def cons(t: { type T }) = new {
+  def apply(hd: t.T) = new {
+    def apply(m.List & { type Elem <: t.T }) = new { this =>
+      type Elem <: t.T
+      def head() = hd
+      def tail() = tl
+    }}}
 
+*)
+
+Example paper_list_nil_head:
+  has_type
+    []
+    (tobj 0
+          [(1, dfun 1 (tlet 2 (tobj 2 [(1, dfun 3 (tapp (tvar 2) 1 (tvar 3)));
+                                       (0, dmem TBot)])
+                            (tvar 2)));
+           (0, dmem (TBind (TAnd
+                              (TAll 1 TTop (TSel (varB 1) 0))
+                              (TMem 0 TBot TTop))))
+          ])
+          TTop.
+Proof.
+  apply t_sub with (T1:=(TBind (TAnd
+                           (TAll 1 TTop (TAnd (TSel (varB 1) 0) (TBind (TMem 0 TBot TBot))))
+                           (TMem 0
+                                 (TBind (TAnd
+                                           (TAll 1 TTop (TSel (varB 1) 0))
+                                           (TMem 0 TBot TTop)))
+                                 (TBind (TAnd
+                                           (TAll 1 TTop (TSel (varB 1) 0))
+                                           (TMem 0 TBot TTop))))))).
+  eapply t_obj.
+  eauto. compute. reflexivity.
+  eapply dt_fun with (T1:=TTop) (T2:=(TAnd (TSel (varB 1) 0) (TBind (TMem 0 TBot TBot)))).
+  apply t_let with (Tx:=(TBind (TAnd (TAll 1 TTop TBot) (TMem 0 TBot TBot)))).
+  eapply t_obj.
+  eauto. compute. reflexivity.
+  eapply dt_fun with (T1:=TTop) (T2:=TBot).
+  simpl. unfold open at 3. simpl. eapply t_app.
+  eapply t_sub. eapply t_var. compute. reflexivity. crush2.
+  apply stp_and11. crush2. crush2. crush2. crush2.
+  eapply dt_mem. eapply dt_nil. eauto. simpl. reflexivity. eauto. eauto.
+  simpl. reflexivity. crush2. crush2. eauto.
+  simpl. unfold open at 2. simpl.
+  eapply t_sub. eapply t_var. compute. eauto. crush2.
+  eapply stp_and2. eapply stp_sel2. compute. reflexivity. crush2.
+  eapply stp_and12. crush2. crush2. crush2.
+  eapply stp_bindx. eauto. crush2. crush2. crush2.
+  unfold open. simpl. eapply stp_and12. crush2. crush2.
+  unfold open. simpl. crush2.
+
+  eapply dt_mem. eapply dt_nil. eauto. simpl. reflexivity. eauto. eauto.
+  simpl. reflexivity. crush2. crush2. crush2.
+Qed.
 
 (* ############################################################ *)
 (* Proofs *)
