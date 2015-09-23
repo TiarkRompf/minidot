@@ -1232,7 +1232,13 @@ Example paper_list_nil_head:
                               (TAll 1 TTop (TSel (varB 1) 0))
                               (TMem 0 TBot TTop))))
           ])
-          TTop.
+    (TBind (TAnd
+              (TAll 1 TTop (TAnd (TSel (varB 1) 0) (TBind (TMem 0 TBot TBot))))
+              (TMem 0
+                    TBot
+                    (TBind (TAnd
+                              (TAll 1 TTop (TSel (varB 1) 0))
+                              (TMem 0 TBot TTop)))))).
 Proof.
   apply t_sub with (T1:=(TBind (TAnd
                            (TAll 1 TTop (TAnd (TSel (varB 1) 0) (TBind (TMem 0 TBot TBot))))
@@ -1264,7 +1270,9 @@ Proof.
   unfold open. simpl. crush2.
 
   eapply dt_mem. eapply dt_nil. eauto. simpl. reflexivity. eauto. eauto.
-  simpl. reflexivity. crush2. crush2. crush2.
+  simpl. reflexivity. crush2. crush2.
+
+  crush2.
 Qed.
 
 (* ############################################################ *)
