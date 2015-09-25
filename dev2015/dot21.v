@@ -903,6 +903,19 @@ Ltac crush2 :=
   try solve [(econstructor; compute; eauto; crush2)];
   try solve [(eapply t_sub; eapply t_var; compute; eauto; crush2)].
 
+Ltac crush_cl :=
+  try solve [(econstructor; compute; eauto; crush_cl)].
+
+Ltac crush_wf :=
+  try solve [(eapply stp_topx; crush_wf)];
+  try solve [(eapply stp_botx; crush_wf)];
+  try solve [(eapply stp_bool; crush_wf)];
+  try solve [(eapply stp_selx; compute; eauto; crush_wf)];
+  try solve [(eapply stp_selax; compute; eauto; crush_wf)];
+  try solve [(eapply stp_mem; crush_wf)];
+  try solve [(eapply stp_all; [crush_wf | (compute; eauto) | crush_cl | crush_cl | crush_wf | crush_wf])];
+  try solve [(eapply stp_bindx; [(compute; eauto) | crush_cl | crush_cl | crush_wf | crush_wf])];
+  try solve [(eapply stp_and2; [eapply stp_and11; crush_wf | eapply stp_and12; crush_wf])].
 
 (* define polymorphic identity function *)
 
@@ -920,11 +933,12 @@ Proof.
   eapply t_var_unpack; crush2.
   eapply dt_nil.
   crush2. crush2. crush2.
-  unfold polyId. crush2. unfold polyId. crush2. crush2.
+  unfold polyId. crush_wf.
+  unfold polyId. crush_wf. crush2.
   assert (open (varF 0) polyId=polyId) as A. { unfold open. simpl. reflexivity. }
   rewrite <- A at 2.
   eapply t_var_unpack; crush2.
-  unfold polyId. crush2.
+  unfold polyId. crush_wf.
 Qed.
 
 
@@ -1004,7 +1018,7 @@ Proof.
   crush2.
   eapply stp_bindx. simpl. reflexivity. crush2. crush2.
   unfold open. simpl.
-  crush2.
+  crush_wf.
   unfold open. simpl.
   eapply stp_and12; crush2.
   unfold open. simpl. crush2.
@@ -1013,12 +1027,12 @@ Proof.
   assert (open (varF 3) (TAll 1 TBool (TSel (varF 1) 0))=TAll 1 TBool (TSel (varF 1) 0) ) as A. { compute. reflexivity. }
   rewrite <- A. eapply t_var_unpack.
   eapply t_sub. eapply t_var. compute. reflexivity.
-  crush2. crush2. crush2. crush2. crush2. crush2. crush2. crush2. crush2. crush2.
-  crush2. crush2. crush2. crush2. crush2. crush2. crush2. crush2. crush2.
+  crush_wf. crush2. crush_wf. crush2. crush_wf. crush_wf. crush2. crush2. crush2. crush2.
+  crush2. crush_wf. crush2. crush2. crush2. crush2. crush_wf. crush_wf. crush2.
   assert (open (varF 0) brandUnbrand=brandUnbrand) as A. { compute. reflexivity. }
   rewrite <- A at 2.
   eapply t_var_unpack. eapply t_var. simpl. reflexivity.
-  crush2. crush2. crush2.
+  crush_wf. crush_wf. crush_wf.
 Qed.
 
 Example ex4:
@@ -1027,12 +1041,12 @@ Example ex4:
 Proof.
   eapply t_sub.
   eapply t_var. compute. reflexivity.
-  crush2.
-  eapply stp_all. crush2. crush2. crush2. crush2. crush2.
-  eapply stp_bindx. crush2. crush2. crush2. crush2.
+  crush_wf.
+  eapply stp_all. crush2. crush2. crush2. crush2. crush_wf.
+  eapply stp_bindx. crush2. crush2. crush2. crush_wf.
   unfold open. simpl.
   eapply stp_all. eapply stp_bindx. crush2. crush2. crush2.
-  unfold open. simpl. crush2.
+  unfold open. simpl. crush_wf.
   unfold open. simpl.
   eapply stp_and2.
   eapply stp_and11; crush2. eapply stp_all; crush2.
@@ -1082,22 +1096,22 @@ Proof.
                     TBool))).
   eapply t_sub.
   eapply t_var. compute. reflexivity.
-  crush2.
+  crush_wf.
 
   eapply stp_all.
   crush2.
   simpl. reflexivity.
-  crush2. crush2. crush2.
+  crush2. crush2. crush_wf.
   unfold open. simpl.
-  eapply stp_bindx. simpl. eauto. crush2. crush2. crush2.
+  eapply stp_bindx. simpl. eauto. crush2. crush2. crush_wf.
   unfold open. simpl.
   eapply stp_all. eapply stp_bindx. simpl. eauto. crush2. crush2.
   unfold open. simpl.
-  eapply stp_and2. eapply stp_and11; crush2.  eapply stp_and12; crush2.
+  crush_wf.
   unfold open. simpl.
   eapply stp_and2. eapply stp_and11; crush2.
   eapply stp_all.
-  crush2. crush2. crush2. crush2. crush2.
+  crush_wf. crush2. crush2. crush2. crush_wf.
   eapply stp_selab2. compute. reflexivity. crush2.
   instantiate (1:=TBool). crush2.
   instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). crush2.
@@ -1118,13 +1132,13 @@ Proof.
      (TBind
         (TAnd (TAll 1 TBool (TSel (varH 0) 0))
               (TAll 0 (TSel (varH 0) 0) TBool))) TBool)]). crush2.
-  crush2. crush2. crush2.
+  crush2. crush2. crush_wf.
   crush2. crush2.
-  crush2. crush2. crush2. crush2. crush2. crush2. crush2. crush2.
+  crush2. crush_wf. crush_wf. crush2. crush2. crush2. crush_wf. crush_wf.
 
   crush2.
 
-  crush2. crush2.
+  crush_wf. crush2.
 
   instantiate (1:=(TBind (TAnd (TAll 1 TBool TBool) (TAll 0 TBool TBool)))).
   assert (open (varF 2) (TAll 0 (TBind (TAnd (TAll 1 TBool TBool) (TAll 0 TBool TBool))) TBool) = (TAll 0 (TBind (TAnd (TAll 1 TBool TBool) (TAll 0 TBool TBool))) TBool)) as A. {
@@ -1132,23 +1146,23 @@ Proof.
   }
   rewrite <- A. eapply t_var_unpack. eapply t_var. compute. reflexivity.
 
-  crush2. crush2. crush2.
+  crush_wf. crush_wf. crush_wf.
 
   eapply t_obj. eauto. unfold open. simpl. reflexivity.
   eapply dt_fun.
   instantiate (1:=TBool). unfold open. simpl.
   eapply t_app. eapply t_var. compute. reflexivity.
-  crush2.
-  instantiate (1:=TBool). unfold open. simpl. crush2. crush2.
+  crush_wf.
+  instantiate (1:=TBool). unfold open. simpl. crush2. crush_wf.
   instantiate (1:=TAll 0 TBool TBool).
   eapply dt_fun.
   instantiate (1:=TBool). unfold open. simpl.
   eapply t_app. eapply t_var. compute. reflexivity.
-  crush2.
-  instantiate (1:=TBool). unfold open. simpl. crush2. crush2.
+  crush_wf.
+  instantiate (1:=TBool). unfold open. simpl. crush2. crush_wf.
   eapply dt_nil.
   eauto. eauto. simpl. reflexivity. eauto. eauto. eauto.
-  crush2. crush2. crush2.
+  crush_wf. crush_wf. crush_wf.
 Qed.
 
 (* test expansion *)
@@ -1160,7 +1174,7 @@ Proof.
   remember (TAll 0 TBool (TSel (varF 1) 0)) as T.
   assert (T = open (varF 1) (TAll 0 TBool (TSel (varB 1) 0))). compute. eauto.
   rewrite H.
-  eapply t_var_unpack. eapply t_sub. eapply t_var. compute. eauto. crush2. crush2. crush2.
+  eapply t_var_unpack. eapply t_sub. eapply t_var. compute. eauto. crush_wf. crush2. crush_wf.
 Qed.
 
 
@@ -1257,25 +1271,24 @@ Proof.
   eauto. compute. reflexivity.
   eapply dt_fun with (T1:=TTop) (T2:=TBot).
   simpl. unfold open at 3. simpl. eapply t_app.
-  eapply t_sub. eapply t_var. compute. reflexivity. crush2.
-  apply stp_and11. crush2. crush2. crush2. crush2.
+  eapply t_sub. eapply t_var. compute. reflexivity. crush_wf.
+  apply stp_and11. crush_wf. crush_wf. crush2. crush2.
   eapply dt_mem. eapply dt_nil. eauto. simpl. reflexivity. eauto. eauto.
-  simpl. reflexivity. crush2. crush2. eauto.
+  simpl. reflexivity. crush_wf. crush_wf. eauto.
   simpl. unfold open at 2. simpl.
-  eapply t_sub. eapply t_var. compute. eauto. crush2.
+  eapply t_sub. eapply t_var. compute. eauto. crush_wf.
   eapply stp_and2. eapply stp_sel2. compute. reflexivity. crush2.
-  eapply stp_and12. crush2. crush2. crush2.
-  eapply stp_bindx. eauto. crush2. crush2. crush2.
-  unfold open. simpl. eapply stp_and12. crush2. crush2.
-  unfold open. simpl. crush2.
+  eapply stp_and12. crush2. crush_wf. crush_wf.
+  eapply stp_bindx. eauto. crush2. crush2. crush_wf.
+  unfold open. simpl. eapply stp_and12. crush_wf. crush_wf.
+  unfold open. simpl. crush_wf.
 
   eapply dt_mem. eapply dt_nil. eauto. simpl. reflexivity. eauto. eauto.
-  simpl. reflexivity. crush2. crush2.
+  simpl. reflexivity. crush_wf. crush_wf.
 
   crush2.
 Qed.
 
-(* takes about fifteen minutes to verify *)
 Example paper_list_cons_head:
   has_type
     []
@@ -1339,25 +1352,25 @@ Proof.
   eapply dt_fun with (T1:=TTop) (T2:=(TSel (varF 1) 0)).
   simpl. unfold open. simpl. crush2.
   eapply dt_mem. eapply dt_nil. eauto. simpl. reflexivity. eauto. eauto.
-  simpl. reflexivity. crush2. crush2. eauto.
+  simpl. reflexivity. crush_wf. crush_wf. eauto.
   simpl. unfold open. simpl.
   eapply t_sub.
-  eapply t_var. compute. eauto. crush2.
+  eapply t_var. compute. eauto. crush_wf.
   compute.
   eapply stp_and2. eapply stp_sel2. compute. reflexivity. crush2.
   eapply stp_and12. eapply stp_mem. eapply stp_bindx.
   eauto. crush2. crush2.
-  unfold open. simpl. crush2.
+  unfold open. simpl. crush_wf.
   unfold open. simpl.
   eapply stp_and2. eapply stp_and11.
-  eapply stp_all. crush2. eauto. crush2. crush2.
-  unfold open. simpl. crush2. unfold open. simpl.
+  eapply stp_all. crush_wf. eauto. crush2. crush2.
+  unfold open. simpl. crush_wf. unfold open. simpl.
   eapply stp_sela2. compute. reflexivity. crush2.
-  eapply stp_and12. crush2. crush2. crush2. crush2.
-  eapply stp_and12. crush2. crush2. crush2. crush2. crush2.
-  eapply stp_bindx. eauto. crush2. crush2. crush2.
-  unfold open. simpl. eapply stp_and12. crush2. crush2. crush2.
-  eapply dt_nil. eauto. eauto. simpl. reflexivity. crush2. crush2.
+  eapply stp_and12. crush2. crush2. crush2. crush_wf.
+  eapply stp_and12. crush2. crush_wf. crush2. crush_wf. crush_wf.
+  eapply stp_bindx. eauto. crush2. crush2. crush_wf.
+  unfold open. simpl. eapply stp_and12. crush2. crush_wf. crush_wf.
+  eapply dt_nil. eauto. eauto. simpl. reflexivity. crush_wf. crush_wf.
   eauto.
   unfold open. simpl.
   assert (open (varF 4)
@@ -1367,9 +1380,9 @@ Proof.
                 (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0)))))) as A. {
     compute. reflexivity.
   }
-  rewrite <- A at 3. apply t_var_unpack. apply t_var. compute. reflexivity. crush2.
-  crush2. unfold open. simpl. crush2.
-  eapply dt_nil. eauto. eauto. simpl. reflexivity. crush2. crush2. crush2.
+  rewrite <- A at 3. apply t_var_unpack. apply t_var. compute. reflexivity. crush_wf.
+  crush_wf. unfold open. simpl. crush_wf.
+  eapply dt_nil. eauto. eauto. simpl. reflexivity. crush_wf. crush_wf. crush2.
 
   unfold open. simpl.
   assert (open (varF 2) (TAll 0 (TSel (varF 1) 0)
@@ -1382,12 +1395,17 @@ Proof.
            (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0))))))) as B. {
     compute. reflexivity.
   }
-  rewrite <- B at 2. apply t_var_unpack. apply t_var. compute. reflexivity. crush2.
-  unfold open. simpl. crush2. unfold open. simpl. crush2.
+  rewrite <- B at 2. apply t_var_unpack. apply t_var. compute. reflexivity. crush_wf.
+  unfold open. simpl. crush_wf. unfold open. simpl. crush_wf.
 
   eapply dt_mem. eapply dt_nil. eauto. simpl. reflexivity. eauto. eauto. simpl. reflexivity.
 
-  crush2. crush2. crush2.
+  crush_wf. crush_wf.
+
+  eapply stp_bindx. eauto. crush_cl. crush_cl. crush_wf.
+  unfold open. simpl. eapply stp_and2.
+  eapply stp_and11; crush_wf.
+  eapply stp_and12. eapply stp_mem. eapply stp_bot. crush_wf. crush_wf. crush_wf.
 
 Qed.
 
