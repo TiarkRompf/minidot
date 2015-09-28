@@ -1630,6 +1630,197 @@ Proof.
 
 Qed.
 
+Example paper_list:
+  has_type
+    []
+    (tobj 0
+          [(2, dfun 1 (tlet 2 (tobj 2 [(2, dfun 3 (tapp (tvar 2) 2 (tvar 3)));
+                                       (1, dfun 3 (tapp (tvar 2) 1 (tvar 3)));
+                                       (0, dmem TBot)])
+                            (tvar 2)));
+           (1, dfun 1(*type T*) (tlet 2 (tobj 2
+          [(0, dfun 3(*hd*) (tlet 4 (tobj 4 [(0, dfun 5(*tl*) (tlet 6 (tobj 6
+          [(2, dfun 7 (tvar 5)); (1, dfun 7 (tvar 3));
+           (0, dmem (TSel (varF 1) 0))]) (tvar 6)))]) (tvar 4)))]) (tvar 2)));
+           (0, dmem (TBind (TAnd
+                              (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 2) 0)))))
+                           (TAnd
+                              (TAll 1 TTop (TSel (varB 1) 0))
+                              (TMem 0 TBot TTop)))))
+          ])
+    (TBind (TAnd
+              (TAll 2 TTop (TAnd (TSel (varB 1) 0) (TBind (TMem 0 TBot TBot))))
+           (TAnd
+              (TAll 1 (TMem 0 TBot TTop)
+                    (TAll 0 (TSel (varB 0) 0)
+                          (TAll 0 (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 2) 0))))
+                                (TAnd (TSel (varB 3) 0) (TBind (TMem 0 TBot (TSel (varB 3) 0)))))))
+              (TMem 0
+                    TBot
+                    (TBind (TAnd
+                              (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 2) 0)))))
+                           (TAnd
+                              (TAll 1 TTop (TSel (varB 1) 0))
+                              (TMem 0 TBot TTop)))))))).
+Proof.
+  apply t_sub with (T1:=
+    (TBind (TAnd
+              (TAll 2 TTop (TAnd (TSel (varB 1) 0) (TBind (TMem 0 TBot TBot))))
+           (TAnd
+              (TAll 1 (TMem 0 TBot TTop)
+                    (TAll 0 (TSel (varB 0) 0)
+                          (TAll 0 (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 2) 0))))
+                                (TAnd (TSel (varB 3) 0) (TBind (TMem 0 TBot (TSel (varB 3) 0)))))))
+              (TMem 0
+                    (TBind (TAnd
+                              (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 2) 0)))))
+                           (TAnd
+                              (TAll 1 TTop (TSel (varB 1) 0))
+                              (TMem 0 TBot TTop))))
+                    (TBind (TAnd
+                              (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 2) 0)))))
+                           (TAnd
+                              (TAll 1 TTop (TSel (varB 1) 0))
+                              (TMem 0 TBot TTop))))))))).
+  eapply t_obj.
+  eauto. compute. reflexivity.
+
+  eapply dt_fun with (T1:=TTop) (T2:=(TAnd (TSel (varB 1) 0) (TBind (TMem 0 TBot TBot)))).
+  apply t_let with (Tx:=(TBind (TAnd (TAll 2 TTop TBot) (TAnd (TAll 1 TTop TBot) (TMem 0 TBot TBot))))).
+  eapply t_obj.
+  eauto. compute. reflexivity.
+  eapply dt_fun with (T1:=TTop) (T2:=TBot).
+  simpl. unfold open at 3. simpl. eapply t_app.
+  eapply t_sub. eapply t_var. compute. reflexivity. crush_wf.
+  apply stp_and11. crush_wf. crush_wf. crush2. crush2.
+  eapply dt_fun with (T1:=TTop) (T2:=TBot).
+  simpl. unfold open at 3. simpl. eapply t_app.
+  eapply t_sub. eapply t_var. compute. reflexivity. crush_wf.
+  apply stp_and12. apply stp_and11. crush_wf. crush_wf. crush2. crush2. crush2.
+  eapply dt_mem. eapply dt_nil. eauto. simpl. reflexivity. eauto. eauto.
+  simpl. reflexivity. eauto. eauto. simpl. reflexivity.
+  crush_wf. crush_wf. eauto.
+  simpl. unfold open at 2. simpl.
+  eapply t_sub. eapply t_var. compute. eauto. crush_wf.
+  eapply stp_and2. eapply stp_sel2. compute. reflexivity. crush2.
+  eapply stp_and12. eapply stp_and12.
+  eapply stp_mem. eapply stp_bindx. eauto. crush_cl. crush_cl.
+  unfold open. simpl. crush_wf. unfold open. simpl.
+
+  apply stp_and2. eapply stp_and11. eapply stp_all. crush_wf. eauto. crush_cl. crush_cl.
+  unfold open. simpl. crush_wf. unfold open. simpl. eapply stp_bot. crush_wf. crush_wf.
+  eapply stp_and12. eapply stp_and2. eapply stp_and11. eapply stp_all. crush_wf. eauto.
+  crush_cl. crush_cl. unfold open. simpl. crush_wf. unfold open. simpl. eapply stp_bot.
+  crush_wf. crush_wf. eapply stp_and12. eapply stp_mem. crush_wf. crush2. crush_wf.
+  crush_wf. eapply stp_top. crush_wf. crush_wf. crush_wf.
+
+  crush_wf.
+
+  eapply stp_bindx. eauto. crush2. crush2. crush_wf.
+  unfold open. simpl. eapply stp_and12. eapply stp_and12. crush_wf. crush_wf. crush_wf.
+  unfold open. simpl. crush_wf.
+
+  eapply dt_fun with (T1:=(TMem 0 TBot TTop))
+                     (T2:=(TAll 0 (TSel (varB 0) 0)
+                          (TAll 0 (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 2) 0))))
+                                (TAnd (TSel (varB 3) 0) (TBind (TMem 0 TBot (TSel (varB 3) 0))))))).
+  apply t_let with (Tx:=(TBind
+                           (TAll 0 (TSel (varF 1) 0)
+                          (TAll 0 (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0))))
+                                (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0)))))))).
+  eapply t_obj.
+  eauto. compute. reflexivity.
+  eapply dt_fun with (T1:=(TSel (varF 1) 0))
+                     (T2:=(TAll 0 (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0))))
+                                (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0)))))).
+  apply t_let with (Tx:=(TBind (TAll 0 (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0))))
+                                     (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0))))))).
+  eapply t_obj.
+  eauto. compute. reflexivity.
+  eapply dt_fun with (T1:=(TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0)))))
+                     (T2:=(TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0))))).
+  apply t_let with (Tx:=(TBind (TAnd
+                                  (TAll 2 TTop (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0)))))
+                                  (TAnd (TAll 1 TTop (TSel (varF 1) 0)) (TMem 0 (TSel (varF 1) 0) (TSel (varF 1) 0)))))).
+  eapply t_obj.
+  eauto. compute. reflexivity.
+  eapply dt_fun with (T1:=TTop) (T2:=(TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0))))).
+  simpl. unfold open. simpl. crush2.
+  eapply dt_fun with (T1:=TTop) (T2:=(TSel (varF 1) 0)).
+  simpl. unfold open. simpl. crush2.
+  eapply dt_mem. eapply dt_nil. eauto. simpl. reflexivity. eauto. eauto.
+  simpl. reflexivity. eauto. eauto. simpl. reflexivity. crush_wf. crush_wf. eauto.
+  simpl. unfold open. simpl.
+  eapply t_sub.
+  eapply t_var. compute. eauto. crush_wf.
+
+  eapply stp_and2. eapply stp_sel2. compute. reflexivity. crush_cl.
+  eapply stp_and12. eapply stp_and12. eapply stp_mem. eapply stp_bindx.
+  eauto. crush2. crush2.
+  unfold open. simpl. crush_wf.
+  unfold open. simpl.
+  eapply stp_and2. eapply stp_and11.
+  eapply stp_all. crush_wf. eauto. crush2. crush2.
+  unfold open. simpl. crush_wf. unfold open. simpl.
+  eapply stp_and2. eapply stp_and11. crush_wf. crush_wf. eapply stp_and12.
+  eapply stp_bindx. eauto. crush_cl. crush_cl. crush_wf. unfold open. simpl.
+  eapply stp_mem. crush_wf. unfold open. simpl.
+  eapply stp_sela2. compute. reflexivity. crush_cl.
+  eapply stp_and12. eapply stp_and12. crush2. crush_wf. crush_wf. crush_wf. crush_wf.
+  crush_wf.
+  eapply stp_and12. eapply stp_and2. eapply stp_and11. eapply stp_all. crush_wf. eauto.
+  crush_cl. crush_cl. unfold open. simpl. crush_wf. unfold open. simpl.
+  eapply stp_sela2. compute. reflexivity. crush_cl.
+  eapply stp_and12. eapply stp_and12. crush2. crush_wf. crush_wf. crush_wf. crush_wf.
+  eapply stp_and12. crush2. crush_wf. crush_wf. eapply stp_top. crush_wf. crush_wf.
+  crush_wf. eapply stp_bindx. eauto. crush_cl. crush_cl. crush_wf. unfold open. simpl.
+  crush_wf. eapply stp_bindx. eauto. crush_cl. crush_cl. unfold open. simpl. crush_wf.
+  unfold open. simpl.
+  eapply stp_and12. eapply stp_and12. crush2. crush_wf. crush_wf. crush_wf.
+
+  eapply dt_nil. eauto. eauto. simpl. reflexivity. crush_wf. crush_wf.
+  eauto.
+  unfold open. simpl.
+  assert (open (varF 4)
+               (TAll 0 (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0))))
+                     (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0))))) =
+          (TAll 0 (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0))))
+                (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0)))))) as A. {
+    compute. reflexivity.
+  }
+  rewrite <- A at 3. apply t_var_unpack. apply t_var. compute. reflexivity. crush_wf.
+  crush_wf. unfold open. simpl. crush_wf.
+  eapply dt_nil. eauto. eauto. simpl. reflexivity. crush_wf. crush_wf. crush2.
+
+  unfold open. simpl.
+  assert (open (varF 2) (TAll 0 (TSel (varF 1) 0)
+        (TAll 0
+           (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0))))
+           (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0)))))) =
+          (TAll 0 (TSel (varF 1) 0)
+        (TAll 0
+           (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0))))
+           (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0))))))) as B. {
+    compute. reflexivity.
+  }
+  rewrite <- B at 2. apply t_var_unpack. apply t_var. compute. reflexivity. crush_wf.
+  unfold open. simpl. crush_wf. unfold open. simpl. crush_wf.
+
+  eapply dt_mem. eapply dt_nil. eauto. simpl. reflexivity. eauto. eauto. simpl. reflexivity.
+
+  eauto. eauto. simpl. reflexivity.
+  crush_wf. crush_wf.
+
+  eapply stp_bindx. eauto. crush_cl. crush_cl. crush_wf.
+  unfold open. simpl. eapply stp_and2.
+  eapply stp_and11; crush_wf.
+  eapply stp_and12. eapply stp_and2.
+  eapply stp_and11; crush_wf. eapply stp_and12.
+  eapply stp_mem. eapply stp_bot. crush_wf. crush_wf. crush_wf.
+  crush_wf.
+
+Qed.
+
 
 (* ############################################################ *)
 (* Proofs *)
