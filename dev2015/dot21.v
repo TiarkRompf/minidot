@@ -1298,7 +1298,7 @@ Example paper_list_nil:
                                        (0, dmem TBot)])
                             (tvar 2)));
            (0, dmem (TBind (TAnd
-                              (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 1) 0)))))
+                              (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 2) 0)))))
                             (TAnd
                               (TAll 1 TTop (TSel (varB 1) 0))
                               (TMem 0 TBot TTop)))))
@@ -1308,7 +1308,7 @@ Example paper_list_nil:
               (TMem 0
                     TBot
                     (TBind (TAnd
-                              (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 1) 0)))))
+                              (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 2) 0)))))
                            (TAnd
                               (TAll 1 TTop (TSel (varB 1) 0))
                               (TMem 0 TBot TTop))))))).
@@ -1317,12 +1317,12 @@ Proof.
                            (TAll 1 TTop (TAnd (TSel (varB 1) 0) (TBind (TMem 0 TBot TBot))))
                            (TMem 0
                                  (TBind (TAnd
-                                           (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 1) 0)))))
+                                           (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 2) 0)))))
                                         (TAnd
                                            (TAll 1 TTop (TSel (varB 1) 0))
                                            (TMem 0 TBot TTop))))
                                  (TBind (TAnd
-                                           (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 1) 0)))))
+                                           (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 2) 0)))))
                                         (TAnd
                                            (TAll 1 TTop (TSel (varB 1) 0))
                                            (TMem 0 TBot TTop)))))))).
