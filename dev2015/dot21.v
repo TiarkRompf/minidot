@@ -1289,6 +1289,86 @@ Proof.
   crush2.
 Qed.
 
+Example paper_list_nil:
+  has_type
+    []
+    (tobj 0
+          [(1, dfun 1 (tlet 2 (tobj 2 [(2, dfun 3 (tapp (tvar 2) 2 (tvar 3)));
+                                       (1, dfun 3 (tapp (tvar 2) 1 (tvar 3)));
+                                       (0, dmem TBot)])
+                            (tvar 2)));
+           (0, dmem (TBind (TAnd
+                              (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 1) 0)))))
+                            (TAnd
+                              (TAll 1 TTop (TSel (varB 1) 0))
+                              (TMem 0 TBot TTop)))))
+          ])
+    (TBind (TAnd
+              (TAll 1 TTop (TAnd (TSel (varB 1) 0) (TBind (TMem 0 TBot TBot))))
+              (TMem 0
+                    TBot
+                    (TBind (TAnd
+                              (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 1) 0)))))
+                           (TAnd
+                              (TAll 1 TTop (TSel (varB 1) 0))
+                              (TMem 0 TBot TTop))))))).
+Proof.
+  apply t_sub with (T1:=(TBind (TAnd
+                           (TAll 1 TTop (TAnd (TSel (varB 1) 0) (TBind (TMem 0 TBot TBot))))
+                           (TMem 0
+                                 (TBind (TAnd
+                                           (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 1) 0)))))
+                                        (TAnd
+                                           (TAll 1 TTop (TSel (varB 1) 0))
+                                           (TMem 0 TBot TTop))))
+                                 (TBind (TAnd
+                                           (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 1) 0)))))
+                                        (TAnd
+                                           (TAll 1 TTop (TSel (varB 1) 0))
+                                           (TMem 0 TBot TTop)))))))).
+  eapply t_obj.
+  eauto. compute. reflexivity.
+  eapply dt_fun with (T1:=TTop) (T2:=(TAnd (TSel (varB 1) 0) (TBind (TMem 0 TBot TBot)))).
+  apply t_let with (Tx:=(TBind (TAnd (TAll 2 TTop TBot) (TAnd (TAll 1 TTop TBot) (TMem 0 TBot TBot))))).
+  eapply t_obj.
+  eauto. compute. reflexivity.
+  eapply dt_fun with (T1:=TTop) (T2:=TBot).
+  simpl. unfold open at 3. simpl. eapply t_app.
+  eapply t_sub. eapply t_var. compute. reflexivity. crush_wf.
+  apply stp_and11. crush_wf. crush_wf. crush2. crush2.
+  eapply dt_fun with (T1:=TTop) (T2:=TBot).
+  simpl. unfold open at 3. simpl. eapply t_app.
+  eapply t_sub. eapply t_var. compute. reflexivity. crush_wf.
+  apply stp_and12. apply stp_and11. crush_wf. crush_wf. crush2. crush2. crush2.
+  eapply dt_mem. eapply dt_nil. eauto. simpl. reflexivity. eauto. eauto.
+  simpl. reflexivity. eauto. eauto. simpl. reflexivity.
+  crush_wf. crush_wf. eauto.
+  simpl. unfold open at 2. simpl.
+  eapply t_sub. eapply t_var. compute. eauto. crush_wf.
+  eapply stp_and2. eapply stp_sel2. compute. reflexivity. crush2.
+  eapply stp_and12.
+  eapply stp_mem. eapply stp_bindx. eauto. crush_cl. crush_cl.
+  unfold open. simpl. crush_wf. unfold open. simpl.
+
+  apply stp_and2. eapply stp_and11. eapply stp_all. crush_wf. eauto. crush_cl. crush_cl.
+  unfold open. simpl. crush_wf. unfold open. simpl. eapply stp_bot. crush_wf. crush_wf.
+  eapply stp_and12. eapply stp_and2. eapply stp_and11. eapply stp_all. crush_wf. eauto.
+  crush_cl. crush_cl. unfold open. simpl. crush_wf. unfold open. simpl. eapply stp_bot.
+  crush_wf. crush_wf. eapply stp_and12. eapply stp_mem. crush_wf. crush2. crush_wf.
+  crush_wf. eapply stp_top. crush_wf. crush_wf. crush_wf.
+
+  eapply stp_bindx. eauto. crush2. crush2. crush_wf.
+  unfold open. simpl. eapply stp_and12. eapply stp_and12. crush_wf. crush_wf. crush_wf.
+  unfold open. simpl. crush_wf.
+
+  eapply dt_mem. eapply dt_nil. eauto. simpl. reflexivity. eauto. eauto.
+  simpl. reflexivity. crush_wf. crush_wf.
+
+  eapply stp_bindx. eauto. crush_cl. crush_cl. crush_wf. unfold open. simpl.
+  eapply stp_and2. eapply stp_and11. crush_wf. crush_wf. eapply stp_and12.
+  eapply stp_mem. eapply stp_bot. crush_wf. crush_wf. crush_wf.
+Qed.
+
 Example paper_list_cons_head:
   has_type
     []
