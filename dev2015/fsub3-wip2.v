@@ -2057,6 +2057,9 @@ Proof.
     + SCase "mem". eapply stpd2_mem.
       eapply IHn; try eassumption. omega.
       eapply IHn; try eassumption. omega.
+    + SCase "cell". eapply stpd2_cell.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
     + SCase "sel1". eapply stpd2_sel1; try eassumption.
       eapply IHn; try eassumption. omega.
       eapply IHn; try eassumption. omega.
