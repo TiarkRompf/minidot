@@ -6,6 +6,7 @@
 (* it also turns types into proper first class objects, *)
 (* compared to fsub1.v *)
 
+(* this version adds mutable references to fsub2.v *)
 
 Require Export SfLib.
 
@@ -22,6 +23,7 @@ Inductive ty : Type :=
   | TTop   : ty
   | TFun   : ty -> ty -> ty
   | TMem   : ty -> ty -> ty
+  | TCell  : ty -> ty
   | TSel   : id -> ty
   | TSelH  : id -> ty
   | TSelB  : id -> ty
@@ -32,6 +34,9 @@ Inductive tm : Type :=
   | ttrue  : tm
   | tfalse : tm
   | tvar   : id -> tm
+  | tnew   : tm -> tm
+  | tget   : tm -> tm
+  | tset   : tm -> tm -> tm
   | ttyp   : ty -> tm
   | tapp   : tm -> tm -> tm (* f(x) *)
   | tabs   : id -> id -> tm -> tm (* \f x.y *)
@@ -42,6 +47,7 @@ Inductive tm : Type :=
 Inductive vl : Type :=
 | vty   : list (id*vl) -> ty -> vl
 | vbool : bool -> vl
+| vloc  : id -> vl
 | vabs  : list (id*vl) -> id -> id -> tm -> vl
 | vtabs : list (id*vl) -> id -> ty -> tm -> vl
 .
@@ -77,15 +83,12 @@ Fixpoint indexr {X : Type} (n : id) (l : list (id * X)) : option X :=
   end.
 
 
-(*
 Fixpoint update {X : Type} (n : nat) (x: X)
                (l : list X) { struct l }: list X :=
   match l with
     | [] => []
     | a :: l'  => if beq_nat n (length l') then x::l' else a :: update n x l'
   end.
-*)
-
 
 (* LOCALLY NAMELESS *)
 
@@ -104,6 +107,9 @@ Inductive closed_rec: nat -> nat -> ty -> Prop :=
     closed_rec k l T1 ->
     closed_rec k l T2 ->
     closed_rec k l (TMem T1 T2)
+| cl_cell: forall k l T1,
+    closed_rec k l T1 ->
+    closed_rec k l (TCell T1)
 | cl_bind: forall k l T1 T2,
     closed_rec k l T1 ->
     closed_rec (S k) l T2 ->
@@ -132,6 +138,7 @@ Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
     | TTop        => TTop
     | TBot        => TBot
     | TBool       => TBool
+    | TCell T1    => TCell (open_rec k u T1)
     | TMem T1 T2  => TMem (open_rec k u T1) (open_rec k u T2)
     | TFun T1 T2  => TFun (open_rec k u T1) (open_rec k u T2)
   end.
@@ -149,6 +156,7 @@ Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
     | TTop         => TTop
     | TBot         => TBot
     | TBool        => TBool
+    | TCell T1     => TCell (subst U T1)
     | TMem T1 T2   => TMem (subst U T1) (subst U T2)
     | TFun T1 T2   => TFun (subst U T1) (subst U T2)
     | TSelB i      => TSelB i
@@ -162,6 +170,7 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
     | TTop         => True
     | TBot         => True
     | TBool        => True
+    | TCell T1     => nosubst T1
     | TMem T1 T2   => nosubst T1 /\ nosubst T2
     | TFun T1 T2   => nosubst T1 /\ nosubst T2
     | TSelB i      => True
@@ -192,6 +201,10 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH TBot T2
 | stp_bool: forall G1 GH,
     stp G1 GH TBool TBool
+| stp_cell: forall G1 GH T1 T2,
+    stp G1 GH T1 T2 ->
+    stp G1 GH T2 T1 ->
+    stp G1 GH (TCell T1) (TCell T2)
 | stp_fun: forall G1 GH T1 T2 T3 T4,
     stp G1 GH T3 T1 ->
     stp G1 GH T2 T4 ->
@@ -254,6 +267,16 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
 | t_typ: forall env T1,
            stp env [] T1 T1 ->
            has_type env (ttyp T1) (TMem T1 T1)
+| t_new: forall env x T1,
+           has_type env x T1 ->
+           has_type env (tnew x) (TCell T1)
+| t_get: forall env T1 x,
+           has_type env x (TCell T1) ->
+           has_type env (tget x) T1
+| t_set: forall env T1 x y,
+           has_type env x (TCell T1) ->
+           has_type env y T1 ->
+           has_type env (tset x y) T1
 | t_app: forall env f x T1 T2,
            has_type env f (TFun T1 T2) ->
            has_type env x T1 ->
@@ -296,6 +319,7 @@ Definition base (v:vl): venv :=
   match v with
     | vty GX _ => GX
     | vbool _ => nil
+    | vloc _ => nil
     | vabs GX _ _ _ => GX
     | vtabs GX _ _ _ => GX
   end.
@@ -325,18 +349,22 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
     stp2 false false G2 T3 G1 T1 GH n1 ->
     stp2 false false G1 T2 G2 T4 GH n2 ->
     stp2 false true G1 (TMem T1 T2) G2 (TMem T3 T4) GH (S (n1+n2))
+| stp2_cell: forall m G1 G2 T1 T2 GH n1 n2,
+    stp2 false false G2 T2 G1 T1 GH n1 ->
+    stp2 false false G1 T1 G2 T2 GH n2 ->
+    stp2 m true G1 (TCell T1) G2 (TCell T2) GH (S (n1+n2))
 
 (* strong version, with precise/invertible bounds *)
-| stp2_strong_sel1: forall G1 G2 GX TX x T2 GH n1,
+| stp2_strong_sel1: forall G1 G2 GX TX x T2 GH STO n1,
     index x G1 = Some (vty GX TX) ->
-    val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
+    val_type STO GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 TX ->
     stp2 true true GX TX G2 T2 GH n1 ->
     stp2 true true G1 (TSel x) G2 T2 GH (S n1)
 
-| stp2_strong_sel2: forall G1 G2 GX TX x T1 GH n1,
+| stp2_strong_sel2: forall G1 G2 GX TX x T1 GH STO n1,
     index x G2 = Some (vty GX TX) ->
-    val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
+    val_type STO GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 TX ->
     stp2 true false G1 T1 GX TX GH n1 ->
     stp2 true true G1 T1 G2 (TSel x) GH (S n1)
@@ -348,17 +376,17 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
 
 
 (* existing object, but imprecise type *)
-| stp2_sel1: forall G1 G2 TX x T2 GH n1 n2 v,
+| stp2_sel1: forall G1 G2 TX x T2 GH STO n1 n2 v,
     index x G1 = Some v ->
-    val_type (base v) v TX ->
+    val_type STO (base v) v TX ->
     closed 0 0 TX ->
     stp2 false false (base v) TX G2 (TMem TBot T2) GH n1 ->
     stp2 false true G2 T2 G2 T2 GH n2 -> (* regularity *)
     stp2 false true G1 (TSel x) G2 T2 GH (S (n1+n2))
 
-| stp2_sel2: forall G1 G2 TX x T1 GH n1 n2 v,
+| stp2_sel2: forall G1 G2 TX x T1 GH STO n1 n2 v,
     index x G2 = Some v ->
-    val_type (base v) v TX ->
+    val_type STO (base v) v TX ->
     closed 0 0 TX ->
     stp2 false false (base v) TX G1 (TMem T1 TTop) GH n1 ->
     stp2 false true G1 T1 G1 T1 GH n2 -> (* regularity *)
@@ -409,34 +437,38 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) 
 
 
 
-with wf_env : venv -> tenv -> Prop :=
-| wfe_nil : wf_env nil nil
-| wfe_cons : forall n v t vs ts,
-    val_type ((n,v)::vs) v t ->
-    wf_env vs ts ->
-    wf_env (cons (n,v) vs) (cons (n,t) ts)
+with wf_env : tenv -> venv -> tenv -> Prop :=
+| wfe_nil : forall sto, wf_env sto nil nil
+| wfe_cons : forall sto n v t vs ts,
+    val_type sto ((n,v)::vs) v t ->
+    wf_env sto vs ts ->
+    wf_env sto (cons (n,v) vs) (cons (n,t) ts)
 
-with val_type : venv -> vl -> ty -> Prop :=
-| v_ty: forall env venv tenv T1 TE,
-    wf_env venv tenv -> (* T1 wf in tenv ? *)
+with val_type : tenv -> venv -> vl -> ty -> Prop :=
+| v_ty: forall sto env venv tenv T1 TE,
+    wf_env sto venv tenv -> (* T1 wf in tenv ? *)
     (exists n, stp2 true true venv (TMem T1 T1) env TE [] n)->
-    val_type env (vty venv T1) TE
-| v_bool: forall venv b TE,
+    val_type sto env (vty venv T1) TE
+| v_bool: forall sto venv b TE,
     (exists n, stp2 true true [] TBool venv TE [] n) ->
-    val_type venv (vbool b) TE
-| v_abs: forall env venv tenv f x y T1 T2 TE,
-    wf_env venv tenv ->
+    val_type sto venv (vbool b) TE
+| v_loc: forall sto venv b T1 TE,
+    indexr b sto = Some T1 ->
+    (exists n, stp2 true true [] (TCell T1) venv TE [] n) ->
+    val_type sto venv (vloc b) TE
+| v_abs: forall sto env venv tenv f x y T1 T2 TE,
+    wf_env sto venv tenv ->
     has_type ((x,T1)::(f,TFun T1 T2)::tenv) y T2 ->
     fresh venv <= f ->
     1 + f <= x ->
     (exists n, stp2 true true venv (TFun T1 T2) env TE [] n)->
-    val_type env (vabs venv f x y) TE
-| v_tabs: forall env venv tenv x y T1 T2 TE,
-    wf_env venv tenv ->
+    val_type sto env (vabs venv f x y) TE
+| v_tabs: forall sto env venv tenv x y T1 T2 TE,
+    wf_env sto venv tenv ->
     has_type ((x,T1)::tenv) y (open (TSel x) T2) ->
     fresh venv = x ->
     (exists n, stp2 true true venv (TAll T1 T2) env TE [] n) ->
-    val_type env (vtabs venv x T1 y) TE
+    val_type sto env (vtabs venv x T1 y) TE
 .
 
 
@@ -503,19 +535,24 @@ Lemma stpd2_mem: forall G1 G2 GH T11 T12 T21 T22,
     stpd2 false G1 T12 G2 T22 GH ->
     stpd2 true G1 (TMem T11 T12) G2 (TMem T21 T22) GH.
 Proof. intros. repeat eu. eauto. Qed.
+Lemma stpd2_cell: forall G1 G2 GH T1 T2,
+    stpd2 false G2 T2 G1 T1 GH ->
+    stpd2 false G1 T1 G2 T2 GH ->
+    stpd2 true G1 (TCell T1) G2 (TCell T2) GH.
+Proof. intros. repeat eu. eauto. Qed.
 
-Lemma stpd2_sel1: forall G1 G2 TX x T2 GH v,
+Lemma stpd2_sel1: forall G1 G2 TX x T2 GH STO v,
     index x G1 = Some v ->
-    val_type (base v) v TX ->
+    val_type STO (base v) v TX ->
     closed 0 0 TX ->
     stpd2 false (base v) TX G2 (TMem TBot T2) GH ->
     stpd2 true G2 T2 G2 T2 GH ->
     stpd2 true G1 (TSel x) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
 
-Lemma stpd2_sel2: forall G1 G2 TX x T1 GH v,
+Lemma stpd2_sel2: forall G1 G2 TX x T1 GH STO v,
     index x G2 = Some v ->
-    val_type (base v) v TX ->
+    val_type STO (base v) v TX ->
     closed 0 0 TX ->
     stpd2 false (base v) TX G1 (TMem T1 TTop) GH ->
     stpd2 true G1 T1 G1 T1 GH ->
@@ -600,45 +637,82 @@ Some (Some v))   means result v
 Could use do-notation to clean up syntax.
  *)
 
-Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
+Fixpoint teval(n: nat)(sto: venv)(env: venv)(t: tm){struct n}: option (option (venv*vl)) :=
   match n with
     | 0 => None
     | S n =>
       match t with
-        | ttrue      => Some (Some (vbool true))
-        | tfalse     => Some (Some (vbool false))
-        | tvar x     => Some (index x env)
-        | tabs f x y => Some (Some (vabs env f x y))
-        | ttabs x T y  => Some (Some (vtabs env x T y))
-        | ttyp T     => Some (Some (vty env T))
-        | tapp ef ex   =>
-          match teval n env ex with
+        | ttrue      => Some (Some (sto, vbool true))
+        | tfalse     => Some (Some (sto, vbool false))
+        | tvar x     => Some (match (index x env) with | Some v => Some (sto, v) | None => None end)
+        | tabs f x y => Some (Some (sto, vabs env f x y))
+        | ttabs x T y  => Some (Some (sto, vtabs env x T y))
+        | ttyp T     => Some (Some (sto, vty env T))
+        | tnew ex     =>
+          match teval n sto env ex with
             | None => None
             | Some None => Some None
-            | Some (Some vx) =>
-              match teval n env ef with
+            | Some (Some (sto1, v)) => Some (Some ((0,v)::sto1, vloc (length sto1)))
+          end
+        | tget ex    =>
+          match teval n sto env ex with
+            | None => None
+            | Some None => Some None
+            | Some (Some (sto1, vbool _)) => Some None
+            | Some (Some (sto1, vty _ _)) => Some None
+            | Some (Some (sto1, vtabs _ _ _ _)) => Some None
+            | Some (Some (sto1, vabs _ _ _ _)) => Some None
+            | Some (Some (sto1, vloc i)) =>
+              Some (match (indexr i sto1) with
+                      | Some v => Some (sto,v)
+                      | None => None
+                    end)
+          end
+        | tset ex ey   =>
+          match teval n sto env ex with
+            | None => None
+            | Some None => Some None
+            | Some (Some (sto1, vbool _)) => Some None
+            | Some (Some (sto1, vty _ _)) => Some None
+            | Some (Some (sto1, vtabs _ _ _ _)) => Some None
+            | Some (Some (sto1, vabs _ _ _ _)) => Some None
+            | Some (Some (sto1, vloc i)) =>
+              match teval n sto1 env ex with
                 | None => None
                 | Some None => Some None
-                | Some (Some (vbool _)) => Some None
-                | Some (Some (vty _ _)) => Some None
-                | Some (Some (vtabs _ _ _ _)) => Some None
-                | Some (Some (vabs env2 f x ey)) =>
-                  teval n ((x,vx)::(f,vabs env2 f x ey)::env2) ey
+                | Some (Some (sto2, v)) => Some (Some (update i (0,v) sto2, v))
+              end
+          end
+        | tapp ef ex   =>
+          match teval n sto env ex with
+            | None => None
+            | Some None => Some None
+            | Some (Some (sto1, vx)) =>
+              match teval n sto1 env ef with
+                | None => None
+                | Some None => Some None
+                | Some (Some (sto2, vbool _)) => Some None
+                | Some (Some (sto2, vty _ _)) => Some None
+                | Some (Some (sto2, vloc _)) => Some None
+                | Some (Some (sto2, vtabs _ _ _ _)) => Some None
+                | Some (Some (sto2, vabs env2 f x ey)) =>
+                  teval n sto2 ((x,vx)::(f,vabs env2 f x ey)::env2) ey
               end
           end
         | ttapp ef ex   =>
-          match teval n env ex with
+          match teval n sto env ex with
             | None => None
             | Some None => Some None
-            | Some (Some vx) =>
-              match teval n env ef with
+            | Some (Some (sto1, vx)) =>
+              match teval n sto1 env ef with
                 | None => None
                 | Some None => Some None
-                | Some (Some (vbool _)) => Some None
-                | Some (Some (vty _ _)) => Some None
-                | Some (Some (vabs _ _ _ _)) => Some None
-                | Some (Some (vtabs env2 x T ey)) =>
-                  teval n ((x,vx)::env2) ey
+                | Some (Some (sto2, vbool _)) => Some None
+                | Some (Some (sto2, vty _ _)) => Some None
+                | Some (Some (sto2, vloc _)) => Some None
+                | Some (Some (sto2, vabs _ _ _ _)) => Some None
+                | Some (Some (sto2, vtabs env2 x T ey)) =>
+                  teval n sto2 ((x,vx)::env2) ey
               end
           end
       end
