@@ -1988,11 +1988,11 @@ Proof. intros. induction H0.
 Qed.
 
 
-Inductive res_type: venv -> option vl -> ty -> Prop :=
+Inductive res_type: venv -> tenv -> option (venv*vl) -> ty -> Prop :=
 | not_stuck: forall sto venv senv v T,
       val_type senv venv v T ->
       wf_env senv sto senv ->
-      res_type venv (Some v) T.
+      res_type venv senv (Some (sto, v)) T.
 
 Hint Constructors res_type.
 Hint Resolve not_stuck.
@@ -2322,10 +2322,10 @@ Proof.
   intros. inversion H; econstructor; eauto; eapply sstpd2_trans; eauto.
 Qed.
 
-Lemma restp_widen: forall vf H1 H2 T1 T2,
-  res_type H1 vf T1 ->
-  sstpd2 true H1 T1 H2 T2 [] ->
-  res_type H2 vf T2.
+Lemma restp_widen: forall vf G H1 T1 T2,
+  res_type H1 G vf T1 ->
+  sstpd2 true H1 T1 H1 T2 [] ->
+  res_type H1 G vf T2.
 Proof.
   intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto. eauto.
 Qed.
@@ -3546,9 +3546,9 @@ Qed.
 
 (* if not a timeout, then result not stuck and well-typed *)
 
-Theorem full_safety : forall n e tenv venv res T,
-  teval n venv e = Some res -> has_type tenv e T -> wf_env venv tenv ->
-  res_type venv res T.
+Theorem full_safety : forall n e senv sto tenv venv res T,
+  teval n sto venv e = Some res -> has_type tenv e T -> wf_env senv venv tenv -> wf_env senv sto senv ->
+  res_type venv senv res T.
 
 Proof.
   intros n. induction n.
@@ -3557,46 +3557,52 @@ Proof.
 
   - Case "True".
     remember (ttrue) as e. induction H0; inversion Heqe; subst.
-    + eapply not_stuck. eapply v_bool; eauto.
+    + eapply not_stuck. eapply v_bool; eauto. assumption.
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "False".
     remember (tfalse) as e. induction H0; inversion Heqe; subst.
-    + eapply not_stuck. eapply v_bool; eauto.
+    + eapply not_stuck. eapply v_bool; eauto. assumption.
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "Var".
     remember (tvar i) as e. induction H0; inversion Heqe; subst.
-    + destruct (index_safe_ex venv0 env T1 i) as [v [I V]]; eauto.
+    + destruct (index_safe_ex senv venv0 env T1 i) as [v [I V]]; eauto.
       rewrite I. eapply not_stuck. eapply V.
+      assumption.
 
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
+  - Case "New". admit.
+  - Case "Get". admit.
+  - Case "Set". admit.
+
   - Case "Typ".
     remember (ttyp t) as e. induction H0; inversion Heqe; subst.
-    + eapply not_stuck. eapply v_ty; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+    + eapply not_stuck. eapply v_ty; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor. assumption.
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "App".
     remember (tapp e1 e2) as e. induction H0; inversion Heqe; subst.
     +
-      remember (teval n venv0 e1) as tf.
-      remember (teval n venv0 e2) as tx.
-
+      remember (teval n sto venv0 e2) as tx.
 
       destruct tx as [rx|]; try solve by inversion.
-      assert (res_type venv0 rx T1) as HRX. SCase "HRX". subst. eapply IHn; eauto.
-      inversion HRX as [? vx].
+      assert (res_type venv0 senv rx T1) as HRX. SCase "HRX". subst. eapply IHn; eauto.
+      inversion HRX as [? ? ? vx].
 
-      destruct tf as [rf|]; subst rx; try solve by inversion.
-      assert (res_type venv0 rf (TFun T1 T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
-      inversion HRF as [? vf].
+      subst rx.
+      remember (teval n sto0 venv0 e1) as tf.
 
-      destruct (invert_abs venv0 vf T1 T2) as
+      destruct tf as [rf|]; try solve by inversion.
+      assert (res_type venv0 senv rf (TFun T1 T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
+      inversion HRF as [? ? ? vf].
+
+      destruct (invert_abs senv venv0 vf T1 T2) as
           [env1 [tenv [f0 [x0 [y0 [T3 [T4 [EF [FRF [FRX [WF [HTY [STX STY]]]]]]]]]]]]]. eauto.
       (* now we know it's a closure, and we have has_type evidence *)
 
-      assert (res_type ((x0,vx)::(f0,vf)::env1) res T4) as HRY.
+      assert (res_type ((x0,vx)::(f0,vf)::env1) senv res T4) as HRY.
         SCase "HRY".
           subst. eapply IHn. eauto. eauto.
           (* wf_env f x *) econstructor. eapply valtp_widen; eauto. eapply sstpd2_extend2. eapply sstpd2_extend2. eauto. eauto. eauto.
@@ -3608,55 +3614,55 @@ Proof.
           inversion A3 as [na3 HA3].
           assert (stpd2 false env1 T4 env1 T4 []) as A4 by solve [eapply stpd2_wrapf; eapply stpd2_reg1; eauto].
           inversion A4 as [na4 HA4].
-          eexists. eapply stp2_fun. eassumption. eassumption. eauto. eauto.
+          eexists. eapply stp2_fun. eassumption. eassumption. eauto. eauto. eauto.
           (* TODO: sstpd2_fun constructor *)
 
       inversion HRY as [? vy].
 
-      eapply not_stuck. eapply valtp_widen; eauto. eapply sstpd2_extend1. eapply sstpd2_extend1. eauto. eauto. eauto.
+      eapply not_stuck. eapply valtp_widen; eauto. eapply sstpd2_extend1. eapply sstpd2_extend1. eauto. eauto. eauto. eauto.
 
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
 
   - Case "Abs".
     remember (tabs i i0 e) as xe. induction H0; inversion Heqxe; subst.
-    + eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh venv0 env H1). eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
+    + eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh senv venv0 env H1). eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor. assumption.
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "TApp".
     remember (ttapp e1 e2) as e. induction H0; inversion Heqe; subst.
     +
-      remember (teval n venv0 e1) as tf.
-      remember (teval n venv0 e2) as tx.
+      remember (teval n sto venv0 e2) as tx.
 
       destruct tx as [rx|]; try solve by inversion.
-      assert (res_type venv0 rx T11) as HRX. SCase "HRX". subst. eapply IHn; eauto.
-      inversion HRX as [? vx].
+      assert (res_type venv0 senv rx T11) as HRX. SCase "HRX". subst. eapply IHn; eauto.
+      inversion HRX as [? ? ? vx].
 
       subst rx.
+      remember (teval n sto0 venv0 e1) as tf.
 
       destruct tf as [rf|]; try solve by inversion.
-      assert (res_type venv0 rf (TAll T11 T12)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
-      inversion HRF as [? vf].
+      assert (res_type venv0 senv rf (TAll T11 T12)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
+      inversion HRF as [? ? ? vf].
 
-      destruct (invert_tabs venv0 vf vx T11 T12) as
+      destruct (invert_tabs senv senv venv0 vf vx T11 T12) as
           [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]].
       eauto. eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
       (* now we know it's a closure, and we have has_type evidence *)
 
-      assert (res_type ((x0,vx)::env1) res (open (TSel x0) T4)) as HRY.
+      assert (res_type ((x0,vx)::env1) senv res (open (TSel x0) T4)) as HRY.
         SCase "HRY".
           subst. eapply IHn. eauto. eauto.
-          (* wf_env x *) econstructor. eapply valtp_widen; eauto. eapply sstpd2_extend2. eauto. eauto. eauto.
+          (* wf_env x *) econstructor. eapply valtp_widen; eauto. eapply sstpd2_extend2. eauto. eauto. eauto. eauto.
       inversion HRY as [? vy].
 
-      eapply not_stuck. eapply valtp_widen. eauto. eauto.
+      eapply not_stuck. eapply valtp_widen. eauto. eauto. eauto.
 
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "TAbs".
     remember (ttabs i t e) as xe. induction H0; inversion Heqxe; subst.
-    + eapply not_stuck. eapply v_tabs; eauto. subst i. eauto. rewrite (wf_fresh venv0 env H1). eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
+    + eapply not_stuck. eapply v_tabs; eauto. subst i. eauto. rewrite (wf_fresh senv venv0 env H1). eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor. assumption.
     +  eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
        Grab Existential Variables. apply 0. apply 0.
