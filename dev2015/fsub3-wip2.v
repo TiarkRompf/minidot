@@ -1926,26 +1926,26 @@ Qed.
 
 
 
-Lemma valtp_extend : forall vs v x v1 T,
-                       val_type vs v T ->
+Lemma valtp_extend : forall sto vs v x v1 T,
+                       val_type sto vs v T ->
                        fresh vs <= x ->
-                       val_type ((x,v1)::vs) v T.
+                       val_type sto ((x,v1)::vs) v T.
 Proof.
   intros. induction H; eauto; econstructor; eauto; eapply sstpd2_extend2; eauto.
 Qed.
 
 
-Lemma index_safe_ex: forall H1 G1 TF i,
-             wf_env H1 G1 ->
+Lemma index_safe_ex: forall STO H1 G1 TF i,
+             wf_env STO H1 G1 ->
              index i G1 = Some TF ->
-             exists v, index i H1 = Some v /\ val_type H1 v TF.
+             exists v, index i H1 = Some v /\ val_type STO H1 v TF.
 Proof. intros. induction H.
    - Case "nil". inversion H0.
    - Case "cons". inversion H0.
      case_eq (le_lt_dec (fresh ts) n); intros ? E1.
      + SCase "ok".
        rewrite E1 in H3.
-       assert ((fresh ts) <= n) as QF. eauto. rewrite <-(wf_fresh vs ts H1) in QF.
+       assert ((fresh ts) <= n) as QF. eauto. rewrite <-(wf_fresh sto vs ts H1) in QF.
        elim (le_xx (fresh vs) n QF). intros ? EX.
 
        case_eq (beq_nat i n); intros E2.
@@ -1956,7 +1956,7 @@ Proof. intros. induction H.
          subst t. eauto.
        * SSCase "miss".
          rewrite E2 in H3.
-         assert (exists v0, index i vs = Some v0 /\ val_type vs v0 TF) as HI. eapply IHwf_env. eauto.
+         assert (exists v0, index i vs = Some v0 /\ val_type sto vs v0 TF) as HI. eapply IHwf_env. eauto.
          inversion HI as [v0 HI1]. inversion HI1.
          eexists. econstructor. eapply index_extend; eauto. eapply valtp_extend; eauto.
      + SSCase "bad".
@@ -1964,8 +1964,8 @@ Proof. intros. induction H.
 Qed.
 
 
-Lemma index_safeh_ex: forall H1 H2 G1 GH TF i,
-             wf_env H1 G1 -> wf_envh H1 H2 GH ->
+Lemma index_safeh_ex: forall STO H1 H2 G1 GH TF i,
+             wf_env STO H1 G1 -> wf_envh H1 H2 GH ->
              indexr i GH = Some TF ->
              exists v, indexr i H2 = Some v /\ valh_type H1 H2 v TF.
 Proof. intros. induction H0.
@@ -1989,8 +1989,9 @@ Qed.
 
 
 Inductive res_type: venv -> option vl -> ty -> Prop :=
-| not_stuck: forall venv v T,
-      val_type venv v T ->
+| not_stuck: forall sto venv senv v T,
+      val_type senv venv v T ->
+      wf_env senv sto senv ->
       res_type venv (Some v) T.
 
 Hint Constructors res_type.
