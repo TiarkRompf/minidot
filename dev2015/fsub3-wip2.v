@@ -2314,10 +2314,10 @@ Proof. intros. repeat eu. eapply sstpd2_untrans_aux; eauto. Qed.
 
 
 
-Lemma valtp_widen: forall vf H1 H2 T1 T2,
-  val_type H1 vf T1 ->
+Lemma valtp_widen: forall STO vf H1 H2 T1 T2,
+  val_type STO H1 vf T1 ->
   sstpd2 true H1 T1 H2 T2 [] ->
-  val_type H2 vf T2.
+  val_type STO H2 vf T2.
 Proof.
   intros. inversion H; econstructor; eauto; eapply sstpd2_trans; eauto.
 Qed.
@@ -2327,11 +2327,11 @@ Lemma restp_widen: forall vf H1 H2 T1 T2,
   sstpd2 true H1 T1 H2 T2 [] ->
   res_type H2 vf T2.
 Proof.
-  intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto.
+  intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto. eauto.
 Qed.
 
-Lemma invert_typ: forall venv vx T1 T2,
-  val_type venv vx (TMem T1 T2) ->
+Lemma invert_typ: forall sto venv vx T1 T2,
+  val_type sto venv vx (TMem T1 T2) ->
   exists GX TX,
     vx = (vty GX TX) /\
     sstpd2 false venv T1 GX TX [] /\
