@@ -2736,6 +2736,7 @@ Qed.
 Lemma nosubst_open_rev: forall j TX T2, nosubst (open_rec j TX T2) -> nosubst TX -> nosubst T2.
 Proof.
   intros. generalize dependent j. induction T2; intros; try inversion H; simpl; eauto.
+  simpl in H. eauto.
 Qed.
 
 Lemma nosubst_zero_closed: forall j T2, nosubst (open_rec j (TSelH 0) T2) -> closed_rec (j+1) 0 T2 -> closed_rec j 0 T2.
