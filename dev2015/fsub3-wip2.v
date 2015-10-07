@@ -3461,13 +3461,13 @@ Qed.
 
 
 
-Lemma invert_abs: forall venv vf T1 T2,
-  val_type venv vf (TFun T1 T2) ->
+Lemma invert_abs: forall sto venv vf T1 T2,
+  val_type sto venv vf (TFun T1 T2) ->
   exists env tenv f x y T3 T4,
     vf = (vabs env f x y) /\
     fresh env <= f /\
     1 + f <= x /\
-    wf_env env tenv /\
+    wf_env sto env tenv /\
     has_type ((x,T3)::(f,TFun T3 T4)::tenv) y T4 /\
     sstpd2 true venv T1 env T3 [] /\
     sstpd2 true env T4 venv T2 [].
