@@ -2955,16 +2955,16 @@ Proof.
 Qed.
 
 
-Lemma compat_sel: forall GX TX V G1 T1' (GXX:venv) (TXX:ty) x v,
+Lemma compat_sel: forall STO GX TX V G1 T1' (GXX:venv) (TXX:ty) x v,
     compat GX TX V G1 (TSel x) T1' ->
     closed 0 0 TX ->
     closed 0 0 TXX ->
     index x G1 = Some v ->
-    val_type GXX v TXX ->
+    val_type STO GXX v TXX ->
     exists TXX', T1' = (TSel x) /\ TXX' = TXX /\ compat GX TX V GXX TXX TXX'
 .
 Proof.
-  intros ? ? ? ? ? ? ? ? ? CC CL CL1 IX. repeat destruct CC as [|CC].
+  intros ? ? ? ? ? ? ? ? ? ? CC CL CL1 IX. repeat destruct CC as [|CC].
   - ev. repeat eexists; eauto. + right. left. simpl in H0. eauto.
   - ev. repeat eexists; eauto. + right. left. simpl in H0. eauto.
   - ev. repeat eexists; eauto. + right. left. simpl in H0. eauto.
