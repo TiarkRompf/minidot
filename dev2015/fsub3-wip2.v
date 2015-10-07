@@ -964,6 +964,7 @@ Fixpoint splice n (T : ty) {struct T} : ty :=
     | TTop         => TTop
     | TBot         => TBot
     | TBool        => TBool
+    | TCell T1     => TCell (splice n T1)
     | TMem T1 T2   => TMem (splice n T1) (splice n T2)
     | TFun T1 T2   => TFun (splice n T1) (splice n T2)
     | TSelB i      => TSelB i
@@ -1172,6 +1173,10 @@ Proof.
   reflexivity.
   assumption. assumption.
   simpl.
+  rewrite IHclosed_rec.
+  reflexivity.
+  assumption.
+  simpl.
   rewrite IHclosed_rec1. rewrite IHclosed_rec2.
   reflexivity.
   assumption. assumption.
@@ -1311,14 +1316,14 @@ Proof.
   revert GH0 GH1 HeqGH.
   induction H; intros; subst GH; simpl; eauto.
   - Case "strong_sel1".
-    eapply stp2_strong_sel1. apply H. assumption. assumption.
+    eapply stp2_strong_sel1. apply H. eassumption. assumption.
     assert (splice (length GH0) TX=TX) as A. {
       eapply closed_splice_idem. eassumption. omega.
     }
     rewrite <- A. apply IHstp2.
     reflexivity.
   - Case "strong_sel2".
-    eapply stp2_strong_sel2. apply H. assumption. assumption.
+    eapply stp2_strong_sel2. apply H. eassumption. assumption.
     assert (splice (length GH0) TX=TX) as A. {
       eapply closed_splice_idem. eassumption. omega.
     }
@@ -1545,11 +1550,11 @@ Proof.
   try solve [inversion IHstp2; eauto].
   - Case "strong_sel1".
     eapply stp2_strong_sel1. eapply index_extend_mult. apply H.
-    assumption. assumption. assumption.
+    assumption. eassumption. assumption.
     apply IHstp2. assumption. apply venv_ext_refl. assumption.
   - Case "strong_sel2".
     eapply stp2_strong_sel2. eapply index_extend_mult. apply H.
-    assumption. assumption. assumption.
+    assumption. eassumption. assumption.
     apply IHstp2. assumption. assumption. apply venv_ext_refl.
   - Case "strong_selx".
     eapply stp2_strong_selx.
