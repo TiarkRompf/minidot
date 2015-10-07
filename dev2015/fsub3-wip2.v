@@ -2622,15 +2622,16 @@ closed j n TX ->
 (subst TX (open_rec j (TSelH (x+1)) T2)).
 Proof.
   intros T2 TX n. induction T2; intros; eauto.
-  -  simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.
-  -  simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.
-  -  simpl. case_eq (beq_nat i 0); intros E. symmetry. eapply closed_no_open. eauto. simpl. eauto.
+  - simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.
+  - simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.
+  - simpl. rewrite IHT2. eauto. eauto.
+  - simpl. case_eq (beq_nat i 0); intros E. symmetry. eapply closed_no_open. eauto. simpl. eauto.
   - simpl. case_eq (beq_nat j i); intros E. simpl.
     assert (x+1<>0). omega. eapply beq_nat_false_iff in H0.
     assert (x=x+1-1). unfold id. omega.
     rewrite H0. eauto.
     simpl. eauto.
-  -  simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eapply closed_upgrade. eauto. eauto. eauto.
+  - simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eapply closed_upgrade. eauto. eauto. eauto.
 Qed.
 
 
