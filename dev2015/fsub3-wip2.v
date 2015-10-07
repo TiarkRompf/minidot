@@ -3388,43 +3388,44 @@ Qed.
 
 Lemma stp_to_stp2: forall G1 GH T1 T2,
   stp G1 GH T1 T2 ->
-  forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
+  forall STO GX GY, wf_env STO GX G1 -> wf_envh GX GY GH ->
   stpd2 false GX T1 GX T2 GY.
 Proof with stpd2_wrapf.
-  intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY; eapply stpd2_wrapf.
+  intros G1 G2 T1 T2 ST. induction ST; intros STO GX GY WX WY; eapply stpd2_wrapf.
   - Case "topx". eapply stpd2_topx.
   - Case "botx". eapply stpd2_botx.
   - Case "top". eapply stpd2_top.
-    specialize (IHST GX GY WX WY).
+    specialize (IHST STO GX GY WX WY).
     apply stpd2_reg2 in IHST.
     apply IHST.
   - Case "bot". eapply stpd2_bot.
-    specialize (IHST GX GY WX WY).
+    specialize (IHST STO GX GY WX WY).
     apply stpd2_reg2 in IHST.
     apply IHST.
   - Case "bool". eapply stpd2_bool; eauto.
+  - Case "cell". eapply stpd2_cell; eauto.
   - Case "fun". eapply stpd2_fun; eauto.
   - Case "mem". eapply stpd2_mem; eauto.
   - Case "sel1".
-    assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
+    assert (exists v : vl, index x GX = Some v /\ val_type STO GX v TX) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
     eapply inv_vtp_half in VT. ev.
     eapply stpd2_sel1. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
-    specialize (IHST2 GX GY WX WY).
+    specialize (IHST2 STO GX GY WX WY).
     apply stpd2_reg2 in IHST2.
     apply IHST2.
   - Case "sel2".
-    assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
+    assert (exists v : vl, index x GX = Some v /\ val_type STO GX v TX) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
     eapply inv_vtp_half in VT. ev.
     eapply stpd2_sel2. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
-    specialize (IHST2 GX GY WX WY).
+    specialize (IHST2 STO GX GY WX WY).
     apply stpd2_reg2 in IHST2.
     apply IHST2.
   - Case "selx".
-    assert (exists v : vl, index x GX = Some v /\ val_type GX v TX) as A.
+    assert (exists v : vl, index x GX = Some v /\ val_type STO GX v TX) as A.
     eapply index_safe_ex. eauto. eauto. ev.
     eapply stpd2_selx. eauto. eauto.
   - Case "sela1". eauto.
@@ -3433,7 +3434,7 @@ Proof with stpd2_wrapf.
     destruct A as [? [? VT]]. destruct x0.
     inversion VT. subst.
     eapply stpd2_sela1. eauto. eauto. eapply IHST1. eauto. eauto.
-    specialize (IHST2 _ _ WX WY).
+    specialize (IHST2 _ _ _ WX WY).
     apply stpd2_reg2 in IHST2.
     apply IHST2.
   - Case "sela2".
@@ -3442,7 +3443,7 @@ Proof with stpd2_wrapf.
     destruct A as [? [? VT]]. destruct x0.
     inversion VT. subst.
     eapply stpd2_sela2. eauto. eauto. eapply IHST1. eauto. eauto.
-    specialize (IHST2 _ _ WX WY).
+    specialize (IHST2 _ _ _ WX WY).
     apply stpd2_reg2 in IHST2.
     apply IHST2.
   - Case "selax". eauto.
@@ -3454,7 +3455,7 @@ Proof with stpd2_wrapf.
     eapply stpd2_all. eauto. rewrite H. eauto. rewrite H.  eauto.
     rewrite H.
     eapply IHST2. eauto. eapply wfeh_cons. eauto.
-    rewrite H. apply IHST3; eauto. apply wfeh_cons. assumption.
+    rewrite H. eapply IHST3; eauto. apply wfeh_cons. assumption.
 Qed.
 
 
