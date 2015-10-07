@@ -2368,6 +2368,7 @@ Proof.
     eapply IHn in H2. eapply sstpd2_untrans in H2. inversion H2.
     eapply IHn in H1. inversion H1.
     eexists. eapply stp2_mem. eauto. eauto. omega. omega.
+  - Case "cell". eexists. eapply stp2_cell. eauto. eauto.
   - Case "sel1". subst.
     eapply IHn in H4. eapply sstpd2_untrans in H4. eapply valtp_widen with (2:=H4) in H2.
     remember H2 as Hv. clear HeqHv.
