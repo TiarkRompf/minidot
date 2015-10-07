@@ -2821,7 +2821,7 @@ stp2 G1 T1 G2 T2 (GH0 ++ [(0,vtya GX TX)])
 
 
 Definition compat (GX:venv) (TX: ty) (V: option vl) (G1:venv) (T1:ty) (T1':ty) :=
-  (exists x1 v, index x1 G1 = Some v /\ V = Some v /\ GX = base v /\ val_type GX v TX /\ T1' = (subst (TSel x1) T1)) \/
+  (exists x1 v STO, index x1 G1 = Some v /\ V = Some v /\ GX = base v /\ val_type STO GX v TX /\ T1' = (subst (TSel x1) T1)) \/
   (*  (G1 = GX /\ T1' = (subst TX T1)) \/ *)   (* this is doesn't work for DOT *)
   (* ((forall TA TB, TX <> TMem TA TB) /\ T1' = subst TTop T1) \/ *)(* can remove all term-only bindings -- may not be necessary after all since it applies nosubst *)
   (closed_rec 0 0 T1 /\ T1' = T1) \/ (* this one is for convenience: redundant with next *)
@@ -2842,7 +2842,7 @@ Lemma closed_compat: forall GX TX V GXX TXX TXX' j k,
 Proof.
   intros. inversion H;[|destruct H2;[|destruct H2]].
   - destruct H2. destruct H2. destruct H2. destruct H2. destruct H3.
-    destruct H3. destruct H3. destruct H4. rewrite H4.
+    destruct H3. destruct H4. destruct H4. rewrite H5.
     eapply closed_subst. eauto. eauto.
   - destruct H2. rewrite H3.
     eapply closed_upgrade. eapply closed_upgrade_free. eauto. omega. omega.
