@@ -883,7 +883,7 @@ Proof.
 Qed.
 
 
-(* splicing -- for stp_extend. not finished *)
+(* splicing -- for stp_extend. *)
 
 Fixpoint splice n (T : ty) {struct T} : ty :=
   match T with

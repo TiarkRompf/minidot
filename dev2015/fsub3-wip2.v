@@ -853,8 +853,8 @@ Qed.
 
 
 
-Lemma wf_fresh : forall vs ts,
-                    wf_env vs ts ->
+Lemma wf_fresh : forall sto vs ts,
+                    wf_env sto vs ts ->
                     (fresh vs = fresh ts).
 Proof.
   intros. induction H. auto.
@@ -957,7 +957,7 @@ Proof.
 Qed.
 
 
-(* splicing -- for stp_extend. not finished *)
+(* splicing -- for stp_extend. *)
 
 Fixpoint splice n (T : ty) {struct T} : ty :=
   match T with
