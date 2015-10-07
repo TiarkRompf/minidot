@@ -3483,19 +3483,19 @@ Qed.
 
 
 
-Lemma invert_tabs: forall venv vf vx T1 T2,
-  val_type venv vf (TAll T1 T2) ->
-  val_type venv vx T1 ->
+Lemma invert_tabs: forall sto sto1 venv vf vx T1 T2,
+  val_type sto venv vf (TAll T1 T2) ->
+  val_type sto1 venv vx T1 ->
   sstpd2 true venv T2 venv T2 [] ->
   exists env tenv x y T3 T4,
     vf = (vtabs env x T3 y) /\
     fresh env = x /\
-    wf_env env tenv /\
+    wf_env sto env tenv /\
     has_type ((x,T3)::tenv) y (open (TSel x) T4) /\
     sstpd2 true venv T1 env T3 [] /\
     sstpd2 true ((x,vx)::env) (open (TSel x) T4) venv T2 []. (* (open T1 T2) []. *)
 Proof.
-  intros venv0 vf vx T1 T2 VF VX STY. inversion VF; ev; try solve by inversion. inversion H2. subst.
+  intros sto sto1 venv0 vf vx T1 T2 VF VX STY. inversion VF; ev; try solve by inversion. inversion H2. subst.
   eexists. eexists. eexists. eexists. eexists. eexists.
   repeat split; eauto.
   remember (fresh venv1) as x.
