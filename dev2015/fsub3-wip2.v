@@ -3570,6 +3570,19 @@ Proof.
   intros. generalize senv'. apply (proj2 val_wf_sto_ext). assumption.
 Qed.
 
+Lemma wfe_length : forall sto vs ts,
+                    wf_env sto vs ts ->
+                    (length vs = length ts).
+Proof.
+  intros. induction H. auto.
+  compute. eauto.
+Qed.
+
+Lemma valtp_reg: forall STO G v T,
+                   val_type STO G v T ->
+                   sstpd2 true G T G T [].
+Proof. intros. induction H; eapply sstpd2_reg2; eauto. Qed.
+
 (* if not a timeout, then result not stuck and well-typed *)
 
 Theorem full_safety : forall n e senv sto tenv venv res T,
@@ -3623,7 +3636,40 @@ Proof.
       destruct A as [senv' A].
       exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
-  - Case "New". admit.
+  - Case "New".
+    remember (tnew e) as e'. induction H0; inversion Heqe'; subst.
+    +
+      remember (teval n sto venv0 e) as te.
+
+      destruct te as [re|]; try solve by inversion.
+      assert (exists senv', res_type venv0 (senv'++senv) re T1) as HRE. SCase "HRE". subst. eapply IHn; eauto.
+      destruct HRE as [senve' HRE].
+      inversion HRE as [? ? ? ve]. subst.
+      inversion H4. subst.
+      exists ([(0, T1)]++senve').
+      eapply not_stuck.
+      eapply v_loc.
+      unfold indexr. simpl. inversion HRE; subst.
+      rewrite <- (wfe_length (senve'++senv) sto0 (senve'++senv)).
+      rewrite <- beq_nat_refl. reflexivity. assumption.
+      eapply valtp_reg in H3. eapply sstpd2_downgrade in H3. destruct H3 as [n' H3].
+      (* NOTE: v_loc enforces that the cell type is valid in an empty env! *)
+      admit.
+      econstructor. eapply valtp_extend. rewrite <- app_assoc. eapply valtp_sto_ext.
+      (* NOTE: looks wrong. sto0 instead of venv0 *)
+      admit.
+      (* NOTE: wrong *)
+      admit.
+      rewrite <- app_assoc. eapply wf_env_sto_ext. inversion HRE; subst. apply H12.
+
+    + assert (
+          exists senv', res_type venv0 (senv' ++ senv) res T1
+        ) as A. {
+        eapply IHhas_type; eauto.
+      }
+      destruct A as [senv' A].
+      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+
   - Case "Get". admit.
   - Case "Set". admit.
 
