@@ -269,6 +269,7 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env (ttyp T1) (TMem T1 T1)
 | t_new: forall env x T1,
            has_type env x T1 ->
+           stp [] [] T1 T1 -> (* NOTE: empty env limitation *)
            has_type env (tnew x) (TCell T1)
 | t_get: forall env T1 x,
            has_type env x (TCell T1) ->
@@ -1766,6 +1767,159 @@ Lemma stp_reg  : forall G GH T1 T2,
 Proof.
   intros. induction H;
     try solve [repeat ev; split; eauto].
+Qed.
+
+
+(* extend_mult0 *)
+
+
+Inductive venv_ext0 : venv -> venv -> Prop :=
+| venv_ext0_nil : forall G, venv_ext0 G nil
+| venv_ext0_refl : forall G, venv_ext0 G G
+.
+
+Inductive aenv_ext0 : aenv -> aenv -> Prop :=
+| aenv_ext0_nil : aenv_ext0 nil nil
+| aenv_ext0_cons : forall x T G' G A A', aenv_ext0 A' A -> venv_ext0 G' G -> aenv_ext0 ((x,(G',T))::A') ((x,(G,T))::A).
+
+Lemma aenv_ext0_refl: forall GH, aenv_ext0 GH GH.
+Proof.
+  intros. induction GH.
+  - apply aenv_ext0_nil.
+  - destruct a. destruct p. apply aenv_ext0_cons.
+    assumption.
+    apply venv_ext0_refl.
+Qed.
+
+Lemma index_extend_mult0 : forall G G' x T,
+                       index x G = Some T ->
+                       venv_ext0 G' G ->
+                       index x G' = Some T.
+Proof.
+  intros G G' x T H HV.
+  induction HV.
+  - inversion H.
+  - assumption.
+Qed.
+
+Lemma aenv_ext0__same_length:
+  forall GH GH',
+    aenv_ext0 GH' GH ->
+    length GH = length GH'.
+Proof.
+  intros. induction H.
+  - simpl. reflexivity.
+  - simpl. rewrite IHaenv_ext0. reflexivity.
+Qed.
+
+Lemma indexr_at_ext0 :
+  forall GH GH' x T G,
+    aenv_ext0 GH' GH ->
+    indexr x GH = Some (G, T) ->
+    exists G', indexr x GH' = Some (G', T) /\ venv_ext0 G' G.
+Proof.
+  intros GH GH' x T G Hext Hindex. induction Hext.
+  - simpl in Hindex. inversion Hindex.
+  - simpl. simpl in Hindex.
+    case_eq (beq_nat x (length A)); intros E.
+    rewrite E in Hindex.  inversion Hindex. subst.
+    rewrite <- (@aenv_ext0__same_length A A'). rewrite E.
+    exists G'. split. reflexivity. assumption. assumption.
+    rewrite E in Hindex.
+    rewrite <- (@aenv_ext0__same_length A A'). rewrite E.
+    apply IHHext. assumption. assumption.
+Qed.
+
+Lemma stp2_closure_extend_mult0_rec :
+  forall G1 G2 T1 T2 GH s m n1,
+    stp2 s m G1 T1 G2 T2 GH n1 ->
+    (forall G1' G2' GH',
+       aenv_ext0 GH' GH ->
+       venv_ext0 G1' G1 ->
+       venv_ext0 G2' G2 ->
+       stp2 s m G1' T1 G2' T2 GH' n1).
+Proof.
+  intros G1 G2 T1 T2 GH s m n1 H.
+  induction H; intros; eauto;
+  try solve [inversion IHstp2_1; inversion IHstp2_2; eauto];
+  try solve [inversion IHstp2; eauto].
+  - Case "strong_sel1".
+    eapply stp2_strong_sel1. eapply index_extend_mult0. apply H.
+    assumption. eassumption. assumption.
+    apply IHstp2. assumption. apply venv_ext0_refl. assumption.
+  - Case "strong_sel2".
+    eapply stp2_strong_sel2. eapply index_extend_mult0. apply H.
+    assumption. eassumption. assumption.
+    apply IHstp2. assumption. assumption. apply venv_ext0_refl.
+  - Case "strong_selx".
+    eapply stp2_strong_selx.
+    eapply index_extend_mult0. apply H. assumption.
+    eapply index_extend_mult0. apply H0. assumption.
+  - Case "sel1".
+    eapply stp2_sel1. eapply index_extend_mult0. apply H.
+    assumption. eassumption. assumption.
+    apply IHstp2_1. assumption. apply venv_ext0_refl. assumption.
+    apply IHstp2_2. assumption. assumption. assumption.
+  - Case "sel2".
+    eapply stp2_sel2. eapply index_extend_mult0. apply H.
+    assumption. eassumption. assumption.
+    apply IHstp2_1. assumption. apply venv_ext0_refl. assumption.
+    apply IHstp2_2. assumption. assumption. assumption.
+  - Case "selx".
+    eapply stp2_selx.
+    eapply index_extend_mult0. apply H. assumption.
+    eapply index_extend_mult0. apply H0. assumption.
+  - Case "sela1".
+    assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext0 GX' GX) as A. {
+      apply indexr_at_ext0 with (GH:=GH); assumption.
+    }
+    inversion A as [GX' [H' HX]].
+    apply stp2_sela1 with (GX:=GX') (TX:=TX).
+    assumption. assumption.
+    apply IHstp2_1; assumption.
+    apply IHstp2_2; assumption.
+  - Case "sela2".
+    assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext0 GX' GX) as A. {
+      apply indexr_at_ext0 with (GH:=GH); assumption.
+    }
+    inversion A as [GX' [H' HX]].
+    apply stp2_sela2 with (GX:=GX') (TX:=TX).
+    assumption. assumption.
+    apply IHstp2_1; assumption.
+    apply IHstp2_2; assumption.
+  - Case "selax".
+    assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext0 GX' GX) as A. {
+      apply indexr_at_ext0 with (GH:=GH); assumption.
+    }
+    inversion A as [GX' [H' HX]].
+    apply stp2_selax with (GX:=GX') (TX:=TX).
+    assumption.
+  - Case "all".
+    assert (length GH = length GH') as A. {
+      apply aenv_ext0__same_length. assumption.
+    }
+    apply stp2_all.
+    apply IHstp2_1; assumption.
+    subst. rewrite <- A. assumption.
+    subst. rewrite <- A. assumption.
+    subst. rewrite <- A.
+    apply IHstp2_2. apply aenv_ext0_cons. assumption. assumption. assumption. assumption.
+    subst. rewrite <- A.
+    apply IHstp2_3. apply aenv_ext0_cons. assumption. assumption. assumption. assumption.
+  - Case "trans".
+    eapply stp2_transf.
+    eapply IHstp2_1.
+    assumption. assumption. apply venv_ext0_refl.
+    eapply IHstp2_2.
+    assumption. apply venv_ext0_refl. assumption.
+Qed.
+
+Lemma stp2_extend_mult0 : forall G1 G2 T1 T2 GH s m n1,
+                       stp2 s m [] T1 [] T2 GH n1 ->
+                       stp2 s m G1 T1 G2 T2 GH n1.
+Proof.
+  intros. eapply stp2_closure_extend_mult0_rec. apply H.
+  apply aenv_ext0_refl. eapply venv_ext0_nil. eapply venv_ext0_nil.
 Qed.
 
 (* stpd2 variants below *)
@@ -3652,15 +3806,18 @@ Proof.
       unfold indexr. simpl. inversion HRE; subst.
       rewrite <- (wfe_length (senve'++senv) sto0 (senve'++senv)).
       rewrite <- beq_nat_refl. reflexivity. assumption.
-      eapply valtp_reg in H3. eapply sstpd2_downgrade in H3. destruct H3 as [n' H3].
-      (* NOTE: v_loc enforces that the cell type is valid in an empty env! *)
-      admit.
+      eapply valtp_reg in H5. eapply sstpd2_downgrade in H5. destruct H5 as [? H5].
+      assert (stpd2 false [] T1 [] T1 []) as A. {
+        eapply stp_to_stp2. eassumption. eauto. apply wfeh_nil.
+      }
+      destruct A as [? A].
+      eexists. eapply stp2_cell. eapply stp2_extend_mult0. eapply A. eapply stp2_extend_mult0. eapply A.
       econstructor. eapply valtp_extend. rewrite <- app_assoc. eapply valtp_sto_ext.
       (* NOTE: looks wrong. sto0 instead of venv0 *)
       admit.
       (* NOTE: wrong *)
       admit.
-      rewrite <- app_assoc. eapply wf_env_sto_ext. inversion HRE; subst. apply H12.
+      rewrite <- app_assoc. eapply wf_env_sto_ext. inversion HRE; subst. assumption.
 
     + assert (
           exists senv', res_type venv0 (senv' ++ senv) res T1
