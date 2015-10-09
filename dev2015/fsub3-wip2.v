@@ -2141,11 +2141,19 @@ Proof. intros. induction H0.
        eapply v_tya. (* aenv is not constrained -- bit of a cheat?*)
 Qed.
 
+Inductive wf_sto: tenv -> venv -> tenv -> Prop :=
+| wfs_nil: forall G,
+  wf_sto G nil nil
+| wfs_cons: forall G v t vs ts,
+  val_type G nil v t ->
+  wf_sto G vs ts ->
+  wf_sto G ((0,v)::vs) ((0,t)::ts)
+.
 
 Inductive res_type: venv -> tenv -> option (venv*vl) -> ty -> Prop :=
 | not_stuck: forall sto venv senv v T,
       val_type senv venv v T ->
-      wf_env senv sto senv ->
+      wf_sto senv sto senv ->
       res_type venv senv (Some (sto, v)) T.
 
 Hint Constructors res_type.
@@ -3724,8 +3732,18 @@ Proof.
   intros. generalize senv'. apply (proj2 val_wf_sto_ext). assumption.
 Qed.
 
-Lemma wfe_length : forall sto vs ts,
-                    wf_env sto vs ts ->
+
+Lemma wf_sto_sto_ext: forall senv' senv venv env,
+  wf_sto senv venv env ->
+  wf_sto (senv'++senv) venv env.
+Proof.
+  intros. induction H.
+  - apply wfs_nil.
+  - apply wfs_cons. apply valtp_sto_ext. assumption. assumption.
+Qed.
+
+Lemma wfs_length : forall sto vs ts,
+                    wf_sto sto vs ts ->
                     (length vs = length ts).
 Proof.
   intros. induction H. auto.
@@ -3740,7 +3758,10 @@ Proof. intros. induction H; eapply sstpd2_reg2; eauto. Qed.
 (* if not a timeout, then result not stuck and well-typed *)
 
 Theorem full_safety : forall n e senv sto tenv venv res T,
-  teval n sto venv e = Some res -> has_type tenv e T -> wf_env senv venv tenv -> wf_env senv sto senv ->
+  teval n sto venv e = Some res ->
+  has_type tenv e T ->
+  wf_env senv venv tenv ->
+  wf_sto senv sto senv ->
   exists senv', res_type venv (senv'++senv) res T.
 
 Proof.
@@ -3801,23 +3822,21 @@ Proof.
       inversion HRE as [? ? ? ve]. subst.
       inversion H4. subst.
       exists ([(0, T1)]++senve').
-      eapply not_stuck.
-      eapply v_loc.
-      unfold indexr. simpl. inversion HRE; subst.
-      rewrite <- (wfe_length (senve'++senv) sto0 (senve'++senv)).
-      rewrite <- beq_nat_refl. reflexivity. assumption.
+      inversion HRE; subst.
       eapply valtp_reg in H5. eapply sstpd2_downgrade in H5. destruct H5 as [? H5].
       assert (stpd2 false [] T1 [] T1 []) as A. {
         eapply stp_to_stp2. eassumption. eauto. apply wfeh_nil.
       }
       destruct A as [? A].
+      eapply not_stuck.
+      eapply v_loc.
+      unfold indexr. simpl.
+      rewrite <- (wfs_length (senve'++senv) sto0 (senve'++senv)).
+      rewrite <- beq_nat_refl. reflexivity. assumption.
       eexists. eapply stp2_cell. eapply stp2_extend_mult0. eapply A. eapply stp2_extend_mult0. eapply A.
-      econstructor. eapply valtp_extend. rewrite <- app_assoc. eapply valtp_sto_ext.
-      (* NOTE: looks wrong. sto0 instead of venv0 *)
-      admit.
-      (* NOTE: wrong *)
-      admit.
-      rewrite <- app_assoc. eapply wf_env_sto_ext. inversion HRE; subst. assumption.
+      econstructor. eapply valtp_widen. rewrite <- app_assoc. eapply valtp_sto_ext. eassumption.
+      eapply stpd2_upgrade. eexists. eapply stp2_extend_mult0. eapply A.
+      rewrite <- app_assoc. eapply wf_sto_sto_ext. eauto.
 
     + assert (
           exists senv', res_type venv0 (senv' ++ senv) res T1
