@@ -7,6 +7,10 @@
 (* compared to fsub1.v *)
 
 (* this version adds mutable references to fsub2.v *)
+(*
+   limitation:
+   the underlying type of a mutable reference must be well-formed in empty env
+*)
 
 Require Export SfLib.
 
