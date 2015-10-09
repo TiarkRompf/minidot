@@ -682,7 +682,7 @@ Fixpoint teval(n: nat)(sto: venv)(env: venv)(t: tm){struct n}: option (option (v
             | Some (Some (sto1, vtabs _ _ _ _)) => Some None
             | Some (Some (sto1, vabs _ _ _ _)) => Some None
             | Some (Some (sto1, vloc i)) =>
-              match teval n sto1 env ex with
+              match teval n sto1 env ey with
                 | None => None
                 | Some None => Some None
                 | Some (Some (sto2, v)) => Some (Some (update i (0,v) sto2, v))
@@ -3799,6 +3799,27 @@ Proof. intros. induction H.
        assumption.
 Qed.
 
+Lemma update_sto_safe_ex: forall G sto senv i T v,
+             wf_sto G sto senv ->
+             indexr i senv = Some T ->
+             val_type G [] v T ->
+             wf_sto G (update i (0,v) sto) senv.
+Proof. intros. induction H.
+   - Case "nil". inversion H0.
+   - Case "cons". inversion H0. simpl.
+     case_eq (beq_nat i (length ts)); intros E2.
+     * SSCase "hit".
+       rewrite E2 in H4. inversion H4. subst. clear H4.
+       assert (length ts = length vs) as A. { symmetry. eapply wfs_length. eauto. }
+       simpl. rewrite A in E2. unfold id in E2. rewrite E2.
+       apply wfs_cons. assumption. assumption.
+     * SSCase "miss".
+       rewrite E2 in H4.
+       assert (length ts = length vs) as A. { symmetry. eapply wfs_length. eauto. }
+       simpl. rewrite A in E2. unfold id in E2. rewrite E2.
+       apply wfs_cons. assumption. apply IHwf_sto. assumption. assumption.
+Qed.
+
 (* if not a timeout, then result not stuck and well-typed *)
 
 Theorem full_safety : forall n e senv sto tenv venv res T,
@@ -3917,7 +3938,43 @@ Proof.
       destruct A as [senv' A].
       exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
-  - Case "Set". admit.
+  - Case "Set".
+    remember (tset e1 e2) as e. induction H0; inversion Heqe; subst.
+
+    +
+      remember (teval n sto venv0 e1) as te1.
+
+      destruct te1 as [re1|]; try solve by inversion.
+      assert (exists senv', res_type venv0 (senv'++senv) re1 (TCell T1)) as HRE1. subst. eapply IHn; eauto.
+      destruct HRE1 as [senv1' HRE1].
+      inversion HRE1 as [? ? ? ve1].
+
+      subst.
+
+      destruct (invert_loc (senv1' ++ senv) venv0 ve1 T1) as
+          [b [Ti [EB [ET [B1 B2]]]]]. eauto.
+
+      subst.
+
+      remember (teval n sto0 venv0 e2) as te2.
+
+      destruct te2 as [re2|]; try solve by inversion.
+      assert (exists senv', res_type venv0 (senv'++senv1'++senv) re2 T1) as HRE2. subst. eapply IHn; eauto. eapply wf_env_sto_ext. assumption.
+      destruct HRE2 as [senv2' HRE2].
+      inversion HRE2 as [? ? ? ve2].
+
+      subst. inversion H4. subst.
+
+      exists (senv2'++senv1'). rewrite <- app_assoc.
+      eapply not_stuck. assumption. eapply update_sto_safe_ex. assumption.
+      eapply indexr_extend_mult. eassumption.
+      eapply valtp_widen. eassumption. assumption.
+
+    + assert (exists senv', res_type venv0 (senv' ++ senv) res T1) as A. {
+        eapply IHhas_type; eauto.
+      }
+      destruct A as [senv' A].
+      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "Typ".
     remember (ttyp t) as e. induction H0; inversion Heqe; subst.
@@ -4043,7 +4100,7 @@ Proof.
       destruct A as [senv' A].
       exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
-       Grab Existential Variables. apply 0. apply 0.
+       Grab Existential Variables. apply nil. apply 0. apply 0.
 Qed.
 
 End FSUB.
