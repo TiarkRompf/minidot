@@ -665,7 +665,7 @@ Fixpoint teval(n: nat)(sto: venv)(env: venv)(t: tm){struct n}: option (option (v
             | Some (Some (sto1, vabs _ _ _ _)) => Some None
             | Some (Some (sto1, vloc i)) =>
               Some (match (indexr i sto1) with
-                      | Some v => Some (sto,v)
+                      | Some v => Some (sto1,v)
                       | None => None
                     end)
           end
@@ -3755,6 +3755,46 @@ Lemma valtp_reg: forall STO G v T,
                    sstpd2 true G T G T [].
 Proof. intros. induction H; eapply sstpd2_reg2; eauto. Qed.
 
+Lemma invert_loc: forall sto venv vx T,
+  val_type sto venv vx (TCell T) ->
+  exists i Ti,
+    vx = (vloc i) /\
+    indexr i sto = Some Ti /\
+    sstpd2 true venv T [] Ti [] /\
+    sstpd2 true [] Ti venv T [].
+Proof.
+  intros. inversion H; ev; try solve by inversion. inversion H1.
+  subst.
+  assert (sstpd2 true venv0 T [] T1 []) as E1. {
+    eapply stpd2_upgrade. eexists. eassumption.
+  }
+  assert (sstpd2 true [] T1 venv0 T []) as E2. {
+    eapply stpd2_upgrade. eexists. eassumption.
+  }
+  repeat eu. repeat eexists; eauto.
+Qed.
+
+Lemma index_sto_safe_ex: forall G sto senv i T,
+             wf_sto G sto senv ->
+             indexr i senv = Some T ->
+             exists v, indexr i sto = Some v /\ val_type G [] v T.
+Proof. intros. induction H.
+   - Case "nil". inversion H0.
+   - Case "cons". inversion H0.
+     case_eq (beq_nat i (length ts)); intros E2.
+     * SSCase "hit".
+       rewrite E2 in H3. inversion H3. subst. clear H3.
+       assert (length ts = length vs) as A. { symmetry. eapply wfs_length. eauto. }
+       simpl. rewrite A in E2. rewrite E2.
+       eexists. split. eauto. assumption.
+     * SSCase "miss".
+       rewrite E2 in H3.
+       assert (exists v, indexr i vs = Some v /\ val_type G [] v T) as A by eauto.
+       destruct A as [? A]. destruct A as [A1 A2].
+       eexists. split. eapply indexr_extend. eauto.
+       assumption.
+Qed.
+
 (* if not a timeout, then result not stuck and well-typed *)
 
 Theorem full_safety : forall n e senv sto tenv venv res T,
@@ -3846,7 +3886,33 @@ Proof.
       destruct A as [senv' A].
       exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
-  - Case "Get". admit.
+  - Case "Get".
+    remember (tget e) as e'. induction H0; inversion Heqe'; subst.
+    +
+      remember (teval n sto venv0 e) as te.
+      destruct te as [re|]; try solve by inversion.
+      assert (exists senv', res_type venv0 (senv'++senv) re (TCell T1)) as HRE. SCase "HRE". subst. eapply IHn; eauto.
+      destruct HRE as [senve' HRE].
+      inversion HRE as [? ? ? ve]. subst.
+
+      destruct (invert_loc (senve' ++ senv) venv0 ve T1) as
+          [b [Ti [EB [ET [B1 B2]]]]]. eauto.
+
+      subst.
+
+      destruct (index_sto_safe_ex (senve'++senv) sto0 (senve'++senv) b Ti) as [v [A1 A2]];
+        eauto.
+      rewrite A1 in H4. inversion H4. subst.
+
+      exists senve'. eapply not_stuck. eapply valtp_widen. eassumption. assumption.
+      assumption.
+
+    + assert (exists senv', res_type venv0 (senv' ++ senv) res T1) as A. {
+        eapply IHhas_type; eauto.
+      }
+      destruct A as [senv' A].
+      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+
   - Case "Set". admit.
 
   - Case "Typ".
