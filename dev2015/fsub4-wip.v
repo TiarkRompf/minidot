@@ -1988,6 +1988,22 @@ Proof.
   apply stp2_extendH_mult0; assumption.
 Qed.
 
+Lemma stpd2_extendS : forall x v1 G1 G2 T1 T2 STO H m,
+                       stpd2 m G1 T1 G2 T2 STO H ->
+                       stpd2 m G1 T1 G2 T2 ((x,v1)::STO) H.
+Proof.
+  intros. inversion H0 as [n1 Hsub]. exists n1.
+  apply stp2_extendS; assumption.
+Qed.
+
+Lemma stpd2_extendS_mult : forall G1 G2 T1 T2 STO STO2 H m,
+                       stpd2 m G1 T1 G2 T2 STO H->
+                       stpd2 m G1 T1 G2 T2 (STO2++STO) H.
+Proof.
+  intros. inversion H0 as [n1 Hsub]. exists n1.
+  apply stp2_extendS_mult; assumption.
+Qed.
+
 
 Lemma stpd2_reg2 : forall G1 G2 T1 T2 STO H m,
                        stpd2 m G1 T1 G2 T2 STO H ->
