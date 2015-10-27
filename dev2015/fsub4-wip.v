@@ -3933,29 +3933,29 @@ Proof.
       remember (teval n sto venv0 e) as te.
 
       destruct te as [re|]; try solve by inversion.
-      assert (exists senv', res_type venv0 (senv'++senv) re T1) as HRE. SCase "HRE". subst. eapply IHn; eauto.
+      assert (exists senv', res_type (senv'++senv) venv0 re T1) as HRE. SCase "HRE". subst. eapply IHn; eauto.
       destruct HRE as [senve' HRE].
       inversion HRE as [? ? ? ve]. subst.
       inversion H4. subst.
-      exists ([(0, T1)]++senve').
+      exists ([(0, (venv0,T1))]++senve').
       inversion HRE; subst.
       eapply valtp_reg in H5. eapply sstpd2_downgrade in H5. destruct H5 as [? H5].
-      assert (stpd2 false venv0 T1 venv0 T1 sto []) as A. {
+      assert (stpd2 false venv0 T1 venv0 T1 senv []) as A. {
         eapply stp_to_stp2. eassumption. eauto. apply wfeh_nil.
       }
       destruct A as [? A].
       eapply not_stuck.
       eapply v_loc.
       unfold indexr. simpl.
-(*      rewrite <- (wfs_length (senve'++senv) sto0 (senve'++senv)). *)
+      rewrite <- (wfs_length (senve'++senv) sto0 (senve'++senv)). 
       rewrite <- beq_nat_refl. reflexivity. assumption.
-      eexists. eapply stp2_cell. eapply stp2_extend_mult0. eapply A. eapply stp2_extend_mult0. eapply A.
+      eexists. eapply stp2_cell. eapply stp2_extendS_mult. eapply A. eapply stp2_extendS_mult. eapply A.
       econstructor. eapply valtp_widen. rewrite <- app_assoc. eapply valtp_sto_ext. eassumption.
-      eapply stpd2_upgrade. eexists. eapply stp2_extend_mult0. eapply A.
+      eapply stpd2_upgrade. eexists. eapply stp2_extendS_mult. eapply A.
       rewrite <- app_assoc. eapply wf_sto_sto_ext. eauto.
 
     + assert (
-          exists senv', res_type venv0 (senv' ++ senv) res T1
+          exists senv', res_type (senv' ++ senv) venv0 res T1
         ) as A. {
         eapply IHhas_type; eauto.
       }
