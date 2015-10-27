@@ -382,19 +382,19 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list(id*(venv*ty)) -
 
 
 (* existing object, but imprecise type *)
-| stp2_sel1: forall G1 G2 TX x T2 STO GH n1 n2 v,
+| stp2_sel1: forall G1 G2 GX TX x T2 STO GH n1 n2 v,
     index x G1 = Some v ->
-    val_type STO (base v) v TX ->
+    val_type STO GX v TX ->
     closed 0 0 TX ->
-    stp2 false false (base v) TX G2 (TMem TBot T2) STO GH n1 ->
+    stp2 false false GX TX G2 (TMem TBot T2) STO GH n1 ->
     stp2 false true G2 T2 G2 T2 STO GH n2 -> (* regularity *)
     stp2 false true G1 (TSel x) G2 T2 STO GH (S (n1+n2))
 
-| stp2_sel2: forall G1 G2 TX x T1 STO GH n1 n2 v,
+| stp2_sel2: forall G1 G2 GX TX x T1 STO GH n1 n2 v,
     index x G2 = Some v ->
-    val_type STO (base v) v TX ->
+    val_type STO GX v TX ->
     closed 0 0 TX ->
-    stp2 false false (base v) TX G1 (TMem T1 TTop) STO GH n1 ->
+    stp2 false false GX TX G1 (TMem T1 TTop) STO GH n1 ->
     stp2 false true G1 T1 G1 T1 STO GH n2 -> (* regularity *)
     stp2 false true G1 T1 G2 (TSel x) STO GH (S (n1+n2))
 
@@ -547,20 +547,20 @@ Lemma stpd2_cell: forall G1 G2 STO GH T1 T2,
     stpd2 true G1 (TCell T1) G2 (TCell T2) STO GH.
 Proof. intros. repeat eu. eauto. Qed.
 
-Lemma stpd2_sel1: forall G1 G2 TX x T2 STO GH v,
+Lemma stpd2_sel1: forall G1 G2 GX TX x T2 STO GH v,
     index x G1 = Some v ->
-    val_type STO (base v) v TX ->
+    val_type STO GX v TX ->
     closed 0 0 TX ->
-    stpd2 false (base v) TX G2 (TMem TBot T2) STO GH ->
+    stpd2 false GX TX G2 (TMem TBot T2) STO GH ->
     stpd2 true G2 T2 G2 T2 STO GH ->
     stpd2 true G1 (TSel x) G2 T2 STO GH.
 Proof. intros. repeat eu. eauto. Qed.
 
-Lemma stpd2_sel2: forall G1 G2 TX x T1 STO GH v,
+Lemma stpd2_sel2: forall G1 G2 GX TX x T1 STO GH v,
     index x G2 = Some v ->
-    val_type STO (base v) v TX ->
+    val_type STO GX v TX ->
     closed 0 0 TX ->
-    stpd2 false (base v) TX G1 (TMem T1 TTop) STO GH ->
+    stpd2 false GX TX G1 (TMem T1 TTop) STO GH ->
     stpd2 true G1 T1 G1 T1 STO GH ->
     stpd2 true G1 T1 G2 (TSel x) STO GH.
 Proof. intros. repeat eu. eauto. Qed.
