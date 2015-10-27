@@ -3724,6 +3724,7 @@ Lemma val_wf_sto_ext:
      forall senv', val_type (senv' ++ senv) G v T).
 Proof.
   apply val_env_mutind; intros; eauto. eauto using indexr_extend_mult.
+  admit. admit. admit. admit. admit. (* TODO *)
 Qed.
 
 Lemma wf_env_sto_ext: forall senv' senv venv env,
@@ -3760,26 +3761,28 @@ Qed.
 
 Lemma valtp_reg: forall STO G v T,
                    val_type STO G v T ->
-                   sstpd2 true G T G T [].
+                   sstpd2 true G T G T STO [].
 Proof. intros. induction H; eapply sstpd2_reg2; eauto. Qed.
 
 Lemma invert_loc: forall sto venv vx T,
   val_type sto venv vx (TCell T) ->
-  exists i Ti,
+  exists i vi venvi Ti,
     vx = (vloc i) /\
-    indexr i sto = Some Ti /\
-    sstpd2 true venv T [] Ti [] /\
-    sstpd2 true [] Ti venv T [].
+    indexr i sto = Some vi /\
+    val_type sto venvi vi Ti ->
+    sstpd2 true venv T venvi Ti sto [] /\
+    sstpd2 true venvi Ti venv T sto [].
 Proof.
-  intros. inversion H; ev; try solve by inversion. inversion H1.
+  intros. inversion H; ev; try solve by inversion. inversion H2.
   subst.
-  assert (sstpd2 true venv0 T [] T1 []) as E1. {
+  assert (sstpd2 true venv0 T venv2 T1 sto []) as E1. {
     eapply stpd2_upgrade. eexists. eassumption.
   }
-  assert (sstpd2 true [] T1 venv0 T []) as E2. {
+  assert (sstpd2 true venv2 T1 venv0 T sto []) as E2. {
     eapply stpd2_upgrade. eexists. eassumption.
   }
   repeat eu. repeat eexists; eauto.
+  Grab Existential Variables. apply v1. apply 0.
 Qed.
 
 Lemma index_sto_safe_ex: forall G sto senv i T,
@@ -3829,8 +3832,8 @@ Qed.
 Theorem full_safety : forall n e senv sto tenv venv res T,
   teval n sto venv e = Some res ->
   has_type tenv e T ->
-  wf_env senv venv tenv ->
-  wf_sto senv sto senv ->
+  wf_env sto venv tenv ->
+  wf_sto sto sto senv ->
   exists senv', res_type venv (senv'++senv) res T.
 
 Proof.
@@ -3865,7 +3868,7 @@ Proof.
   - Case "Var".
     remember (tvar i) as e. induction H0; inversion Heqe; subst.
     + exists nil. rewrite app_nil_l.
-      destruct (index_safe_ex senv venv0 env T1 i) as [v [I V]]; eauto.
+      destruct (index_safe_ex sto venv0 env T1 i) as [v [I V]]; eauto.
       rewrite I. eapply not_stuck. eapply V.
       assumption.
     + assert (
@@ -3893,14 +3896,14 @@ Proof.
       exists ([(0, T1)]++senve').
       inversion HRE; subst.
       eapply valtp_reg in H5. eapply sstpd2_downgrade in H5. destruct H5 as [? H5].
-      assert (stpd2 false [] T1 [] T1 []) as A. {
+      assert (stpd2 false venv0 T1 venv0 T1 sto []) as A. {
         eapply stp_to_stp2. eassumption. eauto. apply wfeh_nil.
       }
       destruct A as [? A].
       eapply not_stuck.
       eapply v_loc.
       unfold indexr. simpl.
-      rewrite <- (wfs_length (senve'++senv) sto0 (senve'++senv)).
+(*      rewrite <- (wfs_length (senve'++senv) sto0 (senve'++senv)). *)
       rewrite <- beq_nat_refl. reflexivity. assumption.
       eexists. eapply stp2_cell. eapply stp2_extend_mult0. eapply A. eapply stp2_extend_mult0. eapply A.
       econstructor. eapply valtp_widen. rewrite <- app_assoc. eapply valtp_sto_ext. eassumption.
