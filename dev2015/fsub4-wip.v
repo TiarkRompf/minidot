@@ -8,9 +8,10 @@
 
 (* this version adds mutable references to fsub2.v *)
 (*
-   limitation:
+   limitation in fsub3.v:
    the underlying type of a mutable reference must be well-formed in empty env
-*)
+ *)
+(* this file aims to remove this restriction (WIP) *)
 
 Require Export SfLib.
 
