@@ -3578,44 +3578,12 @@ Proof. intros. repeat eu. eapply stp2_substitute; eauto. Qed.
 
 (* --------------------------------- *)
 
-Lemma inv_vtp_half: forall STO G v T GH,
-  val_type STO G v T ->
-  exists T0, val_type STO (base v) v T0 /\ closed 0 0 T0 /\ stpd2 false (base v) T0 G T STO GH.
-Proof.
-  intros. inversion H; subst.
-  - eexists. split; try split.
-    + simpl. econstructor. eassumption. ev. eapply stp2_reg1 in H1. apply H1.
-    + ev. eapply stp2_closed1 in H1. simpl in H1. apply H1.
-    + eapply sstpd2_downgrade. ev. eexists. simpl.
-      eapply stp2_extendH_mult0. eassumption.
-  - eexists. split; try split.
-    + simpl. econstructor. ev. eapply stp2_reg1 in H0. apply H0.
-    + ev. eapply stp2_closed1 in H0. simpl in H0. apply H0.
-    + eapply sstpd2_downgrade. ev. eexists. simpl.
-      eapply stp2_extendH_mult0. eassumption.
-  - admit. (*eexists. split; try split.
-    + simpl. econstructor; try eassumption. ev. eapply stp2_reg1 in H1. apply H1.
-    + ev. eapply stp2_closed1 in H1. simpl in H1. apply H1.
-    + eapply sstpd2_downgrade. ev. eexists. simpl.
-      eapply stp2_extendH_mult0. eassumption.*)
-  - eexists. split; try split.
-    + simpl. econstructor; try eassumption. ev. eapply stp2_reg1 in H4. apply H4.
-    + ev. eapply stp2_closed1 in H4. simpl in H4. apply H4.
-    + eapply sstpd2_downgrade. ev. eexists. simpl.
-      eapply stp2_extendH_mult0. eassumption.
-  - eexists. split; try split.
-    + simpl. econstructor; try eassumption. reflexivity. ev. eapply stp2_reg1 in H2. apply H2.
-    + ev. eapply stp2_closed1 in H2. simpl in H2. apply H2.
-    + eapply sstpd2_downgrade. ev. eexists. simpl.
-      eapply stp2_extendH_mult0. eassumption.
-Qed.
-
-Lemma stp_to_stp2: forall G1 GH T1 T2,
+Lemma stp_to_stp2_aux: forall G1 GH T1 T2,
   stp G1 GH T1 T2 ->
   forall STO GX GY, wf_env STO GX G1 -> wf_envh GX GY GH ->
-  stpd2 false GX T1 GX T2 STO GY.
+  stpd2 true GX T1 GX T2 STO GY.
 Proof with stpd2_wrapf.
-  intros G1 G2 T1 T2 ST. induction ST; intros STO GX GY WX WY; eapply stpd2_wrapf.
+  intros G1 G2 T1 T2 ST. induction ST; intros STO GX GY WX WY.
   - Case "topx". eapply stpd2_topx.
   - Case "botx". eapply stpd2_botx.
   - Case "top". eapply stpd2_top.
@@ -3627,15 +3595,15 @@ Proof with stpd2_wrapf.
     apply stpd2_reg2 in IHST.
     apply IHST.
   - Case "bool". eapply stpd2_bool; eauto.
-  - Case "cell". eapply stpd2_cell; eauto.
-  - Case "fun". eapply stpd2_fun; eauto.
-  - Case "mem". eapply stpd2_mem; eauto.
+  - Case "cell". eapply stpd2_cell; eapply stpd2_wrapf; eauto.
+  - Case "fun". eapply stpd2_fun; eapply stpd2_wrapf; eauto.
+  - Case "mem". eapply stpd2_mem; eapply stpd2_wrapf; eauto.
   - Case "sel1".
     assert (exists v : vl, index x GX = Some v /\ val_type STO GX v TX) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
-    eapply inv_vtp_half in VT. ev.
-    eapply stpd2_sel1. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
+    eapply stpd2_sel1. eauto. eauto. eapply valtp_closed; eauto.
+    eapply stpd2_wrapf. eauto.
     specialize (IHST2 STO GX GY WX WY).
     apply stpd2_reg2 in IHST2.
     apply IHST2.
@@ -3643,8 +3611,8 @@ Proof with stpd2_wrapf.
     assert (exists v : vl, index x GX = Some v /\ val_type STO GX v TX) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
-    eapply inv_vtp_half in VT. ev.
-    eapply stpd2_sel2. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
+    eapply stpd2_sel2. eauto. eauto. eapply valtp_closed; eauto.
+    eapply stpd2_wrapf. eauto.
     specialize (IHST2 STO GX GY WX WY).
     apply stpd2_reg2 in IHST2.
     apply IHST2.
@@ -3657,7 +3625,8 @@ Proof with stpd2_wrapf.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. destruct x0.
     inversion VT. subst.
-    eapply stpd2_sela1. eauto. eauto. eapply IHST1. eauto. eauto.
+    eapply stpd2_sela1. eauto. eauto.
+    eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
     specialize (IHST2 _ _ _ WX WY).
     apply stpd2_reg2 in IHST2.
     apply IHST2.
@@ -3666,7 +3635,8 @@ Proof with stpd2_wrapf.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. destruct x0.
     inversion VT. subst.
-    eapply stpd2_sela2. eauto. eauto. eapply IHST1. eauto. eauto.
+    eapply stpd2_sela2. eauto. eauto.
+    eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
     specialize (IHST2 _ _ _ WX WY).
     apply stpd2_reg2 in IHST2.
     apply IHST2.
@@ -3676,10 +3646,11 @@ Proof with stpd2_wrapf.
     eapply stpd2_selax. eauto.
   - Case "all".
     subst x. assert (length GY = length GH). eapply wfh_length; eauto.
-    eapply stpd2_all. eauto. rewrite H. eauto. rewrite H.  eauto.
+    eapply stpd2_all. eapply stpd2_wrapf. eauto. rewrite H. eauto. rewrite H.  eauto.
     rewrite H.
-    eapply IHST2. eauto. eapply wfeh_cons. eauto.
-    rewrite H. eapply IHST3; eauto. apply wfeh_cons. assumption.
+    eapply stpd2_wrapf. eapply IHST2. eauto. eapply wfeh_cons. eauto.
+    rewrite H.
+    eapply stpd2_wrapf. eapply IHST3; eauto. apply wfeh_cons. assumption.
 Qed.
 
 
