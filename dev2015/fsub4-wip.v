@@ -3996,21 +3996,21 @@ Proof.
       remember (teval n sto venv0 e1) as te1.
 
       destruct te1 as [re1|]; try solve by inversion.
-      assert (exists senv', res_type venv0 (senv'++senv) re1 (TCell T1)) as HRE1. subst. eapply IHn; eauto.
+      assert (exists senv', res_type (senv'++senv) venv0 re1 (TCell T1)) as HRE1. subst. eapply IHn; eauto.
       destruct HRE1 as [senv1' HRE1].
       inversion HRE1 as [? ? ? ve1].
 
       subst.
 
       destruct (invert_loc (senv1' ++ senv) venv0 ve1 T1) as
-          [b [Ti [EB [ET [B1 B2]]]]]. eauto.
+          [i [venvi [Ti [EB [ET [B1 B2]]]]]]. eauto.
 
       subst.
 
       remember (teval n sto0 venv0 e2) as te2.
 
       destruct te2 as [re2|]; try solve by inversion.
-      assert (exists senv', res_type venv0 (senv'++senv1'++senv) re2 T1) as HRE2. subst. eapply IHn; eauto. eapply wf_env_sto_ext. assumption.
+      assert (exists senv', res_type (senv'++senv1'++senv) venv0 re2 T1) as HRE2. subst. eapply IHn; eauto. eapply wf_env_sto_ext. assumption.
       destruct HRE2 as [senv2' HRE2].
       inversion HRE2 as [? ? ? ve2].
 
@@ -4019,13 +4019,13 @@ Proof.
       exists (senv2'++senv1'). rewrite <- app_assoc.
       eapply not_stuck. assumption. eapply update_sto_safe_ex. assumption.
       eapply indexr_extend_mult. eassumption.
-      eapply valtp_widen. eassumption. assumption.
-
-    + assert (exists senv', res_type venv0 (senv' ++ senv) res T1) as A. {
+      eapply valtp_widen. eassumption. eapply sstpd2_extendS_mult. assumption.
+      
+    + assert (exists senv', res_type (senv' ++ senv) venv0 res T1) as A. {
         eapply IHhas_type; eauto.
       }
       destruct A as [senv' A].
-      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
   - Case "Typ".
     remember (ttyp t) as e. induction H0; inversion Heqe; subst.
