@@ -1242,6 +1242,17 @@ Proof.
   intros. apply (proj1 (stp2_closed G1 G2 T1 T2 STO GH s m n1 H)).
 Qed.
 
+Lemma valtp_closed: forall STO G v T,
+  val_type STO G v T -> closed 0 0 T.
+Proof.
+  intros. inversion H; subst; repeat ev;
+  match goal with
+      [ H : stp2 ?s ?m ?G1 ?T1 G T STO [] ?n |- _ ] =>
+      eapply stp2_closed2 in H; simpl in H; apply H
+  end.
+Qed.
+
+
 Lemma stp_splice : forall GX G0 G1 T1 T2 x v1,
    stp GX (G1++G0) T1 T2 ->
    stp GX ((map (splicett (length G0)) G1) ++ (x,v1)::G0) (splice (length G0) T1) (splice (length G0) T2).
