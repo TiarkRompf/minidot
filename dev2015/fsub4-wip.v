@@ -4032,11 +4032,11 @@ Proof.
     + exists nil. rewrite app_nil_l. eapply not_stuck. eapply v_ty; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor. assumption.
     + assert (
           exists senv',
-            res_type venv0 (senv' ++ senv) (Some (sto, vty venv0 t)) T1) as A. {
+            res_type (senv' ++ senv) venv0 (Some (sto, vty venv0 t)) T1) as A. {
         eapply IHhas_type; eauto.
       }
       destruct A as [senv' A].
-      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
   - Case "App".
     remember (tapp e1 e2) as e. induction H0; inversion Heqe; subst.
