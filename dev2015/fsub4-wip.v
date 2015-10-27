@@ -1739,6 +1739,23 @@ Proof.
   apply stp2_extendH_mult. assumption.
 Qed.
 
+Lemma stp2_extendS : forall x v1 G1 G2 T1 T2 STO GH s m n1,
+                       stp2 s m G1 T1 G2 T2 STO GH n1 ->
+                       stp2 s m G1 T1 G2 T2 ((x,v1)::STO) GH n1.
+Proof. admit. Qed.
+
+Lemma stp2_extendS_mult : forall G1 G2 T1 T2 STO STO2 GH s m n1,
+                       stp2 s m G1 T1 G2 T2 STO GH n1 ->
+                       stp2 s m G1 T1 G2 T2 (STO2++STO) GH n1.
+Proof.
+  intros. induction STO2.
+  - simpl. assumption.
+  - simpl. destruct a as [x v1].
+    apply stp2_extendS. assumption.
+Qed.
+
+
+
 Lemma stp2_reg  : forall G1 G2 T1 T2 STO GH s m n1,
                     stp2 s m G1 T1 G2 T2 STO GH n1 ->
                     (exists n0, stp2 s true G1 T1 G1 T1 STO GH n0) /\
