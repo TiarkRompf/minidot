@@ -4095,7 +4095,7 @@ Proof.
     + exists nil. rewrite app_nil_l. eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh senv venv0 env H1). eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor. assumption.
     + assert (
           exists senv',
-            res_type venv0 (senv' ++ senv) (Some (sto, vabs venv0 i i0 e)) T1) as A. {
+            res_type (senv' ++ senv) venv0 (Some (sto, vabs venv0 i i0 e)) T1) as A. {
         eapply IHhas_type; eauto.
       }
       destruct A as [senv' A].
@@ -4138,18 +4138,18 @@ Proof.
         eapply IHhas_type; eauto.
       }
       destruct A as [senv' A].
-      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
   - Case "TAbs".
     remember (ttabs i t e) as xe. induction H0; inversion Heqxe; subst.
     + exists nil. rewrite app_nil_l. eapply not_stuck. eapply v_tabs; eauto. subst i. eauto. rewrite (wf_fresh senv venv0 env H1). eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor. assumption.
     + assert (exists senv',
-                res_type venv0 (senv' ++ senv)
+                res_type (senv' ++ senv) venv0
                          (Some (sto, vtabs venv0 i t e)) T1) as A. {
         eapply IHhas_type; eauto.
       }
       destruct A as [senv' A].
-      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
        Grab Existential Variables. apply nil. apply 0. apply 0.
 Qed.
