@@ -3960,34 +3960,34 @@ Proof.
         eapply IHhas_type; eauto.
       }
       destruct A as [senv' A].
-      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
   - Case "Get".
     remember (tget e) as e'. induction H0; inversion Heqe'; subst.
     +
       remember (teval n sto venv0 e) as te.
       destruct te as [re|]; try solve by inversion.
-      assert (exists senv', res_type venv0 (senv'++senv) re (TCell T1)) as HRE. SCase "HRE". subst. eapply IHn; eauto.
+      assert (exists senv', res_type (senv'++senv) venv0 re (TCell T1)) as HRE. SCase "HRE". subst. eapply IHn; eauto.
       destruct HRE as [senve' HRE].
       inversion HRE as [? ? ? ve]. subst.
 
       destruct (invert_loc (senve' ++ senv) venv0 ve T1) as
-          [b [Ti [EB [ET [B1 B2]]]]]. eauto.
+          [i [venvi [Ti [EB [ET [B1 B2]]]]]]. eauto.
 
       subst.
 
-      destruct (index_sto_safe_ex (senve'++senv) sto0 (senve'++senv) b Ti) as [v [A1 A2]];
+      destruct (index_sto_safe_ex (senve'++senv) sto0 (senve'++senv) venvi i Ti) as [v [A1 A2]];
         eauto.
       rewrite A1 in H4. inversion H4. subst.
 
       exists senve'. eapply not_stuck. eapply valtp_widen. eassumption. assumption.
       assumption.
 
-    + assert (exists senv', res_type venv0 (senv' ++ senv) res T1) as A. {
+    + assert (exists senv', res_type (senv' ++ senv) venv0 res T1) as A. {
         eapply IHhas_type; eauto.
       }
       destruct A as [senv' A].
-      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
   - Case "Set".
     remember (tset e1 e2) as e. induction H0; inversion Heqe; subst.
