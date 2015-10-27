@@ -330,7 +330,7 @@ Definition base (v:vl): venv :=
     | vtabs GX _ _ _ => GX
   end.
 
-Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> venv -> list (id*(venv*ty)) -> nat -> Prop :=
+Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> list(id*(venv*ty)) -> list (id*(venv*ty)) -> nat -> Prop :=
 | stp2_topx: forall m G1 G2 STO GH n1,
     stp2 m true G1 TTop G2 TTop STO GH (S n1)
 | stp2_botx: forall m G1 G2 STO GH n1,
@@ -443,14 +443,14 @@ Inductive stp2: bool -> bool -> venv -> ty -> venv -> ty -> venv -> list (id*(ve
 
 
 
-with wf_env : venv -> venv -> tenv -> Prop :=
+with wf_env : list (id*(venv*ty)) -> venv -> tenv -> Prop :=
 | wfe_nil : forall sto, wf_env sto nil nil
 | wfe_cons : forall sto n v t vs ts,
     val_type sto ((n,v)::vs) v t ->
     wf_env sto vs ts ->
     wf_env sto (cons (n,v) vs) (cons (n,t) ts)
 
-with val_type : venv -> venv -> vl -> ty -> Prop :=
+with val_type : list (id*(venv*ty)) -> venv -> vl -> ty -> Prop :=
 | v_ty: forall sto env venv tenv T1 TE,
     wf_env sto venv tenv -> (* T1 wf in tenv ? *)
     (exists n, stp2 true true venv (TMem T1 T1) env TE sto [] n)->
@@ -458,9 +458,8 @@ with val_type : venv -> venv -> vl -> ty -> Prop :=
 | v_bool: forall sto venv b TE,
     (exists n, stp2 true true [] TBool venv TE sto [] n) ->
     val_type sto venv (vbool b) TE
-| v_loc: forall sto venv venv1 b v1 T1 TE,
-    indexr b sto = Some v1 ->
-    val_type sto venv1 v1 T1 ->
+| v_loc: forall sto venv venv1 b T1 TE,
+    indexr b sto = Some (venv1,T1) ->
     (exists n, stp2 true true venv1 (TCell T1) venv TE sto [] n) ->
     val_type sto venv (vloc b) TE
 | v_abs: forall sto env venv tenv f x y T1 T2 TE,
@@ -2147,20 +2146,20 @@ Proof. intros. induction H0.
        eapply v_tya. (* aenv is not constrained -- bit of a cheat?*)
 Qed.
 
-Inductive wf_sto: venv -> venv -> tenv -> Prop :=
+Inductive wf_sto: list (id*(venv*ty)) -> venv -> list (id*(venv*ty)) -> Prop :=
 | wfs_nil: forall G,
   wf_sto G nil nil
-| wfs_cons: forall G v t vs ts,
-  val_type G nil v t ->
+| wfs_cons: forall G venv v t vs ts,
+  val_type G venv v t ->
   wf_sto G vs ts ->
-  wf_sto G ((0,v)::vs) ((0,t)::ts)
+  wf_sto G ((0,v)::vs) ((0,(venv,t))::ts)
 .
 
-Inductive res_type: venv -> tenv -> option (venv*vl) -> ty -> Prop :=
-| not_stuck: forall sto venv senv v T,
-      val_type sto venv v T ->
-      wf_sto sto sto senv ->
-      res_type venv senv (Some (sto, v)) T.
+Inductive res_type: list (id*(venv*ty)) -> venv -> option (venv*vl) -> ty -> Prop :=
+| not_stuck: forall STO sto venv v T,
+      val_type STO venv v T ->
+      wf_sto STO sto STO ->
+      res_type STO venv (Some (sto, v)) T.
 
 Hint Constructors res_type.
 Hint Resolve not_stuck.
@@ -2490,14 +2489,12 @@ Proof.
   intros vf H1 H2 T1 T2 STO H. revert H2 T2. induction H; intros; try (econstructor; eauto; eapply sstpd2_trans; eauto).
 Qed.
 
-Lemma restp_widen: forall vf G H1 T1 T2 STO,
-  res_type H1 G vf T1 ->
+Lemma restp_widen: forall vf H1 T1 T2 STO,
+  res_type STO H1 vf T1 ->
   sstpd2 true H1 T1 H1 T2 STO [] ->
-  res_type H1 G vf T2.
+  res_type STO H1 vf T2.
 Proof.
-  intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto. eauto. eauto.
-  admit.
-  admit. (* TODO *)
+  intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto. eauto. 
 Qed.
 
 Lemma invert_typ: forall sto venv vx T1 T2,
@@ -3766,14 +3763,13 @@ Proof. intros. induction H; eapply sstpd2_reg2; eauto. Qed.
 
 Lemma invert_loc: forall sto venv vx T,
   val_type sto venv vx (TCell T) ->
-  exists i vi venvi Ti,
+  exists i venvi Ti,
     vx = (vloc i) /\
-    indexr i sto = Some vi /\
-    val_type sto venvi vi Ti ->
+    indexr i sto = Some (venvi,Ti) /\
     sstpd2 true venv T venvi Ti sto [] /\
     sstpd2 true venvi Ti venv T sto [].
 Proof.
-  intros. inversion H; ev; try solve by inversion. inversion H2.
+  intros. inversion H; ev; try solve by inversion. inversion H1.
   subst.
   assert (sstpd2 true venv0 T venv2 T1 sto []) as E1. {
     eapply stpd2_upgrade. eexists. eassumption.
@@ -3782,13 +3778,12 @@ Proof.
     eapply stpd2_upgrade. eexists. eassumption.
   }
   repeat eu. repeat eexists; eauto.
-  Grab Existential Variables. apply v1. apply 0.
 Qed.
 
-Lemma index_sto_safe_ex: forall G sto senv i T,
+Lemma index_sto_safe_ex: forall G sto senv venv i T,
              wf_sto G sto senv ->
-             indexr i senv = Some T ->
-             exists v, indexr i sto = Some v /\ val_type G [] v T.
+             indexr i senv = Some (venv,T) ->
+             exists v, indexr i sto = Some v /\ val_type G venv v T.
 Proof. intros. induction H.
    - Case "nil". inversion H0.
    - Case "cons". inversion H0.
@@ -3800,16 +3795,16 @@ Proof. intros. induction H.
        eexists. split. eauto. assumption.
      * SSCase "miss".
        rewrite E2 in H3.
-       assert (exists v, indexr i vs = Some v /\ val_type G [] v T) as A by eauto.
+       assert (exists v, indexr i vs = Some v /\ val_type G venv0 v T) as A by eauto.
        destruct A as [? A]. destruct A as [A1 A2].
        eexists. split. eapply indexr_extend. eauto.
        assumption.
 Qed.
 
-Lemma update_sto_safe_ex: forall G sto senv i T v,
+Lemma update_sto_safe_ex: forall G sto senv venv i T v,
              wf_sto G sto senv ->
-             indexr i senv = Some T ->
-             val_type G [] v T ->
+             indexr i senv = Some (venv,T) ->
+             val_type G venv v T ->
              wf_sto G (update i (0,v) sto) senv.
 Proof. intros. induction H.
    - Case "nil". inversion H0.
@@ -3832,9 +3827,9 @@ Qed.
 Theorem full_safety : forall n e senv sto tenv venv res T,
   teval n sto venv e = Some res ->
   has_type tenv e T ->
-  wf_env sto venv tenv ->
-  wf_sto sto sto senv ->
-  exists senv', res_type venv (senv'++senv) res T.
+  wf_env senv venv tenv ->
+  wf_sto senv sto senv ->
+  exists senv', res_type (senv'++senv) venv res T.
 
 Proof.
   intros n. induction n.
@@ -3847,11 +3842,11 @@ Proof.
       eapply not_stuck. eapply v_bool; eauto. assumption.
     + assert (
           exists senv',
-            res_type venv0 (senv' ++ senv) (Some (sto, vbool true)) T1) as A. {
+            res_type (senv' ++ senv) venv0 (Some (sto, vbool true)) T1) as A. {
         eapply IHhas_type; eauto.
       }
       destruct A as [senv' A].
-      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
   - Case "False".
     remember (tfalse) as e. induction H0; inversion Heqe; subst.
@@ -3859,21 +3854,21 @@ Proof.
       eapply not_stuck. eapply v_bool; eauto. assumption.
     + assert (
           exists senv',
-            res_type venv0 (senv' ++ senv) (Some (sto, vbool false)) T1) as A. {
+            res_type (senv' ++ senv) venv0 (Some (sto, vbool false)) T1) as A. {
         eapply IHhas_type; eauto.
       }
       destruct A as [senv' A].
-      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
   - Case "Var".
     remember (tvar i) as e. induction H0; inversion Heqe; subst.
     + exists nil. rewrite app_nil_l.
-      destruct (index_safe_ex sto venv0 env T1 i) as [v [I V]]; eauto.
+      destruct (index_safe_ex senv venv0 env T1 i) as [v [I V]]; eauto.
       rewrite I. eapply not_stuck. eapply V.
       assumption.
     + assert (
          exists senv',
-                 res_type venv0 (senv' ++ senv)
+                 res_type (senv' ++ senv) venv0
                    match index i venv0 with
                    | Some v => Some (sto, v)
                    | None => None
@@ -3881,7 +3876,7 @@ Proof.
         eapply IHhas_type; eauto.
       }
       destruct A as [senv' A].
-      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
   - Case "New".
     remember (tnew e) as e'. induction H0; inversion Heqe'; subst.
