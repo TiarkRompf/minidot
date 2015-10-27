@@ -3472,7 +3472,7 @@ Proof.
       repeat destruct IXX1 as [IXX1|IXX1]; ev; try contradiction.
       repeat destruct IXX2 as [IXX2|IXX2]; ev; try contradiction.
       * SSCase "sel-sel".
-        subst. inversion H14. subst. inversion H1. subst.
+        subst. inversion H14. subst. inversion H6. subst.
         simpl. eapply stpd2_selx. eauto. eauto.
     + SCase "x > 0".
       destruct IXX1; destruct IXX2; ev; subst; eapply stpd2_selax; eauto.
@@ -3480,7 +3480,7 @@ Proof.
     + eauto. + subst. eauto. + eauto. + eauto. + subst. eauto. + eauto.
 
   - Case "all".
-    intros GH0 GH0' GX TX T1' T2' V ? ? ? CX IX1 IX2 FA.
+    intros GH0 GH0' GX TX T1' T2' V ? ? CX IX1 IX2 FA.
 
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -3566,9 +3566,8 @@ Qed.
 Lemma stpd2_substitute: forall m G1 G2 T1 T2 STO GH,
    stpd2 m G1 T1 G2 T2 STO GH ->
    forall GH0 GH0' GX TX T1' T2' V,
-     GX = base V ->
      GH = (GH0 ++ [(0,(GX, TX))]) ->
-     val_type STO (base V) V TX ->
+     val_type STO GX V TX ->
      closed 0 0 TX ->
      compat GX TX (Some V) G1 T1 T1' ->
      compat GX TX (Some V) G2 T2 T2' ->
