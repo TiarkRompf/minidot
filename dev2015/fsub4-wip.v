@@ -4107,7 +4107,7 @@ Proof.
       remember (teval n sto venv0 e2) as tx.
 
       destruct tx as [rx|]; try solve by inversion.
-      assert (exists senv', res_type venv0 (senv'++senv) rx T11) as HRX. SCase "HRX". subst. eapply IHn; eauto.
+      assert (exists senv', res_type (senv'++senv) venv0 rx T11) as HRX. SCase "HRX". subst. eapply IHn; eauto.
       destruct HRX as [senvx' HRX].
       inversion HRX as [? ? ? vx].
 
@@ -4115,26 +4115,26 @@ Proof.
       remember (teval n sto0 venv0 e1) as tf.
 
       destruct tf as [rf|]; try solve by inversion.
-      assert (exists senv', res_type venv0 (senv'++(senvx'++senv)) rf (TAll T11 T12)) as HRF. SCase "HRF". subst. eapply IHn; eauto. apply wf_env_sto_ext. assumption.
+      assert (exists senv', res_type (senv'++(senvx'++senv)) venv0 rf (TAll T11 T12)) as HRF. SCase "HRF". subst. eapply IHn; eauto. apply wf_env_sto_ext. assumption.
       destruct HRF as [senvf' HRF].
       inversion HRF as [? ? ? vf].
 
-      destruct (invert_tabs (senvf'++senvx'++senv) (senvx'++senv) venv0 vf vx T11 T12) as
+      destruct (invert_tabs (senvf'++senvx'++senv) venv0 vf vx T11 T12) as
           [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]].
-      eauto. eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+      eauto. eapply valtp_sto_ext. eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. eapply wf_env_sto_ext. eauto. econstructor.
       (* now we know it's a closure, and we have has_type evidence *)
 
-      assert (exists senv', res_type ((x0,vx)::env1) (senv'++senvf'++senvx'++senv) res (open (TSel x0) T4)) as HRY.
+      assert (exists senv', res_type (senv'++senvf'++senvx'++senv) ((x0,vx)::env1) res (open (TSel x0) T4)) as HRY.
         SCase "HRY".
           subst. eapply IHn. eauto. eauto.
-          (* wf_env x *) econstructor. eapply valtp_sto_ext. eapply valtp_widen; eauto. eapply sstpd2_extend2. eauto. eauto. eauto. eauto.
+          (* wf_env x *) econstructor. eapply valtp_widen. eapply valtp_sto_ext. eauto. eapply sstpd2_extend2. eauto. eauto. eauto. eauto.
       destruct HRY as [senv' HRY].
       inversion HRY as [? vy].
 
       exists (senv'++senvf'++senvx'). rewrite <- app_assoc. rewrite <- app_assoc.
-      eapply not_stuck. eapply valtp_widen. eauto. eauto. eauto.
+      eapply not_stuck. eapply valtp_widen; eauto. eapply sstpd2_extendS_mult. eauto. eauto. 
 
-    + assert (exists senv', res_type venv0 (senv' ++ senv) res T1) as A. {
+    + assert (exists senv', res_type (senv' ++ senv) venv0 res T1) as A. {
         eapply IHhas_type; eauto.
       }
       destruct A as [senv' A].
@@ -4151,7 +4151,7 @@ Proof.
       destruct A as [senv' A].
       exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
-       Grab Existential Variables. apply nil. apply 0. apply 0.
+       Grab Existential Variables. apply 0. apply 0.
 Qed.
 
 End FSUB.
