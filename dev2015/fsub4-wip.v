@@ -274,7 +274,7 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env (ttyp T1) (TMem T1 T1)
 | t_new: forall env x T1,
            has_type env x T1 ->
-           stp env [] T1 T1 -> (* NOTE: empty env limitation *)
+           stp env [] T1 T1 ->
            has_type env (tnew x) (TCell T1)
 | t_get: forall env T1 x,
            has_type env x (TCell T1) ->
