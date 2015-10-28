@@ -451,29 +451,29 @@ with wf_env : list (id*(venv*ty)) -> venv -> tenv -> Prop :=
     wf_env sto (cons (n,v) vs) (cons (n,t) ts)
 
 with val_type : list (id*(venv*ty)) -> venv -> vl -> ty -> Prop :=
-| v_ty: forall sto env venv tenv T1 TE,
+| v_ty: forall sto env venv tenv T1 TE n,
     wf_env sto venv tenv -> (* T1 wf in tenv ? *)
-    (exists n, stp2 true true venv (TMem T1 T1) env TE sto [] n)->
+    stp2 true true venv (TMem T1 T1) env TE sto [] n ->
     val_type sto env (vty venv T1) TE
-| v_bool: forall sto venv b TE,
-    (exists n, stp2 true true [] TBool venv TE sto [] n) ->
+| v_bool: forall sto venv b TE n,
+    stp2 true true [] TBool venv TE sto [] n ->
     val_type sto venv (vbool b) TE
-| v_loc: forall sto venv venv1 b T1 TE,
+| v_loc: forall sto venv venv1 b T1 TE n,
     indexr b sto = Some (venv1,T1) ->
-    (exists n, stp2 true true venv1 (TCell T1) venv TE sto [] n) ->
+    stp2 true true venv1 (TCell T1) venv TE sto [] n ->
     val_type sto venv (vloc b) TE
-| v_abs: forall sto env venv tenv f x y T1 T2 TE,
+| v_abs: forall sto env venv tenv f x y T1 T2 TE n,
     wf_env sto venv tenv ->
     has_type ((x,T1)::(f,TFun T1 T2)::tenv) y T2 ->
     fresh venv <= f ->
     1 + f <= x ->
-    (exists n, stp2 true true venv (TFun T1 T2) env TE sto [] n)->
+    stp2 true true venv (TFun T1 T2) env TE sto [] n ->
     val_type sto env (vabs venv f x y) TE
-| v_tabs: forall sto env venv tenv x y T1 T2 TE,
+| v_tabs: forall sto env venv tenv x y T1 T2 TE n,
     wf_env sto venv tenv ->
     has_type ((x,T1)::tenv) y (open (TSel x) T2) ->
     fresh venv = x ->
-    (exists n, stp2 true true venv (TAll T1 T2) env TE sto [] n) ->
+    stp2 true true venv (TAll T1 T2) env TE sto [] n ->
     val_type sto env (vtabs venv x T1 y) TE
 .
 
@@ -1750,22 +1750,29 @@ Proof.
   apply stp2_extendH_mult. assumption.
 Qed.
 
-Lemma stp2_extendS : forall x v1 G1 G2 T1 T2 STO GH s m n1,
-                       stp2 s m G1 T1 G2 T2 STO GH n1 ->
-                       stp2 s m G1 T1 G2 T2 ((x,v1)::STO) GH n1.
-Proof. admit. Qed.
+Scheme stp2_mut := Induction for stp2 Sort Prop
+with wf_env_mut := Induction for wf_env Sort Prop
+with val_type_mut := Induction for val_type Sort Prop.
+Combined Scheme stp2_val_env_mutind from stp2_mut, wf_env_mut, val_type_mut.
+
+Lemma stp2_val_wf_sto_ext:
+  (forall s m G1 T1 G2 T2 STO GH n1,
+     stp2 s m G1 T1 G2 T2 STO GH n1 ->
+     forall senv', stp2 s m G1 T1 G2 T2 (senv'++STO) GH n1) /\
+  (forall senv venv env, wf_env senv venv env ->
+     forall senv', wf_env (senv' ++ senv) venv env) /\
+  (forall senv G v T, val_type senv G v T ->
+     forall senv', val_type (senv' ++ senv) G v T).
+Proof.
+  apply stp2_val_env_mutind; intros; eauto using indexr_extend_mult.
+Qed.
 
 Lemma stp2_extendS_mult : forall G1 G2 T1 T2 STO STO2 GH s m n1,
                        stp2 s m G1 T1 G2 T2 STO GH n1 ->
                        stp2 s m G1 T1 G2 T2 (STO2++STO) GH n1.
 Proof.
-  intros. induction STO2.
-  - simpl. assumption.
-  - simpl. destruct a as [x v1].
-    apply stp2_extendS. assumption.
+  intros. apply (proj1 stp2_val_wf_sto_ext). assumption.
 Qed.
-
-
 
 Lemma stp2_reg  : forall G1 G2 T1 T2 STO GH s m n1,
                     stp2 s m G1 T1 G2 T2 STO GH n1 ->
@@ -1999,14 +2006,6 @@ Proof.
   apply stp2_extendH_mult0; assumption.
 Qed.
 
-Lemma stpd2_extendS : forall x v1 G1 G2 T1 T2 STO H m,
-                       stpd2 m G1 T1 G2 T2 STO H ->
-                       stpd2 m G1 T1 G2 T2 ((x,v1)::STO) H.
-Proof.
-  intros. inversion H0 as [n1 Hsub]. exists n1.
-  apply stp2_extendS; assumption.
-Qed.
-
 Lemma stpd2_extendS_mult : forall G1 G2 T1 T2 STO STO2 H m,
                        stpd2 m G1 T1 G2 T2 STO H->
                        stpd2 m G1 T1 G2 T2 (STO2++STO) H.
@@ -2094,14 +2093,6 @@ Proof.
   apply stp2_extendH_mult0; assumption.
 Qed.
 
-Lemma sstpd2_extendS : forall x v1 G1 G2 T1 T2 STO H m,
-                       sstpd2 m G1 T1 G2 T2 STO H ->
-                       sstpd2 m G1 T1 G2 T2 ((x,v1)::STO) H.
-Proof.
-  intros. inversion H0 as [n1 Hsub]. exists n1.
-  apply stp2_extendS; assumption.
-Qed.
-
 Lemma sstpd2_extendS_mult : forall G1 G2 T1 T2 STO STO2 H m,
                        sstpd2 m G1 T1 G2 T2 STO H->
                        sstpd2 m G1 T1 G2 T2 (STO2++STO) H.
@@ -2150,7 +2141,7 @@ Lemma valtp_extend : forall sto vs v x v1 T,
                        fresh vs <= x ->
                        val_type sto ((x,v1)::vs) v T.
 Proof.
-  intros. induction H; eauto; econstructor; eauto; eapply sstpd2_extend2; eauto.
+  intros. induction H; eauto; econstructor; eauto; eapply stp2_extend2; eauto.
 Qed.
 
 
@@ -2546,7 +2537,9 @@ Lemma valtp_widen: forall vf H1 H2 T1 T2 STO,
   sstpd2 true H1 T1 H2 T2 STO [] ->
   val_type STO H2 vf T2.
 Proof.
-  intros vf H1 H2 T1 T2 STO H. revert H2 T2. induction H; intros; try (econstructor; eauto; eapply sstpd2_trans; eauto).
+  intros vf H1 H2 T1 T2 STO H. revert H2 T2. induction H; intros;
+  try (edestruct sstpd2_trans; [(eexists; eauto) | eauto | idtac]);
+  try (econstructor; eauto).
 Qed.
 
 Lemma restp_widen: forall vf H1 T1 T2 STO,
@@ -2603,7 +2596,8 @@ Proof.
     assert (closed 0 (length ([]:aenv)) x1). eapply stp2_closed2; eauto.
     eexists. eapply stp2_strong_sel1. eauto.
     inversion Hv. subst.
-    eapply v_ty. eassumption. ev. eapply stp2_reg1. eassumption.
+    edestruct stp2_reg1. eapply H14.
+    eapply v_ty. eassumption. eassumption. eassumption.
     eauto. eauto. omega.
   - Case "sel2".
     eapply IHn in H4. eapply sstpd2_untrans in H4. eapply valtp_widen with (2:=H4) in H2.
@@ -2612,7 +2606,8 @@ Proof.
     assert (closed 0 (length ([]:aenv)) x1). eapply stp2_closed2; eauto.
     eexists. eapply stp2_strong_sel2. eauto.
     inversion Hv. subst.
-    eapply v_ty. eassumption. ev. eapply stp2_reg1. eassumption.
+    edestruct stp2_reg1. eapply H13.
+    eapply v_ty. eassumption. eassumption. eassumption.
     eauto. eauto. omega.
   - Case "selx".
     eexists. eapply stp2_strong_selx. eauto. eauto.
@@ -3745,19 +3740,13 @@ Proof.
   subst. eauto.
 Qed.
 
-
-Scheme wf_env_mut := Induction for wf_env Sort Prop
-with val_type_mut := Induction for val_type Sort Prop.
-Combined Scheme val_env_mutind from wf_env_mut, val_type_mut.
-
 Lemma val_wf_sto_ext:
   (forall senv venv env, wf_env senv venv env ->
      forall senv', wf_env (senv' ++ senv) venv env) /\
   (forall senv G v T, val_type senv G v T ->
      forall senv', val_type (senv' ++ senv) G v T).
 Proof.
-  apply val_env_mutind; intros; eauto. eauto using indexr_extend_mult.
-  admit. admit. admit. admit. admit. (* TODO *)
+  apply (proj2 stp2_val_wf_sto_ext).
 Qed.
 
 Lemma wf_env_sto_ext: forall senv' senv venv env,
@@ -3795,7 +3784,7 @@ Qed.
 Lemma valtp_reg: forall STO G v T,
                    val_type STO G v T ->
                    sstpd2 true G T G T STO [].
-Proof. intros. induction H; eapply sstpd2_reg2; eauto. Qed.
+Proof. intros. induction H; eapply stp2_reg2; eauto. Qed.
 
 Lemma invert_loc: forall sto venv vx T,
   val_type sto venv vx (TCell T) ->
@@ -3936,7 +3925,7 @@ Proof.
       unfold indexr. simpl.
       rewrite <- (wfs_length (senve'++senv) sto0 (senve'++senv)). 
       rewrite <- beq_nat_refl. reflexivity. assumption.
-      eexists. eapply stp2_cell. eapply stp2_extendS_mult. eapply A. eapply stp2_extendS_mult. eapply A.
+      eapply stp2_cell. eapply stp2_extendS_mult. eapply A. eapply stp2_extendS_mult. eapply A.
       econstructor. eapply valtp_widen. rewrite <- app_assoc. eapply valtp_sto_ext. eassumption.
       eapply stpd2_upgrade. eexists. eapply stp2_extendS_mult. eapply A.
       rewrite <- app_assoc. eapply wf_sto_sto_ext. eauto.
@@ -4016,7 +4005,11 @@ Proof.
 
   - Case "Typ".
     remember (ttyp t) as e. induction H0; inversion Heqe; subst.
-    + exists nil. rewrite app_nil_l. eapply not_stuck. eapply v_ty; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor. assumption.
+    + exists nil. rewrite app_nil_l. eapply not_stuck.
+      assert (exists n0, stp2 true true venv0 (TMem t t) venv0 (TMem t t) senv [] n0) as A. {
+        eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+     }
+     destruct A as [? A].                                                                    eapply v_ty; eauto. eassumption.
     + assert (
           exists senv',
             res_type (senv' ++ senv) venv0 (Some (sto, vty venv0 t)) T1) as A. {
@@ -4051,7 +4044,7 @@ Proof.
         SCase "HRY".
           subst. eapply IHn. eauto. eauto.
           (* wf_env f x *) econstructor. eapply valtp_widen. eapply valtp_sto_ext. eauto. eapply sstpd2_extend2. eapply sstpd2_extend2. eauto. eauto. eauto.
-          (* wf_env f   *) econstructor. eapply v_abs; eauto. eapply sstpd2_extend2.
+          (* wf_env f   *)
           eapply sstpd2_downgrade in STX. eapply sstpd2_downgrade in STY. repeat eu.
           assert (stpd2 false env1 T3 env1 T3 (senvf' ++ senvx' ++ senv) []) as A3. {
             eapply stpd2_wrapf. eapply stpd2_reg2. eauto.
@@ -4059,8 +4052,8 @@ Proof.
           inversion A3 as [na3 HA3].
           assert (stpd2 false env1 T4 env1 T4 (senvf' ++ senvx' ++ senv) []) as A4 by solve [eapply stpd2_wrapf; eapply stpd2_reg1; eauto].
           inversion A4 as [na4 HA4].
-          eexists. eapply stp2_fun. eassumption. eassumption. eauto. eauto. eauto.
-          (* TODO: sstpd2_fun constructor *)
+          econstructor. eapply v_abs; eauto. eapply stp2_extend2.
+          eapply stp2_fun. eassumption. eassumption. eauto. eauto. eauto.
 
       destruct HRY as [senv' HRY].
       inversion HRY as [? vy].
@@ -4079,7 +4072,12 @@ Proof.
 
   - Case "Abs".
     remember (tabs i i0 e) as xe. induction H0; inversion Heqxe; subst.
-    + exists nil. rewrite app_nil_l. eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh senv venv0 env H1). eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor. assumption.
+    + exists nil. rewrite app_nil_l. eapply not_stuck.
+      assert (exists n0, stp2 true true venv0 (TFun T1 T2) venv0 (TFun T1 T2) senv [] n0) as A. {
+        eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
+      }
+      destruct A as [? A].
+      eapply v_abs; eauto. rewrite (wf_fresh senv venv0 env H1). eauto. assumption.
     + assert (
           exists senv',
             res_type (senv' ++ senv) venv0 (Some (sto, vabs venv0 i i0 e)) T1) as A. {
@@ -4129,7 +4127,12 @@ Proof.
 
   - Case "TAbs".
     remember (ttabs i t e) as xe. induction H0; inversion Heqxe; subst.
-    + exists nil. rewrite app_nil_l. eapply not_stuck. eapply v_tabs; eauto. subst i. eauto. rewrite (wf_fresh senv venv0 env H1). eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor. assumption.
+    + exists nil. rewrite app_nil_l. eapply not_stuck.
+      assert (exists n0, stp2 true true venv0 (TAll t T2) venv0 (TAll t T2) senv [] n0) as A. {
+        eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
+      }
+      destruct A as [? A].
+      eapply v_tabs; eauto. subst i. eauto. rewrite (wf_fresh senv venv0 env H1). eauto. assumption.
     + assert (exists senv',
                 res_type (senv' ++ senv) venv0
                          (Some (sto, vtabs venv0 i t e)) T1) as A. {
