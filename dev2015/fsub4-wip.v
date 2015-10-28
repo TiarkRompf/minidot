@@ -3653,6 +3653,13 @@ Proof with stpd2_wrapf.
     eapply stpd2_wrapf. eapply IHST3; eauto. apply wfeh_cons. assumption.
 Qed.
 
+Lemma stp_to_stp2: forall G1 STO GH T1 T2,
+  stp G1 GH T1 T2 ->
+  forall GX GY, wf_env STO GX G1 -> wf_envh GX GY GH ->
+  stpd2 false GX T1 GX T2 STO GY.
+Proof.
+  intros. eapply stpd2_wrapf. eapply stp_to_stp2_aux; eauto.
+Qed.
 
 
 
@@ -3718,15 +3725,16 @@ Proof.
     (* now that sela1/sela2 can use subtyping, it is better to dispatch on the
        valtp evidence (instead of the type, as before) *)
 
-    eapply inv_vtp_half in VX. ev.
+    (* eapply inv_vtp_half in VX. ev. *)
 
     assert (closed 0 (length ([]:aenv)) T2). eapply sstpd2_closed1; eauto.
     assert (open (TSelH 0) T2 = T2) as OP2. symmetry. eapply closed_no_open; eauto.
 
 
     eapply stpd2_substitute with (GH0:=nil).
-    eapply stpd2_extend1. eapply stpd2_narrow. eapply H6. eapply KEY.
-    eauto. eauto. simpl. eauto. eauto. eauto.
+    eapply stpd2_extend1. eapply KEY. (* previously: stpd2_narrow. inv_vtp_half. eapply KEY. *)
+    eauto. simpl. eauto.
+    eapply VX. eassumption.
     left. repeat eexists. eapply index_hit2. eauto. eauto. eauto. eauto.
     rewrite (subst_open_zero 0 1). eauto. eauto.
     right. left. split. rewrite OP2. eauto. eauto. eauto.
