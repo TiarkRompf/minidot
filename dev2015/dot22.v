@@ -1,8 +1,7 @@
 (* Full safety for DOT *)
 
-(* this version is based on dot20.v *)
-(* based on that, it adds the t_app_var typing rule, for  *)
-(* fully dependent method types *)
+(* this version is based on dot21.v *)
+(* based on that, it adds union types  *)
 
 Require Export SfLib.
 
@@ -29,6 +28,7 @@ Inductive ty : Type :=
   | TAll   : id -> ty -> ty -> ty
   | TBind  : ty -> ty
   | TAnd   : ty -> ty -> ty
+  | TOr    : ty -> ty -> ty
 .
 
 Inductive tm : Type :=
@@ -115,6 +115,10 @@ Inductive closed_rec: nat -> nat -> ty -> Prop :=
     closed_rec k l T1 ->
     closed_rec k l T2 ->
     closed_rec k l (TAnd T1 T2)
+| cl_or: forall k l T1 T2,
+    closed_rec k l T1 ->
+    closed_rec k l T2 ->
+    closed_rec k l (TOr T1 T2)
 | cl_selh: forall k l x m,
     l > x ->
     closed_rec k l (TSel (varH x) m)
@@ -140,6 +144,7 @@ Fixpoint open_rec (k: nat) (u: var) (T: ty) { struct T }: ty :=
     | TBool       => TBool
     | TMem m T1 T2  => TMem m (open_rec k u T1) (open_rec k u T2)
     | TAnd T1 T2  => TAnd (open_rec k u T1) (open_rec k u T2)
+    | TOr  T1 T2  => TOr  (open_rec k u T1) (open_rec k u T2)
   end.
 
 Definition open u T := open_rec 0 u T.
@@ -162,6 +167,7 @@ Fixpoint subst (U : var) (T : ty) {struct T} : ty :=
     | TAll m T1 T2   => TAll m (subst U T1) (subst U T2)
     | TBind T2     => TBind (subst U T2)
     | TAnd T1 T2   => TAnd (subst U T1) (subst U T2)
+    | TOr  T1 T2   => TOr  (subst U T1) (subst U T2)
   end.
 
 Fixpoint nosubst (T : ty) {struct T} : Prop :=
@@ -176,6 +182,7 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
     | TAll m T1 T2   => nosubst T1 /\ nosubst T2
     | TBind T2     => nosubst T2
     | TAnd T1 T2   => nosubst T1 /\ nosubst T2
+    | TOr  T1 T2   => nosubst T1 /\ nosubst T2
   end.
 
 
@@ -287,6 +294,18 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G GH T T1 ->
     stp G GH T T2 ->
     stp G GH T (TAnd T1 T2)
+| stp_or21: forall G GH T1 T2 T,
+    stp G GH T T1 ->
+    stp G GH T2 T2 -> (* regularity *)
+    stp G GH T (TOr T1 T2)
+| stp_or22: forall G GH T1 T2 T,
+    stp G GH T T2 ->
+    stp G GH T1 T1 -> (* regularity *)
+    stp G GH T (TOr T1 T2)
+| stp_or1: forall G GH T1 T2 T,
+    stp G GH T1 T ->
+    stp G GH T2 T ->
+    stp G GH (TOr T1 T2) T
 .
 
 
@@ -559,6 +578,19 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 m false G1 T G2 T2 GH n2 ->
     stp2 m true G1 T G2 (TAnd T1 T2) GH (S (n1+n2))
 
+| stp2_or21: forall m n1 n2 G1 G2 GH T1 T2 T,
+    stp2 m false G1 T G2 T1 GH n1 ->
+    stp2 m true G2 T2 G2 T2 GH n2 -> (* regularity *)
+    stp2 m true G1 T G2 (TOr T1 T2) GH (S (n1+n2))
+| stp2_or22: forall m n1 n2 G1 G2 GH T1 T2 T,
+    stp2 m false G1 T G2 T2 GH n1 ->
+    stp2 m true G2 T1 G2 T1 GH n2 -> (* regularity *)
+    stp2 m true G1 T G2 (TOr T1 T2) GH (S (n1+n2))
+| stp2_or1: forall m n1 n2 G1 G2 GH T1 T2 T,
+    stp2 m true G1 T1 G2 T GH n1 ->
+    stp2 m true G1 T2 G2 T GH n2 ->
+    stp2 m true G1 (TOr T1 T2) G2 T GH (S (n1+n2))
+
 | stp2_wrapf: forall m G1 G2 T1 T2 GH n1,
     stp2 m true G1 T1 G2 T2 GH n1 ->
     stp2 m false G1 T1 G2 T2 GH (S n1)
@@ -778,6 +810,22 @@ Lemma stpd2_and2: forall G1 G2 GH T1 T2 T,
     stpd2 true G1 T G2 (TAnd T1 T2) GH.
 Proof. intros. repeat eu. eauto. Qed.
 
+Lemma stpd2_or21: forall G1 G2 GH T1 T2 T,
+    stpd2 false G1 T G2 T1 GH ->
+    stpd2 true G2 T2 G2 T2 GH ->
+    stpd2 true G1 T G2 (TOr T1 T2) GH.
+Proof. intros. repeat eu. eauto. Qed.
+Lemma stpd2_or22: forall G1 G2 GH T1 T2 T,
+    stpd2 false G1 T G2 T2 GH ->
+    stpd2 true G2 T1 G2 T1 GH ->
+    stpd2 true G1 T G2 (TOr T1 T2) GH.
+Proof. intros. repeat eu. eauto. Qed.
+Lemma stpd2_or1: forall G1 G2 GH T1 T2 T,
+    stpd2 true G1 T1 G2 T GH ->
+    stpd2 true G1 T2 G2 T GH ->
+    stpd2 true G1 (TOr T1 T2) G2 T GH.
+Proof. intros. repeat eu. eauto. Qed.
+
 Lemma stpd2_wrapf: forall G1 G2 T1 T2 GH,
     stpd2 true G1 T1 G2 T2 GH ->
     stpd2 false G1 T1 G2 T2 GH.
@@ -871,6 +919,7 @@ Hint Unfold closed.
 Hint Unfold open.
 
 Hint Resolve ex_intro.
+
 
 
 (* ############################################################ *)
@@ -1821,7 +1870,6 @@ Proof.
 
 Qed.
 
-
 (* ############################################################ *)
 (* Proofs *)
 (* ############################################################ *)
@@ -1948,6 +1996,7 @@ Fixpoint splice n (T : ty) {struct T} : ty :=
     | TAll m T1 T2   => TAll m (splice n T1) (splice n T2)
     | TBind T2   => TBind (splice n T2)
     | TAnd T1 T2 => TAnd (splice n T1) (splice n T2)
+    | TOr  T1 T2 => TOr  (splice n T1) (splice n T2)
   end.
 
 Definition splicett n (V: (id*ty)) :=
@@ -3439,7 +3488,8 @@ Lemma stp2_reg  : forall G1 G2 T1 T2 GH s m n1,
                     (exists n0, stp2 s true G2 T2 G2 T2 GH n0).
 Proof.
   intros. induction H;
-    try solve [repeat ev; split; eexists; eauto].
+    try solve [repeat ev; split; eexists; eauto 4].
+  - Case "all". repeat ev; split; eexists; eauto.
   - Case "and11".
     repeat ev; split; eexists.
     eapply stp2_and2.
@@ -3458,6 +3508,24 @@ Proof.
     eapply stp2_and2.
     eapply stp2_wrapf. eapply stp2_and11; eassumption.
     eapply stp2_wrapf. eapply stp2_and12; eassumption.
+  - Case "or21".
+    repeat ev; split; eexists.
+    eassumption.
+    eapply stp2_or1.
+    eapply stp2_or21; eauto.
+    eapply stp2_or22; eauto.
+  - Case "or22".
+    repeat ev; split; eexists.
+    eassumption.
+    eapply stp2_or1.
+    eapply stp2_or21; eauto.
+    eapply stp2_or22; eauto.
+  - Case "or1".
+    repeat ev; split; eexists.
+    eapply stp2_or1.
+    eapply stp2_or21; eauto.
+    eapply stp2_or22; eauto.
+    eassumption.
   Grab Existential Variables.
   apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
   apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
@@ -4166,6 +4234,18 @@ Proof.
       eapply stpd2_and2.
       eapply IHn; try eassumption. omega.
       eapply IHn; try eassumption. omega.
+    + SCase "or21".
+      eapply stpd2_or21.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
+    + SCase "or22".
+      eapply stpd2_or22.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
+    + SCase "or1".
+      eapply stpd2_or1.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
     + SCase "wrapf".
       eapply stpd2_wrapf.
       eapply IHn; try eassumption. omega.
@@ -4216,6 +4296,10 @@ Proof.
     specialize (IHstp2_1 Heqm); destruct IHstp2_1;
     specialize (IHstp2_2 Heqm); destruct IHstp2_2.
     eexists. eapply stp2_and12; eauto.
+  - Case "or22".
+    specialize (IHstp2_1 Heqm); destruct IHstp2_1;
+    specialize (IHstp2_2 Heqm); destruct IHstp2_2.
+    eexists. eapply stp2_or22; eauto.
   - Case "transf".
     specialize (IHstp2_1 Heqm); destruct IHstp2_1;
     specialize (IHstp2_2 Heqm); destruct IHstp2_2.
@@ -4350,6 +4434,22 @@ Lemma atpd2_and2: forall G1 G2 GH T1 T2 T,
     atpd2 false G1 T G2 T2 GH ->
     atpd2 true G1 T G2 (TAnd T1 T2) GH.
 Proof. intros. repeat eu. eexists. eapply stp2_and2; eauto. Qed.
+
+Lemma atpd2_or21: forall G1 G2 GH T1 T2 T,
+    atpd2 false G1 T G2 T1 GH ->
+    atpd2 true G2 T2 G2 T2 GH ->
+    atpd2 true G1 T G2 (TOr T1 T2) GH.
+Proof. intros. repeat eu. eexists. eapply stp2_or21; eauto. Qed.
+Lemma atpd2_or22: forall G1 G2 GH T1 T2 T,
+    atpd2 false G1 T G2 T2 GH ->
+    atpd2 true G2 T1 G2 T1 GH ->
+    atpd2 true G1 T G2 (TOr T1 T2) GH.
+Proof. intros. repeat eu. eexists. eapply stp2_or22; eauto. Qed.
+Lemma atpd2_or1: forall G1 G2 GH T1 T2 T,
+    atpd2 true G1 T1 G2 T GH ->
+    atpd2 true G1 T2 G2 T GH ->
+    atpd2 true G1 (TOr T1 T2) G2 T GH.
+Proof. intros. repeat eu. eexists. eapply stp2_or1; eauto. Qed.
 
 Lemma atpd2_wrapf: forall G1 G2 T1 T2 GH,
     atpd2 true G1 T1 G2 T2 GH ->
@@ -4652,6 +4752,18 @@ Proof.
       eapply atpd2_and2.
       eapply IHn; try eassumption. omega.
       eapply IHn; try eassumption. omega.
+    + SCase "or21".
+      eapply atpd2_or21.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
+    + SCase "or22".
+      eapply atpd2_or22.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
+    + SCase "or1".
+      eapply atpd2_or1.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
     + SCase "wrapf".
       eapply atpd2_wrapf.
       eapply IHn; try eassumption. omega.
@@ -4694,6 +4806,8 @@ Proof.
       destruct A as [? A].
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
+    + SCase "or21". subst. eexists. eapply stp2_or21; eauto.
+    + SCase "or22". subst. eexists. eapply stp2_or22; eauto.
   - Case "botx". subst. inversion H1.
     + SCase "botx". eexists. eauto.
     + SCase "top". eexists. eauto.
@@ -4708,6 +4822,8 @@ Proof.
       destruct A as [? A].
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
+    + SCase "or21". subst. eexists. eapply stp2_or21; eauto.
+    + SCase "or22". subst. eexists. eapply stp2_or22; eauto.
   - Case "top". subst. inversion H1.
     + SCase "topx". eexists. eauto.
     + SCase "top". eexists. eauto.
@@ -4721,6 +4837,8 @@ Proof.
       destruct A as [? A].
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
+    + SCase "or21". subst. eexists. eapply stp2_or21; eauto.
+    + SCase "or22". subst. eexists. eapply stp2_or22; eauto.
   - Case "bot". subst.
     apply stp2_reg2 in H1. inversion H1 as [n1' H1'].
     exists (S n1'). apply stp2_bot. apply H1'.
@@ -4737,6 +4855,8 @@ Proof.
       destruct A as [? A].
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
+    + SCase "or21". subst. eexists. eapply stp2_or21; eauto.
+    + SCase "or22". subst. eexists. eapply stp2_or22; eauto.
   - Case "mem". subst. inversion H1.
     + SCase "top".
       apply stp2_reg1 in H. inversion H. eexists. eapply stp2_top. eassumption.
@@ -4760,6 +4880,8 @@ Proof.
       destruct A as [? A].
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
+    + SCase "or21". subst. eexists. eapply stp2_or21; eauto.
+    + SCase "or22". subst. eexists. eapply stp2_or22; eauto.
   - Case "ssel1". subst.
     assert (sstpd2 true ((f, vobj GX f ds) :: GX) (open (varF f) TX) G3 T3 []). eapply IHn. eauto. omega. eexists. eapply H1.
     assert (sstpd2 false GX' TX' G3 (TMem l TBot T3) []). {
@@ -4792,6 +4914,8 @@ Proof.
       subst. rewrite H2 in H10. inversion H10. subst.
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
+    + SCase "or21". subst. eexists. eapply stp2_or21; eauto.
+    + SCase "or22". subst. eexists. eapply stp2_or22; eauto.
   - Case "sselx". subst. inversion H1.
     + SCase "top". subst.
       apply stp2_reg1 in H. inversion H.
@@ -4812,6 +4936,8 @@ Proof.
       subst. rewrite H6 in H3. inversion H3. subst.
       eexists. eapply stp2_strong_selx. eauto. eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
+    + SCase "or21". subst. eexists. eapply stp2_or21; eauto.
+    + SCase "or22". subst. eexists. eapply stp2_or22; eauto.
   - Case "all". subst. inversion H1.
     + SCase "top".
       apply stp2_reg1 in H. inversion H.
@@ -4834,6 +4960,8 @@ Proof.
         eapply stpd2_trans. eapply stpd2_narrow. eexists. eapply H10. eauto. eauto.
         repeat eu. eexists. eapply stp2_all. eauto. eauto. eauto. eauto. eapply H8.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
+    + SCase "or21". subst. eexists. eapply stp2_or21; eauto.
+    + SCase "or22". subst. eexists. eapply stp2_or22; eauto.
   - Case "bind". subst. inversion H1; subst.
     + SCase "top".
       apply stp2_reg1 in H. inversion H.
@@ -4860,14 +4988,16 @@ Proof.
       inversion A.
       eexists. eapply stp2_bind; try eassumption.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
-  - Case "and11". subst. inversion H1; subst;
-                         try solve [eapply IHn in H2;
-                         [inversion H2; eexists; eapply stp2_and11; eassumption
-                         | omega | eexists; eassumption]].
-  - Case "and12". subst. inversion H1; subst;
-                         try solve [eapply IHn in H2;
-                         [inversion H2; eexists; eapply stp2_and12; eassumption
-                         | omega | eexists; eassumption]].
+    + SCase "or21". subst. eexists. eapply stp2_or21; eauto.
+    + SCase "or22". subst. eexists. eapply stp2_or22; eauto.
+  - Case "and11". subst.
+    eapply IHn in H2. destruct H2 as [? H2].
+    eexists. eapply stp2_and11.
+    eassumption. eassumption. omega. eexists. eassumption.
+  - Case "and12". subst.
+    eapply IHn in H2. destruct H2 as [? H2].
+    eexists. eapply stp2_and12.
+    eassumption. eassumption. omega. eexists. eassumption.
   - Case "and2". subst. inversion H1; subst.
     + SCase "top". eapply stp2_reg1 in H. inversion H. eexists. eapply stp2_top; eassumption.
     + SCase "sel2".
@@ -4882,13 +5012,78 @@ Proof.
     + SCase "and11". subst. eapply IHn. apply H2. omega. eexists. eassumption.
     + SCase "and12". subst. eapply IHn. apply H3. omega. eexists. eassumption.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
+    + SCase "or21". subst. eexists. eapply stp2_or21; eauto.
+    + SCase "or22". subst. eexists. eapply stp2_or22; eauto.
+  - Case "or21". subst. inversion H1; subst.
+    + SCase "top". eapply stp2_reg1 in H. inversion H. eexists. eapply stp2_top; eassumption.
+    + SCase "sel2".
+      assert (sstpd2 false GX' TX' G1 (TMem l T1 TTop) []) as A. {
+        eapply sstpd2_trans_axiom. eexists. eassumption.
+        eexists. eapply stp2_wrapf. eapply stp2_mem.
+        eapply stp2_wrapf. eassumption.
+        eapply stp2_topx.
+      }
+      destruct A as [? A].
+      eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
+    + SCase "or21". subst.
+      assert (sstpd2 false G1 T1 G3 T2 []) as A. {
+        eapply sstpd2_trans_axiom.
+        eexists. eapply stp2_wrapf. eapply H.
+        eexists. eassumption.
+      }
+      destruct A as [? A].
+      eexists. eapply stp2_or21. eapply A. eassumption.
+    + SCase "or22". subst.
+      assert (sstpd2 false G1 T1 G3 T5 []) as A. {
+        eapply sstpd2_trans_axiom.
+        eexists. eapply stp2_wrapf. eapply H.
+        eexists. eassumption.
+      }
+      destruct A as [? A].
+      eexists. eapply stp2_or22. eapply A. eassumption.
+    + SCase "or1". subst. eapply IHn. apply H2. omega. eexists. eassumption.
+  - Case "or22". subst. inversion H1; subst.
+    + SCase "top". eapply stp2_reg1 in H. inversion H. eexists. eapply stp2_top; eassumption.
+    + SCase "sel2".
+      assert (sstpd2 false GX' TX' G1 (TMem l T1 TTop) []) as A. {
+        eapply sstpd2_trans_axiom. eexists. eassumption.
+        eexists. eapply stp2_wrapf. eapply stp2_mem.
+        eapply stp2_wrapf. eassumption.
+        eapply stp2_topx.
+      }
+      destruct A as [? A].
+      eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
+    + SCase "or21". subst.
+      assert (sstpd2 false G1 T1 G3 T2 []) as A. {
+        eapply sstpd2_trans_axiom.
+        eexists. eapply stp2_wrapf. eapply H.
+        eexists. eassumption.
+      }
+      destruct A as [? A].
+      eexists. eapply stp2_or21. eapply A. eassumption.
+    + SCase "or22". subst.
+      assert (sstpd2 false G1 T1 G3 T5 []) as A. {
+        eapply sstpd2_trans_axiom.
+        eexists. eapply stp2_wrapf. eapply H.
+        eexists. eassumption.
+      }
+      destruct A as [? A].
+      eexists. eapply stp2_or22. eapply A. eassumption.
+    + SCase "or1". subst. eapply IHn. apply H2. omega. eexists. eassumption.
+  - Case "or1". subst.
+    eapply IHn in H2. destruct H2 as [? H2].
+    eapply IHn in H3. destruct H3 as [? H3].
+    eexists. eapply stp2_or1.
+    eassumption. eassumption. omega. eexists. eassumption. omega. eexists. eassumption.
   - Case "wrapf". subst. eapply IHn. eapply H2. omega. eexists. eauto.
   - Case "transf". subst. eapply IHn. eapply H2. omega. eapply IHn. eapply H3. omega. eexists. eauto.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma sstpd2_trans: forall G1 G2 G3 T1 T2 T3,
@@ -5252,6 +5447,7 @@ Proof.
   -  simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eapply closed_upgrade. eauto. eauto. eauto.
   -  simpl. rewrite IHT2. eauto. eapply closed_upgrade. eauto. eauto.
   - simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.
+  - simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.
 Qed.
 
 
@@ -5270,6 +5466,7 @@ Proof.
 
   eapply closed_upgrade. eauto. eauto.
   subst. omega.
+  subst. eapply closed_upgrade. eassumption. omega.
   subst. eapply closed_upgrade. eassumption. omega.
 Qed.
 
@@ -5318,6 +5515,8 @@ Proof.
   case_eq (beq_nat x 0); intros E. omega. omega.
 
   case_eq (beq_nat j i0); intros E. eauto. eauto.
+
+  eapply closed_upgrade; eauto.
 
   eapply closed_upgrade; eauto.
 Qed.
@@ -5592,6 +5791,18 @@ Proof.
   - ev. repeat eexists; eauto. + right. right. inversion H. eauto. + right. right. inversion H. eauto.
 Qed.
 
+Lemma compat_or: forall GX TX TX' V G1 T1 T2 T1',
+    compat GX TX TX' V G1 (TOr T1 T2) T1' ->
+    closed_rec 0 1 TX ->
+    exists TA TB, T1' = TOr TA TB /\
+                  compat GX TX TX' V G1 T1 TA /\
+                  compat GX TX TX' V G1 T2 TB.
+Proof.
+  intros ? ? ? ? ? ? ? ? CC CLX. repeat destruct CC as [|CC].
+  - ev. repeat eexists; eauto. + left. repeat eexists; eauto. + left. repeat eexists; eauto.
+  - ev. repeat eexists; eauto. + right. left. inversion H. eauto. + right. left. inversion H. eauto.
+  - ev. repeat eexists; eauto. + right. right. inversion H. eauto. + right. right. inversion H. eauto.
+Qed.
 
 Lemma compat_sel: forall GX TX TX' V G1 T1' (GXX:venv) (TXX:ty) x l v n,
     compat GX TX TX' V G1 (TSel (varF x) l) T1' ->
@@ -5757,6 +5968,12 @@ Proof.
     reflexivity.
     inversion H. eauto.
     inversion H. eauto.
+  - simpl.
+    rewrite <- IHT1.
+    rewrite <- IHT2.
+    reflexivity.
+    inversion H. eauto.
+    inversion H. eauto.
 Qed.
 
 Lemma subst_open1: forall x T,
@@ -5786,6 +6003,8 @@ Proof.
     apply cl_bind. apply IHT. eassumption.
   - simpl in H. inversion H. subst.
     apply cl_and. apply IHT1. eassumption. apply IHT2. eassumption.
+  - simpl in H. inversion H. subst.
+    apply cl_or. apply IHT1. eassumption. apply IHT2. eassumption.
 Qed.
 
 Lemma open_noop : forall i j T1 T0,
@@ -5796,6 +6015,7 @@ Proof.
   - simpl. rewrite IHclosed_rec1. rewrite IHclosed_rec2. reflexivity.
   - simpl. rewrite IHclosed_rec1. rewrite IHclosed_rec2. reflexivity.
   - simpl. rewrite IHclosed_rec. reflexivity.
+  - simpl. rewrite IHclosed_rec1. rewrite IHclosed_rec2. reflexivity.
   - simpl. rewrite IHclosed_rec1. rewrite IHclosed_rec2. reflexivity.
   - simpl. assert (beq_nat k i = false) as E. {
       apply false_beq_nat. omega.
@@ -5851,6 +6071,12 @@ Proof.
     eexists. eapply stp2_and12; eauto. omega. omega.
   - Case "and2". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
     eexists. eapply stp2_and2; eauto. omega. omega.
+  - Case "or21". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
+    eexists. eapply stp2_or21; eauto. omega. omega.
+  - Case "or22". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
+    eexists. eapply stp2_or22; eauto. omega. omega.
+  - Case "or1". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
+    eexists. eapply stp2_or1; eauto. omega. omega.
   - Case "wrapf". eapply IHn in H1. eu. eexists. eapply stp2_wrapf. eauto. omega.
   - Case "transf". eapply IHn in H1. eapply IHn in H2. eu. eu. eexists.
     eapply stp2_transf. eauto. eauto. omega. omega.
@@ -6796,6 +7022,37 @@ Proof.
     omega. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
     eauto.
 
+  - Case "or21".
+    intros GH0 GH0' GXX TXX TXX' lX T1' T2' V ? VS CX ? IX1 IX2 FA IXH.
+    subst. apply compat_or in IX2. repeat destruct IX2 as [? IX2].
+    eapply IHn in H1. destruct H1.
+    eapply IHn in H2. destruct H2.
+    eexists.
+    subst. eapply stp2_or21; eassumption.
+    omega. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+    omega. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+    eauto.
+  - Case "or22".
+    intros GH0 GH0' GXX TXX TXX' lX T1' T2' V ? VS CX ? IX1 IX2 FA IXH.
+    subst. apply compat_or in IX2. repeat destruct IX2 as [? IX2].
+    eapply IHn in H1. destruct H1.
+    eapply IHn in H2. destruct H2.
+    eexists.
+    subst. eapply stp2_or22; eassumption.
+    omega. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+    omega. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+    eauto.
+  - Case "or1".
+    intros GH0 GH0' GXX TXX TXX' lX T1' T2' V ? VS CX ? IX1 IX2 FA IXH.
+    subst. apply compat_or in IX1. repeat destruct IX1 as [? IX1].
+    eapply IHn in H1. destruct H1.
+    eapply IHn in H2. destruct H2.
+    eexists.
+    subst. eapply stp2_or1. eapply H1. eapply H2.
+    omega. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+    omega. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+    eauto.
+
   - Case "wrapf".
     intros. subst.
     eapply IHn in H1. destruct H1.
@@ -7035,6 +7292,12 @@ Proof.
     eexists. eapply stp2_and12; eauto. omega. omega.
   - Case "and2". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
     eexists. eapply stp2_and2; eauto. omega. omega.
+  - Case "or21". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
+    eexists. eapply stp2_or21; eauto. omega. omega.
+  - Case "or22". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
+    eexists. eapply stp2_or22; eauto. omega. omega.
+  - Case "or1". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
+    eexists. eapply stp2_or1; eauto. omega. omega.
   - Case "wrapf". eapply IHn in H1. ev. eexists. eapply stp2_wrapf. eauto. omega.
   - Case "transf". eapply IHn in H1. eapply IHn in H2. ev. ev. eexists.
     eapply stp2_transf. eauto. eauto. omega. omega.
@@ -7110,6 +7373,18 @@ Proof.
     eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
   - Case "and2".
     eapply stpd2_and2; eauto.
+    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
+    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
+  - Case "or21".
+    eapply stpd2_or21; eauto.
+    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
+    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
+  - Case "or22".
+    eapply stpd2_or22; eauto.
+    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
+    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
+  - Case "or1".
+    eapply stpd2_or1; eauto.
     eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
     eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
   - Case "wrap". destruct m.
@@ -7297,6 +7572,18 @@ Proof.
     eapply stpd2_and2.
     eapply stpd2_wrapf. eapply IHST1; eauto.
     eapply stpd2_wrapf. eapply IHST2; eauto.
+  - Case "or21".
+    eapply stpd2_or21.
+    eapply stpd2_wrapf. eapply IHST1; eauto.
+    eapply IHST2; eauto.
+  - Case "or22".
+    eapply stpd2_or22.
+    eapply stpd2_wrapf. eapply IHST1; eauto.
+    eapply IHST2; eauto.
+  - Case "or1".
+    eapply stpd2_or1.
+    eapply IHST1; eauto.
+    eapply IHST2; eauto.
 Qed.
 
 Lemma stp_to_stp2: forall G1 GH T1 T2,
@@ -7340,6 +7627,10 @@ Inductive wf_tp: tenv -> tenv -> ty -> Prop :=
     wf_tp G1 GH T1 ->
     wf_tp G1 GH T2 ->
     wf_tp G1 GH (TAnd T1 T2)
+| wf_or: forall G1 GH T1 T2,
+    wf_tp G1 GH T1 ->
+    wf_tp G1 GH T2 ->
+    wf_tp G1 GH (TOr T1 T2)
 .
 Hint Constructors wf_tp.
 
@@ -7407,6 +7698,10 @@ Proof.
     eapply stpd2_and2; eapply stpd2_wrapf.
     eapply stpd2_and11. eapply IHST1; eauto. eapply IHST2; eauto.
     eapply stpd2_and12. eapply IHST2; eauto. eapply IHST1; eauto.
+  - Case "or".
+    eapply stpd2_or1.
+    eapply stpd2_or21. eapply stpd2_wrapf. eapply IHST1; eauto. eapply IHST2; eauto.
+    eapply stpd2_or22. eapply stpd2_wrapf. eapply IHST2; eauto. eapply IHST1; eauto.
 Qed.
 
 Lemma stp_to_stp2_cycle: forall venv env T0 T t,
