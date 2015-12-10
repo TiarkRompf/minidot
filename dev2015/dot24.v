@@ -6616,13 +6616,6 @@ Proof. intros. repeat eu. eapply stp2_substitute_aux; eauto. Qed.
 
 
 
-Lemma stpd2_to_atpd2: forall G1 G2 T1 T2 GH m,
-  stpd2 m G1 T1 G2 T2 GH ->
-  atpd2 m G1 T1 G2 T2 GH.
-Proof.
-  intros. eauto.
-Qed.
-
 Lemma stpd2_to_sstpd2: forall G1 G2 T1 T2 m,
   stpd2 m G1 T1 G2 T2 nil ->
   sstpd2 m G1 T1 G2 T2 nil.
@@ -6654,6 +6647,13 @@ Proof.
     eapply stpd2_mem.
     eapply IHstp2_1; eauto. eexists. eassumption.
     eapply stpd2_wrapf. eapply IHstp2_2; eauto. eexists. eassumption.
+  - Case "var1".
+    eapply stpd2_var1.
+    eassumption. eassumption. eapply valtp_closed. eassumption.
+    eapply stpd2_wrapf. eapply IHstp2. eexists. eassumption. eauto.
+    eapply stpd2_reg2. eapply IHstp2. eexists. eassumption. eauto.
+  - Case "varx".
+    eapply stpd2_varx; eauto.
   - Case "sel1".
     eapply stpd2_sel1.
     eassumption. eassumption. eapply valtp_closed. eassumption.
@@ -6810,7 +6810,7 @@ Proof.
     
     eapply stpd2_sel1. eauto. eauto. eapply valtp_closed; eauto.
     rewrite Q in ST.
-    eapply stpd2_extendH_mult0. eapply atpd2_to_stpd2. apply ST.
+    eapply stpd2_extendH_mult0. apply ST.
     
     specialize (IHST2 GX GY WX WY).
     apply stpd2_reg2 in IHST2.
@@ -6851,7 +6851,7 @@ Proof.
     
     eapply stpd2_sel2. eauto. eauto. eapply valtp_closed; eauto.
     rewrite Q in ST.
-    eapply stpd2_extendH_mult0. eapply atpd2_to_stpd2. apply ST.
+    eapply stpd2_extendH_mult0. apply ST.
     
     specialize (IHST2 GX GY WX WY).
     apply stpd2_reg2 in IHST2.
