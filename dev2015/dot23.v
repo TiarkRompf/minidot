@@ -4212,7 +4212,7 @@ Proof.
       assert (stpd2 false G1 (open (varH (length ([]:aenv))) T4)
                           G3 (open (varH (length ([]:aenv))) T8)
                           [(0, (G3, T7))]).
-        eapply stpd2_trans. eapply stpd2_narrow. eexists. eapply H10. eauto. eauto.
+        eapply stpd2_trans. eapply stpd2_narrow. eexists. eapply stp2_extendH_mult0. eapply H10. eauto. eauto.
         repeat eu. eexists. eapply stp2_all. eauto. eauto. eauto. eauto. eapply H8.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
     + SCase "or21". subst. eexists. eapply stp2_or21; eauto.
@@ -6130,13 +6130,6 @@ Proof. intros. repeat eu. eapply stp2_substitute_aux; eauto. Qed.
 
 
 
-Lemma stpd2_to_atpd2: forall G1 G2 T1 T2 GH m,
-  stpd2 m G1 T1 G2 T2 GH ->
-  atpd2 m G1 T1 G2 T2 GH.
-Proof.
-  intros. eauto.
-Qed.
-
 Lemma stpd2_to_sstpd2: forall G1 G2 T1 T2 m,
   stpd2 m G1 T1 G2 T2 nil ->
   sstpd2 m G1 T1 G2 T2 nil.
@@ -6324,7 +6317,7 @@ Proof.
     
     eapply stpd2_sel1. eauto. eauto. eapply valtp_closed; eauto.
     rewrite Q in ST.
-    eapply stpd2_extendH_mult0. eapply atpd2_to_stpd2. apply ST.
+    eapply stpd2_extendH_mult0. apply ST.
     
     specialize (IHST2 GX GY WX WY).
     apply stpd2_reg2 in IHST2.
@@ -6365,7 +6358,7 @@ Proof.
     
     eapply stpd2_sel2. eauto. eauto. eapply valtp_closed; eauto.
     rewrite Q in ST.
-    eapply stpd2_extendH_mult0. eapply atpd2_to_stpd2. apply ST.
+    eapply stpd2_extendH_mult0. apply ST.
     
     specialize (IHST2 GX GY WX WY).
     apply stpd2_reg2 in IHST2.
