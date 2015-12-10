@@ -5775,9 +5775,80 @@ Proof.
     eexists.
     eapply stp2_varx. eauto. eauto.
 
+  - Case "vara1".
+    intros GH0 GH0' GXX TXX TXX' lX T1' T2' V ? VS CX ? IX1 IX2 FA IXH.
 
+    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
+
+    assert (compat GXX TXX TXX' (Some V) G1 (TVar (varH x)) T1') as IXX. eauto.
+
+    eapply (compat_varh GXX TXX TXX' (Some V) G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
+
+    destruct IX1.
+    + SCase "x = 0".
+      repeat destruct IXX as [|IXX]; ev.
+      * subst. simpl. inversion H10. subst.
+        eapply IHn in H4. destruct H4.
+        eapply IHn in H5. destruct H5.
+        eexists.
+        eapply stp2_var1. eauto. eauto. eapply closed_subst. eapply closed_upgrade_free. eauto. omega. eauto.
+        eauto.
+        eauto.
+        omega. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto. 
+        omega. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+      * subst. inversion H9. omega.
+      * subst. destruct H9. eauto.
+    + SCase "x > 0".
+      ev. subst.
+      eapply IHn in H4. destruct H4.
+      eapply IHn in H5. destruct H5.
+      eexists.
+
+      eapply stp2_vara1. eauto.
+
+      assert (S (x - 1) = x) as A. {
+        destruct x. omega. (* contradiction *)
+        simpl. omega.
+      }
+      rewrite A.
+      eapply closed_compat'. eauto.
+      eapply closed_upgrade_free. eauto. omega.
+      assert (x + 1 = (S x)) as B by omega. rewrite B. eassumption.
+
+      eauto.
+      eauto.
+      omega. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto. 
+      omega. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+    (* remaining obligations *)
+    + eauto. + subst GH. eauto. + eauto.
     
-    
+  - Case "varax".
+    intros GH0 GH0' GXX TXX TXX' lX T1' T2' V ? VS CX ? IX1 IX2 FA IXH.
+
+    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
+
+    assert (compat GXX TXX TXX' (Some V) G1 (TVar (varH x)) T1') as IXX1. eauto.
+    assert (compat GXX TXX TXX' (Some V) G2 (TVar (varH x)) T2') as IXX2. eauto.
+
+    eapply (compat_varh GXX TXX TXX' (Some V) G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
+    eapply (compat_varh GXX TXX TXX' (Some V) G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
+    assert (not (nosubst (TVar (varH 0)))). unfold not. intros. simpl in H1. eauto.
+    assert (not (closed 0 0 (TVar (varH 0)))). unfold not. intros. inversion H6. omega.
+
+    destruct x; destruct IX1; ev; try omega; destruct IX2; ev; try omega; subst.
+    + SCase "x = 0".
+      repeat destruct IXX1 as [IXX1|IXX1]; ev; try contradiction.
+      repeat destruct IXX2 as [IXX2|IXX2]; ev; try contradiction.
+      * SSCase "var-var".
+        subst. inversion H16. subst. inversion H8. subst.
+        simpl. eexists. eapply stp2_varx. subst. eauto. eauto.
+    + SCase "x > 0".
+      destruct IXX1; destruct IXX2; ev; subst; eexists; eapply stp2_varax; eauto.
+    (* leftovers *)
+    + eauto. + subst. eauto. + eauto. + eauto. + subst. eauto. + eauto.
+                                                                 
   - Case "sel1".
     intros GH0 GH0' GXX TXX TXX' lX T1' T2' V ? VS CX ? IX1 IX2 FA IXH.
 
