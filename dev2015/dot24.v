@@ -621,6 +621,14 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 1 false G1 (open (varH (length GH)) T1) G2 (open (varH (length GH)) T2) ((0,(G1, open (varH (length GH)) T1))::GH) n1 ->
     stp2 m true G1 (TBind T1) G2 (TBind T2) GH (S (n1+n2))
 
+| stp2_bind1: forall m G1 G2 T1 T2 GH n1 n2,
+    closed 1 (length GH) T1 -> (* must not accidentally bind x *)
+    closed 0 (length GH) T2 ->
+    stp2 1 false G2 T2 G2 T2 GH n2 -> (* regularity *)
+    stp2 1 false G1 (open (varH (length GH)) T1) G2 T2 ((0,(G1, open (varH (length GH)) T1))::GH) n1 ->
+    stp2 m true G1 (TBind T1) G2 T2 GH (S (n1+n2))
+
+         
 | stp2_and11: forall m n1 n2 G1 G2 GH T1 T2 T,
     stp2 m true G1 T1 G2 T GH n1 ->
     stp2 m true G1 T2 G1 T2 GH n2 -> (* regularity *)
@@ -879,6 +887,15 @@ Lemma stpd2_bind: forall G1 G2 T1 T2 GH,
     stpd2 false G1 (open (varH (length GH)) T1) G2 (open (varH (length GH)) T2) ((0,(G1, open (varH (length GH)) T1))::GH) ->
     stpd2 true G1 (TBind T1) G2 (TBind T2) GH.
 Proof. intros. repeat eu. eauto. Qed.
+
+Lemma stpd2_bind1: forall G1 G2 T1 T2 GH,
+    closed 1 (length GH) T1 -> (* must not accidentally bind x *)
+    closed 0 (length GH) T2 ->
+    stpd2 false G2  T2 G2 T2 GH -> (* regularity *)
+    stpd2 false G1 (open (varH (length GH)) T1) G2 T2 ((0,(G1, open (varH (length GH)) T1))::GH) ->
+    stpd2 true G1 (TBind T1) G2 T2 GH.
+Proof. intros. repeat eu. eauto. Qed.
+
 
 Lemma stpd2_and11: forall G1 G2 GH T1 T2 T,
     stpd2 true G1 T1 G2 T GH ->
@@ -2948,8 +2965,9 @@ Proof.
     specialize IHstp2_2 with (GH2:=GH0) (GH3:=(0, (G1,(open (varH (length GH1 + length GH0)) T1)))::GH1).
     rewrite app_length in IHstp2_2. simpl in IHstp2_2. unfold open in IHstp2_2.
     eapply IHstp2_2. eauto. omega. omega.
+  - Case "bind1". admit.
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0.    
+apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma stp_extend : forall G1 GH T1 T2 x v1,
@@ -3313,6 +3331,7 @@ Proof.
     rewrite A in IHstp2_1. apply IHstp2_1. apply aenv_ext_cons. assumption. assumption. assumption. assumption.
     subst.
     rewrite A in IHstp2_2. apply IHstp2_2. apply aenv_ext_cons. assumption. assumption. assumption. assumption.
+  - Case "bind1". admit.
   - Case "trans".
     eapply stp2_transf.
     eapply IHstp2_1.
@@ -3346,7 +3365,7 @@ Proof.
     try solve [split; try split; repeat ev; intros; eauto using index_extend];
     try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; inversion IHstp2_3 as [? [? ?]]; constructor; eauto; apply stp2_closure_extend; eauto];
     try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eapply stp2_bind; eauto; apply stp2_closure_extend; eauto];
-    try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eapply stp2_bindb; eauto; apply stp2_closure_extend; eauto].
+    try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eapply stp2_bind1; eauto; apply stp2_closure_extend; eauto].
 Qed.
 
 Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2 H s m n1,
@@ -3482,6 +3501,7 @@ Proof.
   apply stp2_splice.
   simpl. unfold open in H2. apply H2.
   simpl. apply le_refl. simpl. apply le_refl.
+  - Case "bind1". admit.
 Qed.
 
 Lemma stp2_extendH_mult : forall G1 G2 T1 T2 H H2 s m n1,
@@ -3505,6 +3525,7 @@ Proof.
   intros. induction H;
     try solve [repeat ev; split; eexists; eauto 4].
   - Case "all". repeat ev; split; eexists; eauto.
+  - Case "bind". admit. 
   - Case "and11".
     repeat ev; split; eexists.
     eapply stp2_and2.
@@ -4189,6 +4210,37 @@ Proof.
       instantiate (5:=(0, (G1, open (varH (length GH)) T0)) :: GH1).
       subst. simpl. reflexivity. subst. simpl. reflexivity.
       assumption.
+    + SCase "bind1".
+            assert (length GH = length GH') as A. {
+        subst. clear.
+        induction GH1.
+        - simpl. reflexivity.
+        - simpl. simpl in IHGH1. rewrite IHGH1. reflexivity.
+      }
+      eapply stpd2_bind1.
+      assert (closed 1 (length GH) T0 -> closed 1 (length GH') T0) as C0. {
+        rewrite A. intros P. apply P.
+      }
+      apply C0; assumption.
+      rewrite <-A. eauto.
+      eapply IHn. eassumption. omega.
+      instantiate (5:=GH1).
+      subst. simpl. reflexivity. subst. simpl. reflexivity.
+      assumption.
+      assert (
+          stpd2 false G1 (open (varH (length GH)) T0) G2 T2
+                ((0, (G1, open (varH (length GH)) T0)) :: GH')
+                ->
+          stpd2 false G1 (open (varH (length GH')) T0) G2 T2
+                ((0, (G1, open (varH (length GH')) T0)) :: GH')
+        ) as CS2. {
+        rewrite A. intros P. apply P.
+      }
+      apply CS2. eapply IHn. eassumption. omega.
+      instantiate (5:=(0, (G1, open (varH (length GH)) T0)) :: GH1).
+      subst. simpl. reflexivity. subst. simpl. reflexivity.
+      assumption.
+
     + SCase "and11".
       eapply stpd2_and11.
       eapply IHn; try eassumption. omega.
@@ -4465,9 +4517,31 @@ Proof.
       }
       inversion A.
       eexists. eapply stp2_bind; try eassumption.
+    + SCase "bind1".
+      subst.
+      assert (stpd2 false G1 (open (varH 0) T0) G3 T3
+                    [(0, (G1, open (varH 0) T0))]) as A. {
+        simpl in H5. simpl in H9.
+        eapply stpd2_trans.
+        eexists; eauto.
+        change ([(0, (G1, open (varH 0) T0))]) with ((0, (G1, open (varH 0) T0))::[]).
+        eapply stpd2_narrow. eexists. eassumption. eexists. eassumption.
+      }
+      inversion A.
+      eexists. eapply stp2_bind1; try eassumption.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
     + SCase "or21". subst. eexists. eapply stp2_or21; eauto.
     + SCase "or22". subst. eexists. eapply stp2_or22; eauto.
+  - Case "bind1". subst.
+    assert (stpd2 false G1 (open (varH (length ([]:aenv))) T0) G3 T3
+                  [(0, (G1, open (varH (length ([]:aenv))) T0))]) as A. {
+      eapply stpd2_trans. eauto. eapply stpd2_extendH_mult0. eapply stpd2_wrapf. eauto.
+      admit. (* downgrade *)
+    }
+    destruct A as [? A]. 
+    eexists. eapply stp2_bind1. eauto. eapply stp2_closed. eauto.
+    instantiate (1:=0). admit. (*regularity, need downgrade?*)
+    apply A.
   - Case "and11". subst.
     eapply IHn in H2. destruct H2 as [? H2].
     eexists. eapply stp2_and11.
