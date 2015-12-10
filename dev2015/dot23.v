@@ -4031,14 +4031,14 @@ apply 0. apply 0. apply 0.
 Qed.
 
 Lemma stpd2_narrow: forall x G1 G2 G3 G4 GH T1 T2 T3 T4,
-  stpd2 false G1 T1 G2 T2 GH -> (* careful about H! *)
+  stpd2 false G1 T1 G2 T2 ((x,(G1,T1))::GH) -> (* careful about H! *)
   stpd2 false G3 T3 G4 T4 ((x,(G2,T2))::GH) ->
   stpd2 false G3 T3 G4 T4 ((x,(G1,T1))::GH).
 Proof.
   intros. inversion H0 as [n H'].
   eapply (stp2_narrow_aux n) with (GH1:=[]). eapply H'. omega.
   simpl. reflexivity. simpl. reflexivity.
-  eapply stpd2_extendH. assumption.
+  assumption.
 Qed.
 
 Lemma sstpd2_trans_aux: forall n, forall m G1 G2 G3 T1 T2 T3 n1,
