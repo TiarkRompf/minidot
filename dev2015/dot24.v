@@ -5751,7 +5751,7 @@ Proof.
 Qed.
 
 
-
+(* invert_typ lemmas are called from subst, so we need to inject subst capability *)
 Definition can_subst n := forall ni, ni <= n -> forall (nj : nat) (m : bool) (G1 G2 : venv) (T1 T2 : ty)
    (GH : list (id * (venv * ty))) (n1 : nat),
  stp2 1 m G1 T1 G2 T2 GH n1 ->
@@ -5774,6 +5774,8 @@ Lemma valtp_reg: forall G v T n,
                    val_type G v T n ->
                    sstpd2 true G T G T [].
 Proof. intros. induction H; eapply sstpd2_reg2; eauto. Qed.
+
+(* TODO: following two lemmas could be generalized *)
 
 Lemma invert_typ: forall n, can_subst n -> forall venv vx l G2 TX T1 T2 n1,
   val_type venv vx TX (S n) -> stp2 0 true venv TX G2 (TMem l T1 T2) [] n1 ->                  
@@ -5806,6 +5808,52 @@ Proof.
 Grab Existential Variables.
 apply 0. apply 0.
 Qed.
+
+Lemma invert_typb: forall n, can_subst n -> forall venv vx x l G2 TX T1 T2 n1,
+  index x G2 = Some vx ->                                              
+  val_type venv vx TX (S n) -> stp2 0 true venv TX G2 (TBind (TMem l T1 T2)) [] n1 ->
+  exists GY TY,
+    val_type GY vx TY 1 /\  sstpd2 true GY TY G2 (open (varF x) (TMem l T1 T2 )) [].
+Proof.
+  intros n. induction n.
+  - (* 1 *)
+    intros CS. intros.
+    assert (val_type G2 vx (TBind (TMem l T1 T2)) 1) as A. eapply valtp_widen. eauto. eexists. eauto.
+    inversion A; subst.
+    destruct H2. inversion H2.
+    destruct H6. 
+    eapply dcs_tbind in H4. inversion H4. apply H3.
+    inversion H4.
+  - (* n *)
+    intros CS. intros.
+    assert (val_type G2 vx (TBind (TMem l T1 T2)) (S (S n))) as A. eapply valtp_widen. eauto. eexists. eauto.
+    inversion A. subst. 
+    
+    destruct H9. inversion H2.
+    + admit. (* bindx *)
+    + (* bind1 *)
+      subst. clear A H2 H0 H1.
+      
+    assert (stpd2 false venv1 (open (varF x0) T0) G2 
+                  (TBind (TMem l T1 T2)) []) as XX.
+    eapply CS. eauto.
+    eapply H10. eauto. rewrite app_nil_l. eauto. simpl. rewrite subst_open1. eauto. eauto. eauto. eapply closed_open. eapply closed_upgrade_free. eauto. eauto. eauto. eauto.
+    
+    left. repeat eexists. eauto. simpl. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
+    right. eauto.
+    eauto.
+    left. repeat eexists. eauto. simpl. rewrite subst_open1. eauto. eauto.
+    destruct XX.
+    
+    assert (sstpd2 true venv1 (open (varF x0) T0) G2 (TBind (TMem l T1 T2)) []) as YY.
+    eapply sstpd2_untrans. eapply stpd2_to_sstpd2_aux1. eauto. eauto.
+    destruct YY.
+  
+    eapply IHn. intros ni no. apply CS. omega. eapply H. eauto. eauto.
+Grab Existential Variables.
+apply 0. apply 0.
+Qed.
+
 
 Lemma sstpd2_downgrade: forall G1 G2 T1 T2 GH, sstpd2 true G1 T1 G2 T2 GH -> stpd2 false G1 T1 G2 T2 GH.
 Proof. admit. Qed.  
