@@ -237,7 +237,7 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_sel1: forall G1 GH TX m T2 x,
     index x G1 = Some TX ->
     closed 0 0 TX ->
-    stp G1 GH TX (TMem m TBot T2) ->
+    stp G1 [] TX (TMem m TBot T2) ->
     stp G1 GH T2 T2 -> (* regularity of stp2 *)
     stp G1 GH (TSel (varF x) m) T2
 | stp_sel2: forall G1 GH TX m T1 x,
@@ -2520,11 +2520,12 @@ Proof.
   revert G0 G1 HeqG.
   induction H; intros; subst GH; simpl; eauto.
   - Case "sel1".
-    eapply stp_sel1. apply H. assumption.
-    assert (splice (length G0) TX=TX) as A. {
-      eapply closed_splice_idem. eassumption. omega.
+    assert (splice (length G0) T2=T2) as A. {
+      eapply closed_splice_idem. apply stp_closed2 in H1. inversion H1. subst.
+      simpl in H9. eauto. omega.
     }
-    rewrite <- A. apply IHstp1. reflexivity.
+    eapply stp_sel1. apply H. assumption.
+    rewrite A. apply H1. 
     apply IHstp2. reflexivity.
   - Case "sel2".
     eapply stp_sel2. apply H. assumption.
@@ -5769,6 +5770,10 @@ Definition can_subst n := forall ni, ni <= n -> forall (nj : nat) (m : bool) (G1
  exists n1' : nat, stp2 1 m G1 T1' G2 T2' GH0' n1'.
 
 
+Lemma valtp_reg: forall G v T n,
+                   val_type G v T n ->
+                   sstpd2 true G T G T [].
+Proof. intros. induction H; eapply sstpd2_reg2; eauto. Qed.
 
 Lemma invert_typ: forall n, can_subst n -> forall venv vx l G2 TX T1 T2 n1,
   val_type venv vx TX (S n) -> stp2 0 true venv TX G2 (TMem l T1 T2) [] n1 ->                  
@@ -6905,7 +6910,7 @@ Proof.
   apply 0. apply 0. apply 0.
 Qed.
 
-Lemma sstpd2_downgrade: forall G1 G2 T1 T2 H,
+Lemma sstpd2_downgrade1: forall G1 G2 T1 T2 H,
   sstpd2 true G1 T1 G2 T2 H ->
   stpd2 false G1 T1 G2 T2 H.
 Proof.
@@ -6962,12 +6967,25 @@ Proof.
     assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? [? VT]]].
+    edestruct IHST1; eauto. eapply stpd2_to_sstpd2_aux1 in H2. destruct H2. 
+    destruct x1. inversion VT.
+    eapply invert_typ in VT. destruct VT as [GZ [TZ [VT SM]]].
     eapply stpd2_sel1. eauto. eauto. eapply valtp_closed; eauto.
-    eapply stpd2_wrapf. eauto.
-    specialize (IHST2 GX GY WX WY).
-    apply stpd2_reg2 in IHST2.
-    apply IHST2.
-  - Case "sel2".
+    eapply sstpd2_downgrade. eauto. eapply sstpd2_extendH_mult0. apply SM.
+    apply IHST2; eauto.
+    intros n. apply stp2_substitute_aux. eauto. eauto.
+  - Case "sel2". admit. (*
+    assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
+    eapply index_safe_ex. eauto. eauto.
+    destruct A as [? [? [? VT]]].
+    edestruct IHST1; eauto. eapply stpd2_to_sstpd2_aux1 in H2. destruct H2. 
+    destruct x1. inversion VT.
+    eapply invert_typ in VT. destruct VT as [GZ [TZ [VT SM]]].
+    eapply stpd2_sel1. eauto. eauto. eapply valtp_closed; eauto.
+    eapply sstpd2_downgrade. eauto. eapply sstpd2_extendH_mult0. apply SM.
+    apply IHST2; eauto.
+    intros n. apply stp2_substitute_aux. eauto. eauto.
+
     assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [? [? [? VT]]].
@@ -6975,7 +6993,7 @@ Proof.
     eapply stpd2_wrapf. eauto.
     specialize (IHST2 GX GY WX WY).
     apply stpd2_reg2 in IHST2.
-    apply IHST2.
+    apply IHST2. *)
   - Case "selb1".
     (* replace x: {z => ..U }  U < T2  by x: (.. U)  U < T *)
     (* previously, there was a separate stp2 level for this *)
@@ -6997,7 +7015,7 @@ Proof.
           [] n) as ST. {
       eapply stp2_substitute_aux with (GH0:=[]).
       eauto.
-      eauto.
+      eauto. eauto.
       simpl. reflexivity.
       erewrite subst_open1. eassumption. eauto. 
       eapply closed_open. simpl. eapply closed_upgrade. eauto. eapply closed_upgrade_free. eauto. simpl. eauto. eauto. eauto. eauto.
@@ -7011,7 +7029,11 @@ Proof.
     }
     assert ((open (varF x) (TMem m TBot T2) = TMem m TBot (open (varF x) T2))) as Q.
     unfold open. unfold open. simpl. eauto.
+
+
     
+    eapply invert_typ in VT. destruct VT as [GZ [TZ [VT SM]]].
+
     eapply stpd2_sel1. eauto. eauto. eapply valtp_closed; eauto.
     rewrite Q in ST.
     eapply stpd2_extendH_mult0. apply ST.
@@ -7518,10 +7540,6 @@ Grab Existential Variables.
 apply 0. apply 0.
 Qed.
 
-Lemma valtp_reg: forall G v T n,
-                   val_type G v T n ->
-                   sstpd2 true G T G T [].
-Proof. intros. induction H; eapply sstpd2_reg2; eauto. Qed.
 
 Lemma has_type_wf:
   forall G t T, has_type G t T -> stp G [] T T.
