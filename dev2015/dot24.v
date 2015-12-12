@@ -5842,16 +5842,16 @@ apply 0. apply 0.
 Qed.
 
 
-Lemma invert_typb: forall n, can_subst n -> forall venv vx x l G2 TX T1 T2 n1,
+Lemma invert_bind: forall n, can_subst n -> forall venv vx x G2 TX T1 n1,
   index x G2 = Some vx ->                                              
-  val_type venv vx TX (S n) -> stp2 0 true venv TX G2 (TBind (TMem l T1 T2)) [] n1 ->
-  exists GY TY,
-    val_type GY vx TY 1 /\  sstpd2 true GY TY G2 (open (varF x) (TMem l T1 T2 )) [].
+  val_type venv vx TX (S n) -> stp2 0 true venv TX G2 (TBind (T1)) [] n1 ->
+  exists n2, n2 <= n /\ exists GY TY,
+    val_type GY vx TY n2 /\  sstpd2 true GY TY G2 (open (varF x) (T1 )) [].
 Proof.
   intros n. induction n.
   - (* 1 *)
     intros CS. intros.
-    assert (val_type G2 vx (TBind (TMem l T1 T2)) 1) as A. eapply valtp_widen. eauto. eexists. eauto.
+    assert (val_type G2 vx (TBind T1) 1) as A. eapply valtp_widen. eauto. eexists. eauto.
     inversion A; subst.
     destruct H2. inversion H2.
     destruct H6. 
@@ -5859,16 +5859,25 @@ Proof.
     inversion H4.
   - (* n *)
     intros CS. intros.
-    assert (val_type G2 vx (TBind (TMem l T1 T2)) (S (S n))) as A. eapply valtp_widen. eauto. eexists. eauto.
+    assert (val_type G2 vx (TBind (T1)) (S (S n))) as A. eapply valtp_widen. eauto. eexists. eauto.
     inversion A. subst. 
     
     destruct H9. inversion H2.
-    + admit. (* bindx *)
+    + (* bindx *)
+      subst. clear A H2 H0 H1.
+      assert (stpd2 false venv1 (open (varF x0) T2) G2 (open (varF x) T1) []) as XX. eapply CS. eauto. eauto. eauto. rewrite app_nil_l. eauto. rewrite subst_open1. eauto. eauto. eapply closed_open. eapply closed_upgrade_free. eauto. eauto. eauto. eauto.
+      left. repeat eexists. eauto. simpl. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
+      left. repeat eexists. eauto. simpl. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
+      eauto.
+      left. repeat eexists. eauto. simpl. rewrite subst_open1. eauto. eauto.
+      destruct XX.
+
+      eexists. split. eauto. eexists. eexists. repeat split. eauto. eauto. eapply sstpd2_untrans. eapply stpd2_to_sstpd2_aux1. eauto. eauto. 
     + (* bind1 *)
       subst. clear A H2 H0 H1.
       
-    assert (stpd2 false venv1 (open (varF x0) T0) G2 
-                  (TBind (TMem l T1 T2)) []) as XX.
+    assert (stpd2 false venv1 (open (varF x0) T2) G2 
+                  (TBind T1) []) as XX.
     eapply CS. eauto.
     eapply H10. eauto. rewrite app_nil_l. eauto. simpl. rewrite subst_open1. eauto. eauto. eauto. eapply closed_open. eapply closed_upgrade_free. eauto. eauto. eauto. eauto.
     
@@ -5878,14 +5887,74 @@ Proof.
     left. repeat eexists. eauto. simpl. rewrite subst_open1. eauto. eauto.
     destruct XX.
     
-    assert (sstpd2 true venv1 (open (varF x0) T0) G2 (TBind (TMem l T1 T2)) []) as YY.
+    assert (sstpd2 true venv1 (open (varF x0) T2) G2 (TBind (T1)) []) as YY.
     eapply sstpd2_untrans. eapply stpd2_to_sstpd2_aux1. eauto. eauto.
     destruct YY.
-  
-    eapply IHn. intros ni no. apply CS. omega. eapply H. eauto. eauto.
+
+    eapply IHn in H4. destruct H4. destruct H2. exists x3. split. omega. eauto.
+    intros ni no. apply CS. omega. eapply H. eauto.
 Grab Existential Variables.
-apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0.
 Qed.
+
+
+(* should this use invert_bind? *)
+Lemma invert_typb: forall n, can_subst n -> forall venv vx x l G2 TX T1 T2 n1,
+  index x G2 = Some vx ->                                              
+  val_type venv vx TX (S n) -> stp2 0 true venv TX G2 (TBind (TMem l T1 T2)) [] n1 ->
+  exists GY TY,
+    val_type GY vx TY 1 /\  sstpd2 true GY TY G2 (open (varF x) (TMem l T1 T2 )) [].
+Proof.
+   intros n. induction n.
+   - (* 1 *)
+     intros CS. intros.
+     assert (val_type G2 vx (TBind (TMem l T1 T2)) 1) as A. eapply valtp_widen. eauto. eexists. eauto.
+     inversion A; subst.
+     destruct H2. inversion H2.
+     destruct H6. 
+     eapply dcs_tbind in H4. inversion H4. apply H3.
+     inversion H4.
+   - (* n *)
+     intros CS. intros.
+     assert (val_type G2 vx (TBind (TMem l T1 T2)) (S (S n))) as A. eapply valtp_widen. eauto. eexists. eauto.
+     inversion A. subst. 
+     
+     destruct H9. inversion H2.
+     + (* bindx *)
+       subst. clear A H2 H0 H1.
+       assert (stpd2 false venv1 (open (varF x0) T0) G2 (open (varF x) (TMem l T1 T2)) []) as XX. eapply CS. eauto. eauto. eauto.
+       simpl. rewrite app_nil_l. eauto. rewrite subst_open1. eauto. eauto. eapply closed_open. eapply closed_upgrade_free. eauto. eauto. eauto. eauto. 
+       left. repeat eexists. eauto. simpl. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto. 
+       left. repeat eexists. eauto. simpl. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto. 
+       eauto.
+       left. repeat eexists. eauto. simpl. rewrite subst_open1. eauto. eauto.
+       destruct XX.
+       eapply stpd2_to_sstpd2_aux1 in H0. eapply sstpd2_untrans in H0. destruct H0.
+
+       eapply invert_typ. intros ni no. eapply CS. instantiate (1:= n) in no. eauto. eauto. eauto. eauto. 
+     + (* bind1 *)
+       subst. clear A H2 H0 H1.
+       
+       assert (stpd2 false venv1 (open (varF x0) T0) G2 
+                     (TBind (TMem l T1 T2)) []) as XX.
+       eapply CS. eauto.
+       eapply H10. eauto. rewrite app_nil_l. eauto. simpl. rewrite subst_open1. eauto. eauto. eauto. eapply closed_open. eapply closed_upgrade_free. eauto. eauto. eauto. eauto.
+                                                                                                            
+       left. repeat eexists. eauto. simpl. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
+       right. eauto.
+       eauto.
+       left. repeat eexists. eauto. simpl. rewrite subst_open1. eauto. eauto.
+       destruct XX.
+     
+     assert (sstpd2 true venv1 (open (varF x0) T0) G2 (TBind (TMem l T1 T2)) []) as YY.
+     eapply sstpd2_untrans. eapply stpd2_to_sstpd2_aux1. eauto. eauto.
+     destruct YY.
+   
+     eapply IHn. intros ni no. apply CS. omega. eapply H. eauto. eauto.
+ Grab Existential Variables.
+ apply 0. apply 0. apply 0. apply 0.
+Qed.
+
 
 
 Lemma sstpd2_downgrade: forall G1 G2 T1 T2 GH, sstpd2 true G1 T1 G2 T2 GH -> stpd2 false G1 T1 G2 T2 GH.
