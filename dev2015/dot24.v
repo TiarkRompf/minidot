@@ -243,7 +243,7 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_sel2: forall G1 GH TX m T1 x,
     index x G1 = Some TX ->
     closed 0 0 TX ->
-    stp G1 GH TX (TMem m T1 TTop) ->
+    stp G1 [] TX (TMem m T1 TTop) ->
     stp G1 GH T1 T1 -> (* regularity of stp2 *)
     stp G1 GH T1 (TSel (varF x) m)
 | stp_selb1: forall G1 GH TX m T2 x,
@@ -259,19 +259,7 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_selx: forall G1 GH TX x m,
     index x G1 = Some TX ->
     stp G1 GH (TSel (varF x) m) (TSel (varF x) m)
-| stp_sela1: forall G1 GH TX m T2 x,
-    indexr x GH = Some TX ->
-    closed 0 (S x) TX ->
-    stp G1 GH TX (TMem m TBot T2) ->   (* not using self name for now *)
-    stp G1 GH T2 T2 -> (* regularity of stp2 *)
-    stp G1 GH (TSel (varH x) m) T2
-| stp_sela2: forall G1 GH TX m T1 x,
-    indexr x GH = Some TX ->
-    closed 0 (S x) TX ->
-    stp G1 GH TX (TMem m T1 TTop) ->   (* not using self name for now *)
-    stp G1 GH T1 T1 -> (* regularity of stp2 *)
-    stp G1 GH T1 (TSel (varH x) m)
-| stp_selab1: forall G1 GH GU GL TX m T2 x,
+| stp_sela1: forall G1 GH GU GL TX m T2 x,
     indexr x GH = Some TX ->
     closed 0 (S x) TX ->
     length GL = (S x) ->
@@ -279,6 +267,23 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GL TX (TMem m TBot T2) ->
     stp G1 GH T2 T2 -> (* regularity *)
     stp G1 GH (TSel (varH x) m) T2
+| stp_sela2: forall G1 GH GU GL TX m T1 x,
+    indexr x GH = Some TX ->
+    closed 0 (S x) TX ->
+    length GL = (S x) ->
+    GH = GU ++ GL ->
+    stp G1 GL TX (TMem m T1 TTop) ->   (* not using self name for now *)
+    stp G1 GH T1 T1 -> (* regularity of stp2 *)
+    stp G1 GH T1 (TSel (varH x) m)
+| stp_selab1: forall G1 GH GU GL TX m T2 T2' x,
+    indexr x GH = Some TX ->
+    closed 0 (S x) TX ->
+    length GL = (S x) ->
+    GH = GU ++ GL ->
+    stp G1 GL TX (TBind (TMem m TBot T2)) ->
+    T2' = (open (varH x) T2) ->
+    stp G1 GH T2' T2' -> (* regularity *)
+    stp G1 GH (TSel (varH x) m) T2'
 | stp_selab2: forall G1 GH GU GL TX m T1 T1' x,
     indexr x GH = Some TX ->
     closed 0 (S x) TX ->
