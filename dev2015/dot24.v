@@ -592,7 +592,7 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     closed 0 (S x) TX ->
     length GL = (S x) ->
     GH = GU ++ GL ->
-    stp2 (S m) false GX TX G2 (TMem l TBot T2) GL n1 ->
+    stp2 (S m) false GX TX G2 (TBind (TMem l TBot T2)) GL n1 ->
     T2' = (open (varH x) T2) ->
     stp2 (S m) true G2 T2' G2 T2' GH n2 -> (* regularity *)
     stp2 (S m) true G1 (TSel (varH x) l) G2 T2' GH (S (n1+n2))
@@ -855,7 +855,7 @@ Lemma stpd2_selab1: forall G1 G2 GX l TX x T2 T2' GH GU GL,
     closed 0 (S x) TX ->
     length GL = (S x) ->
     GH = GU ++ GL ->
-    stpd2 false GX TX G2 (TMem l TBot T2) GL ->
+    stpd2 false GX TX G2 (TBind (TMem l TBot T2)) GL ->
     T2' = (open (varH x) T2) ->
     stpd2 true G2 T2' G2 T2' GH ->
     stpd2 true G1 (TSel (varH x) l) G2 T2' GH.
@@ -2866,24 +2866,13 @@ Proof.
       rewrite EQGL in H1. rewrite app_length in H1.
       rewrite map_length. omega.
       rewrite EQGH1. rewrite map_app. rewrite app_assoc. reflexivity.
-      eapply IHstp2_1; eauto.
-      inversion A. unfold open.
-      rewrite splice_open_permute.
-      rewrite H5. unfold open.
-      assert (varH x0=varH (x0+0)) as B. {
-        rewrite <- plus_n_O. reflexivity.
-      }
-      rewrite <- B. reflexivity.
-      omega.
+      eapply IHstp2_1. eauto. unfold open. rewrite splice_open_permute. assert (x0+0 = x0) as Z by eauto. rewrite Z. subst T2'. reflexivity. omega.
       apply IHstp2_2; eauto.
-    + assert (closed 1 0 T2) as C2. {
-        inversion H1. subst. inversion H9. subst. eassumption.
-      }
-      assert (splice (length GH0) TX=TX) as A. {
+    + assert (splice (length GH0) TX=TX) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
       assert (splice (length GH0) (TBind (TMem l TBot T2))=(TBind (TMem l TBot T2))) as B. {
-        eapply closed_splice_idem. eassumption. omega.
+        eapply closed_splice_idem. eapply stp2_closed. eauto. omega.
       }
       assert (exists GH0U, GH0 = GH0U ++ GL) as EQGH. {
         eapply exists_GH0U. eassumption. eassumption. eassumption.
@@ -2892,15 +2881,15 @@ Proof.
       eapply stp2_selab1.
       eapply indexr_spliceat_lo; eauto. rewrite <- HeqGH. eassumption.
       eassumption. eassumption.
-      instantiate (1:=GL). eassumption.
       rewrite EQGH. instantiate (1:=map (spliceat (length (GH0U ++ GL))) GH1 ++ (x, v1) :: GH0U). rewrite <- app_assoc. reflexivity.
       eauto.
-      inversion B. rewrite H5. rewrite H7.
+      inversion B. rewrite H6. rewrite H4.
+      assert (closed 0 (length GL) (TBind (TMem l TBot T2))) as CB. eapply stp2_closed2; eauto.
       erewrite closed_splice_idem. reflexivity.
-      eapply closed_open. eapply closed_upgrade_free. eapply C2. omega.
-      eapply cl_selh. instantiate (1:=(length GH0)). omega. omega.
-      apply IHstp2_2; eauto.*)
-
+      inversion CB. inversion H9.
+      eapply closed_open. eapply closed_upgrade_free. eauto. instantiate (1:=(length GH0)). omega. 
+      eapply cl_selh. eauto. eauto.
+      apply IHstp2_2; eauto. 
   - Case "selab2".
     case_eq (le_lt_dec (length GH0) x0); intros E LE.
     + assert (S x0 = x0 + 1) as EQ by omega.
@@ -3013,7 +3002,7 @@ Proof.
     eapply IHstp2_2. eauto. omega. omega.
   - Case "bind1". admit.
 Grab Existential Variables.
-apply 0. apply 0. apply 0. (* apply 0.*)
+apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma stp_extend : forall G1 GH T1 T2 x v1,
