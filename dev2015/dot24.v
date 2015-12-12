@@ -5898,7 +5898,7 @@ apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 
-(* should this use invert_bind? *)
+(* could/should this use invert_bind? *)
 Lemma invert_typb: forall n, can_subst n -> forall venv vx x l G2 TX T1 T2 n1,
   index x G2 = Some vx ->                                              
   val_type venv vx TX (S n) -> stp2 0 true venv TX G2 (TBind (TMem l T1 T2)) [] n1 ->
@@ -7729,31 +7729,12 @@ Proof.
     + SCase "unpack".
       assert (res_type venv0 (index i venv0) (TBind T1)). eapply IHhas_type; eauto. eapply has_type_wf; eauto.
       inversion H3. subst.
-      inversion H7; subst; ev; try solve by inversion.
-      eapply dcs_tbind in H9. inversion H9. eassumption.
-      eapply not_stuck. inversion H9. subst.
-
-      assert (exists n, stp2 1 false venv1 (open (varF x) T2) venv0 (open (varF i) T1) [] n).
-      eapply stp2_substitute_aux with (GH0:=nil).
-      eapply H17. eauto. simpl. reflexivity.
-      unfold open. erewrite subst_open_zero with (k:=1). eauto. eauto.
-      eapply closed_open. eapply closed_upgrade_free. eauto. simpl. eauto. eauto.
-      eauto.
-
-      left. eexists. eexists. eexists. split. eauto. split. reflexivity. split. eauto. split. unfold open. rewrite subst_open_zero with (k:=1). eauto. eauto.
-      symmetry. eapply subst_open_zero. eauto.
-
-      left. eexists. eexists. eexists. split. eauto. split. reflexivity. split. eauto. split. unfold open. rewrite subst_open_zero with (k:=1). eauto. eauto.
-      symmetry. eapply subst_open_zero. eauto.
-
-      eauto.
-
-      left. eexists. eexists. eexists. split. eauto. split. reflexivity. split. eauto. split. unfold open. rewrite subst_open_zero with (k:=1). eauto. eauto. eauto.
-
-      eapply valtp_widen. eauto.
-
-      ev. eapply sstpd2_untrans. eapply stpd2_to_sstpd2_aux1. eapply H10. eauto.
-
+      destruct n0. inversion H7. 
+      assert (sstpd2 true venv0 (TBind T1) venv0 (TBind T1) []). eapply valtp_reg. eauto. eu.
+      eapply invert_bind in H7. destruct H7. destruct H7. destruct H8. destruct H8. destruct H8.
+      eapply valtp_widen in H8.
+      eapply not_stuck. apply H8. apply H9. intros ni no. eapply stp2_substitute_aux. eauto. eauto. eauto. 
+                    
     + eapply restp_widen. eapply IHhas_type; eauto. eapply has_type_wf; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
 (*
@@ -7794,7 +7775,7 @@ Proof.
       assert (res_type venv0 rf (TAll i T1 T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
       inversion HRF as [? vf].
 
-      destruct (invert_obj venv0 vf i T1 T2 n1 vx n0) as
+      destruct (invert_obj n1 n0 venv0 vf i T1 T2 vx) as
           [env1 [tenv [TF [ds [x0 [y0 [T3 [T4 [EF [FRX [EQDS [WF [HDS [HTF [HTY [STX STY]]]]]]]]]]]]]]]]. eauto. eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eassumption. eauto. eauto.
       (* now we know it's a closure, and we have has_type evidence *)
 
@@ -7821,7 +7802,7 @@ Proof.
       assert (res_type venv0 rf (TAll i T1 T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
       inversion HRF as [? vf].
 
-      destruct (invert_obj_var venv0 vf i T1 T2 n1 vx n0 x) as
+      destruct (invert_obj_var n1 n0 venv0 vf i T1 T2 vx x) as
           [env1 [tenv [TF [ds [x0 [y0 [T3 [T4 [EF [FRX [EQDS [WF [HDS [HTF [HTY [STX STY]]]]]]]]]]]]]]]]. eauto. eauto.
       destruct n. inversion Heqtx. simpl in Heqtx. inversion Heqtx. reflexivity.
       eapply stpd2_upgrade. eapply stp_to_stp2. eassumption. eauto. eauto.
@@ -7882,7 +7863,7 @@ Proof.
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. 
 Qed.
 
 End FSUB.
