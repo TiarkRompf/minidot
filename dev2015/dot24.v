@@ -7501,7 +7501,7 @@ Grab Existential Variables.
 apply 0. apply 0.
 Qed.
 
-Lemma invert_obj_var: forall venv vf l T1 T2 n vx nx xarg,
+Lemma invert_obj_var: forall n nx venv vf l T1 T2 vx xarg,
   val_type venv vf (TAll l T1 T2) n ->
   val_type venv vx T1 nx ->
   index xarg venv = Some vx ->
@@ -7517,7 +7517,10 @@ Lemma invert_obj_var: forall venv vf l T1 T2 n vx nx xarg,
     sstpd2 true venv T1 (((fresh env), vobj env (fresh env) ds)::env) (open (varF (fresh env)) T3) [] /\
     sstpd2 true ((x, vx)::((fresh env), vobj env (fresh env) ds)::env) (open (varF x) (open_rec 1 (varF (fresh env)) T4)) venv (open (varF xarg) T2) [].
 Proof.
-  intros. inversion H; repeat ev; try solve by inversion.
+  intros n. destruct n. intros. inversion H.
+  assert (exists ni, n <= ni). exists n. omega. destruct H as [ni ?]. revert n H. induction ni; intros n N.
+  - (* 1 *)
+    inversion N. subst n. intros. inversion H; repeat ev; try solve by inversion.
   subst.
   exists venv1. exists tenv0. exists T. exists ds.
   assert (exists y T3 T4, index l ds = Some (dfun (1 + (fresh venv1))  y) /\ has_type ((1+(fresh venv1), (open (varF (fresh venv1)) T3)) :: ((fresh venv1), (open (varF (fresh venv1)) T)) :: tenv0) y (open (varF (1 + (fresh venv1))) (open_rec 1 (varF (fresh venv1)) T4)) /\ sstpd2 true (((fresh venv1), vobj venv1 (fresh venv1) ds)::venv1) (open (varF (fresh venv1)) (TAll l T3 T4)) venv0 (TAll l T1 T2) []) as A. {
@@ -7599,6 +7602,14 @@ Proof.
   }
   eapply stpd2_upgrade in HR2.
   subst. eauto.
+  - (* n *)
+    intros.
+    assert (sstpd2 true venv0 (TAll l T1 T2) venv0 (TAll l T1 T2) []). eapply valtp_reg; eauto.
+    eu.
+    eapply invert_all in H. destruct H as [GY [TY [VT [? ST]]]].
+    eapply valtp_widen in VT.
+    eapply IHni. instantiate (1:=0). omega. eapply VT. eauto. eauto. eauto. eexists. apply ST.
+    intros nv. eapply stp2_substitute_aux. eauto.
 Grab Existential Variables.
 apply 0. apply 0.
 Qed.
