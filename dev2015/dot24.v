@@ -589,7 +589,7 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
 
 | stp2_selab1: forall m G1 G2 GX l TX x T2 T2' GH GU GL n1 n2,
     indexr x GH = Some (GX, TX) ->
-    closed 0 (S x) TX ->
+    closed 0 x T2 ->
     length GL = (S x) ->
     GH = GU ++ GL ->
     stp2 (S m) false GX TX G2 (TBind (TMem l TBot T2)) GL n1 ->
@@ -639,7 +639,7 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
 | stp2_bind1: forall m G1 G2 T1 T2 GH n1 n2,
     closed 1 (length GH) T1 -> (* must not accidentally bind x *)
     closed 0 (length GH) T2 ->
-    stp2 1 false G2 T2 G2 T2 GH n2 -> (* regularity *)
+    stp2 m false G2 T2 G2 T2 GH n2 -> (* regularity *)
     stp2 1 false G1 (open (varH (length GH)) T1) G2 T2 ((0,(G1, open (varH (length GH)) T1))::GH) n1 ->
     stp2 m true G1 (TBind T1) G2 T2 GH (S (n1+n2))
 
@@ -852,7 +852,7 @@ Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela1; eauto. Qed.
 
 Lemma stpd2_selab1: forall G1 G2 GX l TX x T2 T2' GH GU GL,
     indexr x GH = Some (GX, TX) ->
-    closed 0 (S x) TX ->
+    closed 0 x T2 ->
     length GL = (S x) ->
     GH = GU ++ GL ->
     stpd2 false GX TX G2 (TBind (TMem l TBot T2)) GL ->
@@ -2869,7 +2869,7 @@ Proof.
       eapply IHstp2_1. eauto. unfold open. rewrite splice_open_permute. assert (x0+0 = x0) as Z by eauto. rewrite Z. subst T2'. reflexivity. omega.
       apply IHstp2_2; eauto.
     + assert (splice (length GH0) TX=TX) as A. {
-        eapply closed_splice_idem. eassumption. omega.
+        eapply closed_splice_idem. eapply stp2_closed1. eauto. omega.
       }
       assert (splice (length GH0) (TBind (TMem l TBot T2))=(TBind (TMem l TBot T2))) as B. {
         eapply closed_splice_idem. eapply stp2_closed. eauto. omega.
@@ -3005,15 +3005,25 @@ Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0.
 Qed.
 
+(*
 Lemma stp_extend : forall G1 GH T1 T2 x v1,
                        stp G1 GH T1 T2 ->
                        stp G1 ((x,v1)::GH) T1 T2.
 Proof.
   intros. induction H; eauto using indexr_extend.
-  - Case "selab1".
-    eapply stp_selab1; try eassumption.
+  - Case "sela1".
+    eapply stp_sela1; try eassumption.
     eapply indexr_extend. eassumption.
     instantiate (1:=(x,v1)::GU). simpl. rewrite H2. reflexivity.
+  - Case "sela2".
+    eapply stp_sela2; try eassumption.
+    eapply indexr_extend. eassumption.
+    instantiate (1:=(x,v1)::GU). simpl. rewrite H2. reflexivity.
+  - Case "selab1".
+    assert (closed 0 (S x0) TX). eassumption.
+    eapply stp_selab1; try eassumption.
+    eapply indexr_extend. eassumption.
+    instantiate (1:=(x,v1)::GU). simpl. rewrite H3. reflexivity.
   - Case "selab2".
     eapply stp_selab2; try eassumption.
     eapply indexr_extend. eassumption.
@@ -3127,7 +3137,7 @@ Proof.
   simpl. unfold open in H3. rewrite <- H. apply H3.
   simpl. apply le_refl. simpl. apply le_refl.
 Qed.
-
+*)
 
 Lemma indexr_at_index: forall {A} x0 GH0 GH1 x (v:A),
   beq_nat x0 (length GH1) = true ->
@@ -3292,8 +3302,14 @@ Proof.
       apply indexr_at_ext with (GH:=GH); assumption.
     }
     inversion A as [GX' [H' HX]].
-    apply stp2_sela1 with (GX:=GX') (TX:=TX).
+    assert (exists GU' GL', GH' = GU' ++ GL' /\ aenv_ext GU' GU /\ aenv_ext GL' GL) as B. {
+      eapply aenv_ext__concat. eassumption. eassumption.
+    }
+    destruct B as [GU' [GL' [BEQ [BU BL]]]].
+    apply stp2_sela1 with (GX:=GX') (TX:=TX) (GL:=GL') (GU:=GU').
     assumption. assumption.
+    rewrite <- H1. symmetry. apply aenv_ext__same_length. eassumption.
+    eassumption.
     apply IHstp2_1; assumption.
     apply IHstp2_2; assumption.
   - Case "selab1".
@@ -3310,6 +3326,7 @@ Proof.
     rewrite <- H1. symmetry. apply aenv_ext__same_length. eassumption.
     eassumption.
     apply IHstp2_1; eauto.
+    eassumption.
     apply IHstp2_2; eauto.
   - Case "selab2".
     assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
@@ -3365,7 +3382,16 @@ Proof.
     rewrite A in IHstp2_1. apply IHstp2_1. apply aenv_ext_cons. assumption. assumption. assumption. assumption.
     subst.
     rewrite A in IHstp2_2. apply IHstp2_2. apply aenv_ext_cons. assumption. assumption. assumption. assumption.
-  - Case "bind1". admit.
+  - Case "bind1".
+    assert (length GH = length GH') as A. {
+      apply aenv_ext__same_length. assumption.
+    }
+    apply stp2_bind1.
+    subst. rewrite A in H. assumption.
+    subst. rewrite A in H0. assumption.
+    apply IHstp2_1. assumption. assumption. assumption. 
+    subst.
+    rewrite A in IHstp2_2. apply IHstp2_2. apply aenv_ext_cons. assumption. assumption. assumption. assumption.
   - Case "trans".
     eapply stp2_transf.
     eapply IHstp2_1.
@@ -3423,6 +3449,9 @@ Lemma stp2_extendH : forall x v1 G1 G2 T1 T2 GH s m n1,
                        stp2 s m G1 T1 G2 T2 ((x,v1)::GH) n1.
 Proof.
   intros. induction H; eauto using indexr_extend.
+  - Case "sela1".
+    eapply stp2_sela1; try eassumption. eapply indexr_extend. eassumption.
+    rewrite H2. instantiate (1:=(x, v1)::GU). simpl. reflexivity.
   - Case "selab1".
     eapply stp2_selab1; try eassumption. eapply indexr_extend. eassumption.
     rewrite H2. instantiate (1:=(x, v1)::GU). simpl. reflexivity.
@@ -3535,7 +3564,38 @@ Proof.
   apply stp2_splice.
   simpl. unfold open in H2. apply H2.
   simpl. apply le_refl. simpl. apply le_refl.
-  - Case "bind1". admit.
+  - Case "bind1".
+    assert (splice (length GH) T2 = T2) as A2. {
+      eapply closed_splice_idem. eauto. omega.
+    }
+    assert (splice (length GH) T1 = T1) as A1. {
+      eapply closed_splice_idem. eauto. omega.
+    }
+    eapply stp2_bind1.
+    apply closed_inc. eauto.
+    apply closed_inc. eauto.
+    assumption.
+    unfold open. simpl. 
+    rewrite <- A2. rewrite <- A1. 
+    change (varH (S (length GH))) with (varH (0 + (S (length GH)))).
+    rewrite -> splice_open_permute.
+    assert (
+      stp2 1 false G1
+        (splice (length GH) (open_rec 0 (varH (0 + length GH)) T1)) G2
+        (splice (length GH) T2)
+        ((map (spliceat (length GH)) [(0, (G1, (open_rec 0 (varH (0 + length GH)) T1)))])++((x, v1) :: GH)) n1
+      ->
+      stp2 1 false G1
+        (splice (length GH) (open_rec 0 (varH (0 + length GH)) T1)) G2
+        (splice (length GH) T2)
+        ((0, (G1, splice (length GH) (open_rec 0 (varH (0 + length GH)) T1))) :: (x, v1) :: GH) n1
+      ) as HGX2. {
+    simpl. intros A. apply A.
+    }
+    apply HGX2.
+    apply stp2_splice.
+    simpl. unfold open in H2. apply H2.
+    simpl. apply le_refl.
 Qed.
 
 Lemma stp2_extendH_mult : forall G1 G2 T1 T2 H H2 s m n1,
@@ -3559,7 +3619,6 @@ Proof.
   intros. induction H;
     try solve [repeat ev; split; eexists; eauto 4].
   - Case "all". repeat ev; split; eexists; eauto.
-  - Case "bind". admit. 
   - Case "and11".
     repeat ev; split; eexists.
     eapply stp2_and2.
@@ -3997,28 +4056,56 @@ Proof.
       * assert (indexr x ([(x0, (GX2, TX2))]++GH0) = Some (GX2, TX2)) as A2. {
           simpl. rewrite E. reflexivity.
         }
-        assert (indexr x GH = Some (GX2, TX2)) as A2'. {
+        assert (indexr x (GU ++ GL) = Some (GX2, TX2)) as A2'. {
           rewrite EGH. eapply indexr_extend_mult. apply A2.
         }
         rewrite A2' in H1. inversion H1. subst.
         inversion HX as [nx HX'].
         eapply stpd2_sela1.
         eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
-        apply beq_nat_true in E. rewrite E.
-        change (S (length GH0)) with (length ([(x0, (GX1, TX1))]++GH0)).
-        eapply stp2_closed1. eassumption.
-        eapply stpd2_trans.
-        eexists. eapply stp2_extendH_mult. eassumption.
+        eapply stpd2_closed1 in HX. simpl in HX. eapply beq_nat_true in E. rewrite E. eapply HX.
+        instantiate (1:=([(x0, (GX1, TX1))]++GH0)). simpl. apply beq_nat_true in E. rewrite E. reflexivity.
+        reflexivity.
+        eapply stpd2_trans. eapply HX.
+        eapply IHn; try eassumption. omega. rewrite app_nil_l.
+        eapply proj2. eapply concat_same_length'. eassumption.
+        eapply beq_nat_true in E. subst. eauto.
+        simpl. reflexivity.
         eapply IHn; try eassumption. omega.
-        reflexivity. reflexivity.
-        eapply IHn; try eassumption. omega.
-        reflexivity. reflexivity.
+        reflexivity. 
       * assert (indexr x GH' = Some (GX, TX)) as A. {
           subst.
-          eapply indexr_same. apply E. eassumption.
+          eapply indexr_same. apply E. rewrite EGH in H1. eassumption.
         }
-        eapply stpd2_sela1. eapply A. assumption.
+        simpl in EGH. simpl in EGH'. simpl in IHn. simpl in HX.
+        case_eq (le_lt_dec (S (length GH0)) x); intros E' LE'.
+        assert (exists GH1L, GH1 = GU ++ GH1L /\ GL = GH1L ++ (x0, (GX2, TX2)) :: GH0) as EQGH. {
+          eapply exists_GH1L. eassumption. eassumption. simpl. eassumption.
+        }
+        destruct EQGH as [GH1L [EQGH1 EQGL]].
+        eapply stpd2_sela1 with (GH:=GH'). eapply A.
+        eassumption. 
+        instantiate (1:=GH1L ++ (x0, (GX1, TX1)) :: GH0).
+        rewrite app_length. simpl.
+        rewrite EQGL in H3. rewrite app_length in H3. simpl in H3. eassumption.
+        instantiate (1:=GU). rewrite app_assoc. rewrite EQGH1 in EGH'. assumption.
+        eapply IHn; try eassumption. omega. reflexivity.
         eapply IHn; try eassumption. omega.
+        assert (exists GH0U, (x0, (GX2, TX2))::GH0 = GH0U ++ GL) as EQGH. {
+          eapply exists_GH0U. eassumption. eassumption. simpl. eassumption.
+        }
+        destruct EQGH as [GH0U EQGH].
+        destruct GH0U. simpl in EQGH.
+        assert (length ((x0, (GX2, TX2))::GH0)=length GL) as Contra. {
+          rewrite EQGH. reflexivity.
+        }
+        simpl in Contra. rewrite H3 in Contra. inversion Contra. apply beq_nat_false in E. omega.
+        simpl in EQGH. inversion EQGH.
+        eapply stpd2_sela1 with (GH:=GH'). eapply A.
+        eassumption. eassumption. 
+        rewrite H7 in EGH'. simpl in EGH'. instantiate (1:=GH1 ++ (x0, (GX1, TX1)) :: GH0U).
+        rewrite <- app_assoc. simpl. eapply EGH'.
+        eexists. eassumption.
         eapply IHn; try eassumption. omega.
     + SCase "selab1".
       case_eq (beq_nat x (length GH0)); intros E.
@@ -4034,14 +4121,14 @@ Proof.
         inversion E2. subst.
         eapply stpd2_selab1.
         eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
-        eapply stpd2_closed1 in HX. simpl in HX. eapply beq_nat_true in E. rewrite E. eapply HX.
+        eassumption.
         instantiate (1:=([(x0, (GX1, TX1))]++GH0)). simpl. apply beq_nat_true in E. rewrite E. reflexivity.
         reflexivity.
         eapply stpd2_trans. eapply HX.
         eapply IHn; try eassumption. omega. rewrite app_nil_l.
         eapply proj2. eapply concat_same_length'. eassumption.
         eapply beq_nat_true in E. subst. eauto.
-        simpl. reflexivity.
+        simpl. reflexivity. reflexivity.
         eapply IHn; try eassumption. omega.
         reflexivity.
       * assert (indexr x GH' = Some (GX, TX)) as A. {
@@ -4060,7 +4147,7 @@ Proof.
         rewrite app_length. simpl.
         rewrite EQGL in H3. rewrite app_length in H3. simpl in H3. eassumption.
         instantiate (1:=GU). rewrite app_assoc. rewrite EQGH1 in EGH'. assumption.
-        eapply IHn; try eassumption. omega. reflexivity.
+        eapply IHn; try eassumption. omega. reflexivity. reflexivity.
         eapply IHn; try eassumption. omega.
         assert (exists GH0U, (x0, (GX2, TX2))::GH0 = GH0U ++ GL) as EQGH. {
           eapply exists_GH0U. eassumption. eassumption. simpl. eassumption.
@@ -4074,9 +4161,9 @@ Proof.
         simpl in EQGH. inversion EQGH.
         eapply stpd2_selab1 with (GH:=GH'). eapply A.
         eassumption. eassumption. 
-        rewrite H7 in EGH'. simpl in EGH'. instantiate (1:=GH1 ++ (x0, (GX1, TX1)) :: GH0U).
+        rewrite H6 in EGH'. simpl in EGH'. instantiate (1:=GH1 ++ (x0, (GX1, TX1)) :: GH0U).
         rewrite <- app_assoc. simpl. eapply EGH'.
-        eexists. eassumption.
+        eexists. eassumption. reflexivity.
         eapply IHn; try eassumption. omega.
     + SCase "selab2".
       case_eq (beq_nat x (length GH0)); intros E.
@@ -4572,9 +4659,9 @@ Proof.
       admit. (* downgrade *)
     }
     destruct A as [? A]. 
+    eapply stp2_reg2 in H1. ev.
     eexists. eapply stp2_bind1. eauto. eapply stp2_closed. eauto.
-    instantiate (1:=0). admit. (*regularity, need downgrade?*)
-    apply A.
+    eapply stp2_wrapf. apply H1. apply A.
   - Case "and11". subst.
     eapply IHn in H2. destruct H2 as [? H2].
     eexists. eapply stp2_and11.
@@ -5756,7 +5843,8 @@ Proof.
   - Case "selax". inversion H2.
   - Case "all". eexists. eapply stp2_all. eauto. eauto. eauto. eauto. eauto.
   - Case "bind". eexists. eapply stp2_bind. eauto. eauto. eauto. eauto.
-  - Case "bind1". eexists. eapply stp2_bind1. eauto. eauto. eauto. eauto.
+  - Case "bind1". subst.  eapply IHn in H3. inversion H3.
+    eexists. eapply stp2_bind1; eauto. omega.
   - Case "and11". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
     eexists. eapply stp2_and11; eauto. omega. omega.
   - Case "and12". subst. eapply IHn in H1. inversion H1. eapply IHn in H2. inversion H2.
@@ -5776,18 +5864,6 @@ Proof.
     apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
-
-(* can be called on level >= 1 *)
-
-
-Lemma stp2_substitute_test: forall ni, 
-   forall GX V TX,
-     val_type GX V TX (S ni) ->
-     val_type GX V TX 1.
-Proof.
-  intros. induction ni. eauto. eapply IHni. eauto.
-  admit.
-Qed.
 
 
 (* invert_typ lemmas are called from subst, so we need to inject subst capability *)
@@ -5939,7 +6015,7 @@ Qed.
 
 (* could/should this use invert_bind? *)
 Lemma invert_typb: forall n, can_subst n -> forall venv vx x l G2 TX T1 T2 n1,
-  index x G2 = Some vx ->                                              
+  index x G2 = Some vx \/ closed 0 0 (TMem l T1 T2) -> 
   val_type venv vx TX (S n) -> stp2 0 true venv TX G2 (TBind (TMem l T1 T2)) [] n1 ->
   exists GY TY,
     val_type GY vx TY 1 /\  sstpd2 true GY TY G2 (open (varF x) (TMem l T1 T2 )) [].
@@ -5963,8 +6039,10 @@ Proof.
        subst. clear A H2 H0 H1.
        assert (stpd2 false venv1 (open (varF x0) T0) G2 (open (varF x) (TMem l T1 T2)) []) as XX. eapply CS. eauto. eauto. eauto.
        simpl. rewrite app_nil_l. eauto. rewrite subst_open1. eauto. eauto. eapply closed_open. eapply closed_upgrade_free. eauto. eauto. eauto. eauto. 
-       left. repeat eexists. eauto. simpl. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto. 
-       left. repeat eexists. eauto. simpl. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto. 
+       left. repeat eexists. eauto. simpl. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
+       { destruct H. 
+       * left. repeat eexists. eauto. simpl. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
+       * right. left. unfold open. repeat erewrite <-closed_no_open. eauto. eauto. eauto.     }
        eauto.
        left. repeat eexists. eauto. simpl. rewrite subst_open1. eauto. eauto.
        destruct XX.
@@ -6236,8 +6314,7 @@ Proof.
     eexists.
     eapply stp2_selx. eauto. eauto.
 
-  - Case "sela1". admit.
-  - Case "selab1NEW". 
+  - Case "sela1". 
     intros GH0 GH0' GXX TXX TXX' lX T1' T2' V ? VS CX ? IX1 IX2 FA IXH.
 
     assert (length (GU ++ GL) = length GH0 + 1). rewrite H1. eapply app_length.
@@ -6307,7 +6384,7 @@ Proof.
       }
       assert (x + 1 = (S x)) as B by omega. 
 
-      eapply stp2_selab1. eauto.
+      eapply stp2_sela1. eauto.
       rewrite A.
       eapply closed_compat'. eauto.
       eapply closed_upgrade_free. eauto. omega.
@@ -6326,7 +6403,6 @@ Proof.
     (* remaining obligations *)
     + eauto. + rewrite <-H1. eauto. + eauto. 
 
-(*                                      
   - Case "selab1".
     intros GH0 GH0' GXX TXX TXX' lX T1' T2' V ? VS CX ? IX1 IX2 FA IXH.
 
@@ -6340,122 +6416,82 @@ Proof.
     destruct IX1.
     + SCase "x = 0". ev. subst.
       repeat destruct IXX as [|IXX]; ev.
-      * subst. simpl. inversion H11. subst.
-
+      * subst. simpl. inversion H10. subst.
 
         assert (GL = [(0, (GXX, TXX))]) as EQGL. {
           eapply proj2. eapply concat_same_length'. eassumption.
           simpl. eassumption.
         }
+        assert (closed 0 0 (TBind (TMem l TBot T0))) as CL1. econstructor. econstructor. eauto. eapply closed_upgrade. eauto. eauto.
+(*        eapply IHn in H6. destruct H6.
+        eapply IHn in H8. destruct H8. *)
 
-        assert (exists nb, stp2 1 false GXX (subst TXX' TXX) G2 (TBind (TMem l TBot T0)) [] nb) as SBind. {
-          eapply IHn. eauto. omega. rewrite app_nil_l. eauto. eauto. eapply CX. eauto. eauto.
-          right. left. split. eassumption. reflexivity.
-          eauto. eauto.
+        assert (stpd2 false GXX (subst TXX' TXX) G2 (TBind (TMem l TBot T0)) []). {
+          eapply IHn. eauto. omega. rewrite app_nil_l. eauto. eauto. eapply CX. eauto.
+          eauto.  right. left. split. eassumption. reflexivity.
+          eauto. eauto. 
         }
-        destruct SBind as [nb SBind].
-
-        (* (todo: revise note)
-           If the input level is 1, we cannot create a selb node.
-           A potential avenue is to create a sel node directly.
-           But this is not straightforward: we have an imprecise bind which we need to invert.
-           Inversion requires transitivity, which increases the size.
-           Then on the internal stp obtained from the inverted bind, we need to call
-           subst again, but it need not be smaller than our own input.
-
-           Fortunately, we know that we are unpacking a bind in the valtp,
-           which becomes the new self object, so we can do an outer
-           induction on the valtp depth.
-
-           TODO: Can we use the same approach for selb, and get rid of the
-           level 2 pushback altogether?  <--- YES!
-         *)
-
-        {
-
-        assert (exists n1, stp2 0 true GXX (subst TXX' TXX) G2 (TBind (TMem l TBot T0)) [] n1) as SBind0. {
-          eapply sstpd2_untrans. eapply stpd2_to_sstpd2_aux1. eauto. eauto.
-          
+        eu. 
+        assert (stpd2 true G2 T2' G2 T2' GH0'). {
+          eapply IHn. apply H8. eauto. omega. eauto. eauto. eauto. eauto. eauto.
+          eauto. admit.
+          eauto. 
         }
-        destruct SBind0 as [n1 SBind0].
+        eu. 
+        assert (sstpd2 true GXX (subst TXX' TXX) G2 (TBind (TMem l TBot T0)) []).
+        eapply sstpd2_untrans. eapply stpd2_to_sstpd2_aux1. apply H13. eauto.
+        eu.
 
-        assert (val_type G2 x0 (TBind (TMem l TBot T0)) (S ni)) as VSB. eapply valtp_widen. eapply VS. eexists. eapply SBind0.
-
-        inversion VSB; subst; ev.
-        inversion H14.
-        eapply dcs_tbind in H17. inversion H17. eassumption.
-        inversion H14.
-        (*inversion H14. (* invert bind/bind *)*) subst.
-
-        assert (closed 0 0 (open (varF x2) T2)) as CL. eapply closed_open. eauto. eauto.
+        destruct IX2 as [IX2 | [IX2|IX2]]. (* TODO: clean this up. minimize duplication *)
+        (* 1 - subst *) {
+        repeat ev.
         
-        assert (compat venv0 (open (varH 0) T2) (varF x2)
-                       (Some x0) venv0 (open (varH 0) T2)
-                       (open (varF x2) T2)) as CP1. {
-          left. eexists. eexists. eexists. split. eauto. split. eauto. split. eauto. split. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto. 
+        destruct nv. inversion VS. (* no 0 *)
+        (* assert (exists GY TY, val_type GY x0 TY /\ sstpd2 GY TY G2 (open (varF x2 *)
+        eapply invert_typb in VS. destruct VS as [GY [TY [VS SM]]]. 
+
+        assert (closed 0 (length ([]:aenv)) TY). eapply sstpd2_closed1. apply SM.
+        eapply sstpd2_downgrade in SM. destruct SM as [? SM]. 
+        unfold open in SM. instantiate (2:=TBot) in SM. simpl in SM. 
+
+        eexists. 
+        eapply stp2_sel1. eauto. eauto. eauto. eapply stp2_extendH_mult0. subst T2'.
+        rewrite subst_open1.
+        apply SM. eapply closed_upgrade. eauto. eauto. eauto.
+        intros nx ny. apply IHni. omega. inversion H17. subst x6. eauto. eauto.
         }
+        (* 2 - closed *) {
+        destruct nv. inversion VS. (* no 0 *)
+        (* assert (exists GY TY, val_type GY x0 TY /\ sstpd2 GY TY G2 (open (varF x2 *)
+        eapply invert_typb in VS. destruct VS as [GY [TY [VS SM]]]. 
 
-        assert (compat venv0 (open (varH 0) T2) (varF x2)
-     (Some x0) G2 (open (varH 0) (TMem l TBot T0))
-     (TMem l TBot T2')) as CP2. {
-          destruct IX2 as [IX2 | [IX2 | IX2]].
-          (*1*)repeat destruct IX2 as [|IX2]; ev. inversion H18; subst.
-          rewrite subst_open1.
-          left. eexists. eexists. eexists. split. eauto. split. eauto. split. eauto. split. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
-          inversion H4. inversion H28. eauto. (* closed 1 0 T0 *)
-          (*2*)destruct IX2 as [IX21 IX22]. right. left. split. econstructor; eauto. rewrite IX22. eauto.
-          (*3*)destruct IX2 as [IX21 IX22]. right. right. split. econstructor; simpl; eauto. rewrite IX22. eauto.
-        }
-        assert (compat venv0 (open (varH 0) T2) (varF x2)
-     (Some x0) venv0 (open (varH 0) T2)
-     (subst (varF x2) (open (varH 0) T2))) as CPH. {
-           left. eexists. eexists. eexists. split. eauto. split. eauto. split. eauto. split. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
-        }
+        assert (closed 0 (length ([]:aenv)) TY). eapply sstpd2_closed1. apply SM.
+        eapply sstpd2_downgrade in SM. destruct SM as [? SM]. 
+        unfold open in SM. instantiate (2:=TBot) in SM. simpl in SM. 
 
-
-
-        assert (exists n7, stp2 1 false venv0 (open (varF x2) T2) G2 (TMem l TBot T2') [] n7) as ST1. {
-          subst.
-          eapply IHni in H24. destruct H24 as [? H24].
           eexists.
-          eapply H24.
-          eauto. eauto. rewrite app_nil_l. eauto.
-          rewrite subst_open1. eauto. eauto.
-          eapply closed_open. eapply closed_upgrade_free. eauto. eauto. eauto. eauto.
-          eauto. eauto. eauto. eauto.
+          eapply stp2_sel1. eauto. eauto. eauto. eapply stp2_extendH_mult0. destruct IX2. subst T2'.
+          unfold open. erewrite <-closed_no_open. erewrite <-closed_no_open in SM. apply SM.
+          eauto. eauto. eauto.
+          intros nx ny. apply IHni. omega. eauto. eauto.
         }
-        destruct ST1 as [n7 ST1].
+        (* 3 - nosubst *) {
+        destruct nv. inversion VS. (* no 0 *)
+        (* assert (exists GY TY, val_type GY x0 TY /\ sstpd2 GY TY G2 (open (varF x2 *)
+        eapply invert_typb in VS. destruct VS as [GY [TY [VS SM]]]. 
 
-        assert (stp2 1 false venv0 (open (varF x2) T2) G2 (TMem l TBot T2') GH0' n7) as ST1'.
-        eapply stp2_extendH_mult in ST1. rewrite app_nil_r in ST1. eapply ST1.
-
-        assert (exists n9, stp2 1 true G2 (TMem l TBot T2') G2 (TMem l TBot T2') GH0' n9) as REG1.
-        eapply stp2_reg2. eauto.
-        destruct REG1 as [n9 REG1].
-
-        assert (exists n8, stp2 1 true G2 T2' G2 T2' GH0' n8) as REG1'.
-        inversion REG1. subst.
-        eapply stp2_reg2. eapply H32.
-        destruct REG1' as [n8 REG1'].
-
-        
-        
-        assert (val_type venv0 x0 (open (varF x2) T2) 1). { (* this looks fishy: how can we also end up with valtp 1 ?!? *)
-          
-          admit.
+        assert (closed 0 (length ([]:aenv)) TY). eapply sstpd2_closed1. apply SM.
+        eapply sstpd2_downgrade in SM. destruct SM as [? SM]. 
+        unfold open in SM. instantiate (2:=TBot) in SM. simpl in SM. 
+          eexists.
+          eapply stp2_sel1. eauto. eauto. eauto. eapply stp2_extendH_mult0. destruct IX2. subst T2'.
+          rewrite subst_open1. apply SM. eapply closed_upgrade. eauto. eauto. eauto. 
+          intros nx ny. apply IHni. omega. eauto. eauto.
         }
 
-        eexists. eapply stp2_sel1. eauto. eauto. eauto.
-        eapply ST1'. eapply REG1'.
+      * subst. inversion H9. omega.
+      * subst. destruct H9. eauto.
 
-        (* second case from inverting H14: bind < bind *)
-
-        admit. (* TODO: asymmetric bind case !!! *)
-        
-        }
-
-      * subst. inversion H10. omega.
-      * subst. destruct H10. eauto.
     + SCase "x > 0".
       ev. subst.
       assert (exists GH0L, GH0 = GU ++ GH0L /\ GL = GH0L ++ [(0, (GXX, TXX))]) as EQGH. {
@@ -6472,66 +6508,61 @@ Proof.
       destruct EQGH' as [GU' [GL' [EQGH0' FAGL']]].
 
       remember (x-1) as x_1.
-
-      eapply IHn in H7. destruct H7.
-      eapply IHn in H9. destruct H9.
-      eexists.
-      eapply stp2_selab1. eauto.
-
-      eapply closed_compat'. eauto.
-      eapply closed_upgrade_free. eauto. omega.
-      rewrite Heqx_1. simpl.
-      assert (x - 1 + 1 = x) as B. {
+      assert (S (x - 1) = x) as A. {
+        destruct x. omega. (* contradiction *)
+        simpl. omega.
+      }
+      assert (x + 1 = (S x)) as B by omega.
+      assert (x_1 + 1 = x) as C. {
         omega.
       }
-      rewrite B.
-      eassumption.
 
-      eassumption.
+      assert (exists T0', T2' = open (varH x_1) T0' /\ compat GXX TXX TXX' (Some V) G2 T0 T0') as CTO. {
+        destruct IX2 as [IX2 | [IX2 | IX2]].
+        repeat destruct IX2 as [|IX2]; ev.
+        inversion H13. subst x2.
+        eexists. split. unfold open. erewrite open_subst_commute. rewrite C. eauto. eauto.
+        left. repeat eexists. eauto. eauto.
+        eexists. split. destruct IX2. eapply closed_no_open. subst T2'. eauto.
+        right. left. split.
+        destruct IX2. unfold open in H10. erewrite <-closed_no_open in H10. eauto. eauto.
+        destruct IX2. unfold open in H10. erewrite <-closed_no_open in H10. subst T2'. erewrite closed_no_open. unfold open. eauto. eauto. eauto.
+        eexists. split. destruct IX2. unfold open in H13. rewrite <- C in H13. erewrite <-open_subst_commute in H13. apply H13. eauto.
+        right. right. split.
+        destruct IX2. unfold open in H10. eapply nosubst_open_rev. eauto. simpl. omega. eauto.
+      }
+      ev.
+    
+      eapply IHn in H6. destruct H6.
+      eapply IHn in H8. destruct H8.
 
-      instantiate (1:=GL'). rewrite EQGL in H5. rewrite app_length in H5. simpl in H5.
-      rewrite NPeano.Nat.add_1_r in H5. inversion H5. rewrite Heqx_1.
+      eexists.
+      eapply stp2_selab1. eauto.
+      eapply closed_compat'. eauto.
+      eapply closed_upgrade_free. eauto. omega.
+      rewrite C. eauto.
+
+      instantiate (1:=GL'). rewrite EQGL in H4. rewrite app_length in H4. simpl in H4.
+      rewrite NPeano.Nat.add_1_r in H4. inversion H4. rewrite Heqx_1.
       erewrite <- Forall2_length; try eassumption. omega.
       instantiate (1:=GU'). eassumption.
 
-      eauto.
+      apply H6. eauto. eauto. omega. 
+      eauto. eauto. eauto. eauto.
 
-      destruct IX2 as [IX2 | [IX2 | IX2]].
-      repeat destruct IX2 as [|IX2]; ev. inversion H14. subst V. rewrite H17.
-      assert (x_1 + 1 = x) as C. {
-        omega.
-      }
-      rewrite <- C.
-      unfold open. erewrite subst_open_commute.
-      erewrite closed_no_subst. reflexivity.
-      inversion H4. clear C. subst. inversion H21. subst. eassumption.
-      rewrite C. clear C. simpl. inversion H4. subst. inversion H21. subst. eapply closed_upgrade_free. eassumption. omega. eauto.
+      apply IX2. apply IX2. eauto. eauto. omega.
+      eauto. eauto. eauto. eauto. eauto. 
 
-      destruct IX2 as [IX2A IX2B]. unfold open. erewrite open_noop.
-      rewrite IX2B. unfold open. erewrite open_noop. reflexivity.
-      eapply closed_open_tselh. eassumption.
-      eapply closed_open_tselh. eassumption.
+      (* compat GXX TXX TXX' (Some V) G2 (TBind (TMem l TBot T0)) (TBind (TMem l TBot x1)) *)
+      { destruct H13.
+      repeat ev. inversion H14. subst V. left. repeat eexists; eauto. eauto. simpl. subst x1. eauto.
+      destruct H13. destruct H13. right. left. subst x1. split. repeat econstructor. eapply closed_upgrade. eauto. eauto. eauto.
+      destruct H13. right. right. subst x1. simpl. eauto. }
 
-      destruct IX2 as [IX2A IX2B].
-      assert (x_1 + 1 = x) as C. {
-        omega.
-      }
-      rewrite IX2B. rewrite <- C.
-      unfold open. erewrite subst_open_commute.
-      erewrite closed_no_subst. reflexivity.
-      inversion H4. clear C. subst. inversion H16. subst. eassumption.
-      rewrite C. clear C. simpl. inversion H4. subst. inversion H16. subst. eapply closed_upgrade_free. eassumption. omega. eauto.
-
-      eauto.
-
-      omega. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
-      omega. eapply EQGL. eauto. eauto. eauto. eauto.
-      right. left. split. eassumption. reflexivity.
       eauto. eauto.
 
     (* remaining obligations *)
     + eauto. + rewrite <- H1. eauto. + eauto.
-*)
 
   - Case "selab2". admit. (*
     intros GH0 GH0' GXX TXX TXX' lX T1' T2' V ? VS CX ? IX1 IX2 FA IXH.
@@ -6992,7 +7023,8 @@ Proof.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. 
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. (*apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. *)
 Qed.
 
 
