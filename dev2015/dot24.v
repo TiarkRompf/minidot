@@ -7096,6 +7096,8 @@ Proof.
     eapply stpd2_reg1. eapply IHstp2_2. eexists. eassumption. eauto.
   - Case "selx".
     eapply stpd2_selx; eauto.
+  - Case "bind1".
+    eapply stpd2_bind1; eauto. subst m. eapply IHstp2_1. eexists. eassumption. reflexivity.
   - Case "and11".
     eapply stpd2_and11; eauto.
     eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
@@ -7279,23 +7281,29 @@ Proof.
   - Case "sela1".
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
-    destruct A as [? [? VT]]. destruct x0.
+    destruct A as [? [? VT]]. 
     inversion VT. subst.
+    assert (exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL) as EQG. {
+      eapply exists_GYL. eassumption.
+    }
+    destruct EQG as [GYU [GYL [EQY WYL]]].
     eapply stpd2_sela1. eauto. eauto.
+    instantiate (1:=GYL). erewrite wfh_length. eassumption. eassumption.
+    eassumption.
     eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
     specialize (IHST2 _ _ WX WY).
     apply stpd2_reg2 in IHST2.
     apply IHST2.
-  - Case "sela2".
+  - Case "sela2". admit. (*
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. destruct x0.
     inversion VT. subst.
-    eapply stpd2_sela2. eauto. eauto.
+    eapply stpd2_sela2. eauto. eauto. eauto. 
     eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
     specialize (IHST2 _ _ WX WY).
     apply stpd2_reg2 in IHST2.
-    apply IHST2.
+    apply IHST2. *)
   - Case "selab1".
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
@@ -7305,13 +7313,12 @@ Proof.
       eapply exists_GYL. eassumption.
     }
     destruct EQG as [GYU [GYL [EQY WYL]]].
-    eapply stpd2_selab1. eauto. eauto. eauto.
+    eapply stpd2_selab1. eauto. instantiate (1:= T2). admit. (* XXX *)
     instantiate (1:=GYL). erewrite wfh_length. eassumption. eassumption.
     eassumption.
     eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
-    specialize (IHST2 _ _ WX WY).
-    apply stpd2_reg2 in IHST2.
-    apply IHST2.
+    specialize (IHST2 _ _ WX WY). reflexivity.
+    apply IHST2; eauto.
   - Case "selab2".
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
