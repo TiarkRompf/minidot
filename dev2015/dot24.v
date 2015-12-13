@@ -279,7 +279,7 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_selab1: forall G1 GH GU GL TX m T2 T2' x,
     indexr x GH = Some TX ->
     closed 0 (S x) TX ->
-    closed 0 (S x) (TBind (TMem m TBot T2)) ->
+    closed 0 x (TBind (TMem m TBot T2)) ->
     length GL = (S x) ->
     GH = GU ++ GL ->
     stp G1 GL TX (TBind (TMem m TBot T2)) ->
@@ -289,7 +289,7 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_selab2: forall G1 GH GU GL TX m T1 T1' x,
     indexr x GH = Some TX ->
     closed 0 (S x) TX ->
-    closed 0 0 (TBind (TMem m T1 TTop)) ->
+    closed 0 x (TBind (TMem m T1 TTop)) ->
     length GL = (S x) ->
     GH = GU ++ GL ->
     stp G1 GL TX (TBind (TMem m T1 TTop)) ->
@@ -589,7 +589,7 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
 
 | stp2_selab1: forall m G1 G2 GX l TX x T2 T2' GH GU GL n1 n2,
     indexr x GH = Some (GX, TX) ->
-    closed 0 x T2 ->
+    closed 1 x T2 -> (* < x required in substitute *)
     length GL = (S x) ->
     GH = GU ++ GL ->
     stp2 (S m) false GX TX G2 (TBind (TMem l TBot T2)) GL n1 ->
@@ -852,7 +852,7 @@ Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela1; eauto. Qed.
 
 Lemma stpd2_selab1: forall G1 G2 GX l TX x T2 T2' GH GU GL,
     indexr x GH = Some (GX, TX) ->
-    closed 0 x T2 ->
+    closed 1 x T2 ->
     length GL = (S x) ->
     GH = GU ++ GL ->
     stpd2 false GX TX G2 (TBind (TMem l TBot T2)) GL ->
@@ -4968,6 +4968,38 @@ Proof.
   destruct A2 as [? A2]. inversion A2. subst. eexists. eassumption.
 Qed.
 
+Lemma inv_closed_open0: forall j n x T, closed j n (open_rec j (varH x) T) -> n <= x -> closed (j) n T.
+Proof.
+  intros. generalize dependent j. induction T; try solve [
+  intros; inversion H; subst; unfold closed; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto].
+
+  - Case "TVarB". intros. simpl.
+    unfold open_rec in H.
+    destruct v.
+    eapply closed_upgrade. eauto. omega.
+    eapply closed_upgrade. eauto. omega.
+
+    case_eq (beq_nat j i); intros E.
+
+    + rewrite E in H. eapply beq_nat_true_iff in E. subst. inversion H. subst.  eapply cl_varb. omega.
+
+    + rewrite E in H. eapply closed_upgrade; eauto.
+
+  - Case "TSelB". intros. simpl.
+    unfold open_rec in H.
+    destruct v.
+    eapply closed_upgrade. eauto. omega.
+    eapply closed_upgrade. eauto. omega.
+
+    case_eq (beq_nat j i0); intros E.
+
+    + rewrite E in H. eapply beq_nat_true_iff in E. subst. inversion H. subst. eapply cl_selb. omega.
+
+    + rewrite E in H. eapply closed_upgrade; eauto. 
+
+Qed.
+
+
 Lemma inv_closed_open: forall j n V l T, closed j n (open_rec j V T) -> closed j n (TSel V l) -> closed (j+1) n T.
 Proof.
   intros. generalize dependent j. induction T; try solve [
@@ -6457,7 +6489,7 @@ Proof.
         eexists. 
         eapply stp2_sel1. eauto. eauto. eauto. eapply stp2_extendH_mult0. subst T2'.
         rewrite subst_open1.
-        apply SM. eapply closed_upgrade. eauto. eauto. eauto.
+        apply SM. eauto. eauto. eauto.
         intros nx ny. apply IHni. omega. inversion H17. subst x6. eauto. eauto.
         }
         (* 2 - closed *) {
@@ -6469,11 +6501,13 @@ Proof.
         eapply sstpd2_downgrade in SM. destruct SM as [? SM]. 
         unfold open in SM. instantiate (2:=TBot) in SM. simpl in SM. 
 
+        destruct IX2. eapply inv_closed_open0 in H17. unfold open in H18. erewrite <-closed_no_open in H18.
           eexists.
-          eapply stp2_sel1. eauto. eauto. eauto. eapply stp2_extendH_mult0. destruct IX2. subst T2'.
-          unfold open. erewrite <-closed_no_open. erewrite <-closed_no_open in SM. apply SM.
-          eauto. eauto. eauto.
-          intros nx ny. apply IHni. omega. eauto. eauto.
+          eapply stp2_sel1. eauto. eauto. eauto. eapply stp2_extendH_mult0. subst T2'.
+          erewrite <-closed_no_open in SM. apply SM.
+          
+          eauto. eauto. eauto. eauto.
+          intros nx ny. apply IHni. omega. right. repeat econstructor. destruct IX2. eapply inv_closed_open0 in H16. apply H16. eauto. eauto.
         }
         (* 3 - nosubst *) {
         destruct nv. inversion VS. (* no 0 *)
@@ -6485,8 +6519,10 @@ Proof.
         unfold open in SM. instantiate (2:=TBot) in SM. simpl in SM. 
           eexists.
           eapply stp2_sel1. eauto. eauto. eauto. eapply stp2_extendH_mult0. destruct IX2. subst T2'.
-          rewrite subst_open1. apply SM. eapply closed_upgrade. eauto. eauto. eauto. 
-          intros nx ny. apply IHni. omega. eauto. eauto.
+          rewrite subst_open1. apply SM. eauto. eauto. eauto. 
+          intros nx ny. apply IHni. omega. eauto. eauto. eauto. right. eauto. repeat econstructor.
+          destruct IX2. unfold open in H16.  eapply nosubst_zero_closed. eauto. eauto.
+          eauto.
         }
 
       * subst. inversion H9. omega.
@@ -6524,9 +6560,9 @@ Proof.
         eexists. split. unfold open. erewrite open_subst_commute. rewrite C. eauto. eauto.
         left. repeat eexists. eauto. eauto.
         eexists. split. destruct IX2. eapply closed_no_open. subst T2'. eauto.
-        right. left. split.
-        destruct IX2. unfold open in H10. erewrite <-closed_no_open in H10. eauto. eauto.
-        destruct IX2. unfold open in H10. erewrite <-closed_no_open in H10. subst T2'. erewrite closed_no_open. unfold open. eauto. eauto. eauto.
+        right. left. 
+        destruct IX2. unfold open in H13. eapply inv_closed_open0 in H10. eauto. 
+        erewrite <-closed_no_open in H13. eauto. eauto. omega.
         eexists. split. destruct IX2. unfold open in H13. rewrite <- C in H13. erewrite <-open_subst_commute in H13. apply H13. eauto.
         right. right. split.
         destruct IX2. unfold open in H10. eapply nosubst_open_rev. eauto. simpl. omega. eauto.
@@ -7319,7 +7355,7 @@ Proof.
     eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
     specialize (IHST2 _ _ WX WY). reflexivity.
     apply IHST2; eauto.
-  - Case "selab2".
+  - Case "selab2". admit. (*
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]].
@@ -7334,7 +7370,7 @@ Proof.
     eapply stpd2_wrapf. eapply IHST1. eauto. eauto. eauto.
     specialize (IHST2 _ _ WX WY).
     apply stpd2_reg2 in IHST2.
-    apply IHST2.
+    apply IHST2. *)
   - Case "selax".
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto. ev. destruct x0.
