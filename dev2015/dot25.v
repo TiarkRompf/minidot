@@ -4,6 +4,11 @@
 (* based on that, it removes the 2nd level of pushback,
    and performs the necessary translation while going
    from stp to stp2 *)
+(* copied from dot23.v *)
+(* based on that, it adds bind1 rule and
+   preliminary support for singleton types (TVar) *)
+(* copied from dot24.v *)
+(* based on that, it adds more experiments with singletons *)
 
 (* TODO:
    used closed for regularity and wf
