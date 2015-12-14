@@ -7428,6 +7428,442 @@ Proof.
 Qed.
 
 
+
+(* experimental stuff follows *)
+
+Inductive stpx: tenv -> tenv -> ty -> ty -> Prop :=
+| stpx_topx: forall G1 GH,
+    stpx G1 GH TTop TTop
+| stpx_botx: forall G1 GH,
+    stpx G1 GH TBot TBot
+| stpx_top: forall G1 GH T1,
+    stpx G1 GH T1 T1 -> (* regularity *)
+    stpx G1 GH T1 TTop
+| stpx_bot: forall G1 GH T2,
+    stpx G1 GH T2 T2 -> (* regularity *)
+    stpx G1 GH TBot T2
+| stpx_bool: forall G1 GH,
+    stpx G1 GH TBool TBool
+| stpx_mem: forall G1 GH m T1 T2 T3 T4,
+    stpx G1 GH T3 T1 ->
+    stpx G1 GH T2 T4 ->
+    stpx G1 GH (TMem m T1 T2) (TMem m T3 T4)
+
+| stpx_var1: forall G1 GH TX T2 x,
+    index x G1 = Some TX ->
+    stpx G1 GH TX T2 ->
+    stpx G1 GH (TVar (varF x)) T2
+| stpx_var1_pack: forall G1 GH T2 x,
+    stpx G1 [] (TVar (varF x)) (open (varF x) T2) ->
+    stpx G1 GH (TVar (varF x)) (TBind T2)
+| stpx_var1_unpack: forall G1 GH T2 x,
+    stpx G1 [] (TVar (varF x)) (TBind T2) ->
+    stpx G1 GH (TVar (varF x)) (open (varF x) T2)
+         
+| stpx_sel1: forall G1 GH TX m T2 x,
+    index x G1 = Some TX ->
+    closed 0 0 TX ->
+    stpx G1 [] TX (TMem m TBot T2) ->
+    stpx G1 GH T2 T2 -> (* regularity of stp2 *)
+    stpx G1 GH (TSel (varF x) m) T2
+| stpx_sel2: forall G1 GH TX m T1 x,
+    index x G1 = Some TX ->
+    closed 0 0 TX ->
+    stpx G1 [] TX (TMem m T1 TTop) ->
+    stpx G1 GH T1 T1 -> (* regularity of stp2 *)
+    stpx G1 GH T1 (TSel (varF x) m)
+| stpx_selb1: forall G1 GH TX m T2 x,
+    index x G1 = Some TX ->
+    stpx G1 [] TX (TBind (TMem m TBot T2)) ->   (* Note GH = [] *)
+    stpx G1 GH (open (varF x) T2) (open (varF x) T2) -> (* regularity *)
+    stpx G1 GH (TSel (varF x) m) (open (varF x) T2)
+| stpx_selb2: forall G1 GH TX m T1 x,
+    index x G1 = Some TX ->
+    stpx G1 [] TX (TBind (TMem m T1 TTop)) ->   (* Note GH = [] *)
+    stpx G1 GH (open (varF x) T1) (open (varF x) T1) -> (* regularity *)
+    stpx G1 GH (open (varF x) T1) (TSel (varF x) m)
+| stpx_selx: forall G1 GH TX x m,
+    index x G1 = Some TX ->
+    stpx G1 GH (TSel (varF x) m) (TSel (varF x) m)
+| stpx_sela1: forall G1 GH GU GL TX m T2 x,
+    indexr x GH = Some TX ->
+    closed 0 (S x) TX ->
+    length GL = (S x) ->
+    GH = GU ++ GL ->
+    stpx G1 GL TX (TMem m TBot T2) ->
+    stpx G1 GH T2 T2 -> (* regularity *)
+    stpx G1 GH (TSel (varH x) m) T2
+| stpx_sela2: forall G1 GH GU GL TX m T1 x,
+    indexr x GH = Some TX ->
+    closed 0 (S x) TX ->
+    length GL = (S x) ->
+    GH = GU ++ GL ->
+    stpx G1 GL TX (TMem m T1 TTop) ->   (* not using self name for now *)
+    stpx G1 GH T1 T1 -> (* regularity of stp2 *)
+    stpx G1 GH T1 (TSel (varH x) m)
+| stpx_selab1: forall G1 GH GU GL TX m T2 T2' x,
+    indexr x GH = Some TX ->
+    closed 0 (S x) TX ->
+    closed 0 x (TBind (TMem m TBot T2)) ->
+    length GL = (S x) ->
+    GH = GU ++ GL ->
+    stpx G1 GL TX (TBind (TMem m TBot T2)) ->
+    T2' = (open (varH x) T2) ->
+    stpx G1 GH T2' T2' -> (* regularity *)
+    stpx G1 GH (TSel (varH x) m) T2'
+| stpx_selab2: forall G1 GH GU GL TX m T1 T1' x,
+    indexr x GH = Some TX ->
+    closed 0 (S x) TX ->
+    closed 0 x (TBind (TMem m T1 TTop)) ->
+    length GL = (S x) ->
+    GH = GU ++ GL ->
+    stpx G1 GL TX (TBind (TMem m T1 TTop)) ->
+    T1' = (open (varH x) T1) ->
+    stpx G1 GH T1' T1' -> (* regularity *)
+    stpx G1 GH T1' (TSel (varH x) m)
+| stpx_selax: forall G1 GH TX x m,
+    indexr x GH = Some TX  ->
+    stpx G1 GH (TSel (varH x) m) (TSel (varH x) m)
+| stpx_all: forall G1 GH m T1 T2 T3 T4 x,
+    stpx G1 GH T3 T1 ->
+    x = length GH ->
+    closed 1 (length GH) T2 -> (* must not accidentally bind x *)
+    closed 1 (length GH) T4 ->
+    stpx G1 ((0,T1)::GH) (open (varH x) T2) (open (varH x) T2) -> (* regularity *)
+    stpx G1 ((0,T3)::GH) (open (varH x) T2) (open (varH x) T4) ->
+    stpx G1 GH (TAll m T1 T2) (TAll m T3 T4)
+| stpx_bindx: forall G1 GH T1 T2 x,
+    x = length GH ->
+    closed 1 (length GH) T1 -> (* must not accidentally bind x *)
+    closed 1 (length GH) T2 ->
+    stpx G1 ((0,open (varH x) T2)::GH) (open (varH x) T2) (open (varH x) T2) -> (* regularity *)
+    stpx G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) (open (varH x) T2) ->
+    stpx G1 GH (TBind T1) (TBind T2)
+| stpx_and11: forall G GH T1 T2 T,
+    stpx G GH T1 T ->
+    stpx G GH T2 T2 -> (* regularity *)
+    stpx G GH (TAnd T1 T2) T
+| stpx_and12: forall G GH T1 T2 T,
+    stpx G GH T2 T ->
+    stpx G GH T1 T1 -> (* regularity *)
+    stpx G GH (TAnd T1 T2) T
+| stpx_and2: forall G GH T1 T2 T,
+    stpx G GH T T1 ->
+    stpx G GH T T2 ->
+    stpx G GH T (TAnd T1 T2)
+| stpx_or21: forall G GH T1 T2 T,
+    stpx G GH T T1 ->
+    stpx G GH T2 T2 -> (* regularity *)
+    stpx G GH T (TOr T1 T2)
+| stpx_or22: forall G GH T1 T2 T,
+    stpx G GH T T2 ->
+    stpx G GH T1 T1 -> (* regularity *)
+    stpx G GH T (TOr T1 T2)
+| stpx_or1: forall G GH T1 T2 T,
+    stpx G GH T1 T ->
+    stpx G GH T2 T ->
+    stpx G GH (TOr T1 T2) T
+.
+
+(*
+Lemma invert_var0: forall n n1 m GX G1 G2 T2 x,
+  wf_env G1 GX ->
+  stp2 0 m G1 (TVar (varF x)) G2 T2 [] n1 -> n1 < n ->
+  exists v, index x G1 = Some v.
+Proof.
+ *)
+
+(* what's the story with GH = [] ? can we always assume this? *)
+Lemma invert_var: forall n n1 m G1 G2 T2 x,
+  stp2 0 m G1 (TVar (varF x)) G2 T2 [] n1 -> n1 < n ->
+  exists v nv, index x G1 = Some v /\ val_type G2 v T2 nv.
+Proof.
+  intros n. induction n; intros. inversion H0. 
+  inversion H; subst.
+  - Case "top". eapply IHn in H1. repeat ev. repeat eexists. eauto. eapply valtp_widen; eauto. eexists. apply H. omega.
+  - Case "var1". repeat eexists. eauto. eapply valtp_widen; eauto. eexists. eauto. 
+  - Case "varx". admit. (* do not have valtp here, but could get from wf_env. also need a way to assign valtp (TVar x) *)
+  - Case "sel2".
+    assert (sstpd2 false ((f, vobj GX f ds) :: GX) (open (varF f) TX)
+                   ((f, vobj GX f ds) :: GX) (open (varF f) TX) []). eapply sstpd2_wrapf. eapply sstpd2_reg2. eexists. eauto.
+    eu.
+
+    eapply IHn in H6. repeat ev.
+    assert (val_type GX' (vobj GX f ds) TX' 1). assumption.
+    assert (val_type G1 (vobj GX f ds) (TMem l (TVar (varF x)) TTop) 1). eapply valtp_widen; eauto. eapply sstpd2_untrans. eexists. apply H3.
+    assert (val_type G1 (vobj GX f ds) (TMem l (TVar (varF x)) TTop) 1). assumption.
+
+    eapply invert_typ1 in H10. repeat ev. 
+    
+    
+    repeat eexists. eauto. eapply valtp_widen. eauto.
+
+    assert (sstpd2 false GX' TX' ((f, vobj GX f ds) :: GX)
+     (TMem l (open (varF f) TX) TTop) []). admit. (* difficult? inversion of valtp. only needed for downgrade, so might as well get rid of this *)
+    eu.
+    
+    eexists. eapply stp2_strong_sel2. eauto. eapply H2. eauto. eauto. eauto. eauto. omega.
+  - Case "and". admit.
+    (* eapply IHn in H1. repeat ev. repeat eexists. eauto.
+    eapply IHn in H2. repeat ev. repeat eexists. eauto. *)
+  (* may be difficult, need to join two separate valtp derivations *)
+  - Case "or1". admit.
+  - Case "or2". admit.
+  - Case "wrapf". admit.
+  - Case "transf". admit.
+Qed.
+
+    
+Lemma stpx_to_stp2_aux: forall G1 GH T1 T2,
+  stpx G1 GH T1 T2 ->
+  forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
+  stpd2 true GX T1 GX T2 GY.
+Proof.
+  intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY.
+  - Case "topx". eapply stpd2_topx.
+  - Case "botx". eapply stpd2_botx.
+  - Case "top".
+    eapply stpd2_top.
+    specialize (IHST GX GY WX WY).
+    apply stpd2_reg2 in IHST.
+    apply IHST.
+  - Case "bot".
+    eapply stpd2_bot.
+    specialize (IHST GX GY WX WY).
+    apply stpd2_reg2 in IHST.
+    apply IHST.
+  - Case "bool". eapply stpd2_bool; eauto.
+  - Case "mem". eapply stpd2_mem; eapply stpd2_wrapf; eauto.
+
+  - Case "var1".
+    assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
+    eapply index_safe_ex. eauto. eauto.
+    destruct A as [? [? [? VT]]].
+    eapply stpd2_var1. eauto. eauto. eapply valtp_closed; eauto.
+    eapply stpd2_wrapf. eapply IHST; eauto. eapply valtp_reg in VT. admit. (* downgrade/reg *)
+
+  - Case "var1_pack".
+    assert (stpd2 true GX (TVar (varF x)) GX (open (varF x) T2) []). apply IHST; eauto.
+    assert (sstpd2 true GX (TBind T2) GX (TBind T2) []) as R. admit. (* reg *)
+    eapply stpd2_to_sstpd2 in H. eu. eu. eapply invert_var in H. ev. ev.
+    eapply stpd2_var1. eauto. eapply v_pack. eauto. eauto. eauto.
+    eexists. eauto. admit. (* closed *)
+    eapply stpd2_extendH_mult0. eapply sstpd2_downgrade. eexists. eauto. 
+    eapply stpd2_extendH_mult0. admit. (* downgrade *) eauto. 
+
+  - Case "var1_unpack".
+    assert (stpd2 true GX (TVar (varF x)) GX (TBind T2) []). apply IHST; eauto.
+    assert (sstpd2 true GX (TBind T2) GX (TBind T2) []) as R1. admit. (* reg *)
+    assert (stpd2 true GX (open (varF x) T2) GX (open (varF x) T2) GY) as R2. admit. (* reg *)
+    eapply stpd2_to_sstpd2 in H. eu. eu. eu. eapply invert_var in H. ev.
+    destruct x4. inversion H0.
+    assert (index x GX = Some x3). assumption.
+    eapply invert_bind in H. ev. 
+    eapply stpd2_var1. eauto. eauto. eapply valtp_closed; eauto. eapply sstpd2_downgrade. eapply sstpd2_extendH_mult0. eauto. 
+    eexists. eauto. 
+    intros nx ny. eapply stp2_substitute_aux. eauto. eauto. eauto. eauto.
+    
+  - Case "sel1".
+    assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
+    eapply index_safe_ex. eauto. eauto.
+    destruct A as [? [? [? VT]]].
+    edestruct IHST1; eauto. eapply stpd2_to_sstpd2_aux1 in H2. destruct H2. 
+    destruct x1. inversion VT.
+    eapply invert_typ in VT. destruct VT as [GZ [TZ [VT SM]]].
+    eapply stpd2_sel1. eauto. eauto. eapply valtp_closed; eauto.
+    eapply sstpd2_downgrade. eauto. eapply sstpd2_extendH_mult0. apply SM.
+    apply IHST2; eauto.
+    intros n. apply stp2_substitute_aux. eauto. eauto.
+  - Case "sel2". admit. (*
+    assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
+    eapply index_safe_ex. eauto. eauto.
+    destruct A as [? [? [? VT]]].
+    edestruct IHST1; eauto. eapply stpd2_to_sstpd2_aux1 in H2. destruct H2. 
+    destruct x1. inversion VT.
+    eapply invert_typ in VT. destruct VT as [GZ [TZ [VT SM]]].
+    eapply stpd2_sel1. eauto. eauto. eapply valtp_closed; eauto.
+    eapply sstpd2_downgrade. eauto. eapply sstpd2_extendH_mult0. apply SM.
+    apply IHST2; eauto.
+    intros n. apply stp2_substitute_aux. eauto. eauto.
+
+    assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
+    eapply index_safe_ex. eauto. eauto.
+    destruct A as [? [? [? VT]]].
+    eapply stpd2_sel2. eauto. eauto. eapply valtp_closed; eauto.
+    eapply stpd2_wrapf. eauto.
+    specialize (IHST2 GX GY WX WY).
+    apply stpd2_reg2 in IHST2.
+    apply IHST2. *)
+  - Case "selb1". 
+    (* replace x: {z => ..U }  U < T2  by x: (.. U)  U < T *)
+    (* previously, there was a separate stp2 level for this *)
+    assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
+    eapply index_safe_ex. eauto. eauto.
+    destruct A as [? [? [? VT]]].
+    edestruct IHST1; eauto. eapply stpd2_to_sstpd2_aux1 in H1. destruct H1. 
+    destruct x1. inversion VT.
+    eapply invert_typb in VT. destruct VT as [GZ [TZ [VT SM]]].
+    eapply stpd2_sel1. eauto. eauto. eapply valtp_closed; eauto.
+    eapply sstpd2_downgrade. eauto. eapply sstpd2_extendH_mult0.
+    instantiate (2:= TBot) in SM. unfold open in SM. simpl in SM. apply SM.
+    apply IHST2; eauto.
+    intros n. apply stp2_substitute_aux. eauto. eauto. eauto.
+  - Case "selb2". admit. (*
+    assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
+    eapply index_safe_ex. eauto. eauto.
+    destruct A as [? [? [? VT]]].
+    assert (sstpd2 true GX TX GX (TBind (TMem m T1 TTop)) []).
+    eapply stpd2_to_sstpd2. eapply IHST1; eauto.
+    assert (val_type GX x0 (TBind (TMem m T1 TTop)) x1) as V2. eapply valtp_widen; eauto.
+    inversion V2.
+    subst. destruct H2. inversion H2.
+    inversion H6. 
+    subst. eapply dcs_tbind in H4. inversion H4. eassumption. (* 1 case left *)
+
+    destruct H5. inversion H5. subst. 
+
+    assert (exists n, stp2 1 false venv0 (open (varF x2) T2) GX
+          (open (varF x) (TMem m T1 TTop))
+          [] n) as ST. {
+      eapply stp2_substitute_aux with (GH0:=[]).
+      eauto.
+      eauto.
+      simpl. reflexivity.
+      erewrite subst_open1. eassumption. eauto. 
+      eapply closed_open. simpl. eapply closed_upgrade. eauto. eapply closed_upgrade_free. eauto. simpl. eauto. eauto. eauto. eauto.
+      left. eexists. eexists. eexists. split. eauto. split. eauto. split. eauto.
+      split. rewrite subst_open1; eauto. simpl. rewrite subst_open1; eauto.
+      left. eexists. eexists. eexists. split. eauto. split. eauto. split. eauto.
+      split. rewrite subst_open1; eauto. rewrite subst_open1; eauto.
+      eauto. (* forall *)
+      left. eexists. eexists. eexists. split. eauto. split. eauto. split. eauto.
+      split. rewrite subst_open1; eauto. rewrite subst_open1; eauto.
+    }
+    assert ((open (varF x) (TMem m T1 TTop) = TMem m (open (varF x) T1) TTop)) as Q.
+    unfold open. unfold open. simpl. eauto.
+    
+    eapply stpd2_sel2. eauto. eauto. eapply valtp_closed; eauto.
+    rewrite Q in ST.
+    eapply stpd2_extendH_mult0. apply ST.
+    
+    specialize (IHST2 GX GY WX WY).
+    apply stpd2_reg2 in IHST2.
+    apply IHST2.*)
+  - Case "selx".
+    assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
+    eapply index_safe_ex. eauto. eauto.
+    destruct A as [? [? [? VT]]].
+    eapply stpd2_selx. eauto. eauto.
+  - Case "sela1".
+    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
+    eapply index_safeh_ex. eauto. eauto. eauto.
+    destruct A as [? [? VT]]. 
+    inversion VT. subst.
+    assert (exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL) as EQG. {
+      eapply exists_GYL. eassumption.
+    }
+    destruct EQG as [GYU [GYL [EQY WYL]]].
+    eapply stpd2_sela1. eauto. eauto.
+    instantiate (1:=GYL). erewrite wfh_length. eassumption. eassumption.
+    eassumption.
+    eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
+    specialize (IHST2 _ _ WX WY).
+    apply stpd2_reg2 in IHST2.
+    apply IHST2.
+  - Case "sela2". admit. (*
+    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
+    eapply index_safeh_ex. eauto. eauto. eauto.
+    destruct A as [? [? VT]]. destruct x0.
+    inversion VT. subst.
+    eapply stpd2_sela2. eauto. eauto. eauto. 
+    eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
+    specialize (IHST2 _ _ WX WY).
+    apply stpd2_reg2 in IHST2.
+    apply IHST2. *)
+  - Case "selab1".
+    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
+    eapply index_safeh_ex. eauto. eauto. eauto.
+    destruct A as [? [? VT]].
+    inversion VT. subst.
+    assert (exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL) as EQG. {
+      eapply exists_GYL. eassumption.
+    }
+    destruct EQG as [GYU [GYL [EQY WYL]]].
+    eapply stpd2_selab1. eauto. instantiate (1:= T2). admit. (* XXX *)
+    instantiate (1:=GYL). erewrite wfh_length. eassumption. eassumption.
+    eassumption.
+    eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
+    specialize (IHST2 _ _ WX WY). reflexivity.
+    apply IHST2; eauto.
+  - Case "selab2". admit. (*
+    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
+    eapply index_safeh_ex. eauto. eauto. eauto.
+    destruct A as [? [? VT]].
+    inversion VT. subst.
+    assert (exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL) as EQG. {
+      eapply exists_GYL. eassumption.
+    }
+    destruct EQG as [GYU [GYL [EQY WYL]]].
+    eapply stpd2_selab2. eauto. eauto. eauto.
+    instantiate (1:=GYL). erewrite wfh_length. eassumption. eassumption.
+    eassumption.
+    eapply stpd2_wrapf. eapply IHST1. eauto. eauto. eauto.
+    specialize (IHST2 _ _ WX WY).
+    apply stpd2_reg2 in IHST2.
+    apply IHST2. *)
+  - Case "selax".
+    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
+    eapply index_safeh_ex. eauto. eauto. eauto. ev. destruct x0.
+    eapply stpd2_selax. eauto.
+  - Case "all".
+    subst x. assert (length GY = length GH). eapply wfh_length; eauto.
+    eapply stpd2_all.
+    eapply stpd2_wrapf. eauto.
+    rewrite H. eauto. rewrite H.  eauto.
+    rewrite H.
+    eapply stpd2_wrapf. eapply IHST2. eauto. eapply wfeh_cons. eauto.
+    rewrite H.
+    eapply stpd2_wrapf. apply IHST3; eauto.
+  - Case "bind".
+    subst x. assert (length GY = length GH). eapply wfh_length; eauto. unfold id in H.
+    eapply stpd2_bind. rewrite H. eauto. rewrite H. eauto.
+    rewrite H.
+    eapply stpd2_wrapf. eapply IHST1. eauto. eapply wfeh_cons. eauto.
+    rewrite H.
+    eapply stpd2_wrapf. eapply IHST2; eauto.
+  - Case "and11".
+    eapply stpd2_and11.
+    eapply IHST1; eauto.
+    eapply IHST2; eauto.
+  - Case "and12".
+    eapply stpd2_and12.
+    eapply IHST1; eauto.
+    eapply IHST2; eauto.
+  - Case "and2".
+    eapply stpd2_and2.
+    eapply stpd2_wrapf. eapply IHST1; eauto.
+    eapply stpd2_wrapf. eapply IHST2; eauto.
+  - Case "or21".
+    eapply stpd2_or21.
+    eapply stpd2_wrapf. eapply IHST1; eauto.
+    eapply IHST2; eauto.
+  - Case "or22".
+    eapply stpd2_or22.
+    eapply stpd2_wrapf. eapply IHST1; eauto.
+    eapply IHST2; eauto.
+  - Case "or1".
+    eapply stpd2_or1.
+    eapply IHST1; eauto.
+    eapply IHST2; eauto.
+Grab Existential Variables.
+(*apply 0. apply 0. apply 0. apply 0.    *)
+Qed.
+
+
+
+
+
+
 Inductive wf_tp: tenv -> tenv -> ty -> Prop :=
 | wf_top: forall G1 GH,
     wf_tp G1 GH TTop
