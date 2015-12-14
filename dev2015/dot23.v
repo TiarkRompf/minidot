@@ -5,11 +5,7 @@
    and performs the necessary translation while going
    from stp to stp2 *)
 
-(* TODO:
-   used closed for regularity and wf
-   remove redundant case in compat
-   (maybe go back to simpler naming scheme)
-*)
+(* FIXME: examples are commented out *)
 
 
 Require Export SfLib.

@@ -10,11 +10,8 @@
 (* copied from dot24.v *)
 (* based on that, it adds more experiments with singletons *)
 
-(* TODO:
-   used closed for regularity and wf
-   remove redundant case in compat
-   (maybe go back to simpler naming scheme)
-*)
+(* FIXME: admits around sel2/selab2 from (dot24) *)
+(* FIXME: examples are commented out (dot23) *)
 
 
 Require Export SfLib.

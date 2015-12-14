@@ -10,11 +10,8 @@
 
 (* TODO: remove singletons here in favor of dot25 ?*)
 
-(* TODO:
-   used closed for regularity and wf
-   remove redundant case in compat
-   (maybe go back to simpler naming scheme)
-*)
+(* FIXME: admits around sel2/selab2 *)
+(* FIXME: examples are commented out (dot23) *)
 
 
 Require Export SfLib.
