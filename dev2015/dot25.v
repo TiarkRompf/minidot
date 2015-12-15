@@ -4803,9 +4803,9 @@ Proof. intros. repeat eu. eapply sstpd2_untrans_aux; eauto. Qed.
 
 
 
-Lemma valtp_widen: forall n1 n2 vf H1 H2 T1 T2,
+Lemma valtp_widen: forall n1 vf H1 H2 T1 T2,
   val_type H1 vf T1 n1 ->
-  stp2 0 true H1 T1 H2 T2 [] n2 ->
+  sstpd2 true H1 T1 H2 T2 [] ->
   val_type H2 vf T2 n1.
 Proof.
   intros n. assert (exists ni, n <= ni). exists n. omega. destruct H as [ni N]. revert n N. induction ni. intros. subst. inversion N. subst. inversion H.
@@ -4813,7 +4813,7 @@ Proof.
   econstructor; eauto; eapply sstpd2_trans; eauto; eexists. eauto.
   econstructor; eauto; eapply sstpd2_trans; eauto; eexists. eauto.
   econstructor; eauto; eapply sstpd2_trans; eauto; eexists. eauto.
-  eapply v_var; eauto; eapply sstpd2_trans; eauto; eexists. eauto.
+  eapply v_var; eauto; eapply sstpd2_trans; eauto; eexists. 
 (*  
   subst. eu. inversion H0.
   - (* top *) subst. admit. (* issue: don't have actual valtp evidence. thin air? *)
@@ -4833,7 +4833,7 @@ Lemma restp_widen: forall vf H1 H2 T1 T2,
   sstpd2 true H1 T1 H2 T2 [] ->
   res_type H2 vf T2.
 Proof.
-  intros. inversion H. eu. eapply not_stuck. eapply valtp_widen; eauto.
+  intros. inversion H. eu. eapply not_stuck. eapply valtp_widen; eauto. eexists. eauto.
 Qed.
 
 Lemma tand_shape: forall T1 T2,
@@ -5878,12 +5878,12 @@ Proof.
     eapply IHn in H2. eapply sstpd2_untrans in H2. eu.
     eapply IHn in H3. eapply sstpd2_untrans in H3. eu.
     eexists. eapply stp2_mem. eauto. eauto. omega. omega.
-  - Case "var1".
+  - Case "var1". admit. (*
     remember H3 as Hv. clear HeqHv.
     eapply IHn in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
     destruct H5. 
     eexists. eapply stp2_strong_var1. eauto.
-    eassumption. eassumption. omega.
+    eassumption. eassumption. omega. *)
   - Case "varx".
     eexists. eapply stp2_strong_varx. eauto. eauto.
   - Case "vara1". inversion H2.
@@ -5931,7 +5931,7 @@ Proof.
   - Case "transf". eapply IHn in H1. eapply IHn in H2. eu. eu. eexists.
     eapply stp2_transf. eauto. eauto. omega. omega.
     Grab Existential Variables.
-    apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+    apply 0. apply 0. apply 0. apply 0. apply 0.  apply 0. apply 0.
 Qed.
 
 
@@ -5970,14 +5970,16 @@ Proof.
   intros n. induction n.
   (* 1 *) intros CS. intros. eexists. eexists. split. eauto. eexists. eauto. 
   (* n *) intros CS. intros.
-  assert (val_type G2 vx (TMem l T1 T2) (S (S n))) as A. eapply valtp_widen. eauto. eexists. eauto.
+  assert (val_type G2 vx (TMem l T1 T2) (S (S n))) as A. eapply valtp_widen. eauto. eexists. eauto. clear H H0.
   inversion A.
-  - subst. 
-  destruct H8. inversion H1.
+  - (* bool *) subst. destruct H3. inversion H.
+  - (* mem *) subst. destruct H7. eexists. eexists. split. eauto. eapply valtp_reg. eauto.
+  - (* bindx *)
+    subst. destruct H6. inversion H; subst.
   assert (stpd2 false venv1 (open (varF x) T0) G2 
                 (TMem l T1 T2) []) as XX.
-  eapply CS. eauto.
-  eapply H9. eauto. rewrite app_nil_l. eauto. simpl. rewrite subst_open1. eauto. eauto. eauto. eapply closed_open. eapply closed_upgrade_free. eauto. eauto. eauto. eauto.
+  eapply CS. eauto. subst. 
+  eapply H7. eauto. rewrite app_nil_l. eauto. simpl. rewrite subst_open1. eauto. eauto. eauto. eapply closed_open. eapply closed_upgrade_free. eauto. eauto. eauto. eauto.
 
   left. repeat eexists. eauto. simpl. rewrite subst_open1. eauto. eauto. rewrite subst_open1. eauto. eauto.
   right. eauto.
@@ -5989,10 +5991,9 @@ Proof.
   eapply sstpd2_untrans. eapply stpd2_to_sstpd2_aux1. eauto. eauto.
   destruct YY.
 
-  eapply IHn. intros ni no. apply CS. omega. eapply H3. eauto.
+  eapply IHn. intros ni no. apply CS. omega. eapply H1. eauto.
 
-  - subst. ev. eapply v_var in H3. inversion H1. subst.
-    eapply IHn.
+  - subst. ev. inversion H. subst. repeat eexists. eauto. rewrite H0 in H3. inversion H3. subst vx. eauto.
 Grab Existential Variables.
 apply 0. apply 0.
 Qed.
