@@ -476,14 +476,16 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
 
 
 (* strong version, with precise/invertible bounds *)
-| stp2_strong_var1: forall G1 G2 x T2 GH v n1,
+| stp2_strong_var1: forall G1 G2 x T2 GH v nv n1,
     index x G1 = Some v ->
+    val_type (base_env v) v (base_type v) nv ->
     stp2 0 true (base_env v) (base_type v) G2 T2 GH n1 ->
     stp2 0 true G1 (TVar (varF x)) G2 T2 GH (S (n1))
 
-| stp2_strong_varx: forall G1 G2 v x1 x2 GH n1,
+| stp2_strong_varx: forall G1 G2 v x1 x2 GH nv n1,
     index x1 G1 = Some v ->
     index x2 G2 = Some v ->
+    val_type (base_env v) v (base_type v) nv ->
     stp2 0 true G1 (TVar (varF x1)) G2 (TVar (varF x2)) GH n1
 
 (* existing object, but imprecise type *)
@@ -4536,11 +4538,11 @@ Proof.
       apply stp2_reg1 in H. inversion H.
       eexists. eapply stp2_top. eassumption.
     + SCase "svar1".
-      subst. rewrite H5 in H3. inversion H3. subst.
+      subst. rewrite H6 in H3. inversion H3. subst.
       eexists. eapply stp2_strong_var1; eauto.
     + SCase "sselx".
-      subst. rewrite H5 in H3. inversion H3. subst.
-      eexists. eapply stp2_strong_varx. eauto. eauto.
+      subst. rewrite H6 in H3. inversion H3. subst.
+      eexists. eapply stp2_strong_varx; eauto.
     + SCase "ssel2". subst.
       assert (sstpd2 false GX' TX' G1 (TMem l (TVar (varF x1)) TTop) []) as A. {
         eapply sstpd2_trans_axiom. eexists. eassumption.
@@ -5878,14 +5880,15 @@ Proof.
     eapply IHn in H2. eapply sstpd2_untrans in H2. eu.
     eapply IHn in H3. eapply sstpd2_untrans in H3. eu.
     eexists. eapply stp2_mem. eauto. eauto. omega. omega.
-  - Case "var1". admit. (*
+  - Case "var1".
+    eexists. eapply stp2_strong_var1. eauto. 
     remember H3 as Hv. clear HeqHv.
     eapply IHn in H5. eapply sstpd2_untrans in H5. eapply valtp_widen with (2:=H5) in H3.
     destruct H5. 
     eexists. eapply stp2_strong_var1. eauto.
     eassumption. eassumption. omega. *)
   - Case "varx".
-    eexists. eapply stp2_strong_varx. eauto. eauto.
+    admit. (* eexists. eapply stp2_strong_varx; eauto. admit. *)
   - Case "vara1". inversion H2.
   - Case "varax". inversion H2. 
   - Case "sel1".
@@ -5931,7 +5934,7 @@ Proof.
   - Case "transf". eapply IHn in H1. eapply IHn in H2. eu. eu. eexists.
     eapply stp2_transf. eauto. eauto. omega. omega.
     Grab Existential Variables.
-    apply 0. apply 0. apply 0. apply 0. apply 0.  apply 0. apply 0.
+    apply 0. apply 0. apply 0. apply 0. apply 0.  apply 0. 
 Qed.
 
 
@@ -6086,7 +6089,7 @@ Proof.
     + (* var1 < bind *)
       subst. ev. inversion H2. subst. repeat eexists. instantiate (1:=1). omega. eauto. rewrite H3 in H6. inversion H6. subst vx. eauto. (* uh oh: need base < open x T1 *)
       (* for now this case is impossible, but we might want to support it *)
-      destruct v; simpl in H7. inversion H7. destruct l0. inversion H7. destruct p. destruct d. inversion H7. inversion H7.
+      destruct v; simpl in H8. inversion H8. destruct l0. inversion H8. destruct p. destruct d. inversion H8. inversion H8.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
@@ -6147,8 +6150,13 @@ Proof.
      destruct YY.
    
      eapply IHn. intros ni no. apply CS. omega. eapply H. eauto. eauto.
- Grab Existential Variables.
- apply 0. apply 0. apply 0. apply 0.
+ + (* var1 < bind *)
+      subst. ev. inversion H2. subst. repeat eexists. eauto. rewrite H3 in H6. inversion H6. subst vx. eauto. (* uh oh: need base < open x T1 *)
+      (* for now this case is impossible, but we might want to support it *)
+      destruct v; simpl in H8. inversion H8. destruct l1. inversion H8. destruct p. destruct d. inversion H8. inversion H8.
+
+Grab Existential Variables.
+ apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 
@@ -7160,11 +7168,11 @@ Proof.
     eapply stpd2_mem.
     eapply IHstp2_1; eauto. eexists. eassumption.
     eapply stpd2_wrapf. eapply IHstp2_2; eauto. eexists. eassumption.
-  - Case "var1".
+  - Case "var1". admit. (*
     eapply stpd2_var1.
     eassumption. eassumption. eapply valtp_closed. eassumption.
     eapply stpd2_wrapf. eapply IHstp2. eexists. eassumption. eauto.
-    eapply stpd2_reg2. eapply IHstp2. eexists. eassumption. eauto.
+    eapply stpd2_reg2. eapply IHstp2. eexists. eassumption. eauto. *)
   - Case "varx".
     eapply stpd2_varx; eauto.
   - Case "sel1".
@@ -7624,12 +7632,12 @@ Proof.
 Lemma invert_var: forall n n1 m G1 G2 T2 x,
   stp2 0 m G1 (TVar (varF x)) G2 T2 [] n1 -> n1 < n ->
   exists v nv, index x G1 = Some v /\ val_type G2 v T2 nv.
-Proof.
+Proof.  
   intros n. induction n; intros. inversion H0. 
   inversion H; subst.
   - Case "top". eapply IHn in H1. repeat ev. repeat eexists. eauto. eapply valtp_widen; eauto. eexists. apply H. omega.
   - Case "var1". repeat eexists. eauto. eapply valtp_widen; eauto. eexists. eauto. 
-  - Case "varx". admit. (* do not have valtp here, but could get from wf_env. also need a way to assign valtp (TVar x) *)
+  - Case "varx". repeat eexists. eauto. eapply v_var. eauto. eauto. admit. (* 1 not nv *) eauto.
   - Case "sel2".
     assert (sstpd2 false ((f, vobj GX f ds) :: GX) (open (varF f) TX)
                    ((f, vobj GX f ds) :: GX) (open (varF f) TX) []). eapply sstpd2_wrapf. eapply sstpd2_reg2. eexists. eauto.
@@ -7658,6 +7666,8 @@ Proof.
   - Case "or2". admit.
   - Case "wrapf". admit.
   - Case "transf". admit.
+Grab Existential Variables.
+    apply 0. apply 0.
 Qed.
 
     
