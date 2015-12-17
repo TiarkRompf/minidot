@@ -1,16 +1,5 @@
-(* Full safety for STLC *)
-(* values well-typed with respect to runtime environment *)
-(* inversion lemma structure *)
-(* subtyping (in addition to nano2.v) *)
-(* singleton types (in addtion to nano4-1.v *)
-
-(* full proof for singleton types! *)
-(* added stp_vary rule *)
-
-(* TODO: type members *)
-(* TODO: dependent application *)
-
-(* small-step style !! *)
+(* Clean-slate look at subtyping relation based on *)
+(* singleton types (single env) *)
 
 Require Export SfLib.
 
@@ -936,9 +925,6 @@ Proof.
 Grab Existential Variables.
 Qed.
 
-(* idea: can we use the same strong_sel as before, and just translate the new rules? *)
-
-
 
 Lemma stpd2_trans: forall m b GH G1 T1 T2 T3,
   stpd2 m true GH G1 T1 T2 ->
@@ -948,7 +934,11 @@ Proof.
   intros. repeat eu. eapply stp2_trans; eauto.
 Qed.
 
+(* TODO: stp_to_stp2 *)
 
+(* TODO: specific inversion lemmas *)
+
+(* TODO: evaluation semantics / soundness *)
 
 
 End STLC.
