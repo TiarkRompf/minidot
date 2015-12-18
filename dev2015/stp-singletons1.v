@@ -193,7 +193,7 @@ Inductive stp2: nat -> bool -> tenv -> venv -> ty -> ty -> nat -> Prop :=
     stp2 m true GH G1 (TVar true x) T2 (S n1)
          
 | stp2_var_bind2: forall m GH G1 x T2 n1 ,
-    stp2 m true GH G1 (TVar true x) (open 0 (TVar true x) T2) n1 ->
+    stp2 m true [] G1 (TVar true x) (open 0 (TVar true x) T2) n1 ->
     stp2 (S m) true GH G1 (TVar true x) (TBind T2) (S (n1))
 
 (*| stp2_bind1: forall m GH G1 x T2 n1,
@@ -212,9 +212,11 @@ Inductive stp2: nat -> bool -> tenv -> venv -> ty -> ty -> nat -> Prop :=
     index x1 GH = Some (TVar true x2) ->
     x2 < length G1 ->
     stp2 m true GH G1 (TVar true x2) (TVar false x1) (S n1) *)
-| stp2_vara1: forall m GH G1 TX x T2 n1,
+| stp2_vara1: forall m GH GU G1 TX T2 x n1,
     index x GH = Some TX ->
-    stp2 m true GH G1 TX T2 n1 ->
+    GH = GU ++ [TX] ->
+    x = 0 -> 
+    stp2 (m + length GU) true [TX] G1 TX T2 n1 -> (* TEMP -- SHOULD ALLOW UP TO x *)
     stp2 m true GH G1 (TVar false x) T2 (S n1)
 
 
@@ -722,23 +724,6 @@ Ltac invstp_var := match goal with
 end.
 
 
-(*
-Lemma stp2_substitute_aux: forall ni nj, forall d m G1 G2 T1 T2 GH n1,
-   stp2 (S d) m G1 T1 G2 T2 GH n1 -> n1 < nj ->
-   forall GH0 GH0' GX TX TX' l T1' T2' V,
-     GH = (GH0 ++ [(0,(GX, TX))]) ->
-     val_type GX V (subst TX' TX) ni ->
-     (* When we're replacing binds from a pack/unpack sequence, the
-        type in GH may refer to itself (contain TSelH 0).
-        It should be safe for TX to refer to itself. *)
-     closed 0 1 TX ->
-     closed 0 0 (TSel TX' l) ->
-     compat GX TX TX' (Some V) G1 T1 T1' ->
-     compat GX TX TX' (Some V) G2 T2 T2' ->
-     Forall2 (compat2 GX TX TX' (Some V)) GH0 GH0' ->
-     compat GX TX TX' (Some V) GX TX (subst TX' TX) ->
-     exists n1', stp2 (S d) m G1 T1' G2 T2' GH0' n1'.
-*)
 
 Lemma closed_no_subst: forall T i j k TX,
    closed i j k T ->
@@ -773,6 +758,11 @@ Lemma subst_open_commute: forall T0 TX n,
 Proof. admit. Qed.
 
 
+Lemma subst_open_commute1: forall T0 x x0,
+ (open 0 (TVar true x0) (subst 0 (TVar true x) T0)) 
+ = (subst 0 (TVar true x) (open 0 (TVar true x0) T0)).
+Proof. admit. Qed.
+
 Lemma stp2_downgrade: forall m b GH G1 T1 T2 n1,
   stp2 m b GH G1 T1 T2 n1 ->
   stp2 (S m) b GH G1 T1 T2 n1.
@@ -790,6 +780,9 @@ Proof.
 Qed.
 *)
 
+
+(* THIS WILL BE DIFFICULT: narrow with m in context < m *)
+
 Lemma stp2_narrow: forall m b GH TX1 TX2 G1 T1 T2 n1 n2,
   stp2 m false (TX1::GH) G1 TX1 TX2 n1 ->
   stp2 m b (TX2::GH) G1 T1 T2 n2 -> 
@@ -798,22 +791,92 @@ Proof.
   admit.
 Qed.
 
+Definition substt x T := (subst 0 (TVar true x) T).
+
+
+Lemma closed_subst: forall i j k x T2,
+  closed (i + 1) j k T2 ->
+  closed i j k (substt x T2).
+Proof. admit. Qed.
+
+
 
 (* TODO: need to be careful will m1 and m2 !!! *)
-Lemma stp2_subst_narrow: forall m b GH G1 T1 T2 TX x n1 n2,
-   stp2 m true (GH) G1 (TVar true x) (subst (length GH) (TVar true x) TX) n1 ->
-   stp2 m b (TX::GH) G1 T1 T2 n2 ->
-   (forall (m1 : nat) (b : bool)
-          (G1 : venv) (T1 T2 T3 : ty) (n1 n2 : nat),
+Lemma stp2_subst_narrow: forall ml, forall nl, forall m b GH G1 T1 T2 TX x n1 n2,
+   stp2 (m+(length GH)) true [] G1 (TVar true x) (substt x TX) n1 ->
+   stp2 m b (GH++[TX]) G1 T1 T2 n2 -> (m+(length GH)) < ml -> n2 < nl ->
+   (forall (m1 : nat) (b : bool) (G1 : venv) (T1 T2 T3 : ty) (n1 n2 : nat),
         stp2 m1 true [] G1 T1 T2 n1 ->
         stp2 m1 b [] G1 T2 T3 n2 ->
-        m1 < m -> stpd2 m1 true [] G1 T1 T3) ->
-   stpd2 m b GH G1 (subst (length GH) (TVar true x) T1) (subst (length GH) (TVar true x) T2).
+        m1 < ml -> stpd2 m1 true [] G1 T1 T3) ->
+   stpd2 m b (map (substt x) GH) G1 (substt x T1) (substt x T2).
 Proof.
-  admit.
+  intros ml. (* induction ml. intros. omega. *)
+  intros nl. induction nl. intros. omega.
+  intros. inversion H0.
+  - Case "bot". subst.
+    eapply stpd2_bot; eauto. rewrite map_length. simpl. eapply closed_subst. rewrite app_length in H4. simpl in H4. eapply H4.
+  - Case "top". subst.
+    eapply stpd2_top; eauto. rewrite map_length. simpl. eapply closed_subst. rewrite app_length in H4. simpl in H4. eapply H4.
+  - Case "bool". subst.
+    eapply stpd2_bool; eauto.
+  - Case "fun". subst.
+    eapply stpd2_fun. eapply IHnl; eauto. omega. eapply IHnl; eauto. omega.
+  - Case "mem". subst.
+    eapply stpd2_mem. eapply IHnl; eauto. omega. eapply IHnl; eauto. omega.
+
+  - Case "varx". subst.
+    eexists. eapply stp2_varx. eauto.
+  - Case "var1". subst.
+    assert (TX0 = substt x TX0) as C. simpl. admit. (* closed! NOTE: need to add to stp2_var1 *)
+    eapply IHnl in H6.
+    eu. eexists. eapply stp2_var1. eauto. eauto. rewrite C. eauto.
+    eauto. eauto. omega. eauto.
+  - Case "var-bind". subst.
+(*    assert (stpd2 m0 true (map (substt x) GH) G1 (substt x (TVar true x0)) (substt x (open 0 (TVar true x0) T0))).
+     assert (S m0 + d = m0 + S d) as R. omega. 
+     eapply IHnl. instantiate (3:= S d). rewrite <-R. eapply H. (* requires that m of LHS can be larger than RHS *)
+     eapply H4. omega. omega. eauto. 
+    eu. eexists. eapply stp2_var_bind2. fold subst. erewrite subst_open_commute1. eapply H5. *)
+    admit.
+    (* GH = [], so no need to recurse. just need to show types are closed! *)
+  - Case "vara1". 
+    case_eq (beq_nat x0 0); intros E.
+    + SCase "hit". 
+      eapply beq_nat_true_iff in E. subst x0.
+      assert (TX = TX0). admit.
+      subst TX0.
+      (* downgrade LHS from (S ml) to m *)
+      assert (stp2 (m+(length GH)) true [] G1 (TVar true x) (substt x TX) n1) as LHS.
+      assumption.
+      (* admit. *) (* PROBABLY THE KEY CHALLENGE !! *)
+      (* RHS via induction *)
+      assert (stpd2 (m + length GH) true (map (substt x) []) G1 (substt x TX) (substt x T2)) as RHS.
+      assert (GH = GU). admit. subst GU. 
+      assert (m + length GH + 0 = m + length GH) as R. eauto.
+      eapply IHnl. simpl. rewrite R. eauto. simpl. eauto. simpl. omega. omega. eauto.
+      destruct RHS as [nr RHS].
+      (* transitivity *)
+      assert (stpd2 (m + length GH) true [] G1 (substt x (TVar false 0)) (substt x T2)).
+      unfold substt. simpl. eapply H3. (* trans *) eapply LHS. eapply RHS. omega.
+      (* extendH *)
+      assert (stpd2 (m + length GH) true (map (substt x) GH) G1 (substt x (TVar false 0)) (substt x T2)).
+      admit.
+
+      eauto. admit.  (* TODO: now m is too high!!!!! *)
+    + SCase "miss". admit.
+      
+  - Case "ssel1". admit.
+  - Case "ssel2". admit.
+
+  - Case "bindx". admit.
+
+  - Case "wrapf". admit.
+  - Case "transf". admit.
+    
+    Grab Existential Variables.
+    apply 0. 
 Qed.
-
-
 
 
 
@@ -832,7 +895,7 @@ Proof.
   destruct b.
   (* b = true *) {
   inversion H.
-  - Case "bot". eapply stpd2_bot; eauto. eapply stpd2_closed2; eauto. 
+  - Case "bot". eapply stpd2_bot; eauto. subst. eapply stpd2_closed2; eauto. 
   - Case "top". inversion H0; subst; invty.
     + SCase "top". eapply stpd2_top; eauto.
     + SCase "sel2". admit.
