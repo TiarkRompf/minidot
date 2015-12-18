@@ -179,7 +179,7 @@ Inductive stp2: nat -> bool -> tenv -> venv -> ty -> ty -> nat -> Prop :=
     stp2 m true GH G1 (TFun T1 T2) (TFun T3 T4) (S (n1+n2))
 | stp2_mem: forall m GH G1 T1 T2 T3 T4 n1 n2,
     stp2 m false GH G1 T3 T1 n2 ->
-    stp2 m true GH G1 T2 T4 n1 ->
+    stp2 m false GH G1 T2 T4 n1 ->
     stp2 m true GH G1 (TMem T1 T2) (TMem T3 T4) (S (n1+n2))
 
 
@@ -220,14 +220,14 @@ Inductive stp2: nat -> bool -> tenv -> venv -> ty -> ty -> nat -> Prop :=
     stp2 m true GH G1 (TVar false x) T2 (S n1)
 
 
-| stp2_strong_sel1: forall m GH G1 T2 TX b x n1,
+| stp2_strong_sel1: forall m GH G1 T2 TX x n1,
     index x G1 = Some (vty TX) ->
     stp2 m true GH G1 TX T2 n1 ->
-    stp2 m true GH G1 (TSel (TVar b x)) T2 (S n1)
-| stp2_strong_sel2: forall m GH G1 T1 TX b x n1,
+    stp2 m true GH G1 (TSel (TVar true x)) T2 (S n1)
+| stp2_strong_sel2: forall m GH G1 T1 TX x n1,
     index x G1 = Some (vty TX) ->
     stp2 m true GH G1 T1 TX n1 ->
-    stp2 m true GH G1 T1 (TSel (TVar b x)) (S n1)
+    stp2 m true GH G1 T1 (TSel (TVar true x)) (S n1)
 
 (*         
 | stp2_sel1: forall m GH G1 T2 b x n1,
@@ -248,10 +248,10 @@ Inductive stp2: nat -> bool -> tenv -> venv -> ty -> ty -> nat -> Prop :=
 | stp2_wrapf: forall m GH G1 T1 T2 n1,
     stp2 m true GH G1 T1 T2 n1 ->
     stp2 m false GH G1 T1 T2 (S n1)
-| stp2_transf: forall m GH G1 T1 T2 T3 n1 n2 m2,
+| stp2_transf: forall m GH G1 T1 T2 T3 n1 n2 m2 m3,
     stp2 m false GH G1 T1 T2 n1 ->
-    stp2 m2 true GH G1 T2 T3 n2 -> m2 <= m ->
-    stp2 m false GH G1 T1 T3 (S (n1+n2))
+    stp2 m2 false GH G1 T2 T3 n2 -> 
+    stp2 m3 false GH G1 T1 T3 (S (n1+n2))
          
 
 with wf_env : venv -> tenv -> Prop := 
@@ -274,13 +274,41 @@ with val_type : venv -> vl -> ty -> Prop :=
     val_type0 G1 v T1 ->
     (exists n, stp2 0 true [] G1 T1 T2 n) ->
     val_type G1 v T2
+
+
+with vtp : nat -> venv -> nat -> ty -> nat -> Prop :=
+| vtp_top: forall m G1 x n1,
+    x < length G1 ->
+    vtp m G1 x TTop (S n1)
+| vtp_bool: forall m G1 x b n1,
+    index x G1 = Some (vbool b) ->
+    vtp m G1 x (TBool) (S (n1))
+| vtp_mem: forall m G1 x TX T1 T2 ms n1 n2,
+    index x G1 = Some (vty TX) ->
+    stp2 ms false [] G1 T1 TX n1 ->
+    stp2 ms false [] G1 TX T2 n2 ->
+    vtp m G1 x (TMem T1 T2) (S (n1+n2))
+| vtp_bind: forall m G1 x T2 n1,
+    vtp m G1 x (open 0 (TVar true x) T2) n1 ->
+    vtp (S m) G1 x (TBind T2) (S (n1))
+| vtp_sel: forall m G1 x y TX n1,
+    index y G1 = Some (vty TX) ->
+    vtp m G1 x TX n1 ->
+    vtp m G1 x (TSel (TVar true y)) (S (n1))
+
+
 .
               
 
 
 Definition stpd2 m b GH G1 T1 T2 := exists n, stp2 m b GH G1 T1 T2 n.
 
+Definition vtpd m G1 x T1 := exists n, vtp m G1 x T1 n.
+
+Definition vtpdd m G1 x T1 := exists m1 n, vtp m1 G1 x T1 n /\ m1 <= m.
+
 Hint Constructors stp2.
+Hint Constructors vtp.
 
 Ltac ep := match goal with
              | [ |- stp2 ?M ?B ?GH ?G1 ?T1 ?T2 ?N ] => assert (exists (n:nat), stp2 M B GH G1 T1 T2 n) as EEX
@@ -288,6 +316,8 @@ Ltac ep := match goal with
 
 Ltac eu := match goal with
              | H: stpd2 _ _ _ _ _ _ |- _ => destruct H as [? H]
+             | H: vtpd _ _ _ _ |- _ => destruct H as [? H]
+             | H: vtpdd _ _ _ _ |- _ => destruct H as [? [? [H ?]]]
            end.
 
 Lemma stpd2_bot: forall m GH G1 T,
@@ -307,7 +337,7 @@ Lemma stpd2_fun: forall m GH G1 T1 T2 T3 T4,
     stpd2 m true  GH G1 (TFun T1 T2) (TFun T3 T4).
 Proof. intros. repeat eu. eexists. eauto. Qed.
 Lemma stpd2_mem: forall m GH G1 T1 T2 T3 T4,
-    stpd2 m false GH G1 T3 T1 ->
+    stpd2 m true GH G1 T3 T1 ->
     stpd2 m true  GH G1 T2 T4 ->
     stpd2 m true  GH G1 (TMem T1 T2) (TMem T3 T4).
 Proof. intros. repeat eu. eexists. eauto. Qed.
@@ -814,12 +844,12 @@ Proof. admit. Qed.
 
 (* TODO: need to be careful will m1 and m2 !!! *)
 Lemma stp2_subst_narrow: forall ml, forall nl, forall m m2 b GH G1 T1 T2 TX x n1 n2,
-   stp2 m true [] G1 (TVar true x) (substt x TX) n1 ->
-   stp2 m2 b (GH++[TX]) G1 T1 T2 n2 -> m < ml -> n2 < nl -> m2 <= m ->
-   (forall (m1 : nat) (b : bool) (G1 : venv) (T1 T2 T3 : ty) (n1 n2 : nat),
-        stp2 m true [] G1 T1 T2 n1 ->
+   vtp m G1 x (substt x TX) n1 ->
+   stp2 m2 b (GH++[TX]) G1 T1 T2 n2 -> m < ml -> n2 < nl ->
+   (forall (m1 : nat) (b : bool) (G1 : venv) x (T2 T3 : ty) (n1 n2 : nat),
+        vtp m G1 x T2 n1 ->
         stp2 m1 b [] G1 T2 T3 n2 ->
-        m1 <= m -> stpd2 m1 true [] G1 T1 T3) ->
+        vtpdd m G1 x T3) ->
    stpd2 m2 b (map (substt x) GH) G1 (substt x T1) (substt x T2).
 Proof.
   (*
@@ -896,11 +926,11 @@ Qed.
 
 
 
-Lemma stp2_trans: forall l, forall n, forall k, forall m1 m2 b G1 T1 T2 T3 n1 n2,
-  stp2 m1 true [] G1 T1 T2 n1 -> 
+Lemma stp2_trans: forall l, forall n, forall k, forall m1 m2 b G1 x T2 T3 n1 n2,
+  vtp m1 G1 x T2 n1 -> 
   stp2 m2 b [] G1 T2 T3 n2 ->
-  n2 < n -> m1 < l -> n1 < k -> m2 <= m1 -> 
-  stpd2 m2 true [] G1 T1 T3.
+  m1 < l -> n2 < n -> n1 < k -> 
+  vtpdd m1 G1 x T3.
 Proof.
   intros l. induction l. intros. solve by inversion.
   intros n. induction n. intros. solve by inversion.
@@ -908,116 +938,86 @@ Proof.
   destruct b.
   (* b = true *) {
   inversion H.
-  - Case "bot". eapply stpd2_bot; eauto. subst. eapply stpd2_closed2; eauto. 
   - Case "top". inversion H0; subst; invty.
-    + SCase "top". eapply stpd2_top; eauto.
-    + SCase "sel2". admit.
+    + SCase "top". repeat eexists; eauto.
+    + SCase "sel2".
+      assert (vtpdd m1 G1 x TX). eapply IHn; eauto. omega. 
+      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. 
   - Case "bool". inversion H0; subst; invty.
-    + SCase "top". eapply stpd2_top; eauto. 
-    + SCase "bool". eapply stpd2_bool; eauto.
-    + SCase "sel2". admit.
-  - Case "fun". inversion H0; subst; invty.
-    + SCase "top". eapply stpd2_top; eauto. eapply stpd2_closed1; eauto.
-    + SCase "fun". admit. (*invty. subst. eapply stpd2_fun; eapply stp2_trans_axiom; eauto.*)
-    + SCase "sel2". admit.
+    + SCase "top". repeat eexists. eapply vtp_top. eapply index_max. eauto. eauto. 
+    + SCase "bool". repeat eexists; eauto. 
+    + SCase "sel2". 
+      assert (vtpdd m1 G1 x TX). eapply IHn; eauto. omega. 
+      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. 
   - Case "mem". inversion H0; subst; invty.
-    + SCase "top". eapply stpd2_top; eauto. eapply stpd2_closed1; eauto.
-    + SCase "mem". admit. (*invty. subst. eapply stpd2_mem. eapply stp2_trans_axiom; eauto. eapply IHn; eauto. omega. *)
-    + SCase "sel2". admit.
-
-  - Case "varx". inversion H0; subst; invty.
-    + SCase "top". eapply stpd2_top; eauto. 
-    + SCase "varx". eauto. 
-    + SCase "var1". eauto. 
-    + SCase "var1b". eauto. 
-    + SCase "sel2". eauto.
-
-  - Case "var1".
-    (* left gets smaller, right stays same *)
-    subst. assert (stpd2 m2 true [] G1 TX T3). eapply IHk. apply H7. eauto. eauto. eauto. omega. eauto.
-    eu. eexists. eapply stp2_var1; eauto. 
-  - Case "varbind2".
-    (* left and right decrease level, right size increases *)
+    + SCase "top". repeat eexists. eapply vtp_top. eapply index_max. eauto. eauto. 
+    + SCase "mem". invty. subst.
+      repeat eexists. eapply vtp_mem. eauto.
+      eapply stp2_transf. eauto. eapply H5.
+      eapply stp2_transf. eauto. eapply H13.
+      eauto. 
+    + SCase "sel2". 
+      assert (vtpdd m1 G1 x TX0). eapply IHn; eauto. omega. 
+      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. 
+  - Case "bind". 
     inversion H0; subst; invty.
-    + SCase "top". eapply stpd2_top; eauto. eapply stpd2_closed1; eauto.
-    + SCase "sel2". admit. 
-    + SCase "bind1".
+    + SCase "top". repeat eexists. eapply vtp_top. admit. (* x < length G1 *) eauto. 
+    + SCase "sel2". 
+      assert (vtpdd (S m) G1 x TX). eapply IHn; eauto. omega. 
+      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. 
+    + SCase "bindx".
       invty. subst.
       remember (TVar false (length [])) as VZ.
       remember (TVar true x) as VX.
 
       (* left *)
-      assert (stpd2 m true [] G1 VX (open 0 VX T0)) as LHS. admit.
+      assert (vtpd m G1 x (open 0 VX T0)) as LHS. eexists. eassumption.
       eu.
       (* right *)
-      assert (stpd2 m0 false (open 0 VZ T0 :: []) G1 (open 0 VZ T0) (open 0 VZ T5)) as RHS1.
+      assert (stpd2 m0 false (open 0 VZ T0 :: []) G1 (open 0 VZ T0) (open 0 VZ T4)) as RHS1.
       eexists. eassumption.
       eu.
       
       (* narrow and subst! *)
       
-      assert (stpd2 m0 false [] G1 (open 0 VX T0) (open 0 VX T5)) as RHS2. {
+      assert (stpd2 m0 false [] G1 (open 0 VX T0) (open 0 VX T4)) as RHS2. {
         subst VX. erewrite <-subst_open_commute in LHS. eapply stp2_subst_narrow in LHS.
         unfold substt in LHS. 
         erewrite subst_open_commute in LHS.
         erewrite subst_open_commute in LHS. 
         unfold substt. instantiate (3:=[]) in LHS. simpl in LHS. eapply LHS.
         simpl. subst. simpl in RHS1. eapply RHS1.
-        eauto. eauto. omega.
+        eauto. eauto. 
         intros. eapply IHl; eauto. omega. (* omega. *)
       }
       
       (* now trans *)
-      assert (stpd2 m0 true [] G1 VX (open 0 VX T5)) as BB. {
-        assert (stpd2 m true [] G1 (open 0 VX T0) (open 0 VX T0)) as R.
-        eapply stpd2_reg2; eauto.
-        eu. eu. subst. eapply IHl. eapply LHS. eapply RHS2. eauto. omega. eauto. omega. 
+      assert (vtpdd m G1 x (open 0 VX T4)) as BB. {
+        eu. subst. eapply IHl. eapply LHS. eapply RHS2. omega. eauto. eauto.
       }
       
-      eu. eexists. subst. eapply stp2_var_bind2. eapply BB.
-      
-  - Case "vara1". subst.
-    (* contradiction: GH <> [] *)
-    assert (length (GU ++ [TX]) > 0). rewrite app_length. simpl. omega.
-    rewrite <- H6 in H7. simpl in H7. inversion H7.
+      eu. eu. repeat eexists. eapply vtp_bind. subst VX. eapply BB. omega. 
 
-  - Case "ssel1". subst.
-    assert (stpd2 m2 true [] G1 TX T3). eapply IHk. eauto. eauto. eauto. eauto. omega. eauto.
-    eu. eexists. eapply stp2_strong_sel1. eauto. eauto.
-  - Case "ssel2". subst. inversion H0; subst; invty.
-    + SCase "top". eapply stpd2_top. eapply stpd2_closed1; eauto.
-    + SCase "ssel1". (* cross case *)index_subst. eapply IHn. eapply H6. eauto. omega. eauto. eauto. eauto. 
-    + SCase "ssel2".
-      assert (stpd2 m2 true [] G1 T1 TX0). eapply IHn. eapply H. eauto. omega. eauto. eauto. eauto. 
-      eu. eexists. eapply stp2_strong_sel2. eauto. eauto. 
-      
-  - Case "bindx". subst. inversion H0; subst; invty.
-    + SCase "top". eapply stpd2_top. eapply stpd2_closed1; eauto.
-    + SCase "ssel2". 
-      assert (stpd2 m2 true [] G1 (TBind T0) TX). eapply IHn. eapply H. eauto. omega. eauto. eauto. eauto. 
-      eu. eexists. eapply stp2_strong_sel2. eauto. eauto.
-    + SCase "bindx".
-      remember (TVar false (length [])) as V.
-      (* narrow! still needed *)
-      assert (stpd2 m0 false (open 0 V T0 :: []) G1 (open 0 V T4) (open 0 V T2)).
-      eapply stp2_narrow. eapply H5. eauto. omega. 
-      (* trans axiom *)
-      assert (stpd2 m0 false (open 0 V T0 :: []) G1 (open 0 V T0) (open 0 V T2)).
-      admit. (* eapply stp2_trans_axiom. eauto. eauto. *)
-      (* result *)
-      eu. eexists. subst V. eapply stp2_bindx. eauto. eauto. eauto. 
-    
+  - Case "ssel1". subst. inversion H0; subst; invty.
+    + SCase "top". repeat eexists. eapply vtp_top. admit. (* x < length G1 *) eauto.
+    + SCase "sel". index_subst. eapply IHn. eauto. eauto. eauto. omega. eauto.
+    + SCase "sel2". 
+      assert (vtpdd m1 G1 x TX0). eapply IHn; eauto. omega. 
+      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto.
+
   }  (* b = false *) {
     inversion H0.
 
-  - Case "wrapf". eapply IHn. eapply H. eauto. omega. eauto. eauto. eauto.
+  - Case "wrapf". eapply IHn. eapply H. eauto. eauto. omega. eauto.
   - Case "transf". subst.
-    assert (stpd2 m2 true [] G1 T1 T4) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eauto. eauto. 
-    eu. eapply IHn. eapply LHS. eapply stp2_downgrade. eauto. eauto. omega. omega. eauto. eauto. 
+    assert (vtpdd m1 G1 x T0) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto.
+    eu.
+    assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. 
+    eu. repeat eexists. eauto. omega. 
   }
 
 Grab Existential Variables.
-apply 0.  
+apply 0. apply 0. apply 0. apply 0. apply 0. 
 Qed.
 
 
