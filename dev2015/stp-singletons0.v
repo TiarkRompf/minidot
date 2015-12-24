@@ -182,14 +182,12 @@ Inductive stp2: nat -> bool -> tenv -> venv -> ty -> ty -> nat -> Prop :=
     stp2 m false GH G1 T2 T4 n1 ->
     stp2 m true GH G1 (TMem T1 T2) (TMem T3 T4) (S (n1+n2))
 
-(*
 | stp2_varx: forall m GH G1 x n1,
     x < length G1 ->
     stp2 m true GH G1 (TVar true x) (TVar true x) (S n1)
 | stp2_var1: forall m m2 GH G1 x T2 n1,
     vtp m2 G1 x T2 n1 -> (* slack for: val_type G2 v T2 *)
     stp2 m true GH G1 (TVar true x) T2 (S n1)
-*)
 
 (* not sure if we should have these 2 or not ... ? *)
 (*
@@ -202,25 +200,23 @@ Inductive stp2: nat -> bool -> tenv -> venv -> ty -> ty -> nat -> Prop :=
     stp2 m true GH G1 (TVar true x) (TBind T2) (S n1)
 *)
     
-(*| stp2_varax: forall m GH G1 x n1,
+| stp2_varax: forall m GH G1 x n1,
     x < length GH ->
-    stp2 m true GH G1 (TVar false x) (TVar false x) (S n1) *)
-(* | stp2_varay: forall m GH G1 TX x1 x2 n1,
+    stp2 m true GH G1 (TVar false x) (TVar false x) (S n1)
+(*
+| stp2_varay: forall m GH G1 TX x1 x2 n1,
     index x1 GH = Some TX ->
     stp2 m false GH G1 TX (TVar false x2) n1 ->
-    stp2 m true GH G1 (TVar false x2) (TVar false x1) (S n1) *)
-(* | stp2_vary: forall m GH G1 x1 x2 n1,
+    stp2 m true GH G1 (TVar false x2) (TVar false x1) (S n1)
+| stp2_vary: forall m GH G1 x1 x2 n1,
     index x1 GH = Some (TVar true x2) ->
     x2 < length G1 ->
-    stp2 m true GH G1 (TVar true x2) (TVar false x1) (S n1) *)
-
-(*| stp2_vara1: forall m GH GU G1 TX T2 x n1,
-    index x GH = Some TX ->
-    GH = GU ++ [TX] ->
-    x = 0 -> 
-    stp2 m false [TX] G1 TX T2 n1 -> (* TEMP -- SHOULD ALLOW UP TO x *)
+    stp2 m true GH G1 (TVar true x2) (TVar false x1) (S n1)
+*)
+| stp2_vara1: forall m GH G1 T2 x n1,
+    htp  m false GH G1 x T2 n1 -> (* TEMP -- SHOULD ALLOW UP TO x *)
     stp2 m true GH G1 (TVar false x) T2 (S n1)
-
+(*
 | stp2_varab1: forall m GH G1 T2 x n1,
     stp2 m true GH G1 (TVar false x) (TBind T2) n1 -> 
     stp2 m true GH G1 (TVar false x) (open 0 (TVar false x) T2) (S n1) 
@@ -229,6 +225,7 @@ Inductive stp2: nat -> bool -> tenv -> venv -> ty -> ty -> nat -> Prop :=
     stp2 m true GH G1 (TVar false x) (open 0 (TVar false x) T2) n1 -> 
     stp2 (S m) true GH G1 (TVar false x) (TBind T2) (S n1)
 *)
+         
 
 | stp2_strong_sel1: forall m GH G1 T2 TX x n1,
     index x G1 = Some (vty TX) ->
@@ -241,11 +238,11 @@ Inductive stp2: nat -> bool -> tenv -> venv -> ty -> ty -> nat -> Prop :=
 
 
 | stp2_sel1: forall m GH G1 T2 n1,
-    htp  m true GH G1 0 (TMem TBot T2) n1 ->
+    htp  m false GH G1 0 (TMem TBot T2) n1 ->
     stp2 m true GH G1 (TSel (TVar false 0)) T2 (S n1)
 
 | stp2_sel2: forall m GH G1 T1 n1,
-    htp  m true GH G1 0 (TMem T1 TTop) n1 ->
+    htp  m false GH G1 0 (TMem T1 TTop) n1 ->
     stp2 m true GH G1 T1 (TSel (TVar false 0)) (S n1)
 
 
@@ -890,7 +887,7 @@ Proof. admit. Qed.
 Lemma stp2_subst_narrow0: forall n, forall m2 b GH G1 T1 T2 TX x n2,
    stp2 m2 b (GH++[TX]) G1 T1 T2 n2 -> n2 < n ->
    (forall (m1 : nat) GH (T3 : ty) (n1 : nat),
-      htp m1 true (GH++[TX]) G1 0 T3 n1 -> n1 < n ->
+      htp m1 false (GH++[TX]) G1 0 T3 n1 -> n1 < n ->
       exists m2, vtpd m2 G1 x (substt x T3)) ->
    stpd2 m2 b (map (substt x) GH) G1 (substt x T1) (substt x T2).
 Proof.
@@ -941,20 +938,28 @@ Proof.
   - Case "mem". subst.
     eapply stpd2_mem. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
 
-(*
+
   - Case "varx". subst.
     eexists. eapply stp2_varx. eauto.
   - Case "var1". subst.
     assert (substt x T2 = T2) as R. admit. (* closed *)
     eexists. eapply stp2_var1. rewrite R. eauto.
+  - Case "varax". subst.
+    case_eq (beq_nat x0 0); intros E.
+    + (* hit *)
+      assert (x0 = 0). eapply beq_nat_true_iff. eauto. 
+      repeat eexists. unfold substt. subst x0. simpl. eapply stp2_varx. eauto. admit. (* closed *)
+    + (* miss *)
+      admit. (* not now *)
   - Case "vara1". 
     case_eq (beq_nat x0 0); intros E.
     + (* hit *)
-      assert (x0 = 0). eauto. 
-      assert (exists m0, vtpd m0 G1 x (substt x T2)). subst. eapply H1; eauto.
+      assert (x0 = 0). eapply beq_nat_true_iff. eauto. subst x0. 
+      assert (exists m0, vtpd m0 G1 x (substt x T2)). subst. eapply H1; eauto. omega. 
       ev. eu. subst. repeat eexists. simpl. eapply stp2_var1. eauto. 
     + (* miss *)
-      subst. inversion E. (* not now *)
+      subst. inversion E. admit. (* not now *)
+(*
   - Case "varab1".
     case_eq (beq_nat x0 0); intros E.
     + (* hit *)
@@ -987,27 +992,7 @@ Proof.
       assert (substt x (TVar false x0) = (TVar false x0)) as R3. admit. 
       rewrite R3. rewrite R1. eu. repeat eexists. eapply stp2_varab2.
       rewrite R3 in H10. rewrite R2 in H10. eauto.
-
-  - Case "ssel1". subst. 
-    assert (substt x T2 = T2) as R. admit. (* closed! *)
-    eexists. eapply stp2_strong_sel1. eauto. rewrite R. eauto. 
-    
-  - Case "ssel2". subst. 
-    assert (substt x T1 = T1) as R. admit. (* closed! *)
-    eexists. eapply stp2_strong_sel2. eauto. rewrite R. eauto. 
-
-  - Case "sel1". subst. (* alternative: could create strong_sel node *)
-    assert (stpd2 m2 true (map (substt x) GH) G1 (substt x ((TVar b0 x0))) (TMem TBot (substt x T2))). admit. 
-    eu. eexists. destruct b0.
-    simpl. eapply stp2_sel1. unfold substt in H3 at 2. simpl in H3. eapply H3.
-    simpl. unfold substt at 2. unfold substt at 2 in H3. simpl in H3. simpl. destruct (nat_compare x0 0); eapply stp2_sel1; unfold substt in H3 at 2; simpl in H3; eapply H3. 
-
-  - Case "sel2". subst. (* alternative: could create strong_sel node *)
-    assert (stpd2 m2 true (map (substt x) GH) G1 (substt x ((TVar b0 x0))) (TMem (substt x T1) TTop)). admit. 
-    eu. eexists. destruct b0.
-    simpl. eapply stp2_sel2. unfold substt in H3 at 2. simpl in H3. eapply H3.
-    simpl. unfold substt at 3. unfold substt at 2 in H3. simpl in H3. simpl. destruct (nat_compare x0 0); eapply stp2_sel2; unfold substt in H3 at 2; simpl in H3; eapply H3. 
-*)    
+*)
 
   - Case "ssel1". subst. 
     assert (substt x T2 = T2) as R. admit. (* closed! *)
@@ -1057,7 +1042,7 @@ Proof.
     eu. eu. repeat eexists. eapply stp2_transf. eauto. eauto. 
     
 Grab Existential Variables.
-apply 0. 
+apply 0. apply 0. apply 0. 
 Qed. 
 
 
@@ -1213,7 +1198,7 @@ Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. 
 Qed.
 
-(*
+
 Lemma stp2_trans2: forall n, forall m b G1 T2 T3 x n1 n2,
   vtp2 G1 x T2 n1 ->
   stp2 m b [] G1 T2 T3 n2 -> n2 < n ->
@@ -1234,13 +1219,9 @@ Proof.
       assert (vtpd2 G1 x TX). eapply IHn; eauto. omega. 
       eu. eexists. eapply vtp2_sel. eauto. eauto. 
     + SCase "sel2". subst.
-      destruct b0.
-      * inversion H3. inversion H6. subst. 
-        assert (vtpd2 G1 x TX). eapply IHn; eauto. omega. 
-        eu. eexists. eapply vtp2_sel. eauto. eauto.
-      * assert (closed (length ([]:tenv)) (length G1) 0 (TVar false x0)) as CL.
-        eapply stpd2_closed1. eauto.
-        simpl in CL. inversion CL. omega.
+      assert (closed (length ([]:tenv)) (length G1) 0 (TVar false 0)) as CL.
+      eapply stpd2_closed1. eauto.
+      simpl in CL. inversion CL. omega.
     + SCase "wrapf". subst.
       clear H0. eapply IHn; eauto. omega.
     + SCase "transf". subst.
@@ -1259,18 +1240,10 @@ Proof.
     + SCase "ssel1". subst.
       assert (vtpd2 G1 x TX0). eapply IHn. eapply H. eauto. omega.
       eu. eexists. eapply vtp2_sel. eauto. eauto. 
-    + SCase "ssel2". subst.
-      inversion H12. subst. inversion H6. subst. 
-      index_subst.
-      eapply IHn. eapply H3. eauto. omega.
     + SCase "sel1". subst.
-      destruct b0.
-      * inversion H4. inversion H7. subst. 
-        assert (vtpd2 G1 x TX0). eapply IHn. eapply H. eauto. omega.
-        eu. eexists. eapply vtp2_sel. eauto. eauto.
-      * assert (closed (length ([]:tenv)) (length G1) 0 (TVar false x0)) as CL.
-        eapply stpd2_closed1. eauto.
-        simpl in CL. inversion CL. omega.
+      assert (closed (length ([]:tenv)) (length G1) 0 (TVar false 0)) as CL.
+      eapply stpd2_closed1. eauto.
+      simpl in CL. inversion CL. omega.
     + SCase "wrapf". subst.
       clear H0. eapply IHn; eauto. omega. 
     + SCase "transf". subst.
@@ -1280,7 +1253,7 @@ Proof.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. 
 Qed.
-*)
+
 
 
 (* TODO: stp_to_stp2 *)
