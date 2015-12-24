@@ -249,6 +249,12 @@ Inductive stp2: nat -> bool -> tenv -> venv -> ty -> ty -> nat -> Prop :=
     stp2 m true GH G1 T1 (TSel (TVar false 0)) (S n1)
 
 
+| stp2_bind1: forall m GH G1 T1 T1' T2 n1,
+    htp m false (T1'::GH) G1 (length GH) T2 n1 ->
+    T1' = (open 0 (TVar false (length GH)) T1) ->
+    closed (length GH) (length G1) 0 T2 ->
+    stp2 (S m) true GH G1 (TBind T1) T2 (S n1)
+
 | stp2_bindx: forall m GH G1 T1 T1' T2 T2' n1,
     htp m false (T1'::GH) G1 (length GH) T2' n1 ->
     T1' = (open 0 (TVar false (length GH)) T1) ->
@@ -890,6 +896,39 @@ Lemma stp2_subst_narrow0: forall n, forall m2 b GH G1 T1 T2 TX x n2,
 Proof.
   intros n. induction n. intros. omega.
   intros.
+
+  (* helper lemma for htp *)
+    assert (forall ni n2, forall m T0 T2,
+      htp m false (T0 :: GH ++ [TX]) G1 (length (GH ++ [TX])) T2 n2 -> n2 < ni -> ni < S n ->
+      htpd m false (map (substt x) (T0::GH)) G1 (length GH) (substt x T2)) as htp_subst_narrow0. {
+      induction ni. intros. omega.
+      intros. inversion H2.
+      + (* var *) subst. repeat eexists. eapply htp_var. simpl.
+        assert (beq_nat (length GH) (length (map (substt x) GH)) = true) as R.
+        rewrite map_length. eapply beq_nat_true_iff. eauto. 
+        rewrite R. admit. (* TODO: shifted index lookup *)
+      + (* bind *) subst.
+        assert (htpd m false
+         (map (substt x) (T0 :: GH)) G1
+         (length (GH)) (substt x (TBind TX0))) as BB.
+        eapply IHni. eapply H5. omega. omega. 
+        eu. admit. (* TODO: subst_open_commute, then htp_bind *)
+      + (* sub *) subst.
+        assert (GU = []). admit. subst GU. 
+        rewrite app_nil_l in H8. subst GL. 
+        
+        assert (htpd m false
+                     (map (substt x) (T0 :: GH)) G1
+                     (length GH) (substt x T4)) as AA.
+        eapply IHni. eauto. omega. omega. 
+        assert (stpd2 m false (map (substt x)  ( T0 :: GH)) G1 (substt x T4) (substt x T3)) as BB.
+        eapply IHn. eauto. omega. { intros. eapply H1. eauto. eauto. }
+        eu. eu. repeat eexists. eapply htp_sub. eauto. eauto.
+        (* - *)
+        simpl. rewrite map_length. eauto. instantiate (1:=[]). simpl. eauto. 
+    }
+
+  (* main logic *)  
   inversion H.
   - Case "bot". subst.
     eapply stpd2_bot; eauto. rewrite map_length. simpl. eapply closed_subst. rewrite app_length in H2. simpl in H2. eapply H2.
@@ -992,39 +1031,16 @@ Proof.
     repeat eexists. eapply stp2_strong_sel2. eauto. unfold substt. 
     instantiate (1:=n2). admit. (* FIXME: m2 vs ms *)
 
+   - Case "bind1". 
+    assert (htpd m false (map (substt x) (T1'::GH)) G1 (length GH) (substt x T2)). 
+    eapply htp_subst_narrow0. eauto. eauto. omega. 
+    eu. repeat eexists. eapply stp2_bind1. rewrite map_length. eapply H12. 
+    subst T1'. fold subst. unfold substt at 1. admit. 
+    admit. (* closed_subst *)
+   
   - Case "bindx". 
-    assert (forall ni n2, forall T2,
-      htp m false (T1' :: GH ++ [TX]) G1 (length (GH ++ [TX])) T2 n2 -> n2 < ni -> ni < S n ->
-      htpd m false (map (substt x) (T1'::GH)) G1 (length GH) (substt x T2)) as A. {
-      induction ni. intros. omega.
-      intros. inversion H12.
-      + (* var *) subst. repeat eexists. eapply htp_var. simpl.
-        assert (beq_nat (length GH) (length (map (substt x) GH)) = true) as R.
-        rewrite map_length. eapply beq_nat_true_iff. eauto. 
-        rewrite R. admit. (* TODO: shifted index lookup *)
-      + (* bind *) subst.
-        assert (htpd m false
-         (map (substt x) (open 0 (TVar false (length (GH ++ [TX]))) T0 :: GH)) G1
-         (length (GH)) (substt x (TBind TX0))) as BB.
-        eapply IHni. eapply H15. omega. omega. 
-        eu. admit. (* TODO: subst_open_commute, then htp_bind *)
-      + (* sub *) subst.
-        assert (GU = []). admit. subst GU. 
-        rewrite app_nil_l in H18. subst GL. 
-        
-        assert (htpd m false
-                     (map (substt x) (open 0 (TVar false (length (GH ++ [TX]))) T0 :: GH)) G1
-                     (length GH) (substt x T5)) as AA.
-        eapply IHni. eauto. omega. omega. 
-        assert (stpd2 m false (map (substt x)  (open 0 (TVar false (length (GH ++ [TX]))) T0 :: GH)) G1 (substt x T5) (substt x T4)) as BB.
-        eapply IHn. eauto. omega. { intros. eapply H1. eapply H3. eauto. }
-        eu. eu. repeat eexists. eapply htp_sub. eauto. eauto.
-        (* - *)
-        simpl. rewrite map_length. eauto. instantiate (1:=[]). simpl. eauto. 
-    }
-    (* could pull out above into lemma ... *)
     assert (htpd m false (map (substt x) (T1'::GH)) G1 (length GH) (substt x T2')). 
-    eapply A. eauto. eauto. omega. 
+    eapply htp_subst_narrow0. eauto. eauto. omega. 
     eu. repeat eexists. eapply stp2_bindx. rewrite map_length. eapply H12. 
     subst T1'. fold subst. unfold substt at 1. admit. (* open/subst *)
     subst T2'. fold subst. unfold substt at 1. admit. (* open/subst *)
@@ -1052,7 +1068,7 @@ Lemma stp2_subst_narrowX: forall ml, forall nl, forall m b m2 GH G1 T2 TX x n1 n
         vtp m0 G1 x T2 n1 ->
         stp2 m1 b [] G1 T2 T3 n2 -> m0 <= m ->
         vtpdd m0 G1 x T3) ->
-   vtpdd m G1 x (substt x T2). (* XXX if transitivity, then would need to decrease b/c *)
+   vtpdd m G1 x (substt x T2). (* decrease b/c transitivity *)
 Proof. 
   intros ml. (* induction ml. intros. omega. *)
   intros nl. induction nl. intros. omega.
@@ -1133,6 +1149,25 @@ Proof.
       assert (vtpdd (S m) G1 x TX). eapply IHn; eauto. omega. 
       eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. 
     + SCase "sel2". admit. (* see above *)
+    + SCase "bind1".
+      invty. subst.
+      remember (TVar false (length [])) as VZ.
+      remember (TVar true x) as VX.
+
+      (* left *)
+      assert (vtpd m G1 x (open 0 VX T0)) as LHS. eexists. eassumption.
+      eu.
+      (* right *)
+      assert (substt x (open 0 VZ T0) = (open 0 VX T0)) as R. unfold substt. subst. eapply subst_open_commute.  
+      assert (substt x T3 = T3) as R1. unfold substt. admit. (* closed *)
+
+      assert (vtpdd m G1 x (substt x T3)) as BB. {
+        eapply stp2_subst_narrowX. rewrite <-R in LHS. eapply LHS.
+        instantiate (2:=nil). simpl. eapply H10. eauto. eauto.
+        { intros. eapply IHl. eauto. eauto. omega. eauto. eauto. }
+      }
+      rewrite R1 in BB. 
+      eu. repeat eexists. eauto. omega. 
     + SCase "bindx".
       invty. subst.
       remember (TVar false (length [])) as VZ.
@@ -1151,8 +1186,7 @@ Proof.
       }
       unfold substt in BB. subst. rewrite subst_open_commute in BB. 
       clear R.
-      eu. repeat eexists. eapply vtp_bind. eauto. omega. 
-
+      eu. repeat eexists. eapply vtp_bind. eauto. omega. (* enough slack to add bind back *)
   - Case "ssel2". subst. inversion H0; subst; invty.
     + SCase "top". repeat eexists. eapply vtp_top. admit. (* x < length G1 *) eauto.
     + SCase "ssel1". index_subst. eapply IHn. eauto. eauto. eauto. omega. eauto.
