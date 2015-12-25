@@ -1,6 +1,12 @@
 (* Clean-slate look at subtyping relation based on *)
 (* singleton types (single env) *)
 
+(* TODO: get rid of all admits
+   Rewriting semantics
+   Soundness proof
+   Type checker / examples
+*)
+
 Require Export SfLib.
 
 Require Export Arith.EqNat.
@@ -244,14 +250,17 @@ Inductive stp2: nat -> bool -> tenv -> venv -> ty -> ty -> nat -> Prop :=
 | stp2_bind1: forall m GH G1 T1 T1' T2 n1,
     htp m false (T1'::GH) G1 (length GH) T2 n1 ->
     T1' = (open 0 (TVar false (length GH)) T1) ->
+    closed (length GH) (length G1) 1 T1 ->
     closed (length GH) (length G1) 0 T2 ->
-    stp2 (S m) true GH G1 (TBind T1) T2 (S n1)
+    stp2 m true GH G1 (TBind T1) T2 (S n1)
 
 | stp2_bindx: forall m GH G1 T1 T1' T2 T2' n1,
     htp m false (T1'::GH) G1 (length GH) T2' n1 ->
     T1' = (open 0 (TVar false (length GH)) T1) ->
     T2' = (open 0 (TVar false (length GH)) T2) -> 
-    stp2 (S m) true GH G1 (TBind T1) (TBind T2) (S n1)
+    closed (length GH) (length G1) 1 T1 ->
+    closed (length GH) (length G1) 1 T2 ->
+    stp2 m true GH G1 (TBind T1) (TBind T2) (S n1)
          
          
 | stp2_wrapf: forall m GH G1 T1 T2 n1,
@@ -290,12 +299,13 @@ with htp: nat -> bool -> tenv -> venv -> nat -> ty -> nat -> Prop :=
     htp m b GH G1 x TX (S n1)
 | htp_bind: forall m b GH G1 x TX n1, (* is it needed given stp2_bind1? *)
     htp m b GH G1 x (TBind TX) n1 ->
+    closed x (length G1) 1 TX ->
     htp m b GH G1 x (open 0 (TVar false x) TX) (S n1)
 | htp_sub: forall m b GH GU GL G1 x T1 T2 n1 n2,
     htp m b GH G1 x T1 n1 ->
     stp2 m b GL G1 T1 T2 n2 ->
     length GL = S x ->
-    GH = GU ++ GL -> (* TODO *)
+    GH = GU ++ GL -> (* NOTE: restriction to GL means we need trans in sel rules *)
     htp m b GH G1 x T2 (S (n1+n2))
              
 with vtp : nat -> venv -> nat -> ty -> nat -> Prop :=
@@ -879,15 +889,43 @@ Lemma gh_match: forall (GH:tenv) GU GL TX T0,
   GU = [] /\ GL = T0 :: GH ++ [TX].
 Proof. admit. Qed. 
 
-Lemma subst_closed_id: forall x n T2,
-  closed 0 n 0 T2 ->
+Lemma subst_closed_id: forall x j k T2,
+  closed 0 j k T2 ->
   substt x T2 = T2.
 Proof. admit. Qed. 
 
 Lemma vtp_closed: forall m G1 x T2 n1,
   vtp m G1 x T2 n1 -> 
   closed 0 (length G1) 0 T2.
-Proof. admit. Qed. 
+Proof. admit. Qed.
+
+
+Lemma beq_nat_true_eq: forall A, beq_nat A A = true.
+Proof. intros. eapply beq_nat_true_iff. eauto. Qed.
+  
+(* NOT SO EASY ... *) (*
+It seems like we'd need to have z:z.type, which is problematic
+Lemma htp_bind_admissible: forall m GH G1 x TX n1, (* is it needed given stp2_bind1? *)
+    htp m true GH G1 x (TBind TX) n1 ->
+    htpd m true GH G1 x (open 0 (TVar false x) TX).
+Proof.
+  intros.
+  assert (closed x (length G1) 1 TX). admit. 
+  assert (GL: tenv). admit.
+  assert (length GL = S x). admit. 
+  
+  eexists. eapply htp_sub. eapply H. eapply stp2_bind1.
+  eapply htp_sub. eapply htp_var. simpl. rewrite beq_nat_true_eq. eauto.
+  
+Qed.
+*)
+
+
+
+
+
+
+
 Lemma stp2_subst_narrow0: forall n, forall m2 b GH G1 T1 T2 TX x n2,
    stp2 m2 b (GH++[TX]) G1 T1 T2 n2 -> x < length G1 -> n2 < n -> 
    (forall (m1 : nat) GH (T3 : ty) (n1 : nat),
@@ -911,7 +949,7 @@ Proof.
          (length (GH)) (substt x (TBind TX0))) as BB.
         eapply IHni. eapply H5. omega. omega.
         rewrite subst_open3. 
-        eu. repeat eexists. eapply htp_bind. eauto. 
+        eu. repeat eexists. eapply htp_bind. eauto. eapply closed_subst. rewrite app_length in H6. eauto. 
       + (* sub *) subst.
         assert (GU = [] /\ GL = T0 :: GH ++ [TX]) as A. eapply gh_match; eauto. 
         destruct A. subst GL. subst GU. 
@@ -1027,18 +1065,21 @@ Proof.
     instantiate (1:=n2). admit. (* FIXME: m2 vs ms *)
 
    - Case "bind1". 
-    assert (htpd m false (map (substt x) (T1'::GH)) G1 (length GH) (substt x T2)). 
+    assert (htpd m2 false (map (substt x) (T1'::GH)) G1 (length GH) (substt x T2)). 
     eapply htp_subst_narrow0. eauto. eauto. omega. 
-    eu. repeat eexists. eapply stp2_bind1. rewrite map_length. eapply H12.
-    simpl. subst T1'. fold subst. eapply subst_open4. 
-    eapply closed_subst. rewrite map_length. rewrite app_length in H4. simpl in H4. eauto. 
+    eu. repeat eexists. eapply stp2_bind1. rewrite map_length. eapply H13.
+    simpl. subst T1'. fold subst. eapply subst_open4.
+    fold subst. eapply closed_subst. rewrite app_length in H4. simpl in H4. rewrite map_length. eauto. 
+    eapply closed_subst. rewrite map_length. rewrite app_length in H5. simpl in H5. eauto. 
    
   - Case "bindx". 
-    assert (htpd m false (map (substt x) (T1'::GH)) G1 (length GH) (substt x T2')). 
+    assert (htpd m2 false (map (substt x) (T1'::GH)) G1 (length GH) (substt x T2')). 
     eapply htp_subst_narrow0. eauto. eauto. omega. 
-    eu. repeat eexists. eapply stp2_bindx. rewrite map_length. eapply H12. 
+    eu. repeat eexists. eapply stp2_bindx. rewrite map_length. eapply H14. 
     subst T1'. fold subst. eapply subst_open4. 
-    subst T2'. fold subst. eapply subst_open4. 
+    subst T2'. fold subst. eapply subst_open4.
+    rewrite app_length in H5. simpl in H5. eapply closed_subst. rewrite map_length. eauto.
+    rewrite app_length in H6. simpl in H6. eapply closed_subst. rewrite map_length. eauto. 
 
   - Case "wrapf".
     assert (stpd2 m2 true (map (substt x) GH) G1 (substt x T1) (substt x T2)).
@@ -1079,9 +1120,8 @@ Proof.
     destruct A as [? [? [A ?]]]. inversion A. subst.
     repeat eexists. unfold substt. rewrite subst_open_commute.
     assert (closed 0 (length G1) 0 (TBind (substt x TX0))). eapply vtp_closed. unfold substt in A. simpl in A. eapply A.
-    inversion H7. subst. 
-    assert ((substt x TX0) = TX0) as R. admit. (* XXXX MIGHT NOT HOLD !!! *) 
-    rewrite <-R. eapply H11. omega.
+    assert ((substt x (TX0)) = TX0) as R. eapply subst_closed_id. eauto.
+    unfold substt in R. rewrite R in H12. eapply H12. omega.
   - Case "sub". subst. 
     assert (GL = [TX]). admit. subst GL.
     assert (vtpdd m G1 x (substt x T1)) as A.
