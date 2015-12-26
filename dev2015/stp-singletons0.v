@@ -47,7 +47,7 @@ Fixpoint index {X : Type} (n : id) (l : list X) : option X :=
   end.
 
 
-(* closed j k means normal variables < i and < j, bound variables < k *)
+(* closed i j k means normal variables < i and < j, bound variables < k *)
 Inductive closed: nat -> nat -> nat -> ty -> Prop :=
 | cl_bot: forall i j k,
     closed i j k TBot
@@ -909,6 +909,15 @@ Lemma vtp_closed: forall m G1 x T2 n1,
   closed 0 (length G1) 0 T2.
 Proof. admit. Qed.
 
+Lemma vtp_closed1: forall m G1 x T2 n1,
+  vtp m G1 x T2 n1 -> 
+  x < length G1.
+Proof. admit. Qed.
+
+Lemma vtp2_closed1: forall G1 x T2 n1,
+  vtp2 G1 x T2 n1 -> 
+  x < length G1.
+Proof. admit. Qed.
 
 Lemma beq_nat_true_eq: forall A, beq_nat A A = true.
 Proof. intros. eapply beq_nat_true_iff. eauto. Qed.
@@ -1201,7 +1210,7 @@ Proof.
       eapply stp2_closed2 in H0. simpl in H0. inversion H0. inversion H11. omega.  
   - Case "bind". 
     inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. admit. (* x < length G1 *) eauto. 
+    + SCase "top". repeat eexists. eapply vtp_top. eapply vtp_closed1. eauto. eauto. 
     + SCase "sel2". 
       assert (vtpdd (S m) G1 x TX). eapply IHn; eauto. omega. 
       eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. 
@@ -1221,7 +1230,7 @@ Proof.
 
       assert (vtpdd m G1 x (substt x T3)) as BB. {
         eapply stp2_subst_narrowX. rewrite <-R in LHS. eapply LHS.
-        instantiate (2:=nil). simpl. eapply H10. admit (* x < length G1 *).  eauto. eauto. 
+        instantiate (2:=nil). simpl. eapply H10. eapply vtp_closed1. eauto. eauto. eauto. 
         { intros. eapply IHl. eauto. eauto. omega. eauto. eauto. }
       }
       rewrite R1 in BB. 
@@ -1239,14 +1248,14 @@ Proof.
 
       assert (vtpdd m G1 x (substt x (open 0 VZ T4))) as BB. {
         eapply stp2_subst_narrowX. rewrite <-R in LHS. eapply LHS.
-        instantiate (2:=nil). simpl. eapply H10. admit. (* x < length G1 *) eauto. eauto.
+        instantiate (2:=nil). simpl. eapply H10. eapply vtp_closed1. eauto. eauto. eauto. 
         { intros. eapply IHl. eauto. eauto. omega. eauto. eauto. }
       }
       unfold substt in BB. subst. rewrite subst_open_commute in BB. 
       clear R.
       eu. repeat eexists. eapply vtp_bind. eauto. omega. (* enough slack to add bind back *)
   - Case "ssel2". subst. inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. admit. (* x < length G1 *) eauto.
+    + SCase "top". repeat eexists. eapply vtp_top. eapply vtp_closed1. eauto. eauto. 
     + SCase "ssel1". index_subst. eapply IHn. eauto. eauto. eauto. omega. eauto.
     + SCase "ssel2". 
       assert (vtpdd m1 G1 x TX0). eapply IHn; eauto. omega. 
@@ -1306,7 +1315,7 @@ Proof.
   - Case "sel". subst.
     inversion H0.
     + SCase "top". subst.
-      eexists. eapply vtp2_down. eapply vtp_top. admit. (* x < length G1 *)
+      eexists. eapply vtp2_down. eapply vtp_top. eapply vtp2_closed1. eauto. 
     + SCase "varx". subst.
       index_subst.
       eapply IHn. eauto. eauto. omega. 
