@@ -293,11 +293,14 @@ with val_type : venv -> vl -> ty -> Prop :=
     (exists n, stp2 0 true [] G1 T1 T2 n) ->
     val_type G1 v T2
 
+
 with htp: nat -> bool -> tenv -> venv -> nat -> ty -> nat -> Prop :=
 | htp_var: forall m b GH G1 x TX n1,
+    (* can we assign (TVar false x) ? probably not ... *)
     index x GH = Some TX ->
     htp m b GH G1 x TX (S n1)
-| htp_bind: forall m b GH G1 x TX n1, (* is it needed given stp2_bind1? *)
+| htp_bind: forall m b GH G1 x TX n1,
+    (* is it needed given stp2_bind1? for the moment, yes ...*)
     htp m b GH G1 x (TBind TX) n1 ->
     closed x (length G1) 1 TX ->
     htp m b GH G1 x (open 0 (TVar false x) TX) (S n1)
@@ -635,6 +638,13 @@ Lemma stpd2_closed1 : forall m b GH G1 T1 T2,
                       closed (length GH) (length G1) 0 T1.
 Proof. intros. eapply (stpd2_closed m b GH G1 T1 T2); eauto. Qed.
 
+
+Lemma stp2_closed2 : forall m b GH G1 T1 T2 n1,
+                      stp2 m b GH G1 T1 T2 n1 ->
+                      closed (length GH) (length G1) 0 T2.
+Proof. intros. eapply (stpd2_closed m b GH G1); eauto. Qed.
+
+
 Lemma stpd2_closed2 : forall m b GH G1 T1 T2,
                       stpd2 m b GH G1 T1 T2 ->
                       closed (length GH) (length G1) 0 T2.
@@ -902,7 +912,18 @@ Proof. admit. Qed.
 
 Lemma beq_nat_true_eq: forall A, beq_nat A A = true.
 Proof. intros. eapply beq_nat_true_iff. eauto. Qed.
-  
+
+
+Lemma sub_env1: forall (GL:tenv) GU GH TX,
+  GH ++ [TX] = GU ++ GL ->
+  length GL = 1 ->
+  GL = [TX].
+Proof. admit. Qed. 
+
+
+
+
+
 (* NOT SO EASY ... *) (*
 It seems like we'd need to have z:z.type, which is problematic
 Lemma htp_bind_admissible: forall m GH G1 x TX n1, (* is it needed given stp2_bind1? *)
@@ -1123,7 +1144,7 @@ Proof.
     assert ((substt x (TX0)) = TX0) as R. eapply subst_closed_id. eauto.
     unfold substt in R. rewrite R in H12. eapply H12. omega.
   - Case "sub". subst. 
-    assert (GL = [TX]). admit. subst GL.
+    assert (GL = [TX]). eapply sub_env1; eauto. subst GL.
     assert (vtpdd m G1 x (substt x T1)) as A.
     eapply IHnl. eauto. eauto. eauto. eauto. omega. eauto. 
     eu.
@@ -1157,17 +1178,15 @@ Proof.
       assert (vtpdd m1 G1 x TX). eapply IHn; eauto. omega. 
       eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto.
     + SCase "sel2".
-      assert (closed (length ([]:tenv)) (length G1) 0 (TSel (TVar false 0))).
-      eapply stpd2_closed2. eauto.
-      simpl in H5. inversion H5. subst. inversion H11. omega.
-      
+      eapply stp2_closed2 in H0. simpl in H0. inversion H0. inversion H9. omega.  
   - Case "bool". inversion H0; subst; invty.
     + SCase "top". repeat eexists. eapply vtp_top. eapply index_max. eauto. eauto. 
     + SCase "bool". repeat eexists; eauto. 
     + SCase "ssel2". 
       assert (vtpdd m1 G1 x TX). eapply IHn; eauto. omega. 
       eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto.
-    + SCase "sel2". admit. (* see above *)
+    + SCase "sel2". 
+      eapply stp2_closed2 in H0. simpl in H0. inversion H0. inversion H9. omega.  
   - Case "mem". inversion H0; subst; invty.
     + SCase "top". repeat eexists. eapply vtp_top. eapply index_max. eauto. eauto. 
     + SCase "mem". invty. subst.
@@ -1178,14 +1197,16 @@ Proof.
     + SCase "sel2". 
       assert (vtpdd m1 G1 x TX0). eapply IHn; eauto. omega. 
       eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. 
-    + SCase "sel2". admit. (* see above *)
+    + SCase "sel2". 
+      eapply stp2_closed2 in H0. simpl in H0. inversion H0. inversion H11. omega.  
   - Case "bind". 
     inversion H0; subst; invty.
     + SCase "top". repeat eexists. eapply vtp_top. admit. (* x < length G1 *) eauto. 
     + SCase "sel2". 
       assert (vtpdd (S m) G1 x TX). eapply IHn; eauto. omega. 
       eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. 
-    + SCase "sel2". admit. (* see above *)
+    + SCase "sel2". 
+      eapply stp2_closed2 in H0. simpl in H0. inversion H0. inversion H9. omega.  
     + SCase "bind1".
       invty. subst.
       remember (TVar false (length [])) as VZ.
@@ -1196,7 +1217,7 @@ Proof.
       eu.
       (* right *)
       assert (substt x (open 0 VZ T0) = (open 0 VX T0)) as R. unfold substt. subst. eapply subst_open_commute.  
-      assert (substt x T3 = T3) as R1. unfold substt. admit. (* closed *)
+      assert (substt x T3 = T3) as R1. eapply subst_closed_id. eauto. 
 
       assert (vtpdd m G1 x (substt x T3)) as BB. {
         eapply stp2_subst_narrowX. rewrite <-R in LHS. eapply LHS.
@@ -1285,7 +1306,7 @@ Proof.
   - Case "sel". subst.
     inversion H0.
     + SCase "top". subst.
-      eexists. eapply vtp2_down. eapply vtp_top. admit. (* wf/closed *)
+      eexists. eapply vtp2_down. eapply vtp_top. admit. (* x < length G1 *)
     + SCase "varx". subst.
       index_subst.
       eapply IHn. eauto. eauto. omega. 
