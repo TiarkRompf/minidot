@@ -926,7 +926,7 @@ match goal with
           | _ => idtac
       end;
 *)
-(*
+
 Ltac crush_has_tp :=
   try solve [eapply stp_selx; compute; eauto; crush_has_tp];
   try solve [eapply stp_selax; compute; eauto; crush_has_tp];
@@ -1861,7 +1861,6 @@ Proof.
 
 Qed.
 
-*)
 
 (* ############################################################ *)
 (* Proofs *)
