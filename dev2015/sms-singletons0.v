@@ -268,6 +268,17 @@ with stp2: nat -> bool -> tenv -> venv -> ty -> ty -> nat -> Prop :=
     stp2 (S m) true GH G1 (TVar false x) (TBind T2) (S n1)
 *)
          
+(* NOTE: Currently we require *all* store references (TVar true x)
+   to expand (strong_sel), even in nested contexts (GH <> nil).
+   This is directly related to the htp GL restriction: when
+   substituting, we must derive the precise expansion, and cannot
+   tolerate potentially unsafe bindings in GH.
+   Is this an issue? If yes, we can keep sel1/sel2 and htp
+   for store references, and only invert once we know GH=[].
+   We need to be careful, though: it is not clear that we can
+   use stp2_trans on the embedded vtp. We may need to specially
+   mark self variables (again), since they are the only ones 
+   that occur recursively. *)
 
 | stp2_strong_sel1: forall m GH G1 T2 TX x n1,
     index x G1 = Some (vty TX) ->
