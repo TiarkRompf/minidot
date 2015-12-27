@@ -151,7 +151,7 @@ Inductive has_type : tenv -> venv -> tm -> ty -> Prop :=
   | T_Vary : forall G1 GH x T,
       index x GH = Some T ->
       closed (length GH) (length G1) 0 T -> 
-      has_type GH G1 (tvar true x) T
+      has_type GH G1 (tvar false x) T
   | T_Mem : forall GH G1 T11,
       closed (length GH) (length G1) 0 T11 -> 
       has_type GH G1 (tmem T11) (TMem T11 T11)
@@ -933,6 +933,11 @@ Lemma index_subst: forall GH TX T0 T3 x,
   index (length GH) (map (substt x) (T0 :: GH)) = Some (substt x T3).
 Proof. admit. Qed.
 
+Lemma index_subst1: forall GH TX T3 x x0,
+  index x0 (GH ++ [TX]) = Some T3 -> x0 <> 0 ->
+  index (x0-1) (map (substt x) GH) = Some (substt x T3).
+Proof. admit. Qed.
+
 Lemma index_hit0: forall (GH:tenv) TX T2,
  index 0 (GH ++ [TX]) = Some T2 -> T2 = TX.
 Proof. admit. Qed. 
@@ -1465,13 +1470,47 @@ Proof. admit. Qed.
 Lemma hastp_inv: forall G1 x T,
   has_type [] G1 (tvar true x) T ->
   exists m n1, vtp m G1 x T n1.
-Proof. admit. Qed.
+Proof.
+  intros. remember [] as GH. remember (tvar true x) as t.
+  induction H; subst; try inversion Heqt.
+  - Case "varx". subst. repeat eexists. eauto.
+  - Case "sub".
+    destruct IHhas_type. eauto. eauto. ev.
+    assert (exists m0, vtpdd m0 G1 x T2). eexists. eapply stp2_trans; eauto. 
+    ev. eu. repeat eexists. eauto. 
+Qed.
 
-Lemma hastp_subst: forall m G1 TX T x t n1,
-  has_type [TX] G1 t T ->
+Lemma hastp_subst: forall m G1 GH TX T x t n1,
+  has_type (GH++[TX]) G1 t T ->
   vtp m G1 x TX n1 ->
-  has_type [] G1 (subst_tm x t) T.
-Proof. admit. Qed.
+  has_type (map (substt x) GH) G1 (subst_tm x t) (substt x T).
+Proof.
+  intros. remember (GH++[TX]) as GH0. revert GH HeqGH0. induction H; intros.
+  - Case "varx". simpl. eapply T_Varx. erewrite subst_closed_id. eauto. eapply vtp_closed. eauto.
+  - Case "vary". subst. simpl.
+    case_eq (beq_nat x0 0); intros E.
+    + assert (x0 = 0). eapply beq_nat_true_iff; eauto. subst x0.
+      eapply T_Varx. eapply index_hit0 in H. subst. erewrite subst_closed_id. eauto. eapply vtp_closed. eauto. 
+    + assert (x0 <> 0). eapply beq_nat_false_iff; eauto.
+      eapply T_Vary. eapply index_subst1. eauto. eauto. rewrite map_length. eapply closed_subst. rewrite app_length in H1. simpl in H1. eapply H1.
+  - Case "mem". subst. simpl.
+    eapply T_Mem. eapply closed_subst. rewrite app_length in H. rewrite map_length. eauto.
+  - Case "abs". subst. simpl.
+    assert (has_type (map (substt x) (T11::GH0)) G1 (subst_tm x t12) (substt x T12)) as HI.
+    eapply IHhas_type. eauto. eauto.
+    simpl in HI. 
+    eapply T_Abs. eapply HI. eapply closed_subst. rewrite map_length. rewrite app_length in H1. simpl in H1. eauto.
+  - Case "app". 
+    eapply T_App. eauto. eauto.
+  - Case "sub". subst. 
+    edestruct stp2_subst_narrow0. eapply H1. eapply vtp_closed1. eauto. eauto. 
+    { intros. edestruct stp2_subst_narrowX. erewrite subst_closed_id.
+      eapply H0. eapply vtp_closed. eauto. eauto. eapply vtp_closed1. eauto. eauto. eauto.
+      { intros. eapply stp2_trans; eauto. }
+      ev. repeat eexists. eauto.
+    }
+    eapply T_Sub. eauto. eauto. 
+Qed.
 
 Theorem type_safety : forall G t T,
   has_type [] G t T ->
