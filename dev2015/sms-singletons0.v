@@ -1557,9 +1557,13 @@ Proof.
         assert (exists m n1, vtp m G1 x0 T1 n1). eapply hastp_inv. eauto.
         ev. inversion H1. subst.
         assert (vtpdd x1 G1 x0 T0). eapply stp2_trans. eauto. eauto. eauto. eauto. eauto.
-        eu. 
+        eu.
+        assert (has_type (map (substt x0) []) G1 (subst_tm x0 t) (substt x0 T2)) as HI.
+        eapply hastp_subst; eauto.
+        simpl in HI. erewrite subst_closed_id in HI. 
         right. repeat eexists. rewrite app_nil_l. eapply ST_AppAbs. eauto. eauto.
-        eapply T_Sub. eapply hastp_subst. eauto. eauto. eauto. 
+        eapply T_Sub. eauto. eauto.
+        change 0 with (length ([]:tenv)). eapply stpd2_closed1. eauto. 
       * SSCase "arg_step".
         ev. subst. 
         right. repeat eexists. eapply ST_App2. eauto. eapply T_App.
