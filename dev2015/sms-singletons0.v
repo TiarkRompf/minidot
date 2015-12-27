@@ -1,10 +1,19 @@
 (* Clean-slate look at subtyping relation based on *)
 (* singleton types (single env) *)
 
-(* TODO: get rid of all admits
-   Rewriting semantics
-   Soundness proof
+(* TODO: 
+   get rid of all admits
+   + Rewriting semantics
+   + Soundness proof
    Type checker / examples
+------
+   - multiple members
+   - intersection types
+   - app
+   - examples / type checking
+
+   - remove unnecessary size variables
+   - closedness question: expansion cannot use id beyond self
 *)
 
 Require Export SfLib.
@@ -597,6 +606,13 @@ Proof.
   intros T. induction T; intros; inversion H;  econstructor; eauto.
   simpl. omega.
 Qed.
+
+
+Lemma stp2_extend_mult : forall m b GH G1 G' T1 T2 n,
+                      stp2 m b GH G1 T1 T2 n ->
+                      stp2 m b GH (G'++G1) T1 T2 n.
+Proof. admit. Qed. 
+
 
 (*
 Lemma stp2_extend : forall m b GH  v1 G1 G2 T1 T2 n,
@@ -1427,9 +1443,23 @@ Inductive step : venv -> tm -> venv -> tm -> Prop :=
 .
 
 
+Lemma app_cons1: forall (G1:venv) v,
+  v::G1 = [v]++G1.
+Proof. admit. Qed.
+
+Lemma has_type_closed: forall GH G1 t T,
+  has_type GH G1 t T ->                         
+  closed (length GH) (length G1) 0 T.
+Proof. admit. Qed. 
+
 Lemma has_type_extend: forall GH G1 t T v,
   has_type GH G1 t T ->                         
   has_type GH (v::G1) t T.
+Proof. admit. Qed. 
+
+Lemma has_type_extend_mult: forall GH G1 t T G',
+  has_type GH G1 t T ->                         
+  has_type GH (G'++G1) t T.
 Proof. admit. Qed. 
 
 Lemma hastp_inv: forall G1 x T,
@@ -1446,10 +1476,10 @@ Proof. admit. Qed.
 Theorem type_safety : forall G t T,
   has_type [] G t T ->
   (exists x, t = tvar true x) \/
-  (exists G' t', step G t G' t' /\ has_type [] G' t' T).
+  (exists G' t', step G t (G'++G) t' /\ has_type [] (G'++G) t' T).
 Proof. 
   intros.
-  assert (closed 0 (length G) 0 T) as CL. admit. 
+  assert (closed (length ([]:tenv)) (length G) 0 T) as CL. eapply has_type_closed. eauto. 
   remember [] as GH. remember t as tt. remember T as TT.
   revert T t HeqTT HeqGH Heqtt CL. 
   induction H; intros. 
@@ -1458,7 +1488,7 @@ Proof.
   - Case "mem". right.
     assert (stpd2 0 true [] (vty T11::G1) T11 T11).
     eapply stpd2_refl. subst. eapply closed_extend. eauto. 
-    eu. repeat eexists. eapply ST_Mem. eapply T_Varx. eapply vtp_mem.
+    eu. repeat eexists. rewrite <-app_cons1. eapply ST_Mem. eapply T_Varx. eapply vtp_mem.
     simpl. rewrite beq_nat_true_eq. eauto. eauto. eauto. 
   - Case "abs". right.
     inversion CL.
@@ -1466,18 +1496,18 @@ Proof.
     eapply stpd2_refl. subst. eapply closed_extend. eauto. 
     assert (stpd2 0 true [] (vabs T11 T12 t12::G1) T12 T12).
     eapply stpd2_refl. subst. eapply closed_extend. eauto. 
-    eu. eu. repeat eexists. eapply ST_Abs. eapply T_Varx. eapply vtp_fun.
+    eu. eu. repeat eexists. rewrite <-app_cons1. eapply ST_Abs. eapply T_Varx. eapply vtp_fun.
     simpl. rewrite beq_nat_true_eq. eauto. subst.
     eapply has_type_extend. eauto. eauto. eauto. 
   - Case "app". subst.
-    assert (closed 0 (length G1) 0 (TFun T1 T)) as TF. admit. 
+    assert (closed (length ([]:tenv)) (length G1) 0 (TFun T1 T)) as TF. eapply has_type_closed. eauto. 
     assert ((exists x : id, t2 = tvar true x) \/
                 (exists (G' : venv) (t' : tm),
-                   step G1 t2 G' t' /\ has_type [] G' t' T1)) as HX.
+                   step G1 t2 (G'++G1) t' /\ has_type [] (G'++G1) t' T1)) as HX.
     eapply IHhas_type2. eauto. eauto. eauto. inversion TF. eauto. 
     assert ((exists x : id, t1 = tvar true x) \/
                 (exists (G' : venv) (t' : tm),
-                   step G1 t1 G' t' /\ has_type [] G' t' (TFun T1 T))) as HF.
+                   step G1 t1 (G'++G1) t' /\ has_type [] (G'++G1) t' (TFun T1 T))) as HF.
     eapply IHhas_type1. eauto. eauto. eauto. eauto.
     destruct HF.
     + SCase "fun-val".
@@ -1489,52 +1519,30 @@ Proof.
         ev. inversion H1. subst.
         assert (vtpdd x1 G1 x0 T0). eapply stp2_trans. eauto. eauto. eauto. eauto. eauto.
         eu. 
-        right. repeat eexists. eapply ST_AppAbs. eauto. eauto.
+        right. repeat eexists. rewrite app_nil_l. eapply ST_AppAbs. eauto. eauto.
         eapply T_Sub. eapply hastp_subst. eauto. eauto. eauto. 
       * SSCase "arg_step".
-        admit. (* ev. subst. 
-        right. repeat eexists. eapply ST_App2. eauto. eapply T_App. ... extend_mult ... *)
+        ev. subst. 
+        right. repeat eexists. eapply ST_App2. eauto. eapply T_App.
+        eapply has_type_extend_mult. eauto. eauto. 
     + SCase "fun_step".
-      admit. (* ST_App1 *)
+      ev. subst. right. repeat eexists. eapply ST_App1. eauto. eapply T_App.
+      eauto. eapply has_type_extend_mult. eauto. 
   - Case "sub". subst.
     assert ((exists x : id, t0 = tvar true x) \/
                (exists (G' : venv) (t' : tm),
-                  step G1 t0 G' t' /\ has_type [] G' t' T1)) as HH.
+                  step G1 t0 (G'++G1) t' /\ has_type [] (G'++G1) t' T1)) as HH.
     eapply IHhas_type; eauto. change 0 with (length ([]:tenv)) at 1. eapply stpd2_closed1; eauto.
     destruct HH.
     + SCase "val".
       ev. subst. left. eexists. eauto.
     + SCase "step".
-      ev. subst. admit. 
-      (* right. repeat eexists. eauto. eapply T_Sub. eauto. eauto. ...extend_mult...*)
+      ev. subst. 
+      right. repeat eexists. eauto. eapply T_Sub. eauto. eapply stp2_extend_mult. eauto. 
       
 Grab Existential Variables.
 apply 0. apply 0.
 Qed. 
-
-(*
-Theorem preservation : forall G G' t t' T,
-  has_type [] G t T ->
-  step G t G' t' ->
-  has_type [] G' t' T.
-Proof.
-  intros. induction H0.
-  - Case "mem". eapply T_Varx. eapply vtp_mem.
-  - Case "vary". inversion H0.
-  - Case "
-
-Qed. 
-
-
-Theorem progress : forall G t T,
-  has_type [] G t T ->
-  (exists x, t = tvar true x) \/
-  (exists G' t', step G t G' t').
-Proof. admit. Qed. 
-*)
-
-
-
 
 
 End STLC.
