@@ -289,6 +289,16 @@ with stp2: nat -> bool -> tenv -> venv -> ty -> ty -> nat -> Prop :=
     stp2 m false [] G1 T1 TX n1 ->
     stp2 m true GH G1 T1 (TSel (TVar true x)) (S n1)
 
+(*
+| stp2_xsel1: forall m GH G1 T2 TX x n1,
+    index x G1 = Some (vty TX) ->
+    stp2 m false [] G1 TX T2 n1 ->
+    stp2 m true GH G1 (TSel (TVar true x)) T2 (S n1)
+| stp2_xsel2: forall m GH G1 T1 TX x n1,
+    index x G1 = Some (vty TX) ->
+    stp2 m false [] G1 T1 TX n1 ->
+    stp2 m true GH G1 T1 (TSel (TVar true x)) (S n1)         
+*)
 
 | stp2_sel1: forall m GH G1 T2 n1,
     htp  m false GH G1 0 (TMem TBot T2) n1 ->
@@ -1131,7 +1141,7 @@ Proof.
     + (* miss *)
       assert (x0 <> 0). eapply beq_nat_false_iff. eauto.
       subst. 
-      assert (htpd m2 false (map (substt x) GH) G1 (x0-1) (substt x T2)). eapply htp_subst_narrow02. eauto. eauto. eauto. 
+      assert (htpd m2 false (map (substt x) GH) G1 (x0-1) (substt x T2)). eapply htp_subst_narrow02. eauto. eauto. eauto. eauto.
       eu. repeat eexists. unfold substt at 2. simpl. rewrite E. eapply stp2_vara1. eauto. 
 (*
   - Case "varab1".
