@@ -5,12 +5,8 @@
    and performs the necessary translation while going
    from stp to stp2 *)
 (* copied from dot23.v *)
-(* based on that, it adds bind1 rule and
-   preliminary support for singleton types (TVar) *)
+(* based on that, it adds bind1 rule *)
 
-(* TODO: remove singletons here in favor of dot25 ?*)
-
-(* FIXME: admits around sel2/selab2 *)
 (* FIXME: examples are commented out (dot23) *)
 
 
