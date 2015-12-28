@@ -531,6 +531,15 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 (S m) true G2 T2 G2 T2 GH n2 -> (* regularity *)
     stp2 (S m) true G1 (TSel (varH x) l) G2 T2 GH (S (n1+n2))
 
+| stp2_sela2: forall m G1 G2 GX l TX x T1 GH n1 n2,
+    indexr x GH = Some (GX, TX) ->
+    closed 0 (S x) TX ->
+    length GL = (S x) ->
+    GH = GU ++ GL ->
+    stp2 (S m) false GX TX G2 (TMem l T1 TTop) GL n1 ->
+    stp2 (S m) true G1 T1 G1 T1 GH n2 -> (* regularity *)
+    stp2 (S m) true G1 T1 G2 (TSel (varH x) l) GH (S (n1+n2))
+
 | stp2_selab1: forall m G1 G2 GX l TX x T2 T2' GH GU GL n1 n2,
     indexr x GH = Some (GX, TX) ->
     closed 1 x T2 -> (* < x required in substitute *)
@@ -541,10 +550,9 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 (S m) true G2 T2' G2 T2' GH n2 -> (* regularity *)
     stp2 (S m) true G1 (TSel (varH x) l) G2 T2' GH (S (n1+n2))
 
-| stp2_selab2: forall m G1 G2 GX l TX x T1 T1' GH GU GL n1 n2, (* FIXME *)
+| stp2_selab2: forall m G1 G2 GX l TX x T1 T1' GH GU GL n1 n2,
     indexr x GH = Some (GX, TX) ->
-    closed 0 (S x) TX ->
-    closed 0 0 (TBind (TMem l T1 TTop)) ->
+    closed 1 x T2 -> (* < x required in substitute *)
     length GL = (S x) ->
     GH = GU ++ GL ->
     stp2 (S m) false GX TX G1 (TBind (TMem l T1 TTop)) GL n1 ->
@@ -552,12 +560,6 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 (S m) true G1 T1' G1 T1' GH n2 -> (* regularity *)
     stp2 (S m) true G1 T1' G2 (TSel (varH x) l) GH (S (n1+n2))
 
-| stp2_sela2: forall m G1 G2 GX l TX x T1 GH n1 n2, (* FIXME *)
-    indexr x GH = Some (GX, TX) ->
-    closed 0 (S x) TX ->
-    stp2 (S m) false GX TX G1 (TMem l T1 TTop) GH n1 ->
-    stp2 (S m) true G1 T1 G1 T1 GH n2 -> (* regularity *)
-    stp2 (S m) true G1 T1 G2 (TSel (varH x) l) GH (S (n1+n2))
 
 
 | stp2_selax: forall m G1 G2 GX l TX x GH n1,
@@ -6493,13 +6495,30 @@ Proof.
       eapply exists_GYL. eassumption.
     }
     destruct EQG as [GYU [GYL [EQY WYL]]].
-    eapply stpd2_selab1. eauto. instantiate (1:= T2). admit. (* XXX *)
+    eapply stpd2_selab1. eauto. instantiate (1:= T2). inversion H1. inversion H7. eauto.
     instantiate (1:=GYL). erewrite wfh_length. eassumption. eassumption.
     eassumption.
     eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
     specialize (IHST2 _ _ WX WY). reflexivity.
     apply IHST2; eauto.
-  - Case "selab2". admit. (*
+  - Case "selab2".
+    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
+    eapply index_safeh_ex. eauto. eauto. eauto.
+    destruct A as [? [? VT]].
+    inversion VT. subst.
+    assert (exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL) as EQG. {
+      eapply exists_GYL. eassumption.
+    }
+    destruct EQG as [GYU [GYL [EQY WYL]]].
+    eapply stpd2_selab2. eauto. instantiate (1:= T1). inversion H1. inversion H7. eauto.
+    instantiate (1:=GYL). erewrite wfh_length. eassumption. eassumption.
+    eassumption.
+    eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
+    specialize (IHST2 _ _ WX WY). reflexivity.
+    apply IHST2; eauto.
+
+
+    admit. (*
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]].
