@@ -2644,7 +2644,21 @@ Proof.
     specialize IHstp2_2 with (GH2:=GH0) (GH3:=(0, (G1,(open (varH (length GH1 + length GH0)) T1)))::GH1).
     rewrite app_length in IHstp2_2. simpl in IHstp2_2. unfold open in IHstp2_2.
     eapply IHstp2_2. eauto. omega. omega.
-  - Case "bind1". admit. (*XXX*)
+  - Case "bind1".
+    eapply stp2_bind1.
+    
+    simpl. rewrite map_spliceat_length_inc. apply closed_splice. assumption.
+
+    simpl. rewrite map_spliceat_length_inc. apply closed_splice. assumption.
+
+    eapply IHstp2_1. eauto. 
+
+    rewrite app_length. rewrite map_length. simpl.
+    repeat rewrite splice_open_permute with (j:=0).
+    specialize IHstp2_2 with (GH2:=GH0) (GH3:=(0, (G1,(open (varH (length GH1 + length GH0)) T1)))::GH1).
+    rewrite app_length in IHstp2_2. simpl in IHstp2_2. unfold open in IHstp2_2.
+    eapply IHstp2_2. eauto. omega. 
+
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0.
 Qed.
@@ -3451,6 +3465,12 @@ Hint Resolve not_stuck.
 
 
 
+Lemma sstpd2_downgrade: forall G1 G2 T1 T2 GH, sstpd2 true G1 T1 G2 T2 GH -> stpd2 false G1 T1 G2 T2 GH.
+Proof. admit. (* XXX *) Qed.  
+
+
+
+
 Lemma stpd2_trans_aux: forall n, forall G1 G2 G3 T1 T2 T3 H n1,
   stp2 MAX false G1 T1 G2 T2 H n1 -> n1 < n ->
   stpd2 false G2 T2 G3 T3 H ->
@@ -4118,8 +4138,8 @@ Proof.
   - Case "bind1". subst.
     assert (stpd2 false G1 (open (varH (length ([]:aenv))) T0) G3 T3
                   [(0, (G1, open (varH (length ([]:aenv))) T0))]) as A. {
-      eapply stpd2_trans. eauto. eapply stpd2_extendH_mult0. eapply stpd2_wrapf. eauto.
-      admit. (* downgrade XXX *)
+      eapply stpd2_trans. eauto. eapply stpd2_extendH_mult0. 
+      eapply sstpd2_downgrade. eexists. eauto. 
     }
     destruct A as [? A]. 
     eapply stp2_reg2 in H1. ev.
@@ -5402,10 +5422,6 @@ Proof.
 Qed.
 
 
-
-Lemma sstpd2_downgrade: forall G1 G2 T1 T2 GH, sstpd2 true G1 T1 G2 T2 GH -> stpd2 false G1 T1 G2 T2 GH.
-Proof. admit. (* XXX *) Qed.  
-
 Lemma stp2_substitute_aux: forall ni nv, nv <= ni -> forall nj, forall m G1 G2 T1 T2 GH n1,
    stp2 1 m G1 T1 G2 T2 GH n1 -> n1 < nj ->
    forall GH0 GH0' GX TX TX' l T1' T2' V,
@@ -6153,7 +6169,43 @@ Proof.
       eapply closed_upgrade_free. eauto. unfold id in H4.
       rewrite app_length. simpl. omega.
 
-  - Case "bind1". admit.
+  - Case "bind1".
+    intros GH0 GH0' GX TX TX' lX T1' T2' V ? VS CX ? IX1 IX2 FA IXH.
+
+    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
+
+    eapply compat_bind in IX1. repeat destruct IX1 as [? IX1].
+    (* eapply compat_bind in IX2. repeat destruct IX2 as [? IX2]. *)
+
+    subst.
+    
+    eapply IHn in H3. destruct H3.
+    eapply IHn in H4. destruct H4.
+
+    assert (closed 0 (length GH0') T2'). {
+      eapply stp2_closed1. eapply H3.  
+    }
+    
+    eexists.
+    eapply stp2_bind1.
+    eauto.
+    eauto. 
+    eauto.
+    eauto.
+    omega.
+      instantiate (3:=(0, (G1,  open (varH (length (GH0 ++ [(0, (GX, TX))]))) T0))::GH0).
+      reflexivity.
+      eauto. eapply CX. eauto.
+      rewrite app_length. simpl. rewrite EL. eauto.
+      eauto. eauto. 
+      eapply Forall2_cons. simpl. eauto. eauto. repeat split. rewrite app_length. simpl. rewrite EL. eapply IX1. eauto.
+      eauto.
+    omega.
+      reflexivity.
+      eauto. eapply CX. eauto.
+      eauto. eauto. eauto. eauto. eauto. 
+    eapply closed_upgrade_free. eauto. unfold id in H5. omega. 
       
   - Case "and11".
     intros GH0 GH0' GXX TXX TXX' lX T1' T2' V ? VS CX ? IX1 IX2 FA IXH.
