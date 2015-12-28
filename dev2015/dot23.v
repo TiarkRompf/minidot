@@ -5,9 +5,6 @@
    and performs the necessary translation while going
    from stp to stp2 *)
 
-(* FIXME: examples are commented out *)
-
-
 Require Export SfLib.
 
 Require Export Arith.EqNat.
