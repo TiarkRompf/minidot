@@ -299,7 +299,7 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     closed 1 (length GH) T1 -> (* must not accidentally bind x *)
     closed 0 (length GH) T2 ->
     stp G1 GH T2 T2 ->
-    stp G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) (open (varH x) T2) ->
+    stp G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) T2 ->
     stp G1 GH (TBind T1) T2
 | stp_and11: forall G GH T1 T2 T,
     stp G GH T1 T ->
@@ -6615,6 +6615,13 @@ Proof.
     eapply stpd2_wrapf. eapply IHST1. eauto. eapply wfeh_cons. eauto.
     rewrite H.
     eapply stpd2_wrapf. eapply IHST2; eauto.
+  - Case "bind1".
+    subst x. assert (length GY = length GH). eapply wfh_length; eauto.
+    eapply stpd2_bind1. rewrite H. eauto. rewrite H. eauto.
+    eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
+    rewrite H.
+    eapply stpd2_wrapf. eapply IHST2; eauto.
+    
   - Case "and11".
     eapply stpd2_and11.
     eapply IHST1; eauto.
