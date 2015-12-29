@@ -965,7 +965,7 @@ match goal with
           | _ => idtac
       end;
 *)
-(*
+
 Ltac crush_has_tp :=
   try solve [eapply stp_selx; compute; eauto; crush_has_tp];
   try solve [eapply stp_selax; compute; eauto; crush_has_tp];
@@ -1524,7 +1524,9 @@ Proof.
   eapply stp_and2. eapply stp_and11.
   eapply stp_all. crush_wf. eauto. crush2. crush2.
   unfold open. simpl. crush_wf. unfold open. simpl.
-  eapply stp_sela2. compute. reflexivity. crush2.
+  eapply stp_sela2. compute. reflexivity. compute. eauto.
+    instantiate (1:=[(0, TAnd (TAll 1 TTop (TSel (varF 1) 0)) (TMem 0 (TSel (varF 1) 0) (TSel (varF 1) 0)))]). eauto. 
+    instantiate (1:=[(0, TTop)]). eauto. 
   eapply stp_and12. crush2. crush2. crush2. crush_wf.
   eapply stp_and12. crush2. crush_wf. crush2. crush_wf. crush_wf.
   eapply stp_bindx. eauto. crush2. crush2. crush_wf.
@@ -1565,7 +1567,6 @@ Proof.
   unfold open. simpl. eapply stp_and2.
   eapply stp_and11; crush_wf.
   eapply stp_and12. eapply stp_mem. eapply stp_bot. crush_wf. crush_wf. crush_wf.
-
 Qed.
 
 Example paper_list_cons:
@@ -1660,11 +1661,15 @@ Proof.
   eapply stp_bindx. eauto. crush_cl. crush_cl. crush_wf. unfold open. simpl.
   eapply stp_mem. crush_wf. unfold open. simpl.
   eapply stp_sela2. compute. reflexivity. crush_cl.
+    instantiate (1:=[(0, TAnd (TAll 2 TTop (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0))))) (TAnd (TAll 1 TTop (TSel (varF 1) 0)) (TMem 0 (TSel (varF 1) 0) (TSel (varF 1) 0))))]). eauto. 
+    instantiate (1:=[(0, TMem 0 TBot (TSel (varF 1) 0)); (0, TTop)]). eauto.
   eapply stp_and12. eapply stp_and12. crush2. crush_wf. crush_wf. crush_wf. crush_wf.
   crush_wf.
   eapply stp_and12. eapply stp_and2. eapply stp_and11. eapply stp_all. crush_wf. eauto.
   crush_cl. crush_cl. unfold open. simpl. crush_wf. unfold open. simpl.
   eapply stp_sela2. compute. reflexivity. crush_cl.
+    instantiate (1:=[(0, TAnd (TAll 2 TTop (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0))))) (TAnd (TAll 1 TTop (TSel (varF 1) 0)) (TMem 0 (TSel (varF 1) 0) (TSel (varF 1) 0))))]). eauto. 
+    instantiate (1:=[(0, TTop)]). eauto.
   eapply stp_and12. eapply stp_and12. crush2. crush_wf. crush_wf. crush_wf. crush_wf.
   eapply stp_and12. crush2. crush_wf. crush_wf. eapply stp_top. crush_wf. crush_wf.
   crush_wf. eapply stp_bindx. eauto. crush_cl. crush_cl. crush_wf. unfold open. simpl.
@@ -1845,11 +1850,25 @@ Proof.
   eapply stp_bindx. eauto. crush_cl. crush_cl. crush_wf. unfold open. simpl.
   eapply stp_mem. crush_wf. unfold open. simpl.
   eapply stp_sela2. compute. reflexivity. crush_cl.
+    instantiate (1:=[(0,
+ TAnd
+   (TAll 2 TTop
+      (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0)))))
+   (TAnd (TAll 1 TTop (TSel (varF 1) 0))
+         (TMem 0 (TSel (varF 1) 0) (TSel (varF 1) 0))))]). eauto.
+    instantiate (1:=[(0, TMem 0 TBot (TSel (varF 1) 0)); (0, TTop)]). eauto.
   eapply stp_and12. eapply stp_and12. crush2. crush_wf. crush_wf. crush_wf. crush_wf.
   crush_wf.
   eapply stp_and12. eapply stp_and2. eapply stp_and11. eapply stp_all. crush_wf. eauto.
   crush_cl. crush_cl. unfold open. simpl. crush_wf. unfold open. simpl.
   eapply stp_sela2. compute. reflexivity. crush_cl.
+    instantiate (1:=[(0,
+ TAnd
+   (TAll 2 TTop
+      (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0)))))
+   (TAnd (TAll 1 TTop (TSel (varF 1) 0))
+         (TMem 0 (TSel (varF 1) 0) (TSel (varF 1) 0))))]). eauto.
+    instantiate (1:=[(0, TTop)]). eauto.
   eapply stp_and12. eapply stp_and12. crush2. crush_wf. crush_wf. crush_wf. crush_wf.
   eapply stp_and12. crush2. crush_wf. crush_wf. eapply stp_top. crush_wf. crush_wf.
   crush_wf. eapply stp_bindx. eauto. crush_cl. crush_cl. crush_wf. unfold open. simpl.
@@ -1900,14 +1919,11 @@ Proof.
 
 Qed.
 
-*)
+
 
 (* ############################################################ *)
 (* Proofs *)
 (* ############################################################ *)
-
-
-
 
 
 Lemma wf_fresh : forall vs ts,
