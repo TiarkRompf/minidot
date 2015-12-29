@@ -294,6 +294,13 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 ((0,open (varH x) T2)::GH) (open (varH x) T2) (open (varH x) T2) -> (* regularity *)
     stp G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) (open (varH x) T2) ->
     stp G1 GH (TBind T1) (TBind T2)
+| stp_bind1: forall G1 GH T1 T2 x,
+    x = length GH ->
+    closed 1 (length GH) T1 -> (* must not accidentally bind x *)
+    closed 0 (length GH) T2 ->
+    stp G1 GH T2 T2 ->
+    stp G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) (open (varH x) T2) ->
+    stp G1 GH (TBind T1) T2
 | stp_and11: forall G GH T1 T2 T,
     stp G GH T1 T ->
     stp G GH T2 T2 -> (* regularity *)
