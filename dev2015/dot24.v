@@ -3464,10 +3464,75 @@ Hint Constructors res_type.
 Hint Resolve not_stuck.
 
 
+Lemma sstpd2_downgrade_true: forall G1 G2 T1 T2 H,
+  sstpd2 true G1 T1 G2 T2 H ->
+  stpd2 true G1 T1 G2 T2 H.
+Proof.
+  intros. inversion H0. remember 0 as m. induction H1;
+    try solve [eexists; eauto]; try solve [inversion Heqm].
+  - Case "top".
+    eapply stpd2_top. eapply IHstp2. eapply sstpd2_reg1. eassumption. eauto.
+  - Case "bot".
+    eapply stpd2_bot. eapply IHstp2. eapply sstpd2_reg2. eassumption. eauto.
+  - Case "mem".
+    eapply stpd2_mem.
+    eapply IHstp2_1; eauto. eexists. eassumption.
+    eapply stpd2_wrapf. eapply IHstp2_2; eauto. eexists. eassumption.
+  - Case "sel1".
+    eapply stpd2_sel1.
+    eassumption. eassumption. eapply valtp_closed. eassumption.
+    eapply IHstp2_1. eexists. eassumption. eauto.
+    eapply stpd2_reg2. eapply IHstp2_2. eexists. eassumption. eauto.
+  - Case "sel2".
+    eapply stpd2_sel2.
+    eassumption. eassumption. eapply valtp_closed. eassumption.
+    eapply IHstp2_1. eexists. eassumption. eauto.
+    eapply stpd2_reg1. eapply IHstp2_2. eexists. eassumption. eauto.
+  - Case "selx".
+    eapply stpd2_selx; eauto.
+  - Case "bind1".
+    eapply stpd2_bind1; eauto. subst m. eapply IHstp2_1. eexists. eassumption. reflexivity.
+  - Case "and11".
+    eapply stpd2_and11; eauto.
+    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
+    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
+  - Case "and12".
+    eapply stpd2_and12; eauto.
+    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
+    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
+  - Case "and2".
+    eapply stpd2_and2; eauto.
+    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
+    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
+  - Case "or21".
+    eapply stpd2_or21; eauto.
+    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
+    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
+  - Case "or22".
+    eapply stpd2_or22; eauto.
+    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
+    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
+  - Case "or1".
+    eapply stpd2_or1; eauto.
+    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
+    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
+  - Case "wrap". destruct m.
+    + eapply stpd2_wrapf. eapply IHstp2. eexists. eassumption. eauto.
+    + inversion Heqm.
+  - Case "trans". destruct m.
+    + eapply stpd2_transf. eapply IHstp2_1. eexists; eauto. eauto.
+      eapply IHstp2_2. eexists. eauto. eauto.
+    + inversion Heqm.
+  Grab Existential Variables.
+  apply 0. apply 0. apply 0.
+Qed.
 
-Lemma sstpd2_downgrade: forall G1 G2 T1 T2 GH, sstpd2 true G1 T1 G2 T2 GH -> stpd2 false G1 T1 G2 T2 GH.
-Proof. admit. (* XXX *) Qed.  
-
+Lemma sstpd2_downgrade: forall G1 G2 T1 T2 H,
+  sstpd2 true G1 T1 G2 T2 H ->
+  stpd2 false G1 T1 G2 T2 H.
+Proof.
+  intros. eapply stpd2_wrapf. eapply sstpd2_downgrade_true. eassumption.
+Qed.
 
 
 
@@ -6343,76 +6408,6 @@ Lemma stpd2_upgrade: forall G1 G2 T1 T2,
 Proof.
   intros.
   eapply sstpd2_untrans. eapply stpd2_to_sstpd2. eauto.
-Qed.
-
-Lemma sstpd2_downgrade_true: forall G1 G2 T1 T2 H,
-  sstpd2 true G1 T1 G2 T2 H ->
-  stpd2 true G1 T1 G2 T2 H.
-Proof.
-  intros. inversion H0. remember 0 as m. induction H1;
-    try solve [eexists; eauto]; try solve [inversion Heqm].
-  - Case "top".
-    eapply stpd2_top. eapply IHstp2. eapply sstpd2_reg1. eassumption. eauto.
-  - Case "bot".
-    eapply stpd2_bot. eapply IHstp2. eapply sstpd2_reg2. eassumption. eauto.
-  - Case "mem".
-    eapply stpd2_mem.
-    eapply IHstp2_1; eauto. eexists. eassumption.
-    eapply stpd2_wrapf. eapply IHstp2_2; eauto. eexists. eassumption.
-  - Case "sel1".
-    eapply stpd2_sel1.
-    eassumption. eassumption. eapply valtp_closed. eassumption.
-    eapply IHstp2_1. eexists. eassumption. eauto.
-    eapply stpd2_reg2. eapply IHstp2_2. eexists. eassumption. eauto.
-  - Case "sel2".
-    eapply stpd2_sel2.
-    eassumption. eassumption. eapply valtp_closed. eassumption.
-    eapply IHstp2_1. eexists. eassumption. eauto.
-    eapply stpd2_reg1. eapply IHstp2_2. eexists. eassumption. eauto.
-  - Case "selx".
-    eapply stpd2_selx; eauto.
-  - Case "bind1".
-    eapply stpd2_bind1; eauto. subst m. eapply IHstp2_1. eexists. eassumption. reflexivity.
-  - Case "and11".
-    eapply stpd2_and11; eauto.
-    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
-    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
-  - Case "and12".
-    eapply stpd2_and12; eauto.
-    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
-    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
-  - Case "and2".
-    eapply stpd2_and2; eauto.
-    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
-    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
-  - Case "or21".
-    eapply stpd2_or21; eauto.
-    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
-    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
-  - Case "or22".
-    eapply stpd2_or22; eauto.
-    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
-    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
-  - Case "or1".
-    eapply stpd2_or1; eauto.
-    eapply IHstp2_1; eauto. eexists. rewrite <- Heqm. eassumption.
-    eapply IHstp2_2; eauto. eexists. rewrite <- Heqm. eassumption.
-  - Case "wrap". destruct m.
-    + eapply stpd2_wrapf. eapply IHstp2. eexists. eassumption. eauto.
-    + inversion Heqm.
-  - Case "trans". destruct m.
-    + eapply stpd2_transf. eapply IHstp2_1. eexists; eauto. eauto.
-      eapply IHstp2_2. eexists. eauto. eauto.
-    + inversion Heqm.
-  Grab Existential Variables.
-  apply 0. apply 0. apply 0.
-Qed.
-
-Lemma sstpd2_downgrade1: forall G1 G2 T1 T2 H,
-  sstpd2 true G1 T1 G2 T2 H ->
-  stpd2 false G1 T1 G2 T2 H.
-Proof.
-  intros. eapply stpd2_wrapf. eapply sstpd2_downgrade_true. eassumption.
 Qed.
 
 
