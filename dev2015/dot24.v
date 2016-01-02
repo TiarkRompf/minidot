@@ -85,6 +85,12 @@ Fixpoint indexr {X : Type} (n : id) (l : list (id * X)) : option X :=
       if (beq_nat n (length l')) then Some a else indexr n l'
   end.
 
+Fixpoint tailr {X : Type} (n : id) (l : list (id * X)) : list (id * X) :=
+  match l with
+    | [] => []
+    | (n',a) :: l'  => (* DeBrujin *)
+      if (beq_nat n (length l)) then l else tailr n l'
+  end.
 
 (*
 Fixpoint update {X : Type} (n : nat) (x: X)
@@ -240,39 +246,27 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_selx: forall G1 GH TX x m,
     index x G1 = Some TX ->
     stp G1 GH (TSel (varF x) m) (TSel (varF x) m)
-| stp_sela1: forall G1 GH GU GL TX m T2 x,
-    indexr x GH = Some TX ->
-    closed 0 (S x) TX ->
-    length GL = (S x) ->
-    GH = GU ++ GL ->
-    stp G1 GL TX (TMem m TBot T2) ->
+| stp_sela1: forall G1 GH GL TX m T2 x,
+    tailr (S x) GH = (0,TX)::GL ->
+    stp G1 ((0,TX)::GL) TX (TMem m TBot T2) ->
     stp G1 GH T2 T2 -> (* regularity *)
     stp G1 GH (TSel (varH x) m) T2
-| stp_sela2: forall G1 GH GU GL TX m T1 x,
-    indexr x GH = Some TX ->
-    closed 0 (S x) TX ->
-    length GL = (S x) ->
-    GH = GU ++ GL ->
-    stp G1 GL TX (TMem m T1 TTop) ->   (* not using self name for now *)
+| stp_sela2: forall G1 GH GL TX m T1 x,
+    tailr (S x) GH = (0,TX)::GL ->
+    stp G1 ((0,TX)::GL) TX (TMem m T1 TTop) ->   (* not using self name for now *)
     stp G1 GH T1 T1 -> (* regularity of stp2 *)
     stp G1 GH T1 (TSel (varH x) m)
-| stp_selab1: forall G1 GH GU GL TX m T2 T2' x,
-    indexr x GH = Some TX ->
-    closed 0 (S x) TX ->
+| stp_selab1: forall G1 GH GL TX m T2 T2' x,
+    tailr (S x) GH = (0,TX)::GL ->
     closed 0 x (TBind (TMem m TBot T2)) ->
-    length GL = (S x) ->
-    GH = GU ++ GL ->
-    stp G1 GL TX (TBind (TMem m TBot T2)) ->
+    stp G1 ((0,TX)::GL) TX (TBind (TMem m TBot T2)) ->
     T2' = (open (varH x) T2) ->
     stp G1 GH T2' T2' -> (* regularity *)
     stp G1 GH (TSel (varH x) m) T2'
-| stp_selab2: forall G1 GH GU GL TX m T1 T1' x,
-    indexr x GH = Some TX ->
-    closed 0 (S x) TX ->
+| stp_selab2: forall G1 GH GL TX m T1 T1' x,
+    tailr (S x) GH = (0,TX)::GL ->
     closed 0 x (TBind (TMem m T1 TTop)) ->
-    length GL = (S x) ->
-    GH = GU ++ GL ->
-    stp G1 GL TX (TBind (TMem m T1 TTop)) ->
+    stp G1 ((0,TX)::GL) TX (TBind (TMem m T1 TTop)) ->
     T1' = (open (varH x) T1) ->
     stp G1 GH T1' T1' -> (* regularity *)
     stp G1 GH T1' (TSel (varH x) m)
@@ -1005,60 +999,43 @@ Ltac crush_wf :=
 
 (* define polymorphic identity function *)
 
-Definition polyId := TAll 0 (TBind (TMem 0 TBot TTop)) (TAll 0 (TSel (varB 0) 0) (TSel (varB 1) 0)).
+Definition polyId := TAll 0 (TMem 0 TBot TTop) (TAll 0 (TSel (varB 0) 0) (TSel (varB 1) 0)).
 
-Example ex1: has_type [] (tlet 0 (tobj 0 [(0, dfun 1 (tlet 2 (tobj 2 [(0, (dfun 3 (tvar 3)))]) (tvar 2)))]) (tvar 0)) polyId.
+Example ex1: has_type [] (tobj 0 [(0, dfun 1 (tobj 2 [(0, (dfun 3 (tvar 3)))]))]) polyId.
 Proof.
-  apply t_let with (Tx:=(TBind polyId)).
-  apply t_obj with (TX:=polyId).
-  eauto. compute. reflexivity.
-  eapply dt_fun with (T1:=(TBind (TMem 0 TBot TTop))) (T2:=TAll 0 (TSel (varB 0) 0) (TSel (varB 1) 0)).
-  unfold open. simpl. apply t_let with (Tx:=(TBind (TAll 0 (TSel (varF 1) 0) (TSel (varF 1) 0)))); crush2.
-  assert ((open (varF 2) (TAll 0 (TSel (varF 1) 0) (TSel (varF 1) 0)))=(TAll 0 (TSel (varF 1) 0) (TSel (varF 1) 0))) as A. { unfold open. simpl. reflexivity. }
-  rewrite <- A.
-  eapply t_var_unpack; crush2.
-  eapply dt_nil.
-  crush2. crush2. crush2.
-  unfold polyId. crush_wf.
-  unfold polyId. crush_wf. crush2.
-  assert (open (varF 0) polyId=polyId) as A. { unfold open. simpl. reflexivity. }
-  rewrite <- A at 2.
-  eapply t_var_unpack; crush2.
-  unfold polyId. crush_wf.
+  eapply t_sub with (T1:=TBind polyId).
+  apply t_obj with (TX:=polyId). eauto. compute. reflexivity.
+  {
+    eapply dt_fun with (T1:=(TMem 0 TBot TTop)) (T2:=TAll 0 (TSel (varB 0) 0) (TSel (varB 1) 0)).
+    unfold open. simpl. 
+    eapply t_sub with (T1:=(TBind (TAll 0 (TSel (varF 1) 0) (TSel (varF 1) 0)))).
+    eapply t_obj with (TX:=(TAll 0 (TSel (varF 1) 0) (TSel (varF 1) 0))). eauto. compute. reflexivity.
+    { eapply dt_fun with (T1:=(TSel (varF 1) 0)) (T2:=(TSel (varF 1) 0)). eapply t_var. compute. reflexivity.
+      crush2. crush2. crush2. crush2. simpl. eauto. }
+    crush_wf. crush_wf. { eapply stp_bind1. eauto. crush2. crush2. crush_wf. compute. crush_wf. }
+  eauto. eauto. eauto. simpl. eauto. }
+  crush_wf. crush_wf.
+  eapply stp_bind1. eauto. crush2. crush2. crush_wf. crush_wf. 
 Qed.
 
 
 (* instantiate it to bool *)
 
-Example ex2: has_type [(0,polyId)] (tapp (tvar 0) 0 (tlet 1 (tobj 1 [(0,dmem TBool)]) (tvar 1))) (TAll 0 TBool TBool).
+Example ex2: has_type [(0,polyId)] (tapp (tvar 0) 0 (tobj 1 [(0,dmem TBool)])) (TAll 0 TBool TBool).
 Proof.
-  eapply t_app. instantiate (1:= (TBind (TMem 0 TBool TBool))).
+  eapply t_app. instantiate (1:= (TMem 0 TBool TBool)).
     { eapply t_sub.
       { eapply t_var. simpl. eauto. crush2. }
-      { eapply stp_all; eauto. { eapply stp_bindx; crush2. } compute. eapply cl_all; eauto.
-        eapply stp_all. compute. eapply stp_selax; crush2. crush2. crush2. crush2.
-        simpl. unfold open. simpl. eapply stp_selax; crush2. crush2.
-        eapply stp_all. compute. eapply stp_selab2. crush2.
-        crush2. instantiate (1:=TBool). crush2.
-        instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). simpl. reflexivity.
-        rewrite app_nil_l. reflexivity.
-        crush2. crush2. crush2. crush2. crush2. crush2. crush2.
-        simpl. unfold open.
-        simpl. eapply stp_selab1. crush2.
-        crush2. instantiate (1:=TBool). crush2.
-        instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). simpl. reflexivity.
-        instantiate (1:=[(0, TBool)]). simpl. reflexivity.
-        crush2. crush2. crush2.
-      }
+      { eapply stp_all; eauto. compute. eapply cl_all; eauto. crush_wf. crush2. }
     }
-    { eapply t_let; crush2. }
-    crush2.
+    { eapply t_sub. eapply t_obj. eauto. eauto. eauto. crush_wf. crush_wf. eapply stp_bind1; eauto. crush2. crush2. }
+    crush_wf. 
 Qed.
 
 
 
 (* define brand / unbrand client function *)
-
+(* TODO: get rid of bind/let *)
 Definition brandUnbrand :=
   TAll 0
        (TBind (TMem 0 TBot TTop))
@@ -1135,30 +1112,8 @@ Proof.
   unfold open. simpl. crush_wf.
   unfold open. simpl.
   eapply stp_and2.
-  eapply stp_and11; crush2. eapply stp_all; crush2.
-  unfold open. simpl.
-  eapply stp_selab2. compute. reflexivity. crush2.
-  instantiate (1:=TBool). crush2.
-  instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). crush2.
-  instantiate (1:=[(0, TBool); (0, TAnd (TAll 1 TBool TBool) (TAll 0 TBool TBool));
-   (0,
-   TAll 0
-     (TBind
-        (TAnd (TAll 1 TBool (TSel (varH 0) 0))
-              (TAll 0 (TSel (varH 0) 0) TBool))) TBool)]). crush2.
-  crush2. crush2. crush2.
-  eapply stp_and12; crush2.
-  eapply stp_all. eapply stp_selab1. compute. reflexivity. crush2.
-  instantiate (1:=TBool). crush2.
-  instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). crush2.
-  instantiate (1:=[(0, TAnd (TAll 1 TBool TBool) (TAll 0 TBool TBool));
-   (0,
-   TAll 0
-     (TBind
-        (TAnd (TAll 1 TBool (TSel (varH 0) 0))
-              (TAll 0 (TSel (varH 0) 0) TBool))) TBool)]). crush2.
-  crush2. crush2. crush2.
-  crush2. crush2. crush2. crush2. crush2. crush2. crush2. crush2. crush2. crush2.
+  eapply stp_and11; crush2. eapply stp_and12; crush2. (* eapply stp_all; crush2. *)
+  unfold open. simpl. eauto. eauto. eauto. eauto. eauto. 
 Qed.
 
 Hint Resolve ex4.
@@ -1195,7 +1150,7 @@ Proof.
   unfold open. simpl.
   crush_wf.
   unfold open. simpl.
-  eapply stp_and2. eapply stp_and11; crush2.
+  eapply stp_and2. eapply stp_and11; crush2. (*
   eapply stp_all.
   crush_wf. crush2. crush2. crush2. crush_wf.
   eapply stp_selab2. compute. reflexivity. crush2.
@@ -1207,8 +1162,8 @@ Proof.
      (TBind
         (TAnd (TAll 1 TBool (TSel (varH 0) 0))
               (TAll 0 (TSel (varH 0) 0) TBool))) TBool)]). crush2.
-  crush2. crush2. crush2.
-  eapply stp_and12; crush2.
+  crush2. crush2. crush2.*)
+  eapply stp_and12; crush2. (*
   eapply stp_all. crush2. eapply stp_selab1. compute. reflexivity. crush2.
   instantiate (1:=TBool). crush2.
   instantiate (1:=[(0, TBind (TMem 0 TBool TBool))]). crush2.
@@ -1218,7 +1173,7 @@ Proof.
      (TBind
         (TAnd (TAll 1 TBool (TSel (varH 0) 0))
               (TAll 0 (TSel (varH 0) 0) TBool))) TBool)]). crush2.
-  crush2. crush2. crush_wf.
+  crush2. crush2. crush_wf. *)
   crush2. crush2.
   crush2. crush_wf. crush_wf. crush2. crush2. crush2. crush_wf. crush_wf.
 
@@ -1531,9 +1486,9 @@ Proof.
   eapply stp_and2. eapply stp_and11.
   eapply stp_all. crush_wf. eauto. crush2. crush2.
   unfold open. simpl. crush_wf. unfold open. simpl.
-  eapply stp_sela2. compute. reflexivity. compute. eauto.
+  eapply stp_sela2. compute. reflexivity. (*compute. eauto.
     instantiate (1:=[(0, TAnd (TAll 1 TTop (TSel (varF 1) 0)) (TMem 0 (TSel (varF 1) 0) (TSel (varF 1) 0)))]). eauto. 
-    instantiate (1:=[(0, TTop)]). eauto. 
+    instantiate (1:=[(0, TTop)]). eauto. *)
   eapply stp_and12. crush2. crush2. crush2. crush_wf.
   eapply stp_and12. crush2. crush_wf. crush2. crush_wf. crush_wf.
   eapply stp_bindx. eauto. crush2. crush2. crush_wf.
@@ -1667,16 +1622,16 @@ Proof.
   eapply stp_and2. eapply stp_and11. crush_wf. crush_wf. eapply stp_and12.
   eapply stp_bindx. eauto. crush_cl. crush_cl. crush_wf. unfold open. simpl.
   eapply stp_mem. crush_wf. unfold open. simpl.
-  eapply stp_sela2. compute. reflexivity. crush_cl.
+  eapply stp_sela2. compute. reflexivity. (*crush_cl.
     instantiate (1:=[(0, TAnd (TAll 2 TTop (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0))))) (TAnd (TAll 1 TTop (TSel (varF 1) 0)) (TMem 0 (TSel (varF 1) 0) (TSel (varF 1) 0))))]). eauto. 
-    instantiate (1:=[(0, TMem 0 TBot (TSel (varF 1) 0)); (0, TTop)]). eauto.
+    instantiate (1:=[(0, TMem 0 TBot (TSel (varF 1) 0)); (0, TTop)]). eauto. *)
   eapply stp_and12. eapply stp_and12. crush2. crush_wf. crush_wf. crush_wf. crush_wf.
   crush_wf.
   eapply stp_and12. eapply stp_and2. eapply stp_and11. eapply stp_all. crush_wf. eauto.
   crush_cl. crush_cl. unfold open. simpl. crush_wf. unfold open. simpl.
-  eapply stp_sela2. compute. reflexivity. crush_cl.
+  eapply stp_sela2. compute. reflexivity. (*crush_cl.
     instantiate (1:=[(0, TAnd (TAll 2 TTop (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0))))) (TAnd (TAll 1 TTop (TSel (varF 1) 0)) (TMem 0 (TSel (varF 1) 0) (TSel (varF 1) 0))))]). eauto. 
-    instantiate (1:=[(0, TTop)]). eauto.
+    instantiate (1:=[(0, TTop)]). eauto.*)
   eapply stp_and12. eapply stp_and12. crush2. crush_wf. crush_wf. crush_wf. crush_wf.
   eapply stp_and12. crush2. crush_wf. crush_wf. eapply stp_top. crush_wf. crush_wf.
   crush_wf. eapply stp_bindx. eauto. crush_cl. crush_cl. crush_wf. unfold open. simpl.
@@ -1856,26 +1811,26 @@ Proof.
   eapply stp_and2. eapply stp_and11. crush_wf. crush_wf. eapply stp_and12.
   eapply stp_bindx. eauto. crush_cl. crush_cl. crush_wf. unfold open. simpl.
   eapply stp_mem. crush_wf. unfold open. simpl.
-  eapply stp_sela2. compute. reflexivity. crush_cl.
+  eapply stp_sela2. compute. reflexivity. (*crush_cl.
     instantiate (1:=[(0,
  TAnd
    (TAll 2 TTop
       (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0)))))
    (TAnd (TAll 1 TTop (TSel (varF 1) 0))
          (TMem 0 (TSel (varF 1) 0) (TSel (varF 1) 0))))]). eauto.
-    instantiate (1:=[(0, TMem 0 TBot (TSel (varF 1) 0)); (0, TTop)]). eauto.
+    instantiate (1:=[(0, TMem 0 TBot (TSel (varF 1) 0)); (0, TTop)]). eauto.*)
   eapply stp_and12. eapply stp_and12. crush2. crush_wf. crush_wf. crush_wf. crush_wf.
   crush_wf.
   eapply stp_and12. eapply stp_and2. eapply stp_and11. eapply stp_all. crush_wf. eauto.
   crush_cl. crush_cl. unfold open. simpl. crush_wf. unfold open. simpl.
-  eapply stp_sela2. compute. reflexivity. crush_cl.
+  eapply stp_sela2. compute. reflexivity. (*crush_cl.
     instantiate (1:=[(0,
  TAnd
    (TAll 2 TTop
       (TAnd (TSel (varF 0) 0) (TBind (TMem 0 TBot (TSel (varF 1) 0)))))
    (TAnd (TAll 1 TTop (TSel (varF 1) 0))
          (TMem 0 (TSel (varF 1) 0) (TSel (varF 1) 0))))]). eauto.
-    instantiate (1:=[(0, TTop)]). eauto.
+    instantiate (1:=[(0, TTop)]). eauto.*)
   eapply stp_and12. eapply stp_and12. crush2. crush_wf. crush_wf. crush_wf. crush_wf.
   eapply stp_and12. crush2. crush_wf. crush_wf. eapply stp_top. crush_wf. crush_wf.
   crush_wf. eapply stp_bindx. eauto. crush_cl. crush_cl. crush_wf. unfold open. simpl.
