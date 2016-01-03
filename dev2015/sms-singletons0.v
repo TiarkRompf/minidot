@@ -875,6 +875,23 @@ Definition substt x T := (subst (TVar true x) T).
 Hint Immediate substt.
 
 
+
+Lemma closed_no_open: forall T x k l j,
+  closed l k j T ->
+  T = open j (TVar false x) T.
+Proof.
+  intros. induction H; intros; eauto;
+  try solve [compute; compute in IHclosed; rewrite <-IHclosed; auto];
+  try solve [compute; compute in IHclosed1; compute in IHclosed2; rewrite <-IHclosed1; rewrite <-IHclosed2; auto].
+
+  Case "TSelB".
+    simpl. 
+    assert (k <> x0). omega.
+    apply beq_nat_false_iff in H0.
+    rewrite H0. auto.
+Qed.
+
+
 Lemma closed_no_subst: forall T j k TX,
    closed 0 j k T ->
    subst TX T = T.
@@ -891,43 +908,93 @@ Proof.
   eapply closed_upgrade. eauto. eauto.
 Qed.
 
+Lemma closed_subst: forall j n k V T, closed (n+1) k j T -> closed n k 0 V -> closed n k j (subst V T).
+Proof.
+  intros. generalize dependent j. induction T; intros; inversion H; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
 
-(*
-Lemma subst_open_commute: forall i j n V l T2, closed i (n+1) (j+1) (n+1) T2 -> closed 0 0 (TSel V l) ->
-    subst V (open_rec j (varH (n+1)) T2) = open_rec j (varH n) (subst V T2).
+  - Case "TSelH". simpl.
+    case_eq (beq_nat i 0); intros E. eapply closed_upgrade. eapply closed_upgrade_gh. eauto. eauto. omega. econstructor. subst. 
+    assert (i > 0). eapply beq_nat_false_iff in E. omega. omega.
+Qed.
+
+(* not used? *)
+Lemma subst_open_commute_m: forall j k n m V T2, closed (n+1) k (j+1) T2 -> closed m k 0 V ->
+    subst V (open j (TVar false (n+1)) T2) = open j (TVar false n) (subst V T2).
+Proof.
+  intros. generalize dependent j. generalize dependent n.
+  induction T2; intros; inversion H; simpl; eauto;
+          try rewrite IHT2_1; try rewrite IHT2_2; try rewrite IHT2; eauto.
+  
+  simpl. case_eq (beq_nat i 0); intros E.
+  eapply closed_no_open. eapply closed_upgrade. eauto. omega.
+  simpl. eauto.
+  
+  simpl. case_eq (beq_nat j i); intros E.
+  simpl. case_eq (beq_nat (n+1) 0); intros E2. eapply beq_nat_true_iff in E2. omega.
+  assert (n+1-1 = n) as A. omega. rewrite A. eauto.
+  eauto.
+Qed.
+
+(* not used? *)
+Lemma subst_open_commute: forall j k n V T2, closed (n+1) k (j+1) T2 -> closed 0 k 0 V ->
+    subst V (open j (TVar false (n+1)) T2) = open j (TVar false n) (subst V T2).
 Proof.
   intros. eapply subst_open_commute_m; eauto.
 Qed.
-*)
 
-(* FIXME: need some closed evidence, but don't worry about it for now *)
+Lemma subst_open_commute0: forall T0 n j TX,
+  closed 0 n (j+1) T0 ->
+  (subst TX (open j (TVar false 0) T0)) = open j TX T0.
+Proof.
+  intros T0 n. induction T0; intros.
+  eauto. eauto. eauto.
+  simpl. inversion H. rewrite IHT0_1. rewrite IHT0_2. eauto. eauto. eauto.
+  simpl. inversion H. rewrite IHT0_1. rewrite IHT0_2. eauto. eauto. eauto.
+  simpl. inversion H. omega. eauto.
+  simpl. inversion H. subst. destruct i. case_eq (beq_nat j 0); intros E; simpl; eauto.
+  case_eq (beq_nat j (S i)); intros E; simpl; eauto. 
 
-Lemma subst_open_commute: forall T0 TX,
-  (subst TX (open 0 (TVar false 0) T0)) = open 0 TX T0.
-Proof. admit. Qed.
+  simpl. inversion H. rewrite IHT0. eauto. eauto.
+  simpl. inversion H. rewrite IHT0. eauto. subst. eauto. 
+Qed.
 
 
-Lemma subst_open_commute1: forall T0 x x0,
- (open 0 (TVar true x0) (subst (TVar true x) T0)) 
- = (subst (TVar true x) (open 0 (TVar true x0) T0)).
-Proof. admit. Qed.
+Lemma subst_open_commute1: forall T0 x x0 j,
+ (open j (TVar true x0) (subst (TVar true x) T0)) 
+ = (subst (TVar true x) (open j (TVar true x0) T0)).
+Proof.
+  induction T0; intros.
+  eauto. eauto. eauto. 
+  simpl. rewrite IHT0_1. rewrite IHT0_2. eauto. eauto. eauto.
+  simpl. rewrite IHT0_1. rewrite IHT0_2. eauto. eauto. eauto.
+  simpl. destruct b. simpl. eauto.
+  case_eq (beq_nat i 0); intros E. simpl. eauto. simpl. eauto.
+
+  simpl. case_eq (beq_nat j i); intros E. simpl. eauto. simpl. eauto.
+
+  simpl. rewrite IHT0. eauto.
+  simpl. rewrite IHT0. eauto.
+Qed.
 
 
 Lemma subst_closed_id: forall x j k T2,
   closed 0 j k T2 ->
   substt x T2 = T2.
-Proof. admit. Qed. 
+Proof. intros. eapply closed_no_subst. eauto. Qed. 
 
-
-Lemma closed_subst: forall i j k x T2,
-  closed (i + 1) j k T2 ->
+Lemma closed_subst0: forall i j k x T2,
+  closed (i + 1) j k T2 -> x < j ->
   closed i j k (substt x T2).
-Proof. admit. Qed.
+Proof. intros. eapply closed_subst. eauto. econstructor. eauto. Qed.
 
 Lemma closed_subst1: forall i j k x T2,
-  closed i j k T2 -> i <> 0 ->
+  closed i j k T2 -> x < j -> i <> 0 ->
   closed (i-1) j k (substt x T2).
-Proof. admit. Qed.
+Proof.
+  intros. eapply closed_subst.
+  assert ((i - 1 + 1) = i) as R. omega.
+  rewrite R. eauto. econstructor. eauto.
+Qed.
 
 Lemma index_subst: forall GH TX T0 T3 x,
   index (length (GH ++ [TX])) (T0 :: GH ++ [TX]) = Some T3 ->
@@ -1022,14 +1089,14 @@ Proof.
       intros. inversion H2.
       + (* var *) subst.
         repeat eexists. eapply htp_var. eapply index_subst1. eauto. eauto.
-        rewrite map_length. eauto. eapply closed_subst. rewrite app_length in H7. eapply H7.
+        rewrite map_length. eauto. eapply closed_subst0. rewrite app_length in H7. eapply H7. eauto.
       + (* bind *) subst.
         assert (htpd m false
          (map (substt x) (GH0)) G1
          (xi-1) (substt x (TBind TX0))) as BB.
         eapply IHni. eapply H6. eauto. omega. omega.
         rewrite subst_open5. 
-        eu. repeat eexists. eapply htp_bind. eauto. eapply closed_subst1. eauto. eauto. apply []. eauto.
+        eu. repeat eexists. eapply htp_bind. eauto. eapply closed_subst1. eauto. eauto. eauto. apply []. eauto.
       + (* sub *) subst.
         assert (exists GL0, GL = GL0 ++ [TX] /\ GH0 = GU ++ GL0) as A. eapply gh_match1. eauto. omega.
         destruct A as [GL0 [? ?]]. subst GL.
@@ -1061,9 +1128,9 @@ Proof.
   (* main logic *)  
   inversion H.
   - Case "bot". subst.
-    eapply stpd2_bot; eauto. rewrite map_length. simpl. eapply closed_subst. rewrite app_length in H2. simpl in H2. eapply H2.
+    eapply stpd2_bot; eauto. rewrite map_length. simpl. eapply closed_subst0. rewrite app_length in H2. simpl in H2. eapply H2. eauto.
   - Case "top". subst.
-    eapply stpd2_top; eauto. rewrite map_length. simpl. eapply closed_subst. rewrite app_length in H2. simpl in H2. eapply H2.
+    eapply stpd2_top; eauto. rewrite map_length. simpl. eapply closed_subst0. rewrite app_length in H2. simpl in H2. eapply H2. eauto.
   - Case "bool". subst.
     eapply stpd2_bool; eauto.
   - Case "fun". subst.
@@ -1156,8 +1223,8 @@ Proof.
     eapply htp_subst_narrow0. eauto. eauto. omega. 
     eu. repeat eexists. eapply stp2_bind1. rewrite map_length. eapply H13.
     simpl. subst T1'. fold subst. eapply subst_open4.
-    fold subst. eapply closed_subst. rewrite app_length in H4. simpl in H4. rewrite map_length. eauto. 
-    eapply closed_subst. rewrite map_length. rewrite app_length in H5. simpl in H5. eauto. 
+    fold subst. eapply closed_subst0. rewrite app_length in H4. simpl in H4. rewrite map_length. eauto. eauto. 
+    eapply closed_subst0. rewrite map_length. rewrite app_length in H5. simpl in H5. eauto. eauto.
    
   - Case "bindx". 
     assert (htpd m2 false (map (substt x) (T1'::GH)) G1 (length GH) (substt x T2')). 
@@ -1165,8 +1232,8 @@ Proof.
     eu. repeat eexists. eapply stp2_bindx. rewrite map_length. eapply H14. 
     subst T1'. fold subst. eapply subst_open4. 
     subst T2'. fold subst. eapply subst_open4.
-    rewrite app_length in H5. simpl in H5. eapply closed_subst. rewrite map_length. eauto.
-    rewrite app_length in H6. simpl in H6. eapply closed_subst. rewrite map_length. eauto. 
+    rewrite app_length in H5. simpl in H5. eauto. eapply closed_subst0. rewrite map_length. eauto. eauto.
+    rewrite app_length in H6. simpl in H6. eauto. eapply closed_subst0. rewrite map_length. eauto. eauto.
 
   - Case "wrapf".
     assert (stpd2 m2 true (map (substt x) GH) G1 (substt x T1) (substt x T2)).
@@ -1205,10 +1272,10 @@ Proof.
     assert (vtpdd m G1 x (substt x (TBind TX0))) as A.
     eapply IHnl. eauto. eauto. eauto. eauto. omega. eauto.
     destruct A as [? [? [A ?]]]. inversion A. subst.
-    repeat eexists. unfold substt. rewrite subst_open_commute.
+    repeat eexists. unfold substt. erewrite subst_open_commute0.
     assert (closed 0 (length G1) 0 (TBind (substt x TX0))). eapply vtp_closed. unfold substt in A. simpl in A. eapply A.
     assert ((substt x (TX0)) = TX0) as R. eapply subst_closed_id. eauto.
-    unfold substt in R. rewrite R in H9. eapply H9. omega.
+    unfold substt in R. rewrite R in H9. eapply H9. simpl. eauto. omega.
   - Case "sub". subst. 
     assert (GL = [TX]). eapply sub_env1; eauto. subst GL.
     assert (vtpdd m G1 x (substt x T1)) as A.
@@ -1294,7 +1361,7 @@ Proof.
       assert (vtpd m G1 x (open 0 VX T0)) as LHS. eexists. eassumption.
       eu.
       (* right *)
-      assert (substt x (open 0 VZ T0) = (open 0 VX T0)) as R. unfold substt. subst. eapply subst_open_commute.  
+      assert (substt x (open 0 VZ T0) = (open 0 VX T0)) as R. unfold substt. subst. eapply subst_open_commute0. eauto. 
       assert (substt x T3 = T3) as R1. eapply subst_closed_id. eauto. 
 
       assert (vtpdd m G1 x (substt x T3)) as BB. {
@@ -1313,16 +1380,16 @@ Proof.
       assert (vtpd m G1 x (open 0 VX T0)) as LHS. eexists. eassumption.
       eu.
       (* right *)
-      assert (substt x (open 0 VZ T0) = (open 0 VX T0)) as R. unfold substt. subst. eapply subst_open_commute.  
+      assert (substt x (open 0 VZ T0) = (open 0 VX T0)) as R. unfold substt. subst. eapply subst_open_commute0. eauto.
 
       assert (vtpdd m G1 x (substt x (open 0 VZ T4))) as BB. {
         eapply stp2_subst_narrowX. rewrite <-R in LHS. eapply LHS.
         instantiate (2:=nil). simpl. eapply H11. eapply vtp_closed1. eauto. eauto. eauto. 
         { intros. eapply IHl. eauto. eauto. omega. eauto. eauto. }
       }
-      unfold substt in BB. subst. rewrite subst_open_commute in BB. 
+      unfold substt in BB. subst. erewrite subst_open_commute0 in BB. 
       clear R.
-      eu. repeat eexists. eapply vtp_bind. eauto. eauto. omega. (* enough slack to add bind back *)
+      eu. repeat eexists. eapply vtp_bind. eauto. eauto. omega. eauto. (* enough slack to add bind back *)
   - Case "ssel2". subst. inversion H0; subst; invty.
     + SCase "top". repeat eexists. eapply vtp_top. eapply vtp_closed1. eauto. eauto. 
     + SCase "ssel1". index_subst. eapply IHn. eauto. eauto. eauto. omega. eauto.
@@ -1474,15 +1541,15 @@ Proof.
     + assert (x0 = 0). eapply beq_nat_true_iff; eauto. subst x0.
       eexists. eapply T_Varx. eapply index_hit0 in H. subst. erewrite subst_closed_id. eauto. eapply vtp_closed. eauto. 
     + assert (x0 <> 0). eapply beq_nat_false_iff; eauto.
-      eexists. eapply T_Vary. eapply index_subst1. eauto. eauto. rewrite map_length. eapply closed_subst. rewrite app_length in H1. simpl in H1. eapply H1.
+      eexists. eapply T_Vary. eapply index_subst1. eauto. eauto. rewrite map_length. eapply closed_subst0. rewrite app_length in H1. simpl in H1. eapply H1. eapply vtp_closed1. eauto.
   - Case "mem". subst. simpl.
-    eexists. eapply T_Mem. eapply closed_subst. rewrite app_length in H. rewrite map_length. eauto.
+    eexists. eapply T_Mem. eapply closed_subst0. rewrite app_length in H. rewrite map_length. eauto. eapply vtp_closed1. eauto.
   - Case "abs". subst. simpl.
     assert (has_typed (map (substt x) (T11::GH0)) G1 (subst_tm x t12) (substt x T12)) as HI.
     eapply IHhas_type. eauto. eauto.
     eu. simpl in HI. 
-    eexists. eapply T_Abs. eapply HI. eapply closed_subst. rewrite map_length. rewrite app_length in H1. simpl in H1. eauto. eauto.
-    eapply closed_subst. rewrite map_length. rewrite app_length in H2. simpl in H2. eauto. 
+    eexists. eapply T_Abs. eapply HI. eapply closed_subst0. rewrite map_length. rewrite app_length in H1. simpl in H1. eauto. eauto. eapply vtp_closed1. eauto.
+    eapply closed_subst0. rewrite map_length. rewrite app_length in H2. simpl in H2. eauto. eapply vtp_closed1. eauto.
   - Case "app".
     edestruct IHhas_type1. eauto. eauto.
     edestruct IHhas_type2. eauto. eauto. 
