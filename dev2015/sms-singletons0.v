@@ -1036,10 +1036,19 @@ Proof.
 Qed. 
 
 
-Lemma subst_open3: forall (GH:tenv) TX TX0 x,
-  (substt x (open 0 (TVar false (length (GH ++ [TX]))) TX0)) =
-  (open 0 (TVar false (length GH)) (substt x TX0)).
-Proof. admit. Qed. 
+Lemma subst_open3: forall TX0 (GH:tenv) TX  x j,
+  (substt x (open j (TVar false (length (GH ++ [TX]))) TX0)) =
+  (open j (TVar false (length GH)) (substt x TX0)).
+Proof.
+  intros TX. induction TX; intros; eauto.
+  - unfold substt. simpl. unfold substt in IHTX1. unfold substt in IHTX2. erewrite <-IHTX1. erewrite <-IHTX2. eauto.
+  - unfold substt. simpl. unfold substt in IHTX1. unfold substt in IHTX2. erewrite <-IHTX1. erewrite <-IHTX2. eauto.
+  - unfold substt. simpl. destruct b. eauto.
+    case_eq (beq_nat i 0); intros E. eauto. eauto.
+  - unfold substt. simpl.
+    case_eq (beq_nat j i); intros E. simpl. rewrite app_length. simpl.
+    
+Qed. 
 
 Lemma subst_open4: forall (GH:tenv) TX T0 x, 
   substt x (open 0 (TVar false (length (GH ++ [TX]))) T0) =
