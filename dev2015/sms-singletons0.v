@@ -1035,10 +1035,9 @@ Proof.
     remember (length GH + 1) as L. destruct L. omega. eauto.
 Qed. 
 
-
-Lemma subst_open3: forall TX0 (GH:tenv) TX  x j,
-  (substt x (open j (TVar false (length (GH ++ [TX]))) TX0)) =
-  (open j (TVar false (length GH)) (substt x TX0)).
+Lemma subst_open: forall TX n x j,
+  (substt x (open j (TVar false (n+1)) TX)) =
+  (open j (TVar false n) (substt x TX)).
 Proof.
   intros TX. induction TX; intros; eauto.
   - unfold substt. simpl. unfold substt in IHTX1. unfold substt in IHTX2. erewrite <-IHTX1. erewrite <-IHTX2. eauto.
@@ -1046,33 +1045,60 @@ Proof.
   - unfold substt. simpl. destruct b. eauto.
     case_eq (beq_nat i 0); intros E. eauto. eauto.
   - unfold substt. simpl.
-    case_eq (beq_nat j i); intros E. simpl. rewrite app_length. simpl.
-    
-Qed. 
+    case_eq (beq_nat j i); intros E. simpl. 
+    assert (beq_nat (n + 1) 0 = false). eapply beq_nat_false_iff. omega.
+    assert ((n + 1 - 1 = n)). omega. 
+    rewrite H. rewrite H0. eauto. eauto.
+  - unfold substt. simpl. unfold substt in IHTX. erewrite <-IHTX. eauto.
+  - unfold substt. simpl. unfold substt in IHTX. erewrite <-IHTX. eauto.
+Qed.
 
-Lemma subst_open4: forall (GH:tenv) TX T0 x, 
+Lemma subst_open3: forall TX0 (GH:tenv) TX  x,
+  (substt x (open 0 (TVar false (length (GH ++ [TX]))) TX0)) =
+  (open 0 (TVar false (length GH)) (substt x TX0)).
+Proof. intros. rewrite app_length. simpl. eapply subst_open. Qed.
+
+Lemma subst_open4: forall T0 (GH:tenv) TX x, 
   substt x (open 0 (TVar false (length (GH ++ [TX]))) T0) =
   open 0 (TVar false (length (map (substt x) GH))) (substt x T0).
-Proof. admit. Qed.
+Proof. intros. rewrite map_length. eapply subst_open3. Qed.
 
 Lemma subst_open5: forall (GH:tenv) T0 x xi, 
   xi <> 0 -> substt x (open 0 (TVar false xi) T0) =
   open 0 (TVar false (xi-1)) (substt x T0).
-Proof. admit. Qed.
+Proof.
+  intros. remember (xi-1) as n. assert (xi=n+1) as R. omega. rewrite R.
+  eapply subst_open.
+Qed.
+
+Lemma gh_match1: forall (GU:tenv) GH GL TX,
+  GH ++ [TX] = GU ++ GL ->
+  length GL > 0 ->
+  exists GL1, GL = GL1 ++ [TX] /\ GH = GU ++ GL1.
+Proof.
+  intros GU. induction GU; intros.
+  - eexists. simpl in H. eauto. 
+  - destruct GH. simpl in H.
+    assert (length [TX] = 1). eauto.
+    rewrite H in H1. simpl in H1. rewrite app_length in H1. omega.
+    destruct (IHGU GH GL TX).
+    simpl in H. inversion H. eauto. eauto.
+    eexists. split. eapply H1. simpl. destruct H1. simpl in H. inversion H. subst. eauto.
+Qed.
 
 Lemma gh_match: forall (GH:tenv) GU GL TX T0,
   T0 :: GH ++ [TX] = GU ++ GL ->
   length GL = S (length (GH ++ [TX])) ->
   GU = [] /\ GL = T0 :: GH ++ [TX].
-Proof. admit. Qed. 
-
-Lemma gh_match1: forall (GH:tenv) GU GL TX,
-  GH ++ [TX] = GU ++ GL ->
-  length GL > 0 ->
-  exists GL1, GL = GL1 ++ [TX] /\ GH = GU ++ GL1.
-Proof. admit. Qed. 
-
-
+Proof.
+  intros. edestruct gh_match1. rewrite app_comm_cons in H. eapply H. omega.
+  assert (length (T0 :: GH ++ [TX]) = length (GU ++ GL)). rewrite H. eauto.
+  assert (GU = []). destruct GU. eauto. simpl in H.
+  simpl in H2. rewrite app_length in H2. simpl in H2. rewrite app_length in H2.
+  simpl in H2. rewrite H0 in H2. rewrite app_length in H2. simpl in H2.
+  omega.
+  split. eauto. rewrite H3 in H1. simpl in H1. subst. simpl in H1. eauto.
+Qed.
 
 Lemma sub_env1: forall (GL:tenv) GU GH TX,
   GH ++ [TX] = GU ++ GL ->
