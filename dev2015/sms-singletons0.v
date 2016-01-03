@@ -1104,11 +1104,18 @@ Lemma sub_env1: forall (GL:tenv) GU GH TX,
   GH ++ [TX] = GU ++ GL ->
   length GL = 1 ->
   GL = [TX].
-Proof. admit. Qed. 
+Proof.
+  intros.
+  destruct GL. inversion H0. destruct GL.
+  eapply app_inj_tail in H. destruct H. subst. eauto.
+  inversion H0.
+Qed. 
 
 Lemma app_cons1: forall (G1:venv) v,
   v::G1 = [v]++G1.
-Proof. admit. Qed.
+Proof.
+  intros. simpl. eauto. 
+Qed.
 
 
 
