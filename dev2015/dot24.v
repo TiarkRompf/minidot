@@ -1887,6 +1887,11 @@ Qed.
 (* Proofs *)
 (* ############################################################ *)
 
+Ltac ev := repeat match goal with
+                    | H: exists _, _ |- _ => destruct H
+                    | H: _ /\  _ |- _ => destruct H
+           end.
+
 
 Lemma wf_fresh : forall vs ts,
                     wf_env vs ts ->
@@ -1948,7 +1953,37 @@ Proof.
       compute. eauto.
 Qed.
 
+Lemma tailr_max : forall X vs n (T: X) GL,
+                       tailr (S n) vs = (0,T)::GL ->
+                       n < length vs.
+Proof.
+  intros X vs. induction vs.
+  - Case "nil". intros. inversion H.
+  - Case "cons".
+    intros. inversion H. destruct a.
+    case_eq (beq_nat n (length vs)); intros E2.
+    + SSCase "hit".
+      eapply beq_nat_true in E2. subst n. compute. eauto.
+    + SSCase "miss".
+      rewrite E2 in H1.
+      assert (n < length vs). eapply IHvs. apply H1.
+      compute. eauto.
+Qed.
 
+Lemma tailr_to_indexr: forall GH GL x (TX:ty),
+  tailr (S x) GH = (0,TX)::GL ->
+  indexr x GH = Some TX /\ length GL = x /\ exists GU, GH = GU ++ ((0,TX)::GL).
+Proof.
+  intros GH. induction GH.
+  - intros. inversion H.
+  - intros. case_eq (beq_nat x (length GH)); intros E.
+    + (* hit *) inversion H. destruct a. rewrite E in H1. inversion H1. subst.
+      repeat split; eauto. simpl. rewrite E. eauto. symmetry. eapply beq_nat_true_iff. eauto.
+      rewrite E. eexists. rewrite app_nil_l. eauto.
+    + (* miss *) inversion H. destruct a. rewrite E in H1.
+      repeat split; eauto. simpl. rewrite E. eauto. eapply IHGH. eauto. eapply IHGH. eauto.
+      rewrite E. edestruct IHGH. eauto. ev. eexists. rewrite H1. instantiate (1:= (i,t)::x0). simpl. rewrite <-H3. eauto. 
+Qed.
 
 Lemma le_xx : forall a b,
                        a <= b ->
@@ -2210,10 +2245,6 @@ Proof.
   case_eq (le_lt_dec n x); intros E LE. omega. reflexivity.
 Qed.
 
-Ltac ev := repeat match goal with
-                    | H: exists _, _ |- _ => destruct H
-                    | H: _ /\  _ |- _ => destruct H
-           end.
 
 Lemma closed_upgrade: forall i j l T,
  closed_rec i l T ->
@@ -2259,7 +2290,8 @@ Proof.
   intros. induction H;
     try solve [repeat ev; split; eauto using indexr_max];
     try solve [try inversion IHstp; split; eauto; apply cl_selh; eapply indexr_max; eassumption];
-    try solve [inversion IHstp1 as [IH1 IH2]; inversion IH2; split; eauto; apply cl_selh; eapply indexr_max; eassumption].
+    try solve [inversion IHstp1 as [IH1 IH2]; inversion IH2; split; eauto; apply cl_selh; eapply indexr_max; eassumption];
+    try solve [inversion IHstp1 as [IH1 IH2]; inversion IHstp2; split; eauto; eapply cl_selh ; eapply tailr_max; eassumption]. 
 Qed.
 
 Lemma stp_closed2 : forall G1 GH T1 T2,
@@ -3181,13 +3213,15 @@ Proof.
   intros. apply (proj1 (stp2_reg G1 G2 T1 T2 GH s m n1 H)).
 Qed.
 
+
 Lemma stp_reg  : forall G GH T1 T2,
                     stp G GH T1 T2 ->
                     stp G GH T1 T1 /\ stp G GH T2 T2.
 Proof.
   intros. induction H;
-    try solve [repeat ev; split; eauto].
+    try solve [repeat ev; split; eauto; try (eapply stp_selax; eapply tailr_to_indexr; eauto)].
 Qed.
+
 
 Lemma stpd2_extend2 : forall x v1 G1 G2 T1 T2 H m,
                        stpd2 m G1 T1 G2 T2 H ->
@@ -6489,62 +6523,71 @@ Proof.
     destruct A as [? [? [? VT]]].
     eapply stpd2_selx. eauto. eauto.
   - Case "sela1".
+    remember ((0,TX)::GL) as GL1. assert (length GL1 = S (length GL)) as LE. subst GL1. eauto. 
+    assert (indexr x GH = Some TX /\ length GL = x /\ exists GU, GH = GU ++ GL1). subst GL1. eapply tailr_to_indexr. eauto. ev. 
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. 
     inversion VT. subst.
-    assert (exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL) as EQG. {
+    remember ((0,TX)::GL) as GL1. 
+    assert (exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL1) as EQG. {
       eapply exists_GYL. eassumption.
     }
     destruct EQG as [GYU [GYL [EQY WYL]]].
-    eapply stpd2_sela1. eauto. eauto.
-    instantiate (1:=GYL). erewrite wfh_length. eassumption. eassumption.
-    eassumption.
+    eapply stpd2_sela1. eauto. rewrite <-LE. eapply (stp_closed _ _ TX (TMem _ _ _)). eauto.
+    instantiate (1:=GYL). erewrite wfh_length. apply LE.  eassumption. eassumption.
     eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
     specialize (IHST2 _ _ WX WY).
     apply stpd2_reg2 in IHST2.
     apply IHST2.
   - Case "sela2".
+    remember ((0,TX)::GL) as GL1. assert (length GL1 = S (length GL)) as LE. subst GL1. eauto. 
+    assert (indexr x GH = Some TX /\ length GL = x /\ exists GU, GH = GU ++ GL1). subst GL1. eapply tailr_to_indexr. eauto. ev.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. 
     inversion VT. subst.
-    assert (exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL) as EQG. {
+    remember ((0,TX)::GL) as GL1. 
+    assert (exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL1) as EQG. {
       eapply exists_GYL. eassumption.
     }
     destruct EQG as [GYU [GYL [EQY WYL]]].
-    eapply stpd2_sela2. eauto. eauto.
-    instantiate (1:=GYL). erewrite wfh_length. eassumption. eassumption.
-    eassumption.
+    eapply stpd2_sela2. eauto. eauto. rewrite <-LE. eapply (stp_closed _ _ TX (TMem _ _ _)). eauto.
+    instantiate (1:=GYL). erewrite wfh_length. apply LE. eassumption. eassumption.
     eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
     specialize (IHST2 _ _ WX WY).
     apply stpd2_reg2 in IHST2.
     apply IHST2.
   - Case "selab1".
+    remember ((0,TX)::GL) as GL1. assert (length GL1 = S (length GL)) as LE. subst GL1. eauto. 
+    assert (indexr x GH = Some TX /\ length GL = x /\ exists GU, GH = GU ++ GL1). subst GL1. eapply tailr_to_indexr. eauto. ev.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]].
     inversion VT. subst.
-    assert (exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL) as EQG. {
+    remember ((0,TX)::GL) as GL1. 
+    assert (exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL1) as EQG. {
       eapply exists_GYL. eassumption.
     }
     destruct EQG as [GYU [GYL [EQY WYL]]].
-    eapply stpd2_selab1. eauto. instantiate (1:= T2). inversion H1. inversion H7. eauto.
-    instantiate (1:=GYL). erewrite wfh_length. eassumption. eassumption.
-    eassumption.
+    eapply stpd2_selab1. eauto. instantiate (1:= T2). inversion H0. inversion H6. eauto.
+    instantiate (1:=GYL). erewrite wfh_length. apply LE. eassumption. eassumption.
     eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
     specialize (IHST2 _ _ WX WY). reflexivity.
     apply IHST2; eauto.
   - Case "selab2".
+    remember ((0,TX)::GL) as GL1. assert (length GL1 = S (length GL)) as LE. subst GL1. eauto. 
+    assert (indexr x GH = Some TX /\ length GL = x /\ exists GU, GH = GU ++ GL1). subst GL1. eapply tailr_to_indexr. eauto. ev.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]].
     inversion VT. subst.
-    assert (exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL) as EQG. {
+    remember ((0,TX)::GL) as GL1. 
+    assert (exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL1) as EQG. {
       eapply exists_GYL. eassumption.
     }
     destruct EQG as [GYU [GYL [EQY WYL]]].
-    eapply stpd2_selab2. eauto. instantiate (1:= T1). inversion H1. inversion H7. eauto.
+    eapply stpd2_selab2. eauto. instantiate (1:= T1). inversion H0. inversion H6. eauto.
     instantiate (1:=GYL). erewrite wfh_length. eassumption. eassumption.
     eassumption.
     eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
@@ -6658,7 +6701,7 @@ Lemma stp_to_wf_tp_aux: forall G GH T1 T2,
                           wf_tp G GH T1 /\ wf_tp G GH T2.
 Proof.
   intros. induction H;
-  try solve [repeat ev; split; eauto].
+    try solve [repeat ev; split; eauto; try (eapply wf_sela; eapply tailr_to_indexr; eauto)].
 Qed.
 
 Lemma stp_to_wf_tp: forall G GH T,
