@@ -607,7 +607,30 @@ Qed.
 
 Lemma closed_upgrade_gh: forall i i1 j k T1,
   closed i j k T1 -> i <= i1 -> closed i1 j k T1.
-Proof. admit. Qed.
+Proof.
+  intros. generalize dependent i1. induction H; intros; econstructor; eauto. omega.
+Qed.
+
+Lemma closed_upgrade: forall i j k k1 T1,
+  closed i j k T1 -> k <= k1 -> closed i j k1 T1.
+Proof.
+  intros. generalize dependent k1. induction H; intros; econstructor; eauto. omega.
+  eapply IHclosed. omega. 
+Qed.
+
+Lemma closed_open: forall j k n b V T, closed k n (j+1) T -> closed k n j (TVar b V) -> closed k n j (open j (TVar b V) T).
+Proof.
+  intros. generalize dependent j. induction T; intros; inversion H; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
+
+  - Case "TVarB". simpl.
+    case_eq (beq_nat j i); intros E. eauto. 
+    econstructor. eapply beq_nat_false_iff in E. omega.
+  - eapply closed_upgrade; eauto.
+Qed.
+
+
+
+
 
 Lemma all_closed: forall ni,
   (forall m b GH G1 T1 T2 n,
@@ -690,8 +713,8 @@ Proof.
   - eapply IHH1. eauto. omega.
   (* htp right *)
   - eauto. 
-  - admit. (* closed-open *) 
-  - eapply closed_upgrade_gh. eapply IHS2. eauto. omega. admit. (* length ++ *)
+  - eapply IHH1 in H1. eapply closed_open. simpl. eapply closed_upgrade_gh. eauto. omega. econstructor. eauto. omega. 
+  - eapply closed_upgrade_gh. eapply IHS2. eauto. omega. rewrite H4. rewrite app_length. omega. 
   (* has_type *)
   - eapply closed_upgrade_gh. eapply IHV2. eauto. omega. omega.
   - eauto.
@@ -804,10 +827,10 @@ Proof.
   - Case "bind".
     eexists. eapply stp2_bindx. eapply htp_var. simpl. rewrite beq_nat_true_eq. eauto.
     instantiate (1:=open 0 (TVar false (length GH)) T1).
-    admit. (* closed-open *)
+    eapply closed_open. simpl. eapply closed_upgrade_gh. eauto. omega. econstructor. simpl. omega.
     eauto. eauto. eauto. eauto. 
 Grab Existential Variables.
-apply 0. apply 0.    
+apply 0. apply 0.
 Qed.
 
 Lemma stpd2_reg1 : forall m b GH G1 T1 T2,
@@ -852,23 +875,22 @@ Definition substt x T := (subst (TVar true x) T).
 Hint Immediate substt.
 
 
-Lemma closed_no_subst: forall T i j k TX,
-   closed i j k T ->
+Lemma closed_no_subst: forall T j k TX,
+   closed 0 j k T ->
    subst TX T = T.
 Proof.
-  admit.
-(*  intros T. induction T; intros; inversion H; simpl; eauto;
-    try rewrite (IHT (S j) TX); eauto;
-    try rewrite (IHT2 (S j) TX); eauto;
-    try rewrite (IHT j TX); eauto;
-    try rewrite (IHT1 j TX); eauto;
-    try rewrite (IHT2 j TX); eauto.
+  intros T. induction T; intros; inversion H; simpl; eauto;
+    try rewrite (IHT j (S k) TX); eauto;
+    (* try rewrite (IHT2 (S j) TX); eauto; *)
+    try rewrite (IHT j k TX); eauto;
+    try rewrite (IHT1 j k TX); eauto;
+    try rewrite (IHT2 j k TX); eauto.
+
+  subst. inversion H4. 
 
   eapply closed_upgrade. eauto. eauto.
-  subst. omega.
-  subst. eapply closed_upgrade. eassumption. omega.
-  subst. eapply closed_upgrade. eassumption. omega. *)
 Qed.
+
 
 (*
 Lemma subst_open_commute: forall i j n V l T2, closed i (n+1) (j+1) (n+1) T2 -> closed 0 0 (TSel V l) ->
