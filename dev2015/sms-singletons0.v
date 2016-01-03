@@ -2,18 +2,18 @@
 (* singleton types (single env) *)
 
 (* TODO: 
-   get rid of all admits
+   + get rid of all admits
    + Rewriting semantics
    + Soundness proof
    Type checker / examples
 ------
-   - expansion other than 0
+   + expansion other than 0
    - multiple members
    - intersection types
    - app var / proper TAll comparison
-   - examples / type checking
-
    - remove unnecessary size variables
+   - stp_selx rule?
+
    - closedness question: expansion cannot use id beyond self
 *)
 
@@ -248,13 +248,13 @@ with stp2: nat -> bool -> tenv -> venv -> ty -> ty -> nat -> Prop :=
     stp2 m true GH G1 T1 (TSel (TVar true x)) (S n1)         
 *)
 
-| stp2_sel1: forall m GH G1 T2 n1,
-    htp  m false GH G1 0 (TMem TBot T2) n1 ->
-    stp2 m true GH G1 (TSel (TVar false 0)) T2 (S n1)
+| stp2_sel1: forall m GH G1 T2 x n1,
+    htp  m false GH G1 x (TMem TBot T2) n1 ->
+    stp2 m true GH G1 (TSel (TVar false x)) T2 (S n1)
 
-| stp2_sel2: forall m GH G1 T1 n1,
-    htp  m false GH G1 0 (TMem T1 TTop) n1 ->
-    stp2 m true GH G1 T1 (TSel (TVar false 0)) (S n1)
+| stp2_sel2: forall m GH G1 T1 x n1,
+    htp  m false GH G1 x (TMem T1 TTop) n1 ->
+    stp2 m true GH G1 T1 (TSel (TVar false x)) (S n1)
 
 
 | stp2_bind1: forall m GH G1 T1 T1' T2 n1,
@@ -1274,16 +1274,26 @@ Proof.
     eexists. eapply stp2_strong_sel2. eauto. rewrite R. eauto. 
 
   - Case "sel1". subst. (* invert htp to vtp and create strong_sel node *)
-    assert (exists m0, vtpd m0 G1 x (substt x (TMem TBot T2))) as A. eapply narrowX. eauto. omega.
-    destruct A as [? A]. eu. inversion A. subst.
-    repeat eexists. eapply stp2_strong_sel1. eauto. unfold substt. 
-    instantiate (1:=n2). admit. (* FIXME: m2 vs ms *)
-
+    case_eq (beq_nat x0 0); intros E.
+    + assert (x0 = 0). eapply beq_nat_true_iff. eauto. subst x0.
+      assert (exists m0, vtpd m0 G1 x (substt x (TMem TBot T2))) as A. eapply narrowX. eauto. omega.
+      destruct A as [? A]. eu. inversion A. subst.
+      repeat eexists. eapply stp2_strong_sel1. eauto. unfold substt. 
+      instantiate (1:=n2). admit. (* FIXME: m2 vs ms *)
+    + assert (x0 <> 0). eapply beq_nat_false_iff. eauto.
+      eapply htp_subst_narrow02 in H2. 
+      eu. repeat eexists. unfold substt. simpl. rewrite E. eapply stp2_sel1. eapply H2. eauto. eauto. eauto. 
+      
   - Case "sel2". subst. (* invert htp to vtp and create strong_sel node *)
-    assert (exists m0, vtpd m0 G1 x (substt x (TMem T1 TTop))) as A. eapply narrowX. eauto. omega.
-    destruct A as [? A]. eu. inversion A. subst. 
-    repeat eexists. eapply stp2_strong_sel2. eauto. unfold substt. 
-    instantiate (1:=n2). admit. (* FIXME: m2 vs ms *)
+    case_eq (beq_nat x0 0); intros E.
+    + assert (x0 = 0). eapply beq_nat_true_iff. eauto. subst x0.
+      assert (exists m0, vtpd m0 G1 x (substt x (TMem T1 TTop))) as A. eapply narrowX. eauto. omega.
+      destruct A as [? A]. eu. inversion A. subst. 
+      repeat eexists. eapply stp2_strong_sel2. eauto. unfold substt. 
+      instantiate (1:=n2). admit. (* FIXME: m2 vs ms *)
+    + assert (x0 <> 0). eapply beq_nat_false_iff. eauto.
+      eapply htp_subst_narrow02 in H2. 
+      eu. repeat eexists. unfold substt. simpl. rewrite E. eapply stp2_sel2. eapply H2. eauto. eauto. eauto. 
 
    - Case "bind1". 
     assert (htpd m2 false (map (substt x) (T1'::GH)) G1 (length GH) (substt x T2)). 
@@ -1464,7 +1474,7 @@ Proof.
       assert (vtpdd m1 G1 x TX0). eapply IHn; eauto. omega. 
       eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto.
     + SCase "sel1".
-      assert (closed (length ([]:tenv)) (length G1) 0 (TSel (TVar false 0))).
+      assert (closed (length ([]:tenv)) (length G1) 0 (TSel (TVar false x0))).
       eapply stpd2_closed2. eauto.
       simpl in H7. inversion H7. inversion H12. omega. 
       
@@ -1504,7 +1514,7 @@ Proof.
       assert (vtpd2 G1 x TX). eapply IHn; eauto. omega. 
       eu. eexists. eapply vtp2_sel. eauto. eauto. 
     + SCase "sel2". subst.
-      assert (closed (length ([]:tenv)) (length G1) 0 (TVar false 0)) as CL.
+      assert (closed (length ([]:tenv)) (length G1) 0 (TVar false x0)) as CL.
       eapply stpd2_closed1. eauto.
       simpl in CL. inversion CL. omega.
     + SCase "wrapf". subst.
@@ -1526,7 +1536,7 @@ Proof.
       assert (vtpd2 G1 x TX0). eapply IHn. eapply H. eauto. omega.
       eu. eexists. eapply vtp2_sel. eauto. eauto. 
     + SCase "sel1". subst.
-      assert (closed (length ([]:tenv)) (length G1) 0 (TVar false 0)) as CL.
+      assert (closed (length ([]:tenv)) (length G1) 0 (TVar false x0)) as CL.
       eapply stpd2_closed1. eauto.
       simpl in CL. inversion CL. omega.
     + SCase "wrapf". subst.
