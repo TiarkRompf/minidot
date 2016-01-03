@@ -7,6 +7,7 @@
    + Soundness proof
    Type checker / examples
 ------
+   - expansion other than 0
    - multiple members
    - intersection types
    - app var / proper TAll comparison
@@ -999,16 +1000,40 @@ Qed.
 Lemma index_subst: forall GH TX T0 T3 x,
   index (length (GH ++ [TX])) (T0 :: GH ++ [TX]) = Some T3 ->
   index (length GH) (map (substt x) (T0 :: GH)) = Some (substt x T3).
-Proof. admit. Qed.
+Proof.
+  intros GH. induction GH; intros; inversion H.
+  - eauto.
+  - rewrite beq_nat_true_eq in H1. inversion H1. subst. simpl.
+    rewrite map_length. rewrite beq_nat_true_eq. eauto.
+Qed.
 
 Lemma index_subst1: forall GH TX T3 x x0,
   index x0 (GH ++ [TX]) = Some T3 -> x0 <> 0 ->
   index (x0-1) (map (substt x) GH) = Some (substt x T3).
-Proof. admit. Qed.
+Proof.
+  intros GH. induction GH; intros; inversion H.
+  - eapply beq_nat_false_iff in H0. rewrite H0 in H2. inversion H2.
+  - simpl.
+    assert (beq_nat (x0 - 1) (length (map (substt x) GH)) = beq_nat x0 (length (GH ++ [TX]))). {
+      case_eq (beq_nat x0 (length (GH ++ [TX]))); intros E.
+      eapply beq_nat_true_iff. rewrite map_length. eapply beq_nat_true_iff in E. subst x0.
+      rewrite app_length. simpl. omega.
+      eapply beq_nat_false_iff. eapply beq_nat_false_iff in E.
+      rewrite app_length in E. simpl in E. rewrite map_length.
+      destruct x0. destruct H0. reflexivity. omega.
+    }
+    rewrite H1. case_eq (beq_nat x0 (length (GH ++ [TX]))); intros E; rewrite E in H2.
+    inversion H2. subst. eauto. eauto. 
+Qed.
 
 Lemma index_hit0: forall (GH:tenv) TX T2,
  index 0 (GH ++ [TX]) = Some T2 -> T2 = TX.
-Proof. admit. Qed. 
+Proof.
+  intros GH. induction GH; intros; inversion H.
+  - eauto.
+  - rewrite app_length in H1. simpl in H1.
+    remember (length GH + 1) as L. destruct L. omega. eauto.
+Qed. 
 
 
 Lemma subst_open3: forall (GH:tenv) TX TX0 x,
