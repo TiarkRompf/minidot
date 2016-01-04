@@ -38,15 +38,17 @@ Inductive ty : Type :=
 Inductive tm : Type :=
   | tvar  : bool -> id -> tm
   | tbool : bool -> tm
-  | tmem  : ty -> tm
+  | tobj  : dm -> tm
   | tapp  : tm -> tm -> tm
-  | tabs  : ty -> ty -> tm -> tm
+
+with dm : Type :=
+  | dfun : ty -> ty -> tm -> dm
+  | dty  : ty -> dm
 .
 
 Inductive vl : Type :=
   | vbool : bool -> vl
-  | vabs  : ty -> ty -> tm -> vl
-  | vty   : ty -> vl
+  | vobj  : dm -> vl
 .
 
 Definition venv := list vl.
@@ -135,12 +137,12 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
       has_type GH G1 (tvar false x) T (S n1)
   | T_Mem : forall GH G1 T11 n1,
       closed (length GH) (length G1) 0 T11 -> 
-      has_type GH G1 (tmem T11) (TMem T11 T11) (S n1)
+      has_type GH G1 (tobj (dty T11)) (TMem T11 T11) (S n1)
   | T_Abs : forall GH G1 T11 T12 t12 n1,
       has_type (T11::GH) G1 t12 T12 n1 ->
       closed (length GH) (length G1) 0 T11 ->
       closed (length GH) (length G1) 0 T12 -> 
-      has_type GH G1 (tabs T11 T12 t12) (TFun T11 T12) (S n1)
+      has_type GH G1 (tobj (dfun T11 T12 t12)) (TFun T11 T12) (S n1)
   | T_App : forall T1 T2 GH G1 t1 t2 n1 n2,
       has_type GH G1 t1 (TFun T1 T2) n1 ->
       has_type GH G1 t2 T1 n2 ->
@@ -189,11 +191,11 @@ with stp2: tenv -> venv -> ty -> ty -> nat -> Prop :=
    that occur recursively. *)
 
 | stp2_strong_sel1: forall GH G1 T2 TX x n1,
-    index x G1 = Some (vty TX) ->
+    index x G1 = Some (vobj (dty TX)) ->
     stp2 [] G1 TX T2 n1 ->
     stp2 GH G1 (TSel (TVar true x)) T2 (S n1)
 | stp2_strong_sel2: forall GH G1 T1 TX x n1,
-    index x G1 = Some (vty TX) ->
+    index x G1 = Some (vobj (dty TX)) ->
     stp2 [] G1 T1 TX n1 ->
     stp2 GH G1 T1 (TSel (TVar true x)) (S n1)
 
@@ -259,12 +261,12 @@ with vtp : nat -> venv -> nat -> ty -> nat -> Prop :=
     index x G1 = Some (vbool b) ->
     vtp m G1 x (TBool) (S (n1))
 | vtp_mem: forall m G1 x TX T1 T2 n1 n2,
-    index x G1 = Some (vty TX) ->
+    index x G1 = Some (vobj (dty TX)) ->
     stp2 [] G1 T1 TX n1 ->
     stp2 [] G1 TX T2 n2 ->
     vtp m G1 x (TMem T1 T2) (S (n1+n2))
 | vtp_fun: forall m G1 x T1 T2 T3 T4 t n1 n2 n3,
-    index x G1 = Some (vabs T1 T2 t) ->
+    index x G1 = Some (vobj (dfun T1 T2 t)) ->
     has_type [T1] G1 t T2 n3 ->
     stp2 [] G1 T3 T1 n1 ->
     stp2 [] G1 T2 T4 n2 ->             
@@ -274,7 +276,7 @@ with vtp : nat -> venv -> nat -> ty -> nat -> Prop :=
     closed 0 (length G1) 1 T2 ->
     vtp (S m) G1 x (TBind T2) (S (n1))
 | vtp_sel: forall m G1 x y TX n1,
-    index y G1 = Some (vty TX) ->
+    index y G1 = Some (vobj (dty TX)) ->
     vtp m G1 x TX n1 ->
     vtp m G1 x (TSel (TVar true y)) (S (n1))
 .
@@ -1303,22 +1305,20 @@ Qed.
 
 Fixpoint subst_tm (u:nat) (T : tm) {struct T} : tm :=
   match T with
-    | tvar true i  => tvar true i
-    | tvar false i => if beq_nat i 0 then (tvar true u) else tvar false (i-1)
-    | tbool b      => tbool b                           
-    | tmem T       => tmem (subst (TVar true u) T)
-    | tabs T1 T2 t => tabs (subst (TVar true u) T1) (subst (TVar true u) T2) (subst_tm u t)
-(*    | TVarB i      => TVarB i *)
-    | tapp t1 t2   => tapp (subst_tm u t1) (subst_tm u t2)
+    | tvar true i         => tvar true i
+    | tvar false i        => if beq_nat i 0 then (tvar true u) else tvar false (i-1)
+    | tbool b             => tbool b
+    | tobj (dty T)        => tobj (dty (subst (TVar true u) T))
+    | tobj (dfun T1 T2 t) => tobj (dfun (subst (TVar true u) T1) (subst (TVar true u) T2) (subst_tm u t))
+    | tapp t1 t2          => tapp (subst_tm u t1) (subst_tm u t2)
   end.
 
+
 Inductive step : venv -> tm -> venv -> tm -> Prop :=
-| ST_Mem : forall G1 T1,
-    step G1 (tmem T1) (vty T1::G1) (tvar true (length G1))
-| ST_Abs : forall G1 T1 T2 t,
-    step G1 (tabs T1 T2 t) (vabs T1 T2 t::G1) (tvar true (length G1))
+| ST_Obj : forall G1 D,
+    step G1 (tobj D) (vobj D::G1) (tvar true (length G1))
 | ST_AppAbs : forall G1 f x T1 T2 t12,
-    index f G1 = Some (vabs T1 T2 t12) ->
+    index f G1 = Some (vobj (dfun T1 T2 t12)) ->
     step G1 (tapp (tvar true f) (tvar true x)) G1 (subst_tm x t12)
 | ST_App1 : forall G1 G1' t1 t1' t2,
     step G1 t1 G1' t1' ->
@@ -1397,17 +1397,17 @@ Proof.
   - Case "varx". eauto. 
   - Case "vary". subst GH. inversion H. 
   - Case "mem". right.
-    assert (stpd2 [] (vty T11::G1) T11 T11).
+    assert (stpd2 [] (vobj (dty T11)::G1) T11 T11).
     eapply stpd2_refl. subst. eapply closed_extend. eauto. 
-    eu. repeat eexists. rewrite <-app_cons1. eapply ST_Mem. eapply T_Varx. eapply vtp_mem.
+    eu. repeat eexists. rewrite <-app_cons1. eapply ST_Obj. eapply T_Varx. eapply vtp_mem.
     simpl. rewrite beq_nat_true_eq. eauto. eauto. eauto. 
   - Case "abs". right.
     inversion CL.
-    assert (stpd2 [] (vabs T11 T12 t12::G1) T11 T11).
+    assert (stpd2 [] (vobj (dfun T11 T12 t12)::G1) T11 T11).
     eapply stpd2_refl. subst. eapply closed_extend. eauto. 
-    assert (stpd2 [] (vabs T11 T12 t12::G1) T12 T12).
+    assert (stpd2 [] (vobj (dfun T11 T12 t12)::G1) T12 T12).
     eapply stpd2_refl. subst. eapply closed_extend. eauto. 
-    eu. eu. repeat eexists. rewrite <-app_cons1. eapply ST_Abs. eapply T_Varx. eapply vtp_fun.
+    eu. eu. repeat eexists. rewrite <-app_cons1. eapply ST_Obj. eapply T_Varx. eapply vtp_fun.
     simpl. rewrite beq_nat_true_eq. eauto. subst.
     eapply has_type_extend. eauto. eauto. eauto. 
   - Case "app". subst.
