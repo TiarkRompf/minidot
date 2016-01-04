@@ -7,8 +7,7 @@
 (* TODO: 
    Type checker / examples
 ------
-   - multiple members
-   - intersection types
+   - multiple members / intersection types
    - app var / proper TAll comparison
 
    - closedness question: expansion cannot use id beyond self
@@ -1327,9 +1326,6 @@ Inductive step : venv -> tm -> venv -> tm -> Prop :=
     step G1 t2 G1' t2' ->
     step G1 (tapp (tvar true f) t2) G1' (tapp (tvar true f) t2')
 .
-
-
-
 
 
 
