@@ -9,6 +9,7 @@
 ------
    - multiple members / intersection types
    - app var / proper TAll comparison
+   - has_type var_pack/unpack rules
 
    - closedness question: expansion cannot use id beyond self
 *)
