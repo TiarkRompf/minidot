@@ -7,9 +7,6 @@
 (* copied from dot23.v *)
 (* based on that, it adds bind1 rule *)
 
-(* FIXME: examples are commented out (dot23) *)
-
-
 Require Export SfLib.
 
 Require Export Arith.EqNat.
