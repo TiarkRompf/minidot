@@ -1,18 +1,4 @@
-(* Clean-slate look at subtyping relation based on *)
-(* singleton types (single env) *)
-(* smallstep semantics *)
-(* copied from sms-singletons0.v *)
-(* based on that, removed singletons and other new things. model current version of DOT *)
-
-(* TODO: 
-   Type checker / examples
-------
-   - multiple members / intersection types
-   - app var / proper TAll comparison
-   - has_type var_pack/unpack rules
-
-   - closedness question: expansion cannot use id beyond self
-*)
+(* smallstep proof *)
 
 Require Export SfLib.
 
@@ -64,7 +50,6 @@ Fixpoint index {X : Type} (n : id) (l : list X) : option X :=
   end.
 
 
-(* closed i j k means normal variables < i and < j, bound variables < k *)
 Inductive closed: nat -> nat -> nat -> ty -> Prop :=
 | cl_bot: forall i j k,
     closed i j k TBot
@@ -135,6 +120,7 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
       index x GH = Some T ->
       closed (length GH) (length G1) 0 T -> 
       has_type GH G1 (tvar false x) T (S n1)
+  (* todo: add var pack/unpack *)
   | T_Mem : forall GH G1 T11 n1,
       closed (length GH) (length G1) 0 T11 -> 
       has_type GH G1 (tobj (dty T11)) (TMem T11 T11) (S n1)
@@ -147,6 +133,7 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
       has_type GH G1 t1 (TFun T1 T2) n1 ->
       has_type GH G1 t2 T1 n2 ->
       has_type GH G1 (tapp t1 t2) T2 (S (n1+n2))
+  (* todo: add app-var and use dependent functions *)
   | T_Sub : forall GH G1 t T1 T2 n1 n2,
       has_type GH G1 t T1 n1 ->
       stp2 GH G1 T1 T2 n2 ->
@@ -162,6 +149,7 @@ with stp2: tenv -> venv -> ty -> ty -> nat -> Prop :=
     stp2 GH G1 T  TTop (S n1)
 | stp2_bool: forall GH G1 n1,
     stp2 GH G1 TBool TBool (S n1)
+(* todo: use dependent functions *)
 | stp2_fun: forall GH G1 T1 T2 T3 T4 n1 n2,
     stp2 GH G1 T3 T1 n1 ->
     stp2 GH G1 T2 T4 n2 ->
@@ -177,18 +165,6 @@ with stp2: tenv -> venv -> ty -> ty -> nat -> Prop :=
 | stp2_varax: forall GH G1 x n1,
     x < length GH ->
     stp2 GH G1 (TVar false x) (TVar false x) (S n1)
-         
-(* NOTE: Currently we require *all* store references (TVar true x)
-   to expand (strong_sel), even in nested contexts (GH <> nil).
-   This is directly related to the htp GL restriction: when
-   substituting, we must derive the precise expansion, and cannot
-   tolerate potentially unsafe bindings in GH.
-   Is this an issue? If yes, we can keep sel1/sel2 and htp
-   for store references, and only invert once we know GH=[].
-   We need to be careful, though: it is not clear that we can
-   use stp2_trans on the embedded vtp. We may need to specially
-   mark self variables (again), since they are the only ones 
-   that occur recursively. *)
 
 | stp2_strong_sel1: forall GH G1 T2 TX x n1,
     index x G1 = Some (vobj (dty TX)) ->
@@ -237,20 +213,22 @@ with stp2: tenv -> venv -> ty -> ty -> nat -> Prop :=
 
 with htp: tenv -> venv -> nat -> ty -> nat -> Prop :=
 | htp_var: forall GH G1 x TX n1,
-    (* can we assign (TVar false x) ? probably not ... *)
     index x GH = Some TX ->
     closed (length GH) (length G1) 0 TX ->         
     htp GH G1 x TX (S n1)
 | htp_bind: forall GH G1 x TX n1,
-    (* is it needed given stp2_bind1? for the moment, yes ...*)
     htp GH G1 x (TBind TX) n1 ->
     closed x (length G1) 1 TX ->
     htp GH G1 x (open 0 (TVar false x) TX) (S n1)
 | htp_sub: forall GH GU GL G1 x T1 T2 n1 n2,
+    (* use restricted GH. note: this is slightly different
+    than in the big-step version b/c here we do not distinguish
+    if variables are bound in terms vs types. it would be easy 
+    to do exactly the same thing by adding this distinction. *)
     htp GH G1 x T1 n1 ->
     stp2 GL G1 T1 T2 n2 ->
     length GL = S x ->
-    GH = GU ++ GL -> (* NOTE: restriction to GL means we need trans in sel rules *)
+    GH = GU ++ GL -> 
     htp GH G1 x T2 (S (n1+n2))
              
 with vtp : nat -> venv -> nat -> ty -> nat -> Prop :=
@@ -1162,7 +1140,7 @@ Qed.
 
 
 
-Lemma stp2_trans: forall l, forall n, forall k, forall m1 G1 x T2 T3 n1 n2,
+Lemma vtp_widen: forall l, forall n, forall k, forall m1 G1 x T2 T3 n1 n2,
   vtp m1 G1 x T2 n1 -> 
   stp2 [] G1 T2 T3 n2 ->
   m1 < l -> n2 < n -> n1 < k -> 
@@ -1339,7 +1317,7 @@ Proof.
   - Case "varx". subst. repeat eexists. eauto.
   - Case "sub".
     destruct IHhas_type. eauto. eauto. ev.
-    assert (exists m0, vtpdd m0 G1 x T2). eexists. eapply stp2_trans; eauto. 
+    assert (exists m0, vtpdd m0 G1 x T2). eexists. eapply vtp_widen; eauto. 
     ev. eu. repeat eexists. eauto. 
 Qed.
 
@@ -1372,7 +1350,7 @@ Proof.
     edestruct stp2_subst_narrow0. eapply H1. eapply vtp_closed1. eauto. eauto. 
     { intros. edestruct stp2_subst_narrowX. erewrite subst_closed_id.
       eapply H0. eapply vtp_closed. eauto. eauto. eapply vtp_closed1. eauto. eauto. eauto.
-      { intros. eapply stp2_trans; eauto. }
+      { intros. eapply vtp_widen; eauto. }
       ev. repeat eexists. eauto.
     }
     edestruct IHhas_type. eauto. eauto.
@@ -1425,7 +1403,7 @@ Proof.
         assert (exists m n1, vtp m G1 x (TFun T1 T) n1). eapply hastp_inv. eauto.
         assert (exists m n1, vtp m G1 x0 T1 n1). eapply hastp_inv. eauto.
         ev. inversion H1. subst.
-        assert (vtpdd x1 G1 x0 T0). eapply stp2_trans. eauto. eauto. eauto. eauto. eauto.
+        assert (vtpdd x1 G1 x0 T0). eapply vtp_widen. eauto. eauto. eauto. eauto. eauto.
         eu.
         assert (has_typed (map (substt x0) []) G1 (subst_tm x0 t) (substt x0 T2)) as HI.
         eapply hastp_subst; eauto.
