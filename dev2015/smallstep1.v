@@ -128,7 +128,7 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
       closed (length GH) (length G1) 0 T -> 
       has_type GH G1 (tvar false x) T (S n1)
   (* todo: add var pack/unpack *)
-  (* todo: objects with multiple members *)
+  (* todo: recursive objects with multiple members *)
   | T_Mem : forall GH G1 T11 n1,
       closed (length GH) (length G1) 0 T11 -> 
       has_type GH G1 (tobj (dty T11)) (TMem T11 T11) (S n1)
