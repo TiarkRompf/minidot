@@ -129,13 +129,12 @@ Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
 
 
 Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
-  | T_Varx : forall m GH G1 x T n1,
-      vtp m G1 x T n1 ->
-      has_type GH G1 (tvar true x) T (S n1)
-  | T_Vary : forall G1 GH x T n1,
-      index x GH = Some T ->
-      closed (length GH) (length G1) 0 T -> 
-      has_type GH G1 (tvar false x) T (S n1)
+  | T_Varx : forall GH G1 x n1,
+      x < length G1 ->
+      has_type GH G1 (tvar true x) (TVar true x) (S n1)
+  | T_Vary : forall G1 GH x n1,
+      x < length GH ->
+      has_type GH G1 (tvar false x) (TVar false x) (S n1)
   | T_Mem : forall GH G1 T11 n1,
       closed (length GH) (length G1) 0 T11 -> 
       has_type GH G1 (tmem T11) (TMem T11 T11) (S n1)
@@ -175,8 +174,8 @@ with stp2: nat -> bool -> tenv -> venv -> ty -> ty -> nat -> Prop :=
 | stp2_varx: forall m GH G1 x n1,
     x < length G1 ->
     stp2 m true GH G1 (TVar true x) (TVar true x) (S n1)
-| stp2_var1: forall m m2 GH G1 x T2 n1,
-    vtp m2 G1 x T2 n1 -> (* slack for: val_type G2 v T2 *)
+| stp2_var1: forall m GH G1 x T2 n1,
+    vtp2 G1 x T2 n1 -> (* slack for: val_type G2 v T2 *)
     stp2 m true GH G1 (TVar true x) T2 (S n1)
 
 (* not sure if we should have these 2 or not ... ? *)
@@ -574,7 +573,7 @@ Proof.
   - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
   - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega. 
   - econstructor. simpl. eauto.
-  - econstructor. eapply IHn. eauto. omega. 
+  - econstructor. admit. (* eapply IHn. eauto. omega. *)
   - econstructor. eauto.
   - econstructor. eapply IHn. eauto. omega.
   - econstructor. eapply index_extend. eauto. eapply IHn. eauto. omega.
@@ -597,8 +596,8 @@ Proof.
   - eapply htp_bind. eapply IHn. eauto. omega. eapply closed_extend. eauto. 
   - eapply htp_sub. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eauto.
   (* has_type *)
-  - econstructor. eapply IHn. eauto. omega.
-  - econstructor. eauto. eapply closed_extend. eauto.
+  - admit. (* econstructor. eapply IHn. eauto. omega. *)
+  - econstructor. eauto. 
   - econstructor. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eapply closed_extend. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
@@ -665,7 +664,7 @@ Proof.
   - econstructor. eapply IHS2. eauto. omega. eapply IHS1. eauto. omega.
   - econstructor. eapply IHS2. eauto. omega. eapply IHS1. eauto. omega. 
   - econstructor. simpl. eauto.
-  - econstructor. eauto. eapply IHV1. eauto. omega. 
+  - econstructor. admit. (* eauto. eapply IHV1. eauto. omega. *)
   - econstructor. eauto.
   - econstructor. eapply IHH1. eauto. omega.
   - econstructor. econstructor. eapply index_max. eauto. 
@@ -683,7 +682,7 @@ Proof.
   - econstructor. eapply IHS1. eauto. omega. eapply IHS2. eauto. omega.
   - econstructor. eapply IHS1. eauto. omega. eapply IHS2. eauto. omega. 
   - econstructor. simpl. eauto.
-  - eapply closed_upgrade_gh. eapply IHV2. eauto. omega. omega. 
+  - admit. (* eapply closed_upgrade_gh. eapply IHV2. eauto. omega. omega. *)
   - econstructor. eauto.
   - eapply IHH2. eauto. omega.
   - eapply closed_upgrade_gh. eapply IHS2. eapply H2. omega. simpl. omega.  
@@ -717,8 +716,8 @@ Proof.
   - eapply IHH1 in H1. eapply closed_open. simpl. eapply closed_upgrade_gh. eauto. omega. econstructor. eauto. omega. 
   - eapply closed_upgrade_gh. eapply IHS2. eauto. omega. rewrite H4. rewrite app_length. omega. 
   (* has_type *)
-  - eapply closed_upgrade_gh. eapply IHV2. eauto. omega. omega.
-  - eauto.
+  - econstructor. eauto. 
+  - econstructor. eauto. 
   - econstructor. eauto. eauto.
   - econstructor. eauto. eauto. 
   - eapply IHT in H1. inversion H1. eauto. omega.
@@ -764,6 +763,11 @@ Lemma vtp_closed: forall m G1 x T2 n1,
   vtp m G1 x T2 n1 -> 
   closed 0 (length G1) 0 T2.
 Proof. intros. eapply all_closed. eauto. eauto. Qed.
+
+Lemma vtp2_closed: forall G1 x T2 n1,
+  vtp2 G1 x T2 n1 -> 
+  closed 0 (length G1) 0 T2.
+Proof. admit. (* intros. eapply all_closed. eauto. eauto. *) Qed.
 
 Lemma vtp_closed1: forall m G1 x T2 n1,
   vtp m G1 x T2 n1 -> 
@@ -1142,7 +1146,7 @@ Lemma stp2_subst_narrow0: forall n, forall m2 b GH G1 T1 T2 TX x n2,
    stp2 m2 b (GH++[TX]) G1 T1 T2 n2 -> x < length G1 -> n2 < n -> 
    (forall (m1 : nat) GH (T3 : ty) (n1 : nat),
       htp m1 false (GH++[TX]) G1 0 T3 n1 -> n1 < n ->
-      exists m2, vtpd m2 G1 x (substt x T3)) ->
+      vtpd2 G1 x (substt x T3)) ->
    stpd2 m2 b (map (substt x) GH) G1 (substt x T1) (substt x T2).
 Proof.
   intros n. induction n. intros. omega.
@@ -1209,7 +1213,7 @@ Proof.
   - Case "varx". subst.
     eexists. eapply stp2_varx. eauto.
   - Case "var1". subst.
-    assert (substt x T2 = T2) as R. eapply subst_closed_id. eapply vtp_closed. eauto. 
+    assert (substt x T2 = T2) as R. eapply subst_closed_id. eapply vtp2_closed. eauto. 
     eexists. eapply stp2_var1. rewrite R. eauto.
   - Case "varax". subst.
     case_eq (beq_nat x0 0); intros E.
@@ -1223,7 +1227,7 @@ Proof.
     case_eq (beq_nat x0 0); intros E.
     + (* hit *)
       assert (x0 = 0). eapply beq_nat_true_iff. eauto. subst x0. 
-      assert (exists m0, vtpd m0 G1 x (substt x T2)). subst. eapply narrowX; eauto. omega. 
+      assert (vtpd2 G1 x (substt x T2)). subst. eapply narrowX; eauto. omega. 
       ev. eu. subst. repeat eexists. simpl. eapply stp2_var1. eauto. 
     + (* miss *)
       assert (x0 <> 0). eapply beq_nat_false_iff. eauto.
@@ -1276,10 +1280,11 @@ Proof.
   - Case "sel1". subst. (* invert htp to vtp and create strong_sel node *)
     case_eq (beq_nat x0 0); intros E.
     + assert (x0 = 0). eapply beq_nat_true_iff. eauto. subst x0.
-      assert (exists m0, vtpd m0 G1 x (substt x (TMem TBot T2))) as A. eapply narrowX. eauto. omega.
-      destruct A as [? A]. eu. inversion A. subst.
+      assert (vtpd2 G1 x (substt x (TMem TBot T2))) as A. eapply narrowX. eauto. omega.
+      eu. inversion A. inversion H3.
       repeat eexists. eapply stp2_strong_sel1. eauto. unfold substt. 
-      instantiate (1:=n2). admit. (* FIXME: m2 vs ms *)
+      assert (m2=ms) as R. admit.
+      rewrite R. eauto. 
     + assert (x0 <> 0). eapply beq_nat_false_iff. eauto.
       eapply htp_subst_narrow02 in H2. 
       eu. repeat eexists. unfold substt. simpl. rewrite E. eapply stp2_sel1. eapply H2. eauto. eauto. eauto. 
@@ -1287,10 +1292,11 @@ Proof.
   - Case "sel2". subst. (* invert htp to vtp and create strong_sel node *)
     case_eq (beq_nat x0 0); intros E.
     + assert (x0 = 0). eapply beq_nat_true_iff. eauto. subst x0.
-      assert (exists m0, vtpd m0 G1 x (substt x (TMem T1 TTop))) as A. eapply narrowX. eauto. omega.
-      destruct A as [? A]. eu. inversion A. subst. 
+      assert (vtpd2 G1 x (substt x (TMem T1 TTop))) as A. eapply narrowX. eauto. omega.
+      eu. inversion A. inversion H3.
       repeat eexists. eapply stp2_strong_sel2. eauto. unfold substt. 
-      instantiate (1:=n2). admit. (* FIXME: m2 vs ms *)
+      assert (m2=ms) as R. admit.
+      rewrite R. eauto.
     + assert (x0 <> 0). eapply beq_nat_false_iff. eauto.
       eapply htp_subst_narrow02 in H2. 
       eu. repeat eexists. unfold substt. simpl. rewrite E. eapply stp2_sel2. eapply H2. eauto. eauto. eauto. 
@@ -1360,7 +1366,7 @@ Proof.
     eu.
     assert (stpd2 m2 b (map (substt x) []) G1 (substt x T1) (substt x T2)) as B.
     eapply stp2_subst_narrow0. eauto. eauto. eauto. {
-      intros. eapply IHnl in H. eu. repeat eexists. eauto. eauto. eauto. eauto. omega. eauto. 
+      intros. eapply IHnl in H. eu. repeat eexists. eapply vtp2_down. eauto. eauto. eauto. eauto. omega. eauto. 
     }
     simpl in B. eu. 
     assert (vtpdd x0 G1 x (substt x T2)).
@@ -1494,6 +1500,7 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 
+
 Lemma stp2_trans2: forall n, forall m b G1 T2 T3 x n1 n2,
   vtp2 G1 x T2 n1 ->
   stp2 m b [] G1 T2 T3 n2 -> n2 < n ->
@@ -1509,7 +1516,7 @@ Proof.
     + SCase "varx". subst.
       eexists. eapply vtp2_refl. eauto.
     + SCase "var1". subst.
-      eexists. eapply vtp2_down. eauto.
+      eexists. eauto.
     + SCase "ssel2". subst.
       assert (vtpd2 G1 x TX). eapply IHn; eauto. omega. 
       eu. eexists. eapply vtp2_sel. eauto. eauto. 
@@ -1548,6 +1555,49 @@ Proof.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. 
 Qed.
+
+Lemma stp2_subst_narrowX2: forall nl, forall b m2 GH G1 T2 TX x n1 n2,
+   vtp2 G1 x (substt x TX) n1 ->
+   htp m2 b (GH++[TX]) G1 0 T2 n2 -> x < length G1 -> n2 < nl ->
+   vtpd2 G1 x (substt x T2).
+Proof. 
+  intros nl. induction nl. intros. omega.
+  intros.
+  inversion H0.
+  - Case "var". subst.
+    assert (T2 = TX). eapply index_hit0. eauto. 
+    subst T2.
+    repeat eexists. eauto. 
+  - Case "bind". subst.
+    assert (vtpd2 G1 x (substt x (TBind TX0))) as A.
+    eapply IHnl. eauto. eauto. eauto. eauto. omega. eauto.
+    destruct A as [? A]. inversion A. inversion H5. subst.
+    repeat eexists. unfold substt. erewrite subst_open_commute0.
+    assert (closed 0 (length G1) 0 (TBind (substt x TX0))). eapply vtp2_closed. unfold substt in A. simpl in A. eapply A.
+    assert ((substt x (TX0)) = TX0) as R. eapply subst_closed_id. eauto.
+    unfold substt in R. rewrite R in H11. eapply vtp2_down. eapply H11. simpl. eauto. 
+  - Case "sub". subst. 
+    assert (GL = [TX]). eapply sub_env1; eauto. subst GL.
+    assert (vtpd2 G1 x (substt x T1)) as A.
+    eapply IHnl. eauto. eauto. eauto. eauto. omega. eauto. 
+    eu.
+    assert (stpd2 m2 b (map (substt x) []) G1 (substt x T1) (substt x T2)) as B.
+    eapply stp2_subst_narrow0. eauto. eauto. eauto. {
+      intros. eapply IHnl in H. eu. repeat eexists. eauto. eauto. eauto. eauto. omega.
+    }
+    simpl in B. eu. 
+    eapply stp2_trans2. eauto. eauto. eauto. 
+Qed.
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1595,53 +1645,52 @@ Inductive step : venv -> tm -> venv -> tm -> Prop :=
 
 Lemma hastp_inv: forall G1 x T n1,
   has_type [] G1 (tvar true x) T n1 ->
-  exists m n1, vtp m G1 x T n1.
+  vtpd2 G1 x T.
 Proof.
   intros. remember [] as GH. remember (tvar true x) as t.
   induction H; subst; try inversion Heqt.
-  - Case "varx". subst. repeat eexists. eauto.
+  - Case "varx". subst. exists 1. eapply vtp2_refl. eauto.
   - Case "sub".
     destruct IHhas_type. eauto. eauto. ev.
-    assert (exists m0, vtpdd m0 G1 x T2). eexists. eapply stp2_trans; eauto. 
-    ev. eu. repeat eexists. eauto. 
+    eapply stp2_trans2; eauto. 
 Qed.
 
-Lemma hastp_subst: forall m G1 GH TX T x t n1 n2,
+
+Lemma hastp_subst: forall G1 GH TX T x t n1 n2,
   has_type (GH++[TX]) G1 t T n2 ->
-  vtp m G1 x TX n1 ->
+  vtp2 G1 x TX n1 ->
   exists n3, has_type (map (substt x) GH) G1 (subst_tm x t) (substt x T) n3.
 Proof.
   intros. remember (GH++[TX]) as GH0. revert GH HeqGH0. induction H; intros.
-  - Case "varx". simpl. eexists. eapply T_Varx. erewrite subst_closed_id. eauto. eapply vtp_closed. eauto.
+  - Case "varx". simpl. eexists. eapply T_Varx. eauto. 
   - Case "vary". subst. simpl.
     case_eq (beq_nat x0 0); intros E.
     + assert (x0 = 0). eapply beq_nat_true_iff; eauto. subst x0.
-      eexists. eapply T_Varx. eapply index_hit0 in H. subst. erewrite subst_closed_id. eauto. eapply vtp_closed. eauto. 
+      exists 1. eapply T_Varx. eapply vtp2_closed1. eauto. 
     + assert (x0 <> 0). eapply beq_nat_false_iff; eauto.
-      eexists. eapply T_Vary. eapply index_subst1. eauto. eauto. rewrite map_length. eapply closed_subst0. rewrite app_length in H1. simpl in H1. eapply H1. eapply vtp_closed1. eauto.
+      exists 1. unfold substt. simpl. rewrite E. eapply T_Vary. rewrite map_length.
+      rewrite app_length in H. simpl in H. omega.  
   - Case "mem". subst. simpl.
-    eexists. eapply T_Mem. eapply closed_subst0. rewrite app_length in H. rewrite map_length. eauto. eapply vtp_closed1. eauto.
+    eexists. eapply T_Mem. eapply closed_subst0. rewrite app_length in H. rewrite map_length. eauto. eapply vtp2_closed1. eauto.
   - Case "abs". subst. simpl.
     assert (has_typed (map (substt x) (T11::GH0)) G1 (subst_tm x t12) (substt x T12)) as HI.
     eapply IHhas_type. eauto. eauto.
     eu. simpl in HI. 
-    eexists. eapply T_Abs. eapply HI. eapply closed_subst0. rewrite map_length. rewrite app_length in H1. simpl in H1. eauto. eauto. eapply vtp_closed1. eauto.
-    eapply closed_subst0. rewrite map_length. rewrite app_length in H2. simpl in H2. eauto. eapply vtp_closed1. eauto.
+    eexists. eapply T_Abs. eapply HI. eapply closed_subst0. rewrite map_length. rewrite app_length in H1. simpl in H1. eauto. eauto. eapply vtp2_closed1. eauto.
+    eapply closed_subst0. rewrite map_length. rewrite app_length in H2. simpl in H2. eauto. eapply vtp2_closed1. eauto.
   - Case "app".
     edestruct IHhas_type1. eauto. eauto.
     edestruct IHhas_type2. eauto. eauto. 
     eexists. eapply T_App. eapply H2. eapply H3. 
-  - Case "sub". subst. 
-    edestruct stp2_subst_narrow0. eapply H1. eapply vtp_closed1. eauto. eauto. 
-    { intros. edestruct stp2_subst_narrowX. erewrite subst_closed_id.
-      eapply H0. eapply vtp_closed. eauto. eauto. eapply vtp_closed1. eauto. eauto. eauto.
-      { intros. eapply stp2_trans; eauto. }
-      ev. repeat eexists. eauto.
+  - Case "sub". subst.
+    edestruct stp2_subst_narrow0. eapply H1. eapply vtp2_closed1. eauto. eauto. 
+    { intros. edestruct stp2_subst_narrowX2. erewrite subst_closed_id. 
+      eapply H0. eapply vtp2_closed. eauto. eauto. eapply vtp2_closed1. eauto. eauto. eexists. eauto. 
     }
     edestruct IHhas_type. eauto. eauto.
     eexists. eapply T_Sub. eauto. eauto.
 Grab Existential Variables.
-  apply 0. apply 0.
+  apply 0. apply 0. 
 Qed.
 
 Theorem type_safety : forall G t T n1,
@@ -1659,7 +1708,7 @@ Proof.
   - Case "mem". right.
     assert (stpd2 0 true [] (vty T11::G1) T11 T11).
     eapply stpd2_refl. subst. eapply closed_extend. eauto. 
-    eu. repeat eexists. rewrite <-app_cons1. eapply ST_Mem. eapply T_Varx. eapply vtp_mem.
+    eu. repeat eexists. rewrite <-app_cons1. eapply ST_Mem. eapply T_Sub. eapply T_Varx. eauto. eapply stp2_wrapf. eapply stp2_var1.  eapply vtp2_down. eapply vtp_mem.
     simpl. rewrite beq_nat_true_eq. eauto. eauto. eauto. 
   - Case "abs". right.
     inversion CL.
@@ -1667,7 +1716,7 @@ Proof.
     eapply stpd2_refl. subst. eapply closed_extend. eauto. 
     assert (stpd2 0 true [] (vabs T11 T12 t12::G1) T12 T12).
     eapply stpd2_refl. subst. eapply closed_extend. eauto. 
-    eu. eu. repeat eexists. rewrite <-app_cons1. eapply ST_Abs. eapply T_Varx. eapply vtp_fun.
+    eu. eu. repeat eexists. rewrite <-app_cons1. eapply ST_Abs. eapply T_Sub. eapply T_Varx. eauto. eapply stp2_wrapf. eapply stp2_var1. eapply vtp2_down. eapply vtp_fun.
     simpl. rewrite beq_nat_true_eq. eauto. subst.
     eapply has_type_extend. eauto. eauto. eauto. 
   - Case "app". subst.
@@ -1685,12 +1734,12 @@ Proof.
       destruct HX.
       * SSCase "arg-val".
         ev. ev. subst. 
-        assert (exists m n1, vtp m G1 x (TFun T1 T) n1). eapply hastp_inv. eauto.
-        assert (exists m n1, vtp m G1 x0 T1 n1). eapply hastp_inv. eauto.
-        ev. inversion H1. subst.
-        assert (vtpdd x1 G1 x0 T0). eapply stp2_trans. eauto. eauto. eauto. eauto. eauto.
+        assert (vtpd2 G1 x (TFun T1 T)). eapply hastp_inv. eauto.
+        assert (vtpd2 G1 x0 T1). eapply hastp_inv. eauto.
+        eu. eu. inversion H1. inversion H3. subst.
+        assert (vtpd2 G1 x0 T2). eapply stp2_trans2. eauto. eauto. eauto. eauto. eauto.
         eu.
-        assert (has_typed (map (substt x0) []) G1 (subst_tm x0 t) (substt x0 T2)) as HI.
+        assert (has_typed (map (substt x0) []) G1 (subst_tm x0 t) (substt x0 T3)) as HI.
         eapply hastp_subst; eauto.
         eu. simpl in HI. erewrite subst_closed_id in HI. 
         right. repeat eexists. rewrite app_nil_l. eapply ST_AppAbs. eauto.
@@ -1716,7 +1765,7 @@ Proof.
       right. repeat eexists. eauto. eapply T_Sub. eauto. eapply stp2_extend_mult. eauto. 
       
 Grab Existential Variables.
-apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. 
 Qed. 
 
 
