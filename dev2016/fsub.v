@@ -8,6 +8,7 @@ Require Export SfLib.
 
 Require Export Arith.EqNat.
 Require Export Arith.Le.
+Require Import Coq.Program.Equality.
 
 (* ### Syntax ### *)
 
@@ -1302,6 +1303,21 @@ Proof.
     try solve [inversion IHstp1; inversion IHstp2; inversion IHstp3; split; eauto].
 Qed.
 
+
+Lemma stp_reg2 : forall G GH T1 T2,
+                       stp G GH T1 T2 ->
+                       stp G GH T2 T2.
+Proof.
+  intros. apply (proj2 (stp_reg G GH T1 T2 H)).
+Qed.
+
+Lemma stp_reg1 : forall G GH T1 T2,
+                       stp G GH T1 T2 ->
+                       stp G GH T1 T1.
+Proof.
+  intros. apply (proj1 (stp_reg G GH T1 T2 H)).
+Qed.
+
 Lemma valtp_extend : forall vs v x v1 T,
                        val_type vs v T ->
                        fresh vs <= x ->
@@ -1377,12 +1393,32 @@ Hint Constructors res_type.
 Hint Resolve not_stuck.
 
 (* ### Transitivity ### *)
+
+Lemma stp_trans: forall G GH T1 T2 T3,
+  stp G GH T1 T2 ->
+  stp G GH T2 T3 ->
+  stp G GH T1 T3.
+Proof.
+  intros G GH T1 T2 T3 S12 S23.
+  generalize dependent S23.
+  generalize dependent T3.
+  generalize dependent S12.
+  generalize dependent T1.
+  generalize dependent GH.
+  generalize dependent G.
+  induction T2; intros G GH T1 S12; dependent induction S12;
+  intros T3 S23; inversion S23; eauto 4 using stp_reg1, stp_reg2.
+  (* TAll - TAll *)
+  admit.
+Qed.
+
 Lemma stp2_trans: forall G1 G2 G3 T1 T2 T3 H,
   stp2 G1 T1 G2 T2 H ->
   stp2 G2 T2 G3 T3 H ->
   stp2 G1 T1 G3 T3 H.
-Proof. admit. Qed.
-
+Proof.
+  admit.
+Qed.
 
 (* ### Substitution for relating static and dynamic semantics ### *)
 
