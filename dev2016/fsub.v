@@ -599,7 +599,9 @@ Proof.
     + rewrite E in H. inversion H. subst. simpl.
       rewrite app_length in E.
       rewrite app_length. rewrite map_length. simpl.
-      assert (beq_nat (x0 + 1) (length G2 + S (length G0)) = true). eapply beq_nat_true_iff. eapply beq_nat_true_iff in E. omega.
+      assert (beq_nat (x0 + 1) (length G2 + S (length G0)) = true). {
+        eapply beq_nat_true_iff. eapply beq_nat_true_iff in E. omega.
+      }
       rewrite H1. eauto.
     + rewrite E in H.  eapply IHG2 in H. eapply indexr_extend. eapply H. eauto.
 Qed.
@@ -607,7 +609,8 @@ Qed.
 Lemma indexr_spliceat_hi: forall G0 G2 x0 x v1 G T,
     indexr x0 (G2 ++ G0) = Some (G, T) ->
     length G0 <= x0 ->
-    indexr (x0 + 1) (map (spliceat (length G0)) G2 ++ (x, v1) :: G0) = Some (G, splice (length G0) T).
+    indexr (x0 + 1) (map (spliceat (length G0)) G2 ++ (x, v1) :: G0) =
+    Some (G, splice (length G0) T).
 Proof.
   intros G0 G2. induction G2; intros.
   - eapply indexr_max in H. simpl in H. omega.
@@ -616,7 +619,9 @@ Proof.
     + rewrite E in H. inversion H. subst. simpl.
       rewrite app_length in E.
       rewrite app_length. rewrite map_length. simpl.
-      assert (beq_nat (x0 + 1) (length G2 + S (length G0)) = true). eapply beq_nat_true_iff. eapply beq_nat_true_iff in E. omega.
+      assert (beq_nat (x0 + 1) (length G2 + S (length G0)) = true). {
+        eapply beq_nat_true_iff. eapply beq_nat_true_iff in E. omega.
+      }
       rewrite H1. eauto.
     + rewrite E in H.  eapply IHG2 in H. destruct p. eapply indexr_extend. eapply H. eauto.
 Qed.
@@ -780,7 +785,8 @@ Proof.
   intros. induction H;
     try solve [repeat ev; split; eauto];
     try solve [try inversion IHstp; split; eauto; apply cl_selh; eapply indexr_max; eassumption];
-    try solve [inversion IHstp1 as [IH1 IH2]; inversion IH2; split; eauto; apply cl_selh; eapply indexr_max; eassumption].
+    try solve [inversion IHstp1 as [IH1 IH2]; inversion IH2; split; eauto;
+               apply cl_selh; eapply indexr_max; eassumption].
 Qed.
 
 Lemma stp_closed2 : forall G1 GH T1 T2,
@@ -802,8 +808,10 @@ Lemma stp2_closed: forall G1 G2 T1 T2 GH,
                      closed 0 (length GH) T1 /\ closed 0 (length GH) T2.
   intros. induction H;
     try solve [repeat ev; split; eauto];
-    try solve [try inversion IHstp2_1; try inversion IHstp2_2; split; eauto; apply cl_selh; eapply indexr_max; eassumption];
-    try solve [inversion IHstp2 as [IH1 IH2]; inversion IH2; split; eauto; apply cl_selh; eapply indexr_max; eassumption].
+    try solve [try inversion IHstp2_1; try inversion IHstp2_2; split; eauto;
+               apply cl_selh; eapply indexr_max; eassumption];
+    try solve [inversion IHstp2 as [IH1 IH2]; inversion IH2; split; eauto;
+               apply cl_selh; eapply indexr_max; eassumption].
 Qed.
 
 Lemma stp2_closed2 : forall G1 G2 T1 T2 GH,
@@ -822,7 +830,8 @@ Qed.
 
 Lemma stp_splice : forall GX G0 G1 T1 T2 x v1,
    stp GX (G1++G0) T1 T2 ->
-   stp GX ((map (splicett (length G0)) G1) ++ (x,v1)::G0) (splice (length G0) T1) (splice (length G0) T2).
+   stp GX ((map (splicett (length G0)) G1) ++ (x,v1)::G0)
+       (splice (length G0) T1) (splice (length G0) T2).
 Proof.
   intros GX G0 G1 T1 T2 x v1 H. remember (G1++G0) as G.
   revert G0 G1 HeqG.
@@ -875,7 +884,8 @@ Qed.
 
 Lemma stp2_splice : forall G1 T1 G2 T2 GH1 GH0 x v1,
    stp2 G1 T1 G2 T2 (GH1++GH0) ->
-   stp2 G1 (splice (length GH0) T1) G2 (splice (length GH0) T2) ((map (spliceat (length GH0)) GH1) ++ (x,v1)::GH0).
+   stp2 G1 (splice (length GH0) T1) G2 (splice (length GH0) T2)
+        ((map (spliceat (length GH0)) GH1) ++ (x,v1)::GH0).
 Proof.
   intros G1 T1 G2 T2 GH1 GH0 x v1 H. remember (GH1++GH0) as GH.
   revert GH0 GH1 HeqGH.
@@ -958,10 +968,12 @@ Proof.
   assert (splice (length GH) T3 = T3) as A3. {
     eapply closed_splice_idem. eauto. omega.
   }
-  assert (map (splicett (length GH)) [(0,TMem T1)] ++(x,v1)::GH =((0,TMem T1)::(x,v1)::GH)) as HGX1. {
+  assert (map (splicett (length GH)) [(0,TMem T1)] ++(x,v1)::GH =
+          ((0,TMem T1)::(x,v1)::GH)) as HGX1. {
     simpl. rewrite A1. eauto.
   }
-  assert (map (splicett (length GH)) [(0,TMem T3)] ++(x,v1)::GH =((0,TMem T3)::(x,v1)::GH)) as HGX3. {
+  assert (map (splicett (length GH)) [(0,TMem T3)] ++(x,v1)::GH =
+          ((0,TMem T3)::(x,v1)::GH)) as HGX3. {
     simpl. rewrite A3. eauto.
   }
   apply stp_all with (x:=length ((x,v1) :: GH)).
@@ -1022,7 +1034,10 @@ Inductive venv_ext : venv -> venv -> Prop :=
 
 Inductive aenv_ext : aenv -> aenv -> Prop :=
 | aenv_ext_nil : aenv_ext nil nil
-| aenv_ext_cons : forall x T G' G A A', aenv_ext A' A -> venv_ext G' G -> aenv_ext ((x,(G',T))::A') ((x,(G,T))::A).
+| aenv_ext_cons :
+    forall x T G' G A A',
+      aenv_ext A' A -> venv_ext G' G ->
+      aenv_ext ((x,(G',T))::A') ((x,(G,T))::A).
 
 Lemma aenv_ext_refl: forall GH, aenv_ext GH GH.
 Proof.
@@ -1150,10 +1165,13 @@ Lemma stp2_extend : forall x v1 G1 G2 T1 T2 H,
 Proof.
   intros. induction H0;
     try solve [split; try split; intros; eauto using index_extend];
-    try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eauto];
+    try solve [split; try split; intros;
+               inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eauto];
     try solve [split; try split; intros; inversion IHstp2 as [? [? ?]]; eauto];
     try solve [split; try split; intros; inversion IHstp2 as [? [? ?]]; eauto using index_extend];
-    try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; inversion IHstp2_3 as [? [? ?]]; eauto; eapply stp2_all; eauto using stp2_closure_extend].
+    try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]];
+               inversion IHstp2_2 as [? [? ?]]; inversion IHstp2_3 as [? [? ?]];
+               eauto; eapply stp2_all; eauto using stp2_closure_extend].
 Qed.
 
 Lemma stp2_extend2 : forall x v1 G1 G2 T1 T2 H,
@@ -1192,14 +1210,16 @@ Proof.
   assert (splice (length GH) T1 = T1) as A1. {
     eapply closed_splice_idem. eauto. omega.
   }
-  assert (map (spliceat (length GH)) [(0,(G1, T1))] ++(x,v1)::GH =((0, (G1, T1))::(x,v1)::GH)) as HGX1. {
+  assert (map (spliceat (length GH)) [(0,(G1, T1))] ++(x,v1)::GH =
+          ((0, (G1, T1))::(x,v1)::GH)) as HGX1. {
     simpl. rewrite A1. eauto.
   }
   assert (closed 0 (length GH) T3). eapply stp2_closed1. eauto.
   assert (splice (length GH) T3 = T3) as A3. {
     eapply closed_splice_idem. eauto. omega.
   }
-  assert (map (spliceat (length GH)) [(0,(G2, T3))] ++(x,v1)::GH =((0, (G2, T3))::(x,v1)::GH)) as HGX3. {
+  assert (map (spliceat (length GH)) [(0,(G2, T3))] ++(x,v1)::GH =
+          ((0, (G2, T3))::(x,v1)::GH)) as HGX3. {
     simpl. rewrite A3. eauto.
   }
   eapply stp2_all.
@@ -1306,13 +1326,17 @@ Proof. intros. induction H.
 
        case_eq (beq_nat i n); intros E2.
        * SSCase "hit".
-         assert (index i ((n, v) :: vs) = Some v). eauto. unfold index. rewrite EX. rewrite E2. eauto.
+         assert (index i ((n, v) :: vs) = Some v). {
+           eauto. unfold index. rewrite EX. rewrite E2. eauto.
+         }
          assert (t = TF).
          unfold index in H0. rewrite E1 in H0. rewrite E2 in H0. inversion H0. eauto.
          subst t. eauto.
        * SSCase "miss".
          rewrite E2 in H3.
-         assert (exists v0, index i vs = Some v0 /\ val_type vs v0 TF) as HI. eapply IHwf_env. eauto.
+         assert (exists v0, index i vs = Some v0 /\ val_type vs v0 TF) as HI. {
+           eapply IHwf_env. eauto.
+         }
          inversion HI as [v0 HI1]. inversion HI1.
          eexists. econstructor. eapply index_extend; eauto. eapply valtp_extend; eauto.
      + SSCase "bad".
@@ -1448,7 +1472,8 @@ Lemma closed_no_open: forall T x l j,
 Proof.
   intros. induction H; intros; eauto;
   try solve [compute; compute in IHclosed_rec; rewrite <-IHclosed_rec; auto];
-  try solve [compute; compute in IHclosed_rec1; compute in IHclosed_rec2; rewrite <-IHclosed_rec1; rewrite <-IHclosed_rec2; auto].
+  try solve [compute; compute in IHclosed_rec1; compute in IHclosed_rec2;
+             rewrite <-IHclosed_rec1; rewrite <-IHclosed_rec2; auto].
 
   Case "TVarB".
     unfold open_rec. assert (k <> i). omega.
@@ -1497,14 +1522,16 @@ Lemma closed_no_subst: forall T j TX,
    subst TX T = T.
 Proof.
   intros T. induction T; intros; inversion H; simpl; eauto;
-            try rewrite (IHT j TX); eauto; try rewrite (IHT2 (S j) TX); eauto; try rewrite (IHT1 j TX); eauto.
+  try rewrite (IHT j TX); eauto; try rewrite (IHT2 (S j) TX); eauto;
+  try rewrite (IHT1 j TX); eauto.
 
   eapply closed_upgrade. eauto. eauto.
 
   subst. omega.
 Qed.
 
-Lemma closed_open: forall j n TX T, closed (j+1) n T -> closed j n TX -> closed j n (open_rec j TX T).
+Lemma closed_open: forall j n TX T, closed (j+1) n T -> closed j n TX ->
+  closed j n (open_rec j TX T).
 Proof.
   intros. generalize dependent j.
   induction T; intros; inversion H; unfold closed;
@@ -1615,7 +1642,8 @@ Proof.
        assert ((x - 1) = (length (map (substt TX) GH0))).
        rewrite map_length. rewrite app_length in HeqL. simpl in HeqL. unfold id. omega.
        simpl.
-       eapply beq_nat_true_iff in H1. unfold id in H1. unfold id. rewrite H1. subst. eauto. eauto. subst. eauto.
+       eapply beq_nat_true_iff in H1. unfold id in H1. unfold id. rewrite H1.
+       subst. eauto. eauto. subst. eauto.
      + assert (x <> L). eapply beq_nat_false_iff. eauto.
        eapply indexr_miss in H. eapply IHGH0 in H.
        inversion H. left. eapply H1.
@@ -1623,7 +1651,8 @@ Proof.
        simpl.
        assert ((x - 1) <> (length (map (substt TX) GH0))).
        rewrite app_length in HeqL. simpl in HeqL. rewrite map_length.
-       unfold not. intros. subst L. unfold id in H0. unfold id in H2. unfold not in H0. eapply H0. unfold id in H4. rewrite <-H4. omega.
+       unfold not. intros. subst L. unfold id in H0. unfold id in H2.
+       unfold not in H0. eapply H0. unfold id in H4. rewrite <-H4. omega.
        eapply beq_nat_false_iff in H4. unfold id in H4. unfold id. rewrite H4.
        eauto. subst. eauto.
 Qed.
@@ -1821,14 +1850,17 @@ Lemma compat_fun: forall GX TX G1 T1 T2 T1',
 Proof.
   intros ? ? ? ? ? ? CC CLX. destruct CC.
 
-  simpl in H. destruct H. destruct H. repeat eexists. eauto. unfold compat. eauto. unfold compat. eauto.
+  simpl in H. destruct H. destruct H. repeat eexists. eauto.
+  unfold compat. eauto. unfold compat. eauto.
 
-  simpl in H. destruct H. destruct H. repeat eexists. eauto. unfold compat. eauto. unfold compat. eauto.
+  simpl in H. destruct H. destruct H. repeat eexists. eauto.
+  unfold compat. eauto. unfold compat. eauto.
 
   simpl in H. destruct H. destruct H. inversion H. repeat eexists. eauto.
   unfold compat. eauto. unfold compat. eauto.
 
-  simpl in H. destruct H. destruct H. repeat eexists. eauto. unfold compat. eauto. unfold compat. eauto.
+  simpl in H. destruct H. destruct H. repeat eexists. eauto.
+  unfold compat. eauto. unfold compat. eauto.
 Qed.
 
 Lemma compat_sel: forall GX TX G1 T1' (GXX:venv) (TXX:ty) x,
@@ -1863,7 +1895,8 @@ Proof.
   intros ? ? ? ? ? ? ? ? ? CC CL IX FA.
 
   case_eq (beq_nat x 0); intros E.
-  - left. assert (x = 0). eapply beq_nat_true_iff. eauto. subst x. rewrite indexr_hit0 in IX. inversion IX. eauto.
+  - left. assert (x = 0). eapply beq_nat_true_iff. eauto. subst x.
+    rewrite indexr_hit0 in IX. inversion IX. eauto.
   - right. assert (x <> 0). eapply beq_nat_false_iff. eauto.
     assert (x > 0). unfold id. unfold id in H. omega.
     eapply (indexr_compat_miss0) in FA. destruct FA.
@@ -1888,14 +1921,16 @@ Proof.
   intros ? ? ? ? ? ? ? CC CLX CL2. destruct CC.
 
   simpl in H. destruct H. destruct H. repeat eexists. eauto. eapply closed_subst. eauto. eauto.
-  unfold compat. eauto. unfold compat. left. exists x. eauto. rewrite subst_open_commute. eauto. eauto. eauto.
+  unfold compat. eauto. unfold compat. left. exists x. eauto.
+  rewrite subst_open_commute. eauto. eauto. eauto.
 
   destruct H. destruct H. simpl in H0. repeat eexists. eauto. eapply closed_subst. eauto.
   eapply closed_upgrade_free. eauto. omega. unfold compat. eauto. unfold compat.
   right. left. rewrite subst_open_commute. eauto. eauto. eauto.
 
   destruct H. destruct H. inversion H. repeat eexists. eauto. subst.
-  eapply closed_upgrade_free. eauto. omega. unfold compat. eauto. unfold compat. eauto. right. right.
+  eapply closed_upgrade_free. eauto. omega. unfold compat. eauto.
+  unfold compat. eauto. right. right.
 
   right. split. eapply nosubst_open. simpl. omega. eapply nosubst_intro. eauto. symmetry.
   assert (T2 = subst TTop T2). symmetry. eapply closed_no_subst. eauto.
@@ -2321,7 +2356,8 @@ Proof.
       assert (res_type ((x0,vx)::env1) res T4) as HRY.
         SCase "HRY".
           subst. eapply IHn. eauto. eauto.
-          (* wf_env x *) econstructor. eapply valtp_widen; eauto. eapply stp2_extend2. eauto. eauto. eauto.
+          (* wf_env x *) econstructor. eapply valtp_widen; eauto.
+                         eapply stp2_extend2. eauto. eauto. eauto.
 
       inversion HRY as [? vy].
 
