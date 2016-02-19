@@ -1506,20 +1506,27 @@ Qed.
 
 Lemma closed_open: forall j n TX T, closed (j+1) n T -> closed j n TX -> closed j n (open_rec j TX T).
 Proof.
-  intros. generalize dependent j. induction T; intros; inversion H; unfold closed; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto. eapply closed_upgrade. eauto. eauto.
-
+  intros. generalize dependent j.
+  induction T; intros; inversion H; unfold closed;
+  try econstructor;
+  try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
+  eapply closed_upgrade. eauto. eauto.
   - Case "TVarB". simpl.
     case_eq (beq_nat j i); intros E. eauto.
-
     econstructor. eapply beq_nat_false_iff in E. omega.
 Qed.
 
 Lemma closed_subst: forall j n TX T, closed j (n+1) T -> closed 0 n TX -> closed j (n) (subst TX T).
 Proof.
-  intros. generalize dependent j. induction T; intros; inversion H; unfold closed; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
+  intros. generalize dependent j.
+  induction T; intros; inversion H; unfold closed;
+  try econstructor;
+  try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
 
   - Case "TVarH". simpl.
-    case_eq (beq_nat i 0); intros E. eapply closed_upgrade. eapply closed_upgrade_free. eauto. omega. eauto. omega.
+    case_eq (beq_nat i 0); intros E.
+    eapply closed_upgrade. eapply closed_upgrade_free.
+    eauto. omega. eauto. omega.
     econstructor. assert (i > 0). eapply beq_nat_false_iff in E. omega. omega.
 Qed.
 
@@ -1535,7 +1542,8 @@ Proof.
     eapply closed_no_open. eapply closed_upgrade. eauto. omega.
     eauto.
   - Case "TVarB". simpl. case_eq (beq_nat j i); intros E.
-    simpl. case_eq (beq_nat (n+1) 0); intros E2. eapply beq_nat_true_iff in E2. omega.
+    simpl. case_eq (beq_nat (n+1) 0); intros E2.
+    eapply beq_nat_true_iff in E2. omega.
     assert (n+1-1 = n). omega. eauto.
     eauto.
 Qed.
@@ -1549,16 +1557,16 @@ Qed.
 Lemma subst_open_zero: forall j k TX T2, closed k 0 T2 ->
     subst TX (open_rec j (TVarH 0) T2) = open_rec j TX T2.
 Proof.
-  intros. generalize dependent k. generalize dependent j. induction T2; intros; inversion H; simpl; eauto; try rewrite (IHT2_1 _ k); try rewrite (IHT2_2 _ (S k)); try rewrite (IHT2_2 _ (S k)); try rewrite (IHT2 _ k); eauto.
-
+  intros. generalize dependent k. generalize dependent j.
+  induction T2; intros; inversion H; simpl; eauto;
+  try rewrite (IHT2_1 _ k);
+  try rewrite (IHT2_2 _ (S k));
+  try rewrite (IHT2_2 _ (S k));
+  try rewrite (IHT2 _ k); eauto.
   eapply closed_upgrade; eauto.
-
   case_eq (beq_nat i 0); intros E. omega. omega.
-
   case_eq (beq_nat j i); intros E. eauto. eauto.
 Qed.
-
-
 
 Lemma Forall2_length: forall A B f (G1:list A) (G2:list B),
                         Forall2 f G1 G2 -> length G1 = length G2.
@@ -1571,17 +1579,17 @@ Qed.
 
 Lemma nosubst_intro: forall j T, closed j 0 T -> nosubst T.
 Proof.
-  intros. generalize dependent j. induction T; intros; inversion H; simpl; eauto.
+  intros. generalize dependent j.
+  induction T; intros; inversion H; simpl; eauto.
   omega.
 Qed.
 
 Lemma nosubst_open: forall j TX T2, nosubst TX -> nosubst T2 -> nosubst (open_rec j TX T2).
 Proof.
-  intros. generalize dependent j. induction T2; intros; try inversion H0; simpl; eauto.
-
+  intros. generalize dependent j. induction T2; intros;
+  try inversion H0; simpl; eauto.
   case_eq (beq_nat j i); intros E. eauto. eauto.
 Qed.
-
 
 (* substitution for one-env stp. not necessary, but good sanity check *)
 Definition substt (UX: ty) (V: (id*ty)) :=
@@ -1756,7 +1764,8 @@ Lemma indexr_compat_miss0: forall GH GH' GX TX (GXX:venv) (TXX:ty) n,
       exists TXX', indexr n GH' = Some (GXX,TXX') /\ compat GX TX GXX TXX TXX'.
 Proof.
   intros. revert n H0. induction H.
-  - intros. simpl. eauto. simpl in H0. assert (n+1 <> 0). omega. eapply beq_nat_false_iff in H. rewrite H in H0. inversion H0.
+  - intros. simpl. eauto. simpl in H0. assert (n+1 <> 0). omega.
+    eapply beq_nat_false_iff in H. rewrite H in H0. inversion H0.
   - intros. simpl. destruct y.
     case_eq (beq_nat n (length l')); intros E.
     + simpl in H1. destruct x. rewrite app_length in H1. simpl in H1.
@@ -1878,21 +1887,25 @@ Lemma compat_all: forall GX TX G1 T1 T2 T1' n,
 Proof.
   intros ? ? ? ? ? ? ? CC CLX CL2. destruct CC.
 
-    simpl in H. destruct H. destruct H. repeat eexists. eauto. eapply closed_subst. eauto. eauto.  unfold compat. eauto. unfold compat. left. exists x. eauto. rewrite subst_open_commute. eauto. eauto. eauto.
+  simpl in H. destruct H. destruct H. repeat eexists. eauto. eapply closed_subst. eauto. eauto.
+  unfold compat. eauto. unfold compat. left. exists x. eauto. rewrite subst_open_commute. eauto. eauto. eauto.
 
-    destruct H. destruct H. simpl in H0. repeat eexists. eauto. eapply closed_subst. eauto. eapply closed_upgrade_free. eauto. omega. unfold compat. eauto. unfold compat. right. left. rewrite subst_open_commute. eauto. eauto. eauto.
+  destruct H. destruct H. simpl in H0. repeat eexists. eauto. eapply closed_subst. eauto.
+  eapply closed_upgrade_free. eauto. omega. unfold compat. eauto. unfold compat.
+  right. left. rewrite subst_open_commute. eauto. eauto. eauto.
 
-    destruct H. destruct H. inversion H. repeat eexists. eauto. subst. eapply closed_upgrade_free. eauto. omega. unfold compat. eauto. unfold compat. eauto. right. right.
+  destruct H. destruct H. inversion H. repeat eexists. eauto. subst.
+  eapply closed_upgrade_free. eauto. omega. unfold compat. eauto. unfold compat. eauto. right. right.
 
-    right. split. eapply nosubst_open. simpl. omega. eapply nosubst_intro. eauto. symmetry.
-    assert (T2 = subst TTop T2). symmetry. eapply closed_no_subst. eauto.
-    remember (open_rec 0 (TVarH n) T2) as XX. rewrite H7 in HeqXX. subst XX.
-    eapply subst_open_commute. eauto. eauto.
+  right. split. eapply nosubst_open. simpl. omega. eapply nosubst_intro. eauto. symmetry.
+  assert (T2 = subst TTop T2). symmetry. eapply closed_no_subst. eauto.
+  remember (open_rec 0 (TVarH n) T2) as XX. rewrite H7 in HeqXX. subst XX.
+  eapply subst_open_commute. eauto. eauto.
 
-    simpl in H. destruct H. destruct H. repeat eexists. eauto. eapply closed_subst. eauto. eauto.
-    unfold compat. right. right. right. eauto.
-    unfold compat. right. right. right. split. eapply nosubst_open. simpl. omega. eauto.
-    rewrite subst_open_commute. eauto. eauto. eauto.
+  simpl in H. destruct H. destruct H. repeat eexists. eauto. eapply closed_subst. eauto. eauto.
+  unfold compat. right. right. right. eauto.
+  unfold compat. right. right. right. split. eapply nosubst_open. simpl. omega. eauto.
+  rewrite subst_open_commute. eauto. eauto. eauto.
 Qed.
 
 Lemma stp2_substitute: forall G1 G2 T1 T2 GH,
@@ -1995,7 +2008,9 @@ Proof.
     destruct IX1.
     + destruct H4. destruct H5. subst.
 
-      assert (compat GXX TXX GXX TXX TXX) as CPX. right. left. split. eauto. symmetry. eapply closed_no_subst. eauto.
+      assert (compat GXX TXX GXX TXX TXX) as CPX. {
+        right. left. split. eauto. symmetry. eapply closed_no_subst. eauto.
+      }
 
       inversion IXX.
 
@@ -2237,7 +2252,8 @@ Proof.
   }
 
   (* need reflexivity *)
-  assert (stp2 venv0 T1 venv0 T1 []). eapply stp2_reg1. eauto.                            assert (closed 0 0 T1). eapply stp2_closed1 in H6. simpl in H6. eauto.
+  assert (stp2 venv0 T1 venv0 T1 []). eapply stp2_reg1. eauto.
+  assert (closed 0 0 T1). eapply stp2_closed1 in H6. simpl in H6. eauto.
 
   (* now rename *)
 
@@ -2247,7 +2263,8 @@ Proof.
     simpl. eauto.
     eauto.
     eauto.
-    left. eexists. split. eapply index_hit2. eauto. eauto. eauto. unfold open. rewrite (subst_open_zero 0 1). eauto. eauto.
+    left. eexists. split. eapply index_hit2. eauto. eauto. eauto. unfold open.
+      rewrite (subst_open_zero 0 1). eauto. eauto.
     right. left. split. eauto. unfold open. rewrite (subst_open_zero 0 1). eauto. eauto.
     eauto.
   }
@@ -2278,7 +2295,8 @@ Proof.
 
   - Case "Abs".
     remember (tabs i t e) as xe. induction H0; inversion Heqxe; subst.
-    + eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh venv0 env H1). eauto. eapply stp_to_stp2. eauto. eauto. econstructor.
+    + eapply not_stuck. eapply v_abs; eauto. rewrite (wf_fresh venv0 env H1).
+      eauto. eapply stp_to_stp2. eauto. eauto. econstructor.
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "App".
@@ -2313,7 +2331,8 @@ Proof.
 
   - Case "TAbs".
     remember (ttabs i t e) as xe. induction H0; inversion Heqxe; subst.
-    + eapply not_stuck. eapply v_tabs; eauto. rewrite (wf_fresh venv0 env H1). eauto. eapply stp_to_stp2. eauto. eauto. econstructor.
+    + eapply not_stuck. eapply v_tabs; eauto. rewrite (wf_fresh venv0 env H1).
+      eauto. eapply stp_to_stp2. eauto. eauto. econstructor.
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "TApp".
