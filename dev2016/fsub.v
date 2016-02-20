@@ -107,17 +107,6 @@ Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
 
 Definition open u T := open_rec 0 u T.
 
-Fixpoint open_tm_rec (k: nat) (u: ty) (t: tm) { struct t }: tm :=
-  match t with
-    | tvar x => tvar x
-    | tabs T t => tabs (open_rec k u T) (open_tm_rec (S k) u t)
-    | tapp t1 t2 => tapp (open_tm_rec k u t1) (open_tm_rec k u t2)
-    | ttabs T t => ttabs (open_rec k u T) (open_tm_rec (S k) u t)
-    | ttapp t1 T2 => ttapp (open_tm_rec k u t1) (open_rec k u T2)
-  end.
-
-Definition open_tm u t := open_tm_rec 0 u t.
-
 (* Locally-nameless encoding with respect to varH variables. *)
 Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
   match T with
@@ -201,7 +190,7 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env x T1 ->
            has_type env (tapp f x) T2
 | t_abs: forall env y T1 T2,
-           has_type (T1::env) (open_tm (TVarF (length env)) y) T2 ->
+           has_type (T1::env) y T2 ->
            stp env [] (TFun T1 T2) (TFun T1 T2) ->
            has_type env (tabs T1 y) (TFun T1 T2)
 | t_tapp: forall env f T11 T12 T,
@@ -209,9 +198,7 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            T = open T11 T12 ->
            has_type env (ttapp f T11) T
 | t_tabs: forall env y T1 T2,
-            has_type ((TMem T1)::env)
-                     (open_tm (TVarF (length env)) y)
-                     (open (TVarF (length env)) T2) ->
+            has_type ((TMem T1)::env) y (open (TVarF (length env)) T2) ->
            stp env [] (TAll T1 T2) (TAll T1 T2) ->
            has_type env (ttabs T1 y) (TAll T1 T2)
 | t_sub: forall env e T1 T2,
@@ -290,13 +277,13 @@ with val_type : venv -> vl -> ty -> Prop :=
     val_type env (vty venv T1) TE
 | v_abs: forall env venv tenv x y T1 T2 TE,
     wf_env venv tenv ->
-    has_type (T1::tenv) (open_tm (TVarF x) y) T2 ->
+    has_type (T1::tenv) y T2 ->
     length venv = x ->
     stp2 venv (TFun T1 T2) env TE [] ->
     val_type env (vabs venv T1 y) TE
 | v_tabs: forall env venv tenv x y T1 T2 TE,
     wf_env venv tenv ->
-    has_type ((TMem T1)::tenv) (open_tm (TVarF x) y) (open (TVarF x) T2) ->
+    has_type ((TMem T1)::tenv) y (open (TVarF x) T2) ->
     length venv = x ->
     stp2 venv (TAll T1 T2) env TE [] ->
     val_type env (vtabs venv T1 y) TE
@@ -343,7 +330,7 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
                 | Some (Some (vty _ _)) => Some None
                 | Some (Some (vtabs _ _ _)) => Some None
                 | Some (Some (vabs env2 _ ey)) =>
-                  teval n (vx::env2) (open_tm (TVarF (length env2)) ey)
+                  teval n (vx::env2) ey
               end
           end
         | ttapp ef ex   =>
@@ -353,7 +340,7 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
             | Some (Some (vty _ _)) => Some None
             | Some (Some (vabs _ _ _)) => Some None
             | Some (Some (vtabs env2 T ey)) =>
-              teval n ((vty env ex)::env2) (open_tm (TVarF (length env2)) ey)
+              teval n ((vty env ex)::env2) ey
           end
       end
   end.
@@ -406,7 +393,7 @@ Ltac crush2 :=
 
 Definition polyId := TAll TTop (TFun (TVarB 0) (TVarB 0)).
 
-Example ex1: has_type [] (ttabs TTop (tabs (TVarB 0) (tvar 1))) polyId.
+Example ex1: has_type [] (ttabs TTop (tabs (TVarF 0) (tvar 1))) polyId.
 Proof.
   crush_has_tp.
 Qed.
@@ -2142,7 +2129,7 @@ Lemma invert_abs: forall venv vf T1 T2,
     vf = (vabs env T3 y) /\
     length env = x /\
     wf_env env tenv /\
-    has_type (T3::tenv) (open_tm (TVarF x) y) T4 /\
+    has_type (T3::tenv) y T4 /\
     stp2 venv T1 env T3 [] /\
     stp2 env T4 venv T2 [].
 Proof.
@@ -2155,7 +2142,7 @@ Lemma invert_tabs: forall venv vf T1 T2,
     vf = (vtabs env T3 y) /\
     length env = x /\
     wf_env env tenv /\
-    has_type ((TMem T3)::tenv) (open_tm (TVarF x) y) (open (TVarF x) T4) /\
+    has_type ((TMem T3)::tenv) y (open (TVarF x) T4) /\
     stp2 venv T1 env T3 [] /\
     stp2 ((vty venv T1)::env) (open (TVarF x) T4) venv (open T1 T2) [].
 Proof.
