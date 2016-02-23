@@ -1322,16 +1322,81 @@ Proof.
     eapply IHSsubT3; eauto.
 Qed.
 
+Inductive lc: ty -> Prop :=
+| lc_top:
+    lc TTop
+| lc_fun: forall T1 T2,
+    lc T1 ->
+    lc T2 ->
+    lc (TFun T1 T2)
+| lc_all: forall T1 T2,
+    lc T1 ->
+    (forall l, lc (open (TVarH l) T2)) ->
+    lc (TAll T1 T2)
+| lc_sel: forall x,
+    lc (TVarF x)
+| lc_selh: forall x,
+    lc (TVarH x)
+| lc_mem: forall T,
+    lc T ->
+    lc (TMem T)
+.
+
+Hint Constructors lc.
+
+Lemma lc_open : forall T x y,
+  lc (open (TVarH x) T) ->
+  lc (open (TVarH y) T).
+Proof.
+  intros. remember (open (TVarH x) T) as Tx.
+  generalize dependent T.
+  induction H; intros T' Eq;
+  destruct T'; unfold open; simpl in Eq;
+  try solve [inversion Eq];
+  unfold open; simpl; eauto;
+  try solve [destruct i; eauto; unfold open in Eq; simpl in Eq; inversion Eq].
+  - inversion Eq; subst.
+    apply lc_fun.
+    apply IHlc1. reflexivity.
+    apply IHlc2. reflexivity.
+  - inversion Eq; subst.
+    apply lc_all.
+    apply IHlc. reflexivity.
+    intros.
+    assert (open (TVarH l) (open_rec 1 (TVarH y) T'2)=
+            open (TVarH y) (open (TVarH l) T'2)) as A by admit.
+    rewrite A.
+    apply H1 with (l:=l). admit.
+  - inversion Eq; subst.
+    apply lc_mem.
+    apply IHlc. reflexivity.
+Qed.
+
+Lemma stp_lc : forall G GH T1 T2,
+                     stp G GH T1 T2 ->
+                     lc T1 /\ lc T2.
+Proof.
+  intros. induction H;
+    try solve [repeat ev; split; eauto];
+    try solve [try inversion IHstp; split; eauto; apply lc_selh; eapply indexr_max; eassumption].
+  split.
+  apply lc_all.
+  destruct IHstp1. assumption.
+  destruct IHstp2 as [A ?]. simpl in A. subst. intros l. eapply lc_open. eapply A.
+  apply lc_all.
+  destruct IHstp1. assumption.
+  destruct IHstp3 as [? A]. simpl in A. subst. intros l. eapply lc_open. eapply A.
+Qed.
+
 Lemma stp_trans: forall G GH T1 T2 T3,
   stp G GH T1 T2 ->
   stp G GH T2 T3 ->
   stp G GH T1 T3.
 Proof.
   intros G GH T1 T2 T3 S12 S23.
-  assert (closed 0 (length GH) T2) as A. {
-    eapply stp_closed2. eassumption.
+  assert (lc T2) as A. {
+    eapply proj2. eapply stp_lc. eassumption.
   }
-  remember (length GH) as j. clear Heqj.
   remember T2 as T2'. rewrite HeqT2' in A.
   generalize dependent T3.
   generalize dependent T1.
@@ -1345,14 +1410,14 @@ Proof.
   - (* TAll - TAll *)
     subst.
     eapply stp_all; eauto.
-    eapply IHA2. reflexivity.
+    eapply H0. reflexivity.
     change (TMem T6 :: GH) with ([] ++ [(TMem T6)] ++ GH).
     eapply stp_narrow_aux.
     unfold trans_on.
-    intros. eapply IHA1. reflexivity. eassumption. eassumption.
+    intros. eapply IHA. reflexivity. eassumption. eassumption.
     simpl.
-    eapply IHA2. reflexivity. simpl. admit. admit.
-    assumption. admit. (* something is messed up with opening *)
+    eapply H0. reflexivity. eassumption. eassumption.
+    assumption. assumption.
 Qed.
 
 Lemma stp2_trans: forall G1 G2 G3 T1 T2 T3 H,
