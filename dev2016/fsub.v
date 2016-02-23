@@ -1328,18 +1328,31 @@ Lemma stp_trans: forall G GH T1 T2 T3,
   stp G GH T1 T3.
 Proof.
   intros G GH T1 T2 T3 S12 S23.
-  generalize dependent S23.
+  assert (closed 0 (length GH) T2) as A. {
+    eapply stp_closed2. eassumption.
+  }
+  remember (length GH) as j. clear Heqj.
+  remember T2 as T2'. rewrite HeqT2' in A.
   generalize dependent T3.
-  generalize dependent S12.
   generalize dependent T1.
-  generalize dependent GH.
-  generalize dependent G.
-  induction T2; intros G GH T1 S12; dependent induction S12;
-  intros T3 S23; inversion S23; eauto 4 using stp_reg1, stp_reg2.
+  generalize dependent GH. generalize dependent G.
+  generalize dependent T2'.
+  induction A; intros T2' EQ G GH T1' S12;
+  induction S12; try discriminate; inversion EQ; subst;
+  intros T3' S23;
+  remember S23 as S23'; clear HeqS23'; inversion S23;
+  eauto 4 using stp_reg1, stp_reg2.
   - (* TAll - TAll *)
     subst.
     eapply stp_all; eauto.
-    admit.
+    eapply IHA2. reflexivity.
+    change (TMem T6 :: GH) with ([] ++ [(TMem T6)] ++ GH).
+    eapply stp_narrow_aux.
+    unfold trans_on.
+    intros. eapply IHA1. reflexivity. eassumption. eassumption.
+    simpl.
+    eapply IHA2. reflexivity. simpl. admit. admit.
+    assumption. admit. (* something is messed up with opening *)
 Qed.
 
 Lemma stp2_trans: forall G1 G2 G3 T1 T2 T3 H,
