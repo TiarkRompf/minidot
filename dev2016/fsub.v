@@ -66,33 +66,31 @@ Fixpoint indexr {X : Type} (n : id) (l : list X) : option X :=
       if (beq_nat n (length l')) then Some a else indexr n l'
   end.
 
-(* closed and open define a locally-nameless encoding wrt to TVarB type variables. *)
-Inductive closed_rec: nat -> nat -> ty -> Prop :=
+Inductive closed: nat(*B*) -> nat(*H*) -> ty -> Prop :=
 | cl_top: forall k l,
-    closed_rec k l TTop
+    closed k l TTop
 | cl_fun: forall k l T1 T2,
-    closed_rec k l T1 ->
-    closed_rec k l T2 ->
-    closed_rec k l (TFun T1 T2)
+    closed k l T1 ->
+    closed k l T2 ->
+    closed k l (TFun T1 T2)
 | cl_all: forall k l T1 T2,
-    closed_rec k l T1 ->
-    closed_rec (S k) l T2 ->
-    closed_rec k l (TAll T1 T2)
+    closed k l T1 ->
+    closed (S k) l T2 ->
+    closed k l (TAll T1 T2)
 | cl_sel: forall k l x,
-    closed_rec k l (TVarF x)
+    closed k l (TVarF x)
 | cl_selh: forall k l x,
     l > x ->
-    closed_rec k l (TVarH x)
+    closed k l (TVarH x)
 | cl_selb: forall k l i,
     k > i ->
-    closed_rec k l (TVarB i)
+    closed k l (TVarB i)
 | cl_mem: forall k l T,
-    closed_rec k l T ->
-    closed_rec k l (TMem T)
+    closed k l T ->
+    closed k l (TMem T)
 .
 
-Definition closed j l T := closed_rec j l T.
-
+(* open define a locally-nameless encoding wrt to TVarB type variables. *)
 (* substitute type u for all occurrences of (TVarB k) *)
 Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
   match T with
@@ -350,7 +348,6 @@ Hint Unfold venv.
 Hint Unfold tenv.
 
 Hint Unfold open.
-Hint Unfold closed.
 Hint Unfold indexr.
 Hint Unfold length.
 
@@ -358,7 +355,7 @@ Hint Constructors ty.
 Hint Constructors tm.
 Hint Constructors vl.
 
-Hint Constructors closed_rec.
+Hint Constructors closed.
 Hint Constructors has_type.
 Hint Constructors val_type.
 Hint Constructors wf_env.
@@ -608,8 +605,8 @@ Lemma closed_splice: forall j l T n,
 Proof.
   intros. induction H; simpl; eauto.
   case_eq (le_lt_dec n x); intros E LE.
-  unfold closed. apply cl_selh. omega.
-  unfold closed. apply cl_selh. omega.
+  apply cl_selh. omega.
+  apply cl_selh. omega.
 Qed.
 
 Lemma map_splice_length_inc: forall G0 G2 v1,
@@ -633,7 +630,6 @@ Lemma closed_inc: forall j l T,
   closed j (S l) T.
 Proof.
   intros. induction H; simpl; eauto.
-  unfold closed. apply cl_selh. omega.
 Qed.
 
 Lemma closed_inc_mult: forall j l l' T,
@@ -653,17 +649,17 @@ Lemma closed_splice_idem: forall k l T n,
 Proof.
   intros. induction H; eauto.
   - (* TFun *) simpl.
-    rewrite IHclosed_rec1. rewrite IHclosed_rec2.
+    rewrite IHclosed1. rewrite IHclosed2.
     reflexivity.
     assumption. assumption.
   - (* TAll *) simpl.
-    rewrite IHclosed_rec1. rewrite IHclosed_rec2.
+    rewrite IHclosed1. rewrite IHclosed2.
     reflexivity.
     assumption. assumption.
   - (* TVarH *) simpl.
     case_eq (le_lt_dec n x); intros E LE. omega. reflexivity.
   - (* TMem *) simpl.
-    rewrite IHclosed_rec.
+    rewrite IHclosed.
     reflexivity. assumption.
 Qed.
 
@@ -1347,13 +1343,13 @@ Hint Resolve beq_nat_true_iff.
 Hint Resolve beq_nat_false_iff.
 
 Lemma closed_no_open: forall T x l j,
-  closed_rec j l T ->
+  closed j l T ->
   T = open_rec j x T.
 Proof.
   intros. induction H; intros; eauto;
-  try solve [compute; compute in IHclosed_rec; rewrite <-IHclosed_rec; auto];
-  try solve [compute; compute in IHclosed_rec1; compute in IHclosed_rec2;
-             rewrite <-IHclosed_rec1; rewrite <-IHclosed_rec2; auto].
+  try solve [compute; compute in IHclosed; rewrite <-IHclosed; auto];
+  try solve [compute; compute in IHclosed1; compute in IHclosed2;
+             rewrite <-IHclosed1; rewrite <-IHclosed2; auto].
 
   Case "TVarB".
     unfold open_rec. assert (k <> i). omega.
@@ -1362,19 +1358,19 @@ Proof.
 Qed.
 
 Lemma closed_upgrade: forall i j l T,
- closed_rec i l T ->
+ closed i l T ->
  j >= i ->
- closed_rec j l T.
+ closed j l T.
 Proof.
  intros. generalize dependent j. induction H; intros; eauto.
- Case "TBind". econstructor. eapply IHclosed_rec1. omega. eapply IHclosed_rec2. omega.
+ Case "TBind". econstructor. eapply IHclosed1. omega. eapply IHclosed2. omega.
  Case "TVarB". econstructor. omega.
 Qed.
 
 Lemma closed_upgrade_free: forall i l k T,
- closed_rec i l T ->
+ closed i l T ->
  k >= l ->
- closed_rec i k T.
+ closed i k T.
 Proof.
  intros. generalize dependent k. induction H; intros; eauto.
  Case "TVarH". econstructor. omega.
@@ -1398,7 +1394,7 @@ Proof.
 Qed.
 
 Lemma closed_no_subst: forall T j TX,
-   closed_rec j 0 T ->
+   closed j 0 T ->
    subst TX T = T.
 Proof.
   intros T. induction T; intros; inversion H; simpl; eauto;
@@ -1414,7 +1410,7 @@ Lemma closed_open: forall j n TX T, closed (j+1) n T -> closed j n TX ->
   closed j n (open_rec j TX T).
 Proof.
   intros. generalize dependent j.
-  induction T; intros; inversion H; unfold closed;
+  induction T; intros; inversion H;
   try econstructor;
   try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
   eapply closed_upgrade. eauto. eauto.
@@ -1426,7 +1422,7 @@ Qed.
 Lemma closed_subst: forall j n TX T, closed j (n+1) T -> closed 0 n TX -> closed j (n) (subst TX T).
 Proof.
   intros. generalize dependent j.
-  induction T; intros; inversion H; unfold closed;
+  induction T; intros; inversion H;
   try econstructor;
   try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
 
