@@ -1344,17 +1344,37 @@ Inductive lc: ty -> Prop :=
 
 Hint Constructors lc.
 
-Lemma lc_open : forall T x y,
-  lc (open (TVarH x) T) ->
-  lc (open (TVarH y) T).
+Lemma open_open : forall i j x y T,
+  i <> j ->
+  open_rec i (TVarH x) (open_rec j (TVarH y) T) =
+  open_rec j (TVarH y) (open_rec i (TVarH x) T).
 Proof.
-  intros. remember (open (TVarH x) T) as Tx.
+  intros.
+  generalize dependent j.
+  generalize dependent i.
+  induction T; simpl; intros; eauto.
+  - rewrite (IHT1 i j). rewrite (IHT2 i j). reflexivity. assumption. assumption.
+  - rewrite (IHT1 i j). rewrite (IHT2 (S i) (S j)). reflexivity. omega. assumption.
+  - case_eq (beq_nat j i); intros E1; case_eq (beq_nat i0 i); intros E2; simpl.
+    apply beq_nat_true in E1. apply beq_nat_true in E2. subst. omega.
+    apply beq_nat_true in E1. subst. rewrite <- beq_nat_refl. reflexivity.
+    apply beq_nat_true in E2. subst. rewrite <- beq_nat_refl. reflexivity.
+    rewrite E1. rewrite E2. reflexivity.
+  - rewrite (IHT i j). reflexivity. assumption.
+Qed.
+
+Lemma lc_open : forall T j x y,
+  lc (open_rec j (TVarH x) T) ->
+  lc (open_rec j (TVarH y) T).
+Proof.
+  intros. remember (open_rec j (TVarH x) T) as Tx.
+  generalize dependent j.
   generalize dependent T.
-  induction H; intros T' Eq;
-  destruct T'; unfold open; simpl in Eq;
+  induction H; intros T' j Eq;
+  destruct T'; simpl in Eq;
   try solve [inversion Eq];
-  unfold open; simpl; eauto;
-  try solve [destruct i; eauto; unfold open in Eq; simpl in Eq; inversion Eq].
+  simpl; eauto;
+  try solve [case_eq (beq_nat j i); intros E; rewrite E in Eq; inversion Eq].
   - inversion Eq; subst.
     apply lc_fun.
     apply IHlc1. reflexivity.
@@ -1363,10 +1383,11 @@ Proof.
     apply lc_all.
     apply IHlc. reflexivity.
     intros.
-    assert (open (TVarH l) (open_rec 1 (TVarH y) T'2)=
-            open (TVarH y) (open (TVarH l) T'2)) as A by admit.
-    rewrite A.
-    apply H1 with (l:=l). admit.
+    unfold open. rewrite open_open.
+    unfold open in H1. apply H1 with (l:=l). rewrite open_open. reflexivity.
+    omega. omega.
+  - case_eq (beq_nat j i); intros E; eauto.
+    rewrite E in Eq. inversion Eq.
   - inversion Eq; subst.
     apply lc_mem.
     apply IHlc. reflexivity.
