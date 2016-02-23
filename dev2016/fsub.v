@@ -1441,6 +1441,16 @@ Proof.
     assumption. assumption.
 Qed.
 
+Lemma stp_narrow: forall Q E F G P S T,
+  stp E (G ++ [(TMem Q)] ++ F) S T ->
+  stp E F P Q ->
+  stp E (G ++ [(TMem P)] ++ F) S T.
+Proof.
+  intros.
+  apply stp_narrow_aux with (Q:=Q); eauto.
+  unfold trans_on. intros. apply stp_trans with (T2:=Q); eauto.
+Qed.
+
 Lemma stp2_trans: forall G1 G2 G3 T1 T2 T3 H,
   stp2 G1 T1 G2 T2 H ->
   stp2 G2 T2 G3 T3 H ->
