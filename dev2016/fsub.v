@@ -889,6 +889,16 @@ Proof.
   simpl. unfold open in H4. rewrite <- H0. apply H4.
 Qed.
 
+Lemma stp_extend_mult : forall G T1 T2 GH GH2,
+                       stp G GH T1 T2 ->
+                       stp G (GH2++GH) T1 T2.
+Proof.
+  intros. induction GH2.
+  - simpl. assumption.
+  - simpl.
+    apply stp_extend. assumption.
+Qed.
+
 Lemma indexr_at_index: forall {A} x0 GH0 GH1 (v:A),
   beq_nat x0 (length GH1) = true ->
   indexr x0 (GH0 ++ v :: GH1) = Some v.
@@ -1263,6 +1273,54 @@ Hint Constructors res_type.
 Hint Resolve not_stuck.
 
 (* ### Transitivity ### *)
+
+Definition trans_on Q := forall E F S T,
+  stp E F S Q -> stp E F Q T -> stp E F S T.
+
+Hint Unfold trans_on.
+
+Lemma stp_narrow_aux : forall Q E F G P S T,
+  trans_on Q ->
+  stp E (G ++ [(TMem Q)] ++ F) S T ->
+  stp E F P Q ->
+  stp E (G ++ [(TMem P)] ++ F) S T.
+Proof.
+  intros Q E F G P S T TransQ SsubT PsubQ.
+  dependent induction SsubT; intros; eauto.
+  - case_eq (beq_nat x (length F)); intros E2.
+    + eapply stp_sela1.
+      eapply indexr_at_index. assumption.
+      eapply beq_nat_true in E2. subst.
+      eapply stp_closed1. eassumption.
+      assert (indexr x (G ++ [TMem Q] ++ F) = Some (TMem Q)) as I. {
+        simpl. apply indexr_at_index. assumption.
+      }
+      rewrite I in H. inversion H. subst.
+      apply TransQ.
+      apply stp_extend_mult. apply stp_extend_mult. assumption.
+      eapply IHSsubT. eassumption. eauto. assumption.
+    + eapply stp_sela1.
+      eapply indexr_same. assumption. eassumption. assumption.
+      eapply IHSsubT. eassumption. eauto. assumption.
+  - case_eq (beq_nat x (length F)); intros E2.
+    + eapply stp_selax.
+      eapply indexr_at_index. assumption.
+    + eapply stp_selax.
+      eapply indexr_same. assumption. eassumption.
+  - assert (length (G ++ [TMem P] ++ F) = length (G ++ [TMem Q] ++ F)) as A. {
+      simpl. rewrite app_length. rewrite app_length. simpl.
+      reflexivity.
+    }
+    eapply stp_all; eauto.
+    rewrite A. assumption.
+    rewrite A. assumption.
+    rewrite A.
+    change (TMem T1 :: G ++ [TMem P] ++ F) with ((TMem T1 :: G) ++ [TMem P] ++ F).
+    eapply IHSsubT2; eauto.
+    rewrite A.
+    change (TMem T3 :: G ++ [TMem P] ++ F) with ((TMem T3 :: G) ++ [TMem P] ++ F).
+    eapply IHSsubT3; eauto.
+Qed.
 
 Lemma stp_trans: forall G GH T1 T2 T3,
   stp G GH T1 T2 ->
