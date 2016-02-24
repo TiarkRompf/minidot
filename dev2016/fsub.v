@@ -2352,7 +2352,18 @@ Proof.
   - Case "wrapf".
     intros. subst. eapply IHn; eauto; try omega.
   - Case "transf".
-    admit.
+    intros. subst.
+    apply stp2_extend2 with (v1:=(vty GX TX)) in H.
+    apply stp2_extend1 with (v1:=(vty GX TX)) in H0.
+    eapply stpd2_trans.
+
+    eapply IHn; eauto; try omega.
+    unfold compat. simpl. left. exists (length G2).
+    rewrite <- beq_nat_refl. split; eauto.
+
+    eapply IHn; eauto; try omega.
+    unfold compat. simpl. left. exists (length G2).
+    rewrite <- beq_nat_refl. split; eauto.
 Qed.
 
 Lemma stp2_substitute: forall G1 G2 T1 T2 GH m,
