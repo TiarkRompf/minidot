@@ -1774,7 +1774,10 @@ Proof. intros. repeat eu. eapply stpd2_untrans_aux; eauto. Qed.
 Lemma stpd2_upgrade: forall G1 G2 T1 T2,
   stpd2 false G1 T1 G2 T2 [] ->
   stpd2 true G1 T1 G2 T2 [].
-Proof. admit. Qed.
+Proof.
+  intros. destruct H as [n H].
+  eapply stpd2_untrans_aux; eauto using stp2_reg2.
+Qed.
 
 (* ### Substitution for relating static and dynamic semantics ### *)
 Lemma indexr_hit2 {X}: forall x (B:X) A G,
