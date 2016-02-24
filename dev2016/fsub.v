@@ -227,7 +227,7 @@ Inductive stp2: bool (* whether the last rule may not be transitivity *) ->
 | stp2_sel1: forall G1 G2 GX TX x T2 GH n1,
     indexr x G1 = Some (vty GX TX) ->
     closed 0 0 (length GX) TX ->
-    stp2 true GX TX G2 T2 GH n1 ->
+    stp2 false GX TX G2 T2 GH n1 ->
     stp2 true G1 (TVarF x) G2 T2 GH (S n1)
 | stp2_sel2: forall G1 G2 GX TX x T1 GH n1,
     indexr x G2 = Some (vty GX TX) ->
@@ -1562,7 +1562,7 @@ Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_sel1: forall G1 G2 GX TX x T2 GH,
     indexr x G1 = Some (vty GX TX) ->
     closed 0 0 (length GX) TX ->
-    stpd2 true GX TX G2 T2 GH ->
+    stpd2 false GX TX G2 T2 GH ->
     stpd2 true G1 (TVarF x) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_sel2: forall G1 G2 GX TX x T1 GH,
@@ -1736,7 +1736,7 @@ Proof.
   intros n. induction n; intros; try omega. eu.
   inversion H; subst;
   try solve [inversion H1; eexists; eauto];
-  try solve [eapply stpd2_sel1; eauto; eapply IHn; eauto; try omega];
+  try solve [eapply stpd2_sel1; eauto; eapply stpd2_wrapf; eapply IHn; eauto; try omega];
   try solve [eapply IHn; [eapply H2 | omega | eauto]]; (* wrapf *)
   try solve [eapply IHn; [eapply H2 | omega | (eapply IHn; [ eapply H3 | omega | eauto ])]]; (* transf *)
   inversion H1; subst;
@@ -1748,7 +1748,8 @@ Proof.
   try solve [indexr_contra].
   - Case "sel2 - sel1".
     rewrite H6 in H2. inversion H2. subst.
-    eapply IHn. eapply H4. omega. eexists. eassumption.
+    eapply IHn. eapply H4. omega.
+    admit.
   - Case "sel2 - selx".
     rewrite H6 in H2. inversion H2. subst.
     eapply stpd2_sel2; eauto.
