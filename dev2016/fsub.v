@@ -1559,7 +1559,7 @@ Lemma stpd2_mem: forall G1 G2 T1 T2 GH,
     stpd2 false G1 T1 G2 T2 GH ->
     stpd2 true G1 (TMem T1) G2 (TMem T2) GH.
 Proof. intros. repeat eu. eauto. Qed.
-Lemma stpd2_sel1: forall G1 G2 GX TX x T2 GH,
+Lemma stpd2_sel1_down: forall G1 G2 GX TX x T2 GH,
     indexr x G1 = Some (vty GX TX) ->
     closed 0 0 (length GX) TX ->
     stpd2 true GX TX G2 T2 GH ->
@@ -1641,7 +1641,7 @@ Proof.
       eapply IHn; try eassumption. omega.
     + SCase "mem". eapply stpd2_mem.
       eapply IHn; try eassumption. omega.
-    + SCase "sel1". eapply stpd2_sel1; try eassumption.
+    + SCase "sel1". eapply stpd2_sel1_down; try eassumption.
       eapply IHn; try eassumption. omega.
     + SCase "sel2". eapply stpd2_sel2; try eassumption.
       eapply IHn; try eassumption. omega.
@@ -1736,7 +1736,7 @@ Proof.
   intros n. induction n; intros; try omega. eu.
   inversion H; subst;
   try solve [inversion H1; eexists; eauto];
-  try solve [eapply stpd2_sel1; eauto; eapply IHn; eauto; try omega];
+  try solve [eapply stpd2_sel1_down; eauto; eapply IHn; eauto; try omega];
   try solve [eapply stpd2_sela1; eauto; eapply stpd2_wrapf; eapply IHn; eauto; try omega];
   try solve [eapply IHn; [eapply H2 | omega | eauto]]; (* wrapf *)
   try solve [eapply IHn; [eapply H2 | omega | (eapply IHn; [ eapply H3 | omega | eauto ])]]; (* transf *)
@@ -1755,7 +1755,7 @@ Proof.
     eapply stpd2_sel2; eauto.
   - Case "selx - sel1".
     rewrite H5 in H3. inversion H3. subst.
-    eapply stpd2_sel1; eauto.
+    eapply stpd2_sel1_down; eauto.
   - Case "selx - selx".
     rewrite H5 in H3. inversion H3. subst.
     eapply stpd2_selx; eauto.
@@ -1768,15 +1768,36 @@ Proof.
 Grab Existential Variables. apply 0.
 Qed.
 
-Lemma stpd2_untrans: forall G1 G2 G3 T1 T2 T3 GH,
-  stpd2 true G1 T1 G2 T2 GH ->
-  stpd2 true G2 T2 G3 T3 GH ->
-  stpd2 true G1 T1 G3 T3 GH.
-Proof. intros. repeat eu. eapply stpd2_untrans_aux; eauto. Qed.
-
-Lemma stpd2_upgrade: forall G1 G2 T1 T2 GH,
+Lemma stpd2_upgrade_general: forall G1 G2 T1 T2 GH,
   stpd2 false G1 T1 G2 T2 GH ->
   stpd2 true G1 T1 G2 T2 GH.
+Proof.
+  intros. destruct H as [n H].
+  eapply stpd2_untrans_aux; eauto using stp2_reg2.
+Qed.
+
+(* We need to fix stpd2_sel1 to weaken the non-trans hypothesis,
+   that allowed the more convenient one-pass pushback proof. *)
+Lemma stpd2_sel1: forall G1 G2 GX TX x T2 GH,
+    indexr x G1 = Some (vty GX TX) ->
+    closed 0 0 (length GX) TX ->
+    stpd2 false GX TX G2 T2 GH ->
+    stpd2 true G1 (TVarF x) G2 T2 GH.
+Proof.
+  intros. eapply stpd2_sel1_down; eauto using stpd2_upgrade_general.
+Qed.
+
+(* Otherwise, we don't generally need to push back transitivity
+   in non-empty abstract contexts. *)
+Lemma stpd2_untrans: forall G1 G2 G3 T1 T2 T3,
+  stpd2 true G1 T1 G2 T2 [] ->
+  stpd2 true G2 T2 G3 T3 [] ->
+  stpd2 true G1 T1 G3 T3 [].
+Proof. intros. repeat eu. eapply stpd2_untrans_aux; eauto. Qed.
+
+Lemma stpd2_upgrade: forall G1 G2 T1 T2,
+  stpd2 false G1 T1 G2 T2 [] ->
+  stpd2 true G1 T1 G2 T2 [].
 Proof.
   intros. destruct H as [n H].
   eapply stpd2_untrans_aux; eauto using stp2_reg2.
@@ -2287,14 +2308,14 @@ Lemma stp2_substitute_aux: forall n, forall G1 G2 T1 T2 GH m n1,
      compat GX TX G1 T1 T1' ->
      compat GX TX G2 T2 T2' ->
      Forall2 (compat2 GX TX) GH0 GH0' ->
-     stpd2 m G1 T1' G2 T2' GH0'.
+     stpd2 false G1 T1' G2 T2' GH0'.
 Proof.
   intros n. induction n.
   Case "z". intros. inversion H0. subst. inversion H; eauto.
   intros G1 G2 T1 T2 GH m n1 H NE.
   induction H.
   - Case "top".
-    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA; eapply stpd2_wrapf.
     eapply compat_top in IX2.
     subst. eapply stpd2_top.
     eapply compat_closed. eassumption.
@@ -2303,7 +2324,7 @@ Proof.
     eassumption. assumption.
 
   - Case "fun".
-    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA; eapply stpd2_wrapf.
     eapply compat_fun in IX1. repeat destruct IX1 as [? IX1].
     eapply compat_fun in IX2. repeat destruct IX2 as [? IX2].
     subst. eapply stpd2_fun.
@@ -2311,7 +2332,7 @@ Proof.
     eauto. eauto.
 
   - Case "mem".
-    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA; eapply stpd2_wrapf.
     eapply compat_mem in IX1. repeat destruct IX1 as [? IX1].
     eapply compat_mem in IX2. repeat destruct IX2 as [? IX2].
     subst. eapply stpd2_mem.
@@ -2319,7 +2340,7 @@ Proof.
     eauto. eauto.
 
   - Case "sel1".
-    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA; eapply stpd2_wrapf.
 
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -2334,7 +2355,7 @@ Proof.
     eauto. eauto. eauto.
 
   - Case "sel2".
-    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA; eapply stpd2_wrapf.
 
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -2349,7 +2370,7 @@ Proof.
     eauto. eauto. eauto.
 
   - Case "selx".
-    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA; eapply stpd2_wrapf.
 
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -2383,15 +2404,15 @@ Proof.
     + SCase "x = 0".
       repeat destruct IXX as [|IXX]; ev.
       * subst. simpl.
-        eapply stpd2_sel1. eauto. eauto.
-        eapply stpd2_upgrade. eapply IHn; eauto; try omega. right. right. left. auto.
+        eapply stpd2_wrapf. eapply stpd2_sel1. eauto. eauto.
+        eapply IHn; eauto; try omega. right. right. left. auto.
       * subst. simpl.
-        eapply stpd2_upgrade. eapply IHn; eauto; try omega. right. right. left. auto.
+        eapply IHn; eauto; try omega. right. right. left. auto.
       * subst. inversion H5. subst. omega.
       * subst. destruct H5. eauto.
     + SCase "x > 0".
       ev. subst.
-      eapply stpd2_sela1. eauto.
+      eapply stpd2_wrapf. eapply stpd2_sela1. eauto.
 
       assert (x-1+1=x) as A by omega.
       remember (x-1) as x1. rewrite <- A in H0.
@@ -2401,7 +2422,7 @@ Proof.
     + eauto. + subst GH. eauto. + eauto.
 
   - Case "selax".
-    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA.
+    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA; eapply stpd2_wrapf.
 
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -2421,13 +2442,14 @@ Proof.
       destruct H0. destruct H0. subst. simpl.
       destruct H3. destruct H3. subst. simpl.
       eapply stpd2_sel1. eauto. eauto.
-      eapply stpd2_sel2. eauto. eauto.
+      eapply stpd2_wrapf. eapply stpd2_sel2. eauto. eauto.
       eapply stpd2_wrapf.
       eapply stp2_refl. eapply closed_upgrade_free. eassumption. omega.
 
       destruct H0. destruct H0. subst. simpl.
       destruct H3. destruct H3. subst. simpl.
       eapply stpd2_sel1. eauto. eauto.
+      eapply stpd2_wrapf.
       eapply stp2_refl. eapply closed_upgrade_free. eassumption. omega.
 
       destruct H3. destruct H3. subst. simpl.
@@ -2472,7 +2494,7 @@ Proof.
     + eauto.
 
   - Case "all".
-    intros GH0 GH0' GX TX T1' T2' ? CX IX1 IX2 FA.
+    intros GH0 GH0' GX TX T1' T2' ? CX IX1 IX2 FA; eapply stpd2_wrapf.
 
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
@@ -2500,12 +2522,12 @@ Proof.
     + eauto.
     + eauto. subst GH. rewrite <-EL. eapply closed_upgrade_free. eauto. omega.
   - Case "wrapf".
-    intros. subst. eapply stpd2_wrapf; eapply IHn; eauto; try omega.
+    intros. subst. eapply IHn; eauto; try omega.
   - Case "transf".
     intros. subst.
     apply stp2_extend2 with (v1:=(vty GX TX)) in H.
     apply stp2_extend1 with (v1:=(vty GX TX)) in H0.
-    eapply stpd2_transf.
+    eapply stpd2_trans.
 
     eapply IHn; eauto; try omega.
     unfold compat. simpl. left. exists (length G2).
@@ -2524,7 +2546,7 @@ Lemma stp2_substitute: forall G1 G2 T1 T2 GH m,
      compat GX TX G1 T1 T1' ->
      compat GX TX G2 T2 T2' ->
      Forall2 (compat2 GX TX) GH0 GH0' ->
-     stpd2 m G1 T1' G2 T2' GH0'.
+     stpd2 false G1 T1' G2 T2' GH0'.
 Proof.
   intros. repeat eu. eapply stp2_substitute_aux; eauto.
 Qed.
@@ -2550,7 +2572,6 @@ Proof.
     eapply stpd2_sel1; eauto. inversion H2. subst.
     eapply stp2_closed1 in H3. eauto. inversion H3. subst. simpl in H9. apply H9.
     eapply stp2_closed1 in H3. eauto. inversion H3. subst. simpl in H13. apply H13.
-    eapply stpd2_upgrade.
     eapply stpd2_trans. eexists. apply H7. eapply IHST; eauto.
     destruct H5 as [? H5]. inversion H5.
     destruct H5 as [? H5]. inversion H5.
