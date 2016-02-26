@@ -2,13 +2,7 @@
  DSub (D<:)
  T ::= Top | x.Type | { Type = T } | { Type <: T } | (z: T) -> T^z
  t ::= x | { Type = T } | lambda x:T.t | t t
-*)
-
-(*
-FSub (F<:)
-T ::= Top | X | T -> T | Forall Z <: T. T^Z
-t ::= x | lambda x:T.t | Lambda X<:T.t | t t | t [T]
-*)
+ *)
 
 Require Export SfLib.
 
@@ -20,40 +14,38 @@ Require Import Coq.Program.Equality.
 
 Definition id := nat.
 
+(* term variables occurring in types *)
+Inductive var : Type :=
+| varF : id -> var (* free, in concrete environment *)
+| varH : id -> var (* free, in abstract environment  *)
+| varB : id -> var (* locally-bound variable *)
+.
+
 Inductive ty : Type :=
 | TTop : ty
-| TFun : ty -> ty -> ty
+(* (z: T) -> T^z *)
 | TAll : ty -> ty -> ty
-| TVarF : id -> ty (* free type variable, in concrete environment *)
-| TVarH : id -> ty (* free type variable, in abstract environment  *)
-| TVarB : id -> ty (* locally-bound type variable *)
-(* For uniformity, we use TMem to mark type variables in the environment. *)
-(* The advantage is that we don't need to represent two kinds of bindings
-   x: T, X <: T
-   in environments, but instead just
-   x: T, X: TMem T
-*)
-| TMem : ty -> ty  (* Z <: T *)
+(* x.Type *)
+| TSel : var -> ty
+(* { Type = T } or { Type <: T } *)
+| TMem : bool(* whether alias (=: true) vs upper-bounded (<: false) *) -> ty -> ty
 .
 
 Inductive tm : Type :=
+(* x -- free variable, matching concrete environment *)
 | tvar : id -> tm
+(* { Type = T } *)
+| ttyp : ty -> tm
+(* lambda x:T.t *)
 | tabs : ty -> tm -> tm
+(* t t *)
 | tapp : tm -> tm -> tm
-| ttabs : ty -> tm -> tm
-| ttapp : tm -> ty -> tm
 .
 
 Inductive vl : Type :=
-(* a closure for a term abstraction *)
+(* a closure for a lambda abstraction *)
 | vabs : list vl (*H*) -> ty -> tm -> vl
-(* a closure for a type abstraction *)
-| vtabs : list vl (*H*) -> ty -> tm -> vl
-(* For uniformity, we represent a type closing over H here as well,
-   because such types can be bound in H during type application.
-   They represent a type variable binding in the runtime environment,
-   corresponding to TMem in the static environment.
-*)
+(* a closure for a first-class type *)
 | vty : list vl (*H*) -> ty -> vl
 .
 
