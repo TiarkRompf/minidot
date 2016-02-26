@@ -211,13 +211,10 @@ Inductive stp2: bool (* whether the last rule may not be transitivity *) ->
 | stp2_top: forall G1 G2 GH T n,
     closed 0 (length GH) (length G1) T ->
     stp2 true G1 T G2 TTop GH (S n)
-| stp2_fun: forall G1 G2 T1 T2 T3 T4 GH n1 n2,
-    stp2 false G2 T3 G1 T1 GH n1 ->
-    stp2 false G1 T2 G2 T4 GH n2 ->
-    stp2 true G1 (TFun T1 T2) G2 (TFun T3 T4) GH (S (n1 + n2))
-| stp2_mem: forall G1 G2 T1 T2 GH n1,
+| stp2_mem: forall G1 G2 b1 T1 b2 T2 GH n1 n2,
     stp2 false G1 T1 G2 T2 GH n1 ->
-    stp2 true G1 (TMem T1) G2 (TMem T2) GH (S n1)
+    b2 = false \/ (b1 = true /\ b2 = true /\ stp2 false G2 T2 G1 T1 GH n2) ->
+    stp2 true G1 (TMem b1 T1) G2 (TMem b2 T2) GH (S n1)
 
 (* concrete type variables *)
 (* vty already marks binding as type binding, so need for additional TMem marker *)
@@ -225,16 +222,16 @@ Inductive stp2: bool (* whether the last rule may not be transitivity *) ->
     indexr x G1 = Some (vty GX TX) ->
     closed 0 0 (length GX) TX ->
     stp2 true GX TX G2 T2 GH n1 ->
-    stp2 true G1 (TVarF x) G2 T2 GH (S n1)
+    stp2 true G1 (TSel (varF x)) G2 T2 GH (S n1)
 | stp2_sel2: forall G1 G2 GX TX x T1 GH n1,
     indexr x G2 = Some (vty GX TX) ->
     closed 0 0 (length GX) TX ->
     stp2 false G1 T1 GX TX GH n1 ->
-    stp2 true G1 T1 G2 (TVarF x) GH (S n1)
+    stp2 true G1 T1 G2 (TSel (varF x)) GH (S n1)
 | stp2_selx: forall G1 G2 v x1 x2 GH n,
     indexr x1 G1 = Some v ->
     indexr x2 G2 = Some v ->
-    stp2 true G1 (TVarF x1) G2 (TVarF x2) GH (S n)
+    stp2 true G1 (TSel (varF x1)) G2 (TSel (varF x2)) GH (S n)
 
 (* abstract type variables *)
 (* X<:T, one sided *)
@@ -242,17 +239,17 @@ Inductive stp2: bool (* whether the last rule may not be transitivity *) ->
     indexr x GH = Some (GX, TX) ->
     closed 0 x (length GX) TX ->
     stp2 false GX TX G2 T2 GH n1 ->
-    stp2 true G1 (TVarH x) G2 T2 GH (S n1)
+    stp2 true G1 (TSel (varH x)) G2 T2 GH (S n1)
 | stp2_selax: forall G1 G2 v x GH n,
     indexr x GH = Some v ->
-    stp2 true G1 (TVarH x) G2 (TVarH x) GH (S n)
+    stp2 true G1 (TSel (varH x)) G2 (TSel (varH x)) GH (S n)
 
 | stp2_all: forall G1 G2 T1 T2 T3 T4 x GH n1 n2,
     stp2 false G2 T3 G1 T1 GH n1 ->
     x = length GH ->
     closed 1 (length GH) (length G1) T2 ->
     closed 1 (length GH) (length G2) T4 ->
-    stp2 false G1 (open (TVarH x) T2) G2 (open (TVarH x) T4) ((G2, T3)::GH) n2 ->
+    stp2 false G1 (open (varH x) T2) G2 (open (varH x) T4) ((G2, T3)::GH) n2 ->
     stp2 true G1 (TAll T1 T2) G2 (TAll T3 T4) GH (S (n1 + n2))
 
 | stp2_wrapf: forall G1 G2 T1 T2 GH n1,
