@@ -1485,48 +1485,44 @@ Lemma stpd2_top: forall G1 G2 GH T,
     closed 0 (length GH) (length G1) T ->
     stpd2 true G1 T G2 TTop GH.
 Proof. intros. exists (S 0). eauto. Qed.
-Lemma stpd2_fun: forall G1 G2 T1 T2 T3 T4 GH,
-    stpd2 false G2 T3 G1 T1 GH ->
-    stpd2 false G1 T2 G2 T4 GH ->
-    stpd2 true G1 (TFun T1 T2) G2 (TFun T3 T4) GH.
-Proof. intros. repeat eu. eauto. Qed.
-Lemma stpd2_mem: forall G1 G2 T1 T2 GH,
+Lemma stpd2_mem: forall G1 G2 b1 T1 b2 T2 GH,
     stpd2 false G1 T1 G2 T2 GH ->
-    stpd2 true G1 (TMem T1) G2 (TMem T2) GH.
-Proof. intros. repeat eu. eauto. Qed.
+    ((b2 = false) \/ (b1 = true /\ b2 = true /\ stpd2 false G2 T2 G1 T1 GH)) ->
+    stpd2 true G1 (TMem b1 T1) G2 (TMem b2 T2) GH.
+Proof. intros. inversion H0 as [H02 | [H01 [H02 H0B]]]; repeat eu; subst; eauto. Qed.
 Lemma stpd2_sel1_down: forall G1 G2 GX TX x T2 GH,
     indexr x G1 = Some (vty GX TX) ->
     closed 0 0 (length GX) TX ->
     stpd2 true GX TX G2 T2 GH ->
-    stpd2 true G1 (TVarF x) G2 T2 GH.
+    stpd2 true G1 (TSel (varF x)) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_sel2: forall G1 G2 GX TX x T1 GH,
     indexr x G2 = Some (vty GX TX) ->
     closed 0 0 (length GX) TX ->
     stpd2 false G1 T1 GX TX GH ->
-    stpd2 true G1 T1 G2 (TVarF x) GH.
+    stpd2 true G1 T1 G2 (TSel (varF x)) GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_selx: forall G1 G2 v x1 x2 GH,
     indexr x1 G1 = Some v ->
     indexr x2 G2 = Some v ->
-    stpd2 true G1 (TVarF x1) G2 (TVarF x2) GH.
+    stpd2 true G1 (TSel (varF x1)) G2 (TSel (varF x2)) GH.
 Proof. intros. exists (S 0). eauto. Qed.
-Lemma stpd2_sela1: forall G1 G2 GX TX x T2 GH,
-    indexr x GH = Some (GX, TX) ->
+Lemma stpd2_sela1: forall G1 G2 GX b TX x T2 GH,
+    indexr x GH = Some (GX, TMem b TX) ->
     closed 0 x (length GX) TX ->
     stpd2 false GX TX G2 T2 GH ->
-    stpd2 true G1 (TVarH x) G2 T2 GH.
+    stpd2 true G1 (TSel (varH x)) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_selax: forall G1 G2 v x GH,
     indexr x GH = Some v ->
-    stpd2 true G1 (TVarH x) G2 (TVarH x) GH.
+    stpd2 true G1 (TSel (varH x)) G2 (TSel (varH x)) GH.
 Proof. intros. exists (S 0). eauto. Qed.
 Lemma stpd2_all: forall G1 G2 T1 T2 T3 T4 x GH,
     stpd2 false G2 T3 G1 T1 GH ->
     x = length GH ->
     closed 1 (length GH) (length G1) T2 ->
     closed 1 (length GH) (length G2) T4 ->
-    stpd2 false G1 (open (TVarH x) T2) G2 (open (TVarH x) T4) ((G2, T3)::GH) ->
+    stpd2 false G1 (open (varH x) T2) G2 (open (varH x) T4) ((G2, T3)::GH) ->
     stpd2 true G1 (TAll T1 T2) G2 (TAll T3 T4) GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_wrapf: forall G1 G2 T1 T2 GH,
@@ -1571,10 +1567,12 @@ Proof.
     intros GH1 GH0 GH' GX1 TX1 GX2 TX2 EGH EGH' HX; eauto.
     + SCase "top". eapply stpd2_top.
       subst. rewrite app_length. simpl. rewrite app_length in H0. simpl in H0. apply H0.
-    + SCase "fun". eapply stpd2_fun.
+    + SCase "mem_false". eapply stpd2_mem.
       eapply IHn; try eassumption. omega.
+      left. reflexivity.
+    + SCase "mem_true". eapply stpd2_mem.
       eapply IHn; try eassumption. omega.
-    + SCase "mem". eapply stpd2_mem.
+      right. split. reflexivity. split. reflexivity.
       eapply IHn; try eassumption. omega.
     + SCase "sel1". eapply stpd2_sel1_down; try eassumption.
       eapply IHn; try eassumption. omega.
