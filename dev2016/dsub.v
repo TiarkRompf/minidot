@@ -137,7 +137,7 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_mem: forall G1 GH b1 T1 b2 T2,
     stp G1 GH T1 T2 ->
     b2 = false \/ (b1 = true /\ b2 = true /\ stp G1 GH T2 T1) ->
-    stp G1 GH (TMem b1 T1) (TMem b1 T2)
+    stp G1 GH (TMem b1 T1) (TMem b2 T2)
 | stp_sel1: forall G1 GH b T T2 x,
     indexr x G1 = Some (TMem b T) ->
     closed 0 0 (length G1) T ->
@@ -181,6 +181,9 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            indexr x env = Some T1 ->
            stp env [] T1 T1 ->
            has_type env (tvar x) T1
+| t_typ: forall env T1,
+           closed 0 0 (length env) T1 ->
+           has_type env (ttyp T1) (TMem true T1)
 | t_app: forall env f x T1 T2,
            has_type env f (TAll T1 T2) ->
            has_type env x T1 ->
@@ -274,32 +277,26 @@ Inductive wf_env : venv -> tenv -> Prop :=
 with val_type : venv -> vl -> ty -> Prop :=
 | v_ty: forall env venv tenv T1 TE,
     wf_env venv tenv ->
-    (exists n, stp2 true venv (TMem T1) env TE [] n) ->
+    (exists n, stp2 true venv (TMem true T1) env TE [] n) ->
     val_type env (vty venv T1) TE
 | v_abs: forall env venv tenv x y T1 T2 TE,
     wf_env venv tenv ->
-    has_type (T1::tenv) y T2 ->
-    length venv = x ->
-    (exists n, stp2 true venv (TFun T1 T2) env TE [] n) ->
-    val_type env (vabs venv T1 y) TE
-| v_tabs: forall env venv tenv x y T1 T2 TE,
-    wf_env venv tenv ->
-    has_type ((TMem T1)::tenv) y (open (TVarF x) T2) ->
+    has_type (T1::tenv) y (open (varF x) T2) ->
     length venv = x ->
     (exists n, stp2 true venv (TAll T1 T2) env TE [] n) ->
-    val_type env (vtabs venv T1 y) TE
+    val_type env (vabs venv T1 y) TE
 .
 
 Inductive wf_envh : venv -> aenv -> tenv -> Prop :=
 | wfeh_nil : forall vvs, wf_envh vvs nil nil
 | wfeh_cons : forall t vs vvs ts,
     wf_envh vvs vs ts ->
-    wf_envh vvs (cons (vvs,t) vs) (cons (TMem t) ts)
+    wf_envh vvs (cons (vvs,t) vs) (cons t ts)
 .
 
 Inductive valh_type : venv -> aenv -> (venv*ty) -> ty -> Prop :=
 | v_tya: forall aenv venv T1,
-    valh_type venv aenv (venv, T1) (TMem T1)
+    valh_type venv aenv (venv, T1) T1
 .
 
 (* ### Evaluation (Big-Step Semantics) ### *)
@@ -318,8 +315,8 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
     | S n =>
       match t with
         | tvar x     => Some (indexr x env)
+        | ttyp T => Some (Some (vty env T))
         | tabs T y => Some (Some (vabs env T y))
-        | ttabs T y  => Some (Some (vtabs env T y))
         | tapp ef ex   =>
           match teval n env ex with
             | None => None
@@ -329,19 +326,9 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
                 | None => None
                 | Some None => Some None
                 | Some (Some (vty _ _)) => Some None
-                | Some (Some (vtabs _ _ _)) => Some None
                 | Some (Some (vabs env2 _ ey)) =>
                   teval n (vx::env2) ey
               end
-          end
-        | ttapp ef ex   =>
-          match teval n env ef with
-            | None => None
-            | Some None => Some None
-            | Some (Some (vty _ _)) => Some None
-            | Some (Some (vabs _ _ _)) => Some None
-            | Some (Some (vtabs env2 T ey)) =>
-              teval n ((vty env ex)::env2) ey
           end
       end
   end.
@@ -391,19 +378,22 @@ Ltac crush2 :=
 
 (* define polymorphic identity function *)
 
-Definition polyId := TAll TTop (TFun (TVarB 0) (TVarB 0)).
+Definition polyId := TAll (TMem false TTop) (TAll (TSel (varB 0)) (TSel (varB 1))).
 
-Example ex1: has_type [] (ttabs TTop (tabs (TVarF 0) (tvar 1))) polyId.
+Example ex1: has_type [] (tabs (TMem false TTop) (tabs (TSel (varF 0)) (tvar 1))) polyId.
 Proof.
   crush_has_tp.
 Qed.
 
 (* instantiate it to TTop *)
-Example ex2: has_type [polyId] (ttapp (tvar 0) TTop) (TFun TTop TTop).
+Example ex2: has_type [polyId] (tapp (tvar 0) (ttyp TTop)) (TAll TTop TTop).
 Proof.
+  eapply t_app. eapply t_sub. eapply t_var. compute. reflexivity.
+  crush2.
+  crush2.
+  crush2.
   crush2.
 Qed.
-
 
 (* ############################################################ *)
 (* Proofs *)
