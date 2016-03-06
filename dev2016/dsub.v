@@ -134,10 +134,13 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_top: forall G1 GH T1,
     closed 0 (length GH) (length G1) T1 ->
     stp G1 GH T1 TTop
-| stp_mem: forall G1 GH b1 T1 b2 T2,
+| stp_mem_false: forall G1 GH b1 T1 T2,
     stp G1 GH T1 T2 ->
-    b2 = false \/ (b1 = true /\ b2 = true /\ stp G1 GH T2 T1) ->
-    stp G1 GH (TMem b1 T1) (TMem b2 T2)
+    stp G1 GH (TMem b1 T1) (TMem false T2)
+| stp_mem_true: forall G1 GH T1 T2,
+    stp G1 GH T1 T2 ->
+    stp G1 GH T2 T1 ->
+    stp G1 GH (TMem true T1) (TMem true T2)
 | stp_sel1: forall G1 GH b T T2 x,
     indexr x G1 = Some (TMem b T) ->
     closed 0 0 (length G1) T ->
@@ -214,10 +217,13 @@ Inductive stp2: bool (* whether the last rule may not be transitivity *) ->
 | stp2_top: forall G1 G2 GH T n,
     closed 0 (length GH) (length G1) T ->
     stp2 true G1 T G2 TTop GH (S n)
-| stp2_mem: forall G1 G2 b1 T1 b2 T2 GH n1 n2,
+| stp2_mem_false: forall G1 G2 b1 T1 T2 GH n1,
     stp2 false G1 T1 G2 T2 GH n1 ->
-    b2 = false \/ (b1 = true /\ b2 = true /\ stp2 false G2 T2 G1 T1 GH n2) ->
-    stp2 true G1 (TMem b1 T1) G2 (TMem b2 T2) GH (S n1)
+    stp2 true G1 (TMem b1 T1) G2 (TMem false T2) GH (S n1)
+| stp2_mem_true: forall G1 G2 T1 T2 GH n1 n2,
+    stp2 false G1 T1 G2 T2 GH n1 ->
+    stp2 false G2 T2 G1 T1 GH n2 ->
+    stp2 true G1 (TMem true T1) G2 (TMem true T2) GH (S (n1+n2))
 
 (* concrete type variables *)
 (* vty already marks binding as type binding, so need for additional TMem marker *)
@@ -793,12 +799,12 @@ Proof.
     simpl. apply closed_open; auto using closed_inc.
     unfold open. rewrite <- open_preserves_size. omega.
   - simpl in H0.
-    eapply stp_mem.
-    eapply IHn; eauto; try omega.
     destruct b.
-    right. split; try split; eauto.
+    eapply stp_mem_true.
     eapply IHn; eauto; try omega.
-    left. eauto.
+    eapply IHn; eauto; try omega.
+    eapply stp_mem_false.
+    eapply IHn; eauto; try omega.
 Qed.
 
 Lemma stp_refl: forall T G GH,
@@ -839,10 +845,11 @@ Proof.
   - eapply indexr_has in H1. destruct H1 as [v HI].
     eexists; eapply stp2_selax; eauto.
   - destruct (IHn T0 G GH) as [n0 IH0]; eauto; try omega.
-    eexists. eapply stp2_mem. eapply stp2_wrapf. eapply IH0.
     destruct b.
-    right. split; try split; eauto.
-    left. eauto.
+    eexists. eapply stp2_mem_true.
+    eapply stp2_wrapf. eapply IH0. eapply stp2_wrapf. eapply IH0.
+    eexists. eapply stp2_mem_false.
+    eapply stp2_wrapf. eapply IH0.
 Grab Existential Variables. apply 0. apply 0. apply 0.
 Qed.
 
@@ -866,11 +873,6 @@ Proof.
     rewrite map_splice_length_inc.
     apply closed_splice.
     assumption.
-  - Case "mem".
-    eapply stp_mem. eapply IHstp. reflexivity.
-    inversion H0 as [H02 | [H01 [H02 H0ST]]]; subst.
-    left. eauto.
-    right. split; try split; eauto. admit.
   - Case "sel1".
     eapply stp_sel1. apply H. assumption.
     assert (splice (length G0) T=T) as A. {
