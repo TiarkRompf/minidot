@@ -1721,8 +1721,10 @@ Proof.
   inversion H1; subst;
   try solve [eapply stpd2_top; eauto using stp2_closed1];
   try solve [eapply stpd2_sel2; eauto];
-  try solve [eapply stpd2_fun; eapply stpd2_trans; eauto];
-  try solve [eapply stpd2_mem; eauto; eapply stpd2_trans; eauto];
+  try solve [eapply stpd2_sela2; eauto];
+  try solve [eapply stpd2_mem; [eapply stpd2_trans; eauto |
+                     try solve [left; reflexivity];
+                     try solve [right; split; try split; eauto; eapply stpd2_trans; eauto]]];
   try solve [eapply stpd2_sela1; eauto; eapply stpd2_wrapf; eapply IHn; eauto; try omega];
   try solve [indexr_contra].
   - Case "sel2 - sel1".
@@ -1737,6 +1739,11 @@ Proof.
   - Case "selx - selx".
     rewrite H5 in H3. inversion H3. subst.
     eapply stpd2_selx; eauto.
+  - Case "sela2 - sela1".
+    rewrite H7 in H2. inversion H2. subst.
+    admit.
+  - Case "sela2 - selax".
+    admit.
   - Case "selax - selax".
     eapply stpd2_selax; eauto.
   - Case "all - all".
