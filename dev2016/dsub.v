@@ -402,19 +402,16 @@ Qed.
 Fixpoint tsize(T: ty) :=
   match T with
     | TTop => 1
-    | TFun T1 T2 => S (tsize T1 + tsize T2)
     | TAll T1 T2 => S (tsize T1 + tsize T2)
-    | TVarF _ => 1
-    | TVarH _ => 1
-    | TVarB _ => 1
-    | TMem T0 => S (tsize T0)
+    | TSel _ => 1
+    | TMem _ T0 => S (tsize T0)
   end.
 
 Lemma open_preserves_size: forall T x j,
-  tsize T = tsize (open_rec j (TVarH x) T).
+  tsize T = tsize (open_rec j (varH x) T).
 Proof.
   intros T. induction T; intros; simpl; eauto.
-  - simpl. destruct (beq_nat j i); eauto.
+  - destruct v; simpl; destruct (beq_nat j i); eauto.
 Qed.
 
 (* ## Extension, Regularity ## *)
@@ -487,12 +484,11 @@ Qed.
 Fixpoint splice n (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
-    | TFun T1 T2   => TFun (splice n T1) (splice n T2)
     | TAll T1 T2   => TAll (splice n T1) (splice n T2)
-    | TVarF i      => TVarF i
-    | TVarB i      => TVarB i
-    | TVarH i      => if le_lt_dec n i then TVarH (i+1) else TVarH i
-    | TMem T0      => TMem (splice n T0)
+    | TSel (varF i) => TSel (varF i)
+    | TSel (varB i) => TSel (varB i)
+    | TSel (varH i) => if le_lt_dec n i then TSel (varH (i+1)) else TSel (varH i)
+    | TMem b T0      => TMem b (splice n T0)
   end.
 
 Definition spliceat n (V: (venv*ty)) :=
@@ -501,18 +497,23 @@ Definition spliceat n (V: (venv*ty)) :=
   end.
 
 Lemma splice_open_permute: forall {X} (G0:list X) T2 n j,
-(open_rec j (TVarH (n + S (length G0))) (splice (length G0) T2)) =
-(splice (length G0) (open_rec j (TVarH (n + length G0)) T2)).
+(open_rec j (varH (n + S (length G0))) (splice (length G0) T2)) =
+(splice (length G0) (open_rec j (varH (n + length G0)) T2)).
 Proof.
   intros X G T. induction T; intros; simpl; eauto;
-  try rewrite IHT1; try rewrite IHT2; try rewrite IHT; eauto.
+  try rewrite IHT1; try rewrite IHT2; try rewrite IHT; eauto;
+  destruct v; eauto.
 
   case_eq (le_lt_dec (length G) i); intros E LE; simpl; eauto.
+  rewrite LE. eauto.
+  rewrite LE. eauto.
   case_eq (beq_nat j i); intros E; simpl; eauto.
   case_eq (le_lt_dec (length G) (n + length G)); intros EL LE.
+  rewrite E.
   assert (n + S (length G) = n + length G + 1). omega.
   rewrite H. eauto.
   omega.
+  rewrite E. eauto.
 Qed.
 
 Lemma indexr_splice_hi: forall G0 G2 x0 v1 T,
@@ -659,10 +660,6 @@ Lemma closed_splice_idem: forall i j k T n,
                             splice n T = T.
 Proof.
   intros. induction H; eauto.
-  - (* TFun *) simpl.
-    rewrite IHclosed1. rewrite IHclosed2.
-    reflexivity.
-    assumption. assumption.
   - (* TAll *) simpl.
     rewrite IHclosed1. rewrite IHclosed2.
     reflexivity.
@@ -746,8 +743,8 @@ Proof.
  intros. apply (closed_inc_mult i j k T H i j k'); omega.
 Qed.
 
-Lemma closed_open: forall i j k TX T, closed (i+1) j k T -> closed i j k TX ->
-  closed i j k (open_rec i TX T).
+Lemma closed_open: forall i j k V T, closed (i+1) j k T -> closed i j k (TSel V) ->
+  closed i j k (open_rec i V T).
 Proof.
   intros. generalize dependent i.
   induction T; intros; inversion H;
@@ -755,7 +752,7 @@ Proof.
   try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
   eapply closed_upgrade. eauto. eauto.
   - Case "TVarB". simpl.
-    case_eq (beq_nat i0 i); intros E. eauto.
+    case_eq (beq_nat i x); intros E. eauto.
     econstructor. eapply beq_nat_false_iff in E. omega.
 Qed.
 
@@ -795,6 +792,13 @@ Proof.
     apply IHn; eauto.
     simpl. apply closed_open; auto using closed_inc.
     unfold open. rewrite <- open_preserves_size. omega.
+  - simpl in H0.
+    eapply stp_mem.
+    eapply IHn; eauto; try omega.
+    destruct b.
+    right. split; try split; eauto.
+    eapply IHn; eauto; try omega.
+    left. eauto.
 Qed.
 
 Lemma stp_refl: forall T G GH,
@@ -826,10 +830,7 @@ Proof.
   intros n. induction n; intros; try omega.
   inversion H; subst; eauto; try omega; try simpl in H0.
   - destruct (IHn T1 G GH) as [n1 IH1]; eauto; try omega.
-    destruct (IHn T2 G GH) as [n2 IH2]; eauto; try omega.
-    eexists; constructor; try constructor; eauto.
-  - destruct (IHn T1 G GH) as [n1 IH1]; eauto; try omega.
-    destruct (IHn (open (TVarH (length GH)) T2) G ((G,T1)::GH)); eauto; try omega.
+    destruct (IHn (open (varH (length GH)) T2) G ((G,T1)::GH)); eauto; try omega.
     simpl. apply closed_open; auto using closed_inc.
     unfold open. rewrite <- open_preserves_size. omega.
     eexists; econstructor; try constructor; eauto.
@@ -838,6 +839,10 @@ Proof.
   - eapply indexr_has in H1. destruct H1 as [v HI].
     eexists; eapply stp2_selax; eauto.
   - destruct (IHn T0 G GH) as [n0 IH0]; eauto; try omega.
+    eexists. eapply stp2_mem. eapply stp2_wrapf. eapply IH0.
+    destruct b.
+    right. split; try split; eauto.
+    left. eauto.
 Grab Existential Variables. apply 0. apply 0. apply 0.
 Qed.
 
@@ -861,21 +866,45 @@ Proof.
     rewrite map_splice_length_inc.
     apply closed_splice.
     assumption.
+  - Case "mem".
+    eapply stp_mem. eapply IHstp. reflexivity.
+    inversion H0 as [H02 | [H01 [H02 H0ST]]]; subst.
+    left. eauto.
+    right. split; try split; eauto. admit.
   - Case "sel1".
     eapply stp_sel1. apply H. assumption.
     assert (splice (length G0) T=T) as A. {
       eapply closed_splice_idem. eassumption. omega.
     }
     rewrite <- A. apply IHstp. reflexivity.
+  - Case "sel2".
+    eapply stp_sel2. apply H. assumption.
+    assert (splice (length G0) T=T) as A. {
+      eapply closed_splice_idem. eassumption. omega.
+    }
+    rewrite <- A. apply IHstp. reflexivity.
   - Case "sela1".
     case_eq (le_lt_dec (length G0) x); intros E LE.
-    + apply stp_sela1 with (T:=(splice (length G0) T)).
-      assert (TMem (splice (length G0) T)=(splice (length G0) (TMem T))) as B by auto.
+    + apply stp_sela1 with (T:=(splice (length G0) T)) (b:=b).
+      assert (TMem b (splice (length G0) T)=(splice (length G0) (TMem b T))) as B by auto.
       rewrite B. apply indexr_splice_hi. eauto. eauto.
       eapply closed_splice in H0. assert (S x = x +1) as A by omega.
       rewrite <- A. eapply H0.
       eapply IHstp. eauto.
     + eapply stp_sela1. eapply indexr_splice_lo. eauto. eauto. eauto. eauto.
+      assert (splice (length G0) T=T) as A. {
+        eapply closed_splice_idem. eassumption. omega.
+      }
+      rewrite <- A. eapply IHstp. eauto.
+  - Case "sela2".
+    case_eq (le_lt_dec (length G0) x); intros E LE.
+    + apply stp_sela2 with (T:=(splice (length G0) T)).
+      assert (TMem true (splice (length G0) T)=(splice (length G0) (TMem true T))) as B by auto.
+      rewrite B. apply indexr_splice_hi. eauto. eauto.
+      eapply closed_splice in H0. assert (S x = x +1) as A by omega.
+      rewrite <- A. eapply H0.
+      eapply IHstp. eauto.
+    + eapply stp_sela2. eapply indexr_splice_lo. eauto. eauto. eauto. eauto.
       assert (splice (length G0) T=T) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
@@ -893,7 +922,7 @@ Proof.
 
     simpl. rewrite map_splice_length_inc. apply closed_splice. assumption.
 
-    specialize IHstp2 with (G3:=G0) (G4:=(TMem T3) :: G2).
+    specialize IHstp2 with (G3:=G0) (G4:=T3 :: G2).
     simpl in IHstp2. rewrite app_length. rewrite map_length. simpl.
     repeat rewrite splice_open_permute with (j:=0). subst x.
     rewrite app_length in IHstp2. simpl in IHstp2.
