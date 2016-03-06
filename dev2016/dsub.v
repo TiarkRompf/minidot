@@ -1767,7 +1767,7 @@ Lemma stpd2_sel1: forall G1 G2 GX TX x T2 GH,
     indexr x G1 = Some (vty GX TX) ->
     closed 0 0 (length GX) TX ->
     stpd2 false GX TX G2 T2 GH ->
-    stpd2 true G1 (TVarF x) G2 T2 GH.
+    stpd2 true G1 (TSel (varF x)) G2 T2 GH.
 Proof.
   intros. eapply stpd2_sel1_down; eauto using stpd2_upgrade_general.
 Qed.
@@ -1851,21 +1851,42 @@ Proof.
     rewrite H0. auto.
 Qed.
 
-Lemma open_subst_commute: forall T2 TX j k x i,
-closed i j k TX ->
-(open_rec i (TVarH x) (subst TX T2)) =
-(subst TX (open_rec i (TVarH (x+1)) T2)).
+Lemma open_subst_commute: forall T2 V j k x i,
+closed i j k (TSel V) ->
+(open_rec i (varH x) (subst V T2)) =
+(subst V (open_rec i (varH (x+1)) T2)).
 Proof.
-  intros T2 TX j k. induction T2; intros; eauto.
-  -  simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.
-  -  simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eapply closed_upgrade. eauto. eauto. eauto.
-  -  simpl. case_eq (beq_nat i 0); intros E. symmetry. eapply closed_no_open. eauto. simpl. eauto.
-  - simpl. case_eq (beq_nat i0 i); intros E. simpl.
-    assert (x+1<>0). omega. eapply beq_nat_false_iff in H0.
-    assert (x=x+1-1). unfold id. omega.
-    rewrite H0. eauto.
-    simpl. eauto.
-  -  simpl. rewrite IHT2. eauto. eauto.
+  intros T2 TX j k. induction T2; intros; eauto; try destruct v; eauto.
+  - simpl. rewrite IHT2_1; eauto. rewrite IHT2_2; eauto.
+    eapply closed_upgrade. eauto. eauto.
+  - simpl.
+    case_eq (beq_nat i 0); intros E.
+    apply beq_nat_true in E. subst.
+    case_eq (beq_nat i0 0); intros E0.
+    apply beq_nat_true in E0. subst.
+    destruct TX; eauto.
+    simpl. destruct i; eauto.
+    inversion H; subst. omega.
+    simpl. reflexivity.
+    case_eq (beq_nat i0 0); intros E0.
+    apply beq_nat_true in E0. subst.
+    simpl. destruct TX; eauto.
+    case_eq (beq_nat i i0); intros E1.
+    apply beq_nat_true in E1. subst.
+    inversion H; subst. omega.
+    reflexivity.
+    simpl. reflexivity.
+  - simpl.
+    case_eq (beq_nat i i0); intros E.
+    apply beq_nat_true in E; subst.
+    simpl.
+    assert (x+1 <> 0) as A by omega.
+    eapply beq_nat_false_iff in A.
+    rewrite A.
+    assert (x = x + 1 - 1) as B. unfold id. omega.
+    rewrite <- B. reflexivity.
+    simpl. reflexivity.
+  - simpl. rewrite IHT2. eauto. eauto.
 Qed.
 
 Lemma closed_no_subst: forall T i k TX,
@@ -1874,14 +1895,11 @@ Lemma closed_no_subst: forall T i k TX,
 Proof.
   intros T. induction T; intros; inversion H; simpl; eauto;
   try rewrite (IHT i k TX); eauto; try rewrite (IHT2 (S i) k TX); eauto;
-  try rewrite (IHT1 i k TX); eauto.
-
-  eapply closed_upgrade. eauto. eauto.
-
-  subst. omega.
+  try rewrite (IHT1 i k TX); eauto;
+  try omega.
 Qed.
 
-Lemma closed_subst: forall i j k TX T, closed i (j+1) k T -> closed 0 j k TX -> closed i j k (subst TX T).
+Lemma closed_subst: forall i j k V T, closed i (j+1) k T -> closed 0 j k (TSel V) -> closed i j k (subst V T).
 Proof.
   intros. generalize dependent i.
   induction T; intros; inversion H;
@@ -1889,37 +1907,37 @@ Proof.
   try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
 
   - Case "TVarH". simpl.
-    case_eq (beq_nat i 0); intros E.
+    case_eq (beq_nat x 0); intros E.
     eapply closed_upgrade. eapply closed_upgrade_free.
     eauto. omega. eauto. omega.
-    econstructor. assert (i > 0). eapply beq_nat_false_iff in E. omega. omega.
+    econstructor. assert (x > 0). eapply beq_nat_false_iff in E. omega. omega.
 Qed.
 
-Lemma subst_open_commute_m: forall i j k j' TX T2, closed (i+1) (j+1) k T2 -> closed 0 j' k TX ->
-    subst TX (open_rec i (TVarH (j+1)) T2) = open_rec i (TVarH j) (subst TX T2).
+Lemma subst_open_commute_m: forall i j k j' V T2, closed (i+1) (j+1) k T2 -> closed 0 j' k (TSel V) ->
+    subst V (open_rec i (varH (j+1)) T2) = open_rec i (varH j) (subst V T2).
 Proof.
   intros. generalize dependent i. generalize dependent j.
   induction T2; intros; inversion H; simpl; eauto;
           try rewrite IHT2_1; try rewrite IHT2_2; try rewrite IHT2; eauto.
 
-  - Case "TVarH". simpl. case_eq (beq_nat i 0); intros E.
+  - Case "TVarH". simpl. case_eq (beq_nat x 0); intros E.
     eapply closed_no_open. eapply closed_upgrade. eauto. omega.
     eauto.
-  - Case "TVarB". simpl. case_eq (beq_nat i0 i); intros E.
+  - Case "TVarB". simpl. case_eq (beq_nat i x); intros E.
     simpl. case_eq (beq_nat (j+1) 0); intros E2.
     eapply beq_nat_true_iff in E2. omega.
-    assert (j+1-1 = j). omega. eauto.
+    subst. assert (j+1-1 = j) as A. omega. rewrite A. eauto.
     eauto.
 Qed.
 
-Lemma subst_open_commute: forall i j k TX T2, closed (i+1) (j+1) k T2 -> closed 0 0 k TX ->
-    subst TX (open_rec i (TVarH (j+1)) T2) = open_rec i (TVarH j) (subst TX T2).
+Lemma subst_open_commute: forall i j k V T2, closed (i+1) (j+1) k T2 -> closed 0 0 k (TSel V) ->
+    subst V (open_rec i (varH (j+1)) T2) = open_rec i (varH j) (subst V T2).
 Proof.
   intros. eapply subst_open_commute_m; eauto.
 Qed.
 
 Lemma subst_open_zero: forall i i' k TX T2, closed i' 0 k T2 ->
-    subst TX (open_rec i (TVarH 0) T2) = open_rec i TX T2.
+    subst TX (open_rec i (varH 0) T2) = open_rec i TX T2.
 Proof.
   intros. generalize dependent i'. generalize dependent i.
   induction T2; intros; inversion H; simpl; eauto;
@@ -1927,9 +1945,9 @@ Proof.
   try rewrite (IHT2_2 _ (S i'));
   try rewrite (IHT2_2 _ (S i'));
   try rewrite (IHT2 _ i'); eauto.
-  eapply closed_upgrade; eauto.
-  case_eq (beq_nat i 0); intros E. omega. omega.
-  case_eq (beq_nat i0 i); intros E. eauto. eauto.
+  subst.
+  case_eq (beq_nat x 0); intros E. omega. omega.
+  case_eq (beq_nat i x); intros E. eauto. eauto.
 Qed.
 
 Lemma Forall2_length: forall A B f (G1:list A) (G2:list B),
@@ -1947,113 +1965,11 @@ Proof.
   omega.
 Qed.
 
-Lemma nosubst_open: forall i TX T2, nosubst TX -> nosubst T2 -> nosubst (open_rec i TX T2).
+Lemma nosubst_open: forall i V T2, nosubst (TSel V) -> nosubst T2 -> nosubst (open_rec i V T2).
 Proof.
   intros. generalize dependent i. induction T2; intros;
-  try inversion H0; simpl; eauto.
-  case_eq (beq_nat i0 i); intros E. eauto. eauto.
-Qed.
-
-Lemma indexr_subst: forall GH0 x TX T,
-   indexr x (GH0 ++ [(TMem TX)]) = Some T ->
-   x = 0 /\ TMem TX = T \/
-   x > 0 /\ indexr (x-1) (map (subst TX) GH0) = Some (subst TX T).
-Proof.
-  intros GH0. induction GH0; intros.
-  - simpl in H. case_eq (beq_nat x 0); intros E.
-    + rewrite E in H. inversion H.
-      left. split. eapply beq_nat_true_iff. eauto. eauto.
-    + rewrite E in H. inversion H.
-  -  unfold id in H. remember ((length (GH0 ++ [(TMem TX)]))) as L.
-     case_eq (beq_nat x L); intros E.
-     + assert (x = L). eapply beq_nat_true_iff. eauto.
-       eapply indexr_hit in H.
-       right. split. rewrite app_length in HeqL. simpl in HeqL. omega.
-       assert ((x - 1) = (length (map (subst TX) GH0))).
-       rewrite map_length. rewrite app_length in HeqL. simpl in HeqL. unfold id. omega.
-       simpl.
-       eapply beq_nat_true_iff in H1. unfold id in H1. unfold id. rewrite H1.
-       subst. eauto. eauto. subst. eauto.
-     + assert (x <> L). eapply beq_nat_false_iff. eauto.
-       eapply indexr_miss in H. eapply IHGH0 in H.
-       inversion H. left. eapply H1.
-       right. inversion H1. split. eauto.
-       simpl.
-       assert ((x - 1) <> (length (map (subst TX) GH0))).
-       rewrite app_length in HeqL. simpl in HeqL. rewrite map_length.
-       unfold not. intros. subst L. unfold id in H0. unfold id in H2.
-       unfold not in H0. eapply H0. unfold id in H4. rewrite <-H4. omega.
-       eapply beq_nat_false_iff in H4. unfold id in H4. unfold id. rewrite H4.
-       eauto. subst. eauto.
-Qed.
-
-
-Lemma stp_substitute: forall T1 T2 GX GH,
-   stp GX GH T1 T2 ->
-   forall GH0 TX,
-     GH = (GH0 ++ [(TMem TX)]) ->
-     closed 0 0 (length GX) TX ->
-     stp GX (map (subst TX) GH0) TX TX ->
-     stp GX (map (subst TX) GH0)
-         (subst TX T1)
-         (subst TX T2).
-Proof.
-  intros T1 T2 GX GH H.
-  induction H.
-  - Case "top".
-    intros. subst. simpl. rewrite app_length in H. simpl in H.
-    apply stp_top. rewrite map_length.
-    apply closed_subst. assumption.
-    eapply closed_upgrade_free. eassumption. omega.
-  - Case "fun". intros. simpl. eapply stp_fun. eauto. eauto.
-  - Case "mem". intros. simpl. eapply stp_mem. eauto.
-  - Case "sel1". intros. simpl. eapply stp_sel1. apply H. assumption.
-    assert (subst TX T = T) as A. {
-      eapply closed_no_subst. eassumption.
-    }
-    rewrite <- A.
-    apply IHstp; eauto.
-  - Case "selx". intros. simpl. eapply stp_selx. apply H.
-  - Case "sela1". intros GH0 TX ? ? ?. simpl.
-    subst GH. specialize (indexr_subst _ x TX (TMem T) H). intros.
-    destruct H2; destruct H2.
-    + inversion H5. subst. simpl.
-      specialize (IHstp GH0 T).
-      assert (subst T T = T). eapply closed_no_subst; eauto.
-      rewrite H2 in IHstp.
-      eapply IHstp. eauto. eauto. eauto.
-    + subst. simpl.
-      assert (beq_nat x 0 = false). eapply beq_nat_false_iff; omega. rewrite H6. simpl.
-      eapply stp_sela1. simpl in H5. eapply H5.
-      eapply closed_subst.
-      assert (x - 1 + 1 = x) as A by omega.  rewrite A. assumption.
-      eapply closed_upgrade_free. eassumption. omega.
-      eauto.
-  - Case "selax". intros GH0 TX ? ? ?. simpl.
-    subst GH. specialize (indexr_subst _ x TX v H). intros.
-    destruct H0; destruct H0.
-    + subst. simpl. eauto.
-    + subst. simpl. assert (beq_nat x 0 = false). eapply beq_nat_false_iff. omega. rewrite H4. eapply stp_selax. eauto.
-  - Case "all".
-    intros GH0 TX ? ? ?.
-    simpl. eapply stp_all.
-    + eapply IHstp1; eauto.
-    + rewrite map_length. eauto.
-    + rewrite map_length. eapply closed_subst. subst GH.
-      rewrite app_length in H1. simpl in H1. eauto.
-      eapply closed_upgrade_free; eauto. omega.
-    + rewrite map_length. eapply closed_subst. subst GH.
-      rewrite app_length in H2. simpl in H2. eauto.
-      eapply closed_upgrade_free; eauto. omega.
-    + specialize IHstp2 with (GH0:=(TMem T3)::GH0) (TX:=TX).
-      subst GH. simpl in IHstp2.
-      unfold open. unfold open in IHstp2.
-      subst x.
-      rewrite open_subst_commute with (j:=0) (k:=(length G1)).
-      rewrite open_subst_commute with (j:=0) (k:=(length G1)).
-      rewrite app_length in IHstp2. simpl in IHstp2.
-      eapply IHstp2; eauto. eapply stp_extend; eauto.
-      eauto. eauto.
+  try inversion H0; simpl; eauto; destruct v; eauto.
+  case_eq (beq_nat i i0); intros E. eauto. eauto.
 Qed.
 
 (*
@@ -2083,16 +1999,20 @@ stp2 G1 T1 G2 T2 (GH0 ++ [(vty GX TX)])
 (* ---- two-env substitution. first define what 'compatible' types mean. ---- *)
 
 Definition compat (GX:venv) (TX: ty) (G1:venv) (T1:ty) (T1':ty) :=
-  (exists x1, indexr x1 G1 = Some (vty GX TX) /\ T1' = (subst (TVarF x1) T1)) \/
-  (G1 = GX /\ T1' = (subst TX T1)) \/
+  (exists x1, indexr x1 G1 = Some (vty GX TX) /\ T1' = (subst (varF x1) T1)) \/
   (closed 0 0 (length G1) T1 /\ T1' = T1) \/ (* this one is for convenience: redundant with next *)
-  (nosubst T1 /\ T1' = subst TTop T1).
+  (nosubst T1 /\ T1' = T1).
 
 
 Definition compat2 (GX:venv) (TX: ty) (p1:(venv*ty)) (p2:(venv*ty)) :=
   match p1, p2 with
       (G1,T1), (G2,T2) => G1 = G2 /\ compat GX TX G1 T1 T2
   end.
+
+Lemma nosubst_elim: forall i j k T, closed i j k T -> nosubst T -> closed i 0 k T.
+Proof.
+  admit.
+Qed.
 
 Lemma closed_compat: forall GX TX GXX TXX TXX' i j,
   compat GX TX GXX TXX TXX' ->
@@ -2104,12 +2024,9 @@ Proof.
   - destruct H2. destruct H2. rewrite H3.
     eapply closed_subst. eauto.
     eapply cl_sel. apply indexr_max in H2. omega.
-  - destruct H2. destruct H2. rewrite H3.
-    eapply closed_subst. eauto. eauto.
   - destruct H2. rewrite H3.
     eapply closed_upgrade. eapply closed_upgrade_free. eauto. omega. omega.
-  - destruct H2. rewrite H3.
-    eapply closed_subst. eauto. eauto.
+  - subst. eapply nosubst_elim in H2. eapply closed_upgrade_free. eassumption. omega. eassumption.
 Qed.
 
 Lemma indexr_compat_miss0: forall GH GH' GX TX (GXX:venv) (TXX:ty) n,
