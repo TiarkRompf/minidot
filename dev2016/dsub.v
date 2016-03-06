@@ -243,12 +243,16 @@ Inductive stp2: bool (* whether the last rule may not be transitivity *) ->
     stp2 true G1 (TSel (varF x1)) G2 (TSel (varF x2)) GH (S n)
 
 (* abstract type variables *)
-(* X<:T, one sided *)
-| stp2_sela1: forall G1 G2 GX TX x T2 GH n1,
-    indexr x GH = Some (GX, TX) ->
+| stp2_sela1: forall G1 G2 GX b TX x T2 GH n1,
+    indexr x GH = Some (GX, (TMem b TX)) ->
     closed 0 x (length GX) TX ->
     stp2 false GX TX G2 T2 GH n1 ->
     stp2 true G1 (TSel (varH x)) G2 T2 GH (S n1)
+| stp2_sela2: forall G1 G2 GX T1 TX x GH n1,
+    indexr x GH = Some (GX, (TMem true TX)) ->
+    closed 0 x (length GX) TX ->
+    stp2 false G1 T1 GX TX GH n1 ->
+    stp2 true G1 T1 G2 (TSel (varH x)) GH (S n1)
 | stp2_selax: forall G1 G2 v x GH n,
     indexr x GH = Some v ->
     stp2 true G1 (TSel (varH x)) G2 (TSel (varH x)) GH (S n)
@@ -960,11 +964,26 @@ Proof.
     reflexivity.
   - Case "sela1".
     case_eq (le_lt_dec (length GH0) x); intros E LE.
-    + eapply stp2_sela1. eapply indexr_spliceat_hi. apply H. eauto.
+    + eapply stp2_sela1 with (TX:=splice (length GH0) TX) (b:=b).
+      assert (TMem b (splice (length GH0) TX) = splice (length GH0) (TMem b TX)) as B by auto.
+      rewrite B. eapply indexr_spliceat_hi. apply H. eauto.
       eapply closed_splice in H0. assert (S x = x +1) by omega. rewrite <- H2.
       eapply H0.
       eapply IHstp2. eauto.
     + eapply stp2_sela1. eapply indexr_spliceat_lo. apply H. eauto. eauto.
+      assert (splice (length GH0) TX=TX) as A. {
+        eapply closed_splice_idem. eassumption. omega.
+      }
+      rewrite <- A. eapply IHstp2. eauto.
+  - Case "sela2".
+    case_eq (le_lt_dec (length GH0) x); intros E LE.
+    + eapply stp2_sela2 with (TX:=splice (length GH0) TX).
+      assert (TMem true (splice (length GH0) TX) = splice (length GH0) (TMem true TX)) as B by auto.
+      rewrite B. eapply indexr_spliceat_hi. apply H. eauto.
+      eapply closed_splice in H0. assert (S x = x +1) by omega. rewrite <- H2.
+      eapply H0.
+      eapply IHstp2. eauto.
+    + eapply stp2_sela2. eapply indexr_spliceat_lo. apply H. eauto. eauto.
       assert (splice (length GH0) TX=TX) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
@@ -1002,17 +1021,12 @@ Proof.
   assert (splice (length GH) T4 = T4) as A4. {
     eapply closed_splice_idem. apply H2. omega.
   }
-  assert (TVarH (S (length GH)) = splice (length GH) (TVarH (length GH))) as AH. {
-    simpl. case_eq (le_lt_dec (length GH) (length GH)); intros E LE.
-    simpl. rewrite NPeano.Nat.add_1_r. reflexivity.
-    clear LE. apply lt_irrefl in E. inversion E.
-  }
   assert (closed 0 (length GH) (length G1) T3). eapply stp_closed1. eauto.
   assert (splice (length GH) T3 = T3) as A3. {
     eapply closed_splice_idem. eauto. omega.
   }
-  assert (map (splice (length GH)) [TMem T3] ++ v1::GH =
-          ((TMem T3)::v1::GH)) as HGX3. {
+  assert (map (splice (length GH)) [T3] ++ v1::GH =
+          (T3::v1::GH)) as HGX3. {
     simpl. rewrite A3. eauto.
   }
   apply stp_all with (x:=length (v1 :: GH)).
@@ -1023,7 +1037,7 @@ Proof.
   simpl.
   rewrite <- A2. rewrite <- A4.
   unfold open.
-  change (TVarH (S (length GH))) with (TVarH (0 + (S (length GH)))).
+  change (varH (S (length GH))) with (varH (0 + (S (length GH)))).
   rewrite -> splice_open_permute. rewrite -> splice_open_permute.
   rewrite <- HGX3.
   apply stp_splice.
@@ -1165,11 +1179,21 @@ Proof.
     eapply indexr_extend_venv. apply H. assumption.
     eapply indexr_extend_venv. apply H0. assumption.
   - Case "sela1".
-    assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
+    assert (exists GX', indexr x GH' = Some (GX', TMem b TX) /\ venv_ext GX' GX) as A. {
       apply indexr_at_ext with (GH:=GH); assumption.
     }
     inversion A as [GX' [H' HX]].
-    apply stp2_sela1 with (GX:=GX') (TX:=TX).
+    apply stp2_sela1 with (GX:=GX') (TX:=TX) (b:=b).
+    assumption.
+    eapply closed_inc_mult; try eassumption; try omega.
+    apply venv_ext__ge_length. assumption.
+    apply IHstp2; assumption.
+  - Case "sela2".
+    assert (exists GX', indexr x GH' = Some (GX', TMem true TX) /\ venv_ext GX' GX) as A. {
+      apply indexr_at_ext with (GH:=GH); assumption.
+    }
+    inversion A as [GX' [H' HX]].
+    apply stp2_sela2 with (GX:=GX') (TX:=TX).
     assumption.
     eapply closed_inc_mult; try eassumption; try omega.
     apply venv_ext__ge_length. assumption.
@@ -1258,11 +1282,6 @@ Proof.
   assert (splice (length GH) T4 = T4) as A4. {
     eapply closed_splice_idem. apply H2. omega.
   }
-  assert (TVarH (S (length GH)) = splice (length GH) (TVarH (length GH))) as AH. {
-    simpl. case_eq (le_lt_dec (length GH) (length GH)); intros E LE.
-    simpl. rewrite NPeano.Nat.add_1_r. reflexivity.
-    clear LE. apply lt_irrefl in E. inversion E.
-  }
   assert (closed 0 (length GH) (length G2) T3). eapply stp2_closed1. eauto.
   assert (splice (length GH) T3 = T3) as A3. {
     eapply closed_splice_idem. eauto. omega.
@@ -1279,7 +1298,7 @@ Proof.
   simpl.
   rewrite <- A2. rewrite <- A4.
   unfold open.
-  change (TVarH (S (length GH))) with (TVarH (0 + (S (length GH)))).
+  change (varH (S (length GH))) with (varH (0 + (S (length GH)))).
   rewrite -> splice_open_permute.
   rewrite -> splice_open_permute.
   rewrite <- HGX3.
