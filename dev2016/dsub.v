@@ -241,11 +241,13 @@ Inductive stp2: bool (* whether selections are precise *) ->
 (* vty already marks binding as type binding, so no need for additional TMem marker *)
 | stp2_strong_sel1: forall G1 G2 GX TX x T2 GH n1,
     indexr x G1 = Some (vty GX TX) ->
+    val_type GX (vty GX TX) (TMem true TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stp2 true true GX TX G2 T2 GH n1 ->
     stp2 true true G1 (TSel (varF x)) G2 T2 GH (S n1)
 | stp2_strong_sel2: forall G1 G2 GX TX x T1 GH n1,
     indexr x G2 = Some (vty GX TX) ->
+    val_type GX (vty GX TX) (TMem true TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stp2 true false G1 T1 GX TX GH n1 ->
     stp2 true true G1 T1 G2 (TSel (varF x)) GH (S n1)
@@ -1092,14 +1094,14 @@ Proof.
     apply closed_splice.
     assumption.
   - Case "strong_sel1".
-    eapply stp2_strong_sel1. apply H. assumption.
+    eapply stp2_strong_sel1. apply H. assumption. assumption.
     assert (splice (length GH0) TX=TX) as A. {
       eapply closed_splice_idem. eassumption. omega.
     }
     rewrite <- A. apply IHstp2.
     reflexivity.
   - Case "strong_sel2".
-    eapply stp2_strong_sel2. apply H. assumption.
+    eapply stp2_strong_sel2. apply H. assumption. assumption.
     assert (splice (length GH0) TX=TX) as A. {
       eapply closed_splice_idem. eassumption. omega.
     }
@@ -1378,11 +1380,11 @@ Proof.
     apply venv_ext__ge_length. assumption.
   - Case "strong_sel1".
     eapply stp2_strong_sel1. eapply indexr_extend_venv. apply H.
-    assumption. assumption.
+    assumption. assumption. assumption.
     apply IHstp2. assumption. apply venv_ext_refl. assumption.
   - Case "strong_sel2".
     eapply stp2_strong_sel2. eapply indexr_extend_venv. apply H.
-    assumption. assumption.
+    assumption. assumption. assumption.
     apply IHstp2. assumption. assumption. apply venv_ext_refl.
   - Case "sel1".
     eapply stp2_sel1. eapply indexr_extend_venv. apply H.
@@ -1724,12 +1726,14 @@ Lemma stpd2_mem: forall G1 G2 b1 T1 b2 T2 GH s,
 Proof. intros. inversion H0 as [H02 | [H01 [H02 H0B]]]; repeat eu; subst; eauto. Qed.
 Lemma stpd2_strong_sel1: forall G1 G2 GX TX x T2 GH,
     indexr x G1 = Some (vty GX TX) ->
+    val_type GX (vty GX TX) (TMem true TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stpd2 true true GX TX G2 T2 GH ->
     stpd2 true true G1 (TSel (varF x)) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_strong_sel2: forall G1 G2 GX TX x T1 GH,
     indexr x G2 = Some (vty GX TX) ->
+    val_type GX (vty GX TX) (TMem true TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stpd2 true false G1 T1 GX TX GH ->
     stpd2 true true G1 T1 G2 (TSel (varF x)) GH.
@@ -1997,10 +2001,10 @@ Proof.
   try solve [eapply stpd2_sela1; eauto; eapply stpd2_wrapf; eapply IHn; eauto; try omega];
   try solve [indexr_contra].
   - Case "sel2 - sel1".
-    rewrite H6 in H2. inversion H2. subst.
-    eapply IHn. eapply H4. omega. eauto.
+    rewrite H7 in H2. inversion H2. subst.
+    eapply IHn. eapply H5. omega. eauto.
   - Case "sel2 - selx".
-    rewrite H6 in H2. inversion H2. subst.
+    rewrite H7 in H2. inversion H2. subst.
     eapply stpd2_strong_sel2; eauto.
   - Case "selx - sel1".
     rewrite H5 in H3. inversion H3. subst.
@@ -2060,8 +2064,8 @@ Proof.
 Qed.
 
 Lemma stpd2_to_strong_aux: forall n, forall G1 G2 T1 T2 m n1,
-  stp2 false m G1 T1 G2 T2 nil n1 -> n1 < n ->
-  stpd2 true m G1 T1 G2 T2 nil.
+  stp2 false m G1 T1 G2 T2 [] n1 -> n1 < n ->
+  stpd2 true m G1 T1 G2 T2 [].
 Proof.
   intros n. induction n; intros; try omega.
   inversion H; subst; try solve [inversion H1].
@@ -2080,7 +2084,10 @@ Proof.
     remember H2 as Hv. clear HeqHv.
     eapply invert_typ in H2. ev. subst.
     assert (closed 0 (length ([]:aenv)) (length x0) x1). eapply stpd2_closed1; eauto.
-    eapply stpd2_strong_sel1. eauto. eauto. eassumption. omega.
+    eapply stpd2_strong_sel1. eauto. eauto.
+    inversion Hv; subst.
+    eapply v_ty. eassumption. eapply stp2_refl. eauto. eauto.
+    eassumption. omega.
   - Case "sel2".
     eapply IHn in H4. eapply stpd2_strong_untrans in H4.
     eapply valtp_widen with (2:=H4) in H2.
@@ -2089,6 +2096,8 @@ Proof.
     destruct H6. inversion H2. destruct H2.
     assert (closed 0 (length ([]:aenv)) (length x0) x1). eapply stpd2_closed1; eauto.
     eapply stpd2_strong_sel2. eauto. eauto.
+    inversion Hv; subst.
+    eapply v_ty. eassumption. eapply stp2_refl. eauto. eauto.
     eapply stpd2_trans. eapply IHn. eapply H5. omega. eassumption. omega.
   - Case "selx".
     eapply stpd2_selx; eauto.
@@ -2114,6 +2123,43 @@ Lemma stpd2_upgrade: forall G1 G2 T1 T2,
 Proof.
   intros.
   eapply stpd2_strong_untrans. eapply stpd2_to_strong. eauto.
+Qed.
+
+Lemma stpd2_downgrade_aux: forall G1 G2 T1 T2 H m,
+  stpd2 true m G1 T1 G2 T2 H ->
+  stpd2 false m G1 T1 G2 T2 H.
+Proof.
+  intros. inversion H0. dependent induction H1; try solve [eexists; eauto].
+  - Case "mem_false".
+    eapply stpd2_mem. eapply stpd2_wrapf. eapply IHstp2. eexists. eassumption.
+    left. reflexivity.
+  - Case "mem_true".
+    eapply stpd2_mem. eapply stpd2_wrapf. eapply IHstp2_1. eexists. eassumption.
+    right. split. reflexivity. split. reflexivity.
+    eapply IHstp2_2. eexists. eassumption.
+  - Case "sel1".
+    eapply stpd2_sel1; eauto.
+    eapply stpd2_wrapf. eapply stpd2_mem. simpl. eapply stpd2_wrapf. eapply IHstp2.
+    eexists. eassumption.
+    left. reflexivity.
+  - Case "sel2".
+    eapply stpd2_sel2; eauto.
+    simpl. eapply stpd2_wrapf. eapply stp2_refl. eauto.
+  - Case "wrap".
+    eapply stpd2_wrapf. eapply IHstp2. eexists. eassumption.
+  - Case "trans".
+    eapply stpd2_transf.
+    eapply IHstp2_1. eexists. eassumption.
+    eapply IHstp2_2. eexists. eassumption.
+  Grab Existential Variables.
+  apply 0. apply 0. apply 0.
+Qed.
+
+Lemma stpd2_downgrade: forall G1 G2 T1 T2 H,
+  stpd2 true true G1 T1 G2 T2 H ->
+  stpd2 false false G1 T1 G2 T2 H.
+Proof.
+  intros. eapply stpd2_downgrade_aux. eapply stpd2_wrapf. assumption.
 Qed.
 
 (* ### Substitution for relating static and dynamic semantics ### *)
@@ -2808,10 +2854,38 @@ Proof.
 Qed.
 
 (* ### Relating Static and Dynamic Subtyping ### *)
+Lemma inv_vtp_half: forall G v T GH,
+  val_type G v T ->
+  exists T0, val_type (base v) v T0 /\ closed 0 0 (length (base v)) T0 /\
+             stpd2 false false (base v) T0 G T GH.
+Proof.
+  intros. inversion H; subst.
+  - eexists. split; try split.
+    + simpl. econstructor. eassumption. ev. eapply stp2_reg1 in H1. apply H1.
+    + ev. eapply stp2_closed1 in H1. simpl in H1. apply H1.
+    + eapply sstpd2_downgrade. ev. eexists. simpl.
+      eapply stp2_extendH_mult0. eassumption.
+  - eexists. split; try split.
+    + simpl. econstructor. ev. eapply stp2_reg1 in H0. apply H0.
+    + ev. eapply stp2_closed1 in H0. simpl in H0. apply H0.
+    + eapply sstpd2_downgrade. ev. eexists. simpl.
+      eapply stp2_extendH_mult0. eassumption.
+  - eexists. split; try split.
+    + simpl. econstructor; try eassumption. ev. eapply stp2_reg1 in H4. apply H4.
+    + ev. eapply stp2_closed1 in H4. simpl in H4. apply H4.
+    + eapply sstpd2_downgrade. ev. eexists. simpl.
+      eapply stp2_extendH_mult0. eassumption.
+  - eexists. split; try split.
+    + simpl. econstructor; try eassumption. reflexivity. ev. eapply stp2_reg1 in H2. apply H2.
+    + ev. eapply stp2_closed1 in H2. simpl in H2. apply H2.
+    + eapply sstpd2_downgrade. ev. eexists. simpl.
+      eapply stp2_extendH_mult0. eassumption.
+Qed.
+
 Lemma stp_to_stp2: forall G1 GH T1 T2,
   stp G1 GH T1 T2 ->
   forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
-  stpd2 false GX T1 GX T2 GY.
+  stpd2 false false GX T1 GX T2 GY.
 Proof.
   intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY; eapply stpd2_wrapf.
   - Case "top".
@@ -2819,6 +2893,15 @@ Proof.
   - Case "mem_false". eapply stpd2_mem; eauto.
   - Case "mem_true". eapply stpd2_mem; eauto.
   - Case "sel1".
+    assert (exists v : vl, indexr x GX = Some v /\ val_type GX v TX) as A.
+    eapply indexr_safe_ex. eauto. eauto.
+    destruct A as [? [? VT]].
+    eapply inv_vtp_half in VT. ev.
+    eapply stpd2_sel1. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
+    specialize (IHST2 GX GY WX WY).
+    apply stpd2_reg2 in IHST2.
+    apply IHST2.
+
     admit.
     (*
     assert (exists v : vl, indexr x GX = Some v /\ val_type GX v (TMem T)) as A.
