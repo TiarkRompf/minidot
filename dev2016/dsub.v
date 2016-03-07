@@ -389,6 +389,7 @@ Hint Constructors closed.
 Hint Constructors has_type.
 Hint Constructors val_type.
 Hint Constructors wf_env.
+Hint Constructors wf_envh.
 Hint Constructors stp.
 Hint Constructors stp2.
 
@@ -2888,7 +2889,12 @@ Proof.
     destruct A as [? [? VT]].
     eapply inv_vtp_half in VT. ev.
     eapply stpd2_sel1. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
-  - Case "sel2". admit.
+  - Case "sel2".
+    assert (exists v : vl, indexr x GX = Some v /\ val_type GX v TX) as A.
+    eapply indexr_safe_ex. eauto. eauto.
+    destruct A as [? [? VT]].
+    eapply inv_vtp_half in VT. ev.
+    eapply stpd2_sel2. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto. eauto.
   - Case "selx". eauto.
     assert (exists v0 : vl, indexr x GX = Some v0 /\ val_type GX v0 v) as A.
     eapply indexr_safe_ex. eauto. eauto. eauto.
