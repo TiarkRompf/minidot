@@ -256,12 +256,12 @@ Inductive stp2: bool (* whether selections are precise *) ->
     closed 0 0 (length (base v)) TX ->
     stp2 false false (base v) TX G2 (TMem false T2) GH n1 ->
     stp2 false true G1 (TSel (varF x)) G2 T2 GH (S n1)
-| stp2_sel2: forall G1 G2 v TX x T T1 GH n1 n2,
+| stp2_sel2: forall G1 G2 GM v TX x T T1 GH n1 n2,
     indexr x G2 = Some v ->
     val_type (base v) v TX ->
     closed 0 0 (length (base v)) TX ->
-    stp2 false false (base v) TX (base v) (TMem true T) [] n1 ->
-    stp2 false false G1 T1 (base v) T GH n2 ->
+    stp2 false false (base v) TX GM (TMem true T) [] n1 ->
+    stp2 false false G1 T1 GM T GH n2 ->
     stp2 false true G1 T1 G2 (TSel (varF x)) GH (S (n1+n2))
 | stp2_selx: forall G1 G2 v x1 x2 GH s n,
     indexr x1 G1 = Some v ->
@@ -274,13 +274,13 @@ Inductive stp2: bool (* whether selections are precise *) ->
     closed 0 x (length GX) TX ->
     stp2 false false GX TX G2 (TMem false T2) GH n1 ->
     stp2 false true G1 (TSel (varH x)) G2 T2 GH (S n1)
-| stp2_sela2: forall G1 G2 GX T1 TX T x GH GU GL n1 n2,
+| stp2_sela2: forall G1 G2 GX GM T1 TX T x GH GU GL n1 n2,
     indexr x GH = Some (GX, TX) ->
     closed 0 x (length GX) TX ->
     length GL = x ->
     GH = GU ++ GL ->
-    stp2 false false GX TX G2 (TMem true T) GL n1 ->
-    stp2 false false G1 T1 G2 T GH n2 ->
+    stp2 false false GX TX GM (TMem true T) GL n1 ->
+    stp2 false false G1 T1 GM T GH n2 ->
     stp2 false true G1 T1 G2 (TSel (varH x)) GH (S (n1+n2))
 | stp2_selax: forall G1 G2 v x GH s n,
     indexr x GH = Some v ->
@@ -1117,7 +1117,7 @@ Proof.
     }
     eapply stp2_sel2. apply H. eassumption. assumption.
     eassumption.
-    assert (closed 0 0 (length (base v)) T) as CB. {
+    assert (closed 0 0 (length GM) T) as CB. {
       eapply stp2_closed2 in H2. simpl in H2. inversion H2. assumption.
     }
     assert (splice (length GH0) T=T) as B. {
@@ -1165,7 +1165,7 @@ Proof.
       eapply H1. instantiate (1:=(map (spliceat (length GH0)) GH1 ++ v1 :: GH0U)).
       rewrite <- app_assoc. simpl. rewrite EQGH. reflexivity.
       eassumption.
-      assert (closed 0 x (length G2) T) as CB. {
+      assert (closed 0 x (length GM) T) as CB. {
         eapply stp2_closed2 in H3. unfold venv in H3.
         rewrite H1 in H3. inversion H3. assumption.
       }
@@ -1422,8 +1422,8 @@ Proof.
     apply venv_ext__ge_length. assumption.
     rewrite <- H1. symmetry. apply aenv_ext__same_length. assumption.
     assumption.
-    apply IHstp2_1; eauto.
-    apply IHstp2_2; eauto.
+    apply IHstp2_1; eauto. apply venv_ext_refl.
+    apply IHstp2_2; eauto. apply venv_ext_refl.
   - Case "selax".
     destruct v as [GX TX].
     assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
@@ -1741,12 +1741,12 @@ Lemma stpd2_sel1: forall G1 G2 v TX x T2 GH,
     stpd2 false false (base v) TX G2 (TMem false T2) GH ->
     stpd2 false true G1 (TSel (varF x)) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
-Lemma stpd2_sel2: forall G1 G2 v TX x T T1 GH,
+Lemma stpd2_sel2: forall G1 G2 GM v TX x T T1 GH,
     indexr x G2 = Some v ->
     val_type (base v) v TX ->
     closed 0 0 (length (base v)) TX ->
-    stpd2 false false (base v) TX (base v) (TMem true T) [] ->
-    stpd2 false false G1 T1 (base v) T GH ->
+    stpd2 false false (base v) TX GM (TMem true T) [] ->
+    stpd2 false false G1 T1 GM T GH ->
     stpd2 false true G1 T1 G2 (TSel (varF x)) GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_selx: forall G1 G2 v x1 x2 GH s,
@@ -1760,13 +1760,13 @@ Lemma stpd2_sela1: forall G1 G2 GX TX x T2 GH,
     stpd2 false false GX TX G2 (TMem false T2) GH ->
     stpd2 false true G1 (TSel (varH x)) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
-Lemma stpd2_sela2: forall G1 G2 GX T1 TX T x GH GU GL,
+Lemma stpd2_sela2: forall G1 G2 GX GM T1 TX T x GH GU GL,
     indexr x GH = Some (GX, TX) ->
     closed 0 x (length GX) TX ->
     length GL = x ->
     GH = GU ++ GL ->
-    stpd2 false false GX TX G2 (TMem true T) GL ->
-    stpd2 false false G1 T1 G2 T GH ->
+    stpd2 false false GX TX GM (TMem true T) GL ->
+    stpd2 false false G1 T1 GM T GH ->
     stpd2 false true G1 T1 G2 (TSel (varH x)) GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_selax: forall G1 G2 v x GH s,
@@ -1875,7 +1875,8 @@ Proof.
           apply beq_nat_true. assumption.
         }
         destruct Heq as [HeqGU HeqGL].
-        apply stpd2_sela2 with (GX:=GX1) (TX:=TX1) (T:=T) (GL:=GL) (GU:=GH1 ++ [(GX1, TX1)]).
+        apply stpd2_sela2 with (GX:=GX1) (TX:=TX1) (T:=T) (GM:=GM)
+                               (GL:=GL) (GU:=GH1 ++ [(GX1, TX1)]).
         eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
         apply beq_nat_true in E. rewrite E. eapply stp2_closed1. eassumption.
         reflexivity. rewrite <- app_assoc. simpl. rewrite HeqGL. reflexivity.
@@ -2595,8 +2596,8 @@ Proof.
     eapply (compat_sel GXX TXX (Some V) G2 T2' (base v) TX) in IX2. repeat destruct IX2 as [? IX2].
 
     assert (compat GXX TXX (Some V) (base v) TX TX) as CPX. right. left. eauto.
-    assert (closed 0 0 (length (base v)) T) as CT. eapply stp2_closed2 in H2. simpl in H2. inversion H2. assumption.
-    assert (compat GXX TXX (Some V) (base v) T T) as CPT. right. left. eauto.
+    assert (closed 0 0 (length GM) T) as CT. eapply stp2_closed2 in H2. simpl in H2. inversion H2. assumption.
+    assert (compat GXX TXX (Some V) GM T T) as CPT. right. left. eauto.
 
     subst.
     eapply stpd2_sel2. eauto. eauto. eauto.
@@ -2656,7 +2657,7 @@ Proof.
   - Case "sela2".
     intros GH0 GH0' GXX TXX T1' T2' V ? ? ? CX IX1 IX2 FA.
 
-    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length (GU ++ GL) = length GH0 + 1). rewrite <- H2. rewrite H6. apply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
     assert (compat GXX TXX (Some V) G2 (TSel (varH x)) T2') as IXX. eauto.
@@ -2666,18 +2667,57 @@ Proof.
     destruct IX2.
     + SCase "x = 0".
       repeat destruct IXX as [|IXX]; ev.
-      * subst. simpl. inversion H9; subst.
+      * subst. simpl. inversion H11; subst. destruct GL.
+        simpl.
         eapply stpd2_sel2. eauto. eauto. eauto.
         eexists. eassumption.
-        eapply IHn; eauto; try omega. right. left. auto.
-        eapply compat_mem_fwd. eauto.
-      * subst. inversion H7. subst. omega.
-      * subst. destruct H7. eauto.
+        assert (closed 0 0 (length GM) T) as CT. eapply stp2_closed2 in H3. simpl in H3. inversion H3. assumption.
+        assert (compat (base x1) TXX (Some x1) GM T T) as CPT. right. left. eauto.
+        eapply IHn; eauto; try omega.
+        simpl in H9. inversion H9.
+      * subst. inversion H10. subst. omega.
+      * subst. destruct H10. eauto.
     + SCase "x > 0".
       ev. subst.
-      eapply stpd2_sela1. eauto.
+      assert (exists GH0L, GH0 = GU ++ GH0L /\ GL = GH0L ++ [(base V, TXX)]) as EQGH. {
+        eapply exists_GH1L. reflexivity. eassumption. eassumption.
+      }
+      destruct EQGH as [GH0L [EQGH0 EQGL]].
+      assert (exists GU' GL', GH0' = GU' ++ GL' /\
+              Forall2 (compat2 (base V) TXX (Some V)) GH0L GL') as EQGH'. {
+        rewrite EQGH0 in FA.
+        eapply Forall2_app_inv_l in FA.
+        destruct FA as [GU' [GL' [FAU [FAL EQFA]]]].
+        exists GU'. exists GL'. split; eassumption.
+      }
+      destruct EQGH' as [GU' [GL' [EQGH0' FAGL']]].
+
+      remember (length GL) as x.
       assert (x-1+1=x) as A by omega.
       remember (x-1) as x1. rewrite <- A in H0.
+
+      eapply stpd2_sela2. eauto.
+      eapply compat_closed. eauto. eauto. eauto.
+      instantiate (1:=GL'). rewrite Heqx1. rewrite Heqx. rewrite EQGL.
+      rewrite app_length. simpl.
+      assert (length GH0L = length GL') as L1. eapply Forall2_length; eauto.
+      rewrite L1. unfold venv. omega.
+      rewrite EQGH0'. reflexivity.
+
+      eapply IHn; eauto; try omega.
+      eapply compat_mem_fwd.
+      eapply
+
+      eauto.
+      eauto.
+      eauto.
+      omega. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+      omega. eauto. eauto. eauto. eauto. eauto. eapply compat_mem_fwd1. eauto. eauto. eauto.
+    (* remaining obligations *)
+    + eauto. + rewrite <-H1. eauto. + eauto.
+
+
+      apply stpd2_sela2 with (GX:=GX) (GM:=GM) (TX:=x0) (T:=T). eauto.
       eapply compat_closed. eauto. eauto. eauto.
       eapply IHn; eauto; try omega.
       eapply compat_mem_fwd. eauto.
