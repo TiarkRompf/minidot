@@ -2863,22 +2863,12 @@ Proof.
   - eexists. split; try split.
     + simpl. econstructor. eassumption. ev. eapply stp2_reg1 in H1. apply H1.
     + ev. eapply stp2_closed1 in H1. simpl in H1. apply H1.
-    + eapply sstpd2_downgrade. ev. eexists. simpl.
-      eapply stp2_extendH_mult0. eassumption.
-  - eexists. split; try split.
-    + simpl. econstructor. ev. eapply stp2_reg1 in H0. apply H0.
-    + ev. eapply stp2_closed1 in H0. simpl in H0. apply H0.
-    + eapply sstpd2_downgrade. ev. eexists. simpl.
-      eapply stp2_extendH_mult0. eassumption.
-  - eexists. split; try split.
-    + simpl. econstructor; try eassumption. ev. eapply stp2_reg1 in H4. apply H4.
-    + ev. eapply stp2_closed1 in H4. simpl in H4. apply H4.
-    + eapply sstpd2_downgrade. ev. eexists. simpl.
+    + eapply stpd2_downgrade. ev. eexists. simpl.
       eapply stp2_extendH_mult0. eassumption.
   - eexists. split; try split.
     + simpl. econstructor; try eassumption. reflexivity. ev. eapply stp2_reg1 in H2. apply H2.
     + ev. eapply stp2_closed1 in H2. simpl in H2. apply H2.
-    + eapply sstpd2_downgrade. ev. eexists. simpl.
+    + eapply stpd2_downgrade. ev. eexists. simpl.
       eapply stp2_extendH_mult0. eassumption.
 Qed.
 
@@ -2898,25 +2888,6 @@ Proof.
     destruct A as [? [? VT]].
     eapply inv_vtp_half in VT. ev.
     eapply stpd2_sel1. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
-    specialize (IHST2 GX GY WX WY).
-    apply stpd2_reg2 in IHST2.
-    apply IHST2.
-
-    admit.
-    (*
-    assert (exists v : vl, indexr x GX = Some v /\ val_type GX v (TMem T)) as A.
-    eapply indexr_safe_ex. eauto. eauto.
-    destruct A as [? [? VT]].
-    inversion VT; subst.
-    destruct H3 as [? H3]. inversion H3. subst.
-    eapply stp2_extendH_mult with (H2:=GY) in H7. rewrite app_nil_r in H7.
-    eapply stpd2_sel1; eauto. inversion H2. subst.
-    eapply stp2_closed1 in H3. eauto. inversion H3. subst. simpl in H9. apply H9.
-    eapply stp2_closed1 in H3. eauto. inversion H3. subst. simpl in H13. apply H13.
-    eapply stpd2_trans. eexists. apply H7. eapply IHST; eauto.
-    destruct H5 as [? H5]. inversion H5.
-    destruct H5 as [? H5]. inversion H5.
-    *)
   - Case "sel2". admit.
   - Case "selx". eauto.
     assert (exists v0 : vl, indexr x GX = Some v0 /\ val_type GX v0 v) as A.
@@ -2950,7 +2921,6 @@ Proof.
     rewrite A.
     eapply IHST2. eauto. eapply wfeh_cons. eauto.
 Qed.
-
 
 (* ### Inversion Lemmas ### *)
 
