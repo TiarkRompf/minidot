@@ -2969,7 +2969,33 @@ Lemma invert_app: forall venv vf vx T1 T2,
     stpd2 true true venv T1 env T3 [] /\
     stpd2 true true (vx::env) (open (varF x) T4) venv T2 [].
 Proof.
-  admit.
+  intros. inversion H; ev; try solve by inversion.
+  inversion H5. subst.
+  eexists. eexists. eexists. eexists. eexists. eexists.
+  repeat split; eauto; remember (length venv1) as x.
+
+  eapply stpd2_upgrade; eauto.
+  eapply stpd2_upgrade.
+  eapply inv_vtp_half with (GH:=nil) in H0. ev.
+  simpl in H22.
+  assert (stpd2 false false venv1 (open (varH 0) T3) venv0 (open (varH 0) T2) [(base vx, x0)]) as A. {
+    eapply stpd2_narrow. eassumption. eexists. eassumption.
+  }
+  assert (open (varH 0) T2=T2) as EH2. {
+    rewrite <- closed_no_open with (i:=0) (j:=0) (k:=(length venv0)); eauto.
+  }
+  assert (open (varF x) T2=T2) as EF2. {
+    rewrite <- closed_no_open with (i:=0) (j:=0) (k:=(length venv0)); eauto.
+  }
+  rewrite EH2 in A.
+  apply stp2_substitute with (GH0:=nil) (V:=vx) (GX:=base vx) (T1:=(open (varH 0) T3)) (T2:=T2) (TX:=x0) (GH:=[(base vx, x0)]); eauto.
+  apply stpd2_extend1. eapply A.
+  left. exists (length venv1). exists vx.
+  split. simpl. rewrite <- beq_nat_refl. reflexivity.
+  split. reflexivity. split. reflexivity. split. assumption.
+  subst x. unfold open. erewrite subst_open_zero. reflexivity.
+  simpl in H17. eapply H17.
+  right. left. eauto.
 Qed.
 
 Lemma invert_dapp: forall venv vf vx xarg T1 T2,
