@@ -223,7 +223,7 @@ Inductive stp2: bool (* whether the last rule may not be transitivity *) ->
     stp2 true G1 (TMem T1) G2 (TMem T2) GH (S n1)
 
 (* concrete type variables *)
-(* vty already marks binding as type binding, so need for additional TMem marker *)
+(* vty already marks binding as type binding, so no need for additional TMem marker *)
 | stp2_sel1: forall G1 G2 GX TX x T2 GH n1,
     indexr x G1 = Some (vty GX TX) ->
     closed 0 0 (length GX) TX ->
