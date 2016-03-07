@@ -159,7 +159,7 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_sela1: forall G1 GH TX T2 x,
     indexr x GH = Some TX ->
     closed 0 x (length G1) TX ->
-    stp G1 GH (TMem false TX) T2 ->
+    stp G1 GH TX (TMem false T2) ->
     stp G1 GH (TSel (varH x)) T2
 | stp_sela2: forall G1 GH TX T T1 GU GL x,
     indexr x GH = Some TX ->
@@ -2873,6 +2873,23 @@ Proof.
       eapply stp2_extendH_mult0. eassumption.
 Qed.
 
+Lemma exists_GYL: forall GX GY GU GL,
+  wf_envh GX GY (GU ++ GL) ->
+  exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL.
+Proof.
+  intros. remember (GU ++ GL) as G. generalize dependent HeqG. generalize dependent GU. generalize dependent GL. induction H; intros.
+  - exists []. exists []. simpl. split. reflexivity. symmetry in HeqG. apply app_eq_nil in HeqG.
+    inversion HeqG. subst. eauto.
+  - induction GU.
+    + rewrite app_nil_l in HeqG.
+      exists []. eexists. rewrite app_nil_l. split. reflexivity.
+      rewrite <- HeqG. eauto.
+    + simpl in HeqG. inversion HeqG.
+      specialize (IHwf_envh GL GU H2). destruct IHwf_envh as [GYU [GYL [IHA IHB]]].
+      exists ((vvs, a)::GYU). exists GYL. split. rewrite IHA. simpl. reflexivity.
+      apply IHB.
+Qed.
+
 Lemma stp_to_stp2: forall G1 GH T1 T2,
   stp G1 GH T1 T2 ->
   forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
@@ -2900,17 +2917,27 @@ Proof.
     eapply indexr_safe_ex. eauto. eauto. eauto.
     destruct A as [? [? ?]].
     eapply stpd2_selx; eauto.
-  - Case "sela1". admit.
-    (*
-    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v (TMem T)) as A.
+  - Case "sela1".
+    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. destruct x0.
     inversion VT. subst.
-    eapply stpd2_sela1. eauto.
-    erewrite wf_length; eauto.
-    eapply IHST. eauto. eauto.
-    *)
-  - Case "sela2". admit.
+    eapply stpd2_sela1. eauto. erewrite wf_length; eauto. eauto.
+  - Case "sela2".
+    assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
+    eapply index_safeh_ex. eauto. eauto. eauto.
+    destruct A as [? [? VT]]. destruct x0 as [GX' TX'].
+    inversion VT. subst.
+    assert (exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX' GYL GL) as EQG. {
+      apply exists_GYL with (GU:=GU). assumption.
+    }
+    destruct EQG as [GYU [GYL [EQY WYL]]].
+
+    eapply stpd2_sela2. eauto.
+    rewrite wf_length with (ts:=G1); eauto.
+    erewrite wfh_length; eauto.
+    rewrite EQY. reflexivity.
+    eauto. eauto.
   - Case "selax".
     assert (exists v0, indexr x GY = Some v0 /\ valh_type GX GY v0 v) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
