@@ -1760,10 +1760,12 @@ Lemma stpd2_sela1: forall G1 G2 GX TX x T2 GH,
     stpd2 false false GX TX G2 (TMem false T2) GH ->
     stpd2 false true G1 (TSel (varH x)) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
-Lemma stpd2_sela2: forall G1 G2 GX T1 TX T x GH,
+Lemma stpd2_sela2: forall G1 G2 GX T1 TX T x GH GU GL,
     indexr x GH = Some (GX, TX) ->
     closed 0 x (length GX) TX ->
-    stpd2 false false GX TX G2 (TMem true T) GH ->
+    length GL = x ->
+    GH = GU ++ GL ->
+    stpd2 false false GX TX G2 (TMem true T) GL ->
     stpd2 false false G1 T1 G2 T GH ->
     stpd2 false true G1 T1 G2 (TSel (varH x)) GH.
 Proof. intros. repeat eu. eauto. Qed.
@@ -1859,30 +1861,61 @@ Proof.
         eapply IHn; try eassumption. omega.
     + SCase "sela2".
       unfold id,venv,aenv in *.
-      case_eq (beq_nat x (length GH0)); intros E.
-      * assert (indexr x ([(GX2, TX2)]++GH0) = Some (GX2, TX2)) as A2. {
+      case_eq (beq_nat (length GL) (length GH0)); intros E.
+      * assert (indexr (length GL) ([(GX2, TX2)]++GH0) = Some (GX2, TX2)) as A2. {
           simpl. rewrite E. reflexivity.
         }
-        assert (indexr x GH = Some (GX2, TX2)) as A2'. {
+        assert (indexr (length GL) (GU ++ GL) = Some (GX2, TX2)) as A2'. {
           rewrite EGH. eapply indexr_extend_mult. apply A2.
         }
         unfold venv in A2'. rewrite A2' in H0. inversion H0. subst.
         inversion HX as [nx HX'].
-        apply stpd2_sela2 with (GX:=GX1) (TX:=TX1) (T:=T).
+        assert (GU=GH1++[(GX, TX)] /\ GL=GH0) as Heq. {
+          eapply concat_same_length'. rewrite <- app_assoc. assumption.
+          apply beq_nat_true. assumption.
+        }
+        destruct Heq as [HeqGU HeqGL].
+        apply stpd2_sela2 with (GX:=GX1) (TX:=TX1) (T:=T) (GL:=GL) (GU:=GH1 ++ [(GX1, TX1)]).
         eapply indexr_extend_mult. simpl. rewrite E. reflexivity.
         apply beq_nat_true in E. rewrite E. eapply stp2_closed1. eassumption.
+        reflexivity. rewrite <- app_assoc. simpl. rewrite HeqGL. reflexivity.
         eapply stpd2_trans.
-        eexists. eapply stp2_extendH_mult. eapply stp2_extendH_mult. eassumption.
+        eexists. rewrite HeqGL. eassumption. eexists. eassumption.
         eapply IHn; try eassumption. omega.
-        reflexivity. reflexivity.
-        eapply IHn; try eassumption. omega.
-        reflexivity. reflexivity.
-      * assert (indexr x GH' = Some (GX, TX)) as A. {
+        reflexivity.
+      * assert (indexr (length GL) GH' = Some (GX, TX)) as A. {
           subst.
-          eapply indexr_same. apply E. eassumption.
+          eapply indexr_same. apply E. simpl in EGH. rewrite EGH in H0.
+          eapply H0.
         }
-        eapply stpd2_sela2. eapply A. assumption.
+        simpl in EGH. simpl in EGH'. simpl in IHn. simpl in HX.
+        case_eq (le_lt_dec (S (length GH0)) (length GL)); intros E' LE'.
+        assert (exists GH1L, GH1 = GU ++ GH1L /\ GL = GH1L ++ (GX2, TX2) :: GH0) as EQGH. {
+          eapply exists_GH1L. reflexivity. eassumption. eassumption.
+        }
+        destruct EQGH as [GH1L [EQGH1 EQGL]].
+        eapply stpd2_sela2 with (GH:=GH'). eapply A.
+        eassumption.
+        instantiate (1:=GH1L ++  (GX1, TX1) :: GH0).
+        rewrite app_length. simpl. rewrite EQGL. rewrite app_length. simpl. reflexivity.
+        instantiate (1:=GU). rewrite app_assoc. rewrite EQGH1 in EGH'. assumption.
+        eapply IHn; try eassumption. omega. reflexivity.
         eapply IHn; try eassumption. omega.
+        assert (exists GH0U, (GX2, TX2)::GH0 = GH0U ++ GL) as EQGH. {
+          eapply exists_GH0U. reflexivity. eassumption. eassumption.
+        }
+        destruct EQGH as [GH0U EQGH].
+        destruct GH0U. simpl in EQGH.
+        assert (length ((GX2, TX2)::GH0)=length GL) as Contra. {
+          rewrite EQGH. reflexivity.
+        }
+        simpl in Contra. omega.
+        simpl in EQGH. inversion EQGH.
+        eapply stpd2_sela2 with (GH:=GH'). eapply A.
+        eassumption. reflexivity.
+        instantiate (1:=GH1 ++ (GX1, TX1) :: GH0U). rewrite <- app_assoc. simpl.
+        rewrite <- H6. assumption.
+        eexists. eassumption.
         eapply IHn; try eassumption. omega.
     + SCase "selax".
       unfold id,venv,aenv in *.
