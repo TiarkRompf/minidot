@@ -161,10 +161,12 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     closed 0 x (length G1) TX ->
     stp G1 GH (TMem false TX) T2 ->
     stp G1 GH (TSel (varH x)) T2
-| stp_sela2: forall G1 GH TX T T1 x,
+| stp_sela2: forall G1 GH TX T T1 GU GL x,
     indexr x GH = Some TX ->
     closed 0 x (length G1) TX ->
-    stp G1 GH TX (TMem true T) ->
+    length GL = x ->
+    GH = GU ++ GL ->
+    stp G1 GL TX (TMem true T) ->
     stp G1 GH T1 T ->
     stp G1 GH T1 (TSel (varH x))
 | stp_selax: forall G1 GH v x,
@@ -272,10 +274,12 @@ Inductive stp2: bool (* whether selections are precise *) ->
     closed 0 x (length GX) TX ->
     stp2 false false GX TX G2 (TMem false T2) GH n1 ->
     stp2 false true G1 (TSel (varH x)) G2 T2 GH (S n1)
-| stp2_sela2: forall G1 G2 GX T1 TX T x GH n1 n2,
+| stp2_sela2: forall G1 G2 GX T1 TX T x GH GU GL n1 n2,
     indexr x GH = Some (GX, TX) ->
     closed 0 x (length GX) TX ->
-    stp2 false false GX TX G2 (TMem true T) GH n1 ->
+    length GL = x ->
+    GH = GU ++ GL ->
+    stp2 false false GX TX G2 (TMem true T) GL n1 ->
     stp2 false false G1 T1 G2 T GH n2 ->
     stp2 false true G1 T1 G2 (TSel (varH x)) GH (S (n1+n2))
 | stp2_selax: forall G1 G2 v x GH s n,
@@ -424,9 +428,17 @@ Example ex2: has_type [polyId] (tapp (tvar 0) (ttyp TTop)) (TAll TTop TTop).
 Proof.
   eapply t_app. eapply t_sub. eapply t_var. compute. reflexivity.
   crush2.
+  eapply stp_all. eapply stp_mem_false.
+  instantiate (1:=TTop). eauto.
+  instantiate (1:=0). eauto.
   crush2.
   crush2.
-  crush2.
+  unfold open. simpl.
+  eapply stp_all. eapply stp_sela2. compute. reflexivity. simpl.
+  instantiate (1:=true). crush2. instantiate (1:=[]). crush2.
+  rewrite app_nil_r. reflexivity.
+  crush2. crush2. compute. reflexivity. crush2. crush2.
+  crush2. crush2. crush2.
 Qed.
 
 (* ############################################################ *)
@@ -894,6 +906,78 @@ Proof.
   intros. apply stp2_refl_aux with (n:=S (tsize T)); eauto.
 Qed.
 
+Lemma concat_same_length: forall {X} (GU: list X) (GL: list X) (GH1: list X) (GH0: list X),
+  GU ++ GL = GH1 ++ GH0 ->
+  length GU = length GH1 ->
+  GU=GH1 /\ GL=GH0.
+Proof.
+  intros. generalize dependent GH1. induction GU; intros.
+  - simpl in H0. induction GH1. rewrite app_nil_l in H. rewrite app_nil_l in H.
+    split. reflexivity. apply H.
+    simpl in H0. omega.
+  - simpl in H0. induction GH1. simpl in H0. omega.
+    simpl in H0. inversion H0. simpl in H. inversion H. specialize (IHGU GH1 H4 H2).
+    destruct IHGU. subst. split; reflexivity.
+Qed.
+
+Lemma concat_same_length': forall {X} (GU: list X) (GL: list X) (GH1: list X) (GH0: list X),
+  GU ++ GL = GH1 ++ GH0 ->
+  length GL = length GH0 ->
+  GU=GH1 /\ GL=GH0.
+Proof.
+  intros.
+  assert (length (GU ++ GL) = length (GH1 ++ GH0)) as A. {
+    rewrite H. reflexivity.
+  }
+  rewrite app_length in A. rewrite app_length in A.
+  rewrite H0 in A. apply NPeano.Nat.add_cancel_r in A.
+  apply concat_same_length; assumption.
+Qed.
+
+Lemma exists_GH1L: forall {X} (GU: list X) (GL: list X) (GH1: list X) (GH0: list X) x0,
+  length GL = x0 ->
+  GU ++ GL = GH1 ++ GH0 ->
+  length GH0 <= x0 ->
+  exists GH1L, GH1 = GU ++ GH1L /\ GL = GH1L ++ GH0.
+Proof.
+  intros X GU. induction GU; intros.
+  - eexists. rewrite app_nil_l. split. reflexivity. simpl in H0. assumption.
+  - induction GH1.
+
+    simpl in H0.
+    assert (length (a :: GU ++ GL) = length GH0) as Contra. {
+      rewrite H0. reflexivity.
+    }
+    simpl in Contra. rewrite app_length in Contra. omega.
+
+    simpl in H0. inversion H0.
+    specialize (IHGU GL GH1 GH0 x0 H H4 H1).
+    destruct IHGU as [GH1L [IHA IHB]].
+    exists GH1L. split. simpl. rewrite IHA. reflexivity. apply IHB.
+Qed.
+
+Lemma exists_GH0U: forall {X} (GH1: list X) (GH0: list X) (GU: list X) (GL: list X) x0,
+  length GL = x0 ->
+  GU ++ GL = GH1 ++ GH0 ->
+  x0 < length GH0 ->
+  exists GH0U, GH0 = GH0U ++ GL.
+Proof.
+  intros X GH1. induction GH1; intros.
+  - simpl in H0. exists GU. symmetry. assumption.
+  - induction GU.
+
+    simpl in H0.
+    assert (length GL = length (a :: GH1 ++ GH0)) as Contra. {
+      rewrite H0. reflexivity.
+    }
+    simpl in Contra. rewrite app_length in Contra. omega.
+
+    simpl in H0. inversion H0.
+    specialize (IHGH1 GH0 GU GL x0 H H4 H1).
+    destruct IHGH1 as [GH0U IH].
+    exists GH0U. apply IH.
+Qed.
+
 Lemma stp_splice : forall GX G0 G1 T1 T2 v1,
    stp GX (G1++G0) T1 T2 ->
    stp GX ((map (splice (length G0)) G1) ++ v1::G0)
@@ -941,18 +1025,39 @@ Proof.
   - Case "sela2".
     case_eq (le_lt_dec (length G0) x); intros E LE.
     + assert (S x = x + 1) as A by omega.
+      assert (exists GH1L, G2 = GU ++ GH1L /\ GL = GH1L ++ G0) as EQGH. {
+        eapply exists_GH1L. eassumption. eassumption. eassumption.
+      }
+      destruct EQGH as [GH1L [EQGH1 EQGL]].
       eapply closed_splice in H0.
       eapply stp_sela2.
-      apply indexr_splice_hi. eauto. eauto.
+      apply indexr_splice_hi. rewrite <- HeqG. eauto. eauto.
       rewrite <- A. eapply H0.
+      subst. instantiate (1:=(map (splice (length G0)) GH1L ++ v1 :: G0)).
+      rewrite app_length. rewrite app_length. rewrite map_length. simpl. omega.
+      subst. instantiate (1:=(map (splice (length G0)) GU)).
+      rewrite map_app. simpl. rewrite app_assoc. reflexivity.
       eapply IHstp1. eauto.
       eapply IHstp2. eauto.
     + assert (splice (length G0) TX=TX) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
-      eapply stp_sela2. eapply indexr_splice_lo. eauto. eauto. eauto. eauto.
-      rewrite <- A. simpl in IHstp1. eapply IHstp1. eauto.
-      eapply IHstp2. eauto.
+      assert (exists GH0U, G0 = GH0U ++ GL) as EQGH. {
+        eapply exists_GH0U. eassumption. eassumption. eassumption.
+      }
+      destruct EQGH as [GH0U EQGH].
+      eapply stp_sela2. eapply indexr_splice_lo.
+      rewrite <- HeqG. eauto. eauto. eauto.
+      eapply H1. instantiate (1:=(map (splice (length G0)) G2 ++ v1 :: GH0U)).
+      rewrite <- app_assoc. simpl. rewrite EQGH. reflexivity.
+      eassumption.
+      assert (closed 0 x (length G1) T) as CB. {
+        eapply stp_closed2 in H3. rewrite H1 in H3. inversion H3. assumption.
+      }
+      assert (splice (length G0) T=T) as B. {
+        eapply closed_splice_idem. eassumption. omega.
+      }
+      rewrite <- B. eapply IHstp2. eauto.
   - Case "selax".
     case_eq (le_lt_dec (length G0) x); intros E LE.
     + eapply stp_selax.
@@ -1034,17 +1139,40 @@ Proof.
   - Case "sela2".
     case_eq (le_lt_dec (length GH0) x); intros E LE.
     + assert (S x = x + 1) as EQ1 by omega.
+      assert (exists GH1L, GH1 = GU ++ GH1L /\ GL = GH1L ++ GH0) as EQGH. {
+        eapply exists_GH1L. eassumption. eassumption. eassumption.
+      }
+      destruct EQGH as [GH1L [EQGH1 EQGL]].
       eapply stp2_sela2.
-      eapply indexr_spliceat_hi. apply H. eauto.
+      eapply indexr_spliceat_hi. rewrite <- HeqGH. eauto. eauto.
       eapply closed_splice in H0. rewrite <- EQ1. eapply H0.
-      simpl in IHstp2_1. eapply IHstp2_1. eauto.
+      subst. instantiate (1:=(map (spliceat (length GH0)) GH1L ++ v1 :: GH0)).
+      rewrite app_length. rewrite app_length. rewrite map_length. simpl.
+      unfold venv. omega.
+      subst. instantiate (1:=(map (spliceat (length GH0)) GU)).
+      rewrite map_app. simpl. rewrite app_assoc. reflexivity.
+      eapply IHstp2_1. eauto.
       eapply IHstp2_2. eauto.
     + assert (splice (length GH0) TX=TX) as A. {
         eapply closed_splice_idem. eassumption. omega.
       }
-      eapply stp2_sela2. eapply indexr_spliceat_lo. apply H. eauto. eauto. eauto.
-      rewrite <- A. simpl in IHstp2_1. eapply IHstp2_1. eauto.
-      eapply IHstp2_2. eauto.
+      assert (exists GH0U, GH0 = GH0U ++ GL) as EQGH. {
+        eapply exists_GH0U. eassumption. eassumption. eassumption.
+      }
+      destruct EQGH as [GH0U EQGH].
+      eapply stp2_sela2. eapply indexr_spliceat_lo.
+      rewrite <- HeqGH. eauto. eauto. eauto.
+      eapply H1. instantiate (1:=(map (spliceat (length GH0)) GH1 ++ v1 :: GH0U)).
+      rewrite <- app_assoc. simpl. rewrite EQGH. reflexivity.
+      eassumption.
+      assert (closed 0 x (length G2) T) as CB. {
+        eapply stp2_closed2 in H3. unfold venv in H3.
+        rewrite H1 in H3. inversion H3. assumption.
+      }
+      assert (splice (length GH0) T=T) as B. {
+        eapply closed_splice_idem. eassumption. omega.
+      }
+      rewrite <- B. eapply IHstp2_2. eauto.
   - Case "selax".
     case_eq (le_lt_dec (length GH0) x); intros E LE.
     + destruct v. eapply stp2_selax.
@@ -2458,7 +2586,36 @@ Proof.
     (* remaining obligations *)
     + eauto. + subst GH. eauto. + eauto.
 
-  - Case "sela2". admit.
+  - Case "sela2".
+    intros GH0 GH0' GXX TXX T1' T2' V ? ? ? CX IX1 IX2 FA.
+
+    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
+
+    assert (compat GXX TXX (Some V) G2 (TSel (varH x)) T2') as IXX. eauto.
+
+    eapply (compat_selh GXX TXX (Some V) G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
+
+    destruct IX2.
+    + SCase "x = 0".
+      repeat destruct IXX as [|IXX]; ev.
+      * subst. simpl. inversion H9; subst.
+        eapply stpd2_sel2. eauto. eauto. eauto.
+        eexists. eassumption.
+        eapply IHn; eauto; try omega. right. left. auto.
+        eapply compat_mem_fwd. eauto.
+      * subst. inversion H7. subst. omega.
+      * subst. destruct H7. eauto.
+    + SCase "x > 0".
+      ev. subst.
+      eapply stpd2_sela1. eauto.
+      assert (x-1+1=x) as A by omega.
+      remember (x-1) as x1. rewrite <- A in H0.
+      eapply compat_closed. eauto. eauto. eauto.
+      eapply IHn; eauto; try omega.
+      eapply compat_mem_fwd. eauto.
+    (* remaining obligations *)
+    + eauto. + subst GH. eauto. + eauto.
 
   - Case "selax".
 
