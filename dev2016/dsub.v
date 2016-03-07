@@ -2704,25 +2704,18 @@ Proof.
       rewrite L1. unfold venv. omega.
       rewrite EQGH0'. reflexivity.
 
+      apply stp2_extend2 with (v1:=V) in H3.
       eapply IHn; eauto; try omega.
       eapply compat_mem_fwd.
-      eapply
+      unfold compat. simpl. left. exists (length GM). exists V.
+      rewrite <- beq_nat_refl. split; eauto.
 
-      eauto.
-      eauto.
-      eauto.
-      omega. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
-      omega. eauto. eauto. eauto. eauto. eauto. eapply compat_mem_fwd1. eauto. eauto. eauto.
-    (* remaining obligations *)
-    + eauto. + rewrite <-H1. eauto. + eauto.
-
-
-      apply stpd2_sela2 with (GX:=GX) (GM:=GM) (TX:=x0) (T:=T). eauto.
-      eapply compat_closed. eauto. eauto. eauto.
+      eapply stp2_extend2 with (v1:=V) in H4.
       eapply IHn; eauto; try omega.
-      eapply compat_mem_fwd. eauto.
+      unfold compat. simpl. left. exists (length GM). exists V.
+      rewrite <- beq_nat_refl. split; eauto.
     (* remaining obligations *)
-    + eauto. + subst GH. eauto. + eauto.
+    + eauto. + rewrite <- H6. eauto. + eauto.
 
   - Case "selax".
 
