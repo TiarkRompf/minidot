@@ -1200,6 +1200,9 @@ Lemma stp_extend : forall G1 GH T1 T2 v1,
                        stp G1 (v1::GH) T1 T2.
 Proof.
   intros. induction H; eauto using indexr_extend, closed_inc.
+  eapply stp_sela2; eauto using indexr_extend.
+  instantiate (1:=(v1 :: GU)). rewrite H2. simpl. reflexivity.
+
   assert (splice (length GH) T2 = T2) as A2. {
     eapply closed_splice_idem. apply H1. omega.
   }
@@ -1306,6 +1309,28 @@ Proof.
   - simpl. rewrite IHaenv_ext. reflexivity.
 Qed.
 
+Lemma aenv_ext__concat:
+  forall GH GH' GU GL,
+    aenv_ext GH' GH ->
+    GH = GU ++ GL ->
+    exists GU' GL', GH' = GU' ++ GL' /\ aenv_ext GU' GU /\ aenv_ext GL' GL.
+Proof.
+  intros. generalize dependent GU. generalize dependent GL. induction H.
+  - intros. symmetry in H0. apply app_eq_nil in H0. destruct H0.
+    exists []. exists []. simpl. split; eauto. subst. split. apply aenv_ext_refl. apply aenv_ext_refl.
+  - intros. induction GU. rewrite app_nil_l in H1. subst.
+    exists []. eexists. rewrite app_nil_l. split. reflexivity.
+    split. apply aenv_ext_refl.
+    apply aenv_ext_cons. eassumption. eassumption.
+
+    simpl in H1. inversion H1.
+    specialize (IHaenv_ext GL GU H4).
+    destruct IHaenv_ext as [GU' [GL' [IHA [IHU IHL]]]].
+    exists ((G', T)::GU'). exists GL'.
+    split. simpl. rewrite IHA. reflexivity.
+    split. apply aenv_ext_cons. apply IHU. assumption. apply IHL.
+Qed.
+
 Lemma indexr_at_ext :
   forall GH GH' x T G,
     aenv_ext GH' GH ->
@@ -1387,12 +1412,18 @@ Proof.
       apply indexr_at_ext with (GH:=GH); assumption.
     }
     inversion A as [GX' [H' HX]].
-    apply stp2_sela2 with (GX:=GX') (TX:=TX) (T:=T).
+    assert (exists GU' GL', GH' = GU' ++ GL' /\ aenv_ext GU' GU /\ aenv_ext GL' GL) as B. {
+      eapply aenv_ext__concat. eassumption. eassumption.
+    }
+    destruct B as [GU' [GL' [BEQ [BU BL]]]].
+    eapply stp2_sela2 with (GX:=GX') (TX:=TX) (T:=T) (GL:=GL') (GU:=GU').
     assumption.
     eapply closed_inc_mult; try eassumption; try omega.
     apply venv_ext__ge_length. assumption.
-    apply IHstp2_1; assumption.
-    apply IHstp2_2; assumption.
+    rewrite <- H1. symmetry. apply aenv_ext__same_length. assumption.
+    assumption.
+    apply IHstp2_1; eauto.
+    apply IHstp2_2; eauto.
   - Case "selax".
     destruct v as [GX TX].
     assert (exists GX', indexr x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
@@ -1474,6 +1505,9 @@ Proof.
   induction H;
     try solve [try constructor; simpl; eauto using indexr_extend, closed_upgrade_free];
     try solve [eapply stp2_transf; simpl; eauto].
+  eapply stp2_sela2; eauto using indexr_extend.
+  instantiate (1:=(v1::GU)). simpl. rewrite H2. reflexivity.
+
   assert (splice (length GH) T2 = T2) as A2. {
     eapply closed_splice_idem. apply H1. omega.
   }
