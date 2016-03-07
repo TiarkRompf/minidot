@@ -2957,35 +2957,39 @@ Qed.
 
 (* ### Inversion Lemmas ### *)
 
-Lemma invert_abs: forall venv vf T1 T2,
-  val_type venv vf (TFun T1 T2) ->
+Lemma invert_app: forall venv vf vx T1 T2,
+  val_type venv vf (TAll T1 T2) ->
+  val_type venv vx T1 ->
+  closed 0 0 (length venv) T2 ->
   exists env tenv x y T3 T4,
     vf = (vabs env T3 y) /\
     length env = x /\
     wf_env env tenv /\
-    has_type (T3::tenv) y T4 /\
-    stpd2 true venv T1 env T3 [] /\
-    stpd2 true env T4 venv T2 [].
+    has_type (T3::tenv) y (open (varF x) T4) /\
+    stpd2 true true venv T1 env T3 [] /\
+    stpd2 true true (vx::env) (open (varF x) T4) venv T2 [].
 Proof.
-  intros. inversion H; repeat ev; try solve by inversion.
-  inversion H3. subst.
-  assert (stpd2 false venv0 T1 venv1 T0 []) as E1. eauto.
-  assert (stpd2 false venv1 T3 venv0 T2 []) as E2. eauto.
-  eapply stpd2_upgrade in E1. eapply stpd2_upgrade in E2.
-  repeat eu. repeat eexists; eauto.
+  admit.
 Qed.
 
-Lemma invert_tabs: forall venv vf T1 T2,
+Lemma invert_dapp: forall venv vf vx xarg T1 T2,
   val_type venv vf (TAll T1 T2) ->
+  val_type venv vx T1 ->
+  indexr xarg venv = Some vx ->
+  closed 0 0 (length venv) (open (varF xarg) T2) ->
   exists env tenv x y T3 T4,
-    vf = (vtabs env T3 y) /\
+    vf = (vabs env T3 y) /\
     length env = x /\
     wf_env env tenv /\
-    has_type ((TMem T3)::tenv) y (open (TVarF x) T4) /\
-    stpd2 true venv T1 env T3 [] /\
-    stpd2 true ((vty venv T1)::env) (open (TVarF x) T4) venv (open T1 T2) [].
+    has_type (T3::tenv) y (open (varF x) T4) /\
+    stpd2 true true venv T1 env T3 [] /\
+    stpd2 true true (vx::env) (open (varF x) T4) venv (open (varF xarg) T2) [].
 Proof.
-  intros. inversion H; ev; try solve by inversion. inversion H3. subst.
+  admit.
+Qed.
+
+(*
+intros. inversion H; ev; try solve by inversion. inversion H3. subst.
   eexists. eexists. eexists. eexists. eexists. eexists.
   repeat split; eauto; remember (length venv1) as x.
 
@@ -3018,6 +3022,7 @@ Proof.
   subst.
   eapply stpd2_upgrade; eauto.
 Qed.
+ *)
 
 (* ### Type Safety ### *)
 (* If term type-checks and the term evaluates without timing-out,
@@ -3038,82 +3043,84 @@ Proof.
       rewrite I. eapply not_stuck. eapply V.
 
     + eapply restp_widen. eapply IHhas_type; eauto.
-      eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+      eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
+
+  - Case "Typ".
+    remember (ttyp t) as e. induction H0; inversion Heqe; subst.
+    + eapply not_stuck. eapply v_ty; eauto.
+      eapply stp2_refl. simpl. erewrite wf_length; eauto.
+    + eapply restp_widen. eapply IHhas_type; eauto.
+      eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
   - Case "Abs".
     remember (tabs t e) as xe. induction H0; inversion Heqxe; subst.
     + eapply not_stuck. eapply v_abs; eauto.
-      eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
+      eapply stp2_refl. simpl. erewrite wf_length; eauto.
     + eapply restp_widen. eapply IHhas_type; eauto.
-      eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+      eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
   - Case "App".
-    remember (tapp e1 e2) as e. induction H0; inversion Heqe; subst.
+    dependent induction H0.
     +
       remember (teval n venv0 e1) as tf.
       remember (teval n venv0 e2) as tx.
-
 
       destruct tx as [rx|]; try solve by inversion.
       assert (res_type venv0 rx T1) as HRX. SCase "HRX". subst. eapply IHn; eauto.
       inversion HRX as [? vx].
 
       destruct tf as [rf|]; subst rx; try solve by inversion.
-      assert (res_type venv0 rf (TFun T1 T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
+      assert (res_type venv0 rf (TAll T1 T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
       inversion HRF as [? vf].
 
-      destruct (invert_abs venv0 vf T1 T2) as
-          [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]]. eauto.
+      destruct (invert_app venv0 vf vx T1 T2) as
+          [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]].
+      eauto. eauto. erewrite wf_length; eauto.
       (* now we know it's a closure, and we have has_type evidence *)
 
-      assert (res_type (vx::env1) res T4) as HRY.
+      assert (res_type (vx::env1) res (open (varF x0) T4)) as HRY.
         SCase "HRY".
           subst. eapply IHn. eauto. eauto.
           (* wf_env x *) econstructor. eapply valtp_widen; eauto.
-                         eapply stpd2_extend2. eauto. eauto. eauto.
+                         eapply stpd2_extend2. eauto. eauto.
 
-      inversion HRY as [? vy].
-
-      eapply not_stuck. eapply valtp_widen; eauto. eapply stpd2_extend1. eauto.
-
-    + eapply restp_widen. eapply IHhas_type; eauto.
-      eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
-
-  - Case "TAbs".
-    remember (ttabs t e) as xe. induction H0; inversion Heqxe; subst.
-    + eapply not_stuck. eapply v_tabs; eauto.
-      eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
-    + eapply restp_widen. eapply IHhas_type; eauto.
-      eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
-
-  - Case "TApp".
-    remember (ttapp e t) as xe. induction H0; inversion Heqxe; subst.
-    +
-      remember t as T11.
-      remember (teval n venv0 e) as tf.
-
-      destruct tf as [rf|]; try solve by inversion.
-      assert (res_type venv0 rf (TAll T11 T12)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
-      inversion HRF as [? vf].
-
-      subst t.
-      destruct (invert_tabs venv0 vf T11 T12) as
-          [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]]. eauto.
-      (* now we know it's a closure, and we have has_type evidence *)
-
-      assert (res_type ((vty venv0 T11)::env1) res (open (TVarF x0) T4)) as HRY.
-        SCase "HRY".
-          subst. eapply IHn. eauto. eauto.
-          (* wf_env x *) econstructor. eapply v_ty.
-          (* wf_env   *) eauto.
-          eapply stpd2_extend2. eapply stpd2_mem.
-          eapply stpd2_wrapf. eauto. eauto.
-      eauto.
       inversion HRY as [? vy].
 
       eapply not_stuck. eapply valtp_widen; eauto.
 
+    +
+      remember (teval n venv0 e1) as tf.
+      remember (teval n venv0 (tvar x)) as tx.
+
+      destruct tx as [rx|]; try solve by inversion.
+      assert (res_type venv0 rx T1) as HRX. SCase "HRX". subst. eapply IHn; eauto.
+      inversion HRX as [? vx].
+
+      destruct tf as [rf|]; try solve by inversion.
+      assert (res_type venv0 rf (TAll T1 T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
+      inversion HRF as [? vf].
+
+      destruct (invert_dapp venv0 vf vx x T1 T2) as
+          [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]].
+      eauto. eauto.
+      destruct n. inversion Heqtx. simpl in Heqtx. inversion Heqtx.
+      subst rx. symmetry. assumption.
+      erewrite wf_length; eauto.
+      (* now we know it's a closure, and we have has_type evidence *)
+
+      assert (res_type (vx::env1) res (open (varF x0) T4)) as HRY.
+        SCase "HRY".
+          subst. eapply IHn. eauto. eauto.
+          (* wf_env x *) econstructor. eapply valtp_widen; eauto.
+          eapply stpd2_extend2. eauto.
+          (* wf_env   *) eauto.
+      inversion HRY as [? vy].
+
+      eapply not_stuck. eapply valtp_widen; eauto.
+
+      destruct rx. solve by inversion. solve by inversion.
+
     + eapply restp_widen. eapply IHhas_type; eauto.
-      eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+      eapply stpd2_upgrade. eapply stp_to_stp2; eauto.
 
 Qed.
