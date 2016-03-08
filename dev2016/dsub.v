@@ -3037,42 +3037,6 @@ Proof.
   simpl in H20. eapply H20.
 Qed.
 
-(*
-intros. inversion H; ev; try solve by inversion. inversion H3. subst.
-  eexists. eexists. eexists. eexists. eexists. eexists.
-  repeat split; eauto; remember (length venv1) as x.
-
-  eapply stpd2_upgrade; eauto.
-  (* inversion of TAll < TAll *)
-  assert (stpd2 true venv0 T1 venv1 T0 []). eapply stpd2_upgrade; eauto.
-  assert (stpd2 false venv1 (open (TVarH 0) T3) venv0 (open (TVarH 0) T2) [(venv0, T1)]). {
-    eauto.
-  }
-
-  (* need reflexivity *)
-  assert (stpd2 true venv0 T1 venv0 T1 []). eapply stp2_reg1. eauto.
-  assert (closed 0 0 (length venv0) T1). eapply stpd2_closed1 in H5. simpl in H5. eauto.
-
-  (* now rename *)
-
-  assert (stpd2 false ((vty venv0 T1) :: venv1) (open_rec 0 (TVarF x) T3) venv0 (open T1 T2) []). {
-    eapply stp2_substitute with (GH0:=nil).
-    eapply stpd2_extend1. eapply H4. simpl. eauto.
-    simpl. eauto.
-    eauto.
-    left. eexists. split. eapply indexr_hit2. eauto. eauto. eauto. unfold open.
-    erewrite (subst_open_zero 0 1). subst x.
-    assert ((length venv1) + 0=length venv1) as R by omega. rewrite R. eauto. eauto.
-    right. left. split. eauto. unfold open. erewrite (subst_open_zero 0 1). eauto. eauto.
-    eauto.
-  }
-
-  (* done *)
-  subst.
-  eapply stpd2_upgrade; eauto.
-Qed.
- *)
-
 (* ### Type Safety ### *)
 (* If term type-checks and the term evaluates without timing-out,
    the result is not stuck, but a value.
