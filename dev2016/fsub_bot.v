@@ -392,20 +392,11 @@ Hint Resolve ex_intro.
 (* Examples *)
 (* ############################################################ *)
 
-Ltac crush_has_tp :=
-  try solve [eapply stp_selx; compute; eauto; crush_has_tp];
-  try solve [eapply stp_selax; compute; eauto; crush_has_tp];
-  try solve [eapply cl_selb; compute; eauto; crush_has_tp];
-  try solve [(econstructor; compute; eauto; crush_has_tp)].
-
-Ltac crush2 :=
-  try solve [(eapply stp_selx; compute; eauto; crush2)];
-  try solve [(eapply stp_selax; compute; eauto; crush2)];
-  try solve [(eapply stp_sel1; compute; eauto; crush2)];
-  try solve [(eapply stp_sela1; compute; eauto; crush2)];
-  try solve [(eapply cl_selb; compute; eauto; crush2)];
-  try solve [(econstructor; compute; eauto; crush2)];
-  try solve [(eapply t_sub; eapply t_var; compute; eauto; crush2)].
+Ltac crush :=
+  try solve [eapply stp_selx; compute; eauto; crush];
+  try solve [eapply stp_selax; compute; eauto; crush];
+  try solve [econstructor; compute; eauto; crush];
+  try solve [eapply t_sub; crush].
 
 (* define polymorphic identity function *)
 
@@ -413,13 +404,13 @@ Definition polyId := TAll TTop (TFun (TVarB 0) (TVarB 0)).
 
 Example ex1: has_type [] (ttabs TTop (tabs (TVarF 0) (tvar 1))) polyId.
 Proof.
-  crush_has_tp.
+  crush.
 Qed.
 
 (* instantiate it to TTop *)
 Example ex2: has_type [polyId] (ttapp (tvar 0) TTop) (TFun TTop TTop).
 Proof.
-  crush2.
+  crush.
 Qed.
 
 

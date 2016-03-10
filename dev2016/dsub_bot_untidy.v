@@ -415,20 +415,12 @@ Hint Resolve ex_intro.
 (* Examples *)
 (* ############################################################ *)
 
-Ltac crush_has_tp :=
-  try solve [eapply stp_selx; compute; eauto; crush_has_tp];
-  try solve [eapply stp_selax; compute; eauto; crush_has_tp];
-  try solve [eapply cl_selb; compute; eauto; crush_has_tp];
-  try solve [(econstructor; compute; eauto; crush_has_tp)].
-
-Ltac crush2 :=
-  try solve [(eapply stp_selx; compute; eauto; crush2)];
-  try solve [(eapply stp_selax; compute; eauto; crush2)];
-  try solve [(eapply stp_sel1; compute; eauto; crush2)];
-  try solve [(eapply stp_sela1; compute; eauto; crush2)];
-  try solve [(eapply cl_selb; compute; eauto; crush2)];
-  try solve [(econstructor; compute; eauto; crush2)];
-  try solve [(eapply t_sub; eapply t_var; compute; eauto; crush2)].
+Ltac crush :=
+  try solve [eapply stp_selx; compute; eauto; crush];
+  try solve [eapply stp_selax; compute; eauto; crush];
+  try solve [econstructor; compute; eauto; crush];
+  try solve [eapply t_sub; crush];
+  try solve [eapply stp_sela2; crush; try instantiate (1:=[]); eauto using app_nil_r].
 
 (* define polymorphic identity function *)
 
@@ -436,25 +428,13 @@ Definition polyId := TAll (TMem false TTop) (TAll (TSel (varB 0)) (TSel (varB 1)
 
 Example ex1: has_type [] (tabs (TMem false TTop) (tabs (TSel (varF 0)) (tvar 1))) polyId.
 Proof.
-  crush_has_tp.
+  crush.
 Qed.
 
 (* instantiate it to TTop *)
 Example ex2: has_type [polyId] (tapp (tvar 0) (ttyp TTop)) (TAll TTop TTop).
 Proof.
-  eapply t_app. eapply t_sub. eapply t_var. compute. reflexivity.
-  crush2.
-  eapply stp_all. eapply stp_mem_false.
-  instantiate (1:=TTop). eauto.
-  instantiate (1:=0). eauto.
-  crush2.
-  crush2.
-  unfold open. simpl.
-  eapply stp_all. eapply stp_sela2. compute. reflexivity. simpl.
-  instantiate (1:=true). crush2. instantiate (1:=[]). crush2.
-  rewrite app_nil_r. reflexivity.
-  crush2. crush2. compute. reflexivity. crush2. crush2.
-  crush2. crush2. crush2.
+  crush.
 Qed.
 
 (* ############################################################ *)

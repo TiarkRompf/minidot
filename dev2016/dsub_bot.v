@@ -1,7 +1,6 @@
 (*
  DSub (D<:) + Bot
- (untidy, because syntax for alias vs upper bound is not yet simplified)
- T ::= Top | Bot | x.Type | { Type = T } | { Type <: T } | (z: T) -> T^z
+ T ::= Top | Bot | x.Type | { Type: S..U } | (z: T) -> T^z
  t ::= x | { Type = T } | lambda x:T.t | t t
  *)
 
@@ -29,8 +28,8 @@ Inductive ty : Type :=
 | TAll : ty -> ty -> ty
 (* x.Type *)
 | TSel : var -> ty
-(* { Type = T } or { Type <: T } *)
-| TMem : bool(* whether alias (=: true) vs upper-bounded (<: false) *) -> ty -> ty
+(* { Type: S..U } *)
+| TMem : ty(*S*) -> ty(*U*) -> ty
 .
 
 Inductive tm : Type :=
@@ -84,9 +83,10 @@ Inductive closed: nat(*B*) -> nat(*H*) -> nat(*F*) -> ty -> Prop :=
 | cl_selb: forall i j k x,
     i > x ->
     closed i j k (TSel (varB x))
-| cl_mem: forall i j k b T,
-    closed i j k T ->
-    closed i j k (TMem b T)
+| cl_mem: forall i j k T1 T2,
+    closed i j k T1 ->
+    closed i j k T2 ->
+    closed i j k (TMem T1 T2)
 .
 
 (* open define a locally-nameless encoding wrt to TVarB type variables. *)
@@ -99,7 +99,7 @@ Fixpoint open_rec (k: nat) (u: var) (T: ty) { struct T }: ty :=
     | TSel (varF x) => TSel (varF x)
     | TSel (varH i) => TSel (varH i)
     | TSel (varB i) => if beq_nat k i then TSel u else TSel (varB i)
-    | TMem b T0  => TMem b (open_rec k u T0)
+    | TMem T1 T2  => TMem (open_rec k u T1) (open_rec k u T2)
   end.
 
 Definition open u T := open_rec 0 u T.
@@ -113,7 +113,7 @@ Fixpoint subst (U : var) (T : ty) {struct T} : ty :=
     | TSel (varB i) => TSel (varB i)
     | TSel (varF i) => TSel (varF i)
     | TSel (varH i) => if beq_nat i 0 then TSel U else TSel (varH (i-1))
-    | TMem b T0     => TMem b (subst U T0)
+    | TMem T1 T2     => TMem (subst U T1) (subst U T2)
   end.
 
 Fixpoint nosubst (T : ty) {struct T} : Prop :=
@@ -124,7 +124,7 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
     | TSel (varB i) => True
     | TSel (varF i) => True
     | TSel (varH i) => i <> 0
-    | TMem b T0     => nosubst T0
+    | TMem T1 T2    => nosubst T1 /\ nosubst T2
   end.
 
 (* ### Static Subtyping ### *)
@@ -144,23 +144,19 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_bot: forall G1 GH T2,
     closed 0 (length GH) (length G1) T2 ->
     stp G1 GH TBot T2
-| stp_mem_false: forall G1 GH b1 T1 T2,
-    stp G1 GH T1 T2 ->
-    stp G1 GH (TMem b1 T1) (TMem false T2)
-| stp_mem_true: forall G1 GH T1 T2,
-    stp G1 GH T1 T2 ->
-    stp G1 GH T2 T1 ->
-    stp G1 GH (TMem true T1) (TMem true T2)
+| stp_mem: forall G1 GH S1 U1 S2 U2,
+    stp G1 GH U1 U2 ->
+    stp G1 GH S2 S1 ->
+    stp G1 GH (TMem S1 U1) (TMem S2 U2)
 | stp_sel1: forall G1 GH TX T2 x,
     indexr x G1 = Some TX ->
     closed 0 0 (length G1) TX ->
-    stp G1 GH TX (TMem false T2) ->
+    stp G1 GH TX (TMem TBot T2) ->
     stp G1 GH (TSel (varF x)) T2
-| stp_sel2: forall G1 GH TX T T1 x,
+| stp_sel2: forall G1 GH TX T1 x,
     indexr x G1 = Some TX ->
     closed 0 0 (length G1) TX ->
-    stp G1 [] TX (TMem true T) ->
-    stp G1 GH T1 T ->
+    stp G1 GH TX (TMem T1 TTop) ->
     stp G1 GH T1 (TSel (varF x))
 | stp_selx: forall G1 GH v x,
     (* This is a bit looser than just being able to select on TMem vars. *)
@@ -169,15 +165,12 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_sela1: forall G1 GH TX T2 x,
     indexr x GH = Some TX ->
     closed 0 x (length G1) TX ->
-    stp G1 GH TX (TMem false T2) ->
+    stp G1 GH TX (TMem TBot T2) ->
     stp G1 GH (TSel (varH x)) T2
-| stp_sela2: forall G1 GH TX T T1 GU GL x,
+| stp_sela2: forall G1 GH TX T1 x,
     indexr x GH = Some TX ->
     closed 0 x (length G1) TX ->
-    length GL = x ->
-    GH = GU ++ GL ->
-    stp G1 GL TX (TMem true T) ->
-    stp G1 GH T1 T ->
+    stp G1 GH TX (TMem T1 TTop) ->
     stp G1 GH T1 (TSel (varH x))
 | stp_selax: forall G1 GH v x,
     (* This is a bit looser than just being able to select on TMem vars. *)
@@ -200,7 +193,7 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env (tvar x) T1
 | t_typ: forall env T1,
            closed 0 0 (length env) T1 ->
-           has_type env (ttyp T1) (TMem true T1)
+           has_type env (ttyp T1) (TMem T1 T1)
 | t_app: forall env f x T1 T2,
            has_type env f (TAll T1 T2) ->
            has_type env x T1 ->
@@ -241,26 +234,23 @@ Inductive stp2: bool (* whether selections are precise *) ->
 | stp2_bot: forall G1 G2 GH T s n,
     closed 0 (length GH) (length G2) T ->
     stp2 s true G1 TBot G2 T GH (S n)
-| stp2_mem_false: forall G1 G2 b1 T1 T2 GH s n1,
-    stp2 s s G1 T1 G2 T2 GH n1 ->
-    stp2 s true G1 (TMem b1 T1) G2 (TMem false T2) GH (S n1)
-| stp2_mem_true: forall G1 G2 T1 T2 GH s n1 n2,
-    stp2 s s G1 T1 G2 T2 GH n1 ->
-    stp2 s false G2 T2 G1 T1 GH n2 ->
-    stp2 s true G1 (TMem true T1) G2 (TMem true T2) GH (S (n1+n2))
+| stp2_mem_true: forall G1 G2 S1 U1 S2 U2 GH s n1 n2,
+    stp2 s s G1 U1 G2 U2 GH n1 ->
+    stp2 s false G2 S2 G1 S1 GH n2 ->
+    stp2 s true G1 (TMem S1 U1) G2 (TMem S2 U2) GH (S (n1+n2))
 
 (* concrete type variables *)
 (* precise/invertible bounds *)
 (* vty already marks binding as type binding, so no need for additional TMem marker *)
 | stp2_strong_sel1: forall G1 G2 GX TX x T2 GH n1,
     indexr x G1 = Some (vty GX TX) ->
-    val_type GX (vty GX TX) (TMem true TX) -> (* for downgrade *)
+    val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stp2 true true GX TX G2 T2 GH n1 ->
     stp2 true true G1 (TSel (varF x)) G2 T2 GH (S n1)
 | stp2_strong_sel2: forall G1 G2 GX TX x T1 GH n1,
     indexr x G2 = Some (vty GX TX) ->
-    val_type GX (vty GX TX) (TMem true TX) -> (* for downgrade *)
+    val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stp2 true false G1 T1 GX TX GH n1 ->
     stp2 true true G1 T1 G2 (TSel (varF x)) GH (S n1)
@@ -269,14 +259,13 @@ Inductive stp2: bool (* whether selections are precise *) ->
     indexr x G1 = Some v ->
     val_type (base v) v TX ->
     closed 0 0 (length (base v)) TX ->
-    stp2 false false (base v) TX G2 (TMem false T2) GH n1 ->
+    stp2 false false (base v) TX G2 (TMem TBot T2) GH n1 ->
     stp2 false true G1 (TSel (varF x)) G2 T2 GH (S n1)
-| stp2_sel2: forall G1 G2 GM v TX x T T1 GH n1 n2,
+| stp2_sel2: forall G1 G2 v TX x T1 GH n1 n2,
     indexr x G2 = Some v ->
     val_type (base v) v TX ->
     closed 0 0 (length (base v)) TX ->
-    stp2 false false (base v) TX GM (TMem true T) [] n1 ->
-    stp2 false false G1 T1 GM T GH n2 ->
+    stp2 false false (base v) TX G1 (TMem T1 TTop) GH n1 ->
     stp2 false true G1 T1 G2 (TSel (varF x)) GH (S (n1+n2))
 | stp2_selx: forall G1 G2 v x1 x2 GH s n,
     indexr x1 G1 = Some v ->
@@ -287,15 +276,12 @@ Inductive stp2: bool (* whether selections are precise *) ->
 | stp2_sela1: forall G1 G2 GX TX x T2 GH n1,
     indexr x GH = Some (GX, TX) ->
     closed 0 x (length GX) TX ->
-    stp2 false false GX TX G2 (TMem false T2) GH n1 ->
+    stp2 false false GX TX G2 (TMem TBot T2) GH n1 ->
     stp2 false true G1 (TSel (varH x)) G2 T2 GH (S n1)
-| stp2_sela2: forall G1 G2 GX GM T1 TX T x GH GU GL n1 n2,
+| stp2_sela2: forall G1 G2 GX T1 TX x GH n1 n2,
     indexr x GH = Some (GX, TX) ->
     closed 0 x (length GX) TX ->
-    length GL = x ->
-    GH = GU ++ GL ->
-    stp2 false false GX TX GM (TMem true T) GL n1 ->
-    stp2 false false G1 T1 GM T GH n2 ->
+    stp2 false false GX TX G1 (TMem T1 TTop) GH n1 ->
     stp2 false true G1 T1 G2 (TSel (varH x)) GH (S (n1+n2))
 | stp2_selax: forall G1 G2 v x GH s n,
     indexr x GH = Some v ->
@@ -330,7 +316,7 @@ with wf_env : venv -> tenv -> Prop :=
 with val_type : venv -> vl -> ty -> Prop :=
 | v_ty: forall env venv tenv T1 TE,
     wf_env venv tenv ->
-    (exists n, stp2 true true venv (TMem true T1) env TE [] n) ->
+    (exists n, stp2 true true venv (TMem T1 T1) env TE [] n) ->
     val_type env (vty venv T1) TE
 | v_abs: forall env venv tenv x y T1 T2 TE,
     wf_env venv tenv ->
@@ -415,46 +401,25 @@ Hint Resolve ex_intro.
 (* Examples *)
 (* ############################################################ *)
 
-Ltac crush_has_tp :=
-  try solve [eapply stp_selx; compute; eauto; crush_has_tp];
-  try solve [eapply stp_selax; compute; eauto; crush_has_tp];
-  try solve [eapply cl_selb; compute; eauto; crush_has_tp];
-  try solve [(econstructor; compute; eauto; crush_has_tp)].
-
-Ltac crush2 :=
-  try solve [(eapply stp_selx; compute; eauto; crush2)];
-  try solve [(eapply stp_selax; compute; eauto; crush2)];
-  try solve [(eapply stp_sel1; compute; eauto; crush2)];
-  try solve [(eapply stp_sela1; compute; eauto; crush2)];
-  try solve [(eapply cl_selb; compute; eauto; crush2)];
-  try solve [(econstructor; compute; eauto; crush2)];
-  try solve [(eapply t_sub; eapply t_var; compute; eauto; crush2)].
+Ltac crush :=
+  try solve [eapply stp_selx; compute; eauto; crush];
+  try solve [eapply stp_selax; compute; eauto; crush];
+  try solve [econstructor; compute; eauto; crush];
+  try solve [eapply t_sub; crush].
 
 (* define polymorphic identity function *)
 
-Definition polyId := TAll (TMem false TTop) (TAll (TSel (varB 0)) (TSel (varB 1))).
+Definition polyId := TAll (TMem TBot TTop) (TAll (TSel (varB 0)) (TSel (varB 1))).
 
-Example ex1: has_type [] (tabs (TMem false TTop) (tabs (TSel (varF 0)) (tvar 1))) polyId.
+Example ex1: has_type [] (tabs (TMem TBot TTop) (tabs (TSel (varF 0)) (tvar 1))) polyId.
 Proof.
-  crush_has_tp.
+  crush.
 Qed.
 
 (* instantiate it to TTop *)
 Example ex2: has_type [polyId] (tapp (tvar 0) (ttyp TTop)) (TAll TTop TTop).
 Proof.
-  eapply t_app. eapply t_sub. eapply t_var. compute. reflexivity.
-  crush2.
-  eapply stp_all. eapply stp_mem_false.
-  instantiate (1:=TTop). eauto.
-  instantiate (1:=0). eauto.
-  crush2.
-  crush2.
-  unfold open. simpl.
-  eapply stp_all. eapply stp_sela2. compute. reflexivity. simpl.
-  instantiate (1:=true). crush2. instantiate (1:=[]). crush2.
-  rewrite app_nil_r. reflexivity.
-  crush2. crush2. compute. reflexivity. crush2. crush2.
-  crush2. crush2. crush2.
+  crush.
 Qed.
 
 (* ############################################################ *)
