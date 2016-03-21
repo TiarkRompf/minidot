@@ -676,6 +676,14 @@ Lemma has_type_closed: forall GH G1 t T n1,
   closed (length GH) (length G1) 0 T.
 Proof. intros. eapply all_closed. eauto. eauto. Qed.
 
+Lemma has_type_closed_z: forall GH G1 z T n1,
+  has_type GH G1 (tvar false z) T n1 ->
+  z < length GH.
+Proof.
+  intros. remember (tvar false z) as t. generalize dependent z.
+  induction H; intros; inversion Heqt; subst; eauto using index_max.
+Qed.
+
 Lemma stp2_closed1 : forall GH G1 T1 T2 n1,
                       stp2 GH G1 T1 T2 n1 ->
                       closed (length GH) (length G1) 0 T1.
@@ -984,6 +992,23 @@ Proof.
   destruct b; eauto.
   case_eq (beq_nat i 0); intros; simpl; eauto.
   case_eq (beq_nat n i); intros; simpl; eauto.
+Qed.
+
+Lemma subst_open_commute_z: forall x T1 z n,
+ subst (TVar true x) (open n (TVar false (z + 1)) T1) =
+ open n (TVar false z) (subst (TVar true x) T1).
+Proof.
+  intros x T1 z.
+  induction T1; intros n; simpl;
+  try rewrite IHT1; try rewrite IHT1_1; try rewrite IHT1_2;
+  eauto.
+  destruct b; eauto.
+  case_eq (beq_nat i 0); intros; simpl; eauto.
+  case_eq (beq_nat n i); intros; simpl; eauto.
+  assert (beq_nat (z + 1) 0 = false) as A. {
+    apply false_beq_nat. omega.
+  }
+  rewrite A. f_equal. omega.
 Qed.
 
 Lemma gh_match1: forall (GU:tenv) GH GL TX,
@@ -1488,10 +1513,8 @@ Proof.
           subst. simpl. rewrite <- minus_n_O. rewrite NPeano.Nat.add_1_r.
           reflexivity.
         }
-        rewrite B. unfold substt. erewrite subst_open_commute. reflexivity.
-        simpl. eapply closed_upgrade_gh. eapply H2.
-        rewrite app_length. simpl. admit.
-        econstructor. eapply vtp_closed1. eauto.
+        rewrite B. unfold substt.
+        rewrite subst_open_commute_z. reflexivity.
         rewrite map_length. eapply closed_subst. rewrite app_length in H2.
         simpl in H2. eapply H2.
         econstructor. eapply vtp_closed1. eauto.
@@ -1521,11 +1544,8 @@ Proof.
           subst. simpl. rewrite <- minus_n_O. rewrite NPeano.Nat.add_1_r.
           reflexivity.
         }
-        rewrite B. unfold substt. erewrite subst_open_commute. reflexivity.
-        eapply has_type_closed in H. inversion H. simpl.
-        eapply closed_upgrade_gh. eauto.
-        rewrite app_length. simpl. admit.
-        econstructor. eapply vtp_closed1. eauto.
+        rewrite B. unfold substt.
+        rewrite subst_open_commute_z. reflexivity.
         rewrite map_length. eapply closed_subst. rewrite app_length in H2.
         simpl in H2. eapply H2.
         econstructor. eapply vtp_closed1. eauto.
