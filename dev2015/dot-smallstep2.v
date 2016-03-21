@@ -684,6 +684,19 @@ Proof.
   induction H; intros; inversion Heqt; subst; eauto using index_max.
 Qed.
 
+Lemma has_type_closed_b: forall G1 b x T n1,
+  has_type [] G1 (tvar b x) T n1 ->
+  b = true /\ x < length G1.
+ Proof.
+ intros.
+ remember [] as GH.
+ remember (tvar b x) as t.
+ generalize dependent x. generalize dependent b. generalize HeqGH. clear HeqGH.
+ induction H; intros; inversion Heqt; subst; eauto using index_max.
+ - split; eauto. eapply vtp_closed1; eauto.
+ - simpl in H. inversion H.
+Qed.
+
 Lemma stp2_closed1 : forall GH G1 T1 T2 n1,
                       stp2 GH G1 T1 T2 n1 ->
                       closed (length GH) (length G1) 0 T1.
@@ -1586,7 +1599,9 @@ Proof.
   induction H; intros. 
   - Case "varx". eauto. 
   - Case "vary". subst GH. inversion H.
-  - Case "pack". subst GH. admit.
+  - Case "pack". subst GH.
+    eapply has_type_closed_b in H. destruct H. subst.
+    left. eexists. reflexivity.
   - Case "unpack". subst GH. admit.
   - Case "mem". right.
     assert (stpd2 [] (vobj (dty T11)::G1) T11 T11).
