@@ -1482,7 +1482,40 @@ Proof.
         rewrite map_length. eapply closed_subst. rewrite app_length in H2.
         simpl in H2. eapply H2.
         econstructor. eapply vtp_closed1. eauto.
-  - Case "unpack". subst. simpl. admit.
+  - Case "unpack". subst. simpl.
+    simpl in IHhas_type. specialize (IHhas_type H0 GH0 eq_refl). ev.
+    assert (substt x (TBind T1) = (TBind (substt x T1))) as A. {
+      eauto.
+    }
+    rewrite A in H1.
+    destruct b.
+    + eexists. eapply T_VarUnpack. eapply H1.
+      unfold substt. rewrite subst_open_commute1. reflexivity.
+      rewrite map_length. eapply closed_subst0. rewrite app_length in H2. simpl in H2.
+      apply H2. eapply vtp_closed1. eauto.
+    + case_eq (beq_nat x0 0); intros E.
+      * assert (x0 = 0). eapply beq_nat_true_iff; eauto. subst x0.
+        rewrite E in H1.
+        eexists. eapply T_VarUnpack. eapply H1. admit.
+        rewrite map_length. eapply closed_subst. rewrite app_length in H2. simpl in H2.
+        eapply H2. econstructor. eapply vtp_closed1. eauto.
+      * assert (x0 <> 0). eapply beq_nat_false_iff; eauto.
+        rewrite E in H1.
+        eexists. eapply T_VarUnpack. eapply H1.
+        remember (x0 - 1) as z.
+        assert (x0 = z + 1) as B. {
+          intuition. destruct x0. specialize (H3 eq_refl). inversion H3.
+          subst. simpl. rewrite <- minus_n_O. rewrite NPeano.Nat.add_1_r.
+          reflexivity.
+        }
+        rewrite B. unfold substt. erewrite subst_open_commute. reflexivity.
+        eapply has_type_closed in H. inversion H. simpl.
+        eapply closed_upgrade_gh. eauto.
+        rewrite app_length. simpl. admit.
+        econstructor. eapply vtp_closed1. eauto.
+        rewrite map_length. eapply closed_subst. rewrite app_length in H2.
+        simpl in H2. eapply H2.
+        econstructor. eapply vtp_closed1. eauto.
   - Case "mem". subst. simpl.
     eexists. eapply T_Mem. eapply closed_subst0. rewrite app_length in H. rewrite map_length. eauto. eapply vtp_closed1. eauto.
   - Case "abs". subst. simpl.
