@@ -618,7 +618,7 @@ Proof.
   (* has_type *)
   - eapply closed_upgrade_gh. eapply IHV2. eauto. omega. omega.
   - eauto.
-  - econstructor. eauto.
+  - econstructor. eapply closed_upgrade_gh. eauto. omega.
   - eapply IHT in H1. inversion H1; subst. eauto. omega.
   - econstructor. eauto. eauto.
   - econstructor. eauto. eauto. 
@@ -1450,16 +1450,38 @@ Proof.
     + assert (x0 <> 0). eapply beq_nat_false_iff; eauto.
       eexists. eapply T_Vary. eapply index_subst1. eauto. eauto. rewrite map_length. eapply closed_subst0. rewrite app_length in H1. simpl in H1. eapply H1. eapply vtp_closed1. eauto.
   - Case "pack". subst. simpl.
+    simpl in IHhas_type. specialize (IHhas_type H0 GH0 eq_refl). ev.
+    assert (substt x (TBind T1) = (TBind (substt x T1))) as A. {
+      eauto.
+    }
+    rewrite A.
     destruct b.
-    + simpl in IHhas_type. specialize (IHhas_type H0 GH0 eq_refl). ev.
-      assert (substt x (TBind T1) = (TBind (substt x T1))) as A. {
-        eauto.
-      }
-      rewrite A. eexists. eapply T_VarPack. eapply H1.
+    + eexists. eapply T_VarPack. eapply H1.
       unfold substt. rewrite subst_open_commute1. reflexivity.
       rewrite map_length. eapply closed_subst0. rewrite app_length in H2. simpl in H2.
       apply H2. eapply vtp_closed1. eauto.
-    + admit.
+    + case_eq (beq_nat x0 0); intros E.
+      * assert (x0 = 0). eapply beq_nat_true_iff; eauto. subst x0.
+        rewrite E in H1.
+        eexists. eapply T_VarPack. eapply H1. admit.
+        rewrite map_length. eapply closed_subst. rewrite app_length in H2. simpl in H2.
+        eapply H2. econstructor. eapply vtp_closed1. eauto.
+      * assert (x0 <> 0). eapply beq_nat_false_iff; eauto.
+        rewrite E in H1.
+        eexists. eapply T_VarPack. eapply H1.
+        remember (x0 - 1) as z.
+        assert (x0 = z + 1) as B. {
+          intuition. destruct x0. specialize (H3 eq_refl). inversion H3.
+          subst. simpl. rewrite <- minus_n_O. rewrite NPeano.Nat.add_1_r.
+          reflexivity.
+        }
+        rewrite B. unfold substt. erewrite subst_open_commute. reflexivity.
+        simpl. eapply closed_upgrade_gh. eapply H2.
+        rewrite app_length. simpl. admit.
+        econstructor. eapply vtp_closed1. eauto.
+        rewrite map_length. eapply closed_subst. rewrite app_length in H2.
+        simpl in H2. eapply H2.
+        econstructor. eapply vtp_closed1. eauto.
   - Case "unpack". subst. simpl. admit.
   - Case "mem". subst. simpl.
     eexists. eapply T_Mem. eapply closed_subst0. rewrite app_length in H. rewrite map_length. eauto. eapply vtp_closed1. eauto.
