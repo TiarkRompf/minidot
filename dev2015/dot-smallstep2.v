@@ -1,4 +1,5 @@
 (* smallstep proof *)
+(* compared to 1, adds packing/unpacking in term typing *)
 
 Require Export SfLib.
 
@@ -127,7 +128,16 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
       index x GH = Some T ->
       closed (length GH) (length G1) 0 T -> 
       has_type GH G1 (tvar false x) T (S n1)
-  (* todo: add var pack/unpack *)
+  | T_VarPack : forall GH G1 b x T1 T1' n1,
+      has_type GH G1 (tvar b x) T1' n1 ->
+      T1' = (open 0 (TVar b x) T1) ->
+      closed (length GH) (length G1) 1 T1 ->
+      has_type GH G1 (tvar b x) (TBind T1) (S n1)
+  | T_VarUnpack : forall GH G1 b x T1 T1' n1,
+      has_type GH G1 (tvar b x) (TBind T1) n1 ->
+      T1' = (open 0 (TVar b x) T1) ->
+      closed (length GH) (length G1) 0 T1' ->
+      has_type GH G1 (tvar b x) T1' (S n1)
   (* todo: recursive objects with multiple members *)
   | T_Mem : forall GH G1 T11 n1,
       closed (length GH) (length G1) 0 T11 -> 
@@ -482,6 +492,8 @@ Proof.
   (* has_type *)
   - econstructor. eapply IHn. eauto. omega.
   - econstructor. eauto. eapply closed_extend. eauto.
+  - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
+  - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
   - econstructor. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eapply closed_extend. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
@@ -606,6 +618,8 @@ Proof.
   (* has_type *)
   - eapply closed_upgrade_gh. eapply IHV2. eauto. omega. omega.
   - eauto.
+  - econstructor. eauto.
+  - eapply IHT in H1. inversion H1; subst. eauto. omega.
   - econstructor. eauto. eauto.
   - econstructor. eauto. eauto. 
   - eapply IHT in H1. inversion H1. eauto. omega.
@@ -1412,6 +1426,12 @@ Proof.
   intros. remember [] as GH. remember (tvar true x) as t.
   induction H; subst; try inversion Heqt.
   - Case "varx". subst. repeat eexists. eauto.
+  - Case "pack". subst.
+    destruct IHhas_type. eauto. eauto. ev.
+    repeat eexists. eapply vtp_bind. eauto. eauto.
+  - Case "unpack". subst.
+    destruct IHhas_type. eauto. eauto. ev. inversion H0.
+    repeat eexists. eauto.
   - Case "sub".
     destruct IHhas_type. eauto. eauto. ev.
     assert (exists m0, vtpdd m0 G1 x T2). eexists. eapply vtp_widen; eauto. 
@@ -1431,6 +1451,8 @@ Proof.
       eexists. eapply T_Varx. eapply index_hit0 in H. subst. erewrite subst_closed_id. eauto. eapply vtp_closed. eauto. 
     + assert (x0 <> 0). eapply beq_nat_false_iff; eauto.
       eexists. eapply T_Vary. eapply index_subst1. eauto. eauto. rewrite map_length. eapply closed_subst0. rewrite app_length in H1. simpl in H1. eapply H1. eapply vtp_closed1. eauto.
+  - Case "pack". subst. simpl. admit.
+  - Case "unpack". subst. simpl. admit.
   - Case "mem". subst. simpl.
     eexists. eapply T_Mem. eapply closed_subst0. rewrite app_length in H. rewrite map_length. eauto. eapply vtp_closed1. eauto.
   - Case "abs". subst. simpl.
@@ -1467,7 +1489,9 @@ Proof.
   revert T t HeqTT HeqGH Heqtt CL. 
   induction H; intros. 
   - Case "varx". eauto. 
-  - Case "vary". subst GH. inversion H. 
+  - Case "vary". subst GH. inversion H.
+  - Case "pack". subst GH. admit.
+  - Case "unpack". subst GH. admit.
   - Case "mem". right.
     assert (stpd2 [] (vobj (dty T11)::G1) T11 T11).
     eapply stpd2_refl. subst. eapply closed_extend. eauto. 
