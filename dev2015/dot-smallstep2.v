@@ -973,6 +973,19 @@ Proof.
   eapply subst_open.
 Qed.
 
+Lemma subst_open_commute0b: forall x T1 n,
+  substt x (open n (TVar false 0) T1) = open n (TVar true x) (substt x T1).
+Proof.
+  unfold substt.
+  intros x T1.
+  induction T1; intros n; simpl;
+  try rewrite IHT1; try rewrite IHT1_1; try rewrite IHT1_2;
+  eauto.
+  destruct b; eauto.
+  case_eq (beq_nat i 0); intros; simpl; eauto.
+  case_eq (beq_nat n i); intros; simpl; eauto.
+Qed.
+
 Lemma gh_match1: forall (GU:tenv) GH GL TX,
   GH ++ [TX] = GU ++ GL ->
   length GL > 0 ->
@@ -1463,7 +1476,7 @@ Proof.
     + case_eq (beq_nat x0 0); intros E.
       * assert (x0 = 0). eapply beq_nat_true_iff; eauto. subst x0.
         rewrite E in H1.
-        eexists. eapply T_VarPack. eapply H1. admit.
+        eexists. eapply T_VarPack. eapply H1. rewrite subst_open_commute0b. eauto.
         rewrite map_length. eapply closed_subst. rewrite app_length in H2. simpl in H2.
         eapply H2. econstructor. eapply vtp_closed1. eauto.
       * assert (x0 <> 0). eapply beq_nat_false_iff; eauto.
@@ -1496,7 +1509,7 @@ Proof.
     + case_eq (beq_nat x0 0); intros E.
       * assert (x0 = 0). eapply beq_nat_true_iff; eauto. subst x0.
         rewrite E in H1.
-        eexists. eapply T_VarUnpack. eapply H1. admit.
+        eexists. eapply T_VarUnpack. eapply H1. rewrite subst_open_commute0b. eauto.
         rewrite map_length. eapply closed_subst. rewrite app_length in H2. simpl in H2.
         eapply H2. econstructor. eapply vtp_closed1. eauto.
       * assert (x0 <> 0). eapply beq_nat_false_iff; eauto.
