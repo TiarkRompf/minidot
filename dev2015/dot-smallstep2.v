@@ -676,8 +676,6 @@ Lemma has_type_closed: forall GH G1 t T n1,
   closed (length GH) (length G1) 0 T.
 Proof. intros. eapply all_closed. eauto. eauto. Qed.
 
-
-
 Lemma stp2_closed1 : forall GH G1 T1 T2 n1,
                       stp2 GH G1 T1 T2 n1 ->
                       closed (length GH) (length G1) 0 T1.
@@ -1451,7 +1449,17 @@ Proof.
       eexists. eapply T_Varx. eapply index_hit0 in H. subst. erewrite subst_closed_id. eauto. eapply vtp_closed. eauto. 
     + assert (x0 <> 0). eapply beq_nat_false_iff; eauto.
       eexists. eapply T_Vary. eapply index_subst1. eauto. eauto. rewrite map_length. eapply closed_subst0. rewrite app_length in H1. simpl in H1. eapply H1. eapply vtp_closed1. eauto.
-  - Case "pack". subst. simpl. admit.
+  - Case "pack". subst. simpl.
+    destruct b.
+    + simpl in IHhas_type. specialize (IHhas_type H0 GH0 eq_refl). ev.
+      assert (substt x (TBind T1) = (TBind (substt x T1))) as A. {
+        eauto.
+      }
+      rewrite A. eexists. eapply T_VarPack. eapply H1.
+      unfold substt. rewrite subst_open_commute1. reflexivity.
+      rewrite map_length. eapply closed_subst0. rewrite app_length in H2. simpl in H2.
+      apply H2. eapply vtp_closed1. eauto.
+    + admit.
   - Case "unpack". subst. simpl. admit.
   - Case "mem". subst. simpl.
     eexists. eapply T_Mem. eapply closed_subst0. rewrite app_length in H. rewrite map_length. eauto. eapply vtp_closed1. eauto.
