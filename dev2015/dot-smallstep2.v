@@ -1602,7 +1602,9 @@ Proof.
   - Case "pack". subst GH.
     eapply has_type_closed_b in H. destruct H. subst.
     left. eexists. reflexivity.
-  - Case "unpack". subst GH. admit.
+  - Case "unpack". subst GH.
+    eapply has_type_closed_b in H. destruct H. subst.
+    left. eexists. reflexivity.
   - Case "mem". right.
     assert (stpd2 [] (vobj (dty T11)::G1) T11 T11).
     eapply stpd2_refl. subst. eapply closed_extend. eauto. 
