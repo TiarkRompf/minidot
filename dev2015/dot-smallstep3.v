@@ -1571,6 +1571,13 @@ Proof.
   eauto.
 Qed.
 
+Lemma stp2_upgrade_gh: forall T0 G1 T1 T2 n,
+  stp2 nil G1 T1 T2 n ->
+  stp2 [T0] G1 T1 T2 n.
+Proof.
+  admit.
+Qed.
+
 Lemma vtp_widen: forall l, forall n, forall k, forall m1 G1 x T2 T3 n1 n2,
   vtp m1 G1 x T2 n1 -> 
   stp2 [] G1 T2 T3 n2 ->
@@ -1635,10 +1642,12 @@ Proof.
   - Case "fun". inversion H0; subst; invty.
     + SCase "top". repeat eexists. eapply vtp_top. eapply index_max. eauto. eauto. 
     + SCase "fun". invty. subst.
+      assert (stpd2 [T8] G1 (open 0 (TVar false 0) T0) (open 0 (TVar false 0) T5)) as A. {
+        eapply stp2_narrow. simpl. eassumption. simpl. eapply stp2_upgrade_gh. eassumption.
+      }
+      destruct A as [na A].
       repeat eexists. eapply vtp_fun. eauto. eauto. 
-      eapply stp2_transf. eauto. eauto. eauto. eauto. eauto. eauto.
-      instantiate (1:=0). admit.
-      eauto. 
+      eapply stp2_transf. eauto. eauto. eauto. eauto. eauto. eauto. eauto. reflexivity.
     + SCase "sel2". 
       assert (vtpdd m1 G1 x TX). eapply IHn; eauto. omega. 
       eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. 
