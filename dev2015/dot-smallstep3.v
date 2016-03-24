@@ -1186,7 +1186,12 @@ Proof.
     rewrite map_length. eapply closed_subst0. rewrite app_length in *. simpl in *. eauto. omega.
     rewrite map_length. eapply closed_subst0. rewrite app_length in *. simpl in *. eauto. omega.
     eapply IHn; eauto. omega.
-    admit.
+    rewrite <- subst_open_commute_z. rewrite <- subst_open_commute_z.
+    specialize (IHn (T4::GH)). simpl in IHn.
+    unfold substt in IHn at 2.  unfold substt in IHn at 3. unfold substt in IHn at 3.
+    simpl in IHn. eapply IHn.
+    rewrite map_length. rewrite app_length in *. eassumption.
+    omega. omega. eauto.
   - Case "mem". subst.
     eapply stpd2_mem. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
 
