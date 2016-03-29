@@ -266,7 +266,7 @@ with htp: tenv -> venv -> nat -> ty -> nat -> Prop :=
     to do exactly the same thing by adding this distinction. *)
     htp GH G1 x T1 n1 ->
     stp2 GL G1 T1 T2 n2 ->
-    length GL = S x ->
+    length GL <= S x ->
     GH = GU ++ GL -> 
     htp GH G1 x T2 (S (n1+n2))
              
@@ -1170,10 +1170,18 @@ Proof.
         rewrite subst_open5. 
         eu. repeat eexists. eapply htp_bind. eauto. eapply closed_subst1. eauto. eauto. eauto. apply []. eauto.
       + (* sub *) subst.
-        assert (exists GL0, GL = GL0 ++ [TX] /\ GH0 = GU ++ GL0) as A. eapply gh_match1. eauto. omega.
-        destruct A as [GL0 [? ?]]. subst GL.
         assert (htpd (map (substt x) GH0) G1 (xi-1) (substt x T3)) as AA.
-        eapply IHni. eauto. eauto. omega. omega. 
+        eapply IHni. eauto. eauto. omega. omega.
+        destruct GL.
+        eu. repeat eexists. eapply htp_sub. eauto.
+        erewrite subst_closed_id. erewrite subst_closed_id. eassumption.
+        eapply stp2_closed2 in H7. simpl in H7. eapply H7.
+        eapply stp2_closed1 in H7. simpl in H7. eapply H7.
+        simpl. omega. rewrite app_nil_r. reflexivity.
+
+        remember (t::GL) as GL'.
+        assert (exists GL0, GL' = GL0 ++ [TX] /\ GH0 = GU ++ GL0) as A. eapply gh_match1. eauto. subst. simpl. omega.
+        destruct A as [GL0 [? ?]]. clear HeqGL'. subst GL'.
         assert (stpd2 (map (substt x) GL0) G1 (substt x T3) (substt x T0)) as BB.
         eapply IHn. eauto. eauto. omega. { intros. eapply narrowX. eauto. eauto. }
         eu. eu. repeat eexists. eapply htp_sub. eauto. eauto.
@@ -1324,8 +1332,26 @@ Proof.
     assert (closed 0 (length G1) 0 (TBind (substt x TX0))). eapply vtp_closed. unfold substt in A. simpl in A. eapply A.
     assert ((substt x (TX0)) = TX0) as R. eapply subst_closed_id. eauto.
     unfold substt in R. rewrite R in H9. eapply H9. simpl. eauto. omega.
-  - Case "sub". subst. 
-    assert (GL = [TX]). eapply sub_env1; eauto. subst GL.
+  - Case "sub". subst.
+    destruct GL.
+
+    assert (vtpdd m G1 x (substt x T1)) as A.
+    eapply IHnl. eauto. eauto. eauto. eauto. omega. eauto.
+    eu.
+    assert (stpd2 [] G1 (substt x T1) (substt x T2)) as B.
+    erewrite subst_closed_id. erewrite subst_closed_id. eexists. eassumption.
+    eapply stp2_closed2 in H6. simpl in H6. eapply H6.
+    eapply stp2_closed1 in H6. simpl in H6. eapply H6.
+    simpl in B. eu.
+    assert (vtpdd x0 G1 x (substt x T2)).
+    eapply H4. eauto. eauto. eauto.
+    eu. repeat eexists. eauto. omega.
+
+    assert (length GL = 0) as LenGL. simpl in *. omega.
+    assert (GL = []). destruct GL. reflexivity. simpl in LenGL. inversion LenGL.
+    subst GL.
+    assert (TX = t). eapply proj2. apply app_inj_tail. eassumption.
+    subst t.
     assert (vtpdd m G1 x (substt x T1)) as A.
     eapply IHnl. eauto. eauto. eauto. eauto. omega. eauto. 
     eu.
@@ -1369,46 +1395,44 @@ Proof.
     rewrite IHGH0. reflexivity. assumption.
 Qed.
 
-Lemma exists_GH1L: forall {X} (GU: list X) (GL: list X) (GH1: list X) (GH0: list X) x0,
-  length GL = x0 ->
+Lemma exists_GH1L: forall {X} (GU: list X) (GL: list X) (GH1: list X) (GH0: list X),
   GU ++ GL = GH1 ++ GH0 ->
-  length GH0 <= x0 ->
+  length GH0 <= length GL ->
   exists GH1L, GH1 = GU ++ GH1L /\ GL = GH1L ++ GH0.
 Proof.
   intros X GU. induction GU; intros.
   - eexists. rewrite app_nil_l. split. reflexivity. simpl in H0. assumption.
   - induction GH1.
 
-    simpl in H0.
+    simpl in H.
     assert (length (a :: GU ++ GL) = length GH0) as Contra. {
-      rewrite H0. reflexivity.
+      rewrite H. reflexivity.
     }
     simpl in Contra. rewrite app_length in Contra. omega.
 
-    simpl in H0. inversion H0.
-    specialize (IHGU GL GH1 GH0 x0 H H4 H1).
+    simpl in H. inversion H.
+    specialize (IHGU GL GH1 GH0 H3 H0).
     destruct IHGU as [GH1L [IHA IHB]].
     exists GH1L. split. simpl. rewrite IHA. reflexivity. apply IHB.
 Qed.
 
-Lemma exists_GH0U: forall {X} (GH1: list X) (GH0: list X) (GU: list X) (GL: list X) x0,
-  length GL = x0 ->
+Lemma exists_GH0U: forall {X} (GH1: list X) (GH0: list X) (GU: list X) (GL: list X),
   GU ++ GL = GH1 ++ GH0 ->
-  x0 < length GH0 ->
+  length GL < length GH0 ->
   exists GH0U, GH0 = GH0U ++ GL.
 Proof.
   intros X GH1. induction GH1; intros.
-  - simpl in H0. exists GU. symmetry. assumption.
+  - simpl in H. exists GU. symmetry. assumption.
   - induction GU.
 
-    simpl in H0.
+    simpl in H.
     assert (length GL = length (a :: GH1 ++ GH0)) as Contra. {
-      rewrite H0. reflexivity.
+      rewrite H. reflexivity.
     }
     simpl in Contra. rewrite app_length in Contra. omega.
 
-    simpl in H0. inversion H0.
-    specialize (IHGH1 GH0 GU GL x0 H H4 H1).
+    simpl in H. inversion H.
+    specialize (IHGH1 GH0 GU GL H3 H0).
     destruct IHGH1 as [GH0U IH].
     exists GH0U. apply IH.
 Qed.
@@ -1451,7 +1475,7 @@ Proof.
         simpl. rewrite E. reflexivity.
         eapply stp2_closed1 in HX. eapply closed_upgrade_gh. eapply HX.
         rewrite app_length. rewrite app_length. simpl. omega.
-        eapply HX. simpl. f_equal. symmetry. apply beq_nat_true. apply E.
+        eapply HX. simpl. apply beq_nat_true in E. omega.
         reflexivity.
       * assert (index x GH' = Some T) as A. {
           subst.
@@ -1466,9 +1490,9 @@ Proof.
     + SCase "sub".
       edestruct IHn_htp as [? Htp].
       eapply H0. omega. eapply EGH. eapply EGH'. assumption.
-      case_eq (le_lt_dec (length GH0) x); intros E' LE'.
+      case_eq (le_lt_dec (S (length GH0)) (length GL)); intros E' LE'.
       assert (exists GH1L, GH1 = GU ++ GH1L /\ GL = GH1L ++ (TX2) :: GH0) as EQGH. {
-        eapply exists_GH1L. eassumption. eassumption. simpl. omega.
+        eapply exists_GH1L. eassumption. simpl. eassumption.
       }
       destruct EQGH as [GH1L [EQGH1 EQGL]].
       edestruct IHn_stp2 as [? Hsub].
@@ -1478,14 +1502,14 @@ Proof.
       subst. rewrite app_length in *. simpl in *. eauto.
       rewrite EGH'. simpl. rewrite EQGH1. rewrite <- app_assoc. reflexivity.
       assert (exists GH0U, TX2::GH0 = GH0U ++ GL) as EQGH. {
-        eapply exists_GH0U. eassumption. eassumption. simpl. omega.
+        eapply exists_GH0U. eassumption. eassumption.
       }
       destruct EQGH as [GH0U EQGH].
       destruct GH0U. simpl in EQGH.
       assert (length (TX2::GH0)=length GL) as Contra. {
         rewrite EQGH. reflexivity.
       }
-      simpl in Contra. rewrite H2 in Contra. inversion Contra. subst. omega.
+      simpl in Contra. rewrite <- Contra in H2. subst. omega.
       simpl in EQGH. inversion EQGH.
       eexists. eapply htp_sub. eapply Htp. eassumption. eauto.
       instantiate (1:=GH1 ++ [TX1] ++ GH0U). subst.
