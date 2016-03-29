@@ -479,7 +479,6 @@ Proof.
   simpl. omega.
 Qed.
 
-
 Lemma all_extend: forall ni,
   (forall GH  v1 G1 T1 T2 n,
      stp2 GH G1 T1 T2 n -> n < ni ->
@@ -545,6 +544,13 @@ Lemma closed_upgrade_gh: forall i i1 j k T1,
   closed i j k T1 -> i <= i1 -> closed i1 j k T1.
 Proof.
   intros. generalize dependent i1. induction H; intros; econstructor; eauto. omega.
+Qed.
+
+Lemma closed_extend_mult : forall T i j j' k,
+                             closed i j k T -> j <= j' ->
+                             closed i j' k T.
+Proof.
+  intros. generalize dependent j'. induction H; intros; econstructor; eauto. omega.
 Qed.
 
 Lemma closed_upgrade: forall i j k k1 T1,
@@ -2037,10 +2043,12 @@ Proof.
       * SSCase "arg_step".
         ev. subst. 
         right. repeat eexists. eapply ST_App2. eauto. eapply T_App.
-        eapply has_type_extend_mult. eauto. eauto. admit.
+        eapply has_type_extend_mult. eauto. eauto.
+        simpl in *. rewrite app_length. eapply closed_extend_mult. eassumption. omega.
     + SCase "fun_step".
       ev. subst. right. repeat eexists. eapply ST_App1. eauto. eapply T_App.
-      eauto. eapply has_type_extend_mult. eauto. admit.
+      eauto. eapply has_type_extend_mult. eauto.
+      simpl in *. rewrite app_length. eapply closed_extend_mult. eassumption. omega.
   - admit.
   - Case "sub". subst.
     assert ((exists x : id, t0 = tvar true x) \/
