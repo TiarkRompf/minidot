@@ -2021,12 +2021,19 @@ Proof.
         eu.
         assert (has_typed (map (substt x0) []) G1 (subst_tm x0 t) (substt x0 T2)) as HI.
         eapply hastp_subst; eauto.
-        admit. (*
-        eu. simpl in HI. erewrite subst_closed_id in HI. 
+        eu. simpl in HI.
+        edestruct stp2_subst_narrow as [? HI2]. rewrite app_nil_l. eapply H17. eauto.
+        simpl in HI2.
+        assert (open 0 (TVar false 0) T2 = T2) as EqT2. {
+          erewrite <- closed_no_open. reflexivity. eapply has_type_closed. eassumption.
+        }
+        assert (substt x0 (open 0 (TVar false 0) T) = T) as EqT. {
+          erewrite <- closed_no_open. erewrite subst_closed_id. reflexivity.
+          eassumption. eassumption.
+        }
+        rewrite EqT2 in HI2. rewrite EqT in HI2.
         right. repeat eexists. rewrite app_nil_l. eapply ST_AppAbs. eauto.
         eapply T_Sub. eauto. eauto.
-        change 0 with (length ([]:tenv)). eapply stpd2_closed1. eauto. 
-        *)
       * SSCase "arg_step".
         ev. subst. 
         right. repeat eexists. eapply ST_App2. eauto. eapply T_App.
