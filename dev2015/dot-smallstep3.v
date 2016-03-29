@@ -155,7 +155,7 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
   | T_AppVar : forall T1 T2 T2' GH G1 t1 b2 x2 n1 n2,
       has_type GH G1 t1 (TFun T1 T2) n1 ->
       has_type GH G1 (tvar b2 x2) T1 n2 ->
-      T2' = (open 0 (TVar b2 x2) T1) ->
+      T2' = (open 0 (TVar b2 x2) T2) ->
       closed (length GH) (length G1) 0 T2' ->
       has_type GH G1 (tapp t1 (tvar b2 x2)) T2' (S (n1+n2))
   | T_Sub : forall GH G1 t T1 T2 n1 n2,
@@ -2049,7 +2049,51 @@ Proof.
       ev. subst. right. repeat eexists. eapply ST_App1. eauto. eapply T_App.
       eauto. eapply has_type_extend_mult. eauto.
       simpl in *. rewrite app_length. eapply closed_extend_mult. eassumption. omega.
-  - admit.
+
+  - Case "appvar". subst.
+    assert (closed (length ([]:tenv)) (length G1) 0 (TFun T1 T2)) as TF. eapply has_type_closed. eauto.
+    assert ((exists x : id, tvar b2 x2 = tvar true x) \/
+                (exists (G' : venv) (t' : tm) n2,
+                   step G1 (tvar b2 x2) (G'++G1) t' /\ has_type [] (G'++G1) t' T1 n2)) as HX.
+    eapply IHhas_type2. eauto. eauto. eauto. inversion TF. eauto.
+    assert (b2 = true) as HXeq. {
+      destruct HX as [[? HX] | Contra]. inversion HX. reflexivity.
+      destruct Contra as [G' [t' [n' [Hstep Htyp]]]].
+      inversion Hstep.
+    }
+    clear HX. subst b2.
+    assert ((exists x : id, t1 = tvar true x) \/
+                (exists (G' : venv) (t' : tm) n2,
+                   step G1 t1 (G'++G1) t' /\ has_type [] (G'++G1) t' (TFun T1 T2) n2)) as HF.
+    eapply IHhas_type1. eauto. eauto. eauto. eauto.
+    destruct HF.
+    + SCase "fun-val".
+      ev. ev. subst.
+      assert (exists m n1, vtp m G1 x (TFun T1 T2) n1). eapply hastp_inv. eauto.
+      assert (exists m n1, vtp m G1 x2 T1 n1). eapply hastp_inv. eauto.
+      ev. inversion H1. subst.
+      assert (vtpdd x0 G1 x2 T0). eapply vtp_widen. eauto. eauto. eauto. eauto. eauto.
+      eu.
+      assert (has_typed (map (substt x2) []) G1 (subst_tm x2 t) (substt x2 T3)) as HI.
+      eapply hastp_subst; eauto.
+      eu. simpl in HI.
+      edestruct stp2_subst_narrow as [? HI2]. rewrite app_nil_l. eapply H17. eauto.
+      simpl in HI2.
+      assert (open 0 (TVar false 0) T3 = T3) as EqT3. {
+        erewrite <- closed_no_open. reflexivity. eapply has_type_closed. eassumption.
+      }
+      assert ((substt x2 (open 0 (TVar false 0) T2))=(open 0 (TVar true x2) T2)) as EqT2. {
+        rewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity.
+        eassumption.
+      }
+      rewrite EqT3 in HI2. rewrite EqT2 in HI2.
+      right. repeat eexists. rewrite app_nil_l. eapply ST_AppAbs. eauto.
+      eapply T_Sub. eauto. eauto.
+    + SCase "fun_step".
+      ev. subst. right. repeat eexists. eapply ST_App1. eauto. eapply T_AppVar.
+      eauto. eapply has_type_extend_mult. eauto. reflexivity.
+      simpl in *. rewrite app_length. eapply closed_extend_mult. eassumption. omega.
+
   - Case "sub". subst.
     assert ((exists x : id, t0 = tvar true x) \/
                (exists (G' : venv) (t' : tm) n2,
