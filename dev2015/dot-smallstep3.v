@@ -1825,6 +1825,21 @@ Proof.
     ev. eu. repeat eexists. eauto. 
 Qed.
 
+Lemma stp2_subst_narrow: forall GH0 TX G1 T1 T2 x m n1 n2,
+  stp2 (GH0 ++ [TX]) G1 T1 T2 n2 ->
+  vtp m G1 x TX n1 ->
+  stpd2 (map (substt x) GH0) G1 (substt x T1) (substt x T2).
+Proof.
+  intros.
+  edestruct stp2_subst_narrow0. eauto. eapply vtp_closed1. eauto. eauto.
+  { intros. edestruct stp2_subst_narrowX. erewrite subst_closed_id.
+    eauto. eapply vtp_closed. eauto. eauto. eapply vtp_closed1. eauto. eauto. eauto.
+    { intros. eapply vtp_widen; eauto. }
+    ev. repeat eexists. eauto.
+  }
+  eexists. eassumption.
+Qed.
+
 Lemma hastp_subst: forall m G1 GH TX T x t n1 n2,
   has_type (GH++[TX]) G1 t T n2 ->
   vtp m G1 x TX n1 ->
@@ -1942,13 +1957,8 @@ Proof.
     subst. rewrite map_length. rewrite app_length in *. simpl in *. eassumption.
     subst. rewrite map_length. econstructor. eapply vtp_closed1. eauto.
     apply []. apply beq_nat_false. apply E. apply []. apply beq_nat_false. apply E.
-  - Case "sub". subst. 
-    edestruct stp2_subst_narrow0. eapply H1. eapply vtp_closed1. eauto. eauto. 
-    { intros. edestruct stp2_subst_narrowX. erewrite subst_closed_id.
-      eapply H0. eapply vtp_closed. eauto. eauto. eapply vtp_closed1. eauto. eauto. eauto.
-      { intros. eapply vtp_widen; eauto. }
-      ev. repeat eexists. eauto.
-    }
+  - Case "sub". subst.
+    edestruct stp2_subst_narrow. eapply H1. eapply H0.
     edestruct IHhas_type. eauto. eauto.
     eexists. eapply T_Sub. eauto. eauto.
 Grab Existential Variables.
