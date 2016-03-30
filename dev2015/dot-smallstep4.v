@@ -1912,6 +1912,22 @@ Proof.
   eexists. eassumption.
 Qed.
 
+Lemma tand_substt: forall T1 T2 x,
+  substt x (tand T1 T2) = tand (substt x T1) (substt x T2).
+Proof.
+  intros. generalize dependent x. generalize dependent T1.
+  destruct T2; intros; eauto.
+  unfold substt. simpl. destruct b; eauto.
+  destruct (beq_nat i 0); eauto.
+Qed.
+
+Lemma length_subst_dms: forall ds x,
+  (length (dms_to_list ds))=(length (dms_to_list (subst_dms x ds))).
+Proof.
+  intros. induction ds; eauto.
+  simpl. rewrite IHds. reflexivity.
+Qed.
+
 Lemma hastp_subst_aux: forall ni,
   (forall m G1 GH TX T x t n1 n2,
   has_type (GH++[TX]) G1 t T n2 -> n2 < ni ->
@@ -1922,8 +1938,8 @@ Lemma hastp_subst_aux: forall ni,
   vtp m G1 x TX n1 ->
   exists n3, dms_has_type (map (substt x) GH) G1 (subst_dms x ds) (substt x T) n3).
 Proof.
-  intro ni. induction ni. split; intros; omega. destruct IHni as [IHniT IHniD]. split.
-  intros. remember (GH++[TX]) as GH0. revert GH HeqGH0. inversion H; intros.
+  intro ni. induction ni. split; intros; omega. destruct IHni as [IHniT IHniD]. split;
+  intros; remember (GH++[TX]) as GH0; revert GH HeqGH0; inversion H; intros.
   - Case "varx". simpl. eexists. eapply T_Varx. erewrite subst_closed_id. eauto. eapply vtp_closed. eauto.
   - Case "vary". subst. simpl.
     case_eq (beq_nat x0 0); intros E.
@@ -2043,21 +2059,23 @@ Proof.
     edestruct stp2_subst_narrow. eauto. eauto.
     edestruct IHniT. eapply H2. omega. eauto.
     eexists. eapply T_Sub. eauto. eauto.
-  - admit.
-(*
+  - Case "dnil". eexists. simpl. econstructor.
   - Case "mem". subst. simpl.
-    eexists. eapply T_Mem. eapply closed_subst0. rewrite app_length in H. rewrite map_length. eauto. eapply vtp_closed1. eauto.
+    edestruct IHniD as [? IH]. eapply H2. omega. eauto.
+    eexists. eapply D_Mem. eapply IH. eapply closed_subst0. rewrite app_length in H3. rewrite map_length. eauto. eapply vtp_closed1. eauto. eauto.
+    rewrite tand_substt. unfold substt. simpl. rewrite <- length_subst_dms. reflexivity.
   - Case "abs". subst. simpl.
-    edestruct IHhas_type as [? HI]. eauto. instantiate (1:=T11::GH0). eauto.
-    simpl in HI.
-    eexists. eapply T_Abs. eapply HI.
+    edestruct IHniD as [? IHD]. eapply H2. omega. eauto.
+    edestruct IHniT with (GH:=T11::GH1) as [? IHT]. eapply H3. omega. eauto.
+    simpl in IHT.
+    eexists. eapply D_Abs. eapply IHD. eapply IHT.
     rewrite map_length. rewrite app_length. simpl.
     rewrite subst_open. unfold substt. reflexivity.
-    eapply closed_subst0. rewrite map_length. rewrite app_length in H2. simpl in H2. eauto. eauto. eapply vtp_closed1. eauto.
-    eapply closed_subst0. rewrite map_length. rewrite app_length in H3. simpl in H3. eauto. eapply vtp_closed1. eauto.
-*)
+    eapply closed_subst0. rewrite map_length. rewrite app_length in H5. simpl in H5. eauto. eauto. eapply vtp_closed1. eauto.
+    eapply closed_subst0. rewrite map_length. rewrite app_length in H6. simpl in H6. eauto. eapply vtp_closed1. eauto. eauto.
+    rewrite tand_substt. unfold substt. simpl. reflexivity.
 Grab Existential Variables.
-  apply 0. (* apply 0. *)
+  apply 0. apply 0.
 Qed.
 
 Lemma hastp_subst: forall m G1 GH TX T x t n1 n2,
