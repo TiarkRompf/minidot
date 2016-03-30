@@ -1995,19 +1995,14 @@ Proof.
         rewrite map_length. eapply closed_subst. rewrite app_length in H4.
         simpl in H4. eapply H4.
         econstructor. eapply vtp_closed1. eauto.
-  - Case "obj". admit.
-(*
-  - Case "mem". subst. simpl.
-    eexists. eapply T_Mem. eapply closed_subst0. rewrite app_length in H. rewrite map_length. eauto. eapply vtp_closed1. eauto.
-  - Case "abs". subst. simpl.
-    edestruct IHhas_type as [? HI]. eauto. instantiate (1:=T11::GH0). eauto.
-    simpl in HI. 
-    eexists. eapply T_Abs. eapply HI.
-    rewrite map_length. rewrite app_length. simpl.
-    rewrite subst_open. unfold substt. reflexivity.
-    eapply closed_subst0. rewrite map_length. rewrite app_length in H2. simpl in H2. eauto. eauto. eapply vtp_closed1. eauto.
-    eapply closed_subst0. rewrite map_length. rewrite app_length in H3. simpl in H3. eauto. eapply vtp_closed1. eauto.
-*)
+  - Case "obj".
+    subst.
+    edestruct IHniD with (GH:=(open 0 (TVar false (length (GH1 ++ [TX]))) T0 :: GH1)) as [? IH]. eauto. omega. eauto.
+    eexists. simpl. eapply T_Obj. eauto.
+    rewrite map_length. eapply closed_subst. rewrite app_length in H3. simpl in H3. eapply H3.
+    econstructor. eapply vtp_closed1. eauto.
+    rewrite map_length. simpl in IH. rewrite app_length in IH. simpl in IH.
+    rewrite subst_open in IH. apply IH.
   - Case "app".
     subst.
     edestruct IHniT. eapply H2. omega. eauto.
@@ -2049,6 +2044,18 @@ Proof.
     edestruct IHniT. eapply H2. omega. eauto.
     eexists. eapply T_Sub. eauto. eauto.
   - admit.
+(*
+  - Case "mem". subst. simpl.
+    eexists. eapply T_Mem. eapply closed_subst0. rewrite app_length in H. rewrite map_length. eauto. eapply vtp_closed1. eauto.
+  - Case "abs". subst. simpl.
+    edestruct IHhas_type as [? HI]. eauto. instantiate (1:=T11::GH0). eauto.
+    simpl in HI.
+    eexists. eapply T_Abs. eapply HI.
+    rewrite map_length. rewrite app_length. simpl.
+    rewrite subst_open. unfold substt. reflexivity.
+    eapply closed_subst0. rewrite map_length. rewrite app_length in H2. simpl in H2. eauto. eauto. eapply vtp_closed1. eauto.
+    eapply closed_subst0. rewrite map_length. rewrite app_length in H3. simpl in H3. eauto. eapply vtp_closed1. eauto.
+*)
 Grab Existential Variables.
   apply 0. (* apply 0. *)
 Qed.
