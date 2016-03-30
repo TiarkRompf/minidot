@@ -2090,15 +2090,18 @@ Qed.
 
 Lemma dms_to_vtp_aux: forall G1 ds ds0 ds1 T n1,
   dms_to_list ds = ds0 ++ dms_to_list ds1 ->
+  closed 0 (length G1) 1 T ->
   dms_has_type [open 0 (TVar false 0) T] G1 ds1 (open 0 (TVar false 0) T) n1 ->
   exists m n, vtp m ([vobj (subst_dms (length G1) ds)] ++ G1) (length G1) (open 0 (TVar true (length G1)) T) n.
 Proof.
-  intros G1 ds ds0 ds1 T n1 Hdms H.
+  intros G1 ds ds0 ds1 T n1 Hdms Hclosed H.
   remember (open 0 (TVar false 0) T) as T0.
   remember (open 0 (TVar true (length G1)) T) as T1.
   assert (substt (length G1) T0 = T1) as Eq. {
-    subst. rewrite subst_open_commute0b. admit.
+    subst. rewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity.
+    eapply Hclosed.
   }
+  clear Hclosed.
   rewrite <- Eq. clear HeqT1. clear Eq. clear HeqT0. clear T. clear T1.
   remember T0 as T. rewrite HeqT in H at 1. clear HeqT.
   generalize dependent n1. generalize dependent T0. generalize dependent T.
@@ -2136,10 +2139,11 @@ apply 0. apply 0. apply 0.
 Qed.
 
 Lemma dms_to_vtp: forall G1 ds T n1,
+  closed 0 (length G1) 1 T ->
   dms_has_type [open 0 (TVar false 0) T] G1 ds (open 0 (TVar false 0) T) n1 ->
   exists m n, vtp m ([vobj (subst_dms (length G1) ds)] ++ G1) (length G1) (open 0 (TVar true (length G1)) T) n.
 Proof.
-  intros. eapply dms_to_vtp_aux. rewrite app_nil_l. reflexivity. eauto.
+  intros. eapply dms_to_vtp_aux. rewrite app_nil_l. reflexivity. eauto. eauto.
 Qed.
 
 Theorem type_safety : forall G t T n1,
@@ -2161,7 +2165,7 @@ Proof.
     eapply has_type_closed_b in H. destruct H. subst.
     left. eexists. reflexivity.
   - Case "obj". subst. simpl in *. right.
-    edestruct dms_to_vtp as [? [? HV]]. eauto.
+    edestruct dms_to_vtp as [? [? HV]]. eauto. eauto.
     repeat eexists. rewrite <- app_cons1. eapply ST_Obj. reflexivity. reflexivity.
     eapply T_VarPack. eapply T_Varx. eapply HV. reflexivity.
     eapply closed_extend. eauto.
