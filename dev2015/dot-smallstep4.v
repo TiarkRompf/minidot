@@ -2088,11 +2088,58 @@ Proof.
   intros. eapply hastp_subst_aux with (t:=t). eauto. eauto. eauto.
 Qed.
 
+Lemma dms_to_vtp_aux: forall G1 ds ds0 ds1 T n1,
+  dms_to_list ds = ds0 ++ dms_to_list ds1 ->
+  dms_has_type [open 0 (TVar false 0) T] G1 ds1 (open 0 (TVar false 0) T) n1 ->
+  exists m n, vtp m ([vobj (subst_dms (length G1) ds)] ++ G1) (length G1) (open 0 (TVar true (length G1)) T) n.
+Proof.
+  intros G1 ds ds0 ds1 T n1 Hdms H.
+  remember (open 0 (TVar false 0) T) as T0.
+  remember (open 0 (TVar true (length G1)) T) as T1.
+  assert (substt (length G1) T0 = T1) as Eq. {
+    subst. rewrite subst_open_commute0b. admit.
+  }
+  rewrite <- Eq. clear HeqT1. clear Eq. clear HeqT0. clear T. clear T1.
+  remember T0 as T. rewrite HeqT in H at 1. clear HeqT.
+  generalize dependent n1. generalize dependent T0. generalize dependent T.
+  generalize dependent ds. generalize dependent ds0.
+  induction ds1; intros.
+  - inversion H; subst. repeat eexists.
+    econstructor. simpl. omega.
+  - inversion H; subst.
+    + rewrite tand_substt.
+      edestruct (IHds1 (ds0++[dty T11])) as [? [? IH]].
+      rewrite <- app_assoc. simpl. simpl in Hdms. rewrite <- Hdms. reflexivity.
+      eauto.
+      assert (stpd2 [] ([vobj (subst_dms (length G1) ds)] ++ G1)
+                    (substt (length G1) T11) (substt (length G1) T11)). {
+        eapply stpd2_refl. eapply closed_subst. eapply closed_extend. eauto.
+        econstructor. simpl. omega.
+      }
+      eu.
+      destruct (tand_destruct (substt (length G1) (TMem (length (dms_to_list ds1)) T11 T11)) (substt (length G1) TS)) as [Eq0 | [Eq1 Eq2]].
+      repeat eexists.
+      rewrite Eq0. eapply vtp_and.
+      econstructor.
+      simpl. rewrite beq_nat_true_eq. eauto.
+      instantiate (1:=(substt (length G1) T11)). admit.
+      eauto. eauto. eapply IH. eauto. eauto.
+      repeat eexists.
+      rewrite Eq1.
+      econstructor.
+      simpl. rewrite beq_nat_true_eq. eauto.
+      instantiate (1:=(substt (length G1) T11)). admit.
+      eauto. eauto.
+    + admit.
+Grab Existential Variables.
+apply 0. apply 0. apply 0.
+Qed.
+
 Lemma dms_to_vtp: forall G1 ds T n1,
   dms_has_type [open 0 (TVar false 0) T] G1 ds (open 0 (TVar false 0) T) n1 ->
   exists m n, vtp m ([vobj (subst_dms (length G1) ds)] ++ G1) (length G1) (open 0 (TVar true (length G1)) T) n.
 Proof.
-  admit.
+  intros. eapply dms_to_vtp_aux. rewrite app_nil_l. reflexivity. eauto.
 Qed.
 
 Theorem type_safety : forall G t T n1,
