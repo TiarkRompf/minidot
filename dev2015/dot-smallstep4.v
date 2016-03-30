@@ -184,7 +184,7 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
       T' = (open 0 (TVar false (length GH)) T) ->
       ds' = (open_dms 0 (TVar false (length GH)) ds) ->
       closed (length GH) (length G1) 1 T ->
-      dms_has_type (T'::GH) G1 ds T' n1 ->
+      dms_has_type (T'::GH) G1 ds' T' n1 ->
       has_type GH G1 (tobj ds) (TBind T) (S n1)
   | T_App : forall l T1 T2 GH G1 t1 t2 n1 n2,
       has_type GH G1 t1 (TFun l T1 T2) n1 ->
@@ -1860,8 +1860,6 @@ Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
-
-
 (* Reduction semantics  *)
 Fixpoint subst_tm (u:nat) (T : tm) {struct T} : tm :=
   match T with
@@ -1937,6 +1935,64 @@ Lemma length_subst_dms: forall ds x,
 Proof.
   intros. induction ds; eauto.
   simpl. rewrite IHds. reflexivity.
+Qed.
+
+Scheme tm_mut  := Induction for tm Sort Prop
+with   dm_mut  := Induction for dm Sort Prop
+with   dms_mut := Induction for dms Sort Prop.
+Combined Scheme tm_mutind from tm_mut, dm_mut, dms_mut.
+
+Lemma subst_open_var: forall TX n x j,
+  (subst_var (TVar true x) (open_var j (TVar false (n+1)) TX)) =
+  (open_var j (TVar false n) (subst_var (TVar true x) TX)).
+Proof.
+  intros TX. induction TX; intros; eauto.
+  destruct b. eauto.
+  simpl. case_eq (beq_nat i 0); intros E. eauto. eauto.
+  simpl. case_eq (beq_nat j i); intros E. simpl.
+  assert (beq_nat (n + 1) 0 = false). eapply beq_nat_false_iff. omega.
+  assert ((n + 1 - 1 = n)). omega.
+  rewrite H. rewrite H0. eauto. eauto.
+Qed.
+
+Lemma subst_open_typ: forall TX n x j,
+  (subst (TVar true x) (open j (TVar false (n+1)) TX)) =
+  (open j (TVar false n) (subst (TVar true x) TX)).
+Proof.
+  intros.
+  assert (substt x (open j (TVar false (n + 1)) TX) =
+          open j (TVar false n) (substt x TX)) as A. {
+    rewrite subst_open. reflexivity.
+  }
+  unfold substt in A. apply A.
+Qed.
+
+Lemma subst_open_tm_mut:
+  (forall TX n x j,
+  (subst_tm x (open_tm j (TVar false (n+1)) TX)) =
+  (open_tm j (TVar false n) (subst_tm x TX))) /\
+  (forall TX n x j,
+  (subst_dm x (open_dm j (TVar false (n+1)) TX)) =
+  (open_dm j (TVar false n) (subst_dm x TX))) /\
+  (forall TX n x j,
+  (subst_dms x (open_dms j (TVar false (n+1)) TX)) =
+  (open_dms j (TVar false n) (subst_dms x TX))).
+Proof.
+  apply tm_mutind; intros; eauto.
+  - simpl. f_equal. rewrite subst_open_var. reflexivity.
+  - simpl. rewrite H. reflexivity.
+  - simpl. rewrite H. rewrite H0. reflexivity.
+  - simpl. rewrite H. rewrite subst_open_typ. rewrite subst_open_typ. reflexivity.
+  - simpl. rewrite subst_open_typ. reflexivity.
+  - simpl. rewrite H. rewrite H0. reflexivity.
+Qed.
+
+Lemma subst_open_dms:
+  (forall TX n x j,
+  (subst_dms x (open_dms j (TVar false (n+1)) TX)) =
+  (open_dms j (TVar false n) (subst_dms x TX))).
+Proof.
+  intros. rewrite (proj2 (proj2 subst_open_tm_mut)). reflexivity.
 Qed.
 
 Lemma hastp_subst_aux: forall ni,
@@ -2029,7 +2085,7 @@ Proof.
     rewrite map_length. eapply closed_subst. rewrite app_length in H4. simpl in H4. eapply H4.
     econstructor. eapply vtp_closed1. eauto.
     rewrite map_length. simpl in IH. rewrite app_length in IH. simpl in IH.
-    rewrite subst_open in IH. apply IH.
+    rewrite subst_open in IH. rewrite subst_open_dms in IH. apply IH.
   - Case "app".
     subst.
     edestruct IHniT. eapply H2. omega. eauto.
