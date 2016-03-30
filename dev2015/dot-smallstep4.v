@@ -1,5 +1,5 @@
 (* smallstep proof *)
-(* compared to 2, makes functions dependent *)
+(* compared to 3, it adds multiple members *)
 
 Require Export SfLib.
 
@@ -9,16 +9,17 @@ Require Export Arith.Lt.
 Module STLC.
 
 Definition id := nat.
+Definition lb := nat.
 
 Inductive ty : Type :=
   | TBot   : ty
   | TTop   : ty
   | TBool  : ty           
-  | TFun   : ty -> ty -> ty
-  | TMem   : ty -> ty -> ty (* intro *)
+  | TFun   : lb -> ty -> ty -> ty
+  | TMem   : lb -> ty -> ty -> ty (* intro *)
   | TVar   : bool -> id -> ty
   | TVarB  : id -> ty                   
-  | TSel   : ty -> ty (* elim *)
+  | TSel   : ty -> lb -> ty (* elim *)
   | TBind  : ty -> ty
   | TAnd   : ty -> ty -> ty
 .
@@ -26,17 +27,21 @@ Inductive ty : Type :=
 Inductive tm : Type :=
   | tvar  : bool -> id -> tm
   | tbool : bool -> tm
-  | tobj  : dm -> tm (* todo: multiple members *)
-  | tapp  : tm -> tm -> tm
+  | tobj  : dms -> tm
+  | tapp  : tm -> lb -> tm -> tm
 
 with dm : Type :=
   | dfun : ty -> ty -> tm -> dm
   | dty  : ty -> dm
+
+with dms : Type :=
+  | dnil : dms
+  | dcons : dm -> dms -> dms
 .
 
 Inductive vl : Type :=
   | vbool : bool -> vl
-  | vobj  : dm -> vl
+  | vobj  : dms -> vl
 .
 
 Definition venv := list vl.
@@ -59,14 +64,14 @@ Inductive closed: nat -> nat -> nat -> ty -> Prop :=
     closed i j k TTop
 | cl_bool: forall i j k,
     closed i j k TBool
-| cl_fun: forall i j k T1 T2,
+| cl_fun: forall i j k l T1 T2,
     closed i j k T1 ->
     closed i j (S k) T2 ->
-    closed i j k (TFun T1 T2)
-| cl_mem: forall i j k T1 T2,
+    closed i j k (TFun l T1 T2)
+| cl_mem: forall i j k l T1 T2,
     closed i j k T1 ->
     closed i j k T2 ->        
-    closed i j k (TMem T1 T2)
+    closed i j k (TMem l T1 T2)
 | cl_var0: forall i j k x,
     i > x ->
     closed i j k (TVar false x)
@@ -76,9 +81,9 @@ Inductive closed: nat -> nat -> nat -> ty -> Prop :=
 | cl_varB: forall i j k x,
     k > x ->
     closed i j k (TVarB x)
-| cl_sel: forall i j k T1,
+| cl_sel: forall i j k T1 l,
     closed i j k T1 ->
-    closed i j k (TSel T1)
+    closed i j k (TSel T1 l)
 | cl_bind: forall i j k T1,
     closed i j (S k) T1 ->
     closed i j k (TBind T1)
@@ -96,9 +101,9 @@ Fixpoint open (k: nat) (u: ty) (T: ty) { struct T }: ty :=
     | TTop        => TTop
     | TBot        => TBot
     | TBool       => TBool
-    | TSel T1     => TSel (open k u T1)                  
-    | TFun T1 T2  => TFun (open k u T1) (open (S k) u T2)
-    | TMem T1 T2  => TMem (open k u T1) (open k u T2)
+    | TSel T1 l   => TSel (open k u T1) l
+    | TFun l T1 T2  => TFun l (open k u T1) (open (S k) u T2)
+    | TMem l T1 T2  => TMem l (open k u T1) (open k u T2)
     | TBind T1    => TBind (open (S k) u T1)
     | TAnd T1 T2  => TAnd (open k u T1) (open k u T2)
   end.
@@ -108,12 +113,12 @@ Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
     | TTop         => TTop
     | TBot         => TBot
     | TBool        => TBool
-    | TMem T1 T2   => TMem (subst U T1) (subst U T2)
-    | TSel T1      => TSel (subst U T1)
+    | TMem l T1 T2 => TMem l (subst U T1) (subst U T2)
+    | TSel T1 l    => TSel (subst U T1) l
     | TVarB i      => TVarB i
     | TVar true i  => TVar true i
     | TVar false i => if beq_nat i 0 then U else TVar false (i-1)
-    | TFun T1 T2   => TFun (subst U T1) (subst U T2)
+    | TFun l T1 T2 => TFun l (subst U T1) (subst U T2)
     | TBind T2     => TBind (subst U T2)
     | TAnd T1 T2   => TAnd (subst U T1) (subst U T2)
   end.
@@ -138,26 +143,27 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
       T1' = (open 0 (TVar b x) T1) ->
       closed (length GH) (length G1) 0 T1' ->
       has_type GH G1 (tvar b x) T1' (S n1)
-  (* todo: recursive objects with multiple members *)
+(* todo: generalize *)
   | T_Mem : forall GH G1 T11 n1,
       closed (length GH) (length G1) 0 T11 -> 
-      has_type GH G1 (tobj (dty T11)) (TMem T11 T11) (S n1)
+      has_type GH G1 (tobj (dcons (dty T11) dnil)) (TMem 0 T11 T11) (S n1)
+(* todo: generalize *)
   | T_Abs : forall GH G1 T11 T12 t12 n1,
       has_type (T11::GH) G1 t12 T12 n1 ->
       closed (length GH) (length G1) 0 T11 ->
       closed (length GH) (length G1) 0 T12 -> 
-      has_type GH G1 (tobj (dfun T11 T12 t12)) (TFun T11 T12) (S n1)
-  | T_App : forall T1 T2 GH G1 t1 t2 n1 n2,
-      has_type GH G1 t1 (TFun T1 T2) n1 ->
+      has_type GH G1 (tobj (dcons (dfun T11 T12 t12) dnil)) (TFun 0 T11 T12) (S n1)
+  | T_App : forall l T1 T2 GH G1 t1 t2 n1 n2,
+      has_type GH G1 t1 (TFun l T1 T2) n1 ->
       has_type GH G1 t2 T1 n2 ->
       closed (length GH) (length G1) 0 T2 ->
-      has_type GH G1 (tapp t1 t2) T2 (S (n1+n2))
-  | T_AppVar : forall T1 T2 T2' GH G1 t1 b2 x2 n1 n2,
-      has_type GH G1 t1 (TFun T1 T2) n1 ->
+      has_type GH G1 (tapp t1 l t2) T2 (S (n1+n2))
+  | T_AppVar : forall l T1 T2 T2' GH G1 t1 b2 x2 n1 n2,
+      has_type GH G1 t1 (TFun l T1 T2) n1 ->
       has_type GH G1 (tvar b2 x2) T1 n2 ->
       T2' = (open 0 (TVar b2 x2) T2) ->
       closed (length GH) (length G1) 0 T2' ->
-      has_type GH G1 (tapp t1 (tvar b2 x2)) T2' (S (n1+n2))
+      has_type GH G1 (tapp t1 l (tvar b2 x2)) T2' (S (n1+n2))
   | T_Sub : forall GH G1 t T1 T2 n1 n2,
       has_type GH G1 t T1 n1 ->
       stp2 GH G1 T1 T2 n2 ->
@@ -173,18 +179,18 @@ with stp2: tenv -> venv -> ty -> ty -> nat -> Prop :=
     stp2 GH G1 T  TTop (S n1)
 | stp2_bool: forall GH G1 n1,
     stp2 GH G1 TBool TBool (S n1)
-| stp2_fun: forall GH G1 T1 T2 T3 T4 T2' T4' n1 n2,
+| stp2_fun: forall GH G1 l T1 T2 T3 T4 T2' T4' n1 n2,
     T2' = (open 0 (TVar false (length GH)) T2) ->
     T4' = (open 0 (TVar false (length GH)) T4) ->
     closed (length GH) (length G1) 1 T2 ->
     closed (length GH) (length G1) 1 T4 ->
     stp2 GH G1 T3 T1 n1 ->
     stp2 (T3::GH) G1 T2' T4' n2 ->
-    stp2 GH G1 (TFun T1 T2) (TFun T3 T4) (S (n1+n2))
-| stp2_mem: forall GH G1 T1 T2 T3 T4 n1 n2,
+    stp2 GH G1 (TFun l T1 T2) (TFun l T3 T4) (S (n1+n2))
+| stp2_mem: forall GH G1 l T1 T2 T3 T4 n1 n2,
     stp2 GH G1 T3 T1 n2 ->
     stp2 GH G1 T2 T4 n1 ->
-    stp2 GH G1 (TMem T1 T2) (TMem T3 T4) (S (n1+n2))
+    stp2 GH G1 (TMem l T1 T2) (TMem l T3 T4) (S (n1+n2))
 
 | stp2_varx: forall GH G1 x n1,
     x < length G1 ->
@@ -192,27 +198,27 @@ with stp2: tenv -> venv -> ty -> ty -> nat -> Prop :=
 | stp2_varax: forall GH G1 x n1,
     x < length GH ->
     stp2 GH G1 (TVar false x) (TVar false x) (S n1)
-
+(* todo: generalize *)
 | stp2_strong_sel1: forall GH G1 T2 TX x n1,
-    index x G1 = Some (vobj (dty TX)) ->
+    index x G1 = Some (vobj (dcons (dty TX) dnil)) ->
     stp2 [] G1 TX T2 n1 ->
-    stp2 GH G1 (TSel (TVar true x)) T2 (S n1)
+    stp2 GH G1 (TSel (TVar true x) 0) T2 (S n1)
 | stp2_strong_sel2: forall GH G1 T1 TX x n1,
-    index x G1 = Some (vobj (dty TX)) ->
+    index x G1 = Some (vobj (dcons (dty TX) dnil)) ->
     stp2 [] G1 T1 TX n1 ->
-    stp2 GH G1 T1 (TSel (TVar true x)) (S n1)
+    stp2 GH G1 T1 (TSel (TVar true x) 0) (S n1)
 
-| stp2_sel1: forall GH G1 T2 x n1,
-    htp  GH G1 x (TMem TBot T2) n1 ->
-    stp2 GH G1 (TSel (TVar false x)) T2 (S n1)
+| stp2_sel1: forall GH G1 l T2 x n1,
+    htp  GH G1 x (TMem l TBot T2) n1 ->
+    stp2 GH G1 (TSel (TVar false x) l) T2 (S n1)
 
-| stp2_sel2: forall GH G1 T1 x n1,
-    htp  GH G1 x (TMem T1 TTop) n1 ->
-    stp2 GH G1 T1 (TSel (TVar false x)) (S n1)
+| stp2_sel2: forall GH G1 l T1 x n1,
+    htp  GH G1 x (TMem l T1 TTop) n1 ->
+    stp2 GH G1 T1 (TSel (TVar false x) l) (S n1)
 
-| stp2_selx: forall GH G1 T1 n1,
+| stp2_selx: forall GH G1 l T1 n1,
     closed (length GH) (length G1) 0 T1 ->
-    stp2 GH G1 (TSel T1) (TSel T1) (S n1)
+    stp2 GH G1 (TSel T1 l) (TSel T1 l) (S n1)
 
          
 
@@ -277,13 +283,15 @@ with vtp : nat -> venv -> nat -> ty -> nat -> Prop :=
 | vtp_bool: forall m G1 x b n1,
     index x G1 = Some (vbool b) ->
     vtp m G1 x (TBool) (S (n1))
+(* todo: generalize *)
 | vtp_mem: forall m G1 x TX T1 T2 n1 n2,
-    index x G1 = Some (vobj (dty TX)) ->
+    index x G1 = Some (vobj (dcons (dty TX) dnil)) ->
     stp2 [] G1 T1 TX n1 ->
     stp2 [] G1 TX T2 n2 ->
-    vtp m G1 x (TMem T1 T2) (S (n1+n2))
+    vtp m G1 x (TMem 0 T1 T2) (S (n1+n2))
+(* todo: generalize *)
 | vtp_fun: forall m G1 x T1 T2 T3 T4 T2' T4' t n1 n2 n3,
-    index x G1 = Some (vobj (dfun T1 T2 t)) ->
+    index x G1 = Some (vobj (dcons (dfun T1 T2 t) dnil)) ->
     has_type [T1] G1 t T2 n3 ->
     stp2 [] G1 T3 T1 n1 ->
     T2' = (open 0 (TVar false 0) T2) ->
@@ -291,15 +299,16 @@ with vtp : nat -> venv -> nat -> ty -> nat -> Prop :=
     closed 0 (length G1) 1 T2 ->
     closed 0 (length G1) 1 T4 ->
     stp2 [T3] G1 T2' T4' n2 ->
-    vtp m G1 x (TFun T3 T4) (S (n1+n2+n3))
+    vtp m G1 x (TFun 0 T3 T4) (S (n1+n2+n3))
 | vtp_bind: forall m G1 x T2 n1,
     vtp m G1 x (open 0 (TVar true x) T2) n1 ->
     closed 0 (length G1) 1 T2 ->
     vtp (S m) G1 x (TBind T2) (S (n1))
+(* todo: generalize *)
 | vtp_sel: forall m G1 x y TX n1,
-    index y G1 = Some (vobj (dty TX)) ->
+    index y G1 = Some (vobj (dcons (dty TX) dnil)) ->
     vtp m G1 x TX n1 ->
-    vtp m G1 x (TSel (TVar true y)) (S (n1))
+    vtp m G1 x (TSel (TVar true y) 0) (S (n1))
 | vtp_and: forall m m1 m2 G1 x T1 T2 n1 n2,
     vtp m1 G1 x T1 n1 ->
     vtp m2 G1 x T2 n2 ->
@@ -343,19 +352,19 @@ Proof. intros. exists 1. eauto. Qed.
 Lemma stpd2_bool: forall GH G1,
     stpd2 GH G1 TBool TBool.
 Proof. intros. exists 1. eauto. Qed.
-Lemma stpd2_fun: forall GH G1 T1 T2 T3 T4 T2' T4',
+Lemma stpd2_fun: forall GH G1 l T1 T2 T3 T4 T2' T4',
     T2' = (open 0 (TVar false (length GH)) T2) ->
     T4' = (open 0 (TVar false (length GH)) T4) ->
     closed (length GH) (length G1) 1 T2 ->
     closed (length GH) (length G1) 1 T4 ->
     stpd2 GH G1 T3 T1 ->
     stpd2 (T3::GH) G1 T2' T4' ->
-    stpd2 GH G1 (TFun T1 T2) (TFun T3 T4).
+    stpd2 GH G1 (TFun l T1 T2) (TFun l T3 T4).
 Proof. intros. repeat eu. eexists. eauto. Qed.
-Lemma stpd2_mem: forall GH G1 T1 T2 T3 T4,
+Lemma stpd2_mem: forall GH G1 l T1 T2 T3 T4,
     stpd2 GH G1 T3 T1 ->
     stpd2 GH G1 T2 T4 ->
-    stpd2 GH G1 (TMem T1 T2) (TMem T3 T4).
+    stpd2 GH G1 (TMem l T1 T2) (TMem l T3 T4).
 Proof. intros. repeat eu. eexists. eauto. Qed.
 
 
@@ -776,9 +785,9 @@ Fixpoint tsize (T: ty) { struct T }: nat :=
     | TTop        => 1
     | TBot        => 1
     | TBool       => 1
-    | TSel T1     => S (tsize T1)
-    | TFun T1 T2  => S (tsize T1 + tsize T2)
-    | TMem T1 T2  => S (tsize T1 + tsize T2)
+    | TSel T1 l     => S (tsize T1)
+    | TFun l T1 T2  => S (tsize T1 + tsize T2)
+    | TMem l T1 T2  => S (tsize T1 + tsize T2)
     | TBind T1    => S (tsize T1)
     | TAnd T1 T2  => S (tsize T1 + tsize T2)
   end.
@@ -851,10 +860,10 @@ Ltac index_subst := match goal with
 Ltac invty := match goal with
                 | H1: TBot     = _ |- _ => inversion H1
                 | H1: TBool    = _ |- _ => inversion H1
-                | H1: TSel _   = _ |- _ => inversion H1
-                | H1: TMem _ _ = _ |- _ => inversion H1
+                | H1: TSel _ _ = _ |- _ => inversion H1
+                | H1: TMem _ _ _ = _ |- _ => inversion H1
                 | H1: TVar _ _ = _ |- _ => inversion H1
-                | H1: TFun _ _ = _ |- _ => inversion H1
+                | H1: TFun _ _ _ = _ |- _ => inversion H1
                 | H1: TBind  _ = _ |- _ => inversion H1
                 | H1: TAnd _ _ = _ |- _ => inversion H1
                 | _ => idtac
@@ -864,8 +873,8 @@ Ltac invstp_var := match goal with
   | H1: stp2 _ true _ _ TBot        (TVar _ _) _ |- _ => inversion H1
   | H1: stp2 _ true _ _ TTop        (TVar _ _) _ |- _ => inversion H1
   | H1: stp2 _ true _ _ TBool       (TVar _ _) _ |- _ => inversion H1
-  | H1: stp2 _ true _ _ (TFun _ _)  (TVar _ _) _ |- _ => inversion H1
-  | H1: stp2 _ true _ _ (TMem _ _)  (TVar _ _) _ |- _ => inversion H1
+  | H1: stp2 _ true _ _ (TFun _ _ _)  (TVar _ _) _ |- _ => inversion H1
+  | H1: stp2 _ true _ _ (TMem _ _ _)  (TVar _ _) _ |- _ => inversion H1
   | H1: stp2 _ true _ _ (TAnd _ _)  (TVar _ _) _ |- _ => inversion H1
   | _ => idtac
 end.
@@ -1252,7 +1261,7 @@ Proof.
   - Case "sel1". subst. (* invert htp to vtp and create strong_sel node *)
     case_eq (beq_nat x0 0); intros E.
     + assert (x0 = 0). eapply beq_nat_true_iff. eauto. subst x0.
-      assert (exists m0, vtpd m0 G1 x (substt x (TMem TBot T2))) as A. eapply narrowX. eauto. omega.
+      assert (exists m0, vtpd m0 G1 x (substt x (TMem l TBot T2))) as A. eapply narrowX. eauto. omega.
       destruct A as [? A]. eu. inversion A. subst.
       repeat eexists. eapply stp2_strong_sel1. eauto. unfold substt. 
       eauto.
@@ -1263,7 +1272,7 @@ Proof.
   - Case "sel2". subst. (* invert htp to vtp and create strong_sel node *)
     case_eq (beq_nat x0 0); intros E.
     + assert (x0 = 0). eapply beq_nat_true_iff. eauto. subst x0.
-      assert (exists m0, vtpd m0 G1 x (substt x (TMem T1 TTop))) as A. eapply narrowX. eauto. omega.
+      assert (exists m0, vtpd m0 G1 x (substt x (TMem l T1 TTop))) as A. eapply narrowX. eauto. omega.
       destruct A as [? A]. eu. inversion A. subst. 
       repeat eexists. eapply stp2_strong_sel2. eauto. unfold substt. 
       eauto.
@@ -1745,7 +1754,7 @@ Proof.
       assert (vtpdd m1 G1 x TX0). eapply IHn; eauto. omega. 
       eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto.
     + SCase "sel1".
-      assert (closed (length ([]:tenv)) (length G1) 0 (TSel (TVar false x0))).
+      assert (closed (length ([]:tenv)) (length G1) 0 (TSel (TVar false x0) l0)).
       eapply stpd2_closed2. eauto.
       simpl in H7. inversion H7. inversion H12. omega.
     + SCase "selx".
@@ -1784,30 +1793,38 @@ Qed.
 
 (* Reduction semantics  *)
 
-
 Fixpoint subst_tm (u:nat) (T : tm) {struct T} : tm :=
   match T with
     | tvar true i         => tvar true i
     | tvar false i        => if beq_nat i 0 then (tvar true u) else tvar false (i-1)
     | tbool b             => tbool b
-    | tobj (dty T)        => tobj (dty (subst (TVar true u) T))
-    | tobj (dfun T1 T2 t) => tobj (dfun (subst (TVar true u) T1) (subst (TVar true u) T2) (subst_tm u t))
-    | tapp t1 t2          => tapp (subst_tm u t1) (subst_tm u t2)
+    | tobj ds             => tobj (subst_dms u ds)
+    | tapp t1 l t2        => tapp (subst_tm u t1) l (subst_tm u t2)
+  end
+with subst_dm (u:nat) (d : dm) {struct d} : dm :=
+  match d with
+    | dty T        => dty (subst (TVar true u) T)
+    | dfun T1 T2 t => dfun (subst (TVar true u) T1) (subst (TVar true u) T2) (subst_tm u t)
+  end
+with subst_dms (u:nat) (ds : dms) {struct ds} : dms :=
+  match ds with
+    | dnil => dnil
+    | dcons d ds => (dcons (subst_dm u d) (subst_dms u ds))
   end.
-
 
 Inductive step : venv -> tm -> venv -> tm -> Prop :=
 | ST_Obj : forall G1 D,
     step G1 (tobj D) (vobj D::G1) (tvar true (length G1))
+(* todo: generalize *)
 | ST_AppAbs : forall G1 f x T1 T2 t12,
-    index f G1 = Some (vobj (dfun T1 T2 t12)) ->
-    step G1 (tapp (tvar true f) (tvar true x)) G1 (subst_tm x t12)
-| ST_App1 : forall G1 G1' t1 t1' t2,
+    index f G1 = Some (vobj (dcons (dfun T1 T2 t12) dnil)) ->
+    step G1 (tapp (tvar true f) 0 (tvar true x)) G1 (subst_tm x t12)
+| ST_App1 : forall G1 G1' l t1 t1' t2,
     step G1 t1 G1' t1' ->
-    step G1 (tapp t1 t2) G1' (tapp t1' t2)
-| ST_App2 : forall G1 G1' f t2 t2',
+    step G1 (tapp t1 l t2) G1' (tapp t1' l t2)
+| ST_App2 : forall G1 G1' l f t2 t2',
     step G1 t2 G1' t2' ->
-    step G1 (tapp (tvar true f) t2) G1' (tapp (tvar true f) t2')
+    step G1 (tapp (tvar true f) l t2) G1' (tapp (tvar true f) l t2')
 .
 
 
@@ -1977,7 +1994,7 @@ Theorem type_safety : forall G t T n1,
   (exists G' t' n2, step G t (G'++G) t' /\ has_type [] (G'++G) t' T n2).
 Proof. 
   intros.
-  assert (closed (length ([]:tenv)) (length G) 0 T) as CL. eapply has_type_closed. eauto. 
+  assert (closed (length ([]:tenv)) (length G) 0 T) as CL. eapply has_type_closed. eauto.
   remember [] as GH. remember t as tt. remember T as TT.
   revert T t HeqTT HeqGH Heqtt CL. 
   induction H; intros. 
@@ -1990,15 +2007,15 @@ Proof.
     eapply has_type_closed_b in H. destruct H. subst.
     left. eexists. reflexivity.
   - Case "mem". right.
-    assert (stpd2 [] (vobj (dty T11)::G1) T11 T11).
+    assert (stpd2 [] (vobj (dcons (dty T11) dnil)::G1) T11 T11).
     eapply stpd2_refl. subst. eapply closed_extend. eauto. 
     eu. repeat eexists. rewrite <-app_cons1. eapply ST_Obj. eapply T_Varx. eapply vtp_mem.
     simpl. rewrite beq_nat_true_eq. eauto. eauto. eauto. 
   - Case "abs". right.
     inversion CL. subst.
-    assert (stpd2 [] (vobj (dfun T11 T12 t12)::G1) T11 T11).
+    assert (stpd2 [] (vobj (dcons (dfun T11 T12 t12) dnil)::G1) T11 T11).
     eapply stpd2_refl. subst. eapply closed_extend. eauto.
-    assert (stpd2 [T11] (vobj (dfun T11 T12 t12)::G1) (open 0 (TVar false 0) T12) (open 0 (TVar false 0) T12)).
+    assert (stpd2 [T11] (vobj (dcons (dfun T11 T12 t12) dnil)::G1) (open 0 (TVar false 0) T12) (open 0 (TVar false 0) T12)).
     eapply stpd2_refl. subst. eapply closed_open. eapply closed_extend. simpl. eapply closed_upgrade_gh. simpl in *. eauto. omega. econstructor. simpl. omega.
     eu. eu. repeat eexists. rewrite <-app_cons1. eapply ST_Obj. eapply T_Varx. eapply vtp_fun.
     simpl. rewrite beq_nat_true_eq. eauto. subst.
@@ -2006,21 +2023,21 @@ Proof.
     reflexivity. reflexivity.
     eapply closed_extend. eauto. eapply closed_extend. eauto. eauto.
   - Case "app". subst.
-    assert (closed (length ([]:tenv)) (length G1) 0 (TFun T1 T)) as TF. eapply has_type_closed. eauto. 
+    assert (closed (length ([]:tenv)) (length G1) 0 (TFun l T1 T)) as TF. eapply has_type_closed. eauto.
     assert ((exists x : id, t2 = tvar true x) \/
                 (exists (G' : venv) (t' : tm) n2,
                    step G1 t2 (G'++G1) t' /\ has_type [] (G'++G1) t' T1 n2)) as HX.
     eapply IHhas_type2. eauto. eauto. eauto. inversion TF. eauto. 
     assert ((exists x : id, t1 = tvar true x) \/
                 (exists (G' : venv) (t' : tm) n2,
-                   step G1 t1 (G'++G1) t' /\ has_type [] (G'++G1) t' (TFun T1 T) n2)) as HF.
+                   step G1 t1 (G'++G1) t' /\ has_type [] (G'++G1) t' (TFun l T1 T) n2)) as HF.
     eapply IHhas_type1. eauto. eauto. eauto. eauto.
     destruct HF.
     + SCase "fun-val".
       destruct HX.
       * SSCase "arg-val".
         ev. ev. subst. 
-        assert (exists m n1, vtp m G1 x (TFun T1 T) n1). eapply hastp_inv. eauto.
+        assert (exists m n1, vtp m G1 x (TFun l T1 T) n1). eapply hastp_inv. eauto.
         assert (exists m n1, vtp m G1 x0 T1 n1). eapply hastp_inv. eauto.
         ev. inversion H2. subst.
         assert (vtpdd x1 G1 x0 T0). eapply vtp_widen. eauto. eauto. eauto. eauto. eauto.
@@ -2028,7 +2045,7 @@ Proof.
         assert (has_typed (map (substt x0) []) G1 (subst_tm x0 t) (substt x0 T2)) as HI.
         eapply hastp_subst; eauto.
         eu. simpl in HI.
-        edestruct stp2_subst_narrow as [? HI2]. rewrite app_nil_l. eapply H17. eauto.
+        edestruct stp2_subst_narrow as [? HI2]. rewrite app_nil_l. eauto. eauto.
         simpl in HI2.
         assert (open 0 (TVar false 0) T2 = T2) as EqT2. {
           erewrite <- closed_no_open. reflexivity. eapply has_type_closed. eassumption.
@@ -2051,7 +2068,7 @@ Proof.
       simpl in *. rewrite app_length. eapply closed_extend_mult. eassumption. omega.
 
   - Case "appvar". subst.
-    assert (closed (length ([]:tenv)) (length G1) 0 (TFun T1 T2)) as TF. eapply has_type_closed. eauto.
+    assert (closed (length ([]:tenv)) (length G1) 0 (TFun l T1 T2)) as TF. eapply has_type_closed. eauto.
     assert ((exists x : id, tvar b2 x2 = tvar true x) \/
                 (exists (G' : venv) (t' : tm) n2,
                    step G1 (tvar b2 x2) (G'++G1) t' /\ has_type [] (G'++G1) t' T1 n2)) as HX.
@@ -2064,12 +2081,12 @@ Proof.
     clear HX. subst b2.
     assert ((exists x : id, t1 = tvar true x) \/
                 (exists (G' : venv) (t' : tm) n2,
-                   step G1 t1 (G'++G1) t' /\ has_type [] (G'++G1) t' (TFun T1 T2) n2)) as HF.
+                   step G1 t1 (G'++G1) t' /\ has_type [] (G'++G1) t' (TFun l T1 T2) n2)) as HF.
     eapply IHhas_type1. eauto. eauto. eauto. eauto.
     destruct HF.
     + SCase "fun-val".
       ev. ev. subst.
-      assert (exists m n1, vtp m G1 x (TFun T1 T2) n1). eapply hastp_inv. eauto.
+      assert (exists m n1, vtp m G1 x (TFun l T1 T2) n1). eapply hastp_inv. eauto.
       assert (exists m n1, vtp m G1 x2 T1 n1). eapply hastp_inv. eauto.
       ev. inversion H1. subst.
       assert (vtpdd x0 G1 x2 T0). eapply vtp_widen. eauto. eauto. eauto. eauto. eauto.
@@ -2077,7 +2094,7 @@ Proof.
       assert (has_typed (map (substt x2) []) G1 (subst_tm x2 t) (substt x2 T3)) as HI.
       eapply hastp_subst; eauto.
       eu. simpl in HI.
-      edestruct stp2_subst_narrow as [? HI2]. rewrite app_nil_l. eapply H17. eauto.
+      edestruct stp2_subst_narrow as [? HI2]. rewrite app_nil_l. eauto. eauto.
       simpl in HI2.
       assert (open 0 (TVar false 0) T3 = T3) as EqT3. {
         erewrite <- closed_no_open. reflexivity. eapply has_type_closed. eassumption.
