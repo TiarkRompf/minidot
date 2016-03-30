@@ -143,6 +143,25 @@ Fixpoint subst (U : var) (T : ty) {struct T} : ty :=
     | TAnd T1 T2   => TAnd (subst U T1) (subst U T2)
   end.
 
+Fixpoint open_tm (k: nat) (u: var) (t: tm) { struct t } : tm :=
+  match t with
+  | tvar v => tvar (open_var k u v)
+  | tbool b => tbool b
+  | tobj dms => tobj (open_dms (S k) u dms)
+  | tapp t1 l t2 => tapp (open_tm k u t1) l (open_tm k u t2)
+  end
+with open_dm (k: nat) (u: var) (d: dm) { struct d } : dm :=
+  match d with
+  | dfun T1 T2 t => dfun (open k u T1) (open k u T2) (open_tm k u t)
+  | dty T => dty (open k u T)
+  end
+with open_dms (k: nat) (u: var) (ds: dms) { struct ds } : dms :=
+  match ds with
+  | dnil => dnil
+  | dcons d ds => dcons (open_dm k u d) (open_dms k u ds)
+  end
+.
+
 Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
   | T_Varx : forall m GH G1 x T n1,
       vtp m G1 x T n1 ->
@@ -161,8 +180,9 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
       T1' = (open 0 (TVar b x) T1) ->
       closed (length GH) (length G1) 0 T1' ->
       has_type GH G1 (tvar (TVar b x)) T1' (S n1)
-  | T_Obj : forall GH G1 ds T T' n1,
+  | T_Obj : forall GH G1 ds ds' T T' n1,
       T' = (open 0 (TVar false (length GH)) T) ->
+      ds' = (open_dms 0 (TVar false (length GH)) ds) ->
       closed (length GH) (length G1) 1 T ->
       dms_has_type (T'::GH) G1 ds T' n1 ->
       has_type GH G1 (tobj ds) (TBind T) (S n1)
@@ -578,7 +598,7 @@ Proof.
   - econstructor. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
-  - econstructor. eauto. eapply closed_extend. eauto. eapply IHn. eauto. omega.
+  - econstructor. eauto. eauto. eapply closed_extend. eauto. eapply IHn. eauto. omega.
   - econstructor. subst. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eapply closed_extend. eauto.
   - eapply T_AppVar. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
@@ -1843,25 +1863,6 @@ Qed.
 
 
 (* Reduction semantics  *)
-Fixpoint open_tm (k: nat) (u: var) (t: tm) { struct t } : tm :=
-  match t with
-  | tvar v => tvar (open_var k u v)
-  | tbool b => tbool b
-  | tobj dms => tobj (open_dms (S k) u dms)
-  | tapp t1 l t2 => tapp (open_tm k u t1) l (open_tm k u t2)
-  end
-with open_dm (k: nat) (u: var) (d: dm) { struct d } : dm :=
-  match d with
-  | dfun T1 T2 t => dfun (open k u T1) (open k u T2) (open_tm k u t)
-  | dty T => dty (open k u T)
-  end
-with open_dms (k: nat) (u: var) (ds: dms) { struct ds } : dms :=
-  match ds with
-  | dnil => dnil
-  | dcons d ds => dcons (open_dm k u d) (open_dms k u ds)
-  end
-.
-
 Fixpoint subst_tm (u:nat) (T : tm) {struct T} : tm :=
   match T with
     | tvar v              => tvar (subst_var (TVar true u) v)
@@ -2024,8 +2025,8 @@ Proof.
   - Case "obj".
     subst.
     edestruct IHniD with (GH:=(open 0 (TVar false (length (GH1 ++ [TX]))) T0 :: GH1)) as [? IH]. eauto. omega. eauto.
-    eexists. simpl. eapply T_Obj. eauto.
-    rewrite map_length. eapply closed_subst. rewrite app_length in H3. simpl in H3. eapply H3.
+    eexists. simpl. eapply T_Obj. eauto. eauto.
+    rewrite map_length. eapply closed_subst. rewrite app_length in H4. simpl in H4. eapply H4.
     econstructor. eapply vtp_closed1. eauto.
     rewrite map_length. simpl in IH. rewrite app_length in IH. simpl in IH.
     rewrite subst_open in IH. apply IH.
