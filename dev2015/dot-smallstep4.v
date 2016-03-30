@@ -1119,6 +1119,19 @@ Proof.
     remember (length GH + 1) as L. destruct L. omega. eauto.
 Qed. 
 
+Lemma subst_open_var: forall TX n x j,
+  (subst_var (TVar true x) (open_var j (TVar false (n+1)) TX)) =
+  (open_var j (TVar false n) (subst_var (TVar true x) TX)).
+Proof.
+  intros TX. induction TX; intros; eauto.
+  destruct b. eauto.
+  simpl. case_eq (beq_nat i 0); intros E. eauto. eauto.
+  simpl. case_eq (beq_nat j i); intros E. simpl.
+  assert (beq_nat (n + 1) 0 = false). eapply beq_nat_false_iff. omega.
+  assert ((n + 1 - 1 = n)). omega.
+  rewrite H. rewrite H0. eauto. eauto.
+Qed.
+
 Lemma subst_open: forall TX n x j,
   (substt x (open j (TVar false (n+1)) TX)) =
   (open j (TVar false n) (substt x TX)).
@@ -1126,12 +1139,7 @@ Proof.
   intros TX. induction TX; intros; eauto.
   - unfold substt. simpl. unfold substt in IHTX1. unfold substt in IHTX2. erewrite <-IHTX1. erewrite <-IHTX2. eauto.
   - unfold substt. simpl. unfold substt in IHTX1. unfold substt in IHTX2. erewrite <-IHTX1. erewrite <-IHTX2. eauto.
-  - unfold substt. simpl. destruct v. destruct b. eauto.
-    simpl. case_eq (beq_nat i 0); intros E. eauto. eauto.
-    simpl. case_eq (beq_nat j i); intros E. simpl. 
-    assert (beq_nat (n + 1) 0 = false). eapply beq_nat_false_iff. omega.
-    assert ((n + 1 - 1 = n)). omega. 
-    rewrite H. rewrite H0. eauto. eauto.
+  - unfold substt. simpl. rewrite subst_open_var. reflexivity.
   - unfold substt. simpl. unfold substt in IHTX. erewrite <-IHTX. eauto.
   - unfold substt. simpl. unfold substt in IHTX1. unfold substt in IHTX2. erewrite <-IHTX1. erewrite <-IHTX2. eauto.
 Qed.
@@ -1941,19 +1949,6 @@ Scheme tm_mut  := Induction for tm Sort Prop
 with   dm_mut  := Induction for dm Sort Prop
 with   dms_mut := Induction for dms Sort Prop.
 Combined Scheme tm_mutind from tm_mut, dm_mut, dms_mut.
-
-Lemma subst_open_var: forall TX n x j,
-  (subst_var (TVar true x) (open_var j (TVar false (n+1)) TX)) =
-  (open_var j (TVar false n) (subst_var (TVar true x) TX)).
-Proof.
-  intros TX. induction TX; intros; eauto.
-  destruct b. eauto.
-  simpl. case_eq (beq_nat i 0); intros E. eauto. eauto.
-  simpl. case_eq (beq_nat j i); intros E. simpl.
-  assert (beq_nat (n + 1) 0 = false). eapply beq_nat_false_iff. omega.
-  assert ((n + 1 - 1 = n)). omega.
-  rewrite H. rewrite H0. eauto. eauto.
-Qed.
 
 Lemma subst_open_typ: forall TX n x j,
   (subst (TVar true x) (open j (TVar false (n+1)) TX)) =
