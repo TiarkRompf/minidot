@@ -148,10 +148,11 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
       closed (length GH) (length G1) 0 T11 -> 
       has_type GH G1 (tobj (dcons (dty T11) dnil)) (TMem 0 T11 T11) (S n1)
 (* todo: generalize *)
-  | T_Abs : forall GH G1 T11 T12 t12 n1,
-      has_type (T11::GH) G1 t12 T12 n1 ->
+  | T_Abs : forall GH G1 T11 T12 T12' t12 n1,
+      has_type (T11::GH) G1 t12 T12' n1 ->
+      T12' = (open 0 (TVar false (length GH)) T12) ->
       closed (length GH) (length G1) 0 T11 ->
-      closed (length GH) (length G1) 0 T12 -> 
+      closed (length GH) (length G1) 1 T12 -> 
       has_type GH G1 (tobj (dcons (dfun T11 T12 t12) dnil)) (TFun 0 T11 T12) (S n1)
   | T_App : forall l T1 T2 GH G1 t1 t2 n1 n2,
       has_type GH G1 t1 (TFun l T1 T2) n1 ->
@@ -292,7 +293,7 @@ with vtp : nat -> venv -> nat -> ty -> nat -> Prop :=
 (* todo: generalize *)
 | vtp_fun: forall m G1 x T1 T2 T3 T4 T2' T4' t n1 n2 n3,
     index x G1 = Some (vobj (dcons (dfun T1 T2 t) dnil)) ->
-    has_type [T1] G1 t T2 n3 ->
+    has_type [T1] G1 t T2' n3 ->
     stp2 [] G1 T3 T1 n1 ->
     T2' = (open 0 (TVar false 0) T2) ->
     T4' = (open 0 (TVar false 0) T4) ->
@@ -543,7 +544,7 @@ Proof.
   - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
   - econstructor. eapply closed_extend. eauto.
-  - econstructor. eapply IHn. eauto. omega. eapply closed_extend. eauto. eapply closed_extend. eauto.
+  - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto. eapply closed_extend. eauto.
   - econstructor. subst. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eapply closed_extend. eauto.
   - eapply T_AppVar. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
@@ -1941,11 +1942,13 @@ Proof.
   - Case "mem". subst. simpl.
     eexists. eapply T_Mem. eapply closed_subst0. rewrite app_length in H. rewrite map_length. eauto. eapply vtp_closed1. eauto.
   - Case "abs". subst. simpl.
-    assert (has_typed (map (substt x) (T11::GH0)) G1 (subst_tm x t12) (substt x T12)) as HI.
-    eapply IHhas_type. eauto. eauto.
-    eu. simpl in HI. 
-    eexists. eapply T_Abs. eapply HI. eapply closed_subst0. rewrite map_length. rewrite app_length in H1. simpl in H1. eauto. eauto. eapply vtp_closed1. eauto.
-    eapply closed_subst0. rewrite map_length. rewrite app_length in H2. simpl in H2. eauto. eapply vtp_closed1. eauto.
+    edestruct IHhas_type as [? HI]. eauto. instantiate (1:=T11::GH0). eauto.
+    simpl in HI. 
+    eexists. eapply T_Abs. eapply HI.
+    rewrite map_length. rewrite app_length. simpl.
+    rewrite subst_open. unfold substt. reflexivity.
+    eapply closed_subst0. rewrite map_length. rewrite app_length in H2. simpl in H2. eauto. eauto. eapply vtp_closed1. eauto.
+    eapply closed_subst0. rewrite map_length. rewrite app_length in H3. simpl in H3. eauto. eapply vtp_closed1. eauto.
   - Case "app".
     edestruct IHhas_type1. eauto. eauto.
     edestruct IHhas_type2. eauto. eauto. 
@@ -2042,19 +2045,16 @@ Proof.
         ev. inversion H2. subst.
         assert (vtpdd x1 G1 x0 T0). eapply vtp_widen. eauto. eauto. eauto. eauto. eauto.
         eu.
-        assert (has_typed (map (substt x0) []) G1 (subst_tm x0 t) (substt x0 T2)) as HI.
+        assert (has_typed (map (substt x0) []) G1 (subst_tm x0 t) (substt x0 (open 0 (TVar false 0) T2))) as HI.
         eapply hastp_subst; eauto.
         eu. simpl in HI.
         edestruct stp2_subst_narrow as [? HI2]. rewrite app_nil_l. eauto. eauto.
         simpl in HI2.
-        assert (open 0 (TVar false 0) T2 = T2) as EqT2. {
-          erewrite <- closed_no_open. reflexivity. eapply has_type_closed. eassumption.
-        }
         assert (substt x0 (open 0 (TVar false 0) T) = T) as EqT. {
           erewrite <- closed_no_open. erewrite subst_closed_id. reflexivity.
           eassumption. eassumption.
         }
-        rewrite EqT2 in HI2. rewrite EqT in HI2.
+        rewrite EqT in HI2.
         right. repeat eexists. rewrite app_nil_l. eapply ST_AppAbs. eauto.
         eapply T_Sub. eauto. eauto.
       * SSCase "arg_step".
@@ -2091,19 +2091,16 @@ Proof.
       ev. inversion H1. subst.
       assert (vtpdd x0 G1 x2 T0). eapply vtp_widen. eauto. eauto. eauto. eauto. eauto.
       eu.
-      assert (has_typed (map (substt x2) []) G1 (subst_tm x2 t) (substt x2 T3)) as HI.
+      assert (has_typed (map (substt x2) []) G1 (subst_tm x2 t) (substt x2 (open 0 (TVar false 0) T3))) as HI.
       eapply hastp_subst; eauto.
       eu. simpl in HI.
       edestruct stp2_subst_narrow as [? HI2]. rewrite app_nil_l. eauto. eauto.
       simpl in HI2.
-      assert (open 0 (TVar false 0) T3 = T3) as EqT3. {
-        erewrite <- closed_no_open. reflexivity. eapply has_type_closed. eassumption.
-      }
       assert ((substt x2 (open 0 (TVar false 0) T2))=(open 0 (TVar true x2) T2)) as EqT2. {
         rewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity.
         eassumption.
       }
-      rewrite EqT3 in HI2. rewrite EqT2 in HI2.
+      rewrite EqT2 in HI2.
       right. repeat eexists. rewrite app_nil_l. eapply ST_AppAbs. eauto.
       eapply T_Sub. eauto. eauto.
     + SCase "fun_step".
