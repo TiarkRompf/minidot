@@ -2088,6 +2088,19 @@ Proof.
   intros. eapply hastp_subst_aux with (t:=t). eauto. eauto. eauto.
 Qed.
 
+Lemma index_subst_dms: forall ds ds0 D ds1 x,
+  dms_to_list ds = ds0 ++ dms_to_list (dcons D ds1) ->
+  index (length (dms_to_list ds1)) (dms_to_list (subst_dms x ds)) = Some (subst_dm x D).
+Proof.
+  intros. generalize dependent ds1. generalize dependent ds. induction ds0; intros.
+  - simpl in H. destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
+    simpl. rewrite <- length_subst_dms. rewrite beq_nat_true_eq. reflexivity.
+  - destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
+    simpl. rewrite false_beq_nat. eapply IHds0. eauto.
+    rewrite <- length_subst_dms. rewrite H2. rewrite app_length. simpl.
+    omega.
+Qed.
+
 Lemma dms_to_vtp_aux: forall G1 ds ds0 ds1 T n1,
   dms_to_list ds = ds0 ++ dms_to_list ds1 ->
   closed 0 (length G1) 1 T ->
@@ -2109,7 +2122,10 @@ Proof.
   induction ds1; intros.
   - inversion H; subst. repeat eexists.
     econstructor. simpl. omega.
-  - inversion H; subst.
+  - assert (index (length (dms_to_list ds1)) (dms_to_list (subst_dms (length G1) ds)) = Some (subst_dm (length G1) d)) as I. {
+      eapply index_subst_dms. eauto.
+    }
+    inversion H; subst.
     + rewrite tand_substt.
       edestruct (IHds1 (ds0++[dty T11])) as [? [? IH]].
       rewrite <- app_assoc. simpl. simpl in Hdms. rewrite <- Hdms. reflexivity.
@@ -2125,13 +2141,13 @@ Proof.
       rewrite Eq0. eapply vtp_and.
       econstructor.
       simpl. rewrite beq_nat_true_eq. eauto.
-      instantiate (1:=(substt (length G1) T11)). admit.
+      simpl in I. eapply I.
       eauto. eauto. eapply IH. eauto. eauto.
       repeat eexists.
       rewrite Eq1.
       econstructor.
       simpl. rewrite beq_nat_true_eq. eauto.
-      instantiate (1:=(substt (length G1) T11)). admit.
+      simpl in I. eapply I.
       eauto. eauto.
     + admit.
 Grab Existential Variables.
