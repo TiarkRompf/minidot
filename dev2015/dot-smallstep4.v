@@ -190,7 +190,7 @@ with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
       closed (length GH) (length G1) 0 T11 ->
       closed (length GH) (length G1) 1 T12 ->
       l = length (dms_to_list ds) ->
-      T = tand (TFun 0 T11 T12) TS ->
+      T = tand (TFun l T11 T12) TS ->
       dms_has_type GH G1 (dcons (dfun T11 T12 t12) ds) T (S (n1+n2))
 
 with stp2: tenv -> venv -> ty -> ty -> nat -> Prop :=
@@ -2075,7 +2075,7 @@ Proof.
     rewrite subst_open. unfold substt. reflexivity.
     eapply closed_subst0. rewrite map_length. rewrite app_length in H5. simpl in H5. eauto. eauto. eapply vtp_closed1. eauto.
     eapply closed_subst0. rewrite map_length. rewrite app_length in H6. simpl in H6. eauto. eapply vtp_closed1. eauto. eauto.
-    rewrite tand_substt. unfold substt. simpl. reflexivity.
+    rewrite tand_substt. unfold substt. simpl. rewrite <- length_subst_dms. reflexivity.
 Grab Existential Variables.
   apply 0. apply 0.
 Qed.
@@ -2149,9 +2149,59 @@ Proof.
       simpl. rewrite beq_nat_true_eq. eauto.
       simpl in I. eapply I.
       eauto. eauto.
-    + admit.
+    + rewrite tand_substt.
+      edestruct (IHds1 (ds0++[dfun T11 T12 t12])) as [? [? IH]].
+      rewrite <- app_assoc. simpl. simpl in Hdms. rewrite <- Hdms. reflexivity.
+      eauto.
+      assert (stpd2 [] ([vobj (subst_dms (length G1) ds)] ++ G1)
+                    (substt (length G1) T11) (substt (length G1) T11)) as S11. {
+        eapply stpd2_refl. eapply closed_subst. eapply closed_extend. eauto.
+        econstructor. simpl. omega.
+      }
+      eu.
+      assert (stpd2 [(substt (length G1) T11)] ([vobj (subst_dms (length G1) ds)] ++ G1) (open 0 (TVar false 0) (substt (length G1) T12)) (open 0 (TVar false 0) (substt (length G1) T12))) as S12. {
+        eapply stpd2_refl. subst. unfold substt. rewrite <- subst_open_commute_z.
+        eapply closed_subst. eapply closed_open.
+        eapply closed_upgrade_gh. eapply closed_extend. eauto.
+        simpl. omega.
+        simpl. econstructor. omega.
+        simpl. econstructor. omega.
+      }
+      eu.
+      assert (has_typed (map (substt (length G1)) [T11]) ([vobj (subst_dms (length G1) ds)] ++ G1) (subst_tm (length G1) t12) (substt (length G1) (open 0 (TVar false 1) T12))) as A. {
+        eapply hastp_subst with (TX:=T0). eapply has_type_extend. eauto.
+        simpl.
+        instantiate (1:=0). instantiate (1:=0). admit. (* that's what we're trying to prove *)
+      }
+      eu.
+      destruct (tand_destruct (substt (length G1) (TFun (length (dms_to_list ds1)) T11 T12)) (substt (length G1) TS)) as [Eq0 | [Eq1 Eq2]].
+      repeat eexists.
+      rewrite Eq0. eapply vtp_and.
+      econstructor.
+      simpl. rewrite beq_nat_true_eq. eauto.
+      simpl in I. eapply I.
+      eapply A. eauto. unfold substt. rewrite <- subst_open_commute_z. simpl. reflexivity. eauto.
+      eapply closed_subst. eapply closed_extend. eauto.
+      econstructor. simpl. omega.
+      eapply closed_subst. apply closed_extend. eauto.
+      econstructor. simpl. omega.
+      unfold substt in S12. rewrite <- subst_open_commute_z in S12.
+      rewrite <- subst_open_commute_z. eapply S12.
+      eauto. eauto. eauto.
+      repeat eexists.
+      rewrite Eq1.
+      econstructor.
+      simpl. rewrite beq_nat_true_eq. eauto.
+      simpl in I. eapply I.
+      eapply A. eauto. unfold substt. rewrite <- subst_open_commute_z. simpl. reflexivity. eauto.
+      eapply closed_subst. eapply closed_extend. eauto.
+      econstructor. simpl. omega.
+      eapply closed_subst. apply closed_extend. eauto.
+      econstructor. simpl. omega.
+      unfold substt in S12. rewrite <- subst_open_commute_z in S12.
+      rewrite <- subst_open_commute_z. eapply S12.
 Grab Existential Variables.
-apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma dms_to_vtp: forall G1 ds T n1,
