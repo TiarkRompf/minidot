@@ -2088,6 +2088,13 @@ Proof.
   intros. eapply hastp_subst_aux with (t:=t). eauto. eauto. eauto.
 Qed.
 
+Lemma dms_to_vtp: forall G1 ds T n1,
+  dms_has_type [open 0 (TVar false 0) T] G1 ds (open 0 (TVar false 0) T) n1 ->
+  exists m n, vtp m ([vobj (subst_dms (length G1) ds)] ++ G1) (length G1) (open 0 (TVar true (length G1)) T) n.
+Proof.
+  admit.
+Qed.
+
 Theorem type_safety : forall G t T n1,
   has_type [] G t T n1 ->
   (exists x, t = tvar true x) \/
@@ -2106,7 +2113,11 @@ Proof.
   - Case "unpack". subst GH.
     eapply has_type_closed_b in H. destruct H. subst.
     left. eexists. reflexivity.
-  - Case "obj". admit.
+  - Case "obj". subst. simpl in *. right.
+    edestruct dms_to_vtp as [? [? HV]]. eauto.
+    repeat eexists. rewrite <- app_cons1. eapply ST_Obj. reflexivity. reflexivity.
+    eapply T_VarPack. eapply T_Varx. eapply HV. reflexivity.
+    eapply closed_extend. eauto.
 (*
   - Case "mem". right.
     assert (stpd2 [] (vobj (dcons (dty T11) dnil)::G1) T11 T11).
