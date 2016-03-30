@@ -153,7 +153,7 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
   | T_VarxBool : forall GH G1 x b n1,
       index x G1 = Some (vbool b) ->
       has_type GH G1 (tvar true x) TBool (S n1)
-  | T_Varx : forall GH G1 x ds ds' T T' TX n1,
+  | T_VarxObj : forall GH G1 x ds ds' T T' TX n1,
       index x G1 = Some (vobj ds) ->
       subst_dms x ds' = ds ->
       T' = (open 0 (TVar false 0) T) ->
@@ -161,6 +161,9 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
       dms_has_type [T'] G1 ds' T' n1 ->
       TX = (open 0 (TVar true x) T) ->
       has_type GH G1 (tvar true x) TX (S n1)
+  | T_Varx : forall m GH G1 x T n1,
+      vtp m G1 x T n1 ->
+      has_type GH G1 (tvar true x) T (S n1)
   | T_Vary : forall G1 GH x T n1,
       index x GH = Some T ->
       closed (length GH) (length G1) 0 T -> 
@@ -588,6 +591,7 @@ Proof.
   (* has_type *)
   - econstructor. eapply index_extend. eassumption.
   - econstructor. eapply index_extend. eassumption. eauto. eauto. eapply closed_extend. eauto. eapply IHn. eauto. omega. eauto.
+  - eapply T_Varx. eapply IHn. eauto. omega.
   - econstructor. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
@@ -726,6 +730,7 @@ Proof.
   (* has_type *)
   - econstructor.
   - subst. eapply closed_open. eapply closed_upgrade_gh. eauto. omega. econstructor. eapply index_max in H1. omega.
+  - eapply closed_upgrade_gh. eapply IHV2. eauto. omega. omega.
   - eauto.
   - econstructor. eapply closed_upgrade_gh. eauto. omega.
   - eapply IHT in H1. inversion H1; subst. eauto. omega.
@@ -811,6 +816,7 @@ Lemma has_type_closed_b: forall G1 b x T n1,
  remember (tvar b x) as t.
  generalize dependent x. generalize dependent b. generalize HeqGH. clear HeqGH.
  induction H; intros; inversion Heqt; subst; eauto using index_max.
+ - split; eauto. eapply vtp_closed1; eauto.
  - simpl in H. inversion H.
 Qed.
 
@@ -1879,7 +1885,8 @@ Proof.
   intros. remember [] as GH. remember (tvar true x) as t.
   induction H; subst; try inversion Heqt.
   - Case "varx_bool". subst. repeat eexists. eauto.
-  - Case "varx". admit.
+  - Case "varx_obj". admit.
+  - Case "varx". subst. repeat eexists. eauto.
   - Case "pack". subst.
     destruct IHhas_type. eauto. eauto. ev.
     repeat eexists. eapply vtp_bind. eauto. eauto.
@@ -1929,15 +1936,15 @@ Proof.
   intro ni. induction ni. split; intros; omega. destruct IHni as [IHniT IHniD]. split;
   intros; remember (GH++[TX]) as GH0; revert GH HeqGH0; inversion H; intros.
   - Case "varx_bool". simpl. eexists. eapply T_VarxBool. eassumption.
-  - Case "varx". subst.
-    simpl. eexists. eapply T_Varx. eassumption. reflexivity. reflexivity. eassumption.
+  - Case "varx_obj". subst.
+    simpl. eexists. eapply T_VarxObj. eassumption. reflexivity. reflexivity. eassumption.
     eassumption. erewrite subst_closed_id. eauto. eapply closed_open. eauto.
     econstructor. apply index_max in H2. omega.
+  - Case "varx". simpl. eexists. eapply T_Varx. erewrite subst_closed_id. eauto. eapply vtp_closed. eauto.
   - Case "vary". subst. simpl.
     case_eq (beq_nat x0 0); intros E.
     + assert (x0 = 0). eapply beq_nat_true_iff; eauto. subst x0.
-      admit. (*
-      eexists. eapply T_Varx. eapply index_hit0 in H2. subst. erewrite subst_closed_id. eauto. eapply vtp_closed. eauto. *)
+      eexists. eapply T_Varx. eapply index_hit0 in H2. subst. erewrite subst_closed_id. eauto. eapply vtp_closed. eauto.
     + assert (x0 <> 0). eapply beq_nat_false_iff; eauto.
       eexists. eapply T_Vary. eapply index_subst1. eauto. eauto. rewrite map_length. eapply closed_subst0. rewrite app_length in H3. simpl in H3. eapply H3. eapply vtp_closed1. eauto.
   - Case "pack". subst. simpl.
@@ -2192,6 +2199,7 @@ Proof.
   revert T t HeqTT HeqGH Heqtt CL. 
   induction H; intros. 
   - Case "varx_bool". eauto.
+  - Case "varx_obj". eauto.
   - Case "varx". eauto.
   - Case "vary". subst GH. inversion H.
   - Case "pack". subst GH.
@@ -2202,7 +2210,7 @@ Proof.
     left. eexists. reflexivity.
   - Case "obj". subst. simpl in *. right.
     repeat eexists. rewrite <- app_cons1. eapply ST_Obj. reflexivity. reflexivity.
-    eapply T_VarPack. eapply T_Varx.
+    eapply T_VarPack. eapply T_VarxObj.
     simpl. rewrite beq_nat_true_eq. reflexivity. reflexivity. reflexivity.
     eapply closed_extend. eauto.
     eapply dms_has_type_extend. eauto. eauto. eauto.
