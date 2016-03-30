@@ -1864,8 +1864,10 @@ with subst_dms (u:nat) (ds : dms) {struct ds} : dms :=
   end.
 
 Inductive step : venv -> tm -> venv -> tm -> Prop :=
-| ST_Obj : forall G1 D,
-    step G1 (tobj D) (vobj D::G1) (tvar true (length G1))
+| ST_Obj : forall G1 D x Dx,
+    x = length G1 ->
+    Dx = subst_dms x D ->
+    step G1 (tobj D) (vobj Dx::G1) (tvar true x)
 | ST_AppAbs : forall G1 l ds f x T1 T2 t12,
     index f G1 = Some (vobj ds) ->
     index l (dms_to_list ds) = Some (dfun T1 T2 t12) ->
