@@ -1878,6 +1878,18 @@ Inductive step : venv -> tm -> venv -> tm -> Prop :=
     step G1 (tapp (tvar true f) l t2) G1' (tapp (tvar true f) l t2')
 .
 
+Lemma vtp_obj: forall G1 x ds ds' T TX T' n1,
+  index x G1 = Some (vobj ds) ->
+  subst_dms x ds' = ds ->
+  T' = (open 0 (TVar false 0) T) ->
+  closed 0 (length G1) 1 T ->
+  dms_has_type [T'] G1 ds' T' n1 ->
+  TX = (open 0 (TVar true x) T) ->
+  exists m n, vtp m G1 x TX n.
+Proof.
+  admit.
+Qed.
+
 Lemma hastp_inv: forall G1 x T n1,
   has_type [] G1 (tvar true x) T n1 ->
   exists m n1, vtp m G1 x T n1.
@@ -1885,7 +1897,7 @@ Proof.
   intros. remember [] as GH. remember (tvar true x) as t.
   induction H; subst; try inversion Heqt.
   - Case "varx_bool". subst. repeat eexists. eauto.
-  - Case "varx_obj". admit.
+  - Case "varx_obj". subst. eapply vtp_obj; eauto using closed_no_open, closed_open.
   - Case "varx". subst. repeat eexists. eauto.
   - Case "pack". subst.
     destruct IHhas_type. eauto. eauto. ev.
