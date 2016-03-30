@@ -130,12 +130,6 @@ Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
     | TAnd T1 T2   => TAnd (subst U T1) (subst U T2)
   end.
 
-Function tand (t1: ty) (t2: ty) :=
-  match t2 with
-    | TTop => t1
-    | _ => TAnd t1 t2
-  end.
-
 Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
   | T_Varx : forall m GH G1 x T n1,
       vtp m G1 x T n1 ->
@@ -181,7 +175,7 @@ with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
       dms_has_type GH G1 ds TS n1 ->
       closed (length GH) (length G1) 0 T11 ->
       l = length (dms_to_list ds) ->
-      T = tand (TMem l T11 T11) TS ->
+      T = TAnd (TMem l T11 T11) TS ->
       dms_has_type GH G1 (dcons (dty T11) ds) T (S n1)
   | D_Abs : forall GH G1 l T11 T12 T12' t12 ds TS T n1 n2,
       dms_has_type GH G1 ds TS n1 ->
@@ -190,7 +184,7 @@ with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
       closed (length GH) (length G1) 0 T11 ->
       closed (length GH) (length G1) 1 T12 ->
       l = length (dms_to_list ds) ->
-      T = tand (TFun l T11 T12) TS ->
+      T = TAnd (TFun l T11 T12) TS ->
       dms_has_type GH G1 (dcons (dfun T11 T12 t12) ds) T (S (n1+n2))
 
 with stp2: tenv -> venv -> ty -> ty -> nat -> Prop :=
@@ -611,22 +605,6 @@ Proof.
   - eapply closed_upgrade; eauto.
 Qed.
 
-Lemma tand_destruct: forall T1 T2,
-  tand T1 T2 = TAnd T1 T2 \/ (tand T1 T2 = T1 /\ T2 = TTop).
-Proof.
-  intros T1 T2. generalize dependent T1. destruct T2; intros; eauto.
-Qed.
-
-Lemma tand_closed: forall i j k T1 T2,
-  closed i j k T1 -> closed i j k T2 ->
-  closed i j k (tand T1 T2).
-Proof.
-  intros i j k T1 T2 H1 H2.
-  destruct (tand_destruct T1 T2) as [Eq | [Eq1 Eq2]].
-  - rewrite Eq. econstructor; eauto.
-  - rewrite Eq1. assumption.
-Qed.
-
 Lemma all_closed: forall ni,
   (forall GH G1 T1 T2 n,
      stp2 GH G1 T1 T2 n -> n < ni ->
@@ -728,9 +706,9 @@ Proof.
   - eapply IHS2. eauto. omega.
   (* dms_has_type *)
   - econstructor.
-  - subst T. eapply tand_closed. econstructor; eauto.
+  - subst T. econstructor. econstructor; eauto.
     eapply IHDMS. eauto. omega.
-  - subst T. eapply tand_closed. econstructor; eauto.
+  - subst T. econstructor. econstructor; eauto.
     eapply IHDMS. eauto. omega.
 Qed.
 
@@ -1914,15 +1892,6 @@ Proof.
   eexists. eassumption.
 Qed.
 
-Lemma tand_substt: forall T1 T2 x,
-  substt x (tand T1 T2) = tand (substt x T1) (substt x T2).
-Proof.
-  intros. generalize dependent x. generalize dependent T1.
-  destruct T2; intros; eauto.
-  unfold substt. simpl. destruct b; eauto.
-  destruct (beq_nat i 0); eauto.
-Qed.
-
 Lemma length_subst_dms: forall ds x,
   (length (dms_to_list ds))=(length (dms_to_list (subst_dms x ds))).
 Proof.
@@ -2065,7 +2034,7 @@ Proof.
   - Case "mem". subst. simpl.
     edestruct IHniD as [? IH]. eapply H2. omega. eauto.
     eexists. eapply D_Mem. eapply IH. eapply closed_subst0. rewrite app_length in H3. rewrite map_length. eauto. eapply vtp_closed1. eauto. eauto.
-    rewrite tand_substt. unfold substt. simpl. rewrite <- length_subst_dms. reflexivity.
+    unfold substt. simpl. rewrite <- length_subst_dms. reflexivity.
   - Case "abs". subst. simpl.
     edestruct IHniD as [? IHD]. eapply H2. omega. eauto.
     edestruct IHniT with (GH:=T11::GH1) as [? IHT]. eapply H3. omega. eauto.
@@ -2075,7 +2044,7 @@ Proof.
     rewrite subst_open. unfold substt. reflexivity.
     eapply closed_subst0. rewrite map_length. rewrite app_length in H5. simpl in H5. eauto. eauto. eapply vtp_closed1. eauto.
     eapply closed_subst0. rewrite map_length. rewrite app_length in H6. simpl in H6. eauto. eapply vtp_closed1. eauto. eauto.
-    rewrite tand_substt. unfold substt. simpl. rewrite <- length_subst_dms. reflexivity.
+    unfold substt. simpl. rewrite <- length_subst_dms. reflexivity.
 Grab Existential Variables.
   apply 0. apply 0.
 Qed.
@@ -2126,8 +2095,7 @@ Proof.
       eapply index_subst_dms. eauto.
     }
     inversion H; subst.
-    + rewrite tand_substt.
-      edestruct (IHds1 (ds0++[dty T11])) as [? [? IH]].
+    + edestruct (IHds1 (ds0++[dty T11])) as [? [? IH]].
       rewrite <- app_assoc. simpl. simpl in Hdms. rewrite <- Hdms. reflexivity.
       eauto.
       assert (stpd2 [] ([vobj (subst_dms (length G1) ds)] ++ G1)
@@ -2136,21 +2104,13 @@ Proof.
         econstructor. simpl. omega.
       }
       eu.
-      destruct (tand_destruct (substt (length G1) (TMem (length (dms_to_list ds1)) T11 T11)) (substt (length G1) TS)) as [Eq0 | [Eq1 Eq2]].
       repeat eexists.
-      rewrite Eq0. eapply vtp_and.
+      eapply vtp_and.
       econstructor.
       simpl. rewrite beq_nat_true_eq. eauto.
       simpl in I. eapply I.
       eauto. eauto. eapply IH. eauto. eauto.
-      repeat eexists.
-      rewrite Eq1.
-      econstructor.
-      simpl. rewrite beq_nat_true_eq. eauto.
-      simpl in I. eapply I.
-      eauto. eauto.
-    + rewrite tand_substt.
-      edestruct (IHds1 (ds0++[dfun T11 T12 t12])) as [? [? IH]].
+    + edestruct (IHds1 (ds0++[dfun T11 T12 t12])) as [? [? IH]].
       rewrite <- app_assoc. simpl. simpl in Hdms. rewrite <- Hdms. reflexivity.
       eauto.
       assert (stpd2 [] ([vobj (subst_dms (length G1) ds)] ++ G1)
@@ -2174,9 +2134,8 @@ Proof.
         instantiate (1:=0). instantiate (1:=0). admit. (* that's what we're trying to prove *)
       }
       eu.
-      destruct (tand_destruct (substt (length G1) (TFun (length (dms_to_list ds1)) T11 T12)) (substt (length G1) TS)) as [Eq0 | [Eq1 Eq2]].
       repeat eexists.
-      rewrite Eq0. eapply vtp_and.
+      eapply vtp_and.
       econstructor.
       simpl. rewrite beq_nat_true_eq. eauto.
       simpl in I. eapply I.
@@ -2188,20 +2147,8 @@ Proof.
       unfold substt in S12. rewrite <- subst_open_commute_z in S12.
       rewrite <- subst_open_commute_z. eapply S12.
       eauto. eauto. eauto.
-      repeat eexists.
-      rewrite Eq1.
-      econstructor.
-      simpl. rewrite beq_nat_true_eq. eauto.
-      simpl in I. eapply I.
-      eapply A. eauto. unfold substt. rewrite <- subst_open_commute_z. simpl. reflexivity. eauto.
-      eapply closed_subst. eapply closed_extend. eauto.
-      econstructor. simpl. omega.
-      eapply closed_subst. apply closed_extend. eauto.
-      econstructor. simpl. omega.
-      unfold substt in S12. rewrite <- subst_open_commute_z in S12.
-      rewrite <- subst_open_commute_z. eapply S12.
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0.
 Qed.
 
 Lemma dms_to_vtp: forall G1 ds T n1,
