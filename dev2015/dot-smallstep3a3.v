@@ -1809,19 +1809,29 @@ Proof.
   intros. remember [] as GH. remember (tvar true x) as t.
   induction H; subst; try inversion Heqt.
   - Case "varx". subst. inversion H0; subst.
-    + assert (stpd2 [] G1 T11 T11) as A. {
-        eapply stpd2_refl. eauto.
+    + assert (stpd2 [] G1 (substt x T11) (substt x T11)) as A. {
+        eapply stpd2_refl. eapply closed_subst. eauto.
+        econstructor. eapply index_max in H. omega.
       }
       eu. repeat eexists. eapply vtp_mem. eauto. eauto. eauto.
-    + assert (stpd2 [] G1 T11 T11) as A. {
-        eapply stpd2_refl. eauto.
+    + assert (stpd2 [] G1 (substt x T11) (substt x T11)) as A. {
+        eapply stpd2_refl. eapply closed_subst. eauto.
+        econstructor. eapply index_max in H. omega.
       }
-      assert (stpd2 [T11] G1 (open 0 (TVar false 0) T12) (open 0 (TVar false 0) T12)) as B. {
-        eapply stpd2_refl. eapply closed_open. eapply closed_upgrade_gh. eauto.
-        simpl. omega. simpl. econstructor. omega.
+      assert (stpd2 [(substt x T11)] G1 (open 0 (TVar false 0) (substt x T12)) (open 0 (TVar false 0) (substt x T12))) as B. {
+        eapply stpd2_refl. eapply closed_open. eapply closed_subst.
+        eapply closed_upgrade_gh. eauto. simpl. omega.
+        econstructor. eapply index_max in H. omega.
+        econstructor. simpl. omega.
       }
-      eu. eu. repeat eexists. eapply vtp_fun.
-      eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+      assert (has_typed [(substt x T11)] G1 (subst_tm x t12) (open 0 (TVar false 0) (substt x T12))) as C. {
+        admit.
+      }
+      eu. eu. eu. repeat eexists. eapply vtp_fun.
+      eauto. eauto. eauto. eauto. eauto.
+      eapply closed_subst. eauto. econstructor. eapply index_max in H. omega.
+      eapply closed_subst. eauto. econstructor. eapply index_max in H. omega.
+      eauto.
   - Case "pack". subst.
     destruct IHhas_type. eauto. eauto. ev.
     repeat eexists. eapply vtp_bind. eauto. eauto.
@@ -1870,7 +1880,12 @@ Proof.
   intro ni. induction ni. split; intros; omega. destruct IHni as [IHniT IHniD].
   split;
   intros; remember (GH++[TX]) as GH0; revert GH HeqGH0; inversion H; intros.
-  - Case "varx". subst. simpl. eexists. eapply T_Varx. eauto. erewrite subst_closed_id. eauto. eapply dms_has_type_closed in H3. eauto.
+  - Case "varx".
+    assert (substt x T = T) as EqT. {
+      erewrite subst_closed_id. reflexivity. eauto.
+    }
+    subst. simpl. eexists. eapply T_Varx. eauto. eauto. eauto.
+    rewrite EqT. reflexivity. rewrite EqT. eauto.
   - Case "vary". subst. simpl.
     case_eq (beq_nat x0 0); intros E.
     + assert (x0 = 0). eapply beq_nat_true_iff; eauto. subst x0.
@@ -2009,14 +2024,6 @@ Proof.
   intros. eapply hastp_subst_aux with (t:=t). eauto. eauto. eauto.
 Qed.
 
-Lemma dms_hastp_subst: forall G1 ds T n1,
-  closed 0 (length G1) 1 T ->
-  dms_has_type [open 0 (TVar false 0) T] G1 ds (open 0 (TVar false 0) T) n1 ->
-  exists n, dms_has_type [] ([vobj (subst_dm (length G1) ds)] ++ G1) (subst_dm (length G1) ds) (open 0 (TVar true (length G1)) T) n.
-Proof.
-  admit.
-Qed.
-
 Theorem type_safety : forall G t T n1,
   has_type [] G t T n1 ->
   (exists x, t = tvar true x) \/
@@ -2036,11 +2043,13 @@ Proof.
     eapply has_type_closed_b in H. destruct H. subst.
     left. eexists. reflexivity.
   - Case "obj". subst. right.
-    eapply dms_hastp_subst in H. ev.
     repeat eexists. rewrite <- app_cons1. eapply ST_Obj.
     eapply T_VarPack. eapply T_Varx.
-    simpl. rewrite beq_nat_true_eq. eauto. eauto. eauto.
-    eapply closed_extend. eauto. eauto.
+    simpl. rewrite beq_nat_true_eq. eauto. eapply dms_has_type_extend. eauto. eauto. eauto.
+    eapply closed_subst. eapply closed_open. eapply closed_extend. eapply closed_upgrade_gh. eauto.
+    simpl. omega. simpl. econstructor. omega. simpl. econstructor. omega.
+    simpl. rewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity. eauto.
+    eapply closed_extend. eauto.
   - Case "app". subst.
     assert (closed (length ([]:tenv)) (length G1) 0 (TFun T1 T)) as TF. eapply has_type_closed. eauto. 
     assert ((exists x : id, t2 = tvar true x) \/
