@@ -1801,6 +1801,28 @@ Inductive step : venv -> tm -> venv -> tm -> Prop :=
 .
 
 
+Lemma stp2_subst_narrow: forall GH0 TX G1 T1 T2 x m n1 n2,
+  stp2 (GH0 ++ [TX]) G1 T1 T2 n2 ->
+  vtp m G1 x TX n1 ->
+  stpd2 (map (substt x) GH0) G1 (substt x T1) (substt x T2).
+Proof.
+  intros.
+  edestruct stp2_subst_narrow0. eauto. eapply vtp_closed1. eauto. eauto.
+  { intros. edestruct stp2_subst_narrowX. erewrite subst_closed_id.
+    eauto. eapply vtp_closed. eauto. eauto. eapply vtp_closed1. eauto. eauto. eauto.
+    { intros. eapply vtp_widen; eauto. }
+    ev. repeat eexists. eauto.
+  }
+  eexists. eassumption.
+Qed.
+
+Lemma hastp_upgrade_gh: forall G1 GH x T n1,
+  has_type [] G1 (tvar true x) T n1 ->
+  exists n, has_type GH G1 (tvar true x) T n.
+Proof.
+  admit.
+Qed.
+
 
 Lemma hastp_inv: forall G1 x T n1,
   has_type [] G1 (tvar true x) T n1 ->
@@ -1844,28 +1866,6 @@ Proof.
     ev. eu. repeat eexists. eauto. 
 Grab Existential Variables.
 apply 0. apply 0.
-Qed.
-
-Lemma stp2_subst_narrow: forall GH0 TX G1 T1 T2 x m n1 n2,
-  stp2 (GH0 ++ [TX]) G1 T1 T2 n2 ->
-  vtp m G1 x TX n1 ->
-  stpd2 (map (substt x) GH0) G1 (substt x T1) (substt x T2).
-Proof.
-  intros.
-  edestruct stp2_subst_narrow0. eauto. eapply vtp_closed1. eauto. eauto.
-  { intros. edestruct stp2_subst_narrowX. erewrite subst_closed_id.
-    eauto. eapply vtp_closed. eauto. eauto. eapply vtp_closed1. eauto. eauto. eauto.
-    { intros. eapply vtp_widen; eauto. }
-    ev. repeat eexists. eauto.
-  }
-  eexists. eassumption.
-Qed.
-
-Lemma hastp_upgrade_gh: forall G1 GH x T n1,
-  has_type [] G1 (tvar true x) T n1 ->
-  exists n, has_type GH G1 (tvar true x) T n.
-Proof.
-  admit.
 Qed.
 
 Lemma hastp_subst_aux: forall ni, (forall G1 GH TX T x t n1 n2,
