@@ -2072,14 +2072,19 @@ Proof.
     omega.
 Qed.
 
-Lemma dms_to_vtp_aux: forall G1 ds ds0 ds1 T n1,
-  dms_to_list ds = ds0 ++ dms_to_list ds1 ->
+Lemma dms_to_vtp: forall G1 ds T n1,
   closed 0 (length G1) 1 T ->
-  dms_has_type [open 0 (TVar false 0) T] G1 ds1 (open 0 (TVar false 0) T) n1 ->
+  dms_has_type [open 0 (TVar false 0) T] G1 ds (open 0 (TVar false 0) T) n1 ->
   exists m n, vtp m ([vobj (subst_dms (length G1) ds)] ++ G1) (length G1) (open 0 (TVar true (length G1)) T) n.
 Proof.
-  intros G1 ds ds0 ds1 T n1 Hdms Hclosed H.
+  intros G1 ds T n1 Hclosed H.
+  remember (@nil dm) as ds0.
+  remember ds as ds1.
+  assert (dms_to_list ds = ds0 ++ dms_to_list ds1) as Hdms. {
+    subst. rewrite app_nil_l. reflexivity.
+  }
   remember (open 0 (TVar false 0) T) as T0.
+  remember H as HT0. clear HeqHT0.
   remember (open 0 (TVar true (length G1)) T) as T1.
   assert (substt (length G1) T0 = T1) as Eq. {
     subst. rewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity.
@@ -2087,8 +2092,10 @@ Proof.
   }
   clear Hclosed.
   rewrite <- Eq. clear HeqT1. clear Eq. clear HeqT0. clear T. clear T1.
-  remember T0 as T. rewrite HeqT in H at 1. clear HeqT.
-  generalize dependent n1. generalize dependent T0. generalize dependent T.
+  remember T0 as T. rewrite HeqT in H at 1. rewrite HeqT in HT0. clear HeqT.
+  remember n1 as n0. rewrite Heqn0 in H. clear Heqn0.
+  rewrite Heqds1. rewrite Heqds1 in HT0. clear Heqds1. clear Heqds0.
+  generalize dependent n1. generalize dependent T.
   generalize dependent ds. generalize dependent ds0.
   induction ds1; intros.
   - inversion H; subst. repeat eexists.
@@ -2099,7 +2106,7 @@ Proof.
     inversion H; subst.
     + edestruct (IHds1 (ds0++[dty T11])) as [? [? IH]].
       rewrite <- app_assoc. simpl. simpl in Hdms. rewrite <- Hdms. reflexivity.
-      eauto.
+      eauto. eauto.
       assert (stpd2 [] ([vobj (subst_dms (length G1) ds)] ++ G1)
                     (substt (length G1) T11) (substt (length G1) T11)). {
         eapply stpd2_refl. eapply closed_subst. eapply closed_extend. eauto.
@@ -2114,7 +2121,7 @@ Proof.
       eauto. eauto. eapply IH. eauto. eauto.
     + edestruct (IHds1 (ds0++[dfun T11 T12 t12])) as [? [? IH]].
       rewrite <- app_assoc. simpl. simpl in Hdms. rewrite <- Hdms. reflexivity.
-      eauto.
+      eauto. eauto.
       assert (stpd2 [] ([vobj (subst_dms (length G1) ds)] ++ G1)
                     (substt (length G1) T11) (substt (length G1) T11)) as S11. {
         eapply stpd2_refl. eapply closed_subst. eapply closed_extend. eauto.
@@ -2132,7 +2139,6 @@ Proof.
       eu.
       assert (has_typed (map (substt (length G1)) [T11]) ([vobj (subst_dms (length G1) ds)] ++ G1) (subst_tm (length G1) t12) (substt (length G1) (open 0 (TVar false 1) T12))) as A. {
         eapply hastp_subst with (TX:=T0). eapply has_type_extend. eauto.
-        simpl.
         instantiate (1:=0). admit.
       }
       eu.
@@ -2151,14 +2157,6 @@ Proof.
       eauto. eauto. eauto.
 Grab Existential Variables.
 apply 0. apply 0.
-Qed.
-
-Lemma dms_to_vtp: forall G1 ds T n1,
-  closed 0 (length G1) 1 T ->
-  dms_has_type [open 0 (TVar false 0) T] G1 ds (open 0 (TVar false 0) T) n1 ->
-  exists m n, vtp m ([vobj (subst_dms (length G1) ds)] ++ G1) (length G1) (open 0 (TVar true (length G1)) T) n.
-Proof.
-  intros. eapply dms_to_vtp_aux. rewrite app_nil_l. reflexivity. eauto. eauto.
 Qed.
 
 Theorem type_safety : forall G t T n1,
