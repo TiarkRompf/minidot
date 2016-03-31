@@ -1900,17 +1900,19 @@ Proof.
 Qed.
 
 Lemma hastp_subst_aux: forall ni,
-  (forall m G1 GH TX T x t n1 n2,
+  (forall G1 GH TX T x t n1 n2,
   has_type (GH++[TX]) G1 t T n2 -> n2 < ni ->
-  vtp m G1 x TX n1 ->
+  has_type [] G1 (tvar true x) TX n1 ->
   exists n3, has_type (map (substt x) GH) G1 (subst_tm x t) (substt x T) n3) /\
-  (forall m G1 GH TX T x ds n1 n2,
+  (forall G1 GH TX T x ds n1 n2,
   dms_has_type (GH++[TX]) G1 ds T n2 -> n2 < ni ->
-  vtp m G1 x TX n1 ->
+  has_type [] G1 (tvar true x) TX n1 ->
   exists n3, dms_has_type (map (substt x) GH) G1 (subst_dms x ds) (substt x T) n3).
 Proof.
-  intro ni. induction ni. split; intros; omega. destruct IHni as [IHniT IHniD]. split;
-  intros; remember (GH++[TX]) as GH0; revert GH HeqGH0; inversion H; intros.
+  intro ni. induction ni. split; intros; omega. destruct IHni as [IHniT IHniD].
+  split;
+  intros; remember (GH++[TX]) as GH0; revert GH HeqGH0; inversion H; intros;
+  edestruct hastp_inv as [? [? HV]]; eauto.
   - Case "varx". simpl. eexists. eapply T_Varx. erewrite subst_closed_id. eauto. eapply vtp_closed. eauto.
   - Case "vary". subst. simpl.
     case_eq (beq_nat x0 0); intros E.
@@ -2049,9 +2051,9 @@ Grab Existential Variables.
   apply 0. apply 0.
 Qed.
 
-Lemma hastp_subst: forall m G1 GH TX T x t n1 n2,
+Lemma hastp_subst: forall G1 GH TX T x t n1 n2,
   has_type (GH++[TX]) G1 t T n2 ->
-  vtp m G1 x TX n1 ->
+  has_type [] G1 (tvar true x) TX n1 ->
   exists n3, has_type (map (substt x) GH) G1 (subst_tm x t) (substt x T) n3.
 Proof.
   intros. eapply hastp_subst_aux with (t:=t). eauto. eauto. eauto.
@@ -2131,7 +2133,7 @@ Proof.
       assert (has_typed (map (substt (length G1)) [T11]) ([vobj (subst_dms (length G1) ds)] ++ G1) (subst_tm (length G1) t12) (substt (length G1) (open 0 (TVar false 1) T12))) as A. {
         eapply hastp_subst with (TX:=T0). eapply has_type_extend. eauto.
         simpl.
-        instantiate (1:=0). instantiate (1:=0). admit. (* that's what we're trying to prove *)
+        instantiate (1:=0). admit.
       }
       eu.
       repeat eexists.
