@@ -1,5 +1,5 @@
 (* smallstep proof *)
-(* compared to 2, makes functions dependent *)
+(* compared to 3, removes bool, they don't even step *)
 
 Require Export SfLib.
 
@@ -13,7 +13,6 @@ Definition id := nat.
 Inductive ty : Type :=
   | TBot   : ty
   | TTop   : ty
-  | TBool  : ty           
   | TFun   : ty -> ty -> ty
   | TMem   : ty -> ty -> ty (* intro *)
   | TVar   : bool -> id -> ty
@@ -25,7 +24,6 @@ Inductive ty : Type :=
 
 Inductive tm : Type :=
   | tvar  : bool -> id -> tm
-  | tbool : bool -> tm
   | tobj  : dm -> tm (* todo: multiple members *)
   | tapp  : tm -> tm -> tm
 
@@ -35,7 +33,6 @@ with dm : Type :=
 .
 
 Inductive vl : Type :=
-  | vbool : bool -> vl
   | vobj  : dm -> vl
 .
 
@@ -57,8 +54,6 @@ Inductive closed: nat -> nat -> nat -> ty -> Prop :=
     closed i j k TBot
 | cl_top: forall i j k,
     closed i j k TTop
-| cl_bool: forall i j k,
-    closed i j k TBool
 | cl_fun: forall i j k T1 T2,
     closed i j k T1 ->
     closed i j (S k) T2 ->
@@ -95,7 +90,6 @@ Fixpoint open (k: nat) (u: ty) (T: ty) { struct T }: ty :=
     | TVarB x => if beq_nat k x then u else TVarB x
     | TTop        => TTop
     | TBot        => TBot
-    | TBool       => TBool
     | TSel T1     => TSel (open k u T1)                  
     | TFun T1 T2  => TFun (open k u T1) (open (S k) u T2)
     | TMem T1 T2  => TMem (open k u T1) (open k u T2)
@@ -107,7 +101,6 @@ Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
     | TBot         => TBot
-    | TBool        => TBool
     | TMem T1 T2   => TMem (subst U T1) (subst U T2)
     | TSel T1      => TSel (subst U T1)
     | TVarB i      => TVarB i
@@ -172,8 +165,6 @@ with stp2: tenv -> venv -> ty -> ty -> nat -> Prop :=
 | stp2_top: forall GH G1 T n1,
     closed (length GH) (length G1) 0 T ->
     stp2 GH G1 T  TTop (S n1)
-| stp2_bool: forall GH G1 n1,
-    stp2 GH G1 TBool TBool (S n1)
 | stp2_fun: forall GH G1 T1 T2 T3 T4 T2' T4' n1 n2,
     T2' = (open 0 (TVar false (length GH)) T2) ->
     T4' = (open 0 (TVar false (length GH)) T4) ->
@@ -275,9 +266,6 @@ with vtp : nat -> venv -> nat -> ty -> nat -> Prop :=
 | vtp_top: forall m G1 x n1,
     x < length G1 ->
     vtp m G1 x TTop (S n1)
-| vtp_bool: forall m G1 x b n1,
-    index x G1 = Some (vbool b) ->
-    vtp m G1 x (TBool) (S (n1))
 | vtp_mem: forall m G1 x TX T1 T2 n1 n2,
     index x G1 = Some (vobj (dty TX)) ->
     stp2 [] G1 T1 TX n1 ->
@@ -340,9 +328,6 @@ Proof. intros. exists 1. eauto. Qed.
 Lemma stpd2_top: forall GH G1 T,
     closed (length GH) (length G1) 0 T ->
     stpd2 GH G1 T TTop.
-Proof. intros. exists 1. eauto. Qed.
-Lemma stpd2_bool: forall GH G1,
-    stpd2 GH G1 TBool TBool.
 Proof. intros. exists 1. eauto. Qed.
 Lemma stpd2_fun: forall GH G1 T1 T2 T3 T4 T2' T4',
     T2' = (open 0 (TVar false (length GH)) T2) ->
@@ -499,7 +484,6 @@ Proof.
   (* stp *)
   - econstructor. eapply closed_extend. eauto.
   - econstructor. eapply closed_extend. eauto.
-  - econstructor. 
   - econstructor. eauto. eauto.
     eapply closed_extend. eauto. eapply closed_extend. eauto.
     eapply IHn. eauto. omega. eapply IHn. eauto. omega.
@@ -519,7 +503,6 @@ Proof.
   - eapply stp2_transf. eapply IHn. eauto. omega. eapply IHn. eauto. omega. 
   (* vtp *)    
   - econstructor. simpl. eauto.
-  - econstructor. eapply index_extend. eauto.
   - econstructor. eapply index_extend. eauto. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
   - econstructor. eapply index_extend. eauto. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eauto. eapply closed_extend. eauto. eapply closed_extend. eauto. eapply IHn. eauto. omega.
   - econstructor. eapply IHn. eauto. omega. eapply closed_extend. eauto. 
@@ -602,7 +585,6 @@ Proof.
   (* stp left *)
   - econstructor. 
   - eauto. 
-  - econstructor. 
   - econstructor. eapply IHS2. eauto. omega. eauto.
   - econstructor. eapply IHS2. eauto. omega. eapply IHS1. eauto. omega. 
   - econstructor. simpl. eauto.
@@ -620,7 +602,6 @@ Proof.
   - eapply IHS1. eauto. omega.
   (* stp right *)
   - eauto. 
-  - econstructor. 
   - econstructor. 
   - econstructor. eapply IHS1. eauto. omega. eauto.
   - econstructor. eapply IHS1. eauto. omega. eapply IHS2. eauto. omega. 
@@ -641,12 +622,10 @@ Proof.
   - eauto.
   - eapply index_max. eauto.
   - eapply index_max. eauto.
-  - eapply index_max. eauto.
   - eapply IHV1. eauto. omega.
   - eapply IHV1. eauto. omega.
   - eapply IHV1. eauto. omega. 
   (* vtp right *)
-  - econstructor.
   - econstructor.
   - change 0 with (length ([]:tenv)) at 1. econstructor. eapply IHS1. eauto. omega. eapply IHS2. eauto. omega.
   - change 0 with (length ([]:tenv)) at 1. econstructor. eapply IHS1. eauto. omega. eauto.
@@ -776,7 +755,6 @@ Fixpoint tsize (T: ty) { struct T }: nat :=
     | TVarB x => 1
     | TTop        => 1
     | TBot        => 1
-    | TBool       => 1
     | TSel T1     => S (tsize T1)
     | TFun T1 T2  => S (tsize T1 + tsize T2)
     | TMem T1 T2  => S (tsize T1 + tsize T2)
@@ -800,7 +778,6 @@ Proof.
   inversion H; subst; simpl in H0.
   - Case "bot". exists 1. eauto.
   - Case "top". exists 1. eauto.
-  - Case "bool". eapply stpd2_bool; eauto.
   - Case "fun". eapply stpd2_fun; eauto.
     eapply IHn; eauto; omega.
     eapply IHn; eauto.
@@ -851,7 +828,6 @@ Ltac index_subst := match goal with
 
 Ltac invty := match goal with
                 | H1: TBot     = _ |- _ => inversion H1
-                | H1: TBool    = _ |- _ => inversion H1
                 | H1: TSel _   = _ |- _ => inversion H1
                 | H1: TMem _ _ = _ |- _ => inversion H1
                 | H1: TVar _ _ = _ |- _ => inversion H1
@@ -864,7 +840,6 @@ Ltac invty := match goal with
 Ltac invstp_var := match goal with
   | H1: stp2 _ true _ _ TBot        (TVar _ _) _ |- _ => inversion H1
   | H1: stp2 _ true _ _ TTop        (TVar _ _) _ |- _ => inversion H1
-  | H1: stp2 _ true _ _ TBool       (TVar _ _) _ |- _ => inversion H1
   | H1: stp2 _ true _ _ (TFun _ _)  (TVar _ _) _ |- _ => inversion H1
   | H1: stp2 _ true _ _ (TMem _ _)  (TVar _ _) _ |- _ => inversion H1
   | H1: stp2 _ true _ _ (TAnd _ _)  (TVar _ _) _ |- _ => inversion H1
@@ -1215,8 +1190,6 @@ Proof.
     eapply stpd2_bot; eauto. rewrite map_length. simpl. eapply closed_subst0. rewrite app_length in H2. simpl in H2. eapply H2. eauto.
   - Case "top". subst.
     eapply stpd2_top; eauto. rewrite map_length. simpl. eapply closed_subst0. rewrite app_length in H2. simpl in H2. eapply H2. eauto.
-  - Case "bool". subst.
-    eapply stpd2_bool; eauto.
   - Case "fun". subst.
     eapply stpd2_fun. eauto. eauto.
     rewrite map_length. eapply closed_subst0. rewrite app_length in *. simpl in *. eauto. omega.
@@ -1530,7 +1503,6 @@ Proof.
     ].
     + SCase "bot". eapply stpd2_bot. rewrite EGHLEN; assumption.
     + SCase "top". eapply stpd2_top. rewrite EGHLEN; assumption.
-    + SCase "bool". eauto.
     + SCase "fun". eapply stpd2_fun.
       reflexivity. reflexivity.
       rewrite EGHLEN; assumption. rewrite EGHLEN; assumption.
@@ -1589,7 +1561,7 @@ Proof.
       eapply H1. omega. eauto. eauto. eauto.
       eexists. eapply stp2_transf. eapply IH1. eapply IH2.
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma stp2_narrow: forall TX1 TX2 GH0 G T1 T2 n nx,
@@ -1619,22 +1591,6 @@ Proof.
       eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto.
     + SCase "sel2".
       eapply stp2_closed2 in H0. simpl in H0. inversion H0. inversion H9. omega.
-    + SCase "and".
-      assert (vtpdd m1 G1 x T1). eapply IHn; eauto. omega. eu. 
-      assert (vtpdd m1 G1 x T0). eapply IHn; eauto. omega. eu.
-      repeat eexists. eapply vtp_and; eauto. eauto.
-    + SCase "trans".
-      assert (vtpdd m1 G1 x T0) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
-      assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
-      repeat eexists. eauto. omega. 
-  - Case "bool". inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. eapply index_max. eauto. eauto. 
-    + SCase "bool". repeat eexists; eauto. 
-    + SCase "ssel2". 
-      assert (vtpdd m1 G1 x TX). eapply IHn; eauto. omega. 
-      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto.
-    + SCase "sel2". 
-      eapply stp2_closed2 in H0. simpl in H0. inversion H0. inversion H9. omega.  
     + SCase "and".
       assert (vtpdd m1 G1 x T1). eapply IHn; eauto. omega. eu. 
       assert (vtpdd m1 G1 x T0). eapply IHn; eauto. omega. eu.
@@ -1778,7 +1734,7 @@ Proof.
       repeat eexists. eauto. omega. 
 
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 
@@ -1790,7 +1746,6 @@ Fixpoint subst_tm (u:nat) (T : tm) {struct T} : tm :=
   match T with
     | tvar true i         => tvar true i
     | tvar false i        => if beq_nat i 0 then (tvar true u) else tvar false (i-1)
-    | tbool b             => tbool b
     | tobj (dty T)        => tobj (dty (subst (TVar true u) T))
     | tobj (dfun T1 T2 t) => tobj (dfun (subst (TVar true u) T1) (subst (TVar true u) T2) (subst_tm u t))
     | tapp t1 t2          => tapp (subst_tm u t1) (subst_tm u t2)
