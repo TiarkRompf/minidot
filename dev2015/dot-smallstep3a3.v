@@ -287,6 +287,13 @@ with htp: tenv -> venv -> nat -> ty -> nat -> Prop :=
     htp GH G1 x T2 (S (n1+n2))
              
 with vtp : nat -> venv -> nat -> ty -> nat -> Prop :=
+| vtp_loc : forall m G1 x ds ds' T T' n1,
+    index x G1 = Some (vobj ds) ->
+    dms_has_type [T'] G1 ds' T' n1 ->
+    subst_dm x ds' = ds ->
+    substt x T' = T ->
+    closed 0 (length G1) 0 T ->
+    vtp m G1 x (TAnd T TTop) (S n1)
 | vtp_top: forall m G1 x n1,
     x < length G1 ->
     vtp m G1 x TTop (S n1)
@@ -529,6 +536,7 @@ Proof.
   - eapply stp2_and2. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
   - eapply stp2_transf. eapply IHn. eauto. omega. eapply IHn. eauto. omega. 
   (* vtp *)    
+  - econstructor. eapply index_extend. eauto. eapply IHn. eauto. omega. eauto. eauto. eapply closed_extend. eauto.
   - econstructor. simpl. eauto.
   - econstructor. eapply index_extend. eauto. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
   - econstructor. eapply index_extend. eauto. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eauto. eapply closed_extend. eauto. eapply closed_extend. eauto. eapply IHn. eauto. omega.
@@ -651,6 +659,7 @@ Proof.
   - econstructor. eapply IHS2. eauto. omega. eapply IHS2. eauto. omega. 
   - eapply IHS2. eauto. omega.
   (* vtp left *)
+  - eapply index_max. eauto.
   - eauto.
   - eapply index_max. eauto.
   - eapply index_max. eauto.
@@ -658,6 +667,7 @@ Proof.
   - eapply IHV1. eauto. omega.
   - eapply IHV1. eauto. omega. 
   (* vtp right *)
+  - econstructor. eauto. econstructor.
   - econstructor.
   - change 0 with (length ([]:tenv)) at 1. econstructor. eapply IHS1. eauto. omega. eapply IHS2. eauto. omega.
   - change 0 with (length ([]:tenv)) at 1. econstructor. eapply IHS1. eauto. omega. eauto.
@@ -1630,6 +1640,7 @@ Proof.
   intros n. induction n. intros. solve by inversion.
   intros k. induction k; intros. solve by inversion.
   inversion H.
+  - Case "obj". admit.
   - Case "top". inversion H0; subst; invty.
     + SCase "top". repeat eexists; eauto.
     + SCase "ssel2".
