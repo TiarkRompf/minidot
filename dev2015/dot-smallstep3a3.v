@@ -112,11 +112,29 @@ Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
   end.
 
 
+Fixpoint subst_tm (u:nat) (T : tm) {struct T} : tm :=
+  match T with
+    | tvar true i         => tvar true i
+    | tvar false i        => if beq_nat i 0 then (tvar true u) else tvar false (i-1)
+    | tobj ds             => tobj (subst_dm u ds)
+    | tapp t1 t2          => tapp (subst_tm u t1) (subst_tm u t2)
+  end
+with subst_dm (u:nat) (d: dm) {struct d} : dm :=
+  match d with
+    | dty T        => dty (subst (TVar true u) T)
+    | dfun T1 T2 t => dfun (subst (TVar true u) T1) (subst (TVar true u) T2) (subst_tm u t)
+  end.
+
+Definition substt x T := (subst (TVar true x) T).
+Hint Immediate substt.
 
 Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
-  | T_Varx : forall GH G1 x ds T n1,
+  | T_Varx : forall GH G1 x ds ds' T T' n1,
       index x G1 = Some (vobj ds) ->
-      dms_has_type [] G1 ds T n1 ->
+      dms_has_type [T'] G1 ds' T' n1 ->
+      subst_dm x ds' = ds ->
+      substt x T' = T ->
+      closed 0 (length G1) 0 T ->
       has_type GH G1 (tvar true x) T (S n1)
   | T_Vary : forall G1 GH x T n1,
       index x GH = Some T ->
@@ -522,7 +540,7 @@ Proof.
   - eapply htp_bind. eapply IHn. eauto. omega. eapply closed_extend. eauto. 
   - eapply htp_sub. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eauto.
   (* has_type *)
-  - econstructor. eapply index_extend. eauto. eapply IHn. eauto. omega.
+  - econstructor. eapply index_extend. eauto. eapply IHn. eauto. omega. eauto. eauto. eapply closed_extend. eauto.
   - econstructor. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
@@ -655,7 +673,7 @@ Proof.
   - eapply IHH1 in H1. eapply closed_open. simpl. eapply closed_upgrade_gh. eauto. omega. econstructor. eauto. omega. 
   - eapply closed_upgrade_gh. eapply IHS2. eauto. omega. rewrite H4. rewrite app_length. omega. 
   (* has_type *)
-  - eapply closed_upgrade_gh. eapply IHD. eauto. omega. simpl. omega.
+  - subst. eapply closed_upgrade_gh. eauto. omega.
   - eauto.
   - econstructor. eapply closed_upgrade_gh. eauto. omega.
   - eapply IHT in H1. inversion H1; subst. eauto. omega.
@@ -879,12 +897,6 @@ Ltac invstp_var := match goal with
   | H1: stp2 _ true _ _ (TAnd _ _)  (TVar _ _) _ |- _ => inversion H1
   | _ => idtac
 end.
-
-Definition substt x T := (subst (TVar true x) T).
-
-Hint Immediate substt.
-
-
 
 Lemma closed_no_open: forall T x k l j,
   closed l k j T ->
@@ -1774,21 +1786,6 @@ Qed.
 
 
 (* Reduction semantics  *)
-
-
-Fixpoint subst_tm (u:nat) (T : tm) {struct T} : tm :=
-  match T with
-    | tvar true i         => tvar true i
-    | tvar false i        => if beq_nat i 0 then (tvar true u) else tvar false (i-1)
-    | tobj ds             => tobj (subst_dm u ds)
-    | tapp t1 t2          => tapp (subst_tm u t1) (subst_tm u t2)
-  end
-with subst_dm (u:nat) (d: dm) {struct d} : dm :=
-  match d with
-    | dty T        => dty (subst (TVar true u) T)
-    | dfun T1 T2 t => dfun (subst (TVar true u) T1) (subst (TVar true u) T2) (subst_tm u t)
-  end.
-
 Inductive step : venv -> tm -> venv -> tm -> Prop :=
 | ST_Obj : forall G1 D,
     step G1 (tobj D) (vobj (subst_dm (length G1) D)::G1) (tvar true (length G1))
