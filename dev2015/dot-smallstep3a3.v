@@ -174,13 +174,13 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
 with dms_has_type: tenv -> venv -> dm -> ty -> nat -> Prop :=
   | D_Mem : forall GH G1 T11 n1,
       closed (length GH) (length G1) 0 T11 ->
-      dms_has_type GH G1 (dty T11) (TAnd (TMem T11 T11) TTop) (S n1)
+      dms_has_type GH G1 (dty T11) (TMem T11 T11) (S n1)
   | D_Abs : forall GH G1 T11 T12 T12' t12 n1,
       has_type (T11::GH) G1 t12 T12' n1 ->
       T12' = (open 0 (TVar false (length GH)) T12) ->
       closed (length GH) (length G1) 0 T11 ->
       closed (length GH) (length G1) 1 T12 ->
-      dms_has_type GH G1 (dfun T11 T12 t12) (TAnd (TFun T11 T12) TTop) (S n1)
+      dms_has_type GH G1 (dfun T11 T12 t12) (TFun T11 T12) (S n1)
 
 with stp2: tenv -> venv -> ty -> ty -> nat -> Prop :=
 | stp2_bot: forall GH G1 T n1,
@@ -318,13 +318,6 @@ with vtp : nat -> venv -> nat -> ty -> nat -> Prop :=
     vtp m2 G1 x T2 n2 ->
     m1 <= m -> m2 <= m ->
     vtp m G1 x (TAnd T1 T2) (S (n1+n2))
-| vtp_loc : forall m G1 x ds ds' T T' n1,
-    index x G1 = Some (vobj ds) ->
-    dms_has_type [T'] G1 ds' T' n1 ->
-    subst_dm x ds' = ds ->
-    substt x T' = T ->
-    closed 0 (length G1) 0 T ->
-    vtp m G1 x T (S n1)
 .
 
 Definition has_typed GH G1 x T1 := exists n, has_type GH G1 x T1 n.
@@ -536,13 +529,12 @@ Proof.
   - eapply stp2_and2. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
   - eapply stp2_transf. eapply IHn. eauto. omega. eapply IHn. eauto. omega. 
   (* vtp *)    
-  - eapply vtp_top. simpl. eauto.
+  - econstructor. simpl. eauto.
   - econstructor. eapply index_extend. eauto. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
   - econstructor. eapply index_extend. eauto. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eauto. eapply closed_extend. eauto. eapply closed_extend. eauto. eapply IHn. eauto. omega.
   - econstructor. eapply IHn. eauto. omega. eapply closed_extend. eauto. 
   - econstructor. eapply index_extend. eauto. eapply IHn. eauto. omega.
-  - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eauto.
-  - eapply vtp_loc. eapply index_extend. eauto. eapply IHn. eauto. omega. eauto. eauto. eapply closed_extend. eauto.
+  - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eauto. 
   (* htp *)
   - econstructor. eauto. eapply closed_extend. eauto. 
   - eapply htp_bind. eapply IHn. eauto. omega. eapply closed_extend. eauto. 
@@ -665,7 +657,6 @@ Proof.
   - eapply IHV1. eauto. omega.
   - eapply IHV1. eauto. omega.
   - eapply IHV1. eauto. omega. 
-  - eapply index_max. eauto.
   (* vtp right *)
   - econstructor.
   - change 0 with (length ([]:tenv)) at 1. econstructor. eapply IHS1. eauto. omega. eapply IHS2. eauto. omega.
@@ -673,7 +664,6 @@ Proof.
   - econstructor. eauto. (* eapply IHV2 in H1. eauto. omega. *)
   - econstructor. econstructor. eapply index_max. eauto.
   - econstructor. eapply IHV2. eauto. omega. eapply IHV2. eauto. omega. 
-  - eauto.
   (* htp left *)
   - eapply index_max. eauto.
   - eapply IHH1. eauto. omega.
@@ -692,8 +682,8 @@ Proof.
   - eapply IHT in H1. inversion H1. eauto. omega.
   - eapply IHS2. eauto. omega.
   (* dms_has_type *)
-  - econstructor. econstructor. eauto. eauto. econstructor.
-  - econstructor. econstructor. eauto. eapply closed_upgrade. eauto. omega. econstructor.
+  - econstructor. eauto. eauto.
+  - econstructor. eauto. eapply closed_upgrade. eauto. omega.
 Qed.
 
 
@@ -1284,7 +1274,7 @@ Proof.
     + assert (x0 = 0). eapply beq_nat_true_iff. eauto. subst x0.
       assert (exists m0, vtpd m0 G1 x (substt x (TMem TBot T2))) as A. eapply narrowX. eauto. omega.
       destruct A as [? A]. eu. inversion A. subst.
-      repeat eexists. eapply stp2_strong_sel1. eauto. unfold substt.
+      repeat eexists. eapply stp2_strong_sel1. eauto. unfold substt. 
       eauto.
     + assert (x0 <> 0). eapply beq_nat_false_iff. eauto.
       eapply htp_subst_narrow02 in H2. 
@@ -1640,7 +1630,6 @@ Proof.
   intros n. induction n. intros. solve by inversion.
   intros k. induction k; intros. solve by inversion.
   inversion H.
-  - Case "obj". admit.
   - Case "top". inversion H0; subst; invty.
     + SCase "top". repeat eexists; eauto.
     + SCase "ssel2".
@@ -1841,9 +1830,7 @@ Lemma hastp_inv: forall G1 x T n1,
 Proof.
   intros. remember [] as GH. remember (tvar true x) as t.
   induction H; subst; try inversion Heqt.
-  - Case "varx".
-    eapply vtp_widen.
-    subst. repeat eexists. eapply vtp_loc. inversion H0; subst.
+  - Case "varx". subst. inversion H0; subst.
     + assert (stpd2 [] G1 (substt x T11) (substt x T11)) as A. {
         eapply stpd2_refl. eapply closed_subst. eauto.
         econstructor. eapply index_max in H. omega.
