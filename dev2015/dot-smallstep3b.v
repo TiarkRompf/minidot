@@ -2079,7 +2079,13 @@ Proof.
     rewrite subst_dms_curry. eapply dms_has_type_curry in H. rewrite H.
     simpl. rewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity. eauto.
     eapply closed_extend. eauto.
-    admit.
+    eapply wfs_ext. eauto.
+    assert (dms_curry ds = (open 0 (TVar false 0) T)) as EqT. {
+      eapply dms_has_type_curry. eauto.
+    }
+    rewrite subst_dms_curry. rewrite EqT. inversion H; subst.
+    + admit. (* easy *)
+    + admit. (* not easier! *)      
   - Case "app". subst.
     assert (closed (length ([]:tenv)) (length G1) 0 (TFun T1 T)) as TF. eapply has_type_closed. eauto. 
     assert ((exists x : id, t2 = tvar true x) \/
