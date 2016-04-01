@@ -1797,7 +1797,7 @@ with subst_dm (u:nat) (d: dm) {struct d} : dm :=
 
 Inductive step : venv -> tm -> venv -> tm -> Prop :=
 | ST_Obj : forall G1 D,
-    step G1 (tobj D) (vobj D::G1) (tvar true (length G1))
+    step G1 (tobj D) (vobj (subst_dm (length G1) D)::G1) (tvar true (length G1))
 | ST_AppAbs : forall G1 f x T1 T2 t12,
     index f G1 = Some (vobj (dfun T1 T2 t12)) ->
     step G1 (tapp (tvar true f) (tvar true x)) G1 (subst_tm x t12)
@@ -2038,6 +2038,19 @@ Proof.
       inversion Hwf; subst. eauto. eauto.
 Qed.
 
+Lemma dms_has_type_curry: forall GH G1 ds T n,
+  dms_has_type GH G1 ds T n ->
+  dms_curry ds = T.
+Proof.
+  intros. inversion H; subst; eauto.
+Qed.
+
+Lemma subst_dms_curry: forall x ds,
+  dms_curry (subst_dm x ds) = substt x (dms_curry ds).
+Proof.
+  intros. destruct ds; compute; eauto.
+Qed.
+
 Theorem type_safety : forall G t T n1,
   has_type [] G t T n1 -> wf_sto G ->
   (exists x, t = tvar true x) \/
@@ -2056,10 +2069,17 @@ Proof.
   - Case "unpack". subst GH.
     eapply has_type_closed_b in H. destruct H. subst.
     left. eexists. reflexivity.
-  - Case "obj". admit. (*subst. right.
-    repeat eexists. rewrite <- app_cons1. eapply ST_Obj. eapply T_Varx.
-    simpl. rewrite beq_nat_true_eq. eauto.
-    eapply dms_has_type_extend. eauto.*)
+  - Case "obj". subst. right.
+    repeat eexists. rewrite <- app_cons1. eapply ST_Obj.
+    eapply T_VarPack. eapply T_Varx.
+    simpl. rewrite beq_nat_true_eq. eauto. reflexivity.
+    rewrite subst_dms_curry. eapply dms_has_type_curry in H. rewrite H.
+    eapply closed_subst. eapply closed_open. eapply closed_extend. eapply closed_upgrade_gh. eauto. simpl. omega.
+    econstructor. simpl. omega. econstructor. simpl. omega.
+    rewrite subst_dms_curry. eapply dms_has_type_curry in H. rewrite H.
+    simpl. rewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity. eauto.
+    eapply closed_extend. eauto.
+    admit.
   - Case "app". subst.
     assert (closed (length ([]:tenv)) (length G1) 0 (TFun T1 T)) as TF. eapply has_type_closed. eauto. 
     assert ((exists x : id, t2 = tvar true x) \/
@@ -2154,6 +2174,8 @@ Proof.
     + SCase "step".
       ev. subst. 
       right. repeat eexists. eauto. eapply T_Sub. eauto. eapply stp2_extend_mult. eauto. eauto.
+Grab Existential Variables.
+apply 0.
 Qed. 
 
 
