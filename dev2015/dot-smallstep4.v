@@ -1836,32 +1836,23 @@ Proof.
       rewrite <- A. eapply IHhtp. eauto. omega. eauto.
   - Case "htp_sub".
     unfold splice_var.
-    admit.
-    (*
     case_eq (le_lt_dec (length G0) x1); intros E LE.
     + assert (S x1 = x1 + 1) as A by omega.
       assert (exists GH1L, G1 = GU ++ GH1L /\ GL = GH1L ++ G0) as EQGH. {
-        eapply exists_GH1L_z. eauto. omega. eassumption. eassumption. eassumption.
+        eapply exists_GH1L. eauto. omega.
       }
       destruct EQGH as [GH1L [EQGH1 EQGL]].
-      eapply closed_splice in H0.
-      eapply stp_sela2.
-      apply indexr_splice_hi. rewrite <- HeqG. eauto. eauto.
-      rewrite <- A. eapply H0.
-      subst. instantiate (1:=(map (splice (length G0)) GH1L ++ v1 :: G0)).
-      rewrite app_length. rewrite app_length. rewrite map_length. simpl. omega.
-      subst. instantiate (1:=(map (splice (length G0)) GU)).
-      rewrite map_app. simpl. rewrite app_assoc. reflexivity.
-      eapply IHstp1. eauto.
-      eapply IHstp2. eauto.
-    
-    assert (splice (length G0) T1=T1) as A. {
-      eapply closed_splice_idem. eapply stp2_closed2. eauto.
-    }
-    eapply htp_sub.
-    eapply IHhtp. eauto. omega.
-    eapply IHstp. eauto.
-    *)
+      assert (splice_var (length G0) x1=x1+1) as B. {
+        unfold splice_var. rewrite LE. reflexivity.
+      }
+      rewrite <- B.
+      eapply htp_sub.
+      eapply IHhtp. eauto. omega.
+      eapply IHstp. subst. eauto. omega.
+      rewrite app_length. rewrite map_length. simpl.
+      unfold splice_var. rewrite LE. subst. rewrite app_length in *. omega.
+      subst. rewrite map_app. simpl. rewrite app_assoc. reflexivity.
+   + admit.
 Qed.
 
 Lemma stp2_upgrade_gh : forall GH T G1 T1 T2 n,
