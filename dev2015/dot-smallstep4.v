@@ -1965,7 +1965,29 @@ Proof.
     eapply closed_upgrade_gh. eauto. simpl. omega.
     eapply closed_upgrade_gh. eauto. simpl. omega.
 
-  - admit.
+  - subst.
+    assert (splice (length GH) T0 = T0) as A. {
+      eapply closed_splice_idem. eauto. omega.
+    }
+    assert (splice (length GH) T3 = T3) as B. {
+      eapply closed_splice_idem. eauto. omega.
+    }
+    assert (length (T :: GH)=splice_var (length GH) (length GH)) as C. {
+      unfold splice_var. simpl.
+      case_eq (le_lt_dec (length GH) (length GH)); intros E LE; omega.
+    }
+    assert (map (splice (length GH)) [(open 0 (TVar false (length GH)) T0)] ++ T::GH =
+          (((open 0 (TVar false (S (length GH))) (splice (length GH) T0)))::T::GH)) as HGX. {
+      simpl. rewrite <- splice_open_permute0. reflexivity.
+    }
+    eapply stp2_bindx.
+    instantiate (2:=(open 0 (TVar false (S (length GH))) (splice (length GH) T0))).
+    rewrite <- HGX. rewrite C.
+    apply htp_splice. simpl. eauto. simpl. rewrite A. reflexivity.
+    simpl. rewrite <- splice_open_permute0. rewrite B. reflexivity.
+    eapply closed_upgrade_gh. eauto. simpl. omega.
+    eapply closed_upgrade_gh. eauto. simpl. omega.
+
   - eapply stp2_and11. eapply IHn. eauto. omega. eapply closed_upgrade_gh. eauto. simpl. omega.
   - eapply stp2_and12. eapply IHn. eauto. omega. eapply closed_upgrade_gh. eauto. simpl. omega.
   - eapply stp2_and2. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
