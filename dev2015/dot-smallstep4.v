@@ -1874,6 +1874,12 @@ Proof.
       rewrite <- app_assoc. simpl. rewrite EQGH. reflexivity.
 Qed.
 
+Lemma stp2_splice: forall GX G0 G1 T1 T2 v1 n,
+   stp2 (G1++G0) GX T1 T2 n ->
+   stp2 ((map (splice (length G0)) G1) ++ v1::G0) GX
+   (splice (length G0) T1) (splice (length G0) T2) n.
+Proof. intros. eapply stp2_splice_aux. eauto. eauto. Qed.
+
 Lemma stp_upgrade_gh_aux: forall ni,
   (forall GH T G1 T1 T2 n,
      stp2 GH G1 T1 T2 n -> n < ni ->
@@ -1890,7 +1896,29 @@ Proof.
   - econstructor. eauto. eauto.
     eapply closed_upgrade_gh. eauto. simpl. omega. eapply closed_upgrade_gh. eauto. simpl. omega.
     eapply IHn. eauto. omega.
-    admit.
+    subst.
+    assert (splice (length GH) T0 = T0) as A. {
+      eapply closed_splice_idem. eapply stp2_closed2. eauto. omega.
+    }
+    assert (splice (length GH) T4 = T4) as B. {
+      eapply closed_splice_idem. eapply stp2_closed1. eauto. omega.
+    }
+    assert (splice (length GH) T3 = T3) as C. {
+      eapply closed_splice_idem. eauto. omega.
+    }
+    assert (splice (length GH) T5 = T5) as D. {
+      eapply closed_splice_idem. eauto. omega.
+    }
+    assert (map (splice (length GH)) [T4] ++ T::GH =
+          (T4::T::GH)) as HGX3. {
+      simpl. rewrite B. eauto.
+    }
+    simpl. change (S (length GH)) with (0 + (S (length GH))).
+    rewrite <- C. rewrite <- D.
+    rewrite splice_open_permute. rewrite splice_open_permute.
+    rewrite <- HGX3.
+    apply stp2_splice. simpl. eauto.
+
   - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega. 
   - econstructor. simpl. eauto.
   - econstructor. simpl. omega.
