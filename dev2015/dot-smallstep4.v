@@ -758,8 +758,10 @@ Lemma has_type_extend_mult: forall GH G1 t T G' n1,
   has_type GH (G'++G1) t T n1.
 Proof. intros. induction G'. simpl. eauto. simpl. eapply has_type_extend. eauto. Qed. 
 
-
-
+Lemma htp_closed: forall x GH G1 T2 n,
+  htp GH G1 x T2 n ->
+  closed (length GH) (length G1) 0 T2.
+Proof. intros. eapply all_closed with (x:=x). eauto. eauto. Qed.
 
 Lemma vtp_closed: forall m G1 x T2 n1,
   vtp m G1 x T2 n1 -> 
@@ -2151,7 +2153,7 @@ Proof.
     + eapply htp_var.
       apply index_splice_hi. eauto. eauto.
       eapply closed_splice.
-      assert (S x1 = x1 +1) as A by omega.
+      assert (S x1 = x1 + 1) as A by omega.
       rewrite <- A. eauto.
     + assert (splice (length G0) T1=T1) as A. {
         eapply closed_splice_idem. eassumption. omega.
@@ -2160,7 +2162,40 @@ Proof.
       eapply index_splice_lo.
       rewrite A. eauto. omega.
       rewrite A. eauto.
-  - admit.
+  - Case "htp_bind".
+    unfold splice_var.
+    case_eq (le_lt_dec (length G0) x1); intros E LE.
+    + remember (x1 - (length G0)) as n.
+      assert (x1 = n + length G0) as A. {
+        clear LE. apply le_plus_minus in E.
+        rewrite E. omega.
+      }
+      rewrite A at 2.
+      rewrite <- splice_open_permute.
+      assert (n + S (length G0)=x1+1) as B. {
+        rewrite Heqn. omega.
+      }
+      rewrite B.
+      eapply htp_bind.
+      specialize (IHhtp GX G0 G1 x1 (TBind TX)).
+      simpl in IHhtp. unfold splice_var in IHhtp. rewrite LE in IHhtp.
+      eapply IHhtp. eauto. omega.
+      assert (S x1 = x1 + 1) as C by omega. rewrite <- C.
+      eapply closed_splice. eauto.
+    + assert (splice (length G0) TX = TX) as A. {
+        eapply closed_splice_idem. eauto. omega.
+      }
+      assert (splice (length G0) (open 0 (TVar false x1) TX)=open 0 (TVar false x1) TX) as B. {
+        eapply closed_splice_idem.
+        eapply closed_open. eapply closed_upgrade_gh. eauto.
+        instantiate (1:=S x1). omega.
+        econstructor. omega. omega.
+      }
+      rewrite B.
+      eapply htp_bind.
+      specialize (IHhtp GX G0 G1 x1 (TBind TX)).
+      simpl in IHhtp. unfold splice_var in IHhtp. rewrite LE in IHhtp.
+      rewrite <- A. eapply IHhtp. eauto. omega. eauto.
   - admit.
 Qed.
 
