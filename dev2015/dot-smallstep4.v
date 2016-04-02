@@ -1915,7 +1915,7 @@ Qed.
 Lemma stp2_upgrade_gh : forall GH T G1 T1 T2 n,
                       stp2 GH G1 T1 T2 n ->
                       stp2 (T::GH) G1 T1 T2 n.
-Proof. admit. Qed.
+Proof. intros. eapply stp_upgrade_gh_aux. eauto. eauto. Qed.
 
 Lemma stp2_upgrade_gh_mult : forall GH GH' G1 T1 T2 n,
                       stp2 GH G1 T1 T2 n ->
