@@ -1533,6 +1533,15 @@ Proof.
   omega.
 Qed.
 
+Lemma splice_open_permute0: forall {X} (G0:list X) T2 j,
+(open j (TVar false (S (length G0))) (splice (length G0) T2)) =
+(splice (length G0) (open j (TVar false (length G0)) T2)).
+Proof.
+  intros.
+  change (TVar false (length G0)) with (TVar false (0 + (length G0))).
+  rewrite <- splice_open_permute. reflexivity.
+Qed.
+
 Lemma index_splice_hi: forall G0 G2 x0 v1 T,
     index x0 (G2 ++ G0) = Some T ->
     length G0 <= x0 ->
@@ -1880,6 +1889,12 @@ Lemma stp2_splice: forall GX G0 G1 T1 T2 v1 n,
    (splice (length G0) T1) (splice (length G0) T2) n.
 Proof. intros. eapply stp2_splice_aux. eauto. eauto. Qed.
 
+Lemma htp_splice: forall GX G0 G1 x1 T1 v1 n,
+   htp (G1++G0) GX x1 T1 n ->
+   htp ((map (splice (length G0)) G1) ++ v1::G0) GX
+   (splice_var (length G0) x1) (splice (length G0) T1) n.
+Proof. intros. eapply stp2_splice_aux. eauto. eauto. Qed.
+
 Lemma stp_upgrade_gh_aux: forall ni,
   (forall GH T G1 T1 T2 n,
      stp2 GH G1 T1 T2 n -> n < ni ->
@@ -1910,13 +1925,13 @@ Proof.
       eapply closed_splice_idem. eauto. omega.
     }
     assert (map (splice (length GH)) [T4] ++ T::GH =
-          (T4::T::GH)) as HGX3. {
+          (T4::T::GH)) as HGX. {
       simpl. rewrite B. eauto.
     }
     simpl. change (S (length GH)) with (0 + (S (length GH))).
     rewrite <- C. rewrite <- D.
     rewrite splice_open_permute. rewrite splice_open_permute.
-    rewrite <- HGX3.
+    rewrite <- HGX.
     apply stp2_splice. simpl. eauto.
 
   - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega. 
@@ -1927,7 +1942,29 @@ Proof.
   - econstructor. eapply IHn. eauto. omega.
   - econstructor. eapply IHn. eauto. omega.
   - econstructor. eapply closed_upgrade_gh. eauto. simpl. omega.
-  - admit.
+  - subst.
+    assert (splice (length GH) T0 = T0) as A. {
+      eapply closed_splice_idem. eauto. omega.
+    }
+    assert (splice (length GH) T2 = T2) as B. {
+      eapply closed_splice_idem. eauto. omega.
+    }
+    assert (length (T :: GH)=splice_var (length GH) (length GH)) as C. {
+      unfold splice_var. simpl.
+      case_eq (le_lt_dec (length GH) (length GH)); intros E LE; omega.
+    }
+    assert (map (splice (length GH)) [(open 0 (TVar false (length GH)) T0)] ++ T::GH =
+          (((open 0 (TVar false (S (length GH))) (splice (length GH) T0)))::T::GH)) as HGX. {
+      simpl. rewrite <- splice_open_permute0. reflexivity.
+    }
+    eapply stp2_bind1.
+    rewrite <- B.
+    instantiate (1:=(open 0 (TVar false (S (length GH))) (splice (length GH) T0))).
+    rewrite <- HGX. rewrite C.
+    apply htp_splice. simpl. eauto. simpl. rewrite A. reflexivity.
+    eapply closed_upgrade_gh. eauto. simpl. omega.
+    eapply closed_upgrade_gh. eauto. simpl. omega.
+
   - admit.
   - eapply stp2_and11. eapply IHn. eauto. omega. eapply closed_upgrade_gh. eauto. simpl. omega.
   - eapply stp2_and12. eapply IHn. eauto. omega. eapply closed_upgrade_gh. eauto. simpl. omega.
