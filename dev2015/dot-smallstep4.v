@@ -1860,13 +1860,14 @@ Proof.
 Qed.
 
 
-Lemma hastp_inv: forall G1 x T n1,
-  has_type [] G1 (tvar true x) T n1 ->
-  exists m n1, vtp m G1 x T n1.
+Lemma dms_hastp_inv: forall G1 x ds' T' n1,
+  dms_has_type [T'] G1 ds' T' n1 ->
+  closed 0 (length G1) 0 (substt x T') ->
+  index x G1 = Some (vobj (subst_dms x ds')) ->
+  exists m n, vtp m G1 x (substt x T') n.
 Proof.
-  intros. remember [] as GH. remember (tvar true x) as t.
-  induction H; subst; try inversion Heqt.
-  - Case "varx". subst. admit. (*inversion H0; subst.
+  admit.
+(*
     + repeat eexists. eapply vtp_top. eapply index_max. eauto.
     + assert (stpd2 [] G1 (substt x T11) (substt x T11)) as A. {
         eapply stpd2_refl. eapply closed_subst. eauto.
@@ -1888,6 +1889,15 @@ Proof.
       eapply closed_subst. eauto. econstructor. eapply index_max in H. omega.
       eapply closed_subst. eauto. econstructor. eapply index_max in H. omega.
       eauto.*)
+Qed.
+
+Lemma hastp_inv: forall G1 x T n1,
+  has_type [] G1 (tvar true x) T n1 ->
+  exists m n1, vtp m G1 x T n1.
+Proof.
+  intros. remember [] as GH. remember (tvar true x) as t.
+  induction H; subst; try inversion Heqt.
+  - Case "varx". subst. eapply dms_hastp_inv; eauto.
   - Case "pack". subst.
     destruct IHhas_type. eauto. eauto. ev.
     repeat eexists. eapply vtp_bind. eauto. eauto.
