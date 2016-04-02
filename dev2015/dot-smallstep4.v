@@ -295,7 +295,7 @@ with stp2: tenv -> venv -> ty -> ty -> nat -> Prop :=
 with htp: tenv -> venv -> nat -> ty -> nat -> Prop :=
 | htp_var: forall GH G1 x TX n1,
     index x GH = Some TX ->
-    closed (length GH) (length G1) 0 TX ->         
+    closed (S x) (length G1) 0 TX ->
     htp GH G1 x TX (S n1)
 | htp_bind: forall GH G1 x TX n1,
     htp GH G1 x (TBind TX) n1 ->
@@ -703,7 +703,7 @@ Proof.
   - eapply IHH1. eauto. omega.
   - eapply IHH1. eauto. omega.
   (* htp right *)
-  - eauto. 
+  - eapply closed_upgrade_gh. eauto. subst. eapply index_max in H1. omega.
   - eapply IHH1 in H1. eapply closed_open. simpl. eapply closed_upgrade_gh. eauto. omega. econstructor. eauto. omega. 
   - eapply closed_upgrade_gh. eapply IHS2. eauto. omega. rewrite H4. rewrite app_length. omega. 
   (* has_type *)
@@ -879,7 +879,7 @@ Proof.
   - Case "bind".
     eexists. eapply stp2_bindx. eapply htp_var. simpl. rewrite beq_nat_true_eq. eauto.
     instantiate (1:=open 0 (TVar false (length GH)) T0).
-    eapply closed_open. simpl. eapply closed_upgrade_gh. eauto. omega. econstructor. simpl. omega.
+    eapply closed_open. eapply closed_upgrade_gh. eauto. omega. econstructor. omega.
     eauto. eauto. eauto. eauto.
   - Case "and".
     destruct (IHn GH G1 T0 H1). omega.
@@ -1226,7 +1226,7 @@ Proof.
       intros. inversion H2.
       + (* var *) subst.
         repeat eexists. eapply htp_var. eapply index_subst1. eauto. eauto.
-        rewrite map_length. eauto. eapply closed_subst0. rewrite app_length in H7. eapply H7. eauto.
+        eapply closed_subst0. eapply closed_upgrade_gh. eauto. omega. eauto.
       + (* bind *) subst.
         assert (htpd (map (substt x) (GH0)) G1 (xi-1) (substt x (TBind TX0))) as BB.
         eapply IHni. eapply H6. eauto. omega. omega.
@@ -1534,16 +1534,16 @@ Proof.
         destruct HX as [nx HX].
         eexists. eapply htp_sub. eapply htp_var. eapply index_extend_mult.
         simpl. rewrite E. reflexivity.
-        eapply stp2_closed1 in HX. eapply closed_upgrade_gh. eapply HX.
-        rewrite app_length. rewrite app_length. simpl. omega.
-        eapply HX. simpl. apply beq_nat_true in E. omega.
+        eapply stp2_closed1 in HX. eapply closed_upgrade_gh.
+        eapply HX. apply beq_nat_true in E. subst. omega.
+        eapply HX. eapply beq_nat_true in E. subst. omega.
         instantiate (1:=GH1++[TX1]). rewrite app_assoc. reflexivity.
       * assert (index x GH' = Some T) as A. {
           subst.
           eapply index_same. apply E. eassumption.
         }
         eexists. eapply htp_var. eapply A.
-        subst. rewrite app_length in *. simpl in *. assumption.
+        subst. eauto.
     + SCase "bind".
       edestruct IHn_htp with (GH:=GH) (GH':=GH').
       eapply H0. omega. subst. reflexivity. subst. reflexivity. assumption.
@@ -2145,7 +2145,21 @@ Proof.
     eapply stp2_transf.
     eapply IHstp. eauto. omega.
     eapply IHstp. eauto. omega.
-  - admit.
+  - Case "htp_var".
+    unfold splice_var.
+    case_eq (le_lt_dec (length G0) x1); intros E LE.
+    + eapply htp_var.
+      apply index_splice_hi. eauto. eauto.
+      eapply closed_splice.
+      assert (S x1 = x1 +1) as A by omega.
+      rewrite <- A. eauto.
+    + assert (splice (length G0) T1=T1) as A. {
+        eapply closed_splice_idem. eassumption. omega.
+      }
+      eapply htp_var.
+      eapply index_splice_lo.
+      rewrite A. eauto. omega.
+      rewrite A. eauto.
   - admit.
   - admit.
 Qed.
