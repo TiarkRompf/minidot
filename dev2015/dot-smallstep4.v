@@ -1473,7 +1473,7 @@ Qed.
 
 Lemma exists_GH0U: forall {X} (GH1: list X) (GH0: list X) (GU: list X) (GL: list X),
   GU ++ GL = GH1 ++ GH0 ->
-  length GL < length GH0 ->
+  length GL < S (length GH0) ->
   exists GH0U, GH0 = GH0U ++ GL.
 Proof.
   intros X GH1. induction GH1; intros.
@@ -1852,7 +1852,26 @@ Proof.
       rewrite app_length. rewrite map_length. simpl.
       unfold splice_var. rewrite LE. subst. rewrite app_length in *. omega.
       subst. rewrite map_app. simpl. rewrite app_assoc. reflexivity.
-   + admit.
+    + assert (splice (length G0) T1=T1) as A1. {
+        eapply closed_splice_idem. eapply stp2_closed2. eauto. omega.
+      }
+      assert (splice (length G0) T0=T0) as A0. {
+        eapply closed_splice_idem. eapply stp2_closed1. eauto. omega.
+      }
+      assert (exists GH0U, G0 = GH0U ++ GL) as EQGH. {
+        eapply exists_GH0U. eauto. omega.
+      }
+      destruct EQGH as [GH0U EQGH].
+      assert (splice_var (length G0) x1=x1) as C. {
+        unfold splice_var. rewrite LE. reflexivity.
+      }
+      rewrite <- C.
+      eapply htp_sub.
+      eapply IHhtp. eauto. omega.
+      rewrite A1. rewrite A0. eauto.
+      rewrite C. eauto.
+      instantiate (1:=(map (splice (length G0)) G1 ++ v1 :: GH0U)).
+      rewrite <- app_assoc. simpl. rewrite EQGH. reflexivity.
 Qed.
 
 Lemma stp2_upgrade_gh : forall GH T G1 T1 T2 n,
