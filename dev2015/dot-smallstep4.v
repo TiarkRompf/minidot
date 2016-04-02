@@ -2047,6 +2047,11 @@ Lemma stp2_upgrade_gh_mult : forall GH GH' G1 T1 T2 n,
                       stp2 (GH'++GH) G1 T1 T2 n.
 Proof. intros. induction GH'. simpl. eauto. simpl. eapply stp2_upgrade_gh. eauto. Qed. 
 
+Lemma stp2_upgrade_gh_mult0 : forall GH G1 T1 T2 n,
+                      stp2 [] G1 T1 T2 n ->
+                      stp2 GH G1 T1 T2 n.
+Proof. intros. rewrite <- (app_nil_r GH). eapply stp2_upgrade_gh_mult. eauto. Qed.
+
 Fixpoint splice_tm n (t : tm) {struct t} : tm :=
   match t with
     | tvar true i         => tvar true i
@@ -2190,6 +2195,44 @@ Proof.
     eauto. rewrite <- length_splice_dms. eauto.
 Qed.
 
+Lemma has_type_splice: forall GX G0 G1 t1 T1 v1 n,
+   has_type (G1++G0) GX t1 T1 n ->
+   has_type ((map (splice (length G0)) G1) ++ v1::G0) GX
+   (splice_tm (length G0) t1) (splice (length G0) T1) n.
+Proof. intros. eapply hastp_splice_aux. eauto. eauto. Qed.
+
+Lemma dms_has_type_splice: forall GX G0 G1 ds1 T1 v1 n,
+   dms_has_type (G1++G0) GX ds1 T1 n ->
+   dms_has_type ((map (splice (length G0)) G1) ++ v1::G0) GX
+   (splice_dms (length G0) ds1) (splice (length G0) T1) n.
+Proof. intros. eapply hastp_splice_aux. eauto. eauto. Qed.
+
+Inductive tm_closed: nat -> tm -> Prop :=
+| clt_var0: forall i x, i > x -> tm_closed i (tvar false x)
+| clt_var1: forall i x, tm_closed i (tvar true x)
+| clt_obj: forall i ds, dms_closed i ds -> tm_closed i (tobj ds)
+| clt_app: forall i f l a, tm_closed i f -> tm_closed i a -> tm_closed i (tapp f l a)
+with dm_closed: nat -> dm -> Prop :=
+| cld_fun: forall i T1 j1 k1 T2 j2 k2 t12, closed i j1 k1 T1 -> closed i j2 k2 T2 -> tm_closed i t12 -> dm_closed i (dfun T1 T2 t12)
+| cld_mem: forall i T1 j1 k1, closed i j1 k1 T1 -> dm_closed i (dty T1)
+with dms_closed: nat -> dms -> Prop :=
+| cld_nil: forall i, dms_closed i dnil
+| cld_cons: forall i d ds, dm_closed i d -> dms_closed i ds -> dms_closed i (dcons d ds).
+
+Scheme tm_closed_mut := Induction for tm_closed Sort Prop
+with dm_closed_mut := Induction for dm_closed Sort Prop
+with dms_closed_mut := Induction for dms_closed Sort Prop.
+Combined Scheme tm_closed_mutind from tm_closed_mut, dm_closed_mut, dms_closed_mut.
+
+Lemma tm_closed_upgrade_gh_aux:
+  (forall i t1, tm_closed i t1 -> forall i1, i <= i1 -> tm_closed i1 t1) /\
+  (forall i d1, dm_closed i d1 -> forall i1, i <= i1 -> dm_closed i1 d1) /\
+  (forall i ds1, dms_closed i ds1 -> forall i1, i <= i1 -> dms_closed i1 ds1).
+Proof.
+  apply tm_closed_mutind; intros; econstructor; eauto using closed_upgrade_gh.
+  omega.
+Qed.
+
 Lemma hastp_upgrade_gh_aux: forall ni,
   (forall T GH G1 t1 T1 n,
      has_type GH G1 t1 T1 n -> n < ni ->
@@ -2215,12 +2258,24 @@ Proof.
   - admit.
 Qed.
 
+Lemma hastp_upgrade_gh_var: forall G1 GH x T n1,
+  has_type [] G1 (tvar true x) T n1 ->
+  has_type GH G1 (tvar true x) T n1.
+Proof.
+  intros.
+  remember (tvar true x) as t.  remember [] as GH0.
+  induction H; eauto; inversion Heqt; subst.
+  - eapply T_VarPack. eauto. eauto. eapply closed_upgrade_gh. eauto. simpl. omega.
+  - eapply T_VarUnpack. eauto. eauto. eapply closed_upgrade_gh. eauto. simpl. omega.
+  - eapply T_Sub. eauto. eapply stp2_upgrade_gh_mult0. eauto.
+Qed.
+
 Lemma hastp_upgrade_gh: forall G1 GH x T n1,
   has_type [] G1 (tvar true x) T n1 ->
   exists n, has_type GH G1 (tvar true x) T n.
 Proof.
   intros. exists n1.
-  induction GH. simpl. eauto. simpl. eapply hastp_upgrade_gh_aux. eauto. eauto.
+  induction GH. simpl. eauto. simpl. eapply hastp_upgrade_gh_var. eauto.
 Qed.
 
 (* upgrade_gh interlude ends *)
