@@ -1,5 +1,5 @@
 (* smallstep proof *)
-(* compared to 3a2, makes tobj recursive (still only one member) *)
+(* compared to 3b, makes tobj recursive (still only one member) *)
 
 Require Export SfLib.
 
