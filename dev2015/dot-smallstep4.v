@@ -1922,11 +1922,37 @@ Lemma stp2_upgrade_gh_mult : forall GH GH' G1 T1 T2 n,
                       stp2 (GH'++GH) G1 T1 T2 n.
 Proof. intros. induction GH'. simpl. eauto. simpl. eapply stp2_upgrade_gh. eauto. Qed. 
 
+Lemma hastp_upgrade_gh_aux: forall ni,
+  (forall T GH G1 t1 T1 n,
+     has_type GH G1 t1 T1 n -> n < ni ->
+     has_type (T::GH) G1 t1 T1 n) /\
+  (forall T GH G1 ds1 T1 n,
+     dms_has_type GH G1 ds1 T1 n -> n < ni ->
+     dms_has_type (T::GH) G1 ds1 T1 n).
+Proof.
+  intros n. induction n. repeat split; intros; omega.
+  repeat split; intros; inversion H.
+  (* has_type *)
+  - econstructor. eauto. eauto. eauto. eauto. eauto.
+  - econstructor. eapply index_extend. eauto. eapply closed_upgrade_gh. eauto. simpl. omega.
+  - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_upgrade_gh. eauto. simpl. omega.
+  - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_upgrade_gh. eauto. simpl. omega.
+  - admit.
+  - econstructor. subst. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eapply closed_upgrade_gh. eauto. simpl. omega.
+  - eapply T_AppVar. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eapply closed_upgrade_gh. eauto. simpl. omega.
+  - econstructor. eapply IHn. eauto. omega. eapply stp2_upgrade_gh. eauto.
+  (* dms_has_type *)
+  - econstructor.
+  - econstructor. eapply IHn. eauto. omega. eapply closed_upgrade_gh. eauto. simpl. omega. eauto. eauto.
+  - admit.
+Qed.
+
 Lemma hastp_upgrade_gh: forall G1 GH x T n1,
   has_type [] G1 (tvar true x) T n1 ->
   exists n, has_type GH G1 (tvar true x) T n.
 Proof.
-  admit.
+  intros. exists n1.
+  induction GH. simpl. eauto. simpl. eapply hastp_upgrade_gh_aux. eauto. eauto.
 Qed.
 
 (* upgrade_gh interlude ends *)
