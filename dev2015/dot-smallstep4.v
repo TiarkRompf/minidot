@@ -1874,6 +1874,44 @@ Proof.
       rewrite <- app_assoc. simpl. rewrite EQGH. reflexivity.
 Qed.
 
+Lemma stp_upgrade_gh_aux: forall ni,
+  (forall GH T G1 T1 T2 n,
+     stp2 GH G1 T1 T2 n -> n < ni ->
+     stp2 (T::GH) G1 T1 T2 n) /\
+  (forall T x GH G1 T2 n,
+     htp GH G1 x T2 n -> n < ni ->
+     htp (T::GH) G1 x T2 n).
+Proof.
+  intros n. induction n. repeat split; intros; omega.
+  repeat split; intros; inversion H.
+  (* stp *)
+  - econstructor. eapply closed_upgrade_gh. eauto. simpl. omega.
+  - econstructor. eapply closed_upgrade_gh. eauto. simpl. omega.
+  - econstructor. eauto. eauto.
+    eapply closed_upgrade_gh. eauto. simpl. omega. eapply closed_upgrade_gh. eauto. simpl. omega.
+    eapply IHn. eauto. omega.
+    admit.
+  - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega. 
+  - econstructor. simpl. eauto.
+  - econstructor. simpl. omega.
+  - econstructor. eauto. eauto. eauto.
+  - econstructor. eauto. eauto. eauto.
+  - econstructor. eapply IHn. eauto. omega.
+  - econstructor. eapply IHn. eauto. omega.
+  - econstructor. eapply closed_upgrade_gh. eauto. simpl. omega.
+  - admit.
+  - admit.
+  - eapply stp2_and11. eapply IHn. eauto. omega. eapply closed_upgrade_gh. eauto. simpl. omega.
+  - eapply stp2_and12. eapply IHn. eauto. omega. eapply closed_upgrade_gh. eauto. simpl. omega.
+  - eapply stp2_and2. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
+  - eapply stp2_transf. eapply IHn. eauto. omega. eapply IHn. eauto. omega. 
+  (* htp *)
+  - econstructor. eapply index_extend. eauto. eapply closed_upgrade_gh. eauto. omega.
+  - eapply htp_bind. eapply IHn. eauto. omega. eapply closed_upgrade_gh. eauto. omega.
+  - eapply htp_sub. eapply IHn. eauto. omega. eauto. eauto. subst GH.
+    instantiate (1:=T::GU). eauto.
+Qed.
+
 Lemma stp2_upgrade_gh : forall GH T G1 T1 T2 n,
                       stp2 GH G1 T1 T2 n ->
                       stp2 (T::GH) G1 T1 T2 n.
