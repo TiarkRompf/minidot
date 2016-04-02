@@ -2023,7 +2023,7 @@ Proof.
       subst. rewrite app_length in *. simpl in *. eauto.
       rewrite EGH'. simpl. rewrite EQGH1. rewrite <- app_assoc. reflexivity.
       assert (exists GH0U, TX2::GH0 = GH0U ++ GL) as EQGH. {
-        eapply exists_GH0U. eassumption. eassumption.
+        eapply exists_GH0U. eassumption. simpl. omega.
       }
       destruct EQGH as [GH0U EQGH].
       destruct GH0U. simpl in EQGH.
