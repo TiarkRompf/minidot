@@ -1859,36 +1859,96 @@ Proof.
   admit.
 Qed.
 
+Lemma length_subst_dms: forall ds x,
+  (length (dms_to_list ds))=(length (dms_to_list (subst_dms x ds))).
+Proof.
+  intros. induction ds; eauto.
+  simpl. rewrite IHds. reflexivity.
+Qed.
 
-Lemma dms_hastp_inv: forall G1 x ds' T' n1,
-  dms_has_type [T'] G1 ds' T' n1 ->
+Lemma index_subst_dms: forall ds ds0 D ds1 x,
+  dms_to_list ds = ds0 ++ dms_to_list (dcons D ds1) ->
+  index (length (dms_to_list ds1)) (dms_to_list (subst_dms x ds)) = Some (subst_dm x D).
+Proof.
+  intros. generalize dependent ds1. generalize dependent ds. induction ds0; intros.
+  - simpl in H. destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
+    simpl. rewrite <- length_subst_dms. rewrite beq_nat_true_eq. reflexivity.
+  - destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
+    simpl. rewrite false_beq_nat. eapply IHds0. eauto.
+    rewrite <- length_subst_dms. rewrite H2. rewrite app_length. simpl.
+    omega.
+Qed.
+
+Lemma dms_hastp_inv: forall G1 x ds' T' n,
+  dms_has_type [T'] G1 ds' T' n ->
   closed 0 (length G1) 0 (substt x T') ->
   index x G1 = Some (vobj (subst_dms x ds')) ->
   exists m n, vtp m G1 x (substt x T') n.
 Proof.
-  admit.
-(*
-    + repeat eexists. eapply vtp_top. eapply index_max. eauto.
-    + assert (stpd2 [] G1 (substt x T11) (substt x T11)) as A. {
-        eapply stpd2_refl. eapply closed_subst. eauto.
-        econstructor. eapply index_max in H. omega.
-      }
-      eu. repeat eexists. eapply vtp_mem. eauto. eauto. eauto.
-    + assert (stpd2 [] G1 (substt x T11) (substt x T11)) as A. {
-        eapply stpd2_refl. eapply closed_subst. eauto.
-        econstructor. eapply index_max in H. omega.
-      }
-      assert (stpd2 [(substt x T11)] G1 (open 0 (TVar false 0) (substt x T12)) (open 0 (TVar false 0) (substt x T12))) as B. {
-        eapply stpd2_refl. eapply closed_open. eapply closed_subst.
-        eapply closed_upgrade_gh. eauto. simpl. omega.
-        econstructor. eapply index_max in H. omega.
-        econstructor. simpl. omega.
-      }
-      eu. eu. repeat eexists. eapply vtp_fun.
-      eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
-      eapply closed_subst. eauto. econstructor. eapply index_max in H. omega.
-      eapply closed_subst. eauto. econstructor. eapply index_max in H. omega.
-      eauto.*)
+  intros G1 x ds' T' n H HC HI.
+  remember T' as T0. remember H as HT0. clear HeqHT0.
+  rewrite HeqT0 in H at 2. rewrite HeqT0. rewrite HeqT0 in HC. clear HeqT0.
+  remember ds' as ds0. rewrite Heqds0 in H.
+  assert (exists dsa, dms_to_list ds0 = dsa ++ dms_to_list ds') as Hds. {
+    exists []. rewrite app_nil_l. subst. reflexivity.
+  }
+  clear Heqds0.
+  remember n as n0. rewrite Heqn0 in *. rewrite <- Heqn0 in HT0. clear Heqn0.
+  remember [T0] as GH. generalize dependent T0.
+  induction H; intros.
+  - repeat eexists. eapply vtp_top. eapply index_max. eauto.
+  - subst.
+    assert (closed 0 (length G1) 0 (substt x TS)) as HCS. {
+      unfold substt in *. simpl in HC. inversion HC; subst.
+      eauto.
+    }
+    assert (closed 0 (length G1) 0 (substt x T11)) as HC11. {
+      unfold substt in *. simpl in HC. inversion HC; subst.
+      inversion H6; subst. eauto.
+    }
+    assert (stpd2 [] G1 (substt x T11) (substt x T11)) as A. {
+      eapply stpd2_refl. eauto.
+    }
+    eu.
+    destruct Hds as [dsa Hdsa]. simpl in Hdsa.
+    edestruct IHdms_has_type as [? [? AS]]. eauto. eauto. eauto. exists (dsa ++ [dty T11]). rewrite <- app_assoc. simpl. eauto. eauto. eauto.
+    unfold substt in *. simpl.
+    repeat eexists. eapply vtp_and. eapply vtp_mem. eauto.
+    erewrite index_subst_dms with (D:=dty T11). simpl. reflexivity. eauto.
+    eauto. eauto. eauto. eauto. eauto.
+  - subst.
+    assert (closed 0 (length G1) 0 (substt x TS)) as HCS. {
+      unfold substt in *. simpl in HC. inversion HC; subst.
+      eauto.
+    }
+    assert (closed 0 (length G1) 0 (substt x T11)) as HC11. {
+      unfold substt in *. simpl in HC. inversion HC; subst.
+      inversion H8; subst. eauto.
+    }
+    assert (closed 1 (length G1) 0 (open 0 (TVar false 0) (substt x T12))) as HC12. {
+      unfold substt in *. simpl in HC. inversion HC; subst. inversion H8; subst.
+      eapply closed_open. eapply closed_upgrade_gh. eauto. omega.
+      econstructor. omega.
+    }
+    assert (stpd2 [] G1 (substt x T11) (substt x T11)) as A. {
+      eapply stpd2_refl. eauto.
+    }
+    eu.
+    assert (stpd2 [(substt x T11)] G1 (open 0 (TVar false 0) (substt x T12)) (open 0 (TVar false 0) (substt x T12))) as B. {
+      eapply stpd2_refl. eauto.
+    }
+    eu.
+    destruct Hds as [dsa Hdsa]. simpl in Hdsa.
+    edestruct IHdms_has_type as [? [? AS]]. eauto. eauto. eauto. exists (dsa ++ [dfun T11 T12 t12]). rewrite <- app_assoc. simpl. eauto. eauto. eauto.
+    unfold substt in *. simpl.
+    repeat eexists. eapply vtp_and. eapply vtp_fun. eauto.
+    erewrite index_subst_dms with (D:=dfun T11 T12 t12). simpl. reflexivity. eauto.
+    eauto. eapply HT0. simpl. reflexivity. eauto. eauto. eauto. eauto. eauto.
+    eapply closed_subst. eauto. econstructor. eapply index_max. eauto.
+    eapply closed_subst. eauto. econstructor. eapply index_max. eauto.
+    eauto. eauto. eauto. eauto.
+Grab Existential Variables.
+apply 0. apply 0.
 Qed.
 
 Lemma hastp_inv: forall G1 x T n1,
@@ -1908,13 +1968,6 @@ Proof.
     destruct IHhas_type. eauto. eauto. ev.
     assert (exists m0, vtpdd m0 G1 x T2). eexists. eapply vtp_widen; eauto. 
     ev. eu. repeat eexists. eauto. 
-Qed.
-
-Lemma length_subst_dms: forall ds x,
-  (length (dms_to_list ds))=(length (dms_to_list (subst_dms x ds))).
-Proof.
-  intros. induction ds; eauto.
-  simpl. rewrite IHds. reflexivity.
 Qed.
 
 Lemma hastp_subst_aux_z: forall ni, (forall G1 GH TX T x t n1 n2,
