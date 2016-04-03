@@ -360,6 +360,15 @@ with vtp : nat -> venv -> nat -> ty -> nat -> Prop :=
     stp2 [] G1 T1 TX n1 ->
     stp2 [] G1 TX T2 n2 ->
     vtp m G1 x (TMem l T1 T2) (S (n1+n2))
+| vtp_fld: forall m G1 x l ds dsx T1 T2 y1 T1x b1x y1x T' n1 n2 n3,
+    index x G1 = Some (vobj ds) ->
+    index l (dms_to_list ds) = Some (dfld T1 true y1) ->
+    subst_dms x dsx = ds ->
+    dms_has_type [T'] G1 dsx T' n3 ->
+    subst_dm x (dfld T1x b1x y1x) = (dfld T1 true y1) ->
+    has_type [T'] G1 (tvar b1x y1x) T1x n2 ->
+    stp2 [] G1 T1 T2 n1 ->
+    vtp m G1 x (TFld l T2) (S (n1+n2+n3))
 | vtp_fun: forall m G1 x l ds dsx T1 T2 T3 T4 T2' T4' t T1x T2x tx T' T2x' n1 n2 n3 n4,
     index x G1 = Some (vobj ds) ->
     index l (dms_to_list ds) = Some (dfun T1 T2 t) ->
@@ -621,6 +630,7 @@ Proof.
   (* vtp *)    
   - econstructor. simpl. eauto.
   - econstructor. eapply index_extend. eauto. eauto. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
+  - econstructor. eapply index_extend. eauto. eauto. eauto. eapply IHn. eauto. omega. eauto. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
   - econstructor. eapply index_extend. eauto. eauto. eauto. eapply IHn. eauto. omega. eauto. eauto. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eauto. eapply closed_extend. eauto. eapply closed_extend. eauto. eapply IHn. eauto. omega.
   - econstructor. eapply IHn. eauto. omega. eapply closed_extend. eauto. 
   - econstructor. eapply index_extend. eauto. eauto. eapply IHn. eauto. omega.
@@ -756,6 +766,7 @@ Proof.
   - eauto.
   - eapply index_max. eauto.
   - eapply index_max. eauto.
+  - eapply index_max. eauto.
   - eapply IHV1. eauto. omega.
   - eapply IHV1. eauto. omega.
   - eapply IHV1. eauto. omega.
@@ -764,6 +775,7 @@ Proof.
   (* vtp right *)
   - econstructor.
   - change 0 with (length ([]:tenv)) at 1. econstructor. eapply IHS1. eauto. omega. eapply IHS2. eauto. omega.
+  - change 0 with (length ([]:tenv)) at 1. econstructor. eapply IHS2. eauto. omega.
   - change 0 with (length ([]:tenv)) at 1. econstructor. eapply IHS1. eauto. omega. eauto.
   - econstructor. eauto. (* eapply IHV2 in H1. eauto. omega. *)
   - econstructor. econstructor. eapply index_max. eauto.
@@ -2393,8 +2405,32 @@ Proof.
       assert (vtpdd m1 G1 x T5) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
       assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega. 
+
+  - Case "fld". inversion H0; subst; invty.
+    + SCase "top". repeat eexists. eapply vtp_top. eapply index_max. eauto. eauto.
+    + SCase "fld". subst. repeat eexists. eapply vtp_fld; eauto. eauto.
+    + SCase "sel2".
+      assert (vtpdd m1 G1 x TX). eapply IHn; eauto. omega.
+      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. eauto.
+    + SCase "sel2".
+      eapply stp2_closed2 in H0. simpl in H0. inversion H0. subst. inversion H14. omega.
+    + SCase "and".
+      assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 G1 x T5). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_and; eauto. eauto.
+    + SCase "or1".
+      assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or1; eauto. eauto.
+    + SCase "or2".
+      assert (vtpdd m1 G1 x T5). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or2; eauto. eauto.
+    + SCase "trans".
+      assert (vtpdd m1 G1 x T5) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
+      assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
+      repeat eexists. eauto. omega.
+
   - Case "fun". inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. eapply index_max. eauto. eauto. 
+    + SCase "top". repeat eexists. eapply vtp_top. eapply index_max. eauto. eauto.
     + SCase "fun". invty. subst.
       assert (stpd2 [T8] G1 (open 0 (TVar false 0) T0) (open 0 (TVar false 0) T5)) as A. {
         eapply stp2_narrow. simpl. eassumption. simpl. eassumption.
@@ -2421,6 +2457,7 @@ Proof.
       assert (vtpdd m1 G1 x T7) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
       assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega. 
+
   - Case "bind". 
     inversion H0; subst; invty.
     + SCase "top". repeat eexists. eapply vtp_top. eapply vtp_closed1. eauto. eauto. 
@@ -2582,7 +2619,7 @@ Proof.
       repeat eexists. eauto. omega. eauto. omega. omega. eauto.
 
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 
