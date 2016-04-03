@@ -1,5 +1,5 @@
 (* smallstep proof *)
-(* compared to 3c, it adds multiple members *)
+(* compared to 4, it adds union types *)
 
 Require Export SfLib.
 
@@ -21,6 +21,7 @@ Inductive ty : Type :=
   | TSel   : ty -> lb -> ty (* elim *)
   | TBind  : ty -> ty
   | TAnd   : ty -> ty -> ty
+  | TOr    : ty -> ty -> ty
 .
 
 Inductive tm : Type :=
@@ -72,7 +73,7 @@ Inductive closed: nat -> nat -> nat -> ty -> Prop :=
     closed i j k (TFun l T1 T2)
 | cl_mem: forall i j k l T1 T2,
     closed i j k T1 ->
-    closed i j k T2 ->        
+    closed i j k T2 ->
     closed i j k (TMem l T1 T2)
 | cl_var0: forall i j k x,
     i > x ->
@@ -91,8 +92,12 @@ Inductive closed: nat -> nat -> nat -> ty -> Prop :=
     closed i j k (TBind T1)
 | cl_and: forall i j k T1 T2,
     closed i j k T1 ->
-    closed i j k T2 ->        
+    closed i j k T2 ->
     closed i j k (TAnd T1 T2)
+| cl_or: forall i j k T1 T2,
+    closed i j k T1 ->
+    closed i j k T2 ->
+    closed i j k (TOr T1 T2)
 .
 
 
@@ -107,6 +112,7 @@ Fixpoint open (k: nat) (u: ty) (T: ty) { struct T }: ty :=
     | TMem l T1 T2  => TMem l (open k u T1) (open k u T2)
     | TBind T1    => TBind (open (S k) u T1)
     | TAnd T1 T2  => TAnd (open k u T1) (open k u T2)
+    | TOr T1 T2   => TOr (open k u T1) (open k u T2)
   end.
 
 Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
@@ -121,6 +127,7 @@ Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
     | TFun l T1 T2 => TFun l (subst U T1) (subst U T2)
     | TBind T2     => TBind (subst U T2)
     | TAnd T1 T2   => TAnd (subst U T1) (subst U T2)
+    | TOr T1 T2    => TOr (subst U T1) (subst U T2)
   end.
 
 
@@ -285,7 +292,20 @@ with stp2: tenv -> venv -> ty -> ty -> nat -> Prop :=
     stp2 GH G1 T T1 n1 ->
     stp2 GH G1 T T2 n2 ->
     stp2 GH G1 T (TAnd T1 T2) (S (n1+n2))
-         
+
+| stp2_or21: forall GH G1 T1 T2 T n1,
+    stp2 GH G1 T T1 n1 ->
+    closed (length GH) (length G1) 0 T2 ->
+    stp2 GH G1 T (TOr T1 T2) (S n1)
+| stp2_or22: forall GH G1 T1 T2 T n1,
+    stp2 GH G1 T T2 n1 ->
+    closed (length GH) (length G1) 0 T1 ->
+    stp2 GH G1 T (TOr T1 T2) (S n1)
+| stp2_or1: forall GH G1 T1 T2 T n1 n2,
+    stp2 GH G1 T1 T n1 ->
+    stp2 GH G1 T2 T n2 ->
+    stp2 GH G1 (TOr T1 T2) T (S (n1+n2))
+
 | stp2_transf: forall GH G1 T1 T2 T3 n1 n2,
     stp2 GH G1 T1 T2 n1 ->
     stp2 GH G1 T2 T3 n2 -> 
@@ -351,6 +371,17 @@ with vtp : nat -> venv -> nat -> ty -> nat -> Prop :=
     vtp m2 G1 x T2 n2 ->
     m1 <= m -> m2 <= m ->
     vtp m G1 x (TAnd T1 T2) (S (n1+n2))
+| vtp_or1: forall m m1 m2 G1 x T1 T2 n1,
+    vtp m1 G1 x T1 n1 ->
+    closed 0 (length G1) 0 T2 ->
+    m1 <= m -> m2 <= m ->
+    vtp m G1 x (TOr T1 T2) (S (n1))
+| vtp_or2: forall m m1 m2 G1 x T1 T2 n1,
+    vtp m1 G1 x T2 n1 ->
+    closed 0 (length G1) 0 T1 ->
+    m1 <= m -> m2 <= m ->
+    vtp m G1 x (TOr T1 T2) (S (n1))
+
 .
 
 Definition has_typed GH G1 x T1 := exists n, has_type GH G1 x T1 n.
@@ -560,6 +591,9 @@ Proof.
   - eapply stp2_and11. eapply IHn. eauto. omega. eapply closed_extend. eauto.
   - eapply stp2_and12. eapply IHn. eauto. omega. eapply closed_extend. eauto.
   - eapply stp2_and2. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
+  - eapply stp2_or21. eapply IHn. eauto. omega. eapply closed_extend. eauto.
+  - eapply stp2_or22. eapply IHn. eauto. omega. eapply closed_extend. eauto.
+  - eapply stp2_or1. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
   - eapply stp2_transf. eapply IHn. eauto. omega. eapply IHn. eauto. omega. 
   (* vtp *)    
   - econstructor. simpl. eauto.
@@ -567,7 +601,9 @@ Proof.
   - econstructor. eapply index_extend. eauto. eauto. eauto. eapply IHn. eauto. omega. eauto. eauto. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eauto. eapply closed_extend. eauto. eapply closed_extend. eauto. eapply IHn. eauto. omega.
   - econstructor. eapply IHn. eauto. omega. eapply closed_extend. eauto. 
   - econstructor. eapply index_extend. eauto. eauto. eapply IHn. eauto. omega.
-  - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eauto. 
+  - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eauto.
+  - econstructor. eapply IHn. eauto. omega. eapply closed_extend. eauto. omega. eauto.
+  - eapply vtp_or2. eapply IHn. eauto. omega. eapply closed_extend. eauto. omega. eauto.
   (* htp *)
   - econstructor. eauto. eapply closed_extend. eauto. 
   - eapply htp_bind. eapply IHn. eauto. omega. eapply closed_extend. eauto. 
@@ -666,6 +702,9 @@ Proof.
   - econstructor. eauto. eapply IHS1. eauto. omega.
   - eapply IHS1. eauto. omega. 
   - eapply IHS1. eauto. omega.
+  - eapply IHS1. eauto. omega.
+  - econstructor. eapply IHS1. eauto. omega. eapply IHS1. eauto. omega.
+  - eapply IHS1. eauto. omega.
   (* stp right *)
   - eauto. 
   - econstructor. 
@@ -682,7 +721,10 @@ Proof.
   - econstructor. eauto.
   - eapply IHS2. eauto. omega. 
   - eapply IHS2. eauto. omega.
-  - econstructor. eapply IHS2. eauto. omega. eapply IHS2. eauto. omega. 
+  - econstructor. eapply IHS2. eauto. omega. eapply IHS2. eauto. omega.
+  - econstructor. eapply IHS2. eauto. omega. eauto.
+  - econstructor. eauto. eapply IHS2. eauto. omega.
+  - eapply IHS2. eauto. omega.
   - eapply IHS2. eauto. omega.
   (* vtp left *)
   - eauto.
@@ -690,7 +732,9 @@ Proof.
   - eapply index_max. eauto.
   - eapply IHV1. eauto. omega.
   - eapply IHV1. eauto. omega.
-  - eapply IHV1. eauto. omega. 
+  - eapply IHV1. eauto. omega.
+  - eapply IHV1. eauto. omega.
+  - eapply IHV1. eauto. omega.
   (* vtp right *)
   - econstructor.
   - change 0 with (length ([]:tenv)) at 1. econstructor. eapply IHS1. eauto. omega. eapply IHS2. eauto. omega.
@@ -698,6 +742,8 @@ Proof.
   - econstructor. eauto. (* eapply IHV2 in H1. eauto. omega. *)
   - econstructor. econstructor. eapply index_max. eauto.
   - econstructor. eapply IHV2. eauto. omega. eapply IHV2. eauto. omega. 
+  - econstructor. eapply IHV2. eauto. omega. eauto.
+  - econstructor. eauto. eapply IHV2. eauto. omega.
   (* htp left *)
   - eapply index_max. eauto.
   - eapply IHH1. eauto. omega.
@@ -849,6 +895,7 @@ Fixpoint tsize (T: ty) { struct T }: nat :=
     | TMem l T1 T2 => S (tsize T1 + tsize T2)
     | TBind T1    => S (tsize T1)
     | TAnd T1 T2  => S (tsize T1 + tsize T2)
+    | TOr T1 T2   => S (tsize T1 + tsize T2)
   end.
 
 Lemma open_preserves_size: forall T b x j,
@@ -886,7 +933,11 @@ Proof.
   - Case "and".
     destruct (IHn GH G1 T0 H1). omega.
     destruct (IHn GH G1 T2 H2). omega.
-    eexists. eapply stp2_and2. eapply stp2_and11. eauto. eauto. eapply stp2_and12. eauto. eauto. 
+    eexists. eapply stp2_and2. eapply stp2_and11. eauto. eauto. eapply stp2_and12. eauto. eauto.
+  - Case "or".
+    destruct (IHn GH G1 T0 H1). omega.
+    destruct (IHn GH G1 T2 H2). omega.
+    eexists. eapply stp2_or1. eapply stp2_or21. eauto. eauto. eapply stp2_or22. eauto. eauto.
 Grab Existential Variables.
 apply 0.
 Qed.
@@ -923,6 +974,7 @@ Ltac invty := match goal with
                 | H1: TFun _ _ _ = _ |- _ => inversion H1
                 | H1: TBind  _ = _ |- _ => inversion H1
                 | H1: TAnd _ _ = _ |- _ => inversion H1
+                | H1: TOr _ _ = _ |- _ => inversion H1
                 | _ => idtac
               end.
 
@@ -932,6 +984,7 @@ Ltac invstp_var := match goal with
   | H1: stp2 _ true _ _ (TFun _ _ _)  (TVar _ _) _ |- _ => inversion H1
   | H1: stp2 _ true _ _ (TMem _ _ _)  (TVar _ _) _ |- _ => inversion H1
   | H1: stp2 _ true _ _ (TAnd _ _)  (TVar _ _) _ |- _ => inversion H1
+  | H1: stp2 _ true _ _ (TOr _ _)  (TVar _ _) _ |- _ => inversion H1
   | _ => idtac
 end.
 
@@ -964,6 +1017,7 @@ Proof.
   rewrite (IHT2 j k TX); eauto.
   omega.
   eapply closed_upgrade; eauto.
+  rewrite (IHT2 j k TX); eauto.
   rewrite (IHT2 j k TX); eauto.
 Qed.
 
@@ -1016,6 +1070,7 @@ Proof.
   simpl. inversion H. rewrite IHT0. eauto. eauto.
   simpl. inversion H. rewrite IHT0. eauto. subst. eauto.
   simpl. inversion H. rewrite IHT0_1. rewrite IHT0_2. eauto. eauto. eauto.
+  simpl. inversion H. rewrite IHT0_1. rewrite IHT0_2. eauto. eauto. eauto.
 Qed.
 
 
@@ -1034,7 +1089,8 @@ Proof.
 
   simpl. rewrite IHT0. eauto.
   simpl. rewrite IHT0. eauto.
-  simpl. rewrite IHT0_1. rewrite IHT0_2. eauto. 
+  simpl. rewrite IHT0_1. rewrite IHT0_2. eauto.
+  simpl. rewrite IHT0_1. rewrite IHT0_2. eauto.
 Qed.
 
 
@@ -1111,6 +1167,7 @@ Proof.
     rewrite H. rewrite H0. eauto. eauto.
   - unfold substt. simpl. unfold substt in IHTX. erewrite <-IHTX. eauto.
   - unfold substt. simpl. unfold substt in IHTX. erewrite <-IHTX. eauto.
+  - unfold substt. simpl. unfold substt in IHTX1. unfold substt in IHTX2. erewrite <-IHTX1. erewrite <-IHTX2. eauto.
   - unfold substt. simpl. unfold substt in IHTX1. unfold substt in IHTX2. erewrite <-IHTX1. erewrite <-IHTX2. eauto.
 Qed.
 
@@ -1349,7 +1406,18 @@ Proof.
     assert (stpd2 (map (substt x) GH) G1 (substt x T1) (substt x T0)). eapply IHn. eauto. eauto. omega. eauto. 
     assert (stpd2 (map (substt x) GH) G1 (substt x T1) (substt x T3)). eapply IHn. eauto. eauto. omega. eauto. 
     eu. eu. eexists. eapply stp2_and2. eauto. eauto. 
-    
+
+  - Case "or21".
+    assert (stpd2 (map (substt x) GH) G1 (substt x T1) (substt x T0)). eapply IHn. eauto. eauto. omega. eauto.
+    eu. eexists. eapply stp2_or21. eauto. eapply closed_subst0. rewrite app_length in H3. rewrite map_length. eauto. eauto.
+  - Case "or22".
+    assert (stpd2 (map (substt x) GH) G1 (substt x T1) (substt x T3)). eapply IHn. eauto. eauto. omega. eauto.
+    eu. eexists. eapply stp2_or22. eauto. eapply closed_subst0. rewrite app_length in H3. rewrite map_length. eauto. eauto.
+  - Case "or1".
+    assert (stpd2 (map (substt x) GH) G1 (substt x T0) (substt x T2)). eapply IHn. eauto. eauto. omega. eauto.
+    assert (stpd2 (map (substt x) GH) G1 (substt x T3) (substt x T2)). eapply IHn. eauto. eauto. omega. eauto.
+    eu. eu. eexists. eapply stp2_or1. eauto. eauto.
+
   - Case "transf". 
     assert (stpd2 (map (substt x) GH) G1 (substt x T1) (substt x T3)).
     eapply IHn; eauto. omega.
@@ -1511,6 +1579,7 @@ Fixpoint splice n (T : ty) {struct T} : ty :=
     | TFun l T1 T2 => TFun l (splice n T1) (splice n T2)
     | TBind T2     => TBind (splice n T2)
     | TAnd T1 T2   => TAnd (splice n T1) (splice n T2)
+    | TOr T1 T2    => TOr (splice n T1) (splice n T2)
   end.
 
 Definition spliceat n (V: (venv*ty)) :=
@@ -1790,6 +1859,18 @@ Proof.
     simpl. eapply stp2_and2.
     eapply IHstp. eauto. omega.
     eapply IHstp. eauto. omega.
+  - Case "or21".
+    simpl. eapply stp2_or21.
+    eapply IHstp. eauto. omega.
+    rewrite map_splice_length_inc. eapply closed_splice. eauto.
+  - Case "or22".
+    simpl. eapply stp2_or22.
+    eapply IHstp. eauto. omega.
+    rewrite map_splice_length_inc. eapply closed_splice. eauto.
+  - Case "or1".
+    simpl. eapply stp2_or1.
+    eapply IHstp. eauto. omega.
+    eapply IHstp. eauto. omega.
   - Case "transf".
     eapply stp2_transf.
     eapply IHstp. eauto. omega.
@@ -1991,6 +2072,11 @@ Proof.
   - eapply stp2_and11. eapply IHn. eauto. omega. eapply closed_upgrade_gh. eauto. simpl. omega.
   - eapply stp2_and12. eapply IHn. eauto. omega. eapply closed_upgrade_gh. eauto. simpl. omega.
   - eapply stp2_and2. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
+
+  - eapply stp2_or21. eapply IHn. eauto. omega. eapply closed_upgrade_gh. eauto. simpl. omega.
+  - eapply stp2_or22. eapply IHn. eauto. omega. eapply closed_upgrade_gh. eauto. simpl. omega.
+  - eapply stp2_or1. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
+
   - eapply stp2_transf. eapply IHn. eauto. omega. eapply IHn. eauto. omega. 
   (* htp *)
   - econstructor. eapply index_extend. eauto. eapply closed_upgrade_gh. eauto. omega.
@@ -2174,6 +2260,20 @@ Proof.
       edestruct IHn_stp2 as [? IH2].
       eapply H1. omega. eauto. eauto. eauto.
       eexists. eapply stp2_and2. eapply IH1. eapply IH2.
+    + SCase "or21".
+      edestruct IHn_stp2 as [? IH].
+      eapply H0. omega. eauto. eauto. eauto.
+      eexists. eapply stp2_or21. eapply IH. rewrite EGHLEN. assumption.
+    + SCase "or22".
+      edestruct IHn_stp2 as [? IH].
+      eapply H0. omega. eauto. eauto. eauto.
+      eexists. eapply stp2_or22. eapply IH. rewrite EGHLEN. assumption.
+    + SCase "or1".
+      edestruct IHn_stp2 as [? IH1].
+      eapply H0. omega. eauto. eauto. eauto.
+      edestruct IHn_stp2 as [? IH2].
+      eapply H1. omega. eauto. eauto. eauto.
+      eexists. eapply stp2_or1. eapply IH1. eapply IH2.
     + SCase "transf".
       edestruct IHn_stp2 as [? IH1].
       eapply H0. omega. eauto. eauto. eauto.
@@ -2215,6 +2315,12 @@ Proof.
       assert (vtpdd m1 G1 x T1). eapply IHn; eauto. omega. eu. 
       assert (vtpdd m1 G1 x T0). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_and; eauto. eauto.
+    + SCase "or1".
+      assert (vtpdd m1 G1 x T1). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or1; eauto. eauto.
+    + SCase "or2".
+      assert (vtpdd m1 G1 x T0). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or2; eauto. eauto.
     + SCase "trans".
       assert (vtpdd m1 G1 x T0) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
       assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
@@ -2235,6 +2341,12 @@ Proof.
       assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu. 
       assert (vtpdd m1 G1 x T5). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_and; eauto. eauto.
+    + SCase "or1".
+      assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or1; eauto. eauto.
+    + SCase "or2".
+      assert (vtpdd m1 G1 x T5). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or2; eauto. eauto.
     + SCase "trans".
       assert (vtpdd m1 G1 x T5) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
       assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
@@ -2257,6 +2369,12 @@ Proof.
       assert (vtpdd m1 G1 x T6). eapply IHn; eauto. omega. eu. 
       assert (vtpdd m1 G1 x T7). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_and; eauto. eauto.
+    + SCase "or1".
+      assert (vtpdd m1 G1 x T6). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or1; eauto. eauto.
+    + SCase "or2".
+      assert (vtpdd m1 G1 x T7). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or2; eauto. eauto.
     + SCase "trans".
       assert (vtpdd m1 G1 x T7) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
       assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
@@ -2311,6 +2429,12 @@ Proof.
       assert (vtpdd (S m) G1 x T1). eapply IHn; eauto. omega. eu. 
       assert (vtpdd (S m) G1 x T4). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_and; eauto. eauto.
+    + SCase "or1".
+      assert (vtpdd (S m) G1 x T1). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or1; eauto. eauto.
+    + SCase "or2".
+      assert (vtpdd (S m) G1 x T4). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or2; eauto. eauto.
     + SCase "trans".
       assert (vtpdd (S m) G1 x T4) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
       assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
@@ -2331,6 +2455,12 @@ Proof.
       assert (vtpdd m1 G1 x T1). eapply IHn; eauto. omega. eu. 
       assert (vtpdd m1 G1 x T2). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_and; eauto. eauto.
+    + SCase "or1".
+      assert (vtpdd m1 G1 x T1). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or1; eauto. eauto.
+    + SCase "or2".
+      assert (vtpdd m1 G1 x T2). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or2; eauto. eauto.
     + SCase "trans".
       assert (vtpdd m1 G1 x T2) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
       assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
@@ -2348,15 +2478,70 @@ Proof.
       assert (vtpdd m1 G1 x T2). eapply IHn; eauto. omega. eu. 
       assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_and; eauto. eauto.
+    + SCase "or1".
+      assert (vtpdd m1 G1 x T2). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or1; eauto. eauto.
+    + SCase "or2".
+      assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or2; eauto. eauto.
     + SCase "trans".
       assert (vtpdd m1 G1 x T4) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
       assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega. 
 
-Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0.
-Qed.
+  - Case "or1". subst. inversion H0; subst; invty.
+    + SCase "top". repeat eexists. eapply vtp_top. eapply vtp_closed1. eauto. eauto.
+    + SCase "sel2".
+      assert (vtpdd m1 G1 x TX). eapply IHn; eauto. omega.
+      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. eauto.
+    + SCase "sel2".
+      eapply stp2_closed2 in H0. simpl in H0. inversion H0. inversion H13. omega.
+    + SCase "and".
+      assert (vtpdd m1 G1 x T2). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_and; eauto. eauto.
+    + SCase "or1".
+      assert (vtpdd m1 G1 x T2). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or1; eauto. eauto.
+    + SCase "or2".
+      assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or2; eauto. eauto.
+    + SCase "or...".
+      eapply IHn in H4. eu.
+      repeat eexists. eapply H4. omega. eauto. omega. omega. eauto.
+    + SCase "or...".
+      assert (vtpdd m1 G1 x T4) as A. eapply IHn. eapply H. eauto. omega. omega. eauto. eu.
+      eapply IHn in A. eu.
+      repeat eexists. eauto. omega. eauto. omega. omega. eauto.
 
+  - Case "or2". subst. inversion H0; subst; invty.
+    + SCase "top". repeat eexists. eapply vtp_top. eapply vtp_closed1. eauto. eauto.
+    + SCase "sel2".
+      assert (vtpdd m1 G1 x TX). eapply IHn; eauto. omega.
+      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. eauto.
+    + SCase "sel2".
+      eapply stp2_closed2 in H0. simpl in H0. inversion H0. inversion H13. omega.
+    + SCase "and".
+      assert (vtpdd m1 G1 x T2). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_and; eauto. eauto.
+    + SCase "or1".
+      assert (vtpdd m1 G1 x T2). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or1; eauto. eauto.
+    + SCase "or2".
+      assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or2; eauto. eauto.
+    + SCase "or...".
+      eapply IHn in H4. eu.
+      repeat eexists. eapply H4. omega. eauto. omega. omega. eauto.
+    + SCase "or...".
+      assert (vtpdd m1 G1 x T4) as A. eapply IHn. eapply H. eauto. omega. omega. eauto. eu.
+      eapply IHn in A. eu.
+      repeat eexists. eauto. omega. eauto. omega. omega. eauto.
+
+Grab Existential Variables.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+Qed.
 
 
 (* Reduction semantics  *)
