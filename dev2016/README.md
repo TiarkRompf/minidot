@@ -9,3 +9,4 @@ From F to D
 6. `dsub_bot_and_or_rec_fix.v`
 7. `dsub_bot_and_or_rec_fix_mut.v`
 8. `dot.v`
+9. `pot.v`
