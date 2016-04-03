@@ -1,6 +1,12 @@
-(* smallstep proof *)
-(* compared to 4, it adds union types *)
+(*
+DOT
+T ::= Bot | Top | T1 /\ T2 | T1 \/ T2 |
+      { def m(x: S): U^x } | { type A: S..U } | x.A | { z => T^z }
+t ::= x | { y => d^y... } | t.m(t)
+d ::= { def m(x: S): U^x = t^x } | { type A = T }
+*)
 
+(* in small-step *)
 Require Export SfLib.
 
 Require Export Arith.EqNat.
