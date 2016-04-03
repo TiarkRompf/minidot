@@ -2956,7 +2956,19 @@ Proof.
     edestruct IHniD as [? IH]. eapply H2. omega. eauto.
     eexists. eapply D_Mem. eauto. eapply closed_subst0. rewrite app_length in H3. rewrite map_length. eauto. eapply has_type_closed1. eauto. eauto.
     unfold substt. simpl. rewrite <- length_subst_dms. reflexivity.
-  - Case "fld". admit.
+  - Case "fld". subst. simpl.
+    edestruct IHniD as [? IHD]. eapply H2. omega. eauto.
+    edestruct IHniT as [? HI] . eauto. omega. eauto.
+    simpl in HI. destruct b.
+    + eexists. eapply D_Fld. eapply IHD. eapply HI. eauto.
+      unfold substt. simpl. rewrite <- length_subst_dms. reflexivity.
+    + case_eq (beq_nat x0 0); intros E.
+      * apply beq_nat_true in E. subst.
+        eexists. eapply D_Fld. eapply IHD. eapply HI. eauto.
+        unfold substt. simpl. rewrite <- length_subst_dms. reflexivity.
+      * rewrite E in HI.
+        eexists. eapply D_Fld. eapply IHD. eapply HI. eauto.
+        unfold substt. simpl. rewrite <- length_subst_dms. reflexivity.
   - Case "abs". subst. simpl.
     edestruct IHniD as [? IHD]. eapply H2. omega. eauto.
     edestruct IHniT with (GH:=T11::GH1) as [? HI] . eauto. omega. eauto.
