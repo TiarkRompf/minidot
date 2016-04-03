@@ -147,7 +147,7 @@ Fixpoint subst_tm (u:nat) (T : tm) {struct T} : tm :=
   end
 with subst_dm (u:nat) (d: dm) {struct d} : dm :=
   match d with
-    | dfld T true i  => dfld T true i
+    | dfld T true i  => dfld (subst (TVar true u) T) true i
     | dfld T false i => if beq_nat i 0 then (dfld (subst (TVar true u) T) true u) else dfld (subst (TVar true u) T) false (i-1)
     | dty T        => dty (subst (TVar true u) T)
     | dfun T1 T2 t => dfun (subst (TVar true u) T1) (subst (TVar true u) T2) (subst_tm u t)
@@ -2712,7 +2712,56 @@ Proof.
     repeat eexists. eapply vtp_and. eapply vtp_mem. eauto.
     erewrite index_subst_dms with (D:=dty T11). simpl. reflexivity. eauto.
     eauto. eauto. eauto. eauto. eauto.
-  - admit.
+
+  - subst.
+    assert (closed 0 (length G1) 0 (substt x TS)) as HCS. {
+      unfold substt in *. simpl in HC. inversion HC; subst.
+      eauto.
+    }
+    assert (closed 0 (length G1) 0 (substt x T11)) as HC11. {
+      unfold substt in *. simpl in HC. inversion HC; subst.
+      inversion H6; subst. eauto.
+    }
+    assert (stpd2 [] G1 (substt x T11) (substt x T11)) as A. {
+      eapply stpd2_refl. eauto.
+    }
+    eu.
+    destruct Hds as [dsa Hdsa]. simpl in Hdsa.
+    edestruct IHdms_has_type as [? [? AS]]. eauto. eauto. eauto. exists (dsa ++ [dfld T11 b x0]). rewrite <- app_assoc. simpl. eauto. eauto. eauto.
+    assert (b = true \/ (b = false /\ x0 = 0)) as B. {
+      destruct b.
+      - left. reflexivity.
+      - right. split. reflexivity. eapply has_type_closed_z in H0. simpl in H0.
+        destruct x0; eauto. omega.
+    }
+    assert (exists y1, (b = true /\ y1 = x0) \/ (b = false /\ y1 = x)) as C. {
+      destruct B as [? | [? ?]]; subst; eexists; eauto.
+    }
+    destruct C as [y1 C].
+    assert (
+     (if b
+      then dfld (subst (TVar true x) T11) true x0
+      else
+       if beq_nat x0 0
+       then dfld (subst (TVar true x) T11) true x
+       else dfld (subst (TVar true x) T11) false (x0 - 1)) =
+     (dfld (subst (TVar true x) T11) true y1)) as Hst. {
+      destruct C as [[Eqb Eqy] | [Eqb Eqy]].
+      - subst. reflexivity.
+      - destruct B as [Contra | [? Eqx0]]. rewrite Eqb in Contra. inversion Contra.
+        rewrite Eqb. rewrite Eqx0. rewrite beq_nat_true_eq. rewrite Eqy.
+        reflexivity.
+    }
+    assert (index (length (dms_to_list ds)) (dms_to_list (subst_dms x ds0)) = Some (dfld (substt x T11) true y1)) as HID. {
+     unfold substt in *. simpl.
+     erewrite index_subst_dms with (D:=dfld T11 b x0).
+     f_equal. eapply Hst. eauto.
+    }
+    unfold substt in *. simpl.
+    repeat eexists. eapply vtp_and. eapply vtp_fld. eauto.
+    eapply HID. eauto.
+    eapply HT0. eapply Hst. eauto. eauto. eauto. eauto. eauto.
+
   - subst.
     assert (closed 0 (length G1) 0 (substt x TS)) as HCS. {
       unfold substt in *. simpl in HC. inversion HC; subst.
