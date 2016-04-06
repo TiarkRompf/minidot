@@ -1,8 +1,9 @@
 (*
-DOT
+nuDOT
 T ::= Bot | Top | T1 /\ T2 | T1 \/ T2 |
-      { def m(x: S): U^x } | { type A: S..U } | x.A | { z => T^z }
-t ::= x | { y => d^y... } | t.m(t)
+      { def m(x: S): U^x } | { type A: S..U } | x.A | { z => T^z } |
+      [x:S | T]  // T will always be an intersection of record types
+t ::= x | t.m(t) | new t | [x:S | d^x... ] | t1 & t2
 d ::= { def m(x: S): U^x = t^x } | { type A = T }
 *)
 
@@ -18,6 +19,7 @@ Definition id := nat.
 Definition lb := nat.
 
 Inductive ty : Type :=
+  | TCls   : ty -> ty -> ty (* [x: S | T], T intersection type *)
   | TBot   : ty
   | TTop   : ty
   | TFun   : lb -> ty -> ty -> ty
@@ -33,10 +35,14 @@ Inductive ty : Type :=
 
 Inductive tm : Type :=
   | tvar  : bool(*like TVar*) -> id -> tm
-  | tobj  : dms(*self is next slot in abstract context -- see subst_tm*) -> tm
+(*| tobj  : dms(*self is next slot in abstract context -- see subst_tm*) -> tm *)
   | tapp  : tm -> lb -> tm -> tm
+  | tnew  : tm -> tm  (* new t, where t must be of type TCls *)
+  | tcls  : ty -> dms -> tm
+  | tmix  : tm -> tm -> tm
 
 with dm : Type :=
+  | dnone : dm
   | dfun : ty -> ty -> tm -> dm
   | dty  : ty -> dm
 
@@ -54,6 +60,7 @@ Fixpoint dms_to_list (ds: dms) : list dm :=
 
 Inductive vl : Type :=
   | vobj  : dms -> vl
+  | vcls  : ty -> dms -> vl
 .
 
 Definition venv := list vl.
@@ -67,6 +74,8 @@ Fixpoint index {X : Type} (n : id) (l : list X) : option X :=
     | [] => None
     | a :: l'  => if beq_nat n (length l') then Some a else index n l'
   end.
+
+(* (index 3 (4 :: 3 :: 2 :: 1 :: 0 :: nil)) === Some 3 *)
 
 
 Inductive closed: nat(*abstract, TVar false i*) -> nat(*concrete, TVar true j*) -> nat(*bound, TVarB k*)
@@ -111,6 +120,7 @@ Inductive closed: nat(*abstract, TVar false i*) -> nat(*concrete, TVar true j*) 
 
 Fixpoint open (k: nat) (u: ty) (T: ty) { struct T }: ty :=
   match T with
+    | TCls S1 T1 => TCls (open (S k) u S1) (open (S k) u T1)
     | TVar b x => TVar b x (* free var remains free. functional, so we can't check for conflict *)
     | TVarB x => if beq_nat k x then u else TVarB x
     | TTop        => TTop
@@ -125,6 +135,7 @@ Fixpoint open (k: nat) (u: ty) (T: ty) { struct T }: ty :=
 
 Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
   match T with
+    | TCls S1 T1   => TCls (subst U S1) (subst U T1)
     | TTop         => TTop
     | TBot         => TBot
     | TMem l T1 T2 => TMem l (subst U T1) (subst U T2)
@@ -140,16 +151,19 @@ Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
     | TOr T1 T2    => TOr (subst U T1) (subst U T2)
   end.
 
-
+(* substitutes the first variable of the abstract context by u, which refers to the concrete context *)
 Fixpoint subst_tm (u:nat) (T : tm) {struct T} : tm :=
   match T with
     | tvar true i         => tvar true i
     | tvar false i        => if beq_nat i 0 then (tvar true u) else tvar false (i-1)
-    | tobj ds             => tobj (subst_dms u ds)
-    | tapp t1 l t2          => tapp (subst_tm u t1) l (subst_tm u t2)
+    | tapp t1 l t2        => tapp (subst_tm u t1) l (subst_tm u t2)
+    | tnew t              => tnew (subst_tm u t)
+    | tcls S1 ds          => tcls (subst (TVar true u) S1) (subst_dms u ds)
+    | tmix t1 t2          => tmix (subst_tm u t1) (subst_tm u t2)
   end
 with subst_dm (u:nat) (d: dm) {struct d} : dm :=
   match d with
+    | dnone        => dnone
     | dty T        => dty (subst (TVar true u) T)
     | dfun T1 T2 t => dfun (subst (TVar true u) T1) (subst (TVar true u) T2) (subst_tm u t)
   end
@@ -161,6 +175,53 @@ with subst_dms (u:nat) (ds: dms) {struct ds} : dms :=
 
 Definition substt x T := (subst (TVar true x) T).
 Hint Immediate substt.
+
+(* rhs overrides lhs *)
+Definition mix_dm (d1 d2: dm) : dm := match d2 with
+| dnone => d1
+| _ => d2
+end.
+
+Fixpoint mix_dm_lists(ds1 ds2: list dm): dms := match ds1 with
+| d1 :: tl1 => match index (length tl1) ds2 with
+  | Some d2 => dcons (mix_dm d1 d2) (mix_dm_lists tl1 ds2)
+  | None    => dcons         d1     (mix_dm_lists tl1 ds2)
+  end
+| nil => dnil
+end.
+
+Definition mix_dms (ds1 ds2: dms) : dms := mix_dm_lists (dms_to_list ds1) (dms_to_list ds2).
+
+(* Reduction semantics  *)
+Inductive step : venv -> tm -> venv -> tm -> Prop :=
+(* reduction *)
+| ST_New : forall G1 S ds,
+    step G1 (tnew (tcls S ds)) (vobj (subst_dms (length G1) ds) :: G1) (tvar true (length G1))
+| ST_Cls : forall G1 S ds,
+    step G1 (tcls S ds) ((vcls S ds) :: G1) (tvar true (length G1))
+| ST_Mix : forall G1 S1 ds1 S2 ds2,
+    step G1 (tmix (tcls S1 ds1) (tcls S2 ds2)) G1 (tcls (TAnd S1 S2) (mix_dms ds1 ds2))
+| ST_AppAbs : forall G1 f l x ds T1 T2 t12,
+    index f G1 = Some (vobj ds) ->
+    index l (dms_to_list ds) = Some (dfun T1 T2 t12) ->
+    step G1 (tapp (tvar true f) l (tvar true x)) G1 (subst_tm x t12)
+(* congruence *)
+| ST_App1 : forall G1 G1' t1 t1' l t2,
+    step G1 t1 G1' t1' ->
+    step G1 (tapp t1 l t2) G1' (tapp t1' l t2)
+| ST_App2 : forall G1 G1' f t2 l t2',
+    step G1 t2 G1' t2' ->
+    step G1 (tapp (tvar true f) l t2) G1' (tapp (tvar true f) l t2')
+| ST_New1 : forall G1 G1' t1 t1',
+    step G1 t1 G1' t1' ->
+    step G1 (tnew t1) G1' (tnew t1')
+| ST_Mix1 : forall G1 G1' t1 t1' t2,
+    step G1 t1 G1' t1' ->
+    step G1 (tmix t1 t2) G1' (tmix t1' t2)
+| ST_Mix2 : forall G1 G1' t1 t2 t2',
+    step G1 t2 G1' t2' ->
+    step G1 (tmix t1 t2) G1' (tmix t1 t2')
+.
 
 Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
   | T_Vary : forall GH G1 x ds ds' T T' n1,
@@ -184,11 +245,20 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
       T1' = (open 0 (TVar b x) T1) ->
       closed (length GH) (length G1) 0 T1' ->
       has_type GH G1 (tvar b x) T1' (S n1)
-  | T_Obj : forall GH G1 ds T T' n1,
-      dms_has_type (T'::GH) G1 ds T' n1 ->
-      closed (length GH) (length G1) 1 T ->
-      T' = open 0 (TVar false (length GH)) T ->
-      has_type GH G1 (tobj ds) (TBind T) (S n1)
+  | T_New : forall GH G1 t1 S1 T1 n1 n2,
+      has_type GH G1 t1 (TCls S1 T1) n1 ->
+      stp GH G1 T1 S1 n2 -> (* (actual type) <: (intersection of all self type requirements) *)
+      has_type GH G1 (tnew t1) (TBind T1) (S (n1+n2))
+  | T_Cls : forall GH G1 S1 T1 ds n1,
+      dms_has_type ((open 0 (TVar false (length GH)) S1) :: GH) G1
+                 ds (open 0 (TVar false (length GH)) T1) n1 ->
+      closed (length GH) (length G1) 1 S1 ->
+      closed (length GH) (length G1) 1 T1 ->
+      has_type GH G1 (tcls S1 ds) (TCls S1 T1) (S n1)
+  | T_Mix : forall GH G1 t1 t2 S1 S2 T1 T2 n1 n2,
+      has_type GH G1 t1 (TCls S1 T1) n1 ->
+      has_type GH G1 t2 (TCls S2 T2) n2 ->
+      has_type GH G1 (tmix t1 t2) (TCls (TAnd S1 S2) (TAnd T1 T2)) (S (n1+n2))
   | T_App : forall l T1 T2 GH G1 t1 t2 n1 n2,
       has_type GH G1 t1 (TFun l T1 T2) n1 ->
       has_type GH G1 t2 T1 n2 ->
@@ -224,6 +294,8 @@ with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
       dms_has_type GH G1 (dcons (dfun T11 T12 t12) ds) T (S (n1+n2))
 
 with stp: tenv -> venv -> ty -> ty -> nat -> Prop :=
+| stp_cls_refl: forall GH G1 S1 T n1,
+    stp GH G1 (TCls S1 T) (TCls S1 T) (S n1)
 | stp_bot: forall GH G1 T n1,
     closed (length GH) (length G1) 0  T ->
     stp GH G1 TBot T (S n1)
@@ -2552,23 +2624,6 @@ Proof.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
-
-
-(* Reduction semantics  *)
-Inductive step : venv -> tm -> venv -> tm -> Prop :=
-| ST_Obj : forall G1 D,
-    step G1 (tobj D) (vobj (subst_dms (length G1) D)::G1) (tvar true (length G1))
-| ST_AppAbs : forall G1 f l x ds T1 T2 t12,
-    index f G1 = Some (vobj ds) ->
-    index l (dms_to_list ds) = Some (dfun T1 T2 t12) ->
-    step G1 (tapp (tvar true f) l (tvar true x)) G1 (subst_tm x t12)
-| ST_App1 : forall G1 G1' t1 t1' l t2,
-    step G1 t1 G1' t1' ->
-    step G1 (tapp t1 l t2) G1' (tapp t1' l t2)
-| ST_App2 : forall G1 G1' f t2 l t2',
-    step G1 t2 G1' t2' ->
-    step G1 (tapp (tvar true f) l t2) G1' (tapp (tvar true f) l t2')
-.
 
 
 Lemma stp_subst_narrow_z: forall GH0 TX G1 T1 T2 x m n1 n2,
