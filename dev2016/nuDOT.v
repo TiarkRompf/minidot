@@ -80,6 +80,10 @@ Fixpoint index {X : Type} (n : id) (l : list X) : option X :=
 
 Inductive closed: nat(*abstract, TVar false i*) -> nat(*concrete, TVar true j*) -> nat(*bound, TVarB k*)
                   -> ty -> Prop :=
+| cl_cls: forall i j k S1 T1,
+    closed i j (S k) S1 ->
+    closed i j (S k) T1 ->
+    closed i j k (TCls S1 T1)
 | cl_bot: forall i j k,
     closed i j k TBot
 | cl_top: forall i j k,
@@ -176,6 +180,24 @@ with subst_dms (u:nat) (ds: dms) {struct ds} : dms :=
 Definition substt x T := (subst (TVar true x) T).
 Hint Immediate substt.
 
+(*
+Fixpoint prepend_dnone(n: nat)(ds: dms): dms := match n with
+| O => ds
+| S m => dcons dnone (prepend_dnone m ds)
+end.
+
+(* by how much is ds1 shorter than ds2? *)
+Fixpoint missing_length(ds1 ds2: dms): nat := match ds2 with
+| dcons d2 tl2 => match ds1 with
+  | dcons d1 tl1 => missing_length tl1 tl2
+  | dnil => S (missing_length dnil tl2)
+  end
+| dnil => O
+end.
+
+(* make ds1 at least as long as ds2 *)
+Definition as_long_as(ds1 ds2: dms): dms := (prepend_dnone (missing_length ds1 ds2) ds1).
+
 (* rhs overrides lhs *)
 Definition mix_dm (d1 d2: dm) : dm := match d2 with
 | dnone => d1
@@ -191,6 +213,93 @@ Fixpoint mix_dm_lists(ds1 ds2: list dm): dms := match ds1 with
 end.
 
 Definition mix_dms (ds1 ds2: dms) : dms := mix_dm_lists (dms_to_list ds1) (dms_to_list ds2).
+*)
+
+Fixpoint zip_n{A: Type}(n: nat)(l1 l2: list A)(f: A -> A -> A) : list A := match n with
+| O => nil
+| S m => match (index m l1), (index m l2) with
+   | Some a1, Some a2 => (f a1 a2) :: (zip_n m l1 l2 f)
+   | Some a1, None    =>    a1     :: (zip_n m l1 l2 f)
+   | None   , Some a2 =>       a2  :: (zip_n m l1 l2 f)
+   | None   , None   =>               (zip_n m l1 l2 f)
+   end
+end.
+
+Definition zip{A: Type}(l1 l2: list A)(f: A -> A -> A) : list A :=
+  zip_n (max (length l1) (length l2)) l1 l2 f.
+
+(*
+Definition override_lhs{A: Type}(l1 l2: list (option A)): list (option A) :=
+  zip l1 l2 (fun o1 o2 => match o2 with
+                          | Some x2 => Some x2
+                          | None => o1
+                          end).
+*)
+
+(* termination measure??
+Fixpoint zip{A: Type}(l1 l2: list A)(f: A -> A -> A) : list A := match l1 with
+| h1 :: t1 => match l2 with
+  | h2 :: t2 => if beq_nat (length t1) (length t2)
+    then (f h1 h2) :: (zip t1 t2 f)
+    else if ble_nat (length t1) (length t2) then h2 :: (zip l1 t2 f)
+                                            else h1 :: (zip t1 l2 f)
+  | nil => l1
+  end
+| nil => l2
+end.
+*)
+
+Fixpoint listOfNone{A: Type}(n: nat): list (option A) := match n with
+| O => nil
+| S m => None :: (listOfNone m)
+end.
+
+Fixpoint sort_rcd_by_label(T: ty): list (option ty) := match T with
+| TAnd T1 T2 => zip (sort_rcd_by_label T1) (sort_rcd_by_label T2)
+                    (fun o1 o2 => match o1, o2 with
+                     | Some U1, Some U2 => Some (TAnd U1 U2)
+                     | Some U1, None    => Some U1
+                     | None   , Some U2 => Some U2
+                     | None   , None    => None
+                     end)
+| TMem l T1 T2 => (Some T) :: (listOfNone l)
+| TFun l T1 T2 => (Some T) :: (listOfNone l)
+| _ => nil
+end.
+
+Fixpoint list_to_rcd(l: list (option ty)): ty := match l with
+| Some T :: tail => TAnd T (list_to_rcd tail)
+| None :: tail => list_to_rcd tail
+| nil => TTop
+end.
+
+Definition override_rcd(T1 T2: ty): ty :=
+  list_to_rcd (zip (sort_rcd_by_label T1)
+                   (sort_rcd_by_label T2)
+                   (fun o1 o2 => match o2 with
+                                 | Some U2 => Some U2
+                                 | None => o1
+                                 end)).
+
+(*
+Definition override_rcd(T1 T2: ty): ty :=
+  list_to_rcd (override_lhs (sort_rcd_by_label T1) (sort_rcd_by_label T2)).
+*)
+
+Fixpoint list_to_dms (l: list dm): dms :=
+  match l with
+    | nil => dnil
+    | d :: ds => dcons d (list_to_dms ds)
+  end.
+
+Definition override_dms(ds1 ds2: dms): dms :=
+  list_to_dms (zip (dms_to_list ds1)
+                   (dms_to_list ds2)
+                   (fun d1 d2 => match d2 with
+                                 | dnone => d1
+                                 | _ => d2
+                                 end)).
+
 
 (* Reduction semantics  *)
 Inductive step : venv -> tm -> venv -> tm -> Prop :=
@@ -245,9 +354,13 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
       T1' = (open 0 (TVar b x) T1) ->
       closed (length GH) (length G1) 0 T1' ->
       has_type GH G1 (tvar b x) T1' (S n1)
+  (* T1 only has type aliases, so if S1 is a supertype of T1, it has good bounds *)
   | T_New : forall GH G1 t1 S1 T1 n1 n2,
       has_type GH G1 t1 (TCls S1 T1) n1 ->
-      stp GH G1 T1 S1 n2 -> (* (actual type) <: (intersection of all self type requirements) *)
+      (* (actual type) <: (intersection of all self type requirements) *)
+      stp ((open 0 (TVar false (length GH)) T1)::GH) G1
+           (open 0 (TVar false (length GH)) T1) (open 0 (TVar false (length GH)) S1)
+           n2 ->
       has_type GH G1 (tnew t1) (TBind T1) (S (n1+n2))
   | T_Cls : forall GH G1 S1 T1 ds n1,
       dms_has_type ((open 0 (TVar false (length GH)) S1) :: GH) G1
@@ -295,6 +408,8 @@ with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
 
 with stp: tenv -> venv -> ty -> ty -> nat -> Prop :=
 | stp_cls_refl: forall GH G1 S1 T n1,
+    closed (length GH) (length G1) 1 S1 ->
+    closed (length GH) (length G1) 1 T ->
     stp GH G1 (TCls S1 T) (TCls S1 T) (S n1)
 | stp_bot: forall GH G1 T n1,
     closed (length GH) (length G1) 0  T ->
@@ -654,6 +769,7 @@ Proof.
   intros n. induction n. repeat split; intros; omega.
   repeat split; intros; inversion H.
   (* stp *)
+  - econstructor; eapply closed_extend; assumption.
   - econstructor. eapply closed_extend. eauto.
   - econstructor. eapply closed_extend. eauto.
   - econstructor. eauto. eauto.
@@ -694,8 +810,11 @@ Proof.
   - econstructor. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
-  - econstructor. eapply IHn. eauto. omega. eapply closed_extend. eauto. eauto.
-  - econstructor. subst. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eapply closed_extend. eauto.
+  - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
+  - econstructor. eapply IHn. eauto. omega. eapply closed_extend. eauto.
+    eauto. eapply closed_extend. eauto.
+  - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
+  - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eapply closed_extend. eauto.
   - eapply T_AppVar. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
   (* dms_has_type *)
@@ -721,15 +840,22 @@ Lemma closed_upgrade: forall i j k k1 T1,
   closed i j k T1 -> k <= k1 -> closed i j k1 T1.
 Proof.
   intros. generalize dependent k1. induction H; intros; econstructor; eauto.
+  eapply IHclosed1. omega.
+  eapply IHclosed2. omega.
   eapply IHclosed2. omega.
   omega.
   eapply IHclosed. omega.
 Qed.
 
-Lemma closed_open: forall j k n b V T, closed k n (j+1) T -> closed k n j (TVar b V) -> closed k n j (open j (TVar b V) T).
+Lemma closed_open: forall j k n b V T,
+  closed k n (j+1) T ->
+  closed k n j (TVar b V) ->
+  closed k n j (open j (TVar b V) T).
 Proof.
-  intros. generalize dependent j. induction T; intros; inversion H; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
-
+  intros. generalize dependent j.
+  induction T; intros; inversion H; try econstructor; try eapply IHT1; eauto;
+    try eapply IHT2; eauto; try eapply IHT; eauto.
+  - econstructor.
   - eapply closed_upgrade; eauto.
   - Case "TVarB". simpl.
     case_eq (beq_nat j i); intros E. eauto.
@@ -766,7 +892,7 @@ Proof.
   intros n. induction n. repeat split; intros; omega.
   repeat split; intros; inversion H; destruct IHn as [IHS1 [IHS2 [IHV1 [IHV2 [IHH1 [IHH2 [IHT IHD]]]]]]].
   (* stp left *)
-  - econstructor.
+  - eapply closed_upgrade_gh. econstructor. eauto.
   - eauto.
   - econstructor. eapply IHS2. eauto. omega. eauto.
   - econstructor. eapply IHS2. eauto. omega. eapply IHS1. eauto. omega.
@@ -967,6 +1093,7 @@ Proof. intros. eapply beq_nat_true_iff. eauto. Qed.
 
 Fixpoint tsize (T: ty) { struct T }: nat :=
   match T with
+    | TCls S1 T1 => S (tsize S1 + tsize T1)
     | TVar b x => 1
     | TVarB x => 1
     | TTop        => 1
@@ -2935,6 +3062,8 @@ Qed.
 Theorem type_safety : forall G t T n1,
   has_type [] G t T n1 ->
   (exists x, t = tvar true x) \/
+  (exists S1 ds, t = tcls S1 ds) \/
+(**)
   (exists G' t' n2, step G t (G'++G) t' /\ has_type [] (G'++G) t' T n2).
 Proof.
   intros.
