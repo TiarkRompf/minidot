@@ -180,41 +180,6 @@ with subst_dms (u:nat) (ds: dms) {struct ds} : dms :=
 Definition substt x T := (subst (TVar true x) T).
 Hint Immediate substt.
 
-(*
-Fixpoint prepend_dnone(n: nat)(ds: dms): dms := match n with
-| O => ds
-| S m => dcons dnone (prepend_dnone m ds)
-end.
-
-(* by how much is ds1 shorter than ds2? *)
-Fixpoint missing_length(ds1 ds2: dms): nat := match ds2 with
-| dcons d2 tl2 => match ds1 with
-  | dcons d1 tl1 => missing_length tl1 tl2
-  | dnil => S (missing_length dnil tl2)
-  end
-| dnil => O
-end.
-
-(* make ds1 at least as long as ds2 *)
-Definition as_long_as(ds1 ds2: dms): dms := (prepend_dnone (missing_length ds1 ds2) ds1).
-
-(* rhs overrides lhs *)
-Definition mix_dm (d1 d2: dm) : dm := match d2 with
-| dnone => d1
-| _ => d2
-end.
-
-Fixpoint mix_dm_lists(ds1 ds2: list dm): dms := match ds1 with
-| d1 :: tl1 => match index (length tl1) ds2 with
-  | Some d2 => dcons (mix_dm d1 d2) (mix_dm_lists tl1 ds2)
-  | None    => dcons         d1     (mix_dm_lists tl1 ds2)
-  end
-| nil => dnil
-end.
-
-Definition mix_dms (ds1 ds2: dms) : dms := mix_dm_lists (dms_to_list ds1) (dms_to_list ds2).
-*)
-
 Fixpoint zip_n{A: Type}(n: nat)(l1 l2: list A)(f: A -> A -> A) : list A := match n with
 | O => nil
 | S m => match (index m l1), (index m l2) with
@@ -227,27 +192,6 @@ end.
 
 Definition zip{A: Type}(l1 l2: list A)(f: A -> A -> A) : list A :=
   zip_n (max (length l1) (length l2)) l1 l2 f.
-
-(*
-Definition override_lhs{A: Type}(l1 l2: list (option A)): list (option A) :=
-  zip l1 l2 (fun o1 o2 => match o2 with
-                          | Some x2 => Some x2
-                          | None => o1
-                          end).
-*)
-
-(* termination measure??
-Fixpoint zip{A: Type}(l1 l2: list A)(f: A -> A -> A) : list A := match l1 with
-| h1 :: t1 => match l2 with
-  | h2 :: t2 => if beq_nat (length t1) (length t2)
-    then (f h1 h2) :: (zip t1 t2 f)
-    else if ble_nat (length t1) (length t2) then h2 :: (zip l1 t2 f)
-                                            else h1 :: (zip t1 l2 f)
-  | nil => l1
-  end
-| nil => l2
-end.
-*)
 
 Fixpoint listOfNone{A: Type}(n: nat): list (option A) := match n with
 | O => nil
@@ -280,11 +224,6 @@ Definition override_rcd(T1 T2: ty): ty :=
                                  | Some U2 => Some U2
                                  | None => o1
                                  end)).
-
-(*
-Definition override_rcd(T1 T2: ty): ty :=
-  list_to_rcd (override_lhs (sort_rcd_by_label T1) (sort_rcd_by_label T2)).
-*)
 
 Fixpoint list_to_dms (l: list dm): dms :=
   match l with
