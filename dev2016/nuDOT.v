@@ -304,12 +304,13 @@ Definition override_dms(ds1 ds2: dms): dms :=
 (* Reduction semantics  *)
 Inductive step : venv -> tm -> venv -> tm -> Prop :=
 (* reduction *)
-| ST_New : forall G1 S ds,
-    step G1 (tnew (tcls S ds)) (vobj (subst_dms (length G1) ds) :: G1) (tvar true (length G1))
+| ST_New : forall x G1 S ds,
+    index x G1 = Some (vcls S ds) ->
+    step G1 (tnew (tvar true x)) (vobj (subst_dms (length G1) ds) :: G1) (tvar true (length G1))
 | ST_Cls : forall G1 S ds,
     step G1 (tcls S ds) ((vcls S ds) :: G1) (tvar true (length G1))
 | ST_Mix : forall G1 S1 ds1 S2 ds2,
-    step G1 (tmix (tcls S1 ds1) (tcls S2 ds2)) G1 (tcls (TAnd S1 S2) (mix_dms ds1 ds2))
+    step G1 (tmix (tcls S1 ds1) (tcls S2 ds2)) G1 (tcls (TAnd S1 S2) (override_dms ds1 ds2))
 | ST_AppAbs : forall G1 f l x ds T1 T2 t12,
     index f G1 = Some (vobj ds) ->
     index l (dms_to_list ds) = Some (dfun T1 T2 t12) ->
@@ -371,7 +372,7 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
   | T_Mix : forall GH G1 t1 t2 S1 S2 T1 T2 n1 n2,
       has_type GH G1 t1 (TCls S1 T1) n1 ->
       has_type GH G1 t2 (TCls S2 T2) n2 ->
-      has_type GH G1 (tmix t1 t2) (TCls (TAnd S1 S2) (TAnd T1 T2)) (S (n1+n2))
+      has_type GH G1 (tmix t1 t2) (TCls (TAnd S1 S2) (override_rcd T1 T2)) (S (n1+n2))
   | T_App : forall l T1 T2 GH G1 t1 t2 n1 n2,
       has_type GH G1 t1 (TFun l T1 T2) n1 ->
       has_type GH G1 t2 T1 n2 ->
@@ -390,6 +391,9 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
 with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
   | D_Nil : forall GH G1 n1,
       dms_has_type GH G1 dnil TTop (S n1)
+  | D_None : forall GH G1 ds T n1,
+      dms_has_type GH G1 ds T n1 ->
+      dms_has_type GH G1 (dcons dnone ds) T (S n1)
   | D_Mem : forall GH G1 l T11 ds TS T n1,
       dms_has_type GH G1 ds TS n1 ->
       closed (length GH) (length G1) 0 T11 ->
@@ -3062,8 +3066,6 @@ Qed.
 Theorem type_safety : forall G t T n1,
   has_type [] G t T n1 ->
   (exists x, t = tvar true x) \/
-  (exists S1 ds, t = tcls S1 ds) \/
-(**)
   (exists G' t' n2, step G t (G'++G) t' /\ has_type [] (G'++G) t' T n2).
 Proof.
   intros.
