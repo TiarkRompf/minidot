@@ -184,8 +184,8 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
       has_type GH G1 (tvar b x) T1' (S n1)
   | T_Obj : forall GH G1 ds T T' n1,
       dms_has_type (T'::GH) G1 ds T' n1 ->
-      closed (length GH) (length G1) 1 T ->
       T' = open 0 (TVar false (length GH)) T ->
+      closed (length GH) (length G1) 1 T ->
       has_type GH G1 (tobj ds) (TBind T) (S n1)
   | T_App : forall l T1 T2 GH G1 t1 t2 n1 n2,
       has_type GH G1 t1 (TFun l T1 T2) n1 ->
@@ -620,7 +620,7 @@ Proof.
   - econstructor. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
-  - econstructor. eapply IHn. eauto. omega. eapply closed_extend. eauto. eauto.
+  - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
   - econstructor. subst. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eapply closed_extend. eauto.
   - eapply T_AppVar. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
@@ -2786,10 +2786,10 @@ Proof.
     edestruct IHniD with (GH:=T'::GH1) as [? IH]. subst. eauto. omega. subst. eauto.
     subst. simpl.
     eexists. eapply T_Obj. eauto.
-    eapply closed_subst. rewrite app_length in *. simpl in *. rewrite map_length. eauto.
-    econstructor. eapply has_type_closed1. eauto.
     rewrite app_length. simpl. unfold substt. rewrite subst_open_commute_z.
     rewrite map_length. eauto.
+    eapply closed_subst. rewrite app_length in *. simpl in *. rewrite map_length. eauto.
+    econstructor. eapply has_type_closed1. eauto.
   - Case "app". subst. simpl.
     edestruct IHniT as [? IH1]. eapply H2. omega. eauto.
     edestruct IHniT as [? IH2]. eapply H3. omega. eauto.
