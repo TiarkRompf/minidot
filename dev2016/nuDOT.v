@@ -273,6 +273,13 @@ Inductive step : venv -> tm -> venv -> tm -> Prop :=
 .
 
 Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
+  | T_Varc : forall GH G1 x ds S1 T1 n1,
+      index x G1 = Some (vcls S1 ds) ->
+      dms_has_type ((open 0 (TVar false (length GH)) S1) :: GH) G1
+                 ds (open 0 (TVar false (length GH)) T1) n1 ->
+      closed 0 (length G1) 1 S1 ->
+      closed 0 (length G1) 1 T1 ->
+      has_type GH G1 (tvar true x) (TCls S1 T1) (S n1)
   | T_Vary : forall GH G1 x ds ds' T T' n1,
       index x G1 = Some (vobj ds) ->
       dms_has_type [T'] G1 ds' T' n1 ->
@@ -766,6 +773,7 @@ Proof.
   - eapply htp_bind. eapply IHn. eauto. omega. eapply closed_extend. eauto.
   - eapply htp_sub. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eauto.
   (* has_type *)
+  - econstructor. eapply index_extend. eauto. eapply IHn. eauto. omega. eapply closed_extend. eauto. eapply closed_extend. eauto.
   - econstructor. eapply index_extend. eauto. eapply IHn. eauto. omega. eauto. eauto. eapply closed_extend. eauto.
   - econstructor. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
@@ -933,6 +941,7 @@ Proof.
   - eapply IHH1 in H1. eapply closed_open. simpl. eapply closed_upgrade_gh. eauto. omega. econstructor. eauto. omega.
   - eapply closed_upgrade_gh. eapply IHS2. eauto. omega. rewrite H4. rewrite app_length. omega.
   (* has_type *)
+  - subst. econstructor; eapply closed_upgrade_gh; eauto; omega.
   - subst. eapply closed_upgrade_gh. eauto. omega.
   - eauto.
   - econstructor. eapply closed_upgrade_gh. eauto. omega.
@@ -2920,6 +2929,19 @@ Proof.
   intro ni. induction ni. split; intros; omega. destruct IHni as [IHniT IHniD].
   split;
   intros; remember (GH++[TX]) as GH0; revert GH HeqGH0; inversion H; intros.
+  - Case "varc". subst.
+    assert (substt x S1 = S1) as EqS1. {
+      erewrite subst_closed_id. reflexivity. eauto.
+    }
+    assert (substt x T1 = T1) as EqT1. {
+      erewrite subst_closed_id. reflexivity. eauto.
+    }
+    rewrite substt_cls. rewrite EqS1. rewrite EqT1.
+    simpl. eexists. eapply T_Varc; eauto.
+    rewrite map_length in *.  subst.
+ admit. eauto. eauto.
+    rewrite EqT. reflexivity. rewrite EqT. eauto.
+
   - Case "vary".
     assert (substt x T = T) as EqT. {
       erewrite subst_closed_id. reflexivity. eauto.
@@ -3235,6 +3257,7 @@ apply (dms_hastp_subst_1 _ _ _ _ _ _ _ H5) in H5. (* narrowing/subst in H5 *)
     simpl. omega. simpl. econstructor. omega. simpl. econstructor. omega.
     simpl. rewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity. eauto.
     eapply closed_extend. eauto.
+*)
   - Case "app". subst.
     assert (closed (length ([]:tenv)) (length G1) 0 (TFun l T1 T)) as TF. eapply has_type_closed. eauto.
     assert ((exists x : id, t2 = tvar true x) \/
