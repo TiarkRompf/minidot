@@ -12,8 +12,6 @@ Require Export SfLib.
 Require Export Arith.EqNat.
 Require Export Arith.Lt.
 
-Module DOT.
-
 Definition id := nat.
 Definition lb := nat.
 
@@ -3022,6 +3020,3 @@ Proof.
       ev. subst.
       right. repeat eexists. eauto. eapply T_Sub. eauto. eapply stp_extend_mult. eauto.
 Qed.
-
-
-End DOT.
