@@ -248,8 +248,10 @@ Inductive step : venv -> tm -> venv -> tm -> Prop :=
     step G1 (tnew (tvar true x)) (vobj (subst_dms (length G1) ds) :: G1) (tvar true (length G1))
 | ST_Cls : forall G1 S ds,
     step G1 (tcls S ds) ((vcls S ds) :: G1) (tvar true (length G1))
-| ST_Mix : forall G1 S1 ds1 S2 ds2,
-    step G1 (tmix (tcls S1 ds1) (tcls S2 ds2)) G1 (tcls (TAnd S1 S2) (override_dms ds1 ds2))
+| ST_Mix : forall x1 x2 G1 S1 ds1 S2 ds2,
+    index x1 G1 = Some (vcls S1 ds1) ->
+    index x2 G1 = Some (vcls S2 ds2) ->
+    step G1 (tmix (tvar true x1) (tvar true x2)) G1 (tcls (TAnd S1 S2) (override_dms ds1 ds2))
 | ST_AppAbs : forall G1 f l x ds T1 T2 t12,
     index f G1 = Some (vobj ds) ->
     index l (dms_to_list ds) = Some (dfun T1 T2 t12) ->
@@ -267,9 +269,9 @@ Inductive step : venv -> tm -> venv -> tm -> Prop :=
 | ST_Mix1 : forall G1 G1' t1 t1' t2,
     step G1 t1 G1' t1' ->
     step G1 (tmix t1 t2) G1' (tmix t1' t2)
-| ST_Mix2 : forall G1 G1' t1 t2 t2',
+| ST_Mix2 : forall G1 G1' x t2 t2',
     step G1 t2 G1' t2' ->
-    step G1 (tmix t1 t2) G1' (tmix t1 t2')
+    step G1 (tmix (tvar true x) t2) G1' (tmix (tvar true x) t2')
 .
 
 (*
@@ -3189,7 +3191,38 @@ Lemma narrow_dms_has_type: forall G1 T1 S1 n1 ds n2,
   exists n3, dms_has_type [T1] G1 ds T1 n3. (* TODO does this hold? *)
 Admitted.
 
-(* TODO this is only type safety if we also prove that step is unique *)
+Lemma invert_step_mix: forall G1 G2 t1 t2 t1' t2',
+  step G1 (tmix t1 t2) G2 (tmix t1' t2') ->
+  t1 = t1' \/ t2 = t2'.
+Proof.
+  intros. inversion H; subst; auto.
+Qed.
+
+Lemma step_unique: forall G G1 G2 t t1 t2,
+  step G t G1 t1 ->
+  step G t G2 t2 ->
+  G1 = G2 /\ t1 = t2.
+Proof.
+  intros. generalize dependent t2. generalize dependent G2.
+  induction H; intros ? ? H_other;
+  inversion H_other; subst;
+  (* transitivity *)
+  repeat match goal with
+    | E1: ?X = ?Y, E2: ?X = ?Z |- _ => assert (EE: Y = Z) by (
+        transitivity X; [symmetry; assumption | assumption]
+      ); inversion EE; clear EE E1 E2; subst
+  end;
+  subst; eauto;
+  (* contradiction: vars don't step *)
+  try match goal with
+  | C: step _ (tvar _ _) _ _ |- _ => inversion C
+  end;
+  (* applying IH *)
+  match goal with
+  | IH: forall _ _, _ -> _ |- _ => edestruct IH; eauto; subst; eauto
+  end.
+Qed.
+
 Theorem type_safety : forall G t T n1,
   has_type [] G t T n1 ->
   (exists x, t = tvar true x) \/
