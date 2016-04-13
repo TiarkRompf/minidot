@@ -3188,15 +3188,17 @@ Qed.
 Lemma narrow_dms_has_type: forall G1 T1 S1 n1 ds n2,
   stp [T1] G1 T1 S1 n1 ->
   dms_has_type [S1] G1 ds T1 n2 ->
-  exists n3, dms_has_type [T1] G1 ds T1 n3. (* TODO does this hold? *)
+  exists n3, dms_has_type [T1] G1 ds T1 n3. (* TODO does this hold?
+probably yes, should be similar to stp_narrow_aux *)
 Admitted.
 
-Lemma invert_step_mix: forall G1 G2 t1 t2 t1' t2',
-  step G1 (tmix t1 t2) G2 (tmix t1' t2') ->
-  t1 = t1' \/ t2 = t2'.
-Proof.
-  intros. inversion H; subst; auto.
-Qed.
+Lemma mix_dms_hastp: forall G1 S1 S2 T1 T2 ds1 ds2 n1 n2,
+  dms_has_type [open 0 (TVar false 0) S1] G1 ds1 (open 0 (TVar false 0) T1) n1 ->
+  dms_has_type [open 0 (TVar false 0) S2] G1 ds2 (open 0 (TVar false 0) T2) n2 ->
+  exists n3,
+    dms_has_type [TAnd (open 0 (TVar false 0) S1) (open 0 (TVar false 0) S2)] G1 
+                 (override_dms ds1 ds2) (open 0 (TVar false 0) (override_rcd T1 T2)) n3.
+Admitted.
 
 Lemma step_unique: forall G G1 G2 t t1 t2,
   step G t G1 t1 ->
@@ -3281,18 +3283,48 @@ Proof.
         { eapply closed_extend. simpl. eauto. }
     + SCase "cong".
       ev. repeat eexists. eapply ST_New1. eauto. eapply T_New. eauto. eapply stp_extend_mult. eauto.
-  - Case "cls". subst. admit.
-  - Case "mix". subst. admit.
-(*
-  - Case "obj". subst. right.
-    repeat eexists. rewrite <- app_cons1. eapply ST_Obj.
-    eapply T_VarPack. eapply T_Vary.
-    simpl. rewrite beq_nat_true_eq. eauto. eapply dms_has_type_extend. eauto. eauto. eauto.
-    eapply closed_subst. eapply closed_open. eapply closed_extend. eapply closed_upgrade_gh. eauto.
-    simpl. omega. simpl. econstructor. omega. simpl. econstructor. omega.
-    simpl. rewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity. eauto.
-    eapply closed_extend. eauto.
-*)
+  - Case "cls". subst. right. repeat eexists.
+    + rewrite <- app_cons1. eapply ST_Cls.
+    + eapply T_Varc.
+      * simpl. rewrite beq_nat_true_eq. eauto.
+      * eapply dms_has_type_extend. eauto.
+      * eapply closed_extend. eauto.
+      * eapply closed_extend. eauto.
+  - Case "mix". subst.
+    assert (IH1: (exists x : id, t1 = tvar true x) \/
+                 (exists (G' : list vl) (t' : tm) (n2 : nat),
+                   step G1 t1 (G' ++ G1) t' /\ has_type [] (G' ++ G1) t' (TCls S1 T1) n2)). {
+      eapply IHhas_type1; eauto. inversion CL.
+      admit. (* TODO does not really hold because T2 might override non-closed stuff of T1,
+     so we're not sure if T1 is closed. But that's only about closed-ness, should be fixable somehow.*)
+    }
+    assert (IH2: (exists x : id, t2 = tvar true x) \/
+                 (exists (G' : list vl) (t' : tm) (n2 : nat),
+                   step G1 t2 (G' ++ G1) t' /\ has_type [] (G' ++ G1) t' (TCls S2 T2) n2)). {
+      eapply IHhas_type2; eauto. inversion CL. inversion H6. subst. econstructor. eauto. admit. (* TODO from follows from H7 *) 
+    }
+    right.
+    destruct IH1 as [IH1 | IH1].
+    + SCase "t1-val".
+      destruct IH2 as [IH2 | IH2].
+      * SSCase "t2-val".
+        ev. subst. apply hastp_inv in H. apply hastp_inv in H0.
+        ev. inversion H. inversion H0. subst.
+        destruct (mix_dms_hastp _ _ _ _ _ _ _ _ _ H4 H14) as [n4 C4].
+        repeat eexists.
+        { rewrite app_nil_l. eapply ST_Mix; eauto. }
+        { eapply T_Cls; simpl.
+          - eapply C4.
+          - eauto.
+          - apply closed_override_rcd; assumption. }
+      * SSCase "t2-step".
+        ev. subst. repeat eexists. eapply ST_Mix2. eauto. eapply T_Mix.
+        { eapply has_type_extend_mult. eauto. }
+        { eauto. }
+    + SCase "t1-step".
+      ev. subst. repeat eexists. eapply ST_Mix1. eauto. eapply T_Mix.
+      { eauto. }
+      { eapply has_type_extend_mult. eauto. }
   - Case "app". subst.
     assert (closed (length ([]:tenv)) (length G1) 0 (TFun l T1 T)) as TF. eapply has_type_closed. eauto.
     assert ((exists x : id, t2 = tvar true x) \/
