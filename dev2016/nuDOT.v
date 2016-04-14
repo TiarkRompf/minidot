@@ -2509,6 +2509,167 @@ Proof.
   eauto.
 Qed.
 
+Lemma hastp_narrow_aux: forall n,
+  (forall GH G t T n0,
+  has_type GH G t T n0 -> n0 <= n ->
+  forall GH1 GH0 GH' TX1 TX2,
+    GH=GH1++[TX2]++GH0 ->
+    GH'=GH1++[TX1]++GH0 ->
+    stpd2 GH0 G TX1 TX2 ->
+    exists n2, has_type GH' G t T n2) /\
+  (forall GH G ds T n0,
+  dms_has_type GH G ds T n0 -> n0 <= n ->
+  forall GH1 GH0 GH' TX1 TX2,
+    GH=GH1++[TX2]++GH0 ->
+    GH'=GH1++[TX1]++GH0 ->
+    stpd2 GH0 G TX1 TX2 ->
+    exists n2, dms_has_type GH' G ds T n2).
+Proof.
+  intros n.
+  induction n.
+  - Case "z". split; intros; inversion H0; subst; inversion H; eauto.
+  - Case "s n". destruct IHn as [IH1 IH2]. split. {
+    intros GH G t T n0 H Le. inversion H; subst;
+    intros GH1 GH0 GH' TX1 TX2 EGH EGH' HX;
+    assert (length GH' = length GH) as EGHLEN by solve [
+      subst; repeat rewrite app_length; simpl; reflexivity
+    ].
+    + SCase "T_Varc". eauto.
+    + SCase "T_Vary". eauto.
+    + SCase "T_Varz".
+      case_eq (beq_nat x (length GH0)); intros E.
+      * assert (index x ([TX2]++GH0) = Some TX2) as A2. {
+          simpl. rewrite E. reflexivity.
+        }
+        assert (index x GH = Some TX2) as A2'. {
+          rewrite EGH. eapply index_extend_mult. apply A2.
+        }
+        rewrite A2' in H0. inversion H0. subst.
+        destruct HX as [nx HX].
+        eexists. eapply T_Sub.
+        - eapply T_Varz.
+          { eapply index_extend_mult. simpl. rewrite E. reflexivity. }
+          { eapply stp_closed1 in HX. eapply closed_upgrade_gh.
+            * eapply HX.
+            * do 2 rewrite app_length. omega. }
+        - do 2 eapply stp_upgrade_gh_mult. eapply HX.
+      * assert (index x GH' = Some T) as A. {
+          subst.
+          eapply index_same. apply E. eassumption.
+        }
+        eexists. eapply T_Varz. eapply A.
+        subst.
+        rewrite EGHLEN. assumption.
+    + SCase "T_VarPack".
+      edestruct IH1 with (GH:=GH) (GH':=GH').
+      eapply H0. omega. subst. reflexivity. subst. reflexivity. assumption.
+      eexists. eapply T_VarPack; eauto.
+      rewrite EGHLEN. assumption.
+    + SCase "T_VarUnpack".
+      edestruct IH1 with (GH:=GH) (GH':=GH').
+      eapply H0. omega. subst. reflexivity. subst. reflexivity. assumption.
+      eexists. eapply T_VarUnpack; eauto.
+      rewrite EGHLEN. assumption.
+    + SCase "T_New".
+      edestruct IH1 with (GH:=GH) (GH':=GH').
+      eapply H0. omega. subst. reflexivity. subst. reflexivity. assumption.
+      subst. rewrite app_comm_cons in H1.
+      destruct (stp_narrow_aux n2) as [_ NS].
+      edestruct NS as [nn NS1].
+      eapply H1. omega. reflexivity. reflexivity. eassumption.
+      simpl in NS1.
+      eexists. eapply T_New. eauto.
+      rewrite EGHLEN. eassumption.
+    + SCase "T_Cls".
+      edestruct IH2 with (GH :=(open 0 (TVar false (length GH)) S1 :: GH))
+                         (GH':=(open 0 (TVar false (length GH)) S1 :: GH'))
+      as [n2 IH].
+      - eapply H0.
+      - omega.
+      - subst. rewrite app_comm_cons. reflexivity.
+      - subst. rewrite <- app_comm_cons. reflexivity.
+      - assumption.
+      - eexists. rewrite <- EGHLEN in H1, H2. apply T_Cls.
+        * rewrite EGHLEN. eapply IH.
+        * assumption.
+        * assumption.
+    + SCase "T_Mix".
+      edestruct IH1 with (GH:=GH) (GH':=GH') as [nt1 IHt1].
+      eapply H0. omega. subst. reflexivity. subst. reflexivity. assumption.
+      edestruct IH1 with (GH:=GH) (GH':=GH') as [nt2 IHt2].
+      eapply H1. omega. subst. reflexivity. subst. reflexivity. assumption.
+      eexists. eapply T_Mix. eapply IHt1. eapply IHt2.
+    + SCase "T_App".
+      edestruct IH1 with (GH:=GH) (GH':=GH') as [nt1 IHt1].
+      eapply H0. omega. subst. reflexivity. subst. reflexivity. assumption.
+      edestruct IH1 with (GH:=GH) (GH':=GH') as [nt2 IHt2].
+      eapply H1. omega. subst. reflexivity. subst. reflexivity. assumption.
+      eexists. eapply T_App. eapply IHt1. eapply IHt2.
+      rewrite EGHLEN. eassumption.
+    + SCase "T_AppVar".
+      edestruct IH1 with (GH:=GH) (GH':=GH') as [nt1 IHt1].
+      eapply H0. omega. subst. reflexivity. subst. reflexivity. assumption.
+      edestruct IH1 with (GH:=GH) (GH':=GH') as [nt2 IHt2].
+      eapply H1. omega. subst. reflexivity. subst. reflexivity. assumption.
+      eexists. eapply T_AppVar. eapply IHt1. eapply IHt2.
+      reflexivity.
+      rewrite EGHLEN. eassumption.
+    + SCase "T_Sub".
+      edestruct IH1 with (GH:=GH) (GH':=GH').
+      eapply H0. omega. subst. reflexivity. subst. reflexivity. assumption.
+      subst.
+      destruct (stp_narrow_aux n2) as [_ NS].
+      edestruct NS as [nn NS1].
+      eapply H1. omega. reflexivity. reflexivity. eassumption.
+      simpl in NS1.
+      eexists. eapply T_Sub. eauto. eapply NS1.
+    } {
+    intros GH G t T n0 H Le. inversion H; subst;
+    intros GH1 GH0 GH' TX1 TX2 EGH EGH' HX;
+    assert (length GH' = length GH) as EGHLEN by solve [
+      subst; repeat rewrite app_length; simpl; reflexivity
+    ].
+    + SCase "D_Nil".
+      eexists. eapply D_Nil.
+    + SCase "D_None".
+      edestruct IH2 with (GH:=GH) (GH':=GH') as [nt1 IH].
+      eapply H0. omega. subst. reflexivity. subst. reflexivity. assumption.
+      eexists. eapply D_None. eapply IH.
+    + SCase "D_Mem".
+      edestruct IH2 with (GH:=GH) (GH':=GH') as [nt1 IH].
+      eapply H0. omega. subst. reflexivity. subst. reflexivity. assumption.
+      eexists. eapply D_Mem. eapply IH.
+      rewrite EGHLEN. eassumption. reflexivity. reflexivity.
+    + SCase "D_Abs".
+      edestruct IH2 with (GH:=GH) (GH':=GH') as [nt1 IH2a].
+      eapply H0. omega. subst. reflexivity. subst. reflexivity. assumption.
+      edestruct IH1 with (GH := T11 :: GH) (GH':= T11 :: GH') as [n11 IH1a].
+      - eapply H1.
+      - omega.
+      - subst. rewrite app_comm_cons. reflexivity.
+      - subst. rewrite <- app_comm_cons. reflexivity.
+      - assumption.
+      - eexists. eapply D_Abs.
+        * eapply IH2a.
+        * eapply IH1a.
+        * rewrite EGHLEN. reflexivity.
+        * rewrite EGHLEN. assumption.
+        * rewrite EGHLEN. assumption.
+        * reflexivity.
+        * reflexivity.
+    }
+  Grab Existential Variables. apply 0. apply 0. apply 0. 
+Qed.
+
+Lemma narrow_dms_has_type: forall G1 T1 S1 n1 ds n2,
+  stp [T1] G1 T1 S1 n1 ->
+  dms_has_type [S1] G1 ds T1 n2 ->
+  exists n3, dms_has_type [T1] G1 ds T1 n3.
+Proof.
+  intros. eapply hastp_narrow_aux. eapply H0. reflexivity.
+  instantiate(3:=nil). simpl. reflexivity. simpl. reflexivity.
+Admitted.
+
 (* Note: TCls can be a subtype of a path type, or of an TAnd type, etc, ... do we want
    all these features? *)
 
@@ -3184,13 +3345,6 @@ Proof.
   intros. eapply stp_subst_narrow_z. eauto.
   erewrite subst_closed_id. eauto. eapply vtp_closed in H0. eauto.
 Qed.
-
-Lemma narrow_dms_has_type: forall G1 T1 S1 n1 ds n2,
-  stp [T1] G1 T1 S1 n1 ->
-  dms_has_type [S1] G1 ds T1 n2 ->
-  exists n3, dms_has_type [T1] G1 ds T1 n3. (* TODO does this hold?
-probably yes, should be similar to stp_narrow_aux *)
-Admitted.
 
 Lemma mix_dms_hastp: forall G1 S1 S2 T1 T2 ds1 ds2 n1 n2,
   dms_has_type [open 0 (TVar false 0) S1] G1 ds1 (open 0 (TVar false 0) T1) n1 ->
