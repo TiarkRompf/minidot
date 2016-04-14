@@ -1,6 +1,6 @@
 (*
 FSub (F<:)
-T ::= Top | X | T -> T | Forall Z <: T. T^Z
+T ::= Top | Bot | X | T -> T | Forall Z <: T. T^Z
 t ::= x | lambda x:T.t | Lambda X<:T.t | t t | t [T]
 *)
 
@@ -16,6 +16,7 @@ Definition id := nat.
 
 Inductive ty : Type :=
 | TTop : ty
+| TBot : ty
 | TFun : ty -> ty -> ty
 | TAll : ty -> ty -> ty
 | TVarF : id -> ty (* free type variable, in concrete environment *)
@@ -69,6 +70,8 @@ Fixpoint indexr {X : Type} (n : id) (l : list X) : option X :=
 Inductive closed: nat(*B*) -> nat(*H*) -> nat(*F*) -> ty -> Prop :=
 | cl_top: forall i j k,
     closed i j k TTop
+| cl_bot: forall i j k,
+    closed i j k TBot
 | cl_fun: forall i j k T1 T2,
     closed i j k T1 ->
     closed i j k T2 ->
@@ -96,6 +99,7 @@ Inductive closed: nat(*B*) -> nat(*H*) -> nat(*F*) -> ty -> Prop :=
 Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
   match T with
     | TTop        => TTop
+    | TBot        => TBot
     | TFun T1 T2  => TFun (open_rec k u T1) (open_rec k u T2)
     | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
     | TVarF x => TVarF x
@@ -110,6 +114,7 @@ Definition open u T := open_rec 0 u T.
 Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
+    | TBot         => TBot
     | TFun T1 T2   => TFun (subst U T1) (subst U T2)
     | TAll T1 T2   => TAll (subst U T1) (subst U T2)
     | TVarB i      => TVarB i
@@ -121,6 +126,7 @@ Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
 Fixpoint nosubst (T : ty) {struct T} : Prop :=
   match T with
     | TTop         => True
+    | TBot         => True
     | TFun T1 T2   => nosubst T1 /\ nosubst T2
     | TAll T1 T2   => nosubst T1 /\ nosubst T2
     | TVarB i      => True
@@ -143,6 +149,9 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_top: forall G1 GH T1,
     closed 0 (length GH) (length G1) T1 ->
     stp G1 GH T1 TTop
+| stp_bot: forall G1 GH T2,
+    closed 0 (length GH) (length G1) T2 ->
+    stp G1 GH TBot T2
 | stp_fun: forall G1 GH T1 T2 T3 T4,
     stp G1 GH T3 T1 ->
     stp G1 GH T2 T4 ->
@@ -214,6 +223,9 @@ Inductive stp2: bool (* whether the last rule may not be transitivity *) ->
 | stp2_top: forall G1 G2 GH T n,
     closed 0 (length GH) (length G1) T ->
     stp2 true G1 T G2 TTop GH (S n)
+| stp2_bot: forall G1 G2 GH T n,
+    closed 0 (length GH) (length G2) T ->
+    stp2 true G1 TBot G2 T GH (S n)
 | stp2_fun: forall G1 G2 T1 T2 T3 T4 GH n1 n2,
     stp2 false G2 T3 G1 T1 GH n1 ->
     stp2 false G1 T2 G2 T4 GH n2 ->
@@ -409,6 +421,7 @@ Qed.
 Fixpoint tsize(T: ty) :=
   match T with
     | TTop => 1
+    | TBot => 1
     | TFun T1 T2 => S (tsize T1 + tsize T2)
     | TAll T1 T2 => S (tsize T1 + tsize T2)
     | TVarF _ => 1
@@ -494,6 +507,7 @@ Qed.
 Fixpoint splice n (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
+    | TBot         => TBot
     | TFun T1 T2   => TFun (splice n T1) (splice n T2)
     | TAll T1 T2   => TAll (splice n T1) (splice n T2)
     | TVarF i      => TVarF i
@@ -845,7 +859,7 @@ Proof.
   - eapply indexr_has in H1. destruct H1 as [v HI].
     eexists; eapply stp2_selax; eauto.
   - destruct (IHn T0 G GH) as [n0 IH0]; eauto; try omega.
-Grab Existential Variables. apply 0. apply 0. apply 0.
+Grab Existential Variables. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma stp2_refl: forall T G GH,
@@ -865,6 +879,11 @@ Proof.
   induction H; intros; subst GH; simpl; eauto.
   - Case "top".
     eapply stp_top.
+    rewrite map_splice_length_inc.
+    apply closed_splice.
+    assumption.
+  - Case "bot".
+    eapply stp_bot.
     rewrite map_splice_length_inc.
     apply closed_splice.
     assumption.
@@ -917,6 +936,11 @@ Proof.
   induction H; intros; subst GH; simpl; eauto.
   - Case "top".
     eapply stp2_top.
+    rewrite map_spliceat_length_inc.
+    apply closed_splice.
+    assumption.
+  - Case "bot".
+    eapply stp2_bot.
     rewrite map_spliceat_length_inc.
     apply closed_splice.
     assumption.
@@ -1125,6 +1149,11 @@ Proof.
   induction H; intros; eauto.
   - Case "top".
     eapply stp2_top.
+    eapply closed_inc_mult; try eassumption; try omega.
+    rewrite (@aenv_ext__same_length GH GH'). omega. assumption.
+    apply venv_ext__ge_length. assumption.
+  - Case "bot".
+    eapply stp2_bot.
     eapply closed_inc_mult; try eassumption; try omega.
     rewrite (@aenv_ext__same_length GH GH'). omega. assumption.
     apply venv_ext__ge_length. assumption.
@@ -1455,6 +1484,10 @@ Proof.
     rewrite app_length. rewrite app_length. simpl.
     rewrite app_length in H. rewrite app_length in H. simpl in H.
     apply H.
+  - apply stp_bot.
+    rewrite app_length. rewrite app_length. simpl.
+    rewrite app_length in H. rewrite app_length in H. simpl in H.
+    apply H.
   - case_eq (beq_nat x (length F)); intros E2.
     + eapply stp_sela1.
       eapply indexr_at_index. assumption.
@@ -1541,6 +1574,10 @@ Lemma stpd2_top: forall G1 G2 GH T,
     closed 0 (length GH) (length G1) T ->
     stpd2 true G1 T G2 TTop GH.
 Proof. intros. exists (S 0). eauto. Qed.
+Lemma stpd2_bot: forall G1 G2 GH T,
+    closed 0 (length GH) (length G2) T ->
+    stpd2 true G1 TBot G2 T GH.
+Proof. intros. exists (S 0). eauto. Qed.
 Lemma stpd2_fun: forall G1 G2 T1 T2 T3 T4 GH,
     stpd2 false G2 T3 G1 T1 GH ->
     stpd2 false G1 T2 G2 T4 GH ->
@@ -1626,6 +1663,8 @@ Proof.
   - Case "s n". intros m G1 T1 G2 T2 GH n0 H NE. inversion H; subst;
     intros GH1 GH0 GH' GX1 TX1 GX2 TX2 EGH EGH' HX; eauto.
     + SCase "top". eapply stpd2_top.
+      subst. rewrite app_length. simpl. rewrite app_length in H0. simpl in H0. apply H0.
+    + SCase "bot". eapply stpd2_bot.
       subst. rewrite app_length. simpl. rewrite app_length in H0. simpl in H0. apply H0.
     + SCase "fun". eapply stpd2_fun.
       eapply IHn; try eassumption. omega.
@@ -1727,6 +1766,7 @@ Proof.
   intros n. induction n; intros; try omega. eu.
   inversion H; subst;
   try solve [inversion H1; eexists; eauto];
+  try solve [eapply stpd2_bot; eauto using stp2_closed2];
   try solve [eapply stpd2_sel1_down; eauto; eapply IHn; eauto; try omega];
   try solve [eapply stpd2_sela1; eauto; eapply stpd2_wrapf; eapply IHn; eauto; try omega];
   try solve [eapply IHn; [eapply H2 | omega | eauto]]; (* wrapf *)
@@ -2011,6 +2051,11 @@ Proof.
     apply stp_top. rewrite map_length.
     apply closed_subst. assumption.
     eapply closed_upgrade_free. eassumption. omega.
+  - Case "bot".
+    intros. subst. simpl. rewrite app_length in H. simpl in H.
+    apply stp_bot. rewrite map_length.
+    apply closed_subst. assumption.
+    eapply closed_upgrade_free. eassumption. omega.
   - Case "fun". intros. simpl. eapply stp_fun. eauto. eauto.
   - Case "mem". intros. simpl. eapply stp_mem. eauto.
   - Case "sel1". intros. simpl. eapply stp_sel1. apply H. assumption.
@@ -2145,6 +2190,12 @@ Qed.
 
 Lemma compat_top: forall GX TX G1 T1',
   compat GX TX G1 TTop T1' -> closed 0 0 (length GX) TX -> T1' = TTop.
+Proof.
+  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC]; ev; eauto.
+Qed.
+
+Lemma compat_bot: forall GX TX G1 T1',
+  compat GX TX G1 TBot T1' -> closed 0 0 (length GX) TX -> T1' = TBot.
 Proof.
   intros ? ? ? ? CC CLX. repeat destruct CC as [|CC]; ev; eauto.
 Qed.
@@ -2309,6 +2360,15 @@ Proof.
     intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA; eapply stpd2_wrapf.
     eapply compat_top in IX2.
     subst. eapply stpd2_top.
+    eapply compat_closed. eassumption.
+    rewrite app_length in H. simpl in H.
+    erewrite <- Forall2_length. eapply H. eassumption.
+    eassumption. assumption.
+
+  - Case "bot".
+    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA; eapply stpd2_wrapf.
+    eapply compat_bot in IX1.
+    subst. eapply stpd2_bot.
     eapply compat_closed. eassumption.
     rewrite app_length in H. simpl in H.
     erewrite <- Forall2_length. eapply H. eassumption.
@@ -2551,6 +2611,8 @@ Proof.
   intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY; eapply stpd2_wrapf.
   - Case "top".
     eapply stpd2_top. erewrite wfh_length; eauto. erewrite wf_length; eauto.
+  - Case "bot".
+    eapply stpd2_bot. erewrite wfh_length; eauto. erewrite wf_length; eauto.
   - Case "fun". eapply stpd2_fun; eauto.
   - Case "mem". eapply stpd2_mem; eauto.
   - Case "sel1".
