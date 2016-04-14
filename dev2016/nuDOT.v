@@ -3294,14 +3294,14 @@ Proof.
     assert (IH1: (exists x : id, t1 = tvar true x) \/
                  (exists (G' : list vl) (t' : tm) (n2 : nat),
                    step G1 t1 (G' ++ G1) t' /\ has_type [] (G' ++ G1) t' (TCls S1 T1) n2)). {
-      eapply IHhas_type1; eauto. inversion CL.
-      admit. (* TODO does not really hold because T2 might override non-closed stuff of T1,
-     so we're not sure if T1 is closed. But that's only about closed-ness, should be fixable somehow.*)
+      eapply IHhas_type1; eauto.
+      eapply has_type_closed. eassumption.
     }
     assert (IH2: (exists x : id, t2 = tvar true x) \/
                  (exists (G' : list vl) (t' : tm) (n2 : nat),
                    step G1 t2 (G' ++ G1) t' /\ has_type [] (G' ++ G1) t' (TCls S2 T2) n2)). {
-      eapply IHhas_type2; eauto. inversion CL. inversion H6. subst. econstructor. eauto. admit. (* TODO from follows from H7 *) 
+      eapply IHhas_type2; eauto.
+      eapply has_type_closed. eassumption.
     }
     right.
     destruct IH1 as [IH1 | IH1].
