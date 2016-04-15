@@ -1966,7 +1966,10 @@ Proof.
   intro ni. induction ni. split; intros; omega.
   destruct IHni as [IHstp IHhtp].
   split; intros; inversion H; subst.
-  - Case "cls". trust_me.
+  - Case "cls".
+    eapply stp_cls_refl.
+    rewrite map_splice_length_inc. eapply closed_splice. eauto.
+    rewrite map_splice_length_inc. eapply closed_splice. eauto.
   - Case "bot".
     eapply stp_bot.
     rewrite map_splice_length_inc.
