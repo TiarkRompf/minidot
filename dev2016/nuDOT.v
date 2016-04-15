@@ -2342,14 +2342,14 @@ Lemma stp_narrow_aux: forall n,
   forall GH1 GH0 GH' TX1 TX2,
     GH=GH1++[TX2]++GH0 ->
     GH'=GH1++[TX1]++GH0 ->
-    stpd2 GH0 G TX1 TX2 ->
+    stpd2 ([TX1]++GH0) G TX1 TX2 ->
     htpd GH' G x T) /\
   (forall GH G T1 T2 n0,
   stp GH G T1 T2 n0 -> n0 <= n ->
   forall GH1 GH0 GH' TX1 TX2,
     GH=GH1++[TX2]++GH0 ->
     GH'=GH1++[TX1]++GH0 ->
-    stpd2 GH0 G TX1 TX2 ->
+    stpd2 ([TX1]++GH0) G TX1 TX2 ->
     stpd2 GH' G T1 T2).
 Proof.
   intros n.
@@ -2372,9 +2372,9 @@ Proof.
         destruct HX as [nx HX].
         eexists. eapply htp_sub. eapply htp_var. eapply index_extend_mult.
         simpl. rewrite E. reflexivity.
-        eapply stp_closed1 in HX. eapply closed_upgrade_gh.
+        eapply stp_closed1 in HX. simpl in HX. eapply closed_upgrade_gh.
         eapply HX. apply beq_nat_true in E. subst. omega.
-        eapply stp_upgrade_gh. eauto. simpl.
+        eapply HX. simpl.
         f_equal. apply beq_nat_true in E. subst. reflexivity.
         simpl. reflexivity.
       * assert (index x GH' = Some T) as A. {
@@ -2501,12 +2501,12 @@ Qed.
 
 Lemma stp_narrow: forall TX1 TX2 GH0 G T1 T2 n nx,
   stp ([TX2]++GH0) G T1 T2 n ->
-  stp GH0 G TX1 TX2 nx ->
+  stp GH0 G TX1 TX2 nx -> (* note: only GH0, not TX2::GH0, even though that would hold as well *)
   stpd2 ([TX1]++GH0) G T1 T2.
 Proof.
   intros. eapply stp_narrow_aux. eapply H. reflexivity.
   instantiate(3:=nil). simpl. reflexivity. simpl. reflexivity.
-  eauto.
+  eexists. eapply stp_upgrade_gh. eauto.
 Qed.
 
 Lemma hastp_narrow_aux: forall n,
@@ -2515,14 +2515,14 @@ Lemma hastp_narrow_aux: forall n,
   forall GH1 GH0 GH' TX1 TX2,
     GH=GH1++[TX2]++GH0 ->
     GH'=GH1++[TX1]++GH0 ->
-    stpd2 GH0 G TX1 TX2 ->
+    stpd2 ([TX1]++GH0) G TX1 TX2 ->
     exists n2, has_type GH' G t T n2) /\
   (forall GH G ds T n0,
   dms_has_type GH G ds T n0 -> n0 <= n ->
   forall GH1 GH0 GH' TX1 TX2,
     GH=GH1++[TX2]++GH0 ->
     GH'=GH1++[TX1]++GH0 ->
-    stpd2 GH0 G TX1 TX2 ->
+    stpd2 ([TX1]++GH0) G TX1 TX2 ->
     exists n2, dms_has_type GH' G ds T n2).
 Proof.
   intros n.
@@ -2551,8 +2551,8 @@ Proof.
           { eapply index_extend_mult. simpl. rewrite E. reflexivity. }
           { eapply stp_closed1 in HX. eapply closed_upgrade_gh.
             * eapply HX.
-            * do 2 rewrite app_length. omega. }
-        - do 2 eapply stp_upgrade_gh_mult. eapply HX.
+            * do 3 rewrite app_length. omega. }
+        - eapply stp_upgrade_gh_mult. eapply HX.
       * assert (index x GH' = Some T) as A. {
           subst.
           eapply index_same. apply E. eassumption.
@@ -2667,8 +2667,8 @@ Lemma narrow_dms_has_type: forall G1 T1 S1 n1 ds n2,
   exists n3, dms_has_type [T1] G1 ds T1 n3.
 Proof.
   intros. eapply hastp_narrow_aux. eapply H0. reflexivity.
-  instantiate(3:=nil). simpl. reflexivity. simpl. reflexivity.
-Admitted.
+  instantiate(3:=nil). simpl. reflexivity. simpl. reflexivity. simpl. eauto.
+Qed.
 
 (* Note: TCls can be a subtype of a path type, or of an TAnd type, etc, ... do we want
    all these features? *)
