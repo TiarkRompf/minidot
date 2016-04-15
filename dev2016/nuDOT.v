@@ -639,10 +639,6 @@ Ltac ev := repeat match goal with
                     | H: _ /\  _ |- _ => destruct H
            end.
 
-Ltac trust_me := admit.
-
-
-
 Lemma index_max : forall X vs n (T: X),
                        index n vs = Some T ->
                        n < length vs.
@@ -3086,11 +3082,15 @@ Admitted.
 
 Lemma substt_cls: forall x S1 T1,
   substt x (TCls S1 T1) = TCls (substt x S1) (substt x T1).
-Admitted.
+Proof.
+  intros. unfold substt. simpl. reflexivity.
+Qed.
 
 Lemma substt_and: forall x T1 T2,
   substt x (TAnd T1 T2) = TAnd (substt x T1) (substt x T2).
-Admitted.
+Proof.
+  intros. unfold substt. simpl. reflexivity.
+Qed.
 
 Lemma hastp_subst_aux_z: forall ni, 
    (forall G1 GH TX T x t n1 n2,
