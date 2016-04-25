@@ -469,23 +469,23 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
   end.
 
 
-(* In dynamic subtyping, we generalize type selections on
-   concretely variables from x.T to t.T, where t is any 
-   term that evaluates in the given G. 
+(* In dynamic subtyping, we generalize type selections from
+   x.T to t.T, i.e. from concrete variables x to t, where t 
+   is any term that evaluates in the given G. 
 
    index x G = Some v becomes peval (tvar x) G v
 
-   The proofs require that G can be extended without changing
-   the result, but if t evaluates to an object, the captured
-   environment will be larger. Therefore, we evaluate in the 
-   smallest environment (tail (fresh_in_term t) G) for term t
-   instead of G. 
+   The proofs require that G can be extended to G' without changing
+   the result of evaluation v. But if v is an object, the captured
+   environment will be G' instead of G. Therefore, we evaluate t 
+   in a environment just large enough (tail (fresh_in_term t) G),
+   which is a sub environment of both G and G'.
 
    Note that so far, this additional flexibility is not 
    exposed to the static type assignment / subtyping relations.
 
-   It should be possible to use any static reduction / 
-   normalization relation procedure that is consistent with teval.
+   On the static side, it should be possible to use any reduction / 
+   normalization relation or procedure that is consistent with teval.
 
    For example:
    - syntactic restriction to paths / field selections
