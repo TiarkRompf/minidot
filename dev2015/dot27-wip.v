@@ -9,7 +9,7 @@
    non-variable path expressions *)
 (* copied from dot26.v *)
 (* based on that, it adds some static support for
-   non-variable path expressions. *)
+   non-variable path expressions *)
 
 Require Export SfLib.
 
@@ -330,10 +330,12 @@ with peval1: tm -> tenv -> ty -> Prop :=
 | pt_var: forall x G1 TX,
             index x G1 = Some TX ->
             peval1 (tvar x) G1 TX
-| pt_app: forall f l x G1 T1 T2,
-            peval1 f G1 (TAll l T1 T2) ->
-            peval1 x G1 T1 ->
-            peval1 (tapp f l x) G1 T2
+(*TODO:
+  add non-variable cases
+  but they have to satisfy peval_safe_*
+  so safety and termination,
+  and all provable without stp_to_stp2!
+*)
 .
 
 (*
@@ -1291,7 +1293,6 @@ Proof.
   crush2.
 Qed.
 
-(* -- TODO: switch on after dev
 (*
 val listModule = new { m =>
   type List = { this =>
@@ -1375,7 +1376,7 @@ Proof.
   simpl. reflexivity. crush_wf. crush_wf. eauto.
   simpl. unfold open at 2. simpl.
   eapply t_sub. eapply t_var. compute. eauto. crush_wf.
-  eapply stp_and2. eapply stp_sel2. compute. reflexivity. crush2.
+  eapply stp_and2. eapply stp_sel2. eapply pt_var. compute. reflexivity. crush2.
   eapply stp_and12. crush2. crush_wf. crush_wf.
   eapply stp_bindx. eauto. crush2. crush2. crush_wf.
   unfold open. simpl. eapply stp_and12. crush_wf. crush_wf.
@@ -1443,7 +1444,7 @@ Proof.
   crush_wf. crush_wf. eauto.
   simpl. unfold open at 2. simpl.
   eapply t_sub. eapply t_var. compute. eauto. crush_wf.
-  eapply stp_and2. eapply stp_sel2. compute. reflexivity. crush2.
+  eapply stp_and2. eapply stp_sel2. eapply pt_var. compute. reflexivity. crush2.
   eapply stp_and12.
   eapply stp_mem. eapply stp_bindx. eauto. crush_cl. crush_cl.
   unfold open. simpl. crush_wf. unfold open. simpl.
@@ -1535,7 +1536,7 @@ Proof.
   eapply t_sub.
   eapply t_var. compute. eauto. crush_wf.
   compute.
-  eapply stp_and2. eapply stp_sel2. compute. reflexivity. crush2.
+  eapply stp_and2. eapply stp_sel2. eapply pt_var. compute. reflexivity. crush2.
   eapply stp_and12. eapply stp_mem. eapply stp_bindx.
   eauto. crush2. crush2.
   unfold open. simpl. crush_wf.
@@ -1668,7 +1669,7 @@ Proof.
   eapply t_sub.
   eapply t_var. compute. eauto. crush_wf.
 
-  eapply stp_and2. eapply stp_sel2. compute. reflexivity. crush_cl.
+  eapply stp_and2. eapply stp_sel2. eapply pt_var. compute. reflexivity. crush_cl.
   eapply stp_and12. eapply stp_mem. eapply stp_bindx.
   eauto. crush2. crush2.
   unfold open. simpl. crush_wf.
@@ -1805,7 +1806,7 @@ Proof.
   crush_wf. crush_wf. eauto.
   simpl. unfold open at 2. simpl.
   eapply t_sub. eapply t_var. compute. eauto. crush_wf.
-  eapply stp_and2. eapply stp_sel2. compute. reflexivity. crush2.
+  eapply stp_and2. eapply stp_sel2. eapply pt_var. compute. reflexivity. crush2.
   eapply stp_and12. eapply stp_and12.
   eapply stp_mem. eapply stp_bindx. eauto. crush_cl. crush_cl.
   unfold open. simpl. crush_wf. unfold open. simpl.
@@ -1857,7 +1858,7 @@ Proof.
   eapply t_sub.
   eapply t_var. compute. eauto. crush_wf.
 
-  eapply stp_and2. eapply stp_sel2. compute. reflexivity. crush_cl.
+  eapply stp_and2. eapply stp_sel2. eapply pt_var. compute. reflexivity. crush_cl.
   eapply stp_and12. eapply stp_and12. eapply stp_mem. eapply stp_bindx.
   eauto. crush2. crush2.
   unfold open. simpl. crush_wf.
@@ -1937,7 +1938,6 @@ Proof.
   crush_wf.
 
 Qed.
--- TODO: switch on after dev *)
 
 
 (* ############################################################ *)
@@ -6587,7 +6587,7 @@ Proof.
   - edestruct index_safe_ex as [v [? [IX VT]]]; try eassumption.
     assert (peval (tvar x) H1 v) as EV. eapply index_to_peval; eauto.
     eexists. eexists. split; eassumption.
-  - admit.
+  (*TODO: more cases in the future.*)
 Qed.
 
 (* TODO: need to revisit if stp includes trans rule.
@@ -6874,7 +6874,7 @@ Proof.
     destruct A as [v A].
     assert (peval (tvar x) ((fresh G, v0) :: GX) v) as B. eapply index_to_peval; eauto.
     eexists. eassumption.
-  - admit.
+  (*TODO: more cases in the future.*)
 Qed.
 
 Lemma wf_tp_to_stp2_cycle_aux: forall T0 T v G GH,
