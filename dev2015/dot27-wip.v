@@ -6577,6 +6577,18 @@ Proof.
       apply IHB.
 Qed.
 
+Lemma peval_safe_ex: forall H1 G1 t T,
+  wf_env H1 G1 ->
+  peval1 t G1 T ->
+  exists v n, peval t H1 v /\ val_type H1 v T n.
+Proof.
+  intros H1 G1 t T Hwf H.
+  induction H.
+  - edestruct index_safe_ex as [v [? [IX VT]]]; try eassumption.
+    assert (peval (tvar x) H1 v) as EV. eapply index_to_peval; eauto.
+    eexists. eexists. split; eassumption.
+  - admit.
+Qed.
 
 (* TODO: need to revisit if stp includes trans rule.
    if yes, probably need to return stpd2 false, and
@@ -6603,33 +6615,23 @@ Proof.
   - Case "bool". eapply stpd2_bool; eauto.
   - Case "mem". eapply stpd2_mem; eapply stpd2_wrapf; eauto.
   - Case "sel1".
-    rename x into t. inversion H; subst.
-    + assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
-      eapply index_safe_ex. eauto. eauto.
-      destruct A as [v [? [IX VT]]].
-      assert (peval (tvar x) GX v) as EV. eapply index_to_peval; eauto.
-      edestruct IHST1 as [? B]; eauto. eapply stpd2_to_sstpd2_aux1 in B. destruct B.
-      destruct x0. inversion VT.
-      eapply invert_typ in VT. destruct VT as [GZ [TZ [VT SM]]].
-      eapply stpd2_sel1. eauto. eauto. eapply valtp_closed; eauto.
-      eapply sstpd2_downgrade. eauto. eapply sstpd2_extendH_mult0. apply SM.
-      apply IHST2; eauto.
-      intros n. apply stp2_substitute_aux. eauto. eauto.
-    + admit.
+    edestruct peval_safe_ex as [v [? [EV VT]]]; try eassumption.
+    edestruct IHST1 as [? B]; eauto. eapply stpd2_to_sstpd2_aux1 in B. destruct B.
+    destruct x0. inversion VT.
+    eapply invert_typ in VT. destruct VT as [GZ [TZ [VT SM]]].
+    eapply stpd2_sel1. eauto. eauto. eapply valtp_closed; eauto.
+    eapply sstpd2_downgrade. eauto. eapply sstpd2_extendH_mult0. apply SM.
+    apply IHST2; eauto.
+    intros n. apply stp2_substitute_aux. eauto. eauto.
   - Case "sel2".
-    rename x into t. inversion H; subst.
-    + assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
-      eapply index_safe_ex. eauto. eauto.
-      destruct A as [v [? [IX VT]]].
-      assert (peval (tvar x) GX v) as EV. eapply index_to_peval; eauto.
-      edestruct IHST1 as [? B]; eauto. eapply stpd2_to_sstpd2_aux1 in B. destruct B.
-      destruct x0. inversion VT.
-      eapply invert_typ in VT. destruct VT as [GZ [TZ [VT SM]]].
-      eapply stpd2_sel2. eauto. eauto. eapply valtp_closed; eauto.
-      eapply sstpd2_downgrade. eauto. eapply sstpd2_extendH_mult0. apply SM.
-      apply IHST2; eauto.
-      intros n. apply stp2_substitute_aux. eauto. eauto.
-    + admit.
+    edestruct peval_safe_ex as [v [? [EV VT]]]; try eassumption.
+    edestruct IHST1 as [? B]; eauto. eapply stpd2_to_sstpd2_aux1 in B. destruct B.
+    destruct x0. inversion VT.
+    eapply invert_typ in VT. destruct VT as [GZ [TZ [VT SM]]].
+    eapply stpd2_sel2. eauto. eauto. eapply valtp_closed; eauto.
+    eapply sstpd2_downgrade. eauto. eapply sstpd2_extendH_mult0. apply SM.
+    apply IHST2; eauto.
+    intros n. apply stp2_substitute_aux. eauto. eauto.
   - Case "selb1". 
     (* replace x: {z => ..U }  U < T2  by x: (.. U)  U < T *)
     (* previously, there was a separate stp2 level for this *)
@@ -6659,13 +6661,8 @@ Proof.
     apply IHST2; eauto.
     intros n. apply stp2_substitute_aux. eauto. eauto. eauto.
   - Case "selx".
-    rename x into t. inversion H; subst.
-    + assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
-      eapply index_safe_ex. eauto. eauto.
-      destruct A as [v [? [IX VT]]].
-      assert (peval (tvar x) GX v) as EV. eapply index_to_peval; eauto.
-      eapply stpd2_selx. eauto. eauto.
-    + admit.
+    edestruct peval_safe_ex as [v [? [EV VT]]]; try eassumption.
+    eapply stpd2_selx. eauto. eauto.
   - Case "sela1".
     remember ((0,TX)::GL) as GL1. assert (length GL1 = S (length GL)) as LE. subst GL1. eauto. 
     assert (indexr x GH = Some TX /\ length GL = x /\ exists GU, GH = GU ++ GL1). subst GL1. eapply tailr_to_indexr. eauto. ev. 
@@ -6845,7 +6842,6 @@ Lemma stp_to_wf_tp_aux: forall G GH T1 T2,
                           wf_tp G GH T1 /\ wf_tp G GH T2.
 Proof.
   intros. induction H;
-    try (rename x into t; inversion H; subst);
     try solve [repeat ev; split; eauto; try (eapply wf_sela; eapply tailr_to_indexr; eauto)].
   admit. admit. admit.
 Qed.
