@@ -7,6 +7,9 @@
 (* copied from dot24.v *)
 (* based on that, it adds internal support for 
    non-variable path expressions *)
+(* copied from dot26.v *)
+(* based on that, it adds some static support for
+   non-variable path expressions. *)
 
 Require Export SfLib.
 
@@ -206,6 +209,13 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
 Hint Unfold open.
 Hint Unfold closed.
 
+Definition peval1 (t: tm) (G1: tenv) (TX: ty) :=
+  match t with
+    | tvar x => index x G1 = Some TX
+    | _ => False
+  end.
+Hint Unfold peval1.
+
 (* TODO: var *)
 (* QUESTION: include trans rule or not? sela1 rules use restricted GL now, so trans seems useful *)
 Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
@@ -226,17 +236,17 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH T2 T4 ->
     stp G1 GH (TMem m T1 T2) (TMem m T3 T4)
 | stp_sel1: forall G1 GH TX m T2 x,
-    index x G1 = Some TX ->
+    peval1 x G1 TX ->
     closed 0 0 TX ->
     stp G1 [] TX (TMem m TBot T2) ->
     stp G1 GH T2 T2 -> (* regularity of stp2 *)
-    stp G1 GH (TSel (varF (tvar x)) m) T2
+    stp G1 GH (TSel (varF x) m) T2
 | stp_sel2: forall G1 GH TX m T1 x,
-    index x G1 = Some TX ->
+    peval1 x G1 TX ->
     closed 0 0 TX ->
     stp G1 [] TX (TMem m T1 TTop) ->
     stp G1 GH T1 T1 -> (* regularity of stp2 *)
-    stp G1 GH T1 (TSel (varF (tvar x)) m)
+    stp G1 GH T1 (TSel (varF x) m)
 | stp_selb1: forall G1 GH TX m T2 x,
     index x G1 = Some TX ->
     stp G1 [] TX (TBind (TMem m TBot T2)) ->   (* Note GH = [] *)
@@ -248,8 +258,8 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH (open (varF (tvar x)) T1) (open (varF (tvar x)) T1) -> (* regularity *)
     stp G1 GH (open (varF (tvar x)) T1) (TSel (varF (tvar x)) m)
 | stp_selx: forall G1 GH TX x m,
-    index x G1 = Some TX ->
-    stp G1 GH (TSel (varF (tvar x)) m) (TSel (varF (tvar x)) m)
+    peval1 x G1 TX ->
+    stp G1 GH (TSel (varF x) m) (TSel (varF x) m)
 | stp_sela1: forall G1 GH GL TX m T2 x,
     tailr (S x) GH = (0,TX)::GL ->
     stp G1 ((0,TX)::GL) TX (TMem m TBot T2) ->
@@ -6596,6 +6606,7 @@ Proof.
   - Case "bool". eapply stpd2_bool; eauto.
   - Case "mem". eapply stpd2_mem; eapply stpd2_wrapf; eauto.
   - Case "sel1".
+    rename x into t. destruct t; inversion H. rename i into x. unfold peval1 in H.
     assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
     eapply index_safe_ex. eauto. eauto.    
     destruct A as [v [? [IX VT]]].
@@ -6608,6 +6619,7 @@ Proof.
     apply IHST2; eauto.
     intros n. apply stp2_substitute_aux. eauto. eauto.
   - Case "sel2". 
+    rename x into t. destruct t; inversion H. rename i into x. unfold peval1 in H.
     assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [v [? [IX VT]]].
@@ -6648,6 +6660,7 @@ Proof.
     apply IHST2; eauto.
     intros n. apply stp2_substitute_aux. eauto. eauto. eauto.
   - Case "selx".
+    rename x into t. destruct t; inversion H. rename i into x. unfold peval1 in H.
     assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
     eapply index_safe_ex. eauto. eauto.
     destruct A as [v [? [IX VT]]].
@@ -6832,6 +6845,7 @@ Lemma stp_to_wf_tp_aux: forall G GH T1 T2,
                           wf_tp G GH T1 /\ wf_tp G GH T2.
 Proof.
   intros. induction H;
+    try (rename x into t; destruct t; inversion H; rename i into x; unfold peval1 in H);
     try solve [repeat ev; split; eauto; try (eapply wf_sela; eapply tailr_to_indexr; eauto)].
 Qed.
 
