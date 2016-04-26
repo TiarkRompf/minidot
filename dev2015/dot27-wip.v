@@ -209,13 +209,6 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
 Hint Unfold open.
 Hint Unfold closed.
 
-Definition peval1 (t: tm) (G1: tenv) (TX: ty) :=
-  match t with
-    | tvar x => index x G1 = Some TX
-    | _ => False
-  end.
-Hint Unfold peval1.
-
 (* TODO: var *)
 (* QUESTION: include trans rule or not? sela1 rules use restricted GL now, so trans seems useful *)
 Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
@@ -333,9 +326,15 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G GH T1 T ->
     stp G GH T2 T ->
     stp G GH (TOr T1 T2) T
+with peval1: tm -> tenv -> ty -> Prop :=
+| pt_var: forall x G1 TX,
+            index x G1 = Some TX ->
+            peval1 (tvar x) G1 TX
+| pt_app: forall f l x G1 T1 T2,
+            peval1 f G1 (TAll l T1 T2) ->
+            peval1 x G1 T1 ->
+            peval1 (tapp f l x) G1 T2
 .
-
-
 
 (*
 with path_type: tenv -> tenv -> id -> ty -> Prop :=
@@ -355,6 +354,7 @@ with pathH_type: tenv -> tenv -> id -> ty -> Prop :=
 *)
 
 
+Hint Constructors peval1.
 Hint Constructors stp.
 
 
@@ -429,10 +429,6 @@ with dcs_has_type: tenv -> id -> list (id * def) -> ty -> Prop :=
             T = tand (TMem m T1 T1) TS ->
             dcs_has_type env f ((m, dmem T1)::dcs) T
 .
-
-
-
-
 
 (*
 None             means timeout
@@ -1028,15 +1024,15 @@ match goal with
 *)
 
 Ltac crush_has_tp :=
-  try solve [eapply stp_selx; compute; eauto; crush_has_tp];
+  try solve [eapply stp_selx; try (eapply pt_var; compute; eauto); crush_has_tp];
   try solve [eapply stp_selax; compute; eauto; crush_has_tp];
   try solve [eapply cl_selb; compute; eauto; crush_has_tp];
   try solve [(econstructor; compute; eauto; crush_has_tp)].
 
 Ltac crush2 :=
-  try solve [(eapply stp_selx; compute; eauto; crush2)];
+  try solve [(eapply stp_selx; try (eapply pt_var; compute; eauto); crush2)];
   try solve [(eapply stp_selax; compute; eauto; crush2)];
-  try solve [(eapply stp_sel1; compute; eauto; crush2)];
+  try solve [(eapply stp_sel1; try (eapply pt_var; compute; eauto); crush2)];
   try solve [(eapply stp_sela1; compute; eauto; crush2)];
   try solve [(eapply cl_selb; compute; eauto; crush2)];
   try solve [(eapply stp_and2; [eapply stp_and11; crush2 | eapply stp_and12; crush2])];
@@ -1050,7 +1046,7 @@ Ltac crush_wf :=
   try solve [(eapply stp_topx; crush_wf)];
   try solve [(eapply stp_botx; crush_wf)];
   try solve [(eapply stp_bool; crush_wf)];
-  try solve [(eapply stp_selx; compute; eauto; crush_wf)];
+  try solve [(eapply stp_selx; eapply pt_var; compute; eauto; crush_wf)];
   try solve [(eapply stp_selax; compute; eauto; crush_wf)];
   try solve [(eapply stp_mem; crush_wf)];
   try solve [(eapply stp_all; [crush_wf | (compute; eauto) | crush_cl | crush_cl | crush_wf | crush_wf])];
@@ -1287,7 +1283,7 @@ Proof.
   assert (T = open (varF (tvar 1)) (TAll 0 TBool (TSel (varB 1) 0))). compute. eauto.
   rewrite H.
   eapply stp_selb1. compute. eauto.
-  eapply stp_sel1. compute. eauto.
+  eapply stp_sel1. eapply pt_var. compute. eauto.
   crush2.
   eapply stp_mem. eauto.
   eapply stp_bindx; crush2.
@@ -6607,31 +6603,33 @@ Proof.
   - Case "bool". eapply stpd2_bool; eauto.
   - Case "mem". eapply stpd2_mem; eapply stpd2_wrapf; eauto.
   - Case "sel1".
-    rename x into t. destruct t; inversion H. rename i into x. unfold peval1 in H.
-    assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
-    eapply index_safe_ex. eauto. eauto.    
-    destruct A as [v [? [IX VT]]].
-    assert (peval (tvar x) GX v) as EV. eapply index_to_peval; eauto.
-    edestruct IHST1; eauto. eapply stpd2_to_sstpd2_aux1 in H1. destruct H1.
-    destruct x0. inversion VT.
-    eapply invert_typ in VT. destruct VT as [GZ [TZ [VT SM]]].
-    eapply stpd2_sel1. eauto. eauto. eapply valtp_closed; eauto.
-    eapply sstpd2_downgrade. eauto. eapply sstpd2_extendH_mult0. apply SM.
-    apply IHST2; eauto.
-    intros n. apply stp2_substitute_aux. eauto. eauto.
-  - Case "sel2". 
-    rename x into t. destruct t; inversion H. rename i into x. unfold peval1 in H.
-    assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
-    eapply index_safe_ex. eauto. eauto.
-    destruct A as [v [? [IX VT]]].
-    assert (peval (tvar x) GX v) as EV. eapply index_to_peval; eauto.
-    edestruct IHST1; eauto. eapply stpd2_to_sstpd2_aux1 in H1. destruct H1. 
-    destruct x0. inversion VT.
-    eapply invert_typ in VT. destruct VT as [GZ [TZ [VT SM]]].
-    eapply stpd2_sel2. eauto. eauto. eapply valtp_closed; eauto.
-    eapply sstpd2_downgrade. eauto. eapply sstpd2_extendH_mult0. apply SM.
-    apply IHST2; eauto.
-    intros n. apply stp2_substitute_aux. eauto. eauto.
+    rename x into t. inversion H; subst.
+    + assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
+      eapply index_safe_ex. eauto. eauto.
+      destruct A as [v [? [IX VT]]].
+      assert (peval (tvar x) GX v) as EV. eapply index_to_peval; eauto.
+      edestruct IHST1 as [? B]; eauto. eapply stpd2_to_sstpd2_aux1 in B. destruct B.
+      destruct x0. inversion VT.
+      eapply invert_typ in VT. destruct VT as [GZ [TZ [VT SM]]].
+      eapply stpd2_sel1. eauto. eauto. eapply valtp_closed; eauto.
+      eapply sstpd2_downgrade. eauto. eapply sstpd2_extendH_mult0. apply SM.
+      apply IHST2; eauto.
+      intros n. apply stp2_substitute_aux. eauto. eauto.
+    + admit.
+  - Case "sel2".
+    rename x into t. inversion H; subst.
+    + assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
+      eapply index_safe_ex. eauto. eauto.
+      destruct A as [v [? [IX VT]]].
+      assert (peval (tvar x) GX v) as EV. eapply index_to_peval; eauto.
+      edestruct IHST1 as [? B]; eauto. eapply stpd2_to_sstpd2_aux1 in B. destruct B.
+      destruct x0. inversion VT.
+      eapply invert_typ in VT. destruct VT as [GZ [TZ [VT SM]]].
+      eapply stpd2_sel2. eauto. eauto. eapply valtp_closed; eauto.
+      eapply sstpd2_downgrade. eauto. eapply sstpd2_extendH_mult0. apply SM.
+      apply IHST2; eauto.
+      intros n. apply stp2_substitute_aux. eauto. eauto.
+    + admit.
   - Case "selb1". 
     (* replace x: {z => ..U }  U < T2  by x: (.. U)  U < T *)
     (* previously, there was a separate stp2 level for this *)
@@ -6661,12 +6659,13 @@ Proof.
     apply IHST2; eauto.
     intros n. apply stp2_substitute_aux. eauto. eauto. eauto.
   - Case "selx".
-    rename x into t. destruct t; inversion H. rename i into x. unfold peval1 in H.
-    assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
-    eapply index_safe_ex. eauto. eauto.
-    destruct A as [v [? [IX VT]]].
-    assert (peval (tvar x) GX v) as EV. eapply index_to_peval; eauto.
-    eapply stpd2_selx. eauto. eauto.
+    rename x into t. inversion H; subst.
+    + assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
+      eapply index_safe_ex. eauto. eauto.
+      destruct A as [v [? [IX VT]]].
+      assert (peval (tvar x) GX v) as EV. eapply index_to_peval; eauto.
+      eapply stpd2_selx. eauto. eauto.
+    + admit.
   - Case "sela1".
     remember ((0,TX)::GL) as GL1. assert (length GL1 = S (length GL)) as LE. subst GL1. eauto. 
     assert (indexr x GH = Some TX /\ length GL = x /\ exists GU, GH = GU ++ GL1). subst GL1. eapply tailr_to_indexr. eauto. ev. 
@@ -6846,8 +6845,9 @@ Lemma stp_to_wf_tp_aux: forall G GH T1 T2,
                           wf_tp G GH T1 /\ wf_tp G GH T2.
 Proof.
   intros. induction H;
-    try (rename x into t; destruct t; inversion H; rename i into x; unfold peval1 in H);
+    try (rename x into t; inversion H; subst);
     try solve [repeat ev; split; eauto; try (eapply wf_sela; eapply tailr_to_indexr; eauto)].
+  admit. admit. admit.
 Qed.
 
 Lemma stp_to_wf_tp: forall G GH T,
