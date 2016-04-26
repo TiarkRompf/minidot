@@ -330,12 +330,10 @@ with peval1: tm -> tenv -> ty -> Prop :=
 | pt_var: forall x G1 TX,
             index x G1 = Some TX ->
             peval1 (tvar x) G1 TX
-(*TODO:
-  add non-variable cases
-  but they have to satisfy peval_safe_*
-  so safety and termination,
-  and all provable without stp_to_stp2!
-*)
+| pt_sub: forall t1 G1 T1 T2,
+            peval1 t1 G1 T1 ->
+            stp G1 [] T1 T2 ->
+            peval1 t1 G1 T2
 .
 
 (*
@@ -6587,7 +6585,9 @@ Proof.
   - edestruct index_safe_ex as [v [? [IX VT]]]; try eassumption.
     assert (peval (tvar x) H1 v) as EV. eapply index_to_peval; eauto.
     eexists. eexists. split; eassumption.
-  (*TODO: more cases in the future.*)
+  - specialize (IHpeval1 Hwf). destruct IHpeval1 as [v [n [IH1 IH2]]].
+    exists v. exists n. split. assumption. eapply valtp_widen; eauto.
+    admit. (* already here, we need to go from stp to sstpd2 *)
 Qed.
 
 (* TODO: need to revisit if stp includes trans rule.
@@ -6874,7 +6874,7 @@ Proof.
     destruct A as [v A].
     assert (peval (tvar x) ((fresh G, v0) :: GX) v) as B. eapply index_to_peval; eauto.
     eexists. eassumption.
-  (*TODO: more cases in the future.*)
+  - edestruct IHpeval1 as [v IH]; eauto.
 Qed.
 
 Lemma wf_tp_to_stp2_cycle_aux: forall T0 T v G GH,
