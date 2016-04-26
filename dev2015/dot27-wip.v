@@ -6810,8 +6810,8 @@ Inductive wf_tp: tenv -> tenv -> ty -> Prop :=
     wf_tp G1 GH T2 ->
     wf_tp G1 GH (TMem l T1 T2)
 | wf_sel: forall G1 GH TX x l,
-    index x G1 = Some TX ->
-    wf_tp G1 GH (TSel (varF (tvar x)) l)
+    peval1 x G1 TX ->
+    wf_tp G1 GH (TSel (varF x) l)
 | wf_sela: forall G1 GH TX x l,
     indexr x GH = Some TX  ->
     wf_tp G1 GH (TSel (varH x) l)
@@ -6843,7 +6843,6 @@ Lemma stp_to_wf_tp_aux: forall G GH T1 T2,
 Proof.
   intros. induction H;
     try solve [repeat ev; split; eauto; try (eapply wf_sela; eapply tailr_to_indexr; eauto)].
-  admit. admit. admit.
 Qed.
 
 Lemma stp_to_wf_tp: forall G GH T,
@@ -6851,6 +6850,31 @@ Lemma stp_to_wf_tp: forall G GH T,
                       wf_tp G GH T.
 Proof.
   intros. apply (proj1 (stp_to_wf_tp_aux G GH T T H)).
+Qed.
+
+Lemma peval_safe_cycle: forall T0 v0 TX t G GH GX GY,
+  wf_env GX G ->
+  wf_envh ((fresh G, v0) :: GX) GY GH ->
+  peval1 t ((fresh G, T0) :: G) TX ->
+  exists v, peval t ((fresh G, v0) :: GX) v.
+Proof.
+  intros T0 v0 TX t G GH GX GY WX WY H.
+  remember ((fresh G, T0)::G) as G0. generalize HeqG0.
+  induction H; intros; subst.
+  - assert (exists v, index x ((fresh G, v0) :: GX) = Some v) as A. {
+      simpl. simpl in H.
+      case_eq (le_lt_dec (fresh G) (fresh G)); intros E1 LE1.
+      rewrite (wf_fresh GX G). rewrite LE1. rewrite LE1 in H.
+      case_eq (beq_nat x (fresh G)); intros E2.
+      eexists. reflexivity.
+      eapply index_exists. eapply WX. rewrite E2 in H. eapply H.
+      assumption.
+      omega.
+    }
+    destruct A as [v A].
+    assert (peval (tvar x) ((fresh G, v0) :: GX) v) as B. eapply index_to_peval; eauto.
+    eexists. eassumption.
+  - admit.
 Qed.
 
 Lemma wf_tp_to_stp2_cycle_aux: forall T0 T v G GH,
@@ -6866,18 +6890,7 @@ Proof.
   - Case "bool". eapply stpd2_bool; eauto.
   - Case "mem". eapply stpd2_mem; eapply stpd2_wrapf; eauto.
   - Case "selx".
-    assert (exists v, index x ((fresh G, t) :: GX) = Some v) as A. {
-      simpl. simpl in H.
-      case_eq (le_lt_dec (fresh G) (fresh G)); intros E1 LE1.
-      rewrite (wf_fresh GX G). rewrite LE1. rewrite LE1 in H.
-      case_eq (beq_nat x (fresh G)); intros E2.
-      eexists. reflexivity.
-      eapply index_exists. eapply WX. rewrite E2 in H. eapply H.
-      assumption.
-      omega.
-    }
-    destruct A as [v A].
-    assert (peval (tvar x) ((fresh G, t) :: GX) v) as B. eapply index_to_peval; eauto.
+    edestruct peval_safe_cycle as [? B]; try eassumption.
     eapply stpd2_selx; eapply B.
   - Case "selax".
     assert (exists v, indexr x GY = Some v) as A. {
