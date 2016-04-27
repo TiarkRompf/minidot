@@ -7151,6 +7151,11 @@ Proof.
   intros. eapply stpd2_wrapf. eapply stp_to_stp2_aux; eauto.
 Qed.
 
+Lemma stpd_to_stp2: forall G1 GH T1 T2,
+  stpd G1 GH T1 T2 ->
+  forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
+  stpd2 false GX T1 GX T2 GY.
+Proof. intros. eu. eapply stp_to_stp2; eauto. Qed.
 
 Inductive wf_tp: tenv -> tenv -> ty -> Prop :=
 | wf_top: forall G1 GH,
@@ -7541,7 +7546,7 @@ Qed.
 
 
 Lemma has_type_wf:
-  forall G t T, has_type G t T -> stp G [] T T.
+  forall G t T, has_type G t T -> stpd G [] T T.
 Proof.
   intros. induction H; eauto.
   - eapply stp_reg. eassumption.
@@ -7571,7 +7576,7 @@ Proof.
 
   - Case "Var".
     remember (tvar i) as e.
-    assert (stp tenv0 [] T T). eapply has_type_wf. eauto.
+    assert (stpd tenv0 [] T T). eapply has_type_wf. eauto.
     induction H0; inversion Heqe; subst.
     + destruct (index_safe_ex venv0 env T1 i) as [v [? [I V]]]; eauto.
       rewrite I. eapply not_stuck. eapply V.
@@ -7586,7 +7591,7 @@ Proof.
       assert (res_type venv0 (index i venv0) (TBind T1)). eapply IHhas_type; eauto. eapply has_type_wf; eauto.
       inversion H3. subst.
       destruct n0. inversion H7. 
-      assert (sstpd2 true venv0 (TBind T1) venv0 (TBind T1) []). eapply valtp_reg. eauto. eu.
+      assert (sstpd2 true venv0 (TBind T1) venv0 (TBind T1) []). eapply valtp_reg. eauto. repeat eu.
       eapply invert_bind in H7. destruct H7. destruct H7. destruct H8. destruct H8. destruct H8.
       eapply valtp_widen in H8.
       eapply not_stuck. apply H8. apply H9. intros ni no. eapply stp2_substitute_aux. eauto. eapply index_to_peval. eauto. eauto. 
@@ -7631,7 +7636,7 @@ Proof.
       assert (res_type venv0 rf (TAll i T1 T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
       inversion HRF as [? vf].
 
-      destruct (invert_obj n1 n0 venv0 vf i T1 T2 vx) as
+      destruct (invert_obj n2 n0 venv0 vf i T1 T2 vx) as
           [env1 [tenv [TF [ds [x0 [y0 [T3 [T4 [EF [FRX [EQDS [WF [HDS [HTF [HTY [STX STY]]]]]]]]]]]]]]]]. eauto. eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eassumption. eauto. eauto.
       (* now we know it's a closure, and we have has_type evidence *)
 
@@ -7658,7 +7663,7 @@ Proof.
       assert (res_type venv0 rf (TAll i T1 T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
       inversion HRF as [? vf].
 
-      destruct (invert_obj_var n1 n0 venv0 vf i T1 T2 vx x) as
+      destruct (invert_obj_var n2 n0 venv0 vf i T1 T2 vx x) as
           [env1 [tenv [TF [ds [x0 [y0 [T3 [T4 [EF [FRX [EQDS [WF [HDS [HTF [HTY [STX STY]]]]]]]]]]]]]]]]. eauto. eauto.
       destruct n. inversion Heqtx. simpl in Heqtx. inversion Heqtx. reflexivity.
       eapply stpd2_upgrade. eapply stp_to_stp2. eassumption. eauto. eauto.
@@ -7713,7 +7718,7 @@ Proof.
       destruct tx as [rx|]; try solve by inversion.
       assert (res_type venv0 rx Tx) as HRX. SCase "HRX". subst. eapply IHn; eauto.
       inversion HRX as [? vx]. subst.
-      assert (res_type ((i, vx) :: venv0) res T) as HR. SCase "HR". subst. eapply IHn; eauto. econstructor. eapply valtp_widen; eauto. eapply sstpd2_extend2. eapply stpd2_upgrade. eapply stp_to_stp2. eapply has_type_wf. eauto. eauto. eauto. rewrite wf_fresh with (ts:=env). eauto. eauto. eauto.
+      assert (res_type ((i, vx) :: venv0) res T) as HR. SCase "HR". subst. eapply IHn; eauto. econstructor. eapply valtp_widen; eauto. eapply sstpd2_extend2. eapply stpd2_upgrade. eapply stpd_to_stp2. eapply has_type_wf. eauto. eauto. eauto. rewrite wf_fresh with (ts:=env). eauto. eauto. eauto.
       inversion HR as [? v]. subst.
       eapply not_stuck. eapply valtp_widen. eauto. eapply sstpd2_extend1. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. eauto. rewrite wf_fresh with (ts:=env). eauto. eauto.
 
