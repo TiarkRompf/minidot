@@ -6914,19 +6914,24 @@ Proof.
       apply IHB.
 Qed.
 
-Lemma peval_safe_ex: forall H1 G1 t T,
+Lemma peval_safe_ex: forall n, forall H1 G1 t T n1,
   wf_env H1 G1 ->
-  peval1 t G1 T ->
-  exists v n, peval t H1 v /\ val_type H1 v T n.
+  peval1 t G1 T n1 -> n1 < n ->
+  (forall n2, n2 < n -> forall GH T1 T2, stp G1 GH T1 T2 n2 ->
+   forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
+   stpd2 true GX T1 GX T2 GY) ->
+  exists v nv, peval t H1 v /\ val_type H1 v T nv.
 Proof.
-  intros H1 G1 t T Hwf H.
+  intros n H1 G1 t T n1 Hwf H LE IM.
   induction H.
-  - edestruct index_safe_ex as [v [? [IX VT]]]; try eassumption.
+  - edestruct index_safe_ex as [v [nv [IX VT]]]; try eassumption.
     assert (peval (tvar x) H1 v) as EV. eapply index_to_peval; eauto.
     eexists. eexists. split; eassumption.
-  - specialize (IHpeval1 Hwf). destruct IHpeval1 as [v [n [IH1 IH2]]].
-    exists v. exists n. split. assumption. eapply valtp_widen; eauto.
-    admit. (* already here, we need to go from stp to sstpd2 *)
+  - assert (n1 < n) as LE1 by omega.
+    specialize (IHpeval1 Hwf LE1 IM). destruct IHpeval1 as [v [nv [IH1 IH2]]].
+    exists v. exists nv. split. assumption. eapply valtp_widen; eauto.
+    eapply stpd2_to_sstpd2. eapply (IM n2). omega. eassumption. eassumption.
+    eauto.
 Qed.
 
 (* TODO: need to revisit if stp includes trans rule.
