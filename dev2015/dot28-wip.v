@@ -6934,16 +6934,23 @@ Proof.
     eauto.
 Qed.
 
+Ltac som :=
+    match goal with
+      | IH: ?a < ?b -> _ |- _ =>
+        assert (a < b) as LE_TMP by omega; specialize (IH LE_TMP); clear LE_TMP
+    end.
+
 (* TODO: need to revisit if stp includes trans rule.
    if yes, probably need to return stpd2 false, and
    call untrans after recursive calls. but need to be
    careful since we can only untrans with GH=nil  *)
-Lemma stp_to_stp2_aux: forall G1 GH T1 T2,
-  stp G1 GH T1 T2 ->
+Lemma stp_to_stp2_aux: forall n, forall G1 GH T1 T2 n1,
+  stp G1 GH T1 T2 n1 -> n1 < n ->
   forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
   stpd2 true GX T1 GX T2 GY.
 Proof.
-  intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY.
+  intros n. induction n. intros. omega.
+  intros G1 G2 T1 T2 n1 ST LE. induction ST; intros GX GY WX WY; repeat som.
   - Case "topx". eapply stpd2_topx.
   - Case "botx". eapply stpd2_botx.
   - Case "top".
@@ -6959,23 +6966,25 @@ Proof.
   - Case "bool". eapply stpd2_bool; eauto.
   - Case "mem". eapply stpd2_mem; eapply stpd2_wrapf; eauto.
   - Case "sel1".
-    edestruct peval_safe_ex as [v [? [EV VT]]]; try eassumption.
+    edestruct (peval_safe_ex n) as [v [? [EV VT]]]; try eassumption. omega.
+    intros. eapply IHn; eauto.
     edestruct IHST1 as [? B]; eauto. eapply stpd2_to_sstpd2_aux1 in B. destruct B.
     destruct x0. inversion VT.
     eapply invert_typ in VT. destruct VT as [GZ [TZ [VT SM]]].
     eapply stpd2_sel1. eauto. eauto. eapply valtp_closed; eauto.
     eapply sstpd2_downgrade. eauto. eapply sstpd2_extendH_mult0. apply SM.
     apply IHST2; eauto.
-    intros n. apply stp2_substitute_aux. eauto. eauto.
+    intros n0. apply stp2_substitute_aux. eauto. eauto.
   - Case "sel2".
-    edestruct peval_safe_ex as [v [? [EV VT]]]; try eassumption.
+    edestruct (peval_safe_ex n) as [v [? [EV VT]]]; try eassumption. omega.
+    intros. eapply IHn; eauto.
     edestruct IHST1 as [? B]; eauto. eapply stpd2_to_sstpd2_aux1 in B. destruct B.
     destruct x0. inversion VT.
     eapply invert_typ in VT. destruct VT as [GZ [TZ [VT SM]]].
     eapply stpd2_sel2. eauto. eauto. eapply valtp_closed; eauto.
     eapply sstpd2_downgrade. eauto. eapply sstpd2_extendH_mult0. apply SM.
     apply IHST2; eauto.
-    intros n. apply stp2_substitute_aux. eauto. eauto.
+    intros n0. apply stp2_substitute_aux. eauto. eauto.
   - Case "selb1". 
     (* replace x: {z => ..U }  U < T2  by x: (.. U)  U < T *)
     (* previously, there was a separate stp2 level for this *)
@@ -6990,7 +6999,7 @@ Proof.
     eapply sstpd2_downgrade. eauto. eapply sstpd2_extendH_mult0.
     instantiate (2:= TBot) in SM. unfold open in SM. simpl in SM. apply SM.
     apply IHST2; eauto.
-    intros n. apply stp2_substitute_aux. eauto. eauto. eauto.
+    intros n0. apply stp2_substitute_aux. eauto. eauto. eauto.
   - Case "selb2".
     assert (exists (v : vl) n, index x GX = Some v /\ val_type GX v TX n) as A.
     eapply index_safe_ex. eauto. eauto.
@@ -7003,12 +7012,13 @@ Proof.
     eapply sstpd2_downgrade. eauto. eapply sstpd2_extendH_mult0.
     instantiate (1:= TTop) in SM. unfold open in SM. simpl in SM. apply SM.
     apply IHST2; eauto.
-    intros n. apply stp2_substitute_aux. eauto. eauto. eauto.
+    intros n0. apply stp2_substitute_aux. eauto. eauto. eauto.
   - Case "selx".
-    edestruct peval_safe_ex as [v [? [EV VT]]]; try eassumption.
+    edestruct (peval_safe_ex n) as [v [? [EV VT]]]; try eassumption. omega.
+    intros. eapply IHn; eauto.
     eapply stpd2_selx. eauto. eauto.
   - Case "sela1".
-    remember ((0,TX)::GL) as GL1. assert (length GL1 = S (length GL)) as LE. subst GL1. eauto. 
+    remember ((0,TX)::GL) as GL1. assert (length GL1 = S (length GL)) as LE1. subst GL1. eauto.
     assert (indexr x GH = Some TX /\ length GL = x /\ exists GU, GH = GU ++ GL1). subst GL1. eapply tailr_to_indexr. eauto. ev. 
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
@@ -7019,14 +7029,14 @@ Proof.
       eapply exists_GYL. eassumption.
     }
     destruct EQG as [GYU [GYL [EQY WYL]]].
-    eapply stpd2_sela1. eauto. rewrite <-LE. eapply (stp_closed _ _ TX (TMem _ _ _)). eauto.
-    instantiate (1:=GYL). erewrite wfh_length. apply LE.  eassumption. eassumption.
+    eapply stpd2_sela1. eauto. rewrite <- LE1. eapply (stp_closed _ _ TX (TMem _ _ _)). eauto.
+    instantiate (1:=GYL). erewrite wfh_length. apply LE1. eassumption. eassumption.
     eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
     specialize (IHST2 _ _ WX WY).
     apply stpd2_reg2 in IHST2.
     apply IHST2.
   - Case "sela2".
-    remember ((0,TX)::GL) as GL1. assert (length GL1 = S (length GL)) as LE. subst GL1. eauto. 
+    remember ((0,TX)::GL) as GL1. assert (length GL1 = S (length GL)) as LE1. subst GL1. eauto.
     assert (indexr x GH = Some TX /\ length GL = x /\ exists GU, GH = GU ++ GL1). subst GL1. eapply tailr_to_indexr. eauto. ev.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
@@ -7037,14 +7047,14 @@ Proof.
       eapply exists_GYL. eassumption.
     }
     destruct EQG as [GYU [GYL [EQY WYL]]].
-    eapply stpd2_sela2. eauto. eauto. rewrite <-LE. eapply (stp_closed _ _ TX (TMem _ _ _)). eauto.
-    instantiate (1:=GYL). erewrite wfh_length. apply LE. eassumption. eassumption.
+    eapply stpd2_sela2. eauto. eauto. rewrite <- LE1. eapply (stp_closed _ _ TX (TMem _ _ _)). eauto.
+    instantiate (1:=GYL). erewrite wfh_length. apply LE1. eassumption. eassumption.
     eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
     specialize (IHST2 _ _ WX WY).
     apply stpd2_reg2 in IHST2.
     apply IHST2.
   - Case "selab1".
-    remember ((0,TX)::GL) as GL1. assert (length GL1 = S (length GL)) as LE. subst GL1. eauto. 
+    remember ((0,TX)::GL) as GL1. assert (length GL1 = S (length GL)) as LE1. subst GL1. eauto.
     assert (indexr x GH = Some TX /\ length GL = x /\ exists GU, GH = GU ++ GL1). subst GL1. eapply tailr_to_indexr. eauto. ev.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
@@ -7056,12 +7066,12 @@ Proof.
     }
     destruct EQG as [GYU [GYL [EQY WYL]]].
     eapply stpd2_selab1. eauto. instantiate (1:= T2). inversion H0. inversion H6. eauto.
-    instantiate (1:=GYL). erewrite wfh_length. apply LE. eassumption. eassumption.
+    instantiate (1:=GYL). erewrite wfh_length. apply LE1. eassumption. eassumption.
     eapply stpd2_wrapf. eapply IHST1. eauto. eauto.
     specialize (IHST2 _ _ WX WY). reflexivity.
     apply IHST2; eauto.
   - Case "selab2".
-    remember ((0,TX)::GL) as GL1. assert (length GL1 = S (length GL)) as LE. subst GL1. eauto. 
+    remember ((0,TX)::GL) as GL1. assert (length GL1 = S (length GL)) as LE1. subst GL1. eauto.
     assert (indexr x GH = Some TX /\ length GL = x /\ exists GU, GH = GU ++ GL1). subst GL1. eapply tailr_to_indexr. eauto. ev.
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
