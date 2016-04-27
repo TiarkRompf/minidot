@@ -231,8 +231,8 @@ Inductive stp: tenv -> tenv -> ty -> ty -> nat -> Prop :=
 | stp_sel1: forall G1 GH TX m T2 x n1 n2 n3,
     peval1 x G1 TX n1 ->
     closed 0 0 TX ->
-    stp G1 [] TX (TMem m TBot T2) n1 ->
-    stp G1 GH T2 T2 n2 -> (* regularity of stp2 *)
+    stp G1 [] TX (TMem m TBot T2) n2 ->
+    stp G1 GH T2 T2 n3 -> (* regularity of stp2 *)
     stp G1 GH (TSel (varF x) m) T2 (S (n1+n2+n3))
 | stp_sel2: forall G1 GH TX m T1 x n1 n2 n3,
     peval1 x G1 TX n1 ->
@@ -782,6 +782,8 @@ Ltac ep := match goal with
            end.
 
 Ltac eu := match goal with
+             | H: pevald1 _ _ _ |- _ => destruct H as [? H]
+             | H: stpd _ _ _ _ |- _ => destruct H as [? H]
              | H: stpd2 _ _ _ _ _ _ |- _ => destruct H as [? H]
              | H: sstpd2 _ _ _ _ _ _ |- _ => destruct H as [? H]
 (*             | H: exists n: nat ,  _ |- _  =>
@@ -2522,8 +2524,8 @@ Proof.
   - eapply closed_upgrade; eauto.
 Qed.
 
-Lemma stp_closed : forall G GH T1 T2,
-                     stp G GH T1 T2 ->
+Lemma stp_closed : forall G GH T1 T2 n,
+                     stp G GH T1 T2 n ->
                      closed 0 (length GH) T1 /\ closed 0 (length GH) T2.
 Proof.
   intros. induction H;
@@ -2533,18 +2535,18 @@ Proof.
     try solve [inversion IHstp1 as [IH1 IH2]; inversion IHstp2; split; eauto; eapply cl_selh ; eapply tailr_max; eassumption]. 
 Qed.
 
-Lemma stp_closed2 : forall G1 GH T1 T2,
-                       stp G1 GH T1 T2 ->
+Lemma stp_closed2 : forall G1 GH T1 T2 n,
+                       stp G1 GH T1 T2 n->
                        closed 0 (length GH) T2.
 Proof.
-  intros. apply (proj2 (stp_closed G1 GH T1 T2 H)).
+  intros. apply (proj2 (stp_closed G1 GH T1 T2 n H)).
 Qed.
 
-Lemma stp_closed1 : forall G1 GH T1 T2,
-                       stp G1 GH T1 T2 ->
+Lemma stp_closed1 : forall G1 GH T1 T2 n,
+                       stp G1 GH T1 T2 n ->
                        closed 0 (length GH) T1.
 Proof.
-  intros. apply (proj1 (stp_closed G1 GH T1 T2 H)).
+  intros. apply (proj1 (stp_closed G1 GH T1 T2 n H)).
 Qed.
 
 Lemma stp2_closed: forall G1 G2 T1 T2 GH s m n1,
@@ -3513,9 +3515,158 @@ Proof.
 Qed.
 
 
-Lemma stp_reg  : forall G GH T1 T2,
-                    stp G GH T1 T2 ->
-                    stp G GH T1 T1 /\ stp G GH T2 T2.
+Lemma stpd_topx: forall G1 GH,
+  stpd G1 GH TTop TTop.
+Proof. intros. exists 1. eauto. Qed.
+Lemma stpd_botx: forall G1 GH,
+  stpd G1 GH TBot TBot.
+Proof. intros. exists 1. eauto. Qed.
+Lemma stpd_top: forall G1 GH T1,
+  stpd G1 GH T1 T1 -> (* regularity *)
+  stpd G1 GH T1 TTop.
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_bot: forall G1 GH T2,
+  stpd G1 GH T2 T2 -> (* regularity *)
+  stpd G1 GH TBot T2.
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_bool: forall G1 GH,
+  stpd G1 GH TBool TBool.
+Proof. intros. eexists 1. eauto. Qed.
+Lemma stpd_mem: forall G1 GH m T1 T2 T3 T4,
+  stpd G1 GH T3 T1 ->
+  stpd G1 GH T2 T4 ->
+  stpd G1 GH (TMem m T1 T2) (TMem m T3 T4).
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_sel1: forall G1 GH TX m T2 x,
+  pevald1 x G1 TX ->
+  closed 0 0 TX ->
+  stpd G1 [] TX (TMem m TBot T2) ->
+  stpd G1 GH T2 T2 -> (* regularity of stp2 *)
+  stpd G1 GH (TSel (varF x) m) T2.
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_sel2: forall G1 GH TX m T1 x,
+  pevald1 x G1 TX ->
+  closed 0 0 TX ->
+  stpd G1 [] TX (TMem m T1 TTop) ->
+  stpd G1 GH T1 T1 -> (* regularity of stp2 *)
+  stpd G1 GH T1 (TSel (varF x) m).
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_selb1: forall G1 GH TX m T2 x,
+  index x G1 = Some TX ->
+  stpd G1 [] TX (TBind (TMem m TBot T2)) ->   (* Note GH = [] *)
+  stpd G1 GH (open (varF (tvar x)) T2) (open (varF (tvar x)) T2) -> (* regularity *)
+  stpd G1 GH (TSel (varF (tvar x)) m) (open (varF (tvar x)) T2).
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_selb2: forall G1 GH TX m T1 x,
+  index x G1 = Some TX ->
+  stpd G1 [] TX (TBind (TMem m T1 TTop)) ->   (* Note GH = [] *)
+  stpd G1 GH (open (varF (tvar x)) T1) (open (varF (tvar x)) T1) -> (* regularity *)
+  stpd G1 GH (open (varF (tvar x)) T1) (TSel (varF (tvar x)) m).
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_selx: forall G1 GH TX x m,
+  pevald1 x G1 TX ->
+  stpd G1 GH (TSel (varF x) m) (TSel (varF x) m).
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_sela1: forall G1 GH GL TX m T2 x,
+  tailr (S x) GH = (0,TX)::GL ->
+  stpd G1 ((0,TX)::GL) TX (TMem m TBot T2) ->
+  stpd G1 GH T2 T2 -> (* regularity *)
+  stpd G1 GH (TSel (varH x) m) T2.
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_sela2: forall G1 GH GL TX m T1 x,
+  tailr (S x) GH = (0,TX)::GL ->
+  stpd G1 ((0,TX)::GL) TX (TMem m T1 TTop) ->   (* not using self name for now *)
+  stpd G1 GH T1 T1 -> (* regularity of stp2 *)
+  stpd G1 GH T1 (TSel (varH x) m).
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_selab1: forall G1 GH GL TX m T2 T2' x,
+  tailr (S x) GH = (0,TX)::GL ->
+  closed 0 x (TBind (TMem m TBot T2)) ->
+  stpd G1 ((0,TX)::GL) TX (TBind (TMem m TBot T2)) ->
+  T2' = (open (varH x) T2) ->
+  stpd G1 GH T2' T2' -> (* regularity *)
+  stpd G1 GH (TSel (varH x) m) T2'.
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_selab2: forall G1 GH GL TX m T1 T1' x,
+  tailr (S x) GH = (0,TX)::GL ->
+  closed 0 x (TBind (TMem m T1 TTop)) ->
+  stpd G1 ((0,TX)::GL) TX (TBind (TMem m T1 TTop)) ->
+  T1' = (open (varH x) T1) ->
+  stpd G1 GH T1' T1' -> (* regularity *)
+  stpd G1 GH T1' (TSel (varH x) m).
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_selax: forall G1 GH TX x m,
+  indexr x GH = Some TX  ->
+  stpd G1 GH (TSel (varH x) m) (TSel (varH x) m).
+Proof. intros. repeat eu. exists 1. eauto. Qed.
+Lemma stpd_all: forall G1 GH m T1 T2 T3 T4 x,
+  stpd G1 GH T3 T1 ->
+  x = length GH ->
+  closed 1 (length GH) T2 -> (* must not accidentally bind x *)
+  closed 1 (length GH) T4 ->
+  stpd G1 ((0,T1)::GH) (open (varH x) T2) (open (varH x) T2) -> (* regularity *)
+  stpd G1 ((0,T3)::GH) (open (varH x) T2) (open (varH x) T4) ->
+  stpd G1 GH (TAll m T1 T2) (TAll m T3 T4).
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_bindx: forall G1 GH T1 T2 x,
+  x = length GH ->
+  closed 1 (length GH) T1 -> (* must not accidentally bind x *)
+  closed 1 (length GH) T2 ->
+  stpd G1 ((0,open (varH x) T2)::GH) (open (varH x) T2) (open (varH x) T2) -> (* regularity *)
+  stpd G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) (open (varH x) T2) ->
+  stpd G1 GH (TBind T1) (TBind T2).
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_bind1: forall G1 GH T1 T2 x,
+  x = length GH ->
+  closed 1 (length GH) T1 -> (* must not accidentally bind x *)
+  closed 0 (length GH) T2 ->
+  stpd G1 GH T2 T2 ->
+  stpd G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) T2 ->
+  stpd G1 GH (TBind T1) T2.
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_and11: forall G GH T1 T2 T,
+  stpd G GH T1 T ->
+  stpd G GH T2 T2 -> (* regularity *)
+  stpd G GH (TAnd T1 T2) T.
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_and12: forall G GH T1 T2 T,
+  stpd G GH T2 T ->
+  stpd G GH T1 T1 -> (* regularity *)
+  stpd G GH (TAnd T1 T2) T.
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_and2: forall G GH T1 T2 T,
+  stpd G GH T T1 ->
+  stpd G GH T T2 ->
+  stpd G GH T (TAnd T1 T2).
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_or21: forall G GH T1 T2 T,
+  stpd G GH T T1 ->
+  stpd G GH T2 T2 -> (* regularity *)
+  stpd G GH T (TOr T1 T2).
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_or22: forall G GH T1 T2 T,
+  stpd G GH T T2  ->
+  stpd G GH T1 T1 -> (* regularity *)
+  stpd G GH T (TOr T1 T2).
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd_or1: forall G GH T1 T2 T,
+  stpd G GH T1 T ->
+  stpd G GH T2 T ->
+  stpd G GH (TOr T1 T2) T.
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma ptd_var: forall x G1 TX,
+  index x G1 = Some TX ->
+  pevald1 (tvar x) G1 TX.
+Proof. intros. exists 1. eauto. Qed.
+Lemma ptd_sub: forall t1 G1 T1 T2,
+  pevald1 t1 G1 T1 ->
+  stpd G1 [] T1 T2 ->
+  pevald1 t1 G1 T2.
+Proof. intros. repeat eu. eexists. eauto. Qed.
+
+Lemma stp_reg  : forall G GH T1 T2 n,
+                    stp G GH T1 T2 n ->
+                    stpd G GH T1 T1 /\ stpd G GH T2 T2.
 Proof.
   intros. induction H;
     try solve [repeat ev; split; eauto; try (eapply stp_selax; eapply tailr_to_indexr; eauto)].
