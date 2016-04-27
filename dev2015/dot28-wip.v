@@ -7143,8 +7143,8 @@ Grab Existential Variables.
 (*apply 0. apply 0. apply 0. apply 0.*)
 Qed.
 
-Lemma stp_to_stp2: forall G1 GH T1 T2,
-  stp G1 GH T1 T2 ->
+Lemma stp_to_stp2: forall G1 GH T1 T2 n,
+  stp G1 GH T1 T2 n ->
   forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
   stpd2 false GX T1 GX T2 GY.
 Proof.
@@ -7164,7 +7164,7 @@ Inductive wf_tp: tenv -> tenv -> ty -> Prop :=
     wf_tp G1 GH T2 ->
     wf_tp G1 GH (TMem l T1 T2)
 | wf_sel: forall G1 GH TX x l,
-    peval1 x G1 TX ->
+    pevald1 x G1 TX ->
     wf_tp G1 GH (TSel (varF x) l)
 | wf_sela: forall G1 GH TX x l,
     indexr x GH = Some TX  ->
@@ -7191,28 +7191,28 @@ Inductive wf_tp: tenv -> tenv -> ty -> Prop :=
 .
 Hint Constructors wf_tp.
 
-Lemma stp_to_wf_tp_aux: forall G GH T1 T2,
-                          stp G GH T1 T2 ->
+Lemma stp_to_wf_tp_aux: forall G GH T1 T2 n,
+                          stp G GH T1 T2 n ->
                           wf_tp G GH T1 /\ wf_tp G GH T2.
 Proof.
   intros. induction H;
     try solve [repeat ev; split; eauto; try (eapply wf_sela; eapply tailr_to_indexr; eauto)].
 Qed.
 
-Lemma stp_to_wf_tp: forall G GH T,
-                      stp G GH T T ->
+Lemma stp_to_wf_tp: forall G GH T n,
+                      stp G GH T T n ->
                       wf_tp G GH T.
 Proof.
-  intros. apply (proj1 (stp_to_wf_tp_aux G GH T T H)).
+  intros. apply (proj1 (stp_to_wf_tp_aux G GH T T n H)).
 Qed.
 
-Lemma peval_safe_cycle: forall T0 v0 TX t G GH GX GY,
+Lemma peval_safe_cycle: forall T0 v0 TX t G GH GX GY n,
   wf_env GX G ->
   wf_envh ((fresh G, v0) :: GX) GY GH ->
-  peval1 t ((fresh G, T0) :: G) TX ->
+  peval1 t ((fresh G, T0) :: G) TX n ->
   exists v, peval t ((fresh G, v0) :: GX) v.
 Proof.
-  intros T0 v0 TX t G GH GX GY WX WY H.
+  intros T0 v0 TX t G GH GX GY n WX WY H.
   remember ((fresh G, T0)::G) as G0. generalize HeqG0.
   induction H; intros; subst.
   - assert (exists v, index x ((fresh G, v0) :: GX) = Some v) as A. {
@@ -7244,7 +7244,7 @@ Proof.
   - Case "bool". eapply stpd2_bool; eauto.
   - Case "mem". eapply stpd2_mem; eapply stpd2_wrapf; eauto.
   - Case "selx".
-    edestruct peval_safe_cycle as [? B]; try eassumption.
+    eu. edestruct peval_safe_cycle as [? B]; try eassumption.
     eapply stpd2_selx; eapply B.
   - Case "selax".
     assert (exists v, indexr x GY = Some v) as A. {
@@ -7276,9 +7276,9 @@ Proof.
     eapply stpd2_or22. eapply stpd2_wrapf. eapply IHST2; eauto. eapply IHST1; eauto.
 Qed.
 
-Lemma stp_to_stp2_cycle: forall venv env T0 T t,
+Lemma stp_to_stp2_cycle: forall venv env T0 T t n,
   wf_env venv env ->
-  stp ((fresh env, T0) :: env) [] T T->
+  stp ((fresh env, T0) :: env) [] T T n ->
   stpd2 false ((fresh env, vobj venv (fresh venv) t) :: venv) T
               ((fresh env, vobj venv (fresh venv) t) :: venv) T [].
 Proof.
