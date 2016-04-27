@@ -211,129 +211,129 @@ Hint Unfold closed.
 
 (* TODO: var *)
 (* QUESTION: include trans rule or not? sela1 rules use restricted GL now, so trans seems useful *)
-Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
-| stp_topx: forall G1 GH,
-    stp G1 GH TTop TTop
-| stp_botx: forall G1 GH,
-    stp G1 GH TBot TBot
-| stp_top: forall G1 GH T1,
-    stp G1 GH T1 T1 -> (* regularity *)
-    stp G1 GH T1 TTop
-| stp_bot: forall G1 GH T2,
-    stp G1 GH T2 T2 -> (* regularity *)
-    stp G1 GH TBot T2
-| stp_bool: forall G1 GH,
-    stp G1 GH TBool TBool
-| stp_mem: forall G1 GH m T1 T2 T3 T4,
-    stp G1 GH T3 T1 ->
-    stp G1 GH T2 T4 ->
-    stp G1 GH (TMem m T1 T2) (TMem m T3 T4)
-| stp_sel1: forall G1 GH TX m T2 x,
-    peval1 x G1 TX ->
+Inductive stp: tenv -> tenv -> ty -> ty -> nat -> Prop :=
+| stp_topx: forall G1 GH n1,
+    stp G1 GH TTop TTop (S n1)
+| stp_botx: forall G1 GH n1,
+    stp G1 GH TBot TBot (S n1)
+| stp_top: forall G1 GH T1 n1,
+    stp G1 GH T1 T1 n1 -> (* regularity *)
+    stp G1 GH T1 TTop (S n1)
+| stp_bot: forall G1 GH T2 n1,
+    stp G1 GH T2 T2 n1 -> (* regularity *)
+    stp G1 GH TBot T2 (S n1)
+| stp_bool: forall G1 GH n1,
+    stp G1 GH TBool TBool (S n1)
+| stp_mem: forall G1 GH m T1 T2 T3 T4 n1 n2,
+    stp G1 GH T3 T1 n1 ->
+    stp G1 GH T2 T4 n2 ->
+    stp G1 GH (TMem m T1 T2) (TMem m T3 T4) (S (n1+n2))
+| stp_sel1: forall G1 GH TX m T2 x n1 n2 n3,
+    peval1 x G1 TX n1 ->
     closed 0 0 TX ->
-    stp G1 [] TX (TMem m TBot T2) ->
-    stp G1 GH T2 T2 -> (* regularity of stp2 *)
-    stp G1 GH (TSel (varF x) m) T2
-| stp_sel2: forall G1 GH TX m T1 x,
-    peval1 x G1 TX ->
+    stp G1 [] TX (TMem m TBot T2) n1 ->
+    stp G1 GH T2 T2 n2 -> (* regularity of stp2 *)
+    stp G1 GH (TSel (varF x) m) T2 (S (n1+n2+n3))
+| stp_sel2: forall G1 GH TX m T1 x n1 n2 n3,
+    peval1 x G1 TX n1 ->
     closed 0 0 TX ->
-    stp G1 [] TX (TMem m T1 TTop) ->
-    stp G1 GH T1 T1 -> (* regularity of stp2 *)
-    stp G1 GH T1 (TSel (varF x) m)
-| stp_selb1: forall G1 GH TX m T2 x,
+    stp G1 [] TX (TMem m T1 TTop) n2 ->
+    stp G1 GH T1 T1 n3 -> (* regularity of stp2 *)
+    stp G1 GH T1 (TSel (varF x) m) (S (n1+n2+n3))
+| stp_selb1: forall G1 GH TX m T2 x n1 n2,
     index x G1 = Some TX ->
-    stp G1 [] TX (TBind (TMem m TBot T2)) ->   (* Note GH = [] *)
-    stp G1 GH (open (varF (tvar x)) T2) (open (varF (tvar x)) T2) -> (* regularity *)
-    stp G1 GH (TSel (varF (tvar x)) m) (open (varF (tvar x)) T2)
-| stp_selb2: forall G1 GH TX m T1 x,
+    stp G1 [] TX (TBind (TMem m TBot T2)) n1 ->   (* Note GH = [] *)
+    stp G1 GH (open (varF (tvar x)) T2) (open (varF (tvar x)) T2) n2 -> (* regularity *)
+    stp G1 GH (TSel (varF (tvar x)) m) (open (varF (tvar x)) T2) (S (n1+n2))
+| stp_selb2: forall G1 GH TX m T1 x n1 n2,
     index x G1 = Some TX ->
-    stp G1 [] TX (TBind (TMem m T1 TTop)) ->   (* Note GH = [] *)
-    stp G1 GH (open (varF (tvar x)) T1) (open (varF (tvar x)) T1) -> (* regularity *)
-    stp G1 GH (open (varF (tvar x)) T1) (TSel (varF (tvar x)) m)
-| stp_selx: forall G1 GH TX x m,
-    peval1 x G1 TX ->
-    stp G1 GH (TSel (varF x) m) (TSel (varF x) m)
-| stp_sela1: forall G1 GH GL TX m T2 x,
+    stp G1 [] TX (TBind (TMem m T1 TTop)) n1 ->   (* Note GH = [] *)
+    stp G1 GH (open (varF (tvar x)) T1) (open (varF (tvar x)) T1) n2 -> (* regularity *)
+    stp G1 GH (open (varF (tvar x)) T1) (TSel (varF (tvar x)) m) (S (n1+n2))
+| stp_selx: forall G1 GH TX x m n1,
+    peval1 x G1 TX n1 ->
+    stp G1 GH (TSel (varF x) m) (TSel (varF x) m) (S n1)
+| stp_sela1: forall G1 GH GL TX m T2 x n1 n2,
     tailr (S x) GH = (0,TX)::GL ->
-    stp G1 ((0,TX)::GL) TX (TMem m TBot T2) ->
-    stp G1 GH T2 T2 -> (* regularity *)
-    stp G1 GH (TSel (varH x) m) T2
-| stp_sela2: forall G1 GH GL TX m T1 x,
+    stp G1 ((0,TX)::GL) TX (TMem m TBot T2) n1 ->
+    stp G1 GH T2 T2 n2 -> (* regularity *)
+    stp G1 GH (TSel (varH x) m) T2 (S (n1+n2))
+| stp_sela2: forall G1 GH GL TX m T1 x n1 n2,
     tailr (S x) GH = (0,TX)::GL ->
-    stp G1 ((0,TX)::GL) TX (TMem m T1 TTop) ->   (* not using self name for now *)
-    stp G1 GH T1 T1 -> (* regularity of stp2 *)
-    stp G1 GH T1 (TSel (varH x) m)
-| stp_selab1: forall G1 GH GL TX m T2 T2' x,
+    stp G1 ((0,TX)::GL) TX (TMem m T1 TTop) n1 ->   (* not using self name for now *)
+    stp G1 GH T1 T1 n2 -> (* regularity of stp2 *)
+    stp G1 GH T1 (TSel (varH x) m) (S (n1+n2))
+| stp_selab1: forall G1 GH GL TX m T2 T2' x n1 n2,
     tailr (S x) GH = (0,TX)::GL ->
     closed 0 x (TBind (TMem m TBot T2)) ->
-    stp G1 ((0,TX)::GL) TX (TBind (TMem m TBot T2)) ->
+    stp G1 ((0,TX)::GL) TX (TBind (TMem m TBot T2)) n1 ->
     T2' = (open (varH x) T2) ->
-    stp G1 GH T2' T2' -> (* regularity *)
-    stp G1 GH (TSel (varH x) m) T2'
-| stp_selab2: forall G1 GH GL TX m T1 T1' x,
+    stp G1 GH T2' T2' n2 -> (* regularity *)
+    stp G1 GH (TSel (varH x) m) T2' (S (n1+n2))
+| stp_selab2: forall G1 GH GL TX m T1 T1' x n1 n2,
     tailr (S x) GH = (0,TX)::GL ->
     closed 0 x (TBind (TMem m T1 TTop)) ->
-    stp G1 ((0,TX)::GL) TX (TBind (TMem m T1 TTop)) ->
+    stp G1 ((0,TX)::GL) TX (TBind (TMem m T1 TTop)) n1 ->
     T1' = (open (varH x) T1) ->
-    stp G1 GH T1' T1' -> (* regularity *)
-    stp G1 GH T1' (TSel (varH x) m)
-| stp_selax: forall G1 GH TX x m,
+    stp G1 GH T1' T1' n2 -> (* regularity *)
+    stp G1 GH T1' (TSel (varH x) m) (S (n1+n2))
+| stp_selax: forall G1 GH TX x m n1,
     indexr x GH = Some TX  ->
-    stp G1 GH (TSel (varH x) m) (TSel (varH x) m)
-| stp_all: forall G1 GH m T1 T2 T3 T4 x,
-    stp G1 GH T3 T1 ->
+    stp G1 GH (TSel (varH x) m) (TSel (varH x) m) (S n1)
+| stp_all: forall G1 GH m T1 T2 T3 T4 x n1 n2 n3,
+    stp G1 GH T3 T1 n1 ->
     x = length GH ->
     closed 1 (length GH) T2 -> (* must not accidentally bind x *)
     closed 1 (length GH) T4 ->
-    stp G1 ((0,T1)::GH) (open (varH x) T2) (open (varH x) T2) -> (* regularity *)
-    stp G1 ((0,T3)::GH) (open (varH x) T2) (open (varH x) T4) ->
-    stp G1 GH (TAll m T1 T2) (TAll m T3 T4)
-| stp_bindx: forall G1 GH T1 T2 x,
+    stp G1 ((0,T1)::GH) (open (varH x) T2) (open (varH x) T2) n2 -> (* regularity *)
+    stp G1 ((0,T3)::GH) (open (varH x) T2) (open (varH x) T4) n3 ->
+    stp G1 GH (TAll m T1 T2) (TAll m T3 T4) (S (n1+n2+n3))
+| stp_bindx: forall G1 GH T1 T2 x n1 n2,
     x = length GH ->
     closed 1 (length GH) T1 -> (* must not accidentally bind x *)
     closed 1 (length GH) T2 ->
-    stp G1 ((0,open (varH x) T2)::GH) (open (varH x) T2) (open (varH x) T2) -> (* regularity *)
-    stp G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) (open (varH x) T2) ->
-    stp G1 GH (TBind T1) (TBind T2)
-| stp_bind1: forall G1 GH T1 T2 x,
+    stp G1 ((0,open (varH x) T2)::GH) (open (varH x) T2) (open (varH x) T2) n1 -> (* regularity *)
+    stp G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) (open (varH x) T2) n2 ->
+    stp G1 GH (TBind T1) (TBind T2) (S (n1+n2))
+| stp_bind1: forall G1 GH T1 T2 x n1 n2,
     x = length GH ->
     closed 1 (length GH) T1 -> (* must not accidentally bind x *)
     closed 0 (length GH) T2 ->
-    stp G1 GH T2 T2 ->
-    stp G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) T2 ->
-    stp G1 GH (TBind T1) T2
-| stp_and11: forall G GH T1 T2 T,
-    stp G GH T1 T ->
-    stp G GH T2 T2 -> (* regularity *)
-    stp G GH (TAnd T1 T2) T
-| stp_and12: forall G GH T1 T2 T,
-    stp G GH T2 T ->
-    stp G GH T1 T1 -> (* regularity *)
-    stp G GH (TAnd T1 T2) T
-| stp_and2: forall G GH T1 T2 T,
-    stp G GH T T1 ->
-    stp G GH T T2 ->
-    stp G GH T (TAnd T1 T2)
-| stp_or21: forall G GH T1 T2 T,
-    stp G GH T T1 ->
-    stp G GH T2 T2 -> (* regularity *)
-    stp G GH T (TOr T1 T2)
-| stp_or22: forall G GH T1 T2 T,
-    stp G GH T T2 ->
-    stp G GH T1 T1 -> (* regularity *)
-    stp G GH T (TOr T1 T2)
-| stp_or1: forall G GH T1 T2 T,
-    stp G GH T1 T ->
-    stp G GH T2 T ->
-    stp G GH (TOr T1 T2) T
-with peval1: tm -> tenv -> ty -> Prop :=
-| pt_var: forall x G1 TX,
+    stp G1 GH T2 T2 n1 ->
+    stp G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) T2 n2 ->
+    stp G1 GH (TBind T1) T2 (S (n1+n2))
+| stp_and11: forall G GH T1 T2 T n1 n2,
+    stp G GH T1 T n1 ->
+    stp G GH T2 T2 n2 -> (* regularity *)
+    stp G GH (TAnd T1 T2) T (S (n1+n2))
+| stp_and12: forall G GH T1 T2 T n1 n2,
+    stp G GH T2 T n1 ->
+    stp G GH T1 T1 n2 -> (* regularity *)
+    stp G GH (TAnd T1 T2) T (S (n1+n2))
+| stp_and2: forall G GH T1 T2 T n1 n2,
+    stp G GH T T1 n1 ->
+    stp G GH T T2 n2 ->
+    stp G GH T (TAnd T1 T2) (S (n1+n2))
+| stp_or21: forall G GH T1 T2 T n1 n2,
+    stp G GH T T1 n1 ->
+    stp G GH T2 T2 n2 -> (* regularity *)
+    stp G GH T (TOr T1 T2) (S (n1+n2))
+| stp_or22: forall G GH T1 T2 T n1 n2,
+    stp G GH T T2  n1 ->
+    stp G GH T1 T1 n2 -> (* regularity *)
+    stp G GH T (TOr T1 T2) (S (n1+n2))
+| stp_or1: forall G GH T1 T2 T n1 n2,
+    stp G GH T1 T n1 ->
+    stp G GH T2 T n2 ->
+    stp G GH (TOr T1 T2) T (S (n1+n2))
+with peval1: tm -> tenv -> ty -> nat -> Prop :=
+| pt_var: forall x G1 TX n1,
             index x G1 = Some TX ->
-            peval1 (tvar x) G1 TX
-| pt_sub: forall t1 G1 T1 T2,
-            peval1 t1 G1 T1 ->
-            stp G1 [] T1 T2 ->
-            peval1 t1 G1 T2
+            peval1 (tvar x) G1 TX (S n1)
+| pt_sub: forall t1 G1 T1 T2 n1 n2,
+            peval1 t1 G1 T1 n1 ->
+            stp G1 [] T1 T2 n2 ->
+            peval1 t1 G1 T2 (S (n1+n2))
 .
 
 (*
@@ -363,6 +363,9 @@ Function tand (t1: ty) (t2: ty) :=
     | TTop => t1
     | _ => TAnd t1 t2
   end.
+
+Definition stpd G1 GH T1 T2 := exists n, stp G1 GH T1 T2 n.
+Definition pevald1 x G1 TX := exists n, peval1 x G1 TX n.
 
 (* TODO *)
 
