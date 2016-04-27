@@ -10,6 +10,10 @@
 (* copied from dot26.v *)
 (* based on that, it adds some static support for
    non-variable path expressions *)
+(* copied from dot27.v *)
+(* based on that, it adds subsumption in static paths,
+   which requires derivation on stp size for stp_to_stp2,
+   due to mutual induction in matching static and dynamic stp and peval *)
 
 Require Export SfLib.
 
