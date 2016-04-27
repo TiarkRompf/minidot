@@ -357,7 +357,6 @@ with pathH_type: tenv -> tenv -> id -> ty -> Prop :=
 Hint Constructors peval1.
 Hint Constructors stp.
 
-
 Function tand (t1: ty) (t2: ty) :=
   match t2 with
     | TTop => t1
@@ -366,6 +365,9 @@ Function tand (t1: ty) (t2: ty) :=
 
 Definition stpd G1 GH T1 T2 := exists n, stp G1 GH T1 T2 n.
 Definition pevald1 x G1 TX := exists n, peval1 x G1 TX n.
+
+Hint Unfold stpd.
+Hint Unfold pevald1.
 
 (* TODO *)
 
@@ -3664,12 +3666,14 @@ Lemma ptd_sub: forall t1 G1 T1 T2,
   pevald1 t1 G1 T2.
 Proof. intros. repeat eu. eexists. eauto. Qed.
 
+Hint Resolve stpd_topx stpd_botx stpd_top stpd_bot stpd_bool stpd_mem stpd_sel1 stpd_sel2 stpd_selb1 stpd_selb2 stpd_selx stpd_sela1 stpd_sela2 stpd_selab1 stpd_selab2 stpd_selax stpd_all stpd_bindx stpd_bind1 stpd_and11 stpd_and12 stpd_and2 stpd_or21 stpd_or22 stpd_or1 ptd_var ptd_sub.
+
 Lemma stp_reg  : forall G GH T1 T2 n,
                     stp G GH T1 T2 n ->
                     stpd G GH T1 T1 /\ stpd G GH T2 T2.
 Proof.
   intros. induction H;
-    try solve [repeat ev; split; eauto; try (eapply stp_selax; eapply tailr_to_indexr; eauto)].
+    try solve [repeat ev; split; eauto; try (eapply stpd_selax; eapply tailr_to_indexr; eauto)].
 Qed.
 
 
