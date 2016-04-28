@@ -7256,6 +7256,17 @@ Proof.
 
 Qed.
 
+Lemma invert_obj_fld_sel: forall n venv vf l T2,
+  val_type venv vf (TFld l T2) n ->
+  exists env ds y vy ny,
+    vf = (vobj env (fresh env) ds) /\
+    index l ds = Some (dfld y) /\
+    index y env = Some vy /\
+    val_type venv vy T2 ny.
+Proof.
+  admit.
+Qed.
+
 Lemma peval_safe_sel: forall H1 f v l TX nv,
   peval f H1 v ->
   val_type H1 v (TFld l TX) nv ->
@@ -7263,29 +7274,20 @@ Lemma peval_safe_sel: forall H1 f v l TX nv,
 Proof.
   intros H1 f v l TX nv HP HV.
   unfold peval in HP. destruct HP as [FA [nf IHF]].
-  inversion HV; ev; try solve by inversion; subst.
-  - assert (exists y, index l ds = Some (dfld y)) as A. {
-      admit.
-    }
-    destruct A as [y A].
-    assert (exists v0, index y ((fresh venv0,(vobj venv0 (fresh venv0) ds))::venv0) = Some v0) as B. {
-      admit.
-    }
-    destruct B as [v0 B].
-    assert (exists nv0, val_type H1 v0 TX nv0) as C. {
-      admit.
-    }
-    destruct C as [nv0 C].
-    assert (peval (tsel f l) H1 v0) as RA. {
-      unfold peval. split. eauto. exists (nf+1). intros n LE.
-      destruct n. omega. simpl. unfold teval. simpl. rewrite IHF. simpl.
-      destruct n. omega. simpl.
-      rewrite A.
-      rewrite <- B. simpl. reflexivity.
-      omega.
-    }
-    exists v0. exists nv0. split. apply RA. apply C.
-  - admit.
+  eapply invert_obj_fld_sel in HV.
+  destruct HV as [Hf [ds [y [vy [ny [Ef [Ids [Iy Hvy]]]]]]]].
+  assert (index y ((fresh Hf,v)::Hf) = Some vy) as Iy'. {
+    eapply index_extend; eauto.
+  }
+  subst v.
+  assert (peval (tsel f l) H1 vy) as RA. {
+    unfold peval. split. eauto. exists (nf+1). intros n LE.
+    destruct n. omega. simpl. unfold teval. simpl. rewrite IHF. simpl.
+    destruct n. omega. simpl.
+    rewrite Ids. rewrite <- Iy'. simpl. reflexivity.
+    omega.
+  }
+  exists vy. exists ny. split. apply RA. apply Hvy.
 Qed.
 
 Lemma peval_safe_ex: forall n, forall H1 G1 t T n1,
