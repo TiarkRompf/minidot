@@ -7264,7 +7264,17 @@ Lemma invert_obj_fld_sel: forall n venv vf l T2,
     index y env = Some vy /\
     val_type venv vy T2 ny.
 Proof.
-  admit.
+  intros n. destruct n. intros. inversion H.
+  assert (exists ni, n <= ni). exists n. omega. destruct H as [ni ?]. revert n H. induction ni; intros n N.
+  - (* 1 *)
+    admit.
+  - intros.
+    assert (sstpd2 true venv0 (TFld l T2) venv0 (TFld l T2) []). eapply valtp_reg; eauto.
+    eu.
+    eapply invert_fld in H. destruct H as [GY [TY [VT [? ST]]]].
+    eapply valtp_widen in VT.
+    eapply IHni. instantiate (1:=0). omega. eapply VT. eauto. eauto. eexists. eauto.
+    intros nv. eapply stp2_substitute_aux. eauto.
 Qed.
 
 Lemma peval_safe_sel: forall H1 f v l TX nv,
