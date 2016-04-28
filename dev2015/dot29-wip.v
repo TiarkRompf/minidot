@@ -490,7 +490,7 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
                 | None => Some None
                 | Some (dmem _) => Some None
                 | Some (dfun _ _) => Some None
-                | Some (dfld y) => Some (index y ((f,vobj env2 f ds)::env2))
+                | Some (dfld y) => teval n ((f,vobj env2 f ds)::env2) (tvar y)
               end
           end
         | tapp ef m ex   =>
@@ -8004,11 +8004,12 @@ Proof.
         case_eq (le_lt_dec (fresh env1) (fresh env1)); intros LE E.
         reflexivity. omega.
       }
-      assert (teval n ((fresh env1, vobj env1 (fresh env1) ds) :: env1) (tvar y0) = Some res) as B. {
-        admit.
-      }
+      rewrite <- H6 in H3. rewrite EF in H3. rewrite EQDS in H3.
 
-      assert (res_type (((fresh env1),vf)::env1) res T4) as HRY. admit.
+      assert (res_type (((fresh env1),vf)::env1) res T4) as HRY. {
+        subst. eapply IHn. eapply H3. eauto.
+        econstructor. eapply v_obj; eauto. eauto.
+      }
       inversion HRY as [? vy].
 
       eapply not_stuck. eapply valtp_widen; eauto. rewrite EF. eauto.
