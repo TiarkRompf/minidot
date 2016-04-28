@@ -7167,7 +7167,7 @@ Qed.
 
 Lemma invert_obj_fld: forall n venv vf l T2,
   val_type venv vf (TFld l T2) n ->
-  sstpd2 true venv T2 venv T2 [] ->
+  (*sstpd2 true venv T2 venv T2 [] ->*)
   exists env tenv TF ds y T4,
     vf = (vobj env (fresh env) ds) /\
     index l ds = Some (dfld y) /\
@@ -7191,44 +7191,44 @@ Proof.
       clear Heqtenv.
       remember ((fresh venv1, vobj venv1 (fresh venv1) ds) :: venv1) as venv.
       assert (sstpd2 true venv (open (varF (tvar (fresh venv1))) T) venv0 (TFld l T2) []) as B. { eexists; eassumption. }
-      clear H5. clear Heqvenv.
-      induction H3. destruct B as [? B]. inversion B.
+      clear H4. clear Heqvenv.
+      induction H2. destruct B as [? B]. inversion B.
       simpl.
       case_eq (le_lt_dec (fresh dcs) m); intros LE E1.
       case_eq (beq_nat l m); intros E2.
       exists y. eexists. split. reflexivity. split. eapply H.
       destruct (tand_shape (TFld m T0) TS).
-      rewrite H6 in H5. rewrite H5 in B. destruct B as [? B]. unfold open in B. simpl in B. inversion B. eapply beq_nat_true in E2. rewrite <- E2 in H10. eexists. eassumption.
-      eapply dcs_has_type_stp_fld in H3. inversion H3. rewrite <- H4. eapply beq_nat_true in E2. rewrite <- E2. eexists. eassumption.
-      rewrite H6 in H5. rewrite H5 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. apply B.
+      rewrite H5 in H4. rewrite H4 in B. destruct B as [? B]. unfold open in B. simpl in B. inversion B. eapply beq_nat_true in E2. rewrite <- E2 in H9. eexists. eassumption.
+      eapply dcs_has_type_stp_fld in H2. inversion H2. rewrite <- H3. eapply beq_nat_true in E2. rewrite <- E2. eexists. eassumption.
+      rewrite H5 in H4. rewrite H4 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. apply B.
       eapply IHdcs_has_type. apply A. destruct (tand_shape (TFld m T0) TS).
-      rewrite H6 in H5. rewrite H5 in B. destruct B as [? B]. inversion B. unfold open in H10. simpl in H10. inversion H10. apply beq_nat_false in E2. omega. eexists. eassumption.
-      rewrite H6 in H5. rewrite H5 in B. destruct B as [? B]. inversion B. apply beq_nat_false in E2. omega.
-      inversion H3; subst. simpl in LE. omega. simpl in LE. omega. simpl in LE. omega.
+      rewrite H5 in H4. rewrite H4 in B. destruct B as [? B]. inversion B. unfold open in H9. simpl in H9. inversion H9. apply beq_nat_false in E2. omega. eexists. eassumption.
+      rewrite H5 in H4. rewrite H4 in B. destruct B as [? B]. inversion B. apply beq_nat_false in E2. omega.
+      inversion H2; subst. simpl in LE. omega. simpl in LE. omega. simpl in LE. omega.
       simpl in LE. omega. simpl.
       case_eq (le_lt_dec (fresh dcs) m); intros LE E1.
       case_eq (beq_nat l m); intros E2.
       destruct (tand_shape (TAll m T1 T0) TS).
-      rewrite H5 in H4. rewrite H4 in B. destruct B as [? B]. unfold open in B. simpl in B. inversion B. eapply beq_nat_true in E2. rewrite <- E2 in H9. inversion H9.
-      eapply dcs_has_type_stp_fld in H3. inversion H3. rewrite <- H2. eapply beq_nat_true in E2. rewrite <- E2. eexists. eassumption.
-      rewrite H5 in H4. rewrite H4 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. inversion B.
-      unfold open in H6. simpl in H6. inversion H6.
+      rewrite H4 in H3. rewrite H3 in B. destruct B as [? B]. unfold open in B. simpl in B. inversion B. eapply beq_nat_true in E2. rewrite <- E2 in H8. inversion H8.
+      eapply dcs_has_type_stp_fld in H2. inversion H2. rewrite <- H1. eapply beq_nat_true in E2. rewrite <- E2. eexists. eassumption.
+      rewrite H4 in H3. rewrite H3 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. inversion B.
+      unfold open in H5. simpl in H5. inversion H5.
       eapply IHdcs_has_type. apply A. destruct (tand_shape (TAll m T1 T0) TS).
-      rewrite H5 in H4. rewrite H4 in B. destruct B as [? B]. inversion B. unfold open in H9. simpl in H9. inversion H9. eexists. eassumption.
-      rewrite H5 in H4. rewrite H4 in B. destruct B as [? B]. inversion B.
-      inversion H3; subst. simpl in LE. omega. simpl in LE. omega. simpl in LE. omega.
+      rewrite H4 in H3. rewrite H3 in B. destruct B as [? B]. inversion B. unfold open in H8. simpl in H8. inversion H8. eexists. eassumption.
+      rewrite H4 in H3. rewrite H3 in B. destruct B as [? B]. inversion B.
+      inversion H2; subst. simpl in LE. omega. simpl in LE. omega. simpl in LE. omega.
       simpl in LE. omega. simpl.
       case_eq (le_lt_dec (fresh dcs) m); intros LE E1.
       case_eq (beq_nat l m); intros E2.
       destruct (tand_shape (TMem m T1 T1) TS).
-      rewrite H2 in H0. rewrite H0 in B. destruct B as [? B]. unfold open in B. simpl in B. inversion B. eapply beq_nat_true in E2. rewrite <- E2 in H7. inversion H7.
-      eapply dcs_has_type_stp_fld in H3. inversion H3. rewrite <- H. eapply beq_nat_true in E2. rewrite <- E2. eexists. eassumption.
-      rewrite H2 in H0. rewrite H0 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. inversion B.
-      unfold open in H4. simpl in H4. inversion H4.
+      rewrite H1 in H0. rewrite H0 in B. destruct B as [? B]. unfold open in B. simpl in B. inversion B. eapply beq_nat_true in E2. rewrite <- E2 in H6. inversion H6.
+      eapply dcs_has_type_stp_fld in H2. inversion H2. rewrite <- H. eapply beq_nat_true in E2. rewrite <- E2. eexists. eassumption.
+      rewrite H1 in H0. rewrite H0 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. inversion B.
+      unfold open in H3. simpl in H3. inversion H3.
       eapply IHdcs_has_type. apply A. destruct (tand_shape (TMem m T1 T1) TS).
-      rewrite H2 in H0. rewrite H0 in B. destruct B as [? B]. inversion B. unfold open in H7. simpl in H7. inversion H7. eexists. eassumption.
-      rewrite H2 in H0. rewrite H0 in B. destruct B as [? B]. inversion B.
-      inversion H3; subst. simpl in LE. omega. simpl in LE. omega. simpl in LE. omega.
+      rewrite H1 in H0. rewrite H0 in B. destruct B as [? B]. inversion B. unfold open in H6. simpl in H6. inversion H6. eexists. eassumption.
+      rewrite H1 in H0. rewrite H0 in B. destruct B as [? B]. inversion B.
+      inversion H2; subst. simpl in LE. omega. simpl in LE. omega. simpl in LE. omega.
       simpl in LE. omega.
     }
     destruct A as [y [T4 [A1 [A2 A3]]]].
