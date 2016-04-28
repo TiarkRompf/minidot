@@ -348,6 +348,10 @@ with peval1: tm -> tenv -> ty -> nat -> Prop :=
 | pt_var: forall x G1 TX n1,
             index x G1 = Some TX ->
             peval1 (tvar x) G1 TX (S n1)
+| pt_sel: forall f l G1 TX n1 n2,
+            peval1 f G1 (TFld l TX) n1 ->
+            stp G1 [] TX TX n2 ->
+            peval1 (tsel f l) G1 TX (S (n1+n2))
 | pt_sub: forall t1 G1 T1 T2 n1 n2,
             peval1 t1 G1 T1 n1 ->
             stp G1 [] T1 T2 n2 ->
@@ -7149,6 +7153,7 @@ Proof.
   - edestruct index_safe_ex as [v [nv [IX VT]]]; try eassumption.
     assert (peval (tvar x) H1 v) as EV. eapply index_to_peval; eauto.
     eexists. eexists. split; eassumption.
+  - admit.
   - assert (n1 < n) as LE1 by omega.
     specialize (IHpeval1 Hwf LE1 IM). destruct IHpeval1 as [v [nv [IH1 IH2]]].
     exists v. exists nv. split. assumption. eapply valtp_widen; eauto.
@@ -7459,6 +7464,7 @@ Proof.
     destruct A as [v A].
     assert (peval (tvar x) ((fresh G, v0) :: GX) v) as B. eapply index_to_peval; eauto.
     eexists. eassumption.
+  - admit.
   - edestruct IHpeval1 as [v IH]; eauto.
 Qed.
 
