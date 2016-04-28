@@ -347,6 +347,7 @@ Inductive stp: tenv -> tenv -> ty -> ty -> nat -> Prop :=
 with peval1: tm -> tenv -> ty -> nat -> Prop :=
 | pt_var: forall x G1 TX n1,
             index x G1 = Some TX ->
+            stp G1 [] TX TX n1 ->
             peval1 (tvar x) G1 TX (S n1)
 | pt_sel: forall f l G1 TX n1 n2,
             peval1 f G1 (TFld l TX) n1 ->
@@ -1147,7 +1148,9 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0.
 Qed.
 
 
@@ -1324,7 +1327,29 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Example ex4:
@@ -1516,7 +1541,10 @@ Proof.
   eapply t_var_unpack. eapply t_sub. eapply t_var. compute. eauto. crush_wf. crush2. crush_wf.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0.
 Qed.
 
 
@@ -1528,7 +1556,7 @@ Proof.
   assert (T = open (varF (tvar 1)) (TAll 0 TBool (TSel (varB 1) 0))). compute. eauto.
   rewrite H.
   eexists. eapply stp_selb1. compute. eauto.
-  eapply stp_sel1. eapply pt_var. compute. eauto.
+  eapply stp_sel1. eapply pt_var. compute. eauto. crush2.
   crush2.
   eapply stp_mem. eauto.
   eapply stp_bindx; crush2.
@@ -1537,7 +1565,9 @@ Proof.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0.
+apply 0.  apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 (* -- TODO: uncomment long examples after dev
@@ -3724,8 +3754,9 @@ Lemma stpd_or1: forall G GH T1 T2 T,
 Proof. intros. repeat eu. eexists. eauto. Qed.
 Lemma ptd_var: forall x G1 TX,
   index x G1 = Some TX ->
+  stpd G1 [] TX TX ->
   pevald1 (tvar x) G1 TX.
-Proof. intros. exists 1. eauto. Qed.
+Proof. intros. repeat eu. eexists. eauto. Qed.
 Lemma ptd_sub: forall t1 G1 T1 T2,
   pevald1 t1 G1 T1 ->
   stpd G1 [] T1 T2 ->
@@ -7566,9 +7597,10 @@ Inductive wf_tp: tenv -> tenv -> ty -> nat -> Prop :=
     wf_tp G1 GH T1 n1 ->
     wf_tp G1 GH T2 n2 ->
     wf_tp G1 GH (TMem l T1 T2) (S (n1+n2))
-| wf_sel: forall G1 GH TX x l n1,
+| wf_sel: forall G1 GH TX x l n1 n2,
     peval1 x G1 TX n1 ->
-    wf_tp G1 GH (TSel (varF x) l) (S n1)
+    wf_tp G1 [] TX n2 ->
+    wf_tp G1 GH (TSel (varF x) l) (S (n1+n2))
 | wf_sela: forall G1 GH TX x l n1,
     indexr x GH = Some TX  ->
     wf_tp G1 GH (TSel (varH x) l) (S n1)
@@ -7616,6 +7648,7 @@ Lemma wfd_mem: forall G1 GH l T1 T2,
 Proof. intros. unfold wf_tpd in *. repeat ev. eexists. eauto. Qed.
 Lemma wfd_sel: forall G1 GH TX x l,
   pevald1 x G1 TX ->
+  wf_tpd G1 [] TX ->
   wf_tpd G1 GH (TSel (varF x) l).
 Proof. intros. unfold wf_tpd in *. repeat ev. eu. eexists. eauto. Qed.
 Lemma wfd_sela: forall G1 GH TX x l,
@@ -7647,19 +7680,46 @@ Lemma wfd_or: forall G1 GH T1 T2,
 Proof. intros. unfold wf_tpd in *. repeat ev. eexists. eauto. Qed.
 Hint Resolve wfd_top wfd_bot wfd_bool wfd_fld wfd_mem wfd_sel wfd_sela wfd_all wfd_bind wfd_and wfd_or.
 
-Lemma stp_to_wf_tp_aux: forall G GH T1 T2 n,
-                          stp G GH T1 T2 n ->
-                          wf_tpd G GH T1 /\ wf_tpd G GH T2.
+Lemma peval1_reg: forall x G1 TX n1,
+  peval1 x G1 TX n1 ->
+  stpd G1 [] TX TX.
+Proof. intros. induction H; eauto. eapply stp_reg. eauto. Qed.
+
+Lemma stp_to_wf_tp_aux: forall n,
+  (forall G GH T1 T2 n1,
+    stp G GH T1 T2 n1 -> n1 < n ->
+    wf_tpd G GH T1 /\ wf_tpd G GH T2) /\
+  (forall x G T n1,
+    peval1 x G T n1 -> n1 < n ->
+    wf_tpd G [] T).
 Proof.
-  intros. induction H;
-    try solve [repeat ev; split; eauto; try (eapply wfd_sela; eapply tailr_to_indexr; eauto)].
+  intros n. induction n. split; intros; omega. split; intros;
+  destruct IHn as [IHn IHnp];
+  induction H; repeat som; repeat ev;
+    try solve [split; eauto; try (eapply wfd_sela; eapply tailr_to_indexr; eauto)].
+  - split; eauto.
+    eapply wfd_sel. eapply ptd_var; eauto.
+    eapply proj1. eapply stp_reg. eauto.
+    eapply proj1. eapply IHn. eapply H1. omega.
+  - split; eauto.
+    eapply wfd_sel. eapply ptd_var; eauto.
+    eapply proj1. eapply stp_reg. eauto.
+    eapply proj1. eapply IHn. eapply H1. omega.
+  - split.
+    eapply wfd_sel. eauto. eapply IHnp. eapply H. omega.
+    eapply wfd_sel. eauto. eapply IHnp. eapply H. omega.
+  - eapply proj1. eapply IHn. eauto. omega.
+  - eapply proj1. eapply IHn. eauto. omega.
+  - eapply proj2. eapply IHn. eauto. omega.
 Qed.
 
 Lemma stp_to_wf_tp: forall G GH T n,
                       stp G GH T T n ->
                       wf_tpd G GH T.
 Proof.
-  intros. apply (proj1 (stp_to_wf_tp_aux G GH T T n H)).
+  intros.
+  assert (n < S n) as LE by omega.
+  apply (proj1 ((proj1 (stp_to_wf_tp_aux (S n))) G GH T T n H LE)).
 Qed.
 
 Lemma peval_safe_cycle_sel: forall T0 v0 TX f l v G GH GX GY n1,
