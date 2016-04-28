@@ -7732,13 +7732,19 @@ Proof.
   admit.
 Qed.
 
-Lemma peval_safe_cycle: forall T0 v0 TX t G GH GX GY n,
+Lemma peval_safe_cycle: forall n, forall T0 v0 TX t G GH GX GY n1,
   wf_env GX G ->
   wf_envh ((fresh G, v0) :: GX) GY GH ->
-  peval1 t ((fresh G, T0) :: G) TX n ->
+  peval1 t ((fresh G, T0) :: G) TX n1 -> n1 < n ->
+  (forall n2, n2 < n -> forall T0 T v G GH,
+    wf_tp ((fresh G, T0) :: G) GH T n2 ->
+    forall GX GY, wf_env GX G -> wf_envh ((fresh G, v)::GX) GY GH ->
+    stpd2 true ((fresh G, v) :: GX) T
+               ((fresh G, v) :: GX) T GY) ->
   exists v, peval t ((fresh G, v0) :: GX) v.
 Proof.
-  intros T0 v0 TX t G GH GX GY n WX WY H.
+  intros n. induction n. intros. omega.
+  intros T0 v0 TX t G GH GX GY n1 WX WY H LE SH.
   remember ((fresh G, T0)::G) as G0. generalize HeqG0.
   induction H; intros; subst.
   - assert (exists v, index x ((fresh G, v0) :: GX) = Some v) as A. {
@@ -7754,9 +7760,9 @@ Proof.
     destruct A as [v A].
     assert (peval (tvar x) ((fresh G, v0) :: GX) v) as B. eapply index_to_peval; eauto.
     eexists. eassumption.
-  - edestruct IHpeval1 as [v IH]; eauto.
+  - edestruct IHpeval1 as [v IH]; eauto. omega.
     eapply peval_safe_cycle_sel; eauto.
-  - edestruct IHpeval1 as [v IH]; eauto.
+  - edestruct IHpeval1 as [v IH]; eauto. omega.
 Qed.
 
 Lemma wf_tp_to_stp2_cycle_aux: forall n, forall T0 T v G GH n1,
@@ -7774,8 +7780,10 @@ Proof.
   - Case "fld". eapply stpd2_fld; eapply stpd2_wrapf; eapply IHn; eauto; omega.
   - Case "mem". eapply stpd2_mem; eapply stpd2_wrapf; eapply IHn; eauto; omega.
   - Case "selx". subst.
-    edestruct peval_safe_cycle as [? B]; try eassumption.
-    eapply stpd2_selx; eapply B.
+    eapply IHn in H0; eauto.
+    edestruct (peval_safe_cycle n) as [? B]; try eassumption. omega.
+    intros. eapply IHn; eauto.
+    eapply stpd2_selx; eapply B. omega.
   - Case "selax".
     assert (exists v, indexr x GY = Some v) as A. {
       eapply indexr_exists; eauto.
@@ -7804,6 +7812,7 @@ Proof.
     eapply stpd2_or1.
     eapply stpd2_or21. eapply stpd2_wrapf. eapply IHn; eauto; omega. eapply IHn; eauto; omega.
     eapply stpd2_or22. eapply stpd2_wrapf. eapply IHn; eauto; omega. eapply IHn; eauto; omega.
+Grab Existential Variables. (* weird *) apply vbool. apply true.
 Qed.
 
 Lemma stp_to_stp2_cycle: forall venv env T0 T t n,
