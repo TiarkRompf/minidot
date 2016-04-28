@@ -7601,8 +7601,7 @@ Lemma wfd_top: forall G1 GH,
 Proof. intros. exists 1. eauto. Qed.
 Lemma wfd_bot: forall G1 GH,
   wf_tpd G1 GH TBot.
-Proof. intros. exists 1. eauto. Qed.  
-
+Proof. intros. exists 1. eauto. Qed.
 Lemma wfd_bool: forall G1 GH,
   wf_tpd G1 GH TBool.
 Proof. intros. exists 1. eauto. Qed.
