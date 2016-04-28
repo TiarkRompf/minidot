@@ -7141,6 +7141,113 @@ Proof.
       apply IHB.
 Qed.
 
+Lemma dcs_has_type_stp_fld: forall G G1 G2 f ds x T T2,
+  dcs_has_type G f ds T ->
+  sstpd2 true G1 (open (varF x) T) G2 (TFld (length ds) T2) [] ->
+  False.
+Proof.
+  intros. remember (length ds) as l. assert (l >= length ds) as A by omega. clear Heql.
+  induction H. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  destruct (tand_shape (TFld m T0) TS).
+  rewrite H6 in H5. rewrite H5 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  subst. inversion H10. subst. simpl in A. omega.
+  apply IHdcs_has_type. eexists. eassumption. simpl in A. omega.
+  rewrite H6 in H5. rewrite H5 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0. simpl in A. omega.
+  destruct (tand_shape (TAll m T1 T0) TS).
+  rewrite H5 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  subst. inversion H9. subst.
+  apply IHdcs_has_type. eexists. eassumption. simpl in A. omega.
+  rewrite H5 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  destruct (tand_shape (TMem m T1 T1) TS).
+  rewrite H3 in H2. rewrite H2 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+  subst. inversion H7.
+  apply IHdcs_has_type. eexists. eassumption. simpl in A. omega.
+  rewrite H3 in H2. rewrite H2 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
+Qed.
+
+Lemma invert_obj_fld: forall n venv vf l T2,
+  val_type venv vf (TFld l T2) n ->
+  sstpd2 true venv T2 venv T2 [] ->
+  exists env tenv TF ds y T4,
+    vf = (vobj env (fresh env) ds) /\
+    index l ds = Some (dfld y) /\
+    wf_env env tenv /\
+    dcs_has_type (((fresh env), (open (varF (tvar (fresh env))) TF))::tenv) (fresh env) ds TF /\
+    sstpd2 true ((fresh env, vobj env (fresh env) ds) :: env) (open (varF (tvar (fresh env))) TF) ((fresh env, vobj env (fresh env) ds) :: env) (open (varF (tvar (fresh env))) TF) [] /\
+    has_type (((fresh env),(open (varF (tvar (fresh env))) TF))::tenv) (tvar y) T4 /\
+    sstpd2 true (((fresh env), vobj env (fresh env) ds)::env) T4 venv T2 [].
+Proof.
+  intros n. destruct n. intros. inversion H.
+  assert (exists ni, n <= ni). exists n. omega. destruct H as [ni ?]. revert n H. induction ni; intros n N.
+  - (* 1 *)
+    inversion N. subst n. intros. inversion H; repeat ev; try solve by inversion.
+    subst.
+    exists venv1. exists tenv0. exists T. exists ds.
+    assert (exists y T4, index l ds = Some (dfld y) /\ has_type (((fresh venv1), (open (varF (tvar (fresh venv1))) T)) :: tenv0) (tvar y) T4 /\ sstpd2 true (((fresh venv1), vobj venv1 (fresh venv1) ds)::venv1) (TFld l T4) venv0 (TFld l T2) []) as A. {
+      clear H. clear H0.
+      unfold id in *.
+      remember ((fresh venv1, (open (varF (tvar (fresh venv1))) T))::tenv0) as tenv.
+      assert (fresh tenv = S (fresh venv1)) as A. { rewrite Heqtenv. simpl. reflexivity. }
+      clear Heqtenv.
+      remember ((fresh venv1, vobj venv1 (fresh venv1) ds) :: venv1) as venv.
+      assert (sstpd2 true venv (open (varF (tvar (fresh venv1))) T) venv0 (TFld l T2) []) as B. { eexists; eassumption. }
+      clear H5. clear Heqvenv.
+      induction H3. destruct B as [? B]. inversion B.
+      simpl.
+      case_eq (le_lt_dec (fresh dcs) m); intros LE E1.
+      case_eq (beq_nat l m); intros E2.
+      exists y. eexists. split. reflexivity. split. eapply H.
+      destruct (tand_shape (TFld m T0) TS).
+      rewrite H6 in H5. rewrite H5 in B. destruct B as [? B]. unfold open in B. simpl in B. inversion B. eapply beq_nat_true in E2. rewrite <- E2 in H10. eexists. eassumption.
+      eapply dcs_has_type_stp_fld in H3. inversion H3. rewrite <- H4. eapply beq_nat_true in E2. rewrite <- E2. eexists. eassumption.
+      rewrite H6 in H5. rewrite H5 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. apply B.
+      eapply IHdcs_has_type. apply A. destruct (tand_shape (TFld m T0) TS).
+      rewrite H6 in H5. rewrite H5 in B. destruct B as [? B]. inversion B. unfold open in H10. simpl in H10. inversion H10. apply beq_nat_false in E2. omega. eexists. eassumption.
+      rewrite H6 in H5. rewrite H5 in B. destruct B as [? B]. inversion B. apply beq_nat_false in E2. omega.
+      inversion H3; subst. simpl in LE. omega. simpl in LE. omega. simpl in LE. omega.
+      simpl in LE. omega. simpl.
+      case_eq (le_lt_dec (fresh dcs) m); intros LE E1.
+      case_eq (beq_nat l m); intros E2.
+      destruct (tand_shape (TAll m T1 T0) TS).
+      rewrite H5 in H4. rewrite H4 in B. destruct B as [? B]. unfold open in B. simpl in B. inversion B. eapply beq_nat_true in E2. rewrite <- E2 in H9. inversion H9.
+      eapply dcs_has_type_stp_fld in H3. inversion H3. rewrite <- H2. eapply beq_nat_true in E2. rewrite <- E2. eexists. eassumption.
+      rewrite H5 in H4. rewrite H4 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. inversion B.
+      unfold open in H6. simpl in H6. inversion H6.
+      eapply IHdcs_has_type. apply A. destruct (tand_shape (TAll m T1 T0) TS).
+      rewrite H5 in H4. rewrite H4 in B. destruct B as [? B]. inversion B. unfold open in H9. simpl in H9. inversion H9. eexists. eassumption.
+      rewrite H5 in H4. rewrite H4 in B. destruct B as [? B]. inversion B.
+      inversion H3; subst. simpl in LE. omega. simpl in LE. omega. simpl in LE. omega.
+      simpl in LE. omega. simpl.
+      case_eq (le_lt_dec (fresh dcs) m); intros LE E1.
+      case_eq (beq_nat l m); intros E2.
+      destruct (tand_shape (TMem m T1 T1) TS).
+      rewrite H2 in H0. rewrite H0 in B. destruct B as [? B]. unfold open in B. simpl in B. inversion B. eapply beq_nat_true in E2. rewrite <- E2 in H7. inversion H7.
+      eapply dcs_has_type_stp_fld in H3. inversion H3. rewrite <- H. eapply beq_nat_true in E2. rewrite <- E2. eexists. eassumption.
+      rewrite H2 in H0. rewrite H0 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. inversion B.
+      unfold open in H4. simpl in H4. inversion H4.
+      eapply IHdcs_has_type. apply A. destruct (tand_shape (TMem m T1 T1) TS).
+      rewrite H2 in H0. rewrite H0 in B. destruct B as [? B]. inversion B. unfold open in H7. simpl in H7. inversion H7. eexists. eassumption.
+      rewrite H2 in H0. rewrite H0 in B. destruct B as [? B]. inversion B.
+      inversion H3; subst. simpl in LE. omega. simpl in LE. omega. simpl in LE. omega.
+      simpl in LE. omega.
+    }
+    destruct A as [y [T4 [A1 [A2 A3]]]].
+    exists y. exists T4.
+    split. reflexivity. split. apply A1. split. assumption. split. assumption.
+    split. eapply sstpd2_reg1. eexists. eassumption.
+    split. apply A2. 
+    destruct A3 as [? A3]. inversion A3. subst. eexists. eassumption.
+  - (* n *)
+    intros.
+    assert (sstpd2 true venv0 (TFld l T2) venv0 (TFld l T2) []). eapply valtp_reg; eauto.
+    eu.
+    eapply invert_fld in H. destruct H as [GY [TY [VT [? ST]]]].
+    eapply valtp_widen in VT.
+    eapply IHni. instantiate (1:=0). omega. eapply VT. eauto. eauto. eexists. eauto.
+    intros nv. eapply stp2_substitute_aux. eauto.
+    
+Qed.
+
 Lemma peval_safe_sel: forall H1 f v l TX nv,
   peval f H1 v ->
   val_type H1 v (TFld l TX) nv ->
@@ -7572,30 +7679,6 @@ Proof.
   eapply wf_tp_to_stp2_cycle_aux; eauto.
 Qed.
 
-Lemma dcs_has_type_stp_fld: forall G G1 G2 f ds x T T2,
-  dcs_has_type G f ds T ->
-  sstpd2 true G1 (open (varF x) T) G2 (TFld (length ds) T2) [] ->
-  False.
-Proof.
-  intros. remember (length ds) as l. assert (l >= length ds) as A by omega. clear Heql.
-  induction H. simpl in H0. destruct H0 as [? H0]. inversion H0.
-  destruct (tand_shape (TFld m T0) TS).
-  rewrite H6 in H5. rewrite H5 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
-  subst. inversion H10. subst. simpl in A. omega.
-  apply IHdcs_has_type. eexists. eassumption. simpl in A. omega.
-  rewrite H6 in H5. rewrite H5 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0. simpl in A. omega.
-  destruct (tand_shape (TAll m T1 T0) TS).
-  rewrite H5 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
-  subst. inversion H9. subst.
-  apply IHdcs_has_type. eexists. eassumption. simpl in A. omega.
-  rewrite H5 in H4. rewrite H4 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
-  destruct (tand_shape (TMem m T1 T1) TS).
-  rewrite H3 in H2. rewrite H2 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
-  subst. inversion H7.
-  apply IHdcs_has_type. eexists. eassumption. simpl in A. omega.
-  rewrite H3 in H2. rewrite H2 in H0. simpl in H0. destruct H0 as [? H0]. inversion H0.
-Qed.
-
 Lemma dcs_has_type_stp: forall G G1 G2 f ds x T T1 T2,
   dcs_has_type G f ds T ->
   sstpd2 true G1 (open (varF x) T) G2 (TAll (length ds) T1 T2) [] ->
@@ -7622,89 +7705,6 @@ Proof.
 Qed.
 
 (* like invert_typ above *)
-
-Lemma invert_obj_fld: forall n venv vf l T2,
-  val_type venv vf (TFld l T2) n ->
-  sstpd2 true venv T2 venv T2 [] ->
-  exists env tenv TF ds y T4,
-    vf = (vobj env (fresh env) ds) /\
-    index l ds = Some (dfld y) /\
-    wf_env env tenv /\
-    dcs_has_type (((fresh env), (open (varF (tvar (fresh env))) TF))::tenv) (fresh env) ds TF /\
-    sstpd2 true ((fresh env, vobj env (fresh env) ds) :: env) (open (varF (tvar (fresh env))) TF) ((fresh env, vobj env (fresh env) ds) :: env) (open (varF (tvar (fresh env))) TF) [] /\
-    has_type (((fresh env),(open (varF (tvar (fresh env))) TF))::tenv) (tvar y) T4 /\
-    sstpd2 true (((fresh env), vobj env (fresh env) ds)::env) T4 venv T2 [].
-Proof.
-  intros n. destruct n. intros. inversion H.
-  assert (exists ni, n <= ni). exists n. omega. destruct H as [ni ?]. revert n H. induction ni; intros n N.
-  - (* 1 *)
-    inversion N. subst n. intros. inversion H; repeat ev; try solve by inversion.
-    subst.
-    exists venv1. exists tenv0. exists T. exists ds.
-    assert (exists y T4, index l ds = Some (dfld y) /\ has_type (((fresh venv1), (open (varF (tvar (fresh venv1))) T)) :: tenv0) (tvar y) T4 /\ sstpd2 true (((fresh venv1), vobj venv1 (fresh venv1) ds)::venv1) (TFld l T4) venv0 (TFld l T2) []) as A. {
-      clear H. clear H0.
-      unfold id in *.
-      remember ((fresh venv1, (open (varF (tvar (fresh venv1))) T))::tenv0) as tenv.
-      assert (fresh tenv = S (fresh venv1)) as A. { rewrite Heqtenv. simpl. reflexivity. }
-      clear Heqtenv.
-      remember ((fresh venv1, vobj venv1 (fresh venv1) ds) :: venv1) as venv.
-      assert (sstpd2 true venv (open (varF (tvar (fresh venv1))) T) venv0 (TFld l T2) []) as B. { eexists; eassumption. }
-      clear H5. clear Heqvenv.
-      induction H3. destruct B as [? B]. inversion B.
-      simpl.
-      case_eq (le_lt_dec (fresh dcs) m); intros LE E1.
-      case_eq (beq_nat l m); intros E2.
-      exists y. eexists. split. reflexivity. split. eapply H.
-      destruct (tand_shape (TFld m T0) TS).
-      rewrite H6 in H5. rewrite H5 in B. destruct B as [? B]. unfold open in B. simpl in B. inversion B. eapply beq_nat_true in E2. rewrite <- E2 in H10. eexists. eassumption.
-      eapply dcs_has_type_stp_fld in H3. inversion H3. rewrite <- H4. eapply beq_nat_true in E2. rewrite <- E2. eexists. eassumption.
-      rewrite H6 in H5. rewrite H5 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. apply B.
-      eapply IHdcs_has_type. apply A. destruct (tand_shape (TFld m T0) TS).
-      rewrite H6 in H5. rewrite H5 in B. destruct B as [? B]. inversion B. unfold open in H10. simpl in H10. inversion H10. apply beq_nat_false in E2. omega. eexists. eassumption.
-      rewrite H6 in H5. rewrite H5 in B. destruct B as [? B]. inversion B. apply beq_nat_false in E2. omega.
-      inversion H3; subst. simpl in LE. omega. simpl in LE. omega. simpl in LE. omega.
-      simpl in LE. omega. simpl.
-      case_eq (le_lt_dec (fresh dcs) m); intros LE E1.
-      case_eq (beq_nat l m); intros E2.
-      destruct (tand_shape (TAll m T1 T0) TS).
-      rewrite H5 in H4. rewrite H4 in B. destruct B as [? B]. unfold open in B. simpl in B. inversion B. eapply beq_nat_true in E2. rewrite <- E2 in H9. inversion H9.
-      eapply dcs_has_type_stp_fld in H3. inversion H3. rewrite <- H2. eapply beq_nat_true in E2. rewrite <- E2. eexists. eassumption.
-      rewrite H5 in H4. rewrite H4 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. inversion B.
-      unfold open in H6. simpl in H6. inversion H6.
-      eapply IHdcs_has_type. apply A. destruct (tand_shape (TAll m T1 T0) TS).
-      rewrite H5 in H4. rewrite H4 in B. destruct B as [? B]. inversion B. unfold open in H9. simpl in H9. inversion H9. eexists. eassumption.
-      rewrite H5 in H4. rewrite H4 in B. destruct B as [? B]. inversion B.
-      inversion H3; subst. simpl in LE. omega. simpl in LE. omega. simpl in LE. omega.
-      simpl in LE. omega. simpl.
-      case_eq (le_lt_dec (fresh dcs) m); intros LE E1.
-      case_eq (beq_nat l m); intros E2.
-      destruct (tand_shape (TMem m T1 T1) TS).
-      rewrite H2 in H0. rewrite H0 in B. destruct B as [? B]. unfold open in B. simpl in B. inversion B. eapply beq_nat_true in E2. rewrite <- E2 in H7. inversion H7.
-      eapply dcs_has_type_stp_fld in H3. inversion H3. rewrite <- H. eapply beq_nat_true in E2. rewrite <- E2. eexists. eassumption.
-      rewrite H2 in H0. rewrite H0 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. inversion B.
-      unfold open in H4. simpl in H4. inversion H4.
-      eapply IHdcs_has_type. apply A. destruct (tand_shape (TMem m T1 T1) TS).
-      rewrite H2 in H0. rewrite H0 in B. destruct B as [? B]. inversion B. unfold open in H7. simpl in H7. inversion H7. eexists. eassumption.
-      rewrite H2 in H0. rewrite H0 in B. destruct B as [? B]. inversion B.
-      inversion H3; subst. simpl in LE. omega. simpl in LE. omega. simpl in LE. omega.
-      simpl in LE. omega.
-    }
-    destruct A as [y [T4 [A1 [A2 A3]]]].
-    exists y. exists T4.
-    split. reflexivity. split. apply A1. split. assumption. split. assumption.
-    split. eapply sstpd2_reg1. eexists. eassumption.
-    split. apply A2. 
-    destruct A3 as [? A3]. inversion A3. subst. eexists. eassumption.
-  - (* n *)
-    intros.
-    assert (sstpd2 true venv0 (TFld l T2) venv0 (TFld l T2) []). eapply valtp_reg; eauto.
-    eu.
-    eapply invert_fld in H. destruct H as [GY [TY [VT [? ST]]]].
-    eapply valtp_widen in VT.
-    eapply IHni. instantiate (1:=0). omega. eapply VT. eauto. eauto. eexists. eauto.
-    intros nv. eapply stp2_substitute_aux. eauto.
-    
-Qed.
 
 Lemma invert_obj: forall n nx venv vf l T1 T2 vx,
   val_type venv vf (TAll l T1 T2) n ->
