@@ -449,7 +449,7 @@ with dcs_has_type: tenv -> id -> list (id * def) -> ty -> Prop :=
             dcs_has_type env f nil TTop
 | dt_fld: forall env f y m T2 dcs TS T,
             has_type env (tvar y) (open (varF (tvar f)) T2) ->
-            index y env = Some T2 -> y <> f -> (* TODO: these are extra simplif *)
+            index y env = Some (open (varF (tvar f)) T2) -> y <> f -> (* TODO: these are extra simplif *)
             dcs_has_type env f dcs TS ->
             m = length dcs ->
             T = tand (TFld m T2) TS ->
@@ -7175,7 +7175,8 @@ Lemma invert_obj_fld: forall n venv vf l T2,
     dcs_has_type (((fresh env), (open (varF (tvar (fresh env))) TF))::tenv) (fresh env) ds TF /\
     sstpd2 true ((fresh env, vobj env (fresh env) ds) :: env) (open (varF (tvar (fresh env))) TF) ((fresh env, vobj env (fresh env) ds) :: env) (open (varF (tvar (fresh env))) TF) [] /\
     has_type (((fresh env),(open (varF (tvar (fresh env))) TF))::tenv) (tvar y) T4 /\
-    sstpd2 true (((fresh env), vobj env (fresh env) ds)::env) T4 venv T2 [].
+    sstpd2 true (((fresh env), vobj env (fresh env) ds)::env) T4 venv T2 [] /\
+    index y tenv = Some T4 (*TODO: simplification *).
 Proof.
   intros n. destruct n. intros. inversion H.
   assert (exists ni, n <= ni). exists n. omega. destruct H as [ni ?]. revert n H. induction ni; intros n N.
@@ -7183,7 +7184,7 @@ Proof.
     inversion N. subst n. intros. inversion H; repeat ev; try solve by inversion.
     subst.
     exists venv1. exists tenv0. exists T. exists ds.
-    assert (exists y T4, index l ds = Some (dfld y) /\ has_type (((fresh venv1), (open (varF (tvar (fresh venv1))) T)) :: tenv0) (tvar y) T4 /\ sstpd2 true (((fresh venv1), vobj venv1 (fresh venv1) ds)::venv1) (TFld l T4) venv0 (TFld l T2) []) as A. {
+    assert (exists y T4, index l ds = Some (dfld y) /\ has_type (((fresh venv1), (open (varF (tvar (fresh venv1))) T)) :: tenv0) (tvar y) T4 /\ sstpd2 true (((fresh venv1), vobj venv1 (fresh venv1) ds)::venv1) (TFld l T4) venv0 (TFld l T2) [] /\ index y ((fresh venv1, (open (varF (tvar (fresh venv1))) T))::tenv0) = Some T4 /\ y <> fresh venv1) as A. {
       clear H. clear H0.
       unfold id in *.
       remember ((fresh venv1, (open (varF (tvar (fresh venv1))) T))::tenv0) as tenv.
@@ -7198,9 +7199,10 @@ Proof.
       case_eq (beq_nat l m); intros E2.
       exists y. eexists. split. reflexivity. split. eapply H.
       destruct (tand_shape (TFld m T0) TS).
-      rewrite H5 in H4. rewrite H4 in B. destruct B as [? B]. unfold open in B. simpl in B. inversion B. eapply beq_nat_true in E2. rewrite <- E2 in H9. eexists. eassumption.
+      rewrite H5 in H4. rewrite H4 in B. destruct B as [? B]. unfold open in B. simpl in B. inversion B. eapply beq_nat_true in E2. rewrite <- E2 in H9.
+      split. eexists. eassumption. eauto.
       eapply dcs_has_type_stp_fld in H2. inversion H2. rewrite <- H3. eapply beq_nat_true in E2. rewrite <- E2. eexists. eassumption.
-      rewrite H5 in H4. rewrite H4 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. apply B.
+      rewrite H5 in H4. rewrite H4 in B. eapply beq_nat_true in E2. rewrite <- E2 in B. split. apply B. eauto.
       eapply IHdcs_has_type. apply A. destruct (tand_shape (TFld m T0) TS).
       rewrite H5 in H4. rewrite H4 in B. destruct B as [? B]. inversion B. unfold open in H9. simpl in H9. inversion H9. apply beq_nat_false in E2. omega. eexists. eassumption.
       rewrite H5 in H4. rewrite H4 in B. destruct B as [? B]. inversion B. apply beq_nat_false in E2. omega.
@@ -7231,12 +7233,17 @@ Proof.
       inversion H2; subst. simpl in LE. omega. simpl in LE. omega. simpl in LE. omega.
       simpl in LE. omega.
     }
-    destruct A as [y [T4 [A1 [A2 A3]]]].
+    destruct A as [y [T4 [A1 [A2 [A3 [A4 A5]]]]]].
     exists y. exists T4.
     split. reflexivity. split. apply A1. split. assumption. split. assumption.
     split. eapply sstpd2_reg1. eexists. eassumption.
     split. apply A2. 
-    destruct A3 as [? A3]. inversion A3. subst. eexists. eassumption.
+    destruct A3 as [? A3]. inversion A3. subst. split. eexists. eassumption.
+    simpl in A4. rewrite <- (wf_fresh venv1) in A4.
+    case_eq (le_lt_dec (fresh venv1) (fresh venv1)); intros FLE1 FE1.
+    rewrite FE1 in A4. rewrite false_beq_nat in A4. apply A4. apply A5.
+    omega. assumption.
+
   - (* n *)
     intros.
     assert (sstpd2 true venv0 (TFld l T2) venv0 (TFld l T2) []). eapply valtp_reg; eauto.
@@ -7247,6 +7254,7 @@ Proof.
     intros nv. eapply stp2_substitute_aux. eauto.
     
 Qed.
+
 
 Lemma has_type_wf:
   forall G t T, has_type G t T -> stpd G [] T T.
@@ -7264,17 +7272,14 @@ Lemma invert_obj_fld_sel: forall n venv vf l T2,
     index y env = Some vy /\
     val_type venv vy T2 ny.
 Proof.
-  intros n. destruct n. intros. inversion H.
-  assert (exists ni, n <= ni). exists n. omega. destruct H as [ni ?]. revert n H. induction ni; intros n N.
-  - (* 1 *)
-    admit.
-  - intros.
-    assert (sstpd2 true venv0 (TFld l T2) venv0 (TFld l T2) []). eapply valtp_reg; eauto.
-    eu.
-    eapply invert_fld in H. destruct H as [GY [TY [VT [? ST]]]].
-    eapply valtp_widen in VT.
-    eapply IHni. instantiate (1:=0). omega. eapply VT. eauto. eauto. eexists. eauto.
-    intros nv. eapply stp2_substitute_aux. eauto.
+  intros.
+  destruct (invert_obj_fld n venv0 vf l T2 H) as [env [tenv [Tf [ds [y [Ty A]]]]]].
+  destruct A as [Ef [Ids [Hwf [Hds [Bf [Hy [By Iy]]]]]]].
+  exists env. exists ds. exists y.
+  edestruct index_safe_ex as [vy [ny [Ivy Hvy]]]; eauto.
+  exists vy. exists ny.
+  split; try split; try split; eauto.
+  eapply valtp_widen. eapply valtp_extend. eapply Hvy. eauto. eapply By.
 Qed.
 
 Lemma peval_safe_sel: forall H1 f v l TX nv,
