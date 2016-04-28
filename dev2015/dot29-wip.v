@@ -7141,6 +7141,14 @@ Proof.
       apply IHB.
 Qed.
 
+Lemma peval_safe_sel: forall H1 f v l TX nv,
+  peval f H1 v ->
+  val_type H1 v (TFld l TX) nv ->
+  exists v0 nv0, peval (tsel f l) H1 v0 /\ val_type H1 v0 TX nv0.
+Proof.
+  admit.
+Qed.
+
 Lemma peval_safe_ex: forall n, forall H1 G1 t T n1,
   wf_env H1 G1 ->
   peval1 t G1 T n1 -> n1 < n ->
@@ -7154,7 +7162,9 @@ Proof.
   - edestruct index_safe_ex as [v [nv [IX VT]]]; try eassumption.
     assert (peval (tvar x) H1 v) as EV. eapply index_to_peval; eauto.
     eexists. eexists. split; eassumption.
-  - admit.
+  - assert (n1 < n) as LE1 by omega.
+    specialize (IHpeval1 Hwf LE1 IM). destruct IHpeval1 as [v [nv [IH1 IH2]]].
+    eapply peval_safe_sel; eauto.
   - assert (n1 < n) as LE1 by omega.
     specialize (IHpeval1 Hwf LE1 IM). destruct IHpeval1 as [v [nv [IH1 IH2]]].
     exists v. exists nv. split. assumption. eapply valtp_widen; eauto.
