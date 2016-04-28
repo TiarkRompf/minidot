@@ -7248,6 +7248,14 @@ Proof.
     
 Qed.
 
+Lemma has_type_wf:
+  forall G t T, has_type G t T -> stpd G [] T T.
+Proof.
+  intros. induction H; eauto.
+  - eapply stp_reg. eassumption.
+
+Qed.
+
 Lemma peval_safe_sel: forall H1 f v l TX nv,
   peval f H1 v ->
   val_type H1 v (TFld l TX) nv ->
@@ -7963,14 +7971,6 @@ Grab Existential Variables.
 apply tvar. apply 0. apply 0.
 Qed.
 
-
-Lemma has_type_wf:
-  forall G t T, has_type G t T -> stpd G [] T T.
-Proof.
-  intros. induction H; eauto.
-  - eapply stp_reg. eassumption.
-
-Qed.
 
 (* if not a timeout, then result not stuck and well-typed *)
 
