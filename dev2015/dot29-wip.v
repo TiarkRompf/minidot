@@ -7453,6 +7453,17 @@ Proof.
   intros. apply (proj1 (stp_to_wf_tp_aux G GH T T n H)).
 Qed.
 
+
+Lemma peval_safe_cycle_sel: forall T0 v0 TX f l v G GH GX GY n1,
+  wf_env GX G ->
+  wf_envh ((fresh G, v0) :: GX) GY GH ->
+  peval f ((fresh G, v0) :: GX) v ->
+  peval1 f ((fresh G, T0) :: G) (TFld l TX) n1 ->
+  exists v1, peval (tsel f l) ((fresh G, v0) :: GX) v1.
+Proof.
+  admit.
+Qed.
+
 Lemma peval_safe_cycle: forall T0 v0 TX t G GH GX GY n,
   wf_env GX G ->
   wf_envh ((fresh G, v0) :: GX) GY GH ->
@@ -7475,7 +7486,8 @@ Proof.
     destruct A as [v A].
     assert (peval (tvar x) ((fresh G, v0) :: GX) v) as B. eapply index_to_peval; eauto.
     eexists. eassumption.
-  - admit.
+  - edestruct IHpeval1 as [v IH]; eauto.
+    eapply peval_safe_cycle_sel; eauto.
   - edestruct IHpeval1 as [v IH]; eauto.
 Qed.
 
