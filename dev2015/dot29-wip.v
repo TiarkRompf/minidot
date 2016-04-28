@@ -8067,7 +8067,7 @@ Proof.
       inversion HRF as [? vf].
 
       destruct (invert_obj_fld n0 venv0 vf i T2) as
-          [env1 [tenv [TF [ds [y0 [T4 [EF [EQDS [WF [HDS [HTF [HTY STY]]]]]]]]]]]]. eauto. eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eassumption. eauto. eauto.
+          [env1 [tenv [TF [ds [y0 [T4 [EF [EQDS [WF [HDS [HTF [HTY [STY ?]]]]]]]]]]]]]. eauto.
 
       assert ((if beq_nat y0 (fresh env1) then Some (vobj env1 (fresh env1) ds) else index y0 env1)=(index y0 ((fresh env1, vobj env1 (fresh env1) ds)::env1))) as A. {
         simpl.
