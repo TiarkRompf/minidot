@@ -759,22 +759,21 @@ Proof.
   intros. apply ((proj1 closed_inc_mult) T i j k H i (S j) k); omega.
 Qed.
 
-Lemma closed_splice_idem: forall i j k T n,
-                            closed i j k T ->
-                            n >= j ->
-                            splice n T = T.
+Lemma closed_splice_idem:
+  (forall T i j k n,
+    closed i j k T ->
+    n >= j ->
+    splice n T = T) /\
+  (forall t i j k n,
+    tm_closed i j k t ->
+    n >= j ->
+    tm_splice n t = t).
 Proof.
-  intros. induction H; eauto.
-  - (* TAll *) simpl.
-    rewrite IHclosed1. rewrite IHclosed2.
-    reflexivity.
-    assumption. assumption.
-  - (* TVarH *) simpl.
-    case_eq (le_lt_dec n x); intros E LE. omega. reflexivity.
-  - (* TMem *) simpl.
-    rewrite IHclosed1. rewrite IHclosed2.
-    reflexivity.
-    assumption. assumption.
+  apply tytm_mutind; intros; eauto;
+  try solve [inversion H1; simpl; repeat erewrite H; repeat erewrite H0; eauto];
+  try solve [inversion H0; simpl; repeat erewrite H; repeat erewrite H0; eauto].
+  simpl. f_equal. inversion H; subst. inversion H5; subst; eauto.
+  simpl. case_eq (le_lt_dec n x); intros E LE; eauto. omega.
 Qed.
 
 Ltac ev := repeat match goal with
