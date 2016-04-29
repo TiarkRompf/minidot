@@ -1155,19 +1155,23 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
-Example pex2_0: has_type [] (tobj 0 []) TTop.
-Proof.
+Definition _t2_0 := (tobj 0 []).
+Definition _T2_0 := TTop.
+Example pex2_0: has_type [] _t2_0 _T2_0.
+Proof. unfold _t2_0. unfold _T2_0.
   eapply t_sub. crush2. crush2.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
-Example pex2_1: has_type [(0, TTop)] (tobj 1 [(1, dfld 0);(0, dmem TTop)]) (TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop))).
-Proof.
-  eapply t_sub with (T2:=(TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop)))).
+Definition _t2_1 := (tobj 1 [(1, dfld 0);(0, dmem TTop)]).
+Definition _T2_1 := (TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop))).
+Example pex2_1: has_type [(0, _T2_0)] _t2_1 _T2_1.
+Proof. unfold _t2_1.
+  eapply t_sub with (T2:=_T2_1).
   eapply t_obj with (T:=(TAnd (TFld 1 TTop) (TMem 0 TTop TTop))).
   eauto. unfold open. simpl. reflexivity.
-  eapply dt_fld with (T2:=TTop). crush2. eauto. eauto.
+  eapply dt_fld with (T2:=_T2_0). crush2. eauto. eauto.
   eapply dt_mem. eapply dt_nil. eauto. simpl. reflexivity. simpl. reflexivity. simpl. reflexivity.
   crush2. crush2. crush2.
 Grab Existential Variables.
@@ -1177,12 +1181,13 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0.
 Qed.
 
-Example pex2_2: has_type [(1, (TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop))));(0, TTop)]
-                         (tobj 2 [(0, dfld 1)]) (TFld 0 (TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop)))).
-Proof.
+Definition _t2_2 := (tobj 2 [(0, dfld 1)]).
+Definition _T2_2 := (TFld 0 _T2_1).
+Example pex2_2: has_type [(1, _T2_1);(0, _T2_0)] _t2_2 _T2_2.
+Proof. unfold _t2_2.
   eapply t_sub.
-  eapply t_obj with (T:=(TFld 0 (TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop))))). simpl. reflexivity. unfold open. simpl. reflexivity.
-  eapply dt_fld with (T2:=(TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop)))); crush2. eauto.
+  eapply t_obj with (T:=_T2_2). simpl. reflexivity. unfold open. simpl. reflexivity.
+  eapply dt_fld with (T2:=_T2_1); crush2. eauto.
   crush2. crush2. crush2.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
