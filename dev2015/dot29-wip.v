@@ -4849,62 +4849,51 @@ Lemma path_head_peval: forall G1 G2 t x vx v,
   peval t G1 v ->
   peval t G2 v.
 Proof.
-(*
   intros G1 G2 t x vx v H HI1 HI2 Hp.
   unfold peval. split.
   - eapply fresh_in_path. eassumption. eapply index_max. eassumption.
   - unfold peval in Hp. destruct Hp as [HpF [n IH]].
-    exists (S n). intros n0 LE.
-    generalize dependent t.
-    induction n0; intros. omega.
-    specialize (IH (S n)).
-    assert (S n > n) as A by omega. specialize (IH A).
-    destruct t; simpl in IH; try solve [inversion IH].
-    * inversion IH. simpl. reflexivity.
-    * inversion IH. simpl. reflexivity.
-    * inversion IH. simpl. simpl in H. inversion H. subst.
-      rewrite IH. f_equal. apply index_tail.
-      apply index_tail in HI1. rewrite H1 in HI1. inversion HI1. subst. apply HI2.
-    * simpl in H. simpl. destruct n. simpl in IH. inversion IH. simpl in IH.
-      destruct t; simpl in IH; try solve [inversion IH].
-      assert (exists n1, n0 = S n1) as B. {
-        destruct n0. omega. eexists. reflexivity.
+    exists n.
+    generalize dependent n. intros n.
+    generalize dependent v. generalize dependent t.
+    induction n; intros.
+    + assert (teval 1 (tail (fresh_in_term t) G1) t = Some (Some v)) as A. {
+        eapply IH. omega.
       }
-      destruct B as [n1 B].
-      rewrite B. simpl.
-      simpl in H. inversion H. subst.
-      apply index_tail in HI2. apply index_tail in HI1. rewrite HI1 in IH. rewrite HI2.
-      apply IH.
-      simpl in H. simpl in IH.
-      rewrite IHn0.
-      rewrite IHn0.
-      destruct v. inversion IH.
-      destruct n. simpl in IH. inversion IH. simpl in IH.
-      destruct t; simpl in IH; try solve [inversion IH].
-    * destruct n.
-    + eapply IHn.
-    induction t; simpl in H; inversion H; subst; eauto.
-    + exists (S 0). intros n' LE. destruct n'. omega. simpl. f_equal. apply index_tail.
-      specialize (IH (S 0)). simpl in IH.
-    induction n.
-    + specialize (
-
-        + simpl. apply index_max in HI2. omega.
-    + simpl. exists (S 0). intros n LE.
-      destruct n. omega. simpl. f_equal. apply index_tail.
-
-  induction t; simpl in H; inversion H; subst; eauto.
-  - apply index_to_peval in HI1. apply index_to_peval in HI2.
-    apply peval_unique with (v2:=vx) in Hp. subst.
-    assumption. assumption.
-  - unfold peval in Hp. simpl in Hp. destruct Hp as [Hp1 [Hp2]].
-    unfold peval. split. simpl. eauto. exists (nf+1). intros n LE.
-    destruct n. omega. simpl. unfold teval. simpl. rewrite IHF. simpl.
-    destruct n. omega. simpl.
-    rewrite Ids. rewrite <- Iy'. simpl. reflexivity.
-    omega.
-*)
-admit.
+      remember A as EV1. clear HeqEV1.
+      apply teval_path_step with (x:=x) in A; eauto. destruct A as [A | A].
+      * subst. simpl in EV1. inversion EV1.
+        apply index_tail in HI1. rewrite H2 in HI1. inversion HI1. subst.
+        apply index_tail in HI2. rewrite <- H2 in HI2. simpl.
+        assert (exists n0, S n0 = n) as B. {
+          destruct n. omega. eexists. reflexivity.
+        }
+        destruct B as [n0 B]. rewrite <- B.
+        simpl. rewrite HI2. reflexivity.
+      * destruct A as [n' [t' [m' [env2' [f' [ds' [y' [Eqn [Eqt [EqEv [EqIm EqIy]]]]]]]]]]].
+        subst. assert (n' = 0) as C by omega. subst. simpl in EqEv. inversion EqEv.
+    + remember IH as A. clear HeqA. specialize (A n0 H0).
+      remember A as EV1. clear HeqEV1.
+      apply teval_path_step with (x:=x) in A; eauto. destruct A as [A | A].
+      * assert (exists n1, S n1 = n0) as B. {
+          destruct n0. omega. eexists. reflexivity.
+        }
+        destruct B as [n1 B].
+        subst. simpl in EV1. inversion EV1.
+        apply index_tail in HI1. rewrite H2 in HI1. inversion HI1. subst.
+        apply index_tail in HI2. rewrite <- H2 in HI2. simpl.
+        rewrite HI2. reflexivity.
+      * destruct A as [n' [t' [m' [env2' [f' [ds' [y' [Eqn [Eqt [EqEv [EqIm EqIy]]]]]]]]]]].
+        subst.
+        simpl. rewrite IHn with (v:=(vobj env2' f' ds')); eauto.
+        rewrite EqIm.
+        assert (exists n0', S n0' = n') as B. {
+          destruct n'. omega. eexists. reflexivity.
+        }
+        destruct B as [n0' B].
+        rewrite <- B. simpl.
+        admit. (* almost *)
+        intros. admit. omega.
 Qed.
 
 Lemma sstpd2_trans_aux: forall n, forall m G1 G2 G3 T1 T2 T3 n1,
