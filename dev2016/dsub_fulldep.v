@@ -2,7 +2,7 @@
  DSub (D<:) with Full Term Dependent Types
  T ::= Top | Bot | t.Type | { Type: S..U } | (z: T) -> T^z
  t ::= x | { Type = T } | lambda x:T.t | t t
- *)
+*)
 
 Require Export SfLib.
 
@@ -199,31 +199,16 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH S2 S1 ->
     stp G1 GH (TMem S1 U1) (TMem S2 U2)
 | stp_sel1: forall G1 GH TX T2 t,
-    has_type G1 t TX ->
-    closed 0 0 (length G1) TX ->
+    has_type G1 GH t TX ->
     stp G1 GH TX (TMem TBot T2) ->
     stp G1 GH (TSel t) T2
 | stp_sel2: forall G1 GH TX T1 t,
-    has_type G1 t TX ->
-    closed 0 0 (length G1) TX ->
+    has_type G1 GH t TX ->
     stp G1 GH TX (TMem T1 TTop) ->
     stp G1 GH T1 (TSel t)
 | stp_selx: forall G1 GH t,
-    tm_closed 0 0 (length G1) t ->
+    tm_closed 0 (length GH) (length G1) t ->
     stp G1 GH (TSel t) (TSel t)
-| stp_sela1: forall G1 GH TX T2 x,
-    indexr x GH = Some TX ->
-    closed 0 x (length G1) TX ->
-    stp G1 GH TX (TMem TBot T2) ->
-    stp G1 GH (TSel (tvar (varH x))) T2
-| stp_sela2: forall G1 GH TX T1 x,
-    indexr x GH = Some TX ->
-    closed 0 x (length G1) TX ->
-    stp G1 GH TX (TMem T1 TTop) ->
-    stp G1 GH T1 (TSel (tvar (varH x)))
-| stp_selax: forall G1 GH v x,
-    indexr x GH = Some v  ->
-    stp G1 GH (TSel (tvar (varH x))) (TSel (tvar (varH x)))
 | stp_all: forall G1 GH T1 T2 T3 T4 x,
     stp G1 GH T3 T1 ->
     x = length GH ->
@@ -233,28 +218,32 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH (TAll T1 T2) (TAll T3 T4)
 
 (* ### Type Assignment ### *)
-with has_type : tenv -> tm -> ty -> Prop :=
-| t_var: forall x env T1,
-           indexr x env = Some T1 ->
-           stp env [] T1 T1 ->
-           has_type env (tvar (varF x)) T1
-| t_typ: forall env T1,
-           closed 0 0 (length env) T1 ->
-           has_type env (ttyp T1) (TMem T1 T1)
-| t_app:forall env f x T1 T2 T,
-           has_type env f (TAll T1 T2) ->
-           has_type env x T1 ->
+with has_type : tenv -> tenv -> tm -> ty -> Prop :=
+| t_varF: forall x G1 GH T1,
+           indexr x G1 = Some T1 ->
+           closed 0 0 (length G1) T1 ->
+           has_type G1 GH (tvar (varF x)) T1
+| t_varH: forall x G1 GH T1,
+           indexr x GH = Some T1 ->
+           closed 0 x (length G1) T1 ->
+           has_type G1 GH (tvar (varF x)) T1
+| t_typ: forall G1 GH T1,
+           closed 0 (length GH) (length G1) T1 ->
+           has_type G1 GH (ttyp T1) (TMem T1 T1)
+| t_app: forall G1 GH f x T1 T2 T,
+           has_type G1 GH f (TAll T1 T2) ->
+           has_type G1 GH x T1 ->
            T = open x T2 ->
-           closed 0 0 (length env) T ->
-           has_type env (tapp f x) T
-| t_abs: forall env y T1 T2,
-           has_type (T1::env) y (open (tvar (varF (length env))) T2) ->
-           closed 0 0 (length env) (TAll T1 T2) ->
-           has_type env (tabs T1 y) (TAll T1 T2)
-| t_sub: forall env e T1 T2,
-           has_type env e T1 ->
-           stp env [] T1 T2 ->
-           has_type env e T2
+           closed 0 (length GH) (length G1) T ->
+           has_type G1 GH (tapp f x) T
+| t_abs: forall G1 GH y T1 T2,
+           has_type (T1::G1) GH y (open (tvar (varF (length G1))) T2) ->
+           closed 0 (length GH) (length G1) (TAll T1 T2) ->
+           has_type G1 GH (tabs T1 y) (TAll T1 T2)
+| t_sub: forall G1 GH e T1 T2,
+           has_type G1 GH e T1 ->
+           stp G1 GH T1 T2 ->
+           has_type G1 GH e T2
 .
 
 (* ### Evaluation (Big-Step Semantics) ### *)
@@ -401,7 +390,7 @@ with val_type : venv -> vl -> ty -> Prop :=
     val_type env (vty venv T1) TE
 | v_abs: forall env venv tenv x y T1 T2 TE,
     wf_env venv tenv ->
-    has_type (T1::tenv) y (open (tvar (varF x)) T2) ->
+    has_type (T1::tenv) [] y (open (tvar (varF x)) T2) ->
     length venv = x ->
     (exists n, stp2 true true venv (TAll T1 T2) env TE [] n) ->
     val_type env (vabs venv T1 y) TE
@@ -450,7 +439,6 @@ Hint Resolve ex_intro.
 
 Ltac crush :=
   try solve [eapply stp_selx; compute; eauto; crush];
-  try solve [eapply stp_selax; compute; eauto; crush];
   try solve [econstructor; compute; eauto; crush];
   try solve [eapply t_sub; crush].
 
@@ -458,19 +446,19 @@ Ltac crush :=
 
 Definition polyId := TAll (TMem TBot TTop) (TAll (TSel (tvar (varB 0))) (TSel (tvar (varB 1)))).
 
-Example ex1: has_type [] (tabs (TMem TBot TTop) (tabs (TSel (tvar (varF 0))) (tvar (varF 1)))) polyId.
+Example ex1: has_type [] [] (tabs (TMem TBot TTop) (tabs (TSel (tvar (varF 0))) (tvar (varF 1)))) polyId.
 Proof.
   crush.
 Qed.
 
 (* instantiate it to TTop *)
-Example ex2: has_type [polyId] (tapp (tvar (varF 0)) (ttyp TTop)) (TAll TTop TTop).
+Example ex2: has_type [polyId] [] (tapp (tvar (varF 0)) (ttyp TTop)) (TAll TTop TTop).
 Proof.
   (* TODO: not sure why crush doesn't solve this directly. *)
   eapply t_sub. eapply t_app; crush. crush.
 Qed.
 
-Example ex3: has_type [] (tabs (TAll TTop (TMem TBot TTop)) (tabs (TSel (tapp (tvar (varF 0)) (tvar (varF 0)))) (tvar (varF 1))))
+Example ex3: has_type [] [] (tabs (TAll TTop (TMem TBot TTop)) (tabs (TSel (tapp (tvar (varF 0)) (tvar (varF 0)))) (tvar (varF 1))))
   (TAll (TAll TTop (TMem TBot TTop)) (TAll (TSel (tapp (tvar (varB 0)) (tvar (varB 0)))) (TSel (tapp (tvar (varB 1)) (tvar (varB 1)))))).
 Proof.
   crush.
