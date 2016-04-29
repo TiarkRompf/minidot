@@ -7986,45 +7986,6 @@ Proof.
   intros. apply (proj1 (stp_to_wf_tp_aux G GH T T n H)).
 Qed.
 
-(*
-Lemma peval_safe_cycle_sel: forall T0 v0 TX f l v G GH GX GY n1,
-  wf_env GX G ->
-  wf_envh ((fresh G, v0) :: GX) GY GH ->
-  peval f ((fresh G, v0) :: GX) v ->
-  peval1 f ((fresh G, T0) :: G) (TFld l TX) n1 ->
-  exists v1, peval (tsel f l) ((fresh G, v0) :: GX) v1.
-Proof.
-  admit.
-Qed.
-
-Lemma peval_safe_cycle: forall T0 v0 TX t G GH GX GY n,
-  wf_env GX G ->
-  wf_envh ((fresh G, v0) :: GX) GY GH ->
-  peval1 t ((fresh G, T0) :: G) TX n ->
-  exists v, peval t ((fresh G, v0) :: GX) v.
-Proof.
-  intros T0 v0 TX t G GH GX GY n WX WY H.
-  remember ((fresh G, T0)::G) as G0. generalize HeqG0.
-  induction H; intros; subst.
-  - assert (exists v, index x ((fresh G, v0) :: GX) = Some v) as A. {
-      simpl. simpl in H.
-      case_eq (le_lt_dec (fresh G) (fresh G)); intros E1 LE1.
-      rewrite (wf_fresh GX G). rewrite LE1. rewrite LE1 in H.
-      case_eq (beq_nat x (fresh G)); intros E2.
-      eexists. reflexivity.
-      eapply index_exists. eapply WX. rewrite E2 in H. eapply H.
-      assumption.
-      omega.
-    }
-    destruct A as [v A].
-    assert (peval (tvar x) ((fresh G, v0) :: GX) v) as B. eapply index_to_peval; eauto.
-    eexists. eassumption.
-  - edestruct IHpeval1 as [v IH]; eauto.
-    eapply peval_safe_cycle_sel; eauto.
-  - edestruct IHpeval1 as [v IH]; eauto.
-Qed.
- *)
-
 Lemma peval_cycle_ex: forall T0 v0 TX t G GH GX GY n,
   wf_env GX G ->
   wf_envh ((fresh G, v0) :: GX) GY GH ->
