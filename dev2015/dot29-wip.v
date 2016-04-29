@@ -1177,6 +1177,24 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0.
 Qed.
 
+Example pex2_2: has_type [(1, (TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop))));(0, TTop)]
+                         (tobj 2 [(0, dfld 1)]) (TFld 0 (TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop)))).
+Proof.
+  eapply t_sub.
+  eapply t_obj with (T:=(TFld 0 (TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop))))). simpl. reflexivity. unfold open. simpl. reflexivity.
+  eapply dt_fld with (T2:=(TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop)))); crush2. eauto.
+  crush2. crush2. crush2.
+Grab Existential Variables.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0.
+Qed.
+
 (* define polymorphic identity function *)
 
 Definition polyId := TAll 0 (TMem 0 TBot TTop) (TAll 0 (TSel (varB 0) 0) (TSel (varB 1) 0)).
