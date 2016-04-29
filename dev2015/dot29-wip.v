@@ -1203,9 +1203,13 @@ Qed.
 (* the canonical counter-example to preservation in small-step without path normalization...
 Example pex2: has_type [(2,_T2_2);(1,_T2_1);(0,_T2_0)] (tsel (tsel (tvar 2) 0) 1) (TSel (varF (tsel (tvar 2) 0)) 0).
 Proof.
+  assert (stpd [(2, _T2_2); (1, _T2_1); (0, _T2_0)] []
+     (TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop)))
+     (TFld 1 (TSel (varF (tsel (tvar 2) 0)) 0))) as A by admit. destruct A as [? A].
   eapply t_sel.
-  eapply t_sub. eapply t_sel. eapply t_var. compute. reflexivity. crush2. crush2.
-  instantiate (1:=0). admit.
+  eapply t_sub.
+  eapply t_sel. eapply t_var. compute. reflexivity. crush2. crush2.
+  apply A.
   eapply stp_selx. compute. eapply pt_sel. eapply pt_var. compute. reflexivity. crush2.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
