@@ -1137,6 +1137,24 @@ Ltac crush_wf :=
   try solve [(eapply stp_bindx; [(compute; eauto) | crush_cl | crush_cl | crush_wf | crush_wf])];
   try solve [(eapply stp_and2; [eapply stp_and11; crush_wf | eapply stp_and12; crush_wf])].
 
+(* warm-up *)
+Example pex1: has_type [(0,(TFld 0 (TMem 0 TBot TTop)))] (tsel (tvar 0) 0) TTop.
+Proof.
+  eapply t_sub. eapply t_sel. crush2. crush_wf. eapply stp_top. crush_wf.
+Grab Existential Variables.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+Qed.
+
+Example pex2: has_type [(0,(TFld 0 (TMem 0 TTop TTop)))] (tsel (tvar 0) 0) (TSel (varF (tsel (tvar 0) 0)) 0).
+Proof.
+  eapply t_sub. eapply t_sel. crush2. crush_wf.
+  eapply stp_sel2. eapply pt_sel. eapply pt_var. compute. reflexivity. crush_wf.
+  eauto. crush2. crush_wf.
+Grab Existential Variables.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+Qed.
+
 (* define polymorphic identity function *)
 
 Definition polyId := TAll 0 (TMem 0 TBot TTop) (TAll 0 (TSel (varB 0) 0) (TSel (varB 1) 0)).
