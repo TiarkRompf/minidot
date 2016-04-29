@@ -1137,15 +1137,15 @@ Ltac crush_wf :=
   try solve [(eapply stp_bindx; [(compute; eauto) | crush_cl | crush_cl | crush_wf | crush_wf])];
   try solve [(eapply stp_and2; [eapply stp_and11; crush_wf | eapply stp_and12; crush_wf])].
 
-(* warm-up *)
-Example pex1: has_type [(0,(TFld 0 (TMem 0 TBot TTop)))] (tsel (tvar 0) 0) TTop.
+
+Example pex1_0: has_type [(0,(TFld 0 (TMem 0 TBot TTop)))] (tsel (tvar 0) 0) TTop.
 Proof.
   eapply t_sub. eapply t_sel. crush2. crush_wf. eapply stp_top. crush_wf.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
-Example pex2: has_type [(0,(TFld 0 (TMem 0 TTop TTop)))] (tsel (tvar 0) 0) (TSel (varF (tsel (tvar 0) 0)) 0).
+Example pex1: has_type [(0,(TFld 0 (TMem 0 TTop TTop)))] (tsel (tvar 0) 0) (TSel (varF (tsel (tvar 0) 0)) 0).
 Proof.
   eapply t_sub. eapply t_sel. crush2. crush_wf.
   eapply stp_sel2. eapply pt_sel. eapply pt_var. compute. reflexivity. crush_wf.
@@ -1153,6 +1153,34 @@ Proof.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+Qed.
+
+Example pex2_0: has_type [] (tlet 0 (tobj 0 []) (tvar 0)) TTop.
+Proof.
+  eapply t_sub. eapply t_let; crush2. crush2.
+Grab Existential Variables.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0.
+Qed.
+
+Example pex2_1: has_type [] (tlet 0 (tobj 0 []) (tlet 1 (tobj 1 [(1, dfld 0);(0, dmem TTop)]) (tvar 1))) (TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop))).
+Proof.
+  eapply t_let. eapply t_sub. crush2. eapply stp_top. crush_wf. eauto.
+  eapply t_let. eapply t_sub with (T2:=(TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop)))).
+  eapply t_obj with (T:=(TAnd (TFld 1 TTop) (TMem 0 TTop TTop))).
+  eauto. unfold open. simpl. reflexivity.
+  eapply dt_fld with (T2:=TTop). crush2. eauto. eauto.
+  eapply dt_mem. eapply dt_nil. eauto. simpl. reflexivity. simpl. reflexivity. simpl. reflexivity.
+  crush2. crush2. crush2. eauto. crush2. crush2. crush2.
+Grab Existential Variables.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 (* define polymorphic identity function *)
