@@ -312,34 +312,34 @@ Inductive stp2: bool (* whether selections are precise *) ->
 (* precise/invertible bounds *)
 (* vty already marks binding as type binding, so no need for additional TMem marker *)
 | stp2_strong_sel1: forall G1 G2 GX TX t T2 GH n1,
-    peval G1 t (vty GX TX) ->
+    peval G1 t (vty GX TX) -> tm_closed 0 0 (length G1) t ->
     val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stp2 true true GX TX G2 T2 GH n1 ->
     stp2 true true G1 (TSel t) G2 T2 GH (S n1)
 | stp2_strong_sel2: forall G1 G2 GX TX t T1 GH n1,
-    peval G2 t (vty GX TX) ->
+    peval G2 t (vty GX TX) -> tm_closed 0 0 (length G2) t ->
     val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stp2 true false G1 T1 GX TX GH n1 ->
     stp2 true true G1 T1 G2 (TSel t) GH (S n1)
 (* imprecise type *)
 | stp2_sel1: forall G1 G2 v TX t T2 GH n1,
-    peval G1 t v ->
+    peval G1 t v -> tm_closed 0 0 (length G1) t ->
     val_type (base v) v TX ->
     closed 0 0 (length (base v)) TX ->
     stp2 false false (base v) TX G2 (TMem TBot T2) GH n1 ->
     stp2 false true G1 (TSel t) G2 T2 GH (S n1)
 | stp2_sel2: forall G1 G2 v TX t T1 GH n1,
-    peval G2 t v ->
+    peval G2 t v -> tm_closed 0 0 (length G2) t ->
     val_type (base v) v TX ->
     closed 0 0 (length (base v)) TX ->
     stp2 false false (base v) TX G1 (TMem T1 TTop) GH n1 ->
     stp2 false true G1 T1 G2 (TSel t) GH (S n1)
 (* TODO: maybe need selxr? *)
 | stp2_selx: forall G1 G2 v t1 t2 GH s n,
-    peval G1 t1 v ->
-    peval G2 t2 v ->
+    peval G1 t1 v -> tm_closed 0 0 (length G1) t1 ->
+    peval G2 t2 v -> tm_closed 0 0 (length G2) t2 ->
     stp2 s true G1 (TSel t1) G2 (TSel t2) GH (S n)
 
 (* abstract type variables *)
@@ -831,7 +831,9 @@ Lemma stp2_closed: forall G1 G2 T1 T2 GH s m n,
                      stp2 s m G1 T1 G2 T2 GH n ->
                      closed 0 (length GH) (length G1) T1 /\ closed 0 (length GH) (length G2) T2.
   intros. induction H;
-    try solve [repeat ev; split; try inv_mem; eauto using indexr_max].
+    try solve [repeat ev; split; try inv_mem; eauto using indexr_max;
+               try solve [econstructor; eapply (proj2 closed_inc_mult); eauto; omega];
+               try solve [repeat econstructor; eauto using indexr_max]].
 Qed.
 
 Lemma stp2_closed2 : forall G1 G2 T1 T2 GH s m n,
