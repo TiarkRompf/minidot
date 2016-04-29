@@ -224,6 +224,13 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
 Hint Unfold open.
 Hint Unfold closed.
 
+Fixpoint path_head (t: tm) : option id :=
+  match t with
+    | tvar x => Some x
+    | tsel t1 l => path_head t1
+    | _ => None
+  end.
+
 (* TODO: var *)
 (* QUESTION: include trans rule or not? sela1 rules use restricted GL now, so trans seems useful *)
 Inductive stp: tenv -> tenv -> ty -> ty -> nat -> Prop :=
@@ -605,7 +612,6 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 (S m) false G1 T2 G2 T4 GH n2 ->
     stp2 (S m) true G1 (TMem l T1 T2) G2 (TMem l T3 T4) GH (S (n1+n2))
 
-
 (* strong version, with precise/invertible bounds *)
 | stp2_strong_sel1: forall G1 G2 GX l f ds TX x T2 GH GX' TX' n1 n2,
     peval x G1 (vobj GX f ds) ->
@@ -624,12 +630,6 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     closed 1 0 TX ->
     stp2 0 false G1 T1 ((f, vobj GX f ds)::GX) (open (varF (tvar f)) TX) GH n1 ->
     stp2 0 true G1 T1 G2 (TSel (varF x) l) GH (S (n1+n2))
-
-| stp2_strong_selx: forall G1 G2 l v x1 x2 GH n1,
-    peval x1 G1 v ->
-    peval x2 G2 v ->
-    stp2 0 true G1 (TSel (varF x1) l) G2 (TSel (varF x2) l) GH n1
-
 
 (* existing object, but imprecise type *)
 | stp2_sel1: forall m G1 G2 GX l TX x T2 GH n1 n2 v,
@@ -667,11 +667,19 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 (S ( m)) true G1 (open (varF x') T1) G1 (open (varF x') T1) GH n2 -> (* regularity *)
     stp2 (S ( m)) true G1 (open (varF x') T1) G2 (TSel (varF x) l) GH (S (n1+n2))
  *)
-         
+
+
+(* TODO: this is a simplif *)
+| stp2_selxr: forall m G1 G2 l t x v GH n1,
+   path_head t = Some x ->
+   index x G1 = Some v ->
+   index x G2 = Some v ->
+   stp2 m true G1 (TSel (varF t) l) G2 (TSel (varF t) l) GH (S n1)
+
 | stp2_selx: forall m G1 G2 l v x1 x2 GH n1,
     peval x1 G1 v -> 
     peval x2 G2 v ->
-    stp2 (S m) true G1 (TSel (varF x1) l) G2 (TSel (varF x2) l) GH (S n1)
+    stp2 m true G1 (TSel (varF x1) l) G2 (TSel (varF x2) l) GH (S n1)
 
 (* hypothetical object *)
 (*| stp2_sela1: forall m G1 G2 GX l TX x T2 GH n1 n2,
@@ -920,11 +928,18 @@ Lemma stpd2_selb2: forall G1 G2 GX l TX x x' T1 GH v nv,
 Proof. intros. repeat eu. eexists. eapply stp2_selb2; eauto. Qed.
  *)
 
+Lemma stpd2_selxr: forall G1 G2 l t x v GH,
+    path_head t = Some x ->
+    index x G1 = Some v ->
+    index x G2 = Some v ->
+    stpd2 true G1 (TSel (varF t) l) G2 (TSel (varF t) l) GH.
+Proof. intros. exists (S 0). eapply stp2_selxr; eauto. Qed.
+
 Lemma stpd2_selx: forall G1 G2 l x1 x2 GH v,
     peval x1 G1 v ->
     peval x2 G2 v ->
     stpd2 true G1 (TSel (varF x1) l) G2 (TSel (varF x2) l) GH.
-Proof. intros. eauto. exists (S 0). eapply stp2_selx; eauto. Qed.
+Proof. intros. exists (S 0). eapply stp2_selx; eauto. Qed.
 
 Lemma stpd2_sela1: forall G1 G2 GX l TX x T2 GH GU GL,
     indexr x GH = Some (GX, TX) ->
@@ -3173,10 +3188,6 @@ Proof.
     apply IHstp2_1. assumption. apply venv_ext_refl. assumption.
     eassumption. assumption.
     apply IHstp2_2. assumption. assumption. apply venv_ext_refl.
-  - Case "strong_selx".
-    eapply stp2_strong_selx.
-    eapply peval_extend_mult. apply H. assumption.
-    eapply peval_extend_mult. apply H0. assumption.
   - Case "sel1".
     eapply stp2_sel1. eapply peval_extend_mult. apply H.
     assumption. eassumption. assumption.
@@ -3187,6 +3198,10 @@ Proof.
     assumption. eassumption. assumption.
     apply IHstp2_1. assumption. apply venv_ext_refl. assumption.
     apply IHstp2_2. assumption. assumption. assumption.
+  - Case "selxr".
+    eapply stp2_selxr. eassumption.
+    eapply index_extend_mult. eapply H0. assumption.
+    eapply index_extend_mult. eapply H1. assumption.
   - Case "selx".
     eapply stp2_selx.
     eapply peval_extend_mult. apply H. assumption.
@@ -3322,7 +3337,7 @@ Lemma stp2_extend : forall x v1 G1 G2 T1 T2 H s m n1,
                        stp2 s m ((x,v1)::G1) T1 ((x,v1)::G2) T2 H n1).
 Proof.
   intros. induction H0;
-    try solve [split; try split; repeat ev; intros; eauto using peval_extend];
+    try solve [split; try split; repeat ev; intros; eauto using peval_extend,index_extend];
     try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; inversion IHstp2_3 as [? [? ?]]; constructor; eauto; apply stp2_closure_extend; eauto];
     try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eapply stp2_bind; eauto; apply stp2_closure_extend; eauto];
     try solve [split; try split; intros; inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eapply stp2_bind1; eauto; apply stp2_closure_extend; eauto].
@@ -4023,8 +4038,6 @@ Proof.
     eassumption. eassumption. eapply valtp_closed. eassumption.
     eapply IHstp2_1. eexists. eassumption. eauto.
     eapply stpd2_reg1. eapply IHstp2_2. eexists. eassumption. eauto.
-  - Case "selx".
-    eapply stpd2_selx; eauto.
   - Case "bind1".
     eapply stpd2_bind1; eauto. subst m. eapply IHstp2_1. eexists. eassumption. reflexivity.
   - Case "and11".
@@ -4059,7 +4072,7 @@ Proof.
       eapply IHstp2_2. eexists. eauto. eauto.
     + inversion Heqm.
   Grab Existential Variables.
-  apply 0. apply 0. apply 0.
+  apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma sstpd2_downgrade: forall G1 G2 T1 T2 H,
@@ -4135,6 +4148,7 @@ Proof.
     + SCase "sel2". eapply stpd2_sel2; try eassumption.
       eapply IHn; try eassumption. omega.
       eapply IHn; try eassumption. omega.
+    + SCase "selxr". eapply stpd2_selxr; try eassumption.
     + SCase "selx". eapply stpd2_selx; try eassumption.
     + SCase "sela1".
       case_eq (beq_nat x (length GH0)); intros E.
@@ -4520,6 +4534,147 @@ Proof.
   assumption.
 Qed.
 
+Lemma index_tail: forall {X : Type} x G (v:X),
+  index x G = Some v ->
+  index x (tail (S x) G) = Some v.
+Proof.
+  intros. induction G.
+  - simpl in H. inversion H.
+  - destruct a. simpl in H. simpl.
+    case_eq (beq_nat x i); intros E; rewrite E in H;
+    case_eq (le_lt_dec (fresh G) i); intros LE1 E1; rewrite E1 in H.
+    + inversion H. subst. simpl. rewrite E1. rewrite E. reflexivity.
+    + inversion H.
+    + eapply IHG. apply H.
+    + inversion H.
+Qed.
+
+(*
+Lemma index_tail_extend: forall {X : Type} x G (v:X),
+  index x (tail (S x) G) = Some v ->
+  index x G = Some v.
+Proof.
+  intros. simpl in *.
+
+  induction G. simpl in H0. inversion H0.
+  destruct a. simpl in H. simpl in H0.
+  case_eq (beq_nat x i); intros E; rewrite E in H0.
+  - assumption.
+  - simpl.
+    case_eq (le_lt_dec (fresh G) i); intros LE1 E1.
+    + rewrite E. apply index_max in H0. apply beq_nat_false in E. omega.
+    simpl in H0.
+  + inversion H. subst. simpl. rewrite E1. rewrite E. reflexivity.
+    + inversion H.
+    + eapply IHG. apply H.
+    + inversion H.
+ *)
+
+Lemma fresh_in_path: forall t x (G: venv),
+  path_head t = Some x ->
+  x < fresh G ->
+  fresh_in_term t <= fresh G.
+Proof.
+  intros. induction t; simpl in H; inversion H; subst.
+  - simpl. omega.
+  - simpl. apply IHt. assumption.
+Qed.
+
+(*
+Lemma fresh_in_eval: forall t G n v,
+  fresh_in_term t <= fresh G ->
+  teval n (tail (fresh_in_term t) G) t = Some (Some v) ->
+  teval n G t = Some (Some v).
+Proof.
+  intros t G n v Fr. induction n; intros. simpl in H. inversion H.
+  simpl in H. destruct t; simpl in H;
+              try solve [inversion H];
+              try solve [inversion H; subst; eauto].
+  - inversion H. simpl. f_equal.
+ *)
+
+Lemma path_head_unique: forall t v1 v2,
+  path_head t = Some v1 ->
+  path_head t = Some v2 ->
+  v1 = v2.
+Proof.
+  intros t v1 v2 H1 H2.
+  rewrite H1 in H2. inversion H2. subst. reflexivity.
+Qed.
+
+Lemma index_unique: forall {X:Type} x G (v1: X) (v2: X),
+  index x G = Some v1 ->
+  index x G = Some v2 ->
+  v1 = v2.
+Proof.
+  intros X x G v1 v2 H1 H2.
+  rewrite H1 in H2. inversion H2. subst. reflexivity.
+Qed.
+
+Lemma path_head_peval: forall G1 G2 t x vx v,
+  path_head t = Some x ->
+  index x G1 = Some vx ->
+  index x G2 = Some vx ->
+  peval t G1 v ->
+  peval t G2 v.
+Proof.
+(*
+  intros G1 G2 t x vx v H HI1 HI2 Hp.
+  unfold peval. split.
+  - eapply fresh_in_path. eassumption. eapply index_max. eassumption.
+  - unfold peval in Hp. destruct Hp as [HpF [n IH]].
+    exists (S n). intros n0 LE.
+    generalize dependent t.
+    induction n0; intros. omega.
+    specialize (IH (S n)).
+    assert (S n > n) as A by omega. specialize (IH A).
+    destruct t; simpl in IH; try solve [inversion IH].
+    * inversion IH. simpl. reflexivity.
+    * inversion IH. simpl. reflexivity.
+    * inversion IH. simpl. simpl in H. inversion H. subst.
+      rewrite IH. f_equal. apply index_tail.
+      apply index_tail in HI1. rewrite H1 in HI1. inversion HI1. subst. apply HI2.
+    * simpl in H. simpl. destruct n. simpl in IH. inversion IH. simpl in IH.
+      destruct t; simpl in IH; try solve [inversion IH].
+      assert (exists n1, n0 = S n1) as B. {
+        destruct n0. omega. eexists. reflexivity.
+      }
+      destruct B as [n1 B].
+      rewrite B. simpl.
+      simpl in H. inversion H. subst.
+      apply index_tail in HI2. apply index_tail in HI1. rewrite HI1 in IH. rewrite HI2.
+      apply IH.
+      simpl in H. simpl in IH.
+      rewrite IHn0.
+      rewrite IHn0.
+      destruct v. inversion IH.
+      destruct n. simpl in IH. inversion IH. simpl in IH.
+      destruct t; simpl in IH; try solve [inversion IH].
+    * destruct n.
+    + eapply IHn.
+    induction t; simpl in H; inversion H; subst; eauto.
+    + exists (S 0). intros n' LE. destruct n'. omega. simpl. f_equal. apply index_tail.
+      specialize (IH (S 0)). simpl in IH.
+    induction n.
+    + specialize (
+
+        + simpl. apply index_max in HI2. omega.
+    + simpl. exists (S 0). intros n LE.
+      destruct n. omega. simpl. f_equal. apply index_tail.
+
+  induction t; simpl in H; inversion H; subst; eauto.
+  - apply index_to_peval in HI1. apply index_to_peval in HI2.
+    apply peval_unique with (v2:=vx) in Hp. subst.
+    assumption. assumption.
+  - unfold peval in Hp. simpl in Hp. destruct Hp as [Hp1 [Hp2]].
+    unfold peval. split. simpl. eauto. exists (nf+1). intros n LE.
+    destruct n. omega. simpl. unfold teval. simpl. rewrite IHF. simpl.
+    destruct n. omega. simpl.
+    rewrite Ids. rewrite <- Iy'. simpl. reflexivity.
+    omega.
+*)
+admit.
+Qed.
 
 Lemma sstpd2_trans_aux: forall n, forall m G1 G2 G3 T1 T2 T3 n1,
   stp2 0 m G1 T1 G2 T2 nil n1 -> n1 < n ->
@@ -4667,18 +4822,56 @@ Proof.
       }
       destruct A as [? A].
       eexists. eapply stp2_strong_sel2; eauto.
-    + SCase "sselx".
-      specialize (peval_unique _ _ _ _ H2 H10). intros S. inversion S. subst.
+    + SCase "sselxr". subst.
+      eexists. eapply stp2_strong_sel2; eauto.
+      eapply path_head_peval with (G1:=G2); eauto.
+    + SCase "sselx". subst.
+      specialize (peval_unique _ _ _ _ H2 H11). intros S. inversion S. subst.
       (* subst. rewrite H2 in H10. inversion H10. subst. *)
       eexists. eapply stp2_strong_sel2; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
     + SCase "or21". subst. eexists. eapply stp2_or21; eauto.
     + SCase "or22". subst. eexists. eapply stp2_or22; eauto.
-  - Case "sselx". subst. inversion H1.
+  - Case "sselxr". subst. inversion H1.
     + SCase "top". subst.
       apply stp2_reg1 in H. inversion H.
       eexists. eapply stp2_top. eassumption.
-    + SCase "ssel1".
+    + SCase "ssel1". subst.
+      (* specialize (peval_unique _ _ _ _ H3 H7). intros S. inversion S. subst.*)
+      (* subst. rewrite H6 in H3. inversion H3. subst.*)
+      eexists. eapply stp2_strong_sel1; eauto.
+      eapply path_head_peval with (G1:=G2); eauto.
+    + SCase "ssel2". subst.
+      assert (sstpd2 false GX' TX' G1 (TMem l0 (TSel (varF t) l) TTop) []) as A. {
+        eapply sstpd2_trans_axiom. eexists. eassumption.
+        eexists. eapply stp2_wrapf. eapply stp2_mem.
+        eapply stp2_wrapf. eassumption.
+        eapply stp2_topx.
+      }
+      destruct A as [? A].
+      eexists. eapply stp2_strong_sel2; eauto.
+    + SCase "sselxr".
+      (* specialize (peval_unique _ _ _ _ H3 H6). intros S. inversion S. subst. *)
+      (* subst. rewrite H6 in H3. inversion H3. subst.*)
+      assert (x0 = x1). { eapply path_head_unique; eauto. }
+      subst.
+      assert (v0 = v). { eapply index_unique with (G:=G2); eauto. }
+      subst.
+      eexists. eapply stp2_selxr; eauto.
+    + SCase "sselx".
+      (* specialize (peval_unique _ _ _ _ H3 H6). intros S. inversion S. subst. *)
+      (* subst. rewrite H6 in H3. inversion H3. subst.*)
+      eexists. eapply stp2_selx; eauto.
+      subst.
+      eapply path_head_peval; eauto.
+    + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
+    + SCase "or21". subst. eexists. eapply stp2_or21; eauto.
+    + SCase "or22". subst. eexists. eapply stp2_or22; eauto.
+  - Case "sselxr". subst. inversion H1.
+    + SCase "top". subst.
+      apply stp2_reg1 in H. inversion H.
+      eexists. eapply stp2_top. eassumption.
+    + SCase "ssel1". subst.
       specialize (peval_unique _ _ _ _ H3 H6). intros S. inversion S. subst.
       (* subst. rewrite H6 in H3. inversion H3. subst.*)
       eexists. eapply stp2_strong_sel1; eauto.
@@ -4691,10 +4884,16 @@ Proof.
       }
       destruct A as [? A].
       eexists. eapply stp2_strong_sel2; eauto.
-    + SCase "sselx".
-      specialize (peval_unique _ _ _ _ H3 H6). intros S. inversion S. subst.
+    + SCase "sselxr".
+      (* specialize (peval_unique _ _ _ _ H3 H6). intros S. inversion S. subst. *)
       (* subst. rewrite H6 in H3. inversion H3. subst.*)
-      eexists. eapply stp2_strong_selx. eauto. eauto.
+      eexists. eapply stp2_selx; eauto.
+      subst.
+      eapply path_head_peval with (G1:=G2); eauto.
+    + SCase "sselx". subst.
+      specialize (peval_unique _ _ _ _ H3 H7). intros S. inversion S. subst.
+      (* subst. rewrite H6 in H3. inversion H3. subst.*)
+      eexists. eapply stp2_selx; eauto.
     + SCase "and2". subst. eexists. eapply stp2_and2; eauto.
     + SCase "or21". subst. eexists. eapply stp2_or21; eauto.
     + SCase "or22". subst. eexists. eapply stp2_or22; eauto.
@@ -4865,7 +5064,8 @@ Proof.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0.
 Qed.
 
 Lemma sstpd2_trans: forall G1 G2 G3 T1 T2 T3,
@@ -5911,8 +6111,10 @@ Proof.
     eexists. eapply stp2_strong_sel2. eauto.
     eassumption. eapply stp2_wrapf. eassumption.
     eauto. eauto. eauto. omega.
+  - Case "selxr".
+    eexists. eapply stp2_selxr. eauto. eauto. eauto.
   - Case "selx".
-    eexists. eapply stp2_strong_selx. eauto. eauto.
+    eexists. eapply stp2_selx. eauto. eauto.
   - Case "sela1". inversion H2.
   - Case "selab1". inversion H2.
   - Case "selab2". inversion H2.
@@ -5937,8 +6139,8 @@ Proof.
   - Case "wrapf". eapply IHn in H1. eu. eexists. eapply stp2_wrapf. eauto. omega.
   - Case "transf". eapply IHn in H1. eapply IHn in H2. eu. eu. eexists.
     eapply stp2_transf. eauto. eauto. omega. omega.
-    Grab Existential Variables.
-    apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. 
+Grab Existential Variables.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 
@@ -6309,6 +6511,20 @@ Proof.
     omega. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
     eapply compat_mem_fwd1. eauto. eauto. eauto.
     eauto. eauto. eauto. eauto.
+
+  - Case "selxr".
+
+    intros GH0 GH0' GXX TXX TXX' lX T1' T2' V ? VS CX ? IX1 IX2 FA IXH.
+
+    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
+
+    assert (T1' = TSel (varF t) l). destruct IX1. ev. eauto. destruct H7. ev. auto. ev. eauto.
+    assert (T2' = TSel (varF t) l). destruct IX2. ev. eauto. destruct H8. ev. auto. ev. eauto.
+
+    subst.
+    eexists.
+    eapply stp2_selxr. eauto. eauto. eauto.
 
   - Case "selx".
 
@@ -7079,8 +7295,7 @@ Proof.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply tvar. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply tvar. apply 0. apply 0. apply 0. apply 0. apply 0.
-(*apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.*)
+apply tvar. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 
