@@ -1155,32 +1155,26 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
-Example pex2_0: has_type [] (tlet 0 (tobj 0 []) (tvar 0)) TTop.
+Example pex2_0: has_type [] (tobj 0 []) TTop.
 Proof.
-  eapply t_sub. eapply t_let; crush2. crush2.
+  eapply t_sub. crush2. crush2.
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
-Example pex2_1: has_type [] (tlet 0 (tobj 0 []) (tlet 1 (tobj 1 [(1, dfld 0);(0, dmem TTop)]) (tvar 1))) (TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop))).
+Example pex2_1: has_type [(0, TTop)] (tobj 1 [(1, dfld 0);(0, dmem TTop)]) (TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop))).
 Proof.
-  eapply t_let. eapply t_sub. crush2. eapply stp_top. crush_wf. eauto.
-  eapply t_let. eapply t_sub with (T2:=(TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop)))).
+  eapply t_sub with (T2:=(TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop)))).
   eapply t_obj with (T:=(TAnd (TFld 1 TTop) (TMem 0 TTop TTop))).
   eauto. unfold open. simpl. reflexivity.
   eapply dt_fld with (T2:=TTop). crush2. eauto. eauto.
   eapply dt_mem. eapply dt_nil. eauto. simpl. reflexivity. simpl. reflexivity. simpl. reflexivity.
-  crush2. crush2. crush2. eauto. crush2. crush2. crush2.
+  crush2. crush2. crush2.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 (* define polymorphic identity function *)
