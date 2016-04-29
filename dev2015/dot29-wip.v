@@ -4549,27 +4549,6 @@ Proof.
     + inversion H.
 Qed.
 
-(*
-Lemma index_tail_extend: forall {X : Type} x G (v:X),
-  index x (tail (S x) G) = Some v ->
-  index x G = Some v.
-Proof.
-  intros. simpl in *.
-
-  induction G. simpl in H0. inversion H0.
-  destruct a. simpl in H. simpl in H0.
-  case_eq (beq_nat x i); intros E; rewrite E in H0.
-  - assumption.
-  - simpl.
-    case_eq (le_lt_dec (fresh G) i); intros LE1 E1.
-    + rewrite E. apply index_max in H0. apply beq_nat_false in E. omega.
-    simpl in H0.
-  + inversion H. subst. simpl. rewrite E1. rewrite E. reflexivity.
-    + inversion H.
-    + eapply IHG. apply H.
-    + inversion H.
- *)
-
 Lemma fresh_in_path: forall t x (G: venv),
   path_head t = Some x ->
   x < fresh G ->
@@ -4579,19 +4558,6 @@ Proof.
   - simpl. omega.
   - simpl. apply IHt. assumption.
 Qed.
-
-(*
-Lemma fresh_in_eval: forall t G n v,
-  fresh_in_term t <= fresh G ->
-  teval n (tail (fresh_in_term t) G) t = Some (Some v) ->
-  teval n G t = Some (Some v).
-Proof.
-  intros t G n v Fr. induction n; intros. simpl in H. inversion H.
-  simpl in H. destruct t; simpl in H;
-              try solve [inversion H];
-              try solve [inversion H; subst; eauto].
-  - inversion H. simpl. f_equal.
- *)
 
 Lemma path_head_unique: forall t v1 v2,
   path_head t = Some v1 ->
