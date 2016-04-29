@@ -7824,7 +7824,7 @@ Proof.
   intros. apply (proj1 (stp_to_wf_tp_aux G GH T T n H)).
 Qed.
 
-
+(*
 Lemma peval_safe_cycle_sel: forall T0 v0 TX f l v G GH GX GY n1,
   wf_env GX G ->
   wf_envh ((fresh G, v0) :: GX) GY GH ->
@@ -7861,6 +7861,32 @@ Proof.
     eapply peval_safe_cycle_sel; eauto.
   - edestruct IHpeval1 as [v IH]; eauto.
 Qed.
+ *)
+
+Lemma peval_cycle_ex: forall T0 v0 TX t G GH GX GY n,
+  wf_env GX G ->
+  wf_envh ((fresh G, v0) :: GX) GY GH ->
+  peval1 t ((fresh G, T0) :: G) TX n ->
+  exists x v, path_head t = Some x /\ index x ((fresh G, v0) :: GX) = Some v.
+Proof.
+  intros T0 v0 TX t G GH GX GY n WX WY H.
+  remember ((fresh G, T0)::G) as G0. generalize HeqG0.
+  induction H; intros; subst.
+  - assert (exists v, index x ((fresh G, v0) :: GX) = Some v) as A. {
+      simpl. simpl in H.
+      case_eq (le_lt_dec (fresh G) (fresh G)); intros E1 LE1.
+      rewrite (wf_fresh GX G). rewrite LE1. rewrite LE1 in H.
+      case_eq (beq_nat x (fresh G)); intros E2.
+      eexists. reflexivity.
+      eapply index_exists. eapply WX. rewrite E2 in H. eapply H.
+      assumption.
+      omega.
+    }
+    destruct A as [v A].
+    eexists. eexists. split. simpl. reflexivity. eapply A.
+  - edestruct IHpeval1 as [v IH]; eauto.
+  - edestruct IHpeval1 as [v IH]; eauto.
+Qed.
 
 Lemma wf_tp_to_stp2_cycle_aux: forall T0 T v G GH,
   wf_tp ((fresh G, T0) :: G) GH T ->
@@ -7876,8 +7902,8 @@ Proof.
   - Case "fld". eapply stpd2_fld; eapply stpd2_wrapf; eauto.
   - Case "mem". eapply stpd2_mem; eapply stpd2_wrapf; eauto.
   - Case "selx".
-    eu. edestruct peval_safe_cycle as [? B]; try eassumption.
-    eapply stpd2_selx; eapply B.
+    eu. edestruct peval_cycle_ex as [? [? [B1 B2]]]; try eassumption.
+    eapply stpd2_selxr; eauto.
   - Case "selax".
     assert (exists v, indexr x GY = Some v) as A. {
       eapply indexr_exists; eauto.
