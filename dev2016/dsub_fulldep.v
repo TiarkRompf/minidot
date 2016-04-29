@@ -226,7 +226,7 @@ with has_type : tenv -> tenv -> tm -> ty -> Prop :=
 | t_varH: forall x G1 GH T1,
            indexr x GH = Some T1 ->
            closed 0 x (length G1) T1 ->
-           has_type G1 GH (tvar (varF x)) T1
+           has_type G1 GH (tvar (varH x)) T1
 | t_typ: forall G1 GH T1,
            closed 0 (length GH) (length G1) T1 ->
            has_type G1 GH (ttyp T1) (TMem T1 T1)
@@ -788,12 +788,29 @@ Ltac inv_mem := match goal with
                     closed 0 (length ?GH) (length ?G) ?T1 => inversion H; subst; eauto
                 end.
 
+Scheme stp_mut := Induction for stp Sort Prop
+with   hastp_mut := Induction for has_type Sort Prop.
+Combined Scheme tp_mutind from stp_mut, hastp_mut.
+
+Lemma tp_closed  :
+  (forall G GH T1 T2, stp G GH T1 T2 -> closed 0 (length GH) (length G) T1 /\ closed 0 (length GH) (length G) T2) /\
+  (forall G GH t T, has_type G GH t T -> tm_closed 0 (length GH) (length G) t /\ closed 0 (length GH) (length G) T).
+Proof.
+  apply tp_mutind; intros; eauto; try solve [repeat ev; split; try inv_mem; eauto using indexr_max].
+  (* TODO: automate *)
+  - split. econstructor. econstructor. eauto using indexr_max. eapply (proj1 closed_inc_mult); eauto. omega.
+  - split. econstructor. econstructor. eauto using indexr_max. eapply (proj1 closed_inc_mult); eauto.
+    eapply indexr_max in e. omega.
+  - split; econstructor; eauto.
+  - destruct H. destruct H0. split. econstructor; eauto. eauto.
+  - destruct H. split. econstructor; eauto. inversion c; subst. eauto. eauto.
+Qed.
+
 Lemma stp_closed : forall G GH T1 T2,
                      stp G GH T1 T2 ->
                      closed 0 (length GH) (length G) T1 /\ closed 0 (length GH) (length G) T2.
 Proof.
-  intros. induction H;
-    try solve [repeat ev; split; try inv_mem; eauto using indexr_max].
+  intros. apply (proj1 tp_closed). eauto.
 Qed.
 
 Lemma stp_closed2 : forall G1 GH T1 T2,
