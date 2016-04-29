@@ -4611,6 +4611,237 @@ Proof.
   rewrite H1 in H2. inversion H2. subst. reflexivity.
 Qed.
 
+Lemma teval_sel_decompose: forall n G t m v,
+  teval (S n) G (tsel t m) = Some (Some v) ->
+  exists v0, teval n G t = Some (Some v0).
+Proof.
+  intros n. induction n; intros. simpl in H. inversion H.
+  destruct t; try solve [simpl in H; inversion H].
+
+  simpl in H.
+  remember (index i G) as vi; destruct vi; simpl in H; try solve [inversion H].
+  destruct v0; simpl in H; try solve [inversion H].
+  remember (index m l0) as vm; destruct vm; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  case_eq (le_lt_dec (fresh l) i0); intros LE1 E1; rewrite E1 in H;
+  try solve [inversion H];
+  case_eq (beq_nat i1 i0); intros E2; rewrite E2 in H;
+  try solve [inversion H].
+  eexists. simpl. rewrite <- Heqvi. reflexivity.
+  eexists. simpl. rewrite <- Heqvi. reflexivity.
+
+  simpl in H.
+  remember (teval n G t) as vt; destruct vt; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  destruct v0; simpl in H; try solve [inversion H].
+  remember (index i l0) as vi; destruct vi; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  remember (teval n ((i0, vobj l i0 l0) :: l) (tvar i1)) as vi1; destruct vi1; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  destruct v0; simpl in H; try solve [inversion H].
+  remember (index m l2) as vi2; destruct vi2; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  case_eq (le_lt_dec (fresh l1) i2); intros LE1 E1; rewrite E1 in H;
+  try solve [inversion H];
+  case_eq (beq_nat i3 i2); intros E2; rewrite E2 in H;
+  try solve [inversion H].
+  eexists. simpl. rewrite <- Heqvt. rewrite <- Heqvi. rewrite <- Heqvi1. reflexivity.
+  eexists. simpl. rewrite <- Heqvt. rewrite <- Heqvi. rewrite <- Heqvi1. reflexivity.
+
+  simpl in H.
+  remember (teval n G t2) as vt1; destruct vt1; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  destruct v0; simpl in H; try solve [inversion H].
+  remember (teval n G t1) as vt2; destruct vt2; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  destruct v0; simpl in H; try solve [inversion H].
+  remember (index i l0) as vi; destruct vi; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  remember (teval n ((i1, vbool b) :: (i0, vobj l i0 l0) :: l) t) as vi1; destruct vi1; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  destruct v0; simpl in H; try solve [inversion H].
+  remember (index m l2) as vi2; destruct vi2; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  case_eq (le_lt_dec (fresh l1) i2); intros LE1 E1; rewrite E1 in H;
+  try solve [inversion H];
+  case_eq (beq_nat i3 i2); intros E2; rewrite E2 in H;
+  try solve [inversion H].
+  eexists. simpl. rewrite <- Heqvt1. rewrite <- Heqvt2. rewrite <- Heqvi. rewrite <- Heqvi1. reflexivity.
+  eexists. simpl. rewrite <- Heqvt1. rewrite <- Heqvt2. rewrite <- Heqvi. rewrite <- Heqvi1. reflexivity.
+
+  remember (teval n G t1) as vt2; destruct vt2; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  destruct v0; simpl in H; try solve [inversion H].
+  remember (index i l2) as vi; destruct vi; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  remember (teval n ((i2, vobj l i0 l0) :: (i1, vobj l1 i1 l2) :: l1) t) as vi1; destruct vi1; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  destruct v0; simpl in H; try solve [inversion H].
+  remember (index m l4) as vi2; destruct vi2; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  case_eq (le_lt_dec (fresh l3) i3); intros LE1 E1; rewrite E1 in H;
+  try solve [inversion H];
+  case_eq (beq_nat i4 i3); intros E2; rewrite E2 in H;
+  try solve [inversion H].
+  eexists. simpl. rewrite <- Heqvt1. rewrite <- Heqvt2. rewrite <- Heqvi. rewrite <- Heqvi1. reflexivity.
+  eexists. simpl. rewrite <- Heqvt1. rewrite <- Heqvt2. rewrite <- Heqvi. rewrite <- Heqvi1. reflexivity.
+
+  simpl in H.
+  remember (index m l) as vi; destruct vi; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  case_eq (le_lt_dec (fresh G) i); intros LE1 E1; rewrite E1 in H;
+  try solve [inversion H];
+  case_eq (beq_nat i0 i); intros E2; rewrite E2 in H;
+  try solve [inversion H].
+  eexists. simpl. reflexivity.
+  eexists. simpl. reflexivity.
+
+  simpl in H.
+  remember (teval n G t1) as vt; destruct vt; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  remember (teval n ((i, v0) :: G) t2) as vt1; destruct vt1; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  destruct v1; simpl in H; try solve [inversion H].
+  remember (index m l0) as vi; destruct vi; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  case_eq (le_lt_dec (fresh l) i0); intros LE1 E1; rewrite E1 in H;
+  try solve [inversion H];
+  case_eq (beq_nat i1 i0); intros E2; rewrite E2 in H;
+  try solve [inversion H].
+  eexists. simpl. rewrite <- Heqvt. rewrite <- Heqvt1. reflexivity.
+  eexists. simpl. rewrite <- Heqvt. rewrite <- Heqvt1. reflexivity.
+Qed.
+
+Lemma teval_sel_step: forall n G t m v,
+  teval (S n) G (tsel t m) = Some (Some v) ->
+  exists env2 f ds y,
+    teval n G t = Some (Some (vobj env2 f ds)) /\
+    index m ds = Some (dfld y) /\
+    index y ((f,vobj env2 f ds)::env2) = Some v.
+Proof.
+  intros n. induction n; intros. simpl in H. inversion H.
+  destruct t; try solve [simpl in H; inversion H].
+
+  simpl in H.
+  remember (index i G) as vi; destruct vi; simpl in H; try solve [inversion H].
+  destruct v0; simpl in H; try solve [inversion H].
+  remember (index m l0) as vm; destruct vm; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  case_eq (le_lt_dec (fresh l) i0); intros LE1 E1; rewrite E1 in H;
+  try solve [inversion H];
+  case_eq (beq_nat i1 i0); intros E2; rewrite E2 in H;
+  try solve [inversion H].
+  repeat eexists. simpl. rewrite <- Heqvi. reflexivity. rewrite <- Heqvm. reflexivity. simpl. rewrite E1. rewrite E2. inversion H. reflexivity.
+  repeat eexists. simpl. rewrite <- Heqvi. reflexivity. rewrite <- Heqvm. reflexivity. simpl. rewrite E1. rewrite E2. inversion H. reflexivity.
+
+  simpl in H.
+  remember (teval n G t) as vt; destruct vt; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  destruct v0; simpl in H; try solve [inversion H].
+  remember (index i l0) as vi; destruct vi; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  remember (teval n ((i0, vobj l i0 l0) :: l) (tvar i1)) as vi1; destruct vi1; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  destruct v0; simpl in H; try solve [inversion H].
+  remember (index m l2) as vi2; destruct vi2; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  case_eq (le_lt_dec (fresh l1) i2); intros LE1 E1; rewrite E1 in H;
+  try solve [inversion H];
+  case_eq (beq_nat i3 i2); intros E2; rewrite E2 in H;
+  try solve [inversion H].
+  repeat eexists. simpl. rewrite <- Heqvt. rewrite <- Heqvi. rewrite <- Heqvi1. reflexivity. rewrite <- Heqvi2. reflexivity. simpl. rewrite E1. rewrite E2. inversion H. reflexivity.
+  repeat eexists. simpl. rewrite <- Heqvt. rewrite <- Heqvi. rewrite <- Heqvi1. reflexivity. rewrite <- Heqvi2. reflexivity. simpl. rewrite E1. rewrite E2. inversion H. reflexivity.
+
+  simpl in H.
+  remember (teval n G t2) as vt1; destruct vt1; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  destruct v0; simpl in H; try solve [inversion H].
+  remember (teval n G t1) as vt2; destruct vt2; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  destruct v0; simpl in H; try solve [inversion H].
+  remember (index i l0) as vi; destruct vi; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  remember (teval n ((i1, vbool b) :: (i0, vobj l i0 l0) :: l) t) as vi1; destruct vi1; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  destruct v0; simpl in H; try solve [inversion H].
+  remember (index m l2) as vi2; destruct vi2; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  case_eq (le_lt_dec (fresh l1) i2); intros LE1 E1; rewrite E1 in H;
+  try solve [inversion H];
+  case_eq (beq_nat i3 i2); intros E2; rewrite E2 in H;
+  try solve [inversion H].
+  repeat eexists. simpl. rewrite <- Heqvt1. rewrite <- Heqvt2. rewrite <- Heqvi. rewrite <- Heqvi1. reflexivity. rewrite <- Heqvi2. reflexivity. simpl. rewrite E1. rewrite E2. inversion H. reflexivity.
+  repeat eexists. simpl. rewrite <- Heqvt1. rewrite <- Heqvt2. rewrite <- Heqvi. rewrite <- Heqvi1. reflexivity. rewrite <- Heqvi2. reflexivity. simpl. rewrite E1. rewrite E2. inversion H. reflexivity.
+
+  remember (teval n G t1) as vt2; destruct vt2; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  destruct v0; simpl in H; try solve [inversion H].
+  remember (index i l2) as vi; destruct vi; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  remember (teval n ((i2, vobj l i0 l0) :: (i1, vobj l1 i1 l2) :: l1) t) as vi1; destruct vi1; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  destruct v0; simpl in H; try solve [inversion H].
+  remember (index m l4) as vi2; destruct vi2; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  case_eq (le_lt_dec (fresh l3) i3); intros LE1 E1; rewrite E1 in H;
+  try solve [inversion H];
+  case_eq (beq_nat i4 i3); intros E2; rewrite E2 in H;
+  try solve [inversion H].
+  repeat eexists. simpl. rewrite <- Heqvt1. rewrite <- Heqvt2. rewrite <- Heqvi. rewrite <- Heqvi1. reflexivity. rewrite <- Heqvi2. reflexivity. simpl. rewrite E1. rewrite E2. inversion H. reflexivity.
+  repeat eexists. simpl. rewrite <- Heqvt1. rewrite <- Heqvt2. rewrite <- Heqvi. rewrite <- Heqvi1. reflexivity. rewrite <- Heqvi2. reflexivity. simpl. rewrite E1. rewrite E2. inversion H. reflexivity.
+
+  simpl in H.
+  remember (index m l) as vi; destruct vi; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  case_eq (le_lt_dec (fresh G) i); intros LE1 E1; rewrite E1 in H;
+  try solve [inversion H];
+  case_eq (beq_nat i0 i); intros E2; rewrite E2 in H;
+  try solve [inversion H].
+  repeat eexists. rewrite <- Heqvi. reflexivity. simpl. rewrite E1. rewrite E2. inversion H. reflexivity.
+  repeat eexists. rewrite <- Heqvi. reflexivity. simpl. rewrite E1. rewrite E2. inversion H. reflexivity.
+
+  simpl in H.
+  remember (teval n G t1) as vt; destruct vt; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  remember (teval n ((i, v0) :: G) t2) as vt1; destruct vt1; simpl in H; try solve [inversion H].
+  destruct o; simpl in H; try solve [inversion H].
+  destruct v1; simpl in H; try solve [inversion H].
+  remember (index m l0) as vi; destruct vi; simpl in H; try solve [inversion H].
+  destruct d; simpl in H; try solve [inversion H].
+  case_eq (le_lt_dec (fresh l) i0); intros LE1 E1; rewrite E1 in H;
+  try solve [inversion H];
+  case_eq (beq_nat i1 i0); intros E2; rewrite E2 in H;
+  try solve [inversion H].
+  repeat eexists. simpl. rewrite <- Heqvt. rewrite <- Heqvt1. reflexivity. rewrite <- Heqvi. reflexivity. simpl. rewrite E1. rewrite E2. inversion H. reflexivity.
+  repeat eexists. simpl. rewrite <- Heqvt. rewrite <- Heqvt1. reflexivity. rewrite <- Heqvi. reflexivity. simpl. rewrite E1. rewrite E2. inversion H. reflexivity.
+Qed.
+
+Lemma teval_path_step: forall n t x G v,
+  teval n G t = Some (Some v) ->
+  path_head t = Some x ->
+  t = tvar x \/
+  exists n0 t0 m0 env2 f ds y,
+    S n0 = n /\
+    t = tsel t0 m0 /\
+    teval n0 G t0 = Some (Some (vobj env2 f ds)) /\ index m0 ds = Some (dfld y) /\
+    index y ((f,vobj env2 f ds)::env2) = Some v.
+Proof.
+  intros n. induction n; intros. simpl in H. inversion H.
+  destruct t; simpl in H0; try solve [inversion H0].
+  - inversion H0. subst. left. reflexivity.
+  - right. apply teval_sel_step in H. destruct H as [env2 [f [ds [y [A1 [A2 A3]]]]]].
+    remember A1 as IH. clear HeqIH.
+    apply IHn with (x:=x) in IH; eauto. destruct IH as [IH | IH].
+    + subst. exists n. exists (tvar x). exists i.
+      exists env2. exists f. exists ds. exists y.
+      split. reflexivity. split. reflexivity. split.
+      apply A1. split. apply A2. apply A3.
+    + subst. exists n. exists t. exists i.
+      exists env2. exists f. exists ds. exists y.
+      split. reflexivity. split. reflexivity. split.
+      apply A1. split. apply A2. apply A3.
+Qed.
+
 Lemma path_head_peval: forall G1 G2 t x vx v,
   path_head t = Some x ->
   index x G1 = Some vx ->
