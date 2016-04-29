@@ -468,20 +468,32 @@ Qed.
 (* Proofs *)
 (* ############################################################ *)
 
-Fixpoint tsize(T: ty) :=
+Fixpoint tsize (T: ty) :=
   match T with
     | TTop => 1
     | TBot => 1
     | TAll T1 T2 => S (tsize T1 + tsize T2)
-    | TSel _ => 1
+    | TSel t => tm_tsize t
     | TMem T1 T2 => S (tsize T1 + tsize T2)
+  end
+with tm_tsize (t: tm) :=
+   match t with
+    | tvar _ => 1
+    | ttyp T      => S (tsize T)
+    | tabs T t    => S (tsize T + tm_tsize t)
+    | tapp t1 t2  => S (tm_tsize t1 + tm_tsize t2)
   end.
 
-Lemma open_preserves_size: forall T x j,
-  tsize T = tsize (open_rec j (varH x) T).
+Scheme ty_mut := Induction for ty Sort Prop
+with   tm_mut := Induction for tm Sort Prop.
+Combined Scheme tytm_mutind from ty_mut, tm_mut.
+
+Lemma open_preserves_size:
+  (forall T x j, tsize T = tsize (open_rec j (tvar (varH x)) T)) /\
+  (forall t x j, tm_tsize t = tm_tsize (tm_open_rec j (tvar (varH x)) t)).
 Proof.
-  intros T. induction T; intros; simpl; eauto.
-  - destruct v; simpl; destruct (beq_nat j i); eauto.
+  apply tytm_mutind; intros; simpl; eauto.
+  destruct v; simpl; destruct (beq_nat j i); eauto.
 Qed.
 
 (* ## Extension, Regularity ## *)
