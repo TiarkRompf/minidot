@@ -855,7 +855,7 @@ Lemma closed_upgrade: forall i j k i' T,
  i' >= i ->
  closed i' j k T.
 Proof.
- intros. apply (closed_inc_mult i j k T H i' j k); omega.
+ intros. apply ((proj1 closed_inc_mult) T i j k H i' j k); omega.
 Qed.
 
 Lemma closed_upgrade_free: forall i j k j' T,
@@ -863,7 +863,7 @@ Lemma closed_upgrade_free: forall i j k j' T,
  j' >= j ->
  closed i j' k T.
 Proof.
- intros. apply (closed_inc_mult i j k T H i j' k); omega.
+ intros. apply ((proj1 closed_inc_mult) T i j k H i j' k); omega.
 Qed.
 
 Lemma closed_upgrade_freef: forall i j k k' T,
@@ -871,7 +871,7 @@ Lemma closed_upgrade_freef: forall i j k k' T,
  k' >= k ->
  closed i j k' T.
 Proof.
- intros. apply (closed_inc_mult i j k T H i j k'); omega.
+ intros. apply ((proj1 closed_inc_mult) T i j k H i j k'); omega.
 Qed.
 
 Lemma closed_open: forall i j k V T, closed (i+1) j k T -> closed i j k (TSel V) ->
