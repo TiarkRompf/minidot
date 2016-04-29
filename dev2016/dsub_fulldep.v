@@ -874,17 +874,18 @@ Proof.
  intros. apply ((proj1 closed_inc_mult) T i j k H i j k'); omega.
 Qed.
 
-Lemma closed_open: forall i j k V T, closed (i+1) j k T -> closed i j k (TSel V) ->
-  closed i j k (open_rec i V T).
+Lemma closed_open:
+  (forall T i j k V, closed (i+1) j k T -> tm_closed i j k V -> closed i j k (open_rec i V T)) /\
+  (forall t i j k V, tm_closed (i+1) j k t -> tm_closed i j k V -> tm_closed i j k (tm_open_rec i V t)).
 Proof.
-  intros. generalize dependent i.
-  induction T; intros; inversion H;
-  try econstructor;
-  try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
-  eapply closed_upgrade. eauto. eauto.
-  - Case "TVarB". simpl.
-    case_eq (beq_nat i x); intros E. eauto.
-    econstructor. eapply beq_nat_false_iff in E. omega.
+  apply tytm_mutind; intros;
+  try solve [try (inversion H1; subst); try (inversion H0; subst);
+             simpl; econstructor; eauto;
+             try (try eapply H0; try eapply H; eauto; eapply (proj2 closed_inc_mult); eauto; omega)].
+  simpl. inversion H; subst.
+  inversion H5; subst; simpl; try solve [econstructor; econstructor; omega].
+  case_eq (beq_nat i x); intros E; eauto.
+  econstructor. econstructor. apply beq_nat_false in E. omega.
 Qed.
 
 Lemma indexr_has: forall X (G: list X) x,
