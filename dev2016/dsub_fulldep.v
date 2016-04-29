@@ -703,14 +703,18 @@ Proof.
   eapply indexr_extend_mult. eapply indexr_extend. eauto.
 Qed.
 
-Lemma closed_splice: forall i j k T n,
-  closed i j k T ->
-  closed i (S j) k (splice n T).
+Lemma closed_splice:
+  (forall T i j k n, closed i j k T -> closed i (S j) k (splice n T)) /\
+  (forall t i j k n, tm_closed i j k t -> tm_closed i (S j) k (tm_splice n t)).
 Proof.
-  intros. induction H; simpl; eauto.
-  case_eq (le_lt_dec n x); intros E LE.
-  apply cl_selh. omega.
-  apply cl_selh. omega.
+  apply tytm_mutind; intros; simpl; eauto;
+  try solve [inversion H1; subst; econstructor; eauto];
+  try solve [inversion H0; subst; econstructor; eauto].
+  inversion H; subst. econstructor.
+  inversion H4; subst.
+  simpl; econstructor; omega.
+  simpl. case_eq (le_lt_dec n x); intros; econstructor; omega.
+  simpl; econstructor; omega.
 Qed.
 
 Lemma map_splice_length_inc: forall G0 G2 v1,
