@@ -347,7 +347,6 @@ Inductive stp: tenv -> tenv -> ty -> ty -> nat -> Prop :=
 with peval1: tm -> tenv -> ty -> nat -> Prop :=
 | pt_var: forall x G1 TX n1,
             index x G1 = Some TX ->
-            stp G1 [] TX TX n1 ->
             peval1 (tvar x) G1 TX (S n1)
 | pt_sel: forall f l G1 TX n1 n2,
             peval1 f G1 (TFld l TX) n1 ->
@@ -1148,9 +1147,7 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 
@@ -1327,29 +1324,7 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Example ex4:
@@ -1541,10 +1516,7 @@ Proof.
   eapply t_var_unpack. eapply t_sub. eapply t_var. compute. eauto. crush_wf. crush2. crush_wf.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 
@@ -1556,7 +1528,7 @@ Proof.
   assert (T = open (varF (tvar 1)) (TAll 0 TBool (TSel (varB 1) 0))). compute. eauto.
   rewrite H.
   eexists. eapply stp_selb1. compute. eauto.
-  eapply stp_sel1. eapply pt_var. compute. eauto. crush2.
+  eapply stp_sel1. eapply pt_var. compute. eauto.
   crush2.
   eapply stp_mem. eauto.
   eapply stp_bindx; crush2.
@@ -1565,9 +1537,7 @@ Proof.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0.  apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0.
 Qed.
 
 (* -- TODO: uncomment long examples after dev
@@ -3754,9 +3724,8 @@ Lemma stpd_or1: forall G GH T1 T2 T,
 Proof. intros. repeat eu. eexists. eauto. Qed.
 Lemma ptd_var: forall x G1 TX,
   index x G1 = Some TX ->
-  stpd G1 [] TX TX ->
   pevald1 (tvar x) G1 TX.
-Proof. intros. repeat eu. eexists. eauto. Qed.
+Proof. intros. exists 1. eauto. Qed.
 Lemma ptd_sub: forall t1 G1 T1 T2,
   pevald1 t1 G1 T1 ->
   stpd G1 [] T1 T2 ->
@@ -7583,144 +7552,63 @@ Lemma stpd_to_stp2: forall G1 GH T1 T2,
   stpd2 false GX T1 GX T2 GY.
 Proof. intros. eu. eapply stp_to_stp2; eauto. Qed.
 
-Inductive wf_tp: tenv -> tenv -> ty -> nat -> Prop :=
-| wf_top: forall G1 GH n1,
-    wf_tp G1 GH TTop (S n1)
-| wf_bot: forall G1 GH n1,
-    wf_tp G1 GH TBot (S n1)
-| wf_bool: forall G1 GH n1,
-    wf_tp G1 GH TBool (S n1)
-| wf_fld: forall G1 GH l T2 n1,
-    wf_tp G1 GH T2 n1 ->
-    wf_tp G1 GH (TFld l T2) (S n1)
-| wf_mem: forall G1 GH l T1 T2 n1 n2,
-    wf_tp G1 GH T1 n1 ->
-    wf_tp G1 GH T2 n2 ->
-    wf_tp G1 GH (TMem l T1 T2) (S (n1+n2))
-| wf_sel: forall G1 GH TX x l n1 n2,
-    peval1 x G1 TX n1 ->
-    wf_tp G1 [] TX n2 ->
-    wf_tp G1 GH (TSel (varF x) l) (S (n1+n2))
-| wf_sela: forall G1 GH TX x l n1,
+Inductive wf_tp: tenv -> tenv -> ty -> Prop :=
+| wf_top: forall G1 GH,
+    wf_tp G1 GH TTop
+| wf_bot: forall G1 GH,
+    wf_tp G1 GH TBot
+| wf_bool: forall G1 GH,
+    wf_tp G1 GH TBool
+| wf_fld: forall G1 GH l T2,
+    wf_tp G1 GH T2 ->
+    wf_tp G1 GH (TFld l T2)
+| wf_mem: forall G1 GH l T1 T2,
+    wf_tp G1 GH T1 ->
+    wf_tp G1 GH T2 ->
+    wf_tp G1 GH (TMem l T1 T2)
+| wf_sel: forall G1 GH TX x l,
+    pevald1 x G1 TX ->
+    wf_tp G1 GH (TSel (varF x) l)
+| wf_sela: forall G1 GH TX x l,
     indexr x GH = Some TX  ->
-    wf_tp G1 GH (TSel (varH x) l) (S n1)
-| wf_all: forall G1 GH m T1 T2 x n1 n2,
-    wf_tp G1 GH T1 n1 ->
+    wf_tp G1 GH (TSel (varH x) l)
+| wf_all: forall G1 GH m T1 T2 x,
+    wf_tp G1 GH T1 ->
     x = length GH ->
     closed 1 (length GH) T2 ->
-    wf_tp G1 ((0,T1)::GH) (open (varH x) T2) n2 ->
-    wf_tp G1 GH (TAll m T1 T2) (S (n1+n2))
-| wf_bind: forall G1 GH T1 x n1,
+    wf_tp G1 ((0,T1)::GH) (open (varH x) T2) ->
+    wf_tp G1 GH (TAll m T1 T2)
+| wf_bind: forall G1 GH T1 x,
     x = length GH ->
     closed 1 (length GH) T1 ->
-    wf_tp G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) n1 ->
-    wf_tp G1 GH (TBind T1) (S n1)
-| wf_and: forall G1 GH T1 T2 n1 n2,
-    wf_tp G1 GH T1 n1 ->
-    wf_tp G1 GH T2 n2 ->
-    wf_tp G1 GH (TAnd T1 T2) (S (n1+n2))
-| wf_or: forall G1 GH T1 T2 n1 n2,
-    wf_tp G1 GH T1 n1 ->
-    wf_tp G1 GH T2 n2 ->
-    wf_tp G1 GH (TOr T1 T2) (S (n1+n2))
+    wf_tp G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) ->
+    wf_tp G1 GH (TBind T1)
+| wf_and: forall G1 GH T1 T2,
+    wf_tp G1 GH T1 ->
+    wf_tp G1 GH T2 ->
+    wf_tp G1 GH (TAnd T1 T2)
+| wf_or: forall G1 GH T1 T2,
+    wf_tp G1 GH T1 ->
+    wf_tp G1 GH T2 ->
+    wf_tp G1 GH (TOr T1 T2)
 .
 Hint Constructors wf_tp.
 
-Definition wf_tpd G1 GH T := exists n, wf_tp G1 GH T n.
-
-Lemma wfd_top: forall G1 GH,
-  wf_tpd G1 GH TTop.
-Proof. intros. exists 1. eauto. Qed.
-Lemma wfd_bot: forall G1 GH,
-  wf_tpd G1 GH TBot.
-Proof. intros. exists 1. eauto. Qed.
-Lemma wfd_bool: forall G1 GH,
-  wf_tpd G1 GH TBool.
-Proof. intros. exists 1. eauto. Qed.
-Lemma wfd_fld: forall G1 GH l T2,
-  wf_tpd G1 GH T2 ->
-  wf_tpd G1 GH (TFld l T2).
-Proof. intros. unfold wf_tpd in *. repeat ev. eexists. eauto. Qed.
-Lemma wfd_mem: forall G1 GH l T1 T2,
-  wf_tpd G1 GH T1 ->
-  wf_tpd G1 GH T2 ->
-  wf_tpd G1 GH (TMem l T1 T2).
-Proof. intros. unfold wf_tpd in *. repeat ev. eexists. eauto. Qed.
-Lemma wfd_sel: forall G1 GH TX x l,
-  pevald1 x G1 TX ->
-  wf_tpd G1 [] TX ->
-  wf_tpd G1 GH (TSel (varF x) l).
-Proof. intros. unfold wf_tpd in *. repeat ev. eu. eexists. eauto. Qed.
-Lemma wfd_sela: forall G1 GH TX x l,
-  indexr x GH = Some TX  ->
-  wf_tpd G1 GH (TSel (varH x) l).
-Proof. intros. exists 1. eauto. Qed.
-Lemma wfd_all: forall G1 GH m T1 T2 x,
-  wf_tpd G1 GH T1 ->
-  x = length GH ->
-  closed 1 (length GH) T2 ->
-  wf_tpd G1 ((0,T1)::GH) (open (varH x) T2) ->
-  wf_tpd G1 GH (TAll m T1 T2).
-Proof. intros. unfold wf_tpd in *. repeat ev. eexists. eauto. Qed.
-Lemma wfd_bind: forall G1 GH T1 x,
-  x = length GH ->
-  closed 1 (length GH) T1 ->
-  wf_tpd G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) ->
-  wf_tpd G1 GH (TBind T1).
-Proof. intros. unfold wf_tpd in *. repeat ev. eexists. eauto. Qed.
-Lemma wfd_and: forall G1 GH T1 T2,
-  wf_tpd G1 GH T1 ->
-  wf_tpd G1 GH T2 ->
-  wf_tpd G1 GH (TAnd T1 T2).
-Proof. intros. unfold wf_tpd in *. repeat ev. eexists. eauto. Qed.
-Lemma wfd_or: forall G1 GH T1 T2,
-  wf_tpd G1 GH T1 ->
-  wf_tpd G1 GH T2 ->
-  wf_tpd G1 GH (TOr T1 T2).
-Proof. intros. unfold wf_tpd in *. repeat ev. eexists. eauto. Qed.
-Hint Resolve wfd_top wfd_bot wfd_bool wfd_fld wfd_mem wfd_sel wfd_sela wfd_all wfd_bind wfd_and wfd_or.
-
-Lemma peval1_reg: forall x G1 TX n1,
-  peval1 x G1 TX n1 ->
-  stpd G1 [] TX TX.
-Proof. intros. induction H; eauto. eapply stp_reg. eauto. Qed.
-
-Lemma stp_to_wf_tp_aux: forall n,
-  (forall G GH T1 T2 n1,
-    stp G GH T1 T2 n1 -> n1 < n ->
-    wf_tpd G GH T1 /\ wf_tpd G GH T2) /\
-  (forall x G T n1,
-    peval1 x G T n1 -> n1 < n ->
-    wf_tpd G [] T).
+Lemma stp_to_wf_tp_aux: forall G GH T1 T2 n,
+                          stp G GH T1 T2 n ->
+                          wf_tp G GH T1 /\ wf_tp G GH T2.
 Proof.
-  intros n. induction n. split; intros; omega. split; intros;
-  destruct IHn as [IHn IHnp];
-  induction H; repeat som; repeat ev;
-    try solve [split; eauto; try (eapply wfd_sela; eapply tailr_to_indexr; eauto)].
-  - split; eauto.
-    eapply wfd_sel. eapply ptd_var; eauto.
-    eapply proj1. eapply stp_reg. eauto.
-    eapply proj1. eapply IHn. eapply H1. omega.
-  - split; eauto.
-    eapply wfd_sel. eapply ptd_var; eauto.
-    eapply proj1. eapply stp_reg. eauto.
-    eapply proj1. eapply IHn. eapply H1. omega.
-  - split.
-    eapply wfd_sel. eauto. eapply IHnp. eapply H. omega.
-    eapply wfd_sel. eauto. eapply IHnp. eapply H. omega.
-  - eapply proj1. eapply IHn. eauto. omega.
-  - eapply proj1. eapply IHn. eauto. omega.
-  - eapply proj2. eapply IHn. eauto. omega.
+  intros. induction H;
+    try solve [repeat ev; split; eauto; try (eapply wf_sela; eapply tailr_to_indexr; eauto)].
 Qed.
 
 Lemma stp_to_wf_tp: forall G GH T n,
                       stp G GH T T n ->
-                      wf_tpd G GH T.
+                      wf_tp G GH T.
 Proof.
-  intros.
-  assert (n < S n) as LE by omega.
-  apply (proj1 ((proj1 (stp_to_wf_tp_aux (S n))) G GH T T n H LE)).
+  intros. apply (proj1 (stp_to_wf_tp_aux G GH T T n H)).
 Qed.
+
 
 Lemma peval_safe_cycle_sel: forall T0 v0 TX f l v G GH GX GY n1,
   wf_env GX G ->
@@ -7732,19 +7620,13 @@ Proof.
   admit.
 Qed.
 
-Lemma peval_safe_cycle: forall n, forall T0 v0 TX t G GH GX GY n1,
+Lemma peval_safe_cycle: forall T0 v0 TX t G GH GX GY n,
   wf_env GX G ->
   wf_envh ((fresh G, v0) :: GX) GY GH ->
-  peval1 t ((fresh G, T0) :: G) TX n1 -> n1 < n ->
-  (forall n2, n2 < n -> forall T0 T v G GH,
-    wf_tp ((fresh G, T0) :: G) GH T n2 ->
-    forall GX GY, wf_env GX G -> wf_envh ((fresh G, v)::GX) GY GH ->
-    stpd2 true ((fresh G, v) :: GX) T
-               ((fresh G, v) :: GX) T GY) ->
+  peval1 t ((fresh G, T0) :: G) TX n ->
   exists v, peval t ((fresh G, v0) :: GX) v.
 Proof.
-  intros n. induction n. intros. omega.
-  intros T0 v0 TX t G GH GX GY n1 WX WY H LE SH.
+  intros T0 v0 TX t G GH GX GY n WX WY H.
   remember ((fresh G, T0)::G) as G0. generalize HeqG0.
   induction H; intros; subst.
   - assert (exists v, index x ((fresh G, v0) :: GX) = Some v) as A. {
@@ -7760,59 +7642,55 @@ Proof.
     destruct A as [v A].
     assert (peval (tvar x) ((fresh G, v0) :: GX) v) as B. eapply index_to_peval; eauto.
     eexists. eassumption.
-  - edestruct IHpeval1 as [v IH]; eauto. omega.
+  - edestruct IHpeval1 as [v IH]; eauto.
     eapply peval_safe_cycle_sel; eauto.
-  - edestruct IHpeval1 as [v IH]; eauto. omega.
+  - edestruct IHpeval1 as [v IH]; eauto.
 Qed.
 
-Lemma wf_tp_to_stp2_cycle_aux: forall n, forall T0 T v G GH n1,
-  wf_tp ((fresh G, T0) :: G) GH T n1 -> n1 < n ->
+Lemma wf_tp_to_stp2_cycle_aux: forall T0 T v G GH,
+  wf_tp ((fresh G, T0) :: G) GH T ->
   forall GX GY, wf_env GX G -> wf_envh ((fresh G, v)::GX) GY GH ->
   stpd2 true ((fresh G, v) :: GX) T
              ((fresh G, v) :: GX) T GY.
 Proof.
-  intros n. induction n. intros. omega.
-  intros T0 T t G GH n1 ST LE.
-  inversion ST; intros GX GY WX WY.
+  intros T0 T t G GH ST.
+  dependent induction ST; intros GX GY WX WY.
   - Case "top". eapply stpd2_topx.
   - Case "bot". eapply stpd2_botx.
   - Case "bool". eapply stpd2_bool; eauto.
-  - Case "fld". eapply stpd2_fld; eapply stpd2_wrapf; eapply IHn; eauto; omega.
-  - Case "mem". eapply stpd2_mem; eapply stpd2_wrapf; eapply IHn; eauto; omega.
-  - Case "selx". subst.
-    eapply IHn in H0; eauto.
-    edestruct (peval_safe_cycle n) as [? B]; try eassumption. omega.
-    intros. eapply IHn; eauto.
-    eapply stpd2_selx; eapply B. omega.
+  - Case "fld". eapply stpd2_fld; eapply stpd2_wrapf; eauto.
+  - Case "mem". eapply stpd2_mem; eapply stpd2_wrapf; eauto.
+  - Case "selx".
+    eu. edestruct peval_safe_cycle as [? B]; try eassumption.
+    eapply stpd2_selx; eapply B.
   - Case "selax".
     assert (exists v, indexr x GY = Some v) as A. {
       eapply indexr_exists; eauto.
     }
     destruct A as [v A]. destruct v.
     eapply stpd2_selax. eassumption.
-  - Case "all". subst.
+  - Case "all".
     assert (length GY = length GH) as A. { eapply wfh_length; eauto. }
     eapply stpd2_all.
-    eapply stpd2_wrapf. eapply IHn; eauto; omega.
+    eapply stpd2_wrapf. eapply IHST1; eauto.
     rewrite A. eauto.
     rewrite A. eauto.
-    rewrite A. eapply stpd2_wrapf. eapply IHn; eauto; omega.
-    rewrite A. eapply stpd2_wrapf. eapply IHn; eauto; omega.
-  - Case "bind". subst.
+    rewrite A. eapply stpd2_wrapf. eapply IHST2; eauto.
+    rewrite A. eapply stpd2_wrapf. eapply IHST2; eauto.
+  - Case "bind".
     assert (length (GY:aenv) = length GH) as A. { eapply wfh_length; eauto. }
     assert (closed 1 (length GY) T1) by solve [rewrite A; eauto].
-    unfold id in *. rewrite <- A in H1.
-    eapply stpd2_bind; try eassumption;
-    eapply stpd2_wrapf; eapply IHn; eauto; omega.
+    eapply stpd2_bind; try eassumption.
+    rewrite <- A in IHST. eapply stpd2_wrapf. eapply IHST; eauto.
+    rewrite <- A in IHST. eapply stpd2_wrapf. eapply IHST; eauto.
   - Case "and".
     eapply stpd2_and2; eapply stpd2_wrapf.
-    eapply stpd2_and11. eapply IHn; eauto; omega. eapply IHn; eauto; omega.
-    eapply stpd2_and12. eapply IHn; eauto; omega. eapply IHn; eauto; omega.
+    eapply stpd2_and11. eapply IHST1; eauto. eapply IHST2; eauto.
+    eapply stpd2_and12. eapply IHST2; eauto. eapply IHST1; eauto.
   - Case "or".
     eapply stpd2_or1.
-    eapply stpd2_or21. eapply stpd2_wrapf. eapply IHn; eauto; omega. eapply IHn; eauto; omega.
-    eapply stpd2_or22. eapply stpd2_wrapf. eapply IHn; eauto; omega. eapply IHn; eauto; omega.
-Grab Existential Variables. (* weird *) apply vbool. apply true.
+    eapply stpd2_or21. eapply stpd2_wrapf. eapply IHST1; eauto. eapply IHST2; eauto.
+    eapply stpd2_or22. eapply stpd2_wrapf. eapply IHST2; eauto. eapply IHST1; eauto.
 Qed.
 
 Lemma stp_to_stp2_cycle: forall venv env T0 T t n,
@@ -7822,7 +7700,7 @@ Lemma stp_to_stp2_cycle: forall venv env T0 T t n,
               ((fresh env, vobj venv (fresh venv) t) :: venv) T [].
 Proof.
   intros. apply stpd2_wrapf.
-  eapply stp_to_wf_tp in H0. unfold wf_tpd in *. ev.
+  eapply stp_to_wf_tp in H0.
   eapply wf_tp_to_stp2_cycle_aux; eauto.
 Qed.
 
