@@ -4683,7 +4683,7 @@ Lemma teval_sel_step: forall n G t m v,
   exists env2 f ds y,
     teval n G t = Some (Some (vobj env2 f ds)) /\
     index m ds = Some (dfld y) /\
-    index y ((f,vobj env2 f ds)::env2) = Some v.
+    teval n ((f,vobj env2 f ds)::env2) (tvar y) = Some (Some v).
 Proof.
   intros n. induction n; intros. simpl in H. inversion H.
   destruct t; try solve [simpl in H; inversion H].
@@ -4790,7 +4790,7 @@ Lemma teval_path_step: forall n t x G v,
     S n0 = n /\
     t = tsel t0 m0 /\
     teval n0 G t0 = Some (Some (vobj env2 f ds)) /\ index m0 ds = Some (dfld y) /\
-    index y ((f,vobj env2 f ds)::env2) = Some v.
+    teval n0 ((f,vobj env2 f ds)::env2) (tvar y) = Some (Some v).
 Proof.
   intros n. induction n; intros. simpl in H. inversion H.
   destruct t; simpl in H0; try solve [inversion H0].
@@ -4852,13 +4852,7 @@ Proof.
       * destruct A as [n' [t' [m' [env2' [f' [ds' [y' [Eqn [Eqt [EqEv [EqIm EqIy]]]]]]]]]]].
         subst.
         simpl. rewrite IHn with (v:=(vobj env2' f' ds')); eauto.
-        rewrite EqIm.
-        assert (exists n0', S n0' = n') as B. {
-          destruct n'. omega. eexists. reflexivity.
-        }
-        destruct B as [n0' B].
-        rewrite <- B. simpl.
-        admit. (* almost *)
+        rewrite EqIm. rewrite EqIy. reflexivity.
         intros. admit. omega.
 Qed.
 
