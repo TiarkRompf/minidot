@@ -563,15 +563,26 @@ Qed.
 
 (* splicing -- for stp_extend. *)
 
+Fixpoint var_splice n (v: var) {struct v} : var :=
+  match v with
+    | varF x => varF x
+    | varH i => if le_lt_dec n i then varH (i+1) else (varH i)
+    | varB x => varB x
+  end.
 Fixpoint splice n (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
     | TBot         => TBot
     | TAll T1 T2   => TAll (splice n T1) (splice n T2)
-    | TSel (varF i) => TSel (varF i)
-    | TSel (varB i) => TSel (varB i)
-    | TSel (varH i) => if le_lt_dec n i then TSel (varH (i+1)) else TSel (varH i)
+    | TSel t       => TSel (tm_splice n t)
     | TMem T1 T2   => TMem (splice n T1) (splice n T2)
+  end
+with tm_splice n (t : tm) {struct t} : tm :=
+  match t with
+    | tvar v       => tvar (var_splice n v)
+    | ttyp T       => ttyp (splice n T)
+    | tabs T t     => tabs (splice n T) (tm_splice n t)
+    | tapp t1 t2   => tapp (tm_splice n t1) (tm_splice n t2)
   end.
 
 Definition spliceat n (V: (venv*ty)) :=
@@ -579,24 +590,22 @@ Definition spliceat n (V: (venv*ty)) :=
     | (G,T) => (G,splice n T)
   end.
 
-Lemma splice_open_permute: forall {X} (G0:list X) T2 n j,
-(open_rec j (varH (n + S (length G0))) (splice (length G0) T2)) =
-(splice (length G0) (open_rec j (varH (n + length G0)) T2)).
+Lemma splice_open_permute: forall {X} (G0:list X),
+ (forall T2 n j,
+  (open_rec j (tvar (varH (n + S (length G0)))) (splice (length G0) T2)) =
+  (splice (length G0) (open_rec j (tvar (varH (n + length G0))) T2))) /\
+ (forall t n j,
+  (tm_open_rec j (tvar (varH (n + S (length G0)))) (tm_splice (length G0) t)) =
+  (tm_splice (length G0) (tm_open_rec j (tvar (varH (n + length G0))) t))).
 Proof.
-  intros X G T. induction T; intros; simpl; eauto;
-  try rewrite IHT1; try rewrite IHT2; try rewrite IHT; eauto;
+  intros X G.
+  apply tytm_mutind; intros; simpl; eauto; repeat rewrite H; repeat rewrite H0; eauto.
   destruct v; eauto.
-
+  simpl.
   case_eq (le_lt_dec (length G) i); intros E LE; simpl; eauto.
-  rewrite LE. eauto.
-  rewrite LE. eauto.
-  case_eq (beq_nat j i); intros E; simpl; eauto.
-  case_eq (le_lt_dec (length G) (n + length G)); intros EL LE.
-  rewrite E.
-  assert (n + S (length G) = n + length G + 1). omega.
-  rewrite H. eauto.
-  omega.
-  rewrite E. eauto.
+  case_eq (beq_nat j i); intros E; simpl; eauto; rewrite E;
+  case_eq (le_lt_dec (length G) (n + length G)); intros EL LE; eauto.
+  simpl. f_equal. f_equal. omega. omega.
 Qed.
 
 Lemma indexr_splice_hi: forall G0 G2 x0 v1 T,
