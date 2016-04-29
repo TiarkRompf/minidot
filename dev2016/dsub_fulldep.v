@@ -290,6 +290,9 @@ Definition base (v:vl): venv :=
 
 Definition peval (env: venv) (t: tm) v := exists n, teval n env t = Some (Some v).
 
+Definition join_env {X:Type} (l1: list X) (l2: list X) (l: list X) :=
+  exists l1' l2', l1=l1'++l /\ l2=l2'++l.
+
 (* ### Runtime Subtyping ### *)
 (* H1 T1 <: H2 T2 -| J *)
 Inductive stp2: bool (* whether selections are precise *) ->
@@ -336,7 +339,10 @@ Inductive stp2: bool (* whether selections are precise *) ->
     closed 0 0 (length (base v)) TX ->
     stp2 false false (base v) TX G1 (TMem T1 TTop) GH n1 ->
     stp2 false true G1 T1 G2 (TSel t) GH (S n1)
-(* TODO: maybe need selxr? *)
+| stp2_selxr: forall G1 G2 G t GH s n,
+    join_env G1 G2 G ->
+    tm_closed 0 (length GH) (length G) t ->
+    stp2 s true G1 (TSel t) G2 (TSel t) GH (S n)
 | stp2_selx: forall G1 G2 v t1 t2 GH s n,
     peval G1 t1 v -> tm_closed 0 0 (length G1) t1 ->
     peval G2 t2 v -> tm_closed 0 0 (length G2) t2 ->
@@ -834,6 +840,9 @@ Lemma stp2_closed: forall G1 G2 T1 T2 GH s m n,
     try solve [repeat ev; split; try inv_mem; eauto using indexr_max;
                try solve [econstructor; eapply (proj2 closed_inc_mult); eauto; omega];
                try solve [repeat econstructor; eauto using indexr_max]].
+  unfold join_env in H. destruct H as [G1' [G2' [H1' H2']]]. subst.
+  repeat rewrite app_length. split;
+  econstructor; eapply (proj2 closed_inc_mult); eauto; omega.
 Qed.
 
 Lemma stp2_closed2 : forall G1 G2 T1 T2 GH s m n,
@@ -956,18 +965,17 @@ Proof.
   intros n. induction n; intros; try omega.
   inversion H; subst; eauto; try omega; try simpl in H0.
   - destruct (IHn T1 G GH false) as [n1 IH1]; eauto; try omega.
-    destruct (IHn (open (varH (length GH)) T2) G ((G,T1)::GH) false); eauto; try omega.
+    destruct (IHn (open (tvar (varH (length GH))) T2) G ((G,T1)::GH) false); eauto; try omega.
     simpl. apply closed_open; auto using closed_inc.
-    unfold open. rewrite <- open_preserves_size. omega.
+    econstructor. econstructor. omega.
+    unfold open. rewrite <- (proj1 open_preserves_size). omega.
     eexists; econstructor; try constructor; eauto.
-  - eapply indexr_has in H1. destruct H1 as [v HI].
-    eexists; eapply stp2_selx; eauto.
-  - eapply indexr_has in H1. destruct H1 as [v HI].
-    eexists; eapply stp2_selax; eauto.
+  - eexists; eapply stp2_selxr; eauto.
+    unfold join_env. exists []. exists []. rewrite app_nil_l. split; reflexivity.
   - destruct (IHn T1 G GH s) as [n1 IH1]; eauto; try omega.
     destruct (IHn T2 G GH s) as [n2 IH2]; eauto; try omega.
     destruct s; eexists; econstructor; try constructor; eauto.
-Grab Existential Variables. apply 0. apply 0. apply 0. apply 0.
+Grab Existential Variables. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma stp2_refl: forall T G GH s,
