@@ -922,8 +922,9 @@ Proof.
     assumption.
     assumption.
     apply IHn; eauto.
-    simpl. apply closed_open; auto using closed_inc.
-    unfold open. rewrite <- open_preserves_size. omega.
+    simpl. apply (proj1 closed_open); auto using closed_inc.
+    simpl. econstructor. econstructor. omega.
+    unfold open. rewrite <- (proj1 open_preserves_size). omega.
 Qed.
 
 Lemma stp_refl: forall T G GH,
