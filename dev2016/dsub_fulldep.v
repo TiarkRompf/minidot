@@ -733,21 +733,30 @@ Proof.
   - simpl. eauto.
 Qed.
 
-Lemma closed_inc_mult: forall i j k T,
-  closed i j k T ->
-  forall i' j' k',
-  i' >= i -> j' >= j -> k' >= k ->
-  closed i' j' k' T.
+Lemma closed_inc_mult:
+  (forall T i j k,
+   closed i j k T ->
+   forall i' j' k',
+   i' >= i -> j' >= j -> k' >= k ->
+   closed i' j' k' T) /\
+  (forall t i j k,
+   tm_closed i j k t ->
+   forall i' j' k',
+   i' >= i -> j' >= j -> k' >= k ->
+   tm_closed i' j' k' t).
 Proof.
-  intros i j k T H. induction H; intros; eauto; try solve [constructor; omega].
-  - apply cl_all. apply IHclosed1; omega. apply IHclosed2; omega.
+  apply tytm_mutind; intros; eauto;
+  try solve [inversion H1; subst; econstructor; eauto; eapply H0; eauto; omega];
+  try solve [inversion H0; subst; econstructor; eauto; eapply H0; eauto; omega].
+  inversion H; subst. inversion H7; subst;
+  econstructor; inversion H7; subst; econstructor; omega.
 Qed.
 
 Lemma closed_inc: forall i j k T,
   closed i j k T ->
   closed i (S j) k T.
 Proof.
-  intros. apply (closed_inc_mult i j k T H i (S j) k); omega.
+  intros. apply ((proj1 closed_inc_mult) T i j k H i (S j) k); omega.
 Qed.
 
 Lemma closed_splice_idem: forall i j k T n,
