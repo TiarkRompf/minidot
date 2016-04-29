@@ -4818,42 +4818,24 @@ Proof.
   intros G1 G2 t x vx v H HI1 HI2 Hp.
   unfold peval. split.
   - eapply fresh_in_path. eassumption. eapply index_max. eassumption.
-  - unfold peval in Hp. destruct Hp as [HpF [n IH]].
+  - unfold peval in Hp. destruct Hp as [HpF [n IH]]. clear HpF.
     exists n.
-    generalize dependent n. intros n.
-    generalize dependent v. generalize dependent t.
-    induction n; intros.
-    + assert (teval 1 (tail (fresh_in_term t) G1) t = Some (Some v)) as A. {
-        eapply IH. omega.
-      }
-      remember A as EV1. clear HeqEV1.
-      apply teval_path_step with (x:=x) in A; eauto. destruct A as [A | A].
-      * subst. simpl in EV1. inversion EV1.
-        apply index_tail in HI1. rewrite H2 in HI1. inversion HI1. subst.
-        apply index_tail in HI2. rewrite <- H2 in HI2. simpl.
-        assert (exists n0, S n0 = n) as B. {
-          destruct n. omega. eexists. reflexivity.
-        }
-        destruct B as [n0 B]. rewrite <- B.
-        simpl. rewrite HI2. reflexivity.
-      * destruct A as [n' [t' [m' [env2' [f' [ds' [y' [Eqn [Eqt [EqEv [EqIm EqIy]]]]]]]]]]].
-        subst. assert (n' = 0) as C by omega. subst. simpl in EqEv. inversion EqEv.
-    + remember IH as A. clear HeqA. specialize (A n0 H0).
-      remember A as EV1. clear HeqEV1.
-      apply teval_path_step with (x:=x) in A; eauto. destruct A as [A | A].
-      * assert (exists n1, S n1 = n0) as B. {
-          destruct n0. omega. eexists. reflexivity.
-        }
-        destruct B as [n1 B].
-        subst. simpl in EV1. inversion EV1.
-        apply index_tail in HI1. rewrite H2 in HI1. inversion HI1. subst.
-        apply index_tail in HI2. rewrite <- H2 in HI2. simpl.
-        rewrite HI2. reflexivity.
-      * destruct A as [n' [t' [m' [env2' [f' [ds' [y' [Eqn [Eqt [EqEv [EqIm EqIy]]]]]]]]]]].
-        subst.
-        simpl. rewrite IHn with (v:=(vobj env2' f' ds')); eauto.
-        rewrite EqIm. rewrite EqIy. reflexivity.
-        intros. admit. omega.
+    intros n0 LE. specialize (IH n0 LE).
+    generalize dependent v. generalize dependent t. generalize dependent n0.
+    intros n0 LE. clear LE. clear n. rename n0 into n.
+    induction n; intros. simpl in IH. inversion IH.
+
+    remember IH as A. clear HeqA.
+    remember A as EV1. clear HeqEV1.
+    apply teval_path_step with (x:=x) in A; eauto. destruct A as [A | A].
+    * subst. simpl in EV1. inversion EV1.
+      apply index_tail in HI1. rewrite H1 in HI1. inversion HI1. subst.
+      apply index_tail in HI2. rewrite <- H1 in HI2. simpl.
+      rewrite HI2. reflexivity.
+    * destruct A as [n' [t' [m' [env2' [f' [ds' [y' [Eqn [Eqt [EqEv [EqIm EqIy]]]]]]]]]]].
+      inversion Eqn. subst.
+      simpl. rewrite IHn with (v:=(vobj env2' f' ds')); eauto.
+      rewrite EqIm. rewrite EqIy. reflexivity.
 Qed.
 
 Lemma sstpd2_trans_aux: forall n, forall m G1 G2 G3 T1 T2 T3 n1,
