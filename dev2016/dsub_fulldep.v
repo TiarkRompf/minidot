@@ -1357,7 +1357,14 @@ Proof.
     eapply stp2_sel2; eauto.
     rewrite <- A. apply IHstp2; eauto.
   - Case "selxr". admit.
-  - Case "selx". admit.
+  - Case "selx".
+    assert (tm_splice (length GH0) t1=t1) as A. {
+      eapply closed_splice_idem. eassumption. omega.
+    }
+    assert (tm_splice (length GH0) t2=t2) as B. {
+      eapply closed_splice_idem. eassumption. omega.
+    }
+    rewrite A. rewrite B. eapply stp2_selx; eauto.
   - Case "sela1".
     case_eq (le_lt_dec (length GH0) x); intros E LE.
     + eapply stp2_sela1.
