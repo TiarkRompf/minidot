@@ -1665,6 +1665,32 @@ Proof.
   - apply peval_extend. apply IHHV. apply H.
 Qed.
 
+Lemma venv_ext_prefix_ex : forall G G',
+  venv_ext G' G ->
+  exists l, G'=l++G.
+Proof.
+  intros. induction H; subst.
+  - exists []. simpl. reflexivity.
+  - destruct IHvenv_ext as [l Eq]. subst.
+    exists (T::l). simpl. reflexivity.
+Qed.
+
+Lemma join_extend_venv : forall G1 G1' G2 G2' G,
+  join_env G1 G2 G ->
+  venv_ext G1' G1 ->
+  venv_ext G2' G2 ->
+  exists G', join_env G1' G2' G' /\ venv_ext G' G.
+Proof.
+  intros G1 G1' G2 G2' G Hj H1 H2. unfold join_env in Hj.
+  destruct Hj as [l1 [l2 [Eq1 Eq2]]]. subst.
+  apply venv_ext_prefix_ex in H1. apply venv_ext_prefix_ex in H2.
+  destruct H1 as [l1' H1]. destruct H2 as [l2' H2]. subst.
+  exists G. split.
+  unfold join_env. exists (l1'++l1). exists (l2'++l2).
+  split; rewrite app_assoc; reflexivity.
+  apply venv_ext_refl.
+Qed.
+
 Lemma stp2_closure_extend_rec:
   forall G1 G2 T1 T2 GH s m n,
     stp2 s m G1 T1 G2 T2 GH n ->
@@ -1711,7 +1737,11 @@ Proof.
     eassumption. assumption.
     apply IHstp2. assumption. apply venv_ext_refl. assumption.
   - Case "selxr".
-    admit.
+    eapply join_extend_venv in H; eauto. destruct H as [G' [H H']].
+    eapply stp2_selxr; eauto.
+    eapply closed_inc_mult; try eassumption; try omega.
+    rewrite (@aenv_ext__same_length GH GH'). omega. assumption.
+    apply venv_ext__ge_length. assumption.
   - Case "selx".
     eapply stp2_selx.
     eapply peval_extend_venv; try eassumption.
