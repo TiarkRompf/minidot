@@ -1217,21 +1217,26 @@ Qed.
 
 Example pex2: has_type [(2,_T2_2);(1,_T2_1);(0,_T2_0)] (tsel (tsel (tvar 2) 0) 1) (TSel (varF (tsel (tvar 2) 0)) 0).
 Proof.
-  assert (stpd [(2, _T2_2); (1, _T2_1); (0, _T2_0)] []
-     (TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop)))
-     (TFld 1 (TSel (varF (tsel (tvar 2) 0)) 0))) as A by admit. destruct A as [? A].
-  eapply t_sel.
+  assert (stpd
+     [(2,_T2_2);(1,_T2_1);(0,_T2_0)] []
+     (TSel (varF (tsel (tvar 2) 0)) 0)
+     (TSel (varF (tsel (tvar 2) 0)) 0)). {
+    eexists. eapply stp_selx.
+    eapply pt_sel. eapply pt_var. compute. reflexivity.
+    eapply stp_bindx. eauto. crush_cl. crush_cl. crush2. crush2. }
+  eu.
+  eapply t_sel. 
   eapply t_sub.
+  eapply t_sel_unpack.
   eapply t_sel. eapply t_var. compute. reflexivity. crush2. crush2.
-  apply A.
-  eapply stp_selx. compute. eapply pt_sel. eapply pt_var. compute. reflexivity. crush2.
+  crush2. crush2. eauto. 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. 
 Qed.
-*)
 
 (* define polymorphic identity function *)
 
