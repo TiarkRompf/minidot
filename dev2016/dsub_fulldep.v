@@ -589,6 +589,28 @@ Proof.
   unfold open. simpl. reflexivity. crush. crush.
 Qed.
 
+Example ex7_warmup:
+  stp [] []
+      (TAll (TMem TBot TTop) (TSel (tapp (tabs (TMem TBot (TSel (tvar (varB 0)))) (ttyp TTop)) (ttyp (TSel (tvar (varB 0)))))))
+      (TAll (TMem TBot TTop) TTop).
+Proof.
+  eapply stp_all; crush.
+Qed.
+
+(*
+Example ex7:
+  stp [] []
+      (TAll (TMem TBot TTop) TTop)
+      (TAll (TMem TBot TTop) (TSel (tapp (tabs (TMem TBot (TSel (tvar (varB 0)))) (ttyp TTop)) (ttyp (TSel (tvar (varB 0))))))).
+Proof.
+  eapply stp_all. crush. simpl. reflexivity. simpl. eauto. simpl.
+  econstructor; crush.
+  unfold open. simpl.
+  eapply stp_sel2.
+  eapply t_app. eapply t_abs with (T2:=TMem TTop TTop); crush.
+  (* fails because of closed 0 0 0 (TMem TBot (TSel (tvar (varH 0)))) *)
+*)
+
 (* ############################################################ *)
 (* Proofs *)
 (* ############################################################ *)
