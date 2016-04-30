@@ -1137,7 +1137,7 @@ Ltac crush_wf :=
   try solve [(eapply stp_bindx; [(compute; eauto) | crush_cl | crush_cl | crush_wf | crush_wf])];
   try solve [(eapply stp_and2; [eapply stp_and11; crush_wf | eapply stp_and12; crush_wf])].
 
-
+(* x:(a:(A:Bot..Top)) |- x.a : Top *)
 Example pex1_0: has_type [(0,(TFld 0 (TMem 0 TBot TTop)))] (tsel (tvar 0) 0) TTop.
 Proof.
   eapply t_sub. eapply t_sel. crush2. crush_wf. eapply stp_top. crush_wf.
@@ -1145,6 +1145,7 @@ Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
+(* x:(a:(A:Top..Top)) |- x.a : x.a.A *)
 Example pex1: has_type [(0,(TFld 0 (TMem 0 TTop TTop)))] (tsel (tvar 0) 0) (TSel (varF (tsel (tvar 0) 0)) 0).
 Proof.
   eapply t_sub. eapply t_sel. crush2. crush_wf.
@@ -1157,6 +1158,7 @@ Qed.
 
 Definition _t2_0 := (tobj 0 []).
 Definition _T2_0 := TTop.
+(* {}: Top *)
 Example pex2_0: has_type [] _t2_0 _T2_0.
 Proof. unfold _t2_0. unfold _T2_0.
   eapply t_sub. crush2. crush2.
@@ -1166,6 +1168,7 @@ Qed.
 
 Definition _t2_1 := (tobj 1 [(1, dfld 0);(0, dmem TTop)]).
 Definition _T2_1 := (TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop))).
+(* x:Top |- {z=> b=x, A=Top}: {z => b:z.A, A:Bot..Top} *)
 Example pex2_1: has_type [(0, _T2_0)] _t2_1 _T2_1.
 Proof. unfold _t2_1.
   eapply t_sub with (T2:=_T2_1).
@@ -1183,6 +1186,7 @@ Qed.
 
 Definition _t2_2 := (tobj 2 [(0, dfld 1)]).
 Definition _T2_2 := (TFld 0 _T2_1).
+(* x:Top, y: {z => b:z.A, A:Bot..Top} |- {a=y}: {a: {z => b:z.A, A:Bot..Top}} *)
 Example pex2_2: has_type [(1, _T2_1);(0, _T2_0)] _t2_2 _T2_2.
 Proof. unfold _t2_2.
   eapply t_sub.
@@ -1200,7 +1204,9 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0.
 Qed.
 
-(* the canonical counter-example to preservation in small-step without path normalization...
+(* the canonical counter-example to preservation in small-step without path normalization... *)
+(* x:Top, y: {z => b:z.A, A:Bot..Top}, v: {a: {z => b:z.A, A:Bot..Top}} |- v.a.b: v.a.A *)
+
 Example pex2: has_type [(2,_T2_2);(1,_T2_1);(0,_T2_0)] (tsel (tsel (tvar 2) 0) 1) (TSel (varF (tsel (tvar 2) 0)) 0).
 Proof.
   assert (stpd [(2, _T2_2); (1, _T2_1); (0, _T2_0)] []
