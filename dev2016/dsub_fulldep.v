@@ -1356,6 +1356,8 @@ Proof.
     rewrite B.
     eapply stp2_sel2; eauto.
     rewrite <- A. apply IHstp2; eauto.
+  - Case "selxr". admit.
+  - Case "selx". admit.
   - Case "sela1".
     case_eq (le_lt_dec (length GH0) x); intros E LE.
     + eapply stp2_sela1.
@@ -1397,7 +1399,7 @@ Proof.
     subst x.
     specialize IHstp2_2 with (GH2:=GH0) (GH3:=(G2, T3) :: GH1).
     simpl in IHstp2_2.
-    repeat rewrite splice_open_permute with (j:=0).
+    repeat rewrite (proj1 (splice_open_permute GH0)) with (j:=0).
     rewrite app_length in IHstp2_2.
     eapply IHstp2_2. reflexivity.
 Qed.
