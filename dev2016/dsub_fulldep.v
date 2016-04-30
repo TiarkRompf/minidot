@@ -611,6 +611,28 @@ Proof.
   (* fails because of closed 0 0 0 (TMem TBot (TSel (tvar (varH 0)))) *)
 *)
 
+Example ex7_closure_conversion_tp:
+  has_type [] [] (tabs (TMem TBot TTop) (tabs (TMem TBot (TSel (tvar (varF 0)))) (ttyp TTop)))
+           (TAll (TMem TBot TTop) (TAll (TMem TBot (TSel (tvar (varB 0)))) (TMem TTop TTop))).
+Proof.
+  eapply t_abs; crush.
+Qed.
+
+Example ex7_closure_conversion_sub:
+  stp [(TAll (TMem TBot TTop) (TAll (TMem TBot (TSel (tvar (varB 0)))) (TMem TTop TTop)))] []
+      (TAll (TMem TBot TTop) TTop)
+      (TAll (TMem TBot TTop) (TSel (tapp (tapp (tvar (varF 0)) (tvar (varB 0))) (ttyp (TSel (tvar (varB 0))))))).
+Proof.
+  eapply stp_all. crush. simpl. reflexivity. simpl. eauto. simpl.
+  econstructor; crush.
+  unfold open. simpl.
+  eapply stp_sel2.
+  eapply t_app. eapply t_app. eapply t_varF; crush. eapply t_varH; crush.
+  unfold open. simpl. reflexivity. simpl. crush.
+  eapply t_sub. eapply t_typ; crush. eapply stp_mem. crush. crush.
+  unfold open. simpl. reflexivity. crush. crush.
+Qed.
+
 (* ############################################################ *)
 (* Proofs *)
 (* ############################################################ *)
