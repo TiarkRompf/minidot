@@ -1317,31 +1317,45 @@ Proof.
     apply closed_splice.
     assumption.
   - Case "strong_sel1".
-    eapply stp2_strong_sel1. apply H. assumption. assumption.
     assert (splice (length GH0) TX=TX) as A. {
       eapply closed_splice_idem. eassumption. omega.
     }
-    rewrite <- A. apply IHstp2.
-    reflexivity.
+    assert (tm_splice (length GH0) t=t) as B. {
+      eapply closed_splice_idem. eassumption. omega.
+    }
+    rewrite B.
+    eapply stp2_strong_sel1; eauto.
+    rewrite <- A. eapply IHstp2; eauto.
   - Case "strong_sel2".
-    eapply stp2_strong_sel2. apply H. assumption. assumption.
     assert (splice (length GH0) TX=TX) as A. {
       eapply closed_splice_idem. eassumption. omega.
     }
-    rewrite <- A. apply IHstp2.
-    reflexivity.
+    assert (tm_splice (length GH0) t=t) as B. {
+      eapply closed_splice_idem. eassumption. omega.
+    }
+    rewrite B.
+    eapply stp2_strong_sel2; eauto.
+    rewrite <- A. eapply IHstp2; eauto.
   - Case "sel1".
-    eapply stp2_sel1. apply H. eassumption. assumption.
     assert (splice (length GH0) TX=TX) as A. {
       eapply closed_splice_idem. eassumption. omega.
     }
-    rewrite <- A. apply IHstp2. reflexivity.
+    assert (tm_splice (length GH0) t=t) as B. {
+      eapply closed_splice_idem. eassumption. omega.
+    }
+    rewrite B.
+    eapply stp2_sel1; eauto.
+    rewrite <- A. apply IHstp2; eauto.
   - Case "sel2".
-    eapply stp2_sel2. apply H. eassumption. assumption.
     assert (splice (length GH0) TX=TX) as A. {
       eapply closed_splice_idem. eassumption. omega.
     }
-    rewrite <- A. apply IHstp2. reflexivity.
+    assert (tm_splice (length GH0) t=t) as B. {
+      eapply closed_splice_idem. eassumption. omega.
+    }
+    rewrite B.
+    eapply stp2_sel2; eauto.
+    rewrite <- A. apply IHstp2; eauto.
   - Case "sela1".
     case_eq (le_lt_dec (length GH0) x); intros E LE.
     + eapply stp2_sela1.
