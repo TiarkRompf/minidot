@@ -410,13 +410,17 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            stp env [] T1 T1 n1 ->
            has_type env (tvar x) T1
 | t_var_pack: forall x env T1 n1,
-           has_type env (tvar x) (open (varF (tvar x)) T1) ->
+           has_type env (tvar x) (open (varF (tvar x)) T1) -> (* todo: relax *)
            stp env [] (TBind T1) (TBind T1) n1 ->
            has_type env (tvar x) (TBind T1)
 | t_var_unpack: forall x env T1 n1,
            has_type env (tvar x) (TBind T1) ->
            stp env [] (open (varF (tvar x)) T1) (open (varF (tvar x)) T1) n1 ->
            has_type env (tvar x) (open (varF (tvar x)) T1)
+| t_sel_unpack: forall x l env T1 n1,
+           has_type env (tsel x l) (TBind T1) ->
+           stp env [] (open (varF (tsel x l)) T1) (open (varF (tsel x l)) T1) n1 ->
+           has_type env (tsel x l) (open (varF (tsel x l)) T1)
 | t_obj: forall env f ds T TX n1 n2,
            fresh env = f ->
            open (varF (tvar f)) T = TX ->
