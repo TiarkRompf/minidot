@@ -546,6 +546,27 @@ Proof.
   eapply stp_all; crush.
 Qed.
 
+Example ex5_warmup:
+  stp [] []
+      (TAll (TMem TBot TTop) (TSel (tapp (tabs TTop (ttyp TTop)) (ttyp TBot))))
+      (TAll (TMem TBot TTop) TTop).
+Proof.
+  eapply stp_all; crush.
+Qed.
+
+Example ex5:
+  stp [] []
+      (TAll (TMem TBot TTop) TTop)
+      (TAll (TMem TBot TTop) (TSel (tapp (tabs TTop (ttyp TTop)) (ttyp TBot)))).
+Proof.
+  eapply stp_all. crush. simpl. reflexivity. simpl. eauto. simpl.
+  econstructor; crush.
+  unfold open. simpl.
+  eapply stp_sel2.
+  eapply t_app. eapply t_abs with (T2:=TMem TTop TTop); crush. crush.
+  unfold open. simpl. reflexivity. crush. crush.
+Qed.
+
 (* ############################################################ *)
 (* Proofs *)
 (* ############################################################ *)
