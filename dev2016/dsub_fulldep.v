@@ -287,7 +287,42 @@ Definition base (v:vl): venv :=
     | vabs GX _ _ => GX
   end.
 
-Definition peval (env: venv) (t: tm) v := exists n, teval n env t = Some (Some v).
+(*
+ For evaluation of terms in types,
+ we need to ensure that closures are comparable regardless of environment extension.
+ So we cutoff the environment consistently, based on the free variables in the term.
+ *)
+Fixpoint var_req_env (v: var): nat :=
+  match v with
+    | varF n => 1 + n
+    | _ => 0
+  end.
+Fixpoint tm_req_env (t:tm): nat :=
+  match t with
+    | tvar (varF n) => 1 + n
+    | tvar _ => 0
+    | ttyp T => ty_req_env T
+    | tabs T t0 => max (ty_req_env T) (tm_req_env t0)
+    | tapp t1 t2 => max (tm_req_env t1) (tm_req_env t2)
+  end
+with ty_req_env (T:ty): nat :=
+  match T with
+    | TTop => 0
+    | TBot => 0
+    | TAll T1 T2 => max (ty_req_env T1) (ty_req_env T2)
+    | TSel t => tm_req_env t
+    | TMem T1 T2 => max (ty_req_env T1) (ty_req_env T2)
+  end.
+
+Fixpoint tail {X : Type} (n : nat) (l : list X) : list X :=
+  match l with
+    | [] => []
+    | _::l' => if (beq_nat n (length l)) then l else tail n l'
+  end.
+
+Definition peval (env: venv) (t: tm) v :=
+  tm_req_env t <= length env /\
+  exists n, teval n (tail (tm_req_env t) env) t = Some (Some v).
 
 Definition join_env {X:Type} (l1: list X) (l2: list X) (l: list X) :=
   exists l1' l2', l1=l1'++l /\ l2=l2'++l.
@@ -733,8 +768,10 @@ Lemma peval_extend : forall H t T v,
                        peval (v::H) t T.
 
 Proof.
-  intros.
-  admit.
+  intros H t T v Hp. unfold peval in Hp.
+  destruct Hp as [Hreq Hev]. destruct Hev as [n Hev].
+  unfold peval. split; simpl; try omega.
+  exists n. rewrite false_beq_nat; try omega. apply Hev.
 Qed.
 
 (* splicing -- for stp_extend. *)
@@ -1626,25 +1663,39 @@ Proof.
     rewrite (@aenv_ext__same_length GH GH'). omega. assumption.
     apply venv_ext__ge_length. assumption.
   - Case "strong_sel1".
-    eapply stp2_strong_sel1. eapply index_extend_venv. apply H.
-    assumption. assumption. assumption.
+    eapply stp2_strong_sel1. eapply peval_extend_venv. apply H. assumption.
+    eapply closed_inc_mult; try eassumption; try omega.
+    apply venv_ext__ge_length. assumption.
+    assumption. assumption.
     apply IHstp2. assumption. apply venv_ext_refl. assumption.
   - Case "strong_sel2".
-    eapply stp2_strong_sel2. eapply index_extend_venv. apply H.
-    assumption. assumption. assumption.
+    eapply stp2_strong_sel2. eapply peval_extend_venv. apply H. assumption.
+    eapply closed_inc_mult; try eassumption; try omega.
+    apply venv_ext__ge_length. assumption.
+    assumption. assumption.
     apply IHstp2. assumption. assumption. apply venv_ext_refl.
   - Case "sel1".
-    eapply stp2_sel1. eapply index_extend_venv. apply H.
-    assumption. eassumption. assumption.
+    eapply stp2_sel1. eapply peval_extend_venv. apply H. assumption.
+    eapply closed_inc_mult; try eassumption; try omega.
+    apply venv_ext__ge_length. assumption.
+    eassumption. assumption.
     apply IHstp2. assumption. apply venv_ext_refl. assumption.
   - Case "sel2".
-    eapply stp2_sel2. eapply index_extend_venv. apply H.
-    assumption. eassumption. assumption.
+    eapply stp2_sel2. eapply peval_extend_venv. apply H. assumption.
+    eapply closed_inc_mult; try eassumption; try omega.
+    apply venv_ext__ge_length. assumption.
+    eassumption. assumption.
     apply IHstp2. assumption. apply venv_ext_refl. assumption.
+  - Case "selxr".
+    admit.
   - Case "selx".
     eapply stp2_selx.
-    eapply index_extend_venv. apply H. assumption.
-    eapply index_extend_venv. apply H0. assumption.
+    eapply peval_extend_venv; try eassumption.
+    eapply closed_inc_mult; try eassumption; try omega.
+    apply venv_ext__ge_length. assumption.
+    eapply peval_extend_venv; try eassumption.
+    eapply closed_inc_mult; try eassumption; try omega.
+    apply venv_ext__ge_length. assumption.
   - Case "sela1".
     assert (exists GX', index x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
       apply index_at_ext with (GH:=GH); assumption.
