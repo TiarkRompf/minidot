@@ -492,6 +492,21 @@ Proof.
   eapply stp_all; crush.
 Qed.
 
+(* type-check the rep implementations *)
+Definition _implRepTeq T := tabs (TMem TBot TTop) (ttyp T).
+Example _typ_repTeqT: has_type [] [] (_implRepTeq (TSel (tvar (varF 0)))) _repTeqT.
+Proof.
+  eapply t_abs; crush.
+Qed.
+Example _typ_repTeqTop: has_type [] [] (_implRepTeq TTop) _repTeqTop.
+Proof.
+  eapply t_abs; crush.
+Qed.
+Example _typ_repTeqTfun: has_type [] [] (_implRepTeq (TAll (TSel (tvar (varF 0))) (TSel (tvar (varF 0))))) _repTeqTfun.
+Proof.
+  eapply t_abs; crush.
+Qed.
+
 (* apply Rep as a type *)
 Example _app_repT_warmup: stp [_repT] [] (TSel (tapp (tvar (varF 0)) (ttyp TTop))) TTop.
 Proof.
