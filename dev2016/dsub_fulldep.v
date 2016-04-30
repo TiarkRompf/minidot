@@ -596,6 +596,17 @@ Definition spliceat n (V: (venv*ty)) :=
     | (G,T) => (G,splice n T)
   end.
 
+Lemma splice_open_commute:
+  (forall T2 x n j, splice n (open_rec j x T2) = open_rec j (tm_splice n x) (splice n T2)) /\
+  (forall t2 x n j, tm_splice n (tm_open_rec j x t2) = tm_open_rec j (tm_splice n x) (tm_splice n t2)).
+Proof.
+  apply tytm_mutind; intros; simpl; eauto; repeat rewrite H; repeat rewrite H0; eauto.
+  destruct v; eauto.
+  simpl.
+  case_eq (le_lt_dec n i); intros; eauto.
+  case_eq (beq_nat j i); intros E; simpl; eauto; rewrite E; eauto.
+Qed.
+
 Lemma splice_open_permute: forall {X} (G0:list X),
  (forall T2 n j,
   (open_rec j (tvar (varH (n + S (length G0)))) (splice (length G0) T2)) =
@@ -604,14 +615,10 @@ Lemma splice_open_permute: forall {X} (G0:list X),
   (tm_open_rec j (tvar (varH (n + S (length G0)))) (tm_splice (length G0) t)) =
   (tm_splice (length G0) (tm_open_rec j (tvar (varH (n + length G0))) t))).
 Proof.
-  intros X G.
-  apply tytm_mutind; intros; simpl; eauto; repeat rewrite H; repeat rewrite H0; eauto.
-  destruct v; eauto.
-  simpl.
-  case_eq (le_lt_dec (length G) i); intros E LE; simpl; eauto.
-  case_eq (beq_nat j i); intros E; simpl; eauto; rewrite E;
-  case_eq (le_lt_dec (length G) (n + length G)); intros EL LE; eauto.
-  simpl. f_equal. f_equal. omega. omega.
+  intros. split; intros; assert (n + S (length G0) = n + length G0 + 1) as A by omega;
+  try rewrite (proj1 splice_open_commute); try rewrite (proj2 splice_open_commute);
+  simpl; case_eq (le_lt_dec (length G0) (n + length G0)); intros;
+  try rewrite A; eauto; omega.
 Qed.
 
 Lemma indexr_splice_hi: forall G0 G2 x0 v1 T,
@@ -1106,14 +1113,24 @@ Proof.
       erewrite (proj1 closed_splice_idem); eauto. omega.
   - eapply t_typ.
     simpl. rewrite map_splice_length_inc. apply closed_splice. subst. assumption.
-  - eapply t_app; eauto. admit.
+  - eapply t_app; eauto. subst.
+    unfold open. rewrite (proj1 splice_open_commute). reflexivity.
     simpl. rewrite map_splice_length_inc. apply closed_splice. subst. assumption.
-  - eapply t_abs; eauto. admit.
+  - eapply t_abs; eauto. subst.
+    assert (tvar (varF (length G1))=tm_splice (length G0) (tvar (varF (length G1)))) as B. {
+      erewrite (proj2 closed_splice_idem). reflexivity.
+      econstructor. econstructor. eauto. eauto.
+    }
+    rewrite B. unfold open. rewrite <- (proj1 splice_open_commute).
+    (* oops, T1 is put into concrete not abstract env... *)
+    admit.
     assert (TAll (splice (length G0) T1) (splice (length G0) T2) =
             splice (length G0) (TAll T1 T2)) as A by eauto.
     simpl. rewrite map_splice_length_inc.
     rewrite A. apply (proj1 closed_splice).
     subst. assumption.
+Grab Existential Variables.
+apply 0.
 Qed.
 
 Lemma stp2_splice : forall G1 T1 G2 T2 GH1 GH0 v1 s m n,
