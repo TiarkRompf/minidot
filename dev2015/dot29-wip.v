@@ -359,6 +359,10 @@ with peval1: tm -> tenv -> ty -> nat -> Prop :=
             peval1 f G1 (TFld l TX) n1 ->
             stp G1 [] TX TX n2 ->
             peval1 (tsel f l) G1 TX (S (n1+n2))
+(* | pt_unpack: forall t1 G1 T1 n1 n2, (* TODO! *)
+            peval1 t1 G1 (TBind T1) n1 ->
+            stp G1 [] (open (varF t1) T1) (open (varF t1) T1) n2 ->
+            peval1 t1 G1 (open (varF t1) T1) (S (n1+n2)) *) 
 | pt_sub: forall t1 G1 T1 T2 n1 n2,
             peval1 t1 G1 T1 n1 ->
             stp G1 [] T1 T2 n2 ->
