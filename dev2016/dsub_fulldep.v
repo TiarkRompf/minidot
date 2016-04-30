@@ -935,6 +935,13 @@ Proof.
   intros. apply ((proj1 closed_inc_mult) T i j k H i (S j) k); omega.
 Qed.
 
+Lemma tm_closed_inc: forall i j k t,
+  tm_closed i j k t ->
+  tm_closed i (S j) k t.
+Proof.
+  intros. apply ((proj2 closed_inc_mult) t i j k H i (S j) k); omega.
+Qed.
+
 Lemma closed_splice_idem:
   (forall T i j k n,
     closed i j k T ->
@@ -1413,16 +1420,20 @@ Proof.
     eapply IHstp2_2. reflexivity.
 Qed.
 
-Lemma stp_extend : forall G1 GH T1 T2 v1,
-                       stp G1 GH T1 T2 ->
-                       stp G1 (v1::GH) T1 T2.
+Lemma stp_extend :
+  (forall G1 GH T1 T2,
+    stp G1 GH T1 T2 -> forall v1,
+    stp G1 (v1::GH) T1 T2) /\
+  (forall G1 GH t1 T2,
+    has_type G1 GH t1 T2 -> forall v1,
+    has_type G1 (v1::GH) t1 T2).
 Proof.
-  intros. induction H; eauto using indexr_extend, closed_inc.
+  apply tp_mutind; intros; eauto using indexr_extend, closed_inc, tm_closed_inc.
   assert (splice (length GH) T2 = T2) as A2. {
-    eapply closed_splice_idem. apply H1. omega.
+    eapply closed_splice_idem. eauto. omega.
   }
   assert (splice (length GH) T4 = T4) as A4. {
-    eapply closed_splice_idem. apply H2. omega.
+    eapply closed_splice_idem. eauto. omega.
   }
   assert (closed 0 (length GH) (length G1) T3). eapply stp_closed1. eauto.
   assert (splice (length GH) T3 = T3) as A3. {
@@ -1433,18 +1444,18 @@ Proof.
     simpl. rewrite A3. eauto.
   }
   apply stp_all with (x:=length (v1 :: GH)).
-  apply IHstp1.
+  apply H.
   reflexivity.
-  apply closed_inc. apply H1.
-  apply closed_inc. apply H2.
+  apply closed_inc. eauto.
+  apply closed_inc. eauto.
   simpl.
   rewrite <- A2. rewrite <- A4.
   unfold open.
   change (varH (S (length GH))) with (varH (0 + (S (length GH)))).
-  rewrite -> splice_open_permute. rewrite -> splice_open_permute.
+  repeat rewrite -> (proj1 (splice_open_permute GH)).
   rewrite <- HGX3.
-  apply stp_splice.
-  simpl. unfold open in H3. rewrite <- H0. apply H3.
+  eapply (proj1 stp_splice).
+  simpl. unfold open in s0. rewrite <- e. apply s0. eauto.
 Qed.
 
 Lemma stp_extend_mult : forall G T1 T2 GH GH2,
