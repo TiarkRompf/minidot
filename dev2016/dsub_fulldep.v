@@ -1057,78 +1057,63 @@ Proof.
     exists GH0U. apply IH.
 Qed.
 
-Lemma stp_splice : forall GX G0 G1 T1 T2 v1,
-   stp GX (G1++G0) T1 T2 ->
+Lemma stp_splice :
+  (forall GX G T1 T2,
+   stp GX G T1 T2 -> forall G0 G1 v1, G=G1++G0 ->
    stp GX ((map (splice (length G0)) G1) ++ v1::G0)
-       (splice (length G0) T1) (splice (length G0) T2).
+       (splice (length G0) T1) (splice (length G0) T2)) /\
+  (forall GX G t T,
+   has_type GX G t T -> forall G0 G1 v1, G=G1++G0 ->
+   has_type GX ((map (splice (length G0)) G1) ++ v1::G0)
+       (tm_splice (length G0) t) (splice (length G0) T)).
 Proof.
-  intros GX G0 G1 T1 T2 v1 H. remember (G1++G0) as G.
-  revert G0 G1 HeqG.
-  induction H; intros; subst GH; simpl; eauto.
+  apply tp_mutind; intros; simpl; eauto.
   - Case "top".
     eapply stp_top.
     rewrite map_splice_length_inc.
     apply closed_splice.
-    assumption.
+    subst. assumption.
   - Case "bot".
     eapply stp_bot.
     rewrite map_splice_length_inc.
     apply closed_splice.
-    assumption.
+    subst. assumption.
   - Case "sel1".
-    eapply stp_sel1. apply H. assumption.
-    assert (splice (length G0) TX=TX) as A. {
-      eapply closed_splice_idem. eassumption. omega.
-    }
-    rewrite <- A. apply IHstp. reflexivity.
+    eapply stp_sel1. apply H. assumption. simpl in H0. apply H0. assumption.
   - Case "sel2".
-    eapply stp_sel2. apply H. assumption.
-    assert (splice (length G0) TX=TX) as A. {
-      eapply closed_splice_idem. eassumption. omega.
-    }
-    rewrite <- A. apply IHstp. reflexivity.
-  - Case "sela1".
-    case_eq (le_lt_dec (length G0) x); intros E LE.
-    + eapply stp_sela1.
-      apply indexr_splice_hi. eauto. eauto.
-      eapply closed_splice in H0. assert (S x = x +1) as A by omega.
-      rewrite <- A. eapply H0.
-      eapply IHstp. eauto.
-    + eapply stp_sela1. eapply indexr_splice_lo. eauto. eauto. eauto.
-      assert (splice (length G0) TX=TX) as A. {
-        eapply closed_splice_idem. eassumption. omega.
-      }
-      rewrite <- A. eapply IHstp. eauto.
-  - Case "sela2".
-    case_eq (le_lt_dec (length G0) x); intros E LE.
-    + eapply stp_sela2.
-      apply indexr_splice_hi. eauto. eauto.
-      eapply closed_splice in H0. assert (S x = x +1) as A by omega.
-      rewrite <- A. eapply H0.
-      eapply IHstp. eauto.
-    + eapply stp_sela2. eapply indexr_splice_lo. eauto. eauto. eauto.
-      assert (splice (length G0) TX=TX) as A. {
-        eapply closed_splice_idem. eassumption. omega.
-      }
-      rewrite <- A. eapply IHstp. eauto.
-  - Case "selax".
-    case_eq (le_lt_dec (length G0) x); intros E LE.
-    + eapply stp_selax.
-      eapply indexr_splice_hi. eassumption. assumption.
-    + eapply stp_selax. eapply indexr_splice_lo. eauto. eauto.
+    eapply stp_sel2. apply H. assumption. simpl in H0. apply H0. assumption.
+  - Case "selx".
+    eapply stp_selx.
+    rewrite map_splice_length_inc.
+    apply closed_splice.
+    subst. assumption.
   - Case "all".
     eapply stp_all.
-    eapply IHstp1. eauto. eauto. eauto.
-
-    simpl. rewrite map_splice_length_inc. apply closed_splice. assumption.
-
-    simpl. rewrite map_splice_length_inc. apply closed_splice. assumption.
-
-    specialize IHstp2 with (G3:=G0) (G4:=T3 :: G2).
-    simpl in IHstp2. rewrite app_length. rewrite map_length. simpl.
-    repeat rewrite splice_open_permute with (j:=0). subst x.
-    rewrite app_length in IHstp2. simpl in IHstp2.
-    eapply IHstp2. eauto.
+    eapply H. eauto. eauto.
+    simpl. rewrite map_splice_length_inc. apply closed_splice. subst. assumption.
+    simpl. rewrite map_splice_length_inc. apply closed_splice. subst. assumption.
+    specialize H0 with (G0:=G0) (G2:=T3 :: G2). simpl in H0.
+    rewrite app_length. rewrite map_length. simpl.
+    repeat rewrite (proj1 (splice_open_permute G0)) with (j:=0). subst.
+    rewrite app_length in H0. simpl in H0. eapply H0. eauto.
+  - erewrite (proj1 closed_splice_idem); eauto. omega.
+  - case_eq (le_lt_dec (length G0) x); intros E LE; subst.
+    + eapply t_varH. apply indexr_splice_hi; eauto.
+      assert (S x = x + 1) as A by omega. rewrite <- A.
+      apply (proj1 closed_splice); eauto.
+    + eapply t_varH. apply indexr_splice_lo; eauto.
+      erewrite (proj1 closed_splice_idem); eauto. omega.
+      erewrite (proj1 closed_splice_idem); eauto. omega.
+  - eapply t_typ.
+    simpl. rewrite map_splice_length_inc. apply closed_splice. subst. assumption.
+  - eapply t_app; eauto. admit.
+    simpl. rewrite map_splice_length_inc. apply closed_splice. subst. assumption.
+  - eapply t_abs; eauto. admit.
+    assert (TAll (splice (length G0) T1) (splice (length G0) T2) =
+            splice (length G0) (TAll T1 T2)) as A by eauto.
+    simpl. rewrite map_splice_length_inc.
+    rewrite A. apply (proj1 closed_splice).
+    subst. assumption.
 Qed.
 
 Lemma stp2_splice : forall G1 T1 G2 T2 GH1 GH0 v1 s m n,
