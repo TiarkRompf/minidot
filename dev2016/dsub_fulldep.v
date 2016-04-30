@@ -471,6 +471,42 @@ Proof.
   crush.
 Qed.
 
+(* type Rep[T], abstract *)
+Definition _repT := (TAll (TMem TBot TTop) (TMem TBot TTop)).
+(* type Rep[T] = T *)
+Definition _repTeqT := (TAll (TMem TBot TTop) (TMem (TSel (tvar (varB 0))) (TSel (tvar (varB 0))))).
+(* type Rep[T] = TTop *)
+Definition _repTeqTop := (TAll (TMem TBot TTop) (TMem TTop TTop)).
+(* type Rep[T] = T -> T, partially revealed *)
+Definition _repTeqTfun := (TAll (TMem TBot TTop) (TMem TBot (TAll (TSel (tvar (varB 0))) (TSel (tvar (varB 1)))))).
+Example _sub_repTeqT: stp [] [] _repTeqT _repT.
+Proof.
+  eapply stp_all; crush.
+Qed.
+Example _sub_repTeqTop: stp [] [] _repTeqTop _repT.
+Proof.
+  eapply stp_all; crush.
+Qed.
+Example _sub_repTeqTfun: stp [] [] _repTeqTfun _repT.
+Proof.
+  eapply stp_all; crush.
+Qed.
+
+(* apply Rep as a type *)
+Example _app_repT: stp [_repT] [] (TSel (tapp (tvar (varF 0)) (ttyp TTop))) TTop.
+Proof.
+  eapply stp_top. crush.
+Qed.
+Example _app_repTeqT: stp [_repTeqT] [] TTop (TSel (tapp (tvar (varF 0)) (ttyp TTop))).
+Proof.
+  eapply stp_sel2. eapply t_app; crush. crush.
+Qed.
+Example _app_repTeqTop: has_type [_repTeqTop] [] (tabs (TMem TBot TTop) (tabs (TSel (tapp (tvar (varF 0)) (tvar (varF 1)))) (tvar (varF 2)))) (TAll (TMem TBot TTop) (TAll TTop TTop)).
+Proof.
+  eapply t_abs. simpl. eapply t_sub. eapply t_abs with (T2:=TTop); crush.
+  unfold open. simpl. eapply stp_all; crush. eapply stp_sel2; crush. crush. crush.
+Qed.
+
 (* ############################################################ *)
 (* Proofs *)
 (* ############################################################ *)
