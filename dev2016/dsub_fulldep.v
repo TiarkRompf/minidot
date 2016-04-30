@@ -525,6 +525,10 @@ Example _app_repT: has_type [_repT] [] (tabs (TMem TBot TTop) (tabs (TSel (tapp 
 Proof.
   eapply t_abs; crush.
 Qed.
+Example _app_repT_abs: has_type [] [] (tabs _repT (tabs (TMem TBot TTop) (tabs (TSel (tapp (tvar (varF 0)) (tvar (varF 1)))) (tvar (varF 2))))) (TAll _repT (TAll (TMem TBot TTop) (TAll (TSel (tapp (tvar (varB 1)) (tvar (varB 0)))) (TSel (tapp (tvar (varB 2)) (tvar (varB 1))))))).
+Proof.
+  eapply t_abs; crush.
+Qed.
 
 (* ############################################################ *)
 (* Proofs *)
