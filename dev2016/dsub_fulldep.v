@@ -774,6 +774,22 @@ Proof.
   exists n. rewrite false_beq_nat; try omega. apply Hev.
 Qed.
 
+Lemma join_env_extend1 : forall {X:Type} G1 G2 G (v:X),
+                           join_env G1 G2 G ->
+                           join_env (v::G1) G2 G.
+Proof.
+  unfold join_env. intros. destruct H as [G1' [G2' [H1 H2]]].
+  exists (v::G1'). exists G2'. subst. split; eauto.
+Qed.
+
+Lemma join_env_extend2 : forall {X:Type} G1 G2 G (v:X),
+                           join_env G1 G2 G ->
+                           join_env G1 (v::G2) G.
+Proof.
+  unfold join_env. intros. destruct H as [G1' [G2' [H1 H2]]].
+  exists G1'. exists (v::G2'). subst. split; eauto.
+Qed.
+
 (* splicing -- for stp_extend. *)
 
 Fixpoint var_splice n (v: var) {struct v} : var :=
@@ -1102,6 +1118,14 @@ Lemma closed_upgrade_freef: forall i j k k' T,
  closed i j k' T.
 Proof.
  intros. apply ((proj1 closed_inc_mult) T i j k H i j k'); omega.
+Qed.
+
+Lemma tm_closed_upgrade_freef: forall i j k k' t,
+ tm_closed i j k t ->
+ k' >= k ->
+ tm_closed i j k' t.
+Proof.
+ intros. apply ((proj2 closed_inc_mult) t i j k H i j k'); omega.
 Qed.
 
 Lemma closed_open:
@@ -1761,15 +1785,17 @@ Lemma stp2_extend : forall v1 G1 G2 T1 T2 H s m n,
                        stp2 s m (v1::G1) T1 (v1::G2) T2 H n.
 Proof.
   intros. induction H0;
-    try solve [split; try split; intros; eauto using index_extend];
-    try solve [split; try split; intros; constructor; simpl; eauto using index_extend, closed_upgrade_freef];
-    try solve [split; try split; intros;
-               inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]]; eauto];
-    try solve [split; try split; intros; inversion IHstp2 as [? [? ?]]; eauto];
-    try solve [split; try split; intros; inversion IHstp2 as [? [? ?]]; eauto using index_extend];
-    try solve [split; try split; intros;
-               inversion IHstp2_1 as [? [? ?]]; inversion IHstp2_2 as [? [? ?]];
-               eauto; eapply stp2_all; simpl; eauto using stp2_closure_extend, closed_upgrade_freef].
+    try destruct IHstp2 as [? [? ?]];
+    try destruct IHstp2_1 as [? [? ?]];
+    try destruct IHstp2_2 as [? [? ?]];
+    split; try split; intros;
+    try solve [eauto using peval_extend, close_upgrade_freef, tm_closed_upgrade_freef];
+    try solve [econstructor; simpl; eauto using peval_extend, closed_upgrade_freef, tm_closed_upgrade_freef, join_env_extend1, join_env_extend2];
+    try solve [eapply stp2_all; simpl; eauto using stp2_closure_extend, closed_upgrade_freef];
+    try solve [eapply stp2_sela1; eauto];
+    try solve [eapply stp2_sela2; eauto];
+    try solve [eapply stp2_selax; eauto];
+    try solve [eapply stp2_transf; eauto].
 Qed.
 
 Lemma stp2_extend2 : forall v1 G1 G2 T1 T2 H s m n,
