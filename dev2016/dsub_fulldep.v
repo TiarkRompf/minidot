@@ -1112,6 +1112,14 @@ Proof.
  intros. apply ((proj1 closed_inc_mult) T i j k H i j' k); omega.
 Qed.
 
+Lemma tm_closed_upgrade_free: forall i j k j' t,
+ tm_closed i j k t ->
+ j' >= j ->
+ tm_closed i j' k t.
+Proof.
+ intros. apply ((proj2 closed_inc_mult) t i j k H i j' k); omega.
+Qed.
+
 Lemma closed_upgrade_freef: forall i j k k' T,
  closed i j k T ->
  k' >= k ->
@@ -1850,6 +1858,7 @@ Proof.
   induction H;
     try solve [try constructor; simpl; eauto using index_extend, closed_upgrade_free];
     try solve [eapply stp2_transf; simpl; eauto].
+  solve [eapply stp2_selxr; simpl; eauto using tm_closed_upgrade_free].
   assert (splice (length GH) T2 = T2) as A2. {
     eapply closed_splice_idem. apply H1. omega.
   }
@@ -1873,8 +1882,7 @@ Proof.
   rewrite <- A2. rewrite <- A4.
   unfold open.
   change (varH (S (length GH))) with (varH (0 + (S (length GH)))).
-  rewrite -> splice_open_permute.
-  rewrite -> splice_open_permute.
+  repeat rewrite -> (proj1 (splice_open_permute GH)).
   rewrite <- HGX3.
   apply stp2_splice.
   subst x. simpl. unfold open in H3. apply H3.
