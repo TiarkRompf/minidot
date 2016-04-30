@@ -180,64 +180,72 @@ with subst_dms (u:nat) (ds: dms) {struct ds} : dms :=
 Definition substt x T := (subst (TVar true x) T).
 Hint Immediate substt.
 
-Fixpoint zip_n{A: Type}(n: nat)(l1 l2: list A)(f: A -> A -> A) : list A := match n with
-| O => nil
-| S m => match (index m l1), (index m l2) with
-   | Some a1, Some a2 => (f a1 a2) :: (zip_n m l1 l2 f)
-   | Some a1, None    =>    a1     :: (zip_n m l1 l2 f)
-   | None   , Some a2 =>       a2  :: (zip_n m l1 l2 f)
-   | None   , None   =>               (zip_n m l1 l2 f)
-   end
+Definition override_dm(d1 d2: dm): dm := match d2 with
+| dnone => d1
+| _ => d2
 end.
 
-Definition zip{A: Type}(l1 l2: list A)(f: A -> A -> A) : list A :=
-  zip_n (max (length l1) (length l2)) l1 l2 f.
-
-Fixpoint listOfNone{A: Type}(n: nat): list (option A) := match n with
-| O => nil
-| S m => None :: (listOfNone m)
+Fixpoint override_dms_of_same_length(ds1 ds2: dms): dms := match ds1, ds2 with
+| dcons d1 rest1, dcons d2 rest2 => dcons (override_dm d1 d2) (override_dms_of_same_length rest1 rest2)
+| _, _ => dnil
 end.
 
-Fixpoint sort_rcd_by_label(T: ty): list (option ty) := match T with
-| TAnd T1 T2 => zip (sort_rcd_by_label T1) (sort_rcd_by_label T2)
-                    (fun o1 o2 => match o1, o2 with
-                     | Some U1, Some U2 => Some (TAnd U1 U2)
-                     | Some U1, None    => Some U1
-                     | None   , Some U2 => Some U2
-                     | None   , None    => None
-                     end)
-| TMem l T1 T2 => (Some T) :: (listOfNone l)
-| TFun l T1 T2 => (Some T) :: (listOfNone l)
-| _ => nil
+Fixpoint dms_length(ds: dms) := match ds with
+| dcons d1 ds1 => S (dms_length ds1)
+| dnil => 0
 end.
 
-Fixpoint list_to_rcd(l: list (option ty)): ty := match l with
-| Some T :: tail => TAnd T (list_to_rcd tail)
-| None :: tail => list_to_rcd tail
-| nil => TTop
+Fixpoint prepend_nones(ds: dms)(n: nat): dms := match n with
+| 0 => ds
+| S m => dcons dnone (prepend_nones ds m)
 end.
 
-Definition override_rcd(T1 T2: ty): ty :=
-  list_to_rcd (zip (sort_rcd_by_label T1)
-                   (sort_rcd_by_label T2)
-                   (fun o1 o2 => match o2 with
-                                 | Some U2 => Some U2
-                                 | None => o1
-                                 end)).
-
-Fixpoint list_to_dms (l: list dm): dms :=
-  match l with
-    | nil => dnil
-    | d :: ds => dcons d (list_to_dms ds)
-  end.
+Definition pad_dms(ds1 ds2: dms): dms := prepend_nones ds1 ((dms_length ds2) - (dms_length ds1)).
+(* note: on nats, if a < b, a - b = 0 *)
 
 Definition override_dms(ds1 ds2: dms): dms :=
-  list_to_dms (zip (dms_to_list ds1)
-                   (dms_to_list ds2)
-                   (fun d1 d2 => match d2 with
-                                 | dnone => d1
-                                 | _ => d2
-                                 end)).
+  override_dms_of_same_length (pad_dms ds1 ds2) (pad_dms ds2 ds1).
+
+(* a subset of types which we call record types, with ordered labels *)
+Inductive is_rcd: ty -> nat (* length of record type *) -> Prop :=
+| is_rcd_base: 
+    is_rcd TTop 0
+| is_rcd_cons_fun: forall R l T1 T2,
+    is_rcd R l ->
+    is_rcd (TAnd (TFun l T1 T2) R) (S l)
+| is_rcd_cons_mem: forall R l T1 T2,
+    is_rcd R l ->
+    is_rcd (TAnd (TMem l T1 T2) R) (S l)
+| is_rcc_none: forall R l,
+    is_rcd R l ->
+    is_rcd (TAnd TTop R) (S l).
+
+Definition override_rcd_entry(T1 T2: ty): ty := match T2 with
+| TTop => T1
+| _ => T2
+end.
+
+Fixpoint override_rcd_of_same_length(R1 R2: ty): ty := match R1, R2 with
+| TAnd T1 rest1, TAnd T2 rest2 => TAnd (override_rcd_entry T1 T2)
+                                       (override_rcd_of_same_length rest1 rest2)
+| _, _ => TTop
+end.
+
+Fixpoint rcd_length(R: ty) := match R with
+| TAnd T1 rest => S (rcd_length rest)
+| _ => 0
+end.
+
+Fixpoint prepend_tops(R: ty)(n: nat): ty := match n with
+| 0 => R
+| S m => TAnd TTop (prepend_tops R m)
+end.
+
+Definition pad_rcd(R1 R2: ty): ty := prepend_tops R1 ((rcd_length R2) - (rcd_length R1)).
+(* note: on nats, if a < b, a - b = 0 *)
+
+Definition override_rcd(R1 R2: ty): ty :=
+  override_rcd_of_same_length (pad_rcd R1 R2) (pad_rcd R2 R1).
 
 
 (* Reduction semantics  *)
@@ -349,11 +357,11 @@ with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
       dms_has_type GH G1 dnil TTop (S n1)
   | D_None : forall GH G1 ds T n1,
       dms_has_type GH G1 ds T n1 ->
-      dms_has_type GH G1 (dcons dnone ds) T (S n1)
+      dms_has_type GH G1 (dcons dnone ds) (TAnd TTop T) (S n1)
   | D_Mem : forall GH G1 l T11 ds TS T n1,
       dms_has_type GH G1 ds TS n1 ->
       closed (length GH) (length G1) 0 T11 ->
-      l = length (dms_to_list ds) ->
+      l = dms_length ds ->
       T = TAnd (TMem l T11 T11) TS ->
       dms_has_type GH G1 (dcons (dty T11) ds) T (S n1)
   | D_Abs : forall GH G1 l T11 T12 T12' t12 ds TS T n1 n2,
@@ -362,7 +370,7 @@ with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
       T12' = (open 0 (TVar false (length GH)) T12) ->
       closed (length GH) (length G1) 0 T11 ->
       closed (length GH) (length G1) 1 T12 ->
-      l = length (dms_to_list ds) ->
+      l = dms_length ds ->
       T = TAnd (TFun l T11 T12) TS ->
       dms_has_type GH G1 (dcons (dfun T11 T12 t12) ds) T (S (n1+n2))
 
@@ -619,6 +627,7 @@ Hint Constructors stp.
 Hint Constructors vtp.
 Hint Constructors htp.
 Hint Constructors has_type.
+Hint Constructors is_rcd.
 
 Hint Unfold has_typed.
 Hint Unfold stpd2.
@@ -632,6 +641,13 @@ Hint Unfold index.
 Hint Unfold length.
 
 Hint Resolve ex_intro.
+
+Lemma dms_has_rcd_type: forall G GH ds T n,
+  dms_has_type G GH ds T n ->
+  is_rcd T (dms_length ds).
+Proof.
+  intros. induction H; simpl; subst; eauto.
+Qed.
 
 
 Ltac ev := repeat match goal with
@@ -962,7 +978,7 @@ Proof.
   - eapply IHS2. eauto. omega.
   (* dms_has_type *)
   - econstructor.
-  - subst. eapply IHD in H1. assumption. omega.
+  - subst. eapply IHD in H1. econstructor. econstructor. assumption. omega.
   - subst. econstructor. econstructor. eauto. eauto. eapply IHD. eauto. omega.
   - subst. econstructor. econstructor. eauto. eauto. eapply IHD. eauto. omega.
 Qed.
@@ -2660,10 +2676,10 @@ Proof.
   Grab Existential Variables. apply 0. apply 0. apply 0. 
 Qed.
 
-Lemma narrow_dms_has_type: forall G1 T1 S1 n1 ds n2,
-  stp [T1] G1 T1 S1 n1 ->
+Lemma narrow_dms_has_type: forall G1 T1 S0 S1 n1 ds n2,
+  stp [S0] G1 S0 S1 n1 ->
   dms_has_type [S1] G1 ds T1 n2 ->
-  exists n3, dms_has_type [T1] G1 ds T1 n3.
+  exists n3, dms_has_type [S0] G1 ds T1 n3.
 Proof.
   intros. eapply hastp_narrow_aux. eapply H0. reflexivity.
   instantiate(3:=nil). simpl. reflexivity. simpl. reflexivity. simpl. eauto.
@@ -2962,22 +2978,36 @@ Proof.
 Qed.
 
 Lemma length_subst_dms: forall ds x,
+  dms_length ds = dms_length (subst_dms x ds).
+Proof.
+  intros. induction ds; eauto.
+  simpl. rewrite IHds. reflexivity.
+Qed.
+
+Lemma length_subst_dms': forall ds x,
   (length (dms_to_list ds))=(length (dms_to_list (subst_dms x ds))).
 Proof.
   intros. induction ds; eauto.
   simpl. rewrite IHds. reflexivity.
 Qed.
 
+Lemma dms_to_list_length: forall ds,
+  dms_length ds = length (dms_to_list ds).
+Proof.
+  intro. induction ds; simpl; auto.
+Qed.
+
 Lemma index_subst_dms: forall ds ds0 D ds1 x,
   dms_to_list ds = ds0 ++ dms_to_list (dcons D ds1) ->
-  index (length (dms_to_list ds1)) (dms_to_list (subst_dms x ds)) = Some (subst_dm x D).
+  index (dms_length ds1) (dms_to_list (subst_dms x ds)) = Some (subst_dm x D).
 Proof.
   intros. generalize dependent ds1. generalize dependent ds. induction ds0; intros.
   - simpl in H. destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
-    simpl. rewrite <- length_subst_dms. rewrite beq_nat_true_eq. reflexivity.
+    simpl. rewrite <- length_subst_dms'. rewrite H2. rewrite dms_to_list_length. rewrite beq_nat_true_eq. reflexivity.
   - destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
     simpl. rewrite false_beq_nat. eapply IHds0. eauto.
-    rewrite <- length_subst_dms. rewrite H2. rewrite app_length. simpl.
+    rewrite <- length_subst_dms'. rewrite H2. rewrite app_length. simpl.
+    rewrite dms_to_list_length.
     omega.
 Qed.
 
@@ -2999,8 +3029,19 @@ Proof.
   remember [T0] as GH. generalize dependent T0.
   induction H; intros.
   - repeat eexists. eapply vtp_top. eapply index_max. eauto.
-  - eapply IHdms_has_type; eauto. simpl in Hds. destruct Hds as [dsb Hds].
-    exists (dsb ++ [dnone]). rewrite <- app_assoc. apply Hds.
+  - subst.
+    assert (closed 0 (length G1) 0 (substt x T)) as HCS. {
+      unfold substt in *. simpl in HC. inversion HC; subst.
+      eauto.
+    }
+    destruct Hds as [dsa Hdsa]. simpl in Hdsa.
+    edestruct IHdms_has_type as [? [? AS]]. eauto. eauto. exists (dsa ++ [dnone]). rewrite <- app_assoc. simpl. eauto. eauto. eauto.
+    unfold substt in *. simpl.
+    repeat eexists. eapply vtp_and.
+    + eapply vtp_top. eapply index_max. eassumption.
+    + eassumption.
+    + eauto.
+    + eauto.
   - subst.
     assert (closed 0 (length G1) 0 (substt x TS)) as HCS. {
       unfold substt in *. simpl in HC. inversion HC; subst.
@@ -3052,7 +3093,7 @@ Proof.
     eapply closed_subst. eauto. econstructor. eapply index_max. eauto.
     eauto. eauto. eauto. eauto.
 Grab Existential Variables.
-apply 0. apply 0.
+apply 0. apply 0. apply 0.
 Qed.
 
 Lemma hastp_inv: forall G1 x T n1,
@@ -3349,13 +3390,227 @@ Proof.
   erewrite subst_closed_id. eauto. eapply vtp_closed in H0. eauto.
 Qed.
 
+Lemma dms_length_zero_inv: forall ds,
+  dms_length ds = 0 -> ds = dnil.
+Proof.
+  intros. destruct ds; inversion H. reflexivity.
+Qed.
+
+Lemma dms_length_S_inv: forall ds l,
+  dms_length ds = S l -> exists d0 ds0, ds = dcons d0 ds0 /\ dms_length ds0 = l.
+Proof.
+  intros. destruct ds; inversion H. eauto.
+Qed.
+
+Lemma pad_dms_same_length: forall ds1 ds2,
+  dms_length ds1 = dms_length ds2 ->
+  pad_dms ds1 ds2 = ds1.
+Proof.
+  intros. unfold pad_dms. rewrite H. rewrite Nat.sub_diag. simpl. reflexivity.
+Qed.
+
+Lemma pad_rcd_same_length: forall R1 R2,
+  rcd_length R1 = rcd_length R2 ->
+  pad_rcd R1 R2 = R1.
+Proof.
+  intros. unfold pad_rcd. rewrite H. rewrite Nat.sub_diag. simpl. reflexivity.
+Qed.
+
+Lemma dcons_hastp_inv: forall GH G1 d ds T n,
+  dms_has_type GH G1 (dcons d ds) T n ->
+  exists T1 T2, T = TAnd T1 T2.
+Proof. intros. inversion H; eauto. Qed.
+
+Lemma wrap_hyp: forall (P: Prop), P -> (True /\ P). Proof. intros. auto. Qed.
+
+Lemma override_dcons: forall d1 ds1 d2 ds2,
+  dms_length ds1 = dms_length ds2 ->
+  override_dms (dcons d1 ds1) (dcons d2 ds2) = dcons (override_dm d1 d2) (override_dms ds1 ds2).
+Proof.
+  intros. unfold override_dms. rewrite pad_dms_same_length. rewrite pad_dms_same_length.
+  simpl. rewrite pad_dms_same_length. rewrite pad_dms_same_length. reflexivity.
+  auto. auto. symmetry. simpl. f_equal. assumption. simpl. f_equal. assumption.
+Qed.
+
+Lemma override_rcdcons: forall T1 R1 T2 R2,
+  rcd_length R1 = rcd_length R2 ->
+  override_rcd (TAnd T1 R1) (TAnd T2 R2) = TAnd (override_rcd_entry T1 T2) (override_rcd R1 R2).
+Proof.
+  intros. unfold override_rcd. rewrite pad_rcd_same_length. rewrite pad_rcd_same_length.
+  simpl. rewrite pad_rcd_same_length. rewrite pad_rcd_same_length. reflexivity.
+  auto. auto. symmetry. simpl. f_equal. assumption. simpl. f_equal. assumption.
+Qed.
+
+Lemma dms_hastp_to_length_eq: forall GH G1 ds T n,
+  dms_has_type GH G1 ds T n ->
+  dms_length ds = rcd_length T.
+Proof.
+  intros. induction H; subst; simpl; omega.
+Qed.
+
+Lemma override_dms_length: forall l ds10 ds20,
+  dms_length ds10 = l ->
+  dms_length ds20 = l ->
+  dms_length (override_dms ds10 ds20) = dms_length ds20.
+Proof.
+  intro. induction l; intros; unfold override_dms.
+  - apply dms_length_zero_inv in H. apply dms_length_zero_inv in H0. subst. simpl. reflexivity. 
+  - apply dms_length_S_inv in H. apply dms_length_S_inv in H0. ev. subst.
+    rewrite pad_dms_same_length. rewrite pad_dms_same_length. simpl. f_equal.
+    specialize (IHl x2 x0 eq_refl H1).
+    unfold override_dms in IHl.
+    rewrite pad_dms_same_length in IHl. rewrite pad_dms_same_length in IHl. exact IHl. 
+    auto. auto. simpl. omega. simpl. omega.
+Qed.
+
+Lemma mix_dms_hastp00: forall l ds1 ds2,
+  dms_length ds1 = l ->
+  dms_length ds2 = l ->
+  forall GH G1 T1 T2 n1 n2,
+  dms_has_type GH G1 ds1 T1 n1 ->
+  dms_has_type GH G1 ds2 T2 n2 ->
+  exists n3,
+    dms_has_type GH G1 (override_dms ds1 ds2) (override_rcd T1 T2) n3.
+Proof.
+  intro l. induction l.
+  - intros. apply dms_length_zero_inv in H. apply dms_length_zero_inv in H0. subst.
+    inversion H1. inversion H2. subst.
+    unfold override_dms. unfold override_rcd. simpl. eauto.
+  - intros.
+    apply dms_length_S_inv in H0. destruct H0 as [d20 [ds20 [? Hl2]]].
+    apply dms_length_S_inv in H.  destruct H  as [d10 [ds10 [? Hl1]]].
+    subst ds1. subst ds2.
+    apply wrap_hyp in Hl1. apply wrap_hyp in Hl2.
+    rewrite override_dcons; try omega.
+    inversion H1; inversion H2; subst; apply proj2 in Hl1; apply proj2 in Hl2;
+    (edestruct IHl as [? IH]; [eapply Hl1 | eapply Hl2 | eassumption | eassumption | idtac]);
+    (rewrite override_rcdcons;
+     [ eexists
+     | repeat match goal with
+        | H: dms_has_type _ _ _ _ _ |- _ => apply dms_hastp_to_length_eq in H
+        end; omega
+     ]).
+    + econstructor. eassumption.
+    + econstructor.
+      * eassumption.
+      * eassumption.
+      * reflexivity.
+      * simpl. rewrite (override_dms_length l); auto.
+    + econstructor.
+      * eassumption.
+      * eassumption.
+      * reflexivity.
+      * eassumption.
+      * eassumption.
+      * reflexivity.
+      * simpl. rewrite (override_dms_length l); auto.
+    + econstructor.
+      * eassumption.
+      * eassumption.
+      * reflexivity.
+      * simpl. rewrite (override_dms_length l); auto. rewrite Hl1. rewrite Hl2. reflexivity.
+    + econstructor.
+      * eassumption.
+      * eassumption.
+      * reflexivity.
+      * simpl. rewrite (override_dms_length l); auto.
+    + econstructor.
+      * eassumption.
+      * eassumption.
+      * reflexivity.
+      * eassumption.
+      * eassumption.
+      * reflexivity.
+      * simpl. rewrite (override_dms_length l); auto.
+    + econstructor.
+      * eassumption.
+      * eassumption.
+      * reflexivity.
+      * eassumption.
+      * eassumption.
+      * reflexivity.
+      * simpl. rewrite (override_dms_length l); auto. rewrite Hl1. rewrite Hl2. reflexivity.
+    + econstructor.
+      * eassumption.
+      * eassumption.
+      * reflexivity.
+      * simpl. rewrite (override_dms_length l); auto.
+    + econstructor.
+      * eassumption.
+      * eassumption.
+      * reflexivity.
+      * eassumption.
+      * eassumption.
+      * reflexivity.
+      * simpl. rewrite (override_dms_length l); auto.
+Qed.
+
+Lemma mix_dms_hastp0: forall GH G1 T1 T2 ds1 ds2 n1 n2,
+  dms_has_type GH G1 ds1 T1 n1 ->
+  dms_has_type GH G1 ds2 T2 n2 ->
+  exists n3,
+    dms_has_type GH G1 (override_dms ds1 ds2) (override_rcd T1 T2) n3.
+Proof.
+Admitted.
+
+Lemma stpd2_and11: forall GH G1 T1 T2 T,
+  stpd2 GH G1 T1 T ->
+  closed (length GH) (length G1) 0 T2 ->
+  stpd2 GH G1 (TAnd T1 T2) T.
+Proof. intros. eu. eauto. Qed.
+
+Lemma stpd2_and12: forall GH G1 T1 T2 T,
+  stpd2 GH G1 T1 T ->
+  closed (length GH) (length G1) 0 T2 ->
+  stpd2 GH G1 (TAnd T1 T2) T.
+Proof. intros. eu. eauto. Qed.
+
 Lemma mix_dms_hastp: forall G1 S1 S2 T1 T2 ds1 ds2 n1 n2,
+  closed 0 (length G1) 1 S1 ->
+  closed 0 (length G1) 1 S2 ->
   dms_has_type [open 0 (TVar false 0) S1] G1 ds1 (open 0 (TVar false 0) T1) n1 ->
   dms_has_type [open 0 (TVar false 0) S2] G1 ds2 (open 0 (TVar false 0) T2) n2 ->
   exists n3,
     dms_has_type [TAnd (open 0 (TVar false 0) S1) (open 0 (TVar false 0) S2)] G1 
                  (override_dms ds1 ds2) (open 0 (TVar false 0) (override_rcd T1 T2)) n3.
-Admitted.
+Proof.
+  intros.
+  assert (Sub1: exists n,
+                stp [TAnd (open 0 (TVar false 0) S1) (open 0 (TVar false 0) S2)] G1
+                    (TAnd (open 0 (TVar false 0) S1) (open 0 (TVar false 0) S2))
+                          (open 0 (TVar false 0) S1) n). {
+    admit. (*
+    eapply stpd2_and11.
+    - eapply stpd2_refl. simpl.
+    *)
+  }
+  assert (Sub2: exists n,
+                stp [TAnd (open 0 (TVar false 0) S1) (open 0 (TVar false 0) S2)] G1
+                    (TAnd (open 0 (TVar false 0) S1) (open 0 (TVar false 0) S2))
+                          (open 0 (TVar false 0) S2) n). {
+    admit.
+  }
+  destruct Sub1 as [n11 Sub1].
+  destruct Sub2 as [n12 Sub2].
+  assert (open 0 (TVar false 0) (override_rcd T1 T2) = 
+          override_rcd (open 0 (TVar false 0) T1) (open 0 (TVar false 0) T2)) as E by admit.
+  rewrite E.
+  assert (DH1: exists n,
+    dms_has_type [TAnd (open 0 (TVar false 0) S1) (open 0 (TVar false 0) S2)] G1
+                 ds1 (open 0 (TVar false 0) T1) n). {
+    eapply narrow_dms_has_type. eapply Sub1. eapply H1.
+  }
+  assert (DH2: exists n,
+    dms_has_type [TAnd (open 0 (TVar false 0) S1) (open 0 (TVar false 0) S2)] G1
+                 ds2 (open 0 (TVar false 0) T2) n). {
+    eapply narrow_dms_has_type. eapply Sub2. eapply H2.
+  }
+  destruct DH1 as [n21 DH1].
+  destruct DH2 as [n22 DH2].
+  eapply mix_dms_hastp0.
+  - eapply DH1.
+  - eapply DH2.
+Qed.
 
 Lemma step_unique: forall G G1 G2 t t1 t2,
   step G t G1 t1 ->
@@ -3467,7 +3722,7 @@ Proof.
       * SSCase "t2-val".
         ev. subst. apply hastp_inv in H. apply hastp_inv in H0.
         ev. inversion H. inversion H0. subst.
-        destruct (mix_dms_hastp _ _ _ _ _ _ _ _ _ H4 H14) as [n4 C4].
+        destruct (mix_dms_hastp _ _ _ _ _ _ _ _ _ H8 H18 H4 H14) as [n4 C4].
         repeat eexists.
         { rewrite app_nil_l. eapply ST_Mix; eauto. }
         { eapply T_Cls; simpl.
