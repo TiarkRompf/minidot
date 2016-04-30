@@ -1830,6 +1830,7 @@ Proof.
     try solve [eauto using peval_extend, close_upgrade_freef, tm_closed_upgrade_freef];
     try solve [econstructor; simpl; eauto using peval_extend, closed_upgrade_freef, tm_closed_upgrade_freef, join_env_extend1, join_env_extend2];
     try solve [eapply stp2_all; simpl; eauto using stp2_closure_extend, closed_upgrade_freef];
+    (* TODO: why do we need these cases explicitly now? *)
     try solve [eapply stp2_sela1; eauto];
     try solve [eapply stp2_sela2; eauto];
     try solve [eapply stp2_selax; eauto];
