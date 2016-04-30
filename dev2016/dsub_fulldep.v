@@ -238,6 +238,7 @@ with has_type : tenv -> tenv -> tm -> ty -> Prop :=
            has_type G1 GH (tapp f x) T
 | t_abs: forall G1 GH y T1 T2,
            has_type (T1::G1) GH y (open (tvar (varF (length G1))) T2) ->
+           closed 0 0 (length G1) T1 -> (* for splicing... TODO: revisit what is necessary, re: other closed 0 0 restrictions *)
            closed 0 (length GH) (length G1) (TAll T1 T2) ->
            has_type G1 GH (tabs T1 y) (TAll T1 T2)
 | t_sub: forall G1 GH e T1 T2,
@@ -816,7 +817,7 @@ Proof.
     eapply indexr_max in e. omega.
   - split; econstructor; eauto.
   - destruct H. destruct H0. split. econstructor; eauto. eauto.
-  - destruct H. split. econstructor; eauto. inversion c; subst. eauto. eauto.
+  - destruct H. split. econstructor; eauto. inversion c0; subst. eauto. eauto.
 Qed.
 
 Lemma stp_closed : forall G GH T1 T2,
@@ -1116,19 +1117,21 @@ Proof.
   - eapply t_app; eauto. subst.
     unfold open. rewrite (proj1 splice_open_commute). reflexivity.
     simpl. rewrite map_splice_length_inc. apply closed_splice. subst. assumption.
-  - eapply t_abs; eauto. subst.
+  - subst.
+    assert (splice (length G0) T1 = T1) as C. {
+      erewrite (proj1 closed_splice_idem). reflexivity. eauto. omega.
+    }
     assert (tvar (varF (length G1))=tm_splice (length G0) (tvar (varF (length G1)))) as B. {
       erewrite (proj2 closed_splice_idem). reflexivity.
       econstructor. econstructor. eauto. eauto.
     }
-    rewrite B. unfold open. rewrite <- (proj1 splice_open_commute).
-    (* oops, T1 is put into concrete not abstract env... *)
-    admit.
     assert (TAll (splice (length G0) T1) (splice (length G0) T2) =
             splice (length G0) (TAll T1 T2)) as A by eauto.
-    simpl. rewrite map_splice_length_inc.
-    rewrite A. apply (proj1 closed_splice).
-    subst. assumption.
+    eapply t_abs; eauto.
+    rewrite B. unfold open. rewrite <- (proj1 splice_open_commute).
+    rewrite C. eapply H; eauto. rewrite C. assumption.
+    simpl. rewrite map_splice_length_inc. rewrite A. apply (proj1 closed_splice).
+    assumption.
 Grab Existential Variables.
 apply 0.
 Qed.
