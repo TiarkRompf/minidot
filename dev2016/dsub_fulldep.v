@@ -530,6 +530,22 @@ Proof.
   eapply t_abs; crush.
 Qed.
 
+Example ex4_warmup:
+  stp [] []
+      (TAll _repT (TAll (TMem TBot TTop) (TAll (TSel (tapp (tvar (varB 1)) (tvar (varB 0)))) (TSel (tapp (tvar (varB 2)) (tvar (varB 1)))))))
+      (TAll _repT (TAll (TMem TBot TTop) (TAll (TSel (tapp (tvar (varB 1)) (tvar (varB 0)))) (TSel (tapp (tvar (varB 2)) (tvar (varB 1))))))).
+Proof.
+  eapply stp_all; crush.
+Qed.
+
+Example ex4:
+  stp [] []
+      (TAll _repT (TAll (TMem TBot TTop) (TAll (TSel (tapp (tvar (varB 1)) (tvar (varB 0)))) (TSel (tapp (tvar (varB 2)) (tvar (varB 1)))))))
+      (TAll _repTeqT (TAll (TMem TBot TTop) (TAll (TSel (tapp (tvar (varB 1)) (tvar (varB 0)))) (TSel (tapp (tvar (varB 2)) (tvar (varB 1))))))).
+Proof.
+  eapply stp_all; crush.
+Qed.
+
 (* ############################################################ *)
 (* Proofs *)
 (* ############################################################ *)
