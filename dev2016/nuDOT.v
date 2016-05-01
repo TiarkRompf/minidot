@@ -3166,9 +3166,45 @@ Proof.
   Grab Existential Variables. apply 0.
 Qed.
 
+Lemma subst_override_rcd_of_same_length: forall l x T1 T2,
+  rcd_length T1 = l ->
+  rcd_length T2 = l ->
+  substt x (override_rcd_of_same_length T1 T2)
+  = override_rcd_of_same_length (substt x T1) (substt x T2).
+Proof.
+  intro. unfold substt. induction l; intros; destruct T1; destruct T2; simpl;
+  try reflexivity; try destruct b; simpl; try reflexivity; try destruct i; simpl; try reflexivity.
+  - simpl in H. omega.
+  - f_equal.
+    + destruct T2_1; simpl; auto. try destruct b; simpl; try reflexivity; destruct i; reflexivity.
+    + simpl in *. apply IHl; omega.
+Qed.
+
+Lemma substt_rcd_length: forall x T,
+  rcd_length (substt x T) = rcd_length T.
+Proof.
+  intros. unfold substt. induction T; simpl; try reflexivity.
+  - destruct b; simpl; try reflexivity. destruct i; simpl; try reflexivity.
+  - f_equal. assumption.
+Qed.
+
+Lemma distr_substt_over_padding: forall n x T,
+  prepend_tops (substt x T) n = substt x (prepend_tops T n).
+Proof.
+  intro n. induction n; intros.
+  - simpl. reflexivity.
+  - unfold substt in *. simpl. f_equal. apply IHn.
+Qed.
+
 Lemma substt_override_rcd: forall x T1 T2,
   substt x (override_rcd T1 T2) = override_rcd (substt x T1) (substt x T2).
-Admitted.
+Proof.
+  intros. unfold override_rcd, pad_rcd.
+  repeat rewrite substt_rcd_length. repeat rewrite distr_substt_over_padding.
+  eapply subst_override_rcd_of_same_length.
+  - eapply rcd_length_max.
+  - rewrite Nat.max_comm. eapply rcd_length_max.
+Qed.
 
 Lemma substt_cls: forall x S1 T1,
   substt x (TCls S1 T1) = TCls (substt x S1) (substt x T1).
