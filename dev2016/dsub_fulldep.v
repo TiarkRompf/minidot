@@ -2077,61 +2077,66 @@ Lemma stpd2_mem: forall G1 G2 S1 U1 S2 U2 GH s,
     stpd2 s false G2 S2 G1 S1 GH ->
     stpd2 s true G1 (TMem S1 U1) G2 (TMem S2 U2) GH.
 Proof. intros. repeat eu. eauto. Qed.
-Lemma stpd2_strong_sel1: forall G1 G2 GX TX x T2 GH,
-    index x G1 = Some (vty GX TX) ->
+Lemma stpd2_strong_sel1: forall G1 G2 GX TX t T2 GH,
+    peval G1 t (vty GX TX) -> tm_closed 0 0 (length G1) t ->
     val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stpd2 true true GX TX G2 T2 GH ->
-    stpd2 true true G1 (TSel (varF x)) G2 T2 GH.
+    stpd2 true true G1 (TSel t) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
-Lemma stpd2_strong_sel2: forall G1 G2 GX TX x T1 GH,
-    index x G2 = Some (vty GX TX) ->
+Lemma stpd2_strong_sel2: forall G1 G2 GX TX t T1 GH,
+    peval G2 t (vty GX TX) -> tm_closed 0 0 (length G2) t ->
     val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stpd2 true false G1 T1 GX TX GH ->
-    stpd2 true true G1 T1 G2 (TSel (varF x)) GH.
+    stpd2 true true G1 T1 G2 (TSel t) GH.
 Proof. intros. repeat eu. eauto. Qed.
-Lemma stpd2_sel1: forall G1 G2 v TX x T2 GH,
-    index x G1 = Some v ->
+Lemma stpd2_sel1: forall G1 G2 v TX t T2 GH,
+    peval G1 t v -> tm_closed 0 0 (length G1) t ->
     val_type (base v) v TX ->
     closed 0 0 (length (base v)) TX ->
     stpd2 false false (base v) TX G2 (TMem TBot T2) GH ->
-    stpd2 false true G1 (TSel (varF x)) G2 T2 GH.
+    stpd2 false true G1 (TSel t) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
-Lemma stpd2_sel2: forall G1 G2 v TX x T1 GH,
-    index x G2 = Some v ->
+Lemma stpd2_sel2: forall G1 G2 v TX t T1 GH,
+    peval G2 t v -> tm_closed 0 0 (length G2) t ->
     val_type (base v) v TX ->
     closed 0 0 (length (base v)) TX ->
     stpd2 false false (base v) TX G1 (TMem T1 TTop) GH ->
-    stpd2 false true G1 T1 G2 (TSel (varF x)) GH.
+    stpd2 false true G1 T1 G2 (TSel t) GH.
 Proof. intros. repeat eu. eauto. Qed.
-Lemma stpd2_selx: forall G1 G2 v x1 x2 GH s,
-    index x1 G1 = Some v ->
-    index x2 G2 = Some v ->
-    stpd2 s true G1 (TSel (varF x1)) G2 (TSel (varF x2)) GH.
+Lemma stpd2_selxr: forall G1 G2 G t GH s,
+    join_env G1 G2 G ->
+    tm_closed 0 (length GH) (length G) t ->
+    stpd2 s true G1 (TSel t) G2 (TSel t) GH.
+Proof. intros. exists (S 0). eauto. Qed.
+Lemma stpd2_selx: forall G1 G2 v t1 t2 GH s,
+    peval G1 t1 v -> tm_closed 0 0 (length G1) t1 ->
+    peval G2 t2 v -> tm_closed 0 0 (length G2) t2 ->
+    stpd2 s true G1 (TSel t1) G2 (TSel t2) GH.
 Proof. intros. exists (S 0). eauto. Qed.
 Lemma stpd2_sela1: forall G1 G2 GX TX x T2 GH,
     index x GH = Some (GX, TX) ->
     closed 0 x (length GX) TX ->
     stpd2 false false GX TX G2 (TMem TBot T2) GH ->
-    stpd2 false true G1 (TSel (varH x)) G2 T2 GH.
+    stpd2 false true G1 (TSel (tvar (varH x))) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_sela2: forall G1 G2 GX T1 TX x GH,
     index x GH = Some (GX, TX) ->
     closed 0 x (length GX) TX ->
     stpd2 false false GX TX G1 (TMem T1 TTop) GH ->
-    stpd2 false true G1 T1 G2 (TSel (varH x)) GH.
+    stpd2 false true G1 T1 G2 (TSel (tvar (varH x))) GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_selax: forall G1 G2 v x GH s,
     index x GH = Some v ->
-    stpd2 s true G1 (TSel (varH x)) G2 (TSel (varH x)) GH.
+    stpd2 s true G1 (TSel (tvar (varH x))) G2 (TSel (tvar (varH x))) GH.
 Proof. intros. exists (S 0). eauto. Qed.
 Lemma stpd2_all: forall G1 G2 T1 T2 T3 T4 x GH s,
     stpd2 false false G2 T3 G1 T1 GH ->
     x = length GH ->
     closed 1 (length GH) (length G1) T2 ->
     closed 1 (length GH) (length G2) T4 ->
-    stpd2 false false G1 (open (varH x) T2) G2 (open (varH x) T4) ((G2, T3)::GH) ->
+    stpd2 false false G1 (open (tvar (varH x)) T2) G2 (open (tvar (varH x)) T4) ((G2, T3)::GH) ->
     stpd2 s true G1 (TAll T1 T2) G2 (TAll T3 T4) GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_wrapf: forall G1 G2 T1 T2 GH s,
