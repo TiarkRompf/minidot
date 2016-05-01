@@ -670,6 +670,11 @@ Qed.
 (* Proofs *)
 (* ############################################################ *)
 
+Ltac ev := repeat match goal with
+                    | H: exists _, _ |- _ => destruct H
+                    | H: _ /\  _ |- _ => destruct H
+           end.
+
 Fixpoint tsize (T: ty) :=
   match T with
     | TTop => 1
@@ -772,6 +777,77 @@ Proof.
   destruct Hp as [Hreq Hev]. destruct Hev as [n Hev].
   unfold peval. split; simpl; try omega.
   exists n. rewrite false_beq_nat; try omega. apply Hev.
+Qed.
+
+Lemma teval_app_cmp: forall n H t1 t2 v v0 l t t0,
+  teval n (v0 :: l) t0 = Some (Some v) ->
+  teval n H t1 = Some (Some (vabs l t t0)) ->
+  teval n H t2 = Some (Some v0) ->
+  teval (S n) H (tapp t1 t2) = Some (Some v).
+Proof.
+  intros n. induction n; intros. simpl in *. solve by inversion.
+  remember (S n) as n1. simpl. rewrite H1. rewrite H2. rewrite H0.
+  reflexivity.
+Qed.
+
+Lemma teval_app_dcmp: forall n H t1 t2 v,
+  teval n H (tapp t1 t2) = Some (Some v) ->
+  exists n0 v0 l t t0,
+  S n0 = n /\
+  teval n0 (v0 :: l) t0 = Some (Some v) /\
+  teval n0 H t1 = Some (Some (vabs l t t0)) /\
+  teval n0 H t2 = Some (Some v0).
+Proof.
+  intros n. induction n; intros. simpl in *. solve by inversion.
+  simpl in H0.
+
+  remember (teval n H t2) as v2.
+  destruct v2; simpl in H0; try solve [inversion H0].
+  destruct o; simpl in H0; try solve [inversion H0].
+  remember (teval n H t1) as v1.
+  destruct v1; simpl in H0; try solve [inversion H0].
+  destruct o; simpl in H0; try solve [inversion H0].
+  destruct v1; simpl in H0; try solve [inversion H0].
+
+  exists n. repeat eexists; eauto.
+Qed.
+
+Lemma teval_val_monotonic: forall n t H v n0,
+  teval n0 H t = Some (Some v) -> n0 <= n -> teval n H t = Some (Some v).
+Proof.
+  intros n. induction n; intros.
+  assert (n0 = 0) by omega. subst. simpl in H0. solve [inversion H0].
+  destruct n0. simpl in H0. solve [inversion H0].
+
+  destruct t; try solve [simpl; eauto].
+  eapply teval_app_dcmp in H0. repeat ev.
+
+  eapply teval_app_cmp.
+  eapply IHn. eassumption. omega.
+  eapply IHn. eassumption. omega.
+  eapply IHn. eassumption. omega.
+Qed.
+
+Lemma teval_val_unique: forall n1 n2 t H v1 v2,
+  teval n1 H t = Some (Some v1) -> teval n2 H t = Some (Some v2) -> v1 = v2.
+Proof.
+  intros n1 n2 t H v1 v2 Ev1 Ev2.
+  assert (n1 <= n2 \/ n2 <= n1) as M. {
+    destruct (le_or_lt n1 n2) as [A | A]; omega.
+  }
+  destruct M as [LE12 | LE21].
+  - apply (teval_val_monotonic n2) in Ev1; try omega.
+    rewrite Ev1 in Ev2. inversion Ev2. subst. reflexivity.
+  - apply (teval_val_monotonic n1) in Ev2; try omega.
+    rewrite Ev1 in Ev2. inversion Ev2. subst. reflexivity.
+Qed.
+
+Lemma peval_unique: forall H t v1 v2,
+  peval H t v1 -> peval H t v2 -> v1 = v2.
+Proof.
+  intros H t v1 v2 Hp1 Hp2. unfold peval in *.
+  destruct Hp1 as [Hr1 [n1 He1]]. destruct Hp2 as [Hr2 [n2 He2]].
+  eapply teval_val_unique; eauto.
 Qed.
 
 Lemma join_env_extend1 : forall {X:Type} G1 G2 G (v:X),
@@ -1018,11 +1094,6 @@ Proof.
   simpl. f_equal. inversion H; subst. inversion H5; subst; eauto.
   simpl. case_eq (le_lt_dec n x); intros E LE; eauto. omega.
 Qed.
-
-Ltac ev := repeat match goal with
-                    | H: exists _, _ |- _ => destruct H
-                    | H: _ /\  _ |- _ => destruct H
-           end.
 
 Ltac inv_mem := match goal with
                   | H: closed 0 (length ?GH) (length ?G) (TMem ?T1 ?T2) |-
