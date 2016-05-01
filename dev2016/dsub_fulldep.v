@@ -2743,15 +2743,21 @@ Proof.
     omega.
 Qed.
 
-Lemma closed_no_subst: forall T i k TX,
+Lemma closed_no_subst:
+  (forall T i k TX,
    closed i 0 k T ->
-   subst TX T = T.
+   subst TX T = T) /\
+  (forall t i k TX,
+   tm_closed i 0 k t ->
+   tm_subst TX t = t).
 Proof.
-  intros T. induction T; intros; inversion H; simpl; eauto;
-  try solve [rewrite (IHT i k TX); eauto; try omega];
-  try solve [rewrite (IHT1 i k TX); eauto; rewrite (IHT2 (S i) k TX); eauto; try omega];
-  try solve [rewrite (IHT1 i k TX); eauto; rewrite (IHT2 i k TX); eauto; try omega];
-  try omega.
+  apply tytm_mutind; intros; simpl;
+  try (inversion H; inversion H4; subst);
+  try (inversion H1; subst);
+  try (inversion H0; subst);
+  try (erewrite H; eauto);
+  try (erewrite H0; eauto);
+  eauto; try omega.
 Qed.
 
 Lemma closed_subst: forall i j k V T, closed i (j+1) k T -> closed 0 j k (TSel V) -> closed i j k (subst V T).
