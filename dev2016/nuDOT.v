@@ -855,12 +855,61 @@ Proof.
   - eapply closed_upgrade; eauto.
 Qed.
 
+Lemma closed_override_rcd_of_same_length: forall l i j k T1 T2,
+  rcd_length T1 = l ->
+  rcd_length T2 = l ->
+  closed i j k T1 ->
+  closed i j k T2 ->
+  closed i j k (override_rcd_of_same_length T1 T2).
+Proof.
+  intro. induction l; intros; destruct T1; destruct T2; simpl; try apply cl_top.
+  - simpl in H. omega.
+  - inversion H1. inversion H2. subst. econstructor.
+    + destruct T2_1; simpl; auto.
+    + apply IHl; auto.
+Qed.
+
+Lemma padding_preserves_closedness: forall n i j k R,
+  closed i j k R ->
+  closed i j k (prepend_tops R n).
+Proof.
+  intro n. induction n; intros.
+  - simpl. assumption.
+  - simpl. constructor. constructor. apply IHn. assumption.
+Qed.
+
+Lemma prepend_tops_length: forall n ds,
+  rcd_length (prepend_tops ds n) = n + rcd_length ds.
+Proof.
+  intro. induction n; intros.
+  - simpl. reflexivity.
+  - simpl. f_equal. apply IHn.
+Qed.
+
+Lemma rcd_length_max: forall R1 R2,
+  rcd_length (prepend_tops R1 (rcd_length R2 - rcd_length R1)) 
+  = max (rcd_length R1) (rcd_length R2).
+Proof.
+  intros.
+  destruct (le_lt_dec (rcd_length R2) (rcd_length R1)) as [? | ?].
+  - assert (rcd_length R2 - rcd_length R1 = 0) by omega. rewrite H. simpl.
+    symmetry. apply Nat.max_l_iff. assumption.
+  - rewrite Nat.max_r; [ idtac | omega ].
+    pose (H := (prepend_tops_length (rcd_length R2 - rcd_length R1) R1)).
+    rewrite H. omega.
+Qed.
+
 Lemma closed_override_rcd: forall i j k T1 T2,
   closed i j k T1 ->
   closed i j k T2 ->
   closed i j k (override_rcd T1 T2).
 Proof.
-Admitted.
+  intros. unfold override_rcd, pad_rcd. eapply closed_override_rcd_of_same_length.
+  - eapply rcd_length_max.
+  - rewrite Nat.max_comm. eapply rcd_length_max.
+  - apply padding_preserves_closedness. assumption.
+  - apply padding_preserves_closedness. assumption.
+Qed.
 
 Lemma all_closed: forall ni,
   (forall GH G1 T1 T2 n,
