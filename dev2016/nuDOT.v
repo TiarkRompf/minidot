@@ -3166,6 +3166,47 @@ Proof.
   Grab Existential Variables. apply 0.
 Qed.
 
+Lemma open_override_rcd_of_same_length: forall l T1 T2,
+  rcd_length T1 = l ->
+  rcd_length T2 = l ->
+  open 0 (TVar false 0) (override_rcd_of_same_length T1 T2)
+  = override_rcd_of_same_length (open 0 (TVar false 0) T1) (open 0 (TVar false 0) T2).
+Proof.
+  intro. induction l; intros; destruct T1; destruct T2; simpl;
+  try reflexivity; try destruct b; simpl; try reflexivity; try destruct i; simpl; try reflexivity.
+  - simpl in H. omega.
+  - f_equal.
+    + destruct T2_1; simpl; auto. try destruct b; simpl; try reflexivity; destruct i; reflexivity.
+    + simpl in *. apply IHl; omega.
+Qed.
+
+Lemma open_rcd_length: forall T,
+  rcd_length (open 0 (TVar false 0) T) = rcd_length T.
+Proof.
+  intros. induction T; simpl; try reflexivity.
+  - destruct i; simpl; try reflexivity.
+  - f_equal. assumption.
+Qed.
+
+Lemma distr_open_over_padding: forall n T,
+  prepend_tops (open 0 (TVar false 0) T) n = open 0 (TVar false 0) (prepend_tops T n).
+Proof.
+  intro n. induction n; intros.
+  - simpl. reflexivity.
+  - simpl. f_equal. apply IHn.
+Qed.
+
+Lemma open_override_rcd: forall T1 T2,
+  open 0 (TVar false 0) (override_rcd T1 T2)
+  = override_rcd (open 0 (TVar false 0) T1) (open 0 (TVar false 0) T2).
+Proof.
+  intros. unfold override_rcd, pad_rcd.
+  repeat rewrite open_rcd_length. repeat rewrite distr_open_over_padding.
+  eapply open_override_rcd_of_same_length.
+  - eapply rcd_length_max.
+  - rewrite Nat.max_comm. eapply rcd_length_max.
+Qed.
+
 Lemma subst_override_rcd_of_same_length: forall l x T1 T2,
   rcd_length T1 = l ->
   rcd_length T2 = l ->
@@ -3663,8 +3704,8 @@ Lemma stpd2_and11: forall GH G1 T1 T2 T,
 Proof. intros. eu. eauto. Qed.
 
 Lemma stpd2_and12: forall GH G1 T1 T2 T,
-  stpd2 GH G1 T1 T ->
-  closed (length GH) (length G1) 0 T2 ->
+  stpd2 GH G1 T2 T ->
+  closed (length GH) (length G1) 0 T1 ->
   stpd2 GH G1 (TAnd T1 T2) T.
 Proof. intros. eu. eauto. Qed.
 
@@ -3682,21 +3723,32 @@ Proof.
                 stp [TAnd (open 0 (TVar false 0) S1) (open 0 (TVar false 0) S2)] G1
                     (TAnd (open 0 (TVar false 0) S1) (open 0 (TVar false 0) S2))
                           (open 0 (TVar false 0) S1) n). {
-    admit. (*
     eapply stpd2_and11.
-    - eapply stpd2_refl. simpl.
-    *)
+    - eapply stpd2_refl. simpl. eapply closed_open.
+      * simpl. eapply closed_upgrade_gh. eassumption. omega.
+      * econstructor. omega.
+    - simpl. eapply closed_open.
+      * simpl. eapply closed_upgrade_gh. eassumption. omega.
+      * econstructor. omega.
   }
   assert (Sub2: exists n,
                 stp [TAnd (open 0 (TVar false 0) S1) (open 0 (TVar false 0) S2)] G1
                     (TAnd (open 0 (TVar false 0) S1) (open 0 (TVar false 0) S2))
                           (open 0 (TVar false 0) S2) n). {
-    admit.
+    eapply stpd2_and12.
+    - eapply stpd2_refl. simpl. eapply closed_open.
+      * simpl. eapply closed_upgrade_gh. eassumption. omega.
+      * econstructor. omega.
+    - simpl. eapply closed_open.
+      * simpl. eapply closed_upgrade_gh. eassumption. omega.
+      * econstructor. omega.
   }
   destruct Sub1 as [n11 Sub1].
   destruct Sub2 as [n12 Sub2].
   assert (open 0 (TVar false 0) (override_rcd T1 T2) = 
-          override_rcd (open 0 (TVar false 0) T1) (open 0 (TVar false 0) T2)) as E by admit.
+          override_rcd (open 0 (TVar false 0) T1) (open 0 (TVar false 0) T2)) as E. {
+    eapply open_override_rcd.
+  }
   rewrite E.
   assert (DH1: exists n,
     dms_has_type [TAnd (open 0 (TVar false 0) S1) (open 0 (TVar false 0) S2)] G1
