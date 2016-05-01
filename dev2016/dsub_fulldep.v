@@ -2715,42 +2715,32 @@ Proof.
   apply beq_nat_true in E. subst. omega.
 Qed.
 
-Lemma open_subst_commute: forall T2 V j k x i,
-closed i j k (TSel V) ->
-(open_rec i (varH x) (subst V T2)) =
-(subst V (open_rec i (varH (x+1)) T2)).
+Lemma open_subst_commute:
+(forall T2 V j k x i,
+closed i j k (TSel (tvar V)) ->
+(open_rec i (tvar (varH x)) (subst V T2)) =
+(subst V (open_rec i (tvar (varH (x+1))) T2))) /\
+(forall t2 V j k x i,
+closed i j k (TSel (tvar V)) ->
+(tm_open_rec i (tvar (varH x)) (tm_subst V t2)) =
+(tm_subst V (tm_open_rec i (tvar (varH (x+1))) t2))).
 Proof.
-  intros T2 TX j k. induction T2; intros; eauto; try destruct v; eauto.
-  - simpl. rewrite IHT2_1; eauto. rewrite IHT2_2; eauto.
-    eapply closed_upgrade. eauto. eauto.
-  - simpl.
-    case_eq (beq_nat i 0); intros E.
-    apply beq_nat_true in E. subst.
-    case_eq (beq_nat i0 0); intros E0.
-    apply beq_nat_true in E0. subst.
-    destruct TX; eauto.
-    simpl. destruct i; eauto.
-    inversion H; subst. omega.
-    simpl. reflexivity.
-    case_eq (beq_nat i0 0); intros E0.
-    apply beq_nat_true in E0. subst.
-    simpl. destruct TX; eauto.
-    case_eq (beq_nat i i0); intros E1.
-    apply beq_nat_true in E1. subst.
-    inversion H; subst. omega.
-    reflexivity.
-    simpl. reflexivity.
-  - simpl.
-    case_eq (beq_nat i i0); intros E.
-    apply beq_nat_true in E; subst.
-    simpl.
-    assert (x+1 <> 0) as A by omega.
-    eapply beq_nat_false_iff in A.
-    rewrite A.
-    assert (x = x + 1 - 1) as B. unfold id. omega.
-    rewrite <- B. reflexivity.
-    simpl. reflexivity.
-  - simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.
+  apply tytm_mutind; intros; eauto; simpl; try (destruct v); simpl;
+  try (erewrite H; eauto); try (erewrite H0; eauto);
+  eauto using closed_upgrade.
+
+  - case_eq (beq_nat i0 0); intros E; eauto; destruct V; eauto.
+    case_eq (beq_nat i i1); intros E1; eauto.
+    apply beq_nat_true in E. apply beq_nat_true in E1. subst.
+    inversion H; subst. inversion H4; subst. inversion H5; subst.
+    omega.
+
+  - case_eq (beq_nat i i0); intros E; eauto. simpl.
+    rewrite false_beq_nat. f_equal. f_equal.
+    rewrite <- pred_of_minus.
+    assert (x + 1 = S x) as A by omega. rewrite A.
+    rewrite <- pred_Sn. reflexivity.
+    omega.
 Qed.
 
 Lemma closed_no_subst: forall T i k TX,
