@@ -406,9 +406,11 @@ Inductive stp2: bool (* whether selections are precise *) ->
     closed 0 x (length GX) TX ->
     stp2 false false GX TX G1 (TMem T1 TTop) GH n1 ->
     stp2 false true G1 T1 G2 (TSel (tvar (varH x))) GH (S n1)
+(* covered by selxr
 | stp2_selax: forall G1 G2 v x GH s n,
     index x GH = Some v ->
     stp2 s true G1 (TSel (tvar (varH x))) G2 (TSel (tvar (varH x))) GH (S n)
+*)
 
 | stp2_all: forall G1 G2 T1 T2 T3 T4 x GH s n1 n2,
     stp2 false false G2 T3 G1 T1 GH n1 ->
@@ -1581,12 +1583,14 @@ Proof.
         eapply closed_splice_idem. eassumption. omega.
       }
       rewrite <- A. eapply IHstp2. eauto.
+(*
   - Case "selax".
     case_eq (le_lt_dec (length GH0) x); intros E LE.
     + destruct v. eapply stp2_selax.
       eapply index_spliceat_hi. apply H. eauto.
     + destruct v. eapply stp2_selax.
       eapply index_spliceat_lo. apply H. eauto.
+*)
   - Case "all".
     apply stp2_all with (x:= length GH1 + S (length GH0)).
     eapply IHstp2_1. reflexivity.
@@ -1885,6 +1889,7 @@ Proof.
     eapply closed_inc_mult; try eassumption; try omega.
     apply venv_ext__ge_length. assumption.
     apply IHstp2; assumption.
+(*
   - Case "selax".
     destruct v as [GX TX].
     assert (exists GX', index x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
@@ -1893,6 +1898,7 @@ Proof.
     inversion A as [GX' [H' HX]].
     apply stp2_selax with (v:=(GX',TX)).
     assumption.
+*)
   - Case "all".
     eapply stp2_all with (x:=length GH').
     apply IHstp2_1; assumption.
@@ -2234,10 +2240,12 @@ Lemma stpd2_sela2: forall G1 G2 GX T1 TX x GH,
     stpd2 false false GX TX G1 (TMem T1 TTop) GH ->
     stpd2 false true G1 T1 G2 (TSel (tvar (varH x))) GH.
 Proof. intros. repeat eu. eauto. Qed.
+(*
 Lemma stpd2_selax: forall G1 G2 v x GH s,
     index x GH = Some v ->
     stpd2 s true G1 (TSel (tvar (varH x))) G2 (TSel (tvar (varH x))) GH.
 Proof. intros. exists (S 0). eauto. Qed.
+*)
 Lemma stpd2_all: forall G1 G2 T1 T2 T3 T4 x GH s,
     stpd2 false false G2 T3 G1 T1 GH ->
     x = length GH ->
@@ -2347,6 +2355,7 @@ Proof.
         }
         eapply stpd2_sela2. eapply A. assumption.
         eapply IHn; try eassumption. omega.
+(*
     + SCase "selax".
       unfold id,venv,aenv in *.
       case_eq (beq_nat x (length GH0)); intros E.
@@ -2366,6 +2375,7 @@ Proof.
           eapply index_same. apply E. eassumption.
         }
         eapply stpd2_selax. eapply A.
+*)
     + SCase "all".
       assert (length GH = length GH') as A. {
         subst. clear.
@@ -2406,6 +2416,39 @@ Ltac index_contra :=
     | H: index ?N [] = Some ?V |- _ => simpl in H; inversion H
   end.
 
+Ltac peval_contra :=
+  match goal with
+    | H: peval _ (tvar (varH _)) _ |- _ =>
+      destruct H as [? [_n _Ev]]; destruct _n; simpl in _Ev; solve [inversion _Ev]
+  end.
+
+Lemma symmetry_join_env: forall {X:Type} (G1: list X) G2 G,
+  join_env G1 G2 G ->
+  join_env G2 G1 G.
+Proof.
+  intros. unfold join_env in *. destruct H as [G1' [G2' [Eq1 Eq2]]].
+  exists G2'. exists G1'. eauto.
+Qed.
+
+Lemma tm_closed_join_env: forall {X:Type} (G1: list X) G2 G t i j,
+  join_env G1 G2 G ->
+  tm_closed 0 0 (length G1) t ->
+  tm_closed i j (length G) t ->
+  tm_closed 0 0 (length G2) t.
+Proof.
+  admit.
+Qed.
+
+Lemma peval_join_env: forall G1 G2 G t v i j,
+  join_env G1 G2 G ->
+  tm_closed 0 0 (length G1) t ->
+  tm_closed i j (length G) t ->
+  peval G1 t v ->
+  tm_closed 0 0 (length G2) t /\ peval G2 t v.
+Proof.
+  admit.
+Qed.
+
 Lemma stpd2_untrans_aux: forall n, forall m G1 G2 G3 T1 T2 T3 GH n1,
   stp2 true m G1 T1 G2 T2 GH n1 -> n1 < n ->
   stpd2 true true G2 T2 G3 T3 GH ->
@@ -2424,22 +2467,39 @@ Proof.
   try solve [eapply stpd2_mem; [eapply IHn; eauto; try omega |
                                 eapply stpd2_trans; eauto]];
   try solve [eapply stpd2_sela1; eauto; eapply stpd2_wrapf; eapply IHn; eauto; try omega];
-  try solve [index_contra].
+  try solve [index_contra];
+  try solve [peval_contra].
   - Case "sel2 - sel1".
     assert (vty GX TX = vty GX0 TX0) as Eqv by solve [eapply peval_unique; eauto].
     inversion Eqv. subst.
     eapply IHn. eauto. omega. eauto.
+  - Case "sel2 - selxr".
+    eapply stpd2_strong_sel2; eauto.
+    eapply peval_join_env; eauto.
+    eapply tm_closed_join_env; eauto.
   - Case "sel2 - selx".
+    assert (vty GX TX = v) as Eqv by solve [eapply peval_unique; eauto]. subst.
+    eapply stpd2_strong_sel2; eauto.
+  - Case "selxr - sel1".
+    eapply stpd2_strong_sel1; eauto.
+    eapply peval_join_env; eauto using symmetry_join_env.
+    eapply tm_closed_join_env; eauto using symmetry_join_env.
+  - Case "selxr - selxr".
     admit.
-    (* eapply stpd2_strong_sel2; eauto. *)
-  - Case "selx - sel1".
-    admit.
-    (* eapply stpd2_strong_sel1; eauto. *)
-  - Case "selx - selx".
-    rewrite H5 in H3. inversion H3. subst.
+  - Case "selxr - selx".
     eapply stpd2_selx; eauto.
-  - Case "selax - selax".
-    eapply stpd2_selax; eauto.
+    eapply peval_join_env; eauto using symmetry_join_env.
+    eapply tm_closed_join_env; eauto using symmetry_join_env.
+  - Case "selx - sel1".
+    assert (vty GX TX = v) as Eqv by solve [eapply peval_unique; eauto]. subst.
+    eapply stpd2_strong_sel1; eauto.
+  - Case "selx - selxr".
+    eapply stpd2_selx; eauto.
+    eapply peval_join_env; eauto.
+    eapply tm_closed_join_env; eauto.
+  - Case "selx - selx".
+    assert (v = v0) as Eqv by solve [eapply peval_unique; eauto]. subst.
+    eapply stpd2_selx; eauto.
   - Case "all - all".
     eapply stpd2_all; eauto.
     eapply stpd2_trans; eauto.
