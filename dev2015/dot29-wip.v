@@ -421,8 +421,9 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env (tvar x) (TBind T1) ->
            stp env [] (open (varF (tvar x)) T1) (open (varF (tvar x)) T1) n1 ->
            has_type env (tvar x) (open (varF (tvar x)) T1)
-| t_sel_unpack: forall x l env T1 n1,
+| t_sel_unpack: forall x l env T1 n1 n2,
            has_type env (tsel x l) (TBind T1) ->
+           peval1 (tsel x l) env (TBind T1) n2 -> (* make sure it's actually a path! *)
            stp env [] (open (varF (tsel x l)) T1) (open (varF (tsel x l)) T1) n1 ->
            has_type env (tsel x l) (open (varF (tsel x l)) T1)
 | t_obj: forall env f ds T TX n1 n2,
@@ -1229,13 +1230,14 @@ Proof.
   eapply t_sub.
   eapply t_sel_unpack.
   eapply t_sel. eapply t_var. compute. reflexivity. crush2. crush2.
-  crush2. crush2. eauto. 
+  crush2. crush2. crush2. eauto. 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. 
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. 
 Qed.
 
 (* define polymorphic identity function *)
@@ -8454,6 +8456,48 @@ apply tvar. apply 0. apply 0.
 Qed.
 
 
+Lemma peval_teval_safe: forall n, forall H1 G1 t T n1 ne v,
+  wf_env H1 G1 ->
+  peval1 t G1 T n1 -> n1 < n ->
+  teval ne H1 t = Some (Some v) ->
+  exists nv, peval t H1 v /\ val_type H1 v T nv.
+Proof.
+  intros n. induction n; intros. omega. destruct ne. inversion H3. 
+  inversion H0; subst.
+  - simpl in H3. inversion H3. 
+    eapply (index_safe_ex _ _ _ _ H) in H4.
+    destruct H4. destruct H4. destruct H4. eexists. rewrite H6 in H4. inversion H4.
+    subst v. split. eapply index_to_peval; eauto. eapply H5. 
+  - assert (exists vf, teval ne H1 f = Some (Some vf)) as E.
+    simpl in H3. destruct (teval ne H1 f). destruct o. eauto. inversion H3. inversion H3.
+    ev. 
+    assert (exists nv, peval f H1 x /\ val_type H1 x (TFld l T) nv).
+    eapply IHn. eauto. eauto. omega. eauto.
+    ev. (* peval_safe_sel *)
+    eapply invert_obj_fld_sel in H8.
+    destruct H8 as [Hf [ds [y [vy [ny [Ef [Ids [Iy Hvy]]]]]]]].
+    assert (index y ((fresh Hf,x)::Hf) = Some v) as Iy'. {
+      simpl in H3. rewrite H6 in H3. rewrite Ef in H3. rewrite Ids in H3.
+      destruct ne. inversion H3. unfold teval in H3. subst x. inversion H3. eauto. 
+    }
+    assert (index y ((fresh Hf,x)::Hf) = Some vy) as Iy''. {
+      eapply index_extend. eauto. eauto. 
+    }                                                         
+    assert (vy = v). rewrite Iy' in Iy''. inversion Iy''. eauto.
+    subst vy. unfold peval in H7. destruct H7 as [FA [nf IHF]].
+    assert (peval (tsel f l) H1 v) as RA. {
+      unfold peval. split. simpl. eauto. exists (S nf). intros nx LE.
+      destruct nx. omega. simpl. rewrite IHF. subst x.
+      destruct nx. omega. simpl. 
+      rewrite Ids. rewrite <- Iy'. simpl. reflexivity.
+      omega.
+    }
+    eexists. eauto.     
+  - eapply IHn in H4. ev. eexists. split. eauto. eapply valtp_widen. eauto.
+    eapply sstpd2_untrans. eapply stpd2_to_sstpd2. eapply stp_to_stp2.
+    eauto. eauto. eauto. eauto. omega. eauto. 
+Qed.
+
 (* if not a timeout, then result not stuck and well-typed *)
 
 Theorem full_safety : forall n e tenv venv res T,
@@ -8525,8 +8569,23 @@ Proof.
   - Case "Sel".
     rename e into e1.
     remember (tsel e1 i) as e. induction H0; inversion Heqe; subst.
-    + remember (teval n venv0 e1) as tf.
+    + SCase "unpack".
+      assert (res_type venv0 res (TBind T1)). eapply IHhas_type; eauto.
+      inversion H5. subst.
+      destruct n0. inversion H6. 
+      assert (sstpd2 true venv0 (TBind T1) venv0 (TBind T1) []). eapply valtp_reg. eauto. repeat eu.
 
+      eapply invert_bind in H6. destruct H6. destruct H6. destruct H8. destruct H8. destruct H8. eapply valtp_widen in H8.
+      eapply not_stuck. eapply H8. eapply H9. intros ni no. eapply stp2_substitute_aux. eauto.
+
+      (* analogue of eapply index_to_peval, but we use our peval1 evidence *)
+      assert (exists nv, peval (tsel e1 i) venv0 v /\ val_type venv0 v (TBind T1) nv).
+      eapply peval_teval_safe. eauto. eauto. eauto. eauto. 
+      ev. 
+      eauto. 
+      eauto.
+      
+    + remember (teval n venv0 e1) as tf.
       destruct tf as [rf|]; try solve by inversion.
       assert (res_type venv0 rf (TFld i T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
       inversion HRF as [? vf].
