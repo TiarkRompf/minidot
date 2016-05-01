@@ -3423,24 +3423,6 @@ Proof. intros. inversion H; eauto. Qed.
 
 Lemma wrap_hyp: forall (P: Prop), P -> (True /\ P). Proof. intros. auto. Qed.
 
-Lemma override_dcons: forall d1 ds1 d2 ds2,
-  dms_length ds1 = dms_length ds2 ->
-  override_dms (dcons d1 ds1) (dcons d2 ds2) = dcons (override_dm d1 d2) (override_dms ds1 ds2).
-Proof.
-  intros. unfold override_dms. rewrite pad_dms_same_length. rewrite pad_dms_same_length.
-  simpl. rewrite pad_dms_same_length. rewrite pad_dms_same_length. reflexivity.
-  auto. auto. symmetry. simpl. f_equal. assumption. simpl. f_equal. assumption.
-Qed.
-
-Lemma override_rcdcons: forall T1 R1 T2 R2,
-  rcd_length R1 = rcd_length R2 ->
-  override_rcd (TAnd T1 R1) (TAnd T2 R2) = TAnd (override_rcd_entry T1 T2) (override_rcd R1 R2).
-Proof.
-  intros. unfold override_rcd. rewrite pad_rcd_same_length. rewrite pad_rcd_same_length.
-  simpl. rewrite pad_rcd_same_length. rewrite pad_rcd_same_length. reflexivity.
-  auto. auto. symmetry. simpl. f_equal. assumption. simpl. f_equal. assumption.
-Qed.
-
 Lemma dms_hastp_to_length_eq: forall GH G1 ds T n,
   dms_has_type GH G1 ds T n ->
   dms_length ds = rcd_length T.
@@ -3451,26 +3433,23 @@ Qed.
 Lemma override_dms_length: forall l ds10 ds20,
   dms_length ds10 = l ->
   dms_length ds20 = l ->
-  dms_length (override_dms ds10 ds20) = dms_length ds20.
+  dms_length (override_dms_of_same_length ds10 ds20) = dms_length ds20.
 Proof.
   intro. induction l; intros; unfold override_dms.
   - apply dms_length_zero_inv in H. apply dms_length_zero_inv in H0. subst. simpl. reflexivity. 
   - apply dms_length_S_inv in H. apply dms_length_S_inv in H0. ev. subst.
-    rewrite pad_dms_same_length. rewrite pad_dms_same_length. simpl. f_equal.
-    specialize (IHl x2 x0 eq_refl H1).
-    unfold override_dms in IHl.
-    rewrite pad_dms_same_length in IHl. rewrite pad_dms_same_length in IHl. exact IHl. 
-    auto. auto. simpl. omega. simpl. omega.
+    simpl. f_equal.
+    apply (IHl x2 x0 eq_refl H1).
 Qed.
 
-Lemma mix_dms_hastp00: forall l ds1 ds2,
+Lemma mix_dms_hastp_of_same_length: forall l ds1 ds2,
   dms_length ds1 = l ->
   dms_length ds2 = l ->
   forall GH G1 T1 T2 n1 n2,
   dms_has_type GH G1 ds1 T1 n1 ->
   dms_has_type GH G1 ds2 T2 n2 ->
   exists n3,
-    dms_has_type GH G1 (override_dms ds1 ds2) (override_rcd T1 T2) n3.
+    dms_has_type GH G1 (override_dms_of_same_length ds1 ds2) (override_rcd_of_same_length T1 T2) n3.
 Proof.
   intro l. induction l.
   - intros. apply dms_length_zero_inv in H. apply dms_length_zero_inv in H0. subst.
@@ -3480,16 +3459,9 @@ Proof.
     apply dms_length_S_inv in H0. destruct H0 as [d20 [ds20 [? Hl2]]].
     apply dms_length_S_inv in H.  destruct H  as [d10 [ds10 [? Hl1]]].
     subst ds1. subst ds2.
-    apply wrap_hyp in Hl1. apply wrap_hyp in Hl2.
-    rewrite override_dcons; try omega.
+    apply wrap_hyp in Hl1. apply wrap_hyp in Hl2. simpl.
     inversion H1; inversion H2; subst; apply proj2 in Hl1; apply proj2 in Hl2;
-    (edestruct IHl as [? IH]; [eapply Hl1 | eapply Hl2 | eassumption | eassumption | idtac]);
-    (rewrite override_rcdcons;
-     [ eexists
-     | repeat match goal with
-        | H: dms_has_type _ _ _ _ _ |- _ => apply dms_hastp_to_length_eq in H
-        end; omega
-     ]).
+    (edestruct IHl as [? IH]; [eapply Hl1 | eapply Hl2 | eassumption | eassumption | idtac]); eexists.
     + econstructor. eassumption.
     + econstructor.
       * eassumption.
@@ -3545,13 +3517,59 @@ Proof.
       * simpl. rewrite (override_dms_length l); auto.
 Qed.
 
+Lemma padding_preserves_typing: forall m GH G1 ds T n,
+  dms_has_type GH G1 ds T n ->
+  dms_has_type GH G1 (prepend_nones ds m) (prepend_tops T m) (m + n).
+Proof.
+  intro. induction m; intros.
+  - simpl. assumption.
+  - simpl. apply D_None. apply IHm. assumption.
+Qed.
+
+Lemma prepend_nones_length: forall n ds,
+  dms_length (prepend_nones ds n) = n + dms_length ds.
+Proof.
+  intro. induction n; intros.
+  - simpl. reflexivity.
+  - simpl. f_equal. apply IHn.
+Qed.
+
+Lemma dms_length_max: forall ds1 ds2,
+  dms_length (prepend_nones ds1 (dms_length ds2 - dms_length ds1)) 
+  = max (dms_length ds1) (dms_length ds2).
+Proof.
+  intros.
+  destruct (le_lt_dec (dms_length ds2) (dms_length ds1)) as [? | ?].
+  - assert (dms_length ds2 - dms_length ds1 = 0) by omega. rewrite H. simpl.
+    symmetry. apply Nat.max_l_iff. assumption.
+  - rewrite Nat.max_r; [ idtac | omega ].
+    pose (H := (prepend_nones_length (dms_length ds2 - dms_length ds1) ds1)).
+    rewrite H. omega.
+Qed.
+
 Lemma mix_dms_hastp0: forall GH G1 T1 T2 ds1 ds2 n1 n2,
   dms_has_type GH G1 ds1 T1 n1 ->
   dms_has_type GH G1 ds2 T2 n2 ->
   exists n3,
     dms_has_type GH G1 (override_dms ds1 ds2) (override_rcd T1 T2) n3.
 Proof.
-Admitted.
+  intros.
+  unfold override_dms, override_rcd. unfold pad_dms, pad_rcd.
+  remember (dms_length ds1) as l1. remember (dms_length ds2) as l2.
+  rewrite (dms_hastp_to_length_eq _ _ _ _ _ H) in Heql1. rewrite <- Heql1.
+  rewrite (dms_hastp_to_length_eq _ _ _ _ _ H0) in Heql2. rewrite <- Heql2.
+  eapply (mix_dms_hastp_of_same_length (max (dms_length ds1) (dms_length ds2))).
+  + rewrite <- (dms_hastp_to_length_eq _ _ _ _ _ H) in Heql1.
+    rewrite <- (dms_hastp_to_length_eq _ _ _ _ _ H0) in Heql2.
+    subst.
+    apply dms_length_max.
+  + rewrite <- (dms_hastp_to_length_eq _ _ _ _ _ H) in Heql1.
+    rewrite <- (dms_hastp_to_length_eq _ _ _ _ _ H0) in Heql2.
+    subst.
+    rewrite Nat.max_comm. apply dms_length_max.
+  + apply padding_preserves_typing. eassumption.
+  + apply padding_preserves_typing. eassumption.
+Qed.
 
 Lemma stpd2_and11: forall GH G1 T1 T2 T,
   stpd2 GH G1 T1 T ->
