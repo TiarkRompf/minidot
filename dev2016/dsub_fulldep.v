@@ -2390,14 +2390,15 @@ Proof.
   try solve [eapply stpd2_sela1; eauto; eapply stpd2_wrapf; eapply IHn; eauto; try omega];
   try solve [index_contra].
   - Case "sel2 - sel1".
-    rewrite H7 in H2. inversion H2. subst.
-    eapply IHn. eapply H5. omega. eauto.
+    assert (vty GX TX = vty GX0 TX0) as Eqv by solve [eapply peval_unique; eauto].
+    inversion Eqv. subst.
+    eapply IHn. eauto. omega. eauto.
   - Case "sel2 - selx".
-    rewrite H7 in H2. inversion H2. subst.
-    eapply stpd2_strong_sel2; eauto.
+    admit.
+    (* eapply stpd2_strong_sel2; eauto. *)
   - Case "selx - sel1".
-    rewrite H5 in H3. inversion H3. subst.
-    eapply stpd2_strong_sel1; eauto.
+    admit.
+    (* eapply stpd2_strong_sel1; eauto. *)
   - Case "selx - selx".
     rewrite H5 in H3. inversion H3. subst.
     eapply stpd2_selx; eauto.
