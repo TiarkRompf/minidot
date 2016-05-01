@@ -204,6 +204,17 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     has_type G1 GH t TX ->
     stp G1 GH TX (TMem T1 TTop) ->
     stp G1 GH T1 (TSel t)
+(* TODO: generalize abstract selection to full terms *)
+| stp_sela1: forall G1 GH TX T2 x,
+    index x GH = Some TX ->
+    closed 0 x (length G1) TX ->
+    stp G1 GH TX (TMem TBot T2) ->
+    stp G1 GH (TSel (tvar (varH x))) T2
+| stp_sela2: forall G1 GH TX T1 x,
+    index x GH = Some TX ->
+    closed 0 x (length G1) TX ->
+    stp G1 GH TX (TMem T1 TTop) ->
+    stp G1 GH T1 (TSel (tvar (varH x)))
 | stp_selx: forall G1 GH t,
     tm_closed 0 (length GH) (length G1) t ->
     stp G1 GH (TSel t) (TSel t)
@@ -221,10 +232,12 @@ with has_type : tenv -> tenv -> tm -> ty -> Prop :=
            index x G1 = Some T1 ->
            closed 0 0 (length G1) T1 ->
            has_type G1 GH (tvar (varF x)) T1
+(* TODO
 | t_varH: forall x G1 GH T1,
            index x GH = Some T1 ->
            closed 0 x (length G1) T1 ->
            has_type G1 GH (tvar (varH x)) T1
+*)
 | t_typ: forall G1 GH T1,
            closed 0 (length GH) (length G1) T1 ->
            has_type G1 GH (ttyp T1) (TMem T1 T1)
@@ -651,6 +664,7 @@ Proof.
   eapply t_abs; crush.
 Qed.
 
+(* TODO: enable once abstract type selection generalized to full terms
 Example ex7_closure_conversion_sub:
   stp [(TAll (TMem TBot TTop) (TAll (TMem TBot (TSel (tvar (varB 0)))) (TMem TTop TTop)))] []
       (TAll (TMem TBot TTop) TTop)
@@ -665,6 +679,7 @@ Proof.
   eapply t_sub. eapply t_typ; crush. eapply stp_mem. crush. crush.
   unfold open. simpl. reflexivity. crush. crush.
 Qed.
+*)
 
 (* ############################################################ *)
 (* Proofs *)
@@ -1110,14 +1125,9 @@ Lemma tp_closed  :
   (forall G GH T1 T2, stp G GH T1 T2 -> closed 0 (length GH) (length G) T1 /\ closed 0 (length GH) (length G) T2) /\
   (forall G GH t T, has_type G GH t T -> tm_closed 0 (length GH) (length G) t /\ closed 0 (length GH) (length G) T).
 Proof.
-  apply tp_mutind; intros; eauto; try solve [repeat ev; split; try inv_mem; eauto using index_max].
-  (* TODO: automate *)
-  - split. econstructor. econstructor. eauto using index_max. eapply (proj1 closed_inc_mult); eauto. omega.
-  - split. econstructor. econstructor. eauto using index_max. eapply (proj1 closed_inc_mult); eauto.
-    eapply index_max in e. omega.
-  - split; econstructor; eauto.
-  - destruct H. destruct H0. split. econstructor; eauto. eauto.
-  - destruct H. split. econstructor; eauto. inversion c0; subst. eauto. eauto.
+  apply tp_mutind; intros; eauto; repeat ev; split;
+  try solve [try inv_mem; eauto using index_max];
+  try solve [repeat econstructor; eauto using index_max; eapply (proj1 closed_inc_mult); eauto; omega].
 Qed.
 
 Lemma stp_closed : forall G GH T1 T2,
@@ -1406,6 +1416,30 @@ Proof.
     eapply stp_sel1. apply H. assumption. simpl in H0. apply H0. assumption.
   - Case "sel2".
     eapply stp_sel2. apply H. assumption. simpl in H0. apply H0. assumption.
+  - Case "sela1".
+    case_eq (le_lt_dec (length G0) x); intros E LE.
+    + eapply stp_sela1.
+      apply index_splice_hi. subst. eauto. eauto.
+      assert (S x = x +1) as A by omega.
+      rewrite <- A. eapply (proj1 closed_splice). eauto.
+      eapply H. eauto.
+    + eapply stp_sela1. eapply index_splice_lo. subst. eauto. eauto. eauto.
+      assert (splice (length G0) TX=TX) as A. {
+        eapply closed_splice_idem. eassumption. omega.
+      }
+      rewrite <- A. eapply H. eauto.
+  - Case "sela2".
+    case_eq (le_lt_dec (length G0) x); intros E LE.
+    + eapply stp_sela2.
+      apply index_splice_hi. subst. eauto. eauto.
+      assert (S x = x +1) as A by omega.
+      rewrite <- A. eapply closed_splice. auto.
+      eapply H. eauto.
+    + eapply stp_sela2. eapply index_splice_lo. subst. eauto. eauto. eauto.
+      assert (splice (length G0) TX=TX) as A. {
+        eapply closed_splice_idem. eassumption. omega.
+      }
+      rewrite <- A. eapply H. eauto.
   - Case "selx".
     eapply stp_selx.
     rewrite map_splice_length_inc.
@@ -1421,6 +1455,7 @@ Proof.
     repeat rewrite (proj1 (splice_open_permute G0)) with (j:=0). subst.
     rewrite app_length in H0. simpl in H0. eapply H0. eauto.
   - erewrite (proj1 closed_splice_idem); eauto. omega.
+(*
   - case_eq (le_lt_dec (length G0) x); intros E LE; subst.
     + eapply t_varH. apply index_splice_hi; eauto.
       assert (S x = x + 1) as A by omega. rewrite <- A.
@@ -1428,6 +1463,7 @@ Proof.
     + eapply t_varH. apply index_splice_lo; eauto.
       erewrite (proj1 closed_splice_idem); eauto. omega.
       erewrite (proj1 closed_splice_idem); eauto. omega.
+*)
   - eapply t_typ.
     simpl. rewrite map_splice_length_inc. apply closed_splice. subst. assumption.
   - eapply t_app; eauto. subst.
