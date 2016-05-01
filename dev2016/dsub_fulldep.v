@@ -2190,6 +2190,8 @@ Proof.
       eapply IHn; try eassumption. omega.
     + SCase "sel2". eapply stpd2_sel2; try eassumption.
       eapply IHn; try eassumption. omega.
+    + SCase "selxr". eapply stpd2_selxr. eassumption.
+      subst. rewrite app_length. simpl. rewrite app_length in H1. simpl in H1. apply H1.
     + SCase "sela1".
       unfold id,venv,aenv in *.
       case_eq (beq_nat x (length GH0)); intros E.
