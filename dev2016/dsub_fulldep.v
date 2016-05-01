@@ -2564,25 +2564,27 @@ Proof.
     eapply stpd2_strong_untrans. eapply IHn; eauto. omega.
     eapply IHn; eauto. omega.
   - Case "sel1".
-    eapply IHn in H4. eapply stpd2_strong_untrans in H4.
-    eapply valtp_widen with (2:=H4) in H2.
-    remember H2 as Hv. clear HeqHv.
-    eapply invert_typ in H2. ev. subst.
-    assert (closed 0 (length ([]:aenv)) (length x0) x1). eapply stpd2_closed1; eauto.
+    eapply IHn in H5. eapply stpd2_strong_untrans in H5.
+    eapply valtp_widen with (2:=H5) in H3.
+    remember H3 as Hv. clear HeqHv.
+    eapply invert_typ in H3. ev. subst.
+    assert (closed 0 (length ([]:aenv)) (length x) x0). eapply stpd2_closed1; eauto.
     eapply stpd2_strong_sel1. eauto. eauto.
     inversion Hv; subst.
     eapply v_ty. eassumption. eapply stp2_refl. eauto. eauto.
     eassumption. omega.
   - Case "sel2".
-    eapply IHn in H4. eapply stpd2_strong_untrans in H4.
-    eapply valtp_widen with (2:=H4) in H2.
-    remember H2 as Hv. clear HeqHv.
-    eapply invert_typ in H2. ev. subst.
-    assert (closed 0 (length ([]:aenv)) (length x0) x1). eapply stpd2_closed1; eauto.
+    eapply IHn in H5. eapply stpd2_strong_untrans in H5.
+    eapply valtp_widen with (2:=H5) in H3.
+    remember H3 as Hv. clear HeqHv.
+    eapply invert_typ in H3. ev. subst.
+    assert (closed 0 (length ([]:aenv)) (length x) x0). eapply stpd2_closed1; eauto.
     eapply stpd2_strong_sel2. eauto. eauto.
     inversion Hv; subst.
     eapply v_ty. eassumption. eapply stp2_refl. eauto. eauto.
     eassumption. omega.
+  - Case "selxr".
+    eapply stpd2_selxr; eauto.
   - Case "selx".
     eapply stpd2_selx; eauto.
   - Case "all".
