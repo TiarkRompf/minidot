@@ -2696,19 +2696,23 @@ Qed.
 Hint Resolve beq_nat_true_iff.
 Hint Resolve beq_nat_false_iff.
 
-Lemma closed_no_open: forall T x i j k,
-  closed i j k T ->
-  T = open_rec i x T.
+Lemma closed_no_open:
+  (forall T x i j k,
+   closed i j k T ->
+   T = open_rec i x T) /\
+  (forall t x i j k,
+   tm_closed i j k t ->
+   t = tm_open_rec i x t).
 Proof.
-  intros. induction H; intros; eauto;
-  try solve [compute; compute in IHclosed; rewrite <-IHclosed; auto];
-  try solve [compute; compute in IHclosed1; compute in IHclosed2;
-             rewrite <-IHclosed1; rewrite <-IHclosed2; auto].
-
-  Case "TVarB".
-    unfold open_rec. assert (i <> x0). omega.
-    apply beq_nat_false_iff in H0.
-    rewrite H0. auto.
+  apply tytm_mutind; intros; simpl;
+  try (inversion H; inversion H4; subst);
+  try (inversion H1; subst);
+  try (inversion H0; subst);
+  try (erewrite <- H; eauto);
+  try (erewrite <- H0; eauto);
+  eauto.
+  case_eq (beq_nat i x0); intros E; eauto.
+  apply beq_nat_true in E. subst. omega.
 Qed.
 
 Lemma open_subst_commute: forall T2 V j k x i,
