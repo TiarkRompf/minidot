@@ -3096,7 +3096,7 @@ Proof.
   eapply closed_subst; eauto. econstructor. eauto using index_max.
   unfold compat. left. repeat eexists; eauto.
   unfold compat. left. repeat eexists; eauto.
-  erewrite subst_open_commute; eauto. econstructor. eauto.
+  erewrite subst_open_commute; eauto. 
 
   destruct H. destruct H. inversion H. repeat eexists. eauto. subst.
   eapply closed_upgrade_free. eauto. omega. unfold compat. eauto.
@@ -3121,7 +3121,7 @@ Proof.
   intros. inversion H;[|destruct H2;[|destruct H2]].
   - destruct H2 as [x1 [v [Hindex [HeqV [HGX [Hv Heq]]]]]]. subst.
     apply closed_subst. eassumption.
-    apply index_max in Hindex. apply cl_sel. omega.
+    apply index_max in Hindex. apply clv_f. omega.
   - destruct H2. subst.
     eapply closed_upgrade_free. eapply H2. omega.
   - subst.
