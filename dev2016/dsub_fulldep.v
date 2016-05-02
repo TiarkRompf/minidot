@@ -2951,7 +2951,7 @@ Proof.
   - destruct H2. destruct H2. destruct H2. destruct H3. destruct H4. destruct H4.
     destruct H5. rewrite H5.
     eapply closed_subst. eauto.
-    eapply cl_sel. apply index_max in H2. omega.
+    eapply clv_f. apply index_max in H2. omega.
   - destruct H2. rewrite H3.
     eapply closed_upgrade. eapply closed_upgrade_free. eauto. omega. omega.
   - subst. eapply closed_nosubst. eauto. eauto.
