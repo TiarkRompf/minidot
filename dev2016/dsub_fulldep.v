@@ -2878,18 +2878,30 @@ Proof.
   simpl. eauto.
 Qed.
 
-Lemma nosubst_intro: forall i k T, closed i 0 k T -> nosubst T.
+Lemma var_nosubst_intro:
+  (forall v i k, var_closed i 0 k v -> var_nosubst v).
 Proof.
-  intros. generalize dependent i.
-  induction T; intros; inversion H; simpl; eauto.
-  omega.
+  intros. inversion H; subst; simpl; eauto. omega.
 Qed.
 
-Lemma nosubst_open: forall i V T2, nosubst (TSel V) -> nosubst T2 -> nosubst (open_rec i V T2).
+Lemma nosubst_intro:
+  (forall T i k, closed i 0 k T -> nosubst T) /\
+  (forall t i k, tm_closed i 0 k t -> tm_nosubst t).
 Proof.
-  intros. generalize dependent i. induction T2; intros;
-  try inversion H0; simpl; eauto; destruct v; eauto.
-  case_eq (beq_nat i i0); intros E. eauto. eauto.
+  apply tytm_mutind; intros;
+  try inversion H; try inversion H1; try inversion H0; subst; simpl;
+  eauto using var_nosubst_intro.
+Qed.
+
+Lemma nosubst_open:
+  (forall T2 i V, var_nosubst V -> nosubst T2 -> nosubst (open_rec i (tvar V) T2)) /\
+  (forall t2 i V, var_nosubst V -> tm_nosubst t2 -> tm_nosubst (tm_open_rec i (tvar V) t2)).
+Proof.
+  apply tytm_mutind; intros;
+  try inversion H2; try inversion H1; subst; simpl;
+  eauto.
+  simpl in H0. destruct v; simpl; eauto.
+  case_eq (beq_nat i i0); intros E; eauto.
 Qed.
 
 (*
