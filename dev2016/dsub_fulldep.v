@@ -475,7 +475,7 @@ Hint Constructors ty.
 Hint Constructors tm.
 Hint Constructors vl.
 
-Hint Constructors closed.
+Hint Constructors closed tm_closed var_closed.
 Hint Constructors has_type.
 Hint Constructors val_type.
 Hint Constructors wf_env.
@@ -1277,7 +1277,6 @@ Proof.
     assumption.
     apply IHn; eauto.
     simpl. apply (proj1 closed_open); auto using closed_inc.
-    simpl. econstructor. econstructor. omega.
     unfold open. rewrite <- (proj1 open_preserves_size). omega.
 Qed.
 
@@ -1312,7 +1311,6 @@ Proof.
   - destruct (IHn T1 G GH false) as [n1 IH1]; eauto; try omega.
     destruct (IHn (open (tvar (varH (length GH))) T2) G ((G,T1)::GH) false); eauto; try omega.
     simpl. apply closed_open; auto using closed_inc.
-    econstructor. econstructor. omega.
     unfold open. rewrite <- (proj1 open_preserves_size). omega.
     eexists; econstructor; try constructor; eauto.
   - eexists; eapply stp2_selxr; eauto.
