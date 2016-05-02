@@ -1062,6 +1062,16 @@ Proof.
   - simpl. eauto.
 Qed.
 
+Lemma var_closed_inc_mult:
+  (forall v i j k,
+   var_closed i j k v ->
+   forall i' j' k',
+   i' >= i -> j' >= j -> k' >= k ->
+   var_closed i' j' k' v).
+Proof.
+  intros. inversion H; subst; constructor; omega.
+Qed.
+
 Lemma closed_inc_mult:
   (forall T i j k,
    closed i j k T ->
@@ -1077,8 +1087,7 @@ Proof.
   apply tytm_mutind; intros; eauto;
   try solve [inversion H1; subst; econstructor; eauto; eapply H0; eauto; omega];
   try solve [inversion H0; subst; econstructor; eauto; eapply H0; eauto; omega].
-  inversion H; subst. inversion H7; subst;
-  econstructor; inversion H7; subst; econstructor; omega.
+  inversion H; subst. econstructor. eapply var_closed_inc_mult; eauto.
 Qed.
 
 Lemma closed_inc: forall i j k T,
@@ -2717,11 +2726,11 @@ Qed.
 
 Lemma open_subst_commute:
 (forall T2 V j k x i,
-closed i j k (TSel (tvar V)) ->
+var_closed i j k V ->
 (open_rec i (tvar (varH x)) (subst V T2)) =
 (subst V (open_rec i (tvar (varH (x+1))) T2))) /\
 (forall t2 V j k x i,
-closed i j k (TSel (tvar V)) ->
+var_closed i j k V ->
 (tm_open_rec i (tvar (varH x)) (tm_subst V t2)) =
 (tm_subst V (tm_open_rec i (tvar (varH (x+1))) t2))).
 Proof.
@@ -2729,11 +2738,12 @@ Proof.
   try (erewrite H; eauto); try (erewrite H0; eauto);
   eauto using closed_upgrade.
 
+  - inversion H1; subst; econstructor; eauto.
+
   - case_eq (beq_nat i0 0); intros E; eauto; destruct V; eauto.
     case_eq (beq_nat i i1); intros E1; eauto.
     apply beq_nat_true in E. apply beq_nat_true in E1. subst.
-    inversion H; subst. inversion H4; subst. inversion H5; subst.
-    omega.
+    inversion H; subst. omega.
 
   - case_eq (beq_nat i i0); intros E; eauto. simpl.
     rewrite false_beq_nat. f_equal. f_equal.
@@ -2741,6 +2751,17 @@ Proof.
     assert (x + 1 = S x) as A by omega. rewrite A.
     rewrite <- pred_Sn. reflexivity.
     omega.
+Qed.
+
+Lemma var_no_subst:
+  (forall v i k TX,
+   var_closed i 0 k v ->
+   var_subst TX v = v).
+Proof.
+  intros. inversion H; subst; simpl; eauto.
+  case_eq (beq_nat x 0); intros E;
+  [ eapply beq_nat_true in E | eapply beq_nat_false in E];
+  subst; omega.
 Qed.
 
 Lemma closed_no_subst:
@@ -2760,32 +2781,51 @@ Proof.
   eauto; try omega.
 Qed.
 
-Lemma closed_subst: forall i j k V T, closed i (j+1) k T -> closed 0 j k (TSel V) -> closed i j k (subst V T).
+Lemma var_closed_subst:
+  (forall v i j k V, var_closed i (j+1) k v -> var_closed 0 j k V -> var_closed i j k (var_subst V v)).
 Proof.
-  intros. generalize dependent i.
-  induction T; intros; inversion H;
-  try econstructor;
-  try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
-
-  - Case "TVarH". simpl.
-    case_eq (beq_nat x 0); intros E.
-    eapply closed_upgrade. eapply closed_upgrade_free.
-    eauto. omega. eauto. omega.
-    econstructor. assert (x > 0). eapply beq_nat_false_iff in E. omega. omega.
+  intros.
+  inversion H; subst; inversion H; subst;
+  simpl; try solve [econstructor; omega].
+  case_eq (beq_nat x 0); intros E;
+  [ eapply beq_nat_true in E | eapply beq_nat_false in E];
+  subst.
+  - eapply var_closed_inc_mult; eauto. omega.
+  - econstructor. omega.
 Qed.
 
-Lemma closed_nosubst: forall i j k V T, closed i (j+1) k T -> nosubst T -> closed i j k (subst V T).
+Lemma closed_subst:
+  (forall T i j k V, closed i (j+1) k T -> var_closed 0 j k V -> closed i j k (subst V T)) /\
+  (forall t i j k V, tm_closed i (j+1) k t -> var_closed 0 j k V -> tm_closed i j k (tm_subst V t)).
 Proof.
-  intros. generalize dependent i.
-  induction T; intros; inversion H;
+  apply tytm_mutind; intros; eauto;
+  try inversion H1; try inversion H0; try inversion H; subst;
   try econstructor;
-  try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto; subst;
-  try inversion H0; eauto.
+  try eapply H; eauto; try eapply H0; eauto;
+  eauto using var_closed_subst;
+  eapply var_closed_inc_mult; eauto; omega.
+Qed.
 
-  - Case "TVarH". simpl. simpl in H0. unfold id in H0.
-    assert (beq_nat x 0 = false) as E. apply beq_nat_false_iff. assumption.
-    rewrite E.
-    eapply cl_selh. omega.
+Lemma var_closed_nosubst:
+  (forall v i j k V, var_closed i (j+1) k v -> var_nosubst v -> var_closed i j k (var_subst V v)).
+Proof.
+  intros v. destruct v; intros; inversion H; subst;
+  simpl; try solve [econstructor; omega].
+  simpl in H0.
+  rewrite false_beq_nat. econstructor.
+  unfold id in *. omega.
+  unfold id in *. omega.
+Qed.
+
+Lemma closed_nosubst:
+  (forall T i j k V, closed i (j+1) k T -> nosubst T -> closed i j k (subst V T)) /\
+  (forall t i j k V, tm_closed i (j+1) k t -> tm_nosubst t -> tm_closed i j k (tm_subst V t)).
+Proof.
+  apply tytm_mutind; intros; eauto;
+  try inversion H; try inversion H0; try inversion H1; try inversion H2; subst;
+  try econstructor;
+  try eapply H; eauto; try eapply H0; eauto;
+  eauto using var_closed_nosubst.
 Qed.
 
 Lemma subst_open_commute_m: forall i j k k' j' V T2, closed (i+1) (j+1) k T2 -> closed 0 j' k' (TSel V) ->
