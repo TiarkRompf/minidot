@@ -324,9 +324,10 @@ Fixpoint tail {X : Type} (n : nat) (l : list X) : list X :=
     | _::l' => if (beq_nat n (length l)) then l else tail n l'
   end.
 
-Definition peval (env: venv) (t: tm) v :=
-  tm_req_env t <= length env /\
-  exists n, teval n (tail (tm_req_env t) env) t = Some (Some v).
+Definition peval (G1: venv) (t: tm) v :=
+  tm_closed 0 0 (length G1) t /\
+  tm_req_env t <= length G1 /\
+  exists n, teval n (tail (tm_req_env t) G1) t = Some (Some v).
 
 Definition join_env {X:Type} (l1: list X) (l2: list X) (l: list X) :=
   exists l1' l2', l1=l1'++l /\ l2=l2'++l.
@@ -353,26 +354,26 @@ Inductive stp2: bool (* whether selections are precise *) ->
 (* precise/invertible bounds *)
 (* vty already marks binding as type binding, so no need for additional TMem marker *)
 | stp2_strong_sel1: forall G1 G2 GX TX t T2 GH n1,
-    peval G1 t (vty GX TX) -> tm_closed 0 0 (length G1) t ->
+    peval G1 t (vty GX TX) ->
     val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stp2 true true GX TX G2 T2 GH n1 ->
     stp2 true true G1 (TSel t) G2 T2 GH (S n1)
 | stp2_strong_sel2: forall G1 G2 GX TX t T1 GH n1,
-    peval G2 t (vty GX TX) -> tm_closed 0 0 (length G2) t ->
+    peval G2 t (vty GX TX) ->
     val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stp2 true false G1 T1 GX TX GH n1 ->
     stp2 true true G1 T1 G2 (TSel t) GH (S n1)
 (* imprecise type *)
 | stp2_sel1: forall G1 G2 v TX t T2 GH n1,
-    peval G1 t v -> tm_closed 0 0 (length G1) t ->
+    peval G1 t v ->
     val_type (base v) v TX ->
     closed 0 0 (length (base v)) TX ->
     stp2 false false (base v) TX G2 (TMem TBot T2) GH n1 ->
     stp2 false true G1 (TSel t) G2 T2 GH (S n1)
 | stp2_sel2: forall G1 G2 v TX t T1 GH n1,
-    peval G2 t v -> tm_closed 0 0 (length G2) t ->
+    peval G2 t v ->
     val_type (base v) v TX ->
     closed 0 0 (length (base v)) TX ->
     stp2 false false (base v) TX G1 (TMem T1 TTop) GH n1 ->
@@ -382,8 +383,8 @@ Inductive stp2: bool (* whether selections are precise *) ->
     tm_closed 0 (length GH) (length G) t ->
     stp2 s true G1 (TSel t) G2 (TSel t) GH (S n)
 | stp2_selx: forall G1 G2 v t1 t2 GH s n,
-    peval G1 t1 v -> tm_closed 0 0 (length G1) t1 ->
-    peval G2 t2 v -> tm_closed 0 0 (length G2) t2 ->
+    peval G1 t1 v ->
+    peval G2 t2 v ->
     stp2 s true G1 (TSel t1) G2 (TSel t2) GH (S n)
 
 (* abstract type variables *)
@@ -776,15 +777,107 @@ Proof.
   unfold index. unfold index in H. rewrite H. rewrite E. reflexivity.
 Qed.
 
+Lemma var_closed_inc_mult:
+  (forall v i j k,
+   var_closed i j k v ->
+   forall i' j' k',
+   i' >= i -> j' >= j -> k' >= k ->
+   var_closed i' j' k' v).
+Proof.
+  intros. inversion H; subst; constructor; omega.
+Qed.
+
+Lemma closed_inc_mult:
+  (forall T i j k,
+   closed i j k T ->
+   forall i' j' k',
+   i' >= i -> j' >= j -> k' >= k ->
+   closed i' j' k' T) /\
+  (forall t i j k,
+   tm_closed i j k t ->
+   forall i' j' k',
+   i' >= i -> j' >= j -> k' >= k ->
+   tm_closed i' j' k' t).
+Proof.
+  apply tytm_mutind; intros; eauto;
+  try solve [inversion H1; subst; econstructor; eauto; eapply H0; eauto; omega];
+  try solve [inversion H0; subst; econstructor; eauto; eapply H0; eauto; omega].
+  inversion H; subst. econstructor. eapply var_closed_inc_mult; eauto.
+Qed.
+
+Lemma closed_inc: forall i j k T,
+  closed i j k T ->
+  closed i (S j) k T.
+Proof.
+  intros. apply ((proj1 closed_inc_mult) T i j k H i (S j) k); omega.
+Qed.
+
+Lemma tm_closed_inc: forall i j k t,
+  tm_closed i j k t ->
+  tm_closed i (S j) k t.
+Proof.
+  intros. apply ((proj2 closed_inc_mult) t i j k H i (S j) k); omega.
+Qed.
+
+Lemma closed_upgrade: forall i j k i' T,
+ closed i j k T ->
+ i' >= i ->
+ closed i' j k T.
+Proof.
+ intros. apply ((proj1 closed_inc_mult) T i j k H i' j k); omega.
+Qed.
+
+Lemma tm_closed_upgrade: forall i j k i' t,
+ tm_closed i j k t ->
+ i' >= i ->
+ tm_closed i' j k t.
+Proof.
+ intros. apply ((proj2 closed_inc_mult) t i j k H i' j k); omega.
+Qed.
+
+Lemma closed_upgrade_free: forall i j k j' T,
+ closed i j k T ->
+ j' >= j ->
+ closed i j' k T.
+Proof.
+ intros. apply ((proj1 closed_inc_mult) T i j k H i j' k); omega.
+Qed.
+
+Lemma tm_closed_upgrade_free: forall i j k j' t,
+ tm_closed i j k t ->
+ j' >= j ->
+ tm_closed i j' k t.
+Proof.
+ intros. apply ((proj2 closed_inc_mult) t i j k H i j' k); omega.
+Qed.
+
+Lemma closed_upgrade_freef: forall i j k k' T,
+ closed i j k T ->
+ k' >= k ->
+ closed i j k' T.
+Proof.
+ intros. apply ((proj1 closed_inc_mult) T i j k H i j k'); omega.
+Qed.
+
+Lemma tm_closed_upgrade_freef: forall i j k k' t,
+ tm_closed i j k t ->
+ k' >= k ->
+ tm_closed i j k' t.
+Proof.
+ intros. apply ((proj2 closed_inc_mult) t i j k H i j k'); omega.
+Qed.
+
 Lemma peval_extend : forall H t T v,
                        peval H t T ->
                        peval (v::H) t T.
 
 Proof.
   intros H t T v Hp. unfold peval in Hp.
-  destruct Hp as [Hreq Hev]. destruct Hev as [n Hev].
-  unfold peval. split; simpl; try omega.
-  exists n. rewrite false_beq_nat; try omega. apply Hev.
+  destruct Hp as [Hcl [Hreq Hev]]. destruct Hev as [n Hev].
+  unfold peval. split; try split; simpl.
+  - eapply tm_closed_upgrade_freef; eauto.
+  - omega.
+  - exists n. rewrite false_beq_nat; try omega. apply Hev.
 Qed.
 
 Lemma teval_app_cmp: forall n H t1 t2 v v0 l t t0,
@@ -854,7 +947,7 @@ Lemma peval_unique: forall H t v1 v2,
   peval H t v1 -> peval H t v2 -> v1 = v2.
 Proof.
   intros H t v1 v2 Hp1 Hp2. unfold peval in *.
-  destruct Hp1 as [Hr1 [n1 He1]]. destruct Hp2 as [Hr2 [n2 He2]].
+  destruct Hp1 as [Hc1 [Hr1 [n1 He1]]]. destruct Hp2 as [Hc2 [Hr2 [n2 He2]]].
   eapply teval_val_unique; eauto.
 Qed.
 
@@ -1053,48 +1146,6 @@ Proof.
   - simpl. eauto.
 Qed.
 
-Lemma var_closed_inc_mult:
-  (forall v i j k,
-   var_closed i j k v ->
-   forall i' j' k',
-   i' >= i -> j' >= j -> k' >= k ->
-   var_closed i' j' k' v).
-Proof.
-  intros. inversion H; subst; constructor; omega.
-Qed.
-
-Lemma closed_inc_mult:
-  (forall T i j k,
-   closed i j k T ->
-   forall i' j' k',
-   i' >= i -> j' >= j -> k' >= k ->
-   closed i' j' k' T) /\
-  (forall t i j k,
-   tm_closed i j k t ->
-   forall i' j' k',
-   i' >= i -> j' >= j -> k' >= k ->
-   tm_closed i' j' k' t).
-Proof.
-  apply tytm_mutind; intros; eauto;
-  try solve [inversion H1; subst; econstructor; eauto; eapply H0; eauto; omega];
-  try solve [inversion H0; subst; econstructor; eauto; eapply H0; eauto; omega].
-  inversion H; subst. econstructor. eapply var_closed_inc_mult; eauto.
-Qed.
-
-Lemma closed_inc: forall i j k T,
-  closed i j k T ->
-  closed i (S j) k T.
-Proof.
-  intros. apply ((proj1 closed_inc_mult) T i j k H i (S j) k); omega.
-Qed.
-
-Lemma tm_closed_inc: forall i j k t,
-  tm_closed i j k t ->
-  tm_closed i (S j) k t.
-Proof.
-  intros. apply ((proj2 closed_inc_mult) t i j k H i (S j) k); omega.
-Qed.
-
 Lemma closed_splice_idem:
   (forall T i j k n,
     closed i j k T ->
@@ -1153,13 +1204,20 @@ Proof.
   intros. apply (proj1 (stp_closed G1 GH T1 T2 H)).
 Qed.
 
+Lemma peval_closed: forall G1 t v,
+                      peval G1 t v ->
+                      tm_closed 0 0 (length G1) t.
+Proof.
+  intros. unfold peval in H. destruct H as [Hc ?]. eapply Hc.
+Qed.
+
 Lemma stp2_closed: forall G1 G2 T1 T2 GH s m n,
                      stp2 s m G1 T1 G2 T2 GH n ->
                      closed 0 (length GH) (length G1) T1 /\ closed 0 (length GH) (length G2) T2.
   intros. induction H;
-    try solve [repeat ev; split; try inv_mem; eauto using index_max;
-               try solve [econstructor; eapply (proj2 closed_inc_mult); eauto; omega];
-               try solve [repeat econstructor; eauto using index_max]].
+    try solve [repeat ev; split; try inv_mem; eauto using index_max, peval_closed;
+               try solve [econstructor; eapply (proj2 closed_inc_mult); eauto using peval_closed; omega];
+               try solve [repeat econstructor; eauto using index_max, peval_closed]].
   unfold join_env in H. destruct H as [G1' [G2' [H1' H2']]]. subst.
   repeat rewrite app_length. split;
   econstructor; eapply (proj2 closed_inc_mult); eauto; omega.
@@ -1177,54 +1235,6 @@ Lemma stp2_closed1 : forall G1 G2 T1 T2 GH s m n,
                        closed 0 (length GH) (length G1) T1.
 Proof.
   intros. apply (proj1 (stp2_closed G1 G2 T1 T2 GH s m n H)).
-Qed.
-
-Lemma closed_upgrade: forall i j k i' T,
- closed i j k T ->
- i' >= i ->
- closed i' j k T.
-Proof.
- intros. apply ((proj1 closed_inc_mult) T i j k H i' j k); omega.
-Qed.
-
-Lemma tm_closed_upgrade: forall i j k i' t,
- tm_closed i j k t ->
- i' >= i ->
- tm_closed i' j k t.
-Proof.
- intros. apply ((proj2 closed_inc_mult) t i j k H i' j k); omega.
-Qed.
-
-Lemma closed_upgrade_free: forall i j k j' T,
- closed i j k T ->
- j' >= j ->
- closed i j' k T.
-Proof.
- intros. apply ((proj1 closed_inc_mult) T i j k H i j' k); omega.
-Qed.
-
-Lemma tm_closed_upgrade_free: forall i j k j' t,
- tm_closed i j k t ->
- j' >= j ->
- tm_closed i j' k t.
-Proof.
- intros. apply ((proj2 closed_inc_mult) t i j k H i j' k); omega.
-Qed.
-
-Lemma closed_upgrade_freef: forall i j k k' T,
- closed i j k T ->
- k' >= k ->
- closed i j k' T.
-Proof.
- intros. apply ((proj1 closed_inc_mult) T i j k H i j k'); omega.
-Qed.
-
-Lemma tm_closed_upgrade_freef: forall i j k k' t,
- tm_closed i j k t ->
- k' >= k ->
- tm_closed i j k' t.
-Proof.
- intros. apply ((proj2 closed_inc_mult) t i j k H i j k'); omega.
 Qed.
 
 Lemma closed_open:
@@ -1519,7 +1529,7 @@ Proof.
       eapply closed_splice_idem. eassumption. omega.
     }
     assert (tm_splice (length GH0) t=t) as B. {
-      eapply closed_splice_idem. eassumption. omega.
+      eapply closed_splice_idem. eapply peval_closed. eassumption. omega.
     }
     rewrite B.
     eapply stp2_strong_sel1; eauto.
@@ -1529,7 +1539,7 @@ Proof.
       eapply closed_splice_idem. eassumption. omega.
     }
     assert (tm_splice (length GH0) t=t) as B. {
-      eapply closed_splice_idem. eassumption. omega.
+      eapply closed_splice_idem. eapply peval_closed. eassumption. omega.
     }
     rewrite B.
     eapply stp2_strong_sel2; eauto.
@@ -1539,7 +1549,7 @@ Proof.
       eapply closed_splice_idem. eassumption. omega.
     }
     assert (tm_splice (length GH0) t=t) as B. {
-      eapply closed_splice_idem. eassumption. omega.
+      eapply closed_splice_idem. eapply peval_closed. eassumption. omega.
     }
     rewrite B.
     eapply stp2_sel1; eauto.
@@ -1549,7 +1559,7 @@ Proof.
       eapply closed_splice_idem. eassumption. omega.
     }
     assert (tm_splice (length GH0) t=t) as B. {
-      eapply closed_splice_idem. eassumption. omega.
+      eapply closed_splice_idem. eapply peval_closed. eassumption. omega.
     }
     rewrite B.
     eapply stp2_sel2; eauto.
@@ -1559,10 +1569,10 @@ Proof.
     rewrite map_spliceat_length_inc. eapply closed_splice. eassumption.
   - Case "selx".
     assert (tm_splice (length GH0) t1=t1) as A. {
-      eapply closed_splice_idem. eassumption. omega.
+      eapply closed_splice_idem. eapply peval_closed. eassumption. omega.
     }
     assert (tm_splice (length GH0) t2=t2) as B. {
-      eapply closed_splice_idem. eassumption. omega.
+      eapply closed_splice_idem. eapply peval_closed. eassumption. omega.
     }
     rewrite A. rewrite B. eapply stp2_selx; eauto.
   - Case "sela1".
@@ -1839,26 +1849,18 @@ Proof.
     apply venv_ext__ge_length. assumption.
   - Case "strong_sel1".
     eapply stp2_strong_sel1. eapply peval_extend_venv. apply H. assumption.
-    eapply closed_inc_mult; try eassumption; try omega.
-    apply venv_ext__ge_length. assumption.
     assumption. assumption.
     apply IHstp2. assumption. apply venv_ext_refl. assumption.
   - Case "strong_sel2".
     eapply stp2_strong_sel2. eapply peval_extend_venv. apply H. assumption.
-    eapply closed_inc_mult; try eassumption; try omega.
-    apply venv_ext__ge_length. assumption.
     assumption. assumption.
     apply IHstp2. assumption. assumption. apply venv_ext_refl.
   - Case "sel1".
     eapply stp2_sel1. eapply peval_extend_venv. apply H. assumption.
-    eapply closed_inc_mult; try eassumption; try omega.
-    apply venv_ext__ge_length. assumption.
     eassumption. assumption.
     apply IHstp2. assumption. apply venv_ext_refl. assumption.
   - Case "sel2".
     eapply stp2_sel2. eapply peval_extend_venv. apply H. assumption.
-    eapply closed_inc_mult; try eassumption; try omega.
-    apply venv_ext__ge_length. assumption.
     eassumption. assumption.
     apply IHstp2. assumption. apply venv_ext_refl. assumption.
   - Case "selxr".
@@ -1870,11 +1872,7 @@ Proof.
   - Case "selx".
     eapply stp2_selx.
     eapply peval_extend_venv; try eassumption.
-    eapply closed_inc_mult; try eassumption; try omega.
-    apply venv_ext__ge_length. assumption.
     eapply peval_extend_venv; try eassumption.
-    eapply closed_inc_mult; try eassumption; try omega.
-    apply venv_ext__ge_length. assumption.
   - Case "sela1".
     assert (exists GX', index x GH' = Some (GX', TX) /\ venv_ext GX' GX) as A. {
       apply index_at_ext with (GH:=GH); assumption.
@@ -2197,28 +2195,28 @@ Lemma stpd2_mem: forall G1 G2 S1 U1 S2 U2 GH s,
     stpd2 s true G1 (TMem S1 U1) G2 (TMem S2 U2) GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_strong_sel1: forall G1 G2 GX TX t T2 GH,
-    peval G1 t (vty GX TX) -> tm_closed 0 0 (length G1) t ->
+    peval G1 t (vty GX TX) ->
     val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stpd2 true true GX TX G2 T2 GH ->
     stpd2 true true G1 (TSel t) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_strong_sel2: forall G1 G2 GX TX t T1 GH,
-    peval G2 t (vty GX TX) -> tm_closed 0 0 (length G2) t ->
+    peval G2 t (vty GX TX) ->
     val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stpd2 true false G1 T1 GX TX GH ->
     stpd2 true true G1 T1 G2 (TSel t) GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_sel1: forall G1 G2 v TX t T2 GH,
-    peval G1 t v -> tm_closed 0 0 (length G1) t ->
+    peval G1 t v ->
     val_type (base v) v TX ->
     closed 0 0 (length (base v)) TX ->
     stpd2 false false (base v) TX G2 (TMem TBot T2) GH ->
     stpd2 false true G1 (TSel t) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_sel2: forall G1 G2 v TX t T1 GH,
-    peval G2 t v -> tm_closed 0 0 (length G2) t ->
+    peval G2 t v ->
     val_type (base v) v TX ->
     closed 0 0 (length (base v)) TX ->
     stpd2 false false (base v) TX G1 (TMem T1 TTop) GH ->
@@ -2230,8 +2228,8 @@ Lemma stpd2_selxr: forall G1 G2 G t GH s,
     stpd2 s true G1 (TSel t) G2 (TSel t) GH.
 Proof. intros. exists (S 0). eauto. Qed.
 Lemma stpd2_selx: forall G1 G2 v t1 t2 GH s,
-    peval G1 t1 v -> tm_closed 0 0 (length G1) t1 ->
-    peval G2 t2 v -> tm_closed 0 0 (length G2) t2 ->
+    peval G1 t1 v ->
+    peval G2 t2 v ->
     stpd2 s true G1 (TSel t1) G2 (TSel t2) GH.
 Proof. intros. exists (S 0). eauto. Qed.
 Lemma stpd2_sela1: forall G1 G2 GX TX x T2 GH,
@@ -2447,7 +2445,6 @@ Qed.
 
 Lemma peval_join_env: forall G1 G2 G t v i j,
   join_env G1 G2 G ->
-  tm_closed 0 0 (length G1) t ->
   tm_closed i j (length G) t ->
   peval G1 t v ->
   tm_closed 0 0 (length G2) t /\ peval G2 t v.
@@ -2482,27 +2479,23 @@ Proof.
   - Case "sel2 - selxr".
     eapply stpd2_strong_sel2; eauto.
     eapply peval_join_env; eauto.
-    eapply tm_closed_join_env; eauto.
   - Case "sel2 - selx".
     assert (vty GX TX = v) as Eqv by solve [eapply peval_unique; eauto]. subst.
     eapply stpd2_strong_sel2; eauto.
   - Case "selxr - sel1".
     eapply stpd2_strong_sel1; eauto.
     eapply peval_join_env; eauto using symmetry_join_env.
-    eapply tm_closed_join_env; eauto using symmetry_join_env.
   - Case "selxr - selxr".
     admit.
   - Case "selxr - selx".
     eapply stpd2_selx; eauto.
     eapply peval_join_env; eauto using symmetry_join_env.
-    eapply tm_closed_join_env; eauto using symmetry_join_env.
   - Case "selx - sel1".
     assert (vty GX TX = v) as Eqv by solve [eapply peval_unique; eauto]. subst.
     eapply stpd2_strong_sel1; eauto.
   - Case "selx - selxr".
     eapply stpd2_selx; eauto.
     eapply peval_join_env; eauto.
-    eapply tm_closed_join_env; eauto.
   - Case "selx - selx".
     assert (v = v0) as Eqv by solve [eapply peval_unique; eauto]. subst.
     eapply stpd2_selx; eauto.
@@ -2570,22 +2563,22 @@ Proof.
     eapply stpd2_strong_untrans. eapply IHn; eauto. omega.
     eapply IHn; eauto. omega.
   - Case "sel1".
-    eapply IHn in H5. eapply stpd2_strong_untrans in H5.
-    eapply valtp_widen with (2:=H5) in H3.
-    remember H3 as Hv. clear HeqHv.
-    eapply invert_typ in H3. ev. subst.
+    eapply IHn in H4. eapply stpd2_strong_untrans in H4.
+    eapply valtp_widen with (2:=H4) in H2.
+    remember H2 as Hv. clear HeqHv.
+    eapply invert_typ in H2. ev. subst.
     assert (closed 0 (length ([]:aenv)) (length x) x0). eapply stpd2_closed1; eauto.
-    eapply stpd2_strong_sel1. eauto. eauto.
+    eapply stpd2_strong_sel1. eauto.
     inversion Hv; subst.
     eapply v_ty. eassumption. eapply stp2_refl. eauto. eauto.
     eassumption. omega.
   - Case "sel2".
-    eapply IHn in H5. eapply stpd2_strong_untrans in H5.
-    eapply valtp_widen with (2:=H5) in H3.
-    remember H3 as Hv. clear HeqHv.
-    eapply invert_typ in H3. ev. subst.
+    eapply IHn in H4. eapply stpd2_strong_untrans in H4.
+    eapply valtp_widen with (2:=H4) in H2.
+    remember H2 as Hv. clear HeqHv.
+    eapply invert_typ in H2. ev. subst.
     assert (closed 0 (length ([]:aenv)) (length x) x0). eapply stpd2_closed1; eauto.
-    eapply stpd2_strong_sel2. eauto. eauto.
+    eapply stpd2_strong_sel2. eauto.
     inversion Hv; subst.
     eapply v_ty. eassumption. eapply stp2_refl. eauto. eauto.
     eassumption. omega.
@@ -2914,7 +2907,7 @@ Proof.
   - destruct H2. destruct H2. destruct H2. destruct H3. destruct H4. destruct H4.
     destruct H5. rewrite H5.
     eapply closed_subst. eauto.
-    eapply clv_f. apply index_max in H2. omega.
+    eapply tm_closed_upgrade_free. eapply peval_closed. eauto. omega.
   - destruct H2. rewrite H3.
     eapply closed_upgrade. eapply closed_upgrade_free. eauto. omega. omega.
   - subst. eapply closed_nosubst. eauto. eauto.
@@ -2966,7 +2959,8 @@ Lemma compat_mem: forall GX TX V G1 S1 U1 T1',
 Proof.
   intros ? ? ? ? ? ? ? CC CLX.
   destruct CC as [|CC]; ev; subst.
-  repeat eexists; eauto; solve [unfold compat; left; repeat eexists; eassumption].
+  repeat eexists; eauto;
+  try solve [unfold compat; left; repeat (eexists; eauto); eauto].
 
   destruct CC as [|CC]; ev; subst;
   inversion H; subst;
@@ -2978,7 +2972,7 @@ Lemma compat_mem_fwd2: forall GX TX V G1 T2 T2',
     compat GX TX V G1 (TMem TBot T2) (TMem TBot T2').
 Proof.
   intros. repeat destruct H as [|H]; ev; repeat eexists; eauto.
-  - left. repeat eexists; eauto. rewrite H3. eauto.
+  - left. repeat (eexists; eauto); eauto. rewrite H3. eauto.
   - right. left. subst. eauto.
   - right. right. subst. simpl. eauto.
 Qed.
@@ -2988,7 +2982,7 @@ Lemma compat_mem_fwd1: forall GX TX V G1 T1 T1',
     compat GX TX V G1 (TMem T1 TTop) (TMem T1' TTop).
 Proof.
   intros. repeat destruct H as [|H]; ev; repeat eexists; eauto.
-  - left. repeat eexists; eauto. rewrite H3. eauto.
+  - left. repeat (eexists; eauto); eauto. rewrite H3. eauto.
   - right. left. subst. eauto.
   - right. right. subst. simpl. eauto.
 Qed.
@@ -2999,18 +2993,12 @@ Lemma compat_sel: forall GX TX V G1 T1' (GXX:venv) (TXX:ty) t v,
     closed 0 0 (length GXX) TXX ->
     peval G1 t v ->
     val_type GXX v TXX ->
-    exists TXX', T1' = (TSel t) /\ compat GX TX V GXX TXX TXX'
-.
+    exists TXX', T1' = (TSel t) /\ compat GX TX V GXX TXX TXX'.
 Proof.
-  intros ? ? ? ? ? ? ? ? ? CC CL CL1 IX HV. repeat destruct CC as [|CC]; subst.
-  - ev; subst. repeat eexists; eauto. simpl. f_equal.
-
-    + right. left. simpl in H0. eauto.
-  destruct CC.
-  destruct H. destruct H. destruct H. destruct H0. destruct H1. destruct H2.
-  simpl in H3. eexists. split. eauto. right. left. eauto.
-  destruct H. destruct H. simpl in H0. eexists. split. eauto. right. left. eauto.
-  destruct H. destruct H. simpl in H0. eexists. split. eauto. right. left. eauto.
+  intros ? ? ? ? ? ? ? ? ? CC CL CL1 IX HV. repeat destruct CC as [|CC]; subst;
+  ev; subst; repeat (eexists; eauto); eauto;
+  try solve [simpl; erewrite (proj2 closed_no_subst); eauto using peval_closed];
+  right; left; eauto.
 Qed.
 
 Lemma compat_selh: forall GX TX V G1 T1' GH0 GH0' (GXX:venv) (TXX:ty) x,
@@ -3059,17 +3047,18 @@ Lemma compat_all: forall GX TX V G1 T1 T2 T1' n,
 Proof.
   intros ? ? ? ? ? ? ? ? CC CLX CL2. destruct CC.
 
-  ev. simpl in H0. repeat eexists; eauto.
-  eapply closed_subst; eauto. econstructor. eauto using index_max.
-  unfold compat. left. repeat eexists; eauto.
-  unfold compat. left. repeat eexists; eauto.
-  erewrite subst_open_commute; eauto. 
+  ev. simpl in H0. repeat (eexists; eauto); eauto.
+  eapply closed_subst; eauto.
+  eapply tm_closed_upgrade_free. eapply peval_closed; eauto. omega.
+  unfold compat. left. repeat (eexists; eauto); eauto.
+  unfold compat. left. repeat (eexists; eauto); eauto.
+  erewrite subst_open_commute; eauto using peval_closed. 
 
-  destruct H. destruct H. inversion H. repeat eexists. eauto. subst.
+  destruct H. destruct H. inversion H. repeat (eexists; eauto). subst.
   eapply closed_upgrade_free. eauto. omega. unfold compat. eauto.
   unfold compat. eauto. right. right. subst.
   split. eapply nosubst_open. simpl. omega. eapply nosubst_intro. eauto. symmetry.
-  assert (T2 = subst (varF 0) T2) as A. symmetry. eapply closed_no_subst. eauto.
+  assert (T2 = subst (tvar (varF 0)) T2) as A. symmetry. eapply closed_no_subst. eauto.
   remember (open_rec 0 (tvar (varH n)) T2) as XX. rewrite A in HeqXX. subst XX.
   eapply subst_open_commute. eauto. econstructor. eauto.
 
@@ -3088,7 +3077,7 @@ Proof.
   intros. inversion H;[|destruct H2;[|destruct H2]].
   - destruct H2 as [x1 [v [Hindex [HeqV [HGX [Hv Heq]]]]]]. subst.
     apply closed_subst. eassumption.
-    apply index_max in Hindex. apply clv_f. omega.
+    eapply tm_closed_upgrade_free. eapply peval_closed. eauto. omega.
   - destruct H2. subst.
     eapply closed_upgrade_free. eapply H2. omega.
   - subst.
