@@ -2856,19 +2856,18 @@ Proof.
   intros. eapply subst_open_commute_m; eauto.
 Qed.
 
-Lemma subst_open_zero: forall i i' k TX T2, closed i' 0 k T2 ->
-    subst TX (open_rec i (varH 0) T2) = open_rec i TX T2.
+Lemma subst_open_zero:
+  (forall T2 i i' k TX, closed i' 0 k T2 ->
+   subst TX (open_rec i (tvar (varH 0)) T2) = open_rec i (tvar TX) T2) /\
+  (forall t2 i i' k TX, tm_closed i' 0 k t2 ->
+   tm_subst TX (tm_open_rec i (tvar (varH 0)) t2) = tm_open_rec i (tvar TX) t2).
 Proof.
-  intros. generalize dependent i'. generalize dependent i.
-  induction T2; intros; inversion H; simpl; eauto;
-  try solve [rewrite (IHT2_1 _ i'); eauto;
-             rewrite (IHT2_2 _ (S i')); eauto;
-             rewrite (IHT2_2 _ (S i')); eauto];
-  try solve [rewrite (IHT2_1 _ i'); eauto;
-             rewrite (IHT2_2 _ i'); eauto].
-  subst.
-  case_eq (beq_nat x 0); intros E. omega. omega.
-  case_eq (beq_nat i x); intros E. eauto. eauto.
+  apply tytm_mutind; intros; simpl; eauto;
+  try inversion H1; try inversion H0; subst;
+  repeat erewrite H; eauto; repeat erewrite H0; eauto.
+  inversion H; subst. inversion H4; subst; eauto; simpl.
+  case_eq (beq_nat x 0); intros E; omega.
+  case_eq (beq_nat i x); intros E; eauto.
 Qed.
 
 Lemma Forall2_length: forall A B f (G1:list A) (G2:list B),
