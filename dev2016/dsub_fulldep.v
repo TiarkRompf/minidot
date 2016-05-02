@@ -2828,27 +2828,30 @@ Proof.
   eauto using var_closed_nosubst.
 Qed.
 
-Lemma subst_open_commute_m: forall i j k k' j' V T2, closed (i+1) (j+1) k T2 -> closed 0 j' k' (TSel V) ->
-    subst V (open_rec i (varH (j+1)) T2) = open_rec i (varH j) (subst V T2).
+Lemma subst_open_commute_m:
+  (forall T2 i j k k' j' V, closed (i+1) (j+1) k T2 -> var_closed 0 j' k' V ->
+   subst V (open_rec i (tvar (varH (j+1))) T2) = open_rec i (tvar (varH j)) (subst V T2)) /\
+  (forall t2 i j k k' j' V, tm_closed (i+1) (j+1) k t2 -> var_closed 0 j' k' V ->
+   tm_subst V (tm_open_rec i (tvar (varH (j+1))) t2) = tm_open_rec i (tvar (varH j)) (tm_subst V t2)).
 Proof.
-  intros.
-  generalize dependent i. generalize dependent j.
-  induction T2; intros; inversion H; simpl; eauto; subst;
-  try rewrite IHT2_1;
-  try rewrite IHT2_2;
-  try rewrite IHT2; eauto.
-  - Case "TVarH". simpl. case_eq (beq_nat x 0); intros E.
-    eapply closed_no_open. eapply closed_upgrade. eauto. omega.
-    eauto.
-  - Case "TVarB". simpl. case_eq (beq_nat i x); intros E.
-    simpl. case_eq (beq_nat (j+1) 0); intros E2.
-    eapply beq_nat_true_iff in E2. omega.
-    subst. assert (j+1-1 = j) as A. omega. rewrite A. eauto.
-    eauto.
+  apply tytm_mutind; intros; try solve [eauto; simpl;
+  try inversion H1; try inversion H0; subst;
+  try econstructor;
+  try erewrite H; eauto; try erewrite H0; eauto].
+  inversion H; subst. inversion H5; subst; simpl; eauto.
+  - case_eq (beq_nat x 0); intros E; eauto; subst; simpl.
+    eapply beq_nat_true in E. subst.
+    inversion H0; subst; eauto.
+    case_eq (beq_nat i x); intros E1; eauto.
+    eapply beq_nat_true in E1. subst.
+    omega.
+  - case_eq (beq_nat i x); intros E; eauto; subst; simpl.
+    apply beq_nat_true in E. subst.
+    rewrite false_beq_nat. f_equal. f_equal. omega. omega.
 Qed.
 
-Lemma subst_open_commute: forall i j k k' V T2, closed (i+1) (j+1) k T2 -> closed 0 0 k' (TSel V) ->
-    subst V (open_rec i (varH (j+1)) T2) = open_rec i (varH j) (subst V T2).
+Lemma subst_open_commute: forall i j k k' V T2, closed (i+1) (j+1) k T2 -> var_closed 0 0 k' V ->
+    subst V (open_rec i (tvar (varH (j+1))) T2) = open_rec i (tvar (varH j)) (subst V T2).
 Proof.
   intros. eapply subst_open_commute_m; eauto.
 Qed.
