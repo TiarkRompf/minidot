@@ -3031,12 +3031,12 @@ Proof.
 Qed.
 
 Lemma compat_sel: forall GX TX V G1 T1' (GXX:venv) (TXX:ty) x v,
-    compat GX TX V G1 (TSel (varF x)) T1' ->
+    compat GX TX V G1 (TSel (tvar (varF x))) T1' ->
     closed 0 0 (length GX) TX ->
     closed 0 0 (length GXX) TXX ->
     index x G1 = Some v ->
     val_type GXX v TXX ->
-    exists TXX', T1' = (TSel (varF x)) /\ compat GX TX V GXX TXX TXX'
+    exists TXX', T1' = (TSel (tvar (varF x))) /\ compat GX TX V GXX TXX TXX'
 .
 Proof.
   intros ? ? ? ? ? ? ? ? ? CC CL CL1 IX HV.
@@ -3049,13 +3049,13 @@ Proof.
 Qed.
 
 Lemma compat_selh: forall GX TX V G1 T1' GH0 GH0' (GXX:venv) (TXX:ty) x,
-    compat GX TX V G1 (TSel (varH x)) T1' ->
+    compat GX TX V G1 (TSel (tvar (varH x))) T1' ->
     closed 0 0 (length GX) TX ->
     index x (GH0 ++ [(GX, TX)]) = Some (GXX, TXX) ->
     Forall2 (compat2 GX TX V) GH0 GH0' ->
     (x = 0 /\ GXX = GX /\ TXX = TX) \/
     exists TXX',
-      x > 0 /\ T1' = TSel (varH (x-1)) /\
+      x > 0 /\ T1' = TSel (tvar (varH (x-1))) /\
       index (x-1) GH0' = Some (GXX, TXX') /\
       compat GX TX V GXX TXX TXX'
 .
@@ -3076,7 +3076,7 @@ Proof.
     eexists. split. omega. split; eauto.
 
     simpl in H2. destruct H2. destruct H2.
-    inversion H2; subst. omega.
+    inversion H2; subst. inversion H8; subst. inversion H7; subst. omega.
 
     destruct H2. rewrite E in H3.
     eexists. eauto.
@@ -3090,26 +3090,28 @@ Lemma compat_all: forall GX TX V G1 T1 T2 T1' n,
     exists TA TB, T1' = TAll TA TB /\
                   closed 1 n (length G1) TB /\
                   compat GX TX V G1 T1 TA /\
-                  compat GX TX V G1 (open_rec 0 (varH (n+1)) T2) (open_rec 0 (varH n) TB).
+                  compat GX TX V G1 (open_rec 0 (tvar (varH (n+1))) T2) (open_rec 0 (tvar (varH n)) TB).
 Proof.
   intros ? ? ? ? ? ? ? ? CC CLX CL2. destruct CC.
 
-  ev. simpl in H0. repeat eexists; eauto. eapply closed_subst; eauto using index_max.
+  ev. simpl in H0. repeat eexists; eauto.
+  eapply closed_subst; eauto. econstructor. eauto using index_max.
   unfold compat. left. repeat eexists; eauto.
-  unfold compat. left. repeat eexists; eauto. erewrite subst_open_commute; eauto.
+  unfold compat. left. repeat eexists; eauto.
+  erewrite subst_open_commute; eauto. econstructor. eauto.
 
   destruct H. destruct H. inversion H. repeat eexists. eauto. subst.
   eapply closed_upgrade_free. eauto. omega. unfold compat. eauto.
   unfold compat. eauto. right. right. subst.
   split. eapply nosubst_open. simpl. omega. eapply nosubst_intro. eauto. symmetry.
   assert (T2 = subst (varF 0) T2) as A. symmetry. eapply closed_no_subst. eauto.
-  remember (open_rec 0 (varH n) T2) as XX. rewrite A in HeqXX. subst XX.
-  eapply subst_open_commute. eauto. eauto.
+  remember (open_rec 0 (tvar (varH n)) T2) as XX. rewrite A in HeqXX. subst XX.
+  eapply subst_open_commute. eauto. econstructor. eauto.
 
   simpl in H. destruct H. destruct H. repeat eexists. eauto. eapply closed_nosubst. eauto. eauto.
   unfold compat. right. right. eauto.
   unfold compat. right. right. split. eapply nosubst_open. simpl. omega. eauto.
-  erewrite subst_open_commute. eauto. eauto. eauto.
+  erewrite subst_open_commute. eauto. eauto. econstructor. eauto.
 Qed.
 
 Lemma compat_closed: forall GX TX V G T T' j,
