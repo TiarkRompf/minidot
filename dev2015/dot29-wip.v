@@ -18,7 +18,7 @@
 (* based on that, it adds value fields that can partake in paths *)
 
 (* TODO:
-- add pt_unpack (unpack in peval1)
++ add pt_unpack (unpack in peval1)
 - then we can remove stp_selb1/2
 - make peval1 handle abstract vars, too
 - then we can remove more stp/stp2 cases
@@ -372,18 +372,19 @@ with peval1: tm -> tenv -> ty -> nat -> Prop :=
 | pt_var: forall x G1 TX n1,
             index x G1 = Some TX ->
             peval1 (tvar x) G1 TX (S n1)
+(* TODO: vara case *)                   
 | pt_sel: forall f l G1 TX n1 n2,
             peval1 f G1 (TFld l TX) n1 ->
             stp G1 [] TX TX n2 ->
             peval1 (tsel f l) G1 TX (S (n1+n2))
-(* | pt_unpack: forall t1 G1 T1 n1 n2, (* TODO! *)
-            peval1 t1 G1 (TBind T1) n1 ->
-            stp G1 [] (open (varF t1) T1) (open (varF t1) T1) n2 ->
-            peval1 t1 G1 (open (varF t1) T1) (S (n1+n2)) *) 
 | pt_sub: forall t1 G1 T1 T2 n1 n2,
             peval1 t1 G1 T1 n1 ->
             stp G1 [] T1 T2 n2 ->
             peval1 t1 G1 T2 (S (n1+n2))
+| pt_unpack: forall t1 G1 T1 n1 n2, (* TODO! *)
+            peval1 t1 G1 (TBind T1) n1 ->
+            stp G1 [] (open (varF t1) T1) (open (varF t1) T1) n2 ->
+            peval1 t1 G1 (open (varF t1) T1) (S (n1+n2))
 .
 
 (*
@@ -7823,6 +7824,16 @@ Proof.
     exists v. exists nv. split. assumption. eapply valtp_widen; eauto.
     eapply stpd2_to_sstpd2. eapply (IM n2). omega. eassumption. eassumption.
     eauto.
+  - assert (n1 < n) as LE1 by omega. assert (n2 < n) as LE2 by omega.
+    specialize (IHpeval1 Hwf LE1 IM). destruct IHpeval1 as [v [nv [IH1 IH2]]].
+    destruct nv. inversion IH2.
+    assert (sstpd2 true H1 (TBind T1) H1 (TBind T1) []). eapply valtp_reg; eauto.
+    eu. exists v.
+    eapply invert_bind in IH2.
+    destruct IH2 as [n0 [LEV [GY [TY [VT ST]]]]].
+    eexists. split. eapply IH1. eapply valtp_widen; eauto.
+    intros ni no. eapply stp2_substitute_aux. eauto. eauto.
+    eauto.
 Qed.
 
 Ltac som :=
@@ -8127,6 +8138,7 @@ Proof.
     }
     destruct A as [v A].
     eexists. eexists. split. simpl. reflexivity. eapply A.
+  - edestruct IHpeval1 as [v IH]; eauto.
   - edestruct IHpeval1 as [v IH]; eauto.
   - edestruct IHpeval1 as [v IH]; eauto.
 Qed.
@@ -8512,7 +8524,15 @@ Proof.
     eexists. eauto.     
   - eapply IHn in H4. ev. eexists. split. eauto. eapply valtp_widen. eauto.
     eapply sstpd2_untrans. eapply stpd2_to_sstpd2. eapply stp_to_stp2.
-    eauto. eauto. eauto. eauto. omega. eauto. 
+    eauto. eauto. eauto. eauto. omega. eauto.
+  - eapply IHn in H4. ev. remember H6 as H7. clear HeqH7.
+    eapply valtp_reg in H7. eu.
+    destruct x. inversion H6. eapply invert_bind in H6.
+    destruct H6 as [n1 [LE [GY [TY [VT ST]]]]].
+    eexists. split. eauto.
+    eapply valtp_widen. eapply VT. eapply ST.
+    intros ni no. eapply stp2_substitute_aux; eauto.
+    eauto. eauto. eauto. omega. eauto. 
 Qed.
 
 (* if not a timeout, then result not stuck and well-typed *)
