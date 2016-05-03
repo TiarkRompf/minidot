@@ -17,6 +17,23 @@
 (* copied from dot28.v *)
 (* based on that, it adds value fields that can partake in paths *)
 
+(* TODO:
+- add pt_unpack (unpack in peval1)
+- then we can remove stp_selb1/2
+- make peval1 handle abstract vars, too
+- then we can remove more stp/stp2 cases
+
+towards fulldep:
+- disable self vars in function terms
+- prove total
+- support application in paths
+
+allow both total and recursive functions
+- effect system?
+*)
+
+
+
 Require Export SfLib.
 
 Require Export Arith.EqNat.
