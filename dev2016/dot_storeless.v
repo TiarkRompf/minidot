@@ -2787,14 +2787,14 @@ Proof.
       simpl in *. eassumption.
 
   - Case "sub". subst.
-    assert ((exists x : id, t0 = tvar true x) \/
-               (exists (G' : venv) (t' : tm) n2,
-                  step G1 t0 (G'++G1) t' /\ has_type [] (G'++G1) t' T1 n2)) as HH.
+    assert ((exists x, t0 = tvar (VObj x)) \/
+               (exists (t' : tm) n2,
+                  step t0 t' /\ has_type [] t' T1 n2)) as HH.
     eapply IHhas_type; eauto. change 0 with (length ([]:tenv)) at 1. eapply stpd2_closed1; eauto.
     destruct HH.
     + SCase "val".
       ev. subst. left. eexists. eauto.
     + SCase "step".
       ev. subst.
-      right. repeat eexists. eauto. eapply T_Sub. eauto. eapply stp_extend_mult. eauto.
+      right. repeat eexists. eauto. eapply T_Sub. eauto. eauto.
 Qed.
