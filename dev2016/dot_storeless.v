@@ -2312,8 +2312,8 @@ Qed.
 Inductive step : tm -> tm -> Prop :=
 | ST_Obj : forall D,
     step (tobj D) (tvar (VObj D))
-| ST_AppAbs : forall f l x ds T1 T2 t12,
-    index l (dms_to_list (subst_dms ds ds)) = Some (dfun T1 T2 t12) ->
+| ST_AppAbs : forall f l x T1 T2 t12,
+    index l (dms_to_list (subst_dms f f)) = Some (dfun T1 T2 t12) ->
     step (tapp (tvar (VObj f)) l (tvar (VObj x))) (subst_tm x t12)
 | ST_App1 : forall t1 t1' l t2,
     step t1 t1' ->
