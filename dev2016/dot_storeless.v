@@ -2322,15 +2322,14 @@ Inductive step : tm -> tm -> Prop :=
 .
 
 
-Lemma stp_subst_narrow_z: forall GH0 TX G1 T1 T2 x m n1 n2,
-  stp (GH0 ++ [TX]) G1 T1 T2 n2 ->
-  vtp m G1 x (substt x TX) n1 ->
-  stpd2 (map (substt x) GH0) G1 (substt x T1) (substt x T2).
+Lemma stp_subst_narrow_z: forall GH0 TX T1 T2 x m n1 n2,
+  stp (GH0 ++ [TX]) T1 T2 n2 ->
+  vtp m x (substt x TX) n1 ->
+  stpd2 (map (substt x) GH0) (substt x T1) (substt x T2).
 Proof.
   intros.
-  edestruct stp_subst_narrow0. eauto. eapply vtp_closed1. eauto. eauto.
-  { intros. edestruct stp_subst_narrowX. eauto. eauto.
-    eapply vtp_closed1. eauto. eauto. eauto.
+  edestruct stp_subst_narrow0. eauto. eauto.
+  { intros. edestruct stp_subst_narrowX. eauto. eauto. eauto. eauto.
     { intros. eapply vtp_widen; eauto. }
     ev. repeat eexists. eauto.
   }
