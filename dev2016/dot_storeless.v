@@ -2642,13 +2642,13 @@ Proof.
   erewrite subst_closed_id. eauto. eapply vtp_closed in H0. eauto.
 Qed.
 
-Theorem type_safety : forall G t T n1,
-  has_type [] G t T n1 ->
-  (exists x, t = tvar true x) \/
-  (exists G' t' n2, step G t (G'++G) t' /\ has_type [] (G'++G) t' T n2).
+Theorem type_safety : forall t T n1,
+  has_type [] t T n1 ->
+  (exists x, t = tvar (VObj x)) \/
+  (exists t' n2, step t t' /\ has_type [] t' T n2).
 Proof.
   intros.
-  assert (closed (length ([]:tenv)) (length G) 0 T) as CL. eapply has_type_closed. eauto.
+  assert (closed (length ([]:tenv)) 0 T) as CL. eapply has_type_closed. eauto.
   remember [] as GH. remember t as tt. remember T as TT.
   revert T t HeqTT HeqGH Heqtt CL.
   induction H; intros.
