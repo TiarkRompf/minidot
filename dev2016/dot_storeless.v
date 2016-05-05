@@ -2056,11 +2056,11 @@ Proof.
 Qed.
 
 (* possible types closure *)
-Lemma vtp_widen: forall l, forall n, forall k, forall m1 G1 x T2 T3 n1 n2,
-  vtp m1 G1 x T2 n1 ->
-  stp [] G1 T2 T3 n2 ->
+Lemma vtp_widen: forall l, forall n, forall k, forall m1 x T2 T3 n1 n2,
+  vtp m1 x T2 n1 ->
+  stp [] T2 T3 n2 ->
   m1 < l -> n2 < n -> n1 < k ->
-  vtpdd m1 G1 x T3.
+  vtpdd m1 x T3.
 Proof.
   intros l. induction l. intros. solve by inversion.
   intros n. induction n. intros. solve by inversion.
@@ -2069,235 +2069,235 @@ Proof.
   - Case "top". inversion H0; subst; invty.
     + SCase "top". repeat eexists; eauto.
     + SCase "ssel2".
-      assert (vtpdd m1 G1 x TX). eapply IHn; eauto. omega.
-      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. eauto.
+      assert (vtpdd m1 x TX). eapply IHn; eauto. omega.
+      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto.
     + SCase "sel2".
-      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H9. omega.
+      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H7. omega.
     + SCase "and".
-      assert (vtpdd m1 G1 x T1). eapply IHn; eauto. omega. eu.
-      assert (vtpdd m1 G1 x T0). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T1). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T0). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_and; eauto. eauto.
     + SCase "or1".
-      assert (vtpdd m1 G1 x T1). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T1). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_or1; eauto. eauto.
     + SCase "or2".
-      assert (vtpdd m1 G1 x T0). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T0). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_or2; eauto. eauto.
     + SCase "trans".
-      assert (vtpdd m1 G1 x T0) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
-      assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
+      assert (vtpdd m1 x T0) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
+      assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega.
   - Case "mem". inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. eapply index_max. eauto. eauto.
+    + SCase "top". repeat eexists. eapply vtp_top. eauto.
     + SCase "mem". invty. subst.
-      repeat eexists. eapply vtp_mem. eauto. eauto.
+      repeat eexists. eapply vtp_mem. eauto.
       eapply stp_trans. eauto. eauto.
       eapply stp_trans. eauto. eauto.
       eauto.
     + SCase "sel2".
-      assert (vtpdd m1 G1 x TX0). eapply IHn; eauto. omega.
-      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. eauto.
+      assert (vtpdd m1 x TX0). eapply IHn; eauto. omega.
+      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto.
     + SCase "sel2".
-      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H12. omega.
+      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H10. omega.
     + SCase "and".
-      assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu.
-      assert (vtpdd m1 G1 x T5). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T4). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T5). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_and; eauto. eauto.
     + SCase "or1".
-      assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T4). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_or1; eauto. eauto.
     + SCase "or2".
-      assert (vtpdd m1 G1 x T5). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T5). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_or2; eauto. eauto.
     + SCase "trans".
-      assert (vtpdd m1 G1 x T5) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
-      assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
+      assert (vtpdd m1 x T5) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
+      assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega.
   - Case "fun". inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. eapply index_max. eauto. eauto.
+    + SCase "top". repeat eexists. eapply vtp_top. eauto.
     + SCase "fun". invty. subst.
-      assert (stpd2 [T8] G1 (open 0 (TVar false 0) T0) (open 0 (TVar false 0) T5)) as A. {
+      assert (stpd2 [T8] (open 0 (TVar (VAbs 0)) T0) (open 0 (TVar (VAbs 0)) T5)) as A. {
         eapply stp_narrow. simpl. eassumption. simpl. eassumption.
       }
       destruct A as [na A].
-      repeat eexists. eapply vtp_fun. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+      repeat eexists. eapply vtp_fun. eauto. eauto. eauto. eauto. eauto.
       eapply stp_trans. eauto. eauto. eauto. eauto. eauto. eauto. eauto. reflexivity.
     + SCase "sel2".
-      assert (vtpdd m1 G1 x TX). eapply IHn; eauto. omega.
-      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. eauto.
+      assert (vtpdd m1 x TX). eapply IHn; eauto. omega.
+      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto.
     + SCase "sel2".
-      eapply stp_closed2 in H0. simpl in H0. inversion H0. subst. inversion H17. omega.
+      eapply stp_closed2 in H0. simpl in H0. inversion H0. subst. inversion H15. omega.
     + SCase "and".
-      assert (vtpdd m1 G1 x T6). eapply IHn; eauto. omega. eu.
-      assert (vtpdd m1 G1 x T7). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T6). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T7). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_and; eauto. eauto.
     + SCase "or1".
-      assert (vtpdd m1 G1 x T6). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T6). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_or1; eauto. eauto.
     + SCase "or2".
-      assert (vtpdd m1 G1 x T7). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T7). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_or2; eauto. eauto.
     + SCase "trans".
-      assert (vtpdd m1 G1 x T7) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
-      assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
+      assert (vtpdd m1 x T7) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
+      assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega.
   - Case "bind".
     inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. eapply vtp_closed1. eauto. eauto.
+    + SCase "top". repeat eexists. eapply vtp_top. eauto.
     + SCase "sel2".
-      assert (vtpdd (S m) G1 x TX). eapply IHn; eauto. omega.
-      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. eauto.
+      assert (vtpdd (S m) x TX). eapply IHn; eauto. omega.
+      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto.
     + SCase "sel2".
-      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H10. omega.
+      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H9. omega.
     + SCase "bind1".
       invty. subst.
-      remember (TVar false (length [])) as VZ.
-      remember (TVar true x) as VX.
+      remember (TVar (VAbs (length []))) as VZ.
+      remember (TVar (VObj x)) as VX.
 
       (* left *)
-      assert (vtpd m G1 x (open 0 VX T0)) as LHS. eexists. eassumption.
+      assert (vtpd m x (open 0 VX T0)) as LHS. eexists. eassumption.
       eu.
       (* right *)
       assert (substt x (open 0 VZ T0) = (open 0 VX T0)) as R. unfold substt. subst. eapply subst_open_commute0. eauto.
       assert (substt x T3 = T3) as R1. eapply subst_closed_id. eauto.
 
-      assert (vtpdd m G1 x (substt x T3)) as BB. {
+      assert (vtpdd m x (substt x T3)) as BB. {
         eapply stp_subst_narrowX. rewrite <-R in LHS. eapply LHS.
-        instantiate (2:=nil). simpl. eapply H11. eapply vtp_closed1. eauto. eauto. eauto.
+        instantiate (2:=nil). simpl. eapply H10. eauto. eauto.
         { intros. eapply IHl. eauto. eauto. omega. eauto. eauto. }
       }
       rewrite R1 in BB.
       eu. repeat eexists. eauto. omega.
     + SCase "bindx".
       invty. subst.
-      remember (TVar false (length [])) as VZ.
-      remember (TVar true x) as VX.
+      remember (TVar (VAbs (length []))) as VZ.
+      remember (TVar (VObj x)) as VX.
 
       (* left *)
-      assert (vtpd m G1 x (open 0 VX T0)) as LHS. eexists. eassumption.
+      assert (vtpd m x (open 0 VX T0)) as LHS. eexists. eassumption.
       eu.
       (* right *)
       assert (substt x (open 0 VZ T0) = (open 0 VX T0)) as R. unfold substt. subst. eapply subst_open_commute0. eauto.
 
-      assert (vtpdd m G1 x (substt x (open 0 VZ T4))) as BB. {
+      assert (vtpdd m x (substt x (open 0 VZ T4))) as BB. {
         eapply stp_subst_narrowX. rewrite <-R in LHS. eapply LHS.
-        instantiate (2:=nil). simpl. eapply H11. eapply vtp_closed1. eauto. eauto. eauto.
+        instantiate (2:=nil). simpl. eapply H10. eauto. eauto.
         { intros. eapply IHl. eauto. eauto. omega. eauto. eauto. }
       }
       unfold substt in BB. subst. erewrite subst_open_commute0 in BB.
       clear R.
       eu. repeat eexists. eapply vtp_bind. eauto. eauto. omega. eauto. (* enough slack to add bind back *)
     + SCase "and".
-      assert (vtpdd (S m) G1 x T1). eapply IHn; eauto. omega. eu.
-      assert (vtpdd (S m) G1 x T4). eapply IHn; eauto. omega. eu.
+      assert (vtpdd (S m) x T1). eapply IHn; eauto. omega. eu.
+      assert (vtpdd (S m) x T4). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_and; eauto. eauto.
     + SCase "or1".
-      assert (vtpdd (S m) G1 x T1). eapply IHn; eauto. omega. eu.
+      assert (vtpdd (S m) x T1). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_or1; eauto. eauto.
     + SCase "or2".
-      assert (vtpdd (S m) G1 x T4). eapply IHn; eauto. omega. eu.
+      assert (vtpdd (S m) x T4). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_or2; eauto. eauto.
     + SCase "trans".
-      assert (vtpdd (S m) G1 x T4) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
-      assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
+      assert (vtpdd (S m) x T4) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
+      assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega.
   - Case "ssel2". subst. inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. eapply vtp_closed1. eauto. eauto.
-    + SCase "ssel1". index_subst. index_subst. eapply IHn. eapply H6. eauto. eauto. omega. eauto.
+    + SCase "top". repeat eexists. eapply vtp_top. eauto.
+    + SCase "ssel1". index_subst. index_subst. eapply IHn. eapply H5. eauto. eauto. omega. eauto.
     + SCase "ssel2".
-      assert (vtpdd m1 G1 x TX0). eapply IHn; eauto. omega.
-      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. eauto.
+      assert (vtpdd m1 x TX0). eapply IHn; eauto. omega.
+      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto.
     + SCase "sel1".
-      assert (closed (length ([]:tenv)) (length G1) 0 (TSel (TVar false x0) l1)) as A.
+      assert (closed (length ([]:tenv)) 0 (TSel (TVar (VAbs x0)) l1)) as A.
       eapply stpd2_closed2. eauto.
-      simpl in A. inversion A. inversion H12. omega.
+      simpl in A. inversion A. inversion H10. omega.
     + SCase "selx".
       eauto.
     + SCase "and".
-      assert (vtpdd m1 G1 x T1). eapply IHn; eauto. omega. eu.
-      assert (vtpdd m1 G1 x T2). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T1). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_and; eauto. eauto.
     + SCase "or1".
-      assert (vtpdd m1 G1 x T1). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T1). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_or1; eauto. eauto.
     + SCase "or2".
-      assert (vtpdd m1 G1 x T2). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_or2; eauto. eauto.
     + SCase "trans".
-      assert (vtpdd m1 G1 x T2) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
-      assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
+      assert (vtpdd m1 x T2) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
+      assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega.
   - Case "and". subst. inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. eapply vtp_closed1. eauto. eauto.
+    + SCase "top". repeat eexists. eapply vtp_top. eauto.
     + SCase "sel2".
-      assert (vtpdd m1 G1 x TX). eapply IHn; eauto. omega.
-      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. eauto.
+      assert (vtpdd m1 x TX). eapply IHn; eauto. omega.
+      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto.
     + SCase "sel2".
-      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H13. omega.
+      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H12. omega.
     + SCase "and11". eapply IHn in H4. eu. repeat eexists. eauto. omega. eauto. omega. omega. eauto.
     + SCase "and12". eapply IHn in H5. eu. repeat eexists. eauto. omega. eauto. omega. omega. eauto.
     + SCase "and".
-      assert (vtpdd m1 G1 x T2). eapply IHn; eauto. omega. eu.
-      assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T4). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_and; eauto. eauto.
     + SCase "or1".
-      assert (vtpdd m1 G1 x T2). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_or1; eauto. eauto.
     + SCase "or2".
-      assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T4). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_or2; eauto. eauto.
     + SCase "trans".
-      assert (vtpdd m1 G1 x T4) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
-      assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
+      assert (vtpdd m1 x T4) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
+      assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega.
 
   - Case "or1". subst. inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. eapply vtp_closed1. eauto. eauto.
+    + SCase "top". repeat eexists. eapply vtp_top. eauto.
     + SCase "sel2".
-      assert (vtpdd m1 G1 x TX). eapply IHn; eauto. omega.
-      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. eauto.
+      assert (vtpdd m1 x TX). eapply IHn; eauto. omega.
+      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto.
     + SCase "sel2".
-      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H13. omega.
+      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H12. omega.
     + SCase "and".
-      assert (vtpdd m1 G1 x T2). eapply IHn; eauto. omega. eu.
-      assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T4). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_and; eauto. eauto.
     + SCase "or1".
-      assert (vtpdd m1 G1 x T2). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_or1; eauto. eauto.
     + SCase "or2".
-      assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T4). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_or2; eauto. eauto.
     + SCase "or...".
       eapply IHn in H4. eu.
       repeat eexists. eapply H4. omega. eauto. omega. omega. eauto.
     + SCase "or...".
-      assert (vtpdd m1 G1 x T4) as A. eapply IHn. eapply H. eauto. omega. omega. eauto. eu.
+      assert (vtpdd m1 x T4) as A. eapply IHn. eapply H. eauto. omega. omega. eauto. eu.
       eapply IHn in A. eu.
       repeat eexists. eauto. omega. eauto. omega. omega. eauto.
 
   - Case "or2". subst. inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. eapply vtp_closed1. eauto. eauto.
+    + SCase "top". repeat eexists. eapply vtp_top. eauto.
     + SCase "sel2".
-      assert (vtpdd m1 G1 x TX). eapply IHn; eauto. omega.
-      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto. eauto.
+      assert (vtpdd m1 x TX). eapply IHn; eauto. omega.
+      eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto.
     + SCase "sel2".
-      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H13. omega.
+      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H12. omega.
     + SCase "and".
-      assert (vtpdd m1 G1 x T2). eapply IHn; eauto. omega. eu.
-      assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T4). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_and; eauto. eauto.
     + SCase "or1".
-      assert (vtpdd m1 G1 x T2). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_or1; eauto. eauto.
     + SCase "or2".
-      assert (vtpdd m1 G1 x T4). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T4). eapply IHn; eauto. omega. eu.
       repeat eexists. eapply vtp_or2; eauto. eauto.
     + SCase "or...".
       eapply IHn in H4. eu.
       repeat eexists. eapply H4. omega. eauto. omega. omega. eauto.
     + SCase "or...".
-      assert (vtpdd m1 G1 x T4) as A. eapply IHn. eapply H. eauto. omega. omega. eauto. eu.
+      assert (vtpdd m1 x T4) as A. eapply IHn. eapply H. eauto. omega. omega. eauto. eu.
       eapply IHn in A. eu.
       repeat eexists. eauto. omega. eauto. omega. omega. eauto.
 
