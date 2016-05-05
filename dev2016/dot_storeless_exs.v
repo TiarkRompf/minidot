@@ -1,8 +1,8 @@
 (*
-coqc -I ../../sf/ dot.v
+coqc -I ../../sf/ dot_storeless.v
 *)
 
-Require Import dot.
+Require Import dot_storeless.
 
 (* ############################################################ *)
 (* Examples *)
@@ -22,18 +22,18 @@ Fixpoint dms_compute (ds: dms) :=
   end.
 
 Ltac apply_dfun := match goal with
-  | [ |- dms_has_type ?GH ?G1 (dcons (dfun ?T11 ?T12 ?t12) ?ds) ?T ?n ] =>
-    eapply (D_Abs GH G1 (length (dms_to_list ds)) T11 T12 (open 0 (TVar false (length GH)) T12) t12 ds (dms_compute ds) (TAnd (TFun (length (dms_to_list ds)) T11 T12) (dms_compute ds)))
+  | [ |- dms_has_type ?GH (dcons (dfun ?T11 ?T12 ?t12) ?ds) ?T ?n ] =>
+    eapply (D_Abs GH (length (dms_to_list ds)) T11 T12 (open 0 (TVar (VAbs (length GH))) T12) t12 ds (dms_compute ds) (TAnd (TFun (length (dms_to_list ds)) T11 T12) (dms_compute ds)))
   end.
 
 Ltac apply_tobj := match goal with
-  | [ |- has_type ?GH ?G1 (tobj ?ds) ?T ?n ] =>
-    eapply (T_Obj GH G1 ds) with (T':=(dms_compute ds))
+  | [ |- has_type ?GH (tobj ?ds) ?T ?n ] =>
+    eapply (T_Obj GH ds) with (T':=(dms_compute ds))
 end.
 
 Ltac apply_stp_bind1 := match goal with
-  | [ |- stp ?GH ?G1 (TBind (TAnd ?T1 ?T2)) ?T1 ?n ] =>
-    eapply (stp_trans GH G1 (TBind (TAnd T1 T2)) (TAnd T1 T2) T1)
+  | [ |- stp ?GH (TBind (TAnd ?T1 ?T2)) ?T1 ?n ] =>
+    eapply (stp_trans GH (TBind (TAnd T1 T2)) (TAnd T1 T2) T1)
 end.
 
 Ltac crush := simpl;
@@ -45,10 +45,10 @@ Ltac crush := simpl;
   try solve [econstructor; crush];
   try solve [eapply T_Sub; crush].
 
-Example ex0: has_typed [] [] (tobj dnil) TTop.
+Example ex0: has_typed [] (tobj dnil) TTop.
   eexists. crush.
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0.
 Qed.
 
 (* define polymorphic identity function *)
@@ -56,19 +56,19 @@ Qed.
 Definition polyId := TFun 0 (TMem 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0) (TSel (TVarB 1) 0)).
 
 Example ex1: has_typed
-               [] []
+               []
                (tobj (dcons (dfun (TMem 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0) (TSel (TVarB 1) 0))
-               (tobj (dcons (dfun (TSel (TVar false 1) 0) (TSel (TVar false 1) 0) (tvar false 3)) dnil))) dnil)) polyId.
+               (tobj (dcons (dfun (TSel (TVar (VAbs 1)) 0) (TSel (TVar (VAbs 1)) 0) (tvar (VAbs 3))) dnil))) dnil)) polyId.
 Proof.
   unfold polyId.
   eexists. crush.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0.
 Qed.
 
 (* instantiate it to TTop *)
-Example ex2: has_typed [polyId] [] (tapp (tvar false 0) 0 (tobj (dcons (dty TTop) dnil))) (TFun 0 TTop TTop).
+Example ex2: has_typed [polyId] (tapp (tvar (VAbs 0)) 0 (tobj (dcons (dty TTop) dnil))) (TFun 0 TTop TTop).
 Proof.
   unfold polyId.
   eexists.
@@ -81,5 +81,5 @@ Proof.
   crush.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0.
+apply 0.
 Qed.
