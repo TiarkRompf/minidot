@@ -2616,27 +2616,27 @@ Grab Existential Variables.
 apply 0. apply 0.
 Qed.
 
-Lemma hastp_subst_z: forall G1 GH TX T x t n1 n2,
-  has_type (GH++[TX]) G1 t T n2 ->
-  has_type [] G1 (tvar true x) (substt x TX) n1 ->
-  exists n3, has_type (map (substt x) GH) G1 (subst_tm x t) (substt x T) n3.
+Lemma hastp_subst_z: forall GH TX T x t n1 n2,
+  has_type (GH++[TX]) t T n2 ->
+  has_type [] (tvar (VObj x)) (substt x TX) n1 ->
+  exists n3, has_type (map (substt x) GH) (subst_tm x t) (substt x T) n3.
 Proof.
   intros. eapply hastp_subst_aux_z with (t:=t). eauto. eauto. eauto.
 Qed.
 
-Lemma hastp_subst: forall G1 GH TX T x t n1 n2,
-  has_type (GH++[TX]) G1 t T n2 ->
-  has_type [] G1 (tvar true x) TX n1 ->
-  exists n3, has_type (map (substt x) GH) G1 (subst_tm x t) (substt x T) n3.
+Lemma hastp_subst: forall GH TX T x t n1 n2,
+  has_type (GH++[TX]) t T n2 ->
+  has_type [] (tvar (VObj x)) TX n1 ->
+  exists n3, has_type (map (substt x) GH) (subst_tm x t) (substt x T) n3.
 Proof.
   intros. eapply hastp_subst_z with (t:=t). eauto.
   erewrite subst_closed_id. eauto. eapply has_type_closed in H0. eauto.
 Qed.
 
-Lemma stp_subst_narrow: forall GH0 TX G1 T1 T2 x m n1 n2,
-  stp (GH0 ++ [TX]) G1 T1 T2 n2 ->
-  vtp m G1 x TX n1 ->
-  stpd2 (map (substt x) GH0) G1 (substt x T1) (substt x T2).
+Lemma stp_subst_narrow: forall GH0 TX T1 T2 x m n1 n2,
+  stp (GH0 ++ [TX]) T1 T2 n2 ->
+  vtp m x TX n1 ->
+  stpd2 (map (substt x) GH0) (substt x T1) (substt x T2).
 Proof.
   intros. eapply stp_subst_narrow_z. eauto.
   erewrite subst_closed_id. eauto. eapply vtp_closed in H0. eauto.
