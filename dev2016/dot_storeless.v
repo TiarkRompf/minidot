@@ -2731,57 +2731,60 @@ Proof.
       simpl in *. eassumption.
 
   - Case "appvar". subst.
-    assert (closed (length ([]:tenv)) (length G1) 0 (TFun l T1 T2)) as TF. eapply has_type_closed. eauto.
-    assert ((exists x : id, tvar b2 x2 = tvar true x) \/
-                (exists (G' : venv) (t' : tm) n2,
-                   step G1 (tvar b2 x2) (G'++G1) t' /\ has_type [] (G'++G1) t' T1 n2)) as HX.
+    assert (closed (length ([]:tenv)) 0 (TFun l T1 T2)) as TF. eapply has_type_closed. eauto.
+    assert ((exists x, tvar v2 = tvar (VObj x)) \/
+                (exists (t' : tm) n2,
+                   step (tvar v2) t' /\ has_type [] t' T1 n2)) as HX.
     eapply IHhas_type2. eauto. eauto. eauto. inversion TF. eauto.
-    assert (b2 = true) as HXeq. {
-      destruct HX as [[? HX] | Contra]. inversion HX. reflexivity.
-      destruct Contra as [G' [t' [n' [Hstep Htyp]]]].
+    assert (exists x2, v2 = (VObj x2)) as HXeq. {
+      destruct HX as [[? HX] | Contra]. inversion HX. eexists. reflexivity.
+      destruct Contra as [t' [n' [Hstep Htyp]]].
       inversion Hstep.
     }
-    clear HX. subst b2.
-    assert ((exists x : id, t1 = tvar true x) \/
-                (exists (G' : venv) (t' : tm) n2,
-                   step G1 t1 (G'++G1) t' /\ has_type [] (G'++G1) t' (TFun l T1 T2) n2)) as HF.
+    clear HX. destruct HXeq as [x2 HXeq]. subst v2.
+    assert ((exists x, t1 = tvar (VObj x)) \/
+                (exists (t' : tm) n2,
+                   step t1 t' /\ has_type [] t' (TFun l T1 T2) n2)) as HF.
     eapply IHhas_type1. eauto. eauto. eauto. eauto.
     destruct HF.
     + SCase "fun-val".
       ev. ev. subst.
-      assert (exists m n1, vtp m G1 x (TFun l T1 T2) n1). eapply hastp_inv. eauto.
-      assert (exists m n1, vtp m G1 x2 T1 n1). eapply hastp_inv. eauto.
+      assert (exists m n1, vtp m x (TFun l T1 T2) n1). eapply hastp_inv. eauto.
+      assert (exists m n1, vtp m x2 T1 n1). eapply hastp_inv. eauto.
       ev. inversion H1. subst.
-      assert (vtpdd x0 G1 x2 T0). eapply vtp_widen. eauto. eauto. eauto. eauto. eauto.
+      assert (vtpdd x0 x2 T0). eapply vtp_widen. eauto. eauto. eauto. eauto. eauto.
       eu.
-      assert (exists T, (exists n1, has_type [] G1 (tvar true x) T n1) /\ substt x T' = T) as A. eexists. split. eexists. eapply T_Vary. eauto. eauto. eauto. eauto. eapply closed_subst. eapply dms_has_type_closed in H10. eauto. econstructor. eapply index_max in H7. omega. reflexivity.
+      assert (exists T, (exists n1, has_type [] (tvar (VObj x)) T n1) /\ substt x T' = T) as A. eexists. split. eexists. eapply T_Vary. eauto. reflexivity. eapply closed_subst. eapply dms_has_type_closed in H8. eauto. eauto. reflexivity.
       destruct A as [Tx [[na A] EqTx]].
-      assert (has_typed (map (substt x) [T1x]) G1 (subst_tm x tx) (substt x (open 0 (TVar false 1) T2x))) as HIx.
-      eapply hastp_subst_z. eapply H13. rewrite EqTx. eapply A.
+      assert (has_typed (map (substt x) [T1x]) (subst_tm x tx) (substt x (open 0 (TVar (VAbs 1)) T2x))) as HIx.
+      eapply hastp_subst_z. eapply H11. rewrite EqTx. eapply A.
       eu. simpl in HIx.
-      assert (has_typed (map (substt x2) []) G1 (subst_tm x2 (subst_tm x tx)) (substt x2 (substt x (open 0 (TVar false 1) T2x)))) as HIx0.
-      eapply hastp_subst. rewrite app_nil_l. eapply HIx. simpl in H11. inversion H11. unfold substt. rewrite H9. eauto.
+      assert (subst_dm x (dfun T1x T2x tx) = dfun T0 T3 t) as EqD. {
+        eapply index_subst_dms_eq. eauto. eauto.
+      }
+      simpl in EqD. inversion EqD.
+      assert (has_typed (map (substt x2) []) (subst_tm x2 (subst_tm x tx)) (substt x2 (substt x (open 0 (TVar (VAbs 1)) T2x)))) as HIx0.
+      eapply hastp_subst. rewrite app_nil_l. eapply HIx. unfold substt. rewrite H10. eauto.
       eu. simpl in HIx0.
-      assert ((substt x (open 0 (TVar false 1) T2x))=(open 0 (TVar false 0) (substt x T2x))) as EqT2x. {
+      assert ((substt x (open 0 (TVar (VAbs 1)) T2x))=(open 0 (TVar (VAbs 0)) (substt x T2x))) as EqT2x. {
         change 1 with (0+1). rewrite subst_open. reflexivity.
       }
-      assert (has_typed [] G1 (subst_tm x2 t) (substt x2 (open 0 (TVar false 0) T3))) as HI. {
-        inversion H11; subst. unfold substt in EqT2x. rewrite <- EqT2x. eauto.
+      assert (has_typed [] (subst_tm x2 t) (substt x2 (open 0 (TVar (VAbs 0)) T3))) as HI. {
+        subst. unfold substt in EqT2x. rewrite <- EqT2x. eauto.
       }
       eu. simpl in HI.
-      edestruct stp_subst_narrow as [? HI2]. rewrite app_nil_l. eapply H23. eauto.
+      edestruct stp_subst_narrow as [? HI2]. rewrite app_nil_l. eapply H20. eauto.
       simpl in HI2.
-      assert ((substt x2 (open 0 (TVar false 0) T2))=(open 0 (TVar true x2) T2)) as EqT2. {
+      assert ((substt x2 (open 0 (TVar (VAbs 0)) T2))=(open 0 (TVar (VObj x2)) T2)) as EqT2. {
         rewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity.
         eassumption.
       }
       rewrite EqT2 in HI2.
-      right. repeat eexists. rewrite app_nil_l. eapply ST_AppAbs. eauto. eauto.
-      eapply T_Sub. eauto. eauto.
+      right. repeat eexists. eapply ST_AppAbs. eauto. eauto.
     + SCase "fun_step".
       ev. subst. right. repeat eexists. eapply ST_App1. eauto. eapply T_AppVar.
-      eauto. eapply has_type_extend_mult. eauto. reflexivity.
-      simpl in *. rewrite app_length. eapply closed_extend_mult. eassumption. omega.
+      eauto. eauto. eauto.
+      simpl in *. eassumption.
 
   - Case "sub". subst.
     assert ((exists x : id, t0 = tvar true x) \/
