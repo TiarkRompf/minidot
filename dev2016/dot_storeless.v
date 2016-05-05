@@ -2441,11 +2441,11 @@ Grab Existential Variables.
 apply 0. apply 0.
 Qed.
 
-Lemma hastp_inv: forall G1 x T n1,
-  has_type [] G1 (tvar true x) T n1 ->
-  exists m n1, vtp m G1 x T n1.
+Lemma hastp_inv: forall x T n1,
+  has_type [] (tvar (VObj x)) T n1 ->
+  exists m n1, vtp m x T n1.
 Proof.
-  intros. remember [] as GH. remember (tvar true x) as t.
+  intros. remember [] as GH. remember (tvar (VObj x)) as t.
   induction H; subst; try inversion Heqt.
   - Case "var". subst. eapply dms_hastp_inv; eauto.
   - Case "pack". subst.
@@ -2456,7 +2456,7 @@ Proof.
     repeat eexists. eauto.
   - Case "sub".
     destruct IHhas_type. eauto. eauto. ev.
-    assert (exists m0, vtpdd m0 G1 x T2). eexists. eapply vtp_widen; eauto.
+    assert (exists m0, vtpdd m0 x T2). eexists. eapply vtp_widen; eauto.
     ev. eu. repeat eexists. eauto.
 Qed.
 
