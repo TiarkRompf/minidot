@@ -2727,8 +2727,8 @@ Proof.
         simpl in *. eassumption.
     + SCase "fun_step".
       ev. subst. right. repeat eexists. eapply ST_App1. eauto. eapply T_App.
-      eauto. eapply has_type_extend_mult. eauto.
-      simpl in *. rewrite app_length. eapply closed_extend_mult. eassumption. omega.
+      eauto. eauto.
+      simpl in *. eassumption.
 
   - Case "appvar". subst.
     assert (closed (length ([]:tenv)) (length G1) 0 (TFun l T1 T2)) as TF. eapply has_type_closed. eauto.
