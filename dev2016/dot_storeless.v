@@ -2460,14 +2460,14 @@ Proof.
     ev. eu. repeat eexists. eauto.
 Qed.
 
-Lemma hastp_subst_aux_z: forall ni, (forall G1 GH TX T x t n1 n2,
-  has_type (GH++[TX]) G1 t T n2 -> n2 < ni ->
-  has_type [] G1 (tvar true x) (substt x TX) n1 ->
-  exists n3, has_type (map (substt x) GH) G1 (subst_tm x t) (substt x T) n3) /\
-  (forall G1 GH TX T x ds n1 n2,
-  dms_has_type (GH++[TX]) G1 ds T n2 -> n2 < ni ->
-  has_type [] G1 (tvar true x) (substt x TX) n1 ->
-  exists n3, dms_has_type (map (substt x) GH) G1 (subst_dms x ds) (substt x T) n3).
+Lemma hastp_subst_aux_z: forall ni, (forall GH TX T x t n1 n2,
+  has_type (GH++[TX]) t T n2 -> n2 < ni ->
+  has_type [] (tvar (VObj x)) (substt x TX) n1 ->
+  exists n3, has_type (map (substt x) GH) (subst_tm x t) (substt x T) n3) /\
+  (forall GH TX T x ds n1 n2,
+  dms_has_type (GH++[TX]) ds T n2 -> n2 < ni ->
+  has_type [] (tvar (VObj x)) (substt x TX) n1 ->
+  exists n3, dms_has_type (map (substt x) GH) (subst_dms x ds) (substt x T) n3).
 Proof.
   intro ni. induction ni. split; intros; omega. destruct IHni as [IHniT IHniD].
   split;
@@ -2476,38 +2476,34 @@ Proof.
     assert (substt x T = T) as EqT. {
       erewrite subst_closed_id. reflexivity. eauto.
     }
-    subst. simpl. eexists. eapply T_Vary. eauto. eauto. eauto.
-    rewrite EqT. reflexivity. rewrite EqT. eauto.
+    subst. simpl. eexists. eapply T_Vary. eauto. eauto.
+    rewrite EqT. eauto.
   - Case "varz". subst. simpl.
     case_eq (beq_nat x0 0); intros E.
     + assert (x0 = 0). eapply beq_nat_true_iff; eauto. subst x0.
       eapply index_hit0 in H2. subst.
       eapply hastp_upgrade_gh. eauto.
     + assert (x0 <> 0). eapply beq_nat_false_iff; eauto.
-      eexists. eapply T_Varz. eapply index_subst1. eauto. eauto. rewrite map_length. eapply closed_subst0. rewrite app_length in H3. simpl in H3. eapply H3. eapply has_type_closed1. eauto.
+      eexists. eapply T_Varz. eapply index_subst1. eauto. eauto. rewrite map_length. eapply closed_subst0. rewrite app_length in H3. simpl in H3. eapply H3.
   - Case "pack". subst. simpl.
     edestruct IHniT as [? IH]. eauto. omega. eauto.
     assert (substt x (TBind T1) = (TBind (substt x T1))) as A. {
       eauto.
     }
     rewrite A.
-    destruct b.
-    + eexists. eapply T_VarPack. eapply IH.
-      unfold substt. rewrite subst_open_commute1. reflexivity.
-      rewrite map_length. eapply closed_subst0. rewrite app_length in H4. simpl in H4.
-      apply H4. eapply has_type_closed1. eauto.
-    + case_eq (beq_nat x0 0); intros E.
-      * assert (x0 = 0). eapply beq_nat_true_iff; eauto. subst x0.
+    destruct v.
+    + case_eq (beq_nat i 0); intros E.
+      * assert (i = 0). eapply beq_nat_true_iff; eauto. subst.
         simpl in IH.
         eexists. eapply T_VarPack. eapply IH. rewrite subst_open_commute0b. eauto.
         rewrite map_length. eapply closed_subst. rewrite app_length in H4. simpl in H4.
-        eapply H4. econstructor. eapply has_type_closed1. eauto.
-      * assert (x0 <> 0). eapply beq_nat_false_iff; eauto.
+        eapply H4. econstructor.
+      * assert (i <> 0). eapply beq_nat_false_iff; eauto.
         simpl in IH. rewrite E in IH.
         eexists. eapply T_VarPack. eapply IH.
-        remember (x0 - 1) as z.
-        assert (x0 = z + 1) as B. {
-          intuition. destruct x0. specialize (H3 eq_refl). inversion H3.
+        remember (i - 1) as z.
+        assert (i = z + 1) as B. {
+          intuition. destruct i. specialize (H3 eq_refl). inversion H3.
           subst. simpl. rewrite <- minus_n_O. rewrite NPeano.Nat.add_1_r.
           reflexivity.
         }
@@ -2515,30 +2511,30 @@ Proof.
         rewrite subst_open_commute_z. reflexivity.
         rewrite map_length. eapply closed_subst. rewrite app_length in H4.
         simpl in H4. eapply H4.
-        econstructor. eapply has_type_closed1. eauto.
+        econstructor.
+    + eexists. eapply T_VarPack. eapply IH.
+      unfold substt. rewrite subst_open_commute1. reflexivity.
+      rewrite map_length. eapply closed_subst0. rewrite app_length in H4. simpl in H4.
+      apply H4.
   - Case "unpack". subst. simpl.
     edestruct IHniT as [? IH]. eapply H2. omega. eauto.
     assert (substt x (TBind T1) = (TBind (substt x T1))) as A. {
       eauto.
     }
     rewrite A in IH.
-    destruct b.
-    + eexists. eapply T_VarUnpack. eapply IH.
-      unfold substt. rewrite subst_open_commute1. reflexivity.
-      rewrite map_length. eapply closed_subst0. rewrite app_length in H4. simpl in H4.
-      apply H4. eapply has_type_closed1. eauto.
-    + case_eq (beq_nat x0 0); intros E.
-      * assert (x0 = 0). eapply beq_nat_true_iff; eauto. subst x0.
+    destruct v.
+    + case_eq (beq_nat i 0); intros E.
+      * assert (i = 0). eapply beq_nat_true_iff; eauto. subst.
         simpl in IH.
         eexists. eapply T_VarUnpack. eapply IH. rewrite subst_open_commute0b. eauto.
         rewrite map_length. eapply closed_subst. rewrite app_length in H4. simpl in H4.
-        eapply H4. econstructor. eapply has_type_closed1. eauto.
-      * assert (x0 <> 0). eapply beq_nat_false_iff; eauto.
+        eapply H4. econstructor.
+      * assert (i <> 0). eapply beq_nat_false_iff; eauto.
         simpl in IH. rewrite E in IH.
         eexists. eapply T_VarUnpack. eapply IH.
-        remember (x0 - 1) as z.
-        assert (x0 = z + 1) as B. {
-          intuition. destruct x0. specialize (H3 eq_refl). inversion H3.
+        remember (i - 1) as z.
+        assert (i = z + 1) as B. {
+          intuition. destruct i. specialize (H3 eq_refl). inversion H3.
           subst. simpl. rewrite <- minus_n_O. rewrite NPeano.Nat.add_1_r.
           reflexivity.
         }
@@ -2546,7 +2542,11 @@ Proof.
         rewrite subst_open_commute_z. reflexivity.
         rewrite map_length. eapply closed_subst. rewrite app_length in H4.
         simpl in H4. eapply H4.
-        econstructor. eapply has_type_closed1. eauto.
+        econstructor.
+    + eexists. eapply T_VarUnpack. eapply IH.
+      unfold substt. rewrite subst_open_commute1. reflexivity.
+      rewrite map_length. eapply closed_subst0. rewrite app_length in H4. simpl in H4.
+      apply H4.
   - Case "obj".
     edestruct IHniD with (GH:=T'::GH1) as [? IH]. subst. eauto. omega. subst. eauto.
     subst. simpl.
@@ -2554,25 +2554,19 @@ Proof.
     rewrite app_length. simpl. unfold substt. rewrite subst_open_commute_z.
     rewrite map_length. eauto.
     eapply closed_subst. rewrite app_length in *. simpl in *. rewrite map_length. eauto.
-    econstructor. eapply has_type_closed1. eauto.
+    econstructor.
   - Case "app". subst. simpl.
     edestruct IHniT as [? IH1]. eapply H2. omega. eauto.
     edestruct IHniT as [? IH2]. eapply H3. omega. eauto.
     eexists. eapply T_App. eauto. eauto. eapply closed_subst.
     subst. rewrite map_length. rewrite app_length in *. simpl in *. eauto.
-    subst. rewrite map_length. econstructor. eapply has_type_closed1. eauto.
+    subst. rewrite map_length. econstructor.
   - Case "appvar". subst. simpl.
     edestruct IHniT as [? IH1]. eapply H2. omega. eauto.
     edestruct IHniT as [? IH2]. eapply H3. omega. eauto.
-    destruct b2.
+    destruct v2.
 
-    eexists. eapply T_AppVar. eauto. eauto.
-    rewrite subst_open_commute1. eauto.
-    eapply closed_subst. subst. rewrite map_length. rewrite app_length in *. simpl in *.
-    eapply closed_upgrade_gh. eassumption. omega.
-    subst. rewrite map_length. econstructor. eapply has_type_closed1. eauto.
-
-    case_eq (beq_nat x2 0); intros E.
+    case_eq (beq_nat i 0); intros E.
 
     eapply beq_nat_true in E. subst.
     rewrite subst_open_commute0b.
@@ -2580,15 +2574,21 @@ Proof.
     rewrite map_length. rewrite <- subst_open_commute0b.
     eapply closed_subst. eapply closed_upgrade_gh. eassumption.
     rewrite app_length. simpl. omega.
-    econstructor. eapply has_type_closed1. eauto.
+    econstructor.
 
     rewrite subst_open5.
     simpl in *. rewrite E in *.
     eexists. eapply T_AppVar. eauto. eauto. eauto.
     rewrite <- subst_open5. eapply closed_subst.
     subst. rewrite map_length. rewrite app_length in *. simpl in *. eassumption.
-    subst. rewrite map_length. econstructor. eapply has_type_closed1. eauto.
+    subst. rewrite map_length. econstructor.
     apply []. apply beq_nat_false. apply E. apply []. apply beq_nat_false. apply E.
+
+    eexists. eapply T_AppVar. eauto. eauto.
+    rewrite subst_open_commute1. eauto.
+    eapply closed_subst. subst. rewrite map_length. rewrite app_length in *. simpl in *.
+    eapply closed_upgrade_gh. eassumption. omega.
+    subst. rewrite map_length. econstructor.
   - Case "sub". subst.
     edestruct hastp_inv as [? [? HV]]; eauto.
     edestruct stp_subst_narrow_z. eapply H3. eapply HV.
@@ -2598,8 +2598,9 @@ Proof.
     eexists. eapply D_Nil.
   - Case "mem". subst. simpl.
     edestruct IHniD as [? IH]. eapply H2. omega. eauto.
-    eexists. eapply D_Mem. eauto. eapply closed_subst0. rewrite app_length in H3. rewrite map_length. eauto. eapply has_type_closed1. eauto. eauto.
+    eexists. eapply D_Mem. eauto. eapply closed_subst0. rewrite app_length in H3. rewrite map_length. eauto.
     unfold substt. simpl. rewrite <- length_subst_dms. reflexivity.
+    eauto.
   - Case "abs". subst. simpl.
     edestruct IHniD as [? IHD]. eapply H2. omega. eauto.
     edestruct IHniT with (GH:=T11::GH1) as [? HI] . eauto. omega. eauto.
@@ -2607,9 +2608,10 @@ Proof.
     eexists. eapply D_Abs. eapply IHD. eapply HI.
     rewrite map_length. rewrite app_length. simpl.
     rewrite subst_open. unfold substt. reflexivity.
-    eapply closed_subst0. rewrite map_length. rewrite app_length in H5. simpl in H5. eauto. eauto. eapply has_type_closed1. eauto.
-    eapply closed_subst0. rewrite map_length. rewrite app_length in H6. simpl in H6. eauto. eapply has_type_closed1. eauto. eauto.
+    eapply closed_subst0. rewrite map_length. rewrite app_length in H5. simpl in H5. eauto. eauto.
+    eapply closed_subst0. rewrite map_length. rewrite app_length in H6. simpl in H6. eauto.
     unfold substt. simpl. rewrite <- length_subst_dms. reflexivity.
+    eauto.
 Grab Existential Variables.
 apply 0. apply 0.
 Qed.
