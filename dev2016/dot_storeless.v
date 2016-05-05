@@ -2649,7 +2649,34 @@ Lemma index_subst_dms_eq: forall l ds D D',
   index l (dms_to_list (subst_dms ds ds)) = Some D' ->
   subst_dm ds D = D'.
 Proof.
-  admit.
+  intros l ds D D' HI HI'.
+  remember ds as x. rewrite Heqx in *. rewrite <- Heqx in HI' at 1.
+  rewrite <- Heqx.  clear Heqx.
+  remember ds as dsb.
+  remember (length (dms_to_list dsb)) as n.
+  assert (n = length (dms_to_list (subst_dms x dsb))) as Heqn'. {
+    subst. rewrite <- length_subst_dms. reflexivity.
+  }
+  assert (exists dsa,
+            dms_to_list ds = dms_to_list dsa ++ dms_to_list dsb /\
+            dms_to_list (subst_dms x ds) = dms_to_list (subst_dms x dsa) ++ dms_to_list (subst_dms x dsb)) as Hds. {
+    exists dnil. simpl. subst. eauto.
+  }
+  destruct Hds as [dsa [Hds Hds']]. clear Heqdsb.
+  remember (dms_to_list dsa) as la. clear Heqla.
+  remember (dms_to_list (subst_dms x dsa)) as la'. clear Heqla'. clear dsa.
+  generalize dependent D'. generalize dependent D.
+  generalize dependent la'. generalize dependent la. generalize dependent ds.
+  generalize dependent l. generalize dependent n.
+  induction dsb; intros.
+  - simpl in *. inversion HI.
+  - simpl in HI. case_eq (beq_nat l (length (dms_to_list dsb))); intros E;
+    rewrite E in HI; simpl in HI'; rewrite <- length_subst_dms in HI'; rewrite E in HI'.
+    + inversion HI. subst d. inversion HI'. reflexivity.
+    + eapply IHdsb with (ds:=ds) (la:=la ++ [d]) (la':=la' ++ [(subst_dm x d)]); eauto.
+      rewrite <-length_subst_dms. reflexivity.
+      rewrite <- app_assoc. rewrite Hds. simpl. reflexivity.
+      rewrite <- app_assoc. rewrite Hds'. simpl. reflexivity.
 Qed.
 
 Theorem type_safety : forall t T n1,
