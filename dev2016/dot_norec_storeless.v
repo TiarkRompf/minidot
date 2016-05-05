@@ -288,6 +288,89 @@ with htp: tenv -> id -> ty -> nat -> Prop :=
     GH = GU ++ GL ->
     htp GH x T2 (S (n1+n2)).
 
+
+(* Reduction semantics  *)
+Inductive step : tm -> tm -> Prop :=
+| ST_Obj : forall D,
+    step (tobj D) (tvar (VObj D))
+| ST_AppAbs : forall f l x T1 T2 t12,
+    index l (dms_to_list f) = Some (dfun T1 T2 t12) ->
+    step (tapp (tvar (VObj f)) l (tvar (VObj x))) (subst_tm x t12)
+| ST_App1 : forall t1 t1' l t2,
+    step t1 t1' ->
+    step (tapp t1 l t2) (tapp t1' l t2)
+| ST_App2 : forall f t2 l t2',
+    step t2 t2' ->
+    step (tapp (tvar (VObj f)) l t2) (tapp (tvar (VObj f)) l t2')
+.
+Inductive step_star : tm -> tm -> Prop :=
+| s_refl : forall t, step_star t t
+| s_step : forall t1 t2 t3, step t1 t2 -> step_star t2 t3 -> step_star t1 t3.
+
+Lemma s_trans : forall t1 t2 t3,
+  step_star t1 t2 -> step_star t2 t3 -> step_star t1 t3.
+Proof.
+  intros t1 t2 t3 H12 H23. generalize dependent t3.
+  induction H12; intros; eauto.
+  eapply s_step. eapply H. eapply IHstep_star. eapply H23.
+Qed.
+
+Lemma s_step1: forall t1 t2,
+  step t1 t2 -> step_star t1 t2.
+Proof.
+  intros. eapply s_step. eassumption. eapply s_refl.
+Qed.
+
+Lemma step_star_App1: forall t1 t2 l t1',
+  step_star t1 t1' ->
+  step_star (tapp t1 l t2) (tapp t1' l t2).
+Proof.
+  intros. induction H.
+  - eapply s_refl.
+  - eapply s_step. eapply ST_App1. eassumption. eassumption.
+Qed.
+
+Lemma step_star_App2: forall f t2 l t2',
+  step_star t2 t2' ->
+  step_star (tapp (tvar (VObj f)) l t2) (tapp (tvar (VObj f)) l t2').
+Proof.
+  intros. induction H.
+  - eapply s_refl.
+  - eapply s_step. eapply ST_App2. eassumption. eassumption.
+Qed.
+
+Lemma step_star_AppAbs: forall f l x r T1 T2 t,
+  step_star (subst_tm x t) (tvar (VObj r)) ->
+  index l (dms_to_list f) = Some (dfun T1 T2 t) ->
+  step_star (tapp (tvar (VObj f)) l (tvar (VObj x))) (tvar (VObj r)).
+Proof.
+  intros. remember (subst_tm x t) as tr. remember (tvar (VObj r)) as vr.
+  induction H; subst.
+  - eapply s_step1. eapply ST_AppAbs. eauto.
+  - eapply s_step. eapply ST_AppAbs. eauto. eapply s_step. eauto. eauto.
+Qed.
+
+Lemma step_star_app: forall f l x r tf tx T1 T2 t,
+  step_star tf (tvar (VObj f)) ->
+  step_star tx (tvar (VObj x)) ->
+  index l (dms_to_list f) = Some (dfun T1 T2 t) ->
+  step_star (subst_tm x t) (tvar (VObj r)) ->
+  step_star (tapp tf l tx) (tvar (VObj r)).
+Proof.
+  intros f l x r tf tx T1 T2 t Hf Hx Hl Hr.
+  eapply s_trans. eapply s_trans.
+  eapply step_star_App1. eapply Hf.
+  eapply step_star_App2. eapply Hx.
+  eapply step_star_AppAbs. eapply Hr. eapply Hl.
+Qed.
+
+Lemma step_star_var: forall v ds,
+  step_star (tvar v) (tvar (VObj ds)) ->
+  v = VObj ds.
+Proof.
+  intros. inversion H; subst; eauto; solve by inversion.
+Qed.
+
 Inductive vtp(*possible types*) : nat(*pack count*) -> dms -> ty -> nat(*size*) -> Prop :=
 | vtp_top: forall m ds n1,
     vtp m ds TTop (S n1)
@@ -306,6 +389,9 @@ Inductive vtp(*possible types*) : nat(*pack count*) -> dms -> ty -> nat(*size*) 
     closed 0 1 T2 ->
     closed 0 1 T4 ->
     stp [T3] T2' T4' n2 ->
+    (forall dsa na, has_type [] (tvar (VObj dsa)) T1 na ->
+                    exists dsr nr, step_star (subst_tm dsa t) (tvar (VObj dsr)) /\
+                    has_type [] (tvar (VObj dsr)) (substt dsa T2') nr) ->
     vtp m ds (TFun l T3 T4) (S (n1+n2+n3+n4))
 | vtp_sel: forall m ds dsy l TX n1,
     index l (dms_to_list dsy) = Some (dty TX) ->
@@ -1882,12 +1968,12 @@ Proof.
       }
       destruct A as [na A].
       repeat eexists. eapply vtp_fun. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
-      eapply stp_trans. eauto. eauto. eauto.
+      eapply stp_trans. eauto. eauto. eauto. eauto.
     + SCase "sel2".
       assert (vtpdd m1 x TX). eapply IHn; eauto. omega.
       eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto.
     + SCase "sel2".
-      eapply stp_closed2 in H0. simpl in H0. inversion H0. subst. inversion H14. omega.
+      eapply stp_closed2 in H0. simpl in H0. inversion H0. subst. inversion H15. omega.
     + SCase "and".
       assert (vtpdd m1 x T6). eapply IHn; eauto. omega. eu.
       assert (vtpdd m1 x T7). eapply IHn; eauto. omega. eu.
@@ -2006,23 +2092,6 @@ Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
-
-(* Reduction semantics  *)
-Inductive step : tm -> tm -> Prop :=
-| ST_Obj : forall D,
-    step (tobj D) (tvar (VObj D))
-| ST_AppAbs : forall f l x ds T1 T2 t12,
-    index l (dms_to_list ds) = Some (dfun T1 T2 t12) ->
-    step (tapp (tvar (VObj f)) l (tvar (VObj x))) (subst_tm x t12)
-| ST_App1 : forall t1 t1' l t2,
-    step t1 t1' ->
-    step (tapp t1 l t2) (tapp t1' l t2)
-| ST_App2 : forall f t2 l t2',
-    step t2 t2' ->
-    step (tapp (tvar (VObj f)) l t2) (tapp (tvar (VObj f)) l t2')
-.
-
-
 Lemma stp_subst_narrow_z: forall GH0 TX T1 T2 x m n1 n2,
   stp (GH0 ++ [TX]) T1 T2 n2 ->
   vtp m x (substt x TX) n1 ->
@@ -2137,7 +2206,7 @@ Proof.
     repeat eexists. eapply vtp_and. eapply vtp_fun.
     erewrite index_dms with (D:=dfun T11 T12 t12). simpl. reflexivity. eauto.
     eapply HT0. eauto. eauto. simpl. reflexivity. reflexivity.
-    eauto. eauto. eauto. eauto. eauto. eauto.
+    eauto. eauto. eauto. admit. eauto. eauto. eauto.
 Grab Existential Variables.
 apply 0. apply 0.
 Qed.
@@ -2391,4 +2460,103 @@ Proof.
     + SCase "step".
       ev. subst.
       right. repeat eexists. eauto. eapply T_Sub. eauto. eauto.
+Qed.
+
+Definition reduces (t:tm) (v:tm) (T:ty) :=
+  exists ds n,
+    v=(tvar (VObj ds)) /\ step_star t v /\ has_type [] (tvar (VObj ds)) T n.
+
+Theorem full_type_safety : forall t T n1,
+  has_type [] t T n1 ->
+  exists v, reduces t v T.
+Proof.
+  intros.
+  assert (closed (length ([]:tenv)) 0 T) as CL. eapply has_type_closed. eauto.
+  remember [] as GH. remember t as tt. remember T as TT.
+  revert T t HeqTT HeqGH Heqtt CL.
+  induction H; intros.
+  - Case "vary". subst. repeat eexists. eapply s_refl. eauto.
+  - Case "varz". subst GH. inversion H.
+  - Case "obj". subst.
+    repeat eexists. eapply s_step. eapply ST_Obj. eapply s_refl. eapply T_Vary. eapply H.
+  - Case "app". subst.
+    assert (closed (length ([]:tenv)) 0 (TFun l T1 T)) as TF. eapply has_type_closed. eauto.
+    assert (exists v, reduces t2 v T1) as HX.
+    eapply IHhas_type2. eauto. eauto. eauto. inversion TF. eauto.
+    assert (exists v, reduces t1 v (TFun l T1 T)) as HF.
+    eapply IHhas_type1. eauto. eauto. eauto. eauto.
+    destruct HF as [vf [dsf [? [Eqf [Hsf Htf]]]]].
+    destruct HX as [va [dsa [? [Eqa [Hsa Hta]]]]].
+    assert (exists m n1, vtp m dsf (TFun l T1 T) n1). eapply hastp_inv. eauto.
+    assert (exists m n1, vtp m dsa T1 n1). eapply hastp_inv. eauto.
+    ev. inversion H2. subst.
+    assert (vtpdd x1 dsa T0). eapply vtp_widen. eauto. eauto. eauto. eauto. eauto.
+    eu.
+    assert (exists n1, has_type [] (tvar (VObj dsf)) T' n1) as A. eexists. eapply T_Vary. eauto.
+    destruct A as [na A].
+    assert (has_typed (map (substt dsa) []) (subst_tm dsa t) (substt dsa (open 0 (TVar (VAbs 0)) T2))) as HIx0.
+    eapply hastp_subst. rewrite app_nil_l. eauto. eauto.
+    eu. simpl in HIx0.
+    assert (has_typed [] (subst_tm dsa t) (substt dsa (open 0 (TVar (VAbs 0)) T2))) as HI. {
+      subst. eauto.
+    }
+                                                                                           eu. simpl in HI.
+   edestruct stp_subst_narrow as [? HI2]. rewrite app_nil_l. eapply H18. eauto.
+   simpl in HI2.
+   assert (substt dsa (open 0 (TVar (VAbs 0)) T) = T) as EqT. {
+     erewrite <- closed_no_open. erewrite subst_closed_id. reflexivity.
+     eassumption. eassumption.
+   }
+   rewrite EqT in HI2.
+   assert (exists dsr nr, step_star (subst_tm dsa t) (tvar (VObj dsr)) /\
+                          has_type [] (tvar (VObj dsr)) (substt dsa (open 0 (TVar (VAbs 0)) T2)) nr) as HR. {
+     eapply H19; eauto.
+   }
+   ev. repeat eexists. eapply step_star_app; eauto. eauto.
+
+  - Case "appvar". subst.
+    assert (closed (length ([]:tenv)) 0 (TFun l T1 T2)) as TF. eapply has_type_closed. eauto.
+    assert (exists v, reduces (tvar v2) v T1) as HX.
+    eapply IHhas_type2. eauto. eauto. eauto. inversion TF. eauto.
+    assert (exists v, reduces t1 v (TFun l T1 T2)) as HF.
+    eapply IHhas_type1. eauto. eauto. eauto. eauto.
+    destruct HF as [vf [dsf [? [Eqf [Hsf Htf]]]]].
+    destruct HX as [va [dsa [? [Eqa [Hsa Hta]]]]].
+    assert (v2 = VObj dsa) as HXeq. {
+      subst. eapply step_star_var; eauto.
+    }
+    subst v2.
+    assert (exists m n1, vtp m dsf (TFun l T1 T2) n1). eapply hastp_inv. eauto.
+    assert (exists m n1, vtp m dsa T1 n1). eapply hastp_inv. eauto.
+    ev. inversion H1. subst.
+    assert (vtpdd x1 dsa T0). eapply vtp_widen. eauto. eauto. eauto. eauto. eauto.
+    eu.
+    assert (exists n1, has_type [] (tvar (VObj dsf)) T' n1) as A. eexists. eapply T_Vary. eauto.
+    destruct A as [na A].
+    assert (has_typed (map (substt dsa) []) (subst_tm dsa t) (substt dsa (open 0 (TVar (VAbs 0)) T3))) as HIx0.
+    eapply hastp_subst. rewrite app_nil_l. eauto. eauto.
+    eu. simpl in HIx0.
+    assert (has_typed [] (subst_tm dsa t) (substt dsa (open 0 (TVar (VAbs 0)) T3))) as HI. {
+      subst. eauto.
+    }
+    eu. simpl in HI.
+    edestruct stp_subst_narrow as [? HI2]. rewrite app_nil_l. eapply H18. eauto.
+    simpl in HI2.
+    assert ((substt dsa (open 0 (TVar (VAbs 0)) T2))=(open 0 (TVar (VObj dsa)) T2)) as EqT2. {
+      rewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity.
+      eassumption.
+    }
+    rewrite EqT2 in HI2.
+    assert (exists dsr nr, step_star (subst_tm dsa t) (tvar (VObj dsr)) /\
+                           has_type [] (tvar (VObj dsr)) (substt dsa (open 0 (TVar (VAbs 0)) T3)) nr) as HR. {
+      eapply H19; eauto.
+    }
+    ev. repeat eexists. eapply step_star_app; eauto. eapply T_Sub. eauto. eauto.
+
+  - Case "sub". subst.
+    assert (exists v, reduces t0 v T1) as HH.
+    eapply IHhas_type; eauto. change 0 with (length ([]:tenv)) at 1. eapply stpd2_closed1; eauto.
+    destruct HH as [v [ds [? [Eq [Hs Ht]]]]]. subst.
+    repeat eexists. eauto. eapply T_Sub. eauto. eauto.
+
 Qed.
