@@ -1884,20 +1884,20 @@ Qed.
 (* upgrade_gh interlude ends *)
 
 Lemma stp_narrow_aux: forall n,
-  (forall GH G x T n0,
-  htp GH G x T n0 -> n0 <= n ->
+  (forall GH x T n0,
+  htp GH x T n0 -> n0 <= n ->
   forall GH1 GH0 GH' TX1 TX2,
     GH=GH1++[TX2]++GH0 ->
     GH'=GH1++[TX1]++GH0 ->
-    stpd2 GH0 G TX1 TX2 ->
-    htpd GH' G x T) /\
-  (forall GH G T1 T2 n0,
-  stp GH G T1 T2 n0 -> n0 <= n ->
+    stpd2 GH0 TX1 TX2 ->
+    htpd GH' x T) /\
+  (forall GH T1 T2 n0,
+  stp GH T1 T2 n0 -> n0 <= n ->
   forall GH1 GH0 GH' TX1 TX2,
     GH=GH1++[TX2]++GH0 ->
     GH'=GH1++[TX1]++GH0 ->
-    stpd2 GH0 G TX1 TX2 ->
-    stpd2 GH' G T1 T2).
+    stpd2 GH0 TX1 TX2 ->
+    stpd2 GH' T1 T2).
 Proof.
   intros n.
   induction n.
@@ -1905,7 +1905,7 @@ Proof.
   - Case "s n". destruct IHn as [IHn_htp IHn_stp].
     split.
     {
-    intros GH G x T n0 H NE. inversion H; subst;
+    intros GH x T n0 H NE. inversion H; subst;
     intros GH1 GH0 GH' TX1 TX2 EGH EGH' HX.
     + SCase "var".
       case_eq (beq_nat x (length GH0)); intros E.
@@ -1963,7 +1963,7 @@ Proof.
       rewrite <- app_assoc. rewrite <- app_assoc. reflexivity.
     }
 
-    intros GH G T1 T2 n0 H NE. inversion H; subst;
+    intros GH T1 T2 n0 H NE. inversion H; subst;
     intros GH1 GH0 GH' TX1 TX2 EGH EGH' HX;
     assert (length GH' = length GH) as EGHLEN by solve [
       subst; repeat rewrite app_length; simpl; reflexivity
@@ -1980,7 +1980,7 @@ Proof.
     + SCase "mem". eapply stpd2_mem.
       eapply IHn_stp; try eassumption. omega.
       eapply IHn_stp; try eassumption. omega.
-    + SCase "varx". eexists. eapply stp_varx. omega.
+    + SCase "varx". eexists. eapply stp_varx.
     + SCase "varax". eexists. eapply stp_varax.
       subst. rewrite app_length in *. simpl in *. omega.
     + SCase "ssel1". eexists. eapply stp_strong_sel1; try eassumption.
@@ -1993,14 +1993,14 @@ Proof.
       eexists. eapply stp_selx.
       subst. rewrite app_length in *. simpl in *. assumption.
     + SCase "bind1".
-      edestruct IHn_htp with (GH1:=(open 0 (TVar false (length GH)) T0 :: GH1)) as [? Htp].
+      edestruct IHn_htp with (GH1:=(open 0 (TVar (VAbs (length GH))) T0 :: GH1)) as [? Htp].
       eapply H0. omega. rewrite EGH. reflexivity. reflexivity. eapply HX.
       eexists. eapply stp_bind1.
       rewrite EGHLEN. subst. simpl. simpl in Htp. eapply Htp.
       rewrite EGHLEN. subst. simpl. reflexivity.
       rewrite EGHLEN. assumption. rewrite EGHLEN. assumption.
     + SCase "bindx".
-      edestruct IHn_htp with (GH1:=(open 0 (TVar false (length GH)) T0 :: GH1)) as [? Htp].
+      edestruct IHn_htp with (GH1:=(open 0 (TVar (VAbs (length GH))) T0 :: GH1)) as [? Htp].
       eapply H0. omega. rewrite EGH. reflexivity. reflexivity. eapply HX.
       eexists. eapply stp_bindx.
       rewrite EGHLEN. subst. simpl. simpl in Htp. eapply Htp.
@@ -2045,10 +2045,10 @@ Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
-Lemma stp_narrow: forall TX1 TX2 GH0 G T1 T2 n nx,
-  stp ([TX2]++GH0) G T1 T2 n ->
-  stp GH0 G TX1 TX2 nx ->
-  stpd2 ([TX1]++GH0) G T1 T2.
+Lemma stp_narrow: forall TX1 TX2 GH0 T1 T2 n nx,
+  stp ([TX2]++GH0) T1 T2 n ->
+  stp GH0 TX1 TX2 nx ->
+  stpd2 ([TX1]++GH0) T1 T2.
 Proof.
   intros. eapply stp_narrow_aux. eapply H. reflexivity.
   instantiate(3:=nil). simpl. reflexivity. simpl. reflexivity.
