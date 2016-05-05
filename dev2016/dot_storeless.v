@@ -2661,13 +2661,10 @@ Proof.
     eapply has_type_closed_b in H. destruct H. subst.
     left. eexists. reflexivity.
   - Case "obj". subst. right.
-    repeat eexists. rewrite <- app_cons1. eapply ST_Obj.
-    eapply T_VarPack. eapply T_Vary.
-    simpl. rewrite beq_nat_true_eq. eauto. eapply dms_has_type_extend. eauto. eauto. eauto.
-    eapply closed_subst. eapply closed_open. eapply closed_extend. eapply closed_upgrade_gh. eauto.
-    simpl. omega. simpl. econstructor. omega. simpl. econstructor. omega.
+    repeat eexists. eapply ST_Obj.
+    eapply T_VarPack. eapply T_Vary. eapply H.
     simpl. rewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity. eauto.
-    eapply closed_extend. eauto.
+    eapply closed_open. eauto. eauto. eauto. eauto.
   - Case "app". subst.
     assert (closed (length ([]:tenv)) (length G1) 0 (TFun l T1 T)) as TF. eapply has_type_closed. eauto.
     assert ((exists x : id, t2 = tvar true x) \/
