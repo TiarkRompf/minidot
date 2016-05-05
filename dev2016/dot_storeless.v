@@ -1378,26 +1378,21 @@ Fixpoint splice n (T : ty) {struct T} : ty :=
     | TMem l T1 T2 => TMem l (splice n T1) (splice n T2)
     | TSel T1 l    => TSel (splice n T1) l
     | TVarB i      => TVarB i
-    | TVar true i  => TVar true i
-    | TVar false i => TVar false (splice_var n i)
+    | TVar (VObj ds)  => TVar (VObj ds)
+    | TVar (VAbs i) => TVar (VAbs (splice_var n i))
     | TFun l T1 T2 => TFun l (splice n T1) (splice n T2)
     | TBind T2     => TBind (splice n T2)
     | TAnd T1 T2   => TAnd (splice n T1) (splice n T2)
     | TOr T1 T2    => TOr (splice n T1) (splice n T2)
   end.
 
-Definition spliceat n (V: (venv*ty)) :=
-  match V with
-    | (G,T) => (G,splice n T)
-  end.
-
 Lemma splice_open_permute: forall {X} (G0:list X) T2 n j,
-(open j (TVar false (n + S (length G0))) (splice (length G0) T2)) =
-(splice (length G0) (open j (TVar false (n + length G0)) T2)).
+(open j (TVar (VAbs (n + S (length G0)))) (splice (length G0) T2)) =
+(splice (length G0) (open j (TVar (VAbs (n + length G0))) T2)).
 Proof.
   intros X G T. induction T; intros; simpl; eauto;
   try rewrite IHT1; try rewrite IHT2; try rewrite IHT; eauto.
-  destruct b; eauto.
+  destruct v; eauto.
   case_eq (beq_nat j i); intros E; simpl; eauto.
   unfold splice_var.
   case_eq (le_lt_dec (length G) (n + length G)); intros EL LE.
@@ -1407,11 +1402,11 @@ Proof.
 Qed.
 
 Lemma splice_open_permute0: forall {X} (G0:list X) T2 j,
-(open j (TVar false (S (length G0))) (splice (length G0) T2)) =
-(splice (length G0) (open j (TVar false (length G0)) T2)).
+(open j (TVar (VAbs (S (length G0)))) (splice (length G0) T2)) =
+(splice (length G0) (open j (TVar (VAbs (length G0))) T2)).
 Proof.
   intros.
-  change (TVar false (length G0)) with (TVar false (0 + (length G0))).
+  change (TVar (VAbs (length G0))) with (TVar (VAbs (0 + (length G0)))).
   rewrite <- splice_open_permute. reflexivity.
 Qed.
 
@@ -1423,26 +1418,6 @@ Proof.
   intros G0 G2. induction G2; intros.
   - eapply index_max in H. simpl in H. omega.
   - simpl in H.
-    case_eq (beq_nat x0 (length (G2 ++ G0))); intros E.
-    + rewrite E in H. inversion H. subst. simpl.
-      rewrite app_length in E.
-      rewrite app_length. rewrite map_length. simpl.
-      assert (beq_nat (x0 + 1) (length G2 + S (length G0)) = true). {
-        eapply beq_nat_true_iff. eapply beq_nat_true_iff in E. omega.
-      }
-      rewrite H1. eauto.
-    + rewrite E in H.  eapply IHG2 in H. eapply index_extend. eapply H. eauto.
-Qed.
-
-Lemma index_spliceat_hi: forall G0 G2 x0 v1 G T,
-    index x0 (G2 ++ G0) = Some (G, T) ->
-    length G0 <= x0 ->
-    index (x0 + 1) (map (spliceat (length G0)) G2 ++ v1 :: G0) =
-    Some (G, splice (length G0) T).
-Proof.
-  intros G0 G2. induction G2; intros.
-  - eapply index_max in H. simpl in H. omega.
-  - simpl in H. destruct a.
     case_eq (beq_nat x0 (length (G2 ++ G0))); intros E.
     + rewrite E in H. inversion H. subst. simpl.
       rewrite app_length in E.
@@ -1478,19 +1453,9 @@ Proof.
   eapply index_extend_mult. eapply index_extend. eauto.
 Qed.
 
-Lemma index_spliceat_lo: forall G0 G2 x0 v1 G T f,
-    index x0 (G2 ++ G0) = Some (G, T) ->
-    x0 < length G0 ->
-    index x0 (map (spliceat f) G2 ++ v1 :: G0) = Some (G, T).
-Proof.
-  intros.
-  assert (index x0 G0 = Some (G, T)). eapply index_splice_lo0; eauto.
-  eapply index_extend_mult. eapply index_extend. eauto.
-Qed.
-
-Lemma closed_splice: forall i j k T n,
-  closed i j k T ->
-  closed (S i) j k (splice n T).
+Lemma closed_splice: forall i k T n,
+  closed i k T ->
+  closed (S i) k (splice n T).
 Proof.
   intros.
   Hint Constructors closed.
@@ -1508,34 +1473,26 @@ Proof.
   - simpl. eauto.
 Qed.
 
-Lemma map_spliceat_length_inc: forall G0 G2 v1,
-   (length (map (spliceat (length G0)) G2 ++ v1 :: G0)) = (S (length (G2 ++ G0))).
+Lemma closed_inc_mult: forall i k T,
+  closed i k T ->
+  forall i' k',
+  i' >= i -> k' >= k ->
+  closed i' k' T.
 Proof.
-  intros. rewrite app_length. rewrite map_length. induction G2.
-  - simpl. reflexivity.
-  - simpl. eauto.
-Qed.
-
-Lemma closed_inc_mult: forall i j k T,
-  closed i j k T ->
-  forall i' j' k',
-  i' >= i -> j' >= j -> k' >= k ->
-  closed i' j' k' T.
-Proof.
-  intros i j k T H. induction H; intros; eauto; try solve [constructor; omega].
+  intros i k T H. induction H; intros; eauto; try solve [constructor; omega].
   - econstructor. apply IHclosed1; omega. apply IHclosed2; omega.
   - econstructor. apply IHclosed; omega.
 Qed.
 
-Lemma closed_inc: forall i j k T,
-  closed i j k T ->
-  closed (S i) j k T.
+Lemma closed_inc: forall i k T,
+  closed i k T ->
+  closed (S i) k T.
 Proof.
-  intros. apply (closed_inc_mult i j k T H (S i) j k); omega.
+  intros. apply (closed_inc_mult i k T H (S i) k); omega.
 Qed.
 
-Lemma closed_splice_idem: forall i j k T n,
-                            closed i j k T ->
+Lemma closed_splice_idem: forall i k T n,
+                            closed i k T ->
                             n >= i ->
                             splice n T = T.
 Proof.
@@ -1546,13 +1503,13 @@ Proof.
   omega. reflexivity.
 Qed.
 
-Lemma stp_splice_aux: forall ni, (forall GX G0 G1 T1 T2 v1 n,
-   stp (G1++G0) GX T1 T2 n -> n < ni ->
-   stp ((map (splice (length G0)) G1) ++ v1::G0) GX
+Lemma stp_splice_aux: forall ni, (forall G0 G1 T1 T2 v1 n,
+   stp (G1++G0) T1 T2 n -> n < ni ->
+   stp ((map (splice (length G0)) G1) ++ v1::G0)
    (splice (length G0) T1) (splice (length G0) T2) n) /\
-  (forall GX G0 G1 x1 T1 v1 n,
-   htp (G1++G0) GX x1 T1 n -> n < ni ->
-   htp ((map (splice (length G0)) G1) ++ v1::G0) GX
+  (forall G0 G1 x1 T1 v1 n,
+   htp (G1++G0) x1 T1 n -> n < ni ->
+   htp ((map (splice (length G0)) G1) ++ v1::G0)
    (splice_var (length G0) x1) (splice (length G0) T1) n).
 Proof.
   intro ni. induction ni. split; intros; omega.
@@ -1574,7 +1531,7 @@ Proof.
     simpl. rewrite map_splice_length_inc. apply closed_splice. assumption.
     simpl. rewrite map_splice_length_inc. apply closed_splice. assumption.
     eapply IHstp. eauto. omega.
-    specialize (IHstp GX G0 (T4::G1)).
+    specialize (IHstp G0 (T4::G1)).
     simpl in IHstp. rewrite app_length. rewrite map_length. simpl.
     repeat rewrite splice_open_permute with (j:=0).
     eapply IHstp. rewrite <- app_length. eauto. omega.
@@ -1583,7 +1540,7 @@ Proof.
     eapply IHstp. eauto. omega.
     eapply IHstp. eauto. omega.
   - Case "varx".
-    simpl. eapply stp_varx. omega.
+    simpl. eapply stp_varx.
   - Case "varax". simpl.
     unfold splice_var.
     case_eq (le_lt_dec (length G0) x); intros E LE.
@@ -1594,22 +1551,22 @@ Proof.
   - Case "ssel1".
     eapply stp_strong_sel1. eauto. eauto.
     assert (splice (length G0) T2=T2) as A. {
-      eapply closed_splice_idem. eapply stp_closed2. eapply H3. simpl. omega.
+      eapply closed_splice_idem. eapply stp_closed2. eapply H2. simpl. omega.
     }
     rewrite A. assumption.
   - Case "ssel2".
     eapply stp_strong_sel2. eauto. eauto.
     assert (splice (length G0) T1=T1) as A. {
-      eapply closed_splice_idem. eapply stp_closed1. eapply H3. simpl. omega.
+      eapply closed_splice_idem. eapply stp_closed1. eapply H2. simpl. omega.
     }
     rewrite A. assumption.
   - Case "sel1".
     eapply stp_sel1.
-    specialize (IHhtp GX G0 G1 x (TMem l TBot T2)). simpl in IHhtp.
+    specialize (IHhtp G0 G1 x (TMem l TBot T2)). simpl in IHhtp.
     eapply IHhtp. eauto. omega.
   - Case "sel2".
     eapply stp_sel2.
-    specialize (IHhtp GX G0 G1 x (TMem l T1 TTop)). simpl in IHhtp.
+    specialize (IHhtp G0 G1 x (TMem l T1 TTop)). simpl in IHhtp.
     eapply IHhtp. eauto. omega.
   - Case "selx".
     eapply stp_selx.
@@ -1623,7 +1580,7 @@ Proof.
       omega. clear LE. rewrite app_length in E. omega.
     }
     rewrite <- A.
-    specialize (IHhtp GX G0 (open 0 (TVar false (length (G1 ++ G0))) T0 :: G1)).
+    specialize (IHhtp G0 (open 0 (TVar (VAbs (length (G1 ++ G0)))) T0 :: G1)).
     simpl in IHhtp. eapply IHhtp. eauto. omega.
     rewrite app_length. rewrite <- splice_open_permute.
     rewrite map_splice_length_inc. rewrite app_length.
@@ -1641,7 +1598,7 @@ Proof.
       omega. clear LE. rewrite app_length in E. omega.
     }
     rewrite <- A.
-    specialize (IHhtp GX G0 (open 0 (TVar false (length (G1 ++ G0))) T0 :: G1)).
+    specialize (IHhtp G0 (open 0 (TVar (VAbs (length (G1 ++ G0)))) T0 :: G1)).
     simpl in IHhtp. eapply IHhtp. eauto. omega.
     rewrite app_length. rewrite <- splice_open_permute.
     rewrite map_splice_length_inc. rewrite app_length.
@@ -1709,7 +1666,7 @@ Proof.
       }
       rewrite B.
       eapply htp_bind.
-      specialize (IHhtp GX G0 G1 x1 (TBind TX)).
+      specialize (IHhtp G0 G1 x1 (TBind TX)).
       simpl in IHhtp. unfold splice_var in IHhtp. rewrite LE in IHhtp.
       eapply IHhtp. eauto. omega.
       assert (S x1 = x1 + 1) as C by omega. rewrite <- C.
@@ -1717,7 +1674,7 @@ Proof.
     + assert (splice (length G0) TX = TX) as A. {
         eapply closed_splice_idem. eauto. omega.
       }
-      assert (splice (length G0) (open 0 (TVar false x1) TX)=open 0 (TVar false x1) TX) as B. {
+      assert (splice (length G0) (open 0 (TVar (VAbs x1)) TX)=open 0 (TVar (VAbs x1)) TX) as B. {
         eapply closed_splice_idem.
         eapply closed_open. eapply closed_upgrade_gh. eauto.
         instantiate (1:=S x1). omega.
@@ -1725,7 +1682,7 @@ Proof.
       }
       rewrite B.
       eapply htp_bind.
-      specialize (IHhtp GX G0 G1 x1 (TBind TX)).
+      specialize (IHhtp G0 G1 x1 (TBind TX)).
       simpl in IHhtp. unfold splice_var in IHhtp. rewrite LE in IHhtp.
       rewrite <- A. eapply IHhtp. eauto. omega. eauto.
   - Case "htp_sub".
@@ -1768,25 +1725,25 @@ Proof.
       rewrite <- app_assoc. simpl. rewrite EQGH. reflexivity.
 Qed.
 
-Lemma stp_splice: forall GX G0 G1 T1 T2 v1 n,
-   stp (G1++G0) GX T1 T2 n ->
-   stp ((map (splice (length G0)) G1) ++ v1::G0) GX
+Lemma stp_splice: forall G0 G1 T1 T2 v1 n,
+   stp (G1++G0) T1 T2 n ->
+   stp ((map (splice (length G0)) G1) ++ v1::G0)
    (splice (length G0) T1) (splice (length G0) T2) n.
 Proof. intros. eapply stp_splice_aux. eauto. eauto. Qed.
 
-Lemma htp_splice: forall GX G0 G1 x1 T1 v1 n,
-   htp (G1++G0) GX x1 T1 n ->
-   htp ((map (splice (length G0)) G1) ++ v1::G0) GX
+Lemma htp_splice: forall G0 G1 x1 T1 v1 n,
+   htp (G1++G0) x1 T1 n ->
+   htp ((map (splice (length G0)) G1) ++ v1::G0)
    (splice_var (length G0) x1) (splice (length G0) T1) n.
 Proof. intros. eapply stp_splice_aux. eauto. eauto. Qed.
 
 Lemma stp_upgrade_gh_aux: forall ni,
-  (forall GH T G1 T1 T2 n,
-     stp GH G1 T1 T2 n -> n < ni ->
-     stp (T::GH) G1 T1 T2 n) /\
-  (forall T x GH G1 T2 n,
-     htp GH G1 x T2 n -> n < ni ->
-     htp (T::GH) G1 x T2 n).
+  (forall GH T T1 T2 n,
+     stp GH T1 T2 n -> n < ni ->
+     stp (T::GH) T1 T2 n) /\
+  (forall T x GH T2 n,
+     htp GH x T2 n -> n < ni ->
+     htp (T::GH) x T2 n).
 Proof.
   intros n. induction n. repeat split; intros; omega.
   repeat split; intros; inversion H.
@@ -1820,10 +1777,10 @@ Proof.
     apply stp_splice. simpl. eauto.
 
   - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
-  - econstructor. simpl. eauto.
+  - econstructor.
   - econstructor. simpl. omega.
-  - econstructor. eauto. eauto. eauto.
-  - econstructor. eauto. eauto. eauto.
+  - econstructor. eauto. eauto.
+  - econstructor. eauto. eauto.
   - econstructor. eapply IHn. eauto. omega.
   - econstructor. eapply IHn. eauto. omega.
   - econstructor. eapply closed_upgrade_gh. eauto. simpl. omega.
@@ -1838,13 +1795,13 @@ Proof.
       unfold splice_var. simpl.
       case_eq (le_lt_dec (length GH) (length GH)); intros E LE; omega.
     }
-    assert (map (splice (length GH)) [(open 0 (TVar false (length GH)) T0)] ++ T::GH =
-          (((open 0 (TVar false (S (length GH))) (splice (length GH) T0)))::T::GH)) as HGX. {
+    assert (map (splice (length GH)) [(open 0 (TVar (VAbs (length GH))) T0)] ++ T::GH =
+          (((open 0 (TVar (VAbs (S (length GH)))) (splice (length GH) T0)))::T::GH)) as HGX. {
       simpl. rewrite <- splice_open_permute0. reflexivity.
     }
     eapply stp_bind1.
     rewrite <- B.
-    instantiate (1:=(open 0 (TVar false (S (length GH))) (splice (length GH) T0))).
+    instantiate (1:=(open 0 (TVar (VAbs (S (length GH)))) (splice (length GH) T0))).
     rewrite <- HGX. rewrite C.
     apply htp_splice. simpl. eauto. simpl. rewrite A. reflexivity.
     eapply closed_upgrade_gh. eauto. simpl. omega.
@@ -1861,12 +1818,12 @@ Proof.
       unfold splice_var. simpl.
       case_eq (le_lt_dec (length GH) (length GH)); intros E LE; omega.
     }
-    assert (map (splice (length GH)) [(open 0 (TVar false (length GH)) T0)] ++ T::GH =
-          (((open 0 (TVar false (S (length GH))) (splice (length GH) T0)))::T::GH)) as HGX. {
+    assert (map (splice (length GH)) [(open 0 (TVar (VAbs (length GH))) T0)] ++ T::GH =
+          (((open 0 (TVar (VAbs (S (length GH)))) (splice (length GH) T0)))::T::GH)) as HGX. {
       simpl. rewrite <- splice_open_permute0. reflexivity.
     }
     eapply stp_bindx.
-    instantiate (2:=(open 0 (TVar false (S (length GH))) (splice (length GH) T0))).
+    instantiate (2:=(open 0 (TVar (VAbs (S (length GH)))) (splice (length GH) T0))).
     rewrite <- HGX. rewrite C.
     apply htp_splice. simpl. eauto. simpl. rewrite A. reflexivity.
     simpl. rewrite <- splice_open_permute0. rewrite B. reflexivity.
@@ -1889,36 +1846,36 @@ Proof.
     instantiate (1:=T::GU). eauto.
 Qed.
 
-Lemma stp_upgrade_gh : forall GH T G1 T1 T2 n,
-                      stp GH G1 T1 T2 n ->
-                      stp (T::GH) G1 T1 T2 n.
+Lemma stp_upgrade_gh : forall GH T T1 T2 n,
+                      stp GH T1 T2 n ->
+                      stp (T::GH) T1 T2 n.
 Proof. intros. eapply stp_upgrade_gh_aux. eauto. eauto. Qed.
 
-Lemma stp_upgrade_gh_mult : forall GH GH' G1 T1 T2 n,
-                      stp GH G1 T1 T2 n ->
-                      stp (GH'++GH) G1 T1 T2 n.
+Lemma stp_upgrade_gh_mult : forall GH GH' T1 T2 n,
+                      stp GH T1 T2 n ->
+                      stp (GH'++GH) T1 T2 n.
 Proof. intros. induction GH'. simpl. eauto. simpl. eapply stp_upgrade_gh. eauto. Qed.
 
-Lemma stp_upgrade_gh_mult0 : forall GH G1 T1 T2 n,
-                      stp [] G1 T1 T2 n ->
-                      stp GH G1 T1 T2 n.
+Lemma stp_upgrade_gh_mult0 : forall GH T1 T2 n,
+                      stp [] T1 T2 n ->
+                      stp GH T1 T2 n.
 Proof. intros. rewrite <- (app_nil_r GH). eapply stp_upgrade_gh_mult. eauto. Qed.
 
-Lemma hastp_upgrade_gh_var: forall G1 GH x T n1,
-  has_type [] G1 (tvar true x) T n1 ->
-  has_type GH G1 (tvar true x) T n1.
+Lemma hastp_upgrade_gh_var: forall GH x T n1,
+  has_type [] (tvar (VObj x)) T n1 ->
+  has_type GH (tvar (VObj x)) T n1.
 Proof.
   intros.
-  remember (tvar true x) as t.  remember [] as GH0.
+  remember (tvar (VObj x)) as t.  remember [] as GH0.
   induction H; eauto; inversion Heqt; subst.
   - eapply T_VarPack. eauto. eauto. eapply closed_upgrade_gh. eauto. simpl. omega.
   - eapply T_VarUnpack. eauto. eauto. eapply closed_upgrade_gh. eauto. simpl. omega.
   - eapply T_Sub. eauto. eapply stp_upgrade_gh_mult0. eauto.
 Qed.
 
-Lemma hastp_upgrade_gh: forall G1 GH x T n1,
-  has_type [] G1 (tvar true x) T n1 ->
-  exists n, has_type GH G1 (tvar true x) T n.
+Lemma hastp_upgrade_gh: forall GH x T n1,
+  has_type [] (tvar (VObj x)) T n1 ->
+  exists n, has_type GH (tvar (VObj x)) T n.
 Proof.
   intros. exists n1.
   induction GH. simpl. eauto. simpl. eapply hastp_upgrade_gh_var. eauto.
