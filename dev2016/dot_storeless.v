@@ -2,7 +2,7 @@
 DOT storeless
 T ::= Bot | Top | T1 /\ T2 | T1 \/ T2 |
       { def m(x: S): U^x } | { type A: S..U } | p.A | { z => T^z }
-t ::= x | { z => d^z... } | t.m(t)
+t ::= p | new { z => d^z... } | t.m(t)
 d ::= { def m(x: S): U^x = t^x } | { type A = T }
 v ::= { z => d^z... }
 p ::= x | v
