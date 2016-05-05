@@ -2312,13 +2312,13 @@ Inductive step : tm -> tm -> Prop :=
     step (tobj D) (tvar (VObj D))
 | ST_AppAbs : forall f l x ds T1 T2 t12,
     index l (dms_to_list (subst_dms ds ds)) = Some (dfun T1 T2 t12) ->
-    step (tapp (tvar true f) l (tvar true x)) (subst_tm x t12)
+    step (tapp (tvar (VObj f)) l (tvar (VObj x))) (subst_tm x t12)
 | ST_App1 : forall t1 t1' l t2,
     step t1 t1' ->
     step (tapp t1 l t2) (tapp t1' l t2)
-| ST_App2 : forall G1 G1' f t2 l t2',
+| ST_App2 : forall f t2 l t2',
     step t2 t2' ->
-    step (tapp (tvar true f) l t2) (tapp (tvar true f) l t2')
+    step (tapp (tvar (VObj f)) l t2) (tapp (tvar (VObj f)) l t2')
 .
 
 
