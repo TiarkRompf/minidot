@@ -338,7 +338,7 @@ Inductive vtp(*possible types*) : nat(*pack count*) -> dms -> ty -> nat(*size*) 
 | vtp_fun: forall m l ds T1 T2 T3 T4 T2' T4' t T1x T2x tx T' T2x' n1 n2 n3 n4,
     index l (dms_to_list (subst_dms ds ds)) = Some (dfun T1 T2 t) ->
     dms_has_type [T'] ds T' n4 ->
-    index l (dms_to_list (subst_dms ds ds)) = Some (dfun T1x T2x tx) ->
+    index l (dms_to_list ds) = Some (dfun T1x T2x tx) ->
     T2x' = (open 0 (TVar (VAbs 1)) T2x) ->
     has_type [T1x;T'] tx T2x' n3 ->
     stp [] T3 T1 n1 ->
@@ -1164,70 +1164,68 @@ Proof.
   - Case "sel1". subst. (* invert htp to vtp and create strong_sel node *)
     case_eq (beq_nat x0 0); intros E.
     + assert (x0 = 0). eapply beq_nat_true_iff. eauto. subst x0.
-      assert (exists m0, vtpd m0 G1 x (substt x (TMem l TBot T2))) as A. eapply narrowX. eauto. omega.
+      assert (exists m0, vtpd m0 x (substt x (TMem l TBot T2))) as A. eapply narrowX. eauto. omega.
       destruct A as [? A]. eu. inversion A. subst.
-      repeat eexists. eapply stp_strong_sel1. eauto. eauto. unfold substt.
-      eauto.
+      repeat eexists. eapply stp_strong_sel1. eauto. eauto.
     + assert (x0 <> 0). eapply beq_nat_false_iff. eauto.
-      eapply htp_subst_narrow02 in H2.
-      eu. repeat eexists. unfold substt. simpl. rewrite E. eapply stp_sel1. eapply H2. eauto. eauto. eauto.
+      eapply htp_subst_narrow02 in H1.
+      eu. repeat eexists. unfold substt. simpl. rewrite E. eapply stp_sel1. eapply H1. eauto. eauto. eauto.
 
   - Case "sel2". subst. (* invert htp to vtp and create strong_sel node *)
     case_eq (beq_nat x0 0); intros E.
     + assert (x0 = 0). eapply beq_nat_true_iff. eauto. subst x0.
-      assert (exists m0, vtpd m0 G1 x (substt x (TMem l T1 TTop))) as A. eapply narrowX. eauto. omega.
+      assert (exists m0, vtpd m0 x (substt x (TMem l T1 TTop))) as A. eapply narrowX. eauto. omega.
       destruct A as [? A]. eu. inversion A. subst.
-      repeat eexists. eapply stp_strong_sel2. eauto. eauto. unfold substt.
-      eauto.
+      repeat eexists. eapply stp_strong_sel2. eauto. eauto.
     + assert (x0 <> 0). eapply beq_nat_false_iff. eauto.
-      eapply htp_subst_narrow02 in H2.
-      eu. repeat eexists. unfold substt. simpl. rewrite E. eapply stp_sel2. eapply H2. eauto. eauto. eauto.
+      eapply htp_subst_narrow02 in H1.
+      eu. repeat eexists. unfold substt. simpl. rewrite E. eapply stp_sel2. eapply H1. eauto. eauto. eauto.
   - Case "selx".
-    eexists. eapply stp_selx. eapply closed_subst0. rewrite app_length in H2. simpl in H2. rewrite map_length. eauto. eauto.
+    eexists. eapply stp_selx. eapply closed_subst0. rewrite app_length in H1. simpl in H1. rewrite map_length. eauto.
 
   - Case "bind1".
-    assert (htpd (map (substt x) (T1'::GH)) G1 (length GH) (substt x T2)).
+    assert (htpd (map (substt x) (T1'::GH)) (length GH) (substt x T2)).
     eapply htp_subst_narrow0. eauto. eauto. omega.
-    eu. repeat eexists. eapply stp_bind1. rewrite map_length. eapply H11.
+    eu. repeat eexists. eapply stp_bind1. rewrite map_length. eapply H9.
     simpl. subst T1'. fold subst. eapply subst_open4.
-    fold subst. eapply closed_subst0. rewrite app_length in H4. simpl in H4. rewrite map_length. eauto. eauto.
-    eapply closed_subst0. rewrite map_length. rewrite app_length in H5. simpl in H5. eauto. eauto.
+    fold subst. eapply closed_subst0. rewrite app_length in H3. simpl in H3. rewrite map_length. eauto. eauto.
+    eapply closed_subst0. rewrite map_length. rewrite app_length in H4. simpl in H4. eauto.
 
   - Case "bindx".
-    assert (htpd (map (substt x) (T1'::GH)) G1 (length GH) (substt x T2')).
+    assert (htpd (map (substt x) (T1'::GH)) (length GH) (substt x T2')).
     eapply htp_subst_narrow0. eauto. eauto. omega.
-    eu. repeat eexists. eapply stp_bindx. rewrite map_length. eapply H12.
+    eu. repeat eexists. eapply stp_bindx. rewrite map_length. eapply H10.
     subst T1'. fold subst. eapply subst_open4.
     subst T2'. fold subst. eapply subst_open4.
-    rewrite app_length in H5. simpl in H5. eauto. eapply closed_subst0. rewrite map_length. eauto. eauto.
-    rewrite app_length in H6. simpl in H6. eauto. eapply closed_subst0. rewrite map_length. eauto. eauto.
+    rewrite app_length in H4. simpl in H4. eauto. eapply closed_subst0. rewrite map_length. eauto.
+    rewrite app_length in H5. simpl in H5. eauto. eapply closed_subst0. rewrite map_length. eauto.
 
   - Case "and11".
-    assert (stpd2 (map (substt x) GH) G1 (substt x T0) (substt x T2)). eapply IHn. eauto. eauto. omega. eauto.
-    eu. eexists. eapply stp_and11. eauto. eapply closed_subst0. rewrite app_length in H3. rewrite map_length. eauto. eauto.
+    assert (stpd2 (map (substt x) GH) (substt x T0) (substt x T2)). eapply IHn. eauto. eauto. omega. eauto.
+    eu. eexists. eapply stp_and11. eauto. eapply closed_subst0. rewrite app_length in H2. rewrite map_length. eauto.
   - Case "and12".
-    assert (stpd2 (map (substt x) GH) G1 (substt x T3) (substt x T2)). eapply IHn. eauto. eauto. omega. eauto.
-    eu. eexists. eapply stp_and12. eauto. eapply closed_subst0. rewrite app_length in H3. rewrite map_length. eauto. eauto.
+    assert (stpd2 (map (substt x) GH) (substt x T3) (substt x T2)). eapply IHn. eauto. eauto. omega. eauto.
+    eu. eexists. eapply stp_and12. eauto. eapply closed_subst0. rewrite app_length in H2. rewrite map_length. eauto.
   - Case "and2".
-    assert (stpd2 (map (substt x) GH) G1 (substt x T1) (substt x T0)). eapply IHn. eauto. eauto. omega. eauto.
-    assert (stpd2 (map (substt x) GH) G1 (substt x T1) (substt x T3)). eapply IHn. eauto. eauto. omega. eauto.
+    assert (stpd2 (map (substt x) GH) (substt x T1) (substt x T0)). eapply IHn. eauto. eauto. omega. eauto.
+    assert (stpd2 (map (substt x) GH) (substt x T1) (substt x T3)). eapply IHn. eauto. eauto. omega. eauto.
     eu. eu. eexists. eapply stp_and2. eauto. eauto.
 
   - Case "or21".
-    assert (stpd2 (map (substt x) GH) G1 (substt x T1) (substt x T0)). eapply IHn. eauto. eauto. omega. eauto.
-    eu. eexists. eapply stp_or21. eauto. eapply closed_subst0. rewrite app_length in H3. rewrite map_length. eauto. eauto.
+    assert (stpd2 (map (substt x) GH) (substt x T1) (substt x T0)). eapply IHn. eauto. eauto. omega. eauto.
+    eu. eexists. eapply stp_or21. eauto. eapply closed_subst0. rewrite app_length in H2. rewrite map_length. eauto.
   - Case "or22".
-    assert (stpd2 (map (substt x) GH) G1 (substt x T1) (substt x T3)). eapply IHn. eauto. eauto. omega. eauto.
-    eu. eexists. eapply stp_or22. eauto. eapply closed_subst0. rewrite app_length in H3. rewrite map_length. eauto. eauto.
+    assert (stpd2 (map (substt x) GH) (substt x T1) (substt x T3)). eapply IHn. eauto. eauto. omega. eauto.
+    eu. eexists. eapply stp_or22. eauto. eapply closed_subst0. rewrite app_length in H2. rewrite map_length. eauto.
   - Case "or1".
-    assert (stpd2 (map (substt x) GH) G1 (substt x T0) (substt x T2)). eapply IHn. eauto. eauto. omega. eauto.
-    assert (stpd2 (map (substt x) GH) G1 (substt x T3) (substt x T2)). eapply IHn. eauto. eauto. omega. eauto.
+    assert (stpd2 (map (substt x) GH) (substt x T0) (substt x T2)). eapply IHn. eauto. eauto. omega. eauto.
+    assert (stpd2 (map (substt x) GH) (substt x T3) (substt x T2)). eapply IHn. eauto. eauto. omega. eauto.
     eu. eu. eexists. eapply stp_or1. eauto. eauto.
 
   - Case "trans".
-    assert (stpd2 (map (substt x) GH) G1 (substt x T1) (substt x T3)).
+    assert (stpd2 (map (substt x) GH) (substt x T1) (substt x T3)).
     eapply IHn; eauto. omega.
-    assert (stpd2 (map (substt x) GH) G1 (substt x T3) (substt x T2)).
+    assert (stpd2 (map (substt x) GH) (substt x T3) (substt x T2)).
     eapply IHn; eauto. omega.
     eu. eu. repeat eexists. eapply stp_trans. eauto. eauto.
 
