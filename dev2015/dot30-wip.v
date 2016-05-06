@@ -16,6 +16,8 @@
    due to mutual induction in matching static and dynamic stp and peval *)
 (* copied from dot28.v *)
 (* based on that, it adds value fields that can partake in paths *)
+(* copied from dot29.v *)
+(* based on that, it adds support for abstract variables in paths *)
 
 (* TODO:
 + add pt_unpack (unpack in peval1)
@@ -45,7 +47,7 @@ Module FSUB.
 Definition id := nat.
 
 Inductive var : Type :=
-  | varF   : tm -> var (* was: id -> var *)
+  | varF   : id -> var
   | varH   : id -> var
   | varB   : id -> var
 
@@ -54,7 +56,7 @@ with ty : Type :=
   | TBot   : ty
   | TTop   : ty
   | TMem   : id -> ty -> ty -> ty
-  | TSel   : var -> id -> ty
+  | TSel   : tm -> id -> ty
   | TFld   : id -> ty -> ty
   | TAll   : id -> ty -> ty -> ty
   | TBind  : ty -> ty
@@ -64,7 +66,7 @@ with ty : Type :=
 with tm : Type :=
   | ttrue  : tm
   | tfalse : tm
-  | tvar   : id -> tm
+  | tvar   : var -> tm
   | tsel   : tm -> id -> tm
   | tapp   : tm -> id -> tm -> tm (* \o.m(x) *)
   | tobj   : id -> list (id * def) -> tm (* \o {d} *)
@@ -137,6 +139,7 @@ Fixpoint update {X : Type} (n : nat) (x: X)
 
 (* LOCALLY NAMELESS *)
 
+(* TODO: add j and check x < j for (varF x). swap order of k/l. *)
 Inductive closed_rec: nat -> nat -> ty -> Prop :=
 | cl_top: forall k l,
     closed_rec k l TTop
@@ -158,8 +161,9 @@ Inductive closed_rec: nat -> nat -> ty -> Prop :=
 | cl_bind: forall k l T2,
     closed_rec (S k) l T2 ->
     closed_rec k l (TBind T2)
-| cl_sel: forall k l x m,
-    closed_rec k l (TSel (varF x) m)
+| cl_sel: forall k l p m,
+    closed_path k l p ->
+    closed_rec k l (TSel p m)
 | cl_and: forall k l T1 T2,
     closed_rec k l T1 ->
     closed_rec k l T2 ->
@@ -168,12 +172,18 @@ Inductive closed_rec: nat -> nat -> ty -> Prop :=
     closed_rec k l T1 ->
     closed_rec k l T2 ->
     closed_rec k l (TOr T1 T2)
-| cl_selh: forall k l x m,
+with closed_path: nat -> nat -> tm -> Prop :=
+| clp_var: forall k l x,
+    closed_path k l (tvar (varF x))
+| clp_vara: forall k l x,
     l > x ->
-    closed_rec k l (TSel (varH x) m)
-| cl_selb: forall k l i m,
+    closed_path k l (tvar (varH x))
+| clp_varb: forall k l i,
     k > i ->
-    closed_rec k l (TSel (varB i) m)
+    closed_path k l (tvar (varB i))
+| clp_sel: forall k l p m,
+    closed_path k l p ->
+    closed_path k l (tsel p m)
 .
 
 Hint Constructors closed_rec.
@@ -181,67 +191,124 @@ Hint Constructors closed_rec.
 Definition closed j l T := closed_rec j l T.
 
 
-Fixpoint open_rec (k: nat) (u: var) (T: ty) { struct T }: ty :=
+Fixpoint open_rec (k: nat) (u: tm) (T: ty) { struct T }: ty :=
   match T with
-    | TSel (varF x) m => TSel (varF x) m (* free var remains free. functional, so we can't check for conflict *)
-    | TSel (varH i) m => TSel (varH i) m
-    | TSel (varB i) m => TSel (if beq_nat k i then u else varB i) m
-    | TAll m T1 T2  => TAll m (open_rec k u T1) (open_rec (S k) u T2)
-    | TBind T2    => TBind (open_rec (S k) u T2)
-    | TTop        => TTop
-    | TBot        => TBot
-    | TBool       => TBool
-    | TFld m T2  => TFld m (open_rec k u T2)
-    | TMem m T1 T2  => TMem m (open_rec k u T1) (open_rec k u T2)
-    | TAnd T1 T2  => TAnd (open_rec k u T1) (open_rec k u T2)
-    | TOr  T1 T2  => TOr  (open_rec k u T1) (open_rec k u T2)
-  end.
+    | TSel p m        => TSel (open_path k u p) m
+    | TAll m T1 T2    => TAll m (open_rec k u T1) (open_rec (S k) u T2)
+    | TBind T2        => TBind (open_rec (S k) u T2)
+    | TTop            => TTop
+    | TBot            => TBot
+    | TBool           => TBool
+    | TFld m T2       => TFld m (open_rec k u T2)
+    | TMem m T1 T2    => TMem m (open_rec k u T1) (open_rec k u T2)
+    | TAnd T1 T2      => TAnd (open_rec k u T1) (open_rec k u T2)
+    | TOr  T1 T2      => TOr  (open_rec k u T1) (open_rec k u T2)
+  end
+with open_path (k: nat) (u: tm) (t: tm) { struct t }: tm :=
+  match t with
+    | tvar (varF x) => tvar (varF x) (* free var remains free. functional, so we can't check for conflict *)
+    | tvar (varH x) => tvar (varH x)
+    | tvar (varB i) => (if beq_nat k i then u else tvar (varB i))
+    | ttrue         => ttrue
+    | tfalse        => tfalse
+    | tsel p m      => tsel (open_path k u p) m
+    | tapp t1 m t2  => tapp (open_path k u t1) m (open_path k u t2)
+    | tlet m t1 t2  => tlet m (open_path k u t1) (open_path k u t2)
+    | tobj a b      => tobj a b (* TODO: go deep? right now tobj can't occur in path ... *)
+  end.   
 
 Definition open u T := open_rec 0 u T.
 
 (* sanity check *)
-Example open_ex1: open (varF (tvar 9)) (TAll 0 TBool (TAll 0 (TSel (varB 1) 0) (TSel (varB 1) 0))) =
-                      (TAll 0 TBool (TAll 0 (TSel (varF (tvar 9)) 0) (TSel (varB 1) 0))).
+Example open_ex1: open (tvar (varF 9)) (TAll 0 TBool (TAll 0 (TSel (tvar (varB 1)) 0) (TSel (tvar (varB 1)) 0))) =
+                      (TAll 0 TBool (TAll 0 (TSel (tvar (varF 9)) 0) (TSel (tvar (varB 1)) 0))).
 Proof. compute. eauto. Qed.
 
 
-Fixpoint subst (U : var) (T : ty) {struct T} : ty :=
+Fixpoint subst (U : tm) (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
     | TBot         => TBot
     | TBool        => TBool
-    | TMem m T1 T2   => TMem m (subst U T1) (subst U T2)
-    | TSel (varB i) m => TSel (varB i) m
-    | TSel (varF i) m => TSel (varF i) m
-    | TSel (varH i) m => TSel (if beq_nat i 0 then U else varH (i-1)) m
-    | TFld m T2   => TFld m (subst U T2)
-    | TAll m T1 T2   => TAll m (subst U T1) (subst U T2)
+    | TMem m T1 T2 => TMem m (subst U T1) (subst U T2)
+    | TSel p m     => TSel (subst_path U p) m
+    | TFld m T2    => TFld m (subst U T2)
+    | TAll m T1 T2 => TAll m (subst U T1) (subst U T2)
     | TBind T2     => TBind (subst U T2)
     | TAnd T1 T2   => TAnd (subst U T1) (subst U T2)
     | TOr  T1 T2   => TOr  (subst U T1) (subst U T2)
-  end.
+  end
+with subst_path (U : tm) (t : tm) {struct t} : tm :=
+  match t with
+    | tvar (varF x) => tvar (varF x) 
+    | tvar (varB i) => tvar (varB i)
+    | tvar (varH i) => if beq_nat i 0 then U else (tvar (varH (i-1)))
+    | ttrue         => ttrue
+    | tfalse        => tfalse
+    | tsel p m      => tsel (subst_path U p) m
+    | tapp t1 m t2  => tapp (subst_path U t1) m (subst_path U t2)
+    | tlet m t1 t2  => tlet m (subst_path U t1) (subst_path U t2)
+    | tobj a b      => tobj a b (* TODO: go deep? right now tobj can't occur in path ... *)
+  end.   
 
+    
 Fixpoint nosubst (T : ty) {struct T} : Prop :=
   match T with
     | TTop         => True
     | TBot         => True
     | TBool        => True
-    | TMem m T1 T2   => nosubst T1 /\ nosubst T2
-    | TSel (varB i) m => True
-    | TSel (varF i) m => True
-    | TSel (varH i) m => i <> 0
+    | TMem m T1 T2 => nosubst T1 /\ nosubst T2
+    | TSel p m     => True
     | TFld m T2    => nosubst T2
-    | TAll m T1 T2   => nosubst T1 /\ nosubst T2
+    | TAll m T1 T2 => nosubst T1 /\ nosubst T2
     | TBind T2     => nosubst T2
     | TAnd T1 T2   => nosubst T1 /\ nosubst T2
     | TOr  T1 T2   => nosubst T1 /\ nosubst T2
+  end
+with nosubst_path (t : tm) {struct t} : Prop :=
+  match t with
+    | tvar (varF x) => True
+    | tvar (varB i) => True
+    | tvar (varH i) => i <> 0
+    | ttrue         => True
+    | tfalse        => True
+    | tsel p m      => nosubst_path p
+    | tapp t1 m t2  => nosubst_path t1 /\ nosubst_path t2
+    | tlet m t1 t2  => nosubst_path t1 /\ nosubst_path t2
+    | tobj a b      => True (* TODO: go deep? right now tobj can't occur in path ... *)
+  end.   
+
+
+Fixpoint fresh_in_term (t:tm): nat :=
+  match t with
+    | ttrue => 0
+    | tfalse => 0
+    | tvar (varF n) => S n
+    | tvar x => 0
+    | tsel f l => fresh_in_term f
+    | tapp f l x => max (fresh_in_term f) (fresh_in_term x)
+    | tobj n ds => n
+    | tlet n x y => n
   end.
+
+Fixpoint freshH_in_term (t:tm): nat :=
+  match t with
+    | ttrue => 0
+    | tfalse => 0
+    | tvar (varH n) => S n
+    | tvar x => 0
+    | tsel f l => freshH_in_term f
+    | tapp f l x => max (freshH_in_term f) (freshH_in_term x)
+    | tobj n ds => n
+    | tlet n x y => n
+  end.
+
 
 
 Hint Unfold open.
 Hint Unfold closed.
 
-Fixpoint path_head (t: tm) : option id :=
+Fixpoint path_head (t: tm) : option var :=
   match t with
     | tvar x => Some x
     | tsel t1 l => path_head t1
@@ -270,79 +337,41 @@ Inductive stp: tenv -> tenv -> ty -> ty -> nat -> Prop :=
     stp G1 GH T3 T1 n1 ->
     stp G1 GH T2 T4 n2 ->
     stp G1 GH (TMem m T1 T2) (TMem m T3 T4) (S (n1+n2))
-| stp_sel1: forall G1 GH TX m T2 x n1 n2 n3,
-    peval1 x G1 TX n1 ->
-    closed 0 0 TX ->
-    stp G1 [] TX (TMem m TBot T2) n2 ->
+| stp_sel1: forall G1 GH GL m T2 x n1 n3,
+    tailr (freshH_in_term x) GH = GL ->
+    peval1 x G1 GL (TMem m TBot T2) n1 ->
     stp G1 GH T2 T2 n3 -> (* regularity of stp2 *)
-    stp G1 GH (TSel (varF x) m) T2 (S (n1+n2+n3))
-| stp_sel2: forall G1 GH TX m T1 x n1 n2 n3,
-    peval1 x G1 TX n1 ->
-    closed 0 0 TX ->
-    stp G1 [] TX (TMem m T1 TTop) n2 ->
+    stp G1 GH (TSel x m) T2 (S (n1+n3))
+| stp_sel2: forall G1 GH GL m T1 x n1 n3,
+    tailr (freshH_in_term x) GH = GL ->
+    peval1 x G1 GL (TMem m T1 TTop) n1 ->
     stp G1 GH T1 T1 n3 -> (* regularity of stp2 *)
-    stp G1 GH T1 (TSel (varF x) m) (S (n1+n2+n3))
-| stp_selb1: forall G1 GH TX m T2 x n1 n2,
-    index x G1 = Some TX ->
-    stp G1 [] TX (TBind (TMem m TBot T2)) n1 ->   (* Note GH = [] *)
-    stp G1 GH (open (varF (tvar x)) T2) (open (varF (tvar x)) T2) n2 -> (* regularity *)
-    stp G1 GH (TSel (varF (tvar x)) m) (open (varF (tvar x)) T2) (S (n1+n2))
-| stp_selb2: forall G1 GH TX m T1 x n1 n2,
-    index x G1 = Some TX ->
-    stp G1 [] TX (TBind (TMem m T1 TTop)) n1 ->   (* Note GH = [] *)
-    stp G1 GH (open (varF (tvar x)) T1) (open (varF (tvar x)) T1) n2 -> (* regularity *)
-    stp G1 GH (open (varF (tvar x)) T1) (TSel (varF (tvar x)) m) (S (n1+n2))
-| stp_selx: forall G1 GH TX x m n1,
-    peval1 x G1 TX n1 ->
-    stp G1 GH (TSel (varF x) m) (TSel (varF x) m) (S n1)
-| stp_sela1: forall G1 GH GL TX m T2 x n1 n2,
-    tailr (S x) GH = (0,TX)::GL ->
-    stp G1 ((0,TX)::GL) TX (TMem m TBot T2) n1 ->
-    stp G1 GH T2 T2 n2 -> (* regularity *)
-    stp G1 GH (TSel (varH x) m) T2 (S (n1+n2))
-| stp_sela2: forall G1 GH GL TX m T1 x n1 n2,
-    tailr (S x) GH = (0,TX)::GL ->
-    stp G1 ((0,TX)::GL) TX (TMem m T1 TTop) n1 ->   (* not using self name for now *)
-    stp G1 GH T1 T1 n2 -> (* regularity of stp2 *)
-    stp G1 GH T1 (TSel (varH x) m) (S (n1+n2))
-| stp_selab1: forall G1 GH GL TX m T2 T2' x n1 n2,
-    tailr (S x) GH = (0,TX)::GL ->
-    closed 0 x (TBind (TMem m TBot T2)) ->
-    stp G1 ((0,TX)::GL) TX (TBind (TMem m TBot T2)) n1 ->
-    T2' = (open (varH x) T2) ->
-    stp G1 GH T2' T2' n2 -> (* regularity *)
-    stp G1 GH (TSel (varH x) m) T2' (S (n1+n2))
-| stp_selab2: forall G1 GH GL TX m T1 T1' x n1 n2,
-    tailr (S x) GH = (0,TX)::GL ->
-    closed 0 x (TBind (TMem m T1 TTop)) ->
-    stp G1 ((0,TX)::GL) TX (TBind (TMem m T1 TTop)) n1 ->
-    T1' = (open (varH x) T1) ->
-    stp G1 GH T1' T1' n2 -> (* regularity *)
-    stp G1 GH T1' (TSel (varH x) m) (S (n1+n2))
-| stp_selax: forall G1 GH TX x m n1,
-    indexr x GH = Some TX  ->
-    stp G1 GH (TSel (varH x) m) (TSel (varH x) m) (S n1)
+    stp G1 GH T1 (TSel x m) (S (n1+n3))
+| stp_selx: forall G1 GH GL TX x m n1,
+    tailr (freshH_in_term x) GH = GL ->
+    peval1 x G1 GL TX n1 ->
+    stp G1 GH (TSel x m) (TSel x m) (S n1)
 | stp_all: forall G1 GH m T1 T2 T3 T4 x n1 n2 n3,
     stp G1 GH T3 T1 n1 ->
     x = length GH ->
     closed 1 (length GH) T2 -> (* must not accidentally bind x *)
     closed 1 (length GH) T4 ->
-    stp G1 ((0,T1)::GH) (open (varH x) T2) (open (varH x) T2) n2 -> (* regularity *)
-    stp G1 ((0,T3)::GH) (open (varH x) T2) (open (varH x) T4) n3 ->
+    stp G1 ((0,T1)::GH) (open (tvar (varH x)) T2) (open (tvar (varH x)) T2) n2 -> (* regularity *)
+    stp G1 ((0,T3)::GH) (open (tvar (varH x)) T2) (open (tvar (varH x)) T4) n3 ->
     stp G1 GH (TAll m T1 T2) (TAll m T3 T4) (S (n1+n2+n3))
 | stp_bindx: forall G1 GH T1 T2 x n1 n2,
     x = length GH ->
     closed 1 (length GH) T1 -> (* must not accidentally bind x *)
     closed 1 (length GH) T2 ->
-    stp G1 ((0,open (varH x) T2)::GH) (open (varH x) T2) (open (varH x) T2) n1 -> (* regularity *)
-    stp G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) (open (varH x) T2) n2 ->
+    stp G1 ((0,open (tvar (varH x)) T2)::GH) (open (tvar (varH x)) T2) (open (tvar (varH x)) T2) n1 -> (* regularity *)
+    stp G1 ((0,open (tvar (varH x)) T1)::GH) (open (tvar (varH x)) T1) (open (tvar (varH x)) T2) n2 ->
     stp G1 GH (TBind T1) (TBind T2) (S (n1+n2))
 | stp_bind1: forall G1 GH T1 T2 x n1 n2,
     x = length GH ->
     closed 1 (length GH) T1 -> (* must not accidentally bind x *)
     closed 0 (length GH) T2 ->
     stp G1 GH T2 T2 n1 ->
-    stp G1 ((0,open (varH x) T1)::GH) (open (varH x) T1) T2 n2 ->
+    stp G1 ((0,open (tvar (varH x)) T1)::GH) (open (tvar (varH x)) T1) T2 n2 ->
     stp G1 GH (TBind T1) T2 (S (n1+n2))
 | stp_and11: forall G GH T1 T2 T n1 n2,
     stp G GH T1 T n1 ->
@@ -368,41 +397,87 @@ Inductive stp: tenv -> tenv -> ty -> ty -> nat -> Prop :=
     stp G GH T1 T n1 ->
     stp G GH T2 T n2 ->
     stp G GH (TOr T1 T2) T (S (n1+n2))
-with peval1: tm -> tenv -> ty -> nat -> Prop :=
-| pt_var: forall x G1 TX n1,
+with peval1: tm -> tenv -> tenv -> ty -> nat -> Prop :=
+| pt_var: forall x G1 GH TX n1,
             index x G1 = Some TX ->
-            peval1 (tvar x) G1 TX (S n1)
-(* TODO: vara case *)                   
-| pt_sel: forall f l G1 TX n1 n2,
-            peval1 f G1 (TFld l TX) n1 ->
-            stp G1 [] TX TX n2 ->
-            peval1 (tsel f l) G1 TX (S (n1+n2))
-| pt_sub: forall t1 G1 T1 T2 n1 n2,
-            peval1 t1 G1 T1 n1 ->
-            stp G1 [] T1 T2 n2 ->
-            peval1 t1 G1 T2 (S (n1+n2))
-| pt_unpack: forall t1 G1 T1 n1 n2, (* TODO! *)
-            peval1 t1 G1 (TBind T1) n1 ->
-            stp G1 [] (open (varF t1) T1) (open (varF t1) T1) n2 ->
-            peval1 t1 G1 (open (varF t1) T1) (S (n1+n2))
+            peval1 (tvar (varF x)) G1 GH TX (S n1)
+| pt_vara: forall x G1 GH TX n1,
+            indexr x GH = Some TX -> (* TODO: need to constrain GH to GL? *)
+            peval1 (tvar (varH x)) G1 GH TX (S n1)
+| pt_sel: forall f l G1 GH TX n1 n2,
+            peval1 f G1 GH (TFld l TX) n1 ->
+            stp G1 GH TX TX n2 ->
+            peval1 (tsel f l) G1 GH TX (S (n1+n2))
+| pt_sub: forall t1 G1 GH T1 T2 n1 n2,
+            peval1 t1 G1 GH T1 n1 ->
+            stp G1 GH T1 T2 n2 ->
+            peval1 t1 G1 GH T2 (S (n1+n2))
+| pt_unpack: forall t1 G1 GH T1 n1 n2,
+            peval1 t1 G1 GH (TBind T1) n1 ->
+            stp G1 GH (open t1 T1) (open t1 T1) n2 ->
+            peval1 t1 G1 GH (open t1 T1) (S (n1+n2))
 .
 
-(*
-with path_type: tenv -> tenv -> id -> ty -> Prop :=
-| pt_var: forall G1 GH TX x,
-    index x G1 = Some TX ->
-    path_type G1 GH x TX
-| pt_sub: forall G1 GH TX x,
-    path_type has_type env e T1 ->
-           stp env [] T1 T2 ->
-           has_type env e T2
+(* TODO: sanity check -- prove these are admissible as lemmas *)
 
-with pathH_type: tenv -> tenv -> id -> ty -> Prop :=
-| pth_var: forall G1 GH TX T x,
-    indexr x GH = Some TX ->
-    stp G1 GH TX T ->
-    pathH_type G1 GH x T
+(*
+| stp_sel1: forall G1 GH TX m T2 x,
+    index x G1 = Some TX ->
+    closed 0 0 TX ->
+    stp G1 [] TX (TMem m TBot T2) ->
+    stp G1 GH T2 T2 -> (* regularity of stp2 *)
+    stp G1 GH (TSel (varF x) m) T2
+| stp_sel2: forall G1 GH TX m T1 x,
+    index x G1 = Some TX ->
+    closed 0 0 TX ->
+    stp G1 [] TX (TMem m T1 TTop) ->
+    stp G1 GH T1 T1 -> (* regularity of stp2 *)
+    stp G1 GH T1 (TSel (varF x) m)
+| stp_selb1: forall G1 GH TX m T2 x,
+    index x G1 = Some TX ->
+    stp G1 [] TX (TBind (TMem m TBot T2)) ->   (* Note GH = [] *)
+    stp G1 GH (open (varF x) T2) (open (varF x) T2) -> (* regularity *)
+    stp G1 GH (TSel (varF x) m) (open (varF x) T2)
+| stp_selb2: forall G1 GH TX m T1 x,
+    index x G1 = Some TX ->
+    stp G1 [] TX (TBind (TMem m T1 TTop)) ->   (* Note GH = [] *)
+    stp G1 GH (open (varF x) T1) (open (varF x) T1) -> (* regularity *)
+    stp G1 GH (open (varF x) T1) (TSel (varF x) m)
+| stp_selx: forall G1 GH TX x m,
+    index x G1 = Some TX ->
+    stp G1 GH (TSel (varF x) m) (TSel (varF x) m)
+| stp_sela1: forall G1 GH GL TX m T2 x,
+    tailr (S x) GH = (0,TX)::GL ->
+    stp G1 ((0,TX)::GL) TX (TMem m TBot T2) ->
+    stp G1 GH T2 T2 -> (* regularity *)
+    stp G1 GH (TSel (varH x) m) T2
+| stp_sela2: forall G1 GH GL TX m T1 x,
+    tailr (S x) GH = (0,TX)::GL ->
+    stp G1 ((0,TX)::GL) TX (TMem m T1 TTop) ->   (* not using self name for now *)
+    stp G1 GH T1 T1 -> (* regularity of stp2 *)
+    stp G1 GH T1 (TSel (varH x) m)
+| stp_selab1: forall G1 GH GL TX m T2 T2' x,
+    tailr (S x) GH = (0,TX)::GL ->
+    closed 0 x (TBind (TMem m TBot T2)) ->
+    stp G1 ((0,TX)::GL) TX (TBind (TMem m TBot T2)) ->
+    T2' = (open (varH x) T2) ->
+    stp G1 GH T2' T2' -> (* regularity *)
+    stp G1 GH (TSel (varH x) m) T2'
+| stp_selab2: forall G1 GH GL TX m T1 T1' x,
+    tailr (S x) GH = (0,TX)::GL ->
+    closed 0 x (TBind (TMem m T1 TTop)) ->
+    stp G1 ((0,TX)::GL) TX (TBind (TMem m T1 TTop)) ->
+    T1' = (open (varH x) T1) ->
+    stp G1 GH T1' T1' -> (* regularity *)
+    stp G1 GH T1' (TSel (varH x) m)
+| stp_selax: forall G1 GH TX x m,
+    indexr x GH = Some TX  ->
+    stp G1 GH (TSel (varH x) m) (TSel (varH x) m)
 *)
+
+
+
+
 
 
 Hint Constructors peval1.
@@ -415,7 +490,7 @@ Function tand (t1: ty) (t2: ty) :=
   end.
 
 Definition stpd G1 GH T1 T2 := exists n, stp G1 GH T1 T2 n.
-Definition pevald1 x G1 TX := exists n, peval1 x G1 TX n.
+Definition pevald1 x G1 GH TX := exists n, peval1 x G1 GH TX n.
 
 Hint Unfold stpd.
 Hint Unfold pevald1.
@@ -430,23 +505,23 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
 | t_var: forall x env T1 n1,
            index x env = Some T1 ->
            stp env [] T1 T1 n1 ->
-           has_type env (tvar x) T1
+           has_type env (tvar (varF x)) T1
 | t_var_pack: forall x env T1 n1,
-           has_type env (tvar x) (open (varF (tvar x)) T1) -> (* todo: relax *)
+           has_type env (tvar (varF x)) (open (tvar (varF x)) T1) -> (* todo: relax *)
            stp env [] (TBind T1) (TBind T1) n1 ->
-           has_type env (tvar x) (TBind T1)
+           has_type env (tvar (varF x)) (TBind T1)
 | t_var_unpack: forall x env T1 n1,
-           has_type env (tvar x) (TBind T1) ->
-           stp env [] (open (varF (tvar x)) T1) (open (varF (tvar x)) T1) n1 ->
-           has_type env (tvar x) (open (varF (tvar x)) T1)
+           has_type env (tvar (varF x)) (TBind T1) ->
+           stp env [] (open (tvar (varF x)) T1) (open (tvar (varF x)) T1) n1 ->
+           has_type env (tvar (varF x)) (open (tvar (varF x)) T1)
 | t_sel_unpack: forall x l env T1 n1 n2,
            has_type env (tsel x l) (TBind T1) ->
-           peval1 (tsel x l) env (TBind T1) n2 -> (* make sure it's actually a path! *)
-           stp env [] (open (varF (tsel x l)) T1) (open (varF (tsel x l)) T1) n1 ->
-           has_type env (tsel x l) (open (varF (tsel x l)) T1)
+           peval1 (tsel x l) env [] (TBind T1) n2 -> (* make sure it's actually a path! *)
+           stp env [] (open (tsel x l) T1) (open (tsel x l) T1) n1 ->
+           has_type env (tsel x l) (open (tsel x l) T1)
 | t_obj: forall env f ds T TX n1 n2,
            fresh env = f ->
-           open (varF (tvar f)) T = TX ->
+           open (tvar (varF f)) T = TX ->
            dcs_has_type ((f, TX)::env) f ds T ->
            stp ((f, TX)::env) [] TX TX n1 ->
            stp env [] (TBind T) (TBind T) n2 ->
@@ -462,10 +537,10 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env (tapp f l x) T2
 | t_app_var: forall env f l x T1 T2 T2X n1,
            has_type env f (TAll l T1 T2) ->
-           has_type env (tvar x) T1 ->
-           open (varF (tvar x)) T2 = T2X ->
+           has_type env (tvar (varF x)) T1 ->
+           open (tvar (varF x)) T2 = T2X ->
            stp env [] T2X T2X n1 ->
-           has_type env (tapp f l (tvar x)) T2X
+           has_type env (tapp f l (tvar (varF x))) T2X
 | t_let: forall env x ex e Tx T n1,
            has_type env ex Tx ->
            fresh env <= x ->
@@ -482,14 +557,14 @@ with dcs_has_type: tenv -> id -> list (id * def) -> ty -> Prop :=
 | dt_nil: forall env f,
             dcs_has_type env f nil TTop
 | dt_fld: forall env f y m T2 dcs TS T,
-            has_type env (tvar y) (open (varF (tvar f)) T2) ->
-            index y env = Some (open (varF (tvar f)) T2) -> y <> f -> (* TODO: these are extra simplif *)
+            has_type env (tvar (varF y)) (open (tvar (varF f)) T2) ->
+            index y env = Some (open (tvar (varF f)) T2) -> y <> f -> (* TODO: these are extra simplif *)
             dcs_has_type env f dcs TS ->
             m = length dcs ->
             T = tand (TFld m T2) TS ->
             dcs_has_type env f ((m, dfld y)::dcs) T
 | dt_fun: forall env f x y m T1 T2 dcs TS T,
-            has_type ((x,open (varF (tvar f)) T1)::env) y (open (varF (tvar x)) (open_rec 1 (varF (tvar f)) T2)) ->
+            has_type ((x,open (tvar (varF f)) T1)::env) y (open (tvar (varF x)) (open_rec 1 (tvar (varF f)) T2)) ->
             dcs_has_type env f dcs TS ->
             fresh env = x ->
             m = length dcs ->
@@ -515,10 +590,11 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
     | 0 => None
     | S n =>
       match t with
-        | ttrue      => Some (Some (vbool true))
-        | tfalse     => Some (Some (vbool false))
-        | tvar x     => Some (index x env)
-        | tobj f ds => Some (Some (vobj env f ds)) (* TODO: take subenv < f, also in has_type *)
+        | ttrue         => Some (Some (vbool true))
+        | tfalse        => Some (Some (vbool false))
+        | tvar (varF x) => Some (index x env)
+        | tvar _        => Some None
+        | tobj f ds     => Some (Some (vobj env f ds)) (* TODO: take subenv < f, also in has_type *)
         | tsel ef m =>
           match teval n env ef with
             | None => None
@@ -529,7 +605,7 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
                 | None => Some None
                 | Some (dmem _) => Some None
                 | Some (dfun _ _) => Some None
-                | Some (dfld y) => teval n ((f,vobj env2 f ds)::env2) (tvar y)
+                | Some (dfld y) => teval n ((f,vobj env2 f ds)::env2) (tvar (varF y))
               end
           end
         | tapp ef m ex   =>
@@ -587,16 +663,6 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
    - arbitrary terms if we don't care if typing is decidable
 *)
    
-Fixpoint fresh_in_term (t:tm): nat :=
-  match t with
-    | ttrue => 0
-    | tfalse => 0
-    | tvar n => 1 + n
-    | tsel f l => fresh_in_term f
-    | tapp f l x => max (fresh_in_term f) (fresh_in_term x)
-    | tobj n ds => n
-    | tlet n x y => n
-  end.
 
 Definition peval (t:tm) (G:venv) r :=
   fresh_in_term t <= fresh G /\
@@ -646,8 +712,8 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 0 false GX' TX' G2 (TMem l TBot T2) GH n2 -> (* for downgrade *)
     index l ds = Some (dmem TX) ->
     closed 1 0 TX ->
-    stp2 0 true ((f, vobj GX f ds)::GX) (open (varF (tvar f)) TX) G2 T2 GH n1 ->
-    stp2 0 true G1 (TSel (varF x) l) G2 T2 GH (S (n1+n2))
+    stp2 0 true ((f, vobj GX f ds)::GX) (open (tvar (varF f)) TX) G2 T2 GH n1 ->
+    stp2 0 true G1 (TSel x l) G2 T2 GH (S (n1+n2))
 
 | stp2_strong_sel2: forall G1 G2 GX l f ds TX x T1 GH GX' TX' n1 n2,
     peval x G2 (vobj GX f ds) ->
@@ -655,8 +721,8 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     stp2 0 false GX' TX' G1 (TMem l T1 TTop) GH n2 -> (* for downgrade *)
     index l ds = Some (dmem TX) ->
     closed 1 0 TX ->
-    stp2 0 false G1 T1 ((f, vobj GX f ds)::GX) (open (varF (tvar f)) TX) GH n1 ->
-    stp2 0 true G1 T1 G2 (TSel (varF x) l) GH (S (n1+n2))
+    stp2 0 false G1 T1 ((f, vobj GX f ds)::GX) (open (tvar (varF f)) TX) GH n1 ->
+    stp2 0 true G1 T1 G2 (TSel x l) GH (S (n1+n2))
 
 (* existing object, but imprecise type *)
 | stp2_sel1: forall m G1 G2 GX l TX x T2 GH n1 n2 v,
@@ -665,7 +731,7 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     closed 0 0 TX ->
     stp2 (S m) false GX TX G2 (TMem l TBot T2) GH n1 ->
     stp2 (S m) true G2 T2 G2 T2 GH n2 -> (* regularity *)
-    stp2 (S m) true G1 (TSel (varF x) l) G2 T2 GH (S (n1+n2))
+    stp2 (S m) true G1 (TSel x l) G2 T2 GH (S (n1+n2))
 
 (*         
 | stp2_selb1: forall m G1 G2 GX l TX x x' T2 GH n1 n2 v nv,
@@ -683,7 +749,7 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     closed 0 0 TX ->
     stp2 (S m) false GX TX G1 (TMem l T1 TTop) GH n1 ->
     stp2 (S m) true G1 T1 G1 T1 GH n2 -> (* regularity *)
-    stp2 (S m) true G1 T1 G2 (TSel (varF x) l) GH (S (n1+n2))
+    stp2 (S m) true G1 T1 G2 (TSel x l) GH (S (n1+n2))
 
 (*         
 | stp2_selb2: forall m G1 G2 GX l TX x x' T1 GH n1 n2 v nv,
@@ -698,15 +764,15 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
 
 (* TODO: this is a simplif *)
 | stp2_selxr: forall m G1 G2 l t x v GH n1,
-   path_head t = Some x ->
+   path_head t = Some (varF x) ->
    index x G1 = Some v ->
    index x G2 = Some v ->
-   stp2 m true G1 (TSel (varF t) l) G2 (TSel (varF t) l) GH (S n1)
+   stp2 m true G1 (TSel t l) G2 (TSel t l) GH (S n1)
 
 | stp2_selx: forall m G1 G2 l v x1 x2 GH n1,
     peval x1 G1 v -> 
     peval x2 G2 v ->
-    stp2 m true G1 (TSel (varF x1) l) G2 (TSel (varF x2) l) GH (S n1)
+    stp2 m true G1 (TSel x1 l) G2 (TSel x2 l) GH (S n1)
 
 (* hypothetical object *)
 (*| stp2_sela1: forall m G1 G2 GX l TX x T2 GH n1 n2,
