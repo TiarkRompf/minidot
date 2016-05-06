@@ -345,6 +345,38 @@ Proof.
       subst. eapply IHHs1; eauto.
 Qed.
 
+Fixpoint stepn n t : tm :=
+  match n with
+    | 0 => t
+    | S n =>
+      match stepf t with
+        | None => t
+        | Some t' => stepn n t'
+      end
+  end.
+
+Lemma step_star_stepn: forall t t',
+  step_star t t' ->
+  exists n, stepn n t = t'.
+Proof.
+  intros t t' Hs. induction Hs; eauto.
+  - exists 0. simpl. reflexivity.
+  - destruct IHHs as [n Ev].
+    exists (S n). simpl. unfold step in H. rewrite H. apply Ev.
+Qed.
+
+Lemma stepn_step_star: forall n t t',
+  stepn n t = t' ->
+  step_star t t'.
+Proof.
+  intros n. induction n; intros.
+  - simpl in H. subst. eapply s_refl.
+  - simpl in H. remember (stepf t) as r. destruct r; simpl in H.
+    + eapply s_step. unfold step. rewrite <- Heqr. reflexivity.
+      eapply IHn; eauto.
+    + subst. eapply s_refl.
+Qed.
+
 (* static semantics *)
 Inductive has_type : tenv -> tm -> ty -> nat -> Prop :=
   | T_Vary : forall GH ds T n1,
