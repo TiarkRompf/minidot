@@ -290,19 +290,84 @@ with htp: tenv -> id -> ty -> nat -> Prop :=
 
 
 (* Reduction semantics  *)
-Inductive step : tm -> tm -> Prop :=
-| ST_Obj : forall D,
-    step (tobj D) (tvar (VObj D))
-| ST_AppAbs : forall f l x T1 T2 t12,
+Fixpoint stepf (t: tm): option tm :=
+  match t with
+    | tvar _ => None
+    | tobj D => Some (tvar (VObj D))
+    | tapp t1 l t2 =>
+      match t1 with
+        | tvar (VObj f) =>
+          match t2 with
+            | tvar (VObj x) =>
+              match index l (dms_to_list f) with
+                | Some (dfun T1 T2 t12) => Some (subst_tm x t12)
+                | _ => None
+              end
+            | _ =>
+              match (stepf t2) with
+                | Some t2' => Some (tapp t1 l t2')
+                | None => None
+              end
+          end
+        | _ =>
+          match (stepf t1) with
+            | Some t1' => Some (tapp t1' l t2)
+            | None => None
+          end
+      end
+  end.
+
+Definition step t t' := stepf t = Some t'.
+
+Lemma ST_Obj : forall D,
+    step (tobj D) (tvar (VObj D)).
+Proof.
+  intros. unfold step. simpl. reflexivity.
+Qed.
+
+Lemma ST_AppAbs : forall f l x T1 T2 t12,
     index l (dms_to_list f) = Some (dfun T1 T2 t12) ->
-    step (tapp (tvar (VObj f)) l (tvar (VObj x))) (subst_tm x t12)
-| ST_App1 : forall t1 t1' l t2,
-    step t1 t1' ->
-    step (tapp t1 l t2) (tapp t1' l t2)
-| ST_App2 : forall f t2 l t2',
-    step t2 t2' ->
-    step (tapp (tvar (VObj f)) l t2) (tapp (tvar (VObj f)) l t2')
-.
+    step (tapp (tvar (VObj f)) l (tvar (VObj x))) (subst_tm x t12).
+Proof.
+  intros. unfold step. simpl. rewrite H. reflexivity.
+Qed.
+
+Lemma inv_step_var : forall t t',
+  step t t' -> forall v, t <> tvar v.
+Proof.
+  intros t t' H. unfold step in H.
+  destruct t; simpl in H; inversion H; subst; intros; eauto;
+  congruence.
+Qed.
+
+Lemma ST_App1 : forall t1 t1' l t2,
+  step t1 t1' ->
+  step (tapp t1 l t2) (tapp t1' l t2).
+Proof.
+  intros. unfold step. simpl.
+  assert (forall v1, t1 <> tvar v1) as A. {
+    eapply inv_step_var. eauto.
+  }
+  destruct t1.
+  - specialize (A v). congruence.
+  - unfold step in *. simpl in *. inversion H. subst. reflexivity.
+  - unfold step in *. rewrite H. reflexivity.
+Qed.
+
+Lemma ST_App2 : forall f t2 l t2',
+  step t2 t2' ->
+  step (tapp (tvar (VObj f)) l t2) (tapp (tvar (VObj f)) l t2').
+Proof.
+  intros. unfold step. simpl.
+  assert (forall v2, t2 <> tvar v2) as A. {
+    eapply inv_step_var. eauto.
+  }
+  destruct t2.
+  - specialize (A v). congruence.
+  - unfold step in *. simpl in *. inversion H. subst. reflexivity.
+  - unfold step in *. rewrite H. reflexivity.
+Qed.
+
 Inductive step_star : tm -> tm -> Prop :=
 | s_refl : forall t, step_star t t
 | s_step : forall t1 t2 t3, step t1 t2 -> step_star t2 t3 -> step_star t1 t3.
@@ -2354,7 +2419,7 @@ Proof.
   - Case "vary". eauto.
   - Case "varz". subst GH. inversion H.
   - Case "obj". subst. right.
-    repeat eexists. eapply ST_Obj.
+    repeat eexists.
     eapply T_Vary. eapply H.
   - Case "app". subst.
     assert (closed (length ([]:tenv)) 0 (TFun l T1 T)) as TF. eapply has_type_closed. eauto.
