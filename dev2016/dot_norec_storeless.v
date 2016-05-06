@@ -436,6 +436,55 @@ Proof.
   intros. inversion H; subst; eauto; solve by inversion.
 Qed.
 
+Definition irreducible t := stepf t = None.
+Definition normalizing t t' := step_star t t' /\ irreducible t'.
+
+Lemma irreducible_step_star_refl: forall t t',
+  step_star t t' ->
+  irreducible t ->
+  t = t'.
+Proof.
+  intros t t' Hs Hi. inversion Hs; subst; eauto.
+  unfold irreducible in Hi. unfold step in H. rewrite Hi in H.
+  inversion H.
+Qed.
+
+Lemma step_unique: forall t t1 t2,
+  step t t1 -> step t t2 ->
+  t1 = t2.
+Proof.
+  intros t t1 t2 H1 H2. unfold step in *.
+  rewrite H1 in H2. inversion H2. subst.
+  reflexivity.
+Qed.
+
+Lemma irreducible_step_contra: forall t t',
+  step t t' ->
+  irreducible t ->
+  False.
+Proof.
+  intros t t' Hs Hi. unfold step in Hs. unfold irreducible in Hi.
+  rewrite Hi in Hs. inversion Hs.
+Qed.
+
+Lemma normalizing_unique: forall t t1 t2,
+  normalizing t t1 -> normalizing t t2 ->
+  t1 = t2.
+Proof.
+  intros t t1 t2 H1 H2. unfold normalizing in *.
+  destruct H1 as [Hs1 Hn1]. destruct H2 as [Hs2 Hn2].
+  induction Hs1.
+  - eapply irreducible_step_star_refl; eauto.
+  - specialize (IHHs1 Hn1).
+    inversion Hs2; subst.
+    + elimtype False. eapply irreducible_step_contra.
+      eapply H. eapply Hn2.
+    + assert (t0 = t5) as Eq. {
+        eapply step_unique; eauto.
+      }
+      subst. eapply IHHs1; eauto.
+Qed.
+
 Inductive vtp(*possible types*) : nat(*pack count*) -> dms -> ty -> nat(*size*) -> Prop :=
 | vtp_top: forall m ds n1,
     vtp m ds TTop (S n1)
