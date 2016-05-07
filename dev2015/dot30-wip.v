@@ -790,7 +790,7 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     GH = GU ++ GL ->
     stp2 (S m) false GX TX G2 (TMem l TBot T2) GL n1 ->
     stp2 (S m) true G2 T2 G2 T2 GH n2 -> (* regularity *)
-    stp2 (S m) true G1 (TSel (varH x) l) G2 T2 GH (S (n1+n2))
+    stp2 (S m) true G1 (TSel (tvar (varH x)) l) G2 T2 GH (S (n1+n2))
 
 | stp2_sela2: forall m G1 G2 GX l TX x T1 GH GU GL n1 n2,
     indexr x GH = Some (GX, TX) ->
@@ -799,7 +799,7 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     GH = GU ++ GL ->
     stp2 (S m) false GX TX G1 (TMem l T1 TTop) GL n1 ->
     stp2 (S m) true G1 T1 G1 T1 GH n2 -> (* regularity *)
-    stp2 (S m) true G1 T1 G2 (TSel (varH x) l) GH (S (n1+n2))
+    stp2 (S m) true G1 T1 G2 (TSel (tvar (varH x)) l) GH (S (n1+n2))
 
 | stp2_selab1: forall m G1 G2 GX l TX x T2 T2' GH GU GL n1 n2,
     indexr x GH = Some (GX, TX) ->
@@ -807,9 +807,9 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     length GL = (S x) ->
     GH = GU ++ GL ->
     stp2 (S m) false GX TX G2 (TBind (TMem l TBot T2)) GL n1 ->
-    T2' = (open (varH x) T2) ->
+    T2' = (open (tvar (varH x)) T2) ->
     stp2 (S m) true G2 T2' G2 T2' GH n2 -> (* regularity *)
-    stp2 (S m) true G1 (TSel (varH x) l) G2 T2' GH (S (n1+n2))
+    stp2 (S m) true G1 (TSel (tvar (varH x)) l) G2 T2' GH (S (n1+n2))
 
 | stp2_selab2: forall m G1 G2 GX l TX x T1 T1' GH GU GL n1 n2,
     indexr x GH = Some (GX, TX) ->
@@ -817,37 +817,37 @@ Inductive stp2: nat -> bool -> venv -> ty -> venv -> ty -> list (id*(venv*ty)) -
     length GL = (S x) ->
     GH = GU ++ GL ->
     stp2 (S m) false GX TX G1 (TBind (TMem l T1 TTop)) GL n1 ->
-    T1' = (open (varH x) T1) ->
+    T1' = (open (tvar (varH x)) T1) ->
     stp2 (S m) true G1 T1' G1 T1' GH n2 -> (* regularity *)
-    stp2 (S m) true G1 T1' G2 (TSel (varH x) l) GH (S (n1+n2))
+    stp2 (S m) true G1 T1' G2 (TSel (tvar (varH x)) l) GH (S (n1+n2))
 
 
 
 | stp2_selax: forall m G1 G2 GX l TX x GH n1,
     indexr x GH = Some (GX, TX) ->
-    stp2 (S m) true G1 (TSel (varH x) l) G2 (TSel (varH x) l) GH (S n1)
+    stp2 (S m) true G1 (TSel (tvar (varH x)) l) G2 (TSel (tvar (varH x)) l) GH (S n1)
 
 
 | stp2_all: forall m G1 G2 l T1 T2 T3 T4 GH n1 n1' n2,
     stp2 1 false G2 T3 G1 T1 GH n1 ->
     closed 1 (length GH) T2 -> (* must not accidentally bind x *)
     closed 1 (length GH) T4 ->
-    stp2 1 false G1 (open (varH (length GH)) T2) G1 (open (varH (length GH)) T2) ((0,(G1, T1))::GH) n1' -> (* regularity *)
-    stp2 1 false G1 (open (varH (length GH)) T2) G2 (open (varH (length GH)) T4) ((0,(G2, T3))::GH) n2 ->
+    stp2 1 false G1 (open (tvar (varH (length GH))) T2) G1 (open (tvar (varH (length GH))) T2) ((0,(G1, T1))::GH) n1' -> (* regularity *)
+    stp2 1 false G1 (open (tvar (varH (length GH))) T2) G2 (open (tvar (varH (length GH))) T4) ((0,(G2, T3))::GH) n2 ->
     stp2 m true G1 (TAll l T1 T2) G2 (TAll l T3 T4) GH (S (n1+n1'+n2))
 
 | stp2_bind: forall m G1 G2 T1 T2 GH n1 n2,
     closed 1 (length GH) T1 -> (* must not accidentally bind x *)
     closed 1 (length GH) T2 ->
-    stp2 1 false G2 (open (varH (length GH)) T2) G2 (open (varH (length GH)) T2) ((0,(G2, open (varH (length GH)) T2))::GH) n2 -> (* regularity *)
-    stp2 1 false G1 (open (varH (length GH)) T1) G2 (open (varH (length GH)) T2) ((0,(G1, open (varH (length GH)) T1))::GH) n1 ->
+    stp2 1 false G2 (open (tvar (varH (length GH))) T2) G2 (open (tvar (varH (length GH))) T2) ((0,(G2, open (tvar (varH (length GH))) T2))::GH) n2 -> (* regularity *)
+    stp2 1 false G1 (open (tvar (varH (length GH))) T1) G2 (open (tvar (varH (length GH))) T2) ((0,(G1, open (tvar (varH (length GH))) T1))::GH) n1 ->
     stp2 m true G1 (TBind T1) G2 (TBind T2) GH (S (n1+n2))
 
 | stp2_bind1: forall m G1 G2 T1 T2 GH n1 n2,
     closed 1 (length GH) T1 -> (* must not accidentally bind x *)
     closed 0 (length GH) T2 ->
     stp2 m false G2 T2 G2 T2 GH n2 -> (* regularity *)
-    stp2 1 false G1 (open (varH (length GH)) T1) G2 T2 ((0,(G1, open (varH (length GH)) T1))::GH) n1 ->
+    stp2 1 false G1 (open (tvar (varH (length GH))) T1) G2 T2 ((0,(G1, open (tvar (varH (length GH))) T1))::GH) n1 ->
     stp2 m true G1 (TBind T1) G2 T2 GH (S (n1+n2))
 
          
@@ -900,7 +900,7 @@ with val_type : venv -> vl -> ty -> nat -> Prop :=
     val_type venv (vbool b) TE 1
 | v_obj: forall env venv tenv f ds T TX TE,
     wf_env venv tenv ->
-    open (varF (tvar f)) T = TX ->
+    open (tvar (varF f)) T = TX ->
     dcs_has_type ((f,TX)::tenv) f ds T ->
     fresh venv = f ->
     (exists n, stp2 0 true ((f, vobj venv f ds)::venv) TX env TE [] n)->
@@ -908,7 +908,7 @@ with val_type : venv -> vl -> ty -> nat -> Prop :=
 | v_pack: forall venv venv3 x v T T2 T3 n,
     peval x venv v -> 
     val_type venv v T n ->
-    open (varF x) T2 = T ->
+    open x T2 = T ->
     (exists n, stp2 0 true venv (TBind T2) venv3 T3 [] n) ->
     val_type venv3 v T3 (S n)
 .
@@ -987,7 +987,7 @@ Lemma stpd2_sel1: forall G1 G2 GX l TX x T2 GH v,
     closed 0 0 TX ->
     stpd2 false GX TX G2 (TMem l TBot T2) GH ->
     stpd2 true G2 T2 G2 T2 GH ->
-    stpd2 true G1 (TSel (varF x) l) G2 T2 GH.
+    stpd2 true G1 (TSel x l) G2 T2 GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel1; eauto. Qed.
 
 (*
@@ -1007,7 +1007,7 @@ Lemma stpd2_sel2: forall G1 G2 GX l TX x T1 GH v,
     closed 0 0 TX ->
     stpd2 false GX TX G1 (TMem l T1 TTop) GH ->
     stpd2 true G1 T1 G1 T1 GH ->
-    stpd2 true G1 T1 G2 (TSel (varF x) l) GH.
+    stpd2 true G1 T1 G2 (TSel x l) GH.
 Proof. intros. repeat eu. eexists. eapply stp2_sel2; eauto. Qed.
 
 (*
@@ -1022,16 +1022,16 @@ Proof. intros. repeat eu. eexists. eapply stp2_selb2; eauto. Qed.
  *)
 
 Lemma stpd2_selxr: forall G1 G2 l t x v GH,
-    path_head t = Some x ->
+    path_head t = Some (varF x) ->
     index x G1 = Some v ->
     index x G2 = Some v ->
-    stpd2 true G1 (TSel (varF t) l) G2 (TSel (varF t) l) GH.
+    stpd2 true G1 (TSel t l) G2 (TSel t l) GH.
 Proof. intros. exists (S 0). eapply stp2_selxr; eauto. Qed.
 
 Lemma stpd2_selx: forall G1 G2 l x1 x2 GH v,
     peval x1 G1 v ->
     peval x2 G2 v ->
-    stpd2 true G1 (TSel (varF x1) l) G2 (TSel (varF x2) l) GH.
+    stpd2 true G1 (TSel x1 l) G2 (TSel x2 l) GH.
 Proof. intros. exists (S 0). eapply stp2_selx; eauto. Qed.
 
 Lemma stpd2_sela1: forall G1 G2 GX l TX x T2 GH GU GL,
@@ -1041,7 +1041,7 @@ Lemma stpd2_sela1: forall G1 G2 GX l TX x T2 GH GU GL,
     GH = GU ++ GL ->
     stpd2 false GX TX G2 (TMem l TBot T2) GL ->
     stpd2 true G2 T2 G2 T2 GH ->
-    stpd2 true G1 (TSel (varH x) l) G2 T2 GH.
+    stpd2 true G1 (TSel (tvar (varH x)) l) G2 T2 GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela1; eauto. Qed.
 
 Lemma stpd2_sela2: forall G1 G2 GX l TX x T1 GH GU GL,
@@ -1051,7 +1051,7 @@ Lemma stpd2_sela2: forall G1 G2 GX l TX x T1 GH GU GL,
     GH = GU ++ GL ->
     stpd2 false GX TX G1 (TMem l T1 TTop) GL ->
     stpd2 true G1 T1 G1 T1 GH ->
-    stpd2 true G1 T1 G2 (TSel (varH x) l) GH.
+    stpd2 true G1 T1 G2 (TSel (tvar (varH x)) l) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_sela2; eauto. Qed.
 
 Lemma stpd2_selab1: forall G1 G2 GX l TX x T2 T2' GH GU GL,
@@ -1060,9 +1060,9 @@ Lemma stpd2_selab1: forall G1 G2 GX l TX x T2 T2' GH GU GL,
     length GL = (S x) ->
     GH = GU ++ GL ->
     stpd2 false GX TX G2 (TBind (TMem l TBot T2)) GL ->
-    T2' = (open (varH x) T2) ->
+    T2' = (open (tvar (varH x)) T2) ->
     stpd2 true G2 T2' G2 T2' GH ->
-    stpd2 true G1 (TSel (varH x) l) G2 T2' GH.
+    stpd2 true G1 (TSel (tvar (varH x)) l) G2 T2' GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab1; eauto. Qed.
 
 Lemma stpd2_selab2: forall G1 G2 GX l TX x T1 T1' GH GU GL,
@@ -1071,15 +1071,15 @@ Lemma stpd2_selab2: forall G1 G2 GX l TX x T1 T1' GH GU GL,
     length GL = (S x) ->
     GH = GU ++ GL ->
     stpd2 false GX TX G1 (TBind (TMem l T1 TTop)) GL ->
-    T1' = (open (varH x) T1) ->
+    T1' = (open (tvar (varH x)) T1) ->
     stpd2 true G1 T1' G1 T1' GH ->
-    stpd2 true G1 T1' G2 (TSel (varH x) l) GH.
+    stpd2 true G1 T1' G2 (TSel (tvar (varH x)) l) GH.
 Proof. intros. repeat eu. eauto. eexists. eapply stp2_selab2; eauto. Qed.
 
 
 Lemma stpd2_selax: forall G1 G2 GX l TX x GH,
     indexr x GH = Some (GX, TX) ->
-    stpd2 true G1 (TSel (varH x) l) G2 (TSel (varH x) l) GH.
+    stpd2 true G1 (TSel (tvar (varH x)) l) G2 (TSel (tvar (varH x)) l) GH.
 Proof. intros. exists (S 0). eauto. eapply stp2_selax; eauto. Qed.
 
 
@@ -1087,16 +1087,16 @@ Lemma stpd2_all: forall G1 G2 m T1 T2 T3 T4 GH,
     stpd2 false G2 T3 G1 T1 GH ->
     closed 1 (length GH) T2 ->
     closed 1 (length GH) T4 ->
-    stpd2 false G1 (open (varH (length GH)) T2) G1 (open (varH (length GH)) T2) ((0,(G1, T1))::GH) ->
-    stpd2 false G1 (open (varH (length GH)) T2) G2 (open (varH (length GH)) T4) ((0,(G2, T3))::GH) ->
+    stpd2 false G1 (open (tvar (varH (length GH))) T2) G1 (open (tvar (varH (length GH))) T2) ((0,(G1, T1))::GH) ->
+    stpd2 false G1 (open (tvar (varH (length GH))) T2) G2 (open (tvar (varH (length GH))) T4) ((0,(G2, T3))::GH) ->
     stpd2 true G1 (TAll m T1 T2) G2 (TAll m T3 T4) GH.
 Proof. intros. repeat eu. eauto. Qed.
 
 Lemma stpd2_bind: forall G1 G2 T1 T2 GH,
     closed 1 (length GH) T1 ->
     closed 1 (length GH) T2 ->
-    stpd2 false G2 (open (varH (length GH)) T2) G2 (open (varH (length GH)) T2) ((0,(G2, open (varH (length GH)) T2))::GH) ->
-    stpd2 false G1 (open (varH (length GH)) T1) G2 (open (varH (length GH)) T2) ((0,(G1, open (varH (length GH)) T1))::GH) ->
+    stpd2 false G2 (open (tvar (varH (length GH))) T2) G2 (open (tvar (varH (length GH))) T2) ((0,(G2, open (tvar (varH (length GH))) T2))::GH) ->
+    stpd2 false G1 (open (tvar (varH (length GH))) T1) G2 (open (tvar (varH (length GH))) T2) ((0,(G1, open (tvar (varH (length GH))) T1))::GH) ->
     stpd2 true G1 (TBind T1) G2 (TBind T2) GH.
 Proof. intros. repeat eu. eauto. Qed.
 
@@ -1104,7 +1104,7 @@ Lemma stpd2_bind1: forall G1 G2 T1 T2 GH,
     closed 1 (length GH) T1 -> (* must not accidentally bind x *)
     closed 0 (length GH) T2 ->
     stpd2 false G2  T2 G2 T2 GH -> (* regularity *)
-    stpd2 false G1 (open (varH (length GH)) T1) G2 T2 ((0,(G1, open (varH (length GH)) T1))::GH) ->
+    stpd2 false G1 (open (tvar (varH (length GH))) T1) G2 T2 ((0,(G1, open (tvar (varH (length GH))) T1))::GH) ->
     stpd2 true G1 (TBind T1) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
 
@@ -1202,19 +1202,25 @@ match goal with
 
 Ltac crush_has_tp :=
   try solve [eapply stp_selx; try (eapply pt_var; compute; eauto); crush_has_tp];
-  try solve [eapply stp_selax; compute; eauto; crush_has_tp];
-  try solve [eapply cl_selb; compute; eauto; crush_has_tp];
+  try solve [eapply cl_sel; compute; eauto; crush_has_tp];
+  try solve [eapply clp_varb; compute; eauto; crush_has_tp];
   try solve [(econstructor; compute; eauto; crush_has_tp)].
 
 Ltac crush2 :=
-  try solve [(eapply stp_selx; try (eapply pt_var; compute; eauto); crush2)];
-  try solve [(eapply stp_selax; compute; eauto; crush2)];
-  try solve [(eapply stp_sel1; try (eapply pt_var; compute; eauto); crush2)];
-  try solve [(eapply stp_sela1; compute; eauto; crush2)];
-  try solve [(eapply cl_selb; compute; eauto; crush2)];
+  try solve [(eapply stp_selx; compute; eauto; crush2)];
+  try solve [(eapply stp_sel1; compute; eauto; crush2)];
+  try solve [(eapply stp_sel2; compute; eauto; crush2)];
+  try solve [(eapply pt_var; compute; eauto; crush2)];
+  try solve [(eapply pt_vara; compute; eauto; crush2)];
+  try solve [(eapply pt_sel; compute; eauto; crush2)];
+  try solve [(eapply pt_sub; crush2)];
+  try solve [(eapply cl_sel; compute; eauto; crush2)];
+  try solve [(eapply clp_varb; compute; eauto; crush2)];
   try solve [(eapply stp_and2; [eapply stp_and11; crush2 | eapply stp_and12; crush2])];
+  try solve [(eapply stp_mem; crush2)];
   try solve [(econstructor; compute; eauto; crush2)];
-  try solve [(eapply t_sub; eapply t_var; compute; eauto; crush2)].
+  try solve [(eapply t_sub; eapply t_var; compute; eauto; crush2)];
+  try solve [eauto].
 
 Ltac crush_cl :=
   try solve [(econstructor; compute; eauto; crush_cl)].
@@ -1223,15 +1229,18 @@ Ltac crush_wf :=
   try solve [(eapply stp_topx; crush_wf)];
   try solve [(eapply stp_botx; crush_wf)];
   try solve [(eapply stp_bool; crush_wf)];
-  try solve [(eapply stp_selx; eapply pt_var; compute; eauto; crush_wf)];
-  try solve [(eapply stp_selax; compute; eauto; crush_wf)];
+  try solve [(eapply stp_selx; compute; eauto; crush_wf)];
+  try solve [(eapply stp_selx; compute; eauto; crush_wf)];
+  try solve [(eapply pt_var; compute; eauto; crush_wf)];
+  try solve [(eapply pt_vara; compute; eauto; crush_wf)];
+  try solve [(eapply pt_sel; compute; eauto; crush_wf)];
   try solve [(eapply stp_mem; crush_wf)];
   try solve [(eapply stp_all; [crush_wf | (compute; eauto) | crush_cl | crush_cl | crush_wf | crush_wf])];
   try solve [(eapply stp_bindx; [(compute; eauto) | crush_cl | crush_cl | crush_wf | crush_wf])];
   try solve [(eapply stp_and2; [eapply stp_and11; crush_wf | eapply stp_and12; crush_wf])].
 
 (* x:(a:(A:Bot..Top)) |- x.a : Top *)
-Example pex1_0: has_type [(0,(TFld 0 (TMem 0 TBot TTop)))] (tsel (tvar 0) 0) TTop.
+Example pex1_0: has_type [(0,(TFld 0 (TMem 0 TBot TTop)))] (tsel (tvar (varF 0)) 0) TTop.
 Proof.
   eapply t_sub. eapply t_sel. crush2. crush_wf. eapply stp_top. crush_wf.
 Grab Existential Variables.
@@ -1239,11 +1248,11 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 (* x:(a:(A:Top..Top)) |- x.a : x.a.A *)
-Example pex1: has_type [(0,(TFld 0 (TMem 0 TTop TTop)))] (tsel (tvar 0) 0) (TSel (varF (tsel (tvar 0) 0)) 0).
+Example pex1: has_type [(0,(TFld 0 (TMem 0 TTop TTop)))] (tsel (tvar (varF 0)) 0) (TSel (tsel (tvar (varF 0)) 0) 0).
 Proof.
   eapply t_sub. eapply t_sel. crush2. crush_wf.
-  eapply stp_sel2. eapply pt_sel. eapply pt_var. compute. reflexivity. crush_wf.
-  eauto. crush2. crush_wf.
+  eapply stp_sel2. simpl. reflexivity. eapply pt_sub. eapply pt_sel. eapply pt_var. compute. reflexivity. crush_wf.
+  eauto. crush2. 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
@@ -1260,7 +1269,7 @@ apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Definition _t2_1 := (tobj 1 [(1, dfld 0);(0, dmem TTop)]).
-Definition _T2_1 := (TBind (TAnd (TFld 1 (TSel (varB 0) 0)) (TMem 0 TBot TTop))).
+Definition _T2_1 := (TBind (TAnd (TFld 1 (TSel (tvar (varB 0)) 0)) (TMem 0 TBot TTop))).
 (* x:Top |- {z=> b=x, A=Top}: {z => b:z.A, A:Bot..Top} *)
 Example pex2_1: has_type [(0, _T2_0)] _t2_1 _T2_1.
 Proof. unfold _t2_1.
@@ -1269,12 +1278,12 @@ Proof. unfold _t2_1.
   eauto. unfold open. simpl. reflexivity.
   eapply dt_fld with (T2:=_T2_0). crush2. eauto. eauto.
   eapply dt_mem. eapply dt_nil. eauto. simpl. reflexivity. simpl. reflexivity. simpl. reflexivity.
-  crush2. crush2. crush2.
+  crush2. crush2. crush2. 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Definition _t2_2 := (tobj 2 [(0, dfld 1)]).
@@ -1300,13 +1309,13 @@ Qed.
 (* the canonical counter-example to preservation in small-step without path normalization... *)
 (* x:Top, y: {z => b:z.A, A:Bot..Top}, v: {a: {z => b:z.A, A:Bot..Top}} |- v.a.b: v.a.A *)
 
-Example pex2: has_type [(2,_T2_2);(1,_T2_1);(0,_T2_0)] (tsel (tsel (tvar 2) 0) 1) (TSel (varF (tsel (tvar 2) 0)) 0).
+Example pex2: has_type [(2,_T2_2);(1,_T2_1);(0,_T2_0)] (tsel (tsel (tvar (varF 2)) 0) 1) (TSel (tsel (tvar (varF 2)) 0) 0).
 Proof.
   assert (stpd
      [(2,_T2_2);(1,_T2_1);(0,_T2_0)] []
-     (TSel (varF (tsel (tvar 2) 0)) 0)
-     (TSel (varF (tsel (tvar 2) 0)) 0)). {
-    eexists. eapply stp_selx.
+     (TSel (tsel (tvar (varF 2)) 0) 0)
+     (TSel (tsel (tvar (varF 2)) 0) 0)). {
+    eexists. eapply stp_selx. compute. eauto.
     eapply pt_sel. eapply pt_var. compute. reflexivity.
     eapply stp_bindx. eauto. crush_cl. crush_cl. crush2. crush2. }
   eu.
@@ -1326,18 +1335,18 @@ Qed.
 
 (* define polymorphic identity function *)
 
-Definition polyId := TAll 0 (TMem 0 TBot TTop) (TAll 0 (TSel (varB 0) 0) (TSel (varB 1) 0)).
+Definition polyId := TAll 0 (TMem 0 TBot TTop) (TAll 0 (TSel (tvar (varB 0)) 0) (TSel (tvar (varB 1)) 0)).
 
-Example ex1: has_type [] (tobj 0 [(0, dfun 1 (tobj 2 [(0, (dfun 3 (tvar 3)))]))]) polyId.
+Example ex1: has_type [] (tobj 0 [(0, dfun 1 (tobj 2 [(0, (dfun 3 (tvar (varF 3))))]))]) polyId.
 Proof.
   eapply t_sub with (T1:=TBind polyId).
   eapply t_obj with (TX:=polyId). eauto. compute. reflexivity.
   {
-    eapply dt_fun with (T1:=(TMem 0 TBot TTop)) (T2:=TAll 0 (TSel (varB 0) 0) (TSel (varB 1) 0)).
+    eapply dt_fun with (T1:=(TMem 0 TBot TTop)) (T2:=TAll 0 (TSel (tvar (varB 0)) 0) (TSel (tvar (varB 1)) 0)).
     unfold open. simpl. 
-    eapply t_sub with (T1:=(TBind (TAll 0 (TSel (varF (tvar 1)) 0) (TSel (varF (tvar 1)) 0)))).
-    eapply t_obj with (TX:=(TAll 0 (TSel (varF (tvar 1)) 0) (TSel (varF (tvar 1)) 0))). eauto. compute. reflexivity.
-    { eapply dt_fun with (T1:=(TSel (varF (tvar 1)) 0)) (T2:=(TSel (varF (tvar 1)) 0)). eapply t_var. compute. reflexivity.
+    eapply t_sub with (T1:=(TBind (TAll 0 (TSel (tvar (varF 1)) 0) (TSel (tvar (varF 1)) 0)))).
+    eapply t_obj with (TX:=(TAll 0 (TSel (tvar (varF 1)) 0) (TSel (tvar (varF 1)) 0))). eauto. compute. reflexivity.
+    { eapply dt_fun with (T1:=(TSel (tvar (varF 1)) 0)) (T2:=(TSel (tvar (varF 1)) 0)). eapply t_var. compute. reflexivity.
       crush2. crush2. crush2. crush2. simpl. eauto. }
     crush_wf. crush_wf. { eapply stp_bind1. eauto. crush2. crush2. crush_wf. compute. crush_wf. }
   eauto. eauto. eauto. simpl. eauto. }
@@ -1355,12 +1364,12 @@ Qed.
 
 (* instantiate it to bool *)
 
-Example ex2: has_type [(0,polyId)] (tapp (tvar 0) 0 (tobj 1 [(0,dmem TBool)])) (TAll 0 TBool TBool).
+Example ex2: has_type [(0,polyId)] (tapp (tvar (varF 0)) 0 (tobj 1 [(0,dmem TBool)])) (TAll 0 TBool TBool).
 Proof.
   eapply t_app. instantiate (1:= (TMem 0 TBool TBool)).
     { eapply t_sub.
       { eapply t_var. simpl. eauto. crush2. }
-      { eapply stp_all; eauto. compute. eapply cl_all; eauto. crush_wf. crush2. }
+      { eapply stp_all; eauto. compute. crush2. crush2. crush2. }
     }
     { eapply t_sub. eapply t_obj. eauto. eauto. eauto. crush_wf. crush_wf. eapply stp_bind1; eauto. crush2. crush2. }
     crush_wf. 
@@ -1368,7 +1377,7 @@ Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 
@@ -1380,8 +1389,8 @@ Definition brandUnbrand :=
        (TBind (TMem 0 TBot TTop))
        (TBind (TAll 0
                     (TBind (TAnd
-                              (TAll 1 TBool (TSel (varB 3) 0))  (* brand *)
-                              (TAll 0 (TSel (varB 2) 0) TBool) (* unbrand *)
+                              (TAll 1 TBool (TSel (tvar (varB 3)) 0))  (* brand *)
+                              (TAll 0 (TSel (tvar (varB 2)) 0) TBool) (* unbrand *)
                            )
                     )
                     TBool)).
@@ -1391,8 +1400,8 @@ Example ex3:
            (tlet 0
                  (tobj 0 [(0, dfun 1
                   (tobj 2 [(0, dfun 3
-                  (tapp (tvar 3) 0 (tapp (tvar 3) 1 ttrue)))]))])
-                 (tvar 0))
+                  (tapp (tvar (varF 3)) 0 (tapp (tvar (varF 3)) 1 ttrue)))]))])
+                 (tvar (varF 0)))
            brandUnbrand.
 Proof.
   eapply t_let with (Tx:=(TBind brandUnbrand)).
@@ -1401,8 +1410,8 @@ Proof.
   eapply dt_fun with (T1:=TBind (TMem 0 TBot TTop))
                      (T2:=       (TBind (TAll 0
                     (TBind (TAnd
-                              (TAll 1 TBool (TSel (varB 3) 0))  (* brand *)
-                              (TAll 0 (TSel (varB 2) 0) TBool) (* unbrand *)
+                              (TAll 1 TBool (TSel (tvar (varB 3)) 0))  (* brand *)
+                              (TAll 0 (TSel (tvar (varB 2)) 0) TBool) (* unbrand *)
                            )
                     )
                     TBool))).
@@ -1410,10 +1419,10 @@ Proof.
   simpl. reflexivity.
   unfold open. simpl. reflexivity.
   eapply dt_fun.
-  instantiate (2:=(TBind (TAnd (TAll 1 TBool (TSel (varF (tvar 1)) 0)) (TAll 0 (TSel (varF (tvar 1)) 0) TBool)))). instantiate (1:=TBool).
+  instantiate (2:=(TBind (TAnd (TAll 1 TBool (TSel (tvar (varF 1)) 0)) (TAll 0 (TSel (tvar (varF 1)) 0) TBool)))). instantiate (1:=TBool).
   eapply t_app.
-  instantiate (1:=(TSel (varF (tvar 1)) 0)).
-  assert (open (varF (tvar 3)) (TAll 0 (TSel (varF (tvar 1)) 0) TBool)=TAll 0 (TSel (varF (tvar 1)) 0) TBool) as A. { compute. reflexivity. }
+  instantiate (1:=(TSel (tvar (varF 1)) 0)).
+  assert (open (tvar (varF 3)) (TAll 0 (TSel (tvar (varF 1)) 0) TBool)=TAll 0 (TSel (tvar (varF 1)) 0) TBool) as A. { compute. reflexivity. }
   unfold open. simpl.
   rewrite <- A. eapply t_var_unpack.
   eapply t_sub. eapply t_var. compute. reflexivity.
@@ -1426,12 +1435,12 @@ Proof.
   unfold open. simpl. crush2.
   eapply t_app.
   instantiate (1:=TBool).
-  assert (open (varF (tvar 3)) (TAll 1 TBool (TSel (varF (tvar 1)) 0))=TAll 1 TBool (TSel (varF (tvar 1)) 0) ) as A. { compute. reflexivity. }
+  assert (open (tvar (varF 3)) (TAll 1 TBool (TSel (tvar (varF 1)) 0))=TAll 1 TBool (TSel (tvar (varF 1)) 0) ) as A. { compute. reflexivity. }
   rewrite <- A. eapply t_var_unpack.
   eapply t_sub. eapply t_var. compute. reflexivity.
   crush_wf. crush2. crush_wf. crush2. crush_wf. crush_wf. crush2. crush2. crush2. crush2.
   crush2. crush_wf. crush2. crush2. crush2. crush2. crush_wf. crush_wf. crush2.
-  assert (open (varF (tvar 0)) brandUnbrand=brandUnbrand) as A. { compute. reflexivity. }
+  assert (open (tvar (varF 0)) brandUnbrand=brandUnbrand) as A. { compute. reflexivity. }
   rewrite <- A at 2.
   eapply t_var_unpack. eapply t_var. simpl. reflexivity.
   crush_wf. crush_wf. crush_wf.
@@ -1531,7 +1540,7 @@ Qed.
 
 Example ex4:
   has_type [(1,TAll 0 TBool TBool);(0,brandUnbrand)]
-           (tvar 0) (TAll 0 (TBind (TMem 0 TBool TBool)) (TBind (TAll 0 (TBind (TAnd (TAll 1 TBool TBool) (TAll 0 TBool TBool))) TBool))).
+           (tvar (varF 0)) (TAll 0 (TBind (TMem 0 TBool TBool)) (TBind (TAll 0 (TBind (TAnd (TAll 1 TBool TBool) (TAll 0 TBool TBool))) TBool))).
 Proof.
   eapply t_sub.
   eapply t_var. compute. reflexivity.
@@ -1568,7 +1577,7 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. 
 Qed.
 
 Hint Resolve ex4.
@@ -1577,7 +1586,7 @@ Hint Resolve ex4.
 
 Example ex5:
   has_type [(1,TAll 0 TBool TBool);(0,brandUnbrand)]
-           (tapp (tlet 2 (tapp (tvar 0) 0 (tobj 2 [(0,dmem TBool)])) (tvar 2)) 0 (tobj 2 [(1, dfun 3 (tapp (tvar 1) 0 (tvar 3))); (0, dfun 3 (tapp (tvar 1) 0 (tvar 3)))])) TBool.
+           (tapp (tlet 2 (tapp (tvar (varF 0)) 0 (tobj 2 [(0,dmem TBool)])) (tvar (varF 2))) 0 (tobj 2 [(1, dfun 3 (tapp (tvar (varF 1)) 0 (tvar (varF 3)))); (0, dfun 3 (tapp (tvar (varF 1)) 0 (tvar (varF 3))))])) TBool.
 Proof.
   eapply t_app.
   eapply t_let.
@@ -1637,7 +1646,7 @@ Proof.
   crush_wf. crush2.
 
   instantiate (1:=(TBind (TAnd (TAll 1 TBool TBool) (TAll 0 TBool TBool)))).
-  assert (open (varF (tvar 2)) (TAll 0 (TBind (TAnd (TAll 1 TBool TBool) (TAll 0 TBool TBool))) TBool) = (TAll 0 (TBind (TAnd (TAll 1 TBool TBool) (TAll 0 TBool TBool))) TBool)) as A. {
+  assert (open (tvar (varF 2)) (TAll 0 (TBind (TAnd (TAll 1 TBool TBool) (TAll 0 TBool TBool))) TBool) = (TAll 0 (TBind (TAnd (TAll 1 TBool TBool) (TAll 0 TBool TBool))) TBool)) as A. {
     compute. reflexivity.
   }
   rewrite <- A. eapply t_var_unpack. eapply t_var. compute. reflexivity.
@@ -1703,43 +1712,47 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. 
 Qed.
 
 (* test expansion *)
 
 Example ex6:
-  has_type [(1,TSel (varF (tvar 0)) 0);(0,TMem 0 TBot (TBind (TAll 0 TBool (TSel (varB 1) 0))))]
-           (tvar 1) (TAll 0 TBool (TSel (varF (tvar 1)) 0)).
+  has_type [(1,TSel (tvar (varF 0)) 0);(0,TMem 0 TBot (TBind (TAll 0 TBool (TSel (tvar (varB 1)) 0))))]
+           (tvar (varF 1)) (TAll 0 TBool (TSel (tvar (varF 1)) 0)).
 Proof.
-  remember (TAll 0 TBool (TSel (varF (tvar 1)) 0)) as T.
-  assert (T = open (varF (tvar 1)) (TAll 0 TBool (TSel (varB 1) 0))). compute. eauto.
+  remember (TAll 0 TBool (TSel (tvar (varF 1)) 0)) as T.
+  assert (T = open (tvar (varF 1)) (TAll 0 TBool (TSel (tvar (varB 1)) 0))). compute. eauto.
   rewrite H.
   eapply t_var_unpack. eapply t_sub. eapply t_var. compute. eauto. crush_wf. crush2. crush_wf.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. 
 Qed.
 
 
 Example ex7:
-  stpd [(1,TSel (varF (tvar 0)) 0);(0,TMem 0 TBot (TBind (TMem 0 TBot (TAll 0 TBool (TSel (varB 1) 0)))))] []
-           (TSel (varF (tvar 1)) 0) (TAll 0 TBool (TSel (varF (tvar 1)) 0)).
+  stpd [(1,TSel (tvar (varF 0)) 0);(0,TMem 0 TBot (TBind (TMem 0 TBot (TAll 0 TBool (TSel (tvar (varB 1)) 0)))))] []
+           (TSel (tvar (varF 1)) 0) (TAll 0 TBool (TSel (tvar (varF 1)) 0)).
 Proof.
-  remember (TAll 0 TBool (TSel (varF (tvar 1)) 0)) as T.
-  assert (T = open (varF (tvar 1)) (TAll 0 TBool (TSel (varB 1) 0))). compute. eauto.
+  remember (TAll 0 TBool (TSel (tvar (varF 1)) 0)) as T.
+  assert (T = open (tvar (varF 1)) (TAll 0 TBool (TSel (tvar (varB 1)) 0))). compute. eauto.
   rewrite H.
-  eexists. eapply stp_selb1. compute. eauto.
-  eapply stp_sel1. eapply pt_var. compute. eauto.
-  crush2.
-  eapply stp_mem. eauto.
+  eexists. eapply stp_sel1. compute. eauto.
+  compute.
+  assert ((TMem 0 TBot (TAll 0 TBool (TSel (tvar (varF 1)) 0))) =
+          open (tvar (varF 1))  (TMem 0 TBot (TAll 0 TBool (TSel (tvar (varB 1)) 0)))).
+  compute. eauto.
+  rewrite H0.
+  eapply pt_unpack. eapply pt_sub. eapply pt_var. compute. eauto. 
+
+  eapply stp_sel1. compute. eauto.
+  eapply pt_var. compute. eauto.
   eapply stp_bindx; crush2.
-  eapply stp_bindx; crush2.
-  crush2.
+  crush2. crush2.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. 
 Qed.
 
 (* -- TODO: uncomment long examples after dev
