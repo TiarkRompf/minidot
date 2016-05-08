@@ -2556,15 +2556,24 @@ Fixpoint splice n (T : ty) {struct T} : ty :=
     | TBool        => TBool
     | TFld m T2   => TFld m (splice n T2)
     | TMem m T1 T2   => TMem m (splice n T1) (splice n T2)
-    | TSel (varB i) m => TSel (varB i) m
-    | TSel (varF i) m => TSel (varF i) m
-    | TSel (varH i) m => TSel (varH (if le_lt_dec n i  then (i+1) else i)) m
+    | TSel p m => TSel (splice_path n p) m
     | TAll m T1 T2   => TAll m (splice n T1) (splice n T2)
     | TBind T2   => TBind (splice n T2)
     | TAnd T1 T2 => TAnd (splice n T1) (splice n T2)
     | TOr  T1 T2 => TOr  (splice n T1) (splice n T2)
-  end.
-
+  end
+with splice_path n (t : tm) {struct t} : tm :=
+  match t with
+    | tvar (varF x) => tvar (varF x) 
+    | tvar (varB i) => tvar (varB i)
+    | tvar (varH i) => tvar (varH (if le_lt_dec n i  then (i+1) else i))
+    | ttrue         => ttrue
+    | tfalse        => tfalse
+    | tsel p m      => tsel (splice_path n p) m
+    | tapp t1 m t2  => tapp (splice_path n t1) m (splice_path n t2)
+    | tlet m t1 t2  => tlet m (splice_path n t1) (splice_path n t2)
+    | tobj a b      => tobj a b (* TODO: go deep? right now tobj can't occur in path ... *)
+  end.   
 Definition splicett n (V: (id*ty)) :=
   match V with
     | (x,T) => (x,(splice n T))
@@ -2577,8 +2586,8 @@ Definition spliceat n (V: (id*(venv*ty))) :=
 
 Lemma splice_open_permute: forall {X} (G:list (id*X)) T n j k,
 n + k >= length G ->
-(open_rec j (varH (n + S k)) (splice (length G) T)) =
-(splice (length G) (open_rec j (varH (n + k)) T)).
+(open_rec j (tvar (varH (n + S k))) (splice (length G) T)) =
+(splice (length G) (open_rec j (tvar (varH (n + k))) T)).
 Proof.
   intros X G T. induction T; intros; simpl; eauto;
   try rewrite IHT1; try rewrite IHT2; try rewrite IHT; eauto.
