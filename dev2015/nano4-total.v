@@ -2,6 +2,7 @@
 (* values well-typed with respect to runtime environment *)
 (* inversion lemma structure *)
 (* subtyping (in addition to nano2.v) *)
+(* this version includes a proof of totality (like in nano0-total.v *)
 
 Require Export SfLib.
 
@@ -162,16 +163,55 @@ Inductive stp2: bool -> venv -> ty -> venv -> ty -> nat -> Prop :=
 Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some (Some v).
 
 
-(* need to use Fixpoint because of positivity restriction *)
 Fixpoint val_type0 (env:venv) (v:vl) (T:ty) {struct T}: Prop := match v, T with
 | vbool b, TBool => True
 | vabs env1 y, TFun T1 T2 =>
   closed (length env) T1 /\ closed (length env) T2 /\
   (forall vx, val_type0 env vx T1 ->
               exists v, tevaln (vx::env1) y v /\ val_type0 env v T2)
-| _, TTop => True (* can NOT check other type *)
+| _, TTop => True (* can NOT check v with other type *)
 | _,_ => False
 end.
+
+
+(* ------------------------- NOTES -------------------------
+
+val_type0 cannot straightforwardly be defined as inductive
+family, because the (forall vx, val_type0 env vx T1 -> ... )
+occurrence violates the positivity restriction.
+
+The current definition as Fixpoint has some problems, too.
+Since it recurses structurally on T, it is unclear how to
+add the following desirable rules:
+
+- v: x.T
+
+    index y G1 = Some (vty TX) ->
+    vtp G1 v TX ->
+    vtp G1 v (TSel y)
+
+- v: { z => T }
+
+    vtp G1 v (open 0 (TVar true x) T2) ->
+    closed 0 (length G1) T2 ->
+    vtp G1 v (TBind T2)
+
+- v: (x:T1) -> T2^x
+
+    subst x in T2
+
+Another concern is what to do if stp2 needs to use 
+val_type0 internally (for T < x.L < U).
+
+Ideas:
+
+1) can we define a more complex size measure on types?
+   (to exclude recursion through x.T)
+2) can stp2 get away with a restricted version of vtp?
+   (stp2 only needs type members, not functions)
+
+--------------------------------------------------------- *)
+
 
 Inductive val_type : venv -> vl -> ty -> Prop :=
 | v_sub: forall G1 T1 G2 T2 v,
