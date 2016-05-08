@@ -602,104 +602,88 @@ Proof.
 Qed.
 
 
-Lemma invert_abs1: forall n, forall venv vf T1 T2 GX TX n1,
-  val_type0 GX vf TX -> stp2 true GX TX venv (TFun T1 T2) n1 -> n1 < n ->
-  exists env tenv y T3 T4,
-    vf = (vabs env y) /\ 
-    wf_env env tenv /\
-    has_type (T3::(TFun T3 T4)::tenv) y T4 /\
-    stpd2 true venv T1 env T3 /\
-    stpd2 true env T4 venv T2.
+Lemma cvaltp: forall venv vf T1,
+  val_type0 venv vf T1 ->
+  val_type venv vf T1.
 Proof.
-  intros n. induction n; intros. solve by inversion.
-  inversion H; subst. 
-  - Case "bool". solve by inversion.
-  - Case "fun". subst. inversion H0. subst.
-    eexists. eexists. eexists. eexists. eexists. repeat split; eauto.
-    eapply stpd2_trans. eauto. eapply stpd2_reg2. eauto.
-    eapply stpd2_trans. eauto. eapply stpd2_reg2. eauto.
+  intros. econstructor. eauto. eapply valtp0_reg. eauto. 
 Qed.
-
 
 Lemma invert_abs: forall venv vf T1 T2,
   val_type venv vf (TFun T1 T2) ->
-  exists env tenv y T3 T4,
+  exists env y,
     vf = (vabs env y) /\ 
-    wf_env env tenv /\
-    has_type (T3::(TFun T3 T4)::tenv) y T4 /\
-    stpd2 true venv T1 env T3 /\
-    stpd2 true env T4 venv T2.
+    (forall vx : vl,
+       val_type venv vx T1 ->
+       exists v : vl, tevaln (vx::env) y v /\ val_type venv v T2).
 Proof.
-  intros. inversion H. ev. eapply invert_abs1; eauto. 
+  intros. inversion H. ev. subst.
+  assert (val_type0 venv0 vf (TFun T1 T2)). eapply valtp0_widen;eauto. 
+  destruct vf. inversion H2.
+  exists l. exists t. split. eauto.
+  intros. simpl in H2. ev. 
+  inversion H3. subst.
+  assert (val_type0 venv0 vx T1). ev. eapply valtp0_widen; eauto.
+  specialize (H5 vx H8).
+  ev. eexists. split. eauto. eapply cvaltp; eauto. 
 Qed.
 
 
 (* if not a timeout, then result not stuck and well-typed *)
 
-Theorem full_safety : forall n e tenv venv res T,
-  teval n venv e = Some res -> has_type tenv e T -> wf_env venv tenv ->
-  res_type venv res T.
-
+Theorem full_total_safety : forall e tenv T,
+  has_type tenv e T -> forall venv, wf_env venv tenv ->
+  exists v, tevaln venv e v /\ val_type venv v T.
 Proof.
-  intros n. induction n.
-  (* 0 *)   intros. inversion H.
-  (* S n *) intros. destruct e; inversion H.
+  intros ? ? ? W.
+  induction W; intros ? WFE.
 
-  - Case "True".
-    remember (ttrue) as e. induction H0; inversion Heqe; subst.
-    + eapply not_stuck. eapply v_sub; eauto. eapply v_bool; eauto.
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stpd2; eauto. 
+  - Case "True". eexists. split.
+    exists 0. intros. destruct n. omega. simpl. eauto. eapply cvaltp. simpl. eauto. 
+  - Case "False". eexists. split.
+    exists 0. intros. destruct n. omega. simpl. eauto. eapply cvaltp. simpl. eauto. 
 
-  - Case "False".
-    remember (tfalse) as e. induction H0; inversion Heqe; subst.
-    + eapply not_stuck. eapply v_sub; eauto. eapply v_bool; eauto.
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stpd2; eauto. 
-  
-  - Case "Var".
-    remember (tvar i) as e. induction H0; inversion Heqe; subst.
-    + destruct (index_safe_ex venv0 env T1 i) as [v [I V]]; eauto.
-      rewrite I. eapply not_stuck. eauto. 
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stpd2; eauto. 
+  - Case "Var". 
+    destruct (index_safe_ex venv0 env T1 x) as [v IV]. eauto. eauto. 
+    inversion IV as [I V]. 
+
+    exists v. split. exists 0. intros. destruct n. omega. simpl. rewrite I. eauto. eapply V.
 
   - Case "App".
-    remember (tapp e1 e2) as e. induction H0; inversion Heqe; subst.
-    +
-      remember (teval n venv0 e1) as tf.
-      remember (teval n venv0 e2) as tx. 
+    destruct (IHW1 venv0 WFE) as [vf [IW1 HVF]].
+    destruct (IHW2 venv0 WFE) as [vx [IW2 HVX]].
     
-      destruct tx as [rx|]; try solve by inversion.
-      assert (res_type venv0 rx T1) as HRX. SCase "HRX". subst. eapply IHn; eauto.
-      inversion HRX as [? vx]. 
+    eapply invert_abs in HVF.
+    destruct HVF as [venv1 [y [HF IHF]]].
 
-      destruct tf as [rf|]; subst rx; try solve by inversion.  
-      assert (res_type venv0 rf (TFun T1 T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
-      inversion HRF as [? vf].
+    destruct (IHF vx HVX) as [vy [IW3 HVY]].
 
-      destruct (invert_abs venv0 vf T1 T2) as
-          [env1 [tenv [y0 [T3 [T4 [EF [WF [HTY [STX STY]]]]]]]]]. eauto.
-      (* now we know it's a closure, and we have has_type evidence *)
+    exists vy. split. {
+      (* pick large enough n. nf+nx+ny will do. *)
+      destruct IW1 as [nf IWF].
+      destruct IW2 as [nx IWX].
+      destruct IW3 as [ny IWY].
+      exists (S (nf+nx+ny)). intros. destruct n. omega. simpl.
+      rewrite IWF. subst vf. rewrite IWX. rewrite IWY. eauto.
+      omega. omega. omega.
+    }
+    eapply HVY.
 
-      assert (res_type (vx::vf::env1) res T4) as HRY.
-        SCase "HRY".
-          subst. eapply IHn. eauto. eauto.
-          (* wf_env f x *) econstructor. eapply valtp_widen; eauto. eapply stpd2_extend2; eauto. eapply stpd2_extend2; eauto.
-          (* wf_env f   *) econstructor. eapply v_sub. eapply v_abs; eauto. eapply stpd2_extend2. eapply stpd2_fun. eapply stpd2_wrapf. eapply stpd2_reg2; eauto. eapply stpd2_wrapf. eapply stpd2_reg1; eauto.
-          eauto.
-
-      inversion HRY as [? vy].
-
-      eapply not_stuck. eapply valtp_widen; eauto. eapply stpd2_extend1. eapply stpd2_extend1. eauto.
-
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stpd2; eauto. 
-
-    
-  - Case "Abs". 
-    remember (tabs e) as xe. induction H0; inversion Heqxe; subst.
-    + eapply not_stuck. eapply v_sub. eapply v_abs; eauto. eapply stpd2_refl. rewrite (wf_length venv0 env). eauto. eauto. 
-    + eapply restp_widen. eapply IHhas_type; eauto. eapply stp_to_stpd2; eauto. 
-
-Grab Existential Variables.
-apply 0. apply 0. 
+  - Case "Abs".
+    erewrite <-(wf_length venv0 env WFE) in H. inversion H; subst. 
+    eexists. split. exists 0. intros. destruct n. omega. simpl. eauto.
+    eapply cvaltp. simpl. repeat split; eauto.  intros. 
+    assert (stpd2 true venv0 T1 (vx::venv0) T1). eapply stpd2_extend2. eapply stpd2_refl; eauto. eu.
+    assert (stpd2 true (vx::venv0) T2 venv0 T2). eapply stpd2_extend1. eapply stpd2_refl; eauto. eu.
+    assert (val_type0 (vx::venv0) vx T1). eapply valtp0_widen; eauto. 
+    assert (wf_env (vx::venv0) (T1::env)). eapply wfe_cons; eauto. eapply cvaltp; eauto.
+    specialize (IHW (vx::venv0) H6). ev.
+    assert (val_type0 venv0 x1 T2). inversion H8. subst. ev. eapply valtp0_widen. eauto. eapply stp2_transf. eauto. eauto. eauto.
+    (* we have all pieces ... *)
+    eexists. split; eauto.
+  - Case "Sub".
+    specialize (IHW venv0 WFE). ev. eexists. split. eauto.
+    eapply valtp_widen. eauto. eapply stp_to_stpd2; eauto.
 Qed.
 
 End STLC.
