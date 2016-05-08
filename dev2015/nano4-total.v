@@ -553,6 +553,36 @@ Proof.
   - Case "fun".  eapply stpd2_fun; eapply stpd2_wrapf; eauto.
 Qed.
 
+Lemma valtp0_widen: forall n, forall m n1 vf H1 H2 T1 T2,
+  val_type0 H1 vf T1 ->
+  stp2 m H1 T1 H2 T2 n1 -> n1 < n ->
+  val_type0 H2 vf T2.
+Proof.
+  intros n. induction n; intros. omega. 
+  inversion H0; subst.
+  - Case "Bot". compute in H. destruct vf; inversion H.
+  - Case "Top". destruct vf; compute; eauto.
+  - Case "Bool". destruct vf; compute; eauto.
+  - Case "Fun". destruct vf. simpl in H. inversion H.
+    simpl in H. ev. simpl.
+    split. eapply stpd2_closed1. eauto.
+    split. eapply stpd2_closed2. eauto. 
+    intros.
+    specialize (H7 vx).
+    eapply IHn in H8.
+    specialize (H7 H8).
+    ev.
+    exists x. split. eauto.
+    eapply IHn. eauto. eauto. omega.
+    eauto.
+    omega.
+  - Case "wrapf".
+    eapply IHn. eauto. eapply H4. omega.
+  - Case "transf".
+    assert (val_type0 G2 vf T3). eapply IHn; eauto. omega.
+    eapply IHn; eauto. omega. 
+Qed.
+
 
 Lemma valtp_widen: forall vf H1 H2 T1 T2,
   val_type H1 vf T1 ->
