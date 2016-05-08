@@ -87,7 +87,7 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
     has_type env x T1 ->
     has_type env (tapp f x) T2
 | t_abs: forall env y T1 T2,
-    has_type (T1::(TFun T1 T2)::env) y T2 ->
+    has_type (T1::env) y T2 ->
     closed (length env) (TFun T1 T2) ->       
     has_type env (tabs y) (TFun T1 T2)
 | t_sub: forall env x T1 T2,
@@ -95,6 +95,45 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
     stp env T1 T2 ->
     has_type env x T2
 .
+
+
+
+
+
+(*
+None             means timeout
+Some None        means stuck
+Some (Some v))   means result v
+
+Could use do-notation to clean up syntax.
+*)
+
+Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
+  match n with
+    | 0 => None
+    | S n =>
+      match t with
+        | ttrue      => Some (Some (vbool true))
+        | tfalse     => Some (Some (vbool false))
+        | tvar x     => Some (index x env)
+        | tabs y     => Some (Some (vabs env y))
+        | tapp ef ex   =>
+          match teval n env ex with
+            | None => None
+            | Some None => Some None
+            | Some (Some vx) =>
+              match teval n env ef with
+                | None => None
+                | Some None => Some None
+                | Some (Some (vbool _)) => Some None
+                | Some (Some (vabs env2 ey)) =>
+                  teval n (vx::env2) ey
+              end
+          end
+      end
+  end.
+
+
 
 Inductive stp2: bool -> venv -> ty -> venv -> ty -> nat -> Prop :=
 | stp2_bot: forall G1 G2 T n1,
@@ -181,41 +220,6 @@ Lemma stpd2_transf: forall G1 G2 G3 T1 T2 T3,
     stpd2 false G1 T1 G3 T3.
 Proof. intros. repeat eu. eexists. eauto. Qed.
 
-
-
-
-(*
-None             means timeout
-Some None        means stuck
-Some (Some v))   means result v
-
-Could use do-notation to clean up syntax.
-*)
-
-Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
-  match n with
-    | 0 => None
-    | S n =>
-      match t with
-        | ttrue      => Some (Some (vbool true))
-        | tfalse     => Some (Some (vbool false))
-        | tvar x     => Some (index x env)
-        | tabs y     => Some (Some (vabs env y))
-        | tapp ef ex   =>
-          match teval n env ex with
-            | None => None
-            | Some None => Some None
-            | Some (Some vx) =>
-              match teval n env ef with
-                | None => None
-                | Some None => Some None
-                | Some (Some (vbool _)) => Some None
-                | Some (Some (vabs env2 ey)) =>
-                  teval n (vx::(vabs env2 ey)::env2) ey
-              end
-          end
-      end
-  end.
 
 
 Hint Constructors ty.
