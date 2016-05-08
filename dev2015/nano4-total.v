@@ -402,6 +402,15 @@ Lemma stpd2_closed2 : forall m G1 G2 T1 T2,
 Proof. intros. eapply (stpd2_closed m G1 G2); eauto. Qed.
 
 
+
+Lemma valtp0_closed : forall G1 v T,
+                       val_type0 G1 v T ->
+                       closed (length G1) T.
+Proof.
+  intros.
+  induction T; simpl in H; destruct v; try (solve by inversion); ev; econstructor; eauto.
+Qed.
+
 Lemma valtp_extend : forall vs v v1 T,
                        val_type vs v T ->
                        val_type (v1::vs) v T.
