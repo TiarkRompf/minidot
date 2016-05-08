@@ -433,7 +433,7 @@ Proof. intros. induction H.
              rewrite E in H3. inversion H3. subst t.
              assert (beq_nat i (length vs) = true). eauto.
              assert (index i (v :: vs) = Some v). eauto.  unfold index. rewrite H2. eauto.
-             eauto.
+             eauto using valtp_extend.
            SCase "miss".
              intros E.
              assert (beq_nat i (length vs) = false). eauto.
@@ -478,6 +478,14 @@ Lemma stpd2_reg2 : forall m G1 G2 T1 T2,
 Proof.
   intros. eapply stpd2_refl. eapply (stpd2_closed m G1 G2). eauto.
 Qed.
+
+Lemma valtp0_reg : forall G2 T2 v,
+                      val_type0 G2 v T2 ->
+                      stpd2 true G2 T2 G2 T2.
+Proof.
+  intros. eapply stpd2_refl. eapply valtp0_closed. eauto.
+Qed.
+
 
 
 Lemma stpd2_trans_axiom_aux: forall n, forall G1 G2 G3 T1 T2 T3 n1,
