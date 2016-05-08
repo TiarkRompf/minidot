@@ -155,31 +155,38 @@ Inductive stp2: bool -> venv -> ty -> venv -> ty -> nat -> Prop :=
     stp2 true G1 T1 G2 T2 n1 ->
     stp2 false G2 T2 G3 T3 n2 ->
     stp2 false G1 T1 G3 T3 (S (n1+n2))
-         
+.         
 
-with wf_env : venv -> tenv -> Prop := 
-| wfe_nil : wf_env nil nil
-| wfe_cons : forall v t vs ts,
-    val_type (v::vs) v t ->
-    wf_env vs ts ->
-    wf_env (cons v vs) (cons t ts)
 
-with val_type0 : venv -> vl -> ty -> Prop :=
-| v_bool: forall b,
-    val_type0 [] (vbool b) TBool
-| v_abs: forall venv tenv y T1 T2,
-    wf_env venv tenv ->
-    has_type (T1::(TFun T1 T2)::tenv) y T2 ->
-    val_type0 venv (vabs venv y) (TFun T1 T2)
-              
-with val_type : venv -> vl -> ty -> Prop :=
+
+Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some (Some v).
+
+
+(* need to use Fixpoint because of positivity restriction *)
+Fixpoint val_type0 (env:venv) (v:vl) (T:ty) {struct T}: Prop := match v, T with
+| vbool b, TBool => True
+| vabs env1 y, TFun T1 T2 =>
+  closed (length env) T1 /\ closed (length env) T2 /\
+  (forall vx, val_type0 env vx T1 ->
+              exists v, tevaln (vx::env1) y v /\ val_type0 env v T2)
+| _, TTop => True (* can NOT check other type *)
+| _,_ => False
+end.
+
+Inductive val_type : venv -> vl -> ty -> Prop :=
 | v_sub: forall G1 T1 G2 T2 v,
     val_type0 G1 v T1 ->
     (exists n, stp2 true G1 T1 G2 T2 n) ->
     val_type G2 v T2
 .
-              
 
+Inductive wf_env : venv -> tenv -> Prop := 
+| wfe_nil : wf_env nil nil
+| wfe_cons : forall v t vs ts,
+    val_type vs v t ->
+    wf_env vs ts ->
+    wf_env (cons v vs) (cons t ts)
+.
 
 Definition stpd2 m G1 T1 G2 T2 := exists n, stp2 m G1 T1 G2 T2 n.
 
