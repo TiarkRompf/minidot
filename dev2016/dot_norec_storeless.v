@@ -2609,11 +2609,11 @@ Qed.
 
 Fixpoint wft (t:tm): Prop := match t with
 | tvar (VObj ds) =>
-  (forall l T1 T2 T2',
-    index l (dms_to_list ds) = Some (dfun T1 T2 t) ->
+  (forall l T1 T2 t0 T2',
+    index l (dms_to_list ds) = Some (dfun T1 T2 t0) ->
     T2' = (open 0 (TVar (VAbs 0)) T2) ->
     (forall dsa na, has_type [] (tvar (VObj dsa)) T1 na ->
-                    exists dsr nr, step_star (subst_tm dsa t) (tvar (VObj dsr)) /\
+                    exists dsr nr, step_star (subst_tm dsa t0) (tvar (VObj dsr)) /\
      has_type [] (tvar (VObj dsr)) (substt dsa T2') nr))
 | tapp t1 _ t2 => wft t1 /\ wft t2
 | _ => True
