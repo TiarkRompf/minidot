@@ -14,10 +14,12 @@ Module STLC.
 Definition id := nat.
 
 Inductive ty : Type :=
-  | TBool  : ty           
-  | TFun   : ty -> ty -> ty
   | TBot   : ty
   | TTop   : ty
+  | TBool  : ty           
+  | TFun   : ty -> ty -> ty
+  | TMem   : ty -> ty
+  | TSel   : nat -> ty
 .
 
 Inductive tm : Type :=
@@ -31,6 +33,7 @@ Inductive tm : Type :=
 Inductive vl : Type :=
   | vbool : bool -> vl
   | vabs  : list vl -> tm -> vl
+  | vty   : list vl -> ty -> vl
 .
 
 Definition venv := list vl.
@@ -127,6 +130,7 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
                 | None => None
                 | Some None => Some None
                 | Some (Some (vbool _)) => Some None
+                | Some (Some (vty env2 T)) => Some None
                 | Some (Some (vabs env2 ey)) =>
                   teval n (vx::env2) ey
               end
@@ -163,7 +167,81 @@ Inductive stp2: bool -> venv -> ty -> venv -> ty -> nat -> Prop :=
 Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some (Some v).
 
 
-Fixpoint val_type0 (env:venv) (v:vl) (T:ty) {struct T}: Prop := match v, T with
+(* some messy experiments ...
+
+Inductive cls: venv -> ty -> nat -> Prop :=
+| cls_bot: forall G,
+    cls G TBot 1
+| cls_top: forall G,
+    cls G TTop 1
+| cls_bool: forall G,
+    cls G TBool 1
+| cls_fun: forall G T1 T2 n1 n2,
+    cls G T1 n1 ->
+    cls G T2 n2 ->
+    cls G (TFun T1 T2) (S (n1+n2))
+| cls_mem: forall G T1 n1,
+    cls G T1 n1 ->
+    cls G (TMem T1) (S n1)
+| cls_sel: forall G GX TX x n1,
+    index x G = Some (vty GX TX) ->
+    cls GX TX n1 ->
+    cls G (TSel x) (S n1)
+| cls_sel0: forall G GX TX x,
+    index x G <> Some (vty GX TX) ->
+    cls G (TSel x) 0
+.
+
+Inductive tree (A:Type) :=
+ | Node : A -> list (tree A) -> tree A.
+
+Lemma my_tree_ind : forall (A : Type) 
+  (P : tree A -> Prop) (Pl : list (tree A) -> Prop),
+  (forall a l, Pl l -> P (Node _ a l)) ->
+  Pl nil ->
+  (forall t l, P t -> Pl l -> Pl (t :: l)) ->
+  forall t, P t.
+Proof.
+ intros A P Pl Hnode Hnil Hcons.
+ fix my_tree_ind 1. 
+ destruct t as [a l].
+ apply Hnode.
+ induction l as [ | t l IHl].
+ apply Hnil.
+ apply Hcons.
+ apply my_tree_ind.
+ apply IHl.
+Qed.
+
+Print my_tree_ind.
+
+
+Lemma clsf: forall G T, exists k, cls G T k.
+Proof.
+  intros.
+  induction T.
+  eexists; econstructor.
+  eexists; econstructor.
+  eexists; econstructor.
+  destruct IHT1. destruct IHT2.
+  eexists. econstructor; eauto.
+  destruct IHT.
+  eexists. econstructor; eauto.
+  remember (index n G) as r. symmetry in Heqr.
+  destruct r. destruct v.
+  eexists. eapply cls_sel0. eauto. rewrite Heqr. compute. intros. inversion H.
+  eexists. eapply cls_sel0. eauto. rewrite Heqr. compute. intros. inversion H.
+  eexists. eapply cls_sel. eauto. instantiate (1:=0). admit. (* where from ? *)
+  eexists. eapply cls_sel0. eauto. rewrite Heqr. compute. intros. inversion H. 
+Grab Existential Variables.
+  apply TBot. apply nil. apply TBot. apply nil. apply TBot. apply nil.
+ Qed.
+
+Require Coq.Program.Wf.
+Require Recdef.
+
+(*
+Function val_type0 (env:venv) (v:vl) (T:ty) {wf (clsf) T}: Prop := match v, T with
 | vbool b, TBool => True
 | vabs env1 y, TFun T1 T2 =>
   closed (length env) T1 /\ closed (length env) T2 /\
@@ -172,6 +250,166 @@ Fixpoint val_type0 (env:venv) (v:vl) (T:ty) {struct T}: Prop := match v, T with
 | _, TTop => True (* can NOT check v with other type *)
 | _,_ => False
 end.
+*)
+
+(* n < S n *) 
+
+Variable A : Type.
+
+Variable f : A -> nat.
+
+Print lt. 
+Check lt.
+
+Definition ltof (a b:A) := f a < f b.
+Definition gtof (a b:A) := f b > f a.
+
+Theorem well_founded_ltof : well_founded ltof.
+Proof.
+  red in |- *.
+  cut (forall n (a:A), f a < n -> Acc ltof a).
+  intros H a. apply (H (S (f a))). auto with arith.
+  induction n.
+  intros; absurd (f a < 0); auto with arith.
+  intros a ltSma.
+  apply Acc_intro.
+  unfold ltof in |- *; intros b ltfafb.
+  apply IHn.
+  apply lt_le_trans with (f a); auto with arith.
+Defined.
+
+Inductive gl: venv -> venv -> Prop :=
+| gl_tl: forall x G1,
+    gl G1 (x::G1)
+| gl_vty: forall GX TX G1,
+    gl GX ((vty GX TX)::G1)
+| gl_tl2: forall x G0 G1,
+    gl G0 G1 ->
+    gl G0 (x::G1)
+| gl_vty2: forall GX TX G1 G0,
+    gl G0 GX -> 
+    gl G0 ((vty GX TX)::G1)
+.
+
+Lemma gl_trans: forall G1 G2 G3,
+                  gl G1 G2 -> gl G2 G3 -> gl G1 G3.
+Proof.
+  intros. induction G3.
+  inversion H0.
+  inversion H0.
+  subst.
+  admit. admit. admit. admit. 
+Qed.
+  
+
+Hint Constructors gl.
+
+Function gsz (G:venv) {wf gl G} :=
+       match G with
+         | [] => 0
+         | (vty GX TX)::tl => 1 + (gsz GX) + (gsz tl)
+         | _::tl => gsz tl
+       end.
+
+intros. eapply gl_tl. 
+intros. eapply gl_tl. 
+intros. eapply gl_tl. 
+intros. eapply gl_vty. 
+(* well-founded *)
+compute.
+(* cut (forall n a, gl a n-> Acc gl a).
+intros. eapply H. eapply gl_tl.  *)
+assert (forall a n, gl a n-> Acc gl a).
+intros a. induction a. intros.
+constructor. intros. inversion H0.
+admit.
+admit.
+Qed.
+
+*)
+
+(* rough and preliminary size measure  *)
+Fixpoint size (t : vl) : nat :=
+  match t with
+    | vbool _ => 0
+    | vabs _ _ => 0
+    | vty l _ =>
+      1 + (fix size_l (l : venv) : nat :=
+             match l with
+               | nil => 0
+               | h::r => size h + size_l r
+             end) l
+  end.
+
+Fixpoint tsz (G:venv) (T:ty) {struct T} :=
+  match T with
+    | TBot => 1
+    | TTop => 1
+    | TBool => 1
+    | TFun T1 T2 => S (tsz G T1 + tsz G T2)
+    | TMem T1 => S (tsz G T1)
+    | TSel x => match index x G with
+                  | Some v => size v
+                  | None => 0
+                end
+  end.
+
+(* this does not hold currently!! *)
+Lemma tsz_indir: forall GX TX,
+  tsz GX TX < size (vty GX TX).
+Proof. admit. Qed. 
+  
+
+
+
+Require Coq.Program.Wf.
+
+Program Fixpoint val_type0 (env:venv) (v:vl) (T:ty) {measure (tsz env T)}: Prop :=
+  match v,T with
+    | vbool b, TBool =>
+      True
+    | vabs env1 y, TFun T1 T2 =>
+      closed (length env) T1 /\ closed (length env) T2 /\
+      (forall vx, val_type0 env vx T1 ->
+                  exists v, tevaln (vx::env1) y v /\ val_type0 env v T2)
+    | vty env1 TX, TMem T1 =>
+      exists n1 n2, stp2 false env1 TX env T1 n1 /\ stp2 false env T1 env1 TX n2
+    | _, TSel x =>
+      match index x env with
+        | Some (vty GX TX) => val_type0 GX v TX
+        | _ => False
+      end
+    | _, TTop => True (* can NOT check v with other type *)
+    | _,_ => False
+  end.
+
+Check val_type0_func_obligation_16.
+
+Next Obligation. simpl. omega. Qed.
+Next Obligation. simpl. omega. Qed.
+Next Obligation. (* TSel case *)
+  simpl. rewrite <-Heq_anonymous. eapply tsz_indir. Qed.
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
+
+Print val_type0_func.
+
+(* 
+   PROBLEM: 
+   val_type0_func is incomprehensible, we cannot (easily) unfold 
+   and reason about it ...
+
+   Can we even prove inversion lemmas?
+*)
+
+
 
 
 (* ------------------------- NOTES -------------------------
@@ -449,6 +687,9 @@ Lemma valtp0_closed : forall G1 v T,
 Proof.
   intros.
   induction T; simpl in H; destruct v; try (solve by inversion); ev; econstructor; eauto.
+  unfold val_type0 in H. unfold val_type0_func in H.
+  compute in H.
+  simpl in H. 
 Qed.
 
 Lemma valtp_extend : forall vs v v1 T,
