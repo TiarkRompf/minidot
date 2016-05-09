@@ -2614,7 +2614,7 @@ Fixpoint wft (t:tm): Prop := match t with
     T2' = (open 0 (TVar (VAbs 0)) T2) ->
     (forall dsa na, has_type [] (tvar (VObj dsa)) T1 na ->
                     exists dsr nr, step_star (subst_tm dsa t0) (tvar (VObj dsr)) /\
-     has_type [] (tvar (VObj dsr)) (substt dsa T2') nr))
+                                   has_type [] (tvar (VObj dsr)) (substt dsa T2') nr))
 | tapp t1 _ t2 => wft t1 /\ wft t2
 | _ => True
 end.
@@ -2625,26 +2625,28 @@ Definition reduces (t:tm) (v:tm) (T:ty) :=
 
 Theorem full_type_safety : forall t T n1,
   has_type [] t T n1 -> wft t ->
-  exists v, reduces t v T.
+  exists v, reduces t v T /\ wft v.
 Proof.
   intros t T n1 H Hwft.
   assert (closed (length ([]:tenv)) 0 T) as CL. eapply has_type_closed. eauto.
   remember [] as GH. remember t as tt. remember T as TT.
   revert T t HeqTT HeqGH Heqtt CL.
   induction H; intros.
-  - Case "vary". subst. repeat eexists. eapply s_refl. eauto.
+  - Case "vary". subst. repeat (eexists; eauto). eapply s_refl.
   - Case "varz". subst GH. inversion H.
   - Case "obj". subst.
-    repeat eexists. eapply s_step. eapply ST_Obj. eapply s_refl. eapply T_Vary. eapply H.
+    eexists. split. unfold reduces. repeat eexists. eapply s_step. eapply ST_Obj. eapply s_refl.
+    eapply T_Vary. eapply H.
+    admit.
   - Case "app". subst.
     simpl in Hwft. destruct Hwft as [Hwft1 Hwft2].
     assert (closed (length ([]:tenv)) 0 (TFun l T1 T)) as TF. eapply has_type_closed. eauto.
-    assert (exists v, reduces t2 v T1) as HX.
+    assert (exists v, reduces t2 v T1 /\ wft v) as HX.
     eapply IHhas_type2. eauto. eauto. eauto. eauto. inversion TF. eauto.
-    assert (exists v, reduces t1 v (TFun l T1 T)) as HF.
+    assert (exists v, reduces t1 v (TFun l T1 T) /\ wft v) as HF.
     eapply IHhas_type1. eauto. eauto. eauto. eauto. eauto.
-    destruct HF as [vf [dsf [? [Eqf [Hsf Htf]]]]].
-    destruct HX as [va [dsa [? [Eqa [Hsa Hta]]]]].
+    destruct HF as [vf [[dsf [? [Eqf [Hsf Htf]]]] Hwtf]].
+    destruct HX as [va [[dsa [? [Eqa [Hsa Hta]]]] Hwfta]].
     assert (exists m n1, vtp m dsf (TFun l T1 T) n1). eapply hastp_inv. eauto.
     assert (exists m n1, vtp m dsa T1 n1). eapply hastp_inv. eauto.
     ev. inversion H2. subst.
@@ -2668,19 +2670,20 @@ Proof.
    rewrite EqT in HI2.
    assert (exists dsr nr, step_star (subst_tm dsa t) (tvar (VObj dsr)) /\
                           has_type [] (tvar (VObj dsr)) (substt dsa (open 0 (TVar (VAbs 0)) T2)) nr) as HR. {
-     admit.
+     unfold wft in *. eapply Hwtf; eauto.
    }
-   ev. repeat eexists. eapply step_star_app; eauto. eauto.
+   ev. eexists. split. repeat eexists. eapply step_star_app; eauto. eauto.
+   admit.
 
   - Case "appvar". subst.
     simpl in Hwft. destruct Hwft as [Hwft1 Hwft2].
     assert (closed (length ([]:tenv)) 0 (TFun l T1 T2)) as TF. eapply has_type_closed. eauto.
-    assert (exists v, reduces (tvar v2) v T1) as HX.
+    assert (exists v, reduces (tvar v2) v T1 /\ wft v) as HX.
     eapply IHhas_type2. eauto. eauto. eauto. eauto. inversion TF. eauto.
-    assert (exists v, reduces t1 v (TFun l T1 T2)) as HF.
+    assert (exists v, reduces t1 v (TFun l T1 T2) /\ wft v) as HF.
     eapply IHhas_type1. eauto. eauto. eauto. eauto. eauto.
-    destruct HF as [vf [dsf [? [Eqf [Hsf Htf]]]]].
-    destruct HX as [va [dsa [? [Eqa [Hsa Hta]]]]].
+    destruct HF as [vf [[dsf [? [Eqf [Hsf Htf]]]] Hwtf]].
+    destruct HX as [va [[dsa [? [Eqa [Hsa Hta]]]] Hwta]].
     assert (v2 = VObj dsa) as HXeq. {
       subst. eapply step_star_var; eauto.
     }
@@ -2708,14 +2711,15 @@ Proof.
     rewrite EqT2 in HI2.
     assert (exists dsr nr, step_star (subst_tm dsa t) (tvar (VObj dsr)) /\
                            has_type [] (tvar (VObj dsr)) (substt dsa (open 0 (TVar (VAbs 0)) T3)) nr) as HR. {
-      admit.
+     unfold wft in *. eapply Hwtf; eauto.
     }
-    ev. repeat eexists. eapply step_star_app; eauto. eapply T_Sub. eauto. eauto.
+    ev. eexists. split. repeat eexists. eapply step_star_app; eauto. eapply T_Sub. eauto. eauto.
+    admit.
 
   - Case "sub". subst.
-    assert (exists v, reduces t0 v T1) as HH.
+    assert (exists v, reduces t0 v T1 /\ wft v) as HH.
     eapply IHhas_type; eauto. change 0 with (length ([]:tenv)) at 1. eapply stpd2_closed1; eauto.
-    destruct HH as [v [ds [? [Eq [Hs Ht]]]]]. subst.
-    repeat eexists. eauto. eapply T_Sub. eauto. eauto.
+    destruct HH as [v [[ds [? [Eq [Hs Ht]]]] Hwt]]. subst.
+    eexists. split. repeat eexists. eauto. eapply T_Sub. eauto. eauto. eauto.
 
 Qed.
