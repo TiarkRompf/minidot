@@ -328,43 +328,66 @@ Qed.
 
 *)
 
-(* rough and preliminary size measure  *)
-Fixpoint size (t : vl) : nat :=
+
+Fixpoint vsize (t : vl) : nat :=
   match t with
-    | vbool _ => 0
+    | vbool _  => 0
     | vabs _ _ => 0
-    | vty l _ =>
-      1 + (fix size_l (l : venv) : nat :=
-             match l with
-               | nil => 0
-               | h::r => size h + size_l r
-             end) l
+    | vty G T  => 
+      (fix tsize T := 
+         match T with
+           | TBot       => 1
+           | TTop       => 1
+           | TBool      => 1
+           | TFun T1 T2 => S (tsize T1 + tsize T2)
+           | TMem T1    => S (tsize T1)
+           | TSel x     => S
+             ((fix idx x G :=
+                match G with
+                  | v::tl => if beq_nat x (length tl) then vsize v else idx x tl
+                  | _ => 0
+                end) x G)
+         end) T
   end.
 
-Fixpoint tsz (G:venv) (T:ty) {struct T} :=
+Fixpoint tsize (G:venv) (T:ty) {struct T} :=
   match T with
-    | TBot => 1
-    | TTop => 1
-    | TBool => 1
-    | TFun T1 T2 => S (tsz G T1 + tsz G T2)
-    | TMem T1 => S (tsz G T1)
-    | TSel x => match index x G with
-                  | Some v => size v
-                  | None => 0
-                end
+    | TBot       => 1
+    | TTop       => 1
+    | TBool      => 1
+    | TFun T1 T2 => S (tsize G T1 + tsize G T2)
+    | TMem T1    => S (tsize G T1)
+    | TSel x     => S
+      match index x G with
+        | Some v => vsize v
+        | None => 0
+      end
   end.
 
-(* this does not hold currently!! *)
+
+Lemma tsz_eq: forall TX GX,
+  tsize GX TX = (vsize (vty GX TX)).
+Proof.
+  intros TX. simpl. induction TX; intros; eauto.
+  - Case "fun". simpl. rewrite IHTX1. rewrite IHTX2. eauto.
+  - Case "mem". simpl. rewrite IHTX. eauto.
+  - Case "sel". simpl.
+    induction GX.
+    + simpl. eauto.
+    + simpl. destruct (beq_nat n (length GX)). eauto. eauto.
+ Qed.      
+ 
 Lemma tsz_indir: forall GX TX,
-  tsz GX TX < size (vty GX TX).
-Proof. admit. Qed. 
-  
+  tsize GX TX < S (vsize (vty GX TX)).
+Proof.
+  intros. rewrite tsz_eq. eauto. 
+Qed.
 
 
 
 Require Coq.Program.Wf.
 
-Program Fixpoint val_type0 (env:venv) (v:vl) (T:ty) {measure (tsz env T)}: Prop :=
+Program Fixpoint val_type0 (env:venv) (v:vl) (T:ty) {measure (tsize env T)}: Prop :=
   match v,T with
     | vbool b, TBool =>
       True
@@ -379,8 +402,10 @@ Program Fixpoint val_type0 (env:venv) (v:vl) (T:ty) {measure (tsz env T)}: Prop 
         | Some (vty GX TX) => val_type0 GX v TX
         | _ => False
       end
-    | _, TTop => True (* can NOT check v with other type *)
-    | _,_ => False
+    | _, TTop =>
+      True 
+    | _,_ =>
+      False
   end.
 
 Check val_type0_func_obligation_16.
