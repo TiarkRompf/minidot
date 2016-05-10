@@ -426,6 +426,34 @@ Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversi
 
 Print val_type0_func.
 
+Lemma inv_vtp: forall env env1 y T1 T2,
+  val_type0 env (vabs env1 y) (TFun T1 T2) ->
+  closed (length env) T1 /\ closed (length env) T2 /\
+  (forall vx, val_type0 env vx T1 ->
+              exists v, tevaln (vx::env1) y v /\ val_type0 env v T2).
+Proof.
+  intros. unfold val_type0 in H.
+  unfold val_type0_func at 1 in H.
+  unfold Wf.Fix_sub in H. unfold Wf.Fix_F_sub in H.
+  
+  unfold projT2 in H. unfold projT1 in H. unfold proj2_sig in H. unfold proj1_sig in H.
+  red in H. red in H. red in H. red in H.
+  red in H. red in H. red in H. red in H.
+  red in H. 
+  
+  (* now H has correct form *)
+  destruct H. destruct H0. split. eauto. split. eauto.
+  (* now 'closed' goals are proved *)
+
+  unfold val_type0. unfold val_type0_func at 1. unfold val_type0_func at 1.
+  unfold Wf.Fix_sub. unfold Wf.Fix_F_sub.
+
+  unfold projT2. unfold projT1. unfold proj2_sig. unfold proj1_sig.
+  simpl. simpl in H1. 
+  eapply H1. (* FAILS -- CANNOT UNIFY *)
+Qed.  
+  
+
 (* 
    PROBLEM: 
    val_type0_func is incomprehensible, we cannot (easily) unfold 
