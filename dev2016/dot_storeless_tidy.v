@@ -567,10 +567,34 @@ Proof.
     + apply IHG2. assumption.
 Qed.
 
+Scheme vr_mut := Induction for vr Sort Prop
+with   ty_mut := Induction for ty Sort Prop
+with   tm_mut := Induction for tm Sort Prop
+with   dm_mut := Induction for dm Sort Prop
+with   dms_mut := Induction for dms Sort Prop.
+Combined Scheme syntax_mutind from vr_mut, ty_mut, tm_mut, dm_mut, dms_mut.
+
+Scheme vr_cl_mut := Induction for vr_closed Sort Prop
+with   ty_cl_mut := Induction for closed Sort Prop
+with   tm_cl_mut := Induction for tm_closed Sort Prop
+with   dm_cl_mut := Induction for dm_closed Sort Prop
+with   dms_cl_mut := Induction for dms_closed Sort Prop.
+Combined Scheme closed_mutind from vr_cl_mut, ty_cl_mut, tm_cl_mut, dm_cl_mut, dms_cl_mut.
+
+Lemma closed_upgrade_gh_rec:
+  (forall i k v1, vr_closed i k v1 -> forall i1, i <= i1 -> vr_closed i1 k v1) /\
+  (forall i k T1, closed i k T1 -> forall i1, i <= i1 -> closed i1 k T1) /\
+  (forall i k t1, tm_closed i k t1 -> forall i1, i <= i1 -> tm_closed i1 k t1) /\
+  (forall i k d1, dm_closed i k d1 -> forall i1, i <= i1 -> dm_closed i1 k d1) /\
+  (forall i k ds1, dms_closed i k ds1 -> forall i1, i <= i1 -> dms_closed i1 k ds1).
+Proof.
+  apply closed_mutind; intros; econstructor; eauto. omega.
+Qed.
+
 Lemma closed_upgrade_gh: forall i i1 k T1,
   closed i k T1 -> i <= i1 -> closed i1 k T1.
 Proof.
-  intros. generalize dependent i1. induction H; intros; econstructor; eauto. omega.
+  intros. eapply (proj1 (proj2 closed_upgrade_gh_rec)); eauto.
 Qed.
 
 Lemma closed_upgrade: forall i k k1 T1,
