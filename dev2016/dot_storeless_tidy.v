@@ -369,27 +369,28 @@ Inductive vtp(*possible types*) : nat(*pack count*) -> dms -> ty -> nat(*size*) 
     stp [] T1 TX n1 ->
     stp [] TX T2 n2 ->
     vtp m ds (TMem l T1 T2) (S (n1+n2))
-| vtp_fun: forall m l ds T1 T2 T3 T4 T2' T4' t T1x T2x tx T' T2x' n1 n2 n3 n4,
+| vtp_fun: forall m l ds T1 T2 T3 T4 T2' T4' t T1x T2x tx tx' T' T2x' n1 n2 n3 n4,
     index l (dms_to_list (subst_dms ds ds)) = Some (dfun T1 T2 t) ->
     dms_has_type [T'] ds T' n4 ->
     index l (dms_to_list ds) = Some (dfun T1x T2x tx) ->
-    T2x' = (open 0 (TVar (VAbs 1)) T2x) ->
-    has_type [T1x;T'] tx T2x' n3 ->
+    T2x' = (open 0 (VarF 1) T2x) ->
+    tx' = (tm_open 0 (VarF 1) tx) ->
+    has_type [T1x;T'] tx' T2x' n3 ->
     stp [] T3 T1 n1 ->
-    T2' = (open 0 (TVar (VAbs 0)) T2) ->
-    T4' = (open 0 (TVar (VAbs 0)) T4) ->
+    T2' = (open 0 (VarF 0) T2) ->
+    T4' = (open 0 (VarF 0) T4) ->
     closed 0 1 T2 ->
     closed 0 1 T4 ->
     stp [T3] T2' T4' n2 ->
     vtp m ds (TFun l T3 T4) (S (n1+n2+n3+n4))
 | vtp_bind: forall m ds T2 n1,
-    vtp m ds (open 0 (TVar (VObj ds)) T2) n1 ->
+    vtp m ds (open 0 (VObj ds) T2) n1 ->
     closed 0 1 T2 ->
     vtp (S m) ds (TBind T2) (S (n1))
 | vtp_sel: forall m ds dsy l TX n1,
     index l (dms_to_list (subst_dms dsy dsy)) = Some (dty TX) ->
     vtp m ds TX n1 ->
-    vtp m ds (TSel (TVar (VObj dsy)) l) (S (n1))
+    vtp m ds (TSel (VObj dsy) l) (S (n1))
 | vtp_and: forall m m1 m2 ds T1 T2 n1 n2,
     vtp m1 ds T1 n1 ->
     vtp m2 ds T2 n2 ->
