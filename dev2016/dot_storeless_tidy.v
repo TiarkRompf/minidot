@@ -597,13 +597,24 @@ Proof.
   intros. eapply (proj1 (proj2 closed_upgrade_gh_rec)); eauto.
 Qed.
 
+Lemma closed_upgrade_rec:
+  (forall i k v1, vr_closed i k v1 -> forall k1, k <= k1 -> vr_closed i k1 v1) /\
+  (forall i k T1, closed i k T1 -> forall k1, k <= k1 -> closed i k1 T1) /\
+  (forall i k t1, tm_closed i k t1 -> forall k1, k <= k1 -> tm_closed i k1 t1) /\
+  (forall i k d1, dm_closed i k d1 -> forall k1, k <= k1 -> dm_closed i k1 d1) /\
+  (forall i k ds1, dms_closed i k ds1 -> forall k1, k <= k1 -> dms_closed i k1 ds1).
+Proof.
+  apply closed_mutind; intros; econstructor; eauto;
+  try solve [omega];
+  try solve [eapply H; omega];
+  try solve [eapply H0; omega];
+  try solve [eapply H1; omega].
+Qed.
+
 Lemma closed_upgrade: forall i k k1 T1,
   closed i k T1 -> k <= k1 -> closed i k1 T1.
 Proof.
-  intros. generalize dependent k1. induction H; intros; econstructor; eauto.
-  eapply IHclosed2. omega.
-  omega.
-  eapply IHclosed. omega.
+  intros. eapply (proj1 (proj2 closed_upgrade_rec)); eauto.
 Qed.
 
 Lemma closed_open: forall j k v T, closed k (j+1) T -> closed k j (TVar v) -> closed k j (open j (TVar v) T).
