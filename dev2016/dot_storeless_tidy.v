@@ -442,14 +442,14 @@ Lemma stpd2_top: forall GH T,
     stpd2 GH T TTop.
 Proof. intros. exists 1. eauto. Qed.
 Lemma stpd2_fun: forall GH l T1 T2 T3 T4 T2' T4',
-    T2' = (open 0 (TVar (VAbs (length GH))) T2) ->
-    T4' = (open 0 (TVar (VAbs (length GH))) T4) ->
+    T2' = (open 0 (VarF (length GH)) T2) ->
+    T4' = (open 0 (VarF (length GH)) T4) ->
     closed (length GH) 1 T2 ->
     closed (length GH) 1 T4 ->
     stpd2 GH T3 T1 ->
     stpd2 (T3::GH) T2' T4' ->
     stpd2 GH (TFun l T1 T2) (TFun l T3 T4).
-Proof. intros. repeat eu. eexists. eauto. Qed.
+Proof. intros. repeat eu. eexists. eapply stp_fun; eauto. Qed.
 Lemma stpd2_mem: forall GH l T1 T2 T3 T4,
     stpd2 GH T3 T1 ->
     stpd2 GH T2 T4 ->
