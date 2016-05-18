@@ -1,8 +1,8 @@
-(*
+(* WIP
 DOT storeless
 T ::= Bot | Top | T1 /\ T2 | T1 \/ T2 |
       { def m(x: S): U^x } | { type A: S..U } | p.A | { z => T^z }
-t ::= p | new { z => d^z... } | t.m(t)
+t ::= p | t.m(t)
 d ::= { def m(x: S): U^x = t^x } | { type A = T }
 v ::= { z => d^z... }
 p ::= x | v
@@ -18,22 +18,20 @@ Definition id := nat.
 Definition lb := nat.
 
 Inductive vr : Type :=
-  | VAbs: id(*absolute position in context, from origin, invariant under context extension*) -> vr
-  | VObj: dms -> vr
+  | VarF: id(*absolute position in context, from origin, invariant under context extension*) -> vr
+  | VarB: id(*bound variable, de Bruijn, locally nameless style -- see open *) -> vr
+  | VObj: dms(*self is bound, de Bruijn, var*) -> vr
 with ty : Type :=
   | TBot   : ty
   | TTop   : ty
   | TFun   : lb -> ty -> ty -> ty
   | TMem   : lb -> ty -> ty -> ty
-  | TVar   : vr -> ty
-  | TVarB  : id(*bound variable, de Bruijn, locally nameless style -- see open *) -> ty
-  | TSel   : ty -> lb -> ty
+  | TSel   : vr -> lb -> ty
   | TBind  : ty -> ty
   | TAnd   : ty -> ty -> ty
   | TOr    : ty -> ty -> ty
 with  tm : Type :=
   | tvar  : vr -> tm
-  | tobj  : dms(*self is next slot in abstract context -- see subst_tm*) -> tm
   | tapp  : tm -> lb -> tm -> tm
 
 with dm : Type :=
@@ -62,8 +60,17 @@ Fixpoint index {X : Type} (n : id) (l : list X) : option X :=
     | a :: l'  => if beq_nat n (length l') then Some a else index n l'
   end.
 
-Inductive closed: nat(*abstract, TVar false i*) -> nat(*bound, TVarB k*)
-                  -> ty -> Prop :=
+Inductive vr_closed: nat(*i:abstract*) -> nat(*k:bound*) -> vr -> Prop :=
+| clv_abs: forall i k x,
+    i > x ->
+    vr_closed i k (VarF x)
+| clv_bound: forall i k x,
+    k > x ->
+    vr_closed i k (VarB x)
+| clv_obj: forall i k ds,
+    dms_closed i (S k) ds ->
+    vr_closed i k (VObj ds)
+with closed: nat -> nat -> ty -> Prop :=
 | cl_bot: forall i k,
     closed i k TBot
 | cl_top: forall i k,
@@ -76,17 +83,9 @@ Inductive closed: nat(*abstract, TVar false i*) -> nat(*bound, TVarB k*)
     closed i k T1 ->
     closed i k T2 ->
     closed i k (TMem l T1 T2)
-| cl_var0: forall i k x,
-    i > x ->
-    closed i k (TVar (VAbs x))
-| cl_var1: forall i k ds,
-    closed i k (TVar (VObj ds))
-| cl_varB: forall i k x,
-    k > x ->
-    closed i k (TVarB x)
-| cl_sel: forall i k T1 l,
-    closed i k T1 ->
-    closed i k (TSel T1 l)
+| cl_sel: forall i k v1 l,
+    vr_closed i k v1 ->
+    closed i k (TSel v1 l)
 | cl_bind: forall i k T1,
     closed i (S k) T1 ->
     closed i k (TBind T1)
@@ -98,60 +97,102 @@ Inductive closed: nat(*abstract, TVar false i*) -> nat(*bound, TVarB k*)
     closed i k T1 ->
     closed i k T2 ->
     closed i k (TOr T1 T2)
+with tm_closed: nat -> nat -> tm -> Prop :=
+| clt_var: forall i k v1,
+    vr_closed i k v1 ->
+    tm_closed i k (tvar v1)
+| clt_app: forall i k t1 l t2,
+    tm_closed i k t1 ->
+    tm_closed i k t2 ->
+    tm_closed i k (tapp t1 l t2)
+with dm_closed: nat -> nat -> dm -> Prop :=
+| cld_fun: forall i k T1 T2 t2,
+    closed i k T1 ->
+    closed i (S k) T2 ->
+    tm_closed i (S k) t2 ->
+    dm_closed i k (dfun T1 T2 t2)
+| cld_ty: forall i k T1,
+    closed i k T1 ->
+    dm_closed i k (dty T1)
+with dms_closed: nat -> nat -> dms -> Prop :=
+| clds_nil: forall i k,
+    dms_closed i k dnil
+| clds_cons: forall i k d1 ds2,
+    dm_closed i k d1 ->
+    dms_closed i k ds2 ->
+    dms_closed i k (dcons d1 ds2)
 .
 
-
-Fixpoint open (k: nat) (u: ty) (T: ty) { struct T }: ty :=
+Fixpoint vr_open (k: nat) (u: vr) (v: vr) { struct v }: vr :=
+  match v with
+    | VarF x => VarF x
+    | VarB x => if beq_nat k x then u else VarB x
+    | VObj dms => VObj (dms_open (S k) u dms)
+  end
+with open (k: nat) (u: vr) (T: ty) { struct T }: ty :=
   match T with
-    | TVar v => TVar v (* free var remains free. functional, so we can't check for conflict *)
-    | TVarB x => if beq_nat k x then u else TVarB x
     | TTop        => TTop
     | TBot        => TBot
-    | TSel T1 l     => TSel (open k u T1) l
+    | TSel v1 l     => TSel (vr_open k u v1) l
     | TFun l T1 T2  => TFun l (open k u T1) (open (S k) u T2)
     | TMem l T1 T2  => TMem l (open k u T1) (open k u T2)
     | TBind T1    => TBind (open (S k) u T1)
     | TAnd T1 T2  => TAnd (open k u T1) (open k u T2)
     | TOr T1 T2   => TOr (open k u T1) (open k u T2)
-  end.
+  end
+with tm_open (k: nat) (u: vr) (t: tm) { struct t }: tm :=
+   match t with
+     | tvar v => tvar (vr_open k u v)
+     | tapp t1 l t2 => tapp (tm_open k u t1) l (tm_open k u t2)
+   end
+with dm_open (k: nat) (u: vr) (d: dm) { struct d }: dm :=
+   match d with
+     | dfun T1 T2 t2 => dfun (open k u T1) (open (S k) u T2) (tm_open (S k) u t2)
+     | dty T1 => dty (open k u T1)
+   end
+with dms_open (k: nat) (u: vr) (ds: dms) { struct ds }: dms :=
+   match ds with
+     | dnil => dnil
+     | dcons d ds => dcons (dm_open k u d) (dms_open k u ds)
+   end.
 
-Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
+Fixpoint vr_subst (u : vr) (v : vr) {struct v} : vr :=
+  match v with
+    | VarF i  => if beq_nat i 0 then u else VarF (i-1)
+    | VarB i  => VarB i
+    | VObj ds => VObj (dms_subst u ds)
+  end
+with subst (u : vr) (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
     | TBot         => TBot
-    | TMem l T1 T2 => TMem l (subst U T1) (subst U T2)
-    | TSel T1 l    => TSel (subst U T1) l
-    | TVarB i      => TVarB i
-    | TVar (VObj ds)  => TVar (VObj ds)
-    (* subst the _first_ aka _oldest_ abstract variables,
-       the other abstract variables are shifted to resolve in the shrinked context *)
-    | TVar (VAbs i) => if beq_nat i 0 then U else TVar (VAbs (i-1))
-    | TFun l T1 T2 => TFun l (subst U T1) (subst U T2)
-    | TBind T2     => TBind (subst U T2)
-    | TAnd T1 T2   => TAnd (subst U T1) (subst U T2)
-    | TOr T1 T2    => TOr (subst U T1) (subst U T2)
-  end.
-
-
-Fixpoint subst_tm (u:dms) (T : tm) {struct T} : tm :=
-  match T with
-    | tvar (VObj i)         => tvar (VObj i)
-    | tvar (VAbs i)        => if beq_nat i 0 then (tvar (VObj u)) else tvar (VAbs (i-1))
-    | tobj ds             => tobj (subst_dms u ds)
-    | tapp t1 l t2          => tapp (subst_tm u t1) l (subst_tm u t2)
+    | TMem l T1 T2 => TMem l (subst u T1) (subst u T2)
+    | TSel v1 l    => TSel (vr_subst u v1) l
+    | TFun l T1 T2 => TFun l (subst u T1) (subst u T2)
+    | TBind T2     => TBind (subst u T2)
+    | TAnd T1 T2   => TAnd (subst u T1) (subst u T2)
+    | TOr T1 T2    => TOr (subst u T1) (subst u T2)
   end
-with subst_dm (u:dms) (d: dm) {struct d} : dm :=
-  match d with
-    | dty T        => dty (subst (TVar (VObj u)) T)
-    | dfun T1 T2 t => dfun (subst (TVar (VObj u)) T1) (subst (TVar (VObj u)) T2) (subst_tm u t)
-  end
-with subst_dms (u:dms) (ds: dms) {struct ds} : dms :=
-  match ds with
-    | dnil        => dnil
-    | dcons d ds1  => dcons (subst_dm u d) (subst_dms u ds1)
-  end.
+with tm_subst (u : vr) (t : tm) { struct t } : tm :=
+   match t with
+     | tvar v => tvar (vr_subst u v)
+     | tapp t1 l t2 => tapp (tm_subst u t1) l (tm_subst u t2)
+   end
+with dm_subst (u : vr) (d : dm) { struct d } : dm :=
+   match d with
+     | dfun T1 T2 t2 => dfun (subst u T1) (subst u T2) (tm_subst u t2)
+     | dty T1 => dty (subst u T1)
+   end
+with dms_subst (u : vr) (ds : dms) { struct ds } : dms :=
+   match ds with
+     | dnil => dnil
+     | dcons d ds => dcons (dm_subst u d) (dms_subst u ds)
+   end.
 
-Definition substt x T := (subst (TVar (VObj x)) T).
+Definition subst_tm (u:dms) (t : tm) := tm_subst (VObj u) t.
+Definition subst_dm (u:dms) (d: dm) := dm_subst (VObj u) d.
+Definition subst_dms (u:dms) (ds: dms) := dms_subst (VObj u) ds.
+Definition substt x T := (subst (VObj x) T).
 Hint Immediate substt.
 
 Inductive has_type : tenv -> tm -> ty -> nat -> Prop :=
