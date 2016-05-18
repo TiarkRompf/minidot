@@ -189,37 +189,32 @@ with dms_subst (u : vr) (ds : dms) { struct ds } : dms :=
      | dcons d ds => dcons (dm_subst u d) (dms_subst u ds)
    end.
 
-Definition subst_tm (u:dms) (t : tm) := tm_subst (VObj u) t.
-Definition subst_dm (u:dms) (d: dm) := dm_subst (VObj u) d.
-Definition subst_dms (u:dms) (ds: dms) := dms_subst (VObj u) ds.
+Definition subst_dms (u:dms) (ds: dms) := dms_open 0 (VObj u) ds.
 Definition substt x T := (subst (VObj x) T).
 Hint Immediate substt.
 
 Inductive has_type : tenv -> tm -> ty -> nat -> Prop :=
-  | T_Vary : forall GH ds T T' n1,
-      dms_has_type [T'] ds T' n1 ->
-      substt ds T' = T ->
-      closed 0 0 T ->
-      has_type GH (tvar (VObj ds)) T (S n1)
-  | T_Varz : forall GH x T n1,
+  | T_VObj : forall GH ds ds' T T' n1,
+      dms_has_type (T'::GH) ds' T' n1 ->
+      T' = open 0 (VarF (length GH)) T ->
+      ds' = dms_open 0 (VarF (length GH)) ds' ->
+      closed (length GH) 1 T ->
+      dms_closed (length GH) 1 ds ->
+      has_type GH (tvar (VObj ds)) (TBind T) (S n1)
+  | T_VarF : forall GH x T n1,
       index x GH = Some T ->
       closed (length GH) 0 T ->
-      has_type GH (tvar (VAbs x)) T (S n1)
+      has_type GH (tvar (VarF x)) T (S n1)
   | T_VarPack : forall GH v T1 T1' n1,
       has_type GH (tvar v) T1' n1 ->
-      T1' = (open 0 (TVar v) T1) ->
+      T1' = (open 0 v T1) ->
       closed (length GH) 1 T1 ->
       has_type GH (tvar v) (TBind T1) (S n1)
   | T_VarUnpack : forall GH v T1 T1' n1,
       has_type GH (tvar v) (TBind T1) n1 ->
-      T1' = (open 0 (TVar v) T1) ->
+      T1' = (open 0 v T1) ->
       closed (length GH) 0 T1' ->
       has_type GH (tvar v) T1' (S n1)
-  | T_Obj : forall GH ds T T' n1,
-      dms_has_type (T'::GH) ds T' n1 ->
-      T' = open 0 (TVar (VAbs (length GH))) T ->
-      closed (length GH) 1 T ->
-      has_type GH (tobj ds) (TBind T) (S n1)
   | T_App : forall l T1 T2 GH t1 t2 n1 n2,
       has_type GH t1 (TFun l T1 T2) n1 ->
       has_type GH t2 T1 n2 ->
@@ -228,7 +223,8 @@ Inductive has_type : tenv -> tm -> ty -> nat -> Prop :=
   | T_AppVar : forall l T1 T2 T2' GH t1 v2 n1 n2,
       has_type GH t1 (TFun l T1 T2) n1 ->
       has_type GH (tvar v2) T1 n2 ->
-      T2' = (open 0 (TVar v2) T2) ->
+      vr_closed (length GH) 0 v2 ->
+      T2' = (open 0 v2 T2) ->
       closed (length GH) 0 T2' ->
       has_type GH (tapp t1 l (tvar v2)) T2' (S (n1+n2))
   | T_Sub : forall GH t T1 T2 n1 n2,
@@ -244,12 +240,14 @@ with dms_has_type: tenv -> dms -> ty -> nat -> Prop :=
       l = length (dms_to_list ds) ->
       T = TAnd (TMem l T11 T11) TS ->
       dms_has_type GH (dcons (dty T11) ds) T (S n1)
-  | D_Abs : forall GH l T11 T12 T12' t12 ds TS T n1 n2,
+  | D_Fun : forall GH l T11 T12 T12' t12 t12' ds TS T n1 n2,
       dms_has_type GH ds TS n1 ->
-      has_type (T11::GH) t12 T12' n2 ->
-      T12' = (open 0 (TVar (VAbs (length GH))) T12) ->
+      has_type (T11::GH) t12' T12' n2 ->
+      T12' = (open 0 (VarF (length GH)) T12) ->
+      t12' = (tm_open 0 (VarF (length GH)) t12) ->
       closed (length GH) 0 T11 ->
       closed (length GH) 1 T12 ->
+      tm_closed (length GH) 1 t12 ->
       l = length (dms_to_list ds) ->
       T = TAnd (TFun l T11 T12) TS ->
       dms_has_type GH (dcons (dfun T11 T12 t12) ds) T (S (n1+n2))
@@ -262,8 +260,8 @@ with stp: tenv -> ty -> ty -> nat -> Prop :=
     closed (length GH) 0 T ->
     stp GH T  TTop (S n1)
 | stp_fun: forall GH l T1 T2 T3 T4 T2' T4' n1 n2,
-    T2' = (open 0 (TVar (VAbs (length GH))) T2) ->
-    T4' = (open 0 (TVar (VAbs (length GH))) T4) ->
+    T2' = (open 0 (VarF (length GH)) T2) ->
+    T4' = (open 0 (VarF (length GH)) T4) ->
     closed (length GH) 1 T2 ->
     closed (length GH) 1 T4 ->
     stp GH T3 T1 n1 ->
@@ -274,46 +272,39 @@ with stp: tenv -> ty -> ty -> nat -> Prop :=
     stp GH T2 T4 n1 ->
     stp GH (TMem l T1 T2) (TMem l T3 T4) (S (n1+n2))
 
-| stp_varx: forall GH ds n1,
-    stp GH (TVar (VObj ds)) (TVar (VObj ds)) (S n1)
-| stp_varax: forall GH x n1,
-    x < length GH ->
-    stp GH (TVar (VAbs x)) (TVar (VAbs x)) (S n1)
+| stp_selx: forall GH l v1 n1,
+    vr_closed (length GH) 0 v1 ->
+    stp GH (TSel v1 l) (TSel v1 l) (S n1)
 
 | stp_strong_sel1: forall GH l T2 ds TX n1,
     index l (dms_to_list (subst_dms ds ds)) = Some (dty TX) ->
     stp [] TX T2 n1 ->
-    stp GH (TSel (TVar (VObj ds)) l) T2 (S n1)
+    stp GH (TSel (VObj ds) l) T2 (S n1)
 | stp_strong_sel2: forall GH l T1 ds TX n1,
     index l (dms_to_list (subst_dms ds ds)) = Some (dty TX) ->
     stp [] T1 TX n1 ->
-    stp GH T1 (TSel (TVar (VObj ds)) l) (S n1)
+    stp GH T1 (TSel (VObj ds) l) (S n1)
 
 | stp_sel1: forall GH l T2 x n1,
     htp  GH x (TMem l TBot T2) n1 ->
-    stp GH (TSel (TVar (VAbs x)) l) T2 (S n1)
+    stp GH (TSel (VarF x) l) T2 (S n1)
 
 | stp_sel2: forall GH l T1 x n1,
     htp  GH x (TMem l T1 TTop) n1 ->
-    stp GH T1 (TSel (TVar (VAbs x)) l) (S n1)
-
-| stp_selx: forall GH l T1 n1,
-    closed (length GH) 0 T1 ->
-    stp GH (TSel T1 l) (TSel T1 l) (S n1)
-
+    stp GH T1 (TSel (VarF x) l) (S n1)
 
 
 | stp_bind1: forall GH T1 T1' T2 n1,
     htp (T1'::GH) (length GH) T2 n1 ->
-    T1' = (open 0 (TVar (VAbs (length GH))) T1) ->
+    T1' = (open 0 (VarF (length GH)) T1) ->
     closed (length GH) 1 T1 ->
     closed (length GH) 0 T2 ->
     stp GH (TBind T1) T2 (S n1)
 
 | stp_bindx: forall GH T1 T1' T2 T2' n1,
     htp (T1'::GH) (length GH) T2' n1 ->
-    T1' = (open 0 (TVar (VAbs (length GH))) T1) ->
-    T2' = (open 0 (TVar (VAbs (length GH))) T2) ->
+    T1' = (open 0 (VarF (length GH)) T1) ->
+    T2' = (open 0 (VarF (length GH)) T2) ->
     closed (length GH) 1 T1 ->
     closed (length GH) 1 T2 ->
     stp GH (TBind T1) (TBind T2) (S n1)
@@ -358,7 +349,7 @@ with htp: tenv -> id -> ty -> nat -> Prop :=
 | htp_bind: forall GH x TX n1,
     htp GH x (TBind TX) n1 ->
     closed x 1 TX ->
-    htp GH x (open 0 (TVar (VAbs x)) TX) (S n1)
+    htp GH x (open 0 (VarF x) TX) (S n1)
 | htp_sub: forall GH GU GL x T1 T2 n1 n2,
     (* use restricted GH. note: this is slightly different
     from the big-step version b/c here we do not distinguish
