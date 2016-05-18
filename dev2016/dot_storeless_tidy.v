@@ -617,15 +617,30 @@ Proof.
   intros. eapply (proj1 (proj2 closed_upgrade_rec)); eauto.
 Qed.
 
-Lemma closed_open: forall j k v T, closed k (j+1) T -> closed k j (TVar v) -> closed k j (open j (TVar v) T).
+Lemma closed_open_rec:
+  (forall v1, forall j k v, vr_closed k (j+1) v1 -> vr_closed k j v -> vr_closed k j (vr_open j v v1)) /\
+  (forall T1, forall j k v, closed k (j+1) T1 -> vr_closed k j v -> closed k j (open j v T1)) /\
+  (forall t1, forall j k v, tm_closed k (j+1) t1 -> vr_closed k j v -> tm_closed k j (tm_open j v t1)) /\
+  (forall d1, forall j k v, dm_closed k (j+1) d1 -> vr_closed k j v -> dm_closed k j (dm_open j v d1)) /\
+  (forall ds1, forall j k v, dms_closed k (j+1) ds1 -> vr_closed k j v -> dms_closed k j (dms_open j v ds1)).
 Proof.
-  intros. generalize dependent j. induction T; intros; inversion H; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
-
-  - eapply closed_upgrade; eauto.
-  - Case "TVarB". simpl.
-    case_eq (beq_nat j i); intros E. eauto.
+  apply syntax_mutind; intros;
+  try solve [
+        try inversion H; try inversion H0; try inversion H1; try inversion H2;
+        subst; simpl; econstructor;
+        try (eapply H; eauto); try (eapply H0; eauto); try (eapply H1; eauto);
+        eauto;
+        try solve [omega];
+        try solve [eapply (proj1 closed_upgrade_rec); eauto]
+      ].
+  - inversion H; subst. simpl.
+    case_eq (beq_nat j i); intros E; eauto.
     econstructor. eapply beq_nat_false_iff in E. omega.
-  - eapply closed_upgrade; eauto.
+Qed.
+
+Lemma closed_open: forall j k v T, closed k (j+1) T -> vr_closed k j v -> closed k j (open j v T).
+Proof.
+  intros. eapply (proj1 (proj2 closed_open_rec)); eauto.
 Qed.
 
 Lemma all_closed: forall ni,
