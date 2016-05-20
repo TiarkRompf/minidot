@@ -944,13 +944,28 @@ Proof.
   intros. eapply (proj1 (proj2 closed_no_subst_rec)); eauto.
 Qed.
 
-Lemma closed_subst: forall j n V T, closed (n+1) j T -> closed n 0 V -> closed n j (subst V T).
+Lemma closed_subst_rec:
+  (forall v j n V, vr_closed (n+1) j v -> vr_closed n 0 V -> vr_closed n j (vr_subst V v)) /\
+  (forall T j n V, closed (n+1) j T -> vr_closed n 0 V -> closed n j (subst V T)) /\
+  (forall t j n V, tm_closed (n+1) j t -> vr_closed n 0 V -> tm_closed n j (tm_subst V t)) /\
+  (forall d j n V, dm_closed (n+1) j d -> vr_closed n 0 V -> dm_closed n j (dm_subst V d)) /\
+  (forall ds j n V, dms_closed (n+1) j ds -> vr_closed n 0 V -> dms_closed n j (dms_subst V ds)).
 Proof.
-  intros. generalize dependent j. induction T; intros; inversion H; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
+  apply syntax_mutind; intros;
+  try inversion H; try inversion H0; try inversion H1; try inversion H2;
+  subst; simpl; try econstructor;
+  try solve [eapply H; eauto];
+  try solve [eapply H0; eauto];
+  try solve [eapply H1; eauto];
+  eauto; try omega;
+  try solve [case_eq (beq_nat i 0); intros E; [
+    (eapply (proj1 closed_upgrade_rec); eauto; omega) |
+    (econstructor; eapply beq_nat_false_iff in E; omega) ]].
+Qed.
 
-  - Case "TSelH". simpl.
-    case_eq (beq_nat x 0); intros E. eapply closed_upgrade. eapply closed_upgrade_gh. eauto. omega. omega. econstructor. subst.
-    assert (x > 0). eapply beq_nat_false_iff in E. omega. omega.
+Lemma closed_subst: forall j n V T, closed (n+1) j T -> vr_closed n 0 V -> closed n j (subst V T).
+Proof.
+  intros. eapply (proj1 (proj2 closed_subst_rec)); eauto.
 Qed.
 
 Lemma subst_open_commute0: forall T0 j TX,
