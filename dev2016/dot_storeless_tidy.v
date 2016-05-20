@@ -815,11 +815,9 @@ Proof. intros. eapply beq_nat_true_iff. eauto. Qed.
 
 Fixpoint tsize (T: ty) { struct T }: nat :=
   match T with
-    | TVar _ => 1
-    | TVarB x => 1
     | TTop        => 1
     | TBot        => 1
-    | TSel T1 l   => S (tsize T1)
+    | TSel _ l   => 1
     | TFun l T1 T2 => S (tsize T1 + tsize T2)
     | TMem l T1 T2 => S (tsize T1 + tsize T2)
     | TBind T1    => S (tsize T1)
@@ -828,10 +826,9 @@ Fixpoint tsize (T: ty) { struct T }: nat :=
   end.
 
 Lemma open_preserves_size: forall T v j,
-  tsize T = tsize (open j (TVar v) T).
+  tsize T = tsize (open j v T).
 Proof.
   intros T. induction T; intros; simpl; eauto.
-  - destruct (beq_nat j i); eauto.
 Qed.
 
 Lemma stpd2_refl_aux: forall n GH T1,
@@ -850,13 +847,10 @@ Proof.
     econstructor. omega.
     rewrite <- open_preserves_size. omega.
   - Case "mem". eapply stpd2_mem; try eapply IHn; eauto; try omega.
-  - Case "var0". exists 1. eauto.
-  - Case "var1". exists 1. eauto.
-  - Case "varb". omega.
   - Case "sel". exists 1. eapply stp_selx. eauto.
   - Case "bind".
     eexists. eapply stp_bindx. eapply htp_var. simpl. rewrite beq_nat_true_eq. eauto.
-    instantiate (1:=open 0 (TVar (VAbs (length GH))) T0).
+    instantiate (1:=open 0 (VarF (length GH)) T0).
     eapply closed_open. eapply closed_upgrade_gh. eauto. omega. econstructor. omega.
     eauto. eauto. eauto. eauto.
   - Case "and".
