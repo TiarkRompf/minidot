@@ -893,7 +893,6 @@ Ltac invty := match goal with
                 | H1: TBot     = _ |- _ => inversion H1
                 | H1: TSel _ _   = _ |- _ => inversion H1
                 | H1: TMem _ _ _ = _ |- _ => inversion H1
-                | H1: TVar _ = _ |- _ => inversion H1
                 | H1: TFun _ _ _ = _ |- _ => inversion H1
                 | H1: TBind  _ = _ |- _ => inversion H1
                 | H1: TAnd _ _ = _ |- _ => inversion H1
@@ -901,31 +900,26 @@ Ltac invty := match goal with
                 | _ => idtac
               end.
 
-Ltac invstp_var := match goal with
-  | H1: stp _ true _ _ TBot        (TVar _ ) _ |- _ => inversion H1
-  | H1: stp _ true _ _ TTop        (TVar _ ) _ |- _ => inversion H1
-  | H1: stp _ true _ _ (TFun _ _ _)  (TVar _) _ |- _ => inversion H1
-  | H1: stp _ true _ _ (TMem _ _ _)  (TVar _) _ |- _ => inversion H1
-  | H1: stp _ true _ _ (TAnd _ _)  (TVar _ ) _ |- _ => inversion H1
-  | H1: stp _ true _ _ (TOr _ _)  (TVar _) _ |- _ => inversion H1
-  | _ => idtac
-end.
+Lemma closed_no_open_rec:
+  (forall l j v, vr_closed l j v -> forall x, v = vr_open j (VarF x) v) /\
+  (forall l j T, closed l j T -> forall x, T = open j (VarF x) T) /\
+  (forall l j t, tm_closed l j t -> forall x, t = tm_open j (VarF x) t) /\
+  (forall l j d, dm_closed l j d -> forall x, d = dm_open j (VarF x) d) /\
+  (forall l j ds, dms_closed l j ds -> forall x, ds = dms_open j (VarF x) ds).
+Proof.
+  apply closed_mutind; intros; eauto; simpl;
+  try (rewrite <- H); try (rewrite <- H0); try (rewrite <- H1); eauto.
+  - simpl.
+    assert (k <> x) as A. omega.
+    eapply beq_nat_false_iff in A. rewrite A. reflexivity.
+Qed.
 
 Lemma closed_no_open: forall T x l j,
   closed l j T ->
-  T = open j (TVar (VAbs x)) T.
+  T = open j (VarF x) T.
 Proof.
-  intros. induction H; intros; eauto;
-  try solve [compute; compute in IHclosed; rewrite <-IHclosed; auto];
-  try solve [compute; compute in IHclosed1; compute in IHclosed2; rewrite <-IHclosed1; rewrite <-IHclosed2; auto].
-
-  Case "TSelB".
-    simpl.
-    assert (k <> x0). omega.
-    apply beq_nat_false_iff in H0.
-    rewrite H0. auto.
+  intros. eapply (proj1 (proj2 closed_no_open_rec)); eauto.
 Qed.
-
 
 Lemma closed_no_subst: forall T k TX,
    closed 0 k T ->
