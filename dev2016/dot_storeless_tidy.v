@@ -921,21 +921,27 @@ Proof.
   intros. eapply (proj1 (proj2 closed_no_open_rec)); eauto.
 Qed.
 
+Lemma closed_no_subst_rec:
+  (forall v j, vr_closed 0 j v -> forall vx, vr_subst vx v = v) /\
+  (forall T j, closed 0 j T -> forall vx, subst vx T = T) /\
+  (forall t j, tm_closed 0 j t -> forall vx, tm_subst vx t = t) /\
+  (forall d j, dm_closed 0 j d -> forall vx, dm_subst vx d = d) /\
+  (forall ds j, dms_closed 0 j ds -> forall vx, dms_subst vx ds = ds).
+Proof.
+  apply syntax_mutind; intros;
+  try inversion H; try inversion H0; try inversion H1; try inversion H2;
+  subst; simpl; f_equal;
+  try solve [erewrite H; eauto];
+  try solve [erewrite H0; eauto];
+  try solve [erewrite H1; eauto];
+  eauto; try omega.
+Qed.
+
 Lemma closed_no_subst: forall T k TX,
    closed 0 k T ->
    subst TX T = T.
 Proof.
-  intros T. induction T; intros; inversion H; simpl; eauto;
-    try rewrite (IHT (S k) TX); eauto;
-    try rewrite (IHT k TX); eauto;
-    try rewrite (IHT1 k TX); eauto; subst.
-
-  rewrite (IHT2 (S k) TX); eauto.
-  rewrite (IHT2 k TX); eauto.
-  omega.
-  eapply closed_upgrade; eauto.
-  rewrite (IHT2 k TX); eauto.
-  rewrite (IHT2 k TX); eauto.
+  intros. eapply (proj1 (proj2 closed_no_subst_rec)); eauto.
 Qed.
 
 Lemma closed_subst: forall j n V T, closed (n+1) j T -> closed n 0 V -> closed n j (subst V T).
