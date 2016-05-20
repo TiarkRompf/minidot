@@ -278,10 +278,12 @@ with stp: tenv -> ty -> ty -> nat -> Prop :=
 
 | stp_strong_sel1: forall GH l T2 ds TX n1,
     index l (dms_to_list (subst_dms ds ds)) = Some (dty TX) ->
+    vr_closed (length GH) 0 (VObj ds) ->
     stp [] TX T2 n1 ->
     stp GH (TSel (VObj ds) l) T2 (S n1)
 | stp_strong_sel2: forall GH l T1 ds TX n1,
     index l (dms_to_list (subst_dms ds ds)) = Some (dty TX) ->
+    vr_closed (length GH) 0 (VObj ds) ->
     stp [] T1 TX n1 ->
     stp GH T1 (TSel (VObj ds) l) (S n1)
 
@@ -389,6 +391,7 @@ Inductive vtp(*possible types*) : nat(*pack count*) -> dms -> ty -> nat(*size*) 
     vtp (S m) ds (TBind T2) (S (n1))
 | vtp_sel: forall m ds dsy l TX n1,
     index l (dms_to_list (subst_dms dsy dsy)) = Some (dty TX) ->
+    vr_closed 0 0 (VObj dsy) ->
     vtp m ds TX n1 ->
     vtp m ds (TSel (VObj dsy) l) (S (n1))
 | vtp_and: forall m m1 m2 ds T1 T2 n1 n2,
@@ -664,22 +667,23 @@ Lemma all_closed: forall ni,
      closed (length GH) 0 T) /\
   (forall GH ds T n,
      dms_has_type GH ds T n -> n < ni ->
-     closed (length GH) 0 T).
+     closed (length GH) 0 T) /\
+  (forall GH ds T n,
+     dms_has_type GH ds T n -> n < ni ->
+     dms_closed (length GH) 0 ds).
 Proof.
   intros n. induction n. repeat split; intros; omega.
-  repeat split; intros; inversion H; destruct IHn as [IHS1 [IHS2 [IHV2 [IHH1 [IHH2 [IHT IHD]]]]]].
+  repeat split; intros; inversion H; destruct IHn as [IHS1 [IHS2 [IHV2 [IHH1 [IHH2 [IHT [IHD IHD2]]]]]]].
   (* stp left *)
   - econstructor.
   - eauto.
   - econstructor. eapply IHS2. eauto. omega. eauto.
   - econstructor. eapply IHS2. eauto. omega. eapply IHS1. eauto. omega.
-  - econstructor.
-  - econstructor. eauto.
-  - econstructor. econstructor.
+  - subst. econstructor. eauto.
+  - subst. econstructor. eauto.
   - eapply closed_upgrade_gh. eapply IHS1. eauto. omega. simpl. omega.
   - econstructor. econstructor. eapply IHH1. eauto. omega.
   - eapply closed_upgrade_gh. eapply IHH2 in H1. inversion H1. eauto. omega. simpl. omega.
-  - econstructor. eauto.
   - econstructor. eauto.
   - econstructor. eauto.
   - econstructor. eapply IHS1. eauto. omega. eauto.
@@ -694,13 +698,11 @@ Proof.
   - econstructor.
   - econstructor. eapply IHS1. eauto. omega. eauto.
   - econstructor. eapply IHS1. eauto. omega. eapply IHS2. eauto. omega.
-  - econstructor.
-  - econstructor. eauto.
+  - subst. econstructor. eauto.
   - eapply closed_upgrade_gh. eapply IHS2. eauto. omega. simpl. omega.
-  - econstructor. econstructor.
+  - subst. econstructor. eauto.
   - eapply closed_upgrade_gh. eapply IHH2 in H1. inversion H1. eauto. omega. simpl. omega.
   - econstructor. econstructor. eapply IHH1. eauto. omega.
-  - econstructor. eauto.
   - eauto.
   - econstructor. eauto.
   - eapply IHS2. eauto. omega.
@@ -714,8 +716,8 @@ Proof.
   - econstructor.
   - change 0 with (length ([]:tenv)) at 1. econstructor. eapply IHS1. eauto. omega. eapply IHS2. eauto. omega.
   - change 0 with (length ([]:tenv)) at 1. econstructor. eapply IHS1. eauto. omega. eauto.
-  - econstructor. eauto. (* eapply IHV2 in H1. eauto. omega. *)
-  - econstructor. econstructor.
+  - econstructor. eauto.
+  - subst. econstructor. eauto.
   - econstructor. eapply IHV2. eauto. omega. eapply IHV2. eauto. omega.
   - econstructor. eapply IHV2. eauto. omega. eauto.
   - econstructor. eauto. eapply IHV2. eauto. omega.
@@ -728,11 +730,10 @@ Proof.
   - eapply IHH1 in H1. eapply closed_open. simpl. eapply closed_upgrade_gh. eauto. omega. econstructor. eauto. omega.
   - eapply closed_upgrade_gh. eapply IHS2. eauto. omega. rewrite H4. rewrite app_length. omega.
   (* has_type *)
-  - eapply closed_upgrade_gh. eauto. omega.
+  - econstructor. eauto.
   - eauto.
   - econstructor. eapply closed_upgrade_gh. eauto. omega.
   - eapply IHT in H1. inversion H1; subst. eauto. omega.
-  - econstructor. eauto.
   - eapply IHT in H1. inversion H1. eauto. omega.
   - eapply IHT in H1. inversion H1. eauto. omega.
   - eapply IHS2. eauto. omega.
@@ -740,6 +741,10 @@ Proof.
   - econstructor.
   - subst. econstructor. econstructor. eauto. eauto. eapply IHD. eauto. omega.
   - subst. econstructor. econstructor. eauto. eauto. eapply IHD. eauto. omega.
+  (* dms_has_type 2*)
+  - econstructor.
+  - subst. econstructor. econstructor. eauto. eauto. eapply IHD2. eauto. omega.
+  - subst. econstructor. econstructor. eauto. eauto. eauto. eapply IHD2. eauto. omega.
 Qed.
 
 Lemma htp_closed: forall x GH T2 n,
@@ -763,10 +768,10 @@ Lemma dms_has_type_closed: forall GH t T n1,
 Proof. intros. eapply all_closed with (ds:=t). eauto. eauto. Qed.
 
 Lemma has_type_closed_z: forall GH z T n1,
-  has_type GH (tvar (VAbs z)) T n1 ->
+  has_type GH (tvar (VarF z)) T n1 ->
   z < length GH.
 Proof.
-  intros. remember (tvar (VAbs z)) as t. generalize dependent z.
+  intros. remember (tvar (VarF z)) as t. generalize dependent z.
   induction H; intros; inversion Heqt; subst; eauto using index_max.
 Qed.
 
@@ -778,7 +783,7 @@ Lemma has_type_closed_b: forall v T n1,
  remember [] as GH.
  remember (tvar v) as t.
  generalize HeqGH. clear HeqGH.
- induction H; intros; inversion Heqt; subst; eauto using index_max.
+ induction H; intros; inversion Heqt; try subst; eauto using index_max.
  - simpl in H. inversion H.
 Qed.
 
