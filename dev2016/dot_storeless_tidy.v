@@ -1089,24 +1089,39 @@ Proof.
     remember (length GH + 1) as L. destruct L. omega. eauto.
 Qed.
 
-Lemma subst_open: forall TX n x j,
-  (substt x (open j (TVar (VAbs (n+1))) TX)) =
-  (open j (TVar (VAbs n)) (substt x TX)).
+Lemma subst_open_rec: forall k x,
+  (vr_closed k 0 (VObj x)) ->
+  (forall v j n, (vr_subst (VObj x) (vr_open j (VarF (n+1)) v)) = (vr_open j (VarF n) (vr_subst (VObj x) v))) /\
+  (forall T j n, (subst (VObj x) (open j (VarF (n+1)) T)) = (open j (VarF n) (subst (VObj x) T))) /\
+  (forall t j n, (tm_subst (VObj x) (tm_open j (VarF (n+1)) t)) = (tm_open j (VarF n) (tm_subst (VObj x) t))) /\
+  (forall d j n, (dm_subst (VObj x) (dm_open j (VarF (n+1)) d)) = (dm_open j (VarF n) (dm_subst (VObj x) d))) /\
+  (forall ds j n, (dms_subst (VObj x) (dms_open j (VarF (n+1)) ds)) = (dms_open j (VarF n) (dms_subst (VObj x) ds))).
 Proof.
-  intros TX. induction TX; intros; eauto.
-  - unfold substt. simpl. unfold substt in IHTX1. unfold substt in IHTX2. erewrite <-IHTX1. erewrite <-IHTX2. eauto.
-  - unfold substt. simpl. unfold substt in IHTX1. unfold substt in IHTX2. erewrite <-IHTX1. erewrite <-IHTX2. eauto.
-  - unfold substt. simpl. destruct v; eauto.
-    case_eq (beq_nat i 0); intros E. eauto. eauto.
-  - unfold substt. simpl.
-    case_eq (beq_nat j i); intros E. simpl.
-    assert (beq_nat (n + 1) 0 = false). eapply beq_nat_false_iff. omega.
-    assert ((n + 1 - 1 = n)). omega.
-    rewrite H. rewrite H0. eauto. eauto.
-  - unfold substt. simpl. unfold substt in IHTX. erewrite <-IHTX. eauto.
-  - unfold substt. simpl. unfold substt in IHTX. erewrite <-IHTX. eauto.
-  - unfold substt. simpl. unfold substt in IHTX1. unfold substt in IHTX2. erewrite <-IHTX1. erewrite <-IHTX2. eauto.
-  - unfold substt. simpl. unfold substt in IHTX1. unfold substt in IHTX2. erewrite <-IHTX1. erewrite <-IHTX2. eauto.
+  intros k x Hx.
+  apply syntax_mutind; intros; simpl;
+  try inversion H0; try inversion H1; try inversion H2;
+  subst;
+  try rewrite H; try rewrite H0; try rewrite H1;
+  eauto.
+  - case_eq (beq_nat i 0); intros E; simpl; eauto.
+    f_equal.
+    erewrite <- (proj2 (proj2 (proj2 (proj2 closed_no_open_rec)))).
+    reflexivity. inversion Hx; subst.
+    eapply (proj2 (proj2 (proj2 (proj2 closed_upgrade_rec)))). eauto. omega.
+  - case_eq (beq_nat j i); intros E; simpl; eauto.
+    assert (beq_nat (n + 1) 0 = false) as E1. {
+      apply beq_nat_false_iff. omega.
+    }
+    rewrite E1.
+    f_equal. omega.
+Qed.
+
+Lemma subst_open: forall k x, vr_closed k 0 (VObj x) ->
+  forall TX n j,
+  (substt x (open j (VarF (n+1)) TX)) =
+  (open j (VarF n) (substt x TX)).
+Proof.
+  intros k x Hx. intros. eapply (proj1 (proj2 (subst_open_rec k x Hx))); eauto.
 Qed.
 
 Lemma subst_open3: forall TX0 (GH:tenv) TX  x,
