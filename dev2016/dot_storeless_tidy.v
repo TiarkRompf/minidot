@@ -1250,6 +1250,91 @@ Proof.
   inversion H0.
 Qed.
 
+Lemma length_subst_dms: forall ds x,
+  (length (dms_to_list ds))=(length (dms_to_list (subst_dms x ds))).
+Proof.
+  intros. induction ds; eauto.
+  simpl. rewrite IHds. reflexivity.
+Qed.
+
+Lemma length_open_dms: forall ds x,
+  (length (dms_to_list ds))=(length (dms_to_list (dms_open 0 (VObj x) ds))).
+Proof.
+  intros. induction ds; eauto.
+  simpl. rewrite IHds. reflexivity.
+Qed.
+
+Definition subst_dm x D := dm_open 0 (VObj x) D.
+
+Lemma index_subst_dms: forall ds ds0 D ds1 x,
+  dms_to_list ds = ds0 ++ dms_to_list (dcons D ds1) ->
+  index (length (dms_to_list ds1)) (dms_to_list (subst_dms x ds)) = Some (subst_dm x D).
+Proof.
+  intros. generalize dependent ds1. generalize dependent ds. induction ds0; intros.
+  - simpl in H. destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
+    simpl. rewrite <- length_open_dms. rewrite beq_nat_true_eq. reflexivity.
+  - destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
+    simpl. rewrite false_beq_nat. eapply IHds0. eauto.
+    rewrite <- length_open_dms. rewrite H2. rewrite app_length. simpl.
+    omega.
+Qed.
+
+Lemma index_dms: forall ds ds0 D ds1,
+  dms_to_list ds = ds0 ++ dms_to_list (dcons D ds1) ->
+  index (length (dms_to_list ds1)) (dms_to_list ds) = Some D.
+Proof.
+  intros. generalize dependent ds1. generalize dependent ds. induction ds0; intros.
+  - simpl in H. destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
+    simpl. rewrite beq_nat_true_eq. reflexivity.
+  - destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
+    simpl. rewrite false_beq_nat. eapply IHds0. eauto.
+    rewrite H2. rewrite app_length. simpl.
+    omega.
+Qed.
+
+Lemma index_subst_dms_eq: forall l ds D D',
+  index l (dms_to_list ds) = Some D ->
+  index l (dms_to_list (subst_dms ds ds)) = Some D' ->
+  subst_dm ds D = D'.
+Proof.
+  intros l ds D D' HI HI'.
+  remember ds as x. rewrite Heqx in *. rewrite <- Heqx in HI' at 1.
+  rewrite <- Heqx.  clear Heqx.
+  remember ds as dsb.
+  remember (length (dms_to_list dsb)) as n.
+  assert (n = length (dms_to_list (subst_dms x dsb))) as Heqn'. {
+    subst. rewrite <- length_subst_dms. reflexivity.
+  }
+  assert (exists dsa,
+            dms_to_list ds = dms_to_list dsa ++ dms_to_list dsb /\
+            dms_to_list (subst_dms x ds) = dms_to_list (subst_dms x dsa) ++ dms_to_list (subst_dms x dsb)) as Hds. {
+    exists dnil. simpl. subst. eauto.
+  }
+  destruct Hds as [dsa [Hds Hds']]. clear Heqdsb.
+  remember (dms_to_list dsa) as la. clear Heqla.
+  remember (dms_to_list (subst_dms x dsa)) as la'. clear Heqla'. clear dsa.
+  generalize dependent D'. generalize dependent D.
+  generalize dependent la'. generalize dependent la. generalize dependent ds.
+  generalize dependent l. generalize dependent n.
+  induction dsb; intros.
+  - simpl in *. inversion HI.
+  - simpl in HI. case_eq (beq_nat l (length (dms_to_list dsb))); intros E;
+    rewrite E in HI; simpl in HI'; rewrite <- length_open_dms in HI'; rewrite E in HI'.
+    + inversion HI. subst d. inversion HI'. reflexivity.
+    + eapply IHdsb with (ds:=ds) (la:=la ++ [d]) (la':=la' ++ [(subst_dm x d)]); eauto.
+      rewrite <-length_subst_dms. reflexivity.
+      rewrite <- app_assoc. rewrite Hds. simpl. reflexivity.
+      rewrite <- app_assoc. rewrite Hds'. simpl. reflexivity.
+Qed.
+
+Lemma index_subst_dms_ex: forall l x ds D,
+  index l (dms_to_list (subst_dms ds ds)) = Some D ->
+  index l (dms_to_list (subst_dms (dms_subst (VObj x) ds) (dms_subst (VObj x) ds))) =
+  Some (subst_dm (dms_subst (VObj x) ds) D).
+Proof.
+  admit.
+Qed.
+
 Lemma stp_subst_narrow0: forall x, vr_closed 0 0 (VObj x) ->
    forall n, forall GH T1 T2 TX n2,
    stp (GH++[TX]) T1 T2 n2 -> n2 < n ->
@@ -1342,16 +1427,29 @@ Proof.
 
   - Case "ssel1". subst.
     assert (substt x T2 = T2) as R. eapply subst_closed_id. eapply stpd2_closed2 with (GH:=[]). eauto.
-    (*
-    eexists. eapply stp_strong_sel1. eauto. eauto. rewrite R. eauto.
-    *)
-    admit.
+    rewrite R.
+    unfold substt at 2. simpl.
+    eexists. eapply stp_strong_sel1.
+    eapply index_subst_dms_ex in H1. unfold subst_dm in H1. simpl in H1.
+    eapply H1.
+    rewrite app_length in H2. simpl in H2. clear R. inversion H2; subst.
+    rewrite map_length. econstructor.
+    eapply (proj2 (proj2 (proj2 (proj2 closed_subst_rec)))). eauto.
+    eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    erewrite <- (proj1 (proj2 closed_no_open_rec)). eauto.
+    eapply stp_closed1. eauto.
   - Case "ssel2". subst.
     assert (substt x T1 = T1) as R. eapply subst_closed_id. eapply stpd2_closed1 with (GH:=[]). eauto.
-    (*
-    eexists. eapply stp_strong_sel2. eauto. eauto. rewrite R. eauto.
-    *)
-    admit.
+    rewrite R.
+    eexists. eapply stp_strong_sel2.
+    eapply index_subst_dms_ex in H1. unfold subst_dm in H1. simpl in H1.
+    eapply H1.
+    rewrite app_length in H2. simpl in H2. clear R. inversion H2; subst.
+    rewrite map_length. econstructor.
+    eapply (proj2 (proj2 (proj2 (proj2 closed_subst_rec)))). eauto.
+    eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    erewrite <- (proj1 (proj2 closed_no_open_rec)). eauto.
+    eapply stp_closed2. eauto.
 
   - Case "sel1". subst. (* invert htp to vtp and create strong_sel node *)
     case_eq (beq_nat x0 0); intros E.
@@ -2547,39 +2645,6 @@ Proof.
   eexists. eassumption.
 Qed.
 
-Lemma length_subst_dms: forall ds x,
-  (length (dms_to_list ds))=(length (dms_to_list (subst_dms x ds))).
-Proof.
-  intros. induction ds; eauto.
-  simpl. rewrite IHds. reflexivity.
-Qed.
-
-Lemma index_subst_dms: forall ds ds0 D ds1 x,
-  dms_to_list ds = ds0 ++ dms_to_list (dcons D ds1) ->
-  index (length (dms_to_list ds1)) (dms_to_list (subst_dms x ds)) = Some (subst_dm x D).
-Proof.
-  intros. generalize dependent ds1. generalize dependent ds. induction ds0; intros.
-  - simpl in H. destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
-    simpl. rewrite <- length_subst_dms. rewrite beq_nat_true_eq. reflexivity.
-  - destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
-    simpl. rewrite false_beq_nat. eapply IHds0. eauto.
-    rewrite <- length_subst_dms. rewrite H2. rewrite app_length. simpl.
-    omega.
-Qed.
-
-Lemma index_dms: forall ds ds0 D ds1,
-  dms_to_list ds = ds0 ++ dms_to_list (dcons D ds1) ->
-  index (length (dms_to_list ds1)) (dms_to_list ds) = Some D.
-Proof.
-  intros. generalize dependent ds1. generalize dependent ds. induction ds0; intros.
-  - simpl in H. destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
-    simpl. rewrite beq_nat_true_eq. reflexivity.
-  - destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
-    simpl. rewrite false_beq_nat. eapply IHds0. eauto.
-    rewrite H2. rewrite app_length. simpl.
-    omega.
-Qed.
-
 Lemma dms_hastp_inv: forall ds' T' n,
   dms_has_type [T'] ds' T' n ->
   closed 0 0 (substt ds' T') ->
@@ -2851,41 +2916,6 @@ Lemma stp_subst_narrow: forall GH0 TX T1 T2 x m n1 n2,
 Proof.
   intros. eapply stp_subst_narrow_z. eauto.
   erewrite subst_closed_id. eauto. eapply vtp_closed in H0. eauto.
-Qed.
-
-Lemma index_subst_dms_eq: forall l ds D D',
-  index l (dms_to_list ds) = Some D ->
-  index l (dms_to_list (subst_dms ds ds)) = Some D' ->
-  subst_dm ds D = D'.
-Proof.
-  intros l ds D D' HI HI'.
-  remember ds as x. rewrite Heqx in *. rewrite <- Heqx in HI' at 1.
-  rewrite <- Heqx.  clear Heqx.
-  remember ds as dsb.
-  remember (length (dms_to_list dsb)) as n.
-  assert (n = length (dms_to_list (subst_dms x dsb))) as Heqn'. {
-    subst. rewrite <- length_subst_dms. reflexivity.
-  }
-  assert (exists dsa,
-            dms_to_list ds = dms_to_list dsa ++ dms_to_list dsb /\
-            dms_to_list (subst_dms x ds) = dms_to_list (subst_dms x dsa) ++ dms_to_list (subst_dms x dsb)) as Hds. {
-    exists dnil. simpl. subst. eauto.
-  }
-  destruct Hds as [dsa [Hds Hds']]. clear Heqdsb.
-  remember (dms_to_list dsa) as la. clear Heqla.
-  remember (dms_to_list (subst_dms x dsa)) as la'. clear Heqla'. clear dsa.
-  generalize dependent D'. generalize dependent D.
-  generalize dependent la'. generalize dependent la. generalize dependent ds.
-  generalize dependent l. generalize dependent n.
-  induction dsb; intros.
-  - simpl in *. inversion HI.
-  - simpl in HI. case_eq (beq_nat l (length (dms_to_list dsb))); intros E;
-    rewrite E in HI; simpl in HI'; rewrite <- length_subst_dms in HI'; rewrite E in HI'.
-    + inversion HI. subst d. inversion HI'. reflexivity.
-    + eapply IHdsb with (ds:=ds) (la:=la ++ [d]) (la':=la' ++ [(subst_dm x d)]); eauto.
-      rewrite <-length_subst_dms. reflexivity.
-      rewrite <- app_assoc. rewrite Hds. simpl. reflexivity.
-      rewrite <- app_assoc. rewrite Hds'. simpl. reflexivity.
 Qed.
 
 Theorem type_safety : forall t T n1,
