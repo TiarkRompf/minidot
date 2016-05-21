@@ -1036,17 +1036,19 @@ Lemma subst_closed_id: forall x k T2,
 Proof. intros. eapply closed_no_subst. eauto. Qed.
 
 Lemma closed_subst0: forall i k x T2,
+  vr_closed i 0 (VObj x) ->
   closed (i + 1) k T2 ->
   closed i k (substt x T2).
-Proof. intros. eapply closed_subst. eauto. econstructor. Qed.
+Proof. intros. eapply closed_subst. eauto. eauto. Qed.
 
 Lemma closed_subst1: forall i k x T2,
   closed i k T2 -> i <> 0 ->
+  vr_closed (i-1) 0 (VObj x) ->
   closed (i-1) k (substt x T2).
 Proof.
   intros. eapply closed_subst.
   assert ((i - 1 + 1) = i) as R. omega.
-  rewrite R. eauto. econstructor.
+  rewrite R. eauto. eauto.
 Qed.
 
 Lemma index_subst: forall GH TX T0 T3 x,
