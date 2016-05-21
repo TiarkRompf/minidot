@@ -901,11 +901,11 @@ Ltac invty := match goal with
               end.
 
 Lemma closed_no_open_rec:
-  (forall l j v, vr_closed l j v -> forall x, v = vr_open j (VarF x) v) /\
-  (forall l j T, closed l j T -> forall x, T = open j (VarF x) T) /\
-  (forall l j t, tm_closed l j t -> forall x, t = tm_open j (VarF x) t) /\
-  (forall l j d, dm_closed l j d -> forall x, d = dm_open j (VarF x) d) /\
-  (forall l j ds, dms_closed l j ds -> forall x, ds = dms_open j (VarF x) ds).
+  (forall l j v, vr_closed l j v -> forall vx, v = vr_open j vx v) /\
+  (forall l j T, closed l j T -> forall vx, T = open j vx T) /\
+  (forall l j t, tm_closed l j t -> forall vx, t = tm_open j vx t) /\
+  (forall l j d, dm_closed l j d -> forall vx, d = dm_open j vx d) /\
+  (forall l j ds, dms_closed l j ds -> forall vx, ds = dms_open j vx ds).
 Proof.
   apply closed_mutind; intros; eauto; simpl;
   try (rewrite <- H); try (rewrite <- H0); try (rewrite <- H1); eauto.
@@ -992,26 +992,43 @@ Proof.
   intros. eapply (proj1 (proj2 subst_open_commute0_rec)); eauto.
 Qed.
 
-
-Lemma subst_open_commute1: forall T0 x x0 j,
- (open j (TVar (VObj x0)) (subst (TVar (VObj x)) T0))
- = (subst (TVar (VObj x)) (open j (TVar (VObj x0)) T0)).
+Lemma subst_open_commute1_rec: forall x x0,
+  vr_closed 0 0 (VObj x) ->
+  vr_closed 0 0 (VObj x0) ->
+  (forall v0 j, (vr_open j (VObj x0) (vr_subst (VObj x) v0)) = (vr_subst (VObj x) (vr_open j (VObj x0) v0))) /\
+  (forall T0 j, (open j (VObj x0) (subst (VObj x) T0)) = (subst (VObj x) (open j (VObj x0) T0))) /\
+  (forall t0 j, (tm_open j (VObj x0) (tm_subst (VObj x) t0)) = (tm_subst (VObj x) (tm_open j (VObj x0) t0))) /\
+  (forall d0 j, (dm_open j (VObj x0) (dm_subst (VObj x) d0)) = (dm_subst (VObj x) (dm_open j (VObj x0) d0))) /\
+  (forall ds0 j, (dms_open j (VObj x0) (dms_subst (VObj x) ds0)) = (dms_subst (VObj x) (dms_open j (VObj x0) ds0))).
 Proof.
-  induction T0; intros.
-  eauto. eauto. eauto.
-  simpl. rewrite IHT0_1. rewrite IHT0_2. eauto. eauto. eauto.
-  simpl. rewrite IHT0_1. rewrite IHT0_2. eauto. eauto. eauto.
-  simpl. destruct v; eauto.
-  case_eq (beq_nat i 0); intros E. simpl. eauto. simpl. eauto.
-
-  simpl. case_eq (beq_nat j i); intros E. simpl. eauto. simpl. eauto.
-
-  simpl. rewrite IHT0. eauto.
-  simpl. rewrite IHT0. eauto.
-  simpl. rewrite IHT0_1. rewrite IHT0_2. eauto.
-  simpl. rewrite IHT0_1. rewrite IHT0_2. eauto.
+  intros x x0 HCx HCx0.
+  apply syntax_mutind; intros; simpl;
+  try inversion H0; try inversion H1; try inversion H2;
+  subst;
+  try rewrite H; try rewrite H0; try rewrite H1;
+  eauto.
+  - case_eq (beq_nat i 0); intros E; simpl; eauto.
+    erewrite <- (proj2 (proj2 (proj2 (proj2 closed_no_open_rec)))).
+    reflexivity.
+    inversion HCx; subst.
+    eapply (proj2 (proj2 (proj2 (proj2 closed_upgrade_rec)))); eauto.
+    omega.
+  - case_eq (beq_nat j i); intros E; simpl; eauto.
+    erewrite (proj2 (proj2 (proj2 (proj2 closed_no_subst_rec)))).
+    reflexivity.
+    inversion HCx0; subst.
+    eassumption.
 Qed.
 
+Lemma subst_open_commute1: forall x x0,
+  vr_closed 0 0 (VObj x) ->
+  vr_closed 0 0 (VObj x0) -> forall j T0,
+ (open j (VObj x0) (subst (VObj x) T0))
+ = (subst (VObj x) (open j (VObj x0) T0)).
+Proof.
+  intros x x0 Hx Hx0. intros.
+  eapply (proj1 (proj2 (subst_open_commute1_rec x x0 Hx Hx0))); eauto.
+Qed.
 
 Lemma subst_closed_id: forall x k T2,
   closed 0 k T2 ->
