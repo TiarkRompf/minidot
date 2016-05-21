@@ -1124,22 +1124,22 @@ Proof.
   intros k x Hx. intros. eapply (proj1 (proj2 (subst_open_rec k x Hx))); eauto.
 Qed.
 
-Lemma subst_open3: forall TX0 (GH:tenv) TX  x,
-  (substt x (open 0 (TVar (VAbs (length (GH ++ [TX])))) TX0)) =
-  (open 0 (TVar (VAbs (length GH))) (substt x TX0)).
-Proof. intros. rewrite app_length. simpl. eapply subst_open. Qed.
+Lemma subst_open3: forall k x, vr_closed k 0 (VObj x) -> forall TX0 (GH:tenv) TX,
+  (substt x (open 0 (VarF (length (GH ++ [TX]))) TX0)) =
+  (open 0 (VarF (length GH)) (substt x TX0)).
+Proof. intros. rewrite app_length. simpl. eapply subst_open. eauto. Qed.
 
-Lemma subst_open4: forall T0 (GH:tenv) TX x,
-  substt x (open 0 (TVar (VAbs (length (GH ++ [TX])))) T0) =
-  open 0 (TVar (VAbs (length (map (substt x) GH)))) (substt x T0).
-Proof. intros. rewrite map_length. eapply subst_open3. Qed.
+Lemma subst_open4: forall k x, vr_closed k 0 (VObj x) -> forall T0 (GH:tenv) TX,
+  substt x (open 0 (VarF (length (GH ++ [TX]))) T0) =
+  open 0 (VarF (length (map (substt x) GH))) (substt x T0).
+Proof. intros. rewrite map_length. eapply subst_open3. eauto. Qed.
 
-Lemma subst_open5: forall (GH:tenv) T0 x xi,
-  xi <> 0 -> substt x (open 0 (TVar (VAbs xi)) T0) =
-  open 0 (TVar (VAbs (xi-1))) (substt x T0).
+Lemma subst_open5: forall k x, vr_closed k 0 (VObj x) -> forall (GH:tenv) T0 xi,
+  xi <> 0 -> substt x (open 0 (VarF xi) T0) =
+  open 0 (VarF (xi-1)) (substt x T0).
 Proof.
   intros. remember (xi-1) as n. assert (xi=n+1) as R. omega. rewrite R.
-  eapply subst_open.
+  eapply subst_open. eauto.
 Qed.
 
 Lemma subst_open_commute0b: forall x T1 n,
