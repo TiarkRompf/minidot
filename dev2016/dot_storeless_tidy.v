@@ -1443,7 +1443,8 @@ apply 0. apply 0.
 Qed.
 
 
-Lemma stp_subst_narrowX: forall ml, forall nl, forall m GH T2 TX x n1 n2,
+Lemma stp_subst_narrowX: forall x, vr_closed 0 0 (VObj x) ->
+   forall ml, forall nl, forall m GH T2 TX n1 n2,
    vtp m x (substt x TX) n1 ->
    htp (GH++[TX]) 0 T2 n2 -> m < ml -> n2 < nl ->
    (forall (m0 : nat) x (T2 T3 : ty) (n1 n2 : nat),
@@ -1452,6 +1453,7 @@ Lemma stp_subst_narrowX: forall ml, forall nl, forall m GH T2 TX x n1 n2,
         vtpdd m0 x T3) ->
    vtpdd m x (substt x T2). (* decrease b/c transitivity *)
 Proof.
+  intros x Hx.
   intros ml. (* induction ml. intros. omega. *)
   intros nl. induction nl. intros. omega.
   intros.
