@@ -1142,17 +1142,36 @@ Proof.
   eapply subst_open. eauto.
 Qed.
 
-Lemma subst_open_commute0b: forall x T1 n,
-  substt x (open n (TVar (VAbs 0)) T1) = open n (TVar (VObj x)) (substt x T1).
+Lemma subst_open_commute0b_rec: forall k x,
+  (vr_closed k 0 (VObj x)) ->
+  (forall v1 n, vr_subst (VObj x) (vr_open n (VarF 0) v1) = vr_open n (VObj x) (vr_subst (VObj x) v1)) /\
+  (forall T1 n, subst (VObj x) (open n (VarF 0) T1) = open n (VObj x) (subst (VObj x) T1)) /\
+  (forall t1 n, tm_subst (VObj x) (tm_open n (VarF 0) t1) = tm_open n (VObj x) (tm_subst (VObj x) t1)) /\
+  (forall d1 n, dm_subst (VObj x) (dm_open n (VarF 0) d1) = dm_open n (VObj x) (dm_subst (VObj x) d1)) /\
+  (forall ds1 n, dms_subst (VObj x) (dms_open n (VarF 0) ds1) = dms_open n (VObj x) (dms_subst (VObj x) ds1)).
+Proof.
+  intros k x Hx.
+  apply syntax_mutind; intros; simpl;
+  try inversion H0; try inversion H1; try inversion H2;
+  subst;
+  try rewrite H; try rewrite H0; try rewrite H1;
+  eauto.
+  - case_eq (beq_nat i 0); intros E; simpl; eauto.
+    erewrite <- (proj2 (proj2 (proj2 (proj2 closed_no_open_rec)))).
+    reflexivity.
+    inversion Hx; subst.
+    eapply (proj2 (proj2 (proj2 (proj2 closed_upgrade_rec)))); eauto.
+    omega.
+  - case_eq (beq_nat n i); intros E; simpl; eauto.
+Qed.
+
+Lemma subst_open_commute0b: forall k x,
+  (vr_closed k 0 (VObj x)) -> forall T1 n,
+  substt x (open n (VarF 0) T1) = open n (VObj x) (substt x T1).
 Proof.
   unfold substt.
-  intros x T1.
-  induction T1; intros n; simpl;
-  try rewrite IHT1; try rewrite IHT1_1; try rewrite IHT1_2;
-  eauto.
-  destruct v; eauto.
-  case_eq (beq_nat i 0); intros; simpl; eauto.
-  case_eq (beq_nat n i); intros; simpl; eauto.
+  intros k x Hx. intros.
+  eapply (proj1 (proj2 (subst_open_commute0b_rec k x Hx))); eauto.
 Qed.
 
 Lemma subst_open_commute_z: forall x T1 z n,
