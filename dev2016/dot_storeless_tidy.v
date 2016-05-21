@@ -1174,21 +1174,40 @@ Proof.
   eapply (proj1 (proj2 (subst_open_commute0b_rec k x Hx))); eauto.
 Qed.
 
-Lemma subst_open_commute_z: forall x T1 z n,
- subst (TVar (VObj x)) (open n (TVar (VAbs (z + 1))) T1) =
- open n (TVar (VAbs z)) (subst (TVar (VObj x)) T1).
+Lemma subst_open_commute_z_rec: forall k x,
+  (vr_closed k 0 (VObj x)) ->
+  (forall v1 z n, vr_subst (VObj x) (vr_open n (VarF (z + 1)) v1) = vr_open n (VarF z) (vr_subst (VObj x) v1)) /\
+  (forall T1 z n, subst (VObj x) (open n (VarF (z + 1)) T1) = open n (VarF z) (subst (VObj x) T1)) /\
+  (forall t1 z n, tm_subst (VObj x) (tm_open n (VarF (z + 1)) t1) = tm_open n (VarF z) (tm_subst (VObj x) t1)) /\
+  (forall d1 z n, dm_subst (VObj x) (dm_open n (VarF (z + 1)) d1) = dm_open n (VarF z) (dm_subst (VObj x) d1)) /\
+  (forall ds1 z n, dms_subst (VObj x) (dms_open n (VarF (z + 1)) ds1) = dms_open n (VarF z) (dms_subst (VObj x) ds1)).
 Proof.
-  intros x T1 z.
-  induction T1; intros n; simpl;
-  try rewrite IHT1; try rewrite IHT1_1; try rewrite IHT1_2;
+  intros k x Hx.
+  apply syntax_mutind; intros; simpl;
+  try inversion H0; try inversion H1; try inversion H2;
+  subst;
+  try rewrite H; try rewrite H0; try rewrite H1;
   eauto.
-  destruct v; eauto.
-  case_eq (beq_nat i 0); intros; simpl; eauto.
-  case_eq (beq_nat n i); intros; simpl; eauto.
-  assert (beq_nat (z + 1) 0 = false) as A. {
-    apply false_beq_nat. omega.
-  }
-  rewrite A. f_equal. f_equal. omega.
+  - case_eq (beq_nat i 0); intros E; simpl; eauto.
+    erewrite <- (proj2 (proj2 (proj2 (proj2 closed_no_open_rec)))).
+    reflexivity.
+    inversion Hx; subst.
+    eapply (proj2 (proj2 (proj2 (proj2 closed_upgrade_rec)))); eauto.
+    omega.
+  - case_eq (beq_nat n i); intros E; simpl; eauto.
+    assert (beq_nat (z + 1) 0 = false) as E1. {
+      eapply beq_nat_false_iff. omega.
+    }
+    rewrite E1. f_equal. omega.
+Qed.
+
+Lemma subst_open_commute_z: forall k x,
+ (vr_closed k 0 (VObj x)) -> forall T1 z n,
+ subst (VObj x) (open n (VarF (z + 1)) T1) =
+ open n (VarF z) (subst (VObj x) T1).
+Proof.
+  intros k x Hx. intros.
+  eapply (proj1 (proj2 (subst_open_commute_z_rec k x Hx))); eauto.
 Qed.
 
 Lemma gh_match1: forall (GU:tenv) GH GL TX,
