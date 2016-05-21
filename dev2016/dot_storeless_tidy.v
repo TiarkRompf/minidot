@@ -1250,15 +1250,17 @@ Proof.
   inversion H0.
 Qed.
 
-Lemma stp_subst_narrow0: forall n, forall GH T1 T2 TX x n2,
+Lemma stp_subst_narrow0: forall x, vr_closed 0 0 (VObj x) ->
+   forall n, forall GH T1 T2 TX n2,
    stp (GH++[TX]) T1 T2 n2 -> n2 < n ->
    (forall GH (T3 : ty) (n1 : nat),
       htp (GH++[TX]) 0 T3 n1 -> n1 < n ->
       exists m2, vtpd m2 x (substt x T3)) ->
    stpd2 (map (substt x) GH) (substt x T1) (substt x T2).
 Proof.
+  intros x Hx.
   intros n. induction n. intros. omega.
-  intros ? ? ? ? ? ? ? ? narrowX.
+  intros ? ? ? ? ? ? ? narrowX.
 
   (* helper lemma for htp *)
   assert (forall ni n2, forall GH T2 xi,
@@ -1268,12 +1270,16 @@ Proof.
       intros. inversion H1.
       + (* var *) subst.
         repeat eexists. eapply htp_var. eapply index_subst1. eauto. eauto.
-        eapply closed_subst0. eapply closed_upgrade_gh. eauto. omega.
+        eapply closed_subst0.
+        eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+        eapply closed_upgrade_gh. eauto. omega.
       + (* bind *) subst.
         assert (htpd (map (substt x) (GH0)) (xi-1) (substt x (TBind TX0))) as BB.
         eapply IHni. eapply H5. eauto. omega. omega.
-        rewrite subst_open5.
-        eu. repeat eexists. eapply htp_bind. eauto. eapply closed_subst1. eauto. eauto. eauto. eauto.
+        erewrite subst_open5.
+        eu. repeat eexists. eapply htp_bind. eauto. eapply closed_subst1. eauto. eauto.
+        eapply (proj1 closed_upgrade_gh_rec); eauto. omega. eauto.
+        eauto. eauto.
       + (* sub *) subst.
         assert (exists GL0, GL = GL0 ++ [TX] /\ GH0 = GU ++ GL0) as A. eapply gh_match1. eauto. omega.
         destruct A as [GL0 [? ?]]. subst GL.
@@ -1302,48 +1308,59 @@ Proof.
   (* main logic *)
   inversion H.
   - Case "bot". subst.
-    eapply stpd2_bot; eauto. rewrite map_length. simpl. eapply closed_subst0. rewrite app_length in H1. simpl in H1. eapply H1.
+    eapply stpd2_bot; eauto. rewrite map_length. simpl.
+    eapply closed_subst0. eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    rewrite app_length in H1. simpl in H1. eapply H1.
   - Case "top". subst.
-    eapply stpd2_top; eauto. rewrite map_length. simpl. eapply closed_subst0. rewrite app_length in H1. simpl in H1. eapply H1.
+    eapply stpd2_top; eauto. rewrite map_length. simpl.
+    eapply closed_subst0. eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    rewrite app_length in H1. simpl in H1. eapply H1.
   - Case "fun". subst.
     eapply stpd2_fun. eauto. eauto.
-    rewrite map_length. eapply closed_subst0. rewrite app_length in *. simpl in *. eauto.
-    rewrite map_length. eapply closed_subst0. rewrite app_length in *. simpl in *. eauto.
+    rewrite map_length.
+    eapply closed_subst0. eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    rewrite app_length in *. simpl in *. eauto.
+    rewrite map_length.
+    eapply closed_subst0. eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    rewrite app_length in *. simpl in *. eauto.
     eapply IHn; eauto. omega.
-    rewrite <- subst_open_commute_z. rewrite <- subst_open_commute_z.
+    erewrite <- subst_open_commute_z. erewrite <- subst_open_commute_z.
     specialize (IHn (T4::GH)). simpl in IHn.
     unfold substt in IHn at 2.  unfold substt in IHn at 3. unfold substt in IHn at 3.
     simpl in IHn. eapply IHn.
     rewrite map_length. rewrite app_length in *. eassumption.
-    omega. eauto.
+    omega. eauto. eauto. eauto.
   - Case "mem". subst.
     eapply stpd2_mem. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
 
 
-  - Case "varx". subst.
-    eexists. eapply stp_varx.
-  - Case "varax". subst.
-    case_eq (beq_nat x0 0); intros E.
-    + (* hit *)
-      assert (x0 = 0). eapply beq_nat_true_iff. eauto.
-      repeat eexists. unfold substt. subst x0. simpl. eapply stp_varx.
-    + (* miss *)
-      assert (x0 <> 0). eapply beq_nat_false_iff. eauto.
-      repeat eexists. unfold substt. simpl. rewrite E. eapply stp_varax. rewrite map_length. rewrite app_length in H1. simpl in H1. omega.
+  - Case "selx". subst.
+    eexists. eapply stp_selx.
+    eapply (proj1 closed_subst_rec).
+    rewrite map_length. rewrite app_length in H1. simpl in H1. eapply H1.
+    eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+
   - Case "ssel1". subst.
     assert (substt x T2 = T2) as R. eapply subst_closed_id. eapply stpd2_closed2 with (GH:=[]). eauto.
+    (*
     eexists. eapply stp_strong_sel1. eauto. eauto. rewrite R. eauto.
-
+    *)
+    admit.
   - Case "ssel2". subst.
     assert (substt x T1 = T1) as R. eapply subst_closed_id. eapply stpd2_closed1 with (GH:=[]). eauto.
+    (*
     eexists. eapply stp_strong_sel2. eauto. eauto. rewrite R. eauto.
+    *)
+    admit.
 
   - Case "sel1". subst. (* invert htp to vtp and create strong_sel node *)
     case_eq (beq_nat x0 0); intros E.
     + assert (x0 = 0). eapply beq_nat_true_iff. eauto. subst x0.
       assert (exists m0, vtpd m0 x (substt x (TMem l TBot T2))) as A. eapply narrowX. eauto. omega.
       destruct A as [? A]. eu. inversion A. subst.
-      repeat eexists. eapply stp_strong_sel1. eauto. eauto.
+      repeat eexists. eapply stp_strong_sel1. eauto.
+      eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+      eauto.
     + assert (x0 <> 0). eapply beq_nat_false_iff. eauto.
       eapply htp_subst_narrow02 in H1.
       eu. repeat eexists. unfold substt. simpl. rewrite E. eapply stp_sel1. eapply H1. eauto. eauto. eauto.
@@ -1353,36 +1370,47 @@ Proof.
     + assert (x0 = 0). eapply beq_nat_true_iff. eauto. subst x0.
       assert (exists m0, vtpd m0 x (substt x (TMem l T1 TTop))) as A. eapply narrowX. eauto. omega.
       destruct A as [? A]. eu. inversion A. subst.
-      repeat eexists. eapply stp_strong_sel2. eauto. eauto.
+      repeat eexists. eapply stp_strong_sel2. eauto.
+      eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+      eauto.
     + assert (x0 <> 0). eapply beq_nat_false_iff. eauto.
       eapply htp_subst_narrow02 in H1.
       eu. repeat eexists. unfold substt. simpl. rewrite E. eapply stp_sel2. eapply H1. eauto. eauto. eauto.
-  - Case "selx".
-    eexists. eapply stp_selx. eapply closed_subst0. rewrite app_length in H1. simpl in H1. rewrite map_length. eauto.
 
   - Case "bind1".
     assert (htpd (map (substt x) (T1'::GH)) (length GH) (substt x T2)).
     eapply htp_subst_narrow0. eauto. eauto. omega.
     eu. repeat eexists. eapply stp_bind1. rewrite map_length. eapply H9.
-    simpl. subst T1'. fold subst. eapply subst_open4.
-    fold subst. eapply closed_subst0. rewrite app_length in H3. simpl in H3. rewrite map_length. eauto. eauto.
-    eapply closed_subst0. rewrite map_length. rewrite app_length in H4. simpl in H4. eauto.
+    simpl. subst T1'. fold subst. eapply subst_open4. eauto.
+    fold subst.
+    eapply closed_subst0. eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    rewrite app_length in H3. simpl in H3. rewrite map_length. eauto. eauto.
+    eapply closed_subst0. eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    rewrite map_length. rewrite app_length in H4. simpl in H4. eauto.
 
   - Case "bindx".
     assert (htpd (map (substt x) (T1'::GH)) (length GH) (substt x T2')).
     eapply htp_subst_narrow0. eauto. eauto. omega.
     eu. repeat eexists. eapply stp_bindx. rewrite map_length. eapply H10.
-    subst T1'. fold subst. eapply subst_open4.
-    subst T2'. fold subst. eapply subst_open4.
-    rewrite app_length in H4. simpl in H4. eauto. eapply closed_subst0. rewrite map_length. eauto.
-    rewrite app_length in H5. simpl in H5. eauto. eapply closed_subst0. rewrite map_length. eauto.
+    subst T1'. fold subst. eapply subst_open4. eauto.
+    subst T2'. fold subst. eapply subst_open4. eauto.
+    rewrite app_length in H4. simpl in H4. eauto.
+    eapply closed_subst0. eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    rewrite map_length. eauto.
+    rewrite app_length in H5. simpl in H5. eauto.
+    eapply closed_subst0. eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    rewrite map_length. eauto.
 
   - Case "and11".
     assert (stpd2 (map (substt x) GH) (substt x T0) (substt x T2)). eapply IHn. eauto. eauto. omega. eauto.
-    eu. eexists. eapply stp_and11. eauto. eapply closed_subst0. rewrite app_length in H2. rewrite map_length. eauto.
+    eu. eexists. eapply stp_and11. eauto.
+    eapply closed_subst0. eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    rewrite app_length in H2. rewrite map_length. eauto.
   - Case "and12".
     assert (stpd2 (map (substt x) GH) (substt x T3) (substt x T2)). eapply IHn. eauto. eauto. omega. eauto.
-    eu. eexists. eapply stp_and12. eauto. eapply closed_subst0. rewrite app_length in H2. rewrite map_length. eauto.
+    eu. eexists. eapply stp_and12. eauto.
+    eapply closed_subst0. eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    rewrite app_length in H2. rewrite map_length. eauto.
   - Case "and2".
     assert (stpd2 (map (substt x) GH) (substt x T1) (substt x T0)). eapply IHn. eauto. eauto. omega. eauto.
     assert (stpd2 (map (substt x) GH) (substt x T1) (substt x T3)). eapply IHn. eauto. eauto. omega. eauto.
@@ -1390,10 +1418,14 @@ Proof.
 
   - Case "or21".
     assert (stpd2 (map (substt x) GH) (substt x T1) (substt x T0)). eapply IHn. eauto. eauto. omega. eauto.
-    eu. eexists. eapply stp_or21. eauto. eapply closed_subst0. rewrite app_length in H2. rewrite map_length. eauto.
+    eu. eexists. eapply stp_or21. eauto.
+    eapply closed_subst0. eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    rewrite app_length in H2. rewrite map_length. eauto.
   - Case "or22".
     assert (stpd2 (map (substt x) GH) (substt x T1) (substt x T3)). eapply IHn. eauto. eauto. omega. eauto.
-    eu. eexists. eapply stp_or22. eauto. eapply closed_subst0. rewrite app_length in H2. rewrite map_length. eauto.
+    eu. eexists. eapply stp_or22. eauto.
+    eapply closed_subst0. eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    rewrite app_length in H2. rewrite map_length. eauto.
   - Case "or1".
     assert (stpd2 (map (substt x) GH) (substt x T0) (substt x T2)). eapply IHn. eauto. eauto. omega. eauto.
     assert (stpd2 (map (substt x) GH) (substt x T3) (substt x T2)). eapply IHn. eauto. eauto. omega. eauto.
@@ -1407,7 +1439,7 @@ Proof.
     eu. eu. repeat eexists. eapply stp_trans. eauto. eauto.
 
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0.
 Qed.
 
 
