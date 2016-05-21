@@ -968,22 +968,28 @@ Proof.
   intros. eapply (proj1 (proj2 closed_subst_rec)); eauto.
 Qed.
 
+Lemma subst_open_commute0_rec:
+  (forall v0 j TX, vr_closed 0 (j+1) v0 -> (vr_subst TX (vr_open j (VarF 0) v0)) = vr_open j TX v0) /\
+  (forall T0 j TX, closed 0 (j+1) T0 -> (subst TX (open j (VarF 0) T0)) = open j TX T0) /\
+  (forall t0 j TX, tm_closed 0 (j+1) t0 -> (tm_subst TX (tm_open j (VarF 0) t0)) = tm_open j TX t0) /\
+  (forall d0 j TX, dm_closed 0 (j+1) d0 -> (dm_subst TX (dm_open j (VarF 0) d0)) = dm_open j TX d0) /\
+  (forall ds0 j TX, dms_closed 0 (j+1) ds0 -> (dms_subst TX (dms_open j (VarF 0) ds0)) = dms_open j TX ds0).
+Proof.
+  apply syntax_mutind; intros; simpl;
+  try inversion H0; try inversion H1; try inversion H2;
+  subst;
+  try rewrite H; try rewrite H0; try rewrite H1;
+  eauto.
+  - inversion H; subst. omega.
+  - inversion H; subst.
+    case_eq (beq_nat j i); intros E; simpl; eauto.
+Qed.
+
 Lemma subst_open_commute0: forall T0 j TX,
   closed 0 (j+1) T0 ->
-  (subst TX (open j (TVar (VAbs 0)) T0)) = open j TX T0.
+  (subst TX (open j (VarF 0) T0)) = open j TX T0.
 Proof.
-  intros T0. induction T0; intros.
-  eauto. eauto. eauto.
-  simpl. inversion H. rewrite IHT0_1. rewrite IHT0_2. eauto. eauto. eauto.
-  simpl. inversion H. rewrite IHT0_1. rewrite IHT0_2. eauto. eauto. eauto.
-  simpl. inversion H. omega. eauto.
-  simpl. inversion H. subst. destruct i. case_eq (beq_nat j 0); intros E; simpl; eauto.
-  case_eq (beq_nat j (S i)); intros E; simpl; eauto.
-
-  simpl. inversion H. rewrite IHT0. eauto. eauto.
-  simpl. inversion H. rewrite IHT0. eauto. subst. eauto.
-  simpl. inversion H. rewrite IHT0_1. rewrite IHT0_2. eauto. eauto. eauto.
-  simpl. inversion H. rewrite IHT0_1. rewrite IHT0_2. eauto. eauto. eauto.
+  intros. eapply (proj1 (proj2 subst_open_commute0_rec)); eauto.
 Qed.
 
 
