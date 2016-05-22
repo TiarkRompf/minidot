@@ -2880,7 +2880,11 @@ Proof.
       eapply index_hit0 in H2. subst.
       eapply hastp_upgrade_gh. eauto.
     + assert (x0 <> 0). eapply beq_nat_false_iff; eauto.
-      eexists. eapply T_Varz. eapply index_subst1. eauto. eauto. rewrite map_length. eapply closed_subst0. rewrite app_length in H3. simpl in H3. eapply H3.
+      eexists. eapply T_VarF. eapply index_subst1. eauto. eauto. rewrite map_length. eapply closed_subst0.
+      eapply has_type_closed1 in H1. simpl in H1. inversion H1; subst.
+      eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+      rewrite app_length in H3. simpl in H3. eapply H3.
+
   - Case "pack". subst. simpl.
     edestruct IHniT as [? IH]. eauto. omega. eauto.
     assert (substt x (TBind T1) = (TBind (substt x T1))) as A. {
