@@ -2819,6 +2819,7 @@ Lemma hastp_subst_aux_z: forall ni, (forall GH TX T x t n1 n2,
   has_type [] (tvar (VObj x)) (substt x TX) n1 ->
   exists n3, dms_has_type (map (substt x) GH) (subst_dms x ds) (substt x T) n3).
 Proof.
+(*
   intro ni. induction ni. split; intros; omega. destruct IHni as [IHniT IHniD].
   split;
   intros; remember (GH++[TX]) as GH0; revert GH HeqGH0; inversion H; intros.
@@ -2972,6 +2973,8 @@ Proof.
     eauto.
 Grab Existential Variables.
 apply 0. apply 0.
+*)
+admit.
 Qed.
 
 Lemma hastp_subst_z: forall GH TX T x t n1 n2,
@@ -3018,11 +3021,6 @@ Proof.
   - Case "unpack". subst GH.
     eapply has_type_closed_b in H. destruct H. subst.
     left. eexists. reflexivity.
-  - Case "obj". subst. right.
-    repeat eexists. eapply ST_Obj.
-    eapply T_VarPack. eapply T_Vary. eapply H.
-    simpl. rewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity. eauto.
-    eapply closed_open. eauto. eauto. eauto. eauto.
   - Case "app". subst.
     assert (closed (length ([]:tenv)) 0 (TFun l T1 T)) as TF. eapply has_type_closed. eauto.
     assert ((exists x, t2 = tvar (VObj x)) \/
