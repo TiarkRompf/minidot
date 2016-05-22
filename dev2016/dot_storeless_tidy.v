@@ -2919,8 +2919,19 @@ Proof.
         eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
     + eapply has_type_closed1 in H. inversion H; subst. inversion H7; subst.
       omega.
+    + eexists. eapply T_VarPack. eapply IH.
+      unfold substt.
+      eapply (proj2 (subst_open_distribute 0 0 (VObj x) (VObj d) HCx)).
+      omega.
+      rewrite map_length. eapply closed_subst0.
+      eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+      rewrite app_length in H4. simpl in H4.
+      apply H4.
 
   - Case "unpack". subst. simpl.
+    assert (vr_closed 0 0 (VObj x)) as HCx. {
+      eapply has_type_closed1 in H1. simpl in H1. inversion H1; subst. eauto.
+    }
     edestruct IHniT as [? IH]. eapply H2. omega. eauto.
     assert (substt x (TBind T1) = (TBind (substt x T1))) as A. {
       eauto.
