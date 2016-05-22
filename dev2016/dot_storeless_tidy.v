@@ -2886,6 +2886,9 @@ Proof.
       rewrite app_length in H3. simpl in H3. eapply H3.
 
   - Case "pack". subst. simpl.
+    assert (vr_closed 0 0 (VObj x)) as HCx. {
+      eapply has_type_closed1 in H1. simpl in H1. inversion H1; subst. eauto.
+    }
     edestruct IHniT as [? IH]. eauto. omega. eauto.
     assert (substt x (TBind T1) = (TBind (substt x T1))) as A. {
       eauto.
@@ -2895,27 +2898,28 @@ Proof.
     + case_eq (beq_nat i 0); intros E.
       * assert (i = 0). eapply beq_nat_true_iff; eauto. subst.
         simpl in IH.
-        eexists. eapply T_VarPack. eapply IH. rewrite subst_open_commute0b. eauto.
+        eexists. eapply T_VarPack. eapply IH.
+        erewrite subst_open_commute0b. eauto. eapply HCx.
         rewrite map_length. eapply closed_subst. rewrite app_length in H4. simpl in H4.
-        eapply H4. econstructor.
+        eapply H4.
+        eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
       * assert (i <> 0). eapply beq_nat_false_iff; eauto.
         simpl in IH. rewrite E in IH.
-        eexists. eapply T_VarPack. eapply IH.
+        eexists. eapply T_VarPack.
+        simpl. rewrite E. eapply IH.
         remember (i - 1) as z.
         assert (i = z + 1) as B. {
-          intuition. destruct i. specialize (H3 eq_refl). inversion H3.
-          subst. simpl. rewrite <- minus_n_O. rewrite NPeano.Nat.add_1_r.
-          reflexivity.
+          unfold id in *. omega.
         }
         rewrite B. unfold substt.
-        rewrite subst_open_commute_z. reflexivity.
+        erewrite subst_open_commute_z. simpl. rewrite <- B. rewrite E.
+        rewrite Heqz. reflexivity. eapply HCx.
         rewrite map_length. eapply closed_subst. rewrite app_length in H4.
         simpl in H4. eapply H4.
-        econstructor.
-    + eexists. eapply T_VarPack. eapply IH.
-      unfold substt. rewrite subst_open_commute1. reflexivity.
-      rewrite map_length. eapply closed_subst0. rewrite app_length in H4. simpl in H4.
-      apply H4.
+        eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    + eapply has_type_closed1 in H. inversion H; subst. inversion H7; subst.
+      omega.
+
   - Case "unpack". subst. simpl.
     edestruct IHniT as [? IH]. eapply H2. omega. eauto.
     assert (substt x (TBind T1) = (TBind (substt x T1))) as A. {
