@@ -726,6 +726,26 @@ Proof.
   intros. eapply (proj1 (proj2 closed_subst_rec)); eauto.
 Qed.
 
+Lemma subst_open_distribute: forall k j0 vx v,
+  vr_closed k j0 vx ->
+  (forall v0 j, j0 <= j -> vr_subst vx (vr_open j v v0) = vr_open j (vr_subst vx v) (vr_subst vx v0)) /\
+  (forall T0 j, j0 <= j -> subst vx (open j v T0) = open j (vr_subst vx v) (subst vx T0)) /\
+  (forall t0 j, j0 <= j -> tm_subst vx (tm_open j v t0) = tm_open j (vr_subst vx v) (tm_subst vx t0)) /\
+  (forall d0 j, j0 <= j -> dm_subst vx (dm_open j v d0) = dm_open j (vr_subst vx v) (dm_subst vx d0)) /\
+  (forall ds0 j, j0 <= j -> dms_subst vx (dms_open j v ds0) = dms_open j (vr_subst vx v) (dms_subst vx ds0)).
+Proof.
+  intros k j0 vx v HCx.
+  apply syntax_mutind; intros; simpl;
+  try inversion H0; try inversion H1; try inversion H2;
+  subst;
+  try rewrite H; try rewrite H0; try rewrite H1;
+  eauto.
+  - case_eq (beq_nat i 0); intros E; simpl; eauto.
+    eapply (proj1 closed_no_open_rec).
+    eapply (proj1 closed_upgrade_rec). eauto. omega.
+  - case_eq (beq_nat j i); intros E; simpl; eauto.
+Qed.
+
 Lemma subst_open_commute0_rec:
   (forall v0 j TX, vr_closed 0 (j+1) v0 -> (vr_subst TX (vr_open j (VarF 0) v0)) = vr_open j TX v0) /\
   (forall T0 j TX, closed 0 (j+1) T0 -> (subst TX (open j (VarF 0) T0)) = open j TX T0) /\
@@ -2823,23 +2843,36 @@ Lemma hastp_subst_aux_z: forall ni, (forall GH TX T x t n1 n2,
   has_type [] (tvar (VObj x)) (substt x TX) n1 ->
   exists n3, dms_has_type (map (substt x) GH) (dms_subst (VObj x) ds) (substt x T) n3).
 Proof.
-(*
   intro ni. induction ni. split; intros; omega. destruct IHni as [IHniT IHniD].
   split;
   intros; remember (GH++[TX]) as GH0; revert GH HeqGH0; inversion H; intros.
   - Case "vobj".
+    assert (vr_closed 0 0 (VObj x)) as HCx. {
+      eapply has_type_closed1 in H1. simpl in H1. inversion H1; subst. eauto.
+    }
     edestruct IHniD with (GH:=T'::GH1) as [? IH]. subst. eauto. omega. subst. eauto.
     subst. simpl.
-    eexists. eapply T_VObj. eauto.
+    eexists. eapply T_VObj. eapply IH.
     rewrite app_length. simpl. rewrite map_length. unfold substt.
-    assert (subst (VObj x) (open 0 (VarF (length GH1 + 1)) T0) = open 0 (VarF (length GH1)) (subst (VObj x) T0)) as A. admit.
-    rewrite A. reflexivity.
+    assert (substt x (open 0 (VarF (length GH1 + 1)) T0) = open 0 (VarF (length GH1)) (substt x T0)) as A. {
+      erewrite subst_open. reflexivity. eauto.
+    }
+    unfold substt in A. rewrite A. reflexivity.
     rewrite app_length. simpl. rewrite map_length. unfold subst_dms.
-    assert (dms_open 0 (VObj x) (dms_open 0 (VarF (length GH1 + 1)) ds) = dms_open 0 (VarF (length GH1)) (dms_open 1 (VObj x) ds)) as A'. admit.
-    rewrite A'. reflexivity.
-    eapply closed_subst. rewrite app_length in *. simpl in *. rewrite map_length. eauto.
-    eapply has_type_closed1 in H1. simpl in H1. inversion H1; subst.
+    rewrite (proj2 (proj2 (proj2 (proj2 (subst_open_rec 0 x HCx))))).
+    reflexivity.
+    eapply closed_subst.
+    rewrite app_length in *. simpl in *. rewrite map_length. eauto.
     eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    eapply (proj2 (proj2 (proj2 (proj2 closed_subst_rec)))).
+    rewrite app_length in *. simpl in *. rewrite map_length. eauto.
+    eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    unfold substt.
+    assert (subst (VObj x) (open 0 (VObj ds) T0) = open 0 (vr_subst (VObj x) (VObj ds)) (subst (VObj x) T0)) as B. {
+      eapply (proj2 (subst_open_distribute 0 0 (VObj x) (VObj ds) HCx)).
+      omega.
+    }
+    rewrite B. simpl. reflexivity.
 
   - Case "varz". subst. simpl.
     case_eq (beq_nat x0 0); intros E.
