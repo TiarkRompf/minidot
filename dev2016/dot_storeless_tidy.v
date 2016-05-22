@@ -995,6 +995,13 @@ Proof.
   simpl. rewrite IHds. reflexivity.
 Qed.
 
+Lemma length_dms_subst: forall ds x,
+  (length (dms_to_list ds))=(length (dms_to_list (dms_subst x ds))).
+Proof.
+  intros. induction ds; eauto.
+  simpl. rewrite IHds. reflexivity.
+Qed.
+
 Lemma length_open_dms: forall ds x,
   (length (dms_to_list ds))=(length (dms_to_list (dms_open 0 (VObj x) ds))).
 Proof.
@@ -3030,10 +3037,14 @@ Proof.
   - Case "dnil". subst. simpl.
     eexists. eapply D_Nil.
   - Case "mem". subst. simpl.
+    assert (vr_closed 0 0 (VObj x)) as HCx. {
+      eapply has_type_closed1 in H1. simpl in H1. inversion H1; subst. eauto.
+    }
     edestruct IHniD as [? IH]. eapply H2. omega. eauto.
     eexists. eapply D_Mem. eauto. eapply closed_subst0. rewrite app_length in H3. rewrite map_length. eauto.
-    unfold substt. simpl. rewrite <- length_subst_dms. reflexivity.
-    eauto.
+    eapply (proj1 closed_upgrade_gh_rec). eapply HCx. omega.
+    rewrite app_length in *. simpl in *. rewrite map_length. eassumption.
+    reflexivity. rewrite <- length_dms_subst. unfold substt. simpl. reflexivity.
   - Case "abs". subst. simpl.
     edestruct IHniD as [? IHD]. eapply H2. omega. eauto.
     edestruct IHniT with (GH:=T11::GH1) as [? HI] . eauto. omega. eauto.
