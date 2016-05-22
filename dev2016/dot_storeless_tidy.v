@@ -1206,6 +1206,11 @@ Lemma has_type_closed: forall GH t T n1,
   closed (length GH) 0 T.
 Proof. intros. eapply all_closed with (t:=t). eauto. eauto. Qed.
 
+Lemma has_type_closed1: forall GH t T n1,
+  has_type GH t T n1 ->
+  tm_closed (length GH) 0 t.
+Proof. intros. eapply all_closed with (t:=t). eauto. eauto. Qed.
+
 Lemma dms_has_type_closed: forall GH t T n1,
   dms_has_type GH t T n1 ->
   closed (length GH) 0 T.
@@ -2817,12 +2822,20 @@ Proof.
   intro ni. induction ni. split; intros; omega. destruct IHni as [IHniT IHniD].
   split;
   intros; remember (GH++[TX]) as GH0; revert GH HeqGH0; inversion H; intros.
-  - Case "vary".
-    assert (substt x T = T) as EqT. {
-      erewrite subst_closed_id. reflexivity. eauto.
-    }
-    subst. simpl. eexists. eapply T_Vary. eauto. eauto.
-    rewrite EqT. eauto.
+  - Case "vobj".
+    edestruct IHniD with (GH:=T'::GH1) as [? IH]. subst. eauto. omega. subst. eauto.
+    subst. simpl.
+    eexists. eapply T_VObj. eauto.
+    rewrite app_length. simpl. rewrite map_length. unfold substt.
+    assert (subst (VObj x) (open 0 (VarF (length GH1 + 1)) T0) = open 0 (VarF (length GH1)) (subst (VObj x) T0)) as A. admit.
+    rewrite A. reflexivity.
+    rewrite app_length. simpl. rewrite map_length. unfold subst_dms.
+    assert (dms_open 0 (VObj x) (dms_open 0 (VarF (length GH1 + 1)) ds) = dms_open 0 (VarF (length GH1)) (dms_open 1 (VObj x) ds)) as A'. admit.
+    rewrite A'. reflexivity.
+    eapply closed_subst. rewrite app_length in *. simpl in *. rewrite map_length. eauto.
+    eapply has_type_closed1 in H1. simpl in H1. inversion H1; subst.
+    eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+
   - Case "varz". subst. simpl.
     case_eq (beq_nat x0 0); intros E.
     + assert (x0 = 0). eapply beq_nat_true_iff; eauto. subst x0.
