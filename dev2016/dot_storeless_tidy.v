@@ -2817,11 +2817,11 @@ Qed.
 Lemma hastp_subst_aux_z: forall ni, (forall GH TX T x t n1 n2,
   has_type (GH++[TX]) t T n2 -> n2 < ni ->
   has_type [] (tvar (VObj x)) (substt x TX) n1 ->
-  exists n3, has_type (map (substt x) GH) (subst_tm x t) (substt x T) n3) /\
+  exists n3, has_type (map (substt x) GH) (tm_subst (VObj x) t) (substt x T) n3) /\
   (forall GH TX T x ds n1 n2,
   dms_has_type (GH++[TX]) ds T n2 -> n2 < ni ->
   has_type [] (tvar (VObj x)) (substt x TX) n1 ->
-  exists n3, dms_has_type (map (substt x) GH) (subst_dms x ds) (substt x T) n3).
+  exists n3, dms_has_type (map (substt x) GH) (dms_subst (VObj x) ds) (substt x T) n3).
 Proof.
 (*
   intro ni. induction ni. split; intros; omega. destruct IHni as [IHniT IHniD].
@@ -2984,7 +2984,7 @@ Qed.
 Lemma hastp_subst_z: forall GH TX T x t n1 n2,
   has_type (GH++[TX]) t T n2 ->
   has_type [] (tvar (VObj x)) (substt x TX) n1 ->
-  exists n3, has_type (map (substt x) GH) (subst_tm x t) (substt x T) n3.
+  exists n3, has_type (map (substt x) GH) (tm_subst (VObj x) t) (substt x T) n3.
 Proof.
   intros. eapply hastp_subst_aux_z with (t:=t). eauto. eauto. eauto.
 Qed.
@@ -2992,7 +2992,7 @@ Qed.
 Lemma hastp_subst: forall GH TX T x t n1 n2,
   has_type (GH++[TX]) t T n2 ->
   has_type [] (tvar (VObj x)) TX n1 ->
-  exists n3, has_type (map (substt x) GH) (subst_tm x t) (substt x T) n3.
+  exists n3, has_type (map (substt x) GH) (tm_subst (VObj x) t) (substt x T) n3.
 Proof.
   intros. eapply hastp_subst_z with (t:=t). eauto.
   erewrite subst_closed_id. eauto. eapply has_type_closed in H0. eauto.
@@ -3017,7 +3017,7 @@ Proof.
   remember [] as GH. remember t as tt. remember T as TT.
   revert T t HeqTT HeqGH Heqtt CL.
   induction H; intros.
-  - Case "vary". eauto.
+  - Case "vobj". eauto.
   - Case "varz". subst GH. inversion H.
   - Case "pack". subst GH.
     eapply has_type_closed_b in H. destruct H. subst.
@@ -3051,30 +3051,38 @@ Proof.
         }
         destruct A as [? A].
         assert (substt x (open 0 (VarF 0) T0) = open 0 (VObj x) T0) as EqTx. {
-          admit.
+          unfold substt. rewrite subst_open_commute0. reflexivity.
+          simpl. assumption.
         }
-        assert (has_typed (map (substt x) [T1x]) (subst_tm x (tm_open 0 (VarF 1) tx)) (substt x (open 0 (VarF 1) T2x))) as HIx. {
+        assert (has_typed (map (substt x) [T1x]) (tm_subst (VObj x) (tm_open 0 (VarF 1) tx)) (substt x (open 0 (VarF 1) T2x))) as HIx. {
           eapply hastp_subst_z. eapply H15. rewrite EqTx. eapply A.
         }
         eu. simpl in HIx.
-        assert (dm_subst (VObj x) (dfun T1x T2x tx) = dfun T0 T2 t) as EqD. {
+        assert (dm_subst (VObj x) (dfun T1x T2x tx) = dfun T2 T5 t) as EqD. {
           admit.
         }
         simpl in EqD. inversion EqD.
-        assert (has_typed (map (substt x0) []) (subst_tm x0 (subst_tm x tx)) (substt x0 (substt x (open 0 (VarF 1) T2x)))) as HIx0. {
-          eapply hastp_subst. rewrite app_nil_l. eapply HIx. unfold substt. rewrite H10. eauto.
-       }
-        eu. simpl in HIx0.
-        assert ((substt x (open 0 (TVar (VAbs 1)) T2x))=(open 0 (TVar (VAbs 0)) (substt x T2x))) as EqT2x. {
-          change 1 with (0+1). rewrite subst_open. reflexivity.
+        assert (has_typed (map (substt x0) []) (tm_subst (VObj x0) (tm_subst (VObj x) (tm_open 0 (VarF 1) tx))) (substt x0 (substt x (open 0 (VarF 1) T2x)))) as HIx0. {
+          eapply hastp_subst. rewrite app_nil_l. eapply HIx. unfold substt. rewrite H9. eauto.
         }
-        assert (has_typed [] (subst_tm x0 t) (substt x0 (open 0 (TVar (VAbs 0)) T2))) as HI. {
-          subst. unfold substt in EqT2x. rewrite <- EqT2x. eauto.
+        eu. simpl in HIx0.
+        assert ((substt x (open 0 (VarF 1) T2x))=(open 0 (VarF 0) (substt x T2x))) as EqT2x. {
+          change 1 with (0+1). erewrite subst_open. reflexivity. eauto.
+        }
+        assert ((tm_subst (VObj x0) (tm_subst (VObj x) (tm_open 0 (VarF 1) tx))) =
+                (subst_tm x0 t)) as Eqtx0. {
+          subst. unfold subst_tm.
+          (*tm_subst (VObj x0) (tm_subst (VObj x) (tm_open 0 (VarF 1) tx)) =
+            tm_open 0 (VObj x0) (tm_subst (VObj x) tx)*)
+          admit.
+        }
+        assert (has_typed [] (subst_tm x0 t) (substt x0 (open 0 (VarF 0) T5))) as HI. {
+          subst. rewrite <- Eqtx0. unfold substt in EqT2x. rewrite <- EqT2x. eauto.
         }
         eu. simpl in HI.
-        edestruct stp_subst_narrow as [? HI2]. rewrite app_nil_l. eapply H20. eauto.
+        edestruct stp_subst_narrow as [? HI2]. rewrite app_nil_l. eapply H24. eauto.
         simpl in HI2.
-        assert (substt x0 (open 0 (TVar (VAbs 0)) T) = T) as EqT. {
+        assert (substt x0 (open 0 (VarF 0) T) = T) as EqT. {
           erewrite <- closed_no_open. erewrite subst_closed_id. reflexivity.
           eassumption. eassumption.
         }
