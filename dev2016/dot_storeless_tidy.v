@@ -1128,7 +1128,13 @@ Lemma index_dm_closed: forall i k l ds D,
   index l (dms_to_list ds) = Some D ->
   dm_closed i k D.
 Proof.
-  admit.
+  intros. generalize dependent D. induction H; intros.
+  - simpl in *. solve by inversion.
+  - simpl in *.
+    case_eq (beq_nat l (length (dms_to_list ds2))); intros E;
+    rewrite E in *.
+    + inversion H1. subst. assumption.
+    + eapply IHdms_closed; eauto.
 Qed.
 
 Lemma all_closed: forall ni,
