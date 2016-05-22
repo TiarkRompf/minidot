@@ -1009,6 +1009,13 @@ Proof.
   simpl. rewrite IHds. reflexivity.
 Qed.
 
+Lemma length_dms_open: forall ds v,
+  (length (dms_to_list ds))=(length (dms_to_list (dms_open 0 v ds))).
+Proof.
+  intros. induction ds; eauto.
+  simpl. rewrite IHds. reflexivity.
+Qed.
+
 Lemma index_subst_dms: forall ds ds0 D ds1 x,
   dms_to_list ds = ds0 ++ dms_to_list (dcons D ds1) ->
   index (length (dms_to_list ds1)) (dms_to_list (subst_dms x ds)) = Some (subst_dm x D).
@@ -1033,6 +1040,51 @@ Proof.
     simpl. rewrite false_beq_nat. eapply IHds0. eauto.
     rewrite H2. rewrite app_length. simpl.
     omega.
+Qed.
+
+Lemma index_dms_open_eq: forall l x D Dx,
+  vr_closed 0 0 (VObj x) ->
+  index l (dms_to_list (subst_dms x x)) = Some D ->
+  index l (dms_to_list (dms_open 0 (VarF 0) x)) = Some Dx ->
+  dm_subst (VObj x) Dx = D.
+Proof.
+  intros l x D Dx HC HI HIx.
+  remember HC as HCx. clear HeqHCx.
+  remember x as x0. rewrite Heqx0 in *.
+  rewrite <- Heqx0 in HI at 1. rewrite <- Heqx0 in HC. rewrite <- Heqx0.
+  clear Heqx0.
+  remember x as dsb.
+  remember (length (dms_to_list dsb)) as n.
+  assert (n = length (dms_to_list (subst_dms x0 dsb))) as Heqn'. {
+    subst. rewrite <- length_subst_dms. reflexivity.
+  }
+  assert (exists dsa,
+            dms_to_list x = dms_to_list dsa ++ dms_to_list dsb /\
+            dms_to_list (subst_dms x0 x) = dms_to_list (subst_dms x0 dsa) ++ dms_to_list (subst_dms x0 dsb)) as Hds. {
+    exists dnil. simpl. subst. eauto.
+  }
+  destruct Hds as [dsa [Hds Hds']]. clear Heqdsb.
+  remember (dms_to_list dsa) as la. clear Heqla.
+  remember (dms_to_list (subst_dms x0 dsa)) as la'. clear Heqla'. clear dsa.
+  generalize dependent Dx. generalize dependent D.
+  generalize dependent la'. generalize dependent la. generalize dependent x.
+  generalize dependent l. generalize dependent n.
+  inversion HCx; subst. rename H2 into HCdsb. clear HCx.
+  induction dsb; intros.
+  - simpl in *. inversion HI.
+  - simpl in HI. simpl in HIx.
+    rewrite <- length_dms_open in HI. rewrite <- length_dms_open in HIx.
+    inversion HCdsb; subst.
+    case_eq (beq_nat l (length (dms_to_list dsb))); intros E;
+    rewrite E in HI; rewrite E in HIx.
+    + inversion HI. inversion HIx.
+      rewrite (proj1 (proj2 (proj2 (proj2 (subst_open_distribute 0 0 (VObj x0) (VarF 0) HC))))).
+      simpl.
+      erewrite (proj1 (proj2 (proj2 (proj2 closed_no_subst_rec)))). reflexivity.
+      eauto. omega.
+    + eapply IHdsb with (x:=x) (la:=la ++ [d]) (la':=la' ++ [(subst_dm x0 d)]); eauto.
+      rewrite <- app_assoc. rewrite Hds. simpl. reflexivity.
+      rewrite <- app_assoc. rewrite Hds'. simpl. reflexivity.
 Qed.
 
 Lemma index_subst_dms_eq: forall l ds D D',
@@ -3150,7 +3202,7 @@ Proof.
         }
         eu. simpl in HIx.
         assert (dm_subst (VObj x) (dfun T1x T2x tx) = dfun T2 T5 t) as EqD. {
-          admit.
+          erewrite index_dms_open_eq; eauto.
         }
         simpl in EqD. inversion EqD.
         assert (has_typed (map (substt x0) []) (tm_subst (VObj x0) (tm_subst (VObj x) (tm_open 0 (VarF 1) tx))) (substt x0 (substt x (open 0 (VarF 1) T2x)))) as HIx0. {
@@ -3227,7 +3279,7 @@ Proof.
       }
       eu. simpl in HIx.
       assert (dm_subst (VObj x) (dfun T1x T2x tx) = dfun T0 T5 t) as EqD. {
-        admit.
+        erewrite index_dms_open_eq; eauto.
       }
       simpl in EqD. inversion EqD.
       assert (has_typed (map (substt x2) []) (tm_subst (VObj x2) (tm_subst (VObj x) (tm_open 0 (VarF 1) tx))) (substt x2 (substt x (open 0 (VarF 1) T2x)))) as HIx0. {
