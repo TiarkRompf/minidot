@@ -190,6 +190,8 @@ with dms_subst (u : vr) (ds : dms) { struct ds } : dms :=
    end.
 
 Definition subst_dms (u:dms) (ds: dms) := dms_open 0 (VObj u) ds.
+Definition subst_dm x D := dm_open 0 (VObj x) D.
+Definition subst_tm x t := tm_open 0 (VObj x) t.
 Definition substt x T := (subst (VObj x) T).
 Hint Immediate substt.
 
@@ -972,8 +974,6 @@ Proof.
   intros. induction ds; eauto.
   simpl. rewrite IHds. reflexivity.
 Qed.
-
-Definition subst_dm x D := dm_open 0 (VObj x) D.
 
 Lemma index_subst_dms: forall ds ds0 D ds1 x,
   dms_to_list ds = ds0 ++ dms_to_list (dcons D ds1) ->
@@ -2635,8 +2635,6 @@ Qed.
 
 (* Reduction semantics  *)
 Inductive step : tm -> tm -> Prop :=
-| ST_Obj : forall D,
-    step (tobj D) (tvar (VObj D))
 | ST_AppAbs : forall f l x T1 T2 t12,
     index l (dms_to_list (subst_dms f f)) = Some (dfun T1 T2 t12) ->
     step (tapp (tvar (VObj f)) l (tvar (VObj x))) (subst_tm x t12)
@@ -2655,8 +2653,12 @@ Lemma stp_subst_narrow_z: forall GH0 TX T1 T2 x m n1 n2,
   stpd2 (map (substt x) GH0) (substt x T1) (substt x T2).
 Proof.
   intros.
-  edestruct stp_subst_narrow0. eauto. eauto.
-  { intros. edestruct stp_subst_narrowX. eauto. eauto. eauto. eauto.
+  edestruct stp_subst_narrow0.
+  instantiate (1:=x). admit.
+  eauto. eauto.
+  { intros. edestruct stp_subst_narrowX.
+    instantiate (1:=x). admit.
+    eauto. eauto. eauto. eauto.
     { intros. eapply vtp_widen; eauto. }
     ev. repeat eexists. eauto.
   }
