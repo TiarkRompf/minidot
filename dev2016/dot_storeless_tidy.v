@@ -3119,39 +3119,56 @@ Proof.
       ev. ev. subst.
       assert (exists m n1, vtp m x (TFun l T1 T2) n1). eapply hastp_inv. eauto.
       assert (exists m n1, vtp m x2 T1 n1). eapply hastp_inv. eauto.
-      ev. inversion H1. subst.
-      assert (vtpdd x0 x2 T0). eapply vtp_widen. eauto. eauto. eauto. eauto. eauto.
+      ev. inversion H2. subst.
+      assert (vtpdd x0 x2 T0). { eapply vtp_widen. eauto. eauto. eauto. eauto. eauto. }
       eu.
-      assert (exists T, (exists n1, has_type [] (tvar (VObj x)) T n1) /\ substt x T' = T) as A. eexists. split. eexists. eapply T_Vary. eauto. reflexivity. eapply closed_subst. eapply dms_has_type_closed in H8. eauto. eauto. reflexivity.
-      destruct A as [Tx [[na A] EqTx]].
-      assert (has_typed (map (substt x) [T1x]) (subst_tm x tx) (substt x (open 0 (TVar (VAbs 1)) T2x))) as HIx.
-      eapply hastp_subst_z. eapply H11. rewrite EqTx. eapply A.
+      assert (exists n1, has_type [] (tvar (VObj x)) (open 0 (VObj x) T) n1) as A. {
+        eexists. eapply T_VObj. eauto. simpl. reflexivity. simpl. reflexivity.
+        simpl. eauto. simpl. inversion H26; subst. eauto. eauto.
+      }
+      destruct A as [? A].
+      assert (substt x (open 0 (VarF 0) T) = open 0 (VObj x) T) as EqTx. {
+        unfold substt. rewrite subst_open_commute0. reflexivity.
+        simpl. assumption.
+      }
+      assert (has_typed (map (substt x) [T1x]) (tm_subst (VObj x) (tm_open 0 (VarF 1) tx)) (substt x (open 0 (VarF 1) T2x))) as HIx. {
+        eapply hastp_subst_z. eapply H16. rewrite EqTx. eapply A.
+      }
       eu. simpl in HIx.
-      assert (subst_dm x (dfun T1x T2x tx) = dfun T0 T3 t) as EqD. {
-        eapply index_subst_dms_eq. eauto. eauto.
+      assert (dm_subst (VObj x) (dfun T1x T2x tx) = dfun T0 T5 t) as EqD. {
+        admit.
       }
       simpl in EqD. inversion EqD.
-      assert (has_typed (map (substt x2) []) (subst_tm x2 (subst_tm x tx)) (substt x2 (substt x (open 0 (TVar (VAbs 1)) T2x)))) as HIx0.
-      eapply hastp_subst. rewrite app_nil_l. eapply HIx. unfold substt. rewrite H10. eauto.
-      eu. simpl in HIx0.
-      assert ((substt x (open 0 (TVar (VAbs 1)) T2x))=(open 0 (TVar (VAbs 0)) (substt x T2x))) as EqT2x. {
-        change 1 with (0+1). rewrite subst_open. reflexivity.
+      assert (has_typed (map (substt x2) []) (tm_subst (VObj x2) (tm_subst (VObj x) (tm_open 0 (VarF 1) tx))) (substt x2 (substt x (open 0 (VarF 1) T2x)))) as HIx0. {
+        eapply hastp_subst. rewrite app_nil_l. eapply HIx. unfold substt. rewrite H10. eauto.
       }
-      assert (has_typed [] (subst_tm x2 t) (substt x2 (open 0 (TVar (VAbs 0)) T3))) as HI. {
-        subst. unfold substt in EqT2x. rewrite <- EqT2x. eauto.
+      eu. simpl in HIx0.
+      assert ((substt x (open 0 (VarF 1) T2x))=(open 0 (VarF 0) (substt x T2x))) as EqT2x. {
+        change 1 with (0+1). erewrite subst_open. reflexivity. eauto.
+      }
+      assert ((tm_subst (VObj x2) (tm_subst (VObj x) (tm_open 0 (VarF 1) tx))) =
+              (subst_tm x2 t)) as Eqtx0. {
+        subst. unfold subst_tm.
+        (*tm_subst (VObj x0) (tm_subst (VObj x) (tm_open 0 (VarF 1) tx)) =
+          tm_open 0 (VObj x0) (tm_subst (VObj x) tx)*)
+         admit.
+      }
+      assert (has_typed [] (subst_tm x2 t) (substt x2 (open 0 (VarF 0) T5))) as HI. {
+        subst. rewrite <- Eqtx0. unfold substt in EqT2x. rewrite <- EqT2x. eauto.
       }
       eu. simpl in HI.
-      edestruct stp_subst_narrow as [? HI2]. rewrite app_nil_l. eapply H20. eauto.
+      edestruct stp_subst_narrow as [? HI2]. rewrite app_nil_l. eapply H25. eauto.
       simpl in HI2.
-      assert ((substt x2 (open 0 (TVar (VAbs 0)) T2))=(open 0 (TVar (VObj x2)) T2)) as EqT2. {
-        rewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity.
-        eassumption.
+      assert (substt x2 (open 0 (VarF 0) T2) = (open 0 (VObj x2) T2)) as EqT. {
+        erewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity.
+        eassumption. eauto.
       }
-      rewrite EqT2 in HI2.
+      rewrite EqT in HI2.
       right. repeat eexists. eapply ST_AppAbs. eauto. eauto.
+
     + SCase "fun_step".
       ev. subst. right. repeat eexists. eapply ST_App1. eauto. eapply T_AppVar.
-      eauto. eauto. eauto.
+      eauto. eauto. eauto. eauto.
       simpl in *. eassumption.
 
   - Case "sub". subst.
