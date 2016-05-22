@@ -389,6 +389,7 @@ Inductive vtp(*possible types*) : nat(*pack count*) -> dms -> ty -> nat(*size*) 
     T4' = (open 0 (VarF 0) T4) ->
     closed 0 1 T2 ->
     closed 0 1 T4 ->
+    tm_closed 1 1 tx ->
     stp [T3] T2' T4' n2 ->
     vr_closed 0 0 (VObj ds) ->
     vtp m ds (TFun l T3 T4) (S (n1+n2+n3+n4))
@@ -2567,7 +2568,7 @@ Proof.
       eu.
       repeat eexists. eapply vtp_fun. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
       eauto. eauto.
-      eapply stp_trans. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+      eapply stp_trans. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
     + SCase "ssel2".
       repeat eexists. eapply vtp_sel. eauto. simpl in *. eauto. eauto. omega.
     + SCase "sel2".
@@ -3190,7 +3191,7 @@ Proof.
         eu.
         assert (exists n1, has_type [] (tvar (VObj x)) (open 0 (VObj x) T0) n1) as A. {
           eexists. eapply T_VObj. eauto. simpl. reflexivity. simpl. reflexivity.
-          simpl. eauto. simpl. inversion H25; subst. eauto. eauto.
+          simpl. eauto. simpl. inversion H26; subst. eauto. eauto.
         }
         destruct A as [? A].
         assert (substt x (open 0 (VarF 0) T0) = open 0 (VObj x) T0) as EqTx. {
@@ -3212,18 +3213,29 @@ Proof.
         assert ((substt x (open 0 (VarF 1) T2x))=(open 0 (VarF 0) (substt x T2x))) as EqT2x. {
           change 1 with (0+1). erewrite subst_open. reflexivity. eauto.
         }
+        assert (vr_closed 0 0 (VObj x0)) as HC0. {
+          eapply vtp_closed1; eauto.
+        }
+        assert (vr_closed 0 0 (VObj x)) as HC. {
+          eapply vtp_closed1; eauto.
+        }
         assert ((tm_subst (VObj x0) (tm_subst (VObj x) (tm_open 0 (VarF 1) tx))) =
                 (subst_tm x0 t)) as Eqtx0. {
           subst. unfold subst_tm.
-          (*tm_subst (VObj x0) (tm_subst (VObj x) (tm_open 0 (VarF 1) tx)) =
-            tm_open 0 (VObj x0) (tm_subst (VObj x) tx)*)
-          admit.
+          change 1 with (0+1).
+          rewrite (proj1 (proj2 (proj2 (subst_open_rec 0 x HC)))).
+          rewrite (proj1 (proj2 (proj2 subst_open_commute0_rec))).
+          reflexivity.
+          simpl.
+          eapply (proj1 (proj2 (proj2 closed_subst_rec))).
+          simpl. eauto.
+          eauto.
         }
         assert (has_typed [] (subst_tm x0 t) (substt x0 (open 0 (VarF 0) T5))) as HI. {
           subst. rewrite <- Eqtx0. unfold substt in EqT2x. rewrite <- EqT2x. eauto.
         }
         eu. simpl in HI.
-        edestruct stp_subst_narrow as [? HI2]. rewrite app_nil_l. eapply H24. eauto.
+        edestruct stp_subst_narrow as [? HI2]. rewrite app_nil_l. eapply H25. eauto.
         simpl in HI2.
         assert (substt x0 (open 0 (VarF 0) T) = T) as EqT. {
           erewrite <- closed_no_open. erewrite subst_closed_id. reflexivity.
@@ -3267,7 +3279,7 @@ Proof.
       eu.
       assert (exists n1, has_type [] (tvar (VObj x)) (open 0 (VObj x) T) n1) as A. {
         eexists. eapply T_VObj. eauto. simpl. reflexivity. simpl. reflexivity.
-        simpl. eauto. simpl. inversion H26; subst. eauto. eauto.
+        simpl. eauto. simpl. inversion H27; subst. eauto. eauto.
       }
       destruct A as [? A].
       assert (substt x (open 0 (VarF 0) T) = open 0 (VObj x) T) as EqTx. {
@@ -3289,18 +3301,29 @@ Proof.
       assert ((substt x (open 0 (VarF 1) T2x))=(open 0 (VarF 0) (substt x T2x))) as EqT2x. {
         change 1 with (0+1). erewrite subst_open. reflexivity. eauto.
       }
+      assert (vr_closed 0 0 (VObj x2)) as HC0. {
+        eapply vtp_closed1; eauto.
+      }
+      assert (vr_closed 0 0 (VObj x)) as HC. {
+        eapply vtp_closed1; eauto.
+      }
       assert ((tm_subst (VObj x2) (tm_subst (VObj x) (tm_open 0 (VarF 1) tx))) =
               (subst_tm x2 t)) as Eqtx0. {
         subst. unfold subst_tm.
-        (*tm_subst (VObj x0) (tm_subst (VObj x) (tm_open 0 (VarF 1) tx)) =
-          tm_open 0 (VObj x0) (tm_subst (VObj x) tx)*)
-         admit.
+        change 1 with (0+1).
+        rewrite (proj1 (proj2 (proj2 (subst_open_rec 0 x HC)))).
+        rewrite (proj1 (proj2 (proj2 subst_open_commute0_rec))).
+        reflexivity.
+        simpl.
+        eapply (proj1 (proj2 (proj2 closed_subst_rec))).
+        simpl. eauto.
+        eauto.
       }
       assert (has_typed [] (subst_tm x2 t) (substt x2 (open 0 (VarF 0) T5))) as HI. {
         subst. rewrite <- Eqtx0. unfold substt in EqT2x. rewrite <- EqT2x. eauto.
       }
       eu. simpl in HI.
-      edestruct stp_subst_narrow as [? HI2]. rewrite app_nil_l. eapply H25. eauto.
+      edestruct stp_subst_narrow as [? HI2]. rewrite app_nil_l. eapply H26. eauto.
       simpl in HI2.
       assert (substt x2 (open 0 (VarF 0) T2) = (open 0 (VObj x2) T2)) as EqT. {
         erewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity.
