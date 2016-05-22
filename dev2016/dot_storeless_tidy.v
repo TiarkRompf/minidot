@@ -196,13 +196,14 @@ Definition substt x T := (subst (VObj x) T).
 Hint Immediate substt.
 
 Inductive has_type : tenv -> tm -> ty -> nat -> Prop :=
-  | T_VObj : forall GH ds ds' T T' n1,
+  | T_VObj : forall GH ds ds' T T' TO n1,
       dms_has_type (T'::GH) ds' T' n1 ->
       T' = open 0 (VarF (length GH)) T ->
       ds' = dms_open 0 (VarF (length GH)) ds ->
       closed (length GH) 1 T ->
       dms_closed (length GH) 1 ds ->
-      has_type GH (tvar (VObj ds)) (TBind T) (S n1)
+      TO = open 0 (VObj ds) T ->
+      has_type GH (tvar (VObj ds)) TO (S n1)
   | T_VarF : forall GH x T n1,
       index x GH = Some T ->
       closed (length GH) 0 T ->
@@ -373,10 +374,12 @@ Inductive vtp(*possible types*) : nat(*pack count*) -> dms -> ty -> nat(*size*) 
     stp [] TX T2 n2 ->
     vr_closed 0 0 (VObj ds) ->
     vtp m ds (TMem l T1 T2) (S (n1+n2))
-| vtp_fun: forall m ds l T3 T4 T1 T2 t T2' T4' ds' T' T1x T2x tx T2x' tx' n1 n2 n3 n4,
+| vtp_fun: forall m ds T l T3 T4 T1 T2 t T2' T4' ds' T' T1x T2x tx T2x' tx' n1 n2 n3 n4,
     index l (dms_to_list (subst_dms ds ds)) = Some (dfun T1 T2 t) ->
-    ds' = (dms_open 0 (VarF 0) ds) ->
     dms_has_type [T'] ds' T' n4 ->
+    T' = open 0 (VarF 0) T ->
+    ds' = dms_open 0 (VarF 0) ds ->
+    closed 0 1 T ->
     index l (dms_to_list ds') = Some (dfun T1x T2x tx) ->
     T2x' = (open 0 (VarF 1) T2x) ->
     tx' = (tm_open 0 (VarF 1) tx) ->
@@ -1152,7 +1155,7 @@ Proof.
   - eapply IHH1 in H1. eapply closed_open. simpl. eapply closed_upgrade_gh. eauto. omega. econstructor. eauto. omega.
   - eapply closed_upgrade_gh. eapply IHS2. eauto. omega. rewrite H4. rewrite app_length. omega.
   (* has_type *)
-  - econstructor. eauto.
+  - subst. eapply closed_open. simpl. eauto. econstructor. eauto.
   - eauto.
   - econstructor. eapply closed_upgrade_gh. eauto. omega.
   - eapply IHT in H1. inversion H1; subst. eauto. omega.
@@ -2484,11 +2487,12 @@ Proof.
       }
       eu.
       repeat eexists. eapply vtp_fun. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+      eauto. eauto.
       eapply stp_trans. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
     + SCase "ssel2".
       repeat eexists. eapply vtp_sel. eauto. simpl in *. eauto. eauto. omega.
     + SCase "sel2".
-      eapply stp_closed2 in H0. simpl in H0. inversion H0. subst. inversion H12. omega.
+      eapply stp_closed2 in H0. simpl in H0. inversion H0. subst. inversion H11. omega.
     + SCase "and".
       assert (vtpdd m1 x T6). eapply IHn; eauto. omega. eu.
       assert (vtpdd m1 x T7). eapply IHn; eauto. omega. eu.
@@ -2712,7 +2716,7 @@ Lemma dms_hastp_inv: forall ds T n1,
   dms_has_type [open 0 (VarF 0) T] (dms_open 0 (VarF 0) ds) (open 0 (VarF 0) T) n1 ->
   closed 0 1 T ->
   dms_closed 0 1 ds ->
-  exists m n, vtp m ds (TBind T) n.
+  exists m n, vtp m ds (open 0 (VObj ds) T) n.
 Proof.
   admit.
 Qed.
@@ -3036,22 +3040,30 @@ Proof.
       destruct HX.
       * SSCase "arg-val".
         ev. ev. subst.
-        assert (exists m n1, vtp m x (TFun l T1 T) n1). eapply hastp_inv. eauto.
-        assert (exists m n1, vtp m x0 T1 n1). eapply hastp_inv. eauto.
+        assert (exists m n1, vtp m x (TFun l T1 T) n1). { eapply hastp_inv. eauto. }
+        assert (exists m n1, vtp m x0 T1 n1). { eapply hastp_inv. eauto. }
         ev. inversion H2. subst.
-        assert (vtpdd x1 x0 T0). eapply vtp_widen. eauto. eauto. eauto. eauto. eauto.
+        assert (vtpdd x1 x0 T2). { eapply vtp_widen. eauto. eauto. eauto. eauto. eauto. }
         eu.
-        assert (exists T, (exists n1, has_type [] (tvar (VObj x)) T n1) /\ substt x T' = T) as A. eexists. split. eexists. eapply T_Vary. eauto. reflexivity. eapply closed_subst. eapply dms_has_type_closed in H8. eauto. eauto. reflexivity.
-        destruct A as [Tx [[na A] EqTx]].
-        assert (has_typed (map (substt x) [T1x]) (subst_tm x tx) (substt x (open 0 (TVar (VAbs 1)) T2x))) as HIx.
-        eapply hastp_subst_z. eapply H11. rewrite EqTx. eapply A.
+        assert (exists n1, has_type [] (tvar (VObj x)) (open 0 (VObj x) T0) n1) as A. {
+          eexists. eapply T_VObj. eauto. simpl. reflexivity. simpl. reflexivity.
+          simpl. eauto. simpl. inversion H25; subst. eauto. eauto.
+        }
+        destruct A as [? A].
+        assert (substt x (open 0 (VarF 0) T0) = open 0 (VObj x) T0) as EqTx. {
+          admit.
+        }
+        assert (has_typed (map (substt x) [T1x]) (subst_tm x (tm_open 0 (VarF 1) tx)) (substt x (open 0 (VarF 1) T2x))) as HIx. {
+          eapply hastp_subst_z. eapply H15. rewrite EqTx. eapply A.
+        }
         eu. simpl in HIx.
-        assert (subst_dm x (dfun T1x T2x tx) = dfun T0 T2 t) as EqD. {
-          eapply index_subst_dms_eq. eauto. eauto.
+        assert (dm_subst (VObj x) (dfun T1x T2x tx) = dfun T0 T2 t) as EqD. {
+          admit.
         }
         simpl in EqD. inversion EqD.
-        assert (has_typed (map (substt x0) []) (subst_tm x0 (subst_tm x tx)) (substt x0 (substt x (open 0 (TVar (VAbs 1)) T2x)))) as HIx0.
-        eapply hastp_subst. rewrite app_nil_l. eapply HIx. unfold substt. rewrite H10. eauto.
+        assert (has_typed (map (substt x0) []) (subst_tm x0 (subst_tm x tx)) (substt x0 (substt x (open 0 (VarF 1) T2x)))) as HIx0. {
+          eapply hastp_subst. rewrite app_nil_l. eapply HIx. unfold substt. rewrite H10. eauto.
+       }
         eu. simpl in HIx0.
         assert ((substt x (open 0 (TVar (VAbs 1)) T2x))=(open 0 (TVar (VAbs 0)) (substt x T2x))) as EqT2x. {
           change 1 with (0+1). rewrite subst_open. reflexivity.
