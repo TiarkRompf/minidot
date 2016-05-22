@@ -365,16 +365,19 @@ with htp: tenv -> id -> ty -> nat -> Prop :=
 
 Inductive vtp(*possible types*) : nat(*pack count*) -> dms -> ty -> nat(*size*) -> Prop :=
 | vtp_top: forall m ds n1,
+    vr_closed 0 0 (VObj ds) ->
     vtp m ds TTop (S n1)
 | vtp_mem: forall m l ds TX T1 T2 n1 n2,
     index l (dms_to_list (subst_dms ds ds)) = Some (dty TX) ->
     stp [] T1 TX n1 ->
     stp [] TX T2 n2 ->
+    vr_closed 0 0 (VObj ds) ->
     vtp m ds (TMem l T1 T2) (S (n1+n2))
-| vtp_fun: forall m l ds T1 T2 T3 T4 T2' T4' t T1x T2x tx tx' T' T2x' n1 n2 n3 n4,
+| vtp_fun: forall m ds l T3 T4 T1 T2 t T2' T4' ds' T' T1x T2x tx T2x' tx' n1 n2 n3 n4,
     index l (dms_to_list (subst_dms ds ds)) = Some (dfun T1 T2 t) ->
-    dms_has_type [T'] ds T' n4 ->
-    index l (dms_to_list ds) = Some (dfun T1x T2x tx) ->
+    ds' = (dms_open 0 (VarF 0) ds) ->
+    dms_has_type [T'] ds' T' n4 ->
+    index l (dms_to_list ds') = Some (dfun T1x T2x tx) ->
     T2x' = (open 0 (VarF 1) T2x) ->
     tx' = (tm_open 0 (VarF 1) tx) ->
     has_type [T1x;T'] tx' T2x' n3 ->
@@ -384,6 +387,7 @@ Inductive vtp(*possible types*) : nat(*pack count*) -> dms -> ty -> nat(*size*) 
     closed 0 1 T2 ->
     closed 0 1 T4 ->
     stp [T3] T2' T4' n2 ->
+    vr_closed 0 0 (VObj ds) ->
     vtp m ds (TFun l T3 T4) (S (n1+n2+n3+n4))
 | vtp_bind: forall m ds T2 n1,
     vtp m ds (open 0 (VObj ds) T2) n1 ->
@@ -1066,12 +1070,18 @@ Lemma all_closed: forall ni,
   (forall GH ds T n,
      dms_has_type GH ds T n -> n < ni ->
      closed (length GH) 0 T) /\
+  (forall GH t T n,
+     has_type GH t T n -> n < ni ->
+     tm_closed (length GH) 0 t) /\
+  (forall m x T2 n,
+     vtp m x T2 n -> n < ni ->
+     vr_closed 0 0 (VObj x)) /\
   (forall GH ds T n,
      dms_has_type GH ds T n -> n < ni ->
      dms_closed (length GH) 0 ds).
 Proof.
   intros n. induction n. repeat split; intros; omega.
-  repeat split; intros; inversion H; destruct IHn as [IHS1 [IHS2 [IHV2 [IHH1 [IHH2 [IHT [IHD IHD2]]]]]]].
+  repeat split; intros; inversion H; destruct IHn as [IHS1 [IHS2 [IHV2 [IHH1 [IHH2 [IHT [IHD [IHT1 [IHV1 IHD1]]]]]]]]].
   (* stp left *)
   - econstructor.
   - eauto.
@@ -1153,10 +1163,27 @@ Proof.
   - econstructor.
   - subst. econstructor. econstructor. eauto. eauto. eapply IHD. eauto. omega.
   - subst. econstructor. econstructor. eauto. eauto. eapply IHD. eauto. omega.
-  (* dms_has_type 2*)
+  (* has_type 1 *)
+  - subst. econstructor. econstructor. eauto.
+  - subst. econstructor. econstructor. eauto using index_max.
+  - subst. eapply IHT1 in H1. eauto. omega.
+  - subst. eapply IHT1 in H1. eauto. omega.
+  - subst. eapply IHT1 in H1. eapply IHT1 in H2. econstructor. eauto. eauto. omega. omega.
+  - subst. eapply IHT1 in H1. eapply IHT1 in H2. econstructor. eauto. eauto. omega. omega.
+  - subst. eapply IHT1 in H1. eauto. omega.
+  (* vtp 1 *)
+  - subst. eauto.
+  - subst. eauto.
+  - subst. eauto.
+  - subst. eapply IHV1 in H1. eauto. omega.
+  - subst. eapply IHV1 in H3. eauto. omega.
+  - subst. eapply IHV1 in H1. eauto. omega.
+  - subst. eapply IHV1 in H1. eauto. omega.
+  - subst. eapply IHV1 in H1. eauto. omega.
+  (* dms_has_type 1 *)
   - econstructor.
-  - subst. econstructor. econstructor. eauto. eauto. eapply IHD2. eauto. omega.
-  - subst. econstructor. econstructor. eauto. eauto. eauto. eapply IHD2. eauto. omega.
+  - subst. econstructor. econstructor. eauto. eauto. eapply IHD1. eauto. omega.
+  - subst. econstructor. econstructor. eauto. eauto. eauto. eapply IHD1. eauto. omega.
 Qed.
 
 Lemma htp_closed: forall x GH T2 n,
@@ -1167,6 +1194,11 @@ Proof. intros. eapply all_closed with (x:=x). eauto. eauto. Qed.
 Lemma vtp_closed: forall m x T2 n1,
   vtp m x T2 n1 ->
   closed 0 0 T2.
+Proof. intros. eapply all_closed. eauto. eauto. Qed.
+
+Lemma vtp_closed1: forall m x T2 n1,
+  vtp m x T2 n1 ->
+  vr_closed 0 0 (VObj x).
 Proof. intros. eapply all_closed. eauto. eauto. Qed.
 
 Lemma has_type_closed: forall GH t T n1,
