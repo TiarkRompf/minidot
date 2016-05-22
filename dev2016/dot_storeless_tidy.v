@@ -2703,6 +2703,16 @@ Proof.
   eexists. eassumption.
 Qed.
 
+Lemma dms_hastp_inv: forall ds T n1,
+  dms_has_type [open 0 (VarF 0) T] (dms_open 0 (VarF 0) ds) (open 0 (VarF 0) T) n1 ->
+  closed 0 1 T ->
+  dms_closed 0 1 ds ->
+  exists m n, vtp m ds (TBind T) n.
+Proof.
+  admit.
+Qed.
+
+(*
 Lemma dms_hastp_inv: forall ds' T' n,
   dms_has_type [T'] ds' T' n ->
   closed 0 0 (substt ds' T') ->
@@ -2774,6 +2784,7 @@ Proof.
 Grab Existential Variables.
 apply 0. apply 0.
 Qed.
+ *)
 
 Lemma hastp_inv: forall x T n1,
   has_type [] (tvar (VObj x)) T n1 ->
@@ -2781,7 +2792,7 @@ Lemma hastp_inv: forall x T n1,
 Proof.
   intros. remember [] as GH. remember (tvar (VObj x)) as t.
   induction H; subst; try inversion Heqt.
-  - Case "var". subst. eapply dms_hastp_inv; eauto.
+  - Case "var". subst. simpl in *. eapply dms_hastp_inv; eauto.
   - Case "pack". subst.
     destruct IHhas_type. eauto. eauto. ev.
     repeat eexists. eapply vtp_bind. eauto. eauto.
