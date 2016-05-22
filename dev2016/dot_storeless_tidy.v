@@ -2701,10 +2701,10 @@ Lemma stp_subst_narrow_z: forall GH0 TX T1 T2 x m n1 n2,
 Proof.
   intros.
   edestruct stp_subst_narrow0.
-  instantiate (1:=x). admit.
+  eapply vtp_closed1. eauto.
   eauto. eauto.
   { intros. edestruct stp_subst_narrowX.
-    instantiate (1:=x). admit.
+    eapply vtp_closed1. eauto.
     eauto. eauto. eauto. eauto.
     { intros. eapply vtp_widen; eauto. }
     ev. repeat eexists. eauto.
