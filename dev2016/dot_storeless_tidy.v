@@ -2971,20 +2971,14 @@ Proof.
       rewrite app_length in H4. simpl in H4.
       apply H4.
 
-  - Case "obj".
-    edestruct IHniD with (GH:=T'::GH1) as [? IH]. subst. eauto. omega. subst. eauto.
-    subst. simpl.
-    eexists. eapply T_Obj. eauto.
-    rewrite app_length. simpl. unfold substt. rewrite subst_open_commute_z.
-    rewrite map_length. eauto.
-    eapply closed_subst. rewrite app_length in *. simpl in *. rewrite map_length. eauto.
-    econstructor.
   - Case "app". subst. simpl.
     edestruct IHniT as [? IH1]. eapply H2. omega. eauto.
     edestruct IHniT as [? IH2]. eapply H3. omega. eauto.
     eexists. eapply T_App. eauto. eauto. eapply closed_subst.
     subst. rewrite map_length. rewrite app_length in *. simpl in *. eauto.
-    subst. rewrite map_length. econstructor.
+    subst. rewrite map_length.
+    eapply (proj1 closed_upgrade_gh_rec).
+    eapply has_type_closed1 in H1. inversion H1; subst. simpl in *. eauto. omega.
   - Case "appvar". subst. simpl.
     edestruct IHniT as [? IH1]. eapply H2. omega. eauto.
     edestruct IHniT as [? IH2]. eapply H3. omega. eauto.
@@ -2993,7 +2987,7 @@ Proof.
     case_eq (beq_nat i 0); intros E.
 
     eapply beq_nat_true in E. subst.
-    rewrite subst_open_commute0b.
+    erewrite subst_open_commute0b.
     eexists. eapply T_AppVar. eauto. eauto. eauto.
     rewrite map_length. rewrite <- subst_open_commute0b.
     eapply closed_subst. eapply closed_upgrade_gh. eassumption.
