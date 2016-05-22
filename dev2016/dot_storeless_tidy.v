@@ -2980,6 +2980,10 @@ Proof.
     eapply (proj1 closed_upgrade_gh_rec).
     eapply has_type_closed1 in H1. inversion H1; subst. simpl in *. eauto. omega.
   - Case "appvar". subst. simpl.
+    assert (vr_closed 0 0 (VObj x)) as HCx. {
+      eapply has_type_closed1 in H1. simpl in H1. inversion H1; subst. eauto.
+    }
+
     edestruct IHniT as [? IH1]. eapply H2. omega. eauto.
     edestruct IHniT as [? IH2]. eapply H3. omega. eauto.
     destruct v2.
@@ -2988,25 +2992,36 @@ Proof.
 
     eapply beq_nat_true in E. subst.
     erewrite subst_open_commute0b.
-    eexists. eapply T_AppVar. eauto. eauto. eauto.
-    rewrite map_length. rewrite <- subst_open_commute0b.
+    eexists. eapply T_AppVar. eauto. eauto.
+    simpl. eapply (proj1 closed_upgrade_gh_rec). eapply HCx. omega.
+    eauto.
+    rewrite map_length. erewrite <- subst_open_commute0b.
     eapply closed_subst. eapply closed_upgrade_gh. eassumption.
     rewrite app_length. simpl. omega.
-    econstructor.
+    eapply (proj1 closed_upgrade_gh_rec). eapply HCx. omega. eauto. eauto.
 
-    rewrite subst_open5.
+    erewrite subst_open5.
     simpl in *. rewrite E in *.
-    eexists. eapply T_AppVar. eauto. eauto. eauto.
-    rewrite <- subst_open5. eapply closed_subst.
+    eexists. eapply T_AppVar. eauto. eauto.
+    eapply has_type_closed1 in IH2. inversion IH2; subst. eassumption.
+    eauto.
+    erewrite <- subst_open5. eapply closed_subst.
     subst. rewrite map_length. rewrite app_length in *. simpl in *. eassumption.
-    subst. rewrite map_length. econstructor.
-    apply []. apply beq_nat_false. apply E. apply []. apply beq_nat_false. apply E.
+    eapply (proj1 closed_upgrade_gh_rec). eapply HCx. omega. eauto.
+    apply []. apply beq_nat_false. apply E.
+    eauto.
+    apply []. apply beq_nat_false. apply E.
+
+    eapply has_type_closed1 in IH2. inversion IH2; subst. inversion H9; subst. omega.
 
     eexists. eapply T_AppVar. eauto. eauto.
-    rewrite subst_open_commute1. eauto.
+    eapply has_type_closed1 in IH2. inversion IH2; subst. eassumption.
+    unfold substt.
+    eapply (proj2 (subst_open_distribute 0 0 (VObj x) (VObj d) HCx)). omega.
     eapply closed_subst. subst. rewrite map_length. rewrite app_length in *. simpl in *.
     eapply closed_upgrade_gh. eassumption. omega.
-    subst. rewrite map_length. econstructor.
+    eapply (proj1 closed_upgrade_gh_rec). eapply HCx. omega.
+
   - Case "sub". subst.
     edestruct hastp_inv as [? [? HV]]; eauto.
     edestruct stp_subst_narrow_z. eapply H3. eapply HV.
