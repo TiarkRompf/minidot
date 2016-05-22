@@ -199,7 +199,7 @@ Inductive has_type : tenv -> tm -> ty -> nat -> Prop :=
   | T_VObj : forall GH ds ds' T T' n1,
       dms_has_type (T'::GH) ds' T' n1 ->
       T' = open 0 (VarF (length GH)) T ->
-      ds' = dms_open 0 (VarF (length GH)) ds' ->
+      ds' = dms_open 0 (VarF (length GH)) ds ->
       closed (length GH) 1 T ->
       dms_closed (length GH) 1 ds ->
       has_type GH (tvar (VObj ds)) (TBind T) (S n1)
