@@ -3045,21 +3045,31 @@ Proof.
     eapply (proj1 closed_upgrade_gh_rec). eapply HCx. omega.
     rewrite app_length in *. simpl in *. rewrite map_length. eassumption.
     reflexivity. rewrite <- length_dms_subst. unfold substt. simpl. reflexivity.
-  - Case "abs". subst. simpl.
+  - Case "fun". subst. simpl.
+    assert (vr_closed 0 0 (VObj x)) as HCx. {
+      eapply has_type_closed1 in H1. simpl in H1. inversion H1; subst. eauto.
+    }
     edestruct IHniD as [? IHD]. eapply H2. omega. eauto.
     edestruct IHniT with (GH:=T11::GH1) as [? HI] . eauto. omega. eauto.
     simpl in HI.
-    eexists. eapply D_Abs. eapply IHD. eapply HI.
+    eexists. eapply D_Fun. eapply IHD. eapply HI.
     rewrite map_length. rewrite app_length. simpl.
-    rewrite subst_open. unfold substt. reflexivity.
-    eapply closed_subst0. rewrite map_length. rewrite app_length in H5. simpl in H5. eauto. eauto.
-    eapply closed_subst0. rewrite map_length. rewrite app_length in H6. simpl in H6. eauto.
-    unfold substt. simpl. rewrite <- length_subst_dms. reflexivity.
-    eauto.
+    erewrite subst_open. unfold substt. reflexivity. eapply HCx.
+    rewrite map_length. rewrite app_length. simpl.
+    erewrite (proj1 (proj2 (proj2 (subst_open_rec 0 x HCx)))). reflexivity.
+    rewrite map_length in *. rewrite app_length in *. simpl in *.
+    eapply closed_subst0.
+    eapply (proj1 closed_upgrade_gh_rec). eapply HCx. omega. eauto.
+    rewrite map_length in *. rewrite app_length in *. simpl in *.
+    eapply closed_subst0.
+    eapply (proj1 closed_upgrade_gh_rec). eapply HCx. omega. eauto.
+    rewrite map_length in *. rewrite app_length in *. simpl in *.
+    eapply (proj1 (proj2 (proj2 closed_subst_rec))). eauto.
+    eapply (proj1 closed_upgrade_gh_rec). eapply HCx. omega. eauto.
+    unfold substt. simpl. rewrite <- length_dms_subst. reflexivity.
+
 Grab Existential Variables.
 apply 0. apply 0.
-*)
-admit.
 Qed.
 
 Lemma hastp_subst_z: forall GH TX T x t n1 n2,
