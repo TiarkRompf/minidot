@@ -2431,7 +2431,7 @@ Proof.
     + SCase "ssel2".
       repeat eexists. eapply vtp_sel. eauto. simpl in *. eauto. eauto. omega.
     + SCase "sel2".
-      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H7. omega.
+      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H8. omega.
     + SCase "and".
       assert (vtpdd m1 x T1). eapply IHn; eauto. omega. eu.
       assert (vtpdd m1 x T0). eapply IHn; eauto. omega. eu.
@@ -2447,16 +2447,16 @@ Proof.
       assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega.
   - Case "mem". inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. eauto.
+    + SCase "top". repeat eexists. eapply vtp_top. eauto. eauto.
     + SCase "mem". invty. subst.
       repeat eexists. eapply vtp_mem. eauto.
       eapply stp_trans. eauto. eauto.
       eapply stp_trans. eauto. eauto.
-      eauto.
+      eauto. eauto.
     + SCase "ssel2".
       repeat eexists. eapply vtp_sel. eauto. simpl in *. eauto. eauto. omega.
     + SCase "sel2".
-      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H10. omega.
+      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H11. omega.
     + SCase "and".
       assert (vtpdd m1 x T4). eapply IHn; eauto. omega. eu.
       assert (vtpdd m1 x T5). eapply IHn; eauto. omega. eu.
@@ -2472,14 +2472,14 @@ Proof.
       assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega.
   - Case "fun". inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. eauto.
+    + SCase "top". repeat eexists. eapply vtp_top. eauto. eauto.
     + SCase "fun". invty. subst.
-      assert (stpd2 [T8] (open 0 (VarF 0) T0) (open 0 (VarF 0) T5)) as A. {
+      assert (stpd2 [T8] (open 0 (VarF 0) T5) (open 0 (VarF 0) T4)) as A. {
         eapply stp_narrow. simpl. eassumption. simpl. eassumption.
       }
-      destruct A as [na A].
-      repeat eexists. eapply vtp_fun. eauto. eauto. eauto. eauto. eauto. eauto.
-      eapply stp_trans. eauto. eauto. eauto. eauto. eauto. eauto. eauto. reflexivity.
+      eu.
+      repeat eexists. eapply vtp_fun. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+      eapply stp_trans. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
     + SCase "ssel2".
       repeat eexists. eapply vtp_sel. eauto. simpl in *. eauto. eauto. omega.
     + SCase "sel2".
@@ -2500,7 +2500,8 @@ Proof.
       repeat eexists. eauto. omega.
   - Case "bind".
     inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. eauto.
+    + SCase "top". repeat eexists. eapply vtp_top.
+      eapply vtp_closed1. eauto. eauto.
     + SCase "sel2".
       repeat eexists. eapply vtp_sel. eauto. simpl in *. eauto. eauto. omega.
     + SCase "sel2".
@@ -2519,7 +2520,7 @@ Proof.
 
       assert (vtpdd m x (substt x T3)) as BB. {
         eapply stp_subst_narrowX.
-        admit.
+        eapply vtp_closed1. eauto.
         rewrite <-R in LHS.
         eauto.
         instantiate (2:=nil). simpl. eapply H10. eauto. eauto.
@@ -2539,7 +2540,8 @@ Proof.
       assert (substt x (open 0 VZ T0) = (open 0 VX T0)) as R. unfold substt. subst. eapply subst_open_commute0. eauto.
 
       assert (vtpdd m x (substt x (open 0 VZ T4))) as BB. {
-        eapply stp_subst_narrowX. admit.
+        eapply stp_subst_narrowX.
+        eapply vtp_closed1. eauto.
         rewrite <-R in LHS. eapply LHS.
         instantiate (2:=nil). simpl. eapply H10. eauto. eauto.
         { intros. eapply IHl. eauto. eauto. omega. eauto. eauto. }
@@ -2562,7 +2564,8 @@ Proof.
       assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega.
   - Case "ssel2". subst. inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. eauto.
+    + SCase "top". repeat eexists. eapply vtp_top.
+      eapply vtp_closed1. eauto. eauto.
     + SCase "ssel1".
       repeat eexists. eauto. omega.
     + SCase "ssel2".
@@ -2590,7 +2593,8 @@ Proof.
       assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega.
   - Case "and". subst. inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. eauto.
+    + SCase "top". repeat eexists. eapply vtp_top.
+      eapply vtp_closed1. eauto. eauto.
     + SCase "ssel2".
       repeat eexists. eapply vtp_sel. eauto. eauto. eauto. omega.
     + SCase "sel2".
@@ -2613,7 +2617,8 @@ Proof.
       repeat eexists. eauto. omega.
 
   - Case "or1". subst. inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. eauto.
+    + SCase "top". repeat eexists. eapply vtp_top.
+      eapply vtp_closed1. eauto. eauto.
     + SCase "ssel2".
       repeat eexists. eapply vtp_sel. eauto. eauto. eauto. omega.
     + SCase "sel2".
@@ -2637,7 +2642,8 @@ Proof.
       repeat eexists. eauto. omega. eauto. omega. omega. eauto.
 
   - Case "or2". subst. inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top. eauto.
+    + SCase "top". repeat eexists. eapply vtp_top.
+      eapply vtp_closed1. eauto. eauto.
     + SCase "ssel2".
       repeat eexists. eapply vtp_sel. eauto. eauto. eauto. omega.
     + SCase "sel2".
