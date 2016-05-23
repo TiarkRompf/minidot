@@ -2185,16 +2185,16 @@ Proof.
 
   - Case "ssel1". subst.
     unfold substt at 2. unfold substt at 2. simpl.
-    eexists. eapply stp_strong_sel1. eapply dm_subst_self in H1. simpl in H1.
-    eapply H1.
+    eexists. eapply stp_strong_sel1.
+    eapply dm_subst_self in H1; eauto.
     rewrite app_length in H2. simpl in H2. inversion H2; subst.
     rewrite map_length. econstructor.
     eapply (proj2 (proj2 (proj2 (proj2 closed_subst_rec)))). eauto.
     eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
   - Case "ssel2". subst.
     unfold substt at 2. unfold substt at 2. simpl.
-    eexists. eapply stp_strong_sel2. eapply dm_subst_self in H1. simpl in H1.
-    eapply H1.
+    eexists. eapply stp_strong_sel2.
+    eapply dm_subst_self in H1; eauto.
     rewrite app_length in H2. simpl in H2. inversion H2; subst.
     rewrite map_length. econstructor.
     eapply (proj2 (proj2 (proj2 (proj2 closed_subst_rec)))). eauto.
