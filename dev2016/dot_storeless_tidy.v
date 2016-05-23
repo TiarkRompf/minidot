@@ -1474,17 +1474,29 @@ Proof.
   inversion H0.
 Qed.
 
-Lemma dm_subst_self: forall x ds l D,
-(*
-vr_closed 0 0 (VObj x)
-vr_closed k 0 (VObj ds)
-*)
-index l (dms_to_list (subst_dms ds ds)) = Some D ->
-index l (dms_to_list (subst_dms (dms_subst (VObj x) ds) (dms_subst (VObj x) ds))) = Some (dm_subst (VObj x) D).
+Lemma dm_subst_self: forall k x ds l D,
+  vr_closed 0 0 (VObj x) ->
+  vr_closed k 0 (VObj ds) ->
+  index l (dms_to_list (subst_dms ds ds)) = Some D ->
+  index l (dms_to_list (subst_dms (dms_subst (VObj x) ds) (dms_subst (VObj x) ds))) = Some (dm_subst (VObj x) D).
 Proof.
-  admit.
+  intros k x ds l D HCx HCds HI.
+  inversion HCds; subst. clear HCds. rename H2 into HCds.
+  remember ds as ds0. rewrite Heqds0 in *.
+  rewrite <- Heqds0 in HI at 1. rewrite <- Heqds0 at 1. clear Heqds0.
+  generalize dependent D. generalize dependent ds0.
+  induction HCds; intros.
+  - simpl in *. solve by inversion.
+  - simpl in *.
+    rewrite <- length_dms_open in *. rewrite <- length_dms_subst in *.
+    case_eq (beq_nat l (length (dms_to_list ds2))); intros E;
+    rewrite E in *.
+    + inversion HI; subst. f_equal.
+      rewrite (proj1 (proj2 (proj2 (proj2 (subst_open_distribute 0 0 (VObj x) (VObj ds0) HCx))))).
+      simpl. reflexivity. omega.
+    + unfold subst_dms in *. specialize (IHHCds ds0 D HI). rewrite IHHCds.
+      reflexivity.
 Qed.
-
 
 (* upgrade_gh interlude begin *)
 
