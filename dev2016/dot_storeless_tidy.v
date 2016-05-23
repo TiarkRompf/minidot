@@ -190,9 +190,10 @@ with dms_subst (u : vr) (ds : dms) { struct ds } : dms :=
    end.
 
 Definition subst_dms (u:dms) (ds: dms) := dms_open 0 (VObj u) ds.
-Definition subst_dm x D := dm_open 0 (VObj x) D.
-Definition subst_tm x t := tm_open 0 (VObj x) t.
-Definition substt x T := (subst (VObj x) T).
+Definition subst_dm (x:dms) (D: dm) := dm_open 0 (VObj x) D.
+Definition subst_tm (x:dms) (t: tm) := tm_open 0 (VObj x) t.
+Definition subst_ty (x:dms) (T: ty) := open 0 (VObj x) T.
+Definition substt (x:dms) (T: ty) := (subst (VObj x) T).
 Hint Immediate substt.
 
 Inductive has_type : tenv -> tm -> ty -> nat -> Prop :=
@@ -2810,13 +2811,90 @@ Proof.
   eexists. eassumption.
 Qed.
 
+Lemma dms_hastp_inv_aux_rec: forall T0 ds0 ds0',
+  closed 0 0 (substt ds0 T0) ->
+  dms_closed 0 1 ds0 ->
+  ds0' = dms_open 0 (VarF 0) ds0 -> forall n0, forall n1 T' ds ds',
+  dms_has_type [T0] ds' T' n1 -> n1 <= n0 ->
+  closed 0 0 (substt ds0 T') ->
+  dms_closed 0 1 ds ->
+  ds' = dms_open 0 (VarF 0) ds -> forall dsa dsa',
+  dms_to_list ds0 = dsa ++ dms_to_list ds ->
+  dms_to_list ds0' = dsa' ++ dms_to_list ds' ->
+  exists m n, vtp m ds0 (substt ds0 T') n.
+Proof.
+  intros T0 ds0 ds0' HC0 Hds0 Eq0' n0. induction n0. intros. inversion H; subst; omega.
+  intros n1 T' ds ds' HD LE.
+  intros HC Hds Eq'.
+  intros dsa dsa' Eqa Eqa'.
+  inversion HD; subst.
+  - repeat eexists. eapply vtp_top.
+    econstructor. eauto.
+  - unfold substt in *.
+    destruct ds; simpl in H4; try solve [inversion H4].
+    inversion H4; subst.
+    destruct d; simpl in H2; try solve [inversion H2].
+    inversion H2; subst.
+    unfold substt in *. simpl in HC. inversion HC; subst. inversion Hds; subst.
+    edestruct IHn0 as [? [? IH]]. eapply H. omega. eauto. eassumption. reflexivity.
+    instantiate (1:=dsa ++ [(dty t)]). rewrite <- app_assoc. eauto.
+    instantiate (1:=dsa' ++ [(dm_open 0 (VarF 0) (dty t))]). rewrite <- app_assoc. eauto.
+    simpl.
+
+    assert (closed 0 1 t) as A1. {
+      simpl. inversion H9; subst. eassumption.
+    }
+    assert ((subst (VObj ds0) (open 0 (VarF 0) t))=(open 0 (VObj ds0) t)) as B1. {
+      rewrite subst_open_commute0. reflexivity. simpl. eauto.
+    }
+    assert (stpd2 [] (open 0 (VObj ds0) t) (open 0 (VObj ds0) t)) as C1. {
+      eapply stpd2_refl.
+      simpl. eapply closed_open. simpl. eauto. econstructor. eauto.
+    }
+    eu.
+
+    exists x. eexists. eapply vtp_and.
+    eapply vtp_mem. rewrite <- length_dms_open.
+    instantiate (1:=(subst_ty ds0 t)).
+    assert (dty (subst_ty ds0 t) = subst_dm ds0 (dty t)) as R1. {
+      unfold subst_ty. unfold subst_dm. simpl. reflexivity.
+    }
+    rewrite R1. eapply index_subst_dms. instantiate (1:=dsa). simpl. eauto.
+    unfold subst_ty. rewrite B1. eauto. unfold subst_ty. rewrite B1. eauto.
+    econstructor. eauto.
+    eapply IH. eauto. omega.
+
+ - admit.
+
+Grab Existential Variables.
+apply 0. apply 0.
+Qed.
+
+Lemma dms_hastp_inv_aux: forall ds T' n1,
+  dms_has_type [T'] (dms_open 0 (VarF 0) ds) T' n1 ->
+  closed 0 0 (substt ds T') ->
+  dms_closed 0 1 ds ->
+  exists m n, vtp m ds (substt ds T') n.
+Proof.
+  intros. eapply dms_hastp_inv_aux_rec; eauto.
+  instantiate (1:=[]). rewrite app_nil_l. reflexivity.
+  instantiate (1:=[]). rewrite app_nil_l. reflexivity.
+Qed.
+
 Lemma dms_hastp_inv: forall ds T n1,
   dms_has_type [open 0 (VarF 0) T] (dms_open 0 (VarF 0) ds) (open 0 (VarF 0) T) n1 ->
   closed 0 1 T ->
   dms_closed 0 1 ds ->
   exists m n, vtp m ds (open 0 (VObj ds) T) n.
 Proof.
-  admit.
+  intros ds T n H HCT HCds.
+  assert (open 0 (VObj ds) T=substt ds (open 0 (VarF 0) T)) as A. {
+    unfold substt. rewrite subst_open_commute0. reflexivity.
+    simpl. eauto.
+  }
+  rewrite A. eapply dms_hastp_inv_aux; eauto.
+  rewrite <- A.
+  eapply closed_open; eauto. econstructor. eauto.
 Qed.
 
 (*
