@@ -537,9 +537,6 @@ Inductive vtp(*possible types*) : nat(*pack count*) -> dms -> ty -> nat(*size*) 
     closed 0 1 T2 ->
     closed 0 1 T4 ->
     stp [T3] T2' T4' n2 ->
-    (forall dsa na, has_type [] (tvar (VObj dsa)) T1 na ->
-                    exists dsr nr, step_star (subst_tm dsa t) (tvar (VObj dsr)) /\
-                    has_type [] (tvar (VObj dsr)) (substt dsa T2') nr) ->
     vtp m ds (TFun l T3 T4) (S (n1+n2+n3+n4))
 | vtp_sel: forall m ds dsy l TX n1,
     index l (dms_to_list dsy) = Some (dty TX) ->
@@ -2116,12 +2113,12 @@ Proof.
       }
       destruct A as [na A].
       repeat eexists. eapply vtp_fun. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
-      eapply stp_trans. eauto. eauto. eauto. eauto.
+      eapply stp_trans. eauto. eauto. eauto.
     + SCase "sel2".
       assert (vtpdd m1 x TX). eapply IHn; eauto. omega.
       eu. repeat eexists. eapply vtp_sel. eauto. eauto. eauto.
     + SCase "sel2".
-      eapply stp_closed2 in H0. simpl in H0. inversion H0. subst. inversion H15. omega.
+      eapply stp_closed2 in H0. simpl in H0. inversion H0. subst. inversion H14. omega.
     + SCase "and".
       assert (vtpdd m1 x T6). eapply IHn; eauto. omega. eu.
       assert (vtpdd m1 x T7). eapply IHn; eauto. omega. eu.
@@ -2354,7 +2351,7 @@ Proof.
     repeat eexists. eapply vtp_and. eapply vtp_fun.
     erewrite index_dms with (D:=dfun T11 T12 t12). simpl. reflexivity. eauto.
     eapply HT0. eauto. eauto. simpl. reflexivity. reflexivity.
-    eauto. eauto. eauto. admit. eauto. eauto. eauto.
+    eauto. eauto. eauto. eauto. eauto. eauto.
 Grab Existential Variables.
 apply 0. apply 0.
 Qed.
@@ -2614,6 +2611,17 @@ Definition reduces (t:tm) (v:tm) (T:ty) :=
   exists ds n,
     v=(tvar (VObj ds)) /\ step_star t v /\ has_type [] (tvar (VObj ds)) T n.
 
+Lemma vtp_fun_extra: forall ds T1 T2 t T2' m l T3 T4 n,
+    vtp m ds (TFun l T3 T4) n ->
+    index l (dms_to_list ds) = Some (dfun T1 T2 t) ->
+    T2' = (open 0 (TVar (VAbs 0)) T2) ->
+    (forall dsa na, has_type [] (tvar (VObj dsa)) T1 na ->
+                    exists dsr nr, step_star (subst_tm dsa t) (tvar (VObj dsr)) /\
+                    has_type [] (tvar (VObj dsr)) (substt dsa T2') nr).
+Proof.
+  admit.
+Qed.
+
 Theorem full_type_safety : forall t T n1,
   has_type [] t T n1 ->
   exists v, reduces t v T.
@@ -2658,7 +2666,7 @@ Proof.
    rewrite EqT in HI2.
    assert (exists dsr nr, step_star (subst_tm dsa t) (tvar (VObj dsr)) /\
                           has_type [] (tvar (VObj dsr)) (substt dsa (open 0 (TVar (VAbs 0)) T2)) nr) as HR. {
-     eapply H19; eauto.
+     eapply vtp_fun_extra; eauto.
    }
    ev. repeat eexists. eapply step_star_app; eauto. eauto.
 
@@ -2697,7 +2705,7 @@ Proof.
     rewrite EqT2 in HI2.
     assert (exists dsr nr, step_star (subst_tm dsa t) (tvar (VObj dsr)) /\
                            has_type [] (tvar (VObj dsr)) (substt dsa (open 0 (TVar (VAbs 0)) T3)) nr) as HR. {
-      eapply H19; eauto.
+      eapply vtp_fun_extra; eauto.
     }
     ev. repeat eexists. eapply step_star_app; eauto. eapply T_Sub. eauto. eauto.
 
