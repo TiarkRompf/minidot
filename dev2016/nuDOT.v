@@ -13,7 +13,7 @@ Require Export SfLib.
 Require Export Arith.EqNat.
 Require Export Arith.Lt.
 
-Module DOT.
+Module nuDOT.
 
 Definition id := nat.
 Definition lb := nat.
@@ -4013,4 +4013,4 @@ Proof.
 Qed.
 
 
-End DOT.
+End nuDOT.
