@@ -803,6 +803,17 @@ Proof.
 Qed.
 
 
+Example rex1: has_type [] (tnew (ttabs 0 (TMem TBot TTop) (tabs 1 2 (tvar 2)))) (TCell polyId).
+Proof.
+  crush2.
+Qed.
+
+Example rex2: has_type [(0, TCell polyId)] (ttapp (tget (tvar 0)) (ttyp TBool)) (TFun TBool TBool).
+Proof.
+  unfold polyId. eapply t_tapp.
+  eapply t_sub. eapply t_get. eapply t_var. compute. eauto. crush2.
+  instantiate (1:=(TMem TBool TBool)). crush2. crush2. crush2.
+Qed.
 
 (* define brand / unbrand client function *)
 
