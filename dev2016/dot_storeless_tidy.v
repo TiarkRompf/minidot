@@ -1031,6 +1031,19 @@ Proof.
     omega.
 Qed.
 
+Lemma index_dms_open: forall ds ds0 D ds1 v,
+  dms_to_list ds = ds0 ++ dms_to_list (dcons D ds1) ->
+  index (length (dms_to_list ds1)) (dms_to_list (dms_open 0 v ds)) = Some (dm_open 0 v D).
+Proof.
+  intros. generalize dependent ds1. generalize dependent ds. induction ds0; intros.
+  - simpl in H. destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
+    simpl. rewrite <- length_dms_open. rewrite beq_nat_true_eq. reflexivity.
+  - destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
+    simpl. rewrite false_beq_nat. eapply IHds0. eauto.
+    rewrite <- length_dms_open. rewrite H2. rewrite app_length. simpl.
+    omega.
+Qed.
+
 Lemma index_dms: forall ds ds0 D ds1,
   dms_to_list ds = ds0 ++ dms_to_list (dcons D ds1) ->
   index (length (dms_to_list ds1)) (dms_to_list ds) = Some D.
@@ -2811,10 +2824,13 @@ Proof.
   eexists. eassumption.
 Qed.
 
-Lemma dms_hastp_inv_aux_rec: forall T0 ds0 ds0',
+Lemma dms_hastp_inv_aux_rec: forall T0 T00 ds0 ds0' n0',
   closed 0 0 (substt ds0 T0) ->
   dms_closed 0 1 ds0 ->
-  ds0' = dms_open 0 (VarF 0) ds0 -> forall n0, forall n1 T' ds ds',
+  ds0' = dms_open 0 (VarF 0) ds0 ->
+  T0 = open 0 (VarF 0) T00 ->
+  closed 0 1 T00 ->
+  dms_has_type [T0] ds0' T0 n0' -> forall n0, forall n1 T' ds ds',
   dms_has_type [T0] ds' T' n1 -> n1 <= n0 ->
   closed 0 0 (substt ds0 T') ->
   dms_closed 0 1 ds ->
@@ -2823,13 +2839,15 @@ Lemma dms_hastp_inv_aux_rec: forall T0 ds0 ds0',
   dms_to_list ds0' = dsa' ++ dms_to_list ds' ->
   exists m n, vtp m ds0 (substt ds0 T') n.
 Proof.
-  intros T0 ds0 ds0' HC0 Hds0 Eq0' n0. induction n0. intros. inversion H; subst; omega.
+  intros T0 T00 ds0 ds0' n0' HC0 Hds0 Eq0' Eq00 HC00 HD0 n0.
+  induction n0. intros. inversion H; subst; omega.
   intros n1 T' ds ds' HD LE.
   intros HC Hds Eq'.
   intros dsa dsa' Eqa Eqa'.
   inversion HD; subst.
   - repeat eexists. eapply vtp_top.
     econstructor. eauto.
+
   - unfold substt in *.
     destruct ds; simpl in H4; try solve [inversion H4].
     inversion H4; subst.
@@ -2864,21 +2882,74 @@ Proof.
     econstructor. eauto.
     eapply IH. eauto. omega.
 
- - admit.
+  - unfold substt in *.
+    destruct ds; simpl in H9; try solve [inversion H9].
+    inversion H9; subst.
+    destruct d; simpl in H2; try solve [inversion H2].
+    inversion H2; subst.
+    unfold substt in *. simpl in HC. inversion HC; subst. inversion Hds; subst.
+    edestruct IHn0 as [? [? IH]]. eapply H. omega. eauto. eassumption. reflexivity.
+    instantiate (1:=dsa ++ [(dfun t t0 t1)]). rewrite <- app_assoc. eauto.
+    instantiate (1:=dsa' ++ [(dm_open 0 (VarF 0) (dfun t t0 t1))]). rewrite <- app_assoc. eauto.
+    simpl.
+
+    assert (closed 0 1 t) as A1. {
+      simpl. inversion H12; subst. eassumption.
+    }
+    assert ((subst (VObj ds0) (open 0 (VarF 0) t))=(open 0 (VObj ds0) t)) as B1. {
+      rewrite subst_open_commute0. reflexivity. simpl. eauto.
+    }
+    assert (stpd2 [] (open 0 (VObj ds0) t) (open 0 (VObj ds0) t)) as C1. {
+      eapply stpd2_refl.
+      simpl. eapply closed_open. simpl. eauto. econstructor. eauto.
+    }
+    eu.
+
+    assert (stpd2 [subst (VObj ds0) (open 0 (VarF 0) t)]
+                (open 0 (VarF 0) (open 1 (VObj ds0) t0))
+                (open 0 (VarF 0) (subst (VObj ds0) (open 1 (VarF 0) t0)))) as C2. {
+      admit.
+    }
+    eu.
+
+    exists x. eexists. eapply vtp_and.
+    eapply vtp_fun. rewrite <- length_dms_open.
+    instantiate (1:=(tm_open 1 (VObj ds0) t1)).
+    instantiate (1:=(open 1 (VObj ds0) t0)).
+    instantiate (1:=(subst_ty ds0 t)).
+    assert (dfun (subst_ty ds0 t) (open 1 (VObj ds0) t0) (tm_open 1 (VObj ds0) t1) =
+            subst_dm ds0 (dfun t t0 t1)) as R1. {
+      unfold subst_dm. simpl. reflexivity.
+    }
+    rewrite R1. eapply index_subst_dms. instantiate (1:=dsa). simpl. eauto.
+    eapply HD0.
+    eauto. eauto. eauto.
+    rewrite <- length_dms_open.
+    instantiate (1:=(tm_open 1 (VarF 0) t1)).
+    instantiate (1:=(open 1 (VarF 0) t0)).
+    instantiate (1:=(open 0 (VarF 0) t)).
+    assert (dfun (open 0 (VarF 0) t) (open 1 (VarF 0) t0) (tm_open 1 (VarF 0) t1) =
+            dm_open 0 (VarF 0) (dfun t t0 t1)) as R1'. {
+      simpl. reflexivity.
+    }
+    rewrite R1'. eapply index_dms_open. instantiate (1:=dsa). simpl. eauto.
+    eauto. eauto. eauto.
+    unfold subst_ty. rewrite B1. eauto.
+    eauto. eauto. simpl in *.
+    inversion H12; subst. eapply closed_open. simpl. eauto.
+    econstructor.
+    eapply (proj2 (proj2 (proj2 (proj2 closed_upgrade_rec)))). eauto. omega.
+    eapply closed_subst. simpl. eauto. econstructor. eauto.
+    inversion H12; subst.
+    eapply (proj1 (proj2 (proj2 closed_open_rec))). simpl.
+    eapply (proj1 (proj2 (proj2 closed_upgrade_gh_rec))). eauto. omega.
+    econstructor. omega.
+    eauto.
+    econstructor. eauto.
+    eapply IH. eauto. omega.
 
 Grab Existential Variables.
 apply 0. apply 0.
-Qed.
-
-Lemma dms_hastp_inv_aux: forall ds T' n1,
-  dms_has_type [T'] (dms_open 0 (VarF 0) ds) T' n1 ->
-  closed 0 0 (substt ds T') ->
-  dms_closed 0 1 ds ->
-  exists m n, vtp m ds (substt ds T') n.
-Proof.
-  intros. eapply dms_hastp_inv_aux_rec; eauto.
-  instantiate (1:=[]). rewrite app_nil_l. reflexivity.
-  instantiate (1:=[]). rewrite app_nil_l. reflexivity.
 Qed.
 
 Lemma dms_hastp_inv: forall ds T n1,
@@ -2892,9 +2963,13 @@ Proof.
     unfold substt. rewrite subst_open_commute0. reflexivity.
     simpl. eauto.
   }
-  rewrite A. eapply dms_hastp_inv_aux; eauto.
+  rewrite A. eapply dms_hastp_inv_aux_rec; eauto.
   rewrite <- A.
   eapply closed_open; eauto. econstructor. eauto.
+  rewrite <- A.
+  eapply closed_open; eauto. econstructor. eauto.
+  instantiate (1:=[]). rewrite app_nil_l. reflexivity.
+  instantiate (1:=[]). rewrite app_nil_l. reflexivity.
 Qed.
 
 (*
