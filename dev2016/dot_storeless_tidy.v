@@ -2181,7 +2181,6 @@ Lemma stp_upgrade_gh_mult0 : forall GH T1 T2 n,
                       stp GH T1 T2 n.
 Proof. intros. rewrite <- (app_nil_r GH). eapply stp_upgrade_gh_mult. eauto. Qed.
 
-(*
 Lemma hastp_upgrade_gh_var: forall GH x T n1,
   has_type [] (tvar (VObj x)) T n1 ->
   has_type GH (tvar (VObj x)) T n1.
