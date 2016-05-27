@@ -7,7 +7,7 @@ Require Import dot_storeless_tidy.
 
 Definition Label := nat.
 
-Inductive Var : Type :=
+Inductive Var: Set :=
   | VarFr: nat (*absolute position in context, from origin, invariant under context extension*) -> Var
   | VarBd: nat (*bound variable, de Bruijn, locally nameless style -- see open *) -> Var.
 
@@ -161,10 +161,58 @@ Example MutRecExample: Trm :=
    We do typechecking & translation to DOT at once, so that we have a Ctx with all necessary
    information the translation might need. *)
 
+Definition trVar(v: Var): vr := match v with
+| VarFr i => VarF i
+| VarBd i => VarB i
+end.
+
+(* Note: The only types which can occur in user-written programs are paths referring to a class def *)
+Definition trTyp(T: Pth): ty := match T with
+| PthVar v => TSel (trVar v) 0 (* class was defined in an expr and thus put into a wrapper
+                                  whose 0-th member is the type whose 1-st member is the constructor *)
+| PthSel v l => TSel (trVar v) (l*2) (* class was defined inside another class,
+                                        multiply by 2 to get free slots to insert the constructors *)
+end.
+
+Definition trCtorUse(c: Pth): tm := match c with
+(* the new{} is just an ignored dummy argument because each method has to take exactly 1 argument *)
+| PthVar v   => tapp (tvar (trVar v))    1      (tvar (VObj dnil)) (* v.create(new {})     *)
+| PthSel v l => tapp (tvar (trVar v)) (S (l*2)) (tvar (VObj dnil)) (* v.create_l(new {})   *)
+end.
+
+Definition TAlias(l: lb)(T: ty) := TMem l T T.
+
+(* OLD (with explicit y)
+   "trTypOfDef d y (T1, T2)" means that the type of definition d (inside a class with self ref y),
+   translates to types T1 and T2 (note that a class def generates two defs in DOT, one for the type
+   and one for the constructor, so we need two types T1 and T2 here; if only one is needed, T2 = TTop).
+   --> Turns out we can do it without any opening. *)
+
+(* "trTypOfDef (l, d) (T1, T2)" means that the type of definition d (with label l) translates to types T1 and T2
+   (note that a class def generates two defs in DOT, one for the type and one for the constructor,
+   so we need two types T1 and T2 here; if only one is needed, T2 = TTop). *)
+Inductive trTypOfDef: (Label * Def) -> (ty * ty) -> Prop :=
+| trTypOfDefCls: forall l ds T,
+    trTypOfDefs ds T ->
+    trTypOfDef (l, (DefCls ds)) ((TAlias (2*l) (TBind T)), (TFun (S (2*l)) TTop (TSel (VarB 1) (2*l))))
+    (*                          (type C_l = { z => /\...}) (def create_l(dummy: Top): outerSelf.C_l)   *)
+| trTypOfDefDef: forall m T U u,
+    trTypOfDef (m, (DefDef (TypCls T) (TypCls U) u)) ((TFun (2*m) (trTyp T) (trTyp U)), TTop)
+(* Note: no rule for val defs yet *)
+with trTypOfDefs: Defs -> ty -> Prop :=
+| trTypOfDefsNil:
+    trTypOfDefs DefsNil TTop
+| trTypOfDefsCons: forall l d ds T1 T2 T3,
+    l = DefsLength ds ->
+    trTypOfDef (l, d) (T1, T2) ->
+    trTypOfDefs ds T3 ->
+    trTypOfDefs (DefsCons d ds) (TAnd T1 (TAnd T2 T3)).
+
+
 (* (trTrm G t T t'), or on paper "G |- t : T ~> t'", means that in context G, the miniscala term t
    typechecks as miniscala type T and translates to DOT term t' *)
 Inductive trTrm: Ctx -> Trm -> Typ -> tm -> Prop :=
-| trVar: forall G x T,
+| trTrmVar: forall G x T,
     x < length G ->
     trTrm G (TrmVar (VarFr x)) T (tvar (VarF x))
 (*
