@@ -1,4 +1,4 @@
-(* WIP
+(*
 DOT storeless
 T ::= Bot | Top | T1 /\ T2 | T1 \/ T2 |
       { def m(x: S): U^x } | { type A: S..U } | p.A | { z => T^z }
