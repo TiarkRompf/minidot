@@ -403,6 +403,12 @@ with htp: tenv -> id -> ty -> nat -> Prop :=
     htp GH x T2 (S (n1+n2)).
 
 Inductive peval : vr -> dms -> Prop :=
+| E_Obj: forall ds, peval (VObj ds) ds
+| E_Sel: forall l p ds p' ds' T',
+  peval p ds ->
+  index l (dms_to_list (subst_dms ds ds)) = Some (dfld p' T') ->
+  peval p' ds' ->
+  peval (VSel p l) ds'
 .
 
 Inductive vtp(*possible types*) : nat(*pack count*) -> dms -> ty -> nat(*size*) -> Prop :=
@@ -414,6 +420,7 @@ Inductive vtp(*possible types*) : nat(*pack count*) -> dms -> ty -> nat(*size*) 
     peval px vx ->         
     vtp m vx TX n1 ->
     stp [] TX T2 n2 ->
+    vr_closed 0 0 (VObj ds) ->
     vtp m ds (TFld l T2) (S (n1+n2))
 | vtp_mem: forall m l ds TX T1 T2 n1 n2,
     index l (dms_to_list (subst_dms ds ds)) = Some (dty TX) ->
@@ -1291,7 +1298,7 @@ Proof.
   - eapply IHS2. eauto. omega.
   (* vtp right *)
   - econstructor.
-  - inversion H2; subst.
+  - subst. change 0 with (length ([]:tenv)) at 1. econstructor. eapply IHS2. eauto. omega.
   - change 0 with (length ([]:tenv)) at 1. econstructor. eapply IHS1. eauto. omega. eapply IHS2. eauto. omega.
   - change 0 with (length ([]:tenv)) at 1. econstructor. eapply IHS1. eauto. omega. eauto.
   - econstructor. eauto.
@@ -1332,7 +1339,7 @@ Proof.
   - subst. eapply IHT1 in H1. eauto. omega.
   (* vtp 1 *)
   - subst. eauto.
-  - inversion H2; subst.
+  - subst. eauto.
   - subst. eauto.
   - subst. eauto.
   - subst. eapply IHV1 in H1. eauto. omega.
@@ -2913,7 +2920,31 @@ Proof.
       assert (vtpdd m1 x T0) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
       assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega.
-  - Case "fld". inversion H5; subst.
+  - Case "fld". inversion H0; subst; invty.
+    + SCase "top". repeat eexists. eapply vtp_top. eauto. eauto.
+    + SCase "fld". invty. subst.
+      repeat eexists. eapply vtp_fld. eauto. eauto. eauto.
+      eapply stp_trans. eauto. eauto.
+      eauto. eauto.
+    + SCase "ssel2".
+      repeat eexists. eapply vtp_sel. eauto. simpl in *. eauto. eauto. omega.
+    + SCase "sel2".
+      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H12. omega.
+    + SCase "and".
+      assert (vtpdd m1 x T1). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T4). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_and; eauto. eauto.
+    + SCase "or1".
+      assert (vtpdd m1 x T1). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or1; eauto. eauto.
+    + SCase "or2".
+      assert (vtpdd m1 x T4). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or2; eauto. eauto.
+    + SCase "trans".
+      assert (vtpdd m1 x T4) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
+      assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
+      repeat eexists. eauto. omega.
+
   - Case "mem". inversion H0; subst; invty.
     + SCase "top". repeat eexists. eapply vtp_top. eauto. eauto.
     + SCase "mem". invty. subst.
@@ -3136,7 +3167,7 @@ Proof.
       repeat eexists. eauto. omega. eauto. omega. omega. eauto.
 
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 
@@ -3151,8 +3182,14 @@ Inductive step : tm -> tm -> Prop :=
 | ST_App2 : forall f t2 l t2',
     step t2 t2' ->
     step (tapp (tvar (VObj f)) l t2) (tapp (tvar (VObj f)) l t2')
+| ST_Sel : forall f l p1 T1 v,
+    index l (dms_to_list (subst_dms f f)) = Some (dfld p1 T1) ->
+    peval p1 v ->
+    step (tsel (tvar (VObj f)) l) (tvar (VObj v))
+| ST_Sel1 : forall t1 t1' l,
+    step t1 t1' ->
+    step (tsel t1 l) (tsel t1' l)
 .
-(* TODO: add tsel steps *)
 
 Lemma stp_subst_narrow_z: forall GH0 TX T1 T2 x m n1 n2,
   stp (GH0 ++ [TX]) T1 T2 n2 ->
