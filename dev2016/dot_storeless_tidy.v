@@ -1589,22 +1589,42 @@ Qed.
 
 Definition splice_var n i := if le_lt_dec n i then (i+1) else i.
 Hint Unfold splice_var.
-(*
-Fixpoint splice n (T : ty) {struct T} : ty :=
+
+Fixpoint vr_splice n (v : vr) {struct v} : vr :=
+  match v with
+    | VarF i => VarF (splice_var n i)
+    | VarB i => VarB i
+    | VObj ds => VObj (dms_splice n ds)
+  end
+with splice n (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
     | TBot         => TBot
     | TMem l T1 T2 => TMem l (splice n T1) (splice n T2)
-    | TSel T1 l    => TSel (splice n T1) l
-    | TVarB i      => TVarB i
-    | TVar (VObj ds)  => TVar (VObj ds)
-    | TVar (VAbs i) => TVar (VAbs (splice_var n i))
+    | TSel v1 l    => TSel (vr_splice n v1) l
     | TFun l T1 T2 => TFun l (splice n T1) (splice n T2)
     | TBind T2     => TBind (splice n T2)
     | TAnd T1 T2   => TAnd (splice n T1) (splice n T2)
     | TOr T1 T2    => TOr (splice n T1) (splice n T2)
-  end.
+  end
+with tm_splice n (t : tm) {struct t} : tm :=
+  match t with
+    | tvar v => tvar (vr_splice n v)
+    | tapp t1 l t2 => tapp (tm_splice n t1) l (tm_splice n t2)
+  end
+with dm_splice n (d : dm) {struct d} : dm :=
+  match d with
+    | dfun T1 T2 t2 => dfun (splice n T1) (splice n T2) (tm_splice n t2)
+    | dty T1 => dty (splice n T1)
+  end
+with dms_splice n (ds : dms) {struct ds} : dms :=
+  match ds with
+    | dnil => dnil
+    | dcons d ds => dcons (dm_splice n d) (dms_splice n ds)
+  end
+.
 
+(*
 Lemma splice_open_permute: forall {X} (G0:list X) T2 n j,
 (open j (TVar (VAbs (n + S (length G0)))) (splice (length G0) T2)) =
 (splice (length G0) (open j (TVar (VAbs (n + length G0))) T2)).
