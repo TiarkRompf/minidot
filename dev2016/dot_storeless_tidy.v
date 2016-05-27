@@ -2181,21 +2181,95 @@ Lemma stp_upgrade_gh_mult0 : forall GH T1 T2 n,
                       stp GH T1 T2 n.
 Proof. intros. rewrite <- (app_nil_r GH). eapply stp_upgrade_gh_mult. eauto. Qed.
 
+Lemma hastp_splice_aux: forall ni, (forall G0 G1 t1 T2 v1 n,
+   has_type (G1++G0) t1 T2 n -> n < ni ->
+   has_type ((map (splice (length G0)) G1) ++ v1::G0)
+   (tm_splice (length G0) t1) (splice (length G0) T2) n) /\
+   (forall G0 G1 ds1 T2 v1 n,
+   dms_has_type (G1++G0) ds1 T2 n -> n < ni ->
+   dms_has_type ((map (splice (length G0)) G1) ++ v1::G0)
+   (dms_splice (length G0) ds1) (splice (length G0) T2) n).
+Proof.
+  admit.
+Qed.
+
+Lemma dms_hastp_splice: forall G0 G1 ds1 T2 v1 n,
+   dms_has_type (G1++G0) ds1 T2 n ->
+   dms_has_type ((map (splice (length G0)) G1) ++ v1::G0)
+   (dms_splice (length G0) ds1) (splice (length G0) T2) n.
+Proof. intros. eapply hastp_splice_aux. eauto. eauto. Qed.
+
+Lemma hastp_upgrade_gh_aux: forall ni,
+  (forall GH T t1 T2 n,
+     has_type GH t1 T2 n -> n < ni ->
+     has_type (T::GH) t1 T2 n) /\
+  (forall GH T ds1 T2 n,
+     dms_has_type GH ds1 T2 n -> n < ni ->
+     dms_has_type (T::GH) ds1 T2 n).
+Proof.
+  intros n. induction n. repeat split; intros; omega.
+  repeat split; intros; inversion H; subst.
+  - assert (dms_has_type (open 0 (VarF (S (length GH))) T0 :: T :: GH) (dms_open 0 (VarF (S (length GH))) ds) (open 0 (VarF (S (length GH))) T0) n1) as IH. {
+      admit.
+    }
+    eapply T_VObj. eapply IH.
+    simpl. reflexivity. simpl. reflexivity.
+    simpl. eapply closed_upgrade_gh. eauto. omega.
+    simpl. eapply (proj2 (proj2 (proj2 (proj2 closed_upgrade_gh_rec)))). eauto. omega.
+    eauto.
+  - eapply T_VarF. eapply index_extend. eauto.
+    simpl. eapply closed_upgrade_gh. eauto. omega.
+  - eapply T_VarPack. eapply IHn. eauto. omega. eauto.
+    simpl. eapply closed_upgrade_gh. eauto. omega.
+  - eapply T_VarUnpack. eapply IHn. eauto. omega. eauto.
+    simpl. eapply closed_upgrade_gh. eauto. omega.
+  - eapply T_App. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
+    simpl. eapply closed_upgrade_gh. eauto. omega.
+  - eapply T_AppVar. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
+    simpl. eapply (proj1 closed_upgrade_gh_rec). eauto. omega.
+    eauto.
+    simpl. eapply closed_upgrade_gh. eauto. omega.
+  - eapply T_Sub. eapply IHn. eauto. omega. eapply stp_upgrade_gh. eauto.
+  - eapply D_Nil.
+  - eapply D_Mem. eapply IHn. eauto. omega.
+    simpl. eapply closed_upgrade_gh. eauto. omega.
+    reflexivity. reflexivity.
+  - assert (has_type (T11 :: T :: GH) (tm_open 0 (VarF (S (length GH))) t12) (open 0 (VarF (S (length GH))) T12) n2) as IH. {
+      admit.
+    }
+    eapply D_Fun. eapply IHn. eauto. omega. eapply IH.
+    simpl. reflexivity. simpl. reflexivity.
+    simpl. eapply closed_upgrade_gh. eauto. omega.
+    simpl. eapply closed_upgrade_gh. eauto. omega.
+    simpl. eapply (proj1 (proj2 (proj2 closed_upgrade_gh_rec))). eauto. omega.
+    reflexivity. reflexivity.
+Qed.
+
+Lemma hastp_upgrade_gh : forall GH T t1 T2 n,
+                      has_type GH t1 T2 n ->
+                      has_type (T::GH) t1 T2 n.
+Proof.
+  intros. eapply hastp_upgrade_gh_aux. eauto. eauto.
+Qed.
+
+Lemma hastp_upgrade_gh_mult : forall GH GH' t1 T2 n,
+                      has_type GH t1 T2 n ->
+                      has_type (GH'++GH) t1 T2 n.
+Proof. intros. induction GH'. simpl. eauto. simpl. eapply hastp_upgrade_gh. eauto. Qed.
+
+Lemma hastp_upgrade_gh_mult0 : forall GH t1 T2 n,
+                      has_type [] t1 T2 n ->
+                      has_type GH t1 T2 n.
+Proof. intros. rewrite <- (app_nil_r GH). eapply hastp_upgrade_gh_mult. eauto. Qed.
+
 Lemma hastp_upgrade_gh_var: forall GH x T n1,
   has_type [] (tvar (VObj x)) T n1 ->
   has_type GH (tvar (VObj x)) T n1.
 Proof.
-  admit.
-  (*
-  intros.
-  remember (tvar (VObj x)) as t.  remember [] as GH0.
-  induction H; eauto; inversion Heqt; subst.
-  - eapply T_VarPack. eauto. eauto. eapply closed_upgrade_gh. eauto. simpl. omega.
-  - eapply T_VarUnpack. eauto. eauto. eapply closed_upgrade_gh. eauto. simpl. omega.
-  - eapply T_Sub. eauto. eapply stp_upgrade_gh_mult0. eauto. *)
+  intros. eapply hastp_upgrade_gh_mult0. eauto.
 Qed.
 
-Lemma hastp_upgrade_gh: forall GH x T n1,
+Lemma hastp_upgrade_gh_var_ex: forall GH x T n1,
   has_type [] (tvar (VObj x)) T n1 ->
   exists n, has_type GH (tvar (VObj x)) T n.
 Proof.
@@ -3146,7 +3220,7 @@ Proof.
     case_eq (beq_nat x0 0); intros E.
     + assert (x0 = 0). eapply beq_nat_true_iff; eauto. subst x0.
       eapply index_hit0 in H2. subst.
-      eapply hastp_upgrade_gh. eauto.
+      eapply hastp_upgrade_gh_var_ex. eauto.
     + assert (x0 <> 0). eapply beq_nat_false_iff; eauto.
       eexists. eapply T_VarF. eapply index_subst1. eauto. eauto. rewrite map_length. eapply closed_subst0.
       eapply has_type_closed1 in H1. simpl in H1. inversion H1; subst.
