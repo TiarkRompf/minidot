@@ -2212,7 +2212,7 @@ Proof.
   - assert (dms_has_type (map (splice (length GH)) [(open 0 (VarF (length GH)) T0)] ++ (T::GH))
                          (dms_splice (length GH) (dms_open 0 (VarF (length GH)) ds))
                          (splice (length GH) (open 0 (VarF (length GH)) T0)) n1) as IH'. {
-      admit.
+      eapply dms_hastp_splice. simpl. eauto.
     }
     assert ((length GH + 1) = (S (length GH))) as EqInc by omega.
     assert (splice (length GH) T0 = T0) as EqT0. {
