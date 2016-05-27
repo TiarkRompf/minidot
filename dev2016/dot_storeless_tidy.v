@@ -2057,7 +2057,6 @@ Lemma htp_splice: forall G0 G1 x1 T1 v1 n,
    (splice_var (length G0) x1) (splice (length G0) T1) n.
 Proof. intros. eapply stp_splice_aux. eauto. eauto. Qed.
 
-(*
 Lemma stp_upgrade_gh_aux: forall ni,
   (forall GH T T1 T2 n,
      stp GH T1 T2 n -> n < ni ->
@@ -2098,13 +2097,11 @@ Proof.
     apply stp_splice. simpl. eauto.
 
   - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
-  - econstructor.
-  - econstructor. simpl. omega.
-  - econstructor. eauto. eauto.
-  - econstructor. eauto. eauto.
+  - subst. econstructor. simpl. eapply (proj1 closed_upgrade_gh_rec). eauto. omega.
+  - subst. econstructor. eauto. simpl. eapply (proj1 closed_upgrade_gh_rec). eauto. omega.
+  - subst. econstructor. eauto. simpl. eapply (proj1 closed_upgrade_gh_rec). eauto. omega.
   - econstructor. eapply IHn. eauto. omega.
   - econstructor. eapply IHn. eauto. omega.
-  - econstructor. eapply closed_upgrade_gh. eauto. simpl. omega.
   - subst.
     assert (splice (length GH) T0 = T0) as A. {
       eapply closed_splice_idem. eauto. omega.
@@ -2116,13 +2113,13 @@ Proof.
       unfold splice_var. simpl.
       case_eq (le_lt_dec (length GH) (length GH)); intros E LE; omega.
     }
-    assert (map (splice (length GH)) [(open 0 (TVar (VAbs (length GH))) T0)] ++ T::GH =
-          (((open 0 (TVar (VAbs (S (length GH)))) (splice (length GH) T0)))::T::GH)) as HGX. {
+    assert (map (splice (length GH)) [(open 0 (VarF (length GH)) T0)] ++ T::GH =
+          (((open 0 (VarF (S (length GH))) (splice (length GH) T0)))::T::GH)) as HGX. {
       simpl. rewrite <- splice_open_permute0. reflexivity.
     }
     eapply stp_bind1.
     rewrite <- B.
-    instantiate (1:=(open 0 (TVar (VAbs (S (length GH)))) (splice (length GH) T0))).
+    instantiate (1:=(open 0 (VarF (S (length GH))) (splice (length GH) T0))).
     rewrite <- HGX. rewrite C.
     apply htp_splice. simpl. eauto. simpl. rewrite A. reflexivity.
     eapply closed_upgrade_gh. eauto. simpl. omega.
@@ -2139,12 +2136,12 @@ Proof.
       unfold splice_var. simpl.
       case_eq (le_lt_dec (length GH) (length GH)); intros E LE; omega.
     }
-    assert (map (splice (length GH)) [(open 0 (TVar (VAbs (length GH))) T0)] ++ T::GH =
-          (((open 0 (TVar (VAbs (S (length GH)))) (splice (length GH) T0)))::T::GH)) as HGX. {
+    assert (map (splice (length GH)) [(open 0 (VarF (length GH)) T0)] ++ T::GH =
+          (((open 0 (VarF (S (length GH))) (splice (length GH) T0)))::T::GH)) as HGX. {
       simpl. rewrite <- splice_open_permute0. reflexivity.
     }
     eapply stp_bindx.
-    instantiate (2:=(open 0 (TVar (VAbs (S (length GH)))) (splice (length GH) T0))).
+    instantiate (2:=(open 0 (VarF (S (length GH))) (splice (length GH) T0))).
     rewrite <- HGX. rewrite C.
     apply htp_splice. simpl. eauto. simpl. rewrite A. reflexivity.
     simpl. rewrite <- splice_open_permute0. rewrite B. reflexivity.
@@ -2166,13 +2163,12 @@ Proof.
   - eapply htp_sub. eapply IHn. eauto. omega. eauto. eauto. subst GH.
     instantiate (1:=T::GU). eauto.
 Qed.
-*)
+
 Lemma stp_upgrade_gh : forall GH T T1 T2 n,
                       stp GH T1 T2 n ->
                       stp (T::GH) T1 T2 n.
 Proof.
-  admit.
-  (*intros. eapply stp_upgrade_gh_aux. eauto. eauto.*)
+  intros. eapply stp_upgrade_gh_aux. eauto. eauto.
 Qed.
 
 Lemma stp_upgrade_gh_mult : forall GH GH' T1 T2 n,
@@ -2185,6 +2181,7 @@ Lemma stp_upgrade_gh_mult0 : forall GH T1 T2 n,
                       stp GH T1 T2 n.
 Proof. intros. rewrite <- (app_nil_r GH). eapply stp_upgrade_gh_mult. eauto. Qed.
 
+(*
 Lemma hastp_upgrade_gh_var: forall GH x T n1,
   has_type [] (tvar (VObj x)) T n1 ->
   has_type GH (tvar (VObj x)) T n1.
