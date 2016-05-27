@@ -207,7 +207,7 @@ Inductive has_type : tenv -> tm -> ty -> nat -> Prop :=
       has_type GH (tvar (VObj ds)) TO (S n1)
   | T_VarF : forall GH x T n1,
       index x GH = Some T ->
-      closed (length GH) 0 T ->
+      closed (S x) 0 T ->
       has_type GH (tvar (VarF x)) T (S n1)
   | T_VarPack : forall GH v T1 T1' n1,
       has_type GH (tvar v) T1' n1 ->
@@ -1256,7 +1256,7 @@ Proof.
   - eapply closed_upgrade_gh. eapply IHS2. eauto. omega. rewrite H4. rewrite app_length. omega.
   (* has_type *)
   - subst. eapply closed_open. simpl. eauto. econstructor. eauto.
-  - eauto.
+  - subst. eapply closed_upgrade_gh. eauto. eapply index_max in H1. omega.
   - econstructor. eapply closed_upgrade_gh. eauto. omega.
   - eapply IHT in H1. inversion H1; subst. eauto. omega.
   - eapply IHT in H1. inversion H1. eauto. omega.
@@ -2215,12 +2215,16 @@ Proof.
     + rewrite map_splice_length_inc. eapply closed_splice_rec. eauto.
     + rewrite (proj1 (proj2 splice_open_distribute_rec)).
       simpl. reflexivity.
-  - eapply T_VarF.
-    simpl. unfold splice_var.
+  - simpl. unfold splice_var.
     case_eq (le_lt_dec (length G0) x); intros E LE.
-    apply index_splice_hi. eauto. omega.
-    apply index_splice_lo. admit. omega.
-    rewrite map_splice_length_inc. eapply closed_splice. eauto.
+    + eapply T_VarF. apply index_splice_hi. eauto. omega.
+      eapply closed_splice.
+      assert (S x = x + 1) as A by omega.
+      rewrite <- A. eauto.
+    + assert (splice (length G0) T2=T2) as A. {
+        eapply closed_splice_idem. eassumption. omega.
+      }
+      rewrite A. eapply T_VarF. eapply index_splice_lo. eauto. omega. eauto.
   - simpl. eapply T_VarPack.
     assert (tvar (vr_splice (length G0) v) = tm_splice (length G0) (tvar v)) as A. {
       simpl. reflexivity.
@@ -3308,10 +3312,15 @@ Proof.
       eapply index_hit0 in H2. subst.
       eapply hastp_upgrade_gh_var_ex. eauto.
     + assert (x0 <> 0). eapply beq_nat_false_iff; eauto.
-      eexists. eapply T_VarF. eapply index_subst1. eauto. eauto. rewrite map_length. eapply closed_subst0.
-      eapply has_type_closed1 in H1. simpl in H1. inversion H1; subst.
-      eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
-      rewrite app_length in H3. simpl in H3. eapply H3.
+      eexists. eapply T_VarF.
+      eapply index_subst1. eauto. eauto.
+      eapply closed_subst0. eapply (proj1 closed_upgrade_gh_rec).
+      eapply has_type_closed1 in H1. simpl in H1. inversion H1; subst. eauto.
+      omega.
+      assert (S (x0 - 1) + 1 = S x0) as Eq. {
+        unfold id in *. omega.
+      }
+      rewrite Eq. eauto.
 
   - Case "pack". subst. simpl.
     assert (vr_closed 0 0 (VObj x)) as HCx. {
