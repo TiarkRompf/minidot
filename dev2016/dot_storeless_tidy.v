@@ -1662,7 +1662,6 @@ Proof.
   rewrite <- splice_open_permute. reflexivity.
 Qed.
 
-(*
 Lemma index_splice_hi: forall G0 G2 x0 v1 T,
     index x0 (G2 ++ G0) = Some T ->
     length G0 <= x0 ->
@@ -1706,18 +1705,31 @@ Proof.
   eapply index_extend_mult. eapply index_extend. eauto.
 Qed.
 
+Lemma closed_splice_rec:
+  (forall i k v1, vr_closed i k v1 -> forall n, vr_closed (S i) k (vr_splice n v1)) /\
+  (forall i k T1, closed i k T1 -> forall n, closed (S i) k (splice n T1)) /\
+  (forall i k t1, tm_closed i k t1 -> forall n, tm_closed (S i) k (tm_splice n t1)) /\
+  (forall i k d1, dm_closed i k d1 -> forall n, dm_closed (S i) k (dm_splice n d1)) /\
+  (forall i k ds1, dms_closed i k ds1 -> forall n, dms_closed (S i) k (dms_splice n ds1)).
+Proof.
+  apply closed_mutind; intros; econstructor; eauto;
+  try solve [omega];
+  try solve [eapply H; omega];
+  try solve [eapply H0; omega];
+  try solve [eapply H1; omega].
+  unfold splice_var.
+  case_eq (le_lt_dec n x); intros E LE; omega.
+Qed.
+
 Lemma closed_splice: forall i k T n,
   closed i k T ->
   closed (S i) k (splice n T).
 Proof.
   intros.
-  Hint Constructors closed.
-  induction H; simpl; eauto.
-  unfold splice_var.
-  case_eq (le_lt_dec n x); intros E LE;
-  econstructor; omega.
+  eapply (proj2 closed_splice_rec); eauto.
 Qed.
 
+(*
 Lemma map_splice_length_inc: forall G0 G2 v1,
    (length (map (splice (length G0)) G2 ++ v1 :: G0)) = (S (length (G2 ++ G0))).
 Proof.
