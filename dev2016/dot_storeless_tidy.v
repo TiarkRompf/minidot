@@ -1779,7 +1779,47 @@ Proof.
   eapply (proj2 closed_splice_idem_rec); eauto.
 Qed.
 
-(*
+Lemma length_dms_splice: forall ds n,
+  (length (dms_to_list ds))=(length (dms_to_list (dms_splice n ds))).
+Proof.
+  intros. induction ds; eauto.
+  simpl. rewrite IHds. reflexivity.
+Qed.
+
+Lemma dm_splice_self: forall k n ds l D,
+  vr_closed k 0 (VObj ds) ->
+  index l (dms_to_list (subst_dms ds ds)) = Some D ->
+  index l (dms_to_list (subst_dms (dms_splice n ds) (dms_splice n ds))) = Some (dm_splice n D).
+Proof.
+  intros k n ds l D HCds HI.
+  inversion HCds; subst. clear HCds. rename H2 into HCds.
+  remember ds as ds0. rewrite Heqds0 in *.
+  rewrite <- Heqds0 in HI at 1. rewrite <- Heqds0 at 1. clear Heqds0.
+  generalize dependent D. generalize dependent ds0.
+  induction HCds; intros.
+  - simpl in *. solve by inversion.
+  - simpl in *.
+    rewrite <- length_dms_open in *. rewrite <- length_dms_splice in *.
+    case_eq (beq_nat l (length (dms_to_list ds2))); intros E;
+    rewrite E in *.
+    + inversion HI; subst. f_equal.
+      rewrite (proj1 (proj2 (proj2 (proj2 splice_open_distribute_rec)))).
+      simpl. reflexivity.
+    + unfold subst_dms in *. specialize (IHHCds ds0 D HI). rewrite IHHCds.
+      reflexivity.
+Qed.
+
+Lemma dm_splice_self_dty: forall k n ds l T,
+  vr_closed k 0 (VObj ds) ->
+  index l (dms_to_list (subst_dms ds ds)) = Some (dty T) ->
+  index l (dms_to_list (subst_dms (dms_splice n ds) (dms_splice n ds))) = Some (dty (splice n T)).
+Proof.
+  intros.
+  assert (dty (splice n T) = dm_splice n (dty T)) as A by eauto.
+  rewrite A.
+  eapply dm_splice_self; eauto.
+Qed.
+
 Lemma stp_splice_aux: forall ni, (forall G0 G1 T1 T2 v1 n,
    stp (G1++G0) T1 T2 n -> n < ni ->
    stp ((map (splice (length G0)) G1) ++ v1::G0)
@@ -1816,27 +1856,33 @@ Proof.
     eapply stp_mem.
     eapply IHstp. eauto. omega.
     eapply IHstp. eauto. omega.
-  - Case "varx".
-    simpl. eapply stp_varx.
-  - Case "varax". simpl.
-    unfold splice_var.
-    case_eq (le_lt_dec (length G0) x); intros E LE.
-    + eapply stp_varax.
-      rewrite map_splice_length_inc. omega.
-    + eapply stp_varax.
-      rewrite map_splice_length_inc. omega.
-  - Case "ssel1".
-    eapply stp_strong_sel1. eauto. eauto.
-    assert (splice (length G0) T2=T2) as A. {
-      eapply closed_splice_idem. eapply stp_closed2. eapply H2. simpl. omega.
+  - Case "selx". simpl. inversion H1; subst.
+    + simpl. unfold splice_var.
+      case_eq (le_lt_dec (length G0) x); intros E LE.
+      * eapply stp_selx.
+        rewrite map_splice_length_inc. econstructor. omega.
+      * eapply stp_selx.
+        rewrite map_splice_length_inc. econstructor. omega.
+    + simpl. inversion H1; subst. omega.
+    + simpl. eapply stp_selx.
+      rewrite map_splice_length_inc. econstructor.
+      eapply (proj2 (proj2 (proj2 (proj2 closed_splice_rec)))). eauto.
+  - Case "ssel1". simpl.
+    eapply stp_strong_sel1.
+    eapply dm_splice_self_dty; eauto.
+    rewrite map_splice_length_inc.
+    assert (VObj (dms_splice (length G0) ds) = vr_splice (length G0) (VObj ds)) as A. {
+      simpl. reflexivity.
     }
-    rewrite A. assumption.
-  - Case "ssel2".
-    eapply stp_strong_sel2. eauto. eauto.
-    assert (splice (length G0) T1=T1) as A. {
-      eapply closed_splice_idem. eapply stp_closed1. eapply H2. simpl. omega.
+    rewrite A. eapply (proj1 closed_splice_rec). eauto.
+  - Case "ssel2". simpl.
+    eapply stp_strong_sel2.
+    eapply dm_splice_self_dty; eauto.
+    rewrite map_splice_length_inc.
+    assert (VObj (dms_splice (length G0) ds) = vr_splice (length G0) (VObj ds)) as A. {
+      simpl. reflexivity.
     }
-    rewrite A. assumption.
+    rewrite A. eapply (proj1 closed_splice_rec). eauto.
   - Case "sel1".
     eapply stp_sel1.
     specialize (IHhtp G0 G1 x (TMem l TBot T2)). simpl in IHhtp.
@@ -1845,9 +1891,6 @@ Proof.
     eapply stp_sel2.
     specialize (IHhtp G0 G1 x (TMem l T1 TTop)). simpl in IHhtp.
     eapply IHhtp. eauto. omega.
-  - Case "selx".
-    eapply stp_selx.
-    rewrite map_splice_length_inc. eapply closed_splice. eauto.
   - Case "bind1".
     eapply stp_bind1.
     rewrite map_splice_length_inc.
@@ -1857,7 +1900,7 @@ Proof.
       omega. clear LE. rewrite app_length in E. omega.
     }
     rewrite <- A.
-    specialize (IHhtp G0 (open 0 (TVar (VAbs (length (G1 ++ G0)))) T0 :: G1)).
+    specialize (IHhtp G0 (open 0 (VarF (length (G1 ++ G0))) T0 :: G1)).
     simpl in IHhtp. eapply IHhtp. eauto. omega.
     rewrite app_length. rewrite <- splice_open_permute.
     rewrite map_splice_length_inc. rewrite app_length.
@@ -1875,7 +1918,7 @@ Proof.
       omega. clear LE. rewrite app_length in E. omega.
     }
     rewrite <- A.
-    specialize (IHhtp G0 (open 0 (TVar (VAbs (length (G1 ++ G0)))) T0 :: G1)).
+    specialize (IHhtp G0 (open 0 (VarF (length (G1 ++ G0))) T0 :: G1)).
     simpl in IHhtp. eapply IHhtp. eauto. omega.
     rewrite app_length. rewrite <- splice_open_permute.
     rewrite map_splice_length_inc. rewrite app_length.
@@ -1951,7 +1994,7 @@ Proof.
     + assert (splice (length G0) TX = TX) as A. {
         eapply closed_splice_idem. eauto. omega.
       }
-      assert (splice (length G0) (open 0 (TVar (VAbs x1)) TX)=open 0 (TVar (VAbs x1)) TX) as B. {
+      assert (splice (length G0) (open 0 (VarF x1) TX)=open 0 (VarF x1) TX) as B. {
         eapply closed_splice_idem.
         eapply closed_open. eapply closed_upgrade_gh. eauto.
         instantiate (1:=S x1). omega.
@@ -2014,6 +2057,7 @@ Lemma htp_splice: forall G0 G1 x1 T1 v1 n,
    (splice_var (length G0) x1) (splice (length G0) T1) n.
 Proof. intros. eapply stp_splice_aux. eauto. eauto. Qed.
 
+(*
 Lemma stp_upgrade_gh_aux: forall ni,
   (forall GH T T1 T2 n,
      stp GH T1 T2 n -> n < ni ->
