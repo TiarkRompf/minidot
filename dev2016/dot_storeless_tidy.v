@@ -2285,13 +2285,10 @@ Proof. intros. eapply hastp_splice_aux. eauto. eauto. Qed.
 Lemma hastp_upgrade_gh_aux: forall ni,
   (forall GH T t1 T2 n,
      has_type GH t1 T2 n -> n < ni ->
-     has_type (T::GH) t1 T2 n) /\
-  (forall GH T ds1 T2 n,
-     dms_has_type GH ds1 T2 n -> n < ni ->
-     dms_has_type (T::GH) ds1 T2 n).
+     has_type (T::GH) t1 T2 n).
 Proof.
   intros n. induction n. repeat split; intros; omega.
-  repeat split; intros; inversion H; subst.
+  intros; inversion H; subst.
   - assert (dms_has_type (map (splice (length GH)) [(open 0 (VarF (length GH)) T0)] ++ (T::GH))
                          (dms_splice (length GH) (dms_open 0 (VarF (length GH)) ds))
                          (splice (length GH) (open 0 (VarF (length GH)) T0)) n1) as IH'. {
@@ -2332,19 +2329,6 @@ Proof.
     eauto.
     simpl. eapply closed_upgrade_gh. eauto. omega.
   - eapply T_Sub. eapply IHn. eauto. omega. eapply stp_upgrade_gh. eauto.
-  - eapply D_Nil.
-  - eapply D_Mem. eapply IHn. eauto. omega.
-    simpl. eapply closed_upgrade_gh. eauto. omega.
-    reflexivity. reflexivity.
-  - assert (has_type (T11 :: T :: GH) (tm_open 0 (VarF (S (length GH))) t12) (open 0 (VarF (S (length GH))) T12) n2) as IH. {
-      admit.
-    }
-    eapply D_Fun. eapply IHn. eauto. omega. eapply IH.
-    simpl. reflexivity. simpl. reflexivity.
-    simpl. eapply closed_upgrade_gh. eauto. omega.
-    simpl. eapply closed_upgrade_gh. eauto. omega.
-    simpl. eapply (proj1 (proj2 (proj2 closed_upgrade_gh_rec))). eauto. omega.
-    reflexivity. reflexivity.
 Qed.
 
 Lemma hastp_upgrade_gh : forall GH T t1 T2 n,
