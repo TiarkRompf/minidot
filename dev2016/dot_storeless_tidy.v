@@ -1756,19 +1756,30 @@ Proof.
   intros. apply (closed_inc_mult i k T H (S i) k); omega.
 Qed.
 
-(*
-Lemma closed_splice_idem: forall i k T n,
-                            closed i k T ->
-                            n >= i ->
-                            splice n T = T.
+Lemma closed_splice_idem_rec:
+  (forall i k v1, vr_closed i k v1 -> forall n, n >= i -> vr_splice n v1 = v1) /\
+  (forall i k T1, closed i k T1 -> forall n, n >= i -> splice n T1 = T1) /\
+  (forall i k t1, tm_closed i k t1 -> forall n, n >= i -> tm_splice n t1 = t1) /\
+  (forall i k d1, dm_closed i k d1 -> forall n, n >= i -> dm_splice n d1 = d1) /\
+  (forall i k ds1, dms_closed i k ds1 -> forall n, n >= i -> dms_splice n ds1 = ds1).
 Proof.
-  intros. induction H; eauto;
-  simpl; try rewrite IHclosed; try rewrite IHclosed1; try rewrite IHclosed2; eauto.
+  apply closed_mutind; intros; eauto; simpl;
+  try (rewrite H); try (rewrite H0); try (rewrite H1); eauto.
   unfold splice_var.
   case_eq (le_lt_dec n x); intros E LE.
   omega. reflexivity.
 Qed.
 
+Lemma closed_splice_idem: forall i k T n,
+                            closed i k T ->
+                            n >= i ->
+                            splice n T = T.
+Proof.
+  intros.
+  eapply (proj2 closed_splice_idem_rec); eauto.
+Qed.
+
+(*
 Lemma stp_splice_aux: forall ni, (forall G0 G1 T1 T2 v1 n,
    stp (G1++G0) T1 T2 n -> n < ni ->
    stp ((map (splice (length G0)) G1) ++ v1::G0)
