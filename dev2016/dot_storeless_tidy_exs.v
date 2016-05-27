@@ -1,8 +1,8 @@
 (*
-coqc -I ../../sf/ dot_storeless.v
+coqc -I ../../sf/ dot_storeless_tidy.v
 *)
 
-Require Import dot_storeless.
+Require Import dot_storeless_tidy.
 
 (* ############################################################ *)
 (* Examples *)
@@ -23,12 +23,12 @@ Fixpoint dms_compute (ds: dms) :=
 
 Ltac apply_dfun := match goal with
   | [ |- dms_has_type ?GH (dcons (dfun ?T11 ?T12 ?t12) ?ds) ?T ?n ] =>
-    eapply (D_Abs GH (length (dms_to_list ds)) T11 T12 (open 0 (TVar (VAbs (length GH))) T12) t12 ds (dms_compute ds) (TAnd (TFun (length (dms_to_list ds)) T11 T12) (dms_compute ds)))
+    eapply (D_Fun GH (length (dms_to_list ds)) T11 T12 (open 0 (VarF (length GH)) T12) t12 (tm_open 0 (VarF (length GH)) t12) ds (dms_compute ds) (TAnd (TFun (length (dms_to_list ds)) T11 T12) (dms_compute ds)))
   end.
 
 Ltac apply_tobj := match goal with
-  | [ |- has_type ?GH (tobj ?ds) ?T ?n ] =>
-    eapply (T_Obj GH ds) with (T':=(dms_compute ds))
+  | [ |- has_type ?GH (tvar (VObj ?ds)) ?T ?n ] =>
+    eapply (T_VObj GH ds (dms_open 0 (VarF (length GH)) ds) (dms_compute ds) (open 0 (VarF (length GH)) (dms_compute ds)) (open 0 (VObj ds) (dms_compute ds)))
 end.
 
 Ltac apply_stp_bind1 := match goal with
@@ -45,41 +45,51 @@ Ltac crush := simpl;
   try solve [econstructor; crush];
   try solve [eapply T_Sub; crush].
 
-Example ex0: has_typed [] (tobj dnil) TTop.
+Example ex0: has_typed [] (tvar (VObj dnil)) TTop.
   eexists. crush.
 Grab Existential Variables.
-apply 0. apply 0. apply 0.
+apply 0. apply 0.
+Qed.
+
+Example ex_loop: has_typed [] (tvar (VObj (dcons (dfun TTop TBot (tapp (tvar (VarB 1)) 0 (tvar (VarB 0)))) dnil))) (TFun 0 TTop TBot).
+  eexists.
+  eapply T_Sub.
+  apply_tobj.
+  simpl. apply_dfun. crush.
+  simpl. eapply T_App. instantiate (2:=TTop). crush. crush. crush.
+  reflexivity. reflexivity. crush. crush. crush. reflexivity. reflexivity.
+  reflexivity. reflexivity. crush. crush. reflexivity. crush.
+Grab Existential Variables.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 (* define polymorphic identity function *)
 
-Definition polyId := TFun 0 (TMem 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0) (TSel (TVarB 1) 0)).
+Definition polyId := TFun 0 (TMem 0 TBot TTop) (TFun 0 (TSel (VarB 0) 0) (TSel (VarB 1) 0)).
 
 Example ex1: has_typed
                []
-               (tobj (dcons (dfun (TMem 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0) (TSel (TVarB 1) 0))
-               (tobj (dcons (dfun (TSel (TVar (VAbs 1)) 0) (TSel (TVar (VAbs 1)) 0) (tvar (VAbs 3))) dnil))) dnil)) polyId.
+               (tvar (VObj (dcons (dfun (TMem 0 TBot TTop) (TFun 0 (TSel (VarB 0) 0) (TSel (VarB 1) 0))
+               (tvar (VObj (dcons (dfun (TSel (VarB 1) 0) (TSel (VarB 2) 0) (tvar (VarB 0))) dnil)))) dnil))) polyId.
 Proof.
   unfold polyId.
   eexists. crush.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0.
 Qed.
 
 (* instantiate it to TTop *)
-Example ex2: has_typed [polyId] (tapp (tvar (VAbs 0)) 0 (tobj (dcons (dty TTop) dnil))) (TFun 0 TTop TTop).
+Example ex2: has_typed [polyId] (tapp (tvar (VarF 0)) 0 (tvar (VObj (dcons (dty TTop) dnil)))) (TFun 0 TTop TTop).
 Proof.
   unfold polyId.
   eexists.
   eapply T_App.
   eapply T_Sub.
-  eapply T_Varz. compute. reflexivity.
+  eapply T_VarF. compute. reflexivity.
   crush.
   instantiate (2:=TMem 0 TTop TTop). crush.
   crush.
   crush.
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
