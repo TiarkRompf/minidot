@@ -2209,8 +2209,27 @@ Lemma hastp_upgrade_gh_aux: forall ni,
 Proof.
   intros n. induction n. repeat split; intros; omega.
   repeat split; intros; inversion H; subst.
-  - assert (dms_has_type (open 0 (VarF (S (length GH))) T0 :: T :: GH) (dms_open 0 (VarF (S (length GH))) ds) (open 0 (VarF (S (length GH))) T0) n1) as IH. {
+  - assert (dms_has_type (map (splice (length GH)) [(open 0 (VarF (length GH)) T0)] ++ (T::GH))
+                         (dms_splice (length GH) (dms_open 0 (VarF (length GH)) ds))
+                         (splice (length GH) (open 0 (VarF (length GH)) T0)) n1) as IH'. {
       admit.
+    }
+    assert ((length GH + 1) = (S (length GH))) as EqInc by omega.
+    assert (splice (length GH) T0 = T0) as EqT0. {
+      eapply closed_splice_idem. eauto. omega.
+    }
+    assert (dms_splice (length GH) ds = ds) as Eqds. {
+      eapply closed_splice_idem_rec. eauto. omega.
+    }
+    assert (dms_has_type (open 0 (VarF (S (length GH))) T0 :: T :: GH) (dms_open 0 (VarF (S (length GH))) ds) (open 0 (VarF (S (length GH))) T0) n1) as IH. {
+      simpl in IH'.
+      rewrite (proj1 (proj2 splice_open_distribute_rec)) in IH'.
+      rewrite (proj2 (proj2 (proj2 (proj2 splice_open_distribute_rec)))) in IH'.
+      simpl in IH'. unfold splice_var in IH'. simpl in IH'.
+      case_eq (le_lt_dec (length GH) (length GH)); intros LE E.
+      rewrite E in IH'. rewrite EqInc in IH'. rewrite EqT0 in IH'. rewrite Eqds in IH'.
+      eapply IH'.
+      omega.
     }
     eapply T_VObj. eapply IH.
     simpl. reflexivity. simpl. reflexivity.
