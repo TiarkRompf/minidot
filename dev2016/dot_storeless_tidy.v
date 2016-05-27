@@ -1729,7 +1729,6 @@ Proof.
   eapply (proj2 closed_splice_rec); eauto.
 Qed.
 
-(*
 Lemma map_splice_length_inc: forall G0 G2 v1,
    (length (map (splice (length G0)) G2 ++ v1 :: G0)) = (S (length (G2 ++ G0))).
 Proof.
@@ -1739,14 +1738,15 @@ Proof.
 Qed.
 
 Lemma closed_inc_mult: forall i k T,
-  closed i k T ->
-  forall i' k',
+  closed i k T -> forall i' k',
   i' >= i -> k' >= k ->
   closed i' k' T.
 Proof.
-  intros i k T H. induction H; intros; eauto; try solve [constructor; omega].
-  - econstructor. apply IHclosed1; omega. apply IHclosed2; omega.
-  - econstructor. apply IHclosed; omega.
+  intros.
+  eapply closed_upgrade_gh.
+  eapply closed_upgrade.
+  eassumption.
+  omega. omega.
 Qed.
 
 Lemma closed_inc: forall i k T,
@@ -1756,6 +1756,7 @@ Proof.
   intros. apply (closed_inc_mult i k T H (S i) k); omega.
 Qed.
 
+(*
 Lemma closed_splice_idem: forall i k T n,
                             closed i k T ->
                             n >= i ->
