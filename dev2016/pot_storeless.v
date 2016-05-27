@@ -221,6 +221,12 @@ Definition subst_ty (x:dms) (T: ty) := open 0 (VObj x) T.
 Definition substt (x:dms) (T: ty) := (subst (VObj x) T).
 Hint Immediate substt.
 
+Fixpoint path_head (p: vr) : vr :=
+  match p with
+  | VSel p1 l => path_head p1
+  | _ => p
+  end.
+
 Inductive has_type : tenv -> tm -> ty -> nat -> Prop :=
   | T_VObj : forall GH ds ds' T T' TO n1,
       dms_has_type (length GH) (T'::GH) ds' T' n1 ->
@@ -268,6 +274,7 @@ with dms_has_type: id -> tenv -> dms -> ty -> nat -> Prop :=
       dms_has_type z GH dnil TTop (S n1)
   | D_Fld : forall z GH l v11 T11 ds TS T n1 n2,
       dms_has_type z GH ds TS n1 ->
+      path_head v11 <> (VarF z) ->
       has_type GH (tvar v11) T11 n2 ->
       l = length (dms_to_list ds) ->
       T = TAnd (TFld l T11) TS ->
@@ -1349,7 +1356,7 @@ Proof.
   - subst. eapply IHV1 in H1. eauto. omega.
   (* dms_has_type 1 *)
   - econstructor.
-  - subst. econstructor. econstructor. eapply IHT1 in H2. inversion H2; subst. eauto. omega. eapply IHT. eauto. omega. eapply IHD1. eauto. omega.
+  - subst. econstructor. econstructor. eapply IHT1 in H3. inversion H3; subst. eauto. omega. eapply IHT. eauto. omega. eapply IHD1. eauto. omega.
   - subst. econstructor. econstructor. eauto. eauto. eapply IHD1. eauto. omega.
   - subst. econstructor. econstructor. eauto. eauto. eauto. eapply IHD1. eauto. omega.
 Qed.
@@ -2336,6 +2343,19 @@ Proof.
   - eapply D_Nil.
   - simpl. eapply D_Fld.
     eapply IHD. eauto. omega.
+    {
+      rename H2 into HP.
+      clear H IHT IHD H1 H3.
+      induction v11; try solve [simpl; discriminate].
+      + simpl in HP. simpl. unfold splice_var.
+        unfold not in *. unfold id in *.
+        case_eq (le_lt_dec (length G0) i); intros E LE;
+        case_eq (le_lt_dec (length G0) z); intros E' LE';
+        intro C; inversion C; try omega;
+        assert (i = z) by omega; subst;
+        specialize (HP eq_refl); eauto.
+      + simpl. eapply IHv11; eauto.
+    }
     specialize (IHT G0 G1 (tvar v11) T11 v1 n2). simpl in IHT.
     eapply IHT. eauto. omega.
     rewrite <- length_dms_splice. reflexivity. reflexivity.
