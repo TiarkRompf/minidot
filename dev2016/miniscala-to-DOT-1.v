@@ -17,7 +17,7 @@ Inductive Pth: Set :=
 
 Inductive Typ: Set :=
 | TypCls: Pth -> Typ (* reference to a type *)
-| TypMtd: Typ -> Typ -> Typ (* (x: S)T        where x is locally nameless and can occur in T *)
+| TypMtd: Typ -> Typ -> Typ (* (x: S)T        where x is locally nameless and can occur in T *) (* unused *)
 | TypOfCls: Defs -> Typ (* class { z => (l: T)...}
                                    the type of a path referencing a class, "ClassInfo" in dotty *)
 with Trm: Set :=
@@ -182,6 +182,12 @@ end.
 
 Definition TAlias(l: lb)(T: ty) := TMem l T T.
 
+Definition dnone := dty TTop. (* TODO it would cleaner to add a dnone to DOT's Inductive dm *)
+
+(* TODO need to shift VarBd indices because we move them under the VObj binder! *)
+Definition tlet(t1: tm)(T1: ty)(t2: tm)(T2: ty): tm :=
+  tapp (tvar (VObj (dcons (dfun T1 T2 t2) dnil))) 0 t1.
+
 (* OLD (with explicit y)
    "trTypOfDef d y (T1, T2)" means that the type of definition d (inside a class with self ref y),
    translates to types T1 and T2 (note that a class def generates two defs in DOT, one for the type
@@ -198,6 +204,8 @@ Inductive trTypOfDef: (Label * Def) -> (ty * ty) -> Prop :=
     (*                          (type C_l = { z => /\...}) (def create_l(dummy: Top): outerSelf.C_l)   *)
 | trTypOfDefDef: forall m T U u,
     trTypOfDef (m, (DefDef (TypCls T) (TypCls U) u)) ((TFun (2*m) (trTyp T) (trTyp U)), TTop)
+| trTypOfDefNone: forall m,
+    trTypOfDef (m, DefNone) (TTop, TTop)
 (* Note: no rule for val defs yet *)
 with trTypOfDefs: Defs -> ty -> Prop :=
 | trTypOfDefsNil:
@@ -215,10 +223,76 @@ Inductive trTrm: Ctx -> Trm -> Typ -> tm -> Prop :=
 | trTrmVar: forall G x T,
     x < length G ->
     trTrm G (TrmVar (VarFr x)) T (tvar (VarF x))
+| trAppXX: forall G x1 x2 T2 T3 T3' l ds p t3,
+    trTrm G (TrmVar (VarFr x1)) (TypCls p) (tvar (VarF x1)) ->
+    clLookup G p ds ->
+    DefsIndex l (openDefs (VarFr x1) ds) = Some (DefDef T2 T3 t3) ->
+    open_Typ 1 (VarFr x2) T3 = T3' ->
+    trTrm G (TrmVar (VarFr x2)) T2 (tvar (VarF x2)) ->
+    trTrm G (TrmApp (TrmVar (VarFr x1)) l (TrmVar (VarFr x2))) T3'
+          (tapp (tvar (VarF x1)) (2*l) (tvar (VarF x2)))
+| trAppXT: forall G x1 t2 t2' T2 T3 l ds p t3,
+    trTrm G (TrmVar (VarFr x1)) (TypCls p) (tvar (VarF x1)) ->
+    clLookup G p ds ->
+    DefsIndex l (openDefs (VarFr x1) ds) = Some (DefDef T2 T3 t3) ->
+    closedTyp T3 ->
+    trTrm G t2 T2 t2' ->
+    trTrm G (TrmApp (TrmVar (VarFr x1)) l t2) T3
+          (tapp (tvar (VarF x1)) (2*l) t2')
+| trAppTX: forall G t1 t1' x2 T2 T3 T3' l ds p t3,
+    trTrm G t1 (TypCls p) t1' ->
+    clLookup G p ds ->
+    DefsIndex l ds = Some (DefDef T2 T3 t3) ->
+    open_Typ 1 (VarFr x2) T3 = T3' ->
+    closedTyp T2 ->
+    closedTyp T3' ->
+    trTrm G (TrmVar (VarFr x2)) T2 (tvar (VarF x2)) ->
+    trTrm G (TrmApp t1 l (TrmVar (VarFr x2))) T3'
+          (tapp t1' (2*l) (tvar (VarF x2)))
+| trAppTT: forall G t1 t1' t2 t2' T2 T3 l ds p t3,
+    trTrm G t1 (TypCls p) t1' ->
+    clLookup G p ds ->
+    DefsIndex l ds = Some (DefDef T2 T3 t3) ->
+    closedTyp T2 ->
+    closedTyp T3 ->
+    trTrm G t2 T2 t2' ->
+    trTrm G (TrmApp t1 l t2) T3
+          (tapp t1' (2*l) t2')
 (*
-| trAppXX: forall,
-    trTrm G (TrmApp t1 l t2) 
+| trSeqVal: forall,
+    
+
+| trSeqCls: forall,
+    trDef
+    trTrm G (TrmBlock (DefCls ds) t2) T2 (tlet (tvar (VObj (dcons (dty 
 *)
+
+(* (trDef G (l, d) (d', d'')), on paper "G |- d ~y~> d'; d''" means that the definition d (with label l)
+   translates to DOT definitions d' and d'' (note that two are needed defs are needed for type & constructor).
+   It also performs typechecking, but there's no need to assign a type, because all the type information is
+   contained in the def. *)
+with trDef: Ctx -> (Label * Def) -> (dm * dm) -> Prop :=
+| trDefDef: forall G m T1 T2 t2 t2',
+    trTrm ((TypCls T1) :: G) t2 (TypCls T2) t2' ->
+    trDef G (m, (DefDef (TypCls T1) (TypCls T2) t2)) (dfun (trTyp T1) (trTyp T2) t2', dnone)
+| trDefCls: forall y G l ds ds' T,
+    S y = length G ->
+    trTypOfDefs ds T ->
+    trDefs ((TypCls (PthSel (VarFr y) l)) :: G) (openDefs (VarFr (S y)) ds) (dms_open 0 (VarF (S y)) ds') ->
+    trDef G (l, (DefCls ds))
+      (dty (TBind T)          , dfun TTop (TSel (VarF y) (2*l)) (tvar (VObj ds'))) 
+   (* type C_l = { z => /\...}, def create_l(x: Top): outerSelf.C_l = new { z => ds'} *)
+| trDefNone: forall G m,
+    trDef G (m, DefNone) (dnone, dnone)
+
+with trDefs: Ctx -> Defs -> dms -> Prop :=
+| trDefsNil: forall G,
+    trDefs G DefsNil dnil
+| trDefsCons: forall G d ds d1' d2' ds' l,
+    l = DefsLength ds ->
+    trDef G (l, d) (d1', d2') -> 
+    trDefs G ds ds' ->
+    trDefs G (DefsCons d ds) (dcons d1' (dcons d2' ds'))
 
 (* Class lookup, on paper "G |- class p { z => d...}", means that in context G, 
    the path p refers to a class whose definition is { z => d...}. *)
@@ -231,38 +305,6 @@ with clLookup: Ctx -> Pth -> Defs -> Prop :=
     clLookup G p ds0 ->
     DefsIndex l (openDefs (VarFr x) ds0) = Some (DefCls ds) ->
     clLookup G (PthSel (VarFr x) l) ds.
-
-(*
-| TrmApp: Trm -> Trm -> Trm
-| TrmNew: Pth -> Trm
-| TrmBlock: Def -> Trm -> Trm (* def is bound to a locally nameless var *)
-with Def: Set := (* on paper, Def also contains label, but in Coq, it's given by position (if in
-  class body) or by locally nameless (if in term) *)
-| DefVal: Typ -> Trm -> Def (* val l: T = t *)
-| DefDef: Typ -> Typ -> Trm -> Def (* def m(x: S): T = t     where x is locally nameless *)
-| DefCls: Defs -> Def (* class l { z => ds }      where z is a locally nameless self ref *)
-with Defs: Set := (* labels are given implicitly by position *)
-| DefsNil: Defs
-| DefsSkip: Defs -> Defs (* label at this position undefined *)
-| DefsCons: Def -> Defs -> Defs.
-
-with trTyp: Ctx -> Typ -> ty -> Prop :=
-| trTypCls: forall,
-    trTrm G (Pth2Trm p) 
-
-: Pth -> Typ (* reference to a type *)
-| trTypMtd: Typ -> Typ -> Typ (* (x: S)T        where x is locally nameless and can occur in T *)
-| trTypOfCls: Decls -> Typ (* class { z => (l: T)...}    the type of a class, "ClassInfo" in dotty *)
-with trDecls: Ctx -> Decls -> ty -> Prop :=
-| trDeclsNil: Decls
-| trDeclsSkip: Decls -> Decls (* label at this position undefined *)
-| trDeclsCons: Typ -> Decls -> Decls.
-
-
-trTrm
-trDef
-trTyp
-*)
 
 
 
