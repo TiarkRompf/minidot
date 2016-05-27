@@ -2905,10 +2905,23 @@ Proof.
     }
     eu.
 
+    assert (closed 0 2 t0) as A2. {
+      simpl. inversion H12; subst. eassumption.
+    }
+    assert (subst (VObj ds0) (open 1 (VarF 0) t0)=(open 1 (VObj ds0) t0)) as B2. {
+      rewrite subst_open_commute0. reflexivity. simpl. eauto.
+    }
     assert (stpd2 [subst (VObj ds0) (open 0 (VarF 0) t)]
                 (open 0 (VarF 0) (open 1 (VObj ds0) t0))
-                (open 0 (VarF 0) (subst (VObj ds0) (open 1 (VarF 0) t0)))) as C2. {
-      admit.
+                (open 0 (VarF 0) (open 1 (VObj ds0) t0))) as C2. {
+      eapply stpd2_refl.
+      simpl. eapply closed_open. simpl. eapply closed_open. simpl.
+      eapply closed_upgrade_gh. eauto. omega.
+      econstructor.
+      eapply (proj2 (proj2 (proj2 closed_upgrade_rec))).
+      eapply (proj2 (proj2 (proj2 closed_upgrade_gh_rec))).
+      eauto. omega. omega.
+      econstructor. omega.
     }
     eu.
 
@@ -2944,7 +2957,7 @@ Proof.
     eapply (proj1 (proj2 (proj2 closed_open_rec))). simpl.
     eapply (proj1 (proj2 (proj2 closed_upgrade_gh_rec))). eauto. omega.
     econstructor. omega.
-    eauto.
+    rewrite B2. eapply C2.
     econstructor. eauto.
     eapply IH. eauto. omega.
 
