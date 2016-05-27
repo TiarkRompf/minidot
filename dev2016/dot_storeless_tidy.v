@@ -2190,7 +2190,90 @@ Lemma hastp_splice_aux: forall ni, (forall G0 G1 t1 T2 v1 n,
    dms_has_type ((map (splice (length G0)) G1) ++ v1::G0)
    (dms_splice (length G0) ds1) (splice (length G0) T2) n).
 Proof.
-  admit.
+  intro ni. induction ni. split; intros; omega.
+  destruct IHni as [IHT IHD].
+  split; intros; inversion H; subst.
+  - assert ((length (G1 ++ G0) + 1) = S (length (G1 ++ G0))) as EqInc by omega.
+    assert (dms_has_type (map (splice (length G0)) (open 0 (VarF (length (G1 ++ G0))) T :: G1) ++ v1::G0)
+         (dms_splice (length G0) (dms_open 0 (VarF (length (G1 ++ G0))) ds))
+         (splice (length G0) (open 0 (VarF (length (G1 ++ G0))) T)) n1) as IH. {
+      eapply IHD. simpl in *. eapply H1. omega.
+    }
+    simpl. eapply T_VObj.
+    + eapply IH.
+    + rewrite (proj1 (proj2 splice_open_distribute_rec)).
+      simpl. unfold splice_var.
+      case_eq (le_lt_dec (length G0) (length (G1 ++ G0))); intros LE E.
+      rewrite map_splice_length_inc. rewrite EqInc. reflexivity.
+      clear E. rewrite app_length in LE. omega.
+    + rewrite (proj2 (proj2 (proj2 (proj2 splice_open_distribute_rec)))).
+      simpl. unfold splice_var.
+      case_eq (le_lt_dec (length G0) (length (G1 ++ G0))); intros LE E.
+      rewrite map_splice_length_inc. rewrite EqInc. reflexivity.
+      clear E. rewrite app_length in LE. omega.
+    + rewrite map_splice_length_inc. eapply closed_splice. eauto.
+    + rewrite map_splice_length_inc. eapply closed_splice_rec. eauto.
+    + rewrite (proj1 (proj2 splice_open_distribute_rec)).
+      simpl. reflexivity.
+  - eapply T_VarF.
+    simpl. unfold splice_var.
+    case_eq (le_lt_dec (length G0) x); intros E LE.
+    apply index_splice_hi. eauto. omega.
+    apply index_splice_lo. admit. omega.
+    rewrite map_splice_length_inc. eapply closed_splice. eauto.
+  - simpl. eapply T_VarPack.
+    assert (tvar (vr_splice (length G0) v) = tm_splice (length G0) (tvar v)) as A. {
+      simpl. reflexivity.
+    }
+    rewrite A. eapply IHT. eauto. omega.
+    rewrite (proj1 (proj2 splice_open_distribute_rec)). reflexivity.
+    rewrite map_splice_length_inc. eapply closed_splice. eauto.
+  - simpl. eapply T_VarUnpack.
+    specialize (IHT G0 G1 (tvar v) (TBind T1) v1 n1). simpl in IHT.
+    eapply IHT. eauto. omega.
+    rewrite (proj1 (proj2 splice_open_distribute_rec)). reflexivity.
+    rewrite map_splice_length_inc. eapply closed_splice. eauto.
+  - simpl. eapply T_App.
+    specialize (IHT G0 G1 t0 (TFun l T1 T2) v1 n1). simpl in IHT.
+    eapply IHT. eauto. omega.
+    eapply IHT. eauto. omega.
+    rewrite map_splice_length_inc. eapply closed_splice. eauto.
+  - simpl. eapply T_AppVar.
+    specialize (IHT G0 G1 t0 (TFun l T1 T0) v1 n1). simpl in IHT.
+    eapply IHT. eauto. omega.
+    specialize (IHT G0 G1 (tvar v2) T1 v1 n2). simpl in IHT.
+    eapply IHT. eauto. omega.
+    rewrite map_splice_length_inc. eapply closed_splice_rec. eauto.
+    rewrite (proj1 (proj2 splice_open_distribute_rec)). reflexivity.
+    rewrite map_splice_length_inc. eapply closed_splice. eauto.
+  - eapply T_Sub. eapply IHT. eauto. omega. eapply stp_splice. eauto.
+  - eapply D_Nil.
+  - simpl. eapply D_Mem.
+    eapply IHD. eauto. omega.
+    rewrite map_splice_length_inc. eapply closed_splice. eauto.
+    rewrite <- length_dms_splice. reflexivity. reflexivity.
+  - assert ((length (G1 ++ G0) + 1) = S (length (G1 ++ G0))) as EqInc by omega.
+    simpl. eapply D_Fun.
+    eapply IHD. eauto. omega.
+    assert (splice (length G0) T11 :: map (splice (length G0)) G1 ++ v1 :: G0 =
+            map (splice (length G0)) (T11::G1) ++ v1 :: G0) as A. {
+      simpl. reflexivity.
+    }
+    rewrite A. eapply IHT. simpl. eauto. omega.
+    rewrite (proj1 (proj2 splice_open_distribute_rec)).
+    simpl. rewrite map_splice_length_inc. unfold splice_var.
+    case_eq (le_lt_dec (length G0) (length (G1 ++ G0))); intros LE E.
+    rewrite EqInc. reflexivity.
+    clear E. rewrite app_length in LE. omega.
+    rewrite (proj1 (proj2 (proj2 splice_open_distribute_rec))).
+    simpl. rewrite map_splice_length_inc. unfold splice_var.
+    case_eq (le_lt_dec (length G0) (length (G1 ++ G0))); intros LE E.
+    rewrite EqInc. reflexivity.
+    clear E. rewrite app_length in LE. omega.
+    rewrite map_splice_length_inc. eapply closed_splice. eauto.
+    rewrite map_splice_length_inc. eapply closed_splice. eauto.
+    rewrite map_splice_length_inc. eapply closed_splice_rec. eauto.
+    rewrite <- length_dms_splice. reflexivity. reflexivity.
 Qed.
 
 Lemma dms_hastp_splice: forall G0 G1 ds1 T2 v1 n,
