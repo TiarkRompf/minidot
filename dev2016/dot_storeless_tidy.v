@@ -1624,31 +1624,45 @@ with dms_splice n (ds : dms) {struct ds} : dms :=
   end
 .
 
-(*
-Lemma splice_open_permute: forall {X} (G0:list X) T2 n j,
-(open j (TVar (VAbs (n + S (length G0)))) (splice (length G0) T2)) =
-(splice (length G0) (open j (TVar (VAbs (n + length G0))) T2)).
+Lemma splice_open_distribute_rec:
+  (forall v0 v j k, vr_splice k (vr_open j v v0) = vr_open j (vr_splice k v) (vr_splice k v0)) /\
+  (forall T0 v j k, splice k (open j v T0) = open j (vr_splice k v) (splice k T0)) /\
+  (forall t0 v j k, tm_splice k (tm_open j v t0) = tm_open j (vr_splice k v) (tm_splice k t0)) /\
+  (forall d0 v j k, dm_splice k (dm_open j v d0) = dm_open j (vr_splice k v) (dm_splice k d0)) /\
+  (forall ds0 v j k, dms_splice k (dms_open j v ds0) = dms_open j (vr_splice k v) (dms_splice k ds0)).
 Proof.
-  intros X G T. induction T; intros; simpl; eauto;
-  try rewrite IHT1; try rewrite IHT2; try rewrite IHT; eauto.
-  destruct v; eauto.
-  case_eq (beq_nat j i); intros E; simpl; eauto.
-  unfold splice_var.
-  case_eq (le_lt_dec (length G) (n + length G)); intros EL LE.
-  assert (n + S (length G) = n + length G + 1). omega.
-  rewrite H. eauto.
-  omega.
+  apply syntax_mutind; intros; simpl;
+  try inversion H0; try inversion H1; try inversion H2;
+  subst;
+  try rewrite H; try rewrite H0; try rewrite H1;
+  eauto.
+  - case_eq (beq_nat j i); intros E; simpl; eauto.
+Qed.
+
+Lemma splice_open_permute: forall {X} (G0:list X) T2 n j,
+(open j (VarF (n + S (length G0))) (splice (length G0) T2)) =
+(splice (length G0) (open j (VarF (n + length G0)) T2)).
+Proof.
+  intros.
+  assert (VarF (n + S (length G0)) = vr_splice (length G0) (VarF (n + length G0))) as A. {
+    simpl. unfold splice_var.
+    case_eq (le_lt_dec (length G0) (n + length G0)); intros EL LE.
+    f_equal. omega. omega.
+  }
+  rewrite A. symmetry.
+  eapply (proj2 splice_open_distribute_rec).
 Qed.
 
 Lemma splice_open_permute0: forall {X} (G0:list X) T2 j,
-(open j (TVar (VAbs (S (length G0)))) (splice (length G0) T2)) =
-(splice (length G0) (open j (TVar (VAbs (length G0))) T2)).
+(open j (VarF (S (length G0))) (splice (length G0) T2)) =
+(splice (length G0) (open j (VarF (length G0)) T2)).
 Proof.
   intros.
-  change (TVar (VAbs (length G0))) with (TVar (VAbs (0 + (length G0)))).
+  change (VarF (length G0)) with (VarF (0 + (length G0))).
   rewrite <- splice_open_permute. reflexivity.
 Qed.
 
+(*
 Lemma index_splice_hi: forall G0 G2 x0 v1 T,
     index x0 (G2 ++ G0) = Some T ->
     length G0 <= x0 ->
