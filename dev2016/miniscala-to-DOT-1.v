@@ -306,5 +306,177 @@ with clLookup: Ctx -> Pth -> Defs -> Prop :=
     DefsIndex l (openDefs (VarFr x) ds0) = Some (DefCls ds) ->
     clLookup G (PthSel (VarFr x) l) ds.
 
+Example e2 := (tapp (tvar (VObj (*_unusedSelf =>*)
+  (dcons (dfun (*call*) (*Lib1*) (TBind (*_self =>*)
+    (TAnd (TAlias 1 (*C*) (TBind (*z =>*)
+      (TAnd (TAlias 2 (*C_U*) (TBind 
+        TTop
+      ))
+      (TAnd (TFun 3 (*new_U*) (*_dummy*) TTop (TSel (VarB 1 (*z*)) 2 (*C_U*)))
+      (TAnd (TAlias 4 (*C_Author*) (TBind 
+        (TAnd (TFun 5 (*book*) (*u*) (TSel (VarB 1 (*z*)) 2 (*C_U*)) (TSel (VarB 2 (*z*)) 6 (*C_Book*)))
+        (TAnd TTop
+        TTop))
+      ))
+      (TAnd (TFun 7 (*new_Author*) (*_dummy*) TTop (TSel (VarB 1 (*z*)) 4 (*C_Author*)))
+      (TAnd (TAlias 6 (*C_Book*) (TBind 
+        (TAnd (TFun 8 (*author*) (*u*) (TSel (VarB 1 (*z*)) 2 (*C_U*)) (TSel (VarB 2 (*z*)) 4 (*C_Author*)))
+        (TAnd TTop
+        TTop))
+      ))
+      (TAnd (TFun 9 (*new_Book*) (*_dummy*) TTop (TSel (VarB 1 (*z*)) 6 (*C_Book*)))
+      (TAnd (TFun 10 (*run*) (*u*) (TSel (VarB 0 (*z*)) 2 (*C_U*)) (TSel (VarB 1 (*z*)) 6 (*C_Book*)))
+      (TAnd TTop
+      TTop))))))))
+    ))
+    (TFun 11 (*new*) (*_dummy*) TTop (TSel (VarB 1 (*_self*)) 1 (*C*))))
+  ) TTop (tapp (tvar (VObj (*_unusedSelf =>*)
+    (dcons (dfun (*call*) (*lib1*) (TSel (VarB 1 (*Lib1*)) 1 (*C*)) TTop (tapp (tvar (VarB 0 (*lib1*))) 10 (*run*) (tapp (tvar (VarB 0 (*lib1*))) 3 (*new_U*) (tvar (VObj dnil)))))
+    dnil)
+  )) 0 (*call*) (tapp (tvar (VarB 0 (*Lib1*))) 11 (*new*) (tvar (VObj dnil)))))
+  dnil)
+)) 0 (*call*) (tvar (VObj (*_self =>*)
+  (dcons (dfun (*new*) (*_dummy*) TTop (TSel (VarB 1 (*_self*)) 1 (*C*)) (tvar (VObj (*z =>*)
+    (dcons (dfun (*run*) (*u*) (TSel (VarB 0 (*z*)) 2 (*C_U*)) (TSel (VarB 1 (*z*)) 6 (*C_Book*)) (tapp (tvar (VObj (*_unusedSelf =>*)
+      (dcons (dfun (*call*) (*a*) (TSel (VarB 2 (*z*)) 4 (*C_Author*)) (TSel (VarB 3 (*z*)) 6 (*C_Book*)) (tapp (tvar (VarB 0 (*a*))) 5 (*book*) (tapp (tvar (VarB 3 (*z*))) 3 (*new_U*) (tvar (VObj dnil)))))
+      dnil)
+    )) 0 (*call*) (tapp (tapp (tvar (VarB 1 (*z*))) 9 (*new_Book*) (tvar (VObj dnil))) 8 (*author*) (tapp (tvar (VarB 1 (*z*))) 3 (*new_U*) (tvar (VObj dnil))))))
+    (dcons (dfun (*new_Book*) (*_dummy*) TTop (TSel (VarB 1 (*z*)) 6 (*C_Book*)) (tvar (VObj 
+      (dcons (dfun (*author*) (*u*) (TSel (VarB 2 (*z*)) 2 (*C_U*)) (TSel (VarB 3 (*z*)) 4 (*C_Author*)) (tapp (tvar (VarB 3 (*z*))) 7 (*new_Author*) (tvar (VObj dnil))))
+      (dcons dnone
+      (dcons dnone
+      (dcons dnone
+      (dcons dnone
+      (dcons dnone
+      (dcons dnone
+      (dcons dnone
+      (dcons dnone
+      dnil)))))))))
+    )))
+    (dcons dnone
+    (dcons (dfun (*new_Author*) (*_dummy*) TTop (TSel (VarB 1 (*z*)) 4 (*C_Author*)) (tvar (VObj 
+      (dcons (dfun (*book*) (*u*) (TSel (VarB 2 (*z*)) 2 (*C_U*)) (TSel (VarB 3 (*z*)) 6 (*C_Book*)) (tapp (tvar (VarB 3 (*z*))) 9 (*new_Book*) (tvar (VObj dnil))))
+      (dcons dnone
+      (dcons dnone
+      (dcons dnone
+      (dcons dnone
+      (dcons dnone
+      dnil))))))
+    )))
+    (dcons (dty (*C_Book*) (TBind 
+      (TAnd (TFun 8 (*author*) (*u*) (TSel (VarB 1 (*z*)) 2 (*C_U*)) (TSel (VarB 2 (*z*)) 4 (*C_Author*)))
+      (TAnd TTop
+      TTop))
+    ))
+    (dcons dnone
+    (dcons (dty (*C_Author*) (TBind 
+      (TAnd (TFun 5 (*book*) (*u*) (TSel (VarB 1 (*z*)) 2 (*C_U*)) (TSel (VarB 2 (*z*)) 6 (*C_Book*)))
+      (TAnd TTop
+      TTop))
+    ))
+    (dcons (dfun (*new_U*) (*_dummy*) TTop (TSel (VarB 1 (*z*)) 2 (*C_U*)) (tvar (VObj dnil)))
+    (dcons (dty (*C_U*) (TBind 
+      TTop
+    ))
+    (dcons dnone
+    (dcons dnone
+    dnil)))))))))))
+  )))
+  (dcons dnone
+  (dcons dnone
+  (dcons dnone
+  (dcons dnone
+  (dcons dnone
+  (dcons dnone
+  (dcons dnone
+  (dcons dnone
+  (dcons dnone
+  (dcons (dty (*C*) (TBind (*z =>*)
+    (TAnd (TAlias 2 (*C_U*) (TBind 
+      TTop
+    ))
+    (TAnd (TFun 3 (*new_U*) (*_dummy*) TTop (TSel (VarB 1 (*z*)) 2 (*C_U*)))
+    (TAnd (TAlias 4 (*C_Author*) (TBind 
+      (TAnd (TFun 5 (*book*) (*u*) (TSel (VarB 1 (*z*)) 2 (*C_U*)) (TSel (VarB 2 (*z*)) 6 (*C_Book*)))
+      (TAnd TTop
+      TTop))
+    ))
+    (TAnd (TFun 7 (*new_Author*) (*_dummy*) TTop (TSel (VarB 1 (*z*)) 4 (*C_Author*)))
+    (TAnd (TAlias 6 (*C_Book*) (TBind 
+      (TAnd (TFun 8 (*author*) (*u*) (TSel (VarB 1 (*z*)) 2 (*C_U*)) (TSel (VarB 2 (*z*)) 4 (*C_Author*)))
+      (TAnd TTop
+      TTop))
+    ))
+    (TAnd (TFun 9 (*new_Book*) (*_dummy*) TTop (TSel (VarB 1 (*z*)) 6 (*C_Book*)))
+    (TAnd (TFun 10 (*run*) (*u*) (TSel (VarB 0 (*z*)) 2 (*C_U*)) (TSel (VarB 1 (*z*)) 6 (*C_Book*)))
+    (TAnd TTop
+    TTop))))))))
+  ))
+  (dcons dnone
+  dnil))))))))))))
+))).
 
+Fixpoint one_step(t: tm): option tm := match t with
+(* ST_AppAbs *)
+| (tapp (tvar (VObj f)) l (tvar (VObj x))) => match (index l (dms_to_list (subst_dms f f))) with
+  | Some (dfun T1 T2 t12) => Some (subst_tm x t12)
+  | _ => None
+  end
+(* ST_App2 *)
+| (tapp (tvar (VObj f)) l t2) => match (one_step t2) with
+  | Some t2' => Some (tapp (tvar (VObj f)) l t2')
+  | None => None
+  end
+(* ST_App1 *)
+| (tapp t1 l t2) => match (one_step t1) with
+  | Some t1' => Some (tapp t1' l t2)
+  | None => None
+  end
+(* default: stuck *)
+| _ => None
+end.
 
+(* returns how many steps were done & what term was reached after that many steps *)
+Fixpoint n_steps(n: nat)(t: tm): (nat * tm) := match n with
+| S m => match (one_step t) with
+  | Some t' => let (m', t'') := n_steps m t' in (S m', t'')
+  | None => (0, t)
+  end
+| 0 => (0, t)
+end.
+
+Inductive multi_step: tm -> nat -> tm -> Prop :=
+| MS_zero: forall t, multi_step t 0 t
+| MS_succ: forall t1 t2 t3 n,
+    step t1 t2 ->
+    multi_step t2 n t3 ->
+    multi_step t1 (S n) t3.
+
+Inductive eval: tm -> tm -> Prop :=
+| E_done: forall t,
+    (~ exists t', step t t') ->
+    eval t t
+| E_step: forall t1 t2 t3,
+    step t1 t2 ->
+    eval t2 t3 ->
+    eval t1 t3.
+
+Hint Constructors step eval.
+
+Fact e2terminates: exists n' ds, n_steps 100 e2 = (n', (tvar (VObj ds))).
+Proof.
+  cbv. (* Here we see that the Author-Book example stps to a value after 13 steps :) *)
+  do 2 eexists. reflexivity.
+Qed.
+
+(*
+Fact eval_e2: exists e2', eval e2 e2'.
+Proof.
+  eexists. unfold e2. eapply E_step.
+  eapply ST_AppAbs. reflexivity.
+  cbv. eapply E_step.
+  eapply ST_App2.
+  eapply ST_AppAbs. cbv. reflexivity.
+  eapply ST_App2.
+Qed.
+*)
