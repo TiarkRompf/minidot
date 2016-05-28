@@ -60,6 +60,12 @@ Inductive closed: nat -> ty -> Prop :=
     closed k T1 ->
     closed k T2 ->
     closed k (TFun T1 T2)
+| cl_mem: forall k T1,
+    closed k T1 ->
+    closed k (TMem T1)
+| cl_sel: forall x k,
+    x < k ->
+    closed k (TSel x)
 .
 
 Inductive stp: tenv -> ty -> ty -> Prop :=
@@ -76,7 +82,7 @@ Inductive stp: tenv -> ty -> ty -> Prop :=
     stp G1 T2 T4 ->
     stp G1 (TFun T1 T2) (TFun T3 T4)
 .
-
+(* todo: mem and sel *)
 
 Inductive has_type : tenv -> tm -> ty -> Prop :=
 | t_true: forall env,
@@ -160,7 +166,7 @@ Inductive stp2: bool -> venv -> ty -> venv -> ty -> nat -> Prop :=
     stp2 true G1 T1 G2 T2 n1 ->
     stp2 false G2 T2 G3 T3 n2 ->
     stp2 false G1 T1 G3 T3 (S (n1+n2))
-.         
+.
 
 
 
@@ -210,9 +216,6 @@ Ideas:
 Current development:
 
 We follow (1) -- define a more complex size measure.
-
-
-
 
 --------------------------------------------------------- *)
 
@@ -531,6 +534,7 @@ Lemma closed_extend : forall X (a:X) G T,
                        closed (length (a::G)) T.
 Proof.
   intros. induction T; inversion H;  econstructor; eauto.
+  simpl. omega. 
 Qed.
 
 
@@ -608,18 +612,18 @@ Lemma stpd2_closed2 : forall m G1 G2 T1 T2,
 Proof. intros. eapply (stpd2_closed m G1 G2); eauto. Qed.
 
 
-
 Lemma valtp0_closed : forall G1 v T,
                        val_type0 G1 v T ->
                        closed (length G1) T.
 Proof.
-  intros.
-  induction T; simpl in H; destruct v; try (solve by inversion); ev; econstructor; eauto.
-  unfold val_type0 in H. unfold val_type0_func in H.
-  compute in H.
-  simpl in H. 
+  intros. destruct T; rewrite val_type0_unfold in H;
+  simpl in H; destruct v; ev;
+  try (solve by inversion);
+  try (econstructor; eauto);
+  try (eapply stpd2_closed1; eexists; eauto);
+  try (remember (index n G1) as idx; destruct idx;[ eapply index_max; eauto | contradiction]).
 Qed.
-
+    
 Lemma valtp_extend : forall vs v v1 T,
                        val_type vs v T ->
                        val_type (v1::vs) v T.
