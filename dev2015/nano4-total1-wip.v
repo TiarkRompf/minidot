@@ -424,43 +424,65 @@ Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversi
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
 
-Print val_type0_func.
 
-Lemma inv_vtp: forall env env1 y T1 T2,
-  val_type0 env (vabs env1 y) (TFun T1 T2) ->
+
+(* 
+   ISSUE: 
+   val_type0_func is incomprehensible, we cannot (easily) unfold 
+   and reason about it. Therefore, we prove unfolding of
+   val_type0 to its body as a lemma.
+
+   (Note that the unfold_sub tactic relies on 
+   functional extensionality)
+*)
+
+Require Import Coq.Program.Wf.
+Import WfExtensionality.
+
+Lemma val_type0_unfold: forall env v T, val_type0 env v T =
+  match v,T with
+    | vbool b, TBool =>
+      True
+    | vabs env1 y, TFun T1 T2 =>
+      closed (length env) T1 /\ closed (length env) T2 /\
+      (forall vx, val_type0 env vx T1 ->
+                  exists v, tevaln (vx::env1) y v /\ val_type0 env v T2)
+    | vty env1 TX, TMem T1 =>
+      exists n1 n2, stp2 false env1 TX env T1 n1 /\ stp2 false env T1 env1 TX n2
+    | _, TSel x =>
+      match index x env with
+        | Some (vty GX TX) => val_type0 GX v TX
+        | _ => False
+      end
+    | _, TTop =>
+      True 
+    | _,_ =>
+      False
+  end.
+Proof.
+  intros. unfold val_type0 at 1. unfold val_type0_func.
+  unfold_sub val_type0 (val_type0 env v T).
+  simpl.
+  destruct v; simpl; try reflexivity;
+  destruct T; simpl; try reflexivity;
+  (* TSel case has another match *)
+  destruct (index n env); simpl; try reflexivity;
+  destruct v; simpl; try reflexivity.
+Qed.
+
+
+
+Lemma inv_vtp_abs: forall env env1 y T1 T2,
+  val_type0 env (vabs env1 y) (TFun T1 T2) <->
   closed (length env) T1 /\ closed (length env) T2 /\
   (forall vx, val_type0 env vx T1 ->
               exists v, tevaln (vx::env1) y v /\ val_type0 env v T2).
 Proof.
-  intros. unfold val_type0 in H.
-  unfold val_type0_func at 1 in H.
-  unfold Wf.Fix_sub in H. unfold Wf.Fix_F_sub in H.
+  split.
+  intros. rewrite val_type0_unfold in H. eauto.
+  intros. rewrite val_type0_unfold. eauto.
+Qed.
   
-  unfold projT2 in H. unfold projT1 in H. unfold proj2_sig in H. unfold proj1_sig in H.
-  red in H. red in H. red in H. red in H.
-  red in H. red in H. red in H. red in H.
-  red in H. 
-  
-  (* now H has correct form *)
-  destruct H. destruct H0. split. eauto. split. eauto.
-  (* now 'closed' goals are proved *)
-
-  unfold val_type0. unfold val_type0_func at 1. unfold val_type0_func at 1.
-  unfold Wf.Fix_sub. unfold Wf.Fix_F_sub.
-
-  unfold projT2. unfold projT1. unfold proj2_sig. unfold proj1_sig.
-  simpl. simpl in H1. 
-  eapply H1. (* FAILS -- CANNOT UNIFY *)
-Qed.  
-  
-
-(* 
-   PROBLEM: 
-   val_type0_func is incomprehensible, we cannot (easily) unfold 
-   and reason about it ...
-
-   Can we even prove inversion lemmas?
-*)
 
 
 
