@@ -671,10 +671,12 @@ Lemma stpd2_refl: forall G1 T1,
   stpd2 true G1 T1 G1 T1.
 Proof.
   intros. induction T1; inversion H.
-  - Case "bool". eapply stpd2_bool; eauto.
-  - Case "fun". eapply stpd2_fun; try eapply stpd2_wrapf; eauto.
   - Case "bot". exists 1. eauto.
   - Case "top". exists 1. eauto.
+  - Case "bool". eapply stpd2_bool; eauto.
+  - Case "fun". eapply stpd2_fun; try eapply stpd2_wrapf; eauto.
+  - admit. (* mem *)
+  - admit. (* sel *)
 Qed.
 
 
@@ -771,13 +773,21 @@ Lemma valtp0_widen: forall n, forall m n1 vf H1 H2 T1 T2,
   stp2 m H1 T1 H2 T2 n1 -> n1 < n ->
   val_type0 H2 vf T2.
 Proof.
-  intros n. induction n; intros. omega. 
-  inversion H0; subst.
-  - Case "Bot". compute in H. destruct vf; inversion H.
-  - Case "Top". destruct vf; compute; eauto.
-  - Case "Bool". destruct vf; compute; eauto.
-  - Case "Fun". destruct vf. simpl in H. inversion H.
-    simpl in H. ev. simpl.
+  intros n. induction n; intros. omega.
+  inversion H0.
+  - Case "Bot".
+    rewrite val_type0_unfold in H. rewrite val_type0_unfold.
+    subst. destruct vf; inversion H. 
+  - Case "Top". 
+    rewrite val_type0_unfold in H. rewrite val_type0_unfold.
+    subst. destruct vf; eauto.
+  - Case "Bool". 
+    rewrite val_type0_unfold in H. rewrite val_type0_unfold.
+    subst. destruct vf; eauto.
+  - Case "Fun".
+    rewrite val_type0_unfold in H. rewrite val_type0_unfold.
+    subst. destruct vf; try solve [inversion H].
+    ev.
     split. eapply stpd2_closed1. eauto.
     split. eapply stpd2_closed2. eauto. 
     intros.
@@ -816,10 +826,12 @@ Qed.
 
 
 Lemma cvaltp: forall venv vf T1,
-  val_type0 venv vf T1 ->
+  val_type0 venv vf T1 <->
   val_type venv vf T1.
 Proof.
-  intros. econstructor. eauto. eapply valtp0_reg. eauto. 
+  split. 
+  intros. econstructor. eauto. eapply valtp0_reg. eauto.
+  intros. inversion H. ev. subst. eapply valtp0_widen; eauto. 
 Qed.
 
 Lemma invert_abs: forall venv vf T1 T2,
@@ -831,14 +843,12 @@ Lemma invert_abs: forall venv vf T1 T2,
        exists v : vl, tevaln (vx::env) y v /\ val_type venv v T2).
 Proof.
   intros. inversion H. ev. subst.
-  assert (val_type0 venv0 vf (TFun T1 T2)). eapply valtp0_widen;eauto. 
-  destruct vf. inversion H2.
-  exists l. exists t. split. eauto.
-  intros. simpl in H2. ev. 
-  inversion H3. subst.
-  assert (val_type0 venv0 vx T1). ev. eapply valtp0_widen; eauto.
-  specialize (H5 vx H8).
-  ev. eexists. split. eauto. eapply cvaltp; eauto. 
+  assert (val_type0 venv0 vf (TFun T1 T2)) as HF. eapply valtp0_widen; eauto.
+  rewrite val_type0_unfold in HF.   
+  destruct vf; try solve [inversion HF].
+  exists l. exists t. split. eauto. 
+  intros. ev. eapply cvaltp in H2. specialize (H5 vx H2).
+  ev. eexists. split. eauto. eapply cvaltp. eauto.
 Qed.
 
 
@@ -852,9 +862,9 @@ Proof.
   induction W; intros ? WFE.
 
   - Case "True". eexists. split.
-    exists 0. intros. destruct n. omega. simpl. eauto. eapply cvaltp. simpl. eauto. 
+    exists 0. intros. destruct n. omega. simpl. eauto. eapply cvaltp. rewrite val_type0_unfold. eauto. 
   - Case "False". eexists. split.
-    exists 0. intros. destruct n. omega. simpl. eauto. eapply cvaltp. simpl. eauto. 
+    exists 0. intros. destruct n. omega. simpl. eauto. eapply cvaltp. rewrite val_type0_unfold. simpl. eauto. 
 
   - Case "Var". 
     destruct (index_safe_ex venv0 env T1 x) as [v IV]. eauto. eauto. 
@@ -885,7 +895,8 @@ Proof.
   - Case "Abs".
     erewrite <-(wf_length venv0 env WFE) in H. inversion H; subst. 
     eexists. split. exists 0. intros. destruct n. omega. simpl. eauto.
-    eapply cvaltp. simpl. repeat split; eauto.  intros. 
+    eapply cvaltp. rewrite val_type0_unfold. repeat split; eauto.
+    intros. 
     assert (stpd2 true venv0 T1 (vx::venv0) T1). eapply stpd2_extend2. eapply stpd2_refl; eauto. eu.
     assert (stpd2 true (vx::venv0) T2 venv0 T2). eapply stpd2_extend1. eapply stpd2_refl; eauto. eu.
     assert (val_type0 (vx::venv0) vx T1). eapply valtp0_widen; eauto. 
