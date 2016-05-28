@@ -167,6 +167,57 @@ Inductive stp2: bool -> venv -> ty -> venv -> ty -> nat -> Prop :=
 Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some (Some v).
 
 
+(* ------------------------- NOTES -------------------------
+
+Define value typing (val_type0)
+
+val_type0 cannot straightforwardly be defined as inductive
+family, because the (forall vx, val_type0 env vx T1 -> ... )
+occurrence violates the positivity restriction.
+
+The definition as Fixpoint has some problems, too. In
+particular we need to guarantee that it is well-founded.
+The standard logical relations defintion recurses 
+structurally on T. In this setting it is unclear how to
+add the following desirable rules:
+
+- v: x.T
+
+    index y G1 = Some (vty TX) ->
+    vtp G1 v TX ->
+    vtp G1 v (TSel y)
+
+- v: { z => T }
+
+    vtp G1 v (open 0 (TVar true x) T2) ->
+    closed 0 (length G1) T2 ->
+    vtp G1 v (TBind T2)
+
+- v: (x:T1) -> T2^x
+
+    subst x in T2
+
+Another concern is what to do if stp2 needs to use 
+val_type0 internally (for T < x.L < U).
+
+Ideas:
+
+1) can we define a more complex size measure on types?
+   (to exclude recursion through x.T)
+2) can stp2 get away with a restricted version of vtp?
+   (stp2 only needs type members, not functions)
+
+Current development:
+
+We follow (1) -- define a more complex size measure.
+
+
+
+
+--------------------------------------------------------- *)
+
+
+
 Fixpoint vsize (t : vl) : nat :=
   match t with
     | vbool _  => 0
@@ -274,7 +325,7 @@ Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversi
    functional extensionality)
 *)
 
-Require Import Coq.Program.Wf.
+Import Coq.Program.Wf.
 Import WfExtensionality.
 
 Lemma val_type0_unfold: forall env v T, val_type0 env v T =
@@ -325,43 +376,7 @@ Qed.
 
 
 
-(* ------------------------- NOTES -------------------------
 
-val_type0 cannot straightforwardly be defined as inductive
-family, because the (forall vx, val_type0 env vx T1 -> ... )
-occurrence violates the positivity restriction.
-
-The current definition as Fixpoint has some problems, too.
-Since it recurses structurally on T, it is unclear how to
-add the following desirable rules:
-
-- v: x.T
-
-    index y G1 = Some (vty TX) ->
-    vtp G1 v TX ->
-    vtp G1 v (TSel y)
-
-- v: { z => T }
-
-    vtp G1 v (open 0 (TVar true x) T2) ->
-    closed 0 (length G1) T2 ->
-    vtp G1 v (TBind T2)
-
-- v: (x:T1) -> T2^x
-
-    subst x in T2
-
-Another concern is what to do if stp2 needs to use 
-val_type0 internally (for T < x.L < U).
-
-Ideas:
-
-1) can we define a more complex size measure on types?
-   (to exclude recursion through x.T)
-2) can stp2 get away with a restricted version of vtp?
-   (stp2 only needs type members, not functions)
-
---------------------------------------------------------- *)
 
 
 Inductive val_type : venv -> vl -> ty -> Prop :=
