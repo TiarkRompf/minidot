@@ -7,6 +7,8 @@
 (* From this follows both type soundness and strong      *)
 (* normalization for STLC.                               *)
 
+(* copied from nano0-total.v *)
+
 Require Export SfLib.
 
 Require Export Arith.EqNat.
@@ -49,7 +51,7 @@ Fixpoint length {X: Type} (l : list X): nat :=
 Fixpoint index {X : Type} (n : id) (l : list X) : option X :=
   match l with
     | [] => None
-    | a :: l'  => if beq_nat n (length l') then Some a else index n l'
+    | a :: l'  => if eq_nat_dec n (length l') then Some a else index n l'
   end.
 
 
@@ -106,23 +108,24 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
 Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some (Some v).
 
 
+
+
+
 (* need to use Fixpoint because of positivity restriction *)
-Fixpoint val_type (v:vl) (T:ty): Prop := match v, T with
+Fixpoint val_type v T : Prop := match v, T with
 | vbool b, TBool => True
-| vabs env y, TFun T1 T2 =>
-  (forall vx, val_type vx T1 ->
-     exists v, tevaln (vx::env) y v /\ val_type v T2)
+| vabs env y, TFun T1 T2 => 
+  (forall H tx vx, tevaln H tx vx /\ val_type vx T1 -> (* R H tx vx T1 *)
+     exists vy, tevaln (vx::env) y vy /\ val_type vy T2) (* R (vx:env) y vy T2 *)
 | _,_ => False
 end.
 
+Definition R H t v T := tevaln H t v /\ val_type v T.
 
-Inductive wf_env : venv -> tenv -> Prop := 
-| wfe_nil : wf_env nil nil
-| wfe_cons : forall v t vs ts,
-    val_type v t ->
-    wf_env vs ts ->
-    wf_env (cons v vs) (cons t ts)
-.
+Definition R_env venv tenv :=
+  length venv = length tenv /\
+ forall x T1, index x tenv = Some T1 ->
+   exists v : vl, R venv (tvar x) v T1.
 
 
 Hint Constructors ty.
@@ -132,141 +135,72 @@ Hint Constructors vl.
 
 Hint Constructors has_type.
 (* Hint Constructors val_type. *)
-Hint Constructors wf_env.
 
 Hint Constructors option.
 Hint Constructors list.
-
-Hint Unfold index.
-Hint Unfold length.
-
-Hint Resolve ex_intro.
-
-Lemma wf_length : forall vs ts,
-                    wf_env vs ts ->
-                    (length vs = length ts).
-Proof.
-  intros. induction H. auto.
-  assert ((length (v::vs)) = 1 + length vs). constructor.
-  assert ((length (t::ts)) = 1 + length ts). constructor.
-  rewrite IHwf_env in H1. auto.
-Qed.
-
-Hint Immediate wf_length.
-
-Lemma index_max : forall X vs n (T: X),
-                       index n vs = Some T ->
-                       n < length vs.
-Proof.
-  intros X vs. induction vs.
-  Case "nil". intros. inversion H.
-  Case "cons".
-  intros. inversion H. 
-  case_eq (beq_nat n (length vs)); intros E.
-  SCase "hit".
-  rewrite E in H1. inversion H1. subst.
-  eapply beq_nat_true in E. 
-  unfold length. unfold length in E. rewrite E. eauto.
-  SCase "miss".
-  rewrite E in H1.
-  assert (n < length vs). eapply IHvs. apply H1.
-  compute. eauto.
-Qed.
-
-
-Lemma index_extend : forall X vs n a (T: X),
-                       index n vs = Some T ->
-                       index n (a::vs) = Some T.
-
-Proof.
-  intros.
-  assert (n < length vs). eapply index_max. eauto.
-  assert (n <> length vs). omega.
-  assert (beq_nat n (length vs) = false) as E. eapply beq_nat_false_iff; eauto.
-  unfold index. unfold index in H. rewrite H. rewrite E. reflexivity.
-Qed.
-
-
-Lemma index_safe_ex: forall H1 G1 TF i,
-             wf_env H1 G1 ->
-             index i G1 = Some TF ->
-             exists v, index i H1 = Some v /\ val_type v TF.
-Proof. intros. induction H.
-       Case "nil". inversion H0.
-       Case "cons". inversion H0.
-         case_eq (beq_nat i (length ts)).
-           SCase "hit".
-             intros E.
-             rewrite E in H3. inversion H3. subst t.
-             assert (beq_nat i (length vs) = true). eauto.
-             assert (index i (v :: vs) = Some v). eauto.  unfold index. rewrite H2. eauto.
-             eauto.
-           SCase "miss".
-             intros E.
-             assert (beq_nat i (length vs) = false). eauto.
-             rewrite E in H3.
-             assert (exists v0, index i vs = Some v0 /\ val_type v0 TF) as HI. eapply IHwf_env. eauto.
-           inversion HI as [v0 HI1]. inversion HI1. 
-           eexists. econstructor. eapply index_extend; eauto.  eauto.
-Qed.
-
-  
-Lemma invert_abs: forall vf T1 T2,
-  val_type vf (TFun T1 T2) ->
-  exists env y,
-    vf = (vabs env y) /\ 
-    (forall vx, val_type vx T1 ->
-       exists v, tevaln (vx::env) y v /\ val_type v T2).
-Proof.
-  intros. simpl in H. destruct vf. inversion H. eauto. 
-Qed.
 
 
 (* if well-typed, then result is an actual value (not stuck and not a timeout),
    for large enough n *)
 
 Theorem full_total_safety : forall e tenv T,
-  has_type tenv e T -> forall venv, wf_env venv tenv ->
-  exists v, tevaln venv e v /\ val_type v T.
+  has_type tenv e T -> forall venv, R_env venv tenv ->
+  exists v, R venv e v T.
 
 Proof.
-  intros ? ? ? W.
+  intros ? ? ? W. 
   induction W; intros ? WFE.
   
-  - Case "True". eexists. split.
+  - Case "True". eexists. split. 
     exists 0. intros. destruct n. omega. simpl. eauto. simpl. eauto. 
   - Case "False". eexists. split.
     exists 0. intros. destruct n. omega. simpl. eauto. simpl. eauto. 
 
-  - Case "Var". 
-    destruct (index_safe_ex venv0 env T1 x) as [v IV]. eauto. eauto. 
-    inversion IV as [I V]. 
-
-    exists v. split. exists 0. intros. destruct n. omega. simpl. rewrite I. eauto. eapply V.
+  - Case "Var".
+    eapply WFE. eauto.
 
   - Case "App".
     destruct (IHW1 venv0 WFE) as [vf [IW1 HVF]].
     destruct (IHW2 venv0 WFE) as [vx [IW2 HVX]].
-    
-    eapply invert_abs in HVF.
-    destruct HVF as [venv1 [y [HF IHF]]].
-
-    destruct (IHF vx HVX) as [vy [IW3 HVY]].
-
-    exists vy. split. {
-      (* pick large enough n. nf+nx+ny will do. *)
-      destruct IW1 as [nf IWF].
-      destruct IW2 as [nx IWX].
-      destruct IW3 as [ny IWY].
-      exists (S (nf+nx+ny)). intros. destruct n. omega. simpl.
-      rewrite IWF. subst vf. rewrite IWX. rewrite IWY. eauto.
-      omega. omega. omega.
-    }
-    eapply HVY.
+    destruct vf. solve [inversion HVF]. 
+    simpl in HVF.
+    specialize (HVF venv0 x vx (conj IW2 HVX)).
+    destruct HVF as [vy [IW3 HVY]].
+    exists vy. split.
+    destruct IW1 as [n1 IW1].
+    destruct IW2 as [n2 IW2].
+    destruct IW3 as [n3 IW3].
+    exists (S (n1+n2+n3)).
+    intros.
+    destruct n. omega. simpl. rewrite IW1. rewrite IW2. rewrite IW3. eauto.
+    omega. omega. omega.
+    eauto. 
     
   - Case "Abs".
     eexists. split. exists 0. intros. destruct n. omega. simpl. eauto. simpl.
-    intros. eapply IHW. eapply wfe_cons; eauto.
+    intros.
+
+    assert (exists v : vl, R (vx::venv0) y v T2).
+    eapply IHW. unfold R_env.
+    split. simpl. destruct WFE. eauto. 
+    intros.
+    simpl in H1. 
+    destruct (eq_nat_dec x (length env)). 
+    inversion H1. subst T0.
+    exists vx. split.
+    exists 0. intros. destruct n. omega. simpl.
+    destruct WFE. subst. rewrite H3.
+    destruct (eq_nat_dec (length env) (length env)). eauto. contradiction n0. eauto.
+    eauto.
+    destruct H0. eauto.
+    destruct WFE. 
+    specialize (H3 _ _ H1). destruct H3. destruct H3. destruct H3. 
+    exists x0. split. exists x1. intros. destruct n0. omega. simpl.
+    rewrite H2. destruct (eq_nat_dec x (length env)). contradiction. specialize (H3 (S n0) H5).
+    simpl in H3. eapply H3.
+    eauto.
+
+    eapply H1. 
 Qed.
 
 End STLC.
