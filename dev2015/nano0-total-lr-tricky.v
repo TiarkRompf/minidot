@@ -7,7 +7,8 @@
 (* From this follows both type soundness and strong      *)
 (* normalization for STLC.                               *)
 
-(* copied from nano0-total.v *)
+(* copied from nano0-total-lr.v *)
+(* use traditional LR formulation, show that proof is tricky *)
 
 Require Export SfLib.
 
@@ -160,7 +161,13 @@ Proof.
     eapply WFE. eauto.
 
   - Case "App".
-    admit. (* this case is almost trivial, but i'm too lazy *)
+    destruct (IHW1 venv0 WFE) as [vf [IW1 HVF]].
+    destruct vf. solve [inversion HVF]. 
+    
+    destruct (IHW2 venv0 WFE) as [vx RX].
+    
+    specialize (HVF x vx RX).
+    eapply HVF.
     
   - Case "Abs".
     eexists. split. exists 0. intros. destruct n. omega. simpl. eauto. simpl.
