@@ -160,6 +160,7 @@ with subst_dms (u:nat) (ds: dms) {struct ds} : dms :=
 Definition substt x T := (subst (TVar true x) T).
 Hint Immediate substt.
 
+(* : -- typing *)
 Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
   | T_Vary : forall GH G1 x ds ds' T T' n1,
       index x G1 = Some (vobj ds) ->
@@ -202,6 +203,8 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
       has_type GH G1 t T1 n1 ->
       stp GH G1 T1 T2 n2 ->
       has_type GH G1 t T2 (S (n1 + n2))
+
+(* : -- member initialization *)
 with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
   | D_Nil : forall GH G1 n1,
       dms_has_type GH G1 dnil TTop (S n1)
@@ -211,7 +214,7 @@ with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
       l = length (dms_to_list ds) ->
       T = TAnd (TMem l T11 T11) TS ->
       dms_has_type GH G1 (dcons (dty T11) ds) T (S n1)
-  | D_Abs : forall GH G1 l T11 T12 T12' t12 ds TS T n1 n2,
+  | D_Fun : forall GH G1 l T11 T12 T12' t12 ds TS T n1 n2,
       dms_has_type GH G1 ds TS n1 ->
       has_type (T11::GH) G1 t12 T12' n2 ->
       T12' = (open 0 (TVar false (length GH)) T12) ->
@@ -221,6 +224,7 @@ with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
       T = TAnd (TFun l T11 T12) TS ->
       dms_has_type GH G1 (dcons (dfun T11 T12 t12) ds) T (S (n1+n2))
 
+(* <: -- subtyping *)
 with stp: tenv -> venv -> ty -> ty -> nat -> Prop :=
 | stp_bot: forall GH G1 T n1,
     closed (length GH) (length G1) 0  T ->
@@ -319,7 +323,7 @@ with stp: tenv -> venv -> ty -> ty -> nat -> Prop :=
     stp GH G1 T2 T3 n2 ->
     stp GH G1 T1 T3 (S (n1+n2))
 
-
+(* :! -- typing for type selection in subtyping *)
 with htp: tenv -> venv -> id -> ty -> nat -> Prop :=
 | htp_var: forall GH G1 x TX n1,
     index x GH = Some TX ->
@@ -340,6 +344,7 @@ with htp: tenv -> venv -> id -> ty -> nat -> Prop :=
     GH = GU ++ GL ->
     htp GH G1 x T2 (S (n1+n2)).
 
+(* :! -- directly invertible value typing *)
 Inductive vtp(*possible types*) : nat(*pack count*) -> venv -> id -> ty -> nat(*size*) -> Prop :=
 | vtp_top: forall m G1 x n1,
     x < length G1 ->
@@ -2839,7 +2844,7 @@ Proof.
     edestruct IHniD as [? IHD]. eapply H2. omega. eauto.
     edestruct IHniT with (GH:=T11::GH1) as [? HI] . eauto. omega. eauto.
     simpl in HI.
-    eexists. eapply D_Abs. eapply IHD. eapply HI.
+    eexists. eapply D_Fun. eapply IHD. eapply HI.
     rewrite map_length. rewrite app_length. simpl.
     rewrite subst_open. unfold substt. reflexivity.
     eapply closed_subst0. rewrite map_length. rewrite app_length in H5. simpl in H5. eauto. eauto. eapply has_type_closed1. eauto.

@@ -23,7 +23,7 @@ Fixpoint dms_compute (ds: dms) :=
 
 Ltac apply_dfun := match goal with
   | [ |- dms_has_type ?GH ?G1 (dcons (dfun ?T11 ?T12 ?t12) ?ds) ?T ?n ] =>
-    eapply (D_Abs GH G1 (length (dms_to_list ds)) T11 T12 (open 0 (TVar false (length GH)) T12) t12 ds (dms_compute ds) (TAnd (TFun (length (dms_to_list ds)) T11 T12) (dms_compute ds)))
+    eapply (D_Fun GH G1 (length (dms_to_list ds)) T11 T12 (open 0 (TVar false (length GH)) T12) t12 ds (dms_compute ds) (TAnd (TFun (length (dms_to_list ds)) T11 T12) (dms_compute ds)))
   end.
 
 Ltac apply_tobj := match goal with
