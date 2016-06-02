@@ -269,19 +269,77 @@ Definition Subst (m: nat) := forall GH G x TX T1 T2 m1 n2, m1 <= m ->
   stp (GH++[TX]) G T1 T2 n2 ->
   stpd (map (substt x) GH) G (substt x T1) (substt x T2).
 
-Lemma pre_canon_bind_aux: forall m1, Subst m1 -> forall G y T,
+Lemma pre_canon_bind_aux: forall m1, Subst m1 -> forall G y T T0,
+  htpy (S m1) G y T0 -> stpd [] G T0 (TBind T) ->
+  htpy m1 G y (open 0 (TVar true y) T).
+Proof.
+  intros m1 HS G y T T0 H Hsub.
+  remember (S m1) as m. generalize dependent m1. generalize dependent T.
+  induction H; intros; subst.
+  - admit.
+  - inversion Heqm; subst. clear Heqm.
+    eu. eapply stp_trans_pushback in Hsub. inversion Hsub; subst.
+    + assert (substt x T1=T1) as EqT1. {
+        eapply subst_closed_id. eassumption.
+      }
+      assert (substt x (open 0 (TVar false 0) T1) = (open 0 (TVar true x) T1)) as A. {
+        rewrite subst_open_commute0b. rewrite EqT1. reflexivity.
+      }
+      assert (substt x (TBind T)=(TBind T)) as EqT. {
+        eapply subst_closed_id. eassumption.
+      }
+      eu. edestruct HS as [? IHS]. eauto. rewrite <- A in H. eapply H.
+      instantiate (4:=nil). simpl. eapply H2.
+      rewrite A in IHS. rewrite EqT in IHS. simpl in IHS.
+      eapply TY_VarUnpack. eapply TY_Sub. eapply H. eapply IHS.
+      reflexivity. eapply closed_open. simpl. inversion H6. eassumption.
+      econstructor. eapply htpy_to_hastp in H. destruct H as [? H]. eapply has_type_closed1 in H. omega.
+    + assert (substt x T1=T1) as EqT1. {
+        eapply subst_closed_id. eassumption.
+      }
+      assert (substt x (open 0 (TVar false 0) T1) = (open 0 (TVar true x) T1)) as A1. {
+        rewrite subst_open_commute0b. rewrite EqT1. reflexivity.
+      }
+      assert (substt x T=T) as EqT. {
+        eapply subst_closed_id. eassumption.
+      }
+      assert (substt x (open 0 (TVar false 0) T) = (open 0 (TVar true x) T)) as A. {
+        rewrite subst_open_commute0b. rewrite EqT. reflexivity.
+      }
+      eu. edestruct HS as [? IHS]. eauto. rewrite <- A1 in H. eapply H.
+      instantiate (4:=nil). simpl. eapply H3.
+      rewrite A1 in IHS. rewrite A in IHS. simpl in IHS.
+      eapply TY_Sub. eapply H. eapply IHS.
+  - admit.
+  - eu. eapply IHhtpy. eexists. eapply stp_trans. eassumption. eapply Hsub.
+    eauto. eauto.
+Qed.
+
+Lemma pre_canon_bind: forall m1, Subst m1 -> forall G y T,
   htpy (S m1) G y (TBind T) ->
+  htpy m1 G y (open 0 (TVar true y) T).
+Proof.
+  intros. eapply pre_canon_bind_aux; eauto 2.
+  eapply stpd_refl.
+  simpl.
+  eapply htpy_to_hastp in H0. destruct H0 as [? H0]. eapply has_type_closed in H0. simpl in H0. eapply H0.
+Qed.
+
+(*
+Lemma pre_canon_bind_aux: forall m1, Subst m1 -> forall G y T T0,
+  htpy (S m1) G y T0 -> stpd [] G T0 (TBind T) ->
   exists T1,
     htpy m1 G y (open 0 (TVar true y) T1) /\
     stpd [(open 0 (TVar true y) T1)] G (open 0 (TVar false 0) T1) (open 0 (TVar false 0) T) /\
     closed 0 (length G) 1 T1.
 Proof.
-  intros m1 HS G y T H.
-  remember (S m1) as m. generalize dependent m1.
-  remember (TBind T) as T0. generalize dependent T.
+  intros m1 HS G y T T0 H Hsub.
+  remember (S m1) as m. generalize dependent m1. generalize dependent T.
   induction H; intros; subst.
   - admit.
-  - inversion HeqT0. inversion Heqm. subst.
+  - inversion Heqm; subst.
+    eu. eapply stp_trans_pushback in Hsub. inversion Hsub; subst.
+    specialize (IHhtpy T1 H2 m1).
     eexists. split; try split; try eassumption.
     eapply stpd_refl. simpl. eapply closed_open. simpl.
     eapply closed_upgrade_gh. eauto. omega. econstructor. omega.
@@ -356,3 +414,4 @@ Proof.
   eapply htpy_to_hastp in H. destruct H as [? H]. eapply has_type_closed in H. simpl in H. simpl in H. inversion H; subst. eassumption.
   eapply A3.
 Qed.
+*)
