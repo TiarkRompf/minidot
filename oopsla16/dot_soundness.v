@@ -269,23 +269,24 @@ Definition Subst (m: nat) := forall GH G x TX T1 T2 m1 n2, m1 <= m ->
   stp (GH++[TX]) G T1 T2 n2 ->
   stpd (map (substt x) GH) G (substt x T1) (substt x T2).
 
-Lemma pre_canon_bind_aux: forall m1, Subst m1 -> forall G y T T0,
-  htpy (S m1) G y T0 -> stpd [] G T0 (TBind T) ->
-  htpy m1 G y (open 0 (TVar true y) T).
+Lemma pre_canon_bind_aux: forall m1, Subst (m1-1) -> forall G y T T0,
+  htpy m1 G y T0 -> stpd [] G T0 (TBind T) ->
+  htpy (m1-1) G y (open 0 (TVar true y) T).
 Proof.
   intros m1 HS G y T T0 H Hsub.
-  remember (S m1) as m. generalize dependent m1. generalize dependent T.
+  generalize dependent T.
   induction H; intros; subst.
   - eu. eapply stp_trans_pushback in Hsub.
     assert False as Contra. {
-      clear H. clear H3. clear HS. clear x0. clear m1.
+      clear H. clear H3. clear HS. clear x0.
       induction H0; subst; unfold substt in Hsub; simpl in Hsub.
       - inversion Hsub.
       - inversion Hsub; subst. inversion H4. eapply IHdms_has_type. eapply H4.
       - inversion Hsub; subst. inversion H6. eapply IHdms_has_type. eapply H6.
     }
     inversion Contra.
-  - inversion Heqm; subst. clear Heqm.
+  - assert (S m - 1 = m) as Eqm by omega. rewrite Eqm.
+    remember H as Hm'. clear HeqHm'. rewrite <- Eqm in Hm'. clear Eqm.
     eu. eapply stp_trans_pushback in Hsub. inversion Hsub; subst.
     + assert (substt x T1=T1) as EqT1. {
         eapply subst_closed_id. eassumption.
@@ -296,7 +297,7 @@ Proof.
       assert (substt x (TBind T)=(TBind T)) as EqT. {
         eapply subst_closed_id. eassumption.
       }
-      eu. edestruct HS as [? IHS]. eauto. rewrite <- A in H. eapply H.
+      eu. edestruct HS as [? IHS]. eauto. rewrite <- A in Hm'. eapply Hm'.
       instantiate (4:=nil). simpl. eapply H2.
       rewrite A in IHS. rewrite EqT in IHS. simpl in IHS.
       eapply TY_VarUnpack. eapply TY_Sub. eapply H. eapply IHS.
@@ -314,28 +315,91 @@ Proof.
       assert (substt x (open 0 (TVar false 0) T) = (open 0 (TVar true x) T)) as A. {
         rewrite subst_open_commute0b. rewrite EqT. reflexivity.
       }
-      eu. edestruct HS as [? IHS]. eauto. rewrite <- A1 in H. eapply H.
+      eu. edestruct HS as [? IHS]. eauto. rewrite <- A1 in Hm'. eapply Hm'.
       instantiate (4:=nil). simpl. eapply H3.
       rewrite A1 in IHS. rewrite A in IHS. simpl in IHS.
       eapply TY_Sub. eapply H. eapply IHS.
-  - eu. eapply TY_VarUnpack. eapply TY_Sub. eapply IHhtpy.
+  - eu. eapply TY_VarUnpack. eapply TY_Sub. eapply IHhtpy. eapply HS.
     eapply stpd_refl.
-    eapply htpy_to_hastp in H. destruct H as [? H]. eapply has_type_closed in H. simpl in H. eapply H.
-    eauto. eauto.
-    eapply Hsub. reflexivity.
-    eapply stp_closed2 in Hsub. simpl in Hsub. inversion Hsub; subst.
-    eapply closed_open. simpl. eassumption.
-    econstructor.
-    eapply htpy_to_hastp in H. destruct H as [? H]. eapply has_type_closed1 in H. omega.
-  - eu. eapply IHhtpy. eexists. eapply stp_trans. eassumption. eapply Hsub.
-    eauto. eauto.
+    eapply htpy_to_hastp in H. destruct H as [? H]. eapply has_type_closed in H. simpl in H. eapply H. eapply Hsub. reflexivity.
+    eapply stp_closed2 in Hsub. simpl in Hsub. eapply closed_open. simpl.
+    inversion Hsub; subst. eassumption.
+    eapply htpy_to_hastp in H. destruct H as [? H]. eapply has_type_closed1 in H.
+    econstructor. omega.
+  - eu. eapply IHhtpy. eapply HS. eexists. eapply stp_trans. eassumption. eapply Hsub.
 Qed.
 
-Lemma pre_canon_bind: forall m1, Subst m1 -> forall G y T,
-  htpy (S m1) G y (TBind T) ->
-  htpy m1 G y (open 0 (TVar true y) T).
+Lemma pre_canon_bind: forall m1, Subst (m1-1) -> forall G y T,
+  htpy m1 G y (TBind T) ->
+  htpy (m1-1) G y (open 0 (TVar true y) T).
 Proof.
   intros. eapply pre_canon_bind_aux; eauto 2.
+  eapply stpd_refl.
+  simpl.
+  eapply htpy_to_hastp in H0. destruct H0 as [? H0]. eapply has_type_closed in H0. simpl in H0. eapply H0.
+Qed.
+
+Lemma Subst_mono: forall m1,
+  Subst m1 ->
+  Subst (m1-1).
+Proof.
+  intros m1. unfold Subst. intros.
+  eapply H; try eassumption. omega.
+Qed.
+
+Lemma pre_canon_mem_aux: forall m1, Subst (m1-1) -> forall G y T0,
+  htpy m1 G y T0 -> forall l TS TU, stpd [] G T0 (TMem l TS TU) ->
+  exists ds T, index y G = Some (vobj ds) /\
+               index l (dms_to_list ds) = Some (dty T) /\
+               stpd [] G TS T /\ stpd [] G T TU.
+Proof.
+  intros m1 HS G y T0 H l TS TU Hsub.
+  generalize dependent TU. generalize dependent TS. generalize dependent l.
+  induction H; intros; subst.
+  - eu. eapply stp_trans_pushback in Hsub. admit.
+  - eu. eapply stp_trans_pushback in Hsub. inversion Hsub; subst; eu.
+    assert (S m - 1 = m) as Eqm by omega.
+    + assert (substt x T1=T1) as EqT1. {
+        eapply subst_closed_id. eassumption.
+      }
+      assert (substt x (open 0 (TVar false 0) T1) = (open 0 (TVar true x) T1)) as A. {
+        rewrite subst_open_commute0b. rewrite EqT1. reflexivity.
+      }
+      assert (substt x (TMem l TS TU)=(TMem l TS TU)) as EqT. {
+        eapply subst_closed_id. eassumption.
+      }
+      assert (open 0 (TVar false 0) (TMem l TS TU)=(TMem l TS TU)) as EqT'. {
+        erewrite <- closed_no_open. reflexivity. eassumption.
+      }
+      assert (open 0 (TVar true x) (TMem l TS TU)=(TMem l TS TU)) as EqT''. {
+        erewrite <- closed_no_open. reflexivity. eassumption.
+      }
+      assert (htpy (S m) G1 x (TBind (TMem l TS TU))) as H'. {
+        eapply TY_Sub. eapply TY_VarPack; eauto.
+        eapply stp_bindx. eapply H2. simpl. reflexivity.
+        simpl. simpl in EqT'. rewrite EqT'. reflexivity.
+        simpl. eauto. simpl. eapply closed_upgrade. eauto. omega.
+      }
+      eapply pre_canon_bind in H'. rewrite EqT'' in H'.
+      edestruct HS as [? IHS]. eauto. rewrite <- Eqm in H. rewrite <- A in H. eapply H.
+      instantiate (4:=nil). simpl. eapply H2.
+      rewrite A in IHS. rewrite EqT in IHS. simpl in IHS.
+      edestruct IHhtpy as [ds [T IH]].
+      eapply Subst_mono.
+      rewrite <- Eqm. eassumption. eexists. eapply IHS.
+      eexists ds. eexists T. eapply IH.
+      eassumption.
+  - eu. eapply IHhtpy; eauto 2. admit.
+  - eu. eapply IHhtpy; eauto 2. eexists. eapply stp_trans. eassumption. eapply Hsub.
+Qed.
+
+Lemma pre_canon_mem: forall m1, Subst (m1-1) -> forall G y l TS TU,
+  htpy m1 G y (TMem l TS TU) ->
+  exists ds T, index y G = Some (vobj ds) /\
+               index l (dms_to_list ds) = Some (dty T) /\
+               stpd [] G TS T /\ stpd [] G T TU.
+Proof.
+  intros. eapply pre_canon_mem_aux; eauto 2.
   eapply stpd_refl.
   simpl.
   eapply htpy_to_hastp in H0. destruct H0 as [? H0]. eapply has_type_closed in H0. simpl in H0. eapply H0.

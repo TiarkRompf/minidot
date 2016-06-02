@@ -906,9 +906,9 @@ Ltac invstp_var := match goal with
   | _ => idtac
 end.
 
-Lemma closed_no_open: forall T x k l j,
+Lemma closed_no_open: forall T b x k l j,
   closed l k j T ->
-  T = open j (TVar false x) T.
+  T = open j (TVar b x) T.
 Proof.
   intros. induction H; intros; eauto;
   try solve [compute; compute in IHclosed; rewrite <-IHclosed; auto];
