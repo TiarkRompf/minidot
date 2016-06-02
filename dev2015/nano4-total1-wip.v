@@ -60,6 +60,12 @@ Inductive closed: nat -> ty -> Prop :=
     closed k T1 ->
     closed k T2 ->
     closed k (TFun T1 T2)
+| cl_mem: forall k T1,
+    closed k T1 ->
+    closed k (TMem T1)
+| cl_sel: forall x k,
+    x < k ->
+    closed k (TSel x)
 .
 
 Inductive stp: tenv -> ty -> ty -> Prop :=
@@ -76,7 +82,7 @@ Inductive stp: tenv -> ty -> ty -> Prop :=
     stp G1 T2 T4 ->
     stp G1 (TFun T1 T2) (TFun T3 T4)
 .
-
+(* todo: mem and sel *)
 
 Inductive has_type : tenv -> tm -> ty -> Prop :=
 | t_true: forall env,
@@ -160,173 +166,59 @@ Inductive stp2: bool -> venv -> ty -> venv -> ty -> nat -> Prop :=
     stp2 true G1 T1 G2 T2 n1 ->
     stp2 false G2 T2 G3 T3 n2 ->
     stp2 false G1 T1 G3 T3 (S (n1+n2))
-.         
+.
 
 
 
 Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some (Some v).
 
 
-(* some messy experiments ...
+(* ------------------------- NOTES -------------------------
 
-Inductive cls: venv -> ty -> nat -> Prop :=
-| cls_bot: forall G,
-    cls G TBot 1
-| cls_top: forall G,
-    cls G TTop 1
-| cls_bool: forall G,
-    cls G TBool 1
-| cls_fun: forall G T1 T2 n1 n2,
-    cls G T1 n1 ->
-    cls G T2 n2 ->
-    cls G (TFun T1 T2) (S (n1+n2))
-| cls_mem: forall G T1 n1,
-    cls G T1 n1 ->
-    cls G (TMem T1) (S n1)
-| cls_sel: forall G GX TX x n1,
-    index x G = Some (vty GX TX) ->
-    cls GX TX n1 ->
-    cls G (TSel x) (S n1)
-| cls_sel0: forall G GX TX x,
-    index x G <> Some (vty GX TX) ->
-    cls G (TSel x) 0
-.
+Define value typing (val_type0)
 
-Inductive tree (A:Type) :=
- | Node : A -> list (tree A) -> tree A.
+val_type0 cannot straightforwardly be defined as inductive
+family, because the (forall vx, val_type0 env vx T1 -> ... )
+occurrence violates the positivity restriction.
 
-Lemma my_tree_ind : forall (A : Type) 
-  (P : tree A -> Prop) (Pl : list (tree A) -> Prop),
-  (forall a l, Pl l -> P (Node _ a l)) ->
-  Pl nil ->
-  (forall t l, P t -> Pl l -> Pl (t :: l)) ->
-  forall t, P t.
-Proof.
- intros A P Pl Hnode Hnil Hcons.
- fix my_tree_ind 1. 
- destruct t as [a l].
- apply Hnode.
- induction l as [ | t l IHl].
- apply Hnil.
- apply Hcons.
- apply my_tree_ind.
- apply IHl.
-Qed.
+The definition as Fixpoint has some problems, too. In
+particular we need to guarantee that it is well-founded.
+The standard logical relations defintion recurses 
+structurally on T. In this setting it is unclear how to
+add the following desirable rules:
 
-Print my_tree_ind.
+- v: x.T
 
+    index y G1 = Some (vty TX) ->
+    vtp G1 v TX ->
+    vtp G1 v (TSel y)
 
-Lemma clsf: forall G T, exists k, cls G T k.
-Proof.
-  intros.
-  induction T.
-  eexists; econstructor.
-  eexists; econstructor.
-  eexists; econstructor.
-  destruct IHT1. destruct IHT2.
-  eexists. econstructor; eauto.
-  destruct IHT.
-  eexists. econstructor; eauto.
-  remember (index n G) as r. symmetry in Heqr.
-  destruct r. destruct v.
-  eexists. eapply cls_sel0. eauto. rewrite Heqr. compute. intros. inversion H.
-  eexists. eapply cls_sel0. eauto. rewrite Heqr. compute. intros. inversion H.
-  eexists. eapply cls_sel. eauto. instantiate (1:=0). admit. (* where from ? *)
-  eexists. eapply cls_sel0. eauto. rewrite Heqr. compute. intros. inversion H. 
-Grab Existential Variables.
-  apply TBot. apply nil. apply TBot. apply nil. apply TBot. apply nil.
- Qed.
+- v: { z => T }
 
-Require Coq.Program.Wf.
-Require Recdef.
+    vtp G1 v (open 0 (TVar true x) T2) ->
+    closed 0 (length G1) T2 ->
+    vtp G1 v (TBind T2)
 
-(*
-Function val_type0 (env:venv) (v:vl) (T:ty) {wf (clsf) T}: Prop := match v, T with
-| vbool b, TBool => True
-| vabs env1 y, TFun T1 T2 =>
-  closed (length env) T1 /\ closed (length env) T2 /\
-  (forall vx, val_type0 env vx T1 ->
-              exists v, tevaln (vx::env1) y v /\ val_type0 env v T2)
-| _, TTop => True (* can NOT check v with other type *)
-| _,_ => False
-end.
-*)
+- v: (x:T1) -> T2^x
 
-(* n < S n *) 
+    subst x in T2
 
-Variable A : Type.
+Another concern is what to do if stp2 needs to use 
+val_type0 internally (for T < x.L < U).
 
-Variable f : A -> nat.
+Ideas:
 
-Print lt. 
-Check lt.
+1) can we define a more complex size measure on types?
+   (to exclude recursion through x.T)
+2) can stp2 get away with a restricted version of vtp?
+   (stp2 only needs type members, not functions)
 
-Definition ltof (a b:A) := f a < f b.
-Definition gtof (a b:A) := f b > f a.
+Current development:
 
-Theorem well_founded_ltof : well_founded ltof.
-Proof.
-  red in |- *.
-  cut (forall n (a:A), f a < n -> Acc ltof a).
-  intros H a. apply (H (S (f a))). auto with arith.
-  induction n.
-  intros; absurd (f a < 0); auto with arith.
-  intros a ltSma.
-  apply Acc_intro.
-  unfold ltof in |- *; intros b ltfafb.
-  apply IHn.
-  apply lt_le_trans with (f a); auto with arith.
-Defined.
+We follow (1) -- define a more complex size measure.
 
-Inductive gl: venv -> venv -> Prop :=
-| gl_tl: forall x G1,
-    gl G1 (x::G1)
-| gl_vty: forall GX TX G1,
-    gl GX ((vty GX TX)::G1)
-| gl_tl2: forall x G0 G1,
-    gl G0 G1 ->
-    gl G0 (x::G1)
-| gl_vty2: forall GX TX G1 G0,
-    gl G0 GX -> 
-    gl G0 ((vty GX TX)::G1)
-.
+--------------------------------------------------------- *)
 
-Lemma gl_trans: forall G1 G2 G3,
-                  gl G1 G2 -> gl G2 G3 -> gl G1 G3.
-Proof.
-  intros. induction G3.
-  inversion H0.
-  inversion H0.
-  subst.
-  admit. admit. admit. admit. 
-Qed.
-  
-
-Hint Constructors gl.
-
-Function gsz (G:venv) {wf gl G} :=
-       match G with
-         | [] => 0
-         | (vty GX TX)::tl => 1 + (gsz GX) + (gsz tl)
-         | _::tl => gsz tl
-       end.
-
-intros. eapply gl_tl. 
-intros. eapply gl_tl. 
-intros. eapply gl_tl. 
-intros. eapply gl_vty. 
-(* well-founded *)
-compute.
-(* cut (forall n a, gl a n-> Acc gl a).
-intros. eapply H. eapply gl_tl.  *)
-assert (forall a n, gl a n-> Acc gl a).
-intros a. induction a. intros.
-constructor. intros. inversion H0.
-admit.
-admit.
-Qed.
-
-*)
 
 
 Fixpoint vsize (t : vl) : nat :=
@@ -424,84 +316,70 @@ Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversi
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
 
-Print val_type0_func.
 
-Lemma inv_vtp: forall env env1 y T1 T2,
-  val_type0 env (vabs env1 y) (TFun T1 T2) ->
+
+(* 
+   ISSUE: 
+   val_type0_func is incomprehensible, we cannot (easily) unfold 
+   and reason about it. Therefore, we prove unfolding of
+   val_type0 to its body as a lemma.
+
+   (Note that the unfold_sub tactic relies on 
+   functional extensionality)
+*)
+
+Import Coq.Program.Wf.
+Import WfExtensionality.
+
+Lemma val_type0_unfold: forall env v T, val_type0 env v T =
+  match v,T with
+    | vbool b, TBool =>
+      True
+    | vabs env1 y, TFun T1 T2 =>
+      closed (length env) T1 /\ closed (length env) T2 /\
+      (forall vx, val_type0 env vx T1 ->
+                  exists v, tevaln (vx::env1) y v /\ val_type0 env v T2)
+    | vty env1 TX, TMem T1 =>
+      exists n1 n2, stp2 false env1 TX env T1 n1 /\ stp2 false env T1 env1 TX n2
+    | _, TSel x =>
+      match index x env with
+        | Some (vty GX TX) => val_type0 GX v TX
+        | _ => False
+      end
+    | _, TTop =>
+      True 
+    | _,_ =>
+      False
+  end.
+Proof.
+  intros. unfold val_type0 at 1. unfold val_type0_func.
+  unfold_sub val_type0 (val_type0 env v T).
+  simpl.
+  destruct v; simpl; try reflexivity;
+  destruct T; simpl; try reflexivity;
+  (* TSel case has another match *)
+  destruct (index n env); simpl; try reflexivity;
+  destruct v; simpl; try reflexivity.
+Qed.
+
+
+
+Lemma inv_vtp_abs: forall env env1 y T1 T2,
+  val_type0 env (vabs env1 y) (TFun T1 T2) <->
   closed (length env) T1 /\ closed (length env) T2 /\
   (forall vx, val_type0 env vx T1 ->
               exists v, tevaln (vx::env1) y v /\ val_type0 env v T2).
 Proof.
-  intros. unfold val_type0 in H.
-  unfold val_type0_func at 1 in H.
-  unfold Wf.Fix_sub in H. unfold Wf.Fix_F_sub in H.
-  
-  unfold projT2 in H. unfold projT1 in H. unfold proj2_sig in H. unfold proj1_sig in H.
-  red in H. red in H. red in H. red in H.
-  red in H. red in H. red in H. red in H.
-  red in H. 
-  
-  (* now H has correct form *)
-  destruct H. destruct H0. split. eauto. split. eauto.
-  (* now 'closed' goals are proved *)
-
-  unfold val_type0. unfold val_type0_func at 1. unfold val_type0_func at 1.
-  unfold Wf.Fix_sub. unfold Wf.Fix_F_sub.
-
-  unfold projT2. unfold projT1. unfold proj2_sig. unfold proj1_sig.
-  simpl. simpl in H1. 
-  eapply H1. (* FAILS -- CANNOT UNIFY *)
-Qed.  
+  split.
+  intros. rewrite val_type0_unfold in H. eauto.
+  intros. rewrite val_type0_unfold. eauto.
+Qed.
   
 
-(* 
-   PROBLEM: 
-   val_type0_func is incomprehensible, we cannot (easily) unfold 
-   and reason about it ...
-
-   Can we even prove inversion lemmas?
-*)
 
 
 
 
-(* ------------------------- NOTES -------------------------
-
-val_type0 cannot straightforwardly be defined as inductive
-family, because the (forall vx, val_type0 env vx T1 -> ... )
-occurrence violates the positivity restriction.
-
-The current definition as Fixpoint has some problems, too.
-Since it recurses structurally on T, it is unclear how to
-add the following desirable rules:
-
-- v: x.T
-
-    index y G1 = Some (vty TX) ->
-    vtp G1 v TX ->
-    vtp G1 v (TSel y)
-
-- v: { z => T }
-
-    vtp G1 v (open 0 (TVar true x) T2) ->
-    closed 0 (length G1) T2 ->
-    vtp G1 v (TBind T2)
-
-- v: (x:T1) -> T2^x
-
-    subst x in T2
-
-Another concern is what to do if stp2 needs to use 
-val_type0 internally (for T < x.L < U).
-
-Ideas:
-
-1) can we define a more complex size measure on types?
-   (to exclude recursion through x.T)
-2) can stp2 get away with a restricted version of vtp?
-   (stp2 only needs type members, not functions)
-
---------------------------------------------------------- *)
 
 
 Inductive val_type : venv -> vl -> ty -> Prop :=
@@ -656,6 +534,7 @@ Lemma closed_extend : forall X (a:X) G T,
                        closed (length (a::G)) T.
 Proof.
   intros. induction T; inversion H;  econstructor; eauto.
+  simpl. omega. 
 Qed.
 
 
@@ -733,18 +612,18 @@ Lemma stpd2_closed2 : forall m G1 G2 T1 T2,
 Proof. intros. eapply (stpd2_closed m G1 G2); eauto. Qed.
 
 
-
 Lemma valtp0_closed : forall G1 v T,
                        val_type0 G1 v T ->
                        closed (length G1) T.
 Proof.
-  intros.
-  induction T; simpl in H; destruct v; try (solve by inversion); ev; econstructor; eauto.
-  unfold val_type0 in H. unfold val_type0_func in H.
-  compute in H.
-  simpl in H. 
+  intros. destruct T; rewrite val_type0_unfold in H;
+  simpl in H; destruct v; ev;
+  try (solve by inversion);
+  try (econstructor; eauto);
+  try (eapply stpd2_closed1; eexists; eauto);
+  try (remember (index n G1) as idx; destruct idx;[ eapply index_max; eauto | contradiction]).
 Qed.
-
+    
 Lemma valtp_extend : forall vs v v1 T,
                        val_type vs v T ->
                        val_type (v1::vs) v T.
@@ -792,10 +671,12 @@ Lemma stpd2_refl: forall G1 T1,
   stpd2 true G1 T1 G1 T1.
 Proof.
   intros. induction T1; inversion H.
-  - Case "bool". eapply stpd2_bool; eauto.
-  - Case "fun". eapply stpd2_fun; try eapply stpd2_wrapf; eauto.
   - Case "bot". exists 1. eauto.
   - Case "top". exists 1. eauto.
+  - Case "bool". eapply stpd2_bool; eauto.
+  - Case "fun". eapply stpd2_fun; try eapply stpd2_wrapf; eauto.
+  - admit. (* mem *)
+  - admit. (* sel *)
 Qed.
 
 
@@ -892,13 +773,21 @@ Lemma valtp0_widen: forall n, forall m n1 vf H1 H2 T1 T2,
   stp2 m H1 T1 H2 T2 n1 -> n1 < n ->
   val_type0 H2 vf T2.
 Proof.
-  intros n. induction n; intros. omega. 
-  inversion H0; subst.
-  - Case "Bot". compute in H. destruct vf; inversion H.
-  - Case "Top". destruct vf; compute; eauto.
-  - Case "Bool". destruct vf; compute; eauto.
-  - Case "Fun". destruct vf. simpl in H. inversion H.
-    simpl in H. ev. simpl.
+  intros n. induction n; intros. omega.
+  inversion H0.
+  - Case "Bot".
+    rewrite val_type0_unfold in H. rewrite val_type0_unfold.
+    subst. destruct vf; inversion H. 
+  - Case "Top". 
+    rewrite val_type0_unfold in H. rewrite val_type0_unfold.
+    subst. destruct vf; eauto.
+  - Case "Bool". 
+    rewrite val_type0_unfold in H. rewrite val_type0_unfold.
+    subst. destruct vf; eauto.
+  - Case "Fun".
+    rewrite val_type0_unfold in H. rewrite val_type0_unfold.
+    subst. destruct vf; try solve [inversion H].
+    ev.
     split. eapply stpd2_closed1. eauto.
     split. eapply stpd2_closed2. eauto. 
     intros.
@@ -937,10 +826,12 @@ Qed.
 
 
 Lemma cvaltp: forall venv vf T1,
-  val_type0 venv vf T1 ->
+  val_type0 venv vf T1 <->
   val_type venv vf T1.
 Proof.
-  intros. econstructor. eauto. eapply valtp0_reg. eauto. 
+  split. 
+  intros. econstructor. eauto. eapply valtp0_reg. eauto.
+  intros. inversion H. ev. subst. eapply valtp0_widen; eauto. 
 Qed.
 
 Lemma invert_abs: forall venv vf T1 T2,
@@ -952,14 +843,12 @@ Lemma invert_abs: forall venv vf T1 T2,
        exists v : vl, tevaln (vx::env) y v /\ val_type venv v T2).
 Proof.
   intros. inversion H. ev. subst.
-  assert (val_type0 venv0 vf (TFun T1 T2)). eapply valtp0_widen;eauto. 
-  destruct vf. inversion H2.
-  exists l. exists t. split. eauto.
-  intros. simpl in H2. ev. 
-  inversion H3. subst.
-  assert (val_type0 venv0 vx T1). ev. eapply valtp0_widen; eauto.
-  specialize (H5 vx H8).
-  ev. eexists. split. eauto. eapply cvaltp; eauto. 
+  assert (val_type0 venv0 vf (TFun T1 T2)) as HF. eapply valtp0_widen; eauto.
+  rewrite val_type0_unfold in HF.   
+  destruct vf; try solve [inversion HF].
+  exists l. exists t. split. eauto. 
+  intros. ev. eapply cvaltp in H2. specialize (H5 vx H2).
+  ev. eexists. split. eauto. eapply cvaltp. eauto.
 Qed.
 
 
@@ -973,9 +862,9 @@ Proof.
   induction W; intros ? WFE.
 
   - Case "True". eexists. split.
-    exists 0. intros. destruct n. omega. simpl. eauto. eapply cvaltp. simpl. eauto. 
+    exists 0. intros. destruct n. omega. simpl. eauto. eapply cvaltp. rewrite val_type0_unfold. eauto. 
   - Case "False". eexists. split.
-    exists 0. intros. destruct n. omega. simpl. eauto. eapply cvaltp. simpl. eauto. 
+    exists 0. intros. destruct n. omega. simpl. eauto. eapply cvaltp. rewrite val_type0_unfold. simpl. eauto. 
 
   - Case "Var". 
     destruct (index_safe_ex venv0 env T1 x) as [v IV]. eauto. eauto. 
@@ -1006,7 +895,8 @@ Proof.
   - Case "Abs".
     erewrite <-(wf_length venv0 env WFE) in H. inversion H; subst. 
     eexists. split. exists 0. intros. destruct n. omega. simpl. eauto.
-    eapply cvaltp. simpl. repeat split; eauto.  intros. 
+    eapply cvaltp. rewrite val_type0_unfold. repeat split; eauto.
+    intros. 
     assert (stpd2 true venv0 T1 (vx::venv0) T1). eapply stpd2_extend2. eapply stpd2_refl; eauto. eu.
     assert (stpd2 true (vx::venv0) T2 venv0 T2). eapply stpd2_extend1. eapply stpd2_refl; eauto. eu.
     assert (val_type0 (vx::venv0) vx T1). eapply valtp0_widen; eauto. 

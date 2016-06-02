@@ -1,7 +1,3 @@
-(*
-coqc -I ../../sf/ dot.v
-*)
-
 Require Import dot.
 
 (* ############################################################ *)
@@ -33,11 +29,11 @@ end.
 
 Ltac apply_stp_bind1 := match goal with
   | [ |- stp ?GH ?G1 (TBind (TAnd ?T1 ?T2)) ?T1 ?n ] =>
-    eapply (stp_trans GH G1 (TBind (TAnd T1 T2)) (TAnd T1 T2) T1)
+    eapply stp_bind1 with (T1':=(TAnd T1 T2))
 end.
 
 Ltac crush := simpl;
-  try solve [apply_stp_bind1; [(eapply stp_bind1; crush) | (eapply stp_and11; crush)]];
+  try solve [apply_stp_bind1; crush];
   try solve [eapply T_Sub; [(apply_tobj; crush) | (crush)]];
   try solve [apply_dfun; crush];
   try solve [eapply stp_selx; crush];
@@ -64,7 +60,7 @@ Proof.
   eexists. crush.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0.
 Qed.
 
 (* instantiate it to TTop *)
@@ -81,5 +77,5 @@ Proof.
   crush.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0.
+apply 0.
 Qed.
