@@ -310,7 +310,15 @@ Proof.
       instantiate (4:=nil). simpl. eapply H3.
       rewrite A1 in IHS. rewrite A in IHS. simpl in IHS.
       eapply TY_Sub. eapply H. eapply IHS.
-  - admit.
+  - eu. eapply TY_VarUnpack. eapply TY_Sub. eapply IHhtpy.
+    eapply stpd_refl.
+    eapply htpy_to_hastp in H. destruct H as [? H]. eapply has_type_closed in H. simpl in H. eapply H.
+    eauto. eauto.
+    eapply Hsub. reflexivity.
+    eapply stp_closed2 in Hsub. simpl in Hsub. inversion Hsub; subst.
+    eapply closed_open. simpl. eassumption.
+    econstructor.
+    eapply htpy_to_hastp in H. destruct H as [? H]. eapply has_type_closed1 in H. omega.
   - eu. eapply IHhtpy. eexists. eapply stp_trans. eassumption. eapply Hsub.
     eauto. eauto.
 Qed.
