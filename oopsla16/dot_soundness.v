@@ -276,7 +276,15 @@ Proof.
   intros m1 HS G y T T0 H Hsub.
   remember (S m1) as m. generalize dependent m1. generalize dependent T.
   induction H; intros; subst.
-  - admit.
+  - eu. eapply stp_trans_pushback in Hsub.
+    assert False as Contra. {
+      clear H. clear H3. clear HS. clear x0. clear m1.
+      induction H0; subst; unfold substt in Hsub; simpl in Hsub.
+      - inversion Hsub.
+      - inversion Hsub; subst. inversion H4. eapply IHdms_has_type. eapply H4.
+      - inversion Hsub; subst. inversion H6. eapply IHdms_has_type. eapply H6.
+    }
+    inversion Contra.
   - inversion Heqm; subst. clear Heqm.
     eu. eapply stp_trans_pushback in Hsub. inversion Hsub; subst.
     + assert (substt x T1=T1) as EqT1. {
