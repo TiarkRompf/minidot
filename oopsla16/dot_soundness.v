@@ -395,19 +395,56 @@ Proof.
       exists T. eapply IH.
 Qed.
 
+Lemma htpy_bind0_contra_aux: forall G x T0 T,
+  htpy 0 G x T0 -> stpd [] G T0 (TBind T) ->
+  False.
+Proof.
+  intros G x T0 T H Hsub. generalize dependent T.
+  remember 0 as m. generalize dependent Heqm.
+  induction H; intros; subst.
+  - clear H. clear H3.
+    eu. eapply stp_trans_pushback in Hsub.
+    induction H0; subst; unfold substt in Hsub; simpl in Hsub.
+    + inversion Hsub.
+    + inversion Hsub; subst. inversion H4. eapply IHdms_has_type. eapply H4.
+    + inversion Hsub; subst. inversion H6. eapply IHdms_has_type. eapply H6.
+  - inversion Heqm.
+  - eapply IHhtpy. eauto. eapply stpd_refl.
+    eapply htpy_to_hastp in H. destruct H as [? H]. eapply has_type_closed in H. simpl in H. eapply H.
+  - eu. eapply IHhtpy. eauto. eexists. eapply stp_trans. eapply H0. eapply Hsub.
+Qed.
+
+Lemma htpy_bind0_contra: forall G x T,
+  htpy 0 G x (TBind T) ->
+  False.
+Proof.
+  intros. eapply htpy_bind0_contra_aux; eauto 2.
+  eapply stpd_refl.
+  eapply htpy_to_hastp in H. destruct H as [? H]. eapply has_type_closed in H. simpl in H. eapply H.
+Qed.
+
 Lemma pre_canon_mem_aux: forall m1, Subst (m1-1) -> forall G y T0,
   htpy m1 G y T0 -> forall l TS TU, stpd [] G T0 (TMem l TS TU) ->
   exists ds T, index y G = Some (vobj ds) /\
                index l (dms_to_list ds) = Some (dty T) /\
                stpd [] G TS T /\ stpd [] G T TU.
 Proof.
-  intros m1 HS G y T0 H l TS TU Hsub.
-  generalize dependent TU. generalize dependent TS. generalize dependent l.
+  intros m1. induction m1; intros HS G y T0 H l TS TU Hsub;
+  generalize dependent TU; generalize dependent TS; generalize dependent l;
+  simpl in HS.
+  {remember 0 as m. rewrite Heqm in *. rewrite <- Heqm in H.
   induction H; intros; subst.
   - eu. eapply stp_trans_pushback in Hsub.
     edestruct dms_hastp_inv_mem as [T IH]; eauto.
-  - eu. eapply stp_trans_pushback in Hsub. inversion Hsub; subst; eu.
-    assert (S m - 1 = m) as Eqm by omega.
+  - inversion Heqm.
+  - eapply htpy_bind0_contra in H. inversion H.
+  - eu. eapply IHhtpy. eauto. eexists. eapply stp_trans. eapply H0. eapply Hsub.
+  }
+  remember (S m1) as m. induction H; intros; subst.
+  - eu. eapply stp_trans_pushback in Hsub.
+    edestruct dms_hastp_inv_mem as [T IH]; eauto.
+  - inversion Heqm; subst.
+    eu. eapply stp_trans_pushback in Hsub. inversion Hsub; subst; eu.
     + assert (substt x T1=T1) as EqT1. {
         eapply subst_closed_id. eassumption.
       }
@@ -423,22 +460,26 @@ Proof.
       assert (open 0 (TVar true x) (TMem l TS TU)=(TMem l TS TU)) as EqT''. {
         erewrite <- closed_no_open. reflexivity. eassumption.
       }
-      assert (htpy (S m) G1 x (TBind (TMem l TS TU))) as H'. {
+      assert (htpy (S m1) G1 x (TBind (TMem l TS TU))) as H'. {
         eapply TY_Sub. eapply TY_VarPack; eauto.
         eapply stp_bindx. eapply H2. simpl. reflexivity.
         simpl. simpl in EqT'. rewrite EqT'. reflexivity.
         simpl. eauto. simpl. eapply closed_upgrade. eauto. omega.
       }
       eapply pre_canon_bind in H'. rewrite EqT'' in H'.
-      edestruct HS as [? IHS]. eauto. rewrite <- Eqm in H. rewrite <- A in H. eapply H.
-      instantiate (4:=nil). simpl. eapply H2.
-      rewrite A in IHS. rewrite EqT in IHS. simpl in IHS.
-      edestruct IHhtpy as [ds [T IH]].
-      eapply Subst_mono.
-      rewrite <- Eqm. eassumption. eexists. eapply IHS.
+      assert (S m1 - 1 = m1) as Eqm1 by omega. rewrite Eqm1 in H'.
+      edestruct IHm1 as [ds [T IH]].
+      eapply Subst_mono. rewrite <- minus_n_O in HS. eassumption. eapply H'.
+      eapply stpd_refl. eauto.
       eexists ds. eexists T. eapply IH.
       eassumption.
-  - eu. eapply IHhtpy; eauto 2. admit.
+  - assert (S m1 - 1 = m1) as Eqm1 by omega.
+    eu. eapply pre_canon_bind in H. rewrite Eqm1 in H.
+    edestruct IHm1 as [ds [T IH]].
+    eapply Subst_mono. rewrite <- minus_n_O in HS. eassumption. eapply H.
+    eexists. eauto.
+    eexists ds. eexists T. eapply IH.
+    rewrite Eqm1. rewrite <- minus_n_O in HS. eassumption.
   - eu. eapply IHhtpy; eauto 2. eexists. eapply stp_trans. eassumption. eapply Hsub.
 Qed.
 
