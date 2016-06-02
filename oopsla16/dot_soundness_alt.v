@@ -241,17 +241,17 @@ Proof.
     eexists. eapply stp_selx. eapply closed_subst0. rewrite app_length in H2. simpl in H2. rewrite map_length. eauto. eauto.
 
   - Case "bind1".
-    assert (htpd (map (substt x) (T1'::GH)) G1 (length GH) (substt x T2)).
-    eapply htp_subst_narrow0. eauto. eauto. omega.
-    eu. repeat eexists. eapply stp_bind1. rewrite map_length. eapply H11.
+    assert (stpd (map (substt x) (T1'::GH)) G1 (substt x T1') (substt x T2)) as A.
+    eapply IHn; eauto. omega.
+    eu. repeat eexists. eapply stp_bind1. eapply A.
     simpl. subst T1'. fold subst. eapply subst_open4.
     fold subst. eapply closed_subst0. rewrite app_length in H4. simpl in H4. rewrite map_length. eauto. eauto.
     eapply closed_subst0. rewrite map_length. rewrite app_length in H5. simpl in H5. eauto. eauto.
 
   - Case "bindx".
-    assert (htpd (map (substt x) (T1'::GH)) G1 (length GH) (substt x T2')).
-    eapply htp_subst_narrow0. eauto. eauto. omega.
-    eu. repeat eexists. eapply stp_bindx. rewrite map_length. eapply H12.
+    assert (stpd (map (substt x) (T1'::GH)) G1 (substt x T1') (substt x T2')) as A.
+    eapply IHn; eauto. omega.
+    eu. repeat eexists. eapply stp_bindx. eapply A.
     subst T1'. fold subst. eapply subst_open4.
     subst T2'. fold subst. eapply subst_open4.
     rewrite app_length in H5. simpl in H5. eauto. eapply closed_subst0. rewrite map_length. eauto. eauto.
@@ -457,7 +457,10 @@ Proof.
 
       assert (vtpdd m G1 x (substt x T3)) as BB. {
         eapply stp_subst_narrowX. rewrite <-R in LHS. eapply LHS.
-        instantiate (2:=nil). simpl. eapply H11. eapply vtp_closed1. eauto. eauto. eauto.
+        instantiate (2:=nil). simpl.
+        eapply htp_sub. eapply htp_var. simpl. reflexivity.
+        eapply stp_closed1 in H11. simpl in H11. eapply H11. eapply H11. eauto.
+        instantiate (1:=nil). simpl. reflexivity. eapply vtp_closed1. eauto. eauto. eauto.
         { intros. eapply IHl. eauto. eauto. omega. eauto. eauto. }
       }
       rewrite R1 in BB.
@@ -475,7 +478,10 @@ Proof.
 
       assert (vtpdd m G1 x (substt x (open 0 VZ T4))) as BB. {
         eapply stp_subst_narrowX. rewrite <-R in LHS. eapply LHS.
-        instantiate (2:=nil). simpl. eapply H11. eapply vtp_closed1. eauto. eauto. eauto.
+        instantiate (2:=nil). simpl.
+        eapply htp_sub. eapply htp_var. simpl. reflexivity.
+        eapply stp_closed1 in H11. simpl in H11. eapply H11. eapply H11. eauto.
+        instantiate (1:=nil). simpl. reflexivity. eapply vtp_closed1. eauto. eauto. eauto.
         { intros. eapply IHl. eauto. eauto. omega. eauto. eauto. }
       }
       unfold substt in BB. subst. erewrite subst_open_commute0 in BB.
@@ -596,7 +602,7 @@ Proof.
       repeat eexists. eauto. omega. eauto. omega. omega. eauto.
 
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma stp_subst_narrow_z: forall GH0 TX G1 T1 T2 x m n1 n2,

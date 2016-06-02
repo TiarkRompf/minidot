@@ -294,14 +294,14 @@ with stp: tenv -> venv -> ty -> ty -> nat -> Prop :=
 
 
 | stp_bind1: forall GH G1 T1 T1' T2 n1,
-    htp (T1'::GH) G1 (length GH) T2 n1 ->
+    stp (T1'::GH) G1 T1' T2 n1 ->
     T1' = (open 0 (TVar false (length GH)) T1) ->
     closed (length GH) (length G1) 1 T1 ->
     closed (length GH) (length G1) 0 T2 ->
     stp GH G1 (TBind T1) T2 (S n1)
 
 | stp_bindx: forall GH G1 T1 T1' T2 T2' n1,
-    htp (T1'::GH) G1 (length GH) T2' n1 ->
+    stp (T1'::GH) G1 T1' T2' n1 ->
     T1' = (open 0 (TVar false (length GH)) T1) ->
     T2' = (open 0 (TVar false (length GH)) T2) ->
     closed (length GH) (length G1) 1 T1 ->
@@ -844,10 +844,12 @@ Proof.
   - Case "varb". omega.
   - Case "sel". exists 1. eapply stp_selx. eauto.
   - Case "bind".
-    eexists. eapply stp_bindx. eapply htp_var. simpl. rewrite beq_nat_true_eq. eauto.
-    instantiate (1:=open 0 (TVar false (length GH)) T0).
-    eapply closed_open. eapply closed_upgrade_gh. eauto. omega. econstructor. omega.
-    eauto. eauto. eauto. eauto.
+    remember (open 0 (TVar false (length GH)) T0) as T0'.
+    destruct (IHn (T0'::GH) G1 T0').
+    subst. eapply closed_open. eapply closed_upgrade_gh. eauto.
+    simpl. omega. simpl. econstructor. omega.
+    subst. rewrite <- open_preserves_size. omega.
+    eexists. eapply stp_bindx; eauto.
   - Case "and".
     destruct (IHn GH G1 T0 H1). omega.
     destruct (IHn GH G1 T2 H2). omega.
@@ -856,8 +858,6 @@ Proof.
     destruct (IHn GH G1 T0 H1). omega.
     destruct (IHn GH G1 T2 H2). omega.
     eexists. eapply stp_or1. eapply stp_or21. eauto. eauto. eapply stp_or22. eauto. eauto.
-Grab Existential Variables.
-apply 0.
 Qed.
 
 Lemma stpd_refl: forall GH G1 T1,
@@ -1506,15 +1506,8 @@ Proof.
     rewrite map_splice_length_inc. eapply closed_splice. eauto.
   - Case "bind1".
     eapply stp_bind1.
-    rewrite map_splice_length_inc.
-    assert (splice_var (length G0) (length (G1 ++ G0)) = (S (length (G1 ++ G0)))) as A. {
-      unfold splice_var.
-      case_eq (le_lt_dec (length G0) (length (G1 ++ G0))); intros E LE.
-      omega. clear LE. rewrite app_length in E. omega.
-    }
-    rewrite <- A.
-    specialize (IHhtp GX G0 (open 0 (TVar false (length (G1 ++ G0))) T0 :: G1)).
-    simpl in IHhtp. eapply IHhtp. eauto. omega.
+    specialize (IHstp GX G0 ((open 0 (TVar false (length (G1 ++ G0))) T0)::G1)).
+    simpl in IHstp. eapply IHstp. eauto. omega.
     rewrite app_length. rewrite <- splice_open_permute.
     rewrite map_splice_length_inc. rewrite app_length.
     assert (length G1 + S (length G0)=(S (length G1 + length G0))) as B by omega.
@@ -1522,22 +1515,16 @@ Proof.
     rewrite map_splice_length_inc. eapply closed_splice. eauto.
     rewrite map_splice_length_inc. eapply closed_splice. eauto.
   - Case "bindx".
-    assert (length G1 + S (length G0)=(S (length G1 + length G0))) as B by omega.
     eapply stp_bindx.
-    rewrite map_splice_length_inc.
-    assert (splice_var (length G0) (length (G1 ++ G0)) = (S (length (G1 ++ G0)))) as A. {
-      unfold splice_var.
-      case_eq (le_lt_dec (length G0) (length (G1 ++ G0))); intros E LE.
-      omega. clear LE. rewrite app_length in E. omega.
-    }
-    rewrite <- A.
-    specialize (IHhtp GX G0 (open 0 (TVar false (length (G1 ++ G0))) T0 :: G1)).
-    simpl in IHhtp. eapply IHhtp. eauto. omega.
+    specialize (IHstp GX G0 ((open 0 (TVar false (length (G1 ++ G0))) T0)::G1)).
+    simpl in IHstp. eapply IHstp. eauto. omega.
     rewrite app_length. rewrite <- splice_open_permute.
     rewrite map_splice_length_inc. rewrite app_length.
+    assert (length G1 + S (length G0)=(S (length G1 + length G0))) as B by omega.
     rewrite B. eauto.
     rewrite app_length. rewrite <- splice_open_permute.
     rewrite map_splice_length_inc. rewrite app_length.
+    assert (length G1 + S (length G0)=(S (length G1 + length G0))) as B by omega.
     rewrite B. eauto.
     rewrite map_splice_length_inc. eapply closed_splice. eauto.
     rewrite map_splice_length_inc. eapply closed_splice. eauto.
@@ -1735,8 +1722,8 @@ Proof.
     eapply stp_bind1.
     rewrite <- B.
     instantiate (1:=(open 0 (TVar false (S (length GH))) (splice (length GH) T0))).
-    rewrite <- HGX. rewrite C.
-    apply htp_splice. simpl. eauto. simpl. rewrite A. reflexivity.
+    rewrite <- HGX. rewrite splice_open_permute0.
+    apply stp_splice. simpl. eauto. simpl. rewrite A. reflexivity.
     eapply closed_upgrade_gh. eauto. simpl. omega.
     eapply closed_upgrade_gh. eauto. simpl. omega.
 
@@ -1757,8 +1744,8 @@ Proof.
     }
     eapply stp_bindx.
     instantiate (2:=(open 0 (TVar false (S (length GH))) (splice (length GH) T0))).
-    rewrite <- HGX. rewrite C.
-    apply htp_splice. simpl. eauto. simpl. rewrite A. reflexivity.
+    rewrite <- HGX. rewrite splice_open_permute0.
+    apply stp_splice. simpl. eauto. simpl. rewrite A. reflexivity.
     simpl. rewrite <- splice_open_permute0. rewrite B. reflexivity.
     eapply closed_upgrade_gh. eauto. simpl. omega.
     eapply closed_upgrade_gh. eauto. simpl. omega.
@@ -1926,17 +1913,17 @@ Proof.
       eexists. eapply stp_selx.
       subst. rewrite app_length in *. simpl in *. assumption.
     + SCase "bind1".
-      edestruct IHn_htp with (GH1:=(open 0 (TVar false (length GH)) T0 :: GH1)) as [? Htp].
+      edestruct IHn_stp with (GH1:=(open 0 (TVar false (length GH)) T0 :: GH1)) as [? IH].
       eapply H0. omega. rewrite EGH. reflexivity. reflexivity. eapply HX.
       eexists. eapply stp_bind1.
-      rewrite EGHLEN. subst. simpl. simpl in Htp. eapply Htp.
+      subst. simpl. simpl in IH. eapply IH.
       rewrite EGHLEN. subst. simpl. reflexivity.
       rewrite EGHLEN. assumption. rewrite EGHLEN. assumption.
     + SCase "bindx".
-      edestruct IHn_htp with (GH1:=(open 0 (TVar false (length GH)) T0 :: GH1)) as [? Htp].
+      edestruct IHn_stp with (GH1:=(open 0 (TVar false (length GH)) T0 :: GH1)) as [? IH].
       eapply H0. omega. rewrite EGH. reflexivity. reflexivity. eapply HX.
       eexists. eapply stp_bindx.
-      rewrite EGHLEN. subst. simpl. simpl in Htp. eapply Htp.
+      subst. simpl. simpl in IH. eapply IH.
       rewrite EGHLEN. subst. simpl. reflexivity.
       rewrite EGHLEN. subst. simpl. reflexivity.
       rewrite EGHLEN. assumption. rewrite EGHLEN. assumption.
