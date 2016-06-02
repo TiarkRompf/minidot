@@ -211,3 +211,148 @@ Proof.
   eapply stpp_refl.
   eapply stp_closed2 in H. simpl in H. eauto.
 Qed.
+
+(*
+We need to count the number of packing when typing a concrete variable.
+Like for precise subtyping, we really only need this in an emptry abstract context.
+*)
+Inductive htpy : nat(*pack count*) -> venv -> id(*concrete var*) -> ty -> Prop :=
+  | TY_Vary : forall m G1 x ds ds' T T' n1,
+      index x G1 = Some (vobj ds) ->
+      dms_has_type [T'] G1 ds' T' n1 ->
+      subst_dms x ds' = ds ->
+      substt x T' = T ->
+      closed 0 (length G1) 0 T ->
+      htpy m G1 x T
+  | TY_VarPack : forall m G1 x T1 T1',
+      htpy m G1 x T1' ->
+      T1' = (open 0 (TVar true x) T1) ->
+      closed 0 (length G1) 1 T1 ->
+      htpy (S m) G1 x (TBind T1)
+  | TY_VarUnpack : forall m G1 x T1 T1',
+      htpy m G1 x (TBind T1) ->
+      T1' = (open 0 (TVar true x) T1) ->
+      closed 0 (length G1) 0 T1' ->
+      htpy m G1 x T1'
+  | TY_Sub : forall m G1 t T1 T2 n2,
+      htpy m G1 t T1 ->
+      stp [] G1 T1 T2 n2 ->
+      htpy m G1 t T2.
+
+Lemma htpy_to_hastp: forall m G y T,
+  htpy m G y T ->
+  exists n, has_type [] G (tvar true y) T n.
+Proof.
+  intros. induction H;
+  try destruct IHhtpy as [n IH];
+  try solve [eexists; eauto 3].
+Qed.
+
+Hint Constructors htpy.
+
+Lemma hastp_to_htpy: forall G y T n,
+  has_type [] G (tvar true y) T n ->
+  exists m, htpy m G y T.
+Proof.
+  intros.
+  remember [] as GH. generalize dependent HeqGH.
+  remember (tvar true y) as t. generalize dependent Heqt.
+  induction H; intros; inversion Heqt; subst;
+  try (specialize (IHhas_type eq_refl eq_refl); destruct IHhas_type as [m IH]);
+  try solve [eexists; eauto 3].
+Grab Existential Variables.
+apply 0.
+Qed.
+
+Definition Subst (m: nat) := forall GH G x TX T1 T2 m1 n2, m1 <= m ->
+  htpy m1 G x (substt x TX) ->
+  stp (GH++[TX]) G T1 T2 n2 ->
+  stpd (map (substt x) GH) G (substt x T1) (substt x T2).
+
+Lemma pre_canon_bind_aux: forall m1, Subst m1 -> forall G y T,
+  htpy (S m1) G y (TBind T) ->
+  exists T1,
+    htpy m1 G y (open 0 (TVar true y) T1) /\
+    stpd [(open 0 (TVar true y) T1)] G (open 0 (TVar false 0) T1) (open 0 (TVar false 0) T) /\
+    closed 0 (length G) 1 T1.
+Proof.
+  intros m1 HS G y T H.
+  remember (S m1) as m. generalize dependent m1.
+  remember (TBind T) as T0. generalize dependent T.
+  induction H; intros; subst.
+  - admit.
+  - inversion HeqT0. inversion Heqm. subst.
+    eexists. split; try split; try eassumption.
+    eapply stpd_refl. simpl. eapply closed_open. simpl.
+    eapply closed_upgrade_gh. eauto. omega. econstructor. omega.
+  - destruct T1; simpl in HeqT0; inversion HeqT0.
+    destruct i; simpl in HeqT0; inversion HeqT0.
+    specialize (IHhtpy (TBind T1) eq_refl m1 HS eq_refl).
+    destruct IHhtpy as [? [IH1 [IH2 IH3]]]. repeat eu.
+    assert (closed 0 (length G1) 2 T1) as C1. {
+      eapply htpy_to_hastp in H. destruct H as [? H]. eapply has_type_closed in H. simpl in H. inversion H; subst. inversion H6; subst. eassumption.
+    }
+    assert (closed 0 (length G1) 0 (TVar true x)) as Cx. {
+      eapply htpy_to_hastp in H. destruct H as [? H]. eapply has_type_closed1 in H.
+      econstructor. omega.
+    }
+    assert (substt x x0 = x0) as A. {
+      eapply subst_closed_id. eapply IH3.
+    }
+    assert (substt x (open 0 (TVar true x) x0) = (open 0 (TVar true x) x0)) as A'. {
+      unfold substt. rewrite <- subst_open_commute1.
+      unfold substt in A. rewrite A. reflexivity.
+    }
+    edestruct HS as [? IHS]. eauto. rewrite <- A' in IH1. eapply IH1.
+    instantiate (4:=nil). simpl. eapply IH2.
+    repeat rewrite subst_open_commute0b in IHS.
+    assert (map (substt x) [] = []) as B by eauto. rewrite B in IHS.
+    unfold substt in *. rewrite subst_open_commute1 in IHS.
+    rewrite A' in IHS. clear B.
+    eexists. split. eapply TY_VarUnpack. eapply TY_Sub. eapply IH1.
+    simpl in IHS. eapply IHS. reflexivity.
+    eapply closed_open. eapply closed_open. eapply closed_subst. simpl.
+    eapply closed_upgrade_gh. eassumption. omega. eassumption.
+    eapply closed_upgrade. eassumption. omega.
+    eassumption. split.
+    assert ((open 1 (TVar true x) T1)=(substt x (open 1 (TVar true x) T1))) as B. {
+      erewrite subst_closed_id. reflexivity.
+      eapply closed_open. simpl. eapply C1.
+      eapply closed_upgrade. eapply Cx. omega.
+    }
+    unfold substt in B.
+    rewrite subst_open_commute1. rewrite <- B.
+    eapply stpd_refl. simpl.
+    eapply closed_open. eapply closed_open. simpl.
+    eapply closed_upgrade_gh. eapply C1. omega.
+    econstructor. inversion Cx. omega.
+    econstructor. omega.
+    eapply closed_open. eapply closed_subst. simpl.
+    eapply closed_upgrade_gh. eapply C1. omega.
+    eauto. econstructor. inversion Cx. omega.
+  - Case "sub".
+    admit.
+Qed.
+
+Lemma pre_canon_bind: forall m1, Subst m1 -> forall G y T,
+  htpy (S m1) G y (TBind T) ->
+  htpy m1 G y (open 0 (TVar true y) T).
+Proof.
+  intros m1 HS G y T H.
+  edestruct pre_canon_bind_aux as [? A]; eauto.
+  destruct A as [A1 [A2 A3]].
+  assert (substt y (open 0 (TVar true y) x) = (open 0 (TVar true y) x)) as Eq. {
+    eapply subst_closed_id.
+    eapply htpy_to_hastp in A1. destruct A1 as [? A1]. eapply has_type_closed in A1. simpl in A1. eapply A1.
+  }
+  eu.
+  edestruct HS as [? IHS]. eauto. rewrite <- Eq in A1. eapply A1.
+  instantiate (4:=nil). simpl. eapply A2.
+  simpl in IHS.
+  eapply TY_Sub. eapply A1.
+  repeat rewrite subst_open_commute0b in IHS.
+  erewrite subst_closed_id in IHS. erewrite subst_closed_id in IHS.
+  eapply IHS.
+  eapply htpy_to_hastp in H. destruct H as [? H]. eapply has_type_closed in H. simpl in H. simpl in H. inversion H; subst. eassumption.
+  eapply A3.
+Qed.
