@@ -1809,14 +1809,14 @@ Lemma stp_narrow_aux: forall n,
   forall GH1 GH0 GH' TX1 TX2,
     GH=GH1++[TX2]++GH0 ->
     GH'=GH1++[TX1]++GH0 ->
-    stpd GH0 G TX1 TX2 ->
+    stpd ([TX1]++GH0) G TX1 TX2 ->
     htpd GH' G x T) /\
   (forall GH G T1 T2 n0,
   stp GH G T1 T2 n0 -> n0 <= n ->
   forall GH1 GH0 GH' TX1 TX2,
     GH=GH1++[TX2]++GH0 ->
     GH'=GH1++[TX1]++GH0 ->
-    stpd GH0 G TX1 TX2 ->
+    stpd ([TX1]++GH0) G TX1 TX2 ->
     stpd GH' G T1 T2).
 Proof.
   intros n.
@@ -1839,10 +1839,9 @@ Proof.
         destruct HX as [nx HX].
         eexists. eapply htp_sub. eapply htp_var. eapply index_extend_mult.
         simpl. rewrite E. reflexivity.
-        eapply stp_closed1 in HX. eapply closed_upgrade_gh.
+        eapply stp_closed1 in HX. simpl in HX. eapply closed_upgrade_gh.
         eapply HX. apply beq_nat_true in E. subst. omega.
-        eapply stp_upgrade_gh. eauto. simpl.
-        f_equal. apply beq_nat_true in E. subst. reflexivity.
+        eauto. simpl. f_equal. apply beq_nat_true in E. subst. reflexivity.
         simpl. reflexivity.
       * assert (index x GH' = Some T) as A. {
           subst.
@@ -1967,12 +1966,28 @@ Qed.
 
 Lemma stp_narrow: forall TX1 TX2 GH0 G T1 T2 n nx,
   stp ([TX2]++GH0) G T1 T2 n ->
-  stp GH0 G TX1 TX2 nx ->
+  stp ([TX1]++GH0) G TX1 TX2 nx ->
   stpd ([TX1]++GH0) G T1 T2.
 Proof.
   intros. eapply stp_narrow_aux. eapply H. reflexivity.
   instantiate(3:=nil). simpl. reflexivity. simpl. reflexivity.
   eauto.
+Qed.
+
+Lemma stp_narrow_norec: forall TX1 TX2 GH0 G T1 T2 n nx,
+  stp ([TX2]++GH0) G T1 T2 n ->
+  stp GH0 G TX1 TX2 nx ->
+  stpd ([TX1]++GH0) G T1 T2.
+Proof.
+  intros. eapply stp_narrow; eauto using stp_upgrade_gh.
+Qed.
+
+Lemma stp_narrow0: forall TX1 TX2 G T1 T2 n nx,
+  stp [TX2] G T1 T2 n ->
+  stp [TX1] G TX1 TX2 nx ->
+  stpd [TX1] G T1 T2.
+Proof.
+  intros. eapply stp_narrow; eauto.
 Qed.
 
 Lemma length_subst_dms: forall ds x,

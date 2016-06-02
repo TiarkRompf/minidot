@@ -411,7 +411,7 @@ Proof.
     + SCase "top". repeat eexists. eapply vtp_top. eapply index_max. eauto. eauto.
     + SCase "fun". invty. subst.
       assert (stpd [T8] G1 (open 0 (TVar false 0) T0) (open 0 (TVar false 0) T5)) as A. {
-        eapply stp_narrow. simpl. eassumption. simpl. eassumption.
+        eapply stp_narrow_norec. simpl. eassumption. simpl. eassumption.
       }
       destruct A as [na A].
       repeat eexists. eapply vtp_fun. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
