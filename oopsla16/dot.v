@@ -732,6 +732,11 @@ Lemma htp_closed: forall x GH G1 T2 n,
   closed (length GH) (length G1) 0 T2.
 Proof. intros. eapply all_closed with (x:=x). eauto. eauto. Qed.
 
+Lemma htp_closed1: forall x GH G1 T2 n,
+  htp GH G1 x T2 n ->
+  x < length GH.
+Proof. intros. eapply all_closed with (x:=x). eauto. eauto. Qed.
+
 Lemma has_type_closed: forall GH G1 t T n1,
   has_type GH G1 t T n1 ->
   closed (length GH) (length G1) 0 T.
