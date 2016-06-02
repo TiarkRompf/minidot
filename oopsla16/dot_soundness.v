@@ -347,6 +347,54 @@ Proof.
   eapply H; try eassumption. omega.
 Qed.
 
+Lemma dms_hastp_inv_mem: forall G1 x ds' T' l TS TU n,
+  dms_has_type [T'] G1 ds' T' n ->
+  closed 0 (length G1) 0 (substt x T') ->
+  index x G1 = Some (vobj (subst_dms x ds')) ->
+  stpp G1 (substt x T') (TMem l TS TU) ->
+  exists T, index l (dms_to_list (subst_dms x ds')) = Some (dty T) /\
+  stpd [] G1 TS T /\ stpd [] G1 T TU.
+Proof.
+  intros G1 x ds' T' l TS TU n H HC HI Hsub.
+  remember T' as T0. remember H as HT0. clear HeqHT0.
+  rewrite HeqT0 in H at 2. rewrite HeqT0 in Hsub. rewrite HeqT0 in HC. clear HeqT0.
+  remember ds' as ds0. rewrite Heqds0 in H.
+  assert (exists dsa, dms_to_list ds0 = dsa ++ dms_to_list ds') as Hds. {
+    exists []. rewrite app_nil_l. subst. reflexivity.
+  }
+  clear Heqds0.
+  remember n as n0. rewrite Heqn0 in *. rewrite <- Heqn0 in HT0. clear Heqn0.
+  remember [T0] as GH. generalize dependent T0.
+  generalize dependent TU. generalize dependent TS. generalize dependent l.
+  induction H; intros; unfold substt in Hsub; simpl in Hsub.
+  - inversion Hsub.
+  - subst. simpl in Hsub.
+    destruct Hds as [dsa Hdsa]. simpl in Hdsa.
+    inversion Hsub; subst.
+    + inversion H4; subst.
+      exists (subst (TVar true x) T11). split.
+      erewrite index_subst_dms with (D:=dty T11). simpl. reflexivity. eauto.
+      split; eassumption.
+    + assert (closed 0 (length G1) 0 (substt x TS)) as HCS. {
+       unfold substt in *. simpl in HC. inversion HC; subst.
+       eauto.
+      }
+      edestruct IHdms_has_type as [T IH]. eauto. eauto.
+      exists (dsa ++ [dty T11]). rewrite <- app_assoc. simpl. eauto. eauto. eauto. eauto.
+      exists T. eapply IH.
+  - subst. simpl in Hsub.
+    destruct Hds as [dsa Hdsa]. simpl in Hdsa.
+    inversion Hsub; subst.
+    + inversion H6.
+    + assert (closed 0 (length G1) 0 (substt x TS)) as HCS. {
+       unfold substt in *. simpl in HC. inversion HC; subst.
+       eauto.
+      }
+      edestruct IHdms_has_type as [T IH]. eauto. eauto.
+      exists (dsa ++ [dfun T11 T12 t12]). rewrite <- app_assoc. simpl. eauto. eauto. eauto. eauto.
+      exists T. eapply IH.
+Qed.
+
 Lemma pre_canon_mem_aux: forall m1, Subst (m1-1) -> forall G y T0,
   htpy m1 G y T0 -> forall l TS TU, stpd [] G T0 (TMem l TS TU) ->
   exists ds T, index y G = Some (vobj ds) /\
@@ -356,7 +404,8 @@ Proof.
   intros m1 HS G y T0 H l TS TU Hsub.
   generalize dependent TU. generalize dependent TS. generalize dependent l.
   induction H; intros; subst.
-  - eu. eapply stp_trans_pushback in Hsub. admit.
+  - eu. eapply stp_trans_pushback in Hsub.
+    edestruct dms_hastp_inv_mem as [T IH]; eauto.
   - eu. eapply stp_trans_pushback in Hsub. inversion Hsub; subst; eu.
     assert (S m - 1 = m) as Eqm by omega.
     + assert (substt x T1=T1) as EqT1. {
