@@ -1036,7 +1036,7 @@ Proof.
   }
   remember (S m1) as m. induction H; intros; subst.
   - eu. eapply stp_trans_pushback in Hsub.
-    edestruct dms_hastp_inv_fun as [TS' [TU' [t' [IH1 [IH2 [IH3 IH4]]]]]]; eauto 2. eu.
+    edestruct dms_hastp_inv_fun as [ds [TS' [TU' [t' [IH1 [IH2 IH3]]]]]]; eauto 2. eu.
     repeat eexists; eauto.
   - inversion Heqm; subst.
     eu. eapply stp_trans_pushback in Hsub. inversion Hsub; subst; eu.
@@ -1063,19 +1063,19 @@ Proof.
       }
       eapply pre_canon_bind in H'. rewrite EqT'' in H'.
       assert (S m1 - 1 = m1) as Eqm1 by omega. rewrite Eqm1 in H'.
-      edestruct IHm1 as [TS' [TU' [t' IH]]]. eapply H'.
+      edestruct IHm1 as [? IH]. eapply H'.
       eapply stpd_refl. eauto.
-      eexists TS'. eexists TU'. eexists t'. eapply IH.
+      eexists. eapply IH.
       eapply all_Subst.
   - assert (S m1 - 1 = m1) as Eqm1 by omega.
     eu. eapply pre_canon_bind in H. rewrite Eqm1 in H.
-    edestruct IHm1 as [TS' [TU' [t' IH]]]. eapply H. eexists. eauto.
-    eexists TS'. eexists TU'. eexists t'. eapply IH. eapply all_Subst.
+    edestruct IHm1 as [? IH]. eapply H. eexists. eauto.
+    eexists. eapply IH. eapply all_Subst.
   - eu. eapply IHhtpy; eauto 2. eexists. eapply stp_trans. eassumption. eapply Hsub.
 Qed.
 
-Lemma canon_fun: forall G1 x T0 nx,
-  has_type [] G1 (tvar true x) T0 nx -> forall l TS TU, stpd [] G1 T0 (TFun l TS TU) ->
+Lemma canon_fun: forall G1 x l TS TU nx,
+  has_type [] G1 (tvar true x) (TFun l TS TU) nx ->
   exists ds TS' TU' t',
     index x G1 = Some (vobj ds) /\
     index l (dms_to_list ds) = Some (dfun TS' TU' t') /\
@@ -1085,6 +1085,8 @@ Proof.
   intros.
   eapply hastp_to_htpy in H. destruct H as [m H].
   eapply canon_fun_aux; eauto 2.
+  eapply stpd_refl.
+  eapply htpy_to_hastp in H. destruct H as [? H]. eapply has_type_closed in H. eapply H.
 Qed.
 
 Theorem type_safety : forall G t T n1,
