@@ -683,3 +683,35 @@ Proof.
       specialize (IH2 GH T1 T3).
       specialize (IH2 HX). specialize (IH2 H0). eu.
       eexists. eapply stp_and2. eapply IH1. eapply IH2.
+    + unfold substt at 1. simpl.
+      specialize (IHn0 n1).
+      assert (n1 < n0) as LEn1 by omega. specialize (IHn0 LEn1).
+      destruct IHn0 as [IH ?]. specialize (IH G x TX).
+      specialize (IH GH T1 T0).
+      specialize (IH HX). specialize (IH H). eu.
+      rewrite app_length in *. simpl in *.
+      eexists. eapply stp_or21. eapply IH.
+      rewrite map_length. eapply closed_subst. eassumption. econstructor. omega.
+    + unfold substt at 1. simpl.
+      specialize (IHn0 n1).
+      assert (n1 < n0) as LEn1 by omega. specialize (IHn0 LEn1).
+      destruct IHn0 as [IH ?]. specialize (IH G x TX).
+      specialize (IH GH T1 T3).
+      specialize (IH HX). specialize (IH H). eu.
+      rewrite app_length in *. simpl in *.
+      eexists. eapply stp_or22. eapply IH.
+      rewrite map_length. eapply closed_subst. eassumption. econstructor. omega.
+    + unfold substt at 3. simpl.
+      remember IHn0 as IH1. clear HeqIH1.
+      specialize (IH1 n1).
+      assert (n1 < n0) as LEn1 by omega. specialize (IH1 LEn1).
+      destruct IH1 as [IH1 ?]. specialize (IH1 G x TX).
+      specialize (IH1 GH T0 T2).
+      specialize (IH1 HX). specialize (IH1 H). eu.
+      remember IHn0 as IH2. clear HeqIH2.
+      specialize (IH2 n2).
+      assert (n2 < n0) as LEn2 by omega. specialize (IH2 LEn2).
+      destruct IH2 as [IH2 ?]. specialize (IH2 G x TX).
+      specialize (IH2 GH T3 T2).
+      specialize (IH2 HX). specialize (IH2 H0). eu.
+      eexists. eapply stp_or1. eapply IH1. eapply IH2.
