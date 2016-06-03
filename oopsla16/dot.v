@@ -41,7 +41,9 @@ Inductive tm : Type :=
 
 with dm : Type := (* member definition --
                      the labels, e.g. m & A, are determined from the position in member list, dms *)
-  | dfun : ty -> ty -> tm -> dm (* method: { def m(x: S): U = t }*)
+  | dfun : option ty -> option ty -> tm -> dm (* method: { def m(x: S): U = t } *)
+  (* Church vs Curry: we show that all options work, by making parameter and return types optional,
+     when defining a method. *)
   | dty  : ty -> dm (* type: { type A = T } *)
 
 (* we need our own list-like structure for stuctural recursion, e.g. in subst_tm *)
@@ -164,7 +166,7 @@ Fixpoint subst_tm (u:nat) (t : tm) {struct t} : tm :=
 with subst_dm (u:nat) (d: dm) {struct d} : dm :=
   match d with
     | dty T        => dty (subst (TVar true u) T)
-    | dfun T1 T2 t => dfun (subst (TVar true u) T1) (subst (TVar true u) T2) (subst_tm u t)
+    | dfun T1 T2 t => dfun (option_map (subst (TVar true u)) T1) (option_map (subst (TVar true u)) T2) (subst_tm u t)
   end
 with subst_dms (u:nat) (ds: dms) {struct ds} : dms :=
   match ds with
@@ -191,6 +193,8 @@ Inductive step : venv -> tm -> venv -> tm -> Prop :=
     step G1 t2 G1' t2' ->
     step G1 (tapp (tvar true f) l t2) G1' (tapp (tvar true f) l t2')
 .
+
+Definition eq_some {X} (OT:option X) (T:X) := OT=None \/ OT=Some T.
 
 (* : -- typing *)
 Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
@@ -246,7 +250,7 @@ with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
       l = length (dms_to_list ds) ->
       T = TAnd (TMem l T11 T11) TS ->
       dms_has_type GH G1 (dcons (dty T11) ds) T (S n1)
-  | D_Fun : forall GH G1 l T11 T12 T12' t12 ds TS T n1 n2,
+  | D_Fun : forall GH G1 l OT11 T11 OT12 T12 T12' t12 ds TS T n1 n2,
       dms_has_type GH G1 ds TS n1 ->
       has_type (T11::GH) G1 t12 T12' n2 ->
       T12' = (open 0 (TVar false (length GH)) T12) ->
@@ -254,7 +258,9 @@ with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
       closed (length GH) (length G1) 1 T12 ->
       l = length (dms_to_list ds) ->
       T = TAnd (TFun l T11 T12) TS ->
-      dms_has_type GH G1 (dcons (dfun T11 T12 t12) ds) T (S (n1+n2))
+      eq_some OT11 T11 ->
+      eq_some OT12 T12 ->
+      dms_has_type GH G1 (dcons (dfun OT11 OT12 t12) ds) T (S (n1+n2))
 
 (* <: -- subtyping *)
 with stp: tenv -> venv -> ty -> ty -> nat -> Prop :=
@@ -591,7 +597,7 @@ Proof.
   - econstructor.
   - econstructor. eapply IHn. eauto. omega. eapply closed_extend. eauto. eauto. eauto.
   - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto.
-    eapply closed_extend. eauto. eapply closed_extend. eauto. eauto. eauto.
+    eapply closed_extend. eauto. eapply closed_extend. eauto. eauto. eauto. eauto. eauto.
 Qed.
 
 Lemma closed_upgrade_gh: forall i i1 j k T1,
@@ -923,6 +929,20 @@ Ltac invstp_var := match goal with
   | H1: stp _ true _ _ (TOr _ _)  (TVar _ _) _ |- _ => inversion H1
   | _ => idtac
 end.
+
+Lemma map_eq_some: forall {X} {Y} (f: X -> Y) OT (T: X),
+  eq_some OT T ->
+  eq_some (option_map f OT) (f T).
+Proof.
+  intros. destruct H as [EN | ES]; subst; unfold eq_some; simpl; auto.
+Qed.
+
+Lemma subst_eq_some: forall OT T U,
+  eq_some OT T ->
+  eq_some (option_map (subst U) OT) (subst U T).
+Proof.
+  intros. apply map_eq_some; auto.
+Qed.
 
 Lemma closed_no_open: forall T b x k l j,
   closed l k j T ->

@@ -282,7 +282,7 @@ Proof.
       induction H0; subst; unfold substt in Hsub; simpl in Hsub.
       - inversion Hsub.
       - inversion Hsub; subst. inversion H4. eapply IHdms_has_type. eapply H4.
-      - inversion Hsub; subst. inversion H6. eapply IHdms_has_type. eapply H6.
+      - inversion Hsub; subst. inversion H8. eapply IHdms_has_type. eapply H8.
     }
     inversion Contra.
   - remember H as Hm'. clear HeqHm'.
@@ -388,13 +388,13 @@ Proof.
   - subst. simpl in Hsub.
     destruct Hds as [dsa Hdsa]. simpl in Hdsa.
     inversion Hsub; subst.
-    + inversion H6.
+    + inversion H8.
     + assert (closed 0 (length G1) 0 (substt x TS)) as HCS. {
        unfold substt in *. simpl in HC. inversion HC; subst.
        eauto.
       }
       edestruct IHdms_has_type as [T IH]. eauto. eauto.
-      exists (dsa ++ [dfun T11 T12 t12]). rewrite <- app_assoc. simpl. eauto. eauto. eauto. eauto.
+      exists (dsa ++ [dfun OT11 OT12 t12]). rewrite <- app_assoc. simpl. eauto. eauto. eauto. eauto.
       exists T. eapply IH.
 Qed.
 
@@ -410,7 +410,7 @@ Proof.
     induction H0; subst; unfold substt in Hsub; simpl in Hsub.
     + inversion Hsub.
     + inversion Hsub; subst. inversion H4. eapply IHdms_has_type. eapply H4.
-    + inversion Hsub; subst. inversion H6. eapply IHdms_has_type. eapply H6.
+    + inversion Hsub; subst. inversion H8. eapply IHdms_has_type. eapply H8.
   - inversion Heqm.
   - eapply IHhtpy. eauto. eapply stpd_refl.
     eapply htpy_to_hastp in H. destruct H as [? H]. eapply has_type_closed in H. simpl in H. eapply H.
@@ -983,14 +983,16 @@ Proof.
     specialize (IHT (T11 :: GH)).
     specialize (IHT TX (open 0 (TVar false (length GH + 1)) T12) x t12).
     specialize (IHT nx H1 HX). simpl in IHT. destruct IHT as [? IHT].
-    eexists. eapply D_Fun; eauto 2.
+    eexists. eapply D_Fun. eapply IHDS. eapply IHT.
     rewrite map_length. unfold substt. erewrite <- subst_open_commute. eauto.
     eauto. econstructor. eapply has_type_closed1 in HX. omega.
     rewrite map_length. eapply closed_subst.
     eauto. econstructor. eapply has_type_closed1 in HX. omega.
     rewrite map_length. eapply closed_subst.
     eauto. econstructor. eapply has_type_closed1 in HX. omega.
+    reflexivity.
     unfold substt. rewrite <- length_subst_dms. reflexivity.
+    unfold substt. eapply subst_eq_some; eauto. eapply subst_eq_some; eauto.
   }
 Grab Existential Variables.
 apply 0. apply 0.
@@ -1010,9 +1012,11 @@ Lemma dms_hastp_inv_fun: forall G1 x ds' T' l TS TU n nx,
   closed 0 (length G1) 0 (substt x T') ->
   index x G1 = Some (vobj (subst_dms x ds')) ->
   stpp G1 (substt x T') (TFun l TS TU) ->
-  exists TS' TU' t', index l (dms_to_list (subst_dms x ds')) = Some (dfun TS' TU' t') /\
+  exists TS' TU' t' OTS' OTU',
+  index l (dms_to_list (subst_dms x ds')) = Some (dfun OTS' OTU' t') /\
   has_typed [TS'] G1 t' (open 0 (TVar false 0) TU') /\
-  stpd [] G1 (TFun l TS' TU') (TFun l TS TU).
+  stpd [] G1 (TFun l TS' TU') (TFun l TS TU) /\
+  eq_some OTS' TS' /\ eq_some OTU' TU'.
 Proof.
   intros G1 x ds' T' l TS TU n nx HX H HC HI Hsub.
   remember T' as T0. remember H as HT0. clear HeqHT0.
@@ -1041,47 +1045,53 @@ Proof.
   - subst. simpl in Hsub.
     destruct Hds as [dsa Hdsa]. simpl in Hdsa.
     inversion Hsub; subst.
-    + inversion H6; subst.
+    + inversion H8; subst.
       exists (subst (TVar true x) T11). exists (subst (TVar true x) T12).
-      eexists (subst_tm x t12).
-      split.
-      erewrite index_subst_dms with (D:=dfun T11 T12 t12). simpl. reflexivity. eauto.
-      split.
+      eexists (subst_tm x t12). eexists. eexists.
+      split; repeat try split.
+      * erewrite index_subst_dms with (D:=dfun OT11 OT12 t12). simpl. reflexivity. eauto.
       * edestruct hastp_subst with (GH:=[T11]) (TX:=T0) as [? A]; eauto. simpl in A.
         erewrite <- subst_open_commute. simpl. unfold substt in A. eexists. eapply A.
         eauto. econstructor. eapply has_type_closed1 in HX. omega.
       * eapply stpp_to_stp. eassumption.
+      * eapply subst_eq_some; eauto.
+      * eapply subst_eq_some; eauto.
     + assert (closed 0 (length G1) 0 (substt x TS)) as HCS. {
        unfold substt in *. simpl in HC. inversion HC; subst.
        eauto.
       }
       edestruct IHdms_has_type as [T IH]. eauto. eauto.
-      exists (dsa ++ [dfun T11 T12 t12]). rewrite <- app_assoc. simpl. eauto. eauto. eauto. eauto. eauto.
+      exists (dsa ++ [dfun OT11 OT12 t12]). rewrite <- app_assoc. simpl. eauto. eauto. eauto. eauto. eauto.
       exists T. eapply IH.
 Qed.
 
 Lemma canon_fun_aux: forall m1, forall G y T0,
   htpy m1 G y T0 -> forall l TS TU, stpd [] G T0 (TFun l TS TU) ->
-  exists ds TS' TU' t',
+  exists ds TS' TU' t' OTS' OTU',
     index y G = Some (vobj ds) /\
-    index l (dms_to_list ds) = Some (dfun TS' TU' t') /\
+    index l (dms_to_list ds) = Some (dfun OTS' OTU' t') /\
     has_typed [TS'] G t' (open 0 (TVar false 0) TU') /\
-    stpd [] G (TFun l TS' TU') (TFun l TS TU).
+    stpd [] G (TFun l TS' TU') (TFun l TS TU) /\
+    eq_some OTS' TS' /\ eq_some OTU' TU'.
 Proof.
   intros m1. induction m1; intros G y T0 H l TS TU Hsub;
   generalize dependent TU; generalize dependent TS; generalize dependent l.
   {remember 0 as m. rewrite Heqm in *. rewrite <- Heqm in H.
   induction H; intros; subst.
   - eu. eapply stp_trans_pushback in Hsub.
-    edestruct dms_hastp_inv_fun as [TS' [TU' [t' [IH1 [IH2 [IH3 IH4]]]]]]; eauto 2. eu.
-    repeat eexists; eauto.
+    edestruct dms_hastp_inv_fun as
+    [ds [TS' [TU' [t' [OTS' [OTU' [IH1 [IH2 [IH3 IH4]]]]]]]]]; eauto 2.
+    repeat eu.
+    repeat eexists; eauto 2.
   - inversion Heqm.
   - eapply htpy_bind0_contra in H. inversion H.
   - eu. eapply IHhtpy. eauto. eexists. eapply stp_trans. eapply H0. eapply Hsub.
   }
   remember (S m1) as m. induction H; intros; subst.
   - eu. eapply stp_trans_pushback in Hsub.
-    edestruct dms_hastp_inv_fun as [ds [TS' [TU' [t' [IH1 [IH2 IH3]]]]]]; eauto 2. eu.
+    edestruct dms_hastp_inv_fun as
+    [ds [TS' [TU' [t' [OTS' [OTU' [IH1 [IH2 [IH3 IH4]]]]]]]]]; eauto 2.
+    repeat eu.
     repeat eexists; eauto.
   - inversion Heqm; subst.
     eu. eapply stp_trans_pushback in Hsub. inversion Hsub; subst; eu.
@@ -1121,11 +1131,12 @@ Qed.
 
 Lemma canon_fun: forall G1 x l TS TU nx,
   has_type [] G1 (tvar true x) (TFun l TS TU) nx ->
-  exists ds TS' TU' t',
+  exists ds TS' TU' t' OTS' OTU',
     index x G1 = Some (vobj ds) /\
-    index l (dms_to_list ds) = Some (dfun TS' TU' t') /\
+    index l (dms_to_list ds) = Some (dfun OTS' OTU' t') /\
     has_typed [TS'] G1 t' (open 0 (TVar false 0) TU') /\
-    stpd [] G1 (TFun l TS' TU') (TFun l TS TU).
+    stpd [] G1 (TFun l TS' TU') (TFun l TS TU) /\
+    eq_some OTS' TS' /\ eq_some OTU' TU'.
 Proof.
   intros.
   eapply hastp_to_htpy in H. destruct H as [m H].
@@ -1176,8 +1187,8 @@ Proof.
       * SSCase "arg-val".
         ev. ev. subst.
 
-      edestruct canon_fun as [ds' [TS' [TU' [t' IH]]]]. eassumption.
-      destruct IH as [IHx [IHl [IHt IHs]]]. repeat eu.
+      edestruct canon_fun as [ds' [TS' [TU' [t' [OTS' [OTU' IH]]]]]]. eassumption.
+      destruct IH as [IHx [IHl [IHt [IHs [ETS' ETU']]]]]. repeat eu.
       eapply stp_trans_pushback in IHs. inversion IHs; subst. repeat eu.
       edestruct stp_subst as [? Bs]. erewrite subst_closed_id.
       eapply H0. eapply has_type_closed in H0. simpl. eapply H0.
@@ -1227,8 +1238,8 @@ Proof.
     + SCase "fun-val".
       ev. ev. subst.
 
-      edestruct canon_fun as [ds' [TS' [TU' [t' IH]]]]. eassumption.
-      destruct IH as [IHx [IHl [IHt IHs]]]. repeat eu.
+      edestruct canon_fun as [ds' [TS' [TU' [t' [OTS' [OTU' IH]]]]]]. eassumption.
+      destruct IH as [IHx [IHl [IHt [IHs [ETS' ETU']]]]]. repeat eu.
       eapply stp_trans_pushback in IHs. inversion IHs; subst. repeat eu.
       edestruct stp_subst as [? Bs]. erewrite subst_closed_id.
       eapply H0. eapply has_type_closed in H0. simpl. eapply H0.

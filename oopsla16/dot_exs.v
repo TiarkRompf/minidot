@@ -9,7 +9,8 @@ Hint Constructors dms_has_type.
 Definition dm_compute (d: dm) (l: lb) :=
   match d with
     | dty T11 => TMem l T11 T11
-    | dfun T11 T12 t12 => TFun l T11 T12
+    | dfun (Some T11) (Some T12) t12 => TFun l T11 T12
+    | dfun _ _ t12 => TFun l TBot TTop (* tactic not supported *)
   end.
 Fixpoint dms_compute (ds: dms) :=
   match ds with
@@ -18,8 +19,8 @@ Fixpoint dms_compute (ds: dms) :=
   end.
 
 Ltac apply_dfun := match goal with
-  | [ |- dms_has_type ?GH ?G1 (dcons (dfun ?T11 ?T12 ?t12) ?ds) ?T ?n ] =>
-    eapply (D_Fun GH G1 (length (dms_to_list ds)) T11 T12 (open 0 (TVar false (length GH)) T12) t12 ds (dms_compute ds) (TAnd (TFun (length (dms_to_list ds)) T11 T12) (dms_compute ds)))
+  | [ |- dms_has_type ?GH ?G1 (dcons (dfun (Some ?T11) (Some ?T12) ?t12) ?ds) ?T ?n ] =>
+    eapply (D_Fun GH G1 (length (dms_to_list ds)) (Some T11) T11 (Some T12) T12 (open 0 (TVar false (length GH)) T12) t12 ds (dms_compute ds) (TAnd (TFun (length (dms_to_list ds)) T11 T12) (dms_compute ds)))
   end.
 
 Ltac apply_tobj := match goal with
@@ -39,7 +40,8 @@ Ltac crush := simpl;
   try solve [eapply stp_selx; crush];
   try solve [simpl; erewrite <- closed_no_open; try reflexivity; crush];
   try solve [econstructor; crush];
-  try solve [eapply T_Sub; crush].
+  try solve [eapply T_Sub; crush];
+  try solve [unfold eq_some; eauto].
 
 Example ex0: has_typed [] [] (tobj dnil) TTop.
   eexists. crush.
@@ -51,12 +53,14 @@ Qed.
 
 Definition polyId := TFun 0 (TMem 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0) (TSel (TVarB 1) 0)).
 
+Definition tdfun TS TU t := dfun (Some TS) (Some TU) t.
+
 Example ex1: has_typed
                [] []
-               (tobj (dcons (dfun (TMem 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0) (TSel (TVarB 1) 0))
-               (tobj (dcons (dfun (TSel (TVar false 1) 0) (TSel (TVar false 1) 0) (tvar false 3)) dnil))) dnil)) polyId.
+               (tobj (dcons (tdfun (TMem 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0) (TSel (TVarB 1) 0))
+               (tobj (dcons (tdfun (TSel (TVar false 1) 0) (TSel (TVar false 1) 0) (tvar false 3)) dnil))) dnil)) polyId.
 Proof.
-  unfold polyId.
+  unfold polyId. unfold tdfun.
   eexists. crush.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
