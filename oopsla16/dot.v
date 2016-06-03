@@ -590,7 +590,8 @@ Proof.
   (* dms_has_type *)
   - econstructor.
   - econstructor. eapply IHn. eauto. omega. eapply closed_extend. eauto. eauto. eauto.
-  - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto. eapply closed_extend. eauto. eauto. eauto.
+  - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto.
+    eapply closed_extend. eauto. eapply closed_extend. eauto. eauto. eauto.
 Qed.
 
 Lemma closed_upgrade_gh: forall i i1 j k T1,

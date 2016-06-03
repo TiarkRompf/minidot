@@ -180,9 +180,11 @@ Proof.
   (* main logic *)
   inversion H.
   - Case "bot". subst.
-    eapply stpd_bot; eauto. rewrite map_length. simpl. eapply closed_subst0. rewrite app_length in H2. simpl in H2. eapply H2. eauto.
+    eapply stpd_bot; eauto. rewrite map_length. simpl. eapply closed_subst0.
+    rewrite app_length in H2. simpl in H2. eapply H2. eauto.
   - Case "top". subst.
-    eapply stpd_top; eauto. rewrite map_length. simpl. eapply closed_subst0. rewrite app_length in H2. simpl in H2. eapply H2. eauto.
+    eapply stpd_top; eauto. rewrite map_length. simpl. eapply closed_subst0.
+    rewrite app_length in H2. simpl in H2. eapply H2. eauto.
   - Case "fun". subst.
     eapply stpd_fun. eauto. eauto.
     rewrite map_length. eapply closed_subst0. rewrite app_length in *. simpl in *. eauto. omega.
@@ -207,7 +209,8 @@ Proof.
       repeat eexists. unfold substt. subst x0. simpl. eapply stp_varx. eauto.
     + (* miss *)
       assert (x0 <> 0). eapply beq_nat_false_iff. eauto.
-      repeat eexists. unfold substt. simpl. rewrite E. eapply stp_varax. rewrite map_length. rewrite app_length in H2. simpl in H2. omega.
+      repeat eexists. unfold substt. simpl. rewrite E.
+      eapply stp_varax. rewrite map_length. rewrite app_length in H2. simpl in H2. omega.
   - Case "ssel1". subst.
     assert (substt x T2 = T2) as R. eapply subst_closed_id. eapply stpd_closed2 with (GH:=[]). eauto.
     eexists. eapply stp_strong_sel1. eauto. eauto. rewrite R. eauto.
