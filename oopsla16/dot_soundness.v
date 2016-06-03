@@ -509,7 +509,7 @@ Lemma subst_aux: forall m0 m, m < m0 -> forall n0 n, n < n0 ->
     htpy m G x (substt x TX) ->
     z <> 0 ->
     htp (GH++[TX]) G z T n ->
-    htpd (map (substt x) GH) G z (substt x T)) /\
+    htpd (map (substt x) GH) G (z-1) (substt x T)) /\
   (forall G x TX GH T,
     htpy m G x (substt x TX) ->
     htp (GH++[TX]) G 0 T n ->
@@ -579,3 +579,10 @@ Proof.
         eapply IH. rewrite unsimpl_substt in IH'.
         destruct IH' as [IH1 [IH2 [IH3 IH4]]]. repeat eu.
         eexists. eapply stp_strong_sel1; eauto 2.
+      * apply beq_nat_false in E.
+        assert (htpd (map (substt x) GH) G (x0-1) (substt x (TMem l TBot T2))) as IH. {
+          eapply IHn0. instantiate (1:=n1). omega. eapply HX. apply E.
+          eassumption.
+        }
+        eu.
+        eexists. eapply stp_sel1; eauto 2.
