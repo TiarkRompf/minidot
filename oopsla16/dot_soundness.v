@@ -732,7 +732,7 @@ Proof.
         eapply IHn0. instantiate (1:=n1). omega. eapply HX. eassumption.
         eassumption.
       }
-      eu. rewrite subst_open5. eexists. eapply htp_bind. eapply IH.
+      eu. rewrite subst_open5. eexists. eapply htp_unpack. eapply IH.
       eapply closed_subst. eapply closed_upgrade_gh. eassumption. omega.
       econstructor. omega. apply nil. eassumption.
     + assert (htpd (map (substt x) GH) G (z - 1) (substt x T1)) as IH1. {
@@ -749,7 +749,18 @@ Proof.
       rewrite map_length. subst. rewrite app_length in *. simpl in *. omega.
       instantiate (1:=(map (substt x) GU)). subst. rewrite map_app. reflexivity.
 
-  - admit.
+  - intros G x TX GH T HX HZ.
+    assert (x < length G) as CX. {
+      eapply htpy_to_hastp in HX. destruct HX as [? HX]. eapply has_type_closed1 in HX.
+      eauto.
+    }
+    inversion HZ; subst.
+    + Case "var".
+      eapply index_hit0 in H. subst. eapply HX.
+    + Case "unpack".
+      admit.
+    + Case "sub".
+      admit.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.

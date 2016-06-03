@@ -345,7 +345,7 @@ with htp: tenv -> venv -> id -> ty -> nat -> Prop :=
     index x GH = Some TX ->
     closed (S x) (length G1) 0 TX ->
     htp GH G1 x TX (S n1)
-| htp_bind: forall GH G1 x TX n1,
+| htp_unpack: forall GH G1 x TX n1,
     htp GH G1 x (TBind TX) n1 ->
     closed x (length G1) 1 TX ->
     htp GH G1 x (open 0 (TVar false x) TX) (S n1)
@@ -560,7 +560,7 @@ Proof.
   - eapply stp_trans. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
   (* htp *)
   - econstructor. eauto. eapply closed_extend. eauto.
-  - eapply htp_bind. eapply IHn. eauto. omega. eapply closed_extend. eauto.
+  - eapply htp_unpack. eapply IHn. eauto. omega. eapply closed_extend. eauto.
   - eapply htp_sub. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eauto.
   (* has_type *)
   - econstructor. eapply index_extend. eauto. eapply IHn. eauto. omega. eauto. eauto. eapply closed_extend. eauto.
@@ -1569,7 +1569,7 @@ Proof.
       eapply index_splice_lo.
       rewrite A. eauto. omega.
       rewrite A. eauto.
-  - Case "htp_bind".
+  - Case "htp_unpack".
     unfold splice_var.
     case_eq (le_lt_dec (length G0) x1); intros E LE.
     + remember (x1 - (length G0)) as n.
@@ -1583,7 +1583,7 @@ Proof.
         rewrite Heqn. omega.
       }
       rewrite B.
-      eapply htp_bind.
+      eapply htp_unpack.
       specialize (IHhtp GX G0 G1 x1 (TBind TX)).
       simpl in IHhtp. unfold splice_var in IHhtp. rewrite LE in IHhtp.
       eapply IHhtp. eauto. omega.
@@ -1599,7 +1599,7 @@ Proof.
         econstructor. omega. omega.
       }
       rewrite B.
-      eapply htp_bind.
+      eapply htp_unpack.
       specialize (IHhtp GX G0 G1 x1 (TBind TX)).
       simpl in IHhtp. unfold splice_var in IHhtp. rewrite LE in IHhtp.
       rewrite <- A. eapply IHhtp. eauto. omega. eauto.
@@ -1759,7 +1759,7 @@ Proof.
   - eapply stp_trans. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
   (* htp *)
   - econstructor. eapply index_extend. eauto. eapply closed_upgrade_gh. eauto. omega.
-  - eapply htp_bind. eapply IHn. eauto. omega. eapply closed_upgrade_gh. eauto. omega.
+  - eapply htp_unpack. eapply IHn. eauto. omega. eapply closed_upgrade_gh. eauto. omega.
   - eapply htp_sub. eapply IHn. eauto. omega. eauto. eauto. subst GH.
     instantiate (1:=T::GU). eauto.
 Qed.
@@ -1847,10 +1847,10 @@ Proof.
         }
         eexists. eapply htp_var. eapply A.
         subst. eauto.
-    + SCase "bind".
+    + SCase "unpack".
       edestruct IHn_htp with (GH:=GH) (GH':=GH').
       eapply H0. omega. subst. reflexivity. subst. reflexivity. assumption.
-      eexists. eapply htp_bind; eauto.
+      eexists. eapply htp_unpack; eauto.
     + SCase "sub".
       edestruct IHn_htp as [? Htp].
       eapply H0. omega. eapply EGH. eapply EGH'. assumption.

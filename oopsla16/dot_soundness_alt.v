@@ -151,7 +151,7 @@ Proof.
         assert (htpd (map (substt x) (GH0)) G1 (xi-1) (substt x (TBind TX0))) as BB.
         eapply IHni. eapply H6. eauto. omega. omega.
         rewrite subst_open5.
-        eu. repeat eexists. eapply htp_bind. eauto. eapply closed_subst1. eauto. eauto. eauto. apply []. eauto.
+        eu. repeat eexists. eapply htp_unpack. eauto. eapply closed_subst1. eauto. eauto. eauto. apply []. eauto.
       + (* sub *) subst.
         assert (exists GL0, GL = GL0 ++ [TX] /\ GH0 = GU ++ GL0) as A. eapply gh_match1. eauto. omega.
         destruct A as [GL0 [? ?]]. subst GL.
@@ -308,7 +308,7 @@ Proof.
     assert (T2 = TX). eapply index_hit0. eauto.
     subst T2.
     repeat eexists. eauto. eauto.
-  - Case "bind". subst.
+  - Case "unpack". subst.
     assert (vtpdd m G1 x (substt x (TBind TX0))) as A.
     eapply IHnl. eauto. eauto. eauto. eauto. omega. eauto.
     destruct A as [? [? [A ?]]]. inversion A. subst.
