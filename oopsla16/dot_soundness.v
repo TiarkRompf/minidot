@@ -544,3 +544,34 @@ Proof.
       erewrite subst_open_commute in IH. erewrite subst_open_commute in IH.
       rewrite map_length. unfold substt in IH at 1. eapply IH.
       eauto. eauto. eauto. eauto.
+    + repeat unfold substt at 2. simpl.
+      eapply stpd_mem.
+      eapply IHn0. instantiate (1:=n2). omega. eapply HX. eassumption.
+      eapply IHn0. instantiate (1:=n1). omega. eapply HX. eassumption.
+    + repeat unfold substt at 2. simpl.
+      eexists. eapply stp_varx. assumption.
+    + repeat unfold substt at 2. simpl.
+      case_eq (beq_nat x0 0); intros E.
+      * eexists. eapply stp_varx. assumption.
+      * eexists. eapply stp_varax.
+        rewrite map_length. rewrite app_length in *. simpl in *.
+        eapply beq_nat_false in E. omega.
+    + unfold substt at 2. simpl. erewrite subst_closed_id.
+      eexists. eapply stp_strong_sel1; eauto 2.
+      eapply stp_closed2 in H1. simpl in H1. eapply H1.
+    + unfold substt at 3. simpl. erewrite subst_closed_id.
+      eexists. eapply stp_strong_sel2; eauto 2.
+      eapply stp_closed1 in H1. simpl in H1. eapply H1.
+    + unfold substt at 2. simpl.
+      case_eq (beq_nat x0 0); intros E.
+      * (* interesting case: converting from abstract to concrete sel1 *)
+        apply beq_nat_true in E. subst.
+        assert (htpy m G x (substt x (TMem l TBot T2))) as IH. {
+          eapply IHn0. instantiate (1:=n1). omega. eapply HX. eassumption.
+        }
+        edestruct pre_canon_mem as [ds [T IH']].
+        unfold substt in IH. simpl in IH.
+        instantiate (1:=m). unfold Subst. admit.
+        eapply IH. rewrite unsimpl_substt in IH'.
+        destruct IH' as [IH1 [IH2 [IH3 IH4]]]. repeat eu.
+        eexists. eapply stp_strong_sel1; eauto 2.
