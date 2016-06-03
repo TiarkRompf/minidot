@@ -12,34 +12,40 @@ Require Export SfLib.
 Require Export Arith.EqNat.
 Require Export Arith.Lt.
 
-Definition id := nat.
-Definition lb := nat.
+(*# Syntax #*)
+
+Definition id := nat. (* identifiers for variables *)
+Definition lb := nat. (* labels for records *)
 
 Inductive ty : Type :=
-  | TBot   : ty
-  | TTop   : ty
-  | TFun   : lb -> ty -> ty -> ty
-  | TMem   : lb -> ty -> ty -> ty
+  | TBot   : ty (* bottom type *)
+  | TTop   : ty (* type type *)
+  | TFun   : lb -> ty -> ty -> ty (* dependent function type:
+                                     { def m(x: S): U }, where x is locally bound in U *)
+  | TMem   : lb -> ty -> ty -> ty (* type member type: { type A: S..U } *)
   | TVar   : bool(*true for concrete context, false for abstract context *) ->
              id(*absolute position in context, from origin, invariant under context extension*) -> ty
   | TVarB  : id(*bound variable, de Bruijn, locally nameless style -- see open *) -> ty
-  | TSel   : ty -> lb -> ty
-  | TBind  : ty -> ty
-  | TAnd   : ty -> ty -> ty
-  | TOr    : ty -> ty -> ty
+  | TSel   : ty -> lb -> ty (* type selection: x.A -- the syntax allows T.A, but in the semantics
+                               only x.A (via TVar above) are non-trivial *)
+  | TBind  : ty -> ty (* Recursive binder: { z => T } *)
+  | TAnd   : ty -> ty -> ty (* Intersection Type: T1 /\ T2 *)
+  | TOr    : ty -> ty -> ty (* Union Type: T1 \/ T2 *)
 .
 
 Inductive tm : Type :=
-  | tvar  : bool(*like TVar*) -> id -> tm
-  | tobj  : dms(*self is next slot in abstract context -- see subst_tm*) -> tm
-  | tapp  : tm -> lb -> tm -> tm
+  | tvar  : bool(*like TVar: true for concrete, false for hypothetical *) -> id -> tm
+  (* N.B.: no varB -- terms just use absolute identifers directly *)
+  | tobj  : dms(*self is next slot in abstract context -- see subst_tm*) -> tm (* object *)
+  | tapp  : tm -> lb -> tm -> tm (* method invocation: t.m(t) *)
 
-with dm : Type :=
-  | dfun : ty -> ty -> tm -> dm
-  | dty  : ty -> dm
+with dm : Type := (* member definition --
+                     the labels, e.g. m & A, are determined from the position in member list, dms *)
+  | dfun : ty -> ty -> tm -> dm (* method: { def m(x: S): U = t }*)
+  | dty  : ty -> dm (* type: { type A = T } *)
 
 (* we need our own list-like structure for stuctural recursion, e.g. in subst_tm *)
-with dms : Type :=
+with dms : Type := (* list of member defs *)
   | dnil : dms
   | dcons : dm -> dms -> dms
 .
@@ -54,8 +60,8 @@ Inductive vl : Type :=
   | vobj  : dms -> vl
 .
 
-Definition venv := list vl.
-Definition tenv := list ty.
+Definition venv := list vl. (*rho G*)
+Definition tenv := list ty. (*Gamma GH*)
 
 Hint Unfold venv.
 Hint Unfold tenv.
@@ -66,7 +72,12 @@ Fixpoint index {X : Type} (n : id) (l : list X) : option X :=
     | a :: l'  => if beq_nat n (length l') then Some a else index n l'
   end.
 
-
+(*
+   closed i j k -- well-bound in
+   an abstract environment GH of size >= i
+   a concrete environment G of size >= j
+   under >= k binders/de Bruijn levels
+*)
 Inductive closed: nat(*abstract, TVar false i*) -> nat(*concrete, TVar true j*) -> nat(*bound, TVarB k*)
                   -> ty -> Prop :=
 | cl_bot: forall i j k,
@@ -106,7 +117,7 @@ Inductive closed: nat(*abstract, TVar false i*) -> nat(*concrete, TVar true j*) 
     closed i j k (TOr T1 T2)
 .
 
-
+(* substitute a locally bound variable at de Brujin level k with type u in type T *)
 Fixpoint open (k: nat) (u: ty) (T: ty) { struct T }: ty :=
   match T with
     | TVar b x => TVar b x (* free var remains free. functional, so we can't check for conflict *)
@@ -121,26 +132,30 @@ Fixpoint open (k: nat) (u: ty) (T: ty) { struct T }: ty :=
     | TOr T1 T2   => TOr (open k u T1) (open k u T2)
   end.
 
-Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
+(* substitute the first abstract variable (id 0) with type u in type T --
+   all other abstract variables are shifted (id decremented) to fit the shrinked abstract context
+*)
+Fixpoint subst (u : ty) (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
     | TBot         => TBot
-    | TMem l T1 T2 => TMem l (subst U T1) (subst U T2)
-    | TSel T1 l    => TSel (subst U T1) l
+    | TMem l T1 T2 => TMem l (subst u T1) (subst u T2)
+    | TSel T1 l    => TSel (subst u T1) l
     | TVarB i      => TVarB i
     | TVar true i  => TVar true i
     (* subst the _first_ aka _oldest_ abstract variables,
        the other abstract variables are shifted to resolve in the shrinked context *)
-    | TVar false i => if beq_nat i 0 then U else TVar false (i-1)
-    | TFun l T1 T2 => TFun l (subst U T1) (subst U T2)
-    | TBind T2     => TBind (subst U T2)
-    | TAnd T1 T2   => TAnd (subst U T1) (subst U T2)
-    | TOr T1 T2    => TOr (subst U T1) (subst U T2)
+    | TVar false i => if beq_nat i 0 then u else TVar false (i-1)
+    | TFun l T1 T2 => TFun l (subst u T1) (subst u T2)
+    | TBind T2     => TBind (subst u T2)
+    | TAnd T1 T2   => TAnd (subst u T1) (subst u T2)
+    | TOr T1 T2    => TOr (subst u T1) (subst u T2)
   end.
 
-
-Fixpoint subst_tm (u:nat) (T : tm) {struct T} : tm :=
-  match T with
+(* substitute the first hypothetical variable with term u in term t --
+   like subst, shifts other hypothetical variables *)
+Fixpoint subst_tm (u:nat) (t : tm) {struct t} : tm :=
+  match t with
     | tvar true i         => tvar true i
     | tvar false i        => if beq_nat i 0 then (tvar true u) else tvar false (i-1)
     | tobj ds             => tobj (subst_dms u ds)
@@ -157,6 +172,7 @@ with subst_dms (u:nat) (ds: dms) {struct ds} : dms :=
     | dcons d ds1  => dcons (subst_dm u d) (subst_dms u ds1)
   end.
 
+(* Shortcut for the common case of replacing abstract with concrete. *)
 Definition substt x T := (subst (TVar true x) T).
 Hint Immediate substt.
 
