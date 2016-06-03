@@ -938,13 +938,21 @@ Proof.
         ev. inversion H2. subst.
         assert (vtpdd x1 G1 x0 T0). eapply vtp_widen. eauto. eauto. eauto. eauto. eauto.
         euv.
-        assert (exists T, (exists n1, has_type [] G1 (tvar true x) T n1) /\ substt x T' = T) as A. eexists. split. eexists. eapply T_Vary. eauto. eauto. eauto. eauto. eapply closed_subst. eapply dms_has_type_closed in H10. eauto. econstructor. eapply index_max in H7. omega. reflexivity.
+        assert (exists T, (exists n1, has_type [] G1 (tvar true x) T n1) /\ substt x T' = T) as A. {
+          eexists. split. eexists. eapply T_Vary. eauto. eauto. eauto. eauto.
+          eapply closed_subst. eapply dms_has_type_closed in H10. eauto. econstructor.
+          eapply index_max in H7. omega. reflexivity.
+        }
         destruct A as [Tx [[na A] EqTx]].
         assert (has_typed (map (substt x) [T1x]) G1 (subst_tm x tx) (substt x (open 0 (TVar false 1) T2x))) as HIx.
         eapply hastp_subst_z. eapply H13. rewrite EqTx. eapply A.
         eu. simpl in HIx.
-        assert (has_typed (map (substt x0) []) G1 (subst_tm x0 (subst_tm x tx)) (substt x0 (substt x (open 0 (TVar false 1) T2x)))) as HIx0.
-        eapply hastp_subst. rewrite app_nil_l. eapply HIx. simpl in H11. inversion H11. unfold substt. rewrite H9. eauto.
+        assert (has_typed (map (substt x0) []) G1
+                          (subst_tm x0 (subst_tm x tx))
+                          (substt x0 (substt x (open 0 (TVar false 1) T2x)))) as HIx0. {
+          eapply hastp_subst. rewrite app_nil_l. eapply HIx.
+          simpl in H11. inversion H11. unfold substt. rewrite H9. eauto.
+        }
         eu. simpl in HIx0.
         assert ((substt x (open 0 (TVar false 1) T2x))=(open 0 (TVar false 0) (substt x T2x))) as EqT2x. {
           change 1 with (0+1). rewrite subst_open. reflexivity.
@@ -996,13 +1004,21 @@ Proof.
       ev. inversion H1. subst.
       assert (vtpdd x0 G1 x2 T0). eapply vtp_widen. eauto. eauto. eauto. eauto. eauto.
       euv.
-      assert (exists T, (exists n1, has_type [] G1 (tvar true x) T n1) /\ substt x T' = T) as A. eexists. split. eexists. eapply T_Vary. eauto. eauto. eauto. eauto. eapply closed_subst. eapply dms_has_type_closed in H10. eauto. econstructor. eapply index_max in H7. omega. reflexivity.
+      assert (exists T, (exists n1, has_type [] G1 (tvar true x) T n1) /\ substt x T' = T) as A. {
+        eexists. split. eexists. eapply T_Vary. eauto. eauto. eauto. eauto.
+        eapply closed_subst. eapply dms_has_type_closed in H10. eauto. econstructor.
+        eapply index_max in H7. omega. reflexivity.
+      }
       destruct A as [Tx [[na A] EqTx]].
       assert (has_typed (map (substt x) [T1x]) G1 (subst_tm x tx) (substt x (open 0 (TVar false 1) T2x))) as HIx.
       eapply hastp_subst_z. eapply H13. rewrite EqTx. eapply A.
       eu. simpl in HIx.
-      assert (has_typed (map (substt x2) []) G1 (subst_tm x2 (subst_tm x tx)) (substt x2 (substt x (open 0 (TVar false 1) T2x)))) as HIx0.
-      eapply hastp_subst. rewrite app_nil_l. eapply HIx. simpl in H11. inversion H11. unfold substt. rewrite H9. eauto.
+      assert (has_typed (map (substt x2) []) G1
+                        (subst_tm x2 (subst_tm x tx))
+                        (substt x2 (substt x (open 0 (TVar false 1) T2x)))) as HIx0. {
+        eapply hastp_subst. rewrite app_nil_l. eapply HIx.
+        simpl in H11. inversion H11. unfold substt. rewrite H9. eauto.
+      }
       eu. simpl in HIx0.
       assert ((substt x (open 0 (TVar false 1) T2x))=(open 0 (TVar false 0) (substt x T2x))) as EqT2x. {
         change 1 with (0+1). rewrite subst_open. reflexivity.

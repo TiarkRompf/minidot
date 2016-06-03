@@ -617,7 +617,8 @@ Qed.
 
 Lemma closed_open: forall j k n b V T, closed k n (j+1) T -> closed k n j (TVar b V) -> closed k n j (open j (TVar b V) T).
 Proof.
-  intros. generalize dependent j. induction T; intros; inversion H; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
+  intros. generalize dependent j. induction T; intros; inversion H;
+  try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
 
   - eapply closed_upgrade; eauto.
   - Case "TVarB". simpl.
@@ -957,10 +958,12 @@ Qed.
 
 Lemma closed_subst: forall j n k V T, closed (n+1) k j T -> closed n k 0 V -> closed n k j (subst V T).
 Proof.
-  intros. generalize dependent j. induction T; intros; inversion H; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
+  intros. generalize dependent j. induction T; intros; inversion H;
+  try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
 
   - Case "TSelH". simpl.
-    case_eq (beq_nat i 0); intros E. eapply closed_upgrade. eapply closed_upgrade_gh. eauto. eauto. omega. econstructor. subst.
+    case_eq (beq_nat i 0); intros E.
+    eapply closed_upgrade. eapply closed_upgrade_gh. eauto. eauto. omega. econstructor. subst.
     assert (i > 0). eapply beq_nat_false_iff in E. omega. omega.
 Qed.
 
