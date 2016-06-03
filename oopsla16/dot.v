@@ -948,7 +948,6 @@ Proof.
     assert (i > 0). eapply beq_nat_false_iff in E. omega. omega.
 Qed.
 
-(* not used? *)
 Lemma subst_open_commute_m: forall j k n m V T2, closed (n+1) k (j+1) T2 -> closed m k 0 V ->
     subst V (open j (TVar false (n+1)) T2) = open j (TVar false n) (subst V T2).
 Proof.
@@ -966,7 +965,6 @@ Proof.
   eauto.
 Qed.
 
-(* not used? *)
 Lemma subst_open_commute: forall j k n V T2, closed (n+1) k (j+1) T2 -> closed 0 k 0 V ->
     subst V (open j (TVar false (n+1)) T2) = open j (TVar false n) (subst V T2).
 Proof.
