@@ -631,4 +631,23 @@ Proof.
       econstructor. omega.
       rewrite map_length. eapply closed_subst. eassumption.
       econstructor. omega.
-    +
+    + repeat unfold substt at 2. simpl.
+      specialize (IHn0 n1).
+      assert (n1 < n0) as LEn1 by omega. specialize (IHn0 LEn1).
+      destruct IHn0 as [IH ?]. specialize (IH G x TX).
+      specialize (IH (open 0 (TVar false (length (GH ++ [TX]))) T0 :: GH)).
+      specialize (IH (open 0 (TVar false (length (GH ++ [TX]))) T0)).
+      specialize (IH (open 0 (TVar false (length (GH ++ [TX]))) T3)).
+      specialize (IH HX). specialize (IH H). eu.
+      rewrite app_length in *. simpl in *.
+      eexists. eapply stp_bindx. eapply IH.
+      rewrite map_length. simpl. unfold substt.
+      erewrite subst_open_commute. reflexivity. simpl. eassumption.
+      econstructor. omega.
+      rewrite map_length. simpl. unfold substt.
+      erewrite subst_open_commute. reflexivity. simpl. eassumption.
+      econstructor. omega.
+      rewrite map_length. eapply closed_subst. eassumption.
+      econstructor. omega.
+      rewrite map_length. eapply closed_subst. eassumption.
+      econstructor. omega.
