@@ -68,6 +68,8 @@ Definition tenv := list ty. (*Gamma GH*)
 Hint Unfold venv.
 Hint Unfold tenv.
 
+(*# Variable Binding #*)
+
 Fixpoint index {X : Type} (n : id) (l : list X) : option X :=
   match l with
     | [] => None
@@ -178,6 +180,8 @@ with subst_dms (u:nat) (ds: dms) {struct ds} : dms :=
 Definition substt x T := (subst (TVar true x) T).
 Hint Immediate substt.
 
+(*# Operational Semantics #*)
+
 (* Reduction semantics  *)
 Inductive step : venv -> tm -> venv -> tm -> Prop :=
 | ST_Obj : forall G1 D,
@@ -193,6 +197,8 @@ Inductive step : venv -> tm -> venv -> tm -> Prop :=
     step G1 t2 G1' t2' ->
     step G1 (tapp (tvar true f) l t2) G1' (tapp (tvar true f) l t2')
 .
+
+(*# Static Semantics #*)
 
 Definition eq_some {X} (OT:option X) (T:X) := OT=None \/ OT=Some T.
 
@@ -312,8 +318,6 @@ with stp: tenv -> venv -> ty -> ty -> nat -> Prop :=
 | stp_selx: forall GH G1 l T1 n1,
     closed (length GH) (length G1) 0 T1 ->
     stp GH G1 (TSel T1 l) (TSel T1 l) (S n1)
-
-
 
 | stp_bind1: forall GH G1 T1 T1' T2 n1,
     stp (T1'::GH) G1 T1' T2 n1 ->
@@ -460,8 +464,7 @@ Ltac ev := repeat match goal with
            end.
 
 
-
-
+(*# Regularity #*)
 
 Lemma index_max : forall X vs n (T: X),
                        index n vs = Some T ->
@@ -902,6 +905,7 @@ Lemma stpd_reg2 : forall GH G1 T1 T2,
 Proof. intros. eapply stpd_refl. eapply stpd_closed2. eauto. Qed.
 
 
+(*# Infrastructure Lemmas #*)
 
 Ltac index_subst := match goal with
                       | H1: index ?x ?G = ?V1 , H2: index ?x ?G = ?V2 |- _ => rewrite H1 in H2; inversion H2; subst
@@ -1291,6 +1295,8 @@ Proof.
     destruct IHGH1 as [GH0U IH].
     exists GH0U. apply IH.
 Qed.
+
+(*# Regularity II -- Abstract Context Weakening #*)
 
 (* upgrade_gh interlude begin *)
 
@@ -1840,6 +1846,8 @@ Proof.
 Qed.
 
 (* upgrade_gh interlude ends *)
+
+(*# Narrowing in Abstract Context #*)
 
 Lemma stp_narrow_aux: forall n,
   (forall GH G x T n0,
