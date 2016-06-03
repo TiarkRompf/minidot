@@ -494,3 +494,53 @@ Proof.
   simpl.
   eapply htpy_to_hastp in H0. destruct H0 as [? H0]. eapply has_type_closed in H0. simpl in H0. eapply H0.
 Qed.
+
+Lemma unsimpl_substt: forall x T, subst (TVar true x) T=substt x T.
+Proof. intros. unfold substt. reflexivity. Qed.
+
+Lemma subst_aux: forall m0 m, m < m0 -> forall n0 n, n < n0 ->
+  (forall G x TX GH T1 T2,
+    htpy m G x (substt x TX) ->
+    stp (GH++[TX]) G T1 T2 n ->
+    stpd (map (substt x) GH) G (substt x T1) (substt x T2)) /\
+  (forall G x TX GH z T,
+    htpy m G x (substt x TX) ->
+    z <> 0 ->
+    htp (GH++[TX]) G z T n ->
+    htpd (map (substt x) GH) G z (substt x T)) /\
+  (forall G x TX GH T,
+    htpy m G x (substt x TX) ->
+    htp (GH++[TX]) G 0 T n ->
+    htpy m G x (substt x T)).
+Proof.
+  induction m0; intros m LEm. inversion LEm.
+  induction n0; intros n LEn. inversion LEn.
+  split; try split.
+  - intros  G x TX GH T1 T2 HX Hsub.
+    assert (x < length G) as CX. {
+      eapply htpy_to_hastp in HX. destruct HX as [? HX]. eapply has_type_closed1 in HX.
+      eauto.
+    }
+    inversion Hsub; subst.
+    + unfold substt at 2. simpl.
+      eexists. eapply stp_bot.
+      rewrite map_length. eapply closed_subst.
+      rewrite app_length in H. simpl in H. eapply H. econstructor. omega.
+    + unfold substt at 3. simpl.
+      eexists. eapply stp_top.
+      rewrite map_length. eapply closed_subst.
+      rewrite app_length in H. simpl in H. eapply H. econstructor. omega.
+    + unfold substt at 2. unfold substt at 2. simpl.
+      rewrite app_length in *. simpl in *.
+      eapply stpd_fun. reflexivity. reflexivity.
+      rewrite map_length. eapply closed_subst. eassumption. econstructor. omega.
+      rewrite map_length. eapply closed_subst. eassumption. econstructor. omega.
+      eapply IHn0. instantiate (1:=n1). omega. eapply HX. eassumption.
+      edestruct IHn0 as [IH ?]. instantiate (1:=n2). omega.
+      specialize (IH G x TX).
+      specialize (IH (T4::GH) (open 0 (TVar false (length GH + 1)) T3) (open 0 (TVar false (length GH + 1)) T5)).
+      specialize (IH HX H4).
+      simpl in IH. repeat unfold substt in IH at 3.
+      erewrite subst_open_commute in IH. erewrite subst_open_commute in IH.
+      rewrite map_length. unfold substt in IH at 1. eapply IH.
+      eauto. eauto. eauto. eauto.
