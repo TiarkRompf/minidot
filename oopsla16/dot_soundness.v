@@ -845,61 +845,95 @@ Qed.
 hastp_subst is needed for canonical forms on functions (to substitute self).
 The paper delays this lemma until main soundness proof, while it would fit nicely
 at the end of the section on substitution. *)
-Lemma hastp_subst: forall n G1 GH TX T x t nx,
+Lemma hastp_subst_aux: forall n0 n, n < n0 -> forall G1 GH TX T x t nx,
   has_type (GH++[TX]) G1 t T n ->
   has_type [] G1 (tvar true x) (substt x TX) nx ->
   has_typed (map (substt x) GH) G1 (subst_tm x t) (substt x T).
 Proof.
-  intros n. induction n; intros. inversion H.
+  intros n0. induction n0; intros n LE. inversion LE.
+  intros G1 GH TX T x t nx H HX.
   inversion H; subst.
   - eexists. simpl.
     erewrite subst_closed_id. eapply T_Vary; eauto 2. eassumption.
   - simpl. case_eq (beq_nat x0 0); intros E.
-    + apply beq_nat_true in E. subst. apply index_hit0 in H2. subst.
+    + apply beq_nat_true in E. subst. apply index_hit0 in H0. subst.
       eapply hastp_upgrade_gh. eassumption.
     + apply beq_nat_false in E.
       eexists. eapply T_Varz. eapply index_subst1. eassumption. apply E.
       rewrite app_length in *. simpl in *. rewrite map_length.
       eapply closed_subst. eassumption. econstructor.
-      eapply has_type_closed1 in H0. omega.
-  - simpl. edestruct IHn as [? IH]; eauto. destruct b.
+      eapply has_type_closed1 in HX. omega.
+  - simpl. edestruct IHn0 as [? IH]; eauto. omega. destruct b.
     + eexists. simpl in IH. eapply T_VarPack. eapply IH.
       rewrite subst_open_commute1. eauto.
       rewrite map_length. eapply closed_subst. rewrite app_length in *. simpl in *.
-      eassumption. econstructor. eapply has_type_closed1 in H0. omega.
+      eassumption. econstructor. eapply has_type_closed1 in HX. omega.
     + case_eq (beq_nat x0 0); intros E.
       * apply beq_nat_true in E. subst. unfold substt at 2. simpl. simpl in IH.
         eexists. eapply T_VarPack. eapply IH.
         rewrite subst_open_commute0b. eauto.
         rewrite map_length. eapply closed_subst. rewrite app_length in *. simpl in *.
-        eassumption. econstructor. eapply has_type_closed1 in H0. omega.
+        eassumption. econstructor. eapply has_type_closed1 in HX. omega.
       * simpl in IH. rewrite E in IH. unfold substt at 2. simpl.
         eexists. eapply T_VarPack. eapply IH.
         rewrite subst_open5. eauto. apply nil. apply beq_nat_false; eauto.
         rewrite map_length. eapply closed_subst. rewrite app_length in *. simpl in *.
-        eassumption. econstructor. eapply has_type_closed1 in H0. omega.
-  - simpl. edestruct IHn as [? IH]; eauto. destruct b.
+        eassumption. econstructor. eapply has_type_closed1 in HX. omega.
+  - simpl. edestruct IHn0 as [? IH]. instantiate (1:=n1). omega. eauto. eauto.
+    destruct b.
     + eexists. simpl in IH. eapply T_VarUnpack. eapply IH.
       rewrite subst_open_commute1. eauto.
       rewrite map_length. eapply closed_subst. rewrite app_length in *. simpl in *.
-      eassumption. econstructor. eapply has_type_closed1 in H0. omega.
+      eassumption. econstructor. eapply has_type_closed1 in HX. omega.
     + case_eq (beq_nat x0 0); intros E.
       * apply beq_nat_true in E. subst. unfold substt at 2. simpl. simpl in IH.
         eexists. eapply T_VarUnpack. eapply IH.
         eapply subst_open_commute0b.
         rewrite map_length. eapply closed_subst. rewrite app_length in *. simpl in *.
-        eassumption. econstructor. eapply has_type_closed1 in H0. omega.
+        eassumption. econstructor. eapply has_type_closed1 in HX. omega.
       * simpl in IH. rewrite E in IH. unfold substt at 2. simpl.
         eexists. eapply T_VarUnpack. eapply IH.
         eapply subst_open5. apply nil. apply beq_nat_false; eauto.
         rewrite map_length. eapply closed_subst. rewrite app_length in *. simpl in *.
-        eassumption. econstructor. eapply has_type_closed1 in H0. omega.
+        eassumption. econstructor. eapply has_type_closed1 in HX. omega.
   - simpl. unfold substt at 2. simpl. rewrite unsimpl_substt. admit.
-  - admit.
-  - admit.
-  - admit.
+  - simpl.
+    edestruct IHn0 as [? IH1]. instantiate (1:=n1). omega. eauto. eauto.
+    edestruct IHn0 as [? IH2]. instantiate (1:=n2). omega. eauto. eauto.
+    eexists. eapply T_App. eapply IH1. eapply IH2.
+    rewrite map_length. eapply closed_subst. rewrite app_length in *. simpl in *.
+    eassumption. econstructor. eapply has_type_closed1 in HX. omega.
+  - edestruct IHn0 as [? IH1]. instantiate (1:=n1). omega. eauto. eauto.
+    edestruct IHn0 as [? IH2]. instantiate (1:=n2). omega. eauto. eauto.
+    simpl. destruct b2.
+    + eexists. eapply T_AppVar. eapply IH1. eapply IH2.
+      rewrite subst_open_commute1. eauto.
+      rewrite map_length. eapply closed_subst. rewrite app_length in *. simpl in *.
+      eassumption. econstructor. eapply has_type_closed1 in HX. omega.
+    + case_eq (beq_nat x2 0); intros E.
+      * apply beq_nat_true in E. subst.
+        eexists. eapply T_AppVar. eapply IH1. eapply IH2.
+        eapply subst_open_commute0b.
+        rewrite map_length. eapply closed_subst. rewrite app_length in *. simpl in *.
+        eassumption. econstructor. eapply has_type_closed1 in HX. omega.
+      * simpl in IH2. rewrite E in IH2.
+        eexists. eapply T_AppVar. eapply IH1. eapply IH2.
+        eapply subst_open5. apply nil. apply beq_nat_false; eauto.
+        rewrite map_length. eapply closed_subst. rewrite app_length in *. simpl in *.
+        eassumption. econstructor. eapply has_type_closed1 in HX. omega.
+  - edestruct IHn0 as [? IH1]. instantiate (1:=n1). omega. eauto. eauto.
+    edestruct stp_subst as [? IH2]. eauto. eauto.
+    eexists. eapply T_Sub. eapply IH1. eapply IH2.
 Grab Existential Variables.
 apply 0.
+Qed.
+
+Lemma hastp_subst: forall n G1 GH TX T x t nx,
+  has_type (GH++[TX]) G1 t T n ->
+  has_type [] G1 (tvar true x) (substt x TX) nx ->
+  has_typed (map (substt x) GH) G1 (subst_tm x t) (substt x T).
+Proof.
+  intros. eapply hastp_subst_aux; eauto 2.
 Qed.
 
 Lemma dms_hastp_inv_fun: forall G1 x ds' T' l TS TU n nx,
