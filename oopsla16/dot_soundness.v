@@ -1161,7 +1161,27 @@ Proof.
     destruct HF.
     + SCase "fun-val".
       ev. ev. subst.
-      admit.
+
+      edestruct canon_fun as [ds' [TS' [TU' [t' IH]]]]. eassumption.
+      destruct IH as [IHx [IHl [IHt IHs]]]. repeat eu.
+      eapply stp_trans_pushback in IHs. inversion IHs; subst. repeat eu.
+      edestruct stp_subst as [? Bs]. erewrite subst_closed_id.
+      eapply H0. eapply has_type_closed in H0. simpl. eapply H0.
+      instantiate (4:=nil). simpl. eassumption.
+      edestruct hastp_subst as [? Bt].
+      instantiate (6:=nil). simpl. eapply IHt. erewrite subst_closed_id.
+      eapply T_Sub. eapply H0. eassumption.
+      change 0 with (length (@nil ty)). eapply stp_closed2. eassumption.
+      simpl in *.
+
+      right. repeat eexists. rewrite app_nil_l. eapply ST_AppAbs. eauto. eauto.
+      simpl. eapply T_Sub. eapply Bt.
+      assert (substt x2 (open 0 (TVar false 0) T2)=open 0 (TVar true x2) T2) as EqT2. {
+        rewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity.
+        eassumption.
+      }
+      rewrite <- EqT2. eapply Bs.
+
     + SCase "fun_step".
       ev. subst. right. repeat eexists. eapply ST_App1. eauto. eapply T_AppVar.
       eauto. eapply has_type_extend_mult. eauto. reflexivity.
