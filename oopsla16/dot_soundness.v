@@ -841,6 +841,29 @@ Proof.
     destruct IH as [n' IH]. eapply htp_to_hastp. eapply IH.
 Qed.
 
+Lemma canon_bind: forall G y T n,
+  has_type [] G (tvar true y) (TBind T) n ->
+  has_typed [] G (tvar true y) (open 0 (TVar true y) T).
+Proof.
+  intros.
+  eapply hastp_to_htpy in H. destruct H as [m H].
+  assert (htpy (m-1) G y (open 0 (TVar true y) T)) as A. {
+    eapply pre_canon_bind. eapply all_Subst. eapply H.
+  }
+  eapply htpy_to_hastp. eapply A.
+Qed.
+
+Lemma canon_mem: forall G y l TS TU n,
+  has_type [] G (tvar true y) (TMem l TS TU) n ->
+  exists ds T, index y G = Some (vobj ds) /\
+               index l (dms_to_list ds) = Some (dty T) /\
+               stpd [] G TS T /\ stpd [] G T TU.
+Proof.
+  intros.
+  eapply hastp_to_htpy in H. destruct H as [m H].
+  eapply pre_canon_mem; eauto 2. eapply all_Subst.
+Qed.
+
 (* TODO(draft):
 hastp_subst is needed for canonical forms on functions (to substitute self).
 The paper delays this lemma until main soundness proof, while it would fit nicely
@@ -990,18 +1013,6 @@ Proof.
       edestruct IHdms_has_type as [T IH]. eauto. eauto.
       exists (dsa ++ [dfun T11 T12 t12]). rewrite <- app_assoc. simpl. eauto. eauto. eauto. eauto. eauto.
       exists T. eapply IH.
-Qed.
-
-Lemma canon_bind: forall G y T n,
-  has_type [] G (tvar true y) (TBind T) n ->
-  has_typed [] G (tvar true y) (open 0 (TVar true y) T).
-Proof.
-  intros.
-  eapply hastp_to_htpy in H. destruct H as [m H].
-  assert (htpy (m-1) G y (open 0 (TVar true y) T)) as A. {
-    eapply pre_canon_bind. eapply all_Subst. eapply H.
-  }
-  eapply htpy_to_hastp. eapply A.
 Qed.
 
 Lemma canon_fun_aux: forall nx G1 x T0,
