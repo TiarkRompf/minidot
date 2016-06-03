@@ -1130,7 +1130,27 @@ Proof.
       destruct HX.
       * SSCase "arg-val".
         ev. ev. subst.
-        admit.
+
+      edestruct canon_fun as [ds' [TS' [TU' [t' IH]]]]. eassumption.
+      destruct IH as [IHx [IHl [IHt IHs]]]. repeat eu.
+      eapply stp_trans_pushback in IHs. inversion IHs; subst. repeat eu.
+      edestruct stp_subst as [? Bs]. erewrite subst_closed_id.
+      eapply H0. eapply has_type_closed in H0. simpl. eapply H0.
+      instantiate (4:=nil). simpl. eassumption.
+      edestruct hastp_subst as [? Bt].
+      instantiate (6:=nil). simpl. eapply IHt. erewrite subst_closed_id.
+      eapply T_Sub. eapply H0. eassumption.
+      change 0 with (length (@nil ty)). eapply stp_closed2. eassumption.
+      simpl in *.
+
+      right. repeat eexists. rewrite app_nil_l. eapply ST_AppAbs. eauto. eauto.
+      simpl. eapply T_Sub. eapply Bt.
+      assert (substt x0 (open 0 (TVar false 0) T)=T) as EqT2. {
+        rewrite subst_open_commute0b. erewrite subst_closed_id.
+        erewrite <- closed_no_open. reflexivity.
+        eassumption. eassumption.
+      }
+      rewrite <- EqT2. eapply Bs.
 
       * SSCase "arg_step".
         ev. subst.
