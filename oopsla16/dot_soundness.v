@@ -788,3 +788,94 @@ Proof.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
+
+Theorem type_safety : forall G t T n1,
+  has_type [] G t T n1 ->
+  (exists x, t = tvar true x) \/
+  (exists G' t' n2, step G t (G'++G) t' /\ has_type [] (G'++G) t' T n2).
+Proof.
+  intros.
+  assert (closed (length ([]:tenv)) (length G) 0 T) as CL. eapply has_type_closed. eauto.
+  remember [] as GH. remember t as tt. remember T as TT.
+  revert T t HeqTT HeqGH Heqtt CL.
+  induction H; intros.
+  - Case "vary". eauto.
+  - Case "varz". subst GH. inversion H.
+  - Case "pack". subst GH.
+    eapply has_type_closed_b in H. destruct H. subst.
+    left. eexists. reflexivity.
+  - Case "unpack". subst GH.
+    eapply has_type_closed_b in H. destruct H. subst.
+    left. eexists. reflexivity.
+  - Case "obj". subst. right.
+    repeat eexists. rewrite <- app_cons1. eapply ST_Obj.
+    eapply T_VarPack. eapply T_Vary.
+    simpl. rewrite beq_nat_true_eq. eauto. eapply dms_has_type_extend. eauto. eauto. eauto.
+    eapply closed_subst. eapply closed_open. eapply closed_extend. eapply closed_upgrade_gh. eauto.
+    simpl. omega. simpl. econstructor. omega. simpl. econstructor. omega.
+    simpl. rewrite subst_open_commute0b. erewrite subst_closed_id. reflexivity. eauto.
+    eapply closed_extend. eauto.
+  - Case "app". subst.
+    assert (closed (length ([]:tenv)) (length G1) 0 (TFun l T1 T)) as TF. eapply has_type_closed. eauto.
+    assert ((exists x : id, t2 = tvar true x) \/
+                (exists (G' : venv) (t' : tm) n2,
+                   step G1 t2 (G'++G1) t' /\ has_type [] (G'++G1) t' T1 n2)) as HX.
+    eapply IHhas_type2. eauto. eauto. eauto. inversion TF. eauto.
+    assert ((exists x : id, t1 = tvar true x) \/
+                (exists (G' : venv) (t' : tm) n2,
+                   step G1 t1 (G'++G1) t' /\ has_type [] (G'++G1) t' (TFun l T1 T) n2)) as HF.
+    eapply IHhas_type1. eauto. eauto. eauto. eauto.
+    destruct HF.
+    + SCase "fun-val".
+      destruct HX.
+      * SSCase "arg-val".
+        ev. ev. subst.
+        admit.
+
+      * SSCase "arg_step".
+        ev. subst.
+        right. repeat eexists. eapply ST_App2. eauto. eapply T_App.
+        eapply has_type_extend_mult. eauto. eauto.
+        simpl in *. rewrite app_length. eapply closed_extend_mult. eassumption. omega.
+    + SCase "fun_step".
+      ev. subst. right. repeat eexists. eapply ST_App1. eauto. eapply T_App.
+      eauto. eapply has_type_extend_mult. eauto.
+      simpl in *. rewrite app_length. eapply closed_extend_mult. eassumption. omega.
+
+  - Case "appvar". subst.
+    assert (closed (length ([]:tenv)) (length G1) 0 (TFun l T1 T2)) as TF. eapply has_type_closed. eauto.
+    assert ((exists x : id, tvar b2 x2 = tvar true x) \/
+                (exists (G' : venv) (t' : tm) n2,
+                   step G1 (tvar b2 x2) (G'++G1) t' /\ has_type [] (G'++G1) t' T1 n2)) as HX.
+    eapply IHhas_type2. eauto. eauto. eauto. inversion TF. eauto.
+    assert (b2 = true) as HXeq. {
+      destruct HX as [[? HX] | Contra]. inversion HX. reflexivity.
+      destruct Contra as [G' [t' [n' [Hstep Htyp]]]].
+      inversion Hstep.
+    }
+    clear HX. subst b2.
+    assert ((exists x : id, t1 = tvar true x) \/
+                (exists (G' : venv) (t' : tm) n2,
+                   step G1 t1 (G'++G1) t' /\ has_type [] (G'++G1) t' (TFun l T1 T2) n2)) as HF.
+    eapply IHhas_type1. eauto. eauto. eauto. eauto.
+    destruct HF.
+    + SCase "fun-val".
+      ev. ev. subst.
+      admit.
+    + SCase "fun_step".
+      ev. subst. right. repeat eexists. eapply ST_App1. eauto. eapply T_AppVar.
+      eauto. eapply has_type_extend_mult. eauto. reflexivity.
+      simpl in *. rewrite app_length. eapply closed_extend_mult. eassumption. omega.
+
+  - Case "sub". subst.
+    assert ((exists x : id, t0 = tvar true x) \/
+               (exists (G' : venv) (t' : tm) n2,
+                  step G1 t0 (G'++G1) t' /\ has_type [] (G'++G1) t' T1 n2)) as HH.
+    eapply IHhas_type; eauto. change 0 with (length ([]:tenv)) at 1. eapply stpd_closed1; eauto.
+    destruct HH.
+    + SCase "val".
+      ev. subst. left. eexists. eauto.
+    + SCase "step".
+      ev. subst.
+      right. repeat eexists. eauto. eapply T_Sub. eauto. eapply stp_extend_mult. eauto.
+Qed.
