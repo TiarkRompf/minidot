@@ -767,7 +767,7 @@ Proof.
       rewrite subst_open_commute0b. reflexivity.
       eapply closed_subst. eapply closed_open. simpl. eapply closed_upgrade_gh.
       eassumption. omega. simpl. econstructor. omega. econstructor. omega.
-      (* TODO: I didn't need Lemma 6 here -- it's an unpack, not a pack :) ... *)
+      (* TODO(draft): I didn't need Lemma 6 here -- it's an unpack, not a pack :) ... *)
     + Case "sub".
       edestruct gh_match1 as [GL1 [EqGL EqGH]]. eassumption. omega.
       assert (length GL1=0) as EGL1. {
@@ -787,6 +787,229 @@ Proof.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+Qed.
+
+Lemma stp_subst: forall G x TX GH T1 T2 nx n,
+  has_type [] G (tvar true x) (substt x TX) nx ->
+  stp (GH++[TX]) G T1 T2 n ->
+  stpd (map (substt x) GH) G (substt x T1) (substt x T2).
+Proof.
+  intros. edestruct hastp_to_htpy as [m HX]. eassumption.
+  eapply subst_aux; eauto 2.
+Qed.
+
+Lemma all_Subst: forall m, Subst m.
+Proof.
+  intros. unfold Subst. intros. eapply htpy_to_hastp in H0. destruct H0.
+  eapply stp_subst; eauto 2.
+Qed.
+
+Lemma htp_to_hastp: forall GH G z T n,
+  htp GH G z T n ->
+  has_typed GH G (tvar false z) T.
+Proof.
+  intros. induction H;
+  try destruct IHhtp as [n IH].
+  - eexists. eapply T_Varz. assumption.
+    eapply closed_upgrade_gh. eassumption. eapply index_max in H. omega.
+  - eexists. eapply T_VarUnpack; eauto 2.
+    eapply has_type_closed_z in IH.
+    eapply closed_open. simpl. eapply closed_upgrade_gh. eassumption. omega.
+    econstructor. omega.
+  - eexists. eapply T_Sub. eassumption. subst.
+    eapply stp_upgrade_gh_mult. eassumption.
+Grab Existential Variables. apply 0.
+Qed.
+
+Lemma htp_subst: forall G x TX GH z T nx n,
+  has_type [] G (tvar true x) (substt x TX) nx ->
+  htp (GH++[TX]) G z T n ->
+  has_typed (map (substt x) GH) G (subst_tm x (tvar false z)) (substt x T).
+Proof.
+  intros. edestruct hastp_to_htpy as [m HX]. eassumption.
+  simpl. case_eq (beq_nat z 0); intros E.
+  - apply beq_nat_true in E. subst.
+    assert (htpy m G x (substt x T)) as IH. {
+      eapply subst_aux. instantiate (1:=S m). omega. eauto. eapply HX. eassumption.
+    }
+    eapply htpy_to_hastp in IH. destruct IH as [n' IH].
+    eapply hastp_upgrade_gh. eapply IH.
+  - apply beq_nat_false in E.
+    assert (htpd (map (substt x) GH) G (z - 1) (substt x T)) as IH. {
+      eapply subst_aux. eauto. eauto. eapply HX. assumption. eassumption.
+    }
+    destruct IH as [n' IH]. eapply htp_to_hastp. eapply IH.
+Qed.
+
+(* TODO(draft):
+hastp_subst is needed for canonical forms on functions (to substitute self).
+The paper delays this lemma until main soundness proof, while it would fit nicely
+at the end of the section on substitution. *)
+Lemma hastp_subst: forall n G1 GH TX T x t nx,
+  has_type (GH++[TX]) G1 t T n ->
+  has_type [] G1 (tvar true x) (substt x TX) nx ->
+  has_typed (map (substt x) GH) G1 (subst_tm x t) (substt x T).
+Proof.
+  intros n. induction n; intros. inversion H.
+  inversion H; subst.
+  - eexists. simpl.
+    erewrite subst_closed_id. eapply T_Vary; eauto 2. eassumption.
+  - simpl. case_eq (beq_nat x0 0); intros E.
+    + apply beq_nat_true in E. subst. apply index_hit0 in H2. subst.
+      eapply hastp_upgrade_gh. eassumption.
+    + apply beq_nat_false in E.
+      eexists. eapply T_Varz. eapply index_subst1. eassumption. apply E.
+      rewrite app_length in *. simpl in *. rewrite map_length.
+      eapply closed_subst. eassumption. econstructor.
+      eapply has_type_closed1 in H0. omega.
+  - simpl. edestruct IHn as [? IH]; eauto. destruct b.
+    + eexists. simpl in IH. eapply T_VarPack. eapply IH.
+      rewrite subst_open_commute1. eauto.
+      rewrite map_length. eapply closed_subst. rewrite app_length in *. simpl in *.
+      eassumption. econstructor. eapply has_type_closed1 in H0. omega.
+    + case_eq (beq_nat x0 0); intros E.
+      * apply beq_nat_true in E. subst. unfold substt at 2. simpl. simpl in IH.
+        eexists. eapply T_VarPack. eapply IH.
+        rewrite subst_open_commute0b. eauto.
+        rewrite map_length. eapply closed_subst. rewrite app_length in *. simpl in *.
+        eassumption. econstructor. eapply has_type_closed1 in H0. omega.
+      * simpl in IH. rewrite E in IH. unfold substt at 2. simpl.
+        eexists. eapply T_VarPack. eapply IH.
+        rewrite subst_open5. eauto. apply nil. apply beq_nat_false; eauto.
+        rewrite map_length. eapply closed_subst. rewrite app_length in *. simpl in *.
+        eassumption. econstructor. eapply has_type_closed1 in H0. omega.
+  - simpl. edestruct IHn as [? IH]; eauto. destruct b.
+    + eexists. simpl in IH. eapply T_VarUnpack. eapply IH.
+      rewrite subst_open_commute1. eauto.
+      rewrite map_length. eapply closed_subst. rewrite app_length in *. simpl in *.
+      eassumption. econstructor. eapply has_type_closed1 in H0. omega.
+    + case_eq (beq_nat x0 0); intros E.
+      * apply beq_nat_true in E. subst. unfold substt at 2. simpl. simpl in IH.
+        eexists. eapply T_VarUnpack. eapply IH.
+        eapply subst_open_commute0b.
+        rewrite map_length. eapply closed_subst. rewrite app_length in *. simpl in *.
+        eassumption. econstructor. eapply has_type_closed1 in H0. omega.
+      * simpl in IH. rewrite E in IH. unfold substt at 2. simpl.
+        eexists. eapply T_VarUnpack. eapply IH.
+        eapply subst_open5. apply nil. apply beq_nat_false; eauto.
+        rewrite map_length. eapply closed_subst. rewrite app_length in *. simpl in *.
+        eassumption. econstructor. eapply has_type_closed1 in H0. omega.
+  - simpl. unfold substt at 2. simpl. rewrite unsimpl_substt. admit.
+  - admit.
+  - admit.
+  - admit.
+Grab Existential Variables.
+apply 0.
+Qed.
+
+Lemma dms_hastp_inv_fun: forall G1 x ds' T' l TS TU n nx,
+  has_type [] G1 (tvar true x) (substt x T') nx ->
+  dms_has_type [T'] G1 ds' T' n ->
+  closed 0 (length G1) 0 (substt x T') ->
+  index x G1 = Some (vobj (subst_dms x ds')) ->
+  stpp G1 (substt x T') (TFun l TS TU) ->
+  exists TS' TU' t', index l (dms_to_list (subst_dms x ds')) = Some (dfun TS' TU' t') /\
+  has_typed [TS'] G1 t' (open 0 (TVar false 0) TU') /\
+  stpd [] G1 (TFun l TS' TU') (TFun l TS TU).
+Proof.
+  intros G1 x ds' T' l TS TU n nx HX H HC HI Hsub.
+  remember T' as T0. remember H as HT0. clear HeqHT0.
+  rewrite HeqT0 in H at 2. rewrite HeqT0 in Hsub. rewrite HeqT0 in HC. clear HeqT0.
+  remember ds' as ds0. rewrite Heqds0 in H.
+  assert (exists dsa, dms_to_list ds0 = dsa ++ dms_to_list ds') as Hds. {
+    exists []. rewrite app_nil_l. subst. reflexivity.
+  }
+  clear Heqds0.
+  remember n as n0. rewrite Heqn0 in *. rewrite <- Heqn0 in HT0. clear Heqn0.
+  remember [T0] as GH. generalize dependent T0.
+  generalize dependent TU. generalize dependent TS. generalize dependent l.
+  induction H; intros; unfold substt in Hsub; simpl in Hsub.
+  - inversion Hsub.
+  - subst. simpl in Hsub.
+    destruct Hds as [dsa Hdsa]. simpl in Hdsa.
+    inversion Hsub; subst.
+    + inversion H4.
+    + assert (closed 0 (length G1) 0 (substt x TS)) as HCS. {
+       unfold substt in *. simpl in HC. inversion HC; subst.
+       eauto.
+      }
+      edestruct IHdms_has_type as [T IH]. eauto. eauto.
+      exists (dsa ++ [dty T11]). rewrite <- app_assoc. simpl. eauto. eauto. eauto. eauto. eauto.
+      exists T. eapply IH.
+  - subst. simpl in Hsub.
+    destruct Hds as [dsa Hdsa]. simpl in Hdsa.
+    inversion Hsub; subst.
+    + inversion H6; subst.
+      exists (subst (TVar true x) T11). exists (subst (TVar true x) T12).
+      eexists (subst_tm x t12).
+      split.
+      erewrite index_subst_dms with (D:=dfun T11 T12 t12). simpl. reflexivity. eauto.
+      split.
+      * edestruct hastp_subst with (GH:=[T11]) (TX:=T0) as [? A]; eauto. simpl in A.
+        erewrite <- subst_open_commute. simpl. unfold substt in A. eexists. eapply A.
+        eauto. econstructor. eapply has_type_closed1 in HX. omega.
+      * eapply stpp_to_stp. eassumption.
+    + assert (closed 0 (length G1) 0 (substt x TS)) as HCS. {
+       unfold substt in *. simpl in HC. inversion HC; subst.
+       eauto.
+      }
+      edestruct IHdms_has_type as [T IH]. eauto. eauto.
+      exists (dsa ++ [dfun T11 T12 t12]). rewrite <- app_assoc. simpl. eauto. eauto. eauto. eauto. eauto.
+      exists T. eapply IH.
+Qed.
+
+Lemma canon_bind: forall G y T n,
+  has_type [] G (tvar true y) (TBind T) n ->
+  has_typed [] G (tvar true y) (open 0 (TVar true y) T).
+Proof.
+  intros.
+  eapply hastp_to_htpy in H. destruct H as [m H].
+  assert (htpy (m-1) G y (open 0 (TVar true y) T)) as A. {
+    eapply pre_canon_bind. eapply all_Subst. eapply H.
+  }
+  eapply htpy_to_hastp. eapply A.
+Qed.
+
+Lemma canon_fun_aux: forall nx G1 x T0,
+  has_type [] G1 (tvar true x) T0 nx -> forall l TS TU, stpd [] G1 T0 (TFun l TS TU) ->
+  exists ds TS' TU' t',
+    index x G1 = Some (vobj ds) /\
+    index l (dms_to_list ds) = Some (dfun TS' TU' t') /\
+    has_typed [TS'] G1 t' (open 0 (TVar false 0) TU') /\
+    stpd [] G1 (TFun l TS' TU') (TFun l TS TU).
+Proof.
+  intros nx. induction nx; intros G1 x T0 H l TS TU Hsub. inversion H.
+  remember H as HX. clear HeqHX.
+  inversion H; intros; subst.
+  - eu. eapply stp_trans_pushback in Hsub.
+    edestruct dms_hastp_inv_fun as [TS' [TU' [t' [IH1 [IH2 [IH3 IH4]]]]]]; eauto. eu.
+    repeat eexists; eauto.
+  - eu. eapply stp_trans_pushback in Hsub. inversion Hsub; subst; eu.
+    + assert (substt x T1=T1) as EqT1. {
+        eapply subst_closed_id. eassumption.
+      }
+      assert (substt x (open 0 (TVar false 0) T1) = (open 0 (TVar true x) T1)) as A. {
+        rewrite subst_open_commute0b. rewrite EqT1. reflexivity.
+      }
+      assert (substt x (TFun l TS TU)=(TFun l TS TU)) as EqT. {
+        eapply subst_closed_id. eassumption.
+      }
+      assert (open 0 (TVar false 0) (TFun l TS TU)=(TFun l TS TU)) as EqT'. {
+        erewrite <- closed_no_open. reflexivity. eassumption.
+      }
+      assert (open 0 (TVar true x) (TFun l TS TU)=(TFun l TS TU)) as EqT''. {
+        erewrite <- closed_no_open. reflexivity. eassumption.
+      }
+      edestruct stp_subst as [? B]. rewrite <- A in H5. eapply H5.
+      instantiate (4:=nil). simpl. eassumption. rewrite A in B.
+      edestruct IHnx as [ds' [TS' [TU' [t' IH]]]]. eassumption. eexists. eapply B.
+      destruct IH as [IH1 [IH2 [IH3 IH4]]].
+      exists ds'. exists TS'. exists TU'. exists t'.
+      split. eapply IH1. split. eapply IH2. split. eapply IH3.
+      rewrite <- EqT. unfold substt. simpl. eapply IH4.
+  - eu. edestruct canon_bind as [? B]. eassumption. admit.
+    (* edestruct IHnx as [ds' [TS' [TU' [T' IH]]]]. eapply B. *)
+  - eu. admit.
 Qed.
 
 Theorem type_safety : forall G t T n1,
