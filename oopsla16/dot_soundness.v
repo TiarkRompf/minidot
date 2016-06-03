@@ -719,10 +719,38 @@ Proof.
       eapply IHn0. instantiate (1:=n1). omega. eapply HX. eassumption.
       eapply IHn0. instantiate (1:=n2). omega. eapply HX. eassumption.
 
-  - admit.
+  - intros G x TX GH z T HX NE HZ.
+    assert (x < length G) as CX. {
+      eapply htpy_to_hastp in HX. destruct HX as [? HX]. eapply has_type_closed1 in HX.
+      eauto.
+    }
+    inversion HZ; subst.
+    + eexists. eapply htp_var. eapply index_subst1. eapply H. eapply NE.
+      eapply closed_subst. eapply closed_upgrade_gh. eassumption.
+      omega. econstructor. omega.
+    + assert (htpd (map (substt x) GH) G (z - 1) (substt x (TBind TX0))) as IH. {
+        eapply IHn0. instantiate (1:=n1). omega. eapply HX. eassumption.
+        eassumption.
+      }
+      eu. rewrite subst_open5. eexists. eapply htp_bind. eapply IH.
+      eapply closed_subst. eapply closed_upgrade_gh. eassumption. omega.
+      econstructor. omega. apply nil. eassumption.
+    + assert (htpd (map (substt x) GH) G (z - 1) (substt x T1)) as IH1. {
+        eapply IHn0. instantiate (1:=n1). omega. eapply HX. eassumption.
+        eassumption.
+      }
+      edestruct gh_match1 as [GL1 [EqGL EqGH]]. eassumption. omega.
+      assert (stpd (map (substt x) GL1) G (substt x T1) (substt x T)) as IH2. {
+        eapply IHn0. instantiate (1:=n2). omega. eapply HX.
+        rewrite <- EqGL. eassumption.
+      }
+      repeat eu.
+      eexists. eapply htp_sub. eapply IH1. eapply IH2.
+      rewrite map_length. subst. rewrite app_length in *. simpl in *. omega.
+      instantiate (1:=(map (substt x) GU)). subst. rewrite map_app. reflexivity.
 
   - admit.
 
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
