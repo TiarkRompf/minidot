@@ -564,7 +564,8 @@ Proof.
     + unfold substt at 3. simpl. erewrite subst_closed_id.
       eexists. eapply stp_strong_sel2; eauto 2.
       eapply stp_closed1 in H1. simpl in H1. eapply H1.
-    + unfold substt at 2. simpl.
+    + Case "sel1".
+      unfold substt at 2. simpl.
       case_eq (beq_nat x0 0); intros E.
       * (* interesting case: converting from abstract to concrete sel1 *)
         apply beq_nat_true in E. subst.
@@ -586,3 +587,26 @@ Proof.
         }
         eu.
         eexists. eapply stp_sel1; eauto 2.
+    + Case "sel2".
+      unfold substt at 3. simpl.
+      case_eq (beq_nat x0 0); intros E.
+      * (* interesting case: converting from abstract to concrete sel2 *)
+        apply beq_nat_true in E. subst.
+        assert (htpy m G x (substt x (TMem l T1 TTop))) as IH. {
+          eapply IHn0. instantiate (1:=n1). omega. eapply HX. eassumption.
+        }
+        edestruct pre_canon_mem as [ds [T IH']].
+        unfold substt in IH. simpl in IH.
+        instantiate (1:=m). unfold Subst. intros.
+        eapply IHm0. instantiate (1:=m1). omega.
+        instantiate (1:=S n2). instantiate (1:=n2). omega. eauto. eassumption.
+        eapply IH. rewrite unsimpl_substt in IH'.
+        destruct IH' as [IH1 [IH2 [IH3 IH4]]]. repeat eu.
+        eexists. eapply stp_strong_sel2; eauto 2.
+      * apply beq_nat_false in E.
+        assert (htpd (map (substt x) GH) G (x0-1) (substt x (TMem l T1 TTop))) as IH. {
+          eapply IHn0. instantiate (1:=n1). omega. eapply HX. apply E.
+          eassumption.
+        }
+        eu.
+        eexists. eapply stp_sel2; eauto 2.
