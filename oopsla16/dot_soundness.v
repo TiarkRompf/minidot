@@ -758,9 +758,32 @@ Proof.
     + Case "var".
       eapply index_hit0 in H. subst. eapply HX.
     + Case "unpack".
-      admit.
+      eapply TY_VarUnpack.
+      instantiate (1:=substt x TX0).
+      assert (TBind (substt x TX0)=substt x (TBind TX0)) as A by
+            solve [unfold substt; simpl; reflexivity].
+      rewrite A.
+      eapply IHn0. instantiate (1:=n1). omega. eapply HX. eassumption.
+      rewrite subst_open_commute0b. reflexivity.
+      eapply closed_subst. eapply closed_open. simpl. eapply closed_upgrade_gh.
+      eassumption. omega. simpl. econstructor. omega. econstructor. omega.
+      (* TODO: I didn't need Lemma 6 here -- it's an unpack, not a pack :) ... *)
     + Case "sub".
-      admit.
+      edestruct gh_match1 as [GL1 [EqGL EqGH]]. eassumption. omega.
+      assert (length GL1=0) as EGL1. {
+        subst. rewrite app_length in *. simpl in *. omega.
+      }
+      assert (GL1=[]) as EqGL1. {
+        destruct GL1. reflexivity. simpl in EGL1. omega.
+      }
+      rewrite EqGL1 in EqGL. simpl in EqGL.
+      assert (stpd (map (substt x) []) G (substt x T1) (substt x T)) as IH2. {
+        eapply IHn0. instantiate (1:=n2). omega. eapply HX. simpl.
+        rewrite <- EqGL. eassumption.
+      }
+      eu.
+      eapply TY_Sub.
+      eapply IHn0. instantiate (1:=n1). omega. eapply HX. eassumption. eapply IH2.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
