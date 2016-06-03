@@ -715,3 +715,14 @@ Proof.
       specialize (IH2 GH T3 T2).
       specialize (IH2 HX). specialize (IH2 H0). eu.
       eexists. eapply stp_or1. eapply IH1. eapply IH2.
+    + eapply stpd_trans.
+      eapply IHn0. instantiate (1:=n1). omega. eapply HX. eassumption.
+      eapply IHn0. instantiate (1:=n2). omega. eapply HX. eassumption.
+
+  - admit.
+
+  - admit.
+
+Grab Existential Variables.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+Qed.
