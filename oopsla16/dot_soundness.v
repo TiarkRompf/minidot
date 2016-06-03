@@ -1015,21 +1015,31 @@ Proof.
       exists T. eapply IH.
 Qed.
 
-Lemma canon_fun_aux: forall nx G1 x T0,
-  has_type [] G1 (tvar true x) T0 nx -> forall l TS TU, stpd [] G1 T0 (TFun l TS TU) ->
+Lemma canon_fun_aux: forall m1, forall G y T0,
+  htpy m1 G y T0 -> forall l TS TU, stpd [] G T0 (TFun l TS TU) ->
   exists ds TS' TU' t',
-    index x G1 = Some (vobj ds) /\
+    index y G = Some (vobj ds) /\
     index l (dms_to_list ds) = Some (dfun TS' TU' t') /\
-    has_typed [TS'] G1 t' (open 0 (TVar false 0) TU') /\
-    stpd [] G1 (TFun l TS' TU') (TFun l TS TU).
+    has_typed [TS'] G t' (open 0 (TVar false 0) TU') /\
+    stpd [] G (TFun l TS' TU') (TFun l TS TU).
 Proof.
-  intros nx. induction nx; intros G1 x T0 H l TS TU Hsub. inversion H.
-  remember H as HX. clear HeqHX.
-  inversion H; intros; subst.
+  intros m1. induction m1; intros G y T0 H l TS TU Hsub;
+  generalize dependent TU; generalize dependent TS; generalize dependent l.
+  {remember 0 as m. rewrite Heqm in *. rewrite <- Heqm in H.
+  induction H; intros; subst.
   - eu. eapply stp_trans_pushback in Hsub.
-    edestruct dms_hastp_inv_fun as [TS' [TU' [t' [IH1 [IH2 [IH3 IH4]]]]]]; eauto. eu.
+    edestruct dms_hastp_inv_fun as [TS' [TU' [t' [IH1 [IH2 [IH3 IH4]]]]]]; eauto 2. eu.
     repeat eexists; eauto.
-  - eu. eapply stp_trans_pushback in Hsub. inversion Hsub; subst; eu.
+  - inversion Heqm.
+  - eapply htpy_bind0_contra in H. inversion H.
+  - eu. eapply IHhtpy. eauto. eexists. eapply stp_trans. eapply H0. eapply Hsub.
+  }
+  remember (S m1) as m. induction H; intros; subst.
+  - eu. eapply stp_trans_pushback in Hsub.
+    edestruct dms_hastp_inv_fun as [TS' [TU' [t' [IH1 [IH2 [IH3 IH4]]]]]]; eauto 2. eu.
+    repeat eexists; eauto.
+  - inversion Heqm; subst.
+    eu. eapply stp_trans_pushback in Hsub. inversion Hsub; subst; eu.
     + assert (substt x T1=T1) as EqT1. {
         eapply subst_closed_id. eassumption.
       }
@@ -1045,16 +1055,36 @@ Proof.
       assert (open 0 (TVar true x) (TFun l TS TU)=(TFun l TS TU)) as EqT''. {
         erewrite <- closed_no_open. reflexivity. eassumption.
       }
-      edestruct stp_subst as [? B]. rewrite <- A in H5. eapply H5.
-      instantiate (4:=nil). simpl. eassumption. rewrite A in B.
-      edestruct IHnx as [ds' [TS' [TU' [t' IH]]]]. eassumption. eexists. eapply B.
-      destruct IH as [IH1 [IH2 [IH3 IH4]]].
-      exists ds'. exists TS'. exists TU'. exists t'.
-      split. eapply IH1. split. eapply IH2. split. eapply IH3.
-      rewrite <- EqT. unfold substt. simpl. eapply IH4.
-  - eu. edestruct canon_bind as [? B]. eassumption. admit.
-    (* edestruct IHnx as [ds' [TS' [TU' [T' IH]]]]. eapply B. *)
-  - eu. admit.
+      assert (htpy (S m1) G1 x (TBind (TFun l TS TU))) as H'. {
+        eapply TY_Sub. eapply TY_VarPack; eauto.
+        eapply stp_bindx. eapply H2. simpl. reflexivity.
+        simpl. simpl in EqT'. rewrite EqT'. reflexivity.
+        simpl. eauto. simpl. eapply closed_upgrade. eauto. omega.
+      }
+      eapply pre_canon_bind in H'. rewrite EqT'' in H'.
+      assert (S m1 - 1 = m1) as Eqm1 by omega. rewrite Eqm1 in H'.
+      edestruct IHm1 as [TS' [TU' [t' IH]]]. eapply H'.
+      eapply stpd_refl. eauto.
+      eexists TS'. eexists TU'. eexists t'. eapply IH.
+      eapply all_Subst.
+  - assert (S m1 - 1 = m1) as Eqm1 by omega.
+    eu. eapply pre_canon_bind in H. rewrite Eqm1 in H.
+    edestruct IHm1 as [TS' [TU' [t' IH]]]. eapply H. eexists. eauto.
+    eexists TS'. eexists TU'. eexists t'. eapply IH. eapply all_Subst.
+  - eu. eapply IHhtpy; eauto 2. eexists. eapply stp_trans. eassumption. eapply Hsub.
+Qed.
+
+Lemma canon_fun: forall G1 x T0 nx,
+  has_type [] G1 (tvar true x) T0 nx -> forall l TS TU, stpd [] G1 T0 (TFun l TS TU) ->
+  exists ds TS' TU' t',
+    index x G1 = Some (vobj ds) /\
+    index l (dms_to_list ds) = Some (dfun TS' TU' t') /\
+    has_typed [TS'] G1 t' (open 0 (TVar false 0) TU') /\
+    stpd [] G1 (TFun l TS' TU') (TFun l TS TU).
+Proof.
+  intros.
+  eapply hastp_to_htpy in H. destruct H as [m H].
+  eapply canon_fun_aux; eauto 2.
 Qed.
 
 Theorem type_safety : forall G t T n1,
