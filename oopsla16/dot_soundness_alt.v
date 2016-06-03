@@ -659,7 +659,8 @@ Proof.
     }
     eu.
     destruct Hds as [dsa Hdsa]. simpl in Hdsa.
-    edestruct IHdms_has_type as [? [? AS]]. eauto. eauto. eauto. exists (dsa ++ [dty T11]). rewrite <- app_assoc. simpl. eauto. eauto. eauto.
+    edestruct IHdms_has_type as [? [? AS]]. eauto. eauto. eauto.
+    exists (dsa ++ [dty T11]). rewrite <- app_assoc. simpl. eauto. eauto. eauto.
     unfold substt in *. simpl.
     repeat eexists. eapply vtp_and. eapply vtp_mem. eauto.
     erewrite index_subst_dms with (D:=dty T11). simpl. reflexivity. eauto.
@@ -687,7 +688,8 @@ Proof.
     }
     eu.
     destruct Hds as [dsa Hdsa]. simpl in Hdsa.
-    edestruct IHdms_has_type as [? [? AS]]. eauto. eauto. eauto. exists (dsa ++ [dfun T11 T12 t12]). rewrite <- app_assoc. simpl. eauto. eauto. eauto.
+    edestruct IHdms_has_type as [? [? AS]]. eauto. eauto. eauto.
+    exists (dsa ++ [dfun T11 T12 t12]). rewrite <- app_assoc. simpl. eauto. eauto. eauto.
     unfold substt in *. simpl.
     repeat eexists. eapply vtp_and. eapply vtp_fun. eauto.
     erewrite index_subst_dms with (D:=dfun T11 T12 t12). simpl. reflexivity. eauto.
@@ -868,7 +870,9 @@ Proof.
     eexists. eapply D_Nil.
   - Case "mem". subst. simpl.
     edestruct IHniD as [? IH]. eapply H2. omega. eauto.
-    eexists. eapply D_Mem. eauto. eapply closed_subst0. rewrite app_length in H3. rewrite map_length. eauto. eapply has_type_closed1. eauto. eauto.
+    eexists. eapply D_Mem. eauto. eapply closed_subst0.
+    rewrite app_length in H3. rewrite map_length. eauto.
+    eapply has_type_closed1. eauto. eauto.
     unfold substt. simpl. rewrite <- length_subst_dms. reflexivity.
   - Case "abs". subst. simpl.
     edestruct IHniD as [? IHD]. eapply H2. omega. eauto.
@@ -877,8 +881,12 @@ Proof.
     eexists. eapply D_Fun. eapply IHD. eapply HI.
     rewrite map_length. rewrite app_length. simpl.
     rewrite subst_open. unfold substt. reflexivity.
-    eapply closed_subst0. rewrite map_length. rewrite app_length in H5. simpl in H5. eauto. eauto. eapply has_type_closed1. eauto.
-    eapply closed_subst0. rewrite map_length. rewrite app_length in H6. simpl in H6. eauto. eapply has_type_closed1. eauto. eauto.
+    eapply closed_subst0. rewrite map_length.
+    rewrite app_length in H5. simpl in H5. eauto. eauto.
+    eapply has_type_closed1. eauto.
+    eapply closed_subst0. rewrite map_length.
+    rewrite app_length in H6. simpl in H6. eauto.
+    eapply has_type_closed1. eauto. eauto.
     unfold substt. simpl. rewrite <- length_subst_dms. reflexivity.
 Grab Existential Variables.
 apply 0. apply 0.
