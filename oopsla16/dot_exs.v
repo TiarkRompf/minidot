@@ -284,9 +284,51 @@ Proof.
   apply T_App with (T1:=TTop); try solve [simpl; reflexivity]; crush.
   crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
   crush. crush. simpl.
-  instantiate (1:=0). admit.
+
+  eapply stp_bindx; simpl; try solve [reflexivity]; [idtac | crush | crush].
+  eapply stp_and2.
+  - eapply stp_and11; [idtac | crush].
+    eapply stp_fun; simpl; try solve [reflexivity]; [crush | crush | crush | idtac].
+    eapply stp_and2; [idtac | crush].
+    eapply stp_trans with (T2:= (TBind
+                                   (TAnd
+                                      (TFun 1 TTop
+                                            (TAnd (TSel (TVar false 0) 0)
+                                                  (TMem 0 TBot (TSel (TVarB 1) 0))))
+                                      (TMem 0 TBot TTop)))).
+    eapply stp_bindx; simpl; try solve [reflexivity]; [idtac | crush | crush].
+    eapply stp_and2.
+    eapply stp_and11; [idtac | crush].
+    eapply stp_fun; simpl; try solve [reflexivity]; [crush | crush | crush | idtac ].
+    eapply stp_and2. eapply stp_and11; [idtac | crush].
+    eapply stp_selx. crush. eapply stp_and12; [idtac | crush].
+    eapply stp_mem. crush. eapply stp_selx. crush.
+    eapply stp_and12; crush.
+    eapply stp_sel2; simpl; try solve [reflexivity].
+    apply_htp_sub. eapply htp_var. simpl. reflexivity. crush.
+    eapply stp_and12. eapply stp_and11. compute.
+    eapply stp_mem.
+    eapply stp_bindx; simpl; try solve [reflexivity]; [idtac | crush | crush].
+    eapply stp_and2.
+    eapply stp_and11; [idtac | crush].
+    eapply stp_fun; simpl; try solve [reflexivity]; [crush | crush | crush | idtac ].
+    eapply stp_and2. eapply stp_and11; [idtac | crush].
+    eapply stp_selx. crush. eapply stp_and12; [idtac | crush].
+    eapply stp_mem. crush. eapply stp_selx. crush.
+    eapply stp_and12; crush. crush. crush. crush. crush. crush.
+  - eapply stp_and12. eapply stp_and11. eapply stp_mem. crush.
+    eapply stp_bindx; simpl; try solve [reflexivity]; [idtac | crush | crush].
+    eapply stp_and2.
+    eapply stp_and11; [idtac | crush].
+    eapply stp_fun; simpl; try solve [reflexivity]; [crush | crush | crush | idtac ].
+    eapply stp_and2. eapply stp_and11; [idtac | crush].
+    eapply stp_selx. crush. eapply stp_and12; [idtac | crush].
+    eapply stp_mem. crush. eapply stp_selx. crush.
+    eapply stp_and12; crush. crush. crush.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
