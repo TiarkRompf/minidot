@@ -28,22 +28,22 @@ Ltac apply_tobj := match goal with
     eapply (T_Obj GH G1 ds) with (T':=(dms_compute ds)); try solve [simpl; reflexivity]
 end.
 
-Ltac stp_and_pick :=
+Ltac pick_stp_and c :=
   match goal with
     | [ |- stp ?GH ?G1 (TAnd ?T _) ?T ?n ] =>
-      eapply stp_and11
+      eapply stp_and11; c
     | [ |- stp ?GH ?G1 (TAnd _ ?T) ?T ?n ] =>
-      eapply stp_and12
+      eapply stp_and12; c
     | [ |- stp ?GH ?G1 (TAnd _ _) (TAnd _ _) ?n ] =>
       idtac
     | [ |- stp ?GH ?G1 (TAnd (TFun ?l _ _) _) (TFun ?l _ _) ?n ] =>
-      eapply stp_and11
+      eapply stp_and11; c
     | [ |- stp ?GH ?G1 (TAnd (TFun ?l _ _) _) _ ?n ] =>
-      eapply stp_and12
+      eapply stp_and12; c
     | [ |- stp ?GH ?G1 (TAnd (TMem ?l _ _) _) (TMem ?l _ _) ?n ] =>
-      eapply stp_and11
+      eapply stp_and11; c
     | [ |- stp ?GH ?G1 (TAnd (TMem ?l _ _) _) _ ?n ] =>
-      eapply stp_and12
+      eapply stp_and12; c
     | _ => idtac
   end.
 
@@ -100,15 +100,16 @@ Ltac crush := simpl;
   try solve [apply_dfun; crush];
   try solve [eapply stp_bot; crush];
   try solve [eapply stp_selx; crush];
+  try solve [eapply stp_and2; crush];
+  try solve [pick_stp_and crush];
   try solve [eapply stp_sel2; try solve [simpl; reflexivity]; crush];
   try solve [eapply stp_sel1; try solve [simpl; reflexivity]; crush];
-  try solve [eapply stp_and2; stp_and_pick; crush];
-  try solve [eapply stp_bindx; try solve [simpl; reflexivity]; stp_and_pick; crush];
-  try solve [eapply stp_bind1; try solve [simpl; reflexivity]; stp_and_pick; crush];
+  try solve [eapply stp_bindx; try solve [simpl; reflexivity]; crush];
+  try solve [eapply stp_bind1; try solve [simpl; reflexivity]; crush];
   try solve [apply_rev_open];
   try solve [simpl; erewrite <- closed_no_open; try reflexivity; crush];
   try solve [apply_htp_sub; try solve [simpl; reflexivity];
-             [eapply htp_var; crush | compute; repeat stp_and_pick; crush]];
+             [eapply htp_var; crush | compute; repeat pick_stp_and; crush]];
   try solve [econstructor; try solve [simpl; reflexivity]; crush];
   try solve [eapply T_Sub; crush];
   try solve [unfold eq_some; eauto 3].
@@ -320,7 +321,7 @@ Proof.
     eapply stp_selx. crush. eapply stp_and12; [idtac | crush].
     eapply stp_mem. crush. eapply stp_selx. crush.
     eapply stp_and12; crush. crush. crush. crush. crush. crush.
-  - eapply stp_and12. stp_and_pick. crush. crush. crush.
+  - crush.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
