@@ -28,13 +28,22 @@ Ltac apply_tobj := match goal with
     eapply (T_Obj GH G1 ds) with (T':=(dms_compute ds))
 end.
 
-Ltac apply_stp_bind1 := match goal with
-  | [ |- stp ?GH ?G1 (TBind (TAnd ?T1 ?T2)) ?T1 ?n ] =>
-    eapply stp_bind1 with (T1':=(TAnd T1 T2))
-end.
+Ltac stp_and_pick :=
+  match goal with
+    | [ |- stp ?GH ?G1 (TAnd (TFun ?l _ _) _) (TFun ?l _ _) ?n ] =>
+      eapply stp_and11
+    | [ |- stp ?GH ?G1 (TAnd (TFun ?l _ _) _) _ ?n ] =>
+      eapply stp_and12
+    | [ |- stp ?GH ?G1 (TAnd (TMem ?l _ _) _) (TFun ?l _ _) ?n ] =>
+      eapply stp_and11
+    | [ |- stp ?GH ?G1 (TAnd (TMem ?l _ _) _) _ ?n ] =>
+      eapply stp_and12
+  end.
 
 Ltac crush := simpl;
-  try solve [apply_stp_bind1; crush];
+  try solve [eapply stp_bindx; try solve [simpl; reflexivity]; crush];
+  try solve [eapply stp_bind1; try solve [simpl; reflexivity]; crush];
+  try solve [eapply stp_and2; stp_and_pick; crush];
   try solve [eapply T_Sub; [(apply_tobj; crush) | (crush)]];
   try solve [apply_dfun; crush];
   try solve [eapply stp_selx; crush];
@@ -165,13 +174,10 @@ Proof.
   apply_tobj; simpl.
   apply_dfun; simpl. crush.
   eapply T_Sub. apply_tobj; simpl.
-  apply_dfun; simpl. crush.
-  eapply T_App; try solve [simpl; reflexivity]. instantiate (2:=TTop).
-  eapply T_Sub. eapply T_Varz; crush. crush. crush. crush. crush. crush. crush. crush.
-  crush. crush. crush. crush. crush. eapply stp_bindx; try solve [simpl; reflexivity].
-  eapply stp_and2. crush. eapply stp_and12. eapply stp_and11. crush. crush. crush.
-  crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
-  eapply stp_bindx; try solve [simpl; reflexivity].
+  apply_dfun; simpl; eauto 2.
+  apply T_App with (T1:=TTop); try solve [simpl; reflexivity]; crush.
+  crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
+  crush. crush. eapply stp_bindx; try solve [simpl; reflexivity].
   eapply stp_and2. eapply stp_and11. eapply stp_fun; try solve [simpl; reflexivity].
   crush. crush. crush. eapply stp_and2. eapply stp_sel2; try solve [simpl; reflexivity].
   eapply htp_sub. eapply htp_var. simpl. reflexivity. crush.
