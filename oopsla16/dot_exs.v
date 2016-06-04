@@ -79,6 +79,8 @@ Ltac crush := simpl;
   try solve [apply_dfun; crush];
   try solve [eapply stp_selx; crush];
   try solve [simpl; erewrite <- closed_no_open; try reflexivity; crush];
+  try solve [apply_htp_sub; try solve [simpl; reflexivity];
+             [eapply htp_var; crush | compute; repeat stp_and_pick; crush]];
   try solve [econstructor; crush];
   try solve [eapply T_Sub; crush];
   try solve [unfold eq_some; eauto 3].
@@ -128,7 +130,7 @@ Proof.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0.
+apply 0. apply 0. apply 0.
 Qed.
 
 (*# Example from Paper #*)
@@ -213,10 +215,7 @@ Proof.
   eapply stp_and2; stp_and_pick.
   eapply stp_fun; eauto 2. crush. crush.
   eapply stp_and2; stp_and_pick.
-  eapply stp_sel2; try solve [simpl; reflexivity].
-  apply_htp_sub; eauto 2;
-  try solve [eapply htp_var; crush];
-  compute; repeat stp_and_pick; crush.
+  eapply stp_sel2; try solve [simpl; reflexivity]; crush.
   crush. crush. crush. crush. crush. crush.
 
 Grab Existential Variables.
