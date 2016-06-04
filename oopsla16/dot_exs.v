@@ -38,6 +38,7 @@ Ltac stp_and_pick :=
       eapply stp_and11
     | [ |- stp ?GH ?G1 (TAnd (TMem ?l _ _) _) _ ?n ] =>
       eapply stp_and12
+    | _ => idtac
   end.
 
 Ltac crush := simpl;
@@ -178,13 +179,11 @@ Proof.
   apply T_App with (T1:=TTop); try solve [simpl; reflexivity]; crush.
   crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
   crush. crush. eapply stp_bindx; try solve [simpl; reflexivity].
-  eapply stp_and2. eapply stp_and11. eapply stp_fun; try solve [simpl; reflexivity].
-  crush. crush. crush. eapply stp_and2. eapply stp_sel2; try solve [simpl; reflexivity].
+  eapply stp_and2; stp_and_pick.
+  eapply stp_fun; eauto 2. crush. crush.
+  eapply stp_and2; stp_and_pick. eapply stp_sel2; try solve [simpl; reflexivity].
   eapply htp_sub. eapply htp_var. simpl. reflexivity. crush.
-  eapply stp_and12. eapply stp_and11. eapply stp_mem.
-  eapply stp_bindx; try solve [simpl; reflexivity].
-  eapply stp_and2. eapply stp_and11. crush. crush. eapply stp_and12. crush. crush.
-  crush. crush. crush. crush. crush.
+  eapply stp_and12. eapply stp_and11. crush. crush. crush.
   instantiate (1:=[TAnd
    (TFun 1 TTop
       (TBind (TAnd (TFun 1 TTop (TSel (TVarB 1) 0)) (TMem 0 TBot TBot))))
@@ -194,11 +193,7 @@ Proof.
          (TBind (TAnd (TFun 1 TTop (TSel (TVarB 1) 0)) (TMem 0 TBot TTop))))
       TTop)]). simpl. reflexivity. instantiate (1:=[TTop]). simpl. reflexivity.
   eapply stp_bind1; try solve [simpl; reflexivity]. eapply stp_and12. crush.
-  crush. crush. crush. crush. eapply stp_and12. eapply stp_and11.
-  eapply stp_mem. crush.
-  eapply stp_bindx; try solve [simpl; reflexivity].
-  eapply stp_and2. eapply stp_and11. crush. crush.  eapply stp_and12. crush. crush.
-  crush. crush. crush. crush. crush. crush.
+  crush. crush. crush. crush. crush. crush. crush. crush.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
