@@ -30,11 +30,13 @@ end.
 
 Ltac stp_and_pick :=
   match goal with
+    | [ |- stp ?GH ?G1 (TAnd _ _) (TAnd _ _) ?n ] =>
+      idtac
     | [ |- stp ?GH ?G1 (TAnd (TFun ?l _ _) _) (TFun ?l _ _) ?n ] =>
       eapply stp_and11
     | [ |- stp ?GH ?G1 (TAnd (TFun ?l _ _) _) _ ?n ] =>
       eapply stp_and12
-    | [ |- stp ?GH ?G1 (TAnd (TMem ?l _ _) _) (TFun ?l _ _) ?n ] =>
+    | [ |- stp ?GH ?G1 (TAnd (TMem ?l _ _) _) (TMem ?l _ _) ?n ] =>
       eapply stp_and11
     | [ |- stp ?GH ?G1 (TAnd (TMem ?l _ _) _) _ ?n ] =>
       eapply stp_and12
@@ -70,8 +72,8 @@ Ltac apply_htp_sub :=
 
 SearchAbout list.
 Ltac crush := simpl;
-  try solve [eapply stp_bindx; try solve [simpl; reflexivity]; crush];
-  try solve [eapply stp_bind1; try solve [simpl; reflexivity]; crush];
+  try solve [eapply stp_bindx; try solve [simpl; reflexivity]; stp_and_pick; crush];
+  try solve [eapply stp_bind1; try solve [simpl; reflexivity]; stp_and_pick; crush];
   try solve [eapply stp_and2; stp_and_pick; crush];
   try solve [eapply T_Sub; [(apply_tobj; crush) | (crush)]];
   try solve [apply_dfun; crush];
@@ -123,6 +125,7 @@ Proof.
   instantiate (2:=TMem 0 TTop TTop). crush.
   crush.
   crush.
+
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0.
