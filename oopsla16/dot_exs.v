@@ -72,16 +72,17 @@ Ltac apply_htp_sub :=
 
 SearchAbout list.
 Ltac crush := simpl;
-  try solve [eapply stp_bindx; try solve [simpl; reflexivity]; stp_and_pick; crush];
-  try solve [eapply stp_bind1; try solve [simpl; reflexivity]; stp_and_pick; crush];
-  try solve [eapply stp_and2; stp_and_pick; crush];
   try solve [eapply T_Sub; [(apply_tobj; crush) | (crush)]];
   try solve [apply_dfun; crush];
   try solve [eapply stp_selx; crush];
+  try solve [eapply stp_sel2; try solve [simpl; reflexivity]; crush];
+  try solve [eapply stp_bindx; try solve [simpl; reflexivity]; stp_and_pick; crush];
+  try solve [eapply stp_bind1; try solve [simpl; reflexivity]; stp_and_pick; crush];
+  try solve [eapply stp_and2; stp_and_pick; crush];
   try solve [simpl; erewrite <- closed_no_open; try reflexivity; crush];
   try solve [apply_htp_sub; try solve [simpl; reflexivity];
              [eapply htp_var; crush | compute; repeat stp_and_pick; crush]];
-  try solve [econstructor; crush];
+  try solve [econstructor; try solve [simpl; reflexivity]; crush];
   try solve [eapply T_Sub; crush];
   try solve [unfold eq_some; eauto 3].
 
@@ -214,13 +215,11 @@ Proof.
   crush. crush. eapply stp_bindx; try solve [simpl; reflexivity].
   eapply stp_and2; stp_and_pick.
   eapply stp_fun; eauto 2. crush. crush.
-  eapply stp_and2; stp_and_pick.
-  eapply stp_sel2; try solve [simpl; reflexivity]; crush.
-  crush. crush. crush. crush. crush. crush.
+  eapply stp_and2; stp_and_pick. crush. crush. crush. crush. crush. crush. crush.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0.
+apply 0. apply 0. apply 0.
 Qed.
