@@ -212,11 +212,12 @@ Proof.
   crush. crush. eapply stp_bindx; try solve [simpl; reflexivity].
   eapply stp_and2; stp_and_pick.
   eapply stp_fun; eauto 2. crush. crush.
-  eapply stp_and2; stp_and_pick. eapply stp_sel2; try solve [simpl; reflexivity].
-  apply_htp_sub. eapply htp_var; crush.
-  compute. eapply stp_and12. eapply stp_and11. crush. crush. crush. crush. crush.
-  eapply stp_bind1; try solve [simpl; reflexivity]. eapply stp_and12. crush.
-  crush. crush. crush. crush. crush. crush. crush. crush.
+  eapply stp_and2; stp_and_pick.
+  eapply stp_sel2; try solve [simpl; reflexivity].
+  apply_htp_sub; eauto 2;
+  try solve [eapply htp_var; crush];
+  compute; repeat stp_and_pick; crush.
+  crush. crush. crush. crush. crush. crush.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
