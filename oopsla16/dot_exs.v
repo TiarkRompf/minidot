@@ -25,7 +25,7 @@ Ltac apply_dfun := match goal with
 
 Ltac apply_tobj := match goal with
   | [ |- has_type ?GH ?G1 (tobj ?ds) ?T ?n ] =>
-    eapply (T_Obj GH G1 ds) with (T':=(dms_compute ds))
+    eapply (T_Obj GH G1 ds) with (T':=(dms_compute ds)); try solve [simpl; reflexivity]
 end.
 
 Ltac stp_and_pick :=
@@ -64,21 +64,44 @@ Definition compute_GL {X} (G: list X) (n: nat) :=
     | (GU,GL) => GL
   end.
 
+Fixpoint rev_open (k: nat) (u: id) (T: ty) { struct T }: ty :=
+  match T with
+    | TVar false x => if beq_nat x u then TVarB k else TVar false x
+    | TVar true x => TVar true x
+    | TVarB i => TVarB i
+    | TTop        => TTop
+    | TBot        => TBot
+    | TSel T1 l     => TSel (rev_open k u T1) l
+    | TFun l T1 T2  => TFun l (rev_open k u T1) (rev_open (S k) u T2)
+    | TMem l T1 T2  => TMem l (rev_open k u T1) (rev_open k u T2)
+    | TBind T1    => TBind (rev_open (S k) u T1)
+    | TAnd T1 T2  => TAnd (rev_open k u T1) (rev_open k u T2)
+    | TOr T1 T2   => TOr (rev_open k u T1) (rev_open k u T2)
+  end.
+
 Ltac apply_htp_sub :=
   match goal with
     | [ |- htp ?GH ?G1 ?x ?T ?n ] =>
       eapply (htp_sub GH (compute_GU GH x) (compute_GL GH x))
   end.
 
-SearchAbout list.
+Ltac apply_rev_open :=
+  match goal with
+    | [ |- ?T1 = open ?k (TVar false ?u) ?T2 ] =>
+      try instantiate (1:=rev_open k u T1); simpl; reflexivity
+  end.
+  
 Ltac crush := simpl;
   try solve [eapply T_Sub; [(apply_tobj; crush) | (crush)]];
   try solve [apply_dfun; crush];
+  try solve [eapply stp_bot; crush];
   try solve [eapply stp_selx; crush];
   try solve [eapply stp_sel2; try solve [simpl; reflexivity]; crush];
+  try solve [eapply stp_sel1; try solve [simpl; reflexivity]; crush];
   try solve [eapply stp_and2; stp_and_pick; crush];
   try solve [eapply stp_bindx; try solve [simpl; reflexivity]; stp_and_pick; crush];
   try solve [eapply stp_bind1; try solve [simpl; reflexivity]; stp_and_pick; crush];
+  try solve [apply_rev_open];
   try solve [simpl; erewrite <- closed_no_open; try reflexivity; crush];
   try solve [apply_htp_sub; try solve [simpl; reflexivity];
              [eapply htp_var; crush | compute; repeat stp_and_pick; crush]];
@@ -98,7 +121,7 @@ Definition lobj ds := tobj (list_to_dms ds).
 Example ex0: has_typed [] [] (tobj dnil) TTop.
   eexists. crush.
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0.
 Qed.
 
 (* define polymorphic identity function *)
@@ -113,7 +136,6 @@ Proof.
   eexists. crush.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0.
 Qed.
 
 (* instantiate it to TTop *)
@@ -180,7 +202,7 @@ def cons(t: { type T }) = new {
 (*
 new { m =>
   type List = { this => type Elem; def head(): this.Elem }
-  def nil() = new { this => type Elem = Bot def head() = bot() }
+  def nil() = new { this => type Elem = Bot; def head() = bot() }
 } : { m =>
   type List <: { this => type Elem; def head(): this.Elem }
   def nil(): List & { type Elem = Bot }
@@ -191,7 +213,7 @@ Definition TLstHd EL EU :=
     (TFun 1 TTop (TSel (TVarB 1) 0)) (*def head(_:Top):this.Elem*)
     (TMem 0 EL EU) (*type Elem*)
   )).
-Example paper_lsthd_nil:
+Example paper_lst_hd_nil:
   has_typed [] []
     (lobj
        [(tfun
@@ -217,6 +239,54 @@ Proof.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+Qed.
+
+Definition shift o v :=
+  match v with
+    | TVarB i => TVarB (o+i)
+    | _ => v
+  end.
+(*
+new { m =>
+  type List = { this => type Elem; def tail(): m.List & { type Elem <: this.Elem } }
+  def nil() = new { this => type Elem = Bot; def tail() = bot() }
+} : { m =>
+  type List <: { this => type Elem; def tail(): m.List & { type Elem <: this.Elem } }
+  def nil(): List & { type Elem = Bot }
+}
+*)
+Definition TLstTl o m EL EU :=
+  (TBind (TAnd
+    (*def tail(_:Top): m.List & { type Elem <: this.Elem } *)
+    (TFun 1 TTop (TAnd (TSel (shift (o+2) m) 0) (TMem 0 TBot (TSel (TVarB 1) 0))))
+    (*type Elem*) (TMem 0 EL EU)
+  )).
+Example paper_lst_tl_nil:
+  has_typed [] []
+    (lobj
+       [(tfun
+           TTop (TLstTl 1 (TVar false 0) TBot TBot)
+           (lobj [(tfun TTop TBot (tapp (tvar false 2) 1 (tvar false 3)));
+                   (dty TBot)]));
+         (dty (TLstTl 0 (TVar false 0) TBot TTop))])
+    (TBind (TAnd
+              (TFun 1 TTop (TAnd (TSel (TVarB 1) 0) (TMem 0 TBot TBot)))
+              (TMem 0 TBot (TLstTl 0 (TVarB 0) TBot TTop)))).
+Proof.
+  compute.
+  eexists.
+  eapply T_Sub.
+  apply_tobj; simpl.
+  apply_dfun; simpl. crush.
+  eapply T_Sub. apply_tobj; simpl.
+  apply_dfun; simpl; eauto 2.
+  apply T_App with (T1:=TTop); try solve [simpl; reflexivity]; crush.
+  crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
+  crush. crush. simpl.
+  instantiate (1:=0). admit.
+
+Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0.
+apply 0.
 Qed.
