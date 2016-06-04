@@ -320,9 +320,7 @@ Proof.
     eapply stp_selx. crush. eapply stp_and12; [idtac | crush].
     eapply stp_mem. crush. eapply stp_selx. crush.
     eapply stp_and12; crush. crush. crush. crush. crush. crush.
-  - eapply stp_and12. eapply stp_and11. eapply stp_mem. crush.
-    eapply stp_bindx; simpl; try solve [reflexivity]; [idtac | crush | crush].
-    crush. crush. crush.
+  - eapply stp_and12. stp_and_pick. crush. crush. crush.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
