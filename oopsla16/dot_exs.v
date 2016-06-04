@@ -41,6 +41,34 @@ Ltac stp_and_pick :=
     | _ => idtac
   end.
 
+Fixpoint compute_split_aux {X} (G: list X) (r: nat) :=
+  match G with
+    | [] => ([],[])
+    | x::G => match r with
+                | 0 => ([],x::G)
+                | S r => match compute_split_aux G r with
+                           | (GU,GL) => (x::GU,GL)
+                         end
+              end
+  end.
+Definition compute_split {X} (G: list X) (n: nat) :=
+  compute_split_aux G ((length G)-(S n)).
+Definition compute_GU {X} (G: list X) (n: nat) :=
+  match (compute_split G n) with
+    | (GU,GL) => GU
+  end.
+Definition compute_GL {X} (G: list X) (n: nat) :=
+  match (compute_split G n) with
+    | (GU,GL) => GL
+  end.
+
+Ltac apply_htp_sub :=
+  match goal with
+    | [ |- htp ?GH ?G1 ?x ?T ?n ] =>
+      eapply (htp_sub GH (compute_GU GH x) (compute_GL GH x))
+  end.
+
+SearchAbout list.
 Ltac crush := simpl;
   try solve [eapply stp_bindx; try solve [simpl; reflexivity]; crush];
   try solve [eapply stp_bind1; try solve [simpl; reflexivity]; crush];
@@ -182,16 +210,8 @@ Proof.
   eapply stp_and2; stp_and_pick.
   eapply stp_fun; eauto 2. crush. crush.
   eapply stp_and2; stp_and_pick. eapply stp_sel2; try solve [simpl; reflexivity].
-  eapply htp_sub. eapply htp_var. simpl. reflexivity. crush.
-  eapply stp_and12. eapply stp_and11. crush. crush. crush.
-  instantiate (1:=[TAnd
-   (TFun 1 TTop
-      (TBind (TAnd (TFun 1 TTop (TSel (TVarB 1) 0)) (TMem 0 TBot TBot))))
-   (TAnd
-      (TMem 0
-         (TBind (TAnd (TFun 1 TTop (TSel (TVarB 1) 0)) (TMem 0 TBot TTop)))
-         (TBind (TAnd (TFun 1 TTop (TSel (TVarB 1) 0)) (TMem 0 TBot TTop))))
-      TTop)]). simpl. reflexivity. instantiate (1:=[TTop]). simpl. reflexivity.
+  apply_htp_sub. eapply htp_var; crush.
+  compute. eapply stp_and12. eapply stp_and11. crush. crush. crush. crush. crush.
   eapply stp_bind1; try solve [simpl; reflexivity]. eapply stp_and12. crush.
   crush. crush. crush. crush. crush. crush. crush. crush.
 
