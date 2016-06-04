@@ -30,6 +30,10 @@ end.
 
 Ltac stp_and_pick :=
   match goal with
+    | [ |- stp ?GH ?G1 (TAnd ?T _) ?T ?n ] =>
+      eapply stp_and11
+    | [ |- stp ?GH ?G1 (TAnd _ ?T) ?T ?n ] =>
+      eapply stp_and12
     | [ |- stp ?GH ?G1 (TAnd _ _) (TAnd _ _) ?n ] =>
       idtac
     | [ |- stp ?GH ?G1 (TAnd (TFun ?l _ _) _) (TFun ?l _ _) ?n ] =>
@@ -318,13 +322,7 @@ Proof.
     eapply stp_and12; crush. crush. crush. crush. crush. crush.
   - eapply stp_and12. eapply stp_and11. eapply stp_mem. crush.
     eapply stp_bindx; simpl; try solve [reflexivity]; [idtac | crush | crush].
-    eapply stp_and2.
-    eapply stp_and11; [idtac | crush].
-    eapply stp_fun; simpl; try solve [reflexivity]; [crush | crush | crush | idtac ].
-    eapply stp_and2. eapply stp_and11; [idtac | crush].
-    eapply stp_selx. crush. eapply stp_and12; [idtac | crush].
-    eapply stp_mem. crush. eapply stp_selx. crush.
-    eapply stp_and12; crush. crush. crush.
+    crush. crush. crush.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
