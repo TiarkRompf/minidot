@@ -110,6 +110,7 @@ Ltac crush := simpl;
   try solve [simpl; erewrite <- closed_no_open; try reflexivity; crush];
   try solve [apply_htp_sub; try solve [simpl; reflexivity];
              [eapply htp_var; crush | compute; repeat pick_stp_and; crush]];
+  try solve [eapply T_App; try solve [simpl; reflexivity]; [idtac | crush | crush]; crush];
   try solve [econstructor; try solve [simpl; reflexivity]; crush];
   try solve [eapply T_Sub; crush];
   try solve [unfold eq_some; eauto 3].
@@ -137,8 +138,8 @@ Example ex1: has_typed
                (tobj (dcons (tfun (TMem 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0) (TSel (TVarB 1) 0))
                (tobj (dcons (tfun (TSel (TVar false 1) 0) (TSel (TVar false 1) 0) (tvar false 3)) dnil))) dnil)) polyId.
 Proof.
-  unfold polyId. unfold tfun.
-  eexists. crush.
+  compute. eexists. crush.
+
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
@@ -230,16 +231,7 @@ Example paper_lst_hd_nil:
               (TFun 1 TTop (TAnd (TSel (TVarB 1) 0) (TMem 0 TBot TBot)))
               (TMem 0 TBot (TLstHd TBot TTop)))).
 Proof.
-  compute.
-  eexists.
-  eapply T_Sub.
-  apply_tobj; simpl.
-  apply_dfun; simpl. crush.
-  eapply T_Sub. apply_tobj; simpl.
-  apply_dfun; simpl; eauto 2.
-  apply T_App with (T1:=TTop); try solve [simpl; reflexivity]; crush.
-  crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
-  crush. crush. crush.
+  compute. eexists. crush.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
@@ -279,16 +271,7 @@ Example paper_lst_tl_nil:
               (TFun 1 TTop (TAnd (TSel (TVarB 1) 0) (TMem 0 TBot TBot)))
               (TMem 0 TBot (TLstTl 0 (TVarB 0) TBot TTop)))).
 Proof.
-  compute.
-  eexists.
-  eapply T_Sub.
-  apply_tobj; simpl.
-  apply_dfun; simpl. crush.
-  eapply T_Sub. apply_tobj; simpl.
-  apply_dfun; simpl; eauto 2.
-  apply T_App with (T1:=TTop); try solve [simpl; reflexivity]; crush.
-  crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
-  crush. crush. crush.
+  compute. eexists. crush.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
