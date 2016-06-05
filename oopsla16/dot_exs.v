@@ -411,36 +411,9 @@ Example paper_lst_tl_cons:
                     (TAnd (TSel (TVarB 3) 0) (TMem 0 TBot (TSel (TVarB 2) 0))))))
               (TMem 0 TBot (TLstTl (TVarB 2) TBot TTop)))).
 Proof.
-  compute. eexists.
-  eapply T_Sub.
-  - apply_tobj; simpl; try solve [reflexivity].
-    apply_dfun; simpl; try solve [reflexivity]. crush.
-    eapply T_Sub.
-    apply_tobj; simpl; try solve [reflexivity].
-    apply_dfun; simpl; try solve [reflexivity]. crush.
-    eapply T_Sub.
-    apply_tobj; simpl; try solve [reflexivity].
-    apply_dfun; simpl; try solve [reflexivity]. crush.
-    eapply T_Sub.
-    apply_tobj; simpl; try solve [reflexivity].
-    apply_dfun; simpl; try solve [reflexivity]. crush.
-    eapply T_Sub. eapply T_Varz. simpl. reflexivity.
-    crush. crush. crush. crush. crush. crush. crush. crush.
-    simpl.
-    eapply stp_and2; [idtac | crush].
-    eapply stp_trans with (T2:=
-    (TBind
-       (TAnd
-          (TFun 1 TTop
-                (TAnd (TSel (TVar false 0) 0)
-                      (TMem 0 TBot (TSel (TVarB 1) 0))))
-          (TMem 0 TBot TTop)))).
-    crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
-    crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
-  - crush.
+  compute. eexists. crush.
 
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
