@@ -263,13 +263,15 @@ Definition TLst m EL EU :=
     (*type Elem*)
     (TMem 0 EL EU)
   ))).
+Definition mList := (TSel (TVar false 0) 0).
+Definition pT := (TSel (TVar false 1) 0).
 Example paper_lst:
   has_typed [] []
 
     (* list module impl. *)
     (lobj
        [(*def nil*)
-        (tfun TTop (TAnd (TSel (TVar false 0) 0) (TMem 0 TBot TBot))
+        (tfun TTop (TAnd mList (TMem 0 TBot TBot))
         (lobj [(*def head*)(tfun TTop TBot (*error*)(tapp (tvar false 2) 2 (tvar false 3)));
                (*def tail*)(tfun TTop TBot (*error*)(tapp (tvar false 2) 1 (tvar false 3)));
                (*def Elem*)(dty TBot)]));
@@ -277,18 +279,18 @@ Example paper_lst:
         (tfun
            (*T*)(TMem 0 TBot TTop)
            (TFun 0 (*hd*)(*:T*)(TSel (TVarB 0) 0)
-           (TFun 0 (*tl*)(TAnd (TSel (TVar false 0) 0) (TMem 0 TBot (TSel (TVarB 1) 0)))
-           (TAnd (TSel (TVar false 0) 0) (TMem 0 (TSel (TVarB 2) 0) (TSel (TVarB 2) 0)))))
-           (lobj [(tfun (TSel (TVar false 1) 0)
-             (TFun 0 (TAnd (TSel (TVar false 0) 0) (TMem 0 TBot (TSel (TVar false 1) 0)))
-             (TAnd (TSel (TVar false 0) 0) (TMem 0 (TSel (TVar false 1) 0) (TSel (TVar false 1) 0))))
-           (lobj [(tfun (TAnd (TSel (TVar false 0) 0) (TMem 0 TBot (TSel (TVar false 1) 0)))
-             (TAnd (TSel (TVar false 0) 0) (TMem 0 (TSel (TVar false 1) 0) (TSel (TVar false 1) 0)))
-           (lobj [(*def head*)(tfun TTop (TSel (TVar false 1) 0) (tvar false 3));
+           (TFun 0 (*tl*)(TAnd mList (TMem 0 TBot (TSel (TVarB 1) 0)))
+           (TAnd mList (TMem 0 (TSel (TVarB 2) 0) (TSel (TVarB 2) 0)))))
+           (lobj [(tfun pT
+             (TFun 0 (TAnd mList (TMem 0 TBot pT))
+             (TAnd mList (TMem 0 pT pT)))
+           (lobj [(tfun (TAnd mList (TMem 0 TBot pT))
+             (TAnd mList (TMem 0 pT pT))
+           (lobj [(*def head*)(tfun TTop pT (tvar false 3));
                   (*def tail*)(tfun TTop
-                  (TAnd (TSel (TVar false 0) 0) (TMem 0 TBot (TSel (TVar false 1) 0)))
+                  (TAnd mList (TMem 0 TBot pT))
                   (tvar false 5));
-                  (*def Elem*)(dty (TSel (TVar false 1) 0))]))]))]));
+                  (*def Elem*)(dty pT)]))]))]));
          (*type List*)
          (dty (TLst (TVar false 0) TBot TTop))])
 
