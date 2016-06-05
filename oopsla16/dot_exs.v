@@ -385,7 +385,14 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0.
 Qed.
 
-Example paper_lst_tl_cons:
+Definition TLst m EL EU :=
+  (TBind (TAnd
+    (TFun 2 TTop (TSel (TVarB 1) 0)) (*def head(_:Top):this.Elem*) (TAnd
+    (*def tail(_:Top): m.List & { type Elem <: this.Elem } *)
+    (TFun 1 TTop (TAnd (TSel m 0) (TMem 0 TBot (TSel (TVarB 1) 0))))
+    (*type Elem*) (TMem 0 EL EU)))
+  ).
+Example paper_lst_cons:
   has_typed [] []
     (lobj
        [(tfun
@@ -398,18 +405,19 @@ Example paper_lst_tl_cons:
              (TAnd (TSel (TVar false 0) 0) (TMem 0 (TSel (TVar false 1) 0) (TSel (TVar false 1) 0))))
            (lobj [(tfun (TAnd (TSel (TVar false 0) 0) (TMem 0 TBot (TSel (TVar false 1) 0)))
              (TAnd (TSel (TVar false 0) 0) (TMem 0 (TSel (TVar false 1) 0) (TSel (TVar false 1) 0)))
-           (lobj [(tfun TTop
+           (lobj [(tfun TTop (TSel (TVar false 1) 0) (tvar false 3));
+                  (tfun TTop
                   (TAnd (TSel (TVar false 0) 0) (TMem 0 TBot (TSel (TVar false 1) 0)))
                   (tvar false 5));
                   (dty (TSel (TVar false 1) 0))]))]))]));
-         (dty (TLstTl (TVar false 0) TBot TTop))])
+         (dty (TLst (TVar false 0) TBot TTop))])
     (TBind (TAnd
               (TFun 1
                     (TMem 0 TBot TTop)
                     (TFun 0 (TSel (TVarB 0) 0)
                     (TFun 0 (TAnd (TSel (TVarB 2) 0) (TMem 0 TBot (TSel (TVarB 1) 0)))
                     (TAnd (TSel (TVarB 3) 0) (TMem 0 TBot (TSel (TVarB 2) 0))))))
-              (TMem 0 TBot (TLstTl (TVarB 2) TBot TTop)))).
+              (TMem 0 TBot (TLst (TVarB 2) TBot TTop)))).
 Proof.
   compute. eexists. crush.
 
@@ -419,5 +427,6 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
