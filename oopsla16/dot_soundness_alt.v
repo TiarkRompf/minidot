@@ -161,7 +161,9 @@ Proof.
         assert (htpd (map (substt x) (GH0)) G1 (xi-1) (substt x (TBind TX0))) as BB.
         eapply IHni. eapply H6. eauto. omega. omega.
         rewrite subst_open5.
-        eu. repeat eexists. eapply htp_unpack. eauto. eapply closed_subst1. eauto. eauto. eauto. apply []. eauto.
+        eu. repeat eexists. eapply htp_unpack. eauto.
+        eapply closed_upgrade_gh. eapply closed_subst1. eauto. eauto. eauto. omega.
+        apply []. eauto.
       + (* sub *) subst.
         assert (exists GL0, GL = GL0 ++ [TX] /\ GH0 = GU ++ GL0) as A. eapply gh_match1. eauto. omega.
         destruct A as [GL0 [? ?]]. subst GL.
@@ -308,9 +310,9 @@ Lemma stp_subst_narrowX: forall ml, forall nl, forall m GH G1 T2 TX x n1 n2,
    vtp m G1 x (substt x TX) n1 ->
    htp (GH++[TX]) G1 0 T2 n2 -> x < length G1 -> m < ml -> n2 < nl ->
    (forall (m0 : nat) (G1 : venv) x (T2 T3 : ty) (n1 n2 : nat),
-        vtp m0 G1 x T2 n1 ->
-        stp [] G1 T2 T3 n2 -> m0 <= m ->
-        vtpdd m0 G1 x T3) ->
+        vtp m0 G1 x (substt x T2) n1 ->
+        stp [] G1 (substt x T2) (substt x T3) n2 -> m0 <= m ->
+        vtpdd m0 G1 x (substt x T3)) ->
    vtpdd m G1 x (substt x T2). (* decrease b/c transitivity *)
 Proof.
   intros ml. (* induction ml. intros. omega. *)
@@ -325,10 +327,7 @@ Proof.
     assert (vtpdd m G1 x (substt x (TBind TX0))) as A.
     eapply IHnl. eauto. eauto. eauto. eauto. omega. eauto.
     destruct A as [? [? [A ?]]]. inversion A. subst.
-    repeat eexists. unfold substt. erewrite subst_open_commute0.
-    assert (closed 0 (length G1) 0 (TBind (substt x TX0))). eapply vtp_closed. unfold substt in A. simpl in A. eapply A.
-    assert ((substt x (TX0)) = TX0) as R. eapply subst_closed_id. eauto.
-    unfold substt in R. rewrite R in H9. eapply H9. simpl. eauto. omega.
+    rewrite subst_open_commute0b. repeat eexists. eauto. omega.
   - Case "sub". subst.
     destruct GL.
 

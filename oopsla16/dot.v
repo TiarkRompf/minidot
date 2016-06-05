@@ -373,7 +373,7 @@ with htp: tenv -> venv -> id -> ty -> nat -> Prop :=
     htp GH G1 x TX (S n1)
 | htp_unpack: forall GH G1 x TX n1,
     htp GH G1 x (TBind TX) n1 ->
-    closed x (length G1) 1 TX ->
+    closed (S x) (length G1) 1 TX ->
     htp GH G1 x (open 0 (TVar false x) TX) (S n1)
 | htp_sub: forall GH GU GL G1 x T1 T2 n1 n2,
     (* use restricted GH. note: this is slightly different
