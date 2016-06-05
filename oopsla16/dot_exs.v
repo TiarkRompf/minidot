@@ -303,26 +303,7 @@ Example paper_lst_hd_cons_warmup:
                  (TAnd (TSel (TVarB 3) 0) (TMem 0 TBot (TSel (TVarB 1) 0))))))
               (TMem 0 TBot (TLstHd TBot TTop)))).
 Proof.
-  compute. eexists.
-  eapply T_Sub.
-  - apply_tobj; simpl; try solve [reflexivity]; [idtac | crush | crush].
-    apply_dfun; simpl; try solve [reflexivity];
-    [crush | idtac | crush | crush | crush | crush].
-    eapply T_Sub.
-    apply_tobj; simpl; try solve [reflexivity]; [idtac | crush | crush].
-    apply_dfun; simpl; try solve [reflexivity];
-    [crush | idtac | crush | crush | crush | crush].
-    eapply T_Sub.
-    apply_tobj; simpl; try solve [reflexivity]; [idtac | crush | crush].
-    apply_dfun; simpl; try solve [reflexivity];
-    [crush | idtac | crush | crush | crush | crush].
-    eapply T_Sub.
-    apply_tobj; simpl; try solve [reflexivity]; [idtac | crush | crush].
-    apply_dfun; simpl; try solve [reflexivity];
-    [crush | idtac | crush | crush | crush | crush].
-    eapply T_Sub. eapply T_Varz. simpl. reflexivity. crush.
-    crush. simpl. crush. simpl. crush. simpl. crush.
-  - simpl. crush.
+  compute. eexists. crush.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
@@ -330,7 +311,7 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Definition shift o v :=
