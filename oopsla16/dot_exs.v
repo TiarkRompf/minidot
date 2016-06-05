@@ -435,12 +435,14 @@ Proof.
                       (TMem 0 TBot (TSel (TVarB 1) 0))))
           (TMem 0 TBot TTop)))).
     eapply stp_bindx; simpl; try solve [reflexivity].
-    eapply stp_and2. eapply stp_and11.
+    eapply stp_and2; [idtac | crush].
+    pick_stp_and idtac.
     eapply stp_fun; simpl; try solve [reflexivity]. crush. crush. crush.
-    eapply stp_and2. crush. eapply stp_and12. eapply stp_mem. crush.
+    eapply stp_and2; [crush | idtac].
+    eapply stp_and12. eapply stp_mem; crush.
     crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
     crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
-    crush. crush. crush.
+    crush.
   - crush.
 
 Grab Existential Variables.
