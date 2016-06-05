@@ -355,3 +355,24 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
+
+Example paper_lst_tl_nil_alt:
+  has_typed [] []
+    (lobj
+       [(tfun
+           TTop (TAnd (TSel (TVar false 0) 0) (TMem 0 TBot TBot))
+           (lobj [(tfun TTop TBot (tapp (tvar false 2) 1 (tvar false 3)));
+                   (dty TBot)]));
+         (dty (TLstTl (TVar false 0) TBot TTop))])
+    (TBind (TAnd
+              (TFun 1 TTop (TAnd (TSel (TVarB 1) 0) (TMem 0 TBot TBot)))
+              (TMem 0 TBot (TLstTl (TVarB 2) TBot TTop)))).
+Proof.
+  compute. eexists. crush.
+
+Grab Existential Variables.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0.
+Qed.
