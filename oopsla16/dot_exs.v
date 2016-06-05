@@ -44,6 +44,8 @@ Ltac pick_stp_and c :=
       eapply stp_and11; c
     | [ |- stp ?GH ?G1 (TAnd (TMem ?l _ _) _) _ ?n ] =>
       eapply stp_and12; c
+    | [ |- stp ?GH ?G1 (TAnd _ (TMem ?l _ _)) (TMem ?l _ _) ?n ] =>
+      eapply stp_and12; [eapply stp_mem; c | c]
     | _ => idtac
   end.
 
@@ -149,7 +151,6 @@ Ltac crush := simpl;
   try solve [apply_stp_top; crush];
   try solve [apply_stp_selx; crush];
   try solve [apply_refl_mem crush];
-  try solve [eapply stp_and2; [eapply stp_and11; crush | eapply stp_and12; crush]];
   try solve [eapply stp_and2; crush];
   try solve [pick_stp_and crush];
   try solve [apply_stp_sel2 crush];
@@ -434,15 +435,8 @@ Proof.
                 (TAnd (TSel (TVar false 0) 0)
                       (TMem 0 TBot (TSel (TVarB 1) 0))))
           (TMem 0 TBot TTop)))).
-    eapply stp_bindx; simpl; try solve [reflexivity].
-    eapply stp_and2; [idtac | crush].
-    pick_stp_and idtac.
-    eapply stp_fun; simpl; try solve [reflexivity]. crush. crush. crush.
-    eapply stp_and2; [crush | idtac].
-    eapply stp_and12. eapply stp_mem; crush.
     crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
-    crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
-    crush.
+    crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
   - crush.
 
 Grab Existential Variables.
