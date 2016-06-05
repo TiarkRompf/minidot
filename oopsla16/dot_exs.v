@@ -83,6 +83,12 @@ Fixpoint rev_open (k: nat) (u: id) (T: ty) { struct T }: ty :=
     | TOr T1 T2   => TOr (rev_open k u T1) (rev_open k u T2)
   end.
 
+Definition shift o v :=
+  match v with
+    | TVarB i => TVarB (o+i)
+    | _ => v
+  end.
+
 Ltac apply_htp_sub :=
   match goal with
     | [ |- htp ?GH ?G1 ?x ?T ?n ] =>
@@ -314,11 +320,6 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0.
 Qed.
 
-Definition shift o v :=
-  match v with
-    | TVarB i => TVarB (o+i)
-    | _ => v
-  end.
 (*
 new { m =>
   type List = { this => type Elem; def tail(): m.List & { type Elem <: this.Elem } }
@@ -328,23 +329,23 @@ new { m =>
   def nil(): List & { type Elem = Bot }
 }
 *)
-Definition TLstTl o m EL EU :=
+Definition TLstTl m EL EU :=
   (TBind (TAnd
     (*def tail(_:Top): m.List & { type Elem <: this.Elem } *)
-    (TFun 1 TTop (TAnd (TSel (shift (o+2) m) 0) (TMem 0 TBot (TSel (TVarB 1) 0))))
+    (TFun 1 TTop (TAnd (TSel m 0) (TMem 0 TBot (TSel (TVarB 1) 0))))
     (*type Elem*) (TMem 0 EL EU)
   )).
 Example paper_lst_tl_nil:
   has_typed [] []
     (lobj
        [(tfun
-           TTop (TLstTl 1 (TVar false 0) TBot TBot)
+           TTop (TLstTl (TVar false 0) TBot TBot)
            (lobj [(tfun TTop TBot (tapp (tvar false 2) 1 (tvar false 3)));
                    (dty TBot)]));
-         (dty (TLstTl 0 (TVar false 0) TBot TTop))])
+         (dty (TLstTl (TVar false 0) TBot TTop))])
     (TBind (TAnd
               (TFun 1 TTop (TAnd (TSel (TVarB 1) 0) (TMem 0 TBot TBot)))
-              (TMem 0 TBot (TLstTl 0 (TVarB 0) TBot TTop)))).
+              (TMem 0 TBot (TLstTl (TVarB 2) TBot TTop)))).
 Proof.
   compute. eexists. crush.
 
