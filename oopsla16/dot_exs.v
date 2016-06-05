@@ -391,15 +391,15 @@ Example paper_lst_tl_cons:
            (TFun 0 (*hd*)(TSel (TVarB 0) 0)
            (TFun 0 (*tl*)(TAnd (TSel (TVar false 0) 0) (TMem 0 TBot (TSel (TVarB 1) 0)))
            (TAnd (TSel (TVar false 0) 0) (TMem 0 (TSel (TVarB 2) 0) (TSel (TVarB 2) 0)))))
-           (lobj [(tfun (TSel (TVar false 2) 0)
-             (TFun 0 (TAnd (TSel (TVar false 0) 0) (TMem 0 TBot (TSel (TVar false 2) 0)))
-             (TAnd (TSel (TVar false 0) 0) (TMem 0 (TSel (TVar false 2) 0) (TSel (TVar false 2) 0))))
-           (lobj [(tfun (TAnd (TSel (TVar false 0) 0) (TMem 0 TBot (TSel (TVar false 2) 0)))
-             (TAnd (TSel (TVar false 0) 0) (TMem 0 (TSel (TVar false 2) 0) (TSel (TVar false 2) 0)))
+           (lobj [(tfun (TSel (TVar false 1) 0)
+             (TFun 0 (TAnd (TSel (TVar false 0) 0) (TMem 0 TBot (TSel (TVar false 1) 0)))
+             (TAnd (TSel (TVar false 0) 0) (TMem 0 (TSel (TVar false 1) 0) (TSel (TVar false 1) 0))))
+           (lobj [(tfun (TAnd (TSel (TVar false 0) 0) (TMem 0 TBot (TSel (TVar false 1) 0)))
+             (TAnd (TSel (TVar false 0) 0) (TMem 0 (TSel (TVar false 1) 0) (TSel (TVar false 1) 0)))
            (lobj [(tfun TTop
-                  (TAnd (TSel (TVar false 0) 0) (TMem 0 TBot (TSel (TVar false 2) 0)))
+                  (TAnd (TSel (TVar false 0) 0) (TMem 0 TBot (TSel (TVar false 1) 0)))
                   (tvar false 5));
-                  (dty (TSel (TVar false 2) 0))]))]))]));
+                  (dty (TSel (TVar false 1) 0))]))]))]));
          (dty (TLstTl (TVar false 0) TBot TTop))])
     (TBind (TAnd
               (TFun 1
@@ -438,9 +438,8 @@ Proof.
     eapply stp_fun; simpl; try solve [reflexivity]. crush. crush. crush.
     eapply stp_and2. crush. eapply stp_and12. eapply stp_mem. crush.
     crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
-    crush. crush. crush. crush. crush. crush. crush. crush.
-    simpl. instantiate (1:=0). admit.
-    crush. crush. crush. crush. crush. crush.
+    crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
+    crush. crush. crush.
   - simpl. eapply stp_bindx; simpl; try solve [reflexivity]; [idtac | crush | crush].
     eapply stp_and2. eapply stp_and11.
     eapply stp_fun; simpl; try solve [reflexivity]. crush. crush. crush.
@@ -457,5 +456,5 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
