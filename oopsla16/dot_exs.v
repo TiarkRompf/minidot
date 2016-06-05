@@ -104,11 +104,23 @@ Ltac apply_refl c :=
     c
   end.
 
+Ltac apply_stp_bot :=
+  match goal with
+  | [ |- stp ?GH ?G1 TBot ?T2 ?n ] =>
+    eapply stp_bot
+  end.
+
+Ltac apply_stp_selx :=
+  match goal with
+  | [ |- stp ?GH ?G1 (TSel ?X1 ?l1) (TSel ?X2 ?l2) ?n ] =>
+    eapply stp_selx
+  end.
+
 Ltac crush := simpl;
   try solve [eapply T_Sub; [(apply_tobj; crush) | (crush)]];
   try solve [apply_dfun; crush];
-  try solve [eapply stp_bot; crush];
-  try solve [eapply stp_selx; crush];
+  try solve [apply_stp_bot; crush];
+  try solve [apply_stp_selx; crush];
   try solve [eapply stp_and2; crush];
   try solve [pick_stp_and crush];
   try solve [eapply stp_sel2; try solve [simpl; reflexivity]; crush];
@@ -282,7 +294,7 @@ Proof.
   eapply stp_fun; simpl; try solve [reflexivity]; [crush | crush | crush | idtac].
   eapply stp_fun; simpl; try solve [reflexivity]; [crush | crush | crush | idtac].
   eapply stp_and2; [idtac | crush].
-  eapply stp_trans.
+  eapply stp_trans; [idtac | idtac].
   eapply stp_bindx; simpl; try solve [reflexivity].
   instantiate (2:=(rev_open 0 3 (TAnd (TFun 1 TTop (TSel (TVar false 3) 0))
                                       (TMem 0 TBot TTop)))).
