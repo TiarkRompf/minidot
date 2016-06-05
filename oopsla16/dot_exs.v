@@ -4,6 +4,8 @@ Require Import dot.
 (* Examples *)
 (* ############################################################ *)
 
+(*# Infrastructure #*)
+
 Hint Constructors dms_has_type.
 
 Definition dm_compute (d: dm) (l: lb) :=
@@ -83,12 +85,6 @@ Fixpoint rev_open (k: nat) (u: id) (T: ty) { struct T }: ty :=
     | TBind T1    => TBind (rev_open (S k) u T1)
     | TAnd T1 T2  => TAnd (rev_open k u T1) (rev_open k u T2)
     | TOr T1 T2   => TOr (rev_open k u T1) (rev_open k u T2)
-  end.
-
-Definition shift o v :=
-  match v with
-    | TVarB i => TVarB (o+i)
-    | _ => v
   end.
 
 Ltac apply_htp_sub :=
@@ -175,13 +171,14 @@ Fixpoint list_to_dms (xs: list dm) : dms :=
   end.
 Definition lobj ds := tobj (list_to_dms ds).
 
+(*# Sanity Check #*)
 Example ex0: has_typed [] [] (tobj dnil) TTop.
   eexists. crush.
 Grab Existential Variables.
 apply 0. apply 0.
 Qed.
 
-(* define polymorphic identity function *)
+(*# Polymorphic Identity Function #*)
 Definition polyId := TFun 0 (TMem 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0) (TSel (TVarB 1) 0)).
 
 Example ex1: has_typed
@@ -213,9 +210,10 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0.
 Qed.
 
-(*# Example from Paper #*)
+(*# List Module Example from Paper #*)
 
 (*
+-- module implementation
 val listModule = new { m =>
   type List = { this =>
     type Elem
@@ -233,7 +231,7 @@ val listModule = new { m =>
     def tail() = tl
   }
 }
-
+-- module type
 type ListAPI = { m =>
   type List <: { this =>
     type Elem
@@ -245,7 +243,7 @@ type ListAPI = { m =>
     m.List & { type Elem <: T } =>
       m.List & { type Elem <: T }
 }
-
+-- desugaring of cons type parameter
 def cons(t: { type T }) = new {
   def apply(hd: t.T) = new {
     def apply(tl: m.List & { type Elem <: t.T }) = new { this =>
@@ -255,155 +253,30 @@ def cons(t: { type T }) = new {
     }}}
 
 *)
-
-(*
-new { m =>
-  type List = { this => type Elem; def head(): this.Elem }
-  def nil() = new { this => type Elem = Bot; def head() = bot() }
-} : { m =>
-  type List <: { this => type Elem; def head(): this.Elem }
-  def nil(): List & { type Elem = Bot }
-}
-*)
-Definition TLstHd EL EU :=
-  (TBind (TAnd
-    (TFun 1 TTop (TSel (TVarB 1) 0)) (*def head(_:Top):this.Elem*)
-    (TMem 0 EL EU) (*type Elem*)
-  )).
-Example paper_lst_hd_nil:
-  has_typed [] []
-    (lobj
-       [(tfun
-           TTop (TLstHd TBot TBot)
-           (lobj [(tfun TTop TBot (tapp (tvar false 2) 1 (tvar false 3)));
-                  (dty TBot)]));
-         (dty (TLstHd TBot TTop))])
-    (TBind (TAnd
-              (TFun 1 TTop (TAnd (TSel (TVarB 1) 0) (TMem 0 TBot TBot)))
-              (TMem 0 TBot (TLstHd TBot TTop)))).
-Proof.
-  compute. eexists. crush.
-
-Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0.
-Qed.
-
-(*
-def cons(t: { type T }) = new {
-  def apply(hd: t.T) = new {
-    def apply(tl: m.List & { type Elem <: t.T }) = new { this =>
-      type Elem = t.T
-      def head() = hd
-      def tail() = tl
-    }}}
-def cons[T]: T => m.List & { type Elem <: T } => m.List & { type Elem <: T }
-*)
-Example paper_lst_hd_cons_warmup:
-  has_typed [] []
-    (lobj
-       [(tfun
-           TTop (TFun 0 (*T*)(TMem 0 TBot TTop)
-                (TFun 0 (*hd*)(TSel (TVarB 0) 0)
-                      (TLstHd TBot (TSel (TVarB 2) 0))))
-           (lobj [(tfun (TMem 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0) (TLstHd TBot (TSel (TVarB 2) 0)))
-             (lobj [(tfun (TSel (TVar false 3) 0) (TLstHd TBot (TSel (TVar false 3) 0))
-               (lobj [(tfun TTop (TSel (TVar false 3) 0) (tvar false 5));
-                      (dty (TSel (TVar false 3) 0))]))]))]));
-         (dty (TLstHd TBot TTop))])
-    (TBind (TAnd
-              (TFun 1 TTop (TFun 0 (TMem 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0)
-                 (TAnd (TSel (TVarB 3) 0) (TMem 0 TBot (TSel (TVarB 1) 0))))))
-              (TMem 0 TBot (TLstHd TBot TTop)))).
-Proof.
-  compute. eexists. crush.
-
-Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-Qed.
-
-(*
-new { m =>
-  type List = { this => type Elem; def tail(): m.List & { type Elem <: this.Elem } }
-  def nil() = new { this => type Elem = Bot; def tail() = bot() }
-} : { m =>
-  type List <: { this => type Elem; def tail(): m.List & { type Elem <: this.Elem } }
-  def nil(): List & { type Elem = Bot }
-}
-*)
-Definition TLstTl m EL EU :=
-  (TBind (TAnd
-    (*def tail(_:Top): m.List & { type Elem <: this.Elem } *)
-    (TFun 1 TTop (TAnd (TSel m 0) (TMem 0 TBot (TSel (TVarB 1) 0))))
-    (*type Elem*) (TMem 0 EL EU)
-  )).
-Example paper_lst_tl_nil:
-  has_typed [] []
-    (lobj
-       [(tfun
-           TTop (TLstTl (TVar false 0) TBot TBot)
-           (lobj [(tfun TTop TBot (tapp (tvar false 2) 1 (tvar false 3)));
-                   (dty TBot)]));
-         (dty (TLstTl (TVar false 0) TBot TTop))])
-    (TBind (TAnd
-              (TFun 1 TTop (TAnd (TSel (TVarB 1) 0) (TMem 0 TBot TBot)))
-              (TMem 0 TBot (TLstTl (TVarB 2) TBot TTop)))).
-Proof.
-  compute. eexists. crush.
-
-Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-Qed.
-
-Example paper_lst_tl_nil_alt:
-  has_typed [] []
-    (lobj
-       [(tfun
-           TTop (TAnd (TSel (TVar false 0) 0) (TMem 0 TBot TBot))
-           (lobj [(tfun TTop TBot (tapp (tvar false 2) 1 (tvar false 3)));
-                   (dty TBot)]));
-         (dty (TLstTl (TVar false 0) TBot TTop))])
-    (TBind (TAnd
-              (TFun 1 TTop (TAnd (TSel (TVarB 1) 0) (TMem 0 TBot TBot)))
-              (TMem 0 TBot (TLstTl (TVarB 2) TBot TTop)))).
-Proof.
-  compute. eexists. crush.
-
-Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0.
-Qed.
 
 Definition TLst m EL EU :=
   (TBind (TAnd
-    (TFun 2 TTop (TSel (TVarB 1) 0)) (*def head(_:Top):this.Elem*) (TAnd
+    (*def head(_:Top):this.Elem*)
+    (TFun 2 TTop (TSel (TVarB 1) 0)) (TAnd
     (*def tail(_:Top): m.List & { type Elem <: this.Elem } *)
     (TFun 1 TTop (TAnd (TSel m 0) (TMem 0 TBot (TSel (TVarB 1) 0))))
-    (*type Elem*) (TMem 0 EL EU)))
-  ).
+    (*type Elem*)
+    (TMem 0 EL EU)
+  ))).
 Example paper_lst:
   has_typed [] []
+
+    (* list module impl. *)
     (lobj
        [(*def nil*)
         (tfun TTop (TAnd (TSel (TVar false 0) 0) (TMem 0 TBot TBot))
-        (lobj [(tfun TTop TBot (tapp (tvar false 2) 2 (tvar false 3)));
-               (tfun TTop TBot (tapp (tvar false 2) 1 (tvar false 3)));
-               (dty TBot)]));
+        (lobj [(*def head*)(tfun TTop TBot (*error*)(tapp (tvar false 2) 2 (tvar false 3)));
+               (*def tail*)(tfun TTop TBot (*error*)(tapp (tvar false 2) 1 (tvar false 3)));
+               (*def Elem*)(dty TBot)]));
         (*def cons*)
         (tfun
            (*T*)(TMem 0 TBot TTop)
-           (TFun 0 (*hd*)(TSel (TVarB 0) 0)
+           (TFun 0 (*hd*)(*:T*)(TSel (TVarB 0) 0)
            (TFun 0 (*tl*)(TAnd (TSel (TVar false 0) 0) (TMem 0 TBot (TSel (TVarB 1) 0)))
            (TAnd (TSel (TVar false 0) 0) (TMem 0 (TSel (TVarB 2) 0) (TSel (TVarB 2) 0)))))
            (lobj [(tfun (TSel (TVar false 1) 0)
@@ -411,20 +284,25 @@ Example paper_lst:
              (TAnd (TSel (TVar false 0) 0) (TMem 0 (TSel (TVar false 1) 0) (TSel (TVar false 1) 0))))
            (lobj [(tfun (TAnd (TSel (TVar false 0) 0) (TMem 0 TBot (TSel (TVar false 1) 0)))
              (TAnd (TSel (TVar false 0) 0) (TMem 0 (TSel (TVar false 1) 0) (TSel (TVar false 1) 0)))
-           (lobj [(tfun TTop (TSel (TVar false 1) 0) (tvar false 3));
-                  (tfun TTop
+           (lobj [(*def head*)(tfun TTop (TSel (TVar false 1) 0) (tvar false 3));
+                  (*def tail*)(tfun TTop
                   (TAnd (TSel (TVar false 0) 0) (TMem 0 TBot (TSel (TVar false 1) 0)))
                   (tvar false 5));
-                  (dty (TSel (TVar false 1) 0))]))]))]));
+                  (*def Elem*)(dty (TSel (TVar false 1) 0))]))]))]));
          (*type List*)
          (dty (TLst (TVar false 0) TBot TTop))])
+
+    (* list module type *)
     (TBind (TAnd
+              (*def nil *)
               (TFun 2 TTop (TAnd (TSel (TVarB 1) 0) (TMem 0 TBot TBot))) (TAnd
+              (*def cons *)
               (TFun 1
                     (TMem 0 TBot TTop)
                     (TFun 0 (TSel (TVarB 0) 0)
                     (TFun 0 (TAnd (TSel (TVarB 2) 0) (TMem 0 TBot (TSel (TVarB 1) 0)))
                     (TAnd (TSel (TVarB 3) 0) (TMem 0 TBot (TSel (TVarB 2) 0))))))
+              (*type List *)
               (TMem 0 TBot (TLst (TVarB 2) TBot TTop))))).
 Proof.
   compute. eexists. crush.
