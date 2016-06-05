@@ -424,10 +424,23 @@ Proof.
     apply_dfun; simpl; try solve [reflexivity]. crush.
     eapply T_Sub. eapply T_Varz. simpl. reflexivity.
     crush. crush. crush. crush. crush. crush. crush. crush.
-    simpl. instantiate (1:=0). admit.
+    simpl.
+    eapply stp_and2; [idtac | crush].
+    eapply stp_trans with (T2:=
+    (TBind
+       (TAnd
+          (TFun 1 TTop
+                (TAnd (TSel (TVar false 0) 0)
+                      (TMem 0 TBot (TSel (TVarB 1) 0))))
+          (TMem 0 TBot TTop)))).
+    eapply stp_bindx; simpl; try solve [reflexivity].
+    eapply stp_and2. eapply stp_and11.
+    eapply stp_fun; simpl; try solve [reflexivity]. crush. crush. crush.
+    eapply stp_and2. crush. eapply stp_and12. eapply stp_mem. crush.
     crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
-    crush. simpl. instantiate (1:=0). admit. crush. crush. crush. crush. crush.
-    crush.
+    crush. crush. crush. crush. crush. crush. crush. crush.
+    simpl. instantiate (1:=0). admit.
+    crush. crush. crush. crush. crush. crush.
   - simpl. eapply stp_bindx; simpl; try solve [reflexivity]; [idtac | crush | crush].
     eapply stp_and2. eapply stp_and11.
     eapply stp_fun; simpl; try solve [reflexivity]. crush. crush. crush.
@@ -441,5 +454,8 @@ Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0.
 Qed.
