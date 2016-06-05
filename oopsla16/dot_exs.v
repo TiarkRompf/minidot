@@ -94,7 +94,16 @@ Ltac apply_rev_open :=
     | [ |- ?T1 = open ?k (TVar false ?u) ?T2 ] =>
       try instantiate (1:=rev_open k u T1); simpl; reflexivity
   end.
-  
+
+Ltac apply_refl c :=
+  match goal with
+  | [ |- stp ?GH ?G1 ?T1 ?T2 ?n ] =>
+    assert (T1 = T2) as Eq by solve [simpl; reflexivity];
+    assert (stpd GH G1 T1 T2) as A by solve [eapply stpd_refl; c];
+    simpl in Eq; inversion Eq; clear A; clear Eq;
+    c
+  end.
+
 Ltac crush := simpl;
   try solve [eapply T_Sub; [(apply_tobj; crush) | (crush)]];
   try solve [apply_dfun; crush];
