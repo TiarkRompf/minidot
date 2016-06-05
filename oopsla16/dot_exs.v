@@ -197,7 +197,7 @@ type ListAPI = { m =>
 
 def cons(t: { type T }) = new {
   def apply(hd: t.T) = new {
-    def apply(m.List & { type Elem <: t.T }) = new { this =>
+    def apply(tl: m.List & { type Elem <: t.T }) = new { this =>
       type Elem = t.T
       def head() = hd
       def tail() = tl
@@ -237,6 +237,54 @@ Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+Qed.
+
+(*
+def cons(t: { type T }) = new {
+  def apply(hd: t.T) = new {
+    def apply(tl: m.List & { type Elem <: t.T }) = new { this =>
+      type Elem = t.T
+      def head() = hd
+      def tail() = tl
+    }}}
+def cons[T]: T => m.List & { type Elem <: T } => m.List & { type Elem <: T }
+*)
+Example paper_lst_hd_cons_warmup:
+  has_typed [] []
+    (lobj
+       [(tfun
+           TTop (TFun 0 (TMem 0 TBot TTop) (TLstHd TBot (TSel (TVarB 1) 0)))
+           (lobj [(tfun (TMem 0 TBot TTop) (TLstHd TBot TBot)
+             (lobj [(tfun TTop TBot (tapp (tvar false 4) 1 (tvar false 5)));
+                    (dty TBot)]))]));
+         (dty (TLstHd TBot TTop))])
+    (TBind (TAnd
+              (TFun 1 TTop (TFun 0 (TMem 0 TBot TTop)
+                 (TAnd (TSel (TVarB 2) 0) (TMem 0 TBot (TSel (TVarB 0) 0)))))
+              (TMem 0 TBot (TLstHd TBot TTop)))).
+Proof.
+  compute. eexists.
+  eapply T_Sub.
+  apply_tobj; simpl; try solve [reflexivity]; [crush | crush | crush].
+  simpl.
+  eapply stp_bindx; simpl; try solve [reflexivity]; [idtac | crush | crush].
+  eapply stp_and2; [idtac | crush].
+  pick_stp_and idtac.
+  eapply stp_fun; simpl; try solve [reflexivity]; [crush | crush | crush | idtac].
+  eapply stp_fun; simpl; try solve [reflexivity]; [crush | crush | crush | idtac].
+  eapply stp_and2; [idtac | crush].
+  eapply stp_trans.
+  eapply stp_bindx; simpl; try solve [reflexivity].
+  instantiate (2:=(rev_open 0 3 (TAnd (TFun 1 TTop (TSel (TVar false 3) 0))
+                                      (TMem 0 TBot TTop)))).
+  crush. crush. crush. crush. crush.
+
+Grab Existential Variables.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0.
 Qed.
 
 Definition shift o v :=
