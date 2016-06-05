@@ -149,6 +149,7 @@ Ltac crush := simpl;
   try solve [apply_stp_top; crush];
   try solve [apply_stp_selx; crush];
   try solve [apply_refl_mem crush];
+  try solve [eapply stp_and2; [eapply stp_and11; crush | eapply stp_and12; crush]];
   try solve [eapply stp_and2; crush];
   try solve [pick_stp_and crush];
   try solve [apply_stp_sel2 crush];
@@ -440,14 +441,7 @@ Proof.
     crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
     crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush. crush.
     crush. crush. crush.
-  - simpl. eapply stp_bindx; simpl; try solve [reflexivity]; [idtac | crush | crush].
-    eapply stp_and2. eapply stp_and11.
-    eapply stp_fun; simpl; try solve [reflexivity]. crush. crush. crush.
-    eapply stp_fun; simpl; try solve [reflexivity]. crush. crush. crush.
-    eapply stp_fun; simpl; try solve [reflexivity]. crush. crush.
-    apply_refl crush crush.
-    apply stp_and2. eapply stp_and11. crush. crush. eapply stp_and12. crush.
-    crush. crush. crush.
+  - crush.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
