@@ -290,24 +290,47 @@ Example paper_lst_hd_cons_warmup:
   has_typed [] []
     (lobj
        [(tfun
-           TTop (TFun 0 (TMem 0 TBot TTop) (TLstHd TBot (TSel (TVarB 1) 0)))
-           (lobj [(tfun (TMem 0 TBot TTop) (TLstHd TBot TBot)
-             (lobj [(tfun TTop TBot (tapp (tvar false 4) 1 (tvar false 5)));
-                    (dty TBot)]))]));
+           TTop (TFun 0 (*T*)(TMem 0 TBot TTop)
+                (TFun 0 (*hd*)(TSel (TVarB 0) 0)
+                      (TLstHd TBot (TSel (TVarB 2) 0))))
+           (lobj [(tfun (TMem 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0) (TLstHd TBot (TSel (TVarB 2) 0)))
+             (lobj [(tfun (TSel (TVar false 3) 0) (TLstHd TBot (TSel (TVar false 3) 0))
+               (lobj [(tfun TTop (TSel (TVar false 3) 0) (tvar false 5));
+                      (dty (TSel (TVar false 3) 0))]))]))]));
          (dty (TLstHd TBot TTop))])
     (TBind (TAnd
-              (TFun 1 TTop (TFun 0 (TMem 0 TBot TTop)
-                 (TAnd (TSel (TVarB 2) 0) (TMem 0 TBot (TSel (TVarB 0) 0)))))
+              (TFun 1 TTop (TFun 0 (TMem 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0)
+                 (TAnd (TSel (TVarB 3) 0) (TMem 0 TBot (TSel (TVarB 1) 0))))))
               (TMem 0 TBot (TLstHd TBot TTop)))).
 Proof.
-  compute. eexists. crush.
+  compute. eexists.
+  eapply T_Sub.
+  - apply_tobj; simpl; try solve [reflexivity]; [idtac | crush | crush].
+    apply_dfun; simpl; try solve [reflexivity];
+    [crush | idtac | crush | crush | crush | crush].
+    eapply T_Sub.
+    apply_tobj; simpl; try solve [reflexivity]; [idtac | crush | crush].
+    apply_dfun; simpl; try solve [reflexivity];
+    [crush | idtac | crush | crush | crush | crush].
+    eapply T_Sub.
+    apply_tobj; simpl; try solve [reflexivity]; [idtac | crush | crush].
+    apply_dfun; simpl; try solve [reflexivity];
+    [crush | idtac | crush | crush | crush | crush].
+    eapply T_Sub.
+    apply_tobj; simpl; try solve [reflexivity]; [idtac | crush | crush].
+    apply_dfun; simpl; try solve [reflexivity];
+    [crush | idtac | crush | crush | crush | crush].
+    eapply T_Sub. eapply T_Varz. simpl. reflexivity. crush.
+    crush. simpl. crush. simpl. crush. simpl. crush.
+  - simpl. crush.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Definition shift o v :=
