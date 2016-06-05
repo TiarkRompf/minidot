@@ -124,6 +124,12 @@ Ltac apply_refl_mem c :=
     try solve [apply_refl idtac eassumption; c]; solve [c]
   end.
 
+Ltac apply_stp_sel2 c :=
+  eapply stp_trans;
+  [idtac |
+   eapply stp_sel2; try solve [simpl; reflexivity]; c];
+  c.
+
 Ltac crush := simpl;
   try solve [eapply T_Sub; [(apply_tobj; crush) | (crush)]];
   try solve [apply_dfun; crush];
@@ -132,7 +138,7 @@ Ltac crush := simpl;
   try solve [apply_refl_mem crush];
   try solve [eapply stp_and2; crush];
   try solve [pick_stp_and crush];
-  try solve [eapply stp_sel2; try solve [simpl; reflexivity]; crush];
+  try solve [apply_stp_sel2 crush];
   try solve [eapply stp_sel1; try solve [simpl; reflexivity]; crush];
   try solve [eapply stp_bindx; try solve [simpl; reflexivity]; crush];
   try solve [eapply stp_bind1; try solve [simpl; reflexivity]; crush];
@@ -189,7 +195,7 @@ Proof.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 (*# Example from Paper #*)
@@ -266,7 +272,8 @@ Proof.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0.
 Qed.
 
 (*
@@ -293,17 +300,7 @@ Example paper_lst_hd_cons_warmup:
                  (TAnd (TSel (TVarB 2) 0) (TMem 0 TBot (TSel (TVarB 0) 0)))))
               (TMem 0 TBot (TLstHd TBot TTop)))).
 Proof.
-  compute. eexists.
-  eapply T_Sub.
-  apply_tobj; simpl; try solve [reflexivity]; [crush | crush | crush].
-  simpl.
-  eapply stp_bindx; simpl; try solve [reflexivity]; [idtac | crush | crush].
-  eapply stp_and2; [idtac | crush].
-  pick_stp_and idtac.
-  eapply stp_fun; simpl; try solve [reflexivity]; [crush | crush | crush | idtac].
-  eapply stp_fun; simpl; try solve [reflexivity]; [crush | crush | crush | idtac].
-  eapply stp_and2; [idtac | crush].
-  eapply stp_trans; [idtac | crush]; crush. crush.
+  compute. eexists. crush.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
@@ -351,5 +348,5 @@ Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
-apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
