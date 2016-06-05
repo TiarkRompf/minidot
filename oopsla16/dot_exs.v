@@ -95,11 +95,11 @@ Ltac apply_rev_open :=
       try instantiate (1:=rev_open k u T1); simpl; reflexivity
   end.
 
-Ltac apply_refl c :=
+Ltac apply_refl c d :=
   match goal with
   | [ |- stp ?GH ?G1 ?T1 ?T2 ?n ] =>
     assert (T1 = T2) as Eq by solve [simpl; reflexivity];
-    assert (stpd GH G1 T1 T2) as A by solve [eapply stpd_refl; c];
+    assert (stpd GH G1 T1 T2) as A by solve [eapply stpd_refl; d];
     simpl in Eq; inversion Eq; clear A; clear Eq;
     c
   end.
@@ -116,11 +116,20 @@ Ltac apply_stp_selx :=
     eapply stp_selx
   end.
 
+Ltac apply_refl_mem c :=
+  match goal with
+  | [ |- stp ?GH ?G1 (TMem ?l ?TS ?TU) (TMem _ _ _) _ ] =>
+    assert (closed (length GH) (length G1) 0 (TMem l TS TU)) as C by solve [c];
+    inversion C; subst; eapply stp_mem;
+    try solve [apply_refl idtac eassumption; c]; solve [c]
+  end.
+
 Ltac crush := simpl;
   try solve [eapply T_Sub; [(apply_tobj; crush) | (crush)]];
   try solve [apply_dfun; crush];
   try solve [apply_stp_bot; crush];
   try solve [apply_stp_selx; crush];
+  try solve [apply_refl_mem crush];
   try solve [eapply stp_and2; crush];
   try solve [pick_stp_and crush];
   try solve [eapply stp_sel2; try solve [simpl; reflexivity]; crush];
@@ -294,11 +303,7 @@ Proof.
   eapply stp_fun; simpl; try solve [reflexivity]; [crush | crush | crush | idtac].
   eapply stp_fun; simpl; try solve [reflexivity]; [crush | crush | crush | idtac].
   eapply stp_and2; [idtac | crush].
-  eapply stp_trans; [idtac | idtac].
-  eapply stp_bindx; simpl; try solve [reflexivity].
-  instantiate (2:=(rev_open 0 3 (TAnd (TFun 1 TTop (TSel (TVar false 3) 0))
-                                      (TMem 0 TBot TTop)))).
-  crush. crush. crush. crush. crush.
+  eapply stp_trans; [idtac | crush]; crush. crush.
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
