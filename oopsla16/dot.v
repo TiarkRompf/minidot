@@ -12,34 +12,42 @@ Require Export SfLib.
 Require Export Arith.EqNat.
 Require Export Arith.Lt.
 
-Definition id := nat.
-Definition lb := nat.
+(*# Syntax #*)
+
+Definition id := nat. (* identifiers for variables *)
+Definition lb := nat. (* labels for records *)
 
 Inductive ty : Type :=
-  | TBot   : ty
-  | TTop   : ty
-  | TFun   : lb -> ty -> ty -> ty
-  | TMem   : lb -> ty -> ty -> ty
+  | TBot   : ty (* bottom type *)
+  | TTop   : ty (* type type *)
+  | TFun   : lb -> ty -> ty -> ty (* dependent function type:
+                                     { def m(x: S): U }, where x is locally bound in U *)
+  | TMem   : lb -> ty -> ty -> ty (* type member type: { type A: S..U } *)
   | TVar   : bool(*true for concrete context, false for abstract context *) ->
              id(*absolute position in context, from origin, invariant under context extension*) -> ty
   | TVarB  : id(*bound variable, de Bruijn, locally nameless style -- see open *) -> ty
-  | TSel   : ty -> lb -> ty
-  | TBind  : ty -> ty
-  | TAnd   : ty -> ty -> ty
-  | TOr    : ty -> ty -> ty
+  | TSel   : ty -> lb -> ty (* type selection: x.A -- the syntax allows T.A, but in the semantics
+                               only x.A (via TVar above) are non-trivial *)
+  | TBind  : ty -> ty (* Recursive binder: { z => T } *)
+  | TAnd   : ty -> ty -> ty (* Intersection Type: T1 /\ T2 *)
+  | TOr    : ty -> ty -> ty (* Union Type: T1 \/ T2 *)
 .
 
 Inductive tm : Type :=
-  | tvar  : bool(*like TVar*) -> id -> tm
-  | tobj  : dms(*self is next slot in abstract context -- see subst_tm*) -> tm
-  | tapp  : tm -> lb -> tm -> tm
+  | tvar  : bool(*like TVar: true for concrete, false for hypothetical *) -> id -> tm
+  (* N.B.: no varB -- terms just use absolute identifers directly *)
+  | tobj  : dms(*self is next slot in abstract context -- see subst_tm*) -> tm (* object *)
+  | tapp  : tm -> lb -> tm -> tm (* method invocation: t.m(t) *)
 
-with dm : Type :=
-  | dfun : ty -> ty -> tm -> dm
-  | dty  : ty -> dm
+with dm : Type := (* member definition --
+                     the labels, e.g. m & A, are determined from the position in member list, dms *)
+  | dfun : option ty -> option ty -> tm -> dm (* method: { def m(x: S): U = t } *)
+  (* Church vs Curry: we show that all options work, by making parameter and return types optional,
+     when defining a method. *)
+  | dty  : ty -> dm (* type: { type A = T } *)
 
 (* we need our own list-like structure for stuctural recursion, e.g. in subst_tm *)
-with dms : Type :=
+with dms : Type := (* list of member defs *)
   | dnil : dms
   | dcons : dm -> dms -> dms
 .
@@ -54,11 +62,13 @@ Inductive vl : Type :=
   | vobj  : dms -> vl
 .
 
-Definition venv := list vl.
-Definition tenv := list ty.
+Definition venv := list vl. (*rho G*)
+Definition tenv := list ty. (*Gamma GH*)
 
 Hint Unfold venv.
 Hint Unfold tenv.
+
+(*# Variable Binding #*)
 
 Fixpoint index {X : Type} (n : id) (l : list X) : option X :=
   match l with
@@ -66,7 +76,12 @@ Fixpoint index {X : Type} (n : id) (l : list X) : option X :=
     | a :: l'  => if beq_nat n (length l') then Some a else index n l'
   end.
 
-
+(*
+   closed i j k -- well-bound in
+   an abstract environment GH of size >= i
+   a concrete environment G of size >= j
+   under >= k binders/de Bruijn levels
+*)
 Inductive closed: nat(*abstract, TVar false i*) -> nat(*concrete, TVar true j*) -> nat(*bound, TVarB k*)
                   -> ty -> Prop :=
 | cl_bot: forall i j k,
@@ -106,7 +121,7 @@ Inductive closed: nat(*abstract, TVar false i*) -> nat(*concrete, TVar true j*) 
     closed i j k (TOr T1 T2)
 .
 
-
+(* substitute a locally bound variable at de Brujin level k with type u in type T *)
 Fixpoint open (k: nat) (u: ty) (T: ty) { struct T }: ty :=
   match T with
     | TVar b x => TVar b x (* free var remains free. functional, so we can't check for conflict *)
@@ -121,26 +136,30 @@ Fixpoint open (k: nat) (u: ty) (T: ty) { struct T }: ty :=
     | TOr T1 T2   => TOr (open k u T1) (open k u T2)
   end.
 
-Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
+(* substitute the first abstract variable (id 0) with type u in type T --
+   all other abstract variables are shifted (id decremented) to fit the shrinked abstract context
+*)
+Fixpoint subst (u : ty) (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
     | TBot         => TBot
-    | TMem l T1 T2 => TMem l (subst U T1) (subst U T2)
-    | TSel T1 l    => TSel (subst U T1) l
+    | TMem l T1 T2 => TMem l (subst u T1) (subst u T2)
+    | TSel T1 l    => TSel (subst u T1) l
     | TVarB i      => TVarB i
     | TVar true i  => TVar true i
     (* subst the _first_ aka _oldest_ abstract variables,
        the other abstract variables are shifted to resolve in the shrinked context *)
-    | TVar false i => if beq_nat i 0 then U else TVar false (i-1)
-    | TFun l T1 T2 => TFun l (subst U T1) (subst U T2)
-    | TBind T2     => TBind (subst U T2)
-    | TAnd T1 T2   => TAnd (subst U T1) (subst U T2)
-    | TOr T1 T2    => TOr (subst U T1) (subst U T2)
+    | TVar false i => if beq_nat i 0 then u else TVar false (i-1)
+    | TFun l T1 T2 => TFun l (subst u T1) (subst u T2)
+    | TBind T2     => TBind (subst u T2)
+    | TAnd T1 T2   => TAnd (subst u T1) (subst u T2)
+    | TOr T1 T2    => TOr (subst u T1) (subst u T2)
   end.
 
-
-Fixpoint subst_tm (u:nat) (T : tm) {struct T} : tm :=
-  match T with
+(* substitute the first hypothetical variable with term u in term t --
+   like subst, shifts other hypothetical variables *)
+Fixpoint subst_tm (u:nat) (t : tm) {struct t} : tm :=
+  match t with
     | tvar true i         => tvar true i
     | tvar false i        => if beq_nat i 0 then (tvar true u) else tvar false (i-1)
     | tobj ds             => tobj (subst_dms u ds)
@@ -149,7 +168,7 @@ Fixpoint subst_tm (u:nat) (T : tm) {struct T} : tm :=
 with subst_dm (u:nat) (d: dm) {struct d} : dm :=
   match d with
     | dty T        => dty (subst (TVar true u) T)
-    | dfun T1 T2 t => dfun (subst (TVar true u) T1) (subst (TVar true u) T2) (subst_tm u t)
+    | dfun T1 T2 t => dfun (option_map (subst (TVar true u)) T1) (option_map (subst (TVar true u)) T2) (subst_tm u t)
   end
 with subst_dms (u:nat) (ds: dms) {struct ds} : dms :=
   match ds with
@@ -157,8 +176,11 @@ with subst_dms (u:nat) (ds: dms) {struct ds} : dms :=
     | dcons d ds1  => dcons (subst_dm u d) (subst_dms u ds1)
   end.
 
+(* Shortcut for the common case of replacing abstract with concrete. *)
 Definition substt x T := (subst (TVar true x) T).
 Hint Immediate substt.
+
+(*# Operational Semantics #*)
 
 (* Reduction semantics  *)
 Inductive step : venv -> tm -> venv -> tm -> Prop :=
@@ -175,6 +197,10 @@ Inductive step : venv -> tm -> venv -> tm -> Prop :=
     step G1 t2 G1' t2' ->
     step G1 (tapp (tvar true f) l t2) G1' (tapp (tvar true f) l t2')
 .
+
+(*# Static Semantics #*)
+
+Definition eq_some {X} (OT:option X) (T:X) := OT=None \/ OT=Some T.
 
 (* : -- typing *)
 Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
@@ -230,7 +256,7 @@ with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
       l = length (dms_to_list ds) ->
       T = TAnd (TMem l T11 T11) TS ->
       dms_has_type GH G1 (dcons (dty T11) ds) T (S n1)
-  | D_Fun : forall GH G1 l T11 T12 T12' t12 ds TS T n1 n2,
+  | D_Fun : forall GH G1 l OT11 T11 OT12 T12 T12' t12 ds TS T n1 n2,
       dms_has_type GH G1 ds TS n1 ->
       has_type (T11::GH) G1 t12 T12' n2 ->
       T12' = (open 0 (TVar false (length GH)) T12) ->
@@ -238,7 +264,9 @@ with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
       closed (length GH) (length G1) 1 T12 ->
       l = length (dms_to_list ds) ->
       T = TAnd (TFun l T11 T12) TS ->
-      dms_has_type GH G1 (dcons (dfun T11 T12 t12) ds) T (S (n1+n2))
+      eq_some OT11 T11 ->
+      eq_some OT12 T12 ->
+      dms_has_type GH G1 (dcons (dfun OT11 OT12 t12) ds) T (S (n1+n2))
 
 (* <: -- subtyping *)
 with stp: tenv -> venv -> ty -> ty -> nat -> Prop :=
@@ -290,8 +318,6 @@ with stp: tenv -> venv -> ty -> ty -> nat -> Prop :=
 | stp_selx: forall GH G1 l T1 n1,
     closed (length GH) (length G1) 0 T1 ->
     stp GH G1 (TSel T1 l) (TSel T1 l) (S n1)
-
-
 
 | stp_bind1: forall GH G1 T1 T1' T2 n1,
     stp (T1'::GH) G1 T1' T2 n1 ->
@@ -345,9 +371,9 @@ with htp: tenv -> venv -> id -> ty -> nat -> Prop :=
     index x GH = Some TX ->
     closed (S x) (length G1) 0 TX ->
     htp GH G1 x TX (S n1)
-| htp_bind: forall GH G1 x TX n1,
+| htp_unpack: forall GH G1 x TX n1,
     htp GH G1 x (TBind TX) n1 ->
-    closed x (length G1) 1 TX ->
+    closed (S x) (length G1) 1 TX ->
     htp GH G1 x (open 0 (TVar false x) TX) (S n1)
 | htp_sub: forall GH GU GL G1 x T1 T2 n1 n2,
     (* use restricted GH. note: this is slightly different
@@ -438,8 +464,7 @@ Ltac ev := repeat match goal with
            end.
 
 
-
-
+(*# Regularity #*)
 
 Lemma index_max : forall X vs n (T: X),
                        index n vs = Some T ->
@@ -560,7 +585,7 @@ Proof.
   - eapply stp_trans. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
   (* htp *)
   - econstructor. eauto. eapply closed_extend. eauto.
-  - eapply htp_bind. eapply IHn. eauto. omega. eapply closed_extend. eauto.
+  - eapply htp_unpack. eapply IHn. eauto. omega. eapply closed_extend. eauto.
   - eapply htp_sub. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eauto.
   (* has_type *)
   - econstructor. eapply index_extend. eauto. eapply IHn. eauto. omega. eauto. eauto. eapply closed_extend. eauto.
@@ -574,7 +599,8 @@ Proof.
   (* dms_has_type *)
   - econstructor.
   - econstructor. eapply IHn. eauto. omega. eapply closed_extend. eauto. eauto. eauto.
-  - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto. eapply closed_extend. eauto. eauto. eauto.
+  - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto.
+    eapply closed_extend. eauto. eapply closed_extend. eauto. eauto. eauto. eauto. eauto.
 Qed.
 
 Lemma closed_upgrade_gh: forall i i1 j k T1,
@@ -601,7 +627,8 @@ Qed.
 
 Lemma closed_open: forall j k n b V T, closed k n (j+1) T -> closed k n j (TVar b V) -> closed k n j (open j (TVar b V) T).
 Proof.
-  intros. generalize dependent j. induction T; intros; inversion H; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
+  intros. generalize dependent j. induction T; intros; inversion H;
+  try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
 
   - eapply closed_upgrade; eauto.
   - Case "TVarB". simpl.
@@ -878,6 +905,7 @@ Lemma stpd_reg2 : forall GH G1 T1 T2,
 Proof. intros. eapply stpd_refl. eapply stpd_closed2. eauto. Qed.
 
 
+(*# Infrastructure Lemmas #*)
 
 Ltac index_subst := match goal with
                       | H1: index ?x ?G = ?V1 , H2: index ?x ?G = ?V2 |- _ => rewrite H1 in H2; inversion H2; subst
@@ -906,9 +934,23 @@ Ltac invstp_var := match goal with
   | _ => idtac
 end.
 
-Lemma closed_no_open: forall T x k l j,
+Lemma map_eq_some: forall {X} {Y} (f: X -> Y) OT (T: X),
+  eq_some OT T ->
+  eq_some (option_map f OT) (f T).
+Proof.
+  intros. destruct H as [EN | ES]; subst; unfold eq_some; simpl; auto.
+Qed.
+
+Lemma subst_eq_some: forall OT T U,
+  eq_some OT T ->
+  eq_some (option_map (subst U) OT) (subst U T).
+Proof.
+  intros. apply map_eq_some; auto.
+Qed.
+
+Lemma closed_no_open: forall T b x k l j,
   closed l k j T ->
-  T = open j (TVar false x) T.
+  T = open j (TVar b x) T.
 Proof.
   intros. induction H; intros; eauto;
   try solve [compute; compute in IHclosed; rewrite <-IHclosed; auto];
@@ -941,14 +983,15 @@ Qed.
 
 Lemma closed_subst: forall j n k V T, closed (n+1) k j T -> closed n k 0 V -> closed n k j (subst V T).
 Proof.
-  intros. generalize dependent j. induction T; intros; inversion H; try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
+  intros. generalize dependent j. induction T; intros; inversion H;
+  try econstructor; try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
 
   - Case "TSelH". simpl.
-    case_eq (beq_nat i 0); intros E. eapply closed_upgrade. eapply closed_upgrade_gh. eauto. eauto. omega. econstructor. subst.
+    case_eq (beq_nat i 0); intros E.
+    eapply closed_upgrade. eapply closed_upgrade_gh. eauto. eauto. omega. econstructor. subst.
     assert (i > 0). eapply beq_nat_false_iff in E. omega. omega.
 Qed.
 
-(* not used? *)
 Lemma subst_open_commute_m: forall j k n m V T2, closed (n+1) k (j+1) T2 -> closed m k 0 V ->
     subst V (open j (TVar false (n+1)) T2) = open j (TVar false n) (subst V T2).
 Proof.
@@ -966,7 +1009,6 @@ Proof.
   eauto.
 Qed.
 
-(* not used? *)
 Lemma subst_open_commute: forall j k n V T2, closed (n+1) k (j+1) T2 -> closed 0 k 0 V ->
     subst V (open j (TVar false (n+1)) T2) = open j (TVar false n) (subst V T2).
 Proof.
@@ -1253,6 +1295,8 @@ Proof.
     destruct IHGH1 as [GH0U IH].
     exists GH0U. apply IH.
 Qed.
+
+(*# Regularity II -- Abstract Context Weakening #*)
 
 (* upgrade_gh interlude begin *)
 
@@ -1571,7 +1615,7 @@ Proof.
       eapply index_splice_lo.
       rewrite A. eauto. omega.
       rewrite A. eauto.
-  - Case "htp_bind".
+  - Case "htp_unpack".
     unfold splice_var.
     case_eq (le_lt_dec (length G0) x1); intros E LE.
     + remember (x1 - (length G0)) as n.
@@ -1585,7 +1629,7 @@ Proof.
         rewrite Heqn. omega.
       }
       rewrite B.
-      eapply htp_bind.
+      eapply htp_unpack.
       specialize (IHhtp GX G0 G1 x1 (TBind TX)).
       simpl in IHhtp. unfold splice_var in IHhtp. rewrite LE in IHhtp.
       eapply IHhtp. eauto. omega.
@@ -1601,7 +1645,7 @@ Proof.
         econstructor. omega. omega.
       }
       rewrite B.
-      eapply htp_bind.
+      eapply htp_unpack.
       specialize (IHhtp GX G0 G1 x1 (TBind TX)).
       simpl in IHhtp. unfold splice_var in IHhtp. rewrite LE in IHhtp.
       rewrite <- A. eapply IHhtp. eauto. omega. eauto.
@@ -1761,7 +1805,7 @@ Proof.
   - eapply stp_trans. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
   (* htp *)
   - econstructor. eapply index_extend. eauto. eapply closed_upgrade_gh. eauto. omega.
-  - eapply htp_bind. eapply IHn. eauto. omega. eapply closed_upgrade_gh. eauto. omega.
+  - eapply htp_unpack. eapply IHn. eauto. omega. eapply closed_upgrade_gh. eauto. omega.
   - eapply htp_sub. eapply IHn. eauto. omega. eauto. eauto. subst GH.
     instantiate (1:=T::GU). eauto.
 Qed.
@@ -1802,6 +1846,8 @@ Proof.
 Qed.
 
 (* upgrade_gh interlude ends *)
+
+(*# Narrowing in Abstract Context #*)
 
 Lemma stp_narrow_aux: forall n,
   (forall GH G x T n0,
@@ -1849,10 +1895,10 @@ Proof.
         }
         eexists. eapply htp_var. eapply A.
         subst. eauto.
-    + SCase "bind".
+    + SCase "unpack".
       edestruct IHn_htp with (GH:=GH) (GH':=GH').
       eapply H0. omega. subst. reflexivity. subst. reflexivity. assumption.
-      eexists. eapply htp_bind; eauto.
+      eexists. eapply htp_unpack; eauto.
     + SCase "sub".
       edestruct IHn_htp as [? Htp].
       eapply H0. omega. eapply EGH. eapply EGH'. assumption.
