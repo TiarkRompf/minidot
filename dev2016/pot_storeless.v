@@ -227,6 +227,26 @@ Fixpoint path_head (p: vr) : vr :=
   | _ => p
   end.
 
+Inductive safe_self_type: ty -> Prop :=
+| safe_Top: 
+    safe_self_type TTop
+| safe_Fun: forall l T1 T2 R,
+    safe_self_type R ->
+    safe_self_type (TAnd (TFun l T1 T2) R)
+| safe_Fld: forall l T R,
+    safe_self_type R ->
+    safe_self_type T ->
+    safe_self_type (TAnd (TFld l T) R)
+| safe_Alias: forall l T R,
+    safe_self_type R ->
+    safe_self_type (TAnd (TMem l T T) R)
+| safe_Ub: forall l T R,
+    safe_self_type R ->
+    safe_self_type (TAnd (TMem l TBot T) R)
+| safe_Lb: forall l T R,
+    safe_self_type R ->
+    safe_self_type (TAnd (TMem l T TTop) R).
+
 Inductive has_type : tenv -> tm -> ty -> nat -> Prop :=
   | T_VObj : forall GH ds ds' T T' TO n1,
       dms_has_type (length GH) (T'::GH) ds' T' n1 ->
