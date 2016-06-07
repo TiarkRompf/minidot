@@ -6,6 +6,7 @@
 (* it also turns types into proper first class objects, *)
 (* compared to fsub1.v *)
 
+(* this version adds exceptions to fsub2.v *)
 
 Require Export SfLib.
 
@@ -37,6 +38,8 @@ Inductive tm : Type :=
   | tabs   : id -> id -> tm -> tm (* \f x.y *)
   | ttapp  : tm -> tm -> tm (* f[X] *)
   | ttabs  : id -> ty -> tm -> tm (* \f x.y *)
+  | traise : tm
+  | tcatch : tm -> tm -> tm (* try t1 catch t2 *)
 .
 
 Inductive vl : Type :=
@@ -285,6 +288,14 @@ Does it make a difference? It seems like we can always widen f?
            fresh env = x ->
            has_type env (ttabs x T1 y) (TAll T1 T2)
 
+| t_raise: forall env,
+           has_type env traise TBot
+
+| t_catch: forall env t c T,
+           has_type env t T ->
+           has_type env c T ->  
+           has_type env (tcatch t c) T
+                    
 | t_sub: forall env e T1 T2,
            has_type env e T1 ->
            stp env [] T1 T2 ->
@@ -593,36 +604,39 @@ Proof. intros. repeat eu. eexists. eapply stp2_transf; eauto. Qed.
 
 
 (*
-None             means timeout
-Some None        means stuck
-Some (Some v))   means result v
+None                    means timeout
+Some None               means stuck
+Some (Some None)        means exception
+Some (Some (Some v)))   means result v
 
 Could use do-notation to clean up syntax.
  *)
 
-Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
+Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option (option vl)) :=
   match n with
     | 0 => None
     | S n =>
       match t with
-        | ttrue      => Some (Some (vbool true))
-        | tfalse     => Some (Some (vbool false))
-        | tvar x     => Some (index x env)
-        | tabs f x y => Some (Some (vabs env f x y))
-        | ttabs x T y  => Some (Some (vtabs env x T y))
-        | ttyp T     => Some (Some (vty env T))
+        | ttrue      => Some (Some (Some (vbool true)))
+        | tfalse     => Some (Some (Some (vbool false)))
+        | tvar x     => Some (Some (index x env))
+        | tabs f x y => Some (Some (Some (vabs env f x y)))
+        | ttabs x T y  => Some (Some (Some (vtabs env x T y)))
+        | ttyp T     => Some (Some (Some (vty env T)))
         | tapp ef ex   =>
           match teval n env ex with
             | None => None
             | Some None => Some None
-            | Some (Some vx) =>
+            | Some (Some None) => Some (Some None)
+            | Some (Some (Some vx)) =>
               match teval n env ef with
                 | None => None
                 | Some None => Some None
-                | Some (Some (vbool _)) => Some None
-                | Some (Some (vty _ _)) => Some None
-                | Some (Some (vtabs _ _ _ _)) => Some None
-                | Some (Some (vabs env2 f x ey)) =>
+                | Some (Some None) => Some (Some None)
+                | Some (Some (Some (vbool _))) => Some None
+                | Some (Some (Some (vty _ _))) => Some None
+                | Some (Some (Some (vtabs _ _ _ _))) => Some None
+                | Some (Some (Some (vabs env2 f x ey))) =>
                   teval n ((x,vx)::(f,vabs env2 f x ey)::env2) ey
               end
           end
@@ -630,16 +644,26 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
           match teval n env ex with
             | None => None
             | Some None => Some None
-            | Some (Some vx) =>
+            | Some (Some None) => Some (Some None)
+            | Some (Some (Some vx)) =>
               match teval n env ef with
                 | None => None
                 | Some None => Some None
-                | Some (Some (vbool _)) => Some None
-                | Some (Some (vty _ _)) => Some None
-                | Some (Some (vabs _ _ _ _)) => Some None
-                | Some (Some (vtabs env2 x T ey)) =>
+                | Some (Some None) => Some (Some None)
+                | Some (Some (Some (vbool _))) => Some None
+                | Some (Some (Some (vty _ _))) => Some None
+                | Some (Some (Some (vabs _ _ _ _))) => Some None
+                | Some (Some (Some (vtabs env2 x T ey))) =>
                   teval n ((x,vx)::env2) ey
               end
+          end
+        | traise => Some (Some None)
+        | tcatch et ec =>
+          match teval n env et with
+            | None => None
+            | Some None => Some None
+            | Some (Some None) => teval n env ec
+            | Some (Some (Some vx)) => Some (Some (Some vx))
           end
       end
   end.
@@ -1909,10 +1933,13 @@ Proof. intros. induction H0.
 Qed.
 
 
-Inductive res_type: venv -> option vl -> ty -> Prop :=
+Inductive res_type: venv -> option (option vl) -> ty -> Prop :=
 | not_stuck: forall venv v T,
       val_type venv v T ->
-      res_type venv (Some v) T.
+      res_type venv (Some (Some v)) T
+| not_stuck_except: forall venv T,
+      res_type venv (Some None) T
+.
 
 Hint Constructors res_type.
 Hint Resolve not_stuck.
@@ -2232,7 +2259,7 @@ Lemma restp_widen: forall vf H1 H2 T1 T2,
   sstpd2 true H1 T1 H2 T2 [] ->
   res_type H2 vf T2.
 Proof.
-  intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto.
+  intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto. eauto. 
 Qed.
 
 Lemma invert_typ: forall venv vx T1 T2,
@@ -3422,7 +3449,7 @@ Qed.
 
 
 
-(* if not a timeout, then result not stuck and well-typed *)
+(* if not a timeout, then result not stuck, and well-typed (value or exception) *)
 
 Theorem full_safety : forall n e tenv venv res T,
   teval n venv e = Some res -> has_type tenv e T -> wf_env venv tenv ->
@@ -3464,11 +3491,11 @@ Proof.
 
       destruct tx as [rx|]; try solve by inversion.
       assert (res_type venv0 rx T1) as HRX. SCase "HRX". subst. eapply IHn; eauto.
-      inversion HRX as [? vx].
+      inversion HRX as [? vx|].
 
       destruct tf as [rf|]; subst rx; try solve by inversion.
       assert (res_type venv0 rf (TFun T1 T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
-      inversion HRF as [? vf].
+      inversion HRF as [? vf|].
 
       destruct (invert_abs venv0 vf T1 T2) as
           [env1 [tenv [f0 [x0 [y0 [T3 [T4 [EF [FRF [FRX [WF [HTY [STX STY]]]]]]]]]]]]]. eauto.
@@ -3489,9 +3516,14 @@ Proof.
           eexists. eapply stp2_fun. eassumption. eassumption. eauto. eauto.
           (* TODO: sstpd2_fun constructor *)
 
-      inversion HRY as [? vy].
+      inversion HRY as [? vy|].
 
       eapply not_stuck. eapply valtp_widen; eauto. eapply sstpd2_extend1. eapply sstpd2_extend1. eauto. eauto. eauto.
+
+      (* now handle exception cases *)
+      subst. eapply not_stuck_except.
+      subst. inversion H3. subst. eapply not_stuck_except.
+      subst. inversion H3. subst. eapply not_stuck_except.
 
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
@@ -3509,13 +3541,13 @@ Proof.
 
       destruct tx as [rx|]; try solve by inversion.
       assert (res_type venv0 rx T11) as HRX. SCase "HRX". subst. eapply IHn; eauto.
-      inversion HRX as [? vx].
+      inversion HRX as [? vx|].
 
       subst rx.
 
       destruct tf as [rf|]; try solve by inversion.
       assert (res_type venv0 rf (TAll T11 T12)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
-      inversion HRF as [? vf].
+      inversion HRF as [? vf|].
 
       destruct (invert_tabs venv0 vf vx T11 T12) as
           [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]].
@@ -3526,18 +3558,36 @@ Proof.
         SCase "HRY".
           subst. eapply IHn. eauto. eauto.
           (* wf_env x *) econstructor. eapply valtp_widen; eauto. eapply sstpd2_extend2. eauto. eauto. eauto.
-      inversion HRY as [? vy].
+      inversion HRY as [? vy|].
 
       eapply not_stuck. eapply valtp_widen. eauto. eauto.
 
+      (* now handle exception cases *)
+      subst. eapply not_stuck_except.
+      subst. inversion H3. subst. eapply not_stuck_except.
+      subst. inversion H3. subst. eapply not_stuck_except.
+      
     + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "TAbs".
     remember (ttabs i t e) as xe. induction H0; inversion Heqxe; subst.
     + eapply not_stuck. eapply v_tabs; eauto. subst i. eauto. rewrite (wf_fresh venv0 env H1). eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
-    +  eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
-       Grab Existential Variables. apply 0. apply 0.
+  - Case "Raise".
+    eapply not_stuck_except.
+
+  - Case "Catch".
+    remember (tcatch e1 e2) as e. induction H0; inversion Heqe; subst.
+    + remember (teval n venv0 e1) as tx.
+      destruct tx as [rx|]; try solve by inversion.
+      assert (res_type venv0 rx T) as HRX. SCase "HRX". subst. eapply IHn; eauto.
+      inversion HRX as [? vx|].
+      (* value: return *) subst. inversion H3. eapply not_stuck. eauto.
+      (* exception: use catch block *) subst. eapply IHn; eauto. 
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+
+Grab Existential Variables. apply 0. apply 0.
 Qed.
 
 End FSUB.
