@@ -20,7 +20,7 @@ Definition lb := nat.
 Inductive vr : Type :=
   | VarF: id(*absolute position in context, from origin, invariant under context extension*) -> vr
   | VarB: id(*bound variable, de Bruijn, locally nameless style -- see open *) -> vr
-  | VObj: dms(*self is bound, de Bruijn, var*) -> vr
+  | VObj: list dm(*self is bound, de Bruijn, var*) -> vr
 with ty : Type :=
   | TBot   : ty
   | TTop   : ty
@@ -33,22 +33,14 @@ with ty : Type :=
 with  tm : Type :=
   | tvar  : vr -> tm
   | tapp  : tm -> lb -> tm -> tm
-
 with dm : Type :=
   | dfun : ty -> ty -> tm -> dm
   | dty  : ty -> dm
-
-(* we need our own list-like structure for stuctural recursion, e.g. in subst_tm *)
-with dms : Type :=
-  | dnil : dms
-  | dcons : dm -> dms -> dms
 .
 
-Fixpoint dms_to_list (ds: dms) : list dm :=
-  match ds with
-    | dnil => []
-    | dcons d ds => d :: dms_to_list ds
-  end.
+Definition dms := list dm.
+Definition dnil := @nil dm.
+Definition dcons(d: dm)(ds: dms) := d :: ds.
 
 Definition tenv := list ty.
 
@@ -127,7 +119,7 @@ Fixpoint vr_open (k: nat) (u: vr) (v: vr) { struct v }: vr :=
   match v with
     | VarF x => VarF x
     | VarB x => if beq_nat k x then u else VarB x
-    | VObj dms => VObj (dms_open (S k) u dms)
+    | VObj ds => VObj (map (dm_open (S k) u) ds)
   end
 with open (k: nat) (u: vr) (T: ty) { struct T }: ty :=
   match T with
@@ -149,18 +141,15 @@ with dm_open (k: nat) (u: vr) (d: dm) { struct d }: dm :=
    match d with
      | dfun T1 T2 t2 => dfun (open k u T1) (open (S k) u T2) (tm_open (S k) u t2)
      | dty T1 => dty (open k u T1)
-   end
-with dms_open (k: nat) (u: vr) (ds: dms) { struct ds }: dms :=
-   match ds with
-     | dnil => dnil
-     | dcons d ds => dcons (dm_open k u d) (dms_open k u ds)
    end.
+
+Definition dms_open (k: nat) (u: vr) (ds: dms) := map (dm_open k u) ds.
 
 Fixpoint vr_subst (u : vr) (v : vr) {struct v} : vr :=
   match v with
     | VarF i  => if beq_nat i 0 then u else VarF (i-1)
     | VarB i  => VarB i
-    | VObj ds => VObj (dms_subst u ds)
+    | VObj ds => VObj (map (dm_subst u) ds)
   end
 with subst (u : vr) (T : ty) {struct T} : ty :=
   match T with
@@ -182,12 +171,9 @@ with dm_subst (u : vr) (d : dm) { struct d } : dm :=
    match d with
      | dfun T1 T2 t2 => dfun (subst u T1) (subst u T2) (tm_subst u t2)
      | dty T1 => dty (subst u T1)
-   end
-with dms_subst (u : vr) (ds : dms) { struct ds } : dms :=
-   match ds with
-     | dnil => dnil
-     | dcons d ds => dcons (dm_subst u d) (dms_subst u ds)
    end.
+
+Definition dms_subst (u : vr) (ds : dms) : dms := (map (dm_subst u) ds).
 
 Definition subst_dms (u:dms) (ds: dms) := dms_open 0 (VObj u) ds.
 Definition subst_dm (x:dms) (D: dm) := dm_open 0 (VObj x) D.
@@ -251,7 +237,7 @@ with dms_has_type: tenv -> dms -> ty -> nat -> Prop :=
   | D_Nil : forall GH n1,
       dms_has_type GH dnil TTop (S n1)
   | D_Cons : forall GH l d T ds TS n1 n2,
-      l = length (dms_to_list ds) ->
+      l = length ds ->
       dm_has_type GH l d T n1 ->
       dms_has_type GH ds TS n2 ->
       dms_has_type GH (dcons d ds) (TAnd T TS) (S (n1+n2))
@@ -281,11 +267,11 @@ with stp: tenv -> ty -> ty -> nat -> Prop :=
     stp GH (TSel v1 l) (TSel v1 l) (S n1)
 
 | stp_strong_sel1: forall GH l ds TX n1,
-    index l (dms_to_list (subst_dms ds ds)) = Some (dty TX) ->
+    index l (subst_dms ds ds) = Some (dty TX) ->
     vr_closed (length GH) 0 (VObj ds) ->
     stp GH (TSel (VObj ds) l) TX (S n1)
 | stp_strong_sel2: forall GH l ds TX n1,
-    index l (dms_to_list (subst_dms ds ds)) = Some (dty TX) ->
+    index l (subst_dms ds ds) = Some (dty TX) ->
     vr_closed (length GH) 0 (VObj ds) ->
     stp GH TX (TSel (VObj ds) l) (S n1)
 
@@ -370,18 +356,18 @@ Inductive vtp(*possible types*) : nat(*pack count*) -> dms -> ty -> nat(*size*) 
     vr_closed 0 0 (VObj ds) ->
     vtp m ds TTop (S n1)
 | vtp_mem: forall m l ds TX T1 T2 n1 n2,
-    index l (dms_to_list (subst_dms ds ds)) = Some (dty TX) ->
+    index l (subst_dms ds ds) = Some (dty TX) ->
     stp [] T1 TX n1 ->
     stp [] TX T2 n2 ->
     vr_closed 0 0 (VObj ds) ->
     vtp m ds (TMem l T1 T2) (S (n1+n2))
 | vtp_fun: forall m ds T l T3 T4 T1 T2 t T2' T4' ds' T' T1x T2x tx T2x' tx' n1 n2 n3 n4,
-    index l (dms_to_list (subst_dms ds ds)) = Some (dfun T1 T2 t) ->
+    index l (subst_dms ds ds) = Some (dfun T1 T2 t) ->
     dms_has_type [T'] ds' T' n4 ->
     T' = open 0 (VarF 0) T ->
     ds' = dms_open 0 (VarF 0) ds ->
     closed 0 1 T ->
-    index l (dms_to_list ds') = Some (dfun T1x T2x tx) ->
+    index l ds' = Some (dfun T1x T2x tx) ->
     T2x' = (open 0 (VarF 1) T2x) ->
     tx' = (tm_open 0 (VarF 1) tx) ->
     has_type [T1x;T'] tx' T2x' n3 ->
@@ -399,7 +385,7 @@ Inductive vtp(*possible types*) : nat(*pack count*) -> dms -> ty -> nat(*size*) 
     closed 0 1 T2 ->
     vtp (S m) ds (TBind T2) (S (n1))
 | vtp_sel: forall m ds dsy l TX n1,
-    index l (dms_to_list (subst_dms dsy dsy)) = Some (dty TX) ->
+    index l (subst_dms dsy dsy) = Some (dty TX) ->
     vr_closed 0 0 (VObj dsy) ->
     vtp m ds TX n1 ->
     vtp m ds (TSel (VObj dsy) l) (S (n1))
@@ -582,9 +568,10 @@ Qed.
 Scheme vr_mut := Induction for vr Sort Prop
 with   ty_mut := Induction for ty Sort Prop
 with   tm_mut := Induction for tm Sort Prop
-with   dm_mut := Induction for dm Sort Prop
-with   dms_mut := Induction for dms Sort Prop.
-Combined Scheme syntax_mutind from vr_mut, ty_mut, tm_mut, dm_mut, dms_mut.
+with   dm_mut := Induction for dm Sort Prop.
+(* TODO this doesn't work!!
+Combined Scheme syntax_mutind from vr_mut, ty_mut, tm_mut, dm_mut.
+*)
 
 Scheme vr_cl_mut := Induction for vr_closed Sort Prop
 with   ty_cl_mut := Induction for closed Sort Prop
@@ -630,13 +617,13 @@ Proof.
 Qed.
 
 Lemma closed_open_rec:
-  (forall v1, forall j k v, vr_closed k (j+1) v1 -> vr_closed k j v -> vr_closed k j (vr_open j v v1)) /\
-  (forall T1, forall j k v, closed k (j+1) T1 -> vr_closed k j v -> closed k j (open j v T1)) /\
-  (forall t1, forall j k v, tm_closed k (j+1) t1 -> vr_closed k j v -> tm_closed k j (tm_open j v t1)) /\
-  (forall d1, forall j k v, dm_closed k (j+1) d1 -> vr_closed k j v -> dm_closed k j (dm_open j v d1)) /\
-  (forall ds1, forall j k v, dms_closed k (j+1) ds1 -> vr_closed k j v -> dms_closed k j (dms_open j v ds1)).
+  (forall k j0 v1,  vr_closed  k j0 v1  -> forall j v, j0 = j+1 -> vr_closed k j v -> vr_closed k j (vr_open j v v1)) /\
+  (forall k j0 T1,  closed     k j0 T1  -> forall j v, j0 = j+1 -> vr_closed k j v -> closed k j (open j v T1)) /\
+  (forall k j0 t1,  tm_closed  k j0 t1  -> forall j v, j0 = j+1 -> vr_closed k j v -> tm_closed k j (tm_open j v t1)) /\
+  (forall k j0 d1,  dm_closed  k j0 d1  -> forall j v, j0 = j+1 -> vr_closed k j v -> dm_closed k j (dm_open j v d1)) /\
+  (forall k j0 ds1, dms_closed k j0 ds1 -> forall j v, j0 = j+1 -> vr_closed k j v -> dms_closed k j (dms_open j v ds1)).
 Proof.
-  apply syntax_mutind; intros;
+  apply closed_mutind; intros;
   try solve [
         try inversion H; try inversion H0; try inversion H1; try inversion H2;
         subst; simpl; econstructor;
@@ -645,9 +632,10 @@ Proof.
         try solve [omega];
         try solve [eapply (proj1 closed_upgrade_rec); eauto]
       ].
-  - inversion H; subst. simpl.
-    case_eq (beq_nat j i); intros E; eauto.
+  - simpl. case_eq (beq_nat j x); intros E; eauto.
     econstructor. eapply beq_nat_false_iff in E. omega.
+  - simpl. econstructor. unfold dms_open in H. eapply H. omega.
+    eapply (proj1 closed_upgrade_rec). eauto. omega.
 Qed.
 
 Lemma closed_open: forall j k v T, closed k (j+1) T -> vr_closed k j v -> closed k j (open j v T).
@@ -672,6 +660,7 @@ Proof.
   - simpl.
     assert (k <> x) as A. omega.
     eapply beq_nat_false_iff in A. rewrite A. reflexivity.
+  - f_equal. unfold dms_open in H. eapply H.
 Qed.
 
 Lemma closed_no_open: forall T x l j,
@@ -682,15 +671,17 @@ Proof.
 Qed.
 
 Lemma closed_no_subst_rec:
-  (forall v j, vr_closed 0 j v -> forall vx, vr_subst vx v = v) /\
-  (forall T j, closed 0 j T -> forall vx, subst vx T = T) /\
-  (forall t j, tm_closed 0 j t -> forall vx, tm_subst vx t = t) /\
-  (forall d j, dm_closed 0 j d -> forall vx, dm_subst vx d = d) /\
-  (forall ds j, dms_closed 0 j ds -> forall vx, dms_subst vx ds = ds).
+  (forall i j v , vr_closed  i j v  -> i = 0 -> forall vx, vr_subst vx v = v) /\
+  (forall i j T , closed     i j T  -> i = 0 -> forall vx, subst vx T = T) /\
+  (forall i j t , tm_closed  i j t  -> i = 0 -> forall vx, tm_subst vx t = t) /\
+  (forall i j d , dm_closed  i j d  -> i = 0 -> forall vx, dm_subst vx d = d) /\
+  (forall i j ds, dms_closed i j ds -> i = 0 -> forall vx, dms_subst vx ds = ds).
 Proof.
-  apply syntax_mutind; intros;
+  apply closed_mutind; intros;
   try inversion H; try inversion H0; try inversion H1; try inversion H2;
   subst; simpl; f_equal;
+  unfold dms_subst in *; unfold dcons in *;
+  try solve [erewrite H; eauto; erewrite H0; eauto];
   try solve [erewrite H; eauto];
   try solve [erewrite H0; eauto];
   try solve [erewrite H1; eauto];
@@ -711,6 +702,7 @@ Lemma closed_subst_rec:
   (forall d j n V, dm_closed (n+1) j d -> vr_closed n 0 V -> dm_closed n j (dm_subst V d)) /\
   (forall ds j n V, dms_closed (n+1) j ds -> vr_closed n 0 V -> dms_closed n j (dms_subst V ds)).
 Proof.
+Admitted. (*
   apply syntax_mutind; intros;
   try inversion H; try inversion H0; try inversion H1; try inversion H2;
   subst; simpl; try econstructor;
@@ -722,6 +714,7 @@ Proof.
     (eapply (proj1 closed_upgrade_rec); eauto; omega) |
     (econstructor; eapply beq_nat_false_iff in E; omega) ]].
 Qed.
+*)
 
 Lemma closed_subst: forall j n V T, closed (n+1) j T -> vr_closed n 0 V -> closed n j (subst V T).
 Proof.
@@ -737,6 +730,7 @@ Lemma subst_open_distribute: forall k j0 vx v,
   (forall ds0 j, j0 <= j -> dms_subst vx (dms_open j v ds0) = dms_open j (vr_subst vx v) (dms_subst vx ds0)).
 Proof.
   intros k j0 vx v HCx.
+Admitted. (*
   apply syntax_mutind; intros; simpl;
   try inversion H0; try inversion H1; try inversion H2;
   subst;
@@ -746,7 +740,7 @@ Proof.
     eapply (proj1 closed_no_open_rec).
     eapply (proj1 closed_upgrade_rec). eauto. omega.
   - case_eq (beq_nat j i); intros E; simpl; eauto.
-Qed.
+Qed.*)
 
 Lemma subst_open_commute0_rec:
   (forall v0 j TX, vr_closed 0 (j+1) v0 -> (vr_subst TX (vr_open j (VarF 0) v0)) = vr_open j TX v0) /\
@@ -755,6 +749,7 @@ Lemma subst_open_commute0_rec:
   (forall d0 j TX, dm_closed 0 (j+1) d0 -> (dm_subst TX (dm_open j (VarF 0) d0)) = dm_open j TX d0) /\
   (forall ds0 j TX, dms_closed 0 (j+1) ds0 -> (dms_subst TX (dms_open j (VarF 0) ds0)) = dms_open j TX ds0).
 Proof.
+Admitted. (*
   apply syntax_mutind; intros; simpl;
   try inversion H0; try inversion H1; try inversion H2;
   subst;
@@ -763,7 +758,7 @@ Proof.
   - inversion H; subst. omega.
   - inversion H; subst.
     case_eq (beq_nat j i); intros E; simpl; eauto.
-Qed.
+Qed.*)
 
 Lemma subst_open_commute0: forall T0 j TX,
   closed 0 (j+1) T0 ->
@@ -782,6 +777,7 @@ Lemma subst_open_commute1_rec: forall x x0,
   (forall ds0 j, (dms_open j (VObj x0) (dms_subst (VObj x) ds0)) = (dms_subst (VObj x) (dms_open j (VObj x0) ds0))).
 Proof.
   intros x x0 HCx HCx0.
+Admitted. (*
   apply syntax_mutind; intros; simpl;
   try inversion H0; try inversion H1; try inversion H2;
   subst;
@@ -798,7 +794,7 @@ Proof.
     reflexivity.
     inversion HCx0; subst.
     eassumption.
-Qed.
+Qed.*)
 
 Lemma subst_open_commute1: forall x x0,
   vr_closed 0 0 (VObj x) ->
@@ -878,6 +874,7 @@ Lemma subst_open_rec: forall k x,
   (forall ds j n, (dms_subst (VObj x) (dms_open j (VarF (n+1)) ds)) = (dms_open j (VarF n) (dms_subst (VObj x) ds))).
 Proof.
   intros k x Hx.
+Admitted. (*
   apply syntax_mutind; intros; simpl;
   try inversion H0; try inversion H1; try inversion H2;
   subst;
@@ -894,7 +891,7 @@ Proof.
     }
     rewrite E1.
     f_equal. omega.
-Qed.
+Qed.*)
 
 Lemma subst_open: forall k x, vr_closed k 0 (VObj x) ->
   forall TX n j,
@@ -931,6 +928,7 @@ Lemma subst_open_commute0b_rec: forall k x,
   (forall ds1 n, dms_subst (VObj x) (dms_open n (VarF 0) ds1) = dms_open n (VObj x) (dms_subst (VObj x) ds1)).
 Proof.
   intros k x Hx.
+Admitted. (*
   apply syntax_mutind; intros; simpl;
   try inversion H0; try inversion H1; try inversion H2;
   subst;
@@ -943,7 +941,7 @@ Proof.
     eapply (proj2 (proj2 (proj2 (proj2 closed_upgrade_rec)))); eauto.
     omega.
   - case_eq (beq_nat n i); intros E; simpl; eauto.
-Qed.
+Qed. *)
 
 Lemma subst_open_commute0b: forall k x,
   (vr_closed k 0 (VObj x)) -> forall T1 n,
@@ -963,6 +961,7 @@ Lemma subst_open_commute_z_rec: forall k x,
   (forall ds1 z n, dms_subst (VObj x) (dms_open n (VarF (z + 1)) ds1) = dms_open n (VarF z) (dms_subst (VObj x) ds1)).
 Proof.
   intros k x Hx.
+Admitted. (*
   apply syntax_mutind; intros; simpl;
   try inversion H0; try inversion H1; try inversion H2;
   subst;
@@ -979,7 +978,7 @@ Proof.
       eapply beq_nat_false_iff. omega.
     }
     rewrite E1. f_equal. omega.
-Qed.
+Qed. *)
 
 Lemma subst_open_commute_z: forall k x,
  (vr_closed k 0 (VObj x)) -> forall T1 z n,
@@ -991,76 +990,76 @@ Proof.
 Qed.
 
 Lemma length_subst_dms: forall ds x,
-  (length (dms_to_list ds))=(length (dms_to_list (subst_dms x ds))).
+  length ds = length (subst_dms x ds).
 Proof.
   intros. induction ds; eauto.
   simpl. rewrite IHds. reflexivity.
 Qed.
 
 Lemma length_dms_subst: forall ds x,
-  (length (dms_to_list ds))=(length (dms_to_list (dms_subst x ds))).
+  length ds = length (dms_subst x ds).
 Proof.
   intros. induction ds; eauto.
   simpl. rewrite IHds. reflexivity.
 Qed.
 
 Lemma length_open_dms: forall ds x,
-  (length (dms_to_list ds))=(length (dms_to_list (dms_open 0 (VObj x) ds))).
+  length ds = length (dms_open 0 (VObj x) ds).
 Proof.
   intros. induction ds; eauto.
   simpl. rewrite IHds. reflexivity.
 Qed.
 
 Lemma length_dms_open: forall ds v,
-  (length (dms_to_list ds))=(length (dms_to_list (dms_open 0 v ds))).
+  length ds = length (dms_open 0 v ds).
 Proof.
   intros. induction ds; eauto.
   simpl. rewrite IHds. reflexivity.
 Qed.
 
 Lemma index_subst_dms: forall ds ds0 D ds1 x,
-  dms_to_list ds = ds0 ++ dms_to_list (dcons D ds1) ->
-  index (length (dms_to_list ds1)) (dms_to_list (subst_dms x ds)) = Some (subst_dm x D).
+  ds = ds0 ++ (D :: ds1) ->
+  index (length ds1) (subst_dms x ds) = Some (subst_dm x D).
 Proof.
   intros. generalize dependent ds1. generalize dependent ds. induction ds0; intros.
   - simpl in H. destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
-    simpl. rewrite <- length_open_dms. rewrite beq_nat_true_eq. reflexivity.
+    simpl. rewrite <- length_subst_dms. rewrite beq_nat_true_eq. reflexivity.
   - destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
     simpl. rewrite false_beq_nat. eapply IHds0. eauto.
-    rewrite <- length_open_dms. rewrite H2. rewrite app_length. simpl.
+    rewrite <- length_subst_dms. rewrite app_length. simpl.
     omega.
 Qed.
 
 Lemma index_dms_open: forall ds ds0 D ds1 v,
-  dms_to_list ds = ds0 ++ dms_to_list (dcons D ds1) ->
-  index (length (dms_to_list ds1)) (dms_to_list (dms_open 0 v ds)) = Some (dm_open 0 v D).
+  ds = ds0 ++ (D :: ds1) ->
+  index (length ds1) (dms_open 0 v ds) = Some (dm_open 0 v D).
 Proof.
   intros. generalize dependent ds1. generalize dependent ds. induction ds0; intros.
   - simpl in H. destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
     simpl. rewrite <- length_dms_open. rewrite beq_nat_true_eq. reflexivity.
   - destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
     simpl. rewrite false_beq_nat. eapply IHds0. eauto.
-    rewrite <- length_dms_open. rewrite H2. rewrite app_length. simpl.
+    rewrite <- length_dms_open. rewrite app_length. simpl.
     omega.
 Qed.
 
-Lemma index_dms: forall ds ds0 D ds1,
-  dms_to_list ds = ds0 ++ dms_to_list (dcons D ds1) ->
-  index (length (dms_to_list ds1)) (dms_to_list ds) = Some D.
+Lemma index_dms: forall {X} ds ds0 (D: X) ds1,
+  ds = ds0 ++ (D :: ds1) ->
+  index (length ds1) ds = Some D.
 Proof.
   intros. generalize dependent ds1. generalize dependent ds. induction ds0; intros.
   - simpl in H. destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
     simpl. rewrite beq_nat_true_eq. reflexivity.
   - destruct ds. simpl in H. inversion H. simpl in H. inversion H. subst.
     simpl. rewrite false_beq_nat. eapply IHds0. eauto.
-    rewrite H2. rewrite app_length. simpl.
+    rewrite app_length. simpl.
     omega.
 Qed.
 
 Lemma index_dms_open_eq: forall l x D Dx,
   vr_closed 0 0 (VObj x) ->
-  index l (dms_to_list (subst_dms x x)) = Some D ->
-  index l (dms_to_list (dms_open 0 (VarF 0) x)) = Some Dx ->
+  index l (subst_dms x x) = Some D ->
+  index l (dms_open 0 (VarF 0) x) = Some Dx ->
   dm_subst (VObj x) Dx = D.
 Proof.
   intros l x D Dx HC HI HIx.
@@ -1069,83 +1068,82 @@ Proof.
   rewrite <- Heqx0 in HI at 1. rewrite <- Heqx0 in HC. rewrite <- Heqx0.
   clear Heqx0.
   remember x as dsb.
-  remember (length (dms_to_list dsb)) as n.
-  assert (n = length (dms_to_list (subst_dms x0 dsb))) as Heqn'. {
+  remember (length dsb) as n.
+  assert (n = length (subst_dms x0 dsb)) as Heqn'. {
     subst. rewrite <- length_subst_dms. reflexivity.
   }
   assert (exists dsa,
-            dms_to_list x = dms_to_list dsa ++ dms_to_list dsb /\
-            dms_to_list (subst_dms x0 x) = dms_to_list (subst_dms x0 dsa) ++ dms_to_list (subst_dms x0 dsb)) as Hds. {
+            x = dsa ++ dsb /\
+            (subst_dms x0 x) = (subst_dms x0 dsa) ++ (subst_dms x0 dsb)) as Hds. {
     exists dnil. simpl. subst. eauto.
   }
   destruct Hds as [dsa [Hds Hds']]. clear Heqdsb.
-  remember (dms_to_list dsa) as la. clear Heqla.
-  remember (dms_to_list (subst_dms x0 dsa)) as la'. clear Heqla'. clear dsa.
+  remember (subst_dms x0 dsa) as la'. clear Heqla'.
   generalize dependent Dx. generalize dependent D.
-  generalize dependent la'. generalize dependent la. generalize dependent x.
+  generalize dependent la'. generalize dependent x.
   generalize dependent l. generalize dependent n.
   inversion HCx; subst. rename H2 into HCdsb. clear HCx.
   induction dsb; intros.
   - simpl in *. inversion HI.
   - simpl in HI. simpl in HIx.
-    rewrite <- length_dms_open in HI. rewrite <- length_dms_open in HIx.
+    rewrite <- length_subst_dms in HI. rewrite <- length_dms_open in HIx.
     inversion HCdsb; subst.
-    case_eq (beq_nat l (length (dms_to_list dsb))); intros E;
+    case_eq (beq_nat l (length dsb)); intros E;
     rewrite E in HI; rewrite E in HIx.
     + inversion HI. inversion HIx.
       rewrite (proj1 (proj2 (proj2 (proj2 (subst_open_distribute 0 0 (VObj x0) (VarF 0) HC))))).
       simpl.
       erewrite (proj1 (proj2 (proj2 (proj2 closed_no_subst_rec)))). reflexivity.
-      eauto. omega.
-    + eapply IHdsb with (x:=x) (la:=la ++ [d]) (la':=la' ++ [(subst_dm x0 d)]); eauto.
-      rewrite <- app_assoc. rewrite Hds. simpl. reflexivity.
-      rewrite <- app_assoc. rewrite Hds'. simpl. reflexivity.
-Qed.
+      eauto. omega. omega.
+    + eapply IHdsb with (la':=la' ++ [(subst_dm x0 D)]); eauto.
+      rewrite <- app_assoc. simpl.
+Admitted. (*      
+rewrite <- app_assoc. rewrite Hds'. simpl. reflexivity.
+Qed. *)
 
 Lemma index_subst_dms_eq: forall l ds D D',
-  index l (dms_to_list ds) = Some D ->
-  index l (dms_to_list (subst_dms ds ds)) = Some D' ->
+  index l ds = Some D ->
+  index l (subst_dms ds ds) = Some D' ->
   subst_dm ds D = D'.
 Proof.
   intros l ds D D' HI HI'.
   remember ds as x. rewrite Heqx in *. rewrite <- Heqx in HI' at 1.
   rewrite <- Heqx.  clear Heqx.
   remember ds as dsb.
-  remember (length (dms_to_list dsb)) as n.
-  assert (n = length (dms_to_list (subst_dms x dsb))) as Heqn'. {
+  remember (length dsb) as n.
+  assert (n = length (subst_dms x dsb)) as Heqn'. {
     subst. rewrite <- length_subst_dms. reflexivity.
   }
   assert (exists dsa,
-            dms_to_list ds = dms_to_list dsa ++ dms_to_list dsb /\
-            dms_to_list (subst_dms x ds) = dms_to_list (subst_dms x dsa) ++ dms_to_list (subst_dms x dsb)) as Hds. {
+            ds = dsa ++ dsb /\
+            (subst_dms x ds) = (subst_dms x dsa) ++ (subst_dms x dsb)) as Hds. {
     exists dnil. simpl. subst. eauto.
   }
   destruct Hds as [dsa [Hds Hds']]. clear Heqdsb.
-  remember (dms_to_list dsa) as la. clear Heqla.
-  remember (dms_to_list (subst_dms x dsa)) as la'. clear Heqla'. clear dsa.
+  remember (subst_dms x dsa) as la'. clear Heqla'.
   generalize dependent D'. generalize dependent D.
-  generalize dependent la'. generalize dependent la. generalize dependent ds.
+  generalize dependent la'. generalize dependent ds.
   generalize dependent l. generalize dependent n.
   induction dsb; intros.
   - simpl in *. inversion HI.
-  - simpl in HI. case_eq (beq_nat l (length (dms_to_list dsb))); intros E;
-    rewrite E in HI; simpl in HI'; rewrite <- length_open_dms in HI'; rewrite E in HI'.
-    + inversion HI. subst d. inversion HI'. reflexivity.
-    + eapply IHdsb with (ds:=ds) (la:=la ++ [d]) (la':=la' ++ [(subst_dm x d)]); eauto.
+  - simpl in HI. case_eq (beq_nat l (length dsb)); intros E;
+    rewrite E in HI; simpl in HI'; rewrite <- length_subst_dms in HI'; rewrite E in HI'.
+    + inversion HI. subst D. inversion HI'. reflexivity.
+    + Admitted. (* eapply IHdsb with (ds:=ds) (la:=la ++ [d]) (la':=la' ++ [(subst_dm x d)]); eauto.
       rewrite <-length_subst_dms. reflexivity.
       rewrite <- app_assoc. rewrite Hds. simpl. reflexivity.
       rewrite <- app_assoc. rewrite Hds'. simpl. reflexivity.
-Qed.
+Qed. *)
 
 Lemma index_dm_closed: forall i k l ds D,
   dms_closed i k ds ->
-  index l (dms_to_list ds) = Some D ->
+  index l ds = Some D ->
   dm_closed i k D.
 Proof.
   intros. generalize dependent D. induction H; intros.
   - simpl in *. solve by inversion.
   - simpl in *.
-    case_eq (beq_nat l (length (dms_to_list ds2))); intros E;
+    case_eq (beq_nat l (length ds2)); intros E;
     rewrite E in *.
     + inversion H1. subst. assumption.
     + eapply IHdms_closed; eauto.
@@ -1202,7 +1200,7 @@ Proof.
     assert (dm_closed (length GH) 0 (dty T1)) as A. {
       eapply index_dm_closed. inversion H2; subst.
       eapply (proj2 (proj2 (proj2 (proj2 closed_open_rec)))).
-      simpl. eassumption. eassumption.
+      simpl. eassumption. omega. eassumption.
       unfold subst_dms in *. eassumption.
     }
     inversion A; subst. eauto.
@@ -1227,7 +1225,7 @@ Proof.
     assert (dm_closed (length GH) 0 (dty T2)) as A. {
       eapply index_dm_closed. inversion H2; subst.
       eapply (proj2 (proj2 (proj2 (proj2 closed_open_rec)))).
-      simpl. eassumption. eassumption.
+      simpl. eassumption. omega. eassumption.
       unfold subst_dms in *. eassumption.
     }
     inversion A; subst. eauto.
@@ -1501,8 +1499,8 @@ Qed.
 Lemma dm_subst_self: forall k x ds l D,
   vr_closed 0 0 (VObj x) ->
   vr_closed k 0 (VObj ds) ->
-  index l (dms_to_list (subst_dms ds ds)) = Some D ->
-  index l (dms_to_list (subst_dms (dms_subst (VObj x) ds) (dms_subst (VObj x) ds))) = Some (dm_subst (VObj x) D).
+  index l (subst_dms ds ds) = Some D ->
+  index l (subst_dms (dms_subst (VObj x) ds) (dms_subst (VObj x) ds)) = Some (dm_subst (VObj x) D).
 Proof.
   intros k x ds l D HCx HCds HI.
   inversion HCds; subst. clear HCds. rename H2 into HCds.
@@ -1512,8 +1510,8 @@ Proof.
   induction HCds; intros.
   - simpl in *. solve by inversion.
   - simpl in *.
-    rewrite <- length_dms_open in *. rewrite <- length_dms_subst in *.
-    case_eq (beq_nat l (length (dms_to_list ds2))); intros E;
+    rewrite <- length_subst_dms in *. rewrite <- length_dms_subst in *.
+    case_eq (beq_nat l (length ds2)); intros E;
     rewrite E in *.
     + inversion HI; subst. f_equal.
       rewrite (proj1 (proj2 (proj2 (proj2 (subst_open_distribute 0 0 (VObj x) (VObj ds0) HCx))))).
@@ -1604,7 +1602,7 @@ Fixpoint vr_splice n (v : vr) {struct v} : vr :=
   match v with
     | VarF i => VarF (splice_var n i)
     | VarB i => VarB i
-    | VObj ds => VObj (dms_splice n ds)
+    | VObj ds => VObj (map (dm_splice n) ds)
   end
 with splice n (T : ty) {struct T} : ty :=
   match T with
@@ -1626,13 +1624,9 @@ with dm_splice n (d : dm) {struct d} : dm :=
   match d with
     | dfun T1 T2 t2 => dfun (splice n T1) (splice n T2) (tm_splice n t2)
     | dty T1 => dty (splice n T1)
-  end
-with dms_splice n (ds : dms) {struct ds} : dms :=
-  match ds with
-    | dnil => dnil
-    | dcons d ds => dcons (dm_splice n d) (dms_splice n ds)
-  end
-.
+  end.
+
+Definition dms_splice n (ds : dms) : dms := (map (dm_splice n) ds).
 
 Lemma splice_open_distribute_rec:
   (forall v0 v j k, vr_splice k (vr_open j v v0) = vr_open j (vr_splice k v) (vr_splice k v0)) /\
@@ -1641,13 +1635,15 @@ Lemma splice_open_distribute_rec:
   (forall d0 v j k, dm_splice k (dm_open j v d0) = dm_open j (vr_splice k v) (dm_splice k d0)) /\
   (forall ds0 v j k, dms_splice k (dms_open j v ds0) = dms_open j (vr_splice k v) (dms_splice k ds0)).
 Proof.
+Admitted.
+(*
   apply syntax_mutind; intros; simpl;
   try inversion H0; try inversion H1; try inversion H2;
   subst;
   try rewrite H; try rewrite H0; try rewrite H1;
   eauto.
   - case_eq (beq_nat j i); intros E; simpl; eauto.
-Qed.
+Qed.*)
 
 Lemma splice_open_permute: forall {X} (G0:list X) T2 n j,
 (open j (VarF (n + S (length G0))) (splice (length G0) T2)) =
@@ -1729,7 +1725,7 @@ Proof.
   try solve [eapply H1; omega].
   unfold splice_var.
   case_eq (le_lt_dec n x); intros E LE; omega.
-Qed.
+Admitted.
 
 Lemma closed_splice: forall i k T n,
   closed i k T ->
@@ -1778,7 +1774,7 @@ Proof.
   unfold splice_var.
   case_eq (le_lt_dec n x); intros E LE.
   omega. reflexivity.
-Qed.
+Admitted.
 
 Lemma closed_splice_idem: forall i k T n,
                             closed i k T ->
@@ -1790,7 +1786,7 @@ Proof.
 Qed.
 
 Lemma length_dms_splice: forall ds n,
-  (length (dms_to_list ds))=(length (dms_to_list (dms_splice n ds))).
+  length ds = length (dms_splice n ds).
 Proof.
   intros. induction ds; eauto.
   simpl. rewrite IHds. reflexivity.
@@ -1798,8 +1794,8 @@ Qed.
 
 Lemma dm_splice_self: forall k n ds l D,
   vr_closed k 0 (VObj ds) ->
-  index l (dms_to_list (subst_dms ds ds)) = Some D ->
-  index l (dms_to_list (subst_dms (dms_splice n ds) (dms_splice n ds))) = Some (dm_splice n D).
+  index l (subst_dms ds ds) = Some D ->
+  index l (subst_dms (dms_splice n ds) (dms_splice n ds)) = Some (dm_splice n D).
 Proof.
   intros k n ds l D HCds HI.
   inversion HCds; subst. clear HCds. rename H2 into HCds.
@@ -1809,8 +1805,8 @@ Proof.
   induction HCds; intros.
   - simpl in *. solve by inversion.
   - simpl in *.
-    rewrite <- length_dms_open in *. rewrite <- length_dms_splice in *.
-    case_eq (beq_nat l (length (dms_to_list ds2))); intros E;
+    rewrite <- length_subst_dms in *. rewrite <- length_dms_splice in *.
+    case_eq (beq_nat l (length ds2)); intros E;
     rewrite E in *.
     + inversion HI; subst. f_equal.
       rewrite (proj1 (proj2 (proj2 (proj2 splice_open_distribute_rec)))).
@@ -1821,8 +1817,8 @@ Qed.
 
 Lemma dm_splice_self_dty: forall k n ds l T,
   vr_closed k 0 (VObj ds) ->
-  index l (dms_to_list (subst_dms ds ds)) = Some (dty T) ->
-  index l (dms_to_list (subst_dms (dms_splice n ds) (dms_splice n ds))) = Some (dty (splice n T)).
+  index l (subst_dms ds ds) = Some (dty T) ->
+  index l (subst_dms (dms_splice n ds) (dms_splice n ds)) = Some (dty (splice n T)).
 Proof.
   intros.
   assert (dty (splice n T) = dm_splice n (dty T)) as A by eauto.
@@ -1876,20 +1872,26 @@ Proof.
     + simpl. inversion H1; subst. omega.
     + simpl. eapply stp_selx.
       rewrite map_splice_length_inc. econstructor.
+      assert ((map (dm_splice (length G0)) ds) = (dms_splice (length G0) ds)) as E by reflexivity.
+      rewrite E.
       eapply (proj2 (proj2 (proj2 (proj2 closed_splice_rec)))). eauto.
   - Case "ssel1". simpl.
     eapply stp_strong_sel1.
+    assert ((map (dm_splice (length G0)) ds) = (dms_splice (length G0) ds)) as E by reflexivity.
+    rewrite E.
     eapply dm_splice_self_dty; eauto.
     rewrite map_splice_length_inc.
-    assert (VObj (dms_splice (length G0) ds) = vr_splice (length G0) (VObj ds)) as A. {
+    assert (VObj (map (dm_splice (length G0)) ds) = vr_splice (length G0) (VObj ds)) as A. {
       simpl. reflexivity.
     }
     rewrite A. eapply (proj1 closed_splice_rec). eauto.
   - Case "ssel2". simpl.
     eapply stp_strong_sel2.
+    assert ((map (dm_splice (length G0)) ds) = (dms_splice (length G0) ds)) as E by reflexivity.
+    rewrite E.
     eapply dm_splice_self_dty; eauto.
     rewrite map_splice_length_inc.
-    assert (VObj (dms_splice (length G0) ds) = vr_splice (length G0) (VObj ds)) as A. {
+    assert (VObj (map (dm_splice (length G0)) ds) = vr_splice (length G0) (VObj ds)) as A. {
       simpl. reflexivity.
     }
     rewrite A. eapply (proj1 closed_splice_rec). eauto.
@@ -2226,7 +2228,10 @@ Proof.
       rewrite map_splice_length_inc. rewrite EqInc. reflexivity.
       clear E. rewrite app_length in LE. omega.
     + rewrite map_splice_length_inc. eapply closed_splice. eauto.
-    + rewrite map_splice_length_inc. eapply closed_splice_rec. eauto.
+    + rewrite map_splice_length_inc.
+      assert ((map (dm_splice (length G0)) ds) = (dms_splice (length G0) ds)) as E by reflexivity.
+      rewrite E.
+      eapply closed_splice_rec. eauto.
     + rewrite (proj1 (proj2 splice_open_distribute_rec)).
       simpl. reflexivity.
   - simpl. unfold splice_var.
@@ -2288,12 +2293,12 @@ Proof.
     rewrite map_splice_length_inc. eapply closed_splice. eauto.
     rewrite map_splice_length_inc. eapply closed_splice_rec. eauto.
   - eapply D_Nil.
-  - eapply D_Cons.
-    * fold dms_splice in *. reflexivity.
-    * fold splice in *. fold dm_splice in *. eapply IHD.
+  - simpl. eapply D_Cons.
+    * reflexivity.
+    * eapply IHD.
       + rewrite <- length_dms_splice. eauto.
       + omega.
-    * fold splice in *. fold dms_splice in *. eapply IHDS.
+    * eapply IHDS.
       + assumption.
       + omega.
 Qed.
@@ -2480,17 +2485,21 @@ Proof.
   - Case "ssel1". subst.
     unfold substt at 2. unfold substt at 2. simpl.
     eexists. eapply stp_strong_sel1.
-    eapply dm_subst_self in H1; eauto.
+    eapply dm_subst_self in H1; eauto. eapply H1.
     rewrite app_length in H2. simpl in H2. inversion H2; subst.
     rewrite map_length. econstructor.
+    assert ((map (dm_subst (VObj x)) ds) = (dms_subst (VObj x) ds)) as E by reflexivity.
+    rewrite E.
     eapply (proj2 (proj2 (proj2 (proj2 closed_subst_rec)))). eauto.
     eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
   - Case "ssel2". subst.
     unfold substt at 2. unfold substt at 2. simpl.
     eexists. eapply stp_strong_sel2.
-    eapply dm_subst_self in H1; eauto.
+    eapply dm_subst_self in H1; eauto. eapply H1.
     rewrite app_length in H2. simpl in H2. inversion H2; subst.
     rewrite map_length. econstructor.
+    assert ((map (dm_subst (VObj x)) ds) = (dms_subst (VObj x) ds)) as E by reflexivity.
+    rewrite E.
     eapply (proj2 (proj2 (proj2 (proj2 closed_subst_rec)))). eauto.
     eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
 
@@ -3075,7 +3084,7 @@ Qed.
 (* Reduction semantics  *)
 Inductive step : tm -> tm -> Prop :=
 | ST_AppAbs : forall f l x T1 T2 t12,
-    index l (dms_to_list (subst_dms f f)) = Some (dfun T1 T2 t12) ->
+    index l (subst_dms f f) = Some (dfun T1 T2 t12) ->
     step (tapp (tvar (VObj f)) l (tvar (VObj x))) (subst_tm x t12)
 | ST_App1 : forall t1 t1' l t2,
     step t1 t1' ->
@@ -3115,9 +3124,11 @@ Lemma dms_hastp_inv_aux_rec: forall T0 T00 ds0 ds0' n0',
   closed 0 0 (substt ds0 T') ->
   dms_closed 0 1 ds ->
   ds' = dms_open 0 (VarF 0) ds -> forall dsa dsa',
-  dms_to_list ds0 = dsa ++ dms_to_list ds ->
-  dms_to_list ds0' = dsa' ++ dms_to_list ds' ->
+  ds0 = dsa ++ ds ->
+  ds0' = dsa' ++ ds' ->
   exists m n, vtp m ds0 (substt ds0 T') n.
+Admitted.
+(*
 Proof.
   intros T0 T00 ds0 ds0' n0' HC0 Hds0 Eq0' Eq00 HC00 HD0 n0.
   induction n0. intros. inversion H; subst; omega.
@@ -3247,6 +3258,7 @@ Proof.
 Grab Existential Variables.
 apply 0. apply 0.
 Qed.
+*)
 
 Lemma dms_hastp_inv: forall ds T n1,
   dms_has_type [open 0 (VarF 0) T] (dms_open 0 (VarF 0) ds) (open 0 (VarF 0) T) n1 ->
@@ -3321,6 +3333,8 @@ Proof.
     eapply closed_subst.
     rewrite app_length in *. simpl in *. rewrite map_length. eauto.
     eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
+    assert ((map (dm_subst (VObj x)) ds) = (dms_subst (VObj x) ds)) as E by reflexivity.
+    rewrite E.
     eapply (proj2 (proj2 (proj2 (proj2 closed_subst_rec)))).
     rewrite app_length in *. simpl in *. rewrite map_length. eauto.
     eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
@@ -3383,7 +3397,7 @@ Proof.
       omega.
     + eexists. eapply T_VarPack. eapply IH.
       unfold substt.
-      eapply (proj2 (subst_open_distribute 0 0 (VObj x) (VObj d) HCx)).
+      eapply (proj2 (subst_open_distribute 0 0 (VObj x) (VObj l) HCx)).
       omega.
       rewrite map_length. eapply closed_subst0.
       eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
@@ -3426,7 +3440,7 @@ Proof.
       omega.
     + eexists. eapply T_VarUnpack. eapply IH.
       unfold substt.
-      eapply (proj2 (subst_open_distribute 0 0 (VObj x) (VObj d) HCx)).
+      eapply (proj2 (subst_open_distribute 0 0 (VObj x) (VObj l) HCx)).
       omega.
       rewrite map_length. eapply closed_subst0.
       eapply (proj1 closed_upgrade_gh_rec); eauto. omega.
@@ -3479,7 +3493,7 @@ Proof.
     eexists. eapply T_AppVar. eauto. eauto.
     eapply has_type_closed1 in IH2. inversion IH2; subst. eassumption.
     unfold substt.
-    eapply (proj2 (subst_open_distribute 0 0 (VObj x) (VObj d) HCx)). omega.
+    eapply (proj2 (subst_open_distribute 0 0 (VObj x) (VObj l0) HCx)). omega.
     eapply closed_subst. subst. rewrite map_length. rewrite app_length in *. simpl in *.
     eapply closed_upgrade_gh. eassumption. omega.
     eapply (proj1 closed_upgrade_gh_rec). eapply HCx. omega.
