@@ -2221,14 +2221,16 @@ Inductive wf_sto: list (id*(venv*ty)) -> venv -> list (id*(venv*ty)) -> Prop :=
 .
 
 Inductive res_type: list (id*(venv*ty)) -> venv -> (venv*option (option vl)) -> ty -> Prop :=
-(* TODO: add case for timeout that still ensures wf_sto STO sto STO *)
-| not_stuck: forall STO sto venv v T,
+| res_val: forall STO sto venv v T,
       val_type STO venv v T ->
       wf_sto STO sto STO ->
-      res_type STO venv (sto,(Some (Some v))) T.
+      res_type STO venv (sto,(Some (Some v))) T
+| res_timeout: forall STO sto venv T,
+      wf_sto STO sto STO ->
+      res_type STO venv (sto,None) T.
 
 Hint Constructors res_type.
-Hint Resolve not_stuck.
+Hint Resolve res_val.
 
 
 
@@ -2562,7 +2564,7 @@ Lemma restp_widen: forall vf H1 T1 T2 STO,
   sstpd2 true H1 T1 H1 T2 STO [] ->
   res_type STO H1 vf T2.
 Proof.
-  intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto. eauto. 
+  intros. inversion H. eapply res_val. eapply valtp_widen; eauto. eauto. eauto.
 Qed.
 
 Lemma invert_typ: forall sto venv vx T1 T2,
@@ -3864,25 +3866,28 @@ Qed.
 
 (* if not a timeout, then result not stuck and well-typed *)
 
-Theorem full_safety : forall n e senv sto tenv venv res T sto',
-  teval n sto venv e = (sto', Some res) ->
+Theorem full_safety : forall n e senv sto tenv venv r T,
+  teval n sto venv e = r ->
   has_type tenv e T ->
   wf_env senv venv tenv ->
   wf_sto senv sto senv ->
-  exists senv', res_type (senv'++senv) venv (sto', Some res) T.
+  exists senv', res_type (senv'++senv) venv r T.
 
 Proof.
   intros n. induction n.
-  (* 0 *)   intros. inversion H.
+  { (* 0 *)
+    intros. inversion H. eexists nil. rewrite app_nil_l. simpl.
+    eapply res_timeout. eauto.
+  }
   (* S n *) intros. destruct e; inversion H.
 
   - Case "True".
-    remember (ttrue) as e. induction H0; inversion Heqe; subst.
-    + exists nil. rewrite app_nil_l.
-      eapply not_stuck. eapply v_bool; eauto. assumption.
+    remember (ttrue) as e. induction H0; inversion Heqe; subst; simpl.
+    + exists nil. rewrite app_nil_l. simpl.
+      eapply res_val. eapply v_bool; eauto. assumption.
     + assert (
           exists senv',
-            res_type (senv' ++ senv) venv0 (sto', (Some (Some (vbool true)))) T1) as A. {
+            res_type (senv' ++ senv) venv0 (sto, (Some (Some (vbool true)))) T1) as A. {
         eapply IHhas_type; eauto.
       }
       destruct A as [senv' A].
@@ -3891,10 +3896,10 @@ Proof.
   - Case "False".
     remember (tfalse) as e. induction H0; inversion Heqe; subst.
     + exists nil. rewrite app_nil_l.
-      eapply not_stuck. eapply v_bool; eauto. assumption.
+      eapply res_val. eapply v_bool; eauto. assumption.
     + assert (
           exists senv',
-            res_type (senv' ++ senv) venv0 (sto', (Some (Some (vbool false)))) T1) as A. {
+            res_type (senv' ++ senv) venv0 (sto, (Some (Some (vbool false)))) T1) as A. {
         eapply IHhas_type; eauto.
       }
       destruct A as [senv' A].
@@ -3904,12 +3909,12 @@ Proof.
     remember (tvar i) as e. induction H0; inversion Heqe; subst.
     + exists nil. rewrite app_nil_l.
       destruct (index_safe_ex senv venv0 env T1 i) as [v [I V]]; eauto.
-      rewrite I. eapply not_stuck. eapply V.
+      simpl. rewrite I. eapply res_val. eapply V.
       assumption.
     + assert (
          exists senv',
            res_type (senv' ++ senv) venv0
-                    (sto', (Some (index i venv0)))
+                    (sto, (Some (index i venv0)))
            T1) as A. {
         eapply IHhas_type; eauto.
       }
@@ -3924,17 +3929,16 @@ Proof.
       destruct te as [sto1 te].
       destruct te as [re|]; try solve by inversion.
       assert (exists senv', res_type (senv'++senv) venv0 (sto1, Some re) T1) as HRE. SCase "HRE". subst. eapply IHn; eauto.
-      destruct HRE as [senve' HRE].
-      inversion HRE as [? ? ? ve]. subst.
-      inversion H4. subst.
+      destruct HRE as [senve' HRE]. simpl.
+      destruct re as [v|]; inversion HRE; subst.
       exists ([(0, (venv0,T1))]++senve').
       inversion HRE; subst.
-      eapply valtp_reg in H10. eapply sstpd2_downgrade in H10. destruct H10 as [? H10].
+      eapply valtp_reg in H9. eapply sstpd2_downgrade in H9. destruct H9 as [? H9].
       assert (stpd2 false venv0 T1 venv0 T1 senv []) as A. {
         eapply stp_to_stp2. eassumption. eauto. apply wfeh_nil.
       }
-      destruct A as [? A].
-      eapply not_stuck.
+      destruct A as [? A]. rewrite <- Heqte.
+      eapply res_val.
       eapply v_loc.
       unfold indexr. simpl.
       rewrite <- (wfs_length (senve'++senv) sto1 (senve'++senv)). 
@@ -3944,25 +3948,12 @@ Proof.
       eapply stpd2_upgrade. eexists. eapply stp2_extendS_mult. eapply A.
       rewrite <- app_assoc. eapply wf_sto_sto_ext. eauto.
 
-    + remember (teval n sto venv0 e) as te.
-      destruct te as [sto1 te].
-      destruct te as [re|]; try solve by inversion.
-      destruct re as [v|]; try solve by inversion.
+      edestruct IHn as [senv' IH]; eauto. rewrite <- Heqte in IH.
+      inversion IH; subst. eexists senv'.
+      simpl. rewrite <- Heqte. eapply res_timeout. eauto.
 
-      assert (
-          exists senv', res_type (senv' ++ senv) venv0 ((0,v)::sto1, Some (Some (vloc (length sto1)))) T1
-        ) as A. {
-        eapply IHhas_type; eauto.
-      }
-      destruct A as [senv' A].
-      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
-
-      assert (
-          exists senv', res_type (senv' ++ senv) venv0 (sto1, Some None) T1
-        ) as A. {
-        eapply IHhas_type; eauto.
-      }
-      destruct A as [senv' A]. inversion A.
+    + edestruct IHhas_type as [senv' A]; eauto.
+      eexists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
   - Case "Get".
     remember (tget e) as e'. induction H0; inversion Heqe'; subst.
@@ -3972,7 +3963,7 @@ Proof.
       destruct te as [re|]; try solve by inversion.
       assert (exists senv', res_type (senv'++senv) venv0 (sto1, Some re) (TCell T1)) as HRE. SCase "HRE". subst. eapply IHn; eauto.
       destruct HRE as [senve' HRE].
-      inversion HRE as [? ? ? ve]. subst.
+      destruct re as [ve|]; inversion HRE;subst.
 
       destruct (invert_loc (senve' ++ senv) venv0 ve T1) as
           [i [venvi [Ti [EB [ET [B1 B2]]]]]]. eauto.
@@ -3981,28 +3972,17 @@ Proof.
 
       destruct (index_sto_safe_ex (senve'++senv) sto1 (senve'++senv) venvi i Ti) as [v [A1 A2]];
         eauto.
-      rewrite A1 in H4. inversion H4. subst.
 
-      exists senve'. rewrite A1. eapply not_stuck. eapply valtp_widen. eassumption. assumption.
+      simpl. rewrite <- Heqte.
+      exists senve'. rewrite A1. eapply res_val. eapply valtp_widen. eassumption. assumption.
       assumption.
 
-    + remember (teval n sto venv0 e) as te.
-      destruct te as [sto1 te].
-      destruct te as [re|]; try solve by inversion.
-      destruct re as [v|]; try solve by inversion.
+      edestruct IHn as [senv' IH]; eauto. rewrite <- Heqte in IH.
+      inversion IH; subst. eexists senv'.
+      simpl. rewrite <- Heqte. eapply res_timeout. eauto.
 
-      assert (exists senv', res_type (senv' ++ senv) venv0 (sto', Some res) T1) as A. {
-        rewrite H4 in IHhas_type. eapply IHhas_type; eauto.
-      }
-      destruct A as [senv' A]. rewrite H4.
-      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
-
-      assert (
-          exists senv', res_type (senv' ++ senv) venv0 (sto1, Some None) T1
-        ) as A. {
-        eapply IHhas_type; eauto.
-      }
-      destruct A as [senv' A]. inversion A.
+    + edestruct IHhas_type as [senv' A]; eauto.
+      eexists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
   - Case "Set".
     remember (tset e1 e2) as e. induction H0; inversion Heqe; subst.
@@ -4016,7 +3996,7 @@ Proof.
       
       assert (exists senv', res_type (senv'++senv) venv0 (sto1, Some (Some v1)) (TCell T1)) as HRE1. subst. eapply IHn; eauto.
       destruct HRE1 as [senv1' HRE1].
-      inversion HRE1. subst.
+      inversion HRE1; subst.
 
       subst.
 
@@ -4031,56 +4011,47 @@ Proof.
       destruct te2 as [re2|]; try solve by inversion.
       assert (exists senv', res_type (senv'++senv1'++senv) venv0 (sto2, Some re2) T1) as HRE2. subst. eapply IHn; eauto. eapply wf_env_sto_ext. assumption.
       destruct HRE2 as [senv2' HRE2].
-      inversion HRE2 as [? ? ? ve2].
+      destruct re2 as [ve2|]; inversion HRE2; subst.
 
-      subst. inversion H4. subst.
+      simpl. rewrite <- Heqte1. rewrite <- Heqte2.
 
       exists (senv2'++senv1'). rewrite <- app_assoc.
-      eapply not_stuck. assumption. eapply update_sto_safe_ex. assumption.
+      eapply res_val. assumption. eapply update_sto_safe_ex. assumption.
       eapply indexr_extend_mult. eassumption.
       eapply valtp_widen. eassumption. eapply sstpd2_extendS_mult. assumption.
 
-      assert (
-          exists senv', res_type (senv' ++ senv) venv0 (sto1, Some None) (TCell T1)
-        ) as A. {
-        eapply IHn; eauto.
-      }
-      destruct A as [senv' A]. inversion A.
+      edestruct IHn as [senv1 IH1]. symmetry. eapply Heqte1. eauto. eauto. eauto.
+      inversion IH1; subst.
+      edestruct IHn as [senv' IH]. symmetry. eapply Heqte2. eassumption.
+      apply wf_env_sto_ext. eassumption. eassumption.
+      inversion IH; subst.
+      simpl. rewrite <- Heqte1. rewrite <- Heqte2.
+      eexists (senv'++senv1). eapply res_timeout. rewrite <- app_assoc. eassumption.
 
-    + remember (teval n sto venv0 e1) as te1.
-      destruct te1 as [sto1 te1].
-      destruct te1 as [re1|]; try solve by inversion.
-      destruct re1 as [v1|]; try solve by inversion.
+      simpl. rewrite <- Heqte1.
+      edestruct IHn as [senv' IH]; eauto.  rewrite <- Heqte1 in IH. inversion IH.
 
-      assert (exists senv', res_type (senv' ++ senv) venv0 (sto', Some res) T1) as A. {
-        rewrite H4 in IHhas_type. eapply IHhas_type; eauto.
-      }
-      destruct A as [senv' A].
-      exists senv'. rewrite H4. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
+      simpl. rewrite <- Heqte1.
+      edestruct IHn as [senv' IH]; eauto.  rewrite <- Heqte1 in IH.
+      inversion IH; subst.
+      eexists senv'. eapply res_timeout. eauto.
 
-      inversion H4; subst.
-      assert (exists senv', res_type (senv' ++ senv) venv0 (sto', Some None) T1) as A. {
-        eapply IHhas_type; eauto.
-      }
-      destruct A as [senv' A]. inversion A.
+    + edestruct IHhas_type as [senv' A]; eauto.
+      eexists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
   - Case "Typ".
     remember (ttyp t) as e. induction H0; inversion Heqe; subst.
-    + exists nil. rewrite app_nil_l. eapply not_stuck.
+    + exists nil. rewrite app_nil_l. eapply res_val.
       assert (exists n0, stp2 true true venv0 (TMem t t) venv0 (TMem t t) senv [] n0) as A. {
         eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
      }
-     destruct A as [? A].                                                                    eapply v_ty; eauto. eassumption.
-    + assert (
-          exists senv',
-            res_type (senv' ++ senv) venv0 (sto', (Some (Some (vty venv0 t)))) T1) as A. {
-        eapply IHhas_type; eauto.
-      }
-      destruct A as [senv' A].
-      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
+     destruct A as [? A].
+     eapply v_ty; eauto. eassumption.
+    + edestruct IHhas_type as [senv' A]; eauto.
+      eexists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
   - Case "App".
-    remember (tapp e1 e2) as e. induction H0; inversion Heqe; subst.
+    remember (tapp e1 e2) as e. induction H0; inversion Heqe. subst f; subst x.
     +
       remember (teval n sto venv0 e2) as tx.
 
@@ -4088,24 +4059,23 @@ Proof.
       destruct tx as [rx|]; try solve by inversion.
       assert (exists senv', res_type (senv'++senv) venv0 (sto1, Some rx) T1) as HRX. SCase "HRX". subst. eapply IHn; eauto.
       destruct HRX as [senvx' HRX].
-      inversion HRX as [? ? ? vx].
+      destruct rx as [vx|]; inversion HRX.
 
-      subst rx.
-      remember (teval n sto0 venv0 e1) as tf.
+      remember (teval n sto1 venv0 e1) as tf.
 
       destruct tf as [sto2 tf].
       destruct tf as [rf|]; try solve by inversion.
       assert (exists senv', res_type (senv'++(senvx'++senv)) venv0 (sto2, Some rf) (TFun T1 T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto. apply wf_env_sto_ext. assumption.
       destruct HRF as [senvf' HRF].
-      inversion HRF as [? ? ? vf].
+      destruct rf as [vf|]; inversion HRF.
 
       destruct (invert_abs (senvf'++senvx'++senv) venv0 vf T1 T2) as
           [env1 [tenv [f0 [x0 [y0 [T3 [T4 [EF [FRF [FRX [WF [HTY [STX STY]]]]]]]]]]]]]. eauto.
       (* now we know it's a closure, and we have has_type evidence *)
 
-      assert (exists senv', res_type (senv'++senvf'++senvx'++senv) ((x0,vx)::(f0,vf)::env1) (sto', Some res) T4) as HRY. subst. rewrite <- Heqtf in H4.
+      assert (exists senv', res_type (senv'++senvf'++senvx'++senv) ((x0,vx)::(f0,vf)::env1) r T4) as HRY.
         SCase "HRY".
-          subst. eapply IHn. eauto. eauto.
+          subst. eapply IHn. subst. simpl. rewrite <- Heqtx.rewrite <- Heqtf.  eauto. eauto.
           (* wf_env f x *) econstructor. eapply valtp_widen. eapply valtp_sto_ext. eauto. eapply sstpd2_extend2. eapply sstpd2_extend2. eauto. eauto. eauto.
           (* wf_env f   *)
           eapply sstpd2_downgrade in STX. eapply sstpd2_downgrade in STY. repeat eu.
@@ -4118,15 +4088,28 @@ Proof.
           econstructor. eapply v_abs; eauto. eapply stp2_extend2.
           eapply stp2_fun. eassumption. eassumption. eauto. eauto. eauto.
 
-      destruct HRY as [senv' HRY].
-      inversion HRY as [? vy].
-
-      subst. rewrite <- Heqtf. rewrite <- Heqtf in H4.
+      destruct HRY as [senv' HRY]. subst.
+      simpl in HRY. rewrite <- Heqtx in HRY. rewrite <- Heqtf in HRY.
+      inversion HRY; subst.
+      simpl. rewrite <- Heqtx. rewrite <- Heqtf.
       exists (senv'++senvf'++senvx'). rewrite <- app_assoc. rewrite <- app_assoc.
-      rewrite H4.
-      eapply not_stuck. eapply valtp_widen; eauto. eapply sstpd2_extend1. eapply sstpd2_extend1. eapply sstpd2_extendS_mult. eauto. eauto. eauto. eauto.
+      rewrite <- H.
+      eapply res_val. eapply valtp_widen; eauto. eapply sstpd2_extend1. eapply sstpd2_extend1. eapply sstpd2_extendS_mult. eauto. eauto. eauto. eauto.
 
-      subst. rewrite <- Heqtf in H4. inversion H4; subst.
+      simpl. rewrite <- Heqtx. rewrite <- Heqtf. rewrite <- H.
+      exists (senv'++senvf'++senvx'). rewrite <- app_assoc. rewrite <- app_assoc.
+      eapply res_timeout. eauto.
+
+      edestruct IHn as [senv' IH]. symmetry. eapply Heqtf. eassumption.
+      apply wf_env_sto_ext. eassumption. eassumption.
+      inversion IH; subst.
+      simpl. rewrite <- Heqtx. rewrite <- Heqtf. subst.
+      eexists (senv' ++ senvx'). rewrite <- app_assoc. eauto.
+
+      simpl. rewrite <- Heqtx.
+      edestruct IHn as [senv' IH]; eauto.  rewrite <- Heqtx in IH. inversion IH.
+
+      simpl. subst. eexists. eapply res_timeout. eauto.
 
     + remember (teval n sto venv0 e2) as te.
       destruct te as [sto1 te].
@@ -4136,47 +4119,64 @@ Proof.
       destruct te' as [sto2 te'].
       destruct te' as [re'|]; try solve by inversion.
       destruct re' as [v'|]; try solve by inversion.
-      rewrite H4 in IHhas_type.
       assert (
           exists senv',
-            res_type (senv' ++ senv) venv0 (sto', Some res) T1) as A. {
-        eapply IHhas_type; eauto.
+            res_type (senv' ++ senv) venv0 r T1) as A. {
+        subst r. eapply IHhas_type; eauto.
       }
-      destruct A as [senv' A]. rewrite H4.
+      destruct A as [senv' A]. subst.
       exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
       assert (
-          exists senv', res_type (senv' ++ senv) venv0 (sto2, Some None) T1
+          exists senv', res_type (senv' ++ senv) venv0 r T1
         ) as A. {
-        eapply IHhas_type; eauto.
+        subst r. eapply IHhas_type; eauto.
       }
-      destruct A as [senv' A]. inversion A.
+      destruct A as [senv' A].
+      simpl in *. rewrite Heqe in H. rewrite H.
+      eexists. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
       assert (
-          exists senv', res_type (senv' ++ senv) venv0 (sto1, Some None) T1
+          exists senv', res_type (senv' ++ senv) venv0 r T1
         ) as A. {
-        eapply IHhas_type; eauto.
+        subst r. eapply IHhas_type; eauto.
       }
-      destruct A as [senv' A]. inversion A.
+      destruct A as [senv' A].
+      simpl in *. rewrite Heqe in H. rewrite H.
+      eexists. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
+
+      assert (
+          exists senv', res_type (senv' ++ senv) venv0 r T1
+        ) as A. {
+        subst r. eapply IHhas_type; eauto.
+      }
+      destruct A as [senv' A].
+      simpl in *. rewrite Heqe in H. rewrite H.
+      eexists. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
+
+      assert (
+          exists senv', res_type (senv' ++ senv) venv0 r T1
+        ) as A. {
+        subst r. eapply IHhas_type; eauto.
+      }
+      destruct A as [senv' A].
+      simpl in *. rewrite Heqe in H. rewrite H.
+      eexists. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
   - Case "Abs".
     remember (tabs i i0 e) as xe. induction H0; inversion Heqxe; subst.
-    + exists nil. rewrite app_nil_l. eapply not_stuck.
+    + exists nil. rewrite app_nil_l. eapply res_val.
       assert (exists n0, stp2 true true venv0 (TFun T1 T2) venv0 (TFun T1 T2) senv [] n0) as A. {
         eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
       }
       destruct A as [? A].
       eapply v_abs; eauto. rewrite (wf_fresh senv venv0 env H1). eauto. assumption.
-    + assert (
-          exists senv',
-            res_type (senv' ++ senv) venv0 (sto', (Some (Some (vabs venv0 i i0 e)))) T1) as A. {
-        eapply IHhas_type; eauto.
-      }
-      destruct A as [senv' A].
-      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
+
+    + edestruct IHhas_type as [senv' A]; eauto.
+      eexists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
   - Case "TApp".
-    remember (ttapp e1 e2) as e. induction H0; inversion Heqe; subst.
+    remember (ttapp e1 e2) as e. induction H0; inversion Heqe. subst f; subst x.
     +
       remember (teval n sto venv0 e2) as tx.
 
@@ -4184,35 +4184,47 @@ Proof.
       destruct tx as [rx|]; try solve by inversion.
       assert (exists senv', res_type (senv'++senv) venv0 (sto1, Some rx) T11) as HRX. SCase "HRX". subst. eapply IHn; eauto.
       destruct HRX as [senvx' HRX].
-      inversion HRX as [? ? ? vx].
+      destruct rx as [vx|]; inversion HRX.
 
-      subst rx.
-      remember (teval n sto0 venv0 e1) as tf.
+      remember (teval n sto1 venv0 e1) as tf.
 
       destruct tf as [sto2 tf].
       destruct tf as [rf|]; try solve by inversion.
       assert (exists senv', res_type (senv'++(senvx'++senv)) venv0 (sto2, Some rf) (TAll T11 T12)) as HRF. SCase "HRF". subst. eapply IHn; eauto. apply wf_env_sto_ext. assumption.
       destruct HRF as [senvf' HRF].
-      inversion HRF as [? ? ? vf].
+      destruct rf as [vf|]; inversion HRF.
 
       destruct (invert_tabs (senvf'++senvx'++senv) venv0 vf vx T11 T12) as
           [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]].
       eauto. eapply valtp_sto_ext. eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. eapply wf_env_sto_ext. eauto. econstructor.
       (* now we know it's a closure, and we have has_type evidence *)
 
-      assert (exists senv', res_type (senv'++senvf'++senvx'++senv) ((x0,vx)::env1) (sto', Some res) (open (TSel x0) T4)) as HRY.  subst. rewrite <- Heqtf in H4.
+      assert (exists senv', res_type (senv'++senvf'++senvx'++senv) ((x0,vx)::env1) r (open (TSel x0) T4)) as HRY.
         SCase "HRY".
-          subst. eapply IHn. eauto. eauto.
+          subst. eapply IHn. subst. simpl. rewrite <- Heqtx. rewrite <- Heqtf.  eauto. eauto.
           (* wf_env x *) econstructor. eapply valtp_widen. eapply valtp_sto_ext. eauto. eapply sstpd2_extend2. eauto. eauto. eauto. eauto.
-      destruct HRY as [senv' HRY].
-      inversion HRY as [? vy].
-
-      subst. rewrite <- Heqtf. rewrite <- Heqtf in H4.
+      destruct HRY as [senv' HRY]. subst.
+      simpl in HRY. rewrite <- Heqtx in HRY. rewrite <- Heqtf in HRY.
+      inversion HRY; subst.
+      simpl. rewrite <- Heqtx. rewrite <- Heqtf.
       exists (senv'++senvf'++senvx'). rewrite <- app_assoc. rewrite <- app_assoc.
-      rewrite H4.
-      eapply not_stuck. eapply valtp_widen; eauto. eapply sstpd2_extendS_mult. eauto. eauto. 
+      rewrite <- H.
+      eapply res_val. eapply valtp_widen; eauto. eapply sstpd2_extendS_mult. eauto. eauto. 
 
-      subst. rewrite <- Heqtf in H4. inversion H4; subst.
+      simpl. rewrite <- Heqtx. rewrite <- Heqtf. rewrite <- H.
+      exists (senv'++senvf'++senvx'). rewrite <- app_assoc. rewrite <- app_assoc.
+      eapply res_timeout. eauto.
+
+      edestruct IHn as [senv' IH]. symmetry. eapply Heqtf. eassumption.
+      apply wf_env_sto_ext. eassumption. eassumption.
+      inversion IH; subst.
+      simpl. rewrite <- Heqtx. rewrite <- Heqtf. subst.
+      eexists (senv' ++ senvx'). rewrite <- app_assoc. eauto.
+
+      simpl. rewrite <- Heqtx.
+      edestruct IHn as [senv' IH]; eauto.  rewrite <- Heqtx in IH. inversion IH.
+
+      simpl. subst. eexists. eapply res_timeout. eauto.
 
     + remember (teval n sto venv0 e2) as te.
       destruct te as [sto1 te].
@@ -4222,44 +4234,61 @@ Proof.
       destruct te' as [sto2 te'].
       destruct te' as [re'|]; try solve by inversion.
       destruct re' as [v'|]; try solve by inversion.
-      rewrite H4 in IHhas_type.
       assert (
           exists senv',
-            res_type (senv' ++ senv) venv0 (sto', Some res) T1) as A. {
-        eapply IHhas_type; eauto.
+            res_type (senv' ++ senv) venv0 r T1) as A. {
+        subst r. eapply IHhas_type; eauto.
       }
-      destruct A as [senv' A]. rewrite H4.
+      destruct A as [senv' A]. subst.
       exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
       assert (
-          exists senv', res_type (senv' ++ senv) venv0 (sto2, Some None) T1
+          exists senv', res_type (senv' ++ senv) venv0 r T1
         ) as A. {
-        eapply IHhas_type; eauto.
+        subst r. eapply IHhas_type; eauto.
       }
-      destruct A as [senv' A]. inversion A.
+      destruct A as [senv' A].
+      simpl in *. rewrite Heqe in H. rewrite H.
+      eexists. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
       assert (
-          exists senv', res_type (senv' ++ senv) venv0 (sto1, Some None) T1
+          exists senv', res_type (senv' ++ senv) venv0 r T1
         ) as A. {
-        eapply IHhas_type; eauto.
+        subst r. eapply IHhas_type; eauto.
       }
-      destruct A as [senv' A]. inversion A.
+      destruct A as [senv' A].
+      simpl in *. rewrite Heqe in H. rewrite H.
+      eexists. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
+
+      assert (
+          exists senv', res_type (senv' ++ senv) venv0 r T1
+        ) as A. {
+        subst r. eapply IHhas_type; eauto.
+      }
+      destruct A as [senv' A].
+      simpl in *. rewrite Heqe in H. rewrite H.
+      eexists. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
+
+      assert (
+          exists senv', res_type (senv' ++ senv) venv0 r T1
+        ) as A. {
+        subst r. eapply IHhas_type; eauto.
+      }
+      destruct A as [senv' A].
+      simpl in *. rewrite Heqe in H. rewrite H.
+      eexists. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
   - Case "TAbs".
     remember (ttabs i t e) as xe. induction H0; inversion Heqxe; subst.
-    + exists nil. rewrite app_nil_l. eapply not_stuck.
+    + exists nil. rewrite app_nil_l. eapply res_val.
       assert (exists n0, stp2 true true venv0 (TAll t T2) venv0 (TAll t T2) senv [] n0) as A. {
         eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
       }
       destruct A as [? A].
       eapply v_tabs; eauto. subst i. eauto. rewrite (wf_fresh senv venv0 env H1). eauto. assumption.
-    + assert (exists senv',
-                res_type (senv' ++ senv) venv0
-                         (sto', (Some (Some (vtabs venv0 i t e)))) T1) as A. {
-        eapply IHhas_type; eauto.
-      }
-      destruct A as [senv' A].
-      exists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
+
+    + edestruct IHhas_type as [senv' A]; eauto.
+      eexists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. eapply wf_env_sto_ext; eauto. econstructor.
 
        Grab Existential Variables. apply 0. apply 0.
 Qed.
