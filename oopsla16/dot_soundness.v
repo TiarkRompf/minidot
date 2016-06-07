@@ -767,7 +767,6 @@ Proof.
       rewrite subst_open_commute0b. reflexivity.
       eapply closed_subst. eapply closed_open. simpl. eapply closed_upgrade_gh.
       eassumption. omega. simpl. econstructor. omega. econstructor. omega.
-      (* TODO(draft): I didn't need Lemma 6 here -- it's an unpack, not a pack :) ... *)
     + Case "sub".
       edestruct gh_match1 as [GL1 [EqGL EqGH]]. eassumption. omega.
       assert (length GL1=0) as EGL1. {
@@ -864,10 +863,6 @@ Proof.
   eapply pre_canon_mem; eauto 2. eapply all_Subst.
 Qed.
 
-(* TODO(draft):
-hastp_subst is needed for canonical forms on functions (to substitute self).
-The paper delays this lemma until main soundness proof, while it would fit nicely
-at the end of the section on substitution. *)
 Lemma hastp_subst_aux: forall n0,
   (forall n, n < n0 -> forall G1 GH TX T x t nx,
   has_type (GH++[TX]) G1 t T n ->
