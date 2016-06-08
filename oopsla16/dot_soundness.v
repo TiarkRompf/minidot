@@ -27,10 +27,6 @@ Inductive stpp: venv -> ty -> ty -> Prop :=
     stpd [] G1 T2 T4 ->
     stpp G1 (TTyp l T1 T2) (TTyp l T3 T4)
 
-| stpp_varx: forall G1 x,
-    x < length G1 ->
-    stpp G1 (TVar true x) (TVar true x)
-
 | stpp_strong_sel1: forall G1 l T2 ds TX x,
     index x G1 = Some (vobj ds) ->
     index l (dms_to_list ds) = Some (dty TX) ->
@@ -42,9 +38,9 @@ Inductive stpp: venv -> ty -> ty -> Prop :=
     stpd [] G1 T1 TX ->
     stpp G1 T1 (TSel (TVar true x) l)
 
-| stpp_selx: forall G1 l T1,
-    closed 0 (length G1) 0 T1 ->
-    stpp G1 (TSel T1 l) (TSel T1 l)
+| stpp_selx: forall G1 l p1,
+    vr_closed 0 (length G1) 0 p1 ->
+    stpp G1 (TSel p1 l) (TSel p1 l)
 
 | stpp_bind1: forall G1 T1 T1' T2,
     stpd [T1'] G1 T1' T2 ->
@@ -94,7 +90,7 @@ Lemma stpp_to_stp: forall G T1 T2,
 Proof.
   intros. induction H; repeat eu; eexists; eauto 2.
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0.
 Qed.
 
 Hint Constructors stpp.
@@ -550,14 +546,6 @@ Proof.
       eapply stpd_typ.
       eapply IHn0. instantiate (1:=n2). omega. eapply HX. eassumption.
       eapply IHn0. instantiate (1:=n1). omega. eapply HX. eassumption.
-    + repeat unfold substt at 2. simpl.
-      eexists. eapply stp_varx. assumption.
-    + repeat unfold substt at 2. simpl.
-      case_eq (beq_nat x0 0); intros E.
-      * eexists. eapply stp_varx. assumption.
-      * eexists. eapply stp_varax.
-        rewrite map_length. rewrite app_length in *. simpl in *.
-        eapply beq_nat_false in E. omega.
     + unfold substt at 2. simpl. erewrite subst_closed_id.
       eexists. eapply stp_strong_sel1; eauto 2.
       eapply stp_closed2 in H1. simpl in H1. eapply H1.
@@ -613,7 +601,7 @@ Proof.
     + repeat unfold substt at 2. simpl.
       eexists. eapply stp_selx.
       rewrite app_length in *. simpl in *.
-      rewrite map_length. eapply closed_subst. eassumption.
+      rewrite map_length. eapply vr_closed_subst. eassumption.
       econstructor. omega.
     + unfold substt at 2. simpl.
       specialize (IHn0 n1).
@@ -785,7 +773,7 @@ Proof.
       eapply IHn0. instantiate (1:=n1). omega. eapply HX. eassumption. eapply IH2.
 
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma stp_subst: forall G x TX GH T1 T2 nx n,

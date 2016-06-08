@@ -74,12 +74,10 @@ Definition compute_GL {X} (G: list X) (n: nat) :=
 
 Fixpoint rev_open (k: nat) (u: id) (T: ty) { struct T }: ty :=
   match T with
-    | TVar false x => if beq_nat x u then TVarB k else TVar false x
-    | TVar true x => TVar true x
-    | TVarB i => TVarB i
     | TTop        => TTop
     | TBot        => TBot
-    | TSel T1 l     => TSel (rev_open k u T1) l
+    | TSel (TVar false x) l => TSel (if beq_nat x u then TVarB k else TVar false x) l
+    | TSel p l => TSel p l
     | TFun l T1 T2  => TFun l (rev_open k u T1) (rev_open (S k) u T2)
     | TTyp l T1 T2  => TTyp l (rev_open k u T1) (rev_open k u T2)
     | TBind T1    => TBind (rev_open (S k) u T1)

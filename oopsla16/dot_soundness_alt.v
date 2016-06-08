@@ -211,18 +211,6 @@ Proof.
   - Case "typ". subst.
     eapply stpd_typ. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
 
-
-  - Case "varx". subst.
-    eexists. eapply stp_varx. eauto.
-  - Case "varax". subst.
-    case_eq (beq_nat x0 0); intros E.
-    + (* hit *)
-      assert (x0 = 0). eapply beq_nat_true_iff. eauto.
-      repeat eexists. unfold substt. subst x0. simpl. eapply stp_varx. eauto.
-    + (* miss *)
-      assert (x0 <> 0). eapply beq_nat_false_iff. eauto.
-      repeat eexists. unfold substt. simpl. rewrite E.
-      eapply stp_varax. rewrite map_length. rewrite app_length in H2. simpl in H2. omega.
   - Case "ssel1". subst.
     assert (substt x T2 = T2) as R. eapply subst_closed_id. eapply stpd_closed2 with (GH:=[]). eauto.
     eexists. eapply stp_strong_sel1. eauto. eauto. rewrite R. eauto.
@@ -253,7 +241,7 @@ Proof.
       eapply htp_subst_narrow02 in H2.
       eu. repeat eexists. unfold substt. simpl. rewrite E. eapply stp_sel2. eapply H2. eauto. eauto. eauto.
   - Case "selx".
-    eexists. eapply stp_selx. eapply closed_subst0. rewrite app_length in H2. simpl in H2. rewrite map_length. eauto. eauto.
+    eexists. eapply stp_selx. subst. eapply vr_closed_subst. rewrite app_length in H2. simpl in H2. rewrite map_length. eauto. eauto.
 
   - Case "bind1".
     assert (stpd (map (substt x) (T1'::GH)) G1 (substt x T1') (substt x T2)) as A.
@@ -302,7 +290,7 @@ Proof.
     eu. eu. repeat eexists. eapply stp_trans. eauto. eauto.
 
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0.
 Qed.
 
 
