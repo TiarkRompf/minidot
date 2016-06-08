@@ -582,10 +582,18 @@ Qed.
 
 Axiom admit_closed: forall i j T, closed i j T.
 Axiom admit_dms_closed: forall i j ds, dms_closed i j ds.
+Axiom admit_tm_closed: forall i j t, tm_closed i j t.
 
 Lemma open_and_predictDefsType_commute: forall i v ds,
   open i v (predictDefsType ds) = predictDefsType (dms_open i v ds).
 Admitted.
+
+(* to apply if monad took the "happy path" *)
+Ltac hp :=
+  match goal with
+  | H : match ?x with _ => _ end = SUCCESS _ |- _ => let Eq := fresh "Eq" in
+                                                     destruct x eqn: Eq; inversions H
+  end.
 
 Lemma typeChecking_correct: forall fuel,
    (forall G t T, typeAssignTrm fuel G t   = SUCCESS T  -> exists n, has_type G t T n)
@@ -595,15 +603,14 @@ Lemma typeChecking_correct: forall fuel,
 Proof.
   intro fuel. induction fuel; try solve [repeat split; intros; inversions H].
   destruct IHfuel as [IH1 [IH2 [IH3 IH4]]]. refine (conj _ (conj _ (conj _ _))); introv Eq.
-  + destruct t.
+  + (* typeAssignTrm *)
+    destruct t.
     - destruct v.
-      * simpl in Eq. destruct (index i G) eqn: Eq2; inversions Eq.
+      * simpl in Eq. hp.
         eexists. econstructor. assumption. apply admit_closed.
       * simpl in Eq. inversions Eq.
-      * simpl in Eq.
-        apply simpl_success_eq in Eq.
-        destruct Eq as [unit [Eq2 Eq3]]. subst T. destruct unit.
-        apply IH4 in Eq2. destruct Eq2 as [n D].
+      * simpl in Eq. hp. destruct a.
+        apply IH4 in Eq0. destruct Eq0 as [n D].
         rewrite <- open_and_predictDefsType_commute in D.
         eexists. eapply T_VarPack.
         { eapply T_VObj.
@@ -615,99 +622,36 @@ Proof.
           + reflexivity. }
         { reflexivity. }
         { apply admit_closed. }
-    - inversions Eq.
-      destruct (typeAssignTrm fuel G t1) eqn: Eq; inversions H0.
-      destruct (lookup_fun fuel G a l) eqn: Eq2; inversions H1.
-      destruct a0 eqn: Eq3; inversions H0.
-      destruct t eqn: Eq4; inversions H1.
-      destruct (typeCheckTrm fuel G t2 t0_1) eqn: Eq5; inversions H0. destruct a0.
-      edestruct (IH1 _ _ _ Eq). edestruct (IH2 _ _ _ Eq5).
+    - inversions Eq. repeat hp.
+      apply IH1 in Eq. destruct a0. apply IH2 in Eq1.
       eexists.
 
       admit.
-  + simpl in Eq.
-    destruct (typeAssignTrm fuel G t) eqn: E; inversions Eq.
-    edestruct (IH1 _ _ _ E).
-    destruct (isSubType fuel G a T) eqn: E2; inversions H0.
-    destruct a0 eqn: E3; inversions H2.
-    edestruct (isSubType_correct _ _ _ _ E2).
-    eexists. eapply T_Sub. eapply H. eapply H0.
 
-    - fold typeCheckDefs in Eq. fold typeAssign in Eq. case_ifb; try discriminate.
-      match goal with
-      | H: match ?t with
-           | Some _ => _
-           | None => _
-           end = _ |- _ => destruct t eqn: Eq1
-      end; try discriminate.
-      case_ifb; try discriminate. inversions Eq.
-      specialize (IH1 _ _ _ Eq1).
-      specialize (IH3 _ _ Eq0).
-      apply_fresh ty_new as x;
-      try assert (Eqx: gen_fresh_var_from_env G = x) by admit; subst.
-      * rewrite <- open_and_predictDefsType_commute in IH3. apply IH3.
-      * rewrite <- open_and_predictDefsType_commute in IH1. apply IH1.
-      * rewrite <- from_list_nil. apply* is_wf_ty_correct.
-    - fold typeAssign in Eq.
-      repeat match goal with
-      | H: match ?t with
-           | Some _ => _
-           | None => _
-           end = _ |- _ => let Eq := fresh "Eq" in destruct t eqn: Eq; inversions H
-      end.
-      destruct d; try discriminate.
-      match goal with
-      | H: match ?t with
-           | Some _ => _
-           | None => _
-           end = _ |- _ => let Eq := fresh "Eq" in destruct t eqn: Eq; inversions H
-      end.
-      case_ifb; try discriminate. inversions H1.
-      apply andb_prop in Eq2. destruct Eq2 as [Eq2 Eq3].
-      refine (ty_call _ _ _ _).
-      * apply (IH1 _ _ _ Eq0).
-      * destruct ((proj1 (lookup_correct fuel)) _ _ _ _ Eq) as [Has E].
-        simpl in E. inversions E. apply Has.
-      * apply ty_sbsm with t4. 
-        { apply (IH1 _ _ _ Eq1). }
-        { assert (Imp: subty nohyp G t4 t0 -> subty okhyp G t4 t0) by admit. apply Imp.
-          apply ((proj1 (isSubType_correct fuel)) _ _ _ Eq2). }
-      * rewrite <- from_list_nil. apply* is_wf_ty_correct.
-  + destruct d; unfold typeCheckDef in Eq.
-    - apply ty_tdef. rewrite <- from_list_nil. apply* is_wf_ty_correct.
-    - fold typeAssign in Eq.
-      match goal with
-      | H: match ?t with
-           | Some _ => _
-           | None => _
-           end = _ |- _ => let Eq := fresh "Eq" in destruct t eqn: Eq
-      end; try discriminate.
-      apply andb_prop in Eq. destruct Eq as [Eq Eq3].
-      apply andb_prop in Eq. destruct Eq as [Eq1 Eq2].
-      apply_fresh ty_mdef as x;
-      try assert (Eqx: gen_fresh_var_from_env G = x) by admit; subst.
-      * rewrite <- from_list_nil. apply* is_wf_ty_correct.
-      * rewrite <- from_list_nil. apply* is_wf_ty_correct.
-      * apply ty_sbsm with t2.
-        { apply (IH1 _ _ _ Eq0). }
-        { assert (Imp: subty nohyp G t2 t0
-                    -> subty okhyp (G & gen_fresh_var_from_env G ~ t) t2 t0) by admit.
-          apply Imp.
-           (* TODO weakening & nohyp_to_okhyp *)
-          apply ((proj1 (isSubType_correct fuel)) _ _ _ Eq3). }
-  + destruct ds; unfold typeCheckDefs in Eq.
-    - simpl. apply ty_defs_nil.
-    - fold typeCheckDef in Eq. fold typeCheckDefs in Eq.
-      destruct (get_def (label_of_def d) ds) eqn: Eq0; try discriminate.
-      apply andb_prop in Eq. destruct Eq as [Eq1 Eq2].
-      apply ty_defs_cons.
-      * fold predictDefsType. apply* IH3.
-      * apply* IH2.
-      * apply Eq0.
+  + (* typeCheckTrm *)
+    simpl in Eq. repeat hp. apply isSubType_correct in Eq. apply IH1 in Eq0.
+    ev. eexists. eapply T_Sub; eassumption.
+
+  + (* typeCheckDef *)
+    simpl in Eq. repeat hp.
+    - destruct a. apply IH2 in Eq. ev. eexists. econstructor.
+      * eassumption.
+      * admit. (* TODO depending on whether var can appear in return type *) 
+      * reflexivity.
+      * apply admit_closed.
+      * apply admit_closed.
+      * apply admit_tm_closed.
+    - eexists. econstructor. apply admit_closed.
+
+  + (* typeCheckDefs *)
+    simpl in Eq. repeat hp.
+    - eexists. econstructor.
+    - destruct a. eapply IH3 in Eq. apply IH4 in H1. ev. eexists. econstructor.
+      * reflexivity.
+      * eassumption.
+      * eassumption.
+Grab Existential Variables. apply 0. apply 0. apply 0. apply 0.
 Qed.
-
-Definition typeAssign_correct(fuel: nat) := (proj1 (typeChecking_correct fuel)).
-*)
 
 Definition TStream :=
       (TAnd (TFun _head TTop (TSel (VarB 1) _E))
