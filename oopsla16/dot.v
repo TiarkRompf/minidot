@@ -14,39 +14,42 @@ Require Export Arith.Lt.
 
 (*# Syntax #*)
 
-Definition id := nat. (* identifiers for variables *)
-Definition lb := nat. (* labels for records *)
+Definition id := nat. (* identifiers for variables: x,y,z *)
+Definition lb := nat. (* labels for records: L, m *)
 
 Inductive ty : Type :=
   | TBot   : ty (* bottom type *)
-  | TTop   : ty (* type type *)
-  | TFun   : lb -> ty -> ty -> ty (* dependent function type:
-                                     { def m(x: S): U }, where x is locally bound in U *)
-  | TMem   : lb -> ty -> ty -> ty (* type member type: { type A: S..U } *)
+  | TTop   : ty (* top type *)
+  | TFun   : lb -> ty -> ty -> ty (* dependent function / method member type:
+                                     { def m(x: S): U^x },
+                                     where x is locally bound in U *)
+  | TMem   : lb -> ty -> ty -> ty (* type member type: { type L: S..U } *)
   | TVar   : bool(*true for concrete context, false for abstract context *) ->
              id(*absolute position in context, from origin, invariant under context extension*) -> ty
   | TVarB  : id(*bound variable, de Bruijn, locally nameless style -- see open *) -> ty
-  | TSel   : ty -> lb -> ty (* type selection: x.A -- the syntax allows T.A, but in the semantics
+  | TSel   : ty -> lb -> ty (* type selection: x.A --
+                               the syntax allows T.A, but in the semantics
                                only x.A (via TVar above) are non-trivial *)
-  | TBind  : ty -> ty (* Recursive binder: { z => T } *)
+  | TBind  : ty -> ty (* Recursive binder: { z => T^z },
+                         where z is locally bound in T *)
   | TAnd   : ty -> ty -> ty (* Intersection Type: T1 /\ T2 *)
   | TOr    : ty -> ty -> ty (* Union Type: T1 \/ T2 *)
 .
 
 Inductive tm : Type :=
-  | tvar  : bool(*like TVar: true for concrete, false for hypothetical *) -> id -> tm
+  | tvar  : bool(*like TVar: true for concrete, false for hypothetical *) -> id -> tm (* variable: x *)
   (* N.B.: no varB -- terms just use absolute identifers directly *)
-  | tobj  : dms(*self is next slot in abstract context -- see subst_tm*) -> tm (* object *)
+  | tobj  : dms(*self is next slot in abstract context -- see subst_tm*) -> tm (* new object instance: { z => d... } *)
   | tapp  : tm -> lb -> tm -> tm (* method invocation: t.m(t) *)
 
-with dm : Type := (* member definition --
+with dm : Type := (* initialization / member definition --
                      the labels, e.g. m & A, are determined from the position in member list, dms *)
-  | dfun : option ty -> option ty -> tm -> dm (* method: { def m(x: S): U = t } *)
+  | dfun : option ty -> option ty -> tm -> dm (* method: { def m(x[: S])[: U] = t }, where the types [: S] and [: U] are optional *)
   (* Church vs Curry: we show that all options work, by making parameter and return types optional,
      when defining a method. *)
-  | dty  : ty -> dm (* type: { type A = T } *)
+  | dty  : ty -> dm (* type: { type L = T } *)
 
-(* we need our own list-like structure for stuctural recursion, e.g. in subst_tm *)
+(* we use our own list-like structure for easy recursion, e.g. in subst_tm *)
 with dms : Type := (* list of member defs *)
   | dnil : dms
   | dcons : dm -> dms -> dms
