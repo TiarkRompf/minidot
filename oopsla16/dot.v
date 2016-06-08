@@ -23,7 +23,7 @@ Inductive ty : Type :=
   | TFun   : lb -> ty -> ty -> ty (* dependent function / method member type:
                                      { def m(x: S): U^x },
                                      where x is locally bound in U *)
-  | TMem   : lb -> ty -> ty -> ty (* type member type: { type L: S..U } *)
+  | TTyp   : lb -> ty -> ty -> ty (* type member type: { type L: S..U } *)
   | TVar   : bool(*true for concrete context, false for abstract context *) ->
              id(*absolute position in context, from origin, invariant under context extension*) -> ty
   | TVarB  : id(*bound variable, de Bruijn, locally nameless style -- see open *) -> ty
@@ -95,10 +95,10 @@ Inductive closed: nat(*abstract, TVar false i*) -> nat(*concrete, TVar true j*) 
     closed i j k T1 ->
     closed i j (S k) T2 ->
     closed i j k (TFun l T1 T2)
-| cl_mem: forall i j k l T1 T2,
+| cl_typ: forall i j k l T1 T2,
     closed i j k T1 ->
     closed i j k T2 ->
-    closed i j k (TMem l T1 T2)
+    closed i j k (TTyp l T1 T2)
 | cl_var0: forall i j k x,
     i > x ->
     closed i j k (TVar false x)
@@ -133,7 +133,7 @@ Fixpoint open (k: nat) (u: ty) (T: ty) { struct T }: ty :=
     | TBot        => TBot
     | TSel T1 l     => TSel (open k u T1) l
     | TFun l T1 T2  => TFun l (open k u T1) (open (S k) u T2)
-    | TMem l T1 T2  => TMem l (open k u T1) (open k u T2)
+    | TTyp l T1 T2  => TTyp l (open k u T1) (open k u T2)
     | TBind T1    => TBind (open (S k) u T1)
     | TAnd T1 T2  => TAnd (open k u T1) (open k u T2)
     | TOr T1 T2   => TOr (open k u T1) (open k u T2)
@@ -146,7 +146,7 @@ Fixpoint subst (u : ty) (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
     | TBot         => TBot
-    | TMem l T1 T2 => TMem l (subst u T1) (subst u T2)
+    | TTyp l T1 T2 => TTyp l (subst u T1) (subst u T2)
     | TSel T1 l    => TSel (subst u T1) l
     | TVarB i      => TVarB i
     | TVar true i  => TVar true i
@@ -253,11 +253,11 @@ Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
 with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
   | D_Nil : forall GH G1 n1,
       dms_has_type GH G1 dnil TTop (S n1)
-  | D_Mem : forall GH G1 l T11 ds TS T n1,
+  | D_Typ : forall GH G1 l T11 ds TS T n1,
       dms_has_type GH G1 ds TS n1 ->
       closed (length GH) (length G1) 0 T11 ->
       l = length (dms_to_list ds) ->
-      T = TAnd (TMem l T11 T11) TS ->
+      T = TAnd (TTyp l T11 T11) TS ->
       dms_has_type GH G1 (dcons (dty T11) ds) T (S n1)
   | D_Fun : forall GH G1 l OT11 T11 OT12 T12 T12' t12 ds TS T n1 n2,
       dms_has_type GH G1 ds TS n1 ->
@@ -287,10 +287,10 @@ with stp: tenv -> venv -> ty -> ty -> nat -> Prop :=
     stp GH G1 T3 T1 n1 ->
     stp (T3::GH) G1 T2' T4' n2 ->
     stp GH G1 (TFun l T1 T2) (TFun l T3 T4) (S (n1+n2))
-| stp_mem: forall GH G1 l T1 T2 T3 T4 n1 n2,
+| stp_typ: forall GH G1 l T1 T2 T3 T4 n1 n2,
     stp GH G1 T3 T1 n2 ->
     stp GH G1 T2 T4 n1 ->
-    stp GH G1 (TMem l T1 T2) (TMem l T3 T4) (S (n1+n2))
+    stp GH G1 (TTyp l T1 T2) (TTyp l T3 T4) (S (n1+n2))
 
 | stp_varx: forall GH G1 x n1,
     x < length G1 ->
@@ -311,11 +311,11 @@ with stp: tenv -> venv -> ty -> ty -> nat -> Prop :=
     stp GH G1 T1 (TSel (TVar true x) l) (S n1)
 
 | stp_sel1: forall GH G1 l T2 x n1,
-    htp  GH G1 x (TMem l TBot T2) n1 ->
+    htp  GH G1 x (TTyp l TBot T2) n1 ->
     stp GH G1 (TSel (TVar false x) l) T2 (S n1)
 
 | stp_sel2: forall GH G1 l T1 x n1,
-    htp  GH G1 x (TMem l T1 TTop) n1 ->
+    htp  GH G1 x (TTyp l T1 TTop) n1 ->
     stp GH G1 T1 (TSel (TVar false x) l) (S n1)
 
 | stp_selx: forall GH G1 l T1 n1,
@@ -424,10 +424,10 @@ Lemma stpd_fun: forall GH G1 l T1 T2 T3 T4 T2' T4',
     stpd (T3::GH) G1 T2' T4' ->
     stpd GH G1 (TFun l T1 T2) (TFun l T3 T4).
 Proof. intros. repeat eu. eexists. eauto. Qed.
-Lemma stpd_mem: forall GH G1 l T1 T2 T3 T4,
+Lemma stpd_typ: forall GH G1 l T1 T2 T3 T4,
     stpd GH G1 T3 T1 ->
     stpd GH G1 T2 T4 ->
-    stpd GH G1 (TMem l T1 T2) (TMem l T3 T4).
+    stpd GH G1 (TTyp l T1 T2) (TTyp l T3 T4).
 Proof. intros. repeat eu. eexists. eauto. Qed.
 
 
@@ -840,7 +840,7 @@ Fixpoint tsize (T: ty) { struct T }: nat :=
     | TBot        => 1
     | TSel T1 l   => S (tsize T1)
     | TFun l T1 T2 => S (tsize T1 + tsize T2)
-    | TMem l T1 T2 => S (tsize T1 + tsize T2)
+    | TTyp l T1 T2 => S (tsize T1 + tsize T2)
     | TBind T1    => S (tsize T1)
     | TAnd T1 T2  => S (tsize T1 + tsize T2)
     | TOr T1 T2   => S (tsize T1 + tsize T2)
@@ -868,7 +868,7 @@ Proof.
     simpl. apply closed_open. simpl. eapply closed_upgrade_gh. eauto. omega.
     econstructor. omega.
     rewrite <- open_preserves_size. omega.
-  - Case "mem". eapply stpd_mem; try eapply IHn; eauto; try omega.
+  - Case "typ". eapply stpd_typ; try eapply IHn; eauto; try omega.
   - Case "var0". exists 1. eauto.
   - Case "var1". exists 1. eauto.
   - Case "varb". omega.
@@ -918,7 +918,7 @@ Ltac index_subst := match goal with
 Ltac invty := match goal with
                 | H1: TBot     = _ |- _ => inversion H1
                 | H1: TSel _ _   = _ |- _ => inversion H1
-                | H1: TMem _ _ _ = _ |- _ => inversion H1
+                | H1: TTyp _ _ _ = _ |- _ => inversion H1
                 | H1: TVar _ _ = _ |- _ => inversion H1
                 | H1: TFun _ _ _ = _ |- _ => inversion H1
                 | H1: TBind  _ = _ |- _ => inversion H1
@@ -931,7 +931,7 @@ Ltac invstp_var := match goal with
   | H1: stp _ true _ _ TBot        (TVar _ _) _ |- _ => inversion H1
   | H1: stp _ true _ _ TTop        (TVar _ _) _ |- _ => inversion H1
   | H1: stp _ true _ _ (TFun _ _ _)  (TVar _ _) _ |- _ => inversion H1
-  | H1: stp _ true _ _ (TMem _ _ _)  (TVar _ _) _ |- _ => inversion H1
+  | H1: stp _ true _ _ (TTyp _ _ _)  (TVar _ _) _ |- _ => inversion H1
   | H1: stp _ true _ _ (TAnd _ _)  (TVar _ _) _ |- _ => inversion H1
   | H1: stp _ true _ _ (TOr _ _)  (TVar _ _) _ |- _ => inversion H1
   | _ => idtac
@@ -1312,7 +1312,7 @@ Fixpoint splice n (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
     | TBot         => TBot
-    | TMem l T1 T2 => TMem l (splice n T1) (splice n T2)
+    | TTyp l T1 T2 => TTyp l (splice n T1) (splice n T2)
     | TSel T1 l    => TSel (splice n T1) l
     | TVarB i      => TVarB i
     | TVar true i  => TVar true i
@@ -1515,8 +1515,8 @@ Proof.
     simpl in IHstp. rewrite app_length. rewrite map_length. simpl.
     repeat rewrite splice_open_permute with (j:=0).
     eapply IHstp. rewrite <- app_length. eauto. omega.
-  - Case "mem".
-    eapply stp_mem.
+  - Case "typ".
+    eapply stp_typ.
     eapply IHstp. eauto. omega.
     eapply IHstp. eauto. omega.
   - Case "varx".
@@ -1542,11 +1542,11 @@ Proof.
     rewrite A. assumption.
   - Case "sel1".
     eapply stp_sel1.
-    specialize (IHhtp GX G0 G1 x (TMem l TBot T2)). simpl in IHhtp.
+    specialize (IHhtp GX G0 G1 x (TTyp l TBot T2)). simpl in IHhtp.
     eapply IHhtp. eauto. omega.
   - Case "sel2".
     eapply stp_sel2.
-    specialize (IHhtp GX G0 G1 x (TMem l T1 TTop)). simpl in IHhtp.
+    specialize (IHhtp GX G0 G1 x (TTyp l T1 TTop)). simpl in IHhtp.
     eapply IHhtp. eauto. omega.
   - Case "selx".
     eapply stp_selx.
@@ -1945,7 +1945,7 @@ Proof.
       eapply IHn_stp with (GH1:=(T4::GH1)); try eassumption.
       rewrite EGHLEN. eauto. omega.
       subst. simpl. reflexivity. subst. simpl. reflexivity.
-    + SCase "mem". eapply stpd_mem.
+    + SCase "typ". eapply stpd_typ.
       eapply IHn_stp; try eassumption. omega.
       eapply IHn_stp; try eassumption. omega.
     + SCase "varx". eexists. eapply stp_varx. omega.

@@ -5,12 +5,12 @@ Inductive vtp(*possible types*) : nat(*pack count*) -> venv -> id -> ty -> nat(*
 | vtp_top: forall m G1 x n1,
     x < length G1 ->
     vtp m G1 x TTop (S n1)
-| vtp_mem: forall m G1 x l ds TX T1 T2 n1 n2,
+| vtp_typ: forall m G1 x l ds TX T1 T2 n1 n2,
     index x G1 = Some (vobj ds) ->
     index l (dms_to_list ds) = Some (dty TX) ->
     stp [] G1 T1 TX n1 ->
     stp [] G1 TX T2 n2 ->
-    vtp m G1 x (TMem l T1 T2) (S (n1+n2))
+    vtp m G1 x (TTyp l T1 T2) (S (n1+n2))
 | vtp_fun: forall m G1 x l ds dsx OT1 OT2 OT1x OT2x T1 T2 T3 T4 T2' T4' t T1x T2x tx T' T2x' n1 n2 n3 n4,
     index x G1 = Some (vobj ds) ->
     index l (dms_to_list ds) = Some (dfun OT1 OT2 t) ->
@@ -208,8 +208,8 @@ Proof.
     simpl in IHn. eapply IHn.
     rewrite map_length. rewrite app_length in *. eassumption.
     omega. omega. eauto.
-  - Case "mem". subst.
-    eapply stpd_mem. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
+  - Case "typ". subst.
+    eapply stpd_typ. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
 
 
   - Case "varx". subst.
@@ -234,7 +234,7 @@ Proof.
   - Case "sel1". subst. (* invert htp to vtp and create strong_sel node *)
     case_eq (beq_nat x0 0); intros E.
     + assert (x0 = 0). eapply beq_nat_true_iff. eauto. subst x0.
-      assert (exists m0, vtpd m0 G1 x (substt x (TMem l TBot T2))) as A. eapply narrowX. eauto. omega.
+      assert (exists m0, vtpd m0 G1 x (substt x (TTyp l TBot T2))) as A. eapply narrowX. eauto. omega.
       destruct A as [? A]. euv. inversion A. subst.
       repeat eexists. eapply stp_strong_sel1. eauto. eauto. unfold substt.
       eauto.
@@ -245,7 +245,7 @@ Proof.
   - Case "sel2". subst. (* invert htp to vtp and create strong_sel node *)
     case_eq (beq_nat x0 0); intros E.
     + assert (x0 = 0). eapply beq_nat_true_iff. eauto. subst x0.
-      assert (exists m0, vtpd m0 G1 x (substt x (TMem l T1 TTop))) as A. eapply narrowX. eauto. omega.
+      assert (exists m0, vtpd m0 G1 x (substt x (TTyp l T1 TTop))) as A. eapply narrowX. eauto. omega.
       destruct A as [? A]. euv. inversion A. subst.
       repeat eexists. eapply stp_strong_sel2. eauto. eauto. unfold substt.
       eauto.
@@ -393,10 +393,10 @@ Proof.
       assert (vtpdd m1 G1 x T0) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. euv.
       assert (vtpdd x0 G1 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. euv.
       repeat eexists. eauto. omega.
-  - Case "mem". inversion H0; subst; invty.
+  - Case "typ". inversion H0; subst; invty.
     + SCase "top". repeat eexists. eapply vtp_top. eapply index_max. eauto. eauto.
-    + SCase "mem". invty. subst.
-      repeat eexists. eapply vtp_mem. eauto. eauto.
+    + SCase "typ". invty. subst.
+      repeat eexists. eapply vtp_typ. eauto. eauto.
       eapply stp_trans. eauto. eauto.
       eapply stp_trans. eauto. eauto.
       eauto.
@@ -669,7 +669,7 @@ Proof.
     edestruct IHdms_has_type as [? [? AS]]. eauto. eauto. eauto.
     exists (dsa ++ [dty T11]). rewrite <- app_assoc. simpl. eauto. eauto. eauto.
     unfold substt in *. simpl.
-    repeat eexists. eapply vtp_and. eapply vtp_mem. eauto.
+    repeat eexists. eapply vtp_and. eapply vtp_typ. eauto.
     erewrite index_subst_dms with (D:=dty T11). simpl. reflexivity. eauto.
     eauto. eauto. eauto. eauto. eauto.
   - subst.
@@ -877,9 +877,9 @@ Proof.
     eexists. eapply T_Sub. eauto. eauto.
   - Case "dnil". subst. simpl.
     eexists. eapply D_Nil.
-  - Case "mem". subst. simpl.
+  - Case "typ". subst. simpl.
     edestruct IHniD as [? IH]. eapply H2. omega. eauto.
-    eexists. eapply D_Mem. eauto. eapply closed_subst0.
+    eexists. eapply D_Typ. eauto. eapply closed_subst0.
     rewrite app_length in H3. rewrite map_length. eauto.
     eapply has_type_closed1. eauto. eauto.
     unfold substt. simpl. rewrite <- length_subst_dms. reflexivity.

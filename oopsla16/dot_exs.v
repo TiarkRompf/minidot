@@ -10,7 +10,7 @@ Hint Constructors dms_has_type.
 
 Definition dm_compute (d: dm) (l: lb) :=
   match d with
-    | dty T11 => TMem l T11 T11
+    | dty T11 => TTyp l T11 T11
     | dfun (Some T11) (Some T12) t12 => TFun l T11 T12
     | dfun _ _ t12 => TFun l TBot TTop (* tactic not supported *)
   end.
@@ -42,12 +42,12 @@ Ltac pick_stp_and c :=
       eapply stp_and11; c
     | [ |- stp ?GH ?G1 (TAnd (TFun ?l _ _) _) _ ?n ] =>
       eapply stp_and12; c
-    | [ |- stp ?GH ?G1 (TAnd (TMem ?l _ _) _) (TMem ?l _ _) ?n ] =>
+    | [ |- stp ?GH ?G1 (TAnd (TTyp ?l _ _) _) (TTyp ?l _ _) ?n ] =>
       eapply stp_and11; c
-    | [ |- stp ?GH ?G1 (TAnd (TMem ?l _ _) _) _ ?n ] =>
+    | [ |- stp ?GH ?G1 (TAnd (TTyp ?l _ _) _) _ ?n ] =>
       eapply stp_and12; c
-    | [ |- stp ?GH ?G1 (TAnd _ (TMem ?l _ _)) (TMem ?l _ _) ?n ] =>
-      eapply stp_and12; [eapply stp_mem; c | c]
+    | [ |- stp ?GH ?G1 (TAnd _ (TTyp ?l _ _)) (TTyp ?l _ _) ?n ] =>
+      eapply stp_and12; [eapply stp_typ; c | c]
     | _ => idtac
   end.
 
@@ -81,7 +81,7 @@ Fixpoint rev_open (k: nat) (u: id) (T: ty) { struct T }: ty :=
     | TBot        => TBot
     | TSel T1 l     => TSel (rev_open k u T1) l
     | TFun l T1 T2  => TFun l (rev_open k u T1) (rev_open (S k) u T2)
-    | TMem l T1 T2  => TMem l (rev_open k u T1) (rev_open k u T2)
+    | TTyp l T1 T2  => TTyp l (rev_open k u T1) (rev_open k u T2)
     | TBind T1    => TBind (rev_open (S k) u T1)
     | TAnd T1 T2  => TAnd (rev_open k u T1) (rev_open k u T2)
     | TOr T1 T2   => TOr (rev_open k u T1) (rev_open k u T2)
@@ -126,11 +126,11 @@ Ltac apply_stp_selx :=
     eapply stp_selx
   end.
 
-Ltac apply_refl_mem c :=
+Ltac apply_refl_typ c :=
   match goal with
-  | [ |- stp ?GH ?G1 (TMem ?l ?TS ?TU) (TMem _ _ _) _ ] =>
-    assert (closed (length GH) (length G1) 0 (TMem l TS TU)) as C by solve [c];
-    inversion C; subst; eapply stp_mem;
+  | [ |- stp ?GH ?G1 (TTyp ?l ?TS ?TU) (TTyp _ _ _) _ ] =>
+    assert (closed (length GH) (length G1) 0 (TTyp l TS TU)) as C by solve [c];
+    inversion C; subst; eapply stp_typ;
     try solve [apply_refl idtac eassumption; c]; solve [c]
   end.
 
@@ -146,7 +146,7 @@ Ltac crush := simpl;
   try solve [apply_stp_bot; crush];
   try solve [apply_stp_top; crush];
   try solve [apply_stp_selx; crush];
-  try solve [apply_refl_mem crush];
+  try solve [apply_refl_typ crush];
   try solve [eapply stp_and2; crush];
   try solve [pick_stp_and crush];
   try solve [apply_stp_sel2 crush];
@@ -179,11 +179,11 @@ apply 0. apply 0.
 Qed.
 
 (*# Polymorphic Identity Function #*)
-Definition polyId := TFun 0 (TMem 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0) (TSel (TVarB 1) 0)).
+Definition polyId := TFun 0 (TTyp 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0) (TSel (TVarB 1) 0)).
 
 Example ex1: has_typed
                [] []
-               (tobj (dcons (tfun (TMem 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0) (TSel (TVarB 1) 0))
+               (tobj (dcons (tfun (TTyp 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0) (TSel (TVarB 1) 0))
                (tobj (dcons (tfun (TSel (TVar false 1) 0) (TSel (TVar false 1) 0) (tvar false 3)) dnil))) dnil)) polyId.
 Proof.
   compute. eexists. crush.
@@ -201,7 +201,7 @@ Proof.
   eapply T_Sub.
   eapply T_Varz. compute. reflexivity.
   crush.
-  instantiate (2:=TMem 0 TTop TTop). crush.
+  instantiate (2:=TTyp 0 TTop TTop). crush.
   crush.
   crush.
 
@@ -259,9 +259,9 @@ Definition TLst m EL EU :=
     (*def head(_:Top):this.Elem*)
     (TFun 2 TTop (TSel (TVarB 1) 0)) (TAnd
     (*def tail(_:Top): m.List & { type Elem <: this.Elem } *)
-    (TFun 1 TTop (TAnd (TSel m 0) (TMem 0 TBot (TSel (TVarB 1) 0))))
+    (TFun 1 TTop (TAnd (TSel m 0) (TTyp 0 TBot (TSel (TVarB 1) 0))))
     (*type Elem*)
-    (TMem 0 EL EU)
+    (TTyp 0 EL EU)
   ))).
 Definition mList := (TSel (TVar false 0) 0).
 Definition pT := (TSel (TVar false 1) 0).
@@ -271,24 +271,24 @@ Example paper_lst:
     (* list module impl. *)
     (lobj
        [(*def nil*)
-        (tfun TTop (TAnd mList (TMem 0 TBot TBot))
+        (tfun TTop (TAnd mList (TTyp 0 TBot TBot))
         (lobj [(*def head*)(tfun TTop TBot (*error*)(tapp (tvar false 2) 2 (tvar false 3)));
                (*def tail*)(tfun TTop TBot (*error*)(tapp (tvar false 2) 1 (tvar false 3)));
                (*def Elem*)(dty TBot)]));
         (*def cons*)
         (tfun
-           (*T*)(TMem 0 TBot TTop)
+           (*T*)(TTyp 0 TBot TTop)
            (TFun 0 (*hd*)(*:T*)(TSel (TVarB 0) 0)
-           (TFun 0 (*tl*)(TAnd mList (TMem 0 TBot (TSel (TVarB 1) 0)))
-           (TAnd mList (TMem 0 (TSel (TVarB 2) 0) (TSel (TVarB 2) 0)))))
+           (TFun 0 (*tl*)(TAnd mList (TTyp 0 TBot (TSel (TVarB 1) 0)))
+           (TAnd mList (TTyp 0 (TSel (TVarB 2) 0) (TSel (TVarB 2) 0)))))
            (lobj [(tfun pT
-             (TFun 0 (TAnd mList (TMem 0 TBot pT))
-             (TAnd mList (TMem 0 pT pT)))
-           (lobj [(tfun (TAnd mList (TMem 0 TBot pT))
-             (TAnd mList (TMem 0 pT pT))
+             (TFun 0 (TAnd mList (TTyp 0 TBot pT))
+             (TAnd mList (TTyp 0 pT pT)))
+           (lobj [(tfun (TAnd mList (TTyp 0 TBot pT))
+             (TAnd mList (TTyp 0 pT pT))
            (lobj [(*def head*)(tfun TTop pT (tvar false 3));
                   (*def tail*)(tfun TTop
-                  (TAnd mList (TMem 0 TBot pT))
+                  (TAnd mList (TTyp 0 TBot pT))
                   (tvar false 5));
                   (*def Elem*)(dty pT)]))]))]));
          (*type List*)
@@ -297,15 +297,15 @@ Example paper_lst:
     (* list module type *)
     (TBind (TAnd
               (*def nil *)
-              (TFun 2 TTop (TAnd (TSel (TVarB 1) 0) (TMem 0 TBot TBot))) (TAnd
+              (TFun 2 TTop (TAnd (TSel (TVarB 1) 0) (TTyp 0 TBot TBot))) (TAnd
               (*def cons *)
               (TFun 1
-                    (TMem 0 TBot TTop)
+                    (TTyp 0 TBot TTop)
                     (TFun 0 (TSel (TVarB 0) 0)
-                    (TFun 0 (TAnd (TSel (TVarB 2) 0) (TMem 0 TBot (TSel (TVarB 1) 0)))
-                    (TAnd (TSel (TVarB 3) 0) (TMem 0 TBot (TSel (TVarB 2) 0))))))
+                    (TFun 0 (TAnd (TSel (TVarB 2) 0) (TTyp 0 TBot (TSel (TVarB 1) 0)))
+                    (TAnd (TSel (TVarB 3) 0) (TTyp 0 TBot (TSel (TVarB 2) 0))))))
               (*type List *)
-              (TMem 0 TBot (TLst (TVarB 2) TBot TTop))))).
+              (TTyp 0 TBot (TLst (TVarB 2) TBot TTop))))).
 Proof.
   compute. eexists. crush.
 

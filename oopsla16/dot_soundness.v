@@ -22,10 +22,10 @@ Inductive stpp: venv -> ty -> ty -> Prop :=
     stpd [] G1 T3 T1 ->
     stpd [T3] G1 T2' T4' ->
     stpp G1 (TFun l T1 T2) (TFun l T3 T4)
-| stpp_mem: forall G1 l T1 T2 T3 T4,
+| stpp_typ: forall G1 l T1 T2 T3 T4,
     stpd [] G1 T3 T1 ->
     stpd [] G1 T2 T4 ->
-    stpp G1 (TMem l T1 T2) (TMem l T3 T4)
+    stpp G1 (TTyp l T1 T2) (TTyp l T3 T4)
 
 | stpp_varx: forall G1 x,
     x < length G1 ->
@@ -124,7 +124,7 @@ Proof.
     }
     edestruct A.
     econstructor; eauto 2.
-  - Case "mem".
+  - Case "typ".
     econstructor; eauto 2.
   - Case "bind".
     remember (open 0 (TVar false 0) T0) as T0'.
@@ -350,11 +350,11 @@ Proof.
   eapply H; try eassumption. omega.
 Qed.
 
-Lemma dms_hastp_inv_mem: forall G1 x ds' T' l TS TU n,
+Lemma dms_hastp_inv_typ: forall G1 x ds' T' l TS TU n,
   dms_has_type [T'] G1 ds' T' n ->
   closed 0 (length G1) 0 (substt x T') ->
   index x G1 = Some (vobj (subst_dms x ds')) ->
-  stpp G1 (substt x T') (TMem l TS TU) ->
+  stpp G1 (substt x T') (TTyp l TS TU) ->
   exists T, index l (dms_to_list (subst_dms x ds')) = Some (dty T) /\
   stpd [] G1 TS T /\ stpd [] G1 T TU.
 Proof.
@@ -426,8 +426,8 @@ Proof.
   eapply htpy_to_hastp in H. destruct H as [? H]. eapply has_type_closed in H. simpl in H. eapply H.
 Qed.
 
-Lemma pre_canon_mem_aux: forall m1, Subst m1 -> forall G y T0,
-  htpy m1 G y T0 -> forall l TS TU, stpd [] G T0 (TMem l TS TU) ->
+Lemma pre_canon_typ_aux: forall m1, Subst m1 -> forall G y T0,
+  htpy m1 G y T0 -> forall l TS TU, stpd [] G T0 (TTyp l TS TU) ->
   exists ds T, index y G = Some (vobj ds) /\
                index l (dms_to_list ds) = Some (dty T) /\
                stpd [] G TS T /\ stpd [] G T TU.
@@ -438,14 +438,14 @@ Proof.
   {remember 0 as m. rewrite Heqm in *. rewrite <- Heqm in H.
   induction H; intros; subst.
   - eu. eapply stp_trans_pushback in Hsub.
-    edestruct dms_hastp_inv_mem as [T IH]; eauto.
+    edestruct dms_hastp_inv_typ as [T IH]; eauto.
   - inversion Heqm.
   - eapply htpy_bind0_contra in H. inversion H.
   - eu. eapply IHhtpy. eauto. eexists. eapply stp_trans. eapply H0. eapply Hsub.
   }
   remember (S m1) as m. induction H; intros; subst.
   - eu. eapply stp_trans_pushback in Hsub.
-    edestruct dms_hastp_inv_mem as [T IH]; eauto.
+    edestruct dms_hastp_inv_typ as [T IH]; eauto.
   - inversion Heqm; subst.
     eu. eapply stp_trans_pushback in Hsub. inversion Hsub; subst; eu.
     + assert (substt x T1=T1) as EqT1. {
@@ -454,16 +454,16 @@ Proof.
       assert (substt x (open 0 (TVar false 0) T1) = (open 0 (TVar true x) T1)) as A. {
         rewrite subst_open_commute0b. rewrite EqT1. reflexivity.
       }
-      assert (substt x (TMem l TS TU)=(TMem l TS TU)) as EqT. {
+      assert (substt x (TTyp l TS TU)=(TTyp l TS TU)) as EqT. {
         eapply subst_closed_id. eassumption.
       }
-      assert (open 0 (TVar false 0) (TMem l TS TU)=(TMem l TS TU)) as EqT'. {
+      assert (open 0 (TVar false 0) (TTyp l TS TU)=(TTyp l TS TU)) as EqT'. {
         erewrite <- closed_no_open. reflexivity. eassumption.
       }
-      assert (open 0 (TVar true x) (TMem l TS TU)=(TMem l TS TU)) as EqT''. {
+      assert (open 0 (TVar true x) (TTyp l TS TU)=(TTyp l TS TU)) as EqT''. {
         erewrite <- closed_no_open. reflexivity. eassumption.
       }
-      assert (htpy (S m1) G1 x (TBind (TMem l TS TU))) as H'. {
+      assert (htpy (S m1) G1 x (TBind (TTyp l TS TU))) as H'. {
         eapply TY_Sub. eapply TY_VarPack; eauto.
         eapply stp_bindx. eapply H2. simpl. reflexivity.
         simpl. simpl in EqT'. rewrite EqT'. reflexivity.
@@ -485,13 +485,13 @@ Proof.
   - eu. eapply IHhtpy; eauto 2. eexists. eapply stp_trans. eassumption. eapply Hsub.
 Qed.
 
-Lemma pre_canon_mem: forall m1, Subst m1 -> forall G y l TS TU,
-  htpy m1 G y (TMem l TS TU) ->
+Lemma pre_canon_typ: forall m1, Subst m1 -> forall G y l TS TU,
+  htpy m1 G y (TTyp l TS TU) ->
   exists ds T, index y G = Some (vobj ds) /\
                index l (dms_to_list ds) = Some (dty T) /\
                stpd [] G TS T /\ stpd [] G T TU.
 Proof.
-  intros. eapply pre_canon_mem_aux; eauto 2.
+  intros. eapply pre_canon_typ_aux; eauto 2.
   eapply stpd_refl.
   simpl.
   eapply htpy_to_hastp in H0. destruct H0 as [? H0]. eapply has_type_closed in H0. simpl in H0. eapply H0.
@@ -547,7 +547,7 @@ Proof.
       rewrite map_length. unfold substt in IH at 1. eapply IH.
       eauto. eauto. eauto. eauto.
     + repeat unfold substt at 2. simpl.
-      eapply stpd_mem.
+      eapply stpd_typ.
       eapply IHn0. instantiate (1:=n2). omega. eapply HX. eassumption.
       eapply IHn0. instantiate (1:=n1). omega. eapply HX. eassumption.
     + repeat unfold substt at 2. simpl.
@@ -569,10 +569,10 @@ Proof.
       case_eq (beq_nat x0 0); intros E.
       * (* interesting case: converting from abstract to concrete sel1 *)
         apply beq_nat_true in E. subst.
-        assert (htpy m G x (substt x (TMem l TBot T2))) as IH. {
+        assert (htpy m G x (substt x (TTyp l TBot T2))) as IH. {
           eapply IHn0. instantiate (1:=n1). omega. eapply HX. eassumption.
         }
-        edestruct pre_canon_mem as [ds [T IH']].
+        edestruct pre_canon_typ as [ds [T IH']].
         unfold substt in IH. simpl in IH.
         instantiate (1:=m). unfold Subst. intros.
         eapply IHm0. instantiate (1:=m1). omega.
@@ -581,7 +581,7 @@ Proof.
         destruct IH' as [IH1 [IH2 [IH3 IH4]]]. repeat eu.
         eexists. eapply stp_strong_sel1; eauto 2.
       * apply beq_nat_false in E.
-        assert (htpd (map (substt x) GH) G (x0-1) (substt x (TMem l TBot T2))) as IH. {
+        assert (htpd (map (substt x) GH) G (x0-1) (substt x (TTyp l TBot T2))) as IH. {
           eapply IHn0. instantiate (1:=n1). omega. eapply HX. apply E.
           eassumption.
         }
@@ -592,10 +592,10 @@ Proof.
       case_eq (beq_nat x0 0); intros E.
       * (* interesting case: converting from abstract to concrete sel2 *)
         apply beq_nat_true in E. subst.
-        assert (htpy m G x (substt x (TMem l T1 TTop))) as IH. {
+        assert (htpy m G x (substt x (TTyp l T1 TTop))) as IH. {
           eapply IHn0. instantiate (1:=n1). omega. eapply HX. eassumption.
         }
-        edestruct pre_canon_mem as [ds [T IH']].
+        edestruct pre_canon_typ as [ds [T IH']].
         unfold substt in IH. simpl in IH.
         instantiate (1:=m). unfold Subst. intros.
         eapply IHm0. instantiate (1:=m1). omega.
@@ -604,7 +604,7 @@ Proof.
         destruct IH' as [IH1 [IH2 [IH3 IH4]]]. repeat eu.
         eexists. eapply stp_strong_sel2; eauto 2.
       * apply beq_nat_false in E.
-        assert (htpd (map (substt x) GH) G (x0-1) (substt x (TMem l T1 TTop))) as IH. {
+        assert (htpd (map (substt x) GH) G (x0-1) (substt x (TTyp l T1 TTop))) as IH. {
           eapply IHn0. instantiate (1:=n1). omega. eapply HX. apply E.
           eassumption.
         }
@@ -852,15 +852,15 @@ Proof.
   eapply htpy_to_hastp. eapply A.
 Qed.
 
-Lemma canon_mem: forall G y l TS TU n,
-  has_type [] G (tvar true y) (TMem l TS TU) n ->
+Lemma canon_typ: forall G y l TS TU n,
+  has_type [] G (tvar true y) (TTyp l TS TU) n ->
   exists ds T, index y G = Some (vobj ds) /\
                index l (dms_to_list ds) = Some (dty T) /\
                stpd [] G TS T /\ stpd [] G T TU.
 Proof.
   intros.
   eapply hastp_to_htpy in H. destruct H as [m H].
-  eapply pre_canon_mem; eauto 2. eapply all_Subst.
+  eapply pre_canon_typ; eauto 2. eapply all_Subst.
 Qed.
 
 Lemma hastp_subst_aux: forall n0,
@@ -967,7 +967,7 @@ Proof.
   - eexists. simpl. eapply D_Nil.
   - edestruct IHD as [? IHDS]. instantiate (1:=n1). omega. eauto. eauto.
     rewrite app_length in *. simpl in *. unfold substt at 2. simpl.
-    eexists. eapply D_Mem; eauto 2.
+    eexists. eapply D_Typ; eauto 2.
     rewrite map_length. eapply closed_subst.
     eauto. econstructor. eapply has_type_closed1 in HX. omega.
     unfold substt. rewrite <- length_subst_dms. reflexivity.
