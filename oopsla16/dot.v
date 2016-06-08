@@ -391,11 +391,6 @@ with htp: tenv -> venv -> id -> ty -> nat -> Prop :=
     GH = GU ++ GL ->
     htp GH G1 x T2 (S (n1+n2)).
 
-Definition type_safety : forall G t T n1,
-  has_type [] G t T n1 ->
-  (exists x, t = tvar true x) \/
-  (exists G' t' n2, step G t (G'++G) t' /\ has_type [] (G'++G) t' T n2).
-
 Definition has_typed GH G1 x T1 := exists n, has_type GH G1 x T1 n.
 
 Definition stpd GH G1 T1 T2 := exists n, stp GH G1 T1 T2 n.
