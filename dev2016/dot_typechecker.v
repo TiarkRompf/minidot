@@ -629,13 +629,50 @@ Definition has_expected_type(G: tenv)(t: tm)(pt: option ty)(T: ty)(n: nat) := ma
   end.
 *)
 
+Lemma destruct_typeCheck_pt: forall fuel G t T1 T2,
+  typeCheckTrm fuel G t (Some T1) = SUCCESS T2 ->
+  exists n1 n2 T0, n1 + n2 = fuel /\ 
+                   T1 = T2 /\
+                   typeCheckTrm n1 G t None = SUCCESS T0 /\
+                   isSubType n2 G T0 T1 = SUCCESS true.
+Proof.
+  intros. destruct fuel; inversion H.
+  remember (typeCheckTrm (S fuel) G t None) as a1 eqn: E1.
+  remember (typeCheckTrm (S fuel) G t None) as a2 eqn: E2.
+  assert (E3: a1 = a2). { rewrite E1. rewrite E2. reflexivity. }
+  rewrite E2 in E1. subst a2. 
+  simpl in E1. rewrite simpl_success in E1. rewrite <- E1 in H1.
+  rewrite E3 in H1. clear E1 E3 a1.
+  destruct (typeCheckTrm (S fuel) G t None) eqn: Eq; inversions H1.
+  destruct (isSubType fuel G a T1) eqn: Eq2; inversions H2.
+  destruct a0 eqn: Eq3; inversions H1.
+  do 2 eexists.
+
+
+  intros. destruct fuel; inversion H.
+  remember (typeCheckTrm (S fuel) G t None) as a1 eqn: E1.
+  remember (typeCheckTrm (S fuel) G t None) as a2 eqn: E2.
+  rewrite E2 in E1.
+  assert (E3: a1 = a2). { rewrite E1. rewrite E2. reflexivity. } 
+  simpl in E1. rewrite simpl_success in E1.
+
+
+  remember (typeCheckTrm (S fuel) G t None) as a2 eqn: E2.
+  rewrite E2 in E1.
+  simpl in E1.
+
+  remember (
+ simpl in H.
+Qed.
+
 Lemma typeChecking_correct: forall fuel,
-   (forall G t pt T, typeCheckTrm  fuel G t pt = SUCCESS T  -> exists n, has_type G t T n)
+   (forall G t T, typeCheckTrm  fuel G t None = SUCCESS T  -> exists n, has_type G t T n) /\
+   (forall G t T1 T2, typeCheckTrm  fuel G t (Some T1) = SUCCESS T2  -> T1 = T2 /\ exists n, has_type G t T1 n)
 /\ (forall G d l   , typeCheckDef  fuel G d    = SUCCESS tt -> exists n, dm_has_type G l d (predictDefType l d) n)
 /\ (forall G ds    , typeCheckDefs fuel G ds   = SUCCESS tt -> exists n, dms_has_type G ds (predictDefsType ds) n).
 Proof.
   intro fuel. induction fuel; try solve [repeat split; intros; inversions H].
-  destruct IHfuel as [IH1 [IH2 IH3]]. split; [idtac | split]; introv Eq.
+  destruct IHfuel as [IH1 [IH2 [IH3 IH4]]]. refine (conj _ (conj _ (conj _ _))); introv Eq.
   + destruct t.
     - destruct v.
       * simpl in Eq. destruct (index i G) eqn: Eq2; inversions Eq.
@@ -643,7 +680,7 @@ Proof.
       * simpl in Eq. inversions Eq.
       * simpl in Eq. rewrite simpl_success in Eq. apply simpl_success_eq in Eq.
         destruct Eq as [unit [Eq2 Eq3]]. subst T. destruct unit.
-        apply IH3 in Eq2. destruct Eq2 as [n D].
+        apply IH4 in Eq2. destruct Eq2 as [n D].
         rewrite <- open_and_predictDefsType_commute in D.
         eexists. eapply T_VarPack.
         { eapply T_VObj.
@@ -661,12 +698,11 @@ Proof.
       destruct a0 eqn: Eq3; inversions H0.
       destruct t eqn: Eq4; inversions H1.
       destruct (typeCheckTrm fuel G t2 (Some t0_1)) eqn: Eq5; inversions H0.
-      edestruct (IH1 _ _ _ Eq). edestruct (IH1 _ _ _ Eq5).
-      eexists. eapply T_App.
-      - eapply IH1
+      edestruct (IH1 _ _ _ Eq). edestruct (IH2 _ _ _ _ Eq5). subst.
+      eexists.
 
-      destruct (simpl_success_chain _ _ _ H0) as [a1 Eq].
- apply simpl_success_eq in H0.
+      admit.
+  + simpl in Eq.
 
 
     - fold typeCheckDefs in Eq. fold typeAssign in Eq. case_ifb; try discriminate.
