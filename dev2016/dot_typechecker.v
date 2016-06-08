@@ -1,3 +1,4 @@
+Require Import LibTactics. (* from Chargueraud's TLC, everyone should use these tactics ;-) *)
 Require Import dot_storeless_tidy.
 
 (* ###################################################################### *)
@@ -30,6 +31,7 @@ Inductive tc_error: Type :=
 | err_unbound_VarB: nat -> tc_error
 | err_timeout: tc_error
 | err_not_supported_yet: tc_error
+| err_vobjs_are_not_in_tenv: dms -> tc_error
 | err_type_mismatch: tenv -> tm -> ty -> ty -> tc_error.
 
 Inductive tc_result(A: Set): Type :=
@@ -56,8 +58,14 @@ Definition lookup_in_tenv(G: tenv)(a: vr): tc_result ty :=
     | None => FAIL (err_tenv_hasnt G x)
     end
   | VarB n => FAIL (err_unbound_VarB n)
-  | VObj _ => FAIL err_not_supported_yet
+  | VObj ds => FAIL (err_vobjs_are_not_in_tenv ds)
   end.
+
+Lemma lookup_in_tenv_correct: forall G i T,
+  lookup_in_tenv G (VarF i) = SUCCESS T -> index i G = Some T.
+Proof.
+  intros. simpl in *. destruct (index i G); inversions H. reflexivity.
+Qed.
 
 (* tc_result is for timeout or non-wf types, option is for has/hasnt. *)
 Fixpoint lookup_fun_or_mem(bot_default: ty)(fuel0: nat)(G: tenv)(T: ty)(l: lb): tc_result (option ty) :=
@@ -488,14 +496,14 @@ Proof.
 Qed.
 *)
 
-Definition predictDefType(d: dm)(l: lb): ty := match d with
+Definition predictDefType(l: lb)(d: dm): ty := match d with
 | dty U => TMem l U U
 | dfun T1 T2 body => TFun l T1 T2
 end.
 
 Fixpoint predictDefsType(ds: dms): ty := match ds with
 | dnil => TTop
-| dcons d rest => TAnd (predictDefType d (length (dms_to_list rest))) (predictDefsType rest)
+| dcons d rest => TAnd (predictDefType (length (dms_to_list rest)) d) (predictDefsType rest)
 end.
 
 Definition adapt(fuel: nat)(G: tenv)(t: tm)(tpFound: ty)(tpExpected: option ty)
@@ -512,30 +520,24 @@ Fixpoint typeCheckTrm(fuel0: nat)(G: tenv)(t: tm)(pt: option ty): tc_result ty :
 match fuel0 with
 | 0 => FAIL err_timeout
 | S fuel => LET tpFound BE (match t with
-  | tvar a => lookup_in_tenv G a
+  | tvar (VObj ds) =>
+      let T := predictDefsType ds in
+      let T' := open 0 (VarF (length G)) T in
+      let ds' := dms_open 0 (VarF (length G)) ds in
+      LET _ BE (typeCheckDefs fuel (T' :: G) ds') IN SUCCESS (TBind T)
+  | tvar v => lookup_in_tenv G v
   | tapp t m u =>
       LET T BE (typeCheckTrm fuel G t None) IN
       LET oD BE (lookup_fun fuel G T m) IN
       match oD with
       | Some (TFun _ tpArg tpRet) =>
           LET _ BE (typeCheckTrm fuel G u (Some tpArg)) IN
-          (*TODO check whether return type contains self ref or arg name*)
+        (*TODO check whether return type contains self ref or arg name*)
           SUCCESS tpRet
       | _ => FAIL (err_ty_hasnt T m)
       end
   end) IN (adapt fuel G t tpFound pt)
 end
-with typeCheckVr(fuel0: nat)(G: tenv)(t: tm)(pt: option ty): tc_result ty :=
-  FAIL err_not_supported_yet
-(*
-  | tm_new ds u =>
-      let theFreshVar := (gen_fresh_var_from_env G) in
-      let T := predictDefsType (open_defs theFreshVar ds) in
-      LET _ BE (typeCheckDefs fuel (T :: G) (open_defs theFreshVar ds)) IN
-      LET U BE (typeCheckTrm fuel (T :: G) (open_tm theFreshVar u) pt) IN
-      LET _ BE (check_wf_ty fuel G nil U) IN
-      SUCCESS U
-*)
 with typeCheckDef(fuel0: nat)(G: tenv)(d: dm): tc_result unit := match fuel0 with
 | 0 => FAIL err_timeout
 | S fuel => match d with
@@ -553,19 +555,120 @@ with typeCheckDefs(fuel0: nat)(G: tenv)(ds: dms): tc_result unit := match fuel0 
   end
 end.
 
+Lemma simpl_success: forall {A: Set} (e: tc_result A),
+  LET a BE e IN SUCCESS a = e.
+Proof.
+  intros. destruct e; reflexivity.
+Qed.
+
+Lemma simpl_success_eq: forall {A B: Set} (e: tc_result B) (a2 a3: A),
+  LET _ BE e IN SUCCESS a2 = SUCCESS a3 ->
+  exists a1, e = SUCCESS a1 /\ a2 = a3.
+Proof.
+  intros. destruct e; inversions H. eauto.
+Qed.
+
+Lemma simpl_success_chain: forall {A1 A2: Set} (e1: tc_result A1) (e2: tc_result A2) (a: A2),
+  LET x BE e1 IN e2 = SUCCESS a ->
+  (exists a1, e1 = SUCCESS a1).
+Proof.
+  intros. destruct e1; inversions H. eauto.
+Qed.
+
 (*
+Lemma simpl_success_eq: forall {A: Set} (e: tc_result A) (a2 a3: A),
+  LET _ BE e IN SUCCESS a2 = SUCCESS a3 ->
+  exists a1, e = SUCCESS a1 /\ a2 = a3.
+Proof.
+  intros. destruct e; inversions H. eauto.
+Qed.
+
+Lemma eq_success_inv: forall {A: Set} (e: tc_result A) (a: A),
+  LET _ BE e = SUCCESS a -> 
+
+Lemma success_eq_inv: forall {A B: Set} (e1: tc_result A) (a: A) (b1 b2: B),
+  match e1 with
+  | tc_success _ y => tc_success B b1
+  | tc_fail _ err => tc_fail B err
+  end = (tc_success B b2) ->
+  b1 = b2 /\ exists a, e1 = tc_success A a.
+Proof.
+  intros. destruct e1.
+  - inversion H. eauto.
+  - inversion H.
+Qed.
+*)
+
+Axiom admit_closed: forall i j T, closed i j T.
+Axiom admit_dms_closed: forall i j ds, dms_closed i j ds.
+
+Lemma open_and_predictDefsType_commute: forall i v ds,
+  open i v (predictDefsType ds) = predictDefsType (dms_open i v ds).
+Admitted.
+
+Definition satisfies_pt(G: tenv)(T: ty)(pt: option ty)(n: nat) := match pt with
+  | Some T' => stp G T T' n
+  | None => True
+  end.
+
+Lemma adapt_correct: forall fuel G t T1 pt T2,
+  adapt fuel G t T1 pt = SUCCESS T2 ->
+  pt = None \/ (pt = Some T2 /\ exists n, stp G T1 T2 n).
+Proof.
+  intros. destruct pt.
+  - right. unfold adapt in H. destruct (isSubType fuel G T1 t0) eqn: E; inversions H.
+    destruct a eqn: E2; inversions H1.
+    split; try reflexivity. admit. (* is_subtyp_correct *)
+  - auto.
+Qed.
+
+(*
+Definition has_expected_type(G: tenv)(t: tm)(pt: option ty)(T: ty)(n: nat) := match pt with
+  | Some T' => T = T' /\ has_type G t T n
+  | None => has_type G t T n
+  end.
+*)
+
 Lemma typeChecking_correct: forall fuel,
-   (forall G t T, typeAssign    fuel G t  = Some T -> ty_tm  G t  T)
-/\ (forall G d  , typeCheckDef  fuel G d  = true   -> ty_def  G d  (predictDefType  d ))
-/\ (forall G ds , typeCheckDefs fuel G ds = true   -> ty_defs G ds (predictDefsType ds)).
+   (forall G t pt T, typeCheckTrm  fuel G t pt = SUCCESS T  -> exists n, has_type G t T n)
+/\ (forall G d l   , typeCheckDef  fuel G d    = SUCCESS tt -> exists n, dm_has_type G l d (predictDefType l d) n)
+/\ (forall G ds    , typeCheckDefs fuel G ds   = SUCCESS tt -> exists n, dms_has_type G ds (predictDefsType ds) n).
 Proof.
   intro fuel. induction fuel; try solve [repeat split; intros; inversions H].
-  destruct IHfuel as [IH1 [IH2 IH3]]. repeat split; introv Eq.
-  + destruct t; unfold typeAssign in Eq.
-    - destruct a; try discriminate.
-      destruct (EnvOps.get v G) eqn: Eq2; try discriminate.
-      case_ifb; try discriminate. inversions Eq.
-      apply (ty_var Eq2). rewrite <- from_list_nil. apply* is_wf_ty_correct.
+  destruct IHfuel as [IH1 [IH2 IH3]]. split; [idtac | split]; introv Eq.
+  + destruct t.
+    - destruct v.
+      * simpl in Eq. destruct (index i G) eqn: Eq2; inversions Eq.
+        eexists. econstructor. assumption. apply admit_closed.
+      * simpl in Eq. inversions Eq.
+      * simpl in Eq. rewrite simpl_success in Eq. apply simpl_success_eq in Eq.
+        destruct Eq as [unit [Eq2 Eq3]]. subst T. destruct unit.
+        apply IH3 in Eq2. destruct Eq2 as [n D].
+        rewrite <- open_and_predictDefsType_commute in D.
+        eexists. eapply T_VarPack.
+        { eapply T_VObj.
+          + eapply D.
+          + reflexivity.
+          + reflexivity.
+          + apply admit_closed.
+          + apply admit_dms_closed.
+          + reflexivity. }
+        { reflexivity. }
+        { apply admit_closed. }
+    - inversions Eq. rewrite simpl_success in H0.
+      destruct (typeCheckTrm fuel G t1) eqn: Eq; inversions H0.
+      destruct (lookup_fun fuel G a l) eqn: Eq2; inversions H1.
+      destruct a0 eqn: Eq3; inversions H0.
+      destruct t eqn: Eq4; inversions H1.
+      destruct (typeCheckTrm fuel G t2 (Some t0_1)) eqn: Eq5; inversions H0.
+      edestruct (IH1 _ _ _ Eq). edestruct (IH1 _ _ _ Eq5).
+      eexists. eapply T_App.
+      - eapply IH1
+
+      destruct (simpl_success_chain _ _ _ H0) as [a1 Eq].
+ apply simpl_success_eq in H0.
+
+
     - fold typeCheckDefs in Eq. fold typeAssign in Eq. case_ifb; try discriminate.
       match goal with
       | H: match ?t with
