@@ -67,6 +67,12 @@ Proof.
   intros. simpl in *. destruct (index i G); inversions H. reflexivity.
 Qed.
 
+Lemma lookup_in_tenv_correct': forall G v T,
+  lookup_in_tenv G v = SUCCESS T -> exists i, v = VarF i /\ index i G = Some T.
+Proof.
+  intros. simpl in *. destruct v; inversion H. destruct (index i G) eqn: E; inversions H1. eauto.
+Qed.
+
 (* tc_result is for timeout or non-wf types, option is for has/hasnt. *)
 Fixpoint lookup_fun_or_mem(bot_default: ty)(fuel0: nat)(G: tenv)(T: ty)(l: lb): tc_result (option ty) :=
 match fuel0 with
@@ -78,7 +84,7 @@ match fuel0 with
   | TFun l0 _ _ => if l =? l0 then SUCCESS (Some T) else SUCCESS None
   | TSel a L =>
       LET X BE (lookup_in_tenv G a) IN
-      LET opD BE (lookup_fun_or_mem bot_default fuel G X L) IN
+      LET opD BE (lookup_fun_or_mem (TMem L TTop TBot) fuel G X L) IN
       match opD with
       | Some (TMem _ Lo Hi) => lookup_fun_or_mem bot_default fuel G Hi l
       | _ => FAIL (err_ty_hasnt X L)
@@ -118,6 +124,43 @@ Ltac case_ifb :=
   match goal with
   | _ : context[if ?c then _ else _] |- _ => let Eq := fresh "Eq" in destruct c eqn: Eq
   end.
+
+(* to apply if monad took the "happy path" *)
+Ltac hp :=
+  match goal with
+  | H : match ?x with _ => _ end = SUCCESS _ |- _ => let Eq := fresh "Eq" in
+                                                     destruct x eqn: Eq; inversions H
+  end.
+
+Axiom admit_closed: forall i j T, closed i j T.
+Axiom admit_dms_closed: forall i j ds, dms_closed i j ds.
+Axiom admit_tm_closed: forall i j t, tm_closed i j t.
+
+Definition label_eq(l: lb)(M: ty): Prop :=
+  (exists T1 T2, M = TMem l T1 T2) \/ (exists T1 T2, M = TFun l T1 T2).
+
+Lemma lookup_fun_or_mem_correct: forall fuel df G T l M,
+  label_eq l df ->
+  lookup_fun_or_mem df fuel G T l = SUCCESS (Some M) ->
+  label_eq l M /\ exists n, stp G T M n.
+Proof.
+  intro fuel. induction fuel; introv LE Eq. inversion Eq.
+  rename IHfuel into IH. simpl in Eq. repeat hp.
+  - split. assumption. eexists. eapply stp_bot. apply admit_closed.
+  - apply beq_nat_true in Eq. subst l0.
+    unfold label_eq. split; [eauto | eapply stpd_refl]. apply admit_closed.
+  - apply beq_nat_true in Eq. subst l0.
+    unfold label_eq. split; [eauto | eapply stpd_refl]. apply admit_closed.
+  - apply IH in H0; try assumption.
+    assert (label_eq l0 (TMem l0 TTop TBot)). { unfold label_eq. eauto. }
+    destruct H0 as [LE' H0]. apply IH in Eq0; try assumption.
+    destruct Eq0 as [LE'' Hst].
+    refine (conj LE' _).
+    apply lookup_in_tenv_correct' in Eq. ev. subst.
+    eexists. eapply stp_trans.
+    eapply stp_sel2.
+
+Qed.
 
 (*
 Lemma lookup_correct: forall fuel,
@@ -335,6 +378,7 @@ with firstTry(fuel0: nat)(G: tenv)(tp1 tp2: ty): tc_result bool := match fuel0 w
     | (TFun m1 tpArg1 tpRet1) =>
         if (m1 =? m2)
         then LET b1 BE (isSubType fuel G tpArg2 tpArg1) IN
+             (* TODO put tpArg2 into G *)
              LET b2 BE (isSubType fuel G tpRet1 tpRet2) IN
              SUCCESS (b1 && b2)
         else SUCCESS false
@@ -346,8 +390,7 @@ with firstTry(fuel0: nat)(G: tenv)(tp1 tp2: ty): tc_result bool := match fuel0 w
       match oD with
       | Some (TMem _ Lo Hi) =>
           LET b1 BE (isSubType fuel G tp1 Lo) IN
-          LET b2 BE (isSubType fuel G Lo Hi) IN
-          if (b1 && b2) then (SUCCESS true) else (secondTry fuel G tp1 tp2)
+          if b1 then (SUCCESS true) else (secondTry fuel G tp1 tp2)
         | _ => FAIL (err_ty_hasnt X L)
       end
   | TAnd tp21 tp22 => 
@@ -394,6 +437,45 @@ with secondTry(fuel0: nat)(G: tenv)(tp1 tp2: ty): tc_result bool := match fuel0 
   end
 end.
 
+Lemma subtyping_correct: forall fuel,
+   (forall G tp1 tp2, isSubType fuel G tp1 tp2 = SUCCESS true -> exists n, stp G tp1 tp2 n)
+/\ (forall G tp1 tp2, firstTry  fuel G tp1 tp2 = SUCCESS true -> exists n, stp G tp1 tp2 n)
+/\ (forall G tp1 tp2, secondTry fuel G tp1 tp2 = SUCCESS true -> exists n, stp G tp1 tp2 n).
+Proof.
+  intro fuel. induction fuel; try solve [repeat split; intros; inversions H].
+  destruct IHfuel as [IH0 [IH1 IH2]]. repeat split; introv Eq.
+  + (* isSubType *)
+    simpl in Eq. hp.
+    - eapply stpd_refl. apply admit_closed.
+    - apply IH1 in H0. exact H0.
+  + (* firstTry *)
+    simpl in Eq. hp.
+    - apply IH2 in H0; assumption.
+    - eexists. eapply stp_top. apply admit_closed.
+    - repeat hp; try apply IH2 in H1; try assumption.
+      destruct a; destruct a0; inversions H0. symmetry in Eq. apply beq_nat_eq in Eq.
+      eapply IH0 in Eq0. eapply IH0 in Eq1. ev. eexists.
+       subst. eapply stp_fun.
+       * reflexivity.
+       * reflexivity.
+       * apply admit_closed.
+       * apply admit_closed.
+       * eassumption.
+       * admit. (* basically H, but deal with opening *)
+    - repeat hp; try apply IH2 in H1; try assumption.
+      destruct a; destruct a0; inversions H0. symmetry in Eq. apply beq_nat_eq in Eq.
+      eapply IH0 in Eq0. eapply IH0 in Eq1. ev. eexists.
+       subst. eapply stp_mem.
+       * eassumption.
+       * eassumption.
+    - repeat hp.
+      * 
+ admit. ; try apply IH2 in H1; try assumption.
+      destruct a0; destruct a1; inversions Eq3.
+
+
+  + (* secondTry *)
+Qed.
 
 Lemma isSubType_correct: forall fuel G tp1 tp2,
   isSubType fuel G tp1 tp2 = SUCCESS true -> exists n, stp G tp1 tp2 n.
@@ -580,20 +662,9 @@ Proof.
   intros. destruct e1; inversions H. eauto.
 Qed.
 
-Axiom admit_closed: forall i j T, closed i j T.
-Axiom admit_dms_closed: forall i j ds, dms_closed i j ds.
-Axiom admit_tm_closed: forall i j t, tm_closed i j t.
-
 Lemma open_and_predictDefsType_commute: forall i v ds,
   open i v (predictDefsType ds) = predictDefsType (dms_open i v ds).
 Admitted.
-
-(* to apply if monad took the "happy path" *)
-Ltac hp :=
-  match goal with
-  | H : match ?x with _ => _ end = SUCCESS _ |- _ => let Eq := fresh "Eq" in
-                                                     destruct x eqn: Eq; inversions H
-  end.
 
 Lemma typeChecking_correct: forall fuel,
    (forall G t T, typeAssignTrm fuel G t   = SUCCESS T  -> exists n, has_type G t T n)
