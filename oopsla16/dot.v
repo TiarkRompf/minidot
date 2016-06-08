@@ -27,9 +27,9 @@ Inductive ty : Type :=
   | TVar   : bool(*true for concrete context, false for abstract context *) ->
              id(*absolute position in context, from origin, invariant under context extension*) -> ty
   | TVarB  : id(*bound variable, de Bruijn, locally nameless style -- see open *) -> ty
-  | TSel   : ty -> lb -> ty (* type selection: x.A --
-                               the syntax allows T.A, but in the semantics
-                               only x.A (via TVar above) are non-trivial *)
+  | TSel   : ty -> lb -> ty (* type selection: x.L --
+                               the syntax allows T.L, but in the semantics
+                               only x.L (via TVar above) are non-trivial *)
   | TBind  : ty -> ty (* Recursive binder: { z => T^z },
                          where z is locally bound in T *)
   | TAnd   : ty -> ty -> ty (* Intersection Type: T1 /\ T2 *)
