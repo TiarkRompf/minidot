@@ -187,12 +187,14 @@ Hint Immediate substt.
 
 (* Reduction semantics  *)
 Inductive step : venv -> tm -> venv -> tm -> Prop :=
+(* Computation Rules *)
 | ST_Obj : forall G1 D,
     step G1 (tobj D) (vobj (subst_dms (length G1) D)::G1) (tvar true (length G1))
 | ST_AppAbs : forall G1 f l x ds T1 T2 t12,
     index f G1 = Some (vobj ds) ->
     index l (dms_to_list ds) = Some (dfun T1 T2 t12) ->
     step G1 (tapp (tvar true f) l (tvar true x)) G1 (subst_tm x t12)
+(* Congruence Rules *)
 | ST_App1 : forall G1 G1' t1 t1' l t2,
     step G1 t1 G1' t1' ->
     step G1 (tapp t1 l t2) G1' (tapp t1' l t2)
@@ -388,6 +390,11 @@ with htp: tenv -> venv -> id -> ty -> nat -> Prop :=
     length GL = S x ->
     GH = GU ++ GL ->
     htp GH G1 x T2 (S (n1+n2)).
+
+Definition type_safety : forall G t T n1,
+  has_type [] G t T n1 ->
+  (exists x, t = tvar true x) \/
+  (exists G' t' n2, step G t (G'++G) t' /\ has_type [] (G'++G) t' T n2).
 
 Definition has_typed GH G1 x T1 := exists n, has_type GH G1 x T1 n.
 
