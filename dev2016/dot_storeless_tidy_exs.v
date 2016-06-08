@@ -2,6 +2,8 @@
 coqc -I ../../sf/ dot_storeless_tidy.v
 *)
 
+(* Beware: This only works with Coq 8.4pl6, whereas Coq 8.5 seems to loop infinitely on the crush tactic *)
+
 Require Import dot_storeless_tidy.
 
 (* ############################################################ *)
@@ -22,8 +24,8 @@ Fixpoint dms_compute (ds: dms) :=
   end.
 
 Ltac apply_dfun := match goal with
-  | [ |- dms_has_type ?GH (dcons (dfun ?T11 ?T12 ?t12) ?ds) ?T ?n ] =>
-    eapply (D_Fun GH (length (dms_to_list ds)) T11 T12 (open 0 (VarF (length GH)) T12) t12 (tm_open 0 (VarF (length GH)) t12) ds (dms_compute ds) (TAnd (TFun (length (dms_to_list ds)) T11 T12) (dms_compute ds)))
+  | [ |- dm_has_type ?GH ?l (dfun ?T11 ?T12 ?t12) ?T ?n ] =>
+    eapply (D_Fun GH l T11 T12 (open 0 (VarF (length GH)) T12) t12 (tm_open 0 (VarF (length GH)) t12))
   end.
 
 Ltac apply_tobj := match goal with
@@ -55,10 +57,11 @@ Example ex_loop: has_typed [] (tvar (VObj (dcons (dfun TTop TBot (tapp (tvar (Va
   eexists.
   eapply T_Sub.
   apply_tobj.
-  simpl. apply_dfun. crush.
-  simpl. eapply T_App. instantiate (2:=TTop). crush. crush. crush.
-  reflexivity. reflexivity. crush. crush. crush. reflexivity. reflexivity.
-  reflexivity. reflexivity. crush. crush. reflexivity. crush.
+  simpl. eapply D_Cons. reflexivity. simpl. apply_dfun.
+  simpl. eapply T_App. instantiate (2:=TTop). crush.
+  eapply T_VarF. simpl. reflexivity. crush. econstructor.
+  reflexivity. reflexivity. crush. crush. crush. crush. reflexivity. reflexivity.
+  crush. crush. reflexivity. crush.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
@@ -91,5 +94,5 @@ Proof.
   crush.
   crush.
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
