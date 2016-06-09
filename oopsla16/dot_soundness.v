@@ -210,7 +210,7 @@ Qed.
 
 (*
 We need to count the number of packing when typing a concrete variable.
-Like for precise subtyping, we really only need this in an emptry abstract context.
+Like for precise subtyping, we really only need this in an empty abstract context.
 *)
 Inductive htpy : nat(*pack count*) -> venv -> id(*concrete var*) -> ty -> Prop :=
   | TY_Vary : forall m G1 x ds ds' T T' n1,
