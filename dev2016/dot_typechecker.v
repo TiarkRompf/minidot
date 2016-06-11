@@ -155,10 +155,24 @@ Proof.
     assert (label_eq l0 (TMem l0 TTop TBot)). { unfold label_eq. eauto. }
     destruct H0 as [LE' H0]. apply IH in Eq0; try assumption.
     destruct Eq0 as [LE'' Hst].
+    unfold label_eq in LE''. destruct LE'' as [[? [? LE'']] | [? [? LE'']]]; inversions LE''.
     refine (conj LE' _).
     apply lookup_in_tenv_correct' in Eq. ev. subst.
-    eexists. eapply stp_trans.
-    eapply stp_sel2.
+    eexists.
+    + eapply stp_trans.
+      eapply stp_sel1.
+      { (* Note: (H1 : stp G a (TMem l0 x x0) x1) is not strong enough: It uses all of G instead of
+           only until x3 ! *)
+        eapply htp_sub.
+        - eapply htp_var. eassumption. apply admit_closed.
+        - eapply stp_trans.
+          + eapply H1.
+          + eapply stp_mem.
+            * eapply stp_bot. apply admit_closed.
+            * eapply H0.
+        - 
+
+    }
 
 Qed.
 
