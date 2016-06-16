@@ -51,28 +51,43 @@ Eval cbv in (LET tp1 BE (SUCCESS TTop) IN (SUCCESS (TMem 3 tp1 tp1))).
 
 Eval cbv in (LET tp1 BE (FAIL err_timeout) IN (SUCCESS (TMem 3 tp1 tp1))).
 
-Definition lookup_in_tenv(G: tenv)(a: vr): tc_result ty :=
+Definition lookup_in_tenv(G: tenv)(a: vr): tc_result (id * ty) :=
   match a with
   | VarF x => match index x G with
-    | Some X => SUCCESS X
+    | Some X => SUCCESS (x, X)
     | None => FAIL (err_tenv_hasnt G x)
     end
   | VarB n => FAIL (err_unbound_VarB n)
   | VObj ds => FAIL (err_vobjs_are_not_in_tenv ds)
   end.
 
-Lemma lookup_in_tenv_correct: forall G i T,
-  lookup_in_tenv G (VarF i) = SUCCESS T -> index i G = Some T.
+Lemma lookup_in_tenv_correct: forall G x i T,
+  lookup_in_tenv G (VarF i) = SUCCESS (x, T) -> i = x /\ index i G = Some T.
 Proof.
-  intros. simpl in *. destruct (index i G); inversions H. reflexivity.
+  intros. simpl in *. destruct (index i G); inversions H. auto.
 Qed.
 
-Lemma lookup_in_tenv_correct': forall G v T,
-  lookup_in_tenv G v = SUCCESS T -> exists i, v = VarF i /\ index i G = Some T.
+Lemma lookup_in_tenv_correct': forall G v x T,
+  lookup_in_tenv G v = SUCCESS (x, T) -> v = VarF x /\ index x G = Some T.
 Proof.
   intros. simpl in *. destruct v; inversion H. destruct (index i G) eqn: E; inversions H1. eauto.
 Qed.
 
+(* remove everything from G which was added after x, so x will be the last entry (=head of list) *)
+Fixpoint restrict_env(G: tenv)(x: id): tenv := match G with
+| [] => []
+| _ :: rest => if length rest =? x then G else restrict_env rest x
+end.
+
+Lemma restrict_env_length: forall G i T,
+  index i G = Some T ->
+  length (restrict_env G i) = S i.
+Proof.
+  intro G. induction G; intros. inversions H. unfold index in H.
+
+ ; simpl; auto.
+Qed.
+*)
 (* tc_result is for timeout or non-wf types, option is for has/hasnt. *)
 Fixpoint lookup_fun_or_mem(bot_default: ty)(fuel0: nat)(G: tenv)(T: ty)(l: lb): tc_result (option ty) :=
 match fuel0 with
@@ -83,10 +98,12 @@ match fuel0 with
   | TMem l0 _ _ => if l =? l0 then SUCCESS (Some T) else SUCCESS None
   | TFun l0 _ _ => if l =? l0 then SUCCESS (Some T) else SUCCESS None
   | TSel a L =>
-      LET X BE (lookup_in_tenv G a) IN
-      LET opD BE (lookup_fun_or_mem (TMem L TTop TBot) fuel G X L) IN
+      LET xX BE (lookup_in_tenv G a) IN
+      let (x, X) := xX in
+      let G0 := restrict_env G x in
+      LET opD BE (lookup_fun_or_mem (TMem L TTop TBot) fuel G0 X L) IN
       match opD with
-      | Some (TMem _ Lo Hi) => lookup_fun_or_mem bot_default fuel G Hi l
+      | Some (TMem _ Lo Hi) => lookup_fun_or_mem bot_default fuel G0 Hi l
       | _ => FAIL (err_ty_hasnt X L)
       end
   | TAnd T1 T2 => 
@@ -151,9 +168,9 @@ Proof.
     unfold label_eq. split; [eauto | eapply stpd_refl]. apply admit_closed.
   - apply beq_nat_true in Eq. subst l0.
     unfold label_eq. split; [eauto | eapply stpd_refl]. apply admit_closed.
-  - apply IH in H0; try assumption.
+  - apply IH in H1; try assumption.
     assert (label_eq l0 (TMem l0 TTop TBot)). { unfold label_eq. eauto. }
-    destruct H0 as [LE' H0]. apply IH in Eq0; try assumption.
+    destruct H1 as [LE' H1]. apply IH in Eq0; try assumption.
     destruct Eq0 as [LE'' Hst].
     unfold label_eq in LE''. destruct LE'' as [[? [? LE'']] | [? [? LE'']]]; inversions LE''.
     refine (conj LE' _).
@@ -161,16 +178,14 @@ Proof.
     eexists.
     + eapply stp_trans.
       eapply stp_sel1.
-      { (* Note: (H1 : stp G a (TMem l0 x x0) x1) is not strong enough: It uses all of G instead of
-           only until x3 ! *)
-        eapply htp_sub.
+      { eapply htp_sub.
         - eapply htp_var. eassumption. apply admit_closed.
         - eapply stp_trans.
-          + eapply H1.
+          + eapply H0.
           + eapply stp_mem.
             * eapply stp_bot. apply admit_closed.
-            * eapply H0.
-        - 
+            * eapply H1.
+        - unfold restrict_env. simpl.
 
     }
 
