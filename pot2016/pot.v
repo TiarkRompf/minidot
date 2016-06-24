@@ -518,44 +518,38 @@ Definition substt (x:defs) (T: ty) := (subst (VObj x) T).
 Hint Immediate substt.
 *)
 
-Inductive vtp(*possible types*): nat(*pack count*) -> defs -> ty -> nat(*size*) -> Prop :=
-| vtp_top: forall m ds n1,
-    vr_closed 0 0 (VObj ds) ->
-    vtp m ds TTop (S n1)
-| vtp_mem: forall m l ds TX T1 T2 n1 n2,
-    index l (defs_to_list (subst_defs ds ds)) = Some (dty TX) ->
+(* Possible types of a value *)
+Inductive vtp: nat(*pack count*) -> tm(*must be a value*) -> ty(*possible type*) -> nat(*size*) -> Prop :=
+| vtp_top: forall m v n1,
+    value v ->
+    tm_closed 0 0 v ->
+    vtp m v TTop (S n1)
+| vtp_rcd: forall m l ds t T n1,
+    defs_index l (defs_open (tObj ds) ds) = dSome T t ->
+    defs_closed 0 1 ds ->
+    vtp m (tObj ds) (TRcd l T) (S n1)
+| vtp_all: forall m T1 T2' T3 T4 T4' t2 n1 n2 n3,
+    tty [T1] t2 T2' n1 ->
+    stp [] T3 T1 n2 ->
+    ty_closed 1 0 T2' ->
+    ty_closed 0 1 T4 ->
+    tm_closed 0 1 t2 ->
+    T4' = ty_open (tVar (VarF 0)) T4 ->
+    stp [T3] T2' T4' n3 ->
+    vtp m (tLam T1 t2) (TAll T3 T4) (S (n1+n2+n3))
+| vtp_tag: forall m T1 TX T2 n1 n2,
     stp [] T1 TX n1 ->
     stp [] TX T2 n2 ->
-    vr_closed 0 0 (VObj ds) ->
-    vtp m ds (TMem l T1 T2) (S (n1+n2))
-| vtp_fun: forall m ds T l T3 T4 T1 T2 t T2' T4' ds' T' T1x T2x tx T2x' tx' n1 n2 n3 n4,
-    index l (defs_to_list (subst_defs ds ds)) = Some (dfun T1 T2 t) ->
-    dsty [T'] ds' T' n4 ->
-    T' = ty_open 0 (VarF 0) T ->
-    ds' = defs_open 0 (VarF 0) ds ->
-    ty_closed 0 1 T ->
-    index l (defs_to_list ds') = Some (dfun T1x T2x tx) ->
-    T2x' = (ty_open 0 (VarF 1) T2x) ->
-    tx' = (tm_open 0 (VarF 1) tx) ->
-    tty [T1x;T'] tx' T2x' n3 ->
-    stp [] T3 T1 n1 ->
-    T2' = (ty_open 0 (VarF 0) T2) ->
-    T4' = (ty_open 0 (VarF 0) T4) ->
-    ty_closed 0 1 T2 ->
-    ty_closed 0 1 T4 ->
-    tm_closed 1 1 tx ->
-    stp [T3] T2' T4' n2 ->
-    vr_closed 0 0 (VObj ds) ->
-    vtp m ds (TFun l T3 T4) (S (n1+n2+n3+n4))
+    vtp m (tTag TX) (TTag T1 T2) (S (n1+n2))
+| vtp_proj: forall m v p TX n1,
+    tty [] p (TTag TX TTop) n1 -> (* can we afford term typing here??? empty tenv guarantees that 
+      p begins with a value, not with a var, but still ... *)
+    vtp m v TX n1 ->
+    vtp m v (TProj p) (S (n1))
 | vtp_bind: forall m ds T2 n1,
-    vtp m ds (ty_open 0 (VObj ds) T2) n1 ->
+    vtp m (tObj ds) (ty_open (tObj ds) T2) n1 ->
     ty_closed 0 1 T2 ->
-    vtp (S m) ds (TBind T2) (S (n1))
-| vtp_sel: forall m ds dsy l TX n1,
-    index l (defs_to_list (subst_defs dsy dsy)) = Some (dty TX) ->
-    vr_closed 0 0 (VObj dsy) ->
-    vtp m ds TX n1 ->
-    vtp m ds (TProj (VObj dsy) l) (S (n1))
+    vtp (S m) (tObj ds) (TBind T2) (S (n1))
 | vtp_and: forall m m1 m2 ds T1 T2 n1 n2,
     vtp m1 ds T1 n1 ->
     vtp m2 ds T2 n2 ->
@@ -570,8 +564,7 @@ Inductive vtp(*possible types*): nat(*pack count*) -> defs -> ty -> nat(*size*) 
     vtp m1 ds T2 n1 ->
     ty_closed 0 0 T1 ->
     m1 <= m -> m2 <= m ->
-    vtp m ds (TOr T1 T2) (S (n1))
-.
+    vtp m ds (TOr T1 T2) (S (n1)).
 
 Definition ttyd G x T1 := exists n, tty G x T1 n.
 
