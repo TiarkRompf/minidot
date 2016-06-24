@@ -6,15 +6,17 @@ POT
 
     Var          x, y, z
     Label        a, b, c, f, l, m
-    Value*       v ::= lambda(x:T)t           function
-                       [T]                    type tag ("wrapped type")
-                       {z => (l: T = v)...}   object (rhs in defs must be values)
     Term         t ::= x                      variable
                        lambda(x:T)t           function
                        [T]                    type tag ("wrapped type")
-                       {z => (l: T = t)...}   object construction (rhs in defs must be terms with z not at top-level)
+                       {z => (l: T = i)...}   object construction (rhs in defs must be terms with z not at top-level)
                        t.l
                        t t
+    Value*       v ::= lambda(x:T)t           function
+                       [T]                    type tag ("wrapped type")
+                       {z => (l: T = v)...}   object (rhs in defs must be values)
+    Init'zation* i ::= x
+                       v
     Path*     p, q ::= x
                        [T]
                        {z => (l: T = v)...}
@@ -64,10 +66,6 @@ Reduction:
     
 
 Congruence:
-
-    t -> t'
-    -----------------------------------------------------------------------------------------------------
-    {z => (a: S = v)...; (b: T = t); (c: U = u)... } -> {z => (a: S = v)...; (b: T = t'); (c: U = u)... }
     
     t -> t'
     -----------

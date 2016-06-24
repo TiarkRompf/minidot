@@ -15,7 +15,7 @@ Inductive tm: Set :=
 | tVar : vr -> tm
 | tLam : ty -> tm -> tm  (* lambda(x: T)t *)
 | tTag : ty -> tm        (* "wrapped type" [T] *)
-| tObj : defs -> tm      (* {z => (l: T = t)...} *)
+| tObj : defs -> tm      (* {z => (l: T = i)...} where i are initalizations (vars or values) *)
 | tSel : tm -> lb -> tm  (* t.l *)
 | tApp : tm -> tm -> tm  (* t t *)
 with def: Set :=
@@ -123,139 +123,15 @@ Definition  def_open :=  def_open_rec 0.
 Definition defs_open := defs_open_rec 0.
 Definition   ty_open :=   ty_open_rec 0.
 
-(* Definition of reduction relation with reduction contexts is done as in
-   https://github.com/samuelgruetter/dot-calculus/blob/master/learning/STLC_Core_WF.v
-   by Chargueraud. *)
-
-(* Non-recursive reduction contexts (might have to apply step_ctx several times for 1 step)
-   e ::= { z => (a: S = v)...; (b: T = []); (c: U = u)...} | [].l | [] t | v []    *)
-Inductive ctx_def: Set :=
-| ctx_some: ty -> ctx_def.
-Inductive ctx_defs: Set :=
-| ctx_head: forall (e: ctx_def) (ds: defs), dvalues ds -> ctx_defs
-| ctx_tail: def -> ctx_defs -> ctx_defs.
-Inductive ctx: Set :=
-| ctx_obj: ctx_defs -> ctx
-| ctx_sel: lb -> ctx
-| ctx_app1: tm -> ctx
-| ctx_app2: forall v1, value v1 -> ctx.
-
-(* Fill the hole of reduction context e with the term t *)
-Definition fill_ctx_def(e: ctx_def)(t: tm): def := match e with
-| ctx_some T => dSome T t
-end.
-Fixpoint fill_ctx_defs(e: ctx_defs)(t: tm): defs := match e with
-| ctx_head e' ds _ => dCons (fill_ctx_def e' t) ds
-| ctx_tail d e' => dCons d (fill_ctx_defs e' t)
-end.
-Definition fill_ctx(e: ctx)(t: tm): tm := match e with
-| ctx_obj e'    => tObj (fill_ctx_defs e' t)
-| ctx_sel l     => tSel t l
-| ctx_app1 t2   => tApp t t2
-| ctx_app2 v1 _ => tApp v1 t
-end.
-
-(* More difficult to deal with for induction:
-(* Reduction contexts
-   e ::= hole | { z => (a: S = v)...; (b: T = e); (c: U = u)...} | e.l | e t | v e    *)
-Inductive ctx: Set :=
-| ctx_hole: ctx
-| ctx_obj: ctx_defs -> ctx
-| ctx_sel: ctx -> lb -> ctx
-| ctx_app1: forall (e1: ctx) (t2: tm), ctx
-| ctx_app2: forall (v1: tm) (e2: ctx), value v1 -> ctx
-with ctx_def: Set :=
-| ctx_some: ty -> ctx -> ctx_def
-with ctx_defs: Set :=
-| ctx_head: forall (e: ctx_def) (ds: defs), dvalues ds -> ctx_defs
-| ctx_tail: def -> ctx_defs -> ctx_defs.
-
-(* Fill the hole of reduction context e with the term t *)
-Fixpoint fill_ctx(e: ctx)(t: tm): tm := match e with
-| ctx_hole         => t
-| ctx_obj e'       => tObj (fill_ctx_defs e' t)
-| ctx_sel e' l     => tSel (fill_ctx e' t) l
-| ctx_app1 e1 t2   => tApp (fill_ctx e1 t) t2
-| ctx_app2 v1 e2 _ => tApp v1 (fill_ctx e2 t)
-end
-with fill_ctx_def(e: ctx_def)(t: tm): def := match e with
-| ctx_some T e' => dSome T (fill_ctx e' t)
-end
-with fill_ctx_defs(e: ctx_defs)(t: tm): defs := match e with
-| ctx_head e' ds _ => dCons (fill_ctx_def e' t) ds
-| ctx_tail d e' => dCons d (fill_ctx_defs e' t)
-end.*)
-
-Inductive step: tm -> tm -> Prop :=
-| step_sel: forall ds l T v,
-    dvalues ds ->
-    defs_index l ds = dSome T v ->
-    step (tSel (tObj ds) l) (tm_open (tObj ds) v)
-| step_app: forall T t v,
-    value v ->
-    step (tApp (tLam T t) v) (tm_open v t)
-| step_ctx: forall e t t',
-    step t t' ->
-    step (fill_ctx e t) (fill_ctx e t').
-
-(* More verbose definition which treats each congruence case separately:
 Inductive step: tm -> tm -> Prop :=
 (* Reduction *)
 | step_sel: forall ds l T v,
-    dvalues ds ->
     defs_index l ds = dSome T v ->
     step (tSel (tObj ds) l) (tm_open (tObj ds) v)
 | step_app: forall T t v,
     value v ->
     step (tApp (tLam T t) v) (tm_open v t)
 (* Congruence *)
-| step_obj: forall ds ds',
-    (* Note: We don't open ds, and if ds contains the self ref at top level, it might not step,
-    but that's intended, and the typing rules will exclude this *)
-    step_defs ds ds' ->
-    step (tObj ds) (tObj ds')
-| step_sel1: forall t l t',
-    step t t' ->
-    step (tSel t l) (tSel t' l)
-| step_app1 : forall t1 t1' t2,
-    step t1 t1' ->
-    step (tApp t1 t2) (tApp t1' t2)
-| step_app2 : forall v1 t2 t2',
-    value v1 ->
-    step t2 t2' ->
-    step (tApp v1 t2) (tApp v1 t2')
-with step_def: def -> def -> Prop :=
-| step_some: forall t t' T,
-    step t t' ->
-    step_def (dSome T t) (dSome T t')
-with step_defs: defs -> defs -> Prop :=
-| step_head: forall d d' ds T,
-    step d d' ->
-    dvalues ds ->
-    step_defs (dCons d ds) (dCons d' ds)
-| step_tail: forall d ds ds',
-    step_defs ds ds' ->
-    step (dCons d ds) (dCons d ds'). *)
-
-(* Equivalent definition which is less suitable for induction:
-Inductive step : tm -> tm -> Prop :=
-(* Reduction *)
-| step_sel: forall ds l T v,
-    dvalues ds ->
-    defs_index l ds = dSome T v ->
-    step (tSel (tObj ds) l) (tm_open (tObj ds) v)
-| step_app: forall T t v,
-    value v ->
-    step (tApp (tLam T t) v) (tm_open v t)
-(* Congruence *)
-| step_obj: forall t t' ds1 T ds2,
-    (* Note: We don't open t, and if t contains the self ref at top level, it might not step,
-    but that's intended, and the typing rules will exclude this *)
-    step t t' ->
-    (* Enforces unique evaluation order *)
-    dvalues ds1 ->
-    step (tObj (defs_concat ds2 (dCons (dSome T t ) ds1)))
-         (tObj (defs_concat ds2 (dCons (dSome T t') ds1)))
 | step_sel1: forall t l t',
     step t t' ->
     step (tSel t l) (tSel t' l)
@@ -266,146 +142,47 @@ Inductive step : tm -> tm -> Prop :=
     value v1 ->
     step t2 t2' ->
     step (tApp v1 t2) (tApp v1 t2').
-*)
-
-(*
-Scheme value_mut := Induction for value Sort Prop
-with dvalue_mut := Induction for dvalue Sort Prop
-with dvalues_mut := Induction for dvalues Sort Prop.
-Combined Scheme value_mut_ind from value_mut, dvalue_mut, dvalues_mut.
- 
-Lemma values_dont_step:
-  (forall t, value t -> forall t'
-*)
-(*
-Scheme ctx_tm_mut := Induction for ctx Sort Prop
-with  ctx_def_mut := Induction for ctx_def Sort Prop
-with ctx_defs_mut := Induction for ctx_defs Sort Prop.
-Combined Scheme ctx_mut from ctx_tm_mut, ctx_def_mut, ctx_defs_mut.
-
-Lemma invert_fill_ctx_value:
-   (forall e v, value (fill_ctx e v) -> value v)
-/\ (forall e v, dvalue (fill_ctx_def e v) -> value v)
-/\ (forall e v, dvalues (fill_ctx_defs e v) -> value v).
-Proof.
-  apply ctx_mut; intros; simpl in *; auto; inversion H0; auto.
-Qed.
 
 Lemma values_dont_step: forall v v',
   step v v' -> value v -> False.
 Proof.
-  intros v v' H. induction H; intros.
-  - inversion H1.
-  - inversion H0.
-  - apply IHstep. eapply (proj1 invert_fill_ctx_value). eapply H0.
-Qed.
-*)
-
-Lemma ctx_def_unique: forall d e1 e2 t1 t2,
-  fill_ctx_def e1 t1 = d -> fill_ctx_def e2 t2 = d -> e1 = e2 /\ t1 = t2.
-Proof.
-  intros. destruct e1. destruct e2. simpl in *. rewrite <- H in H0. inversions H0. auto.
+  intros. inversions H; inversions H0.
 Qed.
 
-(* does not hold because ctx alone can also point to a value, only "step" exludes stepping the value 
-Lemma ctx_defs_unique: forall ds e1 e2 t1 t2,
-  fill_ctx_defs e1 t1 = ds -> fill_ctx_defs e2 t2 = ds -> e1 = e2 /\ t1 = t2.
+Lemma objects_dont_step: forall ds t,
+  step (tObj ds) t -> False.
 Proof.
-  intros ds. induction ds; intros.
-  - destruct e1; inversions H.
-  - destruct e1; destruct e2; simpl in *. inversion H; clear H; inversion H0; clear H0.
-    subst ds0 ds1.
-    * destruct (ctx_def_unique _ _ _ _ _ H1 H2) as [E1 E2]. subst. split.
-      + f_equal. admit. (* proof irrelevance *)
-      + reflexivity.
-    * 
- eauto.
-
-
-Lemma ctx_unique:
-  (forall t e1 t1 e2 t2, fill_ctx e1 t1 = t
-
-Lemma ctx_congruence
-  P t t' ->
-  P (fill_ctx e t) (fill_ctx e t').
-not true for any P, but true for P = step
-*)
-
-Ltac transitivity_inv := 
-  repeat match goal with
-    | E1: ?X = ?Y, E2: ?X = ?Z |- _ => assert (EE: Y = Z) by (
-        transitivity X; [symmetry; assumption | assumption]
-      ); inversion EE; clear EE E1 E2; subst
-  end.
-
-(*
-Lemma step_unique_in_any_ctx: forall e t t1 t2,
-  step (fill_ctx e t) (fill_ctx e t1) ->
-  step (fill_ctx e t) (fill_ctx e t2) ->
-  t1 = t2.
-Proof.
-  intro e. induction e; intros.
+  intros. inversions H.
 Qed.
-
-Lemma invert_fill_ctx_eq_var: forall e t v,
-  fill_ctx e t = tVar v -> e = ctx_hole.
-Proof.
-  intros. destruct e; simpl in H; try reflexivity; inversion H.
-Qed.
-*)
 
 Lemma step_unique: forall t t1 t2,
   step t t1 ->
   step t t2 ->
   t1 = t2.
 Proof.
-  intro t. induction t; intros; try solve [inversions H; destruct e; inversions H1].
-  - (* tObj steps in two ways: to t1 and to t2 *)
-    inversions H. destruct e; inversions H1.
-    inversions H0. destruct e; inversions H.
- lets E1: (invert_fill_ctx_eq_var _ _ _ H1).
-    inversions H0. lets E1: (invert_fill_ctx_eq_var _ _ _ H). subst. simpl in *.
-    subst.
- inversions H1. inversions H0. rewrite <- H in H1. 
-*)
-
-Lemma step_unique: forall t t1 t2,
-  step t t1 ->
-  step t t2 ->
-  t1 = t2.
-Proof.
-  intros. gen t2.
-  induction H; intros ? H_other.
-(*
-  - inductions H_other.
-    * transitivity_inv. reflexivity.
-    * 
-*)
-  - inversions H_other.
-    * transitivity_inv. reflexivity.
-    * exfalso. eapply values_dont_step. eapply H2. unfold fill_ctx in H1. induction e; simpl in *; subst.
-      + inversions H2.
-
-
   intros. generalize dependent t2.
-  induction H; intros ? H_other;
-  inversion H_other; subst;
-  (* transitivity *)
-  repeat match goal with
-    | E1: ?X = ?Y, E2: ?X = ?Z |- _ => assert (EE: Y = Z) by (
-        transitivity X; [symmetry; assumption | assumption]
-      ); inversion EE; clear EE E1 E2; subst
-  end;
-  subst; eauto. cbv [tm_open]. ;
-  (* contradiction: vars don't step *)
-  try match goal with
-  | C: step (tVar _ ) _ |- _ => inversion C
-  end. ;
-  (* applying IH *)
-  match goal with
-  | IH: forall _ _, _ -> _ |- _ => edestruct IH; eauto; subst; eauto
-  end.
+  induction H; intros ? H_other.
+  - inversions H_other.
+    + rewrite H3 in H. inversions H. reflexivity.
+    + exfalso. eapply objects_dont_step. eassumption.
+  - inversions H_other.
+    + reflexivity.
+    + inversions H3.
+    + exfalso. eapply values_dont_step; eauto.
+  - inversions H_other.
+    + inversions H.
+    + f_equal. apply IHstep. assumption.
+  - inversions H_other.
+    + inversions H.
+    + f_equal. apply IHstep. assumption.
+    + exfalso. eapply values_dont_step. eapply H. assumption.
+  - inversions H_other.
+    + exfalso. eapply values_dont_step. eapply H0. assumption.
+    + exfalso. eapply values_dont_step. eapply H4. assumption.
+    + f_equal. apply IHstep. assumption.
 Qed.
+
+
 
 Inductive vr_closed: nat(*i:abstract*) -> nat(*k:bound*) -> vr -> Prop :=
 | clv_abs: forall i k x,
