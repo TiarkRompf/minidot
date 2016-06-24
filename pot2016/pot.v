@@ -360,52 +360,59 @@ with dsty: tenv -> defs -> ty -> nat -> Prop :=
 
 (* Subtyping *)
 with stp: tenv -> ty -> ty -> nat -> Prop :=
-(*
-| stp_bot: forall G T n1,
-    ty_closed (length G) 0  T ->
-    stp G TBot T (S n1)
 | stp_top: forall G T n1,
     ty_closed (length G) 0 T ->
-    stp G T  TTop (S n1)
-| stp_fun: forall G l T1 T2 T3 T4 T2' T4' n1 n2,
-    T2' = (ty_open 0 (VarF (length G)) T2) ->
-    T4' = (ty_open 0 (VarF (length G)) T4) ->
+    stp G T TTop (S n1)
+| stp_bot: forall G T n1,
+    ty_closed (length G) 0 T ->
+    stp G TBot T (S n1)
+| stp_rcd: forall G l T1 T2 n1,
+    stp G T1 T2 n1 ->
+    stp G (TRcd l T1) (TRcd l T2) (S n1)
+| stp_all: forall G T1 T2 T3 T4 T2' T4' n1 n2,
+    T2' = ty_open (tVar (VarF (length G))) T2 ->
+    T4' = ty_open (tVar (VarF (length G))) T4 ->
     ty_closed (length G) 1 T2 ->
     ty_closed (length G) 1 T4 ->
     stp G T3 T1 n1 ->
     stp (T3::G) T2' T4' n2 ->
-    stp G (TFun l T1 T2) (TFun l T3 T4) (S (n1+n2))
-| stp_mem: forall G l T1 T2 T3 T4 n1 n2,
+    stp G (TAll T1 T2) (TAll T3 T4) (S (n1+n2))
+| stp_tag: forall G T1 T2 T3 T4 n1 n2,
     stp G T3 T1 n2 ->
     stp G T2 T4 n1 ->
-    stp G (TMem l T1 T2) (TMem l T3 T4) (S (n1+n2))
-| stp_selx: forall G l v1 n1,
-    vr_closed (length G) 0 v1 ->
-    stp G (TProj v1 l) (TProj v1 l) (S n1)
-| stp_strong_sel1: forall G l ds TX n1,
-    index l (defs_to_list (subst_defs ds ds)) = Some (dty TX) ->
-    vr_closed (length G) 0 (VObj ds) ->
-    stp G (TProj (VObj ds) l) TX (S n1)
-| stp_strong_sel2: forall G l ds TX n1,
-    index l (defs_to_list (subst_defs ds ds)) = Some (dty TX) ->
-    vr_closed (length G) 0 (VObj ds) ->
-    stp G TX (TProj (VObj ds) l) (S n1)
-| stp_sel1: forall G l T2 x n1,
-    pty  G x (TMem l TBot T2) n1 ->
-    stp G (TProj (VarF x) l) T2 (S n1)
-| stp_sel2: forall G l T1 x n1,
-    pty  G x (TMem l T1 TTop) n1 ->
-    stp G T1 (TProj (VarF x) l) (S n1)
+    stp G (TTag T1 T2) (TTag T3 T4) (S (n1+n2))
+| stp_projx: forall G p n1,
+    path p ->
+    tm_closed (length G) 0 p ->
+    stp G (TProj p) (TProj p) (S n1)
+(* stp_proj1/2 are a generalization of stp_strong_proj1/2, so can we get rid of them?
+    Or do stp_proj1/2 allow too much?
+| stp_strong_proj1: forall G l ds T1 T2 T3 n1,
+    (* oh no, subsumption, and we're too general to prevent it! will we get away with this? *)
+    defs_index l (defs_open (tObj ds) ds) = dSome (TTag T1 T3) (tTag T2) ->
+    defs_closed (length G) 1 ds ->
+    stp G (TProj (tSel (tObj ds) l)) T3 (S n1)
+| stp_strong_proj2: forall G l ds T1 T2 T3 n1,
+    defs_index l (defs_open (tObj ds) ds) = dSome (TTag T1 T3) (tTag T2) ->
+    defs_closed (length G) 1 ds ->
+    stp G T1 (TProj (tSel (tObj ds) l)) (S n1)
+*)
+| stp_proj1: forall G p T1 T2 n1,
+    pty G p (TTag T1 T2) n1 ->
+    stp G (TProj p) T2 (S n1)
+| stp_proj2: forall G p T1 T2 n1,
+    pty G p (TTag T1 T2) n1 ->
+    stp G T1 (TProj p) (S n1)
 | stp_bind1: forall G T1 T1' T2 n1,
-    pty (T1'::G) (length G) T2 n1 ->
-    T1' = (ty_open 0 (VarF (length G)) T1) ->
+    pty (T1'::G) (tVar (VarF (length G))) T2 n1 ->
+    T1' = ty_open (tVar (VarF (length G))) T1 ->
     ty_closed (length G) 1 T1 ->
     ty_closed (length G) 0 T2 ->
     stp G (TBind T1) T2 (S n1)
 | stp_bindx: forall G T1 T1' T2 T2' n1,
-    pty (T1'::G) (length G) T2' n1 ->
-    T1' = (ty_open 0 (VarF (length G)) T1) ->
-    T2' = (ty_open 0 (VarF (length G)) T2) ->
+    pty (T1'::G) (tVar (VarF (length G))) T2' n1 ->
+    T1' = ty_open (tVar (VarF (length G))) T1 ->
+    T2' = ty_open (tVar (VarF (length G))) T2 ->
     ty_closed (length G) 1 T1 ->
     ty_closed (length G) 1 T2 ->
     stp G (TBind T1) (TBind T2) (S n1)
@@ -437,9 +444,13 @@ with stp: tenv -> ty -> ty -> nat -> Prop :=
     stp G T1 T2 n1 ->
     stp G T2 T3 n2 ->
     stp G T1 T3 (S (n1+n2))
-*)
+
 (* Path typing *)
-with pty: tenv -> id -> ty -> nat -> Prop :=
+with pty: tenv -> tm -> ty -> nat -> Prop :=
+| pty_p: forall G p T n1,
+    tty G p T n1 ->
+    path p ->
+    pty G p T (S n1)
 (*
 | pty_vr: forall G x TX n1,
     index x G = Some TX ->
@@ -465,6 +476,7 @@ with pty: tenv -> id -> ty -> nat -> Prop :=
 
 (* BEWARE: in dot_storeless_tidy, xxx_subst means substitution, but subst_xxx means opening!!! *)
 
+(*
 Fixpoint vr_subst (u: vr) (v: vr) {struct v}: vr :=
   match v with
     | VarF i  => if beq_nat i 0 then u else VarF (i-1)
@@ -504,7 +516,7 @@ Definition subst_tm (x:defs) (t: tm) := tm_open 0 (VObj x) t.
 Definition subst_ty (x:defs) (T: ty) := ty_open 0 (VObj x) T.
 Definition substt (x:defs) (T: ty) := (subst (VObj x) T).
 Hint Immediate substt.
-
+*)
 
 Inductive vtp(*possible types*): nat(*pack count*) -> defs -> ty -> nat(*size*) -> Prop :=
 | vtp_top: forall m ds n1,
