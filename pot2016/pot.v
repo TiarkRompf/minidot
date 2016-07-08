@@ -477,40 +477,40 @@ with pty: tenv -> tm -> ty -> nat -> Prop :=
 
 (* BEWARE: in dot_storeless_tidy, xxx_subst means substitution, but subst_xxx means opening!!! *)
 
-(*
-Fixpoint vr_subst (u: vr) (v: vr) {struct v}: vr :=
-  match v with
-    | VarF i  => if beq_nat i 0 then u else VarF (i-1)
-    | VarB i  => VarB i
-    | VObj ds => VObj (defs_subst u ds)
-  end
-with subst (u: vr) (T: ty) {struct T}: ty :=
-  match T with
-    | TTop         => TTop
-    | TBot         => TBot
-    | TMem l T1 T2 => TMem l (subst u T1) (subst u T2)
-    | TProj v1 l    => TProj (vr_subst u v1) l
-    | TFun l T1 T2 => TFun l (subst u T1) (subst u T2)
-    | TBind T2     => TBind (subst u T2)
-    | TAnd T1 T2   => TAnd (subst u T1) (subst u T2)
-    | TOr T1 T2    => TOr (subst u T1) (subst u T2)
-  end
-with tm_subst (u: vr) (t: tm) { struct t }: tm :=
-   match t with
-     | tvr v => tvr (vr_subst u v)
-     | tApp t1 l t2 => tApp (tm_subst u t1) l (tm_subst u t2)
-   end
-with def_subst (u: vr) (d: def) { struct d }: def :=
-   match d with
-     | dfun T1 T2 t2 => dfun (subst u T1) (subst u T2) (tm_subst u t2)
-     | dty T1 => dty (subst u T1)
-   end
-with defs_subst (u: vr) (ds: defs) { struct ds }: defs :=
-   match ds with
-     | dNil => dNil
-     | dCons d ds => dCons (def_subst u d) (defs_subst u ds)
-   end.
+Definition vr_subst(u: tm)(v: vr): tm := match v with
+| VarF i  => if beq_nat i 0 then u else tVar (VarF (i-1))
+| VarB i  => tVar (VarB i)
+end.
 
+Fixpoint tm_subst(u: tm)(t: tm) { struct t }: tm := match t with
+| tVar v => vr_subst u v
+| tLam T1 t1 => tLam (ty_subst u T1) (tm_subst u t1)
+| tTag T1 => tTag (ty_subst u T1)
+| tObj ds => tObj (defs_subst u ds)
+| tSel t l => tSel (tm_subst u t) l
+| tApp t1 t2 => tApp (tm_subst u t1) (tm_subst u t2)
+end
+with def_subst(u: tm)(d: def) { struct d }: def := match d with
+| dSome T1 t1 => dSome (ty_subst u T1) (tm_subst u t1)
+| dNone => dNone
+end
+with defs_subst(u: tm)(ds: defs) { struct ds }: defs := match ds with
+| dNil => dNil
+| dCons d ds => dCons (def_subst u d) (defs_subst u ds)
+end
+with ty_subst(u: tm)(T: ty) {struct T}: ty := match T with
+| TTop         => TTop
+| TBot         => TBot
+| TRcd l T1    => TRcd l (ty_subst u T1)
+| TAll T1 T2   => TAll (ty_subst u T1) (ty_subst u T2)
+| TTag T1 T2   => TTag (ty_subst u T1) (ty_subst u T2)
+| TProj t1     => TProj (tm_subst u t1)
+| TBind T2     => TBind (ty_subst u T2)
+| TAnd T1 T2   => TAnd (ty_subst u T1) (ty_subst u T2)
+| TOr T1 T2    => TOr (ty_subst u T1) (ty_subst u T2)
+end.
+
+(*
 Definition subst_defs (u:defs) (ds: defs) := defs_open 0 (VObj u) ds.
 Definition subst_def (x:defs) (D: def) := def_open 0 (VObj x) D.
 Definition subst_tm (x:defs) (t: tm) := tm_open 0 (VObj x) t.
