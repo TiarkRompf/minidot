@@ -962,10 +962,13 @@ Proof.
   intros x x0 Hx Hx0. intros.
   eapply (proj1 (proj2 (subst_open_commute1_rec x x0 Hx Hx0))); eauto.
 Qed.
+*)
 
 Lemma subst_closed_id: forall x k T2,
   ty_closed 0 k T2 ->
   substt x T2 = T2.
+Admitted.
+(*
 Proof. intros. eapply closed_no_subst. eauto. Qed.
 
 Lemma closed_subst0: forall i k x T2,
@@ -1456,10 +1459,13 @@ Lemma pty_closed: forall x G T2 n,
   pty G x T2 n ->
   ty_closed (length G) 0 T2.
 Proof. intros. eapply all_closed with (x:=x). eauto. eauto. Qed.
+*)
 
 Lemma vtp_closed: forall m x T2 n1,
   vtp m x T2 n1 ->
   ty_closed 0 0 T2.
+Admitted.
+(*
 Proof. intros. eapply all_closed. eauto. eauto. Qed.
 
 Lemma vtp_closed1: forall m x T2 n1,
@@ -2969,6 +2975,7 @@ Proof.
   instantiate(3:=nil). simpl. reflexivity. simpl. reflexivity.
   eauto.
 Qed.
+*)
 
 (* possible types closure *)
 Lemma vtp_widen: forall l, forall n, forall k, forall m1 x T2 T3 n1 n2,
@@ -2976,6 +2983,8 @@ Lemma vtp_widen: forall l, forall n, forall k, forall m1 x T2 T3 n1 n2,
   stp [] T2 T3 n2 ->
   m1 < l -> n2 < n -> n1 < k ->
   vtpdd m1 x T3.
+Admitted.
+(*
 Proof.
   intros l. induction l. intros. solve by inversion.
   intros n. induction n. intros. solve by inversion.
@@ -3239,12 +3248,15 @@ Inductive step: tm -> tm -> Prop :=
     step t2 t2' ->
     step (tApp (tvr (VObj f)) l t2) (tApp (tvr (VObj f)) l t2')
 .
+*)
 
 
 Lemma stp_subst_narrow_z: forall G0 TX T1 T2 x m n1 n2,
   stp (G0 ++ [TX]) T1 T2 n2 ->
   vtp m x (substt x TX) n1 ->
   stpd (map (substt x) G0) (substt x T1) (substt x T2).
+Admitted.
+(*
 Proof.
   intros.
   edestruct stp_subst_narrow0.
@@ -3708,6 +3720,7 @@ Proof.
   intros. eapply hastp_subst_z with (t:=t). eauto.
   erewrite subst_closed_id. eauto. eapply tty_closed in H0. eauto.
 Qed.
+*)
 
 Lemma stp_subst_narrow: forall G0 TX T1 T2 x m n1 n2,
   stp (G0 ++ [TX]) T1 T2 n2 ->
@@ -3717,7 +3730,6 @@ Proof.
   intros. eapply stp_subst_narrow_z. eauto.
   erewrite subst_closed_id. eauto. eapply vtp_closed in H0. eauto.
 Qed.
-*)
 
 Theorem type_safety: forall t T n1,
   tty [] t T n1 ->
@@ -3746,11 +3758,12 @@ Proof.
     + SCase "fun-val".
       destruct HX.
       * SSCase "arg-val".
-        assert (exists m n1, vtp m x (TFun l T1 T) n1). { eapply hastp_inv. eauto. }
-        assert (exists m n1, vtp m x0 T1 n1). { eapply hastp_inv. eauto. }
-        ev. inversion H2. subst.
-        assert (vtpdd x1 x0 T2). { eapply vtp_widen. eauto. eauto. eauto. eauto. eauto. }
+        assert (exists m n1, vtp m t1 (TAll T2 T3) n1). { eapply hastp_inv; eauto. }
+        assert (exists m n1, vtp m t2 T2 n1). { eapply hastp_inv; eauto. }
+        ev. inversions H4.
+        assert (vtpdd x t2 T1). { eapply vtp_widen. eauto. eauto. eauto. eauto. eauto. }
         eu.
+(*
         assert (exists n1, tty [] (tvr (VObj x)) (ty_open 0 (VObj x) T0) n1) as A. {
           eexists. eapply T_Obj. eauto. simpl. reflexivity. simpl. reflexivity.
           simpl. eauto. simpl. inversion H26; subst. eauto. eauto.
@@ -3804,7 +3817,8 @@ Proof.
           eassumption. eassumption.
         }
         rewrite EqT in HI2.
-        right. repeat eexists. eapply step_app. eauto. eauto.
+*)
+        repeat eexists. eapply step_app. eauto. eauto.
       * SSCase "arg_step".
         ev. subst.
         right. repeat eexists. eapply step_app2. eauto. eapply T_App.
