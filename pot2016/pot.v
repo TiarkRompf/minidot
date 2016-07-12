@@ -1611,18 +1611,22 @@ Ltac index_subst := match goal with
                       | H1: index ?x ?G = ?V1 , H2: index ?x ?G = ?V2 |- _ => rewrite H1 in H2; inversion H2; subst
                       | _ => idtac
                     end.
+*)
 
 Ltac invty := match goal with
+                | H1: TTop     = _ |- _ => inversion H1
                 | H1: TBot     = _ |- _ => inversion H1
-                | H1: TProj _ _   = _ |- _ => inversion H1
-                | H1: TMem _ _ _ = _ |- _ => inversion H1
-                | H1: TFun _ _ _ = _ |- _ => inversion H1
-                | H1: TBind  _ = _ |- _ => inversion H1
+                | H1: TRcd _ _ = _ |- _ => inversion H1
+                | H1: TAll _ _ = _ |- _ => inversion H1
+                | H1: TTag _ _ = _ |- _ => inversion H1
+                | H1: TProj _  = _ |- _ => inversion H1
+                | H1: TBind _  = _ |- _ => inversion H1
                 | H1: TAnd _ _ = _ |- _ => inversion H1
-                | H1: TOr _ _ = _ |- _ => inversion H1
+                | H1: TOr  _ _ = _ |- _ => inversion H1
                 | _ => idtac
               end.
 
+(*
 Lemma gh_match1: forall (GU:tenv) G GL TX,
   G ++ [TX] = GU ++ GL ->
   length GL > 0 ->
@@ -2983,24 +2987,47 @@ Proof.
 Qed.
 *)
 
+Tactic Notation "stp_cases" tactic(tac) ident(xCase) :=
+  tac; [
+    Case_aux xCase "top" |
+    Case_aux xCase "bot" |
+    Case_aux xCase "rcd" |
+    Case_aux xCase "all" |
+    Case_aux xCase "tag" |
+    Case_aux xCase "projx" |
+    Case_aux xCase "proj1" |
+    Case_aux xCase "proj2" |
+    Case_aux xCase "bind1" |
+    Case_aux xCase "bindx" |
+    Case_aux xCase "and11" |
+    Case_aux xCase "and12" |
+    Case_aux xCase "and2" |
+    Case_aux xCase "or21" |
+    Case_aux xCase "or22" |
+    Case_aux xCase "or1" |
+    Case_aux xCase "trans"
+  ].
+
+(*
+
+vtp m v0 (TProj v) n             -->    v is a tTag and it's rule vtp_proj0
+vtp m v0 (TProj (tSel p l)) n    -->    it's rule vtp_step
+*)
+
 (* possible types closure *)
 Lemma vtp_widen: forall l, forall n, forall k, forall m1 x T2 T3 n1 n2,
   vtp m1 x T2 n1 ->
   stp [] T2 T3 n2 ->
   m1 < l -> n2 < n -> n1 < k ->
   vtpdd m1 x T3.
-Admitted.
-(*
-Proof.
   intros l. induction l. intros. solve by inversion.
   intros n. induction n. intros. solve by inversion.
   intros k. induction k; intros. solve by inversion.
   inversion H.
-  - Case "top". inversion H0; subst; invty.
+
+  - Case "top". stp_cases (inversions H0) SCase; invty.
     + SCase "top". repeat eexists; eauto.
-    + SCase "ssel2".
-      repeat eexists. eapply vtp_sel. eauto. simpl in *. eauto. eauto. omega.
-    + SCase "sel2".
+    + SCase "proj2".
       eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H8. omega.
     + SCase "and".
       assert (vtpdd m1 x T1). eapply IHn; eauto. omega. eu.
@@ -3016,6 +3043,27 @@ Proof.
       assert (vtpdd m1 x T0) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
       assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega.
+
+  - Case "rcd".
+    + SCase "top".
+    + SCase "bot".
+    + SCase "rcd".
+    + SCase "all".
+    + SCase "tag".
+    + SCase "projx".
+    + SCase "proj1".
+    + SCase "proj2".
+    + SCase "bind1".
+    + SCase "bindx".
+    + SCase "and11".
+    + SCase "and12".
+    + SCase "and2".
+    + SCase "or21".
+    + SCase "or22".
+    + SCase "or1".
+    + SCase "trans".
+
+(*
   - Case "mem". inversion H0; subst; invty.
     + SCase "top". repeat eexists. eapply vtp_top. eauto. eauto.
     + SCase "mem". invty. subst.
@@ -3041,7 +3089,9 @@ Proof.
       assert (vtpdd m1 x T5) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
       assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega.
-  - Case "fun". inversion H0; subst; invty.
+*)
+
+  - Case "all". inversion H0; subst; invty.
     + SCase "top". repeat eexists. eapply vtp_top. eauto. eauto.
     + SCase "fun". invty. subst.
       assert (stpd [T8] (ty_open 0 (VarF 0) T5) (ty_open 0 (VarF 0) T4)) as A. {
@@ -3069,6 +3119,45 @@ Proof.
       assert (vtpdd m1 x T7) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
       assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega.
+
+  - Case "tag". admit.
+
+  - Case "proj0". admit.
+
+  - Case "proj1". admit.
+
+(*
+  - Case "ssel2". subst. inversion H0; subst; invty.
+    + SCase "top". repeat eexists. eapply vtp_top.
+      eapply vtp_closed1. eauto. eauto.
+    + SCase "ssel1".
+      repeat eexists. eauto. omega.
+    + SCase "ssel2".
+      rewrite H4 in H10. inversion H10; subst.
+      repeat eexists. eauto. omega.
+    + SCase "sel1".
+      repeat eexists. eapply vtp_sel. eassumption.
+      eapply stp_closed2 in H0. simpl in H0. inversion H0; subst. assumption.
+      eauto. omega.
+    + SCase "selx".
+      eapply stp_closed2 in H0. simpl in H0. inversion H0; subst. inversion H11; subst.
+      omega.
+    + SCase "and".
+      assert (vtpdd m1 x T1). eapply IHn; eauto. omega. eu.
+      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_and; eauto. eauto.
+    + SCase "or1".
+      assert (vtpdd m1 x T1). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or1; eauto. eauto.
+    + SCase "or2".
+      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
+      repeat eexists. eapply vtp_or2; eauto. eauto.
+    + SCase "trans".
+      assert (vtpdd m1 x T2) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
+      assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
+      repeat eexists. eauto. omega.
+*)
+
   - Case "bind".
     inversion H0; subst; invty.
     + SCase "top". repeat eexists. eapply vtp_top.
@@ -3134,35 +3223,7 @@ Proof.
       assert (vtpdd (S m) x T4) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
       assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega.
-  - Case "ssel2". subst. inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top.
-      eapply vtp_closed1. eauto. eauto.
-    + SCase "ssel1".
-      repeat eexists. eauto. omega.
-    + SCase "ssel2".
-      rewrite H4 in H10. inversion H10; subst.
-      repeat eexists. eauto. omega.
-    + SCase "sel1".
-      repeat eexists. eapply vtp_sel. eassumption.
-      eapply stp_closed2 in H0. simpl in H0. inversion H0; subst. assumption.
-      eauto. omega.
-    + SCase "selx".
-      eapply stp_closed2 in H0. simpl in H0. inversion H0; subst. inversion H11; subst.
-      omega.
-    + SCase "and".
-      assert (vtpdd m1 x T1). eapply IHn; eauto. omega. eu.
-      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
-      repeat eexists. eapply vtp_and; eauto. eauto.
-    + SCase "or1".
-      assert (vtpdd m1 x T1). eapply IHn; eauto. omega. eu.
-      repeat eexists. eapply vtp_or1; eauto. eauto.
-    + SCase "or2".
-      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
-      repeat eexists. eapply vtp_or2; eauto. eauto.
-    + SCase "trans".
-      assert (vtpdd m1 x T2) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
-      assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
-      repeat eexists. eauto. omega.
+
   - Case "and". subst. inversion H0; subst; invty.
     + SCase "top". repeat eexists. eapply vtp_top.
       eapply vtp_closed1. eauto. eauto.
