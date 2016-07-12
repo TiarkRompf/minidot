@@ -524,10 +524,20 @@ Inductive vtp: nat(*pack count*) -> tm(*must be a value*) -> ty(*possible type*)
     value v ->
     tm_closed 0 0 v ->
     vtp m v TTop (S n1)
-| vtp_rcd: forall m l ds t T n1,
-    defs_index l (defs_open (tObj ds) ds) = dSome T t ->
+| vtp_rcd: forall m l ds dsx X Xx t tx T1 T1' T1x T2 T2' T2x n1 n2 n3,
+    tx = tm_open (tVar (VarF 0)) t ->
+    T1' = ty_open (tObj ds) T1 ->
+    T1x = ty_open (tVar (VarF 0)) T1 ->
+    T2' = ty_open (tObj ds) T2 ->
+    T2x = ty_open (tVar (VarF 0)) T2 ->
+    Xx = ty_open (tVar (VarF 0)) X ->
+    dsx = defs_open (tVar (VarF 0)) ds ->
+    defs_index l ds = dSome T1 t ->
     defs_closed 0 1 ds ->
-    vtp m (tObj ds) (TRcd l T) (S n1)
+    dsty [Xx] dsx Xx n1 ->
+    tty [Xx] tx T1x n2 ->
+    stp [Xx] T1x T2x n3 ->
+    vtp m (tObj ds) (TRcd l T2') (S (n1 + n2 + n3))
 | vtp_all: forall m T1 T2' T3 T4 T4' t2 n1 n2 n3,
     tty [T1] t2 T2' n1 ->
     stp [] T3 T1 n2 ->
@@ -590,6 +600,7 @@ Definition vtpdd m x T1 := exists m1 n, vtp m1 x T1 n /\ m1 <= m.
 Hint Unfold tenv.
 Hint Constructors stp.
 Hint Constructors vtp.
+
 
 Ltac ep := match goal with
              | [ |- stp ?G ?T1 ?T2 ?N ] => assert (exists (n:nat), stp G T1 T2 n) as EEX
@@ -1305,6 +1316,7 @@ Proof.
     + inversion H1. subst. assumption.
     + eapply IHdefs_closed; eauto.
 Qed.
+*)
 
 Lemma all_closed: forall ni,
   (forall G T1 T2 n,
@@ -1313,12 +1325,6 @@ Lemma all_closed: forall ni,
   (forall G T1 T2 n,
      stp G T1 T2 n -> n < ni ->
      ty_closed (length G) 0 T2) /\
-  (forall m x T2 n,
-     vtp m x T2 n -> n < ni ->
-     ty_closed 0 0 T2) /\
-  (forall x G T2 n,
-     pty G x T2 n -> n < ni ->
-     x < length G) /\
   (forall x G T2 n,
      pty G x T2 n -> n < ni ->
      ty_closed (length G) 0 T2) /\
@@ -1334,15 +1340,14 @@ Lemma all_closed: forall ni,
   (forall G t T n,
      tty G t T n -> n < ni ->
      tm_closed (length G) 0 t) /\
-  (forall m x T2 n,
-     vtp m x T2 n -> n < ni ->
-     vr_closed 0 0 (VObj x)) /\
   (forall G l d T n,
      dty G l d T n -> n < ni ->
      def_closed (length G) 0 d) /\
   (forall G ds T n,
      dsty G ds T n -> n < ni ->
      defs_closed (length G) 0 ds).
+Admitted.
+(*
 Proof.
   intros n. induction n. repeat split; intros; omega.
   repeat split; intros; inversion H; destruct IHn as [IHS1 [IHS2 [IHV2 [IHH1 [IHH2 [IHT [IHD [IHD1 [IHT1 [IHV1 [IHD2 IHD3]]]]]]]]]]].
@@ -1471,6 +1476,7 @@ Lemma vtp_closed1: forall m x T2 n1,
   vtp m x T2 n1 ->
   vr_closed 0 0 (VObj x).
 Proof. intros. eapply all_closed. eauto. eauto. Qed.
+*)
 
 Lemma tty_closed: forall G t T n1,
   tty G t T n1 ->
@@ -1488,13 +1494,14 @@ Lemma dsty_closed: forall G t T n1,
 Proof. intros. eapply all_closed with (ds:=t). eauto. eauto. Qed.
 
 Lemma tty_closed_z: forall G z T n1,
-  tty G (tvr (VarF z)) T n1 ->
+  tty G (tVar (VarF z)) T n1 ->
   z < length G.
 Proof.
-  intros. remember (tvr (VarF z)) as t. generalize dependent z.
+  intros. remember (tVar (VarF z)) as t. generalize dependent z.
   induction H; intros; inversion Heqt; subst; eauto using index_max.
 Qed.
 
+(*
 Lemma tty_closed_b: forall v T n1,
   tty [] (tvr v) T n1 ->
   exists ds, v = VObj ds.
@@ -3702,24 +3709,28 @@ Proof.
 Grab Existential Variables.
 apply 0. apply 0. apply 0.
 Qed.
+*)
 
-Lemma hastp_subst_z: forall G TX T x t n1 n2,
-  tty (G++[TX]) t T n2 ->
-  tty [] (tvr (VObj x)) (ty_subst x TX) n1 ->
-  exists n3, tty (map (ty_subst x) G) (tm_subst (VObj x) t) (ty_subst x T) n3.
-Proof.
+Lemma tty_subst_z: forall t T v V n1 n2,
+  value v ->
+  tty [V] t T n1 ->
+  tty [] v (ty_subst v V) n2 ->
+  exists n3, tty [] (tm_subst v t) (ty_subst v T) n3.
+Admitted.
+(*
   intros. eapply hastp_subst_aux_z with (t:=t). eauto. eauto. eauto.
 Qed.
-
-Lemma hastp_subst: forall G TX T x t n1 n2,
-  tty (G++[TX]) t T n2 ->
-  tty [] (tvr (VObj x)) TX n1 ->
-  exists n3, tty (map (ty_subst x) G) (tm_subst (VObj x) t) (ty_subst x T) n3.
-Proof.
-  intros. eapply hastp_subst_z with (t:=t). eauto.
-  erewrite subst_closed_id. eauto. eapply tty_closed in H0. eauto.
-Qed.
 *)
+
+Lemma tty_subst: forall t T v V n1 n2,
+  value v ->
+  tty [V] t T n1 ->
+  tty [] v V n2 ->
+  exists n3, tty [] (tm_subst v t) (ty_subst v T) n3.
+Proof.
+  intros. eapply tty_subst_z with (t:=t). assumption. eauto.
+  erewrite subst_closed_id. eauto. eapply tty_closed in H1. eauto.
+Qed.
 
 Lemma stp_subst_narrow: forall G0 TX T1 T2 x m n1 n2,
   stp (G0 ++ [TX]) T1 T2 n2 ->
@@ -3729,6 +3740,15 @@ Proof.
   intros. eapply stp_subst_narrow_z. eauto.
   erewrite subst_closed_id. eauto. eapply vtp_closed in H0. eauto.
 Qed.
+
+Lemma push_exists_and_r: forall (X: Type) (P: Prop) (Q: X -> Prop),
+  P /\ (exists x, Q x) ->
+  exists x, P /\ Q x.
+Proof. intros. ev. eauto. Qed.
+
+Lemma values_are_initializations: forall ds,
+  dvalues ds -> dinitializations ds.
+Admitted.
 
 Theorem type_safety: forall t T n1,
   tty [] t T n1 ->
@@ -3744,7 +3764,26 @@ Proof.
   - Case "Lam". left. constructor.
   - Case "Tag". left. constructor.
   - Case "Obj". left. constructor. subst. admit.
-  - Case "Sel".
+  - Case "Sel". subst. right.
+    edestruct IHtty as [IH | IH]; clear IHtty; eauto. constructor. assumption.
+    + SCase "sel-val".
+      assert (V: exists m n1, vtp m t (TRcd l T) n1). { eapply hastp_inv; eauto. }
+      (* ev. inversion H0. subst x t l0 T x0. *)
+      destruct V as [m [n2 V]]. inversions V.
+      eexists. eapply push_exists_and_r. split.
+      * eapply step_sel. eassumption.
+      * replace (ty_open (tObj ds) T2) with (ty_subst (tObj ds) (ty_open (tVar (VarF 0)) T2)).
+        replace (tm_open (tObj ds) t0) with (tm_subst (tObj ds) (tm_open (tVar (VarF 0)) t0)).
+        { eapply tty_subst.
+          - assumption.
+          - eapply T_Sub. eassumption. eassumption.
+          - eapply T_Obj. eassumption. reflexivity. reflexivity.
+            apply values_are_initializations. inversions IH. assumption.
+            admit. (* closed *) assumption. reflexivity. (* mismatch!! *)
+
+    + SCase "sel-step".
+
+    
     (* TODO *) admit.
   - Case "App". right. subst.
     assert (value t2 \/ (exists t2' n2, step t2 t2' /\ tty [] t2' T2 n2)) as HX. {
