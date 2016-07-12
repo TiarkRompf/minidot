@@ -551,6 +551,21 @@ Inductive vtp: nat(*pack count*) -> tm(*must be a value*) -> ty(*possible type*)
     stp [] T1 TX n1 ->
     stp [] TX T2 n2 ->
     vtp m (tTag TX) (TTag T1 T2) (S (n1+n2))
+(*
+TProj cases are uniquely invertible because 2 cases:
+  vtp m v0 (TProj v) n            where v is a value  -->    v is a tTag and it's rule vtp_proj0
+  vtp m v0 (TProj (tSel p l)) n                       -->    it's rule vtp_step
+*)
+| vtp_proj_base: forall m v TX n1,
+    vtp m v TX n1 ->
+    vtp m v (TProj (tTag TX)) (S n1)
+| vtp_proj_step: forall p1 p2 m v n1,
+    tm_closed 0 0 p1 ->
+    path p1 ->
+    step p1 p2 ->
+    vtp m v (TProj p2) n1 ->
+    vtp m v (TProj p1) (S n1)
+(*
 (* Note: only works for paths of length 0 and 1 (keep it simple for the moment) *)
 | vtp_proj0: forall m v TX n1,
     vtp m v TX n1 ->
@@ -560,6 +575,7 @@ Inductive vtp: nat(*pack count*) -> tm(*must be a value*) -> ty(*possible type*)
     defs_closed 0 1 ds ->
     vtp m v T2 n1 ->
     vtp m v (TProj (tSel (tObj ds) l)) (S n1)
+*)
 (*
 | vtp_proj: forall m v p TX n1,
     tty [] p (TTag TX TTop) n1 -> (* can we afford term typing here??? empty tenv guarantees that 
@@ -3007,12 +3023,6 @@ Tactic Notation "stp_cases" tactic(tac) ident(xCase) :=
     Case_aux xCase "or1" |
     Case_aux xCase "trans"
   ].
-
-(*
-
-vtp m v0 (TProj v) n             -->    v is a tTag and it's rule vtp_proj0
-vtp m v0 (TProj (tSel p l)) n    -->    it's rule vtp_step
-*)
 
 (* possible types closure *)
 Lemma vtp_widen: forall l, forall n, forall k, forall m1 x T2 T3 n1 n2,
