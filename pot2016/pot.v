@@ -294,6 +294,24 @@ with ty_closed: nat -> nat -> ty -> Prop :=
 
 Definition tenv := list ty.
 
+Inductive path_head: tm -> id -> Prop :=
+| ph_base: forall x,
+    path_head (tVar (VarF x)) x
+| ph_sel: forall p l x,
+    path_head p x ->
+    path_head (tSel p l) x.
+
+(*
+Needed because we represent
+
+  x.a.b.c = ((x.a).b).c)
+
+Alternatively, we could do this:
+
+  x.a.b.c = x.(a.(b.c))
+
+but then, typing would be cumbersome. *)
+
 (* Term typing *)
 Inductive tty: tenv -> tm -> ty -> nat -> Prop :=
 | T_VarF: forall G x T n1,
@@ -447,33 +465,46 @@ with stp: tenv -> ty -> ty -> nat -> Prop :=
 
 (* Path typing *)
 with pty: tenv -> tm -> ty -> nat -> Prop :=
-(* let's see when this breaks: *)
+
+(* simpler: just this 1 rule:
+| pty_p: forall G GU GL p x T n1,
+    G = GU ++ GL ->
+    length GL = S x ->
+    path_head p x ->
+    tty GL p T n1 ->
+    path p ->
+    pty G p T (S n1)
+*)
+
+(* let's see when this breaks: 
 | pty_p: forall G p T n1,
     tty G p T n1 ->
     path p ->
     pty G p T (S n1)
-(*
+*)
 | pty_vr: forall G x TX n1,
     index x G = Some TX ->
     ty_closed (S x) 0 TX ->
-    pty G x TX (S n1)
-| pty_bind: forall G x TX n1,
-    pty G x (TBind TX) n1 ->
-    ty_closed x 1 TX ->
-    pty G x (ty_open 0 (VarF x) TX) (S n1)
-| pty_sub: forall G GU GL x T1 T2 n1 n2,
-    (* use restricted G. note: this is slightly different
-    from the big-step version b/c here we do not distinguish
-    if vriables are bound in terms vs types. it would be easy
-    to do exactly the same thing by adding this distinction. *)
-    pty G x T1 n1 ->
+    pty G (tVar (VarF x)) TX (S n1)
+| pty_sel: forall l U G p n1,
+    pty G p (TRcd l U) n1 ->
+    pty G (tSel p l) U (S n1)
+| pty_bind: forall G p z TX n1,
+    path_head p z ->
+    pty G p (TBind TX) n1 ->
+    ty_closed z 1 TX ->
+    pty G p (ty_open p TX) (S n1)
+| pty_sub: forall G GU GL p x T1 T2 n1 n2,
+    path_head p x ->
+    pty G p T1 n1 ->
     stp GL T1 T2 n2 ->
     length GL = S x ->
     G = GU ++ GL ->
-    pty G x T2 (S (n1+n2))
-*).
+    pty G p T2 (S (n1+n2)).
 
-
+(*
+or define pty with "restricted vars"? not really...
+*)
 
 (* BEWARE: in dot_storeless_tidy, xxx_subst means substitution, but subst_xxx means opening!!! *)
 
