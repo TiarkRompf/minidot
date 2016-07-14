@@ -2544,7 +2544,7 @@ Proof.
       + omega.
 Qed.
 
-Lemma defs_hastp_splice: forall G0 G1 ds1 T2 v1 n,
+Lemma dsty_splice: forall G0 G1 ds1 T2 v1 n,
    dsty (G1++G0) ds1 T2 n ->
    dsty ((map (splice (length G0)) G1) ++ v1::G0)
    (defs_splice (length G0) ds1) (splice (length G0) T2) n.
@@ -2560,7 +2560,7 @@ Proof.
   - assert (dsty (map (splice (length G)) [(ty_open 0 (VarF (length G)) T0)] ++ (T::G))
                          (defs_splice (length G) (defs_open 0 (VarF (length G)) ds))
                          (splice (length G) (ty_open 0 (VarF (length G)) T0)) n1) as IH'. {
-      eapply defs_hastp_splice. simpl. eauto.
+      eapply dsty_splice. simpl. eauto.
     }
     assert ((length G + 1) = (S (length G))) as EqInc by omega.
     assert (splice (length G) T0 = T0) as EqT0. {
@@ -3398,7 +3398,7 @@ Proof.
   eexists. eassumption.
 Qed.
 
-Lemma defs_hastp_inv_aux_rec: forall T0 T00 ds0 ds0' n0',
+Lemma dsty_inv_aux_rec: forall T0 T00 ds0 ds0' n0',
   ty_closed 0 0 (ty_subst ds0 T0) ->
   defs_closed 0 1 ds0 ->
   ds0' = defs_open 0 (VarF 0) ds0 ->
@@ -3542,7 +3542,7 @@ Grab Existential Variables.
 apply 0. apply 0.
 Qed.
 
-Lemma defs_hastp_inv: forall ds T n1,
+Lemma dsty_inv: forall ds T n1,
   dsty [open 0 (VarF 0) T] (defs_open 0 (VarF 0) ds) (ty_open 0 (VarF 0) T) n1 ->
   ty_closed 0 1 T ->
   defs_closed 0 1 ds ->
@@ -3553,7 +3553,7 @@ Proof.
     unfold ty_subst. rewrite subst_open_commute0. reflexivity.
     simpl. eauto.
   }
-  rewrite A. eapply defs_hastp_inv_aux_rec; eauto.
+  rewrite A. eapply dsty_inv_aux_rec; eauto.
   rewrite <- A.
   eapply closed_open; eauto. econstructor. eauto.
   rewrite <- A.
