@@ -350,12 +350,12 @@ Inductive tty: tenv -> tm -> ty -> nat -> Prop :=
 | T_Pack: forall G p T T' n1,
     tty G p T' n1 ->
     T' = ty_open p T ->
-    ty_closed (length G) 0 T' ->
+    ty_closed (length G) 1 T ->
     tty G p (TBind T) (S n1)
 | T_Unpack: forall G p T T' n1,
     tty G p (TBind T) n1 ->
     T' = (ty_open p T) ->
-    ty_closed (length G) 0 T' ->
+    ty_closed (length G) 1 T ->
     tty G p T' (S n1)
 | T_Sub: forall G t T1 T2 n1 n2,
     tty G t T1 n1 ->
@@ -577,7 +577,7 @@ Inductive vtp: nat(*pack count*) -> tm(*must be a value*) -> ty(*possible type*)
     stp [Xx] T1x T2x n3 ->
     vtp m (tObj ds) (TRcd l T2') (S (n1 + n2 + n3))
 | vtp_all: forall m T1 T2' T3 T4 T4' t2 n1 n2 n3,
-    tty [T1] t2 T2' n1 ->
+    tty [T1] (tm_open (tVar (VarF 0)) t2) T2' n1 ->
     stp [] T3 T1 n2 ->
     ty_closed 1 0 T2' ->
     ty_closed 0 1 T4 ->
@@ -621,10 +621,10 @@ TProj cases are uniquely invertible because 2 cases:
     vtp m v TX n1 ->
     vtp m v (TProj p) (S (n1))
 *)
-| vtp_bind: forall m ds T2 n1,
-    vtp m (tObj ds) (ty_open (tObj ds) T2) n1 ->
+| vtp_bind: forall m v T2 n1,
+    vtp m v (ty_open v T2) n1 ->
     ty_closed 0 1 T2 ->
-    vtp (S m) (tObj ds) (TBind T2) (S (n1))
+    vtp (S m) v (TBind T2) (S (n1))
 | vtp_and: forall m m1 m2 ds T1 T2 n1 n2,
     vtp m1 ds T1 n1 ->
     vtp m2 ds T2 n2 ->
@@ -668,15 +668,36 @@ Ltac eu := match goal with
              | H: vtpdd _ _ _ |- _ => destruct H as [? [? [H ?]]]
            end.
 
-Lemma stpd_bot: forall G T,
-    ty_closed (length G) 0 T ->
-    stpd G TBot T.
-Proof. intros. exists 1. eauto. Qed.
 Lemma stpd_top: forall G T,
-    ty_closed (length G) 0 T ->
-    stpd G T TTop.
+  ty_closed (length G) 0 T ->
+  stpd G T TTop.
 Proof. intros. exists 1. eauto. Qed.
 
+Lemma stpd_bot: forall G T,
+  ty_closed (length G) 0 T ->
+  stpd G TBot T.
+Proof. intros. exists 1. eauto. Qed.
+
+Lemma stpd_rcd: forall G l T1 T2,
+  stpd G T1 T2 ->
+  stpd G (TRcd l T1) (TRcd l T2).
+Proof. intros. eu. eexists. eauto. Qed.
+
+Lemma stpd_all: forall G T1 T2 T3 T4 T2' T4',
+  T2' = ty_open (tVar (VarF (length G))) T2 ->
+  T4' = ty_open (tVar (VarF (length G))) T4 ->
+  ty_closed (length G) 1 T2 ->
+  ty_closed (length G) 1 T4 ->
+  stpd G T3 T1 ->
+  stpd (T3::G) T2' T4' ->
+  stpd G (TAll T1 T2) (TAll T3 T4).
+Proof. intros. do 2 eu. eexists. eapply stp_all; eauto. Qed.
+
+Lemma stpd_tag: forall G T1 T2 T3 T4,
+  stpd G T3 T1 ->
+  stpd G T2 T4 ->
+  stpd G (TTag T1 T2) (TTag T3 T4).
+Proof. intros. do 2 eu. eexists. eauto. Qed.
 
 Lemma stpd_trans: forall G T1 T2 T3,
     stpd G T1 T2 ->
@@ -866,8 +887,8 @@ Qed.
 *)
 Admitted.
 
-(*
-Lemma closed_open: forall j k v T, ty_closed k (j+1) T -> vr_closed k j v -> ty_closed k j (ty_open j v T).
+Lemma closed_open: forall k v T, 
+  ty_closed k 1 T -> tm_closed k 0 v -> ty_closed k 0 (ty_open v T).
 Proof.
   intros. eapply (proj1 (proj2 closed_open_rec)); eauto.
 Qed.
@@ -876,7 +897,7 @@ Lemma beq_nat_true_eq: forall A, beq_nat A A = true.
 Proof. intros. eapply beq_nat_true_iff. eauto. Qed.
 
 
-
+(*
 Lemma closed_no_open_rec:
   (forall l j v, vr_closed l j v -> forall vx, v = vr_open j vx v) /\
   (forall l j T, ty_closed l j T -> forall vx, T = ty_open j vx T) /\
@@ -1588,22 +1609,23 @@ Lemma stpd_closed2: forall G T1 T2,
                       stpd G T1 T2 ->
                       ty_closed (length G) 0 T2.
 Proof. intros. eu. eapply stp_closed2. eauto. Qed.
-
+*)
 
 Fixpoint tsize (T: ty) { struct T }: nat :=
   match T with
     | TTop        => 1
     | TBot        => 1
-    | TProj _ l   => 1
-    | TFun l T1 T2 => S (tsize T1 + tsize T2)
-    | TMem l T1 T2 => S (tsize T1 + tsize T2)
+    | TRcd l T1   => S (tsize T1)
+    | TAll T1 T2  => S (tsize T1 + tsize T2)
+    | TTag T1 T2  => S (tsize T1 + tsize T2)
+    | TProj p     => 1
     | TBind T1    => S (tsize T1)
     | TAnd T1 T2  => S (tsize T1 + tsize T2)
     | TOr T1 T2   => S (tsize T1 + tsize T2)
   end.
 
 Lemma ty_open_preserves_size: forall T v j,
-  tsize T = tsize (ty_open j v T).
+  tsize T = tsize (ty_open_rec j v T).
 Proof.
   intros T. induction T; intros; simpl; eauto.
 Qed.
@@ -1617,18 +1639,18 @@ Proof.
   inversion H; subst; simpl in H0.
   - Case "bot". exists 1. eauto.
   - Case "top". exists 1. eauto.
-  - Case "fun". eapply stpd_fun; eauto.
-    eapply IHn; eauto; omega.
-    eapply IHn; eauto.
-    simpl. apply closed_open. simpl. eapply closed_upgrade_gh. eauto. omega.
-    econstructor. omega.
-    rewrite <- ty_open_preserves_size. omega.
-  - Case "mem". eapply stpd_mem; try eapply IHn; eauto; try omega.
-  - Case "sel". exists 1. eapply stp_selx. eauto.
+  - Case "rcd". eapply stpd_rcd. eapply IHn. eassumption. omega.
+  - Case "all". eapply stpd_all; try reflexivity; try assumption.
+    eapply IHn. assumption. omega.
+    eapply IHn. simpl. apply closed_open. simpl. eapply closed_upgrade_gh. eauto. omega.
+    constructor. constructor. omega.
+    unfold ty_open. rewrite <- ty_open_preserves_size. omega.
+  - Case "tag". eapply stpd_tag; eapply IHn; eauto; omega.
+  - Case "proj". exists 1. apply* stp_projx.
   - Case "bind".
     eexists. eapply stp_bindx. eapply pty_vr. simpl. rewrite beq_nat_true_eq. eauto.
-    instantiate (1:=open 0 (VarF (length G)) T0).
-    eapply closed_open. eapply closed_upgrade_gh. eauto. omega. econstructor. omega.
+    instantiate (1 := ty_open (tVar (VarF (length G))) T).
+    eapply closed_open. eapply closed_upgrade_gh. eauto. omega. constructor. constructor. omega.
     eauto. eauto. eauto. eauto.
   - Case "and".
     destruct (IHn G T0 H1). omega.
@@ -1649,6 +1671,7 @@ Proof.
   intros. apply stpd_refl_aux with (n:=S (tsize T1)); eauto.
 Qed.
 
+(*
 Lemma stpd_reg1: forall G T1 T2,
                       stpd G T1 T2 ->
                       stpd G T1 T1.
@@ -3068,6 +3091,9 @@ Lemma vtp_widen: forall l, forall n, forall k, forall m1 x T2 T3 n1 n2,
   stp [] T2 T3 n2 ->
   m1 < l -> n2 < n -> n1 < k ->
   vtpdd m1 x T3.
+Proof.
+Admitted.
+(*
   intros l. induction l. intros. solve by inversion.
   intros n. induction n. intros. solve by inversion.
   intros k. induction k; intros. solve by inversion.
@@ -3349,20 +3375,6 @@ Lemma vtp_widen: forall l, forall n, forall k, forall m1 x T2 T3 n1 n2,
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
-
-
-(* Reduction semantics  *)
-Inductive step: tm -> tm -> Prop :=
-| step_app: forall f l x T1 T2 t12,
-    index l (defs_to_list (subst_defs f f)) = Some (dfun T1 T2 t12) ->
-    step (tApp (tvr (VObj f)) l (tvr (VObj x))) (subst_tm x t12)
-| step_app1: forall t1 t1' l t2,
-    step t1 t1' ->
-    step (tApp t1 l t2) (tApp t1' l t2)
-| step_app2: forall f t2 l t2',
-    step t2 t2' ->
-    step (tApp (tvr (VObj f)) l t2) (tApp (tvr (VObj f)) l t2')
-.
 *)
 
 
@@ -3551,28 +3563,49 @@ Proof.
 Qed.
 *)
 
-Lemma hastp_inv: forall v T n1,
+Tactic Notation "tty_cases" tactic(tac) ident(xCase) :=
+  tac; [
+    Case_aux xCase "VarF" |
+    Case_aux xCase "Lam" |
+    Case_aux xCase "Tag" |
+    Case_aux xCase "Obj" |
+    Case_aux xCase "Sel" |
+    Case_aux xCase "App" |
+    Case_aux xCase "Pack" |
+    Case_aux xCase "Unpack" |
+    Case_aux xCase "Sub"
+  ].
+
+Lemma tty_to_vtp: forall v T n1,
   tty [] v T n1 ->
   value v ->
   exists m n2, vtp m v T n2.
 Proof.
   intros. remember [] as G. revert H0.
-  induction H; subst; intro HV; try solve [inversion HV].
-(*
-  - Case "vr". subst. simpl in *. eapply defs_hastp_inv; eauto.
-  - Case "pack". subst.
+  tty_cases (induction H) Case; subst; intro HV; try solve [inversion HV].
+  - Case "Lam".
+    edestruct stpd_refl. eassumption.
+    edestruct stpd_refl. instantiate (2 := [T1]).
+    eapply closed_open. eapply closed_upgrade_gh. eassumption. simpl. omega.
+    instantiate (1 := tVar (VarF 0)). constructor. constructor. simpl. omega.
+    do 2 eexists. eapply vtp_all; eauto.
+    simpl. eapply closed_open. eapply closed_upgrade_gh. eassumption. simpl. omega. 
+    constructor. constructor. simpl. omega.
+  - Case "Tag".
+    edestruct stpd_refl. eassumption. do 2 eexists. eapply vtp_tag; eassumption.
+  - Case "Obj". simpl in *. admit. (* <---- *)
+  - Case "Pack".
     destruct IHtty. eauto. eauto. ev.
     repeat eexists. eapply vtp_bind. eauto. eauto.
-  - Case "unpack". subst.
+  - Case "Unpack". subst.
     destruct IHtty. eauto. eauto. ev. inversion H0.
     repeat eexists. eauto.
-  - Case "sub".
+  - Case "Sub".
     destruct IHtty. eauto. eauto. ev.
-    assert (exists m0, vtpdd m0 x T2). eexists. eapply vtp_widen; eauto.
+    assert (exists m0, vtpdd m0 t T2). { eexists. eapply vtp_widen; eauto. }
     ev. eu. repeat eexists. eauto.
+  Grab Existential Variables. apply 0. apply 0.
 Qed.
-*)
-Admitted.
 
 (*
 Lemma hastp_subst_aux_z: forall ni, (forall G TX T x t n1 n2,
@@ -3773,7 +3806,7 @@ Proof.
     eapply (proj1 closed_upgrade_gh_rec). eapply HCx. omega.
 
   - Case "sub". subst.
-    edestruct hastp_inv as [? [? HV]]; eauto.
+    edestruct tty_to_vtp as [? [? HV]]; eauto.
     edestruct stp_subst_narrow_z. eapply H3. eapply HV.
     edestruct IHniT as [? IH]. eapply H2. omega. eauto.
     eexists. eapply T_Sub. eauto. eauto.
@@ -3876,7 +3909,7 @@ Proof.
   - Case "Sel". subst. right.
     edestruct IHtty as [IH | IH]; clear IHtty; eauto. constructor. assumption.
     + SCase "sel-val".
-      assert (V: exists m n1, vtp m t (TRcd l T) n1). { eapply hastp_inv; eauto. }
+      assert (V: exists m n1, vtp m t (TRcd l T) n1). { eapply tty_to_vtp; eauto. }
       (* ev. inversion H0. subst x t l0 T x0. *)
       destruct V as [m [n2 V]]. inversions V.
       eexists. eapply push_exists_and_r. split.
@@ -3905,8 +3938,8 @@ Proof.
     + SCase "fun-val".
       destruct HX.
       * SSCase "arg-val".
-        assert (exists m n1, vtp m t1 (TAll T2 T3) n1). { eapply hastp_inv; eauto. }
-        assert (exists m n1, vtp m t2 T2 n1). { eapply hastp_inv; eauto. }
+        assert (exists m n1, vtp m t1 (TAll T2 T3) n1). { eapply tty_to_vtp; eauto. }
+        assert (exists m n1, vtp m t2 T2 n1). { eapply tty_to_vtp; eauto. }
         ev. inversions H4.
         assert (vtpdd x t2 T1). { eapply vtp_widen. eauto. eauto. eauto. eauto. eauto. }
         eu.
@@ -4002,8 +4035,8 @@ Proof.
       destruct HX.
       * SSCase "arg-val".
         ev. ev. subst.
-        assert (exists m n1, vtp m x (TFun l T1 T) n1). { eapply hastp_inv. eauto. }
-        assert (exists m n1, vtp m x0 T1 n1). { eapply hastp_inv. eauto. }
+        assert (exists m n1, vtp m x (TFun l T1 T) n1). { eapply tty_to_vtp. eauto. }
+        assert (exists m n1, vtp m x0 T1 n1). { eapply tty_to_vtp. eauto. }
         ev. inversion H2. subst.
         assert (vtpdd x1 x0 T2). { eapply vtp_widen. eauto. eauto. eauto. eauto. eauto. }
         eu.
@@ -4090,8 +4123,8 @@ Proof.
     destruct HF.
     + SCase "fun-val".
       ev. ev. subst.
-      assert (exists m n1, vtp m x (TFun l T1 T2) n1). eapply hastp_inv. eauto.
-      assert (exists m n1, vtp m x2 T1 n1). eapply hastp_inv. eauto.
+      assert (exists m n1, vtp m x (TFun l T1 T2) n1). eapply tty_to_vtp. eauto.
+      assert (exists m n1, vtp m x2 T1 n1). eapply tty_to_vtp. eauto.
       ev. inversion H2. subst.
       assert (vtpdd x0 x2 T0). { eapply vtp_widen. eauto. eauto. eauto. eauto. eauto. }
       eu.
