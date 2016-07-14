@@ -399,28 +399,35 @@ with stp: tenv -> ty -> ty -> nat -> Prop :=
     stp G T3 T1 n2 ->
     stp G T2 T4 n1 ->
     stp G (TTag T1 T2) (TTag T3 T4) (S (n1+n2))
+
+(* stp_proj rules for paths starting with a variable bound in Gamma: *)
 | stp_projx: forall G p n1,
     path p ->
     tm_closed (length G) 0 p ->
     stp G (TProj p) (TProj p) (S n1)
-(* stp_proj1/2 are a generalization of stp_strong_proj1/2, so can we get rid of them?
-    Or do stp_proj1/2 allow too much?
-| stp_strong_proj1: forall G l ds T1 T2 T3 n1,
-    (* oh no, subsumption, and we're too general to prevent it! will we get away with this? *)
-    defs_index l (defs_open (tObj ds) ds) = dSome (TTag T1 T3) (tTag T2) ->
-    defs_closed (length G) 1 ds ->
-    stp G (TProj (tSel (tObj ds) l)) T3 (S n1)
-| stp_strong_proj2: forall G l ds T1 T2 T3 n1,
-    defs_index l (defs_open (tObj ds) ds) = dSome (TTag T1 T3) (tTag T2) ->
-    defs_closed (length G) 1 ds ->
-    stp G T1 (TProj (tSel (tObj ds) l)) (S n1)
-*)
 | stp_proj1: forall G p T1 T2 n1,
     pty G p (TTag T1 T2) n1 ->
     stp G (TProj p) T2 (S n1)
 | stp_proj2: forall G p T1 T2 n1,
     pty G p (TTag T1 T2) n1 ->
     stp G T1 (TProj p) (S n1)
+
+(* stp_proj rules for paths starting with a value: *)
+| stp_proj1_base: forall G T n,
+    ty_closed 0 0 T ->
+    stp G (TProj (tTag T)) T (S n)
+| stp_proj1_step: forall G p1 p2 T n,
+    step p1 p2 ->
+    stp G (TProj p2) T n ->
+    stp G (TProj p1) T (S n)
+| stp_proj2_base: forall G T n,
+    ty_closed 0 0 T ->
+    stp G T (TProj (tTag T)) (S n)
+| stp_proj2_step: forall G p1 p2 T n,
+    step p1 p2 ->
+    stp G T (TProj p2) n ->
+    stp G T (TProj p1) (S n)
+
 | stp_bind1: forall G T1 T1' T2 n1,
     pty (T1'::G) (tVar (VarF (length G))) T2 n1 ->
     T1' = ty_open (tVar (VarF (length G))) T1 ->
