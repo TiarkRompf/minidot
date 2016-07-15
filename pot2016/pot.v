@@ -1706,10 +1706,20 @@ Proof.
   - Case "tag". eapply stpd_tag; eapply IHn; eauto; omega.
   - Case "proj". exists 1. apply* stp_projx.
   - Case "bind".
+    eexists. eapply stp_bindx; try assumption; try reflexivity. eapply pty_p.
+    + constructor.
+    + instantiate (2 := nil). simpl. reflexivity.
+    + simpl. reflexivity.
+    + eapply T_VarF.
+      * simpl. rewrite beq_nat_true_eq. reflexivity.
+      * apply closed_open. eapply closed_upgrade_gh. eauto. omega. constructor. constructor. omega.
+(* for old pty:
+  - Case "bind".
     eexists. eapply stp_bindx. eapply pty_vr. simpl. rewrite beq_nat_true_eq. eauto.
     instantiate (1 := ty_open (tVar (VarF (length G))) T).
     eapply closed_open. eapply closed_upgrade_gh. eauto. omega. constructor. constructor. omega.
     eauto. eauto. eauto. eauto.
+*)
   - Case "and".
     destruct (IHn G T0 H1). omega.
     destruct (IHn G T2 H2). omega.
