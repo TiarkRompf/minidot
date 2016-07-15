@@ -294,7 +294,6 @@ with ty_closed: nat -> nat -> ty -> Prop :=
 
 Definition tenv := list ty.
 
-(*
 Inductive path_head: tm -> id -> Prop :=
 | ph_base: forall x,
     path_head (tVar (VarF x)) x
@@ -302,6 +301,7 @@ Inductive path_head: tm -> id -> Prop :=
     path_head p x ->
     path_head (tSel p l) x.
 
+(*
 Needed because we represent
 
   x.a.b.c = ((x.a).b).c)
@@ -312,11 +312,13 @@ Alternatively, we could do this:
 
 but then, typing would be cumbersome. *)
 
+(*
 Fixpoint env_size_for_path(p: tm): nat := match p with
 | tVar (VarF x) => S x
 | tSel p0 l => env_size_for_path p0
 | _ => 0
 end.
+*)
 
 (* Term typing *)
 Inductive tty: tenv -> tm -> ty -> nat -> Prop :=
@@ -406,6 +408,7 @@ with stp: tenv -> ty -> ty -> nat -> Prop :=
     stp G T2 T4 n1 ->
     stp G (TTag T1 T2) (TTag T3 T4) (S (n1+n2))
 
+(* stp_proj rules for paths starting with a variable bound in Gamma: *)
 | stp_projx: forall G p n1,
     path p ->
     tm_closed (length G) 0 p ->
@@ -417,8 +420,7 @@ with stp: tenv -> ty -> ty -> nat -> Prop :=
     pty G p (TTag T1 T2) n1 ->
     stp G T1 (TProj p) (S n1)
 
-(* If pty only allows paths starting with a variable, we also need these rules for paths
-   starting with a value:
+(* stp_proj rules for paths starting with a value: *)
 | stp_proj1_base: forall G T n,
     ty_closed 0 0 T ->
     stp G (TProj (tTag T)) T (S n)
@@ -433,7 +435,6 @@ with stp: tenv -> ty -> ty -> nat -> Prop :=
     step p1 p2 ->
     stp G T (TProj p2) n ->
     stp G T (TProj p1) (S n)
-*)
 
 | stp_bind1: forall G T1 T1' T2 n1,
     pty (T1'::G) (tVar (VarF (length G))) T2 n1 ->
@@ -479,15 +480,24 @@ with stp: tenv -> ty -> ty -> nat -> Prop :=
 
 (* Path typing *)
 with pty: tenv -> tm -> ty -> nat -> Prop :=
+| pty_p: forall G GU GL p x T n1,
+    path p ->
+    G = GU ++ GL ->
+    length GL = S x ->
+    path_head p x ->
+    tty GL p T n1 ->
+    pty G p T (S n1).
+
 (* Contrary to htp, this also allows values as head of path.
    Should result in simpler substitution lemmas, but harder vtp_widen.
-   TODO: enforce that T_Pack is not used, maybe by adding a pack count to tty and forcing it to 0 here? *)
+   TODO: enforce that T_Pack is not used, maybe by adding a pack count to tty and forcing it to 0 here?
 | pty_p: forall G GU GL p T n1,
     path p ->
     G = GU ++ GL ->
     length GL = env_size_for_path p ->
     tty GL p T n1 ->
     pty G p T (S n1).
+*)
 
 (* let's see when this breaks: 
 | pty_p: forall G p T n1,
@@ -1711,6 +1721,7 @@ Proof.
     + constructor.
     + instantiate (2 := nil). simpl. reflexivity.
     + simpl. reflexivity.
+    + constructor.
     + eapply T_VarF.
       * simpl. rewrite beq_nat_true_eq. reflexivity.
       * apply closed_open. eapply closed_upgrade_gh. eauto. omega. constructor. constructor. omega.
@@ -3143,6 +3154,10 @@ Tactic Notation "stp_cases" tactic(tac) ident(xCase) :=
     Case_aux xCase "projx" |
     Case_aux xCase "proj1" |
     Case_aux xCase "proj2" |
+    Case_aux xCase "proj1_base" |
+    Case_aux xCase "proj1_step" |
+    Case_aux xCase "proj2_base" |
+    Case_aux xCase "proj2_step" |
     Case_aux xCase "bind1" |
     Case_aux xCase "bindx" |
     Case_aux xCase "and11" |
@@ -3154,14 +3169,11 @@ Tactic Notation "stp_cases" tactic(tac) ident(xCase) :=
     Case_aux xCase "trans"
   ].
 
-
-Lemma pty_inv: forall p T n,
+Lemma pty_empty_env_inv: forall p T n,
   pty [] p T n ->
-  path p /\ tm_closed 0 0 p /\ exists n0, n = S n0 /\ tty [] p T n0.
+  False.
 Proof.
-  intros. inversions H. destruct GU; destruct GL; simpl in H1; inversions H1.
-  repeat split; eauto. replace 0 with (@length ty []) at 1. eapply tty_closed1.
-  eassumption. reflexivity.
+  intros. inversions H. destruct GU; destruct GL; simpl in H1; inversions H1. simpl in H2. omega.
 Qed.
 
 (* TODO find induction measure & prove *)
