@@ -406,7 +406,6 @@ with stp: tenv -> ty -> ty -> nat -> Prop :=
     stp G T2 T4 n1 ->
     stp G (TTag T1 T2) (TTag T3 T4) (S (n1+n2))
 
-(* stp_proj rules for paths starting with a variable bound in Gamma: *)
 | stp_projx: forall G p n1,
     path p ->
     tm_closed (length G) 0 p ->
@@ -418,7 +417,8 @@ with stp: tenv -> ty -> ty -> nat -> Prop :=
     pty G p (TTag T1 T2) n1 ->
     stp G T1 (TProj p) (S n1)
 
-(* stp_proj rules for paths starting with a value: *)
+(* If pty only allows paths starting with a variable, we also need these rules for paths
+   starting with a value:
 | stp_proj1_base: forall G T n,
     ty_closed 0 0 T ->
     stp G (TProj (tTag T)) T (S n)
@@ -433,6 +433,7 @@ with stp: tenv -> ty -> ty -> nat -> Prop :=
     step p1 p2 ->
     stp G T (TProj p2) n ->
     stp G T (TProj p1) (S n)
+*)
 
 | stp_bind1: forall G T1 T1' T2 n1,
     pty (T1'::G) (tVar (VarF (length G))) T2 n1 ->
