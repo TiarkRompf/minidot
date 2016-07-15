@@ -3154,6 +3154,27 @@ Tactic Notation "stp_cases" tactic(tac) ident(xCase) :=
     Case_aux xCase "trans"
   ].
 
+
+Lemma pty_inv: forall p T n,
+  pty [] p T n ->
+  path p /\ tm_closed 0 0 p /\ exists n0, n = S n0 /\ tty [] p T n0.
+Proof.
+  intros. inversions H. destruct GU; destruct GL; simpl in H1; inversions H1.
+  repeat split; eauto. replace 0 with (@length ty []) at 1. eapply tty_closed1.
+  eassumption. reflexivity.
+Qed.
+
+(* TODO find induction measure & prove *)
+Axiom pre_type_safety: forall t T n1,
+  tty [] t T n1 ->
+  (value t) \/
+  (exists t' n2, step t t' /\ tty [] t' T n2).
+
+Axiom pre_tty_to_vtp: forall v T n1,
+  tty [] v T n1 ->
+  value v ->
+  exists m n2, vtp m v T n2.
+
 (* possible types closure *)
 Lemma vtp_widen: forall l, forall n, forall k, forall m1 x T2 T3 n1 n2,
   vtp m1 x T2 n1 ->
@@ -3161,8 +3182,6 @@ Lemma vtp_widen: forall l, forall n, forall k, forall m1 x T2 T3 n1 n2,
   m1 < l -> n2 < n -> n1 < k ->
   vtpdd m1 x T3.
 Proof.
-Admitted.
-(*
   intros l. induction l. intros. solve by inversion.
   intros n. induction n. intros. solve by inversion.
   intros k. induction k; intros. solve by inversion.
@@ -3170,7 +3189,19 @@ Admitted.
 
   - Case "top". stp_cases (inversions H0) SCase; invty.
     + SCase "top". repeat eexists; eauto.
-    + SCase "proj2".
+    + SCase "proj2". apply pty_inv in H10. ev. subst.
+      destruct (pre_type_safety _ _ _ H8) as [HV | HS].
+      * SSCase "value". apply pre_tty_to_vtp in H8; try assumption.
+        (* Problem: The "vtp x1 p (TTag TTop T0) x2" that we get from pre_tty_to_vtp can have any size,
+           and so will the "stp [] TTop TX n1", so we can't give this to an IH... *)
+        ev. inversions H7.
+        assert (vtpdd m1 x TX). eapply IHk. ; eauto. omega.
+        repeat eexists; try reflexivity. eapply vtp_proj_base.
+        inversions H8.
+      * SSCase "step".
+
+      repeat eexists. eapply vtp_sel. eauto. simpl in *. eauto. eauto. omega.
+
       eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H8. omega.
     + SCase "and".
       assert (vtpdd m1 x T1). eapply IHn; eauto. omega. eu.
