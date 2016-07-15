@@ -671,9 +671,6 @@ Definition vtpd m x T1 := exists n, vtp m x T1 n.
 Definition vtpdd m x T1 := exists m1 n, vtp m1 x T1 n /\ m1 <= m.
 
 Hint Unfold tenv.
-Hint Constructors stp.
-Hint Constructors vtp.
-
 
 Ltac ep := match goal with
              | [ |- stp ?G ?T1 ?T2 ?N ] => assert (exists (n:nat), stp G T1 T2 n) as EEX
@@ -685,6 +682,38 @@ Ltac eu := match goal with
              | H: ptyd _ _ _ |- _ => destruct H as [? H]
              | H: vtpd _ _ _ |- _ => destruct H as [? H]
              | H: vtpdd _ _ _ |- _ => destruct H as [? [? [H ?]]]
+           end.
+
+Hint Constructors value dvalue dvalues.
+Hint Constructors initialization dinitialization dinitializations.
+Hint Constructors path.
+Hint Constructors vr_closed tm_closed def_closed defs_closed ty_closed path_head.
+
+Hint Constructors stp.
+Hint Constructors vtp.
+Hint Constructors pty.
+Hint Constructors tty.
+
+Hint Unfold ttyd.
+Hint Unfold stpd.
+Hint Unfold vtpd.
+Hint Unfold vtpdd.
+
+Hint Constructors option.
+Hint Constructors list.
+
+Hint Unfold index.
+Hint Unfold length.
+
+Hint Resolve ex_intro.
+
+(* Override definition from LibTactics to include omega, and exclude auto (jumps to stupid decisions)
+   and exclude intuition eauto (too expensive): *)
+Ltac auto_star ::= try solve [ eauto | omega ].
+
+Ltac ev := repeat match goal with
+                    | H: exists _, _ |- _ => destruct H
+                    | H: _ /\  _ |- _ => destruct H
            end.
 
 Lemma stpd_top: forall G T,
@@ -723,39 +752,6 @@ Lemma stpd_trans: forall G T1 T2 T3,
     stpd G T2 T3 ->
     stpd G T1 T3.
 Proof. intros. repeat eu. eexists. eauto. Qed.
-
-
-
-
-Hint Constructors ty.
-
-Hint Constructors stp.
-Hint Constructors vtp.
-Hint Constructors pty.
-Hint Constructors tty.
-
-Hint Unfold ttyd.
-Hint Unfold stpd.
-Hint Unfold vtpd.
-Hint Unfold vtpdd.
-
-Hint Constructors option.
-Hint Constructors list.
-
-Hint Unfold index.
-Hint Unfold length.
-
-Hint Resolve ex_intro.
-
-
-Ltac ev := repeat match goal with
-                    | H: exists _, _ |- _ => destruct H
-                    | H: _ /\  _ |- _ => destruct H
-           end.
-
-
-
-
 
 Lemma index_max: forall X vs n (T: X),
                        index n vs = Some T ->
@@ -1708,16 +1704,16 @@ Proof.
   inversion H; subst; simpl in H0.
   - Case "bot". exists 1. eauto.
   - Case "top". exists 1. eauto.
-  - Case "rcd". eapply stpd_rcd. eapply IHn. eassumption. omega.
-  - Case "all". eapply stpd_all; try reflexivity; try assumption.
-    eapply IHn. assumption. omega.
-    eapply IHn. simpl. apply closed_open. simpl. eapply closed_upgrade_gh. eauto. omega.
-    constructor. constructor. omega.
-    unfold ty_open. rewrite <- ty_open_preserves_size. omega.
+  - Case "rcd". eapply stpd_rcd. apply* IHn.
+  - Case "all". apply* stpd_all.
+    + apply* IHn.
+    + apply* IHn.
+      * simpl. apply* closed_open. apply* closed_upgrade_gh.
+      * unfold ty_open. rewrite <- ty_open_preserves_size. omega.
   - Case "tag". eapply stpd_tag; eapply IHn; eauto; omega.
   - Case "proj". exists 1. apply* stp_projx.
   - Case "bind".
-    eexists. eapply stp_bindx; try assumption; try reflexivity. eapply pty_p.
+    eexists. apply* stp_bindx. eapply pty_p.
     + constructor.
     + instantiate (2 := nil). simpl. reflexivity.
     + simpl. reflexivity.
@@ -1735,11 +1731,11 @@ Proof.
   - Case "and".
     destruct (IHn G T0 H1). omega.
     destruct (IHn G T2 H2). omega.
-    eexists. eapply stp_and2. eapply stp_and11. eauto. eauto. eapply stp_and12. eauto. eauto.
+    eexists. eapply stp_and2. apply* stp_and11. apply* stp_and12.
   - Case "or".
     destruct (IHn G T0 H1). omega.
     destruct (IHn G T2 H2). omega.
-    eexists. eapply stp_or1. eapply stp_or21. eauto. eauto. eapply stp_or22. eauto. eauto.
+    eexists. eapply stp_or1. apply* stp_or21. apply* stp_or22.
 Grab Existential Variables.
 apply 0.
 Qed.
@@ -3176,6 +3172,7 @@ Proof.
   intros. inversions H. destruct GU; destruct GL; simpl in H1; inversions H1. simpl in H2. omega.
 Qed.
 
+(*
 (* TODO find induction measure & prove *)
 Axiom pre_type_safety: forall t T n1,
   tty [] t T n1 ->
@@ -3186,6 +3183,11 @@ Axiom pre_tty_to_vtp: forall v T n1,
   tty [] v T n1 ->
   value v ->
   exists m n2, vtp m v T n2.
+*)
+
+Lemma vtp_value: forall m v T n,
+  vtp m v T n -> value v.
+Proof. intros. induction* H. Qed.
 
 (* possible types closure *)
 Lemma vtp_widen: forall l, forall n, forall k, forall m1 x T2 T3 n1 n2,
@@ -3621,12 +3623,10 @@ Proof.
     simpl. eauto.
   }
   rewrite A. eapply dsty_inv_aux_rec; eauto.
-  rewrite <- A.
-  eapply closed_open; eauto. econstructor. eauto.
-  rewrite <- A.
-  eapply closed_open; eauto. econstructor. eauto.
-  instantiate (1 := dNil). simpl. reflexivity.
-  instantiate (1 := dNil). simpl. reflexivity.
+  * rewrite <- A. apply* closed_open.
+  * rewrite <- A. apply* closed_open.
+  * instantiate (1 := dNil). simpl. reflexivity.
+  * instantiate (1 := dNil). simpl. reflexivity.
 Qed.
 
 Lemma closed_initialization_is_value: forall d,
