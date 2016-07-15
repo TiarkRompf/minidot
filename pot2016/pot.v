@@ -294,6 +294,7 @@ with ty_closed: nat -> nat -> ty -> Prop :=
 
 Definition tenv := list ty.
 
+(*
 Inductive path_head: tm -> id -> Prop :=
 | ph_base: forall x,
     path_head (tVar (VarF x)) x
@@ -301,7 +302,6 @@ Inductive path_head: tm -> id -> Prop :=
     path_head p x ->
     path_head (tSel p l) x.
 
-(*
 Needed because we represent
 
   x.a.b.c = ((x.a).b).c)
@@ -311,6 +311,12 @@ Alternatively, we could do this:
   x.a.b.c = x.(a.(b.c))
 
 but then, typing would be cumbersome. *)
+
+Fixpoint env_size_for_path(p: tm): nat := match p with
+| tVar (VarF x) => S x
+| tSel p0 l => env_size_for_path p0
+| _ => 0
+end.
 
 (* Term typing *)
 Inductive tty: tenv -> tm -> ty -> nat -> Prop :=
@@ -472,16 +478,15 @@ with stp: tenv -> ty -> ty -> nat -> Prop :=
 
 (* Path typing *)
 with pty: tenv -> tm -> ty -> nat -> Prop :=
-
-(* simpler: just this 1 rule:
-| pty_p: forall G GU GL p x T n1,
-    G = GU ++ GL ->
-    length GL = S x ->
-    path_head p x ->
-    tty GL p T n1 ->
+(* Contrary to htp, this also allows values as head of path.
+   Should result in simpler substitution lemmas, but harder vtp_widen.
+   TODO: enforce that T_Pack is not used, maybe by adding a pack count to tty and forcing it to 0 here? *)
+| pty_p: forall G GU GL p T n1,
     path p ->
-    pty G p T (S n1)
-*)
+    G = GU ++ GL ->
+    length GL = env_size_for_path p ->
+    tty GL p T n1 ->
+    pty G p T (S n1).
 
 (* let's see when this breaks: 
 | pty_p: forall G p T n1,
@@ -489,6 +494,8 @@ with pty: tenv -> tm -> ty -> nat -> Prop :=
     path p ->
     pty G p T (S n1)
 *)
+
+(* or if we want to repeat the tty rules:
 | pty_vr: forall G x TX n1,
     index x G = Some TX ->
     ty_closed (S x) 0 TX ->
@@ -508,6 +515,7 @@ with pty: tenv -> tm -> ty -> nat -> Prop :=
     length GL = S x ->
     G = GU ++ GL ->
     pty G p T2 (S (n1+n2)).
+*)
 
 (*
 or define pty with "restricted vars"? not really...
