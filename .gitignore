@@ -1,3 +1,7 @@
 *#*#
 *.actual.*
 target/
+*.glob
+*.v.d
+*.vo
+*.aux
