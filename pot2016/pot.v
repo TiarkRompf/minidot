@@ -2914,17 +2914,19 @@ Proof.
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
+*)
 
-
-Lemma stp_subst_narrowX: forall x, vr_closed 0 0 (VObj x) ->
+Lemma stp_subst_narrowX: forall x, tm_closed 0 0 x ->
    forall ml, forall nl, forall m G T2 TX n1 n2,
    vtp m x (ty_subst x TX) n1 ->
-   pty (G++[TX]) 0 T2 n2 -> m < ml -> n2 < nl ->
+   pty (G++[TX]) (tVar (VarF 0)) T2 n2 -> m < ml -> n2 < nl ->
    (forall (m0: nat) x (T2 T3: ty) (n1 n2: nat),
         vtp m0 x T2 n1 ->
         stp [] T2 T3 n2 -> m0 <= m ->
         vtpdd m0 x T3) ->
    vtpdd m x (ty_subst x T2). (* decrease b/c transitivity *)
+Admitted.
+(*
 Proof.
   intros x Hx.
   intros ml. (* induction ml. intros. omega. *)
@@ -3394,14 +3396,34 @@ Proof.
       assert (vtpdd x0 x T3) by apply* IHn. eu.
       repeat eexists. eauto. omega.
 
-  - Case "bind". stp_cases (inversions H0) SCase; invty.
-Admitted. (*
-    + SCase "top". repeat eexists. eapply vtp_top.
-      eapply vtp_closed1. eauto. eauto.
-    + SCase "sel2".
-      repeat eexists. eapply vtp_sel. eauto. simpl in *. eauto. eauto. omega.
-    + SCase "sel2".
-      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H9. omega.
+  - Case "bind". admit. (* stp_cases (inversions H0) SCase; invty.
+    + SCase "top". repeat eexists. apply* vtp_top. reflexivity.
+    + SCase "proj2". exfalso. apply* pty_empty_env_inv.
+    + SCase "proj2_base". repeat eexists. apply* vtp_proj_base. omega.
+    + SCase "proj2_step".
+      assert (vtpdd (S m) x (TProj p2)) by apply* IHn. eu.
+      repeat eexists. apply* vtp_proj_step. omega.
+    + SCase "bind1".
+      remember (tVar (VarF (length []))) as VZ.
+
+      (* left *)
+      assert (vtpd m x (ty_open 0 VX T0)) as LHS. eexists. eassumption.
+      eu.
+      (* right *)
+      assert (ty_subst x (ty_open 0 VZ T0) = (ty_open 0 VX T0)) as R. unfold ty_subst. subst. eapply subst_open_commute0. eauto.
+      assert (ty_subst x T3 = T3) as R1. eapply subst_closed_id. eauto.
+
+      assert (vtpdd m x (ty_subst x T3)) as BB. {
+        eapply stp_subst_narrowX.
+        eapply vtp_closed1. eauto.
+        rewrite <-R in LHS.
+        eauto.
+        instantiate (2:=nil). simpl. eapply H10. eauto. eauto.
+        { intros. eapply IHl. eauto. eauto. omega. eauto. eauto. }
+      }
+      rewrite R1 in BB.
+      eu. repeat eexists. eauto. omega.
+
     + SCase "bind1".
       invty. subst.
       remember (VarF (length [])) as VZ.
@@ -3459,86 +3481,86 @@ Admitted. (*
       assert (vtpdd (S m) x T4) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
       assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
       repeat eexists. eauto. omega.
-
-  - Case "and". subst. inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top.
-      eapply vtp_closed1. eauto. eauto.
-    + SCase "ssel2".
-      repeat eexists. eapply vtp_sel. eauto. eauto. eauto. omega.
-    + SCase "sel2".
-      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H12. omega.
-    + SCase "and11". eapply IHn in H4. eu. repeat eexists. eauto. omega. eauto. omega. omega. eauto.
-    + SCase "and12". eapply IHn in H5. eu. repeat eexists. eauto. omega. eauto. omega. omega. eauto.
-    + SCase "and".
-      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
-      assert (vtpdd m1 x T4). eapply IHn; eauto. omega. eu.
-      repeat eexists. eapply vtp_and; eauto. eauto.
-    + SCase "or1".
-      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
-      repeat eexists. eapply vtp_or1; eauto. eauto.
-    + SCase "or2".
-      assert (vtpdd m1 x T4). eapply IHn; eauto. omega. eu.
-      repeat eexists. eapply vtp_or2; eauto. eauto.
+*)
+  - Case "and". stp_cases (inversions H0) SCase; invty.
+    + SCase "top". repeat eexists. apply* vtp_top. reflexivity.
+    + SCase "proj2". exfalso. apply* pty_empty_env_inv.
+    + SCase "proj2_base". repeat eexists. apply* vtp_proj_base. omega.
+    + SCase "proj2_step".
+      assert (vtpdd m1 x (TProj p2)) by apply* IHn. eu.
+      repeat eexists. apply* vtp_proj_step. omega.
+    + SCase "and11".
+      assert (vtpdd m0 x T3). apply* IHn. eu. repeat eexists. eassumption. omega.
+    + SCase "and12".
+      assert (vtpdd m2 x T3). apply* IHn. eu. repeat eexists. eassumption. omega.
+    + SCase "and2".
+      assert (vtpdd m1 x T4) by apply* IHn. eu.
+      assert (vtpdd m1 x T5) by apply* IHn. eu.
+      repeat eexists. apply* vtp_and. omega.
+    + SCase "or21".
+      assert (vtpdd m1 x T4) by apply* IHn. eu.
+      repeat eexists. apply* vtp_or1. omega.
+    + SCase "or22".
+      assert (vtpdd m1 x T5) by apply* IHn. eu.
+      repeat eexists. apply* vtp_or2. omega.
     + SCase "trans".
-      assert (vtpdd m1 x T4) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
-      assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
+      assert (vtpdd m1 x T5) by apply* IHn. eu.
+      assert (vtpdd x0 x T3) by apply* IHn. eu.
       repeat eexists. eauto. omega.
 
-  - Case "or1". subst. inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top.
-      eapply vtp_closed1. eauto. eauto.
-    + SCase "ssel2".
-      repeat eexists. eapply vtp_sel. eauto. eauto. eauto. omega.
-    + SCase "sel2".
-      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H12. omega.
-    + SCase "and".
-      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
-      assert (vtpdd m1 x T4). eapply IHn; eauto. omega. eu.
-      repeat eexists. eapply vtp_and; eauto. eauto.
+  - Case "or1". stp_cases (inversions H0) SCase; invty.
+    + SCase "top". repeat eexists. apply* vtp_top. reflexivity.
+    + SCase "proj2". exfalso. apply* pty_empty_env_inv.
+    + SCase "proj2_base". repeat eexists. apply* vtp_proj_base. omega.
+    + SCase "proj2_step".
+      assert (vtpdd m1 x (TProj p2)) by apply* IHn. eu.
+      repeat eexists. apply* vtp_proj_step. omega.
+    + SCase "and2".
+      assert (vtpdd m1 x T4) by apply* IHn. eu.
+      assert (vtpdd m1 x T5) by apply* IHn. eu.
+      repeat eexists. apply* vtp_and. omega.
+    + SCase "or21".
+      assert (vtpdd m1 x T4) by apply* IHn. eu.
+      repeat eexists. apply* vtp_or1. omega.
+    + SCase "or22".
+      assert (vtpdd m1 x T5) by apply* IHn. eu.
+      repeat eexists. apply* vtp_or2. omega.
     + SCase "or1".
-      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
-      repeat eexists. eapply vtp_or1; eauto. eauto.
-    + SCase "or2".
-      assert (vtpdd m1 x T4). eapply IHn; eauto. omega. eu.
-      repeat eexists. eapply vtp_or2; eauto. eauto.
-    + SCase "or...".
-      eapply IHn in H4. eu.
-      repeat eexists. eapply H4. omega. eauto. omega. omega. eauto.
-    + SCase "or...".
-      assert (vtpdd m1 x T4) as A. eapply IHn. eapply H. eauto. omega. omega. eauto. eu.
-      eapply IHn in A. eu.
-      repeat eexists. eauto. omega. eauto. omega. omega. eauto.
+      assert (vtpdd m0 x T3) by apply* IHn. eu.
+      repeat eexists. eassumption. omega.
+    + SCase "trans".
+      assert (vtpdd m1 x T5) by apply* IHn. eu.
+      assert (vtpdd x0 x T3) by apply* IHn. eu.
+      repeat eexists. eauto. omega.
 
-  - Case "or2". subst. inversion H0; subst; invty.
-    + SCase "top". repeat eexists. eapply vtp_top.
-      eapply vtp_closed1. eauto. eauto.
-    + SCase "ssel2".
-      repeat eexists. eapply vtp_sel. eauto. eauto. eauto. omega.
-    + SCase "sel2".
-      eapply stp_closed2 in H0. simpl in H0. inversion H0. inversion H12. omega.
-    + SCase "and".
-      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
-      assert (vtpdd m1 x T4). eapply IHn; eauto. omega. eu.
-      repeat eexists. eapply vtp_and; eauto. eauto.
+  - Case "or2". stp_cases (inversions H0) SCase; invty.
+    + SCase "top". repeat eexists. apply* vtp_top. reflexivity.
+    + SCase "proj2". exfalso. apply* pty_empty_env_inv.
+    + SCase "proj2_base". repeat eexists. apply* vtp_proj_base. omega.
+    + SCase "proj2_step".
+      assert (vtpdd m1 x (TProj p2)) by apply* IHn. eu.
+      repeat eexists. apply* vtp_proj_step. omega.
+    + SCase "and2".
+      assert (vtpdd m1 x T4) by apply* IHn. eu.
+      assert (vtpdd m1 x T5) by apply* IHn. eu.
+      repeat eexists. apply* vtp_and. omega.
+    + SCase "or21".
+      assert (vtpdd m1 x T4) by apply* IHn. eu.
+      repeat eexists. apply* vtp_or1. omega.
+    + SCase "or22".
+      assert (vtpdd m1 x T5) by apply* IHn. eu.
+      repeat eexists. apply* vtp_or2. omega.
     + SCase "or1".
-      assert (vtpdd m1 x T2). eapply IHn; eauto. omega. eu.
-      repeat eexists. eapply vtp_or1; eauto. eauto.
-    + SCase "or2".
-      assert (vtpdd m1 x T4). eapply IHn; eauto. omega. eu.
-      repeat eexists. eapply vtp_or2; eauto. eauto.
-    + SCase "or...".
-      eapply IHn in H4. eu.
-      repeat eexists. eapply H4. omega. eauto. omega. omega. eauto.
-    + SCase "or...".
-      assert (vtpdd m1 x T4) as A. eapply IHn. eapply H. eauto. omega. omega. eauto. eu.
-      eapply IHn in A. eu.
-      repeat eexists. eauto. omega. eauto. omega. omega. eauto.
+      assert (vtpdd m0 x T3) by apply* IHn. eu.
+      repeat eexists. eassumption. omega.
+    + SCase "trans".
+      assert (vtpdd m1 x T5) by apply* IHn. eu.
+      assert (vtpdd x0 x T3) by apply* IHn. eu.
+      repeat eexists. eauto. omega.
 
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
-*)
-
 
 Lemma stp_subst_narrow_z: forall G0 TX T1 T2 x m n1 n2,
   stp (G0 ++ [TX]) T1 T2 n2 ->
