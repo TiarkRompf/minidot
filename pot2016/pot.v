@@ -3235,6 +3235,7 @@ Proof.
   intros l. induction l. intros. solve by inversion.
   intros n. induction n. intros. solve by inversion.
   intros k. induction k; intros. solve by inversion.
+  clear IHk. (* not needed *)
   lets Vl: (vtp_value _ _ _ _ H).
   lets Cl: (vtp_closed1 _ _ _ _ H).
   inversion H.
@@ -3396,7 +3397,7 @@ Proof.
       assert (vtpdd x0 x T3) by apply* IHn. eu.
       repeat eexists. eauto. omega.
 
-  - Case "bind". admit. (* stp_cases (inversions H0) SCase; invty.
+  - Case "bind". stp_cases (inversions H0) SCase; invty.
     + SCase "top". repeat eexists. apply* vtp_top. reflexivity.
     + SCase "proj2". exfalso. apply* pty_empty_env_inv.
     + SCase "proj2_base". repeat eexists. apply* vtp_proj_base. omega.
@@ -3405,83 +3406,57 @@ Proof.
       repeat eexists. apply* vtp_proj_step. omega.
     + SCase "bind1".
       remember (tVar (VarF (length []))) as VZ.
-
-      (* left *)
-      assert (vtpd m x (ty_open 0 VX T0)) as LHS. eexists. eassumption.
-      eu.
-      (* right *)
-      assert (ty_subst x (ty_open 0 VZ T0) = (ty_open 0 VX T0)) as R. unfold ty_subst. subst. eapply subst_open_commute0. eauto.
-      assert (ty_subst x T3 = T3) as R1. eapply subst_closed_id. eauto.
-
-      assert (vtpdd m x (ty_subst x T3)) as BB. {
-        eapply stp_subst_narrowX.
-        eapply vtp_closed1. eauto.
-        rewrite <-R in LHS.
-        eauto.
-        instantiate (2:=nil). simpl. eapply H10. eauto. eauto.
-        { intros. eapply IHl. eauto. eauto. omega. eauto. eauto. }
+      assert (vtp m x (ty_open x T0) n0) as LHS by assumption.
+      assert (ty_subst x (ty_open VZ T0) = (ty_open x T0)) as R. {
+        unfold ty_subst. subst. eapply subst_open_commute0. eauto.
       }
-      rewrite R1 in BB.
-      eu. repeat eexists. eauto. omega.
-
-    + SCase "bind1".
-      invty. subst.
-      remember (VarF (length [])) as VZ.
-      remember (VObj x) as VX.
-
-      (* left *)
-      assert (vtpd m x (ty_open 0 VX T0)) as LHS. eexists. eassumption.
-      eu.
-      (* right *)
-      assert (ty_subst x (ty_open 0 VZ T0) = (ty_open 0 VX T0)) as R. unfold ty_subst. subst. eapply subst_open_commute0. eauto.
-      assert (ty_subst x T3 = T3) as R1. eapply subst_closed_id. eauto.
-
+      assert (ty_subst x T3 = T3) as R1 by apply* subst_closed_id.
       assert (vtpdd m x (ty_subst x T3)) as BB. {
         eapply stp_subst_narrowX.
-        eapply vtp_closed1. eauto.
-        rewrite <-R in LHS.
-        eauto.
-        instantiate (2:=nil). simpl. eapply H10. eauto. eauto.
-        { intros. eapply IHl. eauto. eauto. omega. eauto. eauto. }
+        - eapply vtp_closed1. eauto.
+        - rewrite <- R in LHS. eauto.
+        - instantiate (2:=nil). simpl in *. rewrite <- HeqVZ. eapply H10.
+        - eauto.
+        - eauto.
+        - intros. apply* IHl.
+                        (***)
       }
       rewrite R1 in BB.
       eu. repeat eexists. eauto. omega.
     + SCase "bindx".
-      invty. subst.
-      remember (VarF (length [])) as VZ.
-      remember (VObj x) as VX.
-
-      (* left *)
-      assert (vtpd m x (ty_open 0 VX T0)) as LHS. eexists. eassumption.
-      eu.
-      (* right *)
-      assert (ty_subst x (ty_open 0 VZ T0) = (ty_open 0 VX T0)) as R. unfold ty_subst. subst. eapply subst_open_commute0. eauto.
-
-      assert (vtpdd m x (ty_subst x (ty_open 0 VZ T4))) as BB. {
-        eapply stp_subst_narrowX.
-        eapply vtp_closed1. eauto.
-        rewrite <-R in LHS. eapply LHS.
-        instantiate (2:=nil). simpl. eapply H10. eauto. eauto.
-        { intros. eapply IHl. eauto. eauto. omega. eauto. eauto. }
+      remember (tVar (VarF (length []))) as VZ.
+      assert (vtp m x (ty_open x T0) n0) as LHS by assumption.
+      assert (ty_subst x (ty_open VZ T0) = (ty_open x T0)) as R. {
+        unfold ty_subst. subst. eapply subst_open_commute0. eauto.
       }
-      unfold ty_subst in BB. subst. erewrite subst_open_commute0 in BB.
+      assert (vtpdd m x (ty_subst x (ty_open VZ T4))) as BB. {
+        eapply stp_subst_narrowX.
+        - eapply vtp_closed1. eauto.
+        - rewrite <- R in LHS. eauto.
+        - instantiate (2:=nil). simpl in *. rewrite <- HeqVZ. eapply H10.
+        - eauto.
+        - eauto.
+        - intros. apply* IHl.
+                        (***)
+      }
+      unfold ty_subst in BB. subst. erewrite subst_open_commute0 in BB; try assumption.
       clear R.
-      eu. repeat eexists. eapply vtp_bind. eauto. eauto. omega. eauto. (* enough slack to add bind back *)
-    + SCase "and".
-      assert (vtpdd (S m) x T1). eapply IHn; eauto. omega. eu.
-      assert (vtpdd (S m) x T4). eapply IHn; eauto. omega. eu.
-      repeat eexists. eapply vtp_and; eauto. eauto.
-    + SCase "or1".
-      assert (vtpdd (S m) x T1). eapply IHn; eauto. omega. eu.
-      repeat eexists. eapply vtp_or1; eauto. eauto.
-    + SCase "or2".
-      assert (vtpdd (S m) x T4). eapply IHn; eauto. omega. eu.
-      repeat eexists. eapply vtp_or2; eauto. eauto.
+      eu. repeat eexists. apply* vtp_bind. omega. (* enough slack to add bind back *)
+    + SCase "and2".
+      assert (vtpdd (S m) x T1) by apply* IHn. eu.
+      assert (vtpdd (S m) x T4) by apply* IHn. eu.
+      repeat eexists. apply* vtp_and. omega.
+    + SCase "or21".
+      assert (vtpdd (S m) x T1) by apply* IHn. eu.
+      repeat eexists. apply* vtp_or1. omega.
+    + SCase "or22".
+      assert (vtpdd (S m) x T4) by apply* IHn. eu.
+      repeat eexists. apply* vtp_or2. omega.
     + SCase "trans".
-      assert (vtpdd (S m) x T4) as LHS. eapply IHn. eauto. eauto. eauto. omega. eauto. eu.
-      assert (vtpdd x0 x T3) as BB. eapply IHn. eapply LHS. eauto. omega. omega. eauto. eu.
+      assert (vtpdd (S m) x T4) by apply* IHn. eu.
+      assert (vtpdd x0 x T3) by apply* IHn. eu.
       repeat eexists. eauto. omega.
-*)
+
   - Case "and". stp_cases (inversions H0) SCase; invty.
     + SCase "top". repeat eexists. apply* vtp_top. reflexivity.
     + SCase "proj2". exfalso. apply* pty_empty_env_inv.
@@ -3559,7 +3534,7 @@ Proof.
       repeat eexists. eauto. omega.
 
 Grab Existential Variables.
-apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
+apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma stp_subst_narrow_z: forall G0 TX T1 T2 x m n1 n2,
