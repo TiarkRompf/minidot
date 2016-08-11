@@ -65,7 +65,7 @@ Congruence:
     
 ### Goals
 
-1. In currently DOT, the only terms allowed in front of type selections are vars: `x.T`. We want to allow a bigger subset of terms, ultimately allowing lambdas, so that higher kinded types could be encoded as term-level lambdas: Eg given `Pair: all(T: [Bot..Top])[{ fst: T!, snd: T! }..{ fst: T!, snd: T! }]`, we could define `let NestedPair = lambda(T: [Bot..Top])(Pair (Pair T)) in NestedPair [Int]`. But for now, lambdas are out of reach, but let's at least try to have paths of length > 1 and see what we learn from it.
+1. In current DOT, the only terms allowed in front of type selections are vars: `x.T`. We want to allow a bigger subset of terms, ultimately allowing lambdas, so that higher kinded types could be encoded as term-level lambdas: Eg given `Pair: all(T: [Bot..Top])[{ fst: T!, snd: T! }..{ fst: T!, snd: T! }]`, we could define `let NestedPair = lambda(T: [Bot..Top])(Pair (Pair T)) in NestedPair [Int]`. But for now, lambdas are out of reach, but let's at least try to have paths of length > 1 and see what we learn from it.
 2. Encode and explain nominality in a simple way, also for mutually recursive classes. This requires paths of length > 1 (see slides 32/33 of Samuel's semester project [presentation](https://github.com/samuelgruetter/dot-calculus/blob/master/doc/Connecting-Scala-to-DOT/slides.pdf)).
 
 
@@ -108,23 +108,59 @@ So let's repeat once more that whether we have type annotations in val defs does
 
 ### "Restricted vars": A possible solution for the "new soundness problem"
 
-TODO copy from INR331 whiteboard
+In order to prevent the above unsound example from typechecking, we have to restrict the usage of self refs in typing derivations.
+Consider this:
 
+    { a =>
+       val Bad1: { type C: Top..Bot } = new { type C = Top }
+       val l = { b =>
+          val m: T1 = v
+          val f: T2 -> T3 = lambda(x: T2)t
+          val Bad2: { type C: Top..Bot } = new { type C = Top }
+       }
+    }
 
-## Notes
+While typechecking `v`, we should not be able to use the self refs `a` and `b`, because otherwise we can prove that bad bounds are good, since putting `a` and `b` into `G` means assuming that `a` and/or `b` are actual instantiated objects with good bounds.
 
-pty, dty, tty
+On the other hand, as soon as we're "behind" one more lambda-bound variable, as when typechecking `t`, we can use `a` and `b`, because `t` will only be run *after* the instantiation of the objects, so it's safe to assume that they are actual instantiated objects with good bounds.
 
-ty_pth, ty_def, ty_trm
+To formalize this intuition, we can use *restricted vars*: They are self ref variables which have to be put into the environment `G`, but are not yet safe for use. We keep track of them by putting them into a set of variables `R`, which is always a subset of `dom G`.
 
-Substitution:
-    [v/x]x.l!  =  v.l!    must be a valid type
+The judgments which were `G |- ...` before now become `G R |- ...`.
 
+The typechecking rule `T-NEW` now declares the self ref as a restricted var:
+
+    (G, z: T) (R union {z}) |- ds : T
+    ---------------------------------
+    G R |- { z => ds } : { z => T}
+
+and `T-VAR` basically disallows the usage of restricted vars:
+
+    (x: T) in G    x notin R
+    ------------------------
+    G R |- x: T
+
+But there are two ways to use them anyways: The first is in the following three subtyping rules:
+
+       x in (dom G)            x in (dom G)           x in (dom G)
+    -----------------       -----------------       -----------------
+    G R |- x.A <: Top       G R |- Bot <: x.A       G R |- x.A <: x.A
+
+And the second is by entering the body of a lambda, which makes all vars unrestricted:
+
+    (G, x: T) (empty) |- u: U
+    ---------------------------------
+    G R |- lambda(x: T)u : all(x: T)U
+
+The subtyping rules don't create new restricted vars (not even for "bind" types), but just keep the existing ones:
+
+    (G, x: T2) R |- T2 <: T1, U1 <: U2
+    -----------------------------------
+    G R |- all(x: T1)U1 <: all(x: T2)U2
     
-## Garbage
+    (G, z: T1) R |- T1 <: T2
+    ---------------------------------
+    G R |- { z => T1 } <: { z => T2 }
 
-    {z => (l: T = v)...}:Term -> {z => (l: T = v)...}:Value         [needed in Coq only]
-
-This is a type, and types don't step:
-    x.l!  ->  {z => d...}.l!  ->  [T]!
+Note: This solution is just an idea, and I believe that it makes POT sound, but I have not (yet) proved anything about it.
 
