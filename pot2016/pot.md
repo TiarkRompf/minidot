@@ -163,4 +163,71 @@ The subtyping rules don't create new restricted vars (not even for "bind" types)
     G R |- { z => T1 } <: { z => T2 }
 
 Note: This solution is just an idea, and I believe that it makes POT sound, but I have not (yet) proved anything about it.
+It is not yet applied to the rest of this document.
+
+
+### Term typing `G |- t : T`
+
+    (x: T) in G
+    T closed in (G restricted up to and including x)
+    ------------------------------------------------ T-Var
+    G |- x : T
+
+There are three kinds of values (lambdas, type tags and objects), and for each of them, we have an intro rule:
+
+    G, x: T1 |- t2 : T2
+    T1 closed in G
+    ----------------------------------- T-Lam
+    G |- lambda(x: T1)t2 : all(x: T1)T2
+
+    T closed in G
+    ----------------- T-Tag
+    G |- [T] : [T..T]
+
+    G, z: T |- ds : T
+    T closed in (G, z: T)
+    ----------------------------------- T-Obj
+    G |- { z => ds } : [{ z => ds }/z]T
+    
+Once an object is checked with `T-Obj`, we assign it a "bind" type:
+
+    G |- p : [p/z]T
+    ------------------- T-Pack
+    G |- p : { z => T }
+
+Selecting and applying a method whose return type depends on the self and on the argument requires to handle 3 aspects:
+- Selecting a member from an object
+- Dealing with the self ref
+- Applying the method to the argument
+
+Previous formalizations mixed some or all of these into one rule, but here, we have one rule for each of these aspects:
+    
+    G |- t : { l: U }
+    ----------------- T-Sel
+    G |- t.l U
+    
+    G |- t1 : all(x: T2)T3
+    G |- t2 : T2
+    T3' = [t2/x]T3
+    T3' closed in G       <----- ensures that T3 does not depend on x OR t2 is a path
+    ---------------------- T-App
+    G |- t1 t2 T3'
+    
+    G |- p : { z => T }
+    ------------------- T-Unpack
+    G |- p : [p/z]T
+
+And finally, we also have the subsumption rule:
+    
+    G |- t : T1
+    G |- T1 <: T2
+    ------------- T-Sub
+    G |- t : T2
+    
+
+### Subtyping rules
+    
+Note: Here we only show the most interesting subtyping rules. For the full set of rules, see [pot.v](./pot.v).
+
+TODO
 
