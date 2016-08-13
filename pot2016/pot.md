@@ -279,3 +279,27 @@ I remember whiteboard discussions where the question was "but how can we evaluat
 Now one might also ask why we don't always use typing (i.e. only have the weak rules, and allow paths starting with a value in the path typing judgment). But this would not work, because the path typing judgment (which can use subsumption) allows too much slack, making it impossible to find a termination measure in the inversion lemmas.
 
 
+### Definition of "possible types" (aka `vtp`)
+
+For path types, the definition of *possible types* has the following two rules (for the other rules, see [pot.v](./pot.v)):
+
+    v :: T
+    ---------
+    v :: [T]!
+
+    p1 -> p2
+    v :: p2!
+    --------
+    v :: p1!
+
+
+### Possible types closure (aka `vtp_widen`)
+
+Since possible types for path types is defined in the same style as the strong path subtyping rules, the it's easy to adapt the possible types closure lemma:
+
+Lemma: If `v :: T1` and `(empty) |- T1 <: T2`, then `v :: T2`.
+
+Proof: Lexicographic induction on the pack count (outer) and the size of the subtyping derivation (inner).
+Proven in Coq (assuming some narrowing lemmas for case lambda and case bind, the same as the original proof uses).
+
+
