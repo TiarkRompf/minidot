@@ -245,31 +245,31 @@ They differ in how they find out what a path refers to:
 Here are the weak path type subtyping rules:
 
     G |- p :! [T1..T2]
-    ------------------
+    ------------------ stp-proj-weak-1
     G |- p! <: T2
 
     G |- p :! [T1..T2]
-    ------------------
+    ------------------ stp-proj-weak-2
     G |- T1 <: p!
 
 And here are the strong path type subtyping rules:
     
     T closed in G
-    --------------
+    -------------- stp-proj-base-1
     G |- [T]! <: T
     
     p1 -> p2
     G |- p2! <: T
-    -------------
+    ------------- stp-proj-step-1
     G |- p1! <: T
     
     T closed in G
-    --------------
+    -------------- stp-proj-base-2
     G |- T <: [T]!
     
     p1 -> p2
     G |- T <: p2!
-    -------------
+    ------------- stp-proj-step-2
     G |- T <: p1!
 
 Note that each kind of rule appears twice: Once with the path type on the left of the `<:`, and once on the right.
@@ -302,4 +302,21 @@ Lemma: If `v :: T1` and `(empty) |- T1 <: T2`, then `v :: T2`.
 Proof: Lexicographic induction on the pack count (outer) and the size of the subtyping derivation (inner).
 Proven in Coq (assuming some narrowing lemmas for case lambda and case bind, the same as the original proof uses).
 
+
+### Evaluation of paths terminates
+
+Lemma: If a path starts with a value, its evaluation according to the small-step rules terminates.
+
+Proof: In fact, if the path has the form `v.l1.l2. ... .ln`, it will take at most `n` steps (or get stuck earlier), because each reduction step replaces the head `v.l` of the path by a value, reducing the number of selections by 1.
+
+Note that this crucially depends on the grammar of values only allowing values on the rhs of val defs. For instance, if we also allowed paths, we can have non-terminating paths such as `{z => l = z.l}.l`.
+
+
+### The new dependency
+
+The substitution lemma for subtyping replaces a variable by a value, so paths starting with a variable will become paths starting with a value, so it has to replace weak path type subtyping rules by strong ones.
+
+That is, it will encounter an `stp-proj-weak-1` node, and have to replace it by a tower of `stp-proj-step-1` nodes with an `stp-proj-base-1` node at the top (or `-2`, respectively). To do so, it has to reduce `p` to a value (i.e. to a type tag), and prove that the evaluation result `[T0]` still has type `[T1..T2]`, from which we obtain `T0 <: T2`. The tower will prove `p! <: T0`, and by transitivity, we get `p! <: T2`, so we're done.
+
+But this requires type safety for `p` (and all paths it steps to). This dependency of the substitution lemma on the type safety theorem is new compared to previous versions of DOT, and we have to find a suitable induction measure to allow this dependency.
 
