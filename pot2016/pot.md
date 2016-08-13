@@ -166,7 +166,7 @@ Note: This solution is just an idea, and I believe that it makes POT sound, but 
 It is not yet applied to the rest of this document.
 
 
-### Term typing `G |- t : T`
+### Term typing
 
     (x: T) in G
     T closed in (G restricted up to and including x)
@@ -226,8 +226,56 @@ And finally, we also have the subsumption rule:
     
 
 ### Subtyping rules
-    
-Note: Here we only show the most interesting subtyping rules. For the full set of rules, see [pot.v](./pot.v).
 
-TODO
+Based on [dot_storeless_tidy.v](../dev2016/dot_storeless_tidy.v) (storeless DOT with recursive subtyping).
+
+Here we only show the relevant changes between DOT and POT, i.e. the subtyping rules dealing with path types.
+For the full set of rules, see [pot.v](./pot.v).
+
+There are two kinds of subtyping rules for path types:
+
+- The *weak* path type subtyping rules deal with paths starting with a *variable*, and therefore are only applicable in a non-empty environment.
+- The *strong* path type subtyping rules deal with paths starting with a *value*, and are therefore the only kind of path type subtyping rules that can occur in an empty environment.
+
+They differ in how they find out what a path refers to:
+
+- The weak ones use a path typing judgment, denoted by `G |- p :! T`, which shrinks the environment when doing subsumption. It's the same as in DOT (where it is known as `htp`), but can also use the `T-Sel` rule. It enforces that the path starts with a variable.
+- The strong ones use small-step reduction.
+
+Here are the weak path type subtyping rules:
+
+    G |- p :! [T1..T2]
+    ------------------
+    G |- p! <: T2
+
+    G |- p :! [T1..T2]
+    ------------------
+    G |- T1 <: p!
+
+And here are the strong path type subtyping rules:
+    
+    T closed in G
+    --------------
+    G |- [T]! <: T
+    
+    p1 -> p2
+    G |- p2! <: T
+    -------------
+    G |- p1! <: T
+    
+    T closed in G
+    --------------
+    G |- T <: [T]!
+    
+    p1 -> p2
+    G |- T <: p2!
+    -------------
+    G |- T <: p1!
+
+Note that each kind of rule appears twice: Once with the path type on the left of the `<:`, and once on the right.
+
+I remember whiteboard discussions where the question was "but how can we evaluate paths starting with an abstract variable?". The answer that the above rules give is "we don't, but we use typing instead, and use evaluation only if the path starts with a value".
+
+Now one might also ask why we don't always use typing (i.e. only have the weak rules, and allow paths starting with a value in the path typing judgment). But this would not work, because the path typing judgment (which can use subsumption) allows too much slack, making it impossible to find a termination measure in the inversion lemmas.
+
 
