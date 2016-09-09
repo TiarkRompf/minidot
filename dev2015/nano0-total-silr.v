@@ -8,6 +8,13 @@
 (* normalization for STLC.                               *)
 
 (* copied from nano0-total.v *)
+(* copied from nano0-total-lr.v *)
+
+(* This version enables recursion again, and we use a    *)
+(* step-indexed logical relation to show soundness only. *)
+
+(* TODO!! *)
+
 
 Require Export SfLib.
 
