@@ -123,7 +123,7 @@ Fixpoint val_type v T : Prop := match v, T with
 | vbool b, TBool => True
 | vabs env y, TFun T1 T2 => 
   (forall H tx vx, tevaln H tx vx /\ val_type vx T1 -> (* R H tx vx T1 *)
-     exists vy, tevaln (vx::env) y vy /\ val_type vy T2) (* R (vx:env) y vy T2 *)
+     exists vy, tevaln (vx::(vabs env y)::env) y vy /\ val_type vy T2) (* R (vx:env) y vy T2 *)
 | _,_ => False
 end.
 
