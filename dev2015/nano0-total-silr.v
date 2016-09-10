@@ -168,31 +168,57 @@ Proof.
   intros ? ? ? W. 
   inversion W; intros ? WFE.
   
-  - Case "True". eexists. split. 
-    exists 0. intros. destruct n. omega. simpl. eauto. simpl. eauto. 
+  - Case "True". eexists. split.
+    simpl in H2. inversion H2. eauto. simpl. eauto.
   - Case "False". eexists. split.
-    exists 0. intros. destruct n. omega. simpl. eauto. simpl. eauto. 
+    simpl in H2. inversion H2. eauto. simpl. eauto. 
 
   - Case "Var".
     eapply WFE. eauto.
 
   - Case "App".
-    destruct (IHW1 venv0 WFE) as [vf [IW1 HVF]].
-    destruct (IHW2 venv0 WFE) as [vx [IW2 HVX]].
-    destruct vf. solve [inversion HVF]. 
-    simpl in HVF.
-    specialize (HVF venv0 x vx (conj IW2 HVX)).
-    destruct HVF as [vy [IW3 HVY]].
-    exists vy. split.
-    destruct IW1 as [n1 IW1].
-    destruct IW2 as [n2 IW2].
-    destruct IW3 as [n3 IW3].
-    exists (S (n1+n2+n3)).
-    intros.
-    destruct n. omega. simpl. rewrite IW1. rewrite IW2. rewrite IW3. eauto.
-    omega. omega. omega.
-    eauto. 
+    (* downgrade R_env *)
+    assert (R_env n venv0 tenv0) as WFE0. admit.
     
+    destruct (IHn f _ _ H  venv0 WFE0) as [vf RF].
+    destruct (IHn x _ _ H0 venv0 WFE0) as [vx RX].
+
+    remember (teval n venv0 f) as EF.
+    remember (teval n venv0 x) as EX.
+    destruct EF as [rf|]. symmetry in HeqEF. specialize (RF _ HeqEF).
+    destruct EX as [rx|]. symmetry in HeqEX. specialize (RX _ HeqEX).
+
+    destruct RF as [? VF]. destruct RX as [? VX]. subst rf rx.
+    
+    destruct vf. solve [contradiction].
+    simpl in VF.
+    specialize (VF vx VX).
+    destruct VF as [vy VY]. 
+
+    exists vy. unfold R. intros vy1 VA.
+    simpl in VA.
+    rewrite HeqEF in VA.
+    rewrite HeqEX in VA.
+    specialize (VY vy1 VA).
+    destruct VY as [? VTY].
+    split. eauto.
+    (* upgrade val_type -- DOES NOT HOLD *)
+    assert (val_type (S n) vy T). admit.
+    eauto.
+
+    (* timeout case x *)
+    eexists. unfold R. intros vy1 VA.
+    simpl in VA.
+    rewrite <-HeqEX in VA. rewrite HeqEF in VA.
+    destruct RF. subst rf. 
+    destruct vf. solve [contradiction].
+    solve [inversion VA].
+    (* timeout case f *)
+    eexists. unfold R. intros vy1 VA.
+    simpl in VA.
+    rewrite <-HeqEF in VA.
+    solve [inversion VA].
+
   - Case "Abs".
     eexists. split. exists 0. intros. destruct n. omega. simpl. eauto. simpl.
     intros.
