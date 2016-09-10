@@ -187,25 +187,40 @@ Proof.
     eexists. split. exists 0. intros. destruct n. omega. simpl. eauto. simpl.
     intros.
 
-    assert (exists v : vl, R (vx::venv0) y v T2).
+    assert (exists v : vl, R (vx :: vabs venv0 y :: venv0) y v T2). {
     eapply IHW. unfold R_env.
     split. simpl. destruct WFE. eauto. 
     intros.
-    simpl in H1. 
-    destruct (eq_nat_dec x (length env)). 
+    simpl in H1.
+    (* is it the arg? *)
+    destruct (eq_nat_dec x (S (length env))). 
     inversion H1. subst T0.
     exists vx. split.
     exists 0. intros. destruct n. omega. simpl.
     destruct WFE. subst. rewrite H3.
-    destruct (eq_nat_dec (length env) (length env)). eauto. contradiction n0. eauto.
+    destruct (eq_nat_dec (S (length env)) (S (length env))). eauto. contradiction n0. eauto.
     eauto.
     destruct H0. eauto.
-    destruct WFE. 
+    (* is it the function? *)
+    destruct (eq_nat_dec x (length env)). 
+    inversion H1. subst T0.
+    exists (vabs venv0 y). split.
+    exists 0. intros. destruct n0. omega. simpl.
+    destruct WFE. subst. rewrite H3.
+    destruct (eq_nat_dec (length env) (S (length env))). contradiction. 
+    destruct (eq_nat_dec (length env) (length env)). eauto. destruct n2. eauto. 
+    (* now create the val_type for the vabs *)
+    admit. (* WE CANNOT, SINCE THIS IS THE MAIN GOAL *)
+    (* continue *)
+    destruct WFE. subst. 
     specialize (H3 _ _ H1). destruct H3. destruct H3. destruct H3. 
-    exists x0. split. exists x1. intros. destruct n0. omega. simpl.
-    rewrite H2. destruct (eq_nat_dec x (length env)). contradiction. specialize (H3 (S n0) H5).
+    exists x0. split. exists x1. intros. destruct n1. omega. simpl.
+    rewrite H2.
+    destruct (eq_nat_dec x (S (length env))). contradiction. specialize (H3 (S n1) H5).
+    destruct (eq_nat_dec x (length env)). contradiction.
     simpl in H3. eapply H3.
     eauto.
+    }
 
     eapply H1. 
 Qed.
