@@ -119,20 +119,27 @@ Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some
 
 
 (* need to use Fixpoint because of positivity restriction *)
-Fixpoint val_type v T : Prop := match v, T with
+Fixpoint val_type nm v T : Prop := match v, T with
 | vbool b, TBool => True
 | vabs env y, TFun T1 T2 => 
-  (forall H tx vx, tevaln H tx vx /\ val_type vx T1 -> (* R H tx vx T1 *)
-     exists vy, tevaln (vx::(vabs env y)::env) y vy /\ val_type vy T2) (* R (vx:env) y vy T2 *)
+  forall vx, val_type nm vx T1 -> (* extend to R ? H tx vx T1 ? *)
+    exists vy,
+      (* R nm (vx::(vabs env y)::env) y vy T2 *)
+      
+        forall r, teval nm (vx::(vabs env y)::env) y = Some r ->
+    r = Some vy /\ val_type nm vy T2
 | _,_ => False
 end.
 
-Definition R H t v T := tevaln H t v /\ val_type v T.
+Definition R nm H t v T := 
+  (* tevaln H t v /\ val_type v T. *)
+  forall r, teval nm H t = Some r ->
+    r = Some v /\ val_type nm v T.
 
-Definition R_env venv tenv :=
+Definition R_env nm venv tenv :=
   length venv = length tenv /\
  forall x T1, index x tenv = Some T1 ->
-   exists v : vl, R venv (tvar x) v T1.
+   exists v : vl, R nm venv (tvar x) v T1.
 
 
 Hint Constructors ty.
@@ -150,13 +157,16 @@ Hint Constructors list.
 (* if well-typed, then result is an actual value (not stuck and not a timeout),
    for large enough n *)
 
-Theorem full_total_safety : forall e tenv T,
-  has_type tenv e T -> forall venv, R_env venv tenv ->
-  exists v, R venv e v T.
+Theorem full_total_safety : forall n, forall e tenv T,
+  has_type tenv e T -> forall venv, R_env n venv tenv ->
+  exists v, R n venv e v T.
 
 Proof.
+  intros n. induction n.
+  (* z *) intros. eexists. unfold R. intros. inversion H1.
+  (* S n *)
   intros ? ? ? W. 
-  induction W; intros ? WFE.
+  inversion W; intros ? WFE.
   
   - Case "True". eexists. split. 
     exists 0. intros. destruct n. omega. simpl. eauto. simpl. eauto. 
