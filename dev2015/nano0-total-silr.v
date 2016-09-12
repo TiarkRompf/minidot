@@ -126,15 +126,15 @@ Fixpoint val_type nm v T : Prop := match v, T with
     exists vy,
       (* R nm (vx::(vabs env y)::env) y vy T2 *)
       
-        forall r, teval nm (vx::(vabs env y)::env) y = Some r ->
-    r = Some vy /\ val_type nm vy T2
+        forall r n, n<=nm -> teval n (vx::(vabs env y)::env) y = Some r ->
+    r = Some vy /\ val_type (nm-n) vy T2
 | _,_ => False
 end.
 
 Definition R nm H t v T := 
   (* tevaln H t v /\ val_type v T. *)
-  forall r, teval nm H t = Some r ->
-    r = Some v /\ val_type nm v T.
+  forall r n, n<=nm -> teval n H t = Some r ->
+    r = Some v /\ val_type (nm-n) v T.
 
 Definition R_env nm venv tenv :=
   length venv = length tenv /\
@@ -163,43 +163,60 @@ Theorem full_total_safety : forall n, forall e tenv T,
 
 Proof.
   intros n. induction n.
-  (* z *) intros. eexists. unfold R. intros. inversion H1.
+  (* z *) intros. eexists. unfold R. intros. inversion H1. subst. inversion H2.
   (* S n *)
   intros ? ? ? W. 
   inversion W; intros ? WFE.
   
   - Case "True". eexists. split.
-    simpl in H2. inversion H2. eauto. simpl. eauto.
+    destruct n0. inversion H3. simpl in H3. inversion H3. eauto. simpl. eauto.
+
   - Case "False". eexists. split.
-    simpl in H2. inversion H2. eauto. simpl. eauto. 
+    destruct n0. inversion H3. simpl in H3. inversion H3. eauto. simpl. eauto.
 
   - Case "Var".
     eapply WFE. eauto.
 
   - Case "App".
     (* downgrade R_env *)
-    assert (R_env n venv0 tenv0) as WFE0. admit.
+    assert (R_env n venv0 tenv0) as WFE0. {
+      unfold R_env.
+      destruct WFE.
+      split. eauto. intros.
+      specialize (H5 _ _ H6).
+      destruct H5.
+      admit. (* should be ok ... *)
+      }
     
     destruct (IHn f _ _ H  venv0 WFE0) as [vf RF].
     destruct (IHn x _ _ H0 venv0 WFE0) as [vx RX].
 
-    remember (teval n venv0 f) as EF.
-    remember (teval n venv0 x) as EX.
-    destruct EF as [rf|]. symmetry in HeqEF. specialize (RF _ HeqEF).
-    destruct EX as [rx|]. symmetry in HeqEX. specialize (RX _ HeqEX).
-
-    destruct RF as [? VF]. destruct RX as [? VX]. subst rf rx.
     
-    destruct vf. solve [contradiction].
+(*    destruct vf. solve [contradiction].
     simpl in VF.
     specialize (VF vx VX).
-    destruct VF as [vy VY]. 
+    destruct VF as [vy VY]. *)
 
-    exists vy. unfold R. intros vy1 VA.
+    eexists. unfold R. intros vy1 n0 ? VA.
+    destruct n0. solve [inversion VA].
+
+    remember (teval n0 venv0 f) as EF.
+    remember (teval n0 venv0 x) as EX.
+    assert (n0 <= n) as HN. omega.
+    destruct EF as [rf|]. symmetry in HeqEF. specialize (RF _ n0 HN HeqEF).
+    destruct EX as [rx|]. symmetry in HeqEX. specialize (RX _ n0 HN HeqEX).
+
+    destruct RF as [? VF]. destruct RX as [? VX]. subst rf rx.
+
     simpl in VA.
     rewrite HeqEF in VA.
     rewrite HeqEX in VA.
-    specialize (VY vy1 VA).
+    destruct vf. solve [contradiction].
+    simpl in VF.
+    specialize (VF vx VX).
+    destruct VF as [vy VY].
+    assert (n0<=n-n0) as HDN. admit. 
+    specialize (VY vy1 _ HDN VA).
     destruct VY as [? VTY].
     split. eauto.
     (* upgrade val_type -- DOES NOT HOLD *)
@@ -220,7 +237,8 @@ Proof.
     solve [inversion VA].
 
   - Case "Abs".
-    eexists. split. exists 0. intros. destruct n. omega. simpl. eauto. simpl.
+    exists (vabs venv0 y).
+    unfold R. intros. split. simpl in H3. inversion H3. eauto.
     intros.
 
     assert (exists v : vl, R (vx :: vabs venv0 y :: venv0) y v T2). {
