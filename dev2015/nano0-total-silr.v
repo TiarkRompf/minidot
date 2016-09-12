@@ -13,6 +13,8 @@
 (* This version enables recursion again, and we use a    *)
 (* step-indexed logical relation to show soundness only. *)
 
+(* Note: we need actual step-indexes, not depth fuel !!! *)
+
 (* TODO!! *)
 
 
@@ -86,34 +88,40 @@ Some None        means stuck
 Some (Some v))   means result v
 *)
 
-Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
+(* this step-indexed version returns the number of steps taken (always <= fuel) *)
+
+Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: (nat * option (option vl)) :=
   match n with
-    | 0 => None
+    | 0 => (0,None)
     | S n =>
       match t with
-        | ttrue      => Some (Some (vbool true))
-        | tfalse     => Some (Some (vbool false))
-        | tvar x     => Some (index x env)
-        | tabs y     => Some (Some (vabs env y))
-        | tapp ef ex   =>
+        | ttrue                                => (1, Some (Some (vbool true)))
+        | tfalse                               => (1, Some (Some (vbool false)))
+        | tvar x                               => (1, Some (index x env))
+        | tabs y                               => (1, Some (Some (vabs env y)))
+        | tapp ef ex                           =>
           match teval n env ef with
-            | None => None
-            | Some None => Some None
-            | Some (Some (vbool _)) => Some None
-            | Some (Some (vabs env2 ey)) =>
-              match teval n env ex with
-                | None => None
-                | Some None => Some None
-                | Some (Some vx) =>
-                  teval n (vx::(vabs env2 ey)::env2) ey
+            | (df, None)                       => (1+df, None)
+            | (df, Some None)                  => (1+df, Some None)
+            | (df, Some (Some (vbool _)))      => (1+df, Some None)
+            | (df, Some (Some (vabs env2 ey))) =>
+              match teval (n-df) env ex with
+                | (dx, None)                   => (1+df+dx, None)
+                | (dx, Some None)              => (1+df+dx, Some None)
+                | (dx, Some (Some vx))         =>
+                  match teval (n-df-dx) (vx::(vabs env2 ey)::env2) ey with
+                    | (dy, res)                => (1+df+dx+dy, res)
+                  end
               end
           end
       end
-  end.
+end.
+
+
+(* TODO -- fix & adapt old code below *)
 
 
 Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some (Some v).
-
 
 
 
