@@ -1,0 +1,10 @@
+- From F to DOT: Type Soundness Proofs with Definitional Interpreters [[pdf]](http://arxiv.org/pdf/1510.05216.pdf)
+  - big-step
+    - [simply typed lambda calculus](nano0.v)
+    - [F<sub>&lt;:</sub>](fsub0.v)
+    - [D<sub>&lt;:&gt;</sub>](fsub2.v) (F<sub>&lt;:</sub> with first-class types and lower bounds)
+    - [D<sub>&lt;:&gt;</sub> with state](fsub4.v) (add mutable references to D<sub>&lt;:</sub>)
+    - [full DOT](dot24.v) (D<sub>&lt;:&gt;</sub> plus intersection and union types, recursive self types, compound objects, ...)
+  - back to small-step
+    - [sketch](dot-smallstep1.v)
+    - [full DOT](dot-smallstep5.v)
