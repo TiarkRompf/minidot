@@ -189,7 +189,7 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            T = open T11 T12 ->
            has_type env (ttapp f T11) T
 | t_tabs: forall env y T1 T2,
-            has_type (bind_ty T1::env) y (open (TVarF (length env)) T2) ->
+           has_type (bind_ty T1::env) y (open (TVarF (length env)) T2) ->
            stp env [] (TAll T1 T2) (TAll T1 T2) ->
            has_type env (ttabs T1 y) (TAll T1 T2)
 | t_sub: forall env e T1 T2,
