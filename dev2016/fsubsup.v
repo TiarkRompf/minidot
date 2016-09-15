@@ -2438,7 +2438,7 @@ Proof.
       remember (x-1) as x_1.
       eapply stpd2_wrapf. eapply stpd2_sela1. eauto.
       rewrite <- A in H0. eapply compat_closed. eauto. eauto. eauto.
-      rewrite <- A in H1. eapply compat_closed. eauto. eauto. eauto. 
+      rewrite <- A in H1. eapply compat_closed. eauto. eauto. eauto.
       eapply IHn; eauto; try omega.
     (* remaining obligations *)
     + eauto. + subst GH. eauto. + eauto.
@@ -2478,7 +2478,7 @@ Proof.
           destruct B as [? B]. eexists. eapply stp2_extendH_mult0. eapply B.
         }
         eapply stpd2_trans. eapply stpd2_trans.
-        eapply A. eapply stpd2_wrapf. eapply CXL''. eapply B'. 
+        eapply A. eapply stpd2_wrapf. eapply CXL''. eapply B'.
       * subst. simpl.
         assert (stpd2 false G1 T1' GXX TXXL GH0') as A. {
           eapply IHn. eapply H2. omega. reflexivity.
@@ -2494,7 +2494,7 @@ Proof.
       remember (x-1) as x_1.
       eapply stpd2_wrapf. eapply stpd2_sela2. eauto.
       rewrite <- A in H0. eapply compat_closed. eauto. eauto. eauto.
-      rewrite <- A in H1. eapply compat_closed. eauto. eauto. eauto. 
+      rewrite <- A in H1. eapply compat_closed. eauto. eauto. eauto.
       eapply IHn; eauto; try omega.
     (* remaining obligations *)
     + eauto. + subst GH. eauto. + eauto.
@@ -2880,7 +2880,7 @@ Proof.
       }
       destruct (invert_tabs venv0 vf T10 T11 T12 T1) as
           [env1 [tenv [x0 [y0 [T0' [T3 [T4 [EF [FRX [WF [HTY [STXL [STXU STY]]]]]]]]]]]]]. eauto. eauto. eauto.
-      
+
       (* now we know it's a closure, and we have has_type evidence *)
 
       assert (res_type ((vty venv0 T1)::env1) res (open (TVarF x0) T4)) as HRY.
