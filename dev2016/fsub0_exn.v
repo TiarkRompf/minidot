@@ -1,7 +1,7 @@
 (*
-FSub (F<:) + Bot
+FSub (F<:) + Bot + Exceptions
 T ::= Top | Bot | X | T -> T | Forall Z <: T. T^Z
-t ::= x | lambda x:T.t | Lambda X<:T.t | t t | t [T]
+t ::= x | lambda x:T.t | Lambda X<:T.t | t t | t [T] | raise t | try t catch t
 *)
 
 Require Export SfLib.
@@ -30,6 +30,8 @@ Inductive tm : Type :=
 | tapp : tm -> tm -> tm
 | ttabs : ty -> tm -> tm
 | ttapp : tm -> ty -> tm
+| traise : tm
+| tcatch : tm -> tm -> tm (* try t1 catch t2 *)
 .
 
 Inductive binding {X: Type} :=
@@ -201,6 +203,12 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type (bind_ty T1::env) y (open (TVarF (length env)) T2) ->
            stp env [] (TAll T1 T2) (TAll T1 T2) ->
            has_type env (ttabs T1 y) (TAll T1 T2)
+| t_raise: forall env,
+           has_type env traise TBot
+| t_catch: forall env t c T,
+           has_type env t T ->
+           has_type env c T ->
+           has_type env (tcatch t c) T
 | t_sub: forall env e T1 T2,
            has_type env e T1 ->
            stp env [] T1 T2 ->
@@ -312,32 +320,39 @@ Inductive valh_type : venv -> aenv -> (venv*ty) -> (@binding ty) -> Prop :=
 (* ### Evaluation (Big-Step Semantics) ### *)
 
 (*
-None             means timeout
-Some None        means stuck
-Some (Some v))   means result v
+None                   means timeout
+Some None              means stuck
+Some (Some None)       means exception
+Some (Some (Some v))   means result v
 
 Could use do-notation to clean up syntax.
 *)
 
-Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
+Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option (option vl)) :=
   match n with
     | 0 => None
     | S n =>
       match t with
-        | tvar x     => Some (indexr x env)
-        | tabs T y => Some (Some (vabs env T y))
-        | ttabs T y  => Some (Some (vtabs env T y))
+        | tvar x =>
+          match indexr x env with
+            | None => Some None
+            | Some v => Some (Some (Some v))
+          end
+        | tabs T y => Some (Some (Some (vabs env T y)))
+        | ttabs T y  => Some (Some (Some (vtabs env T y)))
         | tapp ef ex   =>
           match teval n env ex with
             | None => None
             | Some None => Some None
-            | Some (Some vx) =>
+            | Some (Some None) => Some (Some None)
+            | Some (Some (Some vx)) =>
               match teval n env ef with
                 | None => None
                 | Some None => Some None
-                | Some (Some (vty _ _)) => Some None
-                | Some (Some (vtabs _ _ _)) => Some None
-                | Some (Some (vabs env2 _ ey)) =>
+                | Some (Some None) => Some (Some None)
+                | Some (Some (Some (vty _ _))) => Some None
+                | Some (Some (Some (vtabs _ _ _))) => Some None
+                | Some (Some (Some (vabs env2 _ ey))) =>
                   teval n (vx::env2) ey
               end
           end
@@ -345,10 +360,19 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
           match teval n env ef with
             | None => None
             | Some None => Some None
-            | Some (Some (vty _ _)) => Some None
-            | Some (Some (vabs _ _ _)) => Some None
-            | Some (Some (vtabs env2 T ey)) =>
+            | Some (Some None) => Some (Some None)
+            | Some (Some (Some (vty _ _))) => Some None
+            | Some (Some (Some (vabs _ _ _))) => Some None
+            | Some (Some (Some (vtabs env2 T ey))) =>
               teval n ((vty env ex)::env2) ey
+          end
+        | traise => Some (Some None)
+        | tcatch et ec =>
+          match teval n env et with
+            | None => None
+            | Some None => Some None
+            | Some (Some None) => teval n env ec
+            | Some (Some (Some vx)) => Some (Some (Some vx))
           end
       end
   end.
@@ -1480,10 +1504,14 @@ Proof. intros. induction H0.
        eapply v_tya. (* aenv is not constrained -- bit of a cheat?*)
 Qed.
 
-Inductive res_type: venv -> option vl -> ty -> Prop :=
+Inductive res_type: venv -> option (option vl) -> ty -> Prop :=
 | not_stuck: forall venv v T,
       val_type venv v (bind_tm T) ->
-      res_type venv (Some v) T.
+      res_type venv (Some (Some v)) T
+| not_stuck_except: forall venv T,
+      res_type venv (Some None) T
+.
+
 
 Hint Constructors res_type.
 Hint Resolve not_stuck.
@@ -2658,7 +2686,7 @@ Lemma restp_widen: forall vf H1 H2 T1 T2,
   stpd2 true H1 T1 H2 T2 [] ->
   res_type H2 vf T2.
 Proof.
-  intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto.
+  intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto. eauto.
 Qed.
 
 (* ### Inversion Lemmas ### *)
@@ -2727,7 +2755,7 @@ Qed.
 
 (* ### Type Safety ### *)
 (* If term type-checks and the term evaluates without timing-out,
-   the result is not stuck, but a value.
+   the result is not stuck, but a value or an exception.
 *)
 Theorem full_safety : forall n e tenv venv res T,
   teval n venv e = Some res -> has_type tenv e T -> wf_env venv tenv ->
@@ -2741,7 +2769,8 @@ Proof.
   - Case "Var".
     remember (tvar i) as e. induction H0; inversion Heqe; subst.
     + destruct (indexr_safe_ex venv0 env (bind_tm T1) i) as [v [I V]]; eauto.
-      rewrite I. eapply not_stuck. eapply V.
+      rewrite I in H3. inversion H3.
+      eapply not_stuck. eapply V.
 
     + eapply restp_widen. eapply IHhas_type; eauto.
       eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
@@ -2762,11 +2791,11 @@ Proof.
 
       destruct tx as [rx|]; try solve by inversion.
       assert (res_type venv0 rx T1) as HRX. SCase "HRX". subst. eapply IHn; eauto.
-      inversion HRX as [? vx].
+      inversion HRX as [? vx|].
 
       destruct tf as [rf|]; subst rx; try solve by inversion.
       assert (res_type venv0 rf (TFun T1 T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
-      inversion HRF as [? vf].
+      inversion HRF as [? vf|].
 
       destruct (invert_abs venv0 vf T1 T2) as
           [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]]. eauto.
@@ -2778,9 +2807,14 @@ Proof.
           (* wf_env x *) econstructor. eapply valtp_widen; eauto.
                          eapply stpd2_extend2. eauto. eauto. eauto.
 
-      inversion HRY as [? vy].
+      inversion HRY as [? vy|].
 
       eapply not_stuck. eapply valtp_widen; eauto. eapply stpd2_extend1. eauto.
+
+      (* now handle exception cases *)
+      subst. eapply not_stuck_except.
+      subst. inversion H3. subst. eapply not_stuck_except.
+      subst. inversion H3. subst. eapply not_stuck_except.
 
     + eapply restp_widen. eapply IHhas_type; eauto.
       eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
@@ -2800,7 +2834,7 @@ Proof.
 
       destruct tf as [rf|]; try solve by inversion.
       assert (res_type venv0 rf (TAll T11 T12)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
-      inversion HRF as [? vf].
+      inversion HRF as [? vf|].
 
       subst t.
       destruct (invert_tabs venv0 vf T11 T12) as
@@ -2814,11 +2848,28 @@ Proof.
           (* wf_env   *) eauto.
           eapply stpd2_extend2. eauto. eauto.
       eauto.
-      inversion HRY as [? vy].
+      inversion HRY as [? vy|].
 
       eapply not_stuck. eapply valtp_widen; eauto.
 
+      (* now handle exception cases *)
+      subst. eapply not_stuck_except.
+      subst. inversion H3. subst. eapply not_stuck_except.
+
     + eapply restp_widen. eapply IHhas_type; eauto.
       eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+
+  - Case "Raise".
+    eapply not_stuck_except.
+
+  - Case "Catch".
+    remember (tcatch e1 e2) as e. induction H0; inversion Heqe; subst.
+    + remember (teval n venv0 e1) as tx.
+      destruct tx as [rx|]; try solve by inversion.
+      assert (res_type venv0 rx T) as HRX. SCase "HRX". subst. eapply IHn; eauto.
+      inversion HRX as [? vx|].
+      (* value: return *) subst. inversion H3. eapply not_stuck. eauto.
+      (* exception: use catch block *) subst. eapply IHn; eauto.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
 Qed.
