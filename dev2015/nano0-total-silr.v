@@ -170,129 +170,138 @@ Hint Constructors option.
 Hint Constructors list.
 
 
+Lemma V_down: forall n j v T, j <= n -> val_type n v T -> val_type j v T.
+Proof. admit. Qed.
+
+Lemma R_down: forall n j H t T, j <= n -> R n H t T -> R j H t T.
+Proof. admit. Qed.
+
+
+
 (* if well-typed, then result is an actual value (not stuck and not a timeout),
    for large enough n *)
 
-Theorem full_total_safety : forall n, forall e tenv T,
+Theorem full_total_safety : forall nn, forall n, n < nn -> forall e tenv T,
   has_type tenv e T -> forall venv, R_env n venv tenv ->
-  exists v, R n venv e v T.
+  R n venv e T.
 
 Proof.
-  intros n. induction n.
-  (* z *) intros. eexists. unfold R. intros. inversion H1. subst. inversion H2.
+  intros nn. induction nn.
+  (* z *) intros. admit. (* solve [inversion H]. *)
   (* S n *)
-  intros ? ? ? W. 
+  intros n NB ? ? ? W.
+  destruct n. unfold R. intros. inversion H0.
+  
   inversion W; intros ? WFE.
   
-  - Case "True". eexists. split.
-    destruct n0. inversion H3. simpl in H3. inversion H3. eauto. simpl. eauto.
+  - Case "True". 
+    admit.
+    (* eexists. simpl in H2. inversion H2. repeat split; simpl; eauto. *)
 
-  - Case "False". eexists. split.
-    destruct n0. inversion H3. simpl in H3. inversion H3. eauto. simpl. eauto.
+  - Case "False".
+    admit. 
+    (* eexists. 
+    simpl in H2. inversion H2. repeat split; simpl; eauto. *)
 
   - Case "Var".
     eapply WFE. eauto.
 
   - Case "App".
-    (* downgrade R_env *)
-    assert (R_env n venv0 tenv0) as WFE0. {
-      unfold R_env.
-      destruct WFE.
-      split. eauto. intros.
-      specialize (H5 _ _ H6).
-      destruct H5.
-      admit. (* should be ok ... *)
-      }
+    (* downgrade R_env -- could extract as lemma *)
+    assert (R_env n venv0 tenv0) as WFE0. { admit. (*
+      unfold R_env. unfold R. split. apply WFE. intros.
+      unfold R_env in WFE. unfold R in WFE. apply WFE. *)
+    }
     
-    destruct (IHn f _ _ H  venv0 WFE0) as [vf RF].
-    destruct (IHn x _ _ H0 venv0 WFE0) as [vx RX].
-
+    unfold R. intros ? n1 EVY.
+    simpl in EVY.
     
-(*    destruct vf. solve [contradiction].
-    simpl in VF.
-    specialize (VF vx VX).
-    destruct VF as [vy VY]. *)
+    assert (R n venv0 f (TFun T1 T)) as RF. eapply IHnn. omega. eauto. eauto.
+    unfold R in RF.
 
-    eexists. unfold R. intros vy1 n0 ? VA.
-    destruct n0. solve [inversion VA].
+    remember (teval n venv0 f) as EF. symmetry in HeqEF.
+    destruct EF as [nf [rf|]]; try solve [inversion EVY].
+    destruct (RF rf nf) as [vf [? [EQVF VTF]]]. eauto.
+    subst rf.
+    
+    simpl in VTF. destruct vf. contradiction.
+    
 
-    remember (teval n0 venv0 f) as EF.
-    remember (teval n0 venv0 x) as EX.
-    assert (n0 <= n) as HN. omega.
-    destruct EF as [rf|]. symmetry in HeqEF. specialize (RF _ n0 HN HeqEF).
-    destruct EX as [rx|]. symmetry in HeqEX. specialize (RX _ n0 HN HeqEX).
+    assert (R (n-nf) venv0 x T1) as RX.
+    eapply R_down. instantiate (1:=n). omega. eapply IHnn. omega. eauto. eauto.
+    unfold R in RX.
 
-    destruct RF as [? VF]. destruct RX as [? VX]. subst rf rx.
+    remember (teval (n-nf) venv0 x) as EX. symmetry in HeqEX.
+    destruct EX as [nx [rx|]]; try solve [inversion EVY].
+    destruct (RX rx nx) as [vx [? [EQVX VTX]]]. eauto.
+    subst rx. 
 
-    simpl in VA.
-    rewrite HeqEF in VA.
-    rewrite HeqEX in VA.
-    destruct vf. solve [contradiction].
-    simpl in VF.
-    specialize (VF vx VX).
-    destruct VF as [vy VY].
-    assert (n0<=n-n0) as HDN. admit. 
-    specialize (VY vy1 _ HDN VA).
-    destruct VY as [? VTY].
-    split. eauto.
-    (* upgrade val_type -- DOES NOT HOLD *)
-    assert (val_type (S n) vy T). admit.
-    eauto.
+    remember (teval (n - nf - nx) (vx :: vabs l t :: l) t) as EY. symmetry in HeqEY.
+    destruct EY as [ny [ry|]]; try solve [inversion EVY].
+    inversion EVY. subst r n1. clear EVY.
 
-    (* timeout case x *)
-    eexists. unfold R. intros vy1 VA.
-    simpl in VA.
-    rewrite <-HeqEX in VA. rewrite HeqEF in VA.
-    destruct RF. subst rf. 
-    destruct vf. solve [contradiction].
-    solve [inversion VA].
-    (* timeout case f *)
-    eexists. unfold R. intros vy1 VA.
-    simpl in VA.
-    rewrite <-HeqEF in VA.
-    solve [inversion VA].
+    specialize (VTF _ _ _ _ HeqEX).
+    specialize (VTF VTX _ _ HeqEY).
+    assert ((n - nf - nx - ny = S n - S (nf + nx + ny))) as RW. omega.
+    rewrite <-RW.
+    destruct VTF as [? [? [? ?]]]. eexists. repeat split; eauto. 
 
   - Case "Abs".
-    exists (vabs venv0 y).
-    unfold R. intros. split. simpl in H3. inversion H3. eauto.
-    intros.
 
-    assert (exists v : vl, R (vx :: vabs venv0 y :: venv0) y v T2). {
-    eapply IHW. unfold R_env.
-    split. simpl. destruct WFE. eauto. 
-    intros.
-    simpl in H1.
-    (* is it the arg? *)
-    destruct (eq_nat_dec x (S (length env))). 
-    inversion H1. subst T0.
-    exists vx. split.
-    exists 0. intros. destruct n. omega. simpl.
-    destruct WFE. subst. rewrite H3.
-    destruct (eq_nat_dec (S (length env)) (S (length env))). eauto. contradiction n0. eauto.
-    eauto.
-    destruct H0. eauto.
-    (* is it the function? *)
-    destruct (eq_nat_dec x (length env)). 
-    inversion H1. subst T0.
-    exists (vabs venv0 y). split.
-    exists 0. intros. destruct n0. omega. simpl.
-    destruct WFE. subst. rewrite H3.
-    destruct (eq_nat_dec (length env) (S (length env))). contradiction. 
-    destruct (eq_nat_dec (length env) (length env)). eauto. destruct n2. eauto. 
-    (* now create the val_type for the vabs *)
-    admit. (* WE CANNOT, SINCE THIS IS THE MAIN GOAL *)
-    (* continue *)
-    destruct WFE. subst. 
-    specialize (H3 _ _ H1). destruct H3. destruct H3. destruct H3. 
-    exists x0. split. exists x1. intros. destruct n1. omega. simpl.
-    rewrite H2.
-    destruct (eq_nat_dec x (S (length env))). contradiction. specialize (H3 (S n1) H5).
-    destruct (eq_nat_dec x (length env)). contradiction.
-    simpl in H3. eapply H3.
-    eauto.
-    }
+    (* goal:  R (S n) venv0 (tabs y) (TFun T1 T2) *)
+    unfold R. intros ? ? EV.
+    inversion EV.
+    simpl in EV. inversion EV. subst n1 r. clear EV.
+    exists (vabs venv0 y). split. eauto. split. eauto.
+    assert (S n - 1 = n). omega. rewrite H3.
 
-    eapply H1. 
+    (* goal val_type n (vabs venv0 y) (TFun T1 T2) *)
+
+    (* internal induction *)
+    assert (forall nm1, nm1 <= n -> forall nm, nm <= nm1 ->
+                       val_type nm (vabs venv0 y) (TFun T1 T2)) as IND.
+    intros nm1. induction nm1.
+    (* z *) simpl. intros. destruct nm. solve [inversion H8]. solve [inversion H5].
+    (* s n *) intros ? ? ?. 
+
+    (* goal val_type n (vabs venv0 y) (TFun T1 T2) *)
+    simpl. intros ? ? ? ? ? ?.
+    
+    eapply IHnn. omega. eauto. 
+
+    (* now downgrade and extend R_env *)
+    (* goal: (R_env (n-nx) (vx :: vabs venv0 y :: venv0) (T1::TFun T1 T2::tenv0)) as WFE1. *)
+
+    unfold R_env. split. simpl. unfold R_env in WFE. destruct WFE as [L ?]. rewrite L. eauto.
+      intros ? ? IX.
+      
+      unfold R. intros ? ? EVX.
+      remember (nm-nx) as nx2.
+      destruct nx2. solve [inversion EVX].
+      simpl in EVX. destruct WFE as [L WX].
+      simpl in IX. rewrite <-L in IX.
+      (* is it the arg? *)
+      destruct (eq_nat_dec x (S (length venv0))).
+      inversion EVX. subst n1 r.
+      exists vx. split. eauto. split. eauto. simpl.
+      inversion IX. subst T0.
+      eapply V_down. instantiate (1:= S nx2). omega. eauto.
+      (* is it the fun? *)
+      destruct (eq_nat_dec x (length venv0)).
+      inversion EVX. subst n1 r.
+      inversion IX. subst T0.
+      rewrite Heqnx2.
+
+      exists (vabs venv0 y). split. eauto. split. eauto.
+      (* goal:  val_type (n-nx-1) (vabs venv0  y) (TFun T1 T2) *)
+      (* induction! *) 
+      eapply IHnm1. eauto. omega. omega. 
+
+      (* default case *)
+      eapply R_down. instantiate (1:= S n). omega. eapply WX. eauto. simpl. eauto.
+
+      (* done with indunction *)
+      eapply IND. eauto. eauto.   
 Qed.
 
 End STLC.
