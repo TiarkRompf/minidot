@@ -137,8 +137,7 @@ Fixpoint val_type n v T : Prop := match v, T with
 | vabs env y, TFun T1 T2 =>
   (* forall n nx, R n nx H tx vx T1 -> R (n-nx) ny (vx::vf::H) vy T2 *)
   (* NOTE: trouble b/c R does not include vx!! *)
-  forall nx envx tx vx, 
-    teval (n) envx tx = (nx, Some (Some vx)) ->
+  forall nx vx, 
       val_type (n-nx) vx T1 -> forall ry ny,
       (* R nm (vx::(vabs env y)::env) y T2 *)
       teval (n-nx) (vx::(vabs env y)::env) y = (ny, Some ry) ->
@@ -240,8 +239,7 @@ Proof.
     destruct EY as [ny [ry|]]; try solve [inversion EVY].
     inversion EVY. subst r n1. clear EVY.
 
-    specialize (VTF _ _ _ _ HeqEX).
-    specialize (VTF VTX _ _ HeqEY).
+    specialize (VTF _ _ VTX _ _ HeqEY).
     assert ((n - nf - nx - ny = S n - S (nf + nx + ny))) as RW. omega.
     rewrite <-RW.
     destruct VTF as [? [? [? ?]]]. eexists. repeat split; eauto. 
@@ -261,11 +259,11 @@ Proof.
     assert (forall nm1, nm1 <= n -> forall nm, nm <= nm1 ->
                        val_type nm (vabs venv0 y) (TFun T1 T2)) as IND.
     intros nm1. induction nm1.
-    (* z *) simpl. intros. destruct nm. solve [inversion H8]. solve [inversion H5].
+    (* z *) simpl. intros. destruct nm. solve [inversion H9]. solve [inversion H5].
     (* s n *) intros ? ? ?. 
 
     (* goal val_type n (vabs venv0 y) (TFun T1 T2) *)
-    simpl. intros ? ? ? ? ? ?.
+    simpl. intros ? ? ?.
     
     eapply IHnn. omega. eauto. 
 
@@ -301,7 +299,7 @@ Proof.
       eapply R_down. instantiate (1:= S n). omega. eapply WX. eauto. simpl. eauto.
 
       (* done with indunction *)
-      eapply IND. eauto. eauto.   
+      eapply IND. eauto. eauto.
 Qed.
 
 End STLC.
