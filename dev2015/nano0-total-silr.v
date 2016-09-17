@@ -189,7 +189,7 @@ Theorem full_total_safety : forall nn, forall n, n < nn -> forall e tenv T,
 
 Proof.
   intros nn. induction nn.
-  (* z *) intros. admit. (* solve [inversion H]. *)
+  (* z *) intros. solve [inversion H].
   (* S n *)
   intros n NB ? ? ? W.
   destruct n. unfold R. intros. inversion H0.
@@ -197,13 +197,10 @@ Proof.
   inversion W; intros ? WFE.
   
   - Case "True". 
-    admit.
-    (* eexists. simpl in H2. inversion H2. repeat split; simpl; eauto. *)
+    eexists. simpl in H2. inversion H2. repeat split; simpl; eauto.
 
   - Case "False".
-    admit. 
-    (* eexists. 
-    simpl in H2. inversion H2. repeat split; simpl; eauto. *)
+    eexists. simpl in H2. inversion H2. repeat split; simpl; eauto.
 
   - Case "Var".
     eapply WFE. eauto.
