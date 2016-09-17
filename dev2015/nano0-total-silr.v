@@ -43,7 +43,7 @@ Inductive tm : Type :=
 Inductive vl : Type :=
 | vbool : bool -> vl
 | vabs  : list vl -> tm -> vl
-.
+. 
 
 Definition venv := list vl.
 Definition tenv := list ty.
@@ -121,33 +121,41 @@ end.
 (* TODO -- fix & adapt old code below *)
 
 
-Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some (Some v).
+(* original termination and determinism def: *)
+(* Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some (Some v). *)
 
+(* if we want determinism, too, we'd need something like this: *)
+Definition tevaln nm env e n1 v :=
+  teval nm env e = (nm, None) \/
+  forall n, n > nm -> teval n env e = (n1, Some (Some v)).
 
 
 
 (* need to use Fixpoint because of positivity restriction *)
-Fixpoint val_type nm v T : Prop := match v, T with
+Fixpoint val_type n v T : Prop := match v, T with
 | vbool b, TBool => True
-| vabs env y, TFun T1 T2 => 
-  forall vx, val_type nm vx T1 -> (* extend to R ? H tx vx T1 ? *)
-    exists vy,
-      (* R nm (vx::(vabs env y)::env) y vy T2 *)
-      
-        forall r n, n<=nm -> teval n (vx::(vabs env y)::env) y = Some r ->
-    r = Some vy /\ val_type (nm-n) vy T2
+| vabs env y, TFun T1 T2 =>
+  (* forall n nx, R n nx H tx vx T1 -> R (n-nx) ny (vx::vf::H) vy T2 *)
+  (* NOTE: trouble b/c R does not include vx!! *)
+  forall nx envx tx vx, 
+    teval (n) envx tx = (nx, Some (Some vx)) ->
+      val_type (n-nx) vx T1 -> forall ry ny,
+      (* R nm (vx::(vabs env y)::env) y T2 *)
+      teval (n-nx) (vx::(vabs env y)::env) y = (ny, Some ry) ->
+      exists vy,
+        ny <> 0 /\ ry = Some vy /\ val_type (n-nx-ny) vy T2
 | _,_ => False
 end.
 
-Definition R nm H t v T := 
+Definition R n H t T := 
   (* tevaln H t v /\ val_type v T. *)
-  forall r n, n<=nm -> teval n H t = Some r ->
-    r = Some v /\ val_type (nm-n) v T.
+  forall r n1, teval n H t = (n1,Some r) ->
+    exists v, n1 <> 0 /\ r = Some v /\ val_type (n-n1) v T.
 
 Definition R_env nm venv tenv :=
   length venv = length tenv /\
- forall x T1, index x tenv = Some T1 ->
-   exists v : vl, R nm venv (tvar x) v T1.
+  forall x T1, index x tenv = Some T1 ->
+    R nm venv (tvar x) T1.
 
 
 Hint Constructors ty.
