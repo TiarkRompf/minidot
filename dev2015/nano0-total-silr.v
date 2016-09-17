@@ -175,6 +175,9 @@ Proof. admit. Qed.
 Lemma R_down: forall n j H t T, j <= n -> R n H t T -> R j H t T.
 Proof. admit. Qed.
 
+Lemma R_env_down: forall n j H G, j <= n -> R_env n H G -> R_env j H G.
+Proof. admit. Qed.
+
 
 
 (* if well-typed, then result is an actual value (not stuck and not a timeout),
@@ -206,16 +209,11 @@ Proof.
     eapply WFE. eauto.
 
   - Case "App".
-    (* downgrade R_env -- could extract as lemma *)
-    assert (R_env n venv0 tenv0) as WFE0. { admit. (*
-      unfold R_env. unfold R. split. apply WFE. intros.
-      unfold R_env in WFE. unfold R in WFE. apply WFE. *)
-    }
-    
     unfold R. intros ? n1 EVY.
     simpl in EVY.
     
-    assert (R n venv0 f (TFun T1 T)) as RF. eapply IHnn. omega. eauto. eauto.
+    assert (R n venv0 f (TFun T1 T)) as RF. eapply IHnn. omega. eauto.
+    eapply R_env_down. instantiate (1 := S n). omega. eauto. 
     unfold R in RF.
 
     remember (teval n venv0 f) as EF. symmetry in HeqEF.
@@ -226,8 +224,8 @@ Proof.
     simpl in VTF. destruct vf. contradiction.
     
 
-    assert (R (n-nf) venv0 x T1) as RX.
-    eapply R_down. instantiate (1:=n). omega. eapply IHnn. omega. eauto. eauto.
+    assert (R (n-nf) venv0 x T1) as RX. eapply IHnn. omega. eauto. eauto.
+    eapply R_env_down. instantiate (1 := S n). omega. eauto. 
     unfold R in RX.
 
     remember (teval (n-nf) venv0 x) as EX. symmetry in HeqEX.
@@ -270,7 +268,7 @@ Proof.
     (* now downgrade and extend R_env *)
     (* goal: (R_env (n-nx) (vx :: vabs venv0 y :: venv0) (T1::TFun T1 T2::tenv0)) as WFE1. *)
 
-    unfold R_env. split. simpl. unfold R_env in WFE. destruct WFE as [L ?]. rewrite L. eauto.
+    unfold R_env. split. simpl. unfold R_env in WFE. destruct WFE as [L IX]. rewrite L. eauto.
       intros ? ? IX.
       
       unfold R. intros ? ? EVX.
