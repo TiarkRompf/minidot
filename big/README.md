@@ -1,6 +1,8 @@
 Type Soundness Proofs with Definitional Interpreters
 ====================================================
 
+Paper draft: [[pdf](http://cs.purdue.edu/~rompf/papers/amin-draft2016a.pdf)
+
 - [STLC](stlc.v)
 - [F<:](fsub.v)
 - [F<: with Mutable References](fsub_mut.v)
