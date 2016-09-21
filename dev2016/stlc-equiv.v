@@ -163,9 +163,9 @@ Inductive value : tm -> Prop :=
 .
 
 Inductive step : tm -> tm -> Prop :=
-| ST_AppAbs : forall x v T1 t12,
+| ST_AppAbs : forall v T1 t12,
     value v ->
-    step (tapp (tabs T1 t12) v) (subst_tm x t12)
+    step (tapp (tabs T1 t12) v) (subst_tm v t12)
 | ST_App1 : forall t1 t1' t2,
     step t1 t1' ->
     step (tapp t1 t2) (tapp t1' t2)
@@ -415,9 +415,105 @@ Qed.
 
 (* ### Equivalence big-step subst <-> small-step subst ### *)
 
+Lemma value_eval: forall t1,
+   value t1 ->
+   forall nu, nu >= 1 -> tevals nu t1 = Some (Some t1).
+Proof.
+  intros. destruct nu. inversion H0. inversion H; eauto.
+Qed.
+
+
+Lemma eval_stable: forall n t1 v j,
+  tevals n t1 = Some v ->
+  j >= n ->
+  tevals j t1 = Some v.
+Proof.
+  intros n. induction n; intros. inversion H.
+  simpl in H.
+  destruct j. inversion H0.
+  destruct t1; simpl; eauto.
+  remember (tevals n t1_2) as rx.
+  destruct rx. destruct o.
+  rewrite (IHn _ (Some t)). 
+
+  remember (tevals n t1_1) as rf.
+  destruct rf. destruct o.
+  rewrite (IHn _ (Some t0)).
+  destruct t0; eauto; eapply IHn; eauto; omega.
+  destruct t0; eauto; eapply IHn; eauto; omega.
+  omega.
+  rewrite (IHn _ None). eauto. eauto. omega.
+  inversion H. 
+
+  eauto. omega.
+  inversion H. rewrite (IHn _ None). eauto. eauto. omega.
+  inversion H. 
+Qed.
+
+Lemma app_inv: forall nu t1 t2 t3,
+  tevals nu (tapp t1 t2) = Some (Some t3) ->
+  exists T ty v2 nv, nu = S nv /\
+                     tevals nv t1 = Some (Some (tabs T ty)) /\
+                     tevals nv t2 = Some (Some v2) /\
+                     tevals nv (subst_tm v2 ty) = Some (Some t3).
+Proof. admit. Qed.
+
+
+
+Lemma step_eval: forall t1 t2,
+  step t1 t2 ->
+  forall t3 nu, tevals nu t2 = Some (Some t3) ->
+  tevals (S nu) t1 = Some (Some t3).
+Proof.
+  intros ? ? ?. induction H; intros.
+  - (* AppAbs *)
+    simpl.
+    assert (nu >= 1). destruct nu. inversion H0. omega. 
+    rewrite (value_eval v).
+    rewrite (value_eval (tabs T1 t12)).
+    eapply H0; omega. constructor.
+    eauto. eauto. eauto. 
+  - (* App1 *)
+    simpl. eapply app_inv in H0.
+    repeat destruct H0 as [? H0].
+    destruct H0 as [N [E1 [E2 E3]]].
+    subst nu. eapply IHstep in E1.
+    eapply eval_stable in E2.
+    rewrite E1. rewrite E2. eapply eval_stable. eapply E3. eauto. eauto. 
+  - (* App2 *)
+    simpl. eapply app_inv in H1.
+    repeat destruct H1 as [? H1].
+    destruct H1 as [N [E1 [E2 E3]]].
+    subst nu. eapply IHstep in E2.
+    eapply eval_stable in E1.
+    rewrite E1. rewrite E2. eapply eval_stable. eapply E3. eauto. eauto.
+Qed.
+    
+  
 (* proof of equivalence *)
 
-(* TODO *)
+Lemma small_to_big: forall n t1 t2,
+   mstep n t1 t2 -> value t2 ->
+   exists ns, tevals ns t1 = Some (Some t2).
+Proof.
+  intros n. induction n.
+  (* z *)
+  intros. inversion H; subst. 
+  exists 1. eapply value_eval; eauto. 
+  (* S n *) 
+  intros. inversion H; subst.
+  eapply IHn in H3. destruct H3.
+  exists (S x). eapply step_eval; eauto.
+  eauto. 
+Qed.
+
+Lemma big_to_small: forall t1 t2,
+   step t1 t2 ->
+   exists n, ...
+Proof.
+  intros. inversion H.
+  - 
+  eexists. simpl. destruct v. 
 
 
 
