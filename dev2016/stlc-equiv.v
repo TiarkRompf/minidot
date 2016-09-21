@@ -264,6 +264,13 @@ Proof.
   intros. induction t; simpl; eauto; try rewrite IHt; try rewrite IHt1; try rewrite IHt2; eauto.
 Qed.
 
+
+Lemma shift_add: forall t l1 l2,
+  shift_tm l1 (shift_tm l2 t) = shift_tm (l2+l1) t.
+Proof.
+  intros. induction t; simpl; eauto; try rewrite IHt; try rewrite IHt1; try rewrite IHt2; eauto. rewrite plus_assoc. eauto.
+Qed.
+
 Lemma subst_shift_id: forall t u l,
   subst_tm u (shift_tm (S l) t) = shift_tm l t.
 Proof.
@@ -383,7 +390,8 @@ Proof.
               (tabs t (subst_tm_all (S l) env e1))) as REC. {
     intros env0. induction env0; intros.
     simpl. eauto.
-    simpl. destruct v; try destruct b; rewrite IHenv0; simpl; eauto. admit. } (* add shift *)
+    simpl. destruct v; try destruct b; rewrite IHenv0; simpl; eauto.
+    rewrite shift_add. rewrite plus_comm. eauto. }
 
     rewrite REC in H. subst e2. eauto. 
   - (* tapp *)
@@ -414,13 +422,6 @@ Qed.
 
 
 (* ### Equivalence big-step subst <-> small-step subst ### *)
-
-Lemma value_eval: forall t1,
-   value t1 ->
-   forall nu, nu >= 1 -> tevals nu t1 = Some (Some t1).
-Proof.
-  intros. destruct nu. inversion H0. inversion H; eauto.
-Qed.
 
 
 Lemma eval_stable: forall n t1 v j,
@@ -456,8 +457,25 @@ Lemma app_inv: forall nu t1 t2 t3,
                      tevals nv t1 = Some (Some (tabs T ty)) /\
                      tevals nv t2 = Some (Some v2) /\
                      tevals nv (subst_tm v2 ty) = Some (Some t3).
-Proof. admit. Qed.
+Proof.
+  intros. destruct nu. inversion H. 
+  simpl in H.
+  remember (tevals nu t2) as rx.
+  destruct rx. destruct o.
+  remember (tevals nu t1) as rf.
+  destruct rf. destruct o.
 
+  destruct t0; inversion H; repeat eexists; eauto.
+  inversion H. inversion H. inversion H. inversion H.
+Qed.
+
+
+Lemma value_eval: forall t1,
+   value t1 ->
+   forall nu, nu >= 1 -> tevals nu t1 = Some (Some t1).
+Proof.
+  intros. destruct nu. inversion H0. inversion H; eauto.
+Qed.
 
 
 Lemma step_eval: forall t1 t2,
@@ -490,9 +508,9 @@ Proof.
 Qed.
     
   
-(* proof of equivalence *)
+(* proof of equivalence: small-step implies big-step *)
 
-Lemma small_to_big: forall n t1 t2,
+Theorem small_to_big: forall n t1 t2,
    mstep n t1 t2 -> value t2 ->
    exists ns, tevals ns t1 = Some (Some t2).
 Proof.
@@ -507,13 +525,53 @@ Proof.
   eauto. 
 Qed.
 
-Lemma big_to_small: forall t1 t2,
-   step t1 t2 ->
-   exists n, ...
+
+(* proof of equivalence: big-step implies small-step *)
+
+Lemma ms_app1 : forall n t1 t1' t2,
+     mstep n t1 t1' ->
+     mstep n (tapp t1 t2) (tapp t1' t2).
 Proof.
-  intros. inversion H.
-  - 
-  eexists. simpl. destruct v. 
+  intros. induction H. constructor.
+  econstructor. eapply ST_App1; eauto. eauto.
+Qed.
+
+Lemma ms_app2 : forall n t1 t2 t2',
+     value t1 ->
+     mstep n t2 t2' ->
+     mstep n (tapp t1 t2) (tapp t1 t2').
+Proof.
+  intros. induction H0. constructor.
+  econstructor. apply ST_App2; eauto. eauto.
+Qed.
+
+Lemma ms_trans : forall n1 n2 t1 t2 t3,
+     mstep n1 t1 t2 ->
+     mstep n2 t2 t3 ->
+     mstep (n1+n2) t1 t3.
+Proof.
+  intros. induction H. eauto. 
+  econstructor. eauto. eauto. 
+Qed.
 
 
+Theorem big_to_small: forall n t1 t2,
+   tevals n t1 = Some (Some t2) ->
+   exists ns, value t2 /\ mstep ns t1 t2.
+Proof.
+  intros n. induction n; intros. inversion H. destruct t1. 
+  - simpl in H. inversion H. eexists. split; constructor.
+  - simpl in H. inversion H. eexists. split; constructor.
+  - simpl in H. inversion H.
+  - simpl in H. inversion H. eexists. split; constructor.
+  - eapply app_inv in H. repeat destruct H as [? H].
+    destruct H as [N [E1 [E2 E3]]]. inversion N. subst x2. 
+    eapply IHn in E1. eapply IHn in E2. eapply IHn in E3.
+    destruct E1 as [? [? E1]]. destruct E2 as [? [? E2]]. destruct E3 as [? [? E3]].
+    eexists. split. eauto. 
+    eapply ms_app1 in E1. eapply ms_app2 in E2. 
+    eapply ms_trans. eapply E1.
+    eapply ms_trans. eapply E2. econstructor. econstructor.
+    eauto. eauto. eauto.
+Qed.
 
