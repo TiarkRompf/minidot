@@ -481,8 +481,13 @@ Inductive step : tm -> tm -> Prop :=
     value f ->
     step t2 t2' ->
     step (tapp f t2) (tapp f t2')
+| ST_TAppAbs : forall T1 t12 T2,
+    step (ttapp (ttabs T1 t12) T2) (subst_ty T2 t12)
+| ST_TApp1 : forall t1 t1' t2,
+    step t1 t1' ->
+    step (ttapp t1 t2) (ttapp t1' t2)
 .
-(* TODO: ttapp *)
+
 
 Inductive mstep : nat -> tm -> tm -> Prop :=
 | MST_Z : forall t,
@@ -941,6 +946,19 @@ Proof.
     subst nu. eapply IHstep in E2.
     eapply eval_stable in E1.
     rewrite E1. rewrite E2. eapply eval_stable. eapply E3. eauto. eauto.
+  - (* TAppAbs *)
+    simpl.
+    assert (nu >= 1). destruct nu. inversion H. omega. 
+    rewrite (value_eval (ttabs T1 t12)).
+    eapply H; omega. constructor.
+    eauto. 
+  - (* App1 *)
+    simpl. eapply tapp_inv in H0.
+    repeat destruct H0 as [? H0].
+    destruct H0 as [N [E1 E2]].
+    subst nu. eapply IHstep in E1.
+    eapply eval_stable in E2.
+    rewrite E1. rewrite E2. eauto. eauto. 
 Qed.
     
   
@@ -981,6 +999,16 @@ Proof.
   econstructor. apply ST_App2; eauto. eauto.
 Qed.
 
+Lemma ms_tapp1 : forall n t1 t1' t2,
+     mstep n t1 t1' ->
+     mstep n (ttapp t1 t2) (ttapp t1' t2).
+Proof.
+  intros. induction H. constructor.
+  econstructor. eapply ST_TApp1; eauto. eauto.
+Qed.
+
+
+
 Lemma ms_trans : forall n1 n2 t1 t2 t3,
      mstep n1 t1 t2 ->
      mstep n2 t2 t3 ->
@@ -1008,6 +1036,13 @@ Proof.
     eapply ms_trans. eapply E2. econstructor. econstructor.
     eauto. eauto. eauto.
   - simpl in H. inversion H. eexists. split; constructor.
-  - admit. (* TTAPP case *)
-  - simpl in H. inversion H. eexists. split; constructor.        
+  - eapply tapp_inv in H. repeat destruct H as [? H].
+    destruct H as [N [E1 E2]]. inversion N. subst x1. 
+    eapply IHn in E1. eapply IHn in E2.
+    destruct E1 as [? [? E1]]. destruct E2 as [? [? E2]]. 
+    eexists. split. eauto. 
+    eapply ms_tapp1 in E1. 
+    eapply ms_trans. eapply E1.  econstructor. econstructor.
+    eauto. 
+  - simpl in H. inversion H. eexists. split; constructor.
 Qed.
