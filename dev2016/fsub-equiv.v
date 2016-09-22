@@ -140,181 +140,7 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
     | TVarH i      => i <> 0
   end.
 
-(* ### Static Subtyping ### *)
-(*
-The first env is for looking up varF variables.
-The first env matches the concrete runtime environment, and is
-extended during type assignment.
 
-The second env is for looking up varH variables.
-The second env matches the abstract runtime environment, and is
-extended during subtyping.
- *)
-(*
-Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
-| stp_top: forall G1 GH T1,
-    closed 0 (length GH) (length G1) T1 ->
-    stp G1 GH T1 TTop
-| stp_fun: forall G1 GH T1 T2 T3 T4,
-    stp G1 GH T3 T1 ->
-    stp G1 GH T2 T4 ->
-    stp G1 GH (TFun T1 T2) (TFun T3 T4)
-| stp_sel1: forall G1 GH T T2 x,
-    indexr x G1 = Some (bind_ty T) ->
-    closed 0 0 (length G1) T ->
-    stp G1 GH T T2 ->
-    stp G1 GH (TVarF x) T2
-| stp_selx: forall G1 GH v x,
-    (* This is a bit looser than just being able to select on TMem vars. *)
-    indexr x G1 = Some v ->
-    stp G1 GH (TVarF x) (TVarF x)
-| stp_sela1: forall G1 GH T T2 x,
-    indexr x GH = Some (bind_ty T) ->
-    closed 0 x (length G1) T ->
-    stp G1 GH T T2 ->
-    stp G1 GH (TVarH x) T2
-| stp_selax: forall G1 GH v x,
-    (* This is a bit looser than just being able to select on TMem vars. *)
-    indexr x GH = Some v  ->
-    stp G1 GH (TVarH x) (TVarH x)
-| stp_all: forall G1 GH T1 T2 T3 T4 x,
-    stp G1 GH T3 T1 ->
-    x = length GH ->
-    closed 1 (length GH) (length G1) T2 ->
-    closed 1 (length GH) (length G1) T4 ->
-    stp G1 ((bind_ty T3)::GH) (open (TVarH x) T2) (open (TVarH x) T4) ->
-    stp G1 GH (TAll T1 T2) (TAll T3 T4)
-.
-
-(* ### Type Assignment ### *)
-Inductive has_type : tenv -> tm -> ty -> Prop :=
-| t_var: forall x env T1,
-           indexr x env = Some (bind_tm T1) ->
-           stp env [] T1 T1 ->
-           has_type env (tvar x) T1
-| t_app: forall env f x T1 T2,
-           has_type env f (TFun T1 T2) ->
-           has_type env x T1 ->
-           has_type env (tapp f x) T2
-| t_abs: forall env y T1 T2,
-           has_type (bind_tm T1::env) y T2 ->
-           stp env [] (TFun T1 T2) (TFun T1 T2) ->
-           has_type env (tabs T1 y) (TFun T1 T2)
-| t_tapp: forall env f T11 T12 T,
-           has_type env f (TAll T11 T12) ->
-           T = open T11 T12 ->
-           has_type env (ttapp f T11) T
-| t_tabs: forall env y T1 T2,
-           has_type (bind_ty T1::env) y (open (TVarF (length env)) T2) ->
-           stp env [] (TAll T1 T2) (TAll T1 T2) ->
-           has_type env (ttabs T1 y) (TAll T1 T2)
-| t_sub: forall env e T1 T2,
-           has_type env e T1 ->
-           stp env [] T1 T2 ->
-           has_type env e T2
-.
- *)
-
-(* ### Runtime Subtyping ### *)
-(* H1 T1 <: H2 T2 -| J *)
-(*
-Inductive stp2: bool (* whether the last rule may not be transitivity *) ->
-                venv -> ty -> venv -> ty -> aenv  ->
-                nat (* derivation size *) ->
-                Prop :=
-| stp2_top: forall G1 G2 GH T n,
-    closed 0 (length GH) (length G1) T ->
-    stp2 true G1 T G2 TTop GH (S n)
-| stp2_fun: forall G1 G2 T1 T2 T3 T4 GH n1 n2,
-    stp2 false G2 T3 G1 T1 GH n1 ->
-    stp2 false G1 T2 G2 T4 GH n2 ->
-    stp2 true G1 (TFun T1 T2) G2 (TFun T3 T4) GH (S (n1 + n2))
-
-(* concrete type variables *)
-| stp2_sel1: forall G1 G2 GX TX x T2 GH n1,
-    indexr x G1 = Some (vty GX TX) ->
-    closed 0 0 (length GX) TX ->
-    stp2 true GX TX G2 T2 GH n1 ->
-    stp2 true G1 (TVarF x) G2 T2 GH (S n1)
-| stp2_sel2: forall G1 G2 GX TX x T1 GH n1,
-    indexr x G2 = Some (vty GX TX) ->
-    closed 0 0 (length GX) TX ->
-    stp2 false G1 T1 GX TX GH n1 ->
-    stp2 true G1 T1 G2 (TVarF x) GH (S n1)
-| stp2_selx: forall G1 G2 v x1 x2 GH n,
-    indexr x1 G1 = Some v ->
-    indexr x2 G2 = Some v ->
-    stp2 true G1 (TVarF x1) G2 (TVarF x2) GH (S n)
-
-(* abstract type variables *)
-(* X<:T, one sided *)
-| stp2_sela1: forall G1 G2 GX TX x T2 GH n1,
-    indexr x GH = Some (GX, TX) ->
-    closed 0 x (length GX) TX ->
-    stp2 false GX TX G2 T2 GH n1 ->
-    stp2 true G1 (TVarH x) G2 T2 GH (S n1)
-| stp2_selax: forall G1 G2 v x GH n,
-    indexr x GH = Some v ->
-    stp2 true G1 (TVarH x) G2 (TVarH x) GH (S n)
-
-| stp2_all: forall G1 G2 T1 T2 T3 T4 x GH n1 n2,
-    stp2 false G2 T3 G1 T1 GH n1 ->
-    x = length GH ->
-    closed 1 (length GH) (length G1) T2 ->
-    closed 1 (length GH) (length G2) T4 ->
-    stp2 false G1 (open (TVarH x) T2) G2 (open (TVarH x) T4) ((G2, T3)::GH) n2 ->
-    stp2 true G1 (TAll T1 T2) G2 (TAll T3 T4) GH (S (n1 + n2))
-
-| stp2_wrapf: forall G1 G2 T1 T2 GH n1,
-    stp2 true G1 T1 G2 T2 GH n1 ->
-    stp2 false G1 T1 G2 T2 GH (S n1)
-
-| stp2_transf: forall G1 G2 G3 T1 T2 T3 GH n1 n2,
-    stp2 true G1 T1 G2 T2 GH n1 ->
-    stp2 false G2 T2 G3 T3 GH n2 ->
-    stp2 false G1 T1 G3 T3 GH (S (n1+n2))
-.
-
-(* consistent environment *)
-Inductive wf_env : venv -> tenv -> Prop :=
-| wfe_nil : wf_env nil nil
-| wfe_cons : forall v t vs ts,
-    val_type (v::vs) v t ->
-    wf_env vs ts ->
-    wf_env (cons v vs) (cons t ts)
-
-(* value type assignment *)
-with val_type : venv -> vl -> @binding ty -> Prop :=
-| v_ty: forall env venv tenv T1 TE,
-    wf_env venv tenv ->
-    (exists n, stp2 true venv T1 env TE [] n) ->
-    val_type env (vty venv T1) (bind_ty TE)
-| v_abs: forall env venv tenv x y T1 T2 TE,
-    wf_env venv tenv ->
-    has_type (bind_tm T1::tenv) y T2 ->
-    length venv = x ->
-    (exists n, stp2 true venv (TFun T1 T2) env TE [] n) ->
-    val_type env (vabs venv T1 y) (bind_tm TE)
-| v_tabs: forall env venv tenv x y T1 T2 TE,
-    wf_env venv tenv ->
-    has_type (bind_ty T1::tenv) y (open (TVarF x) T2) ->
-    length venv = x ->
-    (exists n, stp2 true venv (TAll T1 T2) env TE [] n) ->
-    val_type env (vtabs venv T1 y) (bind_tm TE)
-.
-
-Inductive wf_envh : venv -> aenv -> tenv -> Prop :=
-| wfeh_nil : forall vvs, wf_envh vvs nil nil
-| wfeh_cons : forall t vs vvs ts,
-    wf_envh vvs vs ts ->
-    wf_envh vvs (cons (vvs,t) vs) (cons (bind_ty t) ts)
-.
-
-Inductive valh_type : venv -> aenv -> (venv*ty) -> (@binding ty) -> Prop :=
-| v_tya: forall aenv venv T1,
-    valh_type venv aenv (venv, T1) (bind_ty T1)
-.
-*)
 
 (* ### Evaluation (Big-Step Semantics) ### *)
 
@@ -322,9 +148,9 @@ Inductive valh_type : venv -> aenv -> (venv*ty) -> (@binding ty) -> Prop :=
 None             means timeout
 Some None        means stuck
 Some (Some v))   means result v
-
-Could use do-notation to clean up syntax.
 *)
+
+(* Environment-based evaluator *)
 
 Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
   match n with
@@ -454,10 +280,6 @@ Fixpoint tevals(n: nat)(t: tm){struct n}: option (option tm) :=
 
 
 
-
-
-
-
 (* ### Evaluation (Small-Step Semantics) ### *)
 
 Inductive value : tm -> Prop :=
@@ -501,7 +323,7 @@ Inductive mstep : nat -> tm -> tm -> Prop :=
 
 
 (* automation *)
-(*Hint Unfold venv.*)
+
 Hint Constructors venv.
 Hint Unfold tenv.
 
@@ -837,8 +659,8 @@ Proof.
 Qed.
 
 
-(* ### Equivalence big-step subst <-> small-step subst ### *)
 
+(* ### Equivalence big-step subst <-> small-step subst ### *)
 
 Lemma app_inv: forall nu t1 t2 t3,
   tevals nu (tapp t1 t2) = Some (Some t3) ->
