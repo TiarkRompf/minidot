@@ -210,9 +210,9 @@ Hint Resolve ex_intro.
 
 Fixpoint subst_tm_all n venv t {struct venv} :=
   match venv with
-    | vnil => t
-    | vcons (vbool true) tl  => subst_tm ttrue (subst_tm_all (S n) tl t)
-    | vcons (vbool false) tl => subst_tm tfalse (subst_tm_all (S n) tl t)
+    | vnil                      => t
+    | vcons (vbool true) tl     => subst_tm ttrue (subst_tm_all (S n) tl t)
+    | vcons (vbool false) tl    => subst_tm tfalse (subst_tm_all (S n) tl t)
     | vcons (vabs venv0 T y) tl =>
       subst_tm (tabs T (shift_tm n (subst_tm_all 1 venv0 y))) (subst_tm_all (S n)tl t) 
   end.
@@ -220,10 +220,10 @@ Fixpoint subst_tm_all n venv t {struct venv} :=
 
 Definition subst_tm_res t :=
   match t with
-    | None => None
-    | Some None => Some None
-    | Some (Some (vbool true)) => Some (Some ttrue)
-    | Some (Some (vbool false)) => Some (Some tfalse)
+    | None                         => None
+    | Some None                    => Some None
+    | Some (Some (vbool true))     => Some (Some ttrue)
+    | Some (Some (vbool false))    => Some (Some tfalse)
     | Some (Some (vabs venv0 T y)) =>
       Some (Some ((tabs T (subst_tm_all 1 venv0 y))))
   end.
