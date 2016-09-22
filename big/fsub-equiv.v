@@ -354,8 +354,8 @@ Hint Resolve ex_intro.
 Fixpoint subst_ty_all n venv t {struct venv} :=
   match venv with
     | vnil                       => t
-    | vcons (vabs venv0 T y) tl  => subst TTop (subst_ty_all (S n) tl t) (* bogus *) 
-    | vcons (vtabs venv0 T y) tl => subst TTop (subst_ty_all (S n) tl t) (* bogus *)
+    | vcons (vabs venv0 T y) tl  => subst TTop (subst_ty_all (S n) tl t) (* use TTop as placeholde *) 
+    | vcons (vtabs venv0 T y) tl => subst TTop (subst_ty_all (S n) tl t) (* use TTop as placeholder *)
     | vcons (vty venv0 T) tl     =>
       subst (shift_ty n (subst_ty_all 0 venv0 T)) (subst_ty_all (S n) tl t)
   end.
@@ -369,9 +369,7 @@ Fixpoint subst_tm_all n venv t {struct venv} :=
     | vcons (vtabs venv0 T y) tl =>
       subst_tm (shift_tm n (ttabs (subst_ty_all 0 venv0 T) (subst_tm_all 1 venv0 y))) (subst_tm_all (S n) tl t)
     | vcons (vty venv0 T) tl =>
-      subst_ty (shift_ty n (subst_ty_all 0 venv0 T)) (subst_tm_all (S n) tl t) (* bogus *)
-    (* last case: need to subst on term level, so that variable names remain correct ??? *)
-    (* but is inserting tvar 0 ok for subsequent substitutions ??? *)
+      subst_ty (shift_ty n (subst_ty_all 0 venv0 T)) (subst_tm_all (S n) tl t) 
   end.
 
 
