@@ -336,11 +336,6 @@ Hint Constructors tm.
 Hint Constructors vl.
 
 Hint Constructors closed.
-(* Hint Constructors has_type.
-Hint Constructors val_type.
-Hint Constructors wf_env.
-Hint Constructors stp.
-Hint Constructors stp2. *)
 
 Hint Constructors option.
 Hint Constructors list.
@@ -354,7 +349,7 @@ Hint Resolve ex_intro.
 Fixpoint subst_ty_all n venv t {struct venv} :=
   match venv with
     | vnil                       => t
-    | vcons (vabs venv0 T y) tl  => subst TTop (subst_ty_all (S n) tl t) (* use TTop as placeholde *) 
+    | vcons (vabs venv0 T y) tl  => subst TTop (subst_ty_all (S n) tl t) (* use TTop as placeholder *) 
     | vcons (vtabs venv0 T y) tl => subst TTop (subst_ty_all (S n) tl t) (* use TTop as placeholder *)
     | vcons (vty venv0 T) tl     =>
       subst (shift_ty n (subst_ty_all 0 venv0 T)) (subst_ty_all (S n) tl t)
