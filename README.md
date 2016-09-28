@@ -8,6 +8,7 @@ Formalizations of the Dependent Object Types (DOT) calculus, from the bottom up,
 - From F to DOT: Type Soundness Proofs with Definitional Interpreters
   - [STLC](http://sound-big-step-stlc.namin.net)
   - [F<:](http://sound-big-step-fsub.namin.net)
+  - [F<: equivalence with Small-Step](./big/fsub-equiv.v)
   - [F<: with Mutable References](http://sound-big-step-mut.namin.net)
   - [F<: with Exceptions](http://sound-big-step-exceptions.namin.net)
   - [F<:> from the System D Square](http://sound-big-step-fsubsup.namin.net)
