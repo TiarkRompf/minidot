@@ -4,6 +4,9 @@
 (* subtyping (in addition to nano2.v) *)
 (* this version includes a proof of totality (like in nano0-total.v *)
 
+(* copied from nano4-total.v *)
+(* add TMem and TSel, complicated val_type0 wf definition *)
+
 Require Export SfLib.
 
 Require Export Arith.EqNat.
@@ -81,6 +84,10 @@ Inductive stp: tenv -> ty -> ty -> Prop :=
     stp G1 T3 T1 ->
     stp G1 T2 T4 ->
     stp G1 (TFun T1 T2) (TFun T3 T4)
+| stp_mem: forall G1 T1 T2,
+    stp G1 T1 T2 ->
+    stp G1 T2 T1 ->
+    stp G1 (TMem T1) (TMem T2)
 .
 (* todo: mem and sel *)
 
@@ -159,6 +166,10 @@ Inductive stp2: bool -> venv -> ty -> venv -> ty -> nat -> Prop :=
     stp2 false G2 T3 G1 T1 n1 ->
     stp2 false G1 T2 G2 T4 n2 ->
     stp2 true G1 (TFun T1 T2) G2 (TFun T3 T4) (S (n1+n2))
+| stp2_mem: forall G1 G2 T1 T2 n1 n2,
+    stp2 false G1 T1 G2 T2 n1 ->
+    stp2 false G2 T2 G1 T1 n2 ->
+    stp2 true G1 (TMem T1) G2 (TMem T2) (S (n1+n2))
 | stp2_wrapf: forall G1 G2 T1 T2 n1,
     stp2 true G1 T1 G2 T2 n1 ->
     stp2 false G1 T1 G2 T2 (S n1)
@@ -167,6 +178,7 @@ Inductive stp2: bool -> venv -> ty -> venv -> ty -> nat -> Prop :=
     stp2 false G2 T2 G3 T3 n2 ->
     stp2 false G1 T1 G3 T3 (S (n1+n2))
 .
+(* todo: mem and sel *)
 
 
 
@@ -242,12 +254,15 @@ Fixpoint vsize (t : vl) : nat :=
          end) T
   end.
 
+(* TODO: add an abstract env part! *)
+
 Fixpoint tsize (G:venv) (T:ty) {struct T} :=
   match T with
     | TBot       => 1
     | TTop       => 1
     | TBool      => 1
-    | TFun T1 T2 => S (tsize G T1 + tsize G T2)
+    | TFun T1 T2 => S (tsize G T1 + tsize G T2)  
+    (* this becomes: ... + tsize G [T1] (open (varH 1) T2) *)
     | TMem T1    => S (tsize G T1)
     | TSel x     => S
       match index x G with
@@ -287,6 +302,10 @@ Program Fixpoint val_type0 (env:venv) (v:vl) (T:ty) {measure (tsize env T)}: Pro
       closed (length env) T1 /\ closed (length env) T2 /\
       (forall vx, val_type0 env vx T1 ->
                   exists v, tevaln (vx::env1) y v /\ val_type0 env v T2)
+      (* NOTE: we're not currently relating env and env1 in any way!!
+          something like
+                  exists v, tevaln (vx::env1) y v /\ val_type0 env v T2)
+      *)
     | vty env1 TX, TMem T1 =>
       exists n1 n2, stp2 false env1 TX env T1 n1 /\ stp2 false env T1 env1 TX n2
     | _, TSel x =>
@@ -424,6 +443,11 @@ Lemma stpd2_fun: forall G1 G2 T1 T2 T3 T4,
     stpd2 false G2 T3 G1 T1 ->
     stpd2 false G1 T2 G2 T4 ->
     stpd2 true  G1 (TFun T1 T2) G2 (TFun T3 T4).
+Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd2_mem: forall G1 G2 T1 T2,
+    stpd2 false G1 T1 G2 T2 ->
+    stpd2 false G2 T2 G1 T1 ->
+    stpd2 true  G1 (TMem T1) G2 (TMem T2).
 Proof. intros. repeat eu. eexists. eauto. Qed.
 
 Lemma stpd2_wrapf: forall G1 G2 T1 T2,
@@ -675,7 +699,7 @@ Proof.
   - Case "top". exists 1. eauto.
   - Case "bool". eapply stpd2_bool; eauto.
   - Case "fun". eapply stpd2_fun; try eapply stpd2_wrapf; eauto.
-  - admit. (* mem *)
+  - Case "mem". eapply stpd2_mem; try eapply stpd2_wrapf; eauto.
   - admit. (* sel *)
 Qed.
 
@@ -741,6 +765,9 @@ Proof.
   - Case "fun". inversion H0; subst; try solve by inversion.
     + SCase "top". eapply stpd2_top; eauto. eapply stpd2_closed1; eauto.
     + SCase "fun". inversion H14. subst. eapply stpd2_fun; eapply stp2_trans_axiom; eauto.
+  - Case "mem". inversion H0; subst; try solve by inversion.
+    + SCase "top". eapply stpd2_top; eauto. eapply stpd2_closed1; eauto.
+    + SCase "mem". inversion H14. subst. eapply stpd2_mem; eapply stp2_trans_axiom; eauto.
   - Case "wrapf".
     subst. eapply IHn. eapply H2. eapply H0. omega.
   - Case "transf".
@@ -766,6 +793,7 @@ Proof.
   - Case "top". eapply stpd2_top; eauto. rewrite (wf_length GX G1); eauto.
   - Case "bool". eapply stpd2_bool; eauto.
   - Case "fun".  eapply stpd2_fun; eapply stpd2_wrapf; eauto.
+  - Case "mem".  eapply stpd2_mem; eapply stpd2_wrapf; eauto.
 Qed.
 
 Lemma valtp0_widen: forall n, forall m n1 vf H1 H2 T1 T2,
@@ -799,6 +827,13 @@ Proof.
     eapply IHn. eauto. eauto. omega.
     eauto.
     omega.
+  - Case "mem".
+    rewrite val_type0_unfold in H. rewrite val_type0_unfold.
+    subst. destruct vf; try solve [inversion H].
+    ev.
+    assert (stpd2 false l t H2 T3). eapply stp2_trans_axiom; eauto.
+    assert (stpd2 false H2 T3 l t). eapply stp2_trans_axiom; eauto. 
+    eu. eu. eauto. 
   - Case "wrapf".
     eapply IHn. eauto. eapply H4. omega.
   - Case "transf".
