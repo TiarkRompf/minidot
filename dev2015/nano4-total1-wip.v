@@ -7,6 +7,16 @@
 (* copied from nano4-total.v *)
 (* add TMem and TSel, complicated val_type0 wf definition *)
 
+(*
+TODO: 
+ - add tty
+ - add sel1, sel2
+ - make TMem translucent
+ - make TSel take a term instead of a nat
+ - make TFun dependent
+*)
+
+
 Require Export SfLib.
 
 Require Export Arith.EqNat.
