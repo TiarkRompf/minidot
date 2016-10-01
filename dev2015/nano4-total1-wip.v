@@ -88,6 +88,9 @@ Inductive stp: tenv -> ty -> ty -> Prop :=
     stp G1 T1 T2 ->
     stp G1 T2 T1 ->
     stp G1 (TMem T1) (TMem T2)
+| stp_selx: forall G1 x,
+    x < length G1 ->
+    stp G1 (TSel x) (TSel x)
 .
 (* todo: mem and sel *)
 
@@ -170,6 +173,10 @@ Inductive stp2: bool -> venv -> ty -> venv -> ty -> nat -> Prop :=
     stp2 false G1 T1 G2 T2 n1 ->
     stp2 false G2 T2 G1 T1 n2 ->
     stp2 true G1 (TMem T1) G2 (TMem T2) (S (n1+n2))
+| stp2_selx: forall G1 G2 x1 x2 v n,
+    index x1 G1 = Some v ->
+    index x2 G2 = Some v ->          
+    stp2 true G1 (TSel x1) G2 (TSel x2) (S n)
 | stp2_wrapf: forall G1 G2 T1 T2 n1,
     stp2 true G1 T1 G2 T2 n1 ->
     stp2 false G1 T1 G2 T2 (S n1)
@@ -449,6 +456,11 @@ Lemma stpd2_mem: forall G1 G2 T1 T2,
     stpd2 false G2 T2 G1 T1 ->
     stpd2 true  G1 (TMem T1) G2 (TMem T2).
 Proof. intros. repeat eu. eexists. eauto. Qed.
+Lemma stpd2_selx: forall G1 G2 x1 x2 v,
+    index x1 G1 = Some v ->
+    index x2 G2 = Some v ->
+    stpd2 true  G1 (TSel x1) G2 (TSel x2).
+Proof. intros. repeat eu. exists 1. eauto. Qed.
 
 Lemma stpd2_wrapf: forall G1 G2 T1 T2,
     stpd2 true G1 T1 G2 T2 ->
@@ -700,7 +712,7 @@ Proof.
   - Case "bool". eapply stpd2_bool; eauto.
   - Case "fun". eapply stpd2_fun; try eapply stpd2_wrapf; eauto.
   - Case "mem". eapply stpd2_mem; try eapply stpd2_wrapf; eauto.
-  - admit. (* sel *)
+  - Case "sel". eapply index_exists in H2. ev. exists 1. eauto. 
 Qed.
 
 
@@ -768,6 +780,9 @@ Proof.
   - Case "mem". inversion H0; subst; try solve by inversion.
     + SCase "top". eapply stpd2_top; eauto. eapply stpd2_closed1; eauto.
     + SCase "mem". inversion H14. subst. eapply stpd2_mem; eapply stp2_trans_axiom; eauto.
+  - Case "selx".  inversion H0; subst; try solve by inversion.
+    + SCase "top". eapply stpd2_top; eauto. eapply stpd2_closed1; eauto.
+    + SCase "selx". inversion H14. subst. eapply stpd2_selx; eauto. rewrite H3 in H10. inversion H10. subst. eauto.
   - Case "wrapf".
     subst. eapply IHn. eapply H2. eapply H0. omega.
   - Case "transf".
@@ -794,6 +809,9 @@ Proof.
   - Case "bool". eapply stpd2_bool; eauto.
   - Case "fun".  eapply stpd2_fun; eapply stpd2_wrapf; eauto.
   - Case "mem".  eapply stpd2_mem; eapply stpd2_wrapf; eauto.
+  - Case "selx".
+    assert (length GX = length G1) as R. eapply wf_length; eauto. 
+    rewrite <-R in H. eapply index_exists in H. ev. eapply stpd2_selx; eauto. 
 Qed.
 
 Lemma valtp0_widen: forall n, forall m n1 vf H1 H2 T1 T2,
@@ -833,7 +851,11 @@ Proof.
     ev.
     assert (stpd2 false l t H2 T3). eapply stp2_trans_axiom; eauto.
     assert (stpd2 false H2 T3 l t). eapply stp2_trans_axiom; eauto. 
-    eu. eu. eauto. 
+    eu. eu. eauto.
+  - Case "selx".
+    rewrite val_type0_unfold in H. rewrite val_type0_unfold.
+    subst. destruct vf; try solve [inversion H];
+    rewrite <-H5 in H4; rewrite <-H4; eauto. 
   - Case "wrapf".
     eapply IHn. eauto. eapply H4. omega.
   - Case "transf".
