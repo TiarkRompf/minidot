@@ -1,7 +1,7 @@
 (*
-FSub (F<:)
-T ::= Top | X | T -> T | Forall Z <: T. T^Z
-t ::= x | lambda x:T.t | Lambda X<:T.t | t t | t [T]
+FSub (F<:) with Mutable References
+T ::= Top | X | T -> T | Forall Z <: T. T^Z | Ref T
+t ::= x | lambda x:T.t | Lambda X<:T.t | t t | t [T] | ret t | !t | t := t
 *)
 
 Require Export SfLib.
@@ -21,6 +21,7 @@ Inductive ty : Type :=
 | TVarF : id -> ty (* free type variable, in concrete environment *)
 | TVarH : id -> ty (* free type variable, in abstract environment  *)
 | TVarB : id -> ty (* locally-bound type variable *)
+| TCell : ty -> ty
 .
 
 Inductive tm : Type :=
@@ -29,6 +30,9 @@ Inductive tm : Type :=
 | tapp : tm -> tm -> tm
 | ttabs : ty -> tm -> tm
 | ttapp : tm -> ty -> tm
+| tnew : tm -> tm
+| tget : tm -> tm
+| tset : tm -> tm -> tm
 .
 
 Inductive binding {X: Type} :=
@@ -43,6 +47,8 @@ Inductive vl : Type :=
 | vtabs : list vl (*H*) -> ty -> tm -> vl
 (* a closure over a type *)
 | vty : list vl (*H*) -> ty -> vl
+(* a location, for a mutable reference cell *)
+| vloc : id -> vl
 .
 
 Definition tenv := list (@binding ty). (* Gamma environment: static *)
@@ -60,6 +66,13 @@ Fixpoint indexr {X : Type} (n : id) (l : list X) : option X :=
       if (beq_nat n (length l')) then Some a else indexr n l'
   end.
 
+Fixpoint update {X : Type} (n : id) (l : list X) (v: X) : list X :=
+  match l with
+    | [] => []
+    | a :: l' =>
+      if (beq_nat n (length l')) then v :: l' else a :: update n l' v
+  end.
+
 Inductive closed: nat(*B*) -> nat(*H*) -> nat(*F*) -> ty -> Prop :=
 | cl_top: forall i j k,
     closed i j k TTop
@@ -71,6 +84,9 @@ Inductive closed: nat(*B*) -> nat(*H*) -> nat(*F*) -> ty -> Prop :=
     closed i j k T1 ->
     closed (S i) j k T2 ->
     closed i j k (TAll T1 T2)
+| cl_cell: forall i j k T,
+    closed i j k T ->
+    closed i j k (TCell T)
 | cl_sel: forall i j k x,
     k > x ->
     closed i j k (TVarF x)
@@ -89,6 +105,7 @@ Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
     | TTop        => TTop
     | TFun T1 T2  => TFun (open_rec k u T1) (open_rec k u T2)
     | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
+    | TCell T1 => TCell (open_rec k u T1)
     | TVarF x => TVarF x
     | TVarH i => TVarH i
     | TVarB i => if beq_nat k i then u else TVarB i
@@ -102,6 +119,7 @@ Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
     | TTop         => TTop
     | TFun T1 T2   => TFun (subst U T1) (subst U T2)
     | TAll T1 T2   => TAll (subst U T1) (subst U T2)
+    | TCell T1 => TCell (subst U T1)
     | TVarB i      => TVarB i
     | TVarF i      => TVarF i
     | TVarH i      => if beq_nat i 0 then U else TVarH (i-1)
@@ -120,6 +138,7 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
     | TTop         => True
     | TFun T1 T2   => nosubst T1 /\ nosubst T2
     | TAll T1 T2   => nosubst T1 /\ nosubst T2
+    | TCell T1     => nosubst T1
     | TVarB i      => True
     | TVarF i      => True
     | TVarH i      => i <> 0
@@ -168,6 +187,10 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     closed 1 (length GH) (length G1) T4 ->
     stp G1 ((bind_ty T3)::GH) (open (TVarH x) T2) (open (TVarH x) T4) ->
     stp G1 GH (TAll T1 T2) (TAll T3 T4)
+| stp_cell: forall G1 GH T1 T2,
+    stp G1 GH T1 T2 ->
+    stp G1 GH T2 T1 ->
+    stp G1 GH (TCell T1) (TCell T2)
 .
 
 (* ### Type Assignment ### *)
@@ -192,6 +215,17 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type (bind_ty T1::env) y (open (TVarF (length env)) T2) ->
            stp env [] (TAll T1 T2) (TAll T1 T2) ->
            has_type env (ttabs T1 y) (TAll T1 T2)
+| t_new: forall env x T1,
+           has_type env x T1 ->
+           stp env [] T1 T1 ->
+           has_type env (tnew x) (TCell T1)
+| t_get: forall env T1 x,
+           has_type env x (TCell T1) ->
+           has_type env (tget x) T1
+| t_set: forall env T1 x y,
+           has_type env x (TCell T1) ->
+           has_type env y T1 ->
+           has_type env (tset x y) T1
 | t_sub: forall env e T1 T2,
            has_type env e T1 ->
            stp env [] T1 T2 ->
@@ -247,6 +281,11 @@ Inductive stp2: bool (* whether the last rule may not be transitivity *) ->
     stp2 false G1 (open (TVarH x) T2) G2 (open (TVarH x) T4) ((G2, T3)::GH) n2 ->
     stp2 true G1 (TAll T1 T2) G2 (TAll T3 T4) GH (S (n1 + n2))
 
+| stp2_cell: forall G1 G2 T1 T2 GH n1 n2,
+    stp2 false G1 T1 G2 T2 GH n1 ->
+    stp2 false G2 T2 G1 T1 GH n2 ->
+    stp2 true G1 (TCell T1) G2 (TCell T2) GH (S (n1+n2))
+
 | stp2_wrapf: forall G1 G2 T1 T2 GH n1,
     stp2 true G1 T1 G2 T2 GH n1 ->
     stp2 false G1 T1 G2 T2 GH (S n1)
@@ -258,31 +297,35 @@ Inductive stp2: bool (* whether the last rule may not be transitivity *) ->
 .
 
 (* consistent environment *)
-Inductive wf_env : venv -> tenv -> Prop :=
-| wfe_nil : wf_env nil nil
-| wfe_cons : forall v t vs ts,
-    val_type (v::vs) v t ->
-    wf_env vs ts ->
-    wf_env (cons v vs) (cons t ts)
+Inductive wf_env : aenv -> venv -> tenv -> Prop :=
+| wfe_nil : forall sto, wf_env sto nil nil
+| wfe_cons : forall sto v t vs ts,
+    val_type sto (v::vs) v t ->
+    wf_env sto vs ts ->
+    wf_env sto (cons v vs) (cons t ts)
 
 (* value type assignment *)
-with val_type : venv -> vl -> @binding ty -> Prop :=
-| v_ty: forall env venv tenv T1 TE,
-    wf_env venv tenv ->
+with val_type : aenv -> venv -> vl -> @binding ty -> Prop :=
+| v_ty: forall sto env venv tenv T1 TE,
+    wf_env sto venv tenv ->
     (exists n, stp2 true venv T1 env TE [] n) ->
-    val_type env (vty venv T1) (bind_ty TE)
-| v_abs: forall env venv tenv x y T1 T2 TE,
-    wf_env venv tenv ->
+    val_type sto env (vty venv T1) (bind_ty TE)
+| v_abs: forall sto env venv tenv x y T1 T2 TE,
+    wf_env sto venv tenv ->
     has_type (bind_tm T1::tenv) y T2 ->
     length venv = x ->
     (exists n, stp2 true venv (TFun T1 T2) env TE [] n) ->
-    val_type env (vabs venv T1 y) (bind_tm TE)
-| v_tabs: forall env venv tenv x y T1 T2 TE,
-    wf_env venv tenv ->
+    val_type sto env (vabs venv T1 y) (bind_tm TE)
+| v_tabs: forall sto env venv tenv x y T1 T2 TE,
+    wf_env sto venv tenv ->
     has_type (bind_ty T1::tenv) y (open (TVarF x) T2) ->
     length venv = x ->
     (exists n, stp2 true venv (TAll T1 T2) env TE [] n) ->
-    val_type env (vtabs venv T1 y) (bind_tm TE)
+    val_type sto env (vtabs venv T1 y) (bind_tm TE)
+| v_loc: forall sto venv venv1 b T1 TE,
+    indexr b sto = Some (venv1,T1) ->
+    (exists n, stp2 true venv1 (TCell T1) venv TE [] n) ->
+    val_type sto venv (vloc b) (bind_tm TE)
 .
 
 Inductive wf_envh : venv -> aenv -> tenv -> Prop :=
@@ -307,36 +350,67 @@ Some (Some v))   means result v
 Could use do-notation to clean up syntax.
 *)
 
-Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
+Fixpoint teval(n: nat)(sto: venv)(env: venv)(t: tm){struct n}: (venv*option (option vl)) :=
   match n with
-    | 0 => None
+    | 0 => (sto, None)
     | S n =>
       match t with
-        | tvar x     => Some (indexr x env)
-        | tabs T y => Some (Some (vabs env T y))
-        | ttabs T y  => Some (Some (vtabs env T y))
+        | tvar x     => (sto, Some (indexr x env))
+        | tabs T y => (sto, Some (Some (vabs env T y)))
+        | ttabs T y  => (sto, Some (Some (vtabs env T y)))
+        | tnew ex =>
+          match teval n sto env ex with
+            | (sto1, None) => (sto1, None)
+            | (sto1, Some None) => (sto1, Some None)
+            | (sto1, Some (Some v)) => (v::sto1, Some (Some (vloc (length sto1))))
+          end
+        | tget ex =>
+          match teval n sto env ex with
+            | (sto1, None) => (sto1, None)
+            | (sto1, Some None) => (sto1, Some None)
+            | (sto1, Some (Some (vty _ _))) => (sto1, Some None)
+            | (sto1, Some (Some (vabs _ _ _))) => (sto1, Some None)
+            | (sto1, Some (Some (vtabs _ _ _))) => (sto1, Some None)
+            | (sto1, Some (Some (vloc i))) => (sto1, Some (indexr i sto1))
+          end
+        | tset ex ey =>
+          match teval n sto env ex with
+            | (sto1, None) => (sto1, None)
+            | (sto1, Some None) => (sto1, Some None)
+            | (sto1, Some (Some (vty _ _))) => (sto1, Some None)
+            | (sto1, Some (Some (vabs _ _ _))) => (sto1, Some None)
+            | (sto1, Some (Some (vtabs _ _ _))) => (sto1, Some None)
+            | (sto1, Some (Some (vloc i))) =>
+              match teval n sto1 env ey with
+                | (sto2, None) => (sto2, None)
+                | (sto2, Some None) => (sto2, Some None)
+                | (sto2, Some (Some v)) => (update i sto2 v, Some (Some v))
+              end
+          end
         | tapp ef ex   =>
-          match teval n env ex with
-            | None => None
-            | Some None => Some None
-            | Some (Some vx) =>
-              match teval n env ef with
-                | None => None
-                | Some None => Some None
-                | Some (Some (vty _ _)) => Some None
-                | Some (Some (vtabs _ _ _)) => Some None
-                | Some (Some (vabs env2 _ ey)) =>
-                  teval n (vx::env2) ey
+          match teval n sto env ex with
+            | (sto1, None) => (sto1, None)
+            | (sto1, Some None) => (sto1, Some None)
+            | (sto1, Some (Some vx)) =>
+              match teval n sto1 env ef with
+                | (sto2, None) => (sto2, None)
+                | (sto2, Some None) => (sto2, Some None)
+                | (sto2, Some (Some (vty _ _))) => (sto2, Some None)
+                | (sto2, Some (Some (vtabs _ _ _))) => (sto2, Some None)
+                | (sto2, Some (Some (vloc _))) => (sto2, Some None)
+                | (sto2, Some (Some (vabs env2 _ ey))) =>
+                  teval n sto2 (vx::env2) ey
               end
           end
         | ttapp ef ex   =>
-          match teval n env ef with
-            | None => None
-            | Some None => Some None
-            | Some (Some (vty _ _)) => Some None
-            | Some (Some (vabs _ _ _)) => Some None
-            | Some (Some (vtabs env2 T ey)) =>
-              teval n ((vty env ex)::env2) ey
+          match teval n sto env ef with
+            | (sto1, None) => (sto1, None)
+            | (sto1, Some None) => (sto1, Some None)
+            | (sto1, Some (Some (vty _ _))) => (sto1, Some None)
+            | (sto1, Some (Some (vabs _ _ _))) => (sto1, Some None)
+            | (sto1, Some (Some (vloc _))) => (sto1, Some None)
+            | (sto1, Some (Some (vtabs env2 T ey))) =>
+              teval n sto1 ((vty env ex)::env2) ey
           end
       end
   end.
@@ -400,6 +474,7 @@ Fixpoint tsize(T: ty) :=
     | TTop => 1
     | TFun T1 T2 => S (tsize T1 + tsize T2)
     | TAll T1 T2 => S (tsize T1 + tsize T2)
+    | TCell T1 => S (tsize T1)
     | TVarF _ => 1
     | TVarH _ => 1
     | TVarB _ => 1
@@ -414,8 +489,8 @@ Qed.
 
 (* ## Extension, Regularity ## *)
 
-Lemma wf_length : forall vs ts,
-                    wf_env vs ts ->
+Lemma wf_length : forall sto vs ts,
+                    wf_env sto vs ts ->
                     (length vs = length ts).
 Proof.
   intros. induction H. auto.
@@ -484,6 +559,7 @@ Fixpoint splice n (T : ty) {struct T} : ty :=
     | TTop         => TTop
     | TFun T1 T2   => TFun (splice n T1) (splice n T2)
     | TAll T1 T2   => TAll (splice n T1) (splice n T2)
+    | TCell T1     => TCell (splice n T1)
     | TVarF i      => TVarF i
     | TVarB i      => TVarB i
     | TVarH i      => if le_lt_dec n i then TVarH (i+1) else TVarH i
@@ -701,6 +777,10 @@ Proof.
     rewrite IHclosed1. rewrite IHclosed2.
     reflexivity.
     assumption. assumption.
+  - (* TCell *) simpl.
+    rewrite IHclosed.
+    reflexivity.
+    assumption.
   - (* TVarH *) simpl.
     case_eq (le_lt_dec n x); intros E LE. omega. reflexivity.
 Qed.
@@ -864,6 +944,8 @@ Proof.
     simpl. apply closed_open; auto using closed_inc.
     unfold open. rewrite <- open_preserves_size. omega.
     eexists; econstructor; try constructor; eauto.
+  - destruct (IHn T0 G GH) as [n0 IH0]; eauto; try omega.
+    eexists; econstructor; eauto.
   - eapply indexr_has in H1. destruct H1 as [v HI].
     eexists; eapply stp2_selx; eauto.
   - eapply indexr_has in H1. destruct H1 as [v HI].
@@ -1399,17 +1481,17 @@ Proof.
   eapply stp2_closed1; eauto.
 Qed.
 
-Lemma valtp_extend : forall vs v v1 T,
-                       val_type vs v T ->
-                       val_type (v1::vs) v T.
+Lemma valtp_extend : forall sto vs v v1 T,
+                       val_type sto vs v T ->
+                       val_type sto (v1::vs) v T.
 Proof.
   intros. induction H; eauto; econstructor; eauto; eapply stpd2_extend2; eauto.
 Qed.
 
-Lemma indexr_safe_ex: forall H1 G1 TF i,
-             wf_env H1 G1 ->
+Lemma indexr_safe_ex: forall sto H1 G1 TF i,
+             wf_env sto H1 G1 ->
              indexr i G1 = Some TF ->
-             exists v, indexr i H1 = Some v /\ val_type H1 v TF.
+             exists v, indexr i H1 = Some v /\ val_type sto H1 v TF.
 Proof. intros. induction H.
    - Case "nil". inversion H0.
    - Case "cons". inversion H0.
@@ -1422,14 +1504,14 @@ Proof. intros. induction H.
      * SSCase "miss".
        rewrite E2 in H3.
        assert (exists v0,
-                 indexr i vs = Some v0 /\ val_type vs v0 TF). eauto.
+                 indexr i vs = Some v0 /\ val_type sto vs v0 TF). eauto.
        destruct H2. destruct H2.
        eexists. split. eapply indexr_extend. eauto.
        eapply valtp_extend. assumption.
 Qed.
 
-Lemma index_safeh_ex: forall H1 H2 G1 GH TF i,
-             wf_env H1 G1 -> wf_envh H1 H2 GH ->
+Lemma index_safeh_ex: forall sto H1 H2 G1 GH TF i,
+             wf_env sto H1 G1 -> wf_envh H1 H2 GH ->
              indexr i GH = Some TF ->
              exists v, indexr i H2 = Some v /\ valh_type H1 H2 v TF.
 Proof. intros. induction H0.
@@ -1451,13 +1533,26 @@ Proof. intros. induction H0.
        eapply v_tya. (* aenv is not constrained -- bit of a cheat?*)
 Qed.
 
-Inductive res_type: venv -> option vl -> ty -> Prop :=
-| not_stuck: forall venv v T,
-      val_type venv v (bind_tm T) ->
-      res_type venv (Some v) T.
+Inductive wf_sto: aenv -> venv -> aenv -> Prop :=
+| wfs_nil: forall G,
+  wf_sto G nil nil
+| wfs_cons: forall G venv v t vs ts,
+  val_type G venv v (bind_tm t) ->
+  wf_sto G vs ts ->
+  wf_sto G (v::vs) ((venv,t)::ts)
+.
+
+Inductive res_type: aenv -> venv -> (venv*option (option vl)) -> ty -> Prop :=
+| res_val: forall STO sto venv v T,
+      val_type STO venv v (bind_tm T) ->
+      wf_sto STO sto STO ->
+      res_type STO venv (sto,(Some (Some v))) T
+| res_timeout: forall STO sto venv T,
+      wf_sto STO sto STO ->
+      res_type STO venv (sto,None) T.
 
 Hint Constructors res_type.
-Hint Resolve not_stuck.
+Hint Resolve res_val.
 
 (* ### Transitivity ### *)
 
@@ -1540,6 +1635,8 @@ Proof.
     unfold trans_on.
     intros. apply (IHn T3). omega. assumption. assumption.
     simpl. assumption. assumption. assumption.
+  - (* TCell - TCell *)
+    eapply stp_cell; eauto.
 Qed.
 
 Lemma stp_trans: forall G GH T1 T2 T3,
@@ -1603,6 +1700,11 @@ Lemma stpd2_all: forall G1 G2 T1 T2 T3 T4 x GH,
     closed 1 (length GH) (length G2) T4 ->
     stpd2 false G1 (open (TVarH x) T2) G2 (open (TVarH x) T4) ((G2, T3)::GH) ->
     stpd2 true G1 (TAll T1 T2) G2 (TAll T3 T4) GH.
+Proof. intros. repeat eu. eauto. Qed.
+Lemma stpd2_cell: forall G1 G2 T1 T2 GH,
+    stpd2 false G1 T1 G2 T2 GH ->
+    stpd2 false G2 T2 G1 T1 GH ->
+    stpd2 true G1 (TCell T1) G2 (TCell T2) GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_wrapf: forall G1 G2 T1 T2 GH,
     stpd2 true G1 T1 G2 T2 GH ->
@@ -1710,6 +1812,10 @@ Proof.
       subst.
       eapply IHn with (GH1:=(G2, T4) :: GH1); try eassumption. omega.
       simpl. reflexivity. simpl. reflexivity.
+    + SCase "cell".
+      eapply stpd2_cell.
+      eapply IHn; try eassumption. omega.
+      eapply IHn; try eassumption. omega.
     + SCase "wrapf".
       eapply stpd2_wrapf.
       eapply IHn; try eassumption. omega.
@@ -1773,6 +1879,10 @@ Proof.
     eapply stpd2_all; eauto.
     eapply stpd2_trans; eauto.
     eapply stpd2_trans. eapply stpd2_narrow. eexists. eapply H8. eauto. eauto.
+  - Case "cell - cell".
+    eapply stpd2_cell; eauto.
+    eapply stpd2_trans; eauto.
+    eapply stpd2_trans; eauto.
 Grab Existential Variables. apply 0.
 Qed.
 
@@ -1888,6 +1998,7 @@ Proof.
     assert (x=x+1-1). unfold id. omega.
     rewrite H0. eauto.
     simpl. eauto.
+  - simpl. rewrite IHT2. eauto. eauto.
 Qed.
 
 Lemma closed_no_subst: forall T i k TX,
@@ -2075,6 +2186,11 @@ Proof.
       rewrite app_length in IHstp2. simpl in IHstp2.
       eapply IHstp2; eauto. eapply stp_extend; eauto.
       eauto. eauto.
+  - Case "cell".
+    intros GH0 TX ? ? ?.
+    simpl. eapply stp_cell.
+    + eapply IHstp1; eauto.
+    + eapply IHstp2; eauto.
 Qed.
 
 (*
@@ -2267,6 +2383,27 @@ Proof.
   unfold compat. right. right. right. eauto.
   unfold compat. right. right. right. split. eapply nosubst_open. simpl. omega. eauto.
   erewrite subst_open_commute. eauto. eauto. eauto.
+Qed.
+
+Lemma compat_cell: forall GX TX G1 T1 T1',
+    compat GX TX G1 (TCell T1) T1' ->
+    closed 0 0 (length GX) TX ->
+    exists TA, T1' = TCell TA /\
+               compat GX TX G1 T1 TA.
+Proof.
+  intros ? ? ? ? ? CC CLX. destruct CC.
+
+  simpl in H. destruct H. destruct H. repeat eexists. eauto.
+  unfold compat. eauto. unfold compat. eauto.
+
+  simpl in H. destruct H. destruct H. repeat eexists. eauto.
+  unfold compat. eauto. unfold compat. eauto.
+
+  simpl in H. destruct H. destruct H. inversion H. repeat eexists. eauto.
+  unfold compat. eauto. unfold compat. eauto.
+
+  simpl in H. destruct H. repeat eexists. eauto.
+  unfold compat. eauto.
 Qed.
 
 Lemma compat_closed: forall GX TX G T T' j,
@@ -2502,6 +2639,22 @@ Proof.
     + eauto. subst GH. rewrite <-EL. eapply closed_upgrade_free. eauto. omega.
     + eauto.
     + eauto. subst GH. rewrite <-EL. eapply closed_upgrade_free. eauto. omega.
+  - Case "cell".
+    intros GH0 GH0' GX TX T1' T2' ? CX IX1 IX2 FA; eapply stpd2_wrapf.
+
+    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
+    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
+
+    eapply compat_cell in IX1. repeat destruct IX1 as [? IX1].
+    eapply compat_cell in IX2. repeat destruct IX2 as [? IX2].
+
+    subst.
+
+    eapply stpd2_cell.
+    + eapply IHn; eauto; try omega.
+    + eapply IHn; eauto; try omega.
+    + eauto.
+    + eauto.
   - Case "wrapf".
     intros. subst. eapply IHn; eauto; try omega.
   - Case "transf".
@@ -2535,26 +2688,26 @@ Qed.
 (* ### Relating Static and Dynamic Subtyping ### *)
 Lemma stp_to_stp2: forall G1 GH T1 T2,
   stp G1 GH T1 T2 ->
-  forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
+  forall sto GX GY, wf_env sto GX G1 -> wf_envh GX GY GH ->
   stpd2 false GX T1 GX T2 GY.
 Proof.
-  intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY; eapply stpd2_wrapf.
+  intros G1 G2 T1 T2 ST. induction ST; intros sto GX GY WX WY; eapply stpd2_wrapf.
   - Case "top".
     eapply stpd2_top. erewrite wfh_length; eauto. erewrite wf_length; eauto.
   - Case "fun". eapply stpd2_fun; eauto.
   - Case "sel1".
-    assert (exists v : vl, indexr x GX = Some v /\ val_type GX v (bind_ty T)) as A.
+    assert (exists v : vl, indexr x GX = Some v /\ val_type sto GX v (bind_ty T)) as A.
     eapply indexr_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
     inversion VT; subst.
-    destruct H6 as [? H6].
+    destruct H7 as [? H7].
     eapply stpd2_sel1; eauto.
-    eapply stp2_closed1 in H6. simpl in H6. eauto.
+    eapply stp2_closed1 in H7. simpl in H7. eauto.
     eapply stpd2_trans.
-    eexists. eapply stp2_wrapf. apply stp2_extendH_mult with (H2:=GY) in H6. rewrite app_nil_r in H6. eapply H6.
+    eexists. eapply stp2_wrapf. apply stp2_extendH_mult with (H2:=GY) in H7. rewrite app_nil_r in H7. eapply H7.
     eapply IHST. eauto. eauto.
   - Case "selx". eauto.
-    assert (exists v0 : vl, indexr x GX = Some v0 /\ val_type GX v0 v) as A.
+    assert (exists v0 : vl, indexr x GX = Some v0 /\ val_type sto GX v0 v) as A.
     eapply indexr_safe_ex. eauto. eauto. eauto.
     destruct A as [? [? ?]].
     eapply stpd2_selx; eauto.
@@ -2581,55 +2734,58 @@ Proof.
     rewrite A. rewrite B. eauto.
     rewrite A.
     eapply IHST2. eauto. eapply wfeh_cons. eauto.
+  - Case "cell". eapply stpd2_cell; eauto.
 Qed.
 
-Lemma valtp_widen: forall vf H1 H2 T1 T2,
-  val_type H1 vf (bind_tm T1) ->
+Lemma valtp_widen: forall sto vf H1 H2 T1 T2,
+  val_type sto H1 vf (bind_tm T1) ->
   stpd2 true H1 T1 H2 T2 [] ->
-  val_type H2 vf (bind_tm T2).
+  val_type sto H2 vf (bind_tm T2).
 Proof.
   intros. inversion H; econstructor; eauto; eapply stpd2_untrans; eauto.
 Qed.
 
-Lemma restp_widen: forall vf H1 H2 T1 T2,
-  res_type H1 vf T1 ->
+Lemma restp_widen: forall sto vf H1 H2 T1 T2,
+  res_type sto H1 vf T1 ->
   stpd2 true H1 T1 H2 T2 [] ->
-  res_type H2 vf T2.
+  res_type sto H2 vf T2.
 Proof.
-  intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto.
+  intros. inversion H.
+  - eapply res_val. eapply valtp_widen; eauto. assumption.
+  - subst. eapply res_timeout. assumption.
 Qed.
 
 (* ### Inversion Lemmas ### *)
 
-Lemma invert_abs: forall venv vf T1 T2,
-  val_type venv vf (bind_tm (TFun T1 T2)) ->
+Lemma invert_abs: forall sto venv vf T1 T2,
+  val_type sto venv vf (bind_tm (TFun T1 T2)) ->
   exists env tenv x y T3 T4,
     vf = (vabs env T3 y) /\
     length env = x /\
-    wf_env env tenv /\
+    wf_env sto env tenv /\
     has_type (bind_tm T3::tenv) y T4 /\
     stpd2 true venv T1 env T3 [] /\
     stpd2 true env T4 venv T2 [].
 Proof.
   intros. inversion H; repeat ev; try solve by inversion.
-  inversion H6. subst.
+  inversion H7. subst.
   assert (stpd2 false venv0 T1 venv1 T0 []) as E1. eauto.
   assert (stpd2 false venv1 T3 venv0 T2 []) as E2. eauto.
   eapply stpd2_upgrade in E1. eapply stpd2_upgrade in E2.
   repeat eu. repeat eexists; eauto.
 Qed.
 
-Lemma invert_tabs: forall venv vf T1 T2,
-  val_type venv vf (bind_tm (TAll T1 T2)) ->
+Lemma invert_tabs: forall sto venv vf T1 T2,
+  val_type sto venv vf (bind_tm (TAll T1 T2)) ->
   exists env tenv x y T3 T4,
     vf = (vtabs env T3 y) /\
     length env = x /\
-    wf_env env tenv /\
+    wf_env sto env tenv /\
     has_type ((bind_ty T3)::tenv) y (open (TVarF x) T4) /\
     stpd2 true venv T1 env T3 [] /\
     stpd2 true ((vty venv T1)::env) (open (TVarF x) T4) venv (open T1 T2) [].
 Proof.
-  intros. inversion H; ev; try solve by inversion. inversion H6. subst.
+  intros. inversion H; ev; try solve by inversion. inversion H7. subst.
   eexists. eexists. eexists. eexists. eexists. eexists.
   repeat split; eauto; remember (length venv1) as x.
 
@@ -2663,100 +2819,365 @@ Proof.
   eapply stpd2_upgrade; eauto.
 Qed.
 
+(* ### Mutable References Related Lemmas *)
+
+Scheme wf_env_mut := Induction for wf_env Sort Prop
+with val_type_mut := Induction for val_type Sort Prop.
+Combined Scheme val_env_mutind from wf_env_mut, val_type_mut.
+
+Lemma val_wf_sto_ext:
+  (forall senv venv env, wf_env senv venv env ->
+     forall senv', wf_env (senv' ++ senv) venv env) /\
+  (forall senv G v T, val_type senv G v T ->
+     forall senv', val_type (senv' ++ senv) G v T).
+Proof.
+  apply val_env_mutind; intros; eauto using indexr_extend_mult.
+Qed.
+
+Lemma wf_env_sto_ext: forall senv' senv venv env,
+  wf_env senv venv env ->
+  wf_env (senv'++senv) venv env.
+Proof.
+  intros. generalize senv'. apply (proj1 val_wf_sto_ext). assumption.
+Qed.
+
+Lemma valtp_sto_ext: forall senv' senv G v T,
+  val_type senv G v T ->
+  val_type (senv'++senv) G v T.
+Proof.
+  intros. generalize senv'. apply (proj2 val_wf_sto_ext). assumption.
+Qed.
+
+Lemma wf_sto_sto_ext: forall senv' senv venv env,
+  wf_sto senv venv env ->
+  wf_sto (senv'++senv) venv env.
+Proof.
+  intros. induction H.
+  - apply wfs_nil.
+  - apply wfs_cons. apply valtp_sto_ext. assumption. assumption.
+Qed.
+
+Lemma wfs_length : forall sto vs ts,
+                    wf_sto sto vs ts ->
+                    (length vs = length ts).
+Proof.
+  intros. induction H. auto.
+  compute. eauto.
+Qed.
+
+Lemma valtp_reg: forall STO G v T,
+                   val_type STO G v (bind_tm T) ->
+                   stpd2 true G T G T [].
+Proof. intros. inversion H; subst; ev; eapply stp2_reg2; eauto. Qed.
+
+Lemma invert_loc: forall sto venv vx T,
+  val_type sto venv vx (bind_tm (TCell T)) ->
+  exists i venvi Ti,
+    vx = (vloc i) /\
+    indexr i sto = Some (venvi,Ti) /\
+    stpd2 true venv T venvi Ti [] /\
+    stpd2 true venvi Ti venv T [].
+Proof.
+  intros. inversion H; ev; try solve by inversion. inversion H5.
+  subst.
+  assert (stpd2 true venv0 T venv2 T1 []) as E1. {
+    eapply stpd2_upgrade. eexists. eassumption.
+  }
+  assert (stpd2 true venv2 T1 venv0 T []) as E2. {
+    eapply stpd2_upgrade. eexists. eassumption.
+  }
+  repeat eu. repeat eexists; eauto.
+Qed.
+
+Lemma index_sto_safe_ex: forall G sto senv venv i T,
+             wf_sto G sto senv ->
+             indexr i senv = Some (venv,T) ->
+             exists v, indexr i sto = Some v /\ val_type G venv v (bind_tm T).
+Proof. intros. induction H.
+   - Case "nil". inversion H0.
+   - Case "cons". inversion H0.
+     case_eq (beq_nat i (length ts)); intros E2.
+     * SSCase "hit".
+       rewrite E2 in H3. inversion H3. subst. clear H3.
+       assert (length ts = length vs) as A. { symmetry. eapply wfs_length. eauto. }
+       simpl. rewrite A in E2. rewrite E2.
+       eexists. split. eauto. assumption.
+     * SSCase "miss".
+       rewrite E2 in H3.
+       assert (exists v, indexr i vs = Some v /\ val_type G venv0 v (bind_tm T)) as A by eauto.
+       destruct A as [? A]. destruct A as [A1 A2].
+       eexists. split. eapply indexr_extend. eauto.
+       assumption.
+Qed.
+
+Lemma update_sto_safe_ex: forall G sto senv venv i T v,
+             wf_sto G sto senv ->
+             indexr i senv = Some (venv,T) ->
+             val_type G venv v (bind_tm T) ->
+             wf_sto G (update i sto v) senv.
+Proof. intros. induction H.
+   - Case "nil". inversion H0.
+   - Case "cons". inversion H0. simpl.
+     case_eq (beq_nat i (length ts)); intros E2.
+     * SSCase "hit".
+       rewrite E2 in H4. inversion H4. subst. clear H4.
+       assert (length ts = length vs) as A. { symmetry. eapply wfs_length. eauto. }
+       simpl. rewrite A in E2. unfold id in E2. rewrite E2.
+       apply wfs_cons. assumption. assumption.
+     * SSCase "miss".
+       rewrite E2 in H4.
+       assert (length ts = length vs) as A. { symmetry. eapply wfs_length. eauto. }
+       simpl. rewrite A in E2. unfold id in E2. rewrite E2.
+       apply wfs_cons. assumption. apply IHwf_sto. assumption. assumption.
+Qed.
+
 (* ### Type Safety ### *)
 (* If term type-checks and the term evaluates without timing-out,
    the result is not stuck, but a value.
 *)
-Theorem full_safety : forall n e tenv venv res T,
-  teval n venv e = Some res -> has_type tenv e T -> wf_env venv tenv ->
-  res_type venv res T.
+Theorem full_safety : forall n e senv sto tenv venv r T,
+  teval n sto venv e = r ->
+  has_type tenv e T ->
+  wf_env senv venv tenv ->
+  wf_sto senv sto senv ->
+  exists senv', res_type (senv'++senv) venv r T.
 
 Proof.
   intros n. induction n.
-  (* 0 *)   intros. inversion H.
+  (* 0 *)   intros. inversion H. exists nil. rewrite app_nil_l. simpl.
+    eapply res_timeout. eauto.
   (* S n *) intros. destruct e; inversion H.
 
   - Case "Var".
     remember (tvar i) as e. induction H0; inversion Heqe; subst.
-    + destruct (indexr_safe_ex venv0 env (bind_tm T1) i) as [v [I V]]; eauto.
-      rewrite I. eapply not_stuck. eapply V.
 
-    + eapply restp_widen. eapply IHhas_type; eauto.
+    + destruct (indexr_safe_ex senv venv0 env (bind_tm T1) i) as [v [I V]]; eauto.
+      simpl. rewrite I. exists nil. rewrite app_nil_l. eapply res_val. eapply V.
+      eauto.
+
+    + destruct IHhas_type as [senv' A]; eauto.
+      exists senv'. eapply restp_widen. eapply A.
       eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "Abs".
     remember (tabs t e) as xe. induction H0; inversion Heqxe; subst.
-    + eapply not_stuck. eapply v_abs; eauto.
+    + exists nil. rewrite app_nil_l. simpl. eapply res_val. eapply v_abs; eauto.
       eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
-    + eapply restp_widen. eapply IHhas_type; eauto.
+      eauto.
+    + destruct IHhas_type as [senv' A]; eauto.
+      exists senv'. eapply restp_widen. eapply A.
       eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "App".
     remember (tapp e1 e2) as e. induction H0; inversion Heqe; subst.
-    +
-      remember (teval n venv0 e1) as tf.
-      remember (teval n venv0 e2) as tx.
-
-
+    + simpl.
+      remember (teval n sto venv0 e2) as tx.
+      destruct tx as [sto1 tx].
       destruct tx as [rx|]; try solve by inversion.
-      assert (res_type venv0 rx T1) as HRX. SCase "HRX". subst. eapply IHn; eauto.
-      inversion HRX as [? vx].
+      assert (exists senv', res_type (senv'++senv) venv0 (sto1, Some rx) T1) as HRX. SCase "HRX". subst. eapply IHn; eauto.
+      destruct HRX as [senvx' HRX].
+      destruct rx as [vx|]; inversion HRX.
 
-      destruct tf as [rf|]; subst rx; try solve by inversion.
-      assert (res_type venv0 rf (TFun T1 T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
-      inversion HRF as [? vf].
+      remember (teval n sto1 venv0 e1) as tf.
+      destruct tf as [sto2 tf].
+      destruct tf as [rf|]; try solve by inversion.
+      assert (exists senv', res_type (senv'++(senvx'++senv)) venv0 (sto2, Some rf) (TFun T1 T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto. apply wf_env_sto_ext. assumption.
+      destruct HRF as [senvf' HRF].
+      destruct rf as [vf|]; inversion HRF.
 
-      destruct (invert_abs venv0 vf T1 T2) as
+      destruct (invert_abs (senvf'++senvx'++senv) venv0 vf T1 T2) as
           [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]]. eauto.
       (* now we know it's a closure, and we have has_type evidence *)
 
-      assert (res_type (vx::env1) res T4) as HRY.
+      subst vf. rewrite EF.
+      remember (teval n sto2 (vx::env1) y0) as r.
+      assert (exists senv', res_type (senv'++senvf'++senvx'++senv) (vx::env1) r T4) as HRY.
         SCase "HRY".
           subst. eapply IHn. eauto. eauto.
           (* wf_env x *) econstructor. eapply valtp_widen; eauto.
+                         eapply valtp_sto_ext; eauto.
                          eapply stpd2_extend2. eauto. eauto. eauto.
 
-      inversion HRY as [? vy].
+      destruct HRY as [senv' HRY]. subst.
+      exists (senv'++senvf'++senvx'). repeat rewrite <- app_assoc.
+      eapply restp_widen; eauto. eapply stpd2_extend1. eauto.
 
-      eapply not_stuck. eapply valtp_widen; eauto. eapply stpd2_extend1. eauto.
+      edestruct IHn as [senv' IH]. symmetry. eapply Heqtf. eassumption.
+      apply wf_env_sto_ext. eassumption. eassumption.
+      inversion IH; subst.
+      eexists (senv' ++ senvx'). rewrite <- app_assoc. eauto.
 
-    + eapply restp_widen. eapply IHhas_type; eauto.
+      edestruct IHn as [senv' IH]. symmetry. eapply Heqtx.
+      eassumption. eassumption. assumption.
+      inversion IH; subst.
+      eexists senv'. eapply res_timeout. eauto.
+
+    + destruct IHhas_type as [senv' A]; eauto.
+      exists senv'. eapply restp_widen. eapply A.
       eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "TAbs".
     remember (ttabs t e) as xe. induction H0; inversion Heqxe; subst.
-    + eapply not_stuck. eapply v_tabs; eauto.
+    + exists nil. rewrite app_nil_l. eapply res_val. eapply v_tabs; eauto.
       eauto. eapply stpd2_upgrade. eapply stp_to_stp2. eauto. eauto. econstructor.
-    + eapply restp_widen. eapply IHhas_type; eauto.
+      eauto.
+    + destruct IHhas_type as [senv' A]; eauto.
+      exists senv'. eapply restp_widen. eapply A.
       eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
   - Case "TApp".
     remember (ttapp e t) as xe. induction H0; inversion Heqxe; subst.
-    +
+    + simpl.
       remember t as T11.
-      remember (teval n venv0 e) as tf.
-
+      remember (teval n sto venv0 e) as tf.
+      destruct tf as [sto1 tf].
       destruct tf as [rf|]; try solve by inversion.
-      assert (res_type venv0 rf (TAll T11 T12)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
-      inversion HRF as [? vf].
+      assert (exists senv', res_type (senv'++senv) venv0 (sto1, Some rf) (TAll T11 T12)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
+
+      destruct HRF as [senvf' HRF].
+      destruct rf as [vf|]; inversion HRF.
 
       subst t.
-      destruct (invert_tabs venv0 vf T11 T12) as
+      destruct (invert_tabs (senvf'++senv) venv0 vf T11 T12) as
           [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]]. eauto.
       (* now we know it's a closure, and we have has_type evidence *)
 
-      assert (res_type ((vty venv0 T11)::env1) res (open (TVarF x0) T4)) as HRY.
+      subst vf. rewrite EF.
+      remember (teval n sto1 (vty venv0 T11 :: env1) y0) as r.
+      assert (exists senv', res_type (senv'++senvf'++senv) ((vty venv0 T11)::env1) r (open (TVarF x0) T4)) as HRY.
         SCase "HRY".
           subst. eapply IHn. eauto. eauto.
           (* wf_env x *) econstructor. eapply v_ty.
-          (* wf_env   *) eauto.
-          eapply stpd2_extend2. eauto. eauto.
-      eauto.
-      inversion HRY as [? vy].
+          (* wf_env   *) eapply wf_env_sto_ext. eauto.
+          eapply stpd2_extend2. eauto. eauto. eauto.
 
-      eapply not_stuck. eapply valtp_widen; eauto.
+      destruct HRY as [senv' HRY]. subst.
+      exists (senv'++senvf'). repeat rewrite <- app_assoc.
+      eapply restp_widen; eauto.
 
-    + eapply restp_widen. eapply IHhas_type; eauto.
+      edestruct IHn as [senv' IH]. symmetry. eapply Heqtf. eassumption. eauto. eauto.
+      inversion IH; subst.
+      eexists senv'. eauto.
+
+    + destruct IHhas_type as [senv' A]; eauto.
+      exists senv'. eapply restp_widen. eapply A.
       eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
+  - Case "New".
+    remember (tnew e) as e'. induction H0; inversion Heqe'; subst.
+    +
+      remember (teval n sto venv0 e) as te.
+
+      destruct te as [sto1 te].
+      destruct te as [re|]; try solve by inversion.
+      assert (exists senv', res_type (senv'++senv) venv0 (sto1, Some re) T1) as HRE. SCase "HRE". subst. eapply IHn; eauto.
+      destruct HRE as [senve' HRE]. simpl.
+      destruct re as [v|]; inversion HRE; subst.
+      exists ([(venv0,T1)]++senve').
+      inversion HRE; subst.
+      eapply valtp_reg in H9. destruct H9 as [? H9].
+      assert (stpd2 false venv0 T1 venv0 T1 []) as A. {
+        eapply stp_to_stp2. eassumption. eauto. apply wfeh_nil.
+      }
+      destruct A as [? A]. rewrite <- Heqte.
+      eapply res_val.
+      eapply v_loc.
+      unfold indexr. simpl.
+      rewrite <- (wfs_length (senve'++senv) sto1 (senve'++senv)).
+      rewrite <- beq_nat_refl. reflexivity. assumption.
+      eexists. eapply stp2_cell. eapply A. eapply A.
+      econstructor. eapply valtp_widen. rewrite <- app_assoc. eapply valtp_sto_ext. eassumption.
+      eapply stpd2_upgrade. eexists. eapply A.
+      rewrite <- app_assoc. eapply wf_sto_sto_ext. eauto.
+
+      edestruct IHn as [senv' IH]; eauto. rewrite <- Heqte in IH.
+      inversion IH; subst. eexists senv'.
+      simpl. rewrite <- Heqte. eapply res_timeout. eauto.
+
+    + edestruct IHhas_type as [senv' A]; eauto.
+      eexists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+
+  - Case "Get".
+    remember (tget e) as e'. induction H0; inversion Heqe'; subst.
+    +
+      remember (teval n sto venv0 e) as te.
+      destruct te as [sto1 te].
+      destruct te as [re|]; try solve by inversion.
+      assert (exists senv', res_type (senv'++senv) venv0 (sto1, Some re) (TCell T1)) as HRE. SCase "HRE". subst. eapply IHn; eauto.
+      destruct HRE as [senve' HRE].
+      destruct re as [ve|]; inversion HRE;subst.
+
+      destruct (invert_loc (senve' ++ senv) venv0 ve T1) as
+          [i [venvi [Ti [EB [ET [B1 B2]]]]]]. eauto.
+
+      subst.
+
+      destruct (index_sto_safe_ex (senve'++senv) sto1 (senve'++senv) venvi i Ti) as [v [A1 A2]];
+        eauto.
+
+      simpl. rewrite <- Heqte.
+      exists senve'. rewrite A1. eapply res_val. eapply valtp_widen. eassumption. assumption.
+      assumption.
+
+      edestruct IHn as [senv' IH]; eauto. rewrite <- Heqte in IH.
+      inversion IH; subst. eexists senv'.
+      simpl. rewrite <- Heqte. eapply res_timeout. eauto.
+
+    + edestruct IHhas_type as [senv' A]; eauto.
+      eexists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+
+  - Case "Set".
+    remember (tset e1 e2) as e. induction H0; inversion Heqe; subst.
+
+    +
+      remember (teval n sto venv0 e1) as te1.
+
+      destruct te1 as [sto1 te1]; try solve by inversion.
+      destruct te1 as [re1|]; try solve by inversion.
+      destruct re1 as [v1|]; try solve by inversion.
+
+      assert (exists senv', res_type (senv'++senv) venv0 (sto1, Some (Some v1)) (TCell T1)) as HRE1. subst. eapply IHn; eauto.
+      destruct HRE1 as [senv1' HRE1].
+      inversion HRE1; subst.
+
+      subst.
+
+      destruct (invert_loc (senv1' ++ senv) venv0 v1 T1) as
+          [i [venvi [Ti [EB [ET [B1 B2]]]]]]. eauto.
+
+      subst.
+
+      remember (teval n sto1 venv0 e2) as te2.
+
+      destruct te2 as [sto2 te2].
+      destruct te2 as [re2|]; try solve by inversion.
+      assert (exists senv', res_type (senv'++senv1'++senv) venv0 (sto2, Some re2) T1) as HRE2. subst. eapply IHn; eauto. eapply wf_env_sto_ext. assumption.
+      destruct HRE2 as [senv2' HRE2].
+      destruct re2 as [ve2|]; inversion HRE2; subst.
+
+      simpl. rewrite <- Heqte1. rewrite <- Heqte2.
+
+      exists (senv2'++senv1'). rewrite <- app_assoc.
+      eapply res_val. assumption. eapply update_sto_safe_ex. assumption.
+      eapply indexr_extend_mult. eassumption.
+      eapply valtp_widen. eassumption. assumption.
+
+      edestruct IHn as [senv1 IH1]. symmetry. eapply Heqte1. eauto. eauto. eauto.
+      inversion IH1; subst.
+      edestruct IHn as [senv' IH]. symmetry. eapply Heqte2. eassumption.
+      apply wf_env_sto_ext. eassumption. eassumption.
+      inversion IH; subst.
+      simpl. rewrite <- Heqte1. rewrite <- Heqte2.
+      eexists (senv'++senv1). eapply res_timeout. rewrite <- app_assoc. eassumption.
+
+      simpl. rewrite <- Heqte1.
+      edestruct IHn as [senv' IH]; eauto.  rewrite <- Heqte1 in IH. inversion IH.
+
+      simpl. rewrite <- Heqte1.
+      edestruct IHn as [senv' IH]; eauto.  rewrite <- Heqte1 in IH.
+      inversion IH; subst.
+      eexists senv'. eapply res_timeout. eauto.
+
+    + edestruct IHhas_type as [senv' A]; eauto.
+      eexists senv'. eapply restp_widen. eapply A. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 Qed.

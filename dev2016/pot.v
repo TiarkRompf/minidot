@@ -1,5 +1,5 @@
 (*
-POT -- DOT with full path (as opposd to just variable) dependent types
+POT -- DOT with full path (as opposed to just variable) dependent types
 T ::= Bot | Top | T1 /\ T2 | T1 \/ T2 |
       { def m(x: S): U^x } | {val a: T } | { type A: S..U } | p.A | { z => T^z }
 t ::= p | { y => d^y... } | t.m(t)

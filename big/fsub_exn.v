@@ -1,7 +1,7 @@
 (*
-FSub (F<:)
-T ::= Top | X | T -> T | Forall Z <: T. T^Z
-t ::= x | lambda x:T.t | Lambda X<:T.t | t t | t [T]
+FSub (F<:) + Bot + Exceptions
+T ::= Top | Bot | X | T -> T | Forall Z <: T. T^Z
+t ::= x | lambda x:T.t | Lambda X<:T.t | t t | t [T] | raise t | try t catch t
 *)
 
 Require Export SfLib.
@@ -16,6 +16,7 @@ Definition id := nat.
 
 Inductive ty : Type :=
 | TTop : ty
+| TBot : ty
 | TFun : ty -> ty -> ty
 | TAll : ty -> ty -> ty
 | TVarF : id -> ty (* free type variable, in concrete environment *)
@@ -29,6 +30,8 @@ Inductive tm : Type :=
 | tapp : tm -> tm -> tm
 | ttabs : ty -> tm -> tm
 | ttapp : tm -> ty -> tm
+| traise : tm
+| tcatch : tm -> tm -> tm (* try t1 catch t2 *)
 .
 
 Inductive binding {X: Type} :=
@@ -63,6 +66,8 @@ Fixpoint indexr {X : Type} (n : id) (l : list X) : option X :=
 Inductive closed: nat(*B*) -> nat(*H*) -> nat(*F*) -> ty -> Prop :=
 | cl_top: forall i j k,
     closed i j k TTop
+| cl_bot: forall i j k,
+    closed i j k TBot
 | cl_fun: forall i j k T1 T2,
     closed i j k T1 ->
     closed i j k T2 ->
@@ -87,6 +92,7 @@ Inductive closed: nat(*B*) -> nat(*H*) -> nat(*F*) -> ty -> Prop :=
 Fixpoint open_rec (k: nat) (u: ty) (T: ty) { struct T }: ty :=
   match T with
     | TTop        => TTop
+    | TBot        => TBot
     | TFun T1 T2  => TFun (open_rec k u T1) (open_rec k u T2)
     | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
     | TVarF x => TVarF x
@@ -100,6 +106,7 @@ Definition open u T := open_rec 0 u T.
 Fixpoint subst (U : ty) (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
+    | TBot         => TBot
     | TFun T1 T2   => TFun (subst U T1) (subst U T2)
     | TAll T1 T2   => TAll (subst U T1) (subst U T2)
     | TVarB i      => TVarB i
@@ -118,6 +125,7 @@ Definition substb (U: ty) := liftb (subst U).
 Fixpoint nosubst (T : ty) {struct T} : Prop :=
   match T with
     | TTop         => True
+    | TBot         => True
     | TFun T1 T2   => nosubst T1 /\ nosubst T2
     | TAll T1 T2   => nosubst T1 /\ nosubst T2
     | TVarB i      => True
@@ -139,6 +147,9 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_top: forall G1 GH T1,
     closed 0 (length GH) (length G1) T1 ->
     stp G1 GH T1 TTop
+| stp_bot: forall G1 GH T2,
+    closed 0 (length GH) (length G1) T2 ->
+    stp G1 GH TBot T2
 | stp_fun: forall G1 GH T1 T2 T3 T4,
     stp G1 GH T3 T1 ->
     stp G1 GH T2 T4 ->
@@ -192,6 +203,12 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type (bind_ty T1::env) y (open (TVarF (length env)) T2) ->
            stp env [] (TAll T1 T2) (TAll T1 T2) ->
            has_type env (ttabs T1 y) (TAll T1 T2)
+| t_raise: forall env,
+           has_type env traise TBot
+| t_catch: forall env t c T,
+           has_type env t T ->
+           has_type env c T ->
+           has_type env (tcatch t c) T
 | t_sub: forall env e T1 T2,
            has_type env e T1 ->
            stp env [] T1 T2 ->
@@ -207,6 +224,9 @@ Inductive stp2: bool (* whether the last rule may not be transitivity *) ->
 | stp2_top: forall G1 G2 GH T n,
     closed 0 (length GH) (length G1) T ->
     stp2 true G1 T G2 TTop GH (S n)
+| stp2_bot: forall G1 G2 GH T n,
+    closed 0 (length GH) (length G2) T ->
+    stp2 true G1 TBot G2 T GH (S n)
 | stp2_fun: forall G1 G2 T1 T2 T3 T4 GH n1 n2,
     stp2 false G2 T3 G1 T1 GH n1 ->
     stp2 false G1 T2 G2 T4 GH n2 ->
@@ -300,32 +320,39 @@ Inductive valh_type : venv -> aenv -> (venv*ty) -> (@binding ty) -> Prop :=
 (* ### Evaluation (Big-Step Semantics) ### *)
 
 (*
-None             means timeout
-Some None        means stuck
-Some (Some v))   means result v
+None                   means timeout
+Some None              means stuck
+Some (Some None)       means exception
+Some (Some (Some v))   means result v
 
 Could use do-notation to clean up syntax.
 *)
 
-Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
+Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option (option vl)) :=
   match n with
     | 0 => None
     | S n =>
       match t with
-        | tvar x     => Some (indexr x env)
-        | tabs T y => Some (Some (vabs env T y))
-        | ttabs T y  => Some (Some (vtabs env T y))
+        | tvar x =>
+          match indexr x env with
+            | None => Some None
+            | Some v => Some (Some (Some v))
+          end
+        | tabs T y => Some (Some (Some (vabs env T y)))
+        | ttabs T y  => Some (Some (Some (vtabs env T y)))
         | tapp ef ex   =>
           match teval n env ex with
             | None => None
             | Some None => Some None
-            | Some (Some vx) =>
+            | Some (Some None) => Some (Some None)
+            | Some (Some (Some vx)) =>
               match teval n env ef with
                 | None => None
                 | Some None => Some None
-                | Some (Some (vty _ _)) => Some None
-                | Some (Some (vtabs _ _ _)) => Some None
-                | Some (Some (vabs env2 _ ey)) =>
+                | Some (Some None) => Some (Some None)
+                | Some (Some (Some (vty _ _))) => Some None
+                | Some (Some (Some (vtabs _ _ _))) => Some None
+                | Some (Some (Some (vabs env2 _ ey))) =>
                   teval n (vx::env2) ey
               end
           end
@@ -333,10 +360,19 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
           match teval n env ef with
             | None => None
             | Some None => Some None
-            | Some (Some (vty _ _)) => Some None
-            | Some (Some (vabs _ _ _)) => Some None
-            | Some (Some (vtabs env2 T ey)) =>
+            | Some (Some None) => Some (Some None)
+            | Some (Some (Some (vty _ _))) => Some None
+            | Some (Some (Some (vabs _ _ _))) => Some None
+            | Some (Some (Some (vtabs env2 T ey))) =>
               teval n ((vty env ex)::env2) ey
+          end
+        | traise => Some (Some None)
+        | tcatch et ec =>
+          match teval n env et with
+            | None => None
+            | Some None => Some None
+            | Some (Some None) => teval n env ec
+            | Some (Some (Some vx)) => Some (Some (Some vx))
           end
       end
   end.
@@ -398,6 +434,7 @@ Qed.
 Fixpoint tsize(T: ty) :=
   match T with
     | TTop => 1
+    | TBot => 1
     | TFun T1 T2 => S (tsize T1 + tsize T2)
     | TAll T1 T2 => S (tsize T1 + tsize T2)
     | TVarF _ => 1
@@ -482,6 +519,7 @@ Qed.
 Fixpoint splice n (T : ty) {struct T} : ty :=
   match T with
     | TTop         => TTop
+    | TBot         => TBot
     | TFun T1 T2   => TFun (splice n T1) (splice n T2)
     | TAll T1 T2   => TAll (splice n T1) (splice n T2)
     | TVarF i      => TVarF i
@@ -868,7 +906,7 @@ Proof.
     eexists; eapply stp2_selx; eauto.
   - eapply indexr_has in H1. destruct H1 as [v HI].
     eexists; eapply stp2_selax; eauto.
-Grab Existential Variables. apply 0. apply 0. apply 0.
+Grab Existential Variables. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 Lemma stp2_refl: forall T G GH,
@@ -888,6 +926,11 @@ Proof.
   induction H; intros; subst GH; simpl; eauto.
   - Case "top".
     eapply stp_top.
+    rewrite map_spliceb_length_inc.
+    apply closed_splice.
+    assumption.
+  - Case "bot".
+    eapply stp_bot.
     rewrite map_spliceb_length_inc.
     apply closed_splice.
     assumption.
@@ -940,6 +983,11 @@ Proof.
   induction H; intros; subst GH; simpl; eauto.
   - Case "top".
     eapply stp2_top.
+    rewrite map_spliceat_length_inc.
+    apply closed_splice.
+    assumption.
+  - Case "bot".
+    eapply stp2_bot.
     rewrite map_spliceat_length_inc.
     apply closed_splice.
     assumption.
@@ -1148,6 +1196,11 @@ Proof.
   induction H; intros; eauto.
   - Case "top".
     eapply stp2_top.
+    eapply closed_inc_mult; try eassumption; try omega.
+    rewrite (@aenv_ext__same_length GH GH'). omega. assumption.
+    apply venv_ext__ge_length. assumption.
+  - Case "bot".
+    eapply stp2_bot.
     eapply closed_inc_mult; try eassumption; try omega.
     rewrite (@aenv_ext__same_length GH GH'). omega. assumption.
     apply venv_ext__ge_length. assumption.
@@ -1451,10 +1504,14 @@ Proof. intros. induction H0.
        eapply v_tya. (* aenv is not constrained -- bit of a cheat?*)
 Qed.
 
-Inductive res_type: venv -> option vl -> ty -> Prop :=
+Inductive res_type: venv -> option (option vl) -> ty -> Prop :=
 | not_stuck: forall venv v T,
       val_type venv v (bind_tm T) ->
-      res_type venv (Some v) T.
+      res_type venv (Some (Some v)) T
+| not_stuck_except: forall venv T,
+      res_type venv (Some None) T
+.
+
 
 Hint Constructors res_type.
 Hint Resolve not_stuck.
@@ -1475,6 +1532,10 @@ Proof.
   intros Q E F G P S T TransQ SsubT PsubQ.
   dependent induction SsubT; intros; eauto.
   - apply stp_top.
+    rewrite app_length. rewrite app_length. simpl.
+    rewrite app_length in H. rewrite app_length in H. simpl in H.
+    apply H.
+  - apply stp_bot.
     rewrite app_length. rewrite app_length. simpl.
     rewrite app_length in H. rewrite app_length in H. simpl in H.
     apply H.
@@ -1564,6 +1625,10 @@ Lemma stpd2_top: forall G1 G2 GH T,
     closed 0 (length GH) (length G1) T ->
     stpd2 true G1 T G2 TTop GH.
 Proof. intros. exists (S 0). eauto. Qed.
+Lemma stpd2_bot: forall G1 G2 GH T,
+    closed 0 (length GH) (length G2) T ->
+    stpd2 true G1 TBot G2 T GH.
+Proof. intros. exists (S 0). eauto. Qed.
 Lemma stpd2_fun: forall G1 G2 T1 T2 T3 T4 GH,
     stpd2 false G2 T3 G1 T1 GH ->
     stpd2 false G1 T2 G2 T4 GH ->
@@ -1645,6 +1710,8 @@ Proof.
   - Case "s n". intros m G1 T1 G2 T2 GH n0 H NE. inversion H; subst;
     intros GH1 GH0 GH' GX1 TX1 GX2 TX2 EGH EGH' HX; eauto.
     + SCase "top". eapply stpd2_top.
+      subst. rewrite app_length. simpl. rewrite app_length in H0. simpl in H0. apply H0.
+    + SCase "bot". eapply stpd2_bot.
       subst. rewrite app_length. simpl. rewrite app_length in H0. simpl in H0. apply H0.
     + SCase "fun". eapply stpd2_fun.
       eapply IHn; try eassumption. omega.
@@ -1744,6 +1811,7 @@ Proof.
   intros n. induction n; intros; try omega. eu.
   inversion H; subst;
   try solve [inversion H1; eexists; eauto];
+  try solve [eapply stpd2_bot; eauto using stp2_closed2];
   try solve [eapply stpd2_sel1_down; eauto; eapply IHn; eauto; try omega];
   try solve [eapply stpd2_sela1; eauto; eapply stpd2_wrapf; eapply IHn; eauto; try omega];
   try solve [eapply IHn; [eapply H2 | omega | eauto]]; (* wrapf *)
@@ -2027,6 +2095,11 @@ Proof.
     apply stp_top. rewrite map_length.
     apply closed_subst. assumption.
     eapply closed_upgrade_free. eassumption. omega.
+  - Case "bot".
+    intros. subst. simpl. rewrite app_length in H. simpl in H.
+    apply stp_bot. rewrite map_length.
+    apply closed_subst. assumption.
+    eapply closed_upgrade_free. eassumption. omega.
   - Case "fun". intros. simpl. eapply stp_fun. eauto. eauto.
   - Case "sel1". intros. simpl. eapply stp_sel1. apply H. assumption.
     assert (subst TX T = T) as A. {
@@ -2160,6 +2233,12 @@ Qed.
 
 Lemma compat_top: forall GX TX G1 T1',
   compat GX TX G1 TTop T1' -> closed 0 0 (length GX) TX -> T1' = TTop.
+Proof.
+  intros ? ? ? ? CC CLX. repeat destruct CC as [|CC]; ev; eauto.
+Qed.
+
+Lemma compat_bot: forall GX TX G1 T1',
+  compat GX TX G1 TBot T1' -> closed 0 0 (length GX) TX -> T1' = TBot.
 Proof.
   intros ? ? ? ? CC CLX. repeat destruct CC as [|CC]; ev; eauto.
 Qed.
@@ -2307,6 +2386,15 @@ Proof.
     intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA; eapply stpd2_wrapf.
     eapply compat_top in IX2.
     subst. eapply stpd2_top.
+    eapply compat_closed. eassumption.
+    rewrite app_length in H. simpl in H.
+    erewrite <- Forall2_length. eapply H. eassumption.
+    eassumption. assumption.
+
+  - Case "bot".
+    intros GH0 GH0' GXX TXX T1' T2' ? CX IX1 IX2 FA; eapply stpd2_wrapf.
+    eapply compat_bot in IX1.
+    subst. eapply stpd2_bot.
     eapply compat_closed. eassumption.
     rewrite app_length in H. simpl in H.
     erewrite <- Forall2_length. eapply H. eassumption.
@@ -2541,6 +2629,8 @@ Proof.
   intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY; eapply stpd2_wrapf.
   - Case "top".
     eapply stpd2_top. erewrite wfh_length; eauto. erewrite wf_length; eauto.
+  - Case "bot".
+    eapply stpd2_bot. erewrite wfh_length; eauto. erewrite wf_length; eauto.
   - Case "fun". eapply stpd2_fun; eauto.
   - Case "sel1".
     assert (exists v : vl, indexr x GX = Some v /\ val_type GX v (bind_ty T)) as A.
@@ -2596,7 +2686,7 @@ Lemma restp_widen: forall vf H1 H2 T1 T2,
   stpd2 true H1 T1 H2 T2 [] ->
   res_type H2 vf T2.
 Proof.
-  intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto.
+  intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto. eauto.
 Qed.
 
 (* ### Inversion Lemmas ### *)
@@ -2665,7 +2755,7 @@ Qed.
 
 (* ### Type Safety ### *)
 (* If term type-checks and the term evaluates without timing-out,
-   the result is not stuck, but a value.
+   the result is not stuck, but a value or an exception.
 *)
 Theorem full_safety : forall n e tenv venv res T,
   teval n venv e = Some res -> has_type tenv e T -> wf_env venv tenv ->
@@ -2679,7 +2769,8 @@ Proof.
   - Case "Var".
     remember (tvar i) as e. induction H0; inversion Heqe; subst.
     + destruct (indexr_safe_ex venv0 env (bind_tm T1) i) as [v [I V]]; eauto.
-      rewrite I. eapply not_stuck. eapply V.
+      rewrite I in H3. inversion H3.
+      eapply not_stuck. eapply V.
 
     + eapply restp_widen. eapply IHhas_type; eauto.
       eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
@@ -2700,11 +2791,11 @@ Proof.
 
       destruct tx as [rx|]; try solve by inversion.
       assert (res_type venv0 rx T1) as HRX. SCase "HRX". subst. eapply IHn; eauto.
-      inversion HRX as [? vx].
+      inversion HRX as [? vx|].
 
       destruct tf as [rf|]; subst rx; try solve by inversion.
       assert (res_type venv0 rf (TFun T1 T2)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
-      inversion HRF as [? vf].
+      inversion HRF as [? vf|].
 
       destruct (invert_abs venv0 vf T1 T2) as
           [env1 [tenv [x0 [y0 [T3 [T4 [EF [FRX [WF [HTY [STX STY]]]]]]]]]]]. eauto.
@@ -2716,9 +2807,14 @@ Proof.
           (* wf_env x *) econstructor. eapply valtp_widen; eauto.
                          eapply stpd2_extend2. eauto. eauto. eauto.
 
-      inversion HRY as [? vy].
+      inversion HRY as [? vy|].
 
       eapply not_stuck. eapply valtp_widen; eauto. eapply stpd2_extend1. eauto.
+
+      (* now handle exception cases *)
+      subst. eapply not_stuck_except.
+      subst. inversion H3. subst. eapply not_stuck_except.
+      subst. inversion H3. subst. eapply not_stuck_except.
 
     + eapply restp_widen. eapply IHhas_type; eauto.
       eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
@@ -2738,7 +2834,7 @@ Proof.
 
       destruct tf as [rf|]; try solve by inversion.
       assert (res_type venv0 rf (TAll T11 T12)) as HRF. SCase "HRF". subst. eapply IHn; eauto.
-      inversion HRF as [? vf].
+      inversion HRF as [? vf|].
 
       subst t.
       destruct (invert_tabs venv0 vf T11 T12) as
@@ -2752,11 +2848,28 @@ Proof.
           (* wf_env   *) eauto.
           eapply stpd2_extend2. eauto. eauto.
       eauto.
-      inversion HRY as [? vy].
+      inversion HRY as [? vy|].
 
       eapply not_stuck. eapply valtp_widen; eauto.
 
+      (* now handle exception cases *)
+      subst. eapply not_stuck_except.
+      subst. inversion H3. subst. eapply not_stuck_except.
+
     + eapply restp_widen. eapply IHhas_type; eauto.
       eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
+
+  - Case "Raise".
+    eapply not_stuck_except.
+
+  - Case "Catch".
+    remember (tcatch e1 e2) as e. induction H0; inversion Heqe; subst.
+    + remember (teval n venv0 e1) as tx.
+      destruct tx as [rx|]; try solve by inversion.
+      assert (res_type venv0 rx T) as HRX. SCase "HRX". subst. eapply IHn; eauto.
+      inversion HRX as [? vx|].
+      (* value: return *) subst. inversion H3. eapply not_stuck. eauto.
+      (* exception: use catch block *) subst. eapply IHn; eauto.
+    + eapply restp_widen. eapply IHhas_type; eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. econstructor.
 
 Qed.
