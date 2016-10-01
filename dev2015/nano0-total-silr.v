@@ -15,7 +15,7 @@
 
 (* Note: we need actual step-indexes, not depth fuel !!! *)
 
-(* TODO!! *)
+(* TODO: V_down, R_down helper lemmas *)
 
 
 Require Export SfLib.
