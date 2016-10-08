@@ -579,9 +579,10 @@ Proof.
 Qed.
 
 
-
+(* make logical relation explicit *)
 Definition R H t v T := tevaln H t v /\ val_type H v T.
 
+(* consistent environment *)
 Definition R_env venv tenv :=
   length venv = length tenv /\
  forall x T1, indexr x tenv = Some T1 ->
@@ -592,24 +593,6 @@ Definition R_envh (vvs:venv) (aenv:aenv) tenv :=
  forall x T1, indexr x tenv = Some T1 ->
    indexr x aenv = Some (vvs, T1).
 
-
-
-(* TODO: maybe replace with closed form? forall x, ... (see LR file) *)
-(* consistent environment *)
-Inductive wf_env : venv -> tenv -> Prop := 
-| wfe_nil : wf_env nil nil
-| wfe_cons : forall v t vs ts,
-    val_type (v::vs) v t ->
-    wf_env vs ts ->
-    wf_env (cons v vs) (cons t ts)
-.
-
-Inductive wf_envh : venv -> aenv -> tenv -> Prop :=
-| wfeh_nil : forall vvs, wf_envh vvs nil nil
-| wfeh_cons : forall t vs vvs ts,
-    wf_envh vvs vs ts ->
-    wf_envh vvs (cons (vvs,t) vs) (cons t ts)
-.
 
 Inductive valh_type : venv -> aenv -> (venv*ty) -> ty -> Prop :=
 | v_tya: forall aenv venv T1,
@@ -626,6 +609,10 @@ Hint Unfold open.
 Hint Unfold indexr.
 Hint Unfold length.
 
+Hint Unfold R.
+Hint Unfold R_env.
+Hint Unfold R_envh.
+
 Hint Constructors ty.
 Hint Constructors tm.
 Hint Constructors vl.
@@ -633,8 +620,6 @@ Hint Constructors vl.
 Hint Constructors closed.
 Hint Constructors has_type.
 Hint Constructors val_type_stub.
-Hint Constructors wf_env.
-Hint Constructors wf_envh.
 Hint Constructors stp.
 Hint Constructors stp2.
 
@@ -691,22 +676,21 @@ Qed.
 (* ## Extension, Regularity ## *)
 
 Lemma wf_length : forall vs ts,
-                    wf_env vs ts ->
+                    R_env vs ts ->
                     (length vs = length ts).
 Proof.
   intros. induction H. auto.
-  compute. eauto.
 Qed.
 
 Hint Immediate wf_length.
 
 Lemma wfh_length : forall vvs vs ts,
-                    wf_envh vvs vs ts ->
+                    R_envh vvs vs ts ->
                     (length vs = length ts).
 Proof.
   intros. induction H. auto.
-  compute. eauto.
 Qed.
+
 
 Hint Immediate wfh_length.
 
@@ -2177,124 +2161,10 @@ Proof.
   intros. inversion H; subst; econstructor; eauto; eapply stpd2_strong_trans; eauto.
 Qed.
 
-Lemma valtp_widen_aux: forall n, forall n1 b vf H1 H2 T1 T2,
-  val_type H1 vf T1 ->
-  stp2 true b H1 T1 H2 T2 [] n1 -> n1 < n ->
-  val_type H2 vf T2.
-Proof.
-  intros n. induction n; intros. omega.
-  inversion H0.
-  - Case "Top". 
-    rewrite val_type_unfold in H. rewrite val_type_unfold.
-    subst. destruct vf; eauto.
-  - Case "Bot".
-    rewrite val_type_unfold in H. rewrite val_type_unfold.
-    subst. destruct vf; inversion H. 
-  - Case "mem".
-    rewrite val_type_unfold in H. rewrite val_type_unfold.
-    subst. destruct vf; try solve [inversion H].
-    ev.
-    assert (stpd2 false false l t H2 U2 []). eapply stpd2_trans. eauto. eapply stpd2_downgrade. eauto. 
-    assert (stpd2 false false H2 S2 l t []). eapply stpd2_trans. eapply stpd2_downgrade. eapply stpd2_strong_untrans. eauto. eauto. 
-    eu. eu. eauto.
-  - Case "Sel1".
-    subst T1.
-    rewrite val_type_unfold in H. rewrite H4 in H. 
-    destruct vf; eapply IHn; eauto; omega. 
-  - Case "Sel2". 
-    subst T2. subst. 
-    rewrite val_type_unfold. rewrite H4.
-    destruct vf; eapply IHn; eauto; omega.
-  - Case "selx".
-    rewrite val_type_unfold in H. rewrite val_type_unfold.
-    subst. destruct vf; try solve [inversion H];
-    rewrite <-H5 in H4; rewrite <-H4; eauto. 
-  - Case "sela".
-    inversion H4.     
-  - Case "Fun".
-    rewrite val_type_unfold in H. rewrite val_type_unfold.
-    subst. destruct vf; try solve [inversion H].
-    ev.
-    assert (closed 0 (length ([]:aenv)) (length H2) T4). eapply stpd2_closed1. eauto.
-    assert (closed 0 (length ([]:aenv)) (length H2) T5). admit. (* FIXME: dep! *)
-    admit. (* dep! *)
-(*
-    split. eauto. split. eauto. 
-    intros.
-    specialize (H9 vx).
-    eapply IHn in H12.
-    specialize (H9 H12).
-    ev.
-    inversion H0.
-    exists x. split. eauto.
-    eapply IHn. eauto. 
-    eauto.
-    omega. *)
-  - Case "wrapf".
-    eapply IHn. eauto. eapply H4. omega.
-  - Case "transf".
-    assert (val_type G2 vf T3). eapply IHn; eauto. omega.
-    eapply IHn; eauto. omega. 
-Qed.
 
 
-Lemma valtp_widen: forall vf H1 H2 T1 T2,
-  val_type H1 vf T1 ->
-  stpd2 true true H1 T1 H2 T2 [] ->
-  val_type H2 vf T2.
-Proof.
-  intros. destruct H0. eapply valtp_widen_aux; eauto.
-Qed.
 
 
-Lemma valtp_closed: forall vf H1 T1,
-  val_type H1 vf T1 ->
-  closed 0 0 (length H1) T1.
-Proof.
-  admit.
-Qed.
-
-
-Lemma valtp_reg: forall vf H1 T1,
-  val_type H1 vf T1 ->
-  stpd2 true true H1 T1 H1 T1 [].
-Proof.
-  intros. eapply stp2_refl. eapply valtp_closed. eapply H.
-Qed.
-
-Lemma valtp_extend: forall vx vf H1 T1,
-  val_type H1 vf T1 ->
-  val_type (vx::H1) vf T1.
-Proof.
-  intros. eapply valtp_widen. eauto. eapply stpd2_extend2. eapply valtp_reg. eauto. 
-Qed.
-
-
-Lemma wf_env_extend: forall vx G1 H1 T1,
-  R_env H1 G1 ->
-  val_type (vx::H1) vx T1 ->               
-  R_env (vx::H1) (T1::G1).
-Proof.
-  intros. unfold R_env. unfold R_env in H. destruct H as [L U].
-  split. simpl. eauto.
-  intros. simpl in H. case_eq(beq_nat x (length G1)); intros E; rewrite E in H.
-  - inversion H. subst. exists vx. unfold R. split.
-    exists 0. intros. destruct n. omega. simpl. rewrite <-L in E. rewrite E. eauto.
-    eauto.
-  - destruct (U x T0 H) as [vy [EV VY]]. exists vy. split.
-    destruct EV as [n EV]. assert (S n > n) as N. omega. specialize (EV (S n) N). simpl in EV.
-    exists n. intros. destruct n0. omega. simpl.  rewrite <-L in E. rewrite E. eauto.
-    eapply valtp_extend. eauto. 
-Qed.
-
-
-Lemma restp_widen: forall vf H1 H2 T1 T2,
-  res_type H1 vf T1 ->
-  stpd2 true true H1 T1 H2 T2 [] ->
-  res_type H2 vf T2.
-Proof.
-  intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto.
-Qed.
 
 Lemma invert_typ: forall venv vx S U,
   val_type_stub venv vx (TMem S U) ->
@@ -3040,13 +2910,131 @@ Proof.
   intros. repeat eu. eapply stp2_substitute_aux; eauto.
 Qed.
 
+
+(* ### Value Typing / Logical Relation for Values ### *)
+
+Lemma valtp_widen_aux: forall n, forall n1 b vf H1 H2 T1 T2,
+  val_type H1 vf T1 ->
+  stp2 true b H1 T1 H2 T2 [] n1 -> n1 < n ->
+  val_type H2 vf T2.
+Proof.
+  intros n. induction n; intros. omega.
+  inversion H0.
+  - Case "Top". 
+    rewrite val_type_unfold in H. rewrite val_type_unfold.
+    subst. destruct vf; eauto.
+  - Case "Bot".
+    rewrite val_type_unfold in H. rewrite val_type_unfold.
+    subst. destruct vf; inversion H. 
+  - Case "mem".
+    rewrite val_type_unfold in H. rewrite val_type_unfold.
+    subst. destruct vf; try solve [inversion H].
+    ev.
+    assert (stpd2 false false l t H2 U2 []). eapply stpd2_trans. eauto. eapply stpd2_downgrade. eauto. 
+    assert (stpd2 false false H2 S2 l t []). eapply stpd2_trans. eapply stpd2_downgrade. eapply stpd2_strong_untrans. eauto. eauto. 
+    eu. eu. eauto.
+  - Case "Sel1".
+    subst T1.
+    rewrite val_type_unfold in H. rewrite H4 in H. 
+    destruct vf; eapply IHn; eauto; omega. 
+  - Case "Sel2". 
+    subst T2. subst. 
+    rewrite val_type_unfold. rewrite H4.
+    destruct vf; eapply IHn; eauto; omega.
+  - Case "selx".
+    rewrite val_type_unfold in H. rewrite val_type_unfold.
+    subst. destruct vf; try solve [inversion H];
+    rewrite <-H5 in H4; rewrite <-H4; eauto. 
+  - Case "sela".
+    inversion H4.     
+  - Case "Fun".
+    rewrite val_type_unfold in H. rewrite val_type_unfold.
+    subst. destruct vf; try solve [inversion H].
+    ev.
+    assert (closed 0 (length ([]:aenv)) (length H2) T4). eapply stpd2_closed1. eauto.
+    assert (closed 0 (length ([]:aenv)) (length H2) T5). admit. (* FIXME: dep! *)
+    admit. (* dep! *)
+(*
+    split. eauto. split. eauto. 
+    intros.
+    specialize (H9 vx).
+    eapply IHn in H12.
+    specialize (H9 H12).
+    ev.
+    inversion H0.
+    exists x. split. eauto.
+    eapply IHn. eauto. 
+    eauto.
+    omega. *)
+  - Case "wrapf".
+    eapply IHn. eauto. eapply H4. omega.
+  - Case "transf".
+    assert (val_type G2 vf T3). eapply IHn; eauto. omega.
+    eapply IHn; eauto. omega. 
+Qed.
+
+Lemma valtp_widen: forall vf H1 H2 T1 T2,
+  val_type H1 vf T1 ->
+  stpd2 true true H1 T1 H2 T2 [] ->
+  val_type H2 vf T2.
+Proof.
+  intros. destruct H0. eapply valtp_widen_aux; eauto.
+Qed.
+
+
+Lemma valtp_closed: forall vf H1 T1,
+  val_type H1 vf T1 ->
+  closed 0 0 (length H1) T1.
+Proof.
+  admit.
+Qed.
+
+
+Lemma valtp_reg: forall vf H1 T1,
+  val_type H1 vf T1 ->
+  stpd2 true true H1 T1 H1 T1 [].
+Proof.
+  intros. eapply stp2_refl. eapply valtp_closed. eapply H.
+Qed.
+
+Lemma valtp_extend: forall vx vf H1 T1,
+  val_type H1 vf T1 ->
+  val_type (vx::H1) vf T1.
+Proof.
+  intros. eapply valtp_widen. eauto. eapply stpd2_extend2. eapply valtp_reg. eauto. 
+Qed.
+
+
+Lemma wf_env_extend: forall vx G1 H1 T1,
+  R_env H1 G1 ->
+  val_type (vx::H1) vx T1 ->               
+  R_env (vx::H1) (T1::G1).
+Proof.
+  intros. unfold R_env. unfold R_env in H. destruct H as [L U].
+  split. simpl. eauto.
+  intros. simpl in H. case_eq(beq_nat x (length G1)); intros E; rewrite E in H.
+  - inversion H. subst. exists vx. unfold R. split.
+    exists 0. intros. destruct n. omega. simpl. rewrite <-L in E. rewrite E. eauto.
+    eauto.
+  - destruct (U x T0 H) as [vy [EV VY]]. exists vy. split.
+    destruct EV as [n EV]. assert (S n > n) as N. omega. specialize (EV (S n) N). simpl in EV.
+    exists n. intros. destruct n0. omega. simpl.  rewrite <-L in E. rewrite E. eauto.
+    eapply valtp_extend. eauto. 
+Qed.
+
+
+Lemma restp_widen: forall vf H1 H2 T1 T2,
+  res_type H1 vf T1 ->
+  stpd2 true true H1 T1 H2 T2 [] ->
+  res_type H2 vf T2.
+Proof.
+  intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto.
+Qed.
+
+
+
+
 (* ### Relating Static and Dynamic Subtyping ### *)
-
-
-
-
-
-
 
 Lemma inv_vtp_stub_half: forall G v T GH,
   val_type_stub G v T ->
@@ -3106,39 +3094,10 @@ Proof.
   intros. eapply inv_vtp_stub_half. eapply vtp_to_stub. eauto. 
 Qed.
 
-Lemma exists_GYL: forall GX GY GU GL,
-  wf_envh GX GY (GU ++ GL) ->
-  exists GYU GYL, GY = GYU ++ GYL /\ wf_envh GX GYL GL.
-Proof.
-  intros. remember (GU ++ GL) as G. generalize dependent HeqG. generalize dependent GU. generalize dependent GL. induction H; intros.
-  - exists []. exists []. simpl. split. reflexivity. symmetry in HeqG. apply app_eq_nil in HeqG.
-    inversion HeqG. subst. eauto.
-  - induction GU.
-    + rewrite app_nil_l in HeqG.
-      exists []. eexists. rewrite app_nil_l. split. reflexivity.
-      rewrite <- HeqG. eauto.
-    + simpl in HeqG. inversion HeqG.
-      specialize (IHwf_envh GL GU H2). destruct IHwf_envh as [GYU [GYL [IHA IHB]]].
-      exists ((vvs, a)::GYU). exists GYL. split. rewrite IHA. simpl. reflexivity.
-      apply IHB.
-Qed.
 
 
-Lemma wf_length1 : forall vs ts,
-                    R_env vs ts ->
-                    (length vs = length ts).
-Proof.
-  intros. induction H. auto.
-Qed.
 
-Hint Immediate wf_length.
 
-Lemma wfh_length1 : forall vvs vs ts,
-                    R_envh vvs vs ts ->
-                    (length vs = length ts).
-Proof.
-  intros. induction H. auto.
-Qed.
 
 Lemma wf_envh_extend: forall GX GY GH T3,
   R_envh GX GY GH ->
@@ -3158,9 +3117,9 @@ Lemma stp_to_stp2: forall G1 GH T1 T2,
 Proof.
   intros G1 G2 T1 T2 ST. induction ST; intros GX GY WX WY; eapply stpd2_wrapf.
   - Case "top".
-    eapply stpd2_top. erewrite wfh_length1; eauto. erewrite wf_length1; eauto.
+    eapply stpd2_top. erewrite wfh_length; eauto. erewrite wf_length; eauto.
   - Case "bot".
-    eapply stpd2_bot. erewrite wfh_length1; eauto. erewrite wf_length1; eauto.
+    eapply stpd2_bot. erewrite wfh_length; eauto. erewrite wf_length; eauto.
   - Case "mem". eapply stpd2_mem; eauto.
   - Case "sel1".
     assert (exists v : vl, indexr x GX = Some v /\ val_type GX v TX) as A.
@@ -3184,13 +3143,13 @@ Proof.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. destruct x0.
     inversion VT. subst.
-    eapply stpd2_sela1. eauto. erewrite wf_length1; eauto. eauto.
+    eapply stpd2_sela1. eauto. erewrite wf_length; eauto. eauto.
   - Case "sela2".
     assert (exists v, indexr x GY = Some v /\ valh_type GX GY v TX) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
     destruct A as [? [? VT]]. destruct x0.
     inversion VT. subst.
-    eapply stpd2_sela2. eauto. erewrite wf_length1; eauto. eauto.
+    eapply stpd2_sela2. eauto. erewrite wf_length; eauto. eauto.
   - Case "selax".
     assert (exists v0, indexr x GY = Some v0 /\ valh_type GX GY v0 v) as A.
     eapply index_safeh_ex. eauto. eauto. eauto.
@@ -3199,8 +3158,8 @@ Proof.
     eapply stpd2_selax. eauto.
   - Case "all".
     subst x.
-    assert (length GY = length GH) as A. eapply wfh_length1; eauto.
-    assert (length GX = length G1) as B. eapply wf_length1; eauto.
+    assert (length GY = length GH) as A. eapply wfh_length; eauto.
+    assert (length GX = length G1) as B. eapply wf_length; eauto.
     eapply stpd2_all. eauto. eauto.
     rewrite A. rewrite B. eauto.
     rewrite A. rewrite B. eauto.
@@ -3271,7 +3230,7 @@ Proof.
   - Case "DApp". admit. 
     
   - Case "Abs".
-    erewrite <-(wf_length1 venv0 env WFE) in H. inversion H; subst. 
+    erewrite <-(wf_length venv0 env WFE) in H. inversion H; subst. 
     eexists. split. exists 0. intros. destruct n. omega. simpl. eauto.
     rewrite val_type_unfold. repeat split; eauto.
     admit. (* closed *)
