@@ -2986,7 +2986,14 @@ Lemma valtp_closed: forall vf H1 T1,
   val_type H1 vf T1 ->
   closed 0 0 (length H1) T1.
 Proof.
-  admit.
+  intros. destruct T1; destruct vf;
+  rewrite val_type_unfold in H; try eauto; try contradiction.
+  - (* fun *) ev. econstructor. eauto. admit. (* closed *)
+  - (* sel *) destruct v; try remember (indexr i H1) as L; destruct L as [[?|?]|]; try contradiction.
+              econstructor. eapply indexr_max. eauto. 
+  - (* sel *) destruct v; try remember (indexr i H1) as L; destruct L as [[?|?]|]; try contradiction.
+              econstructor. eapply indexr_max. eauto.
+  - (* mem *) ev. econstructor. eapply stp2_closed1 in H0. eauto. eapply stp2_closed2 in H. eauto. 
 Qed.
 
 
