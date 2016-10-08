@@ -257,6 +257,9 @@ Definition base (v:vl): venv :=
     | vabs GX _ _ => GX
   end.
 
+(* break circular dependency stp2 <-> val_type *)
+Definition vtp_prop := venv -> vl -> ty -> Type.
+
 (* ### Runtime Subtyping ### *)
 (* H1 T1 <: H2 T2 -| J *)
 Inductive stp2: bool (* whether selections are precise *) ->
@@ -280,26 +283,26 @@ Inductive stp2: bool (* whether selections are precise *) ->
 (* vty already marks binding as type binding, so no need for additional TMem marker *)
 | stp2_strong_sel1: forall G1 G2 GX TX x T2 GH n1,
     indexr x G1 = Some (vty GX TX) ->
-    val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
+    val_type_stub GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stp2 true true GX TX G2 T2 GH n1 ->
     stp2 true true G1 (TSel (varF x)) G2 T2 GH (S n1)
 | stp2_strong_sel2: forall G1 G2 GX TX x T1 GH n1,
     indexr x G2 = Some (vty GX TX) ->
-    val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
+    val_type_stub GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stp2 true false G1 T1 GX TX GH n1 ->
     stp2 true true G1 T1 G2 (TSel (varF x)) GH (S n1)
 (* imprecise type *)
 | stp2_sel1: forall G1 G2 v TX x T2 GH n1,
     indexr x G1 = Some v ->
-    val_type (base v) v TX ->
+    val_type_stub (base v) v TX ->
     closed 0 0 (length (base v)) TX ->
     stp2 false false (base v) TX G2 (TMem TBot T2) GH n1 ->
     stp2 false true G1 (TSel (varF x)) G2 T2 GH (S n1)
 | stp2_sel2: forall G1 G2 v TX x T1 GH n1,
     indexr x G2 = Some v ->
-    val_type (base v) v TX ->
+    val_type_stub (base v) v TX ->
     closed 0 0 (length (base v)) TX ->
     stp2 false false (base v) TX G1 (TMem T1 TTop) GH n1 ->
     stp2 false true G1 T1 G2 (TSel (varF x)) GH (S n1)
@@ -339,8 +342,50 @@ Inductive stp2: bool (* whether selections are precise *) ->
     stp2 s true G1 T1 G2 T2 GH n1 ->
     stp2 s false G2 T2 G3 T3 GH n2 ->
     stp2 s false G1 T1 G3 T3 GH (S (n1+n2))
+
+
+with val_type_stub : venv -> vl -> ty -> Prop :=
+| v_ty: forall env venv T1 TE,
+    (exists n, stp2 true true venv (TMem T1 T1) env TE [] n) ->
+    val_type_stub env (vty venv T1) TE
+| v_abs: forall env venv y T1 TE,
+    val_type_stub env (vabs venv T1 y) TE
 .
 
+
+(* ### Evaluation (Big-Step Semantics) ### *)
+
+(*
+None             means timeout
+Some None        means stuck
+Some (Some v))   means result v
+
+Could use do-notation to clean up syntax.
+*)
+
+Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
+  match n with
+    | 0 => None
+    | S n =>
+      match t with
+        | tvar x       => Some (indexr x env)
+        | ttyp T       => Some (Some (vty env T))
+        | tabs T y     => Some (Some (vabs env T y))
+        | tapp ef ex   =>
+          match teval n env ex with
+            | None => None
+            | Some None => Some None
+            | Some (Some vx) =>
+              match teval n env ef with
+                | None => None
+                | Some None => Some None
+                | Some (Some (vty _ _)) => Some None
+                | Some (Some (vabs env2 _ ey)) =>
+                  teval n (vx::env2) ey
+              end
+          end
+      end
+  end.
 
 
 Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some (Some v).
@@ -393,20 +438,19 @@ We follow (1) -- define a more complex size measure.
 --------------------------------------------------------- *)
 
 
-
-Fixpoint vsize (t : vl) : nat :=
-  match t with
-    | vbool _  => 0
-    | vabs _ _ => 0
+Fixpoint vsize (v : vl) : nat :=
+  match v with
+    | vabs _ _ _ => 0
     | vty G T  => 
       (fix tsize T := 
          match T with
-           | TBot       => 1
-           | TTop       => 1
-           | TBool      => 1
-           | TFun T1 T2 => S (tsize T1 + tsize T2)
-           | TMem T1    => S (tsize T1)
-           | TSel x     => S
+           | TBot          => 1
+           | TTop          => 1
+           | TAll T1 T2    => S (tsize T1 + tsize T2)
+           | TMem T1 T2    => S (tsize T1 + tsize T2)
+           | TSel (varB x) => 1 (* ? *)
+           | TSel (varH x) => 1 (* ? *)
+           | TSel (varF x) => S
              ((fix idx x G :=
                 match G with
                   | v::tl => if beq_nat x (length tl) then vsize v else idx x tl
@@ -419,14 +463,15 @@ Fixpoint vsize (t : vl) : nat :=
 
 Fixpoint tsize (G:venv) (T:ty) {struct T} :=
   match T with
-    | TBot       => 1
-    | TTop       => 1
-    | TBool      => 1
-    | TFun T1 T2 => S (tsize G T1 + tsize G T2)  
+    | TBot           => 1
+    | TTop           => 1
+    | TAll T1 T2     => S (tsize G T1 + tsize G T2)  
     (* this becomes: ... + tsize G [T1] (open (varH 1) T2) *)
-    | TMem T1    => S (tsize G T1)
-    | TSel x     => S
-      match index x G with
+    | TMem T1 T2     => S (tsize G T1 + tsize G T2)
+    | TSel (varB x)  => 1
+    | TSel (varH x)  => 1
+    | TSel (varF x)  => S
+      match indexr x G with
         | Some v => vsize v
         | None => 0
       end
@@ -438,12 +483,12 @@ Lemma tsz_eq: forall TX GX,
 Proof.
   intros TX. simpl. induction TX; intros; eauto.
   - Case "fun". simpl. rewrite IHTX1. rewrite IHTX2. eauto.
-  - Case "mem". simpl. rewrite IHTX. eauto.
-  - Case "sel". simpl.
+  - Case "sel". simpl. destruct v; eauto. 
     induction GX.
     + simpl. eauto.
-    + simpl. destruct (beq_nat n (length GX)). eauto. eauto.
- Qed.      
+    + simpl. destruct (beq_nat i (length GX)). eauto. eauto.
+  - Case "mem". simpl. rewrite IHTX1. rewrite IHTX2. eauto.
+ Qed.
  
 Lemma tsz_indir: forall GX TX,
   tsize GX TX < S (vsize (vty GX TX)).
@@ -457,20 +502,18 @@ Require Coq.Program.Wf.
 
 Program Fixpoint val_type (env:venv) (v:vl) (T:ty) {measure (tsize env T)}: Prop :=
   match v,T with
-    | vbool b, TBool =>
-      True
-    | vabs env1 y, TFun T1 T2 =>
-      closed (length env) T1 /\ closed (length env) T2 /\
+    | vabs env1 _ y, TAll T1 T2 =>
+      closed 0 0 (length env) T1 /\ closed 0 0 (length env) T2 /\
       (forall vx, val_type env vx T1 ->
                   exists v, tevaln (vx::env1) y v /\ val_type env v T2)
       (* NOTE: we're not currently relating env and env1 in any way!!
           something like
                   exists v, tevaln (vx::env1) y v /\ val_type env v T2)
       *)
-    | vty env1 TX, TMem T1 =>
-      exists n1 n2, stp2 false env1 TX env T1 n1 /\ stp2 false env T1 env1 TX n2
-    | _, TSel x =>
-      match index x env with
+    | vty env1 TX, TMem T1 T2 =>
+      exists n1 n2, stp2 false false env1 TX env T2 [] n1 /\ stp2 false false env T1 env1 TX [] n2
+    | _, TSel (varF x) =>
+      match indexr x env with
         | Some (vty GX TX) => val_type GX v TX
         | _ => False
       end
@@ -479,8 +522,6 @@ Program Fixpoint val_type (env:venv) (v:vl) (T:ty) {measure (tsize env T)}: Prop
     | _,_ =>
       False
   end.
-
-Check val_type_func_obligation_16.
 
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed.
@@ -494,8 +535,6 @@ Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversi
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
-
 
 
 (* 
@@ -513,16 +552,14 @@ Import WfExtensionality.
 
 Lemma val_type_unfold: forall env v T, val_type env v T =
   match v,T with
-    | vbool b, TBool =>
-      True
-    | vabs env1 y, TFun T1 T2 =>
-      closed (length env) T1 /\ closed (length env) T2 /\
+    | vabs env1 _ y, TAll T1 T2 =>
+      closed 0 0 (length env) T1 /\ closed 0 0 (length env) T2 /\
       (forall vx, val_type env vx T1 ->
                   exists v, tevaln (vx::env1) y v /\ val_type env v T2)
-    | vty env1 TX, TMem T1 =>
-      exists n1 n2, stp2 false env1 TX env T1 n1 /\ stp2 false env T1 env1 TX n2
-    | _, TSel x =>
-      match index x env with
+    | vty env1 TX, TMem T1 T2 =>
+      exists n1 n2, stp2 false false env1 TX env T2 [] n1 /\ stp2 false false env T1 env1 TX [] n2
+    | _, TSel (varF x) =>
+      match indexr x env with
         | Some (vty GX TX) => val_type GX v TX
         | _ => False
       end
@@ -537,8 +574,9 @@ Proof.
   simpl.
   destruct v; simpl; try reflexivity;
   destruct T; simpl; try reflexivity;
+  destruct v; simpl; try reflexivity;
   (* TSel case has another match *)
-  destruct (index n env); simpl; try reflexivity;
+  destruct (indexr i env); simpl; try reflexivity;
   destruct v; simpl; try reflexivity.
 Qed.
 
@@ -569,39 +607,6 @@ Inductive valh_type : venv -> aenv -> (venv*ty) -> ty -> Prop :=
 .
 
 
-(* ### Evaluation (Big-Step Semantics) ### *)
-
-(*
-None             means timeout
-Some None        means stuck
-Some (Some v))   means result v
-
-Could use do-notation to clean up syntax.
-*)
-
-Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
-  match n with
-    | 0 => None
-    | S n =>
-      match t with
-        | tvar x     => Some (indexr x env)
-        | ttyp T => Some (Some (vty env T))
-        | tabs T y => Some (Some (vabs env T y))
-        | tapp ef ex   =>
-          match teval n env ex with
-            | None => None
-            | Some None => Some None
-            | Some (Some vx) =>
-              match teval n env ef with
-                | None => None
-                | Some None => Some None
-                | Some (Some (vty _ _)) => Some None
-                | Some (Some (vabs env2 _ ey)) =>
-                  teval n (vx::env2) ey
-              end
-          end
-      end
-  end.
 
 (* automation *)
 Hint Unfold venv.
@@ -617,7 +622,7 @@ Hint Constructors vl.
 
 Hint Constructors closed.
 Hint Constructors has_type.
-(*Hint Constructors val_type.*)
+Hint Constructors val_type_stub.
 Hint Constructors wf_env.
 Hint Constructors wf_envh.
 Hint Constructors stp.
