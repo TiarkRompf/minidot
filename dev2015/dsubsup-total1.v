@@ -589,7 +589,7 @@ Qed.
 Inductive wf_env : venv -> tenv -> Prop := 
 | wfe_nil : wf_env nil nil
 | wfe_cons : forall v t vs ts,
-    val_type vs v t ->
+    val_type (v::vs) v t ->
     wf_env vs ts ->
     wf_env (cons v vs) (cons t ts)
 .
@@ -662,17 +662,17 @@ Qed.
 (* Proofs *)
 (* ############################################################ *)
 
-Fixpoint tsize(T: ty) :=
+Fixpoint tsize_flat(T: ty) :=
   match T with
     | TTop => 1
     | TBot => 1
-    | TAll T1 T2 => S (tsize T1 + tsize T2)
+    | TAll T1 T2 => S (tsize_flat T1 + tsize_flat T2)
     | TSel _ => 1
-    | TMem T1 T2 => S (tsize T1 + tsize T2)
+    | TMem T1 T2 => S (tsize_flat T1 + tsize_flat T2)
   end.
 
 Lemma open_preserves_size: forall T x j,
-  tsize T = tsize (open_rec j (varH x) T).
+  tsize_flat T = tsize_flat (open_rec j (varH x) T).
 Proof.
   intros T. induction T; intros; simpl; eauto.
   - destruct v; simpl; destruct (beq_nat j i); eauto.
@@ -1048,7 +1048,7 @@ Qed.
 
 Lemma stp_refl_aux: forall n T G GH,
   closed 0 (length GH) (length G) T ->
-  tsize T < n ->
+  tsize_flat T < n ->
   stp G GH T T.
 Proof.
   intros n. induction n; intros; try omega.
@@ -1071,7 +1071,7 @@ Lemma stp_refl: forall T G GH,
   closed 0 (length GH) (length G) T ->
   stp G GH T T.
 Proof.
-  intros. apply stp_refl_aux with (n:=S (tsize T)); eauto.
+  intros. apply stp_refl_aux with (n:=S (tsize_flat T)); eauto.
 Qed.
 
 Definition stpd2 s m G1 T1 G2 T2 GH := exists n, stp2 s m G1 T1 G2 T2 GH n.
@@ -1090,7 +1090,7 @@ Hint Unfold stpd2.
 
 Lemma stp2_refl_aux: forall n T G GH s,
   closed 0 (length GH) (length G) T ->
-  tsize T < n ->
+  tsize_flat T < n ->
   stpd2 s true G T G T GH.
 Proof.
   intros n. induction n; intros; try omega.
@@ -1114,7 +1114,7 @@ Lemma stp2_refl: forall T G GH s,
   closed 0 (length GH) (length G) T ->
   stpd2 s true G T G T GH.
 Proof.
-  intros. apply stp2_refl_aux with (n:=S (tsize T)); eauto.
+  intros. apply stp2_refl_aux with (n:=S (tsize_flat T)); eauto.
 Qed.
 
 Lemma concat_same_length: forall {X} (GU: list X) (GL: list X) (GH1: list X) (GH0: list X),
@@ -1797,11 +1797,20 @@ Proof.
   eapply stp2_closed1; eauto.
 Qed.
 
+
+Lemma valtp_stub_extend : forall vs v v1 T,
+                       val_type_stub vs v T ->
+                       val_type_stub (v1::vs) v T.
+Proof.
+  intros. induction H; eauto; econstructor; eauto; eapply stpd2_extend2; eauto.
+Qed.
+
 Lemma valtp_extend : forall vs v v1 T,
                        val_type vs v T ->
                        val_type (v1::vs) v T.
 Proof.
-  intros. induction H; eauto; econstructor; eauto; eapply stpd2_extend2; eauto.
+  intros. rewrite val_type_unfold. rewrite val_type_unfold in H.
+  admit. (* TODO *)
 Qed.
 
 Lemma indexr_safe_ex: forall H1 G1 TF i,
@@ -1874,28 +1883,28 @@ Lemma stpd2_mem: forall G1 G2 S1 U1 S2 U2 GH s,
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_strong_sel1: forall G1 G2 GX TX x T2 GH,
     indexr x G1 = Some (vty GX TX) ->
-    val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
+    val_type_stub GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stpd2 true true GX TX G2 T2 GH ->
     stpd2 true true G1 (TSel (varF x)) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_strong_sel2: forall G1 G2 GX TX x T1 GH,
     indexr x G2 = Some (vty GX TX) ->
-    val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
+    val_type_stub GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stpd2 true false G1 T1 GX TX GH ->
     stpd2 true true G1 T1 G2 (TSel (varF x)) GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_sel1: forall G1 G2 v TX x T2 GH,
     indexr x G1 = Some v ->
-    val_type (base v) v TX ->
+    val_type_stub (base v) v TX ->
     closed 0 0 (length (base v)) TX ->
     stpd2 false false (base v) TX G2 (TMem TBot T2) GH ->
     stpd2 false true G1 (TSel (varF x)) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_sel2: forall G1 G2 v TX x T1 GH,
     indexr x G2 = Some v ->
-    val_type (base v) v TX ->
+    val_type_stub (base v) v TX ->
     closed 0 0 (length (base v)) TX ->
     stpd2 false false (base v) TX G1 (TMem T1 TTop) GH ->
     stpd2 false true G1 T1 G2 (TSel (varF x)) GH.
@@ -2142,13 +2151,113 @@ Proof.
   eapply stpd2_untrans_aux; eauto using stp2_reg2.
 Qed.
 
-Lemma valtp_widen: forall vf H1 H2 T1 T2,
-  val_type H1 vf T1 ->
+Lemma stpd2_downgrade_aux: forall G1 G2 T1 T2 H m,
+  stpd2 true m G1 T1 G2 T2 H ->
+  stpd2 false m G1 T1 G2 T2 H.
+Proof.
+  intros. inversion H0. dependent induction H1; try solve [eexists; eauto].
+  - Case "mem".
+    eapply stpd2_mem. eapply stpd2_wrapf. eapply IHstp2_1. eexists. eassumption.
+    eapply IHstp2_2. eexists. eassumption.
+  - Case "sel1".
+    eapply stpd2_sel1; eauto. simpl.
+    eapply stpd2_wrapf. eapply stpd2_mem.
+    eapply stpd2_wrapf. eapply IHstp2. eexists. eassumption.
+    eapply stpd2_wrapf. eapply stpd2_bot.
+    eapply closed_upgrade_free. eassumption. omega.
+  - Case "sel2".
+    eapply stpd2_sel2; eauto. simpl.
+    eapply stpd2_wrapf. eapply stpd2_mem.
+    eapply stpd2_wrapf. eapply stpd2_top.
+    simpl. eapply closed_upgrade_free. eassumption. omega.
+    eapply IHstp2. eexists. eassumption.
+  - Case "wrap".
+    eapply stpd2_wrapf. eapply IHstp2. eexists. eassumption.
+  - Case "trans".
+    eapply stpd2_transf.
+    eapply IHstp2_1. eexists. eassumption.
+    eapply IHstp2_2. eexists. eassumption.
+  Grab Existential Variables.
+  apply 0. apply 0. apply 0. apply 0.
+Qed.
+
+Lemma stpd2_downgrade: forall G1 G2 T1 T2 H,
+  stpd2 true true G1 T1 G2 T2 H ->
+  stpd2 false false G1 T1 G2 T2 H.
+Proof.
+  intros. eapply stpd2_downgrade_aux. eapply stpd2_wrapf. assumption.
+Qed.
+
+Lemma valtp_stub_widen: forall vf H1 H2 T1 T2,
+  val_type_stub H1 vf T1 ->
   stpd2 true true H1 T1 H2 T2 [] ->
-  val_type H2 vf T2.
+  val_type_stub H2 vf T2.
 Proof.
   intros. inversion H; subst; econstructor; eauto; eapply stpd2_strong_trans; eauto.
 Qed.
+
+Lemma valtp_widen0: forall n, forall n1 b vf H1 H2 T1 T2,
+  val_type H1 vf T1 ->
+  stp2 true b H1 T1 H2 T2 [] n1 -> n1 < n ->
+  val_type H2 vf T2.
+Proof.
+  intros n. induction n; intros. omega.
+  inversion H0.
+  - Case "Top". 
+    rewrite val_type_unfold in H. rewrite val_type_unfold.
+    subst. destruct vf; eauto.
+  - Case "Bot".
+    rewrite val_type_unfold in H. rewrite val_type_unfold.
+    subst. destruct vf; inversion H. 
+  - Case "mem".
+    rewrite val_type_unfold in H. rewrite val_type_unfold.
+    subst. destruct vf; try solve [inversion H].
+    ev.
+    assert (stpd2 false false l t H2 U2 []). eapply stpd2_trans. eauto. eapply stpd2_downgrade. eauto. 
+    assert (stpd2 false false H2 S2 l t []). eapply stpd2_trans. eapply stpd2_downgrade. eapply stpd2_strong_untrans. eauto. eauto. 
+    eu. eu. eauto.
+  - Case "Sel1".
+    subst T1.
+    rewrite val_type_unfold in H. rewrite H4 in H. 
+    destruct vf; eapply IHn; eauto; omega. 
+  - Case "Sel2". 
+    subst T2. subst. 
+    rewrite val_type_unfold. rewrite H4.
+    destruct vf; eapply IHn; eauto; omega.
+  - Case "selx".
+    rewrite val_type_unfold in H. rewrite val_type_unfold.
+    subst. destruct vf; try solve [inversion H];
+    rewrite <-H5 in H4; rewrite <-H4; eauto. 
+  - Case "sela".
+    inversion H4.     
+  - Case "Fun".
+    rewrite val_type_unfold in H. rewrite val_type_unfold.
+    subst. destruct vf; try solve [inversion H].
+    ev.
+    assert (closed 0 (length ([]:aenv)) (length H2) T4). eapply stpd2_closed1. eauto.
+    assert (closed 0 (length ([]:aenv)) (length H2) T5). admit. (* FIXME: dep! *)
+    admit. (* dep! *)
+(*
+    split. eauto. split. eauto. 
+    intros.
+    specialize (H9 vx).
+    eapply IHn in H12.
+    specialize (H9 H12).
+    ev.
+    inversion H0.
+    exists x. split. eauto.
+    eapply IHn. eauto. 
+    eauto.
+    omega. *)
+  - Case "wrapf".
+    eapply IHn. eauto. eapply H4. omega.
+  - Case "transf".
+    assert (val_type G2 vf T3). eapply IHn; eauto. omega.
+    eapply IHn; eauto. omega. 
+Qed.
+
+
+
 
 Lemma restp_widen: forall vf H1 H2 T1 T2,
   res_type H1 vf T1 ->
@@ -2229,42 +2338,6 @@ Proof.
   eapply stpd2_strong_untrans. eapply stpd2_to_strong. eauto.
 Qed.
 
-Lemma stpd2_downgrade_aux: forall G1 G2 T1 T2 H m,
-  stpd2 true m G1 T1 G2 T2 H ->
-  stpd2 false m G1 T1 G2 T2 H.
-Proof.
-  intros. inversion H0. dependent induction H1; try solve [eexists; eauto].
-  - Case "mem".
-    eapply stpd2_mem. eapply stpd2_wrapf. eapply IHstp2_1. eexists. eassumption.
-    eapply IHstp2_2. eexists. eassumption.
-  - Case "sel1".
-    eapply stpd2_sel1; eauto. simpl.
-    eapply stpd2_wrapf. eapply stpd2_mem.
-    eapply stpd2_wrapf. eapply IHstp2. eexists. eassumption.
-    eapply stpd2_wrapf. eapply stpd2_bot.
-    eapply closed_upgrade_free. eassumption. omega.
-  - Case "sel2".
-    eapply stpd2_sel2; eauto. simpl.
-    eapply stpd2_wrapf. eapply stpd2_mem.
-    eapply stpd2_wrapf. eapply stpd2_top.
-    simpl. eapply closed_upgrade_free. eassumption. omega.
-    eapply IHstp2. eexists. eassumption.
-  - Case "wrap".
-    eapply stpd2_wrapf. eapply IHstp2. eexists. eassumption.
-  - Case "trans".
-    eapply stpd2_transf.
-    eapply IHstp2_1. eexists. eassumption.
-    eapply IHstp2_2. eexists. eassumption.
-  Grab Existential Variables.
-  apply 0. apply 0. apply 0. apply 0.
-Qed.
-
-Lemma stpd2_downgrade: forall G1 G2 T1 T2 H,
-  stpd2 true true G1 T1 G2 T2 H ->
-  stpd2 false false G1 T1 G2 T2 H.
-Proof.
-  intros. eapply stpd2_downgrade_aux. eapply stpd2_wrapf. assumption.
-Qed.
 
 (* ### Substitution for relating static and dynamic semantics ### *)
 Lemma indexr_hit2 {X}: forall x (B:X) A G,
