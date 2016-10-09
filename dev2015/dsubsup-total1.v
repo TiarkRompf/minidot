@@ -12,12 +12,12 @@ TODO:
  + add sel1, sel2
  + make TMem translucent
  - make TFun dependent (x)
- - make TSel take a term instead of a nat
  ------------
+ - make TSel take a term instead of a nat
  - allow guarded recursion (x) 
 
 TECHNICAL PROBLEMS:
- + circularity between stp2 and val_type0
+ + circularity between stp2 and val_type
  - recursive types (once we add them)
 
 A: scale up to D<>
@@ -495,8 +495,12 @@ Program Fixpoint val_type (env:venv) (v:vl) (T:ty) {measure (tsize env T)}: Prop
   match v,T with
     | vabs env1 _ y, TAll T1 T2 =>
       closed 0 0 (length env) T1 /\ closed 1 0 (length env) T2 /\
-      (closed 0 0 (length env) T2 -> forall vx, val_type env vx T1 ->
-                  exists v, tevaln (vx::env1) y v /\ val_type env v T2)
+      (* (closed 0 0 (length env) T2 -> forall vx, val_type env vx T1 ->
+        exists v, tevaln (vx::env1) y v /\ val_type env v T2) /\ *)
+      (forall x vx,
+        (closed 0 0 (length env) T \/ tevaln env (tvar x) v) ->
+        val_type env vx T1 ->
+        exists v, tevaln (vx::env1) y v /\ val_type env v (open (varF x) T2))
     | vty env1 TX, TMem T1 T2 =>
       exists n1 n2,
         stp2 false false env1 TX env T2 [] n1 /\
@@ -515,7 +519,15 @@ Program Fixpoint val_type (env:venv) (v:vl) (T:ty) {measure (tsize env T)}: Prop
   end.
 
 Next Obligation. simpl. omega. Qed.
-Next Obligation. simpl. omega. Qed.
+Next Obligation. simpl.
+(* 
+  H : closed 0 0 (length env) (TAll T1 T2) \/
+      tevaln env (tvar x) (vabs env1 wildcard' y)
+  ============================
+   tsize env (open (varF x) T2) < S (tsize env T1 + tsize env T2)
+ *)
+admit. Qed.
+
 Next Obligation. (* TSel case *)
   simpl. rewrite <-Heq_anonymous. eapply tsz_indir. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
@@ -545,8 +557,10 @@ Lemma val_type_unfold: forall env v T, val_type env v T =
   match v,T with
     | vabs env1 _ y, TAll T1 T2 =>
       closed 0 0 (length env) T1 /\ closed 1 0 (length env) T2 /\
-      (closed 0 0 (length env) T2 -> forall vx, val_type env vx T1 ->
-                  exists v, tevaln (vx::env1) y v /\ val_type env v T2)
+      (forall x vx,
+        (closed 0 0 (length env) T \/ tevaln env (tvar x) v) ->
+        val_type env vx T1 ->
+        exists v, tevaln (vx::env1) y v /\ val_type env v (open (varF x) T2))
     | vty env1 TX, TMem T1 T2 =>
       exists n1 n2, stp2 false false env1 TX env T2 [] n1 /\ stp2 false false env T1 env1 TX [] n2
     | _, TSel (varF x) =>
