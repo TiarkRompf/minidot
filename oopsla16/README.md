@@ -9,4 +9,4 @@ The Coq scripts compile with the command `make`, using `coqc --version` 8.4pl6 (
 - [`dot_soundness_alt.v`](dot_soundness_alt.v) -- alternative soundness proof, based on directly invertible value typing aka possible types
 - [`dot_exs.v`](dot_exs.v) -- some examples, just sanity checks for expressivity
 
-Appendix B of the paper, _Type Soundness for Dependent Object Types (DOT)_ ([PDF](http://lampwww.epfl.ch/~amin/dot/soundness_oopsla16.pdf)), outlines a correspondence between the formalism on paper and in Coq.
+Appendix A of the paper, _Type Soundness for Dependent Object Types (DOT)_ ([PDF](http://lampwww.epfl.ch/~amin/dot/soundness_oopsla16.pdf)), outlines a correspondence between the formalism on paper and in Coq.
