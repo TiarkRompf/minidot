@@ -491,23 +491,22 @@ Qed.
 
 Require Coq.Program.Wf.
 
-Program Fixpoint val_type (env:venv) (v:vl) (T:ty) {measure (tsize env T)}: Prop :=
+Program Fixpoint val_type (env:venv) (GH:aenv) (v:vl) (T:ty) {measure (tsize env T)}: Prop :=
   match v,T with
     | vabs env1 _ y, TAll T1 T2 =>
-      closed 0 0 (length env) T1 /\ closed 1 0 (length env) T2 /\
+      closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
       (* (closed 0 0 (length env) T2 -> forall vx, val_type env vx T1 ->
         exists v, tevaln (vx::env1) y v /\ val_type env v T2) /\ *)
       (forall vx,
-        (* (closed 0 0 (length env) T2 \/ tevaln env (tvar x) vx) -> *)
-        val_type env vx T1 ->
-        exists v x, tevaln (vx::env1) y v /\ val_type env v (open (varF x) T2))
+        val_type env GH vx T1 ->
+        exists v, tevaln (vx::env1) y v /\ val_type env ((env,T1)::GH) v (open (varH (length GH)) T2))
     | vty env1 TX, TMem T1 T2 =>
       exists n1 n2,
-        stp2 false false env1 TX env T2 [] n1 /\
-        stp2 false false env T1 env1 TX [] n2
+        stp2 false false env1 TX env T2 GH n1 /\
+        stp2 false false env T1 env1 TX GH n2
     | _, TSel (varF x) =>
       match indexr x env with
-        | Some (vty GX TX) => val_type GX v TX
+        | Some (vty GX TX) => val_type GX [] v TX
         | _ => False
       end
     | vty env1 TX , TTop =>
@@ -553,19 +552,19 @@ Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversi
 Import Coq.Program.Wf.
 Import WfExtensionality.
 
-Lemma val_type_unfold: forall env v T, val_type env v T =
+Lemma val_type_unfold: forall env GH v T, val_type env GH v T =
   match v,T with
     | vabs env1 _ y, TAll T1 T2 =>
-      closed 0 0 (length env) T1 /\ closed 1 0 (length env) T2 /\
+      closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
       (forall vx,
-        (* (closed 0 0 (length env) T2 \/ tevaln env (tvar x) vx) -> *)
-        val_type env vx T1 ->
-        exists v x, tevaln (vx::env1) y v /\ val_type env v (open (varF x) T2))
+        val_type env GH vx T1 ->
+        exists v, tevaln (vx::env1) y v /\ val_type env ((env,T1)::GH) v (open (varH (length GH)) T2))
     | vty env1 TX, TMem T1 T2 =>
-      exists n1 n2, stp2 false false env1 TX env T2 [] n1 /\ stp2 false false env T1 env1 TX [] n2
+      exists n1 n2, stp2 false false env1 TX env T2 GH n1 /\
+                    stp2 false false env T1 env1 TX GH n2
     | _, TSel (varF x) =>
       match indexr x env with
-        | Some (vty GX TX) => val_type GX v TX
+        | Some (vty GX TX) => val_type GX [] v TX
         | _ => False
       end
     | vty env1 TX , TTop =>
@@ -577,7 +576,7 @@ Lemma val_type_unfold: forall env v T, val_type env v T =
   end.
 Proof.
   intros. unfold val_type at 1. unfold val_type_func.
-  unfold_sub val_type (val_type env v T).
+  unfold_sub val_type (val_type env GH v T).
   simpl.
   destruct v; simpl; try reflexivity;
   destruct T; simpl; try reflexivity;
@@ -589,7 +588,7 @@ Qed.
 
 
 (* make logical relation explicit *)
-Definition R H t v T := tevaln H t v /\ val_type H v T.
+Definition R H t v T := tevaln H t v /\ val_type H [] v T.
 
 (* consistent environment *)
 Definition R_env venv tenv :=
