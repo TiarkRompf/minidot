@@ -497,10 +497,10 @@ Program Fixpoint val_type (env:venv) (v:vl) (T:ty) {measure (tsize env T)}: Prop
       closed 0 0 (length env) T1 /\ closed 1 0 (length env) T2 /\
       (* (closed 0 0 (length env) T2 -> forall vx, val_type env vx T1 ->
         exists v, tevaln (vx::env1) y v /\ val_type env v T2) /\ *)
-      (forall x vx,
-        (closed 0 0 (length env) T \/ tevaln env (tvar x) v) ->
+      (forall vx,
+        (* (closed 0 0 (length env) T2 \/ tevaln env (tvar x) vx) -> *)
         val_type env vx T1 ->
-        exists v, tevaln (vx::env1) y v /\ val_type env v (open (varF x) T2))
+        exists v x, tevaln (vx::env1) y v /\ val_type env v (open (varF x) T2))
     | vty env1 TX, TMem T1 T2 =>
       exists n1 n2,
         stp2 false false env1 TX env T2 [] n1 /\
@@ -521,7 +521,7 @@ Program Fixpoint val_type (env:venv) (v:vl) (T:ty) {measure (tsize env T)}: Prop
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl.
 (* 
-  H : closed 0 0 (length env) (TAll T1 T2) \/
+  H : closed 0 0 (length env) T2 \/
       tevaln env (tvar x) (vabs env1 wildcard' y)
   ============================
    tsize env (open (varF x) T2) < S (tsize env T1 + tsize env T2)
@@ -557,10 +557,10 @@ Lemma val_type_unfold: forall env v T, val_type env v T =
   match v,T with
     | vabs env1 _ y, TAll T1 T2 =>
       closed 0 0 (length env) T1 /\ closed 1 0 (length env) T2 /\
-      (forall x vx,
-        (closed 0 0 (length env) T \/ tevaln env (tvar x) v) ->
+      (forall vx,
+        (* (closed 0 0 (length env) T2 \/ tevaln env (tvar x) vx) -> *)
         val_type env vx T1 ->
-        exists v, tevaln (vx::env1) y v /\ val_type env v (open (varF x) T2))
+        exists v x, tevaln (vx::env1) y v /\ val_type env v (open (varF x) T2))
     | vty env1 TX, TMem T1 T2 =>
       exists n1 n2, stp2 false false env1 TX env T2 [] n1 /\ stp2 false false env T1 env1 TX [] n2
     | _, TSel (varF x) =>
