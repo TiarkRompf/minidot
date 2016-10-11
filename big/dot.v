@@ -1,11 +1,6 @@
 (* Full safety for DOT *)
 
-(* copied from dot22.v *)
-(* based on that, it removes the 2nd level of pushback,
-   and performs the necessary translation while going
-   from stp to stp2 *)
-(* copied from dot23.v *)
-(* based on that, it adds bind1 rule *)
+(* based on file dev2015/dot24 *)
 
 Require Export SfLib.
 
@@ -13,7 +8,7 @@ Require Export Arith.EqNat.
 Require Export Arith.Le.
 Require Import Coq.Program.Equality.
 
-Module FSUB.
+Module DOT.
 
 Definition id := nat.
 
@@ -199,8 +194,6 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
 Hint Unfold open.
 Hint Unfold closed.
 
-(* TODO: var *)
-(* QUESTION: include trans rule or not? sela1 rules use restricted GL now, so trans seems useful *)
 Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_topx: forall G1 GH,
     stp G1 GH TTop TTop
@@ -320,24 +313,6 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 
 
 
-(*
-with path_type: tenv -> tenv -> id -> ty -> Prop :=
-| pt_var: forall G1 GH TX x,
-    index x G1 = Some TX ->
-    path_type G1 GH x TX
-| pt_sub: forall G1 GH TX x,
-    path_type has_type env e T1 ->
-           stp env [] T1 T2 ->
-           has_type env e T2
-
-with pathH_type: tenv -> tenv -> id -> ty -> Prop :=
-| pth_var: forall G1 GH TX T x,
-    indexr x GH = Some TX ->
-    stp G1 GH TX T ->
-    pathH_type G1 GH x T
-*)
-
-
 Hint Constructors stp.
 
 
@@ -347,7 +322,6 @@ Function tand (t1: ty) (t2: ty) :=
     | _ => TAnd t1 t2
   end.
 
-(* TODO *)
 
 Inductive has_type : tenv -> tm -> ty -> Prop :=
 | t_true: forall env,
@@ -6442,10 +6416,6 @@ Proof.
 Qed.
 
 
-(* TODO: need to revisit if stp includes trans rule.
-   if yes, probably need to return stpd2 false, and
-   call untrans after recursive calls. but need to be
-   careful since we can only untrans with GH=nil  *)
 Lemma stp_to_stp2_aux: forall G1 GH T1 T2,
   stp G1 GH T1 T2 ->
   forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
@@ -7206,4 +7176,4 @@ Grab Existential Variables.
 apply 0. apply 0. 
 Qed.
 
-End FSUB.
+End DOT.
