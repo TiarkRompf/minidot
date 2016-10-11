@@ -1070,7 +1070,7 @@ Proof.
 Qed.
 
 Example ex4:
-  has_type [(1,TAll 0 TBool TBool);(0,brandUnbrand)]
+  has_type [(1,TAll 0 TBool TBool), (0,brandUnbrand)]
            (tvar 0) (TAll 0 (TBind (TMem 0 TBool TBool)) (TBind (TAll 0 (TBind (TAnd (TAll 1 TBool TBool) (TAll 0 TBool TBool))) TBool))).
 Proof.
   eapply t_sub.
@@ -1092,8 +1092,8 @@ Hint Resolve ex4.
 (* apply it to identity functions *)
 
 Example ex5:
-  has_type [(1,TAll 0 TBool TBool);(0,brandUnbrand)]
-           (tapp (tlet 2 (tapp (tvar 0) 0 (tobj 2 [(0,dmem TBool)])) (tvar 2)) 0 (tobj 2 [(1, dfun 3 (tapp (tvar 1) 0 (tvar 3))); (0, dfun 3 (tapp (tvar 1) 0 (tvar 3)))])) TBool.
+  has_type [(1,TAll 0 TBool TBool), (0,brandUnbrand)]
+           (tapp (tlet 2 (tapp (tvar 0) 0 (tobj 2 [(0,dmem TBool)])) (tvar 2)) 0 (tobj 2 [(1, dfun 3 (tapp (tvar 1) 0 (tvar 3))), (0, dfun 3 (tapp (tvar 1) 0 (tvar 3)))])) TBool.
 Proof.
   eapply t_app.
   eapply t_let.
@@ -1180,7 +1180,7 @@ Qed.
 (* test expansion *)
 
 Example ex6:
-  has_type [(1,TSel (varF 0) 0);(0,TMem 0 TBot (TBind (TAll 0 TBool (TSel (varB 1) 0))))]
+  has_type [(1,TSel (varF 0) 0), (0,TMem 0 TBot (TBind (TAll 0 TBool (TSel (varB 1) 0))))]
            (tvar 1) (TAll 0 TBool (TSel (varF 1) 0)).
 Proof.
   remember (TAll 0 TBool (TSel (varF 1) 0)) as T.
@@ -1191,7 +1191,7 @@ Qed.
 
 
 Example ex7:
-  stp [(1,TSel (varF 0) 0);(0,TMem 0 TBot (TBind (TMem 0 TBot (TAll 0 TBool (TSel (varB 1) 0)))))] []
+  stp [(1,TSel (varF 0) 0), (0,TMem 0 TBot (TBind (TMem 0 TBot (TAll 0 TBool (TSel (varB 1) 0)))))] []
            (TSel (varF 1) 0) (TAll 0 TBool (TSel (varF 1) 0)).
 Proof.
   remember (TAll 0 TBool (TSel (varF 1) 0)) as T.
@@ -1251,9 +1251,9 @@ Example paper_list_nil_head:
   has_type
     []
     (tobj 0
-          [(1, dfun 1 (tlet 2 (tobj 2 [(1, dfun 3 (tapp (tvar 2) 1 (tvar 3)));
+          [(1, dfun 1 (tlet 2 (tobj 2 [(1, dfun 3 (tapp (tvar 2) 1 (tvar 3))),
                                        (0, dmem TBot)])
-                            (tvar 2)));
+                            (tvar 2))),
            (0, dmem (TBind (TAnd
                               (TAll 1 TTop (TSel (varB 1) 0))
                               (TMem 0 TBot TTop))))
@@ -1305,10 +1305,10 @@ Example paper_list_nil:
   has_type
     []
     (tobj 0
-          [(1, dfun 1 (tlet 2 (tobj 2 [(2, dfun 3 (tapp (tvar 2) 2 (tvar 3)));
-                                       (1, dfun 3 (tapp (tvar 2) 1 (tvar 3)));
+          [(1, dfun 1 (tlet 2 (tobj 2 [(2, dfun 3 (tapp (tvar 2) 2 (tvar 3))),
+                                       (1, dfun 3 (tapp (tvar 2) 1 (tvar 3))),
                                        (0, dmem TBot)])
-                            (tvar 2)));
+                            (tvar 2))),
            (0, dmem (TBind (TAnd
                               (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 2) 0)))))
                             (TAnd
@@ -1387,8 +1387,8 @@ Example paper_list_cons_head:
     (tobj 0
           [(1, dfun 1(*type T*) (tlet 2 (tobj 2
           [(0, dfun 3(*hd*) (tlet 4 (tobj 4 [(0, dfun 5(*tl*) (tlet 6 (tobj 6
-          [(1, dfun 7 (tvar 3));
-           (0, dmem (TSel (varF 1) 0))]) (tvar 6)))]) (tvar 4)))]) (tvar 2)));
+          [(1, dfun 7 (tvar 3)),
+           (0, dmem (TSel (varF 1) 0))]) (tvar 6)))]) (tvar 4)))]) (tvar 2))),
            (0, dmem (TBind (TAnd
                               (TAll 1 TTop (TSel (varB 1) 0))
                               (TMem 0 TBot TTop))))
@@ -1508,8 +1508,8 @@ Example paper_list_cons:
     (tobj 0
           [(1, dfun 1(*type T*) (tlet 2 (tobj 2
           [(0, dfun 3(*hd*) (tlet 4 (tobj 4 [(0, dfun 5(*tl*) (tlet 6 (tobj 6
-          [(2, dfun 7 (tvar 5)); (1, dfun 7 (tvar 3));
-           (0, dmem (TSel (varF 1) 0))]) (tvar 6)))]) (tvar 4)))]) (tvar 2)));
+          [(2, dfun 7 (tvar 5)), (1, dfun 7 (tvar 3)),
+           (0, dmem (TSel (varF 1) 0))]) (tvar 6)))]) (tvar 4)))]) (tvar 2))),
            (0, dmem (TBind (TAnd
                               (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 2) 0)))))
                            (TAnd
@@ -1651,14 +1651,14 @@ Example paper_list:
   has_type
     []
     (tobj 0
-          [(2, dfun 1 (tlet 2 (tobj 2 [(2, dfun 3 (tapp (tvar 2) 2 (tvar 3)));
-                                       (1, dfun 3 (tapp (tvar 2) 1 (tvar 3)));
+          [(2, dfun 1 (tlet 2 (tobj 2 [(2, dfun 3 (tapp (tvar 2) 2 (tvar 3))),
+                                       (1, dfun 3 (tapp (tvar 2) 1 (tvar 3))),
                                        (0, dmem TBot)])
-                            (tvar 2)));
+                            (tvar 2))),
            (1, dfun 1(*type T*) (tlet 2 (tobj 2
           [(0, dfun 3(*hd*) (tlet 4 (tobj 4 [(0, dfun 5(*tl*) (tlet 6 (tobj 6
-          [(2, dfun 7 (tvar 5)); (1, dfun 7 (tvar 3));
-           (0, dmem (TSel (varF 1) 0))]) (tvar 6)))]) (tvar 4)))]) (tvar 2)));
+          [(2, dfun 7 (tvar 5)), (1, dfun 7 (tvar 3)),
+           (0, dmem (TSel (varF 1) 0))]) (tvar 6)))]) (tvar 4)))]) (tvar 2))),
            (0, dmem (TBind (TAnd
                               (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 2) 0)))))
                            (TAnd
