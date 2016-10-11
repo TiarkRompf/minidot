@@ -227,73 +227,108 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env e T2
 .
 
+Definition base (v:vl): venv :=
+  match v with
+    | vty GX _ => GX
+    | vabs GX _ _ => GX
+    | vtabs GX _ _ _ => GX
+  end.
+
 (* ### Runtime Subtyping ### *)
 (* H1 T1 <: H2 T2 -| J *)
-Inductive stp2: bool (* whether the last rule may not be transitivity *) ->
+Inductive stp2: bool (* whether selections are precise *) ->
+                bool (* whether the last rule may not be transitivity *) ->
                 venv -> ty -> venv -> ty -> aenv  ->
                 nat (* derivation size *) ->
                 Prop :=
-| stp2_top: forall G1 G2 GH T n,
+| stp2_top: forall G1 G2 GH T s n,
     closed 0 (length GH) (length G1) T ->
-    stp2 true G1 T G2 TTop GH (S n)
-| stp2_bot: forall G1 G2 GH T n,
+    stp2 s true G1 T G2 TTop GH (S n)
+| stp2_bot: forall G1 G2 GH T s n,
     closed 0 (length GH) (length G2) T ->
-    stp2 true G1 TBot G2 T GH (S n)
-| stp2_fun: forall G1 G2 T1 T2 T3 T4 GH n1 n2,
-    stp2 false G2 T3 G1 T1 GH n1 ->
-    stp2 false G1 T2 G2 T4 GH n2 ->
-    stp2 true G1 (TFun T1 T2) G2 (TFun T3 T4) GH (S (n1 + n2))
+    stp2 s true G1 TBot G2 T GH (S n)
+| stp2_fun: forall G1 G2 T1 T2 T3 T4 GH s n1 n2,
+    stp2 s false G2 T3 G1 T1 GH n1 ->
+    stp2 s false G1 T2 G2 T4 GH n2 ->
+    stp2 s true G1 (TFun T1 T2) G2 (TFun T3 T4) GH (S (n1 + n2))
 
 (* concrete type variables *)
-| stp2_sel1: forall G1 G2 GX TX x T2 GH n1,
+(* precise/invertible bounds *)
+| stp2_strong_sel1: forall G1 G2 GX TX x T2 GH n1,
     indexr x G1 = Some (vty GX TX) ->
     closed 0 0 (length GX) TX ->
-    stp2 true GX TX G2 T2 GH n1 ->
-    stp2 true G1 (TVarF x) G2 T2 GH (S n1)
-| stp2_sel2: forall G1 G2 GX TX x T1 GH n1,
+    stp2 true true GX TX G2 T2 GH n1 ->
+    stp2 true true G1 (TVarF x) G2 T2 GH (S n1)
+| stp2_strong_sel2: forall G1 G2 GX TX x T1 GH n1,
     indexr x G2 = Some (vty GX TX) ->
     closed 0 0 (length GX) TX ->
-    stp2 false G1 T1 GX TX GH n1 ->
-    stp2 true G1 T1 G2 (TVarF x) GH (S n1)
-| stp2_selx: forall G1 G2 v x1 x2 GH n,
+    stp2 true false G1 T1 GX TX GH n1 ->
+    stp2 true true G1 T1 G2 (TVarF x) GH (S n1)
+(* imprecise type *)
+| stp2_sel1: forall G1 G2 v TX x T2 GH n1,
+    indexr x G1 = Some v ->
+    val_type (base v) v TX ->
+    closed 0 0 (length (base v)) TX ->
+    stp2 false false (base v) TX G2 (TMem TBot T2) GH n1 ->
+    stp2 false true G1 (TSel (varF x)) G2 T2 GH (S n1)
+| stp2_sel2: forall G1 G2 v TX x T1 GH n1,
+    indexr x G2 = Some v ->
+    val_type (base v) v TX ->
+    closed 0 0 (length (base v)) TX ->
+    stp2 false false (base v) TX G1 (TMem T1 TTop) GH n1 ->
+    stp2 false true G1 T1 G2 (TSel (varF x)) GH (S n1)
+
+| stp2_sel1: forall G1 GH TL T T2 x,
+    indexr x G1 = Some (bind_ty TL T) ->
+    closed 0 0 (length G1) TL ->
+    closed 0 0 (length G1) T ->
+    stp2 false false G1 GH T T2 ->
+    stp2 false true G1 GH (TVarF x) T2
+| stp2_sel2: forall G1 GH TL T T1 x,
+    indexr x G1 = Some (bind_ty TL T) ->
+    closed 0 0 (length G1) TL ->
+    closed 0 0 (length G1) T ->
+    stp2 false false G1 GH T1 TL ->
+    stp2 false true G1 T1 G2 (TVarF x) GH (S n1)
+| stp2_selx: forall G1 G2 v x1 x2 GH s n,
     indexr x1 G1 = Some v ->
     indexr x2 G2 = Some v ->
-    stp2 true G1 (TVarF x1) G2 (TVarF x2) GH (S n)
+    stp2 s true G1 (TVarF x1) G2 (TVarF x2) GH (S n)
 
 (* abstract type variables *)
 | stp2_sela1: forall G1 G2 GX TX0 TX1 x T2 GH n1,
     indexr x GH = Some (GX, (TX0,TX1)) ->
     closed 0 x (length GX) TX0 ->
     closed 0 x (length GX) TX1 ->
-    stp2 false GX TX1 G2 T2 GH n1 ->
-    stp2 true G1 (TVarH x) G2 T2 GH (S n1)
+    stp2 false false GX TX1 G2 T2 GH n1 ->
+    stp2 false true G1 (TVarH x) G2 T2 GH (S n1)
 | stp2_sela2: forall G1 G2 GX TX0 TX1 x T1 GH n1,
     indexr x GH = Some (GX, (TX0,TX1)) ->
     closed 0 x (length GX) TX0 ->
     closed 0 x (length GX) TX1 ->
-    stp2 false G1 T1 GX TX0 GH n1 ->
-    stp2 true G1 T1 G2 (TVarH x) GH (S n1)
-| stp2_selax: forall G1 G2 v x GH n,
+    stp2 false false G1 T1 GX TX0 GH n1 ->
+    stp2 false true G1 T1 G2 (TVarH x) GH (S n1)
+| stp2_selax: forall G1 G2 v x GH s n,
     indexr x GH = Some v ->
-    stp2 true G1 (TVarH x) G2 (TVarH x) GH (S n)
+    stp2 s true G1 (TVarH x) G2 (TVarH x) GH (S n)
 
-| stp2_all: forall G1 G2 T0 T1 T2 T0' T3 T4 x GH n0 n1 n2,
-    stp2 false G1 T0 G2 T0' GH n0 ->
-    stp2 false G2 T3 G1 T1 GH n1 ->
+| stp2_all: forall G1 G2 T0 T1 T2 T0' T3 T4 x GH s n0 n1 n2,
+    stp2 false false G1 T0 G2 T0' GH n0 ->
+    stp2 false false G2 T3 G1 T1 GH n1 ->
     x = length GH ->
     closed 1 (length GH) (length G1) T2 ->
     closed 1 (length GH) (length G2) T4 ->
-    stp2 false G1 (open (TVarH x) T2) G2 (open (TVarH x) T4) ((G2, (T0',T3))::GH) n2 ->
-    stp2 true G1 (TAll T0 T1 T2) G2 (TAll T0' T3 T4) GH (S (n0 + n1 + n2))
+    stp2 false false G1 (open (TVarH x) T2) G2 (open (TVarH x) T4) ((G2, (T0',T3))::GH) n2 ->
+    stp2 s true G1 (TAll T0 T1 T2) G2 (TAll T0' T3 T4) GH (S (n0 + n1 + n2))
 
-| stp2_wrapf: forall G1 G2 T1 T2 GH n1,
-    stp2 true G1 T1 G2 T2 GH n1 ->
-    stp2 false G1 T1 G2 T2 GH (S n1)
+| stp2_wrapf: forall G1 G2 T1 T2 GH s n1,
+    stp2 s true G1 T1 G2 T2 GH n1 ->
+    stp2 s false G1 T1 G2 T2 GH (S n1)
 
-| stp2_transf: forall G1 G2 G3 T1 T2 T3 GH n1 n2,
-    stp2 true G1 T1 G2 T2 GH n1 ->
-    stp2 false G2 T2 G3 T3 GH n2 ->
-    stp2 false G1 T1 G3 T3 GH (S (n1+n2))
+| stp2_transf: forall G1 G2 G3 T1 T2 T3 GH s n1 n2,
+    stp2 s true G1 T1 G2 T2 GH n1 ->
+    stp2 s false G2 T2 G3 T3 GH n2 ->
+    stp2 s false G1 T1 G3 T3 GH (S (n1+n2))
 .
 
 (* consistent environment *)
@@ -308,20 +343,20 @@ Inductive wf_env : venv -> tenv -> Prop :=
 with val_type : venv -> vl -> @binding ty -> Prop :=
 | v_ty: forall env venv tenv T1 TL TU,
     wf_env venv tenv ->
-    (exists n, stp2 true env TL venv T1 [] n) ->
-    (exists n, stp2 true venv T1 env TU [] n) ->
+    (exists n, stp2 true true env TL venv T1 [] n) ->
+    (exists n, stp2 true true venv T1 env TU [] n) ->
     val_type env (vty venv T1) (bind_ty TL TU)
 | v_abs: forall env venv tenv x y T1 T2 TE,
     wf_env venv tenv ->
     has_type (bind_tm T1::tenv) y T2 ->
     length venv = x ->
-    (exists n, stp2 true venv (TFun T1 T2) env TE [] n) ->
+    (exists n, stp2 true true venv (TFun T1 T2) env TE [] n) ->
     val_type env (vabs venv T1 y) (bind_tm TE)
 | v_tabs: forall env venv tenv x y T0 T1 T2 TE,
     wf_env venv tenv ->
     has_type (bind_ty T0 T1::tenv) y (open (TVarF x) T2) ->
     length venv = x ->
-    (exists n, stp2 true venv (TAll T0 T1 T2) env TE [] n) ->
+    (exists n, stp2 true true venv (TAll T0 T1 T2) env TE [] n) ->
     val_type env (vtabs venv T0 T1 y) (bind_tm TE)
 .
 
@@ -777,25 +812,25 @@ Proof.
   intros. apply (proj1 (stp_closed G1 GH T1 T2 H)).
 Qed.
 
-Lemma stp2_closed: forall G1 G2 T1 T2 GH m n,
-                     stp2 m G1 T1 G2 T2 GH n ->
+Lemma stp2_closed: forall G1 G2 T1 T2 GH s m n,
+                     stp2 s m G1 T1 G2 T2 GH n ->
                      closed 0 (length GH) (length G1) T1 /\ closed 0 (length GH) (length G2) T2.
   intros. induction H;
     try solve [repeat ev; split; eauto using indexr_max].
 Qed.
 
-Lemma stp2_closed2 : forall G1 G2 T1 T2 GH m n,
-                       stp2 m G1 T1 G2 T2 GH n ->
+Lemma stp2_closed2 : forall G1 G2 T1 T2 GH s m n,
+                       stp2 s m G1 T1 G2 T2 GH n ->
                        closed 0 (length GH) (length G2) T2.
 Proof.
-  intros. apply (proj2 (stp2_closed G1 G2 T1 T2 GH m n H)).
+  intros. apply (proj2 (stp2_closed G1 G2 T1 T2 GH s m n H)).
 Qed.
 
-Lemma stp2_closed1 : forall G1 G2 T1 T2 GH m n,
-                       stp2 m G1 T1 G2 T2 GH n ->
+Lemma stp2_closed1 : forall G1 G2 T1 T2 GH s m n,
+                       stp2 s m G1 T1 G2 T2 GH n ->
                        closed 0 (length GH) (length G1) T1.
 Proof.
-  intros. apply (proj1 (stp2_closed G1 G2 T1 T2 GH m n H)).
+  intros. apply (proj1 (stp2_closed G1 G2 T1 T2 GH s m n H)).
 Qed.
 
 Lemma closed_upgrade: forall i j k i' T,
@@ -882,33 +917,33 @@ Proof.
   intros. apply stp_refl_aux with (n:=S (tsize T)); eauto.
 Qed.
 
-Definition stpd2 m G1 T1 G2 T2 GH := exists n, stp2 m G1 T1 G2 T2 GH n.
+Definition stpd2 s m G1 T1 G2 T2 GH := exists n, stp2 s m G1 T1 G2 T2 GH n.
 
 Ltac ep := match goal with
-             | [ |- stp2 ?M ?G1 ?T1 ?G2 ?T2 ?GH ?N ] =>
-               assert (exists (n:nat), stp2 M G1 T1 G2 T2 GH n) as EEX
+             | [ |- stp2 ?S ?M ?G1 ?T1 ?G2 ?T2 ?GH ?N ] =>
+               assert (exists (n:nat), stp2 S M G1 T1 G2 T2 GH n) as EEX
            end.
 
 Ltac eu := match goal with
-             | H: stpd2 _ _ _ _ _ _ |- _ =>
+             | H: stpd2 _ _ _ _ _ _ _ |- _ =>
                destruct H as [? H]
            end.
 
 Hint Unfold stpd2.
 
-Lemma stp2_refl_aux: forall n T G GH,
+Lemma stp2_refl_aux: forall n T G GH s,
   closed 0 (length GH) (length G) T ->
   tsize T < n ->
-  stpd2 true G T G T GH.
+  stpd2 s true G T G T GH.
 Proof.
   intros n. induction n; intros; try omega.
   inversion H; subst; eauto; try omega; try simpl in H0.
-  - destruct (IHn T1 G GH) as [n1 IH1]; eauto; try omega.
-    destruct (IHn T2 G GH) as [n2 IH2]; eauto; try omega.
+  - destruct (IHn T1 G GH s) as [n1 IH1]; eauto; try omega.
+    destruct (IHn T2 G GH s) as [n2 IH2]; eauto; try omega.
     eexists; constructor; try constructor; eauto.
-  - destruct (IHn T0 G GH) as [n0 IH0]; eauto; try omega.
-    destruct (IHn T1 G GH) as [n1 IH1]; eauto; try omega.
-    destruct (IHn (open (TVarH (length GH)) T2) G ((G,(T0,T1))::GH)); eauto; try omega.
+  - destruct (IHn T0 G GH false) as [n0 IH0]; eauto; try omega.
+    destruct (IHn T1 G GH false) as [n1 IH1]; eauto; try omega.
+    destruct (IHn (open (TVarH (length GH)) T2) G ((G,(T0,T1))::GH) false); eauto; try omega.
     simpl. apply closed_open; auto using closed_inc.
     unfold open. rewrite <- open_preserves_size. omega.
     eexists; econstructor; try constructor; eauto.
@@ -919,9 +954,9 @@ Proof.
 Grab Existential Variables. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
-Lemma stp2_refl: forall T G GH,
+Lemma stp2_refl: forall T G GH s,
   closed 0 (length GH) (length G) T ->
-  stpd2 true G T G T GH.
+  stpd2 s true G T G T GH.
 Proof.
   intros. apply stp2_refl_aux with (n:=S (tsize T)); eauto.
 Qed.
@@ -1004,12 +1039,12 @@ Proof.
     eapply IHstp3. eauto.
 Qed.
 
-Lemma stp2_splice : forall G1 T1 G2 T2 GH1 GH0 v1 m n,
-   stp2 m G1 T1 G2 T2 (GH1++GH0) n ->
-   stp2 m G1 (splice (length GH0) T1) G2 (splice (length GH0) T2)
+Lemma stp2_splice : forall G1 T1 G2 T2 GH1 GH0 v1 s m n,
+   stp2 s m G1 T1 G2 T2 (GH1++GH0) n ->
+   stp2 s m G1 (splice (length GH0) T1) G2 (splice (length GH0) T2)
         ((map (spliceat (length GH0)) GH1) ++ v1::GH0) n.
 Proof.
-  intros G1 T1 G2 T2 GH1 GH0 v1 m n H. remember (GH1++GH0) as GH.
+  intros G1 T1 G2 T2 GH1 GH0 v1 s m n H. remember (GH1++GH0) as GH.
   revert GH0 GH1 HeqGH.
   induction H; intros; subst GH; simpl; eauto.
   - Case "top".
