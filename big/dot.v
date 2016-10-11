@@ -1,19 +1,16 @@
 (* Full safety for DOT *)
 
-(* copied from dot22.v *)
-(* based on that, it removes the 2nd level of pushback,
-   and performs the necessary translation while going
-   from stp to stp2 *)
-(* copied from dot23.v *)
-(* based on that, it adds bind1 rule *)
+(* based on file dev2015/dot24 *)
 
 Require Export SfLib.
 
 Require Export Arith.EqNat.
 Require Export Arith.Le.
 Require Import Coq.Program.Equality.
+Require Import Omega.
+Require Import NPeano.
 
-Module FSUB.
+Module DOT.
 
 Definition id := nat.
 
@@ -199,8 +196,6 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
 Hint Unfold open.
 Hint Unfold closed.
 
-(* TODO: var *)
-(* QUESTION: include trans rule or not? sela1 rules use restricted GL now, so trans seems useful *)
 Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_topx: forall G1 GH,
     stp G1 GH TTop TTop
@@ -320,24 +315,6 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 
 
 
-(*
-with path_type: tenv -> tenv -> id -> ty -> Prop :=
-| pt_var: forall G1 GH TX x,
-    index x G1 = Some TX ->
-    path_type G1 GH x TX
-| pt_sub: forall G1 GH TX x,
-    path_type has_type env e T1 ->
-           stp env [] T1 T2 ->
-           has_type env e T2
-
-with pathH_type: tenv -> tenv -> id -> ty -> Prop :=
-| pth_var: forall G1 GH TX T x,
-    indexr x GH = Some TX ->
-    stp G1 GH TX T ->
-    pathH_type G1 GH x T
-*)
-
-
 Hint Constructors stp.
 
 
@@ -347,7 +324,6 @@ Function tand (t1: ty) (t2: ty) :=
     | _ => TAnd t1 t2
   end.
 
-(* TODO *)
 
 Inductive has_type : tenv -> tm -> ty -> Prop :=
 | t_true: forall env,
@@ -1096,7 +1072,7 @@ Proof.
 Qed.
 
 Example ex4:
-  has_type [(1,TAll 0 TBool TBool);(0,brandUnbrand)]
+  has_type [(1,TAll 0 TBool TBool), (0,brandUnbrand)]
            (tvar 0) (TAll 0 (TBind (TMem 0 TBool TBool)) (TBind (TAll 0 (TBind (TAnd (TAll 1 TBool TBool) (TAll 0 TBool TBool))) TBool))).
 Proof.
   eapply t_sub.
@@ -1118,8 +1094,8 @@ Hint Resolve ex4.
 (* apply it to identity functions *)
 
 Example ex5:
-  has_type [(1,TAll 0 TBool TBool);(0,brandUnbrand)]
-           (tapp (tlet 2 (tapp (tvar 0) 0 (tobj 2 [(0,dmem TBool)])) (tvar 2)) 0 (tobj 2 [(1, dfun 3 (tapp (tvar 1) 0 (tvar 3))); (0, dfun 3 (tapp (tvar 1) 0 (tvar 3)))])) TBool.
+  has_type [(1,TAll 0 TBool TBool), (0,brandUnbrand)]
+           (tapp (tlet 2 (tapp (tvar 0) 0 (tobj 2 [(0,dmem TBool)])) (tvar 2)) 0 (tobj 2 [(1, dfun 3 (tapp (tvar 1) 0 (tvar 3))), (0, dfun 3 (tapp (tvar 1) 0 (tvar 3)))])) TBool.
 Proof.
   eapply t_app.
   eapply t_let.
@@ -1206,7 +1182,7 @@ Qed.
 (* test expansion *)
 
 Example ex6:
-  has_type [(1,TSel (varF 0) 0);(0,TMem 0 TBot (TBind (TAll 0 TBool (TSel (varB 1) 0))))]
+  has_type [(1,TSel (varF 0) 0), (0,TMem 0 TBot (TBind (TAll 0 TBool (TSel (varB 1) 0))))]
            (tvar 1) (TAll 0 TBool (TSel (varF 1) 0)).
 Proof.
   remember (TAll 0 TBool (TSel (varF 1) 0)) as T.
@@ -1217,7 +1193,7 @@ Qed.
 
 
 Example ex7:
-  stp [(1,TSel (varF 0) 0);(0,TMem 0 TBot (TBind (TMem 0 TBot (TAll 0 TBool (TSel (varB 1) 0)))))] []
+  stp [(1,TSel (varF 0) 0), (0,TMem 0 TBot (TBind (TMem 0 TBot (TAll 0 TBool (TSel (varB 1) 0)))))] []
            (TSel (varF 1) 0) (TAll 0 TBool (TSel (varF 1) 0)).
 Proof.
   remember (TAll 0 TBool (TSel (varF 1) 0)) as T.
@@ -1277,9 +1253,9 @@ Example paper_list_nil_head:
   has_type
     []
     (tobj 0
-          [(1, dfun 1 (tlet 2 (tobj 2 [(1, dfun 3 (tapp (tvar 2) 1 (tvar 3)));
+          [(1, dfun 1 (tlet 2 (tobj 2 [(1, dfun 3 (tapp (tvar 2) 1 (tvar 3))),
                                        (0, dmem TBot)])
-                            (tvar 2)));
+                            (tvar 2))),
            (0, dmem (TBind (TAnd
                               (TAll 1 TTop (TSel (varB 1) 0))
                               (TMem 0 TBot TTop))))
@@ -1331,10 +1307,10 @@ Example paper_list_nil:
   has_type
     []
     (tobj 0
-          [(1, dfun 1 (tlet 2 (tobj 2 [(2, dfun 3 (tapp (tvar 2) 2 (tvar 3)));
-                                       (1, dfun 3 (tapp (tvar 2) 1 (tvar 3)));
+          [(1, dfun 1 (tlet 2 (tobj 2 [(2, dfun 3 (tapp (tvar 2) 2 (tvar 3))),
+                                       (1, dfun 3 (tapp (tvar 2) 1 (tvar 3))),
                                        (0, dmem TBot)])
-                            (tvar 2)));
+                            (tvar 2))),
            (0, dmem (TBind (TAnd
                               (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 2) 0)))))
                             (TAnd
@@ -1413,8 +1389,8 @@ Example paper_list_cons_head:
     (tobj 0
           [(1, dfun 1(*type T*) (tlet 2 (tobj 2
           [(0, dfun 3(*hd*) (tlet 4 (tobj 4 [(0, dfun 5(*tl*) (tlet 6 (tobj 6
-          [(1, dfun 7 (tvar 3));
-           (0, dmem (TSel (varF 1) 0))]) (tvar 6)))]) (tvar 4)))]) (tvar 2)));
+          [(1, dfun 7 (tvar 3)),
+           (0, dmem (TSel (varF 1) 0))]) (tvar 6)))]) (tvar 4)))]) (tvar 2))),
            (0, dmem (TBind (TAnd
                               (TAll 1 TTop (TSel (varB 1) 0))
                               (TMem 0 TBot TTop))))
@@ -1534,8 +1510,8 @@ Example paper_list_cons:
     (tobj 0
           [(1, dfun 1(*type T*) (tlet 2 (tobj 2
           [(0, dfun 3(*hd*) (tlet 4 (tobj 4 [(0, dfun 5(*tl*) (tlet 6 (tobj 6
-          [(2, dfun 7 (tvar 5)); (1, dfun 7 (tvar 3));
-           (0, dmem (TSel (varF 1) 0))]) (tvar 6)))]) (tvar 4)))]) (tvar 2)));
+          [(2, dfun 7 (tvar 5)), (1, dfun 7 (tvar 3)),
+           (0, dmem (TSel (varF 1) 0))]) (tvar 6)))]) (tvar 4)))]) (tvar 2))),
            (0, dmem (TBind (TAnd
                               (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 2) 0)))))
                            (TAnd
@@ -1677,14 +1653,14 @@ Example paper_list:
   has_type
     []
     (tobj 0
-          [(2, dfun 1 (tlet 2 (tobj 2 [(2, dfun 3 (tapp (tvar 2) 2 (tvar 3)));
-                                       (1, dfun 3 (tapp (tvar 2) 1 (tvar 3)));
+          [(2, dfun 1 (tlet 2 (tobj 2 [(2, dfun 3 (tapp (tvar 2) 2 (tvar 3))),
+                                       (1, dfun 3 (tapp (tvar 2) 1 (tvar 3))),
                                        (0, dmem TBot)])
-                            (tvar 2)));
+                            (tvar 2))),
            (1, dfun 1(*type T*) (tlet 2 (tobj 2
           [(0, dfun 3(*hd*) (tlet 4 (tobj 4 [(0, dfun 5(*tl*) (tlet 6 (tobj 6
-          [(2, dfun 7 (tvar 5)); (1, dfun 7 (tvar 3));
-           (0, dmem (TSel (varF 1) 0))]) (tvar 6)))]) (tvar 4)))]) (tvar 2)));
+          [(2, dfun 7 (tvar 5)), (1, dfun 7 (tvar 3)),
+           (0, dmem (TSel (varF 1) 0))]) (tvar 6)))]) (tvar 4)))]) (tvar 2))),
            (0, dmem (TBind (TAnd
                               (TAll 2 TTop (TAnd (TSel (varB 2) 0) (TBind (TMem 0 TBot (TSel (varB 2) 0)))))
                            (TAnd
@@ -6442,10 +6418,6 @@ Proof.
 Qed.
 
 
-(* TODO: need to revisit if stp includes trans rule.
-   if yes, probably need to return stpd2 false, and
-   call untrans after recursive calls. but need to be
-   careful since we can only untrans with GH=nil  *)
 Lemma stp_to_stp2_aux: forall G1 GH T1 T2,
   stp G1 GH T1 T2 ->
   forall GX GY, wf_env GX G1 -> wf_envh GX GY GH ->
@@ -7206,4 +7178,4 @@ Grab Existential Variables.
 apply 0. apply 0. 
 Qed.
 
-End FSUB.
+End DOT.
