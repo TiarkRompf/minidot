@@ -7,6 +7,8 @@ Require Export SfLib.
 Require Export Arith.EqNat.
 Require Export Arith.Le.
 Require Import Coq.Program.Equality.
+Require Import Omega.
+Require Import NPeano.
 
 Module DOT.
 
