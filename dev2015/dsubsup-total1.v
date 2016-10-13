@@ -518,16 +518,17 @@ Program Fixpoint val_type (env:venv) (GH:list (vl -> Prop)) (v:vl) (T:ty) {measu
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
       (* (closed 0 0 (length env) T2 -> forall vx, val_type env vx T1 ->
         exists v, tevaln (vx::env1) y v /\ val_type env v T2) /\ *)
-      (forall vx,
-        val_type env GH vx T1 ->
-        exists v, tevaln (vx::env1) y v /\ val_type env ((fun vo => val_type env GH vo T1)::GH) v (open (varH (length GH)) T2))
+      (forall (ii:(vl -> Prop)), (* fun v => valtp v: T0 *)
+        (forall v, ii v -> val_type env GH v T1) -> (* TO <: T1 *)
+        forall vx, ii vx -> exists v, tevaln (vx::env1) y v /\ val_type env (ii::GH) v (open (varH (length GH)) T2))
     | vty env1 TX, TMem T1 T2 =>
-      exists n1 n2,
+      (* exists n1 n2,
         stp2 false false env1 TX env T2 [] n1 /\
-        stp2 false false env T1 env1 TX [] n2
+        stp2 false false env T1 env1 TX [] n2 *)
+      forall v, val_type env GH v T1 -> val_type env GH v T2
     | _, TSel (varF x) =>
       match indexr x env with
-        | Some (vty GX TX) => val_type GX [] v TX
+        | Some (vty GX TX) => val_type GX GH v TX
         | _ => False
       end
     | vty env1 TX , TTop =>
@@ -540,6 +541,8 @@ Program Fixpoint val_type (env:venv) (GH:list (vl -> Prop)) (v:vl) (T:ty) {measu
 
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. unfold open. rewrite <-open_preserves_tsize. omega. Qed. (* TApp case: open *)
+Next Obligation. simpl. omega. Qed.
+Next Obligation. simpl. omega. Qed. 
 Next Obligation. (* TSel case *)
   simpl. rewrite <-Heq_anonymous. eapply tsz_indir. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
