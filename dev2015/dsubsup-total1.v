@@ -488,6 +488,15 @@ Proof.
 Qed.
 
 
+Lemma open_preserves_tsize: forall G T x j,
+  tsize G T = tsize G (open_rec j (varH x) T).
+Proof.
+  intros G T. induction T; intros; simpl; eauto.
+  - destruct v; simpl; destruct (beq_nat j i); eauto.
+Qed.
+
+
+
 (* Must make sure that the following are valid:
 
 Function valid in empty context:
@@ -530,16 +539,7 @@ Program Fixpoint val_type (env:venv) (GH:list (vl -> Prop)) (v:vl) (T:ty) {measu
   end.
 
 Next Obligation. simpl. omega. Qed.
-Next Obligation. simpl. omega. Qed. 
-Next Obligation. simpl.
-(* 
-  H : closed 0 0 (length env) T2 \/
-      tevaln env (tvar x) (vabs env1 wildcard' y)
-  ============================
-   tsize env (open (varF x) T2) < S (tsize env T1 + tsize env T2)
- *)
-admit. Qed.
-
+Next Obligation. simpl. unfold open. rewrite <-open_preserves_tsize. omega. Qed. (* TApp case: open *)
 Next Obligation. (* TSel case *)
   simpl. rewrite <-Heq_anonymous. eapply tsz_indir. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
