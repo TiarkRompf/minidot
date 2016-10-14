@@ -246,28 +246,28 @@ Inductive stp2: bool (* whether selections are precise *) ->
 (* vty already marks binding as type binding, so no need for additional TMem marker *)
 | stp2_strong_sel1: forall G1 G2 GX TX x T2 GH n1,
     indexr x G1 = Some (vty GX TX) ->
-    val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
+    val_type_stub GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stp2 true true GX TX G2 T2 GH n1 ->
     stp2 true true G1 (TSel (varF x)) G2 T2 GH (S n1)
 | stp2_strong_sel2: forall G1 G2 GX TX x T1 GH n1,
     indexr x G2 = Some (vty GX TX) ->
-    val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
+    val_type_stub GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stp2 true false G1 T1 GX TX GH n1 ->
     stp2 true true G1 T1 G2 (TSel (varF x)) GH (S n1)
 (* imprecise type *)
-| stp2_sel1: forall G1 G2 v TX x T2 GH n1,
+| stp2_sel1: forall G1 G2 v GX TX x T2 GH n1,
     indexr x G1 = Some v ->
-    val_type (base v) v TX ->
-    closed 0 0 (length (base v)) TX ->
-    stp2 false false (base v) TX G2 (TMem TBot T2) GH n1 ->
+    val_type_stub GX v TX ->
+    closed 0 0 (length GX) TX ->
+    stp2 false false GX TX G2 (TMem TBot T2) GH n1 ->
     stp2 false true G1 (TSel (varF x)) G2 T2 GH (S n1)
-| stp2_sel2: forall G1 G2 v TX x T1 GH n1,
+| stp2_sel2: forall G1 G2 v GX TX x T1 GH n1,
     indexr x G2 = Some v ->
-    val_type (base v) v TX ->
-    closed 0 0 (length (base v)) TX ->
-    stp2 false false (base v) TX G1 (TMem T1 TTop) GH n1 ->
+    val_type_stub GX v TX ->
+    closed 0 0 (length GX) TX ->
+    stp2 false false GX TX G1 (TMem T1 TTop) GH n1 ->
     stp2 false true G1 T1 G2 (TSel (varF x)) GH (S n1)
 | stp2_selx: forall G1 G2 v x1 x2 GH s n,
     indexr x1 G1 = Some v ->
@@ -306,8 +306,17 @@ Inductive stp2: bool (* whether selections are precise *) ->
     stp2 s false G2 T2 G3 T3 GH n2 ->
     stp2 s false G1 T1 G3 T3 GH (S (n1+n2))
 
+with val_type_stub : venv -> vl -> ty -> Prop :=
+| vs_ty: forall env venv T1 TE,
+    (exists n, stp2 true true venv (TMem T1 T1) env TE [] n) ->
+    val_type_stub env (vty venv T1) TE
+| vs_abs: forall env venv y T1 T2 TE,
+    (exists n, stp2 true true venv (TAll T1 T2) env TE [] n) ->
+    val_type_stub env (vabs venv T1 y) TE
+.
+
 (* consistent environment *)
-with wf_env : venv -> tenv -> Prop :=
+Inductive wf_env : venv -> tenv -> Prop :=
 | wfe_nil : wf_env nil nil
 | wfe_cons : forall v t vs ts,
     val_type (v::vs) v t ->
@@ -316,16 +325,23 @@ with wf_env : venv -> tenv -> Prop :=
 
 (* value type assignment *)
 with val_type : venv -> vl -> ty -> Prop :=
-| v_ty: forall env venv tenv T1 TE,
+| v_ty: forall env venv tenv T1 T3 T4,
     wf_env venv tenv ->
-    (exists n, stp2 true true venv (TMem T1 T1) env TE [] n) ->
-    val_type env (vty venv T1) TE
-| v_abs: forall env venv tenv x y T1 T2 TE,
+    (exists n, stp2 true true venv (TMem T1 T1) env (TMem T3 T4) [] n) ->
+    val_type env (vty venv T1) (TMem T3 T4)
+| v_abs: forall env venv tenv x y T1 T2 T3 T4,
     wf_env venv tenv ->
     has_type (T1::tenv) y (open (varF x) T2) ->
     length venv = x ->
-    (exists n, stp2 true true venv (TAll T1 T2) env TE [] n) ->
-    val_type env (vabs venv T1 y) TE
+    (exists n, stp2 true true venv (TAll T1 T2) env (TAll T3 T4) [] n) ->
+    val_type env (vabs venv T1 y) (TAll T3 T4)
+| v_sel: forall env x v GX TX,
+    indexr x env = Some (vty GX TX) ->
+    val_type env v TX ->
+    val_type env v (TSel (varF x))
+| v_top: forall env v TX,
+    val_type env v TX ->
+    val_type env v TTop
 .
 
 Inductive wf_envh : venv -> aenv -> tenv -> Prop :=
@@ -1563,11 +1579,20 @@ Proof.
   eapply stp2_closed1; eauto.
 Qed.
 
+Lemma valtp_stub_extend : forall vs v v1 T,
+                       val_type_stub vs v T ->
+                       val_type_stub (v1::vs) v T.
+Proof.
+  intros. induction H; eauto; econstructor; eauto; eapply stpd2_extend2; eauto.
+Qed.
+
 Lemma valtp_extend : forall vs v v1 T,
                        val_type vs v T ->
                        val_type (v1::vs) v T.
 Proof.
-  intros. induction H; eauto; econstructor; eauto; eapply stpd2_extend2; eauto.
+  intros. induction H; eauto; econstructor; eauto;
+  try eapply stpd2_extend2; eauto;
+  try eapply indexr_extend; eauto. 
 Qed.
 
 Lemma indexr_safe_ex: forall H1 G1 TF i,
@@ -1640,30 +1665,30 @@ Lemma stpd2_mem: forall G1 G2 S1 U1 S2 U2 GH s,
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_strong_sel1: forall G1 G2 GX TX x T2 GH,
     indexr x G1 = Some (vty GX TX) ->
-    val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
+    val_type_stub GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stpd2 true true GX TX G2 T2 GH ->
     stpd2 true true G1 (TSel (varF x)) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_strong_sel2: forall G1 G2 GX TX x T1 GH,
     indexr x G2 = Some (vty GX TX) ->
-    val_type GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
+    val_type_stub GX (vty GX TX) (TMem TX TX) -> (* for downgrade *)
     closed 0 0 (length GX) TX ->
     stpd2 true false G1 T1 GX TX GH ->
     stpd2 true true G1 T1 G2 (TSel (varF x)) GH.
 Proof. intros. repeat eu. eauto. Qed.
-Lemma stpd2_sel1: forall G1 G2 v TX x T2 GH,
+Lemma stpd2_sel1: forall G1 G2 v GX TX x T2 GH,
     indexr x G1 = Some v ->
-    val_type (base v) v TX ->
-    closed 0 0 (length (base v)) TX ->
-    stpd2 false false (base v) TX G2 (TMem TBot T2) GH ->
+    val_type_stub GX v TX ->
+    closed 0 0 (length GX) TX ->
+    stpd2 false false GX TX G2 (TMem TBot T2) GH ->
     stpd2 false true G1 (TSel (varF x)) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
-Lemma stpd2_sel2: forall G1 G2 v TX x T1 GH,
+Lemma stpd2_sel2: forall G1 G2 v GX TX x T1 GH,
     indexr x G2 = Some v ->
-    val_type (base v) v TX ->
-    closed 0 0 (length (base v)) TX ->
-    stpd2 false false (base v) TX G1 (TMem T1 TTop) GH ->
+    val_type_stub GX v TX ->
+    closed 0 0 (length GX) TX ->
+    stpd2 false false GX TX G1 (TMem T1 TTop) GH ->
     stpd2 false true G1 T1 G2 (TSel (varF x)) GH.
 Proof. intros. repeat eu. eauto. Qed.
 Lemma stpd2_selx: forall G1 G2 v x1 x2 GH s,
@@ -1908,12 +1933,20 @@ Proof.
   eapply stpd2_untrans_aux; eauto using stp2_reg2.
 Qed.
 
+Lemma valtp_stub_widen: forall vf H1 H2 T1 T2,
+  val_type_stub H1 vf T1 ->
+  stpd2 true true H1 T1 H2 T2 [] ->
+  val_type_stub H2 vf T2.
+Proof.
+  intros. inversion H; subst; econstructor; eauto; eapply stpd2_strong_trans; eauto.
+Qed.
+
 Lemma valtp_widen: forall vf H1 H2 T1 T2,
   val_type H1 vf T1 ->
   stpd2 true true H1 T1 H2 T2 [] ->
   val_type H2 vf T2.
 Proof.
-  intros. inversion H; subst; econstructor; eauto; eapply stpd2_strong_trans; eauto.
+  intros. admit. (* inversion H; subst; econstructor; eauto; eapply stpd2_strong_trans; eauto. *)
 Qed.
 
 Lemma restp_widen: forall vf H1 H2 T1 T2,
@@ -1925,13 +1958,13 @@ Proof.
 Qed.
 
 Lemma invert_typ: forall venv vx S U,
-  val_type venv vx (TMem S U) ->
+  val_type_stub venv vx (TMem S U) ->
   exists GX TX,
     vx = (vty GX TX) /\
     stpd2 true false venv S GX TX [] /\
     stpd2 true true GX TX venv U [].
 Proof.
-  intros. inversion H; ev; try solve by inversion; inversion H1; subst;
+  intros. inversion H; ev; subst; inversion H0. subst.
   repeat eexists; eauto.
 Qed.
 
@@ -1951,23 +1984,23 @@ Proof.
     eapply IHn; eauto. omega.
   - Case "sel1".
     eapply IHn in H4. eapply stpd2_strong_untrans in H4.
-    eapply valtp_widen with (2:=H4) in H2.
+    eapply valtp_stub_widen with (2:=H4) in H2.
     remember H2 as Hv. clear HeqHv.
     eapply invert_typ in H2. ev. subst.
     assert (closed 0 (length ([]:aenv)) (length x0) x1). eapply stpd2_closed1; eauto.
-    eapply stpd2_strong_sel1. eauto. eauto.
+    eapply stpd2_strong_sel1. eauto. 
     inversion Hv; subst.
-    eapply v_ty. eassumption. eapply stp2_refl. eauto. eauto.
+    eapply vs_ty. eapply stp2_refl. eauto. eauto.
     eassumption. omega.
   - Case "sel2".
     eapply IHn in H4. eapply stpd2_strong_untrans in H4.
-    eapply valtp_widen with (2:=H4) in H2.
+    eapply valtp_stub_widen with (2:=H4) in H2.
     remember H2 as Hv. clear HeqHv.
     eapply invert_typ in H2. ev. subst.
     assert (closed 0 (length ([]:aenv)) (length x0) x1). eapply stpd2_closed1; eauto.
     eapply stpd2_strong_sel2. eauto. eauto.
     inversion Hv; subst.
-    eapply v_ty. eassumption. eapply stp2_refl. eauto. eauto.
+    eapply vs_ty. eapply stp2_refl. eauto. eauto.
     eassumption. omega.
   - Case "selx".
     eapply stpd2_selx; eauto.
@@ -2261,7 +2294,7 @@ stp2 G1 T1 G2 T2 (GH0 ++ [(vty GX TX)])
 (* ---- two-env substitution. first define what 'compatible' types mean. ---- *)
 
 Definition compat (GX:venv) (TX: ty) (V: option vl) (G1:venv) (T1:ty) (T1':ty) :=
-  (exists x1 v, indexr x1 G1 = Some v /\ V = Some v /\ GX = base v /\ val_type GX v TX /\ T1' = (subst (varF x1) T1)) \/
+  (exists x1 v, indexr x1 G1 = Some v /\ V = Some v /\ GX = GX /\ val_type_stub GX v TX /\ T1' = (subst (varF x1) T1)) \/
   (closed 0 0 (length G1) T1 /\ T1' = T1) \/ (* this one is for convenience: redundant with next *)
   (nosubst T1 /\ T1' = subst (varF 0) T1).
 
@@ -2365,7 +2398,7 @@ Lemma compat_sel: forall GX TX V G1 T1' (GXX:venv) (TXX:ty) x v,
     closed 0 0 (length GX) TX ->
     closed 0 0 (length GXX) TXX ->
     indexr x G1 = Some v ->
-    val_type GXX v TXX ->
+    val_type_stub GXX v TXX ->
     exists TXX', T1' = (TSel (varF x)) /\ compat GX TX V GXX TXX TXX'
 .
 Proof.
@@ -2462,9 +2495,9 @@ Lemma stp2_substitute_aux: forall n, forall G1 G2 T1 T2 GH m n1,
    stp2 false m G1 T1 G2 T2 GH n1 ->
    n1 <= n ->
    forall GH0 GH0' GX TX T1' T2' V,
-     GX = base V ->
+     GX = GX ->
      GH = (GH0 ++ [(GX, TX)]) ->
-     val_type (base V) V TX ->
+     val_type_stub GX V TX ->
      closed 0 0 (length GX) TX ->
      compat GX TX (Some V) G1 T1 T1' ->
      compat GX TX (Some V) G2 T2 T2' ->
@@ -2509,9 +2542,9 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    eapply (compat_sel GXX TXX (Some V) G1 T1' (base v) TX) in IX1. repeat destruct IX1 as [? IX1].
+    eapply (compat_sel GXX TXX (Some V) G1 T1' GX TX) in IX1. repeat destruct IX1 as [? IX1].
 
-    assert (compat GXX TXX (Some V) (base v) TX TX) as CPX. right. left. eauto.
+    assert (compat GXX TXX (Some V) GX TX TX) as CPX. right. left. eauto.
 
     subst.
     eapply stpd2_sel1. eauto. eauto. eauto.
@@ -2525,9 +2558,9 @@ Proof.
     assert (length GH = length GH0 + 1). subst GH. eapply app_length.
     assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
 
-    eapply (compat_sel GXX TXX (Some V) G2 T2' (base v) TX) in IX2. repeat destruct IX2 as [? IX2].
+    eapply (compat_sel GXX TXX (Some V) G2 T2' GX TX) in IX2. repeat destruct IX2 as [? IX2].
 
-    assert (compat GXX TXX (Some V) (base v) TX TX) as CPX. right. left. eauto.
+    assert (compat GXX TXX (Some V) GX TX TX) as CPX. right. left. eauto.
 
     subst.
     eapply stpd2_sel2. eauto. eauto. eauto.
@@ -2637,7 +2670,7 @@ Proof.
       repeat destruct IXX1 as [IXX1|IXX1]; ev; try contradiction.
       repeat destruct IXX2 as [IXX2|IXX2]; ev; try contradiction.
       * SSCase "sel-sel".
-        subst. simpl. inversion H16; subst. inversion H2; subst.
+        subst. simpl. inversion H17; subst. inversion H9; subst.
         eapply stpd2_selx. eauto. eauto.
     + SCase "x > 0".
       destruct IXX1; destruct IXX2; ev; subst; eapply stpd2_selax; eauto.
@@ -2662,7 +2695,7 @@ Proof.
     + eauto.
     + subst.
       eapply IHn. eauto. omega. simpl. eauto.
-      change ((G2, T3) :: GH0 ++ [(base V, TX)]) with (((G2, T3) :: GH0) ++ [(base V, TX)]).
+      change ((G2, T3) :: GH0 ++ [(GX, TX)]) with (((G2, T3) :: GH0) ++ [(GX, TX)]).
       reflexivity.
       eauto. eauto.
       rewrite app_length. simpl. rewrite EL. eauto.
@@ -2692,9 +2725,9 @@ Qed.
 Lemma stp2_substitute: forall G1 G2 T1 T2 GH m,
    stpd2 false m G1 T1 G2 T2 GH ->
    forall GH0 GH0' GX TX T1' T2' V,
-     GX = base V ->
+     GX = GX ->
      GH = (GH0 ++ [(GX, TX)]) ->
-     val_type (base V) V TX ->
+     val_type_stub GX V TX ->
      closed 0 0 (length GX) TX ->
      compat GX TX (Some V) G1 T1 T1' ->
      compat GX TX (Some V) G2 T2 T2' ->
@@ -2705,23 +2738,33 @@ Proof.
 Qed.
 
 (* ### Relating Static and Dynamic Subtyping ### *)
-Lemma inv_vtp_half: forall G v T GH,
-  val_type G v T ->
-  exists T0, val_type (base v) v T0 /\ closed 0 0 (length (base v)) T0 /\
-             stpd2 false false (base v) T0 G T GH.
+Lemma inv_vtp_stub_half: forall G v T GH,
+  val_type_stub G v T ->
+  exists G0 T0, val_type_stub G0 v T0 /\ closed 0 0 (length G0) T0 /\
+             stpd2 false false G0 T0 G T GH.
 Proof.
   intros. inversion H; subst.
-  - eexists. split; try split.
-    + simpl. econstructor. eassumption. ev. eapply stp2_reg1 in H1. apply H1.
-    + ev. eapply stp2_closed1 in H1. simpl in H1. apply H1.
+  - eexists. eexists. split; try split.
+    + simpl. econstructor. ev. eapply stp2_reg1 in H0. apply H0.
+    + ev. eapply stp2_closed1 in H0. simpl in H0. apply H0.
     + eapply stpd2_downgrade. ev. eexists. simpl.
       eapply stp2_extendH_mult0. eassumption.
-  - eexists. split; try split.
-    + simpl. econstructor; try eassumption. reflexivity. ev. eapply stp2_reg1 in H2. apply H2.
-    + ev. eapply stp2_closed1 in H2. simpl in H2. apply H2.
-    + eapply stpd2_downgrade. ev. eexists. simpl.
-      eapply stp2_extendH_mult0. eassumption.
+  - eexists. eexists. split; try split.
+    + simpl. econstructor; try eassumption. 
+    + ev. eapply stp2_closed2 in H0. simpl in H0. apply H0.
+    + eapply stpd2_downgrade. ev. eapply stp2_reg2 in H0.
+      eu. eexists. eapply stp2_extendH_mult0. eassumption.
 Qed.
+
+Lemma inv_vtp_half: forall G v T GH,
+  val_type G v T ->
+  exists G0 T0, val_type_stub G0 v T0 /\ closed 0 0 (length G0) T0 /\
+             stpd2 false false G0 T0 G T GH.
+Proof.
+  admit.
+Qed.
+
+
 
 Lemma exists_GYL: forall GX GY GU GL,
   wf_envh GX GY (GU ++ GL) ->
@@ -2811,16 +2854,16 @@ Lemma invert_app: forall venv vf vx T1 T2,
     stpd2 true true venv T1 env T3 [] /\
     stpd2 true true (vx::env) (open (varF x) T4) venv T2 [].
 Proof.
-  intros. inversion H; ev; try solve by inversion.
-  inversion H5. subst.
+  intros. inversion H. ev.
+  inversion H9. subst.
   eexists. eexists. eexists. eexists. eexists. eexists.
   repeat split; eauto; remember (length venv1) as x.
 
   eapply stpd2_upgrade; eauto.
   eapply stpd2_upgrade.
   eapply inv_vtp_half with (GH:=nil) in H0. ev.
-  simpl in H22.
-  assert (stpd2 false false venv1 (open (varH 0) T3) venv0 (open (varH 0) T2) [(base vx, x0)]) as A. {
+  simpl in H23.
+  assert (stpd2 false false venv1 (open (varH 0) T3) venv0 (open (varH 0) T2) [(x0, x1)]) as A. {
     eapply stpd2_narrow. eassumption. eexists. eassumption.
   }
   assert (open (varH 0) T2=T2) as EH2. {
@@ -2830,13 +2873,13 @@ Proof.
     rewrite <- closed_no_open with (i:=0) (j:=0) (k:=(length venv0)); eauto.
   }
   rewrite EH2 in A.
-  apply stp2_substitute with (GH0:=nil) (V:=vx) (GX:=base vx) (T1:=(open (varH 0) T3)) (T2:=T2) (TX:=x0) (GH:=[(base vx, x0)]); eauto.
+  apply stp2_substitute with (GH0:=nil) (V:=vx) (GX:=x0) (T1:=(open (varH 0) T3)) (T2:=T2) (TX:=x1) (GH:=[(x0, x1)]); eauto.
   apply stpd2_extend1. eapply A.
   left. exists (length venv1). exists vx.
   split. simpl. rewrite <- beq_nat_refl. reflexivity.
   split. reflexivity. split. reflexivity. split. assumption.
   subst x. unfold open. erewrite subst_open_zero. reflexivity.
-  simpl in H17. eapply H17.
+  simpl in H18. eapply H18.
   right. left. eauto.
 Qed.
 
@@ -2853,30 +2896,30 @@ Lemma invert_dapp: forall venv vf vx xarg T1 T2,
     stpd2 true true venv T1 env T3 [] /\
     stpd2 true true (vx::env) (open (varF x) T4) venv (open (varF xarg) T2) [].
 Proof.
-  intros. inversion H; ev; try solve by inversion.
-  inversion H6. subst.
+  intros. inversion H. ev.
+  inversion H10. subst.
   eexists. eexists. eexists. eexists. eexists. eexists.
   repeat split; eauto; remember (length venv1) as x.
 
   eapply stpd2_upgrade; eauto.
   eapply stpd2_upgrade.
   eapply inv_vtp_half with (GH:=nil) in H0. ev.
-  simpl in H23.
-  assert (stpd2 false false venv1 (open (varH 0) T3) venv0 (open (varH 0) T2) [(base vx, x0)]) as A. {
+  simpl in H24.
+  assert (stpd2 false false venv1 (open (varH 0) T3) venv0 (open (varH 0) T2) [(x0, x1)]) as A. {
     eapply stpd2_narrow. eassumption. eexists. eassumption.
   }
-  apply stp2_substitute with (GH0:=nil) (V:=vx) (GX:=base vx) (T1:=(open (varH 0) T3)) (T2:=(open (varH 0) T2)) (TX:=x0) (GH:=[(base vx, x0)]); eauto.
+  apply stp2_substitute with (GH0:=nil) (V:=vx) (GX:=x0) (T1:=(open (varH 0) T3)) (T2:=(open (varH 0) T2)) (TX:=x1) (GH:=[(x0,x1)]); eauto.
   apply stpd2_extend1. eapply A.
   left. exists (length venv1). exists vx.
   split. simpl. rewrite <- beq_nat_refl. reflexivity.
   split. reflexivity. split. reflexivity. split. assumption.
   subst x. unfold open. erewrite subst_open_zero. reflexivity.
-  simpl in H18. eapply H18.
+  simpl in H19. eapply H19.
   left. exists xarg. exists vx.
   split. assumption.
   split. reflexivity. split. reflexivity. split. assumption.
   unfold open. erewrite subst_open_zero. reflexivity.
-  simpl in H20. eapply H20.
+  simpl in H21. eapply H21.
 Qed.
 
 (* ### Type Safety ### *)
