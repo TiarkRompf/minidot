@@ -339,8 +339,8 @@ with val_type : venv -> vl -> ty -> Prop :=
     indexr x env = Some (vty GX TX) ->
     val_type GX v TX ->
     val_type env v (TSel (varF x))
-| v_top: forall env v TX,
-    val_type env v TX ->
+| v_top: forall env v GX TX,
+    val_type GX v TX ->
     val_type env v TTop
 .
 
@@ -1943,12 +1943,47 @@ Proof.
   intros. inversion H; subst; econstructor; eauto; eapply stpd2_strong_trans; eauto.
 Qed.
 
+Lemma valtp_widen_aux: forall n, forall b n1 vf H1 H2 T1 T2,
+  val_type H1 vf T1 ->
+  stp2 true b H1 T1 H2 T2 [] n1 ->
+  n1 < n ->
+  val_type H2 vf T2.
+Proof.
+  intros n. induction n; intros. omega.
+  inversion H0; subst.
+  - (* top *)
+    econstructor. eauto.
+  - (* bot *)
+    inversion H.
+  - (* mem *)
+    inversion H. subst. ev. inversion H6. subst.
+    econstructor. eauto. eapply stpd2_strong_trans. eauto. eauto. (* could do manually *)
+  - (* sel1 *)
+    inversion H. subst. rewrite H4 in H9. inversion H9. subst.
+    eapply IHn. eauto. eauto. omega. 
+  - (* sel2 *)
+    econstructor. eauto. eapply IHn. eauto. eauto. omega.
+  - (* selx *)
+    inversion H. subst. rewrite H4 in H7. rewrite <-H5 in H7.
+    econstructor. eauto. eauto.
+  - (* selH *)
+    inversion H.
+  - (* all *)
+    inversion H. subst. ev. inversion H5. subst.
+    econstructor. eauto. eauto. eauto. eapply stpd2_strong_trans. eauto. eauto.
+  - (* wrap *)
+    eapply IHn. eauto. eapply H4. omega.
+  - (* trans *)
+    eapply IHn. eapply IHn. eauto. eapply H4. omega. eauto. omega. 
+Qed.
+
+
 Lemma valtp_widen: forall vf H1 H2 T1 T2,
   val_type H1 vf T1 ->
   stpd2 true true H1 T1 H2 T2 [] ->
   val_type H2 vf T2.
 Proof.
-  intros. admit. (* inversion H; subst; econstructor; eauto; eapply stpd2_strong_trans; eauto. *)
+  intros. eu. eapply valtp_widen_aux; eauto. 
 Qed.
 
 Lemma restp_widen: forall vf H1 H2 T1 T2,
@@ -2787,7 +2822,6 @@ Lemma inv_vtp_half: forall G v T GH,
 Proof.
   intros. eapply inv_vtp_stub_half. eapply vtp_to_stub. eauto. 
 Qed.
-
 
 
 Lemma exists_GYL: forall GX GY GU GL,
