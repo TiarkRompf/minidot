@@ -337,7 +337,7 @@ with val_type : venv -> vl -> ty -> Prop :=
     val_type env (vabs venv T1 y) (TAll T3 T4)
 | v_sel: forall env x v GX TX,
     indexr x env = Some (vty GX TX) ->
-    val_type env v TX ->
+    val_type GX v TX ->
     val_type env v (TSel (varF x))
 | v_top: forall env v TX,
     val_type env v TX ->
@@ -1590,9 +1590,11 @@ Lemma valtp_extend : forall vs v v1 T,
                        val_type vs v T ->
                        val_type (v1::vs) v T.
 Proof.
-  intros. induction H; eauto; econstructor; eauto;
-  try eapply stpd2_extend2; eauto;
-  try eapply indexr_extend; eauto. 
+  intros. induction H. 
+  econstructor. eauto. eapply stpd2_extend2; eauto.
+  econstructor. eauto. eauto. eauto. eapply stpd2_extend2; eauto.
+  econstructor. eapply indexr_extend. eauto. eauto.
+  eauto. 
 Qed.
 
 Lemma indexr_safe_ex: forall H1 G1 TF i,
@@ -2756,12 +2758,34 @@ Proof.
       eu. eexists. eapply stp2_extendH_mult0. eassumption.
 Qed.
 
+Lemma vtp_to_stub: forall G v T,
+  val_type G v T ->
+  val_type_stub G v T.
+Proof.
+  intros. induction H.
+  - ev. eapply vs_ty. eexists. eauto.
+  - ev. eapply vs_abs. eexists. eauto.
+  - inversion IHval_type; subst.
+    + constructor. 
+    assert (closed 0 0 (length GX) TX). eapply stpd2_closed2 in H1. eauto.
+    eapply stpd2_strong_sel2. eauto. constructor.
+    eapply stp2_refl. eauto. eauto. 
+    eapply stpd2_wrapf. eauto.
+    + econstructor. 
+      assert (closed 0 0 (length GX) TX). eapply stpd2_closed2 in H1. eauto.
+    eapply stpd2_strong_sel2. eauto. constructor.
+    eapply stp2_refl. eauto. eauto. 
+    eapply stpd2_wrapf. eauto.
+  - inversion IHval_type; econstructor; eapply stpd2_top; eapply stpd2_closed1; eauto.
+Qed.
+
+
 Lemma inv_vtp_half: forall G v T GH,
   val_type G v T ->
   exists G0 T0, val_type_stub G0 v T0 /\ closed 0 0 (length G0) T0 /\
              stpd2 false false G0 T0 G T GH.
 Proof.
-  admit.
+  intros. eapply inv_vtp_stub_half. eapply vtp_to_stub. eauto. 
 Qed.
 
 
