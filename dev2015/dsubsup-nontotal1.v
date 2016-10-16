@@ -2638,6 +2638,19 @@ Proof.
     + SCase "x = 0".
       repeat destruct IXX as [|IXX]; ev.
       * subst. simpl. inversion H8; subst.
+        destruct GH0. (* nil - use strong_sel *) 
+        assert (GH0' = []). destruct GH0'. eauto. inversion EL. subst GH0'.
+        assert (val_type_stub G2 x1 (TMem TBot T2')) as V. { eapply valtp_stub_widen. eauto.
+        eapply IHn in H1. eapply stpd2_upgrade in H1. eauto. omega. eauto. eauto.
+        eauto. eauto.
+        right. left. eauto.
+        eapply compat_mem_fwd2. eauto. 
+        eauto. }
+        eapply invert_typ in V. ev. subst.                                                    
+        assert (closed 0 0 (length x) x2). eapply stpd2_closed2 in H6. eauto.
+        eapply stpd2_downgrade_aux. eapply stpd2_strong_sel1. eauto.
+        eapply vs_ty. eapply stp2_refl. eauto. eauto. eauto.
+        (* cons *)
         eapply stpd2_sel1. eauto. eauto. eauto.
         eapply IHn; eauto; try omega. right. left. auto.
         eapply compat_mem_fwd2. eauto.

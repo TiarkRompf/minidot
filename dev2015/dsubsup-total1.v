@@ -511,24 +511,60 @@ Function valid in empty context:
 
 *)
 
+(* SEVERAL BIG ISSUES:
+
+
+(A)
+
+1) Function case needs recursion with non-tight subtyping
+
+2) Allowing non-tight subtyping means we have rules sel1,sela1 etc on the right
+
+3) This means that we need vtp H (vty GX TX) (TMem T1 T2) to give use GX TX <: H T2
+
+4) But this seems impossible to define!
+
+Ideas: vty case, (a) use forall ii, restrict to vtp for T1,T2. <-- doesn't work: widen knows nothing about prev T1/2 (b) do not restrict <--- doesn't work: can't initialize
+
+
+Next to try:
+
+Don't use non-tight subtyping! Define stp2 with GH: venv, and forall v, val_type_stub v T in stp2_all
+
+Problem: may not be able to use size measure n anymore in stp2.
+
+
+(B)
+
+Not clear how to inject ii/jj for.
+
+Again we cannot use TX if we have (vty GX TX).
+
+GH cannot be part of the size measure since it grows (we add vx). 
+
+*)
+
+
 
 
 Require Coq.Program.Wf.
 
-Program Fixpoint val_type (env:venv) (GH:list ((vl -> Prop)*(vl -> Prop))) (v:vl) (T:ty) {measure (tsize env T)}: Prop :=
+Program Fixpoint val_type (env:venv) (GH:list (vl*Prop*(vl -> Prop))) (v:vl) (T:ty) {measure (tsize env T)}: Prop :=
   match v,T with
     | vabs env1 T0 y, TAll T1 T2 =>
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
-      (forall (ii:(vl -> Prop)) (jj:(vl -> Prop)), (* fun v => valtp v: T0 ; *)
+      (forall (ii:(vl -> Prop)) (jj:(vl -> vl -> Prop)), (* fun vx => valtp vx: T0 ; *)
          (forall v, ii v -> val_type env GH v T1) -> (* TO <: T1 *)
-         (forall v M1 M2, T1 = TMem M1 M2 -> jj v -> val_type env GH v M2) -> (* TL <: M1 *)
-        forall vx, ii vx -> exists v, tevaln (vx::env1) y v /\ val_type env ((ii,jj)::GH) v (open (varH (length GH)) T2))
+         (forall v vy,  jj v vy -> val_type env GH vy T1) -> (* FIXME: v = vty GX TX -> val_type GX ? vy TX *)
+        forall vx, ii vx -> exists v, tevaln (vx::env1) y v /\ val_type env ((vx,ii vx,jj vx)::GH) v (open (varH (length GH)) T2))
     | vty env1 TX, TMem T1 T2 =>
       (* exists n1 n2,
         stp2 false false env1 TX env T2 [] n1 /\
         stp2 false false env T1 env1 TX [] n2 *)
       closed 0 0 (length env1) TX /\ (* required to convert to val_type_stub *)
-      forall v, val_type env GH v T1 -> val_type env GH v T2
+      forall (ii:(venv->vl->ty->Prop)),
+      (forall v, ii env v T1 = val_type env GH v T1 -> ii env v T2 = val_type env GH v T2 ->
+                 (ii env v T1 -> ii env1 v TX) /\ (ii env1 v TX -> ii env v T2))
     | _, TSel (varF x) =>
       match indexr x env with
         | Some (vty GX TX) => val_type GX GH v TX
@@ -536,7 +572,7 @@ Program Fixpoint val_type (env:venv) (GH:list ((vl -> Prop)*(vl -> Prop))) (v:vl
       end
     | _, TSel (varH x) =>
       match indexr x GH with
-        | Some (ii,jj) => jj v
+        | Some (vx,ii,jj) => jj v
         | _ => False
       end
     | vty env1 TX , TTop =>
@@ -579,15 +615,18 @@ Lemma val_type_unfold: forall env GH v T, val_type env GH v T =
   match v,T with
     | vabs env1 T0 y, TAll T1 T2 =>
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
-      (forall (ii:(vl -> Prop)) (jj:(vl -> Prop)), (* fun v => valtp v: T0 ; *)
+      (forall (ii:(vl -> Prop)) (jj:(vl -> vl -> Prop)), (* fun vx => valtp vx: T0 ; *)
          (forall v, ii v -> val_type env GH v T1) -> (* TO <: T1 *)
-         (forall v M1 M2, T1 = TMem M1 M2 -> jj v -> val_type env GH v M2) -> (* TL <: M1 *)         
-        forall vx, ii vx -> exists v, tevaln (vx::env1) y v /\ val_type env ((ii,jj)::GH) v (open (varH (length GH)) T2))
+         (forall v vy,  jj v vy -> val_type env GH vy T1) -> (* FIXME: v = vty GX TX -> val_type GX ? vy TX *)
+         forall vx, ii vx -> exists v, tevaln (vx::env1) y v /\ val_type env ((vx,ii vx,jj vx)::GH) v (open (varH (length GH)) T2))
+
     | vty env1 TX, TMem T1 T2 =>
       (* exists n1 n2, stp2 false false env1 TX env T2 [] n1 /\
                     stp2 false false env T1 env1 TX [] n2 *)
       closed 0 0 (length env1) TX /\ (* required to convert to val_type_stub *)
-      forall v, val_type env GH v T1 -> val_type env GH v T2
+      forall (ii:(venv->vl->ty->Prop)),
+        (forall v, ii env v T1 = val_type env GH v T1 -> ii env v T2 = val_type env GH v T2 ->
+                   (ii env v T1 -> ii env1 v TX) /\ (ii env1 v TX -> ii env v T2))
     | _, TSel (varF x) =>
       match indexr x env with
         | Some (vty GX TX) => val_type GX GH v TX
@@ -595,7 +634,7 @@ Lemma val_type_unfold: forall env GH v T, val_type env GH v T =
       end
     | _, TSel (varH x) =>
       match indexr x GH with
-        | Some (ii,jj) => jj v
+        | Some (vx,ii,jj) => jj v
         | _ => False
       end
     | vty env1 TX , TTop =>
@@ -621,7 +660,7 @@ Proof.
   destruct v; simpl; try reflexivity.
   (* TSelH *)
   destruct (indexr i GH); simpl; try reflexivity.
-  destruct p; simpl; reflexivity.
+  destruct p. destruct p. simpl. reflexivity.
   
   - eauto.
   -  destruct T; simpl; try reflexivity;
@@ -631,7 +670,7 @@ Proof.
      destruct v; simpl; try reflexivity.
      (* TSelH *)
      destruct (indexr i GH); simpl; try reflexivity.
-     destruct p; simpl; reflexivity.
+     destruct p; destruct p; simpl; reflexivity.
 Qed.
 
 
@@ -3035,16 +3074,19 @@ Grab Existential Variables.
     apply 0. apply 0. apply nil.
 Qed.
 
-Definition ghwf (p1:venv*ty) (f:(vl->Prop)*(vl->Prop)): Prop :=
+
+
+Definition F := prod (prod vl Prop) (vl->Prop).
+
+Hint Unfold F.
+
+Definition ghwf (p1:venv*ty) (f:F): Prop :=
 match p1 with
-  | (H1,T1) => f = ((fun v => val_type H1 [] v T1),(fun v => match T1 with | TMem M1 M2 => val_type H1 [] v M1 | _ => False end))
+  | (H1,T1) => f = (fst (fst f), val_type H1 [] (fst (fst f)) T1, (fun v => val_type H1 [] v T1))
 end.
 
-Definition ghvl (v:vl) (f:(vl->Prop)*(vl->Prop)): Prop :=
-  (fst f) v.
-
 (* this is just to accelerate Coq -- val_type in the goal is slooow *)
-Inductive vtp: venv -> (list ((vl->Prop)*(vl->Prop))) -> vl -> ty -> Prop :=
+Inductive vtp: venv -> (list F) -> vl -> ty -> Prop :=
 | vv: forall G H v T, val_type G H v T -> vtp G H v T.
 
 (* Definition vtp_unfold vtp := match vtp with | vv G H v T VT => val_type_unfold G H v T VT end. *)
@@ -3063,12 +3105,25 @@ Proof.
   admit.
 Qed.
 
-  
-Lemma valtp_widen_aux: forall n, forall n1 b vf H1 H2 GH GH1 HH T1 T2,
+
+Lemma eq_ty: forall T1 T2: ty,
+  {T1 = T2} + {T1 <> T2}.
+Proof.
+  intros. decide equality. decide equality; decide equality.
+Qed.
+
+Lemma eq_venv: forall G1 G2: venv,
+  {G1 = G2} + {G1 <> G2}.
+Proof.
+  intros. admit.
+Qed.
+
+Check lt_dec.
+
+Lemma valtp_widen_aux: forall n, forall n1 b vf H1 H2 GH GH1 T1 T2,
   val_type H1 GH vf T1 ->
   stp2 true b H1 T1 H2 T2 GH1 n1 -> n1 < n ->
   Forall2 ghwf GH1 GH ->
-  Forall2 ghvl HH GH ->
   vtp H2 GH vf T2.
 Proof.
   intros n. induction n; intros. omega.
@@ -3084,84 +3139,130 @@ Proof.
   - Case "Bot".
     subst. rewrite val_type_unfold in H. destruct vf; contradiction.
   - Case "mem".
+    admit.
+(*
     subst. rewrite val_type_unfold in H. 
     destruct vf; try contradiction.
     ev. eapply vv. rewrite val_type_unfold. split. eauto.
-    intros v V0. 
-    assert (vtp H1 GH v S1) as V1. eapply IHn. eapply V0. eapply H7. omega. eapply H4. eapply H5. 
-    assert (vtp H1 GH v U1) as V2. eapply vv. eapply H8. eapply unvv. eapply V1.
-    eapply unvv. eapply IHn. eapply unvv. eapply V2. eapply H6. omega. eapply H4. eapply H5. 
+    intros ii v R1 R2.
+
+    
+    (* clear H7. *)
+          
+    (* assert (forall (ii : venv -> vl -> ty -> Prop) (v : vl),
+       ii H1 v S1 = val_type H1 GH v S1 ->
+       ii H1 v U1 = val_type H1 GH v U1 ->
+       (val_type H1 GH v S1 -> ii l v t) /\ (ii l v t -> val_type H1 GH v U1)) as H7. admit. *)
+
+    specialize (H7 (fun H v T => if (eq_venv H l) then
+                                   if (eq_ty T t) then
+                                     ii l v t
+                                   else val_type H GH v T
+                                 else val_type H GH v T) v ).
+    simpl in H7.
+
+    destruct (eq_venv l l) in H7. 
+    destruct (eq_ty t t) in H7. 
+
+    split.
+
+    intros. destruct H7.
+    destruct (eq_venv H1 l).
+    destruct (eq_ty S1 t). subst. 
+    
+    
+    assert (
+
+    
+    split; intros.
+    eapply H7. 
+    assert (vtp H1 GH v S1) as V1. eapply IHn. eapply V0. eapply H6. omega. eapply H4. 
+    assert (vtp H1 GH v U1) as V2. eapply vv. eapply H7. eapply unvv. eapply V1.
+    eapply unvv. eapply IHn. eapply unvv. eapply V2. eapply H5. omega. eapply H4.
+*)
   - Case "Sel1".
     subst.
-    rewrite val_type_unfold in H. rewrite H6 in H.
+    rewrite val_type_unfold in H. rewrite H5 in H.
     destruct vf.
-    eapply IHn. eapply H. eapply H9. omega. eapply H4. eapply H5.
-    eapply IHn. eapply H. eapply H9. omega. eapply H4. eapply H5. 
+    eapply IHn. eapply H. eapply H8. omega. eapply H4.
+    eapply IHn. eapply H. eapply H8. omega. eapply H4. 
   - Case "Sel2". 
     subst T2. subst.
     destruct vf.
-    eapply vv. rewrite val_type_unfold. rewrite H6. 
-    eapply unvv. eapply IHn. eapply H. eapply H9. omega. eapply H4. eapply H5.
-    eapply vv. rewrite val_type_unfold. rewrite H6. 
-    eapply unvv. eapply IHn. eapply H. eapply H9. omega. eapply H4. eapply H5.
+    eapply vv. rewrite val_type_unfold. rewrite H5. 
+    eapply unvv. eapply IHn. eapply H. eapply H8. omega. eapply H4. 
+    eapply vv. rewrite val_type_unfold. rewrite H5. 
+    eapply unvv. eapply IHn. eapply H. eapply H8. omega. eapply H4. 
 (*
   - Case "Sel1-weak". subst.
-    rewrite val_type_unfold in H. rewrite H6 in H.
-    destruct vf. destruct v. contradiction.
-    inversion H7. ev. subst. 
-    assert (vtp l0 GH (vty l0 t1) (TMem t1 t1)) as V0. eapply vv. rewrite val_type_unfold. split. eapply stp2_closed1 in H14. inversion H14. eapply H16. intros ? V. eapply V.
-    assert (vtp GX GH (vty l0 t1) TX) as V1. eapply IHn. eapply unvv. eapply V0. eapply stp2_extendH_mult. eapply H14.
+    assert (val_type H1 GH vf (TSel (varF x))) as HX. apply H. 
+    rewrite val_type_unfold in H. rewrite H5 in H.
+    assert (match v with
+          | vabs _ _ _ => False
+          | vty GX0 TX0 => val_type GX0 GH vf TX0
+          end) as M. destruct vf; auto. 
+    destruct v. contradiction. clear H.
+    inversion H6. ev. subst. 
+    assert (vtp l GH (vty l t) (TMem t t)) as V0. eapply vv. rewrite val_type_unfold. split. eapply stp2_closed1 in H12. inversion H12. eapply H14. intros ? V. eapply V.
+    assert (vtp GX GH (vty l t) TX) as V1. eapply IHn. eapply unvv. eapply V0. eapply stp2_extendH_mult. eapply H12.
     admit. (* admit: not counting val_type_stub in stp2 *)
-    rewrite app_nil_r. eapply H4. eapply H5. 
-    assert (vtp H2 GH (vty l0 t1) (TMem TBot T2)) as V2. eapply 
-    eapply IHn. eapply unvv. eapply V0. 
-    eapply valtp_closed in H. admit. (* GH! *)
-    inversion H7. ev. inversion H14.
-    inversion H7. ev. inversion H14.
-    destruct v. rewrite H6. 
+    rewrite app_nil_r. eapply H4. 
+    assert (vtp H2 GH (vty l t) (TMem TBot T2)) as V2. 
+    eapply IHn. eapply unvv. eapply V1. eapply H8. omega. eapply H4.
+    (* done with V0,V1,V2 *)
+    inversion V2. subst. rewrite val_type_unfold in H9. ev.
+    (* BAM! need to convert from (val_type l GH vf t) to (vtp H2 GH vf T2) *)
+    (* ie upper half of vtp H2 GH (vty l t) (TMem TBot T2) *)
+    eapply valtp_closed in M.
+    (* XXX difficult problem! need upper half specifically but not clear how to get it *)
+    admit.
 
-
-
-    destruct vf.
-    destruct v. try contradiction. 
-    
-    inversion H7. ev. subst.
-    admit. admit. admit. 
-    - Case "Sel2-weak". subst.
-    rewrite val_type_unfold in H. 
-    admit. 
+  - Case "Sel2-weak". subst.
+    eapply vv. rewrite val_type_unfold. rewrite H5. destruct vf;
+      inversion H6; subst.
+    admit. admit. admit. admit.
+    (* XXX lots of inversion, maybe a problem with needing to construct val_type vabs *)
 *)
   - Case "selx".
     rewrite val_type_unfold in H. eapply vv. rewrite val_type_unfold.
-    subst. destruct vf; try solve [inversion H];
-    rewrite <-H7 in H6; rewrite <-H6; eauto. 
+    subst. rewrite <-H5 in H6. rewrite H6. eauto.
+
 (*
   - Case "sela1".
     subst.
-    rewrite val_type_unfold in H.
-    assert (exists ii jj, indexr x GH = Some (ii,jj) /\ ghwf (GX,TX) (ii,jj)) as EX. admit. clear H4.
-    destruct EX as [ii [jj [IX GW]]].
-    assert (exists v, ghvl v (ii,jj)) as EX. admit. clear H5.
-    destruct EX as [v VL].
-    inversion GW.
-    rewrite IX in H. assert (jj vf) as JF. destruct vf; eauto. clear H. 
-    assert (exists M1 M2, TX = TMem M1 M2 /\ val_type GX [] vf M1).
-    rewrite H9 in JF. destruct TX; try contradiction. eexists. eexists. eauto.
-    destruct H as [M1 [M2 [? VM1]]]. subst TX. 
-    subst ii. simpl in VL.
-    (* TODO: switch val_type TMem back to STP *)
-    admit. (* todo: sela *)
-  (* inversion H4. *)
+    assert (exists vx ii jj, indexr x GH = Some (vx,ii,jj) /\ ghwf (GX,TX) (vx,ii,jj)) as EX. admit.
+    destruct EX as [vx [ii [jj [IX GW]]]].
+    inversion GW. clear GW.
+    assert (ii) as II. admit.
+    assert (vtp H2 GH vx (TMem TBot T2)). eapply IHn. subst ii. eauto.
+
+    
+    assert (
+    
+    assert (jj vf) as JJ. rewrite val_type_unfold in H. rewrite IX in H. destruct vf; eapply H.
+    inversion GW. subst. clear IX GW.
+
+
+
+    assert (val_type GX GH vx TX) as V0. admit. (* extendH from ii *)
+    assert (vtp H2 GH vx (TMem TBot T2)) as V1. eapply IHn. eapply V0. eapply H7. omega. eapply H4.
+    inversion V1. subst G H v T. rewrite val_type_unfold in H10. 
+    
+    (* XXX: how to use jj? and then same problem as with sel1: need upper half stp *)
+
+
+    
   - Case "sela2".
     subst.
     
     admit.*)
   - Case "selax". subst.
-    eapply forall2_index in H6; try apply H4. ev.
+    eapply forall2_index in H4; try apply H4. ev.
     rewrite val_type_unfold in H. eapply vv. rewrite val_type_unfold.
-    destruct vf.
-    rewrite H6 in H. rewrite H6. destruct x0. eauto.
-    rewrite H6 in H. rewrite H6. destruct x0. eauto.
+    destruct vf. eauto. eauto. eauto. 
+(*
+    rewrite H4. rewrite H4 in H. rewrite H4. destruct x0. eauto.
+    rewrite H6 in H. rewrite H6. destruct x0. eauto. *)
 
   - Case "Fun". 
     rewrite val_type_unfold in H. eapply vv. rewrite val_type_unfold.
