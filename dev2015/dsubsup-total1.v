@@ -567,6 +567,7 @@ Inductive val_type0 : venv -> vl -> ty -> Prop :=
 
 
 (* NOTE: crucial to be a smaller type according to tsize! *)
+(* TODO: needs selh case -- but not entirely clear how *)
 Inductive bounds : venv -> ty -> (venv*ty) -> (venv*ty)  -> Prop :=
 | bs_mem: forall G T1 T2,
     bounds G (TMem T1 T2) (G,T1) (G,T2)
