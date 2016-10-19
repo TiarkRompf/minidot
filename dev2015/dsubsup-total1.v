@@ -3230,20 +3230,55 @@ Proof.
   admit.
 Qed.
 
+(* FIXME: requires tighten capability !!! *)
+Lemma rev_bounds: forall n n1 m b G1 T1 G2 T2 GH GU TU GL TL,
+  stp2 m b G1 T1 G2 T2 GH n1 ->
+  bounds G2 T2 (GL,TL) (GU,TU) -> n1 < n ->
+  exists GL1 TL1 GU1 TU1, bounds G1 T1 (GL1,TL1) (GU1,TU1).
+Proof.
+  intros n. induction n. intros. omega.
+  intros.
+  inversion H; subst.
+  - (* top *) inversion H0. 
+  - (* bot *) admit. (* FIXME!!! *)
+  - (* mem *) repeat eexists. constructor.
+  - (* sel1 *) eapply IHn in H5. ev.
+    repeat eexists. econstructor; eauto. eauto. omega. 
+  - (* sel2 *) inversion H0. subst. rewrite H7 in H2. inversion H2. subst.
+    eapply IHn in H5. ev.
+    repeat eexists. eauto. eauto. omega.
+  - (* sel1 *)
+    admit. (*
+    eapply IHn in H5. ev.
+    inversion H3.
+    + subst.
+      ev. eapply IHn in H6. ev. inversion H6. subst. 
+      repeat eexists. econstructor. eauto. subst. ev. *)
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+Qed.
 
-
-
-Lemma valtp_widen_aux: forall nf n, forall n1 n2 b vf H1 H2 GH GH1 T1 T2,
+Lemma valtp_widen_aux: forall nf n, forall n1 n2 m b vf H1 H2 GH GH1 T1 T2,
   val_type H1 GH vf T1 -> 
-  stp2 true b H1 T1 H2 T2 GH1 n1 ->
+  stp2 m b H1 T1 H2 T2 GH1 n1 ->
   forall (FS1:fsize H1 T1 n2), forall (FS2:fsize H2 T2 n2), n1 < n -> n2 < nf ->
   Forall2 ghlf GH1 GH ->
   (forall x HX TX, indexr x GH1 = Some (HX,TX) ->
                    exists v ii jj,
                      indexr x GH = Some (v,ii,jj) /\
-                     val_type0 HX v TX /\
-                     (forall vy T0, TX = (TMem T0 T0) -> jj vy -> val_type HX GH vy T0) /\
-                     widen_spec HX GH v TX) ->
+                     val_type HX GH v TX /\
+                     (forall vy, jj vy ->
+                                 forall m b G2 T2,
+                                     stpd2 m b HX TX G2 (TMem TBot T2) GH1 ->
+                                     val_type G2 GH vy T2
+                     )) ->
   vtp H2 GH vf T2.
 Proof.
   intros nf. induction nf. intros. omega.
@@ -3306,12 +3341,15 @@ Proof.
     (* XXX lots of inversion, maybe a problem with needing to construct val_type vabs *)
 *)
 
+  - admit.
+  - admit. 
+    
   - Case "selx".
     admit. (* rewrite val_type_unfold in H. eapply vv. rewrite val_type_unfold.
     subst. rewrite <-H8 in H9. rewrite H9. eauto. *)
 
   - Case "sela1". (* strong version *)
-    subst. 
+    admit. (* subst. 
     rewrite val_type_unfold in H.
     specialize (H6 _ _ _ H7). ev.
     rewrite H6 in H.
@@ -3323,42 +3361,18 @@ Proof.
     eauto. omega. omega.
     eauto.
     admit. (* FIXME: original H *)
-  (* XXXX induction story not fully clear! *)
-    
-    
-(*  - Case "sela1".
-    subst.
-    assert (exists vx ii jj, indexr x GH = Some (vx,ii,jj) /\ ghwf (GX,TX) (vx,ii,jj)) as EX. admit.
-    destruct EX as [vx [ii [jj [IX GW]]]].
-    inversion GW. clear GW.
-    assert (ii) as II. admit.
-    assert (jj vf) as JJ. admit. 
-    assert (vtp H2 GH vx (TMem TBot T2)). subst ii. admit. (* IHn, but careful about GH *)
-    inversion H9. subst.
-
-    ev. inversion H9. subst.
-    admit.
-    subst. 
-    
-    destruct TX; simpl in JJ. 
-
-    rewrite val_type_unfold in H13.
-
-    rewrite val_type_unfold in H. rewrite IX in H. destruct vf; eapply H.
-    inversion GW. subst. clear IX GW.
-
-
-
-    assert (val_type GX GH vx TX) as V0. admit. (* extendH from ii *)
-    assert (vtp H2 GH vx (TMem TBot T2)) as V1. eapply IHn. eapply V0. eapply H7. omega. eapply H4.
-    inversion V1. subst G H v T. rewrite val_type_unfold in H10.  
-    
-    (* XXX: how to use jj? and then same problem as with sel1: need upper half stp *)
-
-*)
-    
+  (* XXXX induction story not fully clear! *) *)
+     
   - Case "sela2".
     subst. admit.
+
+  - Case "sela1-weak".
+    subst. 
+    rewrite val_type_unfold in H.
+    specialize (H6 _ _ _ H7). ev.
+    rewrite H6 in H.
+    assert (x1 /\ x2 vf). destruct vf; eauto. ev. clear H. 
+    eapply vv. eapply H11. eapply H13. eexists. eapply H9. 
     
   - Case "selax". subst.
     admit. (* eapply forall2_index in H7; try apply H4. ev.
@@ -3382,10 +3396,12 @@ Proof.
     
     unfold ghlf in H5.
 
+(*
     assert (stpd2 true false H2 T4 H1 T0 GH1) as ST1. { eapply stp2_tighten. eauto. intros. destruct (H6 x HX TX). eauto. ev. eexists. eauto.  } eu.
+*)
     
     assert (forall v : vl, ii v -> val_type H1 GH v T0) as VST1. {
-      intros v V. eapply unvv. eapply IHnf. eapply (VST0 v V). eapply ST1. eauto. eauto. eauto. omega. eauto. eauto.
+      intros v V. eapply unvv. eapply IHnf. eapply (VST0 v V). eapply H7. eauto. eauto. eauto. omega. eauto. eauto.
     }
     
     assert (val_type H2 GH vx T4) as VX0. eapply VST0. eauto.
@@ -3398,7 +3414,7 @@ Proof.
               val_type H1 GH vy TU) as STJ1.
     { intros. eapply unvv. 
       (* TODO: downgrade bounds from H1 T0 to H2 T4 *)
-      (* should get size < n0 *)
+      (* should get size < n0 ??? *)
       admit.
     }
     
@@ -3410,99 +3426,29 @@ Proof.
 
     (* now deal with function result! *)
 
-    assert (exists GX TX, val_type0 GX vx TX) as W0.
-    destruct vx; eexists; eexists; econstructor.
-    destruct W0 as [GX [TX W0]].
-
-    assert (stpd2 false false GX TX H2 T4 GH1) as NRW.
-    {  admit. (* destruct vx, etc *) }
+    rewrite (Forall2_length _ _ _ _ _ H5) in H11. (* stp result *) 
     
-    assert (stpd2 false false H1 (open (varH (length GH1)) T3) H2
-                  (open (varH (length GH1)) T5) ((GX, TX) :: GH1)) as STR0.
-    { eapply stpd2_narrow. eapply NRW. eauto. } eu. 
-    
-    
-    assert (stpd2 true false H1 (open (varH (length GH1)) T3) H2
-                  (open (varH (length GH1)) T5) ((GX, TX) :: GH1)) as STR1.
-    { eapply stp2_tighten. eauto. admit. (* know how it works ... *) } eu. 
-
-    rewrite (Forall2_length _ _ _ _ _ H5) in STR1. 
-    
-    eapply IHnf. eapply VT. eapply STR1.
+    eapply IHnf. eapply VT. eapply H11.
     eapply open_preserves_fsize. eauto. eapply open_preserves_fsize. eauto.
     eauto. omega.
-    econstructor. simpl.  
-    admit. (* TRICKY ?? *)
-    eauto.
+    admit. (* REMOVE forall2 *) 
 
     (* now custom env predicate *)
     simpl. rewrite (Forall2_length _ _ _ _ _ H5).
     intros.
     unfold id,venv,aenv,F in *.    
-    case_eq (beq_nat x2 (length GH)); intros E.
-    + rewrite E in H14. inversion H14. subst HX TX0. 
+    case_eq (beq_nat x (length GH)); intros E.
+    + rewrite E in H14. inversion H14. subst HX TX. 
       exists vx. exists (ii vx). exists (jj vx).
-      split. eauto.
-      split. eauto. 
-      split. intros. subst. 
-      eauto. 
+      split. reflexivity.
+      split. admit. (* extend VX0 *)
+      intros.
+      admit. (* TODO !!! *)
 
 
-      eauto.
-             admit. (* extend VST0 *)
-             unfold widen_spec. 
-    
-(*    
-    (* what if vs not in env, and type is not closed?
-       this can happen -- func is just not callable in 
-       that env, but may in env after subtyping *)
-
-    
-    destruct (LR x vx VX) as [v [x1 [TE VT]]]. 
-
-    assert (closed 0 0 (length H1) (open (varF x1) T3)).
-    eapply valtp_closed. eauto. 
-    
-    (* what if vs not in env, and type is not closed *)
-    
-    assert (stpd2 true true H1 T3 H2 T5 []). {
-      eapply stpd2_upgrade.
-      eapply stp2_substitute. eexists. eapply H8. eauto. instantiate (3:=([]:aenv)). simpl. eauto. eapply vtp_to_stub; eauto. eauto.
-      simpl. unfold compat. left. rewrite open_subst. 
-      destruct CLE.
-      assert (open (varH 0) T5 = T5) as ID5. unfold open. symmetry. eapply closed_no_open. eauto.
-      right. left. simpl. eauto. 
-    right. left. eauto.
-    right. left. eauto.
-    eauto. } eu. 
-    
-    assert (not (exists x, tevaln H1 (tvar x) vx) -> closed 0 0 (length H1) T3). {
-      intros E. unfold not in E. 
-      destruct E. 
-admit.
-
-    }
-    assert (closed 0 0 (length H1) T3 \/ exists x, tevaln H1 (tvar x) vx).
-    left. unfold not in H11. destruct H11. split. intros.
-    specialize
-
-    (* SHOTGUN ALERT *)
-    (* this is tricky: maybe the new type is closed, but not previous one *)
-    (* then where would we get evaluation capability from? *)
-    assert (closed 0 0 (length H1) T3) as CL_UNKWN. admit.
-    assert (open (varH 0) T5 = T5) as ID5. unfold open. symmetry. eapply closed_no_open. eauto.
-    assert (open (varH 0) T3 = T3) as ID3. unfold open. symmetry. eapply closed_no_open. eauto.
-    simpl in H8. rewrite ID3 in H8. rewrite ID5 in H8. 
-    assert (stpd2 true true H2 T4 H1 T0 []). eapply stpd2_upgrade. eauto. eu.
-    assert (stpd2 true true H1 T3 H2 T5 []). { eapply stpd2_upgrade.
-    eapply stp2_substitute. eexists. eapply H8. eauto. instantiate (3:=([]:aenv)). simpl. eauto. eapply vtp_to_stub; eauto. eauto.
-    right. left. eauto.
-    right. left. eauto.
-    eauto. } eu. 
-    assert (val_type H1 vx T0) as VX. eapply IHn; eauto. admit. (* FIXME: induction strategy *)
-    specialize (LR CL_UNKWN vx VX). ev.
-    eexists. split. eauto. eapply IHn; eauto. admit. (* FIXME: induction strategy *)*)
-
+      
+    + admit. (* extend H6 *)
+      
   - Case "wrapf".
     eapply IHn. eauto. eapply H4. omega.
   - Case "transf".
