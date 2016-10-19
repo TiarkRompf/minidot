@@ -304,6 +304,16 @@ Inductive stp2: bool (* whether selections are precise *) ->
     stp2 s true G1 (TSel (varF x1)) G2 (TSel (varF x2)) GH (S n)
 
 (* abstract type variables *)
+| stp2_strong_sela1: forall G1 G2 GX TX x T2 GH n1,
+    indexr x GH = Some (GX, (TMem TX TX)) ->
+    stp2 true true GX TX G2 T2 GH n1 ->
+    stp2 true true G1 (TSel (varH x)) G2 T2 GH (S n1)
+| stp2_strong_sela2: forall G1 G2 GX TX x T1 GH n1,
+    indexr x GH = Some (GX, (TMem TX TX)) ->
+    closed 0 0 (length GX) TX ->
+    stp2 true false G1 T1 GX TX GH n1 ->
+    stp2 true true G1 T1 G2 (TSel (varH x)) GH (S n1)
+(* imprecise *)
 | stp2_sela1: forall G1 G2 GX TX x T2 GH n1,
     indexr x GH = Some (GX, TX) ->
     closed 0 x (length GX) TX ->
@@ -545,16 +555,28 @@ GH cannot be part of the size measure since it grows (we add vx).
 *)
 
 
-Fixpoint bounds (G:venv) (T:ty) {struct T} :=
-  match T with
-    | TMem T1 T2     => ((G, T1), (G, T2))
-(*    | TSel (varF x)  => 
-      match indexr x G with
-        | Some v => 
-        | None => 0
-      end *)
-    | _ => ((G,TBot),(G,TTop))
-  end.
+
+
+
+Inductive val_type0 : venv -> vl -> ty -> Prop :=
+| vs_ty: forall venv T1,
+    val_type0 venv (vty venv T1) (TMem T1 T1)
+| vs_abs: forall venv y TX,
+    val_type0 venv (vabs venv TX y) (TAll TTop TBot)
+.
+
+
+(* NOTE: crucial to be a smaller type according to tsize! *)
+Inductive bounds : venv -> ty -> (venv*ty) -> (venv*ty)  -> Prop :=
+| bs_mem: forall G T1 T2,
+    bounds G (TMem T1 T2) (G,T1) (G,T2)
+| bs_sel: forall G GX TX GT1 GT2 x,
+    indexr x G = Some (vty GX TX) ->
+    bounds GX TX GT1 GT2 ->
+    bounds G (TSel (varF x)) GT1 GT2 
+.
+
+
 
 Require Coq.Program.Wf.
 
@@ -564,7 +586,7 @@ Program Fixpoint val_type (env:venv) (GH:list (vl*Prop*(vl -> Prop))) (v:vl) (T:
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
       (forall (ii:(vl -> Prop)) (jj:(vl -> vl -> Prop)), (* fun vx => valtp vx: T0 ; *)
          (forall v, ii v -> val_type env GH v T1) -> (* TO <: T1 *)
-         (forall v vy,  jj v vy -> match bounds env T1 with |  (_,(GU,TU)) => val_type GU GH vy TU end) -> (* FIXME: v = vty GX TX -> val_type GX ? vy TX *)
+         (forall v vy GL TL GU TU, bounds env T1 (GL,TL) (GU,TU) -> ii v -> jj v vy -> val_type env GH vy TU) ->
         forall vx, ii vx -> exists v, tevaln (vx::env1) y v /\ val_type env ((vx,ii vx,jj vx)::GH) v (open (varH (length GH)) T2))
     | vty env1 TX, TMem T1 T2 =>
       closed 0 0 (length env1) TX /\ (* required to convert to val_type_stub *)
@@ -590,7 +612,8 @@ Program Fixpoint val_type (env:venv) (GH:list (vl*Prop*(vl -> Prop))) (v:vl) (T:
   end.
 
 Next Obligation. simpl. omega. Qed.
-Next Obligation. simpl. admit. (* bounds! *) Qed.
+Next Obligation. simpl. admit. (* BOUNDS *) Qed.
+
 Next Obligation. simpl. unfold open. rewrite <-open_preserves_tsize. omega. Qed. (* TApp case: open *)
 Next Obligation. (* TSel case *)
   simpl. rewrite <-Heq_anonymous. eapply tsz_indir. Qed.
@@ -621,8 +644,7 @@ Lemma val_type_unfold: forall env GH v T, val_type env GH v T =
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
       (forall (ii:(vl -> Prop)) (jj:(vl -> vl -> Prop)), (* fun vx => valtp vx: T0 ; *)
          (forall v, ii v -> val_type env GH v T1) -> (* TO <: T1 *)
-         (forall v vy,  jj v vy -> match bounds env T1 with |  (_,(GU,TU)) => val_type GU GH vy TU end) -> (* FIXME: v = vty GX TX -> val_type GX ? vy TX *)
-
+         (forall v vy GL TL GU TU, bounds env T1 (GL,TL) (GU,TU) -> ii v -> jj v vy -> val_type env GH vy TU) ->
          forall vx, ii vx -> exists v, tevaln (vx::env1) y v /\ val_type env ((vx,ii vx,jj vx)::GH) v (open (varH (length GH)) T2))
 
     | vty env1 TX, TMem T1 T2 =>
@@ -3178,12 +3200,6 @@ Definition widen_spec H1 GH vf T1 := forall n1 b H2 GH1 T2,
   stp2 true b H1 T1 H2 T2 GH1 n1 -> (* match GH GH1 ! *)
   vtp H2 GH vf T2.
 
-Inductive val_type0 : venv -> vl -> ty -> Prop :=
-| vs_ty: forall venv T1,
-    val_type0 venv (vty venv T1) (TMem T1 T1)
-| vs_abs: forall venv y TX,
-    val_type0 venv (vabs venv TX y) (TAll TTop TBot)
-.
 
 Definition ghlf (p1:venv*ty) (f:F): Prop :=
 match p1 with
@@ -3224,9 +3240,9 @@ Lemma valtp_widen_aux: forall nf n, forall n1 n2 b vf H1 H2 GH GH1 T1 T2,
   Forall2 ghlf GH1 GH ->
   (forall x HX TX, indexr x GH1 = Some (HX,TX) ->
                    exists v ii jj,
-                     indexr x GH = Some (v,ii v,jj) /\
+                     indexr x GH = Some (v,ii,jj) /\
                      val_type0 HX v TX /\
-                     (ii v -> val_type HX GH v TX) /\
+                     (forall vy T0, TX = (TMem T0 T0) -> jj vy -> val_type HX GH vy T0) /\
                      widen_spec HX GH v TX) ->
   vtp H2 GH vf T2.
 Proof.
@@ -3294,6 +3310,22 @@ Proof.
     admit. (* rewrite val_type_unfold in H. eapply vv. rewrite val_type_unfold.
     subst. rewrite <-H8 in H9. rewrite H9. eauto. *)
 
+  - Case "sela1". (* strong version *)
+    subst. 
+    rewrite val_type_unfold in H.
+    specialize (H6 _ _ _ H7). ev.
+    rewrite H6 in H.
+    assert (x1 /\ x2 vf). destruct vf; eauto. ev. clear H.
+
+    assert (val_type GX GH vf TX). eapply H10. eauto. eauto.
+    eapply IHn. eapply H. eapply H8. 
+    instantiate (1:=n2). admit. (* FIXME: fsize !!! *)
+    eauto. omega. omega.
+    eauto.
+    admit. (* FIXME: original H *)
+  (* XXXX induction story not fully clear! *)
+    
+    
 (*  - Case "sela1".
     subst.
     assert (exists vx ii jj, indexr x GH = Some (vx,ii,jj) /\ ghwf (GX,TX) (vx,ii,jj)) as EX. admit.
@@ -3323,10 +3355,10 @@ Proof.
     
     (* XXX: how to use jj? and then same problem as with sel1: need upper half stp *)
 
-
+*)
     
   - Case "sela2".
-    subst. *)
+    subst. admit.
     
   - Case "selax". subst.
     admit. (* eapply forall2_index in H7; try apply H4. ev.
@@ -3358,17 +3390,22 @@ Proof.
     
     assert (val_type H2 GH vx T4) as VX0. eapply VST0. eauto.
     assert (val_type H1 GH vx T0) as VX1. eapply VST1. eauto.
-    
 
-    assert (forall v vy : vl,
-              jj v vy ->
-              let (_, p0) := bounds H1 T0 in
-              let (GU, TU) := p0 in
-              val_type GU GH vy TU) as STJ1. admit. 
+    
+    assert (forall (v vy : vl) (GL : venv) (TL : ty) (GU : venv) (TU : ty),
+              bounds H1 T0 (GL, TL) (GU, TU) ->
+              ii v -> jj v vy ->
+              val_type H1 GH vy TU) as STJ1.
+    { intros. eapply unvv. 
+      (* TODO: downgrade bounds from H1 T0 to H2 T4 *)
+      (* should get size < n0 *)
+      admit.
+    }
     
     destruct (LR ii jj VST1 STJ1 vx VT0) as [v [TE VT]]. 
 
-    exists v. split. eapply TE.
+    
+    exists v. split. eapply TE. eapply unvv.
     (* eapply valtp_narrow in VT. *)
 
     (* now deal with function result! *)
@@ -3378,7 +3415,7 @@ Proof.
     destruct W0 as [GX [TX W0]].
 
     assert (stpd2 false false GX TX H2 T4 GH1) as NRW.
-    {  admit. }
+    {  admit. (* destruct vx, etc *) }
     
     assert (stpd2 false false H1 (open (varH (length GH1)) T3) H2
                   (open (varH (length GH1)) T5) ((GX, TX) :: GH1)) as STR0.
@@ -3391,7 +3428,7 @@ Proof.
 
     rewrite (Forall2_length _ _ _ _ _ H5) in STR1. 
     
-    eapply unvv. eapply IHnf. eapply VT. eapply STR1.
+    eapply IHnf. eapply VT. eapply STR1.
     eapply open_preserves_fsize. eauto. eapply open_preserves_fsize. eauto.
     eauto. omega.
     econstructor. simpl.  
@@ -3404,8 +3441,14 @@ Proof.
     unfold id,venv,aenv,F in *.    
     case_eq (beq_nat x2 (length GH)); intros E.
     + rewrite E in H14. inversion H14. subst HX TX0. 
-      exists vx. exists ii. exists (jj vx).
-             split. eauto. split.
+      exists vx. exists (ii vx). exists (jj vx).
+      split. eauto.
+      split. eauto. 
+      split. intros. subst. 
+      eauto. 
+
+
+      eauto.
              admit. (* extend VST0 *)
              unfold widen_spec. 
     
