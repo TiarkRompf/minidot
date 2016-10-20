@@ -5,7 +5,7 @@ The DOT Calculus and its Variations
 
 Formalizations of the Dependent Object Types (DOT) calculus, from the bottom up, with soundness proofs at each step.
 
-- From F to DOT: Type Soundness Proofs with Definitional Interpreters
+- From F to DOT: Type Soundness Proofs with Definitional Interpreters (POPL'17) [[pdf preprint]](https://www.cs.purdue.edu/homes/rompf/papers/amin-draft2016a.pdf)
   - [STLC](http://sound-big-step-stlc.namin.net)
   - [F<:](http://sound-big-step-fsub.namin.net)
   - [F<: equivalence with Small-Step](./big/fsub_equiv.v)
