@@ -3186,75 +3186,6 @@ Proof.
   - admit.
 Qed.
 
-Lemma valtp_down: forall n, forall n1 vf H1 T1,
-  val_type H1 [] vf T1 n1 -> 
-  tsize H1 T1 < n -> 
-  vtp H1 [] vf T1 0.
-Proof.
-  intros n. induction n. intros. omega.
-  intros.
-  rewrite val_type_unfold in H.
-  destruct vf; destruct T1.
-  - eapply vv. eauto.
-  - eapply vv. eauto.
-  - ev. eapply vv. rewrite val_type_unfold.
-    repeat split. eauto. eauto.
-    intros. eapply IHn in H4. omega. omega. 
-  - ev. destruct v. remember (indexr i H1) as A. destruct A. destruct v. contradiction.
-    eapply IHn in H. eapply unvv in H. eapply vv. rewrite val_type_unfold.
-    rewrite <- HeqA. eapply H. simpl in H0. rewrite <-HeqA in H0.
-    rewrite <-tsz_eq in H0. omega.
-    contradiction. simpl in H. contradiction. contradiction.
-  - contradiction.
-  (* vty *)
-  - eapply vv. eauto.
-  - eapply vv. eauto.
-  - eapply vv. eauto.
-  - ev. destruct v. remember (indexr i H1) as A. destruct A. destruct v. contradiction.
-    eapply IHn in H. eapply unvv in H. eapply vv. rewrite val_type_unfold.
-    rewrite <- HeqA. eapply H. simpl in H0. rewrite <-HeqA in H0.
-    rewrite <-tsz_eq in H0. omega.
-    contradiction. simpl in H. contradiction. contradiction.
-  - eapply vv. eauto. 
-Qed.
-
-(*
-Lemma valtp_up: forall n, forall n1 n2 vf H1 T1,
-  val_type H1 [] vf T1 n1 -> 
-  tsize H1 T1 < n -> n1 < n2 ->
-  vtp H1 [] vf T1 n2.
-Proof.
-  intros n. induction n. intros. omega.
-  intros.
-  rewrite val_type_unfold in H.
-  destruct vf; destruct T1.
-  - eapply vv. eauto.
-  - eapply vv. eauto.
-  - ev. eapply vv. rewrite val_type_unfold.
-    repeat split. eauto. eauto.
-    intros.
-    assert (vtp H1 [] vx T1_1 0). eapply valtp_down. eapply H5. eauto.
-    assert (0 < n1). 
-    specialize (H4 vx jj 0 H8
-
-    eapply IHn in H4. omega. omega. 
-  - ev. destruct v. remember (indexr i H1) as A. destruct A. destruct v. contradiction.
-    eapply IHn in H. eapply unvv in H. eapply vv. rewrite val_type_unfold.
-    rewrite <- HeqA. eapply H. simpl in H0. rewrite <-HeqA in H0.
-    rewrite <-tsz_eq in H0. omega.
-    contradiction. simpl in H. contradiction. contradiction.
-  - contradiction.
-  (* vty *)
-  - eapply vv. eauto.
-  - eapply vv. eauto.
-  - eapply vv. eauto.
-  - ev. destruct v. remember (indexr i H1) as A. destruct A. destruct v. contradiction.
-    eapply IHn in H. eapply unvv in H. eapply vv. rewrite val_type_unfold.
-    rewrite <- HeqA. eapply H. simpl in H0. rewrite <-HeqA in H0.
-    rewrite <-tsz_eq in H0. omega.
-    contradiction. simpl in H. contradiction. contradiction.
-  - eapply vv. eauto. 
-Qed.*)
 
 
 Lemma valtp_widen_aux: forall nf n, forall n1 n2 m b vf H1 H2 GH GH1 T1 T2,
@@ -3348,6 +3279,59 @@ Proof.
       repeat split. eapply H6. eapply H15. omega.
       eapply unvv. eapply H17. eapply H18. eapply H19. eapply H20. 
     }
+
+Lemma foobar0: forall m b H1 H2 T0 T4 GH nvx vx GL1 TL1 GU1 TU1 n0 GH1,
+    val_type H2 GH vx T4 nvx -> 
+    val_type H1 GH vx T0 nvx ->
+    stp2 m b H2 T4 H1 T0 GH1 n0 ->
+    bounds H1 T0 (GL1, TL1) (GU1, TU1) ->
+    exists GL TL GU TU n, bounds H2 T4 (GL, TL) (GU, TU) /\
+                        stp2 false false GU TU GU1 TU1 GH1 n /\ n <= n0.
+Proof. admit. Qed.                                          
+Lemma foobar: forall m b H1 H2 T0 T4 GH nvx vx GL1 TL1 GU1 TU1 n0 GH1,
+    val_type H2 GH vx T4 nvx -> 
+    val_type H1 GH vx T0 nvx ->
+    stp2 m b H2 T4 H1 T0 GH1 n0 ->
+    bounds H1 T0 (GL1, TL1) (GU1, TU1) ->
+    exists GL TL GU TU n, bounds H2 T4 (GL, TL) (GU, TU) /\
+                        stp2 false false GU TU GU1 TU1 GH1 n /\ n <= n0.
+    Proof.
+      intros.
+      inversion H4; subst.
+      - (* mem *)
+        inversion H3; subst.
+        + (* bot *)
+          rewrite val_type_unfold in H. destruct vx; contradiction.
+        + (* mem *)
+          repeat eexists. constructor. 
+          assert (m = false). admit. subst m. eapply H11. omega. 
+        + (* sel1 *) 
+          assert (val_type GX GH vx TX nvx) as VT. rewrite val_type_unfold in H.
+          destruct vx. rewrite H1 in H. eapply H. rewrite H1 in H. eapply H.
+          
+          assert (exists (GL : venv) (TL : ty) (GU : venv) (TU : ty) 
+                         (n : nat),
+                    bounds GX TX (GL, TL) (GU, TU) /\
+                    stp2 false false GU TU GU1 TU1 GH1 n /\ n <= n1).
+          eapply foobar0. eapply VT. eapply H0. eapply H7. constructor.
+          
+          ev. 
+          repeat eexists. econstructor. eapply H1. eapply H8. eapply H9. omega.
+        + (* sel2 *)
+          assert (val_type GX GH vx TX nvx) as VT. rewrite val_type_unfold in H.
+          destruct vx. rewrite H1 in H. destruct v. contradiction.
+          rewrite val_type_unfold. destruct TX. eauto. eapply H. rewrite H1 in H. eapply H.
+         
+          
+          assert (exists (GL : venv) (TL : ty) (GU : venv) (TU : ty) 
+                         (n : nat),
+                    bounds GX TX (GL, TL) (GU, TU) /\
+                    stp2 false false GU TU GU1 TU1 GH1 n /\ n <= n1).
+          eapply foobar0. eapply VT. eapply H0. eapply H7. constructor.
+          
+                     
+    Qed.
+
     
     assert (forall (vy : vl) ny,
              jj vy ny ->
@@ -3355,12 +3339,23 @@ Proof.
                bounds H1 T0 (GL, TL) (GU, TU) ->
                val_type GU GH vy TU ny) as STJ1.
     { intros vy ny jjvy ? ? ? ? BB. specialize (STJ vy ny jjvy).
+      
       (* TODO: downgrade bounds from H1 T0 to H2 T4 *)
       (* should get size < n0 ??? *)
-      admit.
+      assert (exists GL2 TL2 GU2 TU2 n, bounds H2 T4 (GL2, TL2) (GU2, TU2) /\  stp2 false false GU2 TU2 GU TU GH1 n /\ n <= n0). eapply foobar. eapply VX0. eapply unvv. eapply VX1. eapply H7. eapply BB.
+      ev.
+      eapply unvv. eapply IHn. eapply STJ. eapply H14. eapply H15. omega. admit. eapply H5.
+      admit.  
     }
     eapply unvv in VX1. 
     destruct (LR vx jj nvx VX1 NXL STJ1) as [v [nvy [TE VT]]]. 
+
+
+    
+
+
+      
+
 
     
     exists v. exists nvy. split. eapply TE. split. eapply unvv.
