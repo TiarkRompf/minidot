@@ -6,6 +6,9 @@
 (* copied from nano4-total1-wip.v / dsubsup.v *)
 (* scale up to full D<> *)
 
+(* some proofs are commented out with a label PERF:
+   this is just to make Coq go faster through the file *)
+
 (*
 TODO: 
  + add tty
@@ -201,12 +204,11 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH TX (TMem TBot T2) ->
     stp G1 GH (TSel (varH x)) T2
 (* XXX complete proof for Fsub first *)
-(*
 | stp_sela2: forall G1 GH TX T1 x,
     indexr x GH = Some TX ->
     closed 0 x (length G1) TX ->
     stp G1 GH TX (TMem T1 TTop) ->
-    stp G1 GH T1 (TSel (varH x)) *)
+    stp G1 GH T1 (TSel (varH x))
 | stp_selax: forall G1 GH v x,
     (* This is a bit looser than just being able to select on TMem vars. *)
     indexr x GH = Some v  ->
@@ -304,7 +306,7 @@ Inductive stp2: bool (* whether selections are precise *) ->
     stp2 s true G1 (TSel (varF x1)) G2 (TSel (varF x2)) GH (S n)
 
 (* abstract type variables *)
-| stp2_strong_sela1: forall G1 G2 GX TX x T2 GH n1,
+(*| stp2_strong_sela1: forall G1 G2 GX TX x T2 GH n1,
     indexr x GH = Some (GX, (TMem TX TX)) ->
     stp2 true true GX TX G2 T2 GH n1 ->
     stp2 true true G1 (TSel (varH x)) G2 T2 GH (S n1)
@@ -312,19 +314,18 @@ Inductive stp2: bool (* whether selections are precise *) ->
     indexr x GH = Some (GX, (TMem TX TX)) ->
     closed 0 0 (length GX) TX ->
     stp2 true false G1 T1 GX TX GH n1 ->
-    stp2 true true G1 T1 G2 (TSel (varH x)) GH (S n1)
+    stp2 true true G1 T1 G2 (TSel (varH x)) GH (S n1) *)
 (* imprecise *)
 | stp2_sela1: forall G1 G2 GX TX x T2 GH n1,
     indexr x GH = Some (GX, TX) ->
     closed 0 x (length GX) TX ->
     stp2 false false GX TX G2 (TMem TBot T2) GH n1 ->
     stp2 false true G1 (TSel (varH x)) G2 T2 GH (S n1)
-(* XXX complete proof for fsub first 
 | stp2_sela2: forall G1 G2 GX T1 TX x GH n1,
     indexr x GH = Some (GX, TX) ->
     closed 0 x (length GX) TX ->
     stp2 false false GX TX G1 (TMem T1 TTop) GH n1 ->
-    stp2 false true G1 T1 G2 (TSel (varH x)) GH (S n1) *)
+    stp2 false true G1 T1 G2 (TSel (varH x)) GH (S n1)
 | stp2_selax: forall G1 G2 v x GH s n,
     indexr x GH = Some v ->
     stp2 s true G1 (TSel (varH x)) G2 (TSel (varH x)) GH (S n)
@@ -397,7 +398,7 @@ Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some
 
 (* ------------------------- NOTES -------------------------
 
-Define value typing (val_type0)
+Define value typing (val_type)
 
 val_type0 cannot straightforwardly be defined as inductive
 family, because the (forall vx, val_type0 env vx T1 -> ... )
@@ -463,8 +464,6 @@ Fixpoint vsize (v : vl) : nat :=
          end) T
   end.
 
-(* TODO: add an abstract env part! *)
-
 Fixpoint tsize (G:venv) (T:ty) {struct T} :=
   match T with
     | TBot           => 1
@@ -510,53 +509,6 @@ Qed.
 
 
 
-(* Must make sure that the following are valid:
-
-Function valid in empty context:
-
-[] |- (vabs GC x t) : (:T1) -> T2^x
-
-      eval (tvar y) = vx /\ [] |- vx:T1  --->  
-
-
-*)
-
-(* SEVERAL BIG ISSUES:
-
-
-(A)
-
-1) Function case needs recursion with non-tight subtyping
-
-2) Allowing non-tight subtyping means we have rules sel1,sela1 etc on the right
-
-3) This means that we need vtp H (vty GX TX) (TMem T1 T2) to give use GX TX <: H T2
-
-4) But this seems impossible to define!
-
-Ideas: vty case, (a) use forall ii, restrict to vtp for T1,T2. <-- doesn't work: widen knows nothing about prev T1/2 (b) do not restrict <--- doesn't work: can't initialize
-
-
-Next to try:
-
-Don't use non-tight subtyping! Define stp2 with GH: venv, and forall v, val_type_stub v T in stp2_all
-
-Problem: may not be able to use size measure n anymore in stp2.
-
-
-(B)
-
-Not clear how to inject ii/jj for.
-
-Again we cannot use TX if we have (vty GX TX).
-
-GH cannot be part of the size measure since it grows (we add vx). 
-
-*)
-
-
-
-
 
 Inductive val_type0 : venv -> vl -> ty -> Prop :=
 | vs_ty: forall venv T1,
@@ -581,27 +533,27 @@ Inductive bounds : venv -> ty -> (venv*ty) -> (venv*ty)  -> Prop :=
 
 Require Coq.Program.Wf.
 
-Program Fixpoint val_type (env:venv) (GH:list (vl->nat->Prop)) (v:vl) (T:ty) n {measure (tsize env T)}: Prop :=
+Program Fixpoint val_type (env:venv) (GH:list (vl->Prop)) (v:vl) (T:ty) {measure (tsize env T)}: Prop :=
   match v,T with
     | vabs env1 T0 y, TAll T1 T2 =>
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
-      forall vx (jj:vl->nat->Prop) nx,
-        val_type env GH vx T1 nx -> nx < n ->
-        (forall vy ny, jj vy ny -> forall GL TL GU TU, bounds env T1 (GL,TL) (GU,TU) -> val_type GU GH vy TU ny) ->
-        exists v ny, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2) ny /\ ny < n
+      forall vx (jj:vl->Prop),
+        val_type env GH vx T1 ->
+        (forall vy, jj vy -> forall GL TL GU TU, bounds env T1 (GL,TL) (GU,TU) -> val_type GU GH vy TU) ->
+        exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2)
     | vty env1 TX, TMem T1 T2 =>
       closed 0 0 (length env1) TX /\ (* required to convert to val_type_stub *)
       exists n1 n2,
-        stp2 false false env1 TX env T2 [] n1 /\ (* NOTE: what about [] vs GH ?? *)
+        stp2 false false env1 TX env T2 [] n1 /\ (* FIXME: what about [] vs GH ?? *)
         stp2 false false env T1 env1 TX [] n2
     | _, TSel (varF x) =>
       match indexr x env with
-        | Some (vty GX TX) => val_type GX GH v TX n
+        | Some (vty GX TX) => val_type GX GH v TX
         | _ => False
       end
     | _, TSel (varH x) =>
       match indexr x GH with
-        | Some jj => jj v n
+        | Some jj => jj v
         | _ => False
       end
     | vty env1 TX , TTop =>
@@ -613,7 +565,7 @@ Program Fixpoint val_type (env:venv) (GH:list (vl->nat->Prop)) (v:vl) (T:ty) n {
   end.
 
 Next Obligation. simpl. omega. Qed.
-Next Obligation. simpl. admit. (* BOUNDS *) Qed.
+Next Obligation. simpl. admit. (* TODO: prove a lemma that bounds are smaller *) Qed.
 
 Next Obligation. simpl. unfold open. rewrite <-open_preserves_tsize. omega. Qed. (* TApp case: open *)
 Next Obligation. (* TSel case *)
@@ -628,8 +580,8 @@ Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversi
 
 (* 
    ISSUE: 
-   val_type_func is incomprehensible, we cannot (easily) unfold 
-   and reason about it. Therefore, we prove unfolding of
+   The expansion of val_type, val_type_func is incomprehensible. 
+   We cannot (easily) unfold and reason about it. Therefore, we prove unfolding of
    val_type to its body as a lemma.
 
    (Note that the unfold_sub tactic relies on 
@@ -639,27 +591,27 @@ Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversi
 Import Coq.Program.Wf.
 Import WfExtensionality.
 
-Lemma val_type_unfold: forall env GH v T n, val_type env GH v T n =
+Lemma val_type_unfold: forall env GH v T, val_type env GH v T =
   match v,T with
     | vabs env1 T0 y, TAll T1 T2 =>
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
-      forall vx (jj:vl->nat->Prop) nx,
-        val_type env GH vx T1 nx -> nx < n ->
-        (forall vy ny, jj vy ny -> forall GL TL GU TU, bounds env T1 (GL,TL) (GU,TU) -> val_type GU GH vy TU ny) ->
-        exists v ny, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2) ny /\ ny < n
+      forall vx (jj:vl->Prop),
+        val_type env GH vx T1 ->
+        (forall vy, jj vy -> forall GL TL GU TU, bounds env T1 (GL,TL) (GU,TU) -> val_type GU GH vy TU) ->
+        exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2) 
 
     | vty env1 TX, TMem T1 T2 =>
-      closed 0 0 (length env1) TX /\ (* required to convert to val_type_stub *)
+      closed 0 0 (length env1) TX /\
       exists n1 n2, stp2 false false env1 TX env T2 [] n1 /\
                     stp2 false false env T1 env1 TX [] n2
     | _, TSel (varF x) =>
       match indexr x env with
-        | Some (vty GX TX) => val_type GX GH v TX n
+        | Some (vty GX TX) => val_type GX GH v TX
         | _ => False
       end
     | _, TSel (varH x) =>
       match indexr x GH with
-        | Some jj => jj v n
+        | Some jj => jj v
         | _ => False
       end
     | vty env1 TX , TTop =>
@@ -671,7 +623,7 @@ Lemma val_type_unfold: forall env GH v T n, val_type env GH v T n =
   end.
 Proof.
   intros. unfold val_type at 1. unfold val_type_func.
-  unfold_sub val_type (val_type env GH v T n).
+  unfold_sub val_type (val_type env GH v T).
   simpl.
   destruct v; simpl; try reflexivity.
   destruct T.
@@ -697,7 +649,7 @@ Qed.
 
 
 (* make logical relation explicit *)
-Definition R H t v T := exists n, tevaln H t v /\ val_type H [] v T n.
+Definition R H t v T := tevaln H t v /\ val_type H [] v T.
 
 (* consistent environment *)
 Definition R_env venv tenv :=
@@ -767,8 +719,7 @@ Qed.
 (* instantiate it to TTop *)
 Example ex2: has_type [polyId] (tapp (tvar 0) (ttyp TTop)) (TAll TTop TTop).
 Proof.
-  admit. (* XXX: only fsub now 
-  crush.*)
+  crush.
 Qed.
 
 (* ############################################################ *)
@@ -1305,7 +1256,7 @@ Lemma stp_splice : forall GX G0 G1 T1 T2 v1,
    stp GX (G1++G0) T1 T2 ->
    stp GX ((map (splice (length G0)) G1) ++ v1::G0)
        (splice (length G0) T1) (splice (length G0) T2).
-Proof. admit. (*
+Proof. admit. (*PERF
   intros GX G0 G1 T1 T2 v1 H. remember (G1++G0) as G.
   revert G0 G1 HeqG.
   induction H; intros; subst GH; simpl; eauto.
@@ -1379,7 +1330,7 @@ Lemma stp2_splice : forall G1 T1 G2 T2 GH1 GH0 v1 s m n,
    stp2 s m G1 T1 G2 T2 (GH1++GH0) n ->
    stp2 s m G1 (splice (length GH0) T1) G2 (splice (length GH0) T2)
         ((map (spliceat (length GH0)) GH1) ++ v1::GH0) n.
-Proof. admit. (*
+Proof. admit. (*PERF
   intros G1 T1 G2 T2 GH1 GH0 v1 s m n H. remember (GH1++GH0) as GH.
   revert GH0 GH1 HeqGH.
   induction H; intros; subst GH; simpl; eauto.
@@ -1468,7 +1419,7 @@ Qed.
 Lemma stp_extend : forall G1 GH T1 T2 v1,
                        stp G1 GH T1 T2 ->
                        stp G1 (v1::GH) T1 T2.
-Proof. admit. (*
+Proof. admit. (*PERF
   intros. induction H; eauto using indexr_extend, closed_inc.
   assert (splice (length GH) T2 = T2) as A2. {
     eapply closed_splice_idem. apply H1. omega.
@@ -1635,7 +1586,7 @@ Lemma stp2_closure_extend_rec:
        venv_ext G1' G1 ->
        venv_ext G2' G2 ->
        stp2 s m G1' T1 G2' T2 GH' n).
-Proof. admit. (*
+Proof. admit. (*PERF
   intros G1 G2 T1 T2 GH s m n H.
   induction H; intros; eauto.
   - Case "top".
@@ -1731,7 +1682,7 @@ Lemma stp2_extend : forall v1 G1 G2 T1 T2 H s m n,
                        stp2 s m (v1::G1) T1 G2 T2 H n /\
                        stp2 s m G1 T1 (v1::G2) T2 H n /\
                        stp2 s m (v1::G1) T1 (v1::G2) T2 H n.
-Proof. admit. (*
+Proof. admit. (*PERF
   intros. induction H0;
     try solve [split; try split; intros; eauto using indexr_extend];
     try solve [split; try split; intros; constructor; simpl; eauto using indexr_extend, closed_upgrade_freef];
@@ -1922,11 +1873,11 @@ Qed.
 Lemma indexr_safe_ex: forall H1 G1 TF i,
              R_env H1 G1 ->
              indexr i G1 = Some TF ->
-             exists v n, indexr i H1 = Some v /\ val_type H1 [] v TF n.
+             exists v, indexr i H1 = Some v /\ val_type H1 [] v TF.
 Proof.
-  intros. destruct H. destruct (H2 i TF H0) as [v [n [E V]]].
-  exists v. exists n. split; eauto. destruct E as [n1 E].
-  assert (S n1 > n1) as N. omega. specialize (E (S n1) N).
+  intros. destruct H. destruct (H2 i TF H0) as [v [E V]].
+  exists v. split; eauto. destruct E as [n E].
+  assert (S n > n) as N. omega. specialize (E (S n) N).
   simpl in E. inversion E. eauto.
 Qed.
 
@@ -1942,8 +1893,8 @@ Qed.
 
 
 Inductive res_type: venv -> option vl -> ty -> Prop :=
-| not_stuck: forall venv v T n,
-      val_type venv [] v T n ->
+| not_stuck: forall venv v T,
+      val_type venv [] v T ->
       res_type venv (Some v) T.
 
 Hint Constructors res_type.
@@ -2055,7 +2006,7 @@ Lemma stp2_narrow_aux: forall n, forall m G1 T1 G2 T2 GH n0,
     GH'=GH1++[(GX1,TX1)]++GH0 ->
     stpd2 false false GX1 TX1 GX2 TX2 GH0 ->
     stpd2 false m G1 T1 G2 T2 GH'.
-Proof. admit. (*
+Proof. admit. (*PERF
   intros n.
   induction n.
   - Case "z". intros. inversion H0. subst. inversion H; eauto.
@@ -2183,7 +2134,7 @@ Lemma stpd2_untrans_aux: forall n, forall m G1 G2 G3 T1 T2 T3 GH n1,
   stp2 true m G1 T1 G2 T2 GH n1 -> n1 < n ->
   stpd2 true true G2 T2 G3 T3 GH ->
   stpd2 true true G1 T1 G3 T3 GH.
-Proof. admit. (*
+Proof. admit. (*PERF
   intros n. induction n; intros; try omega. eu.
   inversion H; subst;
   try solve [inversion H1; eexists; eauto];
@@ -2237,7 +2188,7 @@ Qed.
 Lemma stpd2_downgrade_aux: forall G1 G2 T1 T2 H m,
   stpd2 true m G1 T1 G2 T2 H ->
   stpd2 false m G1 T1 G2 T2 H.
-Proof. admit. (*
+Proof. admit. (*PERF
   intros. inversion H0. dependent induction H1; try solve [eexists; eauto].
   - Case "mem".
     eapply stpd2_mem. eapply stpd2_wrapf. eapply IHstp2_1. eexists. eassumption.
@@ -2298,7 +2249,7 @@ Qed.
 Lemma stpd2_to_strong_aux: forall n, forall G1 G2 T1 T2 m n1,
   stp2 false m G1 T1 G2 T2 [] n1 -> n1 < n ->
   stpd2 true m G1 T1 G2 T2 [].
-Proof. admit. (*
+Proof. admit. (*PERF
   intros n. induction n; intros; try omega.
   inversion H; subst; try solve [inversion H1].
   - Case "top".
@@ -2423,7 +2374,7 @@ Lemma open_subst_commute: forall T2 V j k x i,
 closed i j k (TSel V) ->
 (open_rec i (varH x) (subst V T2)) =
 (subst V (open_rec i (varH (x+1)) T2)).
-Proof. admit. (*
+Proof. admit. (*PERF
   intros T2 TX j k. induction T2; intros; eauto; try destruct v; eauto.
   - simpl. rewrite IHT2_1; eauto. rewrite IHT2_2; eauto.
     eapply closed_upgrade. eauto. eauto.
@@ -2794,7 +2745,7 @@ Lemma stp2_substitute_aux: forall n, forall G1 G2 T1 T2 GH m n1,
      compat GX TX (Some V) G2 T2 T2' ->
      Forall2 (compat2 GX TX (Some V)) GH0 GH0' ->
      stpd2 false m G1 T1' G2 T2' GH0'.
-Proof. admit. (*
+Proof. admit. (*PERF
   intros n. induction n.
   Case "z". intros. inversion H0. subst. inversion H; eauto.
   intros G1 G2 T1 T2 GH m n1 H NE. remember false as s.
@@ -3031,20 +2982,21 @@ Qed.
 
 (* ### Value Typing / Logical Relation for Values ### *)
 
-Lemma valtp_inv_ty: forall n, forall H1 T1 GX TX nv,
-  val_type H1 [] (vty GX TX) T1 nv ->
+Lemma valtp_inv_ty: forall n, forall H1 T1 GX TX,
+  val_type H1 [] (vty GX TX) T1 ->
   tsize H1 T1 < n ->                    
   closed 0 0 (length GX) TX.
 Proof.
   intros n. induction n; intros. omega.
   rewrite val_type_unfold in H. destruct T1; eauto; try contradiction.
   destruct v; remember (indexr i H1) as L; try destruct L; try destruct v; try contradiction.
-  ev. eapply IHn. eauto. simpl in H0. rewrite <-HeqL in H0. rewrite tsz_eq. omega. admit. 
+  ev. eapply IHn. eauto. simpl in H0. rewrite <-HeqL in H0. rewrite tsz_eq. omega. admit.
+  (*FIXME*)
 (*  ev. eapply stp2_closed1 in H. eauto. *)
 Qed.
 
-Lemma valtp_closed: forall vf GH H1 T1 nv,
-  val_type H1 GH vf T1 nv ->
+Lemma valtp_closed: forall vf GH H1 T1,
+  val_type H1 GH vf T1 ->
   closed 0 (length GH) (length H1) T1.
 Proof.
   intros. destruct T1; destruct vf;
@@ -3062,8 +3014,8 @@ Proof.
 Qed.
 
 
-Lemma vtp_to_stub: forall n, forall G v T nv,
-  val_type G [] v T nv ->
+Lemma vtp_to_stub: forall n, forall G v T,
+  val_type G [] v T ->
   tsize G T < n ->
   val_type_stub G v T.
 Proof. admit. (*
@@ -3100,98 +3052,114 @@ Qed.
 
 
 (* this is just to accelerate Coq -- val_type in the goal is slooow *)
-Inductive vtp: venv -> (list (vl->nat->Prop)) -> vl -> ty -> nat -> Prop :=
-| vv: forall G H v T nv, val_type G H v T nv -> vtp G H v T nv.
+Inductive vtp: venv -> (list (vl->Prop)) -> vl -> ty -> Prop :=
+| vv: forall G H v T, val_type G H v T -> vtp G H v T.
 
-(* Definition vtp_unfold vtp := match vtp with | vv G H v T VT => val_type_unfold G H v T VT end. *)
 
-Lemma unvv: forall G H v T nv,
-  vtp G H v T nv -> val_type G H v T nv.
+Lemma unvv: forall G H v T,
+  vtp G H v T -> val_type G H v T.
 Proof.
   intros. inversion H0. subst. apply H2.
 Qed.
 
-Lemma forall2_index: forall {T1 T2} G1 G2 x (y1:T1) f,
-  indexr x G1 = Some y1 ->
-  Forall2 f G1 G2 ->
-  exists (y2:T2), indexr x G2 = Some y2 /\ (f y1 y2).
-Proof.
-  admit.
-Qed.
+
+(* TODO: bounds will likley need GH environment, i.e. have to treat selh cases here *)
+Lemma inv_bounds: forall n m b H1 H2 T0 T4 GH vx GL1 TL1 GU1 TU1 n0 GH1,
+    val_type H2 GH vx T4 -> 
+    stp2 m b H2 T4 H1 T0 GH1 n0 -> n0 < n ->
+    bounds H1 T0 (GL1, TL1) (GU1, TU1) ->
+    exists GL TL GU TU n, bounds H2 T4 (GL, TL) (GU, TU) /\
+                        stp2 false false GU TU GU1 TU1 GH1 n /\ n <= n0.
+    Proof.
+      intros n. induction n. intros. omega.
+      intros. 
+      inversion H4; subst.
+      - (* mem *)
+        inversion H0; subst.
+        + (* bot *)
+          rewrite val_type_unfold in H. destruct vx; contradiction.
+        + (* mem *)
+          repeat eexists. constructor. 
+          assert (m = false). admit. (* FIXME: downgrade/convert m to false *)
+          subst m. eapply H11. omega. 
+        + (* sel1 *) 
+          assert (val_type GX GH vx TX) as VT. rewrite val_type_unfold in H.
+          destruct vx. rewrite H1 in H. eapply H. rewrite H1 in H. eapply H.
+          
+          assert (exists (GL : venv) (TL : ty) (GU : venv) (TU : ty) (n : nat),
+                    bounds GX TX (GL, TL) (GU, TU) /\
+                    stp2 false false GU TU GU1 TU1 GH1 n /\ n <= n1).
+          eapply IHn. eapply VT. eapply H7. omega. constructor.
+          
+          ev. 
+          repeat eexists. econstructor. eapply H1. eapply H8. eapply H9. omega.
+        + (* sel1 weak *)
+          assert (exists GX0 TX0, v = vty GX0 TX0 /\ val_type GX0 GH vx TX0). 
+          rewrite val_type_unfold in H.
+          rewrite H1 in H. destruct v. destruct vx; contradiction.
+          repeat eexists. destruct vx; eapply H. 
+          destruct H8 as [GX0 [TX0 [? ?]]]. subst v.
+
+          (* FIXME: size of H5: val_type_stub not accounted for in stp *)
+          (* extract stp2 out of val_type_stub and put it directly into stp2 sel1/sel2 *)
+          inversion H5. ev. subst. 
+          (* FIXME: inconsistency with [] vs GH1 *)
+          assert (stp2 false false GX0 (TMem TX0 TX0) GU1 (TMem TBot (TMem TL1 TU1)) GH1 n1) as ST.
+          admit.
+
+          assert (val_type GX0 GH (vty GX0 TX0) (TMem TX0 TX0)).
+          rewrite val_type_unfold. admit. (* closed + stp2_refl *)
+          
+          assert (exists (GL : venv) (TL : ty) (GU : venv) (TU : ty) (n : nat),
+                    bounds GX0 (TMem TX0 TX0) (GL, TL) (GU, TU) /\
+                    stp2 false false GU TU GU1 (TMem TL1 TU1) GH1 n /\ n <= n1).
+          eapply IHn. eapply H8. eapply ST. omega. econstructor. 
+
+          ev. inversion H10. subst x1 x2 x3 x4 G T1 T2.
+          
+          assert (exists (GL : venv) (TL : ty) (GU : venv) (TU : ty) (n : nat),
+                    bounds GX0 TX0 (GL, TL) (GU, TU) /\
+                    stp2 false false GU TU GU1 TU1 GH1 n /\ n <= x5).
+          eapply IHn. eapply H9. eapply H11. omega. econstructor. 
+
+          ev. 
+          repeat eexists. econstructor. eapply H1. eapply H14. eapply H15. omega. 
+        + (* sela1 *)
+          (* FIXME: no case for selH *)
+          admit.
+        + (* wrap *)
+          admit.
+        + (* trans *)
+          admit. (* TRICKY? -- need capability to widen H with H0? or can we do without? *)
+     - (* sel2 *)
+       inversion H0. subst.
+       + (* bot *)
+         rewrite val_type_unfold in H. destruct vx; contradiction.
+       + (* sel1 *)
+         subst. admit.
+       + (* sel2 *)
+         subst. admit. 
+       + (* sel1 weak *)
+         subst. admit.
+       + (* sel2 weak *)
+         subst. admit. 
+       + (* selx *)
+         subst. admit.
+       + (* selh1 *)
+         subst. admit. 
+       + (* wrap *)
+         subst. admit. 
+       + (* trans *)
+         subst. admit. 
+    Qed.
 
 
 
 
-Inductive fsize: venv -> list nat -> ty -> nat -> Prop :=
-| fs_top: forall G GH n,
-    fsize G GH TTop n
-| fs_bot: forall G GH n,
-    fsize G GH TBot n
-| fs_all: forall G GH T1 T2 n1 n2 n,
-    fsize G GH T1 n1 ->
-    fsize G (n1::GH) (open (varH (length GH)) T2) n2 ->
-    n1 < n -> n2 < n ->
-    fsize G GH (TAll T1 T2) n
-| fs_sel: forall G GX GH TX x n,
-    indexr x G = Some (vty GX TX) ->
-    fsize GX GH TX n ->
-    fsize G GH (TSel (varF x)) n
-| fs_selh: forall G GH x n,
-    indexr x GH = Some n ->
-    fsize G GH (TSel (varH x)) n
-| fs_selb: forall G GH x n,
-    fsize G GH (TSel (varB x)) n (* ? *)
-| fs_mem: forall G GH T1 T2 n1 n2 n,
-    fsize G GH T1 n1 ->
-    fsize G GH T2 n2 ->
-    n1 < n -> n2 < n ->
-    fsize G GH (TMem T1 T2) n
-.
-(* can't incr b/c selh is precise *)
-
-
-
-(* FIXME: requires tighten capability !!! *)
-Lemma rev_bounds: forall n n1 m b G1 T1 G2 T2 GH GU TU GL TL,
-  stp2 m b G1 T1 G2 T2 GH n1 ->
-  bounds G2 T2 (GL,TL) (GU,TU) -> n1 < n ->
-  exists GL1 TL1 GU1 TU1, bounds G1 T1 (GL1,TL1) (GU1,TU1).
-Proof.
-  intros n. induction n. intros. omega.
-  intros.
-  inversion H; subst.
-  - (* top *) inversion H0. 
-  - (* bot *) admit. (* FIXME!!! *)
-  - (* mem *) repeat eexists. constructor.
-  - (* sel1 *) eapply IHn in H5. ev.
-    repeat eexists. econstructor; eauto. eauto. omega. 
-  - (* sel2 *) inversion H0. subst. rewrite H7 in H2. inversion H2. subst.
-    eapply IHn in H5. ev.
-    repeat eexists. eauto. eauto. omega.
-  - (* sel1 *)
-    admit. (*
-    eapply IHn in H5. ev.
-    inversion H3.
-    + subst.
-      ev. eapply IHn in H6. ev. inversion H6. subst. 
-      repeat eexists. econstructor. eauto. subst. ev. *)
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-Qed.
-
-
-
-Lemma valtp_widen_aux: forall nf n, forall n1 n2 m b vf H1 H2 GH GH1 T1 T2,
+Lemma valtp_widen_aux: forall n, forall n1 n2 m b vf H1 H2 GH GH1 T1 T2,
   val_type H1 GH vf T1 n2 -> 
   stp2 m b H1 T1 H2 T2 GH1 n1 ->
-  n1 < n -> n2 < nf ->
+  n1 < n ->
   length GH1 = length GH ->
   (forall x HX TX, indexr x GH1 = Some (HX,TX) ->
                    exists v jj n max,
@@ -3211,24 +3179,16 @@ Proof.
   inversion H0.
 
   - Case "Top".
-    (* rewrite val_type_unfold in H. subst.
-    subst. eapply vv. rewrite val_type_unfold.
-    destruct vf. eauto. destruct T1; try contradiction.
-    eauto. admit. *) admit.
-    (* TODO: closed 0 in mem case, must be recursive *)
-    (* destruct vf; eauto. eapply valtp_inv_ty. eauto. eauto. *)
+    subst. admit. 
   - Case "Bot".
     subst. rewrite val_type_unfold in H. destruct vf; contradiction.
   - Case "mem".
     subst. admit. 
   - Case "Sel1".
-    (* subst. 
-    rewrite val_type_unfold in H. rewrite H5 in H. subst.
-    destruct vf.
-    eapply IHn. eapply H. eapply H8. omega. eapply H4.
-    eapply IHn. eapply H. eapply H8. omega. eapply H4. *)
+    subst. 
     admit.
   - Case "Sel2". 
+    subst.
     admit.
   - admit.
   - admit. 
@@ -3280,57 +3240,6 @@ Proof.
       eapply unvv. eapply H17. eapply H18. eapply H19. eapply H20. 
     }
 
-Lemma foobar0: forall m b H1 H2 T0 T4 GH nvx vx GL1 TL1 GU1 TU1 n0 GH1,
-    val_type H2 GH vx T4 nvx -> 
-    val_type H1 GH vx T0 nvx ->
-    stp2 m b H2 T4 H1 T0 GH1 n0 ->
-    bounds H1 T0 (GL1, TL1) (GU1, TU1) ->
-    exists GL TL GU TU n, bounds H2 T4 (GL, TL) (GU, TU) /\
-                        stp2 false false GU TU GU1 TU1 GH1 n /\ n <= n0.
-Proof. admit. Qed.                                          
-Lemma foobar: forall m b H1 H2 T0 T4 GH nvx vx GL1 TL1 GU1 TU1 n0 GH1,
-    val_type H2 GH vx T4 nvx -> 
-    val_type H1 GH vx T0 nvx ->
-    stp2 m b H2 T4 H1 T0 GH1 n0 ->
-    bounds H1 T0 (GL1, TL1) (GU1, TU1) ->
-    exists GL TL GU TU n, bounds H2 T4 (GL, TL) (GU, TU) /\
-                        stp2 false false GU TU GU1 TU1 GH1 n /\ n <= n0.
-    Proof.
-      intros.
-      inversion H4; subst.
-      - (* mem *)
-        inversion H3; subst.
-        + (* bot *)
-          rewrite val_type_unfold in H. destruct vx; contradiction.
-        + (* mem *)
-          repeat eexists. constructor. 
-          assert (m = false). admit. subst m. eapply H11. omega. 
-        + (* sel1 *) 
-          assert (val_type GX GH vx TX nvx) as VT. rewrite val_type_unfold in H.
-          destruct vx. rewrite H1 in H. eapply H. rewrite H1 in H. eapply H.
-          
-          assert (exists (GL : venv) (TL : ty) (GU : venv) (TU : ty) 
-                         (n : nat),
-                    bounds GX TX (GL, TL) (GU, TU) /\
-                    stp2 false false GU TU GU1 TU1 GH1 n /\ n <= n1).
-          eapply foobar0. eapply VT. eapply H0. eapply H7. constructor.
-          
-          ev. 
-          repeat eexists. econstructor. eapply H1. eapply H8. eapply H9. omega.
-        + (* sel2 *)
-          assert (val_type GX GH vx TX nvx) as VT. rewrite val_type_unfold in H.
-          destruct vx. rewrite H1 in H. destruct v. contradiction.
-          rewrite val_type_unfold. destruct TX. eauto. eapply H. rewrite H1 in H. eapply H.
-         
-          
-          assert (exists (GL : venv) (TL : ty) (GU : venv) (TU : ty) 
-                         (n : nat),
-                    bounds GX TX (GL, TL) (GU, TU) /\
-                    stp2 false false GU TU GU1 TU1 GH1 n /\ n <= n1).
-          eapply foobar0. eapply VT. eapply H0. eapply H7. constructor.
-          
-                     
-    Qed.
 
     
     assert (forall (vy : vl) ny,
