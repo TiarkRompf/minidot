@@ -16,7 +16,7 @@ Formalizations of the Dependent Object Types (DOT) calculus, from the bottom up,
   - [DOT in big-step](http://sound-big-step-dot.namin.net)
   - [older developments from 2015](./dev2015)
 
-- Type Soundness for Dependent Object Types (OOPSLA'16) [[pdf](http://lampwww.epfl.ch/~amin/dot/soundness_oopsla16.pdf)
+- Type Soundness for Dependent Object Types (OOPSLA'16) [[pdf]](http://lampwww.epfl.ch/~amin/dot/soundness_oopsla16.pdf)
   - [DOT in small-step](./oopsla16)
 
 - Foundations of Path-Dependent Types (OOPSLA'14) [[pdf]](http://lampwww.epfl.ch/~amin/dot/fpdt.pdf)
