@@ -3156,24 +3156,24 @@ Lemma inv_bounds: forall n m b H1 H2 T0 T4 GH vx GL1 TL1 GU1 TU1 n0 GH1,
 
 
 
-Lemma valtp_widen_aux: forall n, forall n1 n2 m b vf H1 H2 GH GH1 T1 T2,
-  val_type H1 GH vf T1 n2 -> 
+Lemma valtp_widen_aux: forall n, forall n1 m b vf H1 H2 GH GH1 T1 T2,
+  val_type H1 GH vf T1 -> 
   stp2 m b H1 T1 H2 T2 GH1 n1 ->
   n1 < n ->
   length GH1 = length GH ->
-  (forall x HX TX, indexr x GH1 = Some (HX,TX) ->
-                   exists v jj n max,
+  (forall min, min <= n1 ->
+               forall x HX TX, indexr x GH1 = Some (HX,TX) ->
+                   exists v jj max,
                      indexr x GH = Some jj /\
-                     val_type HX GH v TX n /\
-                     n1 < max /\
-                     (forall vy ny, jj vy ny ->
+                     val_type HX GH v TX /\
+                     min < max /\
+                     (forall vy, jj vy ->
                                  forall m b G2 T2 ns,
                                    stp2 m b HX TX G2 (TMem TBot T2) GH1 ns -> ns < max ->
-                                   vtp G2 GH vy T2 ny
+                                   vtp G2 GH vy T2
                      )) ->
-  vtp H2 GH vf T2 n2.
+  vtp H2 GH vf T2.
 Proof.
-  intros nf. (* don't need second induction anymore! *)
   intros n. induction n. intros. omega.
   intros. 
   inversion H0.
@@ -3185,114 +3185,106 @@ Proof.
   - Case "mem".
     subst. admit. 
   - Case "Sel1".
-    subst. 
-    admit.
+    subst. admit.
   - Case "Sel2". 
-    subst.
-    admit.
-  - admit.
-  - admit. 
-    
+    subst. admit.
+  - Case "Sel1W".
+    subst. admit.
+  - Case "Sel2W".
+    subst. admit.     
   - Case "selx".
-    admit. (* rewrite val_type_unfold in H. eapply vv. rewrite val_type_unfold.
+    subst. admit. (* rewrite val_type_unfold in H. eapply vv. rewrite val_type_unfold.
     subst. rewrite <-H8 in H9. rewrite H9. eauto. *)
 
-  - Case "sela1". (* strong version *)
-    subst. admit. 
-  - Case "sela2".
-    subst. admit.
-
-  - Case "sela1-weak".
+  - Case "sela1".
     subst. 
     rewrite val_type_unfold in H.
-    specialize (H6 _ _ _ H7). ev.
-    rewrite H6 in H.
-    assert (x1 vf n2). destruct vf; eauto. clear H.
+    specialize (H5 _ (le_refl _) _ _ _ H6). ev.
+    rewrite H5 in H.
+    assert (x1 vf). destruct vf; eauto. clear H.
 
-    eapply H12. eapply H13. eapply H9. omega. 
+    eapply H11. eapply H12. eapply H8. omega. 
 
-  - Case "selax". subst.
-    admit. (* eapply forall2_index in H7; try apply H4. ev.
-    rewrite val_type_unfold in H. eapply vv. rewrite val_type_unfold.
-    destruct vf. eauto. eauto. eauto. *)
-(*
-    rewrite H4. rewrite H4 in H. rewrite H4. destruct x0. eauto.
-    rewrite H6 in H. rewrite H6. destruct x0. eauto. *)
+  - Case "sela2".
+    subst. admit. 
+  - Case "selax".
+    subst. admit.
 
   - Case "Fun".
     subst.
     rewrite val_type_unfold in H.
-    assert (val_type H2 GH vf (TAll T4 T5) n2). rewrite val_type_unfold.
+    assert (val_type H2 GH vf (TAll T4 T5)). rewrite val_type_unfold.
     subst. destruct vf; try solve [inversion H].
     destruct H as [? [? LR]].
     assert (closed 0 (length GH) (length H2) T4). admit. (* temp eapply stpd2_closed1. eauto. *)
-    assert (closed 1 (length GH) (length H2) T5). eauto. admit.
+    assert (closed 1 (length GH) (length H2) T5). admit.
     split. eauto. split. eauto. 
-    intros vx jj nvx VST0 NXL STJ. 
+    intros vx jj VST0 STJ. 
 
-    assert (val_type H2 GH vx T4 nvx) as VX0. { eapply VST0. }
-    assert (vtp H1 GH vx T0 nvx) as VX1. {
-      eapply IHn. eapply VST0. eapply H7. omega. omega. eauto. eauto. eauto.
-
-      intros. specialize (H6 x HX TX H14). ev.
-      exists x0. exists x1. exists x2. exists x3.
-      repeat split. eapply H6. eapply H15. omega.
-      eapply unvv. eapply H17. eapply H18. eapply H19. eapply H20. 
+    assert (val_type H2 GH vx T4) as VX0. { eapply VST0. }
+    assert (vtp H1 GH vx T0) as VX1. {
+      eapply IHn. eapply VST0. eapply H6. omega. omega. eauto. eauto. eauto.
+      intros min MN. eapply H5. omega. 
     }
 
 
     
-    assert (forall (vy : vl) ny,
-             jj vy ny ->
+    assert (forall (vy : vl),
+             jj vy ->
              forall (GL : venv) (TL : ty) (GU : venv) (TU : ty),
                bounds H1 T0 (GL, TL) (GU, TU) ->
-               val_type GU GH vy TU ny) as STJ1.
-    { intros vy ny jjvy ? ? ? ? BB. specialize (STJ vy ny jjvy).
+               val_type GU GH vy TU) as STJ1.
+    { intros vy jjvy ? ? ? ? BB. specialize (STJ vy jjvy).
       
-      (* TODO: downgrade bounds from H1 T0 to H2 T4 *)
-      (* should get size < n0 ??? *)
-      assert (exists GL2 TL2 GU2 TU2 n, bounds H2 T4 (GL2, TL2) (GU2, TU2) /\  stp2 false false GU2 TU2 GU TU GH1 n /\ n <= n0). eapply foobar. eapply VX0. eapply unvv. eapply VX1. eapply H7. eapply BB.
+      (* downgrade bounds from H1 T0 to H2 T4, get size < n0 *)
+      assert (exists GL2 TL2 GU2 TU2 n,
+                bounds H2 T4 (GL2, TL2) (GU2, TU2) /\
+                stp2 false false GU2 TU2 GU TU GH1 n /\ n <= n0). {
+        eapply inv_bounds. eapply VX0. eapply H6. info_eauto. eapply BB. }
       ev.
-      eapply unvv. eapply IHn. eapply STJ. eapply H14. eapply H15. omega. admit. eapply H5.
-      admit.  
+      eapply unvv. eapply IHn. eapply STJ. eapply H13. eapply H14. omega. eapply H4.
+      intros min MN. eapply H5. omega. 
     }
     eapply unvv in VX1. 
-    destruct (LR vx jj nvx VX1 NXL STJ1) as [v [nvy [TE VT]]]. 
-
-
-    
-
-
-      
-
+    destruct (LR vx jj VX1 STJ1) as [v [TE VT]]. 
 
     
-    exists v. exists nvy. split. eapply TE. split. eapply unvv.
+    exists v. split. eapply TE. eapply unvv.
 
     (* now deal with function result! *)
 
-    rewrite H5 in H11. destruct VT as [VT NYL]. (* length stp result *) 
+    rewrite H4 in H10. (* length stp result *)
     
-    eapply IHn. eapply VT. eapply H11. 
+    eapply IHn. eapply VT. eapply H10. 
 
-    omega. omega.
-    simpl. rewrite H5. reflexivity. (* length *) 
+    omega. 
+    simpl. rewrite H4. reflexivity. (* length *) 
 
     (* now custom env predicate *)
-    simpl. rewrite H5.
+    (* intros min N.
+    assert (min < (S n2)). omega. remember (S n2) as nn. clear N. revert min H13.
+    assert (nn <= S n2). omega. clear Heqnn. 
+    induction nn.
+    intros min NN. inversion NN. *)
+
+    (* XXXXXXXX use n, not n2 !!! *)
+    
+    simpl. rewrite H4.
     intros.
     unfold id,venv,aenv in *.    
     { case_eq (beq_nat x (length GH)); intros E.
     + rewrite E in H14. inversion H14. subst HX TX. 
-      exists vx. exists jj. exists nvx. exists (S n3). 
+      exists vx. exists jj. exists (S n2). 
       split. reflexivity.
-      assert (val_type H2 (jj :: GH) vx T4 nvx) as VXE. admit. (* extend VX0 *)
-      split. eapply VXE. (* extend VX0 *)
+      assert (val_type H2 (jj :: GH) vx T4) as VXE. admit. (* TODO: lemma to extend VX0 *)
+      split. eapply VXE.
       split. omega.
       intros.
-      assert (val_type G2 (jj :: GH) vx (TMem TBot T2) nvx) as VXEM. 
-      eapply unvv. eapply IHn. eapply VXE. eapply H16. omega. omega. 
-      simpl. rewrite H5. reflexivity.
+      assert (val_type G2 (jj :: GH) vx (TMem TBot T2)) as VXEM. 
+      eapply unvv. eapply IHn. eapply VXE. eapply H16. omega. 
+      simpl. rewrite H4. reflexivity.
+      intros min' NN'. eapply IHnn. omega. omega. 
+      
       admit. (* OUCH !!!  FIXME: circularity with wf-env *)
 
       rewrite val_type_unfold in VXEM. destruct vx. contradiction. ev.
