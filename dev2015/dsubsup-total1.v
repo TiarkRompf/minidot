@@ -3154,8 +3154,15 @@ Lemma inv_bounds: forall n m b H1 H2 T0 T4 GH vx GL1 TL1 GU1 TU1 n0 GH1,
     Qed.
 
 
-
-
+Lemma valtp_extendH: forall vf H1 GH T1 jj,
+  val_type H1 GH vf T1 -> 
+  vtp H1 (jj::GH) vf T1.
+Proof.
+  admit.
+  (* NOTE: may be difficult due to contravariance for function arg.
+     do we need the reverse direction as well? *)
+Qed.
+  
 Lemma valtp_widen_aux: forall n, forall n1 m b vf H1 H2 GH GH1 T1 T2,
   val_type H1 GH vf T1 -> 
   stp2 m b H1 T1 H2 T2 GH1 n1 ->
@@ -3163,13 +3170,12 @@ Lemma valtp_widen_aux: forall n, forall n1 m b vf H1 H2 GH GH1 T1 T2,
   length GH1 = length GH ->
   (exists min, n1 <= min /\
                forall x HX TX, indexr x GH1 = Some (HX,TX) ->
-                   exists v jj max,
+                   exists v jj,
                      indexr x GH = Some jj /\
                      val_type HX GH v TX /\
-                     min <= max /\
                      (forall vy, jj vy ->
                                  forall m b G2 T2 ns,
-                                   stp2 m b HX TX G2 (TMem TBot T2) GH1 ns -> ns < max ->
+                                   stp2 m b HX TX G2 (TMem TBot T2) GH1 ns -> ns < min ->
                                    vtp G2 GH vy T2
                      )) ->
   vtp H2 GH vf T2.
@@ -3204,7 +3210,7 @@ Proof.
     rewrite H9 in H.
     assert (x2 vf). destruct vf; eauto. clear H.
 
-    eapply H12. eapply H13. eapply H8. omega. 
+    eapply H11. eapply H12. eapply H8. omega. 
 
   - Case "sela2".
     subst. admit. 
@@ -3263,56 +3269,62 @@ Proof.
     simpl. rewrite H4. reflexivity. (* length *) 
 
     (* now custom env predicate -- prove for all n *)
+
+    (* first, rephrase goal to prove forall nn, nn <= n *)
     assert (exists nn, n2 = nn) as N. exists n2. reflexivity.
     destruct N as [nn N].
     assert (nn <= n) as NN. omega. 
     rewrite N. clear N.
+
+    assert (exists x, x = nn) as N. exists nn. reflexivity.
+    destruct N as [nnn N].
+    assert (nnn <= nn) as NNN. omega.
+    rewrite <-N. clear N.
+    revert nnn NNN. 
+    
     induction nn.
 
     (* zero case *)
+    intros. inversion NNN. subst nnn. 
     simpl. rewrite H4. ev. exists 0. split. omega.
     intros. unfold id,venv,aenv in *.    
     { case_eq (beq_nat x0 (length GH)); intros E.
       + rewrite E in H14. inversion H14. subst HX TX.
-        exists vx. exists jj. exists 0. 
+        exists vx. exists jj. 
         split. reflexivity.
-        assert (val_type H2 (jj :: GH) vx T4) as VXE. admit. (* TODO: lemma to extend GH, applied to VX0 *)
-        split. eapply VXE.
+        assert (vtp H2 (jj :: GH) vx T4) as VXE. eapply valtp_extendH. eapply VX0.
+        split. eapply unvv. eapply VXE.
         split. omega.
-        intros.
-        inversion H17. (* can't be !!! *)
-      + admit. (*  *)
+      + admit. (* TODO: default case *)
     }
 
     (* S n case *)
-    simpl. rewrite H4. ev. exists (S nn). split. omega. 
+    intros. simpl. rewrite H4. ev. exists (nnn). split. omega. 
     intros.
     unfold id,venv,aenv in *.    
     { case_eq (beq_nat x0 (length GH)); intros E.
     + rewrite E in H14. inversion H14. subst HX TX. 
-      exists vx. exists jj. exists (S nn). (* max *)
+      exists vx. exists jj. 
       split. reflexivity.
-      assert (val_type H2 (jj :: GH) vx T4) as VXE. admit. (* TODO: lemma to extend VX0 *)
-      split. eapply VXE.
-      split. omega.
-      intros.
-      assert (val_type G2 (jj :: GH) vx (TMem TBot T2)) as VXEM. 
-      eapply unvv. eapply IHn. eapply VXE. eapply H16. omega. (* ns < max *)
-      simpl. rewrite H4. reflexivity.
-
-      simpl. rewrite H4. ev. exists (n-1). split. omega. 
-
+      assert (vtp H2 (jj :: GH) vx T4) as VXE. eapply valtp_extendH. eapply VX0.
+      split. eapply unvv. eapply VXE.
+      split. 
       
-      admit. (* OUCH !!!  FIXME: circularity with wf-env *)
 
-      rewrite val_type_unfold in VXEM. destruct vx. contradiction. ev.
-      specialize (STJ vy H15). 
       (* compute bounds of T4, given (TMem TBot T2) *)
       (* derive TU <: T2 *)
-      (* get vy:TU from STJ1 *)
+      (* get vy:TU from STJ *)
       (* widen *)
-      admit. 
-    + admit. (* extend H6 *)
+      specialize (STJ vy H15).
+       assert (exists GL2 TL2 GU2 TU2 n,
+                bounds H2 T4 (GL2, TL2) (GU2, TU2) /\
+                stp2 false false GU2 TU2 G2 T2 ((H2,T4)::GH1) n /\ n <= ns). {
+        eapply inv_bounds. eapply unvv. eapply VXE. eapply H16. eauto. econstructor. }
+       ev.
+       eapply unvv. eapply IHn. eapply unvv. eapply valtp_extendH. eapply STJ. eapply H18. eapply H19. omega. simpl. rewrite H4. reflexivity.
+       eapply IHnn. omega. omega. 
+       
+    + admit. (* TODO: default case *)
     }
 
     eapply vv. eapply H7.
