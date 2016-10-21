@@ -1954,12 +1954,12 @@ Lemma stpd2_sela1: forall G1 G2 GX TX x T2 GH,
     stpd2 false false GX TX G2 (TMem TBot T2) GH ->
     stpd2 false true G1 (TSel (varH x)) G2 T2 GH.
 Proof. intros. repeat eu. eauto. Qed.
-(*Lemma stpd2_sela2: forall G1 G2 GX T1 TX x GH,
+Lemma stpd2_sela2: forall G1 G2 GX T1 TX x GH,
     indexr x GH = Some (GX, TX) ->
     closed 0 x (length GX) TX ->
     stpd2 false false GX TX G1 (TMem T1 TTop) GH ->
     stpd2 false true G1 T1 G2 (TSel (varH x)) GH.
-Proof. intros. repeat eu. eauto. Qed. *)
+Proof. intros. repeat eu. eauto. Qed. 
 Lemma stpd2_selax: forall G1 G2 v x GH s,
     indexr x GH = Some v ->
     stpd2 s true G1 (TSel (varH x)) G2 (TSel (varH x)) GH.
@@ -3337,27 +3337,29 @@ Proof.
     eapply IHn; eauto. omega. *)
 Qed.
 
-Lemma valtp_widen: forall vf GH H1 H2 T1 T2,
-  val_type H1 GH vf T1 ->
-  stpd2 true true H1 T1 H2 T2 GH ->
-  val_type H2 GH vf T2.
+Lemma valtp_widen: forall vf H1 H2 T1 T2,
+  val_type H1 [] vf T1 ->
+  stpd2 true true H1 T1 H2 T2 [] ->
+  vtp H2 [] vf T2.
 Proof.
   intros. destruct H0. eapply valtp_widen_aux; eauto.
+  exists x. split. eauto. intros. inversion H3. 
 Qed.
 
 
 
 
-Lemma valtp_reg: forall vf GH H1 T1,
-  val_type H1 GH vf T1 ->
-  stpd2 true true H1 T1 H1 T1 GH.
+Lemma valtp_reg: forall vf H1 T1,
+  val_type H1 [] vf T1 ->
+  stpd2 true true H1 T1 H1 T1 [].
 Proof.
-  intros. eapply stp2_refl. eapply valtp_closed. eapply H.
+  intros. eapply valtp_closed in H. 
+  intros. eapply stp2_refl. eapply H.
 Qed.
 
-Lemma valtp_extend: forall vx vf GH H1 T1,
-  val_type H1 GH vf T1 ->
-  val_type (vx::H1) GH vf T1.
+Lemma valtp_extend: forall vx vf H1 T1,
+  val_type H1 [] vf T1 ->
+  vtp (vx::H1) [] vf T1.
 Proof.
   intros. eapply valtp_widen. eauto. eapply stpd2_extend2. eapply valtp_reg. eauto. 
 Qed.
@@ -3377,7 +3379,7 @@ Proof.
   - destruct (U x T0 H) as [vy [EV VY]]. exists vy. split.
     destruct EV as [n EV]. assert (S n > n) as N. omega. specialize (EV (S n) N). simpl in EV.
     exists n. intros. destruct n0. omega. simpl.  rewrite <-L in E. rewrite E. eauto.
-    eapply valtp_extend. eauto. 
+    eapply unvv. eapply valtp_extend. eauto. 
 Qed.
 
 
@@ -3386,7 +3388,7 @@ Lemma restp_widen: forall vf H1 H2 T1 T2,
   stpd2 true true H1 T1 H2 T2 [] ->
   res_type H2 vf T2.
 Proof.
-  intros. inversion H. eapply not_stuck. eapply valtp_widen; eauto.
+  intros. inversion H. eapply not_stuck. eapply unvv. eapply valtp_widen; eauto.
 Qed.
 
 
@@ -3511,10 +3513,30 @@ Proof.
   destruct vf; try solve [inversion H].
   ev. exists l. exists t. exists t0. split. eauto.
   intros C. simpl in H1.
-  (* TODO: substitute *)
+
+  intros. 
+  
+  assert (exists (jj:vl->Prop), forall vy, jj vy ->
+        forall (GL : venv) (TL : ty) (GU : venv) (TU : ty),
+        bounds venv0 T1 (GL, TL) (GU, TU) -> val_type GU [] vy TU) as F. 
+  exists (fun vy => forall (GL : venv) (TL : ty) (GU : venv) (TU : ty),
+                              bounds venv0 T1 (GL, TL) (GU, TU) -> val_type GU [] vy TU). intros. eapply H3. eapply H4.
+  
+  ev.
+  intros. specialize (H1 vx x H2 H3). simpl in H1.
+  ev.
+  exists x0.
+  split. eapply H1. 
+
+  (* TODO: We have almost what we need in H4, but with GH = [x].
+     Here we know that T2 is closed so it cannot use (varH 0).
+     We can use the inversion of lemma valtp_extendH, once we have that.
+     For dependent apps, we need a substitution lemma similar to stp2. *)
   admit.
-  (* assert unfold open in H1. rewrite <-closed_no_open in H1. eauto. *)
 Qed.
+
+(* TODO: similar lemma for dependent app case *)
+
 
 
 (* final type safety + termination proof *)
@@ -3535,6 +3557,7 @@ Proof.
   - Case "Typ".
     repeat eexists. intros. destruct n. inversion H0. simpl. eauto.
     assert (stpd2 false false venv0 T1 venv0 T1 []). eapply stpd2_wrapf. eapply stp2_refl. rewrite <-(wf_length venv0) in H. eauto. eauto.
+    assert (closed 0 0 (length venv0) T1). eapply stpd2_closed1 in H0. eauto. 
     rewrite val_type_unfold. eu. eauto. 
     
   - Case "App".
@@ -3558,15 +3581,16 @@ Proof.
     }
     eapply HVY.
 
-  - Case "DApp". admit. 
+  - Case "DApp". admit. (* TODO *)
     
   - Case "Abs".
+    (* FIXME below *)
     erewrite <-(wf_length venv0 env WFE) in H. inversion H; subst. 
     eexists. split. exists 0. intros. destruct n. omega. simpl. eauto.
     rewrite val_type_unfold. repeat split; eauto.
     intros. 
     assert (stpd2 true true venv0 T1 (vx::venv0) T1 []). eapply stpd2_extend2. eapply stp2_refl; eauto. eu.
-    assert (stpd2 true true (vx::venv0) T2 venv0 T2 []). eapply stpd2_extend1. eapply stp2_refl; eauto. eu.
+    assert (stpd2 true true (vx::venv0) T2 venv0 T2 []). eapply stpd2_extend1. eapply stp2_refl; eauto. admit. eu.
     assert (val_type (vx::venv0) vx T1). eapply valtp_extend. eauto. 
     assert (R_env (vx::venv0) (T1::env)). eapply wf_env_extend. eauto. eauto. 
     specialize (IHW (vx::venv0) H7). ev.
@@ -3574,6 +3598,7 @@ Proof.
     assert (val_type venv0 x1 T2). eapply valtp_widen. eauto. rewrite R. eauto.
     (* we have all pieces ... *)
     eexists. split; eauto.
+    
   - Case "Sub".
     specialize (IHW venv0 WFE). ev. eexists. split. eauto.
     eapply valtp_widen. eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. unfold R_envh. split. eauto. intros. inversion H2. 
