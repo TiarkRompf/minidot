@@ -366,25 +366,30 @@ Some (Some v))   means result v
 Could use do-notation to clean up syntax.
 *)
 
-Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
+Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: nat * option (option vl) :=
   match n with
-    | 0 => None
+    | 0 => (0,None)
     | S n =>
       match t with
-        | tvar x     => Some (indexr x env)
-        | ttyp T => Some (Some (vty env T))
-        | tabs T y => Some (Some (vabs env T y))
-        | tapp ef ex   =>
-          match teval n env ex with
-            | None => None
-            | Some None => Some None
-            | Some (Some vx) =>
-              match teval n env ef with
-                | None => None
-                | Some None => Some None
-                | Some (Some (vty _ _)) => Some None
-                | Some (Some (vabs env2 _ ey)) =>
-                  teval n (vx::env2) ey
+        | tvar x                  => (1, Some (indexr x env))
+        | ttyp T                  => (1, Some (Some (vty env T)))
+        | tabs T y                => (1, Some (Some (vabs env T y)))
+        | tapp ef ex              =>
+          match teval n env ef with
+            | (df,None)           => (1+df, None)
+            | (df,Some None)      => (1+df, Some None)
+            | (df,Some (Some vf)) =>
+              match teval (n-df) env ex with
+                | (dx,None)           => (1+df+dx, None)
+                | (dx,Some None)      => (1+df+dx, Some None)
+                | (dx,Some (Some vx)) =>
+                  match vf with
+                    | vty _ _         => (1+df+dx, Some None)
+                    | vabs env2 _ ey  =>
+                      match teval (n-df-dx) (vx::env2) ey with
+                        | (dy, res)   => (1+df+dx+dy, res)
+                      end
+                  end
               end
           end
       end
