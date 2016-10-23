@@ -15,8 +15,6 @@
 
 (* Note: we need actual step-indexes, not depth fuel !!! *)
 
-(* TODO: V_down, R_down helper lemmas *)
-
 
 Require Export SfLib.
 
@@ -118,13 +116,39 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: (nat * option (option vl)) :
 end.
 
 
-(* TODO -- fix & adapt old code below *)
+(* some facts about evaluation. we need evaluation to be deterministic so that
+   we can "downgrade" our logical relation val_type below. instead of proving
+   this fact here, it could also be possible to encode it in the LR itself. *)
+
+Lemma eval_deterministic: forall m n, n < m -> forall H t n1 r j,
+  teval n H t = (n1, Some r) -> j >= n ->
+  teval j H t = (n1, Some r).
+Proof.
+  intros m. induction m. intros. inversion H.
+  intros. destruct n. inversion H1. destruct j. inversion H2.
+  destruct t; simpl; simpl in H1; try eauto.
+  remember (teval n H0 t1) as tf. destruct tf as [nf [rf|]].
+  rewrite IHm with (n:=n) (n1:=nf) (r:=rf).
+  destruct rf; try destruct v; try solve [inversion H1; eauto]. 
+  remember (teval (n-nf) H0 t2) as tx. destruct tx as [nx [rx|]].
+  rewrite IHm with (n:=n-nf) (n1:=nx) (r:=rx).
+  destruct rx; try solve [destruct v; inversion H1; eauto].
+  remember (teval (n-nf-nx) (v :: vabs l t :: l) t) as ty. destruct ty as [ny [ry|]].
+  rewrite IHm with (n:=n-nf-nx) (n1:=ny) (r:=ry).
+
+  eauto. omega. eauto. omega.
+  inversion H1. inversion H1.
+  eauto. omega. eauto. omega.
+  inversion H1.
+  omega. eauto. omega.
+  inversion H1.
+Qed.
 
 
 (* original termination and determinism def: *)
 (* Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some (Some v). *)
 
-(* if we want determinism, too, we'd need something like this: *)
+(* if we want to encode determinism directly, we'd need something like this: *)
 Definition tevaln nm env e n1 v :=
   teval nm env e = (nm, None) \/
   forall n, n > nm -> teval n env e = (n1, Some (Some v)).
@@ -170,14 +194,34 @@ Hint Constructors list.
 
 
 Lemma V_down: forall n j v T, j <= n -> val_type n v T -> val_type j v T.
-Proof. admit. Qed.
+Proof.
+  intros n. induction n.
+  intros. destruct j. eauto. inversion H.
+  intros.
+  case_eq (eq_nat_dec j (S n)); intros E _. subst j. eauto.
+  assert (val_type n v T). {
+    destruct T; destruct v; try  eauto.
+    simpl. intros. simpl in H0. specialize (H0 (S nx) vx H1 ry ny H2). eapply H0.
+  }
+  eapply IHn. omega. eauto. 
+Qed.
 
 Lemma R_down: forall n j H t T, j <= n -> R n H t T -> R j H t T.
-Proof. admit. Qed.
-
+Proof.
+  intros.
+  unfold R. unfold R in H1. intros. eapply eval_deterministic in H2.
+  specialize (H1 r n1 H2).
+  destruct H1 as [v [N [R ?]]].
+  eapply V_down in H1. eauto. omega. eauto. omega. 
+Qed.
+                  
 Lemma R_env_down: forall n j H G, j <= n -> R_env n H G -> R_env j H G.
-Proof. admit. Qed.
-
+Proof.
+  intros.
+  unfold R_env. unfold R_env in H1. destruct H1.
+  split. eauto. intros.
+  eapply R_down in H2. eauto. eauto. eauto.
+Qed.
 
 
 (* if well-typed, then result is an actual value (not stuck and not a timeout),
