@@ -530,6 +530,26 @@ Inductive bounds : venv -> ty -> (venv*ty) -> (venv*ty)  -> Prop :=
 .
 
 
+Lemma bounds_tsize_aux: forall n, forall G1 T1, tsize G1 T1 < n -> forall GL TL GU TU, 
+  bounds G1 T1 (GL, TL) (GU, TU) ->
+  tsize GU TU < n.
+Proof.
+  intros n. induction n. intros. omega.
+  intros. 
+  inversion H0; subst.
+  - (* mem *) simpl in H. omega. 
+  - (* sel *) simpl in H. rewrite H1 in H. rewrite <-tsz_eq in H.
+              assert (tsize GU TU < n). eapply (IHn GX TX). omega. eauto.
+              omega.
+Qed.
+
+Lemma bounds_tsize: forall G1 T1 GL TL GU TU, 
+  bounds G1 T1 (GL, TL) (GU, TU) ->
+  tsize GU TU < S (tsize G1 T1).
+Proof.
+  intros. eapply bounds_tsize_aux. eauto. eauto.
+Qed.
+
 
 Require Coq.Program.Wf.
 
@@ -565,8 +585,7 @@ Program Fixpoint val_type (env:venv) (GH:list (vl->Prop)) (v:vl) (T:ty) {measure
   end.
 
 Next Obligation. simpl. omega. Qed.
-Next Obligation. simpl. admit. (* TODO: prove a lemma that bounds are smaller *) Qed.
-
+Next Obligation. simpl. eapply bounds_tsize in H1. omega. Qed. (* TApp case: vx / bounds *)
 Next Obligation. simpl. unfold open. rewrite <-open_preserves_tsize. omega. Qed. (* TApp case: open *)
 Next Obligation. (* TSel case *)
   simpl. rewrite <-Heq_anonymous. eapply tsz_indir. Qed.
