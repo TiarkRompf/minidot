@@ -3081,6 +3081,18 @@ Lemma inv_bounds: forall n m b H1 H2 T0 T4 GH vx GL1 TL1 GU1 TU1 n0 GH1,
         + (* mem *)
           repeat eexists. constructor. 
           assert (m = false). admit. (* FIXME: downgrade/convert m to false *)
+          (*this admit is tough to prove. 
+          Maybe we should change the goal as:
+          
+          exists GL TL GU TU m b n, bounds H2 T4 (GL, TL) (GU, TU) /\
+                        stp2 m b GU TU GU1 TU1 GH1 n /\ n <= n0.
+                        
+          Note: (Said by Tiark: Medium term, we might not even need the true/false 
+          distinction anymore with this proof setup, so if this particular admit turns 
+          out to be tough perhaps its best to put it on hold until we know if
+          this more general refactoring is feasible.)
+          
+          *)
           subst m. eapply H11. omega. 
         + (* sel1 *) 
           assert (val_type GX GH vx TX) as VT. rewrite val_type_unfold in H.
