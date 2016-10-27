@@ -523,19 +523,48 @@ Proof.
 Qed.
 
 
+
+Lemma xxx: forall X (G:list X) i,
+             i < length G ->
+             indexr i (rev G) = indexr (length G - i - 1) G.
+Proof.
+  assert (forall n, n - 0 = n) as plus_z. intros. omega.
+  intros. revert G H.
+  induction i. 
+  - intros. induction G.
+    + simpl. eauto.
+    + simpl. assert (beq_nat (length G) (length G) = true). eapply beq_nat_true_iff. eauto.
+      rewrite plus_z. rewrite H0.
+      assert (forall G, indexr 0 (G ++ [a]) = Some a). { induction G0.
+      * simpl. eauto.
+      * simpl. rewrite app_length. rewrite plus_comm. simpl. eauto. }
+      eapply H1. 
+  - intros. 
+    induction G; intros.
+    + simpl. eauto.
+    + simpl. assert (beq_nat (length G - i - 1) (length G) = false). eapply beq_nat_false_iff. inversion H; omega. rewrite H0.
+      simpl.
+      assert (forall G, indexr (S i) (G ++ [a]) = indexr i G). { intros.
+      induction G0. simpl. eauto. simpl. rewrite app_length. rewrite plus_comm. simpl.
+      rewrite IHG0. eauto. }
+      rewrite H1. eapply IHi. simpl in H. omega. 
+Qed.
+
+
 Lemma open_preserves_tsize: forall G H T x j,
+                              j < length H ->
+  x = length H - j - 1 ->
   tsize G H T = tsize G H (open_rec j (varH x) T).
 Proof.
   intros G H T. revert H. induction T; intros; simpl; eauto.
-  - rewrite <-IHT1. rewrite <-IHT2. eauto.
+  - rewrite <-IHT1. rewrite <-IHT2. eauto. simpl. omega. eauto. eauto. eauto.
   - destruct v; simpl.
     + eauto. 
     + eauto.
     + case_eq (beq_nat j i). intros E.
-      * simpl. (* (open j varH) *)  admit. (* HERE: relate SelB and SelH !!! *)
+      * simpl. eapply beq_nat_true_iff in E. subst j x. rewrite xxx. eauto. eauto.
       * simpl. eauto.
 Qed.
-
 
 
 
