@@ -578,32 +578,35 @@ Inductive val_type0 : venv -> vl -> ty -> Prop :=
 
 (* NOTE: crucial to be a smaller type according to tsize! *)
 (* TODO: needs selh case -- but not entirely clear how *)
-Inductive bounds : venv -> ty -> (venv*ty) -> (venv*ty)  -> Prop :=
-| bs_mem: forall G T1 T2,
-    bounds G (TMem T1 T2) (G,T1) (G,T2)
-| bs_sel: forall G GX TX GT1 GT2 x,
+Inductive bounds : venv -> venv -> ty -> (venv*ty) -> (venv*ty)  -> Prop :=
+| bs_mem: forall G GH T1 T2,
+    bounds G GH (TMem T1 T2) (G,T1) (G,T2)
+| bs_sel: forall G GH GX TX GT1 GT2 x,
     indexr x G = Some (vty GX TX) ->
-    bounds GX TX GT1 GT2 ->
-    bounds G (TSel (varF x)) GT1 GT2 
+    bounds GX GH TX GT1 GT2 ->
+    bounds G GH (TSel (varF x)) GT1 GT2
+
+           (* TODO NEXT: selb case *)
+           
 .
 
 
-Lemma bounds_tsize_aux: forall n, forall G1 T1, tsize G1 T1 < n -> forall GL TL GU TU, 
-  bounds G1 T1 (GL, TL) (GU, TU) ->
-  tsize GU TU < n.
+Lemma bounds_tsize_aux: forall n, forall G1 GH GHN T1, tsize G1 GHN T1 < n -> forall GL TL GU TU, 
+  bounds G1 GH T1 (GL, TL) (GU, TU) ->
+  tsize GU GHN TU < n.
 Proof.
   intros n. induction n. intros. omega.
   intros. 
   inversion H0; subst.
   - (* mem *) simpl in H. omega. 
   - (* sel *) simpl in H. rewrite H1 in H. rewrite <-tsz_eq in H.
-              assert (tsize GU TU < n). eapply (IHn GX TX). omega. eauto.
+              assert (tsize GU GHN TU < n). eapply (IHn GX GH GHN TX). omega. eauto.
               omega.
 Qed.
 
-Lemma bounds_tsize: forall G1 T1 GL TL GU TU, 
-  bounds G1 T1 (GL, TL) (GU, TU) ->
-  tsize GU TU < S (tsize G1 T1).
+Lemma bounds_tsize: forall G1 GH GHN T1 GL TL GU TU, 
+  bounds G1 GH T1 (GL, TL) (GU, TU) ->
+  tsize GU GHN TU < S (tsize G1 GHN T1).
 Proof.
   intros. eapply bounds_tsize_aux. eauto. eauto.
 Qed.
@@ -611,14 +614,14 @@ Qed.
 
 Require Coq.Program.Wf.
 
-Program Fixpoint val_type (env:venv) (GH:list (vl->Prop)) (v:vl) (T:ty) {measure (tsize env T)}: Prop :=
+Program Fixpoint val_type (env:venv) (GH:list (nat * (vl->Prop))) (v:vl) (T:ty) {measure (tsize env (map (fun p => fst p) GH) T)}: Prop :=
   match v,T with
     | vabs env1 T0 y, TAll T1 T2 =>
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
       forall vx (jj:vl->Prop),
         val_type env GH vx T1 ->
-        (forall vy, jj vy -> forall GL TL GU TU, bounds env T1 (GL,TL) (GU,TU) -> val_type GU GH vy TU) ->
-        exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2)
+        (forall vy, jj vy -> forall GL TL GU TU, bounds env [] (* FIXME *) T1 (GL,TL) (GU,TU) -> val_type GU GH vy TU) ->
+        exists v, tevaln (vx::env1) y v /\ val_type env ((tsize env (map (fun p => fst p) GH) T1, jj)::GH) v (open (varH (length GH)) T2)
     | vty env1 TX, TMem T1 T2 =>
       closed 0 0 (length env1) TX /\ (* required to convert to val_type_stub *)
       exists n1 n2,
@@ -631,7 +634,7 @@ Program Fixpoint val_type (env:venv) (GH:list (vl->Prop)) (v:vl) (T:ty) {measure
       end
     | _, TSel (varH x) =>
       match indexr x GH with
-        | Some jj => jj v
+        | Some (n,jj) => jj v
         | _ => False
       end
     | vty env1 TX , TTop =>
@@ -643,8 +646,11 @@ Program Fixpoint val_type (env:venv) (GH:list (vl->Prop)) (v:vl) (T:ty) {measure
   end.
 
 Next Obligation. simpl. omega. Qed.
-Next Obligation. simpl. eapply bounds_tsize in H1. omega. Qed. (* TApp case: vx / bounds *)
-Next Obligation. simpl. unfold open. rewrite <-open_preserves_tsize. omega. Qed. (* TApp case: open *)
+Next Obligation.
+  clear H.
+  remember (map (fun p : nat * (vl -> Prop) => fst p) GH) as GHN.
+  simpl. eapply (bounds_tsize _ _ GHN) in H1. omega. Qed. (* TApp case: vx / bounds *)
+Next Obligation. simpl. unfold open. rewrite <-open_preserves_tsize. omega. simpl. omega. simpl. rewrite map_length. omega. Qed. (* TApp case: open *)
 Next Obligation. (* TSel case *)
   simpl. rewrite <-Heq_anonymous. eapply tsz_indir. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
