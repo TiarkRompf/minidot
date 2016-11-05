@@ -443,128 +443,70 @@ We follow (1) -- define a more complex size measure.
 --------------------------------------------------------- *)
 
 
-Fixpoint vsize (H: list nat) (v : vl) : nat :=
+Fixpoint vsize (v : vl) : nat :=
   match v with
     | vabs _ _ _ => 0
     | vty G T  => 
-      (fix tsize H T := 
+      (fix tsize T := 
          match T with
            | TBot          => 1
            | TTop          => 1
-           | TAll T1 T2    => S (tsize H T1 + tsize (tsize H T1::H) T2) (* TODO: open T2!! --> but difficult size!! *)
-           | TMem T1 T2    => S (tsize H T1 + tsize H T2)
-           | TSel (varB x) => (* can't open in TAll, hence implement reverse lookup *)
-             ((fix idx x H :=
-                match H with
-                  | n::tl => if beq_nat x (length tl) then n else idx x tl
-                  | _ => 0
-                end) x (rev H))
-           | TSel (varH x) =>
-             ((fix idx x H :=
-                match H with
-                  | n::tl => if beq_nat x (length tl) then n else idx x tl
-                  | _ => 0
-                end) x H)
+           | TAll T1 T2    => S (tsize T1 + tsize T2)
+           | TMem T1 T2    => S (tsize T1 + tsize T2)
+           | TSel (varB x) => 1 (* ? *)
+           | TSel (varH x) => 1 (* ? *)
            | TSel (varF x) => S
              ((fix idx x G :=
                 match G with
-                  | v::tl => if beq_nat x (length tl) then vsize H v else idx x tl
+                  | v::tl => if beq_nat x (length tl) then vsize v else idx x tl
                   | _ => 0
                 end) x G)
-         end) H T
+         end) T
   end.
 
-Fixpoint tsize (G:venv) (H:list nat) (T:ty) {struct T} :=
+Fixpoint tsize (G:venv) (T:ty) {struct T} :=
   match T with
     | TBot           => 1
     | TTop           => 1
-    | TAll T1 T2     => S (tsize G H T1 + tsize G ((tsize G H T1)::H) T2) (* TODO:  (open (varH (length H)) T2)  --> HARD! *)
-    | TMem T1 T2     => S (tsize G H T1 + tsize G H T2)
-    | TSel (varB x)  => (* reverse lookup -- not easy to use SelH in TAll *)
-      match indexr x (rev H) with
-        | Some n => n
-        | None => 0
-      end
-    | TSel (varH x)  =>
-      match indexr x H with
-        | Some n => n
-        | None => 0
-      end
+    | TAll T1 T2     => S (tsize G T1 + tsize G T2)  
+    (* this becomes: ... + tsize G [T1] (open (varH 1) T2) *)
+    | TMem T1 T2     => S (tsize G T1 + tsize G T2)
+    | TSel (varB x)  => 1
+    | TSel (varH x)  => 1
     | TSel (varF x)  => S
       match indexr x G with
-        | Some v => vsize H v
+        | Some v => vsize v
         | None => 0
       end
   end.
 
 
-Lemma tsz_eq: forall TX GX HX,
-  tsize GX HX TX = (vsize HX (vty GX TX)).
+Lemma tsz_eq: forall TX GX,
+  tsize GX TX = (vsize (vty GX TX)).
 Proof.
   intros TX. simpl. induction TX; intros; eauto.
   - Case "fun". simpl. rewrite IHTX1. rewrite IHTX2. eauto.
   - Case "sel". simpl. destruct v; eauto. 
-    + induction GX.
-      * simpl. eauto.
-      * simpl. destruct (beq_nat i (length GX)). eauto. eauto.
-    + induction HX.
-      * simpl. eauto.
-      * simpl. destruct (beq_nat i (length HX)). eauto. eauto.
-    + induction (rev HX).
-      * simpl. eauto.
-      * simpl. destruct (beq_nat i (length l)). eauto. eauto.
+    induction GX.
+    + simpl. eauto.
+    + simpl. destruct (beq_nat i (length GX)). eauto. eauto.
   - Case "mem". simpl. rewrite IHTX1. rewrite IHTX2. eauto.
  Qed.
  
-Lemma tsz_indir: forall GX TX HX,
-  tsize GX HX TX < S (vsize HX (vty GX TX)).
+Lemma tsz_indir: forall GX TX,
+  tsize GX TX < S (vsize (vty GX TX)).
 Proof.
   intros. rewrite tsz_eq. eauto. 
 Qed.
 
 
-
-Lemma xxx: forall X (G:list X) i,
-             i < length G ->
-             indexr i (rev G) = indexr (length G - i - 1) G.
+Lemma open_preserves_tsize: forall G T x j,
+  tsize G T = tsize G (open_rec j (varH x) T).
 Proof.
-  assert (forall n, n - 0 = n) as plus_z. intros. omega.
-  intros. revert G H.
-  induction i. 
-  - intros. induction G.
-    + simpl. eauto.
-    + simpl. assert (beq_nat (length G) (length G) = true). eapply beq_nat_true_iff. eauto.
-      rewrite plus_z. rewrite H0.
-      assert (forall G, indexr 0 (G ++ [a]) = Some a). { induction G0.
-      * simpl. eauto.
-      * simpl. rewrite app_length. rewrite plus_comm. simpl. eauto. }
-      eapply H1. 
-  - intros. 
-    induction G; intros.
-    + simpl. eauto.
-    + simpl. assert (beq_nat (length G - i - 1) (length G) = false). eapply beq_nat_false_iff. inversion H; omega. rewrite H0.
-      simpl.
-      assert (forall G, indexr (S i) (G ++ [a]) = indexr i G). { intros.
-      induction G0. simpl. eauto. simpl. rewrite app_length. rewrite plus_comm. simpl.
-      rewrite IHG0. eauto. }
-      rewrite H1. eapply IHi. simpl in H. omega. 
+  intros G T. induction T; intros; simpl; eauto.
+  - destruct v; simpl; destruct (beq_nat j i); eauto.
 Qed.
 
-
-Lemma open_preserves_tsize: forall G H T x j,
-                              j < length H ->
-  x = length H - j - 1 ->
-  tsize G H T = tsize G H (open_rec j (varH x) T).
-Proof.
-  intros G H T. revert H. induction T; intros; simpl; eauto.
-  - rewrite <-IHT1. rewrite <-IHT2. eauto. simpl. omega. eauto. eauto. eauto.
-  - destruct v; simpl.
-    + eauto. 
-    + eauto.
-    + case_eq (beq_nat j i). intros E.
-      * simpl. eapply beq_nat_true_iff in E. subst j x. rewrite xxx. eauto. eauto.
-      * simpl. eauto.
-Qed.
 
 
 
@@ -578,35 +520,32 @@ Inductive val_type0 : venv -> vl -> ty -> Prop :=
 
 (* NOTE: crucial to be a smaller type according to tsize! *)
 (* TODO: needs selh case -- but not entirely clear how *)
-Inductive bounds : venv -> venv -> ty -> (venv*ty) -> (venv*ty)  -> Prop :=
-| bs_mem: forall G GH T1 T2,
-    bounds G GH (TMem T1 T2) (G,T1) (G,T2)
-| bs_sel: forall G GH GX TX GT1 GT2 x,
+Inductive bounds : venv -> ty -> (venv*ty) -> (venv*ty)  -> Prop :=
+| bs_mem: forall G T1 T2,
+    bounds G (TMem T1 T2) (G,T1) (G,T2)
+| bs_sel: forall G GX TX GT1 GT2 x,
     indexr x G = Some (vty GX TX) ->
-    bounds GX GH TX GT1 GT2 ->
-    bounds G GH (TSel (varF x)) GT1 GT2
-
-           (* TODO NEXT: selb case *)
-           
+    bounds GX TX GT1 GT2 ->
+    bounds G (TSel (varF x)) GT1 GT2 
 .
 
 
-Lemma bounds_tsize_aux: forall n, forall G1 GH GHN T1, tsize G1 GHN T1 < n -> forall GL TL GU TU, 
-  bounds G1 GH T1 (GL, TL) (GU, TU) ->
-  tsize GU GHN TU < n.
+Lemma bounds_tsize_aux: forall n, forall G1 T1, tsize G1 T1 < n -> forall GL TL GU TU, 
+  bounds G1 T1 (GL, TL) (GU, TU) ->
+  tsize GU TU < n.
 Proof.
   intros n. induction n. intros. omega.
   intros. 
   inversion H0; subst.
   - (* mem *) simpl in H. omega. 
   - (* sel *) simpl in H. rewrite H1 in H. rewrite <-tsz_eq in H.
-              assert (tsize GU GHN TU < n). eapply (IHn GX GH GHN TX). omega. eauto.
+              assert (tsize GU TU < n). eapply (IHn GX TX). omega. eauto.
               omega.
 Qed.
 
-Lemma bounds_tsize: forall G1 GH GHN T1 GL TL GU TU, 
-  bounds G1 GH T1 (GL, TL) (GU, TU) ->
-  tsize GU GHN TU < S (tsize G1 GHN T1).
+Lemma bounds_tsize: forall G1 T1 GL TL GU TU, 
+  bounds G1 T1 (GL, TL) (GU, TU) ->
+  tsize GU TU < S (tsize G1 T1).
 Proof.
   intros. eapply bounds_tsize_aux. eauto. eauto.
 Qed.
@@ -614,14 +553,14 @@ Qed.
 
 Require Coq.Program.Wf.
 
-Program Fixpoint val_type (env:venv) (GH:list (nat * (vl->Prop))) (v:vl) (T:ty) {measure (tsize env (map (fun p => fst p) GH) T)}: Prop :=
+Program Fixpoint val_type (env:venv) (GH:list (vl->Prop)) (v:vl) (T:ty) {measure (tsize env T)}: Prop :=
   match v,T with
     | vabs env1 T0 y, TAll T1 T2 =>
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
       forall vx (jj:vl->Prop),
         val_type env GH vx T1 ->
-        (forall vy, jj vy -> forall GL TL GU TU, bounds env [] (* FIXME *) T1 (GL,TL) (GU,TU) -> val_type GU GH vy TU) ->
-        exists v, tevaln (vx::env1) y v /\ val_type env ((tsize env (map (fun p => fst p) GH) T1, jj)::GH) v (open (varH (length GH)) T2)
+        (forall vy, jj vy -> forall GL TL GU TU, bounds env T1 (GL,TL) (GU,TU) -> val_type GU GH vy TU) ->
+        exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2)
     | vty env1 TX, TMem T1 T2 =>
       closed 0 0 (length env1) TX /\ (* required to convert to val_type_stub *)
       exists n1 n2,
@@ -634,7 +573,7 @@ Program Fixpoint val_type (env:venv) (GH:list (nat * (vl->Prop))) (v:vl) (T:ty) 
       end
     | _, TSel (varH x) =>
       match indexr x GH with
-        | Some (n,jj) => jj v
+        | Some jj => jj v
         | _ => False
       end
     | vty env1 TX , TTop =>
@@ -646,11 +585,8 @@ Program Fixpoint val_type (env:venv) (GH:list (nat * (vl->Prop))) (v:vl) (T:ty) 
   end.
 
 Next Obligation. simpl. omega. Qed.
-Next Obligation.
-  clear H.
-  remember (map (fun p : nat * (vl -> Prop) => fst p) GH) as GHN.
-  simpl. eapply (bounds_tsize _ _ GHN) in H1. omega. Qed. (* TApp case: vx / bounds *)
-Next Obligation. simpl. unfold open. rewrite <-open_preserves_tsize. omega. simpl. omega. simpl. rewrite map_length. omega. Qed. (* TApp case: open *)
+Next Obligation. simpl. eapply bounds_tsize in H1. omega. Qed. (* TApp case: vx / bounds *)
+Next Obligation. simpl. unfold open. rewrite <-open_preserves_tsize. omega. Qed. (* TApp case: open *)
 Next Obligation. (* TSel case *)
   simpl. rewrite <-Heq_anonymous. eapply tsz_indir. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
@@ -3221,9 +3157,6 @@ Lemma inv_bounds: forall n m b H1 H2 T0 T4 GH vx GL1 TL1 GU1 TU1 n0 GH1,
           repeat eexists. econstructor. eapply H1. eapply H14. eapply H15. omega. 
         + (* sela1 *)
           (* FIXME: no case for selH *)
-          
-
-          
           admit.
         + (* wrap *)
           admit.
