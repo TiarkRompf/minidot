@@ -3274,9 +3274,9 @@ Proof.
 Qed.
 
 Lemma valtp_widen: forall vf H1 H2 T1 T2,
-  val_type H1 [] vf T1 ->
+  val_type H1 [] vf T1 0 ->
   stpd2 true true H1 T1 H2 T2 [] ->
-  vtp H2 [] vf T2.
+  vtp H2 [] vf T2 0.
 Proof.
   intros. destruct H0. eapply valtp_widen_aux; eauto.
   exists x. split. eauto. intros. inversion H3. 
@@ -3286,7 +3286,7 @@ Qed.
 
 
 Lemma valtp_reg: forall vf H1 T1,
-  val_type H1 [] vf T1 ->
+  val_type H1 [] vf T1 0 ->
   stpd2 true true H1 T1 H1 T1 [].
 Proof.
   intros. eapply valtp_closed in H. 
@@ -3294,8 +3294,8 @@ Proof.
 Qed.
 
 Lemma valtp_extend: forall vx vf H1 T1,
-  val_type H1 [] vf T1 ->
-  vtp (vx::H1) [] vf T1.
+  val_type H1 [] vf T1 0 ->
+  vtp (vx::H1) [] vf T1 0.
 Proof.
   intros. eapply valtp_widen. eauto. eapply stpd2_extend2. eapply valtp_reg. eauto. 
 Qed.
@@ -3303,7 +3303,7 @@ Qed.
 
 Lemma wf_env_extend: forall vx G1 H1 T1,
   R_env H1 G1 ->
-  val_type (vx::H1) [] vx T1 ->               
+  val_type (vx::H1) [] vx T1 0 ->
   R_env (vx::H1) (T1::G1).
 Proof.
   intros. unfold R_env. unfold R_env in H. destruct H as [L U].
@@ -3353,7 +3353,7 @@ Qed.
 
   
 Lemma inv_vtp_half: forall G v T GH,
-  val_type G [] v T ->
+  val_type G [] v T 0 ->
   exists G0 T0, val_type_stub G0 v T0 /\ closed 0 0 (length G0) T0 /\
              stpd2 false false G0 T0 G T GH.
 Proof.
@@ -3385,19 +3385,19 @@ Proof.
     eapply stpd2_bot. erewrite wfh_length; eauto. erewrite wf_length; eauto.
   - Case "mem". eapply stpd2_mem; eauto.
   - Case "sel1".
-    assert (exists v : vl, indexr x GX = Some v /\ val_type GX [] v TX) as A.
+    assert (exists v : vl, indexr x GX = Some v /\ val_type GX [] v TX 0) as A.
     eapply indexr_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
     eapply inv_vtp_half in VT. ev.
     eapply stpd2_sel1. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
   - Case "sel2".
-    assert (exists v : vl, indexr x GX = Some v /\ val_type GX [] v TX) as A.
+    assert (exists v : vl, indexr x GX = Some v /\ val_type GX [] v TX 0) as A.
     eapply indexr_safe_ex. eauto. eauto.
     destruct A as [? [? VT]].
     eapply inv_vtp_half in VT. ev.
     eapply stpd2_sel2. eauto. eauto. eauto. eapply stpd2_trans. eauto. eauto.
   - Case "selx". eauto.
-    assert (exists v0 : vl, indexr x GX = Some v0 /\ val_type GX [] v0 v) as A.
+    assert (exists v0 : vl, indexr x GX = Some v0 /\ val_type GX [] v0 v 0) as A.
     eapply indexr_safe_ex. eauto. eauto. eauto.
     destruct A as [? [? ?]].
     eapply stpd2_selx; eauto.
@@ -3437,12 +3437,12 @@ Qed.
 (* ### Inversion Lemmas ### *)
 
 Lemma invert_abs: forall venv vf T1 T2,
-  val_type venv [] vf (TAll T1 T2) ->
+  val_type venv [] vf (TAll T1 T2) 0 ->
   exists env TX y,
     vf = (vabs env TX y) /\ 
     (closed 0 0 (length venv) T2 -> forall vx : vl,
-       val_type venv [] vx T1 ->
-       exists v : vl, tevaln (vx::env) y v /\ val_type venv [] v T2).
+       val_type venv [] vx T1 0 ->
+       exists v : vl, tevaln (vx::env) y v /\ val_type venv [] v T2 0).
 Proof.
   intros. 
   rewrite val_type_unfold in H.   
@@ -3452,14 +3452,11 @@ Proof.
 
   intros. 
   
-  assert (exists (jj:vl->Prop), forall vy, jj vy ->
-        forall (GL : venv) (TL : ty) (GU : venv) (TU : ty),
-        bounds venv0 T1 (GL, TL) (GU, TU) -> val_type GU [] vy TU) as F. 
-  exists (fun vy => forall (GL : venv) (TL : ty) (GU : venv) (TU : ty),
-                              bounds venv0 T1 (GL, TL) (GU, TU) -> val_type GU [] vy TU). intros. eapply H3. eapply H4.
+  assert (exists (jj:vl->nat->Prop), forall vy iy,
+    jj vy iy -> val_type venv0 [] vy T1 iy). exists (fun vy iy => val_type venv0 [] vy T1 iy). intros. eapply H3.
   
   ev.
-  intros. specialize (H1 vx x H2 H3). simpl in H1.
+  specialize (H1 vx x H2 H3). 
   ev.
   exists x0.
   split. eapply H1. 
