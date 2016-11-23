@@ -3112,16 +3112,11 @@ Lemma valtp_widen_aux: forall n, forall n1 m b vf H1 H2 GH GH1 T1 T2 i,
   stp2 m b H1 T1 H2 T2 GH1 n1 ->
   n1 < n ->
   length GH1 = length GH ->
-  (exists min, n1 <= min /\
-               forall x HX TX, indexr x GH1 = Some (HX,TX) ->
+  (forall x HX TX, indexr x GH1 = Some (HX,TX) ->
                    exists v jj,
                      indexr x GH = Some jj /\
                      val_type HX GH v TX 0 /\
-                     (forall vy iy, jj vy iy ->
-                                 forall m b G2 T2 ns,
-                                   stp2 m b HX TX G2 T2 GH1 ns -> ns < min ->
-                                   vtp G2 GH vy T2 iy
-                     )) ->
+                     (forall vy iy, jj vy iy -> vtp HX GH vy TX iy)) ->
   vtp H2 GH vf T2 i.
 Proof.
   intros n. induction n. intros. omega.
@@ -3139,7 +3134,10 @@ Proof.
   - Case "Sel2". 
     subst. admit.
   - Case "Sel1W".
-    subst. admit.
+    subst. admit. (* rewrite val_type_unfold in H. rewrite H6 in H.
+    destruct v. destruct vf; contradiction.
+    assert (val_type l GH vf t i). destruct vf; eapply H. clear H.
+    subst. admit. *)
   - Case "Sel2W".
     subst. admit.     
   - Case "selx".
@@ -3149,16 +3147,18 @@ Proof.
   - Case "sela1".
     subst. 
     rewrite val_type_unfold in H.
-    ev.
-    specialize (H9 _ _ _ H6). ev.
-    rewrite H9 in H.
-    assert (x2 vf (S i)). destruct vf; eauto. clear H.
-
+    remember H5 as ENV. clear HeqENV.
+    specialize (H5 _ _ _ H6).
+    destruct H5. destruct H5. destruct H5. destruct H9. 
+    rewrite H5 in H.
+    assert (x1 vf (S i)). destruct vf; eauto. clear H.
+    assert (vtp GX GH vf TX (S i)). eapply H10. eapply H11. 
     assert (vtp H2 GH vf (TMem TBot T2) (S i)). 
-    eapply H11. eapply H12. eapply H8. omega.
-
-    eapply unvv in H. rewrite val_type_unfold in H.
-    eapply vv. destruct vf; apply H. 
+    eapply IHn. eapply unvv. eapply H. eapply H8. omega. eapply H4.
+    eapply ENV.
+    
+    eapply unvv in H12. rewrite val_type_unfold in H12.
+    eapply vv. destruct vf; apply H12. 
 
   - Case "sela2".
     (* NOTE: currently not supported -- need lower bounds *)
@@ -3179,9 +3179,7 @@ Proof.
 
     assert (val_type H2 GH vx T4 0) as VX0. { eapply VST0. }
     assert (vtp H1 GH vx T0 0) as VX1. {
-      eapply IHn. eapply VST0. eapply H6. omega. omega. eauto. eauto. eauto.
-      ev. 
-      exists x. split. omega. eapply H13. 
+      eapply IHn. eapply VST0. eapply H6. omega. omega. eauto. 
     }
 
     assert (forall (vy : vl) iy,
@@ -3189,7 +3187,7 @@ Proof.
              val_type H1 GH vy T0 iy) as STJ1.
     { intros vy iy jjvy. specialize (STJ vy iy jjvy).
       eapply unvv. eapply IHn. eapply STJ. eapply H6. omega. eapply H4.
-      ev. exists x. split. omega. eapply H13.
+      eapply H5. 
     }
     eapply unvv in VX1. 
     destruct (LR vx jj VX1 STJ1) as [v [TE VT]]. 
@@ -3206,6 +3204,21 @@ Proof.
     omega. 
     simpl. rewrite H4. reflexivity. (* length *) 
 
+    (* now env predicate *)
+    intros.
+    { case_eq (beq_nat x (length GH)); intros E.
+    + admit. (* TODO -- hit *)
+    + admit. (* TODO -- miss *)
+    }
+
+    eapply vv. eapply H7. 
+    (* DONE *)
+    
+
+
+    (* --- old --- *)
+
+    
     (* now custom env predicate -- prove for all n *)
 
     (* first, rephrase goal to prove forall nn, nn <= n *)
