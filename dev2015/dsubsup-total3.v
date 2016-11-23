@@ -3207,8 +3207,15 @@ Proof.
     (* now env predicate *)
     intros.
     { case_eq (beq_nat x (length GH)); intros E.
-    + admit. (* TODO -- hit *)
-    + admit. (* TODO -- miss *)
+      + simpl in H13. rewrite H4 in H13. rewrite E in H13. inversion H13. subst HX TX.
+        exists vx. exists jj. split. simpl. rewrite E. reflexivity.
+        split. eapply unvv. eapply valtp_extendH. eapply VX0.
+        intros. eapply valtp_extendH. eapply STJ. eapply H14. 
+      + assert (indexr x GH1 = Some (HX, TX)).
+        simpl in H13. rewrite H4 in H13. rewrite E in H13. inversion H13. reflexivity.
+        specialize (H5 _ _ _ H14). ev.
+        exists x1. 
+        admit. (* TODO -- miss *)
     }
 
     eapply vv. eapply H7. 
