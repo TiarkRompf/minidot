@@ -553,49 +553,54 @@ Qed.
 
 Require Coq.Program.Wf.
 
-Program Fixpoint val_type (env:venv) (GH:list (vl->Prop)) (v:vl) (T:ty) {measure (tsize env T)}: Prop :=
-  match v,T with
-    | vabs env1 T0 y, TAll T1 T2 =>
+Program Fixpoint val_type (env:venv) (GH:list (vl->nat->Prop)) (v:vl) (T:ty) (i:nat) {measure (tsize env T)}: Prop :=
+  match v,T,i with
+    | vabs env1 T0 y, TAll T1 T2, 0 =>
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
-      forall vx (jj:vl->Prop),
-        val_type env GH vx T1 ->
-        (forall vy, jj vy -> forall GL TL GU TU, bounds env T1 (GL,TL) (GU,TU) -> val_type GU GH vy TU) ->
-        exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2)
-    | vty env1 TX, TMem T1 T2 =>
+      forall vx (jj:vl->nat->Prop),
+        val_type env GH vx T1 0 ->
+        (forall vy iy, jj vy iy -> val_type env GH vy T1 iy) ->
+        exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2) 0
+    | vty env1 TX, TMem T1 T2, 0 =>
       closed 0 0 (length env1) TX /\ (* required to convert to val_type_stub *)
       exists n1 n2,
         stp2 false false env1 TX env T2 [] n1 /\ (* FIXME: what about [] vs GH ?? *)
         stp2 false false env T1 env1 TX [] n2
-    | _, TSel (varF x) =>
+    | _, TMem T1 T2, S i =>
+      val_type env GH v T2 i
+    | _, TSel (varF x), _ =>
       match indexr x env with
-        | Some (vty GX TX) => val_type GX GH v TX
+        | Some (vty GX TX) => val_type GX GH v TX i
         | _ => False
       end
-    | _, TSel (varH x) =>
+    | _, TSel (varH x), _ =>
       match indexr x GH with
-        | Some jj => jj v
+        | Some jj => jj v (S i)
         | _ => False
       end
-    | vty env1 TX , TTop =>
+    | vty env1 TX , TTop, 0 =>
       closed 0 0 (length env1) TX (* required to convert to val_type_stub *)
-    | vabs _ _ _ , TTop =>
+    | vabs _ _ _ , TTop, 0 =>
       True 
-    | _,_ =>
+    | _,_,_ =>
       False
   end.
 
 Next Obligation. simpl. omega. Qed.
-Next Obligation. simpl. eapply bounds_tsize in H1. omega. Qed. (* TApp case: vx / bounds *)
+Next Obligation. simpl. omega. Qed. 
 Next Obligation. simpl. unfold open. rewrite <-open_preserves_tsize. omega. Qed. (* TApp case: open *)
+Next Obligation. simpl. omega. Qed.
 Next Obligation. (* TSel case *)
   simpl. rewrite <-Heq_anonymous. eapply tsz_indir. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0. Qed.
-
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0. Qed.
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0. Qed.
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1.  Qed.
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1.  Qed.
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1.  Qed.
+Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1.  Qed.
 
 (* 
    ISSUE: 
@@ -610,39 +615,41 @@ Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversi
 Import Coq.Program.Wf.
 Import WfExtensionality.
 
-Lemma val_type_unfold: forall env GH v T, val_type env GH v T =
-  match v,T with
-    | vabs env1 T0 y, TAll T1 T2 =>
+Lemma val_type_unfold: forall env GH v T i, val_type env GH v T i =
+  match v,T,i with
+    | vabs env1 T0 y, TAll T1 T2, 0 =>
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
-      forall vx (jj:vl->Prop),
-        val_type env GH vx T1 ->
-        (forall vy, jj vy -> forall GL TL GU TU, bounds env T1 (GL,TL) (GU,TU) -> val_type GU GH vy TU) ->
-        exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2) 
-
-    | vty env1 TX, TMem T1 T2 =>
-      closed 0 0 (length env1) TX /\
-      exists n1 n2, stp2 false false env1 TX env T2 [] n1 /\
-                    stp2 false false env T1 env1 TX [] n2
-    | _, TSel (varF x) =>
+      forall vx (jj:vl->nat->Prop),
+        val_type env GH vx T1 0 ->
+        (forall vy iy, jj vy iy -> val_type env GH vy T1 iy) ->
+        exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2) 0
+    | vty env1 TX, TMem T1 T2, 0 =>
+      closed 0 0 (length env1) TX /\ (* required to convert to val_type_stub *)
+      exists n1 n2,
+        stp2 false false env1 TX env T2 [] n1 /\ (* FIXME: what about [] vs GH ?? *)
+        stp2 false false env T1 env1 TX [] n2
+    | _, TMem T1 T2, S i =>
+      val_type env GH v T2 i
+    | _, TSel (varF x), _ =>
       match indexr x env with
-        | Some (vty GX TX) => val_type GX GH v TX
+        | Some (vty GX TX) => val_type GX GH v TX i
         | _ => False
       end
-    | _, TSel (varH x) =>
+    | _, TSel (varH x), _ =>
       match indexr x GH with
-        | Some jj => jj v
+        | Some jj => jj v (S i)
         | _ => False
       end
-    | vty env1 TX , TTop =>
-      closed 0 0 (length env1) TX
-    | vabs _ _ _ , TTop =>
+    | vty env1 TX , TTop, 0 =>
+      closed 0 0 (length env1) TX (* required to convert to val_type_stub *)
+    | vabs _ _ _ , TTop, 0 =>
       True 
-    | _,_ =>
+    | _,_,_ =>
       False
   end.
 Proof.
   intros. unfold val_type at 1. unfold val_type_func.
-  unfold_sub val_type (val_type env GH v T).
+  unfold_sub val_type (val_type env GH v T i).
   simpl.
   destruct v; simpl; try reflexivity.
   destruct T.
