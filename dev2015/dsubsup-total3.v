@@ -3389,6 +3389,26 @@ Qed.
 
 (* ### Inversion Lemmas ### *)
 
+
+Lemma vtp_subst1: forall venv jj v T2,
+  val_type venv [jj] v (open (varH 0) T2) 0 ->
+  closed 0 0 (length venv) T2 ->
+  val_type venv [] v T2 0.
+Proof.
+  admit.  (* TODO: more generic subst_aux lemma *)
+Qed.
+
+Lemma vtp_subst3: forall venv (jj:vl->nat->Prop) v vx T1 T2,
+  val_type (vx::venv) [] v (open (varF (length venv)) T2) 0 ->
+  val_type venv [] vx T1 0 ->
+  (forall (vy : vl) (iy : nat), jj vy iy -> val_type venv [] vy T1 iy) ->
+  val_type venv [jj] v (open (varH 0) T2) 0.
+Proof.
+  admit.  (* TODO: more generic subst_aux lemma *)
+Qed.
+
+
+
 Lemma invert_abs: forall venv vf T1 T2,
   val_type venv [] vf (TAll T1 T2) 0 ->
   exists env TX y,
@@ -3412,13 +3432,9 @@ Proof.
   specialize (H1 vx x H2 H3). 
   ev.
   exists x0.
-  split. eapply H1. 
+  split. eapply H1.
 
-  (* TODO: We have almost what we need in H4, but with GH = [x].
-     Here we know that T2 is closed so it cannot use (varH 0).
-     We can use the inversion of lemma valtp_extendH, once we have that.
-     For dependent apps, we need a substitution lemma similar to stp2. *)
-  admit.
+  eapply vtp_subst1. eapply H4. eapply C. 
 Qed.
 
 (* TODO: similar lemma for dependent app case *)
@@ -3427,9 +3443,10 @@ Qed.
 
 (* final type safety + termination proof *)
 
+
 Theorem full_total_safety : forall e tenv T,
   has_type tenv e T -> forall venv, R_env venv tenv ->
-  exists v, tevaln venv e v /\ val_type venv [] v T.
+  exists v, tevaln venv e v /\ val_type venv [] v T 0.
 Proof.
   intros ? ? ? W.
   induction W; intros ? WFE.
@@ -3475,16 +3492,12 @@ Proof.
     eexists. split. exists 0. intros. destruct n. omega. simpl. eauto.
     rewrite val_type_unfold. repeat split; eauto.
     intros. 
-    assert (stpd2 true true venv0 T1 (vx::venv0) T1 []). eapply stpd2_extend2. eapply stp2_refl; eauto. eu.
-    assert (stpd2 true true (vx::venv0) T2 venv0 T2 []). eapply stpd2_extend1. eapply stp2_refl; eauto. admit. eu.
-    assert (val_type (vx::venv0) vx T1). eapply valtp_extend. eauto. 
-    assert (R_env (vx::venv0) (T1::env)). eapply wf_env_extend. eauto. eauto. 
-    specialize (IHW (vx::venv0) H7). ev.
-    assert ((open (varF (length env)) T2) = T2) as R. unfold open. symmetry. eapply closed_no_open. eauto. 
-    assert (val_type venv0 x1 T2). eapply valtp_widen. eauto. rewrite R. eauto.
-    (* we have all pieces ... *)
-    eexists. split; eauto.
-    
+    assert (R_env (vx::venv0) (T1::env)) as WFE1. eapply wf_env_extend. eapply WFE. eapply unvv. eapply valtp_extend. eauto.
+    specialize (IHW (vx::venv0) WFE1).
+    destruct IHW as [v [EV VT]]. erewrite <-(wf_length venv0 env WFE) in VT.
+    exists v. split. eapply EV. 
+    eapply vtp_subst3. eapply VT. eauto. eauto.
+
   - Case "Sub".
     specialize (IHW venv0 WFE). ev. eexists. split. eauto.
     eapply valtp_widen. eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. unfold R_envh. split. eauto. intros. inversion H2. 
