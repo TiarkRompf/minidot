@@ -3271,6 +3271,13 @@ Proof.
     eapply unvv. eapply valtp_extend. eauto. 
 Qed.
 
+Lemma wf_env_extend0: forall vx G1 H1 T1,
+  R_env H1 G1 ->
+  val_type H1 [] vx T1 0 ->
+  R_env (vx::H1) (T1::G1).
+Proof.
+  intros. eapply wf_env_extend. eapply H. eapply unvv. eapply valtp_extend. eapply H0. 
+Qed.
 
 Lemma restp_widen: forall vf H1 H2 T1 T2,
   res_type H1 vf T1 ->
@@ -3409,6 +3416,17 @@ Proof.
 Qed.
 
 
+(* relating valtp and surface-level stp *)
+Lemma valtp_widen1: forall venv env x T1 T2,
+  val_type venv [] x T1 0 ->
+  stp env [] T1 T2 ->
+  R_env venv env ->
+  val_type venv [] x T2 0.
+Proof.
+  intros. eapply unvv. eapply valtp_widen. eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. unfold R_envh. split. eauto. intros. inversion H2. 
+Qed.
+
+
 
 Lemma invert_abs: forall venv vf T1 T2,
   val_type venv [] vf (TAll T1 T2) 0 ->
@@ -3494,8 +3512,8 @@ Proof.
     rewrite <-(wf_length venv0 env WFE) in H. inversion H; subst. 
     eexists. split. exists 0. intros. destruct n. omega. simpl. eauto.
     rewrite val_type_unfold. repeat split; eauto.
-    intros. 
-    assert (R_env (vx::venv0) (T1::env)) as WFE1. eapply wf_env_extend. eapply WFE. eapply unvv. eapply valtp_extend. eauto.
+    intros.
+    assert (R_env (vx::venv0) (T1::env)) as WFE1. { eapply wf_env_extend0. eapply WFE. eapply H0. }
     specialize (IHW (vx::venv0) WFE1).
     destruct IHW as [v [EV VT]]. rewrite <-(wf_length venv0 env WFE) in VT.
     exists v. split. eapply EV. 
@@ -3503,9 +3521,10 @@ Proof.
 
   - Case "Sub".
     specialize (IHW venv0 WFE). ev. eexists. split. eauto.
-    eapply unvv. eapply valtp_widen. eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. unfold R_envh. split. eauto. intros. inversion H2. 
+    eapply valtp_widen1. eapply H1. eapply H. eapply WFE. 
+
 Grab Existential Variables.
-    apply 0. 
+  apply 0. 
 Qed.
 
 
