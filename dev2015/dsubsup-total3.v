@@ -518,38 +518,6 @@ Inductive val_type0 : venv -> vl -> ty -> Prop :=
 .
 
 
-(* NOTE: crucial to be a smaller type according to tsize! *)
-(* TODO: needs selh case -- but not entirely clear how *)
-Inductive bounds : venv -> ty -> (venv*ty) -> (venv*ty)  -> Prop :=
-| bs_mem: forall G T1 T2,
-    bounds G (TMem T1 T2) (G,T1) (G,T2)
-| bs_sel: forall G GX TX GT1 GT2 x,
-    indexr x G = Some (vty GX TX) ->
-    bounds GX TX GT1 GT2 ->
-    bounds G (TSel (varF x)) GT1 GT2 
-.
-
-
-Lemma bounds_tsize_aux: forall n, forall G1 T1, tsize G1 T1 < n -> forall GL TL GU TU, 
-  bounds G1 T1 (GL, TL) (GU, TU) ->
-  tsize GU TU < n.
-Proof.
-  intros n. induction n. intros. omega.
-  intros. 
-  inversion H0; subst.
-  - (* mem *) simpl in H. omega. 
-  - (* sel *) simpl in H. rewrite H1 in H. rewrite <-tsz_eq in H.
-              assert (tsize GU TU < n). eapply (IHn GX TX). omega. eauto.
-              omega.
-Qed.
-
-Lemma bounds_tsize: forall G1 T1 GL TL GU TU, 
-  bounds G1 T1 (GL, TL) (GU, TU) ->
-  tsize GU TU < S (tsize G1 T1).
-Proof.
-  intros. eapply bounds_tsize_aux. eauto. eauto.
-Qed.
-
 
 Require Coq.Program.Wf.
 
