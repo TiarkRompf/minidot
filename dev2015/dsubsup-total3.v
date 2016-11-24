@@ -3113,9 +3113,8 @@ Lemma valtp_widen_aux: forall n, forall n1 m b vf H1 H2 GH GH1 T1 T2 i,
   n1 < n ->
   length GH1 = length GH ->
   (forall x HX TX, indexr x GH1 = Some (HX,TX) ->
-                   exists v jj,
+                   exists jj,
                      indexr x GH = Some jj /\
-                     val_type HX GH v TX 0 /\
                      (forall vy iy, jj vy iy -> vtp HX GH vy TX iy)) ->
   vtp H2 GH vf T2 i.
 Proof.
@@ -3149,16 +3148,16 @@ Proof.
     rewrite val_type_unfold in H.
     remember H5 as ENV. clear HeqENV.
     specialize (H5 _ _ _ H6).
-    destruct H5. destruct H5. destruct H5. destruct H9. 
+    destruct H5. destruct H5. 
     rewrite H5 in H.
-    assert (x1 vf (S i)). destruct vf; eauto. clear H.
-    assert (vtp GX GH vf TX (S i)). eapply H10. eapply H11. 
+    assert (x0 vf (S i)). destruct vf; eauto. clear H.
+    assert (vtp GX GH vf TX (S i)). eapply H9. eapply H10. 
     assert (vtp H2 GH vf (TMem TBot T2) (S i)). 
     eapply IHn. eapply unvv. eapply H. eapply H8. omega. eapply H4.
     eapply ENV.
     
-    eapply unvv in H12. rewrite val_type_unfold in H12.
-    eapply vv. destruct vf; apply H12. 
+    eapply unvv in H11. rewrite val_type_unfold in H11.
+    eapply vv. destruct vf; apply H11. 
 
   - Case "sela2".
     (* NOTE: currently not supported -- need lower bounds *)
@@ -3179,7 +3178,7 @@ Proof.
 
     assert (val_type H2 GH vx T4 0) as VX0. { eapply VST0. }
     assert (vtp H1 GH vx T0 0) as VX1. {
-      eapply IHn. eapply VST0. eapply H6. omega. omega. eauto. 
+      eapply IHn. eapply VST0. eapply H6. omega. omega. eapply H5.
     }
 
     assert (forall (vy : vl) iy,
@@ -3192,7 +3191,6 @@ Proof.
     eapply unvv in VX1. 
     destruct (LR vx jj VX1 STJ1) as [v [TE VT]]. 
 
-    
     exists v. split. eapply TE. eapply unvv.
 
     (* now deal with function result! *)
@@ -3208,23 +3206,17 @@ Proof.
     intros.
     { case_eq (beq_nat x (length GH)); intros E.
       + simpl in H13. rewrite H4 in H13. rewrite E in H13. inversion H13. subst HX TX.
-        exists vx. exists jj. split. simpl. rewrite E. reflexivity.
-        split. eapply unvv. eapply valtp_extendH. eapply VX0.
-        intros. eapply valtp_extendH. eapply STJ. eapply H14. 
+        exists jj. split. simpl. rewrite E. reflexivity.
+        split. eapply unvv. eapply valtp_extendH. 
+        intros. eapply STJ. eapply H14. 
       + assert (indexr x GH1 = Some (HX, TX)).
         simpl in H13. rewrite H4 in H13. rewrite E in H13. inversion H13. reflexivity.
         specialize (H5 _ _ _ H14). ev.
-        exists x0. exists x1. split. simpl. rewrite E. eapply H5.
-        split. eapply unvv. eapply valtp_extendH. eapply H15.
-        intros. eapply valtp_extendH. eapply unvv. eapply H16. eapply H17.
+        exists x0. split. simpl. rewrite E. eapply H5.
+        intros. eapply valtp_extendH. eapply unvv. eapply H15. eapply H16.
     }
 
     eapply vv. eapply H7. 
-    (* DONE *)
-    
-
-
-    (* --- old --- *)
       
   - Case "wrapf".
     admit. (* eapply IHn. eauto. eapply H4. omega. *)
@@ -3240,7 +3232,7 @@ Lemma valtp_widen: forall vf H1 H2 T1 T2,
   vtp H2 [] vf T2 0.
 Proof.
   intros. destruct H0. eapply valtp_widen_aux; eauto.
-  exists x. split. eauto. intros. inversion H3. 
+  intros. inversion H3. 
 Qed.
 
 
