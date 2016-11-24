@@ -3098,14 +3098,18 @@ Lemma valtp_widen_aux: forall vf H G1 GH GH1 T1 T2 i,
   vtp H GH vf T2 i.
 Proof.
   intros. revert H0 H2 H3 H4 H5. revert H GH vf i.
-  induction H1; intros.
+  induction H1; intros G GHX vf i V0 LG RG LGHX RGHX.
 
   - Case "Top".
-    subst. admit. 
+    eapply vv. rewrite val_type_unfold. admit. (* TODO: i! *)
   - Case "Bot".
-    subst. rewrite val_type_unfold in H1. destruct vf; contradiction.
+    subst. rewrite val_type_unfold in V0. destruct vf; contradiction.
   - Case "mem".
-    subst. admit. 
+    subst. eapply vv.
+    rewrite val_type_unfold in V0; destruct vf; destruct i; try contradiction.
+    rewrite val_type_unfold. eapply unvv. eapply IHstp1. eapply V0. eapply LG. eapply RG. eapply LGHX. eapply RGHX.
+    rewrite val_type_unfold. eapply V0. 
+    rewrite val_type_unfold. eapply unvv. eapply IHstp1. eapply V0. eapply LG. eapply RG. eapply LGHX. eapply RGHX.
   - Case "Sel1".
     subst. admit. (* rewrite val_type_unfold in H. rewrite H6 in H.
     destruct v. destruct vf; contradiction.
@@ -3119,18 +3123,17 @@ Proof.
 
   - Case "sela1".
     subst. 
-    rewrite val_type_unfold in H3.
-    remember H7 as ENV. clear HeqENV.
-    specialize (H7 _ _ H).
-    destruct H7. destruct H7. 
-    rewrite H7 in H3.
-    assert (x0 vf (S i)). destruct vf; eauto. clear H3.
-    assert (vtp H2 GH0 vf TX (S i)). eapply H8. eapply H9. 
-    assert (vtp H2 GH0 vf (TMem TBot T2) (S i)). 
-    eapply IHstp. eapply unvv. eapply H3. eapply H4. eapply H5. eapply H6. eapply ENV. 
+    rewrite val_type_unfold in V0.
+    remember RGHX as ENV. clear HeqENV.
+    specialize (RGHX _ _ H).
+    ev. rewrite H2 in V0.
+    assert (x0 vf (S i)). destruct vf; eauto. clear V0.
+    assert (vtp G GHX vf TX (S i)). eapply H3. eapply H4. 
+    assert (vtp G GHX vf (TMem TBot T2) (S i)). 
+    eapply IHstp. eapply unvv. eapply H5. eapply LG. eapply RG. eapply LGHX. eapply ENV. 
     
-    eapply unvv in H10. rewrite val_type_unfold in H10.
-    eapply vv. destruct vf; apply H10. 
+    eapply unvv in H6. rewrite val_type_unfold in H6.
+    eapply vv. destruct vf; apply H6. 
 
   - Case "sela2".
     (* NOTE: currently not supported -- need lower bounds *)
