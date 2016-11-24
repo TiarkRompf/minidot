@@ -3072,15 +3072,58 @@ Qed.
 
 
 
+(* ### TODO: Extend and Substitute  ### *)
 
+(* NOTE: we need more generic internal lemmas, due to contravariance *)
+
+(* used in wf_env_extend and in main theorem *)
+Lemma valtp_extend: forall i vx vf H1 T1,
+  val_type H1 [] vf T1 i ->
+  vtp (vx::H1) [] vf T1 i.
+Proof.
+  admit.
+Qed.
+
+(* used in valtp_widen *)
 Lemma valtp_extendH: forall vf H1 GH T1 jj i,
   val_type H1 GH vf T1 i -> 
   vtp H1 (jj::GH) vf T1 i.
 Proof.
   admit.
-  (* NOTE: need the reverse direction as well b/c contravariance for function arg *)
 Qed.
 
+
+(* used in invert_abs *)
+Lemma vtp_subst1: forall venv jj v T2,
+  val_type venv [jj] v (open (varH 0) T2) 0 ->
+  closed 0 0 (length venv) T2 ->
+  val_type venv [] v T2 0.
+Proof.
+  admit.  (* TODO: more generic subst_aux lemma *)
+Qed.
+
+(* used in invert_dabs *)
+Lemma vtp_subst2: forall venv jj v x T2,
+  val_type venv [jj] v (open (varH 0) T2) 0 ->
+  indexr x venv = Some jj ->
+  val_type venv [] v (open (varF x) T2) 0.
+Proof.
+  admit.  (* TODO: more generic subst_aux lemma *)
+Qed.
+
+(* used in vabs case of main theorem *)
+Lemma vtp_subst3: forall venv jj v T2,
+  val_type (jj::venv) [] v (open (varF (length venv)) T2) 0 ->
+  val_type venv [jj] v (open (varH 0) T2) 0.
+Proof.
+  admit.  (* TODO: more generic subst_aux lemma *)
+Qed.
+
+
+
+
+
+(* ### Relating Value Typing and Subtyping ### *)
   
 Lemma valtp_widen_aux: forall vf H G1 GH GH1 T1 T2 i,
   val_type H GH vf T1 i -> 
@@ -3111,15 +3154,23 @@ Proof.
     rewrite val_type_unfold. eapply V0. 
     rewrite val_type_unfold. eapply unvv. eapply IHstp1. eapply V0. eapply LG. eapply RG. eapply LGHX. eapply RGHX.
   - Case "Sel1".
-    subst. admit. (* rewrite val_type_unfold in H. rewrite H6 in H.
-    destruct v. destruct vf; contradiction.
-    assert (val_type l GH vf t i). destruct vf; eapply H. clear H.
-    subst. admit. *)
+    subst. 
+    rewrite val_type_unfold in V0.
+    remember RG as ENV. clear HeqENV.
+    specialize (RG _ _ H).
+    ev. rewrite H2 in V0.
+    assert (x0 vf (S i)). destruct vf; eauto. clear V0.
+    assert (vtp G GHX vf TX (S i)). eapply H3. eapply H4. 
+    assert (vtp G GHX vf (TMem TBot T2) (S i)). 
+    eapply IHstp. eapply unvv. eapply H5. eapply LG. eapply ENV. eapply LGHX. eapply RGHX. 
+    
+    eapply unvv in H6. rewrite val_type_unfold in H6.
+    eapply vv. destruct vf; apply H6.
   - Case "Sel2".
+    (* NOTE: currently not supported -- need lower bounds *)
     subst. admit.     
   - Case "selx".
-    subst. admit. (* rewrite val_type_unfold in H. eapply vv. rewrite val_type_unfold.
-    subst. rewrite <-H8 in H9. rewrite H9. eauto. *)
+    eapply vv. eapply V0.
 
   - Case "sela1".
     subst. 
@@ -3139,65 +3190,63 @@ Proof.
     (* NOTE: currently not supported -- need lower bounds *)
     subst. admit. 
   - Case "selax".
-    subst. admit.
+    eapply vv. eapply V0.
 
   - Case "Fun".
-    subst. admit. (* TEMP 
-    rewrite val_type_unfold in H.
-    assert (val_type H2 GH vf (TAll T4 T5) i). rewrite val_type_unfold.
-    subst. destruct vf; destruct i; try solve [inversion H].
-    destruct H as [? [? LR]].
-    assert (closed 0 (length GH) (length H2) T4). admit. (* temp eapply stpd2_closed1. eauto. *)
-    assert (closed 1 (length GH) (length H2) T5). admit.
+    subst. 
+    rewrite val_type_unfold in V0.
+    assert (val_type G GHX vf (TAll T3 T4) i). rewrite val_type_unfold.
+    subst. destruct vf; destruct i; try solve [inversion V0].
+    destruct V0 as [? [? LR]].
+    assert (closed 0 (length GHX) (length G) T3). rewrite <-LG. rewrite <-LGHX. eapply stp_closed in H1_. eapply H1_.
+    assert (closed 1 (length GHX) (length G) T4). rewrite <-LG. rewrite <-LGHX. eapply H1.
     split. eauto. split. eauto. 
     intros vx jj VST0 STJ. 
 
-    assert (val_type H2 GH vx T4 0) as VX0. { eapply VST0. }
-    assert (vtp H1 GH vx T0 0) as VX1. {
-      eapply IHn. eapply VST0. eapply H6. omega. omega. eapply H5.
-    }
+    assert (val_type G GHX vx T3 0) as VX0. { eapply VST0. }
+    assert (vtp G GHX vx T1 0) as VX1. {
+      eapply IHstp1. eapply VST0. eapply LG. eapply RG. eapply LGHX. eapply RGHX. }
 
     assert (forall (vy : vl) iy,
-             jj vy iy ->
-             val_type H1 GH vy T0 iy) as STJ1.
+             jj vy iy -> val_type G GHX vy T1 iy) as STJ1.
     { intros vy iy jjvy. specialize (STJ vy iy jjvy).
-      eapply unvv. eapply IHn. eapply STJ. eapply H6. omega. eapply H4.
-      eapply H5. 
-    }
+      eapply unvv. eapply IHstp1. eapply STJ. eapply LG. eapply RG. eapply LGHX. eapply RGHX. }
     eapply unvv in VX1. 
     destruct (LR vx jj VX1 STJ1) as [v [TE VT]]. 
 
     exists v. split. eapply TE. eapply unvv.
 
     (* now deal with function result! *)
+    rewrite <-LGHX. rewrite <-LGHX in VT.
+    eapply IHstp2. eapply VT. eapply LG.
 
-    rewrite H4 in H10. (* length stp result *)
-    
-    eapply IHn. eapply VT. eapply H10. 
+    (* extend RG *)
+    intros ? ? IX. destruct (RG _ _ IX) as [jj0 [IX1 FA]].
+    exists jj0. split. eapply IX1. intros. eapply valtp_extendH. eapply unvv. eapply FA. eapply H5.
 
-    omega. 
-    simpl. rewrite H4. reflexivity. (* length *) 
+    (* extend LGHX *)
+    simpl. rewrite LGHX. reflexivity.
 
-    (* now env predicate *)
-    intros.
-    { case_eq (beq_nat x (length GH)); intros E.
-      + simpl in H13. rewrite H4 in H13. rewrite E in H13. inversion H13. subst HX TX.
+    (* extend RGHX *)
+    intros ? ? IX.
+    { case_eq (beq_nat x (length GHX)); intros E.
+      + simpl in IX. rewrite LGHX in IX. rewrite E in IX. inversion IX. subst TX.
         exists jj. split. simpl. rewrite E. reflexivity.
         split. eapply unvv. eapply valtp_extendH. 
-        intros. eapply STJ. eapply H14. 
-      + assert (indexr x GH1 = Some (HX, TX)).
-        simpl in H13. rewrite H4 in H13. rewrite E in H13. inversion H13. reflexivity.
-        specialize (H5 _ _ _ H14). ev.
-        exists x0. split. simpl. rewrite E. eapply H5.
-        intros. eapply valtp_extendH. eapply unvv. eapply H15. eapply H16.
+        intros. eapply STJ. eapply H5. 
+      + assert (indexr x GH = Some TX).
+        simpl in IX. rewrite LGHX in IX. rewrite E in IX. inversion IX. reflexivity.
+        specialize (RGHX _ _ H5). ev.
+        exists x0. split. simpl. rewrite E. eapply H6.
+        intros. eapply valtp_extendH. eapply unvv. eapply H7. eapply H8.
     }
 
-    eapply vv. eapply H7. *)
+    eapply vv. eapply H.
       
   - Case "trans".
-    admit. (*
-    assert (val_type G2 GH vf T3). eapply IHn; eauto. omega.
-    eapply IHn; eauto. omega. *)
+    eapply IHstp2. eapply unvv. eapply IHstp1. eapply V0.
+    eapply LG. eapply RG. eapply LGHX. eapply RGHX.
+    eapply LG. eapply RG. eapply LGHX. eapply RGHX. 
 Qed.
 
 Lemma valtp_widen: forall vf GH H G1 T1 T2 i,
@@ -3217,24 +3266,6 @@ Proof.
 Qed.
 
 
-
-(*
-Lemma valtp_reg: forall vf H1 T1,
-  val_type H1 [] vf T1 0 ->
-  stpd2 true true H1 T1 H1 T1 [].
-Proof.
-  intros. eapply valtp_closed in H. 
-  intros. eapply stp2_refl. eapply H.
-Qed.
- *)
-
-Lemma valtp_extend: forall i vx vf H1 T1,
-  val_type H1 [] vf T1 i ->
-  vtp (vx::H1) [] vf T1 i.
-Proof.
-  admit.
-  (* intros. eapply valtp_widen. eauto. eapply stpd2_extend2. eapply valtp_reg. eauto. *)
-Qed.
 
 
 Lemma wf_env_extend: forall vx jj G1 R1 H1 T1,
@@ -3389,34 +3420,6 @@ Qed.
 
 
 (* ### Inversion Lemmas ### *)
-
-(* used in invert_abs *)
-Lemma vtp_subst1: forall venv jj v T2,
-  val_type venv [jj] v (open (varH 0) T2) 0 ->
-  closed 0 0 (length venv) T2 ->
-  val_type venv [] v T2 0.
-Proof.
-  admit.  (* TODO: more generic subst_aux lemma *)
-Qed.
-
-(* used in invert_dabs *)
-Lemma vtp_subst2: forall venv jj v x T2,
-  val_type venv [jj] v (open (varH 0) T2) 0 ->
-  indexr x venv = Some jj ->
-  val_type venv [] v (open (varF x) T2) 0.
-Proof.
-  admit.  (* TODO: more generic subst_aux lemma *)
-Qed.
-
-(* used in vabs case of main theorem *)
-Lemma vtp_subst3: forall venv jj v T2,
-  val_type (jj::venv) [] v (open (varF (length venv)) T2) 0 ->
-  val_type venv [jj] v (open (varH 0) T2) 0.
-Proof.
-  admit.  (* TODO: more generic subst_aux lemma *)
-Qed.
-
-
 
 Lemma invert_abs: forall venv vf T1 T2,
   val_type venv [] vf (TAll T1 T2) 0 ->
