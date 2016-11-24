@@ -3389,7 +3389,7 @@ Qed.
 
 (* ### Inversion Lemmas ### *)
 
-
+(* used in invert_abs *)
 Lemma vtp_subst1: forall venv jj v T2,
   val_type venv [jj] v (open (varH 0) T2) 0 ->
   closed 0 0 (length venv) T2 ->
@@ -3398,6 +3398,7 @@ Proof.
   admit.  (* TODO: more generic subst_aux lemma *)
 Qed.
 
+(* used in vabs case of main theorem *)
 Lemma vtp_subst3: forall venv (jj:vl->nat->Prop) v vx T1 T2,
   val_type (vx::venv) [] v (open (varF (length venv)) T2) 0 ->
   val_type venv [] vx T1 0 ->
@@ -3459,9 +3460,12 @@ Proof.
 
   - Case "Typ".
     repeat eexists. intros. destruct n. inversion H0. simpl. eauto.
-    assert (stpd2 false false venv0 T1 venv0 T1 []). eapply stpd2_wrapf. eapply stp2_refl. rewrite <-(wf_length venv0) in H. eauto. eauto.
-    assert (closed 0 0 (length venv0) T1). eapply stpd2_closed1 in H0. eauto. 
-    rewrite val_type_unfold. eu. eauto. 
+    rewrite <-(wf_length venv0) in H.
+    rewrite val_type_unfold. split. eapply H.
+    (* NOTE: may need to change vty/TMem case *)
+    assert (stpd2 false false venv0 T1 venv0 T1 []). eapply stpd2_wrapf. eapply stp2_refl. eapply H.
+    eu. exists x. exists x. split; eauto.
+    eapply WFE.
     
   - Case "App".
     rewrite <-(wf_length venv0 _ WFE) in H. 
@@ -3487,20 +3491,19 @@ Proof.
   - Case "DApp". admit. (* TODO *)
     
   - Case "Abs".
-    (* FIXME below *)
-    erewrite <-(wf_length venv0 env WFE) in H. inversion H; subst. 
+    rewrite <-(wf_length venv0 env WFE) in H. inversion H; subst. 
     eexists. split. exists 0. intros. destruct n. omega. simpl. eauto.
     rewrite val_type_unfold. repeat split; eauto.
     intros. 
     assert (R_env (vx::venv0) (T1::env)) as WFE1. eapply wf_env_extend. eapply WFE. eapply unvv. eapply valtp_extend. eauto.
     specialize (IHW (vx::venv0) WFE1).
-    destruct IHW as [v [EV VT]]. erewrite <-(wf_length venv0 env WFE) in VT.
+    destruct IHW as [v [EV VT]]. rewrite <-(wf_length venv0 env WFE) in VT.
     exists v. split. eapply EV. 
     eapply vtp_subst3. eapply VT. eauto. eauto.
 
   - Case "Sub".
     specialize (IHW venv0 WFE). ev. eexists. split. eauto.
-    eapply valtp_widen. eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. unfold R_envh. split. eauto. intros. inversion H2. 
+    eapply unvv. eapply valtp_widen. eauto. eapply stpd2_upgrade. eapply stp_to_stp2; eauto. unfold R_envh. split. eauto. intros. inversion H2. 
 Grab Existential Variables.
     apply 0. 
 Qed.
