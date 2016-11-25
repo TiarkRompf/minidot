@@ -304,29 +304,36 @@ Proof.
 Qed.
 
 
+Inductive sel: Type :=
+| tp : sel
+| ub : sel -> sel
+.
+
+Definition vset := vl -> sel -> Prop.
+
 Require Coq.Program.Wf.
 
-Program Fixpoint val_type (env:list (vl->nat->Prop)) (GH:list (vl->nat->Prop)) (v:vl) (T:ty) (i:nat) {measure (tsize_flat T)}: Prop :=
+Program Fixpoint val_type (env:list vset) (GH:list vset) (v:vl) (T:ty) (i:sel) {measure (tsize_flat T)}: Prop :=
   match v,T,i with
-    | vabs env1 T0 y, TAll T1 T2, 0 =>
+    | vabs env1 T0 y, TAll T1 T2, tp =>
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
-      forall vx (jj:vl->nat->Prop),
-        val_type env GH vx T1 0 ->
+      forall vx (jj:vset),
+        val_type env GH vx T1 tp ->
         (forall vy iy, jj vy iy -> val_type env GH vy T1 iy) ->
-        exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2) 0
-    | vty env1 TX, TMem T1 T2, 0 =>
+        exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2) tp
+    | vty env1 TX, TMem T1 T2, tp =>
       closed 0 0 (length env1) TX 
       (* XXX ignoring lower bounds for now *)
-    | _, TMem T1 T2, S i =>
+    | _, TMem T1 T2, ub i =>
       val_type env GH v T2 i
     | _, TSel (varF x), _ =>
       match indexr x env with
-        | Some jj => jj v (S i)
+        | Some jj => jj v (ub i)
         | _ => False
       end
     | _, TSel (varH x), _ =>
       match indexr x GH with
-        | Some jj => jj v (S i)
+        | Some jj => jj v (ub i)
         | _ => False
       end
     | _, TTop, _ =>
@@ -362,25 +369,25 @@ Import WfExtensionality.
 
 Lemma val_type_unfold: forall env GH v T i, val_type env GH v T i =
   match v,T,i with
-    | vabs env1 T0 y, TAll T1 T2, 0 =>
+    | vabs env1 T0 y, TAll T1 T2, tp =>
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
-      forall vx (jj:vl->nat->Prop),
-        val_type env GH vx T1 0 ->
+      forall vx (jj:vset),
+        val_type env GH vx T1 tp ->
         (forall vy iy, jj vy iy -> val_type env GH vy T1 iy) ->
-        exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2) 0
-    | vty env1 TX, TMem T1 T2, 0 =>
+        exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2) tp
+    | vty env1 TX, TMem T1 T2, tp =>
       closed 0 0 (length env1) TX 
       (* XXX ignoring lower bounds for now *)
-    | _, TMem T1 T2, S i =>
+    | _, TMem T1 T2, ub i =>
       val_type env GH v T2 i
     | _, TSel (varF x), _ =>
       match indexr x env with
-        | Some jj => jj v (S i)
+        | Some jj => jj v (ub i)
         | _ => False
       end
     | _, TSel (varH x), _ =>
       match indexr x GH with
-        | Some jj => jj v (S i)
+        | Some jj => jj v (ub i)
         | _ => False
       end
     | _, TTop, _ =>
@@ -419,7 +426,7 @@ Qed.
 
 
 (* make logical relation explicit *)
-Definition R H G t v T := tevaln H t v /\ val_type G [] v T 0.
+Definition R H G t v T := tevaln H t v /\ val_type G [] v T tp.
 
 
 (* consistent environment *)
@@ -428,7 +435,7 @@ Definition R_env venv genv tenv :=
   length genv = length tenv /\
   forall x T1, indexr x tenv = Some T1 ->
     (exists v : vl, R venv genv (tvar x) v T1) /\
-    (exists (jj:vl->nat->Prop), indexr x genv = Some jj /\
+    (exists (jj:vset), indexr x genv = Some jj /\
       (forall vy iy, jj vy iy -> val_type genv [] vy T1 iy))
 .
 
@@ -1112,7 +1119,7 @@ Qed.
 Lemma indexr_safe_ex: forall H1 GH G1 TF i,
              R_env H1 GH G1 ->
              indexr i G1 = Some TF ->
-             exists v, indexr i H1 = Some v /\ val_type GH [] v TF 0.
+             exists v, indexr i H1 = Some v /\ val_type GH [] v TF tp.
 Proof.
   intros. destruct H. destruct H2. destruct (H3 i TF H0) as [[v [E V]] G].
   exists v. split; eauto. destruct E as [n E].
@@ -1123,9 +1130,9 @@ Qed.
 
 
 
-Inductive res_type: list (vl->nat->Prop) -> option vl -> ty -> Prop :=
+Inductive res_type: list vset -> option vl -> ty -> Prop :=
 | not_stuck: forall venv v T,
-      val_type venv [] v T 0 ->
+      val_type venv [] v T tp ->
       res_type venv (Some v) T.
 
 Hint Constructors res_type.
@@ -1813,7 +1820,7 @@ Qed.
 (* ### Value Typing / Logical Relation for Values ### *)
 
 (* this is just to accelerate Coq -- val_type in the goal is slooow *)
-Inductive vtp: (list (vl->nat->Prop)) -> (list (vl->nat->Prop)) -> vl -> ty -> nat -> Prop :=
+Inductive vtp: list vset -> list vset -> vl -> ty -> sel -> Prop :=
 | vv: forall G H v T i, val_type G H v T i -> vtp G H v T i.
 
 
@@ -1868,26 +1875,26 @@ Qed.
 
 (* used in invert_abs *)
 Lemma vtp_subst1: forall venv jj v T2,
-  val_type venv [jj] v (open (varH 0) T2) 0 ->
+  val_type venv [jj] v (open (varH 0) T2) tp ->
   closed 0 0 (length venv) T2 ->
-  val_type venv [] v T2 0.
+  val_type venv [] v T2 tp.
 Proof.
   admit.  (* TODO: more generic subst_aux lemma *)
 Qed.
 
 (* used in invert_dabs *)
 Lemma vtp_subst2: forall venv jj v x T2,
-  val_type venv [jj] v (open (varH 0) T2) 0 ->
+  val_type venv [jj] v (open (varH 0) T2) tp ->
   indexr x venv = Some jj ->
-  val_type venv [] v (open (varF x) T2) 0.
+  val_type venv [] v (open (varF x) T2) tp.
 Proof.
   admit.  (* TODO: more generic subst_aux lemma *)
 Qed.
 
 (* used in vabs case of main theorem *)
 Lemma vtp_subst3: forall venv jj v T2,
-  val_type (jj::venv) [] v (open (varF (length venv)) T2) 0 ->
-  val_type venv [jj] v (open (varH 0) T2) 0.
+  val_type (jj::venv) [] v (open (varF (length venv)) T2) tp ->
+  val_type venv [jj] v (open (varH 0) T2) tp.
 Proof.
   admit.  (* TODO: more generic subst_aux lemma *)
 Qed.
@@ -1932,9 +1939,9 @@ Proof.
     remember RG as ENV. clear HeqENV.
     specialize (RG _ _ H).
     ev. rewrite H2 in V0.
-    assert (x0 vf (S i)). destruct vf; eauto. clear V0.
-    assert (vtp G GHX vf TX (S i)). eapply H3. eapply H4. 
-    assert (vtp G GHX vf (TMem TBot T2) (S i)). 
+    assert (x0 vf (ub i)). destruct vf; eauto. clear V0.
+    assert (vtp G GHX vf TX (ub i)). eapply H3. eapply H4. 
+    assert (vtp G GHX vf (TMem TBot T2) (ub i)). 
     eapply IHstp. eapply unvv. eapply H5. eapply LG. eapply ENV. eapply LGHX. eapply RGHX. 
     
     eapply unvv in H6. rewrite val_type_unfold in H6.
@@ -1953,9 +1960,9 @@ Proof.
     remember RGHX as ENV. clear HeqENV.
     specialize (RGHX _ _ H).
     ev. rewrite H2 in V0.
-    assert (x0 vf (S i)). destruct vf; eauto. clear V0.
-    assert (vtp G GHX vf TX (S i)). eapply H3. eapply H4. 
-    assert (vtp G GHX vf (TMem TBot T2) (S i)). 
+    assert (x0 vf (ub i)). destruct vf; eauto. clear V0.
+    assert (vtp G GHX vf TX (ub i)). eapply H3. eapply H4. 
+    assert (vtp G GHX vf (TMem TBot T2) (ub i)). 
     eapply IHstp. eapply unvv. eapply H5. eapply LG. eapply RG. eapply LGHX. eapply ENV. 
     
     eapply unvv in H6. rewrite val_type_unfold in H6.
@@ -1978,8 +1985,8 @@ Proof.
     split. eauto. split. eauto. 
     intros vx jj VST0 STJ. 
 
-    assert (val_type G GHX vx T3 0) as VX0. { eapply VST0. }
-    assert (vtp G GHX vx T1 0) as VX1. {
+    assert (val_type G GHX vx T3 tp) as VX0. { eapply VST0. }
+    assert (vtp G GHX vx T1 tp) as VX1. {
       eapply IHstp1. eapply VST0. eapply LG. eapply RG. eapply LGHX. eapply RGHX. }
 
     assert (forall (vy : vl) iy,
@@ -2043,7 +2050,7 @@ Qed.
 
 Lemma wf_env_extend: forall vx jj G1 R1 H1 T1,
   R_env H1 R1 G1 ->
-  val_type (jj::R1) [] vx T1 0 ->
+  val_type (jj::R1) [] vx T1 tp ->
   (forall vy iy, jj vy iy -> val_type (jj::R1) [] vy T1 iy) ->
   R_env (vx::H1) (jj::R1) (T1::G1).
 Proof.
@@ -2064,9 +2071,9 @@ Proof.
     intros. eapply unvv. eapply valtp_extend. eapply H4. assumption.
 Qed.
 
-Lemma wf_env_extend0: forall vx (jj:vl->nat->Prop) G1 R1 H1 T1,
+Lemma wf_env_extend0: forall vx (jj:vset) G1 R1 H1 T1,
   R_env H1 R1 G1 ->
-  val_type R1 [] vx T1 0 ->
+  val_type R1 [] vx T1 tp ->
   (forall vy iy, jj vy iy -> val_type R1 [] vy T1 iy) ->
   R_env (vx::H1) (jj::R1) (T1::G1).
 Proof.
@@ -2090,12 +2097,12 @@ Qed.
 (* ### Inversion Lemmas ### *)
 
 Lemma invert_abs: forall venv vf T1 T2,
-  val_type venv [] vf (TAll T1 T2) 0 ->
+  val_type venv [] vf (TAll T1 T2) tp ->
   exists env TX y,
     vf = (vabs env TX y) /\ 
     (closed 0 0 (length venv) T2 -> forall vx : vl,
-       val_type venv [] vx T1 0 ->
-       exists v : vl, tevaln (vx::env) y v /\ val_type venv [] v T2 0).
+       val_type venv [] vx T1 tp ->
+       exists v : vl, tevaln (vx::env) y v /\ val_type venv [] v T2 tp).
 Proof.
   intros. 
   rewrite val_type_unfold in H.   
@@ -2105,7 +2112,7 @@ Proof.
 
   intros. 
   
-  assert (exists (jj:vl->nat->Prop), forall vy iy,
+  assert (exists (jj:vset), forall vy iy,
     jj vy iy -> val_type venv0 [] vy T1 iy). exists (fun vy iy => val_type venv0 [] vy T1 iy). intros. eapply H3.
   
   ev.
@@ -2119,15 +2126,15 @@ Qed.
 
 
 Lemma invert_dabs: forall venv vf T1 T2 x jj,
-  val_type venv [] vf (TAll T1 T2) 0 ->
+  val_type venv [] vf (TAll T1 T2) tp ->
   indexr x venv = Some jj ->
   (forall vy iy,
     jj vy iy -> val_type venv [] vy T1 iy) ->
   exists env TX y,
     vf = (vabs env TX y) /\
     forall vx : vl,
-       val_type venv [] vx T1 0 ->
-       exists v : vl, tevaln (vx::env) y v /\ val_type venv [] v (open (varF x) T2) 0.
+       val_type venv [] vx T1 tp ->
+       exists v : vl, tevaln (vx::env) y v /\ val_type venv [] v (open (varF x) T2) tp.
 Proof.
   intros. 
   rewrite val_type_unfold in H.   
@@ -2152,7 +2159,7 @@ Qed.
 
 Theorem full_total_safety : forall e tenv T,
   has_type tenv e T -> forall venv renv, R_env venv renv tenv ->
-  exists v, tevaln venv e v /\ val_type renv [] v T 0.
+  exists v, tevaln venv e v /\ val_type renv [] v T tp.
 Proof.
   intros ? ? ? W.
   induction W; intros ? ? WFE.
