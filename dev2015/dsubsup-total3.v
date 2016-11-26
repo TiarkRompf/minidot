@@ -1899,6 +1899,14 @@ Proof.
   admit.
 Qed.
 
+Lemma valtp_shrinkH: forall vf H1 GH T1 jj i,
+  val_type H1 (jj::GH) vf T1 i ->
+  closed 0 (length GH) (length H1) T1 ->                     
+  vtp H1 GH vf T1 i.
+Proof.
+  admit.
+Qed.
+
 
 (* used in invert_abs *)
 Lemma vtp_subst1: forall venv jj v T2,
@@ -2051,19 +2059,26 @@ Proof.
     assert (val_type G GHX vf (TAll T3 T4) i). rewrite val_type_unfold.
     subst. destruct vf; destruct i; try solve [inversion V0].
     destruct V0 as [? [? LR]].
-    assert (closed 0 (length GHX) (length G) T3). rewrite <-LG. rewrite <-LGHX. eapply stp_closed in H1_. eapply H1_.
+    assert (closed 0 (length GHX) (length G) T3). rewrite <-LG. rewrite <-LGHX. eapply stp_closed in stp1. eapply stp1.
     assert (closed 1 (length GHX) (length G) T4). rewrite <-LG. rewrite <-LGHX. eapply H1.
     split. eauto. split. eauto. 
     intros vx jj VST0 STJ. 
 
+    specialize (IHstp1 _ _ LG RG LGHX RGHX).
+    
     assert (val_type G GHX vx T3 tp) as VX0. { eapply VST0. }
     assert (vtp G GHX vx T1 tp) as VX1. {
-      eapply IHstp1. eapply VST0. eapply LG. eapply RG. eapply LGHX. eapply RGHX. }
+      specialize (IHstp1 vx tp). simpl in IHstp1. eapply IHstp1. eapply VST0. }
 
-    assert (forall (vy : vl) iy,
-             jj vy iy -> val_type G GHX vy T1 iy) as STJ1.
-    { intros vy iy jjvy. specialize (STJ vy iy jjvy).
-      eapply unvv. eapply IHstp1. eapply STJ. eapply LG. eapply RG. eapply LGHX. eapply RGHX. }
+    assert (forall (vy : vl) iy, 
+              if pos iy then jj vy iy -> val_type G GHX vy T1 iy
+              else val_type G GHX vy T1 iy -> jj vy iy) as STJ1.
+    { intros vy iy. specialize (STJ vy iy).
+      remember (pos iy) as p. destruct p.
+      specialize (IHstp1 vy iy). rewrite <-Heqp0 in IHstp1.
+      intros. eapply unvv. eapply IHstp1. eapply STJ. assumption.
+      specialize (IHstp1 vy iy). rewrite <-Heqp0 in IHstp1.
+      intros. eapply STJ. eapply unvv. eapply IHstp1. assumption. }
     eapply unvv in VX1. 
     destruct (LR vx jj VX1 STJ1) as [v [TE VT]]. 
 
@@ -2071,11 +2086,28 @@ Proof.
 
     (* now deal with function result! *)
     rewrite <-LGHX. rewrite <-LGHX in VT.
-    eapply IHstp2. eapply VT. eapply LG.
+
+    (* broaden goal so that we can apply stp2 *)
+    assert (if pos tp then
+      val_type G (jj :: GHX) v (open (varH (length GH)) T2) tp ->
+      vtp G (jj :: GHX) v (open (varH (length GH)) T4) tp
+    else 
+      val_type G (jj :: GHX) v (open (varH (length GH)) T4) tp ->
+      vtp G (jj :: GHX) v (open (varH (length GH)) T2) tp) as ST2. {
+    
+    eapply IHstp2. eapply LG.
 
     (* extend RG *)
     intros ? ? IX. destruct (RG _ _ IX) as [jj0 [IX1 FA]].
-    exists jj0. split. eapply IX1. intros. eapply valtp_extendH. eapply unvv. eapply FA. eapply H5.
+    assert (exists vy, jj0 vy tp) as E. admit. (* TODO: require type inhabited *)
+    destruct E as [vy ?].
+    assert (vtp G GHX vy TX tp). specialize (FA vy tp). simpl in FA. eapply FA. assumption.
+    assert (closed 0 (length GHX) (length G) TX). admit. (* valtp_closed *)
+    exists jj0. split. eapply IX1. intros.
+    remember FA as FA'. clear HeqFA'. specialize (FA' vy0 iy).
+    remember (pos iy) as p. destruct p. 
+    intros. eapply valtp_extendH. eapply unvv. eapply FA'. assumption.
+    intros. eapply FA'. eapply valtp_shrinkH. eapply unvv. eassumption. assumption.
 
     (* extend LGHX *)
     simpl. rewrite LGHX. reflexivity.
@@ -2085,22 +2117,46 @@ Proof.
     { case_eq (beq_nat x (length GHX)); intros E.
       + simpl in IX. rewrite LGHX in IX. rewrite E in IX. inversion IX. subst TX.
         exists jj. split. simpl. rewrite E. reflexivity.
-        split. eapply unvv. eapply valtp_extendH. 
-        intros. eapply STJ. eapply H5. 
+        intros. specialize (STJ vy iy). remember (pos iy) as p. destruct p; intros.  
+        eapply valtp_extendH. eapply STJ. assumption.
+        eapply STJ. eapply unvv. eapply valtp_shrinkH. eapply unvv. eassumption.
+        admit. (* closed 0 (length GHX) (length G) T3 --- valtp_closed *)
       + assert (indexr x GH = Some TX).
         simpl in IX. rewrite LGHX in IX. rewrite E in IX. inversion IX. reflexivity.
         specialize (RGHX _ _ H5). ev.
         exists x0. split. simpl. rewrite E. eapply H6.
-        intros. eapply valtp_extendH. eapply unvv. eapply H7. eapply H8.
+        intros. specialize (H7 vy iy). remember (pos iy) as p. destruct p; intros.  
+        eapply valtp_extendH. eapply unvv. eapply H7. eapply H8.
+        assert (exists vy0, vtp G GHX vy0 TX tp). admit. (* TODO: require! *) ev.
+        eapply H7. eapply valtp_shrinkH. eapply unvv. eassumption.
+        admit. (* closed 0 (length GHX) (length G) T3 --- valtp_closed *)
     }
 
+    }
+    simpl in ST2. eapply ST2. eapply VT. 
+
+    assumption.
+    assumption.
+    assumption.
+    assumption.
+    assumption.
     eapply vv. eapply H.
+
+  - rewrite val_type_unfold in V0. rewrite <-Heqp in V0.
+    destruct vf; destruct i; try inversion V0. simpl in Heqp. inversion Heqp.
       
   - Case "trans".
+    specialize (IHstp1 _ _ LG RG LGHX RGHX vf i).
+    specialize (IHstp2 _ _ LG RG LGHX RGHX vf i).
+    rewrite <-Heqp in *.
     eapply IHstp2. eapply unvv. eapply IHstp1. eapply V0.
-    eapply LG. eapply RG. eapply LGHX. eapply RGHX.
-    eapply LG. eapply RG. eapply LGHX. eapply RGHX. 
+  - specialize (IHstp1 _ _ LG RG LGHX RGHX vf i).
+    specialize (IHstp2 _ _ LG RG LGHX RGHX vf i).
+    rewrite <-Heqp in *.
+    eapply IHstp1. eapply unvv. eapply IHstp2. eapply V0.
 Qed.
+
+(* --- up to here --- *)
 
 Lemma valtp_widen: forall vf GH H G1 T1 T2 i,
   val_type GH [] vf T1 i ->
