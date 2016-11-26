@@ -1944,6 +1944,11 @@ Lemma valtp_widen_aux: forall G1 GH1 T1 T2,
   forall (H: list vset) GH,
     length G1 = length H ->
     (forall x TX, indexr x G1 = Some TX ->
+                  (* NOTE: add 
+                       (1) type inhabited, i.e., exists vy, jj vy tp 
+                       (2) lb <: ub, i.e., forall vy iy, if pos iy then
+                                               jj vy (lb iy) -> jj vy (ub iy) else
+                                               jj vy (ub iy) -> jj vy (lb iy) *)
                    exists jj,
                      indexr x H = Some jj /\
                      (forall vy iy, if pos iy then jj vy iy -> vtp H GH vy TX iy
