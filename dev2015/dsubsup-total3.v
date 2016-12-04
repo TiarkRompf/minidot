@@ -392,9 +392,11 @@ Lemma val_type_unfold: forall env GH v T i, val_type env GH v T i =
     | vabs env1 T0 y, TAll T1 T2, tp =>
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
       forall vx (jj:vset),
-        val_type env GH vx T1 tp ->
+        (* val_type env GH vx T1 tp -> *) jj vx tp ->
         (forall vy iy, if pos iy then jj vy iy -> val_type env GH vy T1 iy
                        else           val_type env GH vy T1 iy -> jj vy iy) ->
+        (forall vy iy, if pos iy then jj vy (lb iy) -> jj vy (ub iy) 
+                       else           jj vy (ub iy) -> jj vy (lb iy)) ->
         exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2) tp
     | vty env1 TX, TMem T1 T2, tp =>
       closed 0 0 (length env1) TX 
@@ -1949,16 +1951,22 @@ Lemma valtp_widen_aux: forall G1 GH1 T1 T2,
                        (2) lb <: ub, i.e., forall vy iy, if pos iy then
                                                jj vy (lb iy) -> jj vy (ub iy) else
                                                jj vy (ub iy) -> jj vy (lb iy) *)
-                   exists jj,
+                   exists vx jj,
                      indexr x H = Some jj /\
+                     jj vx tp /\
                      (forall vy iy, if pos iy then jj vy iy -> vtp H GH vy TX iy
-                                    else           vtp H GH vy TX iy -> jj vy iy)) ->
+                                    else           vtp H GH vy TX iy -> jj vy iy) /\
+                     (forall vy iy, if pos iy then jj vy (lb iy) -> jj vy (ub iy) 
+                                    else           jj vy (ub iy) -> jj vy (lb iy))) ->
     length GH1 = length GH ->
     (forall x TX, indexr x GH1 = Some TX ->
-                   exists jj,
+                   exists vx jj,
                      indexr x GH = Some jj /\
+                     jj vx tp /\
                      (forall vy iy, if pos iy then jj vy iy -> vtp H GH vy TX iy
-                                    else           vtp H GH vy TX iy -> jj vy iy)) ->
+                                    else           vtp H GH vy TX iy -> jj vy iy) /\
+                     (forall vy iy, if pos iy then jj vy (lb iy) -> jj vy (ub iy) 
+                                    else           jj vy (ub iy) -> jj vy (lb iy))) ->
   (forall vf i, if (pos i) then
      val_type H GH vf T1 i -> vtp H GH vf T2 i
    else
