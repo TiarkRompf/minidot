@@ -1905,6 +1905,15 @@ Proof.
   admit.
 Qed.
 
+(* used in wf_env_extend *)
+Lemma valtp_shrink: forall i vx vf H1 T1,
+  val_type (vx::H1) [] vf T1 i ->
+  closed 0 0 (length H1) T1 ->                     
+  vtp H1 [] vf T1 i.
+Proof.
+  admit.
+Qed.
+
 (* used in valtp_widen *)
 Lemma valtp_extendH: forall vf H1 GH T1 jj i,
   val_type H1 GH vf T1 i -> 
@@ -2254,34 +2263,56 @@ Qed.
 Lemma wf_env_extend: forall vx jj G1 R1 H1 T1,
   R_env H1 R1 G1 ->
   val_type (jj::R1) [] vx T1 tp ->
-  (forall vy iy, jj vy iy -> val_type (jj::R1) [] vy T1 iy) ->
+  jj vx tp -> (* redundant? *)
+  (forall vy iy, if pos iy then jj vy iy -> vtp (jj::R1) [] vy T1 iy
+                 else           vtp (jj::R1) [] vy T1 iy -> jj vy iy) ->
+  (forall vy iy, if pos iy then jj vy (lb iy) -> jj vy (ub iy) 
+                 else           jj vy (ub iy) -> jj vy (lb iy)) ->
   R_env (vx::H1) (jj::R1) (T1::G1).
 Proof.
   intros. unfold R_env in *. destruct H as [L1 [L2 U]].
   split. simpl. rewrite L1. reflexivity.
   split. simpl. rewrite L2. reflexivity.
   intros. simpl in H. case_eq (beq_nat x (length G1)); intros E; rewrite E in H.
-  - inversion H. subst T0. split. exists vx. unfold R. split.
+  - inversion H. subst T1. split. exists vx. unfold R. split.
     exists 0. intros. destruct n. omega. simpl. rewrite <-L1 in E. rewrite E. reflexivity.
     assumption.
-    simpl. rewrite <-L2 in E. rewrite E. exists jj. split. reflexivity. assumption.
-  - destruct (U x T0 H) as [[vy [EV VY]] IR]. split.
+    simpl. rewrite <-L2 in E. rewrite E. exists vx. exists jj.
+    split. reflexivity. split. assumption. split. assumption. assumption.
+  - destruct (U x TX H) as [[vy [EV VY]] IR]. split.
     exists vy. split.
     destruct EV as [n EV]. assert (S n > n) as N. omega. specialize (EV (S n) N). simpl in EV.
     exists n. intros. destruct n0. omega. simpl. rewrite <-L1 in E. rewrite E. assumption.
     eapply unvv. eapply valtp_extend. assumption.
-    ev. exists x0. split. simpl. rewrite <-L2 in E. rewrite E. assumption.
-    intros. eapply unvv. eapply valtp_extend. eapply H4. assumption.
+    ev. exists x0. exists x1. split. simpl. rewrite <-L2 in E. rewrite E. assumption.
+    split. assumption. split.
+    intros. specialize (H7 vy0 iy). remember (pos iy) as p. destruct p.
+    intros. eapply valtp_extend. eapply unvv. eapply H7. assumption.
+    intros. eapply H7. eapply valtp_shrink. eapply unvv. eassumption.
+    eapply valtp_closed in VY. eapply VY.
+    assumption.
 Qed.
 
 Lemma wf_env_extend0: forall vx (jj:vset) G1 R1 H1 T1,
   R_env H1 R1 G1 ->
-  val_type R1 [] vx T1 tp ->
+  jj vx tp -> 
+  (forall vy iy, if pos iy then jj vy iy -> vtp R1 [] vy T1 iy
+                 else           vtp R1 [] vy T1 iy -> jj vy iy) ->
+  (forall vy iy, if pos iy then jj vy (lb iy) -> jj vy (ub iy) 
+                 else           jj vy (ub iy) -> jj vy (lb iy)) ->
   (forall vy iy, jj vy iy -> val_type R1 [] vy T1 iy) ->
   R_env (vx::H1) (jj::R1) (T1::G1).
 Proof.
-  intros. eapply wf_env_extend. eapply H. eapply unvv. eapply valtp_extend. eapply H0.
-  intros. eapply unvv. eapply valtp_extend. eapply H2. assumption.
+  intros.
+  assert (val_type R1 [] vx T1 tp) as V0.
+  specialize (H2 vx tp). simpl in H2. eapply unvv. eapply H2. assumption.
+  eapply wf_env_extend. assumption. eapply unvv. eapply valtp_extend. eapply V0.
+  assumption.
+  intros. specialize (H2 vy iy). remember (pos iy) as p. destruct p.
+  intros. eapply valtp_extend. eapply unvv. eapply H2. assumption.
+  intros. eapply H2. eapply valtp_shrink. eapply unvv. eassumption.
+  eapply unvv in H5. eapply valtp_closed in V0. apply V0.
+  assumption.
 Qed.
 
 (*
