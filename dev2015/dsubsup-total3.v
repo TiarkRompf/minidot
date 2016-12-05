@@ -2380,12 +2380,14 @@ Qed.
 Lemma invert_dabs: forall venv vf T1 T2 x jj,
   val_type venv [] vf (TAll T1 T2) tp ->
   indexr x venv = Some jj ->
-  (forall vy iy,
-    jj vy iy -> val_type venv [] vy T1 iy) ->
+  (forall vy iy, if pos iy then jj vy iy -> val_type venv [] vy T1 iy
+                 else           val_type venv [] vy T1 iy -> jj vy iy) ->
+  (forall vy iy, if pos iy then jj vy (lb iy) -> jj vy (ub iy)
+                 else           jj vy (ub iy) -> jj vy (lb iy)) ->
   exists env TX y,
     vf = (vabs env TX y) /\
     forall vx : vl,
-       val_type venv [] vx T1 tp ->
+       jj vx tp ->
        exists v : vl, tevaln (vx::env) y v /\ val_type venv [] v (open (varF x) T2) tp.
 Proof.
   intros. 
@@ -2396,12 +2398,14 @@ Proof.
 
   intros. 
   
-  specialize (H3 vx jj H4 H1). 
+  specialize (H4 vx jj H5 H1 H2). 
   ev.
   exists x0.
-  split. eapply H3.
+  split. eapply H4.
 
-  eapply vtp_subst2. eapply H5. eapply H0.
+  eapply vtp_subst2. eapply H6. eapply H0.
+
+  inversion H. destruct H4. reflexivity.
 Qed.
 
 
