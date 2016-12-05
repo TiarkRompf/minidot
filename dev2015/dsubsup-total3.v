@@ -461,10 +461,15 @@ Definition R H G t v T := tevaln H t v /\ val_type G [] v T tp.
 Definition R_env venv genv tenv :=
   length venv = length tenv /\
   length genv = length tenv /\
-  forall x T1, indexr x tenv = Some T1 ->
-    (exists v : vl, R venv genv (tvar x) v T1) /\
-    (exists (jj:vset), indexr x genv = Some jj /\
-      (forall vy iy, jj vy iy -> val_type genv [] vy T1 iy))
+  forall x TX, indexr x tenv = Some TX ->
+    (exists v : vl, R venv genv (tvar x) v TX) /\
+    (exists vx (jj:vset),
+       indexr x genv = Some jj /\
+       jj vx tp /\ (* redundant for now *)
+       (forall vy iy, if pos iy then jj vy iy -> val_type genv [] vy TX iy
+                      else           val_type genv [] vy TX iy -> jj vy iy) /\
+       (forall vy iy, if pos iy then jj vy (lb iy) -> jj vy (ub iy) 
+                      else           jj vy (ub iy) -> jj vy (lb iy)))
 .
 
 
