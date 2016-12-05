@@ -2060,12 +2060,60 @@ Proof.
     eapply vv. eapply V0.
   - eapply vv. eapply V0.
 
-  - Case "sela1".
-    admit. (* like sel1 *)
-  - admit. 
-  - Case "sela2".
-    admit. (* like sel2 *)
-  - admit.
+  (* exactly the same as sel1/sel2, modulo RG/RGHX *)
+  - Case "Sel1".
+    subst. 
+    rewrite val_type_unfold in V0.
+    remember RGHX as ENV. clear HeqENV.
+    specialize (RGHX _ _ H).
+    ev. rewrite H1 in V0.
+    assert (x1 vf (ub i)). destruct vf; eauto. clear V0.
+    assert (vtp G GHX vf TX (ub i)). specialize (H3 vf (ub i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
+    assert (vtp G GHX vf (TMem TBot T2) (ub i)).
+    specialize (IHstp _ _ LG RG LGHX ENV vf (ub i)). simpl in IHstp. rewrite <-Heqp in IHstp.
+    eapply IHstp. eapply unvv. assumption.
+    
+    eapply unvv in H7. rewrite val_type_unfold in H7.
+    destruct vf; eapply vv; apply H7.
+  - eapply vv. rewrite val_type_unfold.
+    remember RGHX as ENV. clear HeqENV.
+    specialize (RGHX _ _ H).
+    ev. rewrite H1.    
+    assert (vtp G GHX vf (TMem TBot T2) (ub i)). eapply vv. rewrite val_type_unfold. destruct vf; assumption.
+    assert (vtp G GHX vf TX (ub i)).
+    specialize (IHstp _ _ LG RG LGHX ENV vf (ub i)). simpl in IHstp. rewrite <-Heqp in IHstp. eapply IHstp. eapply unvv. assumption.
+    assert (x1 vf (ub i)).
+    specialize (H3 vf (ub i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
+    destruct vf; assumption.
+  - Case "Sel2".
+    eapply vv. rewrite val_type_unfold.
+    remember RGHX as ENV. clear HeqENV.
+    specialize (RGHX _ _ H).
+    ev. rewrite H1.    
+    assert (vtp G GHX vf (TMem T1 TTop) (lb i)). eapply vv. rewrite val_type_unfold. destruct vf; assumption.
+    assert (vtp G GHX vf TX (lb i)).
+    specialize (IHstp _ _ LG RG LGHX ENV vf (lb i)). simpl in IHstp. rewrite <-Heqp in IHstp. eapply IHstp. eapply unvv. assumption.
+    assert (x1 vf (lb i)).
+    specialize (H3 vf (lb i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
+    assert (x1 vf (ub i)). specialize (H4 vf i). rewrite <-Heqp in H4. eapply H4. assumption.
+    destruct vf; assumption.
+   - subst. 
+    rewrite val_type_unfold in V0.
+    remember RGHX as ENV. clear HeqENV.
+    specialize (RGHX _ _ H).
+    ev. rewrite H1 in V0.
+    assert (x1 vf (ub i)). destruct vf; eauto. clear V0.
+    assert (x1 vf (lb i)). specialize (H4 vf i). rewrite <-Heqp in H4. eapply H4. assumption.
+    assert (vtp G GHX vf TX (lb i)). specialize (H3 vf (lb i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
+    assert (vtp G GHX vf (TMem T1 TTop) (lb i)).
+    specialize (IHstp _ _ LG RG LGHX ENV vf (lb i)). simpl in IHstp. rewrite <-Heqp in IHstp.
+    eapply IHstp. eapply unvv. assumption.
+    
+    eapply unvv in H8. rewrite val_type_unfold in H8.
+    destruct vf; eapply vv; apply H8.
+
+
+    
   - Case "selax".
     eapply vv. eapply V0.
   - eapply vv. eapply V0.
