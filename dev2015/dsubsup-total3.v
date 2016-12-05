@@ -399,8 +399,7 @@ Lemma val_type_unfold: forall env GH v T i, val_type env GH v T i =
                        else           jj vy (ub iy) -> jj vy (lb iy)) ->
         exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2) tp
     | vty env1 TX, TMem T1 T2, tp =>
-      closed 0 0 (length env1) TX 
-      (* XXX ignoring lower bounds for now *)
+      closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2
     | _, TMem T1 T2, ub i =>
       val_type env GH v T2 i
     | _, TMem T1 T2, lb i =>
@@ -418,7 +417,7 @@ Lemma val_type_unfold: forall env GH v T i, val_type env GH v T i =
     | _, TTop, _ =>
       pos i = true
     | _, TAll _ _, _ =>
-      pos i = true
+      pos i = true /\ i <> tp
     | _, TBot, _ =>
       pos i = false
     | _,_,_ =>
@@ -1860,30 +1859,38 @@ Proof.
 Qed.
 
 
-(* Lemma valtp_closed: forall vf GH H1 T1 i,
-  val_type H1 GH vf T1 i ->
-  closed 0 (length GH) (length H1) T1.
-Proof.
-  intros. destruct T1; destruct vf;
-  rewrite val_type_unfold in H; try eauto; try contradiction.
-  - (* fun *) destruct i; try contradiction. ev. econstructor. eauto. eauto.
-  - (* sel *) destruct v; try remember (indexr i0 H1) as L; try destruct L as [[?|?]|]; try contradiction. destruct L. 
-              econstructor. eapply indexr_max. eauto.
-              admit. admit.  (* selH *)
-  - (* sel *) destruct v; try remember (indexr i0 H1) as L; try destruct L; try contradiction.
-              econstructor. eapply indexr_max. eauto.
-              admit. admit. (* selH *)
-  - (* mem *) ev. econstructor. admit. (*eapply stp2_closed1 in H0. eauto. eapply stp2_closed2 in H. eauto.*)
-
-              admit.  (* temp GH = [] *)
-  - admit. 
-Qed. *)
-
-
 
 (* ### TODO: Extend and Substitute  ### *)
 
 (* NOTE: we need more generic internal lemmas, due to contravariance *)
+
+(* used in valtp_widen *)
+Lemma valtp_closed: forall vf GH H1 T1,
+  val_type H1 GH vf T1 tp ->
+  closed 0 (length GH) (length H1) T1.
+Proof.
+  intros. destruct T1; destruct vf;
+  rewrite val_type_unfold in H; try eauto; try contradiction.
+  - (* fun *) ev. econstructor. eauto. eauto.
+  - inversion H. destruct H2. reflexivity.
+  - (* sel *) destruct v.
+              remember (indexr i H1) as L; try destruct L as [?|]; try contradiction.
+              constructor. eapply indexr_max. eauto.
+              remember (indexr i GH) as L; try destruct L as [?|]; try contradiction.
+              constructor. eapply indexr_max. eauto. 
+              inversion H. 
+  - (* sel *) destruct v.
+              remember (indexr i H1) as L; try destruct L as [?|]; try contradiction.
+              constructor. eapply indexr_max. eauto.
+              remember (indexr i GH) as L; try destruct L as [?|]; try contradiction.
+              constructor. eapply indexr_max. eauto. 
+              inversion H.
+  - (* mem *) ev. econstructor; eauto. 
+Qed.
+
+
+
+
 
 (* used in wf_env_extend and in main theorem *)
 Lemma valtp_extend: forall i vx vf H1 T1,
@@ -1946,11 +1953,6 @@ Lemma valtp_widen_aux: forall G1 GH1 T1 T2,
   forall (H: list vset) GH,
     length G1 = length H ->
     (forall x TX, indexr x G1 = Some TX ->
-                  (* NOTE: add 
-                       (1) type inhabited, i.e., exists vy, jj vy tp 
-                       (2) lb <: ub, i.e., forall vy iy, if pos iy then
-                                               jj vy (lb iy) -> jj vy (ub iy) else
-                                               jj vy (ub iy) -> jj vy (lb iy) *)
                    exists vx jj,
                      indexr x H = Some jj /\
                      jj vx tp /\
@@ -1986,7 +1988,8 @@ Proof.
     subst. 
     rewrite val_type_unfold in V0. 
     eapply vv. rewrite val_type_unfold. destruct i.
-    + eapply V0.
+    + destruct vf. eapply V0. eapply stp_closed1 in stp2. eapply stp_closed2 in stp1.
+      rewrite <-LG. rewrite <-LGHX. split; eassumption.
     + simpl in Heqp. specialize (IHstp1 _ _ LG RG LGHX RGHX vf i). rewrite <-Heqp in IHstp1.
       destruct vf; eapply unvv; eapply IHstp1; assumption.
     + simpl in Heqp. assert (false = pos i) as Heqp'. destruct (pos i). inversion Heqp. reflexivity.
@@ -1995,7 +1998,8 @@ Proof.
   - subst. 
     rewrite val_type_unfold in V0. 
     eapply vv. rewrite val_type_unfold. destruct i.
-    + eapply V0.
+    + destruct vf. eapply V0. eapply stp_closed2 in stp2. eapply stp_closed1 in stp1.
+      rewrite <-LG. rewrite <-LGHX. split; eassumption.
     + simpl in Heqp. specialize (IHstp1 _ _ LG RG LGHX RGHX vf i). rewrite <-Heqp in IHstp1.
       destruct vf; eapply unvv; eapply IHstp1; assumption.
     + simpl in Heqp. assert (true = pos i) as Heqp'. destruct (pos i). reflexivity. inversion Heqp.
@@ -2114,7 +2118,7 @@ Proof.
     (* extend RG *)
     intros ? ? IX. destruct (RG _ _ IX) as [vx0 [jj0 [IX1 [VJ0 [FA FAB]]]]].
     assert (vtp G GHX vx0 TX tp). specialize (FA vx0 tp). simpl in FA. eapply FA. assumption.
-    assert (closed 0 (length GHX) (length G) TX). admit. (* valtp_closed *)
+    assert (closed 0 (length GHX) (length G) TX). eapply valtp_closed. eapply unvv. eassumption.
     exists vx0. exists jj0. split. eapply IX1. split. assumption. split.
     (* jj -> val_type *) intros.
     remember FA as FA'. clear HeqFA'. specialize (FA' vy iy).
@@ -2135,8 +2139,7 @@ Proof.
         intros. specialize (STJ vy iy). remember (pos iy) as p. destruct p; intros.  
         eapply valtp_extendH. eapply STJ. assumption.
         eapply STJ. eapply unvv. eapply valtp_shrinkH. eapply unvv. eassumption.
-        admit. (* closed 0 (length GHX) (length G) T3 --- valtp_closed *)
-        assumption.
+        assumption. assumption.
       + assert (indexr x GH = Some TX) as IX0.
         simpl in IX. rewrite LGHX in IX. rewrite E in IX. inversion IX. reflexivity.
         specialize (RGHX _ _ IX0). ev.
@@ -2145,7 +2148,7 @@ Proof.
         intros. specialize (H7 vy iy). remember (pos iy) as p. destruct p; intros.  
         eapply valtp_extendH. eapply unvv. eapply H7. assumption.
         eapply H7. eapply valtp_shrinkH. eapply unvv. eassumption.
-        admit. (* closed 0 (length GHX) (length G) T3 --- valtp_closed *)
+        eapply valtp_closed. eapply unvv. eassumption.
         assumption.
     }
 
@@ -2160,7 +2163,8 @@ Proof.
     eapply vv. eapply H.
 
   - rewrite val_type_unfold in V0. rewrite <-Heqp in V0.
-    destruct vf; destruct i; try inversion V0. simpl in Heqp. inversion Heqp.
+    destruct vf; destruct i; inversion V0; inversion H2;
+    simpl in Heqp; inversion Heqp.
       
   - Case "trans".
     specialize (IHstp1 _ _ LG RG LGHX RGHX vf i).
