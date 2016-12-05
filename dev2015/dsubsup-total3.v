@@ -332,12 +332,14 @@ Program Fixpoint val_type (env:list vset) (GH:list vset) (v:vl) (T:ty) (i:sel) {
     | vabs env1 T0 y, TAll T1 T2, tp =>
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
       forall vx (jj:vset),
-        val_type env GH vx T1 tp ->
-        (forall vy iy, jj vy iy -> val_type env GH vy T1 iy) ->
+        (* val_type env GH vx T1 tp -> *) jj vx tp ->
+        (forall vy iy, if pos iy then jj vy iy -> val_type env GH vy T1 iy
+                       else           val_type env GH vy T1 iy -> jj vy iy) ->
+        (forall vy iy, if pos iy then jj vy (lb iy) -> jj vy (ub iy) 
+                       else           jj vy (ub iy) -> jj vy (lb iy)) ->
         exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2) tp
     | vty env1 TX, TMem T1 T2, tp =>
-      closed 0 0 (length env1) TX 
-      (* XXX ignoring lower bounds for now *)
+      closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2
     | _, TMem T1 T2, ub i =>
       val_type env GH v T2 i
     | _, TMem T1 T2, lb i =>
@@ -355,7 +357,9 @@ Program Fixpoint val_type (env:list vset) (GH:list vset) (v:vl) (T:ty) (i:sel) {
     | _, TTop, _ =>
       pos i = true
     | _, TAll _ _, _ =>
-      pos i = true
+      pos i = true /\ i <> tp
+    | _, TBot, _ =>
+      pos i = false
     | _,_,_ =>
       False
   end.
@@ -368,14 +372,8 @@ Next Obligation. simpl. omega. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1.  Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1.  Qed.
-(*Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1.  Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1.  Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0. Qed.*)
 
 (* 
-   ISSUE: 
    The expansion of val_type, val_type_func is incomprehensible. 
    We cannot (easily) unfold and reason about it. Therefore, we prove unfolding of
    val_type to its body as a lemma.
