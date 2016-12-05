@@ -2075,13 +2075,14 @@ Proof.
     assert (closed 0 (length GHX) (length G) T3). rewrite <-LG. rewrite <-LGHX. eapply stp_closed in stp1. eapply stp1.
     assert (closed 1 (length GHX) (length G) T4). rewrite <-LG. rewrite <-LGHX. eapply H1.
     split. eauto. split. eauto. 
-    intros vx jj VST0 STJ. 
+    intros vx jj VST0 STJ STB. 
 
     specialize (IHstp1 _ _ LG RG LGHX RGHX).
     
-    assert (val_type G GHX vx T3 tp) as VX0. { eapply VST0. }
+    assert (val_type G GHX vx T3 tp) as VX0. {
+      specialize (STJ vx tp). simpl in STJ. eapply STJ. eapply VST0. }
     assert (vtp G GHX vx T1 tp) as VX1. {
-      specialize (IHstp1 vx tp). simpl in IHstp1. eapply IHstp1. eapply VST0. }
+      specialize (IHstp1 vx tp). simpl in IHstp1. eapply IHstp1. eapply VX0. }
 
     assert (forall (vy : vl) iy, 
               if pos iy then jj vy iy -> val_type G GHX vy T1 iy
@@ -2093,7 +2094,7 @@ Proof.
       specialize (IHstp1 vy iy). rewrite <-Heqp0 in IHstp1.
       intros. eapply STJ. eapply unvv. eapply IHstp1. assumption. }
     eapply unvv in VX1. 
-    destruct (LR vx jj VX1 STJ1) as [v [TE VT]]. 
+    destruct (LR vx jj VST0 STJ1 STB) as [v [TE VT]]. 
 
     exists v. split. eapply TE. eapply unvv.
 
@@ -2111,17 +2112,17 @@ Proof.
     eapply IHstp2. eapply LG.
 
     (* extend RG *)
-    intros ? ? IX. destruct (RG _ _ IX) as [jj0 [IX1 FA]].
-    assert (exists vy, jj0 vy tp) as E. admit. (* TODO: require type inhabited *)
-    destruct E as [vy ?].
-    assert (vtp G GHX vy TX tp). specialize (FA vy tp). simpl in FA. eapply FA. assumption.
+    intros ? ? IX. destruct (RG _ _ IX) as [vx0 [jj0 [IX1 [VJ0 [FA FAB]]]]].
+    assert (vtp G GHX vx0 TX tp). specialize (FA vx0 tp). simpl in FA. eapply FA. assumption.
     assert (closed 0 (length GHX) (length G) TX). admit. (* valtp_closed *)
-    exists jj0. split. eapply IX1. intros.
-    remember FA as FA'. clear HeqFA'. specialize (FA' vy0 iy).
+    exists vx0. exists jj0. split. eapply IX1. split. assumption. split.
+    (* jj -> val_type *) intros.
+    remember FA as FA'. clear HeqFA'. specialize (FA' vy iy).
     remember (pos iy) as p. destruct p. 
     intros. eapply valtp_extendH. eapply unvv. eapply FA'. assumption.
     intros. eapply FA'. eapply valtp_shrinkH. eapply unvv. eassumption. assumption.
-
+    (* jj lb -> jj ub *) apply FAB. 
+    
     (* extend LGHX *)
     simpl. rewrite LGHX. reflexivity.
 
@@ -2129,20 +2130,23 @@ Proof.
     intros ? ? IX.
     { case_eq (beq_nat x (length GHX)); intros E.
       + simpl in IX. rewrite LGHX in IX. rewrite E in IX. inversion IX. subst TX.
-        exists jj. split. simpl. rewrite E. reflexivity.
+        exists vx. exists jj. split. simpl. rewrite E. reflexivity.
+        split. assumption. split.
         intros. specialize (STJ vy iy). remember (pos iy) as p. destruct p; intros.  
         eapply valtp_extendH. eapply STJ. assumption.
         eapply STJ. eapply unvv. eapply valtp_shrinkH. eapply unvv. eassumption.
         admit. (* closed 0 (length GHX) (length G) T3 --- valtp_closed *)
-      + assert (indexr x GH = Some TX).
+        assumption.
+      + assert (indexr x GH = Some TX) as IX0.
         simpl in IX. rewrite LGHX in IX. rewrite E in IX. inversion IX. reflexivity.
-        specialize (RGHX _ _ H5). ev.
-        exists x0. split. simpl. rewrite E. eapply H6.
+        specialize (RGHX _ _ IX0). ev.
+        assert (vtp G GHX x0 TX tp). specialize (H7 x0 tp). simpl in H7. eapply H7. assumption.
+        exists x0. exists x1. split. simpl. rewrite E. eapply H5. split. assumption. split. 
         intros. specialize (H7 vy iy). remember (pos iy) as p. destruct p; intros.  
-        eapply valtp_extendH. eapply unvv. eapply H7. eapply H8.
-        assert (exists vy0, vtp G GHX vy0 TX tp). admit. (* TODO: require! *) ev.
+        eapply valtp_extendH. eapply unvv. eapply H7. assumption.
         eapply H7. eapply valtp_shrinkH. eapply unvv. eassumption.
         admit. (* closed 0 (length GHX) (length G) T3 --- valtp_closed *)
+        assumption.
     }
 
     }
