@@ -1959,6 +1959,19 @@ Proof.
 Qed.
 
 
+(* ### Inhabited types have `Good Bounds` ### *)
+
+(* used in invert_abs *)
+Lemma valtp_bounds: forall G v T1,
+  val_type G [] v T1 tp ->
+  forall (vy : vl) (iy : sel),
+    if pos iy
+    then val_type G [] vy T1 (lb iy) -> val_type G [] vy T1 (ub iy)
+    else val_type G [] vy T1 (ub iy) -> val_type G [] vy T1 (lb iy).
+Proof.
+  admit.
+Qed.
+
 
 
 (* ### Relating Value Typing and Subtyping ### *)
@@ -2305,7 +2318,6 @@ Lemma wf_env_extend0: forall vx (jj:vset) G1 R1 H1 T1,
                  else           vtp R1 [] vy T1 iy -> jj vy iy) ->
   (forall vy iy, if pos iy then jj vy (lb iy) -> jj vy (ub iy) 
                  else           jj vy (ub iy) -> jj vy (lb iy)) ->
-  (forall vy iy, jj vy iy -> val_type R1 [] vy T1 iy) ->
   R_env (vx::H1) (jj::R1) (T1::G1).
 Proof.
   intros.
@@ -2316,7 +2328,7 @@ Proof.
   intros. specialize (H2 vy iy). remember (pos iy) as p. destruct p.
   intros. eapply valtp_extend. eapply unvv. eapply H2. assumption.
   intros. eapply H2. eapply valtp_shrink. eapply unvv. eassumption.
-  eapply unvv in H5. eapply valtp_closed in V0. apply V0.
+  eapply unvv in H4. eapply valtp_closed in V0. apply V0.
   assumption.
 Qed.
 
@@ -2330,16 +2342,7 @@ Proof.
 Qed.
 *)
 
-(* used in invert_abs *)
-Lemma valtp_bounds: forall G v T1,
-  val_type G [] v T1 tp ->
-  forall (vy : vl) (iy : sel),
-    if pos iy
-    then val_type G [] vy T1 (lb iy) -> val_type G [] vy T1 (ub iy)
-    else val_type G [] vy T1 (ub iy) -> val_type G [] vy T1 (lb iy).
-Proof.
-  admit.
-Qed.
+
 
 (* ### Inversion Lemmas ### *)
 
@@ -2518,14 +2521,19 @@ Proof.
     eexists. split. exists 0. intros. destruct n. omega. simpl. eauto.
     rewrite val_type_unfold. repeat split; eauto.
     intros.
-    assert (R_env (vx::venv0) (jj::renv) (T1::env)) as WFE1. { eapply wf_env_extend0. eapply WFE. eapply H0. eapply H1. }
+    assert (R_env (vx::venv0) (jj::renv) (T1::env)) as WFE1. {
+      eapply wf_env_extend0. eapply WFE. eapply H0.
+      intros. specialize (H1 vy iy). destruct (pos iy).
+      intros. eapply vv. eapply H1. assumption.
+      intros. eapply H1. eapply unvv. assumption.
+      assumption. }
     specialize (IHW (vx::venv0) (jj::renv) WFE1).
     destruct IHW as [v [EV VT]]. rewrite <-(wf_length2 _ _ _ WFE) in VT. 
     exists v. split. eapply EV. 
     eapply vtp_subst3. eapply VT. 
 
   - Case "Sub".
-    specialize (IHW venv0 renv WFE). ev. eexists. split. eauto.
+    specialize (IHW venv0 renv WFE). ev. eexists. split. eassumption.
     eapply unvv. eapply valtp_widen. eapply H1. eapply H. eapply WFE. 
 
 Grab Existential Variables.
