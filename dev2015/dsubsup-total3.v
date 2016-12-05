@@ -476,6 +476,7 @@ Definition R_env venv genv tenv :=
   forall x TX, indexr x tenv = Some TX ->
     (exists v : vl, R venv genv (tvar x) v TX) /\
     (exists vx (jj:vset),
+       indexr x venv = Some vx /\
        indexr x genv = Some jj /\
        jj vx tp /\ (* do we need both this and R above? *)
        (forall vy iy, if pos iy then jj vy iy -> vtp genv [] vy TX iy
@@ -2252,7 +2253,8 @@ Proof.
     then val_type GH [] vf0 T1 i -> vtp GH [] vf0 T2 i
     else val_type GH [] vf0 T2 i -> vtp GH [] vf0 T1 i).
   eapply valtp_widen_aux. eassumption. destruct H2 as [L1 [L2 ?]]. omega.
-  { intros. destruct H2 as [L1 [L2 A]]. eapply A. assumption. }
+  { intros. destruct H2 as [L1 [L2 A]]. specialize (A _ _ H3). ev.
+    eexists. eexists. repeat split; eassumption.  }
   reflexivity.
   { intros. simpl in H3. inversion H3. }
   specialize (H3 vf tp). simpl in H3. eapply H3. assumption.
@@ -2276,19 +2278,22 @@ Proof.
   intros. simpl in H. case_eq (beq_nat x (length G1)); intros E; rewrite E in H.
   - inversion H. subst T1. split. exists vx. unfold R. split.
     exists 0. intros. destruct n. omega. simpl. rewrite <-L1 in E. rewrite E. reflexivity.
-    assumption.
-    simpl. rewrite <-L2 in E. rewrite E. exists vx. exists jj.
-    split. reflexivity. split. assumption. split. assumption. assumption.
+    assumption. exists vx. exists jj.
+    split. simpl. rewrite <-L1 in E. rewrite E. reflexivity.
+    split. simpl. rewrite <-L2 in E. rewrite E. reflexivity.
+    split. assumption. split. assumption. assumption.
   - destruct (U x TX H) as [[vy [EV VY]] IR]. split.
     exists vy. split.
     destruct EV as [n EV]. assert (S n > n) as N. omega. specialize (EV (S n) N). simpl in EV.
     exists n. intros. destruct n0. omega. simpl. rewrite <-L1 in E. rewrite E. assumption.
     eapply unvv. eapply valtp_extend. assumption.
-    ev. exists x0. exists x1. split. simpl. rewrite <-L2 in E. rewrite E. assumption.
+    ev. exists x0. exists x1. 
+    split. simpl. rewrite <-L1 in E. rewrite E. assumption.
+    split. simpl. rewrite <-L2 in E. rewrite E. assumption.
     split. assumption. split.
-    intros. specialize (H7 vy0 iy). remember (pos iy) as p. destruct p.
-    intros. eapply valtp_extend. eapply unvv. eapply H7. assumption.
-    intros. eapply H7. eapply valtp_shrink. eapply unvv. eassumption.
+    intros. specialize (H8 vy0 iy). remember (pos iy) as p. destruct p.
+    intros. eapply valtp_extend. eapply unvv. eapply H8. assumption.
+    intros. eapply H8. eapply valtp_shrink. eapply unvv. eassumption.
     eapply valtp_closed in VY. eapply VY.
     assumption.
 Qed.
@@ -2428,8 +2433,8 @@ Proof.
 
   - Case "Typ".
     repeat eexists. intros. destruct n. inversion H0. simpl. eauto.
-    rewrite <-(wf_length venv0 renv) in H.
-    rewrite val_type_unfold. eapply H.
+    rewrite <-(wf_length2 venv0 renv) in H.
+    rewrite val_type_unfold. simpl. split; eapply H.
     (* NOTE: may need to change vty/TMem case *)
     (* assert (stpd2 false false venv0 T1 venv0 T1 []). eapply stpd2_wrapf. eapply stp2_refl. eapply H. eu. exists x. exists x. split; eauto. *)
     eapply WFE.
@@ -2461,16 +2466,37 @@ Proof.
     destruct (IHW2 venv0 renv WFE) as [vx [IW2 HVX]].
 
     (* TODO: extract this into a lemma? *)
-    assert (exists jj, indexr x renv = Some jj /\ (forall vy iy, jj vy iy -> val_type renv [] vy T1 iy)). { unfold R_env in WFE. ev. remember (tvar x) as E. clear W1 IHW1 IHW2 HVF HVX IW1 IW2. induction W2; inversion HeqE; try subst x0.
+    assert (exists vx jj,
+              indexr x venv0 = Some vx /\
+              indexr x renv = Some jj /\
+              jj vx tp /\
+              (forall vy iy, if pos iy then jj vy iy -> vtp renv [] vy T1 iy
+                             else           vtp renv [] vy T1 iy -> jj vy iy) /\
+              (forall vy iy, if pos iy then jj vy (lb iy) -> jj vy (ub iy)
+                             else           jj vy (ub iy) -> jj vy (lb iy))) as B.
+    { unfold R_env in WFE. ev. remember (tvar x) as E. clear W1 IHW1 IHW2 HVF HVX IW1 IW2. induction W2; inversion HeqE; try subst x0.
     + destruct (H3 _ _ H4). assumption.
     + specialize (IHW2 H5 H1 H2 H3). ev.
-      eexists. split. eassumption. intros. eapply unvv. eapply valtp_widen. eapply H7. assumption. eassumption. unfold R_env. split. eapply H1. split. eapply H2. eapply H3. }
+      eexists. eexists. split. eassumption. split. eassumption. split. assumption. split.
+      assert (forall vy iy, if pos iy then val_type renv [] vy T1 iy -> vtp renv [] vy T0 iy
+                            else           val_type renv [] vy T0 iy -> vtp renv [] vy T1 iy) as A.
+      eapply valtp_widen_aux. eassumption. omega.
+      intros. specialize (H3 _ _ H11). destruct H3. ev. eexists. eexists. repeat split; eassumption. auto.
+      intros. inversion H11.
+      intros. specialize (A vy iy). specialize (H9 vy iy). destruct (pos iy).
+      intros. eapply A. eapply unvv. eapply H9. assumption.
+      intros. eapply H9. eapply A. eapply unvv. assumption.
+      assumption. }
 
     ev. 
     eapply invert_dabs in HVF.
     destruct HVF as [venv1 [TX [y [HF IHF]]]].
 
-    destruct (IHF vx HVX) as [vy [IW3 HVY]].
+    (* shouldn't be needed *)
+    assert (x0 = vx). { destruct IW2. assert (S x2 > x2) as SS. omega. specialize (H6 (S x2) SS). simpl in H6. inversion H6. rewrite H8 in H1. inversion H1. reflexivity. }
+    subst x0.                      
+                      
+    destruct (IHF vx H3) as [vy [IW3 HVY]].
 
     exists vy. split. {
       (* pick large enough n. nf+nx+ny will do. *)
@@ -2478,11 +2504,14 @@ Proof.
       destruct IW2 as [nx IWX].
       destruct IW3 as [ny IWY].
       exists (S (nf+nx+ny)). intros. destruct n. omega. simpl.
-      rewrite IWF. subst vf. rewrite IWX. rewrite IWY. eauto.
+      rewrite IWF. subst vf. rewrite IWX. rewrite IWY. reflexivity.
       omega. omega. omega.
     }
-    subst T. eapply HVY. eapply H1. eapply H2. 
-
+    subst T. eapply HVY. eapply H2. intros. specialize (H4 vy iy). destruct (pos iy).
+    intros. eapply unvv. eapply H4. assumption.
+    intros. eapply H4. eapply vv. assumption.
+    assumption.
+    
   - Case "Abs".
     rewrite <-(wf_length2 _ _ _ WFE) in H.
     inversion H; subst. 
