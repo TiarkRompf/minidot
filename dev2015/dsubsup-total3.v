@@ -2325,8 +2325,16 @@ Proof.
 Qed.
 *)
 
-
-
+(* used in invert_abs *)
+Lemma valtp_bounds: forall G v T1,
+  val_type G [] v T1 tp ->
+  forall (vy : vl) (iy : sel),
+    if pos iy
+    then val_type G [] vy T1 (lb iy) -> val_type G [] vy T1 (ub iy)
+    else val_type G [] vy T1 (ub iy) -> val_type G [] vy T1 (lb iy).
+Proof.
+  admit.
+Qed.
 
 (* ### Inversion Lemmas ### *)
 
@@ -2346,16 +2354,26 @@ Proof.
 
   intros. 
   
-  assert (exists (jj:vset), forall vy iy,
-    jj vy iy -> val_type venv0 [] vy T1 iy). exists (fun vy iy => val_type venv0 [] vy T1 iy). intros. eapply H3.
-  
+  assert (exists (jj:vset),
+            jj vx tp /\
+            (forall vy iy, if pos iy then jj vy iy -> val_type venv0 [] vy T1 iy
+                           else           val_type venv0 [] vy T1 iy -> jj vy iy) /\
+            (forall vy iy, if pos iy then jj vy (lb iy) -> jj vy (ub iy)
+                           else           jj vy (ub iy) -> jj vy (lb iy))) as A. {
+    exists (fun vy iy => val_type venv0 [] vy T1 iy). split.
+    assumption. split.
+    intros. destruct (pos iy); intros; assumption.
+    eapply valtp_bounds. eapply H2. }
+                                                                                 
   ev.
-  specialize (H1 vx x H2 H3). 
+  specialize (H1 vx x H3 H4 H5). 
   ev.
   exists x0.
   split. eapply H1.
 
-  eapply vtp_subst1. eapply H4. eapply C. 
+  eapply vtp_subst1. eapply H6. eapply C.
+
+  inversion H. destruct H1. reflexivity.
 Qed.
 
 
