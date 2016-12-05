@@ -453,6 +453,18 @@ Proof.
 Qed.
 
 
+(* this is just to accelerate Coq -- val_type in the goal is slooow *)
+Inductive vtp: list vset -> list vset -> vl -> ty -> sel -> Prop :=
+| vv: forall G H v T i, val_type G H v T i -> vtp G H v T i.
+
+
+Lemma unvv: forall G H v T i,
+  vtp G H v T i -> val_type G H v T i.
+Proof.
+  intros. inversion H0. subst. apply H2.
+Qed.
+
+
 (* make logical relation explicit *)
 Definition R H G t v T := tevaln H t v /\ val_type G [] v T tp.
 
@@ -465,9 +477,9 @@ Definition R_env venv genv tenv :=
     (exists v : vl, R venv genv (tvar x) v TX) /\
     (exists vx (jj:vset),
        indexr x genv = Some jj /\
-       jj vx tp /\ (* redundant for now *)
-       (forall vy iy, if pos iy then jj vy iy -> val_type genv [] vy TX iy
-                      else           val_type genv [] vy TX iy -> jj vy iy) /\
+       jj vx tp /\ (* do we need both this and R above? *)
+       (forall vy iy, if pos iy then jj vy iy -> vtp genv [] vy TX iy
+                      else           vtp genv [] vy TX iy -> jj vy iy) /\
        (forall vy iy, if pos iy then jj vy (lb iy) -> jj vy (ub iy) 
                       else           jj vy (ub iy) -> jj vy (lb iy)))
 .
@@ -1852,18 +1864,6 @@ Qed.
 
 (* ### Value Typing / Logical Relation for Values ### *)
 
-(* this is just to accelerate Coq -- val_type in the goal is slooow *)
-Inductive vtp: list vset -> list vset -> vl -> ty -> sel -> Prop :=
-| vv: forall G H v T i, val_type G H v T i -> vtp G H v T i.
-
-
-Lemma unvv: forall G H v T i,
-  vtp G H v T i -> val_type G H v T i.
-Proof.
-  intros. inversion H0. subst. apply H2.
-Qed.
-
-
 
 (* ### TODO: Extend and Substitute  ### *)
 
@@ -2230,24 +2230,26 @@ Proof.
     eapply IHstp1. eapply unvv. eapply IHstp2. eapply V0.
 Qed.
 
-(* --- up to here --- *)
 
-Lemma valtp_widen: forall vf GH H G1 T1 T2 i,
-  val_type GH [] vf T1 i ->
+Lemma valtp_widen: forall vf GH H G1 T1 T2,
+  val_type GH [] vf T1 tp ->
   stp G1 [] T1 T2 ->
   R_env H GH G1 ->
-  vtp GH [] vf T2 i.
+  vtp GH [] vf T2 tp.
 Proof.
-  intros. eapply valtp_widen_aux. eapply H0. eapply H1. symmetry. eapply (wf_length2 _ _ _ H2). 
-  intros. unfold R_env in *. ev. 
-  specialize (H5 _ _ H3). ev.
-  eexists. split. eapply H6. intros. eapply vv. eapply H7. eapply H8. reflexivity.
-
-  intros. inversion H3. 
+  intros.
+  assert (forall (vf0 : vl) (i : sel),
+    if pos i
+    then val_type GH [] vf0 T1 i -> vtp GH [] vf0 T2 i
+    else val_type GH [] vf0 T2 i -> vtp GH [] vf0 T1 i).
+  eapply valtp_widen_aux. eassumption. destruct H2 as [L1 [L2 ?]]. omega.
+  { intros. destruct H2 as [L1 [L2 A]]. eapply A. assumption. }
+  reflexivity.
+  { intros. simpl in H3. inversion H3. }
+  specialize (H3 vf tp). simpl in H3. eapply H3. assumption.
 Qed.
 
-
-
+(* --- up to here --- *)
 
 Lemma wf_env_extend: forall vx jj G1 R1 H1 T1,
   R_env H1 R1 G1 ->
