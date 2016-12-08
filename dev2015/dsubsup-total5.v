@@ -2568,31 +2568,38 @@ Lemma valtp_bounds: forall G v T1,
 Proof. 
   intros. induction T1; rewrite val_type_unfold in H; try solve by inversion.
 
-  - destruct (pos iy) eqn : A4. intros. rewrite val_type_unfold. destruct vy; assumption.
-    intros. rewrite val_type_unfold in H0. rewrite val_type_unfold. destruct vy; assumption.
+  - (* TTop *) destruct (pos iy) eqn : A4.
+    intros. eapply unvv. rewrite val_type_unfold in H0. simpl in H0. rewrite A4 in H0. destruct vy; inversion H0.
+    intros. eapply unvv. rewrite val_type_unfold in H0. simpl in H0. rewrite A4 in H0. destruct vy; inversion H0.
 
-  - destruct (pos iy) eqn : A4. intros. rewrite val_type_unfold in H0. apply unvv. destruct vy; inversion H0.
-    intros. rewrite val_type_unfold in H0. apply unvv. destruct vy; inversion H0.
+  - (* TBot *) destruct v; inversion H. 
     
-  - destruct v; try solve by inversion. ev. destruct (pos iy). intros. rewrite val_type_unfold in H2.
-    apply unvv. destruct vy; inversion H2. intros. apply unvv. rewrite val_type_unfold in H2.
-    destruct vy ; inversion H2.
+  - (* TFun *) destruct (pos iy) eqn: A4.
+    intros. eapply unvv. rewrite val_type_unfold in H0. destruct vy.
+    ev. simpl in H2. rewrite A4 in H2. inversion H2.
+    ev. simpl in H2. rewrite A4 in H2. inversion H2.
+    intros. eapply unvv. rewrite val_type_unfold in H0. destruct vy.
+    ev. simpl in H2. rewrite A4 in H2. inversion H2.
+    ev. simpl in H2. rewrite A4 in H2. inversion H2.
 
-  - destruct v. 
-    + destruct v0; try solve by inversion. 
-      destruct (indexr i G) eqn: In; try solve by inversion.
-      destruct (pos iy) eqn : A. intros. rewrite val_type_unfold in H0.
-      rewrite val_type_unfold. rewrite In in *. admit.
-      intros. rewrite val_type_unfold in H0. 
-      rewrite val_type_unfold. rewrite In in *. admit.
-    + destruct v0; try solve by inversion.
-      destruct (indexr i G) eqn : In; try solve by inversion.
-      destruct (pos iy) eqn : A. intros. rewrite val_type_unfold in H0.
-      rewrite val_type_unfold. rewrite In in *. admit.
-      intros. rewrite val_type_unfold in H0. 
-      rewrite val_type_unfold. rewrite In in *. admit.
-    
+  - (* TSel *)  
+    destruct v0; try solve [destruct v; inversion H]. 
+      destruct (indexr i G) eqn: In; try solve [destruct v; inversion H].
+      rewrite val_type_unfold in *. rewrite val_type_unfold in *. rewrite In in *.
+      (* We need: 
+            v0 vy (ub (lb iy)) -> 
 
+         It seems like we can fix this if we add two things:
+
+         (1) change val_type so that we have 
+               v0 vy (lb (ub iy)) -> v0 vy (ub (ub iy))
+
+         (2) require predicate on environment (implied by R_env):
+               index i G = Some v0 ->
+               forall vy iy,  v0 vy (lb iy) -> v0 vy (ub iy)
+      *)
+      admit. 
+      
   - destruct v; try solve by inversion. ev. specialize (H1 vy iy).
     destruct (pos iy). intros. rewrite val_type_unfold in H2.
     apply unvv. destruct vy. ev. specialize (H1 H4). apply vv. rewrite val_type_unfold. split.
