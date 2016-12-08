@@ -1862,9 +1862,9 @@ Proof.
     apply unvv. apply vv in H7. apply IHn; try eassumption. unfold open. erewrite <- open_preserves_size.
     simpl in *. omega. eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
     constructor. simpl. omega.
-    + apply vv. rewrite val_type_unfold. assumption.
-    + apply vv. rewrite val_type_unfold. assumption.
-    + apply vv. rewrite val_type_unfold. assumption.
+    + apply vv. rewrite val_type_unfold. ev. repeat split; try assumption; try (eapply closed_upgrade_freef; [eassumption | simpl; auto]). 
+    + apply vv. rewrite val_type_unfold. ev. repeat split; try assumption; try (eapply closed_upgrade_freef; [eassumption | simpl; auto]). 
+    + apply vv. rewrite val_type_unfold. ev. repeat split; try assumption; try (eapply closed_upgrade_freef; [eassumption | simpl; auto]). 
   - destruct vf. destruct i.
     + ev. apply vv. rewrite val_type_unfold. inversion C. subst.
     split; try assumption. split; try assumption. intros.
@@ -1880,9 +1880,10 @@ Proof.
     specialize (H2 H6 H5). ev. exists x. split; try assumption. apply unvv. apply vv in H7. eapply IHn; try eassumption.
     unfold open. erewrite <- open_preserves_size. simpl in *. omega. simpl. eapply closed_open.
     simpl. eapply closed_upgrade_free. eassumption. omega. constructor. omega.
-    + apply vv. rewrite val_type_unfold. assumption.
-    + apply vv. rewrite val_type_unfold. assumption.
-    + apply vv. rewrite val_type_unfold. assumption.
+    + apply vv. rewrite val_type_unfold. ev. inversion C. repeat split; assumption.
+    + apply vv. rewrite val_type_unfold. ev. inversion C. repeat split; assumption.
+    + apply vv. rewrite val_type_unfold. ev. inversion C. repeat split; assumption.
+
 
   - apply vv. rewrite val_type_unfold. destruct vf.
     + destruct v.
@@ -2160,9 +2161,18 @@ Proof.
     apply closed_open. simpl. eapply closed_upgrade_free.
     apply H1. rewrite app_length. omega.
     constructor. simpl. rewrite app_length. omega.
-    + apply vv. rewrite val_type_unfold. simpl. ev. inversion V. 
-    + apply vv. rewrite val_type_unfold. simpl. ev. inversion V.
-    + apply vv. rewrite val_type_unfold. simpl. ev. inversion V.
+    + apply vv. rewrite val_type_unfold. simpl. ev. repeat split.
+      rewrite app_length. simpl. rewrite E. apply closed_splice. assumption.
+      rewrite app_length. simpl. rewrite E. apply closed_splice. assumption.
+      inversion H2; reflexivity. assumption.
+    + apply vv. rewrite val_type_unfold. simpl. ev. repeat split.
+      rewrite app_length. simpl. rewrite E. apply closed_splice. assumption.
+      rewrite app_length. simpl. rewrite E. apply closed_splice. assumption.
+      simpl in H2. rewrite H2. reflexivity. assumption.
+    + apply vv. rewrite val_type_unfold. simpl. ev. repeat split.
+      rewrite app_length. simpl. rewrite E. apply closed_splice. assumption.
+      rewrite app_length. simpl. rewrite E. apply closed_splice. assumption.
+      simpl in H2. rewrite H2. reflexivity. assumption.
 
   - destruct vf. simpl in V. destruct i.
     + ev. apply vv. rewrite val_type_unfold. inversion C. subst.
@@ -2186,9 +2196,10 @@ Proof.
     rewrite app_comm_cons. eapply IHn with (GH0 := GH0); try eassumption. simpl in *. rewrite <- open_preserves_size. omega.
     apply closed_open. simpl. eapply closed_upgrade_free. eassumption. rewrite app_length. omega. constructor. simpl. rewrite app_length.
     omega.
-    + apply vv. rewrite val_type_unfold. simpl. ev. inversion V.
-    + apply vv. rewrite val_type_unfold. simpl. ev. inversion V.
-    + simpl in *. apply vv. rewrite val_type_unfold. simpl. inversion V.
+    + apply vv. rewrite val_type_unfold. simpl. ev. inversion C. repeat split; assumption.
+    + apply vv. rewrite val_type_unfold. simpl. ev. inversion C. repeat split; assumption.
+    + apply vv. rewrite val_type_unfold. simpl in V. ev. inversion C. repeat split; assumption.
+      
 
   - apply vv. rewrite val_type_unfold. destruct vf. simpl in *. destruct v.
     + assumption. 
@@ -2356,9 +2367,18 @@ Proof. induction n; intros ? ? ? ? ? ? ? ? ? Sz Cz Bd Id. inversion Sz.
     eassumption. omega. eapply closed_open2. eassumption. constructor. simpl. omega. omega. 
     eapply Id. apply H8. constructor. eauto. constructor. eauto. omega.
     constructor. eauto. constructor. eauto. omega. 
-    + assumption.
-    + assumption.
-    + assumption.
+    + rewrite app_length in V. simpl in V. ev. repeat split.
+      eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
+      eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
+      eauto. eauto. 
+    + rewrite app_length in V. simpl in V. ev. repeat split.
+      eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
+      eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
+      eauto. eauto. 
+    + rewrite app_length in V. simpl in V. ev. repeat split.
+      eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
+      eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
+      eauto. eauto. 
   
   - inversion Cz. subst. 
     unfold open in *. simpl in *. apply vv. rewrite val_type_unfold in *. destruct v.
@@ -2391,9 +2411,18 @@ Proof. induction n; intros ? ? ? ? ? ? ? ? ? Sz Cz Bd Id. inversion Sz.
     eassumption. omega. eapply closed_open2. eassumption. constructor. simpl. omega. omega. 
     eapply Id. apply H8. constructor. eauto. constructor. eauto. omega.
     constructor. eauto. constructor. eauto. omega. 
-    + assumption.
-    + assumption.
-    + assumption.
+    + ev. rewrite app_length. simpl. repeat split.
+      eapply splice_retreat5. constructor. omega. eauto.
+      eapply splice_retreat5. constructor. omega. eauto.
+      eauto. eauto. 
+    + ev. rewrite app_length. simpl. repeat split.
+      eapply splice_retreat5. constructor. omega. eauto.
+      eapply splice_retreat5. constructor. omega. eauto.
+      eauto. eauto. 
+    + ev. rewrite app_length. simpl. repeat split.
+      eapply splice_retreat5. constructor. omega. eauto.
+      eapply splice_retreat5. constructor. omega. eauto.
+      eauto. eauto. 
 
   - unfold open in *. simpl in *. apply vv. rewrite val_type_unfold in *. 
     destruct v; destruct v0; simpl in *; try apply V.
