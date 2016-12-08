@@ -346,12 +346,12 @@ Program Fixpoint val_type (env:list vset) (GH:list vset) (v:vl) (T:ty) (i:sel) {
       /\ val_type env GH v T1 i
     | _, TSel (varF x), _ =>
       match indexr x env with
-        | Some jj => jj v (ub i)
+        | Some jj => jj v (ub i) (* TODO: use ub_ins *)
         | _ => False
       end
     | _, TSel (varH x), _ =>
       match indexr x GH with
-        | Some jj => jj v (ub i)
+        | Some jj => jj v (ub i) (* TODO: use ub_ins *)
         | _ => False
       end
     | _, TTop, _ => 
