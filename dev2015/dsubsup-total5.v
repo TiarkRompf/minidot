@@ -354,12 +354,13 @@ Program Fixpoint val_type (env:list vset) (GH:list vset) (v:vl) (T:ty) (i:sel) {
         | Some jj => jj v (ub i)
         | _ => False
       end
-    | _, TTop, _ => True
-(*      pos i = true
-    | _, TAll _ _, _ =>
+    | _, TTop, _ => 
+      pos i = true
+    | _, TAll T1 T2, _ =>
+      closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
       pos i = true /\ i <> tp
     | _, TBot, _ =>
-      pos i = false *)
+      pos i = false
     | _,_,_ =>
       False
   end.
@@ -374,11 +375,6 @@ Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed.
 
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
@@ -429,12 +425,13 @@ Lemma val_type_unfold: forall env GH v T i, val_type env GH v T i =
         | Some jj => jj v (ub i)
         | _ => False
       end
-    | _, TTop, _ => True
-(*      pos i = true
-    | _, TAll _ _, _ =>
+    | _, TTop, _ =>
+      pos i = true
+    | _, TAll T1 T2, _ =>
+      closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
       pos i = true /\ i <> tp
     | _, TBot, _ =>
-      pos i = false *)
+      pos i = false
     | _,_,_ =>
       False
   end.
