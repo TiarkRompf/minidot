@@ -1811,8 +1811,8 @@ Lemma valtp_closed: forall vf GH H1 T1 i,
 Proof.
   intros. destruct T1; destruct vf;
   rewrite val_type_unfold in H; try eauto; try contradiction.
-  - (* fun *) destruct i; try solve by inversion.
-    ev. econstructor; eauto.
+  - (* fun *) destruct i; ev; econstructor; assumption.
+  - ev; econstructor; assumption.
   - (* sel *) destruct v.
               remember (indexr i0 H1) as L; try destruct L as [?|]; try contradiction.
               constructor. eapply indexr_max. eauto.
