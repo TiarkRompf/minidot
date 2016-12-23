@@ -2641,41 +2641,75 @@ valtp_bounds1: T10 <: T00 and T01 <: T11
 (* used in invert_abs *)
 Lemma valtp_bounds0: forall G v iy T1,
   val_type G [] v T1 iy ->
-  (forall x (jj:vset) v iy, indexr x G = Some jj -> jj v iy -> (forall vy, jj vy (iy ++ [lb]) -> jj vy (iy ++ [ub]))) ->
-  (forall vy,
-     vtp G [] vy T1 (iy ++ [lb]) -> vtp G [] vy T1 (iy ++ [ub])).
+  (forall x (jj:vset) v iy,
+     indexr x G = Some jj ->
+     jj v iy ->
+     forall vy jy,
+       if pos jy then jj vy (iy ++ (lb::jy)) -> jj vy (iy ++ (ub::jy))
+       else           jj vy (iy ++ (ub::jy)) -> jj vy (iy ++ (lb::jy))) ->
+  forall vy jy,
+    if pos jy then vtp G [] vy T1 (iy ++ (lb::jy)) -> vtp G [] vy T1 (iy ++ (ub::jy))
+    else           vtp G [] vy T1 (iy ++ (ub::jy)) -> vtp G [] vy T1 (iy ++ (lb::jy)).
 Proof. 
-  intros G v iy T1 H R. revert v iy H. induction T1; intros.
+  intros G v iy T1 H R. revert v iy H.
+  induction T1; intros; remember (pos jy) as p; destruct p; intros HV; eapply vv; eapply unvv in HV.
 
   - (* TTop *) 
-    eapply vv. eapply unvv in H0.
     rewrite val_type_unfold in *. rewrite pos_app in *. simpl in *.
-    destruct v; rewrite H in *; destruct vy; inversion H0.
-
+    destruct v; rewrite H in *; destruct vy; rewrite <-Heqp in *; inversion HV.
+  - rewrite val_type_unfold in *. rewrite pos_app in *. simpl in *.
+    destruct v; rewrite H in *; destruct vy; rewrite <-Heqp in *; inversion HV.
+    
   - (* TBot *)
-    eapply vv. eapply unvv in H0. 
     rewrite val_type_unfold in *. rewrite pos_app in *. simpl in *.
-    destruct v; rewrite H in *; destruct vy; inversion H0. 
+    destruct v; rewrite H in *; destruct vy; rewrite <-Heqp in *; inversion HV.
+  - rewrite val_type_unfold in *. rewrite pos_app in *. simpl in *.
+    destruct v; rewrite H in *; destruct vy; rewrite <-Heqp in *; inversion HV.
 
   - (* TFun *)
     clear IHT1_1 IHT1_2.
-    eapply vv. eapply unvv in H0.
-    rewrite val_type_unfold in *. rewrite pos_app in *. simpl in *.
-    destruct v. destruct iy.
-    + simpl in *. destruct vy; ev; inversion H2.
-    + simpl in *. destruct vy; ev.
-      destruct l0. remember (pos iy) as p. destruct p. inversion H5. inversion H2. rewrite H5 in *. inversion H2.
-      destruct l0. remember (pos iy) as p. destruct p. inversion H5. inversion H2. rewrite H5 in *. inversion H2. 
-    + assert (forall a (b:lu), [] = a ++ [b] -> False) as F. admit.
-      ev. rewrite H2 in *. simpl in *. remember (iy ++ [lb]) as L. 
-      destruct vy; ev. destruct L. eapply F in HeqL. inversion HeqL.
-      ev. inversion H5. inversion H5. 
-      
+    assert (forall a (b:lu) c, [] = a ++ (b::c) -> False) as F. admit.
+    assert (pos iy = true). {
+      destruct iy. reflexivity.
+      destruct v; rewrite val_type_unfold in *; ev; assumption.
+    } 
+    assert (exists h1 tl1, iy ++ lb :: jy = h1 :: tl1). admit.
+    assert (exists h2 tl2, iy ++ ub :: jy = h2 :: tl2). admit.
+    ev. rewrite H1 in *. rewrite H2 in *.
+    clear H. 
+
+    rewrite val_type_unfold in *.
+    rewrite <-H2. rewrite pos_app. simpl. rewrite H0. rewrite <-Heqp. simpl. 
+    destruct vy; ev; repeat split; eauto. 
+
+  - clear IHT1_1 IHT1_2.
+    assert (forall a (b:lu) c, [] = a ++ (b::c) -> False) as F. admit.
+    assert (pos iy = true). {
+      destruct iy. reflexivity.
+      destruct v; rewrite val_type_unfold in *; ev; assumption.
+    } 
+    assert (exists h1 tl1, iy ++ lb :: jy = h1 :: tl1). admit.
+    assert (exists h2 tl2, iy ++ ub :: jy = h2 :: tl2). admit.
+    ev. rewrite H1 in *. rewrite H2 in *.
+    clear H. 
+
+    rewrite val_type_unfold in *.
+    rewrite <-H1. rewrite pos_app. simpl. rewrite H0. rewrite <-Heqp. simpl. 
+    destruct vy; ev; repeat split; eauto.
+    
   - (* TSel *)
-    eapply vv. eapply unvv in H0.
     rewrite val_type_unfold in *. simpl in *. destruct v; try solve [destruct v0; inversion H]. 
-    destruct (indexr i G) eqn: In; try solve [destruct v0; inversion H]. 
-    destruct vy; eapply (R _ _ _ (ub::iy) In); eauto; destruct v0; eapply H. 
+    destruct (indexr i G) eqn: In; try solve [destruct v0; inversion H].
+    assert (v v0 (ub::iy)). destruct v0; eapply H. 
+    specialize (R _ _ v0 (ub::iy) In H0 vy jy).
+    rewrite <-Heqp in R. 
+    destruct vy; eapply R; assumption.
+  - rewrite val_type_unfold in *. simpl in *. destruct v; try solve [destruct v0; inversion H]. 
+    destruct (indexr i G) eqn: In; try solve [destruct v0; inversion H].
+    assert (v v0 (ub::iy)). destruct v0; eapply H. 
+    specialize (R _ _ v0 (ub::iy) In H0 vy jy).
+    rewrite <-Heqp in R. 
+    destruct vy; eapply R; assumption.
       
   - (* TMem *)
     clear R. 
