@@ -2551,58 +2551,6 @@ Qed.
 
 (* ### Inhabited types have `Good Bounds` ### *)
 
-(* 
-Then for  T = { { T00 .. T01 } .. {T10 .. T11 } } ,  
-we want to have an ordering 10, 00, 01, 11 
-which seems like it might lead to a Hilbert curve (?)
-
-Then for  T = { { T00 .. T10 } .. {T01 .. T11 } } ,  
-we want to have an ordering 01, 00, 10, 11 
-
-
-*)
-
-(*
-Inductive spth: sel -> sel -> Prop :=
-| spth_tp:
-    spth tp nil
-| spth_p: forall i,
-    pos i = true ->
-    spth (lb i) (ub i)
-| spth_n: forall i,
-    pos i = false ->
-    spth (ub i) (lb i)
-| spth_l: forall i1 i2,
-    spth i1 i2 ->
-    spth (lb i1) (lb i2)
-| spth_u: forall i1 i2,
-    spth i1 i2 ->
-    spth (ub i1) (ub i2)
-.
-
-Lemma spth1: spth (ub (lb tp)) (lb (lb tp)). (* 10 <: 00 *)
-Proof. econstructor; eauto. Qed.
-
-Lemma spth2: spth (lb (lb tp)) (lb (ub tp)). (* 00 <: 01 *)
-Proof. econstructor; econstructor; eauto. Qed.
-
-Lemma spth3: spth (lb (ub tp)) (ub (ub tp)). (* 01 <: 11 *)
-Proof. econstructor; econstructor; eauto. Qed.
-*)
-
-
-Lemma pos_rev: forall iy,
-                 pos iy = pos (rev iy).
-Proof.
-  admit.
-Qed.
-
-Definition sel_comb a b := match a, b with
-                             | lb, lb => ub
-                             | lb, ub => lb
-                             | ub, lb => lb
-                             | ub, ub => ub
-                           end.
 
 Definition bxor a b := match a, b with
                              | false, false => true
@@ -2614,23 +2562,11 @@ Definition bxor a b := match a, b with
 Lemma pos_app: forall a b,
                  pos (a ++ b) = bxor (pos a) (pos b).
 Proof.
-  admit.
+  intros. induction a; intros.
+  simpl. destruct (pos b); reflexivity.
+  simpl. rewrite IHa. destruct a; destruct (pos a0); destruct (pos b); reflexivity. 
 Qed.
 
-
-(*
-
-(T00..T01) .. (T10..T11)
-
-valtp_bounds0: T00 <: T01 and T10 <: T11
-
-valtp_bounds1: T10 <: T00 and T01 <: T11
-
-
-
-
-
-*)
 
 
 
@@ -2668,34 +2604,32 @@ Proof.
 
   - (* TFun *)
     clear IHT1_1 IHT1_2.
-    assert (forall a (b:lu) c, [] = a ++ (b::c) -> False) as F. admit.
     assert (pos iy = true). {
       destruct iy. reflexivity.
       destruct v; rewrite val_type_unfold in *; ev; assumption.
     } 
-    assert (exists h1 tl1, iy ++ lb :: jy = h1 :: tl1). admit.
-    assert (exists h2 tl2, iy ++ ub :: jy = h2 :: tl2). admit.
+    assert (exists h1 tl1, iy ++ lb :: jy = h1 :: tl1). destruct iy. simpl. exists lb. exists jy. reflexivity. simpl. exists l. exists (iy ++ lb :: jy). reflexivity.
+    assert (exists h2 tl2, iy ++ ub :: jy = h2 :: tl2). destruct iy. simpl. exists ub. exists jy. reflexivity. simpl. exists l. exists (iy ++ ub :: jy). reflexivity.
     ev. rewrite H1 in *. rewrite H2 in *.
     clear H. 
 
     rewrite val_type_unfold in *.
     rewrite <-H2. rewrite pos_app. simpl. rewrite H0. rewrite <-Heqp. simpl. 
-    destruct vy; ev; repeat split; eauto. 
+    destruct vy; ev; repeat split; eauto; rewrite H2; unfold not; intros; inversion H6.
 
   - clear IHT1_1 IHT1_2.
-    assert (forall a (b:lu) c, [] = a ++ (b::c) -> False) as F. admit.
     assert (pos iy = true). {
       destruct iy. reflexivity.
       destruct v; rewrite val_type_unfold in *; ev; assumption.
     } 
-    assert (exists h1 tl1, iy ++ lb :: jy = h1 :: tl1). admit.
-    assert (exists h2 tl2, iy ++ ub :: jy = h2 :: tl2). admit.
+    assert (exists h1 tl1, iy ++ lb :: jy = h1 :: tl1). destruct iy. simpl. exists lb. exists jy. reflexivity. simpl. exists l. exists (iy ++ lb :: jy). reflexivity.
+    assert (exists h2 tl2, iy ++ ub :: jy = h2 :: tl2). destruct iy. simpl. exists ub. exists jy. reflexivity. simpl. exists l. exists (iy ++ ub :: jy). reflexivity.
     ev. rewrite H1 in *. rewrite H2 in *.
     clear R H. 
 
     rewrite val_type_unfold in *.
     rewrite <-H1. rewrite pos_app. simpl. rewrite H0. rewrite <-Heqp. simpl. 
-    destruct vy; ev; repeat split; eauto.
+    destruct vy; ev; repeat split; eauto; rewrite H1; unfold not; intros; inversion H6.
     
   - (* TSel *)
     rewrite val_type_unfold in *. simpl in *. destruct v; try solve [destruct v0; inversion H]. 
