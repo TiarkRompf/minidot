@@ -2639,7 +2639,7 @@ valtp_bounds1: T10 <: T00 and T01 <: T11
 
 
 (* used in invert_abs *)
-Lemma valtp_bounds0: forall G v iy T1,
+Lemma valtp_bounds: forall G v iy T1,
   val_type G [] v T1 iy ->
   (forall x (jj:vset) v iy,
      indexr x G = Some jj ->
@@ -2691,7 +2691,7 @@ Proof.
     assert (exists h1 tl1, iy ++ lb :: jy = h1 :: tl1). admit.
     assert (exists h2 tl2, iy ++ ub :: jy = h2 :: tl2). admit.
     ev. rewrite H1 in *. rewrite H2 in *.
-    clear H. 
+    clear R H. 
 
     rewrite val_type_unfold in *.
     rewrite <-H1. rewrite pos_app. simpl. rewrite H0. rewrite <-Heqp. simpl. 
@@ -2712,149 +2712,51 @@ Proof.
     destruct vy; eapply R; assumption.
       
   - (* TMem *)
-    clear R. 
     destruct iy.
-    + simpl in *. eapply vv. eapply unvv in H0. rewrite val_type_unfold in *.
-      destruct v. inversion H. ev. 
-      destruct vy.
-      ev. split. assumption. split. assumption. specialize (H2 (vabs l0 t0 t1) []). simpl in H2. eapply H2. assumption.
-      ev. split. assumption. split. assumption. specialize (H2 (vty l0 t0) []). simpl in H2. eapply H2. assumption.
-    + simpl in *.
-      eapply vv. eapply unvv in H0. rewrite val_type_unfold in *.
-      destruct v; destruct l; destruct vy.
-      ev. split. assumption. split. assumption. eapply unvv. eapply IHT1_1. eassumption. eapply vv. eassumption.
-      ev. split. assumption. split. assumption. eapply unvv. eapply IHT1_1. eassumption. eapply vv. eassumption.
-      ev. split. assumption. split. assumption. eapply unvv. eapply IHT1_2. eassumption. eapply vv. eassumption.
-      ev. split. assumption. split. assumption. eapply unvv. eapply IHT1_2. eassumption. eapply vv. eassumption.
-      ev. split. assumption. split. assumption. eapply unvv. eapply IHT1_1. eassumption. eapply vv. eassumption.
-      ev. split. assumption. split. assumption. eapply unvv. eapply IHT1_1. eassumption. eapply vv. eassumption.
-      ev. split. assumption. split. assumption. eapply unvv. eapply IHT1_2. eassumption. eapply vv. eassumption.
-      ev. split. assumption. split. assumption. eapply unvv. eapply IHT1_2. eassumption. eapply vv. eassumption.
+    + rewrite val_type_unfold in *. destruct v. inversion H.
+      simpl in *. ev. specialize (H1 vy jy). rewrite <-Heqp in H1.
+      destruct vy; ev.
+      split. assumption. split. assumption. eapply H1. assumption.
+      split. assumption. split. assumption. eapply H1. assumption.
+    + rewrite val_type_unfold in *. simpl in *.
+      destruct l.
+      * assert (val_type G [] v T1_1 iy). eapply unvv; destruct v; ev; eapply vv; assumption.
+        assert (val_type G [] vy T1_1 (iy ++ lb :: jy) ->
+              val_type G [] vy T1_1 (iy ++ ub :: jy)). {
+          specialize (IHT1_1 _ _ H0 vy jy).
+          rewrite <-Heqp in IHT1_1. intros. eapply unvv. eapply IHT1_1. eapply vv. assumption. }
+        destruct vy; ev; split; try assumption; split; try assumption; eapply H1; assumption.
+      * assert (val_type G [] v T1_2 iy). eapply unvv; destruct v; ev; eapply vv; assumption.
+        assert (val_type G [] vy T1_2 (iy ++ lb :: jy) ->
+                val_type G [] vy T1_2 (iy ++ ub :: jy)). {
+          specialize (IHT1_2 _ _ H0 vy jy).
+          rewrite <-Heqp in IHT1_2. intros. eapply unvv. eapply IHT1_2. eapply vv. assumption. }
+        destruct vy; ev; split; try assumption; split; try assumption; eapply H1; assumption.
+  - destruct iy.
+    + rewrite val_type_unfold in *. destruct v. inversion H.
+      simpl in *. ev. specialize (H1 vy jy). rewrite <-Heqp in H1.
+      destruct vy; ev.
+      split. assumption. split. assumption. eapply H1. assumption.
+      split. assumption. split. assumption. eapply H1. assumption.
+    + rewrite val_type_unfold in *. simpl in *.
+      destruct l.
+      * assert (val_type G [] v T1_1 iy). eapply unvv; destruct v; ev; eapply vv; assumption.
+        assert (val_type G [] vy T1_1 (iy ++ ub :: jy) ->
+              val_type G [] vy T1_1 (iy ++ lb :: jy)). {
+          specialize (IHT1_1 _ _ H0 vy jy).
+          rewrite <-Heqp in IHT1_1. intros. eapply unvv. eapply IHT1_1. eapply vv. assumption. }
+        destruct vy; ev; split; try assumption; split; try assumption; eapply H1; assumption.
+      * assert (val_type G [] v T1_2 iy). eapply unvv; destruct v; ev; eapply vv; assumption.
+        assert (val_type G [] vy T1_2 (iy ++ ub :: jy) ->
+                val_type G [] vy T1_2 (iy ++ lb :: jy)). {
+          specialize (IHT1_2 _ _ H0 vy jy).
+          rewrite <-Heqp in IHT1_2. intros. eapply unvv. eapply IHT1_2. eapply vv. assumption. }
+        destruct vy; ev; split; try assumption; split; try assumption; eapply H1; assumption.
 Qed.
 
-Lemma valtp_bounds1: forall G v iy1 iy2 T1 T2,
-  val_type G [] v T1 iy1 -> (* myst be inhabited! *)
-  (forall v, vtp G [] v T1 iy1 -> vtp G [] v T2 iy2) ->
-  (forall x (jj:vset) v iy, indexr x G = Some jj -> jj v iy -> (forall vy, jj vy (iy ++ [lb]) -> jj vy (iy ++ [ub]))) ->
-  (forall vy,
-     vtp G [] vy T2 (iy2 ++ [lb]) -> vtp G [] vy T1 (iy1 ++ [lb])) /\
-  (forall vy,
-     vtp G [] vy T1 (iy1 ++ [ub]) -> vtp G [] vy T2 (iy2 ++ [ub])).
-Proof. 
-  admit.
-Qed.
 
 
 
-
-(* used in invert_abs *)
-Lemma valtp_bounds: forall iy2 G v iy T1,
-  val_type G [] v T1 (iy ++ iy2) ->
-  (forall x (jj:vset) v iy, indexr x G = Some jj -> jj v iy -> (forall vy, jj vy (iy ++ [lb]) -> jj vy (iy ++ [ub]))) ->
-  (forall vy,
-     if pos iy2 then
-       vtp G [] vy T1 (iy ++ (lb::iy2)) -> vtp G [] vy T1 (iy ++ (ub::iy2))
-     else
-       vtp G [] vy T1 (iy ++ (lb::iy2)) -> vtp G [] vy T1 (iy ++ (ub::iy2))
-   ).
-Proof.
-  intros iy2. induction iy2; intros.
-  - simpl in *. rewrite app_nil_r in H. eapply valtp_bounds0; eassumption.
-  - simpl in *. destruct a. remember (pos iy2) as p. destruct p.
-    intros.
-    assert (forall vy, vtp G [] vy T1 (iy ++ [lb]) -> vtp G [] vy T1 (iy ++ [ub])) as PRE.
-    simpl in *. eapply valtp_bounds0. instantiate (1:= v). admit. (* valtp iy *)
-    eassumption.
-
-    assert ((forall vy,
-     vtp G [] vy T1 ((iy ++ [ub]) ++ [lb]) -> vtp G [] vy T1 ((iy ++ [lb]) ++ [lb])) /\
-  (forall vy,
-     vtp G [] vy T1 ((iy ++ [lb]) ++ [ub]) -> vtp G [] vy T1 ((iy ++ [ub]) ++ [ub]))) as PRE12.
-    eapply valtp_bounds1. instantiate (1:= v). admit. (* valtp iy *)
-    eapply PRE. eassumption.
-    destruct PRE12 as [PRE1 PRE2].
-
-(*    
-    assert (vtp G [] vy T1 ((iy ++ [lb]) ++ ub :: iy2)) as B1.
-    eapply IHiy2. rewrite <-app_assoc. simpl. eapply H. eapply H0.
-    rewrite <-app_assoc. simpl. eapply H1.
-    rewrite <-app_assoc in B1. simpl in B1.
- *)
-    
-    admit. admit. admit. 
-    
-Qed.
-
-(*
-Lemma valtp_bounds: forall G v T1,
-  val_type G [] v T1 tp ->
-  (forall (vy : vl) (iy : sel),
-    if pos iy
-    then val_type G [] vy T1 (lb iy) -> val_type G [] vy T1 (ub iy)
-    else val_type G [] vy T1 (ub iy) -> val_type G [] vy T1 (lb iy)) /\
-  (forall iy1 iy2,
-     (forall vy, val_type G [] vy T1 iy1      -> val_type G [] vy T1 iy2) ->
-     (forall vy, val_type G [] vy T1 (ub iy1) -> val_type G [] vy T1 (ub iy2))).
-Proof. 
-  intros. induction T1; split; intros; try (rewrite val_type_unfold in H). 
-
-  - (* TTop *) destruct (pos iy) eqn : A4.
-    intros. eapply unvv. rewrite val_type_unfold in H0. simpl in H0. rewrite A4 in H0. destruct vy; inversion H0.
-    intros. eapply unvv. rewrite val_type_unfold in H0. simpl in H0. rewrite A4 in H0. destruct vy; inversion H0.
-  - repeat rewrite val_type_unfold in H0. simpl in *. eapply H0. eapply H1. 
-
-  - (* TBot *) destruct v; inversion H. 
-  - repeat rewrite val_type_unfold in *. simpl in *. eapply H0. eapply H1. 
-
-  - (* TFun *) destruct (pos iy) eqn: A4.
-    intros. eapply unvv. rewrite val_type_unfold in H0. destruct vy.
-    ev. simpl in H2. rewrite A4 in H2. inversion H2.
-    ev. simpl in H2. rewrite A4 in H2. inversion H2.
-    intros. eapply unvv. rewrite val_type_unfold in H0. destruct vy.
-    ev. simpl in H2. rewrite A4 in H2. inversion H2.
-    ev. simpl in H2. rewrite A4 in H2. inversion H2.
-  - clear H IHT1_1 IHT1_2.
-    repeat rewrite val_type_unfold in H1. 
-    rewrite val_type_unfold. simpl in *. eapply H0. eapply H1. 
-
-  - (* TSel *)  
-    destruct v0; try solve [destruct v; inversion H]. 
-      destruct (indexr i G) eqn: In; try solve [destruct v; inversion H].
-      rewrite val_type_unfold in *. rewrite val_type_unfold in *. rewrite In in *.
-      (* 
-         We have:
-            v0 v (ub tp)
-            if pos iy then v0 vy (ub (lb iy)) -> v0 vy (ub (ub iy))
-            else           v0 vy (ub (ub iy)) -> v0 vy (ub (lb iy))
-
-         We need: 
-            v0 vy (ub (lb iy)) -> 
-
-         It seems like we can fix this if we add two things:
-
-         (1) change val_type so that we have 
-               v0 vy (lb (ub iy)) -> v0 vy (ub (ub iy))
-
-         (2) require predicate on environment (implied by R_env):
-               index i G = Some v0 ->
-               forall vy iy,  v0 vy (lb iy) -> v0 vy (ub iy)
-      *)
-      admit. 
-      
-  - destruct v; try solve by inversion. ev. specialize (H1 vy iy).
-    destruct (pos iy). intros. rewrite val_type_unfold in H2.
-    apply unvv. destruct vy. ev. specialize (H1 H4). apply vv. rewrite val_type_unfold. split.
-    simpl. assumption. split. assumption. assumption. 
-    ev. specialize (H1 H4). apply vv. rewrite val_type_unfold. split; simpl. assumption. split; simpl.
-    assumption. assumption.
-    intros. rewrite val_type_unfold in H2. apply unvv. destruct vy. 
-    ev. specialize (H1 H4). apply vv. rewrite val_type_unfold. split.
-    simpl. assumption. split. assumption. assumption. 
-    ev. specialize (H1 H4). apply vv. rewrite val_type_unfold. split; simpl. assumption. split; simpl.
-    assumption. assumption.
-
-Qed.
-*)
 
 
 (* ### Relating Value Typing and Subtyping ### *)
