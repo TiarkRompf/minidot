@@ -488,6 +488,7 @@ Definition R_env venv genv tenv :=
        (forall vy iy, if pos iy then jj vy (lb :: iy) -> jj vy (ub :: iy) 
                       else           jj vy (ub :: iy) -> jj vy (lb :: iy)))
 .
+(* TODO: generalize last bit according to valtp_bounds env predicate *)
 
 
 (* automation *)
@@ -601,8 +602,7 @@ Lemma indexr_extend : forall X vs n x (T: X),
                        indexr n vs = Some T ->
                        indexr n (x::vs) = Some T.
 
-Proof.
-  intros.
+Proof.  intros.
   assert (n < length vs). eapply indexr_max. eauto.
   assert (beq_nat n (length vs) = false) as E. eapply beq_nat_false_iff. omega.
   unfold indexr. unfold indexr in H. rewrite H. rewrite E. reflexivity.
@@ -2797,11 +2797,11 @@ Proof.
     remember RG as ENV. clear HeqENV.
     specialize (RG _ _ H).
     ev. rewrite H1 in V0.
-    assert (x1 vf (ub i)). destruct vf; eauto. clear V0.
-    assert (x1 vf (lb i)). specialize (H4 vf i). rewrite <-Heqp in H4. eapply H4. assumption.
-    assert (vtp G GHX vf TX (lb i)). specialize (H3 vf (lb i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
-    assert (vtp G GHX vf (TMem T1 TTop) (lb i)).
-    specialize (IHstp _ _ LG ENV LGHX RGHX vf (lb i)). simpl in IHstp. rewrite <-Heqp in IHstp.
+    assert (x1 vf (ub :: i)). destruct vf; eauto. clear V0.
+    assert (x1 vf (lb :: i)). specialize (H4 vf i). rewrite <-Heqp in H4. eapply H4. assumption.
+    assert (vtp G GHX vf TX (lb :: i)). specialize (H3 vf (lb :: i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
+    assert (vtp G GHX vf (TMem T1 TTop) (lb :: i)).
+    specialize (IHstp _ _ LG ENV LGHX RGHX vf (lb :: i)). simpl in IHstp. rewrite <-Heqp in IHstp.
     eapply IHstp. eapply unvv. assumption.
     
     eapply unvv in H8. rewrite val_type_unfold in H8.
@@ -2818,10 +2818,10 @@ Proof.
     remember RGHX as ENV. clear HeqENV.
     specialize (RGHX _ _ H).
     ev. rewrite H1 in V0.
-    assert (x1 vf (ub i)). destruct vf; eauto. clear V0.
-    assert (vtp G GHX vf TX (ub i)). specialize (H3 vf (ub i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
-    assert (vtp G GHX vf (TMem TBot T2) (ub i)).
-    specialize (IHstp _ _ LG RG LGHX ENV vf (ub i)). simpl in IHstp. rewrite <-Heqp in IHstp.
+    assert (x1 vf (ub :: i)). destruct vf; eauto. clear V0.
+    assert (vtp G GHX vf TX (ub :: i)). specialize (H3 vf (ub :: i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
+    assert (vtp G GHX vf (TMem TBot T2) (ub :: i)).
+    specialize (IHstp _ _ LG RG LGHX ENV vf (ub :: i)). simpl in IHstp. rewrite <-Heqp in IHstp.
     eapply IHstp. eapply unvv. assumption.
     
     eapply unvv in H7. rewrite val_type_unfold in H7.
@@ -2830,38 +2830,38 @@ Proof.
     remember RGHX as ENV. clear HeqENV.
     specialize (RGHX _ _ H).
     ev. rewrite H1.    
-    assert (vtp G GHX vf (TMem TBot T2) (ub i)). eapply vv. rewrite val_type_unfold. destruct vf.
+    assert (vtp G GHX vf (TMem TBot T2) (ub :: i)). eapply vv. rewrite val_type_unfold. destruct vf.
     split. constructor. split. eapply valtp_closed. eassumption. assumption.
     split. constructor. split. eapply valtp_closed. eassumption. assumption.
-    assert (vtp G GHX vf TX (ub i)).
-    specialize (IHstp _ _ LG RG LGHX ENV vf (ub i)). simpl in IHstp. rewrite <-Heqp in IHstp. eapply IHstp. eapply unvv. assumption.
-    assert (x1 vf (ub i)).
-    specialize (H3 vf (ub i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
+    assert (vtp G GHX vf TX (ub :: i)).
+    specialize (IHstp _ _ LG RG LGHX ENV vf (ub :: i)). simpl in IHstp. rewrite <-Heqp in IHstp. eapply IHstp. eapply unvv. assumption.
+    assert (x1 vf (ub :: i)).
+    specialize (H3 vf (ub :: i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
     destruct vf; assumption.
   - Case "Sel2".
     eapply vv. rewrite val_type_unfold.
     remember RGHX as ENV. clear HeqENV.
     specialize (RGHX _ _ H).
     ev. rewrite H1.    
-    assert (vtp G GHX vf (TMem T1 TTop) (lb i)). eapply vv. rewrite val_type_unfold. destruct vf.
+    assert (vtp G GHX vf (TMem T1 TTop) (lb :: i)). eapply vv. rewrite val_type_unfold. destruct vf.
     split. eapply valtp_closed. eassumption. split. constructor. assumption.
     split. eapply valtp_closed. eassumption. split. constructor. assumption. 
-    assert (vtp G GHX vf TX (lb i)).
-    specialize (IHstp _ _ LG RG LGHX ENV vf (lb i)). simpl in IHstp. rewrite <-Heqp in IHstp. eapply IHstp. eapply unvv. assumption.
-    assert (x1 vf (lb i)).
-    specialize (H3 vf (lb i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
-    assert (x1 vf (ub i)). specialize (H4 vf i). rewrite <-Heqp in H4. eapply H4. assumption.
+    assert (vtp G GHX vf TX (lb :: i)).
+    specialize (IHstp _ _ LG RG LGHX ENV vf (lb :: i)). simpl in IHstp. rewrite <-Heqp in IHstp. eapply IHstp. eapply unvv. assumption.
+    assert (x1 vf (lb :: i)).
+    specialize (H3 vf (lb :: i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
+    assert (x1 vf (ub :: i)). specialize (H4 vf i). rewrite <-Heqp in H4. eapply H4. assumption.
     destruct vf; assumption.
    - subst. 
     rewrite val_type_unfold in V0.
     remember RGHX as ENV. clear HeqENV.
     specialize (RGHX _ _ H).
     ev. rewrite H1 in V0.
-    assert (x1 vf (ub i)). destruct vf; eauto. clear V0.
-    assert (x1 vf (lb i)). specialize (H4 vf i). rewrite <-Heqp in H4. eapply H4. assumption.
-    assert (vtp G GHX vf TX (lb i)). specialize (H3 vf (lb i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
-    assert (vtp G GHX vf (TMem T1 TTop) (lb i)).
-    specialize (IHstp _ _ LG RG LGHX ENV vf (lb i)). simpl in IHstp. rewrite <-Heqp in IHstp.
+    assert (x1 vf (ub :: i)). destruct vf; eauto. clear V0.
+    assert (x1 vf (lb :: i)). specialize (H4 vf i). rewrite <-Heqp in H4. eapply H4. assumption.
+    assert (vtp G GHX vf TX (lb :: i)). specialize (H3 vf (lb :: i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
+    assert (vtp G GHX vf (TMem T1 TTop) (lb :: i)).
+    specialize (IHstp _ _ LG RG LGHX ENV vf (lb :: i)). simpl in IHstp. rewrite <-Heqp in IHstp.
     eapply IHstp. eapply unvv. assumption.
     
     eapply unvv in H8. rewrite val_type_unfold in H8.
@@ -2886,10 +2886,10 @@ Proof.
 
     specialize (IHstp1 _ _ LG RG LGHX RGHX).
     
-    assert (val_type G GHX vx T3 tp) as VX0. {
-      specialize (STJ vx tp). simpl in STJ. eapply STJ. eapply VST0. }
-    assert (vtp G GHX vx T1 tp) as VX1. {
-      specialize (IHstp1 vx tp). simpl in IHstp1. eapply IHstp1. eapply VX0. }
+    assert (val_type G GHX vx T3 nil) as VX0. {
+      specialize (STJ vx nil). simpl in STJ. eapply STJ. eapply VST0. }
+    assert (vtp G GHX vx T1 nil) as VX1. {
+      specialize (IHstp1 vx nil). simpl in IHstp1. eapply IHstp1. eapply VX0. }
 
     assert (forall (vy : vl) iy, 
               if pos iy then jj vy iy -> val_type G GHX vy T1 iy
@@ -2909,18 +2909,18 @@ Proof.
     rewrite <-LGHX. rewrite <-LGHX in VT.
 
     (* broaden goal so that we can apply stp2 *)
-    assert (if pos tp then
-      val_type G (jj :: GHX) v (open (varH (length GH)) T2) tp ->
-      vtp G (jj :: GHX) v (open (varH (length GH)) T4) tp
+    assert (if pos nil then
+      val_type G (jj :: GHX) v (open (varH (length GH)) T2) nil ->
+      vtp G (jj :: GHX) v (open (varH (length GH)) T4) nil
     else 
-      val_type G (jj :: GHX) v (open (varH (length GH)) T4) tp ->
-      vtp G (jj :: GHX) v (open (varH (length GH)) T2) tp) as ST2. {
+      val_type G (jj :: GHX) v (open (varH (length GH)) T4) nil ->
+      vtp G (jj :: GHX) v (open (varH (length GH)) T2) nil) as ST2. {
     
     eapply IHstp2. eapply LG.
 
     (* extend RG *)
     intros ? ? IX. destruct (RG _ _ IX) as [vx0 [jj0 [IX1 [VJ0 [FA FAB]]]]].
-    assert (vtp G GHX vx0 TX tp). specialize (FA vx0 tp). simpl in FA. eapply FA. assumption.
+    assert (vtp G GHX vx0 TX nil). specialize (FA vx0 nil). simpl in FA. eapply FA. assumption.
     assert (closed 0 (length GHX) (length G) TX). eapply valtp_closed. eapply unvv. eassumption.
     exists vx0. exists jj0. split. eapply IX1. split. assumption. split.
     (* jj -> val_type *) intros.
@@ -2946,7 +2946,7 @@ Proof.
       + assert (indexr x GH = Some TX) as IX0.
         simpl in IX. rewrite LGHX in IX. rewrite E in IX. inversion IX. reflexivity.
         specialize (RGHX _ _ IX0). ev.
-        assert (vtp G GHX x0 TX tp). specialize (H7 x0 tp). simpl in H7. eapply H7. assumption.
+        assert (vtp G GHX x0 TX nil). specialize (H7 x0 nil). simpl in H7. eapply H7. assumption.
         exists x0. exists x1. split. simpl. rewrite E. eapply H5. split. assumption. split. 
         intros. specialize (H7 vy iy). remember (pos iy) as p. destruct p; intros.  
         eapply valtp_extendH. eapply unvv. eapply H7. assumption.
@@ -2961,17 +2961,12 @@ Proof.
     eapply stp_closed1 in stp1. rewrite <-LG. rewrite <-LGHX. ev. repeat split; assumption.
     eapply stp_closed1 in stp1. rewrite <-LG. rewrite <-LGHX. ev. repeat split; assumption.
     eapply stp_closed1 in stp1. rewrite <-LG. rewrite <-LGHX. ev. repeat split; assumption.
-    eapply stp_closed1 in stp1. rewrite <-LG. rewrite <-LGHX. ev. repeat split; assumption. 
-    eapply stp_closed1 in stp1. rewrite <-LG. rewrite <-LGHX. ev. repeat split; assumption.
-    
     eapply vv. eapply H.
 
   - rewrite val_type_unfold in V0. rewrite <-Heqp in V0.
     destruct vf; destruct i; inversion Heqp. 
     simpl in Heqp; inversion Heqp.
     ev. inversion H6.
-    ev. inversion H5.
-    ev. inversion H5.
     ev. inversion H5.
     
   - Case "trans".
@@ -2987,10 +2982,10 @@ Qed.
 
 
 Lemma valtp_widen: forall vf GH H G1 T1 T2,
-  val_type GH [] vf T1 tp ->
+  val_type GH [] vf T1 nil ->
   stp G1 [] T1 T2 ->
   R_env H GH G1 ->
-  vtp GH [] vf T2 tp.
+  vtp GH [] vf T2 nil.
 Proof.
   intros.
   assert (forall (vf0 : vl) (i : sel),
@@ -3002,18 +2997,18 @@ Proof.
     eexists. eexists. repeat split; eassumption.  }
   reflexivity.
   { intros. simpl in H3. inversion H3. }
-  specialize (H3 vf tp). simpl in H3. eapply H3. assumption.
+  specialize (H3 vf nil). simpl in H3. eapply H3. assumption.
 Qed.
 
 
 Lemma wf_env_extend: forall vx jj G1 R1 H1 T1,
   R_env H1 R1 G1 ->
-  val_type (jj::R1) [] vx T1 tp ->
-  jj vx tp -> (* redundant? *)
+  val_type (jj::R1) [] vx T1 nil ->
+  jj vx nil -> (* redundant? *)
   (forall vy iy, if pos iy then jj vy iy -> vtp (jj::R1) [] vy T1 iy
                  else           vtp (jj::R1) [] vy T1 iy -> jj vy iy) ->
-  (forall vy iy, if pos iy then jj vy (lb iy) -> jj vy (ub iy) 
-                 else           jj vy (ub iy) -> jj vy (lb iy)) ->
+  (forall vy iy, if pos iy then jj vy (lb :: iy) -> jj vy (ub :: iy) 
+                 else           jj vy (ub :: iy) -> jj vy (lb :: iy)) ->
   R_env (vx::H1) (jj::R1) (T1::G1).
 Proof.
   intros. unfold R_env in *. destruct H as [L1 [L2 U]].
@@ -3044,16 +3039,16 @@ Qed.
 
 Lemma wf_env_extend0: forall vx (jj:vset) G1 R1 H1 T1,
   R_env H1 R1 G1 ->
-  jj vx tp -> 
+  jj vx nil -> 
   (forall vy iy, if pos iy then jj vy iy -> vtp R1 [] vy T1 iy
                  else           vtp R1 [] vy T1 iy -> jj vy iy) ->
-  (forall vy iy, if pos iy then jj vy (lb iy) -> jj vy (ub iy) 
-                 else           jj vy (ub iy) -> jj vy (lb iy)) ->
+  (forall vy iy, if pos iy then jj vy (lb :: iy) -> jj vy (ub :: iy) 
+                 else           jj vy (ub :: iy) -> jj vy (lb :: iy)) ->
   R_env (vx::H1) (jj::R1) (T1::G1).
 Proof.
   intros.
-  assert (val_type R1 [] vx T1 tp) as V0.
-  specialize (H2 vx tp). simpl in H2. eapply unvv. eapply H2. assumption.
+  assert (val_type R1 [] vx T1 nil) as V0.
+  specialize (H2 vx nil). simpl in H2. eapply unvv. eapply H2. assumption.
   eapply wf_env_extend. assumption. eapply unvv. eapply valtp_extend. eapply V0.
   assumption.
   intros. specialize (H2 vy iy). remember (pos iy) as p. destruct p.
@@ -3077,14 +3072,15 @@ Qed.
 
 (* ### Inversion Lemmas ### *)
 
-Lemma invert_abs: forall venv vf T1 T2,
-  val_type venv [] vf (TAll T1 T2) tp ->
+Lemma invert_abs: forall venv vf T1 T2 HX GX,
+  val_type venv [] vf (TAll T1 T2) nil ->
+  R_env HX venv GX ->
   (* TODO: require env predicate for valtp_bounds (follows from R_env) *)
   exists env TX y,
     vf = (vabs env TX y) /\ 
     (closed 0 0 (length venv) T2 -> forall vx : vl,
-       val_type venv [] vx T1 tp ->
-       exists v : vl, tevaln (vx::env) y v /\ val_type venv [] v T2 tp).
+       val_type venv [] vx T1 nil ->
+       exists v : vl, tevaln (vx::env) y v /\ val_type venv [] v T2 nil).
 Proof.
   intros. 
   rewrite val_type_unfold in H.   
@@ -3095,40 +3091,57 @@ Proof.
   intros. 
   
   assert (exists (jj:vset),
-            jj vx tp /\
+            jj vx nil /\
             (forall vy iy, if pos iy then jj vy iy -> val_type venv0 [] vy T1 iy
                            else           val_type venv0 [] vy T1 iy -> jj vy iy) /\
-            (forall vy iy, if pos iy then jj vy (lb iy) -> jj vy (ub iy)
-                           else           jj vy (ub iy) -> jj vy (lb iy))) as A. {
+            (forall vy iy, if pos iy then jj vy (lb :: iy) -> jj vy (ub :: iy)
+                           else           jj vy (ub :: iy) -> jj vy (lb :: iy))) as A. {
     exists (fun vy iy => val_type venv0 [] vy T1 iy). split.
     assumption. split.
     intros. destruct (pos iy); intros; assumption.
-    eapply valtp_bounds. eapply H2. }
+    assert ((forall (x : id) (jj : vset) (v : vl) (iy : sel),
+        indexr x venv0 = Some jj ->
+        jj v iy ->
+        forall (vy : vl) (jy : list lu),
+        if pos jy
+        then jj vy (iy ++ lb :: jy) -> jj vy (iy ++ ub :: jy)
+        else jj vy (iy ++ ub :: jy) -> jj vy (iy ++ lb :: jy))) as RR.
+    { admit. } (* get from R_env *)
+    
+    specialize (valtp_bounds _ _ _ _ H3 RR). intros VB vy iy.
+    specialize (VB vy iy). simpl in VB.
+    destruct iy; simpl in *; intros.
+    eapply unvv. eapply VB. eapply vv. assumption.
+    destruct l0; destruct (pos iy); intros.
+    eapply unvv. eapply VB. eapply vv. assumption.
+    eapply unvv. eapply VB. eapply vv. assumption.
+    eapply unvv. eapply VB. eapply vv. assumption.
+    eapply unvv. eapply VB. eapply vv. assumption. }
                                                                                  
   ev.
-  specialize (H1 vx x H3 H4 H5). 
+  specialize (H2 vx x H4 H5 H6). 
   ev.
   exists x0.
-  split. eapply H1.
+  split. eapply H2.
 
-  eapply vtp_subst1. eapply H6. eapply C.
+  eapply vtp_subst1. eapply H7. eapply C.
 
-  ev. destruct H2. reflexivity.
+  ev. destruct H3. reflexivity.
 Qed.
 
 
 Lemma invert_dabs: forall venv vf T1 T2 x jj,
-  val_type venv [] vf (TAll T1 T2) tp ->
+  val_type venv [] vf (TAll T1 T2) nil ->
   indexr x venv = Some jj ->
   (forall vy iy, if pos iy then jj vy iy -> val_type venv [] vy T1 iy
                  else           val_type venv [] vy T1 iy -> jj vy iy) ->
-  (forall vy iy, if pos iy then jj vy (lb iy) -> jj vy (ub iy)
-                 else           jj vy (ub iy) -> jj vy (lb iy)) ->
+  (forall vy iy, if pos iy then jj vy (lb :: iy) -> jj vy (ub :: iy)
+                 else           jj vy (ub :: iy) -> jj vy (lb :: iy)) ->
   exists env TX y,
     vf = (vabs env TX y) /\
     forall vx : vl,
-       jj vx tp ->
-       exists v : vl, tevaln (vx::env) y v /\ val_type venv [] v (open (varF x) T2) tp.
+       jj vx nil ->
+       exists v : vl, tevaln (vx::env) y v /\ val_type venv [] v (open (varF x) T2) nil.
 Proof.
   intros. 
   rewrite val_type_unfold in H.   
@@ -3155,7 +3168,7 @@ Qed.
 
 Theorem full_total_safety : forall e tenv T,
   has_type tenv e T -> forall venv renv, R_env venv renv tenv ->
-  exists v, tevaln venv e v /\ val_type renv [] v T tp.
+  exists v, tevaln venv e v /\ val_type renv [] v T nil.
 Proof.
   intros ? ? ? W.
   induction W; intros ? ? WFE.
@@ -3192,7 +3205,7 @@ Proof.
       rewrite IWF. subst vf. rewrite IWX. rewrite IWY. eauto.
       omega. omega. omega.
     }
-    eapply HVY.
+    eapply HVY. eapply WFE.
 
   - Case "DApp".
     rewrite <-(wf_length2 _ _ _ WFE) in H0. 
@@ -3203,11 +3216,11 @@ Proof.
     assert (exists vx jj,
               indexr x venv0 = Some vx /\
               indexr x renv = Some jj /\
-              jj vx tp /\
+              jj vx nil /\
               (forall vy iy, if pos iy then jj vy iy -> vtp renv [] vy T1 iy
                              else           vtp renv [] vy T1 iy -> jj vy iy) /\
-              (forall vy iy, if pos iy then jj vy (lb iy) -> jj vy (ub iy)
-                             else           jj vy (ub iy) -> jj vy (lb iy))) as B.
+              (forall vy iy, if pos iy then jj vy (lb :: iy) -> jj vy (ub :: iy)
+                             else           jj vy (ub :: iy) -> jj vy (lb :: iy))) as B.
     { unfold R_env in WFE. ev. remember (tvar x) as E. clear W1 IHW1 IHW2 HVF HVX IW1 IW2. induction W2; inversion HeqE; try subst x0.
     + destruct (H3 _ _ H4). assumption.
     + specialize (IHW2 H5 H1 H2 H3). ev.
