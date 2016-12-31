@@ -315,15 +315,16 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            closed 0 0 (length env) T2 ->
            closed 0 0 (length env) T1 ->
            has_type env (tapp f x) T2
-| t_dapp:forall env f x T1 T2 T,
+| t_dapp:forall env f x T1 T2 T1' T2',
            has_type env f (TAll T1 T2) ->
-           has_type env (tvar x) T1 ->
-           T = open (varF x) T2 ->
-           closed 0 0 (length env) T1 ->
-           closed 0 0 (length env) T ->
-           has_type env (tapp f (tvar x)) T
+           has_type env (tvar x) T1' ->
+           T1' = open (varF x) T1 ->
+           T2' = open (varF x) T2 ->
+           closed 0 0 (length env) T1' ->
+           closed 0 0 (length env) T2' ->
+           has_type env (tapp f (tvar x)) T2'
 | t_abs: forall env y T1 T2,
-           has_type (T1::env) y (open (varF (length env)) T2) ->
+           has_type ((open (varF (length env)) T1)::env) y (open (varF (length env)) T2) ->
            closed 0 0 (length env) (TAll T1 T2) ->
            has_type env (tabs T1 y) (TAll T1 T2)
 | t_sub: forall env e T1 T2,
@@ -3713,6 +3714,30 @@ Proof.
   assumption.
 Qed.
 
+(* TODO: use subst lemmas *)
+Lemma wf_env_extend1: forall vx (jj:vset) G1 R1 H1 T1,
+  R_env H1 R1 G1 ->
+  jj vx nil -> 
+  (forall vy iy, if pos iy then jj vy iy -> vtp R1 [jj] vy (open (varH 0) T1) iy
+                 else           vtp R1 [jj] vy (open (varH 0) T1) iy -> jj vy iy) ->
+  (forall vp ip, jj vp ip -> forall vy iy, if pos iy 
+             then jj vy (ip ++ (lb::iy)) -> jj vy (ip ++ (ub::iy))
+             else jj vy (ip ++ (ub::iy)) -> jj vy (ip ++ (lb::iy))) ->
+  R_env (vx::H1) (jj::R1) ((open (varF (length R1)) T1)::G1).
+Proof.
+  intros.
+  assert (val_type R1 [jj] vx (open (varH 0) T1) nil) as VX.
+  specialize (H2 vx nil). simpl in H2. eapply unvv. eapply H2. assumption.
+  assert (val_type (jj::R1) [] vx (open (varF (length R1)) T1) nil) as V0.
+  admit. (* TODO *)
+  eapply wf_env_extend. assumption. eapply V0.
+  assumption.
+  intros. specialize (H2 vy iy). remember (pos iy) as p. destruct p.
+  intros. admit. (* eapply H2. *) 
+  intros. eapply H2. admit. 
+  assumption.
+Qed.
+
 (* move it here *)
 
 
@@ -4245,16 +4270,27 @@ Proof.
     rewrite val_type_unfold. simpl. repeat split; try eapply H.
     intros. destruct (pos iy); intros; assumption.
     eapply WFE.
+
+  - Case "VarPack". admit. 
+
+  - Case "VarUnpack". admit. 
+
+  - Case "And". admit.
+
+  - Case "And1". admit.
+
+  - Case "And2". admit. 
     
   - Case "App".
-    rewrite <-(wf_length2 _ _ _ WFE) in H. 
+    rewrite <-(wf_length2 _ _ _ WFE) in H.
+    rewrite <-(wf_length2 _ _ _ WFE) in H0. 
     destruct (IHW1 venv0 renv WFE) as [vf [IW1 HVF]].
     destruct (IHW2 venv0 renv WFE) as [vx [IW2 HVX]].
     
     eapply invert_abs in HVF.
     destruct HVF as [venv1 [TX [y [HF IHF]]]].
 
-    destruct (IHF H vx HVX) as [vy [IW3 HVY]].
+    destruct (IHF H0 H vx HVX) as [vy [IW3 HVY]].
 
     exists vy. split. {
       (* pick large enough n. nf+nx+ny will do. *)
@@ -4268,7 +4304,8 @@ Proof.
     eapply HVY. eapply WFE.
 
   - Case "DApp".
-    rewrite <-(wf_length2 _ _ _ WFE) in H0. 
+    rewrite <-(wf_length2 _ _ _ WFE) in H1.
+    rewrite <-(wf_length2 _ _ _ WFE) in H2. 
     destruct (IHW1 venv0 renv WFE) as [vf [IW1 HVF]].
     destruct (IHW2 venv0 renv WFE) as [vx [IW2 HVX]].
 
@@ -4277,26 +4314,33 @@ Proof.
               indexr x venv0 = Some vx /\
               indexr x renv = Some jj /\
               jj vx nil /\
-              (forall vy iy, if pos iy then jj vy iy -> vtp renv [] vy T1 iy
-                             else           vtp renv [] vy T1 iy -> jj vy iy) /\
+              (forall vy iy, if pos iy then jj vy iy -> vtp renv [] vy T1' iy
+                             else           vtp renv [] vy T1' iy -> jj vy iy) /\
               (forall vp ip, jj vp ip -> forall vy iy, if pos iy
                              then jj vy (ip ++ lb :: iy) -> jj vy (ip ++ ub :: iy)
                              else jj vy (ip ++ ub :: iy) -> jj vy (ip ++ lb :: iy))) as B.
-    { unfold R_env in WFE. ev. remember (tvar x) as E. clear W1 IHW1 IHW2 HVF HVX IW1 IW2. induction W2; inversion HeqE; try subst x0.
-    + destruct (H3 _ _ H4). ev. exists x0. exists x1. split. assumption. split. assumption. split. assumption.
+    { unfold R_env in WFE. ev. remember (tvar x) as E. clear W1 H IHW1 IHW2 HVF HVX IW1 IW2. induction W2; inversion HeqE; try subst x0.
+    + (* tvar *) destruct (H5 _ _ H). ev. exists x0. exists x1. split. assumption. split. assumption. split. assumption.
       split. assumption. assumption.
-    + specialize (IHW2 H5 H1 H2 H3). ev.
+    + (* pack *) admit.
+    + (* unpack *) admit. 
+    + (* and *) admit.
+    + (* and1 *) admit.
+    + (* and2 *) admit.
+    + (* tsub *)
+      assert (closed 0 0 (length renv) T0). eapply stp_closed1 in H. rewrite <-H4 in H. eapply H.
+      specialize (IHW2 H6 H7 H3 H4 H5). ev.
       eexists. eexists. split. eassumption. split. eassumption. split. assumption. split.
       assert (forall vy iy, if pos iy 
-                            then val_type renv [] vy T1 iy -> vtp renv [] vy T0 iy
-                            else val_type renv [] vy T0 iy -> vtp renv [] vy T1 iy) as A.
+                            then val_type renv [] vy T0 iy -> vtp renv [] vy T3 iy
+                            else val_type renv [] vy T3 iy -> vtp renv [] vy T0 iy) as A.
       eapply valtp_widen_aux. eassumption. omega.
-      intros. specialize (H3 _ _ H11). destruct H3. ev. exists x3. exists x4. repeat split; eassumption. reflexivity.
+      intros. specialize (H5 _ _ H13). destruct H5. ev. exists x3. exists x4. repeat split; eassumption. reflexivity.
       
-      intros. inversion H11.
-      intros. specialize (A vy iy). specialize (H9 vy iy). destruct (pos iy).
-      intros. eapply A. eapply unvv. eapply H9. assumption.
-      intros. eapply H9. eapply A. eapply unvv. assumption.
+      intros. inversion H13.
+      intros. specialize (A vy iy). specialize (H11 vy iy). destruct (pos iy).
+      intros. eapply A. eapply unvv. eapply H11. assumption.
+      intros. eapply H11. eapply A. eapply unvv. assumption.
       assumption. }
 
     ev. 
@@ -4304,10 +4348,10 @@ Proof.
     destruct HVF as [venv1 [TX [y [HF IHF]]]].
 
     (* shouldn't be needed *)
-    assert (x0 = vx). { destruct IW2. assert (S x2 > x2) as SS. omega. specialize (H6 (S x2) SS). simpl in H6. inversion H6. rewrite H8 in H1. inversion H1. reflexivity. }
-    subst x0.                      
+    assert (x0 = vx). { destruct IW2. assert (S x2 > x2) as SS. omega. specialize (H8 (S x2) SS). simpl in H8. inversion H8. rewrite H10 in H3. inversion H3. reflexivity. }
+    subst x0.
                       
-    destruct (IHF vx H3) as [vy [IW3 HVY]].
+    destruct (IHF vx H5) as [vy [IW3 HVY]].
 
     exists vy. split. {
       (* pick large enough n. nf+nx+ny will do. *)
@@ -4318,9 +4362,9 @@ Proof.
       rewrite IWF. subst vf. rewrite IWX. rewrite IWY. reflexivity.
       omega. omega. omega.
     }
-    subst T. eapply HVY. eapply H2. intros. specialize (H4 vy iy). destruct (pos iy).
-    intros. eapply unvv. eapply H4. assumption.
-    intros. eapply H4. eapply vv. assumption.
+    subst T2'. eapply HVY. eapply H4. intros. specialize (H6 vy iy). destruct (pos iy).
+    intros. eapply unvv. subst T1'. eapply H6. assumption.
+    intros. eapply H6. eapply vv. subst T1'. assumption.
     assumption.
     
   - Case "Abs".
@@ -4329,12 +4373,13 @@ Proof.
     eexists. split. exists 0. intros. destruct n. omega. simpl. eauto.
     rewrite val_type_unfold. repeat split; eauto.
     intros.
-    assert (R_env (vx::venv0) (jj::renv) (T1::env)) as WFE1. {
-      eapply wf_env_extend0. eapply WFE. eapply H0.
+    assert (R_env (vx::venv0) (jj::renv) ((open (varF (length renv)) T1)::env)) as WFE1. {
+      eapply wf_env_extend1. eapply WFE. eapply H0.
       intros. specialize (H1 vy iy). destruct (pos iy).
       intros. eapply vv. eapply H1. assumption.
       intros. eapply H1. eapply unvv. assumption.
       assumption. }
+    rewrite (wf_length2 _ _ _ WFE) in WFE1.
     specialize (IHW (vx::venv0) (jj::renv) WFE1).
     destruct IHW as [v [EV VT]]. rewrite <-(wf_length2 _ _ _ WFE) in VT. 
     exists v. split. eapply EV. 
