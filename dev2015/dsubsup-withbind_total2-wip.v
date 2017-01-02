@@ -4272,7 +4272,7 @@ Proof.
 Qed.
 
 Lemma chain_incl2: forall i (jj1:vset) (jjx:vset) v,
-  (forall vy iy, jj1 vy iy -> exists jj : vset,
+  (forall vy iy, jj1 vy iy -> exists jj : vset, (* unfolding vtp TBind yields a _different_ jj *)
          (forall (v : vl) (i : sel),
           jj v i -> jj v (ub::i)) /\ jj vy iy) ->
   (forall vy iy, jjx vy iy -> jjx vy (ub::iy)) ->
@@ -4280,7 +4280,11 @@ Lemma chain_incl2: forall i (jj1:vset) (jjx:vset) v,
   jjx v nil ->
   jj1 v i -> jjx v i.
 Proof.
-  admit. 
+  intros. specialize (H _ _ H1). ev. eapply (chain_incl _ _ _ _ H H0). assumption. assumption.
+  (* x v i : by repeated application of H *)
+  clear H3. induction i. assumption.
+  assert (a = ub). admit. subst a. (* handle lb case later *)
+  eapply H. eapply IHi. 
 Qed.
 
 Lemma vtp_subst3_aux: forall n TS T venv (jj1:vset) (jjx:vset) GH vy iy,
