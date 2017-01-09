@@ -416,67 +416,10 @@ Fixpoint pos s := match s with
 
 Require Coq.Program.Wf.
 
-Program Fixpoint val_type (env:list vset) (GH:list vset) (v:vl) (T:ty) (i:sel) {measure (tsize_flat T)}: Prop :=
-  match v,T,i with
-    | vabs env1 T0 y, TAll T1 T2, nil =>
-      closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
-      forall vx (jj:vset),
-        (* val_type env GH vx T1 tp -> *) jj vx nil ->
-        (forall vy iy, if pos iy then jj vy iy -> val_type env GH vy T1 iy
-                       else           val_type env GH vy T1 iy -> jj vy iy) ->
-        (forall vp ip, jj vp ip -> forall vy iy, if pos iy 
-          then jj vy (ip ++ (lb::iy)) -> jj vy (ip ++ (ub::iy))
-          else jj vy (ip ++ (ub::iy)) -> jj vy (ip ++ (lb::iy))) ->
-        exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2) nil
-    | vty env1 TX, TMem T1 T2, nil =>
-      closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2
-      /\ forall vy iy, if (pos iy)
-                  then val_type env GH vy T1 iy -> val_type env GH vy T2 iy
-                  else val_type env GH vy T2 iy -> val_type env GH vy T1 iy
-    | _, TMem T1 T2, ub :: i =>
-      closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2
-      /\ val_type env GH v T2 i
-    | _, TMem T1 T2, lb :: i =>
-      closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2
-      /\ val_type env GH v T1 i
-    | _, TSel (varF x), _ =>
-      match indexr x env with
-        | Some jj => jj v (ub :: i) (* TODO: use ub_ins *)(*did*)
-        | _ => False
-      end
-    | _, TSel (varH x), _ =>
-      match indexr x GH with
-        | Some jj => jj v (ub :: i) (* TODO: use ub_ins *)(*did*)
-        | _ => False
-      end
+Program Fixpoint val_type (env:list vset) (GH:list vset) (T:ty) (v:vl) (i:sel) {measure (tsize_flat T)}: Prop :=
+ True.
 
-(* recursive valtype *)
-    | _ , TBind T1, _ =>
-      closed 1 (length GH) (length env) T1 /\
-      forall (jj:vset),
-        (forall vy iy, if pos iy then jj vy iy -> val_type env (jj::GH) vy (open (varH (length GH)) T1) iy
-                       else           val_type env (jj::GH) vy (open (varH (length GH)) T1) iy -> jj vy iy) ->
-        (forall vp ip, jj vp ip -> forall vy iy, if pos iy 
-          then jj vy (ip ++ (lb::iy)) -> jj vy (ip ++ (ub::iy))
-          else jj vy (ip ++ (ub::iy)) -> jj vy (ip ++ (lb::iy))) ->
-        val_type env (jj::GH) v (open (varH (length GH)) T1) i
-(* intersection valtype *)
-    | _ , TAnd T1 T2, _ =>
-      closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2
-      /\ if (pos i) then val_type env GH v T1 i /\ val_type env GH v T2 i 
-                    else val_type env GH v T1 i \/ val_type env GH v T2 i 
-
-    | _, TTop, _ => 
-      pos i = true
-    | _, TAll T1 T2, _ =>
-      closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
-      pos i = true /\ i <> nil
-    | _, TBot, _ =>
-      pos i = false
-    | _,_,_ =>
-      False
-  end.
-
+(*
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed. 
 Next Obligation. simpl. unfold open. rewrite <-open_preserves_size. omega. Qed. (* TApp case: open *)
@@ -496,6 +439,7 @@ Next Obligation. simpl. omega. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
+*)
 
 (* 
    The expansion of val_type, val_type_func is incomprehensible. 
@@ -508,62 +452,80 @@ Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruc
 Import Coq.Program.Wf.
 Import WfExtensionality.
 
-Lemma val_type_unfold: forall env GH v T i, val_type env GH v T i =
+Definition vtsub (a: vset) (b: vset) := forall vy iy, if pos iy
+          then a vy iy -> b vy iy
+          else b vy iy -> a vy iy.
+
+Definition good_bounds (jj: vset) := (forall vp ip, jj vp ip -> forall vy iy, if pos iy 
+          then jj vy (ip ++ (lb::iy)) -> jj vy (ip ++ (ub::iy))
+          else jj vy (ip ++ (ub::iy)) -> jj vy (ip ++ (lb::iy))).
+
+
+Definition unpack (jj: vset) (f:vset -> vset) := forall vy iy, jj vy iy ->
+           (exists (rr: vset), vtsub rr (f rr)) -> vtsub jj (f jj).
+
+Definition unfoldb T := match T with | TBind T1 => open (varH 0) T1 | T => T end. 
+
+
+Lemma val_type_unfold: forall env GH T v i, val_type env GH T v i =
   match v,T,i with
     | vabs env1 T0 y, TAll T1 T2, nil =>
       closed 1 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
-      forall vx (jj:vset),
-        (* val_type env GH vx T1 tp -> *) jj vx nil ->
-        (forall vy iy, if pos iy then jj vy iy -> val_type env (jj::GH) vy (open (varH (length GH)) T1) iy
-                       else           val_type env (jj::GH) vy (open (varH (length GH)) T1) iy -> jj vy iy) ->
-        (forall vp ip, jj vp ip -> forall vy iy, if pos iy 
-          then jj vy (ip ++ (lb::iy)) -> jj vy (ip ++ (ub::iy))
-          else jj vy (ip ++ (ub::iy)) -> jj vy (ip ++ (lb::iy))) ->
-        exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2) nil
+      forall (jj:vset),
+        vtsub jj (val_type env (jj::GH) (open (varH (length GH)) T1)) ->
+        unpack jj (fun rr => val_type env (rr::GH) (open (varH (length GH)) T1)) ->
+        good_bounds jj ->
+        forall vx, jj vx nil ->
+        exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) (open (varH (length GH)) T2) v nil
+
     | vty env1 TX, TMem T1 T2, nil =>
-      closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2
-      /\ forall vy iy, if (pos iy)
-                  then val_type env GH vy T1 iy -> val_type env GH vy T2 iy
-                  else val_type env GH vy T2 iy -> val_type env GH vy T1 iy
+      closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2 /\
+      vtsub (val_type env GH T1) (val_type env GH T2) 
+
     | _, TMem T1 T2, ub :: i =>
-      closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2
-      /\ val_type env GH v T2 i
+      closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2 /\
+      val_type env GH T2 v i
+
     | _, TMem T1 T2, lb :: i =>
-      closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2
-      /\ val_type env GH v T1 i
+      closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2 /\
+      val_type env GH T1 v i
+
     | _, TSel (varF x), _ =>
       match indexr x env with
-        | Some jj => jj v (ub :: i) (* TODO: use ub_ins *)(*did*)
+        | Some jj => jj v (ub :: i)
         | _ => False
       end
+
     | _, TSel (varH x), _ =>
       match indexr x GH with
-        | Some jj => jj v (ub :: i) (* TODO: use ub_ins *)(*did*)
+        | Some jj => jj v (ub :: i)
         | _ => False
       end
 
 (* recursive valtype *)
     | _ , TBind T1, _ =>
       closed 1 (length GH) (length env) T1 /\
-      (forall (jj:vset),
-         (forall vy iy, jj vy iy -> val_type env (jj::GH) vy (open (varH (length GH)) T1) iy) -> val_type env (jj::GH) v (open (varH (length GH)) T1) i) /\
-       (exists (jj:vset),
-            (forall vy iy, jj vy iy -> val_type env (jj::GH) vy (open (varH (length GH)) T1) iy) /\ jj v i)
+      exists (jj:vset),
+        vtsub jj (val_type env (jj::GH) (open (varH (length GH)) T1)) /\
+        jj v i
 
     
 (* intersection valtype *)
     | _ , TAnd T1 T2, _ =>
       closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2
-      /\ if (pos i) then val_type env GH v T1 i /\ val_type env GH v T2 i 
-                    else val_type env GH v T1 i \/ val_type env GH v T2 i 
+      /\ if (pos i) then val_type env GH T1 v i /\ val_type env GH T2 v i 
+                    else val_type env GH T1 v i \/ val_type env GH T2 v i 
 
     | _, TTop, _ => 
       pos i = true
+
     | _, TAll T1 T2, _ =>
       closed 1 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
       pos i = true /\ i <> nil
+
     | _, TBot, _ =>
       pos i = false
+
     | _,_,_ =>
       False
   end.
@@ -595,12 +557,12 @@ Qed.
 
 
 (* this is just to accelerate Coq -- val_type in the goal is slooow *)
-Inductive vtp: list vset -> list vset -> vl -> ty -> sel -> Prop :=
-| vv: forall G H v T i, val_type G H v T i -> vtp G H v T i.
+Inductive vtp: list vset -> list vset -> ty -> vl -> sel -> Prop :=
+| vv: forall G H T v i, val_type G H T v i -> vtp G H T v i.
 
 
-Lemma unvv: forall G H v T i,
-  vtp G H v T i -> val_type G H v T i.
+Lemma unvv: forall G H T v i,
+  vtp G H T v i -> val_type G H T v i.
 Proof. admit. (* PEREV
   intros. inversion H0. subst. apply H2.
 *)
@@ -608,7 +570,7 @@ Qed.
 
 
 (* make logical relation explicit *)
-Definition R H G t v T := tevaln H t v /\ val_type G [] v T nil.
+Definition R H G t v T := tevaln H t v /\ val_type G [] T v nil.
 
 
 (* consistent environment *)
@@ -620,12 +582,10 @@ Definition R_env venv genv tenv :=
     (exists vx (jj:vset),
        indexr x venv = Some vx /\
        indexr x genv = Some jj /\
-       jj vx nil /\ 
-       (forall vy iy, if pos iy then jj vy iy -> vtp genv [] vy TX iy
-                      else           vtp genv [] vy TX iy -> jj vy iy) /\
-       (forall vp ip, jj vp ip -> forall vy iy, if pos iy 
-          then jj vy (ip ++ (lb::iy)) -> jj vy (ip ++ (ub::iy))
-          else jj vy (ip ++ (ub::iy)) -> jj vy (ip ++ (lb::iy)))).
+       jj vx nil /\
+       vtsub jj (vtp genv [] TX) /\
+       unpack jj (fun rr => vtp genv [rr] (unfoldb TX)) /\  (* FIXME !!! *)
+       good_bounds jj).
 
 
 
@@ -1373,7 +1333,7 @@ Qed.
 Lemma indexr_safe_ex: forall H1 GH G1 TF i,
              R_env H1 GH G1 ->
              indexr i G1 = Some TF ->
-             exists v, indexr i H1 = Some v /\ val_type GH [] v TF nil.
+             exists v, indexr i H1 = Some v /\ val_type GH [] TF v nil.
 Proof.
   intros. destruct H. destruct H2. destruct (H3 i TF H0) as [[v [E V]] G].
   exists v. split. destruct E as [n E]. assert (S n > n) as N. omega. specialize (E (S n) N).
@@ -1385,7 +1345,7 @@ Qed.
 
 Inductive res_type: list vset -> option vl -> ty -> Prop :=
 | not_stuck: forall venv v T,
-      val_type venv [] v T nil ->
+      val_type venv [] T v nil ->
       res_type venv (Some v) T.
 
 Hint Constructors res_type.
@@ -1612,7 +1572,7 @@ Qed.
 
 (* used in valtp_widen *)
 Lemma valtp_closed: forall vf GH H1 T1 i,
-  val_type H1 GH vf T1 i ->
+  val_type H1 GH T1 vf i ->
   closed 0 (length GH) (length H1) T1.
 Proof.
   intros. destruct T1; destruct vf;
@@ -1649,7 +1609,7 @@ Qed.
 Lemma valtp_extend_aux: forall n T1 i vx vf H1 G1,
   tsize_flat T1 < n ->
   closed 0 (length G1) (length H1) T1 ->
-  (vtp H1 G1 vf T1 i <-> vtp (vx :: H1) G1 vf T1 i).
+  (vtp H1 G1 T1 vf i <-> vtp (vx :: H1) G1 T1 vf i).
 Proof. admit. (* later
   induction n; intros ? ? ? ? ? ? S C. inversion S.
   destruct T1; split; intros V; apply unvv in V; rewrite val_type_unfold in V.
@@ -1881,18 +1841,18 @@ Qed.
 
 (* used in wf_env_extend *)
 Lemma valtp_shrink: forall i vx vf H1 T1,
-  val_type (vx::H1) [] vf T1 i ->
+  val_type (vx::H1) [] T1 vf i ->
   closed 0 0 (length H1) T1 ->                     
-  vtp H1 [] vf T1 i.
+  vtp H1 [] T1 vf i.
 Proof.
   intros. apply vv in H. eapply valtp_extend_aux. eauto. simpl. assumption.
   eassumption.
 Qed.
 
 Lemma valtp_shrinkM: forall i vx vf H1 GH T1,
-  val_type (vx::H1) GH vf T1 i ->
+  val_type (vx::H1) GH T1 vf i ->
   closed 0 (length GH) (length H1) T1 ->                     
-  vtp H1 GH vf T1 i.
+  vtp H1 GH T1 vf i.
 Proof.
   intros. apply vv in H. eapply valtp_extend_aux. eauto. simpl. assumption.
   eassumption.
@@ -2065,8 +2025,8 @@ Qed.
 Lemma valtp_splice_aux: forall n T vf H GH1 GH0 jj i,
 tsize_flat T < n -> closed 0 (length (GH1 ++ GH0)) (length H) T ->
 (  
-  vtp H (GH1 ++ GH0) vf T i <-> 
-  vtp H (GH1 ++ jj :: GH0) vf (splice (length GH0) T) i
+  vtp H (GH1 ++ GH0) T vf i <-> 
+  vtp H (GH1 ++ jj :: GH0) (splice (length GH0) T) vf i
 ).
 Proof. admit. (*
   induction n; intros ? ? ? ? ? ? ? Sz C. inversion Sz.
@@ -2336,9 +2296,9 @@ Proof. admit. (* PREV
 Qed.
 
 Lemma valtp_shrinkH: forall vf H1 GH T1 jj i,
-  val_type H1 (jj::GH) vf T1 i ->
+  val_type H1 (jj::GH) T1 vf i ->
   closed 0 (length GH) (length H1) T1 ->                     
-  vtp H1 GH vf T1 i.
+  vtp H1 GH T1 vf i.
 Proof. admit. (* PREV
   intros. 
   assert (vtp H1 ([] ++ GH) vf T1 i <-> 
@@ -2355,9 +2315,9 @@ Qed.
 
 (* used in invert_abs *)
 Lemma vtp_subst1: forall venv jj v T2,
-  val_type venv [jj] v (open (varH 0) T2) nil ->
+  val_type venv [jj] (open (varH 0) T2) v nil ->
   closed 0 0 (length venv) T2 ->
-  val_type venv [] v T2 nil.
+  val_type venv [] T2 v nil.
 Proof.
   intros. assert (open (varH 0) T2 = T2). symmetry. unfold open. 
   eapply closed_no_open. eapply H0. rewrite H1 in H. 
@@ -2370,8 +2330,8 @@ Lemma vtp_subst2_aux: forall n T venv jj v x i GH j k,
   tsize_flat T < n ->
   closed j (length GH) (length venv) T -> k < j ->
   indexr x venv = Some jj ->
-  (vtp venv (GH ++ [jj]) v (open_rec k (varH 0) (splice 0 T)) i <->
-   vtp venv GH v (open_rec k (varF x) T) i).
+  (vtp venv (GH ++ [jj]) (open_rec k (varH 0) (splice 0 T)) v i <->
+   vtp venv GH (open_rec k (varF x) T) v i).
 Proof. 
   admit. (*induction n; intros ? ? ? ? ? ? ? ? ? Sz Cz Bd Id. inversion Sz.
   destruct T; split; intros V; apply unvv in V; rewrite val_type_unfold in V.
@@ -2721,17 +2681,17 @@ Qed.
 Lemma vtp_subst: forall T venv jj v x i GH,
   closed 1 (length GH) (length venv) T -> 
   indexr x venv = Some jj ->
-  (vtp venv (GH ++ [jj]) v (open (varH 0) (splice 0 T)) i <->
-   vtp venv GH v (open (varF x) T) i).
+  (vtp venv (GH ++ [jj]) (open (varH 0) (splice 0 T)) v i <->
+   vtp venv GH (open (varF x) T) v i).
 Proof. intros. eapply vtp_subst2_aux. eauto. eassumption. omega. assumption. Qed.
 
 
 (* used in invert_dabs *)
 Lemma vtp_subst2: forall venv jj v x T2,
   closed 1 0 (length venv) T2 ->
-  val_type venv [jj] v (open (varH 0) T2) nil ->
+  val_type venv [jj] (open (varH 0) T2) v nil ->
   indexr x venv = Some jj ->
-  val_type venv [] v (open (varF x) T2) nil.
+  val_type venv [] (open (varF x) T2) v nil.
 Proof.
   intros. apply vv in H0. assert ([jj] = ([] ++ [jj])). simpl. reflexivity.
   rewrite H2 in H0. assert (splice 0 T2 = T2). eapply closed_splice_idem.
@@ -2743,8 +2703,8 @@ Qed.
 Lemma vtp_subst2_general: forall venv jj v x T2 i,
   closed 1 0 (length venv) T2 ->
   indexr x venv = Some jj ->
-  ( vtp venv [jj] v (open (varH 0) T2) i <->
-    vtp venv [] v (open (varF x) T2) i).
+  ( vtp venv [jj] (open (varH 0) T2) v i <->
+    vtp venv [] (open (varF x) T2) v i).
 Proof.
   intros. split. 
   Case "->". intros. assert ([jj] = ([] ++ [jj])). simpl. reflexivity.
@@ -2761,11 +2721,11 @@ Qed.
 (* used in vabs case of main theorem *)
 Lemma vtp_subst3: forall venv jj v T2,
   closed 1 0 (length venv) T2 ->
-  val_type (jj::venv) [] v (open (varF (length venv)) T2) nil ->
-  val_type venv [jj] v (open (varH 0) T2) nil.
+  val_type (jj::venv) [] (open (varF (length venv)) T2) v nil ->
+  val_type venv [jj] (open (varH 0) T2) v nil.
 Proof.
   intros. apply unvv. assert (splice 0 T2 = T2) as EE. eapply closed_splice_idem. eassumption. omega.
-  assert (vtp (jj::venv0) ([] ++ [jj]) v (open (varH 0) (splice 0 T2)) nil).
+  assert (vtp (jj::venv0) ([] ++ [jj]) (open (varH 0) (splice 0 T2)) v nil).
   assert (indexr (length venv0) (jj :: venv0) = Some jj). simpl. 
     replace (beq_nat (length venv0) (length venv0) ) with true. reflexivity. 
     apply beq_nat_refl. 
@@ -2785,20 +2745,20 @@ Qed.
 
 Lemma valty_subst4: forall G T1 jj vp iy,
   closed 1 0 (length G) T1 ->
-  (vtp G [jj] vp (open (varH 0) T1) iy <->
-   vtp (jj :: G) [] vp (open (varF (length G)) T1) iy). 
+  (vtp G [jj] (open (varH 0) T1) vp iy <->
+   vtp (jj :: G) [] (open (varF (length G)) T1) vp iy). 
 Proof. intros. split. 
-  Case "->". intros. assert (vtp (jj :: G) [jj] vp (open (varH 0) T1) iy).
+  Case "->". intros. assert (vtp (jj :: G) [jj] (open (varH 0) T1) vp iy).
     { eapply valtp_extend_aux with (H1 := G). eauto. 
       simpl. eapply closed_open. simpl. eapply closed_inc_mult. eassumption. omega. omega.
       omega. constructor. omega. assumption. }
-    assert (vtp (jj :: G) [] vp (open (varF (length G)) T1) iy).
+    assert (vtp (jj :: G) [] (open (varF (length G)) T1) vp iy).
     { eapply vtp_subst2_general. simpl. eapply closed_upgrade_freef. eassumption. omega.
       simpl. replace (beq_nat (length G) (length G)) with true. reflexivity. apply beq_nat_refl. 
       assumption. } assumption.
-  Case "<-". intros. assert (vtp (jj :: G) [jj] vp (open (varF (length G)) T1) iy).
+  Case "<-". intros. assert (vtp (jj :: G) [jj] (open (varF (length G)) T1) vp iy).
     { eapply valtp_extendH. apply unvv. assumption. }
-    assert (vtp (jj :: G) [jj] vp (open (varH 0) T1) iy).
+    assert (vtp (jj :: G) [jj] (open (varH 0) T1) vp iy).
     { eapply vtp_subst2_general with (x := length G). simpl. eapply closed_upgrade_freef. eassumption. omega.
       simpl. replace (beq_nat (length G) (length G)) with true. reflexivity. apply beq_nat_refl. 
       eassumption. }
@@ -2836,29 +2796,19 @@ Lemma valtp_widen_aux: forall G1 GH1 T1 T2,
                    exists vx jj,
                      indexr x H = Some jj /\
                      jj vx nil /\
-(*                     (forall vy iy, if pos iy then jj vy iy -> vtp H (jj::GH) vy (open (varH (length GH)) TX) iy
-                                    else           vtp H (jj::GH) vy (open (varH (length GH)) TX) iy -> jj vy iy) /\ *)
-                     (forall vy iy, if pos iy then jj vy iy -> vtp H GH vy TX iy
-                                    else           vtp H GH vy TX iy -> jj vy iy) /\
-           (forall vp ip, jj vp ip -> forall vy iy, if pos iy 
-             then jj vy (ip ++ (lb::iy)) -> jj vy (ip ++ (ub::iy))
-             else jj vy (ip ++ (ub::iy)) -> jj vy (ip ++ (lb::iy)))) ->
+                     vtsub jj (vtp H GH TX) /\
+                     good_bounds jj) ->
     length GH1 = length GH ->
     (forall x TX, indexr x GH1 = Some TX ->
                    exists vx jj,
                      indexr x GH = Some jj /\
                      jj vx nil /\
-                     (forall vy iy, if pos iy then jj vy iy -> vtp H GH vy TX iy
-                                    else           vtp H GH vy TX iy -> jj vy iy) /\
-                     (forall vp ip, jj vp ip -> forall vy iy, if pos iy 
-                         then jj vy (ip ++ (lb::iy)) -> jj vy (ip ++ (ub::iy))
-                         else jj vy (ip ++ (ub::iy)) -> jj vy (ip ++ (lb::iy)))) ->
-  (forall vf i, if (pos i) then
-     val_type H GH vf T1 i -> vtp H GH vf T2 i
-   else
-     val_type H GH vf T2 i -> vtp H GH vf T1 i).
+                     vtsub jj (vtp H GH TX) /\
+                     good_bounds jj) ->
+    vtsub (val_type H GH T1) (val_type H GH T2).
 Proof.
-  intros ? ? ? ? stp. 
+  admit. (*
+  intros ? ? ? ? stp.  
   induction stp; intros G GHX LG RG LGHX RGHX vf i; 
   remember (pos i) as p; destruct p; intros V0.
   
@@ -3634,17 +3584,17 @@ Proof.
   - specialize (IHstp1 _ _ LG RG LGHX RGHX vf i).
     specialize (IHstp2 _ _ LG RG LGHX RGHX vf i).
     rewrite <-Heqp in *.
-    eapply IHstp1. eapply unvv. eapply IHstp2. eapply V0.
+    eapply IHstp1. eapply unvv. eapply IHstp2. eapply V0. *)
 Qed.
 
 
 Lemma valtp_widen: forall vf GH H G1 T1 T2,
-  val_type GH [] vf T1 nil ->
+  val_type GH [] T1 vf nil ->
   stp G1 [] T1 T2 ->
   R_env H GH G1 ->
-  vtp GH [] vf T2 nil.
+  vtp GH [] T2 vf nil.
 Proof.
-  intros.
+  intros. admit. (*
   assert (forall (vf0 : vl) (i : sel),
     if pos i
     then val_type GH [] vf0 T1 i -> vtp GH [] vf0 T2 i
@@ -3654,20 +3604,17 @@ Proof.
     eexists. eexists. repeat split; try eassumption. } 
   reflexivity.
   { intros. simpl in H3. inversion H3. }
-  specialize (H3 vf nil). simpl in H3. eapply H3. assumption.
+  specialize (H3 vf nil). simpl in H3. eapply H3. assumption. *)
 Qed.
 
 (* --- up to here --- *)
 
 Lemma wf_env_extend: forall vx jj G1 R1 H1 T1,
   R_env H1 R1 G1 ->
-  val_type (jj::R1) [] vx T1 nil ->
+  val_type (jj::R1) [] T1 vx nil ->
   jj vx nil -> (* redundant? *)
-  (forall vy iy, if pos iy then jj vy iy -> vtp (jj::R1) [] vy T1 iy
-                 else           vtp (jj::R1) [] vy T1 iy -> jj vy iy) ->
-  (forall vp ip, jj vp ip -> forall vy iy, if pos iy 
-             then jj vy (ip ++ (lb::iy)) -> jj vy (ip ++ (ub::iy))
-             else jj vy (ip ++ (ub::iy)) -> jj vy (ip ++ (lb::iy))) ->
+  vtsub jj (vtp (jj::R1) [] T1) ->
+  good_bounds jj ->
   R_env (vx::H1) (jj::R1) (T1::G1).
 Proof.
   intros. unfold R_env in *. destruct H as [L1 [L2 U]].
@@ -3679,7 +3626,7 @@ Proof.
     assumption. exists vx. exists jj.
     split. simpl. rewrite <-L1 in E. rewrite E. reflexivity.
     split. simpl. rewrite <-L2 in E. rewrite E. reflexivity.
-    split. assumption. split. assumption. intros. apply (H4 _ _ H5).
+    split. assumption. split. assumption. intros. admit. (* apply (H4 _ _ H5). *)
   - destruct (U x TX H) as [[vy [EV VY]] IR]. split.
     exists vy. split.
     destruct EV as [n EV]. assert (S n > n) as N. omega. specialize (EV (S n) N). simpl in EV.
@@ -3689,25 +3636,23 @@ Proof.
     split. simpl. rewrite <-L1 in E. rewrite E. assumption.
     split. simpl. rewrite <-L2 in E. rewrite E. assumption.
     split. assumption. split.
+    admit. admit. (*
     intros. specialize (H8 vy0 iy). remember (pos iy) as p. destruct p.
     intros. eapply valtp_extend. eapply unvv. eapply H8. assumption.
     intros. eapply H8. eapply valtp_shrink. eapply unvv. eassumption.
     eapply valtp_closed in VY. eapply VY.
-    assumption.
+    assumption. *)
 Qed.
 
 Lemma wf_env_extend0: forall vx (jj:vset) G1 R1 H1 T1,
   R_env H1 R1 G1 ->
-  jj vx nil -> 
-  (forall vy iy, if pos iy then jj vy iy -> vtp R1 [] vy T1 iy
-                 else           vtp R1 [] vy T1 iy -> jj vy iy) ->
-  (forall vp ip, jj vp ip -> forall vy iy, if pos iy 
-             then jj vy (ip ++ (lb::iy)) -> jj vy (ip ++ (ub::iy))
-             else jj vy (ip ++ (ub::iy)) -> jj vy (ip ++ (lb::iy))) ->
+  jj vx nil ->
+  vtsub jj (vtp R1 [] T1) ->
+  good_bounds jj ->
   R_env (vx::H1) (jj::R1) (T1::G1).
 Proof.
-  intros.
-  assert (val_type R1 [] vx T1 nil) as V0.
+  admit. (* intros.
+  assert (val_type R1 [] T1 vx nil) as V0.
   specialize (H2 vx nil). simpl in H2. eapply unvv. eapply H2. assumption.
   eapply wf_env_extend. assumption. eapply unvv. eapply valtp_extend. eapply V0.
   assumption.
@@ -3715,31 +3660,29 @@ Proof.
   intros. eapply valtp_extend. eapply unvv. eapply H2. assumption.
   intros. eapply H2. eapply valtp_shrink. eapply unvv. eassumption.
   eapply unvv in H4. eapply valtp_closed in V0. apply V0.
-  assumption.
+  assumption. *)
 Qed.
 
 (* TODO: use subst lemmas *)
 Lemma wf_env_extend1: forall vx (jj:vset) G1 R1 H1 T1,
   R_env H1 R1 G1 ->
-  jj vx nil -> 
-  (forall vy iy, if pos iy then jj vy iy -> vtp R1 [jj] vy (open (varH 0) T1) iy
-                 else           vtp R1 [jj] vy (open (varH 0) T1) iy -> jj vy iy) ->
-  (forall vp ip, jj vp ip -> forall vy iy, if pos iy 
-             then jj vy (ip ++ (lb::iy)) -> jj vy (ip ++ (ub::iy))
-             else jj vy (ip ++ (ub::iy)) -> jj vy (ip ++ (lb::iy))) ->
+  jj vx nil ->
+  vtsub jj (vtp R1 [jj] (open (varH 0) T1)) ->
+  good_bounds jj ->
   R_env (vx::H1) (jj::R1) ((open (varF (length R1)) T1)::G1).
 Proof.
   intros.
-  assert (val_type R1 [jj] vx (open (varH 0) T1) nil) as VX.
+  assert (val_type R1 [jj] (open (varH 0) T1) vx nil) as VX.
   specialize (H2 vx nil). simpl in H2. eapply unvv. eapply H2. assumption.
-  assert (val_type (jj::R1) [] vx (open (varF (length R1)) T1) nil) as V0.
+  assert (val_type (jj::R1) [] (open (varF (length R1)) T1) vx nil) as V0.
   admit. (* TODO *)
   eapply wf_env_extend. assumption. eapply V0.
   assumption.
+  admit. admit. (* 
   intros. specialize (H2 vy iy). remember (pos iy) as p. destruct p.
   intros. admit. (* eapply H2. *) 
   intros. eapply H2. admit. 
-  assumption.
+  assumption. *)
 Qed.
 
 (* move it here *)
@@ -3747,17 +3690,14 @@ Qed.
 
 (* used in invert_abs *)
 Lemma valtp_bounds_aux: forall n T1 G v iy,
-  tsize_flat T1 < n -> val_type G [] v T1 iy ->
+  tsize_flat T1 < n -> val_type G [] T1 v iy ->
   (forall x (jj:vset) v iy,
      indexr x G = Some jj ->
      jj v iy ->
-     forall vy jy,
-       if pos jy then jj vy (iy ++ (lb::jy)) -> jj vy (iy ++ (ub::jy))
-       else           jj vy (iy ++ (ub::jy)) -> jj vy (iy ++ (lb::jy))) ->
-  forall vy jy,
-    if pos jy then vtp G [] vy T1 (iy ++ (lb::jy)) -> vtp G [] vy T1 (iy ++ (ub::jy))
-    else           vtp G [] vy T1 (iy ++ (ub::jy)) -> vtp G [] vy T1 (iy ++ (lb::jy)).
-Proof. 
+     good_bounds jj) ->
+  good_bounds (val_type G [] T1).
+Proof.
+  admit. (*
   induction n; intros T1 G vp iy Sz H R vy jy. inversion Sz.
   destruct T1; remember (pos jy) as p; destruct p; intros HV; eapply vv; eapply unvv in HV.
 
@@ -4011,7 +3951,7 @@ Proof.
         ev. apply vv. assumption. }
       specialize (IHn _ _ _ _ Size H4 R (vty l t) jy). rewrite <- Heqp in IHn.
       apply unvv. apply IHn. apply vv. assumption.*)
-
+*)
 Qed.
 
 
@@ -4021,16 +3961,12 @@ Qed.
 
 (* used in invert_abs *)
 Lemma valtp_bounds: forall G v iy T1,
-  val_type G [] v T1 iy ->
+  val_type G [] T1 v iy ->
   (forall x (jj:vset) v iy,
      indexr x G = Some jj ->
      jj v iy ->
-     forall vy jy,
-       if pos jy then jj vy (iy ++ (lb::jy)) -> jj vy (iy ++ (ub::jy))
-       else           jj vy (iy ++ (ub::jy)) -> jj vy (iy ++ (lb::jy))) ->
-  forall vy jy,
-    if pos jy then vtp G [] vy T1 (iy ++ (lb::jy)) -> vtp G [] vy T1 (iy ++ (ub::jy))
-    else           vtp G [] vy T1 (iy ++ (ub::jy)) -> vtp G [] vy T1 (iy ++ (lb::jy)).
+     good_bounds jj) ->
+  good_bounds (val_type G [] T1).
 Proof. admit. (*
   intros G v iy T1 H R. revert v iy H.
   induction T1; intros; remember (pos jy) as p; destruct p; intros HV; eapply vv; eapply unvv in HV.
@@ -4147,12 +4083,12 @@ Qed.
 
 Lemma invert_abs: forall venv vf T1 T2 Gv Gt,
   R_env Gv venv Gt ->
-  val_type venv [] vf (TAll T1 T2) nil ->
+  val_type venv [] (TAll T1 T2) vf nil ->
   exists env TX y,
     vf = (vabs env TX y) /\ 
     (closed 0 0 (length venv) T1 -> closed 0 0 (length venv) T2 -> forall vx : vl,
-       val_type venv [] vx T1 nil ->
-       exists v : vl, tevaln (vx::env) y v /\ val_type venv [] v T2 nil).
+       val_type venv [] T1 vx nil ->
+       exists v : vl, tevaln (vx::env) y v /\ val_type venv [] T2 v nil).
 Proof.
   intros ? ? ? ? ? ? R ? . 
   rewrite val_type_unfold in H.   
@@ -4161,40 +4097,36 @@ Proof.
   intros C1 ?. simpl in H1.
 
   intros. 
+
+  (* Need to create evidence for good_bounds, unpack, ... *)
   
   assert (exists (jj:vset),
             jj vx nil /\
-            (forall vy iy, if pos iy then jj vy iy -> val_type venv0 [] vy T1 iy
-                           else           val_type venv0 [] vy T1 iy -> jj vy iy) /\
-            (forall vp ip, jj vp ip -> forall vy iy, if pos iy 
-                           then jj vy (ip ++ lb :: iy) -> jj vy (ip ++ ub :: iy)
-                           else jj vy (ip ++ ub :: iy) -> jj vy (ip ++ lb :: iy))) as A. {
-    exists (fun vy iy => val_type venv0 [] vy T1 iy). split.
-    assumption. split.
-    intros. destruct (pos iy); intros; assumption.
+            vtsub jj (val_type venv0 [] T1) /\
+            good_bounds jj) as A. {
+    exists (val_type venv0 [] T1).
+    (* pick identity as jj *)
+    split. assumption. split.
+    unfold vtsub. intros. destruct (pos iy); intros; assumption.
     assert ((forall (x : id) (jj : vset) (v : vl) (iy : sel),
         indexr x venv0 = Some jj ->
         jj v iy ->
-        forall (vy : vl) jy ,
-        if pos jy
-        then jj vy (iy ++ lb :: jy) -> jj vy (iy ++ ub :: jy)
-        else jj vy (iy ++ ub :: jy) -> jj vy (iy ++ lb :: jy))) as RR.
+        good_bounds jj)) as RR.
     { unfold R_env in R. ev. intros. assert (x < length venv0). apply indexr_max in H7. assumption.
       rewrite H5 in H9. apply indexr_has in H9. ev. specialize (H6 x x0 H9). ev.
-      rewrite H7 in H11. inversion H11. subst x2. specialize (H14 v iy H8 vy jy). assumption. }
+      rewrite H7 in H11. inversion H11. subst x2. assumption. }
     intros.
-    specialize (valtp_bounds _ _ _ _ H4 RR). intros VB.
-    specialize (VB vy iy). destruct (pos iy). intros. apply unvv. apply VB. apply vv. assumption.
-    intros. apply unvv. apply VB. apply  vv. assumption. }
+    specialize (valtp_bounds _ _ _ _ H3 RR). intros VB. assumption. }
                                                                                     
   ev.
-  assert (forall (vy : vl) (iy : list bound),
-       if pos iy
-       then x vy iy -> val_type venv0 [x] vy (open (varH 0) T1) iy
-       else val_type venv0 [x] vy (open (varH 0) T1) iy -> x vy iy). admit. (* extend/shrink *)
+  assert (vtsub x (val_type venv0 [x] (open (varH 0) T1))).
+  admit. (* extend/shrink *)
   (* TODO *)
 
-  specialize (H1 vx x H4 H7 H6). 
+  assert (unpack x (fun rr : vset => val_type venv0 [rr] (open (varH 0) T1))) as UNP.
+  admit. 
+  
+  specialize (H1 x H7 UNP H6 vx H4). 
   ev.
   exists x0.
   split. eapply H1.
@@ -4205,18 +4137,16 @@ Proof.
 Qed.
 
 Lemma invert_dabs: forall venv vf T1 T2 x jj,
-  val_type venv [] vf (TAll T1 T2) nil ->
+  val_type venv [] (TAll T1 T2) vf nil ->
   indexr x venv = Some jj ->
-  (forall vy iy, if pos iy then jj vy iy -> val_type venv [] vy (open (varF x) T1) iy
-                 else           val_type venv [] vy (open (varF x) T1) iy -> jj vy iy) ->
-  (forall vp ip, jj vp ip -> forall vy iy, if pos iy
-                 then jj vy (ip ++ lb :: iy) -> jj vy (ip ++ ub :: iy)
-                 else jj vy (ip ++ ub :: iy) -> jj vy (ip ++ lb :: iy)) ->
+  vtsub jj (val_type venv [] (open (varF x) T1)) ->
+  unpack jj (fun rr => val_type venv [rr] (open (varH 0) T1)) ->
+  good_bounds jj ->
   exists env TX y,
     vf = (vabs env TX y) /\
     forall vx : vl,
        jj vx nil ->
-       exists v : vl, tevaln (vx::env) y v /\ val_type venv [] v (open (varF x) T2) nil.
+       exists v : vl, tevaln (vx::env) y v /\ val_type venv [] (open (varF x) T2) v nil.
 Proof.
   intros. 
   rewrite val_type_unfold in H.   
@@ -4227,27 +4157,21 @@ Proof.
   intros. 
 
   (* have *)
-  assert (forall (vy : vl) (iy : list bound),
-       if pos iy
-       then jj vy iy -> val_type venv0 [] vy (open (varF x) T1) iy
-       else val_type venv0 [] vy (open (varF x) T1) iy -> jj vy iy). assumption.
+  assert (vtsub jj (val_type venv0 [] (open (varF x) T1))). assumption.
 
 
   (* need *)
-  assert (forall (vy : vl) (iy : list bound),
-            if pos iy
-            then jj vy iy -> val_type venv0 [jj] vy (open (varH 0) T1) iy
-            else val_type venv0 [jj] vy (open (varH 0) T1) iy -> jj vy iy). admit. 
+  assert (vtsub jj (val_type venv0 [jj] (open (varH 0) T1))). admit. 
   (* TODO *)
   
-  specialize (H4 vx jj H5 H7 H2). 
+  specialize (H5 jj H8 H2 H3 vx H6). 
   ev.
   exists x0.
-  split. eapply H4.
+  split. eapply H5.
 
   eapply vtp_subst2. simpl in *. eassumption. eassumption. eapply H0.
 
-  ev. destruct H5. reflexivity.
+  ev. destruct H6. reflexivity.
 Qed.
 
 
@@ -4287,14 +4211,43 @@ Proof.
   eapply H. eapply IHi. 
 Qed.
 
+(*
+Lemma chain_incl3: forall i (jjx:vset) v,
+  (forall vy iy, jjx vy iy -> exists jj : vset, (* unfolding vtp TBind yields a _different_ jj *)
+         (forall (v : vl) (i : sel),
+          jj v i -> jj v (ub::i)) /\ jj vy iy) ->
+  jjx v nil ->
+  jjx v i -> jjx v (ub::i).
+Proof.
+  induction i. intros. assumption.
+  intros. specialize (IHi jj1 jjx v H H0). 
+  assert (a = ub). admit. subst a. (* handle lb case later *)
+  assert (jj1 v i). { clear IHi H H3. induction i. assumption.
+  assert (a = ub). admit. subst a. (* handle lb case later *)
+  eapply H0. eapply IHi. }
+  assert (jjx v i). eapply IHi; assumption.
+
+  
+  
+  specialize (H _ _ H2). ev.
+  
+
+  eapply (chain_incl _ _ _ _ H H0). assumption. assumption.
+  (* x v i : by repeated application of H *)
+  clear H3. induction i. assumption.
+  assert (a = ub). admit. subst a. (* handle lb case later *)
+  eapply H. eapply IHi. 
+Qed.
+*)
+
 Lemma vtp_subst3_aux: forall n TS T venv (jj1:vset) (jjx:vset) GH vy iy,
   tsize_flat T < n ->
-  (forall vy iy, jj1 vy iy -> vtp venv (GH ++ [jj1]) vy (open (varH 0) TS) iy) ->
-  (forall vy iy, jjx vy iy -> vtp venv (GH ++ [jjx]) vy (open (varH 0) TS) iy) ->
+  (forall vy iy, jj1 vy iy -> vtp venv (GH ++ [jj1]) (open (varH 0) TS) vy iy) ->
+  (forall vy iy, jjx vy iy -> vtp venv (GH ++ [jjx]) (open (varH 0) TS) vy iy) ->
   jj1 vy nil ->
   jjx vy nil ->
-  vtp venv (GH ++ [jj1]) vy T iy -> 
-  vtp venv (GH ++ [jjx]) vy T iy.
+  vtp venv (GH ++ [jj1]) (open (varH 0) T) vy iy -> 
+  vtp venv (GH ++ [jjx]) (open (varH 0) T) vy iy.
 Proof.
   induction n; intros ? ? ? ? ? ? ? ? ? F1 F2 J1 J2 V1. inversion H.
   assert (true = pos iy) as R. admit. (* later *)
@@ -4324,7 +4277,50 @@ Proof.
         admit. 
       + admit. }
 
-  - admit.
+  - destruct vy. admit. remember (vty l t) as vy.
+    assert (TS = TMem T1 T2). admit. subst TS. unfold open in *. simpl in *.
+    destruct iy.
+    + specialize (F2 vy nil J2). admit. (* ok *)
+    + 
+      destruct b; [idtac|admit]. (* lb later *)
+      eapply vv. rewrite val_type_unfold. rewrite Heqvy.
+      split. admit. split. admit.
+
+      eapply unvv in V1. rewrite val_type_unfold in V1. rewrite Heqvy in V1. ev.
+      rename H2 into V1. 
+
+      (* IHn *)
+      eapply unvv. eapply vv in V1.
+      specialize (IHn T2 T2 venv0 jj1 jjx). 
+      eapply IHn. omega. 
+      (* F1 *)
+      intros ? ? JJ0. specialize (F1 _ _ JJ0). eapply unvv in F1.
+      rewrite val_type_unfold in F1.
+      destruct vy0. admit. destruct iy0. admit. destruct b. ev.
+      rename H4 into VF1.
+      
+
+      admit.
+      admit.
+      admit. 
+      admit.
+      admit.
+      admit. 
+
+      (*
+      specialize (IHn  (open (varH 0) (TSel (varH 0))) (open (varH 0) (TSel (varH 0))) venv0 jj1 jjx). simpl in IHn. eapply IHn. omega. 
+
+      (* F1 *)
+      intros. specialize (F1 _ _ H3). eapply unvv in F1. 
+
+
+      
+      remember (fun vy iy => jj1 vy (ub::iy)) as jj1'. 
+      eapply unvv. eapply vv in H2. eapply (IHn _ _ _ jj1' jjx). omega.
+      (* F1 *)
+      intros. specialize (F1 _ _ H3). eapply unvv in F1. rewrite 
+      *)
+    
   - admit.
   - admit.
 Qed.
@@ -4333,24 +4329,233 @@ Qed.
 (* NEW BIND DEFINITION FOR VAL_TYPE -- disregard pos iy for the moment *)
 
 Lemma val_bind_unfold: forall G1 GH v T1 i,
-  val_type G1 GH v (TBind T1) i =
+  val_type G1 GH (TBind T1) v i =
   (exists (jj:vset),
-     (forall v i , jj v i -> val_type G1 (jj::GH) v (open (varH (length GH)) T1) i) /\ (* TODO: pos iy *)
+     vtsub jj (val_type G1 (jj::GH) (open (varH (length GH)) T1)) /\
      jj v i).
 Proof. admit. Qed. 
+
+Lemma val_sel_unfold: forall jj1 venv0 vy iy, val_type venv0 [jj1] (TSel (varH 0)) vy iy = jj1 vy (ub::iy).
+  Proof. intros. rewrite val_type_unfold. simpl. destruct vy; reflexivity. Qed.
+
+
+Lemma val_bind_eq: forall G1 GH T1,
+                   exists (jj:vset),
+                     forall v u, ( jj v u /\ (forall vy iy, jj vy iy -> val_type G1 (jj::GH) (open (varH (length GH)) T1) vy iy))  <-> val_type G1 GH (TBind T1) v u. 
+Proof.
+  intros. exists (fun vy iy => val_type G1 GH (TBind T1) vy iy). intros.
+  split. 
+  -
+  (* XXX fixed to { z => z.T } *)
+  assert (T1 = (TSel (varB 0))). admit. subst T1.
+  assert (GH = nil). admit. subst GH. 
+  rewrite val_bind_unfold in *.  unfold open in *. simpl in *.
+  intros. ev. 
+
+  exists x. split. unfold vtsub. intros.
+  specialize (H vy iy). assert (pos iy = true). admit. rewrite H2 in *.
+  eapply H. assumption. 
+  - intros. split. assumption. intros. 
+  assert (T1 = (TSel (varB 0))). admit. subst T1.
+  assert (GH = nil). admit. subst GH. 
+
+  unfold open in *. simpl. rewrite val_sel_unfold.
+  rewrite val_bind_unfold in H0.
+  rewrite val_bind_unfold. ev.
+  exists x. split. assumption.
+  specialize (H0 vy iy). assert (pos iy = true). admit. rewrite H2 in *.
+  specialize (H0 H1). unfold open in  *. rewrite val_sel_unfold in H0. assumption.
+Qed.
+
+
+
+(* need to prove that any subset of val_type TBind is also recursive *)
+
+
+Lemma val_bind_eq2: forall G1 GH T1 (jj:vset),
+                      (forall v u, jj v u -> val_type G1 GH (TBind T1) v u) ->
+                      (forall vy iy, val_type G1 (jj::GH) (open (varH (length GH)) T1) vy iy -> jj vy iy). 
+Proof.
+  intros ? ? ? jj.
+  specialize (val_bind_eq G1 GH T1). intros VBE. ev. rename x into jj0.
+  intros. 
+  
+  assert (T1 = (TSel (varB 0))). admit. subst T1.
+  assert (GH = nil). admit. subst GH.
+
+  unfold open in *. simpl in *. 
+
+  specialize (H vy iy). destruct H. rewrite val_sel_unfold in H1. 
+
+  admit. 
+Qed.
+
+
+
+
+
+(*
+    jj = {1}  jj^U = {1}  ...
+
+    compare with [[ Top ]]
+
+    at creation site, capture { z => z.T } for Top
+
+    at use site, want to use jj
+  
+
+    ----
+
+    allowed:
+    x: (1)
+    x: { z => (1) }
+    x: (1)
+
+  
+*)
+
 
 
 Lemma vtp_subst4_aux: forall n TS T venv (jj1:vset) (jjx:vset) GH vy iy,
   tsize_flat T < n ->
-  (forall vy iy, jj1 vy iy -> vtp venv (GH ++ [jj1]) vy (open (varH 0) TS) iy) ->
-  (forall vy iy, jjx vy iy -> vtp venv (GH) vy (TBind TS) iy) ->
+  (forall vy iy, jj1 vy iy -> vtp venv (GH ++ [jj1]) (open (varH 0) TS) vy iy) ->
+  (forall vy iy, jjx vy iy -> vtp venv (GH) (TBind TS) vy iy) ->
   jj1 vy nil ->
   jjx vy nil ->
-  vtp venv (GH ++ [jj1]) vy T iy -> 
-  vtp venv (GH ++ [jjx]) vy T iy.
+  vtp venv (GH ++ [jj1]) (open (varH 0) T) vy iy -> 
+  vtp venv (GH ++ [jjx]) (open (varH 0) T) vy iy.
 Proof.
   admit. (* use chain_incl2 *)
 Qed.
+
+
+
+
+Lemma vtp_subst4a: forall T venv (jj1:vset) (jjx:vset) vy iy,
+  (forall vy iy, if pos iy then jj1 vy iy   ->   vtp venv [jj1] (open (varH 0) T) vy iy
+                 else           vtp venv [jj1] (open (varH 0) T) vy iy   ->   jj1 vy iy) ->
+  (forall vy iy, if pos iy then jjx vy iy   ->   vtp venv [] (TBind T) vy iy
+                 else           vtp venv [] (TBind T) vy iy   ->   jjx vy iy) ->
+  (* we also have the usual good bounds predicates on jj1 and jjx *)
+  jj1 vy nil ->
+  jjx vy nil ->
+  vtp venv [jj1] (open (varH 0) T) vy iy -> 
+  vtp venv [jjx] (open (varH 0) T) vy iy.
+Proof.
+  admit. (* use chain_incl2 *)
+Qed.
+
+
+Lemma vtp_subst4b: forall T venv (jj1:vset) (jjx:vset) vy,
+  (forall vy iy, if pos iy then jj1 vy iy   ->   vtp venv [jj1] (open (varH 0) T) vy iy
+                 else           vtp venv [jj1] (open (varH 0) T) vy iy   ->   jj1 vy iy) ->
+  (forall vy iy, if pos iy then jjx vy iy   ->   vtp venv [] (TBind T) vy iy
+                 else           vtp venv [] (TBind T) vy iy   ->   jjx vy iy) ->
+  (* we also have the usual good bounds predicates on jj1 and jjx *)
+  jj1 vy nil ->
+  jjx vy nil ->
+  (vtp venv [jj1] (TSel (varH 0)) vy nil <-> 
+  vtp venv [jjx] (TSel (varH 0)) vy nil).
+Proof.
+  admit. (*
+  induction T; intros.
+  - admit.
+  - admit.
+  - Case "fun". admit. (* todo! *)
+  - Case "sel".
+    destruct v; [admit|idtac|admit].
+    assert (i = 0). admit. subst i. unfold open in *. simpl in *.
+    eapply vv. rewrite val_sel_unfold. eapply unvv in H3. rewrite val_sel_unfold in H3.
+
+    assert (vtp venv0 [] vy (TBind (TSel (varH 0))) []). specialize (H0 vy []). simpl in H0.
+    eapply H0. assumption.
+    eapply unvv in H4. rewrite val_bind_unfold in H4. destruct H4 as [jjx2 [? ?]]. 
+    remember H4 as F2. clear HeqF2. specialize (F2 vy nil). simpl in F2.
+    specialize (F2 H5). rewrite val_sel_unfold in F2. 
+    eapply unvv in H2. rewrite val_bind_unfold in H2. ev. 
+
+    
+    { eapply chain_incl2. instantiate (1:= jjx).
+      + (* jjx -> TBind T *)
+        intros. specialize (H0 vy0 iy). assert (pos iy = true). admit. rewrite H5 in H0.
+        specialize (H0 H4). eapply unvv in H0. rewrite val_bind_unfold in H0.
+        destruct H0 as [jjx2 [FA JJ2]]. exists jjx2. split.
+        intros. specialize (FA v i). assert (pos i = true). admit. rewrite H6 in FA.
+        specialize (FA H0). unfold open in FA. simpl in FA. rewrite val_sel_unfold in FA. eapply FA. assumption.
+      + (* jj1 -> open T *)
+        intros. specialize (H vy0 iy). assert (pos iy = true). admit. rewrite H5 in H.
+        specialize (H H3). eapply unvv in H0. rewrite val_bind_unfold in H0.
+    
+  intros.
+  eapply unvv in H3. rewrite val_type_unfold in H3. destruct vy. admit. simpl in H3.
+  eapply vv. rewrite val_type_unfold. simpl. 
+
+  remember (vty l t) as vy. 
+  assert (vtp venv0 [jj1] vy (open (varH 0) T) [ub]). specialize (H vy [ub]). simpl in H.
+  eapply H. assumption.
+  assert (vtp venv0 [] vy (TBind T) []). specialize (H0 vy []). simpl in H0.
+  eapply H0. assumption.
+
+  eapply unvv in H5. rewrite val_bind_unfold in H5. destruct H5 as [jjx2 [? ?]]. 
+  
+  
+  remember H0 as F2. clear HeqF2. specialize (F2 vy nil). simpl in F2.
+  eapply F2 in H2.
+  eapply unvv in H2. rewrite val_bind_unfold in H2. ev. 
+  
+  admit. (* use chain_incl2 *)*)
+Qed.
+
+
+
+Lemma vtp_subst4: forall T venv (jj1:vset) (jjx:vset) vy,
+  (forall vy iy, if pos iy then jj1 vy iy   ->   vtp venv [jj1] (open (varH 0) T) vy iy
+                 else           vtp venv [jj1] (open (varH 0) T) vy iy   ->   jj1 vy iy) ->
+  (forall vy iy, if pos iy then jjx vy iy   ->   vtp venv [] (TBind T) vy iy
+                 else           vtp venv [] (TBind T) vy iy   ->   jjx vy iy) ->
+  (* we also have the usual good bounds predicates on jj1 and jjx *)
+  jj1 vy nil ->
+  jjx vy nil ->
+  vtp venv [jj1] (open (varH 0) T) vy nil -> 
+  vtp venv [jjx] (open (varH 0) T) vy nil.
+Proof.
+  intros.
+  remember H0 as F2. clear HeqF2. specialize (F2 vy nil). simpl in F2.
+  eapply F2 in H2.
+  eapply unvv in H2. rewrite val_bind_unfold in H2. ev. 
+  
+  admit. (* use chain_incl2 *)
+Qed.
+
+
+
+Lemma vtp_subst_narrow_illegal: forall T venv (jj1:vset) (jjx:vset) vy,
+  (forall vy iy, jj1 vy iy   ->   jjx vy iy) ->
+  vtp venv [jj1] (open (varH 0) T) vy nil -> 
+  vtp venv [jjx] (open (varH 0) T) vy nil.
+Proof.
+  intros.
+  destruct T.
+  - admit.
+  - admit.
+  - Case "fun".
+    eapply unvv in H0. unfold open in *. simpl in *. 
+    rewrite val_type_unfold in H0. eapply vv. rewrite val_type_unfold. 
+    destruct vy. ev. split. admit. split. admit. intros.
+    specialize (H2 jj H3). 
+    admit. (* problem: need to switch direction !!! *)
+    admit. 
+  - assert (v = (varH 0)). admit. subst v.
+    eapply unvv in H0. eapply vv.
+    rewrite val_sel_unfold in *. 
+    eapply H. eapply H0.
+  - admit.
+  - admit.
+  - admit. 
+Qed.
+
+
+
 
 
 
@@ -4361,28 +4566,45 @@ Qed.
 (* final type safety + termination proof *)
 Theorem full_total_safety : forall e tenv T,
   has_type tenv e T -> forall venv renv, R_env venv renv tenv ->
-  exists v, tevaln venv e v /\ val_type renv [] v T nil.
+  exists v, tevaln venv e v /\ val_type renv [] T v nil.
 Proof.
   intros ? ? ? W.
-  induction W. admit. admit. (* intros ? ? WFE. *)
-(*
-  - Case "Var". 
+  induction W. 
+
+  - Case "Var".
+    intros ? ? WFE.
     destruct (indexr_safe_ex venv0 renv env T1 x) as [v IV]. eauto. eauto. 
     inversion IV as [I V]. 
 
     exists v. split. exists 0. intros. destruct n. omega. simpl. rewrite I. reflexivity. eapply V.
 
   - Case "Typ".
+    intros ? ? WFE.
     repeat eexists. intros. destruct n. inversion H0. simpl. reflexivity.
-    rewrite <-(wf_length2 venv0 renv) in H.
+(*    rewrite <-(wf_length2 venv0 renv) in H.
     rewrite val_type_unfold. simpl. repeat split; try eapply H.
     intros. destruct (pos iy); intros; assumption.
-    eapply WFE.
-*)
+    eapply WFE. *)
+
   - Case "VarPack".
 
+    (* unfold R_env in IHW. intros venv0. specialize (IHW venv0). *)
 
-    intros venv1 renv1 WFE. 
+    (* decouple jj and renv *)
+    (* forall x:jj, T^x *)
+    (*
+    assert (forall (renv : list vset) (jj1 jjx:vset),
+        R_env venv0 renv env ->
+        indexr x renv = Some jj ->
+        exists (v : vl),
+          indexr x venv0 = Some v /\
+          val_type renv [jj] v (open (varH x) T1) []).
+    
+    intros venv1 renv1 WFE.
+    unfold R_env in IHW. 
+*)
+    
+    intros venv1 renv1 WFE.
     destruct (IHW venv1 renv1 WFE) as [v [IW HV]].
     exists v. split. assumption. eapply unvv. 
     unfold tevaln in IW. destruct IW as [nm ?]. assert (S nm > nm) by omega. specialize (H0 _ H1). simpl in H0. inversion H0. 
@@ -4394,10 +4616,12 @@ Proof.
     rewrite H3 in H6. inversion H6. subst vx1. clear H6. 
     eapply vv. rewrite val_bind_unfold. 
 
-    exists jj1. split. intros.
-    assert (pos i = true) as Hp. admit. 
-    specialize (H9 v0 i). rewrite Hp in H9. specialize (H9 H6).
-    admit. (* follows from vtp_subst *)
+    exists jj1. split. unfold vtsub. intros.
+    remember (pos iy) as p. destruct p; intros. 
+    specialize (H9 vy iy). rewrite <-Heqp in H9. specialize (H9 H6).
+    admit. (* follows from vtp_subst and H9 *)
+    specialize (H9 vy iy). rewrite <-Heqp in H9. eapply H9. 
+    admit. (* follows from vtp_subst and H6 *) 
     
     assumption.
     
@@ -4409,16 +4633,25 @@ Proof.
     assert (indexr x env = Some (TBind T1)) as IT. admit. 
     remember WFE as WFE1. clear HeqWFE1. 
     unfold R_env in WFE1. destruct WFE1 as [? [? WFE1]].
-    specialize (WFE1 _ _ IT). destruct WFE1 as [[vR1 ?] [vx1 [jj1 [? [? [? [? ?]]]]]]]. clear IT.
+    specialize (WFE1 _ _ IT). destruct WFE1 as [[vR1 ?] [vx1 [jj1 [? [? [? [? [? ?]]]]]]]]. clear IT.
 
     rewrite H3 in H6. inversion H6. subst vx1. clear H6.
     
     rewrite val_bind_unfold in HV. destruct HV as [jj0 [FA0 J0]].
 
-    assert (vtp renv1 ([]++[jj1]) v (open (varH 0) T1) []).  eapply vtp_subst4_aux. auto.
-    simpl. intros. eapply vv. eapply FA0. assumption. admit. (* H9 *) eapply J0. eapply H8.
-    simpl. eapply vv. eapply FA0. eapply J0.
-    admit. (* vtp_subst *)
+    assert (vtp renv1 [jj1] (open (varH 0) T1) v nil) as V.
+
+    (* TODO: use unpack evidence from environment! *)
+    unfold unpack in H10.
+    unfold unfoldb in H10.
+    specialize (H10 v [] H8). 
+
+    assert ((exists rr : vset, vtsub rr (vtp renv1 [rr] (open (varH 0) T1)))).
+    exists jj0. admit.
+    specialize (H10 H6 v nil H8).
+    eapply H10. 
+
+    admit. (* follows from vtp_subst and V*)
 
 
   - Case "And". admit.
@@ -4428,6 +4661,7 @@ Proof.
   - Case "And2". admit. 
     
   - Case "App".
+    intros ? ? WFE. 
     rewrite <-(wf_length2 _ _ _ WFE) in H.
     rewrite <-(wf_length2 _ _ _ WFE) in H0. 
     destruct (IHW1 venv0 renv WFE) as [vf [IW1 HVF]].
@@ -4450,6 +4684,7 @@ Proof.
     eapply HVY. eapply WFE.
 
   - Case "DApp".
+    intros ? ? WFE. 
     rewrite <-(wf_length2 _ _ _ WFE) in H1.
     rewrite <-(wf_length2 _ _ _ WFE) in H2. 
     destruct (IHW1 venv0 renv WFE) as [vf [IW1 HVF]].
@@ -4460,11 +4695,8 @@ Proof.
               indexr x venv0 = Some vx /\
               indexr x renv = Some jj /\
               jj vx nil /\
-              (forall vy iy, if pos iy then jj vy iy -> vtp renv [] vy T1' iy
-                             else           vtp renv [] vy T1' iy -> jj vy iy) /\
-              (forall vp ip, jj vp ip -> forall vy iy, if pos iy
-                             then jj vy (ip ++ lb :: iy) -> jj vy (ip ++ ub :: iy)
-                             else jj vy (ip ++ ub :: iy) -> jj vy (ip ++ lb :: iy))) as B.
+              vtsub jj (vtp renv [] T1') /\ (* TODO: unpack *)
+              good_bounds jj) as B.
     { unfold R_env in WFE. ev. remember (tvar x) as E. clear W1 H IHW1 IHW2 HVF HVX IW1 IW2. induction W2; inversion HeqE; try subst x0.
     + (* tvar *) destruct (H5 _ _ H). ev. exists x0. exists x1. split. assumption. split. assumption. split. assumption.
       split. assumption. assumption.
@@ -4477,16 +4709,14 @@ Proof.
       assert (closed 0 0 (length renv) T0). eapply stp_closed1 in H. rewrite <-H4 in H. eapply H.
       specialize (IHW2 H6 H7 H3 H4 H5). ev.
       eexists. eexists. split. eassumption. split. eassumption. split. assumption. split.
-      assert (forall vy iy, if pos iy 
-                            then val_type renv [] vy T0 iy -> vtp renv [] vy T3 iy
-                            else val_type renv [] vy T3 iy -> vtp renv [] vy T0 iy) as A.
+      assert (vtsub (val_type renv [] T0) (val_type renv [] T3)) as A.
       eapply valtp_widen_aux. eassumption. omega.
       intros. specialize (H5 _ _ H13). destruct H5. ev. exists x3. exists x4. repeat split; eassumption. reflexivity.
       
       intros. inversion H13.
-      intros. specialize (A vy iy). specialize (H11 vy iy). destruct (pos iy).
-      intros. eapply A. eapply unvv. eapply H11. assumption.
-      intros. eapply H11. eapply A. eapply unvv. assumption.
+      unfold vtsub. intros. specialize (A vy iy). specialize (H11 vy iy). destruct (pos iy).
+      intros. eapply vv. eapply A. eapply unvv. eapply H11. assumption.
+      intros. eapply H11. eapply vv. eapply A. eapply unvv. assumption.
       assumption. }
 
     ev. 
@@ -4508,22 +4738,25 @@ Proof.
       rewrite IWF. subst vf. rewrite IWX. rewrite IWY. reflexivity.
       omega. omega. omega.
     }
-    subst T2'. eapply HVY. eapply H4. intros. specialize (H6 vy iy). destruct (pos iy).
+    subst T2'. eapply HVY. eapply H4. unfold vtsub. intros. specialize (H6 vy iy). destruct (pos iy).
     intros. eapply unvv. subst T1'. eapply H6. assumption.
     intros. eapply H6. eapply vv. subst T1'. assumption.
+
+    admit. (* TODO: unpack *)
     assumption.
     
   - Case "Abs".
+    intros ? ? WFE. 
     rewrite <-(wf_length2 _ _ _ WFE) in H.
     inversion H; subst. 
     eexists. split. exists 0. intros. destruct n. omega. simpl. eauto.
     rewrite val_type_unfold. repeat split; eauto.
     intros.
     assert (R_env (vx::venv0) (jj::renv) ((open (varF (length renv)) T1)::env)) as WFE1. {
-      eapply wf_env_extend1. eapply WFE. eapply H0.
-      intros. specialize (H1 vy iy). destruct (pos iy).
-      intros. eapply vv. eapply H1. assumption.
-      intros. eapply H1. eapply unvv. assumption.
+      eapply wf_env_extend1. eapply WFE. eapply H3.
+      unfold vtsub. intros. specialize (H0 vy iy). destruct (pos iy).
+      intros. eapply vv. eapply H0. assumption.
+      intros. eapply H0. eapply unvv. assumption.
       assumption. }
     rewrite (wf_length2 _ _ _ WFE) in WFE1.
     specialize (IHW (vx::venv0) (jj::renv) WFE1).
@@ -4532,6 +4765,7 @@ Proof.
     eapply vtp_subst3. assumption. eapply VT. 
 
   - Case "Sub".
+    intros ? ? WFE. 
     specialize (IHW venv0 renv WFE). ev. eexists. split. eassumption.
     eapply unvv. eapply valtp_widen. eapply H1. eapply H. eapply WFE. 
 
