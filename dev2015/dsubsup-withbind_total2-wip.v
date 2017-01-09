@@ -584,7 +584,7 @@ Definition R_env venv genv tenv :=
        indexr x genv = Some jj /\
        jj vx nil /\
        vtsub jj (vtp genv [] TX) /\
-       unpack jj (fun rr => vtp genv [rr] (unfoldb TX)) /\  (* FIXME !!! *)
+       vtsub jj (vtp genv [jj] (unfoldb TX)) /\ 
        good_bounds jj).
 
 
@@ -4103,7 +4103,23 @@ Proof.
   assert (exists (jj:vset),
             jj vx nil /\
             vtsub jj (val_type venv0 [] T1) /\
+            vtsub jj (val_type venv0 [jj] (unfoldb T1)) /\
             good_bounds jj) as A. {
+    (* KEY: if exists T1', T1 = TBind T1', then use embedded jj !!! *)
+    assert (exists T1', T1 = TBind T1') as E. admit.
+    destruct E as [T1' E]. subst T1.
+    simpl.
+    rewrite val_type_unfold in H3. destruct vx. admit. ev.
+    exists x. split. eapply H5. split.
+    { unfold vtsub. intros. remember (pos iy) as p. destruct p.
+      intros. rewrite val_type_unfold. destruct vy. admit. ev.
+      split. assumption. exists x. split. assumption. assumption.
+      intros. admit. (* TODO: lower bound! *)
+    }
+    split. assumption. admit. (* assumption. *)
+
+    (* OTHERWISE (not a TBind): use jj = val_type venv0 [] T1 *)
+    (*
     exists (val_type venv0 [] T1).
     (* pick identity as jj *)
     split. assumption. split.
@@ -4116,7 +4132,8 @@ Proof.
       rewrite H5 in H9. apply indexr_has in H9. ev. specialize (H6 x x0 H9). ev.
       rewrite H7 in H11. inversion H11. subst x2. assumption. }
     intros.
-    specialize (valtp_bounds _ _ _ _ H3 RR). intros VB. assumption. }
+    specialize (valtp_bounds _ _ _ _ H3 RR). intros VB. assumption. *)
+  }
                                                                                     
   ev.
   assert (vtsub x (val_type venv0 [x] (open (varH 0) T1))).
@@ -4126,12 +4143,12 @@ Proof.
   assert (unpack x (fun rr : vset => val_type venv0 [rr] (open (varH 0) T1))) as UNP.
   admit. 
   
-  specialize (H1 x H7 UNP H6 vx H4). 
+  specialize (H1 x H8 UNP H7 vx H4). 
   ev.
   exists x0.
   split. eapply H1.
 
-  eapply vtp_subst1. eapply H8. eapply H2. (* rename: C2 *)
+  eapply vtp_subst1. eapply H9. eapply H2. (* rename: C2 *)
   
   ev. destruct H2. reflexivity.
 Qed.
