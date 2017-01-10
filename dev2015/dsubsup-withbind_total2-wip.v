@@ -438,15 +438,15 @@ Program Fixpoint val_type (env:list vset) (GH:list vset) (T:ty) (v:vl) (i:sel) {
     | vabs env1 T0 y, TAll T1 T2, nil =>
       closed 1 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
       forall (jj:vset),
-(*        vtsub jj (val_type env (jj::GH) (open (varH (length GH)) T1)) -> *)
-        vtsub jj (forall vy iy => val_type env (jj::GH) (unfoldb (varH (length GH)) (open (varH (length GH)) T1) vy iy)) ->
+        vtsub jj (fun vy iy => val_type env (jj::GH) (open (varH (length GH)) T1) vy iy) -> 
+        vtsub jj (fun vy iy => val_type env (jj::GH) (unfoldb (varH (length GH)) (open (varH (length GH)) T1)) vy iy) ->
         good_bounds jj ->
         forall vx, jj vx nil ->
         exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) (open (varH (length GH)) T2) v nil
 
     | vty env1 TX, TMem T1 T2, nil =>
       closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2 /\
-      vtsub (val_type env GH T1) (val_type env GH T2) 
+      vtsub (fun vy iy => val_type env GH T1 vy iy) (fun vy iy => val_type env GH T2 vy iy) 
 
     | _, TMem T1 T2, ub :: i =>
       closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2 /\
@@ -473,11 +473,11 @@ Program Fixpoint val_type (env:list vset) (GH:list vset) (T:ty) (v:vl) (i:sel) {
       closed 1 (length GH) (length env) T1 /\
       if (true) then 
         exists (jj:vset),
-        vtsub jj (val_type env (jj::GH) (open (varH (length GH)) T1)) /\ 
+        vtsub jj (fun vy iy => val_type env (jj::GH) (open (varH (length GH)) T1) vy iy) /\ 
         good_bounds jj /\ jj v i
                  else
         forall jj, 
-        vtsub jj (val_type env (jj::GH) (open (varH (length GH)) T1)) -> 
+        vtsub jj (fun vy iy => val_type env (jj::GH) (open (varH (length GH)) T1) vy iy) -> 
         good_bounds jj -> jj v i
     
 (* intersection valtype *)
@@ -504,27 +504,23 @@ Program Fixpoint val_type (env:list vset) (GH:list vset) (T:ty) (v:vl) (i:sel) {
       False
   end.
 
-(*
-Next Obligation. simpl. omega. Qed.
-Next Obligation. simpl. omega. Qed. 
+Next Obligation. simpl. unfold open. rewrite <-open_preserves_size. omega. Qed.
+Next Obligation. simpl. admit.  Qed.  (* TODO: unfoldb *)
 Next Obligation. simpl. unfold open. rewrite <-open_preserves_size. omega. Qed. (* TApp case: open *)
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed.
-Next Obligation. simpl. omega. Qed.
-Next Obligation. simpl. omega. Qed.
+Next Obligation. simpl. unfold open. rewrite <-open_preserves_size. omega. Qed.
 Next Obligation. simpl. unfold open. rewrite <-open_preserves_size. omega. Qed. (* TBind case: open *)
-Next Obligation. simpl. unfold open. rewrite <-open_preserves_size. omega. Qed. (* TBind case: open *)
-Next Obligation. simpl. unfold open. rewrite <-open_preserves_size. omega. Qed. (* TBind case: open *)
-Next Obligation. simpl. omega. Qed.
+Next Obligation. simpl. omega. Qed. 
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
-*)
+
 
 (* 
    The expansion of val_type, val_type_func is incomprehensible. 
@@ -544,7 +540,7 @@ Lemma val_type_unfold: forall env GH T v i, val_type env GH T v i =
     | vabs env1 T0 y, TAll T1 T2, nil =>
       closed 1 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
       forall (jj:vset),
-(*        vtsub jj (val_type env (jj::GH) (open (varH (length GH)) T1)) -> *)
+        vtsub jj (val_type env (jj::GH) (open (varH (length GH)) T1)) -> 
         vtsub jj (val_type env (jj::GH) (unfoldb (varH (length GH)) (open (varH (length GH)) T1))) ->
         good_bounds jj ->
         forall vx, jj vx nil ->
@@ -663,7 +659,7 @@ Definition R_env venv genv tenv :=
        indexr x venv = Some vx /\
        indexr x genv = Some jj /\
        jj vx nil /\
-(*     vtsub jj (vtp genv [] TX) /\ *)
+       vtsub jj (vtp genv [] TX) /\ (* Do we need this if we have the unfolded one below? *)
        vtsub jj (vtp genv [] (unfoldb (varF x) TX)) /\
        good_bounds jj).
 
@@ -3708,7 +3704,7 @@ Proof.
     assumption. exists vx. exists jj.
     split. simpl. rewrite <-L1 in E. rewrite E. reflexivity.
     split. simpl. rewrite <-L2 in E. rewrite E. reflexivity.
-    split. assumption. split. admit. (* x = R1 assumption *) intros. assumption. (* apply (H4 _ _ H5). *)
+    split. assumption. split. admit. split. admit. (* x = R1 assumption *) assumption. (* apply (H4 _ _ H5). *)
   - destruct (U x TX H) as [[vy [EV VY]] IR]. split.
     exists vy. split.
     destruct EV as [n EV]. assert (S n > n) as N. omega. specialize (EV (S n) N). simpl in EV.
@@ -4107,14 +4103,7 @@ Qed.
 (* ### Inhabited types have `Good Bounds` ### *)
 
 
-Lemma test4: forall x x1 x2 renv env T1 renv1 env1 T2,
-vtsub x (val_type (x1 :: renv) env T1) -> 
-vtsub x (val_type renv1 (x2 :: env1) T2).
-Proof. intros.
-       unfold vtsub in *. intros. specialize (H vy iy).
-       destruct (pos iy). intros. eapply H. 
-       assumption.
-       assumption. Qed.
+
 
 (* used in invert_abs *)
 Lemma valtp_bounds: forall G T1,
@@ -4208,13 +4197,13 @@ Proof. intros. induction T1; unfold good_bounds; intros;
                 val_type G [] T1_2 vy (ip ++ ub :: iy)). {
           specialize (IHT1_2 _ _ H1 vy iy).
           rewrite <-Heqp in IHT1_2. assumption. }
-        destruct vy; ev; split; try assumption; split; try assumption; eapply H1; assumption.
+        destruct vy; ev; split; try assumption; split; try assumption; eapply H2; assumption.
       * assert (val_type G [] T1_1 vp ip). destruct vp; ev; assumption.
         assert (val_type G [] T1_1 vy (ip ++ lb :: iy) ->
               val_type G [] T1_1 vy (ip ++ ub :: iy)). {
           specialize (IHT1_1 _ _ H1 vy iy).
           rewrite <-Heqp in IHT1_1. intros. eapply IHT1_1. assumption. }
-        destruct vy; ev; split; try assumption; split; try assumption; eapply H1; assumption.
+        destruct vy; ev; split; try assumption; split; try assumption; eapply H2; assumption.
        
   - apply unvv. destruct ip; apply vv.
     + rewrite val_type_unfold in *. destruct vp. inversion H0.
@@ -4230,14 +4219,14 @@ Proof. intros. induction T1; unfold good_bounds; intros;
                 val_type G [] T1_2 vy  (ip ++ lb :: iy)). {
           specialize (IHT1_2 _ _ H1 vy iy).
           rewrite <-Heqp in IHT1_2. intros. eapply IHT1_2. assumption. }
-        destruct vy; ev; split; try assumption; split; try assumption; eapply H1; assumption.
+        destruct vy; ev; split; try assumption; split; try assumption; eapply H2; assumption.
       * assert (val_type G [] T1_1 vp ip).
         destruct vp; ev; assumption.
         assert (val_type G []  T1_1 vy (ip ++ ub :: iy) ->
               val_type G [] T1_1 vy  (ip ++ lb :: iy)). {
           specialize (IHT1_1 _ _ H1 vy iy).
           rewrite <-Heqp in IHT1_1. intros. eapply IHT1_1. assumption. }
-        destruct vy; ev; split; try assumption; split; try assumption; eapply H1; assumption.
+        destruct vy; ev; split; try assumption; split; try assumption; eapply H2; assumption.
 
   - (* bind *)
     rewrite val_type_unfold in *. destruct vy. admit. destruct vp. admit. ev.
@@ -4333,12 +4322,14 @@ Proof.
   assert ((unfoldb (varH 0) T1 = T1 \/ exists T1', T1 = TBind T1') ->
           exists (jj:vset),
             jj vx nil /\
+            vtsub jj (val_type venv0 [] T1) /\  (* do we need this ? *)
             vtsub jj (val_type venv0 [jj] (unfoldb (varH 0) T1)) /\
             good_bounds jj) as A. {
     intros. destruct H4. 
   - exists (val_type venv0 [] T1).
     split. assumption. split.
     unfold vtsub. intros. destruct (pos iy); intros; assumption.
+    split. rewrite H4. admit. (* shrinkH *)
     assert ((forall (x : id) (jj : vset),
         indexr x venv0 = Some jj ->
         good_bounds jj)) as RR.
@@ -4355,7 +4346,13 @@ Proof.
             good_bounds jj /\ jj vx [])). destruct vx; assumption.
     clear H3. ev.
     exists x.
-    split. assumption. split. assumption. assumption.
+    split. assumption. split.
+    { unfold vtsub. intros. destruct iy. simpl. intros. 
+      rewrite val_type_unfold. destruct vy. admit.
+      split. assumption. exists x. split. assumption. split; assumption.
+      admit. (* TODO: pos = top / neg = bot case *)
+    }
+    split. assumption. assumption.
   }
 
   assert (unfoldb (varH 0) T1 = T1 \/ (exists T1' : ty, T1 = TBind T1')).
@@ -4367,7 +4364,8 @@ Proof.
   assert (T1 = open (varH 0) T1). eapply closed_no_open. eassumption.
   assert (T2 = open (varH 0) T2). eapply closed_no_open. eassumption.
 
-  rewrite <-H8 in H1. eapply H1. rewrite <-H7. eapply H5. assumption. assumption.
+(* need shrinkH ... *)
+  rewrite <-H9 in H1. eapply H1. rewrite <-H7. eapply H5. assumption. assumption.
 
   ev. destruct H2. reflexivity. 
 Qed.
