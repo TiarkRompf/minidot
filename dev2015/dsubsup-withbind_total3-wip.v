@@ -599,13 +599,13 @@ Lemma val_type_unfold: forall env GH T v i, val_type env GH T v i =
 
     | _, TSel (varF x), _ =>
       match indexr x env with
-        | Some jj => jj v ((uf (varF x)) :: ub :: i)
+        | Some jj => jj v (ub :: i)
         | _ => False
       end
     
     | _, TSel (varH x), _ =>
       match indexr x GH with
-        | Some jj => jj v ((uf (varH x)) :: ub :: i)
+        | Some jj => jj v (ub :: i)
         | _ => False
       end
       
@@ -3200,21 +3200,20 @@ Lemma valtp_widen_aux: forall G1 GH1 T1 T2,
     (forall x TX, indexr x G1 = Some TX -> (* todo TX is closed *)
                    exists vx jj,
                      indexr x H = Some jj /\
-                     jj vx [uf (varF x)] /\
-                     vtsub jj (vtp H GH TX) /\
+                     jj vx [] /\
+                     vtsub jj (fun vy iy => vtp H GH TX vy (uf (varF x)::iy)) /\
                      (* vtsub jj (vtp H GH (unfoldb (varF x) TX)) /\ *)
                      good_bounds jj) ->
     length GH1 = length GH ->
     (forall x TX, indexr x GH1 = Some TX ->
                    exists vx jj,
                      indexr x GH = Some jj /\
-                     jj vx [uf (varH x)] /\
-                     vtsub jj (vtp H GH TX) /\
+                     jj vx [] /\
+                     vtsub jj (fun vy iy => vtp H GH TX vy (uf (varH x)::iy)) /\
                     (* vtsub jj (vtp H GH (unfoldb (varF x) TX)) /\ *)
                      good_bounds jj) ->
     vtsub (vtp H GH T1) (vtp H GH T2).
 Proof.
-  admit. (*
   intros ? ? ? ? stp.  
   induction stp; intros G GHX LG RG LGHX RGHX vf i ; 
   remember (pos i) as p; destruct p; intros V0.
@@ -3292,8 +3291,8 @@ Proof.
     apply unvv in V0. rewrite val_type_unfold in V0.
     specialize (RG _ _ H).
     ev. rewrite H1 in V0.
-    assert (x1 vf (uf (varF x) :: ub :: i)). destruct vf; eauto. clear V0.
-    assert (vtp G GHX TX vf (uf (varF x) :: ub :: i)). specialize (H3 vf (uf (varF x) :: ub :: i)). 
+    assert (x1 vf (ub :: i)). destruct vf; eauto. clear V0.
+    assert (vtp G GHX TX vf (uf (varF x) :: ub :: i)). specialize (H3 vf (ub :: i)). 
     simpl in H3. rewrite <- Heqp in H3. eapply H3. assumption.
     assert (vtp G GHX (TMem TBot T2) vf (uf (varF x) :: ub :: i)).
     specialize(IHstp vf (uf (varF x) :: ub :: i)). simpl in IHstp.
@@ -3315,8 +3314,8 @@ Proof.
     destruct vf; apply unvv; assumption. 
     assert (vtp G GHX TX vf (uf (varF x) :: ub :: i)).
     specialize (IHstp _ _ LG ENV LGHX RGHX vf (uf (varF x) :: ub :: i)). simpl in IHstp. rewrite <-Heqp in IHstp. eapply IHstp.
-    assumption. assert (x1 vf (uf (varF x) :: ub :: i)).
-    specialize (H3 vf (uf (varF x) :: ub :: i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
+    assumption. assert (x1 vf (ub :: i)).
+    specialize (H3 vf (ub :: i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
     destruct vf; assumption.
 
   - Case "Sel2".
@@ -3331,10 +3330,10 @@ Proof.
     destruct vf; apply unvv; assumption.
     assert (vtp G GHX TX vf (uf (varF x) :: lb :: i)).
     specialize (IHstp _ _ LG ENV LGHX RGHX vf (uf (varF x) :: lb :: i)). simpl in IHstp. rewrite <-Heqp in IHstp. eapply IHstp. 
-    assumption. assert (x1 vf (uf (varF x) :: lb :: i)).
-    specialize (H3 vf (uf (varF x) :: lb :: i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
-    assert (x1 vf (uf (varF x) :: ub :: i)). 
-    specialize (H4 x0 [uf (varF x)] H2 vf i). rewrite <-Heqp in H4. 
+    assumption. assert (x1 vf (lb :: i)).
+    specialize (H3 vf (lb :: i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
+    assert (x1 vf (ub :: i)). 
+    specialize (H4 x0 [] H2 vf i). rewrite <-Heqp in H4. 
     simpl in H4. eapply H4. assumption.
     destruct vf; assumption.
   - subst. 
@@ -3342,10 +3341,10 @@ Proof.
     remember RG as ENV. clear HeqENV.
     specialize (RG _ _ H).
     ev. rewrite H1 in V0.
-    assert (x1 vf (uf (varF x) :: ub :: i)). destruct vf; eauto. clear V0.
-    assert (x1 vf (uf (varF x) :: lb :: i)). specialize (H4 x0 [uf (varF x)] H2 vf i). rewrite <-Heqp in H4. 
+    assert (x1 vf (ub :: i)). destruct vf; eauto. clear V0.
+    assert (x1 vf (lb :: i)). specialize (H4 x0 [] H2 vf i). rewrite <-Heqp in H4. 
     simpl in *. eapply H4. assumption.
-    assert (vtp G GHX TX vf (uf (varF x) :: lb :: i)). specialize (H3 vf (uf (varF x) :: lb :: i)).
+    assert (vtp G GHX TX vf (uf (varF x) :: lb :: i)). specialize (H3 vf (lb :: i)).
     simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
     assert (vtp G GHX (TMem T1 TTop) vf (uf (varF x) :: lb :: i)).
     specialize (IHstp _ _ LG ENV LGHX RGHX vf (uf (varF x) :: lb :: i)). simpl in IHstp. rewrite <-Heqp in IHstp.
@@ -3362,36 +3361,62 @@ Proof.
 
     apply unvv in V0. rewrite val_type_unfold in V0. 
     specialize (RG _ _ H). ev. rewrite H0 in V0.
-    assert (x1 vf (uf (varF x) :: ub :: i)). destruct vf; assumption. clear V0.
-    assert (vtp G GHX TX vf (uf (varF x) :: ub :: i)). specialize (H2 vf (uf (varF x) :: ub :: i)). simpl in H2. 
+    assert (x1 vf (ub :: i)). destruct vf; assumption. clear V0.
+    assert (vtp G GHX TX vf (uf (varF x) :: ub :: i)). specialize (H2 vf (ub :: i)). simpl in H2. 
     rewrite <-Heqp in H2. eapply H2. assumption.
     assert (vtp G GHX (TBind (TMem TBot T2)) vf (uf (varF x) :: ub :: i)).
     specialize (IHstp1 vf (uf (varF x) :: ub :: i)). simpl in IHstp1. rewrite <- Heqp in IHstp1. 
     eapply IHstp1. assumption.
     
-    eapply unvv in H6. rewrite val_type_unfold in H6. 
-    assert (val_type G GHX (open (varF x) (TMem TBot T2)) vf (ub :: i)). apply unvv; destruct vf; ev; apply vv; assumption.
-    unfold open in H7. simpl in H7. rewrite val_type_unfold in H7.
+    eapply unvv in H6. rewrite val_type_unfold in H6.
+    assert (closed 1 (length GHX) (length G) (TMem TBot T2) /\
+           (exists jj : vset,
+              indexr x G = Some jj /\
+              vtsub jj
+                (fun (vy : vl) (iy : sel) =>
+                 val_type G GHX (open (varF x) (TMem TBot T2)) vy
+                          (uf (varF x) :: iy)) /\ good_bounds jj /\ jj vf (ub :: i))). destruct vf; assumption. clear H6.
+    ev.
+    assert (val_type G GHX (open (varF x) (TMem TBot T2)) vf (ub :: i)) as A. { specialize (H8 vf (ub::i)). simpl in H8. rewrite <-Heqp in H8. specialize (H8 H10). unfold open in H8. simpl in H8. rewrite val_type_unfold in H8. unfold open. simpl. eapply unvv. destruct vf; eapply vv; assumption. }
+    unfold open in A. simpl in A. rewrite val_type_unfold in A.
     destruct vf; ev; unfold open; apply vv; assumption.
 
   - Case "selb1-reverse".
     clear IHstp2. specialize (IHstp1 _ _ LG RG LGHX RGHX).
     assert(closed 1 (length GH) (length G1) T2) as CL. eapply stp_closed2 in stp1. inversion stp1. inversion H4. assumption. clear stp2.
+    remember RG as RG1. clear HeqRG1. 
     apply vv. rewrite val_type_unfold. specialize (RG _ _ H). ev. rewrite H0.
     assert (val_type G GHX (open (varF x) (TMem TBot T2)) vf (ub :: i)). unfold open. simpl. rewrite val_type_unfold.
     destruct vf. split. constructor. split. apply closed_open. simpl. rewrite <- LG. rewrite <- LGHX. 
     assumption. constructor. eapply indexr_max. eassumption. apply unvv. assumption.
      split. constructor. split. apply closed_open. simpl. rewrite <- LG. rewrite <- LGHX. 
-    assumption. constructor. eapply indexr_max. eassumption. apply unvv. assumption.
-    assert (vtp G GHX (TBind (TMem TBot T2)) vf (uf (varF x) :: ub :: i)).
-    apply vv. rewrite val_type_unfold. destruct vf. split. constructor. constructor. rewrite <- LG. rewrite <- LGHX. assumption.
-    assumption. split. constructor. constructor. rewrite <- LG. rewrite <- LGHX. assumption.
-    assumption. 
-    assert (vtsub x1 (vtp G GHX (TBind (TMem TBot T2)))). eapply vtsub_trans; eassumption.
-    specialize (H6 vf (uf (varF x) :: ub :: i)). simpl in H6. rewrite <- Heqp in H6. specialize (H6 H5). 
-    destruct vf; assumption.
+     assumption. constructor. eapply indexr_max. eassumption. apply unvv. assumption.
 
-  - Case "selb2".
+     assert (vtsub (fun (vy : vl) (iy : sel) => vtp G GHX TX vy (uf (varF x) :: iy))
+                   (fun (vy : vl) (iy : sel) => vtp G GHX (TBind (TMem TBot T2)) vy (uf (varF x) :: iy))) as UF. unfold vtsub. intros. eapply (IHstp1 vy (uf (varF x)::iy)).
+
+
+     assert (vtp G GHX (TBind (TMem TBot T2)) x0 [uf (varF x)]) as BB.
+     specialize (H2 x0 []). simpl in H2. specialize (H2 H1).
+     specialize (UF x0 []). simpl in UF. specialize (UF H2).
+     apply UF.
+     eapply unvv in BB. rewrite val_type_unfold in BB.
+     assert (closed 1 (length GHX) (length G) (TMem TBot T2) /\
+             (exists jj : vset,
+              indexr x G = Some jj /\
+              vtsub jj
+                (fun (vy : vl) (iy : sel) =>
+                 val_type G GHX (open (varF x) (TMem TBot T2)) vy
+                          (uf (varF x) :: iy)) /\ good_bounds jj /\ jj x0 [])). destruct x0; assumption. clear BB. ev.
+     rewrite H0 in H6. inversion H6. subst x2.
+     specialize (H7 vf (ub :: i)). simpl in H7. rewrite <-Heqp in H7. 
+     assert (x1 vf (ub :: i)). eapply H7. unfold open. simpl. rewrite val_type_unfold.
+     unfold open in H4. simpl in H4. destruct vf; apply H4.
+     destruct vf; assumption. 
+
+(* TO HERE *)
+     
+  - Case "selb2". admit. (*
     clear IHstp2. assert (closed 1 (length GH)(length G1) T1). apply stp_closed2 in stp1. inversion stp1.
     inversion H4. assumption. clear stp2. specialize (IHstp1 _ _ LG RG LGHX RGHX).
     apply vv. rewrite val_type_unfold. specialize (RG _ _ H). ev. rewrite H1. 
@@ -3410,9 +3435,9 @@ Proof.
     specialize (H5 vf (uf (varF x) :: lb :: i)). simpl in H5. rewrite <- Heqp in H5. specialize (H5 H3).
     assert (x1 vf (uf (varF x) :: ub :: i)) as Goal. specialize (H4 x0 [uf (varF x)] H2 vf i).
     rewrite <- Heqp in H4. apply H4. assumption.
-    destruct vf; assumption.
+    destruct vf; assumption. *)
 
-  - Case "selb2-reverse".
+  - Case "selb2-reverse". admit. (*
     clear IHstp2. assert (closed 1 (length GH)(length G1) T1). apply stp_closed2 in stp1. inversion stp1.
     inversion H4. assumption. clear stp2. specialize (IHstp1 _ _ LG RG LGHX RGHX).
     apply unvv in V0. rewrite val_type_unfold in V0. specialize (RG _ _ H). ev. rewrite H1 in V0.
@@ -3423,7 +3448,7 @@ Proof.
     clear IHstp1. clear H3. specialize (H7 vf (uf (varF x) :: lb :: i)). simpl in H7. rewrite <- Heqp in H7.
     specialize (H7 H6). apply unvv in H7. rewrite val_type_unfold in H7. assert (
     val_type G GHX (open (varF x) (TMem T1 TTop)) vf (lb :: i)). apply unvv; destruct vf; ev; apply vv; assumption.
-    clear H7. unfold open in H3. simpl in H3. rewrite val_type_unfold in H3. destruct vf; ev; apply vv; assumption.
+    clear H7. unfold open in H3. simpl in H3. rewrite val_type_unfold in H3. destruct vf; ev; apply vv; assumption.*)
  
         
   - Case "selx".
@@ -3431,7 +3456,7 @@ Proof.
   - eapply V0.
 
   (* exactly the same as sel1/sel2, modulo RG/RGHX *)
-  - Case "Sel1".
+  - Case "Sel1". admit. (*
     specialize (IHstp _ _ LG RG LGHX RGHX).
     apply unvv in V0. rewrite val_type_unfold in V0.
     specialize (RGHX _ _ H).
@@ -3446,9 +3471,9 @@ Proof.
     eapply unvv in H7. rewrite val_type_unfold in H7. 
     assert (val_type G GHX (TMem TBot T2) vf (ub :: i)). apply unvv; destruct vf; apply vv; assumption.
     rewrite val_type_unfold in H8. 
-    destruct vf; eapply vv; apply H8.
+    destruct vf; eapply vv; apply H8. *)
 
-  - eapply vv. rewrite val_type_unfold.
+  - admit. (* eapply vv. rewrite val_type_unfold.
     remember RGHX as ENV. clear HeqENV.
     specialize (RGHX _ _ H).
     ev. rewrite H1.    
@@ -3461,9 +3486,9 @@ Proof.
     specialize (IHstp _ _ LG RG LGHX ENV vf (uf (varH x) :: ub :: i)). simpl in IHstp. rewrite <-Heqp in IHstp. eapply IHstp.
     assumption. assert (x1 vf (uf (varH x) :: ub :: i)).
     specialize (H3 vf (uf (varH x) :: ub :: i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
-    destruct vf; assumption.
+    destruct vf; assumption. *)
 
-  - Case "Sel2".
+  - Case "Sel2". admit. (*
     eapply vv. rewrite val_type_unfold.
     remember RGHX as ENV. clear HeqENV.
     specialize (RGHX _ _ H).
@@ -3480,8 +3505,9 @@ Proof.
     assert (x1 vf (uf (varH x) :: ub :: i)). 
     specialize (H4 x0 [uf (varH x)] H2 vf i). rewrite <-Heqp in H4. 
     simpl in H4. eapply H4. assumption.
-    destruct vf; assumption.
-  - subst. 
+    destruct vf; assumption. *)
+  - admit. (*
+    subst. 
     apply unvv in V0. rewrite val_type_unfold in V0.
     remember RGHX as ENV. clear HeqENV.
     specialize (RGHX _ _ H).
@@ -3498,13 +3524,14 @@ Proof.
     eapply unvv in H8. rewrite val_type_unfold in H8. 
     assert (val_type G GHX (TMem T1 TTop) vf (lb :: i)). apply unvv; destruct vf; ev; apply vv; assumption.
     rewrite val_type_unfold in H9. 
-    destruct vf; eapply vv; apply H9.
+    destruct vf; eapply vv; apply H9. *)
 
   - Case "selax".
      eapply V0.
   -  eapply V0. 
 
-  - (* bindx *) 
+  - (* bindx *)
+    admit. (*
     apply unvv in V0. rewrite val_type_unfold in V0. destruct i.
     assert (closed 1 (length GHX) (length G) T1 /\
          (exists jj : vset,
@@ -3550,11 +3577,13 @@ Proof.
    assert (val_type G GHX (open v T1) vf i). apply unvv; destruct vf; ev; apply vv; assumption. clear V0.
    assert (val_type G GHX (open v T2) vf i) as Goal.
    admit. (* need a proper jj to use!! *)
-   rewrite <- LG. rewrite <- LGHX. destruct vf; split; assumption.
+   rewrite <- LG. rewrite <- LGHX. destruct vf; split; assumption. *)
 
   - admit. (* later *)
 
-  - Case "Fun". subst. induction i.
+  - Case "Fun".
+    admit. (*
+    subst. induction i.
      
     apply unvv in V0. rewrite val_type_unfold in V0.
     apply vv. rewrite val_type_unfold.
@@ -3661,7 +3690,7 @@ Proof.
 
     apply vv. rewrite val_type_unfold. assert (vtp G GHX (TAll T3 T4) vf i) as Goal.
     apply IHi; try eassumption. apply unvv in V0. rewrite val_type_unfold in V0. destruct vf; apply vv; assumption.
-    destruct vf; apply unvv; assumption.
+    destruct vf; apply unvv; assumption.*)
 
     
   - apply unvv in V0. rewrite val_type_unfold in V0.
@@ -3684,7 +3713,6 @@ Proof.
     specialize (IHstp2 _ _ LG RG LGHX RGHX vf i).
     rewrite <-Heqp in *.
     eapply IHstp1. eapply IHstp2. eapply V0. 
-*)
 Qed.
 
 
@@ -3828,7 +3856,7 @@ Proof. induction n; intros. inversion H.
   - (* TSel *)
     rewrite val_type_unfold in *. simpl in *. destruct v; try solve [destruct vy; inversion HV].
     destruct (indexr i G) eqn: In; try solve [destruct vy; inversion HV].
-    assert (v vp (uf (varF i) :: ub :: ip)). destruct vp; assumption.
+    assert (v vp (ub :: ip)). destruct vp; assumption.
     unfold good_bounds in H0. 
     specialize (H0 _ _ In _ _ H2 vy iy).
     rewrite <-Heqp in H0. 
@@ -3836,7 +3864,7 @@ Proof. induction n; intros. inversion H.
     
   - rewrite val_type_unfold in *. simpl in *. destruct v; try solve [destruct vy; inversion HV]. 
     destruct (indexr i G) eqn: In; try solve [destruct vy; inversion HV].
-    assert (v vp (uf (varF i) :: ub :: ip)). destruct vp; assumption.
+    assert (v vp (ub :: ip)). destruct vp; assumption.
     unfold good_bounds in H0.
     specialize (H0 _ _ In _ _ H2 vy iy).
     rewrite <-Heqp in H0. 
