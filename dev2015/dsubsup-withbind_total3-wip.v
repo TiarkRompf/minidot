@@ -232,7 +232,6 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     closed 1 (length GH) (length G1) T1 ->
     closed 0 (length GH) (length G1) T2 ->
     stp G1 GH (TBind T1) T2 
-
 | stp_bind2: forall GH G1 T1 T1' T2,
     stp G1 (T1'::GH) T2 T1' ->
     T1' = (open (varH (length GH)) T1) ->
@@ -253,12 +252,10 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH T1 T ->
     closed 0 (length GH) (length G1) T2 ->
     stp G1 GH (TAnd T1 T2) T
-
 | stp_and12: forall GH G1 T1 T2 T,
     stp G1 GH T2 T ->
     closed 0 (length GH) (length G1) T1 ->
     stp G1 GH (TAnd T1 T2) T
-
 | stp_and2: forall GH G1 T1 T2 T,
     stp G1 GH T T1 ->
     stp G1 GH T T2 ->
@@ -2962,7 +2959,6 @@ Proof.
   intros. specialize (H0 H1). eapply valtp_extendH. apply unvv. assumption.
   intros. apply H0. eapply valtp_shrinkH.  apply unvv. eassumption. simpl. assumption.
 Qed.
-
 Lemma vtsub_extendH: forall x venv0 T1,
 closed 0 0 (length venv0) T1 ->
 (vtsub x (vtp venv0 [] T1) <->
@@ -4080,6 +4076,452 @@ Lemma valtp_fold: (forall T1 x x0 renv GH iy,
     Qed.
 
 
+
+Definition prefix k (jj:vset) := fun vy iy => jj vy (k ++ iy).
+
+Hint Unfold prefix.
+    
+Inductive can_unfold2: vset -> Prop :=
+  | indu: forall (jj:vset),          
+          (forall x vy iy, jj vy iy ->
+           exists jj0, 
+           (jj0 vy [] /\
+            vtsub jj0 (prefix (iy ++ [uf x]) jj) /\
+            good_bounds jj0 /\
+            (jj0 = (prefix iy jj) \/ can_unfold2 jj0))) ->
+          can_unfold2 jj.
+
+Lemma can_unfold2_ub: forall v b,
+can_unfold2 v -> can_unfold2 (fun vy iy => v vy (b :: iy)).
+Proof.
+  intros. induction H. subst.
+  eapply indu. intros. specialize (H x vy (b::iy) H0). simpl in *.
+  ev. exists x0. split. assumption. split. assumption.
+  split. assumption. destruct H3. left. rewrite H3. reflexivity. right. assumption.
+Qed.
+
+
+Lemma valtp_unfold2: (forall T1 renv vx k,
+   (* could use R_env directly as premise *)
+   (forall x jj, indexr x renv = Some jj -> can_unfold2 jj) ->
+   (forall x jj, indexr x renv = Some jj -> good_bounds jj) ->
+   val_type renv [] T1 vx k ->
+   exists (jj:vset),
+     jj vx [] /\
+     vtsub jj (fun vy iy => val_type renv (jj::nil) T1 vy (k ++ uf (varH 0)::iy)) /\
+     good_bounds jj /\
+     can_unfold2 jj).
+Proof.
+  induction T1; intros.
+  - (* Top *) admit.
+
+  - (* Bot *) admit.
+  
+  - (*Tall *) admit.
+
+  - (*TSel*) remember (TSel v) as T1. 
+    subst T1. rewrite val_type_unfold in H1. simpl in *.
+    destruct v; try solve [destruct vx; inversion H1].
+    remember (indexr i renv) as IX. destruct IX; try solve [destruct vx; inversion H1].
+    assert (v vx (ub :: k)). destruct vx; assumption. clear H1.
+    assert (can_unfold2 v). apply (H i). symmetry. eassumption.
+ 
+    inversion H1; subst.  
+    (*indu*)
+    specialize (H3 (varH 0) _ _ H2). ev. 
+    exists x. split. assumption. split.
+    unfold vtsub. intros.
+    remember (pos iy) as p. destruct p;
+    rewrite val_type_unfold; rewrite <-HeqIX; intros.
+    assert (v vy (ub :: k ++ uf (varH 0) :: iy)).
+    specialize (H4 vy iy). rewrite <-Heqp in H4. specialize (H4 H7). 
+    unfold prefix in H4. rewrite <-app_assoc in H4. simpl in H4. eapply H4. 
+    destruct vy; assumption.
+    assert (v vy (ub :: k ++ uf (varH 0) :: iy)).
+    destruct vy; assumption.
+    specialize (H4 vy iy). rewrite <-Heqp in H4. eapply H4.
+    unfold prefix. rewrite <-app_assoc. simpl. assumption.
+    split.
+    (* good bounds *)
+    simpl in H5. eapply H5.
+    (* can unfold *)
+    destruct H6. subst x. admit. (* use can_unfold2_ub *)
+    assumption.
+
+  - (*Mem*) remember (TMem T1_1 T1_2) as T1.
+    destruct k.
+    { (* nil *)
+      exists (val_type renv [] T1). split. assumption.
+      split. simpl. subst T1. admit. (* ignore uf *)
+      split. simpl. admit. (* valtp_bounds *)
+      (* can_unfold *)
+      eapply indu. intros. simpl in H2. subst T1. destruct iy.
+      (* nil *)
+      exists (val_type renv [] (TMem T1_1 T1_2)). split. assumption.
+      split. simpl. admit. (* ignore uf *)
+      split. simpl. admit. (* good_bounds *)
+      simpl. left. unfold prefix.  reflexivity. (* id instead of can_unfold *)
+      (* ub / lb / uf *)
+      destruct b.
+      assert (val_type renv [] T1_2 vy iy) as VT2. 
+      rewrite val_type_unfold in H2. eapply unvv. destruct vy; ev; eapply vv; assumption.
+      specialize (IHT1_2 renv vy iy H H0 VT2).
+      simpl.
+      ev. inversion H6. 
+      specialize (H7 x vy nil H3). simpl in H7.
+      ev. exists x0. split. assumption. 
+      (* UNCLEAR *)
+      admit.
+      (* lb *)
+      admit.
+      (* uf *)
+      admit.
+    }
+    { (* ub / lb / uf *)
+      destruct b.
+      assert (val_type renv [] T1_2 vx k) as VT2. subst T1.
+      rewrite val_type_unfold in H1. eapply unvv. destruct vx; ev; eapply vv; assumption.
+      specialize (IHT1_2 renv vx k H H0 VT2). ev.
+      exists x. split. assumption.
+      split. subst T1. 
+      admit. (* should be able to use H3 now *)
+      split; assumption.
+      (* lb *)
+      admit.
+      (* uf *)
+      admit. 
+    }
+
+  - (* TBind *) clear IHT1.
+    destruct k. (* k = nil *)
+    + rewrite val_type_unfold in H1. simpl in *. assert (
+           closed 1 0 (length renv) T1 /\
+           (exists jj : vset,
+              vtsub jj
+                (fun (vy : vl) (iy : sel) =>
+                 val_type renv [jj] (open (varH 0) T1) vy (uf (varH 0) :: iy)) /\
+              good_bounds jj /\ jj vx [])). destruct vx; assumption.
+    clear H1. ev.
+    exists x.
+    split. assumption. split. 
+
+    unfold vtsub. intros. simpl. intros. 
+    rewrite val_type_unfold. 
+    remember (pos iy) as p. destruct p. intros. destruct vy.
+    split. simpl. eapply closed_upgrade_free. eassumption. omega. exists x. split. auto. split. eapply H2. split; assumption.
+    split. simpl. eapply closed_upgrade_free. eassumption. omega. exists x. split. auto. split. eapply H2. split; assumption. 
+    destruct vy. 
+    intros. ev. simpl in H6. inversion H6. subst x0. assumption.
+    intros. ev. simpl in H6. inversion H6. subst x0. assumption.
+
+    split. assumption.
+    admit. (* TODO: can_unfold -- this should come from def of val_type *)
+
+    + rewrite val_type_unfold in H1.
+Qed.
+  
+    
+
+
+Inductive can_unfold: vset -> Prop :=
+  | base: forall (jj:vset),
+          (forall x vy iy, jj vy iy -> 
+           (vtsub (fun vy1 iy1 => jj vy1 (iy ++ iy1)) (fun vy1 iy1 => jj vy1 (iy ++ uf x :: iy1)) /\
+            good_bounds (fun vy1 iy1 => jj vy1 (iy ++ iy1)) )) ->
+          can_unfold jj
+  | indu: forall (jj:vset) jj0,          
+          can_unfold jj0 ->
+          (forall x vy iy, jj vy iy ->
+           (jj0 vy iy /\
+            vtsub (fun vy1 iy1 => jj0 vy1 (iy ++ iy1))(fun vy1 iy1 => jj vy1 (iy ++ uf x :: iy1)) /\
+            good_bounds (fun vy1 iy1 => jj0 vy1 (iy ++ iy1)))) ->
+          can_unfold jj.
+
+Lemma can_unfold_ub: forall v,
+can_unfold v -> can_unfold (fun vy iy => v vy (ub :: iy)).
+Proof.
+  intros. induction H. subst. 
+  apply base. intros. specialize (H x vy (ub :: iy) H0). ev.
+  split. simpl. assumption. simpl. assumption.
+  subst. eapply indu. eapply IHcan_unfold. intros.
+  specialize (H0 x vy (ub::iy) H1). ev. split.  assumption.
+  split. simpl in *. assumption. simpl in *. assumption.
+Qed.
+
+
+
+(*
+Lemma valtp_unfold0: forall T1 renv vx,
+   (* could use R_env directly as premise *)
+   (forall x jj, indexr x renv = Some jj -> can_unfold jj) ->
+   (forall x jj, indexr x renv = Some jj -> good_bounds jj) ->
+   val_type renv [] T1 vx [] -> can_unfold (val_type renv [] T1).
+Proof. induction T1; intros.
+  - (*TOP*) remember TTop as T1.
+    clear H1. eapply base. intros. split. unfold vtsub. intros. destruct (pos iy0) eqn :A. 
+      intros. subst T1. rewrite val_type_unfold in *. rewrite pos_app in *. simpl in *. assumption.
+      intros. subst T1. rewrite val_type_unfold in *. rewrite pos_app in *. simpl in *. assumption.
+    assert (good_bounds (val_type renv [] T1)). eapply valtp_bounds. assumption.
+    unfold good_bounds in *. intros. specialize (H2 vp (iy ++ ip) H3 vy0 iy0).
+    repeat rewrite <- app_assoc in H2. assumption.
+  - (*Bot*) remember TBot as T1.
+    clear H1. eapply base. intros. split. unfold vtsub. intros. destruct (pos iy0) eqn :A. 
+      intros. subst T1. rewrite val_type_unfold in *. rewrite pos_app in *. simpl in *. assumption.
+      intros. subst T1. rewrite val_type_unfold in *. rewrite pos_app in *. simpl in *. assumption.
+    assert (good_bounds (val_type renv [] T1)). eapply valtp_bounds. assumption.
+    unfold good_bounds in *. intros. specialize (H2 vp (iy ++ ip) H3 vy0 iy0).
+    repeat rewrite <- app_assoc in H2. assumption.  
+  - (*ALL*) remember (TAll T1_1 T1_2) as T1.
+    clear H1. eapply base. intros. split.
+    induction iy. unfold vtsub. intros. destruct (pos iy) eqn :A. 
+      intros. subst T1. simpl in *. rewrite val_type_unfold. destruct vy0; assumption.
+      intros. subst T1. simpl in *. rewrite val_type_unfold in H2. apply unvv; destruct vy0; apply vv; assumption.
+      destruct a. (*ub*) unfold vtsub. intros. destruct (pos iy0) eqn : A. 
+      intros. subst T1. simpl in *. rewrite val_type_unfold in *. destruct vy0.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+      intros. subst T1. simpl in *. rewrite val_type_unfold in *. destruct vy0. 
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+      (*lb*) unfold vtsub. intros. destruct (pos iy0) eqn :A . 
+      intros. subst T1. simpl in *. rewrite val_type_unfold in *. destruct vy0.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+      intros. subst T1. simpl in *. rewrite val_type_unfold in *. destruct vy0.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+      (*uf*) assert (val_type renv [] T1 vy iy). subst T1. rewrite val_type_unfold in H1. apply unvv; destruct vy; apply vv; assumption.
+      specialize (IHiy H2). unfold vtsub in *. intros. specialize (IHiy vy0 iy0). destruct (pos iy0) eqn :A; simpl in *; subst T1.
+        intros. rewrite val_type_unfold. rewrite val_type_unfold in H3. destruct vy0; apply IHiy; assumption.
+        intros. rewrite val_type_unfold. rewrite val_type_unfold in H3. destruct vy0; apply IHiy; assumption.
+    assert (good_bounds (val_type renv [] T1)). eapply valtp_bounds. assumption.
+    unfold good_bounds in *. intros. specialize (H2 vp (iy ++ ip) H3 vy0 iy0).
+    repeat rewrite <-app_assoc in H2. assumption.
+  - (*TSel*) remember (TSel v) as T1.
+    subst T1. rewrite val_type_unfold in H1. simpl in *.
+    destruct v; try solve [destruct vx; inversion H1].
+    remember (indexr i renv) as IX. destruct IX; try solve [destruct vx; inversion H1].
+    assert (v vx [ub]). destruct vx; assumption. clear H1.
+    assert (can_unfold v). apply (H i). symmetry. eassumption.
+    assert (can_unfold (fun vy iy => v vy (ub :: iy))). eapply can_unfold_ub. eassumption.
+    clear H1 H2 H H0.
+    inversion H3; subst. 
+    (*base*) apply base. intros. rewrite val_type_unfold in H0. rewrite <-HeqIX in H0. assert (v vy (ub::iy)). destruct vy; assumption. clear H0.
+    specialize (H x vy iy H1). ev. split. unfold vtsub in *. intros. specialize (H vy0 iy0). destruct (pos iy0) eqn : A. intros.
+    rewrite val_type_unfold in H2. rewrite val_type_unfold. rewrite <- HeqIX in *. destruct vy0; apply H; assumption.
+    intros. rewrite val_type_unfold in H2. rewrite val_type_unfold. rewrite <- HeqIX in *. destruct vy0; apply H; assumption.
+    unfold good_bounds in *. intros. rewrite val_type_unfold in H2. rewrite <- HeqIX in H2. assert (v vp (ub :: iy ++ ip)). destruct vp; assumption.
+    clear H2. specialize (H0 vp ip H4 vy0 iy0). destruct (pos iy0) eqn :A. 
+    rewrite val_type_unfold. intros. rewrite val_type_unfold. rewrite <- HeqIX in *. destruct vy0; apply H0; assumption.
+    rewrite val_type_unfold. intros. rewrite val_type_unfold. rewrite <- HeqIX in *. destruct vy0; apply H0; assumption.
+    (*indu*) eapply indu. eassumption. intros. rewrite val_type_unfold in H1. rewrite <- HeqIX in H1. assert (v vy (ub::iy)). destruct vy; assumption. clear H1.
+    specialize (H0 x vy iy H2). ev. repeat split; try assumption. unfold vtsub in *. intros. specialize (H1 vy0 iy0). destruct (pos iy0) eqn : A. intros.
+    rewrite val_type_unfold. rewrite <- HeqIX in *. destruct vy0; apply H1; assumption.
+    intros. rewrite val_type_unfold in H5. rewrite <- HeqIX in *. destruct vy0; apply H1; assumption.
+  - (*Mem*) admit. (*remember (TMem T1_1 T1_2) as T1.
+    clear H1. eapply base. intros. split.
+    induction iy. simpl. unfold vtsub. intros. destruct (pos iy) eqn : A.
+      intros. subst T1. rewrite val_type_unfold. destruct vy0; assumption.
+      intros. subst T1. rewrite val_type_unfold in H2. apply unvv; destruct vy0; apply vv; assumption.
+      destruct a. simpl. unfold vtsub. intros. destruct (pos iy0) eqn : A.
+      intros. subst T1. rewrite val_type_unfold in H2. assert (val_type renv [] T1_2 vy0 (iy ++ iy0)). apply unvv; destruct vy0; ev; apply vv; assumption.
+      clear H2. *)
+  - (*Tbind*) rewrite val_type_unfold in H1. 
+    assert ( closed 1 (0) (length renv) T1 /\
+         (exists jj : vset,
+            vtsub jj
+              (fun (vy : vl) (iy : sel) =>
+               val_type renv [jj] (open (varH (0)) T1) vy
+                 (uf (varH (0)) :: iy)) /\ good_bounds jj /\ jj vx [])). destruct vx; assumption. clear H1. ev.
+    assert (can_unfold x). admit . (* should be in valty of TBind *)
+    eapply base. intros. apply H5. intros. 
+
+
+*)
+
+
+Lemma valtp_unfold: (forall T1 renv vx,
+   (* could use R_env directly as premise *)
+   (forall x jj, indexr x renv = Some jj -> can_unfold jj) ->
+   (forall x jj, indexr x renv = Some jj -> good_bounds jj) ->
+   val_type renv [] T1 vx [] ->
+   exists (jj:vset),
+     jj vx [] /\
+     vtsub jj (fun vy iy => val_type renv (jj::nil) T1 vy (uf (varH 0)::iy)) /\
+     good_bounds jj /\
+     can_unfold jj).
+Proof.
+  induction T1; intros.
+  - (* Top *) remember TTop as T1. exists (val_type renv [] T1). split. assumption. split. 
+    assert (forall vy iy, val_type renv [] T1 vy iy <-> val_type renv ((val_type renv [] T1) :: []) T1 vy (uf (varH 0)::iy)) as E. {
+      intros. split; intros.
+      subst T1. rewrite val_type_unfold in *. destruct vy; simpl; assumption.
+      subst T1. rewrite val_type_unfold in *. destruct vy; simpl; assumption. }
+    unfold vtsub. intros. destruct (pos iy); intros.
+    (* eapply E -- SLOW *)
+    specialize (E vy iy). eapply unvv. destruct E. eapply vv. apply H3. assumption.
+    specialize (E vy iy). eapply unvv. destruct E. eapply vv. apply H4. assumption.
+    split. eapply valtp_bounds. assumption.
+
+    (* can_unfold *)
+    clear H1. eapply base. intros. split. unfold vtsub. intros. destruct (pos iy0) eqn :A. 
+      intros. subst T1. rewrite val_type_unfold in *. rewrite pos_app in *. simpl in *. assumption.
+      intros. subst T1. rewrite val_type_unfold in *. rewrite pos_app in *. simpl in *. assumption.
+    assert (good_bounds (val_type renv [] T1)). eapply valtp_bounds. assumption.
+    unfold good_bounds in *. intros. specialize (H2 vp (iy ++ ip) H3 vy0 iy0).
+    repeat rewrite <- app_assoc in H2. assumption.
+
+  - (* Bot *) remember TBot as T1.
+    exists (val_type renv [] T1). split. assumption. split.
+    unfold vtsub. intros. destruct (pos iy) eqn :A. 
+      intros. subst T1. rewrite val_type_unfold in *. simpl in *. assumption.
+      intros. subst T1. rewrite val_type_unfold in *. simpl in *. assumption.
+    split. eapply valtp_bounds. eassumption.
+    (*can_unfold*)
+    clear H1. eapply base. intros. split. unfold vtsub. intros. destruct (pos iy0) eqn :A. 
+      intros. subst T1. rewrite val_type_unfold in *. rewrite pos_app in *. simpl in *. assumption.
+      intros. subst T1. rewrite val_type_unfold in *. rewrite pos_app in *. simpl in *. assumption.
+    assert (good_bounds (val_type renv [] T1)). eapply valtp_bounds. assumption.
+    unfold good_bounds in *. intros. specialize (H2 vp (iy ++ ip) H3 vy0 iy0).
+    repeat rewrite <- app_assoc in H2. assumption.  
+  
+  - (*Tall *) remember (TAll T1_1 T1_2) as T1.
+    exists (val_type renv [] T1). split. assumption. split.
+    unfold vtsub. intros. destruct (pos iy)  eqn : A. 
+      intros. apply unvv. eapply valtp_extendH. subst T1. rewrite val_type_unfold. destruct vy; assumption.
+      intros. apply vv in H2. assert (vtp renv [] T1 vy (uf (varH 0) :: iy)). eapply valtp_shrinkH. apply unvv. eassumption.
+      eapply valtp_closed in H1. eassumption. apply unvv in H3. subst T1. rewrite val_type_unfold in H3. apply unvv; destruct vy; apply vv; assumption.
+    split. eapply valtp_bounds. eassumption.
+    (* can_unfold *)
+    clear H1. eapply base. intros. split.
+    induction iy. unfold vtsub. intros. destruct (pos iy) eqn :A. 
+      intros. subst T1. simpl in *. rewrite val_type_unfold. destruct vy0; assumption.
+      intros. subst T1. simpl in *. rewrite val_type_unfold in H2. apply unvv; destruct vy0; apply vv; assumption.
+      destruct a. (*ub*) unfold vtsub. intros. destruct (pos iy0) eqn : A. 
+      intros. subst T1. simpl in *. rewrite val_type_unfold in *. destruct vy0.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+      intros. subst T1. simpl in *. rewrite val_type_unfold in *. destruct vy0. 
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+      (*lb*) unfold vtsub. intros. destruct (pos iy0) eqn :A . 
+      intros. subst T1. simpl in *. rewrite val_type_unfold in *. destruct vy0.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+      intros. subst T1. simpl in *. rewrite val_type_unfold in *. destruct vy0.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+      (*uf*) assert (val_type renv [] T1 vy iy). subst T1. rewrite val_type_unfold in H1. apply unvv; destruct vy; apply vv; assumption.
+      specialize (IHiy H2). unfold vtsub in *. intros. specialize (IHiy vy0 iy0). destruct (pos iy0) eqn :A; simpl in *; subst T1.
+        intros. rewrite val_type_unfold. rewrite val_type_unfold in H3. destruct vy0; apply IHiy; assumption.
+        intros. rewrite val_type_unfold. rewrite val_type_unfold in H3. destruct vy0; apply IHiy; assumption.
+    assert (good_bounds (val_type renv [] T1)). eapply valtp_bounds. assumption.
+    unfold good_bounds in *. intros. specialize (H2 vp (iy ++ ip) H3 vy0 iy0).
+    repeat rewrite <-app_assoc in H2. assumption.
+
+  - (*TSel*) remember (TSel v) as T1.
+    subst T1. rewrite val_type_unfold in H1. simpl in *.
+    destruct v; try solve [destruct vx; inversion H1].
+    remember (indexr i renv) as IX. destruct IX; try solve [destruct vx; inversion H1].
+    assert (v vx [ub]). destruct vx; assumption. clear H1.
+    assert (can_unfold v). apply (H i). symmetry. eassumption.
+    remember H1 as CFV. clear HeqCFV.
+    
+    inversion CFV. specialize (H3 (varH 0) _ _ H2). ev. 
+    exists (fun vy iy => v vy (ub::iy)). split. assumption. split.
+
+    unfold vtsub. intros.
+    remember (pos iy) as p. destruct p;
+
+    rewrite val_type_unfold; rewrite <-HeqIX; intros.
+
+    assert (v vy (ub :: uf (varH 0) :: iy)).
+    specialize (H3 vy iy). rewrite <-Heqp in H3. eapply H3. simpl. assumption.
+    destruct vy; assumption.
+
+    assert (v vy (ub :: uf (varH 0) :: iy)).
+    destruct vy; assumption.
+    specialize (H3 vy iy). rewrite <-Heqp in H3. eapply H3. simpl. assumption.
+
+    split.
+    (* good bounds *)
+    simpl in H5. eapply H5.
+    (* can unfold *) eapply can_unfold_ub. assumption.
+
+
+    specialize (H4 (varH 0) _ _ H2). ev. 
+    exists (fun vy iy => jj0 vy (ub::iy)). split. assumption. split.
+
+    unfold vtsub. intros.
+    remember (pos iy) as p. destruct p;
+
+    rewrite val_type_unfold; rewrite <-HeqIX; intros.
+
+    assert (v vy (ub :: uf (varH 0) :: iy)).
+    specialize (H6 vy iy). rewrite <-Heqp in H6. eapply H6. simpl. assumption.
+    destruct vy; assumption.
+
+    assert (v vy (ub :: uf (varH 0) :: iy)).
+    destruct vy; assumption.
+    specialize (H6 vy iy). rewrite <-Heqp in H6. eapply H6. simpl. assumption.
+
+    split.
+    (* good bounds *)
+    simpl in H7. eapply H7.
+    (* can unfold *) eapply can_unfold_ub. assumption.
+    
+  - (*Mem*) remember (TMem T1_1 T1_2) as T1.
+    exists (val_type renv [] T1). split. assumption. split. unfold vtsub. intros. destruct (pos iy) eqn : A.
+    intros. apply unvv. eapply valtp_extendH. subst T1. rewrite val_type_unfold. destruct vy; assumption.
+    intros. assert (val_type renv [] T1 vy (uf (varH 0) :: iy)). apply unvv. eapply valtp_shrinkH.
+    eassumption. eapply valtp_closed in H1. eassumption. subst T1. rewrite val_type_unfold in H3. apply unvv; destruct vy; apply vv; assumption.
+    split. eapply valtp_bounds. eassumption.
+    (*can_unfold*)
+
+    eapply base. intros. split.
+    induction iy. unfold vtsub. intros. destruct (pos iy) eqn :A. 
+      intros. subst T1. simpl in *. rewrite val_type_unfold. destruct vy0; assumption.
+      intros. subst T1. simpl in *. rewrite val_type_unfold in H3. apply unvv; destruct vy0; apply vv; assumption.
+      destruct a. 
+      (*ub*) admit. (*not sure how to induction *)
+      (*lb*) admit. (*not sure how to induction*)
+      assert (val_type renv [] T1 vy iy). subst T1. rewrite val_type_unfold in H1.
+      apply unvv; destruct vy; apply vv; assumption. specialize (IHiy H2). intros vy0 iy0. specialize (IHiy vy0 iy0).
+      destruct (pos iy0) eqn : A; subst T1; simpl in *; intros; rewrite val_type_unfold; rewrite val_type_unfold in H3;
+      destruct vy0; apply IHiy; assumption.
+    assert (good_bounds (val_type renv [] T1)). eapply valtp_bounds. assumption.
+    unfold good_bounds in *. intros. specialize (H2 vp (iy ++ ip) H3 vy0 iy0).
+    repeat rewrite <-app_assoc in H2. assumption.
+
+  - (* TBind *) 
+    rewrite val_type_unfold in H1. simpl in *. assert (
+           closed 1 0 (length renv) T1 /\
+           (exists jj : vset,
+              vtsub jj
+                (fun (vy : vl) (iy : sel) =>
+                 val_type renv [jj] (open (varH 0) T1) vy (uf (varH 0) :: iy)) /\
+              good_bounds jj /\ jj vx [])). destruct vx; assumption.
+    clear H1. ev.
+    exists x.
+    repeat split; try assumption. 
+
+    unfold vtsub. intros. simpl. intros. 
+    rewrite val_type_unfold. 
+    remember (pos iy) as p. destruct p. intros. destruct vy.
+    split. simpl. eapply closed_upgrade_free. eassumption. omega. exists x. split. auto. split. eapply H2. split; assumption.
+    split. simpl. eapply closed_upgrade_free. eassumption. omega. exists x. split. auto. split. eapply H2. split; assumption. 
+    destruct vy. 
+    intros. ev. simpl in H6. inversion H6. subst x0. assumption.
+    intros. ev. simpl in H6. inversion H6. subst x0. assumption.
+
+    admit. (* TODO: can_unfold -- this should come from def of val_type *)
+Qed.
+  
+    
+
+
+
+
 Definition can_unfold (jj:vset) :=
   forall x vy iy,
     jj vy iy ->
@@ -4110,7 +4552,7 @@ Lemma valtp_unfold: (forall T1 renv vx,
      good_bounds jj /\
      can_unfold jj).
 Proof.
-  intros. remember T1 as TX. destruct TX; rewrite HeqTX in *. 
+  intros. remember T1 as TX. induction TX; rewrite HeqTX in *. 
   - (* Top *) exists (val_type renv [] T1). split. assumption. split. 
     assert (forall vy iy, val_type renv [] T1 vy iy <-> val_type renv ((val_type renv [] T1) :: []) T1 vy (uf (varH 0)::iy)) as E. {
       intros. split; intros.
@@ -4141,16 +4583,59 @@ Proof.
     repeat rewrite <-app_assoc in H2. assumption.
     
   - (* Bot *)
-    admit.          
+    exists (val_type renv [] T1). split. assumption. split.
+    unfold vtsub. intros. destruct (pos iy) eqn :A. 
+      intros. subst T1. rewrite val_type_unfold in *. simpl in *. assumption.
+      intros. subst T1. rewrite val_type_unfold in *. simpl in *. assumption.
+    split. eapply valtp_bounds. eassumption.
+    (*can_unfold*)
+    unfold can_unfold. intros. exists (val_type renv [] T1). split. assumption. split. unfold vtsub.
+    intros. destruct (pos iy0) eqn : A. 
+      intros. subst T1. rewrite val_type_unfold in *. rewrite pos_app in *. simpl in *. assumption.
+      intros. subst T1. rewrite val_type_unfold in *. rewrite pos_app in *. simpl in *. assumption.
+    assert (good_bounds (val_type renv [] T1)). eapply valtp_bounds. assumption.
+    unfold good_bounds in *. intros. specialize (H3 vp (iy ++ ip) H4 vy0 iy0).
+    repeat rewrite <-app_assoc in H3. assumption.
+
   - (* Tall *)
-    admit.
+    exists (val_type renv [] T1). split. assumption. split.
+    unfold vtsub. intros. destruct (pos iy)  eqn : A. 
+      intros. apply unvv. eapply valtp_extendH. subst T1. rewrite val_type_unfold. destruct vy; assumption.
+      intros. apply vv in H2. assert (vtp renv [] T1 vy (uf (varH 0) :: iy)). eapply valtp_shrinkH. apply unvv. eassumption.
+      eapply valtp_closed in H1. eassumption. apply unvv in H3. subst T1. rewrite val_type_unfold in H3. apply unvv; destruct vy; apply vv; assumption.
+    split. eapply valtp_bounds. eassumption.
+    (* can_unfold *)
+    unfold can_unfold. intros.
+    exists (val_type renv [] T1). split. assumption. split. 
+    induction iy. unfold vtsub. intros. destruct (pos iy) eqn : A. intros. subst T1. simpl in *. rewrite val_type_unfold. destruct vy0; assumption.
+      intros. simpl in *. subst T1. rewrite val_type_unfold in H3. apply unvv; destruct vy0; apply vv; assumption.
+      destruct a. (*ub*) unfold vtsub. intros. destruct (pos iy0) eqn : A. intros. subst T1. simpl in *. rewrite val_type_unfold in *. destruct vy0.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+        intros. simpl in *. subst T1. rewrite val_type_unfold in *. destruct vy0.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+        (*lb*) unfold vtsub. intros. destruct (pos iy0) eqn : A. intros. simpl in *. subst T1. rewrite val_type_unfold in *. destruct vy0.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+        intros. simpl in *. subst T1. rewrite val_type_unfold in *. destruct vy0.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+        ev. repeat split; try assumption. rewrite app_comm_cons in *. rewrite pos_app in *. simpl in *. assumption. intro F. inversion F.
+        (*uf*) subst T1. rewrite val_type_unfold in H2. assert ( val_type renv [] (TAll TX1 TX2) vy iy).
+        apply unvv; destruct vy; apply vv; assumption. clear H2. specialize (IHiy H3). unfold vtsub in *. intros. specialize (IHiy vy0 iy0). destruct (pos iy0) eqn : A.
+        simpl in *. intros. rewrite val_type_unfold; destruct vy0; rewrite val_type_unfold in H2; apply IHiy; assumption. 
+        simpl in *. intros. rewrite val_type_unfold; destruct vy0; rewrite val_type_unfold in H2; apply IHiy; assumption. 
+     assert (good_bounds (val_type renv [] T1)). eapply valtp_bounds. assumption.
+     unfold good_bounds in *. intros. specialize (H3 vp (iy ++ ip) H4 vy0 iy0).
+    repeat rewrite <-app_assoc in H3. assumption.
+
   - (* TSel *)
     subst T1. rewrite val_type_unfold in H1. simpl in *.
     destruct v; try solve [destruct vx; inversion H1].
     remember (indexr i renv) as IX. destruct IX; try solve [destruct vx; inversion H1].
     assert (v vx [ub]). destruct vx; assumption. clear H1.
     assert (can_unfold v). apply (H i). symmetry. eassumption.
-    remember H1 as CFV. clear HeqCFV.
+    remember H1 as CFV. clear HeqCFV. unfold can_unfold in H1.
     specialize (H1 (varH 0) _ _ H2).
     ev.
 
@@ -4176,7 +4661,19 @@ Proof.
     admit. (* TODO: this is the recursive occurrence *)
     
     
-  - (* TMem *)
+  - (* TMem *) (*
+    exists (val_type renv [] T1). split. assumption. split. unfold vtsub. intros. destruct (pos iy) eqn : A.
+    intros. apply unvv. eapply valtp_extendH. subst T1. rewrite val_type_unfold. destruct vy; assumption.
+    intros. assert (val_type renv [] T1 vy (uf (varH 0) :: iy)). apply unvv. eapply valtp_shrinkH.
+    eassumption. eapply valtp_closed in H1. eassumption. subst T1. rewrite val_type_unfold in H3. apply unvv; destruct vy; apply vv; assumption.
+    split. eapply valtp_bounds. eassumption.
+    (*can_unfold*)
+    unfold can_unfold. intros. exists (val_type renv [] T1). split. assumption. split. 
+    induction iy. simpl in *. unfold vtsub. intros. destruct (pos iy) eqn : A. intros. subst T1. rewrite val_type_unfold.
+      destruct vy0; assumption. intros. subst T1. rewrite val_type_unfold in H3. apply unvv; destruct vy0; apply vv; assumption.
+      destruct a. (*ub*) 
+*)
+
     admit.
   - (* TBind *)
     subst T1. rewrite val_type_unfold in H1. simpl in *. assert (
