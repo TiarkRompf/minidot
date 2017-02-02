@@ -4083,10 +4083,10 @@ Hint Unfold prefix.
     
 Inductive can_unfold2: vset -> Prop :=
   | indu: forall (jj:vset),          
-          (forall x vy iy, jj vy iy ->
+          (forall (x:var) vy iy, jj vy iy ->
            exists jj0, 
            (jj0 vy [] /\
-            vtsub jj0 (prefix (iy ++ [uf x]) jj) /\
+            vtsub jj0 (prefix (iy ++ [uf (varH 0)]) jj) /\
             good_bounds jj0 /\
             (jj0 = (prefix iy jj) \/ can_unfold2 jj0))) ->
           can_unfold2 jj.
@@ -4151,7 +4151,7 @@ Proof.
   - (*Mem*) remember (TMem T1_1 T1_2) as T1.
     destruct k.
     { (* nil *)
-      exists (val_type renv [] T1). split. assumption.
+      exists (val_type renv [] T1). split. admit. (* extend assumption. *)
       split. simpl. subst T1. admit. (* ignore uf *)
       split. simpl. admit. (* valtp_bounds *)
       (* can_unfold *)
@@ -4169,8 +4169,19 @@ Proof.
       simpl.
       ev. inversion H6. 
       specialize (H7 x vy nil H3). simpl in H7.
-      ev. exists x0. split. assumption. 
-      (* UNCLEAR *)
+      ev. exists x1. split. assumption.
+
+      assert (vtsub x0 (prefix (iy ++ [uf (varH 0)]) (val_type renv [x0] T1_2))) as HAVE.
+      { admit. (*  H4 *)  }
+
+      assert (vtsub x0 (prefix (iy ++ [uf (varH 0)]) (val_type renv [] T1_2))) as NEED. 
+      { admit. }
+      
+      (* UNCLEAR:  how to get rid of  [x0] -- that cannot be right !!! *)
+      (* note: definition of can_unfold2 doesn't capture adding stuff to env.
+               how could one do this? it seems difficult, since we need to
+               support arbitrary jj, without externally visible env    *)
+      
       admit.
       (* lb *)
       admit.
@@ -4183,7 +4194,7 @@ Proof.
       rewrite val_type_unfold in H1. eapply unvv. destruct vx; ev; eapply vv; assumption.
       specialize (IHT1_2 renv vx k H H0 VT2). ev.
       exists x. split. assumption.
-      split. subst T1. 
+      split. subst T1.
       admit. (* should be able to use H3 now *)
       split; assumption.
       (* lb *)
@@ -4217,7 +4228,7 @@ Proof.
     split. assumption.
     admit. (* TODO: can_unfold -- this should come from def of val_type *)
 
-    + rewrite val_type_unfold in H1.
+    + admit. (* TODO  --  is uf a problem ??? *)
 Qed.
   
     
