@@ -1,7 +1,7 @@
 Type Soundness Proofs with Definitional Interpreters
 ====================================================
 
-Paper draft: [[pdf](http://cs.purdue.edu/~rompf/papers/amin-draft2016a.pdf)]
+Paper (POPL 2017): [[pdf](http://cs.purdue.edu/~rompf/papers/amin-popl17a.pdf)]
 
 The Coq scripts compile with the command `make`, using `coqc --version` 8.4pl6 (July 2015).
 
