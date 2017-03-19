@@ -46,13 +46,13 @@ Hint Unfold store.
 Hint Unfold Gamma.
 Hint Unfold rho.
 
-
+(*
 Fixpoint length {X: Type} (l : list X): nat :=
   match l with
     | [] => 0
     | _::l' => 1 + length l'
   end.
-
+*)
 Fixpoint index {X : Type} (n : id) (l : list X) : option X :=
   match l with
     | [] => None
@@ -112,16 +112,48 @@ Definition type  : Type := forall (k : nat), (itype k).
 
 Definition beIn (j k:nat) : Type := (lt j k) -> (imemtype j * store * location) -> (itype k) -> Prop .
 
+Lemma xx: forall j, j < 0 -> False. intros. omega. Defined.
+Lemma yy: forall j k, j < S k -> ~ j < k -> j = k. intros. omega. Qed.
+
 Lemma In j k : beIn j k.
 Proof.
   intros. revert j. induction k.
-  unfold beIn. intros. omega. 
+  unfold beIn. intros. apply xx in H. contradiction.
   unfold beIn. intros. 
   unfold beIn in IHk. destruct (lt_dec j k). eapply IHk.
   eassumption. eassumption. eapply (fst X0).
-  assert (j = k). omega. subst j.
+  assert (j = k). apply yy; assumption. subst j.
   eapply (snd X0). eapply (fst X). eapply (fst X). eapply X.
-Qed.
+Defined.
+
+
+Print In.
+
+Definition In2 j k : beIn j k := 
+  nat_rect
+    (fun k0 : nat => forall j0 : nat, beIn j0 k0)
+  (fun (j0 : nat) (H : j0 < 0) (_ : imemtype j0 * store * location)
+     (_ : itype 0) => (fun H0 : False => False_rect Prop H0) (xx j0 H))
+  (fun (k0 : nat) (IHk : forall j0 : nat, beIn j0 k0) 
+     (j0 : nat) (H : j0 < S k0) (X : imemtype j0 * store * location)
+     (X0 : itype (S k0)) =>
+   let s := lt_dec j0 k0 in
+   match s with
+   | left l => IHk j0 l X (fst X0)
+   | right n =>
+       (fun H0 : j0 = k0 =>
+        eq_rect_r
+          (fun j1 : nat =>
+           j1 < S k0 -> imemtype j1 * store * location -> ~ j1 < k0 -> Prop)
+          (fun (_ : k0 < S k0) (X1 : imemtype k0 * store * location)
+             (_ : ~ k0 < k0) =>
+           snd X0
+             ((fun H2 : imemtype k0 => H2) (let (H2, _) := fst X1 in H2))
+             ((fun H2 : store => H2) (let (_, H2) := fst X1 in H2))
+             ((fun H2 : location => H2) (let (_, H2) := X1 in H2))) H0 H X n)
+         (yy j0 k0 H n)
+   end) k j.
+
 
 
 (*Definition 1 Approx*)
@@ -133,12 +165,12 @@ Lemma ApproxT j k: itype_approx j k.
 Proof.
   intros. revert j. 
   induction k. 
-  unfold itype_approx. intros. omega.
+  unfold itype_approx. intros. apply xx in H. contradiction.
   unfold itype_approx. intros. 
   unfold itype_approx in IHk.
   destruct (lt_dec j k). eapply IHk. auto. simpl in X.  eapply (fst X).
-  assert (j = k). omega. subst j. eapply (fst X). 
-Qed.
+  assert (j = k). apply yy; assumption. subst j. eapply (fst X). 
+Defined.
 
 
 Definition Approx j k : imemtype_approx j k :=
@@ -412,7 +444,7 @@ Proof. induction k. apply tt.
     (imemtype_sat k X H) /\ 
     (index X0 H = Some (vbool true) \/ index X0 H = Some (vbool false))
   ).
-Qed.
+Defined.
 
 Lemma Fun (T1 T2 : type) k : itype k.
 Proof. induction k. apply tt.
@@ -425,6 +457,7 @@ Proof. induction k. apply tt.
              -> (ExpT k (S k) c e (l::env2) psi' M' (T2 (S k)) )) ).
 Qed.
 
+(* FIXME: this will probably need to be a fixpoint *)
 Inductive Match {k} : ty -> itype k -> Prop :=
   | Mtop: Match TBool (Bool k) 
   | Mall: forall T1 T2 tau1 tau2,
@@ -470,26 +503,72 @@ Definition WellFormed (k :nat)(G: Gamma) (R: rho) (M: store) (psi: imemtype k) :
   imemtype_sat k psi M -> In j k a (psi_j, M, 
 *)
 
+(* FIXME: Match will need to be part of conclusion *)
 Theorem full_total_safety : forall e G T k,
   has_type G e T -> forall rho M psi, WellFormed k G rho M psi -> forall tau, Match T (tau k)-> 
   exists t a, ExpT k t a e rho psi M (tau t).
 Proof. induction e; intros; inversion H; subst.
-  Case "true". exists (S k). assert (k < (S k)) by omega.  exists H2. 
+  - Case "true". exists (S k). assert (k < (S k)) by omega. exists H2.
+    
     unfold ExpT. exists 1. exists ((vbool true)::M). exists ((Bool k)::psi). exists (length M).
-    split. exists 1. simpl. reflexivity.
-    split. unfold MemoryEx. unfold WellFormed in H0. destruct H0. split. assumption.
-      split.  
-      intros. admit.
+    (* tevaln *) split. exists 1. simpl. reflexivity.
+    (* MemoryEx *) split. unfold MemoryEx. unfold WellFormed in H0. destruct H0. split. assumption.
+    split.
+
+    {
+    (* TODO: generalize and pull this out as a proper lemma with induction on k *)
+    
+    (* imemtype_sat for extended store *)
+    destruct k. admit. (* induction base case *)
+    assert (imemtype_sat k (Bool k :: (map (fun a => fst a) psi)) (vbool true :: M)) as IND.
+    admit. (* induction hypothesis *)
+    
+    intros. unfold imemtype_sat. unfold imemtype_sat in H0. destruct H0. split. simpl. eauto.
+    intros. specialize (H4 j l a).
+    case_eq (beq_nat l (length psi)); intros E.
+    + eapply beq_nat_true_iff in E.
+      assert (index l (Bool (S k) :: psi) = Some (Bool (S k))). admit. 
+      rewrite H6. unfold Approx. simpl. 
       
-    eapply (In k (S k)).
-    inversion H0. subst. exists 2. exists 3. assert (2 < 3) by omega. exists H1.
-    exists []. exists []. exists []. unfold ExpT. exists 1. exists [vbool true].
-    exists 0. assert (1 < 2) by omega. exists H2. split. exists 2. simpl. reflexivity.
-    exists []. si mpl. assert (1 <= 2) by omega. exists H3. assert (1 < 3) by omega. exists H4.
-    exists (vbool true). split. admit. split. reflexivity.                                      
+      destruct (lt_dec j k). (* goal In j k l0 -- get from IND *)
+      * unfold imemtype_sat in IND. destruct IND as [? IND]. 
+        specialize (IND j l l0). simpl in IND. rewrite map_length in IND. simpl in H5. specialize (IND H5).
+        eapply beq_nat_true_iff in E.
+      (* Set Printing All. rewriting is a bit tricky b/c types *)
+        unfold itype in E. unfold id in *. unfold location in *. rewrite E in IND. 
+        unfold itype. unfold location in *. unfold Approx in IND.
+        rewrite map_map in IND. eapply IND. 
+      
+      * unfold eq_rect_r. unfold eq_rect. unfold eq_sym. remember (yy j k a n) as V.
+        destruct V. simpl.
+        assert (beq_nat l (length M) = true). admit.
+        rewrite H7. split. eapply IND. eauto.
+    + eapply beq_nat_false_iff in E.
+      assert (index l (Bool (S k) :: psi) = index l psi). admit.
+      rewrite H6. simpl in H5. assert (l < length psi). admit. 
+      specialize (H4 H7).
+      destruct (index l psi). simpl. simpl in H4. 
+
+      destruct (lt_dec j k).
+      * admit. (* get again from IND *)
+
+      * assert (j = k). omega. simpl in H4. destruct (lt_dec j k). omega.
+        unfold eq_rect_r in *. unfold eq_rect in *. unfold eq_sym in *.
+        remember (yy j k a n) as V.
+        destruct V. 
+        simpl. simpl in H4.
+        admit.
+        (* need another lemma: every itype works with an extended store *)
+        (* then use H4 and IND *)
+
+      * assumption.
+    }
+    
+    admit. (* routine *)
+    admit. (* use result proved above *)
 
 
-                  
+      
   Case "false". admit.
 
   Case "var". admit.
