@@ -14,9 +14,9 @@
 TODO: 
  + val_type: closed TBind
  - valtp_unfold (PERF issue, aborted after 1h)
- - shrink / subst helper lemmas
+ + shrink / subst helper lemmas
  - valtp_widen: can we support stp_bindx?
- - main proof: use substs in pack/unback
+ + main proof: use substs in pack/unback
  - main proof: case and
  - main proof: case dapp
 
@@ -1657,9 +1657,9 @@ Qed.
  
 
 (* used in wf_env_extend and in main theorem *)
-Lemma valtp_extend: forall vx vf df k H1 T1,
-  val_type H1 [] T1 k (df k) vf ->
-  vtp (vx::H1) [] T1 k (df k) vf. 
+Lemma valtp_extend: forall vx vf df k G1 H1 T1,
+  val_type H1 G1 T1 k (df k) vf ->
+  vtp (vx::H1) G1 T1 k (df k) vf. 
   
 Proof.
   intros. eapply valtp_extend_aux with (H1 := H1). eauto. simpl.
@@ -1667,10 +1667,10 @@ Proof.
 Qed.
 
 (* used in wf_env_extend *)
-Lemma valtp_shrink: forall vx vf df k H1 T1,
-  val_type (vx::H1) [] T1 k (df k) vf ->
-  closed 0 0 (length H1) T1 ->                     
-  vtp H1 [] T1 k (df k) vf.
+Lemma valtp_shrink: forall vx vf df k G1 H1 T1,
+  val_type (vx::H1) G1 T1 k (df k) vf ->
+  closed 0 (length G1) (length H1) T1 ->                     
+  vtp H1 G1 T1 k (df k) vf.
 Proof.
   intros. apply vv in H. eapply valtp_extend_aux. eauto. simpl. assumption.
   eassumption.
@@ -2885,9 +2885,10 @@ Proof.
     unfold R_env in WFE. ev. destruct (H4 _ _ H) as [d [v [I ?]]]. ev.
     exists d. exists v. split. exists 0. intros. destruct n. omega. simpl. rewrite I. reflexivity.
     intros. 
-    assert (forall n, val_type renv [d] (open (varH 0) T1) n (d n) v). admit. (* subst *)
-    rewrite val_type_unfold.
-    destruct v; exists d; split. reflexivity. assumption. reflexivity. assumption.
+    assert (forall n, val_type renv [d] (open (varH 0) T1) n (d n) v). {
+      intros. eapply unvv. eapply vtp_subst2_general. rewrite H3. assumption. eassumption. eapply H6. }
+    rewrite val_type_unfold. rewrite H3. 
+    destruct v; split; try assumption; exists d; (split; [reflexivity| assumption]). 
 
 (*    
   - Case "VarUnpack".
@@ -2901,7 +2902,7 @@ Proof.
     
                                                                                                     assert (forall n, exists jj:vseta, jj n = d n). intros. destruct (H7 n). exists x0. ev. assumption.
 
-    admit. (* NOT CLEAR *)
+    (* NOT CLEAR *)
 *)
 
   - Case "unpack". 
@@ -2914,21 +2915,23 @@ Proof.
                  val_type renv [jj] (open (varH 0) T1) n (jj n) vx)) as E.
     destruct vx; ev; exists x0; assumption. 
     destruct E as [jj VXH]. 
-    assert (forall n, val_type (jj::renv) [] (open (varF (length renv)) T1) n (jj n) vx) as VXF.
-    admit. (* subst *)
+    assert (forall n, val_type (jj::renv) [] (open (varF (length renv)) T1) n (jj n) vx) as VXF. {
+      assert (closed 1 0 (S (length renv)) T1). { destruct vx; ev; eapply closed_upgrade_freef; try eassumption; auto. }
+      intros. eapply vtp_subst2. assumption. eapply unvv. eapply valtp_extend. eapply VXH.
+      eapply indexr_hit2. reflexivity. reflexivity. } 
     
     assert (R_env (vx::venv0) (jj::renv) (T1'::env)) as WFE1.
     eapply wf_env_extend. assumption. rewrite H. assumption.
 
     specialize (IHW2 _ _ WFE1).
     destruct IHW2 as [dy [vy [IW2 HVY]]].
+    clear HVX. clear VXF. 
 
     (* question: 
-    clear HVX. clear VXF. 
-    assert (jj 0 = dx 0). admit. (* sure *)
-    assert (forall k : nat, val_type renv [jj] T2 k (jj k) vy). admit. (* sure *)
-    assert (forall k : nat, val_type renv [dx] T2 k (dx k) vy). admit. (* big question! *)
-     /question *)
+    assert (jj 0 = dx 0). (* sure *)
+    assert (forall k : nat, val_type renv [jj] T2 k (jj k) vy). (* sure *)
+    assert (forall k : nat, val_type renv [dx] T2 k (dx k) vy). (* big question! *)
+    *)
 
     exists dy. exists vy. split. {
       destruct IW1 as [nx IWX].
