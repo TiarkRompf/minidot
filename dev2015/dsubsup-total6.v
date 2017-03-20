@@ -1,21 +1,5 @@
 (* Termination for D<> *)
-(* this version includes a proof of totality (like in nano0-total.v *)
-
-(* copied from nano4-total.v *)
-(* add TMem and TSel, complicated val_type0 wf definition *)
-(* copied from nano4-total1-wip.v / dsubsup.v *)
-(* scale up to full D<> *)
-
-(* some proofs are commented out with a label PERF:
-   this is just to make Coq go faster through the file *)
-
-(*
-TODO: 
- - extend and subst lemmas
- - lower bounds (Sel2 rules)
- - allow arbitrary expressions in paths
-*)
-
+(* this version includes a proof of totality *)
 
 (*
  DSub (D<:) + Bot
@@ -148,6 +132,14 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
 
 (* ### Static Subtyping ### *)
 (*
+Note: In contrast to the rules on paper, the subtyping 
+relation has two environments instead of just one.
+(The same holds for the semantic types, val_type, below).
+This split into an abstract and a concrete environment
+was necessary in the D<: soundness development, but is 
+not required here. We just keep it for consistency with
+our earlier Coq files.
+
 The first env is for looking up varF variables.
 The first env matches the concrete runtime environment, and is
 extended during type assignment.
@@ -298,6 +290,7 @@ Proof.
   - destruct v; simpl; destruct (beq_nat j i); eauto.
 Qed.
 
+(* Selector strings for lower/upper bounds *)
 Inductive bound: Type :=
 | ub : bound
 | lb : bound
@@ -305,41 +298,33 @@ Inductive bound: Type :=
 
 Definition sel := list bound.
 
+(* Polarity of selector strings *)
+Fixpoint pos s :=
+  match s with
+    | nil => true
+    | ub :: i => pos i
+    | lb :: i => if (pos i) then false else true
+  end.
+
+
+(* Semantic types are sets of values, indexed by a list of lb/ub selectors *)
 Definition vset := vl -> sel -> Prop.
 
-Fixpoint pos s := match s with
-                    | nil => true
-                    | ub :: i => pos i
-                    | lb :: i => if (pos i) then false else true
-                  end.
 
-(*
-Fixpoint ub_ins n s := match n with
-                     | 0 => ub s
-                     | S n' => match s with
-                              | tp => ub tp
-                              | ub i => ub (ub_ins n' i)
-                              | lb i => lb (ub_ins n' i)
-                              end
-                     end.
 
-Fixpoint lb_ins n s := match n with
-                     | 0 => lb s
-                     | S n' => match s with
-                              | tp => lb tp
-                              | ub i => ub (lb_ins n' i)
-                              | lb i => lb (lb_ins n' i)
-                              end
-                     end.
-*)
-(*
-Fixpoint ub_ins s := match s with
-                    | tp => ub tp
-                    | ub i => ub (ub_ins i)
-                    | lb i => lb (ub_ins i)
-                  end.
-*)
+(* Set inclusion, taking polarity into account *)
+Definition vtsub (a: vset) (b: vset) := forall vy iy, if pos iy
+          then a vy iy -> b vy iy
+          else b vy iy -> a vy iy.
 
+(* Good bounds property *)
+Definition good_bounds (jj: vset) := (forall vp ip, jj vp ip -> forall vy iy, if pos iy 
+          then jj vy (ip ++ (lb::iy)) -> jj vy (ip ++ (ub::iy))
+          else jj vy (ip ++ (ub::iy)) -> jj vy (ip ++ (lb::iy))).
+
+
+(* Definition of semantic types: [[ T ]] = { v | ... } *)
+ 
 Require Coq.Program.Wf.
 
 Program Fixpoint val_type (env:list vset) (GH:list vset) (v:vl) (T:ty) (i:sel) {measure (tsize_flat T)}: Prop :=
@@ -367,12 +352,12 @@ Program Fixpoint val_type (env:list vset) (GH:list vset) (v:vl) (T:ty) (i:sel) {
       /\ val_type env GH v T1 i
     | _, TSel (varF x), _ =>
       match indexr x env with
-        | Some jj => jj v (ub :: i) (* TODO: use ub_ins *)(*did*)
+        | Some jj => jj v (ub :: i)
         | _ => False
       end
     | _, TSel (varH x), _ =>
       match indexr x GH with
-        | Some jj => jj v (ub :: i) (* TODO: use ub_ins *)(*did*)
+        | Some jj => jj v (ub :: i)
         | _ => False
       end
     | _, TTop, _ => 
@@ -436,12 +421,12 @@ Lemma val_type_unfold: forall env GH v T i, val_type env GH v T i =
       /\ val_type env GH v T1 i
     | _, TSel (varF x), _ =>
       match indexr x env with
-        | Some jj => jj v (ub :: i) (* TODO: use ub_ins *)(*did*)
+        | Some jj => jj v (ub :: i)
         | _ => False
       end
     | _, TSel (varH x), _ =>
       match indexr x GH with
-        | Some jj => jj v (ub :: i) (* TODO: use ub_ins *)(*did*)
+        | Some jj => jj v (ub :: i)
         | _ => False
       end
     | _, TTop, _ => 
