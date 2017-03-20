@@ -10,10 +10,12 @@
    this is just to make Coq go faster through the file *)
 
 (*
-TODO: 
- - extend and subst lemmas
- - lower bounds (Sel2 rules)
- - allow arbitrary expressions in paths
+TODO: remove admits 
+ - valtp_unfold
+ - splice_aux: two cases
+ - subst_aux: all
+ - valtp_widen: TMem cases
+ - invert_abs: goodbounds predicate
 *)
 
 
@@ -299,6 +301,7 @@ Proof.
 Qed.
 
 
+(* Selector strings for lower/upper bounds *)
 Inductive lu: Type :=
 | lb: lu
 | ub: lu
@@ -306,14 +309,30 @@ Inductive lu: Type :=
 
 Definition sel := list lu.
 
+(* Polarity of selector strings *)
+Fixpoint pos s :=
+  match s with
+    | nil => true
+    | ub :: i => pos i
+    | lb :: i => if (pos i) then false else true
+  end.
+
+(* Semantic types are sets of values, indexed by a list of lb/ub selectors *)
 Definition vset := vl -> sel -> Prop.
 
-Fixpoint pos s := match s with
-                    | nil => true
-                    | ub :: i => pos i
-                    | lb :: i => if (pos i) then false else true
-                  end.
 
+(* Set inclusion, taking polarity into account *)
+Definition vtsub (a: vset) (b: vset) := forall vy iy, if pos iy
+          then a vy iy -> b vy iy
+          else b vy iy -> a vy iy.
+
+(* Good bounds property *)
+Definition good_bounds (jj: vset) := (forall vp ip, jj vp ip -> forall vy iy, if pos iy 
+          then jj vy (ip ++ (lb::iy)) -> jj vy (ip ++ (ub::iy))
+          else jj vy (ip ++ (ub::iy)) -> jj vy (ip ++ (lb::iy))).
+
+
+(* Definition of semantic types: [[ T ]] = { v | ... } *)
 
 Require Coq.Program.Wf.
 
@@ -1392,404 +1411,6 @@ Proof.
   case_eq (beq_nat i i0); intros E. eauto. eauto.
 Qed.
 
-(*
-when and how we can replace with multiple environments:
-stp2 G1 T1 G2 T2 (GH0 ++ [(vty GX TX)])
-1) T1 closed
-   stp2 G1 T1 G2' T2' (subst GH0)
-2) G1 contains (GX TX) at some index x1
-   index x1 G1 = (GX TX)
-   stp2 G (subst (TVarF x1) T1) G2' T2'
-3) G1 = GX
-   stp2 G1 (subst TX T1) G2' T2'
-4) G1 and GX unrelated
-   stp2 ((GX,TX) :: G1) (subst (TVarF (length G1)) T1) G2' T2'
-*)
-
-(* ---- two-env substitution. first define what 'compatible' types mean. ---- *)
-(*
-Definition compat (GX:venv) (TX: ty) (V: option vl) (G1:venv) (T1:ty) (T1':ty) :=
-  (exists x1 v, indexr x1 G1 = Some v /\ V = Some v /\ GX = GX /\ val_type_stub GX v TX /\ T1' = (subst (varF x1) T1)) \/
-  (closed 0 0 (length G1) T1 /\ T1' = T1) \/ (* this one is for convenience: redundant with next *)
-  (nosubst T1 /\ T1' = subst (varF 0) T1).
-Definition compat2 (GX:venv) (TX: ty) (V: option vl) (p1:(venv*ty)) (p2:(venv*ty)) :=
-  match p1, p2 with
-      (G1,T1), (G2,T2) => G1 = G2 /\ compat GX TX V G1 T1 T2
-  end.
-Lemma closed_compat: forall GX TX V GXX TXX TXX' i j,
-  compat GX TX V GXX TXX TXX' ->
-  closed 0 j (length GXX) TX ->
-  closed i (j+1) (length GXX) TXX ->
-  closed i j (length GXX) TXX'.
-Proof.
-  intros. inversion H;[|destruct H2;[|destruct H2]].
-  - destruct H2. destruct H2. destruct H2. destruct H3. destruct H4. destruct H4.
-    destruct H5. rewrite H5.
-    eapply closed_subst. eauto.
-    eapply cl_sel. apply indexr_max in H2. omega.
-  - destruct H2. rewrite H3.
-    eapply closed_upgrade. eapply closed_upgrade_free. eauto. omega. omega.
-  - subst. eapply closed_nosubst. eauto. eauto.
-Qed.
-Lemma indexr_compat_miss0: forall GH GH' GX TX V (GXX:venv) (TXX:ty) n,
-      Forall2 (compat2 GX TX V) GH GH' ->
-      indexr (n+1) (GH ++ [(GX, TX)]) = Some (GXX,TXX) ->
-      exists TXX', indexr n GH' = Some (GXX,TXX') /\ compat GX TX V GXX TXX TXX'.
-Proof.
-  intros. revert n H0. induction H.
-  - intros. simpl. eauto. simpl in H0. assert (n+1 <> 0). omega.
-    eapply beq_nat_false_iff in H. rewrite H in H0. inversion H0.
-  - intros. simpl. destruct y.
-    case_eq (beq_nat n (length l')); intros E.
-    + simpl in H1. rewrite app_length in H1. simpl in H1.
-      assert (n = length l'). eapply beq_nat_true_iff. eauto.
-      assert (beq_nat (n+1) (length l + 1) = true). eapply beq_nat_true_iff.
-      rewrite (Forall2_length _ _ _ _ _ H0). omega.
-      rewrite H3 in H1. destruct x. inversion H1. subst. simpl in H.
-      destruct H. subst. eexists. eauto.
-    + simpl in H1. destruct x.
-      assert (n <> length l'). eapply beq_nat_false_iff. eauto.
-      assert (beq_nat (n+1) (length l + 1) = false). eapply beq_nat_false_iff.
-      rewrite (Forall2_length _ _ _ _ _ H0). omega.
-      rewrite app_length in H1. simpl in H1.
-      rewrite H3 in H1.
-      eapply IHForall2. eapply H1.
-Qed.
-Lemma compat_top: forall GX TX V G1 T1',
-  compat GX TX V G1 TTop T1' -> closed 0 0 (length GX) TX -> T1' = TTop.
-Proof.
-  intros ? ? ? ? ? CC CLX. repeat destruct CC as [|CC]; ev; eauto.
-Qed.
-Lemma compat_bot: forall GX TX V G1 T1',
-  compat GX TX V G1 TBot T1' -> closed 0 0 (length GX) TX -> T1' = TBot.
-Proof.
-  intros ? ? ? ? ? CC CLX. repeat destruct CC as [|CC]; ev; eauto.
-Qed.
-Lemma compat_mem: forall GX TX V G1 S1 U1 T1',
-    compat GX TX V G1 (TMem S1 U1) T1' ->
-    closed 0 0 (length GX) TX ->
-    exists SA UA, T1' = TMem SA UA /\
-                  compat GX TX V G1 S1 SA /\
-                  compat GX TX V G1 U1 UA.
-Proof.
-  intros ? ? ? ? ? ? ? CC CLX.
-  destruct CC as [|CC]; ev; subst.
-  repeat eexists; eauto; solve [unfold compat; left; repeat eexists; eassumption].
-  destruct CC as [|CC]; ev; subst;
-  inversion H; subst;
-  repeat eexists; eauto; solve [unfold compat; eauto].
-Qed.
-Lemma compat_mem_fwd2: forall GX TX V G1 T2 T2',
-    compat GX TX V G1 T2 T2' ->
-    compat GX TX V G1 (TMem TBot T2) (TMem TBot T2').
-Proof.
-  intros. repeat destruct H as [|H]; ev; repeat eexists; eauto.
-  - left. repeat eexists; eauto. rewrite H3. eauto.
-  - right. left. subst. eauto.
-  - right. right. subst. simpl. eauto.
-Qed.
-Lemma compat_mem_fwd1: forall GX TX V G1 T1 T1',
-    compat GX TX V G1 T1 T1' ->
-    compat GX TX V G1 (TMem T1 TTop) (TMem T1' TTop).
-Proof.
-  intros. repeat destruct H as [|H]; ev; repeat eexists; eauto.
-  - left. repeat eexists; eauto. rewrite H3. eauto.
-  - right. left. subst. eauto.
-  - right. right. subst. simpl. eauto.
-Qed.
-Lemma compat_sel: forall GX TX V G1 T1' (GXX:venv) (TXX:ty) x v,
-    compat GX TX V G1 (TSel (varF x)) T1' ->
-    closed 0 0 (length GX) TX ->
-    closed 0 0 (length GXX) TXX ->
-    indexr x G1 = Some v ->
-    val_type_stub GXX v TXX ->
-    exists TXX', T1' = (TSel (varF x)) /\ compat GX TX V GXX TXX TXX'
-.
-Proof.
-  intros ? ? ? ? ? ? ? ? ? CC CL CL1 IX HV.
-  destruct CC.
-  destruct H. destruct H. destruct H. destruct H0. destruct H1. destruct H2.
-  simpl in H3. eexists. split. eauto. right. left. eauto.
-  destruct H. destruct H. simpl in H0. eexists. split. eauto. right. left. eauto.
-  destruct H. destruct H. simpl in H0. eexists. split. eauto. right. left. eauto.
-Qed.
-Lemma compat_selh: forall GX TX V G1 T1' GH0 GH0' (GXX:venv) (TXX:ty) x,
-    compat GX TX V G1 (TSel (varH x)) T1' ->
-    closed 0 0 (length GX) TX ->
-    indexr x (GH0 ++ [(GX, TX)]) = Some (GXX, TXX) ->
-    Forall2 (compat2 GX TX V) GH0 GH0' ->
-    (x = 0 /\ GXX = GX /\ TXX = TX) \/
-    exists TXX',
-      x > 0 /\ T1' = TSel (varH (x-1)) /\
-      indexr (x-1) GH0' = Some (GXX, TXX') /\
-      compat GX TX V GXX TXX TXX'
-.
-Proof.
-  intros ? ? ? ? ? ? ? ? ? ? CC CL IX FA.
-  case_eq (beq_nat x 0); intros E.
-  - left. assert (x = 0). eapply beq_nat_true_iff. eauto. subst x.
-    rewrite indexr_hit0 in IX. inversion IX. eauto.
-  - right. assert (x <> 0). eapply beq_nat_false_iff. eauto.
-    assert (x > 0). unfold id. unfold id in H. omega.
-    eapply (indexr_compat_miss0) in FA. destruct FA.
-    destruct CC.
-    destruct H2. destruct H2. destruct H2. destruct H3. destruct H4. destruct H5.
-    simpl in H6.
-    rewrite E in H6.
-    eexists. split. omega. split; eauto.
-    simpl in H2. destruct H2. destruct H2.
-    inversion H2; subst. omega.
-    destruct H2. rewrite E in H3.
-    eexists. eauto.
-    assert (x-1+1=x) as A. omega. rewrite A. eauto.
-Qed.
-Lemma compat_all: forall GX TX V G1 T1 T2 T1' n,
-    compat GX TX V G1 (TAll T1 T2) T1' ->
-    closed 0 0 (length GX) TX -> closed 1 (n+1) (length G1) T2 ->
-    exists TA TB, T1' = TAll TA TB /\
-                  closed 1 n (length G1) TB /\
-                  compat GX TX V G1 T1 TA /\
-                  compat GX TX V G1 (open_rec 0 (varH (n+1)) T2) (open_rec 0 (varH n) TB).
-Proof.
-  intros ? ? ? ? ? ? ? ? CC CLX CL2. destruct CC.
-  ev. simpl in H0. repeat eexists; eauto. eapply closed_subst; eauto using indexr_max.
-  unfold compat. left. repeat eexists; eauto.
-  unfold compat. left. repeat eexists; eauto. erewrite subst_open_commute; eauto.
-  destruct H. destruct H. inversion H. repeat eexists. eauto. subst.
-  eapply closed_upgrade_free. eauto. omega. unfold compat. eauto.
-  unfold compat. eauto. right. right. subst.
-  split. eapply nosubst_open. simpl. omega. eapply nosubst_intro. eauto. symmetry.
-  assert (T2 = subst (varF 0) T2) as A. symmetry. eapply closed_no_subst. eauto.
-  remember (open_rec 0 (varH n) T2) as XX. rewrite A in HeqXX. subst XX.
-  eapply subst_open_commute. eauto. eauto.
-  simpl in H. destruct H. destruct H. repeat eexists. eauto. eapply closed_nosubst. eauto. eauto.
-  unfold compat. right. right. eauto.
-  unfold compat. right. right. split. eapply nosubst_open. simpl. omega. eauto.
-  erewrite subst_open_commute. eauto. eauto. eauto.
-Qed.
-Lemma compat_closed: forall GX TX V G T T' j,
-  compat GX TX V G T T' ->
-  closed 0 (j + 1) (length G) T ->
-  closed 0 0 (length GX) TX ->
-  closed 0 j (length G) T'.
-Proof.
-  intros. inversion H;[|destruct H2;[|destruct H2]].
-  - destruct H2 as [x1 [v [Hindex [HeqV [HGX [Hv Heq]]]]]]. subst.
-    apply closed_subst. eassumption.
-    apply indexr_max in Hindex. apply cl_sel. omega.
-  - destruct H2. subst.
-    eapply closed_upgrade_free. eapply H2. omega.
-  - subst.
-    apply closed_nosubst. assumption. eauto.
-Qed.
-Lemma stp2_substitute_aux: forall n, forall G1 G2 T1 T2 GH m n1,
-   stp2 false m G1 T1 G2 T2 GH n1 ->
-   n1 <= n ->
-   forall GH0 GH0' GX TX T1' T2' V,
-     GX = GX ->
-     GH = (GH0 ++ [(GX, TX)]) ->
-     val_type_stub GX V TX ->
-     closed 0 0 (length GX) TX ->
-     compat GX TX (Some V) G1 T1 T1' ->
-     compat GX TX (Some V) G2 T2 T2' ->
-     Forall2 (compat2 GX TX (Some V)) GH0 GH0' ->
-     stpd2 false m G1 T1' G2 T2' GH0'.
-Proof. admit. (*PERF
-  intros n. induction n.
-  Case "z". intros. inversion H0. subst. inversion H; eauto.
-  intros G1 G2 T1 T2 GH m n1 H NE. remember false as s.
-  induction H; inversion Heqs.
-   - Case "top".
-    intros GH0 GH0' GXX TXX T1' T2' V ? ? ? CX IX1 IX2 FA.
-    eapply compat_top in IX2.
-    subst. eapply stpd2_top.
-    eapply compat_closed. eassumption.
-    rewrite app_length in H. simpl in H.
-    erewrite <- Forall2_length. eapply H. eassumption.
-    eassumption. assumption.
-  - Case "bot".
-    intros GH0 GH0' GXX TXX T1' T2' V ? ? ? CX IX1 IX2 FA.
-    eapply compat_bot in IX1.
-    subst. eapply stpd2_bot.
-    eapply compat_closed. eassumption.
-    rewrite app_length in H. simpl in H.
-    erewrite <- Forall2_length. eapply H. eassumption.
-    eassumption. assumption.
-  - Case "mem".
-    intros GH0 GH0' GXX TXX T1' T2' V ? ? ? CX IX1 IX2 FA.
-    eapply compat_mem in IX1. repeat destruct IX1 as [? IX1].
-    eapply compat_mem in IX2. repeat destruct IX2 as [? IX2].
-    subst. eapply stpd2_mem.
-    eapply IHn; eauto; try omega.
-    eapply IHn; eauto; try omega.
-    eauto. eauto.
-  - Case "sel1".
-    intros GH0 GH0' GXX TXX T1' T2' V ? ? ? CX IX1 IX2 FA.
-    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
-    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
-    eapply (compat_sel GXX TXX (Some V) G1 T1' GX TX) in IX1. repeat destruct IX1 as [? IX1].
-    assert (compat GXX TXX (Some V) GX TX TX) as CPX. right. left. eauto.
-    subst.
-    eapply stpd2_sel1. eauto. eauto. eauto.
-    eapply IHn; eauto; try omega.
-    eapply compat_mem_fwd2. eauto.
-    eauto. eauto. eauto. eauto.
-  - Case "sel2".
-    intros GH0 GH0' GXX TXX T1' T2' V ? ? ? CX IX1 IX2 FA.
-    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
-    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
-    eapply (compat_sel GXX TXX (Some V) G2 T2' GX TX) in IX2. repeat destruct IX2 as [? IX2].
-    assert (compat GXX TXX (Some V) GX TX TX) as CPX. right. left. eauto.
-    subst.
-    eapply stpd2_sel2. eauto. eauto. eauto.
-    eapply IHn; eauto; try omega.
-    eapply compat_mem_fwd1. eauto.
-    eauto. eauto. eauto. eauto.
-  - Case "selx".
-    intros GH0 GH0' GXX TXX T1' T2' V ? ? ? CX IX1 IX2 FA.
-    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
-    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
-    assert (T1' = TSel (varF x1)). {
-      destruct IX1. ev. eauto.
-      destruct H6. ev. auto.
-      destruct H6. ev. eauto.
-    }
-    assert (T2' = TSel (varF x2)). {
-      destruct IX2. ev. eauto.
-      destruct H7. ev. auto.
-      destruct H7. ev. eauto.
-    }
-    subst.
-    eapply stpd2_selx. eauto. eauto.
-  - Case "sela1".
-    intros GH0 GH0' GXX TXX T1' T2' V ? ? ? CX IX1 IX2 FA.
-    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
-    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
-    assert (compat GXX TXX (Some V) G1 (TSel (varH x)) T1') as IXX. eauto.
-    eapply (compat_selh GXX TXX (Some V) G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
-    destruct IX1.
-    + SCase "x = 0".
-      repeat destruct IXX as [|IXX]; ev.
-      * subst. simpl. inversion H8; subst.
-        eapply stpd2_sel1. eauto. eauto. eauto.
-        eapply IHn; eauto; try omega. right. left. auto.
-        eapply compat_mem_fwd2. eauto.
-      * subst. inversion H7. subst. omega.
-      * subst. destruct H7. eauto.
-    + SCase "x > 0".
-      ev. subst.
-      eapply stpd2_sela1. eauto.
-      assert (x-1+1=x) as A by omega.
-      remember (x-1) as x1. rewrite <- A in H0.
-      eapply compat_closed. eauto. eauto. eauto.
-      eapply IHn; eauto; try omega.
-      eapply compat_mem_fwd2. eauto.
-    (* remaining obligations *)
-    + eauto. + subst GH. eauto. + eauto.
-(*  - Case "sela2".
-    intros GH0 GH0' GXX TXX T1' T2' V ? ? ? CX IX1 IX2 FA.
-    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
-    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
-    assert (compat GXX TXX (Some V) G2 (TSel (varH x)) T2') as IXX. eauto.
-    eapply (compat_selh GXX TXX (Some V) G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
-    destruct IX2.
-    + SCase "x = 0".
-      repeat destruct IXX as [|IXX]; ev.
-      * subst. simpl. inversion H8; subst.
-        eapply stpd2_sel2. eauto. eauto. eauto.
-        eapply IHn; eauto; try omega. right. left. auto.
-        eapply compat_mem_fwd1. eauto.
-      * subst. inversion H7. subst. omega.
-      * subst. destruct H7. eauto.
-    + SCase "x > 0".
-      ev. subst.
-      eapply stpd2_sela2. eauto.
-      assert (x-1+1=x) as A by omega.
-      remember (x-1) as x1. rewrite <- A in H0.
-      eapply compat_closed. eauto. eauto. eauto.
-      eapply IHn; eauto; try omega.
-      eapply compat_mem_fwd1. eauto.
-    (* remaining obligations *)
-    + eauto. + subst GH. eauto. + eauto.*)
-  - Case "selax".
-    intros GH0 GH0' GXX TXX T1' T2' V ? ? ? CX IX1 IX2 FA.
-    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
-    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
-    assert (compat GXX TXX (Some V) G1 (TSel (varH x)) T1') as IXX1. eauto.
-    assert (compat GXX TXX (Some V) G2 (TSel (varH x)) T2') as IXX2. eauto.
-    destruct v as [GX TX].
-    eapply (compat_selh GXX TXX (Some V) G1 T1' GH0 GH0' GX TX) in IX1. repeat destruct IX1 as [? IX1].
-    eapply (compat_selh GXX TXX (Some V) G2 T2' GH0 GH0' GX TX) in IX2. repeat destruct IX2 as [? IX2].
-    assert (not (nosubst (TSel (varH 0)))). unfold not. intros. simpl in H1. eauto.
-    assert (not (closed 0 0 (length G1) (TSel (varH 0)))). unfold not. intros. inversion H6. omega.
-    assert (not (closed 0 0 (length G2) (TSel (varH 0)))). unfold not. intros. inversion H7. omega.
-    destruct x; destruct IX1; ev; try omega; destruct IX2; ev; try omega; subst.
-    + SCase "x = 0".
-      repeat destruct IXX1 as [IXX1|IXX1]; ev; try contradiction.
-      repeat destruct IXX2 as [IXX2|IXX2]; ev; try contradiction.
-      * SSCase "sel-sel".
-        subst. simpl. inversion H17; subst. inversion H9; subst.
-        eapply stpd2_selx. eauto. eauto.
-    + SCase "x > 0".
-      destruct IXX1; destruct IXX2; ev; subst; eapply stpd2_selax; eauto.
-    (* leftovers *)
-    + eauto. + subst. eauto. + eauto. + eauto. + subst. eauto. + eauto.
-  - Case "all".
-    intros GH0 GH0' GX TX T1' T2' V ? ? ? CX IX1 IX2 FA.
-    assert (length GH = length GH0 + 1). subst GH. eapply app_length.
-    assert (length GH0 = length GH0') as EL. eapply Forall2_length. eauto.
-    eapply compat_all in IX1. repeat destruct IX1 as [? IX1].
-    eapply compat_all in IX2. repeat destruct IX2 as [? IX2].
-    subst.
-    eapply stpd2_all.
-    + eapply IHn; eauto; try omega.
-    + eauto.
-    + eauto.
-    + eauto.
-    + subst.
-      eapply IHn. eauto. omega. simpl. eauto.
-      change ((G2, T3) :: GH0 ++ [(GX, TX)]) with (((G2, T3) :: GH0) ++ [(GX, TX)]).
-      reflexivity.
-      eauto. eauto.
-      rewrite app_length. simpl. rewrite EL. eauto.
-      rewrite app_length. simpl. rewrite EL. eauto.
-      eapply Forall2_cons. simpl. eauto. eauto.
-    + eauto.
-    + eauto. subst GH. rewrite <-EL. eapply closed_upgrade_free. eauto. omega.
-    + eauto.
-    + eauto. subst GH. rewrite <-EL. eapply closed_upgrade_free. eauto. omega.
-  - Case "wrapf".
-    intros. subst. eapply stpd2_wrapf. eapply IHn; eauto; try omega.
-  - Case "transf".
-    intros. subst.
-    apply stp2_extend2 with (v1:=V) in H.
-    apply stp2_extend1 with (v1:=V) in H0.
-    eapply stpd2_transf.
-    eapply IHn; eauto; try omega.
-    unfold compat. simpl. left. exists (length G2). exists V.
-    rewrite <- beq_nat_refl. split; eauto.
-    eapply IHn; eauto; try omega.
-    unfold compat. simpl. left. exists (length G2). exists V.
-    rewrite <- beq_nat_refl. split; eauto. *)
-Qed.
-Lemma stp2_substitute: forall G1 G2 T1 T2 GH m,
-   stpd2 false m G1 T1 G2 T2 GH ->
-   forall GH0 GH0' GX TX T1' T2' V,
-     GX = GX ->
-     GH = (GH0 ++ [(GX, TX)]) ->
-     val_type_stub GX V TX ->
-     closed 0 0 (length GX) TX ->
-     compat GX TX (Some V) G1 T1 T1' ->
-     compat GX TX (Some V) G2 T2 T2' ->
-     Forall2 (compat2 GX TX (Some V)) GH0 GH0' ->
-     stpd2 false m G1 T1' G2 T2' GH0'.
-Proof.
-  intros. repeat eu. eapply stp2_substitute_aux; eauto.
-Qed.
-*)
-
-
-
 
 
 (* ### Value Typing / Logical Relation for Values ### *)
@@ -2226,7 +1847,7 @@ Proof.
     apply indexr_extend_mult. assumption. assert (indexr i0 (GH1 ++ jj :: GH0) = Some x). apply indexr_hit_low; assumption. 
     rewrite H1. rewrite H2 in V. assumption.
 
-  - admit. (* TODO inversion C. subst. apply vv. rewrite val_type_unfold. destruct vf. simpl in *. destruct i. inversion V. 
+  - admit. (* inversion C. subst. apply vv. rewrite val_type_unfold. destruct vf. simpl in *. destruct i. inversion V. 
     ev. split. rewrite app_length. simpl. rewrite E. eapply closed_splice. assumption.
     split. rewrite app_length. simpl. rewrite E. eapply closed_splice. assumption.
     apply unvv. eapply IHn with (GH0 := GH0). simpl in *. omega. apply H6. apply vv. assumption.
