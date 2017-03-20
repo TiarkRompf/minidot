@@ -332,18 +332,13 @@ Program Fixpoint val_type (env:list vset) (GH:list vset) (v:vl) (T:ty) (i:sel) {
     | vabs env1 T0 y, TAll T1 T2, nil =>
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
       forall vx (jj:vset),
-        (* val_type env GH vx T1 tp -> *) jj vx nil ->
-        (forall vy iy, if pos iy then jj vy iy -> val_type env GH vy T1 iy
-                       else           val_type env GH vy T1 iy -> jj vy iy) ->
-        (forall vp ip, jj vp ip -> forall vy iy, if pos iy 
-          then jj vy (ip ++ (lb::iy)) -> jj vy (ip ++ (ub::iy))
-          else jj vy (ip ++ (ub::iy)) -> jj vy (ip ++ (lb::iy))) ->
+        jj vx nil ->
+        vtsub jj (fun vy iy => val_type env GH vy T1 iy) ->
+        good_bounds jj ->
         exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2) nil
     | vty env1 TX, TMem T1 T2, nil =>
       closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2
-      /\ forall vy iy, if (pos iy)
-                  then val_type env GH vy T1 iy -> val_type env GH vy T2 iy
-                  else val_type env GH vy T2 iy -> val_type env GH vy T1 iy
+       /\ vtsub (fun vy iy => val_type env GH vy T1 iy) (fun vy iy => val_type env GH vy T2 iy)
     | _, TMem T1 T2, ub :: i =>
       closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2
       /\ val_type env GH v T2 i
@@ -372,14 +367,12 @@ Program Fixpoint val_type (env:list vset) (GH:list vset) (v:vl) (T:ty) (i:sel) {
   end.
 
 Next Obligation. simpl. omega. Qed.
-Next Obligation. simpl. omega. Qed. 
 Next Obligation. simpl. unfold open. rewrite <-open_preserves_size. omega. Qed. (* TApp case: open *)
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed.
-Next Obligation. simpl. omega. Qed.
-Next Obligation. simpl. omega. Qed.
-Next Obligation. simpl. omega. Qed.
+Next Obligation. simpl. omega. Qed. 
+
 
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
@@ -401,18 +394,13 @@ Lemma val_type_unfold: forall env GH v T i, val_type env GH v T i =
     | vabs env1 T0 y, TAll T1 T2, nil =>
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
       forall vx (jj:vset),
-        (* val_type env GH vx T1 tp -> *) jj vx nil ->
-        (forall vy iy, if pos iy then jj vy iy -> val_type env GH vy T1 iy
-                       else           val_type env GH vy T1 iy -> jj vy iy) ->
-        (forall vp ip, jj vp ip -> forall vy iy, if pos iy 
-          then jj vy (ip ++ (lb::iy)) -> jj vy (ip ++ (ub::iy))
-          else jj vy (ip ++ (ub::iy)) -> jj vy (ip ++ (lb::iy))) ->
+        jj vx nil ->
+        vtsub jj (fun vy iy => val_type env GH vy T1 iy) ->
+        good_bounds jj ->
         exists v, tevaln (vx::env1) y v /\ val_type env (jj::GH) v (open (varH (length GH)) T2) nil
     | vty env1 TX, TMem T1 T2, nil =>
       closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2
-      /\ forall vy iy, if (pos iy)
-                  then val_type env GH vy T1 iy -> val_type env GH vy T2 iy
-                  else val_type env GH vy T2 iy -> val_type env GH vy T1 iy
+       /\ vtsub (fun vy iy => val_type env GH vy T1 iy) (fun vy iy => val_type env GH vy T2 iy)
     | _, TMem T1 T2, ub :: i =>
       closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2
       /\ val_type env GH v T2 i
@@ -439,15 +427,16 @@ Lemma val_type_unfold: forall env GH v T i, val_type env GH v T i =
     | _,_,_ =>
       False
   end.
-Proof. admit. (* need help here, the second line is running 20 min without finishing
+Proof. 
   intros. unfold val_type at 1. unfold val_type_func.
   unfold_sub val_type (val_type env GH v T i).
   simpl.
+  (* unfold_sub and simpl above may take a long time, up to minutes *)
   destruct v; simpl; try reflexivity.
   destruct T.
   - destruct i; simpl; try reflexivity.
   - simpl; try reflexivity.
-  - destruct i; destruct T1; simpl; reflexivity. 
+  - destruct i; destruct T1; simpl; eauto. 
   - destruct v; simpl; try reflexivity.
 
   (* TSel case has another match *)
@@ -455,14 +444,14 @@ Proof. admit. (* need help here, the second line is running 20 min without finis
   destruct v; simpl; try reflexivity.
   (* TSelH *) 
   destruct (indexr i0 GH); simpl; try reflexivity.
-  - destruct i; eauto.
+  - destruct i; try destruct b; reflexivity. 
   -  destruct T; simpl; try reflexivity;
      try destruct v; simpl; try reflexivity.
      destruct (indexr i0 env); simpl; try reflexivity;
        destruct v; simpl; try reflexivity.
      destruct (indexr i0 GH); simpl; try reflexivity.
 
-     destruct i; simpl; try reflexivity. *)
+     destruct i; try destruct b; reflexivity.
 Qed.
 
 
@@ -487,17 +476,13 @@ Definition R_env venv genv tenv :=
   length venv = length tenv /\
   length genv = length tenv /\
   forall x TX, indexr x tenv = Some TX ->
-    (exists v : vl, R venv genv (tvar x) v TX) /\
+    (exists v : vl, R venv genv (tvar x) v TX) /\ (* not strictly needed *)
     (exists vx (jj:vset),
        indexr x venv = Some vx /\
        indexr x genv = Some jj /\
-       jj vx nil /\ 
-       (forall vy iy, if pos iy then jj vy iy -> vtp genv [] vy TX iy
-                      else           vtp genv [] vy TX iy -> jj vy iy) /\
-       (forall vp ip, jj vp ip -> forall vy iy, if pos iy 
-          then jj vy (ip ++ (lb::iy)) -> jj vy (ip ++ (ub::iy))
-          else jj vy (ip ++ (ub::iy)) -> jj vy (ip ++ (lb::iy)))).
-
+       jj vx nil /\
+       vtsub jj (fun vy iy => vtp genv [] vy TX iy) /\
+       good_bounds jj).
 
 
 (* automation *)
