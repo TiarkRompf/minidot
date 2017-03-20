@@ -12,8 +12,8 @@
 
 (*
 TODO: 
- - val_type: closed TBind
- - valtp_unfold
+ + val_type: closed TBind
+ - valtp_unfold (PERF issue, aborted after 1h)
  - shrink / subst helper lemmas
  - valtp_widen: can we support stp_bindx?
  - main proof: use substs in pack/unback
@@ -488,6 +488,7 @@ Program Fixpoint val_type (env: list vseta) (GH:list vseta) (T:ty) n (dd: vset n
       val_type env GH T1 n dd v /\ val_type env GH T2 n dd v
         
     | _, TBind T1 =>
+       closed 1 (length GH) (length env) T1 /\
       (* NOTE: need to investigate this more. Ideally we would like to express:
 
           val_type env (dd::GH) (open (varH (length GH)) T1) n (dd n) v
@@ -497,7 +498,7 @@ Program Fixpoint val_type (env: list vseta) (GH:list vseta) (T:ty) n (dd: vset n
          trouble with lemma valtp_to_vseta.
 
       *)
-
+      
       exists jj:vseta, jj n = dd /\ forall n, val_type env (jj::GH) (open (varH (length GH)) T1) n (jj n) v
     | _, TTop => 
       True
@@ -565,6 +566,7 @@ Lemma val_type_unfold: forall env GH T n dd v, val_type env GH T n dd v =
       val_type env GH T1 n dd v /\ val_type env GH T2 n dd v
         
     | _, TBind T1 =>
+       closed 1 (length GH) (length env) T1 /\
       exists jj:vseta, jj n = dd /\ forall n, val_type env (jj::GH) (open (varH (length GH)) T1) n (jj n) v
         
     | _, TTop => 
@@ -575,10 +577,10 @@ Lemma val_type_unfold: forall env GH T n dd v, val_type env GH T n dd v =
 
   
 
-Proof. admit. (* PERF
+Proof. admit. (* PERF 
   intros. unfold val_type at 1. unfold val_type_func.
   unfold_sub val_type (val_type env GH T n dd v).
-  simpl.
+  simpl. (* unfold_sub. simpl. takes a long time, > 1h *)
   destruct v; simpl; try reflexivity.
   destruct T.
   - destruct i; simpl; try reflexivity.
@@ -1443,8 +1445,8 @@ Proof.
               constructor. eapply indexr_max. eauto. 
               inversion H. 
   - ev. constructor; assumption.
-  - admit. (* TODO: need assumption in val_type for TBind *)
-  - admit. 
+  - ev. constructor; assumption.
+  - ev. constructor; assumption.
   - ev. constructor. eapply IHT1_1. eassumption. eapply IHT1_2. eassumption.
   - ev. constructor. eapply IHT1_1. eassumption. eapply IHT1_2. eassumption.
 Qed.
