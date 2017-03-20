@@ -2122,14 +2122,14 @@ Lemma valtp_shrinkH: forall vf df k H1 GH T1 jj,
   val_type H1 (jj::GH) T1 k (df k) vf ->
   closed 0 (length GH) (length H1) T1 ->                     
   vtp H1 GH T1 k (df k) vf.
-Proof. admit. (*
+Proof.
   intros. 
-  assert (vtp H1 ([] ++ GH) vf T1 i <-> 
-  vtp H1 ([] ++ jj :: GH) vf (splice (length GH) T1) i).
+  assert (vtp H1 ([] ++ GH) T1 k (df k) vf <-> 
+  vtp H1 ([] ++ jj :: GH) (splice (length GH) T1) k (df k) vf).
   eapply valtp_splice_aux. eauto. simpl. assumption. 
   apply H2. simpl. assert (splice (length GH) T1 = T1).
   eapply closed_splice_idem. eassumption. omega. apply vv in H.
-  rewrite H3. assumption. *)
+  rewrite H3. assumption. 
 Qed.
 
 
@@ -2544,9 +2544,8 @@ Lemma vtp_subst3: forall venv jj v T2 d k,
   val_type (jj::venv) [] (open (varF (length venv)) T2) k (d k) v ->
   val_type venv [jj] (open (varH 0) T2) k (d k) v.
 Proof.
-  admit. (*
   intros. apply unvv. assert (splice 0 T2 = T2) as EE. eapply closed_splice_idem. eassumption. omega.
-  assert (vtp (jj::venv0) ([] ++ [jj]) v (open (varH 0) (splice 0 T2)) nil).
+  assert (vtp (jj::venv0) ([] ++ [jj]) (open (varH 0) (splice 0 T2)) k (d k) v).
   assert (indexr (length venv0) (jj :: venv0) = Some jj). simpl. 
     replace (beq_nat (length venv0) (length venv0) ) with true. reflexivity. 
     apply beq_nat_refl. 
@@ -2554,7 +2553,7 @@ Proof.
   apply vv. assumption. 
   simpl in *. rewrite EE in H1. eapply valtp_shrinkM. apply unvv. eassumption.
   apply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
-  constructor. simpl. omega. *)
+  constructor. simpl. omega.
 Qed.
 
 Lemma open_preserves_size2: forall T x j,
@@ -2569,23 +2568,23 @@ Lemma valty_subst4: forall G T1 jj v d k,
   (vtp G [jj] (open (varH 0) T1) k (d k) v <->
    vtp (jj :: G) [] (open (varF (length G)) T1) k (d k) v). 
 Proof.
-  admit. (* intros. split. 
-  Case "->". intros. assert (vtp (jj :: G) [jj] vp (open (varH 0) T1) iy).
+  intros. split. 
+  Case "->". intros. assert (vtp (jj :: G) [jj] (open (varH 0) T1) k (d k) v).
     { eapply valtp_extend_aux with (H1 := G). eauto. 
       simpl. eapply closed_open. simpl. eapply closed_inc_mult. eassumption. omega. omega.
       omega. constructor. omega. assumption. }
-    assert (vtp (jj :: G) [] vp (open (varF (length G)) T1) iy).
+    assert (vtp (jj :: G) [] (open (varF (length G)) T1) k (d k) v).
     { eapply vtp_subst2_general. simpl. eapply closed_upgrade_freef. eassumption. omega.
       simpl. replace (beq_nat (length G) (length G)) with true. reflexivity. apply beq_nat_refl. 
       assumption. } assumption.
-  Case "<-". intros. assert (vtp (jj :: G) [jj] vp (open (varF (length G)) T1) iy).
+  Case "<-". intros. assert (vtp (jj :: G) [jj] (open (varF (length G)) T1) k (d k) v).
     { eapply valtp_extendH. apply unvv. assumption. }
-    assert (vtp (jj :: G) [jj] vp (open (varH 0) T1) iy).
+    assert (vtp (jj :: G) [jj] (open (varH 0) T1) k (d k) v).
     { eapply vtp_subst2_general with (x := length G). simpl. eapply closed_upgrade_freef. eassumption. omega.
       simpl. replace (beq_nat (length G) (length G)) with true. reflexivity. apply beq_nat_refl. 
       eassumption. }
     eapply valtp_shrinkM. apply unvv. eassumption. simpl. eapply closed_open. simpl. eapply closed_upgrade_free.
-    eassumption. omega. constructor. omega.*)
+    eassumption. omega. constructor. omega.
 Qed.
    
 
