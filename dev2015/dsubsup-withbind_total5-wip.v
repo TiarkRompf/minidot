@@ -1459,203 +1459,125 @@ Lemma valtp_extend_aux: forall n T1 vx vf df k H1 G1,
   closed 0 (length G1) (length H1) T1 ->
   (vtp H1 G1 T1 k (df k) vf <-> vtp (vx :: H1) G1 T1 k (df k) vf).
 Proof.
-  admit. (*
-  induction n; intros ? ? ? ? ? ? S C. inversion S.
+  induction n; intros ? ? ? ? ? ? ? S C. inversion S.
   destruct T1; split; intros V; apply unvv in V; rewrite val_type_unfold in V.
   - apply vv. rewrite val_type_unfold. assumption.
   - apply vv. rewrite val_type_unfold. assumption.
   - apply vv. rewrite val_type_unfold. assumption.
   - apply vv. rewrite val_type_unfold. assumption.
-  - destruct vf. destruct i. 
-    + ev. apply vv. rewrite val_type_unfold. split.
-    simpl. eapply closed_upgrade_freef. apply H. omega. split. simpl.
-    eapply closed_upgrade_freef. apply H0. omega. intros.
-    specialize (H2 _ _ H3).
-    assert ((forall (vy : vl) (iy : sel),
-      if pos iy
-      then jj vy iy -> val_type H1 G1 vy T1_1 iy
-      else val_type H1 G1 vy T1_1 iy -> jj vy iy)).
-    { intros. destruct (pos iy) eqn : A. intros. specialize (H4 vy iy). rewrite A in H4.
-      specialize (H4 H6). apply unvv. apply vv in H4. simpl in *. eapply IHn; try omega; try eassumption.
-      intros. specialize (H4 vy iy). rewrite A in H4. apply H4. apply unvv. simpl in *. 
-      apply vv in H6. apply IHn; try omega; try eassumption. }
-    specialize (H2 H6 H5). ev. exists x. split; try assumption.
-    apply unvv. apply vv in H7. apply IHn; try eassumption. unfold open. erewrite <- open_preserves_size.
-    simpl in *. omega. eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
+  - destruct vf; try solve [inversion V]. ev.
+    apply vv. rewrite val_type_unfold. 
+    split. simpl. eapply closed_upgrade_freef. apply H. omega.
+    split. simpl. eapply closed_upgrade_freef. apply H0. omega. 
+    intros.
+    assert (forall kx: nat, val_type (H1) G1 T1_1 kx (jj kx) vx0).
+    intros. simpl in S. assert (tsize_flat T1_1 < n). omega. 
+    apply unvv. eapply IHn with (H1 := H1); simpl; try apply vv; try eassumption; auto.
+    specialize (H2 _ _ H4). ev. exists x. exists x0. split. assumption. intros. 
+    apply unvv. eapply IHn with (H1 := H1). unfold open. rewrite <-open_preserves_size.
+    simpl in S. omega. 
+    eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
+    constructor. simpl. omega. apply vv. auto.
+
+  - destruct vf; try solve by inversion. ev. 
+    apply vv. rewrite val_type_unfold. inversion C. subst.
+    split. assumption. split. assumption. intros.
+    assert (forall kx : nat, val_type (vx :: H1) G1 T1_1 kx (jj kx) vx0).
+    intros. apply unvv. eapply IHn with (H1 := H1). simpl in S. omega. assumption. 
+    apply vv. auto. 
+    specialize (H2 _ _ H4).
+    ev. exists x. exists x0. split. assumption. intros. apply unvv. eapply IHn with (H1 := H1).
+    unfold open. rewrite <- open_preserves_size. simpl in S. omega.
+    eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
     constructor. simpl. omega.
-    + apply vv. rewrite val_type_unfold. ev. repeat split; try assumption; try (eapply closed_upgrade_freef; [eassumption | simpl; auto]). 
-    + apply vv. rewrite val_type_unfold. ev. repeat split; try assumption; try (eapply closed_upgrade_freef; [eassumption | simpl; auto]). 
-  
-
-- destruct vf. destruct i.
-    + ev. apply vv. rewrite val_type_unfold. inversion C. subst.
-    split; try assumption. split; try assumption. intros.
-    specialize (H2 _ _ H3).
-    assert ((forall (vy : vl) (iy : sel),
-      if pos iy
-      then jj vy iy -> val_type (vx :: H1) G1 vy T1_1 iy
-      else val_type (vx :: H1) G1 vy T1_1 iy -> jj vy iy)).
-    { intros. destruct (pos iy) eqn : A. intros. specialize (H4 vy iy). rewrite A in H4. specialize (H4 H6).
-      apply unvv. apply vv in H4. simpl in *. apply IHn; try eassumption; try omega.
-      specialize (H4 vy iy). rewrite A in H4. intros. apply H4. apply unvv. apply vv in H6. 
-      simpl in *. eapply IHn; try eassumption; try omega. }
-    specialize (H2 H6 H5). ev. exists x. split; try assumption. apply unvv. apply vv in H7. eapply IHn; try eassumption.
-    unfold open. erewrite <- open_preserves_size. simpl in *. omega. simpl. eapply closed_open.
-    simpl. eapply closed_upgrade_free. eassumption. omega. constructor. omega.
-    + apply vv. rewrite val_type_unfold. ev. inversion C. repeat split; assumption.
-    + apply vv. rewrite val_type_unfold. ev. inversion C. repeat split; assumption.
-
+    apply vv. eapply H5.
 
   - apply vv. rewrite val_type_unfold. destruct vf.
     + destruct v.
-    destruct (indexr i0 H1) eqn : A.
-    assert (indexr i0 (vx :: H1) = Some v). apply indexr_extend. assumption. rewrite H. assumption.
+    destruct (indexr i H1) eqn : A.
+    assert (indexr i (vx :: H1) = Some v). apply indexr_extend. assumption. rewrite H. assumption.
     inversion V. assumption. inversion V. 
     + destruct v.
-    destruct (indexr i0 H1) eqn : A. 
-    assert (indexr i0 (vx :: H1) = Some v). apply indexr_extend. assumption. rewrite H. assumption.
+    destruct (indexr i H1) eqn : A. 
+    assert (indexr i (vx :: H1) = Some v). apply indexr_extend. assumption. rewrite H. assumption.
     inversion V. assumption. inversion V.
 
   - apply vv. rewrite val_type_unfold. destruct vf.
     + destruct v. inversion C. subst. 
-    eapply indexr_has in H4. ev. assert (indexr i0 (vx:: H1) = Some x). apply indexr_extend.
+    eapply indexr_has in H4. ev. assert (indexr i (vx:: H1) = Some x). apply indexr_extend.
     assumption. rewrite H0 in V. rewrite H. assumption. assumption. inversion V.
     + destruct v. inversion C. subst. 
-    eapply indexr_has in H4. ev. assert (indexr i0 (vx:: H1) = Some x). apply indexr_extend.
+    eapply indexr_has in H4. ev. assert (indexr i (vx:: H1) = Some x). apply indexr_extend.
     assumption. rewrite H0 in V. rewrite H. assumption. assumption. inversion V.
 
-  - inversion C. subst. apply vv. rewrite val_type_unfold. destruct vf. destruct i. inversion V. 
-    destruct b; ev. split. simpl. eapply closed_upgrade_freef. eassumption. omega.
-    split. simpl. eapply closed_upgrade_freef. eassumption. omega.
-    apply unvv. eapply IHn with (H1 := H1). simpl in *. omega. apply H6. apply vv. assumption.
+  - inversion C. subst. apply vv. rewrite val_type_unfold. destruct vf; try solve by inversion.
     ev. split. simpl. eapply closed_upgrade_freef. eassumption. omega.
+        split. simpl. eapply closed_upgrade_freef. eassumption. omega.
+        destruct k. auto. intros. specialize (H2 dy vy). ev. split.
+        intros. apply H2. apply unvv. eapply IHn. simpl in S. omega. assumption. apply vv. eassumption.
+        intros. specialize (H3 H4). apply unvv. eapply IHn with (H1 := H1). simpl in S. omega.
+        assumption. apply vv. assumption.
+
+  - inversion C. subst. apply vv. rewrite val_type_unfold. destruct vf; try solve by inversion.
+    ev. destruct k. repeat split; try assumption.
+    split. assumption. split. assumption. intros. specialize (H2 dy vy). ev.
+    split. intros. apply H2. apply unvv. eapply IHn with (H1:= H1). simpl in S. omega. assumption.
+    apply vv. assumption. intros. specialize (H3 H4). apply unvv. eapply IHn with (H1 := H1). simpl in S. omega.
+    assumption. apply vv. eassumption.
+
+  - inversion C. subst. simpl in *. apply vv. rewrite val_type_unfold.
+    assert (closed 1 (length G1) (length H1) T1 /\
+        (exists jj : forall x : nat, vset x,
+           jj k = df k /\
+           (forall n0 : nat,
+            val_type H1 (jj :: G1) (open (varH (length G1)) T1) n0 (jj n0) vf))). destruct vf; assumption. clear V. ev.
+    assert (closed 1 (length G1) (length (vx :: H1)) T1 /\
+    (exists jj : forall x0 : nat, vset x0,
+       jj k = df k /\
+       (forall n0 : nat,
+        val_type (vx :: H1) (jj :: G1) (open (varH (length G1)) T1) n0
+          (jj n0) vf))) as Goal.
     split. simpl. eapply closed_upgrade_freef. eassumption. omega.
-    apply unvv. eapply IHn with (H1 := H1). simpl in *. omega. assumption. apply vv. assumption.
-    destruct i. simpl. ev. split. eapply closed_upgrade_freef; try eassumption; try omega.
-    split. eapply closed_upgrade_freef; try eassumption; try omega.
+    exists x. split. assumption. intros. specialize (H2 n0). apply unvv. eapply IHn with (H1 := H1).
+    unfold open. rewrite <- open_preserves_size. omega. 
+    eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega. 
+    constructor. simpl. omega.
+    apply vv. assumption.
+    destruct vf; apply Goal.
 
-    intros. destruct (pos iy) eqn : A. specialize (H2 vy iy). rewrite A in H2. intros.
-    assert (val_type H1 G1 vy T1_1 iy). apply unvv. apply vv in H3. simpl in *. eapply IHn; try eassumption; try omega.
-    specialize (H2 H4). apply unvv. apply vv in H2. simpl in *. eapply IHn with (H1 := H1); try eassumption; try omega.
-            specialize (H2 vy iy). rewrite A in H2. intros. assert (val_type H1 G1 vy T1_2 iy).
-    apply unvv. apply vv in H3. simpl in *. eapply IHn; try eassumption; try omega.
-    specialize (H2 H4). simpl in *. apply unvv. apply vv in H2. eapply IHn with (H1 := H1); try eassumption; try omega.
-    
-    destruct b; ev. split. simpl. eapply closed_upgrade_freef. eassumption. omega.
-    split. simpl. eapply closed_upgrade_freef. eassumption. omega. 
-    simpl in *. apply unvv. apply vv in H2. eapply IHn with (H1 := H1); try eassumption; try omega.
-    simpl in *. split. eapply closed_upgrade_freef. eassumption. omega. 
-    split. eapply closed_upgrade_freef. eassumption. omega.
-    apply unvv. apply vv in H2. eapply IHn with (H1 := H1); try eassumption; try omega.
+  - inversion C. subst. apply vv. rewrite val_type_unfold. 
+    assert (closed 1 (length G1) (length (vx :: H1)) T1 /\
+        (exists jj : forall x : nat, vset x,
+           jj k = df k /\
+           (forall n0 : nat,
+            val_type (vx :: H1) (jj :: G1) (open (varH (length G1)) T1) n0
+              (jj n0) vf))). destruct vf; assumption. clear V. ev.
+    assert (closed 1 (length G1) (length H1) T1 /\
+    (exists jj : forall x0 : nat, vset x0,
+       jj k = df k /\
+       (forall n0 : nat,
+        val_type H1 (jj :: G1) (open (varH (length G1)) T1) n0 (jj n0) vf))) as Goal. 
+    split. assumption. exists x. split. assumption. intros. specialize (H2 n0).
+    apply unvv. eapply IHn with (H1 := H1). unfold open. rewrite <- open_preserves_size.
+    simpl in S. omega. eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
+    constructor. simpl. omega. apply vv. eassumption.
+    destruct vf; apply Goal.
 
-  - inversion C. subst. apply vv. rewrite val_type_unfold. destruct vf. destruct i. inversion V. destruct b. 
-    split; try assumption. split; try assumption. ev. apply unvv. apply vv in H2. simpl in *. eapply IHn; try eassumption;
-    try omega. 
-
-    split; try assumption. split; try assumption. ev. apply unvv. apply vv in H2. simpl in *. eapply IHn; try eassumption;
-    try omega. 
-
-    destruct i. ev. split; try assumption. split; try assumption.
-    intros. destruct (pos iy) eqn : A. specialize (H2 vy iy). rewrite A in H2. intros.
-    assert (val_type (vx :: H1) G1 vy T1_1 iy ). apply unvv. apply vv in H3. simpl in *. eapply IHn with (H1 := H1); try eassumption; try omega.
-    specialize (H2 H4). apply unvv. apply vv in H2. simpl in *. eapply IHn; try eassumption; try omega.
-            specialize (H2 vy iy). rewrite A in H2. intros. assert (val_type (vx :: H1) G1 vy T1_2 iy).
-    simpl in *. apply unvv. apply vv in H3. eapply IHn with (H1 := H1); try eassumption; try omega.
-    specialize (H2 H4). apply unvv. apply vv in H2. simpl in *. eapply IHn; try eassumption; try omega.
-
-    destruct b; ev. split; try assumption. split; try assumption.
-    simpl in *. apply unvv. apply vv in H2. simpl in *. eapply IHn; try eassumption; try omega.
-    split; try assumption. split; try assumption.
-    simpl in *. apply unvv. apply vv in H2. simpl in *. eapply IHn; try eassumption; try omega.
-  - admit. (*inversion C. subst. simpl in *. apply vv. rewrite val_type_unfold.
-    destruct vf. split. simpl. eapply closed_upgrade_freef. eassumption. omega.
-    ev. intros. assert (val_type H1 (jj :: G1) (vabs l t t0) (open (varH (length G1)) T1) i).
-    apply H0. intros. specialize (H2 vy iy). destruct (pos iy). intros. specialize (H2 H5). apply unvv. apply vv in H2.
-    eapply IHn; try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega. 
-      eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
-      constructor. simpl. omega.
-    intros. apply H2. apply unvv. apply vv in H5. eapply IHn with (H1 := H1); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega.
-      eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
-      constructor. simpl. omega.
-    assumption.
-    apply unvv. apply vv in H5. eapply IHn with (H1 := H1); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega.
-      eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
-      constructor. simpl. omega.
-
-    split. simpl. eapply closed_upgrade_freef. eassumption. omega.
-    ev. intros. assert (val_type H1 (jj :: G1) (vty l t) (open (varH (length G1)) T1) i).
-    apply H0. intros. specialize (H2 vy iy). destruct (pos iy). intros. specialize (H2 H5). apply unvv. apply vv in H2.
-    eapply IHn; try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega. 
-      eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
-      constructor. simpl. omega.
-    intros. apply H2. apply unvv. apply vv in H5. eapply IHn with (H1 := H1); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega.
-      eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
-      constructor. simpl. omega.
-    assumption.
-    apply unvv. apply vv in H5. eapply IHn with (H1 := H1); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega.
-      eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
-      constructor. simpl. omega.*)
-  - admit. (*inversion C. subst. simpl in *. apply vv. rewrite val_type_unfold.
-    destruct vf. split. simpl. eapply closed_upgrade_freef. eassumption. omega.
-    ev. intros. assert (val_type (vx :: H1) (jj :: G1) (vabs l t t0) (open (varH (length G1)) T1) i).
-    apply H0. intros. specialize (H2 vy iy). destruct (pos iy). intros. specialize (H2 H5). apply unvv. apply vv in H2.
-    eapply IHn with (H1 := H1); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega. 
-      eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
-      constructor. simpl. omega.
-    intros. apply H2. apply unvv. apply vv in H5. eapply IHn with (H1 := H1); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega.
-      eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
-      constructor. simpl. omega.
-    assumption.
-    apply unvv. apply vv in H5. eapply IHn with (H1 := H1); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega.
-      eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
-      constructor. simpl. omega.
-
-    split. simpl. eapply closed_upgrade_freef. eassumption. omega.
-    ev. intros. assert (val_type (vx :: H1) (jj :: G1) (vty l t) (open (varH (length G1)) T1) i).
-    apply H0. intros. specialize (H2 vy iy). destruct (pos iy). intros. specialize (H2 H5). apply unvv. apply vv in H2.
-    eapply IHn with (H1 := H1); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega. 
-      eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
-      constructor. simpl. omega.
-    intros. apply H2. apply unvv. apply vv in H5. eapply IHn with (H1 := H1); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega.
-      eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
-      constructor. simpl. omega.
-    assumption.
-    apply unvv. apply vv in H5. eapply IHn with (H1 := H1); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega.
-      eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
-      constructor. simpl. omega.*)
   - inversion C. subst. simpl in *. apply vv. rewrite val_type_unfold. 
-    destruct vf. ev. split. eapply closed_upgrade_freef. eassumption. simpl. omega.
-    split. eapply closed_upgrade_freef. eassumption. simpl. omega. 
-    split. apply unvv. apply vv in H2. eapply IHn with (H1 := H1); try eassumption; try omega.
-    apply unvv. apply vv in H3. eapply IHn with (H1 := H1); try eassumption; try omega.
-    ev.    split. eapply closed_upgrade_freef. eassumption. simpl. omega.
-    split. eapply closed_upgrade_freef. eassumption. simpl. omega.
-    split. apply unvv. apply vv in H2. eapply IHn with (H1 := H1); try eassumption; try omega.
-    apply unvv. apply vv in H3. eapply IHn with (H1 := H1); try eassumption; try omega.
+    destruct vf. ev.
+    split. apply unvv. apply vv in H. eapply IHn with (H1 := H1); try eassumption; try omega.
+    apply unvv. apply vv in H0. eapply IHn with (H1 := H1); try eassumption; try omega.
+    ev.
+    split. apply unvv. apply vv in H. eapply IHn with (H1 := H1); try eassumption; try omega.
+    apply unvv. apply vv in H0. eapply IHn with (H1 := H1); try eassumption; try omega.
   - inversion C. subst. simpl in *. apply vv. rewrite val_type_unfold. 
-    destruct vf. ev. split. eapply closed_upgrade_freef. eassumption. simpl. omega.
-    split. eapply closed_upgrade_freef. eassumption. simpl. omega. 
-    split. apply unvv. apply vv in H2. eapply IHn with (H1 := H1); try eassumption; try omega.
-    apply unvv. apply vv in H3. eapply IHn with (H1 := H1); try eassumption; try omega.
-    ev.    split. eapply closed_upgrade_freef. eassumption. simpl. omega.
-    split. eapply closed_upgrade_freef. eassumption. simpl. omega.
-    split. apply unvv. apply vv in H2. eapply IHn with (H1 := H1); try eassumption; try omega.
-    apply unvv. apply vv in H3. eapply IHn with (H1 := H1); try eassumption; try omega.
- *)
+    destruct vf. ev.
+    split. apply unvv. apply vv in H. eapply IHn with (H1 := H1); try eassumption; try omega.
+    apply unvv. apply vv in H0. eapply IHn with (H1 := H1); try eassumption; try omega.
+    ev. 
+    split. apply unvv. apply vv in H. eapply IHn with (H1 := H1); try eassumption; try omega.
+    apply unvv. apply vv in H0. eapply IHn with (H1 := H1); try eassumption; try omega.
 Qed.
-
  
 
 (* used in wf_env_extend and in main theorem *)
@@ -1854,257 +1776,162 @@ tsize_flat T < n -> closed 0 (length (GH1 ++ GH0)) (length H) T ->
   vtp H (GH1 ++ jj :: GH0) (splice (length GH0) T) k (df k) vf
 ).
 Proof.
-  admit. (*
-  induction n; intros ? ? ? ? ? ? ? Sz C. inversion Sz.
-  destruct T; split; intros V; apply unvv in V; rewrite val_type_unfold in V;
+  induction n; intros ? ? ? ? ? ? ? ? Sz C. inversion Sz.
+  destruct T; split; intros V; apply unvv in V; simpl in *; rewrite val_type_unfold in V;
     assert (length GH1 + S (length GH0) = S(length (GH1 ++ GH0))) as E;
     try rewrite app_length; try omega.
   - apply vv. rewrite val_type_unfold. destruct vf; apply V.
   - apply vv. rewrite val_type_unfold. destruct vf; apply V.
   - apply vv. rewrite val_type_unfold. destruct vf; apply V.
   - apply vv. rewrite val_type_unfold. destruct vf; apply V.
-  - destruct vf. destruct i.
-    + ev. apply vv. rewrite val_type_unfold. split.
-    rewrite app_length. simpl. rewrite E. apply closed_splice. apply H0.
+  - destruct vf; try solve by inversion. 
+    ev. apply vv. simpl. rewrite val_type_unfold. 
+    split. rewrite app_length. simpl. rewrite E. apply closed_splice. apply H0.
     split. rewrite app_length. simpl. rewrite E. apply closed_splice. apply H1.
-    intros. specialize (H2 _ _ H3). 
-    assert ((forall (vy : vl) (iy : sel),
-      if pos iy
-      then jj0 vy iy -> val_type H (GH1 ++ GH0) vy T1 iy
-      else val_type H (GH1 ++ GH0) vy T1 iy -> jj0 vy iy)).
-    { intros. destruct (pos iy) eqn : A. intros. specialize (H4 vy iy). rewrite A in H4. specialize (H4 H6).
-      apply unvv. apply vv in H4. simpl in *. eapply IHn; try eassumption; try omega. 
-      specialize (H4 vy iy).  rewrite A in H4. intros. apply H4. simpl in *. apply unvv. apply vv in H6.
-      eapply IHn with (GH0 := GH0); try eassumption; try try omega. }
-    specialize (H2 H6 H5). ev. exists x. split; try assumption. 
-    assert (jj0 ::GH1 ++ jj :: GH0 = (jj0 :: GH1) ++ jj :: GH0) as Eq by apply app_comm_cons.
-    unfold open in *. rewrite app_length in *. simpl. rewrite Eq. rewrite splice_open_permute. apply unvv. apply vv in H7. 
-    eapply IHn with (GH0 := GH0); try eassumption. 
-    simpl in Sz. rewrite <- open_preserves_size. omega.
-    apply closed_open. simpl. eapply closed_upgrade_free.
-    apply H1. rewrite app_length. omega.
+    intros. assert (forall kx : nat, val_type H (GH1 ++ GH0) T1 kx (jj0 kx) vx).
+    intros. apply unvv. eapply IHn. simpl in Sz. omega. assumption. apply vv. apply H3. 
+    specialize (H2 _ _ H4). 
+    ev. exists x. exists x0. split. assumption. intros. specialize (H5 k0).
+    apply unvv. rewrite app_comm_cons. rewrite app_comm_cons in H5.
+    unfold open. rewrite app_length. replace (length (jj::GH0)) with (length GH0 + 1). rewrite plus_assoc.
+    rewrite splice_open_permute0. eapply IHn with (GH0 := GH0). 
+    rewrite <- open_preserves_size. simpl in Sz. omega.
+    eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
     constructor. simpl. rewrite app_length. omega.
-    + apply vv. rewrite val_type_unfold. simpl. ev. repeat split.
-      rewrite app_length. simpl. rewrite E. apply closed_splice. assumption.
-      rewrite app_length. simpl. rewrite E. apply closed_splice. assumption. assumption. assumption.
-
-    + apply vv. rewrite val_type_unfold. simpl. ev. repeat split.
-      rewrite app_length. simpl. rewrite E. apply closed_splice. assumption.
-      rewrite app_length. simpl. rewrite E. apply closed_splice. assumption.
-      simpl in H2. rewrite H2. reflexivity. assumption.
+    apply vv. unfold open in *. rewrite app_length in *. assumption.
+    simpl. omega.
     
-  - destruct vf. simpl in V. destruct i.
-    + ev. apply vv. rewrite val_type_unfold. inversion C. subst.
+  - destruct vf; try solve by inversion. simpl in V.
+    ev. apply vv. rewrite val_type_unfold. inversion C. subst.
     split. assumption. split. assumption. intros.
-    specialize (H2 _ _ H3).
-    assert ((forall (vy : vl) (iy : sel),
-      if pos iy
-      then
-       jj0 vy iy ->
-       val_type H (GH1 ++ jj :: GH0) vy (splice (length GH0) T1) iy
-      else
-       val_type H (GH1 ++ jj :: GH0) vy (splice (length GH0) T1) iy ->
-       jj0 vy iy)).
-    { intros. destruct (pos iy) eqn : A. intros. specialize (H4 vy iy). rewrite A in H4. specialize (H4 H6).
-      apply unvv. apply vv in H4. simpl in *. eapply IHn with (GH0 := GH0); try eassumption; try omega.
-      specialize (H4 vy iy). rewrite A in H4. intros. apply H4. apply unvv. apply vv in H6. simpl in *. eapply IHn;
-      try eassumption; try omega. }
-    specialize (H2 H6 H5). ev. exists x. split; try assumption. apply unvv. apply vv in H7.
-    assert (jj0 ::GH1 ++ jj :: GH0 = (jj0 :: GH1) ++ jj :: GH0) as Eq by apply app_comm_cons.
-    unfold open in *. rewrite app_length in *. simpl in *. rewrite splice_open_permute in H7. 
-    rewrite app_comm_cons. eapply IHn with (GH0 := GH0); try eassumption. simpl in *. rewrite <- open_preserves_size. omega.
-    apply closed_open. simpl. eapply closed_upgrade_free. eassumption. rewrite app_length. omega. constructor. simpl. rewrite app_length.
-    omega.
-    + apply vv. rewrite val_type_unfold. simpl. ev. inversion C. repeat split; assumption.
-    + simpl in V. apply vv. rewrite val_type_unfold. simpl. ev. inversion C. repeat split; try assumption.
+    assert (forall kx : nat, val_type H (GH1 ++ jj :: GH0) (splice (length GH0) T1) kx (jj0 kx) vx).
+    intros. specialize (H3 kx). apply unvv. eapply IHn with (GH0:= GH0).
+    simpl in Sz. omega.
+    assumption.
+    apply vv. assumption.
+    specialize (H2 _ _ H4). ev. exists x. exists x0.
+    split. assumption. intros. specialize (H5 k0). apply unvv. rewrite app_comm_cons.
+    eapply IHn with (GH0 := GH0). unfold open. rewrite <- open_preserves_size. simpl in Sz. omega.
+    apply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
+    constructor. simpl. omega.
+    apply vv. rewrite app_length in H5. simpl in H5. replace ( S(length GH0)) with (length GH0 + 1) in H5.
+    rewrite plus_assoc in H5. unfold open in H5. rewrite splice_open_permute0 in H5.
+    rewrite app_length. unfold open. eassumption. 
+    simpl. omega.
     
-
   - apply vv. rewrite val_type_unfold. destruct vf. simpl in *. destruct v.
     + assumption. 
-    + destruct (indexr i0 (GH1 ++ GH0)) eqn : B; try solve by inversion. 
-    destruct (le_lt_dec (length GH0) i0) eqn : A. 
-    assert (indexr (i0 + 1) (GH1 ++ jj :: GH0) = Some v). apply indexr_hit_high. assumption. omega.
-    rewrite H0. apply V. assert (indexr (i0) (GH1 ++ jj :: GH0) = Some v). apply indexr_hit_low. assumption. omega.
+    + destruct (indexr i (GH1 ++ GH0)) eqn : B; try solve by inversion. 
+    destruct (le_lt_dec (length GH0) i) eqn : A. 
+    assert (indexr (i + 1) (GH1 ++ jj :: GH0) = Some v). apply indexr_hit_high. assumption. omega.
+    rewrite H0. apply V. assert (indexr (i) (GH1 ++ jj :: GH0) = Some v). apply indexr_hit_low. assumption. omega.
     rewrite H0. apply V.
     + inversion V.
     + simpl in *. destruct v; simpl; try apply V.
-    destruct (indexr i0 (GH1 ++ GH0)) eqn : B; try solve by inversion. 
-    destruct (le_lt_dec (length GH0) i0) eqn : A. 
-    assert (indexr (i0 + 1) (GH1 ++ jj :: GH0) = Some v). apply indexr_hit_high. assumption. omega.
-    rewrite H0. apply V. assert (indexr (i0) (GH1 ++ jj :: GH0) = Some v). apply indexr_hit_low. assumption. omega.
+    destruct (indexr i (GH1 ++ GH0)) eqn : B; try solve by inversion. 
+    destruct (le_lt_dec (length GH0) i) eqn : A. 
+    assert (indexr (i + 1) (GH1 ++ jj :: GH0) = Some v). apply indexr_hit_high. assumption. omega.
+    rewrite H0. apply V. assert (indexr (i) (GH1 ++ jj :: GH0) = Some v). apply indexr_hit_low. assumption. omega.
     rewrite H0. apply V.
 
   - apply vv. rewrite val_type_unfold. destruct vf; simpl in *. destruct v.
     + assumption.
-    + destruct (le_lt_dec (length GH0) i0) eqn : A. inversion C. subst.  
-    eapply indexr_has in H4. ev. assert (indexr (i0 + 1)(GH1 ++ jj:: GH0) = Some x). apply indexr_hit_high; assumption. 
+    + destruct (le_lt_dec (length GH0) i) eqn : A. inversion C. subst.  
+    eapply indexr_has in H4. ev. assert (indexr (i + 1)(GH1 ++ jj:: GH0) = Some x). apply indexr_hit_high; assumption. 
     rewrite H0. rewrite H1 in V. assumption. 
-    assert (i0 < length GH0) as H4 by omega. eapply indexr_has in H4. ev. assert (indexr (i0)(GH1 ++ GH0) = Some x).
-    apply indexr_extend_mult. assumption. assert (indexr i0 (GH1 ++ jj :: GH0) = Some x). apply indexr_hit_low; assumption. 
+    assert (i < length GH0) as H4 by omega. eapply indexr_has in H4. ev. assert (indexr (i)(GH1 ++ GH0) = Some x).
+    apply indexr_extend_mult. assumption. assert (indexr i (GH1 ++ jj :: GH0) = Some x). apply indexr_hit_low; assumption. 
     rewrite H1. rewrite H2 in V. assumption.
     + inversion V.
     + destruct v; try solve by inversion; try assumption.
-    destruct (le_lt_dec (length GH0) i0) eqn : A. inversion C. subst. 
-    eapply indexr_has in H4. ev. assert (indexr (i0 + 1)(GH1 ++ jj:: GH0) = Some x). apply indexr_hit_high; assumption. 
+    destruct (le_lt_dec (length GH0) i) eqn : A. inversion C. subst. 
+    eapply indexr_has in H4. ev. assert (indexr (i + 1)(GH1 ++ jj:: GH0) = Some x). apply indexr_hit_high; assumption. 
     rewrite H0. rewrite H1 in V. assumption. 
-    assert (i0 < length GH0) as H4 by omega. eapply indexr_has in H4. ev. assert (indexr (i0)(GH1 ++ GH0) = Some x).
-    apply indexr_extend_mult. assumption. assert (indexr i0 (GH1 ++ jj :: GH0) = Some x). apply indexr_hit_low; assumption. 
+    assert (i < length GH0) as H4 by omega. eapply indexr_has in H4. ev. assert (indexr (i)(GH1 ++ GH0) = Some x).
+    apply indexr_extend_mult. assumption. assert (indexr i (GH1 ++ jj :: GH0) = Some x). apply indexr_hit_low; assumption. 
     rewrite H1. rewrite H2 in V. assumption.
 
-  - inversion C. subst. apply vv. rewrite val_type_unfold. destruct vf. simpl in *. destruct i. inversion V. destruct b. 
-    ev. split. rewrite app_length. simpl. rewrite E. eapply closed_splice. assumption.
+  - inversion C. subst. apply vv. rewrite val_type_unfold. destruct vf; try solve by inversion.
+    simpl in *. ev. 
     split. rewrite app_length. simpl. rewrite E. eapply closed_splice. assumption.
-    apply unvv. eapply IHn with (GH0 := GH0). simpl in *. omega. apply H6. apply vv. assumption.
+    split. rewrite app_length. simpl. rewrite E. eapply closed_splice. assumption.
+    destruct k. auto. intros. specialize (H2 dy vy). ev. split. intros. apply H2.
+    apply unvv. eapply IHn. simpl in Sz. omega. assumption. apply vv. eassumption.
+    intros. specialize (H3 H4). apply unvv. eapply IHn with (GH0 := GH0). simpl in Sz. omega.
+    assumption. apply vv. assumption.
 
-    ev. split. rewrite app_length. simpl. rewrite E. eapply closed_splice. assumption.
-    split. rewrite app_length. simpl. rewrite E. eapply closed_splice. assumption.
-    apply unvv. eapply IHn with (GH0 := GH0). simpl in *. omega. assumption. apply vv. assumption.
+  - inversion C. subst. apply vv. rewrite val_type_unfold. destruct vf; try solve by inversion. 
+    simpl in *. ev. split. assumption. split. assumption. destruct k. auto.
+    intros. specialize (H2 dy vy). ev. split. intros.
+    apply H2. apply unvv. eapply IHn with (GH0 := GH0). simpl in Sz. omega.
+    assumption. apply vv. assumption.
+    intros. specialize (H3 H4). apply unvv. eapply IHn. simpl in Sz. omega.
+    assumption. apply vv. eassumption.
 
-    simpl in *. destruct i. ev.
-    split. rewrite app_length. simpl. rewrite E. eapply closed_splice. assumption.
-    split. rewrite app_length. simpl. rewrite E. eapply closed_splice. assumption.
-    intros. specialize (H2 vy iy). destruct (pos iy) eqn : A. intros. assert (val_type H (GH1 ++ GH0) vy T1 iy).
-    apply unvv. apply vv in H3. eapply IHn; try eassumption; try omega. specialize (H2 H4). apply vv in H2.
-    apply unvv. apply vv in H4. eapply IHn with (GH0 := GH0); try eassumption; try omega.
-    intros. assert (val_type H (GH1 ++ GH0) vy T2 iy). apply unvv. apply vv in H3. eapply IHn; try eassumption; try omega. 
-    specialize (H2 H4). apply vv in H2. apply unvv. apply vv in H4. eapply IHn with (GH0 := GH0); try eassumption; try omega.
-    
-    destruct b; ev. split. rewrite app_length. simpl. rewrite E. eapply closed_splice. assumption.
-    split. rewrite app_length. simpl. rewrite E. eapply closed_splice. assumption.
-    apply unvv. apply vv in H2. eapply IHn with (GH0 := GH0); try eassumption; try omega.
-    split. rewrite app_length. simpl. rewrite E. eapply closed_splice. assumption.
-    split. rewrite app_length. simpl. rewrite E. eapply closed_splice. assumption.
-    apply unvv. apply vv in H2. eapply IHn with (GH0 := GH0); try eassumption; try omega.
-        
-  - inversion C. subst. apply vv. rewrite val_type_unfold. destruct vf. simpl in *. destruct i. inversion V. destruct b. 
-    split; try assumption. split; try assumption. ev. apply unvv. apply vv in H2. eapply IHn; try eassumption; try omega.
-    split; try assumption. split; try assumption. ev. apply unvv. apply vv in H2. eapply IHn; try eassumption; try omega.
-    simpl in *. destruct i. 
-    split; try assumption. split; try assumption. ev. intros. specialize (H2 vy iy). destruct (pos iy) eqn : A.
-    intros. assert (val_type H (GH1 ++ jj :: GH0) vy (splice (length GH0) T1) iy).
-    apply unvv. apply vv in H3. eapply IHn with (GH0 := GH0); try eassumption; try omega. 
-    specialize (H2 H4). apply vv in H2. apply unvv. eapply IHn; try eassumption; try omega.
-    intros. assert (val_type H (GH1 ++ jj :: GH0) vy (splice (length GH0) T2) iy).
-    apply unvv. apply vv in H3. eapply IHn with (GH0 := GH0); try eassumption; try omega.
-    specialize (H2 H4). apply vv in H2. apply unvv. eapply IHn; try eassumption; try omega.
+  - inversion C. subst. simpl in *. apply vv. rewrite val_type_unfold.
+    assert (closed 1 (length (GH1 ++ GH0)) (length H) T /\
+        (exists jj0 : forall x : nat, vset x,
+           jj0 k = df k /\
+           (forall n0 : nat,
+            val_type H (jj0 :: GH1 ++ GH0)
+              (open (varH (length (GH1 ++ GH0))) T) n0 (jj0 n0) vf))).
+              destruct vf; assumption. clear V. ev.
+    assert (closed 1 (length (GH1 ++ jj :: GH0)) (length H) (splice (length GH0) T) /\
+    (exists jj0 : forall x : nat, vset x,
+       jj0 k = df k /\
+       (forall n0 : nat,
+        val_type H (jj0 :: GH1 ++ jj :: GH0)
+          (open (varH (length (GH1 ++ jj :: GH0))) (splice (length GH0) T))
+          n0 (jj0 n0) vf))) as Goal.
+    split. rewrite app_length. simpl. rewrite <- plus_n_Sm. eapply closed_splice.
+    rewrite <- app_length. assumption.
+    exists x. split. assumption.
+    intros. specialize (H2 n0). apply unvv. rewrite app_length. replace (length (jj::GH0)) with (length GH0 + 1).
+    rewrite plus_assoc. unfold open. rewrite splice_open_permute0. rewrite app_comm_cons. eapply IHn with (GH0 := GH0).
+    rewrite <- open_preserves_size. simpl in Sz. omega.
+    eapply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
+    constructor. simpl. rewrite app_length. omega.
+    apply vv. unfold open in *. rewrite app_length in *. assumption.
+    simpl. omega.
+    destruct vf; apply Goal.
 
-    destruct b; ev. split; try assumption. split; try assumption. ev.
-    apply unvv. apply vv in H2. eapply IHn; try eassumption; try omega.
-    split; try assumption. split; try assumption. ev.
-    apply unvv. apply vv in H2. eapply IHn; try eassumption; try omega.
-  - admit. (*inversion C. subst. simpl in *. apply vv. rewrite val_type_unfold.
-    destruct vf; ev. split. rewrite app_length in *. simpl in *. rewrite <- plus_n_Sm.
-      eapply closed_splice. assumption.
-    intros. assert (val_type H (jj0 :: GH1 ++ GH0) (vabs l t t0)
-       (open (varH (length (GH1 ++ GH0))) T) i).
-    apply H1. intros. specialize (H2 vy iy). destruct (pos iy). intros. specialize (H2 H5). 
-    apply unvv. apply vv in H2. rewrite app_comm_cons. eapply IHn with (GH0 :=GH0); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega.
-      apply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
-      constructor. simpl. omega.
-      unfold open in *. rewrite app_length in *. simpl in *. rewrite splice_open_permute in H2. eassumption.
-    intros. eapply H2. apply unvv. apply vv in H5. rewrite app_length in *. simpl in *. unfold open.
-    rewrite splice_open_permute. rewrite app_comm_cons in *.
-    eapply IHn with (GH0 := GH0); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega.
-      apply closed_open. simpl. eapply closed_upgrade_free. eassumption. rewrite app_length. omega.
-      constructor. simpl. rewrite app_length. omega.
-    assumption. apply unvv. apply vv in H5. unfold open in *. rewrite app_length in *.
-    simpl in *. rewrite splice_open_permute. rewrite app_comm_cons in *. eapply IHn with (GH0 := GH0); try eassumption; try omega.
-      rewrite <- open_preserves_size. omega.
-      apply closed_open. simpl. eapply closed_upgrade_free.
-      eassumption. rewrite app_length. simpl. omega.
-      constructor. rewrite app_length. simpl. omega.
-    split. rewrite app_length in *. simpl in *. rewrite <- plus_n_Sm.
-      eapply closed_splice. assumption.
-    intros. assert (val_type H (jj0 :: GH1 ++ GH0) (vty l t)
-       (open (varH (length (GH1 ++ GH0))) T) i).
-    apply H1. intros. specialize (H2 vy iy). destruct (pos iy). intros. specialize (H2 H5). 
-    apply unvv. apply vv in H2. rewrite app_comm_cons. eapply IHn with (GH0 :=GH0); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega.
-      apply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
-      constructor. simpl. omega.
-      unfold open in *. rewrite app_length in *. simpl in *. rewrite splice_open_permute in H2. eassumption.
-    intros. eapply H2. apply unvv. apply vv in H5. rewrite app_length in *. simpl in *. unfold open.
-    rewrite splice_open_permute. rewrite app_comm_cons in *.
-    eapply IHn with (GH0 := GH0); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega.
-      apply closed_open. simpl. eapply closed_upgrade_free. eassumption. rewrite app_length. omega.
-      constructor. simpl. rewrite app_length. omega.
-    assumption. apply unvv. apply vv in H5. unfold open in *. rewrite app_length in *.
-    simpl in *. rewrite splice_open_permute. rewrite app_comm_cons in *. eapply IHn with (GH0 := GH0); try eassumption; try omega.
-      rewrite <- open_preserves_size. omega.
-      apply closed_open. simpl. eapply closed_upgrade_free.
-      eassumption. rewrite app_length. simpl. omega.
-      constructor. rewrite app_length. simpl. omega. *)
-  - admit. (*inversion C. subst. simpl in *. apply vv. rewrite val_type_unfold.
-    destruct vf; ev. split. rewrite app_length in *. simpl in *. assumption. 
-    intros. assert (val_type H (jj0 :: GH1 ++ jj :: GH0) (vabs l t t0)
-       (open (varH (length (GH1 ++ jj :: GH0))) (splice (length GH0) T)) i).
-    apply H1. intros. specialize (H2 vy iy). destruct (pos iy). intros. specialize (H2 H5). 
-    apply unvv. apply vv in H2. rewrite app_length. simpl. unfold open. rewrite splice_open_permute.
-    rewrite app_comm_cons. eapply IHn with (GH0 := GH0); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega.
-      apply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
-      constructor. simpl. omega.
-      unfold open in *. rewrite app_length in *. simpl in *. assumption. 
-    intros. eapply H2. apply unvv. apply vv in H5. rewrite app_length in *. simpl in *. unfold open.
-    rewrite app_comm_cons in *.
-    eapply IHn with (GH0 := GH0); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega.
-      apply closed_open. simpl. eapply closed_upgrade_free. eassumption. rewrite app_length. omega.
-      constructor. simpl. rewrite app_length. omega.
-      unfold open in H5. rewrite splice_open_permute in H5. eassumption.
-    assumption. apply unvv. apply vv in H5. unfold open in *. rewrite app_length in *.
-    simpl in *. rewrite splice_open_permute in H5. rewrite app_comm_cons in *.
-    eapply IHn with (GH0 := GH0); try eassumption; try omega.
-      rewrite <- open_preserves_size. omega.
-      apply closed_open. simpl. eapply closed_upgrade_free.
-      eassumption. rewrite app_length. simpl. omega.
-      constructor. rewrite app_length. simpl. omega.
-    split. rewrite app_length in *. simpl in *. assumption. 
-    intros. assert (val_type H (jj0 :: GH1 ++ jj :: GH0) (vty l t)
-       (open (varH (length (GH1 ++ jj :: GH0))) (splice (length GH0) T)) i).
-    apply H1. intros. specialize (H2 vy iy). destruct (pos iy). intros. specialize (H2 H5). 
-    apply unvv. apply vv in H2. rewrite app_length. simpl. unfold open. rewrite splice_open_permute.
-    rewrite app_comm_cons. eapply IHn with (GH0 := GH0); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega.
-      apply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
-      constructor. simpl. omega.
-      unfold open in *. rewrite app_length in *. simpl in *. assumption. 
-    intros. eapply H2. apply unvv. apply vv in H5. rewrite app_length in *. simpl in *. unfold open.
-    rewrite app_comm_cons in *.
-    eapply IHn with (GH0 := GH0); try eassumption; try omega.
-      unfold open. rewrite <- open_preserves_size. omega.
-      apply closed_open. simpl. eapply closed_upgrade_free. eassumption. rewrite app_length. omega.
-      constructor. simpl. rewrite app_length. omega.
-      unfold open in H5. rewrite splice_open_permute in H5. eassumption.
-    assumption. apply unvv. apply vv in H5. unfold open in *. rewrite app_length in *.
-    simpl in *. rewrite splice_open_permute in H5. rewrite app_comm_cons in *.
-    eapply IHn with (GH0 := GH0); try eassumption; try omega.
-      rewrite <- open_preserves_size. omega.
-      apply closed_open. simpl. eapply closed_upgrade_free.
-      eassumption. rewrite app_length. simpl. omega.
-      constructor. rewrite app_length. simpl. omega.*)
+  - inversion C. subst. simpl in *. apply vv. rewrite val_type_unfold.
+    assert (closed 1 (length (GH1 ++ jj :: GH0)) (length H)
+          (splice (length GH0) T) /\
+        (exists jj0 : forall x : nat, vset x,
+           jj0 k = df k /\
+           (forall n0 : nat,
+            val_type H (jj0 :: GH1 ++ jj :: GH0)
+              (open (varH (length (GH1 ++ jj :: GH0)))
+                 (splice (length GH0) T)) n0 (jj0 n0) vf))). destruct vf; assumption. clear V. ev.
+    assert (closed 1 (length (GH1 ++ GH0)) (length H) T /\
+    (exists jj0 : forall x0 : nat, vset x0,
+       jj0 k = df k /\
+       (forall n0 : nat,
+        val_type H (jj0 :: GH1 ++ GH0) (open (varH (length (GH1 ++ GH0))) T)
+          n0 (jj0 n0) vf))) as Goal.
+    split. assumption. exists x. split. assumption.
+    intros. specialize (H2 n0). apply unvv. rewrite app_comm_cons. eapply IHn with (GH0 := GH0).
+    unfold open. rewrite <- open_preserves_size. simpl in Sz. omega.
+    apply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
+    constructor. simpl. omega.
+    rewrite app_length in H2. replace (length (jj :: GH0)) with (length GH0 + 1) in H2.
+    unfold open in H2. rewrite plus_assoc in H2. rewrite splice_open_permute0 in H2.
+    rewrite app_length. unfold open. apply vv. eassumption.
+    simpl. omega.
+    destruct vf; apply Goal.
+
   - inversion C. subst. simpl in *. apply vv. rewrite val_type_unfold. destruct vf; ev. 
-    split. rewrite app_length in *. simpl. rewrite <- plus_n_Sm. eapply closed_splice. assumption.
-    split. rewrite app_length in *. simpl. rewrite <- plus_n_Sm. eapply closed_splice. eassumption.
-    split. apply unvv. apply vv in H2. eapply IHn with (GH0 := GH0); try eassumption; try omega.
-    apply unvv. apply vv in H3. eapply IHn with (GH0 := GH0); try eassumption; try omega.
-    split. rewrite app_length in *. simpl.  rewrite <- plus_n_Sm. eapply closed_splice. assumption.
-    split. rewrite app_length in *. simpl. rewrite <- plus_n_Sm. eapply closed_splice. eassumption.
-    split. apply unvv. apply vv in H2. eapply IHn with (GH0 := GH0); try eassumption; try omega.
-    apply unvv. apply vv in H3. eapply IHn with (GH0 := GH0); try eassumption; try omega.
+    split. apply unvv. apply vv in H0. eapply IHn with (GH0 := GH0); try eassumption; try omega.
+    apply unvv. apply vv in H1. eapply IHn with (GH0 := GH0); try eassumption; try omega.
+    split. apply unvv. apply vv in H0. eapply IHn with (GH0 := GH0); try eassumption; try omega.
+    apply unvv. apply vv in H1. eapply IHn with (GH0 := GH0); try eassumption; try omega.
   - inversion C. subst. simpl in *. apply vv. rewrite val_type_unfold. destruct vf; ev. 
-    split. rewrite app_length in *. simpl. assumption. 
-    split. rewrite app_length in *. simpl. assumption.
-    split. apply unvv. apply vv in H2. eapply IHn with (GH0 := GH0); try eassumption; try omega.
-    apply unvv. apply vv in H3. eapply IHn with (GH0 := GH0); try eassumption; try omega.
-    split. rewrite app_length in *. simpl. assumption.
-    split. rewrite app_length in *. simpl. assumption.
-    split. apply unvv. apply vv in H2. eapply IHn with (GH0 := GH0); try eassumption; try omega.
-    apply unvv. apply vv in H3. eapply IHn with (GH0 := GH0); try eassumption; try omega.
-*)
+    split. apply unvv. apply vv in H0. eapply IHn with (GH0 := GH0); try eassumption; try omega.
+    apply unvv. apply vv in H1. eapply IHn with (GH0 := GH0); try eassumption; try omega.
+    split. apply unvv. apply vv in H0. eapply IHn with (GH0 := GH0); try eassumption; try omega.
+    apply unvv. apply vv in H1. eapply IHn with (GH0 := GH0); try eassumption; try omega.
+
 Qed.
 
 
@@ -2155,349 +1982,179 @@ Lemma vtp_subst2_aux: forall n T venv jj v x d m GH j k,
   (vtp venv (GH ++ [jj]) (open_rec k (varH 0) (splice 0 T)) m (d m) v <->
    vtp venv GH (open_rec k (varF x) T) m (d m) v).
 Proof.
-  admit. (* 
-  induction n; intros ? ? ? ? ? ? ? ? ? Sz Cz Bd Id. inversion Sz.
+  induction n; intros ? ? ? ? ? ? ? ? ? ? Sz Cz Bd Id. inversion Sz.
   destruct T; split; intros V; apply unvv in V; rewrite val_type_unfold in V.
   - unfold open. simpl in *. apply vv. rewrite val_type_unfold. destruct v; apply V.
   - unfold open. simpl in *. apply vv. rewrite val_type_unfold. destruct v; apply V.
   - unfold open. simpl in *. apply vv. rewrite val_type_unfold. destruct v; apply V.
   - unfold open. simpl in *. apply vv. rewrite val_type_unfold. destruct v; apply V.
-  - inversion Cz. subst. 
-    unfold open in *. simpl in *. apply vv. rewrite val_type_unfold in *. destruct v.
-    destruct i.
-    + ev. split. {rewrite app_length in *.  simpl in *. eapply splice_retreat4. 
+  - inversion Cz. subst.  
+    unfold open in *. simpl in *. apply vv. rewrite val_type_unfold in *. destruct v; try solve by inversion.
+    ev. 
+    split. {rewrite app_length in *.  simpl in *. eapply splice_retreat4. 
     eassumption. constructor. eapply indexr_max. eassumption. }
     split. { rewrite app_length in *. simpl in *. eapply splice_retreat4.
     eassumption. constructor. eapply indexr_max. eassumption. }
     
-    intros. specialize (H1 _ _ H2). assert ((forall (vy : vl) (iy : sel),
-      if pos iy
-      then
-       jj0 vy iy ->
-       val_type venv0 (GH ++ [jj]) vy (open_rec k (varH 0) (splice 0 T1)) iy
-      else
-       val_type venv0 (GH ++ [jj]) vy (open_rec k (varH 0) (splice 0 T1)) iy ->
-       jj0 vy iy)).
-    { intros. destruct (pos  iy) eqn : A. specialize (H3 vy iy). rewrite A in H3. intros. 
-      specialize (H3 H7). apply unvv. apply vv in H3. eapply IHn; try eassumption; try omega.
-      specialize (H3 vy iy). rewrite A in H3. intros. apply H3. apply unvv. apply vv in H7.
-      eapply IHn; try eassumption; try omega. }
-    specialize (H1 H7 H6). ev. exists x0. split. assumption. apply unvv. apply vv in H8.
-    assert (jj0 :: GH ++ [jj] = (jj0 :: GH) ++ [jj]) as Eq.
-    apply app_comm_cons. rewrite Eq in H8.
-    unfold open. 
-    erewrite open_permute in H8. erewrite open_permute.  
-    assert ((open_rec 0 (varH (length (GH ++ [jj]))) (splice 0 T2)) =
-             splice 0 (open_rec 0 (varH (length GH)) T2)). {
-    rewrite app_length. simpl.
-    assert ((length GH) = (length GH) + 0). omega. rewrite H9.
-    apply (splice_open_permute0 0 T2 (length GH) 0).
-    }
-    rewrite H9 in H8.
-    eapply IHn with (GH := (jj0::GH)). erewrite <- open_preserves_size. omega.
-    assert (closed (S j) (S (length GH)) (length venv0) T2). eapply closed_upgrade_free.
-    eassumption. omega. eapply closed_open2. eassumption. constructor. simpl. omega. omega. 
-    eapply Id. apply H8. constructor. eauto. constructor. eauto. omega.
-    constructor. eauto. constructor. eauto. omega. 
-    + rewrite app_length in V. simpl in V. ev. repeat split.
-      eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
-      eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
-      eauto. eauto. 
-    + rewrite app_length in V. simpl in V. ev. repeat split.
-      eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
-      eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
-      eauto. eauto. 
-  
+    intros. assert (forall kx : nat, val_type venv0 (GH ++ [jj]) 
+      (open_rec k (varH 0) (splice 0 T1)) kx (jj0 kx) vx).
+    intros. specialize (H2 kx). apply unvv. apply vv in H2. eapply IHn; try omega; eassumption.
+    specialize (H1 _ _ H3).
+    ev. exists x0. exists x1. split. assumption.
+    intros. specialize (H6 k0). apply unvv. apply vv in H6. unfold open. erewrite open_permute. 
+    eapply IHn; try rewrite <- open_preserves_size; try omega; try eassumption.
+    eapply closed_open2. simpl. eapply closed_upgrade_free. eassumption. omega.
+    constructor. simpl. omega. omega.
+    simpl. erewrite open_permute in H6. rewrite app_length in H6. replace (length[jj]) with (0+1) in H6.
+    rewrite plus_assoc in H6. rewrite splice_open_permute0 in H6. rewrite plus_0_r in H6. assumption.
+    simpl. omega. constructor. eauto. constructor. eauto. omega. constructor. eauto. constructor. eauto. omega.
   
   - inversion Cz. subst. 
-    unfold open in *. simpl in *. apply vv. rewrite val_type_unfold in *. destruct v.
-    destruct i.
-    + ev. split. { rewrite app_length. simpl. eapply splice_retreat5. constructor. omega. 
-    eassumption. }
-    split. { rewrite app_length. simpl. eapply splice_retreat5. constructor.
-    omega. eassumption. }
-    intros. specialize (H1 _ _ H2). assert ((forall (vy : vl) (iy : sel),
-      if pos iy
-      then jj0 vy iy -> val_type venv0 GH vy (open_rec k (varF x) T1) iy
-      else val_type venv0 GH vy (open_rec k (varF x) T1) iy -> jj0 vy iy)).
-    { intros. destruct (pos  iy) eqn : A. specialize (H3 vy iy). rewrite A in H3. intros. 
-      specialize (H3 H7). apply unvv. apply vv in H3. eapply IHn; try eassumption; try omega.
-      specialize (H3 vy iy). rewrite A in H3. intros. apply H3. apply unvv. apply vv in H7.
-      eapply IHn; try eassumption; try omega. }
-    specialize (H1 H7 H6). ev. exists x0. split. assumption. apply unvv. apply vv in H8.
-    assert (jj0 :: GH ++ [jj] = (jj0 :: GH) ++ [jj]) as Eq.
-    apply app_comm_cons. rewrite Eq. unfold open in *. 
-    erewrite open_permute in H8. erewrite open_permute.  
-    assert ((open_rec 0 (varH (length (GH ++ [jj]))) (splice 0 T2)) =
-             splice 0 (open_rec 0 (varH (length GH)) T2)). {
-    rewrite app_length. simpl.
-    assert ((length GH) = (length GH) + 0). omega. rewrite H9.
-    apply (splice_open_permute0 0 T2 (length GH) 0).
-    }
-    rewrite H9.
-    eapply IHn with (GH := (jj0::GH)). erewrite <- open_preserves_size. omega.
-    assert (closed (S j) (S (length GH)) (length venv0) T2). eapply closed_upgrade_free.
-    eassumption. omega. eapply closed_open2. eassumption. constructor. simpl. omega. omega. 
-    eapply Id. apply H8. constructor. eauto. constructor. eauto. omega.
-    constructor. eauto. constructor. eauto. omega. 
-    + ev. rewrite app_length. simpl. repeat split.
-      eapply splice_retreat5. constructor. omega. eauto.
-      eapply splice_retreat5. constructor. omega. eauto.
-      eauto. eauto. 
-    + ev. rewrite app_length. simpl. repeat split.
-      eapply splice_retreat5. constructor. omega. eauto.
-      eapply splice_retreat5. constructor. omega. eauto.
-      eauto. eauto. 
-
+    unfold open in *. simpl in *. apply vv. rewrite val_type_unfold in *. destruct v; try solve by inversion. ev.
+    split. { rewrite app_length. simpl. eapply splice_retreat5. constructor. omega. eassumption. }
+    split. { rewrite app_length. simpl. eapply splice_retreat5. constructor. omega. eassumption. }
+    intros. assert (forall kx : nat, val_type venv0 GH (open_rec k (varF x) T1) kx (jj0 kx) vx).
+    intros. specialize (H2 kx). apply unvv. apply vv in H2. eapply IHn; try omega; eassumption.
+    specialize (H1 _ _ H3).
+    ev. exists x0. exists x1. split. assumption.
+    intros. apply unvv. specialize (H6 k0). apply vv in H6. rewrite app_comm_cons.
+    unfold open. erewrite open_permute. rewrite app_length. replace (length [jj]) with (0+1).
+    rewrite plus_assoc. rewrite splice_open_permute0. eapply IHn; try omega; try eassumption.
+    rewrite <- open_preserves_size. omega. 
+    eapply closed_open2. simpl. eapply closed_upgrade_free. eassumption. omega.
+    constructor. simpl. omega. omega. 
+    erewrite open_permute. rewrite plus_0_r. assumption.
+    constructor. auto. constructor. auto. omega. simpl. omega. constructor. auto. constructor. auto. omega.
+    
   - unfold open in *. simpl in *. apply vv. rewrite val_type_unfold in *. 
     destruct v; destruct v0; simpl in *; try apply V.
-    + assert (indexr (i0 + 1) (GH ++ [jj]) = indexr i0 GH). {
+    + assert (indexr (i + 1) (GH ++ [jj]) = indexr i GH). {
     apply indexr_extend_end. }   
     rewrite H in V. apply V.
-    + destruct (beq_nat k i0) eqn : A. 
+    + destruct (beq_nat k i) eqn : A. 
     simpl in *. assert (indexr 0 (GH ++ [jj]) = Some jj). 
     apply indexr_hit01.
     rewrite H in V. rewrite Id. apply V. inversion V.
-    + assert (indexr (i0 + 1) (GH ++ [jj]) = indexr i0 GH). apply indexr_extend_end.
+    + assert (indexr (i + 1) (GH ++ [jj]) = indexr i GH). apply indexr_extend_end.
     rewrite H in V. apply V.
-    + destruct (beq_nat k i0) eqn : A. 
+    + destruct (beq_nat k i) eqn : A. 
     simpl in *. assert (indexr 0 (GH ++ [jj]) = Some jj). apply indexr_hit01.
     rewrite H in V. rewrite Id. apply V. inversion V.
 
   - unfold open in *. simpl in *. apply vv. rewrite val_type_unfold in *. 
     destruct v; destruct v0; simpl in *; try apply V.
-    assert (indexr (i0 + 1) (GH ++ [jj]) = indexr i0 GH). apply indexr_extend_end.
+    assert (indexr (i + 1) (GH ++ [jj]) = indexr i GH). apply indexr_extend_end.
     rewrite H. apply V.
-    destruct (beq_nat k i0) eqn : A. 
+    destruct (beq_nat k i) eqn : A. 
     simpl in *. assert (indexr 0 (GH ++ [jj]) = Some jj). apply indexr_hit01.
     rewrite H. rewrite Id in V. apply V. inversion V.
-    assert (indexr (i0 + 1) (GH ++ [jj]) = indexr i0 GH). apply indexr_extend_end.
+    assert (indexr (i + 1) (GH ++ [jj]) = indexr i GH). apply indexr_extend_end.
     rewrite H. apply V.
-    destruct (beq_nat k i0) eqn : A. 
+    destruct (beq_nat k i) eqn : A. 
     simpl in *. assert (indexr 0 (GH ++ [jj]) = Some jj). apply indexr_hit01.
     rewrite H. rewrite Id in V. apply V. inversion V.
 
   - inversion Cz. subst. 
-    unfold open in *. simpl in *. apply vv. rewrite val_type_unfold in *. destruct i. 
-    + destruct v; try solve by inversion. ev. rewrite app_length in *. split. { eapply splice_retreat4.
-      simpl in *. eassumption. constructor. apply indexr_max in Id. omega. } split. { eapply splice_retreat4.
-      simpl in *. eassumption. constructor. apply indexr_max in Id. omega. } 
-    intros. specialize (H1 vy iy). destruct (pos iy). intros. assert (
-    val_type venv0 (GH ++ [jj]) vy (open_rec k (varH 0) (splice 0 T1)) iy).
-    apply vv in H2. apply unvv. eapply IHn; try eassumption; try omega. specialize (H1 H3). apply vv in H1.
-    apply unvv. eapply IHn; try eassumption; try omega.
-    intros. assert (
-    val_type venv0 (GH ++ [jj]) vy (open_rec k (varH 0) (splice 0 T2)) iy).
-    apply vv in H2. apply unvv. eapply IHn; try eassumption; try omega. specialize (H1 H3). apply vv in H1.
-    apply unvv. eapply IHn; try eassumption; try omega.
-
-    + rewrite app_length in *. destruct v. destruct b. ev. split. eapply splice_retreat4. eassumption. constructor. eapply indexr_max.
-    eassumption. split. eapply splice_retreat4. eassumption. constructor. eapply indexr_max.
-    eassumption. 
-    apply vv in H1. apply unvv. eapply IHn; try eassumption; try omega.
-    ev. split. eapply splice_retreat4. eassumption. constructor. eapply indexr_max.
-    eassumption. split. eapply splice_retreat4. eassumption. constructor. eapply indexr_max.
-    eassumption. 
-    apply vv in H1. apply unvv. eapply IHn; try eassumption; try omega.
-    destruct b; ev. split. eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
-    split. eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
-    apply unvv. apply vv in H1. eapply IHn; try eassumption; try omega.
-    split. eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
-    split. eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
-    apply unvv. apply vv in H1. eapply IHn; try eassumption; try omega.
+    unfold open in *. simpl in *. apply vv. rewrite val_type_unfold in *. destruct v; try solve by inversion.    
+    ev. rewrite app_length in *.
+    split. { eapply splice_retreat4. simpl in *. eassumption. constructor. apply indexr_max in Id. omega. } 
+    split. { eapply splice_retreat4. simpl in *. eassumption. constructor. apply indexr_max in Id. omega. } 
+    destruct m. auto.
+    intros. specialize (H1 dy vy). ev.
+    split. intros. apply H1. apply unvv. apply vv in H3. eapply IHn; try omega; eassumption.
+    intros. specialize (H2 H3). apply unvv. apply vv in H2. eapply IHn; try omega; eassumption.
 
   - inversion Cz. subst. 
-    unfold open in *. simpl in *. apply vv. rewrite val_type_unfold in *. destruct i. 
-    + destruct v; try solve by inversion. ev. rewrite app_length in *. split. { eapply splice_retreat5.
-      constructor. omega. eassumption. }
-    split. eapply splice_retreat5. constructor. omega. eassumption.
-    intros. specialize (H1 vy iy). destruct (pos iy). intros. assert (val_type venv0 GH vy (open_rec k (varF x) T1) iy).
-    apply vv in H2. apply unvv. eapply IHn; try eassumption; try omega. specialize (H1 H3). apply vv in H1.
-    apply unvv. eapply IHn; try eassumption; try omega.
-    intros. assert (val_type venv0 GH vy (open_rec k (varF x) T2) iy).
-    apply unvv. apply vv in H2. eapply IHn; try eassumption; try omega. specialize (H1 H3). apply vv in H1.
-    apply unvv. eapply IHn; try eassumption; try omega.
+    unfold open in *. simpl in *. apply vv. rewrite val_type_unfold in *.
+    destruct v; try solve by inversion. ev. rewrite app_length in *. 
+    split. { eapply splice_retreat5. constructor. omega. eassumption. }
+    split. { eapply splice_retreat5. constructor. omega. eassumption. }
+    destruct m. auto.
+    intros. specialize (H1 dy vy). ev. split. 
+    intros. apply H1. apply unvv. apply vv in H3. eapply IHn; try omega; eassumption.
+    intros. specialize (H2 H3). apply unvv. apply vv in H2. eapply IHn; try omega; eassumption.
 
-    + rewrite app_length. simpl in *. destruct v. ev. destruct b; ev. 
-    split. eapply splice_retreat5. constructor. omega. eassumption.
-    split. eapply splice_retreat5. constructor. omega. eassumption.
-    apply unvv. apply vv in H1. eapply IHn; try eassumption; try omega.
-    ev. split. eapply splice_retreat5. constructor. omega. eassumption.
-    split. eapply splice_retreat5. constructor. omega. eassumption.
-    apply unvv. apply vv in H1. eapply IHn; try eassumption; try omega.
-    destruct b; ev. split. eapply splice_retreat5. constructor. omega. eassumption.
-    split. eapply splice_retreat5. constructor. omega. eassumption.
-    apply unvv. apply vv in H1. eapply IHn; try eassumption; try omega.
-    split. eapply splice_retreat5. constructor. omega. eassumption.
-    split. eapply splice_retreat5. constructor. omega. eassumption.
-    apply unvv. apply vv in H1. eapply IHn; try eassumption; try omega.
+  - inversion Cz. subst. simpl in *. rewrite app_length in *. apply vv. rewrite val_type_unfold.
+    assert (closed 1 (length GH + length [jj]) (length venv0)
+          (open_rec (S k) (varH 0) (splice 0 T)) /\
+        (exists jj0 : forall x0 : nat, vset x0,
+           jj0 m = d m /\
+           (forall n0 : nat,
+            val_type venv0 (jj0 :: GH ++ [jj])
+              (open (varH (length GH + length [jj]))
+                 (open_rec (S k) (varH 0) (splice 0 T))) n0 (jj0 n0) v))).
+                 destruct v; assumption. clear V. ev.
+    assert (closed 1 (length GH) (length venv0) (open_rec (S k) (varF x) T) /\
+    (exists jj0 : forall x1 : nat, vset x1,
+       jj0 m = d m /\
+       (forall n0 : nat,
+        val_type venv0 (jj0 :: GH)
+          (open (varH (length GH)) (open_rec (S k) (varF x) T)) n0 (jj0 n0) v))) as Goal.
+    split. eapply splice_retreat4. simpl in H. eassumption. 
+    constructor. eapply indexr_max. eassumption. 
+    exists x0. split. assumption. intros. specialize (H1 n0).
+    apply unvv. apply vv in H1. unfold open. erewrite open_permute.  eapply IHn.
+    rewrite <- open_preserves_size. omega.
+    eapply closed_open2. simpl. eapply closed_upgrade_free. eassumption. omega.
+    constructor. simpl. omega. omega. eassumption.
+    unfold open in *. erewrite open_permute in H1. replace (length [jj]) with (0 + 1) in H1. rewrite plus_assoc in H1.
+    rewrite splice_open_permute0 in H1. rewrite plus_0_r in H1. assumption.
+    simpl. omega. constructor. auto. constructor. auto. omega. constructor. auto. constructor. auto. omega.
+    destruct v; apply Goal.
 
-  - admit. (*inversion Cz. subst. simpl in *. rewrite app_length in *. apply vv. rewrite val_type_unfold. destruct v; ev.
-    split. eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption. 
-    intros. assert (val_type venv0 (jj0 :: GH ++ [jj]) (vabs l t t0)
-       (open (varH (length GH + length [jj]))
-          (open_rec (S k) (varH 0) (splice 0 T))) i). apply H0.
-    intros. specialize (H1 vy iy). destruct (pos iy). intros. specialize (H1 H4).
-    apply unvv. apply vv in H1. unfold open. erewrite open_permute. simpl.
-    assert ((length GH) = (length GH) + 0) as W. omega. rewrite W. rewrite splice_open_permute0.
-    rewrite app_comm_cons. eapply IHn; try eassumption; try omega.
-      rewrite<- open_preserves_size. omega.
-      eapply closed_open2. simpl. eapply closed_upgrade_free. eassumption. omega. 
-      constructor. simpl. omega. omega. 
-      erewrite open_permute. simpl. unfold open in *. rewrite plus_0_r.  assumption.
-      econstructor. eauto. econstructor. eauto. omega. econstructor. eauto. econstructor. eauto. omega.
-    intros. apply H1. apply unvv. apply vv in H4. unfold open. erewrite open_permute.
-    eapply IHn; try eassumption; try omega. 
-      erewrite <-open_preserves_size. omega.
-      eapply closed_open2. simpl. eapply closed_upgrade_free. eassumption. omega.  
-      constructor. simpl. omega. omega. 
-      unfold open in H4. erewrite open_permute in H4. simpl in H4. 
-      assert ((length GH + 1) = (length GH + 0 + 1) ). rewrite plus_0_r. reflexivity.
-      rewrite H5 in H4. rewrite splice_open_permute0 in H4. rewrite plus_0_r in H4. assumption.
-      econstructor. eauto. econstructor. eauto. omega. econstructor. eauto. econstructor. eauto. omega.
-    assumption. apply unvv. apply vv in H4. unfold open in *. erewrite open_permute.  eapply IHn; try eassumption.
-      rewrite <- open_preserves_size. omega.
-      eapply closed_open2. simpl. eapply closed_upgrade_free. eassumption. omega. 
-      constructor. simpl. omega. omega. erewrite open_permute in H4. simpl in H4. 
-      assert ((length GH + 1) = (length GH + 0 + 1) ). rewrite plus_0_r. reflexivity.
-      rewrite H5 in H4. rewrite splice_open_permute0 in H4. simpl. rewrite plus_0_r in H4. assumption.
-      econstructor. eauto. econstructor. eauto. omega.
-      econstructor. eauto. econstructor. eauto. omega. 
-    split. eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption. 
-    intros. assert (val_type venv0 (jj0 :: GH ++ [jj]) (vty l t)
-       (open (varH (length GH + length [jj]))
-          (open_rec (S k) (varH 0) (splice 0 T))) i). apply H0.
-    intros. specialize (H1 vy iy). destruct (pos iy). intros. specialize (H1 H4).
-    apply unvv. apply vv in H1. unfold open. erewrite open_permute. simpl.
-    assert ((length GH) = (length GH) + 0) as W. omega. rewrite W. rewrite splice_open_permute0.
-    rewrite app_comm_cons. eapply IHn; try eassumption; try omega.
-      rewrite<- open_preserves_size. omega.
-      eapply closed_open2. simpl. eapply closed_upgrade_free. eassumption. omega. 
-      constructor. simpl. omega. omega. 
-      erewrite open_permute. simpl. unfold open in *. rewrite plus_0_r.  assumption.
-      econstructor. eauto. econstructor. eauto. omega. econstructor. eauto. econstructor. eauto. omega.
-    intros. apply H1. apply unvv. apply vv in H4. unfold open. erewrite open_permute.
-    eapply IHn; try eassumption; try omega. 
-      erewrite <-open_preserves_size. omega.
-      eapply closed_open2. simpl. eapply closed_upgrade_free. eassumption. omega.  
-      constructor. simpl. omega. omega. 
-      unfold open in H4. erewrite open_permute in H4. simpl in H4. 
-      assert ((length GH + 1) = (length GH + 0 + 1) ). rewrite plus_0_r. reflexivity.
-      rewrite H5 in H4. rewrite splice_open_permute0 in H4. rewrite plus_0_r in H4. assumption.
-      econstructor. eauto. econstructor. eauto. omega. econstructor. eauto. econstructor. eauto. omega.
-    assumption. apply unvv. apply vv in H4. unfold open in *. erewrite open_permute.  eapply IHn; try eassumption.
-      rewrite <- open_preserves_size. omega.
-      eapply closed_open2. simpl. eapply closed_upgrade_free. eassumption. omega. 
-      constructor. simpl. omega. omega. erewrite open_permute in H4. simpl in H4. 
-      assert ((length GH + 1) = (length GH + 0 + 1) ). rewrite plus_0_r. reflexivity.
-      rewrite H5 in H4. rewrite splice_open_permute0 in H4. simpl. rewrite plus_0_r in H4. assumption.
-      econstructor. eauto. econstructor. eauto. omega.
-      econstructor. eauto. econstructor. eauto. omega.*)
-  - admit. (*inversion Cz. subst. simpl in *. apply vv. rewrite val_type_unfold. destruct v; ev.
-    split. rewrite app_length. simpl. eapply splice_retreat5. constructor. omega. eassumption.
-    intros. assert (val_type venv0 (jj0 :: GH) (vabs l t t0)
-       (open (varH (length GH)) (open_rec (S k) (varF x) T)) i). apply H0.
-    intros. specialize (H1 vy iy). destruct (pos iy). intros. specialize (H1 H4). apply unvv. apply vv in H1.
-    unfold open. erewrite open_permute. eapply IHn; try eassumption.
-      rewrite <- open_preserves_size. omega.
-      eapply closed_open2. simpl. eapply closed_upgrade_free. eassumption. omega. 
-      constructor. simpl. omega. omega. simpl. 
-      unfold open in H1. erewrite open_permute in H1. rewrite app_length in H1. simpl in H1. 
-      assert (length GH +1 = (length GH + 0 + 1)). rewrite plus_0_r. reflexivity. 
-      rewrite H5 in H1. rewrite splice_open_permute0 in H1. rewrite plus_0_r in H1. assumption.
-      econstructor. eauto. econstructor. eauto. omega.
-      econstructor. eauto. econstructor. eauto. omega.
-    intros. apply H1. apply unvv. apply vv in H4. unfold open. 
-    erewrite open_permute. rewrite app_length. simpl. assert ((length GH + 1) = (length GH + 0+ 1)).
-    rewrite plus_0_r. reflexivity. rewrite H5. rewrite splice_open_permute0. 
-    rewrite app_comm_cons. eapply IHn; try eassumption.
-      rewrite <- open_preserves_size. omega.
-      eapply closed_open2. simpl. eapply closed_upgrade_free. eassumption. omega. 
-      constructor. simpl. omega. omega. unfold open in H4. erewrite open_permute in H4.
-      rewrite plus_0_r. assumption.
-      econstructor. eauto. econstructor. eauto. omega.
-      econstructor. eauto. econstructor. eauto. omega.
-    assumption. apply unvv. apply vv in H4. unfold open in *. rewrite app_length in *.
-    simpl in *. erewrite open_permute. assert ((length GH + 1) = (length GH + 0 + 1)).
-    rewrite plus_0_r. reflexivity. rewrite H5. rewrite splice_open_permute0. rewrite app_comm_cons. 
-    eapply IHn; try eassumption. 
-      rewrite <- open_preserves_size. omega.
-      eapply closed_open2. simpl. eapply closed_upgrade_free. eassumption. omega. 
-      constructor. simpl. omega. omega. unfold open in H4. erewrite open_permute in H4.
-      rewrite plus_0_r. assumption.
-      econstructor. eauto. econstructor. eauto. omega.
-      econstructor. eauto. econstructor. eauto. omega.
-    split. rewrite app_length. simpl. eapply splice_retreat5. constructor. omega. eassumption.
-    intros. assert (val_type venv0 (jj0 :: GH) (vty l t)
-       (open (varH (length GH)) (open_rec (S k) (varF x) T)) i). apply H0.
-    intros. specialize (H1 vy iy). destruct (pos iy). intros. specialize (H1 H4). apply unvv. apply vv in H1.
-    unfold open. erewrite open_permute. eapply IHn; try eassumption.
-      rewrite <- open_preserves_size. omega.
-      eapply closed_open2. simpl. eapply closed_upgrade_free. eassumption. omega. 
-      constructor. simpl. omega. omega. simpl. 
-      unfold open in H1. erewrite open_permute in H1. rewrite app_length in H1. simpl in H1. 
-      assert (length GH +1 = (length GH + 0 + 1)). rewrite plus_0_r. reflexivity. 
-      rewrite H5 in H1. rewrite splice_open_permute0 in H1. rewrite plus_0_r in H1. assumption.
-      econstructor. eauto. econstructor. eauto. omega.
-      econstructor. eauto. econstructor. eauto. omega.
-    intros. apply H1. apply unvv. apply vv in H4. unfold open. 
-    erewrite open_permute. rewrite app_length. simpl. assert ((length GH + 1) = (length GH + 0+ 1)).
-    rewrite plus_0_r. reflexivity. rewrite H5. rewrite splice_open_permute0. 
-    rewrite app_comm_cons. eapply IHn; try eassumption.
-      rewrite <- open_preserves_size. omega.
-      eapply closed_open2. simpl. eapply closed_upgrade_free. eassumption. omega. 
-      constructor. simpl. omega. omega. unfold open in H4. erewrite open_permute in H4.
-      rewrite plus_0_r. assumption.
-      econstructor. eauto. econstructor. eauto. omega.
-      econstructor. eauto. econstructor. eauto. omega.
-    assumption. apply unvv. apply vv in H4. unfold open in *. rewrite app_length in *.
-    simpl in *. erewrite open_permute. assert ((length GH + 1) = (length GH + 0 + 1)).
-    rewrite plus_0_r. reflexivity. rewrite H5. rewrite splice_open_permute0. rewrite app_comm_cons. 
-    eapply IHn; try eassumption. 
-      rewrite <- open_preserves_size. omega.
-      eapply closed_open2. simpl. eapply closed_upgrade_free. eassumption. omega. 
-      constructor. simpl. omega. omega. unfold open in H4. erewrite open_permute in H4.
-      rewrite plus_0_r. assumption.
-      econstructor. eauto. econstructor. eauto. omega.
-      econstructor. eauto. econstructor. eauto. omega.*)
-  - inversion Cz. subst. rewrite app_length in *. simpl in *. apply vv. rewrite val_type_unfold. destruct v; ev.
-    split. eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
-    split. eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
-    split. apply unvv. apply vv in H1. eapply IHn; try eassumption; try omega.
-    apply unvv. apply vv in H2. eapply IHn; try eassumption; try omega.
-    split. eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
-    split. eapply splice_retreat4. eassumption. constructor. eapply indexr_max. eassumption.
-    split. apply unvv. apply vv in H1. eapply IHn; try eassumption; try omega.
-    apply unvv. apply vv in H2. eapply IHn; try eassumption; try omega.
-  - inversion Cz. subst. simpl in *. apply vv. rewrite val_type_unfold. destruct v; ev.
-    split. rewrite app_length. simpl. eapply splice_retreat5. constructor. omega. eassumption.
-    split. rewrite app_length. simpl. eapply splice_retreat5. constructor. omega. eassumption.
-    split. apply unvv. apply vv in H1. eapply IHn; try eassumption; try omega.
-    apply unvv. apply vv in H2. eapply IHn; try eassumption; try omega.
+  - inversion Cz. subst. simpl in *. apply vv. rewrite val_type_unfold.
+    assert (closed 1 (length GH) (length venv0) (open_rec (S k) (varF x) T) /\
+        (exists jj0 : forall x0 : nat, vset x0,
+           jj0 m = d m /\
+           (forall n0 : nat,
+            val_type venv0 (jj0 :: GH)
+              (open (varH (length GH)) (open_rec (S k) (varF x) T)) n0
+              (jj0 n0) v))). destruct v; assumption. clear V. ev.
+    assert (closed 1 (length (GH ++ [jj])) (length venv0)
+      (open_rec (S k) (varH 0) (splice 0 T)) /\
+    (exists jj0 : forall x1 : nat, vset x1,
+       jj0 m = d m /\
+       (forall n0 : nat,
+        val_type venv0 (jj0 :: GH ++ [jj])
+          (open (varH (length (GH ++ [jj])))
+             (open_rec (S k) (varH 0) (splice 0 T))) n0 (jj0 n0) v))) as Goal.
+    split. rewrite app_length. eapply splice_retreat5. constructor. omega. eassumption.
+    exists x0. split. assumption. intros. specialize (H1 n0).
+    apply unvv. apply vv in H1. unfold open in *. erewrite open_permute. 
+    rewrite app_comm_cons. rewrite app_length. replace (length[jj]) with (0+1). 
+    rewrite plus_assoc. rewrite splice_open_permute0. eapply IHn.
+    rewrite <- open_preserves_size. omega.
+    eapply closed_open2. simpl. eapply closed_upgrade_free. eassumption. omega.
+    constructor. simpl. omega. omega. eassumption. erewrite open_permute. rewrite plus_0_r.
+    assumption. 
+    constructor. auto. constructor. auto. omega. simpl. omega. constructor. auto. constructor. auto. omega.
+    destruct v; apply Goal.
 
-    split. rewrite app_length. simpl. eapply splice_retreat5. constructor. omega. eassumption.
-    split. rewrite app_length. simpl. eapply splice_retreat5. constructor. omega. eassumption.
-    split. apply unvv. apply vv in H1. eapply IHn; try eassumption; try omega.
-    apply unvv. apply vv in H2. eapply IHn; try eassumption; try omega.
+  - inversion Cz. subst. rewrite app_length in *. simpl in *. apply vv. rewrite val_type_unfold.
+    assert (val_type venv0 (GH ++ [jj]) (open_rec k (varH 0) (splice 0 T1)) m (d m) v /\
+        val_type venv0 (GH ++ [jj]) (open_rec k (varH 0) (splice 0 T2)) m (d m) v). destruct v; assumption. clear V. ev.
+    assert (val_type venv0 GH (open_rec k (varF x) T1) m (d m) v /\
+    val_type venv0 GH (open_rec k (varF x) T2) m (d m) v) as Goal. 
+    split. apply unvv. apply vv in H. eapply IHn; try eassumption; try omega.
+    apply unvv. apply vv in H0. eapply IHn; try eassumption; try omega.
+    destruct v; apply Goal.
+
+  - inversion Cz. subst. simpl in *. apply vv. rewrite val_type_unfold.
+    assert (val_type venv0 GH (open_rec k (varF x) T1) m (d m) v /\
+        val_type venv0 GH (open_rec k (varF x) T2) m (d m) v). destruct v; assumption. clear V. ev.
+    assert (val_type venv0 (GH ++ [jj]) (open_rec k (varH 0) (splice 0 T1)) m (d m) v /\
+    val_type venv0 (GH ++ [jj]) (open_rec k (varH 0) (splice 0 T2)) m (d m) v) as Goal.
+    split. apply unvv. apply vv in H. eapply IHn; try eassumption; try omega.
+    apply unvv. apply vv in H0. eapply IHn; try eassumption; try omega.
+    destruct v; apply Goal.
 
 
 Grab Existential Variables.
 apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0.
-(*apply 0. apply 0. apply 0. apply 0.
-
 apply 0. apply 0. apply 0. apply 0.
 apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0.
-apply 0. apply 0. apply 0. apply 0.*)*)
-Qed.  
+Qed.
 
 
 Lemma vtp_subst: forall T venv jj v x d k GH,
