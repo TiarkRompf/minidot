@@ -13,20 +13,17 @@
 (*
 TODO: 
  + val_type: closed TBind
- - valtp_unfold (PERF issue, aborted after 1h)
  + shrink / subst helper lemmas
  + valtp_widen: can we support stp_bindx? (yes)
- - valtp_widen: can we support stp_selb rules?
  + main proof: use substs in pack/unback
  + main proof: case and
  + main proof: case dapp
- - use has_type in var_pack rule
  + use has_type in var_and rule
 
-large lemmas:
- - valtp_extend_aux
- - valtp_splice_aux
- - valtp_subst2_aux
+ - valtp_unfold (PERF issue, aborted after 1h)
+
+ - use has_type in var_pack rule
+ - valtp_widen: can we support stp_selb rules?
  
 *)
 
@@ -2547,7 +2544,7 @@ Proof.
     eapply unvv in H6. rewrite val_type_unfold in H6.
     destruct v; assumption. }
     
-                                                                                                    assert (forall n, exists jj:vseta, jj n = d n). intros. destruct (H7 n). exists x0. ev. assumption.
+    assert (forall n, exists jj:vseta, jj n = d n). intros. destruct (H7 n). exists x0. ev. assumption.
 
     (* NOT CLEAR *)
 *)
