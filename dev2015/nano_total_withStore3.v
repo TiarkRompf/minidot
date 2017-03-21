@@ -507,90 +507,119 @@ Proof.
     assert (lt_dec j k = left a). admit. (* not sure *) 
     rewrite H6 in H0. assumption.
 Qed.
-    
+
+
+(* Definition 4 TypeProp *)
+Definition typeProp (k :nat)(tau : type) : Prop := 
+forall (psi: imemtype k) M v, In k (S k) (zz k) (psi, M, v) (tau (S k))->
+  imemtype_sat k psi M /\ 
+  forall psi' M', MemoryEx k psi M psi' M' -> In k (S k) (zz k) (psi' , M', v)(tau (S k)).
+
+
+
+Lemma valtp_down: forall T k, fst (val_type T (S k)) = val_type T k.
+Proof.
+  induction T; intros; reflexivity.
+Qed.
+
+Lemma in_down: forall k a psi M v T,
+  In (S k) (S (S k)) (a (S k)) (psi, M, v) (val_type T (S (S k))) ->
+  In k (S k) (a k) ((map (fun a => fst a)  psi), M, v) (val_type T (S k)).
+Proof. admit. Qed.
+
+
+(* TODO: need additional premises? *)
+Lemma InExt: forall j k a T psi v M v0 i,
+  In j (S k) a (ApproxMem j (S k) a psi, M, v0) i ->
+  In j (S k) a (ApproxMem j (S k) a (val_type T (S k) :: psi), v :: M, v0) i.
+Proof. admit. Qed. 
+
+
+(* TODO: change signature to j < k instead of k, S k *)
+Lemma EnvExt: forall k M (psi:imemtype k) v T,
+  In k (S k) (zz k) (psi, M, v) (val_type T (S k)) ->
+  imemtype_sat k psi M -> imemtype_sat k (val_type T k::psi) (v::M). 
+Proof. 
+    intros. induction k. intros. destruct H0. split. simpl. auto.
+    intros. omega. (* induction base case *)
+
+    intros. unfold imemtype_sat.
+    assert (length psi = length M). destruct H0. assumption. 
+    split. simpl. eauto.
+    intros. 
+    case_eq (beq_nat l (length psi)); intros E.
+    + assert (l = length psi). eapply beq_nat_true_iff. apply E. 
+      
+      assert (index l (val_type T (S k) :: psi) = Some (val_type T (S k))). simpl. 
+      unfold itype in *. rewrite E. fold itype in *. reflexivity.
+      assert (index l (v :: M) = Some v). simpl. rewrite H1 in E. rewrite E. auto.
+      rewrite H4. rewrite H5. simpl. 
+      
+      destruct (lt_dec j k). (* goal In j k l0 -- get from IND *)
+      * rewrite valtp_down. rewrite valtp_down.
+        assert (imemtype_sat k (val_type T k :: (map (fun a => fst a) psi)) (v :: M)).
+        eapply IHk. eapply in_down. assumption. eapply SAT_reduce. assumption.
+        destruct H6. clear H6.
+        simpl in H7. rewrite map_length in H7.
+        assert (l < S (length psi)). omega. 
+        specialize (H7 j l l0 H6).
+        unfold itype in *. rewrite E in H7. rewrite H1 in E. rewrite E in H7.
+        unfold ApproxMem in *. rewrite map_map in H7. 
+
+        assert ((fun x => ApproxT j k l0 (fst x)) = ApproxT j (S k) a). admit.
+
+        unfold itype in *. rewrite H8 in H7.
+        eapply H7. 
+        
+      * unfold eq_rect_r. unfold eq_rect. unfold eq_sym. remember (yy j k a n) as V.
+        destruct V. simpl. rewrite valtp_down.
+        admit. (* change signature of lemma, and then we should get this from H *)
+
+    + eapply beq_nat_false_iff in E.
+      assert (index l (val_type T (S k) :: psi) = index l psi). admit.
+      assert (index l (v :: M) = index l M). admit.
+      rewrite H3. rewrite H4. simpl in H2.
+      assert (l < length psi). unfold itype in *. omega.
+      destruct H0. specialize (H6 _ _ a H5).
+      destruct (index l psi); try contradiction.
+      destruct (index l M); try contradiction.
+      eapply InExt. assumption.
+Qed.
+
+
 Lemma ExtendME : forall k M psi M' psi' v T, 
   In k (S k) (zz k) (psi', M', v) (val_type T (S k)) ->
   MemoryEx k psi M psi' M' ->  
   MemoryEx k psi M (val_type T k :: psi') (v :: M').
 Proof. 
-  induction k. intros. unfold MemoryEx in *. destruct H0. destruct H1.
-  split. assumption. split. unfold imemtype_sat in H1. unfold imemtype_sat.
-  destruct H1. split. simpl. simpl in H1. omega.
-  intros. omega. intros. specialize (H2 _ H3). destruct H2. split. rewrite H2.
-  apply index_has in H3. destruct H3. rewrite H3 in H2. erewrite index_extend. symmetry. eassumption. auto.
-  unfold imemtype_sat in H0. destruct H0. rewrite H0 in H3. 
-  apply index_has in H3. destruct H3. rewrite H4. rewrite H3 in H4.
-  erewrite index_extend. symmetry. eassumption. auto.
+  induction k.
+  - intros. unfold MemoryEx in *. destruct H0. destruct H1.
+    split. assumption. split. unfold imemtype_sat in H1. unfold imemtype_sat.
+    destruct H1. split. simpl. simpl in H1. omega.
+    intros. omega. intros. specialize (H2 _ H3). destruct H2. split. rewrite H2.
+    apply index_has in H3. destruct H3. rewrite H3 in H2. erewrite index_extend. symmetry. eassumption. auto.
+    unfold imemtype_sat in H0. destruct H0. rewrite H0 in H3. 
+    apply index_has in H3. destruct H3. rewrite H4. rewrite H3 in H4.
+    erewrite index_extend. symmetry. eassumption. auto.
 
   (* induction case *)
-  intros. (* PROGRESS TO HERE *)
+  - intros. rename H0 into ME.
+    assert (length psi = length M) as LEN. admit.
+    assert (length psi' = length M') as LEN'. admit. 
+    unfold MemoryEx. unfold MemoryEx in ME. destruct ME. split. assumption.
+    destruct H1. split. eapply EnvExt; assumption.
+    intros. specialize (H2 l H3). destruct H2. split. 
+    eapply index_has in H3. destruct H3. 
+    unfold itype. unfold id. erewrite index_extend. eassumption.
+    unfold itype in H2. rewrite <-H2. assumption.
+    rewrite LEN in H3. eapply index_has in H3. destruct H3.
+    erewrite index_extend. eassumption. rewrite <-H4. assumption.
+Qed. 
   
-  
 
-(* generalize and pull this out as a proper lemma with induction on k *)
-(* imemtype_sat for extended store *)
-Lemma EnvExt: forall k M (psi:imemtype k), 
-  imemtype_sat k psi M -> imemtype_sat k (Bool k::psi) ((vbool true)::M). 
-Proof. 
-    intros. induction k. intros. unfold imemtype_sat in *. destruct H. split. simpl. auto.
-      intros. omega. (* induction base case *)
 
-    assert (imemtype_sat k (Bool k :: (map (fun a => fst a) psi)) (vbool true :: M)) as IND.
-    { apply SAT_reduce in H; try omega. fold itype in *. specialize (IHk (map
-         (fun a : itype k * (list (itype k) -> store -> vl -> Prop) =>
-          fst a) psi) H). assumption.
-    } fold itype in *.
-    intros. unfold imemtype_sat. unfold imemtype_sat in H. destruct H. split. simpl. eauto.
-    intros. specialize (H0 j l a).
-    case_eq (beq_nat l (length psi)); intros E.
-    + eapply beq_nat_true_iff in E.
-      assert (index l (Bool (S k) :: psi) = Some (Bool (S k))). simpl. rewrite <- beq_nat_true_iff in E.
-        unfold itype in *. rewrite E. fold itype in *. reflexivity.
-      rewrite H2. unfold ApproxMem. simpl. 
-      
-      destruct (lt_dec j k). (* goal In j k l0 -- get from IND *)
-      * unfold imemtype_sat in IND. destruct IND as [? IND]. 
-        specialize (IND j l l0). simpl in IND. rewrite map_length in IND. simpl in H2. specialize (IND H1).
-        eapply beq_nat_true_iff in E.
-      (* Set Printing All. rewriting is a bit tricky b/c types *)
-        unfold itype in *. unfold id in *. unfold location in *. rewrite E in IND. 
-        unfold itype. unfold location in *. unfold ApproxMem in IND.
-        rewrite map_map in IND. eapply IND. 
-      
-      * unfold eq_rect_r. unfold eq_rect. unfold eq_sym. remember (yy j k a n) as V.
-        destruct V. simpl.
-        assert (beq_nat l (length M) = true). admit.
-        rewrite H3. split. eapply IND. eauto.
-    + eapply beq_nat_false_iff in E.
-      assert (index l (Bool (S k) :: psi) = index l psi). admit.
-      rewrite H2. simpl in H1. assert (l < length psi). admit. 
-      specialize (H0 H3).
-      destruct (index l psi); try assumption. simpl. simpl in H0. 
-
-      destruct (lt_dec j k).
-      * (* get again from IND *)
-        unfold imemtype_sat in IND. destruct IND as [? IND]. 
-        specialize (IND j l l0). simpl in IND. rewrite map_length in IND. simpl in H2. specialize (IND H1).
-        eapply beq_nat_false_iff in E. unfold itype in *. rewrite E in IND. unfold itype in H2. rewrite E in H2.
-        fold itype in *.
-        assert (index l
-          (map
-             (fun
-                a0 : itype k * (list (itype k) -> store -> vl -> Prop) =>
-              fst a0) psi) = Some (fst i)). apply index_map. assumption.
-        rewrite H5 in IND. unfold ApproxMem in *. rewrite map_map in IND. 
-        assert (map
-              (fun
-                 x : itype k * (list (itype k) -> store -> vl -> Prop) =>
-               ApproxT j k l0 (fst x)) psi =  map (ApproxT j (S k) a) psi). 
-               admit. (* double approx *)
-        rewrite H6 in IND. assumption.
-
-      * assert (j = k). omega. unfold eq_rect_r in *. unfold eq_rect in *. unfold eq_sym in *.
-        remember (yy j k a n) as V. destruct V. simpl in *.
- 
-        (* need another lemma: every itype works with an extended store *)
-
+(* TODO: this will probably need to be based on lemma 'typeAll' and
+specific to val_type T *)
 Lemma extStore: forall (j:nat)  (i : (itype (S j))) psi M l (a : lt j (S j)), 
 snd i (ApproxMem j (S j) a psi) M l  ->
 snd i (Bool j :: ApproxMem j (S j) a psi) (vbool true :: M) l.
@@ -599,11 +628,6 @@ Proof. intros.
 
 
 admit. (* not sure how *)
-
-Qed.
-  
-
-       admit. (*apply extStore. assumption.*)
 
 Qed.
 
@@ -638,11 +662,6 @@ Proof. intros. assert (length psi1 <= length psi2). (eapply ME_longer). eassumpt
 Qed.
 
 
-(* Definition 4 TypeProp *)
-Definition typeProp (k :nat)(tau : type) : Prop := 
-forall (psi: imemtype k) M v, In k (S k) (zz k) (psi, M, v) (tau (S k))->
-  imemtype_sat k psi M /\ 
-  forall psi' M', MemoryEx k psi M psi' M' -> In k (S k) (zz k) (psi' , M', v)(tau (S k)).
 
 Lemma BoolProp: forall k, typeProp k Bool.
 Proof. intros.
@@ -713,9 +732,7 @@ Definition wf_env (G: Gamma) (H: venv) : Prop :=
                           In k (S k) (zz k) (psi,M,v) (val_type T (S k)).
 
 
-(* simplify a goal like:
-     In k (S k) (zz k) (psi, M, vbool true) (val_type TBool (S k))
-*)
+
 
 (* invert_abs*)
 Lemma invert_abs: forall k psif' MF' vf T1 T,
@@ -739,7 +756,14 @@ Qed.
 
 
 
-
+Ltac In_simpl2 j k:= simpl; destruct (lt_dec j k); try omega;
+                  unfold eq_rect_r; unfold eq_rect; unfold eq_sym;
+                  match goal with
+                      H: ~ k < k |- _ => remember (yy k k (zz k) H) as V
+                  end;
+                  match goal with
+                      H: ?V = (yy k k (zz k) _) |- _ => clear H; destruct V
+                  end; simpl.
 
 Theorem full_total_safety : forall e G T,
   has_type G e T -> forall H M, wf_env G H ->
@@ -770,61 +794,23 @@ Proof.
 
     (* extend MemoryEx *)
     destruct F as [psi' [ME IN]].
+
+    assert (MemoryEx k psi M (val_type T1 k :: psi') (v :: M')) as ME2.
+    eapply ExtendME; assumption.
     
     exists (val_type T1 k::psi'). split.
-    { unfold MemoryEx. unfold MemoryEx in ME. destruct ME. split. assumption.
-      destruct H4. split. unfold imemtype_sat. unfold imemtype_sat in H4. destruct H4.
-      split. simpl. omega. intros. case_eq (beq_nat l (length psi')); intros F.
-      - rewrite beq_nat_true_iff in F. subst. simpl. assert (beq_nat (length psi') (length psi') = true).
-        rewrite beq_nat_true_iff. reflexivity. rewrite H9. 
-        rewrite H4. assert (beq_nat (length M') (length M') = true). 
-        rewrite beq_nat_true_iff. reflexivity. rewrite H10.
+    assumption.
 
-        unfold In in IN. unfold nat_rect in IN. destruct (lt_dec k k). omega.
-        unfold eq_rect_r in IN. unfold eq_rect in IN. unfold eq_sym in IN. remember (yy k k (zz k) n0) as V.
-        clear HeqV; destruct V. simpl in IN.
-
-        unfold In. unfold nat_rect.
-
-        admit. (* not sure how to get *)
-      - rewrite beq_nat_false_iff in F. assert (l < length psi'). simpl in H8. omega.
-        specialize (H7 _ _ a H9). replace (index l (val_type T1 k :: psi')) with (index l psi').
-        replace (index l (v :: M')) with (index l M').
-        destruct (index l psi'); try solve by inversion.
-        destruct (index l M'); try solve by inversion.
-        unfold In. unfold nat_rect. 
-
-        admit. (* not sure how to get *)
-        admit. admit. (* routine *)
-      - admit. (* MemoryEx *)
-    }
-
-    (* In val_type TRef *)
-    In_simpl k. split. unfold MemoryEx in ME. destruct ME. destruct H4.
-    unfold imemtype_sat. unfold imemtype_sat in H4. destruct H4. split. simpl. omega.
-    intros. simpl in *. case_eq (beq_nat l (length psi')) ; intros F.
-    + rewrite <- H4. rewrite F. destruct (lt_dec k0 k0); try omega. unfold eq_rect_r in IN.
-      unfold eq_rect in IN. unfold eq_sym in IN. remember (yy k0 k0 (zz k0) n1) as V.
-      clear HeqV; destruct V. simpl in IN.
-      unfold In. unfold nat_rect. admit. (* not sure *)
-    + admit. (* NOT SURE *)
-    +
+    In_simpl k. split. eapply EnvExt. assumption. admit. (* extend with ME *)
     exists (length M'). exists v. split. reflexivity.
-    assert (beq_nat (length M')(length M') = true). rewrite beq_nat_true_iff. reflexivity.
-    rewrite H3. split. reflexivity. 
-    unfold In in IN. unfold nat_rect in IN. destruct (lt_dec k0 k0); try omega.
-    unfold eq_rect_r in IN. unfold eq_rect in IN. unfold eq_sym in IN. remember (yy k0 k0 (zz k0) n1) as V.
-    clear HeqV; destruct V. simpl in IN.
-    assert (MemoryEx k1 psi' M' (val_type T1 k1 :: psi') (v :: M')).
-    { unfold MemoryEx. split. unfold MemoryEx in ME. destruct ME. destruct H6. assumption.
-      split. unfold MemoryEx in ME. destruct ME. destruct H6. unfold imemtype_sat. unfold imemtype_sat in H6.
-      destruct H6. split. simpl. omega. admit. (* not sure *)
-      admit. (*routine*)
-    }
-    assert (typeProp k1 (val_type T1)). eapply typeAll.
-    unfold typeProp in H6. admit. (* should be fine *)
+    assert (beq_nat (length M') (length M') = true). admit.
+    rewrite H3. split. reflexivity.
+    (* In_simpl k in IN. doesn't work: why? *)
+    simpl in IN. destruct (lt_dec k0 k0) in IN. omega.
+    unfold eq_rect_r in IN. unfold eq_rect in IN. unfold eq_sym in IN.
+    destruct (yy k0 k0 (zz k0) n1). simpl in IN.
+    admit. (* extend IN *)
     
-
   - Case "app".
     destruct (IHe2 G _ H8 H0 M H1 k psi H2) as [nx [nx' [Mx [vx [Ex [psix [MEx INx]]]]]]].
     assert (imemtype_sat k psix Mx). unfold MemoryEx in MEx. destruct MEx. destruct H4. assumption.
@@ -877,6 +863,9 @@ Proof.
     unfold ExpT. exists n'. exists M'0. exists psi'0. exists v0. split.
     exists (nn). assumption. split. assumption. assumption.
 Qed.
+
+(* ----------------------------- old material follows ---------------------------------*)
+
     
 (*
 (* need to use Fixpoint because of positivity restriction *) 
