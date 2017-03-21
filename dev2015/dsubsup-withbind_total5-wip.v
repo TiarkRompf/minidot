@@ -15,10 +15,12 @@ TODO:
  + val_type: closed TBind
  - valtp_unfold (PERF issue, aborted after 1h)
  + shrink / subst helper lemmas
- - valtp_widen: can we support stp_bindx?
+ + valtp_widen: can we support stp_bindx? (yes)
+ - valtp_widen: can we support stp_selb rules?
  + main proof: use substs in pack/unback
  - main proof: case and
  - main proof: case dapp
+ - use has_type in var_pack rule
 
 large lemmas:
  - valtp_extend_aux
@@ -2697,8 +2699,46 @@ Proof.
   - Case "bind1". admit.
   - Case "bind2". admit.
   - Case "bindx".
-    admit. 
-    
+    eapply vv. rewrite val_type_unfold. rewrite val_type_unfold in V0.
+    assert (closed 1 (length GHX) (length G) T1 /\
+           (exists jj : vseta,
+              jj kf = df kf /\
+              (forall n : nat,
+               val_type G (jj :: GHX) (open (varH (length GHX)) T1) n 
+                        (jj n) vf))). { destruct vf; assumption. }
+    clear V0.
+    assert (closed 1 (length GHX) (length G) T2 /\
+           (exists jj : vseta,
+              jj kf = df kf /\
+              (forall n : nat,
+               val_type G (jj :: GHX) (open (varH (length GHX)) T2) n 
+                        (jj n) vf))). {
+      ev. split. rewrite <-LG. rewrite <-LGHX. assumption.
+      exists x. split. assumption.
+      intros. eapply unvv. subst T2'.
+      rewrite <-LGHX. 
+      eapply IHstp. eapply LG. 
+
+      (* extend RG *)
+      intros ? ? IX. destruct (RG _ _ IX) as [vx0 [jj0 [IX1 FA]]].
+      exists vx0. exists jj0. split. assumption. 
+      intros. eapply valtp_extendH. eapply unvv. eapply FA. simpl. rewrite LGHX. reflexivity.
+
+      (* extend RGHX *)
+      intros ? ? IX.
+      { case_eq (beq_nat x0 (length GHX)); intros E.
+        + simpl in IX. rewrite LGHX in IX. rewrite E in IX. inversion IX. subst TX.
+          exists vf. exists x. split. simpl. rewrite E. reflexivity.
+          intros. subst T1'. rewrite LGHX. eapply vv. eapply H5. 
+        + assert (indexr x0 GH = Some TX) as IX0.
+          simpl in IX. rewrite LGHX in IX. rewrite E in IX. inversion IX. reflexivity.
+          specialize (RGHX _ _ IX0). ev.
+          exists x1. exists x2. split. simpl. rewrite E. assumption.
+          intros. eapply valtp_extendH. eapply unvv. eapply H6. 
+      }
+      subst T1'. rewrite LGHX. eapply H5. 
+    }                                      
+    destruct vf; assumption.
 
   - Case "And11".
     rewrite val_type_unfold in V0.
