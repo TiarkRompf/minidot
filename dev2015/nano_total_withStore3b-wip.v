@@ -125,6 +125,8 @@ Proof.
   eapply (snd X0). eapply (fst X). eapply (fst X). eapply X.
 Defined.
 
+Print In. 
+
 
 (*Definition 1 Approx*)
 Definition itype_approx (j k : nat) : Type := lt j k -> itype k -> itype j.
@@ -416,7 +418,9 @@ Proof. induction k. apply tt.
              v = (vref loc) /\ index loc M = Some vv /\
              snd (T (S k)) psi M vv).
 Defined. 
-  
+
+Print Ref. 
+
 
 Fixpoint val_type (T:ty): type :=
  match T with
@@ -481,7 +485,13 @@ Proof. induction vs. intros. simpl in H. inversion H.
     rewrite map_length. rewrite E. assumption.
 Qed.
 
-Lemma SAT_reduce: forall k (psi:imemtype (S k)) M,
+Lemma IN_reduce: forall j j1 k (psi:imemtype j) M v (a: j < k) (b: j1 < j) T, 
+   In j k a (psi, M, v) (val_type T k) -> In j1 j b (ApproxMem j1 j b psi, M, v) (val_type T j).
+Proof.
+ admit. 
+Qed.
+
+Lemma SAT_reduce1: forall k (psi:imemtype (S k)) M,
    imemtype_sat (S k) psi M -> imemtype_sat k (map (fun a => fst a) psi) M.
 Proof.
   intros. unfold imemtype_sat in *. destruct H. split. rewrite map_length. assumption.
@@ -508,6 +518,13 @@ Proof.
     rewrite H6 in H0. assumption.
 Qed.
 
+Lemma SAT_reduce: forall j k (psi:imemtype k) M (a:j < k),
+   imemtype_sat k psi M -> imemtype_sat j (ApproxMem j k a psi) M.
+Proof.
+  admit. 
+Qed.
+
+
 
 (* Definition 4 TypeProp *)
 Definition typeProp (k :nat)(tau : type) : Prop := 
@@ -528,21 +545,48 @@ Lemma in_down: forall k a psi M v T,
 Proof. admit. Qed.
 
 
-(* TODO: need additional premises? *)
-Lemma InExt: forall j k a T psi v M v0 i,
-  In j (S k) a (ApproxMem j (S k) a psi, M, v0) i ->
-  In j (S k) a (ApproxMem j (S k) a (val_type T (S k) :: psi), v :: M, v0) i.
-Proof. admit. Qed. 
+(* Lemma VtpExt: *)
+  
+
+
+Lemma InExt: forall j k a psi v M v0 T,
+  In j k a (ApproxMem j k a psi, M, v0) (val_type T k) ->
+  In j k a (ApproxMem j k a (val_type T k :: psi), v :: M, v0) (val_type T k).
+Proof.
+  intros. induction k. omega.
+  intros. simpl. simpl in H. 
+  destruct (lt_dec j k).
+  - assert (ApproxT j (S k) a = fun x => ApproxT j k l (fst x)).
+    admit.
+    assert (forall x, ApproxT j (S k) a x = ApproxT j k l (fst x)).
+    intros. rewrite H0. reflexivity. 
+    assert (forall psi, (ApproxMem j (S k) a psi) = (ApproxMem j k l ((map (fun a => fst a) psi)))). intros. unfold ApproxMem. rewrite map_map. rewrite H0. reflexivity.
+    rewrite H2. rewrite valtp_down. rewrite valtp_down.
+    eapply IHk. rewrite <-H2. rewrite valtp_down in H. eapply H. 
+  - unfold eq_rect_r in *. unfold eq_rect in *. remember (yy j k a n) as V.
+    destruct V. simpl in *. 
+    rewrite valtp_down. unfold ApproxMem. unfold ApproxT. simpl.
+    destruct (lt_dec j j). contradiction.
+    unfold eq_rect_r. unfold eq_rect. remember ((yy j j a n0)) as V1.
+    unfold eq_sym. simpl. 
+    eapply 
+
+    
+    assert (In j k l (ApproxMem j (S k) a (val_type T (S k) :: psi), v :: M, v0) (val_type T k)).
+
+    
+    eapply IHk. rewrite
+    unfold ApproxMem. unfold ApproxT. rewrite map_map. simpl. 
+    
+    simpl. rewrite valtp_down. rewrite valtp_down. unfold ApproxMem. eapply IHk. 
 
 
 (* TODO: change signature to j < k instead of k, S k *)
-Lemma EnvExt: forall k M (psi:imemtype k) v T,
-  In k (S k) (zz k) (psi, M, v) (val_type T (S k)) ->
-  imemtype_sat k psi M -> imemtype_sat k (val_type T k::psi) (v::M). 
+Lemma EnvExt: forall j k a M (psi:imemtype j) v T,
+  In j k a (psi, M, v) (val_type T k) ->
+  imemtype_sat j psi M -> imemtype_sat j (val_type T j::psi) (v::M). 
 Proof. 
-    intros. induction k. intros. destruct H0. split. simpl. auto.
-    intros. omega. (* induction base case *)
-
+    intros. induction k. omega. 
     intros. unfold imemtype_sat.
     assert (length psi = length M). destruct H0. assumption. 
     split. simpl. eauto.
@@ -550,37 +594,18 @@ Proof.
     case_eq (beq_nat l (length psi)); intros E.
     + assert (l = length psi). eapply beq_nat_true_iff. apply E. 
       
-      assert (index l (val_type T (S k) :: psi) = Some (val_type T (S k))). simpl. 
+      assert (index l (val_type T j :: psi) = Some (val_type T j)). simpl. 
       unfold itype in *. rewrite E. fold itype in *. reflexivity.
       assert (index l (v :: M) = Some v). simpl. rewrite H1 in E. rewrite E. auto.
-      rewrite H4. rewrite H5. simpl. 
-      
-      destruct (lt_dec j k). (* goal In j k l0 -- get from IND *)
-      * rewrite valtp_down. rewrite valtp_down.
-        assert (imemtype_sat k (val_type T k :: (map (fun a => fst a) psi)) (v :: M)).
-        eapply IHk. eapply in_down. assumption. eapply SAT_reduce. assumption.
-        destruct H6. clear H6.
-        simpl in H7. rewrite map_length in H7.
-        assert (l < S (length psi)). omega. 
-        specialize (H7 j l l0 H6).
-        unfold itype in *. rewrite E in H7. rewrite H1 in E. rewrite E in H7.
-        unfold ApproxMem in *. rewrite map_map in H7. 
-
-        assert ((fun x => ApproxT j k l0 (fst x)) = ApproxT j (S k) a). admit.
-
-        unfold itype in *. rewrite H8 in H7.
-        eapply H7. 
-        
-      * unfold eq_rect_r. unfold eq_rect. unfold eq_sym. remember (yy j k a n) as V.
-        destruct V. simpl. rewrite valtp_down.
-        admit. (* change signature of lemma, and then we should get this from H *)
+      rewrite H4. rewrite H5. simpl.
+      eapply InExt. eapply IN_reduce. eassumption. 
 
     + eapply beq_nat_false_iff in E.
-      assert (index l (val_type T (S k) :: psi) = index l psi). admit.
+      assert (index l (val_type T j :: psi) = index l psi). admit.
       assert (index l (v :: M) = index l M). admit.
       rewrite H3. rewrite H4. simpl in H2.
       assert (l < length psi). unfold itype in *. omega.
-      destruct H0. specialize (H6 _ _ a H5).
+      destruct H0. specialize (H6 _ _ a0 H5).
       destruct (index l psi); try contradiction.
       destruct (index l M); try contradiction.
       eapply InExt. assumption.

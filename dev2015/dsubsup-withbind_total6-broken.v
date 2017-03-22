@@ -14,6 +14,9 @@
 (*
 XXX first (unsuccessful) attempt at adding a store
 XXX add t_unpack term
+
+What's the current problem?
+
 *)
 
 
@@ -536,6 +539,9 @@ Lemma val_type_unfold: forall env GH T STO l, val_type env GH T STO l =
     | Some (vty env1 TX, dd), TMem T1 T2 =>
       closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2 /\
       forall k1 ly,
+        ly < length STO ->
+        (* ly <> l -> *)
+        (* (forall x r, indexr x env = Some r -> r < length STO) -> *)
         (val_type env GH T1 (k1++STO) ly -> dd ly) /\
         (dd ly -> val_type env GH T2 (k1++STO) ly)
     
@@ -663,35 +669,76 @@ Hint Constructors list.
 
 Hint Resolve ex_intro.
 
-(* ############################################################ *)
-(* Examples *)
-(* ############################################################ *)
-
-
-Ltac crush :=
-  try solve [eapply stp_selx; compute; eauto; crush];
-  try solve [eapply stp_selax; compute; eauto; crush];
-  try solve [econstructor; compute; eauto; crush];
-  try solve [eapply t_sub; crush].
-
-(* define polymorphic identity function *)
-
-Definition polyId := TAll (TMem TBot TTop) (TAll (TSel (varB 0)) (TSel (varB 1))).
-
-Example ex10: has_type [] (tabs (TMem TBot TTop) (tabs (TSel (varF 0)) (tvar 1))) polyId.
-Proof. admit.
- (*  crush.*)
-Qed.
-
-(* instantiate it to TTop *)
-Example ex20: has_type [polyId] (tapp (tvar 0) (ttyp TTop)) (TAll TTop TTop).
-Proof. admit.
- (*  crush.*)
-Qed.
 
 (* ############################################################ *)
 (* Proofs *)
 (* ############################################################ *)
+
+
+(* have to be a bit careful with contravariance, but issues seem manageable *)
+Lemma valtp_extend_sto: forall n vf df k l H1 T1,
+  tsize_flat T1 < n ->
+  (* indexr l k = Some (v,vtp H1 [] TX k) ->  *)
+  (vtp H1 [] T1 k l  ->
+  vtp H1 [] T1 ((vf,df)::k) l). 
+Proof.
+  induction n; intros. inversion H.
+  destruct T1. 
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - (* TMem *)
+    (* 
+    eapply unvv in H0. eapply vv. rewrite val_type_unfold in *. 
+    remember (indexr l k) as IX1. destruct IX1; try contradiction.
+    destruct p. destruct v. contradiction.
+    assert (l < length k). eapply indexr_max. eauto. 
+    assert (indexr l ((vf, df) :: k) = Some (vty l0 t,v0)) as IX. eapply indexr_extend. auto. 
+    rewrite IX.
+    ev. split. assumption. split. assumption.*)
+    
+    admit. (*
+    intros. split. specialize (H4 (k1 ++ [(vf,df)]) ly H2).
+    ev. rewrite <-app_assoc in H4. simpl in H4. eapply H4. 
+    specialize (H4 (k1 ++ [(vf,df)]) ly H2). 
+    ev. rewrite <-app_assoc in H6. simpl in H6. eapply H6. *)
+
+    (* eapply IHn. simpl in H. omega.
+    eapply vv. eapply H4. eapply H5. *)
+    (* done, contravariance ok *)
+  - admit. 
+  - admit. 
+Qed.
+
+
+
+(* need in main proof, t_typ case *)
+Lemma new_type: forall T1 venv renv STO vf df,
+                  closed 0 0 (length renv) T1 ->
+                  vf = vty venv T1 ->
+                  df = val_type renv [] T1 ((vf,df) :: STO) ->
+                  val_type renv [] (TMem T1 T1) ((vf, df) :: STO) (length STO).
+Proof.
+  intros.
+  rewrite val_type_unfold. simpl. rewrite <-beq_nat_refl.
+  rewrite H0. split. assumption. split. assumption.
+  intros. split.
+
+  intros. 
+
+  (* HAVE: 
+       val_type renv [] T1 (k1 ++ (vty venv0 T1, val_type renv [] T1 STO) :: STO) ly
+     NEED:
+       val_type renv [] T1 STO ly
+
+   *)
+
+  admit.
+
+  admit. (* reverse direction is easy *)
+Qed.
+
 
 
 
@@ -2796,34 +2843,38 @@ Qed.
 
 
 (* ### Relating Value Typing and Subtyping ### *)
-(*
+
 Lemma valtp_widen_aux: forall G1 GH1 T1 T2,
   stp G1 GH1 T1 T2 ->
-  forall (H: list vseta) GH,
+  forall (H: list vseta) GH HH STO,
     length G1 = length H ->
     (forall x TX, indexr x G1 = Some TX ->
-                   exists vx jj,
-                     indexr x H = Some jj /\
-                     (forall n, vtp H GH TX n (jj n) vx)) ->
+                  exists lx vx dx,
+                    indexr lx STO = Some (vx,dx) /\
+                    indexr x HH = Some vx /\
+                    indexr x H = Some dx /\
+                    vtp H GH TX STO lx) ->
     length GH1 = length GH ->
     (forall x TX, indexr x GH1 = Some TX ->
-                   exists vx jj,
-                     indexr x GH = Some jj /\
-                     (forall n, vtp H GH TX n (jj n) vx)) ->
-  (forall kf (df:vseta) vf, 
-     val_type H GH T1 kf (df kf) vf -> vtp H GH T2 kf (df kf) vf).
+                   exists lx vx dx,
+                     indexr lx STO = Some (vx,dx) /\
+                     indexr x HH = Some vx /\
+                     indexr x GH = Some dx /\
+                     vtp H GH TX STO lx) ->
+  (forall vf, 
+     vtp H GH T1 STO vf -> vtp H GH T2 STO vf).
 Proof.
-  admit. (*
+  
   intros ? ? ? ? stp. 
-  induction stp; intros G GHX LG RG LGHX RGHX kf df vf V0. 
+  induction stp; intros G GHX HH STO LG RG LGHX RGHX vf V0. 
 
   
   - Case "Top".
-    eapply vv. rewrite val_type_unfold. destruct vf; reflexivity.
+    admit. (* eapply vv. rewrite val_type_unfold. destruct vf; reflexivity. *)
   - Case "Bot".
-    rewrite val_type_unfold in V0. destruct vf; inversion V0.
+    admit. (* rewrite val_type_unfold in V0. destruct vf; inversion V0. *)
   - Case "mem".
-    subst. 
+    admit. (*subst. 
     rewrite val_type_unfold in V0. 
     eapply vv. rewrite val_type_unfold.
     destruct vf; destruct kf; try destruct b; try solve by inversion; ev.  
@@ -2834,37 +2885,57 @@ Proof.
       apply stp_closed1 in stp2. assumption. split. apply stp_closed2 in stp1. assumption.
       intros. specialize (H1 dy vy). ev. split.
       intros. eapply H1. eapply unvv. eapply IHstp2; assumption.
-      intros. eapply unvv. eapply IHstp1; try assumption. eapply H2. assumption.
+      intros. eapply unvv. eapply IHstp1; try assumption. eapply H2. assumption. *)
    
   - Case "Sel1".
-    subst. specialize (IHstp _ _ LG RG LGHX RGHX).
-    rewrite val_type_unfold in V0.
-    specialize (RG _ _ H).
-    ev. rewrite H1 in V0.
-    assert (x1 (S kf) (df kf) vf). destruct vf; eauto. clear V0.
+    subst. specialize (IHstp _ _ _ _ LG RG LGHX RGHX).
+    specialize (RG _ _ H). ev.
+    eapply unvv in V0. rewrite val_type_unfold in V0.
+    destruct (indexr vf STO) as [[[|]]|]; try contradiction; eauto.
+    rewrite H3 in V0. 
 
-    eapply unvv in H2.
-    specialize (IHstp (S kf) x1 x0 H2).
+    specialize (IHstp _ H4).
     eapply unvv in IHstp.
     rewrite val_type_unfold in IHstp.
-    destruct x0. inversion IHstp. ev.
-    specialize (H6 df vf). ev.
-    eapply vv. eapply H7. eapply H3. 
+    destruct (indexr x0 STO) as [[[|]]|]; try contradiction. ev.
+    inversion H1. subst x1 x2. specialize (H7 [] vf). ev. simpl in H7.
+    (* IN THE CURRENT MODEL, WE'D HAVE TO SHOW vf <> x0 !!! *)
+
+    admit.
+    admit.
+
 
   - Case "Sel2".
-    subst. specialize (IHstp _ _ LG RG LGHX RGHX).
-    specialize (RG _ _ H).
-    ev. specialize (H2 (S kf)). eapply unvv in H2. 
-    specialize (IHstp _ _ _ H2).
+    subst. specialize (IHstp _ _ _ _ LG RG LGHX RGHX).
+    specialize (RG _ _ H). ev. 
+    eapply vv. rewrite val_type_unfold.
+    destruct (indexr vf STO) as [[[|]]|]; try contradiction; eauto.
+    rewrite H3. 
+    
+    specialize (IHstp _ H4).
     eapply unvv in IHstp.
     rewrite val_type_unfold in IHstp.
-    destruct x0. inversion IHstp. ev.
-    specialize (H5 df vf). ev.
-    
-    eapply vv. rewrite val_type_unfold. rewrite H1.
-    assert (x1 (S kf) (df kf) vf). eapply H5. eapply V0.
-    destruct vf; assumption.
-    
+    destruct (indexr x0 STO) as [[[|]]|]; try contradiction. ev.
+    inversion H1. subst x1 x2. specialize (H7 [] vf). ev. simpl in H7.
+    (* IN THE CURRENT MODEL, WE'D HAVE TO SHOW vf <> x0 !!! *)
+
+    admit.
+    admit.
+    admit. 
+
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+(*    
   - Case "selx".
     eapply vv. eapply V0.
 
@@ -2950,7 +3021,7 @@ Proof.
     specialize (IHstp1 _ _ LG RG LGHX RGHX kf df vf).
     specialize (IHstp2 _ _ LG RG LGHX RGHX kf df vf).
     eapply IHstp2. eapply unvv. eapply IHstp1. eapply V0.*)
-Qed.*)
+Qed.
 
 
 Lemma valtp_widen: forall kf df GH H G1 T1 T2,
@@ -3009,39 +3080,6 @@ Qed.
 
 
 
-Theorem vl_eq: forall x y: vl, {x=y}+{~x=y}.
-Proof.   admit. (* decide equality. NOTE: need induction measure / fixpoint *) 
-Qed.
-
-
-Lemma beq_nat_refl: forall n, beq_nat n n = true.
-Proof. admit. Qed. 
-
-Lemma valtp_extend_sto: forall n v vf df k l H1 T1 TX,
-  tsize_flat T1 < n ->
-  indexr l k = Some (v,vtp H1 [] TX k) ->                        
-  (vtp H1 [] T1 k l  ->
-  vtp H1 [] T1 ((vf,df)::k) l). 
-Proof.
-  induction n; intros. inversion H.
-  destruct T1. 
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - (* TMem *)
-    eapply vv. rewrite val_type_unfold. eapply unvv in H2. rewrite val_type_unfold in H2. 
-    assert (indexr l ((vf, df) :: k) = Some (v,(vtp H1 [] TX k))) as IX. admit. 
-    rewrite H0 in H2. rewrite IX. destruct v.
-    assumption.
-    ev. split. assumption. split. assumption.
-    intros. split. specialize (H4 (k1 ++ [(vf,df)]) ly). ev.
-    intros. rewrite <-app_assoc in H4. eapply (H4 H6).
-    specialize (H4 (k1 ++ [(vf,df)]) ly). ev.
-    intros. rewrite <-app_assoc in H5. eapply (H5 H6).
-  - admit. 
-  - admit. 
-Qed.
 
 
   
@@ -3081,7 +3119,13 @@ Proof.
       + admit.
       + admit.
       + admit.
-      + admit.
+      + rewrite val_type_unfold in H1.
+        assert (indexr (length f)
+                       (k1 ++ (vty venv0 (TSel v), val_type renv [] (TSel v) f) :: f) = Some (vty venv0 (TSel v), val_type renv [] (TSel v) f)). admit.
+        rewrite H2 in H1.
+        rewrite val_type_unfold. 
+
+        simpl in H0. rewrite beq_nat_refl in H0.
       + rewrite val_type_unfold in H0. simpl in H0. rewrite beq_nat_refl in H0.
         ev. specialize (H2 (length f)). ev. eapply H2.
         rewrite val_type_unfold. 
