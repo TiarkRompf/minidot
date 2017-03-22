@@ -1,7 +1,7 @@
 Type Soundness Proofs with Definitional Interpreters
 ====================================================
 
-Paper draft: [[pdf](http://cs.purdue.edu/~rompf/papers/amin-draft2016a.pdf)]
+Paper (POPL 2017): [[pdf](http://cs.purdue.edu/~rompf/papers/amin-popl17a.pdf)]
 
 The Coq scripts compile with the command `make`, using `coqc --version` 8.4pl6 (July 2015).
 
@@ -14,4 +14,4 @@ The Coq scripts compile with the command `make`, using `coqc --version` 8.4pl6 (
 - [D<:> from the System D Square](dsubsup.v)
 - [DOT in Big-Step](dot.v)
 
-For Step-by-Step Instructions, please see Appendix B of the paper (_Type Soundness Proofs with Definitional Interpreters_, forthcoming), which outlines a correspondence between the formalisms in the paper and in Coq. 
+For Step-by-Step Instructions, please see Appendix A of the paper (_Type Soundness Proofs with Definitional Interpreters_), which outlines a correspondence between the formalisms in the paper and in Coq. 
