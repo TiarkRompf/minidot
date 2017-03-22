@@ -12,7 +12,8 @@
 
    NEW IDEA (to be tried):
     different approximation scheme
-
+    t_var_unpack now works, is there anything else that breaks??
+    (see total9 for more experiments based on total5)
 *)
 
 
@@ -512,7 +513,9 @@ Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed.
-Next Obligation. simpl. unfold open. rewrite <-open_preserves_size. omega. Qed. (* TApp case: open *)
+Next Obligation. simpl. omega. Qed. 
+
+Next Obligation. simpl. unfold open. rewrite <-open_preserves_size. omega. Qed. (* TBind case: open *)
 
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0; inversion H1. Qed.
 Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0; inversion H1. Qed.
@@ -543,7 +546,7 @@ Lemma val_type_unfold: forall n env GH T dd v, val_type n env GH T dd v =
            val_type kx (approx_env a env) (approx_env a GH) T1 (jj kx) vx) ->
         exists (jj2:vseta) v, tevaln (vx::env1) y v /\
           (forall k (a: (S k < S n)),
-             val_type k (approx_env a env) (jj (S k)::(approx_env a GH)) (open (varH (length GH)) T2) (jj2 k) v)
+             val_type k (approx_env a env) (jj (k)::(approx_env a GH)) (open (varH (length GH)) T2) (jj2 (S k)) v)
 
     | vty env1 TX, TMem T1 T2 =>
       closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2 /\
@@ -556,12 +559,12 @@ Lemma val_type_unfold: forall n env GH T dd v, val_type n env GH T dd v =
 
     | _, TSel (varF x) =>
       match indexr x env with
-        | Some jj => jj dd v
+        | Some jj => jj (approx minus1 dd) v
         | _ => False
       end
     | _, TSel (varH x) =>
       match indexr x GH with
-        | Some jj => jj dd v
+        | Some jj => jj (approx minus1 dd) v
         | _ => False
       end
 
@@ -580,7 +583,7 @@ Lemma val_type_unfold: forall n env GH T dd v, val_type n env GH T dd v =
 
       *)
       
-      exists jj:vset (S n), approx minus1 jj = dd /\ val_type n env (jj::GH) (open (varH (length GH)) T1) dd v
+      val_type n env (dd::GH) (open (varH (length GH)) T1) dd v
     | _, TTop => 
       True
     | _,_ =>
@@ -594,7 +597,7 @@ Qed.
 
 
 (* this is just to accelerate Coq -- val_type in the goal is slooow *)
-Inductive vtp: forall n, list (vset (S n)) -> list (vset (S n)) -> ty -> vset n -> vl -> Prop :=
+Inductive vtp: forall n, list (vset (S n)) -> list (vset (S n)) -> ty -> vset (S n) -> vl -> Prop :=
 | vv: forall n G H T dd v, val_type n G H T dd v -> vtp n G H T dd v.
 
 
@@ -619,7 +622,7 @@ Definition R_env n venv genv tenv :=
     (exists jj vx,
        indexr x venv = Some vx /\
        indexr x genv = Some jj /\
-       vtp n genv [] TX (approx minus1 jj) vx).
+       vtp n genv [] TX jj vx).
 
 
 (* automation *)
@@ -654,7 +657,7 @@ Hint Resolve ex_intro.
 
 Lemma invert_var : forall x tenv T,
   has_type tenv (tvar x) T -> forall n venv renv, R_env n venv renv tenv ->
-  exists d v, tevaln venv (tvar x) v /\ indexr x venv = Some v /\ indexr x renv = Some d/\ val_type n renv [] T (approx minus1 d) v.
+  exists d v, tevaln venv (tvar x) v /\ indexr x venv = Some v /\ indexr x renv = Some d/\ val_type n renv [] T d v.
 Proof.
   intros ? ? ? W. remember (tvar x) as e.
   induction W; intros ? ? ? WFE; inversion Heqe; try subst x0.
@@ -672,7 +675,7 @@ Proof.
     split. assumption. split. assumption.
     rewrite val_type_unfold.
     destruct v. split. rewrite H3. assumption.
-    exists d. eapply unvv in V. admit. (* subst *)
+    eapply unvv in V. admit. (* subst *)
     admit. (* vty like vabs *)
 
   - Case "VarUnpack".
@@ -681,27 +684,20 @@ Proof.
     exists d. exists v. split. exists 0. intros. destruct n0. omega. simpl. rewrite I. reflexivity.
     split. assumption. split. assumption.
     eapply unvv in V. rewrite val_type_unfold in V. eapply unvv. 
-    destruct v. destruct V as [? [d2 V]].
+    destruct v. destruct V as [? V].
 
     (* HAVE *)
-    assert (val_type n renv [d2] (open (varH 0) T1) (approx minus1 d) (vabs l t t0)). apply V. clear H5. 
+    assert (val_type n renv [d] (open (varH 0) T1) d (vabs l t t0)). apply V. clear H5. 
     (* NEED *)
-    assert (val_type n renv [d] (open (varH 0) T1) (approx minus1 d) (vabs l t t0)).
-    
-    assert (open (varH 0) T1 = (TSel (varH 0))). admit. (* problem case *)
-    simpl in V. rewrite H5 in *. rewrite val_type_unfold in V.
-    rewrite val_type_unfold. simpl in V. simpl. destruct V as [V1 V2].
+    assert (val_type n renv [d] (open (varH 0) T1) d (vabs l t t0)). apply V. clear H5.
 
-    (* HAVE *)
-    assert (approx minus1 d2 = approx minus1 d). apply V1. clear H6.
-    assert (d2 (approx minus1 d) (vabs l t t0)). apply V2. clear H6.
-    (* NEED *)
-    assert (d (approx minus1 d) (vabs l t t0)). admit.
+    (* GOT IT !!! *)
 
-    (* UNCLEAR how to do this, unless we could derive d2 = d1 from (approx d2) = (approx d1) *)
-    admit. 
-    admit.
-    admit.
+    assert (val_type n renv [] (open (varF x) T1) d (vabs l t t0)). admit. (* subst *)
+
+    subst T1'. eapply vv. eapply H5.
+
+    admit. (* vty like vabs *)
     
   - Case "And".
     admit. 
