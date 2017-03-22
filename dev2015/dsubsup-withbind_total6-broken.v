@@ -711,16 +711,17 @@ Proof.
   - admit. 
 Qed.
 
-
+(* IMPORTANT BLOCKER *)
 
 (* need in main proof, t_typ case *)
-Lemma new_type: forall T1 venv renv STO vf df,
+Lemma new_type: forall T1 venv renv STO vf,
                   closed 0 0 (length renv) T1 ->
                   vf = vty venv T1 ->
-                  df = val_type renv [] T1 ((vf,df) :: STO) ->
-                  val_type renv [] (TMem T1 T1) ((vf, df) :: STO) (length STO).
+                  exists df, val_type renv [] (TMem T1 T1) ((vf, df) :: STO) (length STO).
 Proof.
   intros.
+  exists (val_type renv [] T1 ((vf, val_type renv [] TBot [])::STO)). 
+  
   rewrite val_type_unfold. simpl. rewrite <-beq_nat_refl.
   rewrite H0. split. assumption. split. assumption.
   intros. split.
@@ -3100,12 +3101,21 @@ Proof.
     eapply unvv. assumption.
 
   - Case "Typ".
+
+    rename f into STO.
+
+    remember (val_type renv [] TBot STO) as df0. 
+    
+    
+    assert (exists vf df, val_type renv [] (TMem T1 T1) ((vf, df) :: STO) (length STO)).
+    eexists. eexists. eapply new_type. admit.
+    reflexivity. reflexivity. 
     
     exists ((vty venv0 T1, val_type renv [] T1 f)::f).
     exists (length f).
     exists (vty venv0 T1).
     split. exists 1. intros. destruct n. omega. simpl. reflexivity.
-    rewrite val_type_unfold. simpl. rewrite beq_nat_refl.
+    rewrite val_type_unfold. simpl. rewrite <-beq_nat_refl.
     rewrite <-(wf_length2 venv0 renv env f) in H.
     split. assumption. split. assumption.
     intros. split.
