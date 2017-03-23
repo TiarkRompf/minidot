@@ -15,8 +15,6 @@
 
 (* Note: we need actual step-indexes, not depth fuel !!! *)
 
-(* TODO: V_down, R_down helper lemmas *)
-
 
 Require Export SfLib.
 
@@ -118,13 +116,39 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: (nat * option (option vl)) :
 end.
 
 
-(* TODO -- fix & adapt old code below *)
+(* some facts about evaluation. we need evaluation to be deterministic so that
+   we can "downgrade" our logical relation val_type below. instead of proving
+   this fact here, it could also be possible to encode it in the LR itself. *)
+
+Lemma eval_deterministic: forall m n, n < m -> forall H t n1 r j,
+  teval n H t = (n1, Some r) -> j >= n ->
+  teval j H t = (n1, Some r).
+Proof.
+  intros m. induction m. intros. inversion H.
+  intros. destruct n. inversion H1. destruct j. inversion H2.
+  destruct t; simpl; simpl in H1; try eauto.
+  remember (teval n H0 t1) as tf. destruct tf as [nf [rf|]].
+  rewrite IHm with (n:=n) (n1:=nf) (r:=rf).
+  destruct rf; try destruct v; try solve [inversion H1; eauto]. 
+  remember (teval (n-nf) H0 t2) as tx. destruct tx as [nx [rx|]].
+  rewrite IHm with (n:=n-nf) (n1:=nx) (r:=rx).
+  destruct rx; try solve [destruct v; inversion H1; eauto].
+  remember (teval (n-nf-nx) (v :: vabs l t :: l) t) as ty. destruct ty as [ny [ry|]].
+  rewrite IHm with (n:=n-nf-nx) (n1:=ny) (r:=ry).
+
+  eauto. omega. eauto. omega.
+  inversion H1. inversion H1.
+  eauto. omega. eauto. omega.
+  inversion H1.
+  omega. eauto. omega.
+  inversion H1.
+Qed.
 
 
 (* original termination and determinism def: *)
 (* Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some (Some v). *)
 
-(* if we want determinism, too, we'd need something like this: *)
+(* if we want to encode determinism directly, we'd need something like this: *)
 Definition tevaln nm env e n1 v :=
   teval nm env e = (nm, None) \/
   forall n, n > nm -> teval n env e = (n1, Some (Some v)).
@@ -132,19 +156,45 @@ Definition tevaln nm env e n1 v :=
 
 
 (* need to use Fixpoint because of positivity restriction *)
-Fixpoint val_type n v T : Prop := match v, T with
+Fixpoint val_type n v T {struct n}: Prop := match v, T with
 | vbool b, TBool => True
-| vabs env y, TFun T1 T2 =>
+| vabs env y, TFun T1 T2 =>  match n with | 0 => True | S n0 => 
   (* forall n nx, R n nx H tx vx T1 -> R (n-nx) ny (vx::vf::H) vy T2 *)
   (* NOTE: trouble b/c R does not include vx!! *)
-  forall nx vx, 
+  forall nx vx, nx <> 0 ->
+      val_type (S n0 - (S(nx-1))) vx T1 -> forall ry ny,
+      (* R nm (vx::(vabs env y)::env) y T2 *)
+      teval (n-nx) (vx::(vabs env y)::env) y = (ny, Some ry) ->
+      exists vy,
+        ny <> 0 /\ ry = Some vy /\ val_type (n0-(nx-1)-ny) vy T2
+  end                                          
+| _,_ => False
+end.
+
+(* unfolding lemma is handy, otherwise we need to destruct n.
+   we also take the opportunity to rewrite n/nx into saner form *)
+Lemma val_type_unfold: forall n v T, val_type n v T <-> match v, T with
+| vbool b, TBool => True
+| vabs env y, TFun T1 T2 =>  match n with | 0 => True | S n0 => 
+  (* forall n nx, R n nx H tx vx T1 -> R (n-nx) ny (vx::vf::H) vy T2 *)
+  (* NOTE: trouble b/c R does not include vx!! *)
+  forall nx vx, nx <> 0 ->
       val_type (n-nx) vx T1 -> forall ry ny,
       (* R nm (vx::(vabs env y)::env) y T2 *)
       teval (n-nx) (vx::(vabs env y)::env) y = (ny, Some ry) ->
       exists vy,
         ny <> 0 /\ ry = Some vy /\ val_type (n-nx-ny) vy T2
+  end                                          
 | _,_ => False
 end.
+Proof. 
+  intros. destruct n. simpl. split. eauto. eauto. 
+  simpl. destruct v; destruct T; try solve [split; eauto].
+  split. 
+  - intros. specialize (H nx vx H0). assert (n - (nx - 1) = S n -nx) as R. omega. rewrite R in H. eapply H; eauto.
+  - intros. specialize (H nx vx H0). destruct nx. destruct H0. eauto.
+    assert ((S nx - 1) = nx) as R. omega. rewrite R. eapply H. rewrite R in H1. eapply H1. eauto. 
+Qed.
 
 Definition R n H t T := 
   (* tevaln H t v /\ val_type v T. *)
@@ -170,14 +220,37 @@ Hint Constructors list.
 
 
 Lemma V_down: forall n j v T, j <= n -> val_type n v T -> val_type j v T.
-Proof. admit. Qed.
+Proof.
+  intros n. induction n.
+  intros. destruct j. eauto. inversion H.
+  intros.
+  case_eq (eq_nat_dec j (S n)); intros E _. subst j. eauto.
+  assert (val_type n v T). {
+    rewrite val_type_unfold. rewrite val_type_unfold in H0. 
+    destruct T; destruct v; try eauto. 
+    destruct n. eauto. intros. eapply (H0 (S nx) vx _ H2 ry ny). eauto. 
+  }
+  eapply IHn. omega. eauto.
+Grab Existential Variables.
+  omega.
+Qed.
 
 Lemma R_down: forall n j H t T, j <= n -> R n H t T -> R j H t T.
-Proof. admit. Qed.
-
+Proof.
+  intros.
+  unfold R. unfold R in H1. intros. eapply eval_deterministic in H2.
+  specialize (H1 r n1 H2).
+  destruct H1 as [v [N [R ?]]].
+  eapply V_down in H1. eauto. omega. eauto. omega. 
+Qed.
+                  
 Lemma R_env_down: forall n j H G, j <= n -> R_env n H G -> R_env j H G.
-Proof. admit. Qed.
-
+Proof.
+  intros.
+  unfold R_env. unfold R_env in H1. destruct H1.
+  split. eauto. intros.
+  eapply R_down in H2. eauto. eauto. eauto.
+Qed.
 
 
 (* if well-typed, then result is an actual value (not stuck and not a timeout),
@@ -197,10 +270,10 @@ Proof.
   inversion W; intros ? WFE.
   
   - Case "True". 
-    eexists. simpl in H2. inversion H2. repeat split; simpl; eauto.
+    eexists. simpl in H2. inversion H2. repeat split; try rewrite val_type_unfold; eauto.
 
   - Case "False".
-    eexists. simpl in H2. inversion H2. repeat split; simpl; eauto.
+    eexists. simpl in H2. inversion H2. repeat split; try rewrite val_type_unfold; eauto.
 
   - Case "Var".
     eapply WFE. eauto.
@@ -218,7 +291,7 @@ Proof.
     destruct (RF rf nf) as [vf [? [EQVF VTF]]]. eauto.
     subst rf.
     
-    simpl in VTF. destruct vf. contradiction.
+    rewrite val_type_unfold in VTF. destruct vf. contradiction.
     
 
     assert (R (n-nf) venv0 x T1) as RX. eapply IHnn. omega. eauto. eauto.
@@ -234,7 +307,9 @@ Proof.
     destruct EY as [ny [ry|]]; try solve [inversion EVY].
     inversion EVY. subst r n1. clear EVY.
 
-    specialize (VTF _ _ VTX _ _ HeqEY).
+    remember (n-nf) as nnf. destruct nnf. inversion HeqEX. rewrite Heqnnf in *. clear Heqnnf. (* can't be zero *)
+    
+    specialize (VTF _ _ H5 VTX _ _ HeqEY).
     assert ((n - nf - nx - ny = S n - S (nf + nx + ny))) as RW. omega.
     rewrite <-RW.
     destruct VTF as [? [? [? ?]]]. eexists. repeat split; eauto. 
@@ -254,11 +329,12 @@ Proof.
     assert (forall nm1, nm1 <= n -> forall nm, nm <= nm1 ->
                        val_type nm (vabs venv0 y) (TFun T1 T2)) as IND.
     intros nm1. induction nm1.
-    (* z *) simpl. intros. destruct nm. solve [inversion H9]. solve [inversion H5].
+    (* z *) simpl. intros. destruct nm. simpl. eauto. solve [inversion H5].
     (* s n *) intros ? ? ?. 
 
     (* goal val_type n (vabs venv0 y) (TFun T1 T2) *)
-    simpl. intros ? ? ?.
+    destruct nm; rewrite val_type_unfold. eauto.
+    intros ? ? ? ?.
     
     eapply IHnn. omega. eauto. 
 
@@ -269,7 +345,7 @@ Proof.
       intros ? ? IX.
       
       unfold R. intros ? ? EVX.
-      remember (nm-nx) as nx2.
+      remember (S nm-nx) as nx2.
       destruct nx2. solve [inversion EVX].
       simpl in EVX. destruct WFE as [L WX].
       simpl in IX. rewrite <-L in IX.

@@ -12,8 +12,23 @@ TODO:
  - add tty
  - add sel1, sel2
  - make TMem translucent
+ - make TFun dependent (x)
  - make TSel take a term instead of a nat
- - make TFun dependent
+ ------------
+ - allow guarded recursion (x) 
+
+TECHNICAL PROBLEMS:
+ - circularity between stp2 and val_type0 ?
+ - recursive types (once we add them)
+
+A: scale up to D<>
+     dependent functions
+     sel1, sel2
+B: add interesting features:
+     full paths 
+     singleton types
+     guarded recursion
+     capabilities
 *)
 
 

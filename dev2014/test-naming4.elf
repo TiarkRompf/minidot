@@ -1,0 +1,718 @@
+nat : type.  %name nat N.
+
+z : nat.
+s : nat -> nat.
+
+add : nat -> nat -> nat -> type. %name add A.
+add/z: add z N N.
+add/s: add (s N1) N2 (s N3) <- add N1 N2 N3.
+
+
+% ---------- types ---------- %
+
+tp : type.  %name tp T.
+
+top     : tp.
+tp0     : tp.
+tp1     : tp.
+tp2     : tp.
+tp3     : tp.
+tp4     : tp.
+tp5     : tp.
+arrow   : tp -> tp -> tp.
+
+
+exp : type. %name exp E.
+
+ref     : nat -> exp.                % x pre-type index (DeBruijn)
+var     : nat -> exp.                % x
+lam     : tp -> exp -> exp.          % { z:T => B }
+
+app     : exp -> exp -> exp.
+
+
+tenv: nat -> type. %name tenv G.
+tnil: tenv z.
+tcons: tp -> tenv N -> tenv (s N).
+
+
+tsize: tenv N -> nat -> type.
+tsize/z : tsize tnil z.
+tsize/s : tsize (tcons T G) (s N) <- tsize G N.
+
+
+tsize-get: {N} {G:tenv N} tsize G N -> type.
+%mode tsize-get +N +G -S.
+- : tsize-get _ tnil tsize/z.
+- : tsize-get (s N) (tcons _ G) (tsize/s S) <- tsize-get N G S.
+%worlds () (tsize-get _ _ _).
+%total (A) (tsize-get _ A _).
+
+
+tlookup : tenv N -> nat -> nat -> tp -> type.
+tlookup/s : tlookup (tcons T DS) (s N1) N2 T' <- tlookup DS N1 N2 T'.
+tlookup/h : tlookup (tcons T DS) z N2 T <- tsize DS N2.
+
+
+%{
+
+  X + Y = N-1
+
+  tlookup N G Y X T ->
+
+  tlookup (s N) (tcons G) (s N1) N2 T  <- tlookup N G N1 N2 T
+
+  tlookup (s N) (tcons G) z N T
+}%
+
+
+%query 1 1 tlookup (tcons (arrow top top) (tcons top tnil)) _ z top.
+%query 1 1 tlookup (tcons (arrow top top) (tcons top tnil)) z _ (arrow top top).
+
+
+
+%{
+
+%query 1 1 wft2 z     z tnil (lam T0 (lam T1 (ref (s z)))) E T.
+
+%query 1 1 wft2 (s z) z tnil (lam T0 (lam T1 (ref (s z)))) E T.
+
+
+e10 = (lam T0 (lam T1 (ref (s z)))).
+e11 = (lam T0 (lam T1 (var z))).
+e12 = (lam T0 (lam T1 (var z))).
+
+%query 1 1 wft2 ((z))     z tnil e10 e10 T.
+%query 1 1 wft2 ((s z))   z tnil e10 e11 T.
+%query 1 1 wft2 (s (s z)) z tnil e10 e12 T.
+
+
+e20 = (lam T0 (lam T1 (ref z))).
+e21 = (lam T0 (lam T1 (ref z))).
+e22 = (lam T0 (lam T1 (var (s z)))).
+
+%query 1 1 wft2 ((z))     z tnil e20 e20 T.
+%query 1 1 wft2 ((s z))   z tnil e20 e21 T.
+%query 1 1 wft2 (s (s z)) z tnil e20 e22 T.
+
+}%
+
+
+
+
+splice: {N0} tenv N0 -> tp -> {N1} tenv N1 -> tenv (s N1) -> type.
+splice/refl : splice N G Z N G (tcons Z G).
+splice/ext  : splice N G0 Z (s N1) (tcons T G1) (tcons T G2) <- splice N G0 Z N1 G1 G2.
+
+
+%{
+
+prove a bunch of contradictions, mostly out of bounds indexing
+
+}%
+
+
+add-z:
+      {N}
+      {S:add N z N}
+      type.
+%mode add-z +G -B.
+- : add-z z add/z.
+- : add-z (s N) (add/s S) <- add-z N S.
+%worlds () (add-z _ _).
+%total (A) (add-z A _).
+
+add-s:
+      {S:add N1 N2 N3}
+      {S:add N1 (s N2) (s N3)}
+      type.
+%mode add-s +G -B.
+- : add-s add/z add/z.
+- : add-s (add/s S) (add/s S') <- add-s S S'.
+%worlds () (add-s _ _).
+%total (A) (add-s A _).
+
+add-commute:
+      {S:add N1 N2 N3}
+      {S:add N2 N1 N3}
+      type.
+%mode add-commute +G -B.
+- : add-commute add/z A <- add-z _ A.
+- : add-commute (add/s A) A'' <- add-commute A A' <- add-s A' A''.
+%worlds () (add-commute _ _).
+%total (A) (add-commute A _).
+
+
+false: type.
+
+add-false0:
+    add N1 (s _) N1 ->
+    false -> 
+    type.
+%mode add-false0 +G -F.
+- : add-false0 (add/s S) F <- add-false0 S F.
+%worlds () (add-false0 _ _).
+%total (A) (add-false0 A _).
+
+add-false:
+  {A3:add N1 D3 N2}
+  {A2:add (s N2) D2 N3}
+  {A1:add N3 D1 N1}
+  false ->
+  type.
+%mode add-false +A +B +C -F.
+- : add-false (add/s A3) (add/s A2) (add/s A1) F <- add-false A3 A2 A1 F.
+%worlds () (add-false _ _ _ _).
+%total (A) (add-false A _ _ _).
+
+
+add-false1:
+  {A':add N2 D N1}
+  {A:add (s N1) D' N2}
+  false ->
+  type.
+%mode add-false1 +G +A -B.
+- : add-false1 (add/s S) (add/s S') F <- add-false1 S S' F.
+%worlds () (add-false1 _ _ _).
+%total (A) (add-false1 A _ _).
+
+add-false2:
+  {A':add D N2 N1}
+  {A:add D' (s N1) N2}
+  false ->
+  type.
+%mode add-false2 +G +A -B.
+- : add-false2 A1 A2 F 
+ <- add-commute A1 A1' 
+ <- add-commute A2 A2' 
+ <- add-false1 A1' A2' F.
+%worlds () (add-false2 _ _ _).
+%total (A) (add-false2 A _ _).
+
+add-comm-false:
+  {A':add N2 D N1}
+  {A:add D' (s N1) N2}
+  false ->
+  type.
+%mode add-comm-false +G +A -B.
+- : add-comm-false A A'' F <- add-commute A A' <- add-false2 A' A'' F.
+%worlds () (add-comm-false _ _ _).
+%total (A) (add-comm-false A _ _).
+
+
+
+size-bound:
+      {G2:tenv N1}
+      {L:tsize G2 N2}
+      {S:add N2 z N1}
+      type.
+%mode size-bound +G +L -A.
+
+- : size-bound _ (tsize/s S) (add/s A) <- size-bound _ S A.
+- : size-bound _ (tsize/z) (add/z).
+
+%worlds () (size-bound _ _ _).
+%total (A) (size-bound _ A _).
+
+
+lookup-bound:
+      {G2:tenv N1}
+      {L:tlookup G2 N2 N3 T3}
+      {S:add (s D) N3 N1}
+      type.
+%mode lookup-bound +G +L -F.
+
+- : lookup-bound _ (tlookup/s S) (add/s A) 
+        <- lookup-bound _ S A.
+- : lookup-bound _ (tlookup/h S) (add/s A') 
+        <- size-bound _ S A 
+        <- add-commute A A'.
+
+%worlds () (lookup-bound _ _ _).
+%total (A) (lookup-bound _ A _).
+
+
+lookup-false:
+      {G2:tenv N1}
+      {L:tlookup G2 N2 N3 T3}
+      {S:add D N1 N3}
+      false ->
+      type.
+%mode lookup-false +G +L +A -F.
+
+- : lookup-false _ (tlookup/s L) A F 
+        <- lookup-bound _ L A'
+        <- add-false2 A' A F.
+
+- : lookup-false _ (tlookup/h S) A F 
+        <- size-bound _ S A' 
+        <- add-commute A' A''
+        <- add-false2 A'' A F.
+
+%worlds () (lookup-false _ _ _ _).
+%total (A) (lookup-false _ A _ _).
+
+
+contra-lookup:
+      {G2}{Y}{X}{T}
+      false ->
+      tlookup G2 Y X T ->
+      type.
+%mode contra-lookup +G +Y +X +T +F -L.
+%worlds () (contra-lookup _ _ _ _ _ _).
+%total (A) (contra-lookup A _ _ _ _ _).
+
+
+size-from-splice:
+      splice N G0 Z N2 G2 G2' ->
+      tsize G2 N3 ->
+      tsize G2' (s N3) ->
+      type.
+%mode size-from-splice +G +A -C.
+
+-: size-from-splice splice/refl S (tsize/s S).
+-: size-from-splice (splice/ext SP) (tsize/s S) (tsize/s S')
+    <- size-from-splice SP S S'.
+
+%worlds () (size-from-splice _ _ _).
+%total (A) (size-from-splice A _ _).
+
+xx1:
+  {A:add D (s N3) N1}
+  {A:add (s D) N3 N1}
+  type.
+%mode xx1 +SP -B.
+- : xx1 add/z (add/s add/z).
+- : xx1 (add/s S) (add/s S') <- xx1 S S'.
+
+%worlds () (xx1 _ _).
+%total (A) (xx1 A _).
+
+xx1a:
+  {A2:add (s N1) N2 N2}
+  false ->
+  type.
+%mode xx1a +A -F.
+- : xx1a A F <- add-commute A A' <- add-false0 A' F.
+%worlds () (xx1a _ _).
+%total (A) (xx1a A _).
+
+xx1b:
+  {A2:add (s N1) N2 N3}
+  {A1:add z N2 N3}
+  false ->
+  type.
+%mode xx1b +A +B -F.
+- : xx1b A1 add/z F <- xx1a A1 F.
+%worlds () (xx1b _ _ _).
+%total (A) (xx1b A _ _).
+
+xx2:
+  {G1:tenv N1}
+  {S:tsize G1 N2}
+  {A:add N3 (s N2) N1}
+  false ->
+  type.
+%mode xx2 +G +S +A -F.
+- : xx2 G S A F
+  <- size-bound G S A'
+  <- add-commute A' A2
+  <- xx1 A A1
+  <- xx1b A1 A2 F.
+
+%worlds () (xx2 _ _ _ _).
+%total (A) (xx2 A _ _ _).
+
+
+splice-size-false:
+  {SP:splice N1 G1 T1 N2 G2 G3} 
+  {S:tsize G2 N3}
+  {A:add (s D) N3 N1}
+  false ->
+  type.
+%mode splice-size-false +SP +L +A -F.
+
+- : splice-size-false (splice/ext SP) (tsize/s S) A F 
+      <- xx1 A A'
+      <- splice-size-false SP S A' F.
+
+- : splice-size-false splice/refl (tsize/s S) (add/s A) F 
+      <- xx2 _ S A F.
+
+%worlds () (splice-size-false _ _ _ _).
+%total (A) (splice-size-false A _ _ _).
+
+
+%% splice preserves ref lookup (N < X)
+lookup-splice-ref: 
+      splice N G0 Z N2 G2 G2' ->
+      tlookup G2 Y X T ->
+      add N _ X ->
+      tlookup G2' Y (s X) T ->
+      type.
+%mode lookup-splice-ref +SP +L +A -L'.
+
+
+- : lookup-splice-ref splice/refl L A L' % impossible: no lookup at N
+        <- add-commute A A'
+        <- lookup-false _ L A' F
+        <- contra-lookup _ _ _ _ F L'.
+
+- : lookup-splice-ref (splice/ext SP) (tlookup/h S) A (tlookup/h S')
+        <- size-from-splice SP S S'. %% uniqueness of size
+
+- : lookup-splice-ref (splice/ext SP) (tlookup/s L) S (tlookup/s L') 
+        <- lookup-splice-ref SP L S L'.
+
+%worlds () (lookup-splice-ref _ _ _ _).
+%total (A) (lookup-splice-ref _ A _ _).
+
+%% splice preserves var lookup (X < N)
+lookup-splice-var: 
+      splice N G0 Z N2 G2 G2' ->
+      tlookup G2 Y X T ->
+      add (s _) X N ->
+      tlookup G2' (s Y) X T ->
+      type.
+%mode lookup-splice-var +SP +L +A -L'.
+
+- : lookup-splice-var splice/refl L A (tlookup/s L).
+
+- : lookup-splice-var (splice/ext SP) (tlookup/s L) A (tlookup/s L') 
+        <- lookup-splice-var SP L A L'.
+
+- : lookup-splice-var (splice/ext SP) (tlookup/h S) A L'
+        <- splice-size-false SP S A F
+        <- contra-lookup _ _ _ _ F L'.
+
+%worlds () (lookup-splice-var _ _ _ _).
+%total (A) (lookup-splice-var _ A _ _).
+
+
+
+
+
+% ---------- second version ---------- %
+
+%% move term from index I to I + D = O
+%% smaller than I is free (DeBruijn level), larger than I bound (DeBruijn index)
+
+move  : {I:nat}{D:nat}{O:nat} {N} tenv N -> exp -> exp -> type.
+
+move/ref   : move     I D O (s N) G (ref Y) (ref Y)  % I <= O <= X --> stay ref
+           <- add X Y N
+           <- add I D O
+           <- add O _ X
+           .
+
+move/op    : move     I D O (s N) G (ref Y) (var X)   % I <= X < O --> open
+           <- add X Y N
+           <- add I D O
+           <- add I _ X
+           <- add X (s _) O
+           .
+
+move/var   : move     I D O (s N) G (var X) (var X)   % X < I <= O --> var ok
+           <- add Y X N
+           <- add I D O
+           <- add (s _) X I  % X < I <= O
+           .
+
+
+move/lam    : move     I D O N G (lam T E) (lam T EN)
+           <- move I D O (s N) (tcons T G) E EN
+           .
+
+move/app   : move    I D O N G (app L1 U1) (app L1' U1')
+           <- move   I D O N G U1 U1' 
+           <- move   I D O N G L1 L1' 
+            .
+
+
+%query 1 *
+  move z (s z) (s z) z tnil 
+  (lam T0 (lam T1 (ref (s z)))) 
+%%  
+  (lam T0 (lam T1 (var z))).
+
+%query 1 *
+  move z (s z) (s z) z tnil 
+  (lam T0 (lam T1 (ref z))) 
+%%  
+  (lam T0 (lam T1 (ref z))).
+
+
+
+wft  : {N} tenv N -> exp -> tp -> type.
+
+wft/var   : wft     N G (var X) T
+           <- tlookup G Y X T
+           % <- add (s _) X N
+           .
+
+wft/lam    : wft     N G (lam T E) (arrow T T')
+           <- move    N (s z) (s N) (s N) (tcons T G) E EN
+           <- wft     (s N) (tcons T G) EN T'
+           % <- wft2    (s N) (tcons T G) E T'    % wf
+           .
+
+wft/app   : wft      N G (app L1 U1) T2
+           <- wft    N G U1 T1
+           <- wft    N G L1 (arrow T1 T2)
+            .
+
+
+
+%{
+%query 1 1 open z     z tnil (lam T0 (lam T1 (ref (s z)))) E T.
+
+%query 1 1 open (s z) z tnil (lam T0 (lam T1 (ref (s z)))) E T.
+
+
+e10 = (lam T0 (lam T1 (ref (s z)))).
+e11 = (lam T0 (lam T1 (var z))).
+e12 = (lam T0 (lam T1 (var z))).
+
+%query 1 1 open ((z))     z tnil e10 e10 T.
+%query 1 1 open ((s z))   z tnil e10 e11 T.
+%query 1 1 open (s (s z)) z tnil e10 e12 T.
+
+
+e20 = (lam T0 (lam T1 (ref z))).
+e21 = (lam T0 (lam T1 (ref z))).
+e22 = (lam T0 (lam T1 (var (s z)))).
+
+%query 1 1 open ((z))     z tnil e20 e20 T.
+%query 1 1 open ((s z))   z tnil e20 e21 T.
+%query 1 1 open (s (s z)) z tnil e20 e22 T.
+}%
+
+
+
+
+
+add-trans: add N1 D1 N2 -> add N2 D2 N3 -> add N1 D12 N3 -> type.
+%mode add-trans +A +B -C.
+
+- : add-trans add/z A add/z.
+- : add-trans (add/s A1) (add/s A2) (add/s A3) <- add-trans A1 A2 A3.
+
+%worlds () (add-trans _ _ _).
+%total (A) (add-trans A _ _).
+
+add-s-invert: add N1 (s N2) (s N3) -> add N1 N2 N3 -> add N3 (s z) (s N3) -> type.
+%mode add-s-invert +A -B -C.
+
+- : add-s-invert A B C
+      <- add-commute A (add/s A')
+      <- add-commute A' B
+      <- add-commute (add/s add/z) C.
+
+%worlds () (add-s-invert _ _ _).
+%total (A) (add-s-invert A _ _).
+
+
+
+
+
+comb-move:
+      {S1:move I D O N G E4 E5}
+      {S2:move O (s z) (s O) N G E5 E2}
+      {S12:move I (s D) (s O) N G E4 E2}
+      type.
+
+%mode comb-move +S1 +S2 -S12.
+
+- : comb-move (move/ref AOX AIO AXN) (move/ref AOX' _ AXN') (move/ref AOX' AIO' AXN') 
+      <- add-s AIO AIO'.
+
+- : comb-move (move/ref AOX AIO AXN) (move/op AXO' AIX _ AXN') (move/op AXO' AIX' AIO' AXN') 
+      <- add-s AIO AIO' 
+      <- add-trans AIO AIX AIX'.
+
+- : comb-move (move/op AXO AIX AIO AXN) (move/var AXI _ AXN') (move/op AXO' AIX AIO' AXN) 
+      <- add-s AIO AIO' 
+      <- add-s AXO AXO'.
+
+- : comb-move (move/var AXI AIO AXN) (move/var _ _ _) (move/var AXI AIO' AXN) 
+      <- add-s AIO AIO'.
+
+- : comb-move (move/lam S1) (move/lam S2) (move/lam S12)
+      <- comb-move S1 S2 S12.
+
+- : comb-move (move/app S1 S2) (move/app S3 S4) (move/app S13 S24)
+      <- comb-move S1 S3 S13
+      <- comb-move S2 S4 S24.
+
+%worlds () (comb-move _ _ _).
+%total (A) (comb-move A _ _).
+
+
+
+
+add-xx1:
+      {AXI:add (s N6) N5 (s N2)} 
+      {AIO':add (s N2) N3 (s N1)}
+      {AXI1:add (s N8) N5 (s N1)}
+      type.
+%mode add-xx1 +A +B -C.
+
+- : add-xx1 (add/s A1) (add/s A2) (add/s A12)
+      <- add-commute A1 A1'
+      <- add-trans A1' A2 A12'
+      <- add-commute A12' A12
+      .
+
+%worlds () (add-xx1 _ _ _).
+%total (A) (add-xx1 A _ _).
+
+add-xx3:
+      {AXO':add z N1 N2}
+      {AOX':add z N2 N1}
+      type.
+%mode add-xx3 +A -C.
+
+- : add-xx3 add/z add/z.
+
+%worlds () (add-xx3 _ _).
+%total (A) (add-xx3 A _).
+
+add-xx2:
+      {AXO':add N1 z N2}
+      {AOX':add N2 z N1}
+      type.
+%mode add-xx2 +A -C.
+
+- : add-xx2 A A'
+      <- add-commute A A''
+      <- add-xx3 A'' A'''
+      <- add-commute A''' A'.
+
+%worlds () (add-xx2 _ _).
+%total (A) (add-xx2 A _).
+
+
+
+split-move:
+      {S12':move (I) (s D) (s (s O)) N2 G E1 E3}
+      {S1':move (I) D (s O) N2 G E1 E5}
+      {S2':move (s (O)) (s z) (s (s O)) N2 G E5 E3}
+      type.
+
+%mode split-move +S12 -S1 -S2.
+
+- : split-move (move/ref (add/s AOX) AIO AXN) 
+               (move/ref AOX' AIO' AXN) (move/ref (add/s AOX) AIO1 AXN)
+      <- add-s-invert AIO AIO' AIO1
+      <- add-s AOX AOX'
+      .
+
+- : split-move (move/var AXI AIO AXN) 
+               (move/var AXI AIO' AXN) (move/var AXI1 AIO1 AXN)
+      <- add-s-invert AIO AIO' AIO1
+      <- add-xx1 AXI AIO' AXI1
+      .
+
+- : split-move (move/op AXO AIX AIO AXN) 
+               (move/op AXO' AIX AIO' AXN) (move/var AXI1 AIO1 AXN1)
+      <- add-s-invert AXO AXO' AXO1 %% non-exhaustive!
+      <- add-s-invert AIO AIO' AIO1
+      <- add-commute AXN AXN1
+      <- add-commute AXO' AXI1
+      .
+
+- : split-move (move/op AXO AIX AIO AXN) 
+               (move/ref AOX' AIO' AXN) (move/op AXO AOX' AIO1 AXN)
+      <- add-s-invert AIO AIO' AIO1
+      <- add-s-invert AXO AXO' AXO1
+      <- add-xx2 AXO' AOX'
+      .
+
+
+- : split-move (move/lam S12) (move/lam S1) (move/lam S2)
+      <- split-move S12 S1 S2.
+
+- : split-move (move/app S13 S24) (move/app S1 S2) (move/app S3 S4)
+      <- split-move S13 S1 S3
+      <- split-move S24 S2 S4.
+
+%worlds () (split-move _ _ _).
+%total (A) (split-move A _ _).
+
+
+
+
+%{
+given
+
+  move N (s N) (tcons T G) E EN
+  wft (s N) (tcons T G) EN T'
+
+extend to G'
+
+  move N' (s N') (tcons T G') E EN'
+  wft (s N') (tcons T G') EN' T'
+}%
+
+
+extend-splice-wf:
+      splice N G0 Z (N2) G2 G2' ->
+      {S2 :move N D (N2) (N2) G2 E1 E1'}
+      {W2 :wft (N2) G2 E1' U}
+      {S2':move (s N) D (s (N2)) (s (N2)) G2' E1 E1''}
+      {W2':wft (s (N2)) G2' E1'' U}
+      type.
+
+%mode extend-splice-wf +SP +S1 +W1 -S2 -W2.
+
+- : extend-splice-wf SP (move/op AO AI AD AX) (wft/var L) 
+                        (move/op (add/s AO) (add/s AI) (add/s AD) (add/s AX)) (wft/var L')
+      <- lookup-splice-ref SP L AI L'.
+
+- : extend-splice-wf SP (move/var AO AD AX) (wft/var L) 
+                        (move/var (add/s AO) (add/s AD) (add/s AX)) (wft/var L')
+      <- lookup-splice-var SP L AO L'. 
+
+- : extend-splice-wf SP (move/lam S1) (wft/lam W S2) (move/lam S1') (wft/lam W' S2')
+      <- comb-move S1 S2 S12
+      <- extend-splice-wf (splice/ext SP) S12 W S12' W'
+      <- split-move S12' S1' S2'
+      .
+
+- : extend-splice-wf SP (move/app S1 S2) (wft/app W1 W2) (move/app S1' S2') (wft/app W1' W2')
+      <- extend-splice-wf SP S1 W1 S1' W1'
+      <- extend-splice-wf SP S2 W2 S2' W2'
+      .
+
+%worlds () (extend-splice-wf _ _ _ _ _).
+%total (A) (extend-splice-wf _ _ A _ _).
+
+
+
+extend-wf:
+      {S2 :wft N2 G2 E1 U}
+      {T}
+      {S2':wft (s N2) (tcons T G2) E1 U}
+      type.
+
+%mode extend-wf +SP +W1 -W2.
+
+- : extend-wf (wft/var L) T (wft/var (tlookup/s L)).
+
+- : extend-wf (wft/lam W S2) T (wft/lam W' S2')
+      <- extend-splice-wf (splice/ext splice/refl) S2 W S2' W'.
+
+- : extend-wf (wft/app S1 S2) T (wft/app S1' S2')
+     <- extend-wf S1 _ S1'
+     <- extend-wf S2 _ S2'.
+
+%worlds () (extend-wf _ _ _).
+%total (A) (extend-wf A _ _).
+
+
+% TODO:
+% 1) + extract-wf (here)
+% 2) - types (here)
+% 3) - integrate with mud/dot-ext1.elf
+
+

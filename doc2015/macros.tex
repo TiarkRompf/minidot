@@ -1,0 +1,136 @@
+% ----- listings
+
+\definecolor{ckeyword}{HTML}{7F0055}
+\definecolor{ccomment}{HTML}{3F7F5F}
+\definecolor{cstring}{HTML}{2A0099}
+% name 7F0055
+
+\lstdefinelanguage{Scala}%
+{morekeywords={abstract,%
+  case,catch,char,class,%
+  def,else,extends,final,finally,for,forSome,%
+  if,import,implicit,%
+  match,module,%
+  new,null,%
+  object,override,%
+  package,private,protected,public,%
+  for,public,return,super,sealed,%
+  this,throw,trait,try,type,%
+  val,var,%
+  with,while,%
+  yield%
+  },%
+  sensitive,%
+  morecomment=[l]//,%
+  morecomment=[s]{/*}{*/},%
+  morestring=[b]",%
+  morestring=[b]',%
+  showstringspaces=false%
+}[keywords,comments,strings]%
+
+\lstset{language=Scala,%
+  mathescape=true,%
+%  columns=[c]fixed,%
+%  basewidth={0.5em, 0.40em},%
+%  aboveskip=1pt,%\smallskipamount,
+%  belowskip=1pt,%\negsmallskipamount,
+  lineskip=-0.5pt,
+  basewidth={0.54em, 0.4em},%
+%  backgroundcolor=\color{listingbg},
+  basicstyle=\footnotesize\ttfamily,
+  keywordstyle={\color{ckeyword}\ttfamily\bfseries},
+  commentstyle={\color{ccomment}\itshape},
+  stringstyle={\color{cstring}},
+  xleftmargin=1ex
+}
+
+% class EclipseStyle(Style):
+%     """
+%     Style similar to the style used in Eclipse IDEs. (Jevon)
+%     """
+
+%     default_style = ''
+
+%     styles = {
+%         Whitespace:             '#bbbbbb',
+
+%         Comment:                   "nobold #3F7F5F",    # 63,127,95
+%       Comment.Multiline:             "#3F5FBF",     # assume all multiline comments = Javadoc comments, 63,95,191
+%     Comment.Preproc:           'italic #666',   # e.g. XML preprocessing instruction
+  
+%         # Comment.Preproc:           "noitalic",
+
+%         Keyword:                   "bold #7F0055",    # 127,0,85
+%         Keyword.Pseudo:            "#f00",
+%         Keyword.Type:              "bold #7F0055",    # e.g. int
+
+%         Operator:                   "#000",       # e.g. +, -, (, )
+%         # Operator.Word:             "#00f",
+
+%     Number:                 "#000",
+
+% #     Name:                      "nobold #000",
+%         Name.Class:                "nobold #000",
+%         Name.Namespace:            "nobold #000",
+%         Name.Exception:            "nobold #000",
+%         Name.Entity:               "nobold #000",
+%         Name.Tag:                  "bold #7F0055",    # XML/HTML tags - 127,0,85
+%       Name.Function:             "nobold #000",
+%         Name.Attribute:            "nobold #000",     # XML/HTML attributes
+%         Name.Decorator:            "nobold #646464",      # @Annotations - 100,100,100
+    
+%         String:                    "#2A00FF",   # 42,0,255
+%         #String.Interpol:           "bold",
+%         #String.Escape:             "bold",
+
+%         Generic.Heading:           "bold",
+%         Generic.Subheading:        "bold",
+%         Generic.Emph:              "italic",
+%         Generic.Strong:            "bold",
+%         Generic.Prompt:            "bold",
+        
+%         Error:                     "border:#FF0000"
+%     }
+
+
+
+\definecolor{listingbg}{RGB}{240, 240, 240}
+
+\newcommand{\commentstyle}[1]{\slseries{#1}}
+\newcommand{\keywordstyle}[1]{\bfseries{#1}}
+
+\lstnewenvironment{listing}{\lstset{language=Scala}}{}
+\lstnewenvironment{listingtiny}{\lstset{language=Scala,basicstyle=\scriptsize\ttfamily}}{}
+
+\lstnewenvironment{minted}{\lstset{language=Scala}}{}
+
+
+\newcommand{\code}[1]{\lstinline[language=Scala,columns=fixed,basicstyle=\ttfamily]|#1|}
+
+\newcommand{\mint}[1]{\lstinline[language=Scala,columns=fixed,basicstyle=\ttfamily]|#1|}
+
+
+
+% ----- packed items, so we don't waste space
+\newenvironment{sitemize}{\vspace{-4pt}
+\begin{itemize}
+  \setlength{\itemsep}{1pt}
+  \setlength{\parskip}{0pt}
+  \setlength{\parsep}{0pt}
+}{\end{itemize}}
+
+\newenvironment{senumerate}{
+\begin{enumerate}
+  \setlength{\itemsep}{1pt}
+  \setlength{\parskip}{0pt}
+  \setlength{\parsep}{0pt}
+}{\end{enumerate}}
+
+\newcommand{\mypar}[1]{{\bf #1.}}
+
+% ----- comments and todo
+
+%\newcommand{\note}[1]{{\color{red}[#1]}}
+%\newcommand{\todo}[1]{\note{TODO: #1}}
+
+%\newcommand{\comment}[1]{}
