@@ -9,4 +9,4 @@ The Coq scripts compile with the command `make`, using `coqc --version` 8.4pl6 (
 
 ### Artifact Guide ###
 
-An artifact guide is available here (PDF)[https://www.cs.purdue.edu/homes/rompf/papers/wang-draft2017a.pdf], which describes the correspondence with the paper as well as the new alternative proof.
+An artifact guide is available here [PDF](https://www.cs.purdue.edu/homes/rompf/papers/wang-draft2017a.pdf), which describes the correspondence with the paper as well as the new alternative proof.
