@@ -1,3 +1,14 @@
 *#*#
 *.actual.*
+*.aux
+*.log
+*.snm
+*.out
+*.toc
+*.vrb
+*.nav
+*.pdf
+*.glob
+*.vo
+*.v.d
 target/
