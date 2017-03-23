@@ -1,0 +1,382 @@
+%%  based on POPLmark submission by Michael Ashley-Rollman, Karl Crary, and Robert Harper.
+
+% + de-hoas
+% + add decls / lower bounds
+% + index types by depth
+
+%% trying again without putting level into type:
+%% problem with narrow var case b/c bound no longer unique!
+%% --> we'd need a lemma saying we can convert level arbitrarily
+
+
+%%%%%  Natural numbers  %%%%%
+
+nat : type.  %name nat N.
+
+z : nat.
+s : nat -> nat.
+
+nat_eq : nat -> nat -> type.
+nat_eq_     : nat_eq N N.
+
+
+add : nat -> nat -> nat -> type.
+add/z: add z N N.
+add/s: add (s N1) N2 (s N3) <- add N1 N2 N3.
+
+
+%%%%%  Syntax  %%%%%
+
+tp : type.  %name tp T.
+
+dc: type. %name dc D.
+
+bot     : tp.
+top     : tp.
+sel     : nat -> tp.
+arrow   : tp -> tp -> tp.
+bind    : nat -> dc -> tp -> tp.  %% for all x<:T1 in T2
+
+rect: tp -> tp -> dc.
+
+tenv: type. %name tenv G.
+tnil: tenv.
+tcons: dc -> nat -> tenv -> tenv.
+
+
+
+%%%%%  Semantics  %%%%%
+
+sub  : {I1:nat}{I2:nat}{I3:nat} tenv -> tp -> tp -> type.  %% subtyping judgement
+
+sdc: {I1:nat}{I2:nat}{I3:nat} tenv -> dc -> dc -> type.
+
+
+%{
+
+    G |- z:S^(i)..U^(i)   G |- U^(i) < T^(j)
+    -------------------------------------------------
+    G |- z.L^(i+1) < T^(j)
+
+    G |- D1^(i) < D2^(i)    G,z:D1^(i) |- T1^(i+1) < T1^(i+1)
+    -------------------------------------------------------------------
+    G |- { z: D1^(i) => T1^(i+1) }^(i+1) < { z: D2^(i) => T2^(i+1) }^(i+1)
+
+}%
+
+add-reduces: {N1}{N2}{N3}add N1 N2 N3 -> type.
+%mode add-reduces +N1 +N2 +N3 +A.
+- : add-reduces _ _ _ (add/z).
+- : add-reduces _ _ _ (add/s A) <- add-reduces _ _ _ A.
+%worlds () (add-reduces _ _ _ _).
+%total (A) (add-reduces A _ _ _).
+%reduces N2 <= N3 (add-reduces N1 N2 N3 A).
+
+
+sub_bot     : sub _ _ _          G bot _.
+         
+sub_top     : sub _ _ _          G _ top.
+
+sub_var     : sub I0 (s X1) I1    (tcons (rect L U) I tnil) (sel z) T
+           <- sub I0 I I1        (tcons (rect L U) I tnil) U T
+           <- add X0 I X1
+           .
+   
+sub_var2    : sub I0 I1 (s X1)    (tcons (rect L U) I tnil) T (sel z)
+           <- sub I0 I I         (tcons (rect L U) I tnil) L U
+           <- sub I0 I1 I        (tcons (rect L U) I tnil) T L
+           <- add X0 I X1
+           .
+
+
+sub_arrow   : sub I0 I1 I2       G (arrow S1 S2) (arrow T1 T2)
+           <- sub I0 I2 I1       G T1 S1
+           <- sub I0 I1 I2       G S2 T2.
+
+
+sub_bind    : sub I0 (s I) (s I) G (bind z S1 S2) (bind z T1 T2)
+           <- sdc I0 I I         tnil S1 T1 %%% relax all the way!!
+           <- sub I0 (s I) (s I) (tcons S1 I tnil) S2 T2
+           .
+
+
+
+sdc/rect    : sdc I0 I1 I2       G (rect L1 U1) (rect L2 U2)
+           <- sub I0 I2 I2       G L2 U2
+           <- sub I0 I1 I1       G L1 U1
+           <- sub I0 I1 I2       G U1 U2
+           <- sub I0 I2 I1       G L2 L1
+            .
+
+
+
+
+tX = top.
+
+d1 = (rect top top).
+d2 = (rect bot top).
+g1 = (tcons d1 I tnil).
+g2 = (tcons d2 I tnil).
+
+1 = (s z).
+2 = (s 1).
+3 = (s 2).
+4 = (s 3).
+5 = (s 4).
+6 = (s 5).
+depth = 6.
+
+%query 1 1 sub _ _ _ tnil bot top.
+
+%query 1 1 sub _ _ _ tnil top top.
+
+%query 1 1 sub _ _ _ tnil (arrow top top) (arrow top top).
+
+%query 1 1 sdc _ _ _ tnil (rect top top) (rect top top).
+
+%query 1 1 sdc _ _ _ tnil (rect top top) (rect bot top).
+
+
+%query 1 1 sub _ _ _ g1 top top.
+
+%query 1 1 sub _ _ _ g1 (arrow top top) (arrow top top).
+
+%query 1 1 sdc _ _ _ g1 (rect top top) (rect top top).
+
+%query 1 1 sdc _ _ _ g1 (rect top top) (rect bot top).
+
+
+%query 1 1 sub _ _ _ g1 top top.
+
+%query 1 1 sub _ _ _ g1 (arrow top top) (arrow top top).
+
+%query 1 1 sdc _ _ _ g1 (rect top top) (rect top top).
+
+%query 1 1 sdc _ _ _ g1 (rect top top) (rect bot top).
+
+
+%query 1 1 sub _ _ _ tnil (bind z d1 top) (bind z d1 top).
+
+%query 1 1 sub _ _ _ tnil (bind z d2 top) (bind z d2 top).
+
+%query 1 1 sub _ _ _ tnil (bind z d1 top) (bind z d2 top).
+
+
+
+%query 1 1 sub I1 I2 I3 (tcons (rect top top) IX tnil) (sel z) (sel z).
+
+%query 1 1 sub I I2 I3 (tcons (rect bot (arrow top top)) IX tnil) (sel z) (arrow top top).
+
+%query 1 1 sub I1 I2 I3 tnil (bind z (rect bot (arrow top top)) (sel z))
+                             (bind z (rect bot (arrow top top)) (arrow bot top)).
+
+
+%{
+  { z => type A: X .. X;   def id(z.A):z.A } <:
+  { z => type A: bot..top; def id(z.A):z.A } <:
+  { z => type A: bot..top; def id(bot):top } <:
+}%
+
+t1 = (bind z (rect (arrow top top) (arrow top top)) (arrow (sel z) (sel z))).
+t2 = (bind z (rect bot top) (arrow (sel z) (sel z))).
+
+t3 = (bind z (rect bot top) (arrow bot top)).
+
+
+%query 1 1 sub _ _ _ tnil t1 t2.
+
+%query 0 * sub _ _ _ tnil t2 t1.
+
+%query 1 1 sub _ _ _ tnil t2 t3.
+
+%query 1 1 sub _ _ _ tnil t1 t3.
+
+
+%{
+  type Nats = {
+    type Nat = { def succ: Nat }
+    def zero: Nat
+  }
+}%
+
+
+
+
+
+
+
+
+
+extend-sub: sub I1 I2 I3 tnil T1 T2 -> {T3}{I}sub I1 I2 I3 (tcons T3 I tnil) T1 T2 -> type.
+%mode extend-sub +A +B +C -D.
+
+-/bot: extend-sub sub_bot _ _ sub_bot.
+-/top: extend-sub sub_top _ _ sub_top.
+-/arrow: extend-sub (sub_arrow S2 S1) _ _ (sub_arrow S2' S1')
+        <- extend-sub S2 _ _ S2'
+        <- extend-sub S1 _ _ S1'.
+-/bind: extend-sub (sub_bind S2 S1) _ _ (sub_bind S2 S1).
+
+%worlds () (extend-sub _ _ _ _).
+%total (A) (extend-sub A _ _ _).
+
+
+
+
+%%%%%  Transivity and Narrowing  %%%%%
+
+%{
+
+(from Fsub proof)
+
+The main proof for transitivity and narrowing.  The proof is by
+induction on:
+
+  (1st) the type Q
+  (2nd) the clause, where we take trans* < narrow*
+        (that is, narrow* can always call trans* with no change in Q,
+    but when trans* calls narrow*, Q must decrease)
+  (3rd) in trans*, the derivation of sub S Q,
+        and in narrow*, the derivation of sub M N
+
+Twelf requires that induction arguments be explicit, hence the first
+two arguments to trans* and narrow*.  The third argument ensures that
+the clause number is correct for the clause.  (That is, the clause
+number is zero in trans* and one in narrow*).
+
+}%
+
+
+
+
+
+
+trans* : {I:nat}{J1:nat}{J2:nat}{J3:nat}{G: tenv}{S: tp}{Q: tp}{T: tp}
+     {Ncase:nat}
+     nat_eq Ncase z
+%%
+    -> sub I J1 J2 G S Q
+    -> sub I J2 J3 G Q T
+%%
+    -> sub I J1 J3 G S T
+    -> type.
+
+transdc* : {I:nat}{J1:nat}{J2:nat}{J3:nat}{G: tenv}{S: dc}{Q: dc}{T: dc}
+     {Ncase:nat}
+     nat_eq Ncase z
+%%
+     -> sdc I J1 J2 G S Q
+     -> sdc I J2 J3 G Q T
+%%
+     -> sdc I J1 J3 G S T
+     -> type.
+
+
+narrow* : {I:nat}{J1:nat}{J2:nat}{J3:nat}{G:tenv}{P:dc}{Q:dc}{M:tp}{N:tp}
+      {Ncase:nat}
+      nat_eq Ncase (s z)
+%%
+      -> sub I J1 J3 (tcons Q J2 G) M N
+      -> sdc I J2 J2 G P Q
+%%
+      -> sub I J1 J3 (tcons P J2 G) M N -> type.
+
+%mode trans*   +I +J1 +J2 +J3 +G +S +Q +T +C +E +X1 +X2 -X3.
+%mode transdc* +I +J1 +J2 +J3 +G +S +Q +T +C +E +X1 +X2 -X3.
+%mode narrow*  +I +J1 +J2 +J3 +G +P +Q +M +N +C +E +X1 +X2 -X3.
+
+-rect   : transdc* _ _ _ _ _ _ _ _ _ nat_eq_ (sdc/rect L1 U1 X1 X2) (sdc/rect L2 U2 X2' X3) (sdc/rect L3 U3 X1 X3)
+        <- trans* _ _ _ _ _ _ _ _ _ nat_eq_ L2 L1 L3
+        <- trans* _ _ _ _ _ _ _ _ _ nat_eq_ U1 U2 U3.
+
+-top    : trans* _ _ _ _ _ _ _ _ _ _ sub_bot D sub_bot.
+
+-top    : trans* _ _ _ _ _ _ _ _ _ _ D sub_top sub_top.
+
+
+-var    : trans* _ _ _ _ _ _ _ _ _  nat_eq_ (sub_var A U2) D (sub_var A U2')
+       <- trans* _ _ _ _ _ _ _ _ _  nat_eq_ U2 D U2'.
+
+-var2   : trans* _ _ _ _ _ _ _ _ _  nat_eq_ D (sub_var2 A L2 U2) (sub_var2 A L2' U2)
+       <- trans* _ _ _ _ _ _ _ _ _  nat_eq_ D L2 L2'.
+
+
+-varx   :  trans* _ _ _ _ _ _ _ _ _ nat_eq_ (sub_var2 A T1L LU) (sub_var A' UT2) T1T2
+        <- add-reduces _ _ _ A
+        <- trans* _ _ _ _ _ _ _ _ _ nat_eq_ T1L LU T1U
+        <- trans* _ _ _ _ _ _ _ _ _ nat_eq_ T1U UT2 T1T2
+        .
+
+
+-arrow  : trans* _ _ _ _ _ _ _ _ _ nat_eq_ (sub_arrow D1b D1a) (sub_arrow D2b D2a) (sub_arrow Db Da)
+       <- trans* _ _ _ _ _ _ _ _ _ nat_eq_ D2a D1a Da
+       <- trans* _ _ _ _ _ _ _ _ _ nat_eq_ D1b D2b Db.
+
+-tbind  : trans* _ _ _ _ _ _ _ _ _ nat_eq_ (sub_bind D1b D1a) (sub_bind D2b D2a) (sub_bind Db Da)
+       <- transdc* _ _ _ _ _ _ _ _ _ nat_eq_ D1a D2a Da
+       <- narrow* _ _ _ _ _ _ _ _ _ _ nat_eq_ D2b D1a D2b'
+       <- trans* _ _ _ _ _ _ _ _ _ nat_eq_ D1b D2b' Db.
+
+
+
+-bot    : narrow* _ _ _ _ _ _ _ _ _ _ nat_eq_ sub_bot _ sub_bot.
+
+-top    : narrow* _ _ _ _ _ _ _ _ _ _ nat_eq_ sub_top _ sub_top.
+
+-var    : narrow* _ _ _ _ _ _ _ _ _ _ nat_eq_ (sub_var A D) (sdc/rect Lsub Dsub X1 X2) (sub_var A D'')
+       <- extend-sub Dsub _ _ Dsub'
+       <- narrow* _ _ _ _ _ _ _ _ _ _ nat_eq_ D (sdc/rect Lsub Dsub X1 X2) D'
+       <- trans*  _ _ _ _ _ _ _ _ _ nat_eq_ Dsub' D' D''.
+
+-var2   : narrow* _ _ _ _ _ _ _ _  _ _ nat_eq_ (sub_var2 A L D) (sdc/rect Lsub Dsub XX1 XX2) (sub_var2 A L'' XX1')
+       <- extend-sub Lsub _ _ Lsub'
+       <- extend-sub XX1 _ _ XX1'
+       <- narrow* _ _ _ _ _ _ _ _ _ _ nat_eq_ L (sdc/rect Lsub Dsub XX1 XX2) L'
+       <- trans*  _ _ _ _ _ _ _ _ _ nat_eq_ L' Lsub' L''.
+
+
+-arrow  : narrow* _ _ _ _ _ _ _ _ _ _ nat_eq_ (sub_arrow (D2) (D1)) Dsub (sub_arrow (D2') (D1'))
+       <- narrow* _ _ _ _ _ _ _ _ _ _ nat_eq_ D1 Dsub D1'
+       <- narrow* _ _ _ _ _ _ _ _ _ _ nat_eq_ D2 Dsub D2'.
+
+
+-bind   : narrow* _ _ _ _ _ _ _ _ _ _ nat_eq_ (sub_bind (D2) (D1)) Dsub (sub_bind (D2) (D1))
+       % <- narrow* _ _ _ _ _ _ _ _ _ _ nat_eq_ D1 Dsub D1'
+       % <- narrow* _ _ _ _ _ _ _ _ _ _ nat_eq_ (D2) Dsub (D2').
+       .
+
+
+%worlds () 
+(trans* _ _ _ _ _ _ _ _ _ _ _ _ _)
+(transdc* _ _ _ _ _ _ _ _ _ _ _ _ _)
+(narrow* _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+
+%total {[(J2 J2' J2'')] (Q1 Q1' Q1'') (N1 N1' N1'') (D1 D1' D1'') (E1 E1' E1'')} 
+(trans* I1 J1 J2 J3 G1 _ Q1 _ N1 _ D1 E1 _) 
+(transdc* I1' J1' J2' J3' G1' _ Q1' _ N1' _ D1' E1' _)
+(narrow* I1'' J1'' J2'' J3'' G1'' P1'' Q1'' _ _ N1'' _ D1'' E1'' _).
+
+
+
+%%%%%  Peroration  %%%%%
+
+trans : sub I IS IQ G S Q -> sub I IQ IT G Q T -> sub I IS IT G S T -> type.
+%mode trans +X1 +X2 -X3.
+
+-   : trans D1 D2 D3
+       <- trans* _ _ _ _ _ _ _ _ _ nat_eq_ D1 D2 D3.
+
+%worlds () (trans _ _ _).
+%total {} (trans _ _ _).
+
+
+
+narrow : sub IG IM IN (tcons Q I G) M N -> sdc IG I I G P Q -> sub IG IM IN (tcons P I G) M N -> type.
+%mode narrow +X1 +X2 -X3.
+
+-   : narrow D1 D2 D3
+       <- narrow* _ _ _ _ _ _ _ _ _ _ nat_eq_ D1 D2 D3.
+
+%worlds () (narrow _ _ _).
+%total {} (narrow _ _ _).
+

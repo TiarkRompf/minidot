@@ -1,0 +1,315 @@
+%%  based on POPLmark submission by Michael Ashley-Rollman, Karl Crary, and Robert Harper.
+
+%%%%%  Natural numbers  %%%%%
+
+nat : type.  %name nat N.
+
+z : nat.
+s : nat -> nat.
+
+
+nat_eq : nat -> nat -> type.
+
+nat_eq_     : nat_eq N N.
+
+
+
+%%%%%  Syntax  %%%%%
+
+tp : type.  %name tp T.
+
+tenv: nat -> type. %name tenv G.
+
+
+top : tp.
+sel     : nat -> tenv N -> tp.
+arrow   : tp -> tp -> tp.
+bind    : nat -> tenv N -> tp -> tp -> tp.  %% for all x<:T1 in T2
+
+
+
+tnil: tenv z.
+tcons: tp -> tenv N -> tenv (s N).
+
+tsize: tenv N -> nat -> type.
+tf/n   : tsize tnil z.
+tf/c   : tsize (tcons V G) (s N) <- tsize G N.
+
+sub-env-size: tenv N -> nat -> tenv M -> type.
+sub-env/refl: sub-env-size G N G <- tsize G N.
+sub-env/ext: sub-env-size G1 N (tcons _ G2) <- sub-env-size G1 N G2.
+
+
+
+
+
+%%%%%  Semantics  %%%%%
+
+sub  : tenv N -> tp -> tenv M -> tp -> type.  %% subtyping judgement
+
+
+sub_top     : sub G1 _ G2 top.
+
+
+sub_var     : sub G1 (sel Z G0) G2 T
+           <- sub-env-size (tcons U G0) (s Z) G1
+           <- sub G1 U G2 T.
+
+sub_arrow   : sub G1 (arrow S1 S2) G2 (arrow T1 T2)
+           <- sub G2 T1 G1 S1
+           <- sub G1 S2 G2 T2.
+
+sub_bind    : sub G1 (bind Z G0 S1 S2) G1 (bind Z G0 T1 T2)
+           <- sub-env-size G0 Z G1
+           <- sub G0 T1 G0 S1  %% with T1 in env or not?
+           <- sub (tcons T1 G0) S2 (tcons T1 G0) T2.
+
+
+
+
+
+%%%%%  Extend env  %%%%%
+
+extend-sub-env: sub-env-size G0 N G -> {T}sub-env-size G0 N (tcons T G) -> type.
+%mode extend-sub-env +A +B -C.
+
+- : extend-sub-env S T (sub-env/ext S).
+
+%worlds () (extend-sub-env _ _ _).
+%total (A) (extend-sub-env A _ _).
+
+swap-sub-env: sub-env-size G0 N G -> {T}sub-env-size G0 N (tcons T G) -> type.
+%mode swap-sub-env +A +B -C.
+
+% - : swap-sub-env S T (sub-env/ext S).
+
+%worlds () (swap-sub-env _ _ _).
+%trustme
+%total (A) (swap-sub-env A _ _).
+
+
+
+
+extend-sub: sub G1 T1 G2 T2 -> {T3}sub (tcons T3 G1) T1 G2 T2 -> type.
+%mode extend-sub +A +B -C.
+
+%{
+-/top       : extend-sub sub_top _ sub_top.
+
+-/var       : extend-sub (sub_var S1 SE1) _ (sub_var S1 SE1')
+            <- extend-sub-env SE1 _ SE1'
+            % <- extend-sub S1 _ S1'
+            .
+
+-/arrow     : extend-sub (sub_arrow S1 S2) _ (sub_arrow S1' S2')
+            <- extend-sub S1 _ S1'
+            <- extend-sub S2 _ S2'
+            .
+
+-/bind      : extend-sub (sub_bind S1 S2 SE1) _ (sub_bind S1 S2 SE2)
+           <- extend-sub-env SE1 _ SE2.
+}%
+
+%worlds () (extend-sub _ _ _).
+%trustme
+%total (A) (extend-sub A _ _).
+
+
+extend-sub12: sub G1 T1 G2 T2 -> {T3}sub (tcons T3 G1) T1 (tcons T3 G2) T2 -> type.
+%mode extend-sub12 +A +B -C.
+
+%worlds () (extend-sub12 _ _ _).
+%trustme
+%total (A) (extend-sub12 A _ _).
+
+
+
+false: type.
+
+no-bind: sub (tcons T1 G0) (bind N (tcons T1 G0) S1 S2) G2 T2 -> tsize (tcons T1 G1) N -> false -> type.
+%mode no-bind +A +B -C.
+
+%worlds () (no-bind _ _ _).
+%trustme
+%total (A) (no-bind A _ _).
+
+false-sub: false -> {N1}{N2}{G1:tenv N1}{T1}{G2: tenv N2}{T2}sub G1 T1 G2 T2 -> type.
+%mode false-sub +A +N1 +N2 +G1 +T1 +G2 +T2 -B.
+%worlds () (false-sub _ _ _ _ _ _ _ _).
+%trustme
+%total (A) (false-sub A _ _ _ _ _ _ _).
+
+
+
+%%%%%  Transivity and Narrowing  %%%%%
+
+%{
+
+The main proof for transitivity and narrowing.  The proof is by
+induction on:
+
+  (1st) the type Q
+  (2nd) the clause, where we take trans* < narrow*
+        (that is, narrow* can always call trans* with no change in Q,
+    but when trans* calls narrow*, Q must decrease)
+  (3rd) in trans*, the derivation of sub S Q,
+        and in narrow*, the derivation of sub M N
+
+Twelf requires that induction arguments be explicit, hence the first
+two arguments to trans* and narrow*.  The third argument ensures that
+the clause number is correct for the clause.  (That is, the clause
+number is zero in trans* and one in narrow*).
+
+
+The statement of trans* is otherwise straightforward.  The statement
+of narrow* involves one additional subtlety:
+
+In narrow*, we must identify the variable with respect to which we are
+narrowing.  The most natural way to do so is to abstract over that
+variable; thus taking an argument of type:
+
+  {X:tp} var X -> assm X Q -> sub M N
+
+Unfortunately, we run afoul of a complication.  Obviously, the LF
+context may contain dependencies only on other things in the LF
+context.  If we abstract over the variable of interest, that variable
+is not in the context, and therefore nothing in the context may depend
+on it.  As a result, we effectively can narrow only with respect to
+the last variable.  However, this is not strong enough for the proof
+to go through, since we must descend inside forall types.
+
+Thus, when we are narrowing with respect to a variable X, we must find
+a way to move assumptions that depend on X to the left of it without
+violating scoping constraints.  If we maintain the context in its
+usual form:
+
+  t1:tp, dv1:var t1, d1:assm t1 T1, ..., dn:tp, dvn:var tn, dn:assm tn Tn
+
+then this is impossible.  However, we may weaken our context
+assumption to allow variables to appear apart from their typing
+assumptions.  To adhere to scoping constraints, we must keep
+dependencies to the right of the variables they depend on, but we need
+not keep them to the right of those variables typing assumptions.
+
+For example, suppose we encounter:
+
+  ..., ti:tp, dvi:var ti, di:assm ti Ti, tj:tp, dvj:var tj, dj:assm tj Tj(ti)
+
+and we wish to move tj out of the way.  Then we produce:
+
+  ..., ti:tp, dvi:var ti, tj:tp, dvj:var tj, dj:assm tj Tj(ti), di:assm ti Ti
+
+This keeps the subtyping assumption di last, and violates no scoping constraints.
+Thus, we identify the variable for narrowing not by abstracting over
+the entire variable, but only over its subtyping assumption.
+
+As a consequence of this, we must now deal with variables bereft of
+their subtyping assumptions (vblock), and with disembodied subtyping
+assumptions (ablock).  Note that disembodied subtyping assumptions are
+substantially at odds with our usual experience, and we must
+reconsider whether the proof works at all in their presence.
+
+Fortunately, with some minor modifications, the proof still works.
+The only issue that arises is that it now appears as though the refl
+and trans might apply to non-variable types, since those types might
+now have subtyping assumptions.  However, the assm_var lemma applies,
+and states that subtyping assumptions are available only for
+variables, so a contradiction arises in each case where we suppose a
+subtyping assumption for a non-variable.
+
+}%
+
+
+trans* : {Q:tp}
+     {Ncase:nat}
+     nat_eq Ncase z
+%%
+     -> sub G1 S G2 Q
+     -> sub G2 Q G3 T
+%%
+     -> sub G1 S G3 T -> type.
+
+narrow* : {Q:tp}
+      {Ncase:nat}
+      nat_eq Ncase (s z)
+%%
+      -> sub-env-size G0 (s Z) G1
+      -> sub (tcons Q G1) M (tcons Q G1) N
+      -> sub G1 P G1 Q
+%%
+      -> sub (tcons P G1) M (tcons P G1) N -> type.
+
+%mode trans* +Q +N +X1 +X2 +X3 -X4.
+%mode narrow* +Q +N +X1 +X2 +X3 -X4.
+
+-top    : trans* _ _ _ D sub_top sub_top.
+
+
+-var    : trans* _ _ nat_eq_ (sub_var D2 S) D (sub_var D' S)
+       <- trans* _ _ nat_eq_ D2 D D'.
+
+
+-arrow  : trans* _ _ nat_eq_ (sub_arrow D1b D1a) (sub_arrow D2b D2a) (sub_arrow Db Da)
+       <- trans* _ _ nat_eq_ D2a D1a Da
+       <- trans* _ _ nat_eq_ D1b D2b Db.
+
+-bind   : trans* _ _ _ (sub_bind D1b D1a S1) (sub_bind D2b D2a S2) (sub_bind Db Da S1)
+       <- trans* _ _ nat_eq_ D2a D1a Da
+       <- narrow* _ _ nat_eq_ D1b D2a D1b'
+       <- trans* _ _ nat_eq_ D1b' D2b Db.
+
+
+
+-top    : narrow* _ _ nat_eq_ sub_top _ sub_top.
+
+-var    : narrow* _ _ nat_eq_ (sub_var D (sub-env/refl (tf/c S))) Dsub (sub_var D'' (sub-env/refl (tf/c S)))
+        <- extend-sub12 Dsub _ Dsub'
+       <- narrow* _ _ nat_eq_ D Dsub D'
+       <- trans*  _ _ nat_eq_ Dsub' D' D''.
+
+-var    : narrow* _ _ nat_eq_ (sub_var D (sub-env/ext S)) Dsub (sub_var D'' (sub-env/ext S'))
+
+
+
+-arrow  : narrow* _ _ nat_eq_ (sub_arrow (D2) (D1)) Dsub (sub_arrow (D2') (D1'))
+       <- narrow* _ _ nat_eq_ D1 Dsub D1'
+       <- narrow* _ _ nat_eq_ D2 Dsub D2'.
+
+
+-bind   : narrow* _ _ nat_eq_ (sub_bind D2 D1 (sub-env/ext S)) Dsub (sub_bind D2 D1 (sub-env/ext S)).
+
+%{
+-bind   : narrow* _ _ nat_eq_ (sub_bind D2 D1 (sub-env/refl S)) Dsub OUT
+            <- no-bind (sub_bind D2 D1 (sub-env/refl S)) S F
+            <- false-sub F _ _ _ _ _ _ OUT.
+}%
+
+
+%worlds () (trans* _ _ _ _ _ _) (narrow* _ _ _ _ _ _).
+%total {(Q1 Q2) (N1 N2) (D1 D2)} (trans* Q1 N1 _ D1 _ _) (narrow* Q2 N2 _ D2 _ _).
+
+
+
+
+%%%%%  Peroration  %%%%%
+
+trans : sub G S Q -> sub G Q T -> sub G S T -> type.
+%mode trans +X1 +X2 -X3.
+
+-   : trans D1 D2 D3
+       <- trans* _ _ nat_eq_ D1 D2 D3.
+
+%worlds () (trans _ _ _).
+%total {} (trans _ _ _).
+
+
+
+narrow : sub (tcons Q tnil) M N -> sub tnil P Q -> sub (tcons P tnil) M N -> type.
+%mode narrow +X1 +X2 -X3.
+
+-   : narrow D1 D2 D3
+       <- narrow* _ _ nat_eq_ D1 D2 D3.
+
+%worlds () (narrow _ _ _).
+%total {} (narrow _ _ _).
+

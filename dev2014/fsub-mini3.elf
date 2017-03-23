@@ -1,0 +1,363 @@
+%%  based on POPLmark submission by Michael Ashley-Rollman, Karl Crary, and Robert Harper.
+
+% + de-hoas
+
+%% WIP: envs with multiple bindings
+%%      try something like locally nameless
+%%      first issue: need 'sev' in narrow, which breaks termination of mutual induction
+
+%%%%%  Natural numbers  %%%%%
+
+nat : type.  %name nat N.
+
+z : nat.
+s : nat -> nat.
+
+
+nat_eq : nat -> nat -> type.
+
+nat_eq_     : nat_eq N N.
+
+add : nat -> nat -> nat -> type. %name add A.
+add/z: add z N N.
+add/s: add (s N1) N2 (s N3) <- add N1 N2 N3.
+
+ne : nat -> nat -> type.
+ne/z1 : ne z (s N).
+ne/z2 : ne (s N) z.
+ne/s  : ne (s N1) (s N2) <- ne N1 N2.
+
+
+
+%%%%%  Syntax  %%%%%
+
+tp : type.  %name tp T.
+
+top : tp.
+sel     : nat -> tp.
+arrow   : tp -> tp -> tp.
+bind    : tp -> (nat -> tp) -> tp.  %% for all x<:T1 in T2
+
+
+set : type.
+snil: set.
+scons: nat -> set -> set.
+
+not-in : nat -> set -> type.
+not-in/nil : not-in N snil.
+not-in/cons : not-in N1 (scons N2 G) <- not-in N1 G <- ne N1 N2.
+
+tenv: type. %name tenv G.
+tnil: tenv.
+tcons: nat -> tp -> tenv -> tenv.
+
+dom: tenv -> set -> type.
+dom/nil : dom tnil snil.
+dom/cons : dom (tcons N T G) (scons N S) <- dom G S.
+
+
+set-union: set -> set -> set -> type.
+
+
+%%%%%  Lookup  %%%%%
+
+tlookup: tenv -> nat -> tp -> type.
+tl/hit  : tlookup (tcons N T G) N T.
+tl/miss : tlookup (tcons N T G) N' T' <- tlookup G N' T'.
+
+
+%%%%%  Semantics  %%%%%
+
+sub  : tenv -> tp -> tp -> type.  %% subtyping judgement
+
+sev  : tenv -> tenv -> tenv -> type.
+
+
+sub_top     : sub G _ top.
+
+
+sub_var     : sub G (sel Z) T
+           <- tlookup G Z U
+           <- sub G U T.
+
+sub_arrow   : sub G (arrow S1 S2) (arrow T1 T2)
+           <- sub G T1 S1
+           <- sub G S2 T2.
+
+sub_bind    : sub G (bind S1 S2) (bind T1 T2)
+           <- sub G T1 S1
+           <- ({N} not-in N L -> sub (tcons N T1 G) (S2 N) (T2 N)).
+
+            %% alternative: sev (tcons T1 G) (tcons S1 G)
+
+
+
+sev/nil     : sev tnil tnil tnil.
+
+sev/sub     : sev (tcons N P G) (tcons N P G1) (tcons N Q G2) 
+           <- sev G G1 G2 
+           <- sub (tcons N P G) P Q.
+
+sev/refl    : sev (tcons N P G) (tcons N P G1) (tcons N P G2) 
+           <- sev G G1 G2.
+
+
+wft : tenv -> tp -> type.
+
+wf/top : wft G top.
+
+wf/var : wft G (sel N)
+        <- tlookup G N T.
+
+wf/arrow : wft G (arrow T1 T2)
+        <- wft G T1
+        <- wft G T2.
+
+wf/bind : 
+        {L} 
+        ({N} not-in N L -> wft (tcons N T1 G) (T2 N)) -> 
+        wft G T1 ->
+        wft G (bind T1 T2).
+
+
+okt : tenv -> type.
+
+okt/nil : okt tnil.
+
+okt/cons : okt (tcons N T G) 
+          <- wft G T          %% TODO: no duplicate N
+          <- okt G.
+
+
+weaken-lkp: tlookup G N1 T1 -> {N3}{T3} tlookup (tcons N3 T3 G) N1 T1 -> type.
+%mode weaken-lkp +A +B +C -D.
+
+-/hit : weaken-lkp tl/hit N T (tl/miss tl/hit).
+-/miss : weaken-lkp (tl/miss L) N T (tl/miss L') <- weaken-lkp L _ _ L'.
+
+
+%worlds () (weaken-lkp _ _ _ _).
+%total (A) (weaken-lkp A _ _ _).
+
+
+
+not-in-sub: not-in N (scons N1 L) -> not-in N L -> ne N1 N -> type.
+%mode not-in-sub +A -B -C.
+%worlds () (not-in-sub _ _ _).
+%trustme
+%total (A) (not-in-sub A _ _).
+
+
+
+weaken-wf: wft G T1 -> dom G S -> {N3}{T3} not-in N3 S -> wft (tcons N3 T3 G) T1 -> type.
+%mode weaken-wf +A +B +C +D +E -F.
+
+-/top : weaken-wf wf/top _ _ _ _ wf/top.
+
+-/var : weaken-wf (wf/var L) _ _ _ _ (wf/var L')
+    <- weaken-lkp L _ _ L'.
+
+-/arrow : weaken-wf (wf/arrow S2 S1) D1 N1 T1 F1  (wf/arrow S2' S1')
+    <- weaken-wf S1 D1 N1 T1 F1  S1'
+    <- weaken-wf S2 D1 N1 T1 F1  S2'.
+
+-/bind : weaken-wf (wf/bind L S2 S1) D1 N1 T1 F1 (wf/bind (scons N1 L) S2' S1')
+    <- weaken-wf S1 D1 N1 T1 F1 S1'
+    <- ({N}{FN:not-in N (scons N1 L)} not-in-sub FN (FN' N FN) (EN' N FN))
+    <- ({N}{FN:not-in N (scons N1 L)} 
+          weaken-wf (S2 N (FN' N FN)) 
+          (dom/cons D1) N1 T1 (not-in/cons (EN' N FN) F1)
+          (S2x' N FN)).
+
+{S2x':{n:nat} not-in n (scons N1 L) -> wft (tcons N1 T3 (tcons n T1 G1)) (T2 n)}
+{S2' :{n:nat} not-in n (scons N1 L) -> wft (tcons n T1 (tcons N1 T3 G1)) (T2 n)}
+
+%worlds () (weaken _ _ _ _).
+%total (A) (weaken A _ _ _).
+
+
+
+weaken: sub G T1 T2 -> {N3}{T3} sub (tcons N3 T3 G) T1 T2 -> type.
+%mode weaken +A +B +C -D.
+
+-/top : weaken sub_top _ _ sub_top.
+
+-/var : weaken (sub_var SU L) _ _ (sub_var SU' L')
+    <- weaken-lkp L _ _ L'
+    <- weaken SU _ _ SU'.
+
+-/arrow : weaken (sub_arrow S2 S1) _ _ (sub_arrow S2' S1')
+    <- weaken S1 _ _ S1'
+    <- weaken S2 _ _ S2'.
+
+-/bind : weaken (sub_bind S2 S1) N1 T1 (sub_bind S2' S1')
+    <- weaken S1 N1 T1 S1'
+    <- ({N}{A:not-in N L} weaken (S2 N A) N1 T1 (S' N A)).
+
+
+%worlds () (weaken _ _ _ _).
+%total (A) (weaken A _ _ _).
+
+
+
+sev-refl : {G} sev G G G -> type.
+%mode sev-refl +G -A.
+
+-/nil  : sev-refl tnil sev/nil.
+-/cons : sev-refl (tcons _ _ G) (sev/refl A)
+      <- sev-refl G A.
+
+%worlds () (sev-refl _ _).
+%total (A) (sev-refl A _).
+
+
+
+
+%%%%%  Transivity and Narrowing  %%%%%
+
+trans* : 
+     sub G S Q
+     -> sub G Q T
+%%
+     -> sub G S T -> type.
+
+
+
+narrow-lk : 
+    tlookup G2 N D2 ->
+    sev G1 G1 G2 ->
+%%
+    tlookup G2 N D1 ->
+    sub G1 D1 D2 ->
+    type.
+
+%mode narrow-lk  +X1 +X2 -X3 -X4.
+%{
+- : narrow-lk (has K (tl tl/hit A (tf/c N))) (sev/refl BE) (has K (tl tl/hit A (tf/c N'))) rsdc/refl
+ <- tsize-sev BE N N'.
+
+- : narrow-lk (has K (tl (tl/miss L) (add/s A) (tf/c N))) (sev/refl BE) M'' OBD''
+ <- add-swap A AR
+ <- narrow-lk (has K (tl L AR N)) BE M' OBD'
+ <- extend-wf-mem M' _ M''
+ <- extend-rsdc OBD' _ OBD''
+  .
+
+- : narrow-lk (has K (tl tl/hit A (tf/c N))) (sev/sub BDS BE) (has K' (tl tl/hit A (tf/c N'))) (rsdc/sdc BD')
+ <- tsize-sev BE N N'
+ <- inv-sdcs BDS K K' BD'
+  .
+
+- : narrow-lk (has K (tl (tl/miss L) (add/s A) (tf/c N))) (sev/sub BDS BE) M'' OBD''
+ <- add-swap A AR
+ <- narrow-lk (has K (tl L AR N)) BE M' OBD'
+ <- extend-wf-mem M' _ M''
+ <- extend-rsdc OBD' _ OBD''
+  .
+}%
+%worlds () (narrow-lk _ _ _ _).
+%trustme
+%total (A) (narrow-lk _ A _ _).
+
+
+
+narrow* : 
+      sub G2 M N
+      -> sev G1 G1 G2
+%%
+      -> sub G1 M N -> type.
+
+%mode trans* +X2 +X3 -X4.
+%mode narrow* +X2 +X3 -X4.
+
+
+%worlds () (narrow* _ _ _).
+%trustme
+%total {D} (narrow* D _ _).
+
+
+
+-top    : trans* D sub_top sub_top.
+
+
+-var    : trans* (sub_var D2 TL) D (sub_var D' TL)
+       <- trans* D2 D D'.
+
+
+-arrow  : trans* (sub_arrow D1b D1a) (sub_arrow D2b D2a) (sub_arrow Db Da)
+       <- trans* D2a D1a Da
+       <- trans* D1b D2b Db.
+
+-tbind  : trans* (sub_bind D1b D1a) (sub_bind D2b D2a) (sub_bind Db Da)
+       <- sev-refl _ DG
+       <- trans*  D2a D1a Da
+       <- narrow*  D1b (sev/sub D2a DG)  D1b'
+       <- trans*  D1b' D2b Db.
+
+%worlds () (trans* _ _ _).
+%trustme
+%total {[D1 D2]} (trans* D1 D2 _).
+
+
+narrow* : 
+      sub G2 M N
+      -> sev G1 G1 G2
+%%
+      -> sub G1 M N -> type.
+
+%mode narrow* +X2 +X3 -X4.
+
+% --- narrow --- %
+
+
+-top    : narrow* sub_top _ sub_top.
+
+-var/h  : narrow* (sub_var D TL) Dsub 
+                              (sub_var D'' TL')
+       <- narrow-lk TL Dsub TL' BB
+       <- narrow* D Dsub D'
+       <- trans*  BB D' D''.
+
+
+-var/m  : narrow* (sub_var D (tl (tl/miss TL) A (tf/c S))) Dsub 
+                              (sub_var D' (tl (tl/miss TL) A (tf/c S)))
+       <- narrow* D Dsub D'.
+
+
+-arrow  : narrow* (sub_arrow (D2) (D1)) Dsub (sub_arrow (D2') (D1'))
+       <- narrow* D1 Dsub D1'
+       <- narrow* D2 Dsub D2'.
+
+-forall : narrow* (sub_bind (D2) (D1)) Dsub (sub_bind (D2) (D1))
+       <- narrow* D1 (sev/refl Dsub) D1'
+       <- narrow* (D2) (sev/refl Dsub) (D2').
+
+
+%worlds () (narrow* _ _ _).
+%total {D2} (narrow* D2 _ _).
+
+
+
+
+%%%%%  Peroration  %%%%%
+
+trans : sub G S Q -> sub G Q T -> sub G S T -> type.
+%mode trans +X1 +X2 -X3.
+
+-   : trans D1 D2 D3
+       <- trans* _ _ nat_eq_ D1 D2 D3.
+
+%worlds () (trans _ _ _).
+%total {} (trans _ _ _).
+
+
+
+narrow : sub (tcons Q tnil) M N -> sub tnil P Q -> sub (tcons P tnil) M N -> type.
+%mode narrow +X1 +X2 -X3.
+
+-   : narrow D1 D2 D3
+       <- narrow* _ _ nat_eq_ D1 D2 D3.
+
+%worlds () (narrow _ _ _).
+%total {} (narrow _ _ _).
+
