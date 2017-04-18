@@ -67,7 +67,7 @@ COQCHK?="$(COQBIN)coqchk"
 
 VFILES:=SfLib.v\
   dsubsup_total.v\
-  dsubsup_total_alt.v
+  dsubsup_total_rec.v
 
 -include $(addsuffix .d,$(VFILES))
 .SECONDARY: $(addsuffix .d,$(VFILES))
