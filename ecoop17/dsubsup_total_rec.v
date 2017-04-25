@@ -458,20 +458,34 @@ Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. unfold open. rewrite <-open_preserves_size. omega. Qed. (* TBind case: open *)
 
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0; inversion H1. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0; inversion H1. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0; inversion H1. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0; inversion H1. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0; inversion H1. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; inversion H0; inversion H1. Qed.
 
+Ltac ev := repeat match goal with
+                    | H: exists _, _ |- _ => destruct H
+                    | H: _ /\  _ |- _ => destruct H
+           end.
+
+Ltac inv_mem := match goal with
+                  | H: closed 0 (length ?GH) (length ?G) (TMem ?T1 ?T2) |-
+                    closed 0 (length ?GH) (length ?G) ?T2 => inversion H; subst; eauto
+                  | H: closed 0 (length ?GH) (length ?G) (TMem ?T1 ?T2) |-
+                    closed 0 (length ?GH) (length ?G) ?T1 => inversion H; subst; eauto
+                end.
+
+
+Next Obligation. compute. repeat split; intros; ev; try solve by inversion. Qed.
+Next Obligation. compute. repeat split; intros; ev; try solve by inversion. Qed.
+Next Obligation. compute. repeat split; intros; ev; try solve by inversion. Qed.
+Next Obligation. compute. repeat split; intros; ev; try solve by inversion. Qed.
+Next Obligation. compute. repeat split; intros; ev; try solve by inversion. Qed.
+Next Obligation. compute. repeat split; intros; ev; try solve by inversion. Qed.
 
                                   
 (* 
    The expansion of val_type, val_type_func is incomprehensible. 
-   We cannot (easily) unfold and reason about it. Therefore, we 
-   prove unfolding of val_type to its body as a lemma.
-   (Note that the unfold_sub tactic relies on functional extensionality)
+   We cannot (easily) unfold and reason about it. Therefore, we prove unfolding of
+   val_type to its body as a lemma.
+   (Note that the unfold_sub tactic relies on 
+   functional extensionality)
 *)
 
 Import Coq.Program.Wf.
@@ -487,7 +501,7 @@ Lemma val_type_unfold: forall env GH T n dd v, val_type env GH T n dd v =
 
     | vty env1 TX, TMem T1 T2 =>
       closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2 /\
-      match (vsmatch n dd) with
+      match vsmatch n dd with
         | vsmatch 0 dd => True
         | vsmatch (S n0) dd => forall (dy:vseta) vy, 
                       (val_type env GH T1 n0 (dy n0) vy -> dd (dy n0) vy) /\
@@ -509,9 +523,9 @@ Lemma val_type_unfold: forall env GH T n dd v, val_type env GH T n dd v =
       val_type env GH T1 n dd v /\ val_type env GH T2 n dd v
         
     | _, TBind T1 =>
-      closed 1 (length GH) (length env) T1 /\
+       closed 1 (length GH) (length env) T1 /\
       exists jj:vseta, jj n = dd /\ forall n, val_type env (jj::GH) (open (varH (length GH)) T1) n (jj n) v
-
+        
     | _, TTop => 
       True
     | _,_ =>
@@ -520,20 +534,32 @@ Lemma val_type_unfold: forall env GH T n dd v, val_type env GH T n dd v =
 
   
 
-Proof. (* 
+Proof.
   intros. unfold val_type at 1. unfold val_type_func.
   unfold_sub val_type (val_type env GH T n dd v).
-  simpl.
-  ...
+  simpl. (* unfold_sub. simpl. takes a long time, > 1h *)
+  destruct v; simpl; try reflexivity.
+  destruct T. 
+  - try reflexivity.
+  - try reflexivity.
+  - split.  
+  - destruct v; simpl; try reflexivity.
 
-  We admit this lemma here for performance reasons. The invocations
-  of unfold_sub. simpl. above can take Coq an hour or more to
-  complete (for reasons that are not clear).
-
-  The right-hand side of val_type_unfold has been copied and pasted
-  literally from val_type, so there is no question about the 
-  validity of the lemma. *)
-  admit.
+  (* TSel case has another match *)
+  destruct (indexr i env); simpl; try reflexivity;
+  destruct v; simpl; try reflexivity.
+  (* TSelH *) 
+  destruct (indexr i GH); simpl; try reflexivity.
+  - try reflexivity.
+  - split.
+  - simpl. try reflexivity. 
+  - destruct T; simpl; try reflexivity;
+    try destruct v; simpl; try reflexivity.
+    destruct (indexr i env); simpl; try reflexivity;
+      destruct v; simpl; try reflexivity.
+    destruct (indexr i GH); simpl; try reflexivity.
+    admit.
+    (* destruct n; simpl; try reflexivity. *)
 Qed.
 
 
@@ -550,7 +576,7 @@ Require Import Coq.Logic.Eqdep_dec.
 Require Import Coq.Arith.Peano_dec.
 
 intros. inversion H0. apply inj_pair2_eq_dec in H2. subst. assumption.
-apply eq_nat_dec.
+apply eq_nat_dec. 
 Qed.
 
 (* some quick examples *)
@@ -585,7 +611,8 @@ Qed.
    to establish a vseta equivalent to [[ T1 ]] that can be passed
    to [[ TMem T1 T1 ]].
   *)
-Example valtp_to_vseta: forall G1 GH T, exists (dd:vseta), forall n d v, val_type G1 GH T n d v <-> dd (S n) d v.
+Example valtp_to_vseta: forall G1 GH T, exists (dd:vseta), 
+    forall n d v, val_type G1 GH T n d v <-> dd (S n) d v.
 Proof.
   intros. remember (vtp G1 GH T) as V.
 
@@ -598,6 +625,12 @@ Proof.
   split; intros; assumption.
 Qed.
 
+
+
+
+
+(* make logical relation explicit *)
+(* Definition R H G t v T := tevaln H t v /\ val_type G [] v T nil. *)
 
 
 (* consistent environment *)
@@ -619,6 +652,7 @@ Hint Unfold open.
 Hint Unfold indexr.
 Hint Unfold length.
 
+(* Hint Unfold R. *)
 Hint Unfold R_env.
 
 Hint Constructors ty.
@@ -654,11 +688,13 @@ Proof.
   crush.
 Qed.
 
+(*
 (* instantiate it to TTop *)
 Example ex20: has_type [polyId] (tapp (tvar 0) (ttyp TTop)) (TAll TTop TTop).
 Proof. 
   crush.
 Qed.
+*)
 
 (* ############################################################ *)
 (* Proofs *)
@@ -927,18 +963,6 @@ Proof.
   - simpl. rewrite IHclosed1. rewrite IHclosed2. reflexivity. assumption. assumption.
 Qed.
 
-Ltac ev := repeat match goal with
-                    | H: exists _, _ |- _ => destruct H
-                    | H: _ /\  _ |- _ => destruct H
-           end.
-
-Ltac inv_mem := match goal with
-                  | H: closed 0 (length ?GH) (length ?G) (TMem ?T1 ?T2) |-
-                    closed 0 (length ?GH) (length ?G) ?T2 => inversion H; subst; eauto
-                  | H: closed 0 (length ?GH) (length ?G) (TMem ?T1 ?T2) |-
-                    closed 0 (length ?GH) (length ?G) ?T1 => inversion H; subst; eauto
-                end.
-
 Lemma stp_closed : forall G GH T1 T2,
                      stp G GH T1 T2 ->
                      closed 0 (length GH) (length G) T1 /\ closed 0 (length GH) (length G) T2.
@@ -1078,7 +1102,7 @@ Proof.
     rewrite H. reflexivity.
   }
   rewrite app_length in A. rewrite app_length in A.
-  rewrite H0 in A. apply NPeano.Nat.add_cancel_r in A.
+  rewrite H0 in A. apply Nat.add_cancel_r in A.
   apply concat_same_length; assumption.
 Qed.
 
@@ -1378,7 +1402,7 @@ Proof.
 Qed.
 
  
-Lemma valtp_extend_aux: forall n T1 vx vf (df:vseta) k H1 G1,
+Lemma valtp_extend_aux: forall n T1 vx vf df k H1 G1,
   tsize_flat T1 < n ->
   closed 0 (length G1) (length H1) T1 ->
   (vtp H1 G1 T1 k (df k) vf <-> vtp (vx :: H1) G1 T1 k (df k) vf).
@@ -2438,6 +2462,7 @@ Qed.
 
 
 (* type assignment for variables *)
+
 Lemma invert_var : forall x tenv T,
   has_type tenv (tvar x) T -> forall venv renv, R_env venv renv tenv ->
   exists (d: vseta) v, tevaln venv (tvar x) v /\ indexr x venv = Some v /\ indexr x renv = Some d /\ forall k, val_type renv [] T k (d k) v.
@@ -2458,6 +2483,21 @@ Proof.
       intros. eapply unvv. eapply vtp_subst2_general. rewrite H3. assumption. eassumption. eapply H6. }
     split. assumption. split. assumption. intros. rewrite val_type_unfold. rewrite H3. 
     destruct v; split; try assumption; exists d; (split; [reflexivity| assumption]). 
+
+    (*    
+  - Case "VarUnpack".
+    unfold R_env in WFE. ev. destruct (H4 _ _ H) as [d [v [I ?]]]. ev.
+    exists d. exists v. split. exists 0. intros. destruct n. omega. simpl. rewrite I. reflexivity.
+    intros.
+    assert (forall n, exists jj, jj n = d n /\ forall n, val_type renv (jj::nil) (open (varH 0) T1) n (jj n) v). {
+    intros. specialize (H6 n). 
+    eapply unvv in H6. rewrite val_type_unfold in H6.
+    destruct v; assumption. }
+    
+    assert (forall n, exists jj:vseta, jj n = d n). intros. destruct (H7 n). exists x0. ev. assumption.
+
+    (* NOT CLEAR *)
+*)
 
   - Case "And".
     destruct (IHW1 eq_refl venv0 renv WFE) as [d1 [v1 [E1 [I1 [D1 HVF]]]]].
@@ -2511,6 +2551,12 @@ Proof.
     specialize (IHW2 _ _ WFE1).
     destruct IHW2 as [dy [vy [IW2 HVY]]].
     clear HVX. clear VXF. 
+
+    (* question: 
+    assert (jj 0 = dx 0). (* sure *)
+    assert (forall k : nat, val_type renv [jj] T2 k (jj k) vy). (* sure *)
+    assert (forall k : nat, val_type renv [dx] T2 k (dx k) vy). (* not with current rules! *)
+    *)
 
     exists dy. exists vy. split. {
       destruct IW1 as [nx IWX].
@@ -2608,5 +2654,3 @@ Proof.
 Grab Existential Variables.
 
 Qed.
-
-
