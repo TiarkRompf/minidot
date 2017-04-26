@@ -4,7 +4,7 @@ Paper (ECOOP 2017): [[pdf](https://www.cs.purdue.edu/homes/rompf/papers/wang-eco
 
 ### Mechanization in Coq ###
 
-The Coq scripts compile with the command `make`, using `coqc --version` 8.4pl6 (July 2015).
+The Coq scripts compile with the command `make`, using `coqc --version` 8.6.
 
 - [`dsubsup_total.v`](dsubsup_total.v) -- termination proof for plain D<:> (Section 3) 
 - [`dsubsup_total_rec.v`](dsubsup_total_rec.v) -- termination proof for D<:> plus recursive self types and intersection types (Section 4)
