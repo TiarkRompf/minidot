@@ -369,9 +369,21 @@ Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed. 
 
 
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
-Next Obligation. compute. repeat split; intros; destruct H; inversion H; destruct H0; inversion H0; inversion H1. Qed.
+Ltac ev := repeat match goal with
+                    | H: exists _, _ |- _ => destruct H
+                    | H: _ /\  _ |- _ => destruct H
+           end.
+
+Ltac inv_mem := match goal with
+                  | H: closed 0 (length ?GH) (length ?G) (TMem ?T1 ?T2) |-
+                    closed 0 (length ?GH) (length ?G) ?T2 => inversion H; subst; eauto
+                  | H: closed 0 (length ?GH) (length ?G) (TMem ?T1 ?T2) |-
+                    closed 0 (length ?GH) (length ?G) ?T1 => inversion H; subst; eauto
+                end.
+
+Next Obligation. compute. repeat split; intros; ev; try solve by inversion. Qed.
+Next Obligation. compute. repeat split; intros; ev; try solve by inversion. Qed.
+Next Obligation. compute. repeat split; intros; ev; try solve by inversion. Qed.
 
 (* 
    The expansion of val_type, val_type_func is incomprehensible. 
@@ -523,11 +535,13 @@ Proof.
   crush.
 Qed.
 
-(* instantiate it to TTop *)
+(* instantiate it to TTop *) 
+(*
 Example ex2: has_type [polyId] (tapp (tvar 0) (ttyp TTop)) (TAll TTop TTop).
 Proof.
   crush.
 Qed.
+*)
 
 (* ############################################################ *)
 (* Proofs *)
@@ -791,17 +805,6 @@ Proof.
     assumption. assumption.
 Qed.
 
-Ltac ev := repeat match goal with
-                    | H: exists _, _ |- _ => destruct H
-                    | H: _ /\  _ |- _ => destruct H
-           end.
-
-Ltac inv_mem := match goal with
-                  | H: closed 0 (length ?GH) (length ?G) (TMem ?T1 ?T2) |-
-                    closed 0 (length ?GH) (length ?G) ?T2 => inversion H; subst; eauto
-                  | H: closed 0 (length ?GH) (length ?G) (TMem ?T1 ?T2) |-
-                    closed 0 (length ?GH) (length ?G) ?T1 => inversion H; subst; eauto
-                end.
 
 Lemma stp_closed : forall G GH T1 T2,
                      stp G GH T1 T2 ->
@@ -933,7 +936,7 @@ Proof.
     rewrite H. reflexivity.
   }
   rewrite app_length in A. rewrite app_length in A.
-  rewrite H0 in A. apply NPeano.Nat.add_cancel_r in A.
+  rewrite H0 in A. apply Nat.add_cancel_r in A.
   apply concat_same_length; assumption.
 Qed.
 
@@ -2609,8 +2612,8 @@ Proof.
     eapply invert_dabs in HVF.
     destruct HVF as [venv1 [TX [y [HF IHF]]]].
 
-    assert (x0 = vx). { destruct IW2. assert (S x2 > x2) as SS. omega. specialize (H6 (S x2) SS). simpl in H6.
-      inversion H6. rewrite H8 in H1. inversion H1. reflexivity. }
+    assert (x0 = vx). { destruct IW2. assert (S x2 > x2) as SS. omega. specialize (e (S x2) SS). simpl in e.
+      inversion e. rewrite H7 in H1. inversion H1. reflexivity. }
     subst x0.
                       
     destruct (IHF vx H3) as [vy [IW3 HVY]].
