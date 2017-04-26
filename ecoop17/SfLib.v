@@ -179,7 +179,7 @@ Inductive multi (X:Type) (R: relation X)
                     R x y ->
                     multi X R y z ->
                     multi X R x z.
-Implicit Arguments multi [[X]]. 
+Arguments multi {X} _.
 
 Tactic Notation "multi_cases" tactic(first) ident(c) :=
   first;
