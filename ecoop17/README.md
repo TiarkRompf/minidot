@@ -1,4 +1,4 @@
-## Strong Normalization for Dependent Object Types (DOT) ##
+## Towards Strong Normalization for Dependent Object Types (DOT) ##
 
 Paper (ECOOP 2017): [[pdf](https://www.cs.purdue.edu/homes/rompf/papers/wang-ecoop17.pdf)]
 
