@@ -6,7 +6,7 @@ The DOT Calculus and its Variations
 Formalizations of the Dependent Object Types (DOT) calculus, from the bottom up, with soundness proofs at each step.
 
 - Towards Strong Normalization for Dependent Object Types (ECOOP'17) [[pdf]](https://www.cs.purdue.edu/homes/rompf/papers/wang-ecoop17.pdf)
-  - [D<:> with extensions](./eccop17/dsubsup_total_rec.v)
+  - [D<:> with extensions](./ecoop17/dsubsup_total_rec.v)
 
 - From F to DOT: Type Soundness Proofs with Definitional Interpreters (POPL'17) [[pdf]](https://www.cs.purdue.edu/homes/rompf/papers/amin-popl17a.pdf)
   - [STLC](./popl17/stlc.v)
