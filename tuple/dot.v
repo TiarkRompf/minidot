@@ -42,6 +42,9 @@ Inductive tm : Type :=
   (* N.B.: no varB -- terms just use absolute identifers directly *)
   | tobj  : dms(*self is next slot in abstract context -- see subst_tm*) -> tm (* new object instance: { z => d... } *)
   | tapp  : tm -> lb -> tm -> tm (* method invocation: t.m(t) *)
+  (* for now, only one method m, and only one dispatch and argument parameter *)
+  | tupd  : ty -> ty -> tm -> tm -> tm (* let (a: A).m(p: P) = e in e *)
+  | tupi  : tm -> tm -> tm (* (a).m(p) *)
 
 with dm : Type := (* initialization / member definition --
                      the labels, e.g. m & A, are determined from the position in member list, dms *)
@@ -68,6 +71,7 @@ Inductive vl : Type :=
 
 Definition venv := list vl. (*rho G*)
 Definition tenv := list ty. (*Gamma GH*)
+Definition tupenv := list (ty * ty * tm).
 
 Hint Unfold venv.
 Hint Unfold tenv.
@@ -174,7 +178,9 @@ Fixpoint subst_tm (u:nat) (t : tm) {struct t} : tm :=
     | tvar true i         => tvar true i
     | tvar false i        => if beq_nat i 0 then (tvar true u) else tvar false (i-1)
     | tobj ds             => tobj (subst_dms u ds)
-    | tapp t1 l t2          => tapp (subst_tm u t1) l (subst_tm u t2)
+    | tapp t1 l t2        => tapp (subst_tm u t1) l (subst_tm u t2)
+    | tupd ty1 ty2 t1 t2 => tupd (subst (TVar true u) ty1) (subst (TVar true u) ty2) t1(*hack*) (subst_tm u t2)
+    | tupi t1 t2          => tupi (subst_tm u t1) (subst_tm u t2)
   end
 with subst_dm (u:nat) (d: dm) {struct d} : dm :=
   match d with
@@ -191,87 +197,84 @@ with subst_dms (u:nat) (ds: dms) {struct ds} : dms :=
 Definition substt x T := (subst (TVar true x) T).
 Hint Immediate substt.
 
-(*# Operational Semantics #*)
-
-(* Reduction semantics  *)
-Inductive step : venv -> tm -> venv -> tm -> Prop :=
-(* Computation Rules *)
-| ST_Obj : forall G1 D,
-    step G1 (tobj D) (vobj (subst_dms (length G1) D)::G1) (tvar true (length G1))
-| ST_AppAbs : forall G1 f l x ds T1 T2 t12,
-    index f G1 = Some (vobj ds) ->
-    index l (dms_to_list ds) = Some (dfun T1 T2 t12) ->
-    step G1 (tapp (tvar true f) l (tvar true x)) G1 (subst_tm x t12)
-(* Congruence Rules *)
-| ST_App1 : forall G1 G1' t1 t1' l t2,
-    step G1 t1 G1' t1' ->
-    step G1 (tapp t1 l t2) G1' (tapp t1' l t2)
-| ST_App2 : forall G1 G1' f t2 l t2',
-    step G1 t2 G1' t2' ->
-    step G1 (tapp (tvar true f) l t2) G1' (tapp (tvar true f) l t2')
-.
-
 (*# Static Semantics #*)
 
 Definition eq_some {X} (OT:option X) (T:X) := OT=None \/ OT=Some T.
 
 (* : -- typing *)
-Inductive has_type : tenv -> venv -> tm -> ty -> nat -> Prop :=
-  | T_Vary : forall GH G1 x ds ds' T T' n1,
+Inductive has_type : tenv -> venv -> tupenv -> ty -> tm -> ty -> nat -> Prop :=
+  | T_Vary : forall GH G1 P1 R x ds ds' T T' n1,
       index x G1 = Some (vobj ds) ->
-      dms_has_type [T'] G1 ds' T' n1 ->
+      dms_has_type [T'] G1 P1 R ds' T' n1 ->
       subst_dms x ds' = ds ->
       substt x T' = T ->
       closed 0 (length G1) 0 T ->
-      has_type GH G1 (tvar true x) T (S n1)
-  | T_Varz : forall G1 GH x T n1,
+      has_type GH G1 P1 R (tvar true x) T (S n1)
+  | T_Varz : forall G1 GH P1 R x T n1,
       index x GH = Some T ->
       closed (length GH) (length G1) 0 T ->
-      has_type GH G1 (tvar false x) T (S n1)
-  | T_VarPack : forall GH G1 b x T1 T1' n1,
-      has_type GH G1 (tvar b x) T1' n1 ->
+      has_type GH G1 P1 R (tvar false x) T (S n1)
+  | T_VarPack : forall GH G1 P1 R b x T1 T1' n1,
+      has_type GH G1 P1 R (tvar b x) T1' n1 ->
       T1' = (open 0 (TVar b x) T1) ->
       closed (length GH) (length G1) 1 T1 ->
-      has_type GH G1 (tvar b x) (TBind T1) (S n1)
-  | T_VarUnpack : forall GH G1 b x T1 T1' n1,
-      has_type GH G1 (tvar b x) (TBind T1) n1 ->
+      has_type GH G1 P1 R (tvar b x) (TBind T1) (S n1)
+  | T_VarUnpack : forall GH G1 P1 R b x T1 T1' n1,
+      has_type GH G1 P1 R (tvar b x) (TBind T1) n1 ->
       T1' = (open 0 (TVar b x) T1) ->
       closed (length GH) (length G1) 0 T1' ->
-      has_type GH G1 (tvar b x) T1' (S n1)
-  | T_Obj : forall GH G1 ds T T' n1,
-      dms_has_type (T'::GH) G1 ds T' n1 ->
+      has_type GH G1 P1 R (tvar b x) T1' (S n1)
+  | T_Obj : forall GH G1 P1 R ds T T' n1,
+      dms_has_type (T'::GH) G1 P1 R ds T' n1 ->
       T' = open 0 (TVar false (length GH)) T ->
       closed (length GH) (length G1) 1 T ->
-      has_type GH G1 (tobj ds) (TBind T) (S n1)
-  | T_App : forall l T1 T2 GH G1 t1 t2 n1 n2,
-      has_type GH G1 t1 (TFun l T1 T2) n1 ->
-      has_type GH G1 t2 T1 n2 ->
+      has_type GH G1 P1 R (tobj ds) (TBind T) (S n1)
+  | T_App : forall l T1 T2 GH G1 P1 R t1 t2 n1 n2,
+      has_type GH G1 P1 R t1 (TFun l T1 T2) n1 ->
+      has_type GH G1 P1 R t2 T1 n2 ->
       closed (length GH) (length G1) 0 T2 ->
-      has_type GH G1 (tapp t1 l t2) T2 (S (n1+n2))
-  | T_AppVar : forall l T1 T2 T2' GH G1 t1 b2 x2 n1 n2,
-      has_type GH G1 t1 (TFun l T1 T2) n1 ->
-      has_type GH G1 (tvar b2 x2) T1 n2 ->
+      has_type GH G1 P1 R (tapp t1 l t2) T2 (S (n1+n2))
+  | T_AppVar : forall l T1 T2 T2' GH G1 P1 R t1 b2 x2 n1 n2,
+      has_type GH G1 P1 R t1 (TFun l T1 T2) n1 ->
+      has_type GH G1 P1 R (tvar b2 x2) T1 n2 ->
       T2' = (open 0 (TVar b2 x2) T2) ->
       closed (length GH) (length G1) 0 T2' ->
-      has_type GH G1 (tapp t1 l (tvar b2 x2)) T2' (S (n1+n2))
-  | T_Sub : forall GH G1 t T1 T2 n1 n2,
-      has_type GH G1 t T1 n1 ->
+      has_type GH G1 P1 R (tapp t1 l (tvar b2 x2)) T2' (S (n1+n2))
+  | T_TupD : forall GH G1 P1 R Ta Tp t1 t2 T2 n1 n2,
+      has_type (Tp::Ta::[]) G1 P1 R t1 R n1 ->
+      closed 0 0 0 R ->
+      closed 0 (length G1) 0 Tp ->
+      closed 0 (length G1) 0 Ta ->
+      has_type GH G1 ((Ta,Tp,t1)::P1) R t2 T2 n2 ->
+      closed (length GH) (length G1) 0 T2 ->
+      has_type GH G1 P1 R (tupd Ta Tp t1 t2) T2 (S (n1 + n2))
+  | T_TupI : forall GH G1 P1 R Ta Tp t1 ta tp i n1 n2 n3,
+      index i P1 = Some (Ta, Tp, t1) ->
+      has_type GH G1 P1 R ta Ta n1 ->
+      has_type GH G1 P1 R tp Tp n2 ->
+      has_type (Tp::Ta::[]) G1 P1 R t1 R n3 ->
+      closed 0 0 0 R ->
+      closed 0 (length G1) 0 Tp ->
+      closed 0 (length G1) 0 Ta ->
+      has_type GH G1 P1 R (tupi ta tp) R (S (n1 + n2 + n3))
+  | T_Sub : forall GH G1 P1 R t T1 T2 n1 n2,
+      has_type GH G1 P1 R t T1 n1 ->
       stp GH G1 T1 T2 n2 ->
-      has_type GH G1 t T2 (S (n1 + n2))
+      has_type GH G1 P1 R t T2 (S (n1 + n2))
 
 (* : -- member initialization *)
-with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
-  | D_Nil : forall GH G1 n1,
-      dms_has_type GH G1 dnil TTop (S n1)
-  | D_Typ : forall GH G1 l T11 ds TS T n1,
-      dms_has_type GH G1 ds TS n1 ->
+with dms_has_type: tenv -> venv -> tupenv -> ty -> dms -> ty -> nat -> Prop :=
+  | D_Nil : forall GH G1 P1 R n1,
+      dms_has_type GH G1 P1 R dnil TTop (S n1)
+  | D_Typ : forall GH G1 P1 R l T11 ds TS T n1,
+      dms_has_type GH G1 P1 R ds TS n1 ->
       closed (length GH) (length G1) 0 T11 ->
       l = length (dms_to_list ds) ->
       T = TAnd (TTyp l T11 T11) TS ->
-      dms_has_type GH G1 (dcons (dty T11) ds) T (S n1)
-  | D_Fun : forall GH G1 l OT11 T11 OT12 T12 T12' t12 ds TS T n1 n2,
-      dms_has_type GH G1 ds TS n1 ->
-      has_type (T11::GH) G1 t12 T12' n2 ->
+      dms_has_type GH G1 P1 R (dcons (dty T11) ds) T (S n1)
+  | D_Fun : forall GH G1 P1 R l OT11 T11 OT12 T12 T12' t12 ds TS T n1 n2,
+      dms_has_type GH G1 P1 R ds TS n1 ->
+      has_type (T11::GH) G1 P1 R t12 T12' n2 ->
       T12' = (open 0 (TVar false (length GH)) T12) ->
       closed (length GH) (length G1) 0 T11 ->
       closed (length GH) (length G1) 1 T12 ->
@@ -279,7 +282,7 @@ with dms_has_type: tenv -> venv -> dms -> ty -> nat -> Prop :=
       T = TAnd (TFun l T11 T12) TS ->
       eq_some OT11 T11 ->
       eq_some OT12 T12 ->
-      dms_has_type GH G1 (dcons (dfun OT11 OT12 t12) ds) T (S (n1+n2))
+      dms_has_type GH G1 P1 R (dcons (dfun OT11 OT12 t12) ds) T (S (n1+n2))
 
 (* <: -- subtyping *)
 with stp: tenv -> venv -> ty -> ty -> nat -> Prop :=
@@ -392,7 +395,7 @@ with htp: tenv -> venv -> id -> ty -> nat -> Prop :=
     GH = GU ++ GL ->
     htp GH G1 x T2 (S (n1+n2)).
 
-Definition has_typed GH G1 x T1 := exists n, has_type GH G1 x T1 n.
+Definition has_typed GH G1 P1 R x T1 := exists n, has_type GH G1 P1 R x T1 n.
 
 Definition stpd GH G1 T1 T2 := exists n, stp GH G1 T1 T2 n.
 
@@ -405,7 +408,7 @@ Ltac ep := match goal with
            end.
 
 Ltac eu := match goal with
-             | H: has_typed _ _ _ _ |- _ => destruct H as [? H]
+             | H: has_typed _ _ _ _ _ _ |- _ => destruct H as [? H]
              | H: stpd _ _ _ _ |- _ => destruct H as [? H]
              | H: htpd _ _ _ _ |- _ => destruct H as [? H]
            end.
@@ -469,6 +472,39 @@ Ltac ev := repeat match goal with
                     | H: _ /\  _ |- _ => destruct H
            end.
 
+
+(*# Operational Semantics #*)
+
+(* Reduction semantics  *)
+Inductive step : ty -> venv -> tupenv -> tm -> venv -> tupenv -> tm -> Prop :=
+(* Computation Rules *)
+| ST_Obj : forall R G1 P1 D,
+    step R G1 P1 (tobj D) (vobj (subst_dms (length G1) D)::G1) P1 (tvar true (length G1))
+| ST_AppAbs : forall R G1 P1 f l x ds T1 T2 t12,
+    index f G1 = Some (vobj ds) ->
+    index l (dms_to_list ds) = Some (dfun T1 T2 t12) ->
+    step R G1 P1 (tapp (tvar true f) l (tvar true x)) G1 P1 (subst_tm x t12)
+| ST_TupReg : forall R G1 P1 Ta Tp t1 t2,
+    step R G1 P1 (tupd Ta Tp t1 t2) G1 ((Ta,Tp,t1)::P1) t2
+| ST_TupInv : forall R G1 P1 a p i Ta Tp t na np,
+    index i P1 = Some (Ta, Tp, t) ->
+    has_type [] G1 P1 R (tvar true a) Ta na ->
+    has_type [] G1 P1 R (tvar true p) Tp np ->
+    step R G1 P1 (tupi (tvar true a) (tvar true p)) G1 P1 (subst_tm p (subst_tm a t))
+(* Congruence Rules *)
+| ST_App1 : forall R G1 G1' P1 P1' t1 t1' l t2,
+    step R G1 P1 t1 G1' P1' t1' ->
+    step R G1 P1 (tapp t1 l t2) G1' P1' (tapp t1' l t2)
+| ST_App2 : forall R G1 G1' P1 P1' f t2 l t2',
+    step R G1 P1 t2 G1' P1' t2' ->
+    step R G1 P1 (tapp (tvar true f) l t2) G1' P1' (tapp (tvar true f) l t2')
+| ST_TupInv1 : forall R G1 G1' P1 P1' t1 t1' t2,
+    step R G1 P1 t1 G1' P1' t1' ->
+    step R G1 P1 (tupi t1 t2) G1' P1' (tupi t1' t2)
+| ST_TupInv2 : forall R G1 G1' P1 P1' f t2 t2',
+    step R G1 P1 t2 G1' P1' t2' ->
+    step R G1 P1 (tupi (tvar true f) t2) G1' P1' (tupi (tvar true f) t2')
+.
 
 (*# Regularity #*)
 
@@ -563,12 +599,12 @@ Lemma all_extend: forall ni,
   (forall v1 x GH G1 T2 n,
      htp GH G1 x T2 n -> n < ni ->
      htp GH (v1::G1) x T2 n) /\
-  (forall GH G1 t T v n,
-     has_type GH G1 t T n -> n < ni ->
-     has_type GH (v::G1) t T n) /\
-  (forall GH G1 ds T v n,
-     dms_has_type GH G1 ds T n -> n < ni ->
-     dms_has_type GH (v::G1) ds T n).
+  (forall GH G1 P1 R t T v n,
+     has_type GH G1 P1 R t T n -> n < ni ->
+     has_type GH (v::G1) P1 R t T n) /\
+  (forall GH G1 P1 R ds T v n,
+     dms_has_type GH G1 P1 R ds T n -> n < ni ->
+     dms_has_type GH (v::G1) P1 R ds T n).
 Proof.
   intros n. induction n. repeat split; intros; omega.
   repeat split; intros; inversion H.
@@ -605,6 +641,8 @@ Proof.
   - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
   - econstructor. subst. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eapply closed_extend. eauto.
   - eapply T_AppVar. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto.
+  - econstructor. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto. eapply closed_extend. eauto. eapply IHn. eauto. omega. eapply closed_extend. eauto.
+  - econstructor. eauto. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eapply IHn. eauto. omega. eauto. eapply closed_extend. eauto. eapply closed_extend. eauto.
   - econstructor. eapply IHn. eauto. omega. eapply IHn. eauto. omega.
   (* dms_has_type *)
   - econstructor.
@@ -678,11 +716,11 @@ Lemma all_closed: forall ni,
   (forall x GH G1 T2 n,
      htp GH G1 x T2 n -> n < ni ->
      closed (length GH) (length G1) 0 T2) /\
-  (forall GH G1 t T n,
-     has_type GH G1 t T n -> n < ni ->
+  (forall GH G1 P1 R t T n,
+     has_type GH G1 P1 R t T n -> n < ni ->
      closed (length GH) (length G1) 0 T) /\
-  (forall GH G1 ds T n,
-     dms_has_type GH G1 ds T n -> n < ni ->
+  (forall GH G1 P1 R ds T n,
+     dms_has_type GH G1 P1 R ds T n -> n < ni ->
      closed (length GH) (length G1) 0 T).
 Proof.
   intros n. induction n. repeat split; intros; omega.
@@ -741,6 +779,8 @@ Proof.
   - econstructor. eauto.
   - eapply IHT in H1. inversion H1. eauto. omega.
   - eapply IHT in H1. inversion H1. eauto. omega.
+  - subst. eauto.
+  - eapply closed_extend_mult. eapply closed_upgrade_gh. subst. eauto. omega. omega.
   - eapply IHS2. eauto. omega.
   (* dms_has_type *)
   - econstructor.
@@ -763,19 +803,19 @@ Lemma stp_extend_mult : forall GH G1 G' T1 T2 n,
                       stp GH (G'++G1) T1 T2 n.
 Proof. intros. induction G'. simpl. eauto. simpl. eapply stp_extend. eauto. Qed.
 
-Lemma has_type_extend: forall GH G1 t T v n1,
-  has_type GH G1 t T n1 ->
-  has_type GH (v::G1) t T n1.
+Lemma has_type_extend: forall GH G1 P1 R t T v n1,
+  has_type GH G1 P1 R t T n1 ->
+  has_type GH (v::G1) P1 R t T n1.
 Proof. intros. eapply all_extend. eauto. eauto. Qed.
 
-Lemma dms_has_type_extend: forall GH G1 t T v n1,
-  dms_has_type GH G1 t T n1 ->
-  dms_has_type GH (v::G1) t T n1.
+Lemma dms_has_type_extend: forall GH G1 P1 R t T v n1,
+  dms_has_type GH G1 P1 R t T n1 ->
+  dms_has_type GH (v::G1) P1 R t T n1.
 Proof. intros. eapply all_extend. eauto. eauto. Qed.
 
-Lemma has_type_extend_mult: forall GH G1 t T G' n1,
-  has_type GH G1 t T n1 ->
-  has_type GH (G'++G1) t T n1.
+Lemma has_type_extend_mult: forall GH G1 P1 R t T G' n1,
+  has_type GH G1 P1 R t T n1 ->
+  has_type GH (G'++G1) P1 R t T n1.
 Proof. intros. induction G'. simpl. eauto. simpl. eapply has_type_extend. eauto. Qed.
 
 Lemma htp_closed: forall x GH G1 T2 n,
@@ -788,18 +828,18 @@ Lemma htp_closed1: forall x GH G1 T2 n,
   x < length GH.
 Proof. intros. eapply all_closed with (x:=x). eauto. eauto. Qed.
 
-Lemma has_type_closed: forall GH G1 t T n1,
-  has_type GH G1 t T n1 ->
+Lemma has_type_closed: forall GH G1 P1 R t T n1,
+  has_type GH G1 P1 R t T n1 ->
   closed (length GH) (length G1) 0 T.
 Proof. intros. eapply all_closed with (t:=t). eauto. eauto. Qed.
 
-Lemma dms_has_type_closed: forall GH G1 t T n1,
-  dms_has_type GH G1 t T n1 ->
+Lemma dms_has_type_closed: forall GH G1 P1 R t T n1,
+  dms_has_type GH G1 P1 R t T n1 ->
   closed (length GH) (length G1) 0 T.
 Proof. intros. eapply all_closed with (ds:=t). eauto. eauto. Qed.
 
-Lemma has_type_closed_z: forall GH G1 z T n1,
-  has_type GH G1 (tvar false z) T n1 ->
+Lemma has_type_closed_z: forall GH G1 P1 R z T n1,
+  has_type GH G1 P1 R (tvar false z) T n1 ->
   z < length GH.
 Proof.
   intros. remember (tvar false z) as t. generalize dependent z.
@@ -807,16 +847,16 @@ Proof.
 Qed.
 
 
-Lemma has_type_closed1: forall GH G1 x T n1,
-  has_type GH G1 (tvar true x) T n1 ->
+Lemma has_type_closed1: forall GH G1 P1 R x T n1,
+  has_type GH G1 P1 R (tvar true x) T n1 ->
   x < length G1.
 Proof.
   intros. remember (tvar true x) as t. generalize dependent x.
   induction H; intros; inversion Heqt; subst; eauto using index_max.
 Qed.
 
-Lemma has_type_closed_b: forall G1 b x T n1,
-  has_type [] G1 (tvar b x) T n1 ->
+Lemma has_type_closed_b: forall G1 P1 R b x T n1,
+  has_type [] G1 P1 R (tvar b x) T n1 ->
   b = true /\ x < length G1.
  Proof.
  intros.
@@ -1864,9 +1904,9 @@ Lemma stp_upgrade_gh_mult0 : forall GH G1 T1 T2 n,
                       stp GH G1 T1 T2 n.
 Proof. intros. rewrite <- (app_nil_r GH). eapply stp_upgrade_gh_mult. eauto. Qed.
 
-Lemma hastp_upgrade_gh_var: forall G1 GH x T n1,
-  has_type [] G1 (tvar true x) T n1 ->
-  has_type GH G1 (tvar true x) T n1.
+Lemma hastp_upgrade_gh_var: forall G1 P1 R GH x T n1,
+  has_type [] G1 P1 R (tvar true x) T n1 ->
+  has_type GH G1 P1 R (tvar true x) T n1.
 Proof.
   intros.
   remember (tvar true x) as t.  remember [] as GH0.
@@ -1876,9 +1916,9 @@ Proof.
   - eapply T_Sub. eauto. eapply stp_upgrade_gh_mult0. eauto.
 Qed.
 
-Lemma hastp_upgrade_gh: forall G1 GH x T n1,
-  has_type [] G1 (tvar true x) T n1 ->
-  exists n, has_type GH G1 (tvar true x) T n.
+Lemma hastp_upgrade_gh: forall G1 P1 R GH x T n1,
+  has_type [] G1 P1 R (tvar true x) T n1 ->
+  exists n, has_type GH G1 P1 R (tvar true x) T n.
 Proof.
   intros. exists n1.
   induction GH. simpl. eauto. simpl. eapply hastp_upgrade_gh_var. eauto.
@@ -2090,4 +2130,158 @@ Proof.
     simpl. rewrite false_beq_nat. eapply IHds0. eauto.
     rewrite <- length_subst_dms. rewrite H2. rewrite app_length. simpl.
     omega.
+Qed.
+
+Lemma index_swap: forall X P0 P' i (v: X) P1 r,
+  index i (P0 ++ P' ++ v :: P1) = Some r ->
+  exists j, index j (P0 ++ v :: P' ++ P1) = Some r.
+Proof.
+  intros X P0. induction P0; intros P'; induction P'; intros.
+  - simpl. simpl in H. exists i. apply H.
+  - simpl. simpl in H. simpl in IHP'.
+    case_eq (beq_nat i (length (P' ++ v :: P1))); intros E.
+    +
+    assert (i = (length (P' ++ v :: P1))) as E1. {
+      eapply beq_nat_eq. symmetry. apply E.
+    }
+    assert (i = (S (length (P' ++ P1)))) as A0. {
+      rewrite app_length in *. simpl in *. rewrite plus_n_Sm. apply E1.
+    }
+    assert (beq_nat i (S (length (P' ++ P1))) = true) as A. {
+      rewrite A0. symmetry. apply beq_nat_refl.
+    }
+    assert ((i-1)=(length (P' ++ P1))) as B0. {
+      omega.
+    }
+    assert (beq_nat (i-1) (length (P' ++ P1)) = true) as B. {
+      rewrite B0. symmetry. apply beq_nat_refl.
+    }
+    assert (beq_nat (i - 1) (S (length (P' ++ P1))) = false) as C. {
+      rewrite B0. apply false_beq_nat. omega.
+    }
+    exists (i-1). rewrite B. rewrite C. rewrite E in H. apply H.
+    + edestruct IHP' as [ih IH].
+      rewrite E in H. eapply H.
+      case_eq (beq_nat ih (length (P' ++ P1))); intros F.
+      *
+      exists (S ih).
+      assert (beq_nat (S ih) (S (length (P' ++ P1))) = true) as X1. {
+        apply beq_nat_true in F. rewrite <- F. symmetry. apply beq_nat_refl.
+      }
+      rewrite X1. rewrite F in IH. apply IH.
+      * rewrite F in IH.
+        exists ih.
+        rewrite F.
+        assert (ih < S (length (P' ++ P1))) as X2. {
+          apply index_max in IH. omega.
+        }
+        assert (beq_nat ih (S (length (P' ++ P1))) = false) as X3. {
+          apply false_beq_nat. omega.
+        }
+        rewrite X3. apply IH.
+  - exists i. apply H.
+  - simpl. simpl in H.
+    case_eq (beq_nat i (length (P0 ++ a0 :: P' ++ v :: P1))); intros E1.
+    + rewrite E1 in H. exists i. rewrite app_length in E1. simpl in E1. rewrite app_length in E1. simpl in E1.
+      rewrite app_length. simpl. rewrite app_length. rewrite plus_n_Sm. rewrite E1. apply H.
+    + rewrite E1 in H.
+      assert (P0 ++ a0 :: P' ++ v :: P1 = P0 ++ (a0 :: P') ++ v :: P1) as A by eauto.
+      rewrite A in H.
+      edestruct IHP0 as [ih IH]. eapply H.
+      exists ih.
+      assert (beq_nat ih (length (P0 ++ v :: a0 :: P' ++ P1)) = false) as B. {
+        apply index_max in IH. apply false_beq_nat. simpl in IH. omega.
+      }
+      rewrite B. simpl in IH. apply IH.
+Qed.
+
+Lemma all_swap: forall ni,
+  (forall GH G1 P0 P' v P1 R t T n,
+  has_type GH G1 (P0 ++ P' ++ v :: P1) R t T n -> n < ni ->
+  has_type GH G1 (P0 ++ v :: P' ++ P1) R t T n) /\
+  (forall GH G1 P0 P' v P1 R ds T n,
+  dms_has_type GH G1 (P0 ++ P' ++ v :: P1) R ds T n -> n < ni ->
+  dms_has_type GH G1 (P0 ++ v :: P' ++ P1) R ds T n).
+Proof.
+  intros n. induction n. repeat split; intros; omega.
+  repeat split; intros; inversion H; subst; eauto.
+  - econstructor; eauto. eapply IHn; eauto. omega.
+  - econstructor; eauto. eapply IHn; eauto. omega.
+  - econstructor; eauto. eapply IHn; eauto. omega.
+  - econstructor; eauto. eapply IHn; eauto. omega.
+  - eapply T_App; eauto. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
+  - eapply T_AppVar; eauto. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
+  - econstructor; eauto. eapply IHn; eauto. omega. simpl.
+    assert (((Ta, Tp, t1) :: P0 ++ v :: P' ++ P1)=(((Ta, Tp, t1) :: P0) ++ v :: P' ++ P1)) as A. {
+      eauto.
+    }
+    rewrite A. eapply IHn. eauto. omega.
+  - edestruct index_swap. eauto.
+    econstructor; eauto. eapply IHn; eauto. omega. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
+  - econstructor; eauto. eapply IHn; eauto. omega.
+  - econstructor; eauto.
+  - econstructor; eauto. eapply IHn; eauto. omega.
+  - econstructor; eauto. eapply IHn; eauto. omega. eapply IHn; eauto. omega.
+Qed.
+
+Lemma hastp_swap: forall GH G1 P' v P1 R t T n,
+  has_type GH G1 (P' ++ v :: P1) R t T n ->
+  has_type GH G1 (v :: P' ++ P1) R t T n.
+Proof.
+  intros. assert ((v :: P' ++ P1)=([] ++ v :: P' ++ P1)) as A by eauto.
+  rewrite A. eapply all_swap. rewrite app_nil_l. eauto. eauto.
+Qed.
+
+Lemma all_extendp: forall ni,
+  (forall GH G1 P1 R t T n, has_type GH G1 P1 R t T n -> n < ni ->
+  forall P',
+  has_typed GH G1 (P' ++ P1) R t T) /\
+ (forall GH G1 P1 R ds T n, dms_has_type GH G1 P1 R ds T n -> n < ni ->
+  forall P',
+  exists nr, dms_has_type GH G1 (P' ++ P1) R ds T nr).
+Proof.
+  intros n. induction n. repeat split; intros; omega.
+  repeat split; intros; inversion H; subst; eauto.
+  - destruct IHn as [IHn1 IHn2].
+    edestruct IHn2 as [nih IH]. eapply H2. omega. eauto.
+  - destruct IHn as [IHn1 IHn2].
+    edestruct IHn1 as [nih IH]. eapply H1. omega. eauto.
+  - destruct IHn as [IHn1 IHn2].
+    edestruct IHn1 as [nih IH]. eapply H1. omega. eauto.
+  - destruct IHn as [IHn1 IHn2].
+    edestruct IHn2 as [nih IH]. eauto. omega. eauto.
+  - destruct IHn as [IHn1 IHn2].
+    edestruct IHn1 as [na IHA]. eapply H1. omega.
+    edestruct IHn1 as [nb IHB]. eapply H2. omega. eauto.
+  - destruct IHn as [IHn1 IHn2].
+    edestruct IHn1 as [na IHA]. eapply H1. omega.
+    edestruct IHn1 as [nb IHB]. eapply H2. omega. eauto.
+  - destruct IHn as [IHn1 IHn2].
+    edestruct IHn1 as [na IHA]. eapply H1. omega.
+    edestruct IHn1 as [nb IHB]. eapply H5. omega.
+    econstructor. econstructor. eapply IHA. eauto. eauto. eauto. eapply hastp_swap. eauto. eauto.
+  - destruct IHn as [IHn1 IHn2].
+    edestruct IHn1 as [na IHA]. eapply H2. omega.
+    edestruct IHn1 as [nb IHB]. eapply H3. omega.
+    edestruct IHn1 as [nc IHC]. eapply H4. omega.
+    econstructor. econstructor. eapply index_extend_mult. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+  - destruct IHn as [IHn1 IHn2].
+    edestruct IHn1 as [nih IH]. eapply H1. omega. eauto.
+  - econstructor. econstructor.
+  - destruct IHn as [IHn1 IHn2].
+    edestruct IHn2 as [nih IH]. eapply H1. omega. eauto.
+    econstructor. econstructor. eauto. eauto. eauto. eauto.
+  - destruct IHn as [IHn1 IHn2].
+    edestruct IHn1 as [n' IH']. eapply H2. omega. eauto.
+    edestruct IHn2 as [nih IH]. eapply H1. omega. eauto.
+    econstructor. econstructor. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto. eauto.
+Grab Existential Variables. apply 0. apply 0.
+Qed.
+
+Lemma hastp_extendp :
+  forall GH G1 P1 R t T n P',
+    has_type GH G1 P1 R t T n ->
+    has_typed GH G1 (P' ++ P1) R t T.
+Proof.
+  intros. eapply all_extendp. eauto. eauto.
 Qed.

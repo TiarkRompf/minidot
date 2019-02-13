@@ -21,13 +21,13 @@ Fixpoint dms_compute (ds: dms) :=
   end.
 
 Ltac apply_dfun := match goal with
-  | [ |- dms_has_type ?GH ?G1 (dcons (dfun (Some ?T11) (Some ?T12) ?t12) ?ds) ?T ?n ] =>
-    eapply (D_Fun GH G1 (length (dms_to_list ds)) (Some T11) T11 (Some T12) T12 (open 0 (TVar false (length GH)) T12) t12 ds (dms_compute ds) (TAnd (TFun (length (dms_to_list ds)) T11 T12) (dms_compute ds)))
+  | [ |- dms_has_type ?GH ?G1 ?P1 ?R (dcons (dfun (Some ?T11) (Some ?T12) ?t12) ?ds) ?T ?n ] =>
+    eapply (D_Fun GH G1 P1 R (length (dms_to_list ds)) (Some T11) T11 (Some T12) T12 (open 0 (TVar false (length GH)) T12) t12 ds (dms_compute ds) (TAnd (TFun (length (dms_to_list ds)) T11 T12) (dms_compute ds)))
   end.
 
 Ltac apply_tobj := match goal with
-  | [ |- has_type ?GH ?G1 (tobj ?ds) ?T ?n ] =>
-    eapply (T_Obj GH G1 ds) with (T':=(dms_compute ds)); try solve [simpl; reflexivity]
+  | [ |- has_type ?GH ?G1 ?P1 ?R (tobj ?ds) ?T ?n ] =>
+    eapply (T_Obj GH G1 P1 R ds) with (T':=(dms_compute ds)); try solve [simpl; reflexivity]
 end.
 
 Ltac pick_stp_and c :=
@@ -170,7 +170,7 @@ Fixpoint list_to_dms (xs: list dm) : dms :=
 Definition lobj ds := tobj (list_to_dms ds).
 
 (*# Sanity Check #*)
-Example ex0: has_typed [] [] (tobj dnil) TTop.
+Example ex0: has_typed [] [] [] TTop (tobj dnil) TTop.
   eexists. crush.
 Grab Existential Variables.
 apply 0. apply 0.
@@ -180,7 +180,7 @@ Qed.
 Definition polyId := TFun 0 (TTyp 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0) (TSel (TVarB 1) 0)).
 
 Example ex1: has_typed
-               [] []
+               [] [] [] TTop
                (tobj (dcons (tfun (TTyp 0 TBot TTop) (TFun 0 (TSel (TVarB 0) 0) (TSel (TVarB 1) 0))
                (tobj (dcons (tfun (TSel (TVar false 1) 0) (TSel (TVar false 1) 0) (tvar false 3)) dnil))) dnil)) polyId.
 Proof.
@@ -191,7 +191,7 @@ apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0. apply 0.
 Qed.
 
 (* instantiate it to TTop *)
-Example ex2: has_typed [polyId] [] (tapp (tvar false 0) 0 (tobj (dcons (dty TTop) dnil))) (TFun 0 TTop TTop).
+Example ex2: has_typed [polyId] [] [] TTop (tapp (tvar false 0) 0 (tobj (dcons (dty TTop) dnil))) (TFun 0 TTop TTop).
 Proof.
   unfold polyId.
   eexists.
@@ -264,7 +264,7 @@ Definition TLst m EL EU :=
 Definition mList := (TSel (TVar false 0) 0).
 Definition pT := (TSel (TVar false 1) 0).
 Example paper_lst:
-  has_typed [] []
+  has_typed [] [] [] TTop
 
     (* list module impl. *)
     (lobj
