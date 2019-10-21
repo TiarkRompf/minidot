@@ -62,16 +62,16 @@ Theorem andb_true_elim1 : forall b c,
 Proof.
   intros b c H.
   destruct b.
-  Case "b = true".
+  (* Case "b = true". *)
     reflexivity.
-  Case "b = false".
+  (* Case "b = false". *)
     rewrite <- H. reflexivity.  Qed.
 
 (* From Poly.v *)
 
 Notation "[ ]" := nil.
 Notation "[ x , .. , y ]" := (cons x .. (cons y []) ..).
-Notation "x ++ y" := (app x y) 
+Notation "x ++ y" := (app x y)
                      (at level 60, right associativity).
 
 (** * From Props.v *)
@@ -102,16 +102,16 @@ Theorem O_le_n : forall n,
   0 <= n.
 Proof.
   induction n as [| n'].
-  Case "n = 0". apply le_n.
-  Case "n = S n'". apply le_S. apply IHn'.
+  (* Case "n = 0". *) apply le_n.
+  (* Case "n = S n'". *) apply le_S. apply IHn'.
 Qed.
 
 Theorem n_le_m__Sn_le_Sm : forall n m,
   n <= m -> S n <= S m.
 Proof.
   intros. induction H as [| m'].
-  Case "H = n <= n". apply le_n.
-  Case "H = n <= S m'". apply le_S in IHle. apply IHle.
+  (* Case "H = n <= n". *) apply le_n.
+  (* Case "H = n <= S m'". *) apply le_S in IHle. apply IHle.
 Qed.
 
 Theorem ble_nat_true : forall n m,
@@ -120,8 +120,8 @@ Proof.
   intros. generalize dependent m.
   induction n as [| n'];
     intros.
-  Case "n = 0". apply O_le_n.
-  Case "n = S n'". destruct m. inversion H.
+  (* Case "n = 0". *) apply O_le_n.
+  (* Case "n = S n'". *) destruct m. inversion H.
     simpl in H. apply n_le_m__Sn_le_Sm. apply IHn'. apply H.
 Qed.
 
@@ -169,9 +169,9 @@ Inductive empty_relation : nat -> nat -> Prop := .
 Definition relation (X:Type) := X -> X -> Prop.
 
 Definition deterministic {X: Type} (R: relation X) :=
-  forall x y1 y2 : X, R x y1 -> R x y2 -> y1 = y2. 
+  forall x y1 y2 : X, R x y1 -> R x y2 -> y1 = y2.
 
-Inductive multi (X:Type) (R: relation X) 
+Inductive multi (X:Type) (R: relation X)
                             : X -> X -> Prop :=
   | multi_refl  : forall (x : X),
                  multi X R x x
@@ -181,9 +181,9 @@ Inductive multi (X:Type) (R: relation X)
                     multi X R x z.
 Arguments multi {X} _.
 
-Tactic Notation "multi_cases" tactic(first) ident(c) :=
-  first;
-  [ Case_aux c "multi_refl" | Case_aux c "multi_step" ].
+(* Tactic Notation "multi_cases" tactic(first) ident(c) := *)
+(*   first; *)
+(*   [ Case_aux c "multi_refl" | Case_aux c "multi_step" ]. *)
 
 Theorem multi_R : forall (X:Type) (R:relation X) (x y : X),
        R x y -> multi R x y.
@@ -192,7 +192,7 @@ Proof.
   apply multi_step with y. apply r. apply multi_refl.   Qed.
 
 (* Identifiers and polymorphic partial maps. *)
-Inductive id : Type := 
+Inductive id : Type :=
   Id : nat -> id.
 
 Definition beq_id id1 id2 :=
@@ -224,7 +224,7 @@ Proof.
 
 Definition partial_map (A:Type) := id -> option A.
 
-Definition empty {A:Type} : partial_map A := (fun _ => None). 
+Definition empty {A:Type} : partial_map A := (fun _ => None).
 
 Definition extend {A:Type} (Gamma : partial_map A) (x:id) (T : A) :=
   fun x' => if beq_id x x' then Some T else Gamma x'.
@@ -250,9 +250,9 @@ Qed.
 
 (** * Some useful tactics *)
 
-Tactic Notation "solve_by_inversion_step" tactic(t) :=  
-  match goal with  
-  | H : _ |- _ => solve [ inversion H; subst; t ] 
+Tactic Notation "solve_by_inversion_step" tactic(t) :=
+  match goal with
+  | H : _ |- _ => solve [ inversion H; subst; t ]
   end
   || fail "because the goal is not solvable by inversion.".
 
