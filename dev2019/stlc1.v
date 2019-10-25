@@ -10,6 +10,7 @@
 
 Require Export Arith.EqNat.
 Require Export Arith.Le.
+From Coq Require Import omega.Omega.
 Require Import Coq.Lists.List.
 
 Import ListNotations.
@@ -289,12 +290,12 @@ Qed.
 (*                                                              *)
 (* ############################################################ *)
 
-Require Export SfLib.
-
-Require Export Arith.EqNat.
-Require Export Arith.Le.
-
-Require Export stlc1.
+Theorem ex_falso_quodlibet : forall (P:Prop),
+  False -> P.
+Proof.
+  intros P contra.
+  inversion contra.
+Qed.
 
 
 (* ############################################################ *)
@@ -311,13 +312,16 @@ Inductive wf_env : venv -> tenv -> Prop :=
     get_inv_idx vs = get_inv_idx ts ->
     wf_env (expand_env vs v n) (expand_env ts t n)
 
-with val_type : venv -> vl -> ty -> Prop :=
+with val_type : venv -> vl -> ty -> Prop := (* TODO!!! *)
 | v_bool: forall venv b,
     val_type venv (vbool b) TBool
-| v_abs: forall env venv tenv y T1 T2 m,
+| v_abs: forall env venv tenv y T1 T2 m, (* NEW: TRec wrapper *)
     wf_env venv tenv ->
-    has_type (expand_env (expand_env tenv (TFun T1 m T2) Second) T1 m) y First T2 ->
+    has_type (expand_env (expand_env tenv (TRec (TFun T1 m T2)) Second) T1 m) y First T2 ->
     val_type env (vabs venv m y) (TFun T1 m T2)
+| v_rec: forall env v T,  (* NEW *)
+    val_type env v T ->
+    val_type env (vrec v) (TRec T)
 .
 
 
@@ -335,14 +339,14 @@ Lemma length_env_incr : forall (X : Type) n m env (x : X),
    n = m ->
    length_env n (expand_env env x m) = 1 + length_env n env.
 Proof.
-  intros. destruct env; destruct n; inversion H; auto.
+  intros. destruct env0; destruct n; inversion H; auto.
 Qed.
    
 Lemma length_env_same : forall (X : Type) n m env (x : X),
    n <> m ->
    length_env n (expand_env env x m) = length_env n env.
 Proof.
-  intros. destruct env; destruct n; destruct m.
+  intros. destruct env0; destruct n; destruct m.
       apply ex_falso_quodlibet; auto.
       auto.
       auto.
@@ -360,14 +364,14 @@ Proof.
   intros. induction H; auto.
   destruct IHwf_env as [L R].
   destruct n. 
-  Case "First"; split.
-  repeat rewrite length_env_incr; auto.
-  repeat rewrite length_env_same; auto.
-  unfold not; intros. inversion H2. unfold not; intros. inversion H2.
-  Case "Second"; split.
-  repeat rewrite length_env_same; auto.
-  unfold not; intros. inversion H2. unfold not; intros. inversion H2.
-  repeat rewrite length_env_incr; auto.
+  - (* Case "First" *) split.
+    repeat rewrite length_env_incr; auto.
+    repeat rewrite length_env_same; auto.
+    unfold not; intros. inversion H2. unfold not; intros. inversion H2.
+  - (* Case "Second" *) split.
+    repeat rewrite length_env_same; auto.
+    unfold not; intros. inversion H2. unfold not; intros. inversion H2.
+    repeat rewrite length_env_incr; auto.
 Qed.
 
 Hint Immediate wf_length.
@@ -434,51 +438,51 @@ Lemma lookup_safe_ex: forall H1 G1 TF x,
              lookup x G1 = Some TF ->
              exists v, lookup x H1 = Some v /\ val_type H1 v TF.
 Proof. intros. induction H.
-  Case "nil". inversion H0. destruct x; destruct c; destruct (ble_nat n i); inversion H1.
-  Case "cons". destruct vs as [vl1 vl2 vidx]. destruct ts as [tl1 tl2 tidx].
+  - (* Case "nil". *) inversion H0. destruct x; destruct c; destruct (ble_nat n i); inversion H1.
+  - (* Case "cons". *) destruct vs as [vl1 vl2 vidx]. destruct ts as [tl1 tl2 tidx].
     apply wf_length in H1. destruct H1 as [H1l H1r].
     destruct x; destruct c; inversion H0.
-    SCase "VFst". destruct n; simpl in H0 ; simpl in H2.
-      SSCase "First".
+    + (* SCase "VFst". *) destruct n; simpl in H0 ; simpl in H2.
+      * (* SSCase "First". *)
         case_eq (beq_nat i (length tl1)).
-        SSSCase "hit".
+        { (* SSSCase "hit". *)
           intros E.
           rewrite E in H0. inversion H0. subst t. simpl.
           assert (beq_nat i (length vl1) = true). eauto.
-          rewrite H1. eauto.
-        SSSCase "miss".
+          rewrite H1. eauto. }
+        { (* SSSCase "miss". *)
           intros E.
           assert (beq_nat i (length vl1) = false). eauto.
           assert (exists v0, lookup (V First i) (Def vl vl1 vl2 vidx) = Some v0 /\ val_type (Def vl vl1 vl2 vidx) v0 TF) as HI.
           eapply IHwf_env. simpl. rewrite E in H0. eauto.
           inversion HI as [v0 HI1]. inversion HI1.
-          eexists. econstructor. eapply lookup_extend; eauto. eapply valtp_extend; eauto.
-     SSCase "Second".
+          eexists. econstructor. eapply lookup_extend; eauto. eapply valtp_extend; eauto. }
+     * (* SSCase "Second". *)
        assert (exists v0, lookup (V First i) (Def vl vl1 vl2 vidx) = Some v0 /\ val_type (Def vl vl1 vl2 vidx) v0 TF) as HI.
        eapply IHwf_env. simpl. eauto.
        inversion HI as [v0 HI1]. inversion HI1.
        eexists. econstructor. eapply lookup_extend; eauto. eapply valtp_extend; eauto.
-   SCase "VSnd". destruct n; simpl in H0; simpl in H2.
-     SSCase "First".
+   + (* SCase "VSnd". *) destruct n; simpl in H0; simpl in H2.
+     * (* SSCase "First". *)
        assert (exists v0, lookup (V Second i) (Def vl vl1 vl2 vidx) = Some v0 /\ val_type (Def vl vl1 vl2 vidx) v0 TF) as HI.
        eapply IHwf_env. simpl. eauto.
        inversion HI as [v0 HI1]. inversion HI1.
        eexists. econstructor. eapply lookup_extend; eauto. eapply valtp_extend; eauto.
-     SSCase "Second".
+     * (* SSCase "Second". *)
        case_eq (beq_nat i (length tl2)).
-        SSSCase "hit".
+        { (* SSSCase "hit". *)
           intro E.
           rewrite E in H0. simpl. destruct (ble_nat tidx i); inversion H0.
           subst t.
           assert (beq_nat i (length vl2) = true). eauto.
-          rewrite H1. inversion H3. subst vidx. destruct (ble_nat tidx i); eauto. inversion H5.
-        SSSCase "miss".
+          rewrite H1. inversion H3. subst vidx. destruct (ble_nat tidx i); eauto. inversion H5. }
+        { (* SSSCase "miss". *)
           intro E.
           assert (beq_nat i (length vl2) = false). eauto.
           assert (exists v0, lookup (V Second i) (Def vl vl1 vl2 vidx) = Some v0 /\ val_type (Def vl vl1 vl2 vidx) v0 TF) as HI.
           eapply IHwf_env. simpl. destruct (ble_nat tidx i). inversion H0. rewrite E in H0. rewrite H0. rewrite E. auto. auto.
           inversion HI as [v0 HI1]. inversion HI1.
-          eexists. econstructor. eapply lookup_extend; eauto. eapply valtp_extend; eauto.
+          eexists. econstructor. eapply lookup_extend; eauto. eapply valtp_extend; eauto. }
 Qed.
   
 Inductive res_type: venv -> option vl -> ty -> Prop :=
@@ -495,7 +499,10 @@ Lemma valtp_widen: forall vf H1 H2 T1 T2,
   stp H1 T1 H2 T2 ->
   val_type H2 vf T2.
 Proof.
-  intros. inversion H; inversion H0; subst T2; subst; eauto.
+  intros. generalize dependent T2. induction H; intros.
+  - inversion H0. eauto.
+  - inversion H1. eauto.
+  - inversion H0. eapply v_rec. eapply IHval_type. eapply stp_refl. 
 Qed.
 
 Lemma invert_abs: forall venv vf vx T1 n T2,
@@ -503,9 +510,9 @@ Lemma invert_abs: forall venv vf vx T1 n T2,
   exists env tenv y T3 T4,
     vf = (vabs env n y) /\
     wf_env env tenv /\
-    has_type (expand_env (expand_env tenv (TFun T3 n T4) Second) T3 n) y First T4 /\
-    stp venv T1 (expand_env (expand_env env vf Second) vx n) T3 /\
-    stp (expand_env (expand_env env vf Second) vx n) T4 venv T2.
+    has_type (expand_env (expand_env tenv (TRec (TFun T3 n T4)) Second) T3 n) y First T4 /\
+    stp venv T1 (expand_env (expand_env env (vrec vf) Second) vx n) T3 /\
+    stp (expand_env (expand_env env (vrec vf) Second) vx n) T4 venv T2.
 Proof.
   intros. inversion H. repeat eexists; repeat eauto.
 Qed.
@@ -514,21 +521,21 @@ Qed.
 Lemma ext_sanitize_commute : forall {T} n venv (v:T) c,
    expand_env (sanitize_any venv n) v c = sanitize_any (expand_env venv v c) n.
 Proof.
-  intros. destruct venv. destruct c; simpl; eauto. 
+  intros. destruct venv0. destruct c; simpl; eauto. 
 Qed.
 
 Lemma val_type_sanitize_any : forall n venv res T,
   val_type venv res T ->
   val_type (sanitize_any venv n) res T.
 Proof.
-  intros. inversion H; eauto.
+  intros. induction H; eauto. 
 Qed.
 
 Lemma val_type_sanitize : forall env res T n,
   val_type (sanitize_env n env) res T ->
   val_type env res T.
 Proof.
-  intros. inversion H; eauto.
+  intros. induction H; eauto.
 Qed.
 
 Lemma wf_sanitize_any : forall n venv tenv,
@@ -547,7 +554,7 @@ Lemma wf_sanitize : forall n venv tenv,
    wf_env venv tenv ->
    wf_env (sanitize_env n venv) (sanitize_env n tenv).
 Proof.
-  intros. destruct n; unfold sanitize_env. destruct venv. destruct tenv.
+  intros. destruct n; unfold sanitize_env. destruct venv0. destruct tenv0.
   assert (length l0 = length l2). apply wf_length in H; destruct H as [L R]; eauto.
   rewrite H0. eapply wf_sanitize_any. eauto.
   eauto.
@@ -570,43 +577,43 @@ Proof.
   (* 0 *)   intros. inversion H.
   (* S n *) intros. destruct e; inversion H; inversion H0. 
   
-  - Case "True".  eapply not_stuck. eapply v_bool.
-  - Case "False". eapply not_stuck. eapply v_bool.
+  - (* Case "True". *)  eapply not_stuck. eapply v_bool.
+  - (* Case "False". *) eapply not_stuck. eapply v_bool.
 
-  - Case "Var".
+  - (* Case "Var". *)
     subst.
-    destruct (lookup_safe_ex (sanitize_env n venv) (sanitize_env n tenv) T v) as [va [I V]]; eauto. 
+    destruct (lookup_safe_ex (sanitize_env n venv0) (sanitize_env n tenv0) T v) as [va [I V]]; eauto. 
 
     rewrite I. eapply not_stuck. eapply val_type_sanitize. eapply V.
 
-  - Case "App".
-    remember (teval k venv e1 Second) as tf.
+  - (* Case "App". *)
+    remember (teval k venv0 e1 Second) as tf.
     subst T. subst n0.
     
-    destruct tf as [rf|]; try solve by inversion.
-    assert (res_type venv rf (TFun T1 m T2)) as HRF. SCase "HRF". subst. eapply IHk; eauto.
+    destruct tf as [rf|]; try inversion H3. 
+    assert (res_type venv0 rf (TFun T1 m T2)) as HRF. (* SCase "HRF". *) subst. eapply IHk; eauto.
     inversion HRF as [? vf].
 
-    subst rf. remember vf as rvf. destruct vf; try (subst rvf; solve by inversion).
-    assert (c = m). destruct m; destruct c; try (subst rvf ; solve by inversion); eauto. subst c. subst rvf.
-    remember (teval k venv e2 m) as tx.
+    subst rf. remember vf as rvf. destruct vf; subst rvf; inversion H7. (* try (subst rvf; solve inversion). *)
+    assert (c = m). destruct m; destruct c; try inversion H18; eauto. (* try (subst rvf; solve inversion); eauto.*) subst c. (* subst rvf. *)
+    remember (teval k venv0 e2 m0) as tx.
 
-    destruct tx as [rx|]; try solve by inversion.
-    assert (res_type venv rx T1) as HRX. SCase "HRX". subst. eapply IHk; eauto.
+    destruct tx as [rx|]; try inversion H3.
+    assert (res_type venv0 rx T1) as HRX. (* SCase "HRX". *) subst. eapply IHk; eauto.
     inversion HRX as [? vx]. 
 
-    destruct (invert_abs venv (vabs e m t) vx T1 m T2) as
-        [env1 [tenv1 [y0 [T3 [T4 [EF [WF [HTY [STX STY]]]]]]]]]. eauto.
+    destruct (invert_abs venv0 (vabs e m t) vx T1 m T2) as
+        [env1' [tenv1' [y0 [T3' [T4' [EF [WF [HTY [STX STY]]]]]]]]]. eauto.
     (* now we know it's a closure, and we have has_type evidence *)
 
     inversion EF. subst e. subst y0. clear EF.
     subst rx.
 
-    assert (res_type (expand_env (expand_env env1 (vabs env1 m t) Second) vx m) res T4) as HRY.
-        SSSCase "HRY".
+    assert (res_type (expand_env (expand_env env1' (vrec (vabs venv2 m t)) Second) vx m) res T4') as HRY.
+        (* SSSCase "HRY". *)
           subst. eapply IHk; eauto.
         (* wf_env f x *) econstructor. eapply valtp_widen; eauto.
-        (* wf_env f   *) econstructor. eapply v_abs; eauto.
+        (* wf_env f   *) econstructor. eapply v_rec. eapply v_abs; eauto.
           eauto.
           apply wf_idx. assumption.
           apply wf_idx. econstructor. eauto. assumption. apply wf_idx. assumption.
@@ -615,7 +622,25 @@ Proof.
 
     eapply not_stuck. eapply valtp_widen; eauto.
     
-  - Case "Abs". intros. inversion H. inversion H0.
+  - (* Case "Abs". *) intros. inversion H. inversion H0.
     eapply not_stuck. eapply v_abs; eauto.
     eauto.
+  - (* Case "Rec". *)
+    remember (teval k venv0 e1 n) as tevr.
+
+    destruct tevr as [revr|]; try inversion H3.
+    assert (res_type venv0 revr (TRec T)) as HRR. {
+     subst. eapply IHk; eauto.
+    }
+
+    inversion HRR as [? vr]. inversion H10. subst.
+
+    (* NOTE currently impossible b/c vcap is not a well-formed value! *)
+    remember (teval k venv0 e2 n) as tevc. 
+    destruct tevc as [revc|]; try inversion H11.
+    assert (res_type venv0 revc TCap) as HRC. {
+      subst. eapply IHk; eauto.
+    }
+    inversion HRC as [? vc]. inversion H2. (* contradiction here ... *)
+    
 Qed.
