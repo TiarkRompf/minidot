@@ -312,7 +312,7 @@ Inductive wf_env : venv -> tenv -> Prop :=
     get_inv_idx vs = get_inv_idx ts ->
     wf_env (expand_env vs v n) (expand_env ts t n)
 
-with val_type : venv -> vl -> ty -> Prop := (* TODO!!! *)
+with val_type : venv -> vl -> ty -> Prop := 
 | v_bool: forall venv b,
     val_type venv (vbool b) TBool
 | v_abs: forall env venv tenv y T1 T2 m, (* NEW: TRec wrapper *)
@@ -322,6 +322,8 @@ with val_type : venv -> vl -> ty -> Prop := (* TODO!!! *)
 | v_rec: forall env v T,  (* NEW *)
     val_type env v T ->
     val_type env (vrec v) (TRec T)
+| v_cap: forall env,
+    val_type env vcap TCap (* NEW *)
 .
 
 
@@ -502,7 +504,8 @@ Proof.
   intros. generalize dependent T2. induction H; intros.
   - inversion H0. eauto.
   - inversion H1. eauto.
-  - inversion H0. eapply v_rec. eapply IHval_type. eapply stp_refl. 
+  - inversion H0. eapply v_rec. eapply IHval_type. eapply stp_refl.
+  - inversion H0. eauto. 
 Qed.
 
 Lemma invert_abs: forall venv vf vx T1 n T2,
@@ -635,12 +638,14 @@ Proof.
 
     inversion HRR as [? vr]. inversion H10. subst.
 
-    (* NOTE currently impossible b/c vcap is not a well-formed value! *)
     remember (teval k venv0 e2 n) as tevc. 
     destruct tevc as [revc|]; try inversion H11.
     assert (res_type venv0 revc TCap) as HRC. {
       subst. eapply IHk; eauto.
     }
-    inversion HRC as [? vc]. inversion H2. (* contradiction here ... *)
+    inversion HRC as [? vc]. inversion H2. subst.
+    (* NOTE: if there is no val_type case for vcap this inversion fails
+    and recursion is impossible in well-formed envs *)
     
+    inversion H4. subst. eauto. 
 Qed.
