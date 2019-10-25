@@ -902,4 +902,6 @@ Proof.
     admit.
     (* TODO: account for sanitize here *)
     (* eapply IHW. eapply wfe_cons; eauto. *)
+  - (* Case tunrec *)
+    admit.
 Admitted.
