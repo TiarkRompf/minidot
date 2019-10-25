@@ -670,6 +670,7 @@ Fixpoint val_type_tnt (env:venv) (v:vl) (T:ty): Prop := match v, T with
 | vabs env clv y, TFun T1 clt T2 => (clv = clt) /\
   (forall vx, val_type_tnt env vx T1 ->
      exists v, tevaln (expand_env (expand_env env (vrec (vabs env clv y)) Second) vx clv) y First v /\ val_type_tnt env v T2)
+| vrec v, TRec T => True (* NEW: rec, but we can't do anything with it *)
 | _,_ => False
 end.
 
@@ -732,6 +733,17 @@ Proof.
   - (* cap *) admit.
 Admitted.
 
+(* NOTE: will needed (closed T vs) ! *)
+Lemma valtp_shrink_tnt : forall vs v v1 T n,
+                       val_type_tnt (expand_env vs v1 n) v T ->
+                       val_type_tnt vs v T.
+Proof.
+  intros. induction v.
+  - (* bool *) admit.
+  - (* abs *) admit.
+  - (* rec *) admit.
+  - (* cap *) admit.
+Admitted.
 
 
 
@@ -897,11 +909,26 @@ Proof.
     eapply HVY.
     
   - (* Case "Abs". *)
-    eexists. split. exists 0. intros. destruct n0. omega. simpl. eauto. simpl.
-    split. eauto. intros.
-    admit.
-    (* TODO: account for sanitize here *)
-    (* eapply IHW. eapply wfe_cons; eauto. *)
+(*    erewrite <-(wf_length venv0 env WFE) in H. inversion H; subst. *)
+    eexists. split. exists 0. intros. destruct n0. omega. simpl. eauto.
+    simpl. repeat split; eauto.  intros. 
+(*    assert (stpd2 true venv0 T1 (vx::venv0) T1). eapply stpd2_extend2. eapply stpd2_refl; eauto. eu.
+    assert (stpd2 true (vx::venv0) T2 venv0 T2). eapply stpd2_extend1. eapply stpd2_refl; eauto. eu. *)
+
+    remember (expand_env
+         (expand_env (sanitize_env n venv0)
+            (vrec
+               (vabs (sanitize_env n venv0) m y))
+            Second) vx m) as venv1.
+
+    remember (expand_env
+             (expand_env (sanitize_env n env0)
+                (TRec (TFun T1 m T2)) Second) T1
+             m) as tenv1.
+    
+    assert (val_type_tnt venv1 vx T1). { subst. eapply valtp_extend_tnt. eapply valtp_extend_tnt. eauto. }
+    assert (wf_env_tnt venv1 tenv1). { subst. eapply wfe_tnt_env. eauto. eapply wfe_tnt_env. simpl. auto. eauto. eapply wf_idx_tnt. eapply wf_sanitize_tnt. eauto. eapply wf_idx_tnt. eapply wfe_tnt_env. simpl. auto. eauto. eapply wf_idx_tnt. eapply wf_sanitize_tnt. eauto. }
+    specialize (IHW venv1 H1). destruct IHW as [v [? ?]]. exists v. split. eauto. eapply valtp_shrink_tnt. eapply valtp_shrink_tnt. subst. eauto. 
   - (* Case tunrec *)
     admit.
 Admitted.
