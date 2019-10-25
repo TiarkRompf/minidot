@@ -8,10 +8,11 @@
 (* Starting point: https://github.com/TiarkRompf/scala-escape/blob/master/coq/stlc1.v *)
 
 
-Require Export SfLib.
-
 Require Export Arith.EqNat.
 Require Export Arith.Le.
+Require Import Coq.Lists.List.
+
+Import ListNotations.
 
 
 (* ############################################################ *)
@@ -31,6 +32,8 @@ Inductive class : Type :=
 Inductive ty : Type :=
   | TBool  : ty
   | TFun   : ty -> class -> ty -> ty
+  | TRec   : ty -> ty (* NEW: wrapper indicates recursive occurrence *)
+  | TCap   : ty      (* NEW: capability to unwrap TRec values *)
 .
 
 (* variables: 1st or 2nd class, using DeBrujin levels *)
@@ -45,6 +48,7 @@ Inductive tm : Type :=
   | tvar   : var -> tm
   | tapp   : tm -> tm -> tm     (* f(x) *)
   | tabs   : class -> tm -> tm  (* \f x.y *)
+  | tunrec : tm -> tm -> tm     (* NEW: unwrap a recursive value, given a capability *)
 .
 
 (* environments, split according to 1st/2nd class *)
@@ -55,6 +59,8 @@ Inductive env (X: Type) :=
 Inductive vl : Type :=
   | vbool : bool -> vl
   | vabs  : env vl -> class -> tm -> vl
+  | vrec  : vl -> vl (* NEW: recursive wrapper *)
+  | vcap  : vl      (* NEW: capability *)
 .
 
 Definition venv := env vl.  (* value environments *)
@@ -62,6 +68,17 @@ Definition tenv := env ty.  (* type environments  *)
 
 Hint Unfold venv.
 Hint Unfold tenv.
+
+Fixpoint ble_nat (n m : nat) : bool :=
+  match n with
+  | O => true
+  | S n' =>
+      match m with
+      | O => false
+      | S m' => ble_nat n' m'
+      end
+  end.
+
 
 (* environment lookup *)
 Fixpoint index {X : Type} (n : id) (l : list X) : option X :=
@@ -72,7 +89,7 @@ Fixpoint index {X : Type} (n : id) (l : list X) : option X :=
 
 Definition lookup {X : Type} (n : var) (l : env X) : option X :=
   match l with
-    | Def l1 l2 m =>
+    | Def _ l1 l2 m =>
          match n with
            | V First idx  => index idx l1
            | V Second idx => if ble_nat m idx then index idx l2 else None
@@ -83,19 +100,19 @@ Definition lookup {X : Type} (n : var) (l : env X) : option X :=
 (* restrict visible bindings in environment *)
 Definition sanitize_any {X : Type} (l : env X) (n:nat): env X :=
   match l with
-    | Def l1 l2 _ => Def X l1 l2 n
+    | Def _ l1 l2 _ => Def X l1 l2 n
   end.
 
 Definition sanitize_env {X : Type} (c : class) (l : env X) : env X :=
   match c,l  with
-    | First, Def _ l2 _ => sanitize_any l (length l2)
+    | First, Def _ _ l2 _ => sanitize_any l (length l2)
     | Second, _ => l
   end.
 
 (* add new binding to environment *)
 Definition expand_env {X : Type} (l : env X) (x : X) (c : class) : (env X) :=
 match l with
-| Def l1 l2 m =>
+| Def _ l1 l2 m =>
    match c with
    | First => Def X (x::l1) l2 m
    | Second => Def X l1 (x::l2) m
@@ -118,14 +135,18 @@ Inductive has_type : tenv -> tm -> class -> ty -> Prop :=
            has_type env f Second (TFun T1 m T2) ->
            has_type env x m T1 ->
            has_type env (tapp f x) n T2
-| t_abs: forall m n env y T1 T2,
-           has_type (expand_env (expand_env (sanitize_env n env) (TFun T1 m T2) Second) T1 m) y First T2 ->
+| t_abs: forall m n env y T1 T2,  (* NEW: wrap recursive binding *)
+           has_type (expand_env (expand_env (sanitize_env n env) (TRec (TFun T1 m T2)) Second) T1 m) y First T2 ->
            has_type env (tabs m y) n (TFun T1 m T2)
+| t_unrec: forall n env tr tc T1, (* NEW: unrec case *)
+           has_type env tr n (TRec T1) ->
+           has_type env tc n TCap ->
+           has_type env (tunrec tr tc) n T1 
 .
 
 Definition get_inv_idx {X : Type} (env : env X) :=
 match env with
-| Def l1 l2 idx => idx
+| Def _ l1 l2 idx => idx
 end
 .
 
@@ -152,13 +173,33 @@ Fixpoint teval(k: nat)(env: venv)(t: tm)(n: class){struct k}: option (option vl)
              | None => None
              | Some None => Some None
              | Some (Some (vbool _)) => Some None
-             | Some (Some (vabs env2 m ey)) =>
+             | Some (Some (vrec _)) => Some None (* NEW *)
+             | Some (Some vcap) => Some None (* NEW *)
+             | Some (Some (vabs env2 m ey)) => (* NEW: vrec wrapper *)
                 match teval k' env ex m with
                   | None => None
                   | Some None => Some None
                   | Some (Some vx) =>
-                       teval k' (expand_env (expand_env env2 (vabs env2 m ey) Second) vx m) ey First
+                       teval k' (expand_env (expand_env env2 (vrec (vabs env2 m ey)) Second) vx m) ey First
                 end
+           end
+        | tunrec er ec => (* NEW *)
+          match teval k' env er n with
+          | None => None
+          | Some None => Some None
+          | Some (Some (vbool _)) => Some None
+          | Some (Some (vabs _ _ _)) => Some None
+          | Some (Some vcap) => Some None
+          | Some (Some (vrec v)) =>
+            match teval k' env ec n with (* should use Second instead of n? *)
+            | None => None
+            | Some None => Some None
+            | Some (Some (vbool _)) => Some None
+            | Some (Some (vabs _ _ _)) => Some None
+            | Some (Some (vrec _)) => Some None
+            | Some (Some vcap) =>
+              Some (Some v)
+            end
           end
       end
   end.
