@@ -909,7 +909,6 @@ Proof.
     eapply HVY.
     
   - (* Case "Abs". *)
-(*    erewrite <-(wf_length venv0 env WFE) in H. inversion H; subst. *)
     eexists. split. exists 0. intros. destruct n0. omega. simpl. eauto.
     simpl. repeat split; eauto.  intros. 
 (*    assert (stpd2 true venv0 T1 (vx::venv0) T1). eapply stpd2_extend2. eapply stpd2_refl; eauto. eu.
@@ -930,5 +929,6 @@ Proof.
     assert (wf_env_tnt venv1 tenv1). { subst. eapply wfe_tnt_env. eauto. eapply wfe_tnt_env. simpl. auto. eauto. eapply wf_idx_tnt. eapply wf_sanitize_tnt. eauto. eapply wf_idx_tnt. eapply wfe_tnt_env. simpl. auto. eauto. eapply wf_idx_tnt. eapply wf_sanitize_tnt. eauto. }
     specialize (IHW venv1 H1). destruct IHW as [v [? ?]]. exists v. split. eauto. eapply valtp_shrink_tnt. eapply valtp_shrink_tnt. subst. eauto. 
   - (* Case tunrec *)
-    admit.
-Admitted.
+    destruct (IHW2 _ WFE) as [v [HEV HVL]].
+    simpl in HVL. destruct v; inversion HVL.
+Qed.
