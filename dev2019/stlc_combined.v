@@ -1010,7 +1010,7 @@ Proof.
     eauto. eauto. 
     
   - rename H1 into WFE.
-    (* --- OLD ATTEMPT NOTES --- *)
+    (* --- OLD ATTEMPT NOTES (trying to prov term only for 1st cl context --- *)
     (* PROBLEM: fun evaluated as 2nd class --> no termination evidence *)
     (* PROBLEM: same for argument if 2nd class --> proof idea doesn't work!*)
     (* We can't restrict to 1st-class contexts. 1st-class just means that
@@ -1045,14 +1045,15 @@ Proof.
     eapply HVY.
 
   - (* ABS *)
-    admit.
-
+    inversion H1. eapply not_stuck2.  eapply v_abs2. eapply wf_sanitize_comb. eauto.
+    eauto. 
+    
   - eexists. split. exists 0. intros. destruct n0. omega. simpl. eauto.
     simpl. repeat split; eauto. intros. 
 
     assert (val_type_snd vx T1). admit.
     (* PROBLEM: we have no evidence of the soundness val_type for the arg!
-       Cannot do induction. *)
+       Cannot do induction. We need this for the extended wf_env. *)
 
     assert (val_type_snd (vrec (vabs (sanitize_env n venv0) m y))
                          (TRec (TFun T1 m T2))). {
@@ -1071,6 +1072,39 @@ Proof.
     destruct HHT as [FALSE|HHT]. inversion FALSE.
 
     eapply HHT.
-    (* PROBLEM/QUESTION: need is_sanitized for IH, don't know if can be expanded *)
+    (* PROBLEM/QUESTION: need is_sanitized for IH, don't know if can be expanded. *)
+    (* Of course a function can diverge if the argument itself is a cap. *)
+
+    admit. admit. 
+
+  - (* Rec *)
+    inversion H2.
+    remember (teval k venv0 tr n) as tevr.
+
+    destruct tevr as [revr|]; try inversion H4.
+    assert (res_type_snd revr (TRec T1)) as HRR. {
+      subst. eapply IHk. eauto. eauto. eauto. 
+    }
+
+    inversion HRR as [? vr]. inversion H3. subst.
+
+    remember (teval k venv0 tc n) as tevc. 
+    destruct tevc as [revc|]; try inversion H5.
+    assert (res_type_snd revc TCap) as HRC. {
+      subst. eapply IHk; eauto.
+    }
+    inversion HRC as [? vc]; inversion H6. subst.
+    (* NOTE: if there is no val_type case for vcap this inversion fails
+    and recursion is impossible in well-formed envs *)
     
-    admit. 
+    inversion H4. subst. eauto. 
+  - destruct (IHhas_type2 _ H1) as [IHS [FALSE|HVL]]. inversion FALSE.
+    destruct (HVL H2 H3) as [v [? FALSE]].
+    simpl in FALSE. destruct v; inversion FALSE.
+Admitted.
+    
+(* TODO:
+- remaining easy cases
+- try recursive def of valtp-snd/tnt
+- switch gears, try d_sub with full term dep 
+*)
