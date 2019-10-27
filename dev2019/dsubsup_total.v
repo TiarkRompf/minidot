@@ -9,16 +9,15 @@
 
 (* copied from ecoop17/dsubsup_total.v *)
 
-(* this version does not have recursive types *)
-(* we're trying to extend this to full terms as paths *)
+(* this version does not have recursive types or intersection types *)
 
-
-Require Export SfLib.
 
 Require Export Arith.EqNat.
 Require Export Arith.Le.
 Require Import Coq.Program.Equality.
 Require Import Omega.
+Require Import Coq.Lists.List.
+Import ListNotations.
 
 (* ### Syntax ### *)
 
@@ -387,9 +386,9 @@ Ltac inv_mem := match goal with
                     closed 0 (length ?GH) (length ?G) ?T1 => inversion H; subst; eauto
                 end.
 
-Next Obligation. compute. repeat split; intros; ev; try solve by inversion. Qed.
-Next Obligation. compute. repeat split; intros; ev; try solve by inversion. Qed.
-Next Obligation. compute. repeat split; intros; ev; try solve by inversion. Qed.
+Next Obligation. compute. repeat split; intros; ev; inversion H4. Qed. (* try solve by inversion. Qed. *)
+Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H5; inversion H6. Qed.
+Next Obligation. compute. repeat split; intros; ev; inversion H3. Qed.
 
 (* 
    The expansion of val_type, val_type_func is incomprehensible. 
@@ -579,13 +578,13 @@ Lemma indexr_max : forall X vs n (T: X),
                        n < length vs.
 Proof.
   intros X vs. induction vs.
-  - Case "nil". intros. inversion H.
-  - Case "cons".
+  - (* Case "nil". *) intros. inversion H.
+  - (* Case "cons". *)
     intros. inversion H.
     case_eq (beq_nat n (length vs)); intros E2.
-    + SSCase "hit".
+    + (* SSCase "hit". *)
       eapply beq_nat_true in E2. subst n. compute. eauto.
-    + SSCase "miss".
+    + (* SSCase "miss". *)
       rewrite E2 in H1.
       assert (n < length vs). eapply IHvs. apply H1.
       compute. eauto.
@@ -867,7 +866,7 @@ Proof.
   try econstructor;
   try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
   eapply closed_upgrade. eauto. eauto.
-  - Case "TVarB". simpl.
+  - (* Case "TVarB". *) simpl.
     case_eq (beq_nat i x); intros E. eauto.
     econstructor. eapply beq_nat_false_iff in E. omega.
 Qed.
@@ -1019,7 +1018,7 @@ Proof.
   try solve [compute; compute in IHclosed1; compute in IHclosed2;
              rewrite <-IHclosed1; rewrite <-IHclosed2; auto].
 
-  Case "TVarB".
+  (* Case "TVarB". *)
     unfold open_rec. assert (i <> x0). omega.
     apply beq_nat_false_iff in H0.
     rewrite H0. auto.
@@ -1081,7 +1080,7 @@ Proof.
   try econstructor;
   try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
 
-  - Case "TVarH". simpl.
+  - (* Case "TVarH". *) simpl.
     case_eq (beq_nat x 0); intros E.
     eapply closed_upgrade. eapply closed_upgrade_free.
     eauto. omega. eauto. omega.
@@ -1096,7 +1095,7 @@ Proof.
   try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto; subst;
   try inversion H0; eauto.
 
-  - Case "TVarH". simpl. simpl in H0. unfold id in H0.
+  - (* Case "TVarH". *) simpl. simpl in H0. unfold id in H0.
     assert (beq_nat x 0 = false) as E. apply beq_nat_false_iff. assumption.
     rewrite E.
     eapply cl_selh. omega.
@@ -1111,10 +1110,10 @@ Proof.
   try rewrite IHT2_1;
   try rewrite IHT2_2;
   try rewrite IHT2; eauto.
-  - Case "TVarH". simpl. case_eq (beq_nat x 0); intros E.
+  - (* Case "TVarH". *) simpl. case_eq (beq_nat x 0); intros E.
     eapply closed_no_open. eapply closed_upgrade. eauto. omega.
     eauto.
-  - Case "TVarB". simpl. case_eq (beq_nat i x); intros E.
+  - (* Case "TVarB". *) simpl. case_eq (beq_nat i x); intros E.
     simpl. case_eq (beq_nat (j+1) 0); intros E2.
     eapply beq_nat_true_iff in E2. omega.
     subst. assert (j+1-1 = j) as A. omega. rewrite A. eauto.
@@ -1194,10 +1193,10 @@ Proof.
               remember (indexr i0 GH) as L; try destruct L as [?|]; try contradiction.
               constructor. eapply indexr_max. eauto. 
               inversion H.
-  - destruct i; try solve by inversion. destruct b.
+  - destruct i. contradiction. destruct b.
     ev. constructor; assumption.
     ev. constructor; assumption.
-  - destruct i; try solve by inversion.
+  - destruct i. 
     ev. constructor; assumption. 
     destruct b.
     ev. constructor; try assumption.
@@ -1415,7 +1414,7 @@ Proof.
   try econstructor;
   try eapply IHT1; eauto; try eapply IHT2; eauto; try eapply IHT; eauto.
   eapply closed_upgrade. eauto. eauto.
-  - Case "TVarB". simpl.
+  - (* Case "TVarB". *) simpl.
     case_eq (beq_nat i1 x); intros E. eauto.
     econstructor. eapply beq_nat_false_iff in E. omega.
 Qed.
@@ -1570,14 +1569,14 @@ Proof.
 
   - apply vv. rewrite val_type_unfold. destruct vf. simpl in *. destruct v.
     + assumption. 
-    + destruct (indexr i0 (GH1 ++ GH0)) eqn : B; try solve by inversion. 
+    + destruct (indexr i0 (GH1 ++ GH0)) eqn : B; try contradiction.  (* try solve by inversion. *)
     destruct (le_lt_dec (length GH0) i0) eqn : A. 
     assert (indexr (i0 + 1) (GH1 ++ jj :: GH0) = Some v). apply indexr_hit_high. assumption. omega.
     rewrite H0. apply V. assert (indexr (i0) (GH1 ++ jj :: GH0) = Some v). apply indexr_hit_low. assumption. omega.
     rewrite H0. apply V.
     + inversion V.
     + simpl in *. destruct v; simpl; try apply V.
-    destruct (indexr i0 (GH1 ++ GH0)) eqn : B; try solve by inversion. 
+    destruct (indexr i0 (GH1 ++ GH0)) eqn : B; try contradiction.
     destruct (le_lt_dec (length GH0) i0) eqn : A. 
     assert (indexr (i0 + 1) (GH1 ++ jj :: GH0) = Some v). apply indexr_hit_high. assumption. omega.
     rewrite H0. apply V. assert (indexr (i0) (GH1 ++ jj :: GH0) = Some v). apply indexr_hit_low. assumption. omega.
@@ -1592,7 +1591,7 @@ Proof.
     apply indexr_extend_mult. assumption. assert (indexr i0 (GH1 ++ jj :: GH0) = Some x). apply indexr_hit_low; assumption. 
     rewrite H1. rewrite H2 in V. assumption.
     + inversion V.
-    + destruct v; try solve by inversion; try assumption.
+    + destruct v; (*try solve by inversion;*) try assumption.
     destruct (le_lt_dec (length GH0) i0) eqn : A. inversion C. subst. 
     eapply indexr_has in H4. ev. assert (indexr (i0 + 1)(GH1 ++ jj:: GH0) = Some x). apply indexr_hit_high; assumption. 
     rewrite H0. rewrite H1 in V. assumption. 
@@ -1813,7 +1812,7 @@ Proof. induction n; intros ? ? ? ? ? ? ? ? ? Sz Cz Bd Id. inversion Sz.
 
   - inversion Cz. subst. 
     unfold open in *. simpl in *. apply vv. rewrite val_type_unfold in *. destruct i. 
-    + destruct v; try solve by inversion. ev. rewrite app_length in *. split. { eapply splice_retreat4.
+    + destruct v; try contradiction. (* try solve by inversion. *) ev. rewrite app_length in *. split. { eapply splice_retreat4.
       simpl in *. eassumption. constructor. apply indexr_max in Id. omega. } split. { eapply splice_retreat4.
       simpl in *. eassumption. constructor. apply indexr_max in Id. omega. } 
     unfold vtsub. intros. specialize (H1 vy iy). destruct (pos iy). intros. assert (
@@ -1842,7 +1841,7 @@ Proof. induction n; intros ? ? ? ? ? ? ? ? ? Sz Cz Bd Id. inversion Sz.
 
   - inversion Cz. subst. 
     unfold open in *. simpl in *. apply vv. rewrite val_type_unfold in *. destruct i. 
-    + destruct v; try solve by inversion. ev. rewrite app_length in *. split. { eapply splice_retreat5.
+    + destruct v; try contradiction. (*try solve by inversion.*) ev. rewrite app_length in *. split. { eapply splice_retreat5.
       constructor. omega. eassumption. }
     split. eapply splice_retreat5. constructor. omega. eassumption.
     unfold vtsub. intros. specialize (H1 vy iy). destruct (pos iy). intros. assert (val_type venv0 GH vy (open_rec k (varF x) T1) iy).
@@ -1936,17 +1935,17 @@ Proof.
   intros ? ? ? ? stp. 
   induction stp; intros G GHX LG RG LGHX RGHX vf i; 
   remember (pos i) as p; destruct p; intros V0; eapply unvv in V0.
-  - Case "Top".
+  - (* Case "Top". *)
     eapply vv. rewrite val_type_unfold. destruct vf; rewrite Heqp; reflexivity.
   - rewrite val_type_unfold in V0. simpl in V0. rewrite <-Heqp in V0. destruct vf; inversion V0. 
-  - Case "Bot".
+  - (* Case "Bot". *)
     rewrite val_type_unfold in V0. destruct vf; rewrite <-Heqp in V0; inversion V0.
   - eapply vv. rewrite val_type_unfold. rewrite <-Heqp. destruct vf; reflexivity.
-  - Case "mem".
+  - (* Case "mem". *)
     subst. 
     rewrite val_type_unfold in V0. 
     eapply vv. rewrite val_type_unfold.
-    destruct vf; destruct i; try destruct b; try solve by inversion; ev.  
+    destruct vf; destruct i; try destruct b; try contradiction; (*try solve by inversion;*) ev.  
     + rewrite <-LG. rewrite <-LGHX. split.
       apply stp_closed1 in stp2. assumption. split. apply stp_closed2 in stp1. assumption.
       simpl in Heqp. specialize (IHstp1 _ _ LG RG LGHX RGHX (vabs l t t0) i).
@@ -1981,7 +1980,7 @@ Proof.
   - subst. 
     rewrite val_type_unfold in V0. 
     eapply vv. rewrite val_type_unfold.
-    destruct vf; destruct i; try destruct b; try solve by inversion; ev.
+    destruct vf; destruct i; try destruct b; try inversion Heqp; (*try solve by inversion;*) ev.
     + rewrite <- LG. rewrite <- LGHX.  ev. split.
       apply stp_closed2 in stp2. assumption. split. apply stp_closed1 in stp1. assumption.
       simpl in Heqp. specialize (IHstp1 _ _ LG RG LGHX RGHX (vabs l t t0) i).
@@ -2003,7 +2002,7 @@ Proof.
       specialize (IHstp2 _ _ LG RG LGHX RGHX (vty l t) i).
       rewrite A in IHstp2. eapply IHstp2. eapply vv. assumption.  inversion Heqp. 
    
-  - Case "Sel1".
+  - (* Case "Sel1". *)
     subst. specialize (IHstp _ _ LG RG LGHX RGHX).
     rewrite val_type_unfold in V0.
     specialize (RG _ _ H).
@@ -2030,7 +2029,7 @@ Proof.
     assert (x1 vf (ub :: i)).
     specialize (H3 vf (ub :: i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
     destruct vf; assumption.
-  - Case "Sel2".
+  - (* Case "Sel2". *)
     eapply vv. rewrite val_type_unfold.
     remember RG as ENV. clear HeqENV.
     specialize (RG _ _ H).
@@ -2060,12 +2059,12 @@ Proof.
     eapply unvv in H8. rewrite val_type_unfold in H8.
     destruct vf; eapply vv; apply H8.
     
-  - Case "selx".
+  - (* Case "selx". *)
     eapply vv. eapply V0.
   - eapply vv. eapply V0.
 
   (* exactly the same as sel1/sel2, modulo RG/RGHX *)
-  - Case "Sel1".
+  - (* Case "Sel1". *)
     subst. 
     rewrite val_type_unfold in V0.
     remember RGHX as ENV. clear HeqENV.
@@ -2091,7 +2090,7 @@ Proof.
     assert (x1 vf (ub :: i)).
     specialize (H3 vf (ub :: i)). simpl in H3. rewrite <-Heqp in H3. eapply H3. assumption.
     destruct vf; assumption.
-  - Case "Sel2".
+  - (* Case "Sel2". *)
     eapply vv. rewrite val_type_unfold.
     remember RGHX as ENV. clear HeqENV.
     specialize (RGHX _ _ H).
@@ -2123,11 +2122,11 @@ Proof.
     destruct vf; eapply vv; apply H8.
 
     
-  - Case "selax".
+  - (* Case "selax". *)
     eapply vv. eapply V0.
   - eapply vv. eapply V0.
 
-  - Case "Fun".
+  - (* Case "Fun". *)
     subst. 
     rewrite val_type_unfold in V0.
     apply vv. rewrite val_type_unfold.
@@ -2216,7 +2215,7 @@ Proof.
     ev. inversion H6.
     ev. inversion H5.
 
-  - Case "trans".
+  - (* Case "trans". *)
     specialize (IHstp1 _ _ LG RG LGHX RGHX vf i).
     specialize (IHstp2 _ _ LG RG LGHX RGHX vf i).
     rewrite <-Heqp in *.
@@ -2573,19 +2572,19 @@ Proof.
   intros ? ? ? W.
   induction W; intros ? ? WFE.
 
-  - Case "Var". 
+  - (* Case "Var". *)
     destruct (indexr_safe_ex venv0 renv env T1 x) as [v IV]. eauto. eauto. 
     inversion IV as [I V]. 
 
     exists v. split. exists 0. intros. destruct n. omega. simpl. rewrite I. eauto. eapply V.
 
-  - Case "Typ".
+  - (* Case "Typ". *)
     repeat eexists. intros. destruct n. inversion H0. simpl. eauto.
     rewrite <-(wf_length2 venv0 renv) in H; try assumption.
     rewrite val_type_unfold. simpl. repeat split; try eapply H.
     unfold vtsub. intros. destruct (pos iy); intros; assumption.
     
-  - Case "App".
+  - (* Case "App". *)
     rewrite <-(wf_length2 _ _ _ WFE) in H. 
     destruct (IHW1 venv0 renv WFE) as [vf [IW1 HVF]].
     destruct (IHW2 venv0 renv WFE) as [vx [IW2 HVX]].
@@ -2606,7 +2605,7 @@ Proof.
     }
     eapply HVY. eapply WFE.
 
-  - Case "DApp".
+  - (* Case "DApp". *)
  
     remember WFE as WFE'. clear HeqWFE'. 
     eapply invert_var in WFE'; try eassumption. ev. 
@@ -2638,7 +2637,7 @@ Proof.
     intros. eapply H4. eapply vv. assumption.
     assumption.
     
-  - Case "Abs".
+  - (* Case "Abs". *)
     rewrite <-(wf_length2 _ _ _ WFE) in H.
     inversion H; subst. 
     eexists. split. exists 0. intros. destruct n. omega. simpl. eauto.
