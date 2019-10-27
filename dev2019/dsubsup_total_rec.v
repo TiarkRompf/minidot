@@ -33,17 +33,17 @@ Inductive ty : Type :=
 (* (z: T) -> T^z *)
 | TAll : ty -> ty -> ty
 (* x.Type *)
-| TSel : var -> ty
+| TSel : tm -> ty
 (* { Type: S..U } *)
 | TMem : ty(*S*) -> ty(*U*) -> ty
 | TBind  : ty -> ty (* Recursive binder: { z => T^z },
                          where z is locally bound in T *)
 | TAnd : ty -> ty -> ty (* Intersection Type: T1 /\ T2 *)
-.
 
-Inductive tm : Type :=
+
+with tm : Type :=
 (* x -- free variable, matching concrete environment *)
-| tvar : id -> tm
+| tvar : var -> tm
 (* { Type = T } *)
 | ttyp : ty -> tm
 (* lambda x:T.t *)
@@ -87,13 +87,13 @@ Inductive closed: nat(*B*) -> nat(*H*) -> nat(*F*) -> ty -> Prop :=
     closed i j k (TAll T1 T2)
 | cl_sel: forall i j k x,
     k > x ->
-    closed i j k (TSel (varF x))
+    closed i j k (TSel (tvar (varF x)))
 | cl_selh: forall i j k x,
     j > x ->
-    closed i j k (TSel (varH x))
+    closed i j k (TSel (tvar (varH x)))
 | cl_selb: forall i j k x,
     i > x ->
-    closed i j k (TSel (varB x))
+    closed i j k (TSel (tvar (varB x)))
 | cl_mem: forall i j k T1 T2,
     closed i j k T1 ->
     closed i j k T2 ->
@@ -114,9 +114,10 @@ Fixpoint open_rec (k: nat) (u: var) (T: ty) { struct T }: ty :=
     | TTop        => TTop
     | TBot        => TBot
     | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
-    | TSel (varF x) => TSel (varF x)
-    | TSel (varH i) => TSel (varH i)
-    | TSel (varB i) => if beq_nat k i then TSel u else TSel (varB i)
+    | TSel (tvar (varF x)) => TSel (tvar (varF x))
+    | TSel (tvar (varH i)) => TSel (tvar (varH i))
+    | TSel (tvar (varB i)) => if beq_nat k i then TSel (tvar u) else TSel (tvar (varB i))
+    | TSel t      => TSel t (* TODO!! *)                                                                        
     | TMem T1 T2  => TMem (open_rec k u T1) (open_rec k u T2)
     | TBind T => TBind (open_rec (S k) u T)
     | TAnd T1 T2 => TAnd (open_rec k u T1) (open_rec k u T2)
@@ -130,9 +131,10 @@ Fixpoint subst (U : var) (T : ty) {struct T} : ty :=
     | TTop         => TTop
     | TBot         => TBot
     | TAll T1 T2   => TAll (subst U T1) (subst U T2)
-    | TSel (varB i) => TSel (varB i)
-    | TSel (varF i) => TSel (varF i)
-    | TSel (varH i) => if beq_nat i 0 then TSel U else TSel (varH (i-1))
+    | TSel (tvar (varB i)) => TSel (tvar (varB i))
+    | TSel (tvar (varF i)) => TSel (tvar (varF i))
+    | TSel (tvar (varH i)) => if beq_nat i 0 then TSel (tvar U) else TSel (tvar (varH (i-1)))
+    | TSel t       => TSel t (* TODO!! *)                                                                     
     | TMem T1 T2     => TMem (subst U T1) (subst U T2)
     | TBind T       => TBind (subst U T)
     | TAnd T1 T2    => TAnd (subst U T1)(subst U T2)
@@ -143,9 +145,10 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
     | TTop         => True
     | TBot         => True
     | TAll T1 T2   => nosubst T1 /\ nosubst T2
-    | TSel (varB i) => True
-    | TSel (varF i) => True
-    | TSel (varH i) => i <> 0
+    | TSel (tvar (varB i)) => True
+    | TSel (tvar (varF i)) => True
+    | TSel (tvar (varH i)) => i <> 0
+    | TSel t       => True (* TODO !! *)
     | TMem T1 T2    => nosubst T1 /\ nosubst T2
     | TBind T       => nosubst T
     | TAnd T1 T2    => nosubst T1 /\ nosubst T2
@@ -180,31 +183,31 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH S2 S1 ->
     stp G1 GH (TMem S1 U1) (TMem S2 U2)
 | stp_sel1: forall G1 GH TX T2 x,
-    indexr x G1 = Some TX ->
+    indexr x G1 = Some TX -> (* TODO: has_type *)
     closed 0 0 (length G1) TX ->
     stp G1 GH TX (TMem TBot T2) ->
-    stp G1 GH (TSel (varF x)) T2
+    stp G1 GH (TSel (tvar (varF x))) T2
 | stp_sel2: forall G1 GH TX T1 x,
-    indexr x G1 = Some TX ->
+    indexr x G1 = Some TX -> (* TODO: has_type *)
     closed 0 0 (length G1) TX ->
     stp G1 GH TX (TMem T1 TTop) ->
-    stp G1 GH T1 (TSel (varF x)) 
+    stp G1 GH T1 (TSel (tvar (varF x)))
 | stp_selx: forall G1 GH v x,
     indexr x G1 = Some v ->
-    stp G1 GH (TSel (varF x)) (TSel (varF x))
+    stp G1 GH (TSel (tvar (varF x))) (TSel (tvar (varF x)))
 | stp_sela1: forall G1 GH TX T2 x,
     indexr x GH = Some TX ->
     closed 0 x (length G1) TX ->
     stp G1 GH TX (TMem TBot T2) ->
-    stp G1 GH (TSel (varH x)) T2
+    stp G1 GH (TSel (tvar (varH x))) T2
 | stp_sela2: forall G1 GH TX T1 x,
     indexr x GH = Some TX ->
     closed 0 x (length G1) TX ->
     stp G1 GH TX (TMem T1 TTop) ->
-    stp G1 GH T1 (TSel (varH x)) 
+    stp G1 GH T1 (TSel (tvar (varH x)))
 | stp_selax: forall G1 GH v x,
     indexr x GH = Some v  ->
-    stp G1 GH (TSel (varH x)) (TSel (varH x))
+    stp G1 GH (TSel (tvar (varH x))) (TSel (tvar (varH x)))
 
 (* stp for recursive types and intersection types *)
 | stp_bindx: forall GH G1 T1 T1' T2 T2',
@@ -249,14 +252,14 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
 | t_var: forall x env T1,
            indexr x env = Some T1 ->
            stp env [] T1 T1 ->
-           has_type env (tvar x) T1
+           has_type env (tvar (varF x)) T1
 (* pack a recursive type  *)
 | t_var_pack : forall G1 x T1 T1',
            (* has_type G1 (tvar x) T1' -> *)
            indexr x G1 = Some (open (varF x) T1) ->            
            T1' = (open (varF x) T1) ->
            closed 1 0 (length G1) T1 ->
-           has_type G1 (tvar x) (TBind T1) 
+           has_type G1 (tvar (varF x)) (TBind T1) 
 (* unpack a recursive type: unpack(x:{z=>T^z}) { x:T^x => ... }  *)                    
 | t_unpack: forall env x y T1 T1' T2,
            has_type env x (TBind T1) ->
@@ -283,10 +286,10 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env (tapp f x) T2
 | t_dapp:forall env f x T1 T2 T,
            has_type env f (TAll T1 T2) ->
-           has_type env (tvar x) T1 ->
+           has_type env (tvar (varF x)) T1 ->
            T = open (varF x) T2 ->
            closed 0 0 (length env) T ->
-           has_type env (tapp f (tvar x)) T
+           has_type env (tapp f (tvar (varF x))) T
 | t_abs: forall env y T1 T2,
            has_type (T1::env) y (open (varF (length env)) T2) ->
            closed 0 0 (length env) (TAll T1 T2) ->
@@ -313,7 +316,9 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
     | 0 => None
     | S n =>
       match t with
-        | tvar x       => Some (indexr x env)
+        | tvar (varF x) => Some (indexr x env)
+        | tvar (varH x) => Some None
+        | tvar (varB x) => Some None
         | ttyp T       => Some (Some (vty env T))
         | tabs T y     => Some (Some (vabs env T y))
         | tapp ef ex   =>
@@ -350,7 +355,7 @@ Fixpoint tsize_flat(T: ty) :=
     | TTop => 1
     | TBot => 1
     | TAll T1 T2 => S (tsize_flat T1 + tsize_flat T2)
-    | TSel _ => 1
+    | TSel _ => 1 (* TODO ? *)
     | TMem T1 T2 => S (tsize_flat T1 + tsize_flat T2)	
     | TBind T => S (tsize_flat T)
     | TAnd T1 T2 => S (tsize_flat T1 + tsize_flat T2)
@@ -360,7 +365,7 @@ Lemma open_preserves_size: forall T x j,
   tsize_flat T = tsize_flat (open_rec j (varH x) T).
 Proof.
   intros T. induction T; intros; simpl; eauto.
-  - destruct v; simpl; destruct (beq_nat j i); eauto.
+  - destruct t; eauto.  destruct v; simpl; destruct (beq_nat j i); eauto.
 Qed.
 
 
@@ -428,12 +433,12 @@ Program Fixpoint val_type (env: list vseta) (GH:list vseta) (T:ty) n (dd: vset n
                       (dd (dy n0) vy -> val_type env GH T2 n0 (dy n0) vy)
       end
 
-    | _, TSel (varF x) =>
+    | _, TSel (tvar (varF x)) => (* TODO: eval *)
       match indexr x env with
         | Some jj => jj (S n) dd v
         | _ => False
       end
-    | _, TSel (varH x) =>
+    | _, TSel (tvar (varH x)) => (* TODO: eval *)
       match indexr x GH with
         | Some jj => jj (S n) dd v
         | _ => False
@@ -460,7 +465,22 @@ Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. unfold open. rewrite <-open_preserves_size. omega. Qed. (* TBind case: open *)
 
+(*
+Next Obligation.
+  unfold "~". repeat split; intros; try inversion H2; try inversion H3; try inversion H4. Qed.
+Next Obligation.
+  unfold "~". repeat split; intros; try inversion H5; try inversion H6; try inversion H7. Qed.
+Next Obligation.
+  unfold "~". repeat split; intros; try inversion H4; try inversion H6; try inversion H7. Qed.
+Next Obligation.
+  unfold "~". repeat split; intros; try inversion H5; try inversion H6; try inversion H7. Qed.
+Next Obligation.
+  unfold "~". repeat split; intros; try inversion H5; try inversion H6; try inversion H7. Qed.
+Next Obligation.
+  unfold "~". repeat split; intros; try inversion H5; try inversion H6; try inversion H7. Qed.
+*)
 
+  
 Ltac ev := repeat match goal with
                     | H: exists _, _ |- _ => destruct H
                     | H: _ /\  _ |- _ => destruct H
@@ -475,11 +495,19 @@ Ltac inv_mem := match goal with
 
 
 Next Obligation. compute. repeat split; intros; ev; inversion H2; inversion H3. (* try solve by inversion.*) Qed.
+Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H5; inversion H6. Qed.
 Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H5. Qed.
-Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H5. Qed.
-Next Obligation. compute. repeat split; intros; ev; inversion H2. Qed.
-Next Obligation. compute. repeat split; intros; ev; inversion H3; inversion H4. Qed.
-Next Obligation. compute. repeat split; intros; ev; inversion H4. Qed.
+Next Obligation. compute. repeat split; intros; ev; inversion H2; inversion H6. Qed.
+Next Obligation. compute. repeat split; intros; ev; inversion H3; inversion H4; inversion H6. Qed.
+Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H6.  Qed.
+Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H5.  Qed.
+Next Obligation. compute. repeat split; intros; ev; inversion H2; inversion H4.  Qed.
+Next Obligation. compute. repeat split; intros; ev; inversion H3; inversion H4.  Qed.
+Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H5.  Qed.
+Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H6.  Qed.
+Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H5.  Qed.
+Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H5.  Qed.
+Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H5.  Qed.
 
                                   
 (* 
@@ -510,12 +538,12 @@ Lemma val_type_unfold: forall env GH T n dd v, val_type env GH T n dd v =
                       (dd (dy n0) vy -> val_type env GH T2 n0 (dy n0) vy)
       end
 
-    | _, TSel (varF x) =>
+    | _, TSel (tvar (varF x)) =>
       match indexr x env with
         | Some jj => jj (S n) dd v
         | _ => False
       end
-    | _, TSel (varH x) =>
+    | _, TSel (tvar (varH x)) =>
       match indexr x GH with
         | Some jj => jj (S n) dd v
         | _ => False
@@ -666,9 +694,9 @@ Ltac crush :=
 
 (* define polymorphic identity function *)
 
-Definition polyId := TAll (TMem TBot TTop) (TAll (TSel (varB 0)) (TSel (varB 1))).
+Definition polyId := TAll (TMem TBot TTop) (TAll (TSel (tvar (varB 0))) (TSel (tvar (varB 1)))).
 
-Example ex10: has_type [] (tabs (TMem TBot TTop) (tabs (TSel (varF 0)) (tvar 1))) polyId.
+Example ex10: has_type [] (tabs (TMem TBot TTop) (tabs (TSel (tvar (varF 0))) (tvar (varF 1)))) polyId.
 Proof. 
   crush.
 Qed.
@@ -770,9 +798,10 @@ Fixpoint splice n (T : ty) {struct T} : ty :=
     | TTop         => TTop
     | TBot         => TBot
     | TAll T1 T2   => TAll (splice n T1) (splice n T2)
-    | TSel (varF i) => TSel (varF i)
-    | TSel (varB i) => TSel (varB i)
-    | TSel (varH i) => if le_lt_dec n i then TSel (varH (i+1)) else TSel (varH i)
+    | TSel (tvar (varF i)) => TSel (tvar (varF i))
+    | TSel (tvar (varB i)) => TSel (tvar (varB i))
+    | TSel (tvar (varH i)) => if le_lt_dec n i then TSel (tvar (varH (i+1))) else TSel (tvar (varH i))
+    | TSel t => TSel t
     | TMem T1 T2   => TMem (splice n T1) (splice n T2)
     | TBind T      => TBind (splice n T)
     | TAnd T1 T2   => TAnd (splice n T1) (splice n T2)
@@ -789,7 +818,7 @@ Lemma splice_open_permute: forall {X} (G0:list X) T2 n j,
 Proof.
   intros X G T. induction T; intros; simpl; eauto;
   try rewrite IHT1; try rewrite IHT2; try rewrite IHT; eauto;
-  destruct v; eauto.
+  destruct t; eauto. destruct v; eauto. 
 
   case_eq (le_lt_dec (length G) i); intros E LE; simpl; eauto.
   rewrite LE. eauto.
@@ -1009,7 +1038,7 @@ Proof.
  intros. apply (closed_inc_mult i j k T H i j k'); omega.
 Qed.
 
-Lemma closed_open: forall i j k V T, closed (i+1) j k T -> closed i j k (TSel V) ->
+Lemma closed_open: forall i j k V T, closed (i+1) j k T -> closed i j k (TSel (tvar V)) ->
   closed i j k (open_rec i V T).
 Proof.
   intros. generalize dependent i.
@@ -1227,14 +1256,15 @@ Proof.
 Qed.
 
 Lemma open_subst_commute: forall T2 V j k x i,
-closed i j k (TSel V) ->
+closed i j k (TSel (tvar V)) ->
 (open_rec i (varH x) (subst V T2)) =
 (subst V (open_rec i (varH (x+1)) T2)).
 Proof. 
   intros T2 TX j k. induction T2; intros; eauto; try destruct v; eauto.
   - simpl. rewrite IHT2_1; eauto. rewrite IHT2_2; eauto.
     eapply closed_upgrade. eauto. eauto.
-  - simpl.
+  - admit. (* TODO: fix *)
+    (* simpl. rename x into i0.
     case_eq (beq_nat i 0); intros E.
     apply beq_nat_true in E. subst.
     case_eq (beq_nat i0 0); intros E0.
@@ -1250,8 +1280,9 @@ Proof.
     apply beq_nat_true in E1. subst.
     inversion H; subst. omega.
     reflexivity.
-    simpl. reflexivity.
-  - simpl.
+    simpl. reflexivity. *)
+  - admit. (* TODO: fix *)
+    (* simpl.
     case_eq (beq_nat i i0); intros E.
     apply beq_nat_true in E; subst.
     simpl.
@@ -1260,11 +1291,11 @@ Proof.
     rewrite A.
     assert (x = x + 1 - 1) as B. unfold id. omega.
     rewrite <- B. reflexivity.
-    simpl. reflexivity.
-  - simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.
+    simpl. reflexivity. *)
+  (* - simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.*)
   - simpl. rewrite IHT2. reflexivity. eapply closed_upgrade. eassumption. omega.
   - simpl. rewrite IHT2_1. rewrite IHT2_2. reflexivity. assumption. assumption.
-Qed.
+Admitted.
 
 Lemma closed_no_subst: forall T i k TX,
    closed i 0 k T ->
@@ -1278,7 +1309,7 @@ Proof.
   erewrite IHT. reflexivity. eassumption.
 Qed.
 
-Lemma closed_subst: forall i j k V T, closed i (j+1) k T -> closed 0 j k (TSel V) -> closed i j k (subst V T).
+Lemma closed_subst: forall i j k V T, closed i (j+1) k T -> closed 0 j k (TSel (tvar V)) -> closed i j k (subst V T).
 Proof.
   intros. generalize dependent i.
   induction T; intros; inversion H;
@@ -1306,7 +1337,7 @@ Proof.
     eapply cl_selh. omega.
 Qed.
 
-Lemma subst_open_commute_m: forall i j k k' j' V T2, closed (i+1) (j+1) k T2 -> closed 0 j' k' (TSel V) ->
+Lemma subst_open_commute_m: forall i j k k' j' V T2, closed (i+1) (j+1) k T2 -> closed 0 j' k' (TSel (tvar V)) ->
     subst V (open_rec i (varH (j+1)) T2) = open_rec i (varH j) (subst V T2).
 Proof.
   intros.
@@ -1325,7 +1356,7 @@ Proof.
     eauto.
 Qed.
 
-Lemma subst_open_commute: forall i j k k' V T2, closed (i+1) (j+1) k T2 -> closed 0 0 k' (TSel V) ->
+Lemma subst_open_commute: forall i j k k' V T2, closed (i+1) (j+1) k T2 -> closed 0 0 k' (TSel (tvar V)) ->
     subst V (open_rec i (varH (j+1)) T2) = open_rec i (varH j) (subst V T2).
 Proof.
   intros. eapply subst_open_commute_m; eauto.
@@ -1362,10 +1393,10 @@ Proof.
   omega.
 Qed.
 
-Lemma nosubst_open: forall i V T2, nosubst (TSel V) -> nosubst T2 -> nosubst (open_rec i V T2).
+Lemma nosubst_open: forall i V T2, nosubst (TSel (tvar V)) -> nosubst T2 -> nosubst (open_rec i V T2).
 Proof.
   intros. generalize dependent i. induction T2; intros;
-  try inversion H0; simpl; eauto; destruct v; eauto.
+  try inversion H0; simpl; eauto; destruct t; eauto; destruct v; eauto.
   case_eq (beq_nat i i0); intros E. eauto. eauto.
 Qed.
 
@@ -1386,18 +1417,20 @@ Proof.
   induction T1; intros; destruct vf;
   rewrite val_type_unfold in H; try eauto; try contradiction.
   - (* fun *) ev; econstructor; assumption.
-  - (* sel *) destruct v.
+  - (* sel *) destruct t; eauto. destruct v.
               remember (indexr i H1) as L; try destruct L as [?|]; try contradiction.
               constructor. eapply indexr_max. eauto.
               remember (indexr i GH) as L; try destruct L as [?|]; try contradiction.
               constructor. eapply indexr_max. eauto. 
-              inversion H. 
-  - (* sel *) destruct v.
+              inversion H.
+              contradiction. contradiction. contradiction. contradiction.
+  - (* sel *) destruct t; eauto. destruct v.
               remember (indexr i H1) as L; try destruct L as [?|]; try contradiction.
               constructor. eapply indexr_max. eauto.
               remember (indexr i GH) as L; try destruct L as [?|]; try contradiction.
               constructor. eapply indexr_max. eauto. 
-              inversion H. 
+              inversion H.
+              contradiction. contradiction. contradiction. contradiction.
   - ev. constructor; assumption.
   - ev. constructor; assumption.
   - ev. constructor; assumption.
@@ -1445,20 +1478,20 @@ Proof.
     apply vv. eapply H5.
 
   - apply vv. rewrite val_type_unfold. destruct vf.
-    + destruct v.
+    + destruct t; eauto. destruct v.
     destruct (indexr i H1) eqn : A.
     assert (indexr i (vx :: H1) = Some v). apply indexr_extend. assumption. rewrite H. assumption.
     inversion V. assumption. inversion V. 
-    + destruct v.
+    + destruct t; eauto. destruct v.
     destruct (indexr i H1) eqn : A. 
     assert (indexr i (vx :: H1) = Some v). apply indexr_extend. assumption. rewrite H. assumption.
     inversion V. assumption. inversion V.
 
   - apply vv. rewrite val_type_unfold. destruct vf.
-    + destruct v. inversion C. subst. 
+    + destruct t; eauto. destruct v. inversion C. subst. 
     eapply indexr_has in H4. ev. assert (indexr i (vx:: H1) = Some x). apply indexr_extend.
     assumption. rewrite H0 in V. rewrite H. assumption. assumption. inversion V.
-    + destruct v. inversion C. subst. 
+    + destruct t; eauto. destruct v. inversion C. subst. 
     eapply indexr_has in H4. ev. assert (indexr i (vx:: H1) = Some x). apply indexr_extend.
     assumption. rewrite H0 in V. rewrite H. assumption. assumption. inversion V.
 
@@ -1587,12 +1620,12 @@ Lemma splice_preserves_size: forall T j,
   tsize_flat T = tsize_flat (splice j T).
 Proof.
   intros. induction T; simpl; try rewrite IHT1; try rewrite IHT2; try reflexivity.
-  destruct v; simpl; try reflexivity. destruct (le_lt_dec j i); simpl; try reflexivity.
+  destruct t; eauto. destruct v; simpl; try reflexivity. destruct (le_lt_dec j i); simpl; try reflexivity.
   rewrite IHT. reflexivity.
 Qed.
 
 Lemma open_permute : forall T V0 V1 i j a b c d,
-  closed 0 a b (TSel V0) -> closed 0 c d (TSel V1) -> i <> j ->
+  closed 0 a b (TSel (tvar V0)) -> closed 0 c d (TSel (tvar V1)) -> i <> j ->
   open_rec i V0 (open_rec j V1 T) = open_rec j V1 (open_rec i V0 T).
 Proof. intros. generalize dependent i. generalize dependent j.
   induction T; intros.
@@ -1600,20 +1633,20 @@ Proof. intros. generalize dependent i. generalize dependent j.
   simpl. reflexivity.
   simpl. specialize (IHT1 _ _ H1). rewrite IHT1. assert ((S i) <> (S j)) by omega.
   specialize (IHT2 _ _ H2). rewrite IHT2. reflexivity.
-  destruct v. simpl. reflexivity. simpl. reflexivity.
+  destruct t; eauto. destruct v. simpl. reflexivity. simpl. reflexivity.
   (* varB *)
   destruct (beq_nat i i0) eqn : A. rewrite beq_nat_true_iff in A. subst.
-  assert ((open_rec j V1 (TSel (varB i0)) = (TSel (varB i0)))). simpl. 
+  assert ((open_rec j V1 (TSel (tvar (varB i0))) = (TSel (tvar (varB i0))))). simpl. 
   assert (beq_nat j i0 = false). rewrite beq_nat_false_iff. omega. rewrite H2. reflexivity.
   rewrite H2. simpl. assert (beq_nat i0 i0 = true). erewrite beq_nat_refl. eauto. rewrite H3. 
   eapply closed_no_open. eapply closed_upgrade. eauto. omega.
   destruct (beq_nat j i0) eqn : B. rewrite beq_nat_true_iff in B. subst.
   simpl. assert (beq_nat i0 i0 = true). erewrite beq_nat_refl. eauto. rewrite H2.
   assert (beq_nat i i0 = false). rewrite beq_nat_false_iff. omega. rewrite H3.
-  assert (TSel (V1) = open_rec i V0 (TSel V1)). eapply closed_no_open. eapply closed_upgrade.
+  assert (TSel (tvar V1) = open_rec i V0 (TSel (tvar V1))). eapply closed_no_open. eapply closed_upgrade.
   eapply H0. omega. rewrite <- H4. simpl. rewrite H2. reflexivity.
-  assert ((open_rec j V1 (TSel (varB i0))) = TSel (varB i0)). simpl. rewrite B. reflexivity.
-  rewrite H2. assert (open_rec i V0 (TSel (varB i0)) = (TSel (varB i0))). simpl.
+  assert ((open_rec j V1 (TSel (tvar (varB i0)))) = TSel (tvar (varB i0))). simpl. rewrite B. reflexivity.
+  rewrite H2. assert (open_rec i V0 (TSel (tvar (varB i0))) = (TSel (tvar (varB i0)))). simpl.
   rewrite A. reflexivity. rewrite H3. simpl. rewrite B. reflexivity.
 
   simpl. specialize (IHT1 _ _ H1). rewrite IHT1.
@@ -1622,7 +1655,7 @@ Proof. intros. generalize dependent i. generalize dependent j.
   simpl. rewrite IHT1. rewrite IHT2. reflexivity. omega. omega.
 Qed.
 
-Lemma closed_open2: forall i j k V T i1, closed i j k T -> closed i j k (TSel V) ->
+Lemma closed_open2: forall i j k V T i1, closed i j k T -> closed i j k (TSel (tvar V)) ->
   closed i j k (open_rec i1 V T).
 Proof.
   intros. generalize dependent i. revert i1.
@@ -1639,14 +1672,15 @@ Qed.
 
 Lemma splice_retreat4: forall T i j k m V' V ,
   closed i (j + 1) k (open_rec m V' (splice 0 T)) ->
-  (closed i j k (TSel V) -> closed i (j) k (open_rec m V T)).
+  (closed i j k (TSel (tvar V)) -> closed i (j) k (open_rec m V T)).
 Proof. induction T; intros; try destruct v; simpl in *.
+  admit. (* TODO FIX 
   constructor.
   constructor.
   inversion H; subst. 
-  specialize (IHT1 _ _ _ _ _ _ H6 H0). assert (closed (S i) (j) k (TSel V)).
+  specialize (IHT1 _ _ _ _ _ _ H6 H0). assert (closed (S i) (j) k (TSel (tvar V))).
   eapply closed_upgrade. eapply H0. omega.
-  specialize (IHT2 _ _ _ _ _ _ H7 H1). constructor. assumption. assumption. 
+  specialize (IHT2 _ _ _ _ _ _ H7 H1). constructor. assumption. assumption.
   inversion H. subst. constructor. omega.
   inversion H. subst. constructor. omega.
   destruct (beq_nat m i0) eqn : A. assumption. 
@@ -1655,17 +1689,18 @@ Proof. induction T; intros; try destruct v; simpl in *.
   eapply IHT2. eassumption. assumption.
   constructor. inversion H. subst.  eapply IHT; try eassumption. eapply closed_upgrade. eassumption. omega.
   inversion H. subst. constructor.  eapply IHT1; try eassumption. 
-  eapply IHT2; try eassumption.
-Qed.
+  eapply IHT2; try eassumption. *)
+Admitted.
 
 Lemma splice_retreat5: forall T i j k m V' V ,
-  closed i (j + 1) k (TSel V') -> closed i (j) k (open_rec m V T) ->
+  closed i (j + 1) k (TSel (tvar V')) -> closed i (j) k (open_rec m V T) ->
   closed i (j + 1) k (open_rec m V' (splice 0 T)).
 Proof. induction T; intros; try destruct v; simpl in *.
+  admit. (* TODO FIX
   constructor.
   constructor.
   inversion H0; subst.
-  specialize (IHT1 _ _ _ _ _ _ H H6). assert (closed (S i) (j + 1) k (TSel V')).
+  specialize (IHT1 _ _ _ _ _ _ H H6). assert (closed (S i) (j + 1) k (TSel (tvar V'))).
   eapply closed_upgrade. eapply H. omega.
   specialize (IHT2 _ _ _ _ _ _ H1 H7). constructor. assumption. assumption. 
   inversion H0. subst. constructor. omega.
@@ -1676,8 +1711,8 @@ Proof. induction T; intros; try destruct v; simpl in *.
   eapply IHT2. eassumption. eassumption.
   inversion H0. subst. constructor. eapply IHT; try eassumption. eapply closed_upgrade. eassumption. omega.
   inversion H0. subst. constructor. eapply IHT1; try eassumption. eapply IHT2; try eassumption.
-
-Qed.
+          *)
+Admitted.
 
 
 
@@ -1687,7 +1722,7 @@ Lemma splice_open_permute0: forall x0 T2 n j,
 Proof.
   intros x0 T. induction T; intros; simpl; eauto;
   try rewrite IHT1; try rewrite IHT2; try rewrite IHT; eauto;
-  destruct v; eauto.
+  destruct t; eauto. destruct v; eauto.
 
   case_eq (le_lt_dec (x0) i); intros E LE; simpl; eauto.
   rewrite LE. eauto.
@@ -1771,7 +1806,7 @@ Proof.
     rewrite app_length. unfold open. eassumption. 
     simpl. omega.
     
-  - apply vv. rewrite val_type_unfold. destruct vf. simpl in *. destruct v.
+  - apply vv. rewrite val_type_unfold. destruct vf. simpl in *. destruct t; eauto. destruct v.
     + assumption. 
     + destruct (indexr i (GH1 ++ GH0)) eqn : B; try contradiction. (*  try solve by inversion. *)
     destruct (le_lt_dec (length GH0) i) eqn : A. 
@@ -1779,14 +1814,14 @@ Proof.
     rewrite H0. apply V. assert (indexr (i) (GH1 ++ jj :: GH0) = Some v). apply indexr_hit_low. assumption. omega.
     rewrite H0. apply V.
     + inversion V.
-    + simpl in *. destruct v; simpl; try apply V.
+    + simpl in *. destruct t; eauto. destruct v; simpl; try apply V.
     destruct (indexr i (GH1 ++ GH0)) eqn : B; try contradiction. (* try solve by inversion. *)
     destruct (le_lt_dec (length GH0) i) eqn : A. 
     assert (indexr (i + 1) (GH1 ++ jj :: GH0) = Some v). apply indexr_hit_high. assumption. omega.
     rewrite H0. apply V. assert (indexr (i) (GH1 ++ jj :: GH0) = Some v). apply indexr_hit_low. assumption. omega.
     rewrite H0. apply V.
 
-  - apply vv. rewrite val_type_unfold. destruct vf; simpl in *. destruct v.
+  - apply vv. rewrite val_type_unfold. destruct vf; simpl in *. destruct t; eauto. destruct v.
     + assumption.
     + destruct (le_lt_dec (length GH0) i) eqn : A. inversion C. subst.  
     eapply indexr_has in H4. ev. assert (indexr (i + 1)(GH1 ++ jj:: GH0) = Some x). apply indexr_hit_high; assumption. 
@@ -1795,7 +1830,7 @@ Proof.
     apply indexr_extend_mult. assumption. assert (indexr i (GH1 ++ jj :: GH0) = Some x). apply indexr_hit_low; assumption. 
     rewrite H1. rewrite H2 in V. assumption.
     + inversion V.
-    + destruct v; try assumption. (*try try solve by inversion; try assumption.*)
+    + destruct t; eauto. destruct v; try assumption. (*try try solve by inversion; try assumption.*)
     destruct (le_lt_dec (length GH0) i) eqn : A. inversion C. subst. 
     eapply indexr_has in H4. ev. assert (indexr (i + 1)(GH1 ++ jj:: GH0) = Some x). apply indexr_hit_high; assumption. 
     rewrite H0. rewrite H1 in V. assumption. 
@@ -1979,7 +2014,7 @@ Proof.
     constructor. auto. constructor. auto. omega. simpl. omega. constructor. auto. constructor. auto. omega.
     
   - unfold open in *. simpl in *. apply vv. rewrite val_type_unfold in *. 
-    destruct v; destruct v0; simpl in *; try apply V.
+    destruct t; eauto. destruct v; destruct v0; simpl in *; try apply V.
     + assert (indexr (i + 1) (GH ++ [jj]) = indexr i GH). {
     apply indexr_extend_end. }   
     rewrite H in V. apply V.
@@ -1994,7 +2029,7 @@ Proof.
     rewrite H in V. rewrite Id. apply V. inversion V.
 
   - unfold open in *. simpl in *. apply vv. rewrite val_type_unfold in *. 
-    destruct v; destruct v0; simpl in *; try apply V.
+    destruct t; eauto. destruct v; destruct v0; simpl in *; try apply V.
     assert (indexr (i + 1) (GH ++ [jj]) = indexr i GH). apply indexr_extend_end.
     rewrite H. apply V.
     destruct (beq_nat k i) eqn : A. 
@@ -2171,7 +2206,7 @@ Lemma open_preserves_size2: forall T x j,
   tsize_flat T = tsize_flat (open_rec j (varF x) T).
 Proof.
   intros T. induction T; intros; simpl; eauto.
-  - destruct v; simpl; destruct (beq_nat j i); eauto.
+  - destruct t; eauto. destruct v; simpl; destruct (beq_nat j i); eauto.
 Qed.
 
 Lemma valty_subst4: forall G T1 jj v d k,
@@ -2468,10 +2503,10 @@ Qed.
 (* type assignment for variables *)
 
 Lemma invert_var : forall x tenv T,
-  has_type tenv (tvar x) T -> forall venv renv, R_env venv renv tenv ->
-  exists (d: vseta) v, tevaln venv (tvar x) v /\ indexr x venv = Some v /\ indexr x renv = Some d /\ forall k, val_type renv [] T k (d k) v.
+  has_type tenv (tvar (varF x)) T -> forall venv renv, R_env venv renv tenv ->
+  exists (d: vseta) v, tevaln venv (tvar (varF x)) v /\ indexr x venv = Some v /\ indexr x renv = Some d /\ forall k, val_type renv [] T k (d k) v.
 Proof.
-  intros ? ? ? W. remember (tvar x) as e.
+  intros ? ? ? W. remember (tvar (varF x)) as e.
   induction W; intros ? ? WFE; inversion Heqe; try subst x0.
 
   - (* Case "Var". *)
@@ -2552,8 +2587,11 @@ Proof.
     eapply HVY. rewrite (wf_length2 _ _ _ WFE). assumption.
 
   - (* Case "And". *)
-    destruct (invert_var x env (TAnd T1 T2) (t_and env x T1 T2 W1 W2) venv0 renv WFE) as [d [v [E [I [D V]]]]].
-    exists d. exists v. split. apply E. apply V. 
+    destruct x as [x|x|x]. 
+    destruct (invert_var x env (TAnd T1 T2) (t_and env (varF x) T1 T2 W1 W2) venv0 renv WFE) as [d [v [E [I [D V]]]]].
+    exists d. exists v. split. apply E. apply V.
+
+    admit. admit. (* varH x and varB x aren't typed -- but need induction b/c TAnd *)
 
   - (* Case "Typ". *)
 
@@ -2636,4 +2674,5 @@ Proof.
 
 Grab Existential Variables.
 
-Qed.
+Admitted.
+
