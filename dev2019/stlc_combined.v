@@ -44,6 +44,8 @@ Inductive var : Type :=
   | V : class -> id -> var
 .
 
+Definition classOf v := match v with V cl i => cl end.
+
 (* terms *)
 Inductive tm : Type :=
   | ttrue  : tm
@@ -799,3 +801,276 @@ Proof.
     destruct (IHW2 _ WFE) as [v [HEV HVL]].
     simpl in HVL. destruct v; inversion HVL.
 Qed.
+
+
+(* ############################################################ *)
+(*                                                              *)
+(*         Combined soundness and termination proof             *)
+(*                                                              *)
+(* ############################################################ *)
+
+
+(* ### Value typing and well-typed runtime environments ### *)
+(*
+(* Termination part *)
+(* need to use Fixpoint because of positivity restriction *)
+Fixpoint val_type_tnt (v:vl) (T:ty): Prop := match v, T with
+| vbool b, TBool => True
+| vabs env clv y, TFun T1 clt T2 => (clv = clt) /\
+  (forall vx, val_type_tnt vx T1 ->
+     exists v, tevaln (expand_env (expand_env env (vrec (vabs env clv y)) Second) vx clv) y First v /\ val_type_tnt v T2)
+| vrec v, TRec T => True (* NEW: rec, but we can't do anything with it *)
+| _,_ => False
+end.
+
+
+
+Inductive wf_env : venv -> tenv -> Prop := 
+| wfe_nil : forall n, wf_env (Def vl nil nil n) (Def ty nil nil n)
+| wfe_cons : forall v t vs ts n,
+    val_type v t ->
+    wf_env vs ts ->
+    get_inv_idx vs = get_inv_idx ts ->
+    wf_env (expand_env vs v n) (expand_env ts t n)
+
+with val_type : vl -> ty -> Prop := 
+| v_bool: forall b,
+    val_type (vbool b) TBool
+| v_abs: forall venv tenv y T1 T2 m, (* NEW: TRec wrapper *)
+    wf_env venv tenv ->
+    has_type (expand_env (expand_env tenv (TRec (TFun T1 m T2)) Second) T1 m) y First T2 ->
+    val_type (vabs venv m y) (TFun T1 m T2)
+| v_rec: forall v T,  (* NEW *)
+    val_type v T ->
+    val_type (vrec v) (TRec T)
+| v_cap:
+    val_type vcap TCap (* NEW *)
+.
+*)
+
+
+Inductive wf_env_comb : venv -> tenv -> Prop := 
+| wfe_comb_nil : forall n, wf_env_comb (Def vl nil nil n) (Def ty nil nil n)
+| wfe_comb_env : forall v t vs ts n,
+    val_type_snd v t /\ ((n = Second) \/ val_type_tnt v t) ->
+    wf_env_comb vs ts ->
+    get_inv_idx vs = get_inv_idx ts ->
+    wf_env_comb (expand_env vs v n) (expand_env ts t n)
+with val_type_snd : vl -> ty -> Prop := 
+| v_bool2: forall b,
+    val_type_snd (vbool b) TBool
+| v_abs2: forall venv tenv y T1 T2 m, (* NEW: TRec wrapper *)
+    wf_env_comb venv tenv ->
+    has_type (expand_env (expand_env tenv (TRec (TFun T1 m T2)) Second) T1 m) y First T2 ->
+    val_type_snd (vabs venv m y) (TFun T1 m T2)
+| v_rec2: forall v T,  (* NEW *)
+    val_type_snd v T ->
+    val_type_snd (vrec v) (TRec T)
+| v_cap2:
+    val_type_snd vcap TCap (* NEW *)
+.
+
+
+Definition val_type_comb n v T := val_type_snd v T /\ ((n = Second) \/ val_type_tnt v T).
+
+
+Inductive res_type_snd: option vl -> ty -> Prop :=
+| not_stuck2: forall v T,
+      val_type_snd v T ->
+      res_type_snd (Some v) T.
+
+Hint Constructors res_type_snd.
+Hint Resolve not_stuck2.
+
+
+Lemma wf_length_comb : forall vs ts,
+      wf_env_comb vs ts ->
+      length_env First vs = length_env First ts /\ length_env Second vs = length_env Second ts.
+Proof.
+  intros. induction H; auto.
+  destruct IHwf_env_comb as [L R].
+  destruct n. 
+  - (* Case "First" *) split.
+    repeat rewrite length_env_incr; auto.
+    repeat rewrite length_env_same; auto.
+    unfold not; intros. inversion H2. unfold not; intros. inversion H2.
+  - (* Case "Second" *) split.
+    repeat rewrite length_env_same; auto.
+    unfold not; intros. inversion H2. unfold not; intros. inversion H2.
+    repeat rewrite length_env_incr; auto.
+Qed.
+
+Lemma lookup_safe_ex_comb: forall H1 G1 TF cl x,
+             wf_env_comb (sanitize_env cl H1) (sanitize_env cl G1) ->
+             lookup x (sanitize_env cl G1) = Some TF ->
+             exists v, lookup x (sanitize_env cl H1) = Some v /\ val_type_comb (classOf x) v TF.
+Proof. admit. Admitted.
+
+Lemma wf_idx_comb : forall vs ts,
+      wf_env_comb vs ts ->
+      get_inv_idx vs = get_inv_idx ts.
+Proof.
+  intros. induction H; auto.
+  destruct vs; destruct ts; destruct n; auto.
+Qed.
+
+Hint Immediate wf_idx_comb.
+
+Lemma wf_sanitize_any_comb : forall n venv tenv,
+   wf_env_comb venv tenv ->
+   wf_env_comb (sanitize_any venv n) (sanitize_any tenv n).
+Proof.
+  intros. induction H.
+  - simpl. eapply wfe_comb_nil.
+  - eapply wfe_comb_env in IHwf_env_comb.
+    rewrite <-ext_sanitize_commute. rewrite <-ext_sanitize_commute.
+    eauto. eauto. eauto. 
+Qed.  
+
+Lemma wf_sanitize_comb : forall n venv tenv,
+   wf_env_comb venv tenv ->
+   wf_env_comb (sanitize_env n venv) (sanitize_env n tenv).
+Proof.
+  intros. destruct n; unfold sanitize_env. destruct venv0. destruct tenv0.
+  assert (length l0 = length l2). apply wf_length_comb in H; destruct H as [L R]; eauto.
+  rewrite H0. eapply wf_sanitize_any_comb. eauto.
+  eauto.
+Qed.
+  
+
+Hint Immediate wf_sanitize_comb.
+
+(*
+Theorem full_total_safety : forall e cl tenv T,
+  has_type tenv e cl T -> forall venv, wf_env_tnt venv tenv ->
+  exists v, tevaln venv e cl v /\ val_type_tnt v T.
+ *)
+
+Definition is_sanitized {X} (env: env X) := exists env', env = sanitize_env First env'.
+
+
+Theorem full_combined_safety : forall k e n tenv T,
+  has_type tenv e n T -> forall venv, wf_env_comb venv tenv ->
+  (forall res, teval k venv e n = Some res -> res_type_snd res T) /\
+  (k = 0 \/ (is_sanitized tenv -> is_sanitized venv ->
+            exists v, tevaln venv e n v /\ val_type_tnt v T)).
+Proof.
+  intros k. induction k.
+  (* 0 *)   split. intros. inversion H1. left. auto. 
+  (* S n *) intros e n tenv t H. induction H; (intros; split; [intros; subst|subst;right;intros;subst]).
+  - (* True *) inversion H0. eapply not_stuck2. constructor.
+  - eexists. split. exists 0. intros. destruct n0. omega. simpl. eauto. simpl. eauto.
+  - (* False *) inversion H0. eapply not_stuck2. constructor.
+  - eexists. split. exists 0. intros. destruct n0. omega. simpl. eauto. simpl. eauto.
+  - (* Var *)
+    destruct (lookup_safe_ex_comb venv0 env0 T1 n x) as [vl [IL [VLS VLT]]]. eauto. eauto.
+    inversion H1. rewrite IL. eapply not_stuck2. eauto.
+  - destruct (lookup_safe_ex_comb venv0 env0 T1 n x) as [vl [IL [VLS VLT]]]. eauto. eauto.
+    (* n = Second --> can't happen! *)
+    (* helpers: *)
+    assert (forall {X} (env: env X) n, is_sanitized env -> sanitize_env n env = env) as L1. admit.
+    assert (forall {X} (env: env X) x v, is_sanitized env -> lookup x env = Some v -> classOf x = First) as L2. admit. 
+    destruct VLT as [FALSE|VLT]. { rewrite L1 in IL; eauto. rewrite (L2 _ venv0 _ vl) in FALSE. inversion FALSE. eauto. eauto. }
+    exists vl. split. exists 0. intros. destruct n0. omega. unfold teval. rewrite IL. eauto. eauto. 
+  - (* App *) simpl in  H2.
+    (* function *)
+    remember (teval k venv0 f Second) as tf.
+    destruct tf as [rf|]; try inversion H2. 
+    assert (res_type_snd rf (TFun T1 m T2)) as HRF. { eapply IHk; eauto. }
+    inversion HRF as [vf TF HVF]. inversion HVF.
+    subst rf. subst vf. 
+
+    (* argument *)
+    remember (teval k venv0 x m0) as tx.
+    destruct tx as [rx|]; try inversion H2.
+    assert (res_type_snd rx T1) as HRX. { subst. eapply IHk; eauto. }
+    inversion HRX as [vx]. subst rx T.
+
+    (* termination part for argument *)
+    assert (m0 = Second \/ val_type_tnt vx T1) as HRXT. { subst. 
+      destruct (IHk _ _ _ _ H0 _ H1) as [IHS [|]].
+      destruct k. simpl in Heqtf. inversion Heqtf. inversion H5.
+      admit.
+      (* NEED: is_sanitized evidence in function *)
+      (* NEED: deterministic execution *)
+      (* destruct IHT as [vx2 [TEV VTT]].
+      unfold tevaln in TEV.
+      assert (vx = vx2). admit. (* TODO! need a deterministc exec theorem, or extend IH ? *)
+      subst. eauto. *)
+    }
+    
+    (* body *)
+    subst. eapply IHk. eauto. 
+    (* WF on expanded env *)
+    constructor. split; eauto. constructor. split; eauto.
+    eapply v_rec2. eauto. eauto. apply wf_idx_comb. eauto.
+    eapply wf_idx_comb. constructor. split. constructor. eauto.
+    (* NOTE: rec ref always 2nd class here! *)
+    left. eauto. eauto.
+    eauto. eauto. 
+    
+  - rename H1 into WFE.
+    (* --- OLD ATTEMPT NOTES --- *)
+    (* PROBLEM: fun evaluated as 2nd class --> no termination evidence *)
+    (* PROBLEM: same for argument if 2nd class --> proof idea doesn't work!*)
+    (* We can't restrict to 1st-class contexts. 1st-class just means that
+       this expression cannot _leak_ a capability, but it can _use_ a
+       capability through 2nd-class subexpressions (and thus diverge).  
+       
+       What we (most likely) want is slightly different: in an environment
+       that's _restricted_ to only 1st class bindings (which is what we use
+       for closures and most likely need for terms in types as well)
+       everything terminates.
+     *)
+    
+    destruct (IHhas_type1 venv0 WFE) as [IHS1 [FALSE|IHT1]].
+    inversion FALSE. destruct (IHT1 H2 H3) as [vf [IW1 HVF]].
+    destruct (IHhas_type2 venv0 WFE) as [IHS2 [FALSE|IHT2]].
+    inversion FALSE. destruct (IHT2 H2 H3) as [vx [IW2 HVX]].
+
+    simpl in HVF. destruct vf; try contradiction.    
+    destruct HVF  as [? IHF].
+
+    destruct (IHF vx HVX) as [vy [IW3 HVY]].
+
+    exists vy. split. {
+      (* pick large enough n. nf+nx+ny will do. *)
+      destruct IW1 as [nf IWF].
+      destruct IW2 as [nx IWX].
+      destruct IW3 as [ny IWY].
+      exists (S (nf+nx+ny)). intros. destruct n0. omega. simpl. subst c.
+      rewrite IWF. rewrite IWX. rewrite IWY. eauto.
+      omega. omega. omega.
+    }
+    eapply HVY.
+
+  - (* ABS *)
+    admit.
+
+  - eexists. split. exists 0. intros. destruct n0. omega. simpl. eauto.
+    simpl. repeat split; eauto. intros. 
+
+    assert (val_type_snd vx T1). admit.
+    (* PROBLEM: we have no evidence of the soundness val_type for the arg!
+       Cannot do induction. *)
+
+    assert (val_type_snd (vrec (vabs (sanitize_env n venv0) m y))
+                         (TRec (TFun T1 m T2))). {
+      eapply v_rec2. eapply v_abs2. eapply wf_sanitize_comb. eauto. eauto.
+    }
+    
+    destruct (IHhas_type  (expand_env
+         (expand_env (sanitize_env n venv0)
+            (vrec (vabs (sanitize_env n venv0) m y)) Second) vx
+         m)) as [HHS HHT]. 
+    constructor. split. eauto. right. eauto. constructor. eauto. eauto. 
+    eapply wf_idx_comb. eauto. eapply wf_idx_comb.
+    constructor. split. eauto. left. eauto. eauto.
+    eapply wf_idx_comb. eauto. 
+
+    destruct HHT as [FALSE|HHT]. inversion FALSE.
+
+    eapply HHT.
+    (* PROBLEM/QUESTION: need is_sanitized for IH, don't know if can be expanded *)
+    
+    admit. 
