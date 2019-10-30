@@ -1,4 +1,4 @@
-(* Termination for D<:> with intersection types and recursive self types *)
+(* Termination for D<:> with intersection types and positive recursive types *)
 (* this version includes a proof of totality  *)
 
 (*
@@ -177,8 +177,6 @@ Fixpoint open_rec_r (k: nat) (u: var) (T: ty) { struct T }: ty :=
 Definition open_r u T := open_rec_r 0 u T.
 
 
-(************ TODO: adapt the rest of the file  *************)
-
 (* Locally-nameless encoding with respect to varH variables. *)
 Fixpoint subst (U : var) (T : ty) {struct T} : ty :=
   match T with
@@ -186,6 +184,7 @@ Fixpoint subst (U : var) (T : ty) {struct T} : ty :=
     | TBot         => TBot
     | TAll T1 T2   => TAll (subst U T1) (subst U T2)
     | TSel (varB i) => TSel (varB i)
+    | TSel (varR i) => TSel (varR i)
     | TSel (varF i) => TSel (varF i)
     | TSel (varH i) => if beq_nat i 0 then TSel U else TSel (varH (i-1))
     | TMem T1 T2     => TMem (subst U T1) (subst U T2)
@@ -199,6 +198,7 @@ Fixpoint nosubst (T : ty) {struct T} : Prop :=
     | TBot         => True
     | TAll T1 T2   => nosubst T1 /\ nosubst T2
     | TSel (varB i) => True
+    | TSel (varR i) => True
     | TSel (varF i) => True
     | TSel (varH i) => i <> 0
     | TMem T1 T2    => nosubst T1 /\ nosubst T2
@@ -225,10 +225,10 @@ extended during subtyping.
 *)
 Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_top: forall G1 GH T1,
-    closed 0 (length GH) (length G1) T1 ->
+    closed 0 0 (length GH) (length G1) T1 ->
     stp G1 GH T1 TTop
 | stp_bot: forall G1 GH T2,
-    closed 0 (length GH) (length G1) T2 ->
+    closed 0 0 (length GH) (length G1) T2 ->
     stp G1 GH TBot T2
 | stp_mem: forall G1 GH S1 U1 S2 U2,
     stp G1 GH U1 U2 ->
@@ -236,12 +236,12 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH (TMem S1 U1) (TMem S2 U2)
 | stp_sel1: forall G1 GH TX T2 x,
     indexr x G1 = Some TX ->
-    closed 0 0 (length G1) TX ->
+    closed 0 0 0 (length G1) TX ->
     stp G1 GH TX (TMem TBot T2) ->
     stp G1 GH (TSel (varF x)) T2
 | stp_sel2: forall G1 GH TX T1 x,
     indexr x G1 = Some TX ->
-    closed 0 0 (length G1) TX ->
+    closed 0 0 0 (length G1) TX ->
     stp G1 GH TX (TMem T1 TTop) ->
     stp G1 GH T1 (TSel (varF x))
 | stp_selx: forall G1 GH v x,
@@ -249,12 +249,12 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH (TSel (varF x)) (TSel (varF x))
 | stp_sela1: forall G1 GH TX T2 x,
     indexr x GH = Some TX ->
-    closed 0 x (length G1) TX ->
+    closed 0 0 x (length G1) TX ->
     stp G1 GH TX (TMem TBot T2) ->
     stp G1 GH (TSel (varH x)) T2
 | stp_sela2: forall G1 GH TX T1 x,
     indexr x GH = Some TX ->
-    closed 0 x (length G1) TX ->
+    closed 0 0 x (length G1) TX ->
     stp G1 GH TX (TMem T1 TTop) ->
     stp G1 GH T1 (TSel (varH x))
 | stp_selax: forall G1 GH v x,
@@ -264,20 +264,20 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 (* stp for recursive types and intersection types *)
 | stp_bindx: forall GH G1 T1 T1' T2 T2',
     stp G1 (T1'::GH) T1' T2' ->
-    T1' = (open (varH (length GH)) T1) ->
-    T2' = (open (varH (length GH)) T2) ->
-    closed 1 (length GH) (length G1) T1 ->
-    closed 1 (length GH) (length G1) T2 ->
+    T1' = (open_r (varH (length GH)) T1) ->
+    T2' = (open_r (varH (length GH)) T2) ->
+    closed 1 0 (length GH) (length G1) T1 ->
+    closed 1 0 (length GH) (length G1) T2 ->
     stp G1 GH (TBind T1) (TBind T2)
 
 | stp_and11: forall GH G1 T1 T2 T,
     stp G1 GH T1 T ->
-    closed 0 (length GH) (length G1) T2 ->
+    closed 0 0 (length GH) (length G1) T2 ->
     stp G1 GH (TAnd T1 T2) T
 
 | stp_and12: forall GH G1 T1 T2 T,
     stp G1 GH T2 T ->
-    closed 0 (length GH) (length G1) T1 ->
+    closed 0 0 (length GH) (length G1) T1 ->
     stp G1 GH (TAnd T1 T2) T
 
 | stp_and2: forall GH G1 T1 T2 T,
@@ -289,8 +289,8 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
 | stp_all: forall G1 GH T1 T2 T3 T4 x,
     stp G1 GH T3 T1 ->
     x = length GH ->
-    closed 1 (length GH) (length G1) T2 ->
-    closed 1 (length GH) (length G1) T4 ->
+    closed 0 1 (length GH) (length G1) T2 ->
+    closed 0 1 (length GH) (length G1) T4 ->
     stp G1 (T3::GH) (open (varH x) T2) (open (varH x) T4) ->
     stp G1 GH (TAll T1 T2) (TAll T3 T4)
 | stp_trans: forall G1 GH T1 T2 T3,
@@ -308,16 +308,16 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
 (* pack a recursive type  *)
 | t_var_pack : forall G1 x T1 T1',
            (* has_type G1 (tvar x) T1' -> *)
-           indexr x G1 = Some (open (varF x) T1) ->
-           T1' = (open (varF x) T1) ->
-           closed 1 0 (length G1) T1 ->
+           indexr x G1 = Some (open_r (varF x) T1) ->
+           T1' = (open_r (varF x) T1) ->
+           closed 1 0 0 (length G1) T1 ->
            has_type G1 (tvar x) (TBind T1)
 (* unpack a recursive type: unpack(x:{z=>T^z}) { x:T^x => ... }  *)
 | t_unpack: forall env x y T1 T1' T2,
            has_type env x (TBind T1) ->
-           T1' = (open (varF (length env)) T1) ->
+           T1' = (open_r (varF (length env)) T1) ->
            has_type (T1'::env) y T2 ->
-           closed 0 0 (length env) T2 ->
+           closed 0 0 0 (length env) T2 ->
            has_type env (tunpack x y) T2
 
 (* intersection typing *)
@@ -328,23 +328,23 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
 
 
 | t_typ: forall env T1,
-           closed 0 0 (length env) T1 ->
+           closed 0 0 0 (length env) T1 ->
            has_type env (ttyp T1) (TMem T1 T1)
 
 | t_app: forall env f x T1 T2,
            has_type env f (TAll T1 T2) ->
            has_type env x T1 ->
-           closed 0 0 (length env) T2 ->
+           closed 0 0 0 (length env) T2 ->
            has_type env (tapp f x) T2
 | t_dapp:forall env f x T1 T2 T,
            has_type env f (TAll T1 T2) ->
            has_type env (tvar x) T1 ->
            T = open (varF x) T2 ->
-           closed 0 0 (length env) T ->
+           closed 0 0 0 (length env) T ->
            has_type env (tapp f (tvar x)) T
 | t_abs: forall env y T1 T2,
            has_type (T1::env) y (open (varF (length env)) T2) ->
-           closed 0 0 (length env) (TAll T1 T2) ->
+           closed 0 0 0 (length env) (TAll T1 T2) ->
            has_type env (tabs T1 y) (TAll T1 T2)
 | t_sub: forall env e T1 T2,
            has_type env e T1 ->
@@ -397,7 +397,6 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
 
 Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some (Some v).
 
-
 (* ### Semantic Interpretation of Types (Logical Relations) ### *)
 
 Fixpoint tsize_flat(T: ty) :=
@@ -418,6 +417,14 @@ Proof.
   - destruct v; simpl; destruct (beq_nat j i); eauto.
 Qed.
 
+Lemma open_r_preserves_size: forall T x j,
+  tsize_flat T = tsize_flat (open_rec_r j (varH x) T).
+Proof.
+  intros T. induction T; intros; simpl; eauto.
+  - destruct v; simpl; destruct (beq_nat j i); eauto.
+Qed.
+
+(************ TODO: adapt the rest of the file  *************)
 
 (* NEW DESIGN IDEA:
 
