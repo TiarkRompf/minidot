@@ -782,7 +782,7 @@ Proof.
       destruct IW1 as [nf IWF].
       destruct IW2 as [nx IWX].
       destruct IW3 as [ny IWY].
-      exists (S (nf+nx+ny)). intros. destruct n0. omega. simpl. subst c.
+      exists (S (nf+nx+ny)). intros. destruct n0. omega. simpl. subst c0.
       rewrite IWF. rewrite IWX. rewrite IWY. eauto.
       omega. omega. omega.
     }
@@ -859,10 +859,10 @@ Inductive wf_env_comb : venv -> tenv -> Prop :=
 with val_type_snd : vl -> ty -> Prop := 
 | v_bool2: forall b,
     val_type_snd (vbool b) TBool
-| v_abs2: forall venv tenv y T1 T2 m, (* NEW: TRec wrapper *)
+| v_abs2: forall venv tenv y T1 T2 n m, (* NEW: TRec wrapper *)
     wf_env_comb venv tenv ->
     has_type (expand_env (expand_env tenv (TRec (TFun T1 m T2)) Second) T1 m) y First T2 ->
-    val_type_snd (vabs venv m y) (TFun T1 m T2)
+    val_type_snd (vabs venv n m y) (TFun T1 m T2)
 | v_rec2: forall v T,  (* NEW *)
     val_type_snd v T ->
     val_type_snd (vrec v) (TRec T)
@@ -1038,7 +1038,7 @@ Proof.
       destruct IW1 as [nf IWF].
       destruct IW2 as [nx IWX].
       destruct IW3 as [ny IWY].
-      exists (S (nf+nx+ny)). intros. destruct n0. omega. simpl. subst c.
+      exists (S (nf+nx+ny)). intros. destruct n0. omega. simpl. subst c0.
       rewrite IWF. rewrite IWX. rewrite IWY. eauto.
       omega. omega. omega.
     }
@@ -1055,14 +1055,14 @@ Proof.
     (* PROBLEM: we have no evidence of the soundness val_type for the arg!
        Cannot do induction. We need this for the extended wf_env. *)
 
-    assert (val_type_snd (vrec (vabs (sanitize_env n venv0) m y))
+    assert (val_type_snd (vrec (vabs (sanitize_env n venv0) n m y))
                          (TRec (TFun T1 m T2))). {
       eapply v_rec2. eapply v_abs2. eapply wf_sanitize_comb. eauto. eauto.
     }
     
     destruct (IHhas_type  (expand_env
          (expand_env (sanitize_env n venv0)
-            (vrec (vabs (sanitize_env n venv0) m y)) Second) vx
+            (vrec (vabs (sanitize_env n venv0) n m y)) Second) vx
          m)) as [HHS HHT]. 
     constructor. split. eauto. right. eauto. constructor. eauto. eauto. 
     eapply wf_idx_comb. eauto. eapply wf_idx_comb.
