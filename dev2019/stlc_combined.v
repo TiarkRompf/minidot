@@ -1108,3 +1108,34 @@ Admitted.
 - try recursive def of valtp-snd/tnt
 - switch gears, try d_sub with full term dep 
 *)
+
+
+(* New attempt: inductively translate val_type to val_type_tnt *)
+
+Check val_type_ind. 
+
+Scheme Induction for val_type Sort Prop
+  with Induction for wf_env Sort Prop. 
+
+Check val_type_ind_dep.
+
+Theorem strengthen_tnt:
+  (forall v T, val_type v T -> val_type_tnt v T).
+  (* (forall venv tenv, wf_env venv tenv -> wf_env_tnt venv tenv). *)
+Proof.
+  apply (val_type_ind_dep
+           (fun v T vt => val_type_tnt v T)
+           (fun venv tenv wt => wf_env_tnt venv tenv)
+        )
+  ; intros.
+  - (* bool *) simpl. eauto.
+  - (* abs *) simpl.  
+    split. eauto. intros.
+    eapply full_total_safety. eauto. constructor. eauto. constructor.
+    simpl. eauto. eauto. eauto. eapply wf_idx_tnt.
+    constructor. simpl. eauto. eauto. eauto.
+  - (* rec *) simpl. eauto.
+  - (* cap *) admit. (* NOT SUPPORTED! *)
+  - (* wf nil *) eauto.
+  - (* wf cons *) eauto. 
+Admitted.
