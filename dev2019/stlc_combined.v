@@ -849,34 +849,42 @@ with val_type : vl -> ty -> Prop :=
 *)
 
 
+(* Note: this could be baked into wf_env_comb *)
+Definition is_sanitized {X} cl (env: env X) := exists env', env = sanitize_env cl env'.
+
+
 Inductive wf_env_comb : venv -> tenv -> Prop := 
 | wfe_comb_nil : forall n, wf_env_comb (Def vl nil nil n) (Def ty nil nil n)
 | wfe_comb_env : forall v t vs ts n,
-    val_type_snd v t /\ ((n = Second) \/ val_type_tnt v t) ->
+    val_type_snd n v t ->
+    (* (n = First -> v <> vcap) -> (* NO 1st class capabilities! now handled by val_type_snd *)*)
     wf_env_comb vs ts ->
     get_inv_idx vs = get_inv_idx ts ->
     wf_env_comb (expand_env vs v n) (expand_env ts t n)
-with val_type_snd : vl -> ty -> Prop := 
-| v_bool2: forall b,
-    val_type_snd (vbool b) TBool
+with val_type_snd : class -> vl -> ty -> Prop := 
+| v_bool2: forall n b,
+    val_type_snd n (vbool b) TBool
 | v_abs2: forall venv tenv y T1 T2 n m, (* NEW: TRec wrapper *)
     wf_env_comb venv tenv ->
+    is_sanitized n venv ->
     has_type (expand_env (expand_env tenv (TRec (TFun T1 m T2)) Second) T1 m) y First T2 ->
-    val_type_snd (vabs venv n m y) (TFun T1 m T2)
-| v_rec2: forall v T,  (* NEW *)
-    val_type_snd v T ->
-    val_type_snd (vrec v) (TRec T)
+    val_type_snd n (vabs venv n m y) (TFun T1 m T2)
+| v_rec2: forall n v T,  (* NEW *)
+    val_type_snd n v T ->
+    val_type_snd n (vrec v) (TRec T)
 | v_cap2:
-    val_type_snd vcap TCap (* NEW *)
+    val_type_snd Second vcap TCap (* NEW *)
 .
 
 
-Definition val_type_comb n v T := val_type_snd v T /\ ((n = Second) \/ val_type_tnt v T).
+Notation val_type_comb := val_type_snd.
+
+(* Definition val_type_comb n v T := val_type_snd v T *)
 
 
 Inductive res_type_snd: option vl -> ty -> Prop :=
-| not_stuck2: forall v T,
-      val_type_snd v T ->
+| not_stuck2: forall n v T,
+      val_type_snd n v T ->
       res_type_snd (Some v) T.
 
 Hint Constructors res_type_snd.
@@ -940,13 +948,58 @@ Qed.
 
 Hint Immediate wf_sanitize_comb.
 
-(*
-Theorem full_total_safety : forall e cl tenv T,
-  has_type tenv e cl T -> forall venv, wf_env_tnt venv tenv ->
-  exists v, tevaln venv e cl v /\ val_type_tnt v T.
- *)
 
-Definition is_sanitized {X} (env: env X) := exists env', env = sanitize_env First env'.
+Lemma sanitized_head: forall {X} (vs: env X) v n,
+  is_sanitized First (expand_env vs v n) -> n = First.
+Proof.
+  admit. (* todo *)
+Admitted.
+
+Lemma sanitized_tail: forall {X} (vs: env X) v n,
+  is_sanitized First (expand_env vs v n) -> is_sanitized First vs.
+Proof.
+  admit. (* todo *)
+Admitted.
+
+
+(* New attempt: inductively translate val_type to val_type_tnt *)
+
+Scheme Induction for val_type_snd Sort Prop
+  with Induction for wf_env_comb Sort Prop. 
+
+Check val_type_snd_ind_dep.
+
+Theorem strengthen_tnt:
+  (forall n v T, val_type_snd n v T -> n = First -> val_type_tnt v T).
+  (* (forall venv tenv, wf_env venv tenv -> wf_env_tnt venv tenv). *)
+Proof.
+  apply (val_type_snd_ind_dep
+           (fun n v T vt => n = First -> val_type_tnt v T)
+           (fun venv tenv wt => is_sanitized First venv -> wf_env_tnt venv tenv)
+        )
+  ; intros.
+  - (* bool *) simpl. eauto.
+  - (* abs *)
+    simpl. subst n.
+    split. eauto. intros.
+    eapply full_total_safety. eauto. constructor. eauto. constructor.
+    simpl. eauto. eapply H. eauto. eauto. eapply wf_idx_tnt.
+    constructor. simpl. eauto. eauto. eauto.
+  - (* rec *) simpl. eauto.
+  - (* cap *) inversion H.  (* ruled out *)
+  - (* wf nil *) eauto.
+  - (* wf cons *)
+    constructor.
+    eapply H. eapply sanitized_head. eauto.
+    eapply H0. eapply sanitized_tail. eauto.
+    eauto. 
+Qed.
+
+
+
+
+(* Main soundness theorem: could use termination as a subroutine anywhere,
+although currently not used/not needed *)
 
 
 Theorem full_combined_safety : forall k e n tenv T,
@@ -1103,39 +1156,4 @@ Proof.
     simpl in FALSE. destruct v; inversion FALSE.
 Admitted.
     
-(* TODO:
-- remaining easy cases
-- try recursive def of valtp-snd/tnt
-- switch gears, try d_sub with full term dep 
-*)
 
-
-(* New attempt: inductively translate val_type to val_type_tnt *)
-
-Check val_type_ind. 
-
-Scheme Induction for val_type Sort Prop
-  with Induction for wf_env Sort Prop. 
-
-Check val_type_ind_dep.
-
-Theorem strengthen_tnt:
-  (forall v T, val_type v T -> val_type_tnt v T).
-  (* (forall venv tenv, wf_env venv tenv -> wf_env_tnt venv tenv). *)
-Proof.
-  apply (val_type_ind_dep
-           (fun v T vt => val_type_tnt v T)
-           (fun venv tenv wt => wf_env_tnt venv tenv)
-        )
-  ; intros.
-  - (* bool *) simpl. eauto.
-  - (* abs *) simpl.  
-    split. eauto. intros.
-    eapply full_total_safety. eauto. constructor. eauto. constructor.
-    simpl. eauto. eauto. eauto. eapply wf_idx_tnt.
-    constructor. simpl. eauto. eauto. eauto.
-  - (* rec *) simpl. eauto.
-  - (* cap *) admit. (* NOT SUPPORTED! *)
-  - (* wf nil *) eauto.
-  - (* wf cons *) eauto. 
-Admitted.
