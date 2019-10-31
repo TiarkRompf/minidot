@@ -63,7 +63,7 @@ Inductive env (X: Type) :=
 (* values *)
 Inductive vl : Type :=
   | vbool : bool -> vl
-  | vabs  : env vl -> class -> tm -> vl
+  | vabs  : env vl -> class -> class -> tm -> vl (* the first class field describes the closure itself, the second one the class of the argument *)
   | vrec  : vl -> vl (* NEW: recursive wrapper *)
   | vcap  : vl      (* NEW: capability *)
 .
@@ -172,7 +172,7 @@ Fixpoint teval(k: nat)(env: venv)(t: tm)(n: class){struct k}: option (option vl)
         | ttrue      => Some (Some (vbool true))
         | tfalse     => Some (Some (vbool false))
         | tvar x     => Some (lookup x (sanitize_env n env))
-        | tabs m y   => Some (Some (vabs (sanitize_env n env) m y))
+        | tabs m y   => Some (Some (vabs (sanitize_env n env) n m y))
         | tapp ef ex   =>
            match teval k' env ef Second with
              | None => None
@@ -180,12 +180,12 @@ Fixpoint teval(k: nat)(env: venv)(t: tm)(n: class){struct k}: option (option vl)
              | Some (Some (vbool _)) => Some None
              | Some (Some (vrec _)) => Some None (* NEW *)
              | Some (Some vcap) => Some None (* NEW *)
-             | Some (Some (vabs env2 m ey)) => (* NEW: vrec wrapper *)
+             | Some (Some (vabs env2 n m ey)) => (* NEW: vrec wrapper *)
                 match teval k' env ex m with
                   | None => None
                   | Some None => Some None
                   | Some (Some vx) =>
-                       teval k' (expand_env (expand_env env2 (vrec (vabs env2 m ey)) Second) vx m) ey First
+                       teval k' (expand_env (expand_env env2 (vrec (vabs env2 n m ey)) Second) vx m) ey First
                 end
            end
         | tunrec er ec => (* NEW *)
@@ -193,14 +193,14 @@ Fixpoint teval(k: nat)(env: venv)(t: tm)(n: class){struct k}: option (option vl)
           | None => None
           | Some None => Some None
           | Some (Some (vbool _)) => Some None
-          | Some (Some (vabs _ _ _)) => Some None
+          | Some (Some (vabs _ _ _ _)) => Some None
           | Some (Some vcap) => Some None
           | Some (Some (vrec v)) =>
             match teval k' env ec n with (* should use Second instead of n? *)
             | None => None
             | Some None => Some None
             | Some (Some (vbool _)) => Some None
-            | Some (Some (vabs _ _ _)) => Some None
+            | Some (Some (vabs _ _ _ _)) => Some None
             | Some (Some (vrec _)) => Some None
             | Some (Some vcap) =>
               Some (Some v)
@@ -319,10 +319,10 @@ Inductive wf_env : venv -> tenv -> Prop :=
 with val_type : vl -> ty -> Prop := 
 | v_bool: forall b,
     val_type (vbool b) TBool
-| v_abs: forall venv tenv y T1 T2 m, (* NEW: TRec wrapper *)
+| v_abs: forall venv tenv y T1 T2 n m, (* NEW: TRec wrapper *)
     wf_env venv tenv ->
     has_type (expand_env (expand_env tenv (TRec (TFun T1 m T2)) Second) T1 m) y First T2 ->
-    val_type (vabs venv m y) (TFun T1 m T2)
+    val_type (vabs venv n m y) (TFun T1 m T2)
 | v_rec: forall v T,  (* NEW *)
     val_type v T ->
     val_type (vrec v) (TRec T)
@@ -482,8 +482,8 @@ Hint Resolve not_stuck.
 
 Lemma invert_abs: forall vf T1 n T2,
   val_type vf (TFun T1 n T2) ->
-  exists env tenv y T3 T4,
-    vf = (vabs env n y) /\
+  exists env tenv y T3 T4 nf,
+    vf = (vabs env nf n y) /\
     wf_env env tenv /\
     has_type (expand_env (expand_env tenv (TRec (TFun T3 n T4)) Second) T3 n) y First T4.
 Proof.
@@ -602,9 +602,9 @@ Definition tevaln env e cl v := exists nm, forall n, n > nm -> teval n env e cl 
 (* need to use Fixpoint because of positivity restriction *)
 Fixpoint val_type_tnt (v:vl) (T:ty): Prop := match v, T with
 | vbool b, TBool => True
-| vabs env clv y, TFun T1 clt T2 => (clv = clt) /\
+| vabs env clf clv y, TFun T1 clt T2 => (clv = clt) /\
   (forall vx, val_type_tnt vx T1 ->
-     exists v, tevaln (expand_env (expand_env env (vrec (vabs env clv y)) Second) vx clv) y First v /\ val_type_tnt v T2)
+     exists v, tevaln (expand_env (expand_env env (vrec (vabs env clf clv y)) Second) vx clv) y First v /\ val_type_tnt v T2)
 | vrec v, TRec T => True (* NEW: rec, but we can't do anything with it *)
 | _,_ => False
 end.
