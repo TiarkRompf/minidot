@@ -4,7 +4,7 @@
 (*
  DSub (D<:) + Bot + /\ + { z => ... }
  T ::= Top | Bot | x.Type | { Type: S..U } | (z: T) -> T^z | T1 /\ T2 | { z => T^z }
- t ::= x | { Type = T } | lambda x:T.t | t t | unpack(t) { x => t }
+ t ::= x | { x => Type = T^x } | lambda x:T.t | t t | unpack(t) { x => t }
  *)
 
 Require Export SfLib.
@@ -43,9 +43,9 @@ Inductive ty : Type :=
 Inductive tm : Type :=
 (* x -- free variable, matching concrete environment *)
 | tvar : id -> tm
-(* { Type = T } *)
+(* { x => Type = T^x }, where T^x is a strictly positive type *)
 | ttyp : ty -> tm
-(* lambda x:T.t *)
+(* lambda x:T.t, where T is a strictly positive type *)
 | tabs : ty -> tm -> tm
 (* t t *)
 | tapp : tm -> tm -> tm
@@ -64,7 +64,9 @@ Definition tenv := list ty. (* Gamma environment: static *)
 Definition venv := list vl. (* H environment: run-time *)
 
 (* Well-formedness of types checks if recursive variable binders occur
-   in strictly positive positions only. *)
+   in strictly positive positions only.
+   TODO: Generalize to nonnegative occurrences.
+*)
 Inductive ty_wf : nat(*R*) -> ty -> Prop :=
 | ttop_wf: forall n,
     ty_wf n TTop
@@ -95,6 +97,28 @@ Inductive ty_wf : nat(*R*) -> ty -> Prop :=
     ty_wf n t2 ->
     ty_wf n (TAnd t1 t2)
 .
+
+(* Well-formedness carries over to terms, since there are explicit type annotations *)
+Inductive tm_wf: nat(*R*) -> tm -> Prop :=
+| tvar_wf: forall n x,
+    tm_wf n (tvar x)
+| ttyp_wf: forall n T,
+    ty_wf n (TBind T) ->
+    tm_wf n (ttyp T)
+| tabs_wf: forall n T t,
+    ty_wf n T ->
+    tm_wf n t ->
+    tm_wf n (tabs T t)
+| tapp_wf: forall n t1 t2,
+    tm_wf n t1 ->
+    tm_wf n t2 ->
+    tm_wf n (tapp t1 t2)
+| tunpack_wf: forall n t1 t2,
+    tm_wf n t1 ->
+    tm_wf n t2 ->
+    tm_wf n (tunpack t1 t2)
+.
+
 
 (* ### Representation of Bindings ### *)
 
@@ -327,9 +351,10 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env (tvar x) (TAnd T1 T2)
 
 
-| t_typ: forall env T1,
-           closed 0 0 0 (length env) T1 ->
-           has_type env (ttyp T1) (TMem T1 T1)
+| t_typ: forall env T1, (* TODO: Not sure if we should add well-formedness
+                      check to the rule's premises or assume it globally*)
+           closed 1 0 0 (length env) T1 ->
+           has_type env (ttyp T1) (TBind (TMem T1 T1))
 
 | t_app: forall env f x T1 T2,
            has_type env f (TAll T1 T2) ->
