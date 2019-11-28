@@ -558,7 +558,7 @@ Definition big_vseta_join (P: vseta -> Prop): vseta :=
         (exists vssn, (P vssn) /\ (vssn (S n) vsn v))
     end.
 
-Notation "⨆{ vs | P }" := (big_vseta_meet (fun vs => P)) (vs at level 99).
+Notation "⨆{ vs | P }" := (big_vseta_join (fun vs => P)) (vs at level 99).
 
 (* (* tests *) *)
 (* Definition F (vs: vseta): vseta := vs. *)
