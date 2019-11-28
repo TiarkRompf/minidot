@@ -32,7 +32,7 @@ Inductive ty : Type :=
 (* (z: T) -> T^z *)
 | TAll : ty -> ty -> ty
 (* x.Type *)
-| TSel : var -> ty
+| TSel : var -> ty (* TODO: eventually, we want to support an arbitrary expression here*)
 (* { Type: S..U } *)
 | TMem : ty(*S*) -> ty(*U*) -> ty
 | TBind  : ty -> ty (* Recursive binder: { z => T^z },
@@ -259,7 +259,7 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH S2 S1 ->
     stp G1 GH (TMem S1 U1) (TMem S2 U2)
 | stp_sel1: forall G1 GH TX T2 x,
-    indexr x G1 = Some TX ->
+    indexr x G1 = Some TX -> (* TODO probably need mutually inductive def for stp and has_type now *)
     closed 0 0 0 (length G1) TX ->
     stp G1 GH TX (TMem TBot T2) ->
     stp G1 GH (TSel (varF x)) T2
@@ -337,7 +337,7 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            closed 1 0 0 (length G1) T1 ->
            has_type G1 (tvar x) (TBind T1)
 (* unpack a recursive type: unpack(x:{z=>T^z}) { x:T^x => ... }  *)
-| t_unpack: forall env x y T1 T1' T2,
+| t_unpack: forall env x y T1 T1' T2, (*TODO is it possible to get rid of this elimination form? *)
            has_type env x (TBind T1) ->
            T1' = (open_r (varF (length env)) T1) ->
            has_type (T1'::env) y T2 ->
@@ -350,11 +350,15 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
            has_type env (tvar x) T2 ->
            has_type env (tvar x) (TAnd T1 T2)
 
-
-| t_typ: forall env T1, (* TODO: Not sure if we should add well-formedness
-                      check to the rule's premises or assume it globally*)
+(* type values.
+In this version, we interpret the (ttyp T) form as a
+binder Type {z => T^z } in the locally nameless style.
+The argument T should be a well-formed according to ty_wf.
+*)
+| t_typ: forall env T1,
            closed 1 0 0 (length env) T1 ->
-           has_type env (ttyp T1) (TBind (TMem T1 T1))
+           ty_wf 1 T1 -> (* TODO should well-formedness include closedness? *)
+           has_type env (ttyp T1) (TMem (TBind T1) (TBind T1))
 
 | t_app: forall env f x T1 T2,
            has_type env f (TAll T1 T2) ->
@@ -370,14 +374,13 @@ Inductive has_type : tenv -> tm -> ty -> Prop :=
 | t_abs: forall env y T1 T2,
            has_type (T1::env) y (open (varF (length env)) T2) ->
            closed 0 0 0 (length env) (TAll T1 T2) ->
+           ty_wf 0 T1 ->
            has_type env (tabs T1 y) (TAll T1 T2)
 | t_sub: forall env e T1 T2,
            has_type env e T1 ->
            stp env [] T1 T2 ->
            has_type env e T2
 .
-
-
 
 (* ### Evaluation (Big-Step Semantics) ### *)
 
@@ -449,15 +452,16 @@ Proof.
   - destruct v; simpl; destruct (beq_nat j i); eauto.
 Qed.
 
-(************ TODO: adapt the rest of the file  *************)
-
 (* NEW DESIGN IDEA:
 
    The required invariants about runtime evaluation rely in crucial
    ways on transporting properties from the creation site of
    type objects to their use sites -- in particular the fact
-   that only type aliases can be created (TMem T T), and that these
-   cannot be recursive.
+   that only type aliases can be created (TMem T T).
+
+   (* OLD:  and that these
+            cannot be recursive.
+      NOTE: we have recursive types now *)
 
    This suggests that in the proof, we should pair each (vty T) value
    with the semantic interpretation of the type member [[ T ]].
@@ -490,24 +494,101 @@ Fixpoint vset n := match n with
 Definition vseta := forall n, vset n.
 
 
+(* The domain vseta is a complete lattice, which we require for least and greatest fixpoints of types. *)
+
+Definition vseta_sub_eq (vs1: vseta) (vs2: vseta) :=
+  forall n, match n with
+       | 0 => forall v, (vs1 0 v) -> (vs2 0 v)
+       | S n => forall vs v, (vs1 (S n) vs v) -> (vs2 (S n) vs v)
+       end.
+
+Notation "vs1 ⊑ vs2" := (vseta_sub_eq vs1 vs2) (at level 90).
+
+Definition vseta_join (vs1: vseta) (vs2: vseta): vseta :=
+  fun n =>
+    match n with
+    | 0 => fun v => (vs1 0 v) \/ (vs2 0 v)
+    | S n => fun vs v => (vs1 (S n) vs v) \/ (vs2 (S n) vs v)
+    end.
+
+Notation "vs1 ⊔ vs2" := (vseta_join vs1 vs2) (at level 85, right associativity).
+
+Definition vseta_meet (vs1: vseta) (vs2: vseta): vseta :=
+  fun n =>
+    match n with
+    | 0 => fun v => (vs1 0 v) /\ (vs2 0 v)
+    | S n => fun vs v => (vs1 (S n) vs v) /\ (vs2 (S n) vs v)
+    end.
+
+Notation "vs1 ⊓ vs2" := (vseta_meet vs1 vs2) (at level 80, right associativity).
+
+Definition vseta_top: vseta :=
+  fun n =>
+    match n with
+    | 0 => fun _ => True
+    | S n => fun _ _ => True
+    end.
+
+Definition vseta_bot: vseta :=
+  fun n =>
+    match n with
+    | 0 => fun _ => False
+    | S n => fun _ _ => False
+    end.
+
+Definition big_vseta_meet (P: vseta -> Prop): vseta :=
+  fun n =>
+    match n with
+    | 0 =>
+      fun v => forall vs, P vs -> vs 0 v
+    | S n =>
+      fun vsn v =>
+        (forall vssn, (P vssn) -> (vssn (S n) vsn v))
+    end.
+
+Notation "⨅{ vs | P }" := (big_vseta_meet (fun vs => P)) (vs at level 99).
+
+Definition big_vseta_join (P: vseta -> Prop): vseta :=
+  fun n =>
+    match n with
+    | 0 =>
+      fun v => exists vs, P vs /\ vs 0 v
+    | S n =>
+      fun vsn v =>
+        (exists vssn, (P vssn) /\ (vssn (S n) vsn v))
+    end.
+
+Notation "⨆{ vs | P }" := (big_vseta_meet (fun vs => P)) (vs at level 99).
+
+(* (* tests *) *)
+(* Definition F (vs: vseta): vseta := vs. *)
+
+(* Definition lfp: vseta := ⨅{ vs | F vs ⊑ vs  }. *)
+
+(* Definition gfp: vseta := ⨆{ vs | vs ⊑ F vs}. *)
+
+
+(* TODO verify that vseta is a complete lattice *)
+
+
 (* this is just a helper for pattern matching *)
 Inductive vset_match : nat -> Type :=
 | vsmatch: forall n, vset n -> vset_match n
 .
 
-
 Require Coq.Program.Wf.
 
+(* The logical relation *)
 Program Fixpoint val_type (env: list vseta) (GH:list vseta) (T:ty) n (dd: vset n) (v:vl) {measure (tsize_flat T)}: Prop :=
   match v,T with
     | vabs env1 T0 y, TAll T1 T2 =>
-      closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
+      closed 0 0 (length GH) (length env) T1 /\ closed 0 1 (length GH) (length env) T2 /\
       forall jj vx,
         (forall kx, val_type env GH T1 kx (jj kx) vx) ->
         exists (jj2:vseta) v, tevaln (vx::env1) y v /\ (forall k, val_type env (jj::GH) (open (varH (length GH)) T2) k (jj2 k) v)
 
     | vty env1 TX, TMem T1 T2 =>
-      closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2 /\
+      closed 0 0 (length GH) (length env) T1 /\ closed 0 0 (length GH) (length env) T2 /\
       match (vsmatch n dd) with
         | vsmatch 0 dd => True
         | vsmatch (S n0) dd => forall (dy:vseta) vy,
@@ -529,9 +610,9 @@ Program Fixpoint val_type (env: list vseta) (GH:list vseta) (T:ty) n (dd: vset n
     | _, TAnd T1 T2 =>
       val_type env GH T1 n dd v /\ val_type env GH T2 n dd v
 
-    | _, TBind T1 =>
-      closed 1 (length GH) (length env) T1 /\
-      exists jj:vseta, jj n = dd /\ forall n, val_type env (jj::GH) (open (varH (length GH)) T1) n (jj n) v
+    | _, TBind T1 => (*TODO*)
+      closed 1 0 (length GH) (length env) T1 /\
+      exists jj:vseta, jj n = dd /\ forall n, val_type env (jj::GH) (open_r (varH (length GH)) T1) n (jj n) v
 
     | _, TTop =>
       True
@@ -554,10 +635,10 @@ Ltac ev := repeat match goal with
            end.
 
 Ltac inv_mem := match goal with
-                  | H: closed 0 (length ?GH) (length ?G) (TMem ?T1 ?T2) |-
-                    closed 0 (length ?GH) (length ?G) ?T2 => inversion H; subst; eauto
-                  | H: closed 0 (length ?GH) (length ?G) (TMem ?T1 ?T2) |-
-                    closed 0 (length ?GH) (length ?G) ?T1 => inversion H; subst; eauto
+                  | H: closed 0 0 (length ?GH) (length ?G) (TMem ?T1 ?T2) |-
+                    closed 0 0 (length ?GH) (length ?G) ?T2 => inversion H; subst; eauto
+                  | H: closed 0 0 (length ?GH) (length ?G) (TMem ?T1 ?T2) |-
+                    closed 0 0 (length ?GH) (length ?G) ?T1 => inversion H; subst; eauto
                 end.
 
 
