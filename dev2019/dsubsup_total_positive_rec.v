@@ -487,42 +487,46 @@ Qed.
 *)
 
 Fixpoint vset n := match n with
-                     | 0 => vl -> Prop
+                     | 0 => vl -> Prop (* TODO: can we enforce that 0, the Prop is True?  *)
                      | S n => vset n -> vl -> Prop
                    end.
 
 Definition vseta := forall n, vset n.
 
+(* vseta membership *)
+Definition vseta_mem (v:vl) (vs1: vseta) (vs2: vseta): Prop :=
+  forall n, vs2 (S n) (vs1 n) v.
+(* \isindot *)
+Notation "p ⋵ vs" := (vseta_mem (fst p) (snd p) vs) (at level 79).
 
-(* The domain vseta is a complete lattice, which we require for least and greatest fixpoints of types. *)
-
-Definition vseta_sub_eq (vs1: vseta) (vs2: vseta) :=
-  forall n, match n with
-       | 0 => forall v, (vs1 0 v) -> (vs2 0 v)
-       | S n => forall vs v, (vs1 (S n) vs v) -> (vs2 (S n) vs v)
+(* Subset relation for use in comprehensions with explicit index parameter *)
+Definition vset_sub_eq {n:nat}: vset n -> vset n -> Prop :=
+  match n with
+       | 0 => fun vs1 vs2 => forall v, (vs1 v) -> (vs2 v) (* TODO could simplify this to True under assumptions from paper *)
+       | S n => fun vs1 vs2 => forall vs' v, (vs1 vs' v) -> (vs2 vs' v)
        end.
 
-Notation "vs1 ⊑ vs2" := (vseta_sub_eq vs1 vs2) (at level 90).
+(* Subset relation closing over all n, for use in the vesta lattice, e.g., monotonicity check*)
+Definition vseta_sub_eq (vs1: vseta) (vs2: vseta) :=
+  forall n, vset_sub_eq (vs1 n) (vs2 n).
 
+(* \sqsubseteq *)
+Notation "vs1 ⊑# vs2" := (vset_sub_eq vs1 vs2) (at level 75).
+Notation "vs1 ⊑  vs2" := (vseta_sub_eq vs1 vs2) (at level 75).
 
-Definition vseta_join (vs1: vseta) (vs2: vseta): vseta :=
+(* vseta comprehension exposing the index in the body *)
+Definition vseta_pred (P: forall n, vl -> vset n -> Prop): vseta :=
   fun n =>
     match n with
-    | 0 => fun v => (vs1 0 v) \/ (vs2 0 v)
-    | S n => fun vs v => (vs1 (S n) vs v) \/ (vs2 (S n) vs v)
+    | 0 =>   fun v => True
+    | S n => fun vs v => P n v vs
     end.
 
-Notation "vs1 ⊔ vs2" := (vseta_join vs1 vs2) (at level 85, right associativity).
+(* \lBrace \rBrace *)
+Notation "⦃ v vs n | P ⦄" := (vseta_pred (fun n v vs => P))
+                              (at level 0, v ident, vs ident, n ident ).
 
-Definition vseta_meet (vs1: vseta) (vs2: vseta): vseta :=
-  fun n =>
-    match n with
-    | 0 => fun v => (vs1 0 v) /\ (vs2 0 v)
-    | S n => fun vs v => (vs1 (S n) vs v) /\ (vs2 (S n) vs v)
-    end.
-
-Notation "vs1 ⊓ vs2" := (vseta_meet vs1 vs2) (at level 80, right associativity).
-
+(* The domain vseta is a complete lattice, which we require for least and greatest fixpoints of types. *)
 Definition vseta_top: vseta :=
   fun n =>
     match n with
@@ -537,6 +541,28 @@ Definition vseta_bot: vseta :=
     | S n => fun _ _ => False
     end.
 
+(* Check ⦃ v vs n | exists H T t, v = (vabs H T t) /\ n > 0 /\ vs ⊑# (vseta_top n) ⦄.  *)
+
+Definition vseta_join (vs1: vseta) (vs2: vseta): vseta :=
+  fun n =>
+    match n with
+    | 0 => fun v => (vs1 0 v) \/ (vs2 0 v)
+    | S n => fun vs v => (vs1 (S n) vs v) \/ (vs2 (S n) vs v)
+    end.
+
+(* \sqcup *)
+Notation "vs1 ⊔ vs2" := (vseta_join vs1 vs2) (at level 70, right associativity).
+
+Definition vseta_meet (vs1: vseta) (vs2: vseta): vseta :=
+  fun n =>
+    match n with
+    | 0 => fun v => (vs1 0 v) /\ (vs2 0 v)
+    | S n => fun vs v => (vs1 (S n) vs v) /\ (vs2 (S n) vs v)
+    end.
+
+(* \sqcap *)
+Notation "vs1 ⊓ vs2" := (vseta_meet vs1 vs2) (at level 65, right associativity).
+
 Definition vseta_big_meet (P: vseta -> Prop): vseta :=
   fun n =>
     match n with
@@ -547,7 +573,8 @@ Definition vseta_big_meet (P: vseta -> Prop): vseta :=
         (forall vssn, (P vssn) -> (vssn (S n) vsn v))
     end.
 
-Notation "⨅{ vs | P }" := (vseta_big_meet (fun vs => P)) (vs at level 99).
+(* \bigsqcap *)
+Notation "⨅⦃ vs | P ⦄" := (vseta_big_meet (fun vs => P)) (vs at level 99).
 
 Definition vseta_big_join (P: vseta -> Prop): vseta :=
   fun n =>
@@ -559,107 +586,100 @@ Definition vseta_big_join (P: vseta -> Prop): vseta :=
         (exists vssn, (P vssn) /\ (vssn (S n) vsn v))
     end.
 
-Notation "⨆{ vs | P }" := (vseta_big_join (fun vs => P)) (vs at level 99).
+(* \bigsqcup *)
+Notation "⨆⦃ vs | P ⦄" := (vseta_big_join (fun vs => P)) (vs at level 99).
+
 
 (* (* tests *) *)
 (* Definition F (vs: vseta): vseta := vs. *)
 
-(* Definition lfp: vseta := ⨅{ vs | F vs ⊑ vs  }. *)
+(* Definition lfp: vseta := ⨅⦃ vs | F vs ⊑ vs ⦄. *)
 
-(* Definition gfp: vseta := ⨆{ vs | vs ⊑ F vs}. *)
+(* Definition gfp: vseta := ⨆⦃ vs | vs ⊑ F vs ⦄. *)
 
 
 (* TODO verify that vseta is a complete lattice *)
-
-(* explicitly indexed version *)
-Definition vset_sub_eq (n:nat): vset n -> vset n -> Prop :=
-  match n with
-  | 0 => fun vs1 vs2 => forall v, vs1 v -> vs2 v
-  | S n => fun vs1 vs2 => forall vs v, vs1 vs v -> vs2 vs v
-  end.
-
-Definition vset_meet (n:nat): vset n -> vset n -> vset n :=
-  match n with
-  | 0 => fun vs1 vs2 v => vs1 v /\ vs2 v
-  | S n => fun vs1 vs2 vs v => vs1 vs v /\ vs2 vs v
-  end.
-
-Definition vset_join (n:nat): vset n -> vset n -> vset n :=
-  match n with
-  | 0 => fun vs1 vs2 v => vs1 v \/ vs2 v
-  | S n => fun vs1 vs2 vs v  => vs1 vs v \/ vs2 vs v
-  end.
-
-Definition vset_big_meet (n:nat): (vset n -> Prop) -> vset n :=
-    match n with
-    | 0 =>
-      fun P v => forall vs, P vs -> vs v
-    | S n =>
-      fun P vs v =>
-        forall vs', (P vs') -> (vs' vs v)
-    end.
-
-Definition vset_big_join (n:nat): (vset n -> Prop) -> vset n :=
-    match n with
-    | 0 =>
-      fun P v => exists vs, P vs /\ vs v
-    | S n =>
-      fun P vs v =>
-        exists vs', (P vs') /\ (vs' vs v)
-    end.
-
 
 (* this is just a helper for pattern matching *)
 Inductive vset_match : nat -> Type :=
 | vsmatch: forall n, vset n -> vset_match n
 .
 
-Require Coq.Program.Wf.
-
-(* For unclear reasons, Coq does not like it if we attempt to directly
-   define the type interpretation as a function returning vseta, i.e.,
+(* If we define the type interpretation function such that it returns vseta values directly, e.g.,
 
    Program Fixpoint ty_vset (env: list vseta) (GH: list vseta) (T:ty) {measure (tsize_flat T)}: vseta
 
-   which together with the vseta lattice operations from above would
-   enable a nice and concise definition close to pen and paper.
+   then we run into issues with recursive calls in the body of ty_vset, i.e., Coq won't be able
+   to implicitly provide the evidence that the supplied argument is smaller (it's unclear why).
 
-   As soon as we include a recursive call to logrel in the body, Coq
-   complains about a type mismatch. It expects that we manually supply
-   a proof of the parameter being smaller in the recursive call.
+   However, we can circumvent the issues by wrapping the return type in Dom: *)
+Inductive Dom: Type :=
+| DomV: vseta -> Dom.
+(* so that the signature becomes
 
-   However, if we expand the vseta definition and add the index n as
-   additional parameter, returning vset n, Coq is satisfied. Though it
-   is less than ideal that we have to pass around the index n
-   everywhere. See cases below. *)
-(* TODO complete the definition *)
-Program Fixpoint ty_vset (env: list vseta) (GH: list vseta) (T:ty) n {measure (tsize_flat T)}: vset n :=
-  match T with
-  | TTop => vseta_top n
-  | TBot => vseta_bot n
-  | TAll T1 T2 => vseta_bot n
-  | TSel (varF x) => vseta_bot n
-  | TSel (varH x) => vseta_bot n
-  | TMem T1 T2 => vseta_bot n
-  | TBind T => (* choose LFP for inductive types *)
-    let Tx := (open_r (varH (length GH)) T) in
-    (* if we could have the vseta type in the return type, then we could just write
-       ⨅{ vs | (ty_vset env (vs :: GH) Tx) ⊑ vs } *)
-    let lfp := vseta_big_meet (fun vs => vset_sub_eq n (ty_vset env (vs :: GH) Tx n) (vs n))
-    in lfp n
+  Program Fixpoint ty_vset (env: list vseta) (GH: list vseta) (T:ty) {measure (tsize_flat T)}: Dom  *)
 
-    (* TODO: coinductive interpretation using a separate binding form
-      let gfp := vset_big_join (fun vs => vset_sub_eq n (vs n) (ty_vset env (vs :: GH) Tx n))
-      in gfp *)
-
-  | TAnd T1 T2 => vset_meet n (ty_vset env GH T1 n) (ty_vset env GH T2 n)
-
-
-  | _ => vseta_bot n
+(* The price we pay is explicit (un)wrapping of vseta in Dom *)
+Definition unDom (d: Dom): vseta :=
+  match d with
+  | DomV vs => vs
   end.
+(* which we can conveniently hide in lifted versions of the vseta ops on Dom.
+  The '*' symbol indicates which argument is enclosed in Dom: *)
+Notation "p    ⋵* vs"  := (vseta_mem (fst p) (snd p) (unDom vs)) (at level 79).
+Notation "vs1 *⊑  vs2" := ((unDom vs1) ⊑ vs2) (at level 75).
+Notation "vs1  ⊑* vs2" := (vs1 ⊑ (unDom vs2)) (at level 75).
+Notation "vs1 *⊑* vs2" := ((unDom vs1) ⊑ (unDom vs2)) (at level 75).
+Notation "vs1 *⊓* vs2" := (DomV (unDom vs1 ⊓ unDom vs2)) (at level 65, right associativity).
+Notation "vs1 *⊔* vs2" := (DomV (unDom vs1 ⊔ unDom vs2)) (at level 70, right associativity).
+Notation "*⨆*⦃ vs | P ⦄" := (DomV (vseta_big_join (fun vs => P))) (vs at level 99).
+Notation "*⨅*⦃ vs | P ⦄" := (DomV (vseta_big_meet (fun vs => P))) (vs at level 99).
 
+Require Coq.Program.Wf.
 
+Program Fixpoint ty_vset (env: list vseta) (GH: list vseta) (T:ty) {measure (tsize_flat T)}: Dom :=
+  match T with
+  | TTop => DomV vseta_top
 
+  | TAll T1 T2 =>
+    (* TODO: do we really need to include this condition here?
+    closed 0 0 (length GH) (length env) T1 /\ closed 0 1 (length GH) (length env) T2 /\ *)
+    let T2x := (open (varH (length GH)) T2) in
+    DomV ⦃ v vs n | exists H t, v = (vabs H T1 t)
+                      /\ forall vx vsx, (vx,vsx) ⋵* (ty_vset env GH T1) ->
+                                  exists vd u, tevaln (vx :: H) t u /\
+                                          (u, vd) ⋵* (ty_vset env (vd :: GH) T2x) ⦄
+
+  | TMem T1 T2 =>
+    DomV ⦃ v vs n | exists H T, v = (vty H T)
+                           /\ ((unDom (ty_vset env GH T1)) n) ⊑# vs
+                           /\ vs ⊑# ((unDom (ty_vset env GH T2)) n) ⦄
+
+  | TSel (varF x) =>
+      match indexr x env with
+        | Some vs => DomV vs
+        | _ => DomV vseta_bot
+      end
+
+  | TSel (varH x) =>
+      match indexr x GH with
+        | Some vs => DomV vs
+        | _ => DomV vseta_bot
+      end
+
+  | TBind T =>
+    (* TODO needed here? closed 1 0 (length GH) (length env) T  *)
+    let Tx := (open_r (varH (length GH)) T) in
+     *⨅*⦃ vs | (ty_vset env (vs :: GH) Tx) *⊑ vs ⦄ (* choose LFP for inductive types *)
+
+    (* GFP would be:
+     *⨆*⦃ vs | vs ⊑* (ty_vset env (vs :: GH) Tx) ⦄) *)
+
+  | TAnd T1 T2 =>
+    (ty_vset env GH T1) *⊓* (ty_vset env GH T2)
+
+  | _ => DomV vseta_bot
+  end.
 
 
 (* The logical relation *)
