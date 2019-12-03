@@ -681,6 +681,14 @@ Program Fixpoint ty_vset (env: list vseta) (GH: list vseta) (T:ty) {measure (tsi
   | _ => DomV vseta_bot
   end.
 
+Next Obligation. simpl. omega. Qed.
+Next Obligation. simpl. unfold open. rewrite <-open_preserves_size. omega. Qed. (* TApp case: open *)
+Next Obligation. simpl. omega. Qed.
+Next Obligation. simpl. omega. Qed.
+Next Obligation. simpl. unfold open_r. rewrite <-open_r_preserves_size. omega. Qed. (* TBind case: open *)
+Next Obligation. simpl. omega. Qed.
+Next Obligation. simpl. omega. Qed.
+Solve All Obligations with repeat (split; intros); discriminate.
 
 (* The logical relation *)
 Program Fixpoint val_type (env: list vseta) (GH:list vseta) (T:ty) n (dd: vset n) (v:vl) {measure (tsize_flat T)}: Prop :=
