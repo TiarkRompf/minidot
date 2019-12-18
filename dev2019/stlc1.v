@@ -726,26 +726,22 @@ Lemma valtp_extend_tnt : forall vs v v1 T n,
                        val_type_tnt vs v T ->
                        val_type_tnt (expand_env vs v1 n) v T.
 Proof.
-  intros. induction v.
-  - (* bool *) admit.
-  - (* abs *) admit.
-  - (* rec *) admit.
-  - (* cap *) admit.
-Admitted.
+  intros. induction v; destruct T; try (simpl in H; inversion H).
+  - reflexivity.
+  - simpl. split. apply H0. apply H1.
+  - reflexivity.
+Qed.
 
 (* NOTE: will needed (closed T vs) ! *)
 Lemma valtp_shrink_tnt : forall vs v v1 T n,
                        val_type_tnt (expand_env vs v1 n) v T ->
                        val_type_tnt vs v T.
 Proof.
-  intros. induction v.
-  - (* bool *) admit.
-  - (* abs *) admit.
-  - (* rec *) admit.
-  - (* cap *) admit.
-Admitted.
-
-
+  intros. induction v; destruct T; try (simpl in H; inversion H).
+  - reflexivity.
+  - simpl. split. apply H0. apply H1.
+  - reflexivity.
+Qed.
 
 Lemma lookup_safe_ex_tnt: forall H1 G1 TF x,
              wf_env_tnt H1 G1 ->
@@ -810,25 +806,31 @@ Lemma invert_abs_tnt: forall venv vf T1 cl T2,
        exists v, tevaln (expand_env (expand_env env (vrec vf) Second) vx cl) y First v /\ val_type_tnt venv v T2).
 Proof.
   intros. simpl in H. destruct vf.
-  - inversion H.
-  - destruct H. subst c. exists e. exists t. split. eauto. admit. (* wrong env, need widen *)
-  - inversion H.
-  - inversion H. 
+  - (* vbool *) inversion H.
+  - (* vabs *) destruct H. subst c. exists e. exists t. split. eauto. admit. (* wrong env, need widen *)
+  - (* vrec *) inversion H.
+  - (* vcap *) inversion H.
 Admitted.
 
 Lemma val_type_sanitize_any_tnt : forall n venv res T,
   val_type_tnt venv res T ->
   val_type_tnt (sanitize_any venv n) res T.
 Proof.
-  intros. admit. (* induction H; eauto. *)
-Admitted.
+  intros. induction res; destruct T; try (simpl in H; inversion H).
+  - reflexivity.
+  - simpl. split. apply H0. apply H1.
+  - reflexivity.
+Qed.
 
 Lemma val_type_sanitize_tnt : forall env res T n,
   val_type_tnt (sanitize_env n env) res T ->
   val_type_tnt env res T.
 Proof.
-  intros. admit. (* induction H; eauto. *)
-Admitted.
+  intros. induction res; destruct T; try (simpl in H; inversion H).
+  - reflexivity.
+  - simpl. split. apply H0. apply H1.
+  - reflexivity.
+Qed.
 
 Lemma wf_idx_tnt : forall vs ts,
       wf_env_tnt vs ts ->
