@@ -912,7 +912,53 @@ Lemma lookup_safe_ex_comb: forall H1 G1 TF cl x,
              wf_env_comb (sanitize_env cl H1) (sanitize_env cl G1) ->
              lookup x (sanitize_env cl G1) = Some TF ->
              exists v, lookup x (sanitize_env cl H1) = Some v /\ val_type_comb (classOf x) v TF.
-Proof. admit. Admitted.
+Proof.
+  intros. induction H.
+  - inversion H0. destruct x; destruct c. inversion H2.
+    destruct (ble_nat n i); inversion H2.
+  - destruct vs as [vl1 vl2 vidx]. destruct ts as [tl1 tl2 tidx].
+    apply wf_length_comb in H2. destruct H2 as [H2l H2r].
+    destruct x; destruct c; inversion H0.
+    + destruct n; simpl in H0; simpl in H3.
+      * case_eq (beq_nat i (length tl1)).
+        {
+          intros E. rewrite E in H0. inversion H0. subst. simpl.
+          assert (beq_nat i (length vl1) = true). eauto.
+          rewrite H2. eauto.
+        }
+        {
+          intros E.
+          assert (beq_nat i (length vl1) = false). eauto.
+          assert (exists v0, lookup (V First i) (Def vl vl1 vl2 vidx) = Some v0 /\val_type_comb First v0 TF) as HI.
+          eapply IHwf_env_comb. simpl. rewrite E in H0. apply H0.
+          inversion HI as [v0 HI1]. inversion HI1.
+          eexists. split. eapply lookup_extend. eauto. eauto.
+        }
+      * assert (exists v0, lookup (V First i) (Def vl vl1 vl2 vidx) = Some v0 /\ val_type_comb First v0 TF) as HI.
+        eapply IHwf_env_comb. simpl. apply H0.
+        inversion HI as [v0 HI1]. inversion HI1.
+        eexists. split. eauto. eauto.
+    + destruct n; simpl in H0. simpl in H3.
+      * assert (exists v0, lookup (V Second i) (Def vl vl1 vl2 vidx) = Some v0 /\ val_type_comb Second v0 TF) as HI.
+        eapply IHwf_env_comb. eauto.
+        inversion HI as [v0 HI1]. inversion HI1.
+        eexists. split. eauto. eauto.
+      * case_eq (beq_nat i (length tl2)).
+        {
+          intro E. rewrite E in H0. simpl. destruct (ble_nat tidx i); inversion H0. simpl in H3. subst.
+          simpl in H2r. simpl in H2l.
+          assert (beq_nat i (length vl2) = true). eauto.
+          rewrite H2. inversion H4. destruct (ble_nat tidx i); eauto. inversion H5.
+        }
+        {
+          intro E. assert (beq_nat i (length vl2) = false). eauto.
+          assert (exists v0, lookup (V Second i) (Def vl vl1 vl2 vidx) = Some v0 /\ val_type_comb Second v0 TF) as HI.
+          eapply IHwf_env_comb. simpl. destruct (ble_nat tidx i). inversion H0.
+          rewrite E in H0. rewrite H0. rewrite E. reflexivity. auto.
+          inversion HI as [v0 HI1]. inversion HI1.
+          eexists. split. eapply lookup_extend. eauto. eauto.
+        }
+Qed.
 
 Lemma wf_idx_comb : forall vs ts,
       wf_env_comb vs ts ->
