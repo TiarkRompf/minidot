@@ -1058,6 +1058,8 @@ Proof.
     inversion HRX as [vx]. subst.
 
     (* termination part for argument *)
+    (* not sure if this is necessary, *)
+    (* since the first premise of wfe_comb_env was change from val_type_snd v t /\ ((n = Second) \/ val_type_tnt v t) to val_type_snd n v t. *)
     assert (m = Second \/ val_type_tnt v T1) as HRXT. { subst.
       destruct (IHk _ _ _ _ H0 _ H1) as [IHS [|]].
       destruct k. simpl in Heqtf. inversion Heqtf. inversion H7.
@@ -1070,6 +1072,10 @@ Proof.
       subst. eauto. *)
     }
     admit.
+    (* body *)
+    (* subst. eapply IHk. eauto. *)
+    (* WF on expanded env *)
+    (* constructor. *) (* need to show m = vx first, because we have will have the goal val_type_comb m ?v T1 and hypothesis val_type_comb vx v T1 *)
 
     (* (* body *)
     subst. eapply IHk. eauto.
@@ -1129,7 +1135,7 @@ Proof.
 
     assert (val_type_snd Second (vrec (vabs (sanitize_env n venv0) n m y))
                          (TRec (TFun T1 m T2))). {
-      eapply v_rec2. admit.
+      eapply v_rec2. admit. (* no evidence that n is equal to Second. So, v_abs2 cannot be applied at here. *)
     }
     
     destruct (IHhas_type  (expand_env
