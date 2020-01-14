@@ -789,6 +789,11 @@ Proof. intros. induction H.
           eexists. econstructor. eapply lookup_extend; eauto. eapply valtp_extend_tnt; eauto. }
 Qed.
 
+Lemma val_type_tnt_env_change: forall venv0 venv1 v T,
+    val_type_tnt venv0 v T <-> val_type_tnt venv1 v T.
+Proof.
+  split; destruct v; destruct T; auto.
+Qed.
 
 
   
@@ -801,10 +806,13 @@ Lemma invert_abs_tnt: forall venv vf T1 cl T2,
 Proof.
   intros. simpl in H. destruct vf.
   - inversion H.
-  - destruct H. subst c. exists e. exists t. split. eauto. admit. (* wrong env, need widen *)
+  - destruct H. subst c. exists e. exists t. split. eauto. intros.
+    apply (val_type_tnt_env_change venv0 e vx T1) in H. destruct (H0 vx H) as [v [H2 H3]].
+    exists v. split. auto. apply (val_type_tnt_env_change venv0 e v T2). auto.
   - inversion H.
   - inversion H.
-Admitted.
+Qed.
+
 
 Lemma val_type_sanitize_any_tnt : forall n venv res T,
   val_type_tnt venv res T ->
