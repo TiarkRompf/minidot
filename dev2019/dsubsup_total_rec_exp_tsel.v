@@ -146,16 +146,29 @@ Fixpoint open_rec (k: nat) (u: var) (T: ty) { struct T }: ty :=
     | TTop        => TTop
     | TBot        => TBot
     | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
-    | TSel (tvar (varF x)) => TSel (tvar (varF x))
-    | TSel (tvar (varH i)) => TSel (tvar (varH i))
-    | TSel (tvar (varB i)) => if beq_nat k i then TSel (tvar u) else TSel (tvar (varB i))
-    | TSel t      => TSel t (* TODO!! *)
+    | TSel tm => TSel (open_rec_tm k u tm)
+    (* | TSel (tvar (varF x)) => TSel (tvar (varF x)) *)
+    (* | TSel (tvar (varH i)) => TSel (tvar (varH i)) *)
+    (* | TSel (tvar (varB i)) => if beq_nat k i then TSel (tvar u) else TSel (tvar (varB i)) *)
     | TMem T1 T2  => TMem (open_rec k u T1) (open_rec k u T2)
     | TBind T => TBind (open_rec (S k) u T)
     | TAnd T1 T2 => TAnd (open_rec k u T1) (open_rec k u T2)
-  end.
+  end
+
+with open_rec_tm (k: nat) (u: var) (t: tm) { struct t }: tm :=
+       match t with
+       | tvar (varF x) => tvar (varF x)
+       | tvar (varH x) => tvar (varH x)
+       | tvar (varB x) =>
+         if beq_nat k x then (tvar u) else (tvar (varB x))
+       | ttyp ty => ttyp (open_rec k u ty)
+       | tabs ty tm => tabs (open_rec k u ty) (open_rec_tm (S k) u tm)
+       | tapp tm1 tm2 => tapp (open_rec_tm k u tm1) (open_rec_tm k u tm2)
+       | tunpack tm1 tm2 => tunpack (open_rec_tm k u tm1) (open_rec_tm (S k) u tm2)
+       end.
 
 Definition open u T := open_rec 0 u T.
+Definition open_tm u t := open_rec_tm 0 u t.
 
 (* Locally-nameless encoding with respect to varH variables. *)
 Fixpoint subst (U : var) (T : ty) {struct T} : ty :=
@@ -163,28 +176,47 @@ Fixpoint subst (U : var) (T : ty) {struct T} : ty :=
     | TTop         => TTop
     | TBot         => TBot
     | TAll T1 T2   => TAll (subst U T1) (subst U T2)
-    | TSel (tvar (varB i)) => TSel (tvar (varB i))
-    | TSel (tvar (varF i)) => TSel (tvar (varF i))
-    | TSel (tvar (varH i)) => if beq_nat i 0 then TSel (tvar U) else TSel (tvar (varH (i-1)))
-    | TSel t       => TSel t (* TODO!! *)
+    | TSel t       => TSel (subst_tm U t)
     | TMem T1 T2     => TMem (subst U T1) (subst U T2)
     | TBind T       => TBind (subst U T)
     | TAnd T1 T2    => TAnd (subst U T1)(subst U T2)
-  end.
+  end
+
+with subst_tm (U: var) (t: tm) {struct t} : tm :=
+       match t with
+       | tvar (varB i) => (tvar (varB i))
+       | tvar (varF i) => (tvar (varF i))
+       | tvar (varH i) => if beq_nat i 0 then tvar U else  (tvar (varH (i-1)))
+       | ttyp ty => ttyp (subst U ty)
+       | tabs ty tm => tabs (subst U ty) (subst_tm U tm)
+       | tapp tm1 tm2 => tapp (subst_tm U tm1) (subst_tm U tm2)
+       | tunpack tm1 tm2 => tunpack (subst_tm U tm1) (subst_tm U tm2)
+       end.
 
 Fixpoint nosubst (T : ty) {struct T} : Prop :=
   match T with
     | TTop         => True
     | TBot         => True
     | TAll T1 T2   => nosubst T1 /\ nosubst T2
-    | TSel (tvar (varB i)) => True
-    | TSel (tvar (varF i)) => True
-    | TSel (tvar (varH i)) => i <> 0
-    | TSel t       => True (* TODO !! *)
+    (* | TSel (tvar (varB i)) => True *)
+    (* | TSel (tvar (varF i)) => True *)
+    (* | TSel (tvar (varH i)) => i <> 0 *)
+    | TSel t       => nosubst_tm t
     | TMem T1 T2    => nosubst T1 /\ nosubst T2
     | TBind T       => nosubst T
     | TAnd T1 T2    => nosubst T1 /\ nosubst T2
-  end.
+  end
+
+with nosubst_tm (t: tm) {struct t} : Prop :=
+       match t with
+       | tvar (varB _) => True
+       | tvar (varF _) => True
+       | tvar (varH i) => i <> 0
+       | ttyp ty =>  nosubst ty
+       | tabs ty tm => (nosubst ty) /\ (nosubst_tm tm)
+       | tapp tm1 tm2 => (nosubst_tm tm1) /\ (nosubst_tm tm2)
+       | tunpack tm1 tm2 => (nosubst_tm tm1) /\ (nosubst_tm tm2)
+       end.
 
 (* ### Subtyping ### *)
 (*
@@ -1174,7 +1206,7 @@ Proof.
 (* An exercise in Logic.v *)
 Admitted.
 =======
-Proof. 
+Proof.
   intros. destruct (beq_nat n n') eqn:E. destruct (beq_nat_true n n' E). omega. reflexivity.
 Qed.
 >>>>>>> d3ba622369987b3674328a6196e340126e6eb971
@@ -1308,7 +1340,7 @@ Proof.
     + simpl. destruct (beq_nat i i0) eqn:E. apply beq_nat_true in E. subst.
     simpl. destruct (beq_nat (x+1) 0) eqn:E. apply beq_nat_true in E. omega.
     assert (x = x + 1 - 1) as A. unfold id. omega.
-    rewrite <- A. reflexivity. 
+    rewrite <- A. reflexivity.
     auto.
   - simpl. destruct (IHT2_1 x i H). destruct (IHT2_2 x i H). reflexivity.
   - simpl. rewrite IHT2. reflexivity. eapply closed_upgrade. eassumption. omega.
