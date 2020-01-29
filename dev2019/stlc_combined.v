@@ -10,6 +10,7 @@
 (* The goal of this version is to be as simple as possible. 
    No subtyping, env not part of val_type relation. *)
 
+Require Export SfLib.
 Require Export Arith.EqNat.
 Require Export Arith.Le.
 From Coq Require Import omega.Omega.
@@ -482,10 +483,10 @@ Hint Resolve not_stuck.
 
 Lemma invert_abs: forall vf T1 n T2,
   val_type vf (TFun T1 n T2) ->
-  exists env tenv y T3 T4 nf,
+  exists env tenv y nf,
     vf = (vabs env nf n y) /\
     wf_env env tenv /\
-    has_type (expand_env (expand_env tenv (TRec (TFun T3 n T4)) Second) T3 n) y First T4.
+    has_type (expand_env (expand_env tenv (TRec (TFun T1 n T2)) Second) T1 n) y First T2.
 Proof.
   intros. inversion H. repeat eexists; repeat eauto.
 Qed.
@@ -912,7 +913,53 @@ Lemma lookup_safe_ex_comb: forall H1 G1 TF cl x,
              wf_env_comb (sanitize_env cl H1) (sanitize_env cl G1) ->
              lookup x (sanitize_env cl G1) = Some TF ->
              exists v, lookup x (sanitize_env cl H1) = Some v /\ val_type_comb (classOf x) v TF.
-Proof. admit. Admitted.
+Proof.
+  intros. induction H.
+  - inversion H0. destruct x; destruct c. inversion H2.
+    destruct (ble_nat n i); inversion H2.
+  - destruct vs as [vl1 vl2 vidx]. destruct ts as [tl1 tl2 tidx].
+    apply wf_length_comb in H2. destruct H2 as [H2l H2r].
+    destruct x; destruct c; inversion H0.
+    + destruct n; simpl in H0; simpl in H3.
+      * case_eq (beq_nat i (length tl1)).
+        {
+          intros E. rewrite E in H0. inversion H0. subst. simpl.
+          assert (beq_nat i (length vl1) = true). eauto.
+          rewrite H2. eauto.
+        }
+        {
+          intros E.
+          assert (beq_nat i (length vl1) = false). eauto.
+          assert (exists v0, lookup (V First i) (Def vl vl1 vl2 vidx) = Some v0 /\val_type_comb First v0 TF) as HI.
+          eapply IHwf_env_comb. simpl. rewrite E in H0. apply H0.
+          inversion HI as [v0 HI1]. inversion HI1.
+          eexists. split. eapply lookup_extend. eauto. eauto.
+        }
+      * assert (exists v0, lookup (V First i) (Def vl vl1 vl2 vidx) = Some v0 /\ val_type_comb First v0 TF) as HI.
+        eapply IHwf_env_comb. simpl. apply H0.
+        inversion HI as [v0 HI1]. inversion HI1.
+        eexists. split. eauto. eauto.
+    + destruct n; simpl in H0. simpl in H3.
+      * assert (exists v0, lookup (V Second i) (Def vl vl1 vl2 vidx) = Some v0 /\ val_type_comb Second v0 TF) as HI.
+        eapply IHwf_env_comb. eauto.
+        inversion HI as [v0 HI1]. inversion HI1.
+        eexists. split. eauto. eauto.
+      * case_eq (beq_nat i (length tl2)).
+        {
+          intro E. rewrite E in H0. simpl. destruct (ble_nat tidx i); inversion H0. simpl in H3. subst.
+          simpl in H2r. simpl in H2l.
+          assert (beq_nat i (length vl2) = true). eauto.
+          rewrite H2. inversion H4. destruct (ble_nat tidx i); eauto. inversion H5.
+        }
+        {
+          intro E. assert (beq_nat i (length vl2) = false). eauto.
+          assert (exists v0, lookup (V Second i) (Def vl vl1 vl2 vidx) = Some v0 /\ val_type_comb Second v0 TF) as HI.
+          eapply IHwf_env_comb. simpl. destruct (ble_nat tidx i). inversion H0.
+          rewrite E in H0. rewrite H0. rewrite E. reflexivity. auto.
+          inversion HI as [v0 HI1]. inversion HI1.
+          eexists. split. eapply lookup_extend. eauto. eauto.
+        }
+Qed.
 
 Lemma wf_idx_comb : forall vs ts,
       wf_env_comb vs ts ->
@@ -995,6 +1042,17 @@ Proof.
     eauto. 
 Qed.
 
+Lemma invert_abs_snd: forall n vf T1 m T2,
+  val_type_snd n vf (TFun T1 m T2) ->
+  exists venv tenv y,
+    vf = (vabs venv n m y) /\
+    wf_env_comb venv tenv /\
+    is_sanitized n venv /\
+    has_type (expand_env (expand_env tenv (TRec (TFun T1 m T2)) Second) T1 m) y First T2.
+Proof.
+  intros. inversion H; subst. inversion H6. subst. repeat eexists; eauto.
+Qed.
+
 
 
 
@@ -1005,7 +1063,7 @@ although currently not used/not needed *)
 Theorem full_combined_safety : forall k e n tenv T,
   has_type tenv e n T -> forall venv, wf_env_comb venv tenv ->
   (forall res, teval k venv e n = Some res -> res_type_snd res T) /\
-  (k = 0 \/ (is_sanitized tenv -> is_sanitized venv ->
+  (k = 0 \/ (is_sanitized First tenv -> is_sanitized First venv ->
             exists v, tevaln venv e n v /\ val_type_tnt v T)).
 Proof.
   intros k. induction k.
@@ -1016,33 +1074,41 @@ Proof.
   - (* False *) inversion H0. eapply not_stuck2. constructor.
   - eexists. split. exists 0. intros. destruct n0. omega. simpl. eauto. simpl. eauto.
   - (* Var *)
-    destruct (lookup_safe_ex_comb venv0 env0 T1 n x) as [vl [IL [VLS VLT]]]. eauto. eauto.
-    inversion H1. rewrite IL. eapply not_stuck2. eauto.
-  - destruct (lookup_safe_ex_comb venv0 env0 T1 n x) as [vl [IL [VLS VLT]]]. eauto. eauto.
-    (* n = Second --> can't happen! *)
-    (* helpers: *)
-    assert (forall {X} (env: env X) n, is_sanitized env -> sanitize_env n env = env) as L1. admit.
-    assert (forall {X} (env: env X) x v, is_sanitized env -> lookup x env = Some v -> classOf x = First) as L2. admit. 
-    destruct VLT as [FALSE|VLT]. { rewrite L1 in IL; eauto. rewrite (L2 _ venv0 _ vl) in FALSE. inversion FALSE. eauto. eauto. }
-    exists vl. split. exists 0. intros. destruct n0. omega. unfold teval. rewrite IL. eauto. eauto. 
-  - (* App *) simpl in  H2.
+    destruct (lookup_safe_ex_comb venv0 env0 T1 n x) as [vl' [IL IH]]. eauto. eauto.
+    inversion H1. inversion IL. rewrite H4. eapply not_stuck2. eauto.
+  - destruct (lookup_safe_ex_comb venv0 env0 T1 n x) as [vl' [IL IH]]; eauto.
+    eexists. split. exists 0. intros. destruct n0. omega. unfold teval. rewrite IL. eauto.
+    assert (forall {X} (env: env X) x v, is_sanitized First env -> lookup x env = Some v -> classOf x = First) as L1.
+    {
+      intros. inversion H3. subst. destruct x0; destruct c. auto.
+      unfold sanitize_env in H4; unfold sanitize_any in H4; destruct x1 as [l1 l2]. unfold lookup in H4.
+      destruct (ble_nat (length l2) i) eqn:bleH. destruct l2. discriminate. apply index_max in H4.
+      apply (ble_nat_true (length (x0 :: l2)) i) in bleH. omega. inversion H4.
+    }
+    apply strengthen_tnt with (classOf x). auto.
+    eapply (L1 _ venv0 x _). eauto. destruct n; eauto. destruct venv0 as [l1 l2 n]. unfold sanitize_env in IL.
+    unfold sanitize_any in IL. unfold lookup in IL. destruct x; destruct c; auto.
+    destruct (ble_nat (length l2) i) eqn:bleH; simpl; destruct (ble_nat n i) eqn:bleH2; auto.
+    apply (index_max _ l2 i vl') in IL. apply (ble_nat_true (length l2) i) in bleH. omega. inversion IL.
+  - (* App *) simpl in H2.
     (* function *)
     remember (teval k venv0 f Second) as tf.
     destruct tf as [rf|]; try inversion H2. 
     assert (res_type_snd rf (TFun T1 m T2)) as HRF. { eapply IHk; eauto. }
-    inversion HRF as [vf TF HVF]. inversion HVF.
-    subst rf. subst vf. 
+    inversion HRF as [vf TF HVF]. inversion H3. subst.
 
     (* argument *)
-    remember (teval k venv0 x m0) as tx.
+    remember (teval k venv0 x m) as tx.
     destruct tx as [rx|]; try inversion H2.
     assert (res_type_snd rx T1) as HRX. { subst. eapply IHk; eauto. }
-    inversion HRX as [vx]. subst rx T.
+    inversion HRX as [vx]. subst.
 
     (* termination part for argument *)
-    assert (m0 = Second \/ val_type_tnt vx T1) as HRXT. { subst. 
+    (* not sure if this is necessary, *)
+    (* since the first premise of wfe_comb_env was change from val_type_snd v t /\ ((n = Second) \/ val_type_tnt v t) to val_type_snd n v t. *)
+    assert (m = Second \/ val_type_tnt v T1) as HRXT. { subst.
       destruct (IHk _ _ _ _ H0 _ H1) as [IHS [|]].
-      destruct k. simpl in Heqtf. inversion Heqtf. inversion H5.
+      destruct k. simpl in Heqtf. inversion Heqtf. inversion H7.
       admit.
       (* NEED: is_sanitized evidence in function *)
       (* NEED: deterministic execution *)
@@ -1051,16 +1117,21 @@ Proof.
       assert (vx = vx2). admit. (* TODO! need a deterministc exec theorem, or extend IH ? *)
       subst. eauto. *)
     }
-    
+    admit.
     (* body *)
-    subst. eapply IHk. eauto. 
+    (* subst. eapply IHk. eauto. *)
+    (* WF on expanded env *)
+    (* constructor. *) (* need to show m = vx first, because we have will have the goal val_type_comb m ?v T1 and hypothesis val_type_comb vx v T1 *)
+
+    (* (* body *)
+    subst. eapply IHk. eauto.
     (* WF on expanded env *)
     constructor. split; eauto. constructor. split; eauto.
     eapply v_rec2. eauto. eauto. apply wf_idx_comb. eauto.
     eapply wf_idx_comb. constructor. split. constructor. eauto.
     (* NOTE: rec ref always 2nd class here! *)
     left. eauto. eauto.
-    eauto. eauto. 
+    eauto. eauto. *)
     
   - rename H1 into WFE.
     (* --- OLD ATTEMPT NOTES (trying to prov term only for 1st cl context --- *)
@@ -1098,29 +1169,28 @@ Proof.
     eapply HVY.
 
   - (* ABS *)
-    inversion H1. eapply not_stuck2.  eapply v_abs2. eapply wf_sanitize_comb. eauto.
-    eauto. 
     
+    inversion H1. eapply not_stuck2. eapply v_abs2. eapply wf_sanitize_comb. eauto.
+    exists venv0; auto. eauto.
   - eexists. split. exists 0. intros. destruct n0. omega. simpl. eauto.
     simpl. repeat split; eauto. intros. 
 
-    assert (val_type_snd vx T1). admit.
+    assert (val_type_snd m vx T1). admit.
     (* PROBLEM: we have no evidence of the soundness val_type for the arg!
        Cannot do induction. We need this for the extended wf_env. *)
 
-    assert (val_type_snd (vrec (vabs (sanitize_env n venv0) n m y))
+    assert (val_type_snd Second (vrec (vabs (sanitize_env n venv0) n m y))
                          (TRec (TFun T1 m T2))). {
-      eapply v_rec2. eapply v_abs2. eapply wf_sanitize_comb. eauto. eauto.
+      eapply v_rec2. admit. (* no evidence that n is equal to Second. So, v_abs2 cannot be applied at here. *)
     }
     
     destruct (IHhas_type  (expand_env
          (expand_env (sanitize_env n venv0)
             (vrec (vabs (sanitize_env n venv0) n m y)) Second) vx
          m)) as [HHS HHT]. 
-    constructor. split. eauto. right. eauto. constructor. eauto. eauto. 
-    eapply wf_idx_comb. eauto. eapply wf_idx_comb.
-    constructor. split. eauto. left. eauto. eauto.
-    eapply wf_idx_comb. eauto. 
+    constructor. eauto. constructor; eauto. eapply wf_idx_comb.
+    eauto. apply wf_idx_comb. destruct (wf_length_comb venv0 env0 H0).
+    destruct n; destruct env0; destruct venv0. apply wfe_comb_env; auto. apply wfe_comb_env; auto.
 
     destruct HHT as [FALSE|HHT]. inversion FALSE.
 

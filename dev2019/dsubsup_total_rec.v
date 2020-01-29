@@ -1169,9 +1169,15 @@ Qed.
 Theorem false_beq_nat: forall n n' : nat,
      n <> n' ->
      beq_nat n n' = false.
+<<<<<<< HEAD
 Proof.
 (* An exercise in Logic.v *)
 Admitted.
+=======
+Proof. 
+  intros. destruct (beq_nat n n') eqn:E. destruct (beq_nat_true n n' E). omega. reflexivity.
+Qed.
+>>>>>>> d3ba622369987b3674328a6196e340126e6eb971
 
 Lemma indexr_at_index: forall {A} x0 GH0 GH1 (v:A),
   beq_nat x0 (length GH1) = true ->
@@ -1295,39 +1301,19 @@ Proof.
   intros T2 TX j k. induction T2; intros; eauto; try destruct v; eauto.
   - simpl. rewrite IHT2_1; eauto. rewrite IHT2_2; eauto.
     eapply closed_upgrade. eauto. eauto.
-  - admit. (* TODO: fix *)
-    (* simpl. rename x into i0.
-    case_eq (beq_nat i 0); intros E.
-    apply beq_nat_true in E. subst.
-    case_eq (beq_nat i0 0); intros E0.
-    apply beq_nat_true in E0. subst.
-    destruct TX; eauto.
-    simpl. destruct i; eauto.
-    inversion H; subst. omega.
-    simpl. reflexivity.
-    case_eq (beq_nat i0 0); intros E0.
-    apply beq_nat_true in E0. subst.
-    simpl. destruct TX; eauto.
-    case_eq (beq_nat i i0); intros E1.
-    apply beq_nat_true in E1. subst.
-    inversion H; subst. omega.
-    reflexivity.
-    simpl. reflexivity. *)
-  - admit. (* TODO: fix *)
-    (* simpl.
-    case_eq (beq_nat i i0); intros E.
-    apply beq_nat_true in E; subst.
-    simpl.
-    assert (x+1 <> 0) as A by omega.
-    eapply beq_nat_false_iff in A.
-    rewrite A.
-    assert (x = x + 1 - 1) as B. unfold id. omega.
-    rewrite <- B. reflexivity.
-    simpl. reflexivity. *)
-  (* - simpl. rewrite IHT2_1. rewrite IHT2_2. eauto. eauto. eauto.*)
+  - destruct t; eauto. destruct v; eauto.
+    + simpl. destruct (beq_nat i0 0) eqn:E. apply beq_nat_true in E. subst.
+    destruct TX; eauto. inversion H; subst. simpl. destruct (beq_nat i i0) eqn:E.
+    apply beq_nat_true in E. omega. auto. auto.
+    + simpl. destruct (beq_nat i i0) eqn:E. apply beq_nat_true in E. subst.
+    simpl. destruct (beq_nat (x+1) 0) eqn:E. apply beq_nat_true in E. omega.
+    assert (x = x + 1 - 1) as A. unfold id. omega.
+    rewrite <- A. reflexivity. 
+    auto.
+  - simpl. destruct (IHT2_1 x i H). destruct (IHT2_2 x i H). reflexivity.
   - simpl. rewrite IHT2. reflexivity. eapply closed_upgrade. eassumption. omega.
   - simpl. rewrite IHT2_1. rewrite IHT2_2. reflexivity. assumption. assumption.
-Admitted.
+Qed.
 
 Lemma closed_no_subst: forall T i k TX,
    closed i 0 k T ->
@@ -1705,6 +1691,7 @@ Qed.
 Lemma splice_retreat4: forall T i j k m V' V ,
   closed i (j + 1) k (open_rec m V' (splice 0 T)) ->
   (closed i j k (TSel (tvar V)) -> closed i (j) k (open_rec m V T)).
+<<<<<<< HEAD
 Proof. induction T; intros; try destruct v; simpl in *.
   admit. (* TODO FIX
   constructor.
@@ -1723,10 +1710,29 @@ Proof. induction T; intros; try destruct v; simpl in *.
   inversion H. subst. constructor.  eapply IHT1; try eassumption.
   eapply IHT2; try eassumption. *)
 Admitted.
+=======
+Proof.
+  induction T; intros; try destruct v; simpl in *; eauto.
+  - inversion H; subst. constructor. eauto. eapply IHT2. eauto.
+    eapply closed_upgrade. eauto. eauto.
+  - destruct t.
+    destruct v; simpl in H.
+    inversion H; eauto.
+    inversion H; subst. assert (j > i0). omega. eauto.
+    destruct (beq_nat m i0) eqn:E. eauto. inversion H; eauto.
+    inversion H. inversion H. inversion H. inversion H.
+  - inversion H; eauto.
+  - inversion H; subst.
+    apply closed_upgrade with (i':=(S i)) in H0; eauto.
+  - inversion H; eauto.
+Qed.
+
+>>>>>>> d3ba622369987b3674328a6196e340126e6eb971
 
 Lemma splice_retreat5: forall T i j k m V' V ,
   closed i (j + 1) k (TSel (tvar V')) -> closed i (j) k (open_rec m V T) ->
   closed i (j + 1) k (open_rec m V' (splice 0 T)).
+<<<<<<< HEAD
 Proof. induction T; intros; try destruct v; simpl in *.
   admit. (* TODO FIX
   constructor.
@@ -1745,6 +1751,21 @@ Proof. induction T; intros; try destruct v; simpl in *.
   inversion H0. subst. constructor. eapply IHT1; try eassumption. eapply IHT2; try eassumption.
           *)
 Admitted.
+=======
+Proof.
+  induction T; intros; try destruct v; simpl in *; eauto.
+  - inversion H0; subst. apply cl_all.
+    eapply IHT1; eauto. eapply IHT2; eauto. eapply closed_upgrade; eauto.
+  - destruct t. destruct v; simpl in H.
+    apply closed_open2; eauto. apply closed_upgrade_free with (j:=j); eauto. omega.
+    apply closed_open2; eauto. apply cl_selh. inversion H0; subst. omega.
+    eapply splice_retreat4. simpl. destruct (beq_nat m i0) eqn:E; apply closed_upgrade_free with (j':=j+1+1) in H0; eauto; omega. eauto.
+    inversion H0. inversion H0. inversion H0. inversion H0.
+  - inversion H0; eauto.
+  - inversion H0; subst. apply cl_bind. eapply IHT. apply closed_upgrade with (i':=(S i)) in H; eauto; omega. eauto.
+  - inversion H0; eauto.
+Qed.
+>>>>>>> d3ba622369987b3674328a6196e340126e6eb971
 
 
 

@@ -726,26 +726,16 @@ Lemma valtp_extend_tnt : forall vs v v1 T n,
                        val_type_tnt vs v T ->
                        val_type_tnt (expand_env vs v1 n) v T.
 Proof.
-  intros. induction v.
-  - (* bool *) admit.
-  - (* abs *) admit.
-  - (* rec *) admit.
-  - (* cap *) admit.
-Admitted.
+  intros. induction v; destruct T; try (simpl in H; inversion H); auto.
+Qed.
 
 (* NOTE: will needed (closed T vs) ! *)
 Lemma valtp_shrink_tnt : forall vs v v1 T n,
                        val_type_tnt (expand_env vs v1 n) v T ->
                        val_type_tnt vs v T.
 Proof.
-  intros. induction v.
-  - (* bool *) admit.
-  - (* abs *) admit.
-  - (* rec *) admit.
-  - (* cap *) admit.
-Admitted.
-
-
+  intros. induction v; destruct T; try (simpl in H; inversion H); auto.
+Qed.
 
 Lemma lookup_safe_ex_tnt: forall H1 G1 TF x,
              wf_env_tnt H1 G1 ->
@@ -799,6 +789,11 @@ Proof. intros. induction H.
           eexists. econstructor. eapply lookup_extend; eauto. eapply valtp_extend_tnt; eauto. }
 Qed.
 
+Lemma val_type_tnt_env_change: forall venv0 venv1 v T,
+    val_type_tnt venv0 v T <-> val_type_tnt venv1 v T.
+Proof.
+  split; destruct v; destruct T; auto.
+Qed.
 
 
   
@@ -811,24 +806,27 @@ Lemma invert_abs_tnt: forall venv vf T1 cl T2,
 Proof.
   intros. simpl in H. destruct vf.
   - inversion H.
-  - destruct H. subst c. exists e. exists t. split. eauto. admit. (* wrong env, need widen *)
+  - destruct H. subst c. exists e. exists t. split. eauto. intros.
+    apply (val_type_tnt_env_change venv0 e vx T1) in H. destruct (H0 vx H) as [v [H2 H3]].
+    exists v. split. auto. apply (val_type_tnt_env_change venv0 e v T2). auto.
   - inversion H.
-  - inversion H. 
-Admitted.
+  - inversion H.
+Qed.
+
 
 Lemma val_type_sanitize_any_tnt : forall n venv res T,
   val_type_tnt venv res T ->
   val_type_tnt (sanitize_any venv n) res T.
 Proof.
-  intros. admit. (* induction H; eauto. *)
-Admitted.
+  intros. induction res; destruct T; try (simpl in H; inversion H); auto.
+Qed.
 
 Lemma val_type_sanitize_tnt : forall env res T n,
   val_type_tnt (sanitize_env n env) res T ->
   val_type_tnt env res T.
 Proof.
-  intros. admit. (* induction H; eauto. *)
-Admitted.
+  intros. induction res; destruct T; try (simpl in H; inversion H); auto.
+Qed.
 
 Lemma wf_idx_tnt : forall vs ts,
       wf_env_tnt vs ts ->
