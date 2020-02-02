@@ -89,16 +89,6 @@ Inductive closed: nat(*B*) -> nat(*H*) -> nat(*F*) -> ty -> Prop :=
 | cl_sel_tm: forall i j k t,
     closed_tm i j k t ->
     closed i j k (TSel t)
-
-(* | cl_sel: forall i j k x, *)
-(*     k > x -> *)
-(*     closed i j k (TSel (tvar (varF x))) *)
-(* | cl_selh: forall i j k x, *)
-(*     j > x -> *)
-(*     closed i j k (TSel (tvar (varH x))) *)
-(* | cl_selb: forall i j k x, *)
-(*     i > x -> *)
-(*     closed i j k (TSel (tvar (varB x))) *)
 | cl_mem: forall i j k T1 T2,
     closed i j k T1 ->
     closed i j k T2 ->
@@ -246,19 +236,27 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH U1 U2 ->
     stp G1 GH S2 S1 ->
     stp G1 GH (TMem S1 U1) (TMem S2 U2)
-| stp_sel1: forall G1 GH TX T2 x,
-    indexr x G1 = Some TX -> (* TODO: has_type *)
+| stp_sel1: forall G1 GH TX T2 tm,
+    has_type G1 tm TX ->
+    (* TODO: see if we can make the closedness conditions here and elsewhere
+       an invariant of has_type *)
     closed 0 0 (length G1) TX ->
+    closed_tm 0 0 (length G1) tm ->
     stp G1 GH TX (TMem TBot T2) ->
-    stp G1 GH (TSel (tvar (varF x))) T2
-| stp_sel2: forall G1 GH TX T1 x,
-    indexr x G1 = Some TX -> (* TODO: has_type *)
+    stp G1 GH (TSel tm) T2
+| stp_sel2: forall G1 GH TX T1 tm,
+    has_type G1 tm TX ->
     closed 0 0 (length G1) TX ->
+    closed_tm 0 0 (length G1) tm ->
     stp G1 GH TX (TMem T1 TTop) ->
-    stp G1 GH T1 (TSel (tvar (varF x)))
-| stp_selx: forall G1 GH v x,
-    indexr x G1 = Some v ->
-    stp G1 GH (TSel (tvar (varF x))) (TSel (tvar (varF x)))
+    stp G1 GH T1 (TSel tm)
+| stp_selx: forall G1 GH tm, (*TODO rename the rule *)
+    (* this will also handle the stp_selax case from the previous version *)
+    closed_tm 0 (length GH) (length G1) tm ->
+    stp G1 GH (TSel tm) (TSel tm)
+
+(* TODO: it seems acceptable to adopt these from the previous version,
+since varH occurrences are artifacts of subtyping  *)
 | stp_sela1: forall G1 GH TX T2 x,
     indexr x GH = Some TX ->
     closed 0 x (length G1) TX ->
@@ -269,9 +267,11 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     closed 0 x (length G1) TX ->
     stp G1 GH TX (TMem T1 TTop) ->
     stp G1 GH T1 (TSel (tvar (varH x)))
-| stp_selax: forall G1 GH v x,
-    indexr x GH = Some v  ->
-    stp G1 GH (TSel (tvar (varH x))) (TSel (tvar (varH x)))
+
+(* this has become superfluous:   *)
+(* | stp_selax: forall G1 GH v x, *)
+(*     indexr x GH = Some v  -> *)
+(*     stp G1 GH (TSel (tvar (varH x))) (TSel (tvar (varH x))) *)
 
 (* stp for recursive types and intersection types *)
 | stp_bindx: forall GH G1 T1 T1' T2 T2',
@@ -297,7 +297,6 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH T T2 ->
     stp G1 GH T (TAnd T1 T2)
 
-
 | stp_all: forall G1 GH T1 T2 T3 T4 x,
     stp G1 GH T3 T1 ->
     x = length GH ->
@@ -305,14 +304,14 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     closed 1 (length GH) (length G1) T4 ->
     stp G1 (T3::GH) (open (varH x) T2) (open (varH x) T4) ->
     stp G1 GH (TAll T1 T2) (TAll T3 T4)
+
 | stp_trans: forall G1 GH T1 T2 T3,
     stp G1 GH T1 T2 ->
     stp G1 GH T2 T3 ->
     stp G1 GH T1 T3
-.
 
 (* ### Type Assignment ### *)
-Inductive has_type : tenv -> tm -> ty -> Prop :=
+with has_type : tenv -> tm -> ty -> Prop :=
 | t_var: forall x env T1,
            indexr x env = Some T1 ->
            stp env [] T1 T1 ->
@@ -374,7 +373,19 @@ Some None        means stuck
 Some (Some v))   means result v
 Could use do-notation to clean up syntax.
 *)
+(* Type ((Type Int).Type) -> Type Int  *)
 
+(* f: (x: bot .. top) -> x.Type -> List[x.Type]
+
+   f ((Type Int).Type) ;; Int -> List[Int]
+
+
+unclear: environments in subtype relation, closedness assumptions
+
+unclear: normalization of terms in types, separate from bigstep teval?
+
+
+*)
 Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
   match n with
     | 0 => None
