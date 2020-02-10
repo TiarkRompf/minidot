@@ -504,58 +504,43 @@ Inductive vset_match : nat -> Type :=
 
 Require Coq.Program.Wf.
 
-Program Fixpoint val_type (env: list vseta) (GH:list vseta) (T:ty) n (dd: vset n) (v:vl) {measure (tsize_flat T)}: Prop :=
+(* Signature of the logical relation on terms, for readability *)
+Definition Tm_Vseta : Type  := list vseta -> list vseta -> tm -> forall n, (vset n -> vl -> Prop).
+Hint Unfold Tm_Vseta.
+
+(* Mutually recursive program fixpoints currently do not work (cf.  https://github.com/coq/coq/issues/8675), which
+is why we break up val_type and val_tm definitions via an additional argument. That is, val_type = val_type' val_tm *)
+Program Fixpoint val_type' (val_tm: Tm_Vseta) (env: list vseta) (GH:list vseta) (T:ty) n (dd: vset n) (v:vl) {measure (tsize_flat T)}: Prop :=
   match v,T with
     | vabs env1 T0 y, TAll T1 T2 =>
       closed 0 (length GH) (length env) T1 /\ closed 1 (length GH) (length env) T2 /\
       forall jj vx,
-        (forall kx, val_type env GH T1 kx (jj kx) vx) ->
-        exists (jj2:vseta) v, tevaln (vx::env1) y v /\ (forall k, val_type env (jj::GH) (open (varH (length GH)) T2) k (jj2 k) v)
+        (forall kx, val_type' val_tm env GH T1 kx (jj kx) vx) ->
+        exists (jj2:vseta) v, tevaln (vx::env1) y v /\ (forall k, val_type' val_tm env (jj::GH) (open (varH (length GH)) T2) k (jj2 k) v)
 
     | vty env1 TX, TMem T1 T2 =>
       closed 0 (length GH) (length env) T1 /\ closed 0 (length GH) (length env) T2 /\
       match (vsmatch n dd) with
         | vsmatch 0 dd => True
         | vsmatch (S n0) dd => forall (dy:vseta) vy,
-                      (val_type env GH T1 n0 (dy n0) vy -> dd (dy n0) vy) /\
-                      (dd (dy n0) vy -> val_type env GH T2 n0 (dy n0) vy)
+                      (val_type' val_tm env GH T1 n0 (dy n0) vy -> dd (dy n0) vy) /\
+                      (dd (dy n0) vy -> val_type' val_tm env GH T2 n0 (dy n0) vy)
       end
 
-    (* | _, TSel (tvar (varF x)) => (* TODO: eval *) *)
-    (*   match indexr x env with *)
-    (*     | Some jj => jj (S n) dd v *)
-    (*     | _ => False *)
-    (*   end *)
-    (* | _, TSel (tvar (varH x)) => (* TODO: eval *) *)
-    (*   match indexr x GH with *)
-    (*     | Some jj => jj (S n) dd v *)
-    (*     | _ => False *)
-    (*   end *)
-
-    | _, TSel tm => val_tm env GH tm (S n) dd v
+    | _, TSel tm => val_tm env GH tm n dd v
 
     | _, TAnd T1 T2 =>
-      val_type env GH T1 n dd v /\ val_type env GH T2 n dd v
+      val_type' val_tm env GH T1 n dd v /\ val_type' val_tm env GH T2 n dd v
 
     | _, TBind T1 =>
       closed 1 (length GH) (length env) T1 /\
-      exists jj:vseta, jj n = dd /\ forall n, val_type env (jj::GH) (open (varH (length GH)) T1) n (jj n) v
+      exists jj:vseta, jj n = dd /\ forall n, val_type' val_tm env (jj::GH) (open (varH (length GH)) T1) n (jj n) v
 
     | _, TTop =>
       True
     | _,_ =>
       False
-  end
-
-with val_tm  (env: list vseta) (GH:list vseta) (t:tm) n (dd: vset n) (v:vl): Prop :=
-       match t with
-       | (tvar (varF x)) =>
-         match indexr x env with
-         | Some jj => jj (S n) dd v
-         | _ => False
-         end
-       | _ => False
-       end.
+  end.
 
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. unfold open. rewrite <-open_preserves_size. omega. Qed. (* TApp case: open *)
@@ -564,22 +549,19 @@ Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. unfold open. rewrite <-open_preserves_size. omega. Qed. (* TBind case: open *)
+Solve All Obligations with repeat split; intros; intro Hcon; destruct Hcon; discriminate.
 
-(*
-Next Obligation.
-  unfold "~". repeat split; intros; try inversion H2; try inversion H3; try inversion H4. Qed.
-Next Obligation.
-  unfold "~". repeat split; intros; try inversion H5; try inversion H6; try inversion H7. Qed.
-Next Obligation.
-  unfold "~". repeat split; intros; try inversion H4; try inversion H6; try inversion H7. Qed.
-Next Obligation.
-  unfold "~". repeat split; intros; try inversion H5; try inversion H6; try inversion H7. Qed.
-Next Obligation.
-  unfold "~". repeat split; intros; try inversion H5; try inversion H6; try inversion H7. Qed.
-Next Obligation.
-  unfold "~". repeat split; intros; try inversion H5; try inversion H6; try inversion H7. Qed.
-*)
+Fixpoint val_tm  (env: list vseta) (GH:list vseta) (t:tm) n (dd: vset n) (v:vl): Prop :=
+       match t with
+       | (tvar (varF x)) =>
+         match indexr x env with
+         | Some jj => jj (S n) dd v
+         | _ => False
+         end
+       | _ => False (* TODO: other term forms *)
+       end.
 
+Definition val_type := val_type' val_tm.
 
 Ltac ev := repeat match goal with
                     | H: exists _, _ |- _ => destruct H
