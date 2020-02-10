@@ -236,20 +236,21 @@ Inductive stp: tenv -> tenv -> ty -> ty -> Prop :=
     stp G1 GH U1 U2 ->
     stp G1 GH S2 S1 ->
     stp G1 GH (TMem S1 U1) (TMem S2 U2)
-| stp_sel1: forall G1 GH TX T2 tm,
-    has_type G1 tm TX ->
-    (* TODO: see if we can make the closedness conditions here and elsewhere
-       an invariant of has_type *)
-    closed 0 0 (length G1) TX ->
-    closed_tm 0 0 (length G1) tm ->
-    stp G1 GH TX (TMem TBot T2) ->
-    stp G1 GH (TSel tm) T2
-| stp_sel2: forall G1 GH TX T1 tm,
-    has_type G1 tm TX ->
-    closed 0 0 (length G1) TX ->
-    closed_tm 0 0 (length G1) tm ->
-    stp G1 GH TX (TMem T1 TTop) ->
-    stp G1 GH T1 (TSel tm)
+(* we move type selection into the typing relation has_type below *)
+(* | stp_sel1: forall G1 GH TX T2 tm, *)
+(*     has_type G1 tm TX -> *)
+(*     (* TODO: see if we can make the closedness conditions here and elsewhere *)
+(*        an invariant of has_type *) *)
+(*     closed 0 0 (length G1) TX -> *)
+(*     closed_tm 0 0 (length G1) tm -> *)
+(*     stp G1 GH TX (TMem TBot T2) -> *)
+(*     stp G1 GH (TSel tm) T2 *)
+(* | stp_sel2: forall G1 GH TX T1 tm, *)
+(*     has_type G1 tm TX -> *)
+(*     closed 0 0 (length G1) TX -> *)
+(*     closed_tm 0 0 (length G1) tm -> *)
+(*     stp G1 GH TX (TMem T1 TTop) -> *)
+(*     stp G1 GH T1 (TSel tm) *)
 | stp_selx: forall G1 GH tm, (*TODO rename the rule *)
     (* this will also handle the stp_selax case from the previous version *)
     closed_tm 0 (length GH) (length G1) tm ->
@@ -347,7 +348,7 @@ with has_type : tenv -> tm -> ty -> Prop :=
            has_type env x T1 ->
            closed 0 0 (length env) T2 ->
            has_type env (tapp f x) T2
-| t_dapp:forall env f x T1 T2 T,
+| t_dapp: forall env f x T1 T2 T,
            has_type env f (TAll T1 T2) ->
            has_type env (tvar (varF x)) T1 ->
            T = open (varF x) T2 ->
@@ -361,7 +362,17 @@ with has_type : tenv -> tm -> ty -> Prop :=
            has_type env e T1 ->
            stp env [] T1 T2 ->
            has_type env e T2
+
+| t_sel_intro: forall env e1 e2 T,
+    has_type env e1 T ->
+    has_type env e2 (TMem T TTop) ->
+    has_type env e1 (TSel e2)
+| t_sel_elim: forall env e1 e2 T,
+    has_type env e1 (TSel e2) ->
+    has_type env e2 (TMem TBot T) ->
+    has_type env e1 T
 .
+
 
 
 
@@ -416,25 +427,35 @@ Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some
 
 
 (* ### Semantic Interpretation of Types (Logical Relations) ### *)
-
 Fixpoint tsize_flat(T: ty) :=
   match T with
     | TTop => 1
     | TBot => 1
     | TAll T1 T2 => S (tsize_flat T1 + tsize_flat T2)
-    | TSel _ => 1 (* TODO ? *)
+    | TSel t => S (tmsize_flat t)
     | TMem T1 T2 => S (tsize_flat T1 + tsize_flat T2)
     | TBind T => S (tsize_flat T)
     | TAnd T1 T2 => S (tsize_flat T1 + tsize_flat T2)
-  end.
+  end
+with tmsize_flat(t: tm) :=
+       match t with
+       | tvar _ => 1
+       | ttyp T => S (tsize_flat T)
+       | tabs T t => S ((tsize_flat T) + (tmsize_flat t))
+       | tapp t1 t2 => S ((tmsize_flat t1) + (tmsize_flat t2))
+       | tunpack t1 t2 => S ((tmsize_flat t1) + (tmsize_flat t2))
+       end.
 
 Lemma open_preserves_size: forall T x j,
-  tsize_flat T = tsize_flat (open_rec j (varH x) T).
+    tsize_flat T = tsize_flat (open_rec j (varH x) T)
+with
+open_tm_preserves_size: forall t x j,
+    tmsize_flat t = tmsize_flat (open_rec_tm j (varH x) t).
 Proof.
-  intros T. induction T; intros; simpl; eauto.
-  - destruct t; eauto.  destruct v; simpl; destruct (beq_nat j i); eauto.
+  induction T; intros; simpl; eauto.
+  induction t; intros; simpl; eauto.
+  destruct v; simpl; destruct (beq_nat j i); eauto.
 Qed.
-
 
 (* NEW DESIGN IDEA:
 
@@ -500,16 +521,18 @@ Program Fixpoint val_type (env: list vseta) (GH:list vseta) (T:ty) n (dd: vset n
                       (dd (dy n0) vy -> val_type env GH T2 n0 (dy n0) vy)
       end
 
-    | _, TSel (tvar (varF x)) => (* TODO: eval *)
-      match indexr x env with
-        | Some jj => jj (S n) dd v
-        | _ => False
-      end
-    | _, TSel (tvar (varH x)) => (* TODO: eval *)
-      match indexr x GH with
-        | Some jj => jj (S n) dd v
-        | _ => False
-      end
+    (* | _, TSel (tvar (varF x)) => (* TODO: eval *) *)
+    (*   match indexr x env with *)
+    (*     | Some jj => jj (S n) dd v *)
+    (*     | _ => False *)
+    (*   end *)
+    (* | _, TSel (tvar (varH x)) => (* TODO: eval *) *)
+    (*   match indexr x GH with *)
+    (*     | Some jj => jj (S n) dd v *)
+    (*     | _ => False *)
+    (*   end *)
+
+    | _, TSel tm => val_tm env GH tm (S n) dd v
 
     | _, TAnd T1 T2 =>
       val_type env GH T1 n dd v /\ val_type env GH T2 n dd v
@@ -522,7 +545,17 @@ Program Fixpoint val_type (env: list vseta) (GH:list vseta) (T:ty) n (dd: vset n
       True
     | _,_ =>
       False
-  end.
+  end
+
+with val_tm  (env: list vseta) (GH:list vseta) (t:tm) n (dd: vset n) (v:vl): Prop :=
+       match t with
+       | (tvar (varF x)) =>
+         match indexr x env with
+         | Some jj => jj (S n) dd v
+         | _ => False
+         end
+       | _ => False
+       end.
 
 Next Obligation. simpl. omega. Qed.
 Next Obligation. simpl. unfold open. rewrite <-open_preserves_size. omega. Qed. (* TApp case: open *)
