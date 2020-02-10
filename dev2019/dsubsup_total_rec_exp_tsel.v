@@ -375,16 +375,8 @@ Could use do-notation to clean up syntax.
 *)
 (* Type ((Type Int).Type) -> Type Int  *)
 
-(* f: (x: bot .. top) -> x.Type -> List[x.Type]
-
-   f ((Type Int).Type) ;; Int -> List[Int]
-
-
-unclear: environments in subtype relation, closedness assumptions
-
+(*
 unclear: normalization of terms in types, separate from bigstep teval?
-
-
 *)
 Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
   match n with
@@ -394,8 +386,8 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
         | tvar (varF x) => Some (indexr x env)
         | tvar (varH x) => Some None
         | tvar (varB x) => Some None
-        | ttyp T       => Some (Some (vty env T))
-        | tabs T y     => Some (Some (vabs env T y))
+        | ttyp T       => Some (Some (vty env T)) (* TODO: should T be normalized? *)
+        | tabs T y     => Some (Some (vabs env T y)) (* TODO: should T be normalized? *)
         | tapp ef ex   =>
           match teval n env ex with
             | None => None
@@ -1212,15 +1204,9 @@ Qed.
 Theorem false_beq_nat: forall n n' : nat,
      n <> n' ->
      beq_nat n n' = false.
-<<<<<<< HEAD
 Proof.
 (* An exercise in Logic.v *)
 Admitted.
-=======
-Proof.
-  intros. destruct (beq_nat n n') eqn:E. destruct (beq_nat_true n n' E). omega. reflexivity.
-Qed.
->>>>>>> d3ba622369987b3674328a6196e340126e6eb971
 
 Lemma indexr_at_index: forall {A} x0 GH0 GH1 (v:A),
   beq_nat x0 (length GH1) = true ->
@@ -1734,7 +1720,6 @@ Qed.
 Lemma splice_retreat4: forall T i j k m V' V ,
   closed i (j + 1) k (open_rec m V' (splice 0 T)) ->
   (closed i j k (TSel (tvar V)) -> closed i (j) k (open_rec m V T)).
-<<<<<<< HEAD
 Proof. induction T; intros; try destruct v; simpl in *.
   admit. (* TODO FIX
   constructor.
@@ -1753,29 +1738,10 @@ Proof. induction T; intros; try destruct v; simpl in *.
   inversion H. subst. constructor.  eapply IHT1; try eassumption.
   eapply IHT2; try eassumption. *)
 Admitted.
-=======
-Proof.
-  induction T; intros; try destruct v; simpl in *; eauto.
-  - inversion H; subst. constructor. eauto. eapply IHT2. eauto.
-    eapply closed_upgrade. eauto. eauto.
-  - destruct t.
-    destruct v; simpl in H.
-    inversion H; eauto.
-    inversion H; subst. assert (j > i0). omega. eauto.
-    destruct (beq_nat m i0) eqn:E. eauto. inversion H; eauto.
-    inversion H. inversion H. inversion H. inversion H.
-  - inversion H; eauto.
-  - inversion H; subst.
-    apply closed_upgrade with (i':=(S i)) in H0; eauto.
-  - inversion H; eauto.
-Qed.
-
->>>>>>> d3ba622369987b3674328a6196e340126e6eb971
 
 Lemma splice_retreat5: forall T i j k m V' V ,
   closed i (j + 1) k (TSel (tvar V')) -> closed i (j) k (open_rec m V T) ->
   closed i (j + 1) k (open_rec m V' (splice 0 T)).
-<<<<<<< HEAD
 Proof. induction T; intros; try destruct v; simpl in *.
   admit. (* TODO FIX
   constructor.
@@ -1793,24 +1759,6 @@ Proof. induction T; intros; try destruct v; simpl in *.
   inversion H0. subst. constructor. eapply IHT; try eassumption. eapply closed_upgrade. eassumption. omega.
   inversion H0. subst. constructor. eapply IHT1; try eassumption. eapply IHT2; try eassumption.
           *)
-Admitted.
-=======
-Proof.
-  induction T; intros; try destruct v; simpl in *; eauto.
-  - inversion H0; subst. apply cl_all.
-    eapply IHT1; eauto. eapply IHT2; eauto. eapply closed_upgrade; eauto.
-  - destruct t. destruct v; simpl in H.
-    apply closed_open2; eauto. apply closed_upgrade_free with (j:=j); eauto. omega.
-    apply closed_open2; eauto. apply cl_selh. inversion H0; subst. omega.
-    eapply splice_retreat4. simpl. destruct (beq_nat m i0) eqn:E; apply closed_upgrade_free with (j':=j+1+1) in H0; eauto; omega. eauto.
-    inversion H0. inversion H0. inversion H0. inversion H0.
-  - inversion H0; eauto.
-  - inversion H0; subst. apply cl_bind. eapply IHT. apply closed_upgrade with (i':=(S i)) in H; eauto; omega. eauto.
-  - inversion H0; eauto.
-Qed.
->>>>>>> d3ba622369987b3674328a6196e340126e6eb971
-
-
 
 Lemma splice_open_permute0: forall x0 T2 n j,
 (open_rec j (varH (n + x0 + 1 )) (splice (x0) T2)) =
