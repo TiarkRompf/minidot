@@ -429,90 +429,12 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
 
 Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some (Some v).
 
-
-(* ### Semantic Interpretation of Types (Logical Relations) ### *)
-
-(* termination measures *)
-Fixpoint tsize_flat(T: ty) :=
-  match T with
-    | TTop => 1
-    | TBot => 1
-    | TAll T1 T2 => S (tsize_flat T1 + tsize_flat T2)
-    | TSel t => S (tmsize_flat t)
-    | TMem T1 T2 => S (tsize_flat T1 + tsize_flat T2)
-    | TBind T => S (tsize_flat T)
-    | TAnd T1 T2 => S (tsize_flat T1 + tsize_flat T2)
-  end
-with tmsize_flat(t: tm) :=
-       match t with
-       | tvar _ => 1
-       | ttyp T => S (tsize_flat T)
-       | tabs T t => S ((tsize_flat T) + (tmsize_flat t))
-       | tapp t1 t2 => S ((tmsize_flat t1) + (tmsize_flat t2))
-       | tunpack t1 t2 => S ((tmsize_flat t1) + (tmsize_flat t2))
-       end.
-
-(* Combined measure *)
-Definition size_flat (T_t: ty + tm): nat :=
-  match T_t with
-  | inl T => tsize_flat T
-  | inr t => tmsize_flat t
-  end.
-
-Lemma open_preserves_size: forall T x j,
-    tsize_flat T = tsize_flat (open_rec j (varH x) T)
-with
-open_tm_preserves_size: forall t x j,
-    tmsize_flat t = tmsize_flat (open_rec_tm j (varH x) t).
-Proof.
-  induction T; intros; simpl; eauto.
-  induction t; intros; simpl; eauto.
-  destruct v; simpl; destruct (beq_nat j i); eauto.
-Qed.
-
-(* NEW DESIGN IDEA:
-
-   The required invariants about runtime evaluation rely in crucial
-   ways on transporting properties from the creation site of
-   type objects to their use sites -- in particular the fact
-   that only type aliases can be created (TMem T T), and that these
-   cannot be recursive.
-
-   This suggests that in the proof, we should pair each (vty T) value
-   with the semantic interpretation of the type member [[ T ]].
-
-   So [[ T ]] in general is no longer a set of values, but a set of
-   (vl, vset) pairs. This leads to some complication as the type vset
-   is now recursive
-
-      Definition vset := vset -> vl -> Prop.
-
-   which Coq wouldn't let us do (for good reasons).
-
-   But we can do some close with an indexed variant such that
-
-      vset (S n) := vset n -> vl -> Prop
-
-   and quantify over n to denote all finite ones.
-
-   As it turns out, we no longer need the previuos l/u bound selectors,
-   and the TMem case can ensure that the *actual* type member of an
-   object is inbetween the given bounds. This enables the case for
-   intersection types.
-*)
-
 Fixpoint vset n := match n with
                      | 0 => vl -> Prop
                      | S n => vset n -> vl -> Prop
                    end.
 
 Definition vseta := forall n, vset n.
-
-
-(* this is just a helper for pattern matching *)
-Inductive vset_match : nat -> Type :=
-| vsmatch: forall n, vset n -> vset_match n
-.
 
 Definition vseta_top: vseta :=
   fun n =>
@@ -528,27 +450,18 @@ Definition vseta_bot: vseta :=
     | S n => fun _ _ => False
     end.
 
-(* Subset relation for use in comprehensions with explicit index parameter *)
+(* Subset relation at given index n. *)
 Definition vset_sub_eq {n:nat}: vset n -> vset n -> Prop :=
   match n with
        | 0 => fun vs1 vs2 => True
        | S n => fun vs1 vs2 => forall vs' v, (vs1 vs' v) -> (vs2 vs' v)
        end.
 
-(* Subset relation closing over all n, for use in the vesta lattice, e.g., monotonicity check*)
+(* Subset relation closing over all n.*)
 Definition vseta_sub_eq (vs1: vseta) (vs2: vseta) :=
   forall n, vset_sub_eq (vs1 n) (vs2 n).
 
-Require Coq.Program.Wf.
-
-(* Signature of the logical relations on types and terms, for readability *)
-Definition Ty_Vseta : Type  := list vseta -> list vseta -> ty -> forall n, (vset n -> vl -> Prop).
-Hint Unfold Ty_Vseta.
-Definition Tm_Vseta : Type  := list vseta -> list vseta -> tm -> forall n, (vset n -> vl -> Prop).
-Hint Unfold Tm_Vseta.
-
-
-(* Require no termination proof and is invertible *)
+(* Requires no termination proof and is invertible *)
 Inductive logrel_ty: list vseta -> list vseta -> ty -> forall n, vset n -> vl -> Prop :=
 | LTop: forall Gamma GH n vsn v, logrel_ty Gamma GH TTop n vsn v
 | LTMem: forall Gamma GH n T1 vsn1 T2 vsn2 vl1 vl2 H Tx vsn,
