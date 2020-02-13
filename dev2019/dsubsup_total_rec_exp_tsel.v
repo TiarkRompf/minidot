@@ -27,6 +27,7 @@ Inductive var : Type :=
 | varB : id -> var (* locally-bound variable *)
 .
 
+(* TODO: we might as well just put terms and types into a single inductive definition *)
 Inductive ty : Type :=
 | TTop : ty
 | TBot : ty
@@ -579,6 +580,9 @@ Definition val_type (env: list vseta) (GH:list vseta) (T : ty) n (dd: vset n) (v
 
 Definition val_term (env: list vseta) (GH:list vseta) (t : tm) n (dd: vset n) (v:vl) := val_type' env GH (inr t) n dd v.
 
+Hint Unfold val_type.
+Hint Unfold val_term.
+
 
 Ltac ev := repeat match goal with
                     | H: exists _, _ |- _ => destruct H
@@ -625,16 +629,7 @@ Lemma val_type_unfold: forall env GH T n dd v, val_type env GH T n dd v =
                       (dd (dy n0) vy -> val_type env GH T2 n0 (dy n0) vy)
       end
 
-    | _, TSel (tvar (varF x)) =>
-      match indexr x env with
-        | Some jj => jj (S n) dd v
-        | _ => False
-      end
-    | _, TSel (tvar (varH x)) =>
-      match indexr x GH with
-        | Some jj => jj (S n) dd v
-        | _ => False
-      end
+    | _, TSel tm => val_term env GH tm n dd v
 
     | _, TAnd T1 T2 =>
       val_type env GH T1 n dd v /\ val_type env GH T2 n dd v
@@ -647,10 +642,24 @@ Lemma val_type_unfold: forall env GH T n dd v, val_type env GH T n dd v =
       True
     | _,_ =>
       False
-  end.
+  end
+with val_term_unfold: forall env GH t n dd v, val_term env GH t n dd v =
+       match t with
+       | (tvar (varF x)) =>
+         match indexr x env with
+         | Some jj => jj (S n) dd v
+         | _ => False
+         end
+       |  (tvar (varH x)) =>
+         match indexr x GH with
+         | Some jj => jj (S n) dd v
+         | _ => False
+         end
+       | (ttyp T) => val_type env GH T n dd v
+       | _ => False (* TODO: other term forms *)
+end.
 
-
-
+(* TODO: try to prove the new definition, even if it is obvious. *)
 Proof. (*
   intros. unfold val_type at 1. unfold val_type_func.
   unfold_sub val_type (val_type env GH T n dd v).
