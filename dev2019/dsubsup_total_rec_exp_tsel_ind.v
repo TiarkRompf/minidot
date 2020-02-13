@@ -419,7 +419,6 @@ Definition vseta_sub_eq (vs1: vseta) (vs2: vseta) :=
 
 Definition renv := list vseta.
 
-(* Requires no termination proof and is invertible *)
 Inductive logrel_ty: renv  -> ty -> forall n, vset n -> vl -> Prop :=
 | LTop: forall rho n vsn v,
     logrel_ty rho TTop n vsn v
@@ -431,11 +430,12 @@ Inductive logrel_ty: renv  -> ty -> forall n, vset n -> vl -> Prop :=
     vset_sub_eq vsn vsn2 ->
     logrel_ty rho (TMem T1 T2) n vsn (vty H Tx)
 
-| LTAll: forall rho n T1 T2 vsn1 vl1 vsn H T0 t,
-    logrel_ty rho T1 n vsn1 vl1 ->
+| LTAll: forall rho n T1 T2 vsn H T0 t,
+    (* Rejected due to negative position *)
+    (forall vsn1 vl1, logrel_ty rho T1 n vsn1 vl1 ->
     (exists (vs2 : vseta) vl2,
       tevaln (vl1 :: H) t vl2
-      /\ forall k, logrel_ty (vs2 :: rho) (open (varF (length rho)) T2) k (vs2 k) vl2) ->
+      /\ forall k, logrel_ty (vs2 :: rho) (open (varF (length rho)) T2) k (vs2 k) vl2)) ->
     logrel_ty rho (TAll T1 T2) n vsn (vabs H T0 t)
 
 | LTSel: forall rho n t vsn v,
@@ -511,6 +511,18 @@ Theorem full_total_safety : forall e Gamma T,
 Proof.
   intros ? ? ? W.
   induction W; intros ? ? WFE.
+  5: {
+    eexists. exists (vty venv0 T1).
+    split. exists 0.
+    intros. destruct n. omega. auto.
+    unfold R_env in WFE. destruct WFE as [Hlen1 [Hlen2  Hlookup]].
+    intros.
+    econstructor.
+
+    -
+    auto. simpl.
+  }
+
   - unfold R_env in WFE. destruct WFE as [Hlen1 [Hlen2  Hlookup]].
     apply Hlookup in H.
     destruct H as [d0 [v0 [? [? ?]]]].
