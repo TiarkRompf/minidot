@@ -510,16 +510,7 @@ Inductive vset_match : nat -> Type :=
 | vsmatch: forall n, vset n -> vset_match n
 .
 
-
 Require Coq.Program.Wf.
-
-(* Signature of the logical relations on types and terms, for readability *)
-Definition Ty_Vseta : Type  := list vseta -> list vseta -> ty -> forall n, (vset n -> vl -> Prop).
-Hint Unfold Ty_Vseta.
-Definition Tm_Vseta : Type  := list vseta -> list vseta -> tm -> forall n, (vset n -> vl -> Prop).
-Hint Unfold Tm_Vseta.
-
-
 
 (* Mutually recursive program fixpoints currently do not work (cf.  https://github.com/coq/coq/issues/8675), which is why we define the logical relation on the disjoint union ty + tm. *)
 Program Fixpoint val_type' (env: list vseta) (GH:list vseta) (T_tm : ty + tm) n (dd: vset n) (v:vl) {measure (size_flat T_tm)}: Prop :=
@@ -602,20 +593,7 @@ Ltac inv_mem := match goal with
                 end.
 
 
-(* Next Obligation. compute. repeat split; intros; ev; inversion H2; inversion H3. (* try solve by inversion.*) Qed. *)
-(* Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H5; inversion H6. Qed. *)
-(* Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H5. Qed. *)
-(* Next Obligation. compute. repeat split; intros; ev; inversion H2; inversion H6. Qed. *)
-(* Next Obligation. compute. repeat split; intros; ev; inversion H3; inversion H4; inversion H6. Qed. *)
-(* Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H6.  Qed. *)
-(* Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H5.  Qed. *)
-(* Next Obligation. compute. repeat split; intros; ev; inversion H2; inversion H4.  Qed. *)
-(* Next Obligation. compute. repeat split; intros; ev; inversion H3; inversion H4.  Qed. *)
-(* Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H5.  Qed. *)
-(* Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H6.  Qed. *)
-(* Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H5.  Qed. *)
-(* Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H5.  Qed. *)
-(* Next Obligation. compute. repeat split; intros; ev; inversion H4; inversion H5.  Qed. *)
+
 
 
 (*
@@ -629,6 +607,7 @@ Ltac inv_mem := match goal with
 Import Coq.Program.Wf.
 Import WfExtensionality.
 
+(* TODO: adapt to new logical relation  *)
 Lemma val_type_unfold: forall env GH T n dd v, val_type env GH T n dd v =
   match v,T with
     | vabs env1 T0 y, TAll T1 T2 =>
@@ -794,9 +773,9 @@ Hint Resolve ex_intro.
 (* ############################################################ *)
 
 
-Ltac crush :=
-  try solve [eapply stp_selx; compute; eauto; crush];
-  try solve [eapply stp_selax; compute; eauto; crush];
+Ltac crush := (* TODO: this has changed *)
+  (* try solve [eapply stp_selx; compute; eauto; crush]; *)
+  (* try solve [eapply stp_selax; compute; eauto; crush]; *)
   try solve [econstructor; compute; eauto; crush];
   try solve [eapply t_sub; crush].
 
