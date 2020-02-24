@@ -894,6 +894,8 @@ Definition spliceat n (V: (venv*ty)) :=
     | (G,T) => (G,splice n T)
   end.
 
+(* The order of splicing and substitution is permutable if the free var is  *)
+(* beyond the splice point. *)
 Lemma splice_open_permute: forall {X} (G0:list X) T2 n j,
 (open_rec j (varF (n + S (length G0))) (splice (length G0) T2)) =
 (splice (length G0) (open_rec j (varF (n + length G0)) T2)).
@@ -1053,27 +1055,26 @@ Proof.
   intros. apply (closed_inc_mult i k T H i k); omega.
 Qed.
 
-(* TODO: Commented out this lemma. Re-check if this is needed or not! *)
-(* Lemma closed_splice_idem: forall i k T n, *)
-(*                             closed i k T -> *)
-(*                             n >= k -> *)
-(*                             splice n T = T. *)
-(* Proof. *)
-(*   intros. induction H; eauto. *)
-(*   - (* TAll *) simpl. *)
-(*     rewrite IHclosed1. rewrite IHclosed2. *)
-(*     reflexivity. *)
-(*     assumption. assumption. *)
-(*   - (* TVarF *) simpl. *)
-(*     case_eq (le_lt_dec n x). intros.  *)
-(*     inversion H; simpl; reflexivity. *)
-(*   - (* TMem *) simpl. *)
-(*     rewrite IHclosed1. rewrite IHclosed2. *)
-(*     reflexivity. *)
-(*     (* assumption. assumption. *) *)
-(*   - simpl. rewrite IHclosed. reflexivity. (* assumption. *) *)
-(*   - simpl. rewrite IHclosed1. rewrite IHclosed2. reflexivity. (* assumption. assumption. *) *)
-(* Qed. *)
+Lemma closed_splice_idem: forall i j T n,
+                            closed i j T ->
+                            n >= j ->
+                            splice n T = T.
+Proof.
+  intros. induction H; eauto.
+  - (* TAll *) simpl.
+    rewrite IHclosed1. rewrite IHclosed2.
+    reflexivity.
+    assumption. assumption.
+  - (* TVarF *) simpl.
+    case_eq (le_lt_dec n x). intros.
+    inversion H; omega. eauto.
+  - (* TMem *) simpl.
+    rewrite IHclosed1. rewrite IHclosed2.
+    reflexivity.
+    assumption. assumption.
+  - simpl. rewrite IHclosed. reflexivity. assumption.
+  - simpl. rewrite IHclosed1. rewrite IHclosed2. reflexivity. assumption. assumption.
+Qed.
 
 Lemma stp_closed : forall G T1 T2,
                      stp G T1 T2 ->
@@ -1812,6 +1813,14 @@ Proof.
     apply IHGH.
 Qed.
 
+Lemma indexr_hit02: forall {X : Type} GH (jj : X),
+    (exists jj0, indexr 0 (jj :: GH) = Some jj0).
+Proof. 
+  intros X GH. induction GH.
+  - intros. exists jj. reflexivity.
+  - intros. simpl. destruct (length GH) eqn:H. exists a. reflexivity.
+    assert (length GH > 0). omega. eapply indexr_has in H0. eassumption.
+Qed.
 
 (* TODO: this lemma is not used except in extendH *)
 
@@ -2222,60 +2231,72 @@ Proof.
 Qed.
 
 
-Lemma vtp_subst: forall T venv jj v x d k GH,
+(* Lemma vtp_subst: forall T venv jj v x d k GH, *)
+(*   closed 1 (length venv) T -> *)
+(*   indexr x venv = Some jj -> *)
+(*   (vtp venv (GH ++ [jj]) (open (varH 0) (splice 0 T)) k (d k) v <-> *)
+(*    vtp venv GH (open (varF x) T) k (d k) v). *)
+(* Proof. intros. eapply vtp_subst2_aux. eauto. eassumption. omega. assumption. Qed. *)
+Lemma vtp_subst: forall T venv jj v x d k,
   closed 1 (length venv) T ->
   indexr x venv = Some jj ->
-  (vtp venv (GH ++ [jj]) (open (varH 0) (splice 0 T)) k (d k) v <->
-   vtp venv GH (open (varF x) T) k (d k) v).
+  (vtp (venv ++ [jj]) (open (varF 0) (splice 0 T)) k (d k) v <->
+   vtp venv (open (varF x) T) k (d k) v).
 Proof. intros. eapply vtp_subst2_aux. eauto. eassumption. omega. assumption. Qed.
 
 
 (* used in invert_dabs *)
+(* TODO: not sure how to adpat this one *)
 Lemma vtp_subst2: forall venv jj v x d k  T2,
-  closed 1 0 (length venv) T2 ->
-  val_type venv [jj] (open (varH 0) T2) k (d k) v ->
+  closed 1 (length venv) T2 ->
+  (* val_type (venv ++ [jj]) (open (varF 0) T2) k (d k) v -> *)
+  val_type (venv ++ [jj]) (open (varF 0) (splice 0 T2)) k (d k) v ->
   indexr x venv = Some jj ->
-  val_type venv [] (open (varF x) T2) k (d k) v.
+  val_type venv (open (varF x) T2) k (d k) v.
 Proof.
-  intros. apply vv in H0. assert ([jj] = ([] ++ [jj])). simpl. reflexivity.
-  rewrite H2 in H0. assert (splice 0 T2 = T2). eapply closed_splice_idem.
-  eassumption. omega. rewrite <- H3 in H0. eapply vtp_subst in H0. apply unvv. eassumption.
-  simpl. assumption. assumption.
+  intros. apply vv in H0. (* assert (splice 0 T2 = T2). eapply closed_splice_idem. *)
+  (* eassumption. omega. *)
+  apply unvv. eapply vtp_subst. assumption. eassumption. assumption.
+  (* rewrite <- H2 in H0. eapply vtp_subst in H0. apply unvv. eassumption. *)
+  (* simpl. assumption. assumption. *)
 Qed.
 
 (* used in valtp_bounds *)
 Lemma vtp_subst2_general: forall venv jj v x T2 d k,
-  closed 1 0 (length venv) T2 ->
+  closed 1 (length venv) T2 ->
   indexr x venv = Some jj ->
-  ( vtp venv [jj] (open (varH 0) T2) k (d k) v <->
-    vtp venv [] (open (varF x) T2) k (d k) v).
+  ( vtp (venv ++ [jj]) (open (varF 0) (splice 0 T2)) k (d k) v <->
+    vtp venv (open (varF x) T2) k (d k) v).
 Proof.
   intros. split.
-  - (* Case "->". *) intros. assert ([jj] = ([] ++ [jj])). simpl. reflexivity.
-  rewrite H2 in H1. assert (splice 0 T2 = T2). eapply closed_splice_idem.
-  eassumption. omega. rewrite <- H3 in H1. eapply vtp_subst in H1. eassumption.
-  simpl. assumption. assumption.
-  - (* Case "<-". *) intros.  assert ([jj] = ([] ++ [jj])). simpl. reflexivity.
-  assert (splice 0 T2 = T2). eapply closed_splice_idem. eassumption. omega.
-  eapply vtp_subst in H1; try eassumption. rewrite <- H2 in H1. rewrite H3 in H1.
-  assumption.
+  - (* Case "->". *) intros. (* assert ([jj] = ([] ++ [jj])). simpl. reflexivity. *)
+  (* rewrite H2 in H1. assert (splice 0 T2 = T2). eapply closed_splice_idem. *)
+  (* eassumption. omega. rewrite <- H3 in H1. *) eapply vtp_subst. 
+  assumption. eassumption. assumption.
+  - (* Case "<-". *) intros.  (* assert ([jj] = ([] ++ [jj])). simpl. reflexivity. *)
+  (* assert (splice 0 T2 = T2). eapply closed_splice_idem. eassumption. omega. *)
+  eapply vtp_subst in H1; try eassumption. (* rewrite <- H2 in H1. rewrite H3 in H1. *)
+  (* assumption. *)
 Qed.
 
 
 (* used in vabs case of main theorem *)
 Lemma vtp_subst3: forall venv jj v T2 d k,
-  closed 1 0 (length venv) T2 ->
-  val_type (jj::venv) [] (open (varF (length venv)) T2) k (d k) v ->
-  val_type venv [jj] (open (varH 0) T2) k (d k) v.
+  closed 1 (length venv) T2 ->
+  val_type (jj::venv) (open (varF (length venv)) T2) k (d k) v ->
+  val_type (venv ++ [jj]) (open (varF 0) (splice 0 T2)) k (d k) v.
 Proof.
-  intros. apply unvv. assert (splice 0 T2 = T2) as EE. eapply closed_splice_idem. eassumption. omega.
-  assert (vtp (jj::venv0) ([] ++ [jj]) (open (varH 0) (splice 0 T2)) k (d k) v).
+  intros. apply unvv. (* assert (splice 0 T2 = T2) as EE. eapply closed_splice_idem. eassumption. omega. *)
+  assert (vtp (jj::venv0) (open (varF 0) (splice 0 T2)) k (d k) v).
   assert (indexr (length venv0) (jj :: venv0) = Some jj). simpl.
-    replace (beq_nat (length venv0) (length venv0) ) with true. reflexivity.
-    apply beq_nat_refl.
-  eapply vtp_subst. simpl. eapply closed_upgrade_freef. eassumption. omega. eassumption.
-  apply vv. assumption.
-  simpl in *. rewrite EE in H1. eapply valtp_shrinkM. apply unvv. eassumption.
+  replace (beq_nat (length venv0) (length venv0) ) with true. reflexivity.
+  apply beq_nat_refl.
+  eapply vtp_subst. simpl. (* eapply closed_upgrade_freef. *) eapply closed_splice. eassumption.
+  (* TODO: how to unify existential hypothesis with ?jj? *)
+  (* eapply indexr_hit02.  *) admit.
+  (* omega. eassumption. *) admit.
+  (* apply vv. assumption. *)
+  (* simpl in *. rewrite EE in H1. *) eapply valtp_shrinkM. apply unvv. eassumption.
   apply closed_open. simpl. eapply closed_upgrade_free. eassumption. omega.
   constructor. simpl. omega.
 Qed.
@@ -2716,10 +2737,10 @@ Qed.
 
 
 Lemma valtp_widen: forall kf (df:vseta) vf GH H G1 T1 T2,
-  val_type GH [] T1 kf (df kf) vf ->
-  stp G1 [] T1 T2 ->
+  val_type GH T1 kf (df kf) vf ->
+  stp G1 T1 T2 ->
   R_env H GH G1 ->
-  vtp GH [] T2 kf (df kf) vf.
+  vtp GH T2 kf (df kf) vf.
 Proof.
   intros. destruct H2 as [L1 [L2 A]]. symmetry in L2.
   eapply valtp_widen_aux; try eassumption; try reflexivity.
@@ -2733,7 +2754,7 @@ Qed.
 
 Lemma wf_env_extend: forall vx jj G1 R1 H1 T1,
   R_env H1 R1 G1 ->
-  (forall n, val_type (jj::R1) [] T1 n (jj n) vx) ->
+  (forall n, val_type (jj::R1) T1 n (jj n) vx) ->
   R_env (vx::H1) (jj::R1) (T1::G1).
 Proof.
   intros. unfold R_env in *. destruct H as [L1 [L2 U]].
@@ -2753,11 +2774,11 @@ Qed.
 
 Lemma wf_env_extend0: forall vx jj G1 R1 H1 T1,
   R_env H1 R1 G1 ->
-  (forall n, val_type R1 [] T1 n (jj n) vx) ->
+  (forall n, val_type R1 T1 n (jj n) vx) ->
   R_env (vx::H1) (jj::R1) (T1::G1).
 Proof.
   intros.
-  assert (forall n, val_type (jj::R1) [] T1 n (jj n) vx) as V0.
+  assert (forall n, val_type (jj::R1) T1 n (jj n) vx) as V0.
   intro. eapply unvv. eapply valtp_extend. eapply H0.
   eapply wf_env_extend; assumption.
 Qed.
@@ -2808,7 +2829,7 @@ Qed.
 (* main theorem *)
 Theorem full_total_safety : forall e tenv T,
   has_type tenv e T -> forall venv renv, R_env venv renv tenv ->
-  exists (d: vseta) v, tevaln venv e v /\ forall k, val_type renv [] T k (d k) v.
+  exists (d: vseta) v, tevaln venv e v /\ forall k, val_type renv T k (d k) v.
 Proof.
   intros ? ? ? W.
   induction W; intros ? ? WFE.
