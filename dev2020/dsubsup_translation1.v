@@ -59,7 +59,6 @@ Definition id := nat.
 (* term variables occurring in types *)
 Inductive var : Type :=
 | varF : id -> var (* free, in concrete environment *)
-| varH : id -> var (* free, in abstract environment  *)
 | varB : id -> var (* locally-bound variable *)
 .
 
@@ -112,57 +111,54 @@ Fixpoint indexr {X : Type} (n : id) (l : list X) : option X :=
       if (beq_nat n (length l')) then Some a else indexr n l'
   end.
 
-Inductive closed: nat(*B*) -> nat(*H*) -> nat(*F*) -> ty -> Prop :=
-| cl_top: forall i j k,
-    closed i j k TTop
-| cl_bot: forall i j k,
-    closed i j k TBot
-| cl_all: forall i j k T1 T2,
-    closed i j k T1 ->
-    closed (S i) j k T2 ->
-    closed i j k (TAll T1 T2)
+Inductive closed: nat(*B*) -> nat(*F*) -> ty -> Prop :=
+| cl_top: forall i j,
+    closed i j TTop
+| cl_bot: forall i j,
+    closed i j TBot
+| cl_all: forall i j T1 T2,
+    closed i j T1 ->
+    closed (S i) j T2 ->
+    closed i j (TAll T1 T2)
 (* Now we have mutually recursive definitions for closedness on types and terms! *)
-| cl_sel_tm: forall i j k t,
-    closed_tm i j k t ->
-    closed i j k (TSel t)
-| cl_mem: forall i j k T1 T2,
-    closed i j k T1 ->
-    closed i j k T2 ->
-    closed i j k (TMem T1 T2)
-| cl_bind: forall i j k T,
-    closed (S i) j k T ->
-    closed i j k (TBind T)
-| cl_and: forall i j k T1 T2,
-    closed i j k T1 ->
-    closed i j k T2 ->
-    closed i j k (TAnd T1 T2)
+| cl_sel_tm: forall i j t,
+    closed_tm i j t ->
+    closed i j (TSel t)
+| cl_mem: forall i j T1 T2,
+    closed i j T1 ->
+    closed i j T2 ->
+    closed i j (TMem T1 T2)
+| cl_bind: forall i j T,
+    closed (S i) j T ->
+    closed i j (TBind T)
+| cl_and: forall i j T1 T2,
+    closed i j T1 ->
+    closed i j T2 ->
+    closed i j (TAnd T1 T2)
 
 
-with closed_tm: nat(*B*) -> nat(*H*) -> nat(*F*) -> tm -> Prop :=
-| cl_tvarb: forall i j k x,
+with closed_tm: nat(*B*) -> nat(*F*) -> tm -> Prop :=
+| cl_tvarb: forall i j x,
     i > x ->
-    closed_tm i j k (tvar (varB x))
-| cl_tvarh: forall i j k x,
+    closed_tm i j (tvar (varB x))
+| cl_tvarf: forall i j x,
     j > x ->
-    closed_tm i j k (tvar (varH x))
-| cl_tvarf: forall i j k x,
-    k > x ->
-    closed_tm i j k (tvar (varF x))
-| cl_ttyp:  forall i j k ty,
-    closed i j k ty ->
-    closed_tm i j k (ttyp ty)
-| cl_tabs:  forall i j k ty tm,
-    closed i j k ty ->
-    closed_tm (S i) j k tm ->
-    closed_tm i j k (tabs ty tm)
-| cl_tapp:  forall i j k tm1 tm2,
-    closed_tm i j k tm1 ->
-    closed_tm i j k tm2 ->
-    closed_tm i j k (tapp tm1 tm2)
-| cl_tunpack: forall i j k tm1 tm2,
-    closed_tm i j k tm1 ->
-    closed_tm (S i) j k tm2 ->
-    closed_tm i j k (tunpack tm1 tm2)
+    closed_tm i j (tvar (varF x))
+| cl_ttyp:  forall i j ty,
+    closed i j ty ->
+    closed_tm i j (ttyp ty)
+| cl_tabs:  forall i j ty tm,
+    closed i j ty ->
+    closed_tm (S i) j tm ->
+    closed_tm i j (tabs ty tm)
+| cl_tapp:  forall i j tm1 tm2,
+    closed_tm i j tm1 ->
+    closed_tm i j tm2 ->
+    closed_tm i j (tapp tm1 tm2)
+| cl_tunpack: forall i j tm1 tm2,
+    closed_tm i j tm1 ->
+    closed_tm (S i) j tm2 ->
+    closed_tm i j (tunpack tm1 tm2)
 .
 
 (* open define a locally-nameless encoding wrt to TVarB type variables. *)
@@ -173,9 +169,6 @@ Fixpoint open_rec (k: nat) (u: var) (T: ty) { struct T }: ty :=
     | TBot        => TBot
     | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
     | TSel tm => TSel (open_rec_tm k u tm)
-    (* | TSel (tvar (varF x)) => TSel (tvar (varF x)) *)
-    (* | TSel (tvar (varH i)) => TSel (tvar (varH i)) *)
-    (* | TSel (tvar (varB i)) => if beq_nat k i then TSel (tvar u) else TSel (tvar (varB i)) *)
     | TMem T1 T2  => TMem (open_rec k u T1) (open_rec k u T2)
     | TBind T => TBind (open_rec (S k) u T)
     | TAnd T1 T2 => TAnd (open_rec k u T1) (open_rec k u T2)
@@ -184,7 +177,6 @@ Fixpoint open_rec (k: nat) (u: var) (T: ty) { struct T }: ty :=
 with open_rec_tm (k: nat) (u: var) (t: tm) { struct t }: tm :=
        match t with
        | tvar (varF x) => tvar (varF x)
-       | tvar (varH x) => tvar (varH x)
        | tvar (varB x) =>
          if beq_nat k x then (tvar u) else (tvar (varB x))
        | ttyp ty => ttyp (open_rec k u ty)
@@ -195,54 +187,6 @@ with open_rec_tm (k: nat) (u: var) (t: tm) { struct t }: tm :=
 
 Definition open u T := open_rec 0 u T.
 Definition open_tm u t := open_rec_tm 0 u t.
-
-(* Locally-nameless encoding with respect to varH variables. *)
-Fixpoint subst (U : var) (T : ty) {struct T} : ty :=
-  match T with
-    | TTop         => TTop
-    | TBot         => TBot
-    | TAll T1 T2   => TAll (subst U T1) (subst U T2)
-    | TSel t       => TSel (subst_tm U t)
-    | TMem T1 T2     => TMem (subst U T1) (subst U T2)
-    | TBind T       => TBind (subst U T)
-    | TAnd T1 T2    => TAnd (subst U T1)(subst U T2)
-  end
-
-with subst_tm (U: var) (t: tm) {struct t} : tm :=
-       match t with
-       | tvar (varB i) => (tvar (varB i))
-       | tvar (varF i) => (tvar (varF i))
-       | tvar (varH i) => if beq_nat i 0 then tvar U else  (tvar (varH (i-1)))
-       | ttyp ty => ttyp (subst U ty)
-       | tabs ty tm => tabs (subst U ty) (subst_tm U tm)
-       | tapp tm1 tm2 => tapp (subst_tm U tm1) (subst_tm U tm2)
-       | tunpack tm1 tm2 => tunpack (subst_tm U tm1) (subst_tm U tm2)
-       end.
-
-Fixpoint nosubst (T : ty) {struct T} : Prop :=
-  match T with
-    | TTop         => True
-    | TBot         => True
-    | TAll T1 T2   => nosubst T1 /\ nosubst T2
-    (* | TSel (tvar (varB i)) => True *)
-    (* | TSel (tvar (varF i)) => True *)
-    (* | TSel (tvar (varH i)) => i <> 0 *)
-    | TSel t       => nosubst_tm t
-    | TMem T1 T2    => nosubst T1 /\ nosubst T2
-    | TBind T       => nosubst T
-    | TAnd T1 T2    => nosubst T1 /\ nosubst T2
-  end
-
-with nosubst_tm (t: tm) {struct t} : Prop :=
-       match t with
-       | tvar (varB _) => True
-       | tvar (varF _) => True
-       | tvar (varH i) => i <> 0
-       | ttyp ty =>  nosubst ty
-       | tabs ty tm => (nosubst ty) /\ (nosubst_tm tm)
-       | tapp tm1 tm2 => (nosubst_tm tm1) /\ (nosubst_tm tm2)
-       | tunpack tm1 tm2 => (nosubst_tm tm1) /\ (nosubst_tm tm2)
-       end.
 
 (* ### Type Assignment ### *)
 Inductive is_type: tenv -> ty -> Set :=
@@ -309,7 +253,7 @@ with has_type : tenv -> tm -> ty -> Set :=
 | t_app: forall env f x T1 T2,
            has_type env f (TAll T1 T2) ->
            has_type env x T1 ->
-           closed 0 0 (length env) T2 -> (* TODO: dependent app! *)
+           closed 0 (length env) T2 -> (* TODO: dependent app! *)
            has_type env (tapp f x) T2
 (*
 | t_dapp:forall env f x T1 T2 T,
@@ -338,6 +282,7 @@ Module F.
 Inductive tm : Type :=
 | TTyp : tm
 | TTop : tm
+| TBot : tm
 | TAll : tm -> tm -> tm
 | TSig : tm -> tm -> tm
 | tvar : var -> tm
@@ -353,11 +298,11 @@ Definition tenv := list (tm * tm).
 Fixpoint open_rec (k: nat) (u: var) (T: tm) { struct T }: tm :=
   match T with
   | TTop        => TTop
+  | TBot        => TBot
   | TTyp        => TTyp
   | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
   | TSig T1 T2  => TSig (open_rec k u T1) (open_rec (S k) u T2)
   | tvar (varF x) => tvar (varF x)
-  | tvar (varH x) => tvar (varH x)
   | tvar (varB x) =>
     if beq_nat k x then (tvar u) else (tvar (varB x))
   | tabs ty tm => tabs (open_rec k u ty) (open_rec (S k) u tm)
@@ -491,7 +436,7 @@ Admitted.
 Theorem ttpok:
   forall G T (IT: is_type G T), forall G1, F.has_type G1 (ttp _ _ IT) F.TTyp.
 Proof.
-  apply (is_type_ind_mut
+  apply (is_type_ind_mut (* TODO this is not defined yet *)
            (fun G T IT => forall G1, F.has_type G1 (ttp _ _ IT) F.TTyp)
            (fun G e T HT => forall G1, F.has_type G1 (ttm _ _ _ HT) (ttp _ _ (htwf _ _ _ HT)))).
 
@@ -551,5 +496,3 @@ Proof.
     admit.
 
 Admitted.
-
-
