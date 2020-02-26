@@ -305,7 +305,8 @@ Notation "⋆" := (Kind Star).
 
 Definition tenv := list tm.
 
-Fixpoint open_rec (k: nat) (u: var) (T: tm) { struct T }: tm :=
+(*TODO: is it ok if we generalize opening w. arbitrary terms? *)
+Fixpoint open_rec (k: nat) (u: tm) (T: tm) { struct T }: tm :=
   match T with
   | ⋆           => ⋆
   | ◻           => ◻
@@ -315,7 +316,7 @@ Fixpoint open_rec (k: nat) (u: var) (T: tm) { struct T }: tm :=
   | TSig T1 T2  => TSig (open_rec k u T1) (open_rec (S k) u T2)
   | tvar (varF x) => tvar (varF x)
   | tvar (varB x) =>
-    if beq_nat k x then (tvar u) else (tvar (varB x))
+    if beq_nat k x then u else (tvar (varB x))
   | tabs ty tm => tabs (open_rec k u ty) (open_rec (S k) u tm)
   | tapp tm1 tm2 => tapp (open_rec k u tm1) (open_rec k u tm2)
   | tsig tm1 tm2 => tsig (open_rec k u tm1) (open_rec (S k) u tm2)
@@ -323,7 +324,8 @@ Fixpoint open_rec (k: nat) (u: var) (T: tm) { struct T }: tm :=
   | tsnd tm => tsnd (open_rec k u tm)
   end.
 
-Definition open u T := open_rec 0 u T.
+Definition open u T := open_rec 0 (tvar u) T.
+Definition open' t T := open_rec 0 t T.
 
 Inductive tenv_wf: tenv -> Prop :=
 | tenv_wf_empty:
@@ -371,28 +373,27 @@ with has_type : tenv -> tm -> tm -> Prop :=
 | t_app: forall Gamma f e T1 T2 T,
     has_type Gamma f (TAll T1 T2) ->
     has_type Gamma e T1 ->
-    (* TODO: dependent app, need to subst! *)
-(*    T = open (varF x) T2 -> *)
-(*    closed 0 0 (length Gamma) T -> *)
+    T = (open' e T2) ->
     has_type Gamma (tapp f e) T
 
 | t_sig: forall Gamma e1 e2 T1 T2,
     has_type Gamma e1 T1 ->
-    has_type Gamma e2 T2 -> (* deps! *)
-    has_type Gamma (tsig e1 e1) (TSig T1 T2)
+    has_type Gamma e2 (open' e1 T2) ->
+    has_type Gamma (tsig e1 e1) (TSig T1 T2) (* TODO: type annotation required? *)
 
 | t_fst: forall Gamma e T1 T2,
     has_type Gamma e (TSig T1 T2) ->
     has_type Gamma (tfst e) T1
 
-| t_snd: forall Gamma e T1 T2,
-    has_type Gamma e (TSig T1 T2) -> (* deps! *)
-    has_type Gamma (tsnd e) T2
-
+| t_snd: forall Gamma e T1 T2 T,
+    has_type Gamma e (TSig T1 T2) ->
+    T = (open' (tfst e) T2) ->
+    has_type Gamma (tsnd e) T
 .
 
-
-
+(* TODO: move module to separate file *)
+(* TODO: define reduction/evaluation *)
+(* TODO: define strong normalization *)
 
 End F.
 
