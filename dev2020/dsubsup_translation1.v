@@ -279,10 +279,15 @@ with has_type : tenv -> tm -> ty -> Set :=
 
 Module F.
 
-Inductive tm : Type :=
-| TTyp : tm
-| TTop : tm
-| TBot : tm
+Inductive kind : Type :=
+| Box :  kind
+| Star : kind
+.
+
+Inductive tm : Type := (* TODO what about equality types? *)
+| Kind : kind -> tm
+| TTop : tm (* TODO really needed? *)
+| TBot : tm (* TODO really needed? *)
 | TAll : tm -> tm -> tm
 | TSig : tm -> tm -> tm
 | tvar : var -> tm
@@ -293,13 +298,19 @@ Inductive tm : Type :=
 | tsnd : tm -> tm
 .
 
-Definition tenv := list (tm * tm).
+(* \square *)
+Notation "◻" := (Kind Box).
+(* \star *)
+Notation "⋆" := (Kind Star).
+
+Definition tenv := list tm.
 
 Fixpoint open_rec (k: nat) (u: var) (T: tm) { struct T }: tm :=
   match T with
+  | ⋆           => ⋆
+  | ◻           => ◻
   | TTop        => TTop
   | TBot        => TBot
-  | TTyp        => TTyp
   | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
   | TSig T1 T2  => TSig (open_rec k u T1) (open_rec (S k) u T2)
   | tvar (varF x) => tvar (varF x)
@@ -314,47 +325,70 @@ Fixpoint open_rec (k: nat) (u: var) (T: tm) { struct T }: tm :=
 
 Definition open u T := open_rec 0 u T.
 
+Inductive tenv_wf: tenv -> Prop :=
+| tenv_wf_empty:
+    tenv_wf []
 
-Inductive has_type : tenv -> tm -> tm -> Prop :=
-| t_var: forall x env T1 TP,
-    indexr x env = Some (T1, TP) ->
-    has_type env TP TTyp ->
-    has_type env (tvar (varF x)) T1
-| t_all: forall G T1 T2,
-    has_type G T1 TTyp ->
-    has_type ((T1,TTyp)::G) (open (varF (length G)) T2) TTyp ->
-    has_type G (TAll T1 T2) TTyp
-| t_sigt: forall G T1 T2,
-    has_type G T1 TTyp ->
-    has_type ((T1,TTyp)::G) (open (varF (length G)) T2) TTyp ->
-    has_type G (TSig T1 T2) TTyp
-| t_typ: forall G,
-    has_type G TTyp TTyp (* could introduce Box if we don't want this *)
-| t_top: forall G,
-    has_type G TTop TTyp
+| tenv_wf_kind: forall Gamma T U,
+    tenv_wf Gamma ->
+    has_type Gamma T (Kind U) ->
+    tenv_wf (T :: Gamma)
 
-| t_app:forall env f e T1 T2 T,
-    has_type env f (TAll T1 T2) ->
-    has_type env e T1 ->
+with has_type : tenv -> tm -> tm -> Prop :=
+| t_box: forall Gamma,
+    has_type Gamma ⋆ ◻
+
+| t_var: forall x Gamma T,
+    tenv_wf Gamma ->
+    indexr x Gamma = Some T ->
+    has_type Gamma (tvar (varF x)) T
+
+| t_allt: forall Gamma T1 T2 U U',
+    has_type Gamma T1 (Kind U) -> (* not strictly necessary  *)
+    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Kind U') ->
+    has_type Gamma (TAll T1 T2) (Kind U') (* TODO is U' = Box needed at all? *)
+
+| t_sigt: forall Gamma T1 T2 U U',
+    (* TODO this leads to logical inconsistency,
+       should fix U to ⋆, or try infinite hierarchy of kinds
+       (cf. Luo's ECC resp. LEGO system). Arthur's libln model of CC shows how to model hierarchy in Coq) *)
+    has_type Gamma T1 (Kind U) -> (* not strictly necessary here*)
+    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Kind U') ->
+    has_type Gamma (TSig T1 T2) (Kind U') (* TODO is U' = Box needed at all? *)
+
+| t_topt: forall Gamma,
+    has_type Gamma TTop ⋆
+
+| t_bott: forall Gamma,
+    has_type Gamma TBot ⋆
+
+| t_abs: forall Gamma t T1 T2 U U',
+    has_type Gamma T1 (Kind U) -> (* not strictly necessary *)
+    has_type Gamma (TAll T1 T2) (Kind U') ->
+    has_type (T1 :: Gamma) t (open (varF (length Gamma)) T2) ->
+    has_type Gamma (tabs T1 t) (TAll T1 T2)
+
+| t_app: forall Gamma f e T1 T2 T,
+    has_type Gamma f (TAll T1 T2) ->
+    has_type Gamma e T1 ->
     (* TODO: dependent app, need to subst! *)
 (*    T = open (varF x) T2 -> *)
-(*    closed 0 0 (length env) T -> *)
-    has_type env (tapp f e) T
-| t_abs: forall env y T1 T2,
-    has_type env T1 TTyp ->
-    has_type ((T1,TTyp)::env) y (open (varF (length env)) T2) ->
-    has_type env (tabs T1 y) (TAll T1 T2)
+(*    closed 0 0 (length Gamma) T -> *)
+    has_type Gamma (tapp f e) T
 
-| t_fst: forall env e T1 T2,
-    has_type env e (TSig T1 T2) ->
-    has_type env (tfst e) T1
-| t_snd: forall env e T1 T2,
-    has_type env e (TSig T1 T2) -> (* deps! *)
-    has_type env (tsnd e) T2
-| t_sig: forall env e1 e2 T1 T2,
-    has_type env e1 T1 ->
-    has_type env e2 T2 -> (* deps! *)
-    has_type env (tsig e1 e1) (TSig T1 T2)
+| t_sig: forall Gamma e1 e2 T1 T2,
+    has_type Gamma e1 T1 ->
+    has_type Gamma e2 T2 -> (* deps! *)
+    has_type Gamma (tsig e1 e1) (TSig T1 T2)
+
+| t_fst: forall Gamma e T1 T2,
+    has_type Gamma e (TSig T1 T2) ->
+    has_type Gamma (tfst e) T1
+
+| t_snd: forall Gamma e T1 T2,
+    has_type Gamma e (TSig T1 T2) -> (* deps! *)
+    has_type Gamma (tsnd e) T2
+
 .
 
 
@@ -365,12 +399,12 @@ End F.
 Fixpoint ttp G T (ty: is_type G T): F.tm :=
   match ty with
   | t_top _ => F.TTop
-  | t_bot _ => F.TTop (*!*)
+  | t_bot _ => F.TBot
   | t_all _ _ _ T1 T2 => F.TAll (ttp _ _ T1) (ttp _ _ T2)
   | t_mem _ _ _ T1 T2 =>
     let f1 := F.TAll (ttp _ _ T1) (F.tvar (varB 1)) in
     let f2 := F.TAll (F.tvar (varB 2)) (ttp _ _ T2) in
-    F.TSig F.TTyp (F.TSig f1 f2) (* XXX check *)
+    F.TSig F.Star (F.TSig f1 f2) (* XXX check *)
   | t_sel _ _ _ _ _ _ e => F.tfst (ttm _ _ _ e)
   end
 with ttm G e T (tm: has_type G e T): F.tm :=
@@ -394,7 +428,7 @@ Lemma shotgun1: forall env T1 T2,
 Admitted.
 Lemma shotgun2: forall env e T1 T2,
     F.has_type env e T2 ->
-    F.has_type ((T1, F.TTyp) :: env) (F.open_rec 0 (varF (length env)) e) T2.
+    F.has_type ((T1, F.Star) :: env) (F.open_rec 0 (varF (length env)) e) T2.
 Admitted.
 
 
@@ -434,10 +468,10 @@ Admitted.
 (* Theorem: translation is well-typed *)
 (* todo: need an env predicate to relate G and G1 *)
 Theorem ttpok:
-  forall G T (IT: is_type G T), forall G1, F.has_type G1 (ttp _ _ IT) F.TTyp.
+  forall G T (IT: is_type G T), forall G1, F.has_type G1 (ttp _ _ IT) F.Star.
 Proof.
   apply (is_type_ind_mut (* TODO this is not defined yet *)
-           (fun G T IT => forall G1, F.has_type G1 (ttp _ _ IT) F.TTyp)
+           (fun G T IT => forall G1, F.has_type G1 (ttp _ _ IT) F.Star)
            (fun G e T HT => forall G1, F.has_type G1 (ttm _ _ _ HT) (ttp _ _ (htwf _ _ _ HT)))).
 
   - (* TTop *) econstructor.
