@@ -736,28 +736,28 @@ Definition R_env venv genv tenv :=
 
 
 (* automation *)
-Hint Unfold venv.
-Hint Unfold tenv.
+Hint Unfold venv : core.
+Hint Unfold tenv : core.
 
-Hint Unfold open.
-Hint Unfold indexr.
-Hint Unfold length.
+Hint Unfold open : core.
+Hint Unfold indexr : core.
+Hint Unfold length : core.
 
 (* Hint Unfold R. *)
-Hint Unfold R_env.
+Hint Unfold R_env : core.
 
-Hint Constructors ty.
-Hint Constructors tm.
-Hint Constructors vl.
+Hint Constructors ty : core.
+Hint Constructors tm : core.
+Hint Constructors vl : core.
 
-Hint Constructors closed.
-Hint Constructors has_type.
-Hint Constructors stp.
+Hint Constructors closed : core.
+Hint Constructors has_type : core.
+Hint Constructors stp : core.
 
-Hint Constructors option.
-Hint Constructors list.
+Hint Constructors option : core.
+Hint Constructors list : core.
 
-Hint Resolve ex_intro.
+Hint Resolve ex_intro : core.
 
 (* ############################################################ *)
 (* Examples *)
@@ -810,7 +810,7 @@ Proof.
 Qed.
 
 
-Hint Immediate wf_length.
+Hint Immediate wf_length : core.
 
 (* from Coq 8.6 SfLib *)
 
@@ -1330,8 +1330,8 @@ Proof.
     eauto.
 Qed.
 
-Hint Resolve beq_nat_true_iff.
-Hint Resolve beq_nat_false_iff.
+Hint Resolve beq_nat_true_iff : core.
+Hint Resolve beq_nat_false_iff : core.
 
 Lemma closed_no_open: forall T x i k,
   closed i k T ->
