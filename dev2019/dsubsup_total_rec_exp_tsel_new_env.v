@@ -327,9 +327,9 @@ with has_type : tenv -> tm -> ty -> Prop :=
 
 (* intersection typing *)
 | t_and : forall env x T1 T2,
-    has_type env (tvar x) T1 ->
-    has_type env (tvar x) T2 ->
-    has_type env (tvar x) (TAnd T1 T2)
+    has_type env (tvar (varF x)) T1 ->
+    has_type env (tvar (varF x)) T2 ->
+    has_type env (tvar (varF x)) (TAnd T1 T2)
 
 | t_typ: forall env T1,
     closed 0 (length env) T1 ->
@@ -2770,19 +2770,9 @@ Proof.
     eapply HVY. rewrite (wf_length2 _ _ _ WFE). assumption.
 
   - (* Case "And". *)
-    destruct x as [x|x].
-    destruct (invert_var x env (TAnd T1 T2) (t_and env (varF x) T1 T2 W1 W2) venv0 renv WFE) as [d [v [E [I [D V]]]]].
-    exists d. exists v. split. apply E. apply V.
-    (* show that varB case is not possible:  *)
-    specialize (IHW1 venv0 renv).
-    apply IHW1 in WFE.
-    destruct WFE as [d0 [v0 [Heval _]]].
-    destruct Heval.
-    assert (Hcontra: teval (S x0) venv0 (tvar (varB x)) = Some (Some v0)). {
-      apply H. auto.
-    }
-    simpl in Hcontra.
-    discriminate.
+    destruct (invert_var x env (TAnd T1 T2) (t_and env x T1 T2 W1 W2) venv0 renv WFE) as [d [v [E [I [D V]]]]].
+    exists d. exists v.
+    split. auto. auto.
 
   - (* Case "Typ". *)
 
