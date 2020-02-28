@@ -51,14 +51,12 @@ Require Import Coq.Program.Equality.
 Require Import Omega.
 Require Import Coq.Lists.List.
 Import ListNotations.
-Require Import variables.
 
-Require Import cc.
+Require Import languages.
 (* make ⋆ and ◻ available *)
 Import CC.Notations.
 Open Scope cc_scope.
 
-Require Import dsubsup.
 Import D. (* Dsubsup language *)
 
 Fixpoint ttp G T (ty: is_type G T): CC.tm :=
