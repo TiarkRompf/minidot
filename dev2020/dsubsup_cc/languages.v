@@ -236,7 +236,41 @@ with has_type : tenv -> tm -> ty -> Set :=
 *)
 .
 
-(* TODO: big-step evaluator, metatheory *)
+Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
+  match n with
+    | 0 => None
+    | S n =>
+      match t with
+      | tvar (varF x) => Some (indexr x env)
+      (* remove varH *)
+        (* | tvar (varH x) => Some None *)
+        | tvar (varB x) => Some None
+        | ttyp T       => Some (Some (vty env T))
+        | tabs T y     => Some (Some (vabs env T y))
+        | tapp ef ex   =>
+          match teval n env ex with
+            | None => None
+            | Some None => Some None
+            | Some (Some vx) =>
+              match teval n env ef with
+                | None => None
+                | Some None => Some None
+                | Some (Some (vty _ _)) => Some None
+                | Some (Some (vabs env2 _ ey)) =>
+                  teval n (vx::env2) ey
+              end
+          end
+        | tunpack ex ey =>
+          match teval n env ex with
+            | None => None
+            | Some None => Some None
+            | Some (Some vx) =>
+              teval n (vx::env) ey
+          end
+      end
+  end.
+
+Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some (Some v).
 
 End D.
 
@@ -269,6 +303,11 @@ Inductive tm : Type := (* TODO what about equality types? *)
 | tsnd : tm -> tm
 .
 
+(* Note: pairs are *not* values, because we allow sigma types at the type-level only atm *)
+Inductive vl : Type :=
+(* a closure for a lambda abstraction *)
+| vabs : list vl (*H*) -> tm -> tm -> vl. (* TODO: do we need to ensure that a proper type is put into the first tm arg?  *)
+
 Module Notations.
 
 (* \square *)
@@ -281,6 +320,7 @@ End Notations.
 Import Notations.
 
 Definition tenv := list tm.
+Definition venv := list vl.
 
 Open Scope cc_scope.
 
@@ -318,7 +358,7 @@ Inductive has_type : tenv -> tm -> tm -> Prop :=
     has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Kind U') ->
     has_type Gamma (TAll T1 T2) (Kind U')
 
-| t_sigt: forall Gamma T1 T2, (* support strong Sigma-types consistently *)
+| t_sigt: forall Gamma T1 T2, (* support strong Sigma-types consistently, for now, have them at the type level *)
     has_type Gamma T1 ◻ ->
     has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) ◻ ->
     has_type Gamma (TSig T1 T2) ◻
@@ -354,9 +394,37 @@ Inductive has_type : tenv -> tm -> tm -> Prop :=
     has_type Gamma e (TSig T1 T2) ->
     T = (open' (tfst e) T2) ->
     has_type Gamma (tsnd e) T
+
+(* TODO equality/tconv? *)
 .
 
-(* TODO: define reduction/evaluation *)
+Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
+  match n with
+  | 0 => None
+  | S n =>
+    match t with
+    | tvar (varF x) => Some (indexr x env)
+    (* remove varH *)
+    (* | tvar (varH x) => Some None *)
+    | tvar (varB x) => Some None
+    | tabs T y     =>  Some (Some (vabs env T y))
+    | tapp ef ex   =>
+      match teval n env ex with
+      | None => None
+      | Some None => Some None
+      | Some (Some vx) =>
+        match teval n env ef with
+        | None => None
+        | Some None => Some None
+        | Some (Some (vabs env2 _ ey)) => teval n (vx::env2) ey
+        end
+      end
+    | _ => None
+    end
+  end.
+
+Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some (Some v).
+
 (* TODO: define strong normalization *)
 
 End CC.
