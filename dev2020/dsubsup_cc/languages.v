@@ -282,6 +282,9 @@ End D.
 
 Declare Scope cc_scope.
 
+Require Import FunInd.
+Require Import Recdef.
+
 Module CC.
 
 Inductive kind : Type :=
@@ -345,6 +348,47 @@ Fixpoint open_rec (k: nat) (u: tm) (T: tm) { struct T }: tm :=
 Definition open u T := open_rec 0 (tvar u) T.
 Definition open' t T := open_rec 0 t T.
 
+Inductive closed: nat(*B*) -> nat(*F*) -> tm -> Prop :=
+| cl_kind: forall i j U,
+    closed i j (Kind U)
+| cl_top: forall i j,
+    closed i j TTop
+| cl_bot: forall i j,
+    closed i j TBot
+| cl_all: forall i j T1 T2,
+    closed i j T1 ->
+    closed (S i) j T2 ->
+    closed i j (TAll T1 T2)
+| cl_sig: forall i j T1 T2,
+    closed i j T1 ->
+    closed (S i) j T2 ->
+    closed i j (TSig T1 T2)
+| cl_tvarb: forall i j x,
+    i > x ->
+    closed i j (tvar (varB x))
+| cl_tvarf: forall i j x,
+    j > x ->
+    closed i j (tvar (varF x))
+| cl_tabs:  forall i j ty tm,
+    closed i j ty ->
+    closed (S i) j tm ->
+    closed i j (tabs ty tm)
+| cl_tapp:  forall i j tm1 tm2,
+    closed i j tm1 ->
+    closed i j tm2 ->
+    closed i j (tapp tm1 tm2)
+| cl_tsig:  forall i j tm1 tm2,
+    closed i j tm1 ->
+    closed i j tm2 ->
+    closed i j (tsig tm1 tm2)
+| cl_tfst:  forall i j tm,
+    closed i j tm ->
+    closed i j (tfst tm)
+| cl_tsnd:  forall i j tm,
+    closed i j tm ->
+    closed i j (tsnd tm)
+.
+
 Inductive has_type : tenv -> tm -> tm -> Prop :=
 | t_box: forall Gamma,
     has_type Gamma ⋆ ◻
@@ -404,8 +448,6 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
   | S n =>
     match t with
     | tvar (varF x) => Some (indexr x env)
-    (* remove varH *)
-    (* | tvar (varH x) => Some None *)
     | tvar (varB x) => Some None
     | tabs T y     =>  Some (Some (vabs env T y))
     | tapp ef ex   =>
@@ -425,6 +467,47 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
 
 Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some (Some v).
 
+Fixpoint tsize_flat(T: tm) :=
+  match T with
+    | TTop => 1
+    | TBot => 1
+    | TAll T1 T2 => S (tsize_flat T1 + tsize_flat T2)
+    | TSig T1 T2 => S (tsize_flat T1 + tsize_flat T2)
+    | _ => 0
+  end.
+Lemma open_preserves_size: forall T x j,
+    tsize_flat T = tsize_flat (open_rec j (tvar (varF x)) T).
+Proof.
+  intros T. induction T; intros; simpl; eauto. simpl.
+  - destruct k; auto.
+  - destruct v; eauto.  simpl; destruct (beq_nat j i); eauto.
+Qed.
+
+(* Definition vset k := *)
+(*   match k with *)
+(*   | Box => _ *)
+(*   | Star => vl -> Prop *)
+(*   end *)
+
+Definition vset: Type := vl -> Prop.
+Definition renv := list vset.
+
+Function val_type (rho: renv) (T: tm) (v: vl) {measure tsize_flat T} : Prop :=
+  match T, v with
+  | TTop, _ => True
+  (* | TAll x x0 => _ *)
+  (* | TSig x x0 => _ *)
+  (* | tvar x => _ *)
+  (* | tabs x x0 => _ *)
+  (* | tapp x x0 => _ *)
+  (* | tsig x x0 => _ *)
+  (* | tfst x => _ *)
+  (* | tsnd x => _ *)
+  | _, _ => False
+  end.
+Qed.
+
+(* TODO val_type_unfold *)
 (* TODO: define strong normalization *)
 
 End CC.
