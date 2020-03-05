@@ -514,18 +514,18 @@ Definition vset := vl -> Prop.
                  - Middle ground: Try different approach to modelling the syntax using GADTs that
                    are indexed over the sorts ⋆ ◻ (they are not part of the term, type, and kind syntax) (see below)
  *)
-Fixpoint kind_set Gamma K (proof: has_type Gamma K ◻): Type :=
-  match proof with
-  | t_box _ =>
-    vset
-  | t_allt Gamma T1 T2 Box _ p1 p2 =>
-    (kind_set Gamma T1 p1) -> (kind_set Gamma T2 p2)
-  | t_allt Gamma _ T2 Star _ _ p2 =>
-    (kind_set Gamma T2 p2)
-  (* | t_sigt Gamma T1 T2 U U' x x0 x1 => _ *)
-  | t_var x Gamma T U lookup psort =>
-    vset (* FIXME: This case *cannot* happen, but can't make coq aware of it *)
-  end.
+(* Fixpoint kind_set Gamma K (proof: has_type Gamma K ◻): Type := *)
+(*   match proof with *)
+(*   | t_box _ => *)
+(*     vset *)
+(*   | t_allt Gamma T1 T2 Box _ p1 p2 => *)
+(*     (kind_set Gamma T1 p1) -> (kind_set Gamma T2 p2) *)
+(*   | t_allt Gamma _ T2 Star _ _ p2 => *)
+(*     (kind_set Gamma T2 p2) *)
+(*   (* | t_sigt Gamma T1 T2 U U' x x0 x1 => _ *) *)
+(*   | t_var x Gamma T U lookup psort => *)
+(*     vset (* FIXME: This case *cannot* happen, but can't make coq aware of it *) *)
+(*   end. *)
 
 (* GADT approach:
 (* terms and types are separate GADTs indexed by their sort, classifying their universe  *)
@@ -566,7 +566,24 @@ Function val_type (rho: renv) (T: tm) (v: vl) {measure tsize_flat T} : Prop :=
   end.
 Qed.
 
+
 (* TODO val_type_unfold *)
-(* TODO: define strong normalization *)
+
+Definition R_env gamma rho Gamma :=
+  length gamma = length Gamma /\
+  length rho = length Gamma /\
+  forall x TX, indexr x Gamma = Some TX ->
+          (exists (vsx:vset) vx,
+              indexr x gamma = Some vx /\
+              indexr x rho = Some vsx /\
+              val_type rho TX vx).
+
+Definition strong_normalization := forall e Gamma T,
+      has_type Gamma e T ->
+      has_type Gamma T ⋆ ->
+      forall gamma rho, R_env gamma rho Gamma ->
+              exists v, tevaln gamma e v.
+
+(* TODO: prove strong normalization *)
 
 End CC.
