@@ -14,7 +14,7 @@ Import ListNotations.
 
 Definition id := nat.
 
-(* term variables occurring in types *)
+(* term variables occurring in types, both languages share the same variables definition *)
 Inductive var : Type :=
 | varF : id -> var (* free, in concrete environment *)
 | varB : id -> var (* locally-bound variable *)
@@ -287,13 +287,13 @@ Require Import Recdef.
 
 Module CC.
 
-Inductive kind : Type :=
-| Box :  kind
-| Star : kind
+Inductive sort : Type :=
+| Star : sort (* Universe of CC types *)
+| Box :  sort (* Universe of CC kinds  *)
 .
 
 Inductive tm : Type := (* TODO what about equality types? *)
-| Kind : kind -> tm
+| Sort : sort -> tm
 | TTop : tm (* TODO really needed? *)
 | TBot : tm (* TODO really needed? *)
 | TAll : tm -> tm -> tm
@@ -309,14 +309,15 @@ Inductive tm : Type := (* TODO what about equality types? *)
 (* Note: pairs are *not* values, because we allow sigma types at the type-level only atm *)
 Inductive vl : Type :=
 (* a closure for a lambda abstraction *)
-| vabs : list vl (*H*) -> tm -> tm -> vl. (* TODO: do we need to ensure that a proper type is put into the first tm arg?  *)
+| vabs : list vl (*H*) -> tm -> tm -> vl.
+(* TODO: do we need to ensure that a proper type is put into the first tm arg?  *)
 
 Module Notations.
 
 (* \square *)
-Notation "◻" := (Kind Box) : cc_scope.
+Notation "◻" := (Sort Box) : cc_scope.
 (* \star *)
-Notation "⋆" := (Kind Star) : cc_scope.
+Notation "⋆" := (Sort Star) : cc_scope.
 
 End Notations.
 
@@ -350,7 +351,7 @@ Definition open' t T := open_rec 0 t T.
 
 Inductive closed: nat(*B*) -> nat(*F*) -> tm -> Prop :=
 | cl_kind: forall i j U,
-    closed i j (Kind U)
+    closed i j (Sort U)
 | cl_top: forall i j,
     closed i j TTop
 | cl_bot: forall i j,
@@ -389,22 +390,38 @@ Inductive closed: nat(*B*) -> nat(*F*) -> tm -> Prop :=
     closed i j (tsnd tm)
 .
 
+(* TODO: not clear if needed *)
+(* Inductive ctx_wf: tenv -> Prop := *)
+(* | wf_empty: *)
+(*     ctx_wf [] *)
+(* | wf_sort: forall Gamma T U, *)
+(*     ctx_wf Gamma -> *)
+(*     has_type Gamma T (Sort U) -> *)
+(*     ctx_wf (T :: Gamma) *)
+(* with *)
+
 Inductive has_type : tenv -> tm -> tm -> Prop :=
 | t_box: forall Gamma,
     has_type Gamma ⋆ ◻
 
-| t_var: forall x Gamma T,
+| t_var: forall x Gamma T U,
+    (* ctx_wf Gamma -> *)
     indexr x Gamma = Some T ->
+    has_type Gamma T (Sort U) ->
     has_type Gamma (tvar (varF x)) T
 
 | t_allt: forall Gamma T1 T2 U U',
-    has_type Gamma T1 (Kind U) ->
-    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Kind U') ->
-    has_type Gamma (TAll T1 T2) (Kind U')
+    has_type Gamma T1 (Sort U) ->
+    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Sort U') ->
+    has_type Gamma (TAll T1 T2) (Sort U')
 
-| t_sigt: forall Gamma T1 T2, (* support strong Sigma-types consistently, for now, have them at the type level *)
-    has_type Gamma T1 ◻ ->
-    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) ◻ ->
+(* Enable consistent strong Sigma-types, (cf. Definition 5.1 in [Geuvers '94]),
+   forbidding (◻, ⋆, ⋆), (⋆, ◻, ⋆), (◻, ◻, ⋆), (⋆, ⋆, ◻) in the formation rule.
+   While we could allow (⋆, ⋆, ⋆), which we leave out for simplicity. *)
+| t_sigt: forall Gamma T1 T2 U U',
+    has_type Gamma T1 (Sort U) ->
+    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Sort U') ->
+    (U = Box \/ U' = Box) ->
     has_type Gamma (TSig T1 T2) ◻
 
 | t_topt: forall Gamma,
@@ -414,8 +431,8 @@ Inductive has_type : tenv -> tm -> tm -> Prop :=
     has_type Gamma TBot ⋆
 
 | t_abs: forall Gamma t T1 T2 U U',
-    has_type Gamma T1 (Kind U) ->
-    has_type Gamma (TAll T1 T2) (Kind U') ->
+    has_type Gamma T1 (Sort U) ->
+    has_type Gamma (TAll T1 T2) (Sort U') ->
     has_type (T1 :: Gamma) t (open (varF (length Gamma)) T2) ->
     has_type Gamma (tabs T1 t) (TAll T1 T2)
 
@@ -469,40 +486,82 @@ Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some
 
 Fixpoint tsize_flat(T: tm) :=
   match T with
-    | TTop => 1
-    | TBot => 1
-    | TAll T1 T2 => S (tsize_flat T1 + tsize_flat T2)
-    | TSig T1 T2 => S (tsize_flat T1 + tsize_flat T2)
-    | _ => 0
+  | TTop => 1
+  | TBot => 1
+  | TAll T1 T2 => S (tsize_flat T1 + tsize_flat T2)
+  | TSig T1 T2 => S (tsize_flat T1 + tsize_flat T2)
+  | _ => 0
   end.
 Lemma open_preserves_size: forall T x j,
     tsize_flat T = tsize_flat (open_rec j (tvar (varF x)) T).
 Proof.
   intros T. induction T; intros; simpl; eauto. simpl.
-  - destruct k; auto.
+  - destruct s; auto.
   - destruct v; eauto.  simpl; destruct (beq_nat j i); eauto.
 Qed.
 
-(* Definition vset k := *)
-(*   match k with *)
-(*   | Box => _ *)
-(*   | Star => vl -> Prop *)
-(*   end *)
+Definition vset := vl -> Prop.
 
-Definition vset: Type := vl -> Prop.
+(* FIXME:
+   We have to compute the *types* of the sets that kinds are interpreted by, i.e.,
+   this is a dependent type indexed by the kinds in the system (cf. Geuvers '94). Since we lump
+   everything into one syntactic category, we'll have to define this
+   inductively over typing derivations yielding ◻. But we'll run into trouble (see below).
+
+   Alternatives: - Define kind_set relationally, via Inductive
+                 - Properly separate kindes, types, and terms in mutually dependent definitions,
+                   leading to lots of duplication
+                 - Middle ground: Try different approach to modelling the syntax using GADTs that
+                   are indexed over the sorts ⋆ ◻ (they are not part of the term, type, and kind syntax) (see below)
+ *)
+Fixpoint kind_set Gamma K (proof: has_type Gamma K ◻): Type :=
+  match proof with
+  | t_box _ =>
+    vset
+  | t_allt Gamma T1 T2 Box _ p1 p2 =>
+    (kind_set Gamma T1 p1) -> (kind_set Gamma T2 p2)
+  | t_allt Gamma _ T2 Star _ _ p2 =>
+    (kind_set Gamma T2 p2)
+  (* | t_sigt Gamma T1 T2 U U' x x0 x1 => _ *)
+  | t_var x Gamma T U lookup psort =>
+    vset (* FIXME: This case *cannot* happen, but can't make coq aware of it *)
+  end.
+
+(* GADT approach:
+(* terms and types are separate GADTs indexed by their sort, classifying their universe  *)
+Inductive ty: sort -> Type :=
+| TAll : forall s s',
+    ty s -> ty s' -> ty s'
+| TSig : forall s s',
+    ty s -> ty s' -> ty s'
+| TTm: forall s,
+    tm s -> ty s
+with tm: sort -> Type :=
+| tvar : forall s,
+    var -> tm s (* TODO: might make sense to index variables with their sort *)
+| tabs : forall s s',
+    ty s -> tm s' -> tm s'
+| tapp : forall s s',
+    tm s -> tm s' -> tm s (* TODO: correct? *)
+| tsig : forall s s',
+    ty s -> tm s' -> tm s'
+| tfst : forall s, tm s -> tm s
+| tsnd : forall s, tm s -> tm s
+| tty: forall s, ty s -> tm s
+.
+
+Potentially interesting, since we could define
+a sort-indexed evaluator, that describes evaluation/normalization
+at runtime and at type level.
+*)
+
+
 Definition renv := list vset.
 
+(* TODO*)
 Function val_type (rho: renv) (T: tm) (v: vl) {measure tsize_flat T} : Prop :=
   match T, v with
   | TTop, _ => True
-  (* | TAll x x0 => _ *)
-  (* | TSig x x0 => _ *)
-  (* | tvar x => _ *)
-  (* | tabs x x0 => _ *)
-  (* | tapp x x0 => _ *)
-  (* | tsig x x0 => _ *)
-  (* | tfst x => _ *)
-  (* | tsnd x => _ *)
   | _, _ => False
   end.
 Qed.
