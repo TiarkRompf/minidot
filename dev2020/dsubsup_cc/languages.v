@@ -149,26 +149,31 @@ with open_rec_tm (k: nat) (u: var) (t: tm) { struct t }: tm :=
 Definition open u T := open_rec 0 u T.
 Definition open_tm u t := open_rec_tm 0 u t.
 
-(* ### Type Assignment ### *)
-Inductive is_type: tenv -> ty -> Set :=
-| t_top: forall G, is_type G TTop
-| t_bot: forall G, is_type G TBot
-| t_mem: forall G T1 T2, is_type G T1 -> is_type G T2 -> is_type G (TMem T1 T2)
-| t_all: forall G T1 T2,
-    is_type G T1 ->
-    is_type (T1::G) (open (varF (length G)) T2) ->
-    is_type G (TAll T1 T2)
-| t_sel: forall G e T1 T2,
-    is_type G T1 -> (* redundant, but needed for induction(?) *)
-    is_type G T2 ->
-    has_type G e (TMem T1 T2) ->
-    is_type G (TSel e)
+(* ### Type Formation & Assignment ### *)
+Inductive ty_wf: tenv -> ty -> Set :=
+| wf_top: forall Gamma,
+    ty_wf Gamma TTop
+| wf_bot: forall Gamma,
+    ty_wf Gamma TBot
+| wf_mem: forall Gamma T1 T2,
+    ty_wf Gamma T1 ->
+    ty_wf Gamma T2 ->
+    ty_wf Gamma (TMem T1 T2)
+| wf_all: forall Gamma T1 T2,
+    ty_wf Gamma T1 ->
+    ty_wf (T1::Gamma) (open (varF (length Gamma)) T2) ->
+    ty_wf Gamma (TAll T1 T2)
+| wf_sel: forall Gamma e T1 T2,
+    ty_wf Gamma T1 -> (* redundant, but needed for induction(?) *)
+    ty_wf Gamma T2 ->
+    has_type Gamma e (TMem T1 T2) ->
+    ty_wf Gamma (TSel e)
 
 with has_type : tenv -> tm -> ty -> Set :=
-| t_var: forall x env T1,
-           indexr x env = Some T1 ->
-           is_type env T1 ->
-           has_type env (tvar (varF x)) T1
+| t_var: forall x Gamma T1,
+    indexr x Gamma = Some T1 ->
+    ty_wf Gamma T1 ->
+    has_type Gamma (tvar (varF x)) T1
 
 (*
 (* pack a recursive type  *)
@@ -179,60 +184,60 @@ with has_type : tenv -> tm -> ty -> Set :=
            closed 1 0 (length G1) T1 ->
            has_type G1 (tvar (varF x)) (TBind T1)
 (* unpack a recursive type: unpack(x:{z=>T^z}) { x:T^x => ... }  *)
-| t_unpack: forall env x y T1 T1' T2,
-           has_type env x (TBind T1) ->
-           T1' = (open (varF (length env)) T1) ->
-           has_type (T1'::env) y T2 ->
-           closed 0 0 (length env) T2 ->
-           has_type env (tunpack x y) T2
+| t_unpack: forall Gamma x y T1 T1' T2,
+           has_type Gamma x (TBind T1) ->
+           T1' = (open (varF (length Gamma)) T1) ->
+           has_type (T1'::Gamma) y T2 ->
+           closed 0 0 (length Gamma) T2 ->
+           has_type Gamma (tunpack x y) T2
  *)
 
 (* type selection intro and elim forms *)
-| t_sel2: forall env e a T1,
-          has_type env a T1 ->
-          has_type env e (TMem T1 TTop) ->
-          has_type env a (TSel e)
+| t_seli: forall Gamma e a T1,
+          has_type Gamma a T1 ->
+          has_type Gamma e (TMem T1 TTop) ->
+          has_type Gamma a (TSel e)
 
-| t_sel1: forall env e a T1,
-          has_type env a (TSel e) ->
-          has_type env e (TMem TBot T1) ->
-          has_type env a T1
+| t_sele: forall Gamma e a T1,
+          has_type Gamma a (TSel e) ->
+          has_type Gamma e (TMem TBot T1) ->
+          has_type Gamma a T1
 
 
 (* intersection typing *)
 (*
-| t_and : forall env x T1 T2,
-           has_type env (tvar x) T1 ->
-           has_type env (tvar x) T2 ->
-           has_type env (tvar x) (TAnd T1 T2)
+| t_and : forall Gamma x T1 T2,
+           has_type Gamma (tvar x) T1 ->
+           has_type Gamma (tvar x) T2 ->
+           has_type Gamma (tvar x) (TAnd T1 T2)
 *)
 
-| t_typ: forall env T1,
-           is_type env T1 ->
-           has_type env (ttyp T1) (TMem T1 T1)
+| t_typ: forall Gamma T1,
+           ty_wf Gamma T1 ->
+           has_type Gamma (ttyp T1) (TMem T1 T1)
 
-| t_app: forall env f x T1 T2,
-           has_type env f (TAll T1 T2) ->
-           has_type env x T1 ->
-           closed 0 (length env) T2 -> (* TODO: dependent app! *)
-           has_type env (tapp f x) T2
+| t_app: forall Gamma f x T1 T2,
+           has_type Gamma f (TAll T1 T2) ->
+           has_type Gamma x T1 ->
+           closed 0 (length Gamma) T2 -> (* TODO: dependent app! *)
+           has_type Gamma (tapp f x) T2
 (*
-| t_dapp:forall env f x T1 T2 T,
-           has_type env f (TAll T1 T2) ->
-           has_type env (tvar (varF x)) T1 ->
+| t_dapp:forall Gamma f x T1 T2 T,
+           has_type Gamma f (TAll T1 T2) ->
+           has_type Gamma (tvar (varF x)) T1 ->
            T = open (varF x) T2 ->
-           closed 0 0 (length env) T ->
-           has_type env (tapp f (tvar (varF x))) T
+           closed 0 0 (length Gamma) T ->
+           has_type Gamma (tapp f (tvar (varF x))) T
 *)
-| t_abs: forall env y T1 T2,
-           is_type env T1 ->
-           has_type (T1::env) y (open (varF (length env)) T2) ->
-           has_type env (tabs T1 y) (TAll T1 T2)
+| t_abs: forall Gamma y T1 T2,
+           ty_wf Gamma T1 ->
+           has_type (T1::Gamma) y (open (varF (length Gamma)) T2) ->
+           has_type Gamma (tabs T1 y) (TAll T1 T2)
 (*
-| t_sub: forall env e T1 T2,
-           has_type env e T1 ->
-           stp env [] T1 T2 ->
-           has_type env e T2
+| t_sub: forall Gamma e T1 T2,
+           has_type Gamma e T1 ->
+           stp Gamma [] T1 T2 ->
+           has_type Gamma e T2
 *)
 .
 
@@ -292,6 +297,12 @@ Inductive sort : Type :=
 | Box :  sort (* Universe of CC kinds  *)
 .
 
+Definition sort_max (s s' : sort): sort :=
+  match s, s' with
+  | Box, _ | _, Box => Box
+  | _, _ => Star
+  end.
+
 Inductive tm : Type := (* TODO what about equality types? *)
 | Sort : sort -> tm
 | TTop : tm (* TODO really needed? *)
@@ -306,11 +317,14 @@ Inductive tm : Type := (* TODO what about equality types? *)
 | tsnd : tm -> tm
 .
 
-(* Note: pairs are *not* values, because we allow sigma types at the type-level only atm *)
 Inductive vl : Type :=
 (* a closure for a lambda abstraction *)
-| vabs : list vl (*H*) -> tm -> tm -> vl.
-(* TODO: do we need to ensure that a proper type is put into the first tm arg?  *)
+| vabs : list vl (*H*) -> tm -> tm -> vl (* TODO: do we need to ensure that a proper type is put into the first tm arg?  *)
+| vsig : vl -> vl -> vl
+.
+
+Definition tenv := list tm.
+Definition venv := list vl.
 
 Module Notations.
 
@@ -322,11 +336,8 @@ Notation "⋆" := (Sort Star) : cc_scope.
 End Notations.
 
 Import Notations.
-
-Definition tenv := list tm.
-Definition venv := list vl.
-
 Open Scope cc_scope.
+
 
 Fixpoint open_rec (k: nat) (u: tm) (T: tm) { struct T }: tm :=
   match T with
@@ -416,13 +427,12 @@ Inductive has_type : tenv -> tm -> tm -> Prop :=
     has_type Gamma (TAll T1 T2) (Sort U')
 
 (* Enable consistent strong Sigma-types, (cf. Definition 5.1 in [Geuvers '94]),
-   forbidding (◻, ⋆, ⋆), (⋆, ◻, ⋆), (◻, ◻, ⋆), (⋆, ⋆, ◻) in the formation rule.
-   While we could allow (⋆, ⋆, ⋆), which we leave out for simplicity. *)
+   forbidding (◻, ⋆, ⋆), (⋆, ◻, ⋆), (◻, ◻, ⋆), (⋆, ⋆, ◻) in the formation rule.*)
 | t_sigt: forall Gamma T1 T2 U U',
     has_type Gamma T1 (Sort U) ->
     has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Sort U') ->
     (U = Box \/ U' = Box) ->
-    has_type Gamma (TSig T1 T2) ◻
+    has_type Gamma (TSig T1 T2) (Sort (sort_max U U'))
 
 | t_topt: forall Gamma,
     has_type Gamma TTop ⋆
@@ -473,9 +483,20 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
       | Some None => Some None
       | Some (Some vx) =>
         match teval n env ef with
-        | None => None
         | Some None => Some None
         | Some (Some (vabs env2 _ ey)) => teval n (vx::env2) ey
+        | _ => None
+        end
+      end
+    | tsig t1 t2 =>
+      match teval n env t1 with
+      | None => None
+      | Some None => Some None
+      | Some (Some v1) =>
+        match teval n env t2 with
+        | None => None
+        | Some None => Some None
+        | Some (Some v2) => Some (Some (vsig v1 v2))
         end
       end
     | _ => None
