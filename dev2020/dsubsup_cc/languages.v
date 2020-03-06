@@ -411,7 +411,7 @@ Inductive closed: nat(*B*) -> nat(*F*) -> tm -> Prop :=
 (*     ctx_wf (T :: Gamma) *)
 (* with *)
 
-Inductive has_type : tenv -> tm -> tm -> Prop :=
+Inductive has_type : tenv -> tm -> tm -> Type :=
 | t_box: forall Gamma,
     has_type Gamma ⋆ ◻
 
@@ -428,10 +428,11 @@ Inductive has_type : tenv -> tm -> tm -> Prop :=
 
 (* Enable consistent strong Sigma-types, (cf. Definition 5.1 in [Geuvers '94]),
    forbidding (◻, ⋆, ⋆), (⋆, ◻, ⋆), (◻, ◻, ⋆), (⋆, ⋆, ◻) in the formation rule.*)
-| t_sigt: forall Gamma T1 T2 U U',
-    has_type Gamma T1 (Sort U) ->
-    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Sort U') ->
-    has_type Gamma (TSig T1 T2) (Sort (sort_max U U'))
+| t_sigt: forall Gamma T1 T2 U1 U2 U3,
+    U3 = sort_max U1 U2 ->
+    has_type Gamma T1 (Sort U1) ->
+    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Sort U2) ->
+    has_type Gamma (TSig T1 T2) (Sort U3)
 
 | t_topt: forall Gamma,
     has_type Gamma TTop ⋆
@@ -522,33 +523,36 @@ Qed.
 
 Definition vset := vl -> Prop.
 
-(* FIXME:
-   We have to compute the *types* of the sets that kinds are interpreted by, i.e.,
-   this is a dependent type indexed by the kinds in the system (cf. Geuvers '94). Since we lump
-   everything into one syntactic category, we'll have to define this
-   inductively over typing derivations yielding ◻. But we'll run into trouble (see below).
+(*
+  This computes the *types* of the sets that kinds represent (cf. V() interp Geuvers '94),
+  i.e., this is a dependent type indexed by the kinds in the system . Since we lump
+  everything into one syntactic category, we define it inductively over typing derivations yielding ◻. *)
+Fixpoint kind_set Gamma K (proof: has_type Gamma K ◻): Type :=
+  match proof with
+  | t_box _ => (* ⋆ *)
+    vset
+  | t_var x Gamma T Box _ T_is_kind =>
+    (kind_set Gamma T T_is_kind)
+  | t_allt Gamma T1 T2 Box Box T1_is_kind T2_is_kind =>  (* Πα:T1.T2, T1:◻ *)
+    let V1 := (kind_set Gamma T1 T1_is_kind) in
+    let V2 := (kind_set (T1 :: Gamma) (open (varF (length Gamma)) T2) T2_is_kind) in
+    V1 -> V2
+  | t_allt Gamma T1 T2 Star Box p1 p2 => (* Πα:T1.T2, T1:⋆ *)
+    (kind_set (T1 :: Gamma) (open (varF (length Gamma)) T2) p2)
+  | t_sigt Gamma T1 T2 Box Box Box _ T1_is_kind T2_is_kind => (* Σα:T1.T2, T1:◻, T2:◻  *)
+    let V1 := (kind_set Gamma T1 T1_is_kind) in
+    let V2 := (kind_set (T1 :: Gamma) (open (varF (length Gamma)) T2) T2_is_kind) in
+    V1 -> V2 -> Prop (* V1 × V2 *)
+  | t_sigt Gamma T1 T2 Star Box Box _ _ T2_is_kind => (* Σα:T1.T2, T1:⋆, T2:◻ *)
+    (kind_set (T1 :: Gamma) (open (varF (length Gamma)) T2) T2_is_kind)
+  | t_sigt Gamma T1 T2 Box Star Box _ T1_is_kind _ => (* Σα:T1.T2, T1:◻, T2:⋆ *)
+    (kind_set Gamma T1 T1_is_kind)
+  | _ => False
+  end.
 
-   Alternatives: - Define kind_set relationally, via Inductive
-                 - Properly separate kindes, types, and terms in mutually dependent definitions,
-                   leading to lots of duplication
-                 - Middle ground: Try different approach to modelling the syntax using GADTs that
-                   are indexed over the sorts ⋆ ◻ (they are not part of the term, type, and kind syntax) (see below)
- *)
-(* Fixpoint kind_set Gamma K (proof: has_type Gamma K ◻): Type := *)
-(*   match proof with *)
-(*   | t_box _ => *)
-(*     vset *)
-(*   | t_allt Gamma T1 T2 Box _ p1 p2 => *)
-(*     (kind_set Gamma T1 p1) -> (kind_set Gamma T2 p2) *)
-(*   | t_allt Gamma _ T2 Star _ _ p2 => *)
-(*     (kind_set Gamma T2 p2) *)
-(*   (* | t_sigt Gamma T1 T2 U U' x x0 x1 => _ *) *)
-(*   | t_var x Gamma T U lookup psort => *)
-(*     vset (* FIXME: This case *cannot* happen, but can't make coq aware of it *) *)
-(*   end. *)
-
-(* GADT approach:
-(* terms and types are separate GADTs indexed by their sort, classifying their universe  *)
+(* Design idea:
+   terms and types are separate GADTs indexed by their sort, classifying their universe.
+   Might yield more concise and readable definitions (such as kind_set).
 Inductive ty: sort -> Type :=
 | TAll : forall s s',
     ty s -> ty s' -> ty s'
