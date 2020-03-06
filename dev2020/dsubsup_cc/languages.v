@@ -431,7 +431,6 @@ Inductive has_type : tenv -> tm -> tm -> Prop :=
 | t_sigt: forall Gamma T1 T2 U U',
     has_type Gamma T1 (Sort U) ->
     has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Sort U') ->
-    (U = Box \/ U' = Box) ->
     has_type Gamma (TSig T1 T2) (Sort (sort_max U U'))
 
 | t_topt: forall Gamma,
