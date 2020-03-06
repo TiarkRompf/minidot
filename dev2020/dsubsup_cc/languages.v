@@ -524,7 +524,7 @@ Qed.
 Definition vset := vl -> Prop.
 
 (*
-  This computes the *types* of the sets that kinds represent (cf. V() interp Geuvers '94),
+  This computes the *types* of the sets that kinds represent (cf. V(_) interp in Geuvers '94),
   i.e., this is a dependent type indexed by the kinds in the system . Since we lump
   everything into one syntactic category, we define it inductively over typing derivations yielding ◻. *)
 Fixpoint kind_set Gamma K (proof: has_type Gamma K ◻): Type :=
@@ -582,14 +582,13 @@ at runtime and at type level.
 
 Definition renv := list vset.
 
-(* TODO*)
+(* TODO adapt the definitions in Geuvers '94, starting at p. 20 to sets of values *)
 Function val_type (rho: renv) (T: tm) (v: vl) {measure tsize_flat T} : Prop :=
   match T, v with
-  | TTop, _ => True
+  | TTOP, _ => True
   | _, _ => False
   end.
 Qed.
-
 
 (* TODO val_type_unfold *)
 
