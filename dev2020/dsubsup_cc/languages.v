@@ -585,7 +585,7 @@ Definition renv := list vset.
 (* TODO adapt the definitions in Geuvers '94, starting at p. 20 to sets of values *)
 Function val_type (rho: renv) (T: tm) (v: vl) {measure tsize_flat T} : Prop :=
   match T, v with
-  | TTOP, _ => True
+  | TTop, _ => True
   | _, _ => False
   end.
 Qed.
