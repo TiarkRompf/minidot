@@ -59,35 +59,52 @@ Open Scope cc_scope.
 
 Import D. (* Dsubsup language *)
 
-Fixpoint ttp G T (ty: is_type G T): CC.tm :=
-  match ty with
-  | t_top _ => CC.TTop
-  | t_bot _ => CC.TBot
-  | t_all _ _ _ T1 T2 => CC.TAll (ttp _ _ T1) (ttp _ _ T2)
-  | t_mem _ _ _ T1 T2 =>
-    let f1 := CC.TAll (ttp _ _ T1) (CC.tvar (varB 1)) in
-    let f2 := CC.TAll (CC.tvar (varB 2)) (ttp _ _ T2) in
-    CC.TSig ⋆ (CC.TSig f1 f2) (* XXX check *)
-  | t_sel _ _ _ _ _ _ e => CC.tfst (ttm _ _ _ e)
+(* type-directed translation of D into CC *)
+Fixpoint ttp Gamma T (wf: ty_wf Gamma T): CC.tm :=
+  match wf with
+  | wf_top _ =>
+    CC.TTop
+  | wf_bot _ =>
+    CC.TBot
+  | wf_all _ _ _ ty_wf_T1 ty_wf_T2 =>
+    CC.TAll (ttp _ _ ty_wf_T1) (ttp _ _ ty_wf_T2)
+  | wf_mem _ _ _ ty_wf_T1 ty_wf_T2 =>   (* Type L..U ~>  (Σα:⋆.(L → α × α → U)) : ◻ *)
+    let f1 := CC.TAll (ttp _ _ ty_wf_T1) (CC.tvar (varB 1)) in
+    let f2 := CC.TAll (CC.tvar (varB 2)) (ttp _ _ ty_wf_T2) in
+    CC.TSig ⋆ (CC.TSig f1 f2)
+  | wf_sel _ _ _ _ _ _ has_type_e =>
+    CC.tfst (ttm _ _ _ has_type_e)
   end
-with ttm G e T (tm: has_type G e T): CC.tm :=
-  match tm with
-  | t_var v _ _ _ _ => CC.tvar (varF v)
-  | t_typ _ _ T1 =>
-    let T1' := (ttp _ _ T1) in
-    let idfun := (CC.tabs T1' (CC.tvar (varF (length G)))) in
+with ttm Gamma t T (typing: has_type Gamma t T): CC.tm :=
+  match typing with
+  | t_var v _ _ _ _ =>
+    CC.tvar (varF v)
+  | t_typ _ _ ty_wf_T1 =>
+    let T1' := (ttp _ _ ty_wf_T1) in
+    (* let idfun := (CC.tabs T1' (CC.tvar (varF (length Gamma)))) in *)
+    let idfun := (CC.tabs T1' (CC.tvar (varB 0))) in (* TODO: confirm w. Tiark *)
+    (* TODO: it seems we need type annotations in tsig, since the result may
+       also be typed as Σα:⋆.(α→α×α→α), while we would like the type
+       Σα:⋆.(T1'→α×α→T1'). *)
     CC.tsig T1' (CC.tsig idfun idfun)
-  | t_sel2 _ _ _ _ T1 TM  => CC.tapp (CC.tfst (CC.tsnd (ttm _ _ _ TM))) (ttm _ _ _ T1)
-  | t_sel1 _ _ _ _ T1 TM  => CC.tapp (CC.tsnd (CC.tsnd (ttm _ _ _ TM))) (ttm _ _ _ T1)
-  | t_app _ _ _ _ _ T1 T2 _ => CC.tapp (ttm _ _ _ T1) (ttm _ _ _ T2)
-  | t_abs _ _ _ _ T1 T2 => CC.tapp (ttp _ _ T1) (ttm _ _ _ T2)
+  | t_seli _ _ _ _ has_type_a_T1 has_type_e_TM_T1_Top =>
+    let a' := (ttm _ _ _ has_type_a_T1) in
+    let e' := (ttm _ _ _ has_type_e_TM_T1_Top) in
+    CC.tapp (CC.tfst (CC.tsnd e')) a'
+  | t_sele _ _ _ _ has_type_a_TSel_e has_type_e_TM_Bot_T1 =>
+    let a' := (ttm _ _ _ has_type_a_TSel_e) in
+    let e' := (ttm _ _ _ has_type_e_TM_Bot_T1) in
+    CC.tapp (CC.tsnd (CC.tsnd e')) a'
+  | t_app _ _ _ _ _ has_type_f_TAll_T1_T2 has_type_x_T1 _ =>
+    CC.tapp (ttm _ _ _ has_type_f_TAll_T1_T2) (ttm _ _ _ has_type_x_T1)
+  | t_abs _ _ _ _ ty_wf_T1 has_type_y_T2 =>
+    CC.tabs (ttp _ _ ty_wf_T1) (ttm _ _ _ has_type_y_T2)
   end.
-
 
 (* TODO: dependent app isn't correctly defined right now, so we need this crutch *)
 Lemma shotgun1: forall env T1 T2,
-    is_type (T1 :: env) (open (varF (length env)) T2) ->
-    is_type env T2.
+    ty_wf (T1 :: env) (open (varF (length env)) T2) ->
+    ty_wf env T2.
 Admitted.
 
 Lemma shotgun2: forall env e T1 T2,
@@ -96,17 +113,17 @@ Lemma shotgun2: forall env e T1 T2,
 Admitted.
 
 
-Lemma extract1: forall G T1 T2, is_type G (TMem T1 T2) -> is_type G T2.
+Lemma extract1: forall G T1 T2, ty_wf G (TMem T1 T2) -> ty_wf G T2.
 Proof.
   intros. inversion H. eauto.
 Qed.
-Lemma extract2: forall G T1 T2, is_type G (TAll T1 T2) -> is_type (T1::G) (open (varF (length G)) T2).
+Lemma extract2: forall G T1 T2, ty_wf G (TAll T1 T2) -> ty_wf (T1::G) (open (varF (length G)) T2).
 Proof.
   intros. inversion H. eauto.
 Qed.
 
 (* if term has a type, the type is well-formed *)
-Fixpoint htwf G e T (tm: has_type G e T): is_type G T :=
+Fixpoint htwf G e T (tm: has_type G e T): ty_wf G T :=
   match tm with
   | t_var _ _ _ _ i => i
   | t_sel2 _ _ _ _ h1 h2 => t_sel _ _ _ _ (htwf _ _ _ h1) (t_top _) h2
@@ -123,7 +140,7 @@ Lemma indexr_lookup_max: forall T (G1:list T) a,
 Proof.
 Admitted.
 
-(* todo: is_type has a canonical form *)
+(* todo: ty_wf has a canonical form *)
 Lemma foobar: forall G T1 T2 i1 i2 e h, htwf G e (TMem T1 T2) h = t_mem G _ _ i1 i2.
 Proof.
 Admitted.
@@ -132,9 +149,9 @@ Admitted.
 (* Theorem: translation is well-typed *)
 (* todo: need an env predicate to relate G and G1 *)
 Theorem ttpok:
-  forall G T (IT: is_type G T), forall G1, CC.has_type G1 (ttp _ _ IT) CC.Star.
+  forall G T (IT: ty_wf G T), forall G1, CC.has_type G1 (ttp _ _ IT) CC.Star.
 Proof.
-  apply (is_type_ind_mut (* TODO this is not defined yet *)
+  apply (ty_wf_ind_mut (* TODO this is not defined yet *)
            (fun G T IT => forall G1, CC.has_type G1 (ttp _ _ IT) CC.Star)
            (fun G e T HT => forall G1, CC.has_type G1 (ttm _ _ _ HT) (ttp _ _ (htwf _ _ _ HT)))).
 
@@ -175,7 +192,7 @@ Proof.
     (* apply second conversion function *)
     intros. simpl.
 
-    assert (is_type env T1) as i0. admit. (* from htwf *)
+    assert (ty_wf env T1) as i0. admit. (* from htwf *)
 
     rewrite (foobar _ _ _ (t_bot _) i0) in H0. simpl in H0.
 
