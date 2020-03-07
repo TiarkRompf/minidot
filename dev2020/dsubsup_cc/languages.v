@@ -123,8 +123,8 @@ with closed_tm: nat(*B*) -> nat(*F*) -> tm -> Prop :=
 .
 
 (* open define a locally-nameless encoding wrt to TVarB type variables. *)
-(* substitute var u for all occurrences of (varB k) *)
-Fixpoint open_rec (k: nat) (u: var) (T: ty) { struct T }: ty :=
+(* substitute term u for all occurrences of (varB k) *)
+Fixpoint open_rec (k: nat) (u: tm) (T: ty) { struct T }: ty :=
   match T with
     | TTop        => TTop
     | TBot        => TBot
@@ -135,19 +135,25 @@ Fixpoint open_rec (k: nat) (u: var) (T: ty) { struct T }: ty :=
     | TAnd T1 T2 => TAnd (open_rec k u T1) (open_rec k u T2)
   end
 
-with open_rec_tm (k: nat) (u: var) (t: tm) { struct t }: tm :=
+with open_rec_tm (k: nat) (u: tm) (t: tm) { struct t }: tm :=
        match t with
        | tvar (varF x) => tvar (varF x)
        | tvar (varB x) =>
-         if beq_nat k x then (tvar u) else (tvar (varB x))
+         if beq_nat k x then u else (tvar (varB x))
        | ttyp ty => ttyp (open_rec k u ty)
        | tabs ty tm => tabs (open_rec k u ty) (open_rec_tm (S k) u tm)
        | tapp tm1 tm2 => tapp (open_rec_tm k u tm1) (open_rec_tm k u tm2)
        | tunpack tm1 tm2 => tunpack (open_rec_tm k u tm1) (open_rec_tm (S k) u tm2)
        end.
 
-Definition open u T := open_rec 0 u T.
-Definition open_tm u t := open_rec_tm 0 u t.
+(* for backwards compatibility  *)
+Definition open u T := open_rec 0 (tvar u) T.
+Definition open_tm u t := open_rec_tm 0 (tvar u) t.
+
+Definition open' u T := open_rec 0 u T.
+Definition open_tm' u t := open_rec_tm 0 u t.
+
+
 
 (* ### Type Formation & Assignment ### *)
 Inductive ty_wf: tenv -> ty -> Set :=
@@ -216,11 +222,12 @@ with has_type : tenv -> tm -> ty -> Set :=
            ty_wf Gamma T1 ->
            has_type Gamma (ttyp T1) (TMem T1 T1)
 
-| t_app: forall Gamma f x T1 T2,
-           has_type Gamma f (TAll T1 T2) ->
-           has_type Gamma x T1 ->
-           closed 0 (length Gamma) T2 -> (* TODO: dependent app! *)
-           has_type Gamma (tapp f x) T2
+| t_app: forall Gamma f x T1 T2 T,
+    has_type Gamma f (TAll T1 T2) ->
+    has_type Gamma x T1 ->
+    T = (open' x T2) ->
+    has_type Gamma (tapp f x) T
+
 (*
 | t_dapp:forall Gamma f x T1 T2 T,
            has_type Gamma f (TAll T1 T2) ->

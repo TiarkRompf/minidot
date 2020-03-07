@@ -95,7 +95,8 @@ with ttm Gamma t T (typing: has_type Gamma t T): CC.tm :=
     let a' := (ttm _ _ _ has_type_a_TSel_e) in
     let e' := (ttm _ _ _ has_type_e_TM_Bot_T1) in
     CC.tapp (CC.tsnd (CC.tsnd e')) a'
-  | t_app _ _ _ _ _ has_type_f_TAll_T1_T2 has_type_x_T1 _ =>
+  | t_app _ _ _ _ _ _ has_type_f_TAll_T1_T2 has_type_x_T1 _ =>
+    (* TODO this'll need a lemma stating that subst/open and translation commute  *)
     CC.tapp (ttm _ _ _ has_type_f_TAll_T1_T2) (ttm _ _ _ has_type_x_T1)
   | t_abs _ _ _ _ ty_wf_T1 has_type_y_T2 =>
     CC.tabs (ttp _ _ ty_wf_T1) (ttm _ _ _ has_type_y_T2)
