@@ -222,11 +222,10 @@ with has_type : tenv -> tm -> ty -> Set :=
            ty_wf Gamma T1 ->
            has_type Gamma (ttyp T1) (TMem T1 T1)
 
-| t_app: forall Gamma f x T1 T2 T,
+| t_app: forall Gamma f x T1 T2,
     has_type Gamma f (TAll T1 T2) ->
     has_type Gamma x T1 ->
-    T = (open' x T2) ->
-    has_type Gamma (tapp f x) T
+    has_type Gamma (tapp f x) (open' x T2)
 
 (*
 | t_dapp:forall Gamma f x T1 T2 T,

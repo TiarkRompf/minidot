@@ -100,7 +100,7 @@ with ttm Gamma t T (typing: has_type Gamma t T): CC.tm :=
     let a' := (ttm _ _ _ has_type_a_TSel_e) in
     let e' := (ttm _ _ _ has_type_e_TM_Bot_T1) in
     CC.tapp (CC.tsnd (CC.tsnd e')) a'
-  | t_app _ _ _ _ _ _ has_type_f_TAll_T1_T2 has_type_x_T1 _ =>
+  | t_app _ _ _ _ _ has_type_f_TAll_T1_T2 has_type_x_T1 =>
     (* TODO this'll need a lemma stating that subst/open and translation commute  *)
     CC.tapp (ttm _ _ _ has_type_f_TAll_T1_T2) (ttm _ _ _ has_type_x_T1)
   | t_abs _ _ _ _ ty_wf_T1 has_type_y_T2 =>
@@ -122,7 +122,7 @@ Lemma ty_wf_open: forall Gamma e T1 T2,
     has_type Gamma e T1 ->
     ty_wf Gamma (open' e T2)
   with
-    typing_open: forall Gamma e1 e2 T1 T2,
+    has_type_open: forall Gamma e1 e2 T1 T2,
       has_type (T1 :: Gamma) e2 T2 ->
       has_type Gamma e1 T1 ->
       has_type Gamma (open_tm' e1 e2) (open' e1 T2).
@@ -136,9 +136,10 @@ Proof.
     (* TBot *)
     -- simpl. constructor.
     (* TAll *)
-    -- inversion H. subst. simpl. constructor.
+    -- simpl in H. inversion H. subst. simpl. constructor.
        --- eapply IHT2_1; eauto.
-       ---  admit. (* TODO messy *)
+       --- unfold open in *.
+         admit. (* TODO messy *)
     (* TSel *)
     -- eapply ty_wf_open. (* TODO this can't be right *)
        eauto.
@@ -151,26 +152,39 @@ Proof.
     -- inversion H.
     (* TAnd *)
     -- inversion H.
-  (* typing_open *)
-  - apply typing_open. (* TODO this can't be right *)
+  (* has_type_open *)
+  - apply has_type_open. (* TODO this can't be right *)
 Admitted.
 
 (* if term has a type, the type is well-formed *)
-Fixpoint htwf G e T (tm: has_type G e T): ty_wf G T :=
-  match tm with
-  | t_var _ _ _ _ ty_wf_T1 =>
-    ty_wf_T1
-  | t_seli _ _ _ _ has_type_a_T1 has_type_e_TM_T1_Top =>
-    wf_sel _ _ _ _ (htwf _ _ _ has_type_a_T1) (wf_top _) has_type_e_TM_T1_Top
-  | t_sele _ _ _ _ _ has_type_e_TM_Bot_T1 =>
-    extract1 _ _ _ (htwf _ _ _ has_type_e_TM_Bot_T1)
-  | t_typ _ _ ty_wf_T1 =>
-    wf_mem _ _ _ ty_wf_T1 ty_wf_T1
-  | t_app _ _ _ _ _ _ h1 _ _ =>
-    shotgun1 _ _ _ (extract2 _ _ _ ((htwf _ _ _ h1)))
-  | t_abs _ _ _ _ i h =>
-    wf_all _ _ _ i (htwf _ _ _ h)
-  end.
+Lemma htwf: forall Gamma e T, has_type Gamma e T -> ty_wf Gamma T.
+Proof.
+  intros. induction H; auto.
+  - apply wf_sel with (T1 := T1) (T2 := TTop); auto. constructor.
+  - apply (extract1 _ _ _ IHhas_type2).
+  - constructor; auto.
+  - inversion IHhas_type1. subst. eapply ty_wf_open; eauto.
+  - constructor; auto.
+Qed.
+
+(* Fixpoint htwf G e T (tm: has_type G e T): ty_wf G T := *)
+(*   match tm with *)
+(*   | t_var _ _ _ _ ty_wf_T1 => *)
+(*     ty_wf_T1 *)
+(*   | t_seli _ _ _ _ has_type_a_T1 has_type_e_TM_T1_Top => *)
+(*     wf_sel _ _ _ _ (htwf _ _ _ has_type_a_T1) (wf_top _) has_type_e_TM_T1_Top *)
+(*   | t_sele _ _ _ _ _ has_type_e_TM_Bot_T1 => *)
+(*     extract1 _ _ _ (htwf _ _ _ has_type_e_TM_Bot_T1) *)
+(*   | t_typ _ _ ty_wf_T1 => *)
+(*     wf_mem _ _ _ ty_wf_T1 ty_wf_T1 *)
+(*   | t_app Gamma f x T1 T2 has_type_f_TAll_T1_T2 has_type_x_T1 => *)
+(*     match (htwf Gamma f (TAll T1 T2) has_type_f_TAll_T1_T2) as p in (ty_wf _ (TAll _ _)) return (ty_wf Gamma (open' x T2)) with *)
+(*     | wf_all _ _ _ _ ty_wf_T2x => *)
+(*       (ty_wf_open _ _ _ _ ty_wf_T2x has_type_x_T1) *)
+(*     end *)
+(*   | t_abs _ _ _ _ i h => *)
+(*     wf_all _ _ _ i (htwf _ _ _ h) *)
+(*   end. *)
 
 Lemma indexr_lookup_max: forall T (G1:list T) a,
     indexr (length G1) (a :: G1) = Some a.
@@ -178,16 +192,18 @@ Proof.
 Admitted.
 
 (* todo: ty_wf has a canonical form *)
-Lemma foobar: forall G T1 T2 i1 i2 e h, htwf G e (TMem T1 T2) h = t_mem G _ _ i1 i2.
-Proof.
-Admitted.
+(* Lemma foobar: forall G T1 T2 i1 i2 e h, htwf G e (TMem T1 T2) h = t_mem G _ _ i1 i2. *)
+(* Proof. *)
+(* Admitted. *)
 
 
 (* Theorem: translation is well-typed *)
 (* todo: need an env predicate to relate G and G1 *)
 Theorem ttpok:
-  forall G T (IT: ty_wf G T), forall G1, CC.has_type G1 (ttp _ _ IT) CC.Star.
-
+  forall Gamma T (IT: ty_wf Gamma T), forall Gamma1, CC.has_type Gamma1 (ttp _ _ IT) ⋆
+  with
+    ttmok:
+      forall Gamma t T (typing: has_type Gamma t T), forall Gamma1, CC.has_type Gamma1 (ttm _ _ _ typing) (ttp _ _ (htwf _ _ _ typing)).
 Proof.
   apply (ty_wf_ind_mut (* TODO this is not defined yet *)
            (fun G T IT => forall G1, CC.has_type G1 (ttp _ _ IT) CC.Star)
