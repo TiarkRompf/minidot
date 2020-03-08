@@ -243,7 +243,7 @@ with has_type : tenv -> tm -> ty -> Set :=
 (*
 | t_sub: forall Gamma e T1 T2,
            has_type Gamma e T1 ->
-           stp Gamma [] T1 T2 ->
+            stp Gamma [] T1 T2 ->
            has_type Gamma e T2
 *)
 .

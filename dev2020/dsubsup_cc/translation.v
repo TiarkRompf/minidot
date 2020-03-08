@@ -59,7 +59,12 @@ Open Scope cc_scope.
 
 Import D. (* Dsubsup language *)
 
-(* type-directed translation of D into CC *)
+(* type-directed translation of D into CC
+
+   TODO: we should have marker syntax in CC for translation artifacts.
+   these should not consume fuel in evaluation. we could then show that
+   source exps and translation require the exact same amount of fuel.
+*)
 Fixpoint ttp Gamma T (wf: ty_wf Gamma T): CC.tm :=
   match wf with
   | wf_top _ =>
@@ -102,39 +107,70 @@ with ttm Gamma t T (typing: has_type Gamma t T): CC.tm :=
     CC.tabs (ttp _ _ ty_wf_T1) (ttm _ _ _ has_type_y_T2)
   end.
 
-(* TODO: dependent app isn't correctly defined right now, so we need this crutch *)
-Lemma shotgun1: forall env T1 T2,
-    ty_wf (T1 :: env) (open (varF (length env)) T2) ->
-    ty_wf env T2.
-Admitted.
-
-Lemma shotgun2: forall env e T1 T2,
-    CC.has_type env e T2 ->
-    CC.has_type ((T1, CC.Star) :: env) (CC.open_rec 0 (varF (length env)) e) T2.
-Admitted.
-
-
-Lemma extract1: forall G T1 T2, ty_wf G (TMem T1 T2) -> ty_wf G T2.
+Lemma extract1: forall Gamma T1 T2, ty_wf Gamma (TMem T1 T2) -> ty_wf Gamma T2.
 Proof.
   intros. inversion H. eauto.
 Qed.
-Lemma extract2: forall G T1 T2, ty_wf G (TAll T1 T2) -> ty_wf (T1::G) (open (varF (length G)) T2).
+
+Lemma extract2: forall Gamma T1 T2, ty_wf Gamma (TMem T1 T2) -> ty_wf Gamma T1.
 Proof.
   intros. inversion H. eauto.
 Qed.
+
+Lemma ty_wf_open: forall Gamma e T1 T2,
+    ty_wf (T1 :: Gamma) (open (varF (length Gamma)) T2) ->
+    has_type Gamma e T1 ->
+    ty_wf Gamma (open' e T2)
+  with
+    typing_open: forall Gamma e1 e2 T1 T2,
+      has_type (T1 :: Gamma) e2 T2 ->
+      has_type Gamma e1 T1 ->
+      has_type Gamma (open_tm' e1 e2) (open' e1 T2).
+Proof.
+  -  (* ty_wf_open *)
+    intros.  unfold open in *. unfold open' in *. unfold open_tm' in *.
+    generalize dependent Gamma. generalize dependent e. generalize dependent T1.
+    induction T2; intros.
+    (* TTop *)
+    -- simpl. constructor.
+    (* TBot *)
+    -- simpl. constructor.
+    (* TAll *)
+    -- inversion H. subst. simpl. constructor.
+       --- eapply IHT2_1; eauto.
+       ---  admit. (* TODO messy *)
+    (* TSel *)
+    -- eapply ty_wf_open. (* TODO this can't be right *)
+       eauto.
+       auto.
+    (* TMem *)
+    -- inversion H. subst. simpl. constructor.
+       eapply IHT2_1. eauto. auto.
+       eapply IHT2_2. eauto. auto.
+    (* TBind *)
+    -- inversion H.
+    (* TAnd *)
+    -- inversion H.
+  (* typing_open *)
+  - apply typing_open. (* TODO this can't be right *)
+Admitted.
 
 (* if term has a type, the type is well-formed *)
 Fixpoint htwf G e T (tm: has_type G e T): ty_wf G T :=
   match tm with
-  | t_var _ _ _ _ i => i
-  | t_sel2 _ _ _ _ h1 h2 => t_sel _ _ _ _ (htwf _ _ _ h1) (t_top _) h2
-  | t_sel1 _ _ _ _ h1 h2 => extract1 _ _ _ (htwf _ _ _ h2)
-  | t_typ _ _ i => t_mem _ _ _ i i
-  | t_app _ _ _ _ _ h1 _ _ => shotgun1 _ _ _ (extract2 _ _ _ ((htwf _ _ _ h1)))
-  | t_abs _ _ _ _ i h => t_all _ _ _ i (htwf _ _ _ h)
+  | t_var _ _ _ _ ty_wf_T1 =>
+    ty_wf_T1
+  | t_seli _ _ _ _ has_type_a_T1 has_type_e_TM_T1_Top =>
+    wf_sel _ _ _ _ (htwf _ _ _ has_type_a_T1) (wf_top _) has_type_e_TM_T1_Top
+  | t_sele _ _ _ _ _ has_type_e_TM_Bot_T1 =>
+    extract1 _ _ _ (htwf _ _ _ has_type_e_TM_Bot_T1)
+  | t_typ _ _ ty_wf_T1 =>
+    wf_mem _ _ _ ty_wf_T1 ty_wf_T1
+  | t_app _ _ _ _ _ _ h1 _ _ =>
+    shotgun1 _ _ _ (extract2 _ _ _ ((htwf _ _ _ h1)))
+  | t_abs _ _ _ _ i h =>
+    wf_all _ _ _ i (htwf _ _ _ h)
   end.
-
-
 
 Lemma indexr_lookup_max: forall T (G1:list T) a,
     indexr (length G1) (a :: G1) = Some a.
@@ -151,6 +187,7 @@ Admitted.
 (* todo: need an env predicate to relate G and G1 *)
 Theorem ttpok:
   forall G T (IT: ty_wf G T), forall G1, CC.has_type G1 (ttp _ _ IT) CC.Star.
+
 Proof.
   apply (ty_wf_ind_mut (* TODO this is not defined yet *)
            (fun G T IT => forall G1, CC.has_type G1 (ttp _ _ IT) CC.Star)
