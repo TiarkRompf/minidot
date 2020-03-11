@@ -366,8 +366,27 @@ Fixpoint open_rec (k: nat) (u: tm) (T: tm) { struct T }: tm :=
 Definition open u T := open_rec 0 (tvar u) T.
 Definition open' t T := open_rec 0 t T.
 
+Fixpoint subst (x: nat) (u: tm) (t: tm) : tm :=
+  match t with
+  | Sort s => Sort s
+  | TTop => TTop
+  | TBot => TBot
+  | TAll t1 t2 => TAll (subst x u t1) (subst x u t2)
+  | TSig t1 t2 => TSig (subst x u t1) (subst x u t2)
+  | tvar (varF y) =>
+    if beq_nat x y then u else (tvar (varF y))
+  | tvar (varB y) => tvar (varB y)
+  | tabs t1 t2 => tabs (subst x u t1) (subst x u t2)
+  | tapp t1 t2 => tapp (subst x u t1) (subst x u t2)
+  | tsig t1 t2 => tsig (subst x u t1) (subst x u t2)
+  | tfst t => tfst (subst x u t)
+  | tsnd t => tsnd (subst x u t)
+  end.
+
+(* TODO: state and prove that (T^e) = (T^x){e/x} *)
+
 Inductive closed: nat(*B*) -> nat(*F*) -> tm -> Prop :=
-| cl_kind: forall i j U,
+| cl_sort: forall i j U,
     closed i j (Sort U)
 | cl_top: forall i j,
     closed i j TTop
@@ -461,7 +480,7 @@ Inductive has_type : tenv -> tm -> tm -> Type :=
 | t_sig: forall Gamma e1 e2 T1 T2,
     has_type Gamma e1 T1 ->
     has_type Gamma e2 (open' e1 T2) ->
-    has_type Gamma (tsig e1 e1) (TSig T1 T2)
+    has_type Gamma (tsig e1 e2) (TSig T1 T2)
 
 | t_fst: forall Gamma e T1 T2,
     has_type Gamma e (TSig T1 T2) ->

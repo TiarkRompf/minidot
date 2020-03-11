@@ -64,7 +64,10 @@ Import D. (* Dsubsup language *)
    TODO: we should have marker syntax in CC for translation artifacts.
    these should not consume fuel in evaluation. we could then show that
    source exps and translation require the exact same amount of fuel.
-*)
+ *)
+(* Why define this recursively over the derivations? At some point, we'll
+   integrate subtyping again, and subsumption/subtyping induces coercion terms in
+   the translation. We'll need to extract these from the (sub)typing derivations. *)
 Fixpoint ttp Gamma T (wf: ty_wf Gamma T): CC.tm :=
   match wf with
   | wf_top _ =>
@@ -73,7 +76,7 @@ Fixpoint ttp Gamma T (wf: ty_wf Gamma T): CC.tm :=
     CC.TBot
   | wf_all _ _ _ ty_wf_T1 ty_wf_T2 =>
     CC.TAll (ttp _ _ ty_wf_T1) (ttp _ _ ty_wf_T2)
-  | wf_mem _ _ _ ty_wf_T1 ty_wf_T2 =>   (* Type L..U ~>  (Σα:⋆.(L → α × α → U)) : ◻ *)
+  | wf_mem _ _ _ ty_wf_T1 ty_wf_T2 =>   (* Type L..U ~>  (Σα:⋆.(L → α ,α → U)) : ◻ *)
     let f1 := CC.TAll (ttp _ _ ty_wf_T1) (CC.tvar (varB 1)) in
     let f2 := CC.TAll (CC.tvar (varB 2)) (ttp _ _ ty_wf_T2) in
     CC.TSig ⋆ (CC.TSig f1 f2)
@@ -141,9 +144,7 @@ Proof.
        --- unfold open in *.
          admit. (* TODO messy *)
     (* TSel *)
-    -- eapply ty_wf_open. (* TODO this can't be right *)
-       eauto.
-       auto.
+    -- admit.
     (* TMem *)
     -- inversion H. subst. simpl. constructor.
        eapply IHT2_1. eauto. auto.
@@ -152,11 +153,13 @@ Proof.
     -- inversion H.
     (* TAnd *)
     -- inversion H.
+
   (* has_type_open *)
-  - apply has_type_open. (* TODO this can't be right *)
+  - admit.
 Admitted.
 
-(* if term has a type, the type is well-formed *)
+(* if term has a type, the type is well-formed*)
+(* TODO have it as fixpoint as below *)
 Lemma htwf: forall Gamma e T, has_type Gamma e T -> ty_wf Gamma T.
 Proof.
   intros. induction H; auto.
@@ -165,8 +168,10 @@ Proof.
   - constructor; auto.
   - inversion IHhas_type1. subst. eapply ty_wf_open; eauto.
   - constructor; auto.
+    Show Proof.
 Qed.
 
+ (* TODO try defining in this style*)
 (* Fixpoint htwf G e T (tm: has_type G e T): ty_wf G T := *)
 (*   match tm with *)
 (*   | t_var _ _ _ _ ty_wf_T1 => *)
@@ -196,6 +201,32 @@ Admitted.
 (* Proof. *)
 (* Admitted. *)
 
+Lemma ty_wf_unopen: forall Gamma e T U,
+    has_type Gamma e U ->
+    ty_wf Gamma (open' e T) ->
+    ty_wf (U :: Gamma) (open (varF (length Gamma)) T).
+Proof.
+  Admitted.
+
+(*
+   This essentially says ⟦T{D.open' e}⟧ = ⟦T⟧{CC.open' ⟦e⟧}, which we'll need in the
+   main proof for the dependent application case.
+   Due to the locally nameless repr and the derivation-indexed translation
+   functions, we have to express this in a more roundabout way, using substitution:
+   (Γ ⫦ ⟦ T ^ e ⟧) = ((U :: Γ) ⫦ ⟦ T ^ x ⟧){x ↦ (Γ ⫦ ⟦e⟧)}),
+   where Γ ⊢ e : U. We write Γ ⫦ ⟦ ⋅ ⟧ for the type resp. term translation
+   (not explicitly spelling out the derivation under context Γ).
+
+   We will also need to establish that T^e = (T^x){e/x} in the target language.
+*)
+Lemma open_ttp_commute: forall Gamma e T U x (wf_t: ty_wf Gamma (open' e T)) (e_of_U: has_type Gamma e U),
+    x = (length Gamma) ->
+    (ttp _ _ wf_t) = (CC.subst x (ttm _ _ _ e_of_U) (ttp _ _ (ty_wf_unopen _ _ _ _ e_of_U wf_t))).
+Proof.
+  Admitted.
+
+(* TODO: might be better to define context well-formedness in both systems, that
+will gives us a notion of relatedness via a translation function. *)
 
 (* Theorem: translation is well-typed *)
 (* todo: need an env predicate to relate G and G1 *)
