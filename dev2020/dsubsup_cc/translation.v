@@ -208,6 +208,7 @@ Lemma ty_wf_unopen: forall Gamma e T U,
 Proof.
   Admitted.
 
+
 (*
    This essentially says ⟦T{D.open' e}⟧ = ⟦T⟧{CC.open' ⟦e⟧}, which we'll need in the
    main proof for the dependent application case.
@@ -217,13 +218,49 @@ Proof.
    where Γ ⊢ e : U. We write Γ ⫦ ⟦ ⋅ ⟧ for the type resp. term translation
    (not explicitly spelling out the derivation under context Γ).
 
-   We will also need to establish that T^e = (T^x){e/x} in the target language.
+   We will also need to establish that T^e = (T^x){e/x} in the target language (cf. languages.v).
 *)
 Lemma open_ttp_commute: forall Gamma e T U x (wf_t: ty_wf Gamma (open' e T)) (e_of_U: has_type Gamma e U),
     x = (length Gamma) ->
     (ttp _ _ wf_t) = (CC.subst x (ttm _ _ _ e_of_U) (ttp _ _ (ty_wf_unopen _ _ _ _ e_of_U wf_t))).
 Proof.
   Admitted.
+
+(* Optional: Reduce noise in notation, by making the has_type/ty_wf indices implicit. *)
+Module Sugar.
+  Class ty_wf' (Gamma: tenv) (T: ty) := { ty_wf_holds: ty_wf Gamma T }.
+  Class has_type' (Gamma: tenv) (e: tm) (T: ty) := { has_type_holds: has_type Gamma e T }.
+
+  (* versions of ttp and ttm leaving the index implicit *)
+  Definition ttp' (Gamma: tenv) (T: ty) `{ty_wf' Gamma T}  := ttp Gamma T ty_wf_holds.
+  Definition ttm' (Gamma: tenv) (e: tm) (T: ty) `{has_type' Gamma e T} := ttm Gamma e T has_type_holds.
+
+  (* Lemmas about index/derivation transformations become type class instances *)
+  Instance ty_wf_unopen' {Gamma e U T} {He: has_type' Gamma e U} {HT: ty_wf' Gamma (open' e T)} : ty_wf' (U :: Gamma) (open (varF (length Gamma)) T).
+  Proof.
+    constructor. inversion He. inversion HT. eapply ty_wf_unopen; eauto.
+  Defined.
+
+  Instance htwf' {Gamma e T} {He: has_type' Gamma e T} : ty_wf' Gamma T.
+  Proof.
+    constructor. inversion He.
+    eapply htwf; eauto.
+  Defined.
+
+End Sugar.
+
+Import Sugar.
+
+(* Example usage, adieu underscores: *)
+Lemma open_ttp_commute': forall Gamma e T U `{has_type' Gamma e U} `{ty_wf' Gamma (open' e T)},
+    ttp' Gamma (open' e T) = (CC.subst (length Gamma) (ttm' Gamma e U) (ttp' (U :: Gamma) (open (varF (length Gamma)) T))).
+Proof.
+  (* Set Printing Implicit. *)
+  intros. destruct H.
+  destruct H0. unfold ttp'. unfold ttm'. simpl. (* remove the typeclass stuff *)
+  eapply open_ttp_commute. reflexivity.
+Qed.
+
 
 (* TODO: might be better to define context well-formedness in both systems, that
 will gives us a notion of relatedness via a translation function. *)
