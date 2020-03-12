@@ -289,7 +289,17 @@ Qed.
 
   - ttpok: can only say that exists a sort s, so that the translated type from the src language
     has that sort in the target, because of the Σ-type encoding of TMem.
-    Seems unproblematic for the type preservation proof.
+
+  - Problem for the TMem translation: It fixes the existentially quantified variable to be a ⋆,
+    but a translated TMem lives at level ◻. DOT is impredicative, so the abstract type could
+    be a TMem (and its bounds might also involve TMems). Need to reconcile DOT's impredicativity
+    w. the predicativity of the target. E.g.
+    1. Have additional restrictions in the source lang?
+    2. Propagate more information during translation?
+
+  - critical lemmas: ty_wf_open, has_type_open, open_ttp_commute (nasty binding stuff)
+
+
 
 *)
 
@@ -370,6 +380,6 @@ Theorem tctxok': forall Gamma `{ctx_wf Gamma}, CC.ctx_wf (tctx' Gamma)
       forall Gamma T `{ctx_wf Gamma} `{ty_wf Gamma T}, exists s, CC.has_type (tctx' Gamma) (ttp' Gamma T) (CC.Sort s) (* TODO fix universe inconsistency *)
   with
     ttmok':
-      forall Gamma t T `{has_type Gamma t T}, CC.has_type (tctx' Gamma) (ttm' Gamma e T) (ttp' Gamma T).
+      forall Gamma t T `{has_type Gamma t T}, CC.has_type (tctx' Gamma) (ttm' Gamma t T) (ttp' Gamma T).
 Proof.
 Admitted.
