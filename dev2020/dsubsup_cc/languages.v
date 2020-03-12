@@ -156,7 +156,15 @@ Definition open_tm' u t := open_rec_tm 0 u t.
 
 
 (* ### Type Formation & Assignment ### *)
-Inductive ty_wf: tenv -> ty -> Set :=
+Inductive ctx_wf: tenv -> Set :=
+| wf_empty:
+    ctx_wf []
+| wf_cons: forall Gamma T,
+    ty_wf Gamma T ->
+    ctx_wf Gamma ->
+    ctx_wf (T :: Gamma)
+
+with ty_wf: tenv -> ty -> Set :=
 | wf_top: forall Gamma,
     ty_wf Gamma TTop
 | wf_bot: forall Gamma,
@@ -177,8 +185,9 @@ Inductive ty_wf: tenv -> ty -> Set :=
 
 with has_type : tenv -> tm -> ty -> Set :=
 | t_var: forall x Gamma T1,
+    ctx_wf Gamma ->
     indexr x Gamma = Some T1 ->
-    ty_wf Gamma T1 ->
+    (* ty_wf Gamma T1 -> *)
     has_type Gamma (tvar (varF x)) T1
 
 (*
@@ -426,38 +435,35 @@ Inductive closed: nat(*B*) -> nat(*F*) -> tm -> Prop :=
     closed i j (tsnd tm)
 .
 
-(* TODO: not clear if needed *)
-(* Inductive ctx_wf: tenv -> Prop := *)
-(* | wf_empty: *)
-(*     ctx_wf [] *)
-(* | wf_sort: forall Gamma T U, *)
-(*     ctx_wf Gamma -> *)
-(*     has_type Gamma T (Sort U) -> *)
-(*     ctx_wf (T :: Gamma) *)
-(* with *)
-
-Inductive has_type : tenv -> tm -> tm -> Type :=
+Inductive ctx_wf: tenv -> Type :=
+| wf_empty:
+    ctx_wf []
+| wf_sort: forall Gamma T s,
+    has_type Gamma T (Sort s) ->
+    ctx_wf Gamma ->
+    ctx_wf (T :: Gamma)
+with has_type : tenv -> tm -> tm -> Type :=
 | t_box: forall Gamma,
     has_type Gamma ⋆ ◻
 
-| t_var: forall x Gamma T U,
-    (* ctx_wf Gamma -> *)
+| t_var: forall x Gamma T s,
+    ctx_wf Gamma ->
     indexr x Gamma = Some T ->
-    has_type Gamma T (Sort U) ->
+    has_type Gamma T (Sort s) -> (* redundant, but makes kind_set definition easier *)
     has_type Gamma (tvar (varF x)) T
 
-| t_allt: forall Gamma T1 T2 U U',
-    has_type Gamma T1 (Sort U) ->
-    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Sort U') ->
-    has_type Gamma (TAll T1 T2) (Sort U')
+| t_allt: forall Gamma T1 T2 s s',
+    has_type Gamma T1 (Sort s) ->
+    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Sort s') ->
+    has_type Gamma (TAll T1 T2) (Sort s')
 
 (* Enable consistent strong Sigma-types, (cf. Definition 5.1 in [Geuvers '94]),
    forbidding (◻, ⋆, ⋆), (⋆, ◻, ⋆), (◻, ◻, ⋆), (⋆, ⋆, ◻) in the formation rule.*)
-| t_sigt: forall Gamma T1 T2 U1 U2 U3,
-    U3 = sort_max U1 U2 ->
-    has_type Gamma T1 (Sort U1) ->
-    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Sort U2) ->
-    has_type Gamma (TSig T1 T2) (Sort U3)
+| t_sigt: forall Gamma T1 T2 s1 s2 s3,
+    s3 = sort_max s1 s2 ->
+    has_type Gamma T1 (Sort s1) ->
+    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Sort s2) ->
+    has_type Gamma (TSig T1 T2) (Sort s3)
 
 | t_topt: forall Gamma,
     has_type Gamma TTop ⋆
@@ -465,9 +471,9 @@ Inductive has_type : tenv -> tm -> tm -> Type :=
 | t_bott: forall Gamma,
     has_type Gamma TBot ⋆
 
-| t_abs: forall Gamma t T1 T2 U U',
-    has_type Gamma T1 (Sort U) ->
-    has_type Gamma (TAll T1 T2) (Sort U') ->
+| t_abs: forall Gamma t T1 T2 s s',
+    has_type Gamma T1 (Sort s) ->
+    has_type Gamma (TAll T1 T2) (Sort s') ->
     has_type (T1 :: Gamma) t (open (varF (length Gamma)) T2) ->
     has_type Gamma (tabs T1 t) (TAll T1 T2)
 
@@ -556,7 +562,7 @@ Fixpoint kind_set Gamma K (proof: has_type Gamma K ◻): Type :=
   match proof with
   | t_box _ => (* ⋆ *)
     vset
-  | t_var x Gamma T Box _ T_is_kind =>
+  | t_var x Gamma T Box _ _ T_is_kind =>
     (kind_set Gamma T T_is_kind)
   | t_allt Gamma T1 T2 Box Box T1_is_kind T2_is_kind =>  (* Πα:T1.T2, T1:◻ *)
     let V1 := (kind_set Gamma T1 T1_is_kind) in

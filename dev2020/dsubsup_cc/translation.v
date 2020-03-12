@@ -110,6 +110,13 @@ with ttm Gamma t T (typing: has_type Gamma t T): CC.tm :=
     CC.tabs (ttp _ _ ty_wf_T1) (ttm _ _ _ has_type_y_T2)
   end.
 
+Fixpoint tctx Gamma (wf: ctx_wf Gamma): CC.tenv :=
+  match wf with
+  | wf_empty => []
+  | wf_cons Gamma T wf_Gamma_T wf_Gamma =>
+    (ttp _ _ wf_Gamma_T) :: (tctx _ wf_Gamma)
+  end.
+
 Lemma extract1: forall Gamma T1 T2, ty_wf Gamma (TMem T1 T2) -> ty_wf Gamma T2.
 Proof.
   intros. inversion H. eauto.
@@ -158,17 +165,27 @@ Proof.
   - admit.
 Admitted.
 
+
+Lemma wf_lookup: forall Gamma x T, ctx_wf Gamma -> indexr x Gamma = Some T -> ty_wf Gamma T.
+Proof.
+Admitted.
+
+
+Lemma regularity_ctx: forall Gamma e T, has_type Gamma e T -> ctx_wf Gamma.
+Proof.
+Admitted.
+
 (* if term has a type, the type is well-formed*)
 (* TODO have it as fixpoint as below *)
 Lemma htwf: forall Gamma e T, has_type Gamma e T -> ty_wf Gamma T.
 Proof.
   intros. induction H; auto.
+  - eapply wf_lookup; eauto.
   - apply wf_sel with (T1 := T1) (T2 := TTop); auto. constructor.
   - apply (extract1 _ _ _ IHhas_type2).
   - constructor; auto.
   - inversion IHhas_type1. subst. eapply ty_wf_open; eauto.
   - constructor; auto.
-    Show Proof.
 Qed.
 
  (* TODO try defining in this style*)
@@ -208,7 +225,6 @@ Lemma ty_wf_unopen: forall Gamma e T U,
 Proof.
   Admitted.
 
-
 (*
    This essentially says ⟦T{D.open' e}⟧ = ⟦T⟧{CC.open' ⟦e⟧}, which we'll need in the
    main proof for the dependent application case.
@@ -228,10 +244,12 @@ Proof.
 
 (* Optional: Reduce noise in notation, by making the has_type/ty_wf indices implicit. *)
 Module Sugar.
+  Class ctx_wf' (Gamma: tenv) := { ctx_wf_holds: ctx_wf Gamma }.
   Class ty_wf' (Gamma: tenv) (T: ty) := { ty_wf_holds: ty_wf Gamma T }.
   Class has_type' (Gamma: tenv) (e: tm) (T: ty) := { has_type_holds: has_type Gamma e T }.
 
-  (* versions of ttp and ttm leaving the index implicit *)
+  (* versions of translations leaving the index implicit *)
+  Definition tctx' (Gamma: tenv) `{ctx_wf' Gamma} := tctx Gamma ctx_wf_holds.
   Definition ttp' (Gamma: tenv) (T: ty) `{ty_wf' Gamma T}  := ttp Gamma T ty_wf_holds.
   Definition ttm' (Gamma: tenv) (e: tm) (T: ty) `{has_type' Gamma e T} := ttm Gamma e T has_type_holds.
 
@@ -247,6 +265,12 @@ Module Sugar.
     eapply htwf; eauto.
   Defined.
 
+  Instance regularity_ctx' {Gamma e T} {He: has_type' Gamma e T}: ctx_wf' Gamma.
+  Proof.
+    constructor. inversion He.
+    eapply regularity_ctx; eauto.
+  Qed.
+
 End Sugar.
 
 Import Sugar.
@@ -261,17 +285,22 @@ Proof.
   eapply open_ttp_commute. reflexivity.
 Qed.
 
+(* Discussion points:
 
-(* TODO: might be better to define context well-formedness in both systems, that
-will gives us a notion of relatedness via a translation function. *)
+  - ttpok: can only say that exists a sort s, so that the translated type from the src language
+    has that sort in the target, because of the Σ-type encoding of TMem.
+    Seems unproblematic for the type preservation proof.
+
+*)
 
 (* Theorem: translation is well-typed *)
-(* todo: need an env predicate to relate G and G1 *)
-Theorem ttpok:
-  forall Gamma T (IT: ty_wf Gamma T), forall Gamma1, CC.has_type Gamma1 (ttp _ _ IT) ⋆
+Theorem tctxok: forall Gamma (wfG: ctx_wf Gamma), CC.ctx_wf (tctx _ wfG)
+  with
+    ttpok:
+      forall Gamma T (wfG: ctx_wf Gamma) (wfT: ty_wf Gamma T), exists s, CC.has_type (tctx _ wfG) (ttp _ _ wfT) (CC.Sort s) (* TODO fix universe inconsistency *)
   with
     ttmok:
-      forall Gamma t T (typing: has_type Gamma t T), forall Gamma1, CC.has_type Gamma1 (ttm _ _ _ typing) (ttp _ _ (htwf _ _ _ typing)).
+      forall Gamma t T (typing: has_type Gamma t T), CC.has_type (tctx _ (regularity_ctx _ _ _ typing)) (ttm _ _ _ typing) (ttp _ _ (htwf _ _ _ typing)).
 Proof.
   apply (ty_wf_ind_mut (* TODO this is not defined yet *)
            (fun G T IT => forall G1, CC.has_type G1 (ttp _ _ IT) CC.Star)
@@ -332,4 +361,15 @@ Proof.
   - (* t_abs *)
     admit.
 
+Admitted.
+
+(* sugared version *)
+Theorem tctxok': forall Gamma `{ctx_wf Gamma}, CC.ctx_wf (tctx' Gamma)
+  with
+    ttpok':
+      forall Gamma T `{ctx_wf Gamma} `{ty_wf Gamma T}, exists s, CC.has_type (tctx' Gamma) (ttp' Gamma T) (CC.Sort s) (* TODO fix universe inconsistency *)
+  with
+    ttmok':
+      forall Gamma t T `{has_type Gamma t T}, CC.has_type (tctx' Gamma) (ttm' Gamma e T) (ttp' Gamma T).
+Proof.
 Admitted.
