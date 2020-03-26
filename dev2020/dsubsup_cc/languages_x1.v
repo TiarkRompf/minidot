@@ -305,6 +305,7 @@ End D.
 Require Import FunInd.
 Require Import Recdef.
 
+(* Calculus of Construction as a PTS *)
 Module CC.
 
 Inductive sort : Type :=
@@ -322,30 +323,34 @@ Definition sort_max (s s' : sort): sort :=
 Inductive tm : Type := (* TODO what about equality types? *)
 (* Kind Constants *)
 | CSort : sort -> tm
+
 (* Types *)
-| TTop : tm (* TODO really needed? *)
-| TBot : tm (* TODO really needed? *)
-(* Constructors *)           
+(* | TTop : tm (* TODO really needed? *) *)
+(* | TBot : tm (* TODO really needed? *) *)
+(* Dependent and Non-dependet Function Types *)
 | TAll : tm -> tm -> tm
-| TSig : tm -> tm -> tm
-(* Objects *)
+(* TODO: Add weak sigma type back afterwards *)
+(* | TSig : tm -> tm -> tm *)
+
+(* Terms *)
+(* variables *)
 | tvar : var -> tm
+(* λ-terms*)
 | tabs : tm -> tm -> tm
+(* application *)
 | tapp : tm -> tm -> tm
-| tsig : tm -> tm -> tm
-| tfst : tm -> tm
-| tsnd : tm -> tm
+(* | tsig : tm -> tm -> tm *)
+(* | tfst : tm -> tm *)
+(* | tsnd : tm -> tm *)
 .
 
 Inductive vl : Type :=
-(* simple types*)
+(* Simple types *)
 | vty : list vl (*H*) -> tm -> vl
-(* (* a closure for a lambda abstraction *) *)
-(* | vabs : list vl (*H*) -> tm -> tm -> vl *)
-(* Type constructor *)
-| vconstr : list vl (*H*) -> tm -> tm -> vl
+(* a closure for a lambda abstraction *)
+| vabs : list vl (*H*) -> tm -> tm -> vl
 (* Weak sigma type*)
-| vsig : vl -> vl -> vl
+(* | vsig : vl -> vl -> vl *)
 .
 
 Definition tenv := list tm.
@@ -371,15 +376,15 @@ Fixpoint open_rec (k: nat) (u: tm) (T: tm) { struct T }: tm :=
   | TTop        => TTop
   | TBot        => TBot
   | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
-  | TSig T1 T2  => TSig (open_rec k u T1) (open_rec (S k) u T2)
+  (* | TSig T1 T2  => TSig (open_rec k u T1) (open_rec (S k) u T2) *)
   | tvar (varF x) => tvar (varF x)
   | tvar (varB x) =>
     if beq_nat k x then u else (tvar (varB x))
   | tabs ty tm => tabs (open_rec k u ty) (open_rec (S k) u tm)
   | tapp tm1 tm2 => tapp (open_rec k u tm1) (open_rec k u tm2)
-  | tsig tm1 tm2 => tsig (open_rec k u tm1) (open_rec (S k) u tm2)
-  | tfst tm => tfst (open_rec k u tm)
-  | tsnd tm => tsnd (open_rec k u tm)
+  (* | tsig tm1 tm2 => tsig (open_rec k u tm1) (open_rec (S k) u tm2) *)
+  (* | tfst tm => tfst (open_rec k u tm) *)
+  (* | tsnd tm => tsnd (open_rec k u tm) *)
   end.
 
 Definition open u T := open_rec 0 (tvar u) T.
@@ -391,15 +396,15 @@ Fixpoint subst (x: nat) (u: tm) (t: tm) : tm :=
   | TTop => TTop
   | TBot => TBot
   | TAll t1 t2 => TAll (subst x u t1) (subst x u t2)
-  | TSig t1 t2 => TSig (subst x u t1) (subst x u t2)
+  (* | TSig t1 t2 => TSig (subst x u t1) (subst x u t2) *)
   | tvar (varF y) =>
     if beq_nat x y then u else (tvar (varF y))
   | tvar (varB y) => tvar (varB y)
   | tabs t1 t2 => tabs (subst x u t1) (subst x u t2)
   | tapp t1 t2 => tapp (subst x u t1) (subst x u t2)
-  | tsig t1 t2 => tsig (subst x u t1) (subst x u t2)
-  | tfst t => tfst (subst x u t)
-  | tsnd t => tsnd (subst x u t)
+  (* | tsig t1 t2 => tsig (subst x u t1) (subst x u t2) *)
+  (* | tfst t => tfst (subst x u t) *)
+  (* | tsnd t => tsnd (subst x u t) *)
   end.
 
 (* TODO: state and prove that (T^e) = (T^x){e/x} *)
@@ -415,10 +420,10 @@ Inductive closed: nat(*B*) -> nat(*F*) -> tm -> Prop :=
     closed i j T1 ->
     closed (S i) j T2 ->
     closed i j (TAll T1 T2)
-| cl_sig: forall i j T1 T2,
-    closed i j T1 ->
-    closed (S i) j T2 ->
-    closed i j (TSig T1 T2)
+(* | cl_sig: forall i j T1 T2, *)
+(*     closed i j T1 -> *)
+(*     closed (S i) j T2 -> *)
+(*     closed i j (TSig T1 T2) *)
 | cl_tvarb: forall i j x,
     i > x ->
     closed i j (tvar (varB x))
@@ -433,79 +438,90 @@ Inductive closed: nat(*B*) -> nat(*F*) -> tm -> Prop :=
     closed i j tm1 ->
     closed i j tm2 ->
     closed i j (tapp tm1 tm2)
-| cl_tsig:  forall i j tm1 tm2,
-    closed i j tm1 ->
-    closed i j tm2 ->
-    closed i j (tsig tm1 tm2)
-| cl_tfst:  forall i j tm,
-    closed i j tm ->
-    closed i j (tfst tm)
-| cl_tsnd:  forall i j tm,
-    closed i j tm ->
-    closed i j (tsnd tm)
+(* | cl_tsig:  forall i j tm1 tm2, *)
+(*     closed i j tm1 -> *)
+(*     closed i j tm2 -> *)
+(*     closed i j (tsig tm1 tm2) *)
+(* | cl_tfst:  forall i j tm, *)
+(*     closed i j tm -> *)
+(*     closed i j (tfst tm) *)
+(* | cl_tsnd:  forall i j tm, *)
+(*     closed i j tm -> *)
+(*     closed i j (tsnd tm) *)
 .
 
 Inductive ctx_wf: tenv -> Type :=
+(* CNil *)
 | wf_empty:
     ctx_wf []
+(* CCons *)           
 | wf_sort: forall Gamma T s,
+    (* also T is not in Γ *)
     has_type Gamma T (CSort s) ->
     ctx_wf Gamma ->
     ctx_wf (T :: Gamma)
 with has_type : tenv -> tm -> tm -> Type :=
+(* TSort; ⋆ : ◻ *)
 | t_box: forall Gamma,
     has_type Gamma ⋆ ◻
-
+(* TVar; x : T : s *)
 | t_var: forall x Gamma T s,
     ctx_wf Gamma ->
     indexr x Gamma = Some T ->
     has_type Gamma T (CSort s) -> (* redundant, but makes kind_set definition easier *)
     has_type Gamma (tvar (varF x)) T
 
+(* TPi; (x: T1) -> T2 : s *)
 | t_allt: forall Gamma T1 T2 s s',
     has_type Gamma T1 (CSort s) ->
     has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (CSort s') ->
     has_type Gamma (TAll T1 T2) (CSort s')
+(* TODO: Shouldn't the above be: *)
+| t_allt2: forall Gamma T1 T2 s1 s2 s3,
+    has_type Gamma T1 (CSort s1) ->
+    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (CSort s2) ->
+    has_type Gamma (TAll T1 T2) (CSort s3)
 
 (* Enable consistent strong Sigma-types, (cf. Definition 5.1 in [Geuvers '94]),
    forbidding (◻, ⋆, ⋆), (⋆, ◻, ⋆), (◻, ◻, ⋆), (⋆, ⋆, ◻) in the formation rule.*)
-| t_sigt: forall Gamma T1 T2 s1 s2 s3,
-    s3 = sort_max s1 s2 ->
-    has_type Gamma T1 (CSort s1) ->
-    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (CSort s2) ->
-    has_type Gamma (TSig T1 T2) (CSort s3)
+(* | t_sigt: forall Gamma T1 T2 s1 s2 s3, *)
+(*     s3 = sort_max s1 s2 -> *)
+(*     has_type Gamma T1 (CSort s1) -> *)
+(*     has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (CSort s2) -> *)
+(*     has_type Gamma (TSig T1 T2) (CSort s3) *)
 
-| t_topt: forall Gamma,
-    has_type Gamma TTop ⋆
+(* | t_topt: forall Gamma, *)
+(*     has_type Gamma TTop ⋆ *)
 
-| t_bott: forall Gamma,
-    has_type Gamma TBot ⋆
+(* | t_bott: forall Gamma, *)
+(*     has_type Gamma TBot ⋆ *)
 
+(* TLambda; λx:A.b : (x:A) -> B *)
 | t_abs: forall Gamma t T1 T2 s s',
-    has_type Gamma T1 (CSort s) ->
+    has_type Gamma T1 (CSort s) -> (* this premise may be redundant *)
     has_type Gamma (TAll T1 T2) (CSort s') ->
     has_type (T1 :: Gamma) t (open (varF (length Gamma)) T2) ->
     has_type Gamma (tabs T1 t) (TAll T1 T2)
-
+(* TApp; f e : [e/x]B *)
 | t_app: forall Gamma f e T1 T2 T,
     has_type Gamma f (TAll T1 T2) ->
     has_type Gamma e T1 ->
     T = (open' e T2) ->
     has_type Gamma (tapp f e) T
 
-| t_sig: forall Gamma e1 e2 T1 T2,
-    has_type Gamma e1 T1 ->
-    has_type Gamma e2 (open' e1 T2) ->
-    has_type Gamma (tsig e1 e2) (TSig T1 T2)
+(* | t_sig: forall Gamma e1 e2 T1 T2, *)
+(*     has_type Gamma e1 T1 -> *)
+(*     has_type Gamma e2 (open' e1 T2) -> *)
+(*     has_type Gamma (tsig e1 e2) (TSig T1 T2) *)
 
-| t_fst: forall Gamma e T1 T2,
-    has_type Gamma e (TSig T1 T2) ->
-    has_type Gamma (tfst e) T1
+(* | t_fst: forall Gamma e T1 T2, *)
+(*     has_type Gamma e (TSig T1 T2) -> *)
+(*     has_type Gamma (tfst e) T1 *)
 
-| t_snd: forall Gamma e T1 T2 T,
-    has_type Gamma e (TSig T1 T2) ->
-    T = (open' (tfst e) T2) ->
-    has_type Gamma (tsnd e) T
+(* | t_snd: forall Gamma e T1 T2 T, *)
+(*     has_type Gamma e (TSig T1 T2) -> *)
+(*     T = (open' (tfst e) T2) -> *)
+(*     has_type Gamma (tsnd e) T *)
 
 (* TODO equality/tconv? *)
 .
@@ -529,17 +545,17 @@ Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
         | _ => None
         end
       end
-    | tsig t1 t2 =>
-      match teval n env t1 with
-      | None => None
-      | Some None => Some None
-      | Some (Some v1) =>
-        match teval n env t2 with
-        | None => None
-        | Some None => Some None
-        | Some (Some v2) => Some (Some (vsig v1 v2))
-        end
-      end
+    (* | tsig t1 t2 => *)
+    (*   match teval n env t1 with *)
+    (*   | None => None *)
+    (*   | Some None => Some None *)
+    (*   | Some (Some v1) => *)
+    (*     match teval n env t2 with *)
+    (*     | None => None *)
+    (*     | Some None => Some None *)
+    (*     | Some (Some v2) => Some (Some (vsig v1 v2)) *)
+    (*     end *)
+    (*   end *)
     | _ => None
     end
   end.
@@ -548,10 +564,10 @@ Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some
 
 Fixpoint tsize_flat(T: tm) :=
   match T with
-  | TTop => 1
-  | TBot => 1
+  (* | TTop => 1 *)
+  (* | TBot => 1 *)
   | TAll T1 T2 => S (tsize_flat T1 + tsize_flat T2)
-  | TSig T1 T2 => S (tsize_flat T1 + tsize_flat T2)
+  (* | TSig T1 T2 => S (tsize_flat T1 + tsize_flat T2) *)
   | _ => 0
   end.
 Lemma open_preserves_size: forall T x j,
@@ -562,6 +578,11 @@ Proof.
   - destruct v; eauto.  simpl; destruct (beq_nat j i); eauto.
 Qed.
 
+(* *********************** *)
+(* Semantic Interpretation *)
+(* *********************** *)
+
+(* The definition of value sets *)
 Definition vset := vl -> Prop.
 
 (*
