@@ -644,10 +644,20 @@ at runtime and at type level.
 
 Definition renv := list vset.
 
+(* Shall we add vset into the arguments??? *)
 (* TODO adapt the definitions in Geuvers '94, starting at p. 20 to sets of values *)
-Function val_type (rho: renv) (T: tm) (v: vl) {measure tsize_flat T} : Prop :=
+Function val_type (ρ: renv) (T: tm) (v: vl) {measure tsize_flat T} : Prop :=
   match T, v with
-  | TTop, _ => True
+  (* ρ(⊤) = {v} for all value *)
+  (* | TTop, _ => True *)
+  (* [[T1->T2]] *)
+  | TAll T1 T2, vabs env1 T0 y =>
+    closed 0 (length env) T1 /\ closed 1 (length env) T2 /\
+    forall vx, val_type ρ T1 vx ->
+          exists v, teval (vx::env1) y v /\ val_type (vx::ρ) (open (varF (length ρ)) T2) v
+  (* [[T]] *)
+  | 
+  (* *)
   | _, _ => False
   end.
 
