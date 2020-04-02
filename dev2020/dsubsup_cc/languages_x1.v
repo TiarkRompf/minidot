@@ -34,6 +34,8 @@ Module D.
 Inductive ty : Type :=
 | TTop : ty
 | TBot : ty
+(* Type var X *)
+| TVarF : id -> ty (* free type variable, in concrete environment *)
 (* (z: T) -> T^z *)
 | TAll : ty -> ty -> ty
 (* We generalize x.Type to tm.type for arbitrary terms tm.  *)
@@ -43,6 +45,7 @@ Inductive ty : Type :=
 | TBind  : ty -> ty (* Recursive binder: { z => T^z },
                          where z is locally bound in T *)
 | TAnd : ty -> ty -> ty (* Intersection Type: T1 /\ T2 *)
+
 
 
 with tm : Type :=
@@ -585,6 +588,7 @@ Qed.
 (* The definition of value sets *)
 Definition vset := vl -> Prop.
 
+
 (*
   This computes the *types* of the sets that kinds represent (cf. V(_) interp in Geuvers '94),
   i.e., this is a dependent type indexed by the kinds in the system . Since we lump
@@ -644,23 +648,26 @@ at runtime and at type level.
 
 Definition renv := list vset.
 
-(* Shall we add vset into the arguments??? *)
+(* Also, need to take kinds into consideration. With kind_set?  *)
 (* TODO adapt the definitions in Geuvers '94, starting at p. 20 to sets of values *)
-Function val_type (ρ: renv) (T: tm) (v: vl) {measure tsize_flat T} : Prop :=
+Function val_type (ρ: renv) (T: tm) (v: vl) (D: vset) {measure tsize_flat T} : Prop :=
   match T, v with
   (* ρ(⊤) = {v} for all value *)
-  (* | TTop, _ => True *)
-  (* [[T1->T2]] *)
+  | TTop, _ => True
+  (* [[ T1->T2 ]] *)
   | TAll T1 T2, vabs env1 T0 y =>
     closed 0 (length env) T1 /\ closed 1 (length env) T2 /\
-    forall vx, val_type ρ T1 vx ->
-          exists v, teval (vx::env1) y v /\ val_type (vx::ρ) (open (varF (length ρ)) T2) v
-  (* [[T]] *)
-  | 
-  (* *)
+    forall vx D1, val_type ρ T1 vx D1 ->
+          exists D2 v, teval (vx::env1) y v /\ val_type (D1::ρ) (open (varF (length ρ)) T2) v D2
+  (* [[ T ]] *)
+  | TVarF (tvar (varF x)), v =>
+    match indexr x env with
+    | Some => D v
+    | _ => False
+  (* TODO: add more interpretations *)
   | _, _ => False
   end.
-
+   
 (* TODO val_type_unfold *)
 
 Definition R_env gamma rho Gamma :=
