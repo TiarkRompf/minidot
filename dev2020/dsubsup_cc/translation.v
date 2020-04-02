@@ -45,6 +45,12 @@
 *)
 
 
+(* TODOs
+  * TMem: Universe polymorphic translation
+  * Type annotation in Sigma type eliminator
+  * rm context wellformedness in src language
+*)
+
 Require Export Arith.EqNat.
 Require Export Arith.Le.
 Require Import Coq.Program.Equality.
@@ -76,7 +82,9 @@ Fixpoint ttp Gamma T (wf: ty_wf Gamma T): CC.tm :=
     CC.TBot
   | wf_all _ _ _ ty_wf_T1 ty_wf_T2 =>
     CC.TAll (ttp _ _ ty_wf_T1) (ttp _ _ ty_wf_T2)
-  | wf_mem _ _ _ ty_wf_T1 ty_wf_T2 =>   (* Type L..U ~>  (Σα:⋆.(L → α ,α → U)) : ◻ *)
+  | wf_mem _ _ _ ty_wf_T1 ty_wf_T2 =>
+    (* Type L..U ~>  (Σα:⋆.(L → α ,α → U)) : ◻ *)
+    (* TODO: this is not type-preserving *)
     let f1 := CC.TAll (ttp _ _ ty_wf_T1) (CC.tvar (varB 1)) in
     let f2 := CC.TAll (CC.tvar (varB 2)) (ttp _ _ ty_wf_T2) in
     CC.TSig ⋆ (CC.TSig f1 f2)
@@ -89,8 +97,7 @@ with ttm Gamma t T (typing: has_type Gamma t T): CC.tm :=
     CC.tvar (varF v)
   | t_typ _ _ ty_wf_T1 =>
     let T1' := (ttp _ _ ty_wf_T1) in
-    (* let idfun := (CC.tabs T1' (CC.tvar (varF (length Gamma)))) in *)
-    let idfun := (CC.tabs T1' (CC.tvar (varB 0))) in (* TODO: confirm w. Tiark *)
+    let idfun := (CC.tabs T1' (CC.tvar (varB 0))) in
     (* TODO: it seems we need type annotations in tsig, since the result may
        also be typed as Σα:⋆.(α→α×α→α), while we would like the type
        Σα:⋆.(T1'→α×α→T1'). *)

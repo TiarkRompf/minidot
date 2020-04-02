@@ -73,53 +73,53 @@ Definition venv := list vl. (* H environment: run-time *)
 
 
 Inductive closed: nat(*B*) -> nat(*F*) -> ty -> Prop :=
-| cl_top: forall i j,
-    closed i j TTop
-| cl_bot: forall i j,
-    closed i j TBot
-| cl_all: forall i j T1 T2,
-    closed i j T1 ->
-    closed (S i) j T2 ->
-    closed i j (TAll T1 T2)
+| cl_top: forall b f,
+    closed b f TTop
+| cl_bot: forall b f,
+    closed b f TBot
+| cl_all: forall b f T1 T2,
+    closed b f T1 ->
+    closed (S b) f T2 ->
+    closed b f (TAll T1 T2)
 (* Now we have mutually recursive definitions for closedness on types and terms! *)
-| cl_sel_tm: forall i j t,
-    closed_tm i j t ->
-    closed i j (TSel t)
-| cl_mem: forall i j T1 T2,
-    closed i j T1 ->
-    closed i j T2 ->
-    closed i j (TMem T1 T2)
-| cl_bind: forall i j T,
-    closed (S i) j T ->
-    closed i j (TBind T)
-| cl_and: forall i j T1 T2,
-    closed i j T1 ->
-    closed i j T2 ->
-    closed i j (TAnd T1 T2)
+| cl_sel_tm: forall b f t,
+    closed_tm b f t ->
+    closed b f (TSel t)
+| cl_mem: forall b f T1 T2,
+    closed b f T1 ->
+    closed b f T2 ->
+    closed b f (TMem T1 T2)
+| cl_bind: forall b f T,
+    closed (S b) f T ->
+    closed b f (TBind T)
+| cl_and: forall b f T1 T2,
+    closed b f T1 ->
+    closed b f T2 ->
+    closed b f (TAnd T1 T2)
 
 
 with closed_tm: nat(*B*) -> nat(*F*) -> tm -> Prop :=
-| cl_tvarb: forall i j x,
-    i > x ->
-    closed_tm i j (tvar (varB x))
-| cl_tvarf: forall i j x,
-    j > x ->
-    closed_tm i j (tvar (varF x))
-| cl_ttyp:  forall i j ty,
-    closed i j ty ->
-    closed_tm i j (ttyp ty)
-| cl_tabs:  forall i j ty tm,
-    closed i j ty ->
-    closed_tm (S i) j tm ->
-    closed_tm i j (tabs ty tm)
-| cl_tapp:  forall i j tm1 tm2,
-    closed_tm i j tm1 ->
-    closed_tm i j tm2 ->
-    closed_tm i j (tapp tm1 tm2)
-| cl_tunpack: forall i j tm1 tm2,
-    closed_tm i j tm1 ->
-    closed_tm (S i) j tm2 ->
-    closed_tm i j (tunpack tm1 tm2)
+| cl_tvarb: forall b f x,
+    b > x ->
+    closed_tm b f (tvar (varB x))
+| cl_tvarf: forall b f x,
+    f > x ->
+    closed_tm b f (tvar (varF x))
+| cl_ttyp:  forall b f ty,
+    closed b f ty ->
+    closed_tm b f (ttyp ty)
+| cl_tabs:  forall b f ty tm,
+    closed b f ty ->
+    closed_tm (S b) f tm ->
+    closed_tm b f (tabs ty tm)
+| cl_tapp:  forall b f tm1 tm2,
+    closed_tm b f tm1 ->
+    closed_tm b f tm2 ->
+    closed_tm b f (tapp tm1 tm2)
+| cl_tunpack: forall b f tm1 tm2,
+    closed_tm b f tm1 ->
+    closed_tm (S b) f tm2 ->
+    closed_tm b f (tunpack tm1 tm2)
 .
 
 (* open define a locally-nameless encoding wrt to TVarB type variables. *)
@@ -162,7 +162,7 @@ Inductive ctx_wf: tenv -> Set :=
 | wf_cons: forall Gamma T,
     ty_wf Gamma T ->
     ctx_wf Gamma ->
-    ctx_wf (T :: Gamma)
+    ctx_wf (T :: Gamma)  (* TODO untangle*)
 
 with ty_wf: tenv -> ty -> Set :=
 | wf_top: forall Gamma,
@@ -294,12 +294,6 @@ Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some
 
 End D.
 
-(* Target language (inspired by https://docs.racket-lang.org/pie/index.html):
-
- t ::= x | Unit | Type
-     | (z: T) -> T^z  | lambda x:T.t | t t
-     | Sigma z:T. T^z | (t, t)  | fst t | snd t *)
-
 Declare Scope cc_scope.
 
 Require Import FunInd.
@@ -308,17 +302,15 @@ Require Import Recdef.
 Module CC.
 
 Inductive sort : Type :=
-| Star : sort (* Universe of CC types *)
-| Box :  sort (* Universe of CC kinds  *)
+| Typ : nat -> sort
 .
 
-Definition sort_max (s s' : sort): sort :=
-  match s, s' with
-  | Box, _ | _, Box => Box
-  | _, _ => Star
+Definition sort_succ (s: sort): sort :=
+  match s with
+    Typ n => Typ (S n)
   end.
 
-Inductive tm : Type := (* TODO what about equality types? *)
+Inductive tm : Type :=
 | Sort : sort -> tm
 | TTop : tm (* TODO really needed? *)
 | TBot : tm (* TODO really needed? *)
@@ -343,21 +335,17 @@ Definition venv := list vl.
 
 Module Notations.
 
-(* \square *)
-Notation "◻" := (Sort Box) : cc_scope.
-(* \star *)
-Notation "⋆" := (Sort Star) : cc_scope.
+  (* \star *)
+Notation "⋆" := (Sort (Typ 0)) : cc_scope.
 
 End Notations.
 
 Import Notations.
 Open Scope cc_scope.
 
-
 Fixpoint open_rec (k: nat) (u: tm) (T: tm) { struct T }: tm :=
   match T with
-  | ⋆           => ⋆
-  | ◻           => ◻
+  | Sort U      => Sort U
   | TTop        => TTop
   | TBot        => TBot
   | TAll T1 T2  => TAll (open_rec k u T1) (open_rec (S k) u T2)
@@ -367,7 +355,7 @@ Fixpoint open_rec (k: nat) (u: tm) (T: tm) { struct T }: tm :=
     if beq_nat k x then u else (tvar (varB x))
   | tabs ty tm => tabs (open_rec k u ty) (open_rec (S k) u tm)
   | tapp tm1 tm2 => tapp (open_rec k u tm1) (open_rec k u tm2)
-  | tsig tm1 tm2 => tsig (open_rec k u tm1) (open_rec (S k) u tm2)
+  | tsig tm1 tm2 => tsig (open_rec k u tm1) (open_rec k u tm2)
   | tfst tm => tfst (open_rec k u tm)
   | tsnd tm => tsnd (open_rec k u tm)
   end.
@@ -392,47 +380,60 @@ Fixpoint subst (x: nat) (u: tm) (t: tm) : tm :=
   | tsnd t => tsnd (subst x u t)
   end.
 
-(* TODO: state and prove that (T^e) = (T^x){e/x} *)
-
 Inductive closed: nat(*B*) -> nat(*F*) -> tm -> Prop :=
-| cl_sort: forall i j U,
-    closed i j (Sort U)
-| cl_top: forall i j,
-    closed i j TTop
-| cl_bot: forall i j,
-    closed i j TBot
-| cl_all: forall i j T1 T2,
-    closed i j T1 ->
-    closed (S i) j T2 ->
-    closed i j (TAll T1 T2)
-| cl_sig: forall i j T1 T2,
-    closed i j T1 ->
-    closed (S i) j T2 ->
-    closed i j (TSig T1 T2)
-| cl_tvarb: forall i j x,
-    i > x ->
-    closed i j (tvar (varB x))
-| cl_tvarf: forall i j x,
-    j > x ->
-    closed i j (tvar (varF x))
-| cl_tabs:  forall i j ty tm,
-    closed i j ty ->
-    closed (S i) j tm ->
-    closed i j (tabs ty tm)
-| cl_tapp:  forall i j tm1 tm2,
-    closed i j tm1 ->
-    closed i j tm2 ->
-    closed i j (tapp tm1 tm2)
-| cl_tsig:  forall i j tm1 tm2,
-    closed i j tm1 ->
-    closed i j tm2 ->
-    closed i j (tsig tm1 tm2)
-| cl_tfst:  forall i j tm,
-    closed i j tm ->
-    closed i j (tfst tm)
-| cl_tsnd:  forall i j tm,
-    closed i j tm ->
-    closed i j (tsnd tm)
+| cl_sort: forall b f U,
+    closed b f (Sort U)
+| cl_top: forall b f,
+    closed b f TTop
+| cl_bot: forall b f,
+    closed b f TBot
+| cl_all: forall b f T1 T2,
+    closed b f T1 ->
+    closed (S b) f T2 ->
+    closed b f (TAll T1 T2)
+| cl_sig: forall b f T1 T2,
+    closed b f T1 ->
+    closed (S b) f T2 ->
+    closed b f (TSig T1 T2)
+| cl_tvarb: forall b f x,
+    b > x ->
+    closed b f (tvar (varB x))
+| cl_tvarf: forall b f x,
+    f > x ->
+    closed b f (tvar (varF x))
+| cl_tabs:  forall b f ty tm,
+    closed b f ty ->
+    closed (S b) f tm ->
+    closed b f (tabs ty tm)
+| cl_tapp:  forall b f tm1 tm2,
+    closed b f tm1 ->
+    closed b f tm2 ->
+    closed b f (tapp tm1 tm2)
+| cl_tsig: forall b f tm1 tm2,
+    closed b f tm1 ->
+    closed b f tm2 ->
+    closed b f (tsig tm1 tm2)
+| cl_tfst: forall b f tm,
+    closed b f tm ->
+    closed b f (tfst tm)
+| cl_tsnd: forall b f tm,
+    closed b f tm ->
+    closed b f (tsnd tm)
+.
+
+(* TODO complete the conversion relation *)
+Inductive conv: tm -> tm -> Type :=
+| conv_refl: forall t, conv t t
+.
+
+(* TODO complete the cumulativity/subtyping relation *)
+Inductive cum: tm -> tm -> Type :=
+| cum_conv: forall t1 t2,
+    conv t1 t2 ->
+    cum t1 t2
+| cum_sort: forall i j,
+    i <= j ->
+    cum (Sort (Typ i)) (Sort (Typ j))
 .
 
 Inductive ctx_wf: tenv -> Type :=
@@ -443,8 +444,8 @@ Inductive ctx_wf: tenv -> Type :=
     ctx_wf Gamma ->
     ctx_wf (T :: Gamma)
 with has_type : tenv -> tm -> tm -> Type :=
-| t_box: forall Gamma,
-    has_type Gamma ⋆ ◻
+| t_sort: forall Gamma s,
+    has_type Gamma (Sort s) (Sort (sort_succ s))
 
 | t_var: forall x Gamma T s,
     ctx_wf Gamma ->
@@ -452,18 +453,15 @@ with has_type : tenv -> tm -> tm -> Type :=
     has_type Gamma T (Sort s) -> (* redundant, but makes kind_set definition easier *)
     has_type Gamma (tvar (varF x)) T
 
-| t_allt: forall Gamma T1 T2 s s',
+| t_allt: forall Gamma T1 T2 s,
     has_type Gamma T1 (Sort s) ->
-    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Sort s') ->
-    has_type Gamma (TAll T1 T2) (Sort s')
+    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Sort s) ->
+    has_type Gamma (TAll T1 T2) (Sort s)
 
-(* Enable consistent strong Sigma-types, (cf. Definition 5.1 in [Geuvers '94]),
-   forbidding (◻, ⋆, ⋆), (⋆, ◻, ⋆), (◻, ◻, ⋆), (⋆, ⋆, ◻) in the formation rule.*)
-| t_sigt: forall Gamma T1 T2 s1 s2 s3,
-    s3 = sort_max s1 s2 ->
-    has_type Gamma T1 (Sort s1) ->
-    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Sort s2) ->
-    has_type Gamma (TSig T1 T2) (Sort s3)
+| t_sigt: forall Gamma T1 T2 s,
+    has_type Gamma T1 (Sort s) ->
+    has_type (T1 :: Gamma) (open (varF (length Gamma)) T2) (Sort s) ->
+    has_type Gamma (TSig T1 T2) (Sort s)
 
 | t_topt: forall Gamma,
     has_type Gamma TTop ⋆
@@ -471,9 +469,8 @@ with has_type : tenv -> tm -> tm -> Type :=
 | t_bott: forall Gamma,
     has_type Gamma TBot ⋆
 
-| t_abs: forall Gamma t T1 T2 s s',
-    has_type Gamma T1 (Sort s) ->
-    has_type Gamma (TAll T1 T2) (Sort s') ->
+| t_abs: forall Gamma t T1 T2 s,
+    has_type Gamma (TAll T1 T2) (Sort s) ->
     has_type (T1 :: Gamma) t (open (varF (length Gamma)) T2) ->
     has_type Gamma (tabs T1 t) (TAll T1 T2)
 
@@ -483,7 +480,7 @@ with has_type : tenv -> tm -> tm -> Type :=
     T = (open' e T2) ->
     has_type Gamma (tapp f e) T
 
-| t_sig: forall Gamma e1 e2 T1 T2,
+| t_sig: forall Gamma e1 e2 T1 T2, (* TODO have explicit type annotation for the pair?*)
     has_type Gamma e1 T1 ->
     has_type Gamma e2 (open' e1 T2) ->
     has_type Gamma (tsig e1 e2) (TSig T1 T2)
@@ -492,12 +489,15 @@ with has_type : tenv -> tm -> tm -> Type :=
     has_type Gamma e (TSig T1 T2) ->
     has_type Gamma (tfst e) T1
 
-| t_snd: forall Gamma e T1 T2 T,
+| t_snd: forall Gamma e T1 T2,
     has_type Gamma e (TSig T1 T2) ->
-    T = (open' (tfst e) T2) ->
-    has_type Gamma (tsnd e) T
+    has_type Gamma (tsnd e) (open' (tfst e) T2)
 
-(* TODO equality/tconv? *)
+| t_cum: forall Gamma t T T' s,
+    has_type Gamma t T ->
+    cum T T' ->
+    has_type Gamma T' (Sort s) ->
+    has_type Gamma t T'
 .
 
 Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
@@ -538,48 +538,45 @@ Definition tevaln env e v := exists nm, forall n, n > nm -> teval n env e = Some
 
 Fixpoint tsize_flat(T: tm) :=
   match T with
-  | TTop => 1
-  | TBot => 1
   | TAll T1 T2 => S (tsize_flat T1 + tsize_flat T2)
   | TSig T1 T2 => S (tsize_flat T1 + tsize_flat T2)
-  | _ => 0
+  | _ => 1
   end.
 Lemma open_preserves_size: forall T x j,
     tsize_flat T = tsize_flat (open_rec j (tvar (varF x)) T).
 Proof.
   intros T. induction T; intros; simpl; eauto. simpl.
-  - destruct s; auto.
-  - destruct v; eauto.  simpl; destruct (beq_nat j i); eauto.
+  - destruct v; auto. simpl; destruct (beq_nat j i); eauto.
 Qed.
 
 Definition vset := vl -> Prop.
 
-(*
-  This computes the *types* of the sets that kinds represent (cf. V(_) interp in Geuvers '94),
-  i.e., this is a dependent type indexed by the kinds in the system . Since we lump
-  everything into one syntactic category, we define it inductively over typing derivations yielding ◻. *)
-Fixpoint kind_set Gamma K (proof: has_type Gamma K ◻): Type :=
-  match proof with
-  | t_box _ => (* ⋆ *)
-    vset
-  | t_var x Gamma T Box _ _ T_is_kind =>
-    (kind_set Gamma T T_is_kind)
-  | t_allt Gamma T1 T2 Box Box T1_is_kind T2_is_kind =>  (* Πα:T1.T2, T1:◻ *)
-    let V1 := (kind_set Gamma T1 T1_is_kind) in
-    let V2 := (kind_set (T1 :: Gamma) (open (varF (length Gamma)) T2) T2_is_kind) in
-    V1 -> V2
-  | t_allt Gamma T1 T2 Star Box p1 p2 => (* Πα:T1.T2, T1:⋆ *)
-    (kind_set (T1 :: Gamma) (open (varF (length Gamma)) T2) p2)
-  | t_sigt Gamma T1 T2 Box Box Box _ T1_is_kind T2_is_kind => (* Σα:T1.T2, T1:◻, T2:◻  *)
-    let V1 := (kind_set Gamma T1 T1_is_kind) in
-    let V2 := (kind_set (T1 :: Gamma) (open (varF (length Gamma)) T2) T2_is_kind) in
-    V1 -> V2 -> Prop (* V1 × V2 *)
-  | t_sigt Gamma T1 T2 Star Box Box _ _ T2_is_kind => (* Σα:T1.T2, T1:⋆, T2:◻ *)
-    (kind_set (T1 :: Gamma) (open (varF (length Gamma)) T2) T2_is_kind)
-  | t_sigt Gamma T1 T2 Box Star Box _ T1_is_kind _ => (* Σα:T1.T2, T1:◻, T2:⋆ *)
-    (kind_set Gamma T1 T1_is_kind)
-  | _ => False
-  end.
+(* (* *)
+(*   This computes the *types* of the sets that kinds represent (cf. V(_) interp in Geuvers '94), *)
+(*   i.e., this is a dependent type indexed by the kinds in the system . Since we lump *)
+(*   everything into one syntactic category, we define it inductively over typing derivations yielding ◻. *) *)
+(* Fixpoint kind_set Gamma K (proof: has_type Gamma K ◻): Type := *)
+(*   match proof with *)
+(*   | t_box _ => (* ⋆ *) *)
+(*     vset *)
+(*   | t_var x Gamma T Box _ _ T_is_kind => *)
+(*     (kind_set Gamma T T_is_kind) *)
+(*   | t_allt Gamma T1 T2 Box Box T1_is_kind T2_is_kind =>  (* Πα:T1.T2, T1:◻ *) *)
+(*     let V1 := (kind_set Gamma T1 T1_is_kind) in *)
+(*     let V2 := (kind_set (T1 :: Gamma) (open (varF (length Gamma)) T2) T2_is_kind) in *)
+(*     V1 -> V2 *)
+(*   | t_allt Gamma T1 T2 Star Box p1 p2 => (* Πα:T1.T2, T1:⋆ *) *)
+(*     (kind_set (T1 :: Gamma) (open (varF (length Gamma)) T2) p2) *)
+(*   | t_sigt Gamma T1 T2 Box Box Box _ T1_is_kind T2_is_kind => (* Σα:T1.T2, T1:◻, T2:◻  *) *)
+(*     let V1 := (kind_set Gamma T1 T1_is_kind) in *)
+(*     let V2 := (kind_set (T1 :: Gamma) (open (varF (length Gamma)) T2) T2_is_kind) in *)
+(*     V1 -> V2 -> Prop (* V1 × V2 *) *)
+(*   | t_sigt Gamma T1 T2 Star Box Box _ _ T2_is_kind => (* Σα:T1.T2, T1:⋆, T2:◻ *) *)
+(*     (kind_set (T1 :: Gamma) (open (varF (length Gamma)) T2) T2_is_kind) *)
+(*   | t_sigt Gamma T1 T2 Box Star Box _ T1_is_kind _ => (* Σα:T1.T2, T1:◻, T2:⋆ *) *)
+(*     (kind_set Gamma T1 T1_is_kind) *)
+(*   | _ => False *)
+(*   end. *)
 
 (* Design idea:
    terms and types are separate GADTs indexed by their sort, classifying their universe.
@@ -613,7 +610,7 @@ at runtime and at type level.
 
 Definition renv := list vset.
 
-(* TODO adapt the definitions in Geuvers '94, starting at p. 20 to sets of values *)
+(* TODO *)
 Function val_type (rho: renv) (T: tm) (v: vl) {measure tsize_flat T} : Prop :=
   match T, v with
   | TTop, _ => True
