@@ -427,13 +427,13 @@ Inductive conv: tm -> tm -> Type :=
 .
 
 (* TODO complete the cumulativity/subtyping relation *)
-Inductive cum: tm -> tm -> Type :=
-| cum_conv: forall t1 t2,
+Inductive sub: tm -> tm -> Type :=
+| sub_conv: forall t1 t2,
     conv t1 t2 ->
-    cum t1 t2
-| cum_sort: forall i j,
+    sub t1 t2
+| sub_sort: forall i j,
     i <= j ->
-    cum (Sort (Typ i)) (Sort (Typ j))
+    sub (Sort (Typ i)) (Sort (Typ j))
 .
 
 Inductive ctx_wf: tenv -> Type :=
@@ -480,7 +480,7 @@ with has_type : tenv -> tm -> tm -> Type :=
     T = (open' e T2) ->
     has_type Gamma (tapp f e) T
 
-| t_sig: forall Gamma e1 e2 T1 T2, (* TODO have explicit type annotation for the pair?*)
+| t_sig: forall Gamma e1 e2 T1 T2,
     has_type Gamma e1 T1 ->
     has_type Gamma e2 (open' e1 T2) ->
     has_type Gamma (tsig e1 e2) (TSig T1 T2)
@@ -493,9 +493,9 @@ with has_type : tenv -> tm -> tm -> Type :=
     has_type Gamma e (TSig T1 T2) ->
     has_type Gamma (tsnd e) (open' (tfst e) T2)
 
-| t_cum: forall Gamma t T T' s,
+| t_sub: forall Gamma t T T' s,
     has_type Gamma t T ->
-    cum T T' ->
+    sub T T' ->
     has_type Gamma T' (Sort s) ->
     has_type Gamma t T'
 .
@@ -606,7 +606,6 @@ Potentially interesting, since we could define
 a sort-indexed evaluator, that describes evaluation/normalization
 at runtime and at type level.
 *)
-
 
 Definition renv := list vset.
 
