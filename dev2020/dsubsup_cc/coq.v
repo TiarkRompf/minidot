@@ -15,7 +15,7 @@ Polymorphic Definition TBot: Type := forall x: Type, x.
 
 Polymorphic Definition TAll (A : Type) (B: A -> Type): Type := forall x:A, (B x).
 
-Polymorphic Definition TAnd (A: Type) (B: Type): Type := A * B.
+Polymorphic Definition TAnd (A: Type) (B: Type): Type := A * B. (* TODO: not sure *)
 
 (* TODO: TBind, use coinduction? *)
 
@@ -80,13 +80,15 @@ Require Import languages.
 Polymorphic Fixpoint tctx Gamma (wf: D.ctx_wf Gamma): list Type  :=
   match wf with
   | wf_empty => []
-  | wf_cons Gamma T wf_Gamma_T wf_Gamma => (ttp Gamma T wf_Gamma_T) :: (tctx wf_Gamma)
+  | wf_cons Gamma T wf_Gamma_T wf_Gamma => ((ttp Gamma T wf_Gamma_T) Gamma) :: (tctx wf_Gamma)
   end
-with ttp Gamma T (wf: D.ty_wf Gamma T): Type := (* either return type or function from type list to type. *)
+with ttp Gamma T (wf: D.ty_wf Gamma T): (tctx Gamma <ctx_wf_from_ty_wf>) -> Type :=
   match wf with
-  | D.wf_top _ => TTop
+  | D.wf_top _ =>
+    fun _ => TTop
 
-  | D.wf_bot _ => TBot
+  | D.wf_bot _ =>
+    fun _ => TBot
 
   | D.wf_all _ _ _ ty_wf_T1 ty_wf_T2 =>
 
@@ -95,7 +97,7 @@ with ttp Gamma T (wf: D.ty_wf Gamma T): Type := (* either return type or functio
   | D.wf_sel _ _ _ _ _ _ has_type_e =>
 
   end
-with ttm Gamma t T (typing: D.has_type Gamma t T):  :=
+with ttm Gamma t T (typing: D.has_type Gamma t T): (ttp Gamma T <wf_from_has_type>) :=
   match typing with
   | t_var v _ _ _ _ =>
 
