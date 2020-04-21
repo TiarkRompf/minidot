@@ -166,41 +166,57 @@ Qed.
 
 End D_meta.
 
-(* By construction, this asserts type-preservation *)
-Polymorphic Fixpoint tctx {Gamma} (wf: D.ctx_wf Gamma): list Type  :=
+Polymorphic Inductive term: Type -> Type :=
+| Duh: term nat (* TODO remove *)
+| term_tmem: forall T, TMem T T -> term (TMem T T)
+.
+
+Polymorphic Definition TERM: Type := sigT (fun T: Type => term T).
+
+Polymorphic Definition TERM_of {T} (t: term T): TERM :=
+  existT term T t.
+
+Polymorphic Fixpoint tctx {Gamma} (reify: forall U, term U -> U) (wf: D.ctx_wf Gamma): list Type  :=
   match wf with
   | D.wf_empty => []
-  | D.wf_cons Gamma T wf_Gamma_T wf_Gamma => (ttp wf_Gamma_T) :: (tctx wf_Gamma)
+  | D.wf_cons Gamma T wf_Gamma_T wf_Gamma => (ttp reify wf_Gamma_T) :: (tctx reify wf_Gamma)
   end
-with ttp {Gamma} {T} (ty_wf: D.ty_wf Gamma T): Type :=
+with ttp {Gamma} {T} (reify: forall U, term U -> U) (ty_wf: D.ty_wf Gamma T): Type := (* TODO make reify part of this mutually-recursive group of definitions *)
   match ty_wf with
-  | D.wf_top _ _ => TTop
-
-  | D.wf_bot _ _ => TBot
-
-  | _ => TTop
-  (* | D.wf_all _ _ _ ty_wf_T1 ty_wf_T2 => *)
-
-  (* | D.wf_mem _ _ _ ty_wf_T1 ty_wf_T2 => *)
-
-  (* | D.wf_sel _ _ _ _ _ _ has_type_e => *)
-
+  | D.wf_top _ _ =>
+    TTop
+  | D.wf_bot _ _ =>
+    TBot
+  | D.wf_all _ _ _ ty_wf_T1 ty_wf_T2 =>
+    TBot (*TODO*)
+  | D.wf_mem _ _ _ ty_wf_T1 ty_wf_T2 =>
+    TBot (*TODO*)
+  | D.wf_sel _ _ _ _ _ _ has_type_e =>
+    match ttm has_type_e with
+    | existT _ _ (term_tmem _ t) => TSel (reify t) (* TODO this will get rejected *)
+    | _ => False
+    end
   end
-(*Problem: we cannot mention ttp in the return tupe of ttm! *)
-with ttm {Gamma} {t} {T} (typing: D.has_type Gamma t T): (ttp Gamma T (htwf typing)) :=
+(*
+  Problem: we cannot mention ttp in the return type of ttm! The idea is to
+  construct a TERM = term U for some U s.t. U = ttp (htwf typing).
+  reify is supposed to turn this intermediate term representation into a proper
+  coq term having the type U.
+ *)
+with ttm {Gamma} {t} {T} (typing: D.has_type Gamma t T): TERM :=
   match typing with
   | D.t_var v _ _ _ _ =>
-
+    TERM_of Duh
   | D.t_typ _ _ ty_wf_T1 =>
-
+    TERM_of Duh
   | D.t_seli _ _ _ _ has_type_a_T1 has_type_e_TM_T1_Top =>
-
+    TERM_of Duh
   | D.t_sele _ _ _ _ has_type_a_TSel_e has_type_e_TM_Bot_T1 =>
-
+    TERM_of Duh
   | D.t_app _ _ _ _ _ has_type_f_TAll_T1_T2 has_type_x_T1 =>
-
+    TERM_of Duh
   | D.t_abs _ _ _ _ ty_wf_T1 has_type_y_T2 =>
-
+    TERM_of Duh
   end.
 
 (* TODO: how to relate evaluation in D and in Coq?
