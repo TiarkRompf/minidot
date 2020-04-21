@@ -166,22 +166,34 @@ Qed.
 
 End D_meta.
 
+(* "term T" is the type of coq terms having type T, where T ranges over the shallow embedded types above.  *)
 Polymorphic Inductive term: Type -> Type :=
-| Duh: term nat (* TODO remove *)
+| term_tnat: TNat -> term TNat (* TODO remove later *)
+| term_ttop: TTop -> term TTop
+| term_tbot: TTop -> term TBot
 | term_tmem: forall T, TMem T T -> term (TMem T T)
+| term_tsel: forall L U (t: TMem L U), @TSel L U t -> term (@TSel L U t)
+| term_tall: forall T U, TAll T U -> term (TAll T U)
+| term_tand: forall T U, TAnd T U -> term (TAnd T U)
 .
 
+(* ∃T.term T*)
 Polymorphic Definition TERM: Type := sigT (fun T: Type => term T).
 
+(* pack a term T into TERM *)
 Polymorphic Definition TERM_of {T} (t: term T): TERM :=
   existT term T t.
 
-Polymorphic Fixpoint tctx {Gamma} (reify: forall U, term U -> U) (wf: D.ctx_wf Gamma): list Type  :=
+Section Interp.
+
+  Polymorphic Variable reify: forall U, term U -> U.
+
+  Polymorphic Fixpoint tctx {Gamma} (wf: D.ctx_wf Gamma): list Type  :=
   match wf with
   | D.wf_empty => []
-  | D.wf_cons Gamma T wf_Gamma_T wf_Gamma => (ttp reify wf_Gamma_T) :: (tctx reify wf_Gamma)
+  | D.wf_cons Gamma T wf_Gamma_T wf_Gamma => (ttp wf_Gamma_T) :: (tctx wf_Gamma)
   end
-with ttp {Gamma} {T} (reify: forall U, term U -> U) (ty_wf: D.ty_wf Gamma T): Type := (* TODO make reify part of this mutually-recursive group of definitions *)
+with ttp {Gamma} {T} (ty_wf: D.ty_wf Gamma T): Type :=
   match ty_wf with
   | D.wf_top _ _ =>
     TTop
@@ -190,10 +202,10 @@ with ttp {Gamma} {T} (reify: forall U, term U -> U) (ty_wf: D.ty_wf Gamma T): Ty
   | D.wf_all _ _ _ ty_wf_T1 ty_wf_T2 =>
     TBot (*TODO*)
   | D.wf_mem _ _ _ ty_wf_T1 ty_wf_T2 =>
-    TBot (*TODO*)
+    TMem (ttp ty_wf_T1) (ttp ty_wf_T2)
   | D.wf_sel _ _ _ _ _ _ has_type_e =>
     match ttm has_type_e with
-    | existT _ _ (term_tmem _ t) => TSel (reify t) (* TODO this will get rejected *)
+    | existT _ _ (term_tmem T t) => @TSel T T t
     | _ => False
     end
   end
@@ -206,18 +218,22 @@ with ttp {Gamma} {T} (reify: forall U, term U -> U) (ty_wf: D.ty_wf Gamma T): Ty
 with ttm {Gamma} {t} {T} (typing: D.has_type Gamma t T): TERM :=
   match typing with
   | D.t_var v _ _ _ _ =>
-    TERM_of Duh
+    TERM_of (term_tnat 0) (* TODO *)
   | D.t_typ _ _ ty_wf_T1 =>
-    TERM_of Duh
+    TERM_of (term_tnat 0) (* TODO *)
   | D.t_seli _ _ _ _ has_type_a_T1 has_type_e_TM_T1_Top =>
-    TERM_of Duh
+    TERM_of (term_tnat 0) (* TODO *)
   | D.t_sele _ _ _ _ has_type_a_TSel_e has_type_e_TM_Bot_T1 =>
-    TERM_of Duh
+    TERM_of (term_tnat 0) (* TODO *)
   | D.t_app _ _ _ _ _ has_type_f_TAll_T1_T2 has_type_x_T1 =>
-    TERM_of Duh
+    TERM_of (term_tnat 0) (* TODO *)
   | D.t_abs _ _ _ _ ty_wf_T1 has_type_y_T2 =>
-    TERM_of Duh
+    TERM_of (term_tnat 0) (* TODO *)
   end.
+
+
+
+End Interp.
 
 (* TODO: how to relate evaluation in D and in Coq?
 
