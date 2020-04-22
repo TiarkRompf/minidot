@@ -153,7 +153,7 @@ Proof.
     induction T2; intros; eauto.
 Admitted. (*TODO: most of the cases are wrong, try avoiding eauto *)
 
-Lemma htwf: forall Gamma e T, has_type Gamma e T -> ty_wf Gamma T.
+Lemma htwf: forall {Gamma e T}, has_type Gamma e T -> ty_wf Gamma T.
 Proof.
   intros. induction H; auto.
   - eapply wf_lookup; eauto.
@@ -186,8 +186,6 @@ Polymorphic Definition TERM_of {T} (t: term T): TERM :=
 
 Section Interp.
 
-  Polymorphic Variable reify: forall U, term U -> U.
-
   Polymorphic Fixpoint tctx {Gamma} (wf: D.ctx_wf Gamma): list Type  :=
   match wf with
   | D.wf_empty => []
@@ -200,7 +198,7 @@ with ttp {Gamma} {T} (ty_wf: D.ty_wf Gamma T): Type :=
   | D.wf_bot _ _ =>
     TBot
   | D.wf_all _ _ _ ty_wf_T1 ty_wf_T2 =>
-    TBot (*TODO*)
+    TBot (*TODO: requires denotation as context-dependent functions *)
   | D.wf_mem _ _ _ ty_wf_T1 ty_wf_T2 =>
     TMem (ttp ty_wf_T1) (ttp ty_wf_T2)
   | D.wf_sel _ _ _ _ _ _ has_type_e =>
@@ -231,9 +229,25 @@ with ttm {Gamma} {t} {T} (typing: D.has_type Gamma t T): TERM :=
     TERM_of (term_tnat 0) (* TODO *)
   end.
 
+  (* Certifies that term U indeed gives a U. *)
+  Polymorphic Variable reify: forall U, term U -> U. (* TODO: define *)
 
+  (* TODO: use type classes to make more readable *)
+  Polymorphic Lemma ttm_yields_ttp: forall Gamma t T (typing: D.has_type Gamma t T), (projT1 (ttm typing)) = (ttp (htwf typing)).
+  Proof.
+  Admitted.
 
-End Interp.
+  Unset Printing Universes.
+  (* type preservation  *)
+  Polymorphic Theorem type_preservation: forall Gamma t T (typing: D.has_type Gamma t T), (ttp (htwf typing)).
+  Proof.
+    intros.
+    rewrite <- ttm_yields_ttp.
+    destruct (ttm typing).
+    simpl.
+    apply reify.
+    assumption.
+  Qed.
 
 (* TODO: how to relate evaluation in D and in Coq?
 
@@ -242,3 +256,5 @@ End Interp.
      amount of fuel, then the coq translation does not normalize => contradiction of axiom
 
 *)
+
+End Interp.
