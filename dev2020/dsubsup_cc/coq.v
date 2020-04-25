@@ -1,52 +1,64 @@
 Set Printing Universes.
 
-(* Types *)
-Polymorphic Definition TNat: Type := nat.
 
-Polymorphic Definition TMem L U: Type :=
-  sigT (fun a:Type => prod (L -> a) (a -> U)).
+Section Types.
 
-Polymorphic Definition TSel {L U} (t: TMem L U): Type :=
-  projT1 t.
+  Polymorphic Definition TNat: Type := nat.
 
-Polymorphic Definition TTop: Type := sigT (fun a: Type => a).
+  Polymorphic Definition TMem L U: Type :=
+    sigT (fun a:Type => prod (L -> a) (a -> U)).
 
-Polymorphic Definition TBot: Type := forall x: Type, x.
+  Polymorphic Definition TSel {L U} (t: TMem L U): Type :=
+    projT1 t.
 
-Polymorphic Definition TAll (A : Type) (B: A -> Type): Type := forall x:A, (B x).
+  Polymorphic Definition TTop: Type := sigT (fun a: Type => a).
 
-Polymorphic Definition TAnd (A: Type) (B: Type): Type := A * B. (* TODO: not sure *)
+  Polymorphic Definition TBot: Type := forall x: Type, x.
 
-(* TODO: TBind, use coinduction? *)
+  Polymorphic Definition TAll (A : Type) (B: A -> Type): Type := forall x:A, (B x).
 
-Check (TAll (TMem TBot TTop) (fun x => TAll (TSel x) (fun _ => (TSel x)))).
+  Polymorphic Definition TAnd (A: Type) (B: Type): Type := A * B. (* TODO: not sure *)
 
-(* Terms *)
-Polymorphic Definition tzro: TNat :=
-0.
+  (* TODO: TBind, use coinduction? *)
 
-Polymorphic Definition ttyp T: TMem T T :=
-existT (fun a => prod (T -> a) (a -> T)) T (pair (fun (a:T) => a) (fun (a:T) => a)).
+  Check (TAll (TMem TBot TTop) (fun x => TAll (TSel x) (fun _ => (TSel x)))).
 
-Polymorphic Definition tabs {A: Type} {B: A -> Type} (f: forall x:A, B x): TAll A B := f.
+End Types.
 
-Polymorphic Definition tapp {A: Type} {B: A -> Type} (f: TAll A B) (x: A): (B x) := f x.
 
-Check tabs.
+Section Terms.
 
-(* TODO: unpack *)
+  Polymorphic Definition tzro: TNat :=
+  0.
 
-(* Intro & elim forms *)
-Lemma intro: forall L U (x: TMem L U) (y: L), (TSel x).
-Proof.
-intros. destruct x. destruct p. simpl. apply x0. apply y.
-Qed.
+  Polymorphic Definition ttyp T: TMem T T :=
+  existT (fun a => prod (T -> a) (a -> T)) T (pair (fun (a:T) => a) (fun (a:T) => a)).
 
-Lemma elim: forall L U (x: TMem L U) (y: TSel x), U.
-Proof.
-intros. destruct x. destruct p. simpl. apply u. apply y.
-Qed.
+  Polymorphic Definition tabs {A: Type} {B: A -> Type} (f: forall x:A, B x): TAll A B := f.
 
+  Polymorphic Definition tapp {A: Type} {B: A -> Type} (f: TAll A B) (x: A): (B x) := f x.
+
+  Check tabs.
+
+  (* TODO: unpack *)
+
+End Terms.
+
+
+Section Typing.
+
+  (* Intro & elim forms *)
+  Lemma tmem_intro: forall L U (x: TMem L U) (y: L), (TSel x).
+  Proof.
+    intros. destruct x. destruct p. simpl. apply x0. apply y.
+  Qed.
+
+  Lemma tmem_elim: forall L U (x: TMem L U) (y: TSel x), U.
+  Proof.
+    intros. destruct x. destruct p. simpl. apply u. apply y.
+  Qed.
+
+End Typing.
 
 (* Verify impredicativity via universe polymorphism *)
 Definition nest T: TMem (TMem T T) (TMem T T) :=
@@ -59,13 +71,17 @@ ttyp T.
 
 Check unnest.
 
-(* Subtyping could be translated as coercions *)
+Section Subtyping.
 
-Polymorphic Definition sub_any {A: Type} (t: A): TTop := existT (fun a: Type => a) A t.
-Polymorphic Definition sub_bot {A: Type} (t: TBot): A := t A.
+  (* Subtyping could be translated as coercions *)
 
-Polymorphic Definition tmem_any {L U: Type} (t: TMem L U): TTop := sub_any t.
-Polymorphic Definition bot_tmem {L U: Type} (t: TBot): (TMem L U) := sub_bot t.
+  Polymorphic Definition sub_any {A: Type} (t: A): TTop := existT (fun a: Type => a) A t.
+  Polymorphic Definition sub_bot {A: Type} (t: TBot): A := t A.
+
+  Polymorphic Definition tmem_any {L U: Type} (t: TMem L U): TTop := sub_any t.
+  Polymorphic Definition bot_tmem {L U: Type} (t: TBot): (TMem L U) := sub_bot t.
+
+End Subtyping.
 
 Require Export Arith.EqNat.
 Require Export Arith.Le.
@@ -166,68 +182,109 @@ Qed.
 
 End D_meta.
 
-(* "term T" is the type of coq terms having type T, where T ranges over the shallow embedded types above.  *)
-Polymorphic Inductive term: Type -> Type :=
-| term_tnat: TNat -> term TNat (* TODO remove later *)
-| term_ttop: TTop -> term TTop
-| term_tbot: TTop -> term TBot
-| term_tmem: forall T, TMem T T -> term (TMem T T)
-| term_tsel: forall L U (t: TMem L U), @TSel L U t -> term (@TSel L U t)
-| term_tall: forall T U, TAll T U -> term (TAll T U)
-| term_tand: forall T U, TAnd T U -> term (TAnd T U)
-.
+Section Term_Reflect.
 
-(* ∃T.term T*)
-Polymorphic Definition TERM: Type := sigT (fun T: Type => term T).
+  (* "term T" is the type of coq terms having type T, where T ranges over the shallow embedded types above.  *)
+  Polymorphic Inductive term: Type -> Type :=
+  | term_tnat: TNat -> term TNat (* TODO remove later *)
+  | term_ttop: TTop -> term TTop
+  | term_tbot: TTop -> term TBot
+  | term_tmem: forall T, TMem T T -> term (TMem T T)
+  | term_tsel: forall L U (t: TMem L U), @TSel L U t -> term (@TSel L U t)
+  | term_tall: forall T U, TAll T U -> term (TAll T U)
+  | term_tand: forall T U, TAnd T U -> term (TAnd T U)
+  .
 
-(* pack a term T into TERM *)
-Polymorphic Definition TERM_of {T} (t: term T): TERM :=
-  existT term T t.
+  (* ∃T.term T*)
+  Polymorphic Definition TERM: Type := sigT (fun T: Type => term T).
+
+  (* pack a term T into TERM *)
+  Polymorphic Definition TERM_of {T} (t: term T): TERM :=
+    existT term T t.
+
+End Term_Reflect.
+
+Section Contexts.
+
+  Polymorphic Inductive ctx: list Type -> Type :=
+  | ctx_nil:  ctx []
+  | ctx_cons: forall TS U, U -> ctx TS -> ctx (U :: TS)
+  .
+
+  Polymorphic Definition ctx_hd_t {T TS} (ctx: ctx (T :: TS)): Type := T.
+
+  Polymorphic Definition ctx_tl_t {T TS} (ctx: ctx (T :: TS)): list Type := TS.
+
+  Polymorphic Definition ctx_destruct {T TS} (c: ctx (T :: TS)): (T * (ctx TS)) :=
+    match c with
+    | ctx_cons _ _ x xs => (x,xs)
+    end.
+
+  Polymorphic Definition ctx_hd {T TS} (c: ctx (T :: TS)) := fst (ctx_destruct c).
+  Polymorphic Definition ctx_tl {T TS} (c: ctx (T :: TS)) := snd (ctx_destruct c).
+
+End Contexts.
+
+(*
+
+how should this stuff behave?
+
+tall translation case:
+  {{ Gamma }} = list of *terms* having *translated* types as prescribed by Gamma
+
+  ty_wf Gamma T1     ⤳ T1' : {{ Gamma }} -> Type
+  ty_wf T1::Gamma T2 ⤳ T2' : {{ T1::Gamma }} -> Type
+  ty_wf Gamma (D.Tall T1 T2)
+
+  ⤳ {{ Gamma }} ->  TAll (T1' {{ Gamma }},  λx:T1' {{ Gamma }}.  T2' (x :: {{ Gamma }}))
+
+*)
 
 Section Interp.
 
   Polymorphic Fixpoint tctx {Gamma} (wf: D.ctx_wf Gamma): list Type  :=
-  match wf with
-  | D.wf_empty => []
-  | D.wf_cons Gamma T wf_Gamma_T wf_Gamma => (ttp wf_Gamma_T) :: (tctx wf_Gamma)
-  end
-with ttp {Gamma} {T} (ty_wf: D.ty_wf Gamma T): Type :=
-  match ty_wf with
-  | D.wf_top _ _ =>
-    TTop
-  | D.wf_bot _ _ =>
-    TBot
-  | D.wf_all _ _ _ ty_wf_T1 ty_wf_T2 =>
-    TBot (*TODO: requires denotation as context-dependent functions *)
-  | D.wf_mem _ _ _ ty_wf_T1 ty_wf_T2 =>
-    TMem (ttp ty_wf_T1) (ttp ty_wf_T2)
-  | D.wf_sel _ _ _ _ _ _ has_type_e =>
-    match ttm has_type_e with
-    | existT _ _ (term_tmem T t) => @TSel T T t
-    | _ => False
+    match wf with
+    | D.wf_empty => []
+    | D.wf_cons Gamma T wf_Gamma_T wf_Gamma => (ttp wf_Gamma_T) :: (tctx wf_Gamma)
     end
-  end
-(*
-  Problem: we cannot mention ttp in the return type of ttm! The idea is to
-  construct a TERM = term U for some U s.t. U = ttp (htwf typing).
-  reify is supposed to turn this intermediate term representation into a proper
-  coq term having the type U.
- *)
-with ttm {Gamma} {t} {T} (typing: D.has_type Gamma t T): TERM :=
-  match typing with
-  | D.t_var v _ _ _ _ =>
-    TERM_of (term_tnat 0) (* TODO *)
-  | D.t_typ _ _ ty_wf_T1 =>
-    TERM_of (term_tnat 0) (* TODO *)
-  | D.t_seli _ _ _ _ has_type_a_T1 has_type_e_TM_T1_Top =>
-    TERM_of (term_tnat 0) (* TODO *)
-  | D.t_sele _ _ _ _ has_type_a_TSel_e has_type_e_TM_Bot_T1 =>
-    TERM_of (term_tnat 0) (* TODO *)
-  | D.t_app _ _ _ _ _ has_type_f_TAll_T1_T2 has_type_x_T1 =>
-    TERM_of (term_tnat 0) (* TODO *)
-  | D.t_abs _ _ _ _ ty_wf_T1 has_type_y_T2 =>
-    TERM_of (term_tnat 0) (* TODO *)
-  end.
+  with ttp {Gamma} {T} (ty_wf: D.ty_wf Gamma T): Type :=
+    match ty_wf with
+    | D.wf_top _ _ =>
+      TTop
+    | D.wf_bot _ _ =>
+      TBot
+    | D.wf_all _ _ _ ty_wf_T1 ty_wf_T2 =>
+      TBot (*TODO: requires denotation as context-dependent functions *)
+    | D.wf_mem _ _ _ ty_wf_T1 ty_wf_T2 =>
+      TMem (ttp ty_wf_T1) (ttp ty_wf_T2)
+    | D.wf_sel _ _ _ _ _ _ has_type_e =>
+      match ttm has_type_e with
+      | existT _ _ (term_tmem T t) => @TSel T T t
+      | _ => False
+      end
+    end
+  (*
+    Problem: we cannot mention ttp in the return type of ttm! The idea is to
+    construct a TERM = term U for some U s.t. U = ttp (htwf typing).
+    reify is supposed to turn this intermediate term representation into a proper
+    coq term having the type U.
+   *)
+  with ttm {Gamma} {t} {T} (typing: D.has_type Gamma t T): TERM :=
+    match typing with
+    | D.t_var v _ _ _ _ =>
+      TERM_of (term_tnat 0) (* TODO *)
+    | D.t_typ _ _ ty_wf_T1 =>
+      TERM_of (term_tnat 0) (* TODO *)
+    | D.t_seli _ _ _ _ has_type_a_T1 has_type_e_TM_T1_Top =>
+      TERM_of (term_tnat 0) (* TODO *)
+    | D.t_sele _ _ _ _ has_type_a_TSel_e has_type_e_TM_Bot_T1 =>
+      TERM_of (term_tnat 0) (* TODO *)
+    | D.t_app _ _ _ _ _ has_type_f_TAll_T1_T2 has_type_x_T1 =>
+      TERM_of (term_tnat 0) (* TODO *)
+    | D.t_abs _ _ _ _ ty_wf_T1 has_type_y_T2 =>
+      TERM_of (term_tnat 0) (* TODO *)
+    end.
+
 
   (* Certifies that term U indeed gives a U. *)
   Polymorphic Variable reify: forall U, term U -> U. (* TODO: define *)
@@ -256,5 +313,6 @@ with ttm {Gamma} {t} {T} (typing: D.has_type Gamma t T): TERM :=
      amount of fuel, then the coq translation does not normalize => contradiction of axiom
 
 *)
+
 
 End Interp.
