@@ -110,13 +110,13 @@ Proof.
   - apply IHctx_wf in H2. apply ty_wf_weaken. assumption. constructor. assumption. assumption.
 Qed.
 
-Lemma hcwf: forall {Gamma e T}, has_type Gamma e T -> ctx_wf Gamma
-    with
-    tcwf: forall {Gamma T}, ty_wf Gamma T -> ctx_wf Gamma.
-Proof.
-  - intros. induction H; eauto.
-  - intros. induction H; eauto.
-Qed.
+(* Lemma hcwf: forall {Gamma e T}, has_type Gamma e T -> ctx_wf Gamma *)
+(*     with *)
+(*     tcwf: forall {Gamma T}, ty_wf Gamma T -> ctx_wf Gamma. *)
+(* Proof. *)
+(*   - intros. induction H; eauto. *)
+(*   - intros. induction H; eauto. *)
+(* Qed. *)
 
 Lemma extract1: forall Gamma T1 T2, ty_wf Gamma (TMem T1 T2) -> ty_wf Gamma T2.
 Proof.
@@ -143,9 +143,9 @@ Proof.
     generalize dependent Gamma. generalize dependent e. generalize dependent T1.
     induction T2; intros.
     (* TTop *)
-    -- simpl. constructor. eapply hcwf. eauto.
+    -- simpl. constructor.
     (* TBot *)
-    -- simpl. constructor. eapply hcwf. eauto.
+    -- simpl. constructor.
     (* TAll *)
     -- simpl in H. inversion H. subst. simpl. constructor.
        --- eapply IHT2_1; eauto.
@@ -172,8 +172,7 @@ Admitted. (*TODO: most of the cases are wrong, try avoiding eauto *)
 Lemma htwf: forall {Gamma e T}, has_type Gamma e T -> ty_wf Gamma T.
 Proof.
   intros. induction H; auto.
-  - eapply wf_lookup; eauto.
-  - apply wf_sel with (T1 := T1) (T2 := TTop); auto. constructor. eapply tcwf. eauto.
+  - apply wf_sel with (T1 := T1) (T2 := TTop); auto. constructor.
   - apply (extract1 _ _ _ IHhas_type2).
   - constructor; auto.
   - inversion IHhas_type1. subst. eapply ty_wf_open; eauto.
@@ -229,7 +228,7 @@ End Contexts.
 
 how should this stuff behave?
 
-tall translation case:
+t_all translation case:
   {{ Gamma }} = list of *terms* having *translated* types as prescribed by Gamma
 
   ty_wf Gamma T1     ⤳ T1' : {{ Gamma }} -> Type
@@ -238,20 +237,24 @@ tall translation case:
 
   ⤳ {{ Gamma }} ->  TAll (T1' {{ Gamma }},  λx:T1' {{ Gamma }}.  T2' (x :: {{ Gamma }}))
 
+structural properties:
+
+  ctx_cons [[T1]] {{ Gamma }} = {{ T1 :: Gamma }}
+
 *)
 
 Section Interp.
 
-  Polymorphic Fixpoint tctx {Gamma} (wf: D.ctx_wf Gamma): list Type  :=
-    match wf with
-    | D.wf_empty => []
-    | D.wf_cons Gamma T wf_Gamma_T wf_Gamma => (ttp wf_Gamma_T) :: (tctx wf_Gamma)
-    end
-  with ttp {Gamma} {T} (ty_wf: D.ty_wf Gamma T): Type :=
+  (* Polymorphic Fixpoint tctx {Gamma} (wf: D.ctx_wf Gamma): list Type (* ctx ???  *)    := *)
+  (*   match wf with *)
+  (*   | D.wf_empty => [] *)
+  (*   | D.wf_cons Gamma T wf_Gamma_T wf_Gamma => (ttp wf_Gamma_T) :: (tctx wf_Gamma) *)
+  (*   end *)
+  Polymorphic Fixpoint ttp {Gamma} {T} (ty_wf: D.ty_wf Gamma T): Type :=
     match ty_wf with
-    | D.wf_top _ _ =>
+    | D.wf_top _ =>
       TTop
-    | D.wf_bot _ _ =>
+    | D.wf_bot _ =>
       TBot
     | D.wf_all _ _ _ ty_wf_T1 ty_wf_T2 =>
       TBot (*TODO: requires denotation as context-dependent functions *)
