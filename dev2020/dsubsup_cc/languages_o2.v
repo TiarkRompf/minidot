@@ -156,13 +156,20 @@ Definition open_tm' u t := open_rec_tm 0 u t.
 
 
 (* ### Type Formation & Assignment ### *)
+Inductive ctx_wf: tenv -> Set :=
+| wf_empty:
+    ctx_wf []
+| wf_cons: forall Gamma T,
+    ty_wf Gamma T ->
+    ctx_wf Gamma ->
+    ctx_wf (T :: Gamma)  (* TODO untangle*)
 
-Inductive ty_wf: tenv -> ty -> Set :=
+with ty_wf: tenv -> ty -> Set :=
 | wf_top: forall Gamma,
-    (* ctx_wf Gamma -> *)
+    ctx_wf Gamma ->
     ty_wf Gamma TTop
 | wf_bot: forall Gamma,
-    (* ctx_wf Gamma -> *)
+    ctx_wf Gamma ->
     ty_wf Gamma TBot
 | wf_mem: forall Gamma T1 T2,
     ty_wf Gamma T1 ->
@@ -180,9 +187,9 @@ Inductive ty_wf: tenv -> ty -> Set :=
 
 with has_type : tenv -> tm -> ty -> Set :=
 | t_var: forall x Gamma T1,
-    (* ctx_wf Gamma -> *)
+    ctx_wf Gamma ->
     indexr x Gamma = Some T1 ->
-    ty_wf Gamma T1 ->
+    (* ty_wf Gamma T1 -> *)
     has_type Gamma (tvar (varF x)) T1
 
 (*
@@ -249,15 +256,6 @@ with has_type : tenv -> tm -> ty -> Set :=
             stp Gamma [] T1 T2 ->
            has_type Gamma e T2
 *)
-.
-
-Inductive ctx_wf: tenv -> Set :=
-| wf_empty:
-    ctx_wf []
-| wf_cons: forall Gamma T,
-    ty_wf Gamma T ->
-    ctx_wf Gamma ->
-    ctx_wf (T :: Gamma)
 .
 
 Fixpoint teval(n: nat)(env: venv)(t: tm){struct n}: option (option vl) :=
