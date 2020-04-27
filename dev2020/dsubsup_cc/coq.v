@@ -205,22 +205,73 @@ End Term_Reflect.
 
 Section Contexts.
 
-  Polymorphic Inductive ctx: list Type -> Type :=
-  | ctx_nil:  ctx []
-  | ctx_cons: forall TS U, U -> ctx TS -> ctx (U :: TS)
+  (* The context encoding is somewhat inspired by
+       "System F in Agda for Fun and Profit",
+     by Chapman, Kireev, Nester, and Wadler (MPC'19). *)
+
+  (* Translated typing contexts *)
+  Polymorphic Inductive tenv: Type :=
+  | tnil: tenv
+  | tcons: Type -> tenv -> tenv
   .
 
-  Polymorphic Definition ctx_hd_t {T TS} (ctx: ctx (T :: TS)): Type := T.
+  (* \lang \rang *)
+  Notation "⟪ x ; .. ; y ⟫" := (tcons x .. (tcons y tnil) ..).
+  Notation "⟪⟫" := tnil.
 
-  Polymorphic Definition ctx_tl_t {T TS} (ctx: ctx (T :: TS)): list Type := TS.
+  Local Definition tenv_ex1: tenv := tcons Type (tcons Prop (tcons Set (tcons TERM tnil))).
+  Local Definition tenv_ex2: tenv := ⟪ Type ; Prop ; Set; TERM; tenv ⟫.
 
-  Polymorphic Definition ctx_destruct {T TS} (c: ctx (T :: TS)): (T * (ctx TS)) :=
-    match c with
-    | ctx_cons _ _ x xs => (x,xs)
+  (* Morally, tenv is a list of Coq types with heterogeneous universe
+   levels However, we cannot just resolve to the standard list type,
+   e.g.,
+
+     Polymorphic Definition tenv: Type = list Type.
+
+   which results in an odd proof obligation
+
+     Type@{coq.1760} = list Type@{coq.1762}.
+
+   It seems doubtful that we can proceed here. *)
+
+  Fixpoint tenv_length (Gamma: tenv): nat :=
+    match Gamma with
+    | tnil => 0
+    | tcons _ Gamma' => 1 + (tenv_length Gamma')
     end.
 
-  Polymorphic Definition ctx_hd {T TS} (c: ctx (T :: TS)) := fst (ctx_destruct c).
-  Polymorphic Definition ctx_tl {T TS} (c: ctx (T :: TS)) := snd (ctx_destruct c).
+  (* Term contexts are indexed by the typing context. *)
+  Polymorphic Inductive venv: tenv -> Type :=
+  | vnil:  venv tnil
+  | vcons: forall K KS, K -> venv KS -> venv (tcons K KS)
+  .
+
+  (* \lAngle \rAngle*)
+  Notation "⟨ x ; .. ; y ⟩" := (vcons _ _ x .. (vcons _ _ y vnil) ..).
+  Notation "⟨⟩" := vnil.
+
+  Local Definition venv_ex1 := ⟨ 1; 2; False ⟩.
+  Check venv_ex1.
+
+  Polymorphic Definition venv_destruct {T Gamma} (c: venv (tcons T Gamma)): (T * (venv Gamma)) :=
+    match c with
+    | vcons _ _ x xs => (x,xs)
+    end.
+
+  Polymorphic Definition venv_hd {T Gamma} (c: venv (tcons T Gamma)) := fst (venv_destruct c).
+  Polymorphic Definition venv_tl {T Gamma} (c: venv (tcons T Gamma)) := snd (venv_destruct c).
+
+  Fixpoint venv_length {Gamma} (gamma: venv Gamma): nat :=
+    match gamma with
+    | vnil => 0
+    | vcons _ _ _ vs => 1 + (venv_length vs)
+    end.
+
+  Lemma env_length_eq: forall Gamma (gamma: venv Gamma), tenv_length Gamma = venv_length gamma.
+  Proof.
+    intros.
+    induction gamma; simpl; auto.
+  Qed.
 
 End Contexts.
 
