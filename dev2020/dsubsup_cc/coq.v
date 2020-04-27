@@ -204,30 +204,29 @@ Section Term_Reflect.
 
 End Term_Reflect.
 
-Section Contexts.
-
   (* The context encoding is somewhat inspired by
        "System F in Agda for Fun and Profit",
      by Chapman, Kireev, Nester, and Wadler (MPC'19). *)
 
   (* Translated typing contexts *)
-  Polymorphic Inductive tenv: Type :=
-  | tnil: tenv
-  | tcons: Type -> tenv -> tenv
+  Polymorphic Inductive ty_env: Type :=
+  | ty_nil: ty_env
+  | ty_cons: Type -> ty_env -> ty_env
   .
 
   (* \lang \rang *)
-  Notation "⟪ x ; .. ; y ⟫" := (tcons x .. (tcons y tnil) ..).
-  Notation "⟪⟫" := tnil.
+  Notation "⟪ x ; .. ; y ⟫" := (ty_cons x .. (ty_cons y ty_nil) ..).
+  Notation "⟪⟫" := ty_nil.
+  Notation "T ;;⋆ Gamma" := (ty_cons T Gamma) (at level 70, right associativity).
 
-  Local Definition tenv_ex1: tenv := tcons Type (tcons Prop (tcons Set (tcons TERM tnil))).
-  Local Definition tenv_ex2: tenv := ⟪ Type ; Prop ; Set; TERM; tenv ⟫.
+  Local Definition ty_env_ex1: ty_env := ty_cons Type (ty_cons Prop (ty_cons Set (ty_cons TERM ty_nil))).
+  Local Definition ty_env_ex2: ty_env := ⟪ Type ; Prop ; Set; TERM; ty_env ⟫.
 
-  (* Morally, tenv is a list of Coq types with heterogeneous universe
+  (* Morally, ty_env is a list of Coq types with heterogeneous universe
    levels However, we cannot just resolve to the standard list type,
    e.g.,
 
-     Polymorphic Definition tenv: Type = list Type.
+     Polymorphic Definition ty_env: Type = list Type.
 
    which results in an odd proof obligation
 
@@ -235,46 +234,46 @@ Section Contexts.
 
    It seems doubtful that we can proceed here. *)
 
-  Fixpoint tenv_length (Gamma: tenv): nat :=
+  Fixpoint ty_env_length (Gamma: ty_env): nat :=
     match Gamma with
-    | tnil => 0
-    | tcons _ Gamma' => 1 + (tenv_length Gamma')
+    | ⟪⟫ => 0
+    | _ ;;⋆ Gamma' => 1 + (ty_env_length Gamma')
     end.
 
   (* Term contexts are indexed by the typing context. *)
-  Polymorphic Inductive venv: tenv -> Type :=
-  | vnil:  venv tnil
-  | vcons: forall K KS, K -> venv KS -> venv (tcons K KS)
+  Polymorphic Inductive tm_env: ty_env -> Type :=
+  | tm_nil:  tm_env ⟪⟫
+  | tm_cons: forall T Gamma, T -> tm_env Gamma -> tm_env (T ;;⋆ Gamma)
   .
 
   (* \lAngle \rAngle*)
-  Notation "⟨ x ; .. ; y ⟩" := (vcons _ _ x .. (vcons _ _ y vnil) ..).
-  Notation "⟨⟩" := vnil.
+  Notation "⟨ x ; .. ; y ⟩" := (tm_cons _ _ x .. (tm_cons _ _ y tm_nil) ..).
+  Notation "⟨⟩" := tm_nil.
+  Notation "v ;⋆ gamma" := (tm_cons _ _ v gamma) (at level 65, right associativity).
 
-  Local Definition venv_ex1 := ⟨ 1; 2; False ⟩.
-  Check venv_ex1.
+  Local Definition tm_env_ex1 := ⟨ 1; 2; False ⟩.
+  Check tm_env_ex1.
 
-  Polymorphic Definition venv_destruct {T Gamma} (c: venv (tcons T Gamma)): (T * (venv Gamma)) :=
+  Polymorphic Definition tm_env_destruct {T Gamma} (c: tm_env (T ;;⋆ Gamma)): (T * (tm_env Gamma)) :=
     match c with
-    | vcons _ _ x xs => (x,xs)
+    | x ;⋆ xs => (x,xs)
     end.
 
-  Polymorphic Definition venv_hd {T Gamma} (c: venv (tcons T Gamma)) := fst (venv_destruct c).
-  Polymorphic Definition venv_tl {T Gamma} (c: venv (tcons T Gamma)) := snd (venv_destruct c).
+  Polymorphic Definition tm_env_hd {T Gamma} (c: tm_env (T ;;⋆ Gamma)) := fst (tm_env_destruct c).
+  Polymorphic Definition tm_env_tl {T Gamma} (c: tm_env (T ;;⋆ Gamma)) := snd (tm_env_destruct c).
 
-  Fixpoint venv_length {Gamma} (gamma: venv Gamma): nat :=
+  Fixpoint tm_env_length {Gamma} (gamma: tm_env Gamma): nat :=
     match gamma with
-    | vnil => 0
-    | vcons _ _ _ vs => 1 + (venv_length vs)
+    | ⟨⟩ => 0
+    | _ ;⋆ vs => 1 + (tm_env_length vs)
     end.
 
-  Lemma env_length_eq: forall Gamma (gamma: venv Gamma), tenv_length Gamma = venv_length gamma.
+  Lemma env_length_eq: forall Gamma (gamma: tm_env Gamma), ty_env_length Gamma = tm_env_length gamma.
   Proof.
     intros.
     induction gamma; simpl; auto.
   Qed.
 
-End Contexts.
 
 (*
 
@@ -297,28 +296,30 @@ structural properties:
 
 Section Interp.
 
-  Polymorphic Definition TYPE =
+  Polymorphic Variable DUMMY_TERM: { U: Type & { Gamma': ty_env & tm_env Gamma' -> term U } }.
+  Polymorphic Variable DUMMY_TYPE: { Gamma': ty_env & tm_env Gamma' -> Type }.
 
-  (* Polymorphic Fixpoint tctx {Gamma} (wf: D.ctx_wf Gamma): list Type (* ctx ???  *)    := *)
-  (*   match wf with *)
-  (*   | D.wf_empty => [] *)
-  (*   | D.wf_cons Gamma T wf_Gamma_T wf_Gamma => (ttp wf_Gamma_T) :: (tctx wf_Gamma) *)
-  (*   end *)
-  Polymorphic Fixpoint ttp {Gamma} {T} (ty_wf: D.ty_wf Gamma T): { Gamma : tenv & venv Gamma -> Type}  :=
-    match ty_wf with
-    | D.wf_top _ =>
-      TTop
-    | D.wf_bot _ =>
-      TBot
-    | D.wf_all _ _ _ ty_wf_T1 ty_wf_T2 =>
-      TBot (*TODO: requires denotation as context-dependent functions *)
-    | D.wf_mem _ _ _ ty_wf_T1 ty_wf_T2 =>
-      TMem (ttp ty_wf_T1) (ttp ty_wf_T2)
-    | D.wf_sel _ _ _ _ _ _ has_type_e =>
-      match ttm has_type_e with
-      | existT _ _ (term_tmem T t) => @TSel T T t
-      | _ => False
-      end
+  Polymorphic Fixpoint tctx {Gamma} (wf: D.ctx_wf Gamma): ty_env :=
+    match wf with
+    | D.wf_empty => ⟪⟫
+    | D.wf_cons Gamma T wf_Gamma_T wf_Gamma => (ttp wf_Gamma_T) ;;⋆ (tctx wf_Gamma)
+    end
+  with ttp {Gamma} {T} (ty_wf: D.ty_wf Gamma T): { Gamma : ty_env & tm_env Gamma -> Type}  :=
+      match ty_wf with
+        | _ => DUMMY_TYPE
+    (* | D.wf_top _ => *)
+    (*   TTop *)
+    (* | D.wf_bot _ => *)
+    (*   TBot *)
+    (* | D.wf_all _ _ _ ty_wf_T1 ty_wf_T2 => *)
+    (*   TBot (*TODO: requires denotation as context-dependent functions *) *)
+    (* | D.wf_mem _ _ _ ty_wf_T1 ty_wf_T2 => *)
+    (*   TMem (ttp ty_wf_T1) (ttp ty_wf_T2) *)
+    (* | D.wf_sel _ _ _ _ _ _ has_type_e => *)
+    (*   match ttm has_type_e with *)
+    (*   | existT _ _ (term_tmem T t) => @TSel T T t *)
+    (*   | _ => False *)
+    (*   end *)
     end
   (*
     Problem: we cannot mention ttp in the return type of ttm! The idea is to
@@ -326,20 +327,21 @@ Section Interp.
     reify is supposed to turn this intermediate term representation into a proper
     coq term having the type U.
    *)
-  with ttm {Gamma} {t} {T} (typing: D.has_type Gamma t T): TERM :=
-    match typing with
-    | D.t_var v _ _ _ _ =>
-      TERM_of (term_tnat 0) (* TODO *)
-    | D.t_typ _ _ ty_wf_T1 =>
-      TERM_of (term_tnat 0) (* TODO *)
-    | D.t_seli _ _ _ _ has_type_a_T1 has_type_e_TM_T1_Top =>
-      TERM_of (term_tnat 0) (* TODO *)
-    | D.t_sele _ _ _ _ has_type_a_TSel_e has_type_e_TM_Bot_T1 =>
-      TERM_of (term_tnat 0) (* TODO *)
-    | D.t_app _ _ _ _ _ has_type_f_TAll_T1_T2 has_type_x_T1 =>
-      TERM_of (term_tnat 0) (* TODO *)
-    | D.t_abs _ _ _ _ ty_wf_T1 has_type_y_T2 =>
-      TERM_of (term_tnat 0) (* TODO *)
+  with ttm {Gamma} {t} {T} (typing: D.has_type Gamma t T): { U: Type & { Gamma': ty_env & tm_env Gamma' -> term U } } :=
+      match typing with
+      | _ => DUMMY_TERM
+    (* | D.t_var v _ _ _ _ => *)
+    (*   TERM_of (term_tnat 0) (* TODO *) *)
+    (* | D.t_typ _ _ ty_wf_T1 => *)
+    (*   TERM_of (term_tnat 0) (* TODO *) *)
+    (* | D.t_seli _ _ _ _ has_type_a_T1 has_type_e_TM_T1_Top => *)
+    (*   TERM_of (term_tnat 0) (* TODO *) *)
+    (* | D.t_sele _ _ _ _ has_type_a_TSel_e has_type_e_TM_Bot_T1 => *)
+    (*   TERM_of (term_tnat 0) (* TODO *) *)
+    (* | D.t_app _ _ _ _ _ has_type_f_TAll_T1_T2 has_type_x_T1 => *)
+    (*   TERM_of (term_tnat 0) (* TODO *) *)
+    (* | D.t_abs _ _ _ _ ty_wf_T1 has_type_y_T2 => *)
+    (*   TERM_of (term_tnat 0) (* TODO *) *)
     end.
 
 
