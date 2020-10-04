@@ -91,6 +91,32 @@ Module one.
   Proof.
     intros. unfold subtype. intros. eapply intro; eauto.
   Qed.
+
+  Example ex4: forall S1 S2 U1 U2 (sub1 : S2 <: S1) (f: S2 -> (U1 <: U2)), (S1 -> U1) <: (S2 -> U2).
+  Proof.
+    intros. unfold subtype. intros.
+    apply f. apply X0. apply X. apply sub1. apply X0.
+  Qed.
+
+  Example ex5: forall S T U (s1: S <: T) (s2: T <: U), (S <: U).
+  Proof.
+    intros. unfold subtype. intros. auto.
+  Qed.
+
+  Example ex6: forall T, (T <: TTop).
+  Proof.
+    intros. unfold subtype. intros. constructor.
+  Qed.
+
+  Example ex7: forall T, (TBot <: T).
+  Proof.
+    intros. unfold subtype. intros. inversion X.
+  Qed.
+
+  Example ex8: forall T, (T <: T).
+  Proof.
+    intros. unfold subtype. intros. auto.
+  Qed.
   
   (* Verify impredicativity via universe polymorphism *)
 
