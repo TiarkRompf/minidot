@@ -77,43 +77,43 @@ Module one.
   Polymorphic Definition widenBoundsFull T (t: TMem T T): (TMem TBot TTop) :=
     widenBounds T TBot T TTop t (fun x => match x with end) (fun x => I).
 
-  Example ex1: forall S1 S2 U1 U2 (s1 : S2 <: S1) (s2 : U1 <: U2), (TMem S1 U1) <: (TMem S2 U2).
+  Lemma subTMemTMem: forall S1 S2 U1 U2 (s1 : S2 <: S1) (s2 : U1 <: U2), (TMem S1 U1) <: (TMem S2 U2).
   Proof.
     intros. unfold subtype. intros. eapply widenBounds; eauto.
   Qed.
 
-  Example ex2: forall U (x : (TMem TBot U)), (TSel x) <: U.
+  Lemma subTSelRight: forall U (x : (TMem TBot U)), (TSel x) <: U.
   Proof.
     intros. unfold subtype. intros. eapply elim; eauto.
   Qed.
 
-  Example ex3: forall S (x: (TMem S TTop)), S <: (TSel x).
+  Lemma subTSelLeft: forall S (x: (TMem S TTop)), S <: (TSel x).
   Proof.
     intros. unfold subtype. intros. eapply intro; eauto.
   Qed.
 
-  Example ex4: forall S1 S2 U1 U2 (sub1 : S2 <: S1) (f: S2 -> (U1 <: U2)), (S1 -> U1) <: (S2 -> U2).
+  Lemma subAllAll: forall S1 S2 U1 U2 (sub1 : S2 <: S1) (f: S2 -> (U1 <: U2)), (S1 -> U1) <: (S2 -> U2).
   Proof.
     intros. unfold subtype. intros.
     apply f. apply X0. apply X. apply sub1. apply X0.
   Qed.
 
-  Example ex5: forall S T U (s1: S <: T) (s2: T <: U), (S <: U).
+  Lemma subTrans: forall S T U (s1: S <: T) (s2: T <: U), (S <: U).
   Proof.
     intros. unfold subtype. intros. auto.
   Qed.
 
-  Example ex6: forall T, (T <: TTop).
+  Lemma subTop: forall T, (T <: TTop).
   Proof.
     intros. unfold subtype. intros. constructor.
   Qed.
 
-  Example ex7: forall T, (TBot <: T).
+  Lemma subBot: forall T, (TBot <: T).
   Proof.
     intros. unfold subtype. intros. inversion X.
   Qed.
 
-  Example ex8: forall T, (T <: T).
+  Lemma subRefl: forall T, (T <: T).
   Proof.
     intros. unfold subtype. intros. auto.
   Qed.
