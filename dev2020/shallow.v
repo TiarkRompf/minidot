@@ -136,6 +136,35 @@ Module one.
 
   Definition polyPoly: polyIdType := polyId (widenBoundsFull polyIdType (ttyp polyIdType)) polyId.
 
+  (* Test the Church encoding of Booleans *)
+
+  Polymorphic Definition TBool: Type := forall (a: TAny), (TSel a) -> (TSel a) -> (TSel a).
+
+  Polymorphic Definition DTrue: TBool :=
+    fun (a: TAny) =>
+      fun (x: TSel a) =>
+        fun (y: TSel a) =>
+          x.
+
+  Polymorphic Definition DFalse: TBool :=
+    fun (a: TAny) =>
+      fun (x: TSel a) =>
+        fun (y: TSel a) =>
+          y.
+
+  Polymorphic Definition ite (a: TAny) (cnd: TBool) (thn: TSel a) (els: TSel a): TSel a :=
+    cnd a thn els.
+
+  Example ite_true: ite (widenBoundsFull _ (ttyp TNat)) DTrue 1 2 = 1.
+  Proof.
+    cbv. reflexivity.
+  Qed.
+
+  Example ite_false: ite (widenBoundsFull _ (ttyp TNat)) DFalse 1 2 = 2.
+  Proof.
+    cbv. reflexivity.
+  Qed.
+
   (* Test bad bounds *)
 
   Lemma badBound: (TMem TTop TBot) -> False.
@@ -144,5 +173,13 @@ Module one.
     inversion X. destruct X0. apply t. apply x0. constructor.
   Qed.
 
+  Lemma badBoundExists: forall (T: TAny) (v: TSel T), exists (S: TAny), (TMem (TSel T) (TSel S)) -> False.
+  Proof.
+    intros. unfold TAny in *. unfold TSel in *. unfold TMem in *.
+    exists (existT (fun a => prod (TBot -> a) (a -> TTop)) TBot (pair (fun (a:TBot) => a) (fun (a:TBot) => I))).
+    intros. simpl in X. destruct X. destruct p.
+    destruct T. simpl in x0. destruct p. simpl in v.
+    apply t. apply x0. apply v.
+  Qed.
 
 End one.
