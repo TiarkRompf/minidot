@@ -128,8 +128,21 @@ Module one.
 
   (* Test polymorphic identity *)
 
-  Polymorphic Definition polyId (t: TMem False True) (x: TSel t): (TSel t) := x.
+  Polymorphic Definition polyId (t: TMem TBot TTop) (x: TSel t): (TSel t) := x.
 
-  Definition applyPolyId: TNat := polyId (widenBoundsFull _ (ttyp TNat)) 7.
+  Definition applyPolyId: TNat := polyId (widenBoundsFull TNat (ttyp TNat)) 7.
+
+  Polymorphic Definition polyIdType: Type := forall (t : TAny), (TSel t) -> (TSel t).
+
+  Definition polyPoly: polyIdType := polyId (widenBoundsFull polyIdType (ttyp polyIdType)) polyId.
+
+  (* Test bad bounds *)
+
+  Lemma badBound: (TMem TTop TBot) -> False.
+  Proof.
+    intros. unfold TMem in X.
+    inversion X. destruct X0. apply t. apply x0. constructor.
+  Qed.
+
 
 End one.
