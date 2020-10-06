@@ -5,11 +5,19 @@ Require Import Omega.
 Require Import Coq.Lists.List.
 Import ListNotations.
 
+(* Set Printing Universes. *)
+
 (* Shallow embedding using built-in sigma *)
 
 Module one.
 
-  (* Types *)
+  (* T ∈ Types ::= ℕ
+   *             | ⊤
+   *             | ⊥
+   *             | x.Type
+   *             | {Type = T..T}
+   *             | ∀x:T.T^ˣ
+   *)
 
   Polymorphic Definition TNat : Type :=
     nat.
@@ -26,15 +34,28 @@ Module one.
   Polymorphic Definition TSel {L U} (t: TMem L U): Type :=
     projT1 t.
 
+  Polymorphic Definition TAll (A : Type) (B: A -> Type): Type := forall x:A, (B x).
+
   Polymorphic Definition TAny : Type := TMem TBot TTop.
 
-  (* Terms *)
+  (* t ∈ Terms ::= n
+   *             | x
+   *             | {Type = T}
+   *             | λx:T.t
+   *             | t t
+   *)
 
   Polymorphic Definition tzro: TNat :=
     0.
 
   Polymorphic Definition ttyp T: TMem T T :=
     existT (fun a => prod (T -> a) (a -> T)) T (pair (fun (a:T) => a) (fun (a:T) => a)).
+
+  Polymorphic Definition tabs {A: Type} {B: A -> Type} (f: forall x:A, B x): TAll A B :=
+    f.
+
+  Polymorphic Definition tapp {A: Type} {B: A -> Type} (f: TAll A B) (x: A): (B x) :=
+    f x.
 
   (* Intro & elim forms *)
 
@@ -73,7 +94,7 @@ Module one.
     match t with
     | existT _ T (a, b) => existT _ T (fun x => a x, fun x => wu (b x))
     end.
-  
+
   Polymorphic Definition widenBoundsFull T (t: TMem T T): (TMem TBot TTop) :=
     widenBounds T TBot T TTop t (fun x => match x with end) (fun x => I).
 
@@ -130,40 +151,103 @@ Module one.
 
   Polymorphic Definition polyId (t: TMem TBot TTop) (x: TSel t): (TSel t) := x.
 
-  Definition applyPolyId: TNat := polyId (widenBoundsFull TNat (ttyp TNat)) 7.
-
   Polymorphic Definition polyIdType: Type := forall (t : TAny), (TSel t) -> (TSel t).
 
-  Definition polyPoly: polyIdType := polyId (widenBoundsFull polyIdType (ttyp polyIdType)) polyId.
+  (* id(7) = 7 *)
+  Definition polyNat : TNat := polyId (widenBoundsFull TNat (ttyp TNat)) 7.
 
-  (* Test the Church encoding of Booleans *)
+  Example polyNatEq: polyNat = 7.
+  Proof. cbv. reflexivity. Qed.
+
+  (* id(id) = id *)
+  Definition polyPoly : polyIdType := polyId (widenBoundsFull polyIdType (ttyp polyIdType)) polyId.
+
+  Example polyPolyEq: polyPoly = polyId.
+  Proof. cbv. reflexivity. Qed.
+
+  (* id({Type = Nat}) = {Type = Nat} *)
+  Definition polyNatType : (TMem TNat TNat) := polyId (widenBoundsFull _ (nest TNat)) (ttyp TNat).
+
+  Example polyNatTypeEq: polyNatType = (ttyp TNat).
+  Proof. cbv. reflexivity. Qed.
+
+  (* id({Type = ∀ (t: {Type:⊥..⊤}) → ∀ t.Type → t.Type}) =
+       {Type = ∀ (t: {Type:⊥..⊤}) → ∀ t.Type → t.Type} *)
+  Definition polyPolyType : (TMem polyIdType polyIdType) :=
+    polyId (widenBoundsFull _ (nest polyIdType)) (ttyp polyIdType).
+
+  Example polyPolyTypeEq: polyPolyType = (ttyp polyIdType).
+  Proof. cbv. reflexivity. Qed.
+
+  (* Church encoding of Booleans *)
 
   Polymorphic Definition TBool: Type := forall (a: TAny), (TSel a) -> (TSel a) -> (TSel a).
 
   Polymorphic Definition DTrue: TBool :=
-    fun (a: TAny) =>
-      fun (x: TSel a) =>
-        fun (y: TSel a) =>
-          x.
+    tabs (fun (a: TAny) =>
+            tabs (fun (x: TSel a) =>
+                    tabs (fun (y: TSel a) =>
+                            x))).
 
   Polymorphic Definition DFalse: TBool :=
-    fun (a: TAny) =>
-      fun (x: TSel a) =>
-        fun (y: TSel a) =>
-          y.
+    tabs (fun (a: TAny) =>
+            tabs (fun (x: TSel a) =>
+                    tabs (fun (y: TSel a) =>
+                            y))).
 
   Polymorphic Definition ite (a: TAny) (cnd: TBool) (thn: TSel a) (els: TSel a): TSel a :=
     cnd a thn els.
+    (* (tapp (tapp (tapp cnd a) thn) els). *)
 
   Example ite_true: ite (widenBoundsFull _ (ttyp TNat)) DTrue 1 2 = 1.
-  Proof.
-    cbv. reflexivity.
-  Qed.
+  Proof. cbv. reflexivity. Qed.
 
   Example ite_false: ite (widenBoundsFull _ (ttyp TNat)) DFalse 1 2 = 2.
-  Proof.
-    cbv. reflexivity.
-  Qed.
+  Proof. cbv. reflexivity. Qed.
+
+  (* Church encoding of products *)
+
+  Polymorphic Definition TProd (X: TAny) (Y: TAny) := forall (a: TAny), (TSel X -> TSel Y -> TSel a) -> (TSel a).
+
+  Polymorphic Definition DPair (X: TAny) (Y: TAny) (x: TSel X) (y: TSel Y): TProd X Y :=
+    tabs (fun (a: TAny) =>
+            tabs (fun (k: TSel X -> TSel Y -> TSel a) =>
+                    k x y)).
+
+  Check DPair (widenBoundsFull _ (ttyp TNat)) (widenBoundsFull _ (ttyp TNat)) 1 2.
+
+  Polymorphic Definition DFst {X : TAny} {Y: TAny} (p: TProd X Y): TSel X :=
+    tapp p X (tabs (fun (x: TSel X) => tabs (fun (y: TSel Y) => x))).
+
+  Polymorphic Definition DSnd {X : TAny} {Y: TAny} (p: TProd X Y): TSel Y :=
+    tapp p Y (tabs (fun (x: TSel X) => tabs (fun (y: TSel Y) => y))).
+
+  Example pair123: DSnd (DSnd (DPair (widenBoundsFull _ (ttyp TNat))
+                                     (widenBoundsFull _ (ttyp (TProd (widenBoundsFull _ (ttyp TNat)) (widenBoundsFull _ (ttyp TNat)))))
+                                     1
+                                     (DPair (widenBoundsFull _ (ttyp TNat)) (widenBoundsFull _ (ttyp TNat)) 2 3))) = 3.
+  Proof. cbv. reflexivity. Qed.
+
+  (* Church encoding of sums *)
+
+  Polymorphic Definition TSum (X: TAny) (Y: TAny): Type :=
+    forall (a: TAny), (TSel X -> TSel a) -> (TSel Y -> TSel a) -> (TSel a).
+
+  Polymorphic Definition DInL {X: TAny} {Y: TAny} (e: TSel X): TSum X Y :=
+    tabs (fun (a: TAny) =>
+            tabs (fun (f: TSel X -> TSel a) =>
+                    tabs (fun (g: TSel Y -> TSel a) =>
+                            tapp f e))).
+
+  Polymorphic Definition DInR {X: TAny} {Y: TAny} (e: TSel Y): TSum X Y :=
+    tabs (fun (a: TAny) =>
+            tabs (fun (f: TSel X -> TSel a) =>
+                    tabs (fun (g: TSel Y -> TSel a) =>
+                            tapp g e))).
+
+  Polymorphic Definition DCase {X: TAny} {Y: TAny} (Z: TAny) (e: TSum X Y)
+              (f: TSel X -> TSel Z) (g: TSel Y -> TSel Z): TSel Z :=
+    e Z f g.
 
   (* Test bad bounds *)
 
