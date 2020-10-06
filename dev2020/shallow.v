@@ -5,11 +5,10 @@ Require Import Omega.
 Require Import Coq.Lists.List.
 Import ListNotations.
 
-(* Set Printing Universes. *)
-
 (* Shallow embedding using built-in sigma *)
 
 Module one.
+  Set Printing Universes.
 
   (* T ∈ Types ::= ℕ
    *             | ⊤
@@ -138,6 +137,46 @@ Module one.
   Proof.
     intros. unfold subtype. intros. auto.
   Qed.
+
+  (* Test subtyping *)
+
+  Lemma TSubAny: forall T, T <: TMem TBot TTop.
+  Proof.
+    unfold subtype. intros.
+    unfold TMem. exists TTop. split.
+    - intros. inversion X0.
+    - intros. apply X0.
+  Qed.
+
+  Lemma AnySubAny: TMem TBot TTop <: TMem TBot TTop.
+  Proof. apply TSubAny. Qed.
+
+  (* {Type = {Type = ⊥..⊤}} *)
+  Check ttyp (TMem TBot TTop).
+
+  (* Bad bounds *)
+
+  Definition bad T := T -> False.
+
+  Lemma badBound: bad (TMem TTop TBot).
+  Proof.
+    unfold bad. intros. unfold TMem in X.
+    inversion X. destruct X0. apply t. apply x0. constructor.
+  Qed.
+
+  Lemma nonsenseSubtype: (TMem TTop TBot) <: (TMem TBot TTop).
+  Proof.
+    unfold subtype. intros. apply badBound in X. inversion X.
+  Qed.
+
+  Lemma badBoundExists: forall (T: TAny) (v: TSel T), exists (S: TAny), bad (TMem (TSel T) (TSel S)).
+  Proof.
+    intros. unfold TAny in *. unfold TSel in *. unfold TMem in *.
+    exists (existT (fun a => prod (TBot -> a) (a -> TTop)) TBot (pair (fun (a:TBot) => a) (fun (a:TBot) => I))).
+    unfold bad. intros. simpl in X. destruct X. destruct p.
+    destruct T. simpl in x0. destruct p. simpl in v.
+    apply t. apply x0. apply v.
+  Qed.
   
   (* Verify impredicativity via universe polymorphism *)
 
@@ -177,6 +216,12 @@ Module one.
     polyId (widenBoundsFull _ (nest polyIdType)) (ttyp polyIdType).
 
   Example polyPolyTypeEq: polyPolyType = (ttyp polyIdType).
+  Proof. cbv. reflexivity. Qed.
+
+  (* id({Type = {Type=⊥..⊤}}) = {Type = {Type=⊥..⊤}} *)
+  Definition polyAnyType: (TMem TAny TAny) := polyId (widenBoundsFull _ (nest TAny)) (ttyp TAny).
+
+  Lemma polyAnyTypeEq: polyId (widenBoundsFull _ (nest TAny)) (ttyp TAny) = (ttyp TAny).
   Proof. cbv. reflexivity. Qed.
 
   (* Church encoding of Booleans *)
@@ -249,21 +294,31 @@ Module one.
               (f: TSel X -> TSel Z) (g: TSel Y -> TSel Z): TSel Z :=
     e Z f g.
 
-  (* Test bad bounds *)
+  (* Church encoding of lists *)
 
-  Lemma badBound: (TMem TTop TBot) -> False.
-  Proof.
-    intros. unfold TMem in X.
-    inversion X. destruct X0. apply t. apply x0. constructor.
-  Qed.
+  Polymorphic Definition TList (X: TAny): Type :=
+    forall (a: TAny), TSel a -> (TSel X -> TSel a -> TSel a) -> TSel a.
 
-  Lemma badBoundExists: forall (T: TAny) (v: TSel T), exists (S: TAny), (TMem (TSel T) (TSel S)) -> False.
-  Proof.
-    intros. unfold TAny in *. unfold TSel in *. unfold TMem in *.
-    exists (existT (fun a => prod (TBot -> a) (a -> TTop)) TBot (pair (fun (a:TBot) => a) (fun (a:TBot) => I))).
-    intros. simpl in X. destruct X. destruct p.
-    destruct T. simpl in x0. destruct p. simpl in v.
-    apply t. apply x0. apply v.
-  Qed.
+  Polymorphic Definition DNil {X: TAny}: TList X :=
+    tabs (fun (a: TAny) =>
+            tabs (fun (n: TSel a) =>
+                    tabs (fun (f: TSel X -> TSel a -> TSel a) =>
+                            n))).
 
+  Polymorphic Definition DCons {X: TAny} (hd: TSel X) (tl: TList X): TList X :=
+    tabs (fun (a: TAny) =>
+            tabs (fun (n: TSel a) =>
+                    tabs (fun (f: TSel X -> TSel a -> TSel a) =>
+                            f hd (tl a n f)))).
+
+  Polymorphic Definition DFold {X: TAny} {Z: TAny} (e: TList X)
+              (zero: TSel Z) (f: TSel X -> TSel Z -> TSel Z): TSel Z :=
+    e Z zero f.
+
+  Definition list123: TList (widenBoundsFull TNat (ttyp TNat)) := DCons (X := widenBoundsFull _ (ttyp TNat)) 1 (DCons (X := widenBoundsFull _ (ttyp TNat)) 2 (DCons (X := widenBoundsFull _ (ttyp TNat)) 3 DNil)).
+
+  Example fold_list123 :
+    DFold (Z := widenBoundsFull _ (ttyp TNat)) list123 0 (tabs (fun x => tabs (fun z => x + z))) = 6.
+  Proof. cbv. reflexivity. Qed.
+  
 End one.
