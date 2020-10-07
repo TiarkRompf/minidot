@@ -224,6 +224,13 @@ Module one.
   Lemma polyAnyTypeEq: polyId (widenBoundsFull _ (nest TAny)) (ttyp TAny) = (ttyp TAny).
   Proof. cbv. reflexivity. Qed.
 
+  Polymorphic Definition selfAppCoq (f: forall (T: Type), T -> T): forall (T: Type), T -> T := f (forall (T: Type), T -> T) f.
+  
+  Compute (widenBoundsFull _ (ttyp (forall (T: TAny), TSel T -> TSel T))).
+  
+  Polymorphic Definition selfApp (f: forall (T: TAny), TSel T -> TSel T): forall (T: TAny), TSel T -> TSel T :=
+    f (widenBoundsFull _ (ttyp (forall (T: TAny), TSel T -> TSel T))) f.
+
   (* Church encoding of Booleans *)
 
   Polymorphic Definition TBool: Type := forall (a: TAny), (TSel a) -> (TSel a) -> (TSel a).
