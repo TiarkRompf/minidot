@@ -60,12 +60,12 @@ Module one.
 
   Lemma intro: forall L U (x: TMem L U) (y: L), (TSel x).
   Proof.
-    intros. destruct x. destruct p. simpl. apply x0. apply y. 
+    intros. destruct x. destruct p. simpl. apply x0. apply y.
   Qed.
 
   Lemma elim: forall L U (x: TMem L U) (y: TSel x), U.
   Proof.
-    intros. destruct x. destruct p. simpl. apply u. apply y. 
+    intros. destruct x. destruct p. simpl. apply u. apply y.
   Qed.
 
   Lemma elim_for_realz: forall L U (x: TMem L U), (TSel x -> U).
@@ -177,11 +177,11 @@ Module one.
     destruct T. simpl in x0. destruct p. simpl in v.
     apply t. apply x0. apply v.
   Qed.
-  
+
   (* Verify impredicativity via universe polymorphism *)
 
   Definition nest T: TMem (TMem T T) (TMem T T) :=
-    ttyp (TMem T T). 
+    ttyp (TMem T T).
 
   Definition unnest T: TSel (nest T) :=
     ttyp T.
@@ -225,10 +225,10 @@ Module one.
   Proof. cbv. reflexivity. Qed.
 
   Polymorphic Definition selfAppCoq (f: forall (T: Type), T -> T): forall (T: Type), T -> T := f (forall (T: Type), T -> T) f.
-  
+
   Compute (widenBoundsFull _ (ttyp (forall (T: TAny), TSel T -> TSel T))).
-  
-  Polymorphic Definition selfApp (f: forall (T: TAny), TSel T -> TSel T): forall (T: TAny), TSel T -> TSel T :=
+
+  Fail Polymorphic Definition selfApp (f: forall (T: TAny), TSel T -> TSel T): forall (T: TAny), TSel T -> TSel T :=
     f (widenBoundsFull _ (ttyp (forall (T: TAny), TSel T -> TSel T))) f.
 
   (* Church encoding of Booleans *)
@@ -327,5 +327,10 @@ Module one.
   Example fold_list123 :
     DFold (Z := widenBoundsFull _ (ttyp TNat)) list123 0 (tabs (fun x => tabs (fun z => x + z))) = 6.
   Proof. cbv. reflexivity. Qed.
-  
+
+  (* Impredicative Strong Existential Equivalent to type:type (Hook and Howe '86), p. 11, Fact 3  *)
+  Polymorphic Definition HHFact3 : (TAll (TAll TAny (fun x => TSel x)) (fun _ => (TAll TAny (fun x => TSel x)))) :=
+    tabs (fun f : (TAll TAny (fun x => TSel x)) => tabs (fun s : TAny => f (widenBoundsFull (TSel s) (ttyp (TSel s))))).
+
+
 End one.
