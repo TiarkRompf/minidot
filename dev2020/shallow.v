@@ -328,9 +328,33 @@ Module one.
     DFold (Z := widenBoundsFull _ (ttyp TNat)) list123 0 (tabs (fun x => tabs (fun z => x + z))) = 6.
   Proof. cbv. reflexivity. Qed.
 
+  Polymorphic Definition FALSE := (TAll TAny (fun x => TSel x)).
+
   (* Impredicative Strong Existential Equivalent to type:type (Hook and Howe '86), p. 11, Fact 3  *)
-  Polymorphic Definition HHFact3 : (TAll (TAll TAny (fun x => TSel x)) (fun _ => (TAll TAny (fun x => TSel x)))) :=
+  Polymorphic Definition HHFact3 : (TAll (TAll TAny (fun x => TSel x)) (fun _ => FALSE)) :=
     tabs (fun f : (TAll TAny (fun x => TSel x)) => tabs (fun s : TAny => f (widenBoundsFull (TSel s) (ttyp (TSel s))))).
+
+  Polymorphic Definition FALSEBot : (TAll FALSE (fun _ => TBot)) :=
+    tabs (fun f => f (widenBoundsFull TBot (ttyp TBot))).
+
+  (* Hurkens Paradox https://github.com/agda/agda/blob/master/test/Succeed/Hurkens.agda *)
+
+  Polymorphic Definition FALSEProp : TAny := widenBoundsFull _ (ttyp FALSE).
+
+  Polymorphic Definition NOT : TAll TAny (fun _ => TAny)  := tabs (fun A => widenBoundsFull _ (ttyp (TAll (TSel A) (fun _ => (TSel FALSEProp))))).
+
+  Polymorphic Definition P : TAll TAny (fun _ => TAny) := tabs (fun A => widenBoundsFull _ (ttyp (TAll (TSel A) (fun _ => TAny)))).
+
+  Polymorphic Definition U : TAny :=
+    widenBoundsFull _ (ttyp (TAll TAny (fun X => (TAll (TAll (TSel (tapp P (tapp P X))) (fun _ => (TSel X))) (fun _ => (TSel (tapp P (tapp P X)))))))).
+
+  (* TODO : needs a couple of TSels in its body*)
+  Fail Polymorphic Definition tau : TAll (TSel (tapp P (tapp P U))) (fun _ => (TSel U)) :=
+    tabs (fun t =>
+            tabs (fun X =>
+                    tabs (fun f =>
+                            tabs (fun p =>
+                                    (tapp t (fun x => (tapp p (tapp f (tapp (tapp x X) f)))))) ))).
 
 
 End one.
